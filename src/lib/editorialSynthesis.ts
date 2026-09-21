@@ -114,41 +114,96 @@ export function topicOverlap(a: Set<string>, b: Set<string>) {
 /** These patterns FLAG text for disclosure; they never reject on their own. A flagged
  * sentence must be declared by the model and backed by a source contract that records
  * causality or a commercial outcome. Undeclared or unsupported is the failure. */
-// `fixed order` is not a causal claim: the repair verb only flags with an object.
-const CAUSAL_MARKERS = /\b(?:caused?|causes|causing|because|drove|drives|driven|led to|leads to|resulted? in|results in|proves?|proof that|thanks to|due to|so that|therefore|which is why|that is why|fix(?:es|ed|ing)\s+(?:the|their|your|his|her|its|my|our|a|an|this|that)\b|makes? (?:them|it|you) )\b/i
-const COMMERCIAL_MARKERS = /\b(?:revenue|profit|profits|pipeline|booked|bookings|roi|mrr|arr|sales|deals?|paying customers?|signed clients?|retainers?|conversion rate|cash)\b/i
+/** ROUTING ONLY. These patterns decide which proposals enter the reasoned check below.
+ * They never decide a verdict: a flag with no supporting relation to the cited source,
+ * the inspected catalog or the proposal's own declared ledger is what rejects, and a
+ * flagged construction the source actually records is accepted however it is worded.
+ * A longer or cleverer word list would not change a single verdict here. */
+const CAUSAL_ROUTING = /\b(?:caused?|causes|causing|because|drove|drives|driven|led to|leads to|resulted? in|results in|proves?|proof that|thanks to|due to|so that|therefore|which is why|that is why|fix(?:es|ed|ing)\s+(?:the|their|your|his|her|its|my|our|a|an|this|that)\b|makes? (?:them|it|you) )\b/gi
+const COMMERCIAL_ROUTING = /\b(?:revenue|profit|profits|pipeline|booked|bookings|roi|mrr|arr|sales|deals?|paying customers?|signed clients?|retainers?|conversion rate|cash)\b/gi
 
-function publicFields(s: SynthesisSuggestion): Array<{ path: string; text: string }> {
+const constructions = (pattern: RegExp, text: string) =>
+  [...new Set([...String(text ?? '').matchAll(new RegExp(pattern.source, 'gi'))].map(m => m[0].trim().toLowerCase()))]
+const records = (construction: string, text: string) =>
+  new RegExp(`\\b${construction.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(String(text ?? ''))
+
+export type PublicPart = { path: string; text: string; claimIndex: number | null }
+
+function publicFields(s: SynthesisSuggestion): PublicPart[] {
   return [
-    { path: 'topic', text: s.topic }, { path: 'angle', text: s.angle }, { path: 'hook', text: s.hook },
-    { path: 'why_now', text: s.why_now }, { path: 'novelty_reason', text: s.novelty_reason },
-    { path: 'overlap_with_existing_content', text: s.overlap_with_existing_content },
-    { path: 'distribution.cta', text: s.distribution?.cta ?? '' },
-    ...(s.structural_beats ?? []).map((text, i) => ({ path: `structural_beats[${i}]`, text })),
-    ...(s.claims ?? []).flatMap((claim, i) => [
-      { path: `claims[${i}].statement`, text: claim.statement },
-      { path: `claims[${i}].allowed_phrasing`, text: claim.allowed_phrasing }]),
+    { path: 'topic', text: s.topic, claimIndex: null }, { path: 'angle', text: s.angle, claimIndex: null },
+    { path: 'hook', text: s.hook, claimIndex: null }, { path: 'why_now', text: s.why_now, claimIndex: null },
+    { path: 'novelty_reason', text: s.novelty_reason, claimIndex: null },
+    { path: 'overlap_with_existing_content', text: s.overlap_with_existing_content, claimIndex: null },
+    { path: 'distribution.cta', text: s.distribution?.cta ?? '', claimIndex: null },
+    ...(s.structural_beats ?? []).map((text, i) => ({ path: `structural_beats[${i}]`, text, claimIndex: null })),
+    ...(s.claims ?? []).map((claim, i) => ({ path: `claims[${i}].statement`, text: claim.statement, claimIndex: i })),
   ].filter(part => typeof part.text === 'string' && part.text.trim().length)
 }
 
-function undisclosed(kind: 'causal' | 'commercial', marker: RegExp, s: SynthesisSuggestion,
-  declared: NonNullable<SynthesisSuggestion['causal_claims']>, sources: SynthesisSource[]) {
-  const support = (id: string) => {
-    const contract = sources.find(x => x.source_id === id)?.candidate_fields?.contract as Record<string, unknown> | undefined
-    return contract?.[kind === 'causal' ? 'supports_causality' : 'supports_commercial_outcome'] === true
-  }
-  const failures: string[] = []
-  for (const entry of declared) {
-    if (!entry.support_basis?.trim()) failures.push(`${kind} claim "${entry.statement}" has no support basis`)
-    else if (!support(entry.source_id)) failures.push(`${kind} claim "${entry.statement}" cites ${entry.source_id}, whose source contract does not record ${kind === 'causal' ? 'causality' : 'a commercial outcome'}`)
-  }
+export type AssertionVerdict = { path: string; kind: 'causal' | 'commercial'; construction: string
+  accepted: boolean; reason: string }
+
+/** The reasoned check. For every routed construction it asks one question in order:
+ * does the cited source record it, does the inspected catalog name it, does the
+ * proposal's own declaration support it against a source contract, or does the
+ * proposal's own declared allowed_phrasing scope it as an interpretation? Only when
+ * every one of those fails is the assertion the proposal's own invention. */
+export function judgeAssertions(kind: 'causal' | 'commercial', pattern: RegExp, s: SynthesisSuggestion,
+  sources: SynthesisSource[], assetIdentities: string): AssertionVerdict[] {
+  const declared = (kind === 'causal' ? s.causal_claims : s.commercial_claims) ?? []
+  const contractKey = kind === 'causal' ? 'supports_causality' : 'supports_commercial_outcome'
+  const label = kind === 'causal' ? 'causality' : 'a commercial outcome'
+  const noLabel = kind === 'causal' ? 'no causality' : 'no commercial outcome'
+  const cited = new Set([...(s.source_ids ?? []), ...(s.claims ?? []).map(c => c.source_id)].map(String))
+  const contractRecords = (id: string) =>
+    ((sources.find(x => x.source_id === id)?.candidate_fields?.contract) as Record<string, unknown> | undefined)?.[contractKey] === true
+  const sourceText = sources.filter(x => cited.has(x.source_id))
+    .map(x => `${x.passage ?? ''} ${x.retained_context ?? ''} ${x.limitation ?? ''}`).join('\n')
+
+  const verdicts: AssertionVerdict[] = []
   for (const part of publicFields(s)) {
-    if (!marker.test(part.text)) continue
-    const covered = declared.some(entry => typeof entry.statement === 'string' && entry.statement.trim() &&
-      (part.text.includes(entry.statement) || entry.statement.includes(part.text)))
-    if (!covered) failures.push(`undeclared ${kind} wording in ${part.path}: "${part.text}"`)
+    for (const construction of constructions(pattern, part.text)) {
+      const claim = part.claimIndex === null ? undefined : s.claims?.[part.claimIndex]
+      const governing = claim ?? s.claims?.find(c => records(construction, c.allowed_phrasing))
+      const push = (accepted: boolean, reason: string) =>
+        verdicts.push({ path: part.path, kind, construction, accepted, reason })
+
+      if (records(construction, sourceText)) { push(true, 'the cited source records this construction in its own retained text'); continue }
+      if (records(construction, assetIdentities)) { push(true, 'it belongs to an inspected catalog asset identity, not to a claim'); continue }
+
+      const entry = declared.find(e => records(construction, e.statement) ||
+        String(part.text).includes(String(e.statement)) || String(e.statement).includes(String(part.text)))
+      if (entry) {
+        if (!entry.support_basis?.trim()) { push(false, `declared without a support basis`); continue }
+        if (!cited.has(String(entry.source_id))) { push(false, `declared against ${entry.source_id}, which this proposal does not cite`); continue }
+        if (contractRecords(String(entry.source_id))) { push(true, `declared against ${entry.source_id}, whose source contract records ${label}`); continue }
+        push(false, `declared against ${entry.source_id}, whose source contract records ${noLabel}`)
+        continue
+      }
+      if (governing && records(construction, governing.allowed_phrasing)) {
+        if (governing.status === 'fact' && !contractRecords(String(governing.source_id))) {
+          push(false, `carried as a fact against ${governing.source_id}, which records ${noLabel}: declare it as an interpretation or a hypothesis, or drop it`)
+          continue
+        }
+        push(true, `scoped by the proposal's own declared allowed_phrasing as ${governing.status}`)
+        continue
+      }
+      if (claim && claim.allowed_phrasing?.trim()) {
+        push(false, `the statement asserts "${construction}", which its own declared allowed_phrasing does not carry and the cited source does not record`)
+        continue
+      }
+      push(false, `asserts "${construction}", which no cited source records, no inspected asset names, and no declaration covers`)
+    }
   }
-  return failures
+  // A declaration that names a construction never used publicly still has to be coherent.
+  for (const entry of declared) {
+    if (verdicts.some(v => records(v.construction, entry.statement))) continue
+    if (!entry.support_basis?.trim()) verdicts.push({ path: `${kind}_claims`, kind, construction: '(declaration)', accepted: false, reason: `"${entry.statement}" is declared without a support basis` })
+    else if (!cited.has(String(entry.source_id))) verdicts.push({ path: `${kind}_claims`, kind, construction: '(declaration)', accepted: false, reason: `"${entry.statement}" cites ${entry.source_id}, which this proposal does not cite` })
+    else if (!contractRecords(String(entry.source_id))) verdicts.push({ path: `${kind}_claims`, kind, construction: '(declaration)', accepted: false, reason: `"${entry.statement}" cites ${entry.source_id}, whose source contract records ${noLabel}` })
+  }
+  return verdicts
 }
 
 /** Five slots per client per week. Fewer is honest only with an explicit acquisition or
@@ -263,7 +318,7 @@ export async function buildSynthesisBriefs(input: {
   clientId: EditorialClientId; batchId: string; directionVersion: string; sourceCutoff: string
   sources: SynthesisSource[]; suggestions: SynthesisSuggestion[]
   voiceRefs?: EditorialBrief['production']['voice_references']
-  assets?: { id: string; version: string; access_route: string; permission_basis: string; status: string; catalog_state?: string }[]
+  assets?: { id: string; version: string; access_route: string; permission_basis: string; status: string; catalog_state?: string; slug?: string | null }[]
   // Semantic context. The deployed refresh adapter always supplies these; when it is
   // absent (fixture/unit callers) only the structural contract above applies.
   requestedAt?: string; directionText?: string
@@ -333,10 +388,17 @@ export async function buildSynthesisBriefs(input: {
           throw new Error(`${at} uses ${nativeId} (${row.role}${row.qa_failed ? ', qa_failed' : ''}${row.is_test ? ', test' : ''}) as positive voice precedent; only published rows may serve as precedent`)
         }
       }
-      // 6. Causal and commercial wording needs disclosure AND a supporting contract.
-      const defects = [...undisclosed('causal', CAUSAL_MARKERS, s, s.causal_claims ?? [], safeSources),
-        ...undisclosed('commercial', COMMERCIAL_MARKERS, s, s.commercial_claims ?? [], safeSources)]
-      if (defects.length) throw new Error(`${at} ${defects.join('; ')}`)
+      // 6. Causal and commercial assertions are judged against the cited source, the
+      // inspected catalog and the proposal's own declaration. The routing patterns only
+      // decide what gets examined; they never decide a verdict.
+      const assetIdentities = (input.assets ?? [])
+        .map(a => `${a.id} ${a.slug ?? ''} ${a.access_route} ${a.permission_basis}`.replace(/[^a-zA-Z0-9]+/g, ' ')).join(' ')
+      const verdicts = [...judgeAssertions('causal', CAUSAL_ROUTING, s, safeSources, assetIdentities),
+        ...judgeAssertions('commercial', COMMERCIAL_ROUTING, s, safeSources, assetIdentities)]
+      const refused = verdicts.filter(v => !v.accepted)
+      if (refused.length) {
+        throw new Error(`${at} ${refused.map(v => `${v.kind} assertion in ${v.path} ${v.reason}`).join('; ')}`)
+      }
       // 7. An evaluation date must be a future check, not a date already passed.
       const evaluateAt = Date.parse(isoText(s.evaluation.earliest_valid_observation))
       if (!Number.isFinite(evaluateAt)) throw new Error(`${at} evaluation date ${s.evaluation.earliest_valid_observation} is not a parseable timestamp`)

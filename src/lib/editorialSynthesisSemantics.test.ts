@@ -427,3 +427,92 @@ describe('the compact correction turn carries every validator input', () => {
     expect(edge).toContain('${canonicalPromptBodies}')
   })
 })
+
+// Ivan's standing rule: gates are reasoned, never keyword lists. The routing patterns
+// now only decide what gets examined. Every verdict below comes from the relation between
+// the assertion and the cited source, the inspected catalog or the proposal's own
+// declaration. All four false positives are the reviewer's, reproduced from the retained
+// Run5 replies; all three rejections are the failures that must keep holding.
+describe('a routed construction is judged, never rejected for appearing', () => {
+  // A neutral retained context, so every fixture clears the adaptability floor without
+  // adding a single routed construction of its own.
+  const CONTEXT = 'observed_metrics: impressions=238 reactions=0 comments=1; captured from the retained snapshot on the date recorded above'
+  const withPassage = (passage: string, extra: Record<string, unknown> = {}) =>
+    ({ ...ownPost, source_id: 'own:routed', passage, retained_context: CONTEXT, ...extra })
+  const oneClaim = (source: Record<string, unknown>, over: Record<string, unknown>) => ({
+    ...grounded, source_ids: [source.source_id], measurements: [],
+    claims: [{ ...grounded.claims[0], source_id: source.source_id,
+      supporting_quote: String(source.passage).slice(0, 40) }], ...over })
+
+  it('clears "booked" when the cited source records the booking', async () => {
+    const source = withPassage('Davorin described a creator booked for one brief and then graded on a different metric a week later, which is the mismatch he keeps hitting when a campaign is set up in a hurry.')
+    const suggestion = oneClaim(source, { hook: 'The creator was booked for one brief and graded on another.' })
+
+    await expect(run([source], [suggestion])).resolves.toHaveLength(1)
+  })
+
+  it('clears "Deal" inside an inspected asset name', async () => {
+    const source = withPassage('The internal worksheet takes a creator fee and a target cost per install and returns the maximum installs the booking would have to produce, all in the browser with nothing submitted.')
+    const suggestion = oneClaim(source, { hook: 'Point readers at the Creator Deal Check worksheet.' })
+    const assets = [{ id: 'asset-1', version: '1', access_route: '/tools/creator-deal-check',
+      permission_basis: 'client-owned catalog', status: 'ready', slug: 'creator-deal-check' }]
+
+    await expect(run([source], [suggestion], { assets })).resolves.toHaveLength(1)
+  })
+
+  it('clears "because" when it sits inside reported speech the source records', async () => {
+    const source = withPassage('He told the content managers never to show the QR code in the first fifteen seconds, because showing it immediately reads as an ad and viewers skip straight past the integration.')
+    const suggestion = oneClaim(source, { hook: 'He holds the QR code back, because showing it immediately reads as an ad.' })
+
+    await expect(run([source], [suggestion])).resolves.toHaveLength(1)
+  })
+
+  it('clears "prove" when the source uses it', async () => {
+    const source = withPassage('You do not have to write like a seven-year-old just to prove a post was not written by a machine; the argument in the post is about tells, not about quality.')
+    const suggestion = oneClaim(source, { topic: 'Whether avoiding every AI-writing tell is necessary to prove a post was not AI-written' })
+
+    await expect(run([source], [suggestion])).resolves.toHaveLength(1)
+  })
+
+  it('a routed construction with no source, asset or declaration behind it is refused', async () => {
+    const source = withPassage('Three videos a month with one creator is the pace we settled on for the rest of the quarter, written down on the call so the managers have one number to work from.')
+    const suggestion = oneClaim(source, { hook: 'Running one creator too often burns out the audience, which is why the pace was capped.' })
+
+    await expect(run([source], [suggestion])).rejects.toThrow(/no cited source records, no inspected asset names, and no declaration covers/)
+  })
+
+  it('a declared commercial claim with no supporting source contract is refused', async () => {
+    const source = withPassage('She cannot trace a single click from the ad account into the marketplace, so she turns the channel off for a week and reads the difference by hand each morning.')
+    const suggestion = oneClaim(source, {
+      hook: 'Turning the channel off is how she reads the sales it was carrying.',
+      commercial_claims: [{ statement: 'Turning the channel off is how she reads the sales it was carrying.',
+        source_id: source.source_id, support_basis: 'she said so on the call' }] })
+
+    await expect(run([source], [suggestion])).rejects.toThrow(/source contract records no commercial outcome/)
+  })
+
+  it('a statement that exceeds its own declared allowed_phrasing is refused', async () => {
+    const source = withPassage('The post recorded two hundred and thirty eight impressions and one comment on the day it was captured, with no other engagement noted anywhere in the record.')
+    const suggestion = oneClaim(source, {
+      claims: [{ ...grounded.claims[0], source_id: source.source_id, status: 'interpretation',
+        supporting_quote: 'two hundred and thirty eight impressions',
+        statement: 'The checklist format drove the impressions the post recorded',
+        allowed_phrasing: 'On the capture date the post recorded two hundred and thirty eight impressions',
+        prohibited_inference: 'Do not attribute the count to the format' }] })
+
+    await expect(run([source], [suggestion])).rejects.toThrow(/its own declared allowed_phrasing does not carry/)
+  })
+
+  it('accepts an interpretation the proposal scoped in its own allowed_phrasing', async () => {
+    const source = withPassage('The post recorded two hundred and thirty eight impressions and one comment on the capture date, and nothing in the record says why any of it happened the way it did.')
+    const suggestion = oneClaim(source, {
+      hook: 'One reading: the ordering, so that a reader can run it, is what the post was actually for.',
+      claims: [{ ...grounded.claims[0], source_id: source.source_id, status: 'hypothesis',
+        supporting_quote: 'two hundred and thirty eight impressions',
+        statement: 'One reading of the record',
+        allowed_phrasing: 'One reading: the ordering, so that a reader can run it, is what the post was actually for',
+        prohibited_inference: 'Do not present this reading as something the source records' }] })
+
+    await expect(run([source], [suggestion])).resolves.toHaveLength(1)
+  })
+})
