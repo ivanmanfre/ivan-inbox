@@ -64,7 +64,9 @@ export function prepareSynthesisContext(input: {
       model_projection: {
         source_body_state: sourceBodyState,
         source_body_provenance: source.candidate_fields?.body_provenance ?? null,
-        source_content_hash: source.source_content_hash ?? null,
+        // Refresh reads the retained table shape (`body_sha256`) directly;
+        // the RPC/UI projection aliases the same value as `source_content_hash`.
+        source_content_hash: source.body_sha256 ?? source.source_content_hash ?? null,
         source_passage_chars: sourcePassage.length,
         supplied_passage_chars: passage.length,
         passage_clipped: passageClipped,

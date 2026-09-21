@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { prepareSynthesisContext, renderCanonicalPromptBodies, selectSynthesisAssets } from './editorialSynthesisContext'
 const source = { source_id: 's', source_kind: 'own_post', owner: 'A', passage: 'p'.repeat(9000),
-  source_content_hash: 'a'.repeat(64), captured_at: '2026-09-20', retained_context: 'c'.repeat(7000),
+  body_sha256: 'a'.repeat(64), captured_at: '2026-09-20', retained_context: 'c'.repeat(7000),
   candidate_fields: { raw_context: 'x'.repeat(300000), observed_metrics: { comments: 0 }, private_names: ['Private Person'], metric_source: 'client_post_metrics', metric_denominator: 'one exact own post', observation_window: { published_at: '2026-09-15', captured_at: '2026-09-20' }, metric_observations: [{ collector_row_id: 'row-1', observed_metrics: { comments: 0 } }, { collector_row_id: 'study-row', observed_metrics: { comments: 9 } }], body_state: 'full', body_provenance: 'retained_native_recovery:original', source_identity: { platform: 'linkedin', native_id: 'urn:li:activity:source', collector_row_id: 'row-1' } } }
 describe('whole synthesis context budget', () => {
   it('keeps canonical prompt bodies byte-for-byte without JSON-stringifying them into the prompt', () => {
