@@ -35,7 +35,7 @@ export async function runSynthesis<T>(input: {
       // actual validation error. Never repair or omit a proposal in application code.
       messages = trace.reply ? [...input.messages,
         { role: 'assistant', content: trace.reply.raw },
-        { role: 'user', content: `The complete batch was rejected: ${trace.validation_error}. Return the entire corrected JSON suggestions array; do not drop failed proposals or add unsupported claims. Preserve every required JSON type. Machine metric names must equal an exact allowed key/metric_id with no parenthetical label. Retain exact values, formulas, capture dates, ownership and uncertainty. ${input.correctionContext}` },
+        { role: 'user', content: `The complete batch was rejected: ${trace.validation_error}. Return the entire corrected JSON suggestions array; do not drop failed proposals or add unsupported claims. Preserve every required JSON type. Machine metric names must equal an exact allowed key/metric_id with no parenthetical label. Retain exact values, formulas, capture dates, ownership and uncertainty. Remove unsupported audience, cadence, personal behavior and causal claims. Cross-account metrics are not comparable; subjective risk/safety labels are not measured facts. ${input.correctionContext}` },
       ] : input.messages
     }
   }
