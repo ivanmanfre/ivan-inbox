@@ -165,6 +165,10 @@ describe('Run 1 seed import against local FK-enforced 105/106', { timeout: 120_0
       [reviewed.identity.brief_id, briefs[0].identity.content_hash, JSON.stringify(reviewed), reviewed.identity.content_hash])
     expect(reviewReceipt.rows[0].result).toMatchObject({ state: 'accepted', version: 2,
       content_hash: reviewed.identity.content_hash })
+    const queue = await db.query<{ result: any }>(`select public.editorial_read_briefs('clientops','ivan',null,null,1) result`)
+    expect(queue.rows[0].result.total).toBe(1)
+    expect(queue.rows[0].result.items).toHaveLength(1)
+    expect(queue.rows[0].result.items[0].identity.version).toBe(2)
     const requested = await db.query<{ result: any }>(`select public.editorial_reserve_draft('clientops','ivan',
       $1,2,$2,'explicit-draft-local','post') result`, [reviewed.identity.brief_id, reviewed.identity.content_hash])
     expect(requested.rows[0].result.state).toBe('accepted')
@@ -176,6 +180,23 @@ describe('Run 1 seed import against local FK-enforced 105/106', { timeout: 120_0
     const retained = await db.query<{ n: number }>(`select count(*)::int n from public.editorial_decisions
       where client_id='ivan' and request_id='decision-during-refresh'`)
     expect(retained.rows[0].n).toBe(1)
+    await db.query(`select public.editorial_record_decision('clientops','ivan','brief',$1,2,2,
+      'reject','Do not recycle this exact proposal','candidate','reject-reviewed')`, [reviewed.identity.brief_id])
+    const recycledStart = await db.query<{ result: any }>(`select public.editorial_begin_refresh('clientops','ivan',$1,'recycle-check') result`, [direction])
+    const recycled = structuredClone(briefs[0])
+    recycled.identity.brief_id = 'a-new-id-does-not-clear-a-rejection'
+    recycled.identity.content_hash = createHash('sha256').update(canonicalBriefPayload(recycled)).digest('hex')
+    await expect(db.query(`select public.editorial_finish_refresh('clientops','ivan',$1,$2::jsonb,'test','v1')`,
+      [recycledStart.rows[0].result.refresh_id, JSON.stringify([recycled])]))
+      .rejects.toThrow(/existing scoped editorial decision/)
+    const pointerBefore = await db.query<{ batch_id: string }>(`select batch_id from editorial_current_batch where client_id='ivan'`)
+    await db.query(`select public.editorial_adopt_direction('clientops','ivan',$1,
+      '{"audience":"A newly adopted audience"}'::jsonb,'operator','Changed direction while a model ran','direction-race')`, [direction])
+    const staleDirection = await db.query<{ result: any }>(`select public.editorial_finish_refresh('clientops','ivan',$1,$2::jsonb,'test','v1') result`,
+      [recycledStart.rows[0].result.refresh_id, JSON.stringify([recycled])])
+    expect(staleDirection.rows[0].result.status).toBe('failed')
+    expect(staleDirection.rows[0].result.awaiting_reconciliation).toBe(true)
+    expect(staleDirection.rows[0].result.last_usable_batch_id).toBe(pointerBefore.rows[0].batch_id)
     const malicious = structuredClone(seed)
     malicious.plan[3].records[0].content_hash = '0'.repeat(64)
     expect(() => validateInitialBatchSeed(malicious)).toThrow(/hash mismatch/)

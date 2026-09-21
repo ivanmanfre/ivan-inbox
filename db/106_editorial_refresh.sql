@@ -77,6 +77,7 @@ returns jsonb language plpgsql volatile security definer set search_path to 'pub
 declare v_old text; v_version text;
 begin
   perform public.editorial_guard(p_gate,p_client_id);
+  perform pg_advisory_xact_lock(hashtext('editorial-refresh:'||p_client_id));
   if jsonb_typeof(p_payload) <> 'object' or nullif(btrim(p_reason),'') is null
     or nullif(btrim(p_source),'') is null or nullif(btrim(p_request_id),'') is null then
     raise exception 'direction requires a complete payload, source, reason and request id';
@@ -217,7 +218,7 @@ create or replace function public.editorial_finish_refresh(
 returns jsonb language plpgsql volatile security definer set search_path to 'public' as $function$
 declare v public.editorial_refresh_requests%rowtype; b jsonb; e jsonb; v_id text;
   v_ver integer; v_hash text; v_status text; v_pending boolean; v_count integer:=0;
-  v_manifest public.editorial_input_manifests%rowtype; v_source record;
+  v_manifest public.editorial_input_manifests%rowtype; v_source record; v_direction_changed boolean;
 begin
   perform public.editorial_guard(p_gate,p_client_id);
   perform pg_advisory_xact_lock(hashtext('editorial-refresh:'||p_client_id));
@@ -229,8 +230,13 @@ begin
     join public.editorial_input_manifests m on m.client_id=q.client_id and m.input_manifest_hash=q.input_manifest_hash
     where q.client_id=p_client_id and q.batch_id=v.batch_id;
   if not found then raise exception 'refresh manifest missing'; end if;
+  v_direction_changed := (select version from public.editorial_current_direction where client_id=p_client_id)
+    is distinct from v_manifest.direction_version;
   v_pending:=exists(select 1 from public.editorial_decisions d
-    where d.client_id=p_client_id and d.created_at>v_manifest.decision_cutoff);
+    where d.client_id=p_client_id and d.created_at>v_manifest.decision_cutoff) or v_direction_changed;
+  if v_direction_changed then
+    p_failure := 'Active client direction changed during synthesis; last usable batch retained.';
+  end if;
   if p_failure is not null then
     v_status:='failed';
   elsif jsonb_typeof(p_briefs)<>'array' then
@@ -259,6 +265,35 @@ begin
         and d.target_kind='brief' and d.target_id=v_id and d.action='reject' and d.outcome='recorded') then
         raise exception 'rejected brief id cannot be resurrected';
       end if;
+      -- A new batch ID is not permission to recycle a dismissed or curated
+      -- proposal. Apply the latest decision at its exact scope independently
+      -- of model wording about feedback. Restoring a scope explicitly lifts it.
+      if exists (
+        with decisions as (
+          select distinct on (d.target_kind,d.target_id,d.scope) d.*
+          from public.editorial_decisions d
+          where d.client_id=p_client_id and d.outcome='recorded'
+          order by d.target_kind,d.target_id,d.scope,d.created_at desc,d.decision_id desc
+        )
+        select 1 from decisions d
+        left join public.editorial_brief_versions old on old.client_id=p_client_id
+          and d.target_kind='brief' and old.brief_id=d.target_id and old.version=d.target_version
+        where d.action in ('reject','defer','shortlist','edit','dismiss') and (
+          (d.target_kind='source' and d.action in ('reject','dismiss') and exists (
+            select 1 from jsonb_array_elements(b->'evidence') ev where ev->>'source_id'=d.target_id))
+          or (d.target_kind='brief' and (
+            (d.scope='angle' and d.action in ('reject','defer') and
+              lower(btrim(old.payload#>>'{editorial_direction,angle}'))=lower(btrim(b#>>'{editorial_direction,angle}')))
+            or (d.scope='format' and d.action in ('reject','defer') and
+              old.payload#>>'{editorial_direction,format}'=b#>>'{editorial_direction,format}')
+            or (lower(btrim(old.payload#>>'{editorial_direction,topic}'))=lower(btrim(b#>>'{editorial_direction,topic}'))
+              and lower(btrim(old.payload#>>'{editorial_direction,angle}'))=lower(btrim(b#>>'{editorial_direction,angle}')))
+            or (old.payload->'claim_ledger'=b->'claim_ledger' and
+              (select jsonb_agg(ev->>'source_id' order by ev->>'source_id') from jsonb_array_elements(old.payload->'evidence') ev)
+              = (select jsonb_agg(ev->>'source_id' order by ev->>'source_id') from jsonb_array_elements(b->'evidence') ev))
+          ))
+        )
+      ) then raise exception 'proposal conflicts with an existing scoped editorial decision'; end if;
       if (b->>'readiness')='ready_to_draft' and jsonb_array_length(coalesce(b->'missing_material','[]'::jsonb))>0 then
         raise exception 'ready brief has missing material';
       end if;

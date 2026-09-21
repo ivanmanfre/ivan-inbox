@@ -29,6 +29,13 @@ const when = (value: string | number | null | undefined) => value && value !== '
 
 export function SourceDetail({ source, close, lane, previewLinked, readOnly = false }: { source: SourceSnapshot; close: () => void; lane: ContentLane; previewLinked?: EditorialBrief[]; readOnly?: boolean }) {
   const editorialClient = useEditorialClient()
+  const detailRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    detailRef.current?.focus({ preventScroll: true })
+    detailRef.current?.scrollIntoView?.({ block: 'start', behavior: 'instant' })
+    return () => { if (trigger?.isConnected) trigger.focus() }
+  }, [source.source_id])
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [receipt, setReceipt] = useState<string | null>(null)
@@ -42,7 +49,7 @@ export function SourceDetail({ source, close, lane, previewLinked, readOnly = fa
       setReceipt(r.outcome === 'conflict' ? `A newer decision exists: ${r.conflict?.reason ?? 'reload and review it'}.` : `Saved. This did not create a draft or change publishing.`)
     } catch (e) { setReceipt(e instanceof Error ? e.message : 'Decision could not be saved.') } finally { setBusy(false) }
   }
-  return <aside className="a-research-detail" role="dialog" aria-label="Source detail">
+  return <aside ref={detailRef} tabIndex={-1} onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); close() } }} className="a-research-detail" role="dialog" aria-label="Source detail">
     <div className="a-research-detail-head"><span className="a-eyebrow">Source detail</span><Button variant="quiet" size="sm" onClick={close}>Close</Button></div>
     <h3>{source.owner}</h3>
     <dl className="a-research-ledger">

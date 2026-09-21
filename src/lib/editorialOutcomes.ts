@@ -13,7 +13,7 @@ export type ResourceAttribution = {
 }
 export type ResourceOutcome = {
   kind: 'resource'; client_id: EditorialClientId; asset_slug: string; asset_version: number
-  views: number; cta_clicks: number; captures: number; active_bookings: number
+  views: number; cta_clicks: number; captures: number; active_bookings: number | 'unknown'
   direct_bookings: number | 'unknown'; assisted_bookings: number | 'unknown'
   excluded: { test: number; bot: number; wrong_version: number; duplicate: number; canceled: number }
   attribution_limitation: string; observation_end: string | 'unknown'
@@ -64,6 +64,14 @@ export function normalizeResourceOutcomes(input: {
     .sort((a, b) => a.created_at.localeCompare(b.created_at))
   const seenIds = new Set<string>()
   const seenConversions = new Set<string>()
+  const sessionVersions = new Map<string, Set<number | null>>()
+  for (const event of events) {
+    if (!event.session_id || event.is_test === true || bot.test(event.user_agent ?? '') ||
+        testSource.test(event.src ?? '') || testSource.test(event.utm_source ?? '')) continue
+    const versions = sessionVersions.get(event.session_id) ?? new Set<number | null>()
+    versions.add(event.data_version)
+    sessionVersions.set(event.session_id, versions)
+  }
   const counts: Record<string, number> = { view: 0, cta_click: 0, capture: 0 }
   let observationEnd: string | 'unknown' = 'unknown'
   for (const e of events) {
@@ -89,10 +97,18 @@ export function normalizeResourceOutcomes(input: {
     if (prior) excluded.duplicate++
     if (!prior || String(a.updated_at ?? '') > String(prior.updated_at ?? '')) bookings.set(a.calendly_event_uri, a)
   }
-  let direct = 0, assisted = 0, unknown = 0
+  let direct = 0, assisted = 0, unknown = 0, unversioned = 0
   let active = 0
   for (const a of bookings.values()) {
     if (/cancel|test|spam/i.test(a.status) || testSource.test(a.source ?? '')) { excluded.canceled++; continue }
+    const versions = a.session_id ? sessionVersions.get(a.session_id) : null
+    const observedBeforeBooking = events.some(e => e.session_id === a.session_id &&
+      e.data_version === input.dataVersion && e.created_at <= a.booked_at! &&
+      e.is_test !== true && !bot.test(e.user_agent ?? '') && !testSource.test(e.src ?? '') &&
+      !testSource.test(e.utm_source ?? ''))
+    if (!versions || versions.size !== 1 || !versions.has(input.dataVersion) || !observedBeforeBooking) {
+      unversioned++; continue
+    }
     active++
     const source = (a.source ?? '').toLowerCase()
     if (source === 'direct' && a.session_id) direct++
@@ -102,9 +118,11 @@ export function normalizeResourceOutcomes(input: {
   return {
     kind: 'resource', client_id: input.clientId, asset_slug: input.slug, asset_version: input.dataVersion,
     views: counts.view, cta_clicks: counts.cta_click, captures: counts.capture,
-    active_bookings: active, direct_bookings: unknown ? 'unknown' : direct,
-    assisted_bookings: unknown ? 'unknown' : assisted, excluded,
-    attribution_limitation: unknown
+    active_bookings: unversioned ? 'unknown' : active, direct_bookings: unknown || unversioned ? 'unknown' : direct,
+    assisted_bookings: unknown || unversioned ? 'unknown' : assisted, excluded,
+    attribution_limitation: unversioned
+      ? `${unversioned} booking(s) lack an unambiguous event-session link to this asset version; version-specific bookings remain unknown.`
+      : unknown
       ? `${unknown} booking(s) lack a reliable direct/assisted route; no causal claim is available.`
       : 'Observed bookings are not proof that the resource caused them.',
     observation_end: observationEnd,

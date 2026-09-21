@@ -891,13 +891,17 @@ begin
         else 'No batch with that id exists for this lane.' end);
   end if;
 
-  select count(*)::int into v_total
+  select count(distinct brief_id)::int into v_total
     from public.editorial_brief_versions v
    where v.client_id = p_client_id and v.batch_id = v_batch;
 
-  with page as (
-    select v.* from public.editorial_brief_versions v
+  with heads as (
+    select distinct on (v.brief_id) v.* from public.editorial_brief_versions v
      where v.client_id = p_client_id and v.batch_id = v_batch
+     order by v.brief_id, v.version desc
+  ), page as (
+    select v.* from heads v
+     where true
        and (p_cursor is null or v.brief_id > p_cursor)
      order by v.brief_id
      limit v_limit
