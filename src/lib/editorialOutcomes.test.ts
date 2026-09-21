@@ -22,7 +22,8 @@ describe('post and resource outcomes', () => {
     const events: ResourceEvent[] = [event(), event({ id: 'event-1' }),
       event({ id: 'click', event_type: 'cta_click' }), event({ id: 'capture', event_type: 'capture' }),
       event({ id: 'test', is_test: true }), event({ id: 'operator', src: 'operator-check' }),
-      event({ id: 'bot', user_agent: 'HeadlessChrome' }), event({ id: 'version', data_version: 1 }),
+      event({ id: 'bot', user_agent: 'HeadlessChrome' }),
+      event({ id: 'version', data_version: 1, session_id: 'old-version-session' }),
       event({ id: 'asset', lm_id: 'other-asset' }), event({ id: 'late', created_at: '2026-09-22T00:00:00Z' })]
     const attributions = [attribution(), attribution({ id: 'booking-duplicate' }),
       attribution({ id: 'booking-canceled', calendly_event_uri: 'cal-2', status: 'canceled' })]
@@ -78,5 +79,36 @@ describe('post and resource outcomes', () => {
     expect(other.promotion_attribution).toMatchObject({ state: 'unknown', publication_id: 'urn:li:post:B',
       eligible_events: 'unknown', counted_bookings: 'unknown', resource_credit: 1, promotion_credit: 0 })
     expect(exact.views).toBe(other.views)
+  })
+
+  it('keeps a booking unknown when its session crossed asset data versions', () => {
+    const result = normalizeResourceOutcomes({ ...base, events: [
+      event({ id: 'v1', data_version: 1, created_at: '2026-09-20T09:00:00Z' }),
+      event({ id: 'v2', data_version: 2, created_at: '2026-09-20T10:00:00Z' }),
+    ], attributions: [attribution()] })
+    expect(result.active_bookings).toBe('unknown')
+    expect(result.direct_bookings).toBe('unknown')
+  })
+
+  it('does not credit a booking from a promotion tag observed after the booking', () => {
+    const result = normalizeResourceOutcomes({ ...base, promotionPublicationId: 'post-a', events: [
+      event({ id: 'plain', created_at: '2026-09-20T10:00:00Z' }),
+      event({ id: 'future-tag', utm_content: 'post-a', created_at: '2026-09-20T12:00:00Z' }),
+    ], attributions: [attribution()] })
+    expect(result.promotion_attribution).toMatchObject({ state: 'exact', eligible_events: 1, counted_bookings: 0 })
+  })
+
+  it('refuses to credit one booking to competing publication tags on the same field', () => {
+    const events = [
+      event({ id: 'post-a', utm_content: 'post-a', created_at: '2026-09-20T09:00:00Z' }),
+      event({ id: 'post-b', utm_content: 'post-b', created_at: '2026-09-20T10:00:00Z' }),
+    ]
+    for (const publication of ['post-a', 'post-b']) {
+      const result = normalizeResourceOutcomes({ ...base, promotionPublicationId: publication,
+        events, attributions: [attribution()] })
+      expect(result.promotion_attribution).toMatchObject({ state: 'unknown', counted_bookings: 'unknown',
+        resource_credit: 1, promotion_credit: 0 })
+      expect(result.promotion_attribution.limitation).toContain('competing')
+    }
   })
 })

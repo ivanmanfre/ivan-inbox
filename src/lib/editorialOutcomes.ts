@@ -70,9 +70,12 @@ const testSource = /^(test|operator|internal|qa|selftest)([-_:]|$)/i
 const valid = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n >= 0
 const inWindow = (value: string | null | undefined, window: OutcomeWindow) => Boolean(value) &&
   (!window.start || String(value) >= window.start) && String(value) <= window.end
-const promotionTagged = (row: { src?: string | null; utm_source?: string | null; utm_campaign?: string | null; utm_content?: string | null },
-  publicationId: string) => [row.src, row.utm_source, row.utm_campaign, row.utm_content]
-  .some(value => typeof value === 'string' && value.trim() === publicationId)
+const promotionFields = ['src', 'utm_source', 'utm_campaign', 'utm_content'] as const
+type PromotionTags = { [K in typeof promotionFields[number]]?: string | null }
+const promotionTagged = (row: PromotionTags, publicationId: string) => promotionFields
+  .some(field => typeof row[field] === 'string' && row[field]!.trim() === publicationId)
+const matchingPromotionFields = (row: PromotionTags, publicationId: string) => promotionFields
+  .filter(field => typeof row[field] === 'string' && row[field]!.trim() === publicationId)
 
 /** Resource observations are asset-version scoped. Promotion attribution is a
  * separate exact-tag view; an untagged promotion stays unknown rather than
@@ -102,19 +105,21 @@ export function normalizeResourceOutcomes(input: {
   for (const e of allEvents) {
     if (!inWindow(e.created_at, input.observationWindow)) { excluded.outside_window++; continue }
     if (e.lm_id && e.lm_id !== input.assetId) { excluded.wrong_asset++; continue }
-    if (e.data_version !== input.dataVersion) { excluded.wrong_version++; continue }
     if (e.is_test === true || testSource.test(e.src ?? '') || testSource.test(e.utm_source ?? '')) {
       excluded.test++; continue
     }
     if (bot.test(e.user_agent ?? '')) { excluded.bot++; continue }
     if (seenIds.has(e.id)) { excluded.duplicate++; continue }
     seenIds.add(e.id)
-    eligibleEvents.push(e)
+    // Version ambiguity is a property of the retained session, so preserve it
+    // before selecting the current asset-version events used for counts.
     if (e.session_id) {
       const versions = sessionVersions.get(e.session_id) ?? new Set<number | null>()
       versions.add(e.data_version)
       sessionVersions.set(e.session_id, versions)
     }
+    if (e.data_version !== input.dataVersion) { excluded.wrong_version++; continue }
+    eligibleEvents.push(e)
     if (!(e.event_type in counts)) continue
     if (e.event_type === 'view') { counts.view++; continue }
     const identity = e.session_id ? `${e.event_type}:${e.session_id}` : `${e.event_type}:event:${e.id}`
@@ -159,14 +164,30 @@ export function normalizeResourceOutcomes(input: {
       limitation: 'No exact promotion publication identity was supplied.' }
   } else {
     const taggedEvents = eligibleEvents.filter(row => promotionTagged(row, promotionId))
-    const taggedSessions = new Set(taggedEvents.map(row => row.session_id).filter((id): id is string => Boolean(id)))
-    const taggedBookings = eligibleBookings.filter(row => promotionTagged(row, promotionId) ||
-      Boolean(row.session_id && taggedSessions.has(row.session_id)))
-    const exact = complete && (taggedEvents.length > 0 || taggedBookings.length > 0)
-    promotion = exact
+    const taggedBookings: ResourceAttribution[] = []
+    let competingBookings = 0
+    for (const booking of eligibleBookings) {
+      const priorEvents = eligibleEvents.filter(event => event.session_id === booking.session_id &&
+        event.created_at <= booking.booked_at!)
+      const candidates: PromotionTags[] = [booking, ...priorEvents]
+      const matchedFields = new Set(candidates.flatMap(row => matchingPromotionFields(row, promotionId)))
+      if (!matchedFields.size) continue
+      const competing = [...matchedFields].some(field => candidates.some(row => {
+        const value = row[field]
+        return typeof value === 'string' && value.trim() && value.trim() !== promotionId
+      }))
+      if (competing) competingBookings++
+      else taggedBookings.push(booking)
+    }
+    const exact = complete && !competingBookings && (taggedEvents.length > 0 || taggedBookings.length > 0)
+    promotion = competingBookings
+      ? { publication_id: promotionId, state: 'unknown', eligible_events: 'unknown', counted_bookings: 'unknown',
+          resource_credit: 1, promotion_credit: 0,
+          limitation: `${competingBookings} booking(s) have competing publication tags on the same attribution field; no promotion receives credit.` }
+      : exact
       ? { publication_id: promotionId, state: 'exact', eligible_events: taggedEvents.length,
           counted_bookings: taggedBookings.length, resource_credit: 0, promotion_credit: 1,
-          limitation: 'Only exact publication tags or sessions linked to an exact publication-tagged event are credited.' }
+          limitation: 'Only exact publication tags present no later than the booking, without competing tags on that field, receive booking credit.' }
       : { publication_id: promotionId, state: 'unknown', eligible_events: 'unknown', counted_bookings: 'unknown',
           resource_credit: 1, promotion_credit: 0,
           limitation: complete
