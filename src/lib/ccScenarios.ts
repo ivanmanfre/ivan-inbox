@@ -14,6 +14,7 @@
    ========================================================================== */
 export const SCENARIO_NAMES = [
   'healthy', 'outside_window', 'capacity_reached', 'incident', 'unknown', 'partial', 'empty',
+  'rate_limited',
 ] as const
 export type ScenarioName = (typeof SCENARIO_NAMES)[number]
 
@@ -28,6 +29,9 @@ export async function loadScenario(name: ScenarioName): Promise<unknown> {
     case 'incident': return (await import('./cc-fixtures/incident.json')).default
     case 'unknown': return (await import('./cc-fixtures/unknown.json')).default
     case 'partial': return (await import('./cc-fixtures/partial.json')).default
+    // The live 2026-09-20 payload, unmutated: LinkedIn refusing invitations on
+    // Ivan's and Davorin's seats with HTTP 422 errors/cannot_resend_yet.
+    case 'rate_limited': return (await import('./cc-fixtures/rate_limited.json')).default
     // `empty` is the ABSENCE of a payload, not a payload — the adapter answers
     // `unavailable` for it and never reaches this loader.
     case 'empty': throw new Error('the empty scenario has no payload by definition')

@@ -1,17 +1,20 @@
 import { describe, it, expect } from 'vitest'
 import {
   parsePayload, isContractError, monitorLiveness, STATUS_TONE, CC_STATUSES,
-  type CcPayload,
+  isOpenIncident, isRateLimitIncident, rateLimitIncident, rateLimitSentence,
+  RATE_LIMIT_RESTRICTION,
+  type CcPayload, type CcClient, type CcIncident,
 } from './campaignControl'
 import healthy from './cc-fixtures/healthy.json'
 import incident from './cc-fixtures/incident.json'
 import partial from './cc-fixtures/partial.json'
+import rateLimited from './cc-fixtures/rate_limited.json'
 
 function clone<T>(v: T): T { return JSON.parse(JSON.stringify(v)) as T }
 
 describe('parsePayload', () => {
   it('accepts the frozen fixtures', () => {
-    for (const f of [healthy, incident, partial]) {
+    for (const f of [healthy, incident, partial, rateLimited]) {
       const p = parsePayload(f)
       expect(isContractError(p)).toBe(false)
       expect((p as CcPayload).payload_version).toBe('cc03.v1')
@@ -127,6 +130,87 @@ describe('parsePayload', () => {
     const r = parsePayload(bad)
     expect(isContractError(r)).toBe(true)
     expect((r as { contract_error: string }).contract_error).toContain('source_locator')
+  })
+})
+
+/* The live 2026-09-20 payload: LinkedIn answering 422 errors/cannot_resend_yet
+   on Ivan's and Davorin's seats. The card read "Unknown unverified" all evening
+   before this; these tests pin the identification, not the wording alone. */
+describe('the rate-limited incident', () => {
+  const seats = (rateLimited as unknown as { clients: CcClient[] }).clients
+  const ivan = seats.find(c => c.client_id === 'ivan')!
+  const arch = seats.find(c => c.client_id === 'arch')!
+  const mattan = seats.find(c => c.client_id === 'risedtc')!
+
+  it('the fixture carries the two real confirmed invitation-limit seats', () => {
+    expect(ivan.status).toBe('incident')
+    expect(arch.status).toBe('incident')
+    for (const c of [ivan, arch]) {
+      const inc = c.incidents![0]
+      expect(inc.cause?.status).toBe('confirmed')
+      expect(inc.cause?.underlying_restriction).toBe(RATE_LIMIT_RESTRICTION)
+    }
+    // The third seat is a spent cap, not a refusal, and must never be swept in.
+    expect(mattan.status).toBe('capacity_reached')
+    expect(rateLimitIncident(mattan)).toBeNull()
+  })
+
+  it('identifies the seats that are rate limited', () => {
+    expect(rateLimitIncident(ivan)?.incident_key).toBe(ivan.incidents![0].incident_key)
+    expect(rateLimitIncident(arch)?.incident_key).toBe(arch.incidents![0].incident_key)
+  })
+
+  it('needs a CONFIRMED cause: an unconfirmed one stays a generic incident', () => {
+    const c = clone(ivan)
+    c.incidents![0].cause!.status = 'suspected'
+    expect(rateLimitIncident(c)).toBeNull()
+  })
+
+  it('needs THIS restriction: another provider refusal stays a generic incident', () => {
+    const c = clone(ivan)
+    c.incidents![0].cause!.underlying_restriction = 'account_restricted'
+    expect(rateLimitIncident(c)).toBeNull()
+  })
+
+  it('needs an OPEN incident: a recovered one is not a live rate limit', () => {
+    const c = clone(ivan)
+    c.incidents![0].state = 'recovered'
+    expect(isOpenIncident(c.incidents![0])).toBe(false)
+    expect(rateLimitIncident(c)).toBeNull()
+    // An unrecognised state word errs OPEN, so a real episode is never dropped.
+    c.incidents![0].state = 'reopened_again'
+    expect(isOpenIncident(c.incidents![0])).toBe(true)
+    expect(rateLimitIncident(c)).not.toBeNull()
+  })
+
+  it('a seat the payload does not call `incident` never carries one', () => {
+    const c = clone(ivan)
+    c.status = 'healthy'
+    expect(isRateLimitIncident(c.incidents![0])).toBe(true)
+    expect(rateLimitIncident(c)).toBeNull()
+  })
+
+  it('builds the sentence from the payload numbers, never from a constant', () => {
+    expect(rateLimitSentence(ivan.incidents![0]))
+      .toBe('LinkedIn is refusing invitations on this seat: the invitation limit is reached, or these people were invited before. 37 refusals since 20 Sep. Nobody is marked as sent; refused people stay in line and are retried.')
+    // The other seat's own figures, not Ivan's.
+    expect(rateLimitSentence(arch.incidents![0])).toContain('17 refusals since 20 Sep.')
+    expect(rateLimitSentence(arch.incidents![0])).not.toContain('37')
+  })
+
+  it('omits a clause whose number the payload does not carry', () => {
+    const inc = clone(ivan.incidents![0]) as CcIncident
+    inc.observed_failures = null
+    expect(rateLimitSentence(inc)).toContain('Refusals since 20 Sep.')
+    expect(rateLimitSentence(inc)).not.toMatch(/\d+ refusals/)
+    inc.opened_at = null
+    const noDate = rateLimitSentence(inc)
+    expect(noDate).not.toContain('since')
+    expect(noDate).not.toContain('unknown')
+    expect(noDate).not.toContain('0 refusals')
+    // The lead and the reassurance survive on their own.
+    expect(noDate).toContain('LinkedIn is refusing invitations on this seat')
+    expect(noDate).toContain('Nobody is marked as sent')
   })
 })
 

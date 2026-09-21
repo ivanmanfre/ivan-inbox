@@ -20,6 +20,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import {
   fetchPayload, fetchEvidence, monitorLiveness, STATUS_TONE, STATUS_WORD,
+  isRateLimitIncident, rateLimitIncident, rateLimitSentence, RATE_LIMITED_WORD,
   type CcState, type CcPayload, type CcClient, type CcChannel, type CcIncident,
   type CcRangeRow, type CcRecurrenceItem, type CcEvidenceState, type CcStatus,
 } from '../../lib/campaignControl'
@@ -208,15 +209,25 @@ function LaneTable({ ch }: { ch: CcChannel }) {
 }
 
 function IncidentBlock({ inc, asOf }: { inc: CcIncident; asOf: number }) {
+  // The only hook in this component, and it stays FIRST: nothing above it may
+  // return early, and nothing below it may be a hook.
   const [ack, setAck] = useState(Boolean(inc.acknowledged))
+  const limited = isRateLimitIncident(inc)
   return (
     <div className="a-cc-inc">
       <div className="a-wrapline">
         <Badge tone="urgent" label={`Incident ${inc.state}`}>{inc.state}</Badge>
         <span className="a-meta">{inc.failure_family ?? 'incident'}{inc.source_lane ? ` · ${inc.source_lane}` : ''}</span>
       </div>
+      {/* "Cause unknown" was the line a confirmed LinkedIn rate limit printed:
+          `cause.status` IS "confirmed" here, and the restriction names the
+          limit, so the label says both instead of leaving the reader to decode
+          `invitation_limit_or_repeat` two lines further down. */}
       <div className="a-body-t">
-        Cause <b>{inc.cause?.status ?? 'unknown'}</b>: {inc.plain_cause ?? inc.cause?.explanation ?? 'no plain cause recorded'}
+        {limited
+          ? <>Cause <b>confirmed</b>: LinkedIn rate limit (invitation limit, or these people were invited before). </>
+          : <>Cause <b>{inc.cause?.status ?? 'unknown'}</b>: </>}
+        {inc.plain_cause ?? inc.cause?.explanation ?? 'no plain cause recorded'}
       </div>
       {inc.cause?.underlying_restriction && (
         <div className="a-meta">Underlying restriction: {inc.cause.underlying_restriction}</div>
@@ -313,6 +324,12 @@ function ControlSummary({ c, liveness, asOf, staleMinutes, selected, onOpen }: {
   const inv = c.invitation
   const closed = c.status === 'outside_window' || !sendableOpen(inv)
   const fresh = c.freshness
+  /* A confirmed invitation-limit refusal gets its own word. It is still the
+     `incident` status underneath, so the tone and the colour are untouched;
+     only the word and the leading sentence change. A stale monitor outranks it
+     the same way it outranks every other word on this surface (rule 1), so it
+     is read only when `staleMinutes` is null. */
+  const limited = staleMinutes === null ? rateLimitIncident(c) : null
 
   return (
       <Row
@@ -320,16 +337,20 @@ function ControlSummary({ c, liveness, asOf, staleMinutes, selected, onOpen }: {
         lead={<Dot tone={tone as Tone} off={tone === undefined} />}
         title={
           <>
-            {c.label} <span className="a-cc-status" data-tone={tone ?? 'none'}>{STATUS_WORD[shown]}</span>
+            {c.label} <span className="a-cc-status" data-tone={tone ?? 'none'}>{limited ? RATE_LIMITED_WORD : STATUS_WORD[shown]}</span>
             {/* Never green, and never silent about why it is not green. The
                 space is real, not a margin: a screen reader reads the text, and
                 "Unknownunverified" is not a word. */}
             {shown === 'unknown' && <>{' '}<span className="a-cc-unverified">unverified</span></>}
           </>
         }
-        sub={staleMinutes === null
-          ? c.status_reason
-          : `The monitor has not reported in for ${staleMinutes} minutes; these figures may be out of date. Payload said: ${STATUS_WORD[c.status].toLowerCase()}, ${c.status_reason}`}
+        sub={staleMinutes !== null
+          ? `The monitor has not reported in for ${staleMinutes} minutes; these figures may be out of date. Payload said: ${STATUS_WORD[c.status].toLowerCase()}, ${c.status_reason}`
+          : limited
+            /* The plain sentence FIRST, then the monitor's own reason verbatim.
+               The producer's wording is never replaced, only led into. */
+            ? `${rateLimitSentence(limited)} ${c.status_reason}`
+            : c.status_reason}
         subWrap
         tail={
           <span className="a-cc-tail">

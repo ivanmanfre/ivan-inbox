@@ -6,6 +6,7 @@ import incident from '../../lib/cc-fixtures/incident.json'
 import outsideWindow from '../../lib/cc-fixtures/outside_window.json'
 import unknownFix from '../../lib/cc-fixtures/unknown.json'
 import partial from '../../lib/cc-fixtures/partial.json'
+import rateLimited from '../../lib/cc-fixtures/rate_limited.json'
 
 function ok(fixture: unknown): CcState {
   const p = parsePayload(JSON.parse(JSON.stringify(fixture)))
@@ -81,6 +82,101 @@ describe('Control — the incident scenario', () => {
   it('does not fetch private evidence before the fold is opened', () => {
     expect(t).toContain('Private detail')
     expect(t).toContain('Not fetched yet.')
+  })
+})
+
+/* 2026-09-20: LinkedIn answered HTTP 422 errors/cannot_resend_yet on Ivan's and
+   Davorin's seats all evening and the card said "Unknown unverified". The
+   payload knew: cause CONFIRMED, restriction invitation_limit_or_repeat. */
+describe('Control — a confirmed invitation limit says so', () => {
+  const RL_NOW = Date.parse((rateLimited as { monitor: { last_tick_at: string } }).monitor.last_tick_at) + 60_000
+  const render = (fx: unknown, client: 'all' | 'ivan' | 'risedtc' | 'arch' = 'all', now = RL_NOW) =>
+    text(renderToStaticMarkup(<ControlSection cc={ok(fx)} client={client} now={now} />))
+  const t = render(rateLimited)
+
+  it('reads "Rate limited", not the generic incident word and not "Unknown"', () => {
+    expect(t).toContain('Ivan Rate limited')
+    expect(t).toContain('Davorin Rate limited')
+    expect(t).not.toContain('Ivan Incident')
+    expect(t).not.toContain('Ivan Unknown')
+    expect(t).not.toContain('unverified')
+  })
+
+  it('leads with the plain sentence, every number out of the payload', () => {
+    expect(t).toContain('LinkedIn is refusing invitations on this seat')
+    expect(t).toContain('the invitation limit is reached, or these people were invited before')
+    expect(t).toContain('37 refusals since 20 Sep.')
+    expect(t).toContain('17 refusals since 20 Sep.')
+    expect(t).toContain('Nobody is marked as sent; refused people stay in line and are retried.')
+  })
+
+  it('keeps the monitor\'s own status_reason after the plain sentence', () => {
+    expect(t).toContain('Invitation limit or repeat-invitation restriction. 37 provider refusals since')
+    const lead = t.indexOf('LinkedIn is refusing invitations on this seat')
+    expect(lead).toBeGreaterThan(-1)
+    expect(t.indexOf('Invitation limit or repeat-invitation restriction')).toBeGreaterThan(lead)
+  })
+
+  it('stays an incident in tone: urgent, never clear', () => {
+    const html = renderToStaticMarkup(<ControlSection cc={ok(rateLimited)} client="all" now={RL_NOW} />)
+    expect(html).toContain('data-tone="urgent"')
+    expect(text(html)).not.toContain('Healthy')
+  })
+
+  it('names the cause in the detail instead of "Cause unknown"', () => {
+    expect(t).toContain('Cause confirmed : LinkedIn rate limit (invitation limit, or these people were invited before).')
+    expect(t).not.toContain('Cause unknown')
+  })
+
+  it('leaves the third seat alone: a spent cap is not a rate limit', () => {
+    expect(t).toContain('Mattan Capacity reached')
+    expect(t).not.toContain('Mattan Rate limited')
+  })
+
+  it('a provider refusal that is NOT the invitation limit keeps the generic word', () => {
+    const other = JSON.parse(JSON.stringify(rateLimited)) as { clients: Array<{ client_id: string; incidents?: Array<{ cause?: { underlying_restriction?: string } }> }> }
+    for (const c of other.clients) {
+      if (c.incidents?.[0]?.cause) c.incidents[0].cause.underlying_restriction = 'account_restricted'
+    }
+    const t2 = render(other)
+    expect(t2).toContain('Ivan Incident')
+    expect(t2).not.toContain('Rate limited')
+    expect(t2).not.toContain('LinkedIn is refusing invitations on this seat')
+    expect(t2).toContain('Cause confirmed')
+  })
+
+  it('an UNCONFIRMED cause keeps the generic word', () => {
+    const soft = JSON.parse(JSON.stringify(rateLimited)) as { clients: Array<{ incidents?: Array<{ cause?: { status?: string } }> }> }
+    for (const c of soft.clients) {
+      if (c.incidents?.[0]?.cause) c.incidents[0].cause.status = 'suspected'
+    }
+    const t2 = render(soft)
+    expect(t2).toContain('Ivan Incident')
+    expect(t2).not.toContain('Rate limited')
+  })
+
+  it('a stale monitor still forces unverified, even on a rate-limited seat', () => {
+    /* The fixture is a SNAPSHOT, so it is judged at its own as_of: staleness is
+       produced by moving its tick back, exactly as the incident suite does. */
+    const dead = JSON.parse(JSON.stringify(rateLimited)) as { as_of: string; monitor: { last_tick_at: string } }
+    dead.monitor.last_tick_at = new Date(Date.parse(dead.as_of) - 2 * 3600_000).toISOString()
+    const t2 = render(dead)
+    expect(t2).toContain('The monitor has not reported in for')
+    expect(t2).toContain('Unknown')
+    expect(t2).toContain('unverified')
+    expect(t2).not.toContain('Rate limited')
+    // The payload's own word is still carried as secondary text, unchanged.
+    expect(t2).toContain('Payload said: incident,')
+  })
+
+  it('a contract error is unchanged by any of this', () => {
+    const t2 = text(renderToStaticMarkup(
+      <ControlSection cc={{ state: 'error', error: 'payload_version cc03.v2 is not cc03.v1' }} client="all" now={RL_NOW} />,
+    ))
+    expect(t2).toContain('Unverified')
+    expect(t2).toContain('cc03.v2')
+    expect(t2).toContain('NOT used as a stand-in')
+    expect(t2).not.toContain('Rate limited')
   })
 })
 

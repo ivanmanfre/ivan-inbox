@@ -470,6 +470,84 @@ export const STATUS_WORD: Record<CcStatus, string> = {
   unknown: 'Unknown',
 }
 
+/* ---- the rate-limited incident ------------------------------------------
+
+   "Incident" is the contract's word for the CLASS. When the producer has
+   actually CONFIRMED the cause and named the restriction as LinkedIn's
+   invitation limit, the seat has one specific, recognisable condition and the
+   card says so: a seat LinkedIn was refusing invitations on read "Unknown
+   unverified" all evening on 2026-09-20 and told the operator nothing.
+
+   It stays an incident in tone and in colour. The only thing that changes is
+   that the words name what happened. */
+
+/** The producer's own value for "LinkedIn will not take another invitation". */
+export const RATE_LIMIT_RESTRICTION = 'invitation_limit_or_repeat'
+export const RATE_LIMITED_WORD = 'Rate limited'
+
+/* `state` is a free word from the producer ('opened', 'updated', 'recovered'),
+   not a closed enum, so the CLOSED words are named and anything else counts as
+   open. Erring this way keeps an unrecognised word an OPEN incident, which is
+   the safe direction: a real refusal episode is never silently dropped. */
+const CLOSED_INCIDENT_STATES = new Set(['recovered', 'closed', 'resolved', 'expired'])
+
+export function isOpenIncident(inc: CcIncident): boolean {
+  return !CLOSED_INCIDENT_STATES.has(String(inc.state ?? '').toLowerCase())
+}
+
+/** True when this incident is an OPEN, CONFIRMED invitation-limit refusal. A
+    cause the producer has not confirmed is never promoted to a plain claim. */
+export function isRateLimitIncident(inc: CcIncident): boolean {
+  return isOpenIncident(inc)
+    && inc.cause?.status === 'confirmed'
+    && inc.cause?.underlying_restriction === RATE_LIMIT_RESTRICTION
+}
+
+/** The seat's open confirmed invitation-limit incident, or null. Only a client
+    the payload itself calls `incident` can carry one. */
+export function rateLimitIncident(c: CcClient): CcIncident | null {
+  if (c.status !== 'incident') return null
+  return (c.incidents ?? []).find(isRateLimitIncident) ?? null
+}
+
+/* Spelled out rather than left to `toLocaleDateString`: the platform's en-GB
+   short month for September is "Sept" under some ICU builds and "Sep" under
+   others, and the producer's own prose in this same payload writes "21 Sep".
+   One sentence must not read two ways depending on the browser. */
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** "20 Sep", in UTC so the label is the payload's day and not the reader's. */
+function shortDay(iso: string | null | undefined): string | null {
+  if (!iso) return null
+  const t = Date.parse(iso)
+  if (!Number.isFinite(t)) return null
+  const d = new Date(t)
+  return `${d.getUTCDate()} ${MONTH_SHORT[d.getUTCMonth()]}`
+}
+
+/**
+ * The plain sentence the Control card leads with, built ONLY from the payload.
+ * Every number is `observed_failures` / `opened_at` as the producer wrote them;
+ * a figure the payload does not carry drops its whole clause rather than being
+ * invented, defaulted to 0, or printed as "unknown".
+ *
+ * The restriction keeps the producer's own hedge ("or these people were invited
+ * before"): `invitation_limit_or_repeat` is two conditions, and narrowing it to
+ * one on the screen would be a claim this app made up.
+ */
+export function rateLimitSentence(inc: CcIncident): string {
+  const parts = ['LinkedIn is refusing invitations on this seat: the invitation limit is reached, or these people were invited before.']
+  const n = inc.observed_failures
+  const since = shortDay(inc.opened_at)
+  if (typeof n === 'number' && Number.isFinite(n)) {
+    parts.push(since ? `${n.toLocaleString()} refusals since ${since}.` : `${n.toLocaleString()} refusals so far.`)
+  } else if (since) {
+    parts.push(`Refusals since ${since}.`)
+  }
+  parts.push('Nobody is marked as sent; refused people stay in line and are retried.')
+  return parts.join(' ')
+}
+
 // ---- adapters ------------------------------------------------------------
 
 export type CcState =
