@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { execSync } from 'node:child_process'
+import { readFile } from 'node:fs/promises'
+import { resolve } from 'node:path'
 
 // Stamped into the bundle so a screenshot can be traced to a build. Without it the
 // only way to tell a stale tab from a broken fix is to argue about it.
@@ -9,13 +11,27 @@ const BUILD = (() => {
   try { return execSync('git rev-parse --short HEAD').toString().trim() } catch { return 'dev' }
 })()
 
+const workspace = '/Users/ivanmanfredi/Desktop/Ivan - Content System'
+const previewFiles: Record<string, string> = {
+  ivan: resolve(workspace, 'goal-runs/content-brain-01-evidence-briefs-2026-09-20-out/briefs/ivan.json'),
+  risedtc: resolve(workspace, 'goal-runs/content-brain-01-evidence-briefs-2026-09-20-out/briefs/risedtc.json'),
+  arch: resolve(workspace, 'goal-runs/content-brain-01-evidence-briefs-2026-09-20-out/briefs/arch.json'),
+  resources: resolve(workspace, 'goal-runs/content-brain-02-workspace-generation-2026-09-20-out/inventory/resource-rows.json'),
+}
+
 export default defineConfig({
-  // DEV preview reads named, local evidence artifacts through /@fs. These
-  // paths are never imported by production code or copied into dist.
-  server: { fs: { allow: ['/Users/ivanmanfredi/Desktop/Ivan - Content System'] } },
+  server: { host: '127.0.0.1' },
   base: './',
   define: { __BUILD__: JSON.stringify(BUILD) },
-  plugins: [react(), VitePWA({
+  plugins: [{ name: 'local-editorial-preview-files', apply: 'serve', configureServer(server) {
+    server.middlewares.use(async (req, res, next) => {
+      if (!req.url?.startsWith('/__editorial_preview/')) return next()
+      const name = req.url.slice('/__editorial_preview/'.length).split('?')[0]
+      if (process.env.VITE_EDITORIAL_PREVIEW !== '1' || !Object.hasOwn(previewFiles, name)) { res.writeHead(404).end(); return }
+      try { const body = await readFile(previewFiles[name]); res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }).end(body) }
+      catch { res.writeHead(500).end('Named local preview file unavailable') }
+    })
+  } }, react(), VitePWA({
     strategies: 'injectManifest', srcDir: 'src', filename: 'sw.ts',
     registerType: 'autoUpdate',
     // The `?wbmock=cc:<scenario>` operator fixtures are a DEVELOPMENT lever

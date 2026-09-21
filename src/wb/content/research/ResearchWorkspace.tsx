@@ -3,7 +3,7 @@ import { Badge, Button, Card } from '../../../ds'
 import { Group } from '../../kit'
 import { supabase } from '../../../lib/supabase'
 import { readResearch } from '../../../lib/editorialSources'
-import { readBriefOutcomes, readBriefs, recordEditorialDecision, requestDraft, requestSuggestionRefresh, readSuggestionRefresh } from '../../../lib/editorialBriefs'
+import { readBriefOutcomes, readBriefs, recordEditorialDecision, requestDraft, requestSuggestionRefresh, readSuggestionRefresh, reviewEditorialBrief } from '../../../lib/editorialBriefs'
 import { adoptEditorialDirection, readEditorialDirection } from '../../../lib/editorialDirection'
 import type { EditorialBrief, EditorialClient, RefreshState, SourcePage, SourceSnapshot } from '../../../lib/editorialTypes'
 import type { ContentLane } from '../../../lib/content'
@@ -15,12 +15,12 @@ const editorialClient = supabase as unknown as EditorialClient
 const requestId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 const when = (value: string | number | null | undefined) => value && value !== 'unknown' ? String(value) : 'Unknown'
 
-function SourceDetail({ source, close, lane }: { source: SourceSnapshot; close: () => void; lane: ContentLane }) {
+export function SourceDetail({ source, close, lane, previewLinked, readOnly = false }: { source: SourceSnapshot; close: () => void; lane: ContentLane; previewLinked?: EditorialBrief[]; readOnly?: boolean }) {
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [receipt, setReceipt] = useState<string | null>(null)
   const [linked, setLinked] = useState<EditorialBrief[]>([])
-  useEffect(() => { let live=true; void readBriefs(editorialClient, clientId(lane), null, null, 50).then(p => { if(live) setLinked(p.items.filter(b => b.evidence.some(e => e.source_id === source.source_id))) }).catch(() => { if(live) setLinked([]) }); return () => {live=false} }, [lane, source.source_id])
+  useEffect(() => { if (previewLinked) { setLinked(previewLinked); return } let live=true; void (async () => { try { const first = await readBriefs(editorialClient, clientId(lane), null, null, 50); if (first.state === 'failed') return; const all = [...first.items]; let cursor = first.next_cursor; while(cursor) { const p = await readBriefs(editorialClient, clientId(lane), first.batch_id, cursor, 50); if (p.state === 'failed') return; all.push(...p.items); cursor = p.next_cursor } if(live) setLinked(all.filter(b => b.evidence.some(e => e.source_id === source.source_id))) } catch { if(live) setLinked([]) } })(); return () => {live=false} }, [lane, source.source_id, previewLinked])
   const decide = async (action: 'pin' | 'dismiss') => {
     if (!note.trim()) { setReceipt('Add a reason before saving this decision.'); return }
     setBusy(true); setReceipt(null)
@@ -40,8 +40,8 @@ function SourceDetail({ source, close, lane }: { source: SourceSnapshot; close: 
       <dt>Limits</dt><dd>{source.limitation || source.gap_state?.detail || 'No additional limit recorded.'}</dd>
       <dt>Linked suggestions</dt><dd>{linked.length ? linked.map(b => `${b.editorial_direction.topic} (v${b.identity.version})`).join('; ') : 'No current suggestion cites this source.'}</dd>
     </dl>
-    <label className="a-research-reason">Reason <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Why pin or dismiss this source?" /></label>
-    <div className="a-research-actions"><Button size="sm" disabled={busy} onClick={() => void decide('pin')}>Save / pin</Button><Button variant="quiet" size="sm" disabled={busy} onClick={() => void decide('dismiss')}>Dismiss</Button></div>
+    {!readOnly && <><label className="a-research-reason">Reason <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Why pin or dismiss this source?" /></label>
+    <div className="a-research-actions"><Button size="sm" disabled={busy} onClick={() => void decide('pin')}>Save / pin</Button><Button variant="quiet" size="sm" disabled={busy} onClick={() => void decide('dismiss')}>Dismiss</Button></div></>}
     {receipt && <p className="a-ct-sub" role="status">{receipt}</p>}
   </aside>
 }
@@ -54,49 +54,54 @@ export function ResearchPanel({ lane }: { lane: ContentLane }) {
   const [kind, setKind] = useState('all')
   const load = async (append = false) => {
     setError(null)
-    try { const next = await readResearch(editorialClient, clientId(lane), kind === 'all' ? {} : { kinds: [kind as SourceSnapshot['source_kind']] }, append ? cursor : null, 25); setPage(p => append && p ? { ...next, items: [...p.items, ...next.items] } : next); setCursor(next.next_cursor) }
+    try { const next = await readResearch(editorialClient, clientId(lane), kind === 'all' ? {} : { kinds: [kind as SourceSnapshot['source_kind']] }, append ? cursor : null, 25); if (next.state === 'failed') { setError(next.message ?? 'Research read failed.'); return } setPage(p => append && p ? { ...next, items: [...p.items, ...next.items] } : next); setCursor(next.next_cursor) }
     catch (e) { setError(e instanceof Error ? e.message : 'Research could not be read.') }
   }
   useEffect(() => { setPage(null); setSelected(null); setCursor(null); setError(null); void load() }, [lane, kind])
-  if (error) return <Group label="Research" pad><p className="a-ct-sub">{error}</p><Button size="sm" onClick={() => void load()}>Try again</Button></Group>
+  if (error && !page) return <Group label="Research" pad><p className="a-ct-sub">{error}</p><Button size="sm" onClick={() => void load()}>Try again</Button></Group>
   if (!page) return <p className="a-ct-sub">Reading research…</p>
   return <Group label="Research" tail={<span className="a-dim a-mono">{page.total} records · {page.independent_source_count} independent</span>} pad>
+    {error && <p className="a-ct-sub" role="alert">{error} <Button size="sm" onClick={() => void load(Boolean(cursor))}>Try again</Button></p>}
     <label className="a-research-reason">Source kind <select value={kind} onChange={e => setKind(e.target.value)}><option value="all">All kinds</option><option value="public_post">Public posts</option><option value="market_study">Market studies</option><option value="own_post">Own posts</option><option value="call">Calls</option><option value="asset">Assets</option><option value="candidate">Candidates</option></select></label>
     <p className="a-ct-sub">Source cutoff {when(page.health.source_cutoff)} · {page.health.new_evidence_awaiting_refresh} new inputs await review. Loaded {page.items.length} of {page.total}; the total is the scoped server count.</p>
     {page.gaps.length > 0 && <p className="a-ct-sub a-sev-attention">{page.gaps.length} unavailable or unsupported records remain counted: {page.gaps.map(g => g.detail).join(' ')}</p>}
-    <div className="a-research-list">{page.items.map(source => <Card key={`${source.source_id}-${source.seen_version}`} title={source.owner} sub={`${source.source_kind} · published ${when(source.source_published_date)}`} tail={<Badge tone={source.currency_state === 'current' ? 'accent' : 'neutral'} variant="ring">{source.currency_state}</Badge>} onClick={() => setSelected(source)}>
-      <p className="a-research-excerpt">{source.passage ?? source.gap_state?.detail ?? 'Source text unavailable.'}</p><p className="a-ct-sub">{source.limitation}</p>
+    <div className="a-research-list">{page.items.map(source => <Card key={`${source.source_id}-${source.seen_version}`} title={source.owner} sub={`${source.source_kind} · published ${when(source.source_published_date)}`} tail={<Badge tone={source.currency_state === 'current' ? 'accent' : 'neutral'} variant="ring">{source.currency_state}</Badge>}>
+      <p className="a-research-excerpt">{source.passage ?? source.gap_state?.detail ?? 'Source text unavailable.'}</p><p className="a-ct-sub">{source.limitation}</p><Button size="sm" variant="quiet" onClick={() => setSelected(source)}>Inspect source</Button>
     </Card>)}</div>
     {cursor && <Button variant="quiet" size="sm" onClick={() => void load(true)}>Load more ({page.items.length} of {page.total})</Button>}
     {selected && <SourceDetail source={selected} close={() => setSelected(null)} lane={lane} />}
   </Group>
 }
 
-function BriefCard({ brief, lane, reload }: { brief: EditorialBrief; lane: ContentLane; reload: () => void }) {
+export function BriefCard({ brief, lane, reload, readOnly = false }: { brief: EditorialBrief; lane: ContentLane; reload: () => void; readOnly?: boolean }) {
   const [reason, setReason] = useState('')
   const [message, setMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [scope, setScope] = useState<'candidate' | 'angle' | 'format'>('candidate')
+  const [reviewed, setReviewed] = useState<{ version: number; hash: string } | null>(null)
   const draftRequest = useRef(requestId(`create-draft-${brief.identity.brief_id}-${brief.identity.version}`))
+  const reviewRequest = useRef(requestId(`review-${brief.identity.brief_id}-${brief.identity.version}`))
   const decide = async (action: 'shortlist' | 'defer' | 'reject') => {
     if (!reason.trim()) { setMessage('Add a reason and choose its scope before saving.'); return }
     setBusy(true); try { const r = await recordEditorialDecision(editorialClient, clientId(lane), { kind: 'brief', id: brief.identity.brief_id, version: brief.identity.version }, brief.identity.version, action, reason, scope, requestId(`brief-${action}`)); setMessage(r.outcome === 'conflict' ? `Conflict: ${r.conflict?.reason ?? 'newer decision exists'}.` : `${action} saved. It did not generate, approve, schedule, or publish.`); reload() } catch (e) { setMessage(e instanceof Error ? e.message : 'Decision failed.') } finally { setBusy(false) }
   }
-  const createDraft = async () => { setBusy(true); try { const r = await requestDraft(editorialClient, clientId(lane), brief.identity.brief_id, brief.identity.version, brief.identity.content_hash, draftRequest.current, brief.identity.kind); setMessage(r.state === 'accepted' ? 'Draft request accepted. It remains an internal draft for review.' : `Draft blocked: ${r.blocked_reason ?? 'review the brief requirements.'}`) } catch (e) { setMessage(e instanceof Error ? e.message : 'Draft request failed.') } finally { setBusy(false) } }
+  const review = async () => { if (!reason.trim()) { setMessage('Add a review reason before marking this brief ready.'); return } setBusy(true); try { const r = await reviewEditorialBrief(editorialClient, clientId(lane), brief.identity.brief_id, brief.identity.version, brief.identity.content_hash, 'pass', reason, reviewRequest.current); if (r.state === 'accepted' && r.version && r.content_hash) { setReviewed({ version:r.version, hash:r.content_hash }); draftRequest.current = requestId(`create-draft-${brief.identity.brief_id}-${r.version}`); setMessage(`Reviewed as v${r.version}. Create draft is now a separate action.`) } else setMessage(`Review ${r.state}: ${r.reason ?? 'reload the current brief and inspect its missing material.'}`) } catch (e) { setMessage(e instanceof Error ? e.message : 'Review could not be saved.') } finally { setBusy(false) } }
+  const createDraft = async () => { if (!reviewed) { setMessage('Review this brief before requesting a draft.'); return } setBusy(true); try { const r = await requestDraft(editorialClient, clientId(lane), brief.identity.brief_id, reviewed.version, reviewed.hash, draftRequest.current, brief.identity.kind); setMessage(r.state === 'accepted' ? 'Draft request accepted. It remains an internal draft for review.' : `Draft blocked: ${r.blocked_reason ?? 'review the brief requirements.'}`) } catch (e) { setMessage(e instanceof Error ? e.message : 'Draft request failed.') } finally { setBusy(false) } }
   return <Card title={brief.editorial_direction.topic} sub={`${brief.identity.kind} · v${brief.identity.version} · ${brief.identity.status}`} tail={brief.strongest_three ? <Badge tone="accent" variant="ring">Strongest 3</Badge> : <Badge tone="neutral" variant="ring">Remaining</Badge>}>
     <p className="a-research-hook">{brief.editorial_direction.proposed_hook}</p><p className="a-ct-sub"><strong>Why:</strong> {brief.ranking_reason ?? brief.purpose.relevance_reason}</p><p className="a-ct-sub"><strong>Evidence:</strong> {brief.evidence.map(e => e.owner).filter(Boolean).join(', ') || 'No readable evidence.'}</p><p className="a-ct-sub"><strong>Readiness:</strong> {brief.readiness}{brief.missing_material.length ? ` · needs ${brief.missing_material.join(', ')}` : ''}</p>
     <details><summary>Complete brief</summary><dl className="a-research-ledger"><dt>Direction</dt><dd>{brief.editorial_direction.angle}. {brief.editorial_direction.structural_beats.join(' ')}</dd><dt>Claims</dt><dd>{brief.claim_ledger.map(c => `${c.allowed_phrasing} Evidence: ${c.supporting_refs.join(', ')}`).join(' ')}</dd><dt>Passages</dt><dd>{brief.evidence.map(e => `${e.owner}: ${e.passage ?? e.limitation}`).join(' ')}</dd><dt>Dates and limits</dt><dd>{brief.evidence.map(e => `${when(e.source_published_date)}; ${e.limitation}`).join(' ')}</dd><dt>Measurement</dt><dd>{brief.measurements.length ? brief.measurements.map(m => `${m.metric_name}: ${m.observed_value}/${m.denominator}; ${m.observation_window}`).join(' ') : brief.measurements_none_reason ?? 'No measurement.'}</dd><dt>Distribution</dt><dd>{brief.distribution.cta} via {brief.distribution.route}</dd><dt>Resource / production</dt><dd>{brief.resource.artifact_role}: {brief.resource.readiness}. {brief.production.required_materials.join(', ')}</dd></dl></details>
-    <label className="a-research-reason">Decision reason <input value={reason} onChange={e => setReason(e.target.value)} /></label><label className="a-research-reason">Apply to <select value={scope} onChange={e => setScope(e.target.value as typeof scope)}><option value="candidate">This suggestion</option><option value="angle">This angle</option><option value="format">This format</option></select></label>
-    <div className="a-research-actions"><Button size="sm" disabled={busy} onClick={() => void decide('shortlist')}>Shortlist</Button><Button variant="quiet" size="sm" disabled={busy} onClick={() => void decide('defer')}>Defer</Button><Button variant="quiet" size="sm" disabled={busy} onClick={() => void decide('reject')}>Dismiss</Button><Button variant="outline" size="sm" disabled={busy} onClick={() => void createDraft()}>Create draft</Button></div>
+    {!readOnly && <><label className="a-research-reason">Decision reason <input value={reason} onChange={e => setReason(e.target.value)} /></label><label className="a-research-reason">Apply to <select value={scope} onChange={e => setScope(e.target.value as typeof scope)}><option value="candidate">This suggestion</option><option value="angle">This angle</option><option value="format">This format</option></select></label>
+    <div className="a-research-actions"><Button size="sm" disabled={busy} onClick={() => void decide('shortlist')}>Shortlist</Button><Button variant="quiet" size="sm" disabled={busy} onClick={() => void decide('defer')}>Defer</Button><Button variant="quiet" size="sm" disabled={busy} onClick={() => void decide('reject')}>Dismiss</Button><Button variant="outline" size="sm" disabled={busy || !!reviewed} onClick={() => void review()}>Review for draft</Button><Button variant="outline" size="sm" disabled={busy || !reviewed} onClick={() => void createDraft()}>Create draft</Button></div></>}
     {message && <p className="a-ct-sub" role="status">{message}</p>}
   </Card>
 }
 
 export function ThisWeekPanel({ lane }: { lane: ContentLane }) {
-  const [page, setPage] = useState<{ items: EditorialBrief[]; total: number; state: string; coverage_gaps: string[] } | null>(null)
+  const [page, setPage] = useState<{ items: EditorialBrief[]; total: number; state: string; coverage_gaps: string[]; next_cursor: string | null; batch_id: string | null } | null>(null)
   const [refresh, setRefresh] = useState<RefreshState | null>(null)
   const [message, setMessage] = useState<string | null>(null)
-  const reload = async () => { try { const p = await readBriefs(editorialClient, clientId(lane), null, null, 50); setPage(p) } catch (e) { setMessage(e instanceof Error ? e.message : 'Suggestions could not be read.') } }
+  const reload = async () => { try { const p = await readBriefs(editorialClient, clientId(lane), null, null, 50); if (p.state === 'failed') { setMessage(p.message ?? 'Suggestions could not be read.'); return } setPage(p) } catch (e) { setMessage(e instanceof Error ? e.message : 'Suggestions could not be read.') } }
+  const more = async () => { if (!page?.next_cursor) return; try { const p = await readBriefs(editorialClient, clientId(lane), page.batch_id ?? null, page.next_cursor, 50); if (p.state === 'failed') { setMessage(p.message ?? 'More suggestions could not be read.'); return } setPage({ ...p, items: [...page.items, ...p.items] }) } catch (e) { setMessage(e instanceof Error ? e.message : 'More suggestions could not be read.') } }
   useEffect(() => { void reload(); setRefresh(null); setMessage(null) }, [lane])
   const sorted = useMemo(() => (page?.items ?? []).slice().sort((a,b) => Number(b.strongest_three) - Number(a.strongest_three) || a.rank - b.rank), [page])
   const startRefresh = async () => { try { const direction = await readEditorialDirection(editorialClient, clientId(lane)); if (!direction.active_version) { setMessage('Adopt client direction before refreshing suggestions. Private notes are not used.'); return } const r = await requestSuggestionRefresh(editorialClient, clientId(lane), direction.active_version, requestId('refresh')); setMessage(`Refresh ${r.status}. It only synthesizes suggestions from collected evidence.`); if (r.refresh_id) { const state = await readSuggestionRefresh(editorialClient, clientId(lane), r.refresh_id); setRefresh(state); if (state.status === 'complete' || state.status === 'partial') await reload() } } catch (e) { setMessage(e instanceof Error ? e.message : 'Refresh could not start.') } }
@@ -104,14 +109,14 @@ export function ThisWeekPanel({ lane }: { lane: ContentLane }) {
     <p className="a-ct-sub">Reviewable suggestions only. Selection never produces a draft; Create draft is the separate explicit action.</p>
     {refresh && <p className="a-ct-sub">Synthesis: {refresh.status}; last usable batch {refresh.last_usable_batch_id ?? 'none'}. Collection: {refresh.collection_health.new_evidence_awaiting_refresh} new inputs, {refresh.collection_health.stale_inputs} stale. {refresh.synthesis_health.last_failure_reason ?? ''}</p>}
     {message && <p className="a-ct-sub" role="status">{message}</p>}
-    {!page ? <p className="a-ct-sub">Reading this week’s suggestions…</p> : <><p className="a-ct-sub">{page.total} suggestions in this batch. {page.coverage_gaps.join(' ')}</p><div className="a-research-list">{sorted.map(b => <BriefCard key={`${b.identity.brief_id}-${b.identity.version}`} brief={b} lane={lane} reload={() => void reload()} />)}</div></>}
+    {!page ? <p className="a-ct-sub">Reading this week’s suggestions…</p> : <><p className="a-ct-sub">{page.total} suggestions in this batch; {page.items.length} loaded. {page.coverage_gaps.join(' ')}</p><div className="a-research-list">{sorted.map(b => <BriefCard key={`${b.identity.brief_id}-${b.identity.version}`} brief={b} lane={lane} reload={() => void reload()} />)}</div>{page.next_cursor && <Button size="sm" variant="quiet" onClick={() => void more()}>Load more</Button>}</>}
   </Group>
 }
 
 export function ResultsPanel({ lane }: { lane: ContentLane }) {
-  const [briefs, setBriefs] = useState<EditorialBrief[]>([]); const [lines, setLines] = useState<string[] | null>(null)
-  useEffect(() => { let live = true; void readBriefs(editorialClient, clientId(lane), null, null, 15).then(async p => { const outcomes = await Promise.all(p.items.map(b => readBriefOutcomes(editorialClient, clientId(lane), b.identity.brief_id))); if (live) { setBriefs(p.items); setLines(outcomes.flatMap(o => o.observations.map(x => `${x.artifact_role === 'resource' ? 'Resource' : 'Post'} · ${x.metric}: ${x.observed_value} / ${x.denominator} · ${x.attribution} · ${when(x.captured_at)}`))) } }).catch(() => { if(live) setLines([]) }); return () => { live=false } }, [lane])
-  return <Group label="Results" pad><p className="a-ct-sub">Post and resource observations are separate. Unknown is retained; this view does not infer sales.</p>{lines === null ? <p className="a-ct-sub">Reading observed outcomes…</p> : lines.length ? <ul className="a-research-results">{lines.map((x,i)=><li key={i}>{x}</li>)}</ul> : <p className="a-ct-sub">No measured outcomes are available for these {briefs.length} suggestions. Missing telemetry is unknown.</p>}</Group>
+  const [briefs, setBriefs] = useState<EditorialBrief[]>([]); const [lines, setLines] = useState<string[] | null>(null); const [error, setError] = useState<string | null>(null); const [tick, setTick] = useState(0)
+  useEffect(() => { let live = true; setLines(null); setError(null); void (async () => { try { const first = await readBriefs(editorialClient, clientId(lane), null, null, 50); if (first.state === 'failed') throw new Error(first.message ?? 'Suggestions could not be read.'); const all = [...first.items]; let cursor = first.next_cursor; while (cursor) { const p = await readBriefs(editorialClient, clientId(lane), first.batch_id, cursor, 50); if (p.state === 'failed') throw new Error(p.message ?? 'More suggestions could not be read.'); all.push(...p.items); cursor = p.next_cursor } const outcomes = await Promise.all(all.map(b => readBriefOutcomes(editorialClient, clientId(lane), b.identity.brief_id))); const failed = outcomes.find(o => o.state === 'failed'); if (failed) throw new Error(failed.message ?? 'Outcome read failed.'); if (live) { setBriefs(all); setLines(outcomes.flatMap(o => o.observations.map(x => `${x.artifact_role === 'resource' ? 'Resource' : 'Post'} · ${x.metric}: ${x.observed_value} / ${x.denominator} · ${x.attribution} · ${when(x.captured_at)}`))) } } catch(e) { if(live) setError(e instanceof Error ? e.message : 'Results could not be read.') } })(); return () => { live=false } }, [lane,tick])
+  return <Group label="Results" pad><p className="a-ct-sub">Post and resource observations are separate. Unknown is retained; this view does not infer sales.</p>{error ? <p role="alert" className="a-ct-sub">{error} <Button size="sm" onClick={() => setTick(x => x+1)}>Try again</Button></p> : lines === null ? <p className="a-ct-sub">Reading observed outcomes…</p> : lines.length ? <ul className="a-research-results">{lines.map((x,i)=><li key={i}>{x}</li>)}</ul> : <p className="a-ct-sub">No measured outcomes are available for these {briefs.length} suggestions. Missing telemetry is unknown.</p>}</Group>
 }
 
 export function ClientDirectionPanel({ lane }: { lane: ContentLane }) {

@@ -128,7 +128,7 @@ export default function App() {
     if (!session) return
     void reconcilePush()
   }, [session])
-  if (import.meta.env.DEV && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('localEditorialPreview') === '1' && LocalEditorialPreview) {
+  if (import.meta.env.DEV && import.meta.env.VITE_EDITORIAL_PREVIEW === '1' && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('localEditorialPreview') === '1' && LocalEditorialPreview) {
     return <Suspense fallback={null}><LocalEditorialPreview /></Suspense>
   }
   // W5 CHECKER REACHABILITY (content-evidence-03 Phase 2 fix pass,

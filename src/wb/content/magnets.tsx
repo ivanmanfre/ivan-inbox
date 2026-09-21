@@ -322,7 +322,7 @@ export function MagnetsList({ lane, setLane, onOpen }: {
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         {lane === 'ivan' ? (
           <ResourceLane
-            rows={resources.rows} lane="ivan"
+            rows={resources.rows.filter(r => r.source !== 'hypertarget_demo')} lane="ivan"
             ideas={ideas.split.lead_magnet} ideaCount={ideas.counts.lead_magnet}
             ideaState={ideas}
             loading={resources.loading}
@@ -331,7 +331,7 @@ export function MagnetsList({ lane, setLane, onOpen }: {
           />
         ) : (
           <ResourceLane
-            rows={resources.rows} lane={lane} ideas={null} ideaCount={null}
+            rows={resources.rows.filter(r => r.source !== 'hypertarget_demo')} lane={lane} ideas={null} ideaCount={null}
             loading={resources.loading}
             error={resources.error} loadedAt={resources.loadedAt} refresh={resources.refresh}
             onOpen={onOpen}
