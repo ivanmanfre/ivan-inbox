@@ -1,5 +1,5 @@
-import { canonicalBriefPayload } from './editorialBriefs'
-import type { EditorialBrief, EditorialClientId, EvidenceRelation } from './editorialTypes'
+import { canonicalBriefPayload } from './editorialBriefs.ts'
+import type { EditorialBrief, EditorialClientId, EvidenceRelation } from './editorialTypes.ts'
 
 export type SynthesisSource = {
   source_id: string; seen_version: number; source_kind: EditorialBrief['evidence'][number]['source_kind']

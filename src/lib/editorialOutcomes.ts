@@ -1,6 +1,6 @@
-import type { EditorialClientId } from './editorialTypes'
-import { EditorialContractError, isEditorialClientId } from './editorialTypes'
-import type { EditorialClient } from './editorialTypes'
+import type { EditorialClientId } from './editorialTypes.ts'
+import { EditorialContractError, isEditorialClientId } from './editorialTypes.ts'
+import type { EditorialClient } from './editorialTypes.ts'
 
 export type ResourceEvent = {
   id: string; lm_slug: string; event_type: string; data_version: number | null

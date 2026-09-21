@@ -1,5 +1,5 @@
-import { EditorialContractError, isEditorialClientId } from './editorialTypes'
-import type { EditorialClient, EditorialClientId } from './editorialTypes'
+import { EditorialContractError, isEditorialClientId } from './editorialTypes.ts'
+import type { EditorialClient, EditorialClientId } from './editorialTypes.ts'
 
 export type EditorialDirectionRead = {
   client_id: EditorialClientId

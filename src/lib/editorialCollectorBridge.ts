@@ -1,4 +1,4 @@
-import type { EditorialClientId } from './editorialTypes'
+import type { EditorialClientId } from './editorialTypes.ts'
 
 export type CollectorName = 'own_posts' | 'client_post_metrics' | 'lm_idea_candidates' |
   'client_ideas' | 'client_research_study_posts' | 'client_research_findings'
