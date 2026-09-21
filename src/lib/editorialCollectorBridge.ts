@@ -36,6 +36,26 @@ const canonical = (v: unknown): string => v === null || typeof v !== 'object' ? 
   : Array.isArray(v) ? `[${v.map(canonical).join(',')}]`
     : `{${Object.keys(v as object).sort().map(k => `${JSON.stringify(k)}:${canonical((v as Record<string, unknown>)[k])}`).join(',')}}`
 
+function bodyProvenance(collector: CollectorName, row: CollectorRow, body: string | null) {
+  if (!body) return null
+  if (typeof row.body_provenance === 'string' && row.body_provenance.trim()) return row.body_provenance
+  if (collector === 'own_posts' && typeof row.post_text === 'string') return 'own_posts.post_text'
+  if (collector === 'client_post_metrics' && typeof row.full_text === 'string') return 'client_post_metrics.full_text'
+  if (collector === 'client_research_study_posts' && typeof row.post_text === 'string') return 'client_research_study_posts.post_text'
+  return null
+}
+
+function nativeRecovery(row: CollectorRow) {
+  const raw = row.native_body_recovery
+  if (!raw || typeof raw !== 'object') return null
+  const value = raw as Record<string, unknown>
+  return typeof value.source_id === 'string' && typeof value.native_id === 'string' &&
+    typeof value.body_chars === 'number' && typeof value.body_sha256 === 'string' &&
+    typeof value.exact_prefix_match === 'boolean' && typeof value.exact_body_match === 'boolean'
+    ? value as Parameters<typeof resolveEvidenceCompleteness>[0]['native']
+    : null
+}
+
 export async function nativeCandidateHash(collector: 'lm_idea_candidates' | 'client_ideas', row: CollectorRow) {
   const fields = collector === 'lm_idea_candidates'
     ? { evidence: row.evidence ?? null, raw_context: row.raw_context ?? null, source_ref: row.source_ref ?? null }
@@ -134,12 +154,17 @@ export async function normalizeCollectorRow(clientId: EditorialClientId, collect
   }
   if (!id) throw new Error(`${collector} row lacks a native identity`)
   if (!body && !gap) gap = { reason: 'unavailable', detail: 'Original body is absent from the collector row.' }
+  const provenance = bodyProvenance(collector, row, body)
   const completeness = resolveEvidenceCompleteness({
     body,
-    declaredState: row.body_state,
+    declaredState: row.body_state ?? (provenance ? 'full' : undefined),
+    collectionProvenance: provenance,
     fetchFailed: gap?.reason === 'unavailable',
+    native: nativeRecovery(row),
   })
-  fields = { ...(fields ?? {}), body_state: completeness.bodyState }
+  fields = { ...(fields ?? {}), body_state: completeness.bodyState,
+    body_provenance: provenance,
+    capture_provenance: captured ? 'collector' : 'bridge_observed' }
   const hasNativeCapture = Boolean(captured)
   const source = {
     client_id: clientId, source_id: id, seen_version: 1, source_kind: kind,
@@ -185,6 +210,7 @@ export async function normalizeVerifiedCall(clientId: EditorialClientId,
     candidate_fields: { transcript_sha256: passages[0].transcript_sha256,
       candidate_ids: passages.map(p => p.candidate_id).sort(), private_names: privateNames,
       transcript_source: passages[0].transcript_source, body_state: 'full',
+      body_provenance: 'verified_transcript_passage', capture_provenance: 'collector',
       source_identity: { platform: 'transcript', native_id: id, collector_row_id: id } },
   }
   return { ...source, snapshot_hash: await hash(canonical({ ...source, seen_version: undefined })) }

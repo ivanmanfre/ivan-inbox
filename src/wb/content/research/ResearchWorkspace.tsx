@@ -28,6 +28,17 @@ function draftRequestId(brief: EditorialBrief, version = brief.identity.version,
 }
 const isBriefGap = (item: EditorialBrief | BriefAccessGap): item is BriefAccessGap => 'access' in item && item.access === 'permission_unavailable'
 const when = (value: string | number | null | undefined) => value && value !== 'unknown' ? String(value) : 'Unknown'
+const metricValues = (metrics: Record<string, unknown> | null) => metrics
+  ? Object.entries(metrics).map(([name, value]) => `${name}: ${value == null ? 'unknown' : String(value)}`).join('; ')
+  : 'No structured metrics recorded.'
+const nativeIdentity = (source: SourceSnapshot) => `${source.source_identity.platform}:${source.source_identity.native_id}` +
+  (source.source_identity.collector_row_id ? ` (collector row ${source.source_identity.collector_row_id})` : '')
+const metricEvidence = (source: SourceSnapshot) => {
+  const provenance = source.metric_provenance
+  const window = provenance.observation_window ? Object.entries(provenance.observation_window)
+    .map(([name, value]) => `${name}: ${value == null ? 'unknown' : String(value)}`).join('; ') : 'window unknown'
+  return `source: ${provenance.source ?? 'unknown'}; denominator: ${provenance.denominator ?? 'unknown'}; ${window}`
+}
 
 export function SourceDetail({ source, close, lane, previewLinked, readOnly = false }: { source: SourceSnapshot; close: () => void; lane: ContentLane; previewLinked?: EditorialBrief[]; readOnly?: boolean }) {
   const editorialClient = useEditorialClient()
@@ -58,6 +69,8 @@ export function SourceDetail({ source, close, lane, previewLinked, readOnly = fa
       <dt>Original / excerpt</dt><dd>{source.passage ?? 'Original passage is unavailable.'} {'url' in source.source_ref ? <a href={source.source_ref.url} target="_blank" rel="noreferrer">Open original</a> : <span> Authenticated excerpt: {source.source_ref.excerpt_pointer}</span>}</dd>
       <dt>Owner</dt><dd>{source.owner}</dd><dt>Published</dt><dd>{when(source.source_published_date)}</dd>
       <dt>Observed</dt><dd>{when(source.captured_date)}</dd><dt>Scope</dt><dd>{source.source_client_scope}</dd>
+      <dt>Body completeness</dt><dd>{source.body_state}</dd><dt>Native identity</dt><dd>{nativeIdentity(source)}</dd>
+      <dt>Observed metrics</dt><dd>{metricValues(source.observed_metrics)}</dd><dt>Metric provenance</dt><dd>{metricEvidence(source)}</dd>
       <dt>Observation</dt><dd>{source.retained_context || source.candidate_fields?.evidence || 'No source observation recorded.'}</dd>
       <dt>Limits</dt><dd>{source.limitation || source.gap_state?.detail || 'No additional limit recorded.'}</dd>
       <dt>Linked suggestions</dt><dd>{linked.length ? linked.map(b => `${b.editorial_direction.topic} (v${b.identity.version})`).join('; ') : 'No current suggestion cites this source.'}</dd>

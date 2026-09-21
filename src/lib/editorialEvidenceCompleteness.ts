@@ -27,11 +27,15 @@ function declaredState(value: unknown): EvidenceBodyState | null {
 export function resolveEvidenceCompleteness(input: {
   body: string | null
   declaredState?: unknown
+  /** A collector field or retained-native receipt that establishes a declared
+      full body is complete. A label alone is not enough proof. */
+  collectionProvenance?: unknown
   fetchFailed?: boolean
   native?: NativeBodyRecovery | null
 }): EvidenceCompleteness {
   const state = declaredState(input.declaredState)
   const native = input.native ?? null
+  const hasCollectionProvenance = typeof input.collectionProvenance === 'string' && input.collectionProvenance.trim().length > 0
   if (!input.body || input.fetchFailed) {
     return { bodyState: 'unavailable', supplementalBody: false, nativeBodySha256: native?.body_sha256 ?? null }
   }
@@ -42,9 +46,15 @@ export function resolveEvidenceCompleteness(input: {
       nativeBodySha256: native.body_sha256,
     }
   }
-  if (state) return { bodyState: state, supplementalBody: false, nativeBodySha256: native?.body_sha256 ?? null }
+  if (native?.exact_body_match && native.body_chars === input.body.length) {
+    return { bodyState: 'full', supplementalBody: true, nativeBodySha256: native.body_sha256 }
+  }
+  if (state === 'full' && hasCollectionProvenance) {
+    return { bodyState: 'full', supplementalBody: false, nativeBodySha256: native?.body_sha256 ?? null }
+  }
+  if (state && state !== 'full') return { bodyState: state, supplementalBody: false, nativeBodySha256: native?.body_sha256 ?? null }
   return {
-    bodyState: input.body.length === 500 ? 'unknown' : 'full',
+    bodyState: 'unknown',
     supplementalBody: false,
     nativeBodySha256: native?.body_sha256 ?? null,
   }

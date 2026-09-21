@@ -38,6 +38,31 @@ describe('evidence body completeness', () => {
     expect(recovered.supplementalBody).toBe(false)
   })
 
+  it('keeps every unproven retained length unknown, including a non-500 body', () => {
+    const recovered = resolveEvidenceCompleteness({ body: 'x'.repeat(417) })
+
+    expect(recovered.bodyState).toBe('unknown')
+  })
+
+  it('accepts a declared full body only with a retained collection basis', () => {
+    const unproven = resolveEvidenceCompleteness({ body: 'retained source text', declaredState: 'full' })
+    const proven = resolveEvidenceCompleteness({ body: 'retained source text', declaredState: 'full',
+      collectionProvenance: 'client_post_metrics.full_text' })
+
+    expect(unproven.bodyState).toBe('unknown')
+    expect(proven.bodyState).toBe('full')
+  })
+
+  it('accepts an exact native-body match as full without a collector label', () => {
+    const recovered = resolveEvidenceCompleteness({ body: 'native body', native: {
+      source_id: 'urn:fixture', native_id: 'native-fixture', body_chars: 11,
+      body_sha256: 'a'.repeat(64), exact_prefix_match: true, exact_body_match: true,
+    } })
+
+    expect(recovered.bodyState).toBe('full')
+    expect(recovered.supplementalBody).toBe(true)
+  })
+
   it('keeps a failed body capture unavailable instead of treating it as empty text', () => {
     const recovered = resolveEvidenceCompleteness({ body: null, fetchFailed: true })
 

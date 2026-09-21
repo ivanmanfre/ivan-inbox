@@ -9,7 +9,8 @@ export function prepareSynthesisContext(input: {
   sources: SelectionRow[]; outcomes: Row[]
   render: (parts: ContextParts) => SynthesisMessage[]
 }) {
-  const keys = ['observed_metrics', 'linked_findings', 'private_names', 'age_comparability', 'population', 'inclusion', 'study_id']
+  const keys = ['observed_metrics', 'linked_findings', 'private_names', 'age_comparability', 'population', 'inclusion', 'study_id',
+    'metric_source', 'metric_denominator', 'observation_window', 'metric_observations', 'body_state', 'body_provenance', 'source_identity']
   const project = (source: SelectionRow, cap: number): SelectionRow => ({ ...source,
     passage: source.passage.slice(0, cap), retained_context: String(source.retained_context ?? '').slice(0, Math.min(cap, 2000)),
     candidate_fields: Object.fromEntries(keys.filter(k => source.candidate_fields?.[k] !== undefined)

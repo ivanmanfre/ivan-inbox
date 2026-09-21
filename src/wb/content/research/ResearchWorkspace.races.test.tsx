@@ -10,8 +10,9 @@ vi.mock('../../../lib/editorialBriefs', async original => ({
 import { readResearch } from '../../../lib/editorialSources'
 import { requestDraft } from '../../../lib/editorialBriefs'
 import { brief } from '../../../lib/editorialBriefs.fixtures'
-import { BriefCard, ResearchPanel } from './ResearchWorkspace'
+import { BriefCard, ResearchPanel, SourceDetail } from './ResearchWorkspace'
 import type { SourcePage } from '../../../lib/editorialTypes'
+import { sourceSnapshot } from '../../../lib/editorialSources.fixtures'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 let host: HTMLDivElement, root: Root
@@ -102,4 +103,19 @@ it('does not offer an internal-copy escape for image posts missing factual proof
   expect(button('Create internal copy')).toBeUndefined()
   expect(button('Create draft').disabled).toBe(true)
   expect(vi.mocked(requestDraft)).not.toHaveBeenCalled()
+})
+
+it('renders source body state, native identity, metrics and measurement provenance in the detail ledger', async () => {
+  const source = sourceSnapshot({ body_state: 'excerpt',
+    source_identity: { platform: 'linkedin', native_id: 'urn:li:activity:fixture', collector_row_id: 'metric-row-1' },
+    observed_metrics: { impressions: 271, reactions: 0, comments: 5 },
+    metric_provenance: { source: 'client_post_metrics', denominator: 'one exact own post',
+      observation_window: { published_at: '2026-09-15', captured_at: '2026-09-20' } } })
+  await act(async () => root.render(<SourceDetail source={source} close={() => {}} lane="risedtc" previewLinked={[]} readOnly />))
+  expect(host.textContent).toContain('Body completeness')
+  expect(host.textContent).toContain('excerpt')
+  expect(host.textContent).toContain('linkedin:urn:li:activity:fixture')
+  expect(host.textContent).toContain('impressions: 271; reactions: 0; comments: 5')
+  expect(host.textContent).toContain('source: client_post_metrics; denominator: one exact own post')
+  expect(host.textContent).toContain('captured_at: 2026-09-20')
 })

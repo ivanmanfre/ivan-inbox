@@ -68,6 +68,52 @@ describe('collector bridge', () => {
     }
   })
 
+  it('deduplicates one native activity across metrics and study collectors on the persisted legacy identity', async () => {
+    const originalMetrics = rows.client_post_metrics
+    const originalStudies = rows.client_research_study_posts
+    rows.client_post_metrics = [{ id: 'legacy-metric-row', client_id: 'risedtc', social_id: 'urn:li:activity:cross-collector',
+      post_url: 'https://www.linkedin.com/posts/sanitized-cross-collector', full_text: 'Captured post text.',
+      published_at: '2026-09-18T10:00:00Z', captured_at: '2026-09-19T10:00:00Z', impressions: 12, reactions: 0 }]
+    rows.client_research_study_posts = [{ client_id: 'risedtc', study_id: 'study-1',
+      canonical_source_id: 'urn:li:activity:cross-collector', source_url: 'https://www.linkedin.com/posts/sanitized-cross-collector',
+      post_text: 'Captured post text.', author_id: 'Public author', published_at: '2026-09-18T10:00:00Z',
+      last_captured_at: '2026-09-20T10:00:00Z', observed_metrics: { reactions: 99 }, population: 'one exact public post' }]
+    const latest = new Map<string, { seen_version: number; snapshot_hash: string }>([
+      ['legacy-metric-row', { seen_version: 4, snapshot_hash: 'prior-legacy-version' }],
+    ])
+    const inserted: Record<string, unknown>[] = []
+    const db = {
+      from(table: string) {
+        const state = { from: 0, to: 0 }
+        const chain = {
+          select() { return chain }, order() { return chain }, eq() { return chain },
+          range(from: number, to: number) { state.from = from; state.to = to; return chain },
+          then(resolve: (value: unknown) => unknown) { const items = rows[table] ?? []
+            return Promise.resolve(resolve({ data: items.slice(state.from, state.to + 1), count: items.length, error: null })) },
+          async insert(batch: Record<string, unknown>[]) { inserted.push(...batch); for (const item of batch) latest.set(String(item.source_id), { seen_version: Number(item.seen_version), snapshot_hash: String(item.snapshot_hash) }); return { error: null } },
+          async upsert() { return { error: null } },
+        }
+        return chain
+      },
+      async rpc(_name: string, args: { p_source_ids: string[] }) { return { data: args.p_source_ids.flatMap(id => latest.has(id) ? [{ source_id: id, ...latest.get(id)! }] : []), error: null } },
+    }
+    try {
+      await bridgeCollectedSources(db, 'risedtc')
+      const firstHash = String(inserted[0].snapshot_hash)
+      await bridgeCollectedSources(db, 'risedtc')
+      expect(inserted).toHaveLength(1)
+      expect(inserted[0]).toMatchObject({ source_id: 'legacy-metric-row', seen_version: 5, independent: true,
+        candidate_fields: expect.objectContaining({ metric_observations: expect.arrayContaining([
+          expect.objectContaining({ collector_row_id: 'legacy-metric-row', observed_metrics: expect.objectContaining({ impressions: 12, reactions: 0 }) }),
+          expect.objectContaining({ collector_row_id: 'urn:li:activity:cross-collector', observed_metrics: { reactions: 99 } }),
+        ]) }) })
+      expect(latest.get('legacy-metric-row')?.snapshot_hash).toBe(firstHash)
+    } finally {
+      rows.client_post_metrics = originalMetrics
+      rows.client_research_study_posts = originalStudies
+    }
+  })
+
   it('normalizes a captured legacy original once, retries unchanged despite a later read clock, and excludes unrelated private calls', async () => {
     const latest = new Map<string, { seen_version: number; snapshot_hash: string }>()
     const inserted: Record<string, unknown>[] = []

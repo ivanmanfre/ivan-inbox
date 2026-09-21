@@ -334,6 +334,7 @@ export function parseSourceItem(raw: unknown, lane: EditorialClientId): ParsedSo
   const completeness = resolveEvidenceCompleteness({
     body: passage,
     declaredState: candidateFields?.body_state,
+    collectionProvenance: candidateFields?.body_provenance,
     fetchFailed: gapState?.reason === 'unavailable',
   })
   const observations = candidateFields?.observed_metrics

@@ -47,12 +47,77 @@ async function scan(db: Db, table: string, order: string, clientId: EditorialCli
   return rows
 }
 
+type LatestSource = { seen_version: number; snapshot_hash: string }
+type StagedCollection = { spec: { table: string; order: string; scoped: boolean }; rows: Record<string, unknown>[]; normalized: Awaited<ReturnType<typeof normalizeCollectorRow>>[] }
+
+function nativeKey(source: Awaited<ReturnType<typeof normalizeCollectorRow>>) {
+  const identity = source.candidate_fields?.source_identity
+  if (identity && typeof identity === 'object') {
+    const value = identity as Record<string, unknown>
+    if (typeof value.platform === 'string' && typeof value.native_id === 'string') return `${value.platform}:${value.native_id}`
+  }
+  return source.source_id
+}
+
+function sourceMetricObservations(source: Awaited<ReturnType<typeof normalizeCollectorRow>>) {
+  const fields = source.candidate_fields ?? {}
+  if (Array.isArray(fields.metric_observations)) return fields.metric_observations
+  const metrics = fields.observed_metrics
+  if (!metrics || typeof metrics !== 'object' || Array.isArray(metrics)) return []
+  const identity = fields.source_identity && typeof fields.source_identity === 'object'
+    ? fields.source_identity as Record<string, unknown> : {}
+  return [{ collector_row_id: typeof identity.collector_row_id === 'string' ? identity.collector_row_id : source.source_id,
+    metric_source: fields.metric_source ?? null, metric_denominator: fields.metric_denominator ?? null,
+    observation_window: fields.observation_window ?? null, observed_metrics: metrics }]
+}
+
+const stableJson = (value: unknown): string => value === null || typeof value !== 'object' ? JSON.stringify(value) ?? 'null'
+  : Array.isArray(value) ? `[${value.map(stableJson).join(',')}]`
+    : `{${Object.keys(value as object).sort().map(key => `${JSON.stringify(key)}:${stableJson((value as Record<string, unknown>)[key])}`).join(',')}}`
+
+async function rekeySnapshot(source: Awaited<ReturnType<typeof normalizeCollectorRow>>, sourceId: string,
+  candidateFields: Record<string, unknown>) {
+  const { snapshot_hash: _oldHash, ...raw } = source
+  const rekeyed = { ...raw, source_id: sourceId, candidate_fields: candidateFields }
+  const identity = { ...rekeyed, seen_version: undefined,
+    captured_at: candidateFields.capture_provenance === 'collector' ? rekeyed.captured_at : undefined }
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(stableJson(identity)))
+  const snapshot_hash = [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, '0')).join('')
+  return { ...rekeyed, snapshot_hash }
+}
+
+/** Canonicalize after every collector is read. The persisted legacy source id
+ * wins when present; otherwise the lexical id makes first import scan-order independent. */
+async function canonicalizeClientSources(sources: Awaited<ReturnType<typeof normalizeCollectorRow>>[], existing: Map<string, LatestSource>) {
+  const groups = new Map<string, Awaited<ReturnType<typeof normalizeCollectorRow>>[]>()
+  for (const source of sources) groups.set(nativeKey(source), [...(groups.get(nativeKey(source)) ?? []), source])
+  const canonicalized: Awaited<ReturnType<typeof normalizeCollectorRow>>[] = []
+  for (const group of groups.values()) {
+    const ordered = [...group].sort((a, b) => a.source_id.localeCompare(b.source_id))
+    const legacy = ordered.find(source => existing.has(source.source_id)) ?? ordered[0]
+    const newest = [...ordered].sort((a, b) => b.captured_at.localeCompare(a.captured_at) || a.source_id.localeCompare(b.source_id))[0]
+    const linked = ordered.flatMap(source => Array.isArray(source.candidate_fields?.linked_findings)
+      ? source.candidate_fields!.linked_findings : [])
+    const uniqueLinked = [...new Map(linked.map(f => {
+      const value = f as Record<string, unknown>
+      return [`${String(value.study_id ?? '')}:${String(value.finding_id ?? '')}`, f]
+    })).values()]
+    const observations = ordered.flatMap(sourceMetricObservations)
+    const uniqueObservations = [...new Map(observations.map(item => [JSON.stringify(item), item])).values()]
+    const fields = { ...(newest.candidate_fields ?? {}), linked_findings: uniqueLinked,
+      metric_observations: uniqueObservations }
+    canonicalized.push(await rekeySnapshot(newest, legacy.source_id, fields))
+  }
+  return canonicalized
+}
+
 /** Read-only to every existing collector. It only appends immutable editorial
  * source versions and records the exact scan cursor before begin_refresh. */
 export async function bridgeCollectedSources(db: Db, clientId: EditorialClientId) {
   const observedAt = new Date().toISOString()
   const coverageGaps: string[] = ['Private call candidates without exact client-scoped transcript and passage verification remain excluded.']
   let findings: LinkedFinding[] = []
+  const staged: StagedCollection[] = []
   for (const spec of collections[clientId]) {
     const rows = await scan(db, spec.table, spec.order, clientId, spec.scoped)
     const isCandidateCollector = spec.table === 'lm_idea_candidates' || spec.table === 'client_ideas'
@@ -106,77 +171,38 @@ export async function bridgeCollectedSources(db: Db, clientId: EditorialClientId
       }
       return { ...source, source_id: `candidate-summary:${spec.table}:${row.id}` }
     }))
-    const allNormalized = maybeNormalized.filter(x => x !== null)
+    const allNormalized = maybeNormalized.filter((x): x is NonNullable<typeof x> => x !== null)
     if (verified.length) {
       const byTranscript = new Map<string, VerifiedCallPassage[]>()
       for (const passage of verified) byTranscript.set(passage.transcript_id,
         [...(byTranscript.get(passage.transcript_id) ?? []), passage])
       for (const group of byTranscript.values()) allNormalized.push(await normalizeVerifiedCall(clientId, group))
     }
-    // One canonical identity may occur in multiple studies. Keep its latest
-    // capture; repetitions do not become independent corroboration.
-    const nativeKey = (source: typeof allNormalized[number]) => {
-      const identity = source.candidate_fields?.source_identity
-      if (identity && typeof identity === 'object') {
-        const value = identity as Record<string, unknown>
-        if (typeof value.platform === 'string' && typeof value.native_id === 'string')
-          return `${value.platform}:${value.native_id}`
-      }
-      return source.source_id
-    }
-    const byId = new Map<string, typeof allNormalized[number]>()
-    const repeatedHashes = new Map<string, string[]>()
-    for (const source of allNormalized) {
-      const key = nativeKey(source)
-      const prior = byId.get(key)
-      if (!prior) { byId.set(key, source); continue }
-      repeatedHashes.set(key, [...(repeatedHashes.get(key) ?? [prior.snapshot_hash]),
-        source.snapshot_hash])
-      const newest = source.captured_at > prior.captured_at ? source : prior
-      const earlier = newest === source ? prior : source
-      const merged = [...(Array.isArray(newest.candidate_fields?.linked_findings)
-        ? newest.candidate_fields.linked_findings : []),
-      ...(Array.isArray(earlier.candidate_fields?.linked_findings)
-        ? earlier.candidate_fields.linked_findings : [])]
-      const unique = [...new Map(merged.map(f => [`${f.study_id}:${f.finding_id}`, f])).values()]
-      // Repeat captures remain one original author/source. Their distinct
-      // study findings survive as context, never as independent sources.
-      // Preserve the first immutable editorial source id so existing brief
-      // references remain valid even if another collector row names the same
-      // platform-native post.
-      byId.set(key, { ...newest, source_id: prior.source_id,
-        candidate_fields: { ...(newest.candidate_fields ?? {}), linked_findings: unique },
-        retained_context: `${newest.retained_context}\nEarlier study findings: ${JSON.stringify(unique)}`,
-      })
-    }
-    for (const [id, hashes] of repeatedHashes) {
-      const item = byId.get(id)!
-      const payload = `${hashes.sort().join(':')}|${JSON.stringify(item.candidate_fields?.linked_findings ?? [])}`
-      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(payload))
-      item.snapshot_hash = [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, '0')).join('')
-    }
-    const normalized = [...byId.values()]
-    const existing = new Map<string, { seen_version: number; snapshot_hash: string }>()
-    for (let i = 0; i < normalized.length; i += 500) {
-      const ids = normalized.slice(i, i + 500).map(x => x.source_id)
-      const lookup = await db.rpc('editorial_latest_source_versions', {
-        p_gate: 'clientops', p_client_id: clientId, p_source_ids: ids,
-      })
-      if (lookup.error) throw new Error(`editorial source version read failed: ${lookup.error.message}`)
-      for (const item of lookup.data ?? []) existing.set(item.source_id, item)
-    }
-    const changed = normalized.filter(source => existing.get(source.source_id)?.snapshot_hash !== source.snapshot_hash)
-      .map(source => ({ ...source, seen_version: Number(existing.get(source.source_id)?.seen_version ?? 0) + 1 }))
-    for (let i = 0; i < changed.length; i += 100) {
-      const { error } = await db.from('editorial_sources').insert(changed.slice(i, i + 100))
-      if (error) throw new Error(`editorial source snapshot insert failed: ${error.message}`)
-    }
+    staged.push({ spec, rows, normalized: allNormalized })
+  }
+  const rawSources = staged.flatMap(stage => stage.normalized)
+  const existing = new Map<string, LatestSource>()
+  for (let i = 0; i < rawSources.length; i += 500) {
+    const lookup = await db.rpc('editorial_latest_source_versions', {
+      p_gate: 'clientops', p_client_id: clientId, p_source_ids: rawSources.slice(i, i + 500).map(x => x.source_id),
+    })
+    if (lookup.error) throw new Error(`editorial source version read failed: ${lookup.error.message}`)
+    for (const item of lookup.data ?? []) existing.set(item.source_id, item)
+  }
+  const normalized = await canonicalizeClientSources(rawSources, existing)
+  const changed = normalized.filter(source => existing.get(source.source_id)?.snapshot_hash !== source.snapshot_hash)
+    .map(source => ({ ...source, seen_version: Number(existing.get(source.source_id)?.seen_version ?? 0) + 1 }))
+  for (let i = 0; i < changed.length; i += 100) {
+    const { error } = await db.from('editorial_sources').insert(changed.slice(i, i + 100))
+    if (error) throw new Error(`editorial source snapshot insert failed: ${error.message}`)
+  }
+  for (const { spec, rows, normalized: collectorSources } of staged) {
     if (spec.table === 'own_posts' || spec.table === 'client_post_metrics') {
       const outcomeRows = await Promise.all(rows.flatMap(row => {
         const id = String(row.id ?? '')
-        const source = normalized.find(s => s.candidate_fields?.source_identity &&
-          typeof s.candidate_fields.source_identity === 'object' &&
-          (s.candidate_fields.source_identity as Record<string, unknown>).collector_row_id === id)
+        const source = normalized.find(s => sourceMetricObservations(s).some(observation =>
+          observation && typeof observation === 'object' &&
+          (observation as Record<string, unknown>).collector_row_id === id))
         if (!source) return []
         const metrics = source.candidate_fields?.observed_metrics as Record<string, unknown> | undefined
         if (!metrics) return []
@@ -205,9 +231,9 @@ export async function bridgeCollectedSources(db: Db, clientId: EditorialClientId
         if (error) throw new Error(`own outcome snapshot insert failed: ${error.message}`)
       }
     }
-    const partial = normalized.filter(x => x.gap_state).length
+    const partial = collectorSources.filter(x => x.gap_state).length
     if (partial) coverageGaps.push(`${spec.table}: ${partial} rows lack verified original body or permission`)
-    const cursor = `${rows.length}:${normalized.map(x => x.snapshot_hash).sort().join(':')}`
+    const cursor = `${rows.length}:${collectorSources.map(x => x.snapshot_hash).sort().join(':')}`
     const bytes = new TextEncoder().encode(cursor)
     const digest = await crypto.subtle.digest('SHA-256', bytes)
     const cursorHash = [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, '0')).join('')
