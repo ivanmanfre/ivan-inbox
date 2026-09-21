@@ -244,10 +244,13 @@ describe('T04 source fact vs derived summary (source side)', () => {
     const row = rawSourceItem({ source_kind: 'candidate', passage: null, source_content_hash: null,
       gap_state: { reason: 'partial', detail: 'Original body is absent.' }, independent: false, derived_from: 'client_ideas:id',
       candidate_fields: { evidence: { source_label: 'From calls' }, raw_context: { source_ts: 'x' },
-        editorial_assessment: { why: 'structured' }, editorial_strength: 91, angle_options: [] } })
+        editorial_assessment: { why: 'structured' }, editorial_strength: 91,
+        angle_options: { audience: 'owner', hooks: ['one', 'two'] } } })
     const parsed = parseSourceItem(row, 'risedtc')
     expect(parsed.ok).toBe(true)
-    if (parsed.ok) { expect(parsed.item.candidate_fields?.evidence).toEqual({ source_label: 'From calls' }); expect(parsed.item.passage).toBeNull(); expect(parsed.item.gap_state?.reason).toBe('partial') }
+    if (parsed.ok) { expect(parsed.item.candidate_fields?.evidence).toEqual({ source_label: 'From calls' });
+      expect(parsed.item.candidate_fields?.angle_options).toEqual({ audience: 'owner', hooks: ['one', 'two'] })
+      expect(parsed.item.passage).toBeNull(); expect(parsed.item.gap_state?.reason).toBe('partial') }
   })
 
   it('a candidate source missing one of its five fields is an explicit gap', async () => {

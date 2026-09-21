@@ -260,7 +260,7 @@ export type CandidateFields = Record<string, unknown> & {
   raw_context?: unknown
   editorial_assessment?: unknown
   editorial_strength?: unknown
-  angle_options?: unknown[]
+  angle_options?: unknown
 }
 
 export type EvidenceBodyState = 'full' | 'excerpt' | 'unavailable' | 'unknown'

@@ -188,7 +188,7 @@ function parseCandidateFields(raw: unknown, kind: SourceKind): CandidateFields |
   // Candidate metadata is lossless JSON: current collectors retain structured
   // evidence and assessments. Presence is required; fabricated string coercion
   // would erase meaning and turn valid objects into '[object Object]'.
-  if (kind === 'candidate' && (!Array.isArray(raw.angle_options) || required.some(key => !Object.prototype.hasOwnProperty.call(raw, key)))) return null
+  if (kind === 'candidate' && required.some(key => !Object.prototype.hasOwnProperty.call(raw, key))) return null
   return raw as CandidateFields
 }
 

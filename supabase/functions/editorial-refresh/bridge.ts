@@ -68,7 +68,9 @@ function sourceMetricObservations(source: Awaited<ReturnType<typeof normalizeCol
     ? fields.source_identity as Record<string, unknown> : {}
   return [{ collector_row_id: typeof identity.collector_row_id === 'string' ? identity.collector_row_id : source.source_id,
     metric_source: fields.metric_source ?? null, metric_denominator: fields.metric_denominator ?? null,
-    observation_window: fields.observation_window ?? null, observed_metrics: metrics }]
+    observation_window: fields.observation_window ?? null, observed_metrics: metrics,
+    raw_observed_metrics: fields.raw_observed_metrics ?? null,
+    metric_observation_state: fields.metric_observation_state ?? null }]
 }
 
 const stableJson = (value: unknown): string => value === null || typeof value !== 'object' ? JSON.stringify(value) ?? 'null'
@@ -207,6 +209,7 @@ export async function bridgeCollectedSources(db: Db, clientId: EditorialClientId
         if (!match || !match.observation || typeof match.observation !== 'object') return []
         const observation = match.observation as Record<string, unknown>
         const metrics = observation.observed_metrics
+        const metricStates = observation.metric_observation_state
         const window = observation.observation_window
         if (!metrics || typeof metrics !== 'object' || Array.isArray(metrics) || !window || typeof window !== 'object') return []
         const dates = window as Record<string, unknown>
@@ -217,12 +220,19 @@ export async function bridgeCollectedSources(db: Db, clientId: EditorialClientId
         if (!publishedAt || !denominator) return []
         return Object.entries(metrics).flatMap(async ([metric, raw]) => {
           const observed = typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? raw : null
+          const state = metricStates && typeof metricStates === 'object' && !Array.isArray(metricStates)
+            ? (metricStates as Record<string, unknown>)[metric] : null
+          const unknownReason = observed === null
+            ? state === 'unknown_no_metrics_updated_at'
+              ? 'No metrics_updated_at receipt; retained raw value is evaluation-ineligible'
+              : 'Collector did not retain a valid count'
+            : null
           const stable = `${clientId}|${spec.table}|${id}|${metric}|${String(raw)}|${nativeCapture ?? 'unknown'}`
           const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(stable))
           const suffix = [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, '0')).join('')
           return { client_id: clientId, snapshot_id: `collector-${suffix}`, brief_id: `unattributed-own-post:${match.source.source_id}`,
             brief_version: null, artifact_id: match.source.source_id, artifact_role: 'own_post', metric,
-            observed_value: observed, unknown_reason: observed === null ? 'Collector did not retain a valid count' : null,
+            observed_value: observed, unknown_reason: unknownReason,
             denominator: observed === null ? null : denominator,
             scope: `native ${spec.table}.id=${id}`, window_start: publishedAt,
             window_end: nativeCapture, captured_at: nativeCapture ?? observedAt,

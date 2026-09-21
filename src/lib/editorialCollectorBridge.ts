@@ -79,16 +79,20 @@ export async function normalizeCollectorRow(clientId: EditorialClientId, collect
     const metricsUpdated = date(row.metrics_updated_at)
     published = date(row.posted_at); captured = metricsUpdated ?? date(row.scraped_at)
     body = val(row.post_text) || null; permission = 'granted'
-    const rawImpressions = row.num_impressions ?? null
-    const impressions = metricsUpdated ? rawImpressions : null
-    context = `Observed own post; likes=${val(row.num_likes) || 'unknown'}, comments=${val(row.num_comments) || 'unknown'}, shares=${val(row.num_shares) || 'unknown'}, impressions=${impressions == null ? 'unknown (no metrics refresh)' : val(impressions)}.`
-    limitation = 'Own outcome counts need a stated denominator and observation window before use as a claim.'
-    fields = { observed_metrics: { likes: row.num_likes ?? null, comments: row.num_comments ?? null,
-      shares: row.num_shares ?? null, impressions,
+    const rawMetrics = { likes: row.num_likes ?? null, comments: row.num_comments ?? null,
+      shares: row.num_shares ?? null, impressions: row.num_impressions ?? null,
       profile_views: row.profile_views_from_post ?? null,
-      followers_gained: row.followers_gained_from_post ?? null }, raw_observed_metrics: { impressions: rawImpressions },
-      metric_observation_state: { impressions: metricsUpdated ? 'observed_metrics_updated_at' : 'unknown_no_metrics_updated_at' }, observation_window: { published_at: published,
-      captured_at: captured }, metric_source: 'own_posts', metric_denominator: 'one exact own post',
+      followers_gained: row.followers_gained_from_post ?? null }
+    const observedMetrics = Object.fromEntries(Object.entries(rawMetrics)
+      .map(([metric, value]) => [metric, metricsUpdated ? value : null]))
+    const metricState = Object.fromEntries(Object.entries(rawMetrics).map(([metric, value]) => [metric,
+      !metricsUpdated ? 'unknown_no_metrics_updated_at'
+        : value == null ? 'unknown_not_retained' : 'observed_metrics_updated_at']))
+    context = `Observed own post; likes=${val(observedMetrics.likes) || 'unknown'}, comments=${val(observedMetrics.comments) || 'unknown'}, shares=${val(observedMetrics.shares) || 'unknown'}, impressions=${val(observedMetrics.impressions) || 'unknown'}.`
+    limitation = 'Own outcome counts need a stated denominator and observation window before use as a claim.'
+    fields = { observed_metrics: observedMetrics, raw_observed_metrics: rawMetrics,
+      metric_observation_state: metricState, observation_window: { published_at: published,
+      captured_at: captured, metrics_updated_at: metricsUpdated }, metric_source: 'own_posts', metric_denominator: 'one exact own post',
       source_identity: { platform: 'linkedin', native_id: val(row.social_id) || id, collector_row_id: id } }
   } else if (collector === 'client_post_metrics') {
     if (row.client_id !== clientId) throw new Error('client_post_metrics tenant mismatch')

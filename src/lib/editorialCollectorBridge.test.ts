@@ -29,14 +29,29 @@ describe('collector bridge', () => {
     })
   })
 
-  it('keeps a raw Ivan impressions zero without metrics_updated_at unknown for outcome use, while retaining a refreshed zero', async () => {
-    const unknown = await normalizeCollectorRow('ivan', 'own_posts', { id:'unrefreshed', post_text:'body', posted_at:'2026-09-01T00:00:00Z', scraped_at:'2026-09-02T00:00:00Z', num_impressions:0 }, '2026-09-02T00:00:00Z')
-    expect(unknown.candidate_fields?.observed_metrics).toMatchObject({ impressions:null })
-    expect(unknown.candidate_fields?.raw_observed_metrics).toMatchObject({ impressions:0 })
-    expect(unknown.candidate_fields?.metric_observation_state).toMatchObject({ impressions:'unknown_no_metrics_updated_at' })
-    const refreshed = await normalizeCollectorRow('ivan', 'own_posts', { id:'refreshed', post_text:'body', posted_at:'2026-09-01T00:00:00Z', metrics_updated_at:'2026-09-02T00:00:00Z', num_impressions:0 }, '2026-09-02T00:00:00Z')
-    expect(refreshed.candidate_fields?.observed_metrics).toMatchObject({ impressions:0 })
-    expect(refreshed.candidate_fields?.metric_observation_state).toMatchObject({ impressions:'observed_metrics_updated_at' })
+  it('keeps every raw Ivan metric separate and unmeasured without metrics_updated_at, while retaining refreshed zeros', async () => {
+    const raw = { num_likes:0, num_comments:0, num_shares:0, num_impressions:0,
+      profile_views_from_post:0, followers_gained_from_post:0 }
+    const unknown = await normalizeCollectorRow('ivan', 'own_posts', { id:'unrefreshed', post_text:'body',
+      posted_at:'2026-09-01T00:00:00Z', scraped_at:'2026-09-02T00:00:00Z', ...raw }, '2026-09-02T00:00:00Z')
+    expect(unknown.candidate_fields?.observed_metrics).toEqual({ likes:null, comments:null, shares:null,
+      impressions:null, profile_views:null, followers_gained:null })
+    expect(unknown.candidate_fields?.raw_observed_metrics).toEqual({ likes:0, comments:0, shares:0,
+      impressions:0, profile_views:0, followers_gained:0 })
+    expect(unknown.candidate_fields?.metric_observation_state).toEqual({
+      likes:'unknown_no_metrics_updated_at', comments:'unknown_no_metrics_updated_at',
+      shares:'unknown_no_metrics_updated_at', impressions:'unknown_no_metrics_updated_at',
+      profile_views:'unknown_no_metrics_updated_at', followers_gained:'unknown_no_metrics_updated_at',
+    })
+    const refreshed = await normalizeCollectorRow('ivan', 'own_posts', { id:'refreshed', post_text:'body',
+      posted_at:'2026-09-01T00:00:00Z', metrics_updated_at:'2026-09-02T00:00:00Z', ...raw }, '2026-09-02T00:00:00Z')
+    expect(refreshed.candidate_fields?.observed_metrics).toEqual({ likes:0, comments:0, shares:0,
+      impressions:0, profile_views:0, followers_gained:0 })
+    expect(refreshed.candidate_fields?.metric_observation_state).toEqual({
+      likes:'observed_metrics_updated_at', comments:'observed_metrics_updated_at',
+      shares:'observed_metrics_updated_at', impressions:'observed_metrics_updated_at',
+      profile_views:'observed_metrics_updated_at', followers_gained:'observed_metrics_updated_at',
+    })
   })
 
   it('keeps duplicate collector rows for one platform activity on the legacy source identity', async () => {
@@ -176,7 +191,10 @@ describe('collector bridge', () => {
       passage: 'The captured original post body.' })
     expect(first.coverageGaps.join(' ')).toContain('unrelated ownership or unverified original passage')
     expect(outcomes).toContainEqual(expect.objectContaining({ brief_id: 'unattributed-own-post:captured-own-1',
-      metric: 'comments', observed_value: 5, attribution: 'unknown' }))
+      metric: 'comments', observed_value: null, denominator: null, attribution: 'unknown',
+      unknown_reason: 'No metrics_updated_at receipt; retained raw value is evaluation-ineligible' }))
+    expect(outcomes).not.toContainEqual(expect.objectContaining({ brief_id: 'unattributed-own-post:captured-own-1',
+      observed_value: 0 }))
     await new Promise(resolve => setTimeout(resolve, 10))
     await bridgeCollectedSources(db, 'ivan')
     expect(inserted).toHaveLength(1)
