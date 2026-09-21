@@ -60,3 +60,19 @@ it('keeps an existing reviewed version draftable after reload and retries its sa
   await act(async () => button('Create draft').click())
   expect(vi.mocked(requestDraft).mock.calls[1][5]).toBe(first)
 })
+
+it('offers held carousel copy only after review and retains its production hold', async () => {
+  const base = brief()
+  const b = brief({ editorial_direction: { ...base.editorial_direction, format: 'carousel' },
+    readiness: 'needs_material', missing_material: ['4-6 slide visual sequence design'] })
+  b.review = { reviewer_seat: 'independent-reviewer', reviewer_model: 'human',
+    reviewed_at: '2026-09-21T00:00:00Z', verdict: 'pass', notes: 'Copy-only evidence reviewed.' }
+  vi.mocked(requestDraft).mockResolvedValue({ state: 'accepted' } as never)
+  await act(async () => root.render(<BriefCard brief={b} lane="ivan" reload={() => {}} />))
+  expect(host.textContent).toContain('Production holds:')
+  expect(host.textContent).toContain('4-6 slide visual sequence design')
+  expect(button('Create internal copy').disabled).toBe(false)
+  await act(async () => button('Create internal copy').click())
+  expect(vi.mocked(requestDraft).mock.calls[0][6]).toBe('internal_copy')
+  expect(host.textContent).toContain('does not approve publication')
+})
