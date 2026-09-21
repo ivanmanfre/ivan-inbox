@@ -18,7 +18,9 @@ export function prepareSynthesisContext(input: {
   // Round-robin kinds when context is tight: never spend the whole remaining
   // budget on high-engagement public posts and silently lose own/call evidence.
   const kinds = [...new Set(input.sources.map(s => s.source_kind))]
-  const groups = kinds.map(k => input.sources.filter(s => s.source_kind === k))
+  const outcomeIds = new Set(input.outcomes.map(o => String(o.artifact_id)))
+  const groups = kinds.map(k => input.sources.filter(s => s.source_kind === k)
+    .sort((a, b) => k === 'own_post' ? Number(outcomeIds.has(b.source_id)) - Number(outcomeIds.has(a.source_id)) : 0))
   const balanced: SelectionRow[] = []
   for (let i = 0; balanced.length < input.sources.length; i++)
     for (const group of groups) if (group[i]) balanced.push(group[i])
