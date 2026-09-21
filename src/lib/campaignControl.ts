@@ -510,6 +510,24 @@ export function rateLimitIncident(c: CcClient): CcIncident | null {
   return (c.incidents ?? []).find(isRateLimitIncident) ?? null
 }
 
+/* ---- the empty queue -----------------------------------------------------
+
+   A seat with nobody left to invite is also filed under `incident` by the
+   producer (family `no_eligible_prospects`). Nothing is broken on that seat:
+   the sender is fine and LinkedIn is fine, the lane has simply run dry. The
+   card says "Queue empty" so an operator does not read a supply gap as an
+   outage (Ivan, 2026-09-21). It only applies when EVERY open incident on the
+   seat is that family: one real fault beside it keeps the word "Incident". */
+
+export const QUEUE_EMPTY_FAMILY = 'no_eligible_prospects'
+export const QUEUE_EMPTY_WORD = 'Queue empty'
+
+export function isQueueEmptyClient(c: CcClient): boolean {
+  if (c.status !== 'incident') return false
+  const open = (c.incidents ?? []).filter(isOpenIncident)
+  return open.length > 0 && open.every(i => i.failure_family === QUEUE_EMPTY_FAMILY)
+}
+
 /* Spelled out rather than left to `toLocaleDateString`: the platform's en-GB
    short month for September is "Sept" under some ICU builds and "Sep" under
    others, and the producer's own prose in this same payload writes "21 Sep".
