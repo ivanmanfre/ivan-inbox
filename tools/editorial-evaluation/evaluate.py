@@ -387,7 +387,53 @@ def build_evaluation(rows, protocol, tune_on_test=False, degrade_model_for_contr
                     1,
                     f"rows[].partition=='{name}'",
                 )
+        labelled = {
+            c: sum(1 for r in rows if r["client"] == c and r.get("seven_day_label_available"))
+            for c in canonical["clients"]
+        }
+        need(
+            "seven_day_labelled_observations",
+            "a retained observation can only carry the endpoint label when the endpoint metric "
+            "was captured inside publication+"
+            f"{canonical['label']['target_age_days']}d ±{canonical['label']['tolerance_hours']}h "
+            "with a real observed value; a single later total is not that measurement",
+            dict(labelled, total=sum(labelled.values())),
+            f"at least {canonical['baseline']['min_prior_observations']} per author to seed one "
+            f"baseline, and {dc['min_test_outcomes']} in the untouched test block",
+            "editorial_outcome_snapshots where metric='"
+            + canonical["metric_name"]
+            + "' and artifact_role='"
+            + canonical["artifact_role"]
+            + "' and observed_value is not null and unknown_reason is null and "
+            "(window_end - window_start) within the frozen tolerance",
+        )
+        best_baseline = max((r.get("baseline_n") or 0) for r in rows) if rows else 0
+        need(
+            "baseline_prior_population",
+            "no target post has enough of this author's own completed seven-day observations in "
+            "the preceding lookback window to form a historical median",
+            best_baseline,
+            canonical["baseline"]["min_prior_observations"],
+            "rows[].baseline_n",
+        )
+        need(
+            "min_test_outcomes",
+            "the untouched test block is empty, so no Brier, log loss, calibration band, weekly "
+            "selection precision or uncertainty interval can be computed",
+            0,
+            dc["min_test_outcomes"],
+            "rows[].partition=='test'",
+        )
         data["missing_requirements"] = missing
+        data["exclusion_accounting"] = {
+            "total_rows": len(rows),
+            "by_code": _count(rows, "exclusion_code"),
+            "by_client": {
+                c: _count([r for r in rows if r["client"] == c], "exclusion_code")
+                for c in canonical["clients"]
+            },
+            "seven_day_labelled_observations": labelled,
+        }
         data["status"] = "insufficient_data"
         return data
 
@@ -589,6 +635,15 @@ def build_evaluation(rows, protocol, tune_on_test=False, degrade_model_for_contr
     data["status"] = "validated_for_scope"
     data["effectiveness_claim"] = True
     return data
+
+
+def _count(rows, key):
+    out = {}
+    for r in rows:
+        v = r.get(key)
+        if v:
+            out[v] = out.get(v, 0) + 1
+    return dict(sorted(out.items()))
 
 
 def _feature_defaults(train):

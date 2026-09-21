@@ -176,6 +176,7 @@ def build_dataset(
         and ob["in_window"]
         and ob["client"] in clients
     ]
+    label_pool_ids = {ob["snapshot_id"] for ob in label_pool}
 
     # Canonical observation per publication (a publication captured by two
     # collector scopes must not become two evaluation targets).
@@ -234,6 +235,9 @@ def build_dataset(
             "capture_age_days": round(ob["age_days"], 3) if ob["age_days"] is not None else None,
             "unknown_reason": ob["unknown_reason"],
             "collector_scope": ob["scope"],
+            # True only when this retained observation is itself a usable
+            # seven-day measurement of the endpoint metric.
+            "seven_day_label_available": ob["snapshot_id"] in label_pool_ids,
             "features": None,
         }
 
@@ -407,6 +411,7 @@ def build_dataset(
                 "capture_age_days": None,
                 "unknown_reason": None,
                 "collector_scope": None,
+                "seven_day_label_available": False,
                 "features": None,
             }
         )
