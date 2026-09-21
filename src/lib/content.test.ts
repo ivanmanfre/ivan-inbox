@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import {
-  bucketDrafts, isStuckScheduled, laneFilter, draftLane,
+  bucketDrafts, isStuckScheduled, laneFilter, contentLaneFilter, applyContentLaneFilter, draftLane,
   SKIP_STATUS, type ContentDraft,
   groupByStage, groupByLaneStage, stageOf, stageOfLane, countUndated, countBoardVisible,
   isStuckGenerating,
@@ -25,19 +25,32 @@ const row = (o: Partial<ContentDraft>): ContentDraft => ({ ...base, ...o })
 const now = Date.parse('2026-07-31T12:00:00Z')
 
 describe('laneFilter', () => {
-  // There is no 'ivan' literal anywhere in carousel_drafts.client_id: the live
-  // values are NULL ×190 (Ivan) + 'risedtc' ×84, checked against the DB on
-  // 2026-07-31. Every screen in this app coalesces NULL→'ivan' when it READS a
-  // row, and the obvious next step — writing .eq('client_id','ivan') in the
-  // QUERY — returns zero rows and renders a calm, wrong, empty board. This is
-  // the pin on that.
-  it('scopes the Ivan lane with IS NULL, never eq ivan', () => {
+  it('keeps the shared Ivan lane descriptor scoped to historical NULL rows', () => {
     expect(laneFilter('ivan')).toEqual({ column: 'client_id', op: 'is', value: null })
-    expect(laneFilter('ivan').op).not.toBe('eq')
-    expect(laneFilter('ivan').value).not.toBe('ivan')
+  })
+  it('scopes Content Ivan reads to legacy NULL and editorial-native literal ivan', () => {
+    expect(contentLaneFilter('ivan')).toEqual({
+      column: 'client_id', op: 'or', value: 'client_id.is.null,client_id.eq.ivan',
+    })
   })
   it('scopes the Rise lane with the literal client_id', () => {
     expect(laneFilter('risedtc')).toEqual({ column: 'client_id', op: 'eq', value: 'risedtc' })
+  })
+  it('scopes the ARCH lane with the literal client_id', () => {
+    expect(laneFilter('arch')).toEqual({ column: 'client_id', op: 'eq', value: 'arch' })
+  })
+  it('applies Ivan as one PostgREST OR and leaves client lanes as exact equality', () => {
+    const calls: unknown[][] = []
+    const q = {
+      is: (...args: unknown[]) => { calls.push(['is', ...args]); return 'is' },
+      eq: (...args: unknown[]) => { calls.push(['eq', ...args]); return 'eq' },
+      or: (...args: unknown[]) => { calls.push(['or', ...args]); return 'or' },
+    }
+    expect(applyContentLaneFilter(q, contentLaneFilter('ivan'))).toBe('or')
+    expect(calls).toEqual([['or', 'client_id.is.null,client_id.eq.ivan']])
+    calls.length = 0
+    expect(applyContentLaneFilter(q, contentLaneFilter('risedtc'))).toBe('eq')
+    expect(calls).toEqual([['eq', 'client_id', 'risedtc']])
   })
   it('still reads a raw NULL row as the ivan lane at the consumption layer', () => {
     expect(draftLane({ client_id: null })).toBe('ivan')

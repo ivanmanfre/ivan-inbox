@@ -118,13 +118,8 @@ const COLS =
 
 // ---------- lane scoping ----------
 
-// There is no 'ivan' literal in carousel_drafts.client_id: the live values are
-// NULL ×190 (Ivan) and 'risedtc' ×84 (DB check 2026-07-31). Every other screen
-// in this app coalesces NULL→'ivan' at the CONSUMPTION layer (today.ts:199
-// rowClient) — doing that at the QUERY layer instead, i.e. .eq('client_id',
-// 'ivan'), returns zero rows and renders a calm, wrong, empty board. This
-// descriptor exists so that mistake is pinned by a unit test rather than by a
-// blank screen.
+// General lane filters retain the historical single-value shape used by search,
+// resources and writes. Content reads add the editorial-native Ivan union below.
 export type LaneFilter =
   | { column: 'client_id'; op: 'is'; value: null }
   | { column: 'client_id'; op: 'eq'; value: string }
@@ -133,6 +128,24 @@ export function laneFilter(lane: ContentLane): LaneFilter {
   return lane === 'ivan'
     ? { column: 'client_id', op: 'is', value: null }
     : { column: 'client_id', op: 'eq', value: lane }
+}
+
+type ContentLaneFilter = LaneFilter | { column: 'client_id'; op: 'or'; value: string }
+
+export function contentLaneFilter(lane: ContentLane): ContentLaneFilter {
+  return lane === 'ivan'
+    ? { column: 'client_id', op: 'or', value: 'client_id.is.null,client_id.eq.ivan' }
+    : laneFilter(lane)
+}
+
+type ContentLaneQuery<T> = {
+  is(column: 'client_id', value: null): T
+  eq(column: 'client_id', value: string): T
+  or(filter: string): T
+}
+
+export function applyContentLaneFilter<T>(q: ContentLaneQuery<T>, f: ContentLaneFilter): T {
+  return f.op === 'or' ? q.or(f.value) : f.op === 'is' ? q.is(f.column, null) : q.eq(f.column, f.value)
 }
 
 // NULL→'ivan' the same way every existing screen does, so a raw carousel_drafts
@@ -327,9 +340,9 @@ export type ContentPage = {
 }
 
 export async function fetchContentDrafts(lane: ContentLane): Promise<ContentPage> {
-  const f = laneFilter(lane)
+  const f = contentLaneFilter(lane)
   let q = supabase.from('carousel_drafts').select(COLS, { count: 'exact' })
-  q = f.op === 'is' ? q.is(f.column, null) : q.eq(f.column, f.value)
+  q = applyContentLaneFilter(q, f)
   // THE WHOLE LANE, the same set dashboard-v2's useContentLibrary reads (Ivan,
   // 2026-08-04: "u missing stuff from dashboard-v2"). The recent-or-active
   // window (updated_at within RECENT_DAYS OR an active status) silently dropped
@@ -682,9 +695,9 @@ export async function fetchLaneProbe(lane: ContentLane): Promise<LaneProbe> {
   // The queue reads the whole lane now (see fetchContentDrafts), so scoped and
   // total are the same probe — the shape survives because useContent and the
   // blank-board diagnosis read both names.
-  const f = laneFilter(lane)
+  const f = contentLaneFilter(lane)
   const q = supabase.from('carousel_drafts').select('id', { count: 'exact', head: true })
-  const totalRes = await (f.op === 'is' ? q.is(f.column, null) : q.eq(f.column, f.value))
+  const totalRes = await applyContentLaneFilter(q, f)
   if (totalRes.error) throw totalRes.error
   const total = totalRes.count ?? 0
   return { scoped: total, total }
