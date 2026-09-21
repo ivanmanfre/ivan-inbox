@@ -368,7 +368,7 @@ export function StrategyView({ lane, setLane }: {
         </div>}
         {view === 'direction' && <ClientDirectionPanel key={`${lane}-${refreshTick}`} lane={lane} />}
         {view === 'demos' && <DemoPanel key={`${lane}-${refreshTick}`} lane={lane} />}
-        {view === 'recommendations' && <div className="a-strategy-panel"><ProposalsBlock key={lane} lane={lane} refreshKey={refreshTick} onDirtyChange={setProposalDirty} /></div>}
+        {view === 'recommendations' && <div className="a-strategy-panel"><ProposalsBlock readOnly key={lane} lane={lane} refreshKey={refreshTick} onDirtyChange={setProposalDirty} /></div>}
         {view === 'evidence' && <div key={`${lane}-${refreshTick}`} className="a-strategy-panel"><EvidenceBlock lane={lane} /></div>}
         {view === 'competitors' && <BenchmarkBlock key={`${lane}-${refreshTick}`} lane={lane} view="competitors" />}
         {view === 'magnets' && <LeadMagnetsView key={`${lane}-${refreshTick}`} lane={lane} />}

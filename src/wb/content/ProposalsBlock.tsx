@@ -139,7 +139,8 @@ function FounderSource({ s }: { s: FounderSourceRow }) {
 /** One proposal. Exported so the suite can render a row without a fetch, the
     same way `Recommendations` is exported from the audience block: a phrase
     that has never been rendered is a phrase nobody has checked. */
-export function ProposalRow({ p, onApprove, onDrop, onDirtyChange }: {
+export function ProposalRow({ p, onApprove, onDrop, onDirtyChange, readOnly = false }: {
+  readOnly?: boolean
   p: Proposal
   /** Resolves to the receipt line when the write landed, or throws. */
   onApprove: (p: Proposal, overrides: TextOverrides) => Promise<Receipt>
@@ -410,7 +411,7 @@ export function ProposalRow({ p, onApprove, onDrop, onDirtyChange }: {
 
       {error && <div className="a-ct-sub a-sev-urgent a-prop-err">{error}</div>}
 
-      {passing ? (
+      {!readOnly && (passing ? (
         <div className="a-prop-editor">
           <EditField label="Why pass on this?" value={passReason} onChange={setPassReason} />
           <div className="a-ct-sub">Required. This reason is retained to improve future recommendations.</div>
@@ -447,14 +448,15 @@ export function ProposalRow({ p, onApprove, onDrop, onDirtyChange }: {
         >
           {weekly ? 'Pass on this' : 'Delete'}
         </Button>
-      </div>}
+      </div>)}
     </div>
   )
 }
 
 /** The list, given rows. Pure apart from the row's own state, so the three
     states below can be rendered in a test without a network. */
-export function ProposalsList({ rows, onApprove, onDrop, onDirtyChange }: {
+export function ProposalsList({ rows, onApprove, onDrop, onDirtyChange, readOnly = false }: {
+  readOnly?: boolean
   rows: Proposal[]
   onApprove: (p: Proposal, overrides: TextOverrides) => Promise<Receipt>
   onDrop: (p: Proposal, reason?: string) => Promise<void>
@@ -479,7 +481,7 @@ export function ProposalsList({ rows, onApprove, onDrop, onDirtyChange }: {
   const older = rows.filter(p => !weeks.includes(p.context?.audn?.weekly?.week_start ?? ''))
     .sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''))
   const renderRow = (p: Proposal) => (
-    <ProposalRow key={p.id} p={p} onApprove={onApprove} onDrop={onDrop} onDirtyChange={rowDirty} />
+    <ProposalRow readOnly={readOnly} key={p.id} p={p} onApprove={onApprove} onDrop={onDrop} onDirtyChange={rowDirty} />
   )
 
   return (
@@ -518,7 +520,8 @@ export type ProposalsState =
 /** The whole surface, given its state. PURE — no hook, no fetch — so all four
     states can be rendered and read in a test rather than reasoned about. The
     block below is this plus the read. */
-export function ProposalsView({ lane, state, loadedAt, onRetry, onApprove, onDrop, onDirtyChange }: {
+export function ProposalsView({ lane, state, loadedAt, onRetry, onApprove, onDrop, onDirtyChange, readOnly = false }: {
+  readOnly?: boolean
   lane: ContentLane
   state: ProposalsState
   loadedAt: string | null
@@ -531,7 +534,7 @@ export function ProposalsView({ lane, state, loadedAt, onRetry, onApprove, onDro
 
   if (state.kind === 'loading') {
     return (
-      <Group className="a-prop-g" label="Next posts to consider" tail={stamp} pad>
+      <Group className="a-prop-g" label={readOnly ? "Legacy suggestion history" : "Next posts to consider"} tail={stamp} pad>
         <div className="a-ct-sub a-prop-hold">Reading this lane’s proposals…</div>
       </Group>
     )
@@ -539,7 +542,7 @@ export function ProposalsView({ lane, state, loadedAt, onRetry, onApprove, onDro
 
   if (state.kind === 'failed') {
     return (
-      <Group className="a-prop-g" label="Next posts to consider" tail={stamp} pad>
+      <Group className="a-prop-g" label={readOnly ? "Legacy suggestion history" : "Next posts to consider"} tail={stamp} pad>
         {/* The message opens with `proposals: `, the name `fetchProposals`
             gives its own read. A failure that does not say WHAT failed sends
             the reader to the wrong table. */}
@@ -555,7 +558,7 @@ export function ProposalsView({ lane, state, loadedAt, onRetry, onApprove, onDro
 
   if (state.kind === 'empty') {
     return (
-      <Group className="a-prop-g" label="Next posts to consider" tail={stamp} pad>
+      <Group className="a-prop-g" label={readOnly ? "Legacy suggestion history" : "Next posts to consider"} tail={stamp} pad>
         <CalmEmpty
           line="No proposal is waiting for this lane."
           sub="The writer runs weekly. Either nothing was proposed on the last run, or every proposal has been decided."
@@ -568,7 +571,7 @@ export function ProposalsView({ lane, state, loadedAt, onRetry, onApprove, onDro
   return (
     <Group
       className="a-prop-g"
-      label="Next posts to consider"
+      label={readOnly ? "Legacy suggestion history" : "Next posts to consider"}
       tail={
         <span className="a-prop-tail">
           <Badge tone="neutral" variant="ring">{state.rows.length} open</Badge>
@@ -578,16 +581,15 @@ export function ProposalsView({ lane, state, loadedAt, onRetry, onApprove, onDro
       pad
     >
       <div className="a-ct-sub">
-        Written weekly from available source evidence. Send to ideas puts one
-        in this lane’s idea bank. Pass on this saves your reason for the next review.
-        Nothing is published from here.
+        {readOnly ? "Earlier writer output and its original evidence. These rows are kept for reference; review current suggestions in This week." : "Written weekly from available source evidence. Send to ideas puts one in this lane’s idea bank. Pass on this saves your reason for the next review. Nothing is published from here."}
       </div>
-      <ProposalsList rows={state.rows} onApprove={onApprove} onDrop={onDrop} onDirtyChange={onDirtyChange} />
+      <ProposalsList readOnly={readOnly} rows={state.rows} onApprove={onApprove} onDrop={onDrop} onDirtyChange={onDirtyChange} />
     </Group>
   )
 }
 
-export function ProposalsBlock({ lane, onDirtyChange, refreshKey }: {
+export function ProposalsBlock({ lane, onDirtyChange, refreshKey, readOnly = false }: {
+  readOnly?: boolean
   lane: ContentLane
   onDirtyChange?: (dirty: boolean) => void
   refreshKey?: number
@@ -671,6 +673,7 @@ export function ProposalsBlock({ lane, onDirtyChange, refreshKey }: {
 
   return (
     <ProposalsView
+      readOnly={readOnly}
       lane={lane}
       state={state}
       loadedAt={loadedAt}

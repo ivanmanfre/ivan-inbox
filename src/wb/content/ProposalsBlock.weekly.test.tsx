@@ -34,6 +34,15 @@ describe('weekly shortlist actions', () => {
   const button = (scope: Element, label: string) => [...scope.querySelectorAll('button')].find(b => b.textContent === label)!
   const click = async (el: Element) => act(async () => { el.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
 
+  it('keeps legacy evidence readable without exposing a second decision queue in archive mode', async () => {
+    const approve = vi.fn(), drop = vi.fn()
+    await act(async () => root.render(<ProposalsList rows={[old, fresh]} onApprove={approve} onDrop={drop} readOnly />))
+    expect(host.textContent).toContain('Upcoming idea')
+    expect(host.textContent).toContain('Earlier idea')
+    for (const label of ['Send to ideas', 'Edit', 'Delete', 'Pass on this']) expect(button(host, label)).toBeUndefined()
+    expect(approve).not.toHaveBeenCalled(); expect(drop).not.toHaveBeenCalled()
+  })
+
   it('keeps an older edited row and dirty guard alive while its fold closes, then approves only changed fields', async () => {
     const dirty = vi.fn()
     const approve = vi.fn().mockResolvedValue({ text: 'In the idea bank.', already: false })
