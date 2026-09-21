@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, missingManualGuardMeansPreMigration, type InboxMessage, type Status, type DraftGuard } from './inbox'
+import { isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, browseOrder, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, missingManualGuardMeansPreMigration, type InboxMessage, type Status, type DraftGuard } from './inbox'
 
 // inbox.ts:191 gates needsAnswer on a 14-day wall-clock staleness window
 // (STALE_DAYS), measured against Date.now() by default -- and most callers
@@ -1010,5 +1010,30 @@ describe('manual reply conversation-agent readiness', () => {
     expect(missingManualGuardMeansPreMigration(missing, null)).toBe(false)
     expect(missingManualGuardMeansPreMigration(missing, { code: '42501', message: 'permission denied' })).toBe(false)
     expect(missingManualGuardMeansPreMigration(new Error('network failed'), missing)).toBe(false)
+  })
+})
+
+// Ivan, 2026-09-21: a fresh batch of his own sends buried the replies he owed.
+describe('browseOrder', () => {
+  const m = (id: string, pid: string, direction: 'inbound' | 'outbound', at: string): InboxMessage =>
+    ({ ...base, id, prospect_id: pid, direction, sent_at: at, created_at: at })
+  it('puts every thread that owes a reply above newer sends, newest first in each block', () => {
+    const threads = groupThreads([
+      // owes a reply, older than every send below
+      m('a1', 'owes-old', 'inbound', '2026-07-18T10:00:00Z'),
+      m('b1', 'owes-new', 'outbound', '2026-07-19T10:00:00Z'),
+      m('b2', 'owes-new', 'inbound', '2026-07-20T10:00:00Z'),
+      // answered: their reply, then his send an hour ago
+      m('c1', 'sent-new', 'inbound', '2026-07-21T10:00:00Z'),
+      m('c2', 'sent-new', 'outbound', '2026-07-22T19:00:00Z'),
+      m('d1', 'sent-old', 'inbound', '2026-07-19T10:00:00Z'),
+      m('d2', 'sent-old', 'outbound', '2026-07-22T09:00:00Z'),
+      // an invite nobody answered is not a conversation at all
+      m('e1', 'invite-only', 'outbound', '2026-07-22T19:30:00Z'),
+    ])
+    const o = browseOrder(threads)
+    expect(o.pending.map(t => t.prospect_id)).toEqual(['owes-new', 'owes-old'])
+    expect(o.rest.map(t => t.prospect_id)).toEqual(['sent-new', 'sent-old'])
+    expect(o.pending).toHaveLength(inboxWaitingCount(threads))
   })
 })
