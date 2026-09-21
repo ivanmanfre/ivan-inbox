@@ -12,6 +12,12 @@ describe('native editorial route', () => {
     })
   })
 
+  it('refuses video clients without an exact spoken-voice route', () => {
+    expect(planNativeRoute('ivan','video',false,null)).toMatchObject({path:'video-script'})
+    expect(planNativeRoute('risedtc','video',false,null)).toBeNull()
+    expect(planNativeRoute('arch','video',false,null)).toBeNull()
+  })
+
   it('requires the exact resource state before LM dispatch', () => {
     expect(planNativeRoute('risedtc','lm_promo',true,{readiness:'ready'})).toMatchObject({
       path:'lm-gen-v2',phase:'editorial_promo',

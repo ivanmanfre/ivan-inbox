@@ -28,7 +28,7 @@ export function planNativeRoute(clientId: string, format: string, copyOnly: bool
     return { path: 'lm-gen-v2', phase: 'editorial_resource',
       nativeFormat: resource.artifact_role, postFormat: 'text' }
   }
-  if (format === 'video') return { path: 'video-script', postFormat: 'text' }
+  if (format === 'video') return clientId === 'ivan' ? { path: 'video-script', postFormat: 'text' } : null
   if (format === 'text' || format === 'single_image' || format === 'carousel')
     return { path: postPath[clientId], postFormat: format === 'carousel' ? 'carousel' : 'text' }
   return null
