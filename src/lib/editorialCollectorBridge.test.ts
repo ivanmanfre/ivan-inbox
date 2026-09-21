@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { bridgeCollectedSources } from '../../supabase/functions/editorial-refresh/bridge'
-import { normalizeCollectorRow } from './editorialCollectorBridge'
+import { normalizeCollectorRow, normalizeVerifiedCall } from './editorialCollectorBridge'
 
 const rows: Record<string, Record<string, unknown>[]> = {
   own_posts: [{ id: 'captured-own-1', post_text: 'The captured original post body.',
@@ -11,6 +11,16 @@ const rows: Record<string, Record<string, unknown>[]> = {
 }
 
 describe('collector bridge', () => {
+  it('labels verified call passages as excerpts rather than a full transcript', async () => {
+    const source = await normalizeVerifiedCall('risedtc', [{ candidate_id:'candidate-1', transcript_id:'call-1',
+      transcript_date:'2026-09-01T10:00:00Z', transcript_sha256:'a'.repeat(64), excerpt:'Exact retained quote.',
+      permission_state:'unknown', participants:['Private Person'], transcript_source:'transcripts' }])
+    expect(source.candidate_fields).toMatchObject({ body_state:'excerpt',
+      body_provenance:'verified_transcript_passage_excerpt' })
+    expect(source.limitation).toContain('not the full transcript')
+    expect(source.permission_state).toBe('unknown')
+  })
+
   it('keeps a retained 500-character public metrics capture ambiguous and keyed to its native activity', async () => {
     const source = await normalizeCollectorRow('risedtc', 'client_post_metrics', {
       id: '6cdd1e61-9693-4b0a-9963-4696b7f6b7d0',
