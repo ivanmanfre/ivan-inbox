@@ -33,6 +33,30 @@ export type SynthesisSuggestion = {
     earliest_valid_observation: string; event_source_availability: string; attribution_limitations: string }
 }
 
+/** Reject known unit/qualification distortions in public directions. This is
+ * a narrow deterministic guard, not a substitute for editorial source review. */
+export function assertMeasurementWording(sources: SynthesisSource[], suggestion: Pick<SynthesisSuggestion, 'hook' | 'structural_beats' | 'claims'>) {
+  const publicParts = [suggestion.hook, ...suggestion.structural_beats, ...suggestion.claims.map(c => c.statement)]
+  const errors = new Set<string>()
+  for (const source of sources) {
+    const metrics = source.candidate_fields?.observed_metrics as Record<string, unknown> | undefined
+    const impressions = metrics?.impressions
+    const findings = source.candidate_fields?.linked_findings
+    for (const text of publicParts) {
+      if (typeof impressions === 'number' && new RegExp('\\b' + String(impressions) + '\\s+(?:people|readers|unique viewers)\\b', 'i').test(text.replace(/(\d),(?=\d)/g, '$1')))
+        errors.add('Impressions are not unique people/readers: keep the exact impressions unit.')
+      if (metrics?.comments === 0 && /\b(?:0|zero)\s+(?:said|replied|responded|replies|responses|feedback)\b/i.test(text))
+        errors.add('Zero public comments does not prove zero replies, DMs or other feedback: name recorded public comments and the capture date.')
+      if (Array.isArray(findings) && findings.some(f => String(f.formula).includes('reposts')) &&
+        /\breach\b/i.test(text) && /(?:\b\d+(?:\.\d+)?x\b|\bbaseline\b)/i.test(text) && !/\bproxy\b/i.test(text))
+        errors.add('A weighted likes/reposts score is a proxy, not measured reach: name the exact proxy/formula wherever its baseline lift appears.')
+      if (/not just likes/i.test(source.passage ?? '') && /\breplies[,\s]+not likes\b/i.test(text))
+        errors.add('The source says not JUST likes: replies supplement likes, not replace/exclude them. Preserve that qualification.')
+    }
+  }
+  if (errors.size) throw new Error([...errors].join(' '))
+}
+
 function canonical(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null'
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`
@@ -91,6 +115,7 @@ export async function buildSynthesisBriefs(input: {
     if (safeSources.some(v => !v.passage || v.gap_state || ['denied', 'withheld'].includes(v.permission_state))) {
       throw new Error(`suggestion ${index + 1} cites inaccessible source material`)
     }
+    assertMeasurementWording(safeSources, s)
     const sourceFor = (sourceId: string) => {
       const source = safeSources.find(x => x.source_id === sourceId)
       if (!source) throw new Error(`suggestion ${index + 1} has a claim or metric outside its evidence`)
