@@ -30,10 +30,15 @@ export function selectSynthesisAssets<T extends SynthesisAsset>(assets: T[], lim
     String(a.slug ?? a.id).localeCompare(String(b.slug ?? b.id)) || a.id.localeCompare(b.id))
   const selected = ordered.slice(0, limit)
   const omitted = ordered.slice(limit)
+  const omittedByState = omitted.reduce<Record<string, string[]>>((groups, asset) => {
+    ;(groups[asset.catalog_state] ??= []).push(asset.id)
+    return groups
+  }, {})
   return { selected, coverage: {
     method: 'ready-published-draft-private-retired-disqualified-lexical-v1',
     assets_considered: ordered.length, assets_supplied: selected.length, assets_omitted: omitted.length,
-    omitted_assets: omitted.map(asset => ({ id: asset.id, catalog_state: asset.catalog_state })),
+    omitted_asset_ids_by_catalog_state: Object.fromEntries(Object.entries(omittedByState)
+      .sort(([a], [b]) => a.localeCompare(b)).map(([state, ids]) => [state, ids.sort()])),
   } }
 }
 

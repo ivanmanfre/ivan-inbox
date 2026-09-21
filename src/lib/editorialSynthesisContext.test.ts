@@ -27,10 +27,13 @@ describe('whole synthesis context budget', () => {
 
     expect(result.selected.map(asset => asset.id)).toEqual(['ready', 'published', 'draft-a'])
     expect(result.coverage).toMatchObject({ assets_considered: 5, assets_supplied: 3, assets_omitted: 2 })
-    expect(result.coverage.omitted_assets).toEqual([
-      { id: 'draft-b', catalog_state: 'draft' },
-      { id: 'retired', catalog_state: 'retired' },
-    ])
+    expect(result.coverage.omitted_asset_ids_by_catalog_state).toEqual({ draft: ['draft-b'], retired: ['retired'] })
+    const reconstructed = Object.entries(result.coverage.omitted_asset_ids_by_catalog_state as Record<string, string[]>)
+      .flatMap(([catalog_state, ids]) => ids.map(id => ({ id, catalog_state })))
+    expect(reconstructed).toEqual(expect.arrayContaining([
+      { id: 'draft-b', catalog_state: 'draft' }, { id: 'retired', catalog_state: 'retired' },
+    ]))
+    expect(new Set([...result.selected.map(asset => asset.id), ...reconstructed.map(asset => asset.id)]).size).toBe(assets.length)
   })
 
   it('bounds serialized fields, preserves zero/latest exact identity and reports omissions', () => {
