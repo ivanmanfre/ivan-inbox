@@ -674,6 +674,19 @@ export function filterByStatus(threads: Thread[], s: Status): Thread[] {
   return threads.filter(t => threadBucket(t) === s)
 }
 
+// The DMs browse order. Ivan, 2026-09-21: one recency run mixed the rows that
+// owe him a reply with his own sends ("I don't know what is actually pending on
+// my response"). Everything the badge counts goes FIRST, drafted or not, then
+// the conversations where the ball is with them. Newest first inside each.
+export function browseOrder(threads: Thread[]): { pending: Thread[]; rest: Thread[] } {
+  const byRecent = (a: Thread, b: Thread) => eventTime(b.last).localeCompare(eventTime(a.last))
+  const convs = threads.filter(isConversation)
+  return {
+    pending: convs.filter(t => threadBucket(t) !== 'waiting').sort(byRecent),
+    rest: convs.filter(t => threadBucket(t) === 'waiting').sort(byRecent),
+  }
+}
+
 // THE badge number. Every surface that says "N waiting in the inbox" derives
 // it from here — rail bubble, mobile tab, the All-chip suffix — so they cannot
 // drift apart.
