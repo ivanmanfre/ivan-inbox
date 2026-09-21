@@ -113,7 +113,7 @@ describe('T01 typed identity', () => {
     const a = await readBrief(c, 'ivan', 'brief-fixture-01', 1)
     const b = await readBrief(c, 'ivan', 'brief-fixture-01', 1)
     expect(a.found).toBe(true)
-    if (!a.found || !b.found) throw new Error('unreachable')
+    if (!a.found || !b.found || !('brief' in a) || !('brief' in b)) throw new Error('unreachable')
     expect(a.brief.identity.version).toBe(1)
     expect(a.brief.identity.content_hash).toBe(b.brief.identity.content_hash)
     // Every field group is present.
@@ -221,6 +221,7 @@ describe('T02 tenant isolation', () => {
       }),
     })
     const page = await readBriefs(c, 'ivan')
+    if ('access' in page.items[0]) throw new Error('unexpected access gap')
     expect(page.items[0].independent_source_count).toBe(1)
   })
 })

@@ -566,13 +566,22 @@ export type BriefPage = {
   client_id: EditorialClientId
   batch_id: string | null
   state: PageState
-  items: EditorialBrief[]
+  items: (EditorialBrief | BriefAccessGap)[]
   total: number
   next_cursor: string | null
   /** Coverage gaps carried from the batch — a partial batch cannot certify the
       clients or formats it did not cover. */
   coverage_gaps: string[]
   message?: string
+}
+
+/** Opaque read result when a linked source has since been denied or withheld.
+    content_hash identifies the original immutable version, never this gap view. */
+export type BriefAccessGap = {
+  access: 'permission_unavailable'
+  identity: Pick<BriefIdentity, 'brief_id' | 'client_id' | 'version' | 'kind' | 'status' | 'content_hash'>
+  source_ids: string[]
+  content_hash_scope: 'immutable_original'
 }
 
 /** The explicit not-found result. A request for a version that does not exist
@@ -585,7 +594,8 @@ export type BriefNotFound = {
   reason: 'no_such_brief' | 'no_such_version' | 'wrong_client'
 }
 
-export type BriefRead = { found: true; brief: EditorialBrief } | BriefNotFound
+export type BriefRead = { found: true; brief: EditorialBrief } |
+  { found: true; access: 'permission_unavailable'; gap: BriefAccessGap } | BriefNotFound
 
 /* -------------------------------------------------------------------------
    DecisionReceipt

@@ -63,6 +63,25 @@ describe('Run 1 seed import against local FK-enforced 105/106', { timeout: 120_0
     const internalPromo = await db.query<{ result: any }>(`select public.editorial_reserve_draft('clientops','risedtc',
       'brief-risedtc-05',2,$1,'promo-internal','internal_copy') result`, [heldPromo.content_hash])
     expect(internalPromo.rows[0].result.state).toBe('accepted')
+    const promoRead = await db.query<{ result: any }>(`select editorial_brief_json('risedtc','brief-risedtc-05',2) result`)
+    const promoReviewed = structuredClone(promoRead.rows[0].result)
+    promoReviewed.identity.version = 3
+    promoReviewed.identity.content_hash = ''
+    promoReviewed.review = { reviewer_seat: 'operator:other-human', reviewer_model: 'human',
+      verdict: 'pass', reviewed_at: '2026-09-21T00:00:00Z', notes: 'Internal copy only' }
+    promoReviewed.missing_material = promoReviewed.missing_material.filter(
+      (x: string) => x !== 'Explicit independent editorial review')
+    promoReviewed.readiness = 'needs_material'
+    promoReviewed.identity.content_hash = createHash('sha256').update(canonicalBriefPayload(promoReviewed)).digest('hex')
+    const reviewedHeld = await db.query<{ result: any }>(`select editorial_commit_review('clientops','risedtc',
+      'brief-risedtc-05',2,$1,'review-held-copy','pass','Internal copy only',
+      'operator:other-human',$2::jsonb,$3) result`, [heldPromo.content_hash,
+      JSON.stringify(promoReviewed), promoReviewed.identity.content_hash])
+    expect(reviewedHeld.rows[0].result).toMatchObject({ state: 'accepted', version: 3 })
+    const heldAfterReview = await db.query<{ result: any }>(`select editorial_reserve_draft('clientops','risedtc',
+      'brief-risedtc-05',3,$1,'promo-reviewed-internal','internal_copy') result`,
+      [promoReviewed.identity.content_hash])
+    expect(heldAfterReview.rows[0].result.state).toBe('accepted')
     const uncorrected = seed.plan[3].records.find((x: any) => x.client_id === 'ivan' &&
       x.brief_id === 'brief-ivan-06' && x.version === 1)
     const invalidInternal = await db.query<{ result: any }>(`select public.editorial_reserve_draft('clientops','ivan',
@@ -197,6 +216,38 @@ describe('Run 1 seed import against local FK-enforced 105/106', { timeout: 120_0
     expect(staleDirection.rows[0].result.status).toBe('failed')
     expect(staleDirection.rows[0].result.awaiting_reconciliation).toBe(true)
     expect(staleDirection.rows[0].result.last_usable_batch_id).toBe(pointerBefore.rows[0].batch_id)
+    const denied = { ...source, seen_version: 2, permission_state: 'denied', snapshot_hash: 'd'.repeat(64) }
+    await db.query(`insert into editorial_sources(${Object.keys(denied).join(',')}) values(${Object.keys(denied).map((_,i)=>'$'+(i+1)).join(',')})`,
+      Object.values(denied).map(value => value && typeof value === 'object' ? JSON.stringify(value) : value))
+    const revoked = await db.query<{ result: any }>(`select editorial_reserve_draft('clientops','ivan',
+      $1,2,$2,'revoked-source-attempt','post') result`, [reviewed.identity.brief_id, reviewed.identity.content_hash])
+    expect(revoked.rows[0].result).toMatchObject({ state: 'blocked', blocked_reason: 'source_access_missing' })
+    const researchAfterRevocation = await db.query<{ result: any }>(
+      `select editorial_read_research('clientops','ivan','{}'::jsonb,null,200) result`)
+    const protectedSource = researchAfterRevocation.rows[0].result.items.find(
+      (item: any) => item.source_id === source.source_id)
+    expect(protectedSource).toMatchObject({ permission_state: 'denied', passage: null,
+      source_content_hash: null, retained_context: '', candidate_fields: null,
+      snapshot_hash_scope: 'immutable_original', gap_state: { reason: 'permission_denied' } })
+    expect(researchAfterRevocation.rows[0].result.total).toBeGreaterThan(0)
+    expect(researchAfterRevocation.rows[0].result.gaps.some(
+      (gap: any) => gap.source_id === source.source_id && gap.reason === 'permission_denied')).toBe(true)
+    const readAfterRevocation = await db.query<{ result: any }>(
+      `select editorial_read_brief('clientops','ivan',$1,2) result`, [reviewed.identity.brief_id])
+    expect(readAfterRevocation.rows[0].result).toMatchObject({ found: true,
+      access: 'permission_unavailable', gap: {
+        access: 'permission_unavailable', content_hash_scope: 'immutable_original',
+        identity: { brief_id: reviewed.identity.brief_id, content_hash: reviewed.identity.content_hash },
+      } })
+    const briefPage = await db.query<{ result: any }>(
+      `select editorial_read_briefs('clientops','ivan',null,null,100) result`)
+    const opaque = briefPage.rows[0].result.items.find(
+      (item: any) => item.identity.brief_id === reviewed.identity.brief_id)
+    expect(opaque?.access).toBe('permission_unavailable')
+    expect(briefPage.rows[0].result.items.length).toBe(briefPage.rows[0].result.total)
+    for (const wire of [researchAfterRevocation.rows[0].result, readAfterRevocation.rows[0].result, briefPage.rows[0].result]) {
+      expect(JSON.stringify(wire)).not.toContain(String(source.passage))
+    }
     const malicious = structuredClone(seed)
     malicious.plan[3].records[0].content_hash = '0'.repeat(64)
     expect(() => validateInitialBatchSeed(malicious)).toThrow(/hash mismatch/)

@@ -56,7 +56,8 @@ Deno.serve(async request => {
   if (verdict === 'pass') {
     brief.missing_material = brief.missing_material.filter(x => x !== 'Explicit independent editorial review')
     brief.readiness = brief.missing_material.length ? 'needs_material' : 'ready_to_draft'
-    if (brief.readiness !== 'ready_to_draft') return reply(200, { state: 'blocked', reason: 'essential_material_missing' }, origin)
+    // The SQL commit is authoritative: only its narrow, audited production-hold
+    // list permits a reviewed internal-copy brief to remain needs_material.
   } else {
     brief.readiness = 'needs_material'
     if (!brief.missing_material.length) brief.missing_material = [`Editorial review: ${reason}`]

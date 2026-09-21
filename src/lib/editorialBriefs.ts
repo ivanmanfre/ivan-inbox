@@ -32,13 +32,13 @@ import {
   EDITORIAL_RPCS, EditorialContractError,
   STALE_DAYS, METRIC_FAMILY_SOURCES,
   countIndependentSources, daysBetween, isEditorialClientId, isUnknown,
-} from './editorialTypes'
+} from './editorialTypes.ts'
 import type {
-  Batch, BriefMeasurement, BriefPage, BriefRead, BriefVersionRef,
+  Batch, BriefAccessGap, BriefMeasurement, BriefPage, BriefRead, BriefVersionRef,
   CurrencyState, DecisionAction, DecisionReceipt, DecisionScope, DecisionTarget,
   DraftReceipt, EditorialBrief, EditorialClient, EditorialClientId,
   InputManifest, MetricFamily, OutcomeRead, RefreshReceipt, RefreshState,
-} from './editorialTypes'
+} from './editorialTypes.ts'
 
 /* -------------------------------------------------------------------------
    Guards and small readers
@@ -315,6 +315,15 @@ export function parseBrief(raw: unknown): EditorialBrief | null {
   return brief
 }
 
+function parseBriefAccessGap(raw: unknown): BriefAccessGap | null {
+  if (!isObj(raw) || raw.access !== 'permission_unavailable' || !isObj(raw.identity)) return null
+  const i = raw.identity
+  if (!str(i.brief_id) || !str(i.client_id) || !Number.isInteger(i.version)
+      || !str(i.content_hash) || !str(i.kind) || !str(i.status)
+      || raw.content_hash_scope !== 'immutable_original') return null
+  return raw as BriefAccessGap
+}
+
 function failedPage(clientId: EditorialClientId, batchId: string | null, message: string): BriefPage {
   return {
     client_id: clientId, batch_id: batchId, state: 'failed', items: [], total: 0,
@@ -345,7 +354,10 @@ export async function readBriefs(
   if (!r.ok) return failedPage(lane, batchId, r.error)
 
   const d = r.data
-  const items = arr(d.items).map(parseBrief).filter((b): b is EditorialBrief => b !== null)
+  const items = arr(d.items).map(raw => parseBriefAccessGap(raw) ?? parseBrief(raw))
+    .filter((b): b is EditorialBrief | BriefAccessGap => b !== null)
+  if (items.length !== arr(d.items).length) return failedPage(lane, batchId,
+    'The brief page included an unreadable item; pagination was not trusted.')
   return {
     client_id: lane,
     batch_id: str(d.batch_id),
@@ -389,6 +401,8 @@ export async function readBrief(
       reason: (reason === 'no_such_version' ? 'no_such_version' : 'no_such_brief'),
     }
   }
+  const gap = parseBriefAccessGap(d.gap)
+  if (d.access === 'permission_unavailable' && gap) return { found: true, access: 'permission_unavailable', gap }
   const brief = parseBrief(d.brief)
   if (!brief) {
     throw new EditorialContractError('read_failed',

@@ -738,7 +738,8 @@ begin
   )
   select count(*)::int,
          count(distinct f.source_id) filter (
-           where f.independent and f.gap_state is null)::int,
+           where f.independent and f.gap_state is null
+             and f.permission_state not in ('denied','withheld'))::int,
          max(f.captured_at),
          count(*) filter (where f.captured_at > coalesce(
            (select max(b.requested_at) from public.editorial_batches b
@@ -782,15 +783,17 @@ begin
                then to_jsonb(to_char(p.source_published_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'))
              else to_jsonb('unknown'::text) end,
            'captured_date', to_char(p.captured_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-           'owner', p.owner,
-           'source_content_hash', p.body_sha256,
-           'passage', p.passage,
-           'retained_context', p.retained_context,
-           'limitation', p.limitation,
-           'independent', p.independent,
-           'derived_from', p.derived_from,
+           'owner', case when p.permission_state in ('denied','withheld') then 'unknown' else p.owner end,
+           'source_content_hash', case when p.permission_state in ('denied','withheld') then null else p.body_sha256 end,
+           'passage', case when p.permission_state in ('denied','withheld') then null else p.passage end,
+           'retained_context', case when p.permission_state in ('denied','withheld') then '' else p.retained_context end,
+           'limitation', case when p.permission_state in ('denied','withheld') then 'Current source permission is unavailable.' else p.limitation end,
+           'independent', case when p.permission_state in ('denied','withheld') then false else p.independent end,
+           'derived_from', case when p.permission_state in ('denied','withheld') then p.source_id else p.derived_from end,
            'permission_state', p.permission_state,
-           'gap_state', p.gap_state,
+           'gap_state', case when p.permission_state in ('denied','withheld')
+             then jsonb_build_object('reason','permission_denied','detail','Current source permission is unavailable.')
+             else p.gap_state end,
            'currency_state', case
              when p.published_date_state <> 'known' then 'unknown'
              when p.source_published_at < now() - interval '120 days' then 'historical'
@@ -799,9 +802,10 @@ begin
              when p.published_date_state <> 'known' then null
              else (now()::date - p.source_published_at::date) end,
            'snapshot_hash', p.snapshot_hash,
+           'snapshot_hash_scope', 'immutable_original',
            'curation_state', p.curation_state,
            'seen_version', p.seen_version,
-           'candidate_fields', p.candidate_fields,
+           'candidate_fields', case when p.permission_state in ('denied','withheld') then null else p.candidate_fields end,
            'derived_field_names', jsonb_build_array(
              'editorial_assessment', 'editorial_strength', 'angle_options'))
          order by p.source_id),
@@ -832,10 +836,13 @@ begin
     'gaps', coalesce((
       select jsonb_agg(jsonb_build_object(
                'source_id', g.source_id,
-               'reason', g.gap_state->>'reason',
-               'detail', g.gap_state->>'detail'))
-        from public.editorial_sources g
-       where g.client_id = p_client_id and g.gap_state is not null), '[]'::jsonb));
+               'reason', case when g.permission_state in ('denied','withheld')
+                 then 'permission_denied' else g.gap_state->>'reason' end,
+               'detail', case when g.permission_state in ('denied','withheld')
+                 then 'Current source permission is unavailable.' else g.gap_state->>'detail' end))
+        from (select distinct on (s.source_id) s.* from public.editorial_sources s
+          where s.client_id=p_client_id order by s.source_id,s.seen_version desc) g
+       where g.gap_state is not null or g.permission_state in ('denied','withheld')), '[]'::jsonb));
 end;
 $function$;
 
@@ -946,11 +953,29 @@ as $function$
 declare
   v_row       public.editorial_brief_versions%rowtype;
   v_effective text;
+  v_denied_ids jsonb;
 begin
   select * into v_row from public.editorial_brief_versions v
    where v.client_id = p_client_id and v.brief_id = p_brief_id and v.version = p_version;
   if v_row.brief_id is null then
     return null;
+  end if;
+
+  -- Current permission governs historical reads too. Do not return the stored
+  -- payload, claim ledger or editorial copy after any linked source is revoked.
+  -- The original hash remains an identity only, never a digest of this gap view.
+  select jsonb_agg(distinct l.source_id) into v_denied_ids
+    from public.editorial_brief_sources l
+   where l.client_id=p_client_id and l.brief_id=p_brief_id and l.version=p_version
+     and (select s.permission_state from public.editorial_sources s
+           where s.client_id=l.client_id and s.source_id=l.source_id
+           order by s.seen_version desc limit 1) in ('denied','withheld');
+  if v_denied_ids is not null then
+    return jsonb_build_object('access','permission_unavailable',
+      'identity',jsonb_build_object('brief_id',v_row.brief_id,'client_id',v_row.client_id,
+        'version',v_row.version,'kind',v_row.kind,'status',v_row.status,
+        'content_hash',v_row.content_hash),
+      'source_ids',v_denied_ids,'content_hash_scope','immutable_original');
   end if;
 
   -- The status AT PROPOSAL is immutable on the row; the EFFECTIVE status comes from the
@@ -1049,6 +1074,10 @@ begin
       'reason', case when v_any then 'no_such_version' else 'no_such_brief' end);
   end if;
 
+  if v_brief->>'access'='permission_unavailable' then
+    return jsonb_build_object('schema_version',1,'found',true,
+      'access','permission_unavailable','gap',v_brief);
+  end if;
   return jsonb_build_object('schema_version', 1, 'found', true, 'brief', v_brief);
 end;
 $function$;

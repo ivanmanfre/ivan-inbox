@@ -44,12 +44,12 @@ import {
   CANDIDATE_DERIVED_FIELDS, CURATION_STATES, EDITORIAL_RPCS, EditorialContractError,
   SOURCE_KINDS, UNKNOWN, countIndependentSources, daysBetween, deriveCurrencyState,
   isEditorialClientId, isUnknown,
-} from './editorialTypes'
+} from './editorialTypes.ts'
 import type {
   CandidateFields, CurationState, CurrencyState, EditorialClient, EditorialClientId,
   GapReason, PermissionState, SourceFilters, SourceGapState, SourceKind, SourcePage,
   SourcePageGap, SourceRef, SourceSnapshot,
-} from './editorialTypes'
+} from './editorialTypes.ts'
 
 /* -------------------------------------------------------------------------
    Guards and small readers — mirrors editorialBriefs.ts's shape exactly so
@@ -282,7 +282,7 @@ export function parseSourceItem(raw: unknown, lane: EditorialClientId): ParsedSo
   }
 
   const candidateFields = parseCandidateFields(raw.candidate_fields)
-  if (kind === 'candidate' && candidateFields === null) {
+  if (kind === 'candidate' && candidateFields === null && gapState?.reason !== 'permission_denied') {
     return {
       ok: false,
       gap: { source_id: sourceId, reason: 'unavailable', detail: 'A candidate source arrived without its required candidate_fields.' },

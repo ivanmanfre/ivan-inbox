@@ -179,7 +179,7 @@ end;$function$;
 create or replace function public.editorial_read_refresh(p_gate text,p_client_id text,p_refresh_id text)
 returns jsonb language plpgsql stable security definer set search_path to 'public' as $function$
 declare v public.editorial_refresh_requests%rowtype; v_current text; v_cutoff timestamptz;
-  v_collected timestamptz; v_synth timestamptz; v_new integer;
+  v_collected timestamptz; v_synth timestamptz; v_new integer; v_stale integer;
 begin
   perform public.editorial_guard(p_gate,p_client_id);
   select * into v from public.editorial_refresh_requests where client_id=p_client_id and refresh_id=p_refresh_id;
@@ -191,12 +191,16 @@ begin
     on (m.client_id=b.client_id and m.input_manifest_hash=b.input_manifest_hash)
     where b.client_id=p_client_id and b.batch_id=v_current;
   select count(*) into v_new from public.editorial_sources where client_id=p_client_id and (v_cutoff is null or created_at>v_cutoff);
+  select count(*)::int into v_stale from (
+    select distinct on(source_id) source_published_at from public.editorial_sources
+    where client_id=p_client_id order by source_id,seen_version desc) heads
+    where source_published_at is not null and source_published_at<now()-interval '120 days';
   return jsonb_build_object('refresh_id',v.refresh_id,'client_id',p_client_id,'status',v.status,
     'batch_id',v.batch_id,'last_usable_batch_id',v_current,'coverage_gaps',
     coalesce((select coverage_gaps from public.editorial_batches where client_id=p_client_id and batch_id=v.batch_id),'[]'::jsonb),
     'awaiting_reconciliation',v.awaiting_reconciliation,
     'collection_health',jsonb_build_object('last_successful_collection',v_collected,
-      'new_evidence_awaiting_refresh',v_new,'stale_inputs',0),
+      'new_evidence_awaiting_refresh',v_new,'stale_inputs',v_stale),
     'synthesis_health',jsonb_build_object('last_successful_synthesis',v_synth,'last_failure_reason',v.failure_reason),
     'updated_at',v.updated_at);
 end;$function$;
@@ -306,7 +310,10 @@ begin
         select s.permission_state,s.gap_state,s.snapshot_hash into v_source
           from public.editorial_sources s where s.client_id=p_client_id
           and s.source_id=e->>'source_id' and s.seen_version=(e->>'seen_version')::integer;
-        if not found or v_source.permission_state in('denied','withheld') or v_source.gap_state is not null then
+        if not found or v_source.permission_state in('denied','withheld') or v_source.gap_state is not null
+          or (select current.permission_state from public.editorial_sources current
+            where current.client_id=p_client_id and current.source_id=e->>'source_id'
+            order by current.seen_version desc limit 1) in('denied','withheld') then
           raise exception 'brief source is inaccessible'; end if;
       end loop;
       insert into public.editorial_brief_versions(client_id,brief_id,version,batch_id,kind,status,
@@ -376,7 +383,10 @@ begin
       left join public.editorial_sources s on s.client_id=l.client_id and s.source_id=l.source_id
         and s.seen_version=l.seen_version
       where l.client_id=p_client_id and l.brief_id=p_brief_id and l.version=p_version
-        and (s.source_id is null or s.permission_state in('denied','withheld') or s.gap_state is not null)) then
+        and (s.source_id is null or s.permission_state in('denied','withheld') or s.gap_state is not null
+          or (select current.permission_state from public.editorial_sources current
+            where current.client_id=l.client_id and current.source_id=l.source_id
+            order by current.seen_version desc limit 1) in('denied','withheld'))) then
     v_reason:='source_access_missing';
   elsif not exists(select 1 from public.editorial_brief_sources l
       where l.client_id=p_client_id and l.brief_id=p_brief_id and l.version=p_version) then
@@ -528,7 +538,7 @@ create or replace function public.editorial_commit_review(
   p_new_payload jsonb,p_new_hash text)
 returns jsonb language plpgsql volatile security definer set search_path to 'public' as $function$
 declare v_old public.editorial_brief_versions%rowtype; v_existing public.editorial_reviews%rowtype;
-  v_head integer; v_new integer; e record;
+  v_head integer; v_new integer; v_copy_only boolean := false; e record;
 begin
   perform public.editorial_guard(p_gate,p_client_id);
   if nullif(btrim(p_request_id),'') is null or nullif(btrim(p_reason),'') is null
@@ -549,14 +559,23 @@ begin
   if p_reviewer_seat=v_old.authored_by_seat then
     return jsonb_build_object('state','blocked','reason','author_cannot_review_own_brief'); end if;
   if p_verdict='pass' then
+    v_copy_only := v_old.readiness='needs_material'
+      and exists(select 1 from jsonb_array_elements_text(v_old.missing_material) m
+        where m<>'Explicit independent editorial review')
+      and not exists(select 1 from jsonb_array_elements_text(v_old.missing_material) m
+        where m<>'Explicit independent editorial review' and
+          m !~* '^(A permission decision on the .+ before .+ published|4-6 slide visual sequence design|Ivan''s explicit go/no-go on committing a second carousel|Decision: the planned draft title implies a comment-gate CTA|Resolution of which record is canonical|Final post/carousel copy for )');
     if exists(select 1 from jsonb_array_elements_text(v_old.missing_material) m
-      where m<>'Explicit independent editorial review') then
+      where m<>'Explicit independent editorial review') and not v_copy_only then
       return jsonb_build_object('state','blocked','reason','essential_material_missing'); end if;
     if exists(select 1 from public.editorial_brief_sources l
       join public.editorial_sources s on s.client_id=l.client_id and s.source_id=l.source_id
         and s.seen_version=l.seen_version
       where l.client_id=p_client_id and l.brief_id=p_brief_id and l.version=p_version
-        and (s.permission_state in('denied','withheld') or s.gap_state is not null)) then
+        and (s.permission_state in('denied','withheld') or s.gap_state is not null
+          or (select current.permission_state from public.editorial_sources current
+            where current.client_id=l.client_id and current.source_id=l.source_id
+            order by current.seen_version desc limit 1) in('denied','withheld'))) then
       return jsonb_build_object('state','blocked','reason','source_access_missing'); end if;
   end if;
   v_new:=p_version+1;
@@ -567,8 +586,13 @@ begin
      or p_new_payload#>>'{identity,content_hash}'<>p_new_hash
      or p_new_payload#>>'{review,reviewer_seat}'<>p_reviewer_seat
      or p_new_payload#>>'{review,verdict}'<>p_verdict
-     or (p_verdict='pass' and (p_new_payload->>'readiness'<>'ready_to_draft'
-       or jsonb_array_length(coalesce(p_new_payload->'missing_material','[]'::jsonb))<>0)) then
+     or (p_verdict='pass' and not v_copy_only and (p_new_payload->>'readiness'<>'ready_to_draft'
+       or jsonb_array_length(coalesce(p_new_payload->'missing_material','[]'::jsonb))<>0))
+     or (p_verdict='pass' and v_copy_only and (p_new_payload->>'readiness'<>'needs_material'
+       or p_new_payload->'missing_material' is distinct from
+         (select coalesce(jsonb_agg(to_jsonb(m) order by ord),'[]'::jsonb)
+          from jsonb_array_elements_text(v_old.missing_material) with ordinality as hold(m,ord)
+          where m<>'Explicit independent editorial review'))) then
     raise exception 'invalid reviewed version payload'; end if;
   insert into public.editorial_brief_versions(client_id,brief_id,version,batch_id,kind,status,
     content_hash,source_cutoff,direction_version,payload,claim_ledger,
