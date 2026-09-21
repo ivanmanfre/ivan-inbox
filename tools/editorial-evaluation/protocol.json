@@ -1,0 +1,199 @@
+{
+  "schema": "editorial-evaluation-protocol-v1",
+  "frozen_at": "2026-09-21T20:16:54.416058Z",
+  "frozen_by": "/root/b3_evaluation",
+  "freeze_rule": "Frozen before any final test label was read. Changing any value requires a new protocol version with an independent rationale; the prior version is preserved.",
+  "source_document": {
+    "path": "goal-runs/content-brain-completion-plan-2026-09-21/DATA-AND-EVALUATION.md",
+    "sha256": "0fcd0cd2644dc7a28f22552aa9d70c78d984b35f62f14c795ec288f527f91109"
+  },
+  "canonical": {
+    "protocol_version": 1,
+    "endpoint": "own_seven_day_impressions_above_prior_median",
+    "endpoint_definition": "For one own published post, seven-day impressions greater than that author's historical median impressions, measured on the author's own prior published observations only.",
+    "unit_of_observation": "one retained impressions observation for one own published post",
+    "metric_name": "impressions",
+    "artifact_role": "own_post",
+    "clients": [
+      "ivan",
+      "risedtc",
+      "arch"
+    ],
+    "platform": "linkedin",
+    "label": {
+      "target_age_days": 7,
+      "tolerance_hours": 24,
+      "window_start_field": "window_start (publication time)",
+      "window_end_field": "window_end (capture time)",
+      "requires_observed_value": true,
+      "unknown_is_never_zero": true,
+      "never_manufacture_from_older_total": true,
+      "rule": "A label exists only when a retained observation of the endpoint metric was captured between publication+6d and publication+8d and carries a real observed value. A single later total for the same post is not a seven-day measurement."
+    },
+    "baseline": {
+      "statistic": "median",
+      "min_prior_observations": 20,
+      "lookback_days": 90,
+      "same_format_minimum": 20,
+      "all_format_fallback": true,
+      "disclose_fallback": true,
+      "exclude_target": true,
+      "require_label_window_completed_before_forecast": true,
+      "author_scope": "same author/client own history only"
+    },
+    "forecast_time": {
+      "definition": "publication time of the target post",
+      "feature_cutoff": "forecast_at; no feature may be observed after it",
+      "baseline_cutoff": "strictly before forecast_at"
+    },
+    "partitions": {
+      "order": "chronological by forecast_at",
+      "train_fraction": 0.6,
+      "calibration_fraction_of_remainder": 0.5,
+      "maturity_rule": "Every training label must have matured strictly before the earliest calibration forecast time, and every calibration label strictly before the earliest test forecast time. Rows falling inside a maturity gap are excluded, never reassigned.",
+      "test_untouched": true,
+      "no_random_row_validation": true
+    },
+    "grouping": {
+      "key": "duplicate/repost/event group",
+      "derivation": "publication identity, plus any retained repost/duplicate/event linkage; copies of the same event share one group and may not straddle partitions",
+      "straddle_policy": "later-partition members excluded with group_straddles_partition"
+    },
+    "dependence_block": {
+      "definition": "author/client x ISO week of publication",
+      "bootstrap_resamples": 1000,
+      "bootstrap_seed": 421337,
+      "bootstrap_rng": "LCG x' = (1664525*x + 1013904223) mod 2^32, u = x'/2^32",
+      "quantiles": [
+        0.025,
+        0.975
+      ],
+      "quantile_rule": "sorted[floor((n-1)*p)]",
+      "resample": "sample len(blocks) blocks with replacement, take all rows of each"
+    },
+    "baselines_predeclared": [
+      {
+        "key": "baseline_pooled",
+        "definition": "pooled base rate of y on the training partition only"
+      },
+      {
+        "key": "baseline_author_shrunk",
+        "definition": "author/client historical rate on the training partition, shrunk to the pooled training rate with pseudo-count k=20",
+        "shrinkage_k": 20
+      },
+      {
+        "key": "baseline_topic_format",
+        "definition": "simple historical ordering by (topic_category, format) cell rate on the training partition, shrunk to the pooled training rate with pseudo-count k=10",
+        "shrinkage_k": 10
+      }
+    ],
+    "candidate_model": {
+      "family": "regularized logistic regression",
+      "penalty": "l2",
+      "inverse_strength_lambda": 1.0,
+      "optimizer": "full-batch gradient descent, fixed schedule, deterministic",
+      "iterations": 1500,
+      "learning_rate": 0.25,
+      "fit_partition": "train",
+      "standardization_partition": "train",
+      "probability_calibration": "Platt scaling of the model logit, fit on calibration only",
+      "pre_decision_features_only": true,
+      "features": [
+        "format one-hot (text|image|carousel|video|unknown)",
+        "client one-hot (ivan|risedtc|arch)",
+        "log1p body character length at publication",
+        "publication hour of day (sin/cos)",
+        "publication day of week (sin/cos)",
+        "log1p prior-window baseline median",
+        "prior-window baseline observation count"
+      ],
+      "forbidden_features": [
+        "any observation of the target post itself",
+        "any value observed at or after forecast_at",
+        "outcome-derived selection flags such as is_winner"
+      ],
+      "no_model_tournament": true
+    },
+    "display_conditions": {
+      "endpoint_allowed": [
+        "own_seven_day_impressions_above_prior_median"
+      ],
+      "min_test_outcomes": 100,
+      "pooled_claim_requires_all_clients": true,
+      "both_outcome_classes_required": true,
+      "min_test_outcomes_per_claimed_client": 20,
+      "bands": [
+        [
+          0.0,
+          0.2
+        ],
+        [
+          0.2,
+          0.4
+        ],
+        [
+          0.4,
+          0.6
+        ],
+        [
+          0.6,
+          0.8
+        ],
+        [
+          0.8,
+          1.0
+        ]
+      ],
+      "min_observations_per_displayed_band": 30,
+      "band_interval": "95% block-bootstrap interval of the observed rate",
+      "band_interval_must_contain_mean_predicted": true,
+      "band_interval_max_half_width": 0.15,
+      "require_positive_lower_bound_brier_skill": true,
+      "skill_reference": "strongest (lowest Brier) predeclared baseline on the untouched test",
+      "min_displayed_bands_for_validated": 1,
+      "abstain_outside_scope": true
+    },
+    "statuses": {
+      "insufficient_data": "no numeric likelihood is displayed, no effectiveness claim is made, and the exact missing requirements and populations are reported",
+      "experimental": "a likelihood may be logged privately for later comparison but never displayed and never described as validated",
+      "validated_for_scope": "every display condition passed on the untouched test block, and display is limited to the declared scope"
+    },
+    "separate_statuses": [
+      "operational_product",
+      "retrospective_evaluation",
+      "prospective_effectiveness"
+    ],
+    "exclusion_reason_codes": [
+      "no_publication_identity",
+      "publication_date_unknown",
+      "metric_unknown_no_refresh_receipt",
+      "metric_not_retained",
+      "capture_outside_seven_day_window",
+      "duplicate_scope_observation",
+      "baseline_population_insufficient",
+      "temporal_partition_gap",
+      "group_straddles_partition",
+      "test_generated_post",
+      "outcome_selected_cohort",
+      "wrong_endpoint_metric"
+    ],
+    "forecast_persistence": {
+      "store": "existing editorial_brief_versions.payload.forecast + editorial_brief_artifacts",
+      "no_new_physical_table": true,
+      "identity": "sha256 over (client_id, brief_id, version, content_hash, protocol_hash, model_version)",
+      "idempotence": "editorial_brief_artifacts primary key (client_id, brief_id, version, artifact_role='forecast') and unique (client_id, request_id) make a replay collide instead of creating a second forecast",
+      "immutability": "editorial_brief_versions_immutable and editorial_brief_artifacts_immutable block update/delete, so a later observation cannot mutate the original prediction",
+      "later_edit": "a new brief version creates a new forecast and preserves the previous one"
+    },
+    "selection_policy": "consecutive_roster",
+    "prohibited": [
+      "fabricating a seven-day value from an older total",
+      "turning a missing metric into zero",
+      "using an outcome-selected discovery cohort as an evaluation population",
+      "tuning on the untouched test block",
+      "describing a successful evaluator execution as predictive effectiveness"
+    ]
+  },
+  "canonical_serialized": "{\"artifact_role\":\"own_post\",\"baseline\":{\"all_format_fallback\":true,\"author_scope\":\"same author/client own history only\",\"disclose_fallback\":true,\"exclude_target\":true,\"lookback_days\":90,\"min_prior_observations\":20,\"require_label_window_completed_before_forecast\":true,\"same_format_minimum\":20,\"statistic\":\"median\"},\"baselines_predeclared\":[{\"definition\":\"pooled base rate of y on the training partition only\",\"key\":\"baseline_pooled\"},{\"definition\":\"author/client historical rate on the training partition, shrunk to the pooled training rate with pseudo-count k=20\",\"key\":\"baseline_author_shrunk\",\"shrinkage_k\":20},{\"definition\":\"simple historical ordering by (topic_category, format) cell rate on the training partition, shrunk to the pooled training rate with pseudo-count k=10\",\"key\":\"baseline_topic_format\",\"shrinkage_k\":10}],\"candidate_model\":{\"family\":\"regularized logistic regression\",\"features\":[\"format one-hot (text|image|carousel|video|unknown)\",\"client one-hot (ivan|risedtc|arch)\",\"log1p body character length at publication\",\"publication hour of day (sin/cos)\",\"publication day of week (sin/cos)\",\"log1p prior-window baseline median\",\"prior-window baseline observation count\"],\"fit_partition\":\"train\",\"forbidden_features\":[\"any observation of the target post itself\",\"any value observed at or after forecast_at\",\"outcome-derived selection flags such as is_winner\"],\"inverse_strength_lambda\":1.0,\"iterations\":1500,\"learning_rate\":0.25,\"no_model_tournament\":true,\"optimizer\":\"full-batch gradient descent, fixed schedule, deterministic\",\"penalty\":\"l2\",\"pre_decision_features_only\":true,\"probability_calibration\":\"Platt scaling of the model logit, fit on calibration only\",\"standardization_partition\":\"train\"},\"clients\":[\"ivan\",\"risedtc\",\"arch\"],\"dependence_block\":{\"bootstrap_resamples\":1000,\"bootstrap_rng\":\"LCG x' = (1664525*x + 1013904223) mod 2^32, u = x'/2^32\",\"bootstrap_seed\":421337,\"definition\":\"author/client x ISO week of publication\",\"quantile_rule\":\"sorted[floor((n-1)*p)]\",\"quantiles\":[0.025,0.975],\"resample\":\"sample len(blocks) blocks with replacement, take all rows of each\"},\"display_conditions\":{\"abstain_outside_scope\":true,\"band_interval\":\"95% block-bootstrap interval of the observed rate\",\"band_interval_max_half_width\":0.15,\"band_interval_must_contain_mean_predicted\":true,\"bands\":[[0.0,0.2],[0.2,0.4],[0.4,0.6],[0.6,0.8],[0.8,1.0]],\"both_outcome_classes_required\":true,\"endpoint_allowed\":[\"own_seven_day_impressions_above_prior_median\"],\"min_displayed_bands_for_validated\":1,\"min_observations_per_displayed_band\":30,\"min_test_outcomes\":100,\"min_test_outcomes_per_claimed_client\":20,\"pooled_claim_requires_all_clients\":true,\"require_positive_lower_bound_brier_skill\":true,\"skill_reference\":\"strongest (lowest Brier) predeclared baseline on the untouched test\"},\"endpoint\":\"own_seven_day_impressions_above_prior_median\",\"endpoint_definition\":\"For one own published post, seven-day impressions greater than that author's historical median impressions, measured on the author's own prior published observations only.\",\"exclusion_reason_codes\":[\"no_publication_identity\",\"publication_date_unknown\",\"metric_unknown_no_refresh_receipt\",\"metric_not_retained\",\"capture_outside_seven_day_window\",\"duplicate_scope_observation\",\"baseline_population_insufficient\",\"temporal_partition_gap\",\"group_straddles_partition\",\"test_generated_post\",\"outcome_selected_cohort\",\"wrong_endpoint_metric\"],\"forecast_persistence\":{\"idempotence\":\"editorial_brief_artifacts primary key (client_id, brief_id, version, artifact_role='forecast') and unique (client_id, request_id) make a replay collide instead of creating a second forecast\",\"identity\":\"sha256 over (client_id, brief_id, version, content_hash, protocol_hash, model_version)\",\"immutability\":\"editorial_brief_versions_immutable and editorial_brief_artifacts_immutable block update/delete, so a later observation cannot mutate the original prediction\",\"later_edit\":\"a new brief version creates a new forecast and preserves the previous one\",\"no_new_physical_table\":true,\"store\":\"existing editorial_brief_versions.payload.forecast + editorial_brief_artifacts\"},\"forecast_time\":{\"baseline_cutoff\":\"strictly before forecast_at\",\"definition\":\"publication time of the target post\",\"feature_cutoff\":\"forecast_at; no feature may be observed after it\"},\"grouping\":{\"derivation\":\"publication identity, plus any retained repost/duplicate/event linkage; copies of the same event share one group and may not straddle partitions\",\"key\":\"duplicate/repost/event group\",\"straddle_policy\":\"later-partition members excluded with group_straddles_partition\"},\"label\":{\"never_manufacture_from_older_total\":true,\"requires_observed_value\":true,\"rule\":\"A label exists only when a retained observation of the endpoint metric was captured between publication+6d and publication+8d and carries a real observed value. A single later total for the same post is not a seven-day measurement.\",\"target_age_days\":7,\"tolerance_hours\":24,\"unknown_is_never_zero\":true,\"window_end_field\":\"window_end (capture time)\",\"window_start_field\":\"window_start (publication time)\"},\"metric_name\":\"impressions\",\"partitions\":{\"calibration_fraction_of_remainder\":0.5,\"maturity_rule\":\"Every training label must have matured strictly before the earliest calibration forecast time, and every calibration label strictly before the earliest test forecast time. Rows falling inside a maturity gap are excluded, never reassigned.\",\"no_random_row_validation\":true,\"order\":\"chronological by forecast_at\",\"test_untouched\":true,\"train_fraction\":0.6},\"platform\":\"linkedin\",\"prohibited\":[\"fabricating a seven-day value from an older total\",\"turning a missing metric into zero\",\"using an outcome-selected discovery cohort as an evaluation population\",\"tuning on the untouched test block\",\"describing a successful evaluator execution as predictive effectiveness\"],\"protocol_version\":1,\"selection_policy\":\"consecutive_roster\",\"separate_statuses\":[\"operational_product\",\"retrospective_evaluation\",\"prospective_effectiveness\"],\"statuses\":{\"experimental\":\"a likelihood may be logged privately for later comparison but never displayed and never described as validated\",\"insufficient_data\":\"no numeric likelihood is displayed, no effectiveness claim is made, and the exact missing requirements and populations are reported\",\"validated_for_scope\":\"every display condition passed on the untouched test block, and display is limited to the declared scope\"},\"unit_of_observation\":\"one retained impressions observation for one own published post\"}",
+  "protocol_hash": "e916bbef22ff3770449335e63fe0c054048e820e55ff8e73ad809f74df7277f1"
+}
