@@ -12,9 +12,13 @@ vi.mock('../wb/content/ThemesBlock', () => ({ ThemesBlock: () => null }))
 vi.mock('./supabase', () => ({ supabase: {} }))
 import { StrategyView } from '../wb/content/strategy'
 describe('Strategy independent views', () => {
- it('opens recommendations even when the separate notes source fails', () => {
+ it('opens the editorial week even when the separate notes source fails, retaining legacy navigation', () => {
   const html = renderToStaticMarkup(createElement(StrategyView, { lane: 'ivan', setLane: () => {} }))
-  expect(html).toContain('Recommendation shortlist')
+  expect(html).toContain('This week')
+  expect(html).toContain('Refresh suggestions')
+  expect(html).toContain('Reviewable suggestions only')
+  expect(html).toContain('Legacy suggestions')
+  expect(html).not.toContain('Recommendation shortlist')
   expect(html).toContain('Competitors')
   expect(html).toContain('Results')
   expect(html).toContain('Notes')
