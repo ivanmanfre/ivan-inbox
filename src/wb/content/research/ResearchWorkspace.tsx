@@ -31,6 +31,11 @@ const when = (value: string | number | null | undefined) => value && value !== '
 const metricValues = (metrics: Record<string, unknown> | null) => metrics
   ? Object.entries(metrics).map(([name, value]) => `${name}: ${value == null ? 'unknown' : String(value)}`).join('; ')
   : 'No structured metrics recorded.'
+const displayCandidateMetadata = (value: unknown) => {
+  if (value == null || value === '') return ''
+  if (typeof value === 'string') return value
+  try { return JSON.stringify(value) } catch { return 'Structured candidate metadata is unavailable.' }
+}
 const nativeIdentity = (source: SourceSnapshot) => `${source.source_identity.platform}:${source.source_identity.native_id}` +
   (source.source_identity.collector_row_id ? ` (collector row ${source.source_identity.collector_row_id})` : '')
 const metricEvidence = (source: SourceSnapshot) => {
@@ -71,7 +76,7 @@ export function SourceDetail({ source, close, lane, previewLinked, readOnly = fa
       <dt>Observed</dt><dd>{when(source.captured_date)}</dd><dt>Scope</dt><dd>{source.source_client_scope}</dd>
       <dt>Body completeness</dt><dd>{source.body_state}</dd><dt>Native identity</dt><dd>{nativeIdentity(source)}</dd>
       <dt>Observed metrics</dt><dd>{metricValues(source.observed_metrics)}</dd><dt>Metric provenance</dt><dd>{metricEvidence(source)}</dd>
-      <dt>Observation</dt><dd>{source.retained_context || source.candidate_fields?.evidence || 'No source observation recorded.'}</dd>
+      <dt>Observation</dt><dd>{source.retained_context || displayCandidateMetadata(source.candidate_fields?.evidence) || 'No source observation recorded.'}</dd>
       <dt>Limits</dt><dd>{source.limitation || source.gap_state?.detail || 'No additional limit recorded.'}</dd>
       <dt>Linked suggestions</dt><dd>{linked.length ? linked.map(b => `${b.editorial_direction.topic} (v${b.identity.version})`).join('; ') : 'No current suggestion cites this source.'}</dd>
     </dl>

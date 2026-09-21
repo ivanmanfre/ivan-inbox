@@ -256,11 +256,11 @@ export type SourceGapState = { reason: GapReason; detail: string }
     records require all five named fields; non-candidate records use the same
     payload for metrics, body completeness and native identity. */
 export type CandidateFields = Record<string, unknown> & {
-  evidence?: string
-  raw_context?: string
-  editorial_assessment?: string
-  editorial_strength?: string
-  angle_options?: string[]
+  evidence?: unknown
+  raw_context?: unknown
+  editorial_assessment?: unknown
+  editorial_strength?: unknown
+  angle_options?: unknown[]
 }
 
 export type EvidenceBodyState = 'full' | 'excerpt' | 'unavailable' | 'unknown'

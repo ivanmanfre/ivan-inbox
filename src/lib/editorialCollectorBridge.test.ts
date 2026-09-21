@@ -29,6 +29,16 @@ describe('collector bridge', () => {
     })
   })
 
+  it('keeps a raw Ivan impressions zero without metrics_updated_at unknown for outcome use, while retaining a refreshed zero', async () => {
+    const unknown = await normalizeCollectorRow('ivan', 'own_posts', { id:'unrefreshed', post_text:'body', posted_at:'2026-09-01T00:00:00Z', scraped_at:'2026-09-02T00:00:00Z', num_impressions:0 })
+    expect(unknown.candidate_fields?.observed_metrics).toMatchObject({ impressions:null })
+    expect(unknown.candidate_fields?.raw_observed_metrics).toMatchObject({ impressions:0 })
+    expect(unknown.candidate_fields?.metric_observation_state).toMatchObject({ impressions:'unknown_no_metrics_updated_at' })
+    const refreshed = await normalizeCollectorRow('ivan', 'own_posts', { id:'refreshed', post_text:'body', posted_at:'2026-09-01T00:00:00Z', metrics_updated_at:'2026-09-02T00:00:00Z', num_impressions:0 })
+    expect(refreshed.candidate_fields?.observed_metrics).toMatchObject({ impressions:0 })
+    expect(refreshed.candidate_fields?.metric_observation_state).toMatchObject({ impressions:'observed_metrics_updated_at' })
+  })
+
   it('keeps duplicate collector rows for one platform activity on the legacy source identity', async () => {
     const original = rows.client_post_metrics
     rows.client_post_metrics = [

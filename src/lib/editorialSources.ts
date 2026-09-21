@@ -184,14 +184,11 @@ function parseGapState(raw: unknown): SourceGapState | null {
     "silently dropped input" this contract refuses (T04). */
 function parseCandidateFields(raw: unknown, kind: SourceKind): CandidateFields | null {
   if (!isObj(raw)) return null
-  const evidence = str(raw.evidence)
-  const rawContext = str(raw.raw_context)
-  const assessment = str(raw.editorial_assessment)
-  const strength = str(raw.editorial_strength)
-  const angleOptions = Array.isArray(raw.angle_options)
-    ? raw.angle_options.filter((x): x is string => typeof x === 'string')
-    : null
-  if (kind === 'candidate' && (!evidence || !rawContext || !assessment || !strength || !angleOptions)) return null
+  const required = ['evidence', 'raw_context', 'editorial_assessment', 'editorial_strength', 'angle_options']
+  // Candidate metadata is lossless JSON: current collectors retain structured
+  // evidence and assessments. Presence is required; fabricated string coercion
+  // would erase meaning and turn valid objects into '[object Object]'.
+  if (kind === 'candidate' && (!Array.isArray(raw.angle_options) || required.some(key => !Object.prototype.hasOwnProperty.call(raw, key)))) return null
   return raw as CandidateFields
 }
 

@@ -76,14 +76,18 @@ export async function normalizeCollectorRow(clientId: EditorialClientId, collect
     if (clientId !== 'ivan') throw new Error('own_posts is explicitly scoped to the Ivan lane')
     id = val(row.id); kind = 'own_post'; url = val(row.linkedin_url) || null
     pointer = url ? null : `own_posts.id=${id}`; owner = 'Ivan Manfredi'
-    published = date(row.posted_at); captured = date(row.metrics_updated_at) ?? date(row.scraped_at)
+    const metricsUpdated = date(row.metrics_updated_at)
+    published = date(row.posted_at); captured = metricsUpdated ?? date(row.scraped_at)
     body = val(row.post_text) || null; permission = 'granted'
-    context = `Observed own post; likes=${val(row.num_likes) || 'unknown'}, comments=${val(row.num_comments) || 'unknown'}, shares=${val(row.num_shares) || 'unknown'}, impressions=${val(row.num_impressions) || 'unknown'}.`
+    const rawImpressions = row.num_impressions ?? null
+    const impressions = metricsUpdated ? rawImpressions : null
+    context = `Observed own post; likes=${val(row.num_likes) || 'unknown'}, comments=${val(row.num_comments) || 'unknown'}, shares=${val(row.num_shares) || 'unknown'}, impressions=${impressions == null ? 'unknown (no metrics refresh)' : val(impressions)}.`
     limitation = 'Own outcome counts need a stated denominator and observation window before use as a claim.'
     fields = { observed_metrics: { likes: row.num_likes ?? null, comments: row.num_comments ?? null,
-      shares: row.num_shares ?? null, impressions: row.num_impressions ?? null,
+      shares: row.num_shares ?? null, impressions,
       profile_views: row.profile_views_from_post ?? null,
-      followers_gained: row.followers_gained_from_post ?? null }, observation_window: { published_at: published,
+      followers_gained: row.followers_gained_from_post ?? null }, raw_observed_metrics: { impressions: rawImpressions },
+      metric_observation_state: { impressions: metricsUpdated ? 'observed_metrics_updated_at' : 'unknown_no_metrics_updated_at' }, observation_window: { published_at: published,
       captured_at: captured }, metric_source: 'own_posts', metric_denominator: 'one exact own post',
       source_identity: { platform: 'linkedin', native_id: val(row.social_id) || id, collector_row_id: id } }
   } else if (collector === 'client_post_metrics') {
