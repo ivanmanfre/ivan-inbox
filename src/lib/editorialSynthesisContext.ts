@@ -111,7 +111,11 @@ export function prepareSynthesisContext(input: {
   // Keep a 16k planning allowance for correction. This is not a guarantee: the
   // actual initial and correction requests each still fail closed at 200k in
   // runSynthesis, and a rejected reply is retained even when no retry can fit.
-  for (const count of [...new Set([input.sources.length, 16, 12, 8, 6, kinds.length])].filter(n => n <= input.sources.length)) {
+  // A client whose mandatory canon is very large (Ivan: ~147k of canonical bodies) can
+  // only carry a handful of sources. Walking down to one supplies an honest, disclosed
+  // request instead of failing closed; coverage states exactly how few arrived.
+  for (const count of [...new Set([input.sources.length, 16, 12, 8, 6, kinds.length, 5, 4, 3, 2, 1])]
+    .sort((a, b) => b - a).filter(n => n <= input.sources.length && n > 0)) {
     const supplied = count === input.sources.length ? input.sources : balanced.slice(0, count)
     const sourceIds = new Set(supplied.map(s => s.source_id))
     const latest = new Map<string, Row>()
@@ -140,7 +144,7 @@ export function prepareSynthesisContext(input: {
         outcomes_frozen: input.outcomes.length, outcomes_supplied: outcomes.length, outcomes_omitted: input.outcomes.length - outcomes.length,
         excerpted_sources: selected.filter((s, i) => s.passage !== supplied[i].passage || s.retained_context !== String(supplied[i].retained_context ?? '')).length,
         passage_cap: cap, correction_reserve_chars: 16000,
-        limits: 'sources_usable_population is the full usable population for this client; sources_shortlisted is the bounded shortlist drawn from it by selection_policy, and sources_supplied is what this request could carry. omitted_count_by_source_family states what each family lost; every omitted source ID is named in the input manifest, not here. Never claim feed-wide novelty or completeness from this sample. Only selected sources and their latest exact-artifact observations are supplied. All binding decisions remain supplied. Omitted outcomes are unknown here, not zero. Historical feed overlap and buyer composition are unknown. Full source/outcome snapshots remain in the immutable manifest. Candidate duplicate raw context is excluded; structured measurements and private-name guards are retained.' }
+        limits: 'sources_usable_population is the full usable population for this client; sources_shortlisted is the bounded shortlist selection_policy drew from it; sources_supplied is what fit. omitted_count_by_source_family states the loss per family; omitted IDs are named in the input manifest. Never claim feed-wide novelty or completeness from this sample. Only selected sources and their latest exact-artifact observations are supplied. All binding decisions remain supplied. Omitted outcomes are unknown here, not zero. Historical feed overlap and buyer composition are unknown. Full source/outcome snapshots remain in the immutable manifest. Candidate duplicate raw context is excluded; structured measurements and private-name guards are retained.' }
       const messages = input.render({ selected, outcomes, coverage })
       if (JSON.stringify(messages).length <= 184000) return { selected, outcomes, coverage, messages }
     }
