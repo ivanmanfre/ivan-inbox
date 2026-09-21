@@ -54,7 +54,7 @@ CLIENT_EFFECT = {"ivan": 0.3, "risedtc": -0.4, "arch": 0.1}
 TOPICS = ["founder_journey", "business_efficiency", "industry_trends", "other"]
 
 
-def synthetic_rows(weeks: int = 70, per_week: int = 6, seed: int = 20260921):
+def synthetic_rows(weeks: int = 60, per_week: int = 5, seed: int = 20260921):
     """A cohort with a real, learnable pre-decision signal.
 
     Labels come from a logistic function of features that exist before
@@ -182,7 +182,7 @@ class DatasetNegativeControls(unittest.TestCase):
         self.protocol = dataset.load_protocol(PROTOCOL_PATH)
         self.published = datetime(2026, 6, 1, 9, 0, tzinfo=timezone.utc)
 
-    def _outcome(self, **over):
+    def _obs(self, **over):
         row = {
             "client_id": "ivan",
             "snapshot_id": "snap-1",
@@ -224,7 +224,7 @@ class DatasetNegativeControls(unittest.TestCase):
     def test_negative_missing_metric_is_never_turned_into_zero(self):
         out = self._build(
             [
-                self._outcome(
+                self._obs(
                     observed_value="0",
                     unknown_reason="No metrics_updated_at receipt; retained raw value is evaluation-ineligible",
                 )
@@ -239,7 +239,7 @@ class DatasetNegativeControls(unittest.TestCase):
 
     def test_negative_late_total_is_not_a_seven_day_capture(self):
         out = self._build(
-            [self._outcome(window_end=iso(self.published + timedelta(days=78)))],
+            [self._obs(window_end=iso(self.published + timedelta(days=78)))],
             self._index(),
         )
         row = out["rows"][0]
@@ -248,14 +248,14 @@ class DatasetNegativeControls(unittest.TestCase):
         self.assertIn("+78", row["exclusion_reason"])
 
     def test_negative_test_generated_post_is_excluded(self):
-        out = self._build([self._outcome()], self._index(is_test=True))
+        out = self._build([self._obs()], self._index(is_test=True))
         row = out["rows"][0]
         self.assertEqual(row["partition"], "excluded")
         self.assertEqual(row["exclusion_code"], "test_generated_post")
 
     def test_negative_outcome_selected_cohort_is_excluded(self):
         out = self._build(
-            [self._outcome()], self._index(selection_policy="minimum_likes_discovery")
+            [self._obs()], self._index(selection_policy="minimum_likes_discovery")
         )
         row = out["rows"][0]
         self.assertEqual(row["partition"], "excluded")
@@ -263,7 +263,7 @@ class DatasetNegativeControls(unittest.TestCase):
 
     def test_negative_unknown_publication_date_is_excluded(self):
         out = self._build(
-            [self._outcome(window_start=None)], self._index(published_at=None)
+            [self._obs(window_start=None)], self._index(published_at=None)
         )
         row = out["rows"][0]
         self.assertEqual(row["partition"], "excluded")
@@ -271,7 +271,7 @@ class DatasetNegativeControls(unittest.TestCase):
 
     def test_negative_thin_baseline_cannot_produce_a_label(self):
         # One lone eligible seven-day capture: no 20-observation prior baseline exists.
-        out = self._build([self._outcome()], self._index())
+        out = self._build([self._obs()], self._index())
         row = out["rows"][0]
         self.assertEqual(row["partition"], "excluded")
         self.assertEqual(row["exclusion_code"], "baseline_population_insufficient")
@@ -279,7 +279,7 @@ class DatasetNegativeControls(unittest.TestCase):
 
     def test_negative_wrong_metric_is_not_substituted_for_impressions(self):
         out = self._build(
-            [self._outcome(metric="reactions", snapshot_id="snap-r")], self._index()
+            [self._obs(metric="reactions", snapshot_id="snap-r")], self._index()
         )
         row = out["rows"][0]
         self.assertEqual(row["partition"], "excluded")
@@ -287,9 +287,9 @@ class DatasetNegativeControls(unittest.TestCase):
 
     def test_every_retained_observation_appears_in_the_report(self):
         outcomes = [
-            self._outcome(snapshot_id="a", metric="impressions"),
-            self._outcome(snapshot_id="b", metric="reactions"),
-            self._outcome(snapshot_id="c", metric="impressions", publication_id="urn:li:activity:2"),
+            self._obs(snapshot_id="a", metric="impressions"),
+            self._obs(snapshot_id="b", metric="reactions"),
+            self._obs(snapshot_id="c", metric="impressions", publication_id="urn:li:activity:2"),
         ]
         out = self._build(outcomes, self._index())
         self.assertEqual(len(out["rows"]), 3)
