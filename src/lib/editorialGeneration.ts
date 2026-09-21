@@ -51,7 +51,8 @@ export function buildGenerationEnvelope(input: {
   if (route !== 'regeneration' && route !== formatRoute[brief.editorial_direction.format]) throw new GenerationBlocked('format_route_mismatch')
   const sourceIds = new Set(brief.evidence.filter(e => e.gap_state === null && e.passage &&
     (e.source_client_scope === 'public' || e.source_client_scope === clientId) &&
-    (e.permission_state === undefined || e.permission_state === 'public_source' || e.permission_state === 'granted'))
+    (e.permission_state === undefined || e.permission_state === 'public_source' || e.permission_state === 'granted' ||
+      (e.permission_state === 'unknown' && e.source_kind === 'call' && e.source_client_scope === clientId)))
     .map(e => e.source_id))
   if (!sourceIds.size) throw new GenerationBlocked('no_permitted_source')
   const permittedClaims = brief.claim_ledger.filter(c => c.supporting_refs.length > 0 &&
@@ -80,6 +81,8 @@ export function buildGenerationEnvelope(input: {
     ['rendered_deck_unverified', ...brief.missing_material] :
     brief.editorial_direction.format === 'video' ? ['recording_pending'] :
     brief.editorial_direction.format === 'lm_promo' ? [...brief.missing_material] : []
+  if (brief.evidence.some(e => e.source_kind === 'call' && e.source_client_scope === clientId &&
+      e.permission_state === 'unknown')) productionHold.push('call_public_use_permission_unresolved')
   return {
     schema: 'editorial-generation-v1', route, client_id: clientId,
     brief_id: brief.identity.brief_id, brief_version: brief.identity.version,

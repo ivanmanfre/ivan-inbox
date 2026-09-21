@@ -41,4 +41,13 @@ describe('editorial generation boundary', () => {
     expect(() => make({ readiness: 'needs_material', missing_material: ['Permission for case study unknown'] }))
       .toThrow(new GenerationBlocked('essential_material_missing'))
   })
+
+  it('keeps an accessible private call internal while preserving public-use hold', () => {
+    const result = make({ evidence: [evidence({ source_kind: 'call', source_client_scope: 'ivan',
+      permission_state: 'unknown', source_ref: { excerpt_pointer: 'private-call:excerpt-1' } })] })
+    expect(result.source_ids).toEqual(['urn:fixture:source:1'])
+    expect(result.production_hold).toContain('call_public_use_permission_unresolved')
+    expect(() => make({ evidence: [evidence({ source_kind: 'call', source_client_scope: 'arch',
+      permission_state: 'unknown' })] })).toThrow(new GenerationBlocked('no_permitted_source'))
+  })
 })

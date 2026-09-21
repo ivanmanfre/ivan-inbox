@@ -4,8 +4,8 @@ const url = Deno.env.get('SUPABASE_URL') ?? ''
 const anon = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
 const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 const allowedUser = Deno.env.get('EDITORIAL_ALLOWED_USER_ID') ?? Deno.env.get('INBOX_CLAUDE_ALLOWED_USER_ID') ?? ''
-const routerUrl = Deno.env.get('EDITORIAL_GENERATOR_URL') ?? ''
-const routerToken = Deno.env.get('EDITORIAL_GENERATOR_TOKEN') ?? ''
+const routerUrl = Deno.env.get('EDITORIAL_GENERATOR_URL') ?? `${url}/functions/v1/editorial-generator-router`
+const routerToken = Deno.env.get('EDITORIAL_GENERATOR_TOKEN') ?? serviceKey
 const origins = ['https://ivanmanfre.github.io', 'http://localhost:5173', 'http://localhost:4173']
 const headers = (origin: string | null) => ({
   'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origins.includes(origin ?? '') ? origin! : origins[0],
@@ -53,7 +53,8 @@ Deno.serve(async request => {
   }
   const sourceIds = (brief.evidence ?? []).filter((e: Record<string, unknown>) =>
     !e.gap_state && (e.source_client_scope === 'public' || e.source_client_scope === clientId) &&
-    (e.permission_state === 'public_source' || e.permission_state === 'granted' || e.permission_state == null))
+    (e.permission_state === 'public_source' || e.permission_state === 'granted' || e.permission_state == null ||
+      (e.permission_state === 'unknown' && e.source_kind === 'call' && e.source_client_scope === clientId)))
     .map((e: Record<string, unknown>) => e.source_id)
   const claimIds = (brief.claim_ledger ?? []).filter((claim: { supporting_refs?: string[] }) =>
     claim.supporting_refs?.length && claim.supporting_refs.every((ref: string) =>
@@ -67,6 +68,10 @@ Deno.serve(async request => {
     return reply(200, receipt('blocked', 'resource_not_ready'), origin)
   }
   const holds = [...(brief.missing_material ?? [])]
+  if (brief.evidence?.some((e: Record<string, unknown>) => e.source_kind === 'call' &&
+      e.source_client_scope === clientId && e.permission_state === 'unknown')) {
+    holds.push('call_public_use_permission_unresolved')
+  }
   if (format === 'carousel') holds.unshift('rendered_deck_unverified')
   if (format === 'video') holds.unshift('recording_pending')
   const envelope = { schema: 'editorial-generation-v1', client_id: clientId,
@@ -75,8 +80,8 @@ Deno.serve(async request => {
     direction_version: brief.purpose.direction_version, source_ids: sourceIds,
     permitted_claim_ids: claimIds, brief, prior_generation: body.prior_generation ?? null,
     production_hold: holds, copy_only: internalCopy }
-  // The router is an exact, release-controlled generation handoff. A missing
-  // router blocks cleanly; it never mints a draft identity or falls back to a topic.
+  // The in-repo router has a default Supabase function URL; deployments may
+  // override it only as an explicit release object.
   if (!routerUrl || !routerToken) return reply(200, receipt('blocked', 'generation_router_not_deployed'), origin)
   const reserved = await service.rpc('editorial_reserve_draft', { p_gate: 'clientops', p_client_id: clientId,
     p_brief_id: briefId, p_version: version, p_expected_hash: expectedHash,
@@ -96,7 +101,7 @@ Deno.serve(async request => {
     const result = await response.json()
     if (result?.artifact_id !== reserved.data.artifact_id || result?.brief_id !== briefId ||
         result?.version !== version || result?.content_hash !== expectedHash ||
-        !result?.model_response_id || !result?.qa_receipt || !result?.persistence_receipt) {
+        !result?.native_draft_id || !['claimed','complete'].includes(result?.dispatch_state)) {
       throw new Error('generator did not echo the exact brief identity')
     }
     return reply(200, reserved.data, origin)
