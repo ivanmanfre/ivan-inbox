@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Badge, Button, Card } from '../../../ds'
 import { Group } from '../../kit'
 import { supabase } from '../../../lib/supabase'
@@ -12,11 +13,14 @@ import { fetchResources, type Resource } from '../../../lib/styles'
 import './research.css'
 
 const clientId = (lane: ContentLane) => lane
-const editorialClient = supabase as unknown as EditorialClient
+const EditorialClientContext = createContext<EditorialClient>(supabase as unknown as EditorialClient)
+export function EditorialClientProvider({ client, children }: { client: EditorialClient; children: ReactNode }) { return <EditorialClientContext.Provider value={client}>{children}</EditorialClientContext.Provider> }
+const useEditorialClient = () => useContext(EditorialClientContext)
 const requestId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 const when = (value: string | number | null | undefined) => value && value !== 'unknown' ? String(value) : 'Unknown'
 
 export function SourceDetail({ source, close, lane, previewLinked, readOnly = false }: { source: SourceSnapshot; close: () => void; lane: ContentLane; previewLinked?: EditorialBrief[]; readOnly?: boolean }) {
+  const editorialClient = useEditorialClient()
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [receipt, setReceipt] = useState<string | null>(null)
@@ -48,6 +52,7 @@ export function SourceDetail({ source, close, lane, previewLinked, readOnly = fa
 }
 
 export function ResearchPanel({ lane }: { lane: ContentLane }) {
+  const editorialClient = useEditorialClient()
   const [page, setPage] = useState<SourcePage | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<SourceSnapshot | null>(null)
@@ -75,6 +80,7 @@ export function ResearchPanel({ lane }: { lane: ContentLane }) {
 }
 
 export function BriefCard({ brief, lane, reload, readOnly = false }: { brief: EditorialBrief; lane: ContentLane; reload: () => void; readOnly?: boolean }) {
+  const editorialClient = useEditorialClient()
   const [reason, setReason] = useState('')
   const [message, setMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -98,15 +104,18 @@ export function BriefCard({ brief, lane, reload, readOnly = false }: { brief: Ed
 }
 
 export function ThisWeekPanel({ lane }: { lane: ContentLane }) {
+  const editorialClient = useEditorialClient()
   const [page, setPage] = useState<{ items: EditorialBrief[]; total: number; state: string; coverage_gaps: string[]; next_cursor: string | null; batch_id: string | null } | null>(null)
   const [refresh, setRefresh] = useState<RefreshState | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [refreshBusy, setRefreshBusy] = useState(false)
+  const refreshGeneration = useRef(0)
   const reload = async () => { try { const p = await readBriefs(editorialClient, clientId(lane), null, null, 50); if (p.state === 'failed') { setMessage(p.message ?? 'Suggestions could not be read.'); return } setPage(p) } catch (e) { setMessage(e instanceof Error ? e.message : 'Suggestions could not be read.') } }
   const more = async () => { if (!page?.next_cursor) return; try { const p = await readBriefs(editorialClient, clientId(lane), page.batch_id ?? null, page.next_cursor, 50); if (p.state === 'failed') { setMessage(p.message ?? 'More suggestions could not be read.'); return } setPage({ ...p, items: [...page.items, ...p.items] }) } catch (e) { setMessage(e instanceof Error ? e.message : 'More suggestions could not be read.') } }
-  useEffect(() => { void reload(); setRefresh(null); setMessage(null) }, [lane])
+  useEffect(() => { refreshGeneration.current++; void reload(); setRefresh(null); setMessage(null); setRefreshBusy(false); return () => { refreshGeneration.current++ } }, [lane])
   const sorted = useMemo(() => (page?.items ?? []).slice().sort((a,b) => Number(b.strongest_three) - Number(a.strongest_three) || a.rank - b.rank), [page])
-  const startRefresh = async () => { try { const direction = await readEditorialDirection(editorialClient, clientId(lane)); if (!direction.active_version) { setMessage('Adopt client direction before refreshing suggestions. Private notes are not used.'); return } const r = await requestSuggestionRefresh(editorialClient, clientId(lane), direction.active_version, requestId('refresh')); setMessage(`Refresh ${r.status}. It only synthesizes suggestions from collected evidence.`); if (r.refresh_id) { const state = await readSuggestionRefresh(editorialClient, clientId(lane), r.refresh_id); setRefresh(state); if (state.status === 'complete' || state.status === 'partial') await reload() } } catch (e) { setMessage(e instanceof Error ? e.message : 'Refresh could not start.') } }
-  return <Group label="This week" tail={<Button size="sm" onClick={() => void startRefresh()}>Refresh suggestions</Button>} pad>
+  const startRefresh = async () => { if (refreshBusy) return; const generation = ++refreshGeneration.current; setRefreshBusy(true); try { const direction = await readEditorialDirection(editorialClient, clientId(lane)); if (!direction.active_version) { setMessage('Adopt client direction before refreshing suggestions. Private notes are not used.'); return } const r = await requestSuggestionRefresh(editorialClient, clientId(lane), direction.active_version, requestId('refresh')); setMessage(`Refresh ${r.status}. It only synthesizes suggestions from collected evidence.`); if (r.refresh_id) { for (let attempt=0; attempt<6 && generation===refreshGeneration.current; attempt++) { const state = await readSuggestionRefresh(editorialClient, clientId(lane), r.refresh_id); if (generation!==refreshGeneration.current) return; setRefresh(state); if (state.status === 'complete' || state.status === 'partial') { await reload(); break } if (state.status === 'failed' || state.status === 'empty') break; if (attempt<5) await new Promise(resolve => setTimeout(resolve, 1500)) } } } catch (e) { if (generation===refreshGeneration.current) setMessage(e instanceof Error ? e.message : 'Refresh could not start.') } finally { if (generation===refreshGeneration.current) setRefreshBusy(false) } }
+  return <Group label="This week" tail={<Button size="sm" disabled={refreshBusy} onClick={() => void startRefresh()}>{refreshBusy ? 'Checking refresh…' : 'Refresh suggestions'}</Button>} pad>
     <p className="a-ct-sub">Reviewable suggestions only. Selection never produces a draft; Create draft is the separate explicit action.</p>
     {refresh && <p className="a-ct-sub">Synthesis: {refresh.status}; last usable batch {refresh.last_usable_batch_id ?? 'none'}. Collection: {refresh.collection_health.new_evidence_awaiting_refresh} new inputs, {refresh.collection_health.stale_inputs} stale. {refresh.synthesis_health.last_failure_reason ?? ''}</p>}
     {message && <p className="a-ct-sub" role="status">{message}</p>}
@@ -115,12 +124,14 @@ export function ThisWeekPanel({ lane }: { lane: ContentLane }) {
 }
 
 export function ResultsPanel({ lane }: { lane: ContentLane }) {
+  const editorialClient = useEditorialClient()
   const [briefs, setBriefs] = useState<EditorialBrief[]>([]); const [lines, setLines] = useState<string[] | null>(null); const [error, setError] = useState<string | null>(null); const [tick, setTick] = useState(0)
   useEffect(() => { let live = true; setLines(null); setError(null); void (async () => { try { const first = await readBriefs(editorialClient, clientId(lane), null, null, 50); if (first.state === 'failed') throw new Error(first.message ?? 'Suggestions could not be read.'); const all = [...first.items]; let cursor = first.next_cursor; while (cursor) { const p = await readBriefs(editorialClient, clientId(lane), first.batch_id, cursor, 50); if (p.state === 'failed') throw new Error(p.message ?? 'More suggestions could not be read.'); all.push(...p.items); cursor = p.next_cursor } const outcomes = await Promise.all(all.map(b => readEditorialResults(editorialClient, clientId(lane), b.identity.brief_id, b.identity.version))); if (live) { setBriefs(all); setLines(outcomes.flatMap(o => { const result: string[] = []; if (o.post) result.push(`Post ${o.post.post_id} · impressions ${o.post.impressions}, reactions ${o.post.reactions}, comments ${o.post.comments}, shares ${o.post.shares} · observed ${when(o.post.captured_at)}. ${o.post.attribution_limitation}`); if (o.resource) result.push(`Resource ${o.resource.asset_slug} v${o.resource.asset_version} · views ${o.resource.views}, clicks ${o.resource.cta_clicks}, captures ${o.resource.captures}, active bookings ${o.resource.active_bookings} · direct ${o.resource.direct_bookings}, assisted ${o.resource.assisted_bookings} · observed ${when(o.resource.observation_end)}. ${o.resource.attribution_limitation}`); for (const unknown of o.unknowns) result.push(`Unknown · ${unknown}`); return result })) } } catch(e) { if(live) setError(e instanceof Error ? e.message : 'Results could not be read.') } })(); return () => { live=false } }, [lane,tick])
   return <Group label="Results" pad><p className="a-ct-sub">Post and resource observations are separate. Unknown is retained; this view does not infer sales.</p>{error ? <p role="alert" className="a-ct-sub">{error} <Button size="sm" onClick={() => setTick(x => x+1)}>Try again</Button></p> : lines === null ? <p className="a-ct-sub">Reading observed outcomes…</p> : lines.length ? <ul className="a-research-results">{lines.map((x,i)=><li key={i}>{x}</li>)}</ul> : <p className="a-ct-sub">No measured outcomes are available for these {briefs.length} suggestions. Missing telemetry is unknown.</p>}</Group>
 }
 
 export function ClientDirectionPanel({ lane }: { lane: ContentLane }) {
+  const editorialClient = useEditorialClient()
   const [read, setRead] = useState<{ active_version: string | null; status: string; direction: Record<string, unknown> | null; source: string | null; updated_at: string | null } | null>(null)
   const [direction, setDirection] = useState(''); const [source, setSource] = useState(''); const [reason, setReason] = useState(''); const [message, setMessage] = useState<string | null>(null)
   const load = () => void readEditorialDirection(editorialClient, clientId(lane)).then(setRead).catch(e => setMessage(e instanceof Error ? e.message : 'Direction could not be read.'))

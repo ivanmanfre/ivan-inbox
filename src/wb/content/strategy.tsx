@@ -283,7 +283,7 @@ export function StrategyView({ lane, setLane }: {
   const [view, setView] = useState(() => (
     import.meta.env.DEV && typeof window !== 'undefined'
       && evidenceFixtureBypassActive(import.meta.env.DEV, window.location.search)
-      ? 'evidence' : (typeof location !== 'undefined' && new URLSearchParams(location.hash.split('?')[1] ?? '').get('sources') === '1' ? 'research' : 'this-week')
+      ? 'evidence' : (typeof location !== 'undefined' && (() => { const q = new URLSearchParams(location.hash.split('?')[1] ?? ''); return q.get('sources') === '1' || q.get('section') === 'sources' })() ? 'research' : 'this-week')
   ))
   const [refreshTick, setRefreshTick] = useState(0)
   const [proposalDirty, setProposalDirty] = useState(false)
