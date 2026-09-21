@@ -39,6 +39,7 @@ create table if not exists public.editorial_native_draft_dispatches (
   unique(client_id,request_id)
 );
 
+alter table public.editorial_native_draft_dispatches enable row level security;
 revoke all on public.editorial_native_draft_dispatches from public,anon,authenticated;
 grant select,insert,update on public.editorial_native_draft_dispatches to service_role;
 

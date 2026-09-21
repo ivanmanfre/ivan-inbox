@@ -41,6 +41,8 @@ Deno.serve(async request => {
     client_id: clientId, brief_id: briefId, brief_version: version, expected_hash: expectedHash,
     artifact_role: role, artifact_id: null, idempotent_replay: false, state, blocked_reason: reason })
   if (!scoped.data?.found) return reply(200, receipt('conflict', 'no_such_version'), origin)
+  if (scoped.data.access === 'permission_unavailable' || !scoped.data.brief)
+    return reply(200, receipt('blocked', 'source_access_missing'), origin)
   const brief = scoped.data.brief
   if (brief.identity?.content_hash !== expectedHash) return reply(200, receipt('conflict', 'content_hash_mismatch'), origin)
   const internalCopy = role === 'internal_copy'
