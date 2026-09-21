@@ -315,3 +315,27 @@ describe('the request states the causal and commercial disclosure duty', () => {
     ]) expect(edge).toContain(boundary)
   })
 })
+
+// A 180k-character request plus a 26-33k reply exceeds the intact 200k hard guard, so the
+// in-request correction attempt cannot always be dispatched. The defects must therefore
+// survive into the next outer request instead of dying with the rejected batch.
+describe('a rejected batch carries its exact defects forward', () => {
+  const edge = readFileSync('supabase/functions/editorial-refresh/index.ts', 'utf8')
+
+  it('persists every attempt defect on the failed trace', () => {
+    expect(edge).toContain("defects: synthesisAttempts.map(a => a.validation_error).filter(Boolean)")
+  })
+
+  it('reads this client\'s own most recent failed trace and renders only defect text', () => {
+    expect(edge).toContain("from('editorial_synthesis_traces')")
+    expect(edge).toContain('const priorDefects =')
+    expect(edge).toContain('PRIOR ATTEMPT DEFECTS')
+    expect(edge).toMatch(/fix each one and keep every other proposal/)
+    // The prior reply itself is never re-sent: only validation defect strings travel.
+    expect(edge).not.toMatch(/priorTrace[\s\S]{0,400}raw_response/)
+  })
+
+  it('omits the block entirely when there is no prior defect', () => {
+    expect(edge).toContain("${priorDefects.length ? `")
+  })
+})
