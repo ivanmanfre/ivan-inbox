@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { runSynthesis, SynthesisAttemptsFailed } from './editorialSynthesisRun'
+import { parseReplyPayload, runSynthesis, SynthesisAttemptsFailed } from './editorialSynthesisRun'
 const messages = [{ role: 'user', content: 'Exact input' }]
 describe('bounded synthesis correction', () => {
   it('retains rejected reply and sends exact error before accepting whole corrected batch', async () => {
@@ -49,5 +49,41 @@ describe('bounded synthesis correction', () => {
     await expect(runSynthesis({messages:[{role:'user',content:'x'.repeat(200001)}],correctionContext:'',provider,
       validate:async value=>value})).rejects.toThrow('200000')
     expect(provider).not.toHaveBeenCalled()
+  })
+})
+
+// B1: the one real local reply wrapped valid JSON in a ```json fence and the parser threw
+// before the semantic validator ever ran. Stripping the fence repairs the parser only.
+describe('reply fence tolerance', () => {
+  const payload = { suggestions: [{ topic: 'x' }], acquisition_task: null }
+  const body = JSON.stringify(payload)
+
+  it('parses an unfenced payload unchanged', () => {
+    expect(parseReplyPayload(body)).toEqual(payload)
+  })
+
+  it('parses a ```json fenced payload and changes nothing inside it', () => {
+    expect(parseReplyPayload('```json\n' + body + '\n```')).toEqual(payload)
+    expect(parseReplyPayload('```\n' + body + '\n```')).toEqual(payload)
+    expect(parseReplyPayload('  ```json\r\n' + body + '\r\n```  ')).toEqual(payload)
+  })
+
+  it('still rejects a reply that is not JSON once the fence is removed', () => {
+    expect(() => parseReplyPayload('```json\nnot json at all\n```')).toThrow()
+    expect(() => parseReplyPayload('here is your answer')).toThrow()
+  })
+
+  it('never strips a fence that is only part of the body', () => {
+    const embedded = JSON.stringify({ suggestions: [{ topic: '```json inside a string```' }] })
+    expect(parseReplyPayload(embedded)).toEqual(JSON.parse(embedded))
+  })
+
+  it('lets a fenced reply reach the unchanged validator instead of failing at the parser', async () => {
+    const seen: unknown[] = []
+    const result = await runSynthesis({ messages: [{ role: 'user', content: 'go' }], correctionContext: '',
+      provider: async () => ({ raw: '```json\n' + body + '\n```', model: 'local-proxy' }),
+      validate: async parsed => { seen.push(parsed); return parsed } })
+    expect(seen).toEqual([payload])
+    expect(result.reply.raw.startsWith('```json')).toBe(true)
   })
 })

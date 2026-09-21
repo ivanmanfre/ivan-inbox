@@ -292,3 +292,26 @@ describe('the deployed refresh adapter actually supplies the semantic context', 
     expect(edge).toContain('population:')
   })
 })
+
+// The first real local ARCH reply lost all five proposals to undeclared causal and
+// commercial wording. No retained source carries a causality or commercial contract, so
+// the only correct repair is a descriptive rewrite; the prompt has to say that plainly.
+describe('the request states the causal and commercial disclosure duty', () => {
+  const edge = readFileSync('supabase/functions/editorial-refresh/index.ts', 'utf8')
+
+  it('names the declaration arrays, the contract field and the rewrite remedy', () => {
+    expect(edge).toMatch(/MUST be listed in causal_claims or commercial_claims/)
+    expect(edge).toMatch(/candidate_fields\.contract records supports_causality or supports_commercial_outcome/)
+    expect(edge).toMatch(/REWRITE the sentence descriptively/)
+    expect(edge).toMatch(/rejects the entire batch/)
+  })
+
+  it('keeps every boundary sentence the prompt already carried', () => {
+    for (const boundary of [
+      'The client voice/positioning text is not research evidence.',
+      'Own outcomes are observations, not causal proof.',
+      'No invented numbers, permission, deliverables or audience approval.',
+      'Never put private call names, titles or participants into public-facing topic',
+    ]) expect(edge).toContain(boundary)
+  })
+})

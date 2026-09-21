@@ -8,6 +8,17 @@ export class SynthesisAttemptsFailed extends Error {
   constructor(message: string, attempts: SynthesisAttempt[]) { super(message); this.attempts = attempts }
 }
 
+/** Strip ONE leading/trailing markdown code fence before parsing. This is a PARSER
+ * repair, not a judging gate: nothing about the payload is rewritten, no content rule is
+ * relaxed, and the unchanged validator still decides. The raw reply is retained verbatim
+ * by the caller either way. A fenced reply is an artifact of the local Claude proxy
+ * substitution used for replay; production runs OpenAI gpt-4.1-mini under JSON mode. */
+export function parseReplyPayload(raw: string): unknown {
+  const trimmed = raw.trim()
+  const fenced = /^```[a-zA-Z0-9_-]*\r?\n([\s\S]*?)\r?\n?```$/.exec(trimmed)
+  return JSON.parse(fenced ? fenced[1] : trimmed)
+}
+
 /** Two TOTAL provider attempts, including transport and content failures. No partial batch. */
 export async function runSynthesis<T>(input: {
   messages: SynthesisMessage[]
@@ -26,7 +37,7 @@ export async function runSynthesis<T>(input: {
     try {
       const reply = await input.provider(messages, attempt)
       trace.reply = reply
-      const parsed = JSON.parse(reply.raw)
+      const parsed = parseReplyPayload(reply.raw)
       const value = await input.validate(parsed)
       return { value, reply, attempts }
     } catch (error) {
