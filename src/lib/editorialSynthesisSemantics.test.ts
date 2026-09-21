@@ -381,3 +381,49 @@ describe('derived candidate rows are visible and named as unusable proof', () =>
     expect(edge).toMatch(/never be the cited source for any claim/)
   })
 })
+
+// Option A, shipped: the compact correction turn must carry the VALIDATOR'S INPUTS, not
+// only the error strings. buildSynthesisBriefs never reads the message thread or a
+// canonical prompt body, so dropping the canon from the correction turn cannot weaken any
+// check — but everything the validator does read has to be in there.
+describe('the compact correction turn carries every validator input', () => {
+  const edge = readFileSync('supabase/functions/editorial-refresh/index.ts', 'utf8')
+  const lib = readFileSync('src/lib/editorialSynthesis.ts', 'utf8')
+  const correction = edge.slice(edge.indexOf('const buildCorrection ='), edge.indexOf('const synthesized = await runSynthesis'))
+
+  it('the validator never reads the thread or a canonical body', () => {
+    for (const leak of ['canonicalPromptBodies', 'messages', 'relevantPrompts', 'content_prompts']) {
+      expect(lib).not.toContain(leak)
+    }
+  })
+
+  it('carries the output contract, schema, metric records, rejected JSON and exact errors', () => {
+    expect(correction).toContain('${OUTPUT_CONTRACT}')
+    expect(correction).toContain('YOUR REJECTED JSON (verbatim):\\n${raw}')
+    expect(correction).toContain('${directive}')
+    expect(correction).toContain('${FINAL_BOUNDARY}')
+    expect(edge).toMatch(/correctionContext: `Allowed measurement records:/)
+  })
+
+  it('carries the request time, direction, decisions, history roles and assets', () => {
+    for (const input of ['${requestedAt}', '${directionText}', 'JSON.stringify(decisions)',
+      'JSON.stringify(historyForPrompt.rows)', 'JSON.stringify(assets)']) {
+      expect(correction).toContain(input)
+    }
+  })
+
+  it('supplies only the sources the rejected proposals actually cite, and never drops to none', () => {
+    expect(correction).toContain('SOURCES CITED BY YOUR REJECTED PROPOSALS')
+    expect(correction).toContain('cited.size ? selected.filter(x => cited.has(String(x.source_id))) : selected')
+    expect(correction).toContain('passage: x.passage')
+    expect(correction).toContain('candidate_fields: x.candidate_fields')
+  })
+
+  it('drops the canonical bodies from the correction turn only, and says they still bind', () => {
+    expect(correction).not.toContain('canonicalPromptBodies')
+    expect(correction).toContain('still bind and are unchanged, they are simply not repeated here')
+    // The initial request keeps them verbatim.
+    expect(edge).toContain('CANONICAL AUTHOR VOICE AND LANGUAGE RULES')
+    expect(edge).toContain('${canonicalPromptBodies}')
+  })
+})

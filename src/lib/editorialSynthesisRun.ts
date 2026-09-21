@@ -19,12 +19,19 @@ export function parseReplyPayload(raw: string): unknown {
   return JSON.parse(fenced ? fenced[1] : trimmed)
 }
 
+/** The exact correction directive. One definition, so a compact correction turn and the
+ * full-thread fallback can never drift apart. */
+export function correctionDirective(validationError: string, correctionContext: string) {
+  return `The complete batch was rejected: ${validationError}. Return the entire corrected JSON suggestions array; do not drop failed proposals or add unsupported claims. Preserve every required JSON type. Machine metric names must equal an exact allowed key/metric_id with no parenthetical label. Retain exact values, formulas, capture dates, ownership and uncertainty. Remove unsupported audience, cadence, personal behavior and causal claims. Review every proposal, not only the first failing field. Impressions are not unique people; zero recorded public comments is not zero DMs or all feedback. A weighted likes/reposts score is a proxy, not measured reach; keep its definition where citing the lift. Preserve not-just qualifications rather than turning them into exclusions. Where two proposals use identical evidence, label them mutually exclusive alternative treatments, not separate-week variety. Cross-account metrics are not comparable; subjective risk/safety labels are not measured facts. ${correctionContext}`
+}
+
 /** Two TOTAL provider attempts, including transport and content failures. No partial batch. */
 export async function runSynthesis<T>(input: {
   messages: SynthesisMessage[]
   correctionContext: string
   provider: (messages: SynthesisMessage[], attempt: number) => Promise<SynthesisReply>
   validate: (parsed: unknown) => Promise<T>
+  buildCorrection?: (failed: { raw: string; validationError: string; directive: string }) => SynthesisMessage[]
 }): Promise<{ value: T; reply: SynthesisReply; attempts: SynthesisAttempt[] }> {
   const attempts: SynthesisAttempt[] = []
   let messages = input.messages
@@ -45,10 +52,17 @@ export async function runSynthesis<T>(input: {
       if (attempt === 2) throw new SynthesisAttemptsFailed(trace.validation_error, attempts)
       // A transport failure retries the same input; invalid content receives the
       // actual validation error. Never repair or omit a proposal in application code.
-      messages = trace.reply ? [...input.messages,
-        { role: 'assistant', content: trace.reply.raw },
-        { role: 'user', content: `The complete batch was rejected: ${trace.validation_error}. Return the entire corrected JSON suggestions array; do not drop failed proposals or add unsupported claims. Preserve every required JSON type. Machine metric names must equal an exact allowed key/metric_id with no parenthetical label. Retain exact values, formulas, capture dates, ownership and uncertainty. Remove unsupported audience, cadence, personal behavior and causal claims. Review every proposal, not only the first failing field. Impressions are not unique people; zero recorded public comments is not zero DMs or all feedback. A weighted likes/reposts score is a proxy, not measured reach; keep its definition where citing the lift. Preserve not-just qualifications rather than turning them into exclusions. Where two proposals use identical evidence, label them mutually exclusive alternative treatments, not separate-week variety. Cross-account metrics are not comparable; subjective risk/safety labels are not measured facts. ${input.correctionContext}` },
-      ] : input.messages
+      const directive = correctionDirective(trace.validation_error, input.correctionContext)
+      messages = trace.reply
+        ? (input.buildCorrection
+          // A compact correction turn carries the validator's inputs without the
+          // ~147k of canonical bodies, which the validator never reads. The guard at the
+          // top of this loop still decides whether attempt 2 may be dispatched at all.
+          ? input.buildCorrection({ raw: trace.reply.raw, validationError: trace.validation_error, directive })
+          : [...input.messages,
+            { role: 'assistant', content: trace.reply.raw },
+            { role: 'user', content: directive }])
+        : input.messages
     }
   }
   throw new SynthesisAttemptsFailed('No synthesis attempt completed', attempts)

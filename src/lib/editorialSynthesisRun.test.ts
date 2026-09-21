@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { parseReplyPayload, runSynthesis, SynthesisAttemptsFailed } from './editorialSynthesisRun'
+import { correctionDirective, parseReplyPayload, runSynthesis, SynthesisAttemptsFailed } from './editorialSynthesisRun'
 const messages = [{ role: 'user', content: 'Exact input' }]
 describe('bounded synthesis correction', () => {
   it('retains rejected reply and sends exact error before accepting whole corrected batch', async () => {
@@ -85,5 +85,53 @@ describe('reply fence tolerance', () => {
       validate: async parsed => { seen.push(parsed); return parsed } })
     expect(seen).toEqual([payload])
     expect(result.reply.raw.startsWith('```json')).toBe(true)
+  })
+})
+
+// Measured in Run5: every one of the six content attempts died here. A ~180k request plus
+// a 26-39k reply is 206-224k once the reply and the directive are appended, so attempt 2
+// was consumed without ever reaching the provider. The guard is right; the message list
+// was wrong. A compact correction turn drops only the canonical bodies, which the
+// validator never reads.
+describe('the correction turn stays dispatchable under the 200k guard', () => {
+  const canon = 'C'.repeat(147_000)
+  const initial = [{ role: 'system', content: 'json only' },
+    { role: 'user', content: `CONTRACT\n${canon}\nSOURCES: ${'S'.repeat(30_000)}` }]
+  const reply = JSON.stringify({ suggestions: [{ topic: 'x', filler: 'R'.repeat(40_000) }] })
+  const compact = ({ raw, directive }: { raw: string; directive: string }) =>
+    [{ role: 'user', content: `CONTRACT\nCITED SOURCES: ${'S'.repeat(4_000)}\n${raw}\n${directive}` }]
+
+  it('a 40k reply on the full thread exceeds the guard and is never dispatched', async () => {
+    const seen: number[] = []
+    await expect(runSynthesis({ messages: initial, correctionContext: 'allowed metrics',
+      provider: async messages => { seen.push(messages.length); return { raw: reply, model: 'm' } },
+      validate: async () => { throw new Error('rejected once') } })).rejects.toThrow(/exceeds 200000/)
+    expect(seen).toEqual([2])
+  })
+
+  it('the same 40k reply on a compact correction turn stays under the guard and IS dispatched', async () => {
+    const sizes: number[] = []
+    await expect(runSynthesis({ messages: initial, correctionContext: 'allowed metrics',
+      buildCorrection: compact,
+      provider: async messages => { sizes.push(JSON.stringify(messages).length); return { raw: reply, model: 'm' } },
+      validate: async () => { throw new Error('rejected twice') } })).rejects.toThrow(/rejected twice/)
+    expect(sizes).toHaveLength(2)
+    expect(sizes[0]).toBeGreaterThan(170_000)
+    for (const size of sizes) expect(size).toBeLessThanOrEqual(200_000)
+  })
+
+  it('still fails closed when even the compact turn would exceed the guard', async () => {
+    const oversized = () => [{ role: 'user', content: 'x'.repeat(200_001) }]
+    await expect(runSynthesis({ messages: initial, correctionContext: '',
+      buildCorrection: oversized,
+      provider: async () => ({ raw: reply, model: 'm' }),
+      validate: async () => { throw new Error('rejected') } })).rejects.toThrow(/exceeds 200000/)
+  })
+
+  it('carries the identical directive on both the compact and the full-thread path', () => {
+    const directive = correctionDirective('boom', 'ALLOWED: m')
+    expect(directive).toContain('The complete batch was rejected: boom.')
+    expect(directive).toContain('Machine metric names must equal an exact allowed key/metric_id')
+    expect(directive).toContain('ALLOWED: m')
   })
 })
