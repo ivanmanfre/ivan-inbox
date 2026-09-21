@@ -20,7 +20,7 @@ async function allRows(table: string, column: string, value: string) {
   let total: number | null = null
   for (let offset = 0; offset <= 5000; offset += 200) {
     const { data, error, count } = await service.from(table).select('*', { count: 'exact' })
-      .eq(column, value).order('created_at').range(offset, offset + 199)
+      .eq(column, value).order('created_at').order('id').range(offset, offset + 199)
     if (error || count === null) throw new Error(`${table} read failed: ${error?.message ?? 'no exact count'}`)
     total = count
     out.push(...(data ?? []))
@@ -82,10 +82,18 @@ Deno.serve(async request => {
       } else if (asset.current_data_version !== expectedVersion || !asset.slug) {
         unknowns.push('Asset data version or slug differs from the brief; events cannot be attributed to this version.')
       } else {
+        const observedThrough = new Date().toISOString()
         const events = await allRows('lm_events', 'lm_slug', asset.slug)
         const attributions = await allRows('lm_attribution', 'lm_slug', asset.slug)
-        resource = normalizeResourceOutcomes({ clientId: clientId as EditorialClientId, slug: asset.slug,
-          dataVersion: expectedVersion, events: events as never, attributions: attributions as never })
+        resource = normalizeResourceOutcomes({ clientId: clientId as EditorialClientId,
+          assetClientId: (asset.client_id ?? clientId) as EditorialClientId, assetId: asset.id, slug: asset.slug,
+          dataVersion: expectedVersion, promotionPublicationId: brief.identity.kind === 'promotion' ? publicationId : null,
+          observationWindow: { start: null, end: observedThrough,
+            definition: 'All retained rows for the exact asset slug through this read time; historical start is unknown.',
+            readComplete: true }, events: events as never, attributions: attributions as never })
+        if (brief.identity.kind === 'promotion' && resource.promotion_attribution.state === 'unknown') {
+          unknowns.push('Resource totals are asset-version observations; no exact telemetry tag attributes them to this promotion.')
+        }
       }
     } else if (brief.identity.kind === 'promotion' || brief.identity.kind === 'resource') {
       unknowns.push('No exact asset ID and data version are linked to this brief.')
