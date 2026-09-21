@@ -58,6 +58,9 @@ describe('native draft bridge', { timeout: 120_000 }, () => {
     await expect(db.query(`select public.editorial_begin_native_draft('clientops','ivan',
       $1,'brief-ivan-01',2,$2,'bridge-request','A guarded title','text','A guarded topic')`,[artifact,'0'.repeat(64)]))
       .rejects.toThrow(/brief version\/hash mismatch/)
+    await expect(db.query(`select public.editorial_begin_native_draft('clientops','ivan',
+      $1,'brief-ivan-01',2,$2,'bridge-request','A guarded title','video','A guarded topic')`,args))
+      .rejects.toThrow(/native format differs from reserved brief/)
     const after = await db.query<{ n: number }>(`select count(*)::int n from public.carousel_drafts`)
     expect(after.rows[0].n).toBe(1)
     await db.close()
