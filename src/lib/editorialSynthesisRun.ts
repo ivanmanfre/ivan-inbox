@@ -4,7 +4,8 @@ export type SynthesisAttempt = {
   attempt: number; messages: SynthesisMessage[]; reply: SynthesisReply | null; validation_error: string | null
 }
 export class SynthesisAttemptsFailed extends Error {
-  constructor(message: string, readonly attempts: SynthesisAttempt[]) { super(message) }
+  readonly attempts: SynthesisAttempt[]
+  constructor(message: string, attempts: SynthesisAttempt[]) { super(message); this.attempts = attempts }
 }
 
 /** Two TOTAL provider attempts, including transport and content failures. No partial batch. */
