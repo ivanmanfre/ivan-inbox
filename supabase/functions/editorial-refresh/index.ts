@@ -197,9 +197,9 @@ Deno.serve(async request => {
     const { selected, coverage } = prepared
     exactInput = prepared.messages
     const gaps = [...bridgeGaps,
-      ...(selection.omitted ? [`${selection.omitted} source inputs omitted by ${selection.method}; full snapshots remain in the manifest`] : []),
+      ...(selection.omitted ? [`${selection.omitted} usable sources were outside this refresh sample; their originals remain available in Research`] : []),
       ...(refs.length > usable.length ? [`${refs.length - usable.length} source inputs were inaccessible or lacked retained passages`] : []),
-      `Model context coverage: ${JSON.stringify(coverage)}`,
+      `This refresh used ${coverage.sources_supplied} of ${coverage.sources_considered} candidate sources and ${coverage.outcomes_supplied} of ${coverage.outcomes_frozen} recorded outcomes. ${coverage.excerpted_sources} sources were shortened to excerpts; full originals remain in Research. Missing outcomes were not treated as zero.`,
     ]
     if (!selected.length) {
       await rpc('editorial_finish_refresh', { p_gate: 'clientops', p_client_id: clientId, p_refresh_id: refreshId,
