@@ -67,18 +67,19 @@ describe('post and resource outcomes', () => {
       .toThrow('client-owned asset')
   })
 
-  it('keeps several promotions for one asset separate and never turns an unlinked promotion into zero', () => {
+  it('keeps several promotions for one asset separate and never treats current UTM metadata as a publication identity', () => {
     const tagged = event({ id: 'tagged', event_type: 'cta_click', utm_content: 'urn:li:post:A' })
     const booking = attribution({ utm_content: 'urn:li:post:A' })
-    const exact = normalizeResourceOutcomes({ ...base, promotionPublicationId: 'urn:li:post:A',
+    const requested = normalizeResourceOutcomes({ ...base, promotionPublicationId: 'urn:li:post:A',
       events: [tagged], attributions: [booking] })
     const other = normalizeResourceOutcomes({ ...base, promotionPublicationId: 'urn:li:post:B',
       events: [tagged], attributions: [booking] })
-    expect(exact.promotion_attribution).toMatchObject({ state: 'exact', publication_id: 'urn:li:post:A',
-      eligible_events: 1, counted_bookings: 1, resource_credit: 0, promotion_credit: 1 })
+    expect(requested.promotion_attribution).toMatchObject({ state: 'unknown', publication_id: 'urn:li:post:A',
+      eligible_events: 'unknown', counted_bookings: 'unknown', resource_credit: 1, promotion_credit: 0 })
     expect(other.promotion_attribution).toMatchObject({ state: 'unknown', publication_id: 'urn:li:post:B',
       eligible_events: 'unknown', counted_bookings: 'unknown', resource_credit: 1, promotion_credit: 0 })
-    expect(exact.views).toBe(other.views)
+    expect(requested.promotion_attribution.limitation).toContain('No supported publication tag field')
+    expect(requested.views).toBe(other.views)
   })
 
   it('keeps a booking unknown when its session crossed asset data versions', () => {
@@ -90,15 +91,17 @@ describe('post and resource outcomes', () => {
     expect(result.direct_bookings).toBe('unknown')
   })
 
-  it('does not credit a booking from a promotion tag observed after the booking', () => {
-    const result = normalizeResourceOutcomes({ ...base, promotionPublicationId: 'post-a', events: [
-      event({ id: 'plain', created_at: '2026-09-20T10:00:00Z' }),
-      event({ id: 'future-tag', utm_content: 'post-a', created_at: '2026-09-20T12:00:00Z' }),
-    ], attributions: [attribution()] })
-    expect(result.promotion_attribution).toMatchObject({ state: 'exact', eligible_events: 1, counted_bookings: 0 })
+  it('does not infer publication credit from prior or future values in unsupported UTM fields', () => {
+    for (const created_at of ['2026-09-20T09:00:00Z', '2026-09-20T12:00:00Z']) {
+      const result = normalizeResourceOutcomes({ ...base, promotionPublicationId: 'post-a', events: [
+        event({ id: `tag-${created_at}`, utm_content: 'post-a', created_at }),
+      ], attributions: [attribution({ utm_campaign: 'post-a' })] })
+      expect(result.promotion_attribution).toMatchObject({ state: 'unknown', eligible_events: 'unknown',
+        counted_bookings: 'unknown', resource_credit: 1, promotion_credit: 0 })
+    }
   })
 
-  it('refuses to credit one booking to competing publication tags on the same field', () => {
+  it('refuses publication credit across arbitrary alternate UTM fields', () => {
     const events = [
       event({ id: 'post-a', utm_content: 'post-a', created_at: '2026-09-20T09:00:00Z' }),
       event({ id: 'post-b', utm_content: 'post-b', created_at: '2026-09-20T10:00:00Z' }),
@@ -108,7 +111,7 @@ describe('post and resource outcomes', () => {
         events, attributions: [attribution()] })
       expect(result.promotion_attribution).toMatchObject({ state: 'unknown', counted_bookings: 'unknown',
         resource_credit: 1, promotion_credit: 0 })
-      expect(result.promotion_attribution.limitation).toContain('competing')
+      expect(result.promotion_attribution.limitation).toContain('No supported publication tag field')
     }
   })
 })

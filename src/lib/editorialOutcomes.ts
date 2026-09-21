@@ -70,16 +70,9 @@ const testSource = /^(test|operator|internal|qa|selftest)([-_:]|$)/i
 const valid = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n >= 0
 const inWindow = (value: string | null | undefined, window: OutcomeWindow) => Boolean(value) &&
   (!window.start || String(value) >= window.start) && String(value) <= window.end
-const promotionFields = ['src', 'utm_source', 'utm_campaign', 'utm_content'] as const
-type PromotionTags = { [K in typeof promotionFields[number]]?: string | null }
-const promotionTagged = (row: PromotionTags, publicationId: string) => promotionFields
-  .some(field => typeof row[field] === 'string' && row[field]!.trim() === publicationId)
-const matchingPromotionFields = (row: PromotionTags, publicationId: string) => promotionFields
-  .filter(field => typeof row[field] === 'string' && row[field]!.trim() === publicationId)
-
 /** Resource observations are asset-version scoped. Promotion attribution is a
- * separate exact-tag view; an untagged promotion stays unknown rather than
- * inheriting the asset's totals or a manufactured zero. */
+ * separate view. Current telemetry has no canonical publication-tag field, so
+ * UTM/source metadata cannot award promotion credit. */
 export function normalizeResourceOutcomes(input: {
   clientId: EditorialClientId; assetClientId: EditorialClientId; assetId: string
   slug: string; dataVersion: number; observationWindow: OutcomeWindow
@@ -138,7 +131,6 @@ export function normalizeResourceOutcomes(input: {
     if (!prior || String(a.updated_at ?? '') > String(prior.updated_at ?? '')) bookings.set(a.calendly_event_uri, a)
   }
   let direct = 0, assisted = 0, routeUnknown = 0, linkUnknown = 0, active = 0
-  const eligibleBookings: ResourceAttribution[] = []
   for (const a of bookings.values()) {
     if (/cancel|test|spam/i.test(a.status) || testSource.test(a.source ?? '')) { excluded.canceled++; continue }
     const versions = a.session_id ? sessionVersions.get(a.session_id) : null
@@ -147,7 +139,6 @@ export function normalizeResourceOutcomes(input: {
       linkUnknown++; continue
     }
     active++
-    eligibleBookings.push(a)
     const source = (a.source ?? '').toLowerCase()
     if (source === 'direct') direct++
     else if (source === 'assisted') assisted++
@@ -163,36 +154,9 @@ export function normalizeResourceOutcomes(input: {
       counted_bookings: 'unknown', resource_credit: 1, promotion_credit: 0,
       limitation: 'No exact promotion publication identity was supplied.' }
   } else {
-    const taggedEvents = eligibleEvents.filter(row => promotionTagged(row, promotionId))
-    const taggedBookings: ResourceAttribution[] = []
-    let competingBookings = 0
-    for (const booking of eligibleBookings) {
-      const priorEvents = eligibleEvents.filter(event => event.session_id === booking.session_id &&
-        event.created_at <= booking.booked_at!)
-      const candidates: PromotionTags[] = [booking, ...priorEvents]
-      const matchedFields = new Set(candidates.flatMap(row => matchingPromotionFields(row, promotionId)))
-      if (!matchedFields.size) continue
-      const competing = [...matchedFields].some(field => candidates.some(row => {
-        const value = row[field]
-        return typeof value === 'string' && value.trim() && value.trim() !== promotionId
-      }))
-      if (competing) competingBookings++
-      else taggedBookings.push(booking)
-    }
-    const exact = complete && !competingBookings && (taggedEvents.length > 0 || taggedBookings.length > 0)
-    promotion = competingBookings
-      ? { publication_id: promotionId, state: 'unknown', eligible_events: 'unknown', counted_bookings: 'unknown',
-          resource_credit: 1, promotion_credit: 0,
-          limitation: `${competingBookings} booking(s) have competing publication tags on the same attribution field; no promotion receives credit.` }
-      : exact
-      ? { publication_id: promotionId, state: 'exact', eligible_events: taggedEvents.length,
-          counted_bookings: taggedBookings.length, resource_credit: 0, promotion_credit: 1,
-          limitation: 'Only exact publication tags present no later than the booking, without competing tags on that field, receive booking credit.' }
-      : { publication_id: promotionId, state: 'unknown', eligible_events: 'unknown', counted_bookings: 'unknown',
-          resource_credit: 1, promotion_credit: 0,
-          limitation: complete
-            ? 'No exact publication tag links retained resource events to this promotion; promotion-specific outcomes are unknown.'
-            : 'The retained event read is incomplete; promotion-specific outcomes are unknown.' }
+    promotion = { publication_id: promotionId, state: 'unknown', eligible_events: 'unknown',
+      counted_bookings: 'unknown', resource_credit: 1, promotion_credit: 0,
+      limitation: 'No supported publication tag field is wired through the retained event and booking producers; source and UTM metadata are not publication identities.' }
   }
   const attributionLimitation = !complete
     ? 'The retained event read is incomplete; zero and conversion totals are unknown.'
