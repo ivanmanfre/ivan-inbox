@@ -380,7 +380,7 @@ export type BriefEditorialDirection = {
   topic: string
   angle: string
   proposed_hook: string
-  format: 'text' | 'carousel' | 'video' | 'lm_promo' | 'resource'
+  format: 'text' | 'single_image' | 'carousel' | 'video' | 'lm_promo' | 'resource'
   tone: string
   structural_beats: string[]
   why_now: string

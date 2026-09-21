@@ -1,3 +1,4 @@
+import { planNativeRoute } from '../../../src/lib/editorialNativeRoute.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const url = Deno.env.get('SUPABASE_URL') ?? ''
@@ -8,9 +9,7 @@ const service = createClient(url, serviceKey, { auth: { persistSession: false } 
 const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), {
   status, headers: { 'Content-Type': 'application/json' },
 })
-const postRoutes: Record<string,string> = {
-  ivan: 'post-gen-v2', risedtc: 'rise-dtc-post-gen-v2-max', arch: 'arch-post-gen-v2',
-}
+
 
 Deno.serve(async request => {
   if (request.method !== 'POST') return reply(405,{error:'method_not_allowed'})
@@ -28,7 +27,7 @@ Deno.serve(async request => {
   const version = body.version as number
   const hash = body.content_hash as string
   const requestId = body.request_id as string
-  if (!postRoutes[clientId] || !artifactId || !briefId || !Number.isInteger(version) ||
+  if (!['ivan','risedtc','arch'].includes(clientId) || !artifactId || !briefId || !Number.isInteger(version) ||
       !/^[0-9a-f]{64}$/.test(hash) || !requestId || envelope?.schema !== 'editorial-generation-v1' ||
       envelope.client_id !== clientId || envelope.brief_id !== briefId ||
       envelope.brief_version !== version || envelope.brief_hash !== hash ||
@@ -39,17 +38,9 @@ Deno.serve(async request => {
     return reply(400,{error:'exact_editorial_envelope_required'})
   }
   const format = direction?.format
-  // Native text/carousel, video, and editorial-only LM branches each stop at
-  // an internal draft boundary. No release or scheduling phase is dispatched.
-  if (!['text','carousel','video','lm_promo','resource'].includes(String(format)))
-    return reply(409,{error:'native_format_bridge_not_staged',format})
-  if (format === 'carousel' && envelope.copy_only !== true) return reply(409,{error:'carousel_copy_only_hold_required'})
-  if (format === 'lm_promo' && (envelope.copy_only !== true ||
-      (brief?.resource as Record<string,unknown> | undefined)?.readiness !== 'ready'))
-    return reply(409,{error:'promotion_copy_hold_or_resource_missing'})
-  if (format === 'resource' && ((brief?.resource as Record<string,unknown> | undefined)?.readiness !== 'ready' ||
-      !['guide','checklist','template','calculator','skill_pack'].includes(String((brief?.resource as Record<string,unknown> | undefined)?.artifact_role))))
-    return reply(409,{error:'resource_format_or_readiness_missing'})
+  const plan = planNativeRoute(clientId,String(format),envelope.copy_only === true,
+    (brief?.resource as {readiness?:string;artifact_role?:string} | undefined) ?? null)
+  if (!plan) return reply(409,{error:'native_format_bridge_not_staged',format})
   const title = String(direction?.proposed_hook || direction?.topic || '').slice(0,240)
   const topic = String(direction?.topic || '')
   const started = await service.rpc('editorial_begin_native_draft', {
@@ -65,16 +56,13 @@ Deno.serve(async request => {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 30_000)
   try {
-    const path = format === 'video' ? 'video-script' :
-      (format === 'lm_promo' || format === 'resource') ? 'lm-gen-v2' : postRoutes[clientId]
+    const path = plan.path
     const response = await fetch(`${n8nHost}/webhook/${path}`, {
       method: 'POST', signal: controller.signal,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ draft_id:native.native_draft_id, artifact_id:artifactId,
         videoIdeaId:native.native_draft_id, title, topic,
-        phase: format === 'lm_promo' ? 'editorial_promo' : format === 'resource' ? 'editorial_resource' : undefined,
-        format: format === 'lm_promo' ? 'promo' : (brief?.resource as Record<string,unknown> | undefined)?.artifact_role,
-        post_format: format === 'carousel' ? 'carousel' : 'text',
+        phase: plan.phase, format: plan.nativeFormat, post_format: plan.postFormat,
         editorial_generation: envelope }),
     })
     if (!response.ok) throw new Error(`native webhook HTTP ${response.status}`)

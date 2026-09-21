@@ -28,7 +28,7 @@ export class GenerationBlocked extends Error {
 }
 
 const formatRoute: Record<EditorialBrief['editorial_direction']['format'], GenerationRoute> = {
-  text: 'text', carousel: 'carousel', video: 'video_script',
+  text: 'text', single_image: 'text', carousel: 'carousel', video: 'video_script',
   resource: 'resource', lm_promo: 'promotion',
 }
 
@@ -75,9 +75,11 @@ export function buildGenerationEnvelope(input: {
     const allowed = carouselCopy || heldPromoCopy
     if (!allowed) throw new GenerationBlocked('essential_material_missing')
   }
-  const copyOnly = brief.editorial_direction.format === 'carousel' ||
+  const copyOnly = brief.editorial_direction.format === 'carousel' || brief.editorial_direction.format === 'single_image' ||
     (brief.editorial_direction.format === 'lm_promo' && brief.missing_material.length > 0)
-  const productionHold = brief.editorial_direction.format === 'carousel' ?
+  const productionHold = brief.editorial_direction.format === 'single_image' ?
+    ['image_asset_pending', ...brief.production.required_materials] :
+    brief.editorial_direction.format === 'carousel' ?
     ['rendered_deck_unverified', ...brief.missing_material] :
     brief.editorial_direction.format === 'video' ? ['recording_pending'] :
     brief.editorial_direction.format === 'lm_promo' ? [...brief.missing_material] : []

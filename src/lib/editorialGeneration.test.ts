@@ -42,6 +42,16 @@ describe('editorial generation boundary', () => {
       .toThrow(new GenerationBlocked('essential_material_missing'))
   })
 
+  it('routes a single-image brief to text copy while holding the owned image', () => {
+    const b = brief()
+    const image = make({ editorial_direction: { ...b.editorial_direction, format: 'single_image' },
+      production: { ...b.production, required_materials: ['owned image proof pending'] } })
+    expect(image.route).toBe('text')
+    expect(image.copy_only).toBe(true)
+    expect(image.production_hold).toEqual(['image_asset_pending', 'owned image proof pending'])
+    expect(image.brief.editorial_direction.format).toBe('single_image')
+  })
+
   it('keeps an accessible private call internal while preserving public-use hold', () => {
     const result = make({ evidence: [evidence({ source_kind: 'call', source_client_scope: 'ivan',
       permission_state: 'unknown', source_ref: { excerpt_pointer: 'private-call:excerpt-1' } })] })

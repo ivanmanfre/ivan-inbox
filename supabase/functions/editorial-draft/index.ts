@@ -48,7 +48,7 @@ Deno.serve(async request => {
     return reply(200, receipt('blocked', 'essential_material_missing'), origin)
   }
   const format = brief.editorial_direction?.format
-  if (internalCopy && !['carousel', 'lm_promo', 'video'].includes(format)) {
+  if (internalCopy && !['carousel', 'single_image', 'lm_promo', 'video'].includes(format)) {
     return reply(200, receipt('blocked', 'internal_copy_format_not_supported'), origin)
   }
   const sourceIds = (brief.evidence ?? []).filter((e: Record<string, unknown>) =>
@@ -73,13 +73,14 @@ Deno.serve(async request => {
     holds.push('call_public_use_permission_unresolved')
   }
   if (format === 'carousel') holds.unshift('rendered_deck_unverified')
+  if (format === 'single_image') holds.unshift('image_asset_pending', ...(brief.production?.required_materials ?? []))
   if (format === 'video') holds.unshift('recording_pending')
   const envelope = { schema: 'editorial-generation-v1', client_id: clientId,
     brief_id: briefId, brief_version: version, brief_hash: expectedHash,
     artifact_role: role, request_id: requestId, source_cutoff: brief.identity.source_cutoff,
     direction_version: brief.purpose.direction_version, source_ids: sourceIds,
     permitted_claim_ids: claimIds, brief, prior_generation: body.prior_generation ?? null,
-    production_hold: holds, copy_only: internalCopy }
+    production_hold: holds, copy_only: internalCopy || format === 'single_image' }
   // The in-repo router has a default Supabase function URL; deployments may
   // override it only as an explicit release object.
   if (!routerUrl || !routerToken) return reply(200, receipt('blocked', 'generation_router_not_deployed'), origin)

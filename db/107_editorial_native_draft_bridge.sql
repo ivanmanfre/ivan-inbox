@@ -65,12 +65,12 @@ begin
   if v_brief.payload#>>'{editorial_direction,format}' is distinct from p_format then
     raise exception 'native format differs from reserved brief'; end if;
   if v_link.artifact_role not in(p_format,'internal_copy',
-       case when p_format in('text','carousel') then 'post'
+       case when p_format in('text','carousel','single_image') then 'post'
          when p_format='video' then 'video_script'
          when p_format='lm_promo' then 'promotion'
          else 'resource' end) then
     raise exception 'native format differs from reserved artifact role'; end if;
-  if p_format not in('text','carousel','video','resource','lm_promo') then
+  if p_format not in('text','single_image','carousel','video','resource','lm_promo') then
     raise exception 'unsupported native draft format'; end if;
   if nullif(btrim(p_title),'') is null or nullif(btrim(p_topic),'') is null then
     raise exception 'native draft needs title and topic'; end if;
@@ -89,7 +89,7 @@ begin
     substr(v_hex,17,4)||'-'||substr(v_hex,21,12))::uuid;
   v_detail:=jsonb_build_object('editorial_artifact_id',p_artifact_id,
     'brief_id',p_brief_id,'brief_version',p_version,'brief_hash',p_expected_hash,
-    'request_id',p_request_id,'internal_only',true);
+    'request_id',p_request_id,'source_format',p_format,'internal_only',true);
   if p_format='video' then
     insert into public.video_ideas(id,client_id,title,description,status,
         editorial_brief_artifact_id)

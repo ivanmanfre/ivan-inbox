@@ -107,7 +107,9 @@ export function BriefCard({ brief, lane, reload, readOnly = false }: { brief: Ed
   const [scope, setScope] = useState<'candidate' | 'angle' | 'format'>('candidate')
   const [reviewed, setReviewed] = useState<{ version: number; hash: string } | null>(() =>
     brief.review?.verdict === 'pass' ? { version: brief.identity.version, hash: brief.identity.content_hash } : null)
-  const productionHolds = [...brief.missing_material, ...brief.production.critical_constraints]
+  const productionHolds = [...brief.missing_material,
+    ...(brief.editorial_direction.format === 'single_image' ? brief.production.required_materials : []),
+    ...brief.production.critical_constraints]
   let internalCopyEligible = false
   if (brief.readiness === 'needs_material' && brief.missing_material.length > 0) {
     try {

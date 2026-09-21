@@ -63,6 +63,23 @@ describe('native draft bridge', { timeout: 120_000 }, () => {
     await expect(db.query(`select public.editorial_begin_native_draft('clientops','ivan',
       $1,'brief-ivan-01',2,$2,'bridge-request','A guarded title','video','A guarded topic')`,args))
       .rejects.toThrow(/native format differs from reserved brief/)
+    const imageBrief = seed.plan[3].records.find((x: any) => x.client_id === 'ivan' &&
+      x.brief_id === 'brief-ivan-02' && x.version === 1)
+    expect(imageBrief.payload.editorial_direction.format).toBe('single_image')
+    const imageReserve = await db.query<{ result: any }>(`select public.editorial_reserve_draft('clientops','ivan',
+      'brief-ivan-02',1,$1,'image-copy-request','post') result`,[imageBrief.content_hash])
+    expect(imageReserve.rows[0].result.state).toBe('accepted')
+    const imageArtifact = imageReserve.rows[0].result.artifact_id
+    const imageBegin = await db.query<{ result: any }>(`select public.editorial_begin_native_draft('clientops','ivan',
+      $1,'brief-ivan-02',1,$2,'image-copy-request','Image copy','single_image','Follower example') result`,
+      [imageArtifact,imageBrief.content_hash])
+    expect(imageBegin.rows[0].result.should_dispatch).toBe(true)
+    const imageNative = await db.query<any>(`select * from public.carousel_drafts where editorial_brief_artifact_id=$1`,
+      [imageArtifact])
+    expect(imageNative.rows).toHaveLength(1)
+    expect(imageNative.rows[0].type).toBe('text')
+    expect(imageNative.rows[0].source_detail).toMatchObject({
+      source_format:'single_image',brief_hash:imageBrief.content_hash,internal_only:true})
     const promo = seed.plan[3].records.find((x: any) => x.client_id === 'risedtc' &&
       x.brief_id === 'brief-risedtc-05' && x.version === 2)
     const promoReserve = await db.query<{ result: any }>(`select public.editorial_reserve_draft('clientops','risedtc',
@@ -78,7 +95,7 @@ describe('native draft bridge', { timeout: 120_000 }, () => {
     expect(lm.rows[0]).toMatchObject({client_id:'risedtc',status:'draft',format:'promo'})
     expect(lm.rows[0].spec).toMatchObject({brief_hash:promo.content_hash,internal_only:true})
     const after = await db.query<{ n: number }>(`select count(*)::int n from public.carousel_drafts`)
-    expect(after.rows[0].n).toBe(1)
+    expect(after.rows[0].n).toBe(2)
     await db.close()
   })
 })
