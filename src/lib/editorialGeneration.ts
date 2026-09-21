@@ -1,5 +1,5 @@
-import type { EditorialBrief, EditorialClientId } from './editorialTypes'
-import { isEditorialClientId } from './editorialTypes'
+import type { EditorialBrief, EditorialClientId } from './editorialTypes.ts'
+import { isEditorialClientId } from './editorialTypes.ts'
 
 export type GenerationRoute = 'text' | 'carousel' | 'video_script' | 'resource' | 'promotion' | 'regeneration'
 
