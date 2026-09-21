@@ -70,13 +70,23 @@ describe('measured study source preservation', () => {
     const valid = await buildSynthesisBriefs({ clientId: 'risedtc', batchId: 'test-batch', directionVersion: '1',
       sourceCutoff: '2026-09-21T00:00:00Z', sources: [source as never], suggestions: [suggestion as never] })
     expect(valid[0].measurements[0].observed_value).toBe(finding.observed_value)
-    const privateCall = { ...source, source_kind: 'call', owner: 'Private Buyer',
-      permission_state: 'unknown' }
+    // A call with unknown reuse rights stays selectable evidence and still forces the
+    // internal-only hold, but B01 forbids it as the cited proof of a factual claim:
+    // possession and an exact quote match are not a grant.
+    const privateCall = { ...source, source_id: 'private-call', source_kind: 'call',
+      owner: 'Private Buyer', permission_state: 'unknown' }
     const internal = await buildSynthesisBriefs({ clientId: 'risedtc', batchId: 'internal-test',
-      directionVersion: '1', sourceCutoff: '2026-09-21T00:00:00Z', sources: [privateCall as never],
-      suggestions: [{ ...suggestion, measurements: [] } as never] })
+      directionVersion: '1', sourceCutoff: '2026-09-21T00:00:00Z',
+      sources: [source as never, privateCall as never],
+      suggestions: [{ ...suggestion, source_ids: [source.source_id, privateCall.source_id],
+        measurements: [] } as never] })
     expect(internal[0].missing_material).not.toContain('Public use permission for the cited private call excerpt')
     expect(internal[0].production.critical_constraints.join(' ')).toContain('Internal copy only')
+    await expect(buildSynthesisBriefs({ clientId: 'risedtc', batchId: 'internal-test',
+      directionVersion: '1', sourceCutoff: '2026-09-21T00:00:00Z', sources: [privateCall as never],
+      suggestions: [{ ...suggestion, source_ids: [privateCall.source_id], measurements: [],
+        claims: [{ ...suggestion.claims[0], source_id: privateCall.source_id }] } as never] }))
+      .rejects.toThrow(/reuse permission/)
     await expect(buildSynthesisBriefs({ clientId: 'risedtc', batchId: 'test-batch', directionVersion: '1',
       sourceCutoff: '2026-09-21T00:00:00Z', sources: [source as never], suggestions: [{ ...suggestion,
         measurements: [{ ...suggestion.measurements[0], observed_value: '5267' }] } as never] })).rejects.toThrow(/exact structured/)

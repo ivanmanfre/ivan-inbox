@@ -80,6 +80,11 @@ export function assertMeasurementWording(sources: SynthesisSource[], suggestion:
 export const MIN_ADAPTABLE_SOURCE_CHARS = 200
 const RECENT_TOPIC_OVERLAP = 0.6
 
+/** A source may be selected, may expose a theme and may justify internal-only copy while
+ * its reuse rights are unknown. It may NOT be the cited proof of a factual claim:
+ * possession and an exact quote match are not a grant. */
+const CITABLE_PERMISSION = new Set(['public_source', 'internal_allowed', 'granted'])
+
 /** Timestamps arrive as ISO strings over PostgREST and as Date objects over a direct
  * driver. Every comparison below goes through this so neither shape can crash a batch. */
 export const isoText = (value: unknown) => value instanceof Date ? value.toISOString() : String(value ?? '')
@@ -365,6 +370,9 @@ export async function buildSynthesisBriefs(input: {
     }
     for (const claim of s.claims) {
       const source = sourceFor(claim.source_id)
+      if (!CITABLE_PERMISSION.has(String(source.permission_state))) {
+        throw new Error(`suggestion ${index + 1} cites ${source.source_id} for a claim, but its reuse permission is "${source.permission_state}": an unknown or denied grant cannot support a factual citation. The source may still inform why_now or an internal-only hold`)
+      }
       if (!claim.supporting_quote?.trim() ||
           !(source.passage ?? '').includes(claim.supporting_quote) &&
           !source.retained_context.includes(claim.supporting_quote)) {
