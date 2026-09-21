@@ -40,6 +40,9 @@ Deno.serve(async request => {
     p_brief_id: briefId, p_version: version })
   if (scoped.error) return reply(403, { error: 'unauthorized' }, origin)
   if (!scoped.data?.found) return reply(200, { state: 'conflict', reason: 'no_such_version' }, origin)
+  if (scoped.data.access === 'permission_unavailable' || !scoped.data.brief) {
+    return reply(200, { state: 'blocked', reason: 'source_permission_unavailable' }, origin)
+  }
   const old = scoped.data.brief as EditorialBrief
   if (old.identity.content_hash !== expectedHash) return reply(200, { state: 'conflict', reason: 'content_hash_mismatch' }, origin)
   const reviewerSeat = `operator:${auth.user.id}`
