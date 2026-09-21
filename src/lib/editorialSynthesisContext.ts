@@ -44,9 +44,17 @@ export function selectSynthesisAssets<T extends SynthesisAsset>(assets: T[], lim
 
 /** Bound the actual serialized request, never the frozen evidence store. Binding
  * feedback, canonical voice, direction and assets are supplied intact by render. */
+/** What the shortlist left behind, stated INSIDE the request. Counts only: the full
+ * omitted-ID ledger stays in the manifest/receipt so disclosure cannot eat the budget. */
+export type PopulationCoverage = {
+  usable_population: number; shortlist_size: number; selection_policy: string
+  without_usable_body?: number; omitted_count_by_family?: Record<string, number>
+}
+
 export function prepareSynthesisContext(input: {
   sources: SelectionRow[]; outcomes: Row[]
   coverage?: Record<string, unknown>
+  population?: PopulationCoverage
   render: (parts: ContextParts) => SynthesisMessage[]
 }) {
   const keys = ['observed_metrics', 'linked_findings', 'private_names', 'age_comparability', 'population', 'inclusion', 'study_id',
@@ -61,7 +69,17 @@ export function prepareSynthesisContext(input: {
     const retainedContextClipped = retainedContext.length < sourceContext.length
     const candidateFields = Object.fromEntries(keys.filter(k => source.candidate_fields?.[k] !== undefined)
       .map(k => [k, source.candidate_fields![k]]))
-    return { ...source, passage, retained_context: retainedContext, candidate_fields: {
+    // Plain ASCII so the exact string survives JSON escaping and stays findable in
+    // the assembled request: a clipped or incomplete body can never arrive silently.
+    const gaps = [
+      ...(sourceBodyState !== 'full' ? [`retained body state is ${sourceBodyState.replace(/[^a-z_]/gi, '')}`] : []),
+      ...(passageClipped ? [`passage clipped to ${passage.length} of ${sourcePassage.length} characters`] : []),
+      ...(retainedContextClipped ? [`retained context clipped to ${retainedContext.length} of ${sourceContext.length} characters`] : []),
+    ]
+    const gapReason = gaps.length
+      ? `GAP: ${gaps.join('; ')}. The complete original stays in the immutable input manifest and is not supplied here.`
+      : null
+    return { ...source, passage, retained_context: retainedContext, gap_reason: gapReason, candidate_fields: {
       ...candidateFields,
       // `body_state` describes the model-visible passage. The immutable source
       // state and provenance remain distinct inside `model_projection`.
@@ -107,12 +125,22 @@ export function prepareSynthesisContext(input: {
     const outcomes = [...latest.values()].sort((a, b) => String(a.snapshot_id).localeCompare(String(b.snapshot_id)))
     for (const cap of [8000, 4000, 2000, 1000, 500]) {
       const selected = supplied.map(s => project(s, cap))
+      // The model must see how much evidence exists behind the shortlist, not only
+      // the shortlist. `sources_considered` is the usable population, never the 24.
+      const usablePopulation = input.population?.usable_population ?? input.sources.length
       const coverage: Record<string, unknown> = { ...(input.coverage ?? {}), method: 'kind-balanced-exact-artifact-latest-metric-whole-request-v1',
-        sources_considered: input.sources.length, sources_supplied: selected.length, sources_omitted_by_budget: input.sources.length - selected.length,
+        sources_usable_population: usablePopulation,
+        sources_shortlisted: input.population?.shortlist_size ?? input.sources.length,
+        selection_policy: input.population?.selection_policy ?? 'supplied-shortlist-only',
+        sources_without_usable_body: input.population?.without_usable_body ?? 0,
+        omitted_count_by_source_family: input.population?.omitted_count_by_family ?? {},
+        sources_omitted_before_shortlist: Math.max(0, usablePopulation - input.sources.length),
+        sources_omitted_total: Math.max(0, usablePopulation - selected.length),
+        sources_considered: usablePopulation, sources_supplied: selected.length, sources_omitted_by_budget: input.sources.length - selected.length,
         outcomes_frozen: input.outcomes.length, outcomes_supplied: outcomes.length, outcomes_omitted: input.outcomes.length - outcomes.length,
         excerpted_sources: selected.filter((s, i) => s.passage !== supplied[i].passage || s.retained_context !== String(supplied[i].retained_context ?? '')).length,
         passage_cap: cap, correction_reserve_chars: 16000,
-        limits: 'Only selected sources and their latest exact-artifact observations are supplied. All binding decisions remain supplied. Omitted outcomes are unknown here, not zero. Historical feed overlap and buyer composition are unknown. Full source/outcome snapshots remain in the immutable manifest. Candidate duplicate raw context is excluded; structured measurements and private-name guards are retained.' }
+        limits: 'sources_usable_population is the full usable population for this client; sources_shortlisted is the bounded shortlist drawn from it by selection_policy, and sources_supplied is what this request could carry. omitted_count_by_source_family states what each family lost; every omitted source ID is named in the input manifest, not here. Never claim feed-wide novelty or completeness from this sample. Only selected sources and their latest exact-artifact observations are supplied. All binding decisions remain supplied. Omitted outcomes are unknown here, not zero. Historical feed overlap and buyer composition are unknown. Full source/outcome snapshots remain in the immutable manifest. Candidate duplicate raw context is excluded; structured measurements and private-name guards are retained.' }
       const messages = input.render({ selected, outcomes, coverage })
       if (JSON.stringify(messages).length <= 184000) return { selected, outcomes, coverage, messages }
     }

@@ -82,3 +82,58 @@ describe('measured study source preservation', () => {
         measurements: [{ ...suggestion.measurements[0], observed_value: '5267' }] } as never] })).rejects.toThrow(/exact structured/)
   })
 })
+
+// B1 regression: the newest-only shortlist silently lost whole source families and
+// never named what it dropped. Real populations are ivan 2446 / risedtc 4465 / arch 497.
+describe('paginated, family-balanced bounded selection', () => {
+  const row = (id: string, kind: string, owner: string, day: number, passage = 'A retained readable passage that is long enough to be adaptable into an original direction.') =>
+    ({ source_id: id, source_kind: kind, owner, passage,
+      source_published_at: `2026-09-${String(day).padStart(2, '0')}T00:00:00Z`, captured_at: '2026-09-21T00:00:00Z' })
+
+  const population = [
+    ...Array.from({ length: 2000 }, (_, i) => row(`public-${i}`, 'public_post', `author-${i % 40}`, 20)),
+    ...Array.from({ length: 300 }, (_, i) => row(`own-${i}`, 'own_post', 'client', 19)),
+    ...Array.from({ length: 80 }, (_, i) => row(`study-${i}`, 'market_study', `study-author-${i}`, 18)),
+    ...Array.from({ length: 40 }, (_, i) => row(`cand-${i}`, 'candidate', 'candidate-author', 17)),
+    ...Array.from({ length: 12 }, (_, i) => row(`call-${i}`, 'call', 'buyer', 16)),
+  ]
+
+  it('reads every page of the allowed population instead of a newest-first prefix', () => {
+    const result = selectSynthesisSources(population as never, 24, 500)
+
+    expect(result.coverage.page_size).toBe(500)
+    expect(result.coverage.pages_read).toBe(Math.ceil(population.length / 500))
+    expect(result.coverage.population_total).toBe(population.length)
+    expect(result.coverage.usable_population).toBe(population.length)
+  })
+
+  it('represents every present source family rather than spending the budget on the newest family', () => {
+    const result = selectSynthesisSources(population as never, 24, 500)
+    const families = new Set(result.selected.map(s => String(s.source_kind)))
+
+    expect(result.selected.length).toBe(24)
+    for (const family of ['own_post', 'public_post', 'market_study', 'candidate', 'call']) {
+      expect(families.has(family)).toBe(true)
+    }
+  })
+
+  it('names every omitted source id and the omitted count per family', () => {
+    const result = selectSynthesisSources(population as never, 24, 500)
+    const omitted = Object.values(result.coverage.omitted_source_ids_by_family).flat()
+
+    expect(omitted.length).toBe(population.length - result.selected.length)
+    expect(result.coverage.omitted_count).toBe(omitted.length)
+    expect(new Set(omitted).size).toBe(omitted.length)
+    expect(omitted.some(id => result.selected.some(s => s.source_id === id))).toBe(false)
+    expect(result.coverage.omitted_count_by_family.call).toBe(12 - result.selected.filter(s => s.source_kind === 'call').length)
+  })
+
+  it('is deterministic and keeps the legacy omitted/withoutUsableBody contract', () => {
+    const first = selectSynthesisSources(population as never, 24, 500)
+    const second = selectSynthesisSources([...population].reverse() as never, 24, 500)
+
+    expect(first.selected.map(s => s.source_id)).toEqual(second.selected.map(s => s.source_id))
+    expect(first.omitted).toBe(population.length - first.selected.length)
+    expect(first.withoutUsableBody).toBe(0)
+  })
+})

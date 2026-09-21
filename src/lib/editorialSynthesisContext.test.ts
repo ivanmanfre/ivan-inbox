@@ -97,3 +97,55 @@ describe('whole synthesis context budget', () => {
     expect(result.coverage.correction_reserve_chars).toBe(16000)
   })
 })
+
+// B1/A04 carried-in watch item: the coverage rendered INTO the model input reported the
+// post-selector shortlist (24) as `sources_considered`, so the model could not see that
+// ivan 2446 / risedtc 4465 / arch 497 usable rows existed behind it.
+describe('population disclosure inside the actual model input', () => {
+  const population = { usable_population: 4465, shortlist_size: 24, without_usable_body: 562,
+    selection_policy: 'paginated-family-balanced-measured-distinct-author-round-robin-v3',
+    omitted_count_by_family: { own_post: 291, public_post: 4001, market_study: 74, call: 9, candidate: 36 } }
+
+  it('states the usable population, selected count, policy and omitted-by-family inside the input', () => {
+    const result = prepareSynthesisContext({ sources: [source], outcomes: [], population,
+      render: parts => [{ role: 'user', content: `COVERAGE: ${JSON.stringify(parts.coverage)}` }] })
+    const input = result.messages[0].content
+
+    expect(result.coverage.sources_usable_population).toBe(4465)
+    expect(result.coverage.sources_shortlisted).toBe(24)
+    expect(result.coverage.sources_considered).toBe(4465)
+    expect(result.coverage.selection_policy).toBe('paginated-family-balanced-measured-distinct-author-round-robin-v3')
+    expect(result.coverage.omitted_count_by_source_family).toEqual(population.omitted_count_by_family)
+    expect(result.coverage.sources_omitted_total).toBe(4465 - result.selected.length)
+    expect(input).toContain('"sources_usable_population":4465')
+    expect(input).toContain('"sources_shortlisted":24')
+    expect(input).toContain('"omitted_count_by_source_family"')
+  })
+
+  it('keeps the legacy shortlist denominator when no population is supplied', () => {
+    const result = prepareSynthesisContext({ sources: [source], outcomes: [],
+      render: parts => [{ role: 'user', content: JSON.stringify(parts.coverage) }] })
+
+    expect(result.coverage.sources_considered).toBe(1)
+    expect(result.coverage.sources_usable_population).toBe(1)
+  })
+
+  it('carries an explicit gap_reason on every non-full projected source so clipping cannot hide', () => {
+    const result = prepareSynthesisContext({ sources: [source], outcomes: [],
+      render: parts => [{ role: 'user', content: JSON.stringify(parts.selected) }] })
+    const projected = result.selected[0] as Record<string, unknown>
+
+    expect(typeof projected.gap_reason).toBe('string')
+    expect(String(projected.gap_reason)).toContain('passage clipped')
+    expect(result.messages[0].content).toContain(String(projected.gap_reason))
+  })
+
+  it('reports no gap for a source supplied whole', () => {
+    const whole = { ...source, passage: 'short passage', retained_context: 'short context',
+      candidate_fields: { ...source.candidate_fields, raw_context: undefined } }
+    const result = prepareSynthesisContext({ sources: [whole], outcomes: [],
+      render: parts => [{ role: 'user', content: JSON.stringify(parts.selected) }] })
+
+    expect((result.selected[0] as Record<string, unknown>).gap_reason).toBe(null)
+  })
+})
