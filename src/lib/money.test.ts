@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   RUNWAY_REFUSAL, aggregateByDay, aggregateByWeek, billingDay, clientLabel,
   computeRunway, costPerReadyLead, costWindowLabel, dataPerLeadAttr, dayRangeLabel,
-  daysSince, deltaRatio, fmtPerLead, fmtReadyUnavailable, fmtShareOfTotal, fmtUsd,
+  daysSince, deltaRatio, fmtPerLead, fmtReadyNotRecorded, fmtReadyUnavailable, fmtShareOfTotal, fmtUsd, lastReadyDay,
   fmtUsdPerUnit, isStale, isTokenPriced, isoWeekKey, laneTotals, laneTotalsGrandTotal,
   lastNDays, latestPerClient, mrrByClient, noteReason, provenanceText,
   readyLeadWindowDays, relAge, riskNoteKind, riskNoteText, shareOfTotalPct, topActors,
@@ -576,5 +576,20 @@ describe('ready count unavailable', () => {
   it('a failed ready-lead read never renders as no ready leads', () => {
     expect(fmtReadyUnavailable(21.36)).toBe('$21.36 settled · ready count did not load')
     expect(fmtReadyUnavailable(21.36)).not.toMatch(/no ready leads/)
+  })
+})
+
+describe('ready count not recorded', () => {
+  it('a lane whose ready source stopped stamping says so instead of no ready leads', () => {
+    const rows = [
+      { client_id: 'arch', lane: 'engager', day: '2026-09-10', qualified_in: 4, sent_out: 0 },
+      { client_id: 'arch', lane: 'engager', day: '2026-09-18', qualified_in: 0, sent_out: 20 },
+      { client_id: null, lane: 'cold', day: '2026-09-18', qualified_in: 9, sent_out: 1 },
+    ] as unknown as ReplacementRow[]
+    expect(lastReadyDay(rows, 'arch')).toBe('2026-09-10')
+    expect(lastReadyDay(rows, 'ivan')).toBe('2026-09-18')
+    expect(lastReadyDay(rows, 'risedtc')).toBeNull()
+    expect(fmtReadyNotRecorded(21.36, '2026-09-10')).toBe('$21.36 settled · ready count not recorded since 2026-09-10')
+    expect(fmtReadyNotRecorded(5, null)).toBe('$5.00 settled · ready count not recorded in 30 days')
   })
 })

@@ -903,6 +903,24 @@ export async function fetchReadyDays(): Promise<ReplacementRow[] | null> {
   return null
 }
 
+// The newest day a lane's ready-lead source recorded any ready lead (null when
+// none in the whole read). ARCH's source stopped stamping on 2026-09-10, so a
+// window with spend and no ready leads would otherwise print a zero nobody
+// measured (skeptic 1, 2026-09-22).
+export function lastReadyDay(readyDays: ReplacementRow[], lane: string): string | null {
+  let last: string | null = null
+  for (const r of readyDays) {
+    if ((r.client_id ?? 'ivan') !== lane || !(Number(r.qualified_in) > 0)) continue
+    const d = String(r.day).slice(0, 10)
+    if (!last || d > last) last = d
+  }
+  return last
+}
+
+export function fmtReadyNotRecorded(usdSettled: number, last: string | null): string {
+  return `${fmtUsdPerUnit(usdSettled)} settled · ready count not recorded ${last ? `since ${last}` : 'in 30 days'}`
+}
+
 export function fmtReadyUnavailable(usdSettled: number): string {
   return `${fmtUsdPerUnit(usdSettled)} settled · ready count did not load`
 }

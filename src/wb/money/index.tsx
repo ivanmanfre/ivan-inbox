@@ -36,7 +36,7 @@ import {
   costPerReadyLead, costWindowLabel, dataPerLeadAttr, dayRangeLabel,
   fetchActorDay, fetchCashConfig, fetchEngineCounterDay, fetchLaneDay,
   fetchMonthChargesAndInvoices, fetchMrrRows, fetchOpenMoneyDecisions,
-  fetchRenewalRiskRows, fetchStripeKeyExists, fmtPerLead, fmtReadyUnavailable, fetchReadyDays, fmtShareOfTotal, fmtUsd, fmtUsdPerUnit,
+  fetchRenewalRiskRows, fetchStripeKeyExists, fmtPerLead, fmtReadyUnavailable, fetchReadyDays, fmtReadyNotRecorded, lastReadyDay, fmtShareOfTotal, fmtUsd, fmtUsdPerUnit,
   isStale, isTokenPriced,
   laneTotals, laneTotalsGrandTotal, lastNDays, mrrByClient, noteReason, provenanceText,
   readyLeadWindowDays, riskNoteKind,
@@ -516,7 +516,10 @@ function CostPerLeadSection({ laneDay, readyDays, now }: { laneDay: LaneDayRow[]
             data-window={win}
           >
             <span className="a-money-perlead-lane">{laneDisplay(r.lane)}</span>
-            <span className="a-money-perlead-fig">{unavailable ? fmtReadyUnavailable(r.usdSettled) : fmtPerLead(r.perLead, r.usdSettled)}</span>
+            <span className="a-money-perlead-fig">{unavailable ? fmtReadyUnavailable(r.usdSettled)
+              : r.perLead === null && r.usdSettled > 0 && ((lastReadyDay(readyDays ?? [], r.lane) ?? '') < days[0])
+                ? fmtReadyNotRecorded(r.usdSettled, lastReadyDay(readyDays ?? [], r.lane))
+                : fmtPerLead(r.perLead, r.usdSettled)}</span>
             <span className="a-meta a-money-perlead-sub">
               {r.settledDays} settled {r.settledDays === 1 ? 'day' : 'days'}
               {r.settlingDays > 0 ? ` · ${r.settlingDays} ${r.settlingDays === 1 ? 'day' : 'days'} settling` : ''}

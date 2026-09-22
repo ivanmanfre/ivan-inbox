@@ -255,7 +255,10 @@ export function FocusBlock({
         data-focus-ops={summary.opsCount}
         data-fresh={fresh ? '1' : '0'}
       >
-        {summary.line}
+        {/* Until both live reads land the count is partial (skeptic 1, 2026-09-22:
+            a cold load whose thread read never arrived showed "2 things" for 2 min
+            with 13 replies live). The number stays in the data attributes. */}
+        {fresh ? summary.line : 'Checking what needs you.'}
       </div>
       {summary.batches.length > 0 && (
         <div className="a-focus-batches">
