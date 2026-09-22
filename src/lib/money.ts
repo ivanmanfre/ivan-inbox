@@ -889,6 +889,24 @@ export function costPerReadyLead(
 // a lane with real settled dollars and no ready leads to divide them by
 // shows the dollars instead of going silent. `usdSettled` is only ever read
 // when `perLead` is null.
+// The ready-lead rows for the cost section, read strictly: one retry, then
+// null on failure. kpis.fetchReplacement soft-fails to [] (fine for Overview),
+// but here an empty list would print "no ready leads counted" for every lane,
+// a number we never measured (live 2026-09-22 22:55Z: one read failed and all
+// three lanes flipped to "no ready leads"). null renders "did not load".
+export async function fetchReadyDays(): Promise<ReplacementRow[] | null> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data, error } = await supabase.from('inbox_replacement_v').select('client_id,lane,day,qualified_in,sent_out')
+    if (!error && data) return data as ReplacementRow[]
+    if (attempt === 0) await new Promise(r => setTimeout(r, 1500))
+  }
+  return null
+}
+
+export function fmtReadyUnavailable(usdSettled: number): string {
+  return `${fmtUsdPerUnit(usdSettled)} settled · ready count did not load`
+}
+
 export function fmtPerLead(perLead: number | null, usdSettled: number): string {
   if (perLead !== null) return `${fmtUsdPerUnit(perLead)} / ready lead`
   if (usdSettled > 0) return `${fmtUsdPerUnit(usdSettled)} settled · no ready leads counted`

@@ -36,7 +36,7 @@ import {
   costPerReadyLead, costWindowLabel, dataPerLeadAttr, dayRangeLabel,
   fetchActorDay, fetchCashConfig, fetchEngineCounterDay, fetchLaneDay,
   fetchMonthChargesAndInvoices, fetchMrrRows, fetchOpenMoneyDecisions,
-  fetchRenewalRiskRows, fetchStripeKeyExists, fmtPerLead, fmtShareOfTotal, fmtUsd, fmtUsdPerUnit,
+  fetchRenewalRiskRows, fetchStripeKeyExists, fmtPerLead, fmtReadyUnavailable, fetchReadyDays, fmtShareOfTotal, fmtUsd, fmtUsdPerUnit,
   isStale, isTokenPriced,
   laneTotals, laneTotalsGrandTotal, lastNDays, mrrByClient, noteReason, provenanceText,
   readyLeadWindowDays, riskNoteKind,
@@ -44,7 +44,7 @@ import {
   type EngineCounterDayRow, type LaneDayRow, type LaneTotal, type MoneyLedgerRow,
   type MoneyTaskRow, type PeriodAgg,
 } from '../../lib/money'
-import { fetchReplacement, type ReplacementRow } from '../../lib/kpis'
+import { type ReplacementRow } from '../../lib/kpis'
 import { PullIndicator } from '../chrome/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { hasMock } from '../../exp/v2c/mock'
@@ -498,8 +498,9 @@ function CostToServeSection({ laneDay, now }: { laneDay: LaneDayRow[]; now: numb
 // run's live gate check (goal-runs/instantly-picks-2026-09-22/checks/
 // g6-cost-parity.mjs), read-only, for cross-verification against a hand
 // computation over the same raw tables, not edited by this item.
-function CostPerLeadSection({ laneDay, readyDays, now }: { laneDay: LaneDayRow[]; readyDays: ReplacementRow[]; now: number }) {
-  const rows: CostPerLead[] = costPerReadyLead(laneDay, readyDays, { now })
+function CostPerLeadSection({ laneDay, readyDays, now }: { laneDay: LaneDayRow[]; readyDays: ReplacementRow[] | null; now: number }) {
+  const unavailable = readyDays === null
+  const rows: CostPerLead[] = costPerReadyLead(laneDay, readyDays ?? [], { now })
   const days = readyLeadWindowDays(7, now)
   const win = costWindowLabel(days)
   const title = `Cost per ready lead, last 7 complete days (settled Apify only)`
@@ -511,11 +512,11 @@ function CostPerLeadSection({ laneDay, readyDays, now }: { laneDay: LaneDayRow[]
             key={r.lane}
             className="a-money-perlead-row"
             data-cost-lane={r.lane}
-            data-per-lead={dataPerLeadAttr(r.perLead)}
+            data-per-lead={unavailable ? 'unavailable' : dataPerLeadAttr(r.perLead)}
             data-window={win}
           >
             <span className="a-money-perlead-lane">{laneDisplay(r.lane)}</span>
-            <span className="a-money-perlead-fig">{fmtPerLead(r.perLead, r.usdSettled)}</span>
+            <span className="a-money-perlead-fig">{unavailable ? fmtReadyUnavailable(r.usdSettled) : fmtPerLead(r.perLead, r.usdSettled)}</span>
             <span className="a-meta a-money-perlead-sub">
               {r.settledDays} settled {r.settledDays === 1 ? 'day' : 'days'}
               {r.settlingDays > 0 ? ` · ${r.settlingDays} ${r.settlingDays === 1 ? 'day' : 'days'} settling` : ''}
@@ -624,7 +625,7 @@ type MoneyState = {
   // (inbox_replacement_v), read alongside laneDay to price it. Soft-fails to
   // [] already at the fetcher (kpis.ts:67-71) when the view is not applied,
   // same pre-apply discipline as every other optional KPI view this app reads.
-  readyDays: ReplacementRow[]
+  readyDays: ReplacementRow[] | null
   cash: { cashOnHandUsd: number | null; cashAsOfDate: string | null; observedAt: string | null }
   stripeKeyExists: boolean
   tasks: MoneyTaskRow[]
@@ -646,7 +647,7 @@ function useMoney() {
     Promise.all([
       fetchMrrRows(), fetchRenewalRiskRows(), fetchMonthChargesAndInvoices(),
       fetchLaneDay(30), fetchActorDay(30), fetchEngineCounterDay(30),
-      fetchCashConfig(), fetchStripeKeyExists(), fetchOpenMoneyDecisions(), fetchReplacement(),
+      fetchCashConfig(), fetchStripeKeyExists(), fetchOpenMoneyDecisions(), fetchReadyDays(),
     ]).then(([mrrRows, riskRows, monthRows, laneDay, actorDay, engineDay, cash, stripeKeyExists, tasks, readyDays]) => {
       setState({
         loading: false, error: null, mrrRows, riskRows, monthRows, laneDay, actorDay, engineDay,

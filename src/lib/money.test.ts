@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   RUNWAY_REFUSAL, aggregateByDay, aggregateByWeek, billingDay, clientLabel,
   computeRunway, costPerReadyLead, costWindowLabel, dataPerLeadAttr, dayRangeLabel,
-  daysSince, deltaRatio, fmtPerLead, fmtShareOfTotal, fmtUsd,
+  daysSince, deltaRatio, fmtPerLead, fmtReadyUnavailable, fmtShareOfTotal, fmtUsd,
   fmtUsdPerUnit, isStale, isTokenPriced, isoWeekKey, laneTotals, laneTotalsGrandTotal,
   lastNDays, latestPerClient, mrrByClient, noteReason, provenanceText,
   readyLeadWindowDays, relAge, riskNoteKind, riskNoteText, shareOfTotalPct, topActors,
@@ -569,5 +569,12 @@ describe('fmtPerLead / dataPerLeadAttr / costWindowLabel', () => {
   })
   it('labels the window as first..last ISO days, inclusive', () => {
     expect(costWindowLabel(['2026-09-13', '2026-09-14', '2026-09-19'])).toBe('2026-09-13..2026-09-19')
+  })
+})
+
+describe('ready count unavailable', () => {
+  it('a failed ready-lead read never renders as no ready leads', () => {
+    expect(fmtReadyUnavailable(21.36)).toBe('$21.36 settled · ready count did not load')
+    expect(fmtReadyUnavailable(21.36)).not.toMatch(/no ready leads/)
   })
 })
