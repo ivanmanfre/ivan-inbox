@@ -8,7 +8,7 @@
 // takes an injected `act` so the network call lives at the UI call site
 // (wb/today/FocusBlock.tsx), never here: the whole point is that every case
 // below is testable on literal inputs, no network.
-import { outboundApproveUrl, pendingOps, type OpsDraft, type OpsKind } from './ops'
+import { outboundApproveUrl, pendingOps, type OpsDraft } from './ops'
 import { buildOpsItems, buildReplyItems } from './workQueue'
 import type { Thread } from './inbox'
 import { runwayDays, type GovernorRow, type PipelineRow } from './kpis'

@@ -220,8 +220,14 @@
 .a-focus-batch-note{ font-size:var(--ds-fs-meta); color:var(--ds-text-3) }
 .a-focus-batch-expand{ display:flex; flex-direction:column; gap:var(--ds-s2); padding-top:var(--ds-s2) }
 .a-focus-single{
-  display:flex; align-items:center; justify-content:space-between; gap:var(--ds-s4);
+  display:flex; flex-direction:column; gap:var(--ds-s2);
   padding:var(--ds-s3) var(--ds-s4); border-radius:var(--ds-r2); background:var(--ds-surface-2);
   min-width:0;
 }
+.a-focus-single-row{ display:flex; align-items:center; justify-content:space-between; gap:var(--ds-s4); min-width:0 }
 .a-focus-single-body{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ds-text-2) }
+/* fable review item 5 (2026-09-22): the gate's own sentence under a card
+   that could not approve. A `timing` refusal (queue position, not an error)
+   stays meta ink; every other outcome gets the urgent tone. */
+.a-focus-single-note{ font-size:var(--ds-fs-meta); color:var(--ds-text-3) }
+.a-focus-single-note-err{ color:var(--ds-sev-urgent-ui) }

@@ -1074,6 +1074,7 @@ function Counter({ n, cap, warn, bad, warnZero }: {
 
 export function Today({
   onOpenDrafts, onOpenOps, threads, opsDrafts, onOpenThread, onOpenContent, onOpenCall,
+  onOpsChanged, threadsFromCache,
 }: {
   // A host that has its own navigation passes it in; the default app falls back to
   // its own hash routes (src/lib/route.ts). Either way a hand-off row has a way in
@@ -1095,6 +1096,12 @@ export function Today({
   // the section has nowhere to open, so it does not render at all rather than
   // render rows that do nothing when tapped.
   onOpenCall?: (id: string, queue: CallRow[]) => void
+  // FocusBlock's onChanged/threadsFromCache (fable review items 4/6,
+  // 2026-09-22), just forwarded through. Named `onOpsChanged` here (not
+  // `onChanged`) because this level already has several `onOpen*` callbacks
+  // and a bare `onChanged` reads ambiguous next to them.
+  onOpsChanged?: () => void
+  threadsFromCache?: boolean
 } = {}) {
   const t = useToday()
   const rowsRef = useRef<HTMLDivElement>(null)
@@ -1219,6 +1226,8 @@ export function Today({
             opsDrafts={opsDrafts ?? []}
             pipeline={t.health?.pipeline ?? []}
             governor={t.health?.governor ?? []}
+            onChanged={onOpsChanged}
+            threadsFromCache={threadsFromCache}
           />
         )}
         <Masthead c={counts} plate={t.brief ? plate : null} syncedAt={syncedAt} stale={stale} refreshing={t.refreshing} />
