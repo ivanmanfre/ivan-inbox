@@ -791,10 +791,10 @@ export { taskTitle }
 // Cost per ready lead, per lane (instantly-picks item 2, 2026-09-22).
 //
 // Numerator: Apify usd_settled ONLY (vs_lane_day_v), never apify_usd_claimed
-// and never a run-stat apify_usd — the 09-19 error on those was 6-36x low.
+// and never a run-stat apify_usd: the 09-19 error on those was 6-36x low.
 // Denominator: ready leads added per lane per day = sum(qualified_in) from
 // inbox_replacement_v (db/029_replacement_rate.sql), grouped by client_id
-// (already coalesced NULL->'ivan' in that view) across every sub-lane —
+// (already coalesced NULL->'ivan' in that view) across every sub-lane,
 // money's `lane` and the pipeline/replacement views' `lane` are different
 // axes (client tenant vs sub-engine); this sums the latter into the former.
 //
@@ -823,7 +823,7 @@ const COST_LANES: CostPerLead['lane'][] = ['ivan', 'risedtc', 'arch']
 // The last `windowDays` complete UTC days, ending YESTERDAY. Today is never
 // complete: settlement lags 24-48h behind the run, so today's apify rows
 // cannot have a final usd_settled yet, and today's ready-lead count is still
-// accumulating. Ascending, oldest first — day 0 is the oldest day in window.
+// accumulating. Ascending, oldest first: day 0 is the oldest day in window.
 export function readyLeadWindowDays(windowDays = 7, now: number = Date.now()): string[] {
   const todayUtc = new Date(now).toISOString().slice(0, 10)
   const t0 = Date.parse(todayUtc + 'T00:00:00Z')
@@ -880,12 +880,12 @@ export function costPerReadyLead(
   })
 }
 
-// "no ready leads", never $0 and never Infinity/NaN — a rate against zero
+// "no ready leads", never $0 and never Infinity/NaN: a rate against zero
 // ready leads is not a fact about the lane's cost. Orchestrator addition
 // 2026-09-22: a lane can spend real money with zero qualified_in (live
 // 09-15..09-21: ARCH spent $21.36 settled Apify while inbox_replacement_v's
 // ARCH inflow, keyed on enrichment_data.promoted_at, had nothing newly
-// promoted that window) — plain "no ready leads" would hide that spend, so
+// promoted that window), plain "no ready leads" would hide that spend, so
 // a lane with real settled dollars and no ready leads to divide them by
 // shows the dollars instead of going silent. `usdSettled` is only ever read
 // when `perLead` is null.

@@ -395,7 +395,7 @@ function ZoneQueue({ items, onOpenThread, onOpenOps, onOpenContent }: {
   // this to count reply rows independently of the focus line's own count.
   // Row/HandOff (../kit) have no data-* passthrough and kit.tsx is out of
   // this item's owned files, so the attribute goes on a wrapper div here
-  // instead — covers live and folded rows alike, since both call sites below
+  // instead, covers live and folded rows alike, since both call sites below
   // route through this same function.
   const queueRow = (item: QueueItem) => (
     <div key={item.id} data-queue-kind={item.kind}>

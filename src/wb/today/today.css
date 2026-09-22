@@ -198,7 +198,7 @@
    First line of Today on both shells, above the masthead. Plain markup (not
    the Group/Row kit primitives) because this block spans two shells that do
    not share a single visual system yet (the legacy stock shell vs the ds
-   workbench) — kept minimal and additive rather than forcing one shell's kit
+   workbench), kept minimal and additive rather than forcing one shell's kit
    onto the other's screen.
    -------------------------------------------------------------------------- */
 .a-focus{ display:flex; flex-direction:column; gap:var(--ds-s4); margin:0 16px var(--ds-s5); min-width:0 }

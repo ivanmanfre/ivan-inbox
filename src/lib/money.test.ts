@@ -484,7 +484,7 @@ describe('readyLeadWindowDays', () => {
 })
 
 describe('costPerReadyLead', () => {
-  it('no ready leads renders null, but real settled spend still shows (orchestrator addition 2026-09-22: ARCH 09-15..09-21 spent $21.36 with 0 qualified_in — hiding it as plain "no ready leads" would hide real spend)', () => {
+  it('no ready leads renders null, but real settled spend still shows (orchestrator addition 2026-09-22: ARCH 09-15..09-21 spent $21.36 with 0 qualified_in, hiding it as plain "no ready leads" would hide real spend)', () => {
     const now = Date.parse('2026-09-20T12:00:00Z')
     const days = readyLeadWindowDays(7, now)
     // Every day fully settled, some spend, but zero qualified_in rows at all.

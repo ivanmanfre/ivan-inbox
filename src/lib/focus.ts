@@ -1,14 +1,14 @@
 // Today's first line (instantly-picks item 1, 2026-09-22): "N things need
-// you. Everything else is running." — the one number that can never disagree
+// you. Everything else is running.", the one number that can never disagree
 // with the rows under it, because it is built from the exact same arrays
 // zone A renders (buildReplyItems / buildOpsItems, workQueue.ts), plus
 // one-tap batches over the pending ops that are safe to approve as a group.
 //
 // Pure module: no supabase import here. The batch orchestration (runBatch)
 // takes an injected `act` so the network call lives at the UI call site
-// (wb/today/FocusBlock.tsx), never here — the whole point is that every case
+// (wb/today/FocusBlock.tsx), never here: the whole point is that every case
 // below is testable on literal inputs, no network.
-import { pendingOps, type OpsDraft, type OpsKind } from './ops'
+import { outboundApproveUrl, pendingOps, type OpsDraft, type OpsKind } from './ops'
 import { buildOpsItems, buildReplyItems } from './workQueue'
 import type { Thread } from './inbox'
 import { runwayDays, type GovernorRow, type PipelineRow } from './kpis'
@@ -26,8 +26,8 @@ export type FocusInput = {
   opsDrafts: OpsDraft[]
   now?: number
   // Ready-supply signal (brief §2.4): sum(sendable)/avg(sent_7d) per client,
-  // same shape useToday() already fetches into health.pipeline/health.governor
-  // — no new fetch anywhere this composes into.
+  // same shape useToday() already fetches into health.pipeline/health.governor,
+  // no new fetch anywhere this composes into.
   pipeline?: PipelineRow[]
   governor?: GovernorRow[]
 }
@@ -42,7 +42,7 @@ export type FocusSummary = {
   alarmLane: string | null
 }
 
-// Byte-for-byte the (unexported) LANE_NAME map in workQueue.ts:159 — cannot
+// Byte-for-byte the (unexported) LANE_NAME map in workQueue.ts:159, cannot
 // import it (not exported, and workQueue.ts is out of this item's owned
 // files), so this is the same copy kept in a second place on purpose rather
 // than invented anew.
@@ -53,15 +53,27 @@ export function laneName(client: string): string {
 
 // Only kinds whose approve is idempotent and has no per-item edit batch.
 // Every other kind stays a single card (brief §3, locked 2026-09-22).
-const BATCHABLE = new Set<OpsKind>(['manual_invite', 'comment_outbound'])
 const BATCH_NOUN: Record<string, string> = { manual_invite: 'manual invites', comment_outbound: 'comments' }
+
+// A draft is batchable when its approve is idempotent and has no per-item
+// edit AND no per-item live call that itself needs a reader's confirm.
+// manual_invite always qualifies (a double-stamp, nothing is sent).
+// comment_outbound qualifies ONLY for the ivan lane (outboundApproveUrl set):
+// that is the one poster-gate dispatch, safe to fire N times in sequence with
+// one confirm up front. The risedtc lane (no approve_url) is clipboard +
+// stamp, one paste per card, and stays a single card every time (fable
+// review, HIGH, 2026-09-22).
+function isBatchable(d: OpsDraft): boolean {
+  return d.kind === 'manual_invite'
+    || (d.kind === 'comment_outbound' && outboundApproveUrl(d) !== null)
+}
 
 function groupBatches(drafts: OpsDraft[], now: number): { batches: Batch[]; singles: OpsDraft[] } {
   const pending = pendingOps(drafts, now)
   const groups = new Map<string, OpsDraft[]>()
   const singles: OpsDraft[] = []
   for (const d of pending) {
-    if (!BATCHABLE.has(d.kind)) { singles.push(d); continue }
+    if (!isBatchable(d)) { singles.push(d); continue }
     const key = `${d.kind}:${d.client_id}`
     const arr = groups.get(key)
     if (arr) arr.push(d)
@@ -121,7 +133,7 @@ function lineFor(count: number, alarmLane: string | null): string {
 
 export function focusSummary(input: FocusInput): FocusSummary {
   const now = input.now ?? Date.now()
-  // Same fns zone A calls (buildReplyItems / buildOpsItems, workQueue.ts) —
+  // Same fns zone A calls (buildReplyItems / buildOpsItems, workQueue.ts):
   // the count can never disagree with the rows under it because it is not a
   // second reading of the data.
   const replyCount = buildReplyItems(input.threads, now).length
@@ -133,7 +145,7 @@ export function focusSummary(input: FocusInput): FocusSummary {
 }
 
 // ---------------------------------------------------------------------------
-// Batch orchestration — pure, injectable (brief §2.7). `act` is the real
+// Batch orchestration, pure and injectable (brief §2.7). `act` is the real
 // per-id approve/discard call, supplied by the UI layer (FocusBlock.tsx),
 // wrapping the exact same functions OpsScreen/PendingCard use. Kept here so
 // the whole flow (still-pending filter, sequential run, partial-failure

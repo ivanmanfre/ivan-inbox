@@ -12,7 +12,8 @@ import {
 // and a pending ops draft are trivial to construct without hitting the
 // network.
 
-const NOW = Date.parse('2026-09-22T12:00:00Z')
+const NOW_ISO = '2026-09-22T12:00:00Z'
+const NOW = Date.parse(NOW_ISO)
 
 const msg = (over: Partial<InboxMessage> = {}): InboxMessage => ({
   id: 'm1', prospect_id: 'p1', direction: 'inbound', message_text: 'hey',
@@ -90,6 +91,28 @@ describe('focusSummary', () => {
     expect(s.batches[0].kind).toBe('manual_invite')
     expect(s.batches[0].client).toBe('risedtc')
     expect(s.singles.length).toBe(3)
+  })
+
+  it('ivan-lane comment_outbound rows (approve_url set) batch same as manual_invite', () => {
+    const comments = Array.from({ length: 3 }, (_, i) => opsDraft({
+      kind: 'comment_outbound', client_id: 'ivan', id: `c${i}`,
+      context: { approve_url: 'https://n8n.ivanmanfredi.com/webhook/x', posted_at: NOW_ISO },
+    }))
+    const s = focusSummary({ threads: [], opsDrafts: comments, now: NOW })
+    expect(s.batches.length).toBe(1)
+    expect(s.batches[0].kind).toBe('comment_outbound')
+    expect(s.batches[0].ids.length).toBe(3)
+    expect(s.singles).toEqual([])
+  })
+
+  it('risedtc comment rows (no approve_url, clipboard lane) never batch (fable review, HIGH, 2026-09-22)', () => {
+    const comments = Array.from({ length: 4 }, (_, i) => opsDraft({
+      kind: 'comment_outbound', client_id: 'risedtc', id: `rc${i}`,
+      context: { posted_at: NOW_ISO }, // no approve_url -> outboundApproveUrl(d) is null
+    }))
+    const s = focusSummary({ threads: [], opsDrafts: comments, now: NOW })
+    expect(s.batches).toEqual([])
+    expect(s.singles.length).toBe(4)
   })
 
   it('open supply alarm changes the line', () => {

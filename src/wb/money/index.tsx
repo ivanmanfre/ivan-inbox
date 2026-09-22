@@ -492,12 +492,12 @@ function CostToServeSection({ laneDay, now }: { laneDay: LaneDayRow[]; now: numb
 // Next to vendor spend rather than folded into CostToServeSection's own
 // Ledger/DataCell table: this number is not a single sourced row the way
 // every other cell on this page is (apify settled $, apify runs, anthropic
-// $) — it is itself a derivation over two views, so it gets its own small
+// $), it is itself a derivation over two views, so it gets its own small
 // section instead of a column bolted onto a table built around one Source
 // per cell. `data-cost-lane`/`data-per-lead`/`data-window` are read by this
 // run's live gate check (goal-runs/instantly-picks-2026-09-22/checks/
 // g6-cost-parity.mjs), read-only, for cross-verification against a hand
-// computation over the same raw tables — not edited by this item.
+// computation over the same raw tables, not edited by this item.
 function CostPerLeadSection({ laneDay, readyDays, now }: { laneDay: LaneDayRow[]; readyDays: ReplacementRow[]; now: number }) {
   const rows: CostPerLead[] = costPerReadyLead(laneDay, readyDays, { now })
   const days = readyLeadWindowDays(7, now)
