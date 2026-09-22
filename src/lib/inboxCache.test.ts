@@ -47,13 +47,14 @@ function thread(id: string, over: Partial<Thread> = {}): Thread {
     channel: 'linkedin', stage: 'replied', linkedin_url: null, chat_provider_id: null,
     last: m, unread: 0, draft: null, messages: [inb, m], spam: false,
     companionDraft: null, ownerConfirmation: null, draftStale: false,
-    draftSnoozedUntil: null, needsManualReply: false, ...over,
+    draftSnoozedUntil: null, needsManualReply: false, blacklisted: false, ...over,
   }
 }
 
 describe('the budget', () => {
   it('keeps every row a count on the screen is about to state', () => {
-    const work = thread('draft', { draft: msg({ id: 'd', approved_at: null }) })
+    // Dated now: a draft older than STALE_DAYS is backlog (threadBucket), not a work row.
+    const work = thread('draft', { draft: msg({ id: 'd', approved_at: null, created_at: new Date().toISOString() }) })
     const spam = thread('spam', { spam: true })
     const pushed = thread('pushed', { draftSnoozedUntil: '2026-09-20T10:00:00Z' })
     const filler = Array.from({ length: 40 }, (_, i) => thread(`f${i}`))

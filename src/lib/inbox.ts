@@ -27,6 +27,15 @@ export type InboxMessage = {
   // "Replied": "a small likely-spam folder ... so I don't miss anything ... but no push").
   // Optional because the stock screens' fixtures predate the column.
   prospect_skip_reason?: string | null;
+  // outreach_messages.reply_intent (the reply detector's verdict on an inbound:
+  // negative / neutral / positive / info_ask / soft_yes) and
+  // outreach_prospects.blacklisted, both denormalised into inbox_messages_v on
+  // 2026-09-22 (db/204). Andy Brenits' "No thank you, not Needed." sat in
+  // "Needs your reply" for 8 days: the detector had stamped it negative AND
+  // blacklisted the prospect, but the app re-judged the text with its own regex
+  // (which knows "no thanks" and not "no thank you"). The engine's verdict wins.
+  reply_intent?: string | null;
+  prospect_blacklisted?: boolean | null;
   // Not in inbox_messages_v — annotated onto pending drafts by useInbox from the
   // fetchDraftEmailStamps() probe. When set on a draft, approving it makes the
   // dispatcher ALSO email the scan to this address (rise_dm2_scan_delivery_v1 rows).
@@ -66,6 +75,9 @@ export type Thread = {
   // every lane but 'spam', out of the badge and out of the push, and stays readable there
   // so nothing is lost. See filterThreads / inboxBreakdown / markSpam / markNotSpam.
   spam: boolean;
+  // outreach_prospects.blacklisted: the engine closed this person (decline, opt-out,
+  // vendor). Stage stays 'replied' on a decline, so CLOSED_STAGES cannot see it.
+  blacklisted: boolean;
   // A SECOND pending draft on a DIFFERENT channel, staged as one intent with the
   // first (Ivan, 2026-09-04, Nitin Manchanda: "he asked for an email so we should
   // have the ability to check the email draft as well as the dm").
@@ -392,6 +404,7 @@ export function groupThreads(
       draftSnoozedUntil: snoozedUntil,
       needsManualReply: manualReplyIds.has(last.prospect_id),
       spam: (last.prospect_skip_reason ?? null) === SPAM_REASON,
+      blacklisted: Boolean(last.prospect_blacklisted),
       messages,
     })
   }
@@ -544,6 +557,8 @@ const CLOSED_STAGES = new Set(['archived', 'skipped', 'disqualified', 'unsubscri
 function isRealReply(m: InboxMessage): boolean {
   const text = (m.message_text ?? '').trim()
   if (!text) return false
+  // The detector already judged it a decline: its verdict outranks the phrase list.
+  if (m.reply_intent === 'negative') return false
   return !DEAD_TAG.test(text) && !OOO_TEXT.test(text) && !REACTION.test(text)
     && !DECLINE.test(text) && !SIGNOFF.test(text)
 }
@@ -556,7 +571,7 @@ function isRealReply(m: InboxMessage): boolean {
 // cannot drift apart. Returns the inbound message's own timestamp, the
 // moment the wait began, or null when the thread does not owe a reply at all.
 function unansweredSince(t: Thread): string | null {
-  if (CLOSED_STAGES.has(t.stage)) return null
+  if (CLOSED_STAGES.has(t.stage) || t.blacklisted) return null
   if (t.ownerConfirmation) return eventTime(t.ownerConfirmation)
   // PUSHING A DRAFT IS AN ANSWER TO "does this need a reply TODAY" — the same
   // move as the discard rule below, with a return date on it. Ivan read the
@@ -615,12 +630,16 @@ export type ThreadBucket = keyof InboxBreakdown
 // badge and (since the Inbox job was removed) the DMs status filter all read
 // THIS — so the bar Ivan clicks and the list he gets back cannot disagree, which
 // was the failure mode the old raw-unread badge had.
-export function threadBucket(t: Thread): ThreadBucket {
-  if (needsAnswer(t)) return 'answer'
+export function threadBucket(t: Thread, now: number = Date.now()): ThreadBucket {
+  if (needsAnswer(t, now)) return 'answer'
   // A pushed draft is not work waiting on him, so it does not count as one.
   // It stays reachable in 'all' / 'Waiting on them' wearing its return date —
   // parked, never disappeared.
-  if (t.draft !== null && t.draftSnoozedUntil === null) return 'approve'
+  // A draft nobody approved in STALE_DAYS is backlog on the same clock an
+  // unanswered reply is (Fin Dittimi, 2026-09-22: a 12-day-old cold pitch in
+  // "Needs your reply"). Still in 'all', still sendable from the thread.
+  if (t.draft !== null && t.draftSnoozedUntil === null
+      && now - Date.parse(eventTime(t.draft)) <= STALE_DAYS * 86_400_000) return 'approve'
   // 'flagged' is a MARKER now, never a bucket of its own. Live proof it had to
   // stop counting: Nour Siakir Oglou's thread ends with Ivan's own "either way
   // not my lane, all the best" and still rendered as NEEDS REPLY, because a

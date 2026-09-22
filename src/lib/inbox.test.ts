@@ -356,6 +356,27 @@ describe('needsAnswer', () => {
     const t = groupThreads([inbound('fresh', '2026-07-09T20:00:00Z')])[0]
     expect(needsAnswer(t)).toBe(true)
   })
+  // 2026-09-22, Ivan: "some people here doesn't need a follow up". Andy Brenits
+  // ("No thank you, not Needed."), Matias Gonzalez ("No, thanks!!") and Jonathan
+  // S. ("Don't message me again") were all in "Needs your reply": the detector
+  // had stamped every one `reply_intent=negative` and `blacklisted=true`, but
+  // the app judged the text with its own regex (which knows "no thanks" and not
+  // "no thank you") and the stage (still 'replied'). The engine's verdict wins.
+  it('a decline the detector already stamped negative is not waiting', () => {
+    const t = groupThreads([sent('a', '2026-07-20T10:00:00Z'),
+      { ...inbound('b', '2026-07-21T10:00:00Z'), message_text: 'No thank you, not\nNeeded.', reply_intent: 'negative' }])[0]
+    expect(needsAnswer(t)).toBe(false)
+  })
+  it('a blacklisted prospect never owes a reply, whatever the text says', () => {
+    const t = groupThreads([sent('a', '2026-07-20T10:00:00Z'),
+      { ...inbound('b', '2026-07-21T10:00:00Z'), message_text: 'lol how stupid do you think we are', prospect_blacklisted: true }])[0]
+    expect(needsAnswer(t)).toBe(false)
+  })
+  it('a positive or neutral intent leaves the thread waiting', () => {
+    const t = groupThreads([sent('a', '2026-07-20T10:00:00Z'),
+      { ...inbound('b', '2026-07-21T10:00:00Z'), reply_intent: 'positive' }])[0]
+    expect(needsAnswer(t)).toBe(true)
+  })
 })
 
 describe('inboxBreakdown + inboxWaitingCount', () => {
@@ -393,6 +414,15 @@ describe('inboxBreakdown + inboxWaitingCount', () => {
 // reason that is safe: the bar's printed number and the list a click produces
 // come from one function, so a segment can never advertise 42 and hand back 7.
 describe('threadBucket + filterByStatus (the DMs status axis)', () => {
+  // Fin Dittimi (2026-09-22): a cold-pitch draft written 12 days earlier sat in
+  // "Needs your reply" with nothing owed. A draft ages out of the block on the
+  // same STALE_DAYS clock an unanswered reply does; it stays reachable in 'all'.
+  it('a pending draft older than STALE_DAYS is backlog, not approve', () => {
+    const old = { ...base, id: 'd', created_at: '2026-07-07T19:00:00Z' }
+    expect(threadBucket(groupThreads([old])[0])).toBe('waiting')
+    const fresh = { ...base, id: 'e', created_at: '2026-07-21T10:00:00Z' }
+    expect(threadBucket(groupThreads([fresh])[0])).toBe('approve')
+  })
   const rows: InboxMessage[] = [
     // p1 unanswered reply -> answer
     { ...base, id: 'p1s', prospect_id: 'p1', sent_at: '2026-07-20T10:00:00Z', created_at: '2026-07-20T10:00:00Z' },
