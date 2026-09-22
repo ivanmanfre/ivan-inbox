@@ -299,6 +299,26 @@ describe('classifyGateReply', () => {
     expect(classifyGateReply('already posted').outcome).toBe('already')
   })
 
+  // Volume Lane - Drainer (gi8Kcnmno1136bxT) accepts with its kill switch off
+  // and says so on the same "approved:" prefix. Read as a plain accept, Ivan
+  // took held comments for posted ones (2026-09-22).
+  it('flags an accept the gate HELD, and only that one', () => {
+    const plain = classifyGateReply('approved: Loretta Brooks - it will drain with the rest, 4 min apart, inside 13-21 UTC.')
+    expect(plain.outcome).toBe('accepted')
+    expect(plain.held).toBeFalsy()
+
+    const heldReply = 'approved: zoë hartsfield 👻 - held in the queue, the volume lane is still switched off (volume_auto_commenting).'
+    const held = classifyGateReply(heldReply)
+    expect(held.outcome).toBe('accepted')
+    expect(held.held).toBe(true)
+    expect(held.message).toBe(heldReply)
+    expect(classifyGateReply('APPROVED: X - HELD in the queue').held).toBe(true)
+
+    const replay = classifyGateReply('already approved')
+    expect(replay.outcome).toBe('already')
+    expect(replay.held).toBeFalsy()
+  })
+
   it('FAILS CLOSED — an unrecognised sentence is never an accept', () => {
     expect(classifyGateReply('¯\\_(ツ)_/¯').outcome).toBe('unknown')
     expect(classifyGateReply('').outcome).toBe('unknown')

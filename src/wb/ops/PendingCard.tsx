@@ -18,7 +18,7 @@ import {
   approveOpsDraft, approveWeeklyReport, canGenerateDraft, canTagCommenter, isCloseOnlyComment,
   discardOpsDraft, DRAFT_CONTINUE_MAX, engineLabel, expiresIn, generateCommentDraft, likeComment,
   markCommentHandled, outboundApproveUrl, outboundSkipUrl, postCommentReply, isHandWritten, seatLabel,
-  dispatchCommentGate, cardStateOf, weeklyReportDispatches, weeklySendAfter,
+  dispatchCommentGate, cardStateOf, weeklyReportDispatches, weeklySendAfter, GATE_HELD_LABEL,
   archOutcome, archOutcomeLabel, archSources, markNeedsDavor, DRAFTER_BUSY,
   type OpsDraft, type OpsKind, type GateVerdict, type FeedState,
 } from '../../lib/ops'
@@ -200,7 +200,7 @@ function ContextBlock({ draft }: { draft: OpsDraft }) {
 // Exported so a host surface can own the FRAME (header, freshness, columns) and
 // still act on the queue through this one card. Duplicating it would mean two
 // approve paths with two sets of confirm copy for the same publish.
-export function PendingCard({ draft, refresh, feed, onGateResult }: {
+export function PendingCard({ draft, refresh, feed, held, onGateResult }: {
   draft: OpsDraft
   refresh: () => void
   // The comment_feed row behind an outbound card, if the host loaded it. The
@@ -208,18 +208,22 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
   // "did it actually go out" — and because it comes from the database, it
   // survives a refresh and a second device instead of living in React memory.
   feed?: FeedState
+  // The gate's accept when it PARKED the comment (lane switched off). The host
+  // holds it because the stamped card has already left `pending`.
+  held?: GateVerdict
   // Lets the host (which owns the retry line) learn what the gate said without
   // this card having to know a queue exists.
   onGateResult?: (id: string, v: GateVerdict) => void
 }) {
   if (draft.kind === 'conversation_takeover') return <ConversationTakeoverCard draft={draft} refresh={refresh} />
-  return <StandardPendingCard draft={draft} refresh={refresh} feed={feed} onGateResult={onGateResult} />
+  return <StandardPendingCard draft={draft} refresh={refresh} feed={feed} held={held} onGateResult={onGateResult} />
 }
 
-function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
+function StandardPendingCard({ draft, refresh, feed, held, onGateResult }: {
   draft: OpsDraft
   refresh: () => void
   feed?: FeedState
+  held?: GateVerdict
   onGateResult?: (id: string, v: GateVerdict) => void
 }) {
   const [body, setBody] = useState(draft.body)
@@ -247,6 +251,8 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
   // queue position rather than as a red error.
   const [gate, setGate] = useState<GateVerdict | null>(null)
   const postState = cardStateOf(feed)
+  // Approved, but nothing posts until the lane is switched on. Not a success.
+  const heldVerdict = held ?? (gate?.held ? gate : null)
   const confirm = useConfirm()
 
   // Re-seed the editor if the row itself changes (e.g. realtime update lands
@@ -717,7 +723,7 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
       className="a-ops-card"
       label={KIND_LABEL[draft.kind]}
       tail={<>{where}{left && <><Sep />{left}</>}<Sep />{timeAgo(draft.created_at)}</>}
-      foot={foot}
+      foot={heldVerdict ? undefined : foot}
       pad
     >
       <div className="a-stack" data-tight>
@@ -819,7 +825,15 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
         {/* Read from comment_feed, the table the poster actually writes. A card
             that painted "Queued" out of React state would keep saying it after a
             refresh even though nothing was scheduled. */}
-        {postState === 'queued' && (
+        {/* An accept the gate parked: approved, but the lane is switched off,
+            so nothing posts. Amber, never the green of a send, and the gate's
+            own sentence stays readable under it. */}
+        {heldVerdict && (
+          <Banner tone="attention" icon="pause" title={GATE_HELD_LABEL}>
+            <span title={heldVerdict.message}>{heldVerdict.message}</span>
+          </Banner>
+        )}
+        {postState === 'queued' && !heldVerdict && (
           <Banner tone="neutral" icon="time">
             Queued — the poster has it. It posts after its jitter window unless you discard.
           </Banner>

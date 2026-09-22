@@ -45,6 +45,11 @@ export function useCommentQueue(drafts: OpsDraft[], refresh: () => void) {
   const [feed, setFeed] = useState<Map<string, FeedState>>(new Map())
   const [waiting, setWaiting] = useState<QueueEntry[]>([])
   const [cappedToday, setCappedToday] = useState(false)
+  // Accepts the gate PARKED (volume lane switched off). An accept stamps the
+  // ops_drafts row, so the card leaves `pending` on the next read and would take
+  // the "held" sentence with it. The board keeps these cards on screen from this
+  // map so the hold stays visible. In-memory: a reload drops it.
+  const [held, setHeld] = useState<Map<string, GateVerdict>>(new Map())
   const firing = useRef(false)
 
   // Durable state: what the poster says about every outbound card on screen.
@@ -69,6 +74,7 @@ export function useCommentQueue(drafts: OpsDraft[], refresh: () => void) {
 
   const record = useCallback((id: string, v: GateVerdict) => {
     if (CAP_RE.test(v.message)) setCappedToday(true)
+    if (v.held) setHeld(cur => new Map(cur).set(id, v))
     setWaiting(cur => {
       const rest = cur.filter(e => e.id !== id)
       if (v.outcome !== 'timing') return rest
@@ -95,6 +101,7 @@ export function useCommentQueue(drafts: OpsDraft[], refresh: () => void) {
         const v = await dispatchCommentGate(head.url)
         if (CAP_RE.test(v.message)) setCappedToday(true)
         if (v.outcome === 'accepted' || v.outcome === 'already') {
+          if (v.held) setHeld(cur => new Map(cur).set(head.id, v))
           setWaiting(cur => cur.filter(e => e.id !== head.id))
           refresh()
           loadFeed()
@@ -117,6 +124,7 @@ export function useCommentQueue(drafts: OpsDraft[], refresh: () => void) {
     feed,
     waiting,
     cappedToday,
+    held,
     record,
     reloadFeed: loadFeed,
     positionOf: (id: string) => waiting.findIndex(e => e.id === id),

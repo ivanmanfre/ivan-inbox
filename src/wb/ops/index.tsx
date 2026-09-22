@@ -65,14 +65,20 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, refresh)
   const pending = pendingOps(drafts)
-  // Tasks are a LIST, not cards (2026-08-30, Ivan: "make it a more crm thing
-  // with thick"). They come out of the card column and render above it through
-  // the one component that owns what a task is.
-  const cards = pending.filter(d => !isTaskKind(d.kind))
-  const hasTasks = pending.length !== cards.length || doneTodayTasks(drafts).length > 0
   // The comment lane's queue lives here, not on the card: one line, one retry
   // timer, one read of comment_feed for every outbound card on screen.
   const queue = useCommentQueue(pending, refresh)
+  // Tasks are a LIST, not cards (2026-08-30, Ivan: "make it a more crm thing
+  // with thick"). They come out of the card column and render above it through
+  // the one component that owns what a task is.
+  const pendingCards = pending.filter(d => !isTaskKind(d.kind))
+  // A comment the gate accepted but HELD (volume lane switched off) is stamped
+  // and so leaves `pending`; it stays on the board, in place, saying so.
+  const pendingIds = new Set(pendingCards.map(d => d.id))
+  const cards = queue.held.size === 0
+    ? pendingCards
+    : drafts.filter(d => pendingIds.has(d.id) || queue.held.has(d.id))
+  const hasTasks = pending.length !== pendingCards.length || doneTodayTasks(drafts).length > 0
   // The desk's state is held here so the frame can ask whether the desk has
   // anything in it before it decides how many columns to draw. The desk itself
   // still renders nothing when nothing is waiting.
@@ -134,7 +140,7 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
     )
   }
 
-  const empty = pending.length === 0 && !hasTasks
+  const empty = pending.length === 0 && cards.length === 0 && !hasTasks
 
   return (
     <Screen>
@@ -175,6 +181,7 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
                     <PendingCard
                       key={d.id} draft={d} refresh={refresh}
                       feed={queue.feed.get(outboundFeedId(d) ?? '')}
+                      held={queue.held.get(d.id)}
                       onGateResult={queue.record}
                     />
                   ))}

@@ -910,7 +910,15 @@ export type GateOutcome =
   | 'refused' // refused on the merits: retrying changes nothing today
   | 'unknown' // could not be classified, or the call failed
 
-export type GateVerdict = { outcome: GateOutcome; message: string; retryable: boolean }
+// `held`: an ACCEPT the gate parked. The volume lane's gate (Volume Lane -
+// Drainer, gi8Kcnmno1136bxT) answers "approved: <name> - held in the queue, the
+// volume lane is still switched off (volume_auto_commenting)." when its kill
+// switch is off: the row IS approved and drains once the switch flips, but
+// nothing posts until then. Read as plain "approved", Ivan took held comments
+// for posted ones (2026-09-22), so the card has to say it.
+export type GateVerdict = { outcome: GateOutcome; message: string; retryable: boolean; held?: boolean }
+
+export const GATE_HELD_LABEL = 'Approved · held — lane is switched off'
 
 // Ordered, longest-intent-first. Every string below is quoted from the live
 // workflow (lwuWECwQRbhzK5Bt, node "Validate + Approve").
@@ -935,7 +943,9 @@ export function classifyGateReply(raw: string): GateVerdict {
   const message = (raw ?? '').trim()
   for (const r of GATE_RULES) {
     if (r.re.test(message)) {
-      return { outcome: r.outcome, message, retryable: r.outcome === 'timing' }
+      const v: GateVerdict = { outcome: r.outcome, message, retryable: r.outcome === 'timing' }
+      if (r.outcome === 'accepted' && /held/i.test(message)) v.held = true
+      return v
     }
   }
   // FAIL CLOSED. An unrecognised sentence is never treated as an accept: the
