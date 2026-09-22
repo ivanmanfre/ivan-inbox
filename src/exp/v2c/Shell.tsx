@@ -60,6 +60,7 @@ import { useChat } from './useChat'
 import { useGlanceCounts } from './useGlanceCounts'
 import { hasMock } from './mock'
 import { parseWbHash, wbHash } from './route'
+import { useOneShotBootLink } from './bootLink'
 import {
   JOB_LABEL, addPeer, applyDrawer, contextPeer, dropPeer, hasChat, jobHasList,
   peerKey, planWorkbench, type Canvas, type Job, type Peer,
@@ -167,6 +168,8 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
   const boot = useMemo(() => parseWbHash(location.hash), [])
 
   const [job, setJob] = useState<Job>(boot.job)
+  // content-brain-06 C04: one-shot boot deep link for the lazy StrategyView (see bootLink.ts).
+  const bootLink = useOneShotBootLink(boot, job)
   // Ivan, 2026-08-04: the rail collapses. Persisted so it stays how he left it.
   const [railMin, setRailMin] = useState(() => {
     try { return localStorage.getItem('wb-railmin') === '1' } catch { return false }
@@ -730,13 +733,14 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
           Styles did: it is per-lane, so it rides the shared lane state rather
           than asking Ivan which client he means a second time. It is the one
           work surface that WRITES what it shows. */}
-      {/* content-brain-06 C04: StrategyView is lazy, and on the phone its chunk
-          mounts AFTER the `[job]` effect above has already stripped `?lane=&section=`
-          from the hash, so reading `location.hash` at mount found nothing and the
-          deep link landed on Ivan / This week. The boot route was parsed once at
-          Shell mount, before that strip, so hand it down explicitly. */}
+      {/* content-brain-06 C04: StrategyView is lazy, and its chunk can mount AFTER
+          the `[job]` effect above has already stripped `?lane=&section=` from the
+          hash (it does on the phone; desktop timing merely tends to win), so reading
+          `location.hash` at mount found nothing and the deep link landed on Ivan /
+          This week. The boot route was parsed at Shell mount, before that strip, so
+          hand it down explicitly, once (see bootLink). */}
       {job === 'strategy' && (
-        <StrategyView lane={lane} setLane={setLane} initialLane={boot.lane} initialSection={boot.section} />
+        <StrategyView lane={lane} setLane={setLane} initialLane={bootLink?.lane} initialSection={bootLink?.section} />
       )}
       {job === 'sends' && <SendsC client={sendsClient} setClient={setSendsClient} />}
       {/* Money joined 2026-09-01 (goal-run money-truth) — a whole-canvas
