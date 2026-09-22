@@ -730,8 +730,13 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
           Styles did: it is per-lane, so it rides the shared lane state rather
           than asking Ivan which client he means a second time. It is the one
           work surface that WRITES what it shows. */}
+      {/* content-brain-06 C04: StrategyView is lazy, and on the phone its chunk
+          mounts AFTER the `[job]` effect above has already stripped `?lane=&section=`
+          from the hash, so reading `location.hash` at mount found nothing and the
+          deep link landed on Ivan / This week. The boot route was parsed once at
+          Shell mount, before that strip, so hand it down explicitly. */}
       {job === 'strategy' && (
-        <StrategyView lane={lane} setLane={setLane} />
+        <StrategyView lane={lane} setLane={setLane} initialLane={boot.lane} initialSection={boot.section} />
       )}
       {job === 'sends' && <SendsC client={sendsClient} setClient={setSendsClient} />}
       {/* Money joined 2026-09-01 (goal-run money-truth) — a whole-canvas

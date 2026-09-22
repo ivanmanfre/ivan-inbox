@@ -38,7 +38,7 @@ import { ThemesBlock } from './ThemesBlock'
 import { LeadMagnetsView } from './leadmagnets'
 import { MarketsView } from './markets'
 import { ClientDirectionPanel, DemoPanel, ResearchPanel, ResultsPanel as EditorialResultsPanel, ThisWeekPanel as EditorialThisWeekPanel } from './research/ResearchWorkspace'
-import { isStrategyView, readStrategyDeepLink, type StrategyViewId } from './strategy/deepLink'
+import { isContentLane, isStrategyView, readStrategyDeepLink, type StrategyViewId } from './strategy/deepLink'
 import { prefixOf, wbHash } from '../../exp/v2c/route'
 import './content.css'
 import './strategy-evidence.css'
@@ -266,7 +266,7 @@ function FilterSpecBlock({ lane }: { lane: ContentLane }) {
   )
 }
 
-export function StrategyView({ lane, setLane, initialSection }: {
+export function StrategyView({ lane, setLane, initialSection, initialLane }: {
   lane: ContentLane
   setLane: (l: ContentLane) => void
   // content-brain-05 Task 6: the fixture-data preview harness parses its own
@@ -277,7 +277,13 @@ export function StrategyView({ lane, setLane, initialSection }: {
   // The real Shell never passes this — it has nothing to pass yet, since the
   // hash itself is read below — so it is optional and changes nothing for
   // that caller.
-  initialSection?: StrategyViewId
+  initialSection?: StrategyViewId | string
+  // content-brain-06 C04: same origin as `initialSection`, the other half of the
+  // deep link. Shell parses the boot hash before its own `[job]` effect strips the
+  // query, and this lazy component can mount after that strip (it does on the
+  // phone), so the lane the link named has to arrive as a prop, not be re-read
+  // from `location.hash`. Validated here exactly like the hash path.
+  initialLane?: string
 }) {
   const st = useStrategy(lane)
   // The tenants this operator may see come from client_registry through
@@ -320,7 +326,8 @@ export function StrategyView({ lane, setLane, initialSection }: {
     laneLinkRead.current = true
     if (typeof location === 'undefined') return
     const link = readStrategyDeepLink(location.hash)
-    if (link.lane && link.lane !== lane) setLane(link.lane)
+    const wanted = isContentLane(initialLane) ? initialLane : link.lane
+    if (wanted && wanted !== lane) setLane(wanted)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   // Write the CURRENT lane/tab back into the address bar so a reload — not
