@@ -777,7 +777,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
           onOpenContent={l => { setLane(l as ContentLane); goJob('content') }}
           onOpenCall={openCallRow}
           onOpsChanged={ops.refresh}
-          threadsFromCache={inbox.fromCache}
+          liveRead={inbox.loadedAt != null && ops.loadedAt != null}
         />
       )}
       {/* `shell` is what earns the Density and Frame controls. SettingsScreen is

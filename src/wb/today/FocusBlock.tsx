@@ -22,12 +22,12 @@
    - A single card's gate refusal shows the gate's own sentence under that
      row, and a clock refusal (`timing`) reads as a queue position, not an
      error (OpsScreen.tsx:508-516's own rule).
-   - `data-fresh` reads the real `threadsFromCache` flag (Shell.tsx's
+   - `data-fresh` reads Shell's `liveRead` (both hooks' loadedAt set; Shell.tsx's
      `inbox.fromCache`) for the threads half, and a local since-mount check
      for the ops half (useOps has no persisted cache, so any change from its
      initial value is a genuine live fetch).
    ========================================================================== */
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Button } from '../../ds'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import {
@@ -105,7 +105,7 @@ async function dispatchDiscard(d: OpsDraft): Promise<void> {
 type SingleNote = { message: string; outcome: GateOutcome | 'error' }
 
 export function FocusBlock({
-  threads, opsDrafts, pipeline, governor, now, onChanged, threadsFromCache,
+  threads, opsDrafts, pipeline, governor, now, onChanged, liveRead,
 }: {
   threads: Thread[]
   opsDrafts: OpsDraft[]
@@ -122,20 +122,14 @@ export function FocusBlock({
   // flag), forwarded here so data-fresh reads the real signal for the
   // threads half instead of a guess (fable review item 6, 2026-09-22).
   // Undefined (no host wired it) reads as "not known to be cached".
-  threadsFromCache?: boolean
+  liveRead?: boolean
 }) {
   const confirm = useConfirm()
 
-  // opsDrafts has no persisted cache (useOps starts at [] and only ever holds
-  // a real fetch or realtime update after that), so a change from the
-  // reference this component first saw IS a genuine live read - the ops half
-  // of "fresh" needs no prop, unlike the threads half above.
-  const initialOps = useRef(opsDrafts)
-  const [opsFetched, setOpsFetched] = useState(false)
-  useEffect(() => {
-    if (!opsFetched && opsDrafts !== initialOps.current) setOpsFetched(true)
-  }, [opsDrafts, opsFetched])
-  const fresh = !threadsFromCache && opsFetched
+  // "fresh" = both halves of the count came from a network read in this page
+  // load: Shell passes true only once useInbox AND useOps have stamped their
+  // own loadedAt (set only on a successful live read, never from the SWR seed).
+  const fresh = !!liveRead
 
   // Ids this component has already resolved (approved or discarded), kept
   // client-side until the parent's own ops read catches up - without this a

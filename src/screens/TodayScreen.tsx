@@ -997,7 +997,7 @@ function Counter({ n, cap, warn, bad, warnZero }: {
 
 export function TodayScreen({
   onOpenDrafts, onOpenOps, threads, opsDrafts, onOpenThread, onOpenContent, onOpenCall,
-  onOpsChanged, threadsFromCache,
+  onOpsChanged, liveRead,
 }: {
   // A host that has its own navigation passes it in; the default app falls back to
   // its own hash routes (src/lib/route.ts). Either way a hand-off row has a way in
@@ -1021,13 +1021,13 @@ export function TodayScreen({
   // the section has nowhere to open, so it does not render at all rather than
   // render rows that do nothing when tapped.
   onOpenCall?: (id: string, queue: CallRow[]) => void
-  // FocusBlock's onChanged/threadsFromCache (fable review items 4/6,
+  // FocusBlock's onChanged/liveRead (fable review items 4/6,
   // 2026-09-22), just forwarded through. No production caller passes these
   // today (stockShell.tsx mounts this screen with zero props), kept for
   // parity with wb/today/index.tsx's Today() so both shells carry the same
   // contract.
   onOpsChanged?: () => void
-  threadsFromCache?: boolean
+  liveRead?: boolean
 } = {}) {
   const t = useToday()
   const rowsRef = useRef<HTMLDivElement>(null)
@@ -1153,7 +1153,7 @@ export function TodayScreen({
             pipeline={t.health?.pipeline ?? []}
             governor={t.health?.governor ?? []}
             onChanged={onOpsChanged}
-            threadsFromCache={threadsFromCache}
+            liveRead={liveRead}
           />
         )}
         <Masthead c={counts} plate={t.brief ? plate : null} syncedAt={syncedAt} stale={stale} />
