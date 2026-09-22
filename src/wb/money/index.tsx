@@ -32,15 +32,19 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   MONEY_TRUTH_RUN, NO_PRESETTLE_TEXT, NO_SOURCE_TEXT, RUNWAY_REFUSAL, STRIPE_UNVERIFIED_BANNER,
   TOKEN_PRICED_LABEL, UNATTRIBUTED_LANE, UNVERIFIED_SUFFIX,
-  aggregateByDay, aggregateByWeek, billingDay, clientLabel, computeRunway, dayRangeLabel,
+  aggregateByDay, aggregateByWeek, billingDay, clientLabel, computeRunway,
+  costPerReadyLead, costWindowLabel, dataPerLeadAttr, dayRangeLabel,
   fetchActorDay, fetchCashConfig, fetchEngineCounterDay, fetchLaneDay,
   fetchMonthChargesAndInvoices, fetchMrrRows, fetchOpenMoneyDecisions,
-  fetchRenewalRiskRows, fetchStripeKeyExists, fmtShareOfTotal, fmtUsd, fmtUsdPerUnit, isStale, isTokenPriced,
-  laneTotals, laneTotalsGrandTotal, lastNDays, mrrByClient, noteReason, provenanceText, riskNoteKind,
-  riskNoteText, taskTitle, topActors, type ActorDayRow, type ClientMrrRow,
+  fetchRenewalRiskRows, fetchStripeKeyExists, fmtPerLead, fmtShareOfTotal, fmtUsd, fmtUsdPerUnit,
+  isStale, isTokenPriced,
+  laneTotals, laneTotalsGrandTotal, lastNDays, mrrByClient, noteReason, provenanceText,
+  readyLeadWindowDays, riskNoteKind,
+  riskNoteText, taskTitle, topActors, type ActorDayRow, type ClientMrrRow, type CostPerLead,
   type EngineCounterDayRow, type LaneDayRow, type LaneTotal, type MoneyLedgerRow,
   type MoneyTaskRow, type PeriodAgg,
 } from '../../lib/money'
+import { fetchReplacement, type ReplacementRow } from '../../lib/kpis'
 import { PullIndicator } from '../chrome/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { hasMock } from '../../exp/v2c/mock'
@@ -483,6 +487,46 @@ function CostToServeSection({ laneDay, now }: { laneDay: LaneDayRow[]; now: numb
   )
 }
 
+// ---- Section 5b: cost per ready lead, per lane (instantly-picks item 2) ---
+//
+// Next to vendor spend rather than folded into CostToServeSection's own
+// Ledger/DataCell table: this number is not a single sourced row the way
+// every other cell on this page is (apify settled $, apify runs, anthropic
+// $) — it is itself a derivation over two views, so it gets its own small
+// section instead of a column bolted onto a table built around one Source
+// per cell. `data-cost-lane`/`data-per-lead`/`data-window` are read by this
+// run's live gate check (goal-runs/instantly-picks-2026-09-22/checks/
+// g6-cost-parity.mjs), read-only, for cross-verification against a hand
+// computation over the same raw tables — not edited by this item.
+function CostPerLeadSection({ laneDay, readyDays, now }: { laneDay: LaneDayRow[]; readyDays: ReplacementRow[]; now: number }) {
+  const rows: CostPerLead[] = costPerReadyLead(laneDay, readyDays, { now })
+  const days = readyLeadWindowDays(7, now)
+  const win = costWindowLabel(days)
+  const title = `Cost per ready lead, last 7 settled days`
+  return (
+    <Group label={sectionLabel('5b', title)}>
+      <div className="a-money-perlead">
+        {rows.map(r => (
+          <div
+            key={r.lane}
+            className="a-money-perlead-row"
+            data-cost-lane={r.lane}
+            data-per-lead={dataPerLeadAttr(r.perLead)}
+            data-window={win}
+          >
+            <span className="a-money-perlead-lane">{laneDisplay(r.lane)}</span>
+            <span className="a-money-perlead-fig">{fmtPerLead(r.perLead, r.usdSettled)}</span>
+            <span className="a-meta a-money-perlead-sub">
+              {r.settledDays} settled days
+              {r.settlingDays > 0 ? ` · ${r.settlingDays} days settling` : ''}
+            </span>
+          </div>
+        ))}
+      </div>
+    </Group>
+  )
+}
+
 // ---- Section 6: invoice and receipt checklist (this month) ----------------
 
 function ChecklistSection({
@@ -576,6 +620,11 @@ type MoneyState = {
   laneDay: LaneDayRow[]
   actorDay: ActorDayRow[]
   engineDay: EngineCounterDayRow[]
+  // instantly-picks item 2 (2026-09-22): ready-lead supply per client per day
+  // (inbox_replacement_v), read alongside laneDay to price it. Soft-fails to
+  // [] already at the fetcher (kpis.ts:67-71) when the view is not applied,
+  // same pre-apply discipline as every other optional KPI view this app reads.
+  readyDays: ReplacementRow[]
   cash: { cashOnHandUsd: number | null; cashAsOfDate: string | null; observedAt: string | null }
   stripeKeyExists: boolean
   tasks: MoneyTaskRow[]
@@ -584,7 +633,7 @@ type MoneyState = {
 
 const INITIAL: MoneyState = {
   loading: true, error: null, mrrRows: [], riskRows: [], monthRows: [],
-  laneDay: [], actorDay: [], engineDay: [],
+  laneDay: [], actorDay: [], engineDay: [], readyDays: [],
   cash: { cashOnHandUsd: null, cashAsOfDate: null, observedAt: null },
   stripeKeyExists: false, tasks: [], loadedAt: null,
 }
@@ -597,11 +646,11 @@ function useMoney() {
     Promise.all([
       fetchMrrRows(), fetchRenewalRiskRows(), fetchMonthChargesAndInvoices(),
       fetchLaneDay(30), fetchActorDay(30), fetchEngineCounterDay(30),
-      fetchCashConfig(), fetchStripeKeyExists(), fetchOpenMoneyDecisions(),
-    ]).then(([mrrRows, riskRows, monthRows, laneDay, actorDay, engineDay, cash, stripeKeyExists, tasks]) => {
+      fetchCashConfig(), fetchStripeKeyExists(), fetchOpenMoneyDecisions(), fetchReplacement(),
+    ]).then(([mrrRows, riskRows, monthRows, laneDay, actorDay, engineDay, cash, stripeKeyExists, tasks, readyDays]) => {
       setState({
         loading: false, error: null, mrrRows, riskRows, monthRows, laneDay, actorDay, engineDay,
-        cash, stripeKeyExists, tasks, loadedAt: new Date().toISOString(),
+        readyDays, cash, stripeKeyExists, tasks, loadedAt: new Date().toISOString(),
       })
     }).catch((e: unknown) => {
       setState(s => ({ ...s, loading: false, error: e instanceof Error ? e.message : 'money data unavailable' }))
@@ -678,6 +727,7 @@ export function MoneyView() {
               />
               <VendorSpendSection laneDay={m.laneDay} actorDay={m.actorDay} engineDay={m.engineDay} now={now} />
               <CostToServeSection laneDay={m.laneDay} now={now} />
+              <CostPerLeadSection laneDay={m.laneDay} readyDays={m.readyDays} now={now} />
               <ChecklistSection monthRows={m.monthRows} mrrRows={m.mrrRows} now={now} />
               <DecisionsSection tasks={m.tasks} />
             </>

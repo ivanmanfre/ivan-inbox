@@ -114,3 +114,18 @@
   .a-money-wide{ display:none }
   .a-money-narrow{ display:block }
 }
+
+/* --------------------------------------------------------------------------
+   instantly-picks item 2 (2026-09-22) · cost per ready lead, one row per
+   lane, next to vendor spend. Plain rows (not the Ledger/Table primitives)
+   since this is a derived pair of numbers per lane, not one sourced cell.
+   -------------------------------------------------------------------------- */
+.a-money-perlead{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0 }
+.a-money-perlead-row{
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--ds-s2) var(--ds-s4);
+  padding:var(--ds-s3) 0; border-block-start:1px solid var(--ds-hairline); min-width:0;
+}
+.a-money-perlead-row:first-child{ border-block-start:none }
+.a-money-perlead-lane{ flex:none; min-width:9ch; font-weight:var(--ds-fw-medium) }
+.a-money-perlead-fig{ font-variant-numeric:tabular-nums }
+.a-money-perlead-sub{ flex:1 1 auto; min-width:0; text-align:end }
