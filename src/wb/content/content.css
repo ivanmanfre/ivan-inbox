@@ -376,6 +376,8 @@
 @media (min-width:1000px){
   .a-ct-callayout{ grid-template-columns:minmax(0,1fr) 20rem }
 }
+/* The rail shut (the default): the month takes the full width. */
+.a-ct-callayout[data-rail='off']{ grid-template-columns:minmax(0,1fr) }
 
 /* THE MONTH STEP. React replaces the grid node when the key changes, so this
    runs from scratch on every step, and the direction says which side it comes
@@ -474,6 +476,9 @@
 }
 .a-ct-chip[data-arm='armed']{ border-inline-start-color:var(--ds-accent) }
 .a-ct-chip[data-arm='planned']{ border-inline-start-color:var(--ds-sev-attention) }
+/* STUCK wins over armed: a scheduled post past its time that never went out
+   is a failure, and in the armed green it read as a healthy future post. */
+.a-ct-chip[data-st='stuck']{ border-inline-start-color:var(--ds-sev-urgent) }
 .a-ct-chip[data-drag]{ opacity:.45 }
 .a-ct-chip-row{ display:flex; align-items:flex-start; gap:var(--ds-s2); min-width:0 }
 .a-ct-chip-t{

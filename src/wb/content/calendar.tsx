@@ -9,9 +9,11 @@
    scheduled.
 
    What it is NOT: an arming surface. Exactly one thing here writes a date,
-   `setScheduleDateAt`, and `scheduled_at` is the ONLY column it writes. Status
-   and board visibility are left exactly as they were. Arming is a separate,
-   deliberate act with its own confirm, on the chips that can take it.
+   `setScheduleDateAt`, and it writes `scheduled_at` on the draft AND on that
+   draft's pending publish-queue rows in the same call (db/205), so a move is
+   the day the publisher fires on, not a note the Bridge catches up to later.
+   Status and board visibility are left exactly as they were. Arming is a
+   separate, deliberate act with its own confirm, on the chips that can take it.
 
    ONE DOM, TWO READINGS. At >=1000px it is a real month grid with a hairline
    lattice; below that the same nodes are a dense agenda with a sticky day
@@ -41,6 +43,7 @@ import type { OpenDraft } from './row'
 import './content.css'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const RAIL_KEY = 'ct-cal-rail'
 
 /**
  * How many chips a month cell paints before the rest collapse into "+N".
@@ -91,6 +94,17 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
   const [err, setErr] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
   const confirm = useConfirm()
+  // THE RAIL IS SHUT BY DEFAULT (Ivan, 2026-09-22: "weird waiting drafts on the
+  // right"). It is the REVIEW BACKLOG, not the schedule, and a date on a review
+  // draft does not publish it, so it opens on request from the bar and the
+  // choice is remembered per viewer.
+  const [railOpen, setRailOpen] = useState(() => {
+    try { return localStorage.getItem(RAIL_KEY) === 'open' } catch { return false }
+  })
+  const toggleRail = () => setRailOpen(o => {
+    try { localStorage.setItem(RAIL_KEY, o ? 'shut' : 'open') } catch { /* private mode */ }
+    return !o
+  })
   // THE CHIP DESCRIPTION. One panel for the whole grid, not one per chip:
   // there is only ever one pointer and one focus ring.
   const [tip, setTip] = useState<{ el: HTMLElement; id: string; text: string } | null>(null)
@@ -159,7 +173,9 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
   // THE MONTH COUNT IS SPLIT IN WORDS, because one number counting a review row
   // carrying a date alongside a row a publisher actually holds is the lie in
   // figure form.
-  const monthArmed = monthItems.filter(i => i.arming === 'armed').length
+  // A stuck row is armed-and-late: it is not "still going out", so it is not
+  // counted as scheduled (the Sep 8 failed post read as "1 scheduled").
+  const monthArmed = monthItems.filter(i => i.arming === 'armed' && i.stage !== 'stuck').length
   const monthPlanned = monthItems.filter(i => i.arming === 'planned').length
   const monthOut = monthItems.filter(i => i.arming === 'out').length
 
@@ -199,7 +215,13 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
     setBusy(true); setErr(null)
     try {
       const to = await setScheduleDateAt(id, publishAtForDay(at, day))
-      setDone(`Moved to ${dayKeyOf(to) ?? day}.`)
+      // The weekday guard rewrites the date (weekend -> Monday, a taken day ->
+      // the next free weekday) and the RPC returns what it STORED, so the
+      // banner names the day the post is really on and says why it moved.
+      const landed = dayKeyOf(to) ?? day
+      setDone(landed === day
+        ? `Moved to ${longDay(landed)}.`
+        : `${longDay(day)} ${isWeekend(day) ? 'is a weekend' : 'already has a post'}, so it went to ${longDay(landed)}.`)
       refresh()
       return true
     } catch (e) {
@@ -291,9 +313,14 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
             <b>{monthPlanned}</b><span>{armingCountWord('planned')}</span>
           </span>
         )}
+        {(rail.length > 0 || railOpen) && (
+          <Button variant="quiet" size="sm" aria-expanded={railOpen} onClick={toggleRail}>
+            {railOpen ? 'Hide' : 'Show'} undated drafts · {rail.length}
+          </Button>
+        )}
       </div>
 
-      <div className="a-ct-callayout">
+      <div className="a-ct-callayout" data-rail={railOpen ? undefined : 'off'}>
         <div>
           <div className="a-ct-weekhead" aria-hidden>
             {WEEKDAYS.map(w => <span key={w}>{w}</span>)}
@@ -377,10 +404,10 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
             the grid off the screen. EVERY ROW HERE HAS A WORKING CONTROL by
             construction: the rail's own predicate is the same one that decides
             whether the button is drawn. */}
-        <Group
-          label="No date yet"
+        {railOpen && <Group
+          label="In review, no date"
           tail={rail.length}
-          foot={rail.length === 0 ? undefined : 'Oldest first. Drag one onto a day.'}
+          foot={rail.length === 0 ? undefined : 'Still in review, so a date alone will not post them. Oldest first; drag one onto a day.'}
           stickyHead
         >
           {rail.length === 0 ? (
@@ -426,7 +453,7 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
               ))}
             </Rows>
           )}
-        </Group>
+        </Group>}
       </div>
 
       {moving && (
@@ -582,7 +609,9 @@ export function chipDescription(it: CalendarItem): string {
   // PLAIN WORDS HERE TOO: this sentence is the chip's accessible description,
   // so it is the one a screen reader hears and the only place a keyboard user
   // meets the distinction.
-  const armTip = it.arming === 'planned'
+  const armTip = it.stage === 'stuck'
+    ? ' · Did not go out at its time.'
+    : it.arming === 'planned'
     ? ' · Dated, but nothing is set to publish it yet.'
     : it.arming === 'armed'
       ? ' · Set to publish: a publisher holds this one.'
@@ -726,6 +755,12 @@ function hhmm(iso: string): string {
   if (!Number.isFinite(t)) return '--:--'
   const d = new Date(t)
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function isWeekend(k: string): boolean {
+  const [y, m, d] = k.split('-').map(Number)
+  const w = new Date(y, m - 1, d).getDay()
+  return w === 0 || w === 6
 }
 
 function longDay(k: string): string {
