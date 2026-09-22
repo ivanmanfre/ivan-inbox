@@ -444,6 +444,13 @@ function MagnetBody({ d, lane, queue, refresh, onPick }: {
   const liveLinks = links.filter((l): l is [string, string] => !!(l[1] && l[1].trim()))
 
   const meta: [ReactNode, ReactNode][] = []
+  // Holds stamped by the editorial release on lm_drafts_v2.spec.holds.
+  const specHolds: string[] = (() => {
+    const s = d.spec
+    if (!s || typeof s !== 'object' || Array.isArray(s)) return []
+    const h = (s as Record<string, unknown>).holds
+    return Array.isArray(h) ? h.filter((x): x is string => typeof x === 'string' && x.trim().length > 0) : []
+  })()
   if (d.landing_slug) meta.push(['Landing slug', d.landing_slug])
   if (d.slug) meta.push(['Slug', d.slug])
   if (d.vertical_slug) meta.push(['Vertical', d.vertical_slug])
@@ -492,6 +499,13 @@ function MagnetBody({ d, lane, queue, refresh, onPick }: {
           <span className="a-dim-2">{label(d.status)}</span>
         )}
       </div>
+      {/* Holds the editorial release stamped on the row (spec.holds), verbatim,
+          one per line, same contract as the Content draft window (Run6 C04 F1). */}
+      {specHolds.length > 0 && (
+        <ul className="a-dw-holds a-sev-attention" aria-label="Holds">
+          {specHolds.map((h, i) => <li key={i}>{h}</li>)}
+        </ul>
+      )}
 
       {/* The promo post is what a lead magnet SHIPS AS on the feed, so it gets
           the same faithful card, and the same in-place editing, as a draft. */}

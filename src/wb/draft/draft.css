@@ -438,3 +438,7 @@
 , the same span in the note composer (actions.tsx) sits on the dark
    canvas and keeps `--ds-text-3`. */
 .li-card .a-dw-keys{ color:var(--li-ink-3) }
+
+/* Holds stamped on the row by the editorial release, printed verbatim (Run6). */
+.a-dw-holds { margin: 8px 0 0; padding: 0 0 0 18px; font-size: 13px; line-height: 1.4; }
+.a-dw-holds li { margin: 2px 0; }

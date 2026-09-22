@@ -696,6 +696,12 @@ describe('normalizeSourceDetail (AMENDMENTS §A4.2 — a live crash class)', () 
     expect(normalizeSourceDetail({ kind: 'call' })!.internalOnly).toBe(false)
     expect(normalizeSourceDetail('Hand-picked')!.internalOnly).toBe(false)
   })
+  it('reads the holds the editorial release stamped on the row, verbatim, strings only (Run6 C04 F1)', () => {
+    const s = normalizeSourceDetail({ internal_only: true, holds: ['image_asset_pending', '  ', 7, 'cover image showing a raw-screenshot-style artifact that Ivan owns the rights to'] })!
+    expect(s.holds).toEqual(['image_asset_pending', 'cover image showing a raw-screenshot-style artifact that Ivan owns the rights to'])
+    expect(normalizeSourceDetail({ holds: 'not-a-list' })!.holds).toEqual([])
+    expect(normalizeSourceDetail({ kind: 'call' })!.holds).toEqual([])
+  })
   it('still reads the 3 rows that hold a bare string', () => {
     expect(normalizeSourceDetail('Hand-picked')?.text).toBe('Hand-picked')
     expect(normalizeSourceDetail(null)).toBeNull()

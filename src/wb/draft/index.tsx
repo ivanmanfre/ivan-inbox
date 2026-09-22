@@ -509,6 +509,15 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
           <Chip tone="attention">Internal copy only · not approved for publication</Chip>
         )}
       </div>
+      {/* Every hold the editorial release stamped on the row, verbatim, one per
+          line: a decision Ivan still owes, a material not yet produced, a
+          constraint the regeneration ran under. A hold that is not on the
+          screen is a hold nobody can act on (Run6 C04 F1). */}
+      {detail && detail.holds.length > 0 && (
+        <ul className="a-dw-holds a-sev-attention" aria-label="Holds">
+          {detail.holds.map((h, i) => <li key={i}>{h}</li>)}
+        </ul>
+      )}
       {d.title && d.topic && d.title !== d.topic && <p className="a-dw-sub">{d.topic}</p>}
 
       {errMsg && (stage === 'error' || stage === 'stuck' ? (

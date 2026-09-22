@@ -15,6 +15,17 @@ import './research.css'
 
 const clientId = (lane: ContentLane) => lane
 const EditorialClientContext = createContext<EditorialClient>(supabase as unknown as EditorialClient)
+// The gap ledger prints EVERY gap's detail text; on the Ivan lane that was the
+// same three sentences repeated 2,311 times, a 225K-character paragraph above
+// the first research row on a phone (Run6 C04 F2). Identical details are
+// grouped with a count, so every distinct detail stays on the screen and the
+// ledger reads in one line.
+export function groupGapDetails(gaps: ReadonlyArray<{ detail: string }>): [string, number][] {
+  const counts = new Map<string, number>()
+  for (const g of gaps) counts.set(g.detail, (counts.get(g.detail) ?? 0) + 1)
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])
+}
+
 export function EditorialClientProvider({ client, children }: { client: EditorialClient; children: ReactNode }) { return <EditorialClientContext.Provider value={client}>{children}</EditorialClientContext.Provider> }
 const useEditorialClient = () => useContext(EditorialClientContext)
 const requestId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -107,7 +118,7 @@ export function ResearchPanel({ lane }: { lane: ContentLane }) {
     {!page && !error && <p className="a-ct-sub">Reading research…</p>}
     {page && <>
     <p className="a-ct-sub">Source cutoff {when(page.health.source_cutoff)} · {page.health.new_evidence_awaiting_refresh} new inputs await review. Loaded {page.items.length} of {page.total}; the total is the scoped server count.</p>
-    {page.gaps.length > 0 && <p className="a-ct-sub a-sev-attention">{page.gaps.length} unavailable or unsupported records remain counted: {page.gaps.map(g => g.detail).join(' ')}</p>}
+    {page.gaps.length > 0 && <p className="a-ct-sub a-sev-attention">{page.gaps.length} unavailable or unsupported records remain counted: {groupGapDetails(page.gaps).map(([detail, n]) => `${n} × ${detail}`).join(' ')}</p>}
     {/* `data-source-id` carries no visual meaning — it exists so a browser
         capture script can read exactly which source identities rendered
         without guessing from display text, the same identity the underlying

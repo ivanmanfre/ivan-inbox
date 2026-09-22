@@ -2297,6 +2297,10 @@ export type SourceDetail = {
   // read "Other" (a status stageOf has never met) and the hold lived only in
   // this jsonb. True only on the literal boolean; a string never counts.
   internalOnly: boolean
+  // Production/editorial holds stamped on the row by the editorial release
+  // (source_detail.holds, an array of strings): decisions and materials the
+  // draft still waits on. Printed verbatim by the draft window (Run6 C04).
+  holds: string[]
 }
 
 const SOURCE_NAMED = new Set(['kind', 'label', 'quote', 'call_title'])
@@ -2304,7 +2308,7 @@ const SOURCE_NAMED = new Set(['kind', 'label', 'quote', 'call_title'])
 export function normalizeSourceDetail(v: unknown): SourceDetail | null {
   const parsed = parseMaybeJson(v)
   if (parsed === null || parsed === undefined) return null
-  const empty: SourceDetail = { kind: null, label: null, quote: null, callTitle: null, links: [], rows: [], text: null, internalOnly: false }
+  const empty: SourceDetail = { kind: null, label: null, quote: null, callTitle: null, links: [], rows: [], text: null, internalOnly: false, holds: [] }
   if (typeof parsed === 'string') {
     const s = parsed.trim()
     return s ? { ...empty, text: s } : null
@@ -2339,6 +2343,7 @@ export function normalizeSourceDetail(v: unknown): SourceDetail | null {
     rows,
     text: null,
     internalOnly: o.internal_only === true,
+    holds: Array.isArray(o.holds) ? o.holds.filter((h): h is string => typeof h === 'string' && h.trim().length > 0) : [],
   }
 }
 
