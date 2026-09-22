@@ -60,7 +60,7 @@ import { useChat } from './useChat'
 import { useGlanceCounts } from './useGlanceCounts'
 import { hasMock } from './mock'
 import { parseWbHash, wbHash } from './route'
-import { useOneShotBootLink } from './bootLink'
+import { sourcesAliasAtBoot, useOneShotBootLink } from './bootLink'
 import {
   JOB_LABEL, addPeer, applyDrawer, contextPeer, dropPeer, hasChat, jobHasList,
   peerKey, planWorkbench, type Canvas, type Job, type Peer,
@@ -169,7 +169,8 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
 
   const [job, setJob] = useState<Job>(boot.job)
   // content-brain-06 C04: one-shot boot deep link for the lazy StrategyView (see bootLink.ts).
-  const bootLink = useOneShotBootLink(boot, job)
+  const sourcesAlias = useMemo(() => sourcesAliasAtBoot(location.hash), [])
+  const bootLink = useOneShotBootLink(boot, job, sourcesAlias)
   // Ivan, 2026-08-04: the rail collapses. Persisted so it stays how he left it.
   const [railMin, setRailMin] = useState(() => {
     try { return localStorage.getItem('wb-railmin') === '1' } catch { return false }
