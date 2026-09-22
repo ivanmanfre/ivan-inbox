@@ -192,3 +192,36 @@
    figure's box stops the words beside it sliding as the read lands. */
 .a-today-lg .a-ink{ display:inline-block; min-width:2ch; text-align:right }
 .a-today-fig .a-figure-t{ display:inline-block; min-width:2ch }
+
+/* --------------------------------------------------------------------------
+   instantly-picks item 1 (2026-09-22) · the focus line + one-tap batches.
+   First line of Today on both shells, above the masthead. Plain markup (not
+   the Group/Row kit primitives) because this block spans two shells that do
+   not share a single visual system yet (the legacy stock shell vs the ds
+   workbench) — kept minimal and additive rather than forcing one shell's kit
+   onto the other's screen.
+   -------------------------------------------------------------------------- */
+.a-focus{ display:flex; flex-direction:column; gap:var(--ds-s4); margin:0 16px var(--ds-s5); min-width:0 }
+.a-focus-line{
+  font-size:var(--ds-fs-title); line-height:var(--ds-lh-title); font-weight:var(--ds-fw-semi);
+  color:var(--ds-text); min-width:0;
+}
+.a-focus-batches{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0 }
+.a-focus-batch{
+  display:flex; flex-direction:column; gap:var(--ds-s2);
+  padding:var(--ds-s4) var(--ds-s5); border-radius:var(--ds-r3); background:var(--ds-surface-1);
+  min-width:0;
+}
+.a-focus-batch-row{ display:flex; align-items:center; justify-content:space-between; gap:var(--ds-s4); min-width:0 }
+.a-focus-batch-label{
+  all:unset; cursor:pointer; font-size:var(--ds-fs-body); color:var(--ds-text); min-width:0;
+}
+.a-focus-batch-actions{ display:flex; gap:var(--ds-s2); flex:none }
+.a-focus-batch-note{ font-size:var(--ds-fs-meta); color:var(--ds-text-3) }
+.a-focus-batch-expand{ display:flex; flex-direction:column; gap:var(--ds-s2); padding-top:var(--ds-s2) }
+.a-focus-single{
+  display:flex; align-items:center; justify-content:space-between; gap:var(--ds-s4);
+  padding:var(--ds-s3) var(--ds-s4); border-radius:var(--ds-r2); background:var(--ds-surface-2);
+  min-width:0;
+}
+.a-focus-single-body{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ds-text-2) }

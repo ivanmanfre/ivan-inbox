@@ -18,6 +18,7 @@ import {
 } from '../kit'
 import { PullIndicator } from '../chrome/PullIndicator'
 import { SystemAlertStrip } from './alerts'
+import { FocusBlock } from './FocusBlock'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { useToday, type TodayHealth } from '../../hooks/useToday'
 import { hasMock } from '../../exp/v2c/mock'
@@ -390,15 +391,24 @@ function ZoneQueue({ items, onOpenThread, onOpenOps, onOpenContent }: {
   const neverOpened = items.filter(i => i.tier === 0).length
   const { live, older } = foldQueue(items)
   const [showOlder, setShowOlder] = useState(false)
-  const queueRow = (item: QueueItem) => item.kind === 'reply'
-    ? <QueueReplyRow key={item.id} item={item} onOpen={() => onOpenThread(item.openId!)} />
-    : (
-      <QueuePileRow
-        key={item.id}
-        item={item}
-        onOpen={item.kind === 'ops' ? onOpenOps : () => onOpenContent(item.openId!)}
-      />
-    )
+  // data-queue-kind (instantly-picks item 1, 2026-09-22): the gate check reads
+  // this to count reply rows independently of the focus line's own count.
+  // Row/HandOff (../kit) have no data-* passthrough and kit.tsx is out of
+  // this item's owned files, so the attribute goes on a wrapper div here
+  // instead — covers live and folded rows alike, since both call sites below
+  // route through this same function.
+  const queueRow = (item: QueueItem) => (
+    <div key={item.id} data-queue-kind={item.kind}>
+      {item.kind === 'reply'
+        ? <QueueReplyRow item={item} onOpen={() => onOpenThread(item.openId!)} />
+        : (
+          <QueuePileRow
+            item={item}
+            onOpen={item.kind === 'ops' ? onOpenOps : () => onOpenContent(item.openId!)}
+          />
+        )}
+    </div>
+  )
   return (
     <div className="a-today-z" id="td-z0">
       <Group
@@ -1199,6 +1209,18 @@ export function Today({
             keeps the strip it has always had and only the workbench gets the
             narrowed auto-open. */}
         <SystemAlertStrip autoOpen={threads === undefined ? 'all' : 'critical'} />
+        {/* instantly-picks item 1 (2026-09-22): the first line of Today, above
+            the masthead, on the same threads !== undefined gate as the work
+            queue below (#exp/stock passes neither prop, so it renders nothing
+            there rather than a focus line with no data behind it). */}
+        {threads !== undefined && (
+          <FocusBlock
+            threads={threads}
+            opsDrafts={opsDrafts ?? []}
+            pipeline={t.health?.pipeline ?? []}
+            governor={t.health?.governor ?? []}
+          />
+        )}
         <Masthead c={counts} plate={t.brief ? plate : null} syncedAt={syncedAt} stale={stale} refreshing={t.refreshing} />
 
         {t.authError && (

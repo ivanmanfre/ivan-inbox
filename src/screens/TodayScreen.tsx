@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Avatar } from '../components/Avatar'
 import { PullIndicator } from '../components/PullIndicator'
 import { SystemAlertStrip } from '../components/SystemAlertStrip'
+import { FocusBlock } from '../wb/today/FocusBlock'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useToday, type TodayHealth } from '../hooks/useToday'
 import { label } from '../lib/labels'
@@ -1134,6 +1135,17 @@ export function TodayScreen({
             keeps the strip it has always had and only the workbench gets the
             narrowed auto-open. */}
         <SystemAlertStrip autoOpen={threads === undefined ? 'all' : 'critical'} />
+        {/* instantly-picks item 1 (2026-09-22): same shared block wb/today's
+            Today mounts, gated on the same threads !== undefined discriminator
+            every other work-queue prop on this screen already uses. */}
+        {threads !== undefined && (
+          <FocusBlock
+            threads={threads}
+            opsDrafts={opsDrafts ?? []}
+            pipeline={t.health?.pipeline ?? []}
+            governor={t.health?.governor ?? []}
+          />
+        )}
         <Masthead c={counts} plate={t.brief ? plate : null} syncedAt={syncedAt} stale={stale} />
 
         {t.authError && (
