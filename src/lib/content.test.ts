@@ -684,6 +684,18 @@ describe('normalizeSourceDetail (AMENDMENTS §A4.2 — a live crash class)', () 
     const s = normalizeSourceDetail({ born_gated: true, gate_keyword: 'KIT', goal_run: 'x' })!
     expect(s.rows.map(([k]) => k)).toEqual(['born_gated', 'gate_keyword', 'goal_run'])
   })
+  it('reads the editorial route’s internal-only marker as a hold the window prints (Run6 C04)', () => {
+    // editorial_begin_native_draft writes { internal_only: true } and status
+    // 'draft'; the window printed "Other" and no hold for 15 live drafts.
+    const s = normalizeSourceDetail({ brief_id: 'brief-ivan-r5a-01', internal_only: true, request_id: 'x' })!
+    expect(s.internalOnly).toBe(true)
+    // the marker still rides along in the audit rows
+    expect(s.rows.map(([k]) => k)).toContain('internal_only')
+    // only the literal boolean counts
+    expect(normalizeSourceDetail({ internal_only: 'true' })!.internalOnly).toBe(false)
+    expect(normalizeSourceDetail({ kind: 'call' })!.internalOnly).toBe(false)
+    expect(normalizeSourceDetail('Hand-picked')!.internalOnly).toBe(false)
+  })
   it('still reads the 3 rows that hold a bare string', () => {
     expect(normalizeSourceDetail('Hand-picked')?.text).toBe('Hand-picked')
     expect(normalizeSourceDetail(null)).toBeNull()

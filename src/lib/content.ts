@@ -2290,6 +2290,13 @@ export type SourceDetail = {
   rows: [string, unknown][]
   // Set only for the 3 rows that hold a bare string.
   text: string | null
+  // 🔴 THE EDITORIAL ROUTE'S HOLD, READ FROM THE ROW (Run6 C04, 2026-09-22).
+  // editorial_begin_native_draft creates its native row with
+  // source_detail.internal_only = true and status 'draft': internal copy, no
+  // publication approval. Nothing on the draft window said so — the stage chip
+  // read "Other" (a status stageOf has never met) and the hold lived only in
+  // this jsonb. True only on the literal boolean; a string never counts.
+  internalOnly: boolean
 }
 
 const SOURCE_NAMED = new Set(['kind', 'label', 'quote', 'call_title'])
@@ -2297,7 +2304,7 @@ const SOURCE_NAMED = new Set(['kind', 'label', 'quote', 'call_title'])
 export function normalizeSourceDetail(v: unknown): SourceDetail | null {
   const parsed = parseMaybeJson(v)
   if (parsed === null || parsed === undefined) return null
-  const empty: SourceDetail = { kind: null, label: null, quote: null, callTitle: null, links: [], rows: [], text: null }
+  const empty: SourceDetail = { kind: null, label: null, quote: null, callTitle: null, links: [], rows: [], text: null, internalOnly: false }
   if (typeof parsed === 'string') {
     const s = parsed.trim()
     return s ? { ...empty, text: s } : null
@@ -2331,6 +2338,7 @@ export function normalizeSourceDetail(v: unknown): SourceDetail | null {
     links,
     rows,
     text: null,
+    internalOnly: o.internal_only === true,
   }
 }
 

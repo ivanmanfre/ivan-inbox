@@ -478,6 +478,14 @@ function MagnetBody({ d, lane, queue, refresh, onPick }: {
         {d.format && <Chip tone="quiet">{d.format}</Chip>}
         <Chip tone={stage === 'error' ? 'urgent' : 'neutral'}>{LM_STAGE_LABEL[stage]}</Chip>
         {d.updated_at && <Chip tone="quiet">{relTime(d.updated_at)}</Chip>}
+        {/* 🔴 THE INTERNAL-ONLY HOLD IS A FACT THE WINDOW STATES (Run6 C04,
+            2026-09-22). A row the editorial route drafted from a brief is
+            internal copy with no publication approval until a person moves it
+            on; the window said "Needs review" and nothing more. Printed from
+            the row's artifact binding, retired once the row is past review. */}
+        {d.editorial_brief_artifact_id && !['approved', 'scheduled', 'published', 'live'].includes(d.status ?? '') && (
+          <Chip tone="attention">Internal copy only · not approved for publication</Chip>
+        )}
         {/* The raw stored value rides along when the fold changed it, so the
             legacy-vocabulary fold stays auditable from the window. */}
         {d.status && LM_STAGE_LABEL[stage].toLowerCase() !== d.status.toLowerCase() && (

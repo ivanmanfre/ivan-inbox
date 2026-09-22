@@ -289,6 +289,9 @@ export type ResourceDetail = Resource & {
   qa: unknown
   agent_log: unknown
   topic_strength: unknown
+  // Set by the editorial route (db/105+) on a row it drafted from a brief: an
+  // internal copy draft with no publication approval (Run6 C04, 2026-09-22).
+  editorial_brief_artifact_id?: string | null
 }
 
 // select=* rather than a column list, exactly as fetchDraftDetail does: the row

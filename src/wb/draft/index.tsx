@@ -496,6 +496,18 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
             {visible === true ? `On ${LANE_POSSESSIVE[lane]} board` : 'Not on his board'}
           </Chip>
         )}
+        {/* 🔴 THE INTERNAL-ONLY HOLD IS A FACT THE WINDOW STATES (Run6 C04,
+            2026-09-22). The editorial route creates its native row at status
+            'draft' with source_detail.internal_only = true: internal copy, no
+            publication approval. stageOf had never met 'draft', so the stage
+            chip read "Other" and nothing on the screen said the copy was
+            internal and unapproved. The hold is printed from the row itself,
+            on every lane, so it cannot be inferred from a chip's absence.
+            Retired once a person has moved the row past review: the jsonb
+            marker outlives the approval, the hold does not. */}
+        {detail?.internalOnly && stage !== 'approved' && stage !== 'scheduled' && stage !== 'published' && (
+          <Chip tone="attention">Internal copy only · not approved for publication</Chip>
+        )}
       </div>
       {d.title && d.topic && d.title !== d.topic && <p className="a-dw-sub">{d.topic}</p>}
 
