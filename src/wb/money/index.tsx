@@ -502,7 +502,7 @@ function CostPerLeadSection({ laneDay, readyDays, now }: { laneDay: LaneDayRow[]
   const rows: CostPerLead[] = costPerReadyLead(laneDay, readyDays, { now })
   const days = readyLeadWindowDays(7, now)
   const win = costWindowLabel(days)
-  const title = `Cost per ready lead, last 7 settled days`
+  const title = `Cost per ready lead, last 7 complete days (settled Apify only)`
   return (
     <Group label={sectionLabel('5b', title)}>
       <div className="a-money-perlead">
@@ -517,8 +517,8 @@ function CostPerLeadSection({ laneDay, readyDays, now }: { laneDay: LaneDayRow[]
             <span className="a-money-perlead-lane">{laneDisplay(r.lane)}</span>
             <span className="a-money-perlead-fig">{fmtPerLead(r.perLead, r.usdSettled)}</span>
             <span className="a-meta a-money-perlead-sub">
-              {r.settledDays} settled days
-              {r.settlingDays > 0 ? ` · ${r.settlingDays} days settling` : ''}
+              {r.settledDays} settled {r.settledDays === 1 ? 'day' : 'days'}
+              {r.settlingDays > 0 ? ` · ${r.settlingDays} ${r.settlingDays === 1 ? 'day' : 'days'} settling` : ''}
             </span>
           </div>
         ))}
