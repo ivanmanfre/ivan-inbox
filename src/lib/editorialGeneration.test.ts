@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { brief, evidence } from './editorialBriefs.fixtures'
-import { assertEnvelopeAtStage, attachEnvelope, buildGenerationEnvelope, classifyHistoryRole, GenerationBlocked, projectNativeColumns } from './editorialGeneration'
+import { assertEnvelopeAtStage, attachEnvelope, buildGenerationEnvelope, classifyHistoryRole, evaluateRegisterFloors, GenerationBlocked, projectNativeColumns } from './editorialGeneration'
 
 const make = (over = {}) => {
   const b = brief(over)
@@ -99,5 +99,48 @@ describe('projected native columns', () => {
   it('reports an empty projection rather than inventing a destination column', () => {
     expect(projectNativeColumns(['nope'], ['id']))
       .toEqual({ projected: [], unknown: ['nope'] })
+  })
+})
+
+describe('canonical register floors', () => {
+  const long = 'This sentence is deliberately written to run past seventeen words so that it satisfies the rhythm floor cleanly.'
+  const withBoth = `It's a short one. ${long}`
+
+  it('reads an absence penalty as a floor, never as a cap', () => {
+    // arch-qa v12: "zero contractions -> VOICE <= 5. No sentence of 17+ words -> RHYTHM <= 5."
+    // One is enough; more must never make the result worse.
+    const one = evaluateRegisterFloors(withBoth)
+    const many = evaluateRegisterFloors(`${withBoth} It's here. We're there. They're gone. ${long} ${long}`)
+    expect(one.satisfied).toBe(true)
+    expect(many.satisfied).toBe(true)
+    expect(many.contractions).toBeGreaterThan(one.contractions)
+    expect(many.long_sentences).toBeGreaterThan(one.long_sentences)
+    for (const f of many.floors) expect(f.satisfied).toBe(true)
+    // the direction of the rule is explicit in the data, so a caller cannot invert it
+    for (const f of many.floors) expect(f.direction).toBe('minimum')
+  })
+
+  it('reports the exact floor that is unmet rather than a bare failure', () => {
+    const noContractions = evaluateRegisterFloors(`A plain short line. ${long}`)
+    expect(noContractions.satisfied).toBe(false)
+    expect(noContractions.unmet.map(f => f.id)).toEqual(['contractions'])
+    expect(noContractions.unmet[0].penalty_if_unmet).toMatch(/VOICE/)
+
+    const noLong = evaluateRegisterFloors("It's short. So is this one.")
+    expect(noLong.satisfied).toBe(false)
+    expect(noLong.unmet.map(f => f.id)).toEqual(['long_sentences'])
+    expect(noLong.unmet[0].penalty_if_unmet).toMatch(/RHYTHM/)
+  })
+
+  it('counts a seventeen-word sentence as satisfying the rhythm floor and sixteen as not', () => {
+    const sixteen = Array.from({ length: 16 }, (_, i) => `word${i}`).join(' ') + '.'
+    const seventeen = Array.from({ length: 17 }, (_, i) => `word${i}`).join(' ') + '.'
+    expect(evaluateRegisterFloors(sixteen).long_sentences).toBe(0)
+    expect(evaluateRegisterFloors(seventeen).long_sentences).toBe(1)
+  })
+
+  it('does not mistake a possessive or a hyphen for a contraction', () => {
+    expect(evaluateRegisterFloors("The studio's budget. A well-known name.").contractions).toBe(0)
+    expect(evaluateRegisterFloors("The studio's budget. It's late.").contractions).toBe(1)
   })
 })

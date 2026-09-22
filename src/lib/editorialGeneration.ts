@@ -147,3 +147,51 @@ export function projectNativeColumns(intended: string[], actualSchemaColumns: st
     unknown: intended.filter(c => !actualSchemaColumns.includes(c)),
   }
 }
+
+export type RegisterFloor = {
+  id: 'contractions' | 'long_sentences'
+  rule: string
+  direction: 'minimum'
+  minimum: number
+  measured: number
+  satisfied: boolean
+  penalty_if_unmet: string
+}
+
+export type RegisterFloorReport = {
+  contractions: number
+  long_sentences: number
+  floors: RegisterFloor[]
+  unmet: RegisterFloor[]
+  satisfied: boolean
+}
+
+const CONTRACTION = /\b[A-Za-z]+['’](?:t|s|re|ve|ll|d|m)\b/gi
+// A possessive 's is spelled the same as the contraction. Only the forms that
+// cannot be possessive count, plus "it's", which a possessive never takes.
+const POSSESSIVE_SAFE = /\b(?:it['’]s|[A-Za-z]+n['’]t|[A-Za-z]+['’](?:re|ve|ll|d|m))\b/gi
+
+/** Applies arch-qa v12's REGISTER FLOORS exactly as the canonical rubric writes
+ * them. They are ABSENCE penalties: "zero contractions -> VOICE <= 5" and
+ * "no sentence of 17+ words -> RHYTHM <= 5". Each is therefore a MINIMUM of one.
+ * Reading either as a cap inverts the rubric and edits copy toward the very
+ * violation it penalises, so `direction` is carried in the data and every floor
+ * is satisfied by meeting or exceeding its minimum. More is never worse. */
+export function evaluateRegisterFloors(copy: string): RegisterFloorReport {
+  const text = String(copy ?? '')
+  const contractions = (text.match(POSSESSIVE_SAFE) ?? []).length
+  const sentences = text.split(/(?<=[.!?])[\s\n]+|\n+/).map(s => s.trim()).filter(Boolean)
+  const longSentences = sentences.filter(s => s.split(/\s+/).filter(Boolean).length >= 17).length
+  const floors: RegisterFloor[] = [
+    { id: 'contractions', direction: 'minimum', minimum: 1, measured: contractions,
+      satisfied: contractions >= 1,
+      rule: 'arch-qa v12 REGISTER FLOORS: zero contractions -> VOICE <= 5',
+      penalty_if_unmet: 'VOICE is capped at 5 when the copy contains no contraction at all' },
+    { id: 'long_sentences', direction: 'minimum', minimum: 1, measured: longSentences,
+      satisfied: longSentences >= 1,
+      rule: 'arch-qa v12 REGISTER FLOORS: no sentence of 17+ words -> RHYTHM <= 5',
+      penalty_if_unmet: 'RHYTHM is capped at 5 when no sentence reaches seventeen words' },
+  ]
+  const unmet = floors.filter(f => !f.satisfied)
+  return { contractions, long_sentences: longSentences, floors, unmet, satisfied: unmet.length === 0 }
+}
