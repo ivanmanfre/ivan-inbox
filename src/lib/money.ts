@@ -881,9 +881,18 @@ export function costPerReadyLead(
 }
 
 // "no ready leads", never $0 and never Infinity/NaN — a rate against zero
-// ready leads is not a fact about the lane's cost.
-export function fmtPerLead(perLead: number | null): string {
-  return perLead === null ? 'no ready leads' : `${fmtUsdPerUnit(perLead)} / ready lead`
+// ready leads is not a fact about the lane's cost. Orchestrator addition
+// 2026-09-22: a lane can spend real money with zero qualified_in (live
+// 09-15..09-21: ARCH spent $21.36 settled Apify while inbox_replacement_v's
+// ARCH inflow, keyed on enrichment_data.promoted_at, had nothing newly
+// promoted that window) — plain "no ready leads" would hide that spend, so
+// a lane with real settled dollars and no ready leads to divide them by
+// shows the dollars instead of going silent. `usdSettled` is only ever read
+// when `perLead` is null.
+export function fmtPerLead(perLead: number | null, usdSettled: number): string {
+  if (perLead !== null) return `${fmtUsdPerUnit(perLead)} / ready lead`
+  if (usdSettled > 0) return `${fmtUsdPerUnit(usdSettled)} settled · no ready leads counted`
+  return 'no ready leads'
 }
 
 // 4 decimals for the gate check's own precision, or the literal string

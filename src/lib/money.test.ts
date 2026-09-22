@@ -484,7 +484,7 @@ describe('readyLeadWindowDays', () => {
 })
 
 describe('costPerReadyLead', () => {
-  it('no ready leads renders null', () => {
+  it('no ready leads renders null, but real settled spend still shows (orchestrator addition 2026-09-22: ARCH 09-15..09-21 spent $21.36 with 0 qualified_in — hiding it as plain "no ready leads" would hide real spend)', () => {
     const now = Date.parse('2026-09-20T12:00:00Z')
     const days = readyLeadWindowDays(7, now)
     // Every day fully settled, some spend, but zero qualified_in rows at all.
@@ -493,8 +493,17 @@ describe('costPerReadyLead', () => {
     const arch = rows.find(r => r.lane === 'arch')!
     expect(arch.ready).toBe(0)
     expect(arch.perLead).toBeNull()
-    expect(fmtPerLead(arch.perLead)).toBe('no ready leads')
+    expect(arch.usdSettled).toBeCloseTo(63, 5)
+    expect(fmtPerLead(arch.perLead, arch.usdSettled)).toBe('$63.00 settled · no ready leads counted')
     expect(dataPerLeadAttr(arch.perLead)).toBe('null')
+  })
+
+  it('genuinely nothing (no spend, no ready leads) still renders the plain refusal', () => {
+    const now = Date.parse('2026-09-20T12:00:00Z')
+    const rows = costPerReadyLead([], [], { now })
+    const arch = rows.find(r => r.lane === 'arch')!
+    expect(arch.usdSettled).toBe(0)
+    expect(fmtPerLead(arch.perLead, arch.usdSettled)).toBe('no ready leads')
   })
 
   it('unsettled day excluded from both sides', () => {
@@ -548,12 +557,15 @@ describe('costPerReadyLead', () => {
 
 describe('fmtPerLead / dataPerLeadAttr / costWindowLabel', () => {
   it('formats a real number as "$X.XX / ready lead" and the data attribute to 4 decimals', () => {
-    expect(fmtPerLead(1.19941)).toBe('$1.20 / ready lead')
+    expect(fmtPerLead(1.19941, 100)).toBe('$1.20 / ready lead')
     expect(dataPerLeadAttr(1.19941)).toBe('1.1994')
   })
-  it('never renders $0 or Infinity/NaN for a lane with no ready leads', () => {
-    expect(fmtPerLead(null)).toBe('no ready leads')
+  it('never renders $0 or Infinity/NaN for a lane with no ready leads and no spend', () => {
+    expect(fmtPerLead(null, 0)).toBe('no ready leads')
     expect(dataPerLeadAttr(null)).toBe('null')
+  })
+  it('shows real settled spend even when there are no ready leads to divide it by', () => {
+    expect(fmtPerLead(null, 21.36)).toBe('$21.36 settled · no ready leads counted')
   })
   it('labels the window as first..last ISO days, inclusive', () => {
     expect(costWindowLabel(['2026-09-13', '2026-09-14', '2026-09-19'])).toBe('2026-09-13..2026-09-19')
