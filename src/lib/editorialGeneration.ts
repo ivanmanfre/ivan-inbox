@@ -166,10 +166,9 @@ export type RegisterFloorReport = {
   satisfied: boolean
 }
 
-const CONTRACTION = /\b[A-Za-z]+['’](?:t|s|re|ve|ll|d|m)\b/gi
-// A possessive 's is spelled the same as the contraction. Only the forms that
+// A possessive 's is spelled the same as the contraction, so only the forms that
 // cannot be possessive count, plus "it's", which a possessive never takes.
-const POSSESSIVE_SAFE = /\b(?:it['’]s|[A-Za-z]+n['’]t|[A-Za-z]+['’](?:re|ve|ll|d|m))\b/gi
+const CONTRACTION = /\b(?:it['’]s|[A-Za-z]+n['’]t|[A-Za-z]+['’](?:re|ve|ll|d|m))\b/gi
 
 /** Applies arch-qa v12's REGISTER FLOORS exactly as the canonical rubric writes
  * them. They are ABSENCE penalties: "zero contractions -> VOICE <= 5" and
@@ -179,7 +178,7 @@ const POSSESSIVE_SAFE = /\b(?:it['’]s|[A-Za-z]+n['’]t|[A-Za-z]+['’](?:re|v
  * is satisfied by meeting or exceeding its minimum. More is never worse. */
 export function evaluateRegisterFloors(copy: string): RegisterFloorReport {
   const text = String(copy ?? '')
-  const contractions = (text.match(POSSESSIVE_SAFE) ?? []).length
+  const contractions = (text.match(CONTRACTION) ?? []).length
   const sentences = text.split(/(?<=[.!?])[\s\n]+|\n+/).map(s => s.trim()).filter(Boolean)
   const longSentences = sentences.filter(s => s.split(/\s+/).filter(Boolean).length >= 17).length
   const floors: RegisterFloor[] = [
