@@ -295,9 +295,9 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
   // because it cannot be undone and closes the person for every lane.
   async function onDelete() {
     const ok = await confirm({
-      title: 'Delete this thread on LinkedIn?',
+      title: 'Delete from the seat on LinkedIn?',
       message: `The conversation with ${thread.prospect_name} is deleted from the seat's LinkedIn inbox and this person is closed for every lane. It cannot be undone, and ${thread.prospect_name} still has their own copy.`,
-      confirmText: 'Delete thread',
+      confirmText: 'Delete from seat',
       danger: true,
     })
     if (!ok) return
@@ -483,14 +483,14 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
       />
       <Bar>
         <Ladder thread={thread} />
-        <span style={{ marginLeft: 'auto' }}>
+        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           {thread.spam
             ? <Button variant="quiet" size="sm" busy={busy} onClick={busy ? undefined : onNotSpam}>Not spam</Button>
             : thread.client_id !== 'ivan'
               ? <Button variant="quiet" size="sm" onClick={busy ? undefined : onSpam}>Spam</Button>
               : null}
           {thread.chat_provider_id && (
-            <Button variant="quiet" size="sm" busy={busy} onClick={busy ? undefined : onDelete}>Delete</Button>
+            <Button variant="danger" size="sm" icon="discard" busy={busy} onClick={busy ? undefined : onDelete} aria-label="Delete from seat">Delete</Button>
           )}
         </span>
       </Bar>
