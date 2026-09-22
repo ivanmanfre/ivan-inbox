@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, browseOrder, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISMISS_HOLD_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, missingManualGuardMeansPreMigration, type InboxMessage, type Status, type DraftGuard } from './inbox'
+import { isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, browseOrder, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISMISS_HOLD_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, missingManualGuardMeansPreMigration, DELETED_REASON, type InboxMessage, type Status, type DraftGuard } from './inbox'
 
 // inbox.ts:191 gates needsAnswer on a 14-day wall-clock staleness window
 // (STALE_DAYS), measured against Date.now() by default -- and most callers
@@ -867,6 +867,16 @@ describe('discard + restore guards', () => {
     expect(passes(raceHeld, RESTORE_GUARD)).toBe(false)
     expect(passes({ ...discarded, approved_at: '2026-07-22T11:30:00Z' }, RESTORE_GUARD)).toBe(false)
     expect(passes({ ...discarded, sent_at: '2026-07-22T11:30:00Z' }, RESTORE_GUARD)).toBe(false)
+  })
+})
+
+describe('deleted threads (2026-09-22)', () => {
+  it('a thread deleted on LinkedIn drops out of every list, spam included', () => {
+    const gone: InboxMessage = { ...base, id: 'dl1', prospect_id: 'del1', direction: 'inbound', message_text: 'not interested', sent_at: '2026-09-22T20:02:00Z', client_id: 'arch', prospect_stage: 'disqualified', prospect_skip_reason: DELETED_REASON }
+    const kept: InboxMessage = { ...base, id: 'kp1', prospect_id: 'keep1', direction: 'inbound', message_text: 'tell me more', sent_at: '2026-09-22T20:03:00Z', client_id: 'arch', prospect_skip_reason: null }
+    const threads = groupThreads([gone, kept])
+    expect(threads.map(t => t.prospect_id)).toEqual(['keep1'])
+    expect(filterThreads(threads, 'spam')).toEqual([])
   })
 })
 

@@ -34,7 +34,7 @@ import {
   markThreadRead, messageChannel, threadChatId, emailRowSender, ladderSteps, sendFailed,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../../lib/inbox'
 import { label } from '../../lib/labels'
-import { markNotSpam, markSpam } from '../../lib/inbox'
+import { deleteThread, markNotSpam, markSpam } from '../../lib/inbox'
 import './thread.css'
 
 function clientName(id: string): string {
@@ -291,6 +291,21 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
     setBusy(true)
     try { await markSpam(thread); refresh(); onBack() } finally { setBusy(false) }
   }
+  // Delete the conversation from the seat's LinkedIn inbox (Ivan, 2026-09-22). Confirmed,
+  // because it cannot be undone and closes the person for every lane.
+  async function onDelete() {
+    const ok = await confirm({
+      title: 'Delete this thread on LinkedIn?',
+      message: `The conversation with ${thread.prospect_name} is deleted from the seat's LinkedIn inbox and this person is closed for every lane. It cannot be undone, and ${thread.prospect_name} still has their own copy.`,
+      confirmText: 'Delete thread',
+      danger: true,
+    })
+    if (!ok) return
+    setBusy(true)
+    try { await deleteThread(thread); refresh(); onBack() }
+    catch (e) { window.alert(`Not deleted: ${e instanceof Error ? e.message : String(e)}`) }
+    finally { setBusy(false) }
+  }
   async function onNotSpam() {
     setBusy(true)
     try { await markNotSpam(thread); refresh() } finally { setBusy(false) }
@@ -474,6 +489,9 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
             : thread.client_id !== 'ivan'
               ? <Button variant="quiet" size="sm" onClick={busy ? undefined : onSpam}>Spam</Button>
               : null}
+          {thread.chat_provider_id && (
+            <Button variant="quiet" size="sm" busy={busy} onClick={busy ? undefined : onDelete}>Delete</Button>
+          )}
         </span>
       </Bar>
       {showCtx && <ContextSheet thread={thread} onClose={() => setShowCtx(false)} />}

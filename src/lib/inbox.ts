@@ -198,6 +198,11 @@ export type Filter = 'all' | 'ivan' | 'risedtc' | 'arch' | 'email' | 'spam'
 // read one word.
 export const SPAM_REASON = 'inbound_vendor_pitch'
 
+// Written by the inbox-delete-thread edge fn once the LinkedIn chat is confirmed gone
+// (Ivan, 2026-09-22). groupThreads drops these threads everywhere. Keep in sync with
+// the edge fn.
+export const DELETED_REASON = 'thread_deleted_by_operator'
+
 // A draft the dispatcher HELD at the send moment because the thread changed
 // after approval (Mattan typed on LinkedIn mid-queue, or a fresh inbound
 // landed). Unlike every other block reason this one is recoverable by design:
@@ -334,6 +339,7 @@ export function groupThreads(
   for (const messages of map.values()) {
     messages.sort((a, b) => eventTime(a).localeCompare(eventTime(b)))
     const last = messages[messages.length - 1]
+    if ((last.prospect_skip_reason ?? null) === DELETED_REASON) continue
     const latestHold = messages.filter(isInternalConfirmation).at(-1)
     // A newer internal decision invalidates every older leg, including a paired email.
     const drafts = messages.filter(m => isDraft(m) && (!latestHold || eventTime(m) > eventTime(latestHold)))
@@ -750,6 +756,30 @@ export async function markSpam(t: Thread): Promise<void> {
               skip_reason: SPAM_REASON, updated_at: new Date().toISOString() })
     .eq('id', t.prospect_id)
   if (error) throw error
+  for (const d of [t.draft, t.companionDraft]) { if (d) await discardDraft(d.id) }
+}
+
+// Deletes the conversation from the seat's LinkedIn inbox (Unipile) and closes the
+// person for every lane. The edge fn only reports success once a re-read proves the chat
+// is gone; pending drafts are discarded so nothing sends into a deleted thread.
+export async function deleteThread(t: Thread): Promise<void> {
+  const { data: sess } = await supabase.auth.getSession()
+  const token = sess.session?.access_token
+  if (!token) throw new Error('not signed in')
+  const res = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/inbox-delete-thread`,
+    {
+      method: 'POST',
+      headers: {
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prospect_id: t.prospect_id }),
+    },
+  )
+  const out = await res.json().catch(() => ({}))
+  if (!res.ok || out?.ok === false) throw new Error(out?.detail ?? out?.error ?? `delete failed (${res.status})`)
   for (const d of [t.draft, t.companionDraft]) { if (d) await discardDraft(d.id) }
 }
 
