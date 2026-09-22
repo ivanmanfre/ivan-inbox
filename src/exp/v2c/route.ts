@@ -36,6 +36,18 @@ export type WbRoute = {
   // `?warm=<prospect uuid>` lands on that person's card (goal run
   // warm-signal-drafts-2026-09-12). Read once at boot like `thread`.
   warm?: string
+  // content-brain-05 Task 6: `#exp/v2/strategy?lane=risedtc&section=research`
+  // is what makes the client scope and the Strategy tab addressable — a
+  // shared link or a reload has to land on the same lane and tab, not always
+  // Ivan/This week. Both are read here as PLAIN STRINGS, deliberately
+  // unvalidated against the real lane/section vocabularies: this router does
+  // not import `lib/content` (see the UUID comment above — no data layer
+  // here) and does not know `StrategyView`'s own view ids. Validation is the
+  // caller's job (`wb/content/strategy/deepLink.ts` does exactly that for
+  // Strategy); an unregistered value simply fails that later check and the
+  // caller's own default applies, same fail-open rule as an unknown `job`.
+  lane?: string
+  section?: string
 }
 
 export const DEFAULT_ROUTE: WbRoute = { job: 'dms', focus: null }
@@ -115,6 +127,8 @@ export function parseWbHash(hash: string): WbRoute {
   const turn = query.get('turn')
   const feed = query.get('feed')
   const warm = query.get('warm')
+  const lane = query.get('lane')
+  const section = query.get('section')
   return {
     job,
     focus,
@@ -124,6 +138,15 @@ export function parseWbHash(hash: string): WbRoute {
     ...(turn && UUID.test(turn) ? { turn } : {}),
     ...(feed === '1' || feed === 'true' ? { feed: true } : {}),
     ...(warm && (warm === '1' || UUID.test(warm)) ? { warm } : {}),
+    // Raw and unvalidated — see the WbRoute comment. `section=sources` is the
+    // pre-existing Content-Sources-shortcut alias, already fully consumed
+    // above by `sectionJob`/`contentSources` to pick the Strategy JOB itself
+    // (see the parseWbHash test asserting that combination equals exactly
+    // `{ job: 'strategy', focus: null }`); it is excluded here so the two
+    // long-standing meanings of `?section=` — "which job" and, new, "which
+    // Strategy tab" — never collide in one field.
+    ...(lane ? { lane } : {}),
+    ...(section && section !== 'sources' ? { section } : {}),
   }
 }
 

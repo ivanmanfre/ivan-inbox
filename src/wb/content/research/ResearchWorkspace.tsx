@@ -108,9 +108,13 @@ export function ResearchPanel({ lane }: { lane: ContentLane }) {
     {page && <>
     <p className="a-ct-sub">Source cutoff {when(page.health.source_cutoff)} · {page.health.new_evidence_awaiting_refresh} new inputs await review. Loaded {page.items.length} of {page.total}; the total is the scoped server count.</p>
     {page.gaps.length > 0 && <p className="a-ct-sub a-sev-attention">{page.gaps.length} unavailable or unsupported records remain counted: {page.gaps.map(g => g.detail).join(' ')}</p>}
-    <div className="a-research-list">{page.items.map(source => <Card key={`${source.source_id}-${source.seen_version}`} title={source.owner} sub={`${source.source_kind} · published ${when(source.source_published_date)}`} tail={<Badge tone={source.currency_state === 'current' ? 'accent' : 'neutral'} variant="ring">{source.currency_state}</Badge>}>
+    {/* `data-source-id` carries no visual meaning — it exists so a browser
+        capture script can read exactly which source identities rendered
+        without guessing from display text, the same identity the underlying
+        read returned (see `response_ids`/`displayed_ids` in the B03 proof). */}
+    <div className="a-research-list">{page.items.map(source => <div key={`${source.source_id}-${source.seen_version}`} data-source-id={source.source_id}><Card title={source.owner} sub={`${source.source_kind} · published ${when(source.source_published_date)}`} tail={<Badge tone={source.currency_state === 'current' ? 'accent' : 'neutral'} variant="ring">{source.currency_state}</Badge>}>
       <p className="a-research-excerpt">{source.passage ?? source.gap_state?.detail ?? 'Source text unavailable.'}</p><p className="a-ct-sub">{source.limitation}</p><Button size="sm" variant="quiet" onClick={() => setSelected(source)}>Inspect source</Button>
-    </Card>)}</div>
+    </Card></div>)}</div>
     {cursor && <Button variant="quiet" size="sm" onClick={() => void load(true)}>Load more ({page.items.length} of {page.total})</Button>}
     {selected && <SourceDetail source={selected} close={() => setSelected(null)} lane={lane} />}
     </>}

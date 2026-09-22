@@ -7,16 +7,36 @@ import type { ContentLane } from '../../../lib/content'
 import type { Resource } from '../../../lib/styles'
 import { BriefCard, EditorialClientProvider, SourceDetail } from './ResearchWorkspace'
 import { StrategyView } from '../strategy'
+import { isContentLane, isStrategyView, type StrategyViewId } from '../strategy/deepLink'
 import { makeLocalPreviewClient } from './LocalPreviewClient'
 
 type Data = { briefs: Record<ContentLane, EditorialBrief[]>; resources: Resource[] }
 const lanes: ContentLane[] = ['ivan', 'risedtc', 'arch']
 async function read(name: string) { const r = await fetch(`/__editorial_preview/${name}`); if (!r.ok) throw new Error(`${name}: HTTP ${r.status}`); return r.json() }
 
+// content-brain-05 Task 6 proof: this harness has no `#exp/` hash (App.tsx
+// mounts it directly, bypassing Shell), so its own direct-link contract is
+// `?lane=<client>&section=<strategy tab>` on `location.search` instead — read
+// once, at mount, through the exact same validators the real Shell-hosted
+// StrategyView uses (`strategy/deepLink.ts`), so "the same source identities
+// and client state" is not just true of the read functions but of what a
+// fresh page load with a given URL actually shows, fixture data included.
+function initialLinkFromQuery(): { lane: ContentLane; section?: StrategyViewId } {
+  if (typeof window === 'undefined') return { lane: 'ivan' }
+  const q = new URLSearchParams(window.location.search)
+  const lane = q.get('lane')
+  const section = q.get('section')
+  return {
+    lane: isContentLane(lane) ? lane : 'ivan',
+    ...(isStrategyView(section) ? { section } : {}),
+  }
+}
+
 export function LocalPreviewHarness() {
   const [data, setData] = useState<Data | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [lane, setLane] = useState<ContentLane>('ivan')
+  const initialLink = useMemo(initialLinkFromQuery, [])
+  const [lane, setLane] = useState<ContentLane>(initialLink.lane)
   const [view, setView] = useState<'workspace' | 'this-week' | 'research' | 'results' | 'direction' | 'demos'>('workspace')
   const [selected, setSelected] = useState<SourceSnapshot | null>(null)
   const [kind, setKind] = useState('all')
@@ -32,7 +52,7 @@ export function LocalPreviewHarness() {
     {error && <p role="alert">{error} <Button size="sm" onClick={load}>Try again</Button></p>}{!data && !error && <p>Reading frozen data…</p>}
     {data && <div className="a-body a-local-editorial"><nav aria-label="Client lane" className="a-research-actions">{lanes.map(x => <Button key={x} size="sm" variant={x === lane ? 'primary' : 'quiet'} onClick={() => { setLane(x); setSelected(null) }}>{x}</Button>)}</nav>
       <nav aria-label="Strategy views" className="a-research-actions">{([['workspace','Interactive Strategy'],['this-week','Frozen briefs'],['research','Cited sources'],['results','Results'],['direction','Client direction'],['demos','Demos']] as const).map(([id,label]) => <Button key={id} size="sm" variant={view === id ? 'primary' : 'quiet'} onClick={() => { setView(id); setSelected(null) }}>{label}</Button>)}</nav>
-      {view === 'workspace' && localClient && <section><p className="a-ct-sub">Interactive Strategy uses the real panels and frozen briefs with a local simulated editorial transport. Decisions, review, draft, and refresh only record in this browser session; they never reach Supabase.</p><EditorialClientProvider client={localClient}><StrategyView lane={lane} setLane={setLane} /></EditorialClientProvider></section>}
+      {view === 'workspace' && localClient && <section><p className="a-ct-sub">Interactive Strategy uses the real panels and frozen briefs with a local simulated editorial transport. Decisions, review, draft, and refresh only record in this browser session; they never reach Supabase.</p><EditorialClientProvider client={localClient}><StrategyView lane={lane} setLane={setLane} initialSection={initialLink.section} /></EditorialClientProvider></section>}
       {view === 'this-week' && <section><h2>This week · {briefs.length} full briefs</h2><p className="a-ct-sub">Expand a brief for claims, evidence passages, limits, measurement, and production requirements. This read-only preview cannot request a draft.</p><div className="a-research-list">{briefs.map(b => <BriefCard key={`${b.identity.brief_id}-${b.identity.version}`} brief={b} lane={lane} reload={() => {}} readOnly />)}</div></section>}
       {view === 'research' && <section><h2>Research · {sources.length} cited source identities</h2><label className="a-research-reason">Source kind <select value={kind} onChange={e => setKind(e.target.value)}><option value="all">All kinds</option>{[...new Set(sources.map(s => s.source_kind))].map(k => <option key={k} value={k}>{k}</option>)}</select></label><p className="a-ct-sub">These are sources cited by the frozen briefs, not the complete collected-source population.</p><div className="a-research-list">{sources.filter(s => kind === 'all' || s.source_kind === kind).map(s => <Card key={s.source_id} title={s.owner} sub={`${s.source_kind} · ${s.source_published_date}`}><p className="a-research-excerpt">{s.passage ?? s.gap_state?.detail ?? 'Original passage unavailable.'}</p><Button size="sm" variant="quiet" onClick={() => setSelected(s)}>Inspect source</Button></Card>)}</div>{selected && <SourceDetail source={selected} lane={lane} close={() => setSelected(null)} previewLinked={briefs.filter(b => b.evidence.some(e => e.source_id === selected.source_id))} readOnly />}</section>}
       {view === 'results' && <section><h2>Results</h2><p className="a-ct-sub">These files contain proposed measurements, not post-publication outcomes. Missing conversion data remains unknown.</p>{briefs.map(b => <Card key={b.identity.brief_id} title={b.editorial_direction.topic}><p>{b.measurements.length ? b.measurements.map(m => `${m.metric_name}: ${m.observed_value}/${m.denominator} (${m.observation_window})`).join('; ') : b.measurements_none_reason ?? 'No measurement recorded.'}</p></Card>)}</section>}
