@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { taskTitle } from './ops'
 import { LANE_LABEL, type ContentLane } from './content'
+import type { ReplacementRow } from './kpis'
 
 // The Money job's data layer (goal-run money-truth-2026-09-01).
 //
@@ -785,3 +786,113 @@ export async function fetchOpenMoneyDecisions(): Promise<MoneyTaskRow[]> {
 // title derivation (first non-empty line, capped) is the Ops job's own rule
 // and this page reuses it verbatim rather than forking a second copy.
 export { taskTitle }
+
+// ---------------------------------------------------------------------------
+// Cost per ready lead, per lane (instantly-picks item 2, 2026-09-22).
+//
+// Numerator: Apify usd_settled ONLY (vs_lane_day_v), never apify_usd_claimed
+// and never a run-stat apify_usd — the 09-19 error on those was 6-36x low.
+// Denominator: ready leads added per lane per day = sum(qualified_in) from
+// inbox_replacement_v (db/029_replacement_rate.sql), grouped by client_id
+// (already coalesced NULL->'ivan' in that view) across every sub-lane —
+// money's `lane` and the pipeline/replacement views' `lane` are different
+// axes (client tenant vs sub-engine); this sums the latter into the former.
+//
+// A day counts as SETTLED for a lane, vendor=apify, when every run that day
+// has landed a usd_settled value: vs_lane_day_v's own `runs` (count(*)) and
+// `settled_runs` (count(usd_settled)) columns make this a plain equality
+// check with no new fetch. A day with runs===settled===0 (no apify row for
+// this lane at all) is complete by the same rule: there is nothing to wait
+// on, so it counts as $0 spend, not as an unknown in-flight run. A day that
+// HAS runs but not all of them settled is a settling day and is dropped from
+// BOTH the numerator and the denominator (never a partial, never inflates a
+// per-lead rate off a day still landing money).
+// ---------------------------------------------------------------------------
+
+export type CostPerLead = {
+  lane: 'ivan' | 'risedtc' | 'arch'
+  usdSettled: number
+  ready: number
+  perLead: number | null
+  settledDays: number
+  settlingDays: number
+}
+
+const COST_LANES: CostPerLead['lane'][] = ['ivan', 'risedtc', 'arch']
+
+// The last `windowDays` complete UTC days, ending YESTERDAY. Today is never
+// complete: settlement lags 24-48h behind the run, so today's apify rows
+// cannot have a final usd_settled yet, and today's ready-lead count is still
+// accumulating. Ascending, oldest first — day 0 is the oldest day in window.
+export function readyLeadWindowDays(windowDays = 7, now: number = Date.now()): string[] {
+  const todayUtc = new Date(now).toISOString().slice(0, 10)
+  const t0 = Date.parse(todayUtc + 'T00:00:00Z')
+  const out: string[] = []
+  for (let i = windowDays; i >= 1; i--) out.push(new Date(t0 - i * DAY_MS).toISOString().slice(0, 10))
+  return out
+}
+
+export function costPerReadyLead(
+  laneDays: LaneDayRow[],
+  readyDays: ReplacementRow[],
+  opts: { windowDays?: number; now?: number } = {},
+): CostPerLead[] {
+  const days = readyLeadWindowDays(opts.windowDays ?? 7, opts.now ?? Date.now())
+  const daySet = new Set(days)
+
+  return COST_LANES.map(lane => {
+    const byDay = new Map<string, { runs: number; settled: number; usd: number }>()
+    for (const r of laneDays) {
+      if (r.vendor !== 'apify' || r.lane !== lane || !daySet.has(r.day)) continue
+      const cur = byDay.get(r.day) ?? { runs: 0, settled: 0, usd: 0 }
+      cur.runs += r.runs
+      cur.settled += r.settled_runs
+      cur.usd += r.usd_settled ?? 0
+      byDay.set(r.day, cur)
+    }
+
+    let usdSettled = 0, settledDays = 0, settlingDays = 0
+    const settledDaySet = new Set<string>()
+    for (const day of days) {
+      const d = byDay.get(day)
+      const runs = d?.runs ?? 0
+      const settled = d?.settled ?? 0
+      if (runs === settled) {
+        usdSettled += d?.usd ?? 0
+        settledDays += 1
+        settledDaySet.add(day)
+      } else {
+        settlingDays += 1
+      }
+    }
+
+    let ready = 0
+    for (const r of readyDays) {
+      if (r.client_id !== lane || !settledDaySet.has(r.day)) continue
+      ready += r.qualified_in
+    }
+
+    return {
+      lane, usdSettled, ready,
+      perLead: ready === 0 ? null : usdSettled / ready,
+      settledDays, settlingDays,
+    }
+  })
+}
+
+// "no ready leads", never $0 and never Infinity/NaN — a rate against zero
+// ready leads is not a fact about the lane's cost.
+export function fmtPerLead(perLead: number | null): string {
+  return perLead === null ? 'no ready leads' : `${fmtUsdPerUnit(perLead)} / ready lead`
+}
+
+// 4 decimals for the gate check's own precision, or the literal string
+// "null" (never omitted, never empty) so a live read can tell "no ready
+// leads" apart from "attribute missing".
+export function dataPerLeadAttr(perLead: number | null): string {
+  return perLead === null ? 'null' : perLead.toFixed(4)
+}
+
+export function costWindowLabel(days: string[]): string {
+  return `${days[0]}..${days[days.length - 1]}`
+}

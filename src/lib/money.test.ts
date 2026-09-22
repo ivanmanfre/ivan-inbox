@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   RUNWAY_REFUSAL, aggregateByDay, aggregateByWeek, billingDay, clientLabel,
-  computeRunway, dayRangeLabel, daysSince, deltaRatio, fmtShareOfTotal, fmtUsd,
+  computeRunway, costPerReadyLead, costWindowLabel, dataPerLeadAttr, dayRangeLabel,
+  daysSince, deltaRatio, fmtPerLead, fmtShareOfTotal, fmtUsd,
   fmtUsdPerUnit, isStale, isTokenPriced, isoWeekKey, laneTotals, laneTotalsGrandTotal,
   lastNDays, latestPerClient, mrrByClient, noteReason, provenanceText,
-  relAge, riskNoteKind, riskNoteText, shareOfTotalPct, topActors, type ActorDayRow,
-  type EngineCounterDayRow, type LaneDayRow, type MoneyLedgerRow,
+  readyLeadWindowDays, relAge, riskNoteKind, riskNoteText, shareOfTotalPct, topActors,
+  type ActorDayRow, type EngineCounterDayRow, type LaneDayRow, type MoneyLedgerRow,
 } from './money'
+import type { ReplacementRow } from './kpis'
 
 const NOW = new Date('2026-09-01T12:00:00Z').getTime()
 
@@ -458,5 +460,102 @@ describe('shareOfTotalPct / fmtShareOfTotal', () => {
     expect(shareOfTotalPct(73, 0)).toBeNull()
     expect(fmtShareOfTotal(null, 783)).toBeNull()
     expect(fmtShareOfTotal(73, 0)).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Cost per ready lead, per lane (instantly-picks item 2, 2026-09-22).
+// Numerator is Apify usd_settled ONLY, over complete (fully-settled) days;
+// denominator is inbox_replacement_v's qualified_in summed by client_id.
+// ---------------------------------------------------------------------------
+
+function readyRow(over: Partial<ReplacementRow>): ReplacementRow {
+  return { client_id: 'ivan', lane: 'cold', day: '2026-09-01', qualified_in: 10, sent_out: 5, ...over }
+}
+
+describe('readyLeadWindowDays', () => {
+  it('the last N complete UTC days, ending yesterday (today is never complete)', () => {
+    const now = Date.parse('2026-09-20T12:00:00Z')
+    expect(readyLeadWindowDays(7, now)).toEqual([
+      '2026-09-13', '2026-09-14', '2026-09-15', '2026-09-16',
+      '2026-09-17', '2026-09-18', '2026-09-19',
+    ])
+  })
+})
+
+describe('costPerReadyLead', () => {
+  it('no ready leads renders null', () => {
+    const now = Date.parse('2026-09-20T12:00:00Z')
+    const days = readyLeadWindowDays(7, now)
+    // Every day fully settled, some spend, but zero qualified_in rows at all.
+    const laneDays = days.map(day => laneRow({ day, lane: 'arch', vendor: 'apify', runs: 3, settled_runs: 3, usd_settled: 9 }))
+    const rows = costPerReadyLead(laneDays, [], { now })
+    const arch = rows.find(r => r.lane === 'arch')!
+    expect(arch.ready).toBe(0)
+    expect(arch.perLead).toBeNull()
+    expect(fmtPerLead(arch.perLead)).toBe('no ready leads')
+    expect(dataPerLeadAttr(arch.perLead)).toBe('null')
+  })
+
+  it('unsettled day excluded from both sides', () => {
+    const now = Date.parse('2026-09-20T12:00:00Z')
+    const days = readyLeadWindowDays(7, now)
+    const laneDays = days.map((day, i) =>
+      // The last day (2026-09-19) is still settling: 5 runs, only 3 settled.
+      i === days.length - 1
+        ? laneRow({ day, lane: 'ivan', vendor: 'apify', runs: 5, settled_runs: 3, usd_settled: 999 })
+        : laneRow({ day, lane: 'ivan', vendor: 'apify', runs: 2, settled_runs: 2, usd_settled: 10 }))
+    const readyDays = days.map(day => readyRow({ client_id: 'ivan', day, qualified_in: 4 }))
+    const rows = costPerReadyLead(laneDays, readyDays, { now })
+    const ivan = rows.find(r => r.lane === 'ivan')!
+    // 6 fully-settled days at $10 = $60 (the unsettled day's $999 excluded);
+    // 6 fully-settled days at 4 ready = 24 (the unsettled day's 4 excluded).
+    expect(ivan.settledDays).toBe(6)
+    expect(ivan.settlingDays).toBe(1)
+    expect(ivan.usdSettled).toBe(60)
+    expect(ivan.ready).toBe(24)
+    expect(ivan.perLead).toBeCloseTo(60 / 24, 6)
+  })
+
+  it('RISE 09-20 fixture: $18.42/day settled, ~15.4 ready/day -> perLead ~= 1.20', () => {
+    const now = Date.parse('2026-09-20T12:00:00Z')
+    const days = readyLeadWindowDays(7, now)
+    const readyPerDay = [15, 15, 15, 16, 16, 16, 15] // sums to 108, avg 15.43/day
+    const laneDays = days.map(day =>
+      laneRow({ day, lane: 'risedtc', vendor: 'apify', runs: 4, settled_runs: 4, usd_settled: 18.42 }))
+    const readyDays = days.map((day, i) => readyRow({ client_id: 'risedtc', day, qualified_in: readyPerDay[i] }))
+    const rows = costPerReadyLead(laneDays, readyDays, { now })
+    const rise = rows.find(r => r.lane === 'risedtc')!
+    expect(rise.settledDays).toBe(7)
+    expect(rise.usdSettled).toBeCloseTo(18.42 * 7, 5)
+    expect(rise.ready).toBe(108)
+    expect(rise.perLead).not.toBeNull()
+    expect(rise.perLead!).toBeGreaterThan(1.15)
+    expect(rise.perLead!).toBeLessThan(1.25)
+  })
+
+  it('a day with no apify row at all for a lane counts as complete (0 spend, not settling)', () => {
+    const now = Date.parse('2026-09-20T12:00:00Z')
+    const rows = costPerReadyLead([], [readyRow({ client_id: 'arch', day: '2026-09-19', qualified_in: 5 })], { now })
+    const arch = rows.find(r => r.lane === 'arch')!
+    expect(arch.settlingDays).toBe(0)
+    expect(arch.settledDays).toBe(7)
+    expect(arch.usdSettled).toBe(0)
+    expect(arch.ready).toBe(5)
+    expect(arch.perLead).toBeCloseTo(0, 6)
+  })
+})
+
+describe('fmtPerLead / dataPerLeadAttr / costWindowLabel', () => {
+  it('formats a real number as "$X.XX / ready lead" and the data attribute to 4 decimals', () => {
+    expect(fmtPerLead(1.19941)).toBe('$1.20 / ready lead')
+    expect(dataPerLeadAttr(1.19941)).toBe('1.1994')
+  })
+  it('never renders $0 or Infinity/NaN for a lane with no ready leads', () => {
+    expect(fmtPerLead(null)).toBe('no ready leads')
+    expect(dataPerLeadAttr(null)).toBe('null')
+  })
+  it('labels the window as first..last ISO days, inclusive', () => {
+    expect(costWindowLabel(['2026-09-13', '2026-09-14', '2026-09-19'])).toBe('2026-09-13..2026-09-19')
   })
 })
