@@ -1141,6 +1141,31 @@ export async function discardDraft(id: string): Promise<boolean> {
   return (data ?? []).length > 0
 }
 
+// Retire an internal hold by hand. Søren Gleie (2026-09-22): the drafter hit its
+// retry ceiling, wrote "Confirm with Davorin ... write this one by hand", and
+// the card's ONLY verb was "add a note" — a question Ivan had already answered
+// (the "no" was a no) kept the thread in "Needs your reply" with nothing to
+// press. The hold is retired the same way the drafter retires its own
+// superseded holds, so every reader that already hides
+// `owner_confirmation_superseded` (bubbles, the failed-send log, sends.ts)
+// hides this one too. It is NOT a discard: a restored hold would come back as
+// an empty draft, so it never wears the discard reason.
+export const DISMISS_HOLD_GUARD: readonly DraftGuard[] = [
+  { op: 'is', column: 'sent_at' },
+  { op: 'is', column: 'approved_at' },
+  { op: 'eq', column: 'send_blocked_reason', value: 'owner_confirmation' },
+]
+
+export async function dismissConfirmation(id: string): Promise<boolean> {
+  const { data, error } = await applyDraftGuard(
+    supabase.from('outreach_messages')
+      .update({ send_blocked_reason: 'owner_confirmation_superseded', send_blocked_at: new Date().toISOString() }),
+    id, DISMISS_HOLD_GUARD,
+  ).select('id')
+  if (error) throw error
+  return (data ?? []).length > 0
+}
+
 // Undo a discard. The write clears the two block columns and NOTHING else, so
 // the row lands back in exactly the state isDraft describes (outbound, unsent,
 // unapproved, unblocked) and re-enters the pending queue as a draft.

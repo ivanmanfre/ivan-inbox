@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, browseOrder, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, missingManualGuardMeansPreMigration, type InboxMessage, type Status, type DraftGuard } from './inbox'
+import { isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, browseOrder, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISMISS_HOLD_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, missingManualGuardMeansPreMigration, type InboxMessage, type Status, type DraftGuard } from './inbox'
 
 // inbox.ts:191 gates needsAnswer on a 14-day wall-clock staleness window
 // (STALE_DAYS), measured against Date.now() by default -- and most callers
@@ -912,6 +912,21 @@ describe('owner confirmation holds', () => {
     expect(thread.ownerConfirmation).toBeNull()
     expect(thread.draft?.id).toBe('fresh')
     expect(thread.companionDraft).toBeNull()
+  })
+  it('a hand-dismissed hold drops the thread out of "Needs your reply" when the reply was a decline (Søren Gleie, 2026-09-22)', () => {
+    const passes = (m: InboxMessage, guard: readonly DraftGuard[]) => guard.every(g => g.op === 'is' ? m[g.column as keyof InboxMessage] === null : m[g.column as keyof InboxMessage] === g.value)
+    expect(passes(hold, DISMISS_HOLD_GUARD)).toBe(true)
+    expect(passes({ ...hold, send_blocked_reason: 'owner_confirmation_superseded' }, DISMISS_HOLD_GUARD)).toBe(false)
+    expect(passes({ ...hold, send_blocked_reason: 'reply_retry_pending' }, DISMISS_HOLD_GUARD)).toBe(false)
+    expect(passes({ ...hold, approved_at: '2026-07-22T12:30:00Z' }, DISMISS_HOLD_GUARD)).toBe(false)
+    const no: InboxMessage = { ...base, id: 'no', direction: 'inbound', message_text: 'no', reply_intent: 'negative', sent_at: '2026-07-22T11:50:00Z', created_at: '2026-07-22T11:50:00Z' }
+    const held = groupThreads([no, hold])[0]
+    expect(threadBucket(held)).toBe('answer')
+    const dismissed = groupThreads([no, { ...hold, send_blocked_reason: 'owner_confirmation_superseded' }])[0]
+    expect(dismissed.ownerConfirmation).toBeNull()
+    expect(dismissed.draft).toBeNull()
+    expect(threadBucket(dismissed)).toBe('waiting')
+    expect(filterThreads([dismissed], 'all')).toHaveLength(1)
   })
   it('hides retired internal holds without presenting them as current work', () => {
     const retired = { ...hold, send_blocked_reason: 'owner_confirmation_superseded' }

@@ -6,8 +6,11 @@ export function ConfirmationNoteGuidance({ clientId }: { clientId: string }) {
   return <p className="owner-confirmation-guidance">After checking with {confirmationOwner(clientId)}, add a new line beginning <b>Confirmed by {confirmationOwner(clientId)}:</b> followed by their confirmed answer. Keep existing notes. Save the note for reassessment on the next draft cycle, usually within 5 minutes. A new draft will still need approval.</p>
 }
 
-export function OwnerConfirmation({ message, onAddNote, onRetry }: {
+export function OwnerConfirmation({ message, onAddNote, onRetry, onDismiss }: {
   message: InboxMessage; onAddNote: () => void; onRetry?: () => void
+  /** Retire the question without answering it (the thread was already decided by
+      hand). Absent on the automatic-retry state, which needs nobody. */
+  onDismiss?: () => void
 }) {
   if (isReplyRetryPending(message)) {
     const retryAt = message.draft_evidence?.retry_after
@@ -26,6 +29,9 @@ export function OwnerConfirmation({ message, onAddNote, onRetry }: {
     {message.context_gap?.why && <p className="draft-explanation-note">{message.context_gap.why}</p>}
     <p className="draft-explanation-note">Internal question · no reply is queued.</p>
     <DraftExplanation pendingConfirmation messageId={message.id} messageText="" evidence={message.draft_evidence} unavailable={message.draft_evidence_unavailable} onRetry={onRetry} />
-    <button type="button" className="draft-explanation-retry" onClick={onAddNote}>Add confirmed answer in your note</button>
+    <div className="owner-confirmation-actions">
+      <button type="button" className="draft-explanation-retry" onClick={onAddNote}>Add confirmed answer in your note</button>
+      {onDismiss && <button type="button" className="draft-explanation-retry" onClick={onDismiss}>Discard</button>}
+    </div>
   </section>
 }

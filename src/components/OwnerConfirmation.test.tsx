@@ -16,6 +16,13 @@ describe('internal confirmation', () => {
     expect(guidance).toContain(`Confirmed by ${owner}:`)
     expect(guidance).toContain('A new draft will still need approval.')
   })
+  it('offers Discard only when a dismiss handler exists, never on the automatic retry', () => {
+    const hold = { id: 'hold', client_id: 'arch', direction: 'outbound', sent_at: null, approved_at: null, send_blocked_reason: 'owner_confirmation', context_gap: { question: 'Write this one by hand.' } } as unknown as InboxMessage
+    expect(renderToStaticMarkup(<OwnerConfirmation message={hold} onAddNote={() => {}} onDismiss={() => {}} />)).toMatch(/>Discard<\/button>/)
+    expect(renderToStaticMarkup(<OwnerConfirmation message={hold} onAddNote={() => {}} />)).not.toMatch(/Discard/)
+    const retry = { ...hold, id: 'retry', send_blocked_reason: 'reply_retry_pending', draft_evidence: { retry_after: '2026-07-01T10:05:00Z' } } as unknown as InboxMessage
+    expect(renderToStaticMarkup(<OwnerConfirmation message={retry} onAddNote={() => {}} onDismiss={() => {}} />)).not.toMatch(/Discard|<button/)
+  })
   it('keeps an unreadable question visibly held', () => {
     const message = { id: 'hold', client_id: 'arch', draft_evidence_unavailable: true } as InboxMessage
     const html = renderToStaticMarkup(<OwnerConfirmation message={message} onAddNote={() => {}} onRetry={() => {}} />)

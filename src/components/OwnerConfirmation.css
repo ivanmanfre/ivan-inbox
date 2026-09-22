@@ -19,3 +19,4 @@
   margin-bottom:var(--ds-s4);
   overflow-wrap:anywhere;
 }
+.owner-confirmation-actions{ display:flex; flex-wrap:wrap; gap:var(--ds-s4) }

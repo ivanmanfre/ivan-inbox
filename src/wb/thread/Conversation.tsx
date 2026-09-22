@@ -29,7 +29,7 @@ import { Linkified } from '../chrome/Linkified'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import { formatReturn, returnsIn, usePushLater } from '../../lib/pushLater'
 import {
-  approveDraft, channelFamilies, composeReply, discardDraft, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
+  approveDraft, channelFamilies, composeReply, discardDraft, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
   saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId, emailRowSender, ladderSteps, sendFailed,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../../lib/inbox'
@@ -296,6 +296,27 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
     try { await markNotSpam(thread); refresh() } finally { setBusy(false) }
   }
 
+  // Retire the internal question by hand: the thread was already decided (a
+  // "no" that was a no) and the drafter's question has nobody to answer it.
+  async function onDismissHold() {
+    const hold = thread.ownerConfirmation
+    if (!hold) return
+    const ok = await confirm({
+      title: 'Discard this internal question?',
+      message: 'No reply will be drafted for it. The thread stays reachable, and a new message from them starts a fresh draft.',
+      confirmText: 'Discard',
+      danger: true,
+    })
+    if (!ok) return
+    setBusy(true); setDraftErr('')
+    try {
+      const done = await dismissConfirmation(hold.id)
+      if (!done) setDraftErr('This question was already retired or answered. Nothing was changed.')
+      refresh()
+    } catch (e) { setDraftErr(errText(e)) }
+    finally { setBusy(false) }
+  }
+
   async function onDiscard() {
     if (!draft) return
     const ok = await confirm({
@@ -540,7 +561,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
           draft on the thread. Distinct from Later, which parks the draft below. */}
       <FollowUpStrip thread={thread} />
 
-      {thread.ownerConfirmation && <OwnerConfirmation message={thread.ownerConfirmation} onAddNote={() => setShowCtx(true)} onRetry={refresh} />}
+      {thread.ownerConfirmation && <OwnerConfirmation message={thread.ownerConfirmation} onAddNote={() => setShowCtx(true)} onRetry={refresh} onDismiss={busy ? undefined : onDismissHold} />}
 
       {draft && (
         <div className="a-thread-draft">
