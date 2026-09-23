@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/supabase', () => ({ supabase: { rpc: vi.fn() } }))
 
-import { cameBackLine, cardsFor, firstComment, sentLine, tenantLabel, type CameBackCard } from './cameBackData'
+import { cameBackLine, cardsFor, firstComment, scanReopenOnlyIvan, sentLine, tenantLabel, type CameBackCard } from './cameBackData'
 
 const card = (over: Partial<CameBackCard>): CameBackCard => ({
   prospect_id: 'p1', tenant: 'ivan', name: 'Dave', headline: null, company: 'n8n', title: null, country: null,
@@ -21,6 +21,20 @@ describe('cardsFor', () => {
   it('shows nobody on lanes with no LinkedIn seat', () => {
     expect(cardsFor(all, 'email')).toEqual([])
     expect(cardsFor(all, 'spam')).toEqual([])
+  })
+})
+
+describe('scanReopenOnlyIvan', () => {
+  const reopen = [{ kind: 'scan_open', at: '2026-09-16T10:00:00Z', detail: null }]
+  it('drops an Ivan card whose only signal is a scan reopen (the bump drafts it instead)', () =>
+    expect(scanReopenOnlyIvan(card({ n_views: 0, signals: reopen }))).toBe(true))
+  it('keeps an Ivan card that also carries a profile view', () =>
+    expect(scanReopenOnlyIvan(card({ n_views: 1, signals: reopen }))).toBe(false))
+  it('keeps an Ivan card that also carries a post engagement', () =>
+    expect(scanReopenOnlyIvan(card({ n_views: 0, n_engagements: 1, signals: [...reopen, { kind: 'reaction', at: '', detail: null }] }))).toBe(false))
+  it('never touches RISE or ARCH', () => {
+    expect(scanReopenOnlyIvan(card({ tenant: 'risedtc', n_views: 0, signals: reopen }))).toBe(false)
+    expect(scanReopenOnlyIvan(card({ tenant: 'arch', n_views: 0, signals: reopen }))).toBe(false)
   })
 })
 

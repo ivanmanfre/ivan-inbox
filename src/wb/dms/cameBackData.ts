@@ -79,10 +79,18 @@ export function firstComment(c: Pick<CameBackCard, 'signals'>): string | null {
   return (c.signals ?? []).find(s => s.kind === 'comment' && s.detail)?.detail ?? null
 }
 
+/** Ivan 09-23: on his lane a scan reopen becomes a follow-up DRAFT in the thread, not a card.
+    Outreach - Stalled Conversation Bump reads the same RPC and drafts these people after 2 days of
+    silence instead of 5. So an Ivan card whose ONLY signal is a scan reopen is dropped here. A profile
+    view or a post engagement still shows, and RISE and ARCH cards are untouched. */
+export function scanReopenOnlyIvan(c: Pick<CameBackCard, 'tenant' | 'n_views' | 'n_engagements' | 'signals'>): boolean {
+  return c.tenant === 'ivan' && c.n_views === 0 && c.n_engagements === 0 && scanOpenDays(c) > 0
+}
+
 export async function fetchCameBack(): Promise<CameBackCard[]> {
   const { data, error } = await supabase.rpc('came_back_cards')
   if (error) throw error
-  return (data ?? []) as CameBackCard[]
+  return ((data ?? []) as CameBackCard[]).filter(c => !scanReopenOnlyIvan(c))
 }
 
 export async function dismissCameBack(id: string): Promise<boolean> {
