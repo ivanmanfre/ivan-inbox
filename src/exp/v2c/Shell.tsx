@@ -1010,6 +1010,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
           sev={sev}
           chatOn={drawerOpen}
           chatLive={chat.busy}
+          chatUnread={chat.botUnread}
           onJob={goJob}
           onChat={toggleDrawer}
           loadedAt={inbox.loadedAt}
@@ -1042,7 +1043,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
             as a persistent fourth region rather than a peer. The pane is only
             built while open, so the lazy Ask chunk still costs nothing on a
             cold boot that never opens it. */}
-        <Drawer open={drawerOpen} unread={chat.botUnread} busy={chat.busy} onOpen={openDrawer}>
+        <Drawer open={drawerOpen}>
           {drawerOpen ? renderAskPane(collapseDrawer) : null}
         </Drawer>
       </div>

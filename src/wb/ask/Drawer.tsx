@@ -1,6 +1,11 @@
 /* ==========================================================================
    src/wb/ask/Drawer.tsx — goal run inbox-agent-drawer-2026-09-12, Seat B.
 
+   2026-09-23 (Ivan): "that claude sheet on the right is so annoying... it's
+   occupying so much space... It should just be a small icon". Collapsed is now
+   ZERO width: the rail's own Claude item (icon + live dot + unread dot) is the
+   one way in, so the 72px column of two duplicate glyphs is gone.
+
    D2: Claude is no longer a peer on desktop. It is a persistent right column
    of the plate: 72px collapsed (a stack of two ways to open it, plus a live
    dot while a turn is running), 380px open (the exact pane Shell used to dock
@@ -15,18 +20,13 @@
    two different storage patterns for the same kind of "how I left it" state.
    ========================================================================== */
 import { motion, useReducedMotion } from 'motion/react'
-import { IconButton, LiveDot, fadeT } from '../../ds'
+import { fadeT } from '../../ds'
 import type { ReactNode } from 'react'
 
 export function Drawer({
-  open, unread, busy, onOpen, children,
+  open, children,
 }: {
   open: boolean
-  /** `chat.botUnread` — a bot turn landed and nobody has opened it yet. */
-  unread: boolean
-  /** `chat.busy` — a turn is running right now, open or not. */
-  busy: boolean
-  onOpen: () => void
   /** The pane Shell built for the `chat` peer today (BrainAsk or
       AskPaneDirect, `onClose` wired to the collapse). Only rendered by the
       caller while `open`, so pass `null` while collapsed. */
@@ -48,27 +48,7 @@ export function Drawer({
           animate={{ opacity: 1 }}
           transition={fadeT}
         >{children}</motion.div>
-      ) : (
-        <div className="a-drawer-collapsed">
-          <span className="a-drawer-openwrap">
-            <IconButton icon="ask" label="Open Claude" onClick={onOpen} />
-            {/* Reuses the bot thread's own unread mark (`.a-brain-bot-dot`) —
-                one dot, one meaning, everywhere it appears. */}
-            {unread ? <span className="a-brain-bot-dot" data-drawer-unread /> : null}
-            {/* E5: the collapsed column is two glyphs and no words, the same
-                defect the 72px rail had. Same plate, same tokens, mirrored —
-                this column is against the right edge, so the name opens to the
-                LEFT or it opens off-screen. `aria-hidden` because the button
-                already carries the name. */}
-            <span className="ds-rail-tip a-drawer-tip" aria-hidden="true">Open Claude</span>
-          </span>
-          {busy ? <LiveDot label="Claude is working" /> : null}
-          <span className="a-drawer-openwrap">
-            <IconButton icon="expand" label="Open Claude" onClick={onOpen} />
-            <span className="ds-rail-tip a-drawer-tip" aria-hidden="true">Open Claude</span>
-          </span>
-        </div>
-      )}
+      ) : null}
     </aside>
   )
 }

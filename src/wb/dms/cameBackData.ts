@@ -53,7 +53,8 @@ export function cameBackLine(c: Pick<CameBackCard, 'n_views' | 'n_engagements' |
   const parts: string[] = []
   // db/097: they opened the scan we sent. Rides in `signals`, so the RPC's return type never changed.
   const scans = scanOpenDays(c)
-  if (scans > 0) parts.push(scans === 1 ? 'opened the scan' : `opened the scan on ${scans} days`)
+  // db/211: a scan_open signal is now a REOPEN (the first open never reaches this list), so say so.
+  if (scans > 0) parts.push(scans === 1 ? 'opened the scan again' : `opened the scan again on ${scans} days`)
   if (c.n_views > 0) parts.push(c.n_views === 1 ? 'viewed the profile' : `viewed the profile on ${c.n_views} days`)
   if (c.n_engagements > 0) {
     const commented = (c.signals ?? []).some(s => s.kind === 'comment')

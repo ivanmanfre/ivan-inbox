@@ -95,7 +95,7 @@ export function WorkSegment({ job, counts, onJob }: {
 // S38 · the desktop rail.
 // --------------------------------------------------------------------------
 export function Rail({
-  job, counts, countNote, health, sev, chatOn, chatLive, onJob, onChat,
+  job, counts, countNote, health, sev, chatOn, chatLive, chatUnread, onJob, onChat,
   loadedAt, stale, onRefresh, collapsed = false, onToggle,
 }: {
   job: Job
@@ -112,6 +112,8 @@ export function Rail({
   sev: Sev
   chatOn: boolean
   chatLive: boolean
+  /** A Claude turn landed unread. The collapsed right drawer used to carry this dot; it lives here now. */
+  chatUnread?: boolean
   onJob: (j: Job) => void
   onChat: () => void
   loadedAt: string | null
@@ -237,7 +239,8 @@ export function Rail({
       <RailItem
         icon="ask" label="Claude" active={chatOn} collapsed={collapsed}
         markerId="a-rail-active" onClick={onChat}
-        tail={chatLive ? <LiveDot label="Claude is working" /> : undefined}
+        tail={chatLive ? <LiveDot label="Claude is working" />
+          : chatUnread ? <span className="a-brain-bot-dot" data-rail-chat-unread aria-label="New from Claude" /> : undefined}
       />
       {!collapsed ? (
         <div className="a-rail-hint ds-t-meta">

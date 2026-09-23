@@ -26,7 +26,13 @@ if (localStorage.getItem('inbox-theme') === 'light') {
 // Density mode (polish/dens): comfortable is the default and the absence of
 // the attribute IS comfortable, so only 'compact' is ever written. Same
 // persistence pattern as inbox-theme above, one key, read once at boot.
-if (localStorage.getItem('inbox-density') === 'compact') {
+// 2026-09-23 (Ivan): "the sizes are kind of too big overall... I don't have a full
+// panel feeling". Compact is now the DESKTOP default when nothing is stored.
+// Settings writes 'comfortable' explicitly, so an explicit pick still wins. Never
+// on the phone: the compact selector outranks the phone @media block in
+// tokens.css and would shrink the 16px phone body.
+const density = localStorage.getItem('inbox-density')
+if (density === 'compact' || (density === null && window.matchMedia('(min-width:768px)').matches)) {
   document.documentElement.dataset.density = 'compact'
 }
 
