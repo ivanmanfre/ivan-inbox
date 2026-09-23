@@ -1,4 +1,6 @@
 import { planNativeRoute } from '../../../src/lib/editorialNativeRoute.ts'
+import { authorizeProofBudget, parseProofRequest, proofWebhookFields } from '../../../src/lib/editorialProofTransport.ts'
+import type { ProofRequest, ProviderBudget } from '../../../src/lib/editorialProofTransport.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const url = Deno.env.get('SUPABASE_URL') ?? ''
@@ -38,6 +40,17 @@ Deno.serve(async request => {
     return reply(400,{error:'exact_editorial_envelope_required'})
   }
   const format = direction?.format
+  let proof: ProofRequest | null = null
+  let providerBudget: ProviderBudget | null = null
+  try {
+    proof = parseProofRequest(envelope.proof_transport)
+    if (proof) providerBudget = await authorizeProofBudget(
+      async (name,args) => { const result = await service.rpc(name,args); return { data:result.data,error:result.error } },
+      { clientId,requestId,briefId,version,hash,format:String(format) },proof,envelope.provider_budget)
+    else if (envelope.provider_budget != null) throw new Error('provider_budget_without_proof')
+  } catch (error) {
+    return reply(409,{error:'proof_transport_rejected',detail:String(error)})
+  }
   const plan = planNativeRoute(clientId,String(format),envelope.copy_only === true,
     (brief?.resource as {readiness?:string;artifact_role?:string} | undefined) ?? null)
   if (!plan) return reply(409,{error:'native_format_bridge_not_staged',format})
@@ -63,6 +76,7 @@ Deno.serve(async request => {
       body: JSON.stringify({ draft_id:native.native_draft_id, artifact_id:artifactId,
         videoIdeaId:native.native_draft_id, title, topic,
         phase: plan.phase, format: plan.nativeFormat, post_format: plan.postFormat,
+        ...proofWebhookFields(proof,providerBudget),
         editorial_generation: envelope }),
     })
     if (!response.ok) throw new Error(`native webhook HTTP ${response.status}`)
@@ -70,9 +84,9 @@ Deno.serve(async request => {
       native_draft_id:native.native_draft_id,dispatch_state:'claimed',idempotent_replay:false})
   } catch (error) {
     await service.from('editorial_native_draft_dispatches').update({
-      dispatch_state:'failed',last_error:String(error).slice(0,500),
+      last_error:`unreconciled_transport:${String(error)}`.slice(0,500),
     }).eq('artifact_id',artifactId)
-    return reply(503,{error:'native_dispatch_failed',artifact_id:artifactId,
-      native_draft_id:native.native_draft_id})
+    return reply(503,{error:'native_dispatch_unreconciled',artifact_id:artifactId,
+      native_draft_id:native.native_draft_id,dispatch_state:'claimed',reconciliation_required:true})
   } finally { clearTimeout(timer) }
 })

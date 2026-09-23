@@ -12,10 +12,15 @@ const source088 = readFileSync('db/088_lane_allowed.sql', 'utf8')
 const laneStart = source088.indexOf('create or replace function public.lane_allowed')
 const laneEnd = 'grant execute on function public.lane_allowed(text) to service_role;'
 const laneSql = source088.slice(laneStart, source088.indexOf(laneEnd) + laneEnd.length)
-const replayPath = '../../../content-brain-03-release-2026-09-20-out/private/collector-replay/risedtc.json'
-const recoveryPath = '../../../content-brain-03-release-2026-09-20-out/repair-proposals/source-completeness/RISE-FULL-BODY-RECOVERY.json'
-const replay = JSON.parse(readFileSync(replayPath, 'utf8')) as { client_post_metrics: Record<string, unknown>[] }
-const recovery = JSON.parse(readFileSync(recoveryPath, 'utf8')) as { matches: Array<Record<string, unknown>> }
+const replay = { client_post_metrics: [
+  { id:'synthetic-1',client_id:'risedtc',social_id:'post-1',full_text:'Complete synthetic retained body.',published_at:'2026-09-01T00:00:00Z',captured_at:'2026-09-20T00:00:00Z',impressions:10,reactions:2,comments:1,shares:0 },
+  { id:'synthetic-2',client_id:'risedtc',social_id:'post-2',full_text:'Synthetic retained excerpt two.',published_at:'2026-09-02T00:00:00Z',captured_at:'2026-09-20T00:00:00Z',impressions:20,reactions:3,comments:2,shares:1 },
+  { id:'synthetic-3',client_id:'risedtc',social_id:'post-3',full_text:'Synthetic retained excerpt three.',published_at:'2026-09-03T00:00:00Z',captured_at:'2026-09-20T00:00:00Z',impressions:30,reactions:4,comments:3,shares:2 },
+] }
+const recovery = { matches: replay.client_post_metrics.map((row,index) => ({ metrics_id:row.id,
+  social_id:row.social_id,native_id:`native-${index+1}`,native_chars:row.full_text.length,
+  native_sha256:createHash('sha256').update(row.full_text).digest('hex'),exact_prefix_match:true,
+  exact_body_match:index===0 })) }
 
 async function setup() {
   const db = new PGlite()
@@ -56,7 +61,7 @@ describe('limited retained RISE source fidelity replay', { timeout: 60_000 }, ()
     const retained = recovery.matches
     const rows = replay.client_post_metrics.filter(row => retained.some(match => match.metrics_id === row.id))
     expect(rows).toHaveLength(3)
-    const inputHash = createHash('sha256').update(readFileSync(replayPath)).digest('hex')
+    const inputHash = createHash('sha256').update(JSON.stringify(replay)).digest('hex')
     expect(inputHash).toMatch(/^[a-f0-9]{64}$/)
     const normalized = await Promise.all(rows.map(async row => {
       const match = retained.find(item => item.metrics_id === row.id)!
@@ -108,7 +113,11 @@ describe('limited retained RISE source fidelity replay', { timeout: 60_000 }, ()
 
     const privateCall = await normalizeVerifiedCall('risedtc', [{ candidate_id: 'private-candidate',
       transcript_id: 'private-transcript', transcript_date: '2026-09-20T00:00:00Z', transcript_sha256: 'b'.repeat(64),
-      excerpt: 'A private verified passage.', permission_state: 'granted', participants: null, transcript_source: 'local-test' }])
+      transcript_text_sha256: 'c'.repeat(64), transcript_json_sha256: 'd'.repeat(64),
+      excerpt: 'A private verified passage.', excerpt_sha256: 'c'.repeat(64), permission_state: 'granted',
+      participants: null, transcript_source: 'local-test', speaker_name: 'Buyer Name', speaker_role: 'third_party',
+      attribution_state: 'verified', segment_index: 1, segment_start: '00:00:10', segment_end: null,
+      quote_start: 0, quote_end: 27 }])
     await insertSnapshot(db, privateCall)
     const archReader = await db.query<{ payload: Record<string, unknown> }>(
       `select public.editorial_read_research('clientops','arch','{}'::jsonb,null,50) payload`)

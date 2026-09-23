@@ -17,6 +17,7 @@ export type SelectionCoverage = {
   selected_count: number; omitted_count: number
   family_quotas: Record<string, number>
   selected_count_by_family: Record<string, number>
+  selected_count_by_platform: Record<string, number>
   usable_count_by_family: Record<string, number>
   omitted_count_by_family: Record<string, number>
   omitted_source_ids_by_family: Record<string, string[]>
@@ -25,8 +26,15 @@ export type SelectionCoverage = {
 
 /** Families the shortlist must represent. Anything unrecognised keeps its own
  * bucket rather than disappearing into a generic tail. */
-export const SOURCE_FAMILY_ORDER = ['own_post', 'public_post', 'market_study', 'candidate', 'call', 'asset'] as const
+export const SOURCE_FAMILY_ORDER = ['own_post', 'author_note', 'public_post', 'market_study', 'candidate', 'call', 'asset'] as const
 const familyOf = (row: SelectionRow) => String(row.source_kind ?? 'unknown') || 'unknown'
+const platformOf = (row: SelectionRow) => {
+  const identity = row.candidate_fields?.source_identity
+  if (identity && typeof identity === 'object' && typeof (identity as Record<string, unknown>).platform === 'string') {
+    return String((identity as Record<string, unknown>).platform).toLowerCase()
+  }
+  return 'unknown'
+}
 
 const date = (s: SelectionRow) => Date.parse(s.source_published_at ?? s.captured_at) || 0
 const passage = (s: SelectionRow) => typeof s.passage === 'string' ? s.passage : ''
@@ -35,6 +43,15 @@ const lift = (s: SelectionRow) => {
   const findings = s.candidate_fields?.linked_findings
   if (!Array.isArray(findings)) return 0
   return Math.max(0, ...findings.map(f => Number(f?.lift ?? 0)).filter(Number.isFinite))
+}
+const engagement = (s: SelectionRow) => {
+  const metrics = s.candidate_fields?.observed_metrics
+  if (!metrics || typeof metrics !== 'object' || Array.isArray(metrics)) return 0
+  const keys = platformOf(s) === 'reddit' ? ['score', 'comments'] : ['likes', 'replies', 'reposts', 'quotes']
+  return keys.reduce((sum, key) => {
+    const value = Number((metrics as Record<string, unknown>)[key])
+    return sum + (Number.isFinite(value) && value >= 0 ? value : 0)
+  }, 0)
 }
 
 /** Explicit pagination over the allowed population. Every page is read; the page
@@ -86,38 +103,70 @@ export function selectSynthesisSources<T extends SelectionRow>(sources: T[], lim
     buckets.get(family)!.push(source)
   }
   const { ordered, out: quota } = quotas([...buckets.keys()], limit)
-  for (const family of ordered) buckets.get(family)!.sort(rank(family))
+  for (const family of ordered) {
+    const rows = buckets.get(family)!
+    if (family !== 'public_post') { rows.sort(rank(family)); continue }
+    const byPlatform = new Map<string, T[]>()
+    for (const row of rows) byPlatform.set(platformOf(row), [...(byPlatform.get(platformOf(row)) ?? []), row])
+    for (const platformRows of byPlatform.values()) {
+      const newest = Math.max(...platformRows.map(date))
+      platformRows.sort((a, b) => {
+        const byRich = Number(rich(b)) - Number(rich(a))
+        if (byRich) return byRich
+        const aRecent = newest - date(a) <= 30 * 86_400_000
+        const bRecent = newest - date(b) <= 30 * 86_400_000
+        if (aRecent !== bRecent) return Number(bRecent) - Number(aRecent)
+        if (aRecent) {
+          const byEngagement = engagement(b) - engagement(a)
+          if (byEngagement) return byEngagement
+        }
+        return date(b) - date(a) || a.source_id.localeCompare(b.source_id)
+      })
+    }
+    const platforms = [...byPlatform.keys()].sort()
+    const interleaved: T[] = []
+    for (let index = 0; interleaved.length < rows.length; index++) {
+      for (const platform of platforms) {
+        const row = byPlatform.get(platform)?.[index]
+        if (row) interleaved.push(row)
+      }
+    }
+    buckets.set(family, interleaved)
+  }
 
   // Round-robin so no family can consume the budget before the others are offered
   // a slot. Distinct owners come first inside the market families; a repeated owner
   // is still eligible once every distinct owner in that family has been offered.
   const selected = new Map<string, T>()
   const takenOwners = new Map<string, Set<string>>()
-  const cursor = new Map<string, number>()
-  const takeOne = (family: string, cap: number, uniqueOwner: boolean) => {
+  const takenPlatforms = new Map<string, Set<string>>()
+  const takeOne = (family: string, uniqueOwner: boolean, uniquePlatform: boolean) => {
     const rows = buckets.get(family) ?? []
     const owners = takenOwners.get(family) ?? new Set<string>()
+    const platforms = takenPlatforms.get(family) ?? new Set<string>()
     takenOwners.set(family, owners)
-    for (let i = cursor.get(family) ?? 0; i < rows.length; i++) {
-      const row = rows[i]
+    takenPlatforms.set(family, platforms)
+    for (const row of rows) {
       if (selected.has(row.source_id)) continue
       if (uniqueOwner && owners.has(String(row.owner))) continue
-      cursor.set(family, i + 1)
+      if (uniquePlatform && platforms.has(platformOf(row))) continue
       selected.set(row.source_id, row)
       owners.add(String(row.owner))
+      platforms.add(platformOf(row))
       return true
     }
-    if (uniqueOwner) { cursor.set(family, 0); return takeOne(family, cap, false) }
     return false
   }
-  for (const uniqueOwner of [true, false]) {
+  for (const phase of [{ uniqueOwner: true, uniquePlatform: true },
+    { uniqueOwner: true, uniquePlatform: false }, { uniqueOwner: false, uniquePlatform: false }]) {
     for (let round = 0; selected.size < limit; round++) {
       let progressed = false
       for (const family of ordered) {
         if (selected.size >= limit) break
         const taken = [...selected.values()].filter(x => familyOf(x) === family).length
         if (taken >= quota[family]) continue
-        if (takeOne(family, quota[family], uniqueOwner && (family === 'public_post' || family === 'market_study'))) progressed = true
+        const marketFamily = family === 'public_post' || family === 'market_study'
+        if (takeOne(family, phase.uniqueOwner && marketFamily, phase.uniquePlatform && family === 'public_post')) progressed = true
       }
       if (!progressed) break
     }
@@ -139,12 +188,17 @@ export function selectSynthesisSources<T extends SelectionRow>(sources: T[], lim
   if (withoutBodyIds.length) omittedByFamily.without_usable_body = withoutBodyIds
 
   const coverage: SelectionCoverage = {
-    method: 'paginated-family-balanced-measured-distinct-author-round-robin-v3',
+    method: 'paginated-family-platform-recent-engagement-measured-distinct-author-round-robin-v5',
     page_size: Math.max(1, pageSize), pages_read: pages.length,
     population_total: population.length, usable_population: usable.length, without_usable_body: withoutUsableBody,
     selected_count: selected.size, omitted_count: population.length - selected.size,
     family_quotas: Object.fromEntries(ordered.map(family => [family, quota[family]])),
     selected_count_by_family: selectedByFamily, usable_count_by_family: usableByFamily,
+    selected_count_by_platform: Object.fromEntries([...selected.values()].reduce((counts, source) => {
+      const platform = platformOf(source)
+      counts.set(platform, (counts.get(platform) ?? 0) + 1)
+      return counts
+    }, new Map<string, number>())),
     omitted_count_by_family: Object.fromEntries(Object.entries(omittedByFamily).map(([k, v]) => [k, v.length])),
     omitted_source_ids_by_family: omittedByFamily,
     distinct_owners_selected: new Set([...selected.values()].map(x => String(x.owner))).size,

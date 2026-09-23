@@ -1,5 +1,7 @@
 import type { EditorialClientId } from './editorialTypes.ts'
 import { resolveEvidenceCompleteness } from './editorialEvidenceCompleteness.ts'
+import { callOwnerLabel } from './editorialCallAttribution.ts'
+import type { CallAttributionState, CallSpeakerRole } from './editorialCallAttribution.ts'
 
 export type CollectorName = 'own_posts' | 'client_post_metrics' | 'lm_idea_candidates' |
   'client_ideas' | 'client_research_study_posts' | 'client_research_findings'
@@ -12,8 +14,12 @@ export type LinkedFinding = {
 }
 export type VerifiedCallPassage = {
   candidate_id: string; transcript_id: string; transcript_date: string; transcript_sha256: string
-  excerpt: string; permission_state: 'granted' | 'unknown'; participants: string[] | null
-  transcript_source: string
+  transcript_text_sha256: string; transcript_json_sha256: string
+  excerpt: string; excerpt_sha256: string; permission_state: 'granted' | 'unknown'
+  participants: string[] | null; transcript_source: string; speaker_name: string
+  speaker_role: CallSpeakerRole; attribution_state: CallAttributionState
+  segment_index: number; segment_start: string | null; segment_end: string | null
+  quote_start: number; quote_end: number
 }
 export type NormalizedSnapshot = {
   client_id: EditorialClientId; source_id: string; seen_version: number; source_kind: string
@@ -196,29 +202,55 @@ export async function normalizeVerifiedCall(clientId: EditorialClientId,
   if (!passages.length || passages.some(p => p.transcript_id !== passages[0].transcript_id)) {
     throw new Error('verified call needs one exact transcript identity')
   }
+  if (passages.some(p => p.attribution_state !== 'verified' ||
+    !['author', 'third_party'].includes(p.speaker_role) || !p.speaker_name.trim())) {
+    throw new Error('verified call contains an ambiguous or unattributed passage')
+  }
+  if (passages.some(p => p.transcript_sha256 !== passages[0].transcript_sha256 ||
+    p.transcript_text_sha256 !== passages[0].transcript_text_sha256 ||
+    p.transcript_json_sha256 !== passages[0].transcript_json_sha256)) {
+    throw new Error('verified call contains mixed transcript bindings')
+  }
   const id = passages[0].transcript_id
-  const quotes = [...new Set(passages.map(p => p.excerpt.trim()).filter(Boolean))]
+  const uniquePassages = [...new Map(passages.map(p => [
+    `${p.transcript_sha256}:${p.segment_index}:${p.quote_start}:${p.quote_end}:${p.excerpt_sha256}`, p,
+  ])).values()]
+  const quotes = uniquePassages.map(p => p.excerpt.trim()).filter(Boolean)
   if (!quotes.length) throw new Error('verified call lacks exact excerpt')
   const body = quotes.join('\n\n[Verified separate passage from the same call]\n\n')
   const captured = date(passages[0].transcript_date)
   if (!captured) throw new Error('verified call lacks native date')
   const privateNames = [...new Set(passages.flatMap(p => p.participants ?? []))]
+  const passageAttributions = uniquePassages.map(p => ({ candidate_id: p.candidate_id,
+    transcript_id: p.transcript_id, transcript_sha256: p.transcript_sha256,
+    transcript_text_sha256: p.transcript_text_sha256, transcript_json_sha256: p.transcript_json_sha256,
+    excerpt: p.excerpt.trim(), excerpt_sha256: p.excerpt_sha256, speaker_name: p.speaker_name, speaker_role: p.speaker_role,
+    attribution_state: p.attribution_state, segment_index: p.segment_index,
+    segment_start: p.segment_start, segment_end: p.segment_end,
+    quote_start: p.quote_start, quote_end: p.quote_end }))
+  const firstPersonEligible = passageAttributions.every(p => p.speaker_role === 'author')
   const source = {
     client_id: clientId, source_id: id, seen_version: 1, source_kind: 'call',
     source_client_scope: clientId, source_url: null,
     excerpt_pointer: `transcripts.id=${id}; verified-candidates=${passages.map(p => p.candidate_id).sort().join(',')}`,
-    owner: `${clientId} private call`, source_published_at: captured,
+    owner: callOwnerLabel(clientId, passageAttributions), source_published_at: captured,
     published_date_state: 'known' as const, captured_at: captured, body_sha256: await hash(body),
     passage: body,
-    retained_context: 'Exact quoted passages verified inside one original transcript; participant identities withheld from model context.',
-    limitation: 'Internal evidence only. The retained body contains verified selected passages, not the full transcript. Public identities, quotes and consent require separate review.',
+    retained_context: 'Each selected passage is bound to its exact transcript hash, speaker and segment range. Speaker identity is internal attribution evidence, never public-copy permission.',
+    limitation: firstPersonEligible
+      ? 'Internal evidence only. Exact author-attributed excerpts may support the author\'s experience, but the retained body is not the full transcript. Public identities, quotes and consent require separate review.'
+      : 'Internal evidence only. Third-party passages are attributed research and never first-person experience. The retained body is not the full transcript; public identities, quotes and consent require separate review.',
     independent: true, derived_from: null,
     permission_state: passages.every(p => p.permission_state === 'granted') ? 'granted' as const : 'unknown' as const,
     gap_state: null,
     candidate_fields: { transcript_sha256: passages[0].transcript_sha256,
+      transcript_text_sha256: passages[0].transcript_text_sha256,
+      transcript_json_sha256: passages[0].transcript_json_sha256,
       candidate_ids: passages.map(p => p.candidate_id).sort(), private_names: privateNames,
+      passage_attributions: passageAttributions, first_person_eligible: firstPersonEligible,
+      attribution_use: firstPersonEligible ? 'author_experience' : 'attributed_research_only',
       transcript_source: passages[0].transcript_source, body_state: 'excerpt',
-      body_provenance: 'verified_transcript_passage_excerpt', capture_provenance: 'collector',
+      body_provenance: 'speaker_attributed_transcript_passage_excerpt', capture_provenance: 'collector',
       source_identity: { platform: 'transcript', native_id: id, collector_row_id: id } },
   }
   return { ...source, snapshot_hash: await hash(canonical({ ...source, seen_version: undefined })) }

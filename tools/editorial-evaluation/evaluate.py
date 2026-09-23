@@ -388,6 +388,11 @@ def build_evaluation(rows, protocol, tune_on_test=False, degrade_model_for_contr
                     f"rows[].partition=='{name}'",
                 )
         labelled = {
+            c: len({r["publication_id"] for r in rows if r["client"] == c
+                    and r.get("seven_day_label_available") and r.get("publication_id")})
+            for c in canonical["clients"]
+        }
+        data["retained_seven_day_capture_counts"] = {
             c: sum(1 for r in rows if r["client"] == c and r.get("seven_day_label_available"))
             for c in canonical["clients"]
         }
@@ -396,7 +401,8 @@ def build_evaluation(rows, protocol, tune_on_test=False, degrade_model_for_contr
             "a retained observation can only carry the endpoint label when the endpoint metric "
             "was captured inside publication+"
             f"{canonical['label']['target_age_days']}d ±{canonical['label']['tolerance_hours']}h "
-            "with a real observed value; a single later total is not that measurement",
+            "with a real observed value; counts here are distinct publications, not repeated "
+            "captures. A single later total is not that measurement",
             dict(labelled, total=sum(labelled.values())),
             f"at least {canonical['baseline']['min_prior_observations']} per author to seed one "
             f"baseline, and {dc['min_test_outcomes']} in the untouched test block",
@@ -753,7 +759,7 @@ def build_native_index(own_sources, native_capture_paths):
         if not native:
             continue
         passage = s.get("passage") or ""
-        index[native] = {
+        index[f"{s.get('client_id')}:{native}"] = {
             "format": "unknown",
             "topic_category": None,
             "body_chars": len(passage) if passage else None,
@@ -766,13 +772,14 @@ def build_native_index(own_sources, native_capture_paths):
             captured = json.load(fh)
         for row in captured:
             native = row.get("social_id")
-            if not native or native not in index:
+            client_native = f"{row.get('client_id')}:{native}"
+            if not native or client_native not in index:
                 continue
-            index[native]["format"] = row.get("post_type") or "unknown"
-            index[native]["topic_category"] = row.get("topic_category")
+            index[client_native]["format"] = row.get("post_type") or "unknown"
+            index[client_native]["topic_category"] = row.get("topic_category")
             text = row.get("post_text") or ""
             if text:
-                index[native]["body_chars"] = len(text)
+                index[client_native]["body_chars"] = len(text)
     return index
 
 

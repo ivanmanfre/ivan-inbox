@@ -357,6 +357,15 @@ export async function buildSynthesisBriefs(input: {
         if (['brief', 'generated_draft', 'summary_only'].includes(source.source_kind as string) || source.derived_from) {
           throw new Error(`${at} cites ${source.source_id}, a generated or derived artifact: it is not original proof for its own claim`)
         }
+        if (source.source_kind === 'author_note') {
+          const contract = source.candidate_fields?.author_note_contract as Record<string, unknown> | undefined
+          if (!contract || contract.origin_state !== 'user_confirmed_themes' ||
+              contract.original_user_statement !== source.passage ||
+              contract.not_an_exact_story_quote !== true || contract.public_release_hold !== true ||
+              !Array.isArray(contract.confirmed_fields) || !Array.isArray(contract.unknown_fields)) {
+            throw new Error(`${at} cites ${source.source_id}, an incomplete author-note contract`)
+          }
+        }
       }
       // 2. A source too short to adapt belongs in an acquisition task, not a week slot.
       const longest = Math.max(0, ...safeSources.map(x => (x.passage ?? '').trim().length + (x.retained_context ?? '').trim().length))
@@ -479,7 +488,9 @@ export async function buildSynthesisBriefs(input: {
           throw new Error(`suggestion ${index + 1} metric changes linked baseline or method`)
         }
       }
-      if (source.source_kind === 'call') throw new Error('call material cannot supply a performance metric')
+      if (source.source_kind === 'call' || source.source_kind === 'author_note') {
+        throw new Error(`${source.source_kind} material cannot supply a performance metric`)
+      }
     }
     if (s.format === 'lm_promo' || s.format === 'resource') {
       const match = input.assets?.find(a => a.id === s.resource.asset_id && a.version === s.resource.version)
@@ -511,8 +522,10 @@ export async function buildSynthesisBriefs(input: {
     })
     const missing = [...new Set([...s.missing_material, ...s.resource.required_missing_material])]
     const publicCallHold = safeSources.some(x => x.source_kind === 'call' && x.permission_state !== 'granted')
+    const authorNoteHold = safeSources.some(x => x.source_kind === 'author_note')
     // A fully supported proposal can be reviewed explicitly into a new
     // ready-to-draft version; synthesis itself cannot award its own review.
+    if (authorNoteHold) missing.push('Explicit author review and public-release authorization for author-note themes')
     if (missing.length === 0) missing.push('Explicit independent editorial review')
     const briefId = `brief-${input.clientId}-${(await sha256(`${input.batchId}|${key}`)).slice(0, 20)}`
     const brief: EditorialBrief = {
@@ -546,7 +559,8 @@ export async function buildSynthesisBriefs(input: {
       production: { ...s.production, voice_references: input.voiceRefs ?? [],
         critical_constraints: [...s.production.critical_constraints,
           'Use only source-supported claims; withhold private call identities.',
-          ...(publicCallHold ? ['Internal copy only: cited private call excerpt has no public-use permission.'] : [])] },
+          ...(publicCallHold ? ['Internal copy only: cited private call excerpt has no public-use permission.'] : []),
+          ...(authorNoteHold ? ['Internal theme exploration only: author-note details cannot enter public copy until explicit author review and public-release authorization.'] : [])] },
       evaluation: s.evaluation,
       decisions_links: { selection_events: [], generation_request: null, draft_ids: [], resource_ids: [],
         publication_id: null, observed_outcomes: [] },

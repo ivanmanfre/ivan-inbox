@@ -131,7 +131,7 @@ begin
     into v_decisions from public.editorial_decisions
     where client_id=p_client_id and outcome='recorded' and created_at<=v_cutoff;
   select coalesce(jsonb_agg(snapshot_id order by snapshot_id),'[]'::jsonb)
-    into v_outcomes from public.editorial_outcome_snapshots
+    into v_outcomes from public.editorial_eligible_outcome_snapshots_v
     where client_id=p_client_id and captured_at<=v_cutoff;
   select coalesce(jsonb_object_agg(collector,cursor),'{}'::jsonb) into v_cursors
     from public.editorial_collector_cursors where client_id=p_client_id;

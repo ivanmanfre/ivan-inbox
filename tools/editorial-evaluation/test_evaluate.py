@@ -209,7 +209,7 @@ class DatasetNegativeControls(unittest.TestCase):
             "published_at": iso(self.published),
         }
         entry.update(over)
-        return {"urn:li:activity:1": entry}
+        return {"ivan:urn:li:activity:1": entry}
 
     def _build(self, outcomes, index, sources=()):
         return dataset.build_dataset(
@@ -276,6 +276,42 @@ class DatasetNegativeControls(unittest.TestCase):
         self.assertEqual(row["partition"], "excluded")
         self.assertEqual(row["exclusion_code"], "baseline_population_insufficient")
         self.assertLess(row["baseline_n"], 20)
+
+    def test_negative_legacy_unscoped_native_index_cannot_cross_tenants(self):
+        legacy = next(iter(self._index().values()))
+        legacy["is_test"] = True
+        out = self._build([self._obs(client_id="arch")], {
+            "urn:li:activity:1": legacy
+        })
+        self.assertFalse(out["rows"][0]["is_test"])
+        self.assertEqual(out["rows"][0]["exclusion_code"], "baseline_population_insufficient")
+
+    def test_negative_conflicted_observation_never_enters_another_publications_baseline(self):
+        outcomes = []
+        index = {}
+        for i in range(20):
+            published = self.published + timedelta(days=i)
+            pub = f"urn:li:activity:prior-{i}"
+            outcomes.append(self._obs(
+                snapshot_id=f"prior-{i}", publication_id=pub,
+                window_start=iso(published), window_end=iso(published + timedelta(days=7)),
+                captured_at=iso(published + timedelta(days=7)),
+                eligibility_veto_reason="conflicting_source_replay" if i == 0 else None,
+            ))
+            index[f"ivan:{pub}"] = next(iter(self._index(published_at=iso(published)).values()))
+        target_published = self.published + timedelta(days=30)
+        outcomes.append(self._obs(
+            snapshot_id="target", publication_id="urn:li:activity:target",
+            window_start=iso(target_published), window_end=iso(target_published + timedelta(days=7)),
+            captured_at=iso(target_published + timedelta(days=7)),
+        ))
+        index["ivan:urn:li:activity:target"] = next(iter(self._index(published_at=iso(target_published)).values()))
+        out = self._build(outcomes, index)
+        target = next(r for r in out["rows"] if r["publication_id"] == "urn:li:activity:target")
+        conflicted = next(r for r in out["rows"] if r["id"].endswith(":prior-0"))
+        self.assertEqual(conflicted["exclusion_code"], "source_observation_conflict")
+        self.assertEqual(target["baseline_n"], 19)
+        self.assertEqual(target["exclusion_code"], "baseline_population_insufficient")
 
     def test_negative_wrong_metric_is_not_substituted_for_impressions(self):
         out = self._build(

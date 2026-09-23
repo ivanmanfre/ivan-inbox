@@ -117,7 +117,7 @@ async function canonicalizeClientSources(sources: Awaited<ReturnType<typeof norm
  * source versions and records the exact scan cursor before begin_refresh. */
 export async function bridgeCollectedSources(db: Db, clientId: EditorialClientId) {
   const observedAt = new Date().toISOString()
-  const coverageGaps: string[] = ['Private call candidates without exact client-scoped transcript and passage verification remain excluded.']
+  const coverageGaps: string[] = ['Private call candidates without exact client-scoped transcript, speaker and quote-range verification remain excluded.']
   let findings: LinkedFinding[] = []
   const staged: StagedCollection[] = []
   for (const spec of collections[clientId]) {
@@ -129,15 +129,15 @@ export async function bridgeCollectedSources(db: Db, clientId: EditorialClientId
         : ['From your sales calls', 'From your calls'].includes(String(row.source_label ?? ''))) : []
     const verified: VerifiedCallPassage[] = []
     for (let i = 0; i < callCandidates.length; i += 500) {
-      const { data, error } = await db.rpc('editorial_linked_call_passages', {
+      const { data, error } = await db.rpc('editorial_attributed_call_passages', {
         p_gate: 'clientops', p_client_id: clientId,
         p_candidate_ids: callCandidates.slice(i, i + 500).map(x => String(x.id)),
       })
-      if (error) throw new Error(`exact call linkage failed: ${error.message}`)
+      if (error) throw new Error(`exact call attribution failed: ${error.message}`)
       verified.push(...(data ?? []))
     }
     const linkedIds = new Set(verified.map(x => x.candidate_id))
-    if (callCandidates.length > linkedIds.size) coverageGaps.push(`${spec.table}: ${callCandidates.length - linkedIds.size} call candidates lacked exact client-scoped transcript and quote verification`)
+    if (callCandidates.length > linkedIds.size) coverageGaps.push(`${spec.table}: ${callCandidates.length - linkedIds.size} call candidates lacked exact client-scoped transcript, speaker or quote-range verification`)
     if (spec.table === 'client_research_findings') {
       findings = rows.map(row => ({ study_id: String(row.study_id), finding_id: String(row.finding_id),
         source_ids: Array.isArray(row.source_ids) ? row.source_ids.map(String) : [],

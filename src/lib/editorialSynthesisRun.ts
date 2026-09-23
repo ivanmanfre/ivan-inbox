@@ -55,9 +55,8 @@ export async function runSynthesis<T>(input: {
       const directive = correctionDirective(trace.validation_error, input.correctionContext)
       messages = trace.reply
         ? (input.buildCorrection
-          // A compact correction turn carries the validator's inputs without the
-          // ~147k of canonical bodies, which the validator never reads. The guard at the
-          // top of this loop still decides whether attempt 2 may be dispatched at all.
+          // A custom correction carries both evidence and canonical instructions.
+          // The guard above still decides whether attempt 2 fits before dispatch.
           ? input.buildCorrection({ raw: trace.reply.raw, validationError: trace.validation_error, directive })
           : [...input.messages,
             { role: 'assistant', content: trace.reply.raw },

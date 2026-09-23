@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { brief, evidence } from './editorialBriefs.fixtures'
-import { assertEnvelopeAtStage, attachEnvelope, buildGenerationEnvelope, classifyHistoryRole, evaluateRegisterFloors, GenerationBlocked, projectNativeColumns } from './editorialGeneration'
+import { assertEnvelopeAtStage, assertNativeCompletionReadback, assessProviderCallBudget, attachEnvelope, buildGenerationEnvelope, buildTransportQaAssessment, classifyHistoryRole, evaluateRegisterFloors, GenerationBlocked, projectNativeColumns, serializeFinalCopy, validateFinalQaAcceptance } from './editorialGeneration'
+import { createHash } from 'node:crypto'
 
 const make = (over = {}) => {
   const b = brief(over)
@@ -142,5 +143,119 @@ describe('canonical register floors', () => {
   it('does not mistake a possessive or a hyphen for a contraction', () => {
     expect(evaluateRegisterFloors("The studio's budget. A well-known name.").contractions).toBe(0)
     expect(evaluateRegisterFloors("The studio's budget. It's late.").contractions).toBe(1)
+  })
+})
+
+describe('final QA acceptance boundary', () => {
+  const copy = 'This is the exact final copy. It has already been reviewed.'
+  const copySha256 = createHash('sha256').update(copy, 'utf8').digest('hex')
+  const accepted = {
+    assessment_id: 'assessment-1', verdict: 'accepted' as const,
+    reviewed_copy_sha256: copySha256, reviewer_response_id: 'provider-response-1',
+    reviewer_provenance: 'provider_response' as const,
+  }
+
+  it('accepts only a trusted external review bound to the exact final copy', async () => {
+    await expect(validateFinalQaAcceptance({ finalCopy: copy, assessment: accepted, sha256Hex: value => createHash('sha256').update(value).digest('hex') })).resolves.toEqual({
+      ...accepted, final_copy_sha256: copySha256,
+    })
+  })
+
+  it.each([
+    [{ ...accepted, verdict: 'needs_regenerate' }, 'qa_not_accepted'],
+    [{ ...accepted, reviewed_copy_sha256: '0'.repeat(64) }, 'qa_copy_hash_mismatch'],
+    [{ ...accepted, reviewer_provenance: 'model_output' }, 'untrusted_reviewer_provenance'],
+    [{ ...accepted, reviewer_response_id: '' }, 'missing_reviewer_response_id'],
+  ])('fails closed for invalid acceptance evidence %#', async (assessment, reason) => {
+    await expect(validateFinalQaAcceptance({ finalCopy: copy, assessment: assessment as any,
+      sha256Hex: value => createHash('sha256').update(value).digest('hex') }))
+      .rejects.toEqual(new GenerationBlocked(reason))
+  })
+
+  it('requires a rewritten copy to receive its own review', async () => {
+    await expect(validateFinalQaAcceptance({ finalCopy: `${copy} Rewritten.`, assessment: accepted,
+      sha256Hex: value => createHash('sha256').update(value).digest('hex') }))
+      .rejects.toEqual(new GenerationBlocked('qa_copy_hash_mismatch'))
+  })
+})
+
+describe('complete route final-copy contracts', () => {
+  it('serializes the complete selected format without dropping carousel slides or video segments', () => {
+    const carousel = serializeFinalCopy({ format: 'carousel', caption: 'Caption', slides: [
+      { number: 1, copy: 'Cover', visual_direction: 'Portrait crop' },
+      { number: 2, copy: 'Body', visual_direction: 'Two-column comparison' },
+    ] })
+    expect(JSON.parse(carousel)).toEqual({ format: 'carousel', caption: 'Caption', slides: [
+      { number: 1, copy: 'Cover', visual_direction: 'Portrait crop' },
+      { number: 2, copy: 'Body', visual_direction: 'Two-column comparison' },
+    ] })
+    expect(JSON.parse(serializeFinalCopy({ format: 'video', script: 'Full script', segments: ['Beat one', 'Beat two'] })))
+      .toEqual({ format: 'video', script: 'Full script', segments: ['Beat one', 'Beat two'] })
+  })
+
+  it('refuses incomplete structured output and missing resource material', () => {
+    expect(() => serializeFinalCopy({ format: 'carousel', caption: 'Caption', slides: [
+      { number: 1, copy: 'Cover', visual_direction: '' },
+    ] })).toThrow(new GenerationBlocked('incomplete_carousel_copy'))
+    expect(() => serializeFinalCopy({ format: 'video', script: 'Script', segments: [] }))
+      .toThrow(new GenerationBlocked('incomplete_video_script'))
+    expect(() => serializeFinalCopy({ format: 'resource', material: '' }))
+      .toThrow(new GenerationBlocked('resource_material_missing'))
+  })
+})
+
+describe('transport-derived QA receipt', () => {
+  const sha = (value: string) => createHash('sha256').update(value).digest('hex')
+
+  it('accepts only a provider pass of the byte-identical candidate', async () => {
+    const candidate = 'Exact candidate bytes.'
+    const assessment = await buildTransportQaAssessment({ candidateCopy: candidate,
+      providerResponseId: 'msg-provider-1', assessmentId: 'qa-1',
+      reviewerResult: { decision: 'pass', final_copy: candidate }, sha256Hex: sha })
+    expect(assessment).toMatchObject({ verdict: 'accepted', reviewer_response_id: 'msg-provider-1',
+      reviewer_provenance: 'provider_response', reviewed_copy_sha256: sha(candidate) })
+  })
+
+  it('keeps a QA rewrite as an unaccepted correction candidate until it is reviewed again', async () => {
+    const assessment = await buildTransportQaAssessment({ candidateCopy: 'First candidate.',
+      providerResponseId: 'msg-provider-2', assessmentId: 'qa-2',
+      reviewerResult: { decision: 'revised', final_copy: 'Rewritten candidate.' }, sha256Hex: sha })
+    expect(assessment).toMatchObject({ verdict: 'needs_regenerate', proposed_copy: 'Rewritten candidate.',
+      reviewed_copy_sha256: sha('First candidate.') })
+    await expect(validateFinalQaAcceptance({ finalCopy: 'Rewritten candidate.', assessment,
+      sha256Hex: sha })).rejects.toEqual(new GenerationBlocked('qa_not_accepted'))
+  })
+
+  it('rejects model-authored or missing transport identity', async () => {
+    await expect(buildTransportQaAssessment({ candidateCopy: 'Candidate.', providerResponseId: '',
+      assessmentId: 'qa-3', reviewerResult: { decision: 'pass', final_copy: 'Candidate.' }, sha256Hex: sha }))
+      .rejects.toEqual(new GenerationBlocked('missing_reviewer_response_id'))
+  })
+})
+
+describe('native completion identity and provider ceilings', () => {
+  const copy = 'Persisted exact copy.'
+  const copyHash = createHash('sha256').update(copy).digest('hex')
+  const expected = { client_id: 'ivan' as const, artifact_id: 'artifact-1', native_draft_id: 'native-1',
+    request_id: 'request-1', brief_id: 'brief-1', brief_version: 1, brief_hash: 'a'.repeat(64),
+    assessment_id: 'qa-1', final_copy_sha256: copyHash }
+
+  it('accepts only one complete native row with the exact request, brief, QA and copy identity', () => {
+    expect(assertNativeCompletionReadback({ ...expected, dispatch_state: 'complete', persisted: true }, expected))
+      .toMatchObject(expected)
+    expect(() => assertNativeCompletionReadback({ ...expected, client_id: 'arch', dispatch_state: 'complete', persisted: true }, expected))
+      .toThrow(new GenerationBlocked('native_completion_identity_mismatch'))
+    expect(() => assertNativeCompletionReadback({ ...expected, final_copy_sha256: '0'.repeat(64), dispatch_state: 'complete', persisted: true }, expected))
+      .toThrow(new GenerationBlocked('native_completion_identity_mismatch'))
+  })
+
+  it('blocks routes whose actual worst-case graph exceeds twelve provider calls', () => {
+    expect(assessProviderCallBudget('video_script', [
+      { stage: 'generate_script', worst_case_calls: 1 }, { stage: 'qa', worst_case_calls: 1 },
+    ])).toMatchObject({ worst_case_calls: 2, eligible: true })
+    expect(assessProviderCallBudget('text', [
+      { stage: 'content_brief', worst_case_calls: 4 }, { stage: 'hooks', worst_case_calls: 4 },
+      { stage: 'post', worst_case_calls: 4 }, { stage: 'qa', worst_case_calls: 4 },
+    ])).toMatchObject({ worst_case_calls: 16, eligible: false, blocked_reason: 'provider_call_ceiling_exceeded' })
   })
 })

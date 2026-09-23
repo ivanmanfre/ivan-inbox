@@ -279,12 +279,18 @@ describe('the deployed refresh adapter actually supplies the semantic context', 
     }
   })
 
-  it('requests up to five directions on prompt version v6 and never says exactly three', () => {
-    expect(edge).toContain("const promptVersion = 'editorial-synthesis-v6'")
+  it('requests up to five directions on prompt version v8 and never says exactly three', () => {
+    expect(edge).toContain("const promptVersion = 'editorial-synthesis-v8'")
     expect(edge).not.toMatch(/exactly (three|3) (complete )?directions/i)
     expect(edge).not.toMatch(/suggestions array of 3 to 5/)
     expect(edge).toMatch(/up to five/i)
     expect(edge).toMatch(/acquisition/i)
+  })
+
+  it('binds production.structure to one string on both initial and correction turns', () => {
+    expect(edge).toContain('production.structure MUST be ONE nonempty string, never an array or object')
+    expect(edge).toContain('combine the ordered steps into that one string')
+    expect(edge).toContain('`${OUTPUT_CONTRACT}\\n\\nCORRECTION TURN.')
   })
 
   it('renders the per-source gap reason and the population coverage into the request', () => {
@@ -382,10 +388,9 @@ describe('derived candidate rows are visible and named as unusable proof', () =>
   })
 })
 
-// Option A, shipped: the compact correction turn must carry the VALIDATOR'S INPUTS, not
-// only the error strings. buildSynthesisBriefs never reads the message thread or a
-// canonical prompt body, so dropping the canon from the correction turn cannot weaken any
-// check — but everything the validator does read has to be in there.
+// The correction turn must carry both the validator inputs and the actual canonical bodies.
+// Provider calls are stateless, so a reference to instructions sent on attempt one cannot
+// bind attempt two. Everything the validator reads must still be delivered as well.
 describe('the compact correction turn carries every validator input', () => {
   const edge = readFileSync('supabase/functions/editorial-refresh/index.ts', 'utf8')
   const lib = readFileSync('src/lib/editorialSynthesis.ts', 'utf8')
@@ -414,15 +419,18 @@ describe('the compact correction turn carries every validator input', () => {
 
   it('supplies only the sources the rejected proposals actually cite, and never drops to none', () => {
     expect(correction).toContain('SOURCES CITED BY YOUR REJECTED PROPOSALS')
-    expect(correction).toContain('cited.size ? selected.filter(x => cited.has(String(x.source_id))) : selected')
+    // At least one real citation narrows to the valid cited subset. A non-empty
+    // set containing only invented IDs must fall back to all selected originals.
+    expect(correction).toContain('cited.size && selected.some(x => cited.has(String(x.source_id)))')
+    expect(correction).toContain('? selected.filter(x => cited.has(String(x.source_id))) : selected')
     expect(correction).toContain('passage: x.passage')
     expect(correction).toContain('candidate_fields: x.candidate_fields')
   })
 
-  it('drops the canonical bodies from the correction turn only, and says they still bind', () => {
-    expect(correction).not.toContain('canonicalPromptBodies')
-    expect(correction).toContain('still bind and are unchanged, they are simply not repeated here')
-    // The initial request keeps them verbatim.
+  it('delivers the canonical bodies again on the stateless correction turn', () => {
+    expect(correction).toContain('buildSynthesisCorrection(canonicalPromptBodies')
+    expect(correction).toContain('exact canonical voice and language bodies are supplied with this request')
+    // The initial request also keeps them verbatim.
     expect(edge).toContain('CANONICAL AUTHOR VOICE AND LANGUAGE RULES')
     expect(edge).toContain('${canonicalPromptBodies}')
   })

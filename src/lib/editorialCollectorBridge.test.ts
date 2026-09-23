@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { bridgeCollectedSources } from '../../supabase/functions/editorial-refresh/bridge'
-import { normalizeCollectorRow, normalizeVerifiedCall } from './editorialCollectorBridge'
+import { nativeCandidateHash, normalizeCollectorRow, normalizeVerifiedCall } from './editorialCollectorBridge'
 
 const rows: Record<string, Record<string, unknown>[]> = {
   own_posts: [{ id: 'captured-own-1', post_text: 'The captured original post body.',
@@ -13,10 +13,13 @@ const rows: Record<string, Record<string, unknown>[]> = {
 describe('collector bridge', () => {
   it('labels verified call passages as excerpts rather than a full transcript', async () => {
     const source = await normalizeVerifiedCall('risedtc', [{ candidate_id:'candidate-1', transcript_id:'call-1',
-      transcript_date:'2026-09-01T10:00:00Z', transcript_sha256:'a'.repeat(64), excerpt:'Exact retained quote.',
-      permission_state:'unknown', participants:['Private Person'], transcript_source:'transcripts' }])
+      transcript_date:'2026-09-01T10:00:00Z', transcript_sha256:'a'.repeat(64),
+      transcript_text_sha256:'b'.repeat(64), transcript_json_sha256:'c'.repeat(64), excerpt:'Exact retained quote.',
+      excerpt_sha256:'b'.repeat(64), permission_state:'unknown', participants:['Private Person'], transcript_source:'transcripts',
+      speaker_name:'Buyer Name', speaker_role:'third_party', attribution_state:'verified', segment_index:1,
+      segment_start:'00:00:10', segment_end:null, quote_start:0, quote_end:21 }])
     expect(source.candidate_fields).toMatchObject({ body_state:'excerpt',
-      body_provenance:'verified_transcript_passage_excerpt' })
+      body_provenance:'speaker_attributed_transcript_passage_excerpt' })
     expect(source.limitation).toContain('not the full transcript')
     expect(source.permission_state).toBe('unknown')
   })
@@ -220,15 +223,13 @@ describe('collector bridge', () => {
   })
 })
 
-const r1Ivan = JSON.parse(readFileSync('../../../content-brain-01-evidence-briefs-2026-09-20-out/research/snapshots/ivan.json', 'utf8'))
-
 describe('Run 1 curated candidate preservation', () => {
-  it('keeps unchanged verified 225-send source and gaps that exact source when native evidence changes', async () => {
-    const native = structuredClone(r1Ivan.candidates.items.find((x: any) =>
-      x.id === '5e82f6a8-c838-4fe0-8edc-1c963a22eca2'))
-    const seed = JSON.parse(readFileSync('../../../content-brain-01-evidence-briefs-2026-09-20-out/INITIAL-BATCH-IMPORT.json', 'utf8'))
-      .plan[0].records.find((x: any) => x.source_id === native.id)
-    const current = new Map([[native.id, { seen_version: 1, snapshot_hash: seed.snapshot_hash ?? 'seed-verified' }]])
+  it('keeps an unchanged synthetic native candidate snapshot and gaps it after native evidence changes', async () => {
+    const native = { id: '5e82f6a8-c838-4fe0-8edc-1c963a22eca2', source: 'linkedin',
+      evidence: 'Synthetic public evidence summary.', raw_context: 'Synthetic retained public context.',
+      source_ref: 'synthetic-public-source', created_at: '2026-09-20T00:00:00Z' }
+    const nativeHash = await nativeCandidateHash('lm_idea_candidates', native)
+    const current = new Map([[native.id, { seen_version: 1, snapshot_hash: nativeHash }]])
     const inserted: Record<string, unknown>[] = []
     const data: Record<string, Record<string, unknown>[]> = {
       own_posts: [], lm_idea_candidates: [native], client_research_findings: [], client_research_study_posts: [],
@@ -253,7 +254,62 @@ describe('Run 1 curated candidate preservation', () => {
         return q
       },
       async rpc(name: string, args: { p_source_ids?: string[] }) {
-        if (name === 'editorial_linked_call_passages') return { data: [], error: null }
+        if (name === 'editorial_attributed_call_passages') return { data: [], error: null }
+        return { data: (args.p_source_ids ?? []).flatMap(id => current.has(id)
+          ? [{ source_id: id, ...current.get(id)! }] : []), error: null }
+      },
+    }
+    // Seed the immutable editorial snapshot exactly as a prior public import would.
+    await bridgeCollectedSources(db, 'ivan')
+    const seeded = inserted.find(x => x.source_id === native.id)!
+    expect(seeded).toMatchObject({ source_id:native.id, seen_version:2,
+      gap_state:expect.objectContaining({ reason:'partial' }) })
+    current.set(native.id,{ seen_version:Number(seeded.seen_version),snapshot_hash:String(seeded.snapshot_hash) })
+    inserted.length = 0
+    await bridgeCollectedSources(db, 'ivan')
+    expect(inserted.some(x => x.source_id === native.id)).toBe(false)
+    native.raw_context = `${native.raw_context} Changed after R1 verification.`
+    await bridgeCollectedSources(db, 'ivan')
+    expect(inserted).toContainEqual(expect.objectContaining({ source_id: native.id,
+      seen_version: 3, passage: null, body_sha256: null,
+      gap_state: expect.objectContaining({ reason: 'partial' }) }))
+  })
+
+  const privateReplayPath = '../../../goal-runs/content-brain-03-release-2026-09-20-out/private/collector-replay/ivan.json'
+  const privateSeedPath = '../../../goal-runs/content-brain-01-evidence-briefs-2026-09-20-out/INITIAL-BATCH-IMPORT.json'
+  const privateBaseline = existsSync(privateReplayPath) && existsSync(privateSeedPath) ? it : it.skip
+  privateBaseline('keeps the unchanged private R1 225-send baseline at zero inserts, then gaps its changed native row', async () => {
+    const replay = JSON.parse(readFileSync(privateReplayPath, 'utf8'))
+    const native = structuredClone(replay.lm_idea_candidates.find((x: any) =>
+      x.id === '5e82f6a8-c838-4fe0-8edc-1c963a22eca2'))
+    const seed = JSON.parse(readFileSync(privateSeedPath, 'utf8')).plan[0].records
+      .find((x: any) => x.source_id === native.id)
+    const current = new Map([[native.id, { seen_version: 1, snapshot_hash: seed.snapshot_hash }]])
+    const inserted: Record<string, unknown>[] = []
+    const data: Record<string, Record<string, unknown>[]> = {
+      own_posts: [], lm_idea_candidates: [native], client_research_findings: [], client_research_study_posts: [],
+    }
+    const db = {
+      from(table: string) {
+        let offset = 0; let end = 499
+        const q = { select() { return q }, order() { return q }, eq() { return q },
+          range(a: number, b: number) { offset = a; end = b; return q },
+          then(resolve: (x: unknown) => unknown) {
+            const rows = data[table] ?? []
+            return Promise.resolve(resolve({ data: rows.slice(offset, end + 1), count: rows.length, error: null }))
+          },
+          async insert(rows: Record<string, unknown>[]) {
+            inserted.push(...rows)
+            for (const row of rows) current.set(String(row.source_id), {
+              seen_version: Number(row.seen_version), snapshot_hash: String(row.snapshot_hash) })
+            return { error: null }
+          },
+          async upsert() { return { error: null } },
+        }
+        return q
+      },
+      async rpc(name: string, args: { p_source_ids?: string[] }) {
+        if (name === 'editorial_attributed_call_passages') return { data: [], error: null }
         return { data: (args.p_source_ids ?? []).flatMap(id => current.has(id)
           ? [{ source_id: id, ...current.get(id)! }] : []), error: null }
       },

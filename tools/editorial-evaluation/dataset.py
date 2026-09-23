@@ -133,7 +133,9 @@ def build_dataset(
         pub = o.get("publication_id")
         published = parse_ts(o.get("window_start"))
         captured = parse_ts(o.get("window_end")) or parse_ts(o.get("captured_at"))
-        entry = dict(native_index.get(pub) or {}) if pub else {}
+        entry = dict(
+            native_index.get(f"{o.get('client_id')}:{pub}") or {}
+        ) if pub else {}
         if published is None and entry.get("published_at"):
             published = parse_ts(entry["published_at"])
         value = _number(o.get("observed_value"))
@@ -154,6 +156,7 @@ def build_dataset(
                 "captured": captured,
                 "value": value,
                 "unknown_reason": unknown_reason,
+                "eligibility_veto_reason": o.get("eligibility_veto_reason"),
                 "age_days": age,
                 "entry": entry,
                 "in_window": bool(
@@ -173,8 +176,12 @@ def build_dataset(
         and ob["role"] == role
         and ob["value"] is not None
         and not ob["unknown_reason"]
+        and not ob["eligibility_veto_reason"]
         and ob["in_window"]
         and ob["client"] in clients
+        and ob["publication_id"]
+        and not ob["entry"].get("is_test")
+        and (ob["entry"].get("selection_policy") or "consecutive_roster") == canonical["selection_policy"]
     ]
     label_pool_ids = {ob["snapshot_id"] for ob in label_pool}
 
@@ -186,10 +193,11 @@ def build_dataset(
             continue
         key = (ob["client"], ob["publication_id"])
         rank = (
+            0 if not ob["eligibility_veto_reason"] else 1,
             0 if (ob["value"] is not None and not ob["unknown_reason"]) else 1,
             0 if ob["in_window"] else 1,
             abs((ob["age_days"] or 1e9) - label_cfg["target_age_days"]),
-            _scope_rank(ob["scope"]),
+            ob["captured"] or datetime.max.replace(tzinfo=timezone.utc),
             str(ob["snapshot_id"]),
         )
         prev = canonical_snapshot.get(key)
@@ -252,6 +260,13 @@ def build_dataset(
             exclude(
                 "outcome_selected_cohort",
                 f"observation is scoped to unregistered client {client!r}",
+            )
+            continue
+        if ob["eligibility_veto_reason"]:
+            exclude(
+                "source_observation_conflict",
+                "source identity is quarantined (" + str(ob["eligibility_veto_reason"])
+                + "); a preserved first observation cannot remain clean after a conflicting replay",
             )
             continue
         if not pub:
@@ -330,6 +345,21 @@ def build_dataset(
             and p["captured"] < forecast_at
             and window_floor <= p["published"] < forecast_at
         ]
+        # The frozen baseline counts prior publications, not repeated captures.
+        # Deduplicate after the as-of filter: a later, closer capture must never
+        # erase a valid earlier observation available at this forecast time.
+        prior_publications = {}
+        for prior in priors:
+            key = (prior["client"], prior["publication_id"])
+            rank = (
+                abs(prior["age_days"] - label_cfg["target_age_days"]),
+                prior["captured"],
+                str(prior["snapshot_id"]),
+            )
+            existing = prior_publications.get(key)
+            if existing is None or rank < existing[0]:
+                prior_publications[key] = (rank, prior)
+        priors = [prior_publications[key][1] for key in sorted(prior_publications)]
         same_format = [
             p for p in priors if (p["entry"].get("format") or "unknown") == fmt and fmt != "unknown"
         ]
@@ -339,6 +369,8 @@ def build_dataset(
             chosen, scope_label = priors, "all_format_fallback"
 
         row["baseline_n"] = len(chosen)
+        row["baseline_publication_ids"] = [p["publication_id"] for p in chosen]
+        row["baseline_snapshot_ids"] = [p["snapshot_id"] for p in chosen]
         row["baseline_format_scope"] = scope_label
         row["baseline_median"] = _median([p["value"] for p in chosen])
         row["baseline_last_observed_at"] = (

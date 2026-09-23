@@ -4,7 +4,8 @@ import { normalizeCollectorRow } from './editorialCollectorBridge'
 import { selectSynthesisSources } from './editorialSelection'
 import { buildSynthesisBriefs } from './editorialSynthesis'
 
-const snapshot = JSON.parse(readFileSync('../../../content-brain-01-evidence-briefs-2026-09-20-out/research/snapshots/risedtc.json', 'utf8'))
+const snapshot = JSON.parse(readFileSync(new URL(
+  '../../../../content-brain-01-evidence-briefs-2026-09-20-out/research/snapshots/risedtc.json', import.meta.url), 'utf8'))
 
 describe('measured study source preservation', () => {
   it('counts retained rows without readable bodies instead of crashing or selecting them', () => {
@@ -125,6 +126,41 @@ describe('paginated, family-balanced bounded selection', () => {
     for (const family of ['own_post', 'public_post', 'market_study', 'candidate', 'call']) {
       expect(families.has(family)).toBe(true)
     }
+  })
+
+  it('offers X and Reddit evidence when both platforms exist in the public-source population', () => {
+    const publicRow = (id: string, platform: string, owner: string) => ({
+      ...row(id, 'public_post', owner, 20),
+      candidate_fields: { source_identity: { platform, native_id: id } },
+    })
+    const result = selectSynthesisSources([
+      ...Array.from({ length: 20 }, (_, i) => publicRow(`li-${i}`, 'linkedin', `li-owner-${i}`)),
+      publicRow('x-1', 'x', 'x-owner'),
+      publicRow('reddit-1', 'reddit', 'reddit-owner'),
+      row('own-1', 'own_post', 'client', 19),
+    ] as never, 6)
+
+    const platforms = result.selected
+      .filter(source => source.source_kind === 'public_post')
+      .map(source => String((source.candidate_fields?.source_identity as Record<string, unknown>)?.platform))
+    expect(platforms).toEqual(expect.arrayContaining(['x', 'reddit']))
+    expect(result.coverage.selected_count_by_platform).toMatchObject({ x: 1, reddit: 1 })
+  })
+
+  it('prefers recent same-platform engagement without promoting a stale winner or comparing platforms', () => {
+    const publicRow = (id: string, platform: string, published: string, metrics: Record<string, number>) => ({
+      source_id: id, source_kind: 'public_post', owner: id, passage: 'A complete retained source passage suitable for an original direction.',
+      source_published_at: published, captured_at: '2026-09-22T00:00:00Z',
+      candidate_fields: { source_identity: { platform, native_id: id }, observed_metrics: metrics },
+    })
+    const result = selectSynthesisSources([
+      publicRow('x-yesterday-zero', 'x', '2026-09-21T00:00:00Z', { likes: 0, replies: 0, reposts: 0, quotes: 0 }),
+      publicRow('x-ten-days-100', 'x', '2026-09-12T00:00:00Z', { likes: 100, replies: 0, reposts: 0, quotes: 0 }),
+      publicRow('x-stale-1000', 'x', '2026-07-01T00:00:00Z', { likes: 1000, replies: 0, reposts: 0, quotes: 0 }),
+      publicRow('reddit-recent', 'reddit', '2026-09-20T00:00:00Z', { score: 2, comments: 1 }),
+    ] as never, 2)
+
+    expect(result.selected.map(source => source.source_id).sort()).toEqual(['reddit-recent', 'x-ten-days-100'])
   })
 
   it('names every omitted source id and the omitted count per family', () => {

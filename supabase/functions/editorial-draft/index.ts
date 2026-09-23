@@ -1,4 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { authorizeProofBudget, parseProofRequest, proofWebhookFields } from '../../../src/lib/editorialProofTransport.ts'
+import type { ProofRequest, ProviderBudget } from '../../../src/lib/editorialProofTransport.ts'
 
 const url = Deno.env.get('SUPABASE_URL') ?? ''
 const anon = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -50,6 +52,16 @@ Deno.serve(async request => {
     return reply(200, receipt('blocked', 'essential_material_missing'), origin)
   }
   const format = brief.editorial_direction?.format
+  let proof: ProofRequest | null = null
+  let providerBudget: ProviderBudget | null = null
+  try {
+    proof = parseProofRequest(body.proof_transport)
+    if (proof) providerBudget = await authorizeProofBudget(
+      async (name,args) => { const result = await service.rpc(name,args); return { data:result.data,error:result.error } },
+      { clientId:String(clientId),requestId,briefId,version:Number(version),hash:expectedHash,format:String(format) }, proof)
+  } catch (error) {
+    return reply(409,{ error:'proof_transport_rejected',detail:String(error),request_id:requestId },origin)
+  }
   if (internalCopy && !['carousel', 'single_image', 'lm_promo', 'video'].includes(format)) {
     return reply(200, receipt('blocked', 'internal_copy_format_not_supported'), origin)
   }
@@ -82,7 +94,8 @@ Deno.serve(async request => {
     artifact_role: role, request_id: requestId, source_cutoff: brief.identity.source_cutoff,
     direction_version: brief.purpose.direction_version, source_ids: sourceIds,
     permitted_claim_ids: claimIds, brief, prior_generation: body.prior_generation ?? null,
-    production_hold: holds, copy_only: internalCopy || format === 'single_image' }
+    production_hold: holds, copy_only: internalCopy || format === 'single_image',
+    ...proofWebhookFields(proof,providerBudget) }
   // The in-repo router has a default Supabase function URL; deployments may
   // override it only as an explicit release object.
   if (!routerUrl || !routerToken) return reply(200, receipt('blocked', 'generation_router_not_deployed'), origin)

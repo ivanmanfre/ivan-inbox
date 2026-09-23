@@ -27,6 +27,118 @@ export class GenerationBlocked extends Error {
   constructor(reason: string) { super(reason); this.reason = reason }
 }
 
+export type FinalQaAssessment = {
+  assessment_id: string
+  verdict: 'accepted' | 'needs_regenerate' | 'rejected'
+  reviewed_copy_sha256: string
+  reviewer_response_id: string
+  reviewer_provenance: 'provider_response'
+  proposed_copy?: string
+}
+
+const browserSha256 = async (value: string) => [...new Uint8Array(await crypto.subtle.digest(
+  'SHA-256', new TextEncoder().encode(value),
+))].map(byte => byte.toString(16).padStart(2, '0')).join('')
+
+/** Fail-closed acceptance check for the persistence boundary. The reviewer
+ * response id and provenance must come from transport metadata outside the
+ * model-authored JSON; the model's own claim that it was reviewed is not proof. */
+export async function validateFinalQaAcceptance(input: {
+  finalCopy: string
+  assessment: FinalQaAssessment
+  sha256Hex?: (value: string) => Promise<string> | string
+}): Promise<FinalQaAssessment & { final_copy_sha256: string }> {
+  const { assessment } = input
+  if (assessment.verdict !== 'accepted') throw new GenerationBlocked('qa_not_accepted')
+  if (assessment.reviewer_provenance !== 'provider_response')
+    throw new GenerationBlocked('untrusted_reviewer_provenance')
+  if (!assessment.reviewer_response_id?.trim()) throw new GenerationBlocked('missing_reviewer_response_id')
+  if (!assessment.assessment_id?.trim()) throw new GenerationBlocked('missing_assessment_id')
+  const finalCopySha256 = await (input.sha256Hex ?? browserSha256)(input.finalCopy)
+  if (!/^[a-f0-9]{64}$/.test(assessment.reviewed_copy_sha256) ||
+    assessment.reviewed_copy_sha256 !== finalCopySha256) throw new GenerationBlocked('qa_copy_hash_mismatch')
+  return { ...assessment, final_copy_sha256: finalCopySha256 }
+}
+
+export async function buildTransportQaAssessment(input: {
+  candidateCopy: string
+  providerResponseId: string
+  assessmentId: string
+  reviewerResult: { decision: 'pass' | 'revised' | 'fail'; final_copy?: string }
+  sha256Hex?: (value: string) => Promise<string> | string
+}): Promise<FinalQaAssessment> {
+  if (!input.providerResponseId.trim()) throw new GenerationBlocked('missing_reviewer_response_id')
+  if (!input.assessmentId.trim()) throw new GenerationBlocked('missing_assessment_id')
+  const reviewedCopySha256 = await (input.sha256Hex ?? browserSha256)(input.candidateCopy)
+  const sameCopy = input.reviewerResult.final_copy === input.candidateCopy
+  const verdict = input.reviewerResult.decision === 'pass' && sameCopy ? 'accepted' :
+    input.reviewerResult.decision === 'fail' ? 'rejected' : 'needs_regenerate'
+  return {
+    assessment_id: input.assessmentId,
+    verdict,
+    reviewed_copy_sha256: reviewedCopySha256,
+    reviewer_response_id: input.providerResponseId,
+    reviewer_provenance: 'provider_response',
+    ...(sameCopy || !input.reviewerResult.final_copy ? {} : { proposed_copy: input.reviewerResult.final_copy }),
+  }
+}
+
+type FinalCopyInput =
+  | { format: 'text' | 'single_image' | 'lm_promo'; copy: string }
+  | { format: 'carousel'; caption: string; slides: Array<{ number: number; copy: string; visual_direction: string }> }
+  | { format: 'video'; script: string; segments: string[] }
+  | { format: 'resource'; material: string }
+
+export function serializeFinalCopy(input: FinalCopyInput): string {
+  if (input.format === 'carousel') {
+    if (!input.caption.trim() || !input.slides.length || input.slides.some((slide, index) =>
+      slide.number !== index + 1 || !slide.copy.trim() || !slide.visual_direction.trim()))
+      throw new GenerationBlocked('incomplete_carousel_copy')
+    return JSON.stringify(input)
+  }
+  if (input.format === 'video') {
+    if (!input.script.trim() || !input.segments.length || input.segments.some(segment => !segment.trim()))
+      throw new GenerationBlocked('incomplete_video_script')
+    return JSON.stringify(input)
+  }
+  if (input.format === 'resource') {
+    if (!input.material.trim()) throw new GenerationBlocked('resource_material_missing')
+    return input.material
+  }
+  if (!input.copy.trim()) throw new GenerationBlocked('final_copy_missing')
+  return input.copy
+}
+
+export type NativeCompletionIdentity = {
+  client_id: EditorialClientId
+  artifact_id: string
+  native_draft_id: string
+  request_id: string
+  brief_id: string
+  brief_version: number
+  brief_hash: string
+  assessment_id: string
+  final_copy_sha256: string
+}
+
+export function assertNativeCompletionReadback(value: unknown, expected: NativeCompletionIdentity): NativeCompletionIdentity {
+  const row = value as (NativeCompletionIdentity & { dispatch_state?: string; persisted?: boolean }) | null
+  if (!row || row.dispatch_state !== 'complete' || row.persisted !== true ||
+    Object.entries(expected).some(([key, expectedValue]) => row[key as keyof NativeCompletionIdentity] !== expectedValue))
+    throw new GenerationBlocked('native_completion_identity_mismatch')
+  return row
+}
+
+export type ProviderCallStage = { stage: string; worst_case_calls: number }
+
+export function assessProviderCallBudget(route: GenerationRoute, stages: ProviderCallStage[]) {
+  if (!stages.length || stages.some(stage => !stage.stage || !Number.isInteger(stage.worst_case_calls) || stage.worst_case_calls < 0))
+    throw new GenerationBlocked('invalid_provider_call_budget')
+  const worstCaseCalls = stages.reduce((sum, stage) => sum + stage.worst_case_calls, 0)
+  return { route, stages, worst_case_calls: worstCaseCalls, eligible: worstCaseCalls <= 12,
+    blocked_reason: worstCaseCalls > 12 ? 'provider_call_ceiling_exceeded' : null }
+}
+
 const formatRoute: Record<EditorialBrief['editorial_direction']['format'], GenerationRoute> = {
   text: 'text', single_image: 'text', carousel: 'carousel', video: 'video_script',
   resource: 'resource', lm_promo: 'promotion',
