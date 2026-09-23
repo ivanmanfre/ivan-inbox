@@ -31,7 +31,21 @@
 .a-thread-msgs{
   padding:var(--ds-s5) var(--ds-gutter) var(--ds-s7);
   gap:var(--ds-s6);
+  /* The conversation is the thing every card below is answering: it never
+     gives up its last lines to them. */
+  min-height:min(28vh, 240px);
 }
+/* Restore strip + follow-up strip + owner confirmation. Capped and scrolling
+   inside itself, same rule as the draft card: whatever stacks here, the
+   messages above keep the pane. */
+.a-thread-dock{
+  flex:0 1 auto;
+  min-height:0;
+  max-height:38vh;
+  overflow-y:auto;
+  overscroll-behavior-y:contain;
+}
+.a-thread-dock:empty{ display:none }
 .a-thread-turn{
   display:flex;
   flex-direction:column;

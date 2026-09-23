@@ -573,13 +573,19 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
           above drops this reason by name and the failed-send log excludes it too.
           The strip is the only place it is readable, and the only place a restore
           is offered. */}
-      <RestoreStrip thread={thread} refresh={refresh} />
+      {/* 2026-09-23 (Ivan, Ofir Bello): these three stacked UNBOUNDED under the
+          conversation. The owner-confirmation card alone ran taller than the pane,
+          and the screen clips, so the messages were squeezed to a 30px sliver with
+          no way to reach them. One dock, capped, scrolling inside itself. */}
+      <div className="a-thread-dock">
+        <RestoreStrip thread={thread} refresh={refresh} />
 
-      {/* "Follow up on a date": a NEW message on a day he names, with or without a
-          draft on the thread. Distinct from Later, which parks the draft below. */}
-      <FollowUpStrip thread={thread} />
+        {/* "Follow up on a date": a NEW message on a day he names, with or without a
+            draft on the thread. Distinct from Later, which parks the draft below. */}
+        <FollowUpStrip thread={thread} />
 
-      {thread.ownerConfirmation && <OwnerConfirmation message={thread.ownerConfirmation} onAddNote={() => setShowCtx(true)} onRetry={refresh} onDismiss={busy ? undefined : onDismissHold} />}
+        {thread.ownerConfirmation && <OwnerConfirmation message={thread.ownerConfirmation} onAddNote={() => setShowCtx(true)} onRetry={refresh} onDismiss={busy ? undefined : onDismissHold} />}
+      </div>
 
       {draft && (
         <div className="a-thread-draft">
