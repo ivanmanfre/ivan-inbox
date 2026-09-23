@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isContentLane, isStrategyView, readStrategyDeepLink, STRATEGY_VIEWS } from './deepLink'
+import { exactBriefDeepLink, isContentLane, isStrategyView, readStrategyDeepLink, STRATEGY_VIEWS } from './deepLink'
 
 describe('readStrategyDeepLink', () => {
   it('reads a client-scoped lane and section together', () => {
@@ -32,6 +32,17 @@ describe('readStrategyDeepLink', () => {
     for (const section of STRATEGY_VIEWS) {
       expect(readStrategyDeepLink(`#exp/v2/strategy?lane=ivan&section=${section}`)).toEqual({ lane: 'ivan', section })
     }
+  })
+  it('keeps an exact brief scoped to a validated client and version pair', () => {
+    const hash = exactBriefDeepLink('ivan', 'brief-ivan-01', 2)
+    expect(readStrategyDeepLink(hash)).toEqual({ lane:'ivan', section:'this-week', briefId:'brief-ivan-01', briefVersion:2 })
+    for (const bad of [
+      '#exp/v2/strategy?lane=arch&section=this-week&brief_id=brief-1',
+      '#exp/v2/strategy?lane=arch&section=this-week&brief_id=brief-1&brief_version=0',
+      '#exp/v2/strategy?lane=foreign&section=this-week&brief_id=brief-1&brief_version=2',
+      '#exp/v2/strategy?lane=arch&section=research&brief_id=brief-1&brief_version=2',
+    ]) expect(readStrategyDeepLink(bad)).not.toHaveProperty('briefId')
+    expect(() => exactBriefDeepLink('ivan','../other',1)).toThrow()
   })
 })
 

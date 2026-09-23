@@ -119,3 +119,20 @@ it('renders source body state, native identity, metrics and measurement provenan
   expect(host.textContent).toContain('source: client_post_metrics; denominator: one exact own post')
   expect(host.textContent).toContain('captured_at: 2026-09-20')
 })
+
+it('links source usage to the exact brief identity in its own client lane', async () => {
+  const b = brief(); const source = sourceSnapshot()
+  await act(async () => root.render(<SourceDetail source={source} close={() => {}} lane="ivan" previewLinked={[b]} readOnly />))
+  const link = host.querySelector<HTMLAnchorElement>('a[href*="brief_id="]')
+  expect(link?.getAttribute('href')).toContain(`lane=ivan&section=this-week&brief_id=${b.identity.brief_id}&brief_version=${b.identity.version}`)
+  expect(host.textContent).toContain(`Open exact brief ${b.identity.brief_id} v${b.identity.version}`)
+})
+
+it('marks a brief linked to an earlier direction without changing its immutable version', async () => {
+  const b = brief()
+  await act(async () => root.render(<BriefCard brief={b} lane="ivan" reload={() => {}} readOnly currentDirectionVersion="newer-direction" />))
+  expect(host.textContent).toContain('earlier direction')
+  expect(host.textContent).toContain(`This brief is linked to direction ${b.purpose.direction_version}`)
+  expect(host.textContent).toContain('Existing drafts retain their original link.')
+  expect(b.purpose.direction_version).not.toBe('newer-direction')
+})

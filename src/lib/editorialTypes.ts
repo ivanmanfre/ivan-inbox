@@ -81,7 +81,7 @@ export const EVIDENCE_RELATIONS = [
 export type EvidenceRelation = (typeof EVIDENCE_RELATIONS)[number]
 
 export const SOURCE_KINDS = [
-  'candidate', 'market_study', 'call', 'own_post', 'asset', 'public_post', 'author_note',
+  'candidate', 'market_study', 'call', 'own_post', 'asset', 'public_post', 'author_note', 'public_document',
 ] as const
 export type SourceKind = (typeof SOURCE_KINDS)[number]
 

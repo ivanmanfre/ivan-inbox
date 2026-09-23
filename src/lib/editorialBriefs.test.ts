@@ -675,6 +675,16 @@ describe('T12 read calls are side-effect free', () => {
 /* ------------------------------------------- Run-2 authenticated boundaries */
 
 describe('Run 2 authenticated boundaries', () => {
+  it('binds refresh to the selected saved plan and refuses malformed identity before invoke', async () => {
+    const c=stubClient({}); const invokes: unknown[]=[]
+    c.functions={async invoke(_name, options){invokes.push(options.body);return {data:{status:'running'},error:null}}}
+    const weekly={week_start:'2026-09-28',expected_manifest_hash:'a'.repeat(64),provisional_policy_suggestion_id:'proposal:ivan:09'}
+    await requestSuggestionRefresh(c,'ivan','direction-9','request-9',weekly)
+    expect(invokes).toEqual([{client_id:'ivan',expected_direction_version:'direction-9',request_id:'request-9',...weekly}])
+    await expect(requestSuggestionRefresh(c,'ivan','direction-9','request-10',{...weekly,expected_manifest_hash:'wrong'})).rejects.toThrow()
+    expect(invokes).toHaveLength(1)
+  })
+
   it('routes explicit refresh/draft requests and polls the exact refresh id', async () => {
     const c = stubClient({ editorial_read_refresh: p => ({ data: {
       refresh_id: p.p_refresh_id, client_id: p.p_client_id, status: 'failed', batch_id: null,

@@ -614,13 +614,20 @@ export async function reviewEditorialBrief(
 export async function requestSuggestionRefresh(
   client: EditorialClient, clientId: string,
   expectedDirectionVersion: string, requestId: string,
+  weekly?: { week_start: string; expected_manifest_hash: string; provisional_policy_suggestion_id?: string },
 ): Promise<RefreshReceipt> {
   const lane = assertRegisteredClient(clientId)
   if (!client.functions || !expectedDirectionVersion || !requestId) {
     throw new EditorialContractError('invalid_argument', 'An authenticated function client, direction version and request id are required.', 'requestSuggestionRefresh')
   }
+  if (weekly && (!/^\d{4}-\d{2}-\d{2}$/.test(weekly.week_start) ||
+      !/^[a-f0-9]{64}$/.test(weekly.expected_manifest_hash) ||
+      weekly.provisional_policy_suggestion_id !== undefined && !weekly.provisional_policy_suggestion_id.trim()))
+    throw new EditorialContractError('invalid_argument', 'A valid saved week and exact plan hash are required.', 'requestSuggestionRefresh')
   const { data, error } = await client.functions.invoke('editorial-refresh', {
-    body: { client_id: lane, expected_direction_version: expectedDirectionVersion, request_id: requestId },
+    body: { client_id: lane, expected_direction_version: expectedDirectionVersion, request_id: requestId,
+      ...(weekly ? { week_start: weekly.week_start, expected_manifest_hash: weekly.expected_manifest_hash,
+        ...(weekly.provisional_policy_suggestion_id ? { provisional_policy_suggestion_id: weekly.provisional_policy_suggestion_id } : {}) } : {}) },
   })
   if (error || !isObj(data)) throw new EditorialContractError('read_failed', 'The refresh request failed.', error?.message ?? 'No receipt')
   return data as RefreshReceipt

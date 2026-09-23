@@ -43,7 +43,14 @@ export function isContentLane(x: string | null | undefined): x is ContentLane {
   return !!x && (CONTENT_LANES as string[]).includes(x)
 }
 
-export type StrategyDeepLink = { lane?: ContentLane; section?: StrategyViewId }
+export type StrategyDeepLink = { lane?: ContentLane; section?: StrategyViewId; briefId?: string; briefVersion?: number }
+
+const BRIEF_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/
+
+export function exactBriefDeepLink(lane: ContentLane, briefId: string, version: number): string {
+  if (!isContentLane(lane) || !BRIEF_ID.test(briefId) || !Number.isSafeInteger(version) || version < 1) throw new Error('Invalid exact brief identity')
+  return `#exp/v2/strategy?${new URLSearchParams({ lane, section: 'this-week', brief_id: briefId, brief_version: String(version) })}`
+}
 
 /**
  * The Strategy lane/section a fresh-load hash names, if any — read once at
@@ -56,8 +63,16 @@ export type StrategyDeepLink = { lane?: ContentLane; section?: StrategyViewId }
  */
 export function readStrategyDeepLink(hash: string): StrategyDeepLink {
   const route = parseWbHash(hash)
+  if (route.job !== 'strategy') return {}
+  const query = new URLSearchParams(hash.split('?')[1] ?? '')
+  const id = query.get('brief_id')
+  const rawVersion = query.get('brief_version')
+  const version = rawVersion && /^[1-9]\d*$/.test(rawVersion) ? Number(rawVersion) : null
+  const exact = isContentLane(route.lane) && route.section === 'this-week' && id && BRIEF_ID.test(id) &&
+    version !== null && Number.isSafeInteger(version)
   return {
     ...(isContentLane(route.lane) ? { lane: route.lane } : {}),
     ...(isStrategyView(route.section) ? { section: route.section } : {}),
+    ...(exact ? { briefId: id, briefVersion: version } : {}),
   }
 }

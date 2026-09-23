@@ -313,6 +313,12 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
     if (legacy.get('sources') === '1' || legacy.get('section') === 'sources') return 'research'
     return readStrategyDeepLink(location.hash).section ?? 'this-week'
   })
+  const [exactBrief, setExactBrief] = useState<{ id: string; version: number } | null>(() => {
+    if (typeof location === 'undefined') return null
+    const link = readStrategyDeepLink(location.hash)
+    return link.briefId && link.briefVersion ? { id: link.briefId, version: link.briefVersion } : null
+  })
+  const acceptedHash = useRef(typeof location === 'undefined' ? '' : location.hash)
   // Same deep link, the other half: `?lane=` restores the CLIENT the link was
   // scoped to. Read once (a ref guard rather than an empty-array effect that
   // could race a fast-changing `lane` prop), and only ever moves `lane` away
@@ -344,14 +350,34 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
     const id = window.setTimeout(() => {
       if (!/^#exp\//.test(location.hash)) return
       const query = new URLSearchParams({ lane, section: view })
-      history.replaceState(null, '', `${wbHash('strategy', null, prefixOf(location.hash))}?${query.toString()}`)
+      if (view === 'this-week' && exactBrief) { query.set('brief_id', exactBrief.id); query.set('brief_version', String(exactBrief.version)) }
+      const hash = `${wbHash('strategy', null, prefixOf(location.hash))}?${query.toString()}`
+      history.replaceState(null, '', hash); acceptedHash.current = hash
     }, 0)
     return () => window.clearTimeout(id)
-  }, [lane, view])
+  }, [lane, view, exactBrief])
   const [refreshTick, setRefreshTick] = useState(0)
   const [proposalDirty, setProposalDirty] = useState(false)
   const rowsRef = useRef<HTMLDivElement>(null)
   const confirm = useConfirm()
+  useEffect(() => {
+    const onHashChange = () => { void (async () => {
+      if (!/^#exp\/(?:v2c?|brain-[abc])\/strategy(?:\?|$)/.test(location.hash)) return
+      const incoming = location.hash
+      const link = readStrategyDeepLink(incoming)
+      if (st.dirty || proposalDirty) {
+        const ok = await confirm({ title: 'You have unsaved edits on this lane.', message: 'Open this link and lose them?', confirmText: 'Open and lose edits', danger: true })
+        if (!ok) { history.replaceState(null, '', acceptedHash.current); return }
+      }
+      if (location.hash !== incoming) return
+      setExactBrief(link.briefId && link.briefVersion ? { id: link.briefId, version: link.briefVersion } : null)
+      if (link.section) setView(link.section)
+      if (link.lane && link.lane !== lane) setLane(link.lane)
+      acceptedHash.current = incoming
+    })() }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [confirm, lane, proposalDirty, setLane, st.dirty])
   // Pull-to-refresh would discard unsaved edits, so it is wired to a refresh
   // that refuses while dirty rather than being wired to nothing (a dead pull
   // gesture reads as a broken surface).
@@ -395,6 +421,7 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
               if (!ok) return
             }
             setProposalDirty(false)
+            setExactBrief(null)
             setLane(k as ContentLane)
           }}
           options={laneOptions(lanes.lanes)}
@@ -402,7 +429,15 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
     </Bar>
     <Bar>
       <Segmented label="Strategy views" className="a-strategy-nav" markerId="a-strategy-view"
-        value={view} onChange={setView} options={[
+        value={view} onChange={async next => {
+          if (proposalDirty && view === 'direction') {
+            const ok = await confirm({ title: 'You have unsaved weekly policy edits.', message: 'Switch view and lose them?', confirmText: 'Switch and lose them', danger: true })
+            if (!ok) return
+            setProposalDirty(false)
+          }
+          setExactBrief(null)
+          setView(next)
+        }} options={[
           { id: 'this-week', label: 'This week' },
           { id: 'research', label: 'Research' },
           { id: 'results', label: 'Results' },
@@ -420,7 +455,7 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
       <Body innerRef={rowsRef} className="a-strat">
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         <details className="a-strategy-disclosure"><summary>More: demos, legacy analysis and private notes</summary><div className="a-research-actions"><Button size="sm" variant="quiet" onClick={() => setView('demos')}>Demos</Button><Button size="sm" variant="quiet" onClick={() => setView('recommendations')}>Legacy suggestions</Button><Button size="sm" variant="quiet" onClick={() => setView('evidence')}>Evidence archive</Button><Button size="sm" variant="quiet" onClick={() => setView('competitors')}>Competitors</Button><Button size="sm" variant="quiet" onClick={() => setView('magnets')}>Lead magnets</Button><Button size="sm" variant="quiet" onClick={() => setView('outreach')}>Outreach</Button><Button size="sm" variant="quiet" onClick={() => setView('markets')}>Markets</Button><Button size="sm" variant="quiet" onClick={() => setView('notes')}>{st.dirty ? 'Notes •' : 'Notes'}</Button></div></details>
-        {view === 'this-week' && <div className="a-strategy-panel"><EditorialThisWeekPanel key={`${lane}-${refreshTick}`} lane={lane} /></div>}
+        {view === 'this-week' && <div className="a-strategy-panel"><EditorialThisWeekPanel key={`${lane}-${refreshTick}`} lane={lane} exactBrief={exactBrief} /></div>}
         {view === 'research' && <div className="a-strategy-panel"><ResearchPanel key={`${lane}-${refreshTick}`} lane={lane} /></div>}
         {view === 'results' && <div key={`${lane}-${refreshTick}`} className="a-strategy-results">
           <EditorialResultsPanel lane={lane} />
@@ -429,7 +464,7 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
           <details className="a-strategy-disclosure"><summary>Explore subjects, hooks and formats</summary><ThemesBlock lane={lane} /></details>
           <details className="a-strategy-disclosure"><summary>Audience and recommendation outcomes</summary><AudienceBlock lane={lane} /></details>
         </div>}
-        {view === 'direction' && <ClientDirectionPanel key={`${lane}-${refreshTick}`} lane={lane} />}
+        {view === 'direction' && <ClientDirectionPanel key={`${lane}-${refreshTick}`} lane={lane} onDirtyChange={setProposalDirty} />}
         {view === 'demos' && <DemoPanel key={`${lane}-${refreshTick}`} lane={lane} />}
         {view === 'recommendations' && <div className="a-strategy-panel"><ProposalsBlock readOnly key={lane} lane={lane} refreshKey={refreshTick} onDirtyChange={setProposalDirty} /></div>}
         {view === 'evidence' && <div key={`${lane}-${refreshTick}`} className="a-strategy-panel"><EvidenceBlock lane={lane} /></div>}
