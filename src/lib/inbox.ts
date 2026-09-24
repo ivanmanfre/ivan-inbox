@@ -434,7 +434,12 @@ export function groupThreads(
   // pitches in one sweep, so every filed thread shared a created_at and the list
   // printed Aug 31 above Sep 1 above Sep 2 under headers that read the real day.
   // The day header and the row's age already read eventTime; now the order does too.
-  return threads.sort((a, b) => eventTime(b.last).localeCompare(eventTime(a.last)))
+  // Ivan 2026-09-24: "'Viewed the scan' can trigger the next touch". A pending (not pushed) stall-bump
+  // draft for someone who opened their scan on 2+ distinct days goes to the top; everything else keeps
+  // the newest-first order, and the lift ends the moment the draft is sent, discarded or pushed.
+  const scanOpenerFirst = (t: Thread) =>
+    t.draft && t.draftSnoozedUntil === null && Number(t.draft.draft_evidence?.scan_open_days ?? 0) >= 2 ? 0 : 1
+  return threads.sort((a, b) => scanOpenerFirst(a) - scanOpenerFirst(b) || eventTime(b.last).localeCompare(eventTime(a.last)))
 }
 
 // What kind of thread this really is, judged by its message mix rather than
@@ -906,6 +911,9 @@ export type DraftContextGap = { question: string | null; why: string | null; cha
 export type DraftEvidenceFact = { id: string; fact: string; topic: string; at: string; from: string | null }
 export type DraftEvidenceExemplar = { they: string | null; reply: string | null; at: string | null; prospect: string | null }
 export type DraftEvidence = {
+  // Stall Bump (2026-09-24): the prospect opened the scan on this many distinct days and has not
+  // replied since. 2+ floats the thread to the top of the list while the draft waits (groupThreads).
+  scan_open_days?: number | null
   facts?: { slug: string; version: number | null; updated_at?: string | null } | string[] | null
   retry_after?: string | null
   generated_text?: string | null

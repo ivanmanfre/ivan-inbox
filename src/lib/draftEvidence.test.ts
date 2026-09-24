@@ -50,4 +50,17 @@ describe('draft evidence fetch', () => {
     expect(thread.companionDraft?.draft_evidence?.brief?.the_move).toBe('Email move')
     expect(rows[0].draft_evidence).toBeUndefined()
   })
+
+  it('floats a pending draft for a 2+ day scan opener above newer threads, and only while it waits', () => {
+    const base = { prospect_name: 'T', client_id: 'ivan', prospect_stage: 'dm_sent', direction: 'outbound', channel: 'linkedin', message_type: 'dm', message_text: 'x', approved_at: null, send_blocked_at: null, send_blocked_reason: null } as InboxMessage
+    const rows = [
+      { ...base, id: 'old-sent', prospect_id: 'opener', sent_at: '2026-09-20T10:00:00Z', created_at: '2026-09-20T10:00:00Z' },
+      { ...base, id: 'bump', prospect_id: 'opener', sent_at: null, created_at: '2026-09-24T09:00:00Z', draft_evidence: { scan_open_days: 2 } },
+      { ...base, id: 'newer', prospect_id: 'fresh', sent_at: '2026-09-24T11:00:00Z', created_at: '2026-09-24T11:00:00Z' },
+      { ...base, id: 'one-day', prospect_id: 'once', sent_at: null, created_at: '2026-09-24T10:00:00Z', draft_evidence: { scan_open_days: 1 } },
+    ] as InboxMessage[]
+    expect(groupThreads(rows).map(t => t.prospect_id)).toEqual(['opener', 'fresh', 'once'])
+    const sent = rows.map(r => r.id === 'bump' ? { ...r, sent_at: '2026-09-24T09:30:00Z' } : r)
+    expect(groupThreads(sent).map(t => t.prospect_id)).toEqual(['fresh', 'once', 'opener'])
+  })
 })
