@@ -69,6 +69,8 @@ export type CcChannel = {
   eligible_stock_by_pool?: Record<string, number> | null
   capacity?: {
     daily_cap?: number | null; daily_used?: number | null
+    /** The sender's cap counter resets at `daily_window_from` + 24h (UTC day today). */
+    daily_used_basis?: string | null; daily_window_from?: string | null
     weekly_cap?: number | null; weekly_used?: number | null
     target?: number | null; target_status?: string | null
   } | null

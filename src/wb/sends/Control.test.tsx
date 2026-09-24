@@ -7,6 +7,7 @@ import outsideWindow from '../../lib/cc-fixtures/outside_window.json'
 import unknownFix from '../../lib/cc-fixtures/unknown.json'
 import partial from '../../lib/cc-fixtures/partial.json'
 import rateLimited from '../../lib/cc-fixtures/rate_limited.json'
+import healthy from '../../lib/cc-fixtures/healthy.json'
 
 function ok(fixture: unknown): CcState {
   const p = parsePayload(JSON.parse(JSON.stringify(fixture)))
@@ -301,5 +302,27 @@ describe('Recurring problems', () => {
   it('says so when the snapshot carries no ledger', () => {
     const t = text(renderToStaticMarkup(<RecurrenceSection cc={ok(partial)} />))
     expect(t).toContain('no recurrence ledger')
+  })
+})
+
+describe('Control — the seat figure is the operator\'s day, not the cap counter\'s', () => {
+  /* The healthy snapshot is taken at 02:00 Warsaw on 13 Sep. RISE's window ran
+     14:00–03:00 Warsaw, so its cap counter (UTC day) has already reset and
+     reads 0, while the Warsaw calendar says 2 today and 40 yesterday. */
+  const fx = JSON.parse(JSON.stringify(healthy))
+  const rise = fx.clients.find((c: { client_id: string }) => c.client_id === 'risedtc')
+  rise.invitation.capacity.daily_window_from = '2026-09-13T00:00:00Z'
+  rise.invitation.capacity.daily_used_basis = 'utc_date'
+  const daily = fx.ranges.daily as Array<{ client_id: string; channel: string; day: string; sent: number }>
+  daily.find(d => d.client_id === 'risedtc' && d.channel === 'invitation' && d.day === '2026-09-12')!.sent = 40
+  daily.find(d => d.client_id === 'risedtc' && d.channel === 'invitation' && d.day === '2026-09-13')!.sent = 2
+  const t = text(renderToStaticMarkup(<ControlSection cc={ok(fx)} client="all" now={NOW} />))
+
+  it('shows today and yesterday on the Warsaw calendar', () => {
+    expect(t).toContain('2 invitations today · yesterday 40')
+  })
+  it('keeps the UTC cap counter as its own line, with its local reset time', () => {
+    expect(t).toContain('daily limit 0/40, resets 02:00')
+    expect(t).not.toContain('of 40 invitations today')
   })
 })

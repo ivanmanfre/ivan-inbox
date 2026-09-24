@@ -310,8 +310,17 @@ function EvidenceFold({ payload, ids }: { payload: CcPayload; ids: string[] }) {
 
 // ---- one client row ------------------------------------------------------
 
-function ControlSummary({ c, liveness, asOf, staleMinutes, selected, onOpen }: {
-  c: CcClient; liveness: string; asOf: number
+/** The operator's calendar day ("2026-09-24") in the payload's zone, and the
+    day before it by date arithmetic — never "now minus 24h", which lands two
+    days back for an hour after a spring-forward. */
+function localDays(t: number, tz: string): { today: string; yesterday: string } {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(t))
+  const yesterday = new Date(Date.parse(`${today}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
+  return { today, yesterday }
+}
+
+function ControlSummary({ c, p, liveness, asOf, staleMinutes, selected, onOpen }: {
+  c: CcClient; p: CcPayload; liveness: string; asOf: number
   /** Set when the monitor has gone quiet: status rule 1 then applies here, in
       the browser, exactly as it applies in the builder. A green word beside a
       dead monitor is the one reading this surface must never show. */
@@ -334,10 +343,20 @@ function ControlSummary({ c, liveness, asOf, staleMinutes, selected, onOpen }: {
   /* A seat that has only run out of people to invite is not an outage. Same
      precedence as above: a stale monitor and a confirmed refusal both outrank it. */
   const queueEmpty = staleMinutes === null && !limited && isQueueEmptyClient(c)
-  /* The count sits beside the cap it is measured against, on the same UTC day
-     the senders' own counter uses, so "40" reads as "40 of 40" and not as a
-     bare number the operator has to compare from memory. */
-  const dailyCap = inv.capacity?.daily_cap
+  /* The headline is the operator's calendar day (the payload's zone, Warsaw),
+     with yesterday beside it, both from the same `ranges.daily` the Delivery
+     charts read. It is NOT the sender's cap counter: that one runs on the UTC
+     day, and a seat whose window crosses UTC midnight (Mattan, 14:00–03:00
+     Warsaw) read "2 of 40 today" the morning after a full session. The cap
+     counter stays, as its own line, with the local clock time it resets at. */
+  const tz = p.ranges.tz || 'UTC'
+  const { today, yesterday } = localDays(asOf, tz)
+  const sentToday = ccInvitationsForDay(p, c.client_id as Client, today)
+  const sentYesterday = ccInvitationsForDay(p, c.client_id as Client, yesterday)
+  const cap = inv.capacity
+  const capReset = cap?.daily_window_from && Number.isFinite(Date.parse(cap.daily_window_from))
+    ? seatClock(new Date(Date.parse(cap.daily_window_from) + 86_400_000).toISOString(), tz)
+    : null
 
   return (
       <Row
@@ -362,8 +381,8 @@ function ControlSummary({ c, liveness, asOf, staleMinutes, selected, onOpen }: {
         subWrap
         tail={
           <span className="a-cc-tail">
-            <b className="a-figure-t">{num(inv.confirmed_sent)}</b>
-            <span className="a-meta a-dim">{typeof dailyCap === 'number' && dailyCap > 0 ? `of ${dailyCap} invitations today` : 'invitations today'}</span>
+            <b className="a-figure-t">{num(sentToday)}</b>
+            <span className="a-meta a-dim">invitations today · yesterday {num(sentYesterday)}</span>
           </span>
         }
         selected={selected}
@@ -375,6 +394,14 @@ function ControlSummary({ c, liveness, asOf, staleMinutes, selected, onOpen }: {
           <span className="a-sends-nb">
             {closed ? 'Opens' : 'Next check'} {whenLabel(c.next_check_at, asOf)}
           </span>
+          {typeof cap?.daily_cap === 'number' && cap.daily_cap > 0 && (
+            <>
+              <Sep />
+              <span className="a-sends-nb">
+                daily limit {num(cap.daily_used ?? inv.confirmed_sent)}/{cap.daily_cap}{capReset ? `, resets ${capReset}` : ''}
+              </span>
+            </>
+          )}
           <Sep />
           <span className="a-sends-nb">{ageLabel(fresh?.data_age_s)} · rules {fresh?.rule_version ?? 'unknown'}</span>
           <Sep />
@@ -513,6 +540,7 @@ export function ControlSection({ cc, client, now = Date.now() }: {
               <ControlSummary
                 key={c.client_id}
                 c={c}
+                p={p}
                 liveness={live}
                 asOf={asOf}
                 staleMinutes={staleMinutes}
