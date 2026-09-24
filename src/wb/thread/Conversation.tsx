@@ -33,7 +33,7 @@ import {
   saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId, emailRowSender, ladderSteps, sendFailed,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../../lib/inbox'
-import { label } from '../../lib/labels'
+import { campaignLaneLabel, copyRouteTag, label } from '../../lib/labels'
 import { deleteThread, markNotSpam, markSpam } from '../../lib/inbox'
 import './thread.css'
 
@@ -428,6 +428,10 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
   // Judged on what is actually ON SCREEN — a pending email draft sitting in the
   // card below has not happened yet and must not relabel the conversation.
   const mixed = isMixedChannel(bubbles)
+  // The header's own copy of the list row's lane/route tags (see the sub line
+  // below): derived once so the JSX does not call the label functions twice.
+  const laneLabel = campaignLaneLabel(thread.lane)
+  const routeTag = copyRouteTag(thread.copyRoute)
 
   const emailDisabled = thread.channel === 'email'
   const engagedDisabled = thread.stage === 'engaged'
@@ -458,8 +462,25 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
           </button>
         }
         sub={<>
-          {thread.prospect_company ? <>{thread.prospect_company} · </> : null}
-          <b>{clientName(thread.client_id)}</b> · {channelSummary(bubbles)} · {label(thread.stage)}
+          <div className="a-thread-subline">
+            {thread.prospect_company ? <>{thread.prospect_company} · </> : null}
+            <b>{clientName(thread.client_id)}</b> · {channelSummary(bubbles)} · {label(thread.stage)}
+          </div>
+          {/* The campaign lane and copy route (db/212, db/213), moved off the
+              list row into the opened thread's own header (Ivan, 2026-09-24:
+              "put them not in the preview on the left like they are now
+              just inside each dm... when i click on the dm to open it").
+              Reuses Thread.lane / Thread.copyRoute, already on the thread —
+              no new query. A second line under the existing one, same
+              neutral chip language the list used (a route is a category,
+              not a state, so no colour rides it either); absent whenever a
+              thread has neither, which is every non-ARCH seat. */}
+          {(laneLabel || routeTag) && (
+            <div className="a-thread-subline a-thread-tags">
+              {laneLabel && <Chip>{laneLabel}</Chip>}
+              {routeTag && <Chip title={routeTag.title}>{routeTag.label}</Chip>}
+            </div>
+          )}
         </>}
         tail={<>
           {/* DRAFT and Ask Claude are the PANE's marks, and the ledger has both

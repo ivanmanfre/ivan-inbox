@@ -25,6 +25,30 @@
 .a-thread-who:active{ opacity:.75 }
 .a-thread-ladder{ display:block; flex:1 1 auto; min-width:0; max-width:44ch }
 
+/* The lane + copy route (db/212, db/213), moved off the list row into this
+   header (Ivan, 2026-09-24: "put them not in the preview on the left like
+   they are now... inside each dm... when i click on the dm to open it").
+   `sub` renders inside the kit's single `.a-head-sub` box (mono, nowrap,
+   ellipsis, no fixed height — wb.css), so a second line here only grows
+   that box; `.a-head` itself is min-height only and `.a-thread`'s own head
+   already wraps (ELEVATION 2026-09-20 below), so nothing here can push or
+   resize the Bar/Ladder stepper, which is a separate sibling underneath. */
+.a-thread-subline{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.a-thread-tags{ display:flex; align-items:center; gap:var(--ds-s2); margin-top:var(--ds-s1) }
+/* Same neutral, raised-surface tag the list used for these two chips
+   (dms.css `.a-dms-lane [data-ds='Chip']`) — a lane/route is a category,
+   not a state, so no colour rides it here either. */
+.a-thread-tags [data-ds='Chip']{
+  height:auto;
+  padding:var(--ds-s1) var(--ds-s2);
+  border-radius:var(--ds-r1);
+  background:var(--ds-surface-2);
+  color:var(--ds-text-2);
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-lane);
+  letter-spacing:var(--ds-tr-lane);
+}
+
 /* --------------------------------------------------------------------------
    The conversation.
    -------------------------------------------------------------------------- */
