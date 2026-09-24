@@ -42,6 +42,9 @@ export type InboxMessage = {
   // tag no? specially for davorin's"). Optional because the stock screens' fixtures
   // predate the column, same as reply_intent/prospect_blacklisted above.
   lane?: string | null;
+  // The copy route this ARCH person is on, '<sent|next>:<route>[:<invite arm>]' (db/213, 2026-09-24),
+  // null for every other seat. Rendered by labels.ts copyRouteTag. Optional for the same fixture reason.
+  copy_route?: string | null;
   // Not in inbox_messages_v — annotated onto pending drafts by useInbox from the
   // fetchDraftEmailStamps() probe. When set on a draft, approving it makes the
   // dispatcher ALSO email the scan to this address (rise_dm2_scan_delivery_v1 rows).
@@ -124,6 +127,8 @@ export type Thread = {
   needsManualReply: boolean;
   // last.lane, coalesced to null. See InboxMessage.lane above.
   lane: string | null;
+  // last.copy_route, coalesced to null. See InboxMessage.copy_route above.
+  copyRoute: string | null;
 }
 
 /* ==========================================================================
@@ -420,6 +425,7 @@ export function groupThreads(
       spam: (last.prospect_skip_reason ?? null) === SPAM_REASON,
       blacklisted: Boolean(last.prospect_blacklisted),
       lane: last.lane ?? null,
+      copyRoute: last.copy_route ?? null,
       messages,
     })
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { armingCountWord, armingLabel, clientBadge, inlineLabel, label } from './labels'
+import { armingCountWord, armingLabel, clientBadge, copyRouteTag, inlineLabel, label } from './labels'
 
 describe('label', () => {
   it('maps every known value to real words', () => {
@@ -148,5 +148,32 @@ describe('clientBadge', () => {
   it('a seat that does not exist yet gets its own name, never another seat\'s', () => {
     expect(clientBadge('newclient')).toBe('Newclient')
     expect(clientBadge('newclient')).not.toBe('Ivan')
+  })
+})
+
+describe('copyRouteTag (inbox_messages_v.copy_route, db/213)', () => {
+  it('a sent route reads as the route itself, with the invite arm in the tooltip', () => {
+    const t = copyRouteTag('sent:games:engager')!
+    expect(t).toMatchObject({ label: 'Games copy', sent: true })
+    expect(t.title).toContain('engager note')
+    expect(copyRouteTag('sent:eu_expansion')!.label).toBe('EU expansion')
+    expect(copyRouteTag('sent:audit_offer:blank')!.label).toBe('Audit offer')
+    expect(copyRouteTag('sent:sponsor_door')!.label).toBe('Sponsor door')
+    expect(copyRouteTag('sent:custom')!.label).toBe('Custom')
+  })
+
+  it('a route that has not gone out yet says so in the label, never as a fact', () => {
+    const t = copyRouteTag('next:apps:blank')!
+    expect(t).toMatchObject({ label: 'Next: Apps copy', sent: false })
+    expect(t.title).toContain("next pick")
+    expect(copyRouteTag('next:hold')!.label).toBe('Copy held')
+  })
+
+  it('renders nothing for a thread with no route, and never leaks a raw slug', () => {
+    expect(copyRouteTag(null)).toBeNull()
+    expect(copyRouteTag('')).toBeNull()
+    expect(copyRouteTag('garbage')).toBeNull()
+    expect(copyRouteTag('sent:markets_question')!.label).toBe('Markets question')
+    expect(copyRouteTag('sent:some_new_route')!.label).not.toContain('_')
   })
 })

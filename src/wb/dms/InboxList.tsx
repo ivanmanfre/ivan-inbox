@@ -25,7 +25,7 @@ import { useConfirm } from '../chrome/ConfirmSheet'
 import { browseOrder, discardDraft, filterByStatus, filterThreads, inboxWaitingCount, isLeadMagnet, searchThreads, threadKind, type Filter, type Status, type Thread, eventTime } from '../../lib/inbox'
 import { DM_FIELDS, applyThreadTokens, hasStatusToken, tokensForFilter, type FilterToken } from '../../lib/filterTokens'
 import { checkedPhrase } from '../../lib/today'
-import { campaignLaneLabel, clientBadge } from '../../lib/labels'
+import { campaignLaneLabel, clientBadge, copyRouteTag } from '../../lib/labels'
 import { RowSelect } from '../../exp/v2c/RowSelect'
 import './dms.css'
 
@@ -367,6 +367,17 @@ function RowHost({ height, onDiscard, children }: {
       }}
     >{children}</div>
   )
+}
+
+/* The copy route an ARCH conversation is on, beside its lane pill (db/213). A
+   neutral chip like the lane: a route is a category, not a state. A route that
+   has not been sent yet reads "Next: …" in the label itself, so a prediction
+   never passes for a fact; the invite note arm rides the tooltip. Renders
+   nothing for a thread with no route (every non-ARCH seat), so no empty chip. */
+function RouteChip({ value }: { value: string | null }) {
+  const tag = copyRouteTag(value)
+  if (!tag) return null
+  return <Chip title={tag.title} className="a-dms-route"><span className="a-dms-route-t">{tag.label}</span></Chip>
 }
 
 export function InboxList({ threads, filter, setFilter, tokens, setTokens, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, refreshing = false, cachedAt = null, error = null, title = 'Inbox', status, browse = false, before, after, rowsFor, renderRow, rowNote, rowChip, rowTag, renderNote, emptyLine }: {
@@ -737,6 +748,7 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
                               conversation has no lane on record so it never adds an
                               empty chip. */}
                           {campaignLaneLabel(t.lane) && <Pill>{campaignLaneLabel(t.lane)}</Pill>}
+                          <RouteChip value={t.copyRoute} />
                           {kind === 'inmail' && <Pill>INMAIL</Pill>}
                           {kind === 'email' && <Pill>EMAIL</Pill>}
                           {kind === 'linkedin' && <Pill>DM</Pill>}
@@ -758,6 +770,7 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
                         <span className="a-dms-lane">
                           <Pill>{clientBadge(t.client_id)}</Pill>
                           {campaignLaneLabel(t.lane) && <Pill>{campaignLaneLabel(t.lane)}</Pill>}
+                          <RouteChip value={t.copyRoute} />
                         </span>
                         <span className="a-dms-subtext">{note && renderNote
                           ? renderNote(t, note)

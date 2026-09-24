@@ -383,6 +383,16 @@
     display:flex; align-items:center; gap:var(--ds-s2);
   }
   .a-dms-lane{ display:inline-flex; flex:0 0 auto }
+  /* db/213 · The copy-route chip is the third pill on this line ("Next: Games
+     copy" is 111px at 390). The route is what the row is asked to say, so the
+     PREVIEW gives way first (basis 0: it takes only what the pills leave, and
+     the thread holds the full text). Only if the three pills alone outgrow the
+     line does the route chip truncate by ellipsis, its words kept in the
+     tooltip. Seat and lane pills never shrink. Nothing grows the box. */
+  .a-dms-lane:has(.a-dms-route){ flex:0 1 auto; min-width:0 }
+  .a-dms-lane .a-dms-route{ flex:0 1 auto; min-width:4ch; overflow:hidden }
+  .a-dms-route-t{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0 }
+  .a-dms-lane:has(.a-dms-route) + .a-dms-subtext{ flex:1 1 0 }
   .a-dms-lane [data-ds='Chip']{ height:var(--ds-s6); padding-inline:var(--ds-s2) }
   .a-dms-subtext{
     display:block; min-width:0;

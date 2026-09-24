@@ -117,7 +117,7 @@ function projectMessage(m: InboxMessage): InboxMessage {
     chat_provider_id: m.chat_provider_id, campaign_name: m.campaign_name,
     client_id: m.client_id, prospect_skip_reason: m.prospect_skip_reason ?? null,
     reply_intent: m.reply_intent ?? null, prospect_blacklisted: m.prospect_blacklisted ?? null,
-    lane: m.lane ?? null,
+    lane: m.lane ?? null, copy_route: m.copy_route ?? null,
     recipient_email: m.recipient_email ?? null,
     email_mirror_text: capBody(m.email_mirror_text ?? null, cap),
     context_gap: m.context_gap ?? null,
@@ -147,7 +147,7 @@ export function projectThread(t: Thread): Thread {
     companionDraft: t.companionDraft ? projectMessage(t.companionDraft) : null,
     ownerConfirmation: t.ownerConfirmation ? projectMessage(t.ownerConfirmation) : null,
     draftStale: t.draftStale, draftSnoozedUntil: t.draftSnoozedUntil,
-    needsManualReply: t.needsManualReply, lane: t.lane,
+    needsManualReply: t.needsManualReply, lane: t.lane, copyRoute: t.copyRoute,
   }
 }
 

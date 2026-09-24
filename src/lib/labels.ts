@@ -219,3 +219,47 @@ export function campaignLaneLabel(value: string | null | undefined): string {
   if (!value) return ''
   return LANE[value.toLowerCase()] ?? label(value)
 }
+
+// The COPY ROUTE an ARCH conversation is on (inbox_messages_v.copy_route, db/213), next to the lane tag
+// above. Ivan, 2026-09-24: "also the path they take in regarding to copy lane, like there are some going
+// for apps, something games... but others also use the market narrowing or something or other strategies".
+// The column reads '<sent|next>:<route>[:<invite note arm>]': `sent` is what the senders actually used
+// (template key / ai_model / the ratified body's text), `next` is what the live selector will pick
+// because nothing route-bearing has gone out yet. The chip says which, in words, so a prediction never
+// reads as a fact. 'markets_question' is labelled but no sender emits it yet (no template exists).
+const COPY_ROUTE: Record<string, string> = {
+  eu_expansion: 'EU expansion',
+  audit_offer: 'Audit offer',
+  sponsor_door: 'Sponsor door',
+  markets_question: 'Markets question',
+  apps: 'Apps copy',
+  games: 'Games copy',
+  pc: 'PC copy',
+  d2c: 'D2C copy',
+  generic: 'Generic copy',
+  custom: 'Custom',
+  hold: 'Copy held',
+}
+const NOTE_ARM: Record<string, string> = {
+  engager: 'engager note', games: 'games note', apps: 'apps note',
+  sponsor: 'sponsor note', blank: 'blank', custom: 'custom note',
+}
+
+export type CopyRouteTag = { label: string; sent: boolean; title: string }
+
+/** The chip for a thread's copy route, or null when the thread has none (every non-ARCH thread). */
+export function copyRouteTag(value: string | null | undefined): CopyRouteTag | null {
+  if (!value) return null
+  const [state, route = '', note] = value.split(':')
+  if (state !== 'sent' && state !== 'next') return null
+  const name = COPY_ROUTE[route] ?? label(route)
+  if (!name) return null
+  const sent = state === 'sent'
+  const invite = note ? ` Invite: ${NOTE_ARM[note] ?? label(note)}.` : ''
+  if (route === 'hold') {
+    return { label: name, sent, title: `No ratified copy for this person's vertical: the sender holds them.${invite}` }
+  }
+  return sent
+    ? { label: name, sent, title: `Copy route used: ${name}.${invite}` }
+    : { label: `Next: ${name}`, sent, title: `Nothing on a copy route has gone out yet. The sender's next pick: ${name}.${invite}` }
+}
