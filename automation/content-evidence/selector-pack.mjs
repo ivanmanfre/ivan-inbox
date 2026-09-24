@@ -10,10 +10,15 @@
 // output, in the same order.
 //
 // THE PRODUCTION ELIGIBILITY FLOOR (binding -- spec "Weekly selection contract" + D3 in
-// $OUT/DECISIONS.md): a finding may become an `evidence_backed` candidate only when
-// observed_value > baseline_value, baseline_n >= 20, lift (observed/baseline) >= 4, and --
-// only when likes is present at all -- likes >= 40. Unknown likes is a limitation, never an
-// invented number, so a finding with likes absent is judged on the other three alone. This is
+// $OUT/DECISIONS.md; realigned to the CB-15 outlier v3 study, CB-16 carry-over NEXT-RUN.md
+// item 6): a finding may become an `evidence_backed` candidate only when observed_value >
+// baseline_value, baseline_n >= 9 (the v3 study's own floor -- an author's baseline is measured
+// from their 10th post on, so 9 earlier posts is the least that produces one), lift
+// (observed/baseline) >= 3, and -- only when likes is present at all -- likes >= 40. Unknown
+// likes is a limitation, never an invented number, so a finding with likes absent is judged on
+// the other three alone. A finding whose paid_status is known to be 'paid' is excluded outright
+// (same rule the v3 refit applies server-side: `coalesce(paid_status,'unknown') <> 'paid'`);
+// 'unknown' and missing paid_status both pass, because unknown is not evidence of paid. This is
 // the SAME floor for a market finding and a supported own-result finding: "measured" means
 // measured, regardless of whose post it was.
 //
@@ -208,19 +213,24 @@ function eligibilityForFinding(finding) {
   if (finding.observed_value <= finding.baseline_value) {
     return { ok: false, code: 'below_baseline', reason: 'observed_value does not exceed baseline_value' };
   }
-  if (baselineN < 20) {
+  // CB-16 (NEXT-RUN.md item 6): realigned from 20 to 9, the outlier v3 study's own baseline
+  // floor -- an author's baseline is computed starting at their 10th post, so 9 earlier posts
+  // is the least that produces one at all.
+  if (baselineN < 9) {
     return {
       ok: false,
       code: 'below_baseline',
-      reason: `baseline_n ${baselineN} is below the production floor of 20`,
+      reason: `baseline_n ${baselineN} is below the production floor of 9 (v3: baseline from the author's 10th post)`,
     };
   }
   const lift = finding.baseline_value > 0 ? finding.observed_value / finding.baseline_value : null;
-  if (lift === null || lift < 4) {
+  // CB-16 (NEXT-RUN.md item 6): realigned from 4 to 3, matching the outlier v3 study's own
+  // is_outlier_3x threshold.
+  if (lift === null || lift < 3) {
     return {
       ok: false,
       code: 'below_baseline',
-      reason: `lift ${lift === null ? 'n/a' : lift.toFixed(2)} is below the production floor of 4`,
+      reason: `lift ${lift === null ? 'n/a' : lift.toFixed(2)} is below the production floor of 3`,
     };
   }
   if (isFiniteNumber(finding.likes) && finding.likes < 40) {
@@ -228,6 +238,19 @@ function eligibilityForFinding(finding) {
       ok: false,
       code: 'below_baseline',
       reason: `likes ${finding.likes} is below the production floor of 40`,
+    };
+  }
+  // CB-16 (NEXT-RUN.md item 6): paid excluded, mirroring the v3 refit's own
+  // `coalesce(paid_status,'unknown') <> 'paid'` rule (O/build/p0-refit-src.sql:25,46). Only a
+  // KNOWN 'paid' value excludes -- 'unknown' and a missing field both pass, the same as the SQL
+  // coalesce. Every paid_status in the live corpus reads 'unknown' today (read-only, 2026-09-25),
+  // so this is a no-op until the field starts flowing through and being populated; it is not
+  // invented evidence either way.
+  if (finding.paid_status === 'paid') {
+    return {
+      ok: false,
+      code: 'below_baseline',
+      reason: 'paid_status is paid; the production floor excludes paid-boosted posts',
     };
   }
   return { ok: true, lift };
