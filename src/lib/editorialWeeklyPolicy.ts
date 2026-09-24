@@ -1,5 +1,6 @@
 import { EditorialContractError, isEditorialClientId } from './editorialTypes.ts'
 import type { EditorialClientId } from './editorialTypes.ts'
+import { DYNAMIC_SLOT_FORMAT } from './editorialIndustryScore.ts'
 
 export type PurposeAllocation = { unit: 'count' | 'proportion'; values: Record<string, number> }
 export type FormatPreference = { format: string; max_slots: number; purposes?: string[]; route_ready?: boolean; asset_gap?: string }
@@ -8,7 +9,11 @@ export type WeeklyPolicy = {
   status: 'proposed' | 'adopted'
   weekly_total: number
   allocation: PurposeAllocation
-  format_preferences: FormatPreference[]
+  /** Legacy format quota. content-brain-15 (fork 5) retires it: a policy WITHOUT this key is a
+   * count+purpose policy whose slots are DYNAMIC_SLOT_FORMAT, and each brief takes its format from the
+   * engine at synthesis. A policy WITH it only replays weeks frozen before the retirement; the DB
+   * freeze refuses it for a new week. */
+  format_preferences?: FormatPreference[]
   topic_priorities: string[]
   exclusions: string[]
   campaign_dates: string[]
@@ -164,8 +169,8 @@ export function validateWeeklyPolicy(value: unknown): string[] {
   const total = value.weekly_total
   if (!Number.isSafeInteger(total) || Number(total) < 0) errors.push('weekly_total: expected nonnegative integer')
   if (!errors.some(x => x.startsWith('weekly_total'))) errors.push(...allocationErrors(value.allocation, Number(total), 'allocation'))
-  if (!Array.isArray(value.format_preferences)) errors.push('format_preferences: expected array')
-  else {
+  if (value.format_preferences !== undefined && !Array.isArray(value.format_preferences)) errors.push('format_preferences: expected array when present')
+  else if (Array.isArray(value.format_preferences)) {
     for (const [i, item] of value.format_preferences.entries()) {
       if (!object(item) || typeof item.format !== 'string' || !item.format.trim() || !Number.isSafeInteger(item.max_slots) || Number(item.max_slots) < 0 ||
           (item.purposes !== undefined && (!Array.isArray(item.purposes) || item.purposes.some(x => typeof x !== 'string' || !x.trim()))))
@@ -209,7 +214,9 @@ export function validateWeeklyPolicy(value: unknown): string[] {
       errors.push('week_override: valid start, expiry and total are required')
     else errors.push(...allocationErrors(override.allocation, Number(override.weekly_total), 'week_override.allocation'))
     if (object(override) && override.format_preferences !== undefined) {
-      if (!Array.isArray(override.format_preferences)) errors.push('week_override.format_preferences: expected array')
+      if (value.format_preferences === undefined)
+        errors.push('week_override.format_preferences: format quotas are retired; a count+purpose policy takes each format from the engine')
+      else if (!Array.isArray(override.format_preferences)) errors.push('week_override.format_preferences: expected array')
       else for (const [i, item] of override.format_preferences.entries()) {
         if (!object(item) || typeof item.format !== 'string' || !item.format.trim() || !Number.isSafeInteger(item.max_slots) || Number(item.max_slots) < 0 ||
             (item.purposes !== undefined && (!Array.isArray(item.purposes) || item.purposes.some(x => typeof x !== 'string' || !x.trim()))))
@@ -225,6 +232,7 @@ export function validateWeeklyPolicy(value: unknown): string[] {
     if (typeof policy.target_outcomes[purpose] !== 'string' || !policy.target_outcomes[purpose].trim())
       errors.push(`target_outcomes.${purpose}: required for an active purpose`)
   }
+  if (policy.format_preferences === undefined) return errors
   const basePurposes = purposeSequence(policy.allocation, policy.weekly_total, policy.conflict_priority)
   if (!assignFormats(basePurposes, policy.format_preferences)) errors.push(`format_preferences: capacity cannot fill ${policy.weekly_total} slots`)
   if (policy.week_override) {
@@ -250,7 +258,7 @@ export function getEffectiveWeeklyPolicy(direction: Record<string, unknown>, wee
   const override = typed.week_override
   return override && weekStart >= override.week_start && weekStart <= override.expires_after
     ? { ...typed, weekly_total: override.weekly_total, allocation: override.allocation,
-      format_preferences: override.format_preferences ?? typed.format_preferences }
+      ...(typed.format_preferences === undefined ? {} : { format_preferences: override.format_preferences ?? typed.format_preferences }) }
     : typed
 }
 
@@ -260,6 +268,18 @@ export function buildWeeklySlotManifest(clientId: string, directionVersion: stri
   if (!directionVersion.trim() || !date(weekStart)) throw new EditorialContractError('invalid_argument', 'Direction version and valid week start are required.')
   const policy = getEffectiveWeeklyPolicy(direction, weekStart)
   const purposes = policy ? purposeSequence(policy.allocation, policy.weekly_total, policy.conflict_priority) : Array(5).fill('legacy') as string[]
+  // content-brain-15 (fork 5): a count+purpose policy freezes no format. Each slot is dynamic and its
+  // brief takes text | carousel | single_image from the engine at synthesis; never video.
+  if (policy && policy.format_preferences === undefined) {
+    const slots = purposes.map((purpose, index): WeeklySlot => ({
+      slot_id: `weekly:${encodeURIComponent(clientId)}:${encodeURIComponent(directionVersion)}:${weekStart}:${index + 1}`,
+      ordinal: index + 1, purpose, format: DYNAMIC_SLOT_FORMAT, client_id: clientId,
+      direction_version: directionVersion, week_start: weekStart, route_ready: false, asset_gap: null,
+    }))
+    return { contract_version: 1, client_id: clientId, direction_version: directionVersion,
+      week_start: weekStart, policy_status: policy.status, active_client_proof_credit: slots.length > 0,
+      purpose_counts: counts(policy.allocation, policy.weekly_total), slots, slot_requirements: [] }
+  }
   const preferences = policy?.format_preferences ?? []
   const assignments = assignFormats(purposes, preferences)
   if (!assignments) throw new EditorialContractError('invalid_argument', 'Format capacity cannot fill this week.')
