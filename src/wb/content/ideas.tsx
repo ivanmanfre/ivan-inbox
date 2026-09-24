@@ -10,7 +10,7 @@
    delete (there is no client-idea delete call), and no note field (the client
    table has no column for one, so a box here would collect text and drop it).
    ========================================================================== */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   decideIdea, deleteIdea, ideaDecidable, IDEA_NOT_OURS, LANE_LABEL, LANE_POSSESSIVE,
   type ContentLane, type IdeaCandidate, type IdeaDecision,
@@ -19,6 +19,10 @@ import {
   decideClientIdea, ideaWhy, quoteLabel,
   type ClientIdea, type ClientIdeaDecision,
 } from '../../lib/clientIdeas'
+import {
+  contributionsLine, fetchIdeaScores, sortByScore,
+  type IdeaScoreRead, type IdeaScoreRow,
+} from '../../lib/ideaScores'
 import {
   applyFilters, buildFacets, CLIENT_IDEA_SPECS, IDEA_PROMINENT, IDEA_SPECS, splitFacets,
   type FilterState,
@@ -40,12 +44,38 @@ function scoreLine(i: IdeaCandidate): [string, number | null][] {
   ]
 }
 
-function IdeaCard({ i, onDeleted, onDecided }: {
+const NO_SCORES: IdeaScoreRead = { ok: false, byRef: new Map(), validated: false }
+
+// THE OUTLIER-RECIPE SCORE (CB-15, P4 W-W2). One block shared by both idea
+// cards: the score, its top contributions in plain words, and the
+// recommended format. A card with no score row renders nothing here — the
+// same as before this run. `unvalidated` marks a client whose recipe has not
+// cleared PREREG yet; it is a grey label ONLY, never a reason to hide or
+// reorder the row (sort order is decided one level up, in sortByScore).
+function IdeaScoreBlock({ row, unvalidated }: { row: IdeaScoreRow | undefined; unvalidated: boolean }) {
+  if (!row || row.score === null) return null
+  const line = contributionsLine(row)
+  return (
+    <div className="a-ct-why">
+      <b>Outlier score · </b>{row.score.toFixed(2)}
+      {row.recommended_format ? ` · ${label(row.recommended_format)}` : ''}
+      {unvalidated ? <Chip tone="quiet">unvalidated</Chip> : null}
+      {line ? <div className="a-dim">{line}</div> : null}
+    </div>
+  )
+}
+
+function IdeaCard({ i, onDeleted, onDecided, scoreRow, unvalidated }: {
   i: IdeaCandidate
   onDeleted: () => void
   /** A decision LANDED. The caller drops the row on the spot and refetches
       behind it — the row has left `reviewing` either way. */
   onDecided: (id: string) => void
+  /** This idea's newest idea_scores row (CB-15 P4 W-W2), or undefined when
+      it has none yet — a normal, unscored state, not an error. */
+  scoreRow?: IdeaScoreRow
+  /** Ivan's recipe has not cleared PREREG for this client yet. */
+  unvalidated?: boolean
 }) {
   const [open, setOpen] = useState(false)
   // Delete-with-confirm. deleteIdea() attempts the hard delete and falls back
@@ -90,6 +120,11 @@ function IdeaCard({ i, onDeleted, onDecided }: {
     <>
       <Row
         className="a-ct-idearow"
+        // The idea's own id, verbatim, as the row's DOM id — a read-only
+        // hook for G6's Playwright evidence (rendered order vs the order the
+        // DB's own query returns). Nothing in the app reads this id back;
+        // it exists so an external script can, without parsing title text.
+        id={i.id}
         onClick={() => setOpen(o => !o)}
         selected={open}
         lead={
@@ -123,6 +158,7 @@ function IdeaCard({ i, onDeleted, onDecided }: {
           {i.format_recommendation && (
             <div className="a-wrapline"><Chip>{i.format_recommendation}</Chip></div>
           )}
+          <IdeaScoreBlock row={scoreRow} unvalidated={!!unvalidated} />
           {(sourceUrl || i.slack_permalink) && (
             <div className="a-ct-links">
               {sourceUrl && (
@@ -241,9 +277,18 @@ export function IdeasSection({
     setDecided(cur => new Set(cur).add(id))
     refresh()
   }
+  // CB-15 P4 W-W2: idea_scores for Ivan's lane (lm_idea_candidates). Read
+  // once and on every list refresh; a failed or empty read leaves `scores`
+  // at NO_SCORES, which is the state sortByScore treats as "change nothing".
+  const [scores, setScores] = useState<IdeaScoreRead>(NO_SCORES)
+  useEffect(() => {
+    let live = true
+    fetchIdeaScores('ivan', 'lm_idea_candidates').then(r => { if (live) setScores(r) })
+    return () => { live = false }
+  }, [loadedAt])
   const kindRows = withoutDecided(ideas, decided)
   const otherRows = withoutDecided(unclassified ?? [], decided)
-  const all = [...kindRows, ...otherRows]
+  const all = sortByScore([...kindRows, ...otherRows], scores, r => r.id)
   const { prominent: ideaProminent, demoted: ideaDemoted } =
     splitFacets(buildFacets(all, IDEA_SPECS), IDEA_PROMINENT)
   const shown = applyFilters(all, IDEA_SPECS, filters)
@@ -278,6 +323,7 @@ export function IdeasSection({
                 ? ` · plus ${otherRows.length} with no content type, shown here rather than dropped`
                 : ''} ·
               open one to approve or reject it
+              {scores.ok && scores.validated ? ' · sorted by outlier score' : ''}
             </div>
             <FilterRow
               prominent={ideaProminent} demoted={ideaDemoted}
@@ -291,7 +337,10 @@ export function IdeasSection({
             : (
               <Rows>
                 {shown.map(i => (
-                  <IdeaCard key={i.id} i={i} onDeleted={refresh} onDecided={markDecided} />
+                  <IdeaCard
+                    key={i.id} i={i} onDeleted={refresh} onDecided={markDecided}
+                    scoreRow={scores.byRef.get(i.id)} unvalidated={scores.ok && !scores.validated}
+                  />
                 ))}
               </Rows>
             )}
@@ -305,10 +354,15 @@ export function IdeasSection({
 // Ideas, CLIENT LANE
 // ---------------------------------------------------------------------------
 
-function ClientIdeaCard({ i, lane, onDecided }: {
+function ClientIdeaCard({ i, lane, onDecided, scoreRow, unvalidated }: {
   i: ClientIdea
   lane: ContentLane
   onDecided: (id: string) => void
+  /** This idea's newest idea_scores row (CB-15 P4 W-W2), or undefined when
+      it has none yet. */
+  scoreRow?: IdeaScoreRow
+  /** This client's recipe has not cleared PREREG yet. */
+  unvalidated?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [deciding, setDeciding] = useState<ClientIdeaDecision | null>(null)
@@ -332,6 +386,8 @@ function ClientIdeaCard({ i, lane, onDecided }: {
     <>
       <Row
         className="a-ct-idearow"
+        // See IdeaCard's identical comment: a read-only G6 evidence hook.
+        id={i.id}
         onClick={() => setOpen(o => !o)}
         selected={open}
         lead={
@@ -387,6 +443,7 @@ function ClientIdeaCard({ i, lane, onDecided }: {
               </a>
             </div>
           )}
+          <IdeaScoreBlock row={scoreRow} unvalidated={!!unvalidated} />
           <div className="a-ct-delzone">
             {err && <div className="a-ct-err">{err}</div>}
             <div className="a-ct-decide">
@@ -437,7 +494,17 @@ export function ClientIdeasSection({ ideas, lane, loading, error, loadedAt, refr
     setDecided(cur => new Set(cur).add(id))
     refresh()
   }
-  const rows = ideas.filter(i => !decided.has(i.id))
+  // CB-15 P4 W-W2: idea_scores for this client's ideas (client_ideas). A
+  // failed or empty read leaves `scores` at NO_SCORES — sortByScore then
+  // returns `rows` untouched, so the RPC's own "highest client-ICP first"
+  // order (operator_client_ideas) stands exactly as it does today.
+  const [scores, setScores] = useState<IdeaScoreRead>(NO_SCORES)
+  useEffect(() => {
+    let live = true
+    fetchIdeaScores(lane, 'client_ideas').then(r => { if (live) setScores(r) })
+    return () => { live = false }
+  }, [lane, loadedAt])
+  const rows = sortByScore(ideas.filter(i => !decided.has(i.id)), scores, i => i.id)
   // THE SUBFILTER, built through the app's own facet mechanism rather than a
   // bespoke pill strip, so it obeys the rule every other filter here obeys: a
   // facet is DERIVED from the rows currently loaded, never from a hardcoded
@@ -449,11 +516,13 @@ export function ClientIdeasSection({ ideas, lane, loading, error, loadedAt, refr
   if (rows.length === 0) {
     return <CalmEmpty line={`Nothing staged for ${LANE_POSSESSIVE[lane]} lane.`} loadedAt={loadedAt} />
   }
+  const sortLine = scores.ok && scores.validated
+    ? 'highest outlier score first' : 'highest client-ICP first'
   return (
     <Group label="Ideas" tail={rows.length} stickyHead>
       <div className="a-ct-bandline">
         <div className="a-ct-bandline-t">
-          {rows.length} staged, highest client-ICP first — open one to approve or reject it.
+          {rows.length} staged, {sortLine} — open one to approve or reject it.
         </div>
         <FilterRow
           prominent={prominent} demoted={demoted}
@@ -467,7 +536,10 @@ export function ClientIdeasSection({ ideas, lane, loading, error, loadedAt, refr
         : (
           <Rows>
             {shown.map(i => (
-              <ClientIdeaCard key={i.id} i={i} lane={lane} onDecided={markDecided} />
+              <ClientIdeaCard
+                key={i.id} i={i} lane={lane} onDecided={markDecided}
+                scoreRow={scores.byRef.get(i.id)} unvalidated={scores.ok && !scores.validated}
+              />
             ))}
           </Rows>
         )}

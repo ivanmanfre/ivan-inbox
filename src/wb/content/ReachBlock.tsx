@@ -17,7 +17,7 @@
    All math lives in lib/reach (pure, unit-tested).
    ========================================================================== */
 import { useEffect, useMemo, useState } from 'react'
-import { Button } from '../../ds'
+import { Button, Chip } from '../../ds'
 import { Cell, Group, Ledger, relAge } from '../kit'
 import { Failed } from './parts'
 import {
@@ -26,6 +26,7 @@ import {
 } from '../../lib/reach'
 import { num } from '../../lib/benchmark'
 import type { ContentLane } from '../../lib/content'
+import { fetchOwnPostBoosts, markOwnPostBoosted } from '../../lib/ownPostBoosts'
 import { RosterSection } from './RosterBlock'
 import { DriftSection } from './DriftBlock'
 import { LeadMagnetsSection } from './LeadMagnetsBlock'
@@ -45,7 +46,47 @@ function SplitBar({ outPct, label }: { outPct: number; label: string }) {
   )
 }
 
-function PostLine({ p, thisYear }: { p: PostAudienceRow; thisYear: number }) {
+// CB-15 P5 W-M4: boosted own posts are excluded from own baselines and
+// outlier counts by the recompute lane, so this is the one place a boost
+// gets set — the surface that already lists our own published posts. One
+// tap, current state shown on the chip's own icon and label; the block's
+// rule above ("no lime: nothing here is live state") stays true — the chip
+// keeps tone="quiet" in both states, never the accent/selected treatment
+// this file reserves for live state elsewhere. No confirm sheet: the mark
+// is append-only and the latest write always wins, so flipping it back is
+// the same one tap.
+function BoostToggle({ activityId, boosted, onToggle }: {
+  activityId: string
+  boosted: boolean
+  onToggle: (activityId: string, next: boolean) => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const run = async () => {
+    setBusy(true)
+    try {
+      await onToggle(activityId, !boosted)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <>
+      <Chip tone="quiet" icon={boosted ? 'check' : undefined} onClick={busy ? undefined : run}>
+        {busy ? 'Marking…' : boosted ? 'Boosted' : 'Mark boosted'}
+      </Chip>
+      {boosted && <span className="a-dim-2">excluded from own baselines</span>}
+    </>
+  )
+}
+
+function PostLine({ p, thisYear, boosted, onToggleBoost }: {
+  p: PostAudienceRow
+  thisYear: number
+  /** undefined when the boost read has not landed yet or failed — the chip
+      then reads "Mark boosted" (the fail-safe default: unmarked). */
+  boosted?: boolean
+  onToggleBoost?: (activityId: string, next: boolean) => void
+}) {
   const sp = splitOf(p)
   const reached = reachedOf(p)
   const titles = topBuckets(p.demographics?.job_title, 2)
@@ -72,11 +113,21 @@ function PostLine({ p, thisYear }: { p: PostAudienceRow; thisYear: number }) {
         {industry ? ` · Industry ${industry.label} ${industry.pct}%` : ''}
         {location ? ` · Location ${location.label} ${location.pct}%` : ''}
       </span>
+      {onToggleBoost && (
+        <span className="a-reach-post-d">
+          <BoostToggle activityId={p.activity_id} boosted={!!boosted} onToggle={onToggleBoost} />
+        </span>
+      )}
     </li>
   )
 }
 
-function WeekRow({ w, thisYear }: { w: ReachWeek; thisYear: number }) {
+function WeekRow({ w, thisYear, boosts, onToggleBoost }: {
+  w: ReachWeek
+  thisYear: number
+  boosts?: ReadonlyMap<string, boolean>
+  onToggleBoost?: (activityId: string, next: boolean) => void
+}) {
   const label = <span className="a-reach-wk-l"><span>{dayLabel(w.start, thisYear)}</span><span className="a-mono a-dim-2">W{w.week}</span></span>
   if (!w.posts.length) {
     return <li className="a-reach-week a-reach-week-empty">{label}<span className="a-dim-2">No posts</span></li>
@@ -102,7 +153,12 @@ function WeekRow({ w, thisYear }: { w: ReachWeek; thisYear: number }) {
           {w.split && w.withSplit < w.posts.length ? <span className="a-reach-wk-note">Split on {w.withSplit} of {w.posts.length} posts</span> : null}
         </summary>
         <ul className="a-reach-posts">
-          {w.posts.map(p => <PostLine key={p.activity_id} p={p} thisYear={thisYear} />)}
+          {w.posts.map(p => (
+            <PostLine
+              key={p.activity_id} p={p} thisYear={thisYear}
+              boosted={boosts?.get(p.activity_id)} onToggleBoost={onToggleBoost}
+            />
+          ))}
         </ul>
       </details>
     </li>
@@ -234,6 +290,35 @@ export function ReachReady({ rows, followers, readAt, now: nowProp, lane }: { ro
   const r = s.recent
   const visible = showOlder ? s.weeks : s.weeks.slice(0, FOLD_WEEKS)
   const hidden = s.weeks.length - visible.length
+  // CB-15 P5 W-M4: current boosted state for this lane's own posts, plus the
+  // one-tap toggle. A failed or empty read leaves `boosts` empty — every
+  // chip then reads its fail-safe default, "Mark boosted" (unboosted), which
+  // is the same as before this run. Third to drop per the run's budget order,
+  // so `lane` stays optional and the block above renders identically without
+  // it (ReachView's other two call sites do not pass one).
+  const [boosts, setBoosts] = useState<ReadonlyMap<string, boolean>>(() => new Map())
+  useEffect(() => {
+    let live = true
+    if (!lane) return
+    fetchOwnPostBoosts(lane).then(read => {
+      if (!live) return
+      setBoosts(new Map([...read.byRef].map(([ref, m]) => [ref, m.boosted])))
+    })
+    return () => { live = false }
+  }, [lane, readAt])
+  const onToggleBoost = lane
+    ? (activityId: string, next: boolean) => {
+      // Optimistic: the row flips on the tap. A failed write re-reads the
+      // real state rather than guessing, so the chip never lies about what
+      // the database actually holds.
+      setBoosts(cur => new Map(cur).set(activityId, next))
+      return markOwnPostBoosted(lane, activityId, next).catch(() => {
+        fetchOwnPostBoosts(lane).then(read => {
+          setBoosts(new Map([...read.byRef].map(([ref, m]) => [ref, m.boosted])))
+        })
+      })
+    }
+    : undefined
   return (
     <>
       <div className="a-ct-sub a-reach-lede">
@@ -298,7 +383,9 @@ export function ReachReady({ rows, followers, readAt, now: nowProp, lane }: { ro
           {s.undated ? ` ${plural(s.undated, 'post')} without a publish date ${s.undated === 1 ? 'is' : 'are'} not in any week.` : ''}
         </div>
         <ul className="a-reach-weeks">
-          {visible.map(w => <WeekRow key={w.start} w={w} thisYear={thisYear} />)}
+          {visible.map(w => (
+            <WeekRow key={w.start} w={w} thisYear={thisYear} boosts={boosts} onToggleBoost={onToggleBoost} />
+          ))}
         </ul>
         {hidden > 0 || showOlder ? (
           <div className="a-reach-more">
