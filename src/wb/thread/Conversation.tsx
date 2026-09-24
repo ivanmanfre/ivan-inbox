@@ -29,7 +29,7 @@ import { Linkified } from '../chrome/Linkified'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import { formatReturn, returnsIn, usePushLater } from '../../lib/pushLater'
 import {
-  approveDraft, channelFamilies, composeReply, discardDraft, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
+  approveDraft, channelFamilies, canComposeEmail, composeReply, discardDraft, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
   saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId, emailRowSender, ladderSteps, sendFailed,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../../lib/inbox'
@@ -433,7 +433,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
   const laneLabel = campaignLaneLabel(thread.lane)
   const routeTag = copyRouteTag(thread.copyRoute)
 
-  const emailDisabled = thread.channel === 'email'
+  const emailDisabled = thread.channel === 'email' && !canComposeEmail(thread)
   const engagedDisabled = thread.stage === 'engaged'
   const composerNote = thread.ownerConfirmation
     ? isReplyRetryPending(thread.ownerConfirmation) ? 'Reply paused while drafting retries automatically.' : 'Reply paused while an internal fact is confirmed.'

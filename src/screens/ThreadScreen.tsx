@@ -8,7 +8,7 @@ import { Linkified } from '../components/Linkified'
 import { useConfirm } from '../components/ConfirmSheet'
 import { formatReturn, returnsIn, usePushLater } from '../components/PushLaterSheet'
 import {
-  approveDraft, channelFamilies, composeReply, discardDraft, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
+  approveDraft, channelFamilies, canComposeEmail, composeReply, discardDraft, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
   saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId, emailRowSender,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../lib/inbox'
@@ -306,7 +306,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
   // card below has not happened yet and must not relabel the conversation.
   const mixed = isMixedChannel(bubbles)
 
-  const emailDisabled = thread.channel === 'email'
+  const emailDisabled = thread.channel === 'email' && !canComposeEmail(thread)
   const engagedDisabled = thread.stage === 'engaged'
   const composerNote = thread.ownerConfirmation
     ? isReplyRetryPending(thread.ownerConfirmation) ? 'Reply paused while drafting retries automatically.' : 'Reply paused while an internal fact is confirmed.'

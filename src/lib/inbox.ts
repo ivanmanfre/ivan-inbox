@@ -1319,16 +1319,58 @@ async function takeOwnershipBeforeManualReply(prospectId: string): Promise<numbe
   return result.revision ?? null
 }
 
+// ARCH email threads (madebyarch.com inbound, 2026-09-24) can be answered from the composer.
+// Other clients' email threads stay draft-approval only.
+export function canComposeEmail(t: Thread): boolean {
+  return t.client_id === 'arch'
+}
+
+type EmailReplyTarget = { recipient_email: string; message_text_prefix: string; email_headers?: Record<string, string> }
+
+// The reply goes to whoever last emailed us on this thread, as "Re: <their subject>", with
+// In-Reply-To/References so it lands under their message. Send Messages sends it from the
+// client identity (Davorin from ARCH <davorin@madebyarch.com>).
+async function emailReplyTarget(prospectId: string): Promise<EmailReplyTarget> {
+  const { data, error } = await supabase.from('outreach_messages')
+    .select('direction,recipient_email,draft_evidence,message_text')
+    .eq('prospect_id', prospectId).eq('channel', 'email').not('recipient_email', 'is', null)
+    .order('sent_at', { ascending: false, nullsFirst: false }).limit(10)
+  if (error) throw error
+  const rows = (data ?? []) as { direction: string; recipient_email: string; draft_evidence: { email?: { subject?: string; message_id?: string; references?: string } } | null; message_text: string }[]
+  const inbound = rows.find(r => r.direction === 'inbound')
+  const row = inbound ?? rows[0]
+  if (!row) throw new Error('No email address on this thread, so the reply was not queued.')
+  const em = inbound?.draft_evidence?.email ?? {}
+  const firstLine = (row.message_text ?? '').split('\n')[0] ?? ''
+  const baseSubject = (em.subject || (/^subject:/i.test(firstLine) ? firstLine.replace(/^subject:\s*/i, '') : '') || 'Following up').trim()
+  const subject = /^re:/i.test(baseSubject) ? baseSubject : `Re: ${baseSubject}`
+  const mid = (em.message_id ?? '').trim()
+  return {
+    recipient_email: String(row.recipient_email).split(/[,;\s]+/).filter(Boolean)[0],
+    message_text_prefix: `Subject: ${subject}\n\n`,
+    ...(mid ? { email_headers: { 'In-Reply-To': mid, References: `${(em.references ?? '').trim()} ${mid}`.trim() } } : {}),
+  }
+}
+
 export async function composeReply(t: Thread, text: string): Promise<void> {
+  const isEmail = t.channel === 'email'
+  if (isEmail && !canComposeEmail(t)) throw new Error('Email compose is only on for ARCH threads.')
+  const target = isEmail ? await emailReplyTarget(t.prospect_id) : null
   const manualRevision = await takeOwnershipBeforeManualReply(t.prospect_id)
+  const evidence = {
+    ...(manualRevision === null ? {} : { conversation_agent_manual_revision: manualRevision }),
+    ...(target?.email_headers ? { email_headers: target.email_headers } : {}),
+  }
   const { error } = await supabase.from('outreach_messages').insert({
-    prospect_id: t.prospect_id, direction: 'outbound', message_text: text,
-    message_type: 'manual_reply', channel: t.channel === 'email' ? 'email' : 'linkedin',
+    prospect_id: t.prospect_id, direction: 'outbound',
+    message_text: target ? target.message_text_prefix + text : text,
+    message_type: 'manual_reply', channel: isEmail ? 'email' : 'linkedin',
+    ...(target ? { recipient_email: target.recipient_email } : {}),
     approved_at: new Date().toISOString(),
     // sent_at defaults to now() at the column level; explicit null keeps the
     // row pickable by the dispatcher (approved_at NOT NULL AND sent_at IS NULL).
     sent_at: null,
-    ...(manualRevision === null ? {} : { draft_evidence: { conversation_agent_manual_revision: manualRevision } }),
+    ...(Object.keys(evidence).length ? { draft_evidence: evidence } : {}),
   })
   if (error) throw error
   // Ivan just answered this thread himself, so the pending AI draft (if any)
