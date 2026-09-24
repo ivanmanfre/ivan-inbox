@@ -65,6 +65,21 @@ function IdeaScoreBlock({ row, unvalidated }: { row: IdeaScoreRow | undefined; u
   )
 }
 
+// The CLOSED row's one-line version of the same block, so the score and its
+// top contributions are visible in the list itself — never only after a tap.
+// `Row`'s `sub` slot already truncates safely (nowrap + ellipsis, wb.css
+// .a-row-sub), so a long contributions line never overflows at 390px; it
+// just clips with "…" the way every other sub-line on this surface does.
+function scoreSummaryLine(row: IdeaScoreRow | undefined, unvalidated: boolean): string | undefined {
+  if (!row || row.score === null) return undefined
+  const line = contributionsLine(row)
+  // "unvalidated" sits right after the score, BEFORE the format and the
+  // contributions text — the line truncates with an ellipsis at 390px, and
+  // the contributions text is the part most likely to run long, so a label
+  // appended at the end would silently clip off-screen on most rows.
+  return `Outlier ${row.score.toFixed(2)}${unvalidated ? ' (unvalidated)' : ''}${row.recommended_format ? ` · ${label(row.recommended_format)}` : ''}${line ? ` · ${line}` : ''}`
+}
+
 function IdeaCard({ i, onDeleted, onDecided, scoreRow, unvalidated }: {
   i: IdeaCandidate
   onDeleted: () => void
@@ -133,6 +148,7 @@ function IdeaCard({ i, onDeleted, onDecided, scoreRow, unvalidated }: {
           <span className="a-ct-score">{i.composite_score !== null ? i.composite_score : '—'}</span>
         }
         title={title}
+        sub={scoreSummaryLine(scoreRow, !!unvalidated)}
         meta={i.source ? <span>{sourceLabel(i.source)}</span> : undefined}
         tail={i.ingested_at ? <span className="a-dim">{relTime(i.ingested_at)}</span> : undefined}
       />
@@ -404,6 +420,7 @@ function ClientIdeaCard({ i, lane, onDecided, scoreRow, unvalidated }: {
           <span className="a-ct-score">{i.icp_score !== null ? i.icp_score : '—'}</span>
         }
         title={title}
+        sub={scoreSummaryLine(scoreRow, !!unvalidated)}
         // ONE mark closed, and it is the SOURCE: it is the fact that separates
         // one of these rows from the next. It sits a tier below the title so it
         // does not compete with it.
