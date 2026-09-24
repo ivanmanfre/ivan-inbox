@@ -25,7 +25,7 @@ import { useConfirm } from '../chrome/ConfirmSheet'
 import { browseOrder, discardDraft, filterByStatus, filterThreads, inboxWaitingCount, isLeadMagnet, searchThreads, threadKind, type Filter, type Status, type Thread, eventTime } from '../../lib/inbox'
 import { DM_FIELDS, applyThreadTokens, hasStatusToken, tokensForFilter, type FilterToken } from '../../lib/filterTokens'
 import { checkedPhrase } from '../../lib/today'
-import { clientBadge } from '../../lib/labels'
+import { campaignLaneLabel, clientBadge } from '../../lib/labels'
 import { RowSelect } from '../../exp/v2c/RowSelect'
 import './dms.css'
 
@@ -731,6 +731,12 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
                         <span className="a-dms-titleline">
                           <span className="a-nowrap">{t.prospect_name}</span>
                           <Pill>{clientBadge(t.client_id)}</Pill>
+                          {/* The campaign lane, e.g. "Hiring signal" on one of Davorin's
+                              ARCH threads (Ivan, 2026-09-24: "specially for davorin's").
+                              Rides the seat pill on the same line; absent whenever a
+                              conversation has no lane on record so it never adds an
+                              empty chip. */}
+                          {campaignLaneLabel(t.lane) && <Pill>{campaignLaneLabel(t.lane)}</Pill>}
                           {kind === 'inmail' && <Pill>INMAIL</Pill>}
                           {kind === 'email' && <Pill>EMAIL</Pill>}
                           {kind === 'linkedin' && <Pill>DM</Pill>}
@@ -749,7 +755,10 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
                          three-tenant inbox has to say whose row this is. Here
                          it costs the name nothing. */
                       sub={<>
-                        <span className="a-dms-lane"><Pill>{clientBadge(t.client_id)}</Pill></span>
+                        <span className="a-dms-lane">
+                          <Pill>{clientBadge(t.client_id)}</Pill>
+                          {campaignLaneLabel(t.lane) && <Pill>{campaignLaneLabel(t.lane)}</Pill>}
+                        </span>
                         <span className="a-dms-subtext">{note && renderNote
                           ? renderNote(t, note)
                           : (note ?? (pendingDraft ? `Draft: ${snip}` : snip))}</span>

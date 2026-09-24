@@ -47,7 +47,7 @@ function thread(id: string, over: Partial<Thread> = {}): Thread {
     channel: 'linkedin', stage: 'replied', linkedin_url: null, chat_provider_id: null,
     last: m, unread: 0, draft: null, messages: [inb, m], spam: false,
     companionDraft: null, ownerConfirmation: null, draftStale: false,
-    draftSnoozedUntil: null, needsManualReply: false, blacklisted: false, ...over,
+    draftSnoozedUntil: null, needsManualReply: false, blacklisted: false, lane: null, ...over,
   }
 }
 

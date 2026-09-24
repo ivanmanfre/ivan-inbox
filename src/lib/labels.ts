@@ -178,3 +178,44 @@ export function clientBadge(id: string): string {
   if (id === 'risedtc') return 'Rise'
   return id.charAt(0).toUpperCase() + id.slice(1).toLowerCase()
 }
+
+// The known campaign-lane values (outreach_prospects.enrichment_data->>'lane', read into
+// inbox_messages_v by db/212), read live off the DB on 2026-09-24 across all three seats — NOT
+// the same axis as clientBadge above, which names the SEAT (Ivan/Rise/Arch) rather than which
+// campaign lane sent a given conversation. Plain words, kept short enough to sit in a Chip
+// beside the seat pill without wrapping the row. A value not in this map still renders (via
+// label()'s sentenceCase fallback) rather than vanishing, so a lane added later is never blank.
+const LANE: Record<string, string> = {
+  company_expansion: 'Company expansion',
+  engager_warm: 'Engager',
+  hiring_signal: 'Hiring signal',
+  funding_signal: 'Funding',
+  new_in_role: 'New in role',
+  profile_view: 'Profile view',
+  inbound: 'Inbound',
+  israel_trip: 'Israel',
+  cold_games: 'Cold (games)',
+  cold_apps: 'Cold (apps)',
+  warm_games: 'Warm (games)',
+  warm_apps: 'Warm (apps)',
+  sponsor_team: 'Sponsor team',
+  sponsor_mined: 'Sponsor',
+  soft_launch: 'Soft launch',
+  orbit_pilot_fintech: 'Orbit pilot (fintech)',
+  orbit_pilot_csaas: 'Orbit pilot (SaaS)',
+  test_geo_ads: 'Geo ads test',
+  hand_raise: 'Hand raise',
+  skool_owner: 'Skool owner',
+  adlib_twin_engager: 'Ad library engager',
+  own_post_engager: 'Own post engager',
+  podcast_guest: 'Podcast guest',
+  ad_library_engager: 'Ad library engager',
+  ad_velocity: 'Ad velocity',
+}
+
+/** The plain-word tag for a campaign lane. `''` for null/undefined, so a caller can gate the
+    chip on truthiness without a separate null check. */
+export function campaignLaneLabel(value: string | null | undefined): string {
+  if (!value) return ''
+  return LANE[value.toLowerCase()] ?? label(value)
+}

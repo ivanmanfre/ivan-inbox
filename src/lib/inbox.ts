@@ -36,6 +36,12 @@ export type InboxMessage = {
   // (which knows "no thanks" and not "no thank you"). The engine's verdict wins.
   reply_intent?: string | null;
   prospect_blacklisted?: boolean | null;
+  // outreach_prospects.enrichment_data->>'lane', denormalised into inbox_messages_v on
+  // 2026-09-24 (db/212) so the thread list can show which campaign lane a conversation
+  // came from (Ivan: "on inbox we can see the different lanes we are sending to with a
+  // tag no? specially for davorin's"). Optional because the stock screens' fixtures
+  // predate the column, same as reply_intent/prospect_blacklisted above.
+  lane?: string | null;
   // Not in inbox_messages_v — annotated onto pending drafts by useInbox from the
   // fetchDraftEmailStamps() probe. When set on a draft, approving it makes the
   // dispatcher ALSO email the scan to this address (rise_dm2_scan_delivery_v1 rows).
@@ -116,6 +122,8 @@ export type Thread = {
   // view — the reply-blindspot class of bug). Going by message rows alone would
   // make every one of them invisible, so the flag rides on the thread.
   needsManualReply: boolean;
+  // last.lane, coalesced to null. See InboxMessage.lane above.
+  lane: string | null;
 }
 
 /* ==========================================================================
@@ -411,6 +419,7 @@ export function groupThreads(
       needsManualReply: manualReplyIds.has(last.prospect_id),
       spam: (last.prospect_skip_reason ?? null) === SPAM_REASON,
       blacklisted: Boolean(last.prospect_blacklisted),
+      lane: last.lane ?? null,
       messages,
     })
   }
