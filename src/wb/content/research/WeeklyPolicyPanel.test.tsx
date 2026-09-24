@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import '@testing-library/jest-dom/vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { EditorialClient } from '../../../lib/editorialTypes'
 import { WeeklyPolicyPanel } from './WeeklyPolicyPanel'
@@ -84,9 +85,15 @@ describe('editable weekly policy through the actual direction adapter', () => {
     screen.getByText(/legacy format quota/)
     expect(screen.queryByRole('button', { name: 'Add format' })).toBeNull()
     expect(document.querySelectorAll('.a-policy-format-legacy li')).toHaveLength(1)
+    // H2 F5: Adopt is blocked while the legacy quota is still present, so it
+    // can never be re-saved into a new direction version the DB would refuse.
+    expect(screen.getByRole('button', { name: 'Adopt weekly policy' })).toBeDisabled()
+    expect(document.querySelectorAll('.a-policy-errors li')).not.toHaveLength(0)
     fireEvent.click(screen.getByRole('button', { name: /Retire format quota/ }))
     expect(screen.queryByText(/legacy format quota/)).toBeNull()
     expect(document.querySelectorAll('.a-policy-format-legacy')).toHaveLength(0)
     screen.getByText(/Formats are dynamic/, { selector: 'p' })
+    // Retiring clears the block by itself (no other field changed).
+    expect(document.querySelectorAll('.a-policy-errors li')).toHaveLength(0)
   })
 })

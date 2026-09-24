@@ -58,13 +58,20 @@ function SplitBar({ outPct, label }: { outPct: number; label: string }) {
 function BoostToggle({ activityId, boosted, onToggle }: {
   activityId: string
   boosted: boolean
-  onToggle: (activityId: string, next: boolean) => void
+  /** Rejects on a failed write. The caller (ReachReady) has already reverted
+      the shared `boosts` map by the time this rejects — this local `err` is
+      only for the message beside the chip (H2 F2). */
+  onToggle: (activityId: string, next: boolean) => Promise<void>
 }) {
   const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
   const run = async () => {
     setBusy(true)
+    setErr('')
     try {
       await onToggle(activityId, !boosted)
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not save')
     } finally {
       setBusy(false)
     }
@@ -75,6 +82,7 @@ function BoostToggle({ activityId, boosted, onToggle }: {
         {busy ? 'Marking…' : boosted ? 'Boosted' : 'Mark boosted'}
       </Chip>
       {boosted && <span className="a-dim-2">excluded from own baselines</span>}
+      {err && <span className="a-ct-err">{err}</span>}
     </>
   )
 }
@@ -85,7 +93,7 @@ function PostLine({ p, thisYear, boosted, onToggleBoost }: {
   /** undefined when the boost read has not landed yet or failed — the chip
       then reads "Mark boosted" (the fail-safe default: unmarked). */
   boosted?: boolean
-  onToggleBoost?: (activityId: string, next: boolean) => void
+  onToggleBoost?: (activityId: string, next: boolean) => Promise<void>
 }) {
   const sp = splitOf(p)
   const reached = reachedOf(p)
@@ -126,7 +134,7 @@ function WeekRow({ w, thisYear, boosts, onToggleBoost }: {
   w: ReachWeek
   thisYear: number
   boosts?: ReadonlyMap<string, boolean>
-  onToggleBoost?: (activityId: string, next: boolean) => void
+  onToggleBoost?: (activityId: string, next: boolean) => Promise<void>
 }) {
   const label = <span className="a-reach-wk-l"><span>{dayLabel(w.start, thisYear)}</span><span className="a-mono a-dim-2">W{w.week}</span></span>
   if (!w.posts.length) {
@@ -307,16 +315,22 @@ export function ReachReady({ rows, followers, readAt, now: nowProp, lane }: { ro
     return () => { live = false }
   }, [lane, readAt])
   const onToggleBoost = lane
-    ? (activityId: string, next: boolean) => {
-      // Optimistic: the row flips on the tap. A failed write re-reads the
-      // real state rather than guessing, so the chip never lies about what
-      // the database actually holds.
+    ? async (activityId: string, next: boolean) => {
+      // Optimistic: the row flips on the tap.
       setBoosts(cur => new Map(cur).set(activityId, next))
-      return markOwnPostBoosted(lane, activityId, next).catch(() => {
-        fetchOwnPostBoosts(lane).then(read => {
-          setBoosts(new Map([...read.byRef].map(([ref, m]) => [ref, m.boosted])))
-        })
-      })
+      try {
+        await markOwnPostBoosted(lane, activityId, next)
+      } catch (e) {
+        // H2 F2: revert to the PREVIOUS value immediately — never wipe the
+        // whole map. A best-effort re-read follows to catch up with any
+        // OTHER change made elsewhere in the meantime, but it only replaces
+        // the map when that read itself succeeds; a failed re-read must not
+        // erase every other post's boosted state along with this one's.
+        setBoosts(cur => new Map(cur).set(activityId, !next))
+        const read = await fetchOwnPostBoosts(lane).catch(() => null)
+        if (read?.ok) setBoosts(new Map([...read.byRef].map(([ref, m]) => [ref, m.boosted])))
+        throw e // BoostToggle shows this beside the chip
+      }
     }
     : undefined
   return (

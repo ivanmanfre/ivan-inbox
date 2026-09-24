@@ -280,12 +280,20 @@ export function IdeasSection({
   // CB-15 P4 W-W2: idea_scores for Ivan's lane (lm_idea_candidates). Read
   // once and on every list refresh; a failed or empty read leaves `scores`
   // at NO_SCORES, which is the state sortByScore treats as "change nothing".
+  //
+  // H2 F3: gated on kind === 'post' — this component is ALSO mounted for
+  // lead-magnet ideas (magnets.tsx, kind="lead_magnet"), and idea_scores
+  // never carries a lead-magnet row (stage='idea' scoring is post-only, cb15b
+  // outlier_idea_subjects_v). Without this gate, a validated Ivan idea-stage
+  // recipe would print " · sorted by outlier score" on the magnets band line
+  // even though nothing there is, or ever will be, scored.
   const [scores, setScores] = useState<IdeaScoreRead>(NO_SCORES)
   useEffect(() => {
+    if (kind !== 'post') return
     let live = true
     fetchIdeaScores('ivan', 'lm_idea_candidates').then(r => { if (live) setScores(r) })
     return () => { live = false }
-  }, [loadedAt])
+  }, [kind, loadedAt])
   const kindRows = withoutDecided(ideas, decided)
   const otherRows = withoutDecided(unclassified ?? [], decided)
   const all = sortByScore([...kindRows, ...otherRows], scores, r => r.id)
