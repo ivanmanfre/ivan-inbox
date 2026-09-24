@@ -56,6 +56,14 @@ describe('cameBackLine', () => {
   it('says commented when a comment is among the signals', () =>
     expect(cameBackLine(card({ n_views: 0, n_engagements: 1, signals: [{ kind: 'comment', at: '', detail: 'nice' }] })))
       .toMatch(/^commented on a post/))
+  it('names the post they reacted to', () =>
+    expect(cameBackLine(card({ n_views: 0, n_engagements: 1, signals: [{ kind: 'reaction', at: '', detail: null, post_title: 'I built a system that creates 30 post ideas' }] })))
+      .toMatch(/^reacted to “I built a system that creates 30 post ideas” · /))
+  it('names each post once when there are several', () =>
+    expect(cameBackLine(card({ n_views: 0, n_engagements: 2, signals: [
+      { kind: 'reaction', at: '', detail: null, post_title: 'A DTC brand put Instagram Stories on its homepage and conversion rate went up 15' },
+      { kind: 'reaction', at: '', detail: null, post_title: "I didn't want to do this..." },
+    ] }))).toMatch(/^reacted to 2 posts: “A DTC brand put Instagram Stories on its homepage and…” and “I didn't want to do this...” · /))
 })
 
 describe('sentLine / firstComment', () => {

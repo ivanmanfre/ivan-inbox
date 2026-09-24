@@ -11,7 +11,21 @@ import { LANE_LABEL, type ContentLane } from '../../lib/content'
 import type { Filter } from '../../lib/inbox'
 import { dayOf } from './warmSignalsData'
 
-export type CameBackSignal = { kind: string; at: string; detail: string | null }
+// post_title / post_url (db/20260924): the post a reaction or comment landed on, from our post tracker.
+export type CameBackSignal = { kind: string; at: string; detail: string | null; post_title?: string | null; post_url?: string | null }
+
+const POST_TITLE_MAX = 60
+
+/** The distinct posts they engaged with, newest first, as short quoted titles. */
+export function engagedPostTitles(c: Pick<CameBackCard, 'signals'>): string[] {
+  const seen = new Set<string>()
+  for (const s of c.signals ?? []) {
+    if (s.kind === 'view' || s.kind === 'scan_open' || !s.post_title) continue
+    const t = s.post_title.trim()
+    seen.add(t.length > POST_TITLE_MAX ? `${t.slice(0, POST_TITLE_MAX).trimEnd().replace(/\s+\S*$/, '')}…` : t)
+  }
+  return [...seen].map(t => `“${t}”`)
+}
 
 export type CameBackCard = {
   prospect_id: string
@@ -59,7 +73,9 @@ export function cameBackLine(c: Pick<CameBackCard, 'n_views' | 'n_engagements' |
   if (c.n_engagements > 0) {
     const commented = (c.signals ?? []).some(s => s.kind === 'comment')
     const word = commented ? 'commented on' : 'reacted to'
-    parts.push(c.n_engagements === 1 ? `${word} a post` : `${word} ${c.n_engagements} posts`)
+    const titles = engagedPostTitles(c)
+    if (c.n_engagements === 1) parts.push(`${word} ${titles[0] ?? 'a post'}`)
+    else parts.push(`${word} ${c.n_engagements} posts${titles.length ? `: ${titles.join(' and ')}` : ''}`)
   }
   const when = dayOf(c.last_signal_at)
   return `${parts.join(' and ') || 'came back'}${when ? ` · ${when}` : ''}`
