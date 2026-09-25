@@ -177,6 +177,23 @@
      columns it dropped "Oldest" onto a second row of its own and left the
      third slot of the first row empty. Withdrawn for this ledger only. */
   .a-today-read .a-ledger > .a-cell:last-child:nth-child(odd){ grid-column:auto }
+
+  /* P4b (2026-09-25) · census row "11 comments · Your lane" (180x23). The
+     batch disclosure toggle is `all:unset` inline text with no floor of its
+     own, so the tap target was the text's own line-height, not a control.
+     Grown to the same 44px floor every other disclosure control in the app
+     already holds; the row it sits in (space-between, already 44 tall from
+     the ✓/✗ actions beside it) absorbs the extra height with no reflow. */
+  .a-focus-batch-label{
+    display:flex; align-items:center;
+    min-height:var(--ds-tap);
+  }
+  /* P4b · census row "✓"/"✗" (35x44 each). ds.css's own phone tap floor
+     already grows `.ds-btn[data-size='sm']` to 44 tall; it stayed 35 wide
+     because a single glyph plus the sm size's own padding never reaches 44.
+     Width floors alongside height for both the batch row and the per-item
+     expanded row (both use this same class). */
+  .a-focus-batch-actions .ds-btn{ min-width:var(--ds-tap) }
 }
 
 

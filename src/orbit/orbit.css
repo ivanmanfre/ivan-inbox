@@ -101,10 +101,16 @@
   box-shadow: inset 0 0 0 1px var(--ds-accent-line);
   color: var(--ds-accent-ui);
 }
-/* The phone keeps the tap floor the rest of this surface holds. */
+/* The phone keeps the tap floor the rest of this surface holds.
+   P4b (2026-09-25): this used `--ds-chip-h` (40px, "the visible chip pill
+   inside its 44px hit box" per its own tokens.css comment) as the actual
+   box height, so the box WAS the 40px pill, not a 44px hit box around it --
+   census caught all 8 tenant/date chips (Ivan/Arch/Rise/7d/30d/90d/All/
+   Custom) at exactly 40px tall. `--ds-tap` is the floor this comment already
+   promised. */
 @media (max-width: 767px) {
   .a-orbit .a-orbit-preset.a-orbit-preset,
-  .a-root button.a-orbit-preset.a-orbit-preset { height: var(--ds-chip-h) }
+  .a-root button.a-orbit-preset.a-orbit-preset { height: var(--ds-tap) }
 }
 
 /* --- chip rows: filters (own row, most-reached-for) then campaigns -------- */
