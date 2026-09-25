@@ -25,7 +25,8 @@ import type { BrainMobileProps } from '../../exp/brain/types'
 import { JOB_LABEL, type Job } from '../../exp/v2c/layout'
 import { readPlace, resolveBootPlace, tabForJob, writePlace, TABS, TAB_LABEL, type Place } from '../../exp/brain/b/place'
 import { hashNamesJob, parseWbHash } from '../../exp/v2c/route'
-import { AskThread } from './AskThread'
+import { ClaudeScreen } from './ClaudeScreen'
+import { VOICE_HASH } from './claudeState'
 import { Feed } from './Feed'
 import { useFeedData } from '../../exp/brain/b/useFeedData'
 import './ask.css'
@@ -163,8 +164,11 @@ export function Mobile(p: BrainMobileProps) {
 
   // A link that names a job (`#exp/brain-b/sales`, `?section=sales`) opens that
   // place; a bare cold boot still lands where he left off.
+  // `#claude/voice` (the live-voice shortcut, D7) always boots onto Claude.
   const [place, setPlace] = useState<Place>(
-    () => resolveBootPlace({ ...boot, place: hashNamesJob(location.hash) ? tabForJob(job) : null }, readPlace()),
+    () => (VOICE_HASH.test(location.hash)
+      ? 'ask'
+      : resolveBootPlace({ ...boot, place: hashNamesJob(location.hash) ? tabForJob(job) : null }, readPlace())),
   )
   const [feedOpen, setFeedOpen] = useState<boolean>(!!boot.feed)
   // The turn a push notification named. Held here rather than inside AskThread
@@ -495,6 +499,32 @@ export function Mobile(p: BrainMobileProps) {
               `chrome`) takes them into its own 56px row and this one goes,
               which is the one head the reference has. Ask keeps the rib,
               because its pane has no head of its own to merge into. */}
+          {/* The tiles live in the stable node whether or not a head has adopted it;
+              unadopted, the node is detached and paints nothing. */}
+          {createPortal(ribTiles, ribNode)}
+
+          {/* D6 (2026-09-25 redesign): the Claude place is its own screen. Its
+              head, its alerts sheet (the same `feedOpen` state, so `?feed=1`
+              and a drag back still land on it) and its composer. Every other
+              place keeps the rib, the pager and the feed sheet below, as-is. */}
+          {place === 'ask' ? (
+            <ClaudeScreen
+              chat={chat} job={job} about={about} feed={feed} health={p.health}
+              alertsOpen={feedOpen}
+              setAlertsOpen={open => { if (open) { setFeedOpen(true); setSnap(0); setVy(null) } else closeSheet() }}
+              goJobFromFeed={j => {
+                const next = tabForJob(j)
+                setPlace(next)
+                writePlace(next)
+                goJob(j)
+              }}
+              openThreadAt={openThreadAt}
+              focusTurn={focusTurn} onFocused={() => setFocusTurn(null)}
+              morphFrom={morphFrom} onMorphed={() => setMorphFrom(null)}
+              onSettings={() => goJob('settings')}
+              onOps={() => onTab('ops')}
+            />
+          ) : (<>
           {ribClaimed ? null : (
             <Head
               title={title}
@@ -502,9 +532,6 @@ export function Mobile(p: BrainMobileProps) {
               tail={ribTiles}
             />
           )}
-          {/* The tiles live in the stable node whether or not a head has adopted it;
-              unadopted, the node is detached and paints nothing. */}
-          {createPortal(ribTiles, ribNode)}
 
           <div
             className="a-brain-pager" ref={pager}
@@ -519,19 +546,9 @@ export function Mobile(p: BrainMobileProps) {
                 animate={{ opacity: fading ? [0, 1] : 1 }}
                 transition={fadeT}
               >
-                {place === 'ask'
-                  ? (
-                    <AskThread
-                      chat={chat} job={job} about={about} mobile
-                      focusTurn={focusTurn} onFocused={() => setFocusTurn(null)}
-                      morphFrom={morphFrom}
-                      onMorphed={() => setMorphFrom(null)}
-                      // The other half of move 9: a drag down on the answer he
-                      // arrived at goes back to the card he arrived from.
-                      onDragBack={() => { setFocusTurn(null); setFeedOpen(true) }}
-                    />
-                  )
-                  : workSurface}
+                {/* The Claude place renders ClaudeScreen above (D6); this
+                    pager only ever hosts a lane now. */}
+                {workSurface}
               </motion.div>
             </div>
 
@@ -581,6 +598,7 @@ export function Mobile(p: BrainMobileProps) {
               />
             </motion.div>
           </div>
+          </>)}
         </Screen>
         </RibSlotCtx.Provider>
       </Shell>
