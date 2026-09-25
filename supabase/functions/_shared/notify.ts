@@ -11,6 +11,7 @@
 // a row that later reads as a lie.
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { sendPush } from './push-send.ts'
+import { presentPush } from './alert-kinds.ts'
 
 const FAMILY_RE = /^[a-z][a-z0-9_]{1,39}$/
 const SEVERITIES = ['info', 'attention', 'error'] as const
@@ -265,9 +266,21 @@ export async function notify(db: SupabaseClient, raw: unknown): Promise<NotifyRe
   const shouldPush = n.push ?? pushDefault(n.family, (n.severity ?? 'info') as Severity)
   if (!shouldPush) return { id: row.id, pushed: false, deduped: false, subs: 0, results: [] }
 
-  const out = await sendPush(db, {
+  // The stored row keeps the producer's own n.title / n.body untouched
+  // (written above). Only the push payload is reshaped, into one of a
+  // handful of KINDS (glyph + label + cleaned subject) so a lock screen can
+  // tell a done from a needs-you from a failed at a glance, per family
+  // (supabase/functions/_shared/alert-kinds.ts).
+  const presented = presentPush({
+    family: n.family,
+    severity: (n.severity ?? 'info') as Severity,
     title: n.title,
-    body: (n.body ?? '').slice(0, PUSH_BODY_CHARS),
+    body: n.body,
+  })
+
+  const out = await sendPush(db, {
+    title: presented.title,
+    body: presented.body.slice(0, PUSH_BODY_CHARS),
     // The service worker resolves this against its own scope, so './' is the
     // form that lands inside the app rather than at the user root.
     url: n.url ?? './',
