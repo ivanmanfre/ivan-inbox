@@ -1,13 +1,13 @@
 // inbox-fast — the LIVE CONVERSATION fast lane.
 //
-// WHY DIRECT API AND NOT THE RAILWAY PROXY (measured 2026-08-03, orchestrator):
-// the Railway proxy's /v1/messages spawns a fresh Claude Code CLI per call and
-// a trivial one-line turn measured 4.14s WALL TIME — that fails the <2.5s
-// first-audible gate for a voice loop before TTS is even added. The direct
-// Anthropic API streams the first token in a few hundred ms. The proxy-first
-// ruling (proxy-first-api-fallback-routing-2026-07-30) is about single-shot
-// content jobs; Ivan's own latency demand is the overriding constraint here,
-// and this is documented as a deliberate exception.
+// ROUTED THROUGH THE RAILWAY PROXY (2026-09-25, Ivan: "yes to proxy").
+// The 08-03 exception called api.anthropic.com directly for latency; that key
+// was purged on 09-05 (Railway proxy only, no metered API), which left this fn
+// answering 503 on every call. It now posts to the proxy's /v1/messages with
+// RAILWAY_CLAUDE_URL / RAILWAY_CLAUDE_API_KEY (the same pair inbox-claude uses).
+// The proxy does not stream and refuses a `system` field, so the instructions
+// ride inside the first user turn and the one JSON answer is re-emitted as the
+// two SSE frames the client reads (content_block_delta, message_stop).
 //
 // WHAT THIS IS NOT: it is not the brain. Real work — files, pipeline state,
 // research, anything needing tools — escalates through the EXISTING
@@ -67,7 +67,7 @@ When a completed escalation result is fed back to you (a message starting "[work
 
 If you don't know, say so in one sentence. Never fabricate pipeline state, metrics, or file contents — that's exactly what escalation is for.`
 
-const VENDOR_TIMEOUT_MS = 30_000
+const VENDOR_TIMEOUT_MS = 60_000
 
 function cors(origin: string | null): Record<string, string> {
   const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
@@ -92,10 +92,11 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors(origin) })
   if (req.method !== 'POST' && req.method !== 'GET') return fail(405, 'method_not_allowed', origin)
 
-  const key = Deno.env.get('ANTHROPIC_API_KEY')
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !ALLOWED_USER_ID || !key) {
+  const proxyBase = (Deno.env.get('RAILWAY_CLAUDE_URL') ?? '').replace(/\/$/, '')
+  const key = Deno.env.get('RAILWAY_CLAUDE_API_KEY')
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !ALLOWED_USER_ID || !proxyBase || !key) {
     console.error('refusing: incomplete config', {
-      url: !!SUPABASE_URL, anon: !!SUPABASE_ANON_KEY, allow: !!ALLOWED_USER_ID, key: !!key,
+      url: !!SUPABASE_URL, anon: !!SUPABASE_ANON_KEY, allow: !!ALLOWED_USER_ID, proxy: !!proxyBase, key: !!key,
     })
     return fail(503, 'fast_not_configured', origin)
   }
@@ -112,17 +113,10 @@ Deno.serve(async (req) => {
     return fail(403, 'forbidden_user', origin)
   }
 
-  // ---- ?probe=models — AUTH-GATED (sits below the operator allowlist check
-  // above, so only Ivan's own JWT can hit it). Lists what the account's key
-  // actually serves, so the MODEL choice above stays honest over time.
+  // ---- ?probe=models: AUTH-GATED. Reports the model and the route in use.
   const url = new URL(req.url)
   if (url.searchParams.get('probe') === 'models') {
-    const res = await fetch('https://api.anthropic.com/v1/models', {
-      headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    })
-    const body = await res.text()
-    return new Response(body, {
-      status: res.status,
+    return new Response(JSON.stringify({ model: MODEL, via: 'railway-proxy' }), {
       headers: { ...cors(origin), 'Content-Type': 'application/json' },
     })
   }
@@ -149,24 +143,24 @@ Deno.serve(async (req) => {
     return fail(400, 'bad_body', origin)
   }
 
+  // The proxy refuses a `system` field (it reads as an injected instruction
+  // block), so the instructions lead the first user turn instead.
+  const proxied = messages.map((m, i) => i === 0
+    ? { role: m.role, content: `${SYSTEM}\n\n---\n\n${m.content}` }
+    : m)
+
   const ctl = new AbortController()
   const timer = setTimeout(() => ctl.abort(), VENDOR_TIMEOUT_MS)
   let upstream: Response
   try {
-    upstream = await fetch('https://api.anthropic.com/v1/messages', {
+    upstream = await fetch(`${proxyBase}/v1/messages`, {
       method: 'POST',
       headers: {
         'x-api-key': key,
         'anthropic-version': '2023-06-01',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: MAX_TOKENS,
-        stream: true,
-        system: SYSTEM,
-        messages,
-      }),
+      body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, messages: proxied }),
       signal: ctl.signal,
     })
   } catch (e) {
@@ -174,35 +168,35 @@ Deno.serve(async (req) => {
     const aborted = e instanceof Error && e.name === 'AbortError'
     return fail(aborted ? 504 : 502, aborted ? 'fast_timeout' : 'fast_upstream_error', origin)
   }
+  clearTimeout(timer)
 
-  if (!upstream.ok || !upstream.body) {
-    clearTimeout(timer)
-    const detail = (await upstream.text().catch(() => '')).slice(0, 300)
-    console.error('anthropic rejected', { status: upstream.status })
-    return fail(502, 'fast_upstream_error', origin, `vendor_${upstream.status}: ${detail}`)
+  const raw = await upstream.text().catch(() => '')
+  if (!upstream.ok) {
+    console.error('proxy rejected', { status: upstream.status })
+    return fail(502, 'fast_upstream_error', origin, `proxy_${upstream.status}: ${raw.slice(0, 300)}`)
+  }
+  let text = ''
+  try {
+    const body = JSON.parse(raw) as { content?: { type?: string; text?: string }[] }
+    // Only text blocks: a thinking block ahead of the answer is not the answer.
+    text = (body.content ?? []).filter((c) => c.type === 'text' && typeof c.text === 'string')
+      .map((c) => c.text as string).join('').trim()
+  } catch {
+    return fail(502, 'fast_upstream_error', origin, 'proxy_bad_json')
+  }
+  // A capped proxy answers 200 with its limit notice as the "reply". That is an
+  // infra failure, never an answer to show or speak.
+  if (!text || /\b(usage|session|rate) limit\b|limit reached|try again later/i.test(text)) {
+    console.error('proxy returned no usable text', { len: text.length })
+    return fail(503, 'fast_proxy_unavailable', origin)
   }
 
-  // Relay the SSE stream verbatim. The client parses Anthropic's own event
-  // shapes (content_block_delta / message_stop) — no re-framing layer to
-  // drift. The timer is cleared when the stream ends either way.
-  const relay = new ReadableStream({
-    start(controller) {
-      const reader = upstream.body!.getReader()
-      const pump = (): Promise<void> => reader.read().then(({ done, value }) => {
-        if (done) { clearTimeout(timer); controller.close(); return }
-        controller.enqueue(value)
-        return pump()
-      }).catch((e) => {
-        clearTimeout(timer)
-        console.error('relay broke', { message: e instanceof Error ? e.name : 'unknown' })
-        controller.error(e)
-      })
-      return pump()
-    },
-    cancel() { clearTimeout(timer); ctl.abort() },
-  })
+  // Re-emit as the two SSE frames the client reads (live.ts parseFastFrame).
+  const frames =
+    `event: content_block_delta\ndata: ${JSON.stringify({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text } })}\n\n` +
+    `event: message_stop\ndata: ${JSON.stringify({ type: 'message_stop' })}\n\n`
 
-  return new Response(relay, {
+  return new Response(frames, {
     headers: {
       ...cors(origin),
       'Content-Type': 'text/event-stream',
