@@ -19,10 +19,24 @@
  *                    the first render (adoptPrefetchedInbox) so useInbox's
  *                    synchronous seed sees it.
  */
-import { INBOX_QUERY } from './inboxCache'
 import { currentUserId, readSwr, swrKey, type SwrEntry } from './swr'
+import { threadCacheSavedAt, writeThreadCache } from './threadCache'
+import type { TurnRow } from './turns'
+
+// inboxCache.ts's INBOX_QUERY, spelled here rather than imported (P1 speed,
+// 2026-09-25): that import chained inboxCache -> inbox.ts -> supabase-js into
+// the entry chunk, because main.tsx needs this file before the first render.
+// handoffQuery.test.ts pins the two strings together.
+export const INBOX_QUERY = 'dms/threads'
 
 export const SESSION_KEY = 'session'
+
+/**
+ * The Claude thread a Claude push was about (src/sw.ts prefetchClaude): the raw
+ * rows the worker read, for the page to adopt into src/lib/threadCache.ts.
+ */
+export const CLAUDE_HANDOFF_KEY = 'claude:last'
+export type ClaudeHandoff = { user: string; threadId: string; savedAt: string; rows: TurnRow[] }
 export const swrHandoffKey = (query: string): string => `swr:${query}`
 
 type StoredSession = { expires_at?: unknown }
@@ -107,4 +121,29 @@ export async function adoptPrefetchedInbox(): Promise<'adopted' | 'kept' | 'none
   if (pick !== worker) return 'kept'
   try { localStorage.setItem(swrKey(worker.user, INBOX_QUERY), JSON.stringify(worker)) } catch { return 'kept' }
   return 'adopted'
+}
+
+/** Which copy of a thread the page keeps: the worker's only when it is this user's and newer. */
+export function pickClaudeHandoff(worker: ClaudeHandoff | null, userId: string | null, localSavedAt: string | null): boolean {
+  if (!worker || !userId || worker.user !== userId) return false
+  if (typeof worker.threadId !== 'string' || !worker.threadId || typeof worker.savedAt !== 'string') return false
+  if (!Array.isArray(worker.rows) || worker.rows.length === 0) return false
+  return !localSavedAt || worker.savedAt > localSavedAt
+}
+
+/**
+ * Before the first render, beside adoptPrefetchedInbox: if the worker read a
+ * Claude thread at push time and its copy is newer than the page's, it goes into
+ * the thread cache, so the tap on a Claude push opens on the answer. Bounded the
+ * same way; resolves either way.
+ */
+export async function adoptPrefetchedThread(): Promise<'adopted' | 'kept' | 'none'> {
+  const worker = await Promise.race([
+    readHandoff<ClaudeHandoff>(CLAUDE_HANDOFF_KEY),
+    new Promise<null>(r => setTimeout(() => r(null), 300)),
+  ])
+  const userId = currentUserId()
+  if (!worker || !userId) return 'none'
+  if (!pickClaudeHandoff(worker, userId, threadCacheSavedAt(worker.threadId, userId))) return 'kept'
+  return writeThreadCache(worker.threadId, { rows: worker.rows, savedAt: worker.savedAt }, userId) === 'written' ? 'adopted' : 'kept'
 }
