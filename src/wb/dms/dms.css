@@ -661,6 +661,14 @@
   .a-warm-group{ padding-inline:var(--ds-s3) }
   .a-warm-body{ padding-inline:var(--ds-s3) }
   .a-warm-foot{ padding-inline:var(--ds-s3) }
+
+  /* P4b (2026-09-25) · census rows "Warm signals" (105x16) and "Came back,
+     no reply" (149x16). Both disclosure toggles share this class; the
+     button itself was only the icon+text line, no floor of its own, so the
+     real tap target was shorter than the padded header it sits inside looked.
+     Grown to the app's 44px tap floor; the enclosing `.a-group-h` header
+     (align-items:center, kit.tsx/wb.css) absorbs the extra height. */
+  .a-warm-toggle{ min-height:var(--ds-tap) }
 }
 .a-warm-card[data-compact]{ background:transparent }
 .a-warm-card[data-compact] .a-row{ align-items:center }
