@@ -64,12 +64,23 @@ export function useCommentQueue(drafts: OpsDraft[], refresh: () => void) {
 
   // A card that reached a real state at the poster is off the line, whatever the
   // line thought.
+  //
+  // 🔴 SAME ARRAY WHEN NOTHING LEFT. `drafts` is a fresh array on every render
+  // of the board (pendingOps), so this effect runs after every render, and a
+  // fresh `filter()` result is always a new state value: the board re-rendered
+  // itself forever, ~6,700 renders a second at 4x CPU (feel probe 2026-09-25).
+  // It burned the CPU for as long as Ops was open; with the phone lanes kept
+  // alive it burned it on every tab. Handing back `cur` when no entry left
+  // makes the set a no-op, and React stops.
   useEffect(() => {
-    setWaiting(cur => cur.filter(e => {
-      const d = drafts.find(x => x.id === e.id)
-      const f = d ? feed.get(outboundFeedId(d) ?? '') : undefined
-      return cardStateOf(f) === null
-    }))
+    setWaiting(cur => {
+      const next = cur.filter(e => {
+        const d = drafts.find(x => x.id === e.id)
+        const f = d ? feed.get(outboundFeedId(d) ?? '') : undefined
+        return cardStateOf(f) === null
+      })
+      return next.length === cur.length ? cur : next
+    })
   }, [feed, drafts])
 
   const record = useCallback((id: string, v: GateVerdict) => {

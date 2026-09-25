@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   dismissAllNotifications, dismissGroup, dismissNotification, groupNotifications, listNotifications,
   markNotificationsRead, mergeBackRows, restoreDismissedAt, restoreNotifications,
@@ -66,7 +66,10 @@ export function useFeedData() {
     }
   }, [refresh])
 
-  const groups = groupNotifications(rows)
+  // Memoised on the rows (feel pass, 2026-09-25): a new `groups` array on every
+  // render made the phone's feed sheet re-render all of its rows on every tab
+  // tap. groupNotifications is a pure function of the rows.
+  const groups = useMemo(() => groupNotifications(rows), [rows])
   const unreadTotal = rows.filter(r => !r.read_at).length
 
   // MARK-READ ON OPEN, not on scroll-into-view: a fast scroll through a feed

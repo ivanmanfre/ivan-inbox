@@ -24,7 +24,7 @@
 
    Every hook sits above the one return; there is no early return here.
    ========================================================================== */
-import { createContext, memo, useContext, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
+import { createContext, isValidElement, memo, useContext, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 import { RibSlotCtx } from '../../wb/kit'
 
 /** False while the phone chrome covers every lane (Claude, a thread takeover). */
@@ -32,11 +32,38 @@ export const LaneShownCtx = createContext(true)
 
 type Props = { active: boolean; lane: string; children: ReactNode }
 
-/** The lane's content. It renders only while the lane is shown: leaving and
-    staying hidden both keep the last render, so a hidden lane costs nothing. */
+/**
+ * The same element tree, as far as a lane can tell: same types, keys and
+ * values all the way down, with any two FUNCTIONS counted as equal. Every
+ * function a lane is handed by the Shell is a state setter, a stable callback,
+ * or a closure over those plus values that are themselves props (the lane,
+ * the thread list), so a new function object alone never means new content.
+ * Plain objects are compared by identity: a new one re-renders.
+ */
+export function sameTree(a: unknown, b: unknown, depth = 0): boolean {
+  if (Object.is(a, b)) return true
+  if (typeof a === 'function' && typeof b === 'function') return true
+  if (depth > 16) return false
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.length === b.length && a.every((x, i) => sameTree(x, b[i], depth + 1))
+  }
+  if (isValidElement(a) && isValidElement(b)) {
+    if (a.type !== b.type || a.key !== b.key) return false
+    const pa = a.props as Record<string, unknown>
+    const pb = b.props as Record<string, unknown>
+    const ka = Object.keys(pa)
+    return ka.length === Object.keys(pb).length && ka.every(k => k in pb && sameTree(pa[k], pb[k], depth + 1))
+  }
+  return false
+}
+
+/** The lane's content. It renders only while the lane is shown and only when
+    its tree changed: leaving, staying hidden, and coming back to a lane whose
+    data did not move all keep the last render. `minute` is part of the tree
+    so relative ages ("3m ago") are never more than a minute old on reveal. */
 const Frozen = memo(
-  ({ children }: { active: boolean; children: ReactNode }) => <>{children}</>,
-  (_a, b) => !b.active,
+  ({ children }: { active: boolean; minute: number; children: ReactNode }) => <>{children}</>,
+  (a, b) => !b.active || (a.minute === b.minute && sameTree(a.children, b.children)),
 )
 
 export function KeepLane({ active, lane, children }: Props) {
@@ -87,7 +114,7 @@ export function KeepLane({ active, lane, children }: Props) {
           thread) nothing else wants the tiles, and keeping them where they are
           means uncovering the lane moves nothing. */}
       <RibSlotCtx.Provider value={active ? slot : null}>
-        <Frozen active={visible}>{children}</Frozen>
+        <Frozen active={visible} minute={Math.floor(Date.now() / 60_000)}>{children}</Frozen>
       </RibSlotCtx.Provider>
     </div>
   )

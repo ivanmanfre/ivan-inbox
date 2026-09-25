@@ -16,7 +16,7 @@
    The axis it tracks is x, not y, because the gesture this screen already had
    is a horizontal pager and that gesture is the ledger's (S26-6).
    ========================================================================== */
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { Button, Icon, IconButton, Badge, LiveDot, Shell, TabBar, fadeT, springSoft, type IconName, type TabItem } from '../../ds'
@@ -61,6 +61,28 @@ function foldOnTabs<V>(byJob: Partial<Record<Job, V>>): Partial<Record<Place, V>
 }
 
 type Drag = { x0: number; y0: number; t0: number; dx: number; axis: 'none' | 'x' | 'y' }
+
+/** The feed sheet, re-rendered only when what it shows moved. It sat inside
+    this component and re-rendered on every tab tap, twice (the tab, then the
+    lane), re-deriving every row's day word and subject each time (feel pass,
+    2026-09-25). `useFeedData` hands back a fresh object each render, so its
+    FIELDS are compared; every function in it is a useCallback, and the
+    callbacks below are stable wrappers over the latest closure. */
+const KeptFeed = memo(Feed, (a, b) => {
+  if (a.goJob !== b.goJob || a.openThread !== b.openThread
+    || a.onNavigated !== b.onNavigated || a.onScrolled !== b.onScrolled) return false
+  const fa = a.feed as unknown as Record<string, unknown>
+  const fb = b.feed as unknown as Record<string, unknown>
+  const keys = Object.keys(fa)
+  return keys.length === Object.keys(fb).length && keys.every(k => Object.is(fa[k], fb[k]))
+})
+
+/** A callback with a stable identity that always runs the latest closure. */
+function useLatest<A extends unknown[]>(fn: (...a: A) => void): (...a: A) => void {
+  const ref = useRef(fn)
+  useEffect(() => { ref.current = fn })
+  return useCallback((...a: A) => ref.current(...a), [])
+}
 
 /**
  * Move 17, the island.
@@ -385,6 +407,15 @@ export function Mobile(p: BrainMobileProps) {
   const [ribNode] = useState(() => { const d = document.createElement('div'); d.className = 'a-head-slot-in'; return d })
   const [ribClaimed, setRibClaimed] = useState(false)
   const ribSlot = useMemo(() => ({ node: ribNode, setClaimed: setRibClaimed }), [ribNode])
+  // The feed sheet's handlers, stable so KeptFeed can skip a render.
+  const feedGoJob = useLatest((j: Job) => {
+    const next = tabForJob(j)
+    setPlace(next)
+    writePlace(next)
+    goJob(j)
+  })
+  const feedOpenThread = useLatest(openThreadAt)
+  const feedClose = useLatest(() => closeSheet())
 
   // A DM thread takes the screen over. The places stay MOUNTED under it
   // (covered, below), so closing the thread lands on the list exactly where it
@@ -592,15 +623,10 @@ export function Mobile(p: BrainMobileProps) {
                 sub={condensed ? undefined : `${feed.unreadTotal} unread`}
                 tail={<IconButton icon="back" label="Close feed" onClick={closeSheet} />}
               />
-              <Feed
-                feed={feed} goJob={j => {
-                  const next = tabForJob(j)
-                  setPlace(next)
-                  writePlace(next)
-                  goJob(j)
-                }}
-                openThread={openThreadAt}
-                onNavigated={closeSheet}
+              <KeptFeed
+                feed={feed} goJob={feedGoJob}
+                openThread={feedOpenThread}
+                onNavigated={feedClose}
                 onScrolled={setCondensed}
               />
             </motion.div>

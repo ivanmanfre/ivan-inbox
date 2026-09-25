@@ -285,7 +285,10 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
   const inboxError = inbox.error ?? (forceFail ? 'PostgREST returned 500 for inbox_messages_v' : null)
   const opsError = ops.error ?? (forceFail ? 'PostgREST returned 500 for ops_drafts' : null)
 
-  const opsPend = pendingOps(ops.drafts)
+  // Memoised on the rows (feel pass, 2026-09-25): every tab tap re-renders this
+  // Shell, and the waiting count walks all ~1,350 threads' messages.
+  const opsPend = useMemo(() => pendingOps(ops.drafts), [ops.drafts])
+  const dmsWaiting = useMemo(() => inboxWaitingCount(inbox.threads), [inbox.threads])
   const counts = {
     // Ask 11 — the "56" was every thread with an unread inbound row, 28 of
     // which Ivan had already answered in the LinkedIn app (the mirror writes
@@ -293,7 +296,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     // genuinely waiting: unanswered replies + drafts to approve + threads the
     // reply detector flagged needs_manual_reply. Same derivation as the list
     // and the InboxHead breakdown (lib/inbox.ts, inboxBreakdown).
-    dms: inboxWaitingCount(inbox.threads),
+    dms: dmsWaiting,
     ops: opsPend.length,
     // EVERY LANE, not just Ivan's. The rail row names a JOB, and the job holds
     // all three lanes; scoping the number to whichever lane happened to be
