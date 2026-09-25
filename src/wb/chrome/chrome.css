@@ -615,7 +615,15 @@
   display:flex; flex-direction:column;
   min-width:0; min-height:0;
 }
-.wb-lane[data-off]{ visibility:hidden; content-visibility:hidden; pointer-events:none }
+/* NOT `visibility:hidden`: it is inherited, so flipping it restyled every node
+   of the lane on each switch (49-65ms of style recalc at 4x CPU on Content).
+   content-visibility alone skips the paint and keeps the styles; the shown
+   lane sits above the rest so a skipped one can never cover it. */
+.wb-lane:not([data-off]){ z-index:1 }
+.wb-lane[data-off]{ content-visibility:hidden; pointer-events:none }
+@supports not (content-visibility:hidden){
+  .wb-lane[data-off]{ visibility:hidden }
+}
 /* The phone chrome's own covers (src/wb/ask/Mobile.tsx): the lanes under the
    Claude place, and the whole place frame under a DM thread takeover. Both
    stay mounted and are taken out of layout, not out of the tree. */

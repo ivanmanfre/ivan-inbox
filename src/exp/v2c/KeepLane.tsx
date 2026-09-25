@@ -8,7 +8,8 @@
 
    A visited lane now stays in the tree. Every lane is stacked in one box
    (`.wb-lanes`), each absolutely filling it. While inactive a lane is:
-   - `data-off`: `content-visibility:hidden` + `visibility:hidden`. The
+   - `data-off`: `content-visibility:hidden` (never `visibility`, which is
+     inherited and restyles the whole lane on every flip). The
      browser keeps its style and layout and skips its paint, so showing it
      again is a repaint, not a restyle of a few thousand nodes (display:none
      threw that state away and cost 40-60ms of style recalc at 4x CPU).
