@@ -50,7 +50,7 @@ describe('voice escalation', () => {
   })
 
   it('never speaks an em dash', () => {
-    const s = settledAnswer([u('q'), a('A — B')], 'q', 0)!
-    expect(resultToSpeak(s)).not.toContain('—')
+    const s = settledAnswer([u('q'), a('A \u2014 B')], 'q', 0)!
+    expect(resultToSpeak(s)).not.toContain('\u2014')
   })
 })

@@ -60,7 +60,7 @@ export function dispatched(turns: Turn[], task: string, before: number): boolean
 /** What the voice model is told when the turn settles. Short, speakable. */
 export function resultToSpeak(s: Settled): string {
   // A dash reads as nothing aloud and the voice model echoes it into captions.
-  const body = speakableText(s.text).replace(/\s*—\s*/g, ', ')
+  const body = speakableText(s.text).replace(/\s*\u2014\s*/g, ', ')
   if (s.error) return body ? `It stopped with an error (${s.error}). What it had: ${body}` : `It failed: ${s.error}.`
   return body || 'It finished but wrote no text answer. The details are in the chat.'
 }
