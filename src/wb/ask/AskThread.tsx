@@ -636,6 +636,9 @@ export function AskThread({
           <RunnerSection runner={runner} />
         </fieldset>
 
+        {/* P1 speed: the transcript on screen is the saved copy and the
+            last read of it failed. Quiet, never a skeleton over it. */}
+        {chat.turnsStale && !empty && <div className="a-brain-day" data-stale>Saved copy. Could not refresh.</div>}
         {empty && claude ? (
           <motion.div className="cl-empty" variants={list} initial="hidden" animate="show">
             <motion.div className="cl-empty-t" variants={rise}>

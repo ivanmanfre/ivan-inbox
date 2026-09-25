@@ -5,8 +5,9 @@ import { clientsClaim } from 'workbox-core'
 import { supabase } from './lib/supabase'
 import { loadInbox } from './lib/inboxLoad'
 import { INBOX_QUERY, buildInboxCache, type InboxCache } from './lib/inboxCache'
-import { SESSION_KEY, readHandoff, shouldPrefetch, swrHandoffKey, writeHandoff } from './lib/handoff'
+import { CLAUDE_HANDOFF_KEY, SESSION_KEY, readHandoff, shouldPrefetch, swrHandoffKey, writeHandoff, type ClaudeHandoff } from './lib/handoff'
 import type { SwrEntry } from './lib/swr'
+import { getBotThread, isUuid, latestThread, listTurns } from './lib/turns'
 
 // A new build must REPLACE the running one, not queue behind it. Without these
 // two lines an updated worker sits in `waiting` until every tab of the app is
@@ -96,9 +97,52 @@ self.addEventListener('push', (e) => {
     // stop trusting a feed.
     const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
     for (const c of clients) c.postMessage({ type: 'push', url, family: d.family })
+    // A Claude push opens the Claude thread, so that read goes first; the two
+    // run one after the other because either may rotate the refresh token.
+    if (isClaudeFamily(d.family)) await prefetchClaude(clients.length, d.family, url)
     await prefetchInbox(clients.length)
   })())
 })
+
+// The push families whose tap lands on a Claude thread (the same four PUSH_ART
+// gives the Claude card).
+const CLAUDE_FAMILIES = new Set(['claude_turn', 'bot', 'runner_job', 'runner_sync'])
+function isClaudeFamily(family: unknown): boolean {
+  return typeof family === 'string' && CLAUDE_FAMILIES.has(family)
+}
+
+// THE CLAUDE THREAD, READ AT PUSH TIME (P1 speed, 2026-09-25), the same way and
+// under the same rule as prefetchInbox below: only when no window is open (an
+// open page owns the refresh token and refetches itself), session from the
+// hand-off store, a rotated session written back. Which thread: the one the
+// push links (`?thread=<uuid>`), else Claude's own thread for a bot push, else
+// the latest ask thread, which is where a cold open lands. The raw rows go to
+// the hand-off store; main.tsx adopts them into src/lib/threadCache.ts before
+// the first render. An empty read is never saved (N3b).
+async function prefetchClaude(windowClients: number, family: unknown, url: string): Promise<string> {
+  try {
+    const stored = await readHandoff<string>(SESSION_KEY)
+    if (!shouldPrefetch({ windowClients, session: stored })) return windowClients > 0 ? 'app-open' : 'no-session'
+    const parsed = JSON.parse(stored!) as { access_token: string; refresh_token: string }
+    const { data, error } = await supabase.auth.setSession({ access_token: parsed.access_token, refresh_token: parsed.refresh_token })
+    if (error || !data.session) return `auth: ${error?.message ?? 'no session'}`
+    if (data.session.access_token !== parsed.access_token) await writeHandoff(SESSION_KEY, JSON.stringify(data.session))
+    const linked = /[?&]thread=([0-9a-f-]{36})/i.exec(url)?.[1]
+    const threadId = isUuid(linked) ? linked
+      : (family === 'bot' ? (await getBotThread())?.id : (await latestThread())?.id) ?? null
+    if (!threadId) return 'no thread'
+    const rows = await listTurns(threadId)
+    if (rows.length === 0) return 'empty read, not saved'
+    // The replayed context block and raw error detail are never painted, so they never touch storage.
+    const slim = rows.map(r => ({ ...r, context: null, error_detail: null }))
+    const entry: ClaudeHandoff = { user: data.session.user.id, threadId, savedAt: new Date().toISOString(), rows: slim }
+    await writeHandoff(CLAUDE_HANDOFF_KEY, entry)
+    return `saved ${rows.length} turns`
+  } catch (e) {
+    return `failed: ${e instanceof Error ? e.message : String(e)}`
+  }
+}
+;(self as unknown as { __claudePrefetch: typeof prefetchClaude }).__claudePrefetch = prefetchClaude
 
 // FETCH THE DMs LIST NOW, WHILE THE APP IS CLOSED, so the tap on the
 // notification opens on current rows instead of on a 3 s read (2026-09-14,
