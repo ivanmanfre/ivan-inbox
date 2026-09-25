@@ -344,7 +344,7 @@ export function Feed({ feed, goJob, openThread, onNavigated, onScrolled }: {
         {routine.length > 0 && (
           <div className="cl-routine" data-routine data-open={routineOpen ? '' : undefined}>
             <button
-              type="button" className="cl-routine-head" aria-expanded={routineOpen}
+              type="button" className="wb-cl cl-routine-head" aria-expanded={routineOpen}
               onClick={() => setRoutineOpen(v => !v)}
             >
               <span className="cl-kind" data-kind="digest" data-tone="quiet" aria-hidden="true"><Icon name="list" size={20} /></span>

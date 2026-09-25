@@ -314,27 +314,27 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
     })
     const closeTray = () => setTrayOpen2(false)
     const primary = pm === 'stop'
-      ? <button type="button" className="cl-prime" data-mode="stop" aria-label="Stop" onClick={onStop}><Icon name="stop" size={20} /></button>
+      ? <button type="button" className="wb-cl cl-prime" data-mode="stop" aria-label="Stop" onClick={onStop}><Icon name="stop" size={20} /></button>
       : pm === 'send'
-        ? <button type="button" className="cl-prime" data-mode="send" aria-label="Send" disabled={!canSend} onClick={doSend}><Icon name="up" size={24} /></button>
+        ? <button type="button" className="wb-cl cl-prime" data-mode="send" aria-label="Send" disabled={!canSend} onClick={doSend}><Icon name="up" size={24} /></button>
         : pm === 'voice'
           ? (
-            <button type="button" className="cl-prime" data-mode="voice" aria-label="Talk to Claude live" onClick={pill.onVoice}>
+            <button type="button" className="wb-cl cl-prime" data-mode="voice" aria-label="Talk to Claude live" onClick={pill.onVoice}>
               <span className="cl-wave" aria-hidden="true"><i /><i /><i /><i /><i /></span>
             </button>
           )
           : pm === 'dictate'
             ? (
               <button
-                type="button" className="cl-prime" data-mode="voice"
+                type="button" className="wb-cl cl-prime" data-mode="voice"
                 aria-label={recording ? 'Stop dictating' : 'Dictate'}
                 disabled={!stt.supported || transcribing}
                 onClick={() => { if (!transcribing) stt.toggle() }}
               ><Icon name="mic" size={20} /></button>
             )
-            : <button type="button" className="cl-prime" data-mode="off" aria-label="Offline" disabled><span className="cl-wave" aria-hidden="true"><i /><i /><i /><i /><i /></span></button>
+            : <button type="button" className="wb-cl cl-prime" data-mode="off" aria-label="Offline" disabled><span className="cl-wave" aria-hidden="true"><i /><i /><i /><i /><i /></span></button>
     const tile = (icon: 'image' | 'doc' | 'copy' | 'cmd' | 'edit', label: string, onClick: () => void, disabled = false) => (
-      <button type="button" className="cl-tile" onClick={onClick} disabled={disabled}>
+      <button type="button" className="wb-cl cl-tile" onClick={onClick} disabled={disabled}>
         <span className="cl-tile-i"><Icon name={icon} size={20} /></span>
         <span className="cl-tile-t">{label}</span>
       </button>
@@ -368,7 +368,7 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
         {attachments.length > 0 && <div className="cl-pill-note">The attachment stays on this phone for now.</div>}
         <div className="cl-pill" data-mode={pm} onPaste={onPaste}>
           <button
-            type="button" className="cl-pill-btn" aria-label="Add: photo, file, paste, commands, new chat"
+            type="button" className="wb-cl cl-pill-btn" aria-label="Add: photo, file, paste, commands, new chat"
             aria-expanded={trayOpen2} onClick={() => setTrayOpen2(true)}
           ><Icon name="add" size={24} /></button>
           <textarea
@@ -382,7 +382,7 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
           />
           {stt.supported && pm !== 'stop' && pm !== 'dictate' && (
             <button
-              type="button" className="cl-pill-btn" data-on={recording ? '' : undefined}
+              type="button" className="wb-cl cl-pill-btn" data-on={recording ? '' : undefined}
               aria-label={recording ? 'Stop dictating' : 'Dictate'}
               disabled={transcribing}
               onClick={() => { if (!transcribing) stt.toggle() }}
@@ -399,7 +399,7 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
             {tile('cmd', 'Commands', () => { closeTray(); pill.onCommands?.() }, !pill.onCommands)}
           </div>
           {pill.onNewChat && (
-            <button type="button" className="cl-trayrow" onClick={() => { closeTray(); pill.onNewChat?.() }}>
+            <button type="button" className="wb-cl cl-trayrow" onClick={() => { closeTray(); pill.onNewChat?.() }}>
               <Icon name="edit" size={20} /><span>New chat</span>
             </button>
           )}

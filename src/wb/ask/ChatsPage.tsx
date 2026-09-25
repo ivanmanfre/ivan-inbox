@@ -72,7 +72,7 @@ export function ChatsPage({ chat, onClose, offline }: {
       <div className="cl-chats-list">
         {chat.botThread && !needle && (
           <button
-            type="button" className="cl-chat" data-current={onBot ? '' : undefined}
+            type="button" className="wb-cl cl-chat" data-current={onBot ? '' : undefined}
             onClick={() => pick(() => chat.openBot())}
           >
             <span className="cl-chat-i"><Icon name="ask" size={20} /></span>
@@ -94,7 +94,7 @@ export function ChatsPage({ chat, onClose, offline }: {
               const running = current ? chat.busy : t.last_status === 'running' || t.last_status === 'queued'
               return (
                 <button
-                  type="button" key={t.id} className="cl-chat" data-current={current ? '' : undefined}
+                  type="button" key={t.id} className="wb-cl cl-chat" data-current={current ? '' : undefined}
                   onClick={() => pick(() => chat.openThread(t.id))}
                 >
                   <span className="cl-chat-t">{t.title ? shortTitle(t.title, 60) : 'Untitled'}</span>
@@ -128,7 +128,7 @@ export function ChatsPage({ chat, onClose, offline }: {
               placeholder="Search chats" aria-label="Search chats"
             />
           </label>
-          <button type="button" className="cl-new" data-new-thread onClick={() => pick(() => chat.newThread())}>
+          <button type="button" className="wb-cl cl-new" data-new-thread onClick={() => pick(() => chat.newThread())}>
             <Icon name="edit" size={20} /><span>New</span>
           </button>
         </div>

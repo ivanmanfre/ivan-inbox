@@ -760,7 +760,7 @@ export function AskThread({
               <div className="cl-asks" data-quick-asks>
                 {QUICK_ASKS.map(q => (
                   <button
-                    type="button" key={q.label} className="cl-ask"
+                    type="button" key={q.label} className="wb-cl cl-ask"
                     disabled={!!q.send && claude.offline}
                     onClick={() => (q.send ? send(q.send) : setText(q.insert ?? ''))}
                   >{q.label}</button>

@@ -89,14 +89,14 @@ export function ClaudeScreen({
       }}
     >
       <header className="cl-top">
-        <button type="button" className="cl-iconbtn" aria-label="Chats" onClick={() => setChatsOpen(true)}>
+        <button type="button" className="wb-cl cl-iconbtn" aria-label="Chats" onClick={() => setChatsOpen(true)}>
           <Icon name="list" size={24} />
           {chat.botUnread && <span className="cl-dot cl-dot-on" data-bot-unread aria-label="Unread" />}
         </button>
 
         <span className="cl-titlewrap">
           <button
-            type="button" className="cl-title" aria-expanded={menuOpen}
+            type="button" className="wb-cl cl-title" aria-expanded={menuOpen}
             aria-label={`${title}. Thread menu`} onClick={() => setMenuOpen(v => !v)}
           >
             <span className="cl-title-t">{title}</span>
@@ -128,7 +128,7 @@ export function ClaudeScreen({
         </span>
 
         <button
-          type="button" className="cl-iconbtn" data-feed-open
+          type="button" className="wb-cl cl-iconbtn" data-feed-open
           aria-label={offline ? 'Alerts, count unknown while offline' : `Alerts, ${unread} unread`}
           onClick={() => setAlertsOpen(true)}
         >
@@ -136,7 +136,7 @@ export function ClaudeScreen({
           {!offline && unread > 0 && <span className="cl-count">{unread > 99 ? '99+' : unread}</span>}
           {!offline && unread === 0 && health.n > 0 && <span className="cl-dot cl-dot-warn" aria-hidden="true" />}
         </button>
-        <button type="button" className="cl-iconbtn" aria-label="New chat" onClick={newChat}>
+        <button type="button" className="wb-cl cl-iconbtn" aria-label="New chat" onClick={newChat}>
           <Icon name="edit" size={24} />
         </button>
       </header>
@@ -169,7 +169,7 @@ export function ClaudeScreen({
         className="cl-alerts"
       >
         {health.n > 0 && (
-          <button type="button" className="cl-health" onClick={() => { setAlertsOpen(false); onOps() }}>
+          <button type="button" className="wb-cl cl-health" onClick={() => { setAlertsOpen(false); onOps() }}>
             <span className="cl-kind" data-tone="attention" aria-hidden="true"><Icon name="ops" size={20} /></span>
             <span className="cl-health-t">
               <b>{healthLine}</b>

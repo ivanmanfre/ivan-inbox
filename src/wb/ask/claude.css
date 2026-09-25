@@ -1,0 +1,124 @@
+/* ==========================================================================
+   src/wb/ask/claude.css: the 2026-09-25 Claude redesign (candidate A).
+
+   Tokens only. Lime (--ds-accent*) is spent on live state alone: the primary
+   pill button, the running dot/spinner, unread, Pick this up. Buttons that
+   paint themselves carry `wb-cl` so wb.css's bare-button reset skips them.
+   Part 1: the shared thread (phone screen and desktop drawer alike).
+   Part 2 (claude-screen.css): the phone screen's own chrome.
+   ========================================================================== */
+@import './claude-screen.css';
+
+/* ---- the thread: Claude as prose, Ivan as a compact pill ---------------- */
+.a-brain-thread .a-brain-uturn{ justify-content:flex-end }
+.a-brain-thread .a-brain-ubub{
+  max-width:82%;
+  padding:var(--ds-s3) var(--ds-s5);
+  border-radius:var(--ds-r4);
+  background:var(--ds-surface-2);
+  color:var(--ds-text);
+}
+.a-brain-thread .a-brain-answer{
+  padding-inline-start:var(--ds-s0);
+  border-inline-start:0;
+}
+.a-brain-thread .a-brain-answer[data-focus]{ box-shadow:inset 2px 0 0 0 var(--ds-accent); padding-inline-start:var(--ds-s4) }
+.a-brain-thread .a-brain-answer.a-brain-bot{ padding-inline-start:var(--ds-s0) }
+
+/* a disabled fieldset is how offline disables pills, retry and job actions */
+.cl-fs{ border:0; margin:0; padding:0; min-width:0; display:contents }
+.cl-fs:disabled button{ opacity:.45; pointer-events:none }
+
+/* copy / ask again under an answer */
+.cl-turnfoot{ display:flex; gap:var(--ds-s2); margin-inline-start:calc(-1 * var(--ds-s3)); color:var(--ds-text-3) }
+
+/* ---- live tool progress (real stream events only) ---------------------- */
+.cl-steps{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+.cl-steps-h{
+  display:flex; align-items:center; gap:var(--ds-s3);
+  font-size:var(--ds-fs-meta); color:var(--ds-text-2);
+}
+.cl-steps-s{ color:var(--ds-text-3); font-variant-numeric:tabular-nums }
+.cl-steps-l{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:var(--ds-s2) }
+.cl-step{
+  display:flex; align-items:flex-start; gap:var(--ds-s3);
+  font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text); min-width:0;
+}
+.cl-step[data-done]{ color:var(--ds-text-3) }
+.cl-step-m{ flex:0 0 16px; height:18px; display:flex; align-items:center; justify-content:center; color:var(--ds-sev-clear) }
+.cl-step-t{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.cl-step-p{ color:var(--ds-text-3) }
+.cl-spin{
+  width:12px; height:12px; border-radius:var(--ds-r-pill);
+  border:2px solid var(--ds-line-strong); border-top-color:var(--ds-accent);
+  animation:cl-spin 900ms linear infinite;
+}
+@keyframes cl-spin{ to{ transform:rotate(360deg) } }
+.cl-live{
+  display:inline-block; width:8px; height:8px; flex:0 0 auto;
+  border-radius:var(--ds-r-pill); background:var(--ds-accent);
+  animation:cl-breathe 1.6s var(--ds-ease) infinite;
+}
+@keyframes cl-breathe{ 50%{ opacity:.35 } }
+
+/* ---- empty chat: a greeting, then the quick asks above the composer ---- */
+.cl-empty{
+  display:flex; flex-direction:column; gap:var(--ds-s3);
+  margin-block:auto; padding-block:var(--ds-s8);
+}
+.cl-empty-t{ font-size:var(--ds-fs-page); line-height:var(--ds-lh-page); font-weight:var(--ds-fw-semi); color:var(--ds-text); letter-spacing:var(--ds-tr-page) }
+.cl-empty-s{ font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text-3); max-width:32ch }
+.cl-asks{ display:flex; gap:var(--ds-s3); overflow-x:auto; scrollbar-width:none; padding-bottom:var(--ds-s1) }
+.cl-asks::-webkit-scrollbar{ display:none }
+.wb-cl.cl-ask{
+  flex:0 0 auto; min-height:var(--ds-tap);
+  padding:var(--ds-s0) var(--ds-s5);
+  border:1px solid var(--ds-line-strong); border-radius:var(--ds-r-pill);
+  background:var(--ds-surface-1); color:var(--ds-text);
+  font:inherit; font-size:var(--ds-fs-body); cursor:pointer; white-space:nowrap;
+  transition:background var(--ds-dur) var(--ds-ease);
+}
+.wb-cl.cl-ask:active{ background:var(--ds-surface-2) }
+.wb-cl.cl-ask:disabled{ opacity:.45 }
+
+/* ---- alert kinds: glyph on a toned tile + a coloured label ------------- */
+.cl-kind{
+  flex:0 0 auto; width:36px; height:36px;
+  display:inline-flex; align-items:center; justify-content:center;
+  border-radius:var(--ds-r3);
+  background:var(--ds-surface-2); color:var(--ds-text-2);
+}
+.cl-kind[data-tone='attention']{ background:var(--ds-sev-attention-soft); color:var(--ds-sev-attention-ui) }
+.cl-kind[data-tone='urgent']{ background:var(--ds-sev-urgent-soft); color:var(--ds-sev-urgent-ui) }
+.cl-kind[data-tone='clear']{ background:var(--ds-sev-clear-soft); color:var(--ds-sev-clear-ui) }
+.cl-kind[data-tone='ink']{ background:var(--ds-surface-3); color:var(--ds-text) }
+.cl-kind[data-tone='ring']{ background:transparent; color:var(--ds-text); box-shadow:inset 0 0 0 1.5px var(--ds-text-2) }
+.cl-kind[data-tone='outline']{ background:transparent; color:var(--ds-text-3); box-shadow:inset 0 0 0 1px var(--ds-line-strong) }
+.cl-kind[data-tone='quiet']{ background:var(--ds-surface-1); color:var(--ds-text-3) }
+.cl-kind-l{ font-size:var(--ds-fs-meta); font-weight:var(--ds-fw-semi); color:var(--ds-text-2) }
+.cl-kind-l[data-tone='attention']{ color:var(--ds-sev-attention-ui) }
+.cl-kind-l[data-tone='urgent']{ color:var(--ds-sev-urgent-ui) }
+.cl-kind-l[data-tone='clear']{ color:var(--ds-sev-clear-ui) }
+.cl-kind-l[data-tone='ink'], .cl-kind-l[data-tone='ring']{ color:var(--ds-text) }
+.cl-kind-l[data-tone='outline'], .cl-kind-l[data-tone='quiet']{ color:var(--ds-text-3) }
+/* the severity mark stays in the DOM for the instruments; the tile is read */
+.cl-kind-mark{ display:none }
+
+/* the routine fold at the end of the feed */
+.cl-routine{ margin-top:var(--ds-s5); border-top:1px solid var(--ds-line) }
+.wb-cl.cl-routine-head{
+  width:100%; min-height:56px;
+  display:flex; align-items:center; gap:var(--ds-s4);
+  padding:var(--ds-s3) var(--ds-s0);
+  background:none; border:0; color:var(--ds-text-2); font:inherit; cursor:pointer; text-align:start;
+}
+.cl-routine-t{ flex:1 1 auto; font-size:var(--ds-fs-title) }
+.cl-routine-n{ font-size:var(--ds-fs-meta); color:var(--ds-text-3); font-variant-numeric:tabular-nums }
+
+/* dots and counts */
+.cl-dot{ display:inline-block; width:8px; height:8px; border-radius:var(--ds-r-pill); background:var(--ds-accent); flex:0 0 auto }
+.cl-dot-warn{ background:var(--ds-sev-attention) }
+
+@media (prefers-reduced-motion:reduce){
+  .cl-spin, .cl-live{ animation:none }
+}
