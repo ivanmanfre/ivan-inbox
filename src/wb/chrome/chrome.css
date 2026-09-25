@@ -603,3 +603,17 @@
    drawer are untouched. The drawer's own width, said once here and once in
    `.a-drawer[data-open]` above. */
 .wb.dt:has(.a-drawer[data-open]) .a-tk-scrim{ right:380px }
+
+/* KeepLane (src/exp/v2c/KeepLane.tsx): a kept-alive phone lane. Shown, the
+   wrapper is not a box at all, so the lane lays out exactly as it did when it
+   was the column's direct child. Hidden, it is gone from layout and paint; the
+   `!important` beats `display:contents` above, which would otherwise outrank
+   the user agent's own [hidden] rule. */
+.wb-lane{ display:contents }
+.wb-lane[hidden]{ display:none !important }
+/* The phone chrome's own covers (src/wb/ask/Mobile.tsx): the lanes under the
+   Claude place, and the whole place frame under a DM thread takeover. Both
+   stay mounted and are taken out of layout, not out of the tree. */
+.a-brain-lanes{ display:contents }
+.a-brain-lanes[hidden]{ display:none !important }
+.a-brain-root[hidden]{ display:none !important }

@@ -14,7 +14,7 @@ import { internalHoldSummary } from '../../lib/inbox'
    fixed ROW_H, so the row box is pinned to that same constant from JS — one
    number, used by the arithmetic and by the box, so the two cannot drift.
    ========================================================================== */
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Badge, Banner, Button, Chip, DayHeader, EmptyState, FilterTokens, IconButton, Input } from '../../ds'
 import { Body, Group, Head, Bar, Row, Rows, Screen } from '../kit'
 import { Face, PullMark, Pill, timeAgo } from './parts'
@@ -136,21 +136,26 @@ export function rowsScrollTop(scroller: HTMLElement, anchor: HTMLElement | null)
 function useRowWindow(ref: React.RefObject<HTMLDivElement | null>, anchor: React.RefObject<HTMLDivElement | null>, items: Item[], on: boolean, rowH: number) {
   const [top, setTop] = useState(0)
   const [view, setView] = useState(900)
+  // The offset the window is cut at, snapped DOWN to two rows. Every scroll event
+  // used to set a new pixel offset and re-render the whole list; snapped, the
+  // list re-renders once per two rows travelled. Two rows short at the bottom
+  // edge is inside the six-row OVERSCAN, so no unrendered row can show.
+  const step = rowH * 2
   useEffect(() => {
     const el = ref.current
     if (!el || !on) return
-    const onScroll = () => setTop(rowsScrollTop(el, anchor.current))
+    const onScroll = () => setTop(Math.floor(rowsScrollTop(el, anchor.current) / step) * step)
     const onSize = () => setView(el.clientHeight || 900)
     onSize()
     el.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('resize', onSize)
     return () => { el.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onSize) }
-  }, [ref, anchor, on])
+  }, [ref, anchor, on, step])
   // The slot above the rows changes height without a scroll event (cards load, a section folds).
   // setTop with an unchanged number is a no-op, so this settles in one pass.
   useEffect(() => {
     const el = ref.current
-    if (el && on) setTop(rowsScrollTop(el, anchor.current))
+    if (el && on) setTop(Math.floor(rowsScrollTop(el, anchor.current) / step) * step)
   })
   const itemH = (it: Item) => (it.kind === 'day' ? DAY_H : rowH)
   if (!on) return { start: 0, end: items.length, padTop: 0, padBottom: 0 }
@@ -473,7 +478,15 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
     try { await discardDraft(t.draft.id) } finally { refresh() }
   }
   const tokenMode = tokens !== undefined && setTokens !== undefined
-  const laned = tokenMode ? applyThreadTokens(threads, tokens) : filterThreads(threads, filter)
+  // SCROLL JANK (feel pass, 2026-09-25): the row window re-renders this list on
+  // scroll, and every one of those renders re-filtered, re-sorted and re-dated
+  // all ~1,350 threads (a dayLabel `toLocaleDateString` per row). 11 of 155
+  // frames went over 50ms at 4x CPU. The derivations below depend on the
+  // question, never on the scroll offset, so they are memoised on the question.
+  const laned = useMemo(
+    () => (tokenMode ? applyThreadTokens(threads, tokens) : filterThreads(threads, filter)),
+    [tokenMode, threads, tokens, filter],
+  )
   // A SEARCH reaches the whole lane; the LIST does not. The browsable list is
   // what is waiting on him, while typing a name still finds a conversation where
   // the ball is with them. Cutting those rows from search too would turn "I
@@ -486,15 +499,16 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
   // empty every view but that one.
   const statusToken = tokenMode && hasStatusToken(tokens)
   const sectioned = !query && browse && filter !== 'spam' && !statusToken
-  const ordered = browseOrder(laned)
-  const shown = query
+  const ordered = useMemo(() => browseOrder(laned), [laned])
+  const shown = useMemo(() => (query
     ? searchThreads(laned, query)
     : sectioned
       // Conversations only (someone answered, a draft is waiting, a magnet went
       // out): the lane also holds every invite that never got a reply, and those
       // are not chats. Newest activity first, drafts dated by their own clock.
       ? [...ordered.pending, ...ordered.rest]
-      : (status && filter !== 'spam' && !statusToken ? filterByStatus(laned, status) : laned)
+      : (status && filter !== 'spam' && !statusToken ? filterByStatus(laned, status) : laned)),
+  [query, laned, sectioned, ordered, status, filter, statusToken])
   const rowH = useRowH()
   const phone = usePhone()
   const desktopHover = useDesktopHover()
@@ -502,8 +516,8 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
   // header carrying how many conversations landed that day. The phone keeps the
   // flat run: at 390 the row already spends two lines on the same parts and a
   // third band of chrome every few rows costs more than it says.
-  const items: Item[] = []
-  {
+  const items = useMemo(() => {
+    const items: Item[] = []
     let lastDay: string | null = null
     let head: Extract<Item, { kind: 'day' }> | null = null
     const pendingIds = new Set(ordered.pending.map(t => t.prospect_id))
@@ -536,14 +550,17 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
       }
       items.push({ kind: 'row', key: t.prospect_id, t })
     }
-  }
+    return items
+  }, [shown, sectioned, ordered, phone, browse])
   const rowsAnchor = useRef<HTMLDivElement>(null)
   const win = useRowWindow(rowsRef, rowsAnchor, items, windowed && !renderRow, rowH)
-  const draftTotal = threads.filter(t => t.draft && t.draftSnoozedUntil === null).length
-  // Same derivation as the tab badge (lib/inbox.ts) — the chip suffix and the
-  // bubble must never say two different numbers for the same list.
-  const waitingTotal = inboxWaitingCount(threads)
-  const spamTotal = filterThreads(threads, 'spam').length
+  const { draftTotal, waitingTotal, spamTotal } = useMemo(() => ({
+    draftTotal: threads.filter(t => t.draft && t.draftSnoozedUntil === null).length,
+    // Same derivation as the tab badge (lib/inbox.ts) — the chip suffix and the
+    // bubble must never say two different numbers for the same list.
+    waitingTotal: inboxWaitingCount(threads),
+    spamTotal: filterThreads(threads, 'spam').length,
+  }), [threads])
   rowsFor?.(shown)
 
   return (

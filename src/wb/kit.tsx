@@ -6,7 +6,7 @@
    nothing here holds state or touches data. A screen imports Screen/Group/Row
    and spends its own code on the ledger it has to keep.
    ========================================================================== */
-import { createContext, useContext, useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
+import { createContext, useContext, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import { Icon, type IconName } from '../ds'
 import './wb.css'
 import '../ds/ds.css'
@@ -60,7 +60,10 @@ export function Screen({ className, lanes, children }: {
    with null while it commits the unmount, which set state in the middle of the
    commit that was mounting the next surface and threw "Rendered fewer hooks"
    the moment a DM conversation opened (2026-09-09). Effects run after commit,
-   so the adoption and the release never race a render. */
+   so the adoption and the release never race a render. They are LAYOUT
+   effects (feel pass, 2026-09-25): still after commit, but before paint, so a
+   kept-alive lane shown again takes the tiles in the same frame instead of
+   painting one frame with the chrome's own row stacked over its head. */
 export type RibSlot = { node: HTMLDivElement; setClaimed: (claimed: boolean) => void }
 export const RibSlotCtx = createContext<RibSlot | null>(null)
 
@@ -69,7 +72,7 @@ export const RibSlotCtx = createContext<RibSlot | null>(null)
 export function HeadChromeSlot() {
   const slot = useContext(RibSlotCtx)
   const host = useRef<HTMLDivElement | null>(null)
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!slot || !host.current) return
     host.current.appendChild(slot.node)
     slot.setClaimed(true)

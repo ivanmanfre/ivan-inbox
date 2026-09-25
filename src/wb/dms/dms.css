@@ -27,6 +27,13 @@
   display:flex;
   min-width:0;
   overflow:hidden;
+  /* Feel pass (2026-09-25): the window keeps six rows of overscan either side,
+     so about half the mounted rows are off screen at any moment. The browser
+     skips their layout and paint until they near the viewport. The row's box is
+     already pinned from JS (inline height) and already clips, so containment
+     changes nothing a reader can see; the size hint is only a fallback. */
+  content-visibility:auto;
+  contain-intrinsic-size:auto 96px;
 }
 .a-dms-rowhost + .a-dms-rowhost{ box-shadow:inset 0 1px 0 var(--ds-line) }
 /* GRAFT B-1 (DECISIONS D16): the day group header. Its box is a CONSTANT, and

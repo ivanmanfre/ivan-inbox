@@ -88,10 +88,12 @@ function rowLabel(el: HTMLElement): string {
   return (el.textContent ?? '').trim().slice(0, 60) || 'this row'
 }
 
+// The first one ON SCREEN: the phone keeps visited lanes mounted and hidden
+// (KeepLane), and `/` must never focus a search field in a lane nobody can see.
 function searchField(): HTMLInputElement | null {
-  return document.querySelector<HTMLInputElement>(
+  return [...document.querySelectorAll<HTMLInputElement>(
     '.wb-work input.ct-fsearch-in, .wb-work input.search-in, .wb-work input[type=search]',
-  )
+  )].find(el => el.offsetParent !== null) ?? null
 }
 
 /* --------------------------------------------------------------------------
@@ -142,10 +144,15 @@ const EMPTY_FIND: CrossResults = {
 
 const FIND_DEBOUNCE_MS = 250
 
+/** The first match that is on screen (a kept-alive hidden lane's is not). */
+function shownQuery(sel: string): HTMLElement | null {
+  return [...document.querySelectorAll<HTMLElement>(sel)].find(el => el.offsetParent !== null) ?? null
+}
+
 function readScope(): string {
   const job = parseWbHash(location.hash).job
-  const lane = document.querySelector('.wb-work .ct-cmd-lane.on')?.textContent ?? ''
-  const tab = document.querySelector('.wb-work .ct-tab.on')?.textContent ?? ''
+  const lane = shownQuery('.wb-work .ct-cmd-lane.on')?.textContent ?? ''
+  const tab = shownQuery('.wb-work .ct-tab.on')?.textContent ?? ''
   return `${job}|${lane}|${tab}|${searchField()?.value ?? ''}`
 }
 

@@ -16,7 +16,7 @@
    The axis it tracks is x, not y, because the gesture this screen already had
    is a horizontal pager and that gesture is the ledger's (S26-6).
    ========================================================================== */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { Button, Icon, IconButton, Badge, LiveDot, Shell, TabBar, fadeT, springSoft, type IconName, type TabItem } from '../../ds'
@@ -29,6 +29,7 @@ import { ClaudeScreen } from './ClaudeScreen'
 import { VOICE_HASH } from './claudeState'
 import { Feed } from './Feed'
 import { useFeedData } from '../../exp/brain/b/useFeedData'
+import { LaneShownCtx } from '../../exp/v2c/KeepLane'
 import './ask.css'
 
 // A drag has to travel this share of the pager's width before the release
@@ -184,19 +185,16 @@ export function Mobile(p: BrainMobileProps) {
   // Move 3: the head condenses once the ledger under it has moved.
   const [condensed, setCondensed] = useState(false)
 
-  // The place-change fade. `fading` is set for one beat when the place CHANGES,
-  // and the replay is what plays the fade, so nothing here remounts a surface.
-  // The mounted guard is the same one the `job` effect below carries: a fade on
-  // first paint is a splash screen, and this file refuses that for the feed
-  // rows in writing.
-  const [fading, setFading] = useState(false)
-  const placeMounted = useRef(false)
-  useEffect(() => {
-    if (!placeMounted.current) { placeMounted.current = true; return }
-    setFading(true)
-    const t = window.setTimeout(() => setFading(false), 200)
-    return () => window.clearTimeout(t)
-  }, [place])
+  // NO PLACE-CHANGE FADE (feel pass, 2026-09-25). A 200ms opacity replay on
+  // every tab tap read as lag: a native tab bar swaps its page on the frame the
+  // tab lights up. The lanes are kept alive now (KeepLane), so the page that
+  // appears is already painted and there is nothing for a fade to cover.
+
+  // The lanes stay mounted under the Claude place once one has been shown, so
+  // coming back from Claude is a reveal, not a rebuild. A cold boot onto Claude
+  // mounts no lane until one is asked for.
+  const [laneSeen, setLaneSeen] = useState(place !== 'ask')
+  if (!laneSeen && place !== 'ask') setLaneSeen(true)
 
   // Boot deep link: a thread opens Ask on THIS thread, a turn scrolls to that
   // turn inside it, a feed link opens the sheet. All only ever fire once, off
@@ -217,10 +215,12 @@ export function Mobile(p: BrainMobileProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // The tab lights up on this frame; the lane swap is a transition, so its
+  // render never holds the tap's paint (tap-to-paint was 150-390ms at 4x CPU).
   const goPlace = (next: Place) => {
     setPlace(next)
     writePlace(next)
-    if (next !== 'ask') goJob(next)
+    if (next !== 'ask') startTransition(() => goJob(next))
   }
 
   const onTab = (t: Place) => { setFeedOpen(false); setSnap(0); goPlace(t) }
@@ -386,8 +386,11 @@ export function Mobile(p: BrainMobileProps) {
   const [ribClaimed, setRibClaimed] = useState(false)
   const ribSlot = useMemo(() => ({ node: ribNode, setClaimed: setRibClaimed }), [ribNode])
 
-  if (peerView) {
-    return (
+  // A DM thread takes the screen over. The places stay MOUNTED under it
+  // (covered, below), so closing the thread lands on the list exactly where it
+  // was instead of rebuilding it. Not an early return: every hook above runs on
+  // every render either way (N2b).
+  const takeover = peerView ? (
       <div className="app wb wb-take wb-take-thread" data-place="lane">
         {peerView}
         {windows}
@@ -402,8 +405,8 @@ export function Mobile(p: BrainMobileProps) {
           onTap={() => { goJob(job); openAsk() }}
         />
       </div>
-    )
-  }
+  ) : null
+  const lanesShown = !peerView && place !== 'ask'
 
   // ONE TITLE PER PLACE. D27: every phone place printed its name twice -- this
   // chrome row and, right under it, the screen's own head, which says the same
@@ -476,14 +479,19 @@ export function Mobile(p: BrainMobileProps) {
     sev: tabSev[t],
   }))
 
-  return (
-    /* `wb` rides here for one reason: the surfaces this frame HOSTS are not all
+  return (<>
+    {takeover}
+    {/* `wb` rides here for one reason: the surfaces this frame HOSTS are not all
        rebuilt yet. Magnets, Styles, Strategy, Money and the windows still read
        nine sheets that scope every rule to `.wb.wb.wb`, and the phone chrome
        this replaced carried the class, so dropping it left those five surfaces
        bare at 390 while they still looked right at 1440. It leaves with them,
-       in W6. */
-    <div className="brain-b wb a-brain-root" data-place={feedOpen ? 'feed' : place === 'ask' ? 'ask' : 'lane'}>
+       in W6. Covered by a thread takeover it is hidden and inert, not gone. */}
+    <div
+      className="brain-b wb a-brain-root" data-place={feedOpen ? 'feed' : place === 'ask' ? 'ask' : 'lane'}
+      hidden={!!peerView} inert={!!peerView}
+    >
+    <LaneShownCtx.Provider value={lanesShown}>
       <Shell
         layout="phone"
         tabBar={<TabBar items={tabs} active={place} onSelect={id => onTab(id as Place)} markerId="a-brain-tab" />}
@@ -524,7 +532,10 @@ export function Mobile(p: BrainMobileProps) {
               onSettings={() => goJob('settings')}
               onOps={() => onTab('ops')}
             />
-          ) : (<>
+          ) : null}
+          {/* The lanes. Hidden, not unmounted, while Claude has the screen. */}
+          {laneSeen ? (
+          <div className="a-brain-lanes" hidden={place === 'ask'}>
           {ribClaimed ? null : (
             <Head
               title={title}
@@ -541,15 +552,11 @@ export function Mobile(p: BrainMobileProps) {
                 overlay at the same inset, so the place beneath it must stop
                 taking taps rather than merely being hidden behind it. */}
             <div className="a-brain-pane" data-inert={feedOpen && dragX === null ? '' : undefined}>
-              <motion.div
-                className="a-brain-plane"
-                animate={{ opacity: fading ? [0, 1] : 1 }}
-                transition={fadeT}
-              >
+              <div className="a-brain-plane">
                 {/* The Claude place renders ClaudeScreen above (D6); this
                     pager only ever hosts a lane now. */}
                 {workSurface}
-              </motion.div>
+              </div>
             </div>
 
             <motion.div
@@ -598,17 +605,19 @@ export function Mobile(p: BrainMobileProps) {
               />
             </motion.div>
           </div>
-          </>)}
+          </div>
+          ) : null}
         </Screen>
         </RibSlotCtx.Provider>
       </Shell>
       {/* D3: every non-Ask place, and not while the feed sheet has the screen —
           "one region at a time" already governs the sheet, and a chip floating
           over it would be a second thing claiming the same gesture's space. */}
-      {place !== 'ask' && !feedOpen ? (
+      {!peerView && place !== 'ask' && !feedOpen ? (
         <AskFab unread={chat.botUnread} busy={chat.busy} onTap={openAsk} />
       ) : null}
-      {windows}
+      {peerView ? null : windows}
+    </LaneShownCtx.Provider>
     </div>
-  )
+  </>)
 }

@@ -33,6 +33,7 @@ function toQueueItem(d: ContentDraft): QueueItem {
   }
 }
 import { MobileTabs, Rail, WorkSegment } from './Rail'
+import { KeepLane } from './KeepLane'
 import type { OpenDraft } from '../../wb/content'
 import { CommandLayer } from './CommandLayer'
 import type { OpenMagnet } from '../../wb/content/magnets'
@@ -168,6 +169,12 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
   const boot = useMemo(() => parseWbHash(location.hash), [])
 
   const [job, setJob] = useState<Job>(boot.job)
+  // KeepLane: every job the PHONE has shown, in first-visit order. Each one
+  // stays mounted (hidden) after it is left, so a second tap costs no render,
+  // no read and no lost scroll. Grown during render, the documented way to
+  // derive state from a changed value, so the new lane mounts in the same pass.
+  const [visited, setVisited] = useState<Job[]>(() => [boot.job])
+  if (!visited.includes(job)) setVisited([...visited, job])
   // content-brain-06 C04: one-shot boot deep link for the lazy StrategyView (see bootLink.ts).
   const sourcesAlias = useMemo(() => sourcesAliasAtBoot(location.hash), [])
   const bootLink = useOneShotBootLink(boot, job, sourcesAlias)
@@ -267,7 +274,10 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
   // below; that number stays whatever it was last time the surface was
   // enabled (0 on a cold boot into e.g. Content) rather than firing an
   // unbounded read nobody on that route is looking at.
-  const ops = useOps(job === 'ops' || job === 'today')
+  // On the phone a visited Ops/Today lane stays mounted, so its read stays on
+  // too: toggling it off and on again re-fired the read on every tab return.
+  const ops = useOps(job === 'ops' || job === 'today'
+    || (mobile && (visited.includes('ops') || visited.includes('today'))))
   const chat = useChat()
   const glance = useGlanceCounts()
 
@@ -685,7 +695,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     />
   )
 
-  const workSurface = (
+  const workChrome = (
     <>
       <SeatHealthBanner />
       {/* The command layer: ⌘K, j/k/Enter/x, / and ?, plus the bulk bar. It
@@ -701,13 +711,14 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
       {/* One model, both canvases: the lane switch for Work lives HERE now, not in
           the mobile ribbon, so desktop and phone teach the same thing (MF3). */}
       <WorkSegment job={job} counts={counts} onJob={goJob} />
-      {job === 'dms' && dmsSurface}
-      {/* One boundary around every lazy work surface. The fallback is the list
-          skeleton these screens already show while their own read is out, so a
-          tab switch reads as the loading state it always had rather than as a
-          blank. DMs and Today are outside it: they are in Shell's chunk. */}
-      <Suspense fallback={job === 'dms' || job === 'today' ? null : <InboxSkeleton />}>
-      {job === 'content' && (
+    </>
+  )
+
+  // ---- the working surface for ONE job ----
+  const surfaceFor = (j: Job) => (
+    <>
+      {j === 'dms' && dmsSurface}
+      {j === 'content' && (
         <ContentListC
           key={lane}
           lane={lane}
@@ -722,12 +733,12 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
           the old "no badge, the LM lane is read-only here" note was written
           about CLIENT rows and read as though it covered Ivan's own, which it
           never did. */}
-      {job === 'magnets' && (
+      {j === 'magnets' && (
         <MagnetsList lane={lane} setLane={setLane} onOpen={openMagnet} />
       )}
       {/* Styles left the Content scroll the same way Magnets did (Ivan,
           2026-08-04: "STYLES SHOULD BE A TAB"). Same shared lane state. */}
-      {job === 'styles' && (
+      {j === 'styles' && (
         <StylesList lane={lane} setLane={setLane} />
       )}
       {/* Strategy joined the work group on 2026-08-19 for the same reason
@@ -740,26 +751,26 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
           `location.hash` at mount found nothing and the deep link landed on Ivan /
           This week. The boot route was parsed at Shell mount, before that strip, so
           hand it down explicitly, once (see bootLink). */}
-      {job === 'strategy' && (
+      {j === 'strategy' && (
         <StrategyView lane={lane} setLane={setLane} initialLane={bootLink?.lane} initialSection={bootLink?.section} />
       )}
-      {job === 'sends' && <SendsC client={sendsClient} setClient={setSendsClient} />}
+      {j === 'sends' && <SendsC client={sendsClient} setClient={setSendsClient} />}
       {/* Money joined 2026-09-01 (goal-run money-truth) — a whole-canvas
           reading surface like Strategy, so it takes no props from Shell at
           all: it owns its own fetch, same as Strategy owns client_strategy. */}
-      {job === 'money' && <MoneyC />}
+      {j === 'money' && <MoneyC />}
       {/* Sales joined 2026-09-06 (goal-run inbox-sales-section) — the week's
           calls, and the reading for each one. It takes `openCallRow` for the
           same reason Today does: a past call's report opens the SAME call
           window every other surface opens, rather than a second one that would
           drift from it. */}
-      {job === 'sales' && <SalesC onOpenCall={openCallRow} mobile={mobile} />}
+      {j === 'sales' && <SalesC onOpenCall={openCallRow} mobile={mobile} />}
       {/* Orbit joined 2026-09-06's Sales sibling as a whole-canvas surface with
           no props from Shell — it owns its own tenant/range filters and its
           own signal_graph read, the same class of surface Money and Strategy
           already are. */}
-      {job === 'orbit' && <OrbitC />}
-      {job === 'ops' && opsSurface}
+      {j === 'orbit' && <OrbitC />}
+      {j === 'ops' && opsSurface}
       {/* Today aggregates, so its hand-off rows navigate INSIDE the workbench
           rather than through the default app's hash routes. The work-queue
           props (threads/opsDrafts/onOpenThread/onOpenContent) reuse the SAME
@@ -767,7 +778,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
           fetch) and the SAME `openThread`/lane state Content itself uses, so
           a queue row opens the exact thread or the exact lane rather than
           just the job. */}
-      {job === 'today' && (
+      {j === 'today' && (
         <TodayC
           onOpenDrafts={() => goJob('dms')}
           onOpenOps={() => goJob('ops')}
@@ -783,8 +794,27 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
       {/* `shell` is what earns the Density and Frame controls. SettingsScreen is
           shared with #exp/stock (App.tsx:148) and both arms only reach `.wb`, so
           without this the escape hatch renders two controls that do nothing. */}
-      {job === 'settings' && <SettingsC shell="workbench" />}
-      </Suspense>
+      {j === 'settings' && <SettingsC shell="workbench" />}
+    </>
+  )
+
+  // One boundary per lazy work surface. The fallback is the list skeleton these
+  // screens already show while their own read is out, so a first visit reads as
+  // the loading state it always had rather than as a blank. DMs and Today are in
+  // Shell's own chunk and never suspend.
+  const laneFallback = (j: Job) => (j === 'dms' || j === 'today' ? null : <InboxSkeleton />)
+  const workSurface = (
+    <>
+      {workChrome}
+      {/* The PHONE keeps every visited lane mounted and shows one (KeepLane).
+          The desktop renders the active job alone, exactly as before. */}
+      {mobile ? visited.map(j => (
+        <KeepLane key={j} lane={j} active={j === job}>
+          <Suspense fallback={laneFallback(j)}>{surfaceFor(j)}</Suspense>
+        </KeepLane>
+      )) : (
+        <Suspense fallback={laneFallback(job)}>{surfaceFor(job)}</Suspense>
+      )}
     </>
   )
 
