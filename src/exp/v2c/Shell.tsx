@@ -811,11 +811,15 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
       {workChrome}
       {/* The PHONE keeps every visited lane mounted and shows one (KeepLane).
           The desktop renders the active job alone, exactly as before. */}
-      {mobile ? visited.map(j => (
-        <KeepLane key={j} lane={j} active={j === job}>
-          <Suspense fallback={laneFallback(j)}>{surfaceFor(j)}</Suspense>
-        </KeepLane>
-      )) : (
+      {mobile ? (
+        <div className="wb-lanes">
+          {visited.map(j => (
+            <KeepLane key={j} lane={j} active={j === job}>
+              <Suspense fallback={laneFallback(j)}>{surfaceFor(j)}</Suspense>
+            </KeepLane>
+          ))}
+        </div>
+      ) : (
         <Suspense fallback={laneFallback(job)}>{surfaceFor(job)}</Suspense>
       )}
     </>

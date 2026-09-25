@@ -21,7 +21,9 @@ import { getAnchorId, lookupRow, rangeIds, selectRows, type SelectedRow } from '
 export function visibleRowIds(): string[] {
   if (typeof document === 'undefined') return []
   return [...document.querySelectorAll<HTMLElement>('.wb-work [data-wbrow]')]
-    .filter(el => el.offsetParent !== null)
+    // A kept-alive hidden phone lane is `inert` and keeps its boxes, so the
+    // offsetParent test alone would walk its rows too (KeepLane.tsx).
+    .filter(el => el.offsetParent !== null && el.closest('[inert]') === null)
     .map(el => el.getAttribute('data-wbrow') ?? '')
     .filter(id => id !== '')
 }

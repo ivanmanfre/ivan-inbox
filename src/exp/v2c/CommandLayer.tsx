@@ -76,9 +76,15 @@ function overlayOpen(): boolean {
   return document.querySelector(OVERLAY) !== null
 }
 
+// On screen: laid out, and not inside a kept-alive hidden phone lane, which is
+// `inert` and keeps its boxes so a second visit costs no layout (KeepLane.tsx).
+function onScreen(el: HTMLElement): boolean {
+  return el.offsetParent !== null && el.closest('[inert]') === null
+}
+
 function visibleRows(): HTMLElement[] {
   return [...document.querySelectorAll<HTMLElement>('.wb-work [data-wbrow]')]
-    .filter(el => el.offsetParent !== null)
+    .filter(onScreen)
 }
 
 function rowLabel(el: HTMLElement): string {
@@ -93,7 +99,7 @@ function rowLabel(el: HTMLElement): string {
 function searchField(): HTMLInputElement | null {
   return [...document.querySelectorAll<HTMLInputElement>(
     '.wb-work input.ct-fsearch-in, .wb-work input.search-in, .wb-work input[type=search]',
-  )].find(el => el.offsetParent !== null) ?? null
+  )].find(onScreen) ?? null
 }
 
 /* --------------------------------------------------------------------------
@@ -146,7 +152,7 @@ const FIND_DEBOUNCE_MS = 250
 
 /** The first match that is on screen (a kept-alive hidden lane's is not). */
 function shownQuery(sel: string): HTMLElement | null {
-  return [...document.querySelectorAll<HTMLElement>(sel)].find(el => el.offsetParent !== null) ?? null
+  return [...document.querySelectorAll<HTMLElement>(sel)].find(onScreen) ?? null
 }
 
 function readScope(): string {

@@ -48,7 +48,9 @@ function visibleRows(): HTMLElement[] {
   // test renders this bar to static markup).
   if (typeof document === 'undefined') return []
   return [...document.querySelectorAll<HTMLElement>('.wb-work [data-wbrow]')]
-    .filter(el => el.offsetParent !== null)
+    // A kept-alive hidden phone lane is `inert` and keeps its boxes, so the
+    // offsetParent test alone would count its rows too (KeepLane.tsx).
+    .filter(el => el.offsetParent !== null && el.closest('[inert]') === null)
 }
 
 export function ContentBulkBar() {

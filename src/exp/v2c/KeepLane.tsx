@@ -6,9 +6,15 @@
    the lane's reads and dropped the scroll position (feel probe, 2026-09-25:
    Today 392ms tap-to-paint and 13 requests on every visit).
 
-   A visited lane now stays in the tree. While inactive it is:
-   - `hidden` (display:none) and `inert`: no paint, no focus, no taps. The
-     command layer's row walkers already skip rows with no offsetParent.
+   A visited lane now stays in the tree. Every lane is stacked in one box
+   (`.wb-lanes`), each absolutely filling it. While inactive a lane is:
+   - `data-off`: `content-visibility:hidden` + `visibility:hidden`. The
+     browser keeps its style and layout and skips its paint, so showing it
+     again is a repaint, not a restyle of a few thousand nodes (display:none
+     threw that state away and cost 40-60ms of style recalc at 4x CPU).
+   - `inert`: no focus, no taps, out of the accessibility tree. The command
+     layer's row walkers skip rows inside `[inert]`, because these rows keep
+     their boxes and an offsetParent test alone would still find them.
    - FROZEN: `Frozen` below skips every re-render the Shell does while the lane
      is hidden (and the one that hides it), so an inbox refresh costs nothing
      for five hidden lanes. It re-renders with fresh props when shown again.
@@ -16,7 +22,8 @@
      only the visible lane's head adopts the chrome tiles.
 
    Scroll offsets are recorded while the lane is shown and written back when it
-   is shown again: WebKit drops a scroller's offset across display:none.
+   is shown again: a belt for any engine without content-visibility, and for
+   the phone chrome's own covers (Claude, a thread), which are display:none.
 
    The phone chrome can also cover EVERY lane at once (the Claude place, a DM
    thread takeover). It says so through LaneShownCtx, so the lane under the
@@ -107,7 +114,7 @@ export function KeepLane({ active, lane, children }: Props) {
       ref={host}
       className="wb-lane"
       data-lane={lane}
-      hidden={!active}
+      data-off={active ? undefined : ''}
       inert={!active}
     >
       {/* The slot follows `active`, not `visible`: under a cover (Claude, a
