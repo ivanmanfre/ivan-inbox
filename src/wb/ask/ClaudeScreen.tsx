@@ -65,6 +65,20 @@ export function ClaudeScreen({
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
 
+  // Escape closes the top layer (menu, then Chats, then Alerts): the ds Sheet
+  // has no key handling of its own, and a hardware keyboard must get out.
+  useEffect(() => {
+    if (!menuOpen && !chatsOpen && !alertsOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (menuOpen) setMenuOpen(false)
+      else if (chatsOpen) setChatsOpen(false)
+      else setAlertsOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [menuOpen, chatsOpen, alertsOpen, setAlertsOpen])
+
   const onBot = !!chat.botThread && chat.threadId === chat.botThread.id
   const title = threadLabel({ title: chat.thread?.title, threadId: chat.threadId, isBot: onBot })
   const unread = unreadRows(feed.groups)
