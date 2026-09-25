@@ -32,7 +32,28 @@ import {
 } from './forms'
 import { Chip } from '../../ds'
 import { Mark, TenantChip, clock, isRunningWord, laneLabel, useSwipe } from './parts'
+import { lookOf } from './alertLook'
 import './ask.css'
+
+/**
+ * The KIND of a row, drawn: a named glyph on a toned tile, so a failure, a
+ * reply, a booking and a reminder read apart before a word is read (Ivan,
+ * 2026-09-25: "Everything looks kind of the same"). The severity Mark stays in
+ * the DOM for the instruments and greyscale; the tile is what the eye reads.
+ */
+export function KindTile({ family, severity }: { family: string; severity: string | null }) {
+  const look = lookOf(family, severity)
+  return (
+    <span className="cl-kind" data-kind={look.kind} data-tone={look.tone} aria-hidden="true">
+      <Icon name={look.icon} size={20} />
+    </span>
+  )
+}
+
+export function KindLabel({ family, severity }: { family: string; severity: string | null }) {
+  const look = lookOf(family, severity)
+  return <span className="cl-kind-l" data-kind={look.kind} data-tone={look.tone}>{look.label}</span>
+}
 
 /** The DOM hooks the run's evidence harness reads are kept as data attributes:
  * this direction changes the shape of a row, not the vocabulary the
@@ -59,7 +80,7 @@ function InChatMark({ n }: { n: { group_key: string | null } }) {
   return <span className="a-brain-inchat" data-in-chat><Chip tone="quiet">in chat</Chip></span>
 }
 
-export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = false }: {
+export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = false, primary = false }: {
   n: Notification
   /** The row's own element rides along: move 9 grows the answer out of the
    * rectangle of the card that was actually tapped, and only the card knows it. */
@@ -69,6 +90,8 @@ export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = 
   nested?: boolean
   /** The row is on its way out: it resolves in place before it leaves. */
   going?: boolean
+  /** The newest unread row that needs him: its Pick this up takes the lime. */
+  primary?: boolean
 }) {
   const swipe = useSwipe(() => onDismiss(n.id, n))
   const box = useRef<HTMLDivElement>(null)
@@ -141,8 +164,17 @@ export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = 
     )
   }
 
-  const action = form === 'page'
-    ? <Button variant="quiet" size="sm" iconEnd="next" onClick={e => { e.stopPropagation(); onOpen(n, box.current) }}>Pick this up</Button>
+  const kind = lookOf(n.family, n.severity).kind
+  // Every row is tappable already (Row onClick). A row that needs him or that
+  // broke says so on its one action: Pick this up, which is the same open.
+  const pickUp = kind === 'needs_you' || kind === 'failed' || form === 'page'
+  const action = pickUp
+    ? (
+      <Button
+        variant={primary ? 'primary' : 'quiet'} size="sm" iconEnd="next"
+        onClick={e => { e.stopPropagation(); onOpen(n, box.current) }}
+      >Pick this up</Button>
+    )
     : lane
       ? (
         <Button variant="quiet" size="sm" iconEnd="next" onClick={e => { e.stopPropagation(); onOpen(n, box.current) }}>
@@ -152,7 +184,7 @@ export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = 
       : null
 
   return (
-    <div ref={box} className="a-brain-slot" data-contained data-card data-family={n.family} data-shape={shape}>
+    <div ref={box} className="a-brain-slot" data-contained data-card data-family={n.family} data-shape={shape} data-kind={kind}>
       {/* What the swipe reveals, and ONLY while a finger is on the row. The
           B-2 graft made the card's own layer transparent so the container's
           fill shows through it, which meant this word was legible under every
@@ -166,7 +198,7 @@ export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = 
         onTouchEnd={swipe.onTouchEnd} onTouchCancel={swipe.onTouchCancel}
       >
         <Row
-          lead={<Mark shape={shape} />}
+          lead={<><span className="cl-kind-mark"><Mark shape={shape} /></span><KindTile family={n.family} severity={n.severity} /></>}
           title={
             <>
               <span className={running ? 'a-brain-state a-working' : 'a-brain-state'} data-live={running ? '' : undefined}>{word}</span>
@@ -176,6 +208,7 @@ export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = 
           titleWrap
           meta={
             <>
+              <KindLabel family={n.family} severity={n.severity} />
               <TenantChip tenant={n.tenant} />
               <InChatMark n={n} />
               <span>{time}</span>
@@ -250,7 +283,7 @@ export function GroupRow({ g, open, onToggle, onOpen, onDismissAll, onDismissOne
       <div className="a-brain-deck-front">
         <Row
           className="a-brain-deck-head"
-          lead={<Mark shape={shape} />}
+          lead={<><span className="cl-kind-mark"><Mark shape={shape} /></span><KindTile family={g.family} severity={g.latest.severity} /></>}
           title={
             <>
               <span className="a-brain-state">{groupStateWord(g.count, g.family)}</span>
@@ -262,6 +295,7 @@ export function GroupRow({ g, open, onToggle, onOpen, onDismissAll, onDismissOne
           subWrap
           meta={
             <>
+              <KindLabel family={g.family} severity={g.latest.severity} />
               <TenantChip tenant={g.latest.tenant} />
               <InChatMark n={g.latest} />
               <MarkStack items={g.items} />

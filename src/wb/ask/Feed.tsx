@@ -14,7 +14,7 @@
    ========================================================================== */
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Button, DayHeader, EmptyState, ToastStack, fadeT, rise, spring, type ToastItem } from '../../ds'
+import { Button, DayHeader, EmptyState, Icon, ToastStack, fadeT, rise, spring, type ToastItem } from '../../ds'
 import { Body, Rows } from '../kit'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import { getTurn, notificationDeepLink, type Notification, type NotificationGroup } from '../../lib/turns'
@@ -23,6 +23,7 @@ import type { Job } from '../../exp/v2c/layout'
 import type { FeedData } from '../../exp/brain/b/useFeedData'
 import { dayWord } from './forms'
 import { GroupRow, NotificationRow, inChatTurnId } from './NotificationRow'
+import { kindOf, ALERT_LOOK } from './alertLook'
 import './ask.css'
 
 function clockTime(iso: string): string {
@@ -128,7 +129,19 @@ export function Feed({ feed, goJob, openThread, onNavigated, onScrolled }: {
   const scroller = useRef<HTMLDivElement>(null)
 
   const rows: Slot[] = withLeaving(feed.groups, leaving).map((r, at) => ({ ...r, at }))
-  const days = byDay(rows)
+  // Routine kinds (digests, heartbeats) fold into ONE group at the end, so the
+  // rows that need him are not buried under the rows that only report.
+  const isRoutine = (s: Slot) => ALERT_LOOK[kindOf(s.g.family, s.g.latest.severity)].routine
+  const routine = rows.filter(isRoutine)
+  const days = byDay(rows.filter(s => !isRoutine(s)))
+  const [routineOpen, setRoutineOpen] = useState(false)
+  // The newest unread row that needs him or broke: its Pick this up is the
+  // one lime action on the sheet.
+  const primaryKey = rows.find(s => {
+    if (s.going || s.g.unread === 0) return false
+    const k = kindOf(s.g.family, s.g.latest.severity)
+    return k === 'needs_you' || k === 'failed'
+  })?.g.key ?? null
 
   // Move 5. The pill is only ever earned: something landed while he was
   // scrolled away from the top, and tapping it takes him to it.
@@ -317,6 +330,7 @@ export function Feed({ feed, goJob, openThread, onNavigated, onScrolled }: {
                       : (
                         <NotificationRow
                           n={g.latest} onOpen={openOne} going={going}
+                          primary={g.key === primaryKey}
                           onDismiss={(id, row) => leave(g, at, () => dismissOne(id, row))}
                         />
                       )}
@@ -326,6 +340,43 @@ export function Feed({ feed, goJob, openThread, onNavigated, onScrolled }: {
             </Rows>
           </div>
         ))}
+
+        {routine.length > 0 && (
+          <div className="cl-routine" data-routine data-open={routineOpen ? '' : undefined}>
+            <button
+              type="button" className="cl-routine-head" aria-expanded={routineOpen}
+              onClick={() => setRoutineOpen(v => !v)}
+            >
+              <span className="cl-kind" data-kind="digest" data-tone="quiet" aria-hidden="true"><Icon name="list" size={20} /></span>
+              <span className="cl-routine-t">Routine updates</span>
+              <span className="cl-routine-n">{routine.length}</span>
+              <Icon name={routineOpen ? 'discloseUp' : 'disclose'} size={16} />
+            </button>
+            {routineOpen && (
+              <Rows>
+                {routine.map(({ g, going, at }) => (
+                  <div key={g.key} aria-hidden={going || undefined}>
+                    {g.items.length > 1
+                      ? (
+                        <GroupRow
+                          g={g} open={feed.expanded.has(g.key)} onToggle={() => feed.toggle(g.key)}
+                          onOpen={openOne}
+                          onDismissAll={() => leave(g, at, () => dismissAll(g))}
+                          onDismissOne={(id, row) => dismissOne(id, row)}
+                        />
+                      )
+                      : (
+                        <NotificationRow
+                          n={g.latest} onOpen={openOne} going={going}
+                          onDismiss={(id, row) => leave(g, at, () => dismissOne(id, row))}
+                        />
+                      )}
+                  </div>
+                ))}
+              </Rows>
+            )}
+          </div>
+        )}
       </Body>
 
       <AnimatePresence>
