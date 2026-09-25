@@ -579,6 +579,9 @@ export function AskThread({
             started is done, and that answer must not be at the end of a scroll. */}
         <RunnerSection runner={runner} />
 
+        {/* P1 speed: the transcript on screen is the saved copy and the
+            last read of it failed. Quiet, never a skeleton over it. */}
+        {chat.turnsStale && !empty && <div className="a-brain-day" data-stale>Saved copy. Could not refresh.</div>}
         {empty ? (
           <motion.div className="a-stack" variants={list} initial="hidden" animate="show">
             <motion.div className="a-page-t" variants={rise}>
