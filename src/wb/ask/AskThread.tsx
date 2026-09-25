@@ -36,7 +36,7 @@ import type { Job } from '../../exp/v2c/layout'
 import { extractRecallNouns, buildRecallCommand } from '../../exp/brain/b/recall'
 import { groundedClause, sourceBasenames, sourcesChipLabel } from '../../exp/brain/b/brainMeta'
 import { detectLinks } from '../../lib/unfurl'
-import { ToolStrip, TurnMeta } from './Tools'
+import { LiveSteps, ToolStrip, TurnMeta } from './Tools'
 import { LinkPreview } from './LinkPreview'
 import { Composer, type ComposerExtras } from './Composer'
 import { BotBundle } from './BotTurn'
@@ -47,7 +47,7 @@ import { daySeparators } from './days'
 // cost 1.0 KB MORE on the DMs cold path (278.1 vs 277.1 KB script transfer) and
 // two extra requests, because the weight this wave adds is in turns.ts, the
 // feed row and ask.css, none of which can be split off a cold boot.
-import { RunnerControl, RunnerReport, RunnerSection, useRunner } from './Runner'
+import { RunnerControl, RunnerMenuItems, RunnerReport, RunnerSection, useRunner } from './Runner'
 import { Overflow } from './Overflow'
 import './ask.css'
 
@@ -330,7 +330,34 @@ function useMorphFrom(from: DOMRect | null, done: (() => void) | undefined) {
   return ref
 }
 
-function AnswerCard({ turn, onRetry, onRecall, justLanded, focused, cites, morphFrom, onMorphed, onDragBack, host }: {
+/** Copy and retry under a finished answer (2026-09-25 redesign). Retry only
+ * rides the LAST answer, because `chat.retry` replays the last prompt sent. */
+function TurnFoot({ text, onRetry }: { text: string; onRetry?: () => void }) {
+  const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    if (!copied) return
+    const t = window.setTimeout(() => setCopied(false), 1600)
+    return () => window.clearTimeout(t)
+  }, [copied])
+  if (!text && !onRetry) return null
+  return (
+    <div className="cl-turnfoot" data-turn-foot>
+      {text && (
+        <IconButton
+          icon={copied ? 'check' : 'copy'} label={copied ? 'Copied' : 'Copy the answer'}
+          onClick={() => { void navigator.clipboard?.writeText(text).then(() => setCopied(true), () => undefined) }}
+        />
+      )}
+      {onRetry && <IconButton icon="retry" label="Ask again" onClick={onRetry} />}
+    </div>
+  )
+}
+
+function AnswerCard({ turn, onRetry, onRecall, justLanded, focused, cites, morphFrom, onMorphed, onDragBack, host, last = false, offline = false }: {
+  /** The newest answer in the thread: the only one that carries Ask again. */
+  last?: boolean
+  /** No network: anything that needs it is disabled, the prose stays readable. */
+  offline?: boolean
   turn: Turn
   onRetry?: () => void
   onRecall: (noun: string) => void
@@ -374,9 +401,11 @@ function AnswerCard({ turn, onRetry, onRecall, justLanded, focused, cites, morph
       <TurnMeta turn={turn} outcome={outcome} />
       <ToolStrip calls={turn.tools} />
       {text && <div className="a-brain-prose">{<AnswerBody text={text} onRecall={onRecall} cites={cites} />}</div>}
+      <fieldset className="cl-fs" disabled={offline}>
       {parsed && host && turn.turnId && parsed.actions.length > 0 && (
         <ActionPills turnId={turn.turnId} groupKey={`bot:${turn.turnId}`} actions={parsed.actions} host={host} />
       )}
+      </fieldset>
       {detectLinks(text || '').slice(0, 1).map(l => <LinkPreview key={l.url} url={l.url} />)}
       {turn.aborted && <div className="a-brain-note">You stopped this one. Nothing more is coming.</div>}
       {turn.error && (
@@ -387,11 +416,14 @@ function AnswerCard({ turn, onRetry, onRecall, justLanded, focused, cites, morph
               extra text check is belt-and-braces for a message that reached
               here through any other path. */}
           {turn.error.retryable && !isBusy && onRetry && (
-            <Button variant="quiet" size="sm" icon="retry" onClick={onRetry}>Retry</Button>
+            <Button variant="quiet" size="sm" icon="retry" disabled={offline} onClick={onRetry}>Retry</Button>
           )}
         </div>
       )}
       <AnswerFooter turn={turn} />
+      <fieldset className="cl-fs" disabled={offline}>
+        <TurnFoot text={text || ''} onRetry={last && !turn.error && onRetry ? onRetry : undefined} />
+      </fieldset>
     </motion.div>
   )
 }
@@ -409,10 +441,32 @@ const STARTERS = [
   'What should I look at first?',
 ]
 
+/** The phone's quick asks on a new chat (graft from candidate C). The first
+ * three SEND the starters above, word for word; the last two only start the
+ * sentence in the field, because what follows is his to say. */
+export const QUICK_ASKS: { label: string; send?: string; insert?: string }[] = [
+  { label: 'What needs me', send: STARTERS[0] },
+  { label: 'Failed today', send: STARTERS[1] },
+  { label: 'Look first', send: STARTERS[2] },
+  { label: 'Draft a reply', insert: 'Draft a reply to ' },
+  { label: 'Run a scan', insert: 'Run a scan on ' },
+]
+
+/** What the phone Claude screen hands the thread. Absent: the drawer and the
+ * old phone shelf, exactly as before. */
+export type ClaudeChrome = {
+  onVoice?: () => void
+  onNewChat: () => void
+  offline: boolean
+}
+
 export function AskThread({
   chat, about, mobile, focusTurn = null, onFocused, morphFrom = null, onMorphed, onDragBack,
-  composerExtras, see, context, text: textProp, onText,
+  composerExtras, see, context, text: textProp, onText, claude,
 }: {
+  /** The 2026-09-25 phone Claude screen: no shelf (its head carries the
+   * thread), quick asks on a new chat, the floating pill composer. */
+  claude?: ClaudeChrome
   chat: ChatHandle
   job: Job
   about: string | null
@@ -507,6 +561,7 @@ export function AskThread({
   }
 
   const lastTurn = chat.turns[chat.turns.length - 1]
+  const lastAnswerId = [...chat.turns].reverse().find(t => t.role === 'assistant')?.id ?? null
   const runningElsewhereActive = chat.runningElsewhere && lastTurn?.role === 'user'
   const empty = chat.turns.length === 0 && chat.status === 'idle' && !chat.runningElsewhere
   // Bot bundles and answers count as turns for this walk exactly like an
@@ -530,7 +585,7 @@ export function AskThread({
             "New thread" is the first item in that same menu, and the session
             line is the status dot's own label. The phone has no head of its
             own over this thread, so there the shelf stays exactly as it was. */}
-        {mobile && (
+        {mobile && !claude && (
         <div className="a-brain-shelf">
           {/* D1: the pin. There is no thread list on this surface, so Claude's
               own thread is one chip on the shelf: it is the only thread that
@@ -577,12 +632,23 @@ export function AskThread({
             the conversation because a job outlives every turn under it: he
             comes back to this screen to find out whether the hour of Claude he
             started is done, and that answer must not be at the end of a scroll. */}
-        <RunnerSection runner={runner} />
+        <fieldset className="cl-fs" disabled={!!claude?.offline}>
+          <RunnerSection runner={runner} />
+        </fieldset>
 
         {/* P1 speed: the transcript on screen is the saved copy and the
             last read of it failed. Quiet, never a skeleton over it. */}
         {chat.turnsStale && !empty && <div className="a-brain-day" data-stale>Saved copy. Could not refresh.</div>}
-        {empty ? (
+        {empty && claude ? (
+          <motion.div className="cl-empty" variants={list} initial="hidden" animate="show">
+            <motion.div className="cl-empty-t" variants={rise}>
+              {about ? <>Ask about {about}.</> : 'What do you need?'}
+            </motion.div>
+            <motion.div className="cl-empty-s" variants={rise}>
+              Claude reads your memory, the calls and every lane before it answers.
+            </motion.div>
+          </motion.div>
+        ) : empty ? (
           <motion.div className="a-stack" variants={list} initial="hidden" animate="show">
             <motion.div className="a-page-t" variants={rise}>
               {about ? <>Ask about {about}.</> : 'Ask anything.'}
@@ -624,6 +690,8 @@ export function AskThread({
                 onMorphed={onMorphed}
                 onDragBack={onDragBack}
                 host={t.origin === 'bot' ? pillsHost : undefined}
+                last={t.id === lastAnswerId && !chat.busy}
+                offline={!!claude?.offline}
               />
             )
             // Returning an array rather than a Fragment: each child already
@@ -651,7 +719,7 @@ export function AskThread({
               animate={{ opacity: 1, y: 0, transition: spring }}
               exit={{ opacity: 0, transition: fadeT }}
             >
-              {chat.streamTools.length > 0 && <ToolStrip calls={chat.streamTools} />}
+              <LiveSteps calls={chat.streamTools} />
               {chat.streamText && (
                 <div className="a-brain-prose">
                   {/* Move 10. Each word fades in once as it arrives; a word
@@ -689,10 +757,21 @@ export function AskThread({
         // the plate — and, only while there is one, the runner's own refusal.
         // The refusal used to ride the strip that is gone on the desktop, and a
         // door that fails silently is a door that lies.
-        above={(context || (!mobile && runner.note)) ? (
+        above={(context || ((!mobile || claude) && runner.note) || (claude && empty)) ? (
           <div className="a-brain-above">
+            {claude && empty && (
+              <div className="cl-asks" data-quick-asks>
+                {QUICK_ASKS.map(q => (
+                  <button
+                    type="button" key={q.label} className="wb-cl cl-ask"
+                    disabled={!!q.send && claude.offline}
+                    onClick={() => (q.send ? send(q.send) : setText(q.insert ?? ''))}
+                  >{q.label}</button>
+                ))}
+              </div>
+            )}
             {context}
-            {!mobile && runner.note && (
+            {(!mobile || claude) && runner.note && (
               <span className="a-brain-runnote">
                 <Icon name="alert" size={16} />
                 <span>{runner.note}</span>
@@ -712,7 +791,16 @@ export function AskThread({
             menu={composerExtras?.menu}
           />
         }
-        runner={mobile ? <RunnerControl runner={runner} text={text} onSent={() => setText('')} /> : undefined}
+        runner={mobile && !claude ? <RunnerControl runner={runner} text={text} onSent={() => setText('')} /> : undefined}
+        pill={claude ? {
+          onVoice: claude.offline ? undefined : claude.onVoice,
+          onNewChat: claude.onNewChat,
+          onCommands: () => setText('/'),
+          offline: claude.offline,
+          runnerItems: (open, close) => (
+            <RunnerMenuItems runner={runner} text={text} onSent={() => setText('')} open={open} close={close} />
+          ),
+        } : undefined}
       />
 
       <ToastStack items={toasts} onDismiss={id => setToasts(prev => prev.filter(t => t.id !== id))} />

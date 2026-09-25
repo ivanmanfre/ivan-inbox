@@ -12,7 +12,7 @@
    `[attached: name]` line per file.
    ========================================================================== */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Button, Chip, Composer as DsComposer, IconButton, LevelMeter, type ComposerMode } from '../../ds'
+import { Button, Chip, Composer as DsComposer, Icon, IconButton, LevelMeter, Sheet, type ComposerMode } from '../../ds'
 import { detectLinks } from '../../lib/unfurl'
 import { useStt } from '../../exp/v2c/chat/useStt'
 import { fileSize } from './forms'
@@ -69,7 +69,33 @@ export function isSendChord(e: { key: string; metaKey: boolean; ctrlKey: boolean
   return e.key === 'Enter' && (e.metaKey || e.ctrlKey)
 }
 
-export function Composer({ value, onChange, onSend, busy, runningElsewhere, onStop, placeholder, extras, runner, lead, above }: {
+/** What the phone's lime button does right now. Pure, so the state machine is
+ * testable without a DOM: stop while a turn runs, send once there is text,
+ * live voice when the field is empty (dictation when live voice is not there),
+ * nothing while offline. */
+export function primaryMode(x: { busy: boolean; hasText: boolean; offline: boolean; voice: boolean }): 'stop' | 'send' | 'voice' | 'dictate' | 'off' {
+  if (x.busy) return 'stop'
+  if (x.offline) return 'off'
+  if (x.hasText) return 'send'
+  return x.voice ? 'voice' : 'dictate'
+}
+
+/** The pill's own tray (the `+`). Each entry is an existing capability, moved
+ * behind one press: a photo or a file (the same picker as the attach mark), a
+ * paste, the slash commands, a new chat, and the runner. */
+export type PillOptions = {
+  /** Live voice, when the voice module is present. Absent: the lime button dictates. */
+  onVoice?: () => void
+  onNewChat?: () => void
+  /** Puts `/` in the field so the slash palette opens above the pill. */
+  onCommands?: () => void
+  /** The runner's own menu items, handed in by the thread (it owns the runner). */
+  runnerItems?: (open: boolean, close: () => void) => React.ReactNode
+  /** No network: the pill still takes text, but nothing leaves. */
+  offline?: boolean
+}
+
+export function Composer({ value, onChange, onSend, busy, runningElsewhere, onStop, placeholder, extras, runner, lead, above, pill }: {
   value: string
   onChange: (v: string) => void
   onSend: (text: string) => void
@@ -89,8 +115,14 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
   /** One chip row directly above the plate: what travels with the next
    * message. The attachment register, in the place a reader looks for it. */
   above?: React.ReactNode
+  /** The phone Claude screen's floating pill (2026-09-25 redesign). Absent:
+   * the design system's bar, exactly as before (the desktop drawer). */
+  pill?: PillOptions
 }) {
   const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [trayOpen2, setTrayOpen2] = useState(false)
+  const [pasteNote, setPasteNote] = useState<string | null>(null)
+  const docRef = useRef<HTMLInputElement>(null)
   const [heard, setHeard] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   // The design system owns the field, so the seat that has to focus it and
@@ -107,7 +139,7 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
 
   const links = detectLinks(value)
   const firstLink = links[0]?.url
-  const canSend = value.trim().length > 0 && !busy && !runningElsewhere
+  const canSend = value.trim().length > 0 && !busy && !runningElsewhere && !pill?.offline
 
   const doSend = useCallback(() => {
     if (extras?.interceptSend?.()) return
@@ -170,6 +202,30 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
     })
   }
 
+  /** The tray's Paste: an image on the clipboard becomes an attachment, text
+   * lands in the field. Both need the page's clipboard permission; a refusal
+   * says so rather than doing nothing. */
+  const pasteFromClipboard = async () => {
+    try {
+      const clip = navigator.clipboard as Clipboard & { read?: () => Promise<ClipboardItem[]> }
+      if (clip.read) {
+        const items = await clip.read()
+        const dt = new DataTransfer()
+        for (const item of items) {
+          const type = item.types.find(t => t.startsWith('image/'))
+          if (!type) continue
+          const blob = await item.getType(type)
+          dt.items.add(new File([blob], `image.${type.split('/')[1] || 'png'}`, { type }))
+        }
+        if (dt.files.length) { onFiles(dt.files, true); return }
+      }
+      const text = await navigator.clipboard.readText()
+      if (text) onChange(value.trim() ? `${value.replace(/\s+$/, '')} ${text}` : text)
+      field()?.focus()
+    } catch {
+      setPasteNote('Paste was blocked. Long-press the field and paste there.')
+    }
+  }
   // The field grows with what is in it rather than scrolling a one-line window
   // under the caret.
   useEffect(() => {
@@ -250,6 +306,113 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
       </div>
     )
     : undefined
+
+  if (pill) {
+    const pm = primaryMode({
+      busy: busy || runningElsewhere, hasText: value.trim().length > 0,
+      offline: !!pill.offline, voice: !!pill.onVoice,
+    })
+    const closeTray = () => setTrayOpen2(false)
+    const primary = pm === 'stop'
+      ? <button type="button" className="wb-cl cl-prime" data-mode="stop" aria-label="Stop" onClick={onStop}><Icon name="stop" size={20} /></button>
+      : pm === 'send'
+        ? <button type="button" className="wb-cl cl-prime" data-mode="send" aria-label="Send" disabled={!canSend} onClick={doSend}><Icon name="up" size={24} /></button>
+        : pm === 'voice'
+          ? (
+            <button type="button" className="wb-cl cl-prime" data-mode="voice" aria-label="Talk to Claude live" onClick={pill.onVoice}>
+              <span className="cl-wave" aria-hidden="true"><i /><i /><i /><i /><i /></span>
+            </button>
+          )
+          : pm === 'dictate'
+            ? (
+              <button
+                type="button" className="wb-cl cl-prime" data-mode="voice"
+                aria-label={recording ? 'Stop dictating' : 'Dictate'}
+                disabled={!stt.supported || transcribing}
+                onClick={() => { if (!transcribing) stt.toggle() }}
+              ><Icon name="mic" size={20} /></button>
+            )
+            : <button type="button" className="wb-cl cl-prime" data-mode="off" aria-label="Offline" disabled><span className="cl-wave" aria-hidden="true"><i /><i /><i /><i /><i /></span></button>
+    const tile = (icon: 'image' | 'doc' | 'copy' | 'cmd' | 'edit', label: string, onClick: () => void, disabled = false) => (
+      <button type="button" className="wb-cl cl-tile" onClick={onClick} disabled={disabled}>
+        <span className="cl-tile-i"><Icon name={icon} size={20} /></span>
+        <span className="cl-tile-t">{label}</span>
+      </button>
+    )
+    return (
+      <div
+        ref={wrapRef} data-ask className="a-brain-composer cl-composer" data-offline={pill.offline ? '' : undefined}
+        onKeyDownCapture={e => {
+          if (extras?.onKeyDown?.(e)) { e.preventDefault(); e.stopPropagation(); return }
+          if (isSendChord(e)) { e.preventDefault(); e.stopPropagation(); doSend() }
+        }}
+      >
+        <input
+          ref={fileRef} type="file" accept="image/*,application/pdf" multiple hidden
+          onChange={e => { onFiles(e.target.files); e.target.value = '' }}
+        />
+        <input
+          ref={docRef} type="file" accept="application/pdf" multiple hidden
+          onChange={e => { onFiles(e.target.files); e.target.value = '' }}
+        />
+        {extras?.overlay}
+        {above}
+        {runner}
+        {tray && <div className="cl-pill-tray">{tray}</div>}
+        {pasteNote && (
+          <div className="cl-pill-tray">
+            <span className="a-brain-note">{pasteNote}</span>
+            <IconButton icon="close" size="sm" label="Dismiss" onClick={() => setPasteNote(null)} />
+          </div>
+        )}
+        {attachments.length > 0 && <div className="cl-pill-note">The attachment stays on this phone for now.</div>}
+        <div className="cl-pill" data-mode={pm} onPaste={onPaste}>
+          <button
+            type="button" className="wb-cl cl-pill-btn" aria-label="Add: photo, file, paste, commands, new chat"
+            aria-expanded={trayOpen2} onClick={() => setTrayOpen2(true)}
+          ><Icon name="add" size={24} /></button>
+          <textarea
+            className="cl-pill-input"
+            rows={1}
+            value={value}
+            placeholder={pill.offline ? 'Sends when you are back' : placeholder}
+            aria-label="Message Claude"
+            onChange={e => { onChange(e.target.value); setHeard(null) }}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !('ontouchstart' in window)) { e.preventDefault(); doSend() } }}
+          />
+          {stt.supported && pm !== 'stop' && pm !== 'dictate' && (
+            <button
+              type="button" className="wb-cl cl-pill-btn" data-on={recording ? '' : undefined}
+              aria-label={recording ? 'Stop dictating' : 'Dictate'}
+              disabled={transcribing}
+              onClick={() => { if (!transcribing) stt.toggle() }}
+            ><Icon name="mic" size={20} /></button>
+          )}
+          {primary}
+        </div>
+
+        <Sheet open={trayOpen2} onClose={closeTray} title="Add to this chat" className="cl-traysheet">
+          <div className="cl-tiles">
+            {tile('image', 'Photo', () => { closeTray(); fileRef.current?.click() })}
+            {tile('doc', 'File', () => { closeTray(); docRef.current?.click() })}
+            {tile('copy', 'Paste', () => { closeTray(); void pasteFromClipboard() })}
+            {tile('cmd', 'Commands', () => { closeTray(); pill.onCommands?.() }, !pill.onCommands)}
+          </div>
+          {pill.onNewChat && (
+            <button type="button" className="wb-cl cl-trayrow" onClick={() => { closeTray(); pill.onNewChat?.() }}>
+              <Icon name="edit" size={20} /><span>New chat</span>
+            </button>
+          )}
+          {pill.runnerItems && (
+            <div className="cl-trayrun">
+              <div className="cl-trayh">Run on the runner</div>
+              {pill.runnerItems(trayOpen2, closeTray)}
+            </div>
+          )}
+        </Sheet>
+      </div>
+    )
+  }
 
   return (
     /* `data-ask` marks the ask composer for anything outside it that has to

@@ -1,0 +1,108 @@
+/* ==========================================================================
+   src/wb/ask/voice/voice.css: the live voice stage (P2 winner A, voice state).
+   Tokens only. Lime only on live state: the orb, its rings, the live dot, and
+   the one primary action (Tap to talk). One 180ms duration except the orb,
+   whose scale is driven per frame from the audio level (no transition).
+   ========================================================================== */
+.lv{
+  position:fixed; inset:0; z-index:var(--ds-z-dialog);
+  display:flex; flex-direction:column;
+  background:var(--ds-canvas); color:var(--ds-text);
+  font-family:var(--ds-font);
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  overflow:hidden;
+}
+.lv-top{ display:flex; justify-content:center; align-items:center; min-height:var(--ds-tap); padding:var(--ds-s3) var(--ds-s5) 0 }
+.lv-tag{
+  display:inline-flex; align-items:center; gap:var(--ds-s3);
+  min-height:32px; padding:0 var(--ds-s4); border-radius:var(--ds-r-pill);
+  background:var(--ds-surface-1); font-size:var(--ds-fs-body); font-weight:var(--ds-fw-semi);
+}
+.lv-num{ font-variant-numeric:tabular-nums; color:var(--ds-text-2) }
+.lv-cost{ color:var(--ds-text-3); font-weight:var(--ds-fw-regular) }
+
+.lv-orb-wrap{ position:relative; flex:none; height:min(300px,36vh); display:grid; place-items:center }
+.lv-orb-wrap::before{
+  content:""; position:absolute; width:min(320px,80vw); aspect-ratio:1; border-radius:var(--ds-r-pill);
+  background:radial-gradient(circle, var(--ds-accent-soft), transparent 62%);
+  pointer-events:none;
+}
+.lv-orb{
+  position:relative; width:min(168px,40vw); aspect-ratio:1; border-radius:var(--ds-r-pill);
+  background:var(--ds-accent); border:0; padding:0; cursor:pointer;
+  box-shadow:0 0 60px var(--ds-accent-soft), 0 0 0 1px var(--ds-accent-line);
+  will-change:transform;
+}
+.lv-orb[data-dim]{ background:var(--ds-surface-3); box-shadow:0 0 0 1px var(--ds-line-strong) }
+.lv[data-state='IDLE'] .lv-orb-wrap::before,
+.lv[data-state='ERROR'] .lv-orb-wrap::before{ display:none }
+.lv-ring{
+  position:absolute; width:min(168px,40vw); aspect-ratio:1; border-radius:var(--ds-r-pill);
+  border:1.5px solid var(--ds-accent-line); pointer-events:none;
+  animation:lv-ringout 2.2s var(--ds-ease) infinite;
+}
+.lv-ring.b{ animation-delay:.73s }
+.lv-ring.c{ animation-delay:1.46s }
+@keyframes lv-ringout{ 0%{ transform:scale(1); opacity:.9 } 100%{ transform:scale(1.75); opacity:0 } }
+
+.lv-state{ text-align:center; font-size:var(--ds-fs-body); color:var(--ds-text-3); margin:var(--ds-s2) var(--ds-s5) 0; min-height:22px }
+.lv-caps{ flex:1; min-height:0; overflow-y:auto; padding:var(--ds-s7) 28px 0 }
+.lv-me{ font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text-3); margin:0 }
+.lv-me b{ color:var(--ds-text-2); font-weight:var(--ds-fw-medium) }
+.lv-ai{
+  font-size:var(--ds-fs-page); line-height:1.3; font-weight:var(--ds-fw-semi);
+  letter-spacing:var(--ds-tr-page); margin:var(--ds-s4) 0 0; color:var(--ds-text);
+}
+/* The earlier sentences of the reply: readable (judge A: #4a4a47 was ~2:1). */
+.lv-before{ color:var(--ds-text-3) }
+.lv-doing{
+  display:inline-flex; align-items:center; gap:var(--ds-s3); margin-top:var(--ds-s5);
+  max-width:100%; min-height:32px; padding:0 var(--ds-s4); border-radius:var(--ds-r-pill);
+  background:var(--ds-surface-1); color:var(--ds-text-2);
+}
+.lv-doing-t{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0 }
+.lv-retry{
+  display:flex; align-items:center; min-height:var(--ds-tap); margin-top:var(--ds-s5); padding:0 var(--ds-s5);
+  border-radius:var(--ds-r-pill); border:1px solid var(--ds-line-strong); background:var(--ds-surface-1);
+  color:var(--ds-text); font:inherit; font-size:var(--ds-fs-body); font-weight:var(--ds-fw-medium);
+}
+
+.lv-start{ flex:1; display:flex; flex-direction:column; align-items:center; gap:var(--ds-s5); padding:var(--ds-s7) 28px 0 }
+.lv-go{
+  display:inline-flex; align-items:center; justify-content:center; gap:var(--ds-s3);
+  min-height:64px; min-width:220px; padding:0 var(--ds-s7); border:0; border-radius:var(--ds-r-pill);
+  background:var(--ds-accent); color:var(--ds-accent-ink);
+  font:inherit; font-size:var(--ds-fs-title); font-weight:var(--ds-fw-semi);
+  transition:transform var(--ds-dur) var(--ds-ease);
+}
+.lv-go:active{ transform:scale(.97) }
+.lv-hint{ margin:0; max-width:300px; text-align:center; font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text-3) }
+
+.lv-ctl{ display:flex; justify-content:space-between; align-items:flex-end; padding:var(--ds-s5) 36px var(--ds-s6) }
+.lv-c{
+  display:flex; flex-direction:column; align-items:center; gap:var(--ds-s3);
+  min-width:var(--ds-tap); background:none; border:0; padding:0; cursor:pointer;
+  font:inherit; font-size:var(--ds-fs-meta); font-weight:var(--ds-fw-medium); color:var(--ds-text-3);
+}
+.lv-c:disabled{ opacity:.45; cursor:default }
+.lv-c-b{
+  width:64px; height:64px; margin:6px 0; border-radius:var(--ds-r-pill);
+  display:grid; place-items:center; background:var(--ds-surface-2); color:var(--ds-text);
+  transition:transform var(--ds-dur) var(--ds-ease), background var(--ds-dur) var(--ds-ease);
+}
+.lv-c:active:not(:disabled) .lv-c-b{ transform:scale(.94) }
+.lv-c[data-on]{ color:var(--ds-text) }
+.lv-c[data-on] .lv-c-b{ background:var(--ds-text); color:var(--ds-canvas) }
+/* Muted: the mic glyph is struck through (the icon set has no mic-off). */
+.lv-mute{ position:relative }
+.lv-c[data-on] .lv-mute::after{
+  content:""; position:absolute; width:28px; height:2px; border-radius:var(--ds-r1);
+  background:currentColor; transform:rotate(-45deg);
+}
+.lv-end{ color:var(--ds-text) }
+.lv-end .lv-c-b{ width:76px; height:76px; margin:0; background:var(--ds-text); color:var(--ds-canvas) }
+
+@media (prefers-reduced-motion:reduce){
+  .lv-ring{ animation:none; opacity:.5 }
+  .lv-go, .lv-c-b{ transition:none }
+}

@@ -7,7 +7,7 @@
    labels and previews are the same strings the old strip printed and the
    unicode glyph each summary carried is replaced by its named icon.
    ========================================================================== */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Icon, fadeT, spring } from '../../ds'
 import { TOOL_ICON, formatInput, groupRuns, summarizeTool } from '../../exp/v2c/chat/toolSummaries'
@@ -101,6 +101,54 @@ export function TurnMeta({ turn, outcome }: { turn: Turn; outcome: ReturnType<ty
       <span className="a-brain-tmeta-n">Claude</span>
       <span className="a-brain-tdot" data-outcome={outcome} />
       {parts.length > 0 && <span>{parts.join(' · ')}</span>}
+    </div>
+  )
+}
+
+/**
+ * While a turn runs: the tool work as a short step list, built ONLY from the
+ * tool events the stream has delivered (`chat.streamTools`). Every run but the
+ * newest is done (the stream moved past it); the newest is the one in flight.
+ * The head counts real seconds since this list mounted, which is when the
+ * turn started showing work. Nothing here is generated from a clock except
+ * that count.
+ */
+export function LiveSteps({ calls }: { calls: ToolCall[] }) {
+  const [t0] = useState(() => Date.now())
+  const [now, setNow] = useState(t0)
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(id)
+  }, [])
+  const runs = groupRuns(calls)
+  const byId = new Map(calls.map(c => [c.id, c]))
+  const secs = Math.max(0, Math.round((now - t0) / 1000))
+  return (
+    <div className="cl-steps" data-live-steps>
+      <div className="cl-steps-h">
+        <span className="cl-live" aria-hidden="true" />
+        <span>Working</span>
+        <span className="cl-steps-s">{secs}s</span>
+      </div>
+      {runs.length > 0 && (
+        <ol className="cl-steps-l">
+          {runs.map((run, i) => {
+            const s = summarizeTool(run.tool, byId.get(run.ids[0])?.input ?? null)
+            const done = i < runs.length - 1
+            return (
+              <li key={`${i}:${run.ids[0]}`} className="cl-step" data-done={done ? '' : undefined}>
+                <span className="cl-step-m" aria-hidden="true">
+                  {done ? <Icon name="check" size={16} /> : <span className="cl-spin" />}
+                </span>
+                <span className="cl-step-t">
+                  {s.label}{run.ids.length > 1 ? ` ${run.ids.length}` : ''}
+                  {s.preview && <span className="cl-step-p"> {s.preview}</span>}
+                </span>
+              </li>
+            )
+          })}
+        </ol>
+      )}
     </div>
   )
 }
