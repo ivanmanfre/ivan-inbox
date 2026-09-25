@@ -626,7 +626,16 @@
 }
 /* The phone chrome's own covers (src/wb/ask/Mobile.tsx): the lanes under the
    Claude place, and the whole place frame under a DM thread takeover. Both
-   stay mounted and are taken out of layout, not out of the tree. */
+   stay mounted, not out of the tree. */
 .a-brain-lanes{ display:contents }
 .a-brain-lanes[hidden]{ display:none !important }
-.a-brain-root[hidden]{ display:none !important }
+/* Under a DM thread the place frame keeps its boxes at the viewport's size, so
+   the list under it keeps its scroll offset (WebKit drops it across
+   display:none), and paints nothing. */
+.a-brain-root[data-covered]{
+  position:fixed; inset:0; z-index:-1;
+  content-visibility:hidden; pointer-events:none;
+}
+@supports not (content-visibility:hidden){
+  .a-brain-root[data-covered]{ visibility:hidden }
+}

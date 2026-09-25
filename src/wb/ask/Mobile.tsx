@@ -517,10 +517,10 @@ export function Mobile(p: BrainMobileProps) {
        nine sheets that scope every rule to `.wb.wb.wb`, and the phone chrome
        this replaced carried the class, so dropping it left those five surfaces
        bare at 390 while they still looked right at 1440. It leaves with them,
-       in W6. Covered by a thread takeover it is hidden and inert, not gone. */}
+       in W6. Covered by a thread takeover it is skipped and inert, not gone. */}
     <div
       className="brain-b wb a-brain-root" data-place={feedOpen ? 'feed' : place === 'ask' ? 'ask' : 'lane'}
-      hidden={!!peerView} inert={!!peerView}
+      data-covered={peerView ? '' : undefined} inert={!!peerView}
     >
     <LaneShownCtx.Provider value={lanesShown}>
       <Shell
