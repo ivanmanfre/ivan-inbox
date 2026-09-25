@@ -541,7 +541,9 @@ export default function OrbitCanvas(props: OrbitCanvasProps): JSX.Element {
     g.addNode('you', { kind: 'you', x: 0, y: 0, size: 8, color: theme.text, label: 'You', hidden: false, zIndex: 10 });
     for (const person of graph.people) {
       const pt = peopleLayout.get(person.id);
-      if (!pt) continue;
+      // A payload can repeat an id (seen 2026-09-25: one LinkedIn activity urn twice). graphology throws
+      // on a second addNode and the whole Orbit paints black, so the first copy wins.
+      if (!pt || g.hasNode(person.id)) continue;
       g.addNode(person.id, {
         kind: 'person', x: pt.x, y: pt.y, size: baseNodeSize(person),
         color: stageColor(theme, person.st), label: person.n, headline: personHeadline(person),
@@ -571,7 +573,7 @@ export default function OrbitCanvas(props: OrbitCanvasProps): JSX.Element {
 
     for (const post of graph.posts) {
       const pt = postsLayout.get(post.id);
-      if (!pt) continue;
+      if (!pt || g.hasNode(post.id)) continue;
       g.addNode(post.id, {
         // Full label always stored on the node — thinning happens in the
         // reducer (postLabelIdsRef), which also always shows it for the
