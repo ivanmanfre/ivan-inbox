@@ -5,19 +5,11 @@ import App from './App.tsx'
 // (DECISIONS D4): it is loaded by the lazy module the `#exp/stock` branch in
 // App.tsx mounts, so the live app never carries it. The design system brings
 // its own reset (src/ds/ds.css §0).
-// R5c · ONE MotionConfig FOR THE APP. `src/ds/MotionProvider.tsx` has existed
-// since the design system was built and was mounted by the GALLERY only, so
-// every motion component in the shipped app ignored `prefers-reduced-motion`
-// unless it happened to call `useReducedMotion()` itself. `reducedMotion="user"`
-// makes the whole JS half honour the OS setting without one per-component
-// check; the CSS half already collapses in ds.css.
-import { Motion } from './ds/MotionProvider'
-import { ConfirmProvider } from './wb/chrome/ConfirmSheet'
-// Same split as ConfirmProvider above (Phase 3 W2): the context lives in
-// src/lib/pushLater.ts and this is the design system's provider over it, so
-// every `usePushLater()` call site is unchanged.
-import { PushLaterProvider } from './wb/sheets/PushLater'
-import { adoptPrefetchedInbox } from './lib/handoff'
+// R5c · ONE MotionConfig FOR THE APP, plus the Confirm and PushLater
+// providers: all three now live in src/providers.tsx, which App.tsx loads
+// lazily (P1 speed, 2026-09-25). Mounted from here they pulled motion, lucide
+// and the whole design system into the entry chunk ahead of React's mount.
+import { adoptPrefetchedInbox, adoptPrefetchedThread } from './lib/handoff'
 
 if (localStorage.getItem('inbox-theme') === 'light') {
   document.documentElement.dataset.theme = 'light'
@@ -127,16 +119,12 @@ console.log('[inbox] build', __BUILD__)
 // first render, because useInbox seeds from localStorage synchronously and a
 // copy adopted one frame later would be a skeleton flash followed by rows.
 // Bounded inside: a wedged IndexedDB resolves within 300 ms either way.
-adoptPrefetchedInbox().then(() => {
+// The same hand-off carries the Claude thread a Claude push was about
+// (src/sw.ts prefetchClaude), adopted into the thread cache in parallel.
+Promise.all([adoptPrefetchedInbox(), adoptPrefetchedThread()]).then(() => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <Motion>
-        <ConfirmProvider>
-          <PushLaterProvider>
-            <App />
-          </PushLaterProvider>
-        </ConfirmProvider>
-      </Motion>
+      <App />
     </StrictMode>,
   )
 })

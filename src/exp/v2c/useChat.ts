@@ -8,6 +8,7 @@ import {
   setBotPushMuted as writeBotPushMuted,
   type Thread, type TurnRow,
 } from '../../lib/turns'
+import { emptyOverKnown, keepIds, readThreadCache, writeThreadCache } from '../../lib/threadCache'
 
 // Chat state is owned HERE, mounted once by Shell, never inside the pane.
 //
@@ -221,8 +222,18 @@ export const POLL_MAX_MS = 15 * 60_000
 
 export type ChatHandle = ReturnType<typeof useChat>
 
+// P1 speed: the thread a cold open is about to hydrate, so its last-known turns
+// paint in the first render (src/lib/threadCache.ts). An Ask push link names it.
+function bootThreadId(): string | null {
+  const m = typeof location === 'undefined' ? null : location.hash.match(/\/ask\?(?:.*&)?thread=([0-9a-f-]{36})/i)
+  return m && isUuid(m[1]) ? m[1] : readThreadKey()
+}
+const cachedTurns = (id: string | null): Turn[] => readThreadCache(id, turnsFromRows)?.turns ?? []
+
 export function useChat() {
-  const [turns, setTurns] = useState<Turn[]>([])
+  const [turns, setTurns] = useState<Turn[]>(() => cachedTurns(bootThreadId()))
+  // The turns on screen are the saved copy and the last read of the rows failed.
+  const [turnsStale, setTurnsStale] = useState(false)
   const [status, setStatus] = useState<ChatStatus>('idle')
   const [streamText, setStreamText] = useState('')
   const [streamTools, setStreamTools] = useState<ToolCall[]>([])
@@ -396,6 +407,7 @@ export function useChat() {
         threadRef.current = null
         setThreadId(null)
         setThread(null)
+        if (turnsRef.current.length > 0) setTurnsStale(true)
         return
       }
       threadIdRef.current = t.id
@@ -405,7 +417,11 @@ export function useChat() {
       writeThreadKey(t.id)
       const rows = await listTurns(t.id)
       if (stale()) return
-      setTurns(turnsFromRows(rows))
+      const fresh = turnsFromRows(rows)
+      // N3b: zero rows under a thread the screen already holds turns for is a
+      // failed read (an expired session reads empty through RLS), never a truth.
+      if (emptyOverKnown(turnsRef.current, fresh.length)) setTurnsStale(true)
+      else { setTurns(prev => keepIds(prev, fresh)); setTurnsStale(false) }
       const last = rows[rows.length - 1]
       if (last) setGrounding(groundingOf(last))
       // A row still open with no local stream attached IS the "phone was locked"
@@ -421,6 +437,7 @@ export function useChat() {
       // Offline, or the views are not applied yet. The pane keeps whatever it
       // has and the next send still works — hydration is a convenience, not a
       // precondition for talking.
+      if (!stale() && turnsRef.current.length > 0) setTurnsStale(true)
     } finally {
       if (!stale()) setTurnsLoading(false)
     }
@@ -649,6 +666,7 @@ export function useChat() {
     threadRef.current = null
     writeThreadKey(null)
     setTurns([])
+    setTurnsStale(false)
     setStreamText('')
     setStreamTools([])
     setSessionId(null)
@@ -668,7 +686,8 @@ export function useChat() {
     turnIdRef.current = null
     threadIdRef.current = id
     threadRef.current = null
-    setTurns([])
+    setTurns(cachedTurns(id))
+    setTurnsStale(false)
     setStreamText('')
     setStreamTools([])
     setStatus('idle')
@@ -728,12 +747,19 @@ export function useChat() {
     })()
   }, [refreshBot])
 
+  // Save the settled transcript for the next cold open. Never mid-stream, never
+  // mid-hydration, never a copy already known to be stale.
+  useEffect(() => {
+    if (status !== 'idle' || turnsLoading || turnsStale || !threadId || turns.length === 0) return
+    writeThreadCache(threadId, { turns })
+  }, [turns, status, turnsLoading, turnsStale, threadId])
+
   const busy = status !== 'idle'
 
   return {
     turns, status, busy, streamText, streamTools, sessionId, model, slow,
     wanted, setWanted,
-    threadId, thread, turnsLoading, grounding, runningElsewhere,
+    threadId, thread, turnsLoading, turnsStale, grounding, runningElsewhere,
     botThread, botUnread, refreshBot, openBot, botPushMuted, setBotPushMuted,
     send, abort, retry, reset, newThread, openThread,
   }
