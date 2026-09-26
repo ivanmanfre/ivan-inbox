@@ -21,6 +21,7 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { Banner, Button, Icon, IconButton, Badge, LiveDot, Shell, TabBar, fadeT, springSoft, type IconName, type TabItem } from '../../ds'
 import { Head, RibSlotCtx, Screen } from '../kit'
+import { useCriticalAlertCount } from '../today/alerts'
 import type { BrainMobileProps } from '../../exp/brain/types'
 import { JOB_LABEL, type Job } from '../../exp/v2c/layout'
 import { readPlace, resolveBootPlace, tabForJob, writePlace, TABS, TAB_LABEL, type Place } from '../../exp/brain/b/place'
@@ -184,6 +185,7 @@ function AskFab({ unread, busy, onTap }: { unread: boolean; busy: boolean; onTap
 export function Mobile(p: BrainMobileProps) {
   const { chat, job, goJob, counts, sev, boot, workSurface, windows, peerView, about } = p
   const feed = useFeedData()
+  const critical = useCriticalAlertCount()
 
   // A link that names a job (`#exp/brain-b/sales`, `?section=sales`) opens that
   // place; a bare cold boot still lands where he left off.
@@ -478,10 +480,13 @@ export function Mobile(p: BrainMobileProps) {
           // there, so opening it again has to mean putting it back where it was.
           onClick={() => { setFeedOpen(true); setSnap(0); setVy(null) }}
         />
-        {feed.unreadTotal > 0 && (
+        {(feed.unreadTotal > 0 || critical > 0) && (
           <span className="a-brain-feedbtn-n">
-            <Badge tone="neutral" label={`${feed.unreadTotal} unread`}>
-              {feed.unreadTotal > 99 ? '99+' : feed.unreadTotal}
+            <Badge
+              tone={critical > 0 ? 'urgent' : 'neutral'}
+              label={critical > 0 ? `${critical} critical alert${critical === 1 ? '' : 's'} open, ${feed.unreadTotal} unread` : `${feed.unreadTotal} unread`}
+            >
+              {feed.unreadTotal === 0 ? '!' : feed.unreadTotal > 99 ? '99+' : feed.unreadTotal}
             </Badge>
           </span>
         )}

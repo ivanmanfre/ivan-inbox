@@ -24,6 +24,10 @@ import type { FeedData } from '../../exp/brain/b/useFeedData'
 import { dayWord } from './forms'
 import { GroupRow, NotificationRow, inChatTurnId } from './NotificationRow'
 import { kindOf, ALERT_LOOK } from './alertLook'
+// Rebuild 2026-09-26: the system alert list lived only on Today, which is
+// gone. It is pinned on top of the bell now, worst first, critical groups
+// open and warnings folded until tapped.
+import { SystemAlertStrip } from '../today/alerts'
 import './ask.css'
 
 function clockTime(iso: string): string {
@@ -273,6 +277,7 @@ export function Feed({ feed, goJob, openThread, onNavigated, onScrolled }: {
   return (
     <>
       <Body flush className="a-brain-feed" innerRef={scroller} onScroll={onScroll}>
+        <SystemAlertStrip autoOpen="critical" />
         {feed.loaded && feed.groups.length === 0 && (
           <div data-feed-empty>
             {feed.error

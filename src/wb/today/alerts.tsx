@@ -231,3 +231,19 @@ export function SystemAlertStrip({ autoOpen = 'all' }: { autoOpen?: AlertAutoOpe
     </div>
   )
 }
+
+// The bell's mark (rebuild 2026-09-26): how many CRITICAL groups are open in
+// the list above. The bell turns red while any is; warnings never colour it.
+export function useCriticalAlertCount(): number {
+  const [n, setN] = useState(0)
+  useEffect(() => {
+    let alive = true
+    const read = () => fetchSystemAlerts()
+      .then(r => { if (alive) setN(shapeAlerts(r).filter(g => g.severity === 'critical').length) })
+      .catch(() => {})
+    read()
+    const t = setInterval(read, 5 * 60_000)
+    return () => { alive = false; clearInterval(t) }
+  }, [])
+  return n
+}
