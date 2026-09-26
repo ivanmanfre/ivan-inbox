@@ -57,6 +57,20 @@ function gateConfirm(where: string) {
   }
 }
 
+// Ivan's rule: every destructive batch verb asks first. Discard is undoable
+// elsewhere, and the sheet still names what goes. One builder for the batch and
+// the single row, so the two can never ask different questions.
+function discardConfirm(n: number) {
+  return {
+    title: n === 1 ? 'Discard this one?' : `Discard these ${n}?`,
+    message: n === 1
+      ? 'Nothing gets posted. The draft is dropped.'
+      : `Nothing gets posted. All ${n} drafts are dropped.`,
+    confirmText: 'Discard',
+    danger: true,
+  }
+}
+
 type ApproveResult =
   | { ok: true }
   | { ok: false; message: string; outcome: GateOutcome | 'error' }
@@ -194,6 +208,7 @@ export function FocusBlock({
   }
 
   async function onDiscardOne(d: OpsDraft) {
+    if (!(await confirm(discardConfirm(1)))) return
     markBusy([d.id], true)
     try {
       await dispatchDiscard(d)
@@ -233,6 +248,7 @@ export function FocusBlock({
   async function onDiscardBatch(b: Batch) {
     const ids = pendingIdsOf(b, liveOpsDrafts)
     if (ids.length === 0) return
+    if (!(await confirm(discardConfirm(ids.length)))) return
     markBusy(ids, true)
     const r = await runBatch(ids, async id => {
       const d = byId.get(id)
@@ -240,7 +256,7 @@ export function FocusBlock({
       await dispatchDiscard(d)
       markDone(id)
     })
-    setBatchNote(s => ({ ...s, [b.key]: batchResultLine(r, ids.length) }))
+    setBatchNote(s => ({ ...s, [b.key]: batchResultLine(r, ids.length, 'discarded') }))
     markBusy(ids, false)
     if (r.succeeded.length > 0) onChanged?.()
   }

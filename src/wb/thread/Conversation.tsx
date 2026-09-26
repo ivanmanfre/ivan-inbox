@@ -29,7 +29,7 @@ import { Linkified } from '../chrome/Linkified'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import { formatReturn, returnsIn, usePushLater } from '../../lib/pushLater'
 import {
-  approveDraft, channelFamilies, canComposeEmail, composeReply, discardDraft, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
+  approveDraft, channelFamilies, canComposeEmail, composeReply, discardLegs, draftLegs, legFailureText, holdReason, isEngineRetired, retiredLabel, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
   saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId, emailRowSender, ladderSteps, sendFailed,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../../lib/inbox'
@@ -62,6 +62,16 @@ function legName(m: InboxMessage): string {
   if (c === 'inmail') return 'InMail'
   if (c === 'invite') return 'connection note'
   return 'LinkedIn DM'
+}
+
+// The scan-delivery model the sender mails a scan link for even without
+// email_mirror_text (Outreach - Send Messages, mirror branch).
+const SCAN_DELIVERY_MODEL = 'rise_dm2_scan_delivery_v1'
+
+// A stall bump, as opposed to a dated or hand follow-up: the bump lane is one
+// per person, ever, and never redrafts a discarded one.
+function isBump(m: InboxMessage): boolean {
+  return /stall_bump|_bump_|bump_v/.test(m.ai_model ?? '')
 }
 
 function dayLabel(iso: string): string {
@@ -211,10 +221,31 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
   const confirm = useConfirm()
   const pushLater = usePushLater()
 
-  // Re-seed the editor when the draft row changes (e.g. after a refresh).
-  useEffect(() => { setEdited(draft?.message_text ?? '') }, [draft?.id])
-  useEffect(() => { setEditedEmail(draft?.email_mirror_text ?? '') }, [draft?.id])
-  useEffect(() => { setEditedCompanion(companion?.message_text ?? '') }, [companion?.id])
+  // Re-seed the editor when the draft row changes (e.g. after a refresh), AND
+  // when the same row's text changes under an untouched editor. The saved copy
+  // paints pending drafts with capability links redacted to "[link]"; seeding
+  // only on a new id left that text in the box after the live read landed, one
+  // tap from being approved (check3-drafts E1.13). An editor he has typed in is
+  // never overwritten.
+  const seeded = useRef({ id: '', text: '', email: '', cid: '', ctext: '' })
+  useEffect(() => {
+    const was = seeded.current
+    const text = draft?.message_text ?? ''
+    const email = draft?.email_mirror_text ?? ''
+    if ((draft?.id ?? '') !== was.id) { setEdited(text); setEditedEmail(email) }
+    else {
+      setEdited(cur => (cur === was.text ? text : cur))
+      setEditedEmail(cur => (cur === was.email ? email : cur))
+    }
+    seeded.current = { ...seeded.current, id: draft?.id ?? '', text, email }
+  }, [draft?.id, draft?.message_text, draft?.email_mirror_text])
+  useEffect(() => {
+    const was = seeded.current
+    const ctext = companion?.message_text ?? ''
+    if ((companion?.id ?? '') !== was.cid) setEditedCompanion(ctext)
+    else setEditedCompanion(cur => (cur === was.ctext ? ctext : cur))
+    seeded.current = { ...seeded.current, cid: companion?.id ?? '', ctext }
+  }, [companion?.id, companion?.message_text])
 
   // Grow the edit box to fit the draft (capped by max-height in CSS) so long
   // drafts are readable and editable without a tiny scroll window.
@@ -334,30 +365,28 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
 
   async function onDiscard() {
     if (!draft) return
+    // One bump per person, ever: the bump lane never redrafts someone whose bump
+    // was discarded. Later is the safe answer, so the sheet says so.
+    const bump = isBump(draft)
     const ok = await confirm({
-      title: companion ? 'Discard both drafts?' : 'Discard this draft?',
-      message: companion
+      title: companion ? 'Discard both drafts?' : bump ? 'Discard this follow-up?' : 'Discard this draft?',
+      message: (companion
         ? `Neither the ${legName(draft)} nor the ${legName(companion)} will be sent.`
-        : 'It will not be sent.',
+        : 'It will not be sent.')
+        + (bump ? ` A discarded follow-up is never redrafted for ${thread.prospect_name.split(' ')[0]}. Later keeps it for another day.` : ''),
       confirmText: 'Discard',
       danger: true,
     })
     if (!ok) return
     setBusy(true); setDraftErr('')
     try {
-      // Both legs or neither. Discarding only the visible one used to leave the
-      // other queued and invisible — the exact failure this pairing exists to end.
-      if (companion) await discardDraft(companion.id).catch(() => {})
-      // A FALSE IS NOT A DISCARD. Discarding an already-approved row wrote two
-      // columns the dispatcher does not read, the row left the inbox, and the
-      // message still went out on the next two-minute tick. The write now refuses
-      // that row and returns false, and this is where the operator is told so
-      // rather than being shown a discard that did not happen.
-      const stopped = await discardDraft(draft.id)
-      if (!stopped) {
-        setDraftErr('This one was already approved and is in the send queue, so the '
-          + 'discard did not stop it. Nothing was changed.')
-      }
+      // Both legs or neither, and A FALSE IS NOT A DISCARD on either leg.
+      // Discarding an already-approved row used to leave the inbox while the
+      // message still went out on the next tick; the write now refuses it and
+      // every refused leg is named here. The companion's refusal used to be
+      // swallowed.
+      const failed = await discardLegs(draftLegs(thread))
+      if (failed.length) setDraftErr(failed.map(legFailureText).join(' '))
       refresh()
     } catch (e) { setDraftErr(errText(e)) }
     finally { setBusy(false) }
@@ -415,7 +444,12 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
     })
     if (!ok) return
     setBusy(true); setComposeErr('')
-    try { await composeReply(thread, t); setReply(''); refresh() }
+    try {
+      const failed = await composeReply(thread, t)
+      setReply('')
+      if (failed.length) setComposeErr(`Your reply is queued. ${failed.map(legFailureText).join(' ')}`)
+      refresh()
+    }
     catch (e) { setComposeErr(errText(e)) }
     finally { setBusy(false) }
   }
@@ -425,9 +459,10 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
   const bubbles = thread.messages.filter(
     m => m.send_blocked_reason !== 'discarded_in_inbox' && !isDraft(m) && !isInternalConfirmation(m),
   )
+  const onScreen = bubbles.filter(m => !isEngineRetired(m))
   // Judged on what is actually ON SCREEN — a pending email draft sitting in the
   // card below has not happened yet and must not relabel the conversation.
-  const mixed = isMixedChannel(bubbles)
+  const mixed = isMixedChannel(onScreen)
   // The header's own copy of the list row's lane/route tags (see the sub line
   // below): derived once so the JSX does not call the label functions twice.
   const laneLabel = campaignLaneLabel(thread.lane)
@@ -464,7 +499,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
         sub={<>
           <div className="a-thread-subline">
             {thread.prospect_company ? <>{thread.prospect_company} · </> : null}
-            <b>{clientName(thread.client_id)}</b> · {channelSummary(bubbles)} · {label(thread.stage)}
+            <b>{clientName(thread.client_id)}</b> · {channelSummary(onScreen)} · {label(thread.stage)}
           </div>
           {/* The campaign lane and copy route (db/212, db/213), moved off the
               list row into the opened thread's own header (Ivan, 2026-09-24:
@@ -551,6 +586,19 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
               </div>
             )
           }
+          // A draft the engine replaced never went anywhere: one quiet line,
+          // never a red "Send failed" box (JeongHyun Bae had six).
+          if (isEngineRetired(m)) {
+            return (
+              <div key={m.id} className="a-thread-turn" data-side="out">
+                {showDay && <DayHeader label={day} />}
+                <div className="a-thread-lbl a-dim" data-right="">
+                  <span>{retiredLabel(m)}</span>
+                  <span className="a-mono">{at}</span>
+                </div>
+              </div>
+            )
+          }
           const lbl = outLabel(m, thread.stage)
           return (
             <div key={m.id} className="a-thread-turn" data-side="out">
@@ -579,8 +627,8 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
                   {/* An email carries its recipient on its face. The DM above it
                       went to a LinkedIn chat, this one went to an address, and
                       that is the whole difference the operator is trying to see. */}
-                  {chan === 'email' && i === 0 && m.prospect_email && (
-                    <div className="a-meta">To {m.prospect_email}</div>
+                  {chan === 'email' && i === 0 && (m.recipient_email || m.prospect_email) && (
+                    <div className="a-meta">To {m.recipient_email || m.prospect_email}</div>
                   )}
                   <span className="a-pre"><Linkified text={part} /></span>
                 </div>
@@ -665,6 +713,14 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
                   }
                 />
               )}
+              {holdReason(draft) && (
+                <Banner tone="attention" icon="alert">{holdReason(draft)}</Banner>
+              )}
+              {draft.email_stamp_unavailable && (
+                <Banner tone="attention" icon="alert">
+                  Could not check whether this draft also sends an email. Refresh before you approve.
+                </Banner>
+              )}
               {thread.draftStale && (
                 <Banner tone="attention" icon="alert">
                   Your own reply went out after their last message — this draft is probably not needed.
@@ -700,7 +756,9 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
                       <span>{clientOwner(thread.client_id) ? `For ${clientOwner(thread.client_id)!.owner}: ` : ''}{draft.context_gap.question}</span>
                     )}
                     <span className="a-wrapline">
-                      <Button
+                      {/* Your own seat has nobody to ask (18 Sep: the right owner on
+                          every question, your seat asks nobody). */}
+                      {clientOwner(thread.client_id) && <Button
                         variant="quiet"
                         size="sm"
                         busy={asking}
@@ -712,7 +770,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
                             .finally(() => setAsking(false))
                         }}
                         icon={askNote ? 'check' : undefined}
-                      >{askNote ? 'Asked' : asking ? 'Queueing…' : `Ask ${clientOwner(thread.client_id)?.owner ?? 'the client'}`}</Button>
+                      >{askNote ? 'Asked' : asking ? 'Queueing…' : `Ask ${clientOwner(thread.client_id)!.owner}`}</Button>}
                       {draft.context_gap.chat_url && (
                         <a className="a-link" href={draft.context_gap.chat_url} target="_blank" rel="noreferrer">
                           open the conversation
@@ -734,11 +792,11 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
                   <div className="a-stack" data-tight>
                     {draft.draft_evidence.learned && draft.draft_evidence.learned.length > 0 && (
                       <div className="a-thread-devg">
-                        <span className="a-eyebrow">Learned from Mattan</span>
+                        <span className="a-eyebrow">{clientOwner(thread.client_id) ? `Learned from ${clientOwner(thread.client_id)!.owner}` : 'Learned from your DMs'}</span>
                         {draft.draft_evidence.learned.map(f => (
                           <div key={f.id} className="a-thread-devr">
                             <span>{f.fact}</span>
-                            <span className="a-mono a-dim">his own DM{f.from ? ` to ${f.from}` : ''}, {(f.at || '').slice(0, 10)}</span>
+                            <span className="a-mono a-dim">{clientOwner(thread.client_id) ? 'his' : 'your'} own DM{f.from ? ` to ${f.from}` : ''}, {(f.at || '').slice(0, 10)}</span>
                           </div>
                         ))}
                       </div>
@@ -795,10 +853,16 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
               {/* Only on a row that is NOT itself the email. On an email draft the
                   body above IS what gets mailed, and "approving ALSO emails..."
                   read as a second, invisible send. */}
-              {draft.recipient_email && messageChannel(draft) !== 'email' && (
+              {/* The sender mails a DM's rider only when it carries email text, or
+                  it is a scan delivery (which writes its own email from the scan
+                  link). A bare address stamp mails nothing, so it says nothing. */}
+              {draft.recipient_email && messageChannel(draft) !== 'email'
+                && (draft.email_mirror_text || draft.ai_model === SCAN_DELIVERY_MODEL) && (
                 <div className="a-stack" data-tight>
                   <span className="a-meta">
-                    Approving also sends this email to {draft.recipient_email}{emailSenderLabel(thread.client_id)}
+                    {draft.email_mirror_text
+                      ? <>Approving also sends this email to {draft.recipient_email}{emailSenderLabel(thread.client_id)}</>
+                      : <>Approving also emails the scan link to {draft.recipient_email}{emailSenderLabel(thread.client_id)}. The sender writes that email itself.</>}
                     {draft.email_mirror_text && (
                       <Button variant="quiet" size="sm" onClick={() => setShowEmail(v => !v)}>
                         {showEmail ? 'Hide email' : 'Show email'}
