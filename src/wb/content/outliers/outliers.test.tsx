@@ -117,14 +117,67 @@ describe('OutliersView', () => {
     expect(($('[data-post-id="100"] [data-use-this]') as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it('a failed Use this says so and offers the tap again', async () => {
+  it('a failed Use this shows the RPC reason on the card and the button goes back to idle', async () => {
+    let fail = true
     h.rpc.mockImplementation(async (fn: string) => fn === 'operator_outliers'
-      ? { data: payload, error: null } : { data: null, error: { message: 'nope' } })
+      ? { data: payload, error: null }
+      : fail ? { data: null, error: { message: 'not an outlier of this client' } } : { data: { ok: true, created: true, id: 'n' }, error: null })
     await mount()
     await click($('[data-post-id="100"] [data-use-this]'))
     await flush()
-    expect($('[data-post-id="100"] [data-use-this]')!.textContent).toBe('Try again')
-    expect($('[data-post-id="100"]')!.textContent).toContain('Did not reach the board')
+    const btn = $('[data-post-id="100"] [data-use-this]') as HTMLButtonElement
+    expect(btn.textContent).toBe('Use this')
+    expect(btn.disabled).toBe(false)
+    expect($('[data-post-id="100"] [role="alert"]')!.textContent).toBe('Did not reach the board: not an outlier of this client.')
+    // the other cards are untouched
+    expect($('[data-post-id="300"] [role="alert"]')).toBeNull()
+    // retry: the reason clears and the tap settles
+    fail = false
+    await click(btn)
+    await flush()
+    expect($('[data-post-id="100"] [role="alert"]')).toBeNull()
+    expect($('[data-post-id="100"] [data-use-this]')!.textContent).toBe('On the board')
+    expect(h.rpc.mock.calls.filter(c => c[0] === 'operator_outlier_use')).toHaveLength(2)
+  })
+
+  it('a picked week reads "Week of Sep 14" on the heading and keeps the month capital in the sentence', async () => {
+    h.rpc.mockResolvedValue({ data: payload, error: null })
+    await mount()
+    expect($$('.ol-gh').map(g => g.firstChild?.textContent)).toEqual(['Week of Sep 21', 'Week of Sep 14'])
+    await click($$('.ol-chip-w').find(b => b.textContent?.startsWith('Sep 14'))!)
+    expect($('.ol-gh')!.firstChild?.textContent).toBe('Week of Sep 14')
+    expect($('.ol-u')!.textContent).toContain('week of Sep 14')
+    expect(host.textContent).not.toMatch(/\bsep \d/)
+    // an empty week in a sentence keeps the capital too
+    await click($$('[aria-label="Platform"] [role="tab"]').find(b => b.textContent?.startsWith('X'))!)
+    await click($$('.ol-chip-w').find(b => b.textContent?.startsWith('Sep 21'))!)
+    expect(host.textContent).toContain('No X outliers yet.')
+  })
+
+  it('caps a one-paragraph post at a short bold title and keeps the rest in the body', async () => {
+    const one = 'HUGE news dropping today! We spent the last eight months rebuilding how our team plans a launch, and we finally shipped it to every customer. Here is what changed, what broke, and the direction from here.'
+    h.rpc.mockResolvedValue({ data: { ...payload, rows: [row({ post_id: '900', text: one })] }, error: null })
+    await mount()
+    const card = $('[data-post-id="900"]')!
+    const head = card.querySelector('.ol-head')!.textContent!
+    expect(head.length).toBeLessThanOrEqual(101)
+    expect(head).toBe('HUGE news dropping today! We spent the last eight months rebuilding how our team plans a launch, and…')
+    const text = card.querySelector('[data-text]')!.textContent!.replace(/…/g, '')
+    for (const w of one.split(' ')) expect(text).toContain(w)
+  })
+
+  it('resets itself on a lane change without a parent key: no card or board state crosses lanes', async () => {
+    h.rpc.mockImplementation(async (fn: string, args: { p_client: string }) => fn === 'operator_outliers'
+      ? args.p_client === 'ivan' ? { data: payload, error: null } : new Promise(() => {})
+      : { data: null, error: { message: 'unknown seat' } })
+    await mount('ivan')
+    await click($('[data-post-id="100"] [data-use-this]'))
+    await flush()
+    expect($('[data-post-id="100"] [role="alert"]')).not.toBeNull()
+    await act(async () => { root.render(<OutliersView lane="arch" />) })
+    await flush()
+    expect($$('[data-outlier-card]')).toHaveLength(0)
+    expect($('[aria-busy="true"]')).not.toBeNull()
   })
 
   it('filters to X and says X arrives with the first weekly run', async () => {

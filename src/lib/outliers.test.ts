@@ -5,8 +5,8 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('./supabase', () => ({ supabase: {} }))
 
 import {
-  ALL_WEEKS, buyerLabel, filterRows, freshnessLines, groupByWeek, liftText, parseOutliers, platformCounts,
-  sortRows, splitText, weekOptions,
+  ALL_WEEKS, HEAD_MAX, boardFailText, buyerLabel, capHead, filterRows, freshnessLines, groupByWeek, liftText, parseOutliers, platformCounts,
+  sortRows, splitText, weekLabel, weekOptions, weekPhrase,
   type OutlierRow, type OutliersPayload,
 } from './outliers'
 
@@ -99,6 +99,37 @@ describe('shape + text', () => {
   it('splits the first line off as the title', () => {
     expect(splitText('Hook line\r\n\nBody')).toEqual(['Hook line', 'Body'])
     expect(splitText(null)).toEqual(['', ''])
+  })
+  it('caps a long first line: a sentence end first, then a word, and nothing is dropped', () => {
+    const sent = 'We rebuilt the whole onboarding flow this summer and it took far longer than planned. Then the numbers came in and nobody on the team expected them.'
+    const [h1, b1] = splitText(sent)
+    expect(h1).toBe('We rebuilt the whole onboarding flow this summer and it took far longer than planned.')
+    expect(b1).toBe('Then the numbers came in and nobody on the team expected them.')
+    const words = 'word '.repeat(60).trim()
+    const [h2, b2] = splitText(`${words}\nSecond paragraph`)
+    expect(h2.length).toBeLessThanOrEqual(HEAD_MAX + 1)
+    expect(h2.endsWith('…')).toBe(true)
+    expect(b2.startsWith('…word')).toBe(true)
+    expect(b2.endsWith('\nSecond paragraph')).toBe(true)
+    expect((h2 + ' ' + b2).replace(/…/g, '').split(/\s+/).filter(w => w === 'word')).toHaveLength(60)
+    // a short first line is untouched
+    expect(splitText('Short hook\nBody')).toEqual(['Short hook', 'Body'])
+    // one unbroken run still caps
+    expect(capHead('x'.repeat(300))[0].length).toBe(HEAD_MAX + 1)
+  })
+  it('words a failed Use this with the RPC reason, short and plain', () => {
+    expect(boardFailText('not an outlier of this client')).toBe('Did not reach the board: not an outlier of this client.')
+    expect(boardFailText('unknown seat.')).toBe('Did not reach the board: unknown seat.')
+    expect(boardFailText('')).toBe('Did not reach the board.')
+    expect(boardFailText(null)).toBe('Did not reach the board.')
+    const long = boardFailText('a very long postgres message '.repeat(10))
+    expect(long.length).toBeLessThan(140)
+    expect(long).not.toContain('—')
+  })
+  it('labels a week as "Week of Sep 21" and keeps the month capital inside a sentence', () => {
+    expect(weekLabel('2026-09-21')).toBe('Week of Sep 21')
+    expect(weekPhrase('2026-09-21')).toBe('week of Sep 21')
+    expect(weekLabel(ALL_WEEKS)).toBe('All recent')
   })
   it('prints lift at one decimal under 10', () => {
     expect(liftText(3.94)).toBe('3.9')

@@ -171,17 +171,46 @@ export function dayText(iso: string | null | undefined): string {
   return Number.isNaN(d.getTime()) ? '' : `${MON[d.getUTCMonth()]} ${d.getUTCDate()}`
 }
 export const weekLabel = (w: string) => (w === ALL_WEEKS ? 'All recent' : `Week of ${dayText(w)}`)
+/** The same week inside a sentence: "week of Sep 21" (the month keeps its capital). */
+export const weekPhrase = (w: string) => (w === ALL_WEEKS ? 'all recent weeks' : `week of ${dayText(w)}`)
 export const numText = (n: number | null | undefined) => Math.round(Number(n) || 0).toLocaleString('en-US')
 export function liftText(n: number): string {
   const v = Number(n) || 0
   return v >= 100 ? String(Math.round(v)) : v >= 10 ? v.toFixed(0) : v.toFixed(1)
 }
 
-/** First line as the title (how the post read in the feed), the rest as the body. */
+/** The title's cap in characters: about two lines at the card's title size. */
+export const HEAD_MAX = 100
+
+/** Cut an over-long first line at a sentence end (or, failing that, a word) at or
+    under HEAD_MAX. Returns [head, rest]; the rest is never dropped. */
+export function capHead(line: string, max = HEAD_MAX): [string, string] {
+  if (line.length <= max) return [line, '']
+  const win = line.slice(0, max + 1)
+  let cut = -1
+  for (const m of win.matchAll(/[.!?:](?=\s)/g)) if (m.index! + 1 >= 40) cut = m.index! + 1
+  if (cut > 0) return [line.slice(0, cut).trim(), line.slice(cut).trim()]
+  const sp = win.lastIndexOf(' ')
+  if (sp >= 40) return [`${line.slice(0, sp).trim()}…`, `…${line.slice(sp).trim()}`]
+  return [`${line.slice(0, max).trim()}…`, `…${line.slice(max).trim()}`]
+}
+
+/** First line as the title (how the post read in the feed), the rest as the body.
+    A first line past HEAD_MAX is cut, and what is cut off leads the body. */
 export function splitText(text: string | null | undefined): [string, string] {
   const t = String(text ?? '').replace(/\r/g, '').trim()
   const i = t.indexOf('\n')
-  return i < 0 ? [t, ''] : [t.slice(0, i).trim(), t.slice(i + 1).trim()]
+  const [line, body] = i < 0 ? [t, ''] : [t.slice(0, i).trim(), t.slice(i + 1).trim()]
+  const [head, rest] = capHead(line)
+  return [head, rest && body ? `${rest}\n${body}` : rest || body]
+}
+
+/** A failed "Use this", in one short plain line: the RPC's own reason, capped. */
+export function boardFailText(message: string | null | undefined): string {
+  const m = String(message ?? '').replace(/\s+/g, ' ').trim().replace(/[.\s]+$/, '')
+  if (!m) return 'Did not reach the board.'
+  const short = m.length > 100 ? `${m.slice(0, 100).replace(/\s+\S*$/, '')}…` : `${m}.`
+  return `Did not reach the board: ${short}`
 }
 
 /** A body is clamped when it is long or has more lines than the clamp shows. */

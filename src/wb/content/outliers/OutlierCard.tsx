@@ -4,7 +4,7 @@
    who commented is one bar with its n. */
 import { useState } from 'react'
 import {
-  buyerLabel, dayText, liftText, needsClamp, numText, splitText,
+  boardFailText, buyerLabel, dayText, liftText, needsClamp, numText, splitText,
   type OutlierRow,
 } from '../../../lib/outliers'
 
@@ -15,7 +15,7 @@ const SHOWN_TRAITS = 5
 const plural = (n: number | null, one: string, many = `${one}s`) =>
   `${numText(n)} ${Math.round(Number(n) || 0) === 1 ? one : many}`
 
-export function OutlierCard({ row, use, onUse }: { row: OutlierRow; use: UseState; onUse: () => void }) {
+export function OutlierCard({ row, use, fail, onUse }: { row: OutlierRow; use: UseState; fail?: string; onUse: () => void }) {
   const [open, setOpen] = useState(false)
   const [head, body] = splitText(row.text)
   const clamp = needsClamp(body)
@@ -102,11 +102,11 @@ export function OutlierCard({ row, use, onUse }: { row: OutlierRow; use: UseStat
             ) : null}
             <button type="button" className="ol-use" data-use-this data-state={use}
               disabled={onBoard || use === 'busy'} aria-live="polite" onClick={onUse}>
-              {onBoard ? 'On the board' : use === 'busy' ? 'Adding' : use === 'failed' ? 'Try again' : 'Use this'}
+              {onBoard ? 'On the board' : use === 'busy' ? 'Adding' : 'Use this'}
             </button>
           </div>
         </div>
-        {use === 'failed' ? <p className="ol-usefail" role="alert">Did not reach the board.</p> : null}
+        {use === 'failed' ? <p className="ol-usefail" role="alert">{boardFailText(fail)}</p> : null}
       </div>
     </li>
   )

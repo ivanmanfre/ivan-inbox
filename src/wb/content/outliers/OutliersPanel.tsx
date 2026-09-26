@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react'
 import { Segmented } from '../../../ds'
 import {
   ALL_WEEKS, OUTLIER_RULE, TRAIT_RULE, dayText, filterRows, freshnessLines, groupByWeek, platformCounts,
-  rowKey, weekLabel, weekOptions,
+  rowKey, weekLabel, weekOptions, weekPhrase,
   type OutlierRow, type OutlierSort, type OutliersRead, type PlatformFilter,
 } from '../../../lib/outliers'
 import { OutlierCard, type UseState } from './OutlierCard'
@@ -15,6 +15,8 @@ const PAGE = 24
 export type OutliersPanelProps = {
   read: OutliersRead | null
   stateOf: (r: OutlierRow) => UseState
+  /** The RPC's reason for a failed "Use this", if the last tap failed. */
+  failOf?: (r: OutlierRow) => string | undefined
   onUse: (r: OutlierRow) => void
   onRetry: () => void
 }
@@ -27,7 +29,7 @@ function Loading() {
   )
 }
 
-export function OutliersPanel({ read, stateOf, onUse, onRetry }: OutliersPanelProps) {
+export function OutliersPanel({ read, stateOf, failOf, onUse, onRetry }: OutliersPanelProps) {
   const [platform, setPlatform] = useState<PlatformFilter>('all')
   const [week, setWeek] = useState<string>(ALL_WEEKS)
   const [sort, setSort] = useState<OutlierSort>('lift')
@@ -70,7 +72,7 @@ export function OutliersPanel({ read, stateOf, onUse, onRetry }: OutliersPanelPr
     const where = platform === 'all' ? '' : platform === 'x' ? 'X ' : 'LinkedIn '
     body = (
       <div className="ol-empty" role="status">
-        <span>{noX ? 'No X outliers yet.' : week === ALL_WEEKS ? `No ${where}outliers in the current study.` : `No ${where}outliers in the ${weekLabel(week).toLowerCase()}.`}</span>
+        <span>{noX ? 'No X outliers yet.' : week === ALL_WEEKS ? `No ${where}outliers in the current study.` : `No ${where}outliers in the ${weekPhrase(week)}.`}</span>
         <small>{noX ? 'X arrives with the first weekly run.' : 'Pick another week or platform.'}</small>
       </div>
     )
@@ -81,7 +83,7 @@ export function OutliersPanel({ read, stateOf, onUse, onRetry }: OutliersPanelPr
           <section className="ol-grp" key={w}>
             <h3 className="ol-gh">{weekLabel(w)}<span>{total} {total === 1 ? 'post' : 'posts'}</span></h3>
             <ul className="ol-cards">
-              {xs.map(r => <OutlierCard key={rowKey(r)} row={r} use={stateOf(r)} onUse={() => onUse(r)} />)}
+              {xs.map(r => <OutlierCard key={rowKey(r)} row={r} use={stateOf(r)} fail={failOf?.(r)} onUse={() => onUse(r)} />)}
             </ul>
           </section>
         ))}
@@ -94,7 +96,7 @@ export function OutliersPanel({ read, stateOf, onUse, onRetry }: OutliersPanelPr
     )
   }
 
-  const span = week === ALL_WEEKS ? `across ${weeks.length} recent ${weeks.length === 1 ? 'week' : 'weeks'}` : weekLabel(week).toLowerCase()
+  const span = week === ALL_WEEKS ? `across ${weeks.length} recent ${weeks.length === 1 ? 'week' : 'weeks'}` : weekPhrase(week)
   return (
     <div className="ol" data-outliers-view>
       <div className="ol-in">
