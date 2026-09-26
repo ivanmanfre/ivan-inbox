@@ -40,6 +40,7 @@ export function TabBar({ items, active, onSelect, markerId = 'ds-tab-active', cl
           <button
             data-ds="Tab"
             key={t.id}
+            data-tab={t.id}
             type="button"
             data-active={on}
             className="ds-tab"

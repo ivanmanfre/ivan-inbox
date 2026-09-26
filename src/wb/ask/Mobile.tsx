@@ -21,6 +21,7 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { Banner, Button, Icon, IconButton, Badge, LiveDot, Shell, TabBar, fadeT, springSoft, type IconName, type TabItem } from '../../ds'
 import { Head, RibSlotCtx, Screen } from '../kit'
+import '../chrome/instrument.css'
 import { useCriticalAlertCount } from '../today/alerts'
 import type { BrainMobileProps } from '../../exp/brain/types'
 import { JOB_LABEL, type Job } from '../../exp/v2c/layout'
@@ -518,6 +519,9 @@ export function Mobile(p: BrainMobileProps) {
     count: tabCounts[t],
     sev: tabSev[t],
     failed: tabFailed[t],
+    // The Claude key carries the unread bot turn the floating button used to
+    // (rebuild: Claude is on the bar now, so the floating button left it).
+    ...(t === 'ask' && chat.botUnread ? { count: 1 } : {}),
   }))
 
   return (<>
@@ -535,7 +539,7 @@ export function Mobile(p: BrainMobileProps) {
     <LaneShownCtx.Provider value={lanesShown}>
       <Shell
         layout="phone"
-        tabBar={<TabBar items={tabs} active={place} onSelect={id => onTab(id as Place)} markerId="a-brain-tab" />}
+        tabBar={<TabBar className="a-dock" items={tabs} active={place} onSelect={id => (id === 'ask' ? openAsk() : onTab(id as Place))} markerId="a-brain-tab" />}
       >
         <RibSlotCtx.Provider value={ribSlot}>
         <Screen className="a-brain-screen">
@@ -653,9 +657,9 @@ export function Mobile(p: BrainMobileProps) {
       {/* D3: every non-Ask place, and not while the feed sheet has the screen —
           "one region at a time" already governs the sheet, and a chip floating
           over it would be a second thing claiming the same gesture's space. */}
-      {!peerView && place !== 'ask' && !feedOpen ? (
-        <AskFab unread={chat.botUnread} busy={chat.busy} onTap={openAsk} />
-      ) : null}
+      {/* Rebuild: the floating Claude button left the places. The Claude
+          key on the bar does its job (openAsk, unread count). It stays over a
+          thread takeover, where there is no bar. */}
       {peerView ? null : windows}
     </LaneShownCtx.Provider>
     </div>

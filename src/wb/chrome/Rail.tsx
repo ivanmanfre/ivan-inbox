@@ -30,6 +30,7 @@ import {
 import { JOB_LABEL, JOB_MARK, WORK_JOBS, isWorkJob, type Job } from '../../exp/v2c/layout'
 import { relAge } from '../kit'
 import './chrome.css'
+import './instrument.css'
 
 type Counts = Partial<Record<Job, number>>
 type Sev = Partial<Record<Job, 'attention' | 'urgent'>>

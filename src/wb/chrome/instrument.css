@@ -1,0 +1,63 @@
+/* ==========================================================================
+   The B "Instrument" look for the phone bar (rebuild, blueprint v3 decision
+   14). Ivan picked B on 25 Sep ("Probably B seems more user friendly").
+   Matte: no glow, no blur, no status dots. Keys press down. The five places
+   sit on one plate; the active one gets a neutral pill (never lime), and
+   the Claude key on the right is the only lime thing on the bar.
+   Scoped to `.a-dock` so the desktop rail and the gallery keep their look.
+   ========================================================================== */
+.ds-tabbar.a-dock{
+  margin:0 var(--ds-s5, 12px) calc(8px + var(--sab));
+  padding:6px;
+  height:64px;
+  border:1px solid var(--ds-line);
+  border-radius:32px;
+  background:var(--ds-surface-1);
+  gap:2px;
+  box-shadow:none;
+}
+.a-dock .ds-tab{
+  height:50px; min-height:50px; padding:4px 0;
+  border-radius:25px; color:var(--ds-text-3);
+  gap:2px;
+}
+/* The active place: a neutral raised key, not the lime pill. */
+.a-dock .ds-tab[data-active='true'],
+.a-dock .ds-tab-marker{
+  background:var(--ds-surface-3);
+  color:var(--ds-text);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07);
+}
+.a-dock .ds-tab[data-active='true']{ flex:1 1 0; min-width:var(--ds-tap); padding-inline:0 }
+.a-dock .ds-tab-label{ font-size:10.5px; letter-spacing:0 }
+/* Keys press DOWN (translate), rather than shrinking. */
+.a-dock .ds-tab:active{ transform:translateY(1px) }
+/* A count is a quiet ink pill; a failed read keeps its red. */
+.a-dock .ds-badge[data-tone='neutral']{
+  background:var(--ds-text); color:var(--ds-canvas);
+}
+.a-dock .ds-tab-count{ top:2px; right:calc(50% - 22px) }
+/* The Claude key: the one lime object on the bar. Icon only; its name is
+   the aria-label. */
+.a-dock .ds-tab[data-tab='ask']{
+  flex:0 0 50px; width:50px; min-width:50px;
+  background:var(--ds-accent); color:var(--ds-accent-ink);
+}
+.a-dock .ds-tab[data-tab='ask'] .ds-tab-label{ display:none }
+.a-dock .ds-tab[data-tab='ask'][data-active='true']{ box-shadow:inset 0 0 0 2px var(--ds-accent-ink) }
+.a-dock .ds-tab[data-tab='ask'] .ds-tab-marker{ background:var(--ds-accent) }
+.a-dock .ds-tab[data-tab='ask'] .ds-badge{ background:var(--ds-accent-ink); color:var(--ds-accent) }
+@media (prefers-reduced-motion: reduce){
+  .a-dock .ds-tab, .a-dock .ds-tab:active{ transition:none; transform:none }
+}
+
+/* ---- Desktop rail, same look: the active row is a neutral raised key,
+   the sync state is said in words and colour, not a dot. ---- */
+.a-rail .ds-rail-item[data-active='true']{ background:var(--ds-surface-3); color:var(--ds-text) }
+.a-rail .ds-rail-item[data-active='true'] .ds-icon{ color:var(--ds-text) }
+.a-rail .ds-rail-marker{ background:var(--ds-surface-3); box-shadow:inset 0 1px 0 rgba(255,255,255,.07) }
+.a-rail .ds-rail-item:active{ transform:translateY(1px) }
+.a-rail .ds-badge[data-tone='neutral']{ background:var(--ds-text); color:var(--ds-canvas) }
+.a-rail-sync-dot{ display:none }
+.a-rail-sync:has(.a-rail-sync-dot[data-state='bad']) .a-rail-sync-t{ color:var(--ds-sev-urgent) }
+@media (prefers-reduced-motion: reduce){ .a-rail .ds-rail-item:active{ transform:none } }
