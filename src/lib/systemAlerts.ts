@@ -63,10 +63,26 @@ export async function dismissSystemAlert(id: string): Promise<void> {
 }
 
 /** Every open row at once, the strip's Clear all. Final, like the single dismiss. */
-export async function resolveAllSystemAlerts(): Promise<void> {
+// Clears what the strip shows: open rows inside the reader's window. It used
+// to close every open row ever written, including ones older than the window
+// that the confirm's count never named. Returns the stamp the Undo keys on.
+export async function resolveAllSystemAlerts(): Promise<string> {
+  const stamp = new Date().toISOString()
+  const since = new Date(Date.now() - ALERT_WINDOW_DAYS * 86_400_000).toISOString()
   const { error } = await supabase.from(SYSTEM_ALERTS_TABLE)
-    .update({ resolved_at: new Date().toISOString(), resolved_by: 'inbox:clear-all' })
+    .update({ resolved_at: stamp, resolved_by: 'inbox:clear-all' })
     .is('resolved_at', null)
+    .gte('created_at', since)
+  if (error) throw error
+  return stamp
+}
+
+// The receipt's Undo: reopens exactly the set that one Clear all closed.
+export async function undoResolveAll(stamp: string): Promise<void> {
+  const { error } = await supabase.from(SYSTEM_ALERTS_TABLE)
+    .update({ resolved_at: null, resolved_by: null })
+    .eq('resolved_at', stamp)
+    .eq('resolved_by', 'inbox:clear-all')
   if (error) throw error
 }
 

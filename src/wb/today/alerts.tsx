@@ -16,7 +16,7 @@ import {
   type AlertAutoOpen, type AlertStripState,
 } from '../../components/SystemAlertStrip'
 import {
-  alertSummary, bodyPreview, dismissSystemAlert, fetchSystemAlerts, groupHeadline, resolveAllSystemAlerts,
+  alertSummary, bodyPreview, dismissSystemAlert, fetchSystemAlerts, groupHeadline, resolveAllSystemAlerts, undoResolveAll,
   shapeAlerts, type AlertGroup, type AlertMember, type Severity, type SystemAlert,
 } from '../../lib/systemAlerts'
 import { useConfirm } from '../chrome/ConfirmSheet'
@@ -149,7 +149,11 @@ function AlertBanner({ g, onDismiss }: { g: AlertGroup; onDismiss: (ids: string[
   )
 }
 
-export function SystemAlertStrip({ autoOpen = 'all' }: { autoOpen?: AlertAutoOpen } = {}) {
+export function SystemAlertStrip({ autoOpen = 'all', onCleared }: {
+  autoOpen?: AlertAutoOpen
+  /** The host's receipt: given an Undo, it shows it (the bell's toast stack). */
+  onCleared?: (n: number, undo: () => void) => void
+} = {}) {
   const [rows, setRows] = useState<SystemAlert[]>([])
   const [strip, setStrip] = useState<AlertStripState>(INITIAL_STRIP_STATE)
 
@@ -191,13 +195,17 @@ export function SystemAlertStrip({ autoOpen = 'all' }: { autoOpen?: AlertAutoOpe
   const clearAll = async () => {
     const ok = await confirm({
       title: 'Clear every alert?',
-      message: `${members.length} ${members.length === 1 ? 'alert leaves' : 'alerts leave'} the strip for good. New ones still land.`,
+      message: `${members.length} ${members.length === 1 ? 'alert leaves' : 'alerts leave'} the list. New ones still land.${onCleared ? ' Undo stays on the receipt for a few seconds.' : ''}`,
       confirmText: 'Clear all',
       danger: true,
     })
     if (!ok) return
+    const n = members.length
     setRows([])
-    try { await resolveAllSystemAlerts() } catch { load() }
+    try {
+      const stamp = await resolveAllSystemAlerts()
+      onCleared?.(n, () => { void undoResolveAll(stamp).finally(load) })
+    } catch { load() }
   }
 
   if (groups.length === 0) return null

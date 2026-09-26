@@ -522,6 +522,7 @@ export function Mobile(p: BrainMobileProps) {
     // The Claude key carries the unread bot turn the floating button used to
     // (rebuild: Claude is on the bar now, so the floating button left it).
     ...(t === 'ask' && chat.botUnread ? { count: 1 } : {}),
+    ...(t === 'ask' ? { busy: chat.busy } : {}),
   }))
 
   return (<>

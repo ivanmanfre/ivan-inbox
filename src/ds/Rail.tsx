@@ -59,7 +59,11 @@ export function RailItem({
           {hasCount ? <Badge tone={sev ?? 'neutral'} label={countNote}>{count}</Badge> : null}
         </span>
       ) : null}
-      {collapsed && (hasCount || failed) ? <span className="ds-rail-pip" data-sev={failed ? 'urgent' : sev} /> : null}
+      {collapsed && (hasCount || failed) ? (
+        <span className="ds-rail-pip" data-sev={failed ? 'urgent' : sev} aria-hidden="true">
+          <span className="ds-rail-pip-n">{failed ? '!' : count! > 99 ? '99+' : count}</span>
+        </span>
+      ) : null}
     </button>
   )
 }

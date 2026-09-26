@@ -12,6 +12,9 @@ export interface TabItem {
   /** The read behind this place failed: the icon says so in red instead of
       showing 0 or nothing (rebuild, blueprint v3 shell). */
   failed?: boolean
+  /** Work is running behind this place (Claude answering). Drawn as a slow
+      ring on the key, never a dot. */
+  busy?: boolean
 }
 
 export interface TabBarProps {
@@ -41,6 +44,7 @@ export function TabBar({ items, active, onSelect, markerId = 'ds-tab-active', cl
             data-ds="Tab"
             key={t.id}
             data-tab={t.id}
+            data-busy={t.busy || undefined}
             type="button"
             data-active={on}
             className="ds-tab"

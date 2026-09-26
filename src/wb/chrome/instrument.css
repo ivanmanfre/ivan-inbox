@@ -61,3 +61,24 @@
 .a-rail-sync-dot{ display:none }
 .a-rail-sync:has(.a-rail-sync-dot[data-state='bad']) .a-rail-sync-t{ color:var(--ds-sev-urgent) }
 @media (prefers-reduced-motion: reduce){ .a-rail .ds-rail-item:active{ transform:none } }
+
+/* Claude is answering: a slow ring turns on the key. No dot, no glow. */
+.a-dock .ds-tab[data-tab='ask'][data-busy]::after{
+  content:''; position:absolute; inset:-3px; border-radius:inherit; z-index:0;
+  border:2px solid transparent; border-top-color:var(--ds-accent); border-right-color:var(--ds-accent);
+  animation:a-dock-spin 1.1s linear infinite;
+}
+@keyframes a-dock-spin{ to{ transform:rotate(360deg) } }
+@media (prefers-reduced-motion: reduce){
+  .a-dock .ds-tab[data-tab='ask'][data-busy]::after{ animation:none; border-color:var(--ds-accent) }
+}
+
+/* Collapsed rail: the count itself, in a small ink pill, not a dot. */
+.a-rail .ds-rail-pip{
+  width:auto; height:16px; min-width:16px; padding:0 4px; top:2px; right:2px;
+  display:grid; place-items:center;
+  background:var(--ds-text); color:var(--ds-canvas);
+  font-size:10px; line-height:16px; font-weight:var(--ds-fw-medium);
+}
+.a-rail .ds-rail-pip[data-sev='urgent']{ background:var(--ds-sev-urgent); color:var(--ds-text) }
+.a-rail .ds-rail-pip-n{ position:static; width:auto; height:auto; overflow:visible; clip:auto }

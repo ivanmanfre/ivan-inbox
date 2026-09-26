@@ -277,7 +277,19 @@ export function Feed({ feed, goJob, openThread, onNavigated, onScrolled }: {
   return (
     <>
       <Body flush className="a-brain-feed" innerRef={scroller} onScroll={onScroll}>
-        <SystemAlertStrip autoOpen="critical" />
+        <SystemAlertStrip
+          autoOpen="critical"
+          onCleared={(n, undo) => {
+            setToasts(prev => [...prev.filter(t => t.id !== 'alerts-cleared'), {
+              id: 'alerts-cleared',
+              message: `${n} ${n === 1 ? 'alert' : 'alerts'} cleared`,
+              icon: 'discard',
+              actionLabel: 'Undo',
+              onAction: () => { undo(); setToasts(cur => cur.filter(t => t.id !== 'alerts-cleared')) },
+            }])
+            window.setTimeout(() => setToasts(prev => prev.filter(t => t.id !== 'alerts-cleared')), 8000)
+          }}
+        />
         {feed.loaded && feed.groups.length === 0 && (
           <div data-feed-empty>
             {feed.error

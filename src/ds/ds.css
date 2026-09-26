@@ -271,6 +271,9 @@ body :focus-visible{
 }
 .ds-rail-pip[data-sev='attention']{ background:var(--ds-sev-attention) }
 .ds-rail-pip[data-sev='urgent']{ background:var(--ds-sev-urgent) }
+/* The pip carries its number for skins that draw it; the default look keeps
+   the presence dot, so the text is out of sight here. */
+.ds-rail-pip-n{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0) }
 
 /* --------------------------------------------------------------------------
    E5 · THE COLLAPSED RAIL NAMES WHAT YOU POINT AT.
