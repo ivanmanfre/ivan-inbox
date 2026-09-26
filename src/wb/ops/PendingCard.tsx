@@ -17,7 +17,7 @@ import { useConfirm } from '../chrome/ConfirmSheet'
 import {
   approveOpsDraft, approveWeeklyReport, canGenerateDraft, canTagCommenter, isCloseOnlyComment,
   discardOpsDraft, DRAFT_CONTINUE_MAX, engineLabel, expiresIn, generateCommentDraft, likeComment,
-  markCommentHandled, outboundApproveUrl, outboundSkipUrl, postCommentReply, isHandWritten, seatLabel,
+  markCommentHandled, outboundApproveUrl, outboundSkipUrl, postCommentReply, isHandWritten, seatLabel, seatPerson,
   dispatchCommentGate, cardStateOf, weeklyReportDispatches, weeklySendAfter, GATE_HELD_LABEL,
   archOutcome, archOutcomeLabel, archSources, markNeedsDavor, DRAFTER_BUSY,
   type OpsDraft, type OpsKind, type GateVerdict, type FeedState,
@@ -320,7 +320,7 @@ function StandardPendingCard({ draft, refresh, feed, held, onGateResult }: {
   // A NULL slack_channel used to render the literal "#null" on the card
   // (phase0-readability #5 / phase0-mobile #8). No channel = say whose engine
   // it is instead of printing a database absence.
-  // A comment card names the SEAT it posts from (Ivan / Mattan Danino); every
+  // A comment card names the SEAT it posts from (Ivan / Rise / Arch); every
   // other kind keeps the engine register ("your feed" / "Rise").
   const where = isComment || isOutbound
     ? seatLabel(draft.client_id)
@@ -335,7 +335,7 @@ function StandardPendingCard({ draft, refresh, feed, held, onGateResult }: {
   // drift from what the sheet will actually say.
   const approveConfirm = isOutbound
     ? {
-      title: approveUrl ? `Send this to the ${where} comment gate?` : `Copy this to post as ${where}?`,
+      title: approveUrl ? `Send this to the ${where} comment gate?` : `Copy this to post as ${seatPerson(draft.client_id)}?`,
       message: approveUrl
         ? 'The poster’s rate caps, cooldown and jitter still decide. You get their answer on the card, no new tab.'
         : 'Nothing is posted by the system. The comment goes to your clipboard - paste it under the post from Mattan’s seat.',

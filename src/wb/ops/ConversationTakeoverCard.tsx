@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { approveConversationTakeover, discardConversationTakeover, fetchConversationTakeoverReadiness, TAKEOVER_SENDING_HELD, type OpsDraft } from '../../lib/ops'
 import { Banner, Button, Textarea } from '../../ds'
 import { Group, KV, Sep } from '../kit'
+import { useConfirm } from '../chrome/ConfirmSheet'
 import './ops.css'
 
 export const TAKEOVER_CONSEQUENCE = 'Approving sends this opener and lets the agent handle replies, reactions, relevant post likes and resource sharing for this conversation. You can pause or take over in Inbox.'
@@ -24,6 +25,9 @@ export function ConversationTakeoverCard({ draft, refresh }: { draft: OpsDraft; 
   const [busy, setBusy] = useState<'approve' | 'skip' | null>(null)
   const [error, setError] = useState('')
   const [readyDraft, setReadyDraft] = useState('')
+  // Both verbs ask first (blueprint v3 "Confirms added"): approve sends the
+  // opener and hands the thread to the agent; skip drops the proposal for good.
+  const confirm = useConfirm()
   const sendingReady = readyDraft === `${draft.id}:${draft.context?.proposal_hash ?? ''}`
   const ctx = draft.context
   const hash = typeof ctx?.proposal_hash === 'string' ? ctx.proposal_hash : ''
@@ -52,6 +56,12 @@ export function ConversationTakeoverCard({ draft, refresh }: { draft: OpsDraft; 
 
   async function approve() {
     if (!sendingReady) return
+    const who = typeof ctx?.prospect_name === 'string' && ctx.prospect_name ? ctx.prospect_name : 'this viewer'
+    if (!(await confirm({
+      title: `Send this opener to ${who}?`,
+      message: TAKEOVER_CONSEQUENCE,
+      confirmText: 'Approve takeover',
+    }))) return
 
     setBusy('approve'); setError('')
     try {
@@ -62,6 +72,12 @@ export function ConversationTakeoverCard({ draft, refresh }: { draft: OpsDraft; 
   }
 
   async function skip() {
+    if (!(await confirm({
+      title: 'Skip this takeover?',
+      message: 'Drops this proposal. Nothing is sent and the conversation stays with you.',
+      confirmText: 'Skip',
+      danger: true,
+    }))) return
     setBusy('skip'); setError('')
     try { await discardConversationTakeover(draft.id, hash); refresh() }
     catch (e) { setError(errText(e)) }

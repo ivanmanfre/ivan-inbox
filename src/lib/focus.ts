@@ -63,7 +63,7 @@ const BATCH_NOUN: Record<string, string> = { manual_invite: 'manual invites', co
 // one confirm up front. The risedtc lane (no approve_url) is clipboard +
 // stamp, one paste per card, and stays a single card every time (fable
 // review, HIGH, 2026-09-22).
-function isBatchable(d: OpsDraft): boolean {
+export function isBatchable(d: OpsDraft): boolean {
   return d.kind === 'manual_invite'
     || (d.kind === 'comment_outbound' && outboundApproveUrl(d) !== null)
 }

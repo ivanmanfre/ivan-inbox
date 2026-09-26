@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { opsBadge, type OpsDraft } from './ops'
+import { opsBadge, splitCommentIdeas, type OpsDraft } from './ops'
 
 const NOW = Date.parse('2026-09-26T10:00:00Z')
 let i = 0
@@ -34,5 +34,16 @@ describe('opsBadge', () => {
   })
   it('an expired newsjack is not counted', () => {
     expect(opsBadge([row('newsjack', { context: { expires_at: '2026-09-26T09:00:00Z' } as OpsDraft['context'] })], NOW).n).toBe(0)
+  })
+})
+
+describe('splitCommentIdeas', () => {
+  it('today = the first ideas that fit the day, later = the rest, same count as the badge', () => {
+    const rows = [row('comment_reply'), ...Array.from({ length: 5 }, () => row('comment_outbound'))]
+    const s = splitCommentIdeas(rows, NOW)
+    expect(s.today).toHaveLength(3)
+    expect(s.later).toHaveLength(2)
+    expect(s.today[0].id).toBe(rows[1].id)
+    expect(opsBadge(rows, NOW).ideasFolded).toBe(s.later.length)
   })
 })

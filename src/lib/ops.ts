@@ -173,7 +173,14 @@ export function engineLabel(clientId: string): string {
 // BY a person from their account, so the card names the person; "your feed" is
 // the newsjack/publishing register and stays there. Derived from the row's own
 // client_id — never hardcoded, because both lanes render this card.
-export const SEAT_LABEL: Record<string, string> = { ivan: 'Ivan', risedtc: 'Mattan Danino', arch: 'Davorin Smit' }
+// Rebuild decision 8 (26 Sep): the label reads Ivan / Rise / Arch, as every
+// chip in the app has since 20 Sep; a SENTENCE names the person (seatPerson).
+export const SEAT_LABEL: Record<string, string> = { ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch' }
+const SEAT_PERSON: Record<string, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin' }
+/** Who posts from this seat, for a sentence: "you", "Mattan", "Davorin". */
+export function seatPerson(clientId: string): string {
+  return SEAT_PERSON[clientId] ?? seatLabel(clientId)
+}
 export function seatLabel(clientId: string): string {
   return SEAT_LABEL[clientId] ?? ENGINE_LABEL[clientId] ?? clientId
 }
@@ -242,15 +249,24 @@ export const COMMENT_IDEAS_PER_DAY = 3
 const warsawDay = (t: number | string) =>
   new Date(t).toLocaleDateString('en-CA', { timeZone: 'Europe/Warsaw' })
 
+/**
+ * The pending comment ideas split into the ones the poster can still take
+ * today and the rest. Today's are the first `room` in board order, so the Ops
+ * number, the board's lane rows and its "for later" fold are one reading.
+ */
+export function splitCommentIdeas(rows: OpsDraft[], now = Date.now()): { today: OpsDraft[]; later: OpsDraft[] } {
+  const day = warsawDay(now)
+  const postedToday = rows.filter(d =>
+    d.kind === 'comment_outbound' && d.approved_at && warsawDay(d.approved_at) === day).length
+  const room = Math.max(0, COMMENT_IDEAS_PER_DAY - postedToday)
+  const ideas = pendingOps(rows, now).filter(d => d.kind === 'comment_outbound')
+  return { today: ideas.slice(0, room), later: ideas.slice(room) }
+}
+
 export function opsBadge(rows: OpsDraft[], now = Date.now()): { n: number; ideasFolded: number } {
   const pend = pendingOps(rows, now)
-  const today = warsawDay(now)
-  const postedToday = rows.filter(d =>
-    d.kind === 'comment_outbound' && d.approved_at && warsawDay(d.approved_at) === today).length
-  const room = Math.max(0, COMMENT_IDEAS_PER_DAY - postedToday)
-  const ideas = pend.filter(d => d.kind === 'comment_outbound').length
-  const counted = Math.min(ideas, room)
-  return { n: pend.length - ideas + counted, ideasFolded: ideas - counted }
+  const { later } = splitCommentIdeas(rows, now)
+  return { n: pend.length - later.length, ideasFolded: later.length }
 }
 
 // A newsjack past its `expires_at` is a story that has moved on: the card's own
