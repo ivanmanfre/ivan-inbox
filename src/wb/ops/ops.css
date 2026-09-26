@@ -199,3 +199,26 @@
 }
 .a-ops-arch-more > summary:hover{ color:var(--ds-text) }
 .a-ops-arch-more > summary::-webkit-details-marker{ display:none }
+
+/* --------------------------------------------------------------------------
+   9 · Lanes and folds (2026-09-26, Ivan: "make sure ops are separated by
+   client lane and start collapsed"). A closed fold is one tappable row at the
+   phone's tap floor: chevron, lane and count, then the kinds in quiet text.
+   -------------------------------------------------------------------------- */
+.a-ops-fold{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0 }
+.a-ops-fold-head{
+  display:flex; align-items:center; gap:var(--ds-s3);
+  width:100%; min-height:var(--ds-tap);
+  padding:var(--ds-s2) var(--ds-s3);
+  border:0; border-radius:var(--ds-r2);
+  background:var(--ds-surface-2); color:var(--ds-text);
+  font:inherit; text-align:start; cursor:pointer;
+}
+.a-ops-fold-head:hover{ background:var(--ds-surface-3) }
+.a-ops-fold-head > .ds-icon{ flex:0 0 auto; color:var(--ds-text-3) }
+.a-ops-fold-t{ flex:0 0 auto; font-weight:var(--ds-fw-semi) }
+.a-ops-fold-k{
+  flex:1 1 auto; min-width:0;
+  color:var(--ds-text-3); font-size:var(--ds-fs-meta);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}

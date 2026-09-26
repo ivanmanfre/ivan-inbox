@@ -4,6 +4,7 @@ import { InboxSkeleton } from '../../wb/chrome/Skeleton'
 import { useInbox } from '../../hooks/useInbox'
 import { useOps } from '../../hooks/useOps'
 import { pendingOps } from '../../lib/ops'
+import { alertsIntent, voiceIntent } from '../../wb/chrome/intents'
 import { inboxWaitingCount, type Filter, type Status } from '../../lib/inbox'
 import { CONTENT_LANES, LANE_LABEL, type ContentDraft, type ContentLane } from '../../lib/content'
 import type { Resource } from '../../lib/styles'
@@ -293,8 +294,8 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     // Ask 11 — the "56" was every thread with an unread inbound row, 28 of
     // which Ivan had already answered in the LinkedIn app (the mirror writes
     // the outbound, nothing stamps read_at). The badge now counts only what is
-    // genuinely waiting: unanswered replies + drafts to approve + threads the
-    // reply detector flagged needs_manual_reply. Same derivation as the list
+    // genuinely waiting: unanswered replies + drafts to approve (the flagged
+    // bucket has not counted for weeks, inbox.ts threadBucket). Same derivation as the list
     // and the InboxHead breakdown (lib/inbox.ts, inboxBreakdown).
     dms: dmsWaiting,
     ops: opsPend.length,
@@ -321,7 +322,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     .map(l => `${LANE_LABEL[l]} ${glance.contentReviewByLane[l]}`)
     .join(' · ')
   const countNote = {
-    dms: 'threads with an unanswered reply, a draft to approve, or flagged for a manual reply',
+    dms: 'threads with an unanswered reply or a draft to approve',
     ops: 'ops drafts you have not approved or skipped',
     content: `drafts at review, every lane. ${laneSplit}`
       + (glance.contentReviewOther > 0 ? ` · other lanes ${glance.contentReviewOther}` : ''),
@@ -353,8 +354,9 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     // this stack has been bitten by exactly that before. Corroboration is a
     // property of the data and keeps working when the workflows are renamed.
     //
-    // Nothing is hidden: everything below the bar stays in Ops, and the tooltip
-    // says how much is down there.
+    // Nothing is hidden: the tooltip says how much sits below the bar. Ops has
+    // had no workflow list since 31 Aug, so the note no longer points there;
+    // the pill opens the bell sheet, where this same note heads the alerts.
     n: urgentAlerts.length,
     note: urgentAlerts.length === 0
       ? ''
@@ -362,8 +364,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
         + `failed and ${urgentAlerts.length === 1 ? 'has' : 'have'} stopped running. `
         + `${glance.alerts.length - urgentAlerts.length} more errored in the last 7 days without stopping`
         + (glance.acknowledged > 0 ? `, ${glance.acknowledged} you already acknowledged` : '')
-        + `, and ${glance.olderErrored + glance.olderStalled} have not run in a week. `
-        + 'Read only: open Ops for the list.',
+        + `, and ${glance.olderErrored + glance.olderStalled} have not run in a week.`,
   }
   const sev = {
     // Only a real problem takes a severity tier. A backlog of approvals is work,
@@ -445,16 +446,24 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
   // means (composer mic, or the live loop's mic when that sheet is open).
   // Chrome binds ⌘D to "bookmark this page" — preventDefault() suppresses
   // that inside the workbench, which is exactly what was asked for.
+  //
+  // 2026-09-26: the event this used to dispatch had no listener, so ⌘D did
+  // nothing. The ask now goes through `voiceIntent`, which the composer's own
+  // mic listens on. On the desktop a closed drawer means no composer yet: the
+  // drawer opens and the composer runs the parked ask as it mounts. The phone
+  // never parks one (it has no drawer to open, and a stale ask would start the
+  // mic on some later visit to Claude).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && (e.key === 'd' || e.key === 'D')) {
         e.preventDefault()
-        window.dispatchEvent(new CustomEvent('wb-voice-toggle'))
+        if (readCanvas() === 'mobile') { voiceIntent.request(false); return }
+        if (!voiceIntent.request()) openDrawer()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [openDrawer])
 
   // Drawer boot deep link (D2): `boot.focus==='chat'` is the Ask push's own
   // link shape (`#exp/v2/ask?thread=…`, inbox-turn-run writes it). It used to
@@ -576,7 +585,12 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     const onCmd = (e: Event) => {
       const d = (e as CustomEvent).detail as { action?: string } | null
       if (d?.action === 'chat-open') { openDrawer(); return }
-      if (d?.action === 'chat-new') { openDrawer(); newChat() }
+      if (d?.action === 'chat-new') { openDrawer(); newChat(); return }
+      // The workflow pill (2026-09-26): Ops has had no workflow list since
+      // 31 Aug, so the pill opens the bell sheet in the Claude pane instead,
+      // where the automation alert row sits on top. A closed drawer has no
+      // pane yet; the ask waits for it to mount.
+      if (d?.action === 'alerts-open') { openDrawer(); alertsIntent.request() }
     }
     window.addEventListener('wb-cmd', onCmd)
     return () => window.removeEventListener('wb-cmd', onCmd)
@@ -841,6 +855,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
             chat={chat} job={job} about={aboutLabel} aboutContext={aboutContext ?? null}
             subjects={seeSubjects} onClose={onClose}
             onOpenAbout={mobile && ctx ? () => setFocus(peerKey(ctx)) : null} mobile={mobile}
+            health={health}
           />
         </Suspense>
       )
@@ -858,6 +873,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
           // context card that flips focus back to the item.
           onOpenAbout={mobile && ctx ? () => setFocus(peerKey(ctx)) : null}
           mobile={mobile}
+          health={health}
         />
       </Suspense>
     )

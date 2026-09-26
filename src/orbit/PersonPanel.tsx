@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { IconButton, Chip } from '../ds'
+import { useConfirm } from '../lib/confirm'
 import { relAge } from '../wb/kit'
 import {
   addToLane, addToLaneEffect, addToLaneSuccessNote, fetchProspectRow, pickability,
@@ -87,11 +88,21 @@ export function PersonPanel({ person, tenant, lanes, onClose }: PersonPanelProps
     location.hash = '#exp/brain-b/dms?thread=' + person.pid
   }, [person?.pid])
 
+  // Decision 13 (review 2026-09-26): Queue invite, Skip and Add to lane each
+  // fired on a single tap. Each one now asks first, naming its exact effect.
+  const confirm = useConfirm()
+
   const doQueue = useCallback(async () => {
     if (!person?.pid) return
+    const ok = await confirm({
+      title: `Queue an invite to ${person.n}?`,
+      message: queueInviteEffect(tenant),
+      confirmText: 'Queue invite',
+    })
+    if (!ok) return
     setBusy('queue'); setQueueNote(null)
     try {
-      const r = await queueInvite(tenant, person.pid)
+      const r = await queueInvite(tenant, person.pid, lanes)
       if (!r.ok) { setQueueNote(`Blocked: ${r.blocker}`) }
       else {
         setQueueNote(r.remaining.ok ? 'Queued, clears every sender gate now.' : `Queued. Still blocked: ${r.remaining.blockers.join('; ')}`)
@@ -100,10 +111,17 @@ export function PersonPanel({ person, tenant, lanes, onClose }: PersonPanelProps
     } catch (e) {
       setQueueNote(e instanceof Error ? e.message : 'Could not queue this.')
     } finally { setBusy(null) }
-  }, [person?.pid, tenant, refetchRow])
+  }, [person?.pid, person?.n, tenant, lanes, refetchRow, confirm])
 
   const doSkip = useCallback(async () => {
     if (!person?.pid) return
+    const ok = await confirm({
+      title: `Skip ${person.n}?`,
+      message: skipEffect(tenant),
+      confirmText: 'Skip',
+      danger: true,
+    })
+    if (!ok) return
     setBusy('skip'); setSkipNote(null)
     try {
       await skipAction(tenant, person.pid)
@@ -112,10 +130,16 @@ export function PersonPanel({ person, tenant, lanes, onClose }: PersonPanelProps
     } catch (e) {
       setSkipNote(e instanceof Error ? e.message : 'Could not skip this.')
     } finally { setBusy(null) }
-  }, [person?.pid, tenant, refetchRow])
+  }, [person?.pid, person?.n, tenant, refetchRow, confirm])
 
   const doAddToLane = useCallback(async (campaign: OrbitLane) => {
     if (!person) return
+    const ok = await confirm({
+      title: `Add ${person.n} to ${campaign.name}?`,
+      message: addToLaneEffect(tenant, campaign.name),
+      confirmText: 'Add to lane',
+    })
+    if (!ok) return
     setBusy('lane'); setLaneNote(null)
     try {
       const r = await addToLane({ tenant, person, campaignId: campaign.id, post: null })
@@ -126,7 +150,7 @@ export function PersonPanel({ person, tenant, lanes, onClose }: PersonPanelProps
     } catch (e) {
       setLaneNote(e instanceof Error ? e.message : 'Could not add this.')
     } finally { setBusy(null) }
-  }, [person, tenant])
+  }, [person, tenant, confirm])
 
   const candidateLanes = useMemo(() => pickableLanes(lanes), [lanes])
   const events = detail?.events ?? (person ? person.ev.map(e => ({ ...e, src: '', pid: null })) : [])

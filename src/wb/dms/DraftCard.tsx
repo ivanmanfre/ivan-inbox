@@ -17,7 +17,7 @@ import { Linkified } from '../chrome/Linkified'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import { returnsIn, usePushLater } from '../../lib/pushLater'
 import {
-  approveDraft, discardDraft, emailSenderLabel, isFollowUp, snoozeDraft, threadChatId, type Thread,
+  approveDraft, discardLegs, draftLegs, legFailureText, emailSenderLabel, isFollowUp, snoozeDraft, threadChatId, type Thread,
 } from '../../lib/inbox'
 import './dms.css'
 
@@ -146,10 +146,9 @@ export function DraftCard({ thread, onOpenThread, refresh }: {
       // A zero-row update is not an error and it is not a discard. See the same
       // guard on the thread's onDiscard: an already-approved row is refused,
       // and saying nothing here would claim a send was stopped when it was not.
-      const stopped = await discardDraft(draft.id)
-      if (!stopped) {
-        setError('This one was already approved and is in the send queue, so the '
-          + 'discard did not stop it. Nothing was changed.')
+      const failed = await discardLegs(draftLegs(thread))
+      if (failed.length) {
+        setError(failed.map(legFailureText).join(' '))
         springBack()
       }
       refresh()
@@ -247,7 +246,9 @@ export function StaleBar({ stale, refresh }: { stale: Thread[]; refresh: () => v
     if (!ok) return
     setBusy(true)
     try {
-      for (const t of stale) await discardDraft(t.draft!.id)
+      // Every leg of every stale draft: the bar used to discard the DM only, and
+      // the email came back next round as its own stale draft.
+      for (const t of stale) await discardLegs(draftLegs(t))
       refresh()
     } finally {
       setBusy(false)

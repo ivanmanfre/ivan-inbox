@@ -165,13 +165,30 @@ function poolEntries(raw: CcChannel['eligible_stock_by_pool']): { pools: [string
   return { pools, note: typeof noteRaw === 'string' ? noteRaw : null }
 }
 
+/* The seat's eligible supply, counted ONCE. The producer stamps the same
+   seat-wide figure on every source lane and then adds the lanes up for the
+   channel, so `ch.eligible_stock` is that figure times the lane count (review
+   2026-09-26: 708 = 3 x 236, 240 = 2 x 120, 216 = 6 x 36; the pools under it
+   sum to the lane figure, not the channel one). When every lane carries the
+   same number, that number is the supply. Otherwise the pools add up to it.
+   Only with neither is the channel figure shown, as the payload gives it. */
+export function seatEligible(ch: Pick<CcChannel, 'eligible_stock' | 'eligible_stock_by_pool' | 'by_lane'>): number | null {
+  const laneVals = (ch.by_lane ?? [])
+    .map(l => l.eligible_stock)
+    .filter((v): v is number => typeof v === 'number')
+  if (laneVals.length > 0 && laneVals.every(v => v === laneVals[0])) return laneVals[0]
+  const { pools } = poolEntries(ch.eligible_stock_by_pool)
+  if (pools.length > 0) return pools.reduce((a, [, v]) => a + v, 0)
+  return ch.eligible_stock ?? null
+}
+
 function SupplyBlock({ ch }: { ch: CcChannel }) {
   const { pools: poolList, note } = poolEntries(ch.eligible_stock_by_pool)
   const pools = poolList.length > 0 ? poolList : null
   return (
     <div className="a-cc-block">
       <div className="a-meta">
-        Eligible supply <b>{num(ch.eligible_stock)}</b>
+        Eligible supply <b>{num(seatEligible(ch))}</b>
         {ch.eligible_stock_scope ? <> <Sep />scope {ch.eligible_stock_scope}</> : null}
       </div>
       {note && <div className="a-meta a-cc-pool-note">{note}</div>}

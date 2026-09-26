@@ -19,7 +19,7 @@
 import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'motion/react'
-import { Button, Icon, IconButton, Badge, LiveDot, Shell, TabBar, fadeT, springSoft, type IconName, type TabItem } from '../../ds'
+import { Banner, Button, Icon, IconButton, Badge, LiveDot, Shell, TabBar, fadeT, springSoft, type IconName, type TabItem } from '../../ds'
 import { Head, RibSlotCtx, Screen } from '../kit'
 import type { BrainMobileProps } from '../../exp/brain/types'
 import { JOB_LABEL, type Job } from '../../exp/v2c/layout'
@@ -466,7 +466,10 @@ export function Mobile(p: BrainMobileProps) {
     <>
       {chat.busy && <LiveDot label="Claude is working" />}
       {p.health.n > 0 && (
-        <StatusCapsule n={p.health.n} note={p.health.note} onClick={() => onTab('ops')} />
+        // The workflow pill opens the bell sheet, where the automation alert
+        // heads the alerts. It used to open Ops, which has had no workflow
+        // list since 31 Aug.
+        <StatusCapsule n={p.health.n} note={p.health.note} onClick={() => { setFeedOpen(true); setSnap(0); setVy(null) }} />
       )}
       <span className="a-brain-feedbtn" data-feed-open>
         <IconButton
@@ -561,7 +564,6 @@ export function Mobile(p: BrainMobileProps) {
               focusTurn={focusTurn} onFocused={() => setFocusTurn(null)}
               morphFrom={morphFrom} onMorphed={() => setMorphFrom(null)}
               onSettings={() => goJob('settings')}
-              onOps={() => onTab('ops')}
             />
           ) : null}
           {/* The lanes. Hidden, not unmounted, while Claude has the screen. */}
@@ -623,6 +625,11 @@ export function Mobile(p: BrainMobileProps) {
                 sub={condensed ? undefined : `${feed.unreadTotal} unread`}
                 tail={<IconButton icon="back" label="Close feed" onClick={closeSheet} />}
               />
+              {p.health.n > 0 && (
+                <Banner tone="attention" icon="alert" title={`${p.health.n} automation alert${p.health.n === 1 ? '' : 's'}`}>
+                  {p.health.note}
+                </Banner>
+              )}
               <KeptFeed
                 feed={feed} goJob={feedGoJob}
                 openThread={feedOpenThread}

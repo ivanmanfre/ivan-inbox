@@ -619,7 +619,10 @@ function DayLedger({ rows, client, timeframe, cc }: { rows: LedgerRow[]; client:
   ]
 
   return (
-    <Section label="Daily" tail={`last ${days} days · UTC`}>
+    // Two clocks, named: the payload's invitations are counted by WARSAW day,
+    // the legacy ledger's other columns by UTC day. The tail used to say UTC
+    // over the whole table (review 2026-09-26, a live mixed-clock bug).
+    <Section label="Daily" tail={cc ? `last ${days} days · invites Warsaw, rest UTC` : `last ${days} days · UTC`}>
       <TableOrRecords
         label="Sends by day"
         columns={columns}
@@ -628,7 +631,7 @@ function DayLedger({ rows, client, timeframe, cc }: { rows: LedgerRow[]; client:
       />
       <div className="a-sends-cap">
         {cc
-          ? 'Invites = confirmed invitations (Run 01 definition), taken from the operator payload.'
+          ? 'Invites = confirmed invitations (Run 01 definition), taken from the operator payload and counted by Warsaw day. The other columns count by UTC day.'
           : 'Invites = message rows: includes refused attempts; unverified.'}
         {' '}Cap = the seat's counter, spent before the provider answers; when it runs ahead of Invites those slots went to refused sends. Accepted is of that day's invites and only rises.
       </div>

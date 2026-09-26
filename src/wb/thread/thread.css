@@ -34,6 +34,9 @@
    already wraps (ELEVATION 2026-09-20 below), so nothing here can push or
    resize the Bar/Ladder stepper, which is a separate sibling underneath. */
 .a-thread-subline{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+/* Phone: the company and seat wrap onto a second line instead of cutting to
+   "Face Matters Skincare · R…" (2026-09-26 review). */
+@media (max-width: 640px){ .a-thread-subline{ white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical } }
 .a-thread-tags{ display:flex; align-items:center; gap:var(--ds-s2); margin-top:var(--ds-s1) }
 /* Same neutral, raised-surface tag the list used for these two chips
    (dms.css `.a-dms-lane [data-ds='Chip']`) — a lane/route is a category,

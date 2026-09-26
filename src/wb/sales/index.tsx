@@ -39,7 +39,7 @@ import {
 } from '../../lib/salesPacks'
 import { fetchCalls, type CallRow } from '../../lib/transcripts'
 import { docHref, DOC_LABEL, type PackDoc } from './Doc'
-import { dayKey, describeTimes, groupEvents, matchPack, norm, weekWindow } from './match'
+import { callPhase, dayKey, describeTimes, groupEvents, matchPack, norm, packsInWindow, weekWindow } from './match'
 import {
   SALES_FIELDS, readTokens, salesRowMatches, writeTokens,
   type FilterToken,
@@ -252,7 +252,9 @@ export function SalesSurface({ onOpenCall }: {
 
   const groups = useMemo(() => groupEvents(events, now), [events, now])
 
-  const packCount = slugs.length
+  // Packs for the calls on screen, the same fortnight the call count covers.
+  // `slugs.length` was every pack ever published.
+  const packCount = useMemo(() => packsInWindow(events, slugs, meta), [events, slugs, meta])
 
   // ---- one row ----
   const renderRow = (e: WeekEvent, group: GroupKey) => {
@@ -262,13 +264,18 @@ export function SalesSurface({ onOpenCall }: {
     const have = slug ? kindsBySlug[slug] ?? new Set<string>() : new Set<string>()
     // Done once it has ENDED, whichever group it sits in: a call that finished
     // three hours ago is still "today", and it must not keep offering Join.
-    const past = group === 'earlier' || t.past || new Date(e.end_time ?? e.start_time).getTime() <= now.getTime()
+    // ENDED, not STARTED (2026-09-26): the row used to flip to done at the start
+    // time and took Join away mid-call. The end is the calendar's own, or start
+    // plus an hour when it has none (match.ts callEndMs).
+    const phase = callPhase(e, now)
+    const past = group === 'earlier' || phase === 'done'
+    const running = !past && phase === 'running'
     const reportId = past ? reportIdFor(e, slug, calls) : null
     // E3: the one verb this row is for, revealed where the clocks are.
     const verb = salesVerbFor({
       past,
       hasPack: slug !== null,
-      joinLive: t.soon && !past && Boolean(e.meeting_url),
+      joinLive: (t.soon || running) && !past && Boolean(e.meeting_url),
     })
 
     return (
@@ -292,8 +299,8 @@ export function SalesSurface({ onOpenCall }: {
               : <span className="a-sl-raw">{e.title || 'Untitled'}</span>}
           </span>
           <span className="a-sl-time a-mono">
-            {t.soon ? <LiveDot label="Starting now" /> : null}
-            {t.warsaw} Warsaw<Sep />{t.utc}<Sep />{past ? 'done' : t.rel}
+            {t.soon ? <LiveDot label="Starting now" /> : running ? <LiveDot label="On now" /> : null}
+            {t.warsaw} Warsaw<Sep />{t.utc}<Sep />{past ? 'done' : running ? 'on now' : t.rel}
           </span>
           {/* E3: absolutely positioned over the clocks by the sheet, so the row
               at rest is byte-for-byte the row E2 measured, and the clocks come
@@ -315,7 +322,7 @@ export function SalesSurface({ onOpenCall }: {
         {e.meeting_url && !past ? (
           <a
             className="a-sl-join" href={e.meeting_url} target="_blank" rel="noopener noreferrer"
-            data-live={t.soon ? '' : undefined}
+            data-live={t.soon || running ? '' : undefined}
             aria-label={`Join ${m.name ?? e.title}`}
           >
             <span>Join</span>
@@ -427,9 +434,7 @@ export function SalesSurface({ onOpenCall }: {
           const rows = groups[g].filter(e => {
             if (tokens.length === 0) return true
             const slug = matchPack(e, slugs, meta)
-            const t = describeTimes(e.start_time, now)
-            const past = g === 'earlier' || t.past
-              || new Date(e.end_time ?? e.start_time).getTime() <= now.getTime()
+            const past = g === 'earlier' || callPhase(e, now) === 'done'
             return salesRowMatches({
               when: g,
               pack: slug !== null,

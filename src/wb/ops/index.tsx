@@ -20,19 +20,20 @@
        600px of dead ground. With neither a task nor a reaction waiting there is
        no second column to draw, and the single one keeps its measure and centres.
    ========================================================================== */
-import { useRef } from 'react'
-import { doneTodayTasks, isTaskKind, outboundFeedId, pendingOps, type OpsDraft } from '../../lib/ops'
+import { useRef, useState, type ReactNode } from 'react'
+import { doneTodayTasks, isTaskKind, outboundFeedId, pendingOps, pendingTasks, type OpsDraft } from '../../lib/ops'
 import { useCommentQueue } from '../../hooks/useCommentQueue'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { useReactions } from '../../hooks/useReactions'
 import { relAge } from '../kit'
-import { checkedPhrase } from '../../lib/today'
+import { checkedPhrase, clockTime } from '../../lib/today'
 import { Banner, Button, EmptyState, Icon } from '../../ds'
 import { OpsSkeleton } from '../chrome/Skeleton'
 import { Body, Group, Head, Screen } from '../kit'
 import { PendingCard } from './PendingCard'
 import { ReactionDesk } from './ReactionDesk'
 import { TaskList } from './TaskList'
+import { groupOpsByLane, kindsLine } from './lanes'
 import './ops.css'
 
 /** The pull-to-refresh mark, drawn with the icon set instead of arrow glyphs. */
@@ -52,6 +53,37 @@ function PullLine({ pull, refreshing, trigger }: { pull: number; refreshing: boo
         <Icon name={refreshing ? 'refresh' : ready ? 'up' : 'down'} size={20} />
       </span>
     </div>
+  )
+}
+
+/**
+ * One collapsible section: a lane, the task list or the reaction desk. Closed
+ * on mount, every time (never persisted); open state lives only while the
+ * board stays mounted. The closed header is one 44px row that says the lane,
+ * the count and the kinds, so the board reads without opening anything.
+ */
+function Fold({ id, title, count, sub, children }: {
+  id: string
+  title: string
+  count: number
+  sub?: string
+  children: ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  const bodyId = `a-ops-fold-${id}`
+  return (
+    <section className="a-ops-fold" data-open={open ? '' : undefined}>
+      <button
+        type="button" className="a-ops-fold-head"
+        aria-expanded={open} aria-controls={bodyId}
+        onClick={() => setOpen(o => !o)}
+      >
+        <Icon name={open ? 'disclose' : 'forward'} size={16} />
+        <span className="a-ops-fold-t">{title} · <span className="a-mono">{count}</span></span>
+        {sub ? <span className="a-ops-fold-k">{sub}</span> : null}
+      </button>
+      {open && <div className="a-ops-fold-body a-stack" id={bodyId}>{children}</div>}
+    </section>
   )
 }
 
@@ -78,7 +110,9 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
   const cards = queue.held.size === 0
     ? pendingCards
     : drafts.filter(d => pendingIds.has(d.id) || queue.held.has(d.id))
-  const hasTasks = pending.length !== pendingCards.length || doneTodayTasks(drafts).length > 0
+  const taskCount = pendingTasks(drafts).length
+  const doneCount = doneTodayTasks(drafts).length
+  const hasTasks = pending.length !== pendingCards.length || doneCount > 0
   // The desk's state is held here so the frame can ask whether the desk has
   // anything in it before it decides how many columns to draw. The desk itself
   // still renders nothing when nothing is waiting.
@@ -102,7 +136,9 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
     />
   )
 
-  if (error) {
+  // A failed read with nothing ever loaded is the one state that has no cards to
+  // keep: say it is unread, not empty.
+  if (error && drafts.length === 0) {
     return (
       <Screen>
         {head}
@@ -116,9 +152,7 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
             <>
               {error}
               <span className="a-ops-failf">
-                {drafts.length > 0 && loadedAt
-                  ? `Showing what loaded ${relAge(loadedAt)}. It may be out of date.`
-                  : 'Nothing has loaded yet, so this is not an empty queue, it is an unread one.'}
+                Nothing has loaded yet, so this is not an empty queue, it is an unread one.
               </span>
             </>
           </Banner>
@@ -126,6 +160,19 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
       </Screen>
     )
   }
+
+  // A failed REFRESH keeps the last good cards on screen and says so. It used
+  // to draw only the banner while its text claimed the cards were showing.
+  const staleBanner = error ? (
+    <Banner
+      tone="attention"
+      icon="error"
+      title={loadedAt ? `Couldn’t refresh, showing the copy from ${clockTime(loadedAt)}` : 'Couldn’t refresh, showing the last copy'}
+      action={<Button variant="quiet" onClick={refresh}>Retry</Button>}
+    >
+      The cards below may be out of date.
+    </Banner>
+  ) : null
 
   if (loading && drafts.length === 0) {
     return (
@@ -147,6 +194,7 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
       {head}
       <Body innerRef={rowsRef}>
         <PullLine pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
+        {staleBanner}
         <div className="a-ops-canvas" data-wide={sideLive ? '' : undefined}>
           <div className="a-cols" data-cols={sideLive ? 'side' : undefined}>
             <div className="a-stack">
@@ -157,7 +205,9 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
                   // The panel's best line, and it earns its place here more than
                   // anywhere: this is the surface where "empty" and "broken" looked
                   // identical before.
-                  title="Nothing waiting on you, and this is a live read, not a stall."
+                  title={error
+                    ? 'Nothing was waiting on you at the last good read.'
+                    : 'Nothing waiting on you, and this is a live read, not a stall.'}
                   sub={
                     <>
                       Comment replies, newsjacks, weekly reports and escalations all clear.
@@ -166,38 +216,64 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
                   }
                 />
               ) : (
-                <>
-                  {/* The line, stated once. Ivan can approve several and leave; this
-                      says what is actually happening, because the poster takes one
-                      at a time and refuses the rest. */}
-                  {queue.waiting.length > 0 && (
-                    <Banner tone={queue.cappedToday ? 'attention' : 'neutral'} icon={queue.cappedToday ? 'blocked' : 'time'}>
-                      {queue.cappedToday
-                        ? `${queue.waiting.length} comment${queue.waiting.length === 1 ? '' : 's'} held, the poster hit its 3-a-day cap. They stay here for tomorrow.`
-                        : `${queue.waiting.length} comment${queue.waiting.length === 1 ? '' : 's'} queued here, the poster takes one at a time, so this retries the next as its window opens. Leave the tab open.`}
-                    </Banner>
-                  )}
-                  {cards.map(d => (
-                    <PendingCard
-                      key={d.id} draft={d} refresh={refresh}
-                      feed={queue.feed.get(outboundFeedId(d) ?? '')}
-                      held={queue.held.get(d.id)}
-                      onGateResult={queue.record}
-                    />
-                  ))}
-                </>
+                // By client lane, every lane closed on open (Ivan, 2026-09-26:
+                // "make sure ops are separated by client lane and start
+                // collapsed"). The comment-queue line rides inside the lane its
+                // comments belong to, and a held card counts in its lane.
+                groupOpsByLane(cards).map(lane => {
+                  const ids = new Set(lane.cards.map(d => d.id))
+                  const waiting = queue.waiting.filter(e => ids.has(e.id)).length
+                  return (
+                    <Fold
+                      key={lane.key} id={`lane-${lane.key}`}
+                      title={lane.label} count={lane.cards.length} sub={kindsLine(lane.cards)}
+                    >
+                      {/* The line, stated once. Ivan can approve several and leave; this
+                          says what is actually happening, because the poster takes one
+                          at a time and refuses the rest. */}
+                      {waiting > 0 && (
+                        <Banner tone={queue.cappedToday ? 'attention' : 'neutral'} icon={queue.cappedToday ? 'blocked' : 'time'}>
+                          {queue.cappedToday
+                            ? `${waiting} comment${waiting === 1 ? '' : 's'} held, the poster hit its 3-a-day cap. They stay here for tomorrow.`
+                            : `${waiting} comment${waiting === 1 ? '' : 's'} queued here, the poster takes one at a time, so this retries the next as its window opens. Leave the tab open.`}
+                        </Banner>
+                      )}
+                      {lane.cards.map(d => (
+                        <PendingCard
+                          key={d.id} draft={d} refresh={refresh}
+                          feed={queue.feed.get(outboundFeedId(d) ?? '')}
+                          held={queue.held.get(d.id)}
+                          onGateResult={queue.record}
+                        />
+                      ))}
+                    </Fold>
+                  )
+                })
               )}
             </div>
             {/* The side column: the task list first (it is the thing he ticks
-                through), then the reaction desk last on the surface. The desk is
-                the only status-shaped block left and it renders nothing at all
-                when no reaction is waiting (Ivan, 2026-08-19 — reactions live in
-                ops, not the content pipeline). On a phone the grid puts this
-                column first, which is the order Ops has always read in. */}
+                through), then the reaction desk last on the surface. Both fold
+                closed like the lanes (2026-09-26). The desk renders nothing at
+                all when no reaction is waiting (Ivan, 2026-08-19, reactions live
+                in ops, not the content pipeline); a desk that failed to load
+                stays unfolded, so the failure is never hidden behind a tap. On a
+                phone the grid puts this column first, which is the order Ops
+                has always read in. */}
             {sideLive && (
               <div className="a-stack a-ops-side">
-                <TaskList drafts={drafts} refresh={refresh} />
-                <ReactionDesk rx={rx} />
+                {hasTasks && (
+                  <Fold
+                    id="tasks" title="Tasks" count={taskCount}
+                    sub={doneCount > 0 ? `${doneCount} done today` : undefined}
+                  >
+                    <TaskList drafts={drafts} refresh={refresh} />
+                  </Fold>
+                )}
+                {rx.rows.length > 0 ? (
+                  <Fold id="reactions" title="Reactions" count={rx.rows.length}>
+                    <ReactionDesk rx={rx} />
+                  </Fold>
+                ) : <ReactionDesk rx={rx} />}
               </div>
             )}
           </div>

@@ -7,18 +7,20 @@ import { useCallback, useMemo, useState } from 'react'
 import { Chip, IconButton, Sheet } from '../ds'
 import { relAge } from '../wb/kit'
 import { queueInvite, queueInviteEffect } from './actions'
-import { STAGE_LABEL, type OrbitContentEdge, type OrbitPerson, type OrbitPost, type OrbitTenant } from './types'
+import { STAGE_LABEL, type OrbitContentEdge, type OrbitLane, type OrbitPerson, type OrbitPost, type OrbitTenant } from './types'
 
 export interface PostPanelProps {
   post: OrbitPost | null
   tenant: OrbitTenant
   people: OrbitPerson[]
+  /** The graph's campaigns, so a queued row's lane tag is read, not assumed absent. */
+  lanes: OrbitLane[]
   contentEdges: OrbitContentEdge[]
   onClose: () => void
   onOpenPerson: (id: string) => void
 }
 
-export function PostPanel({ post, tenant, people, contentEdges, onClose, onOpenPerson }: PostPanelProps) {
+export function PostPanel({ post, tenant, people, lanes, contentEdges, onClose, onOpenPerson }: PostPanelProps) {
   const open = post != null
 
   const engagers = useMemo(() => {
@@ -55,7 +57,7 @@ export function PostPanel({ post, tenant, people, contentEdges, onClose, onOpenP
     for (const p of queueCandidates) {
       if (!p.pid) continue
       try {
-        const r = await queueInvite(tenant, p.pid)
+        const r = await queueInvite(tenant, p.pid, lanes)
         if (r.ok) queued++
         else blocked++
       } catch {
@@ -65,7 +67,7 @@ export function PostPanel({ post, tenant, people, contentEdges, onClose, onOpenP
     setRunning(false)
     setConfirmOpen(false)
     setSummary(`${queued} queued, ${blocked} blocked, ${failed} failed.`)
-  }, [queueCandidates, tenant])
+  }, [queueCandidates, tenant, lanes])
 
   return (
     <>

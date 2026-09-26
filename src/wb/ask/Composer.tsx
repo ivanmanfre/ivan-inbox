@@ -18,6 +18,7 @@ import { useStt } from '../../exp/v2c/chat/useStt'
 import { fileSize } from './forms'
 import { LinkPreview } from './LinkPreview'
 import { VoiceNote } from './VoiceNote'
+import { voiceIntent } from '../chrome/intents'
 import './ask.css'
 
 /** Three kinds, because move 14 asks the chip to say WHICH: a file he chose, a
@@ -136,6 +137,16 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
     setHeard(t)
     field()?.focus()
   })
+
+  // ⌘D (Shell's keydown) does what the on-screen voice control does: the
+  // phone pill's "Talk to Claude live" when this composer has one, otherwise the
+  // Dictate mic. Read through a ref so the listener registers once per mount.
+  const voiceTap = useRef<() => void>(() => {})
+  voiceTap.current = () => {
+    if (pill?.onVoice) { pill.onVoice(); return }
+    if (stt.supported && stt.state !== 'transcribing') stt.toggle()
+  }
+  useEffect(() => voiceIntent.listen(() => voiceTap.current()), [])
 
   const links = detectLinks(value)
   const firstLink = links[0]?.url

@@ -260,3 +260,48 @@ export function describeTimes(startIso: string, now: Date = new Date(), tz: stri
     past: soonMs <= 0,
   }
 }
+
+// ---------------------------------------------------------------------------
+// When a call is over (2026-09-26)
+// ---------------------------------------------------------------------------
+
+/** A call with no end time is taken to run an hour. */
+export const DEFAULT_CALL_MS = 60 * 60_000
+
+/**
+ * The instant the call ends: its own end time, or start + 60 minutes when the
+ * calendar carries none (or carries one that is not after the start).
+ */
+export function callEndMs(e: { start_time: string; end_time: string | null }): number {
+  const start = new Date(e.start_time).getTime()
+  const end = e.end_time ? new Date(e.end_time).getTime() : NaN
+  return Number.isFinite(end) && end > start ? end : start + DEFAULT_CALL_MS
+}
+
+/**
+ * Before the start, between start and end, or over. The row used to flip to
+ * "done" AT the start time, which took Join away while the call was running.
+ */
+export function callPhase(
+  e: { start_time: string; end_time: string | null }, now: Date,
+): 'upcoming' | 'running' | 'done' {
+  const t = now.getTime()
+  if (t >= callEndMs(e)) return 'done'
+  return t >= new Date(e.start_time).getTime() ? 'running' : 'upcoming'
+}
+
+/**
+ * Packs for THIS window's calls: the distinct packs the matcher puts under
+ * the events on screen. The header used to count every pack ever published
+ * beside a two-week call count, two numbers over two different spans.
+ */
+export function packsInWindow(
+  events: WeekEvent[], slugs: string[], meta: Record<string, PackMeta>,
+): number {
+  const hit = new Set<string>()
+  for (const e of events) {
+    const slug = matchPack(e, slugs, meta)
+    if (slug) hit.add(slug)
+  }
+  return hit.size
+}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { ControlSection, DeliverySection, RecurrenceSection } from './Control'
+import { ControlSection, DeliverySection, RecurrenceSection, seatEligible } from './Control'
 import { parsePayload, type CcPayload, type CcState } from '../../lib/campaignControl'
 import incident from '../../lib/cc-fixtures/incident.json'
 import outsideWindow from '../../lib/cc-fixtures/outside_window.json'
@@ -324,5 +324,32 @@ describe('Control — the seat figure is the operator\'s day, not the cap counte
   it('keeps the UTC cap counter as its own line, with its local reset time', () => {
     expect(t).toContain('daily limit 0/40, resets 02:00')
     expect(t).not.toContain('of 40 invitations today')
+  })
+})
+
+// Review 2026-09-26: the channel's eligible figure is every lane's seat-wide
+// figure added up (708 = 3 x 236). The seat shows the figure once.
+describe('seatEligible', () => {
+  it('uses the one figure every lane carries, not the lane sum', () => {
+    expect(seatEligible({
+      eligible_stock: 708,
+      eligible_stock_by_pool: { by_pool: { cold: 108, engage: 126, hiring: 2 } } as unknown as Record<string, number>,
+      by_lane: [236, 236, 236].map((v, i) => ({ source_lane: `l${i}`, confirmed_sent: 0, eligible_stock: v })),
+    })).toBe(236)
+  })
+  it('falls back to the pools when lanes disagree or carry nothing', () => {
+    expect(seatEligible({
+      eligible_stock: 270,
+      eligible_stock_by_pool: { cold: 17, engage: 71, hiring: 2 },
+      by_lane: [{ source_lane: 'a', confirmed_sent: 0, eligible_stock: null }],
+    })).toBe(90)
+  })
+  it('shows the channel figure only when there is nothing better', () => {
+    expect(seatEligible({ eligible_stock: 12, eligible_stock_by_pool: null, by_lane: [] })).toBe(12)
+    expect(seatEligible({ eligible_stock: null, eligible_stock_by_pool: null })).toBeNull()
+  })
+  it('matches the rate_limited fixture: 90 per lane, 270 in the channel', () => {
+    const p = (ok(rateLimited) as { payload: unknown }).payload as { clients: Array<{ invitation: Parameters<typeof seatEligible>[0] }> }
+    expect(seatEligible(p.clients[0].invitation)).toBe(90)
   })
 })

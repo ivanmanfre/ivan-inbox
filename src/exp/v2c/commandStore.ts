@@ -45,6 +45,9 @@ export type SelectedRow = {
   // Carried through so a delete can stamp taxonomy without a second fetch.
   taxonomy?: unknown
   lane?: string
+  // The other leg of a DM + email draft pair. A bulk discard stops both legs;
+  // registering only the main id left the email pending (check3-drafts E1.2).
+  pairId?: string
 }
 
 type Listener = () => void

@@ -49,6 +49,9 @@ export interface BrainAskPaneProps {
   onClose: () => void
   onOpenAbout: (() => void) | null
   mobile: boolean
+  /** The automation alarm, so the bell sheet can head its alerts with it when
+   *  the workflow pill opens the sheet. Optional: absent draws nothing. */
+  health?: { n: number; note: string }
 }
 
 export interface BrainCandidate {

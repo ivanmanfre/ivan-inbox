@@ -273,6 +273,11 @@
   font:inherit; text-align:start; cursor:pointer;
 }
 .cl-screen .wb-cl.cl-health:active{ background:var(--ds-surface-3) }
+/* 2026-09-26: the row is read only now (no Ops list to open), so it neither
+   presses nor clips the note it exists to show. */
+.cl-screen div.wb-cl.cl-health{ cursor:default }
+.cl-screen div.wb-cl.cl-health:active{ background:var(--ds-surface-2) }
+.cl-screen div.wb-cl.cl-health .cl-health-t span{ white-space:normal }
 .cl-screen .cl-health-t{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:var(--ds-s1) }
 .cl-screen .cl-health-t b{ font-size:var(--ds-fs-title); font-weight:var(--ds-fw-semi); color:var(--ds-text) }
 .cl-screen .cl-health-t span{

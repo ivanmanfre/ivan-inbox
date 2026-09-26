@@ -227,6 +227,11 @@ export function useBulkRun(): {
         else if (cap === 'discard') {
           const stopped = await discardDraft(r.id)
           if (!stopped) errors.push(`${r.label}: already approved or sent, nothing to discard`)
+          // Both legs of a DM + email pair, each refusal named.
+          if (r.pairId) {
+            const pairStopped = await discardDraft(r.pairId).catch(() => false)
+            if (!pairStopped) errors.push(`${r.label}: the email with it was already approved or sent, nothing to discard`)
+          }
         } else if (cap === 'delete') {
           const how = r.lane && r.lane !== 'ivan'
             ? await deleteClientDraft(r.id, r.taxonomy)

@@ -315,6 +315,7 @@ export function Orbit() {
         post={selectedPost}
         tenant={filters.tenant}
         people={graph?.people ?? []}
+        lanes={graph?.lanes ?? []}
         contentEdges={graph?.content_edges ?? []}
         onClose={() => setSel(null)}
         onOpenPerson={id => setSel({ kind: 'person', id })}

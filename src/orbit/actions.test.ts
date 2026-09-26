@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { pickability, type PickabilityRow } from './actions'
+import { campaignLaneOf, pickability, queueRefusal, type PickabilityRow } from './actions'
 
 // Every id/value below is invented — no real prospect data in this repo.
 
@@ -67,5 +67,36 @@ describe('pickability', () => {
   it('arch: an ICP-floor-waived row (flag lives in enrichment_data, not a column) clears the ICP gate', () => {
     const r = pickability('arch', row({ stage: 'queued', icp_score: 3, enrichment_data: { icp_floor_waived: true } }))
     expect(r).toEqual({ ok: true, blockers: [] })
+  })
+})
+
+// Review 2026-09-26: Queue invite erased a RISE hand skip (`skip_state: null`)
+// and ARCH always reported "campaign carries no lane tag" because queueInvite
+// scored the fresh row with `campaignLane: null`.
+describe('queueRefusal', () => {
+  it('refuses a hand-skipped row instead of clearing the skip', () => {
+    expect(queueRefusal(row({ skip_state: 'manual_skip' }))).toBe('skipped by hand, so it stays skipped')
+  })
+  it('an engine skip is not a refusal, and a clean row passes', () => {
+    expect(queueRefusal(row({ skip_state: 'data_thin' }))).toBeNull()
+    expect(queueRefusal(row())).toBeNull()
+  })
+  it('keeps the existing live-thread and blacklist refusals', () => {
+    expect(queueRefusal(row({ blacklisted: true }))).toBe('blacklisted')
+    expect(queueRefusal(row({ connected_at: '2026-09-01T00:00:00Z' }))).toBe('already invited')
+  })
+})
+
+describe('campaignLaneOf', () => {
+  const lanes = [{ id: 'camp-1', name: 'ARCH engagers', lane: 'engager', active: true, n: 3 }]
+  it('reads the lane tag off the graph lanes, so a tagged ARCH row clears', () => {
+    const lane = campaignLaneOf(lanes, 'camp-1')
+    expect(lane).toBe('engager')
+    const r = pickability('arch', row({ stage: 'queued', icp_score: 8, campaignLane: lane }))
+    expect(r.blockers).not.toContain('campaign carries no lane tag')
+  })
+  it('null when the campaign is unknown', () => {
+    expect(campaignLaneOf(lanes, 'other')).toBeNull()
+    expect(campaignLaneOf(lanes, null)).toBeNull()
   })
 })

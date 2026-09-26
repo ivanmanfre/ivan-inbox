@@ -24,7 +24,7 @@
    is not a new code path, only the same one entered from inside the running
    app instead of from a click on a URL.
    ========================================================================== */
-import { useMemo, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import {
   Badge, Banner, Button, Chip, IconButton, LiveDot, PopoverItem, Sheet,
 } from '../../ds'
@@ -36,6 +36,7 @@ import { Feed } from './Feed'
 import { See } from './See'
 import { usePalette } from './Palette'
 import { useFeedData } from '../../exp/brain/b/useFeedData'
+import { alertsIntent } from '../chrome/intents'
 import { getSelected, subscribe as subscribeRows } from '../../exp/v2c/commandStore'
 import {
   EMPTY_SEE, buildSeeBlock, selectionSubject, type SeeState,
@@ -75,9 +76,12 @@ function short(label: string, max = 52): string {
   return `${label.slice(0, max - 1).replace(/[\s,.;:]+$/, '')}…`
 }
 
-export function AskPane({ chat, job, about, aboutContext, subjects = [], onClose, onOpenAbout, mobile }: BrainAskPaneProps) {
+export function AskPane({ chat, job, about, aboutContext, subjects = [], onClose, onOpenAbout, mobile, health }: BrainAskPaneProps) {
   const feed = useFeedData()
   const [feedOpen, setFeedOpen] = useState(false)
+  // The workflow pill (rail row) opens this sheet. The ask can arrive before
+  // the drawer built this pane; the intent holds it until this mount.
+  useEffect(() => alertsIntent.listen(() => setFeedOpen(true)), [])
   // The turn a feed row names, so the docked pane lands on the same answer the
   // phone would (a `claude_turn` row's url carries `&turn=`), and the rect of
   // the card it came from, so it grows out of it (move 9).
@@ -238,6 +242,13 @@ export function AskPane({ chat, job, about, aboutContext, subjects = [], onClose
         sub={`${feed.unreadTotal} unread`}
         className="a-brain-feedsheet"
       >
+        {/* The automation alert heads the sheet the workflow pill opens. Read
+            only: there is no workflow list to send him to (Ops cut it 31 Aug). */}
+        {health && health.n > 0 && (
+          <Banner tone="attention" icon="alert" title={`${health.n} automation alert${health.n === 1 ? '' : 's'}`}>
+            {health.note}
+          </Banner>
+        )}
         <Feed
           feed={feed}
           goJob={navigateToJob}

@@ -29,7 +29,7 @@ import './claude.css'
 
 export function ClaudeScreen({
   chat, job, about, feed, health, alertsOpen, setAlertsOpen, goJobFromFeed, openThreadAt,
-  focusTurn, onFocused, morphFrom, onMorphed, onSettings, onOps,
+  focusTurn, onFocused, morphFrom, onMorphed, onSettings,
 }: {
   chat: ChatHandle
   job: Job
@@ -45,7 +45,6 @@ export function ClaudeScreen({
   morphFrom: DOMRect | null
   onMorphed: () => void
   onSettings: () => void
-  onOps: () => void
 }) {
   const online = useOnline()
   const offline = !online
@@ -135,7 +134,7 @@ export function ClaudeScreen({
               >{chat.botPushMuted ? 'Unmute pushes from Claude' : 'Mute pushes from Claude'}</PopoverItem>
             )}
             {health.n > 0 && (
-              <PopoverItem icon="alert" onClick={() => { setMenuOpen(false); onOps() }}>{healthLine}</PopoverItem>
+              <PopoverItem icon="alert" onClick={() => { setMenuOpen(false); setAlertsOpen(true) }}>{healthLine}</PopoverItem>
             )}
             <PopoverItem icon="settings" onClick={() => { setMenuOpen(false); onSettings() }}>Settings</PopoverItem>
           </Popover>
@@ -183,14 +182,15 @@ export function ClaudeScreen({
         className="cl-alerts"
       >
         {health.n > 0 && (
-          <button type="button" className="wb-cl cl-health" onClick={() => { setAlertsOpen(false); onOps() }}>
+          // Read only. It used to route to Ops, which has had no workflow list
+          // since 31 Aug; the workflow pill now lands here instead.
+          <div className="wb-cl cl-health" role="status">
             <span className="cl-kind" data-tone="attention" aria-hidden="true"><Icon name="ops" size={20} /></span>
             <span className="cl-health-t">
               <b>{healthLine}</b>
               {health.note && <span>{health.note}</span>}
             </span>
-            <Icon name="next" size={16} />
-          </button>
+          </div>
         )}
         <Feed
           feed={feed}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describeTimes, groupEvents, matchPack, weekWindow } from './match'
+import { callEndMs, callPhase, describeTimes, groupEvents, matchPack, packsInWindow, weekWindow } from './match'
 import type { WeekEvent } from '../../lib/salesPacks'
 
 // EVERY NAME IN THIS FILE IS INVENTED. The repo is public; a fixture is not a
@@ -189,5 +189,38 @@ describe('describeTimes', () => {
     const t = describeTimes('2026-12-08T23:30:00.000Z', new Date('2026-12-08T00:00:00.000Z'))
     expect(t.warsaw).toBe('Wed 00:30')
     expect(t.utc).toBe('23:30 UTC')
+  })
+})
+
+describe('callPhase keeps Join up while the call runs', () => {
+  const start = '2026-09-08T18:30:00.000Z'
+  it('upcoming before the start, running until the end, done after', () => {
+    const e = evt({ id: 'c1', start_time: start, end_time: '2026-09-08T19:15:00.000Z' })
+    expect(callPhase(e, new Date('2026-09-08T18:00:00.000Z'))).toBe('upcoming')
+    expect(callPhase(e, new Date('2026-09-08T18:30:00.000Z'))).toBe('running')
+    expect(callPhase(e, new Date('2026-09-08T19:14:59.000Z'))).toBe('running')
+    expect(callPhase(e, new Date('2026-09-08T19:15:00.000Z'))).toBe('done')
+  })
+  it('no end time runs an hour from the start', () => {
+    const e = evt({ id: 'c2', start_time: start, end_time: null })
+    expect(callEndMs(e)).toBe(Date.parse(start) + 3_600_000)
+    expect(callPhase(e, new Date('2026-09-08T19:29:00.000Z'))).toBe('running')
+    expect(callPhase(e, new Date('2026-09-08T19:30:00.000Z'))).toBe('done')
+  })
+  it('an end time at or before the start is not trusted', () => {
+    const e = evt({ id: 'c3', start_time: start, end_time: start })
+    expect(callEndMs(e)).toBe(Date.parse(start) + 3_600_000)
+  })
+})
+
+describe('packsInWindow counts only packs under this window\'s calls', () => {
+  it('ignores packs with no call on screen and counts a shared pack once', () => {
+    const events = [
+      evt({ id: 'a', attendees: ['ada@analyticalengines.io'] }),
+      evt({ id: 'b', attendees: ['ada@analyticalengines.io'] }),
+    ]
+    // Two packs exist, one call-matched: the header says 1, not 2.
+    expect(packsInWindow(events, SLUGS, {})).toBe(1)
+    expect(packsInWindow([], SLUGS, {})).toBe(0)
   })
 })

@@ -150,7 +150,7 @@ export function pickability(tenant: OrbitTenant, row: PickabilityRow): Pickabili
 // ---------------------------------------------------------------------------
 export function queueInviteEffect(tenant: OrbitTenant): string {
   if (tenant === 'ivan') return 'Sets stage → enriched, trigger engaged_post (min. confidence 3); the Ivan sender picks it up once country, scorer_version and ICP clear its lane rule.'
-  if (tenant === 'risedtc') return 'Sets stage → enriched and clears any skip; the RISE sender picks it up once country is present and no invite/DM has gone out yet.'
+  if (tenant === 'risedtc') return 'Sets stage → enriched and clears an engine skip; the RISE sender picks it up once country is present and no invite/DM has gone out yet. A hand skip stays, and the invite is refused.'
   return 'Sets stage → queued; the ARCH sender picks it up once ICP ≥ 7 (or floor-waived) and no hold is set.'
 }
 
@@ -188,11 +188,35 @@ export function addToLaneSuccessNote(tenant: OrbitTenant): string {
 // ---------------------------------------------------------------------------
 export type WriteResult = { ok: true; remaining: Pickability } | { ok: false; blocker: string }
 
-export async function queueInvite(tenant: OrbitTenant, pid: string): Promise<WriteResult> {
+/**
+ * Why queueInvite must not write, or null. A MANUAL skip is a decision a
+ * person made, and the queue patch used to erase it silently (the RISE branch
+ * set `skip_state: null`). It is refused instead, by name, on every tenant:
+ * Ivan's Orbit skip stamps the same `manual_skip` beside `stage='skipped'`.
+ */
+export function queueRefusal(row: Pick<ProspectRow,
+  'blacklisted' | 'connection_sent_at' | 'connected_at' | 'last_dm_sent_at' | 'skip_state'>): string | null {
+  if (row.blacklisted) return 'blacklisted'
+  if (row.connection_sent_at || row.connected_at || row.last_dm_sent_at) return 'already invited'
+  if (row.skip_state === 'manual_skip') return 'skipped by hand, so it stays skipped'
+  return null
+}
+
+/** The campaign's lane tag, from the graph's own `lanes` (lane_of(name)).
+ *  Null only when the campaign is not in the list the caller holds. */
+export function campaignLaneOf(lanes: OrbitLane[], campaignId: string | null): string | null {
+  if (!campaignId) return null
+  return lanes.find(l => l.id === campaignId)?.lane ?? null
+}
+
+// `lanes`: the graph's campaign list. pickability() needs the campaign's lane
+// tag and the prospect row does not carry it; passing null here made every
+// ARCH queue report "campaign carries no lane tag" (review 2026-09-26).
+export async function queueInvite(tenant: OrbitTenant, pid: string, lanes: OrbitLane[] = []): Promise<WriteResult> {
   const row = await fetchProspectRow(pid)
   if (!row) return { ok: false, blocker: 'prospect row not found' }
-  if (row.blacklisted) return { ok: false, blocker: 'blacklisted' }
-  if (row.connection_sent_at || row.connected_at || row.last_dm_sent_at) return { ok: false, blocker: 'already invited' }
+  const refusal = queueRefusal(row)
+  if (refusal) return { ok: false, blocker: refusal }
 
   const patch = tenant === 'ivan'
     ? {
@@ -211,9 +235,10 @@ export async function queueInvite(tenant: OrbitTenant, pid: string): Promise<Wri
   if (!data || data.length === 0) throw new Error('queueInvite: the write did not land (RLS filtered it away)')
 
   const fresh = await fetchProspectRow(pid)
-  const campaignActive = await fetchCampaignActive(fresh?.campaign_id ?? row.campaign_id)
+  const campaignId = fresh?.campaign_id ?? row.campaign_id
+  const campaignActive = await fetchCampaignActive(campaignId)
   const remaining = fresh
-    ? pickability(tenant, { ...fresh, campaignActive, campaignLane: null })
+    ? pickability(tenant, { ...fresh, campaignActive, campaignLane: campaignLaneOf(lanes, campaignId) })
     : { ok: true, blockers: [] }
   return { ok: true, remaining }
 }

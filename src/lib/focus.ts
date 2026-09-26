@@ -186,7 +186,11 @@ export async function runBatch(ids: string[], act: BatchAct): Promise<BatchRunRe
   return { succeeded, failed }
 }
 
-export function batchResultLine(r: BatchRunResult, total: number): string {
-  if (r.failed.length === 0) return `${total} of ${total} approved.`
-  return `${r.succeeded.length} of ${total} approved, ${r.failed.length} failed: open`
+// The receipt names the verb that actually ran: a discard batch used to read
+// "3 of 3 approved." because this line only knew one verb.
+export type BatchVerb = 'approved' | 'discarded'
+
+export function batchResultLine(r: BatchRunResult, total: number, verb: BatchVerb = 'approved'): string {
+  if (r.failed.length === 0) return `${total} ${verb}.`
+  return `${r.succeeded.length} of ${total} ${verb}, ${r.failed.length} failed: open`
 }
