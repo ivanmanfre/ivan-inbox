@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { outboundApproveUrl, outboundSkipUrl, pendingOps, pendingDmLaneOps, sentOps, blockedOps, canGenerateDraft, isCloseOnlyComment, claimingOps, engineLabel, expiresIn, DISCARDED_REASON, classifyGateReply, cardStateOf, outboundFeedId, taskTitle, taskDetails, taskDue, taskSource, dueLabel, pendingTasks, doneTodayTasks, isTaskKind, TASK_TITLE_MAX, weeklyReportDispatches, weeklySendAfter, type OpsDraft } from './ops'
+import { outboundApproveUrl, outboundSkipUrl, pendingOps, pendingDmLaneOps, sentOps, blockedOps, canGenerateDraft, isCloseOnlyComment, claimingOps, engineLabel, expiresIn, DISCARDED_REASON, classifyGateReply, cardStateOf, outboundFeedId, taskTitle, taskDetails, taskDue, taskSource, dueLabel, pendingTasks, doneTodayTasks, isTaskKind, TASK_TITLE_MAX, weeklyReportDispatches, weeklySendAfter, isExpiredNewsjack, emptyReadOverRows, type OpsDraft } from './ops'
 
 const base: OpsDraft = {
   id: '1', client_id: 'risedtc', kind: 'escalation', slack_channel: '#rise-ops',
@@ -524,5 +524,34 @@ describe('an audience proposal is never an ops card', () => {
     ]
     expect(pendingOps(rows).map(r => r.id)).toEqual(['esc', 'task'])
     expect(pendingDmLaneOps(rows).map(r => r.id)).toEqual(['esc', 'task'])
+  })
+})
+
+// An expired newsjack stopped counting on the Ops number (review 2026-09-26:
+// `pendingOps` never checked expiry, so the icon counted stories that had
+// already moved on).
+describe('expired newsjacks', () => {
+  const now = new Date('2026-09-26T12:00:00Z').getTime()
+  const nj = (id: string, expires_at?: string): OpsDraft =>
+    ({ ...base, id, kind: 'newsjack', context: expires_at ? { expires_at } : null })
+
+  it('leaves pendingOps once expires_at has passed', () => {
+    const rows = [nj('live', '2026-09-26T18:00:00Z'), nj('gone', '2026-09-26T11:59:00Z'), nj('unknown')]
+    expect(pendingOps(rows, now).map(r => r.id)).toEqual(['live', 'unknown'])
+  })
+
+  it('isExpiredNewsjack only ever judges newsjacks', () => {
+    expect(isExpiredNewsjack(nj('x', '2026-09-26T12:00:00Z'), now)).toBe(true)
+    expect(isExpiredNewsjack({ ...base, context: { expires_at: '2026-01-01T00:00:00Z' } }, now)).toBe(false)
+  })
+})
+
+describe('emptyReadOverRows', () => {
+  it('an empty read over a board with rows is a failure', () => {
+    expect(emptyReadOverRows([base], [])).toBe(true)
+  })
+  it('an empty first read, or any non-empty read, is not', () => {
+    expect(emptyReadOverRows([], [])).toBe(false)
+    expect(emptyReadOverRows([base], [base])).toBe(false)
   })
 })

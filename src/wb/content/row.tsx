@@ -17,6 +17,7 @@ import {
 } from '../../lib/content'
 import { draftScore } from '../../lib/contentFilters'
 import { label } from '../../lib/labels'
+import { publishStoppedLine } from '../../lib/publishBlock'
 import type { RowCap } from '../../exp/v2c/commandStore'
 import { postTime, relTime, sourceLabel, tagLabel, typeLabel } from '../../exp/v2c/fmt'
 import { Dot, Group, Row, Rows, Sep } from '../kit'
@@ -51,7 +52,7 @@ export function StageMark({ stage, children }: { stage: ContentStage | 'ideas'; 
   )
 }
 
-export function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
+export function Card({ d, lane, refresh, onOpen, active, queue, glance, blocked }: {
   d: ContentDraft
   lane: ContentLane
   refresh: () => void
@@ -63,13 +64,17 @@ export function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
   /** AT-A-GLANCE. The body excerpt on the row, so a decision can be made
       without opening it. Needs-review only, and the scope is the point. */
   glance?: boolean
+  /** Why the publisher stopped this post, in words. Set only when it did. */
+  blocked?: string
 }) {
   const thumb = d.image_urls?.[0]
   const title = d.title || d.topic || 'Untitled'
   // W3-17: a storage 400 must not leave a broken-image glyph on the row.
   const [thumbBroken, setThumbBroken] = useState(false)
   const score = draftScore(d)
-  const stage = stageOf(d)
+  // A stopped publish files the row under Errors (publishBlock.ts), so the
+  // row reads as one too.
+  const stage = blocked ? 'error' : stageOf(d)
   const qa = d.qa_verdict?.trim().toUpperCase()
   // The corner mark carries the QA verdict in three states and severity tokens
   // only — green a literal PASS, amber anything that is not, grey no verdict at
@@ -85,7 +90,7 @@ export function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
   // THE REASON COLUMN. The QA chip is a verdict CODE at best and a bare dash at
   // worst, and neither answers "why did this fail". This line does, on every
   // errored row, reading the TERMINAL agent_log entry rather than the stamp.
-  const failure = stage === 'error' ? draftFailure(d) : null
+  const failure = stage === 'error' && !blocked ? draftFailure(d) : null
   // WHAT A BULK ACTION MAY DO TO THIS ROW. Both rules are the ones the
   // single-row controls already obey, read from the same functions.
   const caps: RowCap[] = [
@@ -163,6 +168,9 @@ export function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
           {/* THE REASON, ON EVERY ERRORED ROW, sharing its line with Retry:
               the sentence and the one thing to do about it are the same
               thought. */}
+          {/* THE PUBLISHER STOPPED IT. Its own line, and no Retry: running
+              the generator again is not the fix for a publish block. */}
+          {blocked && <span className="a-ct-err">{publishStoppedLine(blocked)}</span>}
           {failure && (
             <span className="a-ct-reasonrow" onClick={e => e.stopPropagation()}>
               <span className="a-ct-reason" data-kind={failure.kind} title={failure.reason}>
@@ -216,7 +224,7 @@ export function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
     closed answer. An empty stage says so in a sentence rather than rendering
     nothing, because in tab mode "nothing there" and "I clicked the wrong
     thing" look identical on a blank screen. */
-export function StageTable({ s, rows, lane, refresh, onOpen, openId, sub, empty, groupLabel }: {
+export function StageTable({ s, rows, lane, refresh, onOpen, openId, sub, empty, groupLabel, blocks }: {
   s: ContentStage
   rows: ContentDraft[]
   lane: ContentLane
@@ -226,6 +234,8 @@ export function StageTable({ s, rows, lane, refresh, onOpen, openId, sub, empty,
   sub?: string | null
   empty?: string
   groupLabel?: string
+  /** draft id -> why the publisher stopped it (publishBlocksByDraft). */
+  blocks?: Map<string, string>
 }) {
   return (
     <div id={`wb-s-${s}`} className="a-stack">
@@ -261,6 +271,7 @@ export function StageTable({ s, rows, lane, refresh, onOpen, openId, sub, empty,
                   active={openId === d.id} queue={rows}
                   // The decision surface, and only it.
                   glance={s === 'review'}
+                  blocked={blocks?.get(d.id)}
                 />
               ))}
             </Rows>

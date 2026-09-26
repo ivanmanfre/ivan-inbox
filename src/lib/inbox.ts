@@ -63,6 +63,9 @@ export type InboxMessage = {
   // what it used — asked that, a model confabulates. Probed like context_gap: not in the view.
   draft_evidence?: DraftEvidence | null;
   draft_evidence_unavailable?: boolean;
+  // The email-stamp probe failed, so the app cannot tell whether approving this
+  // draft also mails something. Said on the card, never guessed.
+  email_stamp_unavailable?: boolean;
   // "Push this to later" (Ivan, 2026-08-20 — "some people just say I am
   // travelling"). Set from the draft card; db/037. A pushed draft stays PENDING
   // (approved_at NULL), so the dispatcher still cannot send it — see the
@@ -158,7 +161,41 @@ export function sendFailed(m: InboxMessage): boolean {
   if (m.send_blocked_reason === DISCARD_REASON) return false
   if (isRecoverableHold(m.send_blocked_reason)) return false
   if (isInternalConfirmation(m)) return false
+  if (isEngineRetired(m)) return false
   return true
+}
+
+// A pending draft the ENGINE itself took off the table because something newer
+// replaced it: a redraft, a fresher inbound, the 3-day expiry, or a writer that
+// answered "no reply needed". Nothing was attempted and nothing failed, so it
+// never wears "Send failed" (JeongHyun Bae carried six red "Send failed" bubbles
+// for six superseded redrafts, 2026-09-26 review). Matched on the unsent row
+// only: a sent row is history whatever its reason says.
+const ENGINE_RETIRED = /^(superseded_by|stale_draft_expired|model_meta_no_reply|writer_no_reply)/
+
+export function isEngineRetired(m: InboxMessage): boolean {
+  return m.direction === 'outbound' && !m.sent_at && !m.approved_at
+    && ENGINE_RETIRED.test(m.send_blocked_reason ?? '')
+}
+
+/** The quiet line an engine-retired draft shows in place of a bubble. */
+export function retiredLabel(m: InboxMessage): string {
+  const r = m.send_blocked_reason ?? ''
+  if (r.startsWith('superseded_by')) return 'Draft not sent, replaced by a newer one'
+  if (r.startsWith('stale_draft_expired')) return 'Draft not sent, it expired'
+  return 'Draft not sent, no reply was needed'
+}
+
+// Why a recoverable hold came back to the inbox. The sender used to say this
+// only in a WhatsApp alert; the draft itself looked like any other draft.
+export function holdReason(m: InboxMessage): string | null {
+  const r = m.send_blocked_reason
+  if (!isDraft(m) || !isRecoverableHold(r)) return null
+  if (isRaceHold(r)) return r === `${RACE_HOLD_PREFIX}outbound`
+    ? 'Came back: a message went out on this thread while it was queued. Re-read the thread, then approve again.'
+    : 'Came back: they wrote while it was queued. Re-read their message, then approve again.'
+  if (r === 'lint_unbacked_commitment') return 'Came back: the DM promises an email that is not attached. Fix the line or add the email, then approve again.'
+  return 'Came back: the send check flagged a line. Fix it, then approve again.'
 }
 
 export type LadderStepState = 'done' | 'current' | 'todo' | 'failed'
@@ -338,6 +375,19 @@ export function dedupeMessages(rows: InboxMessage[]): InboxMessage[] {
 // which is what we want for a pending draft.
 export const eventTime = (m: InboxMessage): string => m.sent_at ?? m.created_at
 
+// Ivan 2026-09-24: "'Viewed the scan' can trigger the next touch". A pending (not pushed) stall-bump
+// draft for someone who opened their scan on 2+ distinct days goes to the top; everything else keeps
+// the newest-first order, and the lift ends the moment the draft is sent, discarded or pushed.
+// ONE comparator for groupThreads AND browseOrder: browseOrder used to re-sort by recency alone,
+// which undid the lift on the default DMs view (2026-09-26 review).
+export function scanOpenerLifted(t: Thread): boolean {
+  return t.draft !== null && t.draftSnoozedUntil === null && Number(t.draft.draft_evidence?.scan_open_days ?? 0) >= 2
+}
+
+export function threadOrder(a: Thread, b: Thread): number {
+  return Number(scanOpenerLifted(b)) - Number(scanOpenerLifted(a)) || eventTime(b.last).localeCompare(eventTime(a.last))
+}
+
 export function groupThreads(
   rows: InboxMessage[],
   manualReplyIds: ReadonlySet<string> = new Set(),
@@ -368,8 +418,11 @@ export function groupThreads(
     // The other leg, when there is one. See Thread.companionDraft.
     const otherLeg = newestDraft === null
       ? null
+      // Different FAMILY, not merely a different messageChannel: an invite and a
+      // DM ride the same LinkedIn chat, so pairing them offered "Send both" on
+      // what is really a supersede (check3-drafts E1.12).
       : drafts.filter(d => d.id !== newestDraft.id
-          && messageChannel(d) !== messageChannel(newestDraft)).at(-1) ?? null
+          && CHANNEL_FAMILY[messageChannel(d)] !== CHANNEL_FAMILY[messageChannel(newestDraft)]).at(-1) ?? null
     // 🔴 WHICH LEG IS THE MAIN BOX. On a pair, the LinkedIn message is the primary
     // and the email rides in the blue box under it (Ivan, 2026-09-04: "the blue
     // thing should be the email like on mattan's case"). Not a cosmetic
@@ -403,7 +456,13 @@ export function groupThreads(
     // and switched the composer off ("Email compose lands in v1.1") on a live
     // LinkedIn thread. Judged on sent history; a thread that is only ever a draft
     // (retired April cold-email lane) still falls back to the last row.
-    const lastRode = messages.filter(m => !isDraft(m) && !isInternalConfirmation(m)).at(-1) ?? last
+    // 2026-09-26: the sender's own MIRROR email row (the copy of a DM it mailed
+    // after LinkedIn confirmed) is not the conversation switching channel. Reading
+    // it as one turned Ofir Bello's ARCH composer into an EMAIL composer and
+    // switched Heather Sloan's RISE composer off. The thread stays LinkedIn unless
+    // a real email conversation (their email, or a native email row) happened.
+    const lastRode = messages.filter(m => !isDraft(m) && !isInternalConfirmation(m)
+      && !isSenderMirrorEmail(m) && !isEngineRetired(m)).at(-1) ?? last
     threads.push({
       prospect_id: last.prospect_id, prospect_name: last.prospect_name,
       prospect_company: last.prospect_company, client_id: last.client_id,
@@ -437,9 +496,20 @@ export function groupThreads(
   // Ivan 2026-09-24: "'Viewed the scan' can trigger the next touch". A pending (not pushed) stall-bump
   // draft for someone who opened their scan on 2+ distinct days goes to the top; everything else keeps
   // the newest-first order, and the lift ends the moment the draft is sent, discarded or pushed.
-  const scanOpenerFirst = (t: Thread) =>
-    t.draft && t.draftSnoozedUntil === null && Number(t.draft.draft_evidence?.scan_open_days ?? 0) >= 2 ? 0 : 1
-  return threads.sort((a, b) => scanOpenerFirst(a) - scanOpenerFirst(b) || eventTime(b.last).localeCompare(eventTime(a.last)))
+  return threads.sort(threadOrder)
+}
+
+// The email row `Outreach - Send Messages` inserts after it mails a DM's
+// email_mirror_text (or a scan link). It rides along with a LinkedIn DM.
+export function isSenderMirrorEmail(m: InboxMessage): boolean {
+  return m.channel === 'email' && /(_email_mirror_v1|scan_email_delivery)/.test(m.ai_model ?? '')
+}
+
+// Every pending leg of the thread's draft: the main box and, on a pair, the
+// other channel's row. EVERY verb (discard, later, bring back, compose, spam,
+// delete, swipe, bulk, stale bar) goes through the legs, never t.draft alone.
+export function draftLegs(t: Pick<Thread, 'draft' | 'companionDraft'>): InboxMessage[] {
+  return [t.draft, t.companionDraft].filter((m): m is InboxMessage => m != null)
 }
 
 // What kind of thread this really is, judged by its message mix rather than
@@ -589,6 +659,17 @@ function isRealReply(m: InboxMessage): boolean {
     && !DECLINE.test(text) && !SIGNOFF.test(text)
 }
 
+// 🔴 A REACTION IS A RESPONSE (Ivan, ruled 4+ times, last 2026-09-25: "when he
+// reacts, it is basically a response on any kind of fucking line"). Any emoji,
+// on any line, on every seat. The drafters already treat it as their turn; the
+// badge used to drop it with the sign-offs, so a reaction with no draft yet
+// owed nothing here. A reaction the detector judged negative still doesn't.
+export function isOwedInbound(m: InboxMessage): boolean {
+  if (isRealReply(m)) return true
+  if (m.reply_intent === 'negative') return false
+  return REACTION.test((m.message_text ?? '').trim())
+}
+
 // The core "does this thread owe a reply" test, with no staleness cutoff.
 // Extracted so needsAnswer (the badge/list predicate, which DOES cut off at
 // STALE_DAYS so the badge does not ring forever on something that will never
@@ -606,7 +687,7 @@ function unansweredSince(t: Thread): string | null {
   // him. It rings again the moment the push expires, and instantly if they
   // write back (which voids draftSnoozedUntil in groupThreads).
   if (t.draftSnoozedUntil !== null) return null
-  const lastInbound = t.messages.filter(m => m.direction === 'inbound' && isRealReply(m))
+  const lastInbound = t.messages.filter(m => m.direction === 'inbound' && isOwedInbound(m))
     .map(eventTime).sort().at(-1) ?? null
   if (lastInbound === null) return null
   // DISCARDING A DRAFT IS AN ANSWER TO THE QUESTION "does this need a reply".
@@ -615,8 +696,12 @@ function unansweredSince(t: Thread): string | null {
   // and the mirror never captured his manual send. Ivan: "gabriel was handled
   // manually by mattan as you can see". A human already ruled on this thread;
   // re-listing it is the app overruling him.
+  // The writer's own "no reply is needed" ruling (model_meta_no_reply /
+  // writer_no_reply, 2026-09-25: reactions to OUR sign-off, Michal Mroz and
+  // Saskia von Stamm) is the same kind of decision, made by the drafter.
   const discarded = t.messages
-    .filter(m => m.direction === 'outbound' && !m.sent_at && m.send_blocked_reason === DISCARD_REASON)
+    .filter(m => m.direction === 'outbound' && !m.sent_at
+      && (m.send_blocked_reason === DISCARD_REASON || /^(model_meta_no_reply|writer_no_reply)/.test(m.send_blocked_reason ?? '')))
     .map(eventTime).sort().at(-1) ?? null
   if (discarded !== null && discarded > lastInbound) return null
   const lastSent = t.messages
@@ -724,11 +809,10 @@ export function filterByStatus(threads: Thread[], s: Status): Thread[] {
 // my response"). Everything the badge counts goes FIRST, drafted or not, then
 // the conversations where the ball is with them. Newest first inside each.
 export function browseOrder(threads: Thread[]): { pending: Thread[]; rest: Thread[] } {
-  const byRecent = (a: Thread, b: Thread) => eventTime(b.last).localeCompare(eventTime(a.last))
   const convs = threads.filter(isConversation)
   return {
-    pending: convs.filter(t => threadBucket(t) !== 'waiting').sort(byRecent),
-    rest: convs.filter(t => threadBucket(t) === 'waiting').sort(byRecent),
+    pending: convs.filter(t => threadBucket(t) !== 'waiting').sort(threadOrder),
+    rest: convs.filter(t => threadBucket(t) === 'waiting').sort(threadOrder),
   }
 }
 
@@ -776,7 +860,7 @@ export async function markSpam(t: Thread): Promise<void> {
               skip_reason: SPAM_REASON, updated_at: new Date().toISOString() })
     .eq('id', t.prospect_id)
   if (error) throw error
-  for (const d of [t.draft, t.companionDraft]) { if (d) await discardDraft(d.id) }
+  await discardLegs(draftLegs(t))
 }
 
 // Deletes the conversation from the seat's LinkedIn inbox (Unipile) and closes the
@@ -800,7 +884,7 @@ export async function deleteThread(t: Thread): Promise<void> {
   )
   const out = await res.json().catch(() => ({}))
   if (!res.ok || out?.ok === false) throw new Error(out?.detail ?? out?.error ?? `delete failed (${res.status})`)
-  for (const d of [t.draft, t.companionDraft]) { if (d) await discardDraft(d.id) }
+  await discardLegs(draftLegs(t))
 }
 
 // The way back. Reopens the thread as a reply owed, which is exactly what the detector
@@ -1007,13 +1091,37 @@ export async function fetchDraftEmailStamps(): Promise<Map<string, DraftEmailSta
   const { data, error } = await supabase.from('outreach_messages')
     .select('id,recipient_email,email_mirror_text')
     .eq('direction', 'outbound')
-    .is('sent_at', null).is('approved_at', null).is('send_blocked_at', null)
+    .is('sent_at', null).is('approved_at', null)
+    // A race- or lint-held row is a pending draft again (isDraft), and approving
+    // it still mails the mirror. Skipping held rows here dropped its email line
+    // and editor while the email still went out (check3-drafts E1.5).
+    .or('send_blocked_at.is.null,send_blocked_reason.like.post_approval_race*,send_blocked_reason.like.lint*')
     .not('recipient_email', 'is', null)
+    .order('created_at', { ascending: false })
     .limit(500)
   if (error) throw error
   const m = new Map<string, DraftEmailStamp>()
   for (const r of (data ?? []) as { id: string; recipient_email: string | null; email_mirror_text: string | null }[]) {
     if (r.recipient_email) m.set(r.id, { recipient_email: r.recipient_email, email_mirror_text: r.email_mirror_text })
+  }
+  return m
+}
+
+// Who a SENT email actually went to. The view carries prospect_email only, so a
+// mirror mailed to a colleague (Heather Sloan's went to philip@) printed no
+// recipient, or the wrong one. Newest 1000 email rows, enough for every thread
+// the list shows.
+export async function fetchEmailRecipients(): Promise<Map<string, string>> {
+  const { data, error } = await supabase.from('outreach_messages')
+    .select('id,recipient_email')
+    .eq('channel', 'email')
+    .not('recipient_email', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1000)
+  if (error) throw error
+  const m = new Map<string, string>()
+  for (const r of (data ?? []) as { id: string; recipient_email: string | null }[]) {
+    if (r.recipient_email) m.set(r.id, r.recipient_email)
   }
   return m
 }
@@ -1194,6 +1302,34 @@ export async function discardDraft(id: string): Promise<boolean> {
   return (data ?? []).length > 0
 }
 
+// Discard every leg of a draft. Each leg is its own row with its own guard, so
+// each is tried even when another refuses; what did NOT stop is returned with
+// the reason (null = the guard refused it: already approved or sent) and every
+// caller says so. The companion's result used to be swallowed (`.catch(() =>
+// {})`), so an approved email leg looked discarded while it went out.
+export type LegFailure = { leg: InboxMessage; error: string | null }
+
+export async function discardLegs(legs: readonly (InboxMessage | null | undefined)[]): Promise<LegFailure[]> {
+  const out: LegFailure[] = []
+  for (const leg of legs) {
+    if (!leg) continue
+    try {
+      if (!(await discardDraft(leg.id))) out.push({ leg, error: null })
+    } catch (e) {
+      out.push({ leg, error: e instanceof Error ? e.message : String(e) })
+    }
+  }
+  return out
+}
+
+/** One sentence per leg that did not stop, for a banner or a bulk error line. */
+export function legFailureText(f: LegFailure): string {
+  const what = messageChannel(f.leg) === 'email' ? 'The email' : 'The LinkedIn message'
+  return f.error === null
+    ? `${what} was already approved and is in the send queue, so the discard did not stop it.`
+    : `${what} could not be discarded: ${f.error}`
+}
+
 // Retire an internal hold by hand. Søren Gleie (2026-09-22): the drafter hit its
 // retry ceiling, wrote "Confirm with Davorin ... write this one by hand", and
 // the card's ONLY verb was "add a note" — a question Ivan had already answered
@@ -1352,7 +1488,7 @@ async function emailReplyTarget(prospectId: string): Promise<EmailReplyTarget> {
   }
 }
 
-export async function composeReply(t: Thread, text: string): Promise<void> {
+export async function composeReply(t: Thread, text: string): Promise<LegFailure[]> {
   const isEmail = t.channel === 'email'
   if (isEmail && !canComposeEmail(t)) throw new Error('Email compose is only on for ARCH threads.')
   const target = isEmail ? await emailReplyTarget(t.prospect_id) : null
@@ -1373,9 +1509,12 @@ export async function composeReply(t: Thread, text: string): Promise<void> {
     ...(Object.keys(evidence).length ? { draft_evidence: evidence } : {}),
   })
   if (error) throw error
-  // Ivan just answered this thread himself, so the pending AI draft (if any)
-  // is now stale — discard it rather than leaving it to rot in the queue.
-  if (t.draft) await discardDraft(t.draft.id).catch(() => {})
+  // Ivan just answered this thread himself, so the pending AI draft is now
+  // stale: discard it, EVERY leg. Discarding t.draft alone left a paired email
+  // pending and approvable, and it became the thread's lone draft
+  // (check3-drafts E1.1). His reply is already queued, so a leg that would not
+  // stop is returned for the thread to report, never thrown as if the reply failed.
+  return discardLegs(draftLegs(t))
 }
 
 export async function markThreadRead(prospect_id: string): Promise<void> {

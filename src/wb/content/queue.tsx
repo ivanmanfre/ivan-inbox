@@ -19,6 +19,7 @@ import {
 import { useConfirm } from '../chrome/ConfirmSheet'
 import { relOrAhead, relTime } from '../../exp/v2c/fmt'
 import { label } from '../../lib/labels'
+import { queueErrorText } from '../../lib/publishBlock'
 import { Button, Icon, IconButton } from '../../ds'
 import { Dot, Group, Row, Rows, Sep } from '../kit'
 import { CalmEmpty, Failed, Figure, FilteredEmpty } from './parts'
@@ -64,7 +65,7 @@ function QueueRow({ r, refresh }: { r: ScheduledQueueRow; refresh: () => void })
       sub={
         (r.error_message || pullErr) ? (
           <span className="a-ct-subs">
-            {r.error_message && <span className="a-ct-err">{r.error_message}</span>}
+            {r.error_message && <span className="a-ct-err">{queueErrorText(r)}</span>}
             {pullErr && <span className="a-ct-err">{pullErr}</span>}
           </span>
         ) : undefined

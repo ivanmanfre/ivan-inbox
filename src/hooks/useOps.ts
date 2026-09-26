@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useId, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { fetchOpsDrafts, type OpsDraft } from '../lib/ops'
+import { emptyReadOverRows, fetchOpsDrafts, type OpsDraft } from '../lib/ops'
 
 // W6-2: `enabled` (default true, so every existing caller keeps today's
 // always-on behaviour) lets a shared shell defer the read until the surface
@@ -23,8 +23,18 @@ export function useOps(enabled = true) {
   // channel is also fatal on the way out: one consumer unmounting would
   // removeChannel() realtime out from under the other.
   const topic = `ops_drafts:${useId()}`
+  // The rows on screen, read inside `refresh` without making it re-create.
+  const shown = useRef<OpsDraft[]>([])
   const refresh = useCallback(() => {
     fetchOpsDrafts().then(rows => {
+      // Ivan's rule: an EMPTY result over a board that had rows is a failure,
+      // never a cleared queue. Keep the last good rows and their stamp.
+      if (emptyReadOverRows(shown.current, rows)) {
+        setError('The ops read came back empty over a board that had cards.')
+        setLoading(false)
+        return
+      }
+      shown.current = rows
       setDrafts(rows)
       setError(null)
       setLoadedAt(new Date().toISOString())

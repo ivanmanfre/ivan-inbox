@@ -26,7 +26,7 @@ import { useCommentQueue } from '../../hooks/useCommentQueue'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { useReactions } from '../../hooks/useReactions'
 import { relAge } from '../kit'
-import { checkedPhrase } from '../../lib/today'
+import { checkedPhrase, clockTime } from '../../lib/today'
 import { Banner, Button, EmptyState, Icon } from '../../ds'
 import { OpsSkeleton } from '../chrome/Skeleton'
 import { Body, Group, Head, Screen } from '../kit'
@@ -102,7 +102,9 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
     />
   )
 
-  if (error) {
+  // A failed read with nothing ever loaded is the one state that has no cards to
+  // keep: say it is unread, not empty.
+  if (error && drafts.length === 0) {
     return (
       <Screen>
         {head}
@@ -116,9 +118,7 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
             <>
               {error}
               <span className="a-ops-failf">
-                {drafts.length > 0 && loadedAt
-                  ? `Showing what loaded ${relAge(loadedAt)}. It may be out of date.`
-                  : 'Nothing has loaded yet, so this is not an empty queue, it is an unread one.'}
+                Nothing has loaded yet, so this is not an empty queue, it is an unread one.
               </span>
             </>
           </Banner>
@@ -126,6 +126,19 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
       </Screen>
     )
   }
+
+  // A failed REFRESH keeps the last good cards on screen and says so. It used
+  // to draw only the banner while its text claimed the cards were showing.
+  const staleBanner = error ? (
+    <Banner
+      tone="attention"
+      icon="error"
+      title={loadedAt ? `Couldn’t refresh, showing the copy from ${clockTime(loadedAt)}` : 'Couldn’t refresh, showing the last copy'}
+      action={<Button variant="quiet" onClick={refresh}>Retry</Button>}
+    >
+      The cards below may be out of date.
+    </Banner>
+  ) : null
 
   if (loading && drafts.length === 0) {
     return (
@@ -147,6 +160,7 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
       {head}
       <Body innerRef={rowsRef}>
         <PullLine pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
+        {staleBanner}
         <div className="a-ops-canvas" data-wide={sideLive ? '' : undefined}>
           <div className="a-cols" data-cols={sideLive ? 'side' : undefined}>
             <div className="a-stack">
@@ -157,7 +171,9 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
                   // The panel's best line, and it earns its place here more than
                   // anywhere: this is the surface where "empty" and "broken" looked
                   // identical before.
-                  title="Nothing waiting on you, and this is a live read, not a stall."
+                  title={error
+                    ? 'Nothing was waiting on you at the last good read.'
+                    : 'Nothing waiting on you, and this is a live read, not a stall.'}
                   sub={
                     <>
                       Comment replies, newsjacks, weekly reports and escalations all clear.

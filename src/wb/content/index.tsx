@@ -59,6 +59,7 @@ import { StageTable, type OpenDraft } from './row'
 import { ClientIdeasSection, IdeasSection } from './ideas'
 import { InFlight, PillarMix, QueueStrip } from './queue'
 import { ContentCalendar } from './calendar'
+import { applyPublishBlocks, publishBlocksByDraft } from '../../lib/publishBlock'
 import './content.css'
 
 // The Content area holds two views of the SAME rows, and the lane switch
@@ -379,7 +380,11 @@ function IvanLane({
   // that say margin. It is a substring scan over rows that are already here, so
   // it costs no fetch and no round trip.
   const shown = applySearch(applyFilters(drafts, specs, filters), q, d => [d.title, d.topic, d.post_body])
-  const shownStages = groupByStage(shown)
+  // A post the publisher STOPPED is an error, whatever its draft status says.
+  // The block is written on the queue row only, so it is joined in here and
+  // the Errors tab lists and counts it (the Sep 8 post, 2026-09-26).
+  const blocks = useMemo(() => publishBlocksByDraft(queue.rows), [queue.rows])
+  const shownStages = applyPublishBlocks(groupByStage(shown), blocks)
   const ideasHidden = draftFacetsActive(filters, q)
 
   const tabs: StageTab[] = TAB_ORDER
@@ -456,7 +461,7 @@ function IvanLane({
           <>
             <StageTable
               s={tab} rows={shownStages[tab]} lane="ivan"
-              refresh={refresh} onOpen={onOpen} openId={openId}
+              refresh={refresh} onOpen={onOpen} openId={openId} blocks={blocks}
               sub={
                 tab === 'approved' && countUndated(shownStages.approved) > 0
                   ? `${countUndated(shownStages.approved)} approved without a date, on no other surface`

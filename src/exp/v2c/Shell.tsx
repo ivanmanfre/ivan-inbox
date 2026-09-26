@@ -445,16 +445,24 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
   // means (composer mic, or the live loop's mic when that sheet is open).
   // Chrome binds ⌘D to "bookmark this page" — preventDefault() suppresses
   // that inside the workbench, which is exactly what was asked for.
+  //
+  // 2026-09-26: the event this used to dispatch had no listener, so ⌘D did
+  // nothing. The ask now goes through `voiceIntent`, which the composer's own
+  // mic listens on. On the desktop a closed drawer means no composer yet: the
+  // drawer opens and the composer runs the parked ask as it mounts. The phone
+  // never parks one (it has no drawer to open, and a stale ask would start the
+  // mic on some later visit to Claude).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && (e.key === 'd' || e.key === 'D')) {
         e.preventDefault()
-        window.dispatchEvent(new CustomEvent('wb-voice-toggle'))
+        if (readCanvas() === 'mobile') { voiceIntent.request(false); return }
+        if (!voiceIntent.request()) openDrawer()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [openDrawer])
 
   // Drawer boot deep link (D2): `boot.focus==='chat'` is the Ask push's own
   // link shape (`#exp/v2/ask?thread=…`, inbox-turn-run writes it). It used to

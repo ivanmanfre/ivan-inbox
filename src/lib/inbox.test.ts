@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, browseOrder, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISMISS_HOLD_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, missingManualGuardMeansPreMigration, DELETED_REASON, type InboxMessage, type Status, type DraftGuard } from './inbox'
+import { isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, browseOrder, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISMISS_HOLD_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, missingManualGuardMeansPreMigration, isEngineRetired, retiredLabel, holdReason, isSenderMirrorEmail, draftLegs, isOwedInbound, threadOrder, DELETED_REASON, type InboxMessage, type Status, type DraftGuard } from './inbox'
 
 // inbox.ts:191 gates needsAnswer on a 14-day wall-clock staleness window
 // (STALE_DAYS), measured against Date.now() by default -- and most callers
@@ -202,14 +202,16 @@ describe('threadChatId + archived drafts', () => {
     expect(t.draft?.id).toBe('dm')
     expect(t.companionDraft?.id).toBe('em')
   })
-  it('a non-email pair keeps newest-first; only the email is demoted', () => {
+  // 2026-09-26: an invite and a DM ride the SAME LinkedIn chat, so they are a
+  // supersede, never a "Send both" pair (check3-drafts E1.12). Newest shows alone.
+  it('never pairs an invite with a DM (same channel family)', () => {
     const rows: InboxMessage[] = [
       { ...base, id: 'dm', created_at: '2026-07-22T10:00:00Z' },
       { ...base, id: 'note', message_type: 'connection_note', created_at: '2026-07-22T10:00:01Z' },
     ]
     const t = groupThreads(rows)[0]
     expect(t.draft?.id).toBe('note')
-    expect(t.companionDraft?.id).toBe('dm')
+    expect(t.companionDraft).toBeNull()
   })
   // A REDRAFT is not a second leg. Two rise_reply rows on the same channel mean
   // the newer supersedes the older, and offering both would send it twice.
@@ -1090,5 +1092,77 @@ describe('browseOrder', () => {
     expect(o.pending.map(t => t.prospect_id)).toEqual(['owes-new', 'owes-old'])
     expect(o.rest.map(t => t.prospect_id)).toEqual(['sent-new', 'sent-old'])
     expect(o.pending).toHaveLength(inboxWaitingCount(threads))
+  })
+})
+
+describe('drafts with email and follow-ups, 2026-09-26 live fixes', () => {
+  // Ofir Bello (ARCH) and Heather Sloan (RISE): the thread ENDED on the sender's
+  // mirror email row, which flipped thread.channel to email.
+  it('a sender mirror email row does not switch the thread to email', () => {
+    const rows: InboxMessage[] = [
+      { ...base, id: 'dm', client_id: 'arch', sent_at: '2026-07-22T09:00:00Z', created_at: '2026-07-22T09:00:00Z' },
+      { ...base, id: 'em', client_id: 'arch', channel: 'email', ai_model: 'arch_email_mirror_v1', sent_at: '2026-07-22T09:01:00Z', created_at: '2026-07-22T09:01:00Z' },
+    ]
+    expect(isSenderMirrorEmail(rows[1])).toBe(true)
+    expect(groupThreads(rows)[0].channel).toBe('linkedin')
+  })
+  it('a real email conversation still reads as email', () => {
+    const rows: InboxMessage[] = [
+      { ...base, id: 'in', direction: 'inbound', channel: 'email', sent_at: '2026-07-22T09:00:00Z', created_at: '2026-07-22T09:00:00Z' },
+    ]
+    expect(groupThreads(rows)[0].channel).toBe('email')
+  })
+  // JeongHyun Bae: six superseded redrafts rendered as red "Send failed".
+  it('engine-retired drafts are neither failed nor pending', () => {
+    const r = { ...base, id: 'old', send_blocked_at: '2026-07-22T11:00:00Z', send_blocked_reason: 'superseded_by_v2_redraft' }
+    expect(isEngineRetired(r)).toBe(true)
+    expect(sendFailed(r)).toBe(false)
+    expect(isDraft(r)).toBe(false)
+    expect(retiredLabel(r)).toMatch(/replaced by a newer one/)
+    expect(retiredLabel({ ...r, send_blocked_reason: 'stale_draft_expired_3d' })).toMatch(/expired/)
+    expect(retiredLabel({ ...r, send_blocked_reason: 'model_meta_no_reply_2026-09-25' })).toMatch(/no reply/)
+    // A real sender block stays a failure.
+    expect(sendFailed({ ...r, send_blocked_reason: 'duplicate_in_thread' })).toBe(true)
+  })
+  it('a recoverable hold says why it came back', () => {
+    const race = { ...base, send_blocked_at: '2026-07-22T11:00:00Z', send_blocked_reason: `${RACE_HOLD_PREFIX}inbound` }
+    expect(holdReason(race)).toMatch(/they wrote while it was queued/)
+    expect(holdReason({ ...race, send_blocked_reason: 'lint_unbacked_commitment' })).toMatch(/promises an email/)
+    expect(holdReason(base)).toBeNull()
+  })
+  it('draftLegs returns both legs of a pair and only the main otherwise', () => {
+    const a = { ...base, id: 'a' }, b = { ...base, id: 'b', channel: 'email' as const }
+    expect(draftLegs({ draft: a, companionDraft: b }).map(m => m.id)).toEqual(['a', 'b'])
+    expect(draftLegs({ draft: a, companionDraft: null }).map(m => m.id)).toEqual(['a'])
+    expect(draftLegs({ draft: null, companionDraft: null })).toEqual([])
+  })
+  // Barbara Nagelberg 😄, Amy Boysen 👍: a reaction is a response (ruled 4+ times).
+  it('a reaction after our last send is owed', () => {
+    const rows: InboxMessage[] = [
+      { ...base, id: 'out', sent_at: '2026-07-22T09:00:00Z', created_at: '2026-07-22T09:00:00Z' },
+      { ...base, id: 'rx', direction: 'inbound', message_text: 'Barbara reacted 😄', sent_at: '2026-07-22T10:00:00Z', created_at: '2026-07-22T10:00:00Z' },
+    ]
+    expect(isOwedInbound(rows[1])).toBe(true)
+    expect(needsAnswer(groupThreads(rows)[0])).toBe(true)
+    expect(isOwedInbound({ ...rows[1], message_text: '👍' })).toBe(true)
+    expect(isOwedInbound({ ...rows[1], reply_intent: 'negative' })).toBe(false)
+  })
+  it("the writer's no-reply ruling after a reaction answers it", () => {
+    const rows: InboxMessage[] = [
+      { ...base, id: 'out', sent_at: '2026-07-22T09:00:00Z', created_at: '2026-07-22T09:00:00Z' },
+      { ...base, id: 'rx', direction: 'inbound', message_text: 'Michal reacted 👍', sent_at: '2026-07-22T10:00:00Z', created_at: '2026-07-22T10:00:00Z' },
+      { ...base, id: 'meta', created_at: '2026-07-22T10:05:00Z', send_blocked_at: '2026-07-22T10:06:00Z', send_blocked_reason: 'model_meta_no_reply_2026-09-25' },
+    ]
+    expect(needsAnswer(groupThreads(rows)[0])).toBe(false)
+  })
+  it('the scan-opener lift survives the browse order', () => {
+    const rows: InboxMessage[] = [
+      { ...base, id: 'new', prospect_id: 'new', direction: 'inbound', message_text: 'question?', sent_at: '2026-07-22T12:00:00Z', created_at: '2026-07-22T12:00:00Z' },
+      { ...base, id: 'bump', prospect_id: 'opener', ai_model: 'stall_bump_v1', created_at: '2026-07-20T10:00:00Z',
+        draft_evidence: { scan_open_days: 2 } as unknown as InboxMessage['draft_evidence'] },
+    ]
+    const threads = groupThreads(rows)
+    expect(browseOrder(threads).pending.map(t => t.prospect_id)).toEqual(['opener', 'new'])
+    expect([...threads].sort(threadOrder)[0].prospect_id).toBe('opener')
   })
 })

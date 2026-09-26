@@ -34,10 +34,17 @@ import { ConversationTakeoverCard } from './ConversationTakeoverCard'
 export const KIND_LABEL: Record<OpsKind, string> = { escalation: 'Esc', update: 'Update', newsjack: 'Newsjack', weekly_report: 'Weekly', comment_reply: 'Reply', comment_outbound: 'Comments', booking: 'Booked', precall_email: 'Pre-call', manual_invite: 'Invite', task: 'Task', leads_ballot: 'Leads', audn_recommendation: 'Audience', conversation_takeover: 'Takeover' }
 
 // Slack channel ids are unreadable on a card. escalation/update/booking all print a
-// destination, so name the ones we own and fall back to the raw id for anything else.
+// destination, so name the ones we own. An id we cannot name returns null and the
+// caller says something true without it: a raw `C0…` id is a code, not a place.
 const CHANNEL_NAME: Record<string, string> = { C0BJ72F58BY: 'the Rise DTC channel', C0BPJ0KHXV1: 'the ARCH channel' }
-function channelLabel(id: string): string {
-  return CHANNEL_NAME[id] ?? `#${id}`
+export function channelLabel(id: string | null | undefined): string | null {
+  return id ? CHANNEL_NAME[id] ?? null : null
+}
+
+// The discard caption for the Slack-bound kinds. Named channel when we know it,
+// plain "Slack" when we do not, never the id.
+export function slackDiscardLine(id: string | null | undefined): string {
+  return `It won't be posted to ${channelLabel(id) ?? 'Slack'}.`
 }
 
 export function errText(e: unknown): string {
@@ -319,7 +326,7 @@ function StandardPendingCard({ draft, refresh, feed, held, onGateResult }: {
     ? seatLabel(draft.client_id)
     : isNewsjack || isWeekly || !draft.slack_channel
       ? engineLabel(draft.client_id)
-      : channelLabel(draft.slack_channel)
+      : channelLabel(draft.slack_channel) ?? engineLabel(draft.client_id)
   const left = isNewsjack ? expiresIn(draft.context?.expires_at) : null
 
   // The two confirms, built ONCE and read twice: the sheet fires them on the
@@ -392,7 +399,7 @@ function StandardPendingCard({ draft, refresh, feed, held, onGateResult }: {
           ? "The comment stays on the post. You just won't be reminded about it again."
           : isOutbound
             ? 'Nothing gets posted. The draft is dropped for good.'
-            : `It won't be posted to ${draft.slack_channel}.`,
+            : slackDiscardLine(draft.slack_channel),
     confirmText: 'Discard',
     danger: true,
   }

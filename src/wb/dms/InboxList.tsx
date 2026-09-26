@@ -22,7 +22,7 @@ import { InboxSkeleton } from '../chrome/Skeleton'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { returnsIn } from '../../lib/pushLater'
 import { useConfirm } from '../chrome/ConfirmSheet'
-import { browseOrder, discardDraft, filterByStatus, filterThreads, inboxWaitingCount, isLeadMagnet, searchThreads, threadKind, type Filter, type Status, type Thread, eventTime } from '../../lib/inbox'
+import { browseOrder, discardLegs, draftLegs, legFailureText, filterByStatus, filterThreads, inboxWaitingCount, isLeadMagnet, searchThreads, threadKind, type Filter, type Status, type Thread, eventTime } from '../../lib/inbox'
 import { DM_FIELDS, applyThreadTokens, hasStatusToken, tokensForFilter, type FilterToken } from '../../lib/filterTokens'
 import { checkedPhrase } from '../../lib/today'
 import { clientBadge } from '../../lib/labels'
@@ -468,14 +468,20 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
   async function onRowDiscard(e: React.MouseEvent | null, t: Thread) {
     e?.stopPropagation()
     if (!t.draft) return
+    const pair = t.companionDraft != null
     const ok = await confirm({
-      title: 'Discard this draft?',
-      message: 'It will not be sent.',
+      title: pair ? 'Discard both drafts?' : 'Discard this draft?',
+      message: pair ? 'Neither the LinkedIn message nor the email will be sent.' : 'It will not be sent.',
       confirmText: 'Discard',
       danger: true,
     })
     if (!ok) return
-    try { await discardDraft(t.draft.id) } finally { refresh() }
+    // Every leg, and a leg that would not stop is said out loud: the row and
+    // the swipe used to discard the DM alone and leave the email pending.
+    try {
+      const failed = await discardLegs(draftLegs(t))
+      if (failed.length) window.alert(failed.map(legFailureText).join(' '))
+    } finally { refresh() }
   }
   const tokenMode = tokens !== undefined && setTokens !== undefined
   // SCROLL JANK (feel pass, 2026-09-25): the row window re-renders this list on
@@ -737,6 +743,7 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
                       label={t.prospect_name}
                       caps={pendingDraft ? ['discard'] : []}
                       lane={t.client_id}
+                      pairId={pendingDraft ? t.companionDraft?.id : undefined}
                     />
                     <Row
                       className={hover ? 'r a-dms-hasverb' : 'r'}
