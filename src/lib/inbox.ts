@@ -389,8 +389,17 @@ export function scanOpenerLifted(t: Thread): boolean {
   return t.draft !== null && t.draftSnoozedUntil === null && Number(t.draft.draft_evidence?.scan_open_days ?? 0) >= 2
 }
 
+// DMs rebuild (blueprint v3): an internal owner question is the first thing on the list. No reply is
+// queued behind it until Davorin/Mattan confirm the fact, so every hour it sits is an hour the person
+// waits. The automatic-retry hold is not lifted: it clears itself.
+export function ownerQuestionLifted(t: Thread): boolean {
+  return t.ownerConfirmation != null && t.ownerConfirmation.send_blocked_reason !== 'reply_retry_pending'
+}
+
 export function threadOrder(a: Thread, b: Thread): number {
-  return Number(scanOpenerLifted(b)) - Number(scanOpenerLifted(a)) || eventTime(b.last).localeCompare(eventTime(a.last))
+  return Number(ownerQuestionLifted(b)) - Number(ownerQuestionLifted(a))
+    || Number(scanOpenerLifted(b)) - Number(scanOpenerLifted(a))
+    || eventTime(b.last).localeCompare(eventTime(a.last))
 }
 
 export function groupThreads(
@@ -814,12 +823,39 @@ export function filterByStatus(threads: Thread[], s: Status): Thread[] {
 // owe him a reply with his own sends ("I don't know what is actually pending on
 // my response"). Everything the badge counts goes FIRST, drafted or not, then
 // the conversations where the ball is with them. Newest first inside each.
-export function browseOrder(threads: Thread[]): { pending: Thread[]; rest: Thread[] } {
+// A thread whose newest message is their robot: an out-of-office or an auto-reply (tag or words).
+// Nothing to answer, nothing to wait on; it gets its own quiet fold (blueprint v3).
+const AUTO_TAG = /^\s*\[(ooo_autoreply|auto_reply)/i
+export function isAutoReplyThread(t: Thread): boolean {
+  if (t.last.direction !== 'inbound') return false
+  const text = (t.last.message_text ?? '').trim()
+  return AUTO_TAG.test(text) || OOO_TEXT.test(text)
+}
+
+// Owed but past the STALE_DAYS clock: a reply still owed after 14 days, or a draft nobody approved in
+// 14 days. The badge already stopped counting them; before the rebuild they were filed under "Sent,
+// waiting on them", which says the ball is with the other person when it is with Ivan.
+export function isOlderOwed(t: Thread, now: number = Date.now()): boolean {
+  if (threadBucket(t, now) !== 'waiting') return false
+  const cut = STALE_DAYS * 86_400_000
+  const since = unansweredSince(t)
+  if (since !== null && now - Date.parse(since) > cut) return true
+  return t.draft !== null && t.draftSnoozedUntil === null && now - Date.parse(eventTime(t.draft)) > cut
+}
+
+// The browsable DMs list: what needs him, then what waits on them, then two closed folds.
+export function browseOrder(threads: Thread[], now: number = Date.now()): {
+  pending: Thread[]; rest: Thread[]; older: Thread[]; auto: Thread[]
+} {
   const convs = threads.filter(isConversation)
-  return {
-    pending: convs.filter(t => threadBucket(t) !== 'waiting').sort(threadOrder),
-    rest: convs.filter(t => threadBucket(t) === 'waiting').sort(threadOrder),
+  const pending: Thread[] = [], rest: Thread[] = [], older: Thread[] = [], auto: Thread[] = []
+  for (const t of convs) {
+    if (threadBucket(t, now) !== 'waiting') pending.push(t)
+    else if (isOlderOwed(t, now)) older.push(t)
+    else if (isAutoReplyThread(t)) auto.push(t)
+    else rest.push(t)
   }
+  return { pending: pending.sort(threadOrder), rest: rest.sort(threadOrder), older: older.sort(threadOrder), auto: auto.sort(threadOrder) }
 }
 
 // THE badge number. Every surface that says "N waiting in the inbox" derives

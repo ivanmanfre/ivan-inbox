@@ -1047,3 +1047,12 @@
   .wb-work:not(.list) .a-dms-seat{ display:none }
 }
 .a-dms .a-row.r[data-unread] .a-dms-titleline > :first-child{ font-weight:600; color:var(--ds-text-1) }
+
+/* DMs REBUILD 2: the two closed folds under "Sent, waiting on them" (older than
+   two weeks, auto-replies). The header IS the button, same box as a section head. */
+.a-root button.wb-dms-fold{
+  display:block; width:100%; height:100%; padding:0; margin:0; border:0;
+  background:none; color:inherit; font:inherit; text-align:start; cursor:pointer;
+}
+.wb-dms-fold .ds-dayheader{ height:100% }
+.wb-dms-fold:focus-visible{ outline:2px solid var(--ds-accent); outline-offset:-2px }

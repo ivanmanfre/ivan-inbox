@@ -1166,3 +1166,36 @@ describe('drafts with email and follow-ups, 2026-09-26 live fixes', () => {
     expect([...threads].sort(threadOrder)[0].prospect_id).toBe('opener')
   })
 })
+
+describe('DMs rebuild 2: owner questions first, older-owed and auto-reply folds', () => {
+  const now = Date.parse('2026-09-26T12:00:00Z')
+  const m = (id: string, pid: string, direction: 'inbound' | 'outbound', at: string, extra: Partial<InboxMessage> = {}): InboxMessage =>
+    ({ ...base, id, prospect_id: pid, direction, sent_at: at, created_at: at, ...extra })
+  it('files a reply owed past 14 days under Older, not under waiting', () => {
+    const threads = groupThreads([
+      m('a1', 'old-owed', 'inbound', '2026-09-01T10:00:00Z'),
+      m('b1', 'waiting', 'inbound', '2026-09-20T10:00:00Z'),
+      m('b2', 'waiting', 'outbound', '2026-09-21T10:00:00Z'),
+    ], new Set(), now)
+    const o = browseOrder(threads, now)
+    expect(o.older.map(t => t.prospect_id)).toEqual(['old-owed'])
+    expect(o.rest.map(t => t.prospect_id)).toEqual(['waiting'])
+  })
+  it('folds a thread that ends on their out-of-office', () => {
+    const threads = groupThreads([
+      m('c1', 'ooo', 'outbound', '2026-09-24T10:00:00Z'),
+      m('c2', 'ooo', 'inbound', '2026-09-24T10:05:00Z', { message_text: "Thanks for your message. I'm out of the office until Monday." }),
+    ], new Set(), now)
+    const o = browseOrder(threads, now)
+    expect(o.auto.map(t => t.prospect_id)).toEqual(['ooo'])
+    expect(o.pending).toHaveLength(0)
+  })
+  it('lifts an owner question above newer replies', () => {
+    const threads = groupThreads([
+      m('d1', 'owner', 'inbound', '2026-09-24T10:00:00Z'),
+      m('d2', 'owner', 'outbound', '2026-09-24T11:00:00Z', { sent_at: null, send_blocked_at: '2026-09-24T11:00:00Z', send_blocked_reason: 'owner_confirmation' }),
+      m('e1', 'fresh', 'inbound', '2026-09-26T10:00:00Z'),
+    ], new Set(), now)
+    expect(browseOrder(threads, now).pending.map(t => t.prospect_id)).toEqual(['owner', 'fresh'])
+  })
+})

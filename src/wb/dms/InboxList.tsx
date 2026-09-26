@@ -116,6 +116,7 @@ export function dayLabel(iso: string, now: Date = new Date()): string {
 
 type Item =
   | { kind: 'day'; key: string; label: string; count: number; section?: boolean }
+  | { kind: 'fold'; key: string; label: string; count: number; fold: 'older' | 'auto'; open: boolean }
   | { kind: 'row'; key: string; t: Thread }
 
 /** How far the reader has scrolled INTO the rows: 0 until the rows reach the top of the scroller. */
@@ -157,7 +158,7 @@ function useRowWindow(ref: React.RefObject<HTMLDivElement | null>, anchor: React
     const el = ref.current
     if (el && on) setTop(Math.floor(rowsScrollTop(el, anchor.current) / step) * step)
   })
-  const itemH = (it: Item) => (it.kind === 'day' ? DAY_H : rowH)
+  const itemH = (it: Item) => (it.kind === 'row' ? rowH : DAY_H)
   if (!on) return { start: 0, end: items.length, padTop: 0, padBottom: 0 }
   const offs: number[] = []
   let acc = 0
@@ -506,15 +507,18 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
   const statusToken = tokenMode && hasStatusToken(tokens)
   const sectioned = !query && browse && filter !== 'spam' && !statusToken
   const ordered = useMemo(() => browseOrder(laned), [laned])
+  // DMs rebuild: two folds under "Sent, waiting on them", both closed on open. Owed past 14 days
+  // (the badge already dropped them; they used to be filed as waiting on THEM) and auto-replies.
+  const [folds, setFolds] = useState<{ older: boolean; auto: boolean }>({ older: false, auto: false })
   const shown = useMemo(() => (query
     ? searchThreads(laned, query)
     : sectioned
       // Conversations only (someone answered, a draft is waiting, a magnet went
       // out): the lane also holds every invite that never got a reply, and those
       // are not chats. Newest activity first, drafts dated by their own clock.
-      ? [...ordered.pending, ...ordered.rest]
+      ? [...ordered.pending, ...ordered.rest, ...(folds.older ? ordered.older : []), ...(folds.auto ? ordered.auto : [])]
       : (status && filter !== 'spam' && !statusToken ? filterByStatus(laned, status) : laned)),
-  [query, laned, sectioned, ordered, status, filter, statusToken])
+  [query, laned, sectioned, ordered, status, filter, statusToken, folds])
   const rowH = useRowH()
   const phone = usePhone()
   const desktopHover = useDesktopHover()
@@ -526,6 +530,41 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
     const items: Item[] = []
     let lastDay: string | null = null
     let head: Extract<Item, { kind: 'day' }> | null = null
+    if (sectioned) {
+      const blocks: ['pending' | 'rest' | 'older' | 'auto', Thread[]][] = [
+        ['pending', ordered.pending], ['rest', ordered.rest], ['older', ordered.older], ['auto', ordered.auto],
+      ]
+      for (const [s, list] of blocks) {
+        if (!list.length) continue
+        if (s === 'older' || s === 'auto') {
+          items.push({
+            kind: 'fold', key: `fold-${s}`, fold: s, open: folds[s], count: list.length,
+            label: s === 'older' ? 'Older than two weeks' : 'Auto-replies',
+          })
+          if (!folds[s]) continue
+        } else {
+          items.push({
+            kind: 'day', section: true, key: `section-${s}`,
+            label: s === 'pending' ? 'Needs your reply' : 'Sent, waiting on them', count: list.length,
+          })
+        }
+        lastDay = null
+        head = null
+        for (const t of list) {
+          if ((!phone || browse) && s !== 'pending') {
+            const d = dayLabel(eventTime(t.last))
+            if (d !== lastDay) {
+              lastDay = d
+              head = { kind: 'day', key: `day-${s}-${d}-${t.prospect_id}`, label: d, count: 0 }
+              items.push(head)
+            }
+            if (head) head.count += 1
+          }
+          items.push({ kind: 'row', key: t.prospect_id, t })
+        }
+      }
+      return items
+    }
     const pendingIds = new Set(ordered.pending.map(t => t.prospect_id))
     let section: 'pending' | 'rest' | null = null
     for (const t of shown) {
@@ -557,7 +596,7 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
       items.push({ kind: 'row', key: t.prospect_id, t })
     }
     return items
-  }, [shown, sectioned, ordered, phone, browse])
+  }, [shown, sectioned, ordered, phone, browse, folds])
   const rowsAnchor = useRef<HTMLDivElement>(null)
   const win = useRowWindow(rowsRef, rowsAnchor, items, windowed && !renderRow, rowH)
   const { draftTotal, waitingTotal, spamTotal } = useMemo(() => ({
@@ -687,6 +726,21 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
                   return (
                     <div key={it.key} className="a-dms-dayhost" data-section={it.section ? '1' : undefined} style={{ height: DAY_H }}>
                       <DayHeader sticky={false} label={it.label} tail={it.count} />
+                    </div>
+                  )
+                }
+                if (it.kind === 'fold') {
+                  const f = it.fold
+                  return (
+                    <div key={it.key} className="a-dms-dayhost" data-section="1" style={{ height: DAY_H }}>
+                      <button
+                        type="button"
+                        className="wb-dms-fold"
+                        aria-expanded={it.open}
+                        onClick={() => setFolds(o => ({ ...o, [f]: !o[f] }))}
+                      >
+                        <DayHeader sticky={false} label={it.label} tail={it.open ? `${it.count} · Hide` : `${it.count} · Show`} />
+                      </button>
                     </div>
                   )
                 }
