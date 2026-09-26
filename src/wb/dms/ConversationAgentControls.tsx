@@ -51,6 +51,25 @@ export function ConversationAgentControls({ card, onChanged, now = Date.now() }:
     await run(command, () => controlConversationAgent(card.thread_id, command, card.revision), label)
   }
 
+  // Approving dispatches to a real person, so it asks first, the same as every
+  // other send in the app (2026-09-26 review: this was the one send with no
+  // confirm). The sheet names what goes out.
+  async function approveAction() {
+    if (!action) return
+    const what = action.payload.kind === 'reply'
+      ? 'This reply goes out to them'
+      : action.payload.kind === 'react_message' || action.payload.kind === 'react_post'
+        ? `This reaction (${action.payload.reaction}) goes out`
+        : 'This action runs'
+    const ok = await confirm({
+      title: `Approve for ${card.prospect_name}?`,
+      message: `${what} from the seat within a few minutes. It cannot be recalled once it is sent.`,
+      confirmText: 'Approve and send',
+    })
+    if (!ok) return
+    await run('approve', () => approveConversationAgentAction(action.id, card.revision, action.payload_hash), 'Action approved for dispatch.')
+  }
+
   const gate = action ? approvalGate(card, action, text, now) : { allowed: false, reason: 'No action is waiting.' }
   const inFlight = action?.status === 'sending'
   const unknown = action?.status === 'delivery_unknown'
@@ -143,7 +162,7 @@ export function ConversationAgentControls({ card, onChanged, now = Date.now() }:
             <div className="a-agent-primary">
               <Button
                 variant="primary" size="sm" icon="approve" busy={busy === 'approve'}
-                onClick={() => void run('approve', () => approveConversationAgentAction(action.id, card.revision, action.payload_hash), 'Action approved for dispatch.')}
+                onClick={() => void approveAction()}
               >Approve this action</Button>
             </div>
           )}

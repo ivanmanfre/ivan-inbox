@@ -41,7 +41,7 @@ import { useDraftDetail } from '../../hooks/useContent'
 import { useSectionState } from '../../hooks/useSectionState'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import {
-  ClientRpcError, DraftSaveConflict, LANE_LABEL, LANE_POSSESSIVE, STAGE_LABEL, approveDraft,
+  ClientRpcError, DraftSaveConflict, LANE_LABEL, LANE_OWNER, LANE_POSSESSIVE, STAGE_LABEL, approveDraft,
   boardGroupOf, canPromote, canRestartToIdea, canUnpromote, clientEditable, clientStageLabel,
   groupLogByAgent, normalizeAgentLog, normalizeImageUrls, normalizeKeyPoints, normalizeQa,
   normalizeSourceDetail, reviewActionable, saveClientDraftBody, saveDraftBody, selfContainedHtml,
@@ -324,15 +324,15 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
     // something in front of a paying client, so the sheet says that first, in
     // those words, and then says what it does NOT do.
     const ok = await confirm(next ? {
-      title: 'Put this on Mattan’s board?',
+      title: `Put this on ${LANE_POSSESSIVE[lane]} board?`,
       message:
-        'Mattan sees it. This is the one action here that reaches a client, it fires his board’s '
+        `${LANE_OWNER[lane]} sees it. This is the one action here that reaches a client, it fires his board’s `
         + 'own sync, so it lands on his board within moments, not at some later batch. From there '
         + 'the decisions are his: approve, edit, veto, schedule. '
         + 'Nothing publishes, this writes board visibility and never touches the publisher.',
       confirmText: 'Put it on his board',
     } : {
-      title: 'Take this off Mattan’s board?',
+      title: `Take this off ${LANE_POSSESSIVE[lane]} board?`,
       message:
         'It goes back to our side only and disappears from his board on the same sync. Nothing is '
         + 'deleted and no status changes, the draft stays here, and you can put it back.',
@@ -354,7 +354,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
         ? e.message
         : 'Could not change the board visibility')
     } finally { setPromoting(false) }
-  }, [confirm, d.id, nextId, onClose, onPick, promoting, refresh])
+  }, [confirm, d.id, lane, nextId, onClose, onPick, promoting, refresh])
 
   // OPEN by default on a row that is waiting to be armed: needs review →
   // scheduled is the walk Ivan makes on every row, and a disclosure in front
@@ -689,7 +689,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
             "Approve" would not say so. */}
         {promotable && (
           <Button variant="primary" busy={promoting} disabled={editing} onClick={() => promote(true)}>
-            {promoting ? 'Putting it up…' : 'Put on Mattan’s board'}
+            {promoting ? 'Putting it up…' : `Put on ${LANE_POSSESSIVE[lane]} board`}
           </Button>
         )}
         {unpromotable && (

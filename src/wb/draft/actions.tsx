@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react'
 import { Banner, Button, Chip, Icon, Input, Kbd, Textarea } from '../../ds'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import {
-  LANE_POSSESSIVE, clientDeletable, deleteClientDraft, deleteDraft, fetchIvanArmedDays, listStills,
+  LANE_OWNER, LANE_POSSESSIVE, clientDeletable, deleteClientDraft, deleteDraft, fetchIvanArmedDays, listStills,
   localDay, normalizeImageUrls, restartDraftToIdea, setDraftImage, STILL_FOLDERS,
   type ContentDraft, type ContentDraftDetail, type ContentLane, type Still, type StillFolder,
 } from '../../lib/content'
@@ -414,7 +414,7 @@ export function DeleteClientDraft({ d, lane, onDone }: {
   if (!clientDeletable(lane, d.board_visible)) {
     return (
       <Say>
-        On {LANE_POSSESSIVE[lane]} board, so it can’t be deleted from here — his board keeps its own copy of
+        On {LANE_POSSESSIVE[lane]} board, so it can’t be deleted from here. His board keeps its own copy of
         every promoted post, and only taking it off the board rebuilds that copy. Take it off
         first, then delete.
       </Say>
@@ -438,7 +438,7 @@ export function DeleteClientDraft({ d, lane, onDone }: {
       {confirming ? (
         <div className="a-dw-inline">
           <span className="a-dw-q">
-            Delete this draft? Mattan has never seen it, and this removes it permanently.
+            Delete this draft? {LANE_OWNER[lane]} has never seen it, and this removes it permanently.
           </span>
           <div className="a-dw-inline-a">
             <Button variant="quiet" size="sm" disabled={busy} onClick={() => setConfirming(false)}>Cancel</Button>

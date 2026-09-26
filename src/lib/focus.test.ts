@@ -179,6 +179,7 @@ describe('batch orchestration', () => {
     expect(result.succeeded.sort()).toEqual(['b0', 'b2'])
     expect(result.failed).toEqual([{ id: 'b1', error: 'open' }])
     expect(batchResultLine(result, 3)).toBe('2 of 3 approved, 1 failed: open')
+    expect(batchResultLine(result, 3, 'discarded')).toBe('2 of 3 discarded, 1 failed: open')
     // The failed id is still pending (no approved_at/sent_at/send_blocked_reason).
     const batch: Batch = { key: 'k', kind: 'manual_invite', client: 'risedtc', ids: drafts.map(d => d.id), label: 'x' }
     expect(pendingIdsOf(batch, [...byId.values()])).toEqual(['b1'])
@@ -197,5 +198,16 @@ describe('batch orchestration', () => {
     const result = await runBatch(stillPending, act)
     expect(seen).toEqual(['r0', 'r2'])
     expect(result.succeeded).toEqual(['r0', 'r2'])
+  })
+})
+
+describe('batchResultLine names the verb that ran', () => {
+  it('a clean approve batch says how many were approved', () => {
+    expect(batchResultLine({ succeeded: ['a', 'b', 'c'], failed: [] }, 3)).toBe('3 approved.')
+  })
+  it('a clean discard batch never says approved', () => {
+    const line = batchResultLine({ succeeded: ['a', 'b'], failed: [] }, 2, 'discarded')
+    expect(line).toBe('2 discarded.')
+    expect(line).not.toMatch(/approved/)
   })
 })
