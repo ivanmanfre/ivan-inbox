@@ -11,6 +11,7 @@ import {
 } from '../../lib/campaignPerf'
 import { ago } from '../../lib/today'
 import { hasMock } from '../../exp/v2c/mock'
+import { CampaignSheet } from './CampaignSheet'
 
 type Client = 'all' | Seat
 
@@ -45,12 +46,12 @@ function Num({ n, label }: { n: number; label: string }) {
   )
 }
 
-function CampaignCard({ c }: { c: CampaignPerf }) {
+function CampaignCard({ c, onOpen }: { c: CampaignPerf; onOpen: (c: CampaignPerf) => void }) {
   const tail = c.replied_7d === 0
     ? 'No replies yet.'
     : `${c.positive_7d} positive of ${c.replied_7d}.`
   return (
-    <Card className="a-camp" title={shortName(c.campaign_name)} sub={c.is_active ? undefined : 'Paused'}>
+    <Card className="a-camp" title={shortName(c.campaign_name)} sub={c.is_active ? undefined : 'Paused'} onClick={() => onOpen(c)}>
       <div className="a-camp-nums">
         <Num n={c.invites_7d} label="invites" />
         <Num n={c.dms_7d} label="DMs" />
@@ -78,6 +79,7 @@ function Fold({ label, rows }: { label: string; rows: CampaignPerf[] }) {
 }
 
 export function CampaignBoard({ perf, client }: { perf: ReturnType<typeof useCampaignPerf>; client: Client }) {
+  const [open, setOpen] = useState<CampaignPerf | null>(null)
   if (perf.error) {
     return (
       <section className="a-sends-sec">
@@ -97,11 +99,12 @@ export function CampaignBoard({ perf, client }: { perf: ReturnType<typeof useCam
           </div>
           {g.shown.length === 0
             ? <p className="a-sends-empty">Nothing went out on this seat this week.</p>
-            : <div className="a-camp-grid">{g.shown.map(c => <CampaignCard key={c.campaign_id} c={c} />)}</div>}
+            : <div className="a-camp-grid">{g.shown.map(c => <CampaignCard key={c.campaign_id} c={c} onOpen={setOpen} />)}</div>}
           <Fold label={`${g.quiet.length} quiet this week`} rows={g.quiet} />
           <Fold label={`${g.paused.length} paused`} rows={g.paused} />
         </section>
       ))}
+      <CampaignSheet c={open} onClose={() => setOpen(null)} />
     </>
   )
 }

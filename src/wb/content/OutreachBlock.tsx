@@ -29,7 +29,7 @@ function Alarms({ p }: { p: PerfPayload }) {
   ))}</>
 }
 
-function Cells({ l }: { l: PerfLane }) {
+export function Cells({ l }: { l: PerfLane }) {
   return <div className="a-op-tiles">{l.cells.map(c => (
     <div className={`a-op-tile is-${c.status}`} key={c.step}>
       <div className="a-ct-sub">{l.lane} · {stepLabel(c.step)}</div>
@@ -42,7 +42,7 @@ function Cells({ l }: { l: PerfLane }) {
   ))}</div>
 }
 
-function Variants({ l }: { l: PerfLane }) {
+export function Variants({ l }: { l: PerfLane }) {
   if (!l.variants.length) return null
   return <ul className="a-op-split">{l.variants.map(v => (
     <li key={`${v.step}-${v.variant}`}><span>{stepLabel(v.step)} · {v.variant}{v.status === 'sibling' ? ' · below siblings' : v.status === 'thin' ? ' · too few to call' : ''}</span><span>{v.replies} of {v.n} ({pct(v.rate)}){v.viewed_n > 0 && v.viewed_rate !== null ? ` · viewed back ${pct(v.viewed_rate)}` : ''}</span></li>
