@@ -88,6 +88,7 @@ export function ChatLink({ chatProviderId, url, name, quiet }: {
   return (
     <a
       className={`a-dms-link${quiet ? ' a-dms-link-q' : ''}`}
+      aria-label={label}
       data-fallback={link.isChat ? undefined : ''}
       href={link.href}
       target="_blank"
@@ -100,7 +101,9 @@ export function ChatLink({ chatProviderId, url, name, quiet }: {
           : `No LinkedIn chat with ${name} yet, this is their profile\n${link.href}`}
     >
       <Icon name="copy" size={16} />
-      {state === 'done' ? 'copied' : state === 'fail' ? 'copy failed' : label}
+      <span className="a-dms-link-t" data-rest={state !== 'done' && state !== 'fail' ? '' : undefined}>
+        {state === 'done' ? 'copied' : state === 'fail' ? 'copy failed' : label}
+      </span>
     </a>
   )
 }

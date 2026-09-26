@@ -104,7 +104,7 @@ export function ContextSheet({ thread, onClose }: { thread: Thread; onClose: () 
   // said nothing the empty grid does not; the count fields still print 0,
   // because zero is a reading.
   const rows: Array<[string, string]> = ctx ? ([
-    ['Lane', thread.last.campaign_name || null],
+    ['Campaign', thread.last.campaign_name || null],
     ['Stage', thread.stage ? label(thread.stage) : null],
     ['DMs sent', String(ctx.dm_count ?? 0)],
     ['Replies', `${ctx.reply_count ?? 0}${ctx.last_reply_at ? ` · last ${ago(ctx.last_reply_at)}` : ''}`],
@@ -120,6 +120,7 @@ export function ContextSheet({ thread, onClose }: { thread: Thread; onClose: () 
     <Sheet
       open
       onClose={onClose}
+      className="a-ctx-sheet"
       title={thread.prospect_name}
       sub={ctx?.title || ctx?.headline || undefined}
     >

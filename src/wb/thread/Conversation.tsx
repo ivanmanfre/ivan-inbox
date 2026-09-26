@@ -19,7 +19,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { OwnerConfirmation } from '../../components/OwnerConfirmation'
 import { DraftExplanation } from '../../components/DraftExplanation'
-import { Banner, Button, Chip, Composer, DayHeader, EmptyState, Icon, IconButton, Stepper, Textarea } from '../../ds'
+import { Banner, Button, Chip, Composer, DayHeader, EmptyState, Icon, IconButton, Popover, PopoverItem, Stepper, Textarea } from '../../ds'
 import { Bar, Body, Group, Head, Screen } from '../kit'
 import { ChatLink, Face } from '../dms/parts'
 import { RestoreStrip } from './RestoreStrip'
@@ -33,7 +33,7 @@ import {
   saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId, emailRowSender, ladderSteps, sendFailed,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../../lib/inbox'
-import { campaignLaneLabel, copyRouteTag, label } from '../../lib/labels'
+import { copyRouteTag, label, threadLaneLabel } from '../../lib/labels'
 import { deleteThread, markNotSpam, markSpam } from '../../lib/inbox'
 import './thread.css'
 
@@ -216,6 +216,8 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
   const [composeErr, setComposeErr] = useState('')
   const [busy, setBusy] = useState(false)
   const [showCtx, setShowCtx] = useState(false)
+  const [moreOpen, setMoreOpen] = useState<{ top: number; right: number } | null>(null)
+  const [routeWhy, setRouteWhy] = useState(false)
   const msgsRef = useRef<HTMLDivElement>(null)
   const editRef = useRef<HTMLDivElement>(null)
   const confirm = useConfirm()
@@ -465,7 +467,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
   const mixed = isMixedChannel(onScreen)
   // The header's own copy of the list row's lane/route tags (see the sub line
   // below): derived once so the JSX does not call the label functions twice.
-  const laneLabel = campaignLaneLabel(thread.lane)
+  const laneLabel = threadLaneLabel(thread.lane, thread.campaignLane)
   const routeTag = copyRouteTag(thread.copyRoute)
 
   const emailDisabled = thread.channel === 'email' && !canComposeEmail(thread)
@@ -497,25 +499,23 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
           </button>
         }
         sub={<>
-          <div className="a-thread-subline">
-            {thread.prospect_company ? <>{thread.prospect_company} · </> : null}
-            <b>{clientName(thread.client_id)}</b> · {channelSummary(onScreen)} · {label(thread.stage)}
+          {thread.prospect_company && <div className="a-thread-subline">{thread.prospect_company}</div>}
+          {/* DMs rebuild: seat, lane, the ARCH copy route, channels and stage each on
+              their own chip, on a line that WRAPS. Line 1 used to carry "Company · Seat ·
+              channels · stage" and the phone cut it mid-word (2026-09-26 review). On the
+              phone a tooltip never shows, so the route chip is a button that explains. */}
+          <div className="a-thread-tags">
+            <Chip>{clientName(thread.client_id)}</Chip>
+            {laneLabel && <Chip>{laneLabel}</Chip>}
+            {routeTag && (mobile
+              ? <button type="button" className="wb-thread-route" aria-expanded={routeWhy} onClick={() => setRouteWhy(v => !v)}>
+                  <Chip>{routeTag.label}</Chip>
+                </button>
+              : <Chip title={routeTag.title}>{routeTag.label}</Chip>)}
+            <Chip>{channelSummary(onScreen)}</Chip>
+            {label(thread.stage) && <Chip>{label(thread.stage)}</Chip>}
           </div>
-          {/* The campaign lane and copy route (db/212, db/213), moved off the
-              list row into the opened thread's own header (Ivan, 2026-09-24:
-              "put them not in the preview on the left like they are now
-              just inside each dm... when i click on the dm to open it").
-              Reuses Thread.lane / Thread.copyRoute, already on the thread —
-              no new query. A second line under the existing one, same
-              neutral chip language the list used (a route is a category,
-              not a state, so no colour rides it either); absent whenever a
-              thread has neither, which is every non-ARCH seat. */}
-          {(laneLabel || routeTag) && (
-            <div className="a-thread-subline a-thread-tags">
-              {laneLabel && <Chip>{laneLabel}</Chip>}
-              {routeTag && <Chip title={routeTag.title}>{routeTag.label}</Chip>}
-            </div>
-          )}
+          {mobile && routeWhy && routeTag && <div className="a-thread-routewhy">{routeTag.title}</div>}
         </>}
         tail={<>
           {/* DRAFT and Ask Claude are the PANE's marks, and the ledger has both
@@ -539,7 +539,28 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
       />
       <Bar>
         <Ladder thread={thread} />
-        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        {mobile ? (
+          /* Phone: the thread's own verbs sit behind ⋯ so the ladder keeps the bar. */
+          <span className="wb-thread-morehost">
+            <IconButton icon="more" label="More for this conversation" active={moreOpen !== null} onClick={e => {
+              // Fixed to the viewport under the button: the bar clips anything that hangs out of it.
+              const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+              setMoreOpen(v => v ? null : { top: r.bottom + 8, right: window.innerWidth - r.right })
+            }} />
+            <Popover open={moreOpen !== null} label="More for this conversation" className="wb-thread-more"
+              style={moreOpen ? { position: 'fixed', top: moreOpen.top, right: moreOpen.right } : undefined}>
+              <PopoverItem icon="ask" onClick={() => { setMoreOpen(null); onAsk() }}>Ask Claude</PopoverItem>
+              {thread.spam
+                ? <PopoverItem icon="undo" disabled={busy} onClick={() => { setMoreOpen(null); void onNotSpam() }}>Not spam</PopoverItem>
+                : thread.client_id !== 'ivan'
+                  ? <PopoverItem icon="blocked" disabled={busy} onClick={() => { setMoreOpen(null); void onSpam() }}>Spam</PopoverItem>
+                  : null}
+              {thread.chat_provider_id && (
+                <PopoverItem icon="discard" tone="danger" disabled={busy} onClick={() => { setMoreOpen(null); void onDelete() }}>Delete from seat</PopoverItem>
+              )}
+            </Popover>
+          </span>
+        ) : <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           {thread.spam
             ? <Button variant="quiet" size="sm" busy={busy} onClick={busy ? undefined : onNotSpam}>Not spam</Button>
             : thread.client_id !== 'ivan'
@@ -548,7 +569,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
           {thread.chat_provider_id && (
             <Button variant="danger" size="sm" icon="discard" busy={busy} onClick={busy ? undefined : onDelete} aria-label="Delete from seat">Delete</Button>
           )}
-        </span>
+        </span>}
       </Bar>
       {showCtx && <ContextSheet thread={thread} onClose={() => setShowCtx(false)} />}
 
