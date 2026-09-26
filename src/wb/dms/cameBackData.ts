@@ -114,3 +114,10 @@ export async function dismissCameBack(id: string): Promise<boolean> {
   if (error) throw error
   return (data as { ok?: boolean } | null)?.ok === true
 }
+
+// Undo for Dismiss (db/217): removes the one stamp came_back_dismiss wrote.
+export async function undismissCameBack(id: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('came_back_undismiss', { p_prospect_id: id })
+  if (error) throw error
+  return Boolean((data as { ok?: boolean } | null)?.ok)
+}

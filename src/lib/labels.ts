@@ -226,6 +226,11 @@ const CAMPAIGN_LANE: Record<string, string> = {
   signal: 'Quiet on LinkedIn',
 }
 
+/** Every lane word a DM row can show, for the `lane is …` filter token. */
+export function laneLabelValues(): string[] {
+  return [...new Set([...Object.values(CAMPAIGN_LANE), ...Object.values(LANE)])].sort()
+}
+
 /** The lane chip on a DM row: the person's own lane where the engine stored one (db/212, nearly every
     ARCH row), else the lane of their campaign (db/215). `''` when neither is known. */
 export function threadLaneLabel(lane: string | null | undefined, campaignLane: string | null | undefined): string {
@@ -260,6 +265,16 @@ const NOTE_ARM: Record<string, string> = {
 }
 
 export type CopyRouteTag = { label: string; sent: boolean; title: string }
+
+/** Every copy-route word, for the `route is …` filter token. Matches used AND next (the chip's
+    "Next: " prefix is dropped), so one token finds everyone on a route. */
+export function copyRouteValues(): string[] {
+  return [...new Set(Object.values(COPY_ROUTE))].sort()
+}
+export function copyRouteName(value: string | null | undefined): string | null {
+  const tag = copyRouteTag(value)
+  return tag ? tag.label.replace(/^Next: /, '') : null
+}
 
 /** The chip for a thread's copy route, or null when the thread has none (every non-ARCH thread). */
 export function copyRouteTag(value: string | null | undefined): CopyRouteTag | null {
