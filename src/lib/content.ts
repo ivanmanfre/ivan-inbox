@@ -19,6 +19,14 @@ export const LANE_LABEL: Record<ContentLane, string> = {
   arch: 'Davorin Smit',
 }
 
+// The client's own first name, for a sentence about him ("Davorin sees it").
+// Ivan's lane names nobody: his own posts have no one else to see them.
+export const LANE_OWNER: Record<ContentLane, string> = {
+  ivan: '',
+  risedtc: 'Mattan',
+  arch: 'Davorin',
+}
+
 // Possessive form, for "on Mattan's board" / "Ivan's drafts".
 export const LANE_POSSESSIVE: Record<ContentLane, string> = {
   ivan: 'Ivan’s',
@@ -394,7 +402,12 @@ export type ScheduledQueueRow = {
 
 // The publish queue behind BOTH lanes — its own status vocabulary, unrelated to
 // carousel_drafts.status (phase1b §2).
-export const QUEUE_STATUSES = ['pending', 'queued_v2', 'posting', 'posted', 'failed', 'cancelled'] as const
+//
+// `blocked` is the publish lint's refusal (error_message
+// 'publish_lint_fail: <rule>'). It was missing here, so the read dropped it and
+// Ivan's Sep 8 post sat stopped for 18 days with nothing on screen saying so
+// (2026-09-26). publishBlock.ts turns it into the draft's Errors line.
+export const QUEUE_STATUSES = ['pending', 'queued_v2', 'posting', 'posted', 'failed', 'blocked', 'cancelled'] as const
 
 // What the STRIP reads. `cancelled` is the vocabulary's tombstone, not a queue
 // state: deleteDraft flips the twin queue row to cancelled +

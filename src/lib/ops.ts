@@ -227,7 +227,25 @@ export function isAudnKind(kind: OpsKind): boolean {
 export function pendingOps(rows: OpsDraft[], now = Date.now()): OpsDraft[] {
   return rows.filter(d =>
     !d.approved_at && !d.sent_at && !d.send_blocked_reason
-    && !isAudnKind(d.kind) && !isStaleComment(d, now))
+    && !isAudnKind(d.kind) && !isStaleComment(d, now) && !isExpiredNewsjack(d, now))
+}
+
+// A newsjack past its `expires_at` is a story that has moved on: the card's own
+// countdown already reads "expired", and the lift it was written for is gone.
+// It leaves the Ops number the same way a stale comment does, so the icon never
+// counts a to-do whose only right answer is to let it go. Unknown expiry is
+// not expiry.
+export function isExpiredNewsjack(d: OpsDraft, now = Date.now()): boolean {
+  if (d.kind !== 'newsjack') return false
+  const t = new Date(d.context?.expires_at ?? '').getTime()
+  return Number.isFinite(t) && t <= now
+}
+
+// An ops read that comes back EMPTY over a board that had rows is a failure,
+// not a cleared queue: `fetchOpsDrafts` returns the newest 300 rows in every
+// state, so the table never legitimately shrinks to nothing between two reads.
+export function emptyReadOverRows(prev: OpsDraft[], next: OpsDraft[]): boolean {
+  return prev.length > 0 && next.length === 0
 }
 
 // Ask 12 — "i see in dms that its showing drafts that arent dm they are comment

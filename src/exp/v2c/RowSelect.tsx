@@ -27,7 +27,7 @@ import { selectRange } from './rangeSelect'
 // therefore always sees the row he is on and every row he has picked, and a
 // mouse operator sees a mark wherever the pointer is.
 
-export function RowSelect({ id, kind, label, caps, taxonomy, lane }: {
+export function RowSelect({ id, kind, label, caps, taxonomy, lane, pairId }: {
   id: string
   kind: RowKind
   label: string
@@ -37,6 +37,7 @@ export function RowSelect({ id, kind, label, caps, taxonomy, lane }: {
   caps: RowCap[]
   taxonomy?: unknown
   lane?: string
+  pairId?: string
 }) {
   const ref = useRef<HTMLButtonElement>(null)
   const state = useSyncExternalStore(subscribe, () => rowState(id))
@@ -46,7 +47,7 @@ export function RowSelect({ id, kind, label, caps, taxonomy, lane }: {
   const on = (state & 1) !== 0
   const focused = (state & 2) !== 0
 
-  const row: SelectedRow = { id, kind, label, caps, taxonomy, lane }
+  const row: SelectedRow = { id, kind, label, caps, taxonomy, lane, pairId }
   const rowRef = useRef(row)
   rowRef.current = row
 
@@ -57,7 +58,7 @@ export function RowSelect({ id, kind, label, caps, taxonomy, lane }: {
   useEffect(() => {
     if (!layer) return
     return registerRow(rowRef.current)
-  }, [id, kind, label, capKey, lane, layer])
+  }, [id, kind, label, capKey, lane, pairId, layer])
 
   // The ROW carries the attributes: `data-wbrow` is what the keyboard layer
   // walks, and the other two are what section C paints.

@@ -33,6 +33,7 @@ import {
 } from '../../lib/content'
 import { scheduleDraft } from '../../lib/studioActions'
 import { useConfirm } from '../chrome/ConfirmSheet'
+import { moveConfirmCopy } from './moveConfirm'
 import { place } from '../place'
 import { typeLabel } from '../../exp/v2c/fmt'
 import {
@@ -206,11 +207,11 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
   // same call with the same confirm — a drag is a faster way to say the thing
   // the picker says, not a second, quieter way to change the database.
   const move = async (id: string, at: string | null, day: string): Promise<boolean> => {
-    const ok = await confirm({
-      title: 'Move this post?',
-      message: `Moves to ${longDay(day)}. Status and board visibility stay as they are.`,
-      confirmText: 'Move it',
-    })
+    // A client post already on the board goes OUT on the day it lands on, so
+    // its confirm says so and names the time (moveConfirm.ts). Same write.
+    const when = new Date(publishAtForDay(at, day))
+      .toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+    const ok = await confirm(moveConfirmCopy(rows.find(r => r.id === id), longDay(day), when))
     if (!ok) return false
     setBusy(true); setErr(null)
     try {

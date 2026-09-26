@@ -303,7 +303,9 @@ export function queueStage(r: ScheduledQueueRow, now: number = Date.now()): Cont
     // A publish that FAILED is the queue's version of isStuckScheduled — the
     // post did not go out and nobody was told. `stuck` is a dated stage, so it
     // draws; `error` is not, and this row must never be silent.
-    case 'failed': return 'stuck'
+    // `blocked` is the publish lint's refusal: the same fact, a named cause.
+    case 'failed':
+    case 'blocked': return 'stuck'
     case 'pending':
     case 'queued_v2':
     case 'posting': {

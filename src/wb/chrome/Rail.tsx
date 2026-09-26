@@ -176,12 +176,15 @@ export function Rail({
           {/* AUTOMATION HEALTH, in the frame rather than in any roll-up. It
               answers the same question the sync line answers, which is whether
               the machine is still running. Renders nothing when nothing is
-              wrong; the click goes to Ops, where the list lives. */}
+              wrong. The click opens the bell sheet in the Claude pane, where
+              the automation alert row heads the alerts: Ops has had no
+              workflow list since 31 Aug (Shell.tsx's `alerts-open` command). */}
           {health && health.n > 0 ? (
             <RailItem
               icon="guard" label="Workflows" count={health.n} sev="attention"
               countNote={health.note} collapsed={collapsed}
-              markerId="a-rail-active" onClick={() => onJob('ops')}
+              markerId="a-rail-active"
+              onClick={() => window.dispatchEvent(new CustomEvent('wb-cmd', { detail: { action: 'alerts-open' } }))}
             />
           ) : null}
           {row('settings')}
