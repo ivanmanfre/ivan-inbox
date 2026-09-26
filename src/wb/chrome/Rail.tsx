@@ -39,7 +39,7 @@ type Failed = Partial<Record<Job, boolean>>
 // The group's four members, and the label each one wears inside the group. The
 // rail, the phone bar and the segment all read this one map.
 export const WORK_LANE_LABEL: Record<string, string> = {
-  content: 'Content', magnets: 'Magnets', styles: 'Styles', strategy: 'Strategy',
+  content: 'Posts', magnets: 'Magnets', styles: 'Styles', strategy: 'Strategy',
 }
 
 // The lucide mark per job (SYSTEM.md's icon map). One name per job, the same

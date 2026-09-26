@@ -22,7 +22,8 @@ import {
   addSection, blankCount, lineShape, moveSection, removeSection, sectionIsBlank, updateSection,
 } from '../../lib/strategy'
 import { LANE_LABEL, type ContentLane } from '../../lib/content'
-import { laneOptions, resolveLane, useLanes } from '../../hooks/useLanes'
+import { resolveLane, useLanes } from '../../hooks/useLanes'
+import { clientOptions } from './laneChips'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import { Badge, Button, Card, IconButton, Input, Segmented, spring } from '../../ds'
 import { Bar, Body, Group, Head, Screen } from '../kit'
@@ -404,7 +405,7 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
     />
     <Bar>
         <Segmented
-          label="Lane"
+          label="Client"
           markerId="a-strat-lane"
           value={lane}
           onChange={async k => {
@@ -424,7 +425,7 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
             setExactBrief(null)
             setLane(k as ContentLane)
           }}
-          options={laneOptions(lanes.lanes)}
+          options={clientOptions(lanes.lanes)}
         />
     </Bar>
     <Bar>
@@ -442,10 +443,22 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
           { id: 'research', label: 'Research' },
           { id: 'results', label: 'Results' },
           { id: 'direction', label: 'Client direction' },
+          // Moved up from More (blueprint v3): the three that are read weekly.
+          { id: 'outreach', label: 'Outreach' },
+          { id: 'markets', label: 'Markets' },
+          { id: 'magnets', label: 'Lead magnets' },
         ]} />
     </Bar>
     </>
   )
+
+  // Seven views overflow a phone, so the chosen one is scrolled into sight
+  // (a jump from a deep link or More would otherwise land off screen).
+  useEffect(() => {
+    // jsdom has no scrollIntoView; the guard keeps the tests honest.
+    document.querySelector<HTMLElement>('.a-strategy-nav [aria-selected="true"]')
+      ?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+  }, [view])
 
   const blanks = blankCount(st.sections)
 
@@ -454,7 +467,7 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
       {head}
       <Body innerRef={rowsRef} className="a-strat">
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
-        <details className="a-strategy-disclosure"><summary>More: demos, legacy analysis and private notes</summary><div className="a-research-actions"><Button size="sm" variant="quiet" onClick={() => setView('demos')}>Demos</Button><Button size="sm" variant="quiet" onClick={() => setView('recommendations')}>Legacy suggestions</Button><Button size="sm" variant="quiet" onClick={() => setView('evidence')}>Evidence archive</Button><Button size="sm" variant="quiet" onClick={() => setView('competitors')}>Competitors</Button><Button size="sm" variant="quiet" onClick={() => setView('magnets')}>Lead magnets</Button><Button size="sm" variant="quiet" onClick={() => setView('outreach')}>Outreach</Button><Button size="sm" variant="quiet" onClick={() => setView('markets')}>Markets</Button><Button size="sm" variant="quiet" onClick={() => setView('notes')}>{st.dirty ? 'Notes •' : 'Notes'}</Button></div></details>
+        <details className="a-strategy-disclosure"><summary>More: demos, legacy analysis, competitors and private notes</summary><div className="a-research-actions"><Button size="sm" variant="quiet" onClick={() => setView('demos')}>Demos</Button><Button size="sm" variant="quiet" onClick={() => setView('recommendations')}>Legacy suggestions</Button><Button size="sm" variant="quiet" onClick={() => setView('evidence')}>Evidence archive</Button><Button size="sm" variant="quiet" onClick={() => setView('competitors')}>Competitors</Button><Button size="sm" variant="quiet" onClick={() => setView('notes')}>{st.dirty ? 'Notes, unsaved' : 'Notes'}</Button></div></details>
         {view === 'this-week' && <div className="a-strategy-panel"><EditorialThisWeekPanel key={`${lane}-${refreshTick}`} lane={lane} exactBrief={exactBrief} /></div>}
         {view === 'research' && <div className="a-strategy-panel"><ResearchPanel key={`${lane}-${refreshTick}`} lane={lane} /></div>}
         {view === 'results' && <div key={`${lane}-${refreshTick}`} className="a-strategy-results">

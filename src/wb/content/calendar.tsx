@@ -34,6 +34,7 @@ import {
 import { scheduleDraft } from '../../lib/studioActions'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import { moveConfirmCopy } from './moveConfirm'
+import { ScheduleZone } from './scheduleZone'
 import { place } from '../place'
 import { typeLabel } from '../../exp/v2c/fmt'
 import {
@@ -64,8 +65,10 @@ type Moving = { id: string; title: string; at: string | null; day: string }
  */
 type Dragging = { id: string; title: string; at: string | null; day: string }
 
-export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
+export function ContentCalendar({ rows, queue = [], onOpen, refresh, ivan = false }: {
   rows: ContentDraft[]
+  /** Your lane: the schedule zone also reads today's called-off queue slots. */
+  ivan?: boolean
   /** The PUBLISH QUEUE, optional because it is Ivan's by construction: the
       table has no client column, so a client lane passes nothing. Queue rows
       the drafts already account for are deduped away; what survives is the set
@@ -246,8 +249,8 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
     setErr(null); setDone(null)
     const ok = await confirm({
       title: 'Put this post on LinkedIn?',
-      message: `The publisher reads status='scheduled' and posts it at ${absStamp(it.at)}. `
-        + 'This is not an internal mark: it arms the bridge that publishes.',
+      message: `The publisher posts this at ${absStamp(it.at)}. `
+        + 'This is not an internal mark, it goes out on LinkedIn.',
       confirmText: 'Arm it',
     })
     if (!ok) return
@@ -321,6 +324,10 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
         )}
       </div>
 
+      <ScheduleZone
+        items={items} today={today} withQueue={ivan}
+        onOpen={id => { const it = items.find(i => i.id === id); if (it) onOpen(it.id, it.title, walk) }}
+      />
       <div className="a-ct-callayout" data-rail={railOpen ? undefined : 'off'}>
         <div>
           <div className="a-ct-weekhead" aria-hidden>

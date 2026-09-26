@@ -205,8 +205,11 @@ export function ScheduleDraft({ d, onDone, onArmed }: {
     if (Number.isNaN(at.getTime())) { setErr('That is not a time.'); return }
     const ok = await confirm({
       title: already ? 'Move this post?' : 'Put this post on LinkedIn?',
-      message: `The publisher reads status='scheduled' and posts it at ${at.toLocaleString()}. `
-        + 'This is not an internal mark, it arms the bridge that publishes.',
+      // No raw status code on screen (blueprint FIX): the sentence says what
+      // happens and when, and that it is real.
+      message: `The publisher posts this on ${at.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })} `
+        + `at ${at.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}. `
+        + 'This is not an internal mark, it goes out on LinkedIn.',
       confirmText: already ? 'Reschedule' : 'Schedule it',
     })
     if (!ok) return
