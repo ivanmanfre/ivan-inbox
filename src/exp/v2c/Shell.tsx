@@ -3,7 +3,8 @@ import { SeatHealthBanner } from '../../wb/chrome/SeatHealthBanner'
 import { InboxSkeleton } from '../../wb/chrome/Skeleton'
 import { useInbox } from '../../hooks/useInbox'
 import { useOps } from '../../hooks/useOps'
-import { pendingOps } from '../../lib/ops'
+import { opsBadge } from '../../lib/ops'
+import { useSalesToday } from './useSalesToday'
 import { alertsIntent, voiceIntent } from '../../wb/chrome/intents'
 import { inboxWaitingCount, type Filter, type Status } from '../../lib/inbox'
 import { CONTENT_LANES, LANE_LABEL, type ContentDraft, type ContentLane } from '../../lib/content'
@@ -277,8 +278,11 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
   // unbounded read nobody on that route is looking at.
   // On the phone a visited Ops/Today lane stays mounted, so its read stays on
   // too: toggling it off and on again re-fired the read on every tab return.
-  const ops = useOps(job === 'ops' || job === 'today'
-    || (mobile && (visited.includes('ops') || visited.includes('today'))))
+  // Rebuild (decision 11): Ops carries a real number on every place now, so
+  // its read fires on boot rather than only where Ops renders. It is the
+  // newest 300 rows, one read, polled by the hook.
+  const ops = useOps()
+  const sales = useSalesToday()
   const chat = useChat()
   const glance = useGlanceCounts()
 
@@ -288,7 +292,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
 
   // Memoised on the rows (feel pass, 2026-09-25): every tab tap re-renders this
   // Shell, and the waiting count walks all ~1,350 threads' messages.
-  const opsPend = useMemo(() => pendingOps(ops.drafts), [ops.drafts])
+  const opsNum = useMemo(() => opsBadge(ops.drafts), [ops.drafts])
   const dmsWaiting = useMemo(() => inboxWaitingCount(inbox.threads), [inbox.threads])
   const counts = {
     // Ask 11 — the "56" was every thread with an unread inbound row, 28 of
@@ -297,19 +301,21 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     // genuinely waiting: unanswered replies + drafts to approve (the flagged
     // bucket has not counted for weeks, inbox.ts threadBucket). Same derivation as the list
     // and the InboxHead breakdown (lib/inbox.ts, inboxBreakdown).
-    dms: dmsWaiting,
-    ops: opsPend.length,
+    // Undefined until a read (or the saved copy) lands: never a made-up 0.
+    dms: inbox.loadedAt || inbox.threads.length > 0 ? dmsWaiting : undefined,
+    ops: ops.loadedAt ? opsNum.n : undefined,
+    sales: sales.n,
     // EVERY LANE, not just Ivan's. The rail row names a JOB, and the job holds
     // all three lanes; scoping the number to whichever lane happened to be
     // selected made the rail read 2 while 93 client drafts sat at the same
     // decision stage (measured 2026-08-22). The lane pills inside Content carry
     // the split, so the 95 is never a number whose parts are unreachable.
-    content: glance.contentReview,
+    content: glance.loadedAt ? glance.contentReview : undefined,
     // Magnets had no badge at all, on the stated ground that its lane is
     // read-only here. That reasoning covered CLIENT rows; it never covered
     // Ivan's own, and 10 of his lead magnets sit at review. The count is what
     // the surface shows at its decision stage, both lanes, same as Content.
-    magnets: glance.magnetsReview,
+    magnets: glance.loadedAt ? glance.magnetsReview : undefined,
     // Styles is a shared registry and Strategy is a document. Neither has a
     // queue, so neither gets a number: a count of zero is not rendered, and a
     // permanently blank count slot is the exact defect the port audit found on
@@ -323,8 +329,10 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     .join(' · ')
   const countNote = {
     dms: 'threads with an unanswered reply or a draft to approve',
-    ops: 'ops drafts you have not approved or skipped',
-    content: `drafts at review, every lane. ${laneSplit}`
+    ops: 'approvals waiting and your tasks'
+      + (opsNum.ideasFolded > 0 ? `. ${opsNum.ideasFolded} more comment ideas wait past today's 3` : ''),
+    sales: 'calls today that have not started',
+    content: `posts waiting on your decision, last 14 days. ${laneSplit}`
       + (glance.contentReviewOther > 0 ? ` · other lanes ${glance.contentReviewOther}` : ''),
     magnets: 'lead magnets at review, every lane',
   }
@@ -366,11 +374,13 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
         + (glance.acknowledged > 0 ? `, ${glance.acknowledged} you already acknowledged` : '')
         + `, and ${glance.olderErrored + glance.olderStalled} have not run in a week.`,
   }
-  const sev = {
-    // Only a real problem takes a severity tier. A backlog of approvals is work,
-    // not a warning — the audit's point 8.
-    ops: opsError ? ('urgent' as const) : undefined,
-    dms: inboxError ? ('urgent' as const) : undefined,
+  // Only a real problem takes a severity tier. A backlog of approvals is work,
+  // not a warning — the audit's point 8. A failed read is its own mark now
+  // (rebuild): a red "!" in place of the number, never a 0.
+  const sev = {}
+  const failed = {
+    dms: !!inboxError, ops: !!opsError, sales: sales.failed,
+    content: !!glance.error, magnets: !!glance.error,
   }
 
   // D2: the drawer hides the working list on its own (`applyDrawer`,
@@ -970,7 +980,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
       <Suspense fallback={null}>
         <CommandLayer />
         <BrainMobile
-          chat={chat} job={job} goJob={goJob} counts={counts} sev={sev} health={health}
+          chat={chat} job={job} goJob={goJob} counts={counts} sev={sev} failed={failed} health={health}
           loadedAt={inbox.loadedAt} inboxError={inboxError} refresh={inbox.refresh}
           workSurface={workSurface} windows={windows} peerView={peerView}
           about={aboutLabel} aboutContext={aboutContext ?? null} subjects={seeSubjects}
@@ -1042,7 +1052,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
               : <span className="wb-gear" onClick={() => goJob('settings')} aria-label="Settings"><Icon name="settings" size={20} /></span>}
           </div>
           <div className={`wb-work wide ds-col${plan.narrow ? ' wb-narrow' : ''}`} data-wblane={lane}>{workSurface}</div>
-          <MobileTabs job={job} counts={counts} sev={sev} chatLive={chat.busy} onJob={goJob} onChat={toggleChat} />
+          <MobileTabs job={job} counts={counts} sev={sev} failed={failed} chatLive={chat.busy} onJob={goJob} onChat={toggleChat} />
         </div>
         {windows}
       </Screen>
@@ -1061,6 +1071,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
           countNote={countNote}
           health={health}
           sev={sev}
+          failed={failed}
           chatOn={drawerOpen}
           chatLive={chat.busy}
           chatUnread={chat.botUnread}

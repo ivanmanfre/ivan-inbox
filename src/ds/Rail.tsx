@@ -13,6 +13,8 @@ export interface RailItemProps {
   /** A plain backlog. Neutral unless `sev` names a live problem. */
   count?: number
   sev?: 'attention' | 'urgent'
+  /** The read behind this row failed: a red mark, never a 0. */
+  failed?: boolean
   /** What the count sums. A number whose predicate is unstated is a number to trust blindly. */
   countNote?: string
   /** Rendered as a presence pip instead of a numeral when the rail is collapsed. */
@@ -25,9 +27,9 @@ export interface RailItemProps {
 
 export function RailItem({
   icon, label, active = false, nested = false, count, sev, countNote,
-  collapsed = false, markerId = 'ds-rail-active', onClick, tail,
+  collapsed = false, markerId = 'ds-rail-active', onClick, tail, failed = false,
 }: RailItemProps) {
-  const hasCount = typeof count === 'number' && count > 0
+  const hasCount = !failed && typeof count === 'number' && count > 0
   return (
     <button
       data-ds="RailItem"
@@ -50,13 +52,14 @@ export function RailItem({
           twice. It is in the DOM at rest and hidden by opacity, so revealing it
           costs no layout and the plate under it never reflows. */}
       {collapsed ? <span className="ds-rail-tip" aria-hidden="true">{label}</span> : null}
-      {!collapsed && (hasCount || tail) ? (
+      {!collapsed && (hasCount || tail || failed) ? (
         <span className="ds-rail-item-tail">
           {tail}
+          {failed ? <Badge tone="urgent" label={`Couldn't read ${label}`}>!</Badge> : null}
           {hasCount ? <Badge tone={sev ?? 'neutral'} label={countNote}>{count}</Badge> : null}
         </span>
       ) : null}
-      {collapsed && hasCount ? <span className="ds-rail-pip" data-sev={sev} /> : null}
+      {collapsed && (hasCount || failed) ? <span className="ds-rail-pip" data-sev={failed ? 'urgent' : sev} /> : null}
     </button>
   )
 }

@@ -129,10 +129,19 @@ export function useGlanceCounts(): GlanceCounts {
 
   const refresh = useCallback(async () => {
     const cut = new Date(Date.now() - ALERT_WINDOW_DAYS * 86_400_000).toISOString()
+    // CONTENT NUMBER (rebuild, blueprint v3 decision 4): posts waiting on HIS
+    // decision, created in the last 14 days. His own posts at review, plus
+    // client posts at review that are not on the client's board yet (those
+    // wait for him to put them there). Aged by created_at: an edit moves
+    // updated_at and would roughly double the count (check2-data 4d).
+    const decisionCut = new Date(Date.now() - 14 * 86_400_000).toISOString()
     const [drafts, magnets, wf, jobs] = await Promise.all([
       supabase.from('carousel_drafts')
         .select('client_id', { count: 'exact' })
-        .eq('status', 'review'),
+        .eq('status', 'review')
+        .gte('created_at', decisionCut)
+        // is.null / eq.false, never neq.true: `neq` drops NULLs.
+        .or('client_id.is.null,board_visible.is.null,board_visible.eq.false'),
       supabase.from('lm_drafts_v2')
         .select('client_id', { count: 'exact' })
         .in('status', ['review', 'lm_review']),

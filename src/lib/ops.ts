@@ -230,6 +230,29 @@ export function pendingOps(rows: OpsDraft[], now = Date.now()): OpsDraft[] {
     && !isAudnKind(d.kind) && !isStaleComment(d, now) && !isExpiredNewsjack(d, now))
 }
 
+// THE OPS NUMBER (rebuild, blueprint v3 decision 11). Approvals waiting and
+// tasks, every kind `pendingOps` keeps, EXCEPT that comment ideas
+// (comment_outbound) count only up to what the poster can still post today:
+// it posts 3 a day, so idea 4 and on is not work for today. They sit in their
+// own counted fold on Ops instead ("rn i mainly use it for notifications
+// important, tasks, and approval pending items", 31 Aug; comments "i approve
+// in ops", 22 Sep).
+export const COMMENT_IDEAS_PER_DAY = 3
+
+const warsawDay = (t: number | string) =>
+  new Date(t).toLocaleDateString('en-CA', { timeZone: 'Europe/Warsaw' })
+
+export function opsBadge(rows: OpsDraft[], now = Date.now()): { n: number; ideasFolded: number } {
+  const pend = pendingOps(rows, now)
+  const today = warsawDay(now)
+  const postedToday = rows.filter(d =>
+    d.kind === 'comment_outbound' && d.approved_at && warsawDay(d.approved_at) === today).length
+  const room = Math.max(0, COMMENT_IDEAS_PER_DAY - postedToday)
+  const ideas = pend.filter(d => d.kind === 'comment_outbound').length
+  const counted = Math.min(ideas, room)
+  return { n: pend.length - ideas + counted, ideasFolded: ideas - counted }
+}
+
 // A newsjack past its `expires_at` is a story that has moved on: the card's own
 // countdown already reads "expired", and the lift it was written for is gone.
 // It leaves the Ops number the same way a stale comment does, so the icon never

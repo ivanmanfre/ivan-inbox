@@ -505,12 +505,14 @@ export function Mobile(p: BrainMobileProps) {
 
   const tabCounts = foldOnTabs(counts)
   const tabSev = foldOnTabs(sev)
+  const tabFailed = foldOnTabs(p.failed ?? {})
   const tabs: TabItem[] = TABS.map(t => ({
     id: t,
     icon: TAB_ICON[t],
     label: TAB_LABEL[t],
     count: tabCounts[t],
     sev: tabSev[t],
+    failed: tabFailed[t],
   }))
 
   return (<>
