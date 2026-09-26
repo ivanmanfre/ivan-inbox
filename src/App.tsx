@@ -172,10 +172,16 @@ export default function App() {
   // Gated on `session` because the upsert goes through RLS and needs his JWT;
   // running it on mount would race the session restore and fail silently, which
   // is the same class of bug as the one it exists to fix.
+  // The side-by-side preview (served at /next/, VITE_PREVIEW=1) never touches push: reconcilePush
+  // would subscribe THIS scope and drop the live app's row for the same device, moving his
+  // notifications to the preview.
   useEffect(() => {
-    if (!session) return
+    if (!session || import.meta.env.VITE_PREVIEW === '1') return
     void import('./lib/push').then(m => m.reconcilePush())
   }, [session])
+  useEffect(() => {
+    if (import.meta.env.VITE_PREVIEW === '1') document.title = 'Inbox (new)'
+  }, [])
   if (import.meta.env.DEV && import.meta.env.VITE_EDITORIAL_PREVIEW === '1' && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('localEditorialPreview') === '1' && LocalEditorialPreview) {
     return withProviders(<Suspense fallback={null}><LocalEditorialPreview /></Suspense>)
   }

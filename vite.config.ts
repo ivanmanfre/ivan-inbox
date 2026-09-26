@@ -56,7 +56,8 @@ export default defineConfig({
       }] },
     },
     manifest: {
-      name: 'Inbox', short_name: 'Inbox', display: 'standalone',
+      name: process.env.VITE_PREVIEW === '1' ? 'Inbox (new)' : 'Inbox',
+      short_name: process.env.VITE_PREVIEW === '1' ? 'Inbox new' : 'Inbox', display: 'standalone',
       // goal run inbox-agent-drawer-2026-09-12 (Seat B): `id` pins the
       // installed app's identity to this scope regardless of a later
       // `start_url` change, and `display_override` asks for the desktop
