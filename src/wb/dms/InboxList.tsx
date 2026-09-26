@@ -89,7 +89,7 @@ function useDesktopHover(): boolean {
 }
 
 /** The phone, as a boolean. The day groups are a desktop move. */
-function usePhone(): boolean {
+export function usePhone(): boolean {
   const [on, setOn] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia(PHONE_MQ).matches)
   useEffect(() => {
