@@ -30,14 +30,16 @@
    header and remembers itself.
    ========================================================================== */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Chip, EmptyState, FilterTokens, IconButton, LiveDot } from '../../ds'
+import { Chip, EmptyState, FilterTokens, IconButton } from '../../ds'
 import { InboxSkeleton } from '../chrome/Skeleton'
 import { Group, HeadChromeSlot, Rows, Sep } from '../kit'
 import {
   fetchPackIndex, fetchWeekEvents, subscribePacks,
   type PackKind, type PackMeta, type SalesPack, type WeekEvent,
 } from '../../lib/salesPacks'
-import { fetchCalls, type CallRow } from '../../lib/transcripts'
+import { callStats, fetchCalls, type CallRow } from '../../lib/transcripts'
+import { MEETING_TYPE_LABEL, resolveMeetingType } from '../../lib/nextCall'
+import { CallLog } from './CallLog'
 import { docHref, DOC_LABEL, type PackDoc } from './Doc'
 import { callPhase, dayKey, describeTimes, groupEvents, matchPack, norm, packsInWindow, weekWindow } from './match'
 import {
@@ -155,6 +157,18 @@ export function salesVerbFor({ past, hasPack, joinLive = false }: {
   return hasPack ? 'card' : null
 }
 
+/** "Discovery call · via Calendly", plus who is on it when no pack names them. */
+function kindLine(e: WeekEvent, matched: boolean): string {
+  const type = e.title ? resolveMeetingType({ meeting_type: e.meeting_type, title: e.title }) : null
+  // Ivan's own address is on every invite; it says nothing.
+  const who = matched ? [] : (e.attendees ?? []).filter(x => !/ivanmanfred/i.test(x)).slice(0, 2)
+  return [
+    type ? MEETING_TYPE_LABEL[type] : null,
+    e.source ? `via ${e.source.charAt(0).toUpperCase()}${e.source.slice(1)}` : null,
+    who.length > 0 ? `with ${who.join(', ')}` : null,
+  ].filter(Boolean).join(' · ')
+}
+
 // ---------------------------------------------------------------------------
 // The surface
 // ---------------------------------------------------------------------------
@@ -171,6 +185,11 @@ export function SalesSurface({ onOpenCall }: {
   const [calls, setCalls] = useState<CallRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  // The two reads the screen CAN be drawn without still say when they fail
+  // (blueprint FIX): a failed pack read made every call read "no pack yet",
+  // and a failed transcript read hid every Report chip, both silently.
+  const [packsFailed, setPacksFailed] = useState(false)
+  const [callsState, setCallsState] = useState<'loading' | 'ok' | 'failed'>('loading')
   const [density, setDensity] = useState<'a' | 'b'>(() => {
     try { return localStorage.getItem('sales.density') === 'b' ? 'b' : 'a' } catch { return 'a' }
   })
@@ -196,15 +215,37 @@ export function SalesSurface({ onOpenCall }: {
   // The window and the clock are fixed at mount. Recomputing them every render
   // would move the group boundaries under him mid-read at midnight, which is
   // exactly when he is looking at tomorrow's calls.
-  const week = useMemo(() => weekWindow(new Date()), [])
-  const now = useMemo(() => new Date(), [])
+  //
+  // 2026-09-26 rebuild: the phone keeps this lane alive between visits, so a
+  // clock fixed at mount froze "in 2h 5m" and never lit Join inside the hour.
+  // The clock now ticks every 30 s; the window still only moves when the
+  // Warsaw day does (and the list is read again then).
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000)
+    return () => clearInterval(t)
+  }, [])
+  const today = dayKey(now)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const week = useMemo(() => weekWindow(new Date()), [today])
+  const readAt = useRef(0)
+  const [reads, setReads] = useState(0)
+  const retry = useCallback(() => setReads(n => n + 1), [])
+  // Back on the screen after five minutes away = read again, quietly.
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === 'visible' && Date.now() - readAt.current > 5 * 60_000) setReads(n => n + 1)
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [])
 
   const loadIndex = useCallback(async () => {
     try {
       const rows = await fetchPackIndex()
-      if (alive.current) setIndex(rows)
-    } catch (e) {
-      if (alive.current) setError(e instanceof Error ? e.message : String(e))
+      if (alive.current) { setIndex(rows); setPacksFailed(false) }
+    } catch {
+      if (alive.current) setPacksFailed(true)
     }
   }, [])
 
@@ -218,15 +259,16 @@ export function SalesSurface({ onOpenCall }: {
         fetchWeekEvents(week.from, week.to), fetchPackIndex(), fetchCalls(),
       ])
       if (!alive.current) return
-      if (ev.status === 'fulfilled') setEvents(ev.value)
+      readAt.current = Date.now()
+      if (ev.status === 'fulfilled') { setEvents(ev.value); setError('') }
       else setError(ev.reason instanceof Error ? ev.reason.message : String(ev.reason))
-      if (packs.status === 'fulfilled') setIndex(packs.value)
-      if (tx.status === 'fulfilled') setCalls(tx.value)
+      if (packs.status === 'fulfilled') { setIndex(packs.value); setPacksFailed(false) } else setPacksFailed(true)
+      if (tx.status === 'fulfilled') { setCalls(tx.value); setCallsState('ok') } else setCallsState('failed')
       setLoading(false)
     })()
     const off = subscribePacks(() => { void loadIndex() })
     return () => { alive.current = false; off() }
-  }, [week, loadIndex])
+  }, [week, loadIndex, reads])
 
   const toggleDensity = useCallback(() => {
     setDensity(d => {
@@ -271,6 +313,7 @@ export function SalesSurface({ onOpenCall }: {
     const past = group === 'earlier' || phase === 'done'
     const running = !past && phase === 'running'
     const reportId = past ? reportIdFor(e, slug, calls) : null
+    const kind = kindLine(e, slug !== null)
     // E3: the one verb this row is for, revealed where the clocks are.
     const verb = salesVerbFor({
       past,
@@ -298,8 +341,9 @@ export function SalesSurface({ onOpenCall }: {
               )
               : <span className="a-sl-raw">{e.title || 'Untitled'}</span>}
           </span>
+          {/* No live dot (B look, 25 Sep "small dots everywhere"): the words
+              "on now" and the lime Join carry it. */}
           <span className="a-sl-time a-mono">
-            {t.soon ? <LiveDot label="Starting now" /> : running ? <LiveDot label="On now" /> : null}
             {t.warsaw} Warsaw<Sep />{t.utc}<Sep />{past ? 'done' : running ? 'on now' : t.rel}
           </span>
           {/* E3: absolutely positioned over the clocks by the sheet, so the row
@@ -328,6 +372,11 @@ export function SalesSurface({ onOpenCall }: {
             <span>Join</span>
           </a>
         ) : null}
+
+        {/* What Today's "Next call" block also said (TYPE, SOURCE, WITH), kept
+            when Today went: the kind of call, where it was booked from, and
+            who is on an unmatched one. Absent facts are not drawn. */}
+        {kind ? <div className="a-meta a-sl-kind">{kind}</div> : null}
 
         <div className="a-sl-chips">
           {slug ? CHIPS.map(c => {
@@ -360,6 +409,19 @@ export function SalesSurface({ onOpenCall }: {
 
   const order: GroupKey[] = ['today', 'later', 'next', 'earlier']
   const total = events.length
+  // The reads the list can be drawn without, said once, in one line.
+  const softFail = total === 0 ? '' : [
+    packsFailed ? 'The packs did not load, so a call reading "no pack yet" may have one.' : '',
+    callsState === 'failed' ? 'The call reports did not load, so past calls show no Report yet.' : '',
+  ].filter(Boolean).join(' ')
+  // What Today's empty "Next call" said next: the archive is still there.
+  const archiveLine = callsState !== 'ok' || calls.length === 0 ? '' : (() => {
+    const st = callStats(calls)
+    return st.withActions > 0
+      ? ` ${st.total} earlier calls are on record below, and ${st.withActions} of them still carry something that was agreed.`
+      : ` ${st.total} earlier calls are on record below.`
+  })()
+  const countLine = `${total} ${total === 1 ? 'call' : 'calls'} · ${packCount} ${packCount === 1 ? 'pack' : 'packs'}`
 
   return (
     // `a-root ds-body` is what kit's `Screen` puts here; it is spelled out
@@ -411,10 +473,19 @@ export function SalesSurface({ onOpenCall }: {
           setTokens={setTokens}
           surfaceLabel="calls"
         />
+        {/* The head's count line, on the phone, where the tiles leave it room. */}
+        <span className="a-sl-barcount a-mono">{countLine}</span>
       </div>
 
       <div className="a-body">
-        {error ? <div className="a-meta a-sl-err">The week did not load: {error}</div> : null}
+        {error || softFail ? (
+          <div className="a-sl-warn" role="status">
+            <span className="a-meta a-sl-err">
+              {error ? `The week did not load: ${error}. ` : ''}{softFail}
+            </span>
+            <button type="button" className="wb-sl-retry" onClick={retry}>Read again</button>
+          </div>
+        ) : null}
 
         {loading && total === 0 ? <InboxSkeleton /> : null}
 
@@ -423,7 +494,7 @@ export function SalesSurface({ onOpenCall }: {
             icon="calendar"
             ghosts
             title="No calls booked in the next two weeks."
-            sub={`Read live from the calendar, for the fortnight from ${week.mondayLabel}.`}
+            sub={`Read live from the calendar, for the fortnight from ${week.mondayLabel}.${archiveLine}`}
           />
         ) : null}
 
@@ -452,6 +523,8 @@ export function SalesSurface({ onOpenCall }: {
             </Group>
           )
         })}
+
+        <CallLog rows={calls} state={callsState} onOpen={onOpenCall} onRetry={retry} />
       </div>
 
     </div>

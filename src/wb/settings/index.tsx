@@ -301,6 +301,20 @@ export function Settings({ shell = 'stock' }: { shell?: SettingsShell } = {}) {
 
         <BoardLinks />
 
+        {/* Money is off the bar and the rail (6 Sep, "not necessary"); it opens
+            from ⌘K on desktop and from here, the one door the phone has. */}
+        {shell === 'workbench' && (
+          <SectionCard label="Money">
+            <a className="a-set-link" href="#exp/brain-b/money">
+              <span className="a-set-link-m">
+                <span className="a-body-t a-ink">Money</span>
+                <span className="a-meta">MRR, runway, vendor spend, cost to serve. Read only.</span>
+              </span>
+              <Icon name="forward" size={16} />
+            </a>
+          </SectionCard>
+        )}
+
         <SectionCard>
           {/* The row carries the danger tone; the word itself is said once, on
               the control that does the thing. The label stays in the accessible
