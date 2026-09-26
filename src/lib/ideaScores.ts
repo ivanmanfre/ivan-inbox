@@ -2,7 +2,7 @@
    IDEA SCORES — CB-15's outlier-recipe score, read on Ivan's operator idea
    lists only (lm_idea_candidates via IdeasSection, client_ideas via
    ClientIdeasSection). `operator_idea_scores('clientops', lane)` (db cb15u)
-   copies operator_market_outliers' gate/grants pattern byte-for-byte:
+   copies the retired db/102 outliers RPC's gate/grants pattern byte-for-byte:
    SECURITY DEFINER, operator_gate_ok + lane_allowed, anon revoked by name,
    authenticated-only. It returns the newest idea_scores row per
    (idea_table, idea_ref) for the lane, contributions already cut to the top

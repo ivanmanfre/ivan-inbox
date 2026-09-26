@@ -37,6 +37,7 @@ import { ReachBlock } from './ReachBlock'
 import { ThemesBlock } from './ThemesBlock'
 import { LeadMagnetsView } from './leadmagnets'
 import { MarketsView } from './markets'
+import OutliersView from './outliers'
 import { ClientDirectionPanel, DemoPanel, ResearchPanel, ResultsPanel as EditorialResultsPanel, ThisWeekPanel as EditorialThisWeekPanel } from './research/ResearchWorkspace'
 import { isContentLane, isStrategyView, readStrategyDeepLink, type StrategyViewId } from './strategy/deepLink'
 import { prefixOf, wbHash } from '../../exp/v2c/route'
@@ -442,6 +443,7 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
           { id: 'research', label: 'Research' },
           { id: 'results', label: 'Results' },
           { id: 'direction', label: 'Client direction' },
+          { id: 'outliers', label: 'Outliers' },
         ]} />
     </Bar>
     </>
@@ -471,6 +473,7 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
         {view === 'competitors' && <BenchmarkBlock key={`${lane}-${refreshTick}`} lane={lane} view="competitors" />}
         {view === 'magnets' && <LeadMagnetsView key={`${lane}-${refreshTick}`} lane={lane} />}
         {view === 'markets' && <MarketsView key={`${lane}-${refreshTick}`} lane={lane} />}
+        {view === 'outliers' && <OutliersView key={`${lane}-${refreshTick}`} lane={lane} />}
         {view === 'outreach' && <div key={`${lane}-${refreshTick}`} className="a-strategy-panel"><OutreachBlock lane={lane} /></div>}
         {view === 'notes' && <>
         <div className="a-ct-sub">Private editorial notes{st.updatedAt ? ` · saved ${relAge(st.updatedAt)}` : ''}. These notes are not connected to the generator. Review dated claims against Competitors and Results before using them.</div>

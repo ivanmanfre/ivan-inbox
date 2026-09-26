@@ -3,7 +3,7 @@
 
    THE JSON CONTRACT THIS MODULE READS (documented here and in
    $OUT/UI-RECEIPT.md so the release owner writes the RPC to this exact
-   shape). One browser-facing RPC, gated the same way `operator_market_outliers`
+   shape). One browser-facing RPC, gated the same way the db/102 outliers RPC
    is gated (db/102): `operator_gate_ok(p_gate)` then `lane_allowed(p_client_id)`,
    `security definer`, granted to `authenticated`. It is expected to be a thin
    wrapper over the service-only `content_evidence_pack(p_client_id, p_week_start)`
