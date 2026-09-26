@@ -1,0 +1,45 @@
+/* The Claude status pill and its answered card (Island.tsx). Solid plate, no
+   blur, no dot: the busy mark is the same slow ring the dock's Claude key
+   turns (instrument.css). */
+.cl-island{
+  position:fixed; z-index:var(--ds-z-popover);
+  left:50%; transform:translateX(-50%);
+  /* clears the floating dock plate (instrument.css: 64px + 8px margin) */
+  bottom:calc(84px + var(--sab, 0px));
+  background:var(--ds-surface-2); color:var(--ds-text);
+  border:1px solid var(--ds-line-strong);
+  box-shadow:var(--ds-shadow-float);
+}
+.cl-island-pill{
+  display:inline-flex; align-items:center; gap:var(--ds-s2);
+  min-height:var(--ds-tap); padding:0 var(--ds-s4);
+  border-radius:var(--ds-r-pill);
+  font-size:var(--ds-fs-body); font-weight:var(--ds-fw-semi);
+  white-space:nowrap;
+}
+.cl-island-s{ color:var(--ds-text-3); font-weight:var(--ds-fw-regular); font-variant-numeric:tabular-nums }
+.cl-island-ring{
+  width:14px; height:14px; flex:0 0 auto; border-radius:var(--ds-r-pill);
+  border:2px solid var(--ds-line-strong); border-top-color:var(--ds-accent); border-right-color:var(--ds-accent);
+  animation:cl-island-spin 1.1s linear infinite;
+}
+@keyframes cl-island-spin{ to{ transform:rotate(360deg) } }
+.cl-island-card{
+  width:min(calc(100vw - 2 * var(--ds-s4)), 420px);
+  display:flex; flex-direction:column; gap:var(--ds-s2);
+  padding:var(--ds-s3) var(--ds-s4);
+  border-radius:var(--ds-r4);
+  border-color:var(--ds-accent);
+}
+.cl-island-card[data-failed]{ border-color:var(--ds-sev-urgent) }
+.cl-island-body{
+  display:flex; flex-direction:column; gap:2px; text-align:left;
+  background:none; border:0; padding:0; color:inherit; cursor:pointer;
+}
+.cl-island-t{ font-weight:var(--ds-fw-semi) }
+.cl-island-l{
+  color:var(--ds-text-2); font-size:var(--ds-fs-meta);
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+.cl-island-acts{ display:flex; justify-content:flex-end; gap:var(--ds-s2) }
+@media (prefers-reduced-motion: reduce){ .cl-island-ring{ animation:none; border-color:var(--ds-accent) } }

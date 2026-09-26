@@ -19,7 +19,7 @@
 import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'motion/react'
-import { Banner, Button, Icon, IconButton, Badge, LiveDot, Shell, TabBar, fadeT, springSoft, type IconName, type TabItem } from '../../ds'
+import { Banner, Button, Icon, IconButton, Badge, Shell, TabBar, fadeT, springSoft, type IconName, type TabItem } from '../../ds'
 import { Head, RibSlotCtx, Screen } from '../kit'
 import '../chrome/instrument.css'
 import { useCriticalAlertCount } from '../today/alerts'
@@ -29,6 +29,9 @@ import { readPlace, resolveBootPlace, tabForJob, writePlace, TABS, TAB_LABEL, ty
 import { hashNamesJob, parseWbHash } from '../../exp/v2c/route'
 import { ClaudeScreen } from './ClaudeScreen'
 import { VOICE_HASH } from './claudeState'
+import { listenAskAbout } from './askAbout'
+import { Island } from './Island'
+import type { Subject } from '../../exp/v2c/chat/paneContext'
 import { Feed } from './Feed'
 import { useFeedData } from '../../exp/brain/b/useFeedData'
 import { LaneShownCtx } from '../../exp/v2c/KeepLane'
@@ -173,12 +176,14 @@ function StatusCapsule({ n, note, onClick }: { n: number; note: string; onClick:
  */
 function AskFab({ unread, busy, onTap }: { unread: boolean; busy: boolean; onTap: () => void }) {
   return (
-    <button type="button" className="a-ask-fab" data-ask-fab onClick={onTap} aria-label="Open Claude">
+    <button
+      type="button" className="a-ask-fab" data-ask-fab onClick={onTap}
+      data-busy={busy ? '' : undefined}
+      aria-label={`Ask Claude about this conversation${busy ? '. Claude is working' : ''}${unread ? '. 1 unread from Claude' : ''}`}
+    >
       <Icon name="ask" size={24} />
-      {/* Same dot, same meaning, as the bot thread row and the desktop drawer:
-          a bot turn landed and nobody has opened it yet. */}
-      {unread ? <span className="a-brain-bot-dot" data-ask-fab-unread /> : null}
-      {busy ? <LiveDot label="Claude is working" /> : null}
+      {/* Rebuild (no dots): unread is the count, busy is the key's slow ring. */}
+      {unread ? <span className="a-ask-fab-n" data-ask-fab-unread>1</span> : null}
     </button>
   )
 }
@@ -249,6 +254,12 @@ export function Mobile(p: BrainMobileProps) {
   }
 
   const onTab = (t: Place) => { setFeedOpen(false); setSnap(0); goPlace(t) }
+
+  // "Ask Claude about this person" (rebuild): the subject rides WITH the ask,
+  // because going to the Claude place drops the open thread and, with it,
+  // Shell's own subject for it. Held here until he leaves the Claude place.
+  const [askSubject, setAskSubject] = useState<Subject | null>(null)
+  useEffect(() => { if (place !== 'ask') setAskSubject(null) }, [place])
 
   // D3: the fab's tap. An unread bot turn opens Claude's own thread directly
   // (same stamp-on-arrival as the feed's bot row); either way it lands on the
@@ -418,6 +429,18 @@ export function Mobile(p: BrainMobileProps) {
     goJob(j)
   })
   const feedOpenThread = useLatest(openThreadAt)
+  // Land on Claude with this person attached. Never sends. A takeover is
+  // Shell's focus, which only `goJob` clears.
+  const askWith = useLatest((s: Subject | null) => {
+    if (peerView) goJob(job)
+    // A person gets a fresh chat (the last one stays under Chats), never a
+    // running one: newThread aborts a live stream.
+    if (s && !chat.busy && chat.turns.length > 0) chat.newThread()
+    else if (!s && chat.botUnread) chat.openBot()
+    setAskSubject(s)
+    onTab('ask')
+  })
+  useEffect(() => listenAskAbout(askWith), [askWith])
   const feedClose = useLatest(() => closeSheet())
 
   // A DM thread takes the screen over. The places stay MOUNTED under it
@@ -436,7 +459,7 @@ export function Mobile(p: BrainMobileProps) {
             side effect, then `openAsk()` lands the tab bar on Ask. */}
         <AskFab
           unread={chat.botUnread} busy={chat.busy}
-          onTap={() => { goJob(job); openAsk() }}
+          onTap={() => askWith(p.subjects.find(x => x.kind === 'thread') ?? null)}
         />
       </div>
   ) : null
@@ -467,7 +490,6 @@ export function Mobile(p: BrainMobileProps) {
   // head's slot, so no control is ever drawn twice.
   const ribTiles = (
     <>
-      {chat.busy && <LiveDot label="Claude is working" />}
       {p.health.n > 0 && (
         // The workflow pill opens the bell sheet, where the automation alert
         // heads the alerts. It used to open Ops, which has had no workflow
@@ -564,6 +586,7 @@ export function Mobile(p: BrainMobileProps) {
           {place === 'ask' ? (
             <ClaudeScreen
               chat={chat} job={job} about={about} feed={feed} health={p.health}
+              subjects={askSubject ? [askSubject] : []}
               alertsOpen={feedOpen}
               setAlertsOpen={open => { if (open) { setFeedOpen(true); setSnap(0); setVy(null) } else closeSheet() }}
               goJobFromFeed={j => {
@@ -662,6 +685,9 @@ export function Mobile(p: BrainMobileProps) {
           key on the bar does its job (openAsk, unread count). It stays over a
           thread takeover, where there is no bar. */}
       {peerView ? null : windows}
+      {/* The Claude status pill: only while Claude works or an answer landed
+          while he was elsewhere (Island.tsx). Never over the feed or a thread. */}
+      <Island chat={chat} away={place !== 'ask'} hidden={!!peerView || feedOpen} onOpen={() => onTab('ask')} />
     </LaneShownCtx.Provider>
     </div>
   </>)

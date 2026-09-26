@@ -23,6 +23,7 @@ import {
 } from '../../lib/filterTokens'
 import { preReadWorthwhile, waitingDays } from '../../exp/v2c/chat/preread'
 import { usePreRead } from '../../exp/v2c/chat/usePreRead'
+import { askAbout } from '../ask/askAbout'
 import './dms.css'
 
 // DMs — the one surface a person waiting on Ivan can appear on.
@@ -215,6 +216,8 @@ export function Dms({
             run: () => { navigator.clipboard.writeText(link.href).catch(() => window.prompt('Copy this link', link.href)) },
           })
         }
+        // Rebuild: Claude opens with this person attached (askAbout.ts). Nothing is sent.
+        out.push({ label: 'Ask Claude', icon: 'ask', run: () => askAbout(t) })
         return out
       }}
       renderRow={status === 'approve'

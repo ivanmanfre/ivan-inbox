@@ -475,3 +475,5 @@
   padding-inline:var(--ds-s4);
   scroll-padding-inline:var(--ds-s4);
 }
+/* Rebuild (no dots): the ops warning on the bell is a count mark in amber. */
+.cl-screen .cl-count[data-tone='warn']{ background:var(--ds-sev-attention); color:var(--ds-canvas) }

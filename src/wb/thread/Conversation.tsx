@@ -36,6 +36,7 @@ import {
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../../lib/inbox'
 import { copyRouteTag, label, threadLaneLabel } from '../../lib/labels'
 import { deleteThread, markNotSpam, markSpam } from '../../lib/inbox'
+import { askAbout } from '../ask/askAbout'
 import './thread.css'
 
 function clientName(id: string): string {
@@ -543,8 +544,8 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
       />
       <Bar>
         <Ladder thread={thread} />
-        {mobile ? ((thread.spam || thread.client_id !== 'ivan' || thread.chat_provider_id) ? (
-          /* Phone: the thread's own verbs sit behind ⋯ so the ladder keeps the bar. */
+        {mobile ? (
+          /* Phone: the thread's own verbs (and Ask Claude, always there) sit behind ⋯ so the ladder keeps the bar. */
           <span className="wb-thread-morehost">
             <IconButton icon="more" label="More for this conversation" active={moreOpen !== null} onClick={e => {
               // Fixed to the viewport under the button: the bar clips anything that hangs out of it.
@@ -553,6 +554,8 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
             }} />
             <Popover open={moreOpen !== null} label="More for this conversation" className="wb-thread-more"
               style={moreOpen ? { position: 'fixed', top: moreOpen.top, right: moreOpen.right } : undefined}>
+              {/* Rebuild: Claude opens WITH this person attached (askAbout.ts). Nothing is sent. */}
+              <PopoverItem icon="ask" onClick={() => { setMoreOpen(null); askAbout(thread) }}>Ask Claude</PopoverItem>
               {thread.spam
                 ? <PopoverItem icon="undo" disabled={busy} onClick={() => { setMoreOpen(null); void onNotSpam() }}>Not spam</PopoverItem>
                 : thread.client_id !== 'ivan'
@@ -563,7 +566,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
               )}
             </Popover>
           </span>
-        ) : null) : <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        ) : <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           {thread.spam
             ? <Button variant="quiet" size="sm" busy={busy} onClick={busy ? undefined : onNotSpam}>Not spam</Button>
             : thread.client_id !== 'ivan'
