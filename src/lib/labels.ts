@@ -220,6 +220,20 @@ export function campaignLaneLabel(value: string | null | undefined): string {
   return LANE[value.toLowerCase()] ?? label(value)
 }
 
+// The coarse campaign lanes of lane_of() (db/056), same words as the Lanes screen (kpis.ts).
+const CAMPAIGN_LANE: Record<string, string> = {
+  cold: 'Cold', warm: 'Warm / Orbit', engager: 'Engager', harvest: 'Harvested', partner: 'Partners',
+  signal: 'Quiet on LinkedIn',
+}
+
+/** The lane chip on a DM row: the person's own lane where the engine stored one (db/212, nearly every
+    ARCH row), else the lane of their campaign (db/215). `''` when neither is known. */
+export function threadLaneLabel(lane: string | null | undefined, campaignLane: string | null | undefined): string {
+  if (lane) return campaignLaneLabel(lane)
+  if (!campaignLane) return ''
+  return CAMPAIGN_LANE[campaignLane] ?? label(campaignLane)
+}
+
 // The COPY ROUTE an ARCH conversation is on (inbox_messages_v.copy_route, db/213), next to the lane tag
 // above. Ivan, 2026-09-24: "also the path they take in regarding to copy lane, like there are some going
 // for apps, something games... but others also use the market narrowing or something or other strategies".

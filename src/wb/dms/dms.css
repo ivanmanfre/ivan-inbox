@@ -1022,3 +1022,28 @@
   color:var(--ds-text-3);
   font-size:var(--ds-fs-meta);
 }
+
+/* --------------------------------------------------------------------------
+   DMs REBUILD 1 (blueprint v3, decision 3): the second line carries the lane at
+   every width. Seat (phone and the 420 column; the wide row says it on line 1),
+   lane, the ARCH copy route and one hold chip, then the preview, which is what
+   gives way by ellipsis. The route is the long one ("Next: Audit offer"), so it
+   is the chip that may shrink. Unread is the name's weight, no dot.
+   -------------------------------------------------------------------------- */
+.a-dms .a-row.r > .a-row-main > .a-row-sub{ display:flex; align-items:center; gap:var(--ds-s2) }
+.a-dms-lane{ display:inline-flex; flex:0 1 auto; min-width:0; gap:var(--ds-s1); align-items:center }
+.a-dms-lane > *{ flex:0 0 auto }
+.a-dms-lane > .a-dms-route{ flex:0 1 auto; min-width:0; overflow:hidden }
+.a-dms-lane > .a-dms-route [data-ds='Chip']{ max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.a-dms-lane [data-ds='Chip']{
+  height:auto; padding:var(--ds-s1) var(--ds-s2); border-radius:var(--ds-r1);
+  background:var(--ds-surface-2); color:var(--ds-text-3); font-size:var(--ds-fs-meta);
+}
+.a-dms-subtext{
+  display:block; flex:1 1 0; min-width:4ch;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+@media (min-width:768px){
+  .wb-work:not(.list) .a-dms-seat{ display:none }
+}
+.a-dms .a-row.r[data-unread] .a-dms-titleline > :first-child{ font-weight:600; color:var(--ds-text-1) }

@@ -1,4 +1,4 @@
-import { internalHoldSummary } from '../../lib/inbox'
+import { internalHoldSummary, isReplyRetryPending } from '../../lib/inbox'
 /* ==========================================================================
    src/wb/dms/InboxList.tsx — S02 / S33: the conversation list.
 
@@ -15,7 +15,7 @@ import { internalHoldSummary } from '../../lib/inbox'
    number, used by the arithmetic and by the box, so the two cannot drift.
    ========================================================================== */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Badge, Banner, Button, Chip, DayHeader, EmptyState, FilterTokens, IconButton, Input } from '../../ds'
+import { Banner, Button, Chip, DayHeader, EmptyState, FilterTokens, IconButton, Input } from '../../ds'
 import { Body, Group, Head, Bar, Row, Rows, Screen } from '../kit'
 import { Face, PullMark, Pill, timeAgo } from './parts'
 import { InboxSkeleton } from '../chrome/Skeleton'
@@ -25,7 +25,7 @@ import { useConfirm } from '../chrome/ConfirmSheet'
 import { browseOrder, discardLegs, draftLegs, legFailureText, filterByStatus, filterThreads, inboxWaitingCount, isLeadMagnet, searchThreads, threadKind, type Filter, type Status, type Thread, eventTime } from '../../lib/inbox'
 import { DM_FIELDS, applyThreadTokens, hasStatusToken, tokensForFilter, type FilterToken } from '../../lib/filterTokens'
 import { checkedPhrase } from '../../lib/today'
-import { clientBadge } from '../../lib/labels'
+import { clientBadge, copyRouteTag, threadLaneLabel } from '../../lib/labels'
 import { RowSelect } from '../../exp/v2c/RowSelect'
 import './dms.css'
 
@@ -700,8 +700,16 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
                 // draft's own text whenever one is pending.
                 const pendingDraft = draftRowActions && t.draft != null && t.draftSnoozedUntil === null
                   ? t.draft : null
+                const laneTag = threadLaneLabel(t.lane, t.campaignLane)
+                const route = copyRouteTag(t.copyRoute)
+                const hold = t.ownerConfirmation
+                  ? (isReplyRetryPending(t.ownerConfirmation) ? 'Retry' : 'Owner question') : null
                 let snip = t.last.message_text
-                if (t.ownerConfirmation) snip = internalHoldSummary(t.ownerConfirmation)
+                if (t.ownerConfirmation) {
+                  snip = isReplyRetryPending(t.ownerConfirmation)
+                    ? internalHoldSummary(t.ownerConfirmation)
+                    : (t.ownerConfirmation.context_gap?.question || internalHoldSummary(t.ownerConfirmation))
+                }
                 else if (pendingDraft) snip = pendingDraft.message_text
                 else if (isDraftLast) snip = `Draft: ${t.last.message_text}`
                 else if (t.last.direction === 'outbound' && t.last.sent_at) snip = `You: ${t.last.message_text}`
@@ -778,8 +786,17 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
                          three-tenant inbox has to say whose row this is. Here
                          it costs the name nothing. */
                       sub={<>
+                        {/* DMs rebuild (blueprint v3 decision 3): the lane is back on
+                            every row, reversing the 24 Sep move into the thread
+                            header, because Ivan asked for it on 26 Sep ("every DM
+                            row must show the lane"). Seat (phone and the 420
+                            column only; the wide row has it on line 1), lane, the
+                            ARCH copy route, and one hold chip. */}
                         <span className="a-dms-lane">
-                          <Pill>{clientBadge(t.client_id)}</Pill>
+                          <span className="a-dms-seat"><Pill>{clientBadge(t.client_id)}</Pill></span>
+                          {laneTag && <Pill>{laneTag}</Pill>}
+                          {route && <span className="a-dms-route" title={route.title}><Pill>{route.label}</Pill></span>}
+                          {hold && <Pill>{hold}</Pill>}
                         </span>
                         <span className="a-dms-subtext">{note && renderNote
                           ? renderNote(t, note)
@@ -787,7 +804,6 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
                       </>}
                       tail={<>
                         <span className="a-mono">{timeAgo(eventTime(t.last))}</span>
-                        {t.unread > 0 && <Badge variant="dot" tone="accent" label={`${t.unread} unread`} />}
                         {/* A pushed draft says WHEN, not DRAFT — the row is the
                             only place a parked draft is visible from the list, so
                             it has to carry its return date rather than look like

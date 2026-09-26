@@ -45,6 +45,9 @@ export type InboxMessage = {
   // The copy route this ARCH person is on, '<sent|next>:<route>[:<invite arm>]' (db/213, 2026-09-24),
   // null for every other seat. Rendered by labels.ts copyRouteTag. Optional for the same fixture reason.
   copy_route?: string | null;
+  // lane_of(campaign name) (db/215, 2026-09-26): cold / warm / engager / harvest / partner / signal.
+  // The row's lane chip falls back to it where `lane` is unset (almost every Ivan and RISE row).
+  campaign_lane?: string | null;
   // Not in inbox_messages_v — annotated onto pending drafts by useInbox from the
   // fetchDraftEmailStamps() probe. When set on a draft, approving it makes the
   // dispatcher ALSO email the scan to this address (rise_dm2_scan_delivery_v1 rows).
@@ -132,6 +135,8 @@ export type Thread = {
   lane: string | null;
   // last.copy_route, coalesced to null. See InboxMessage.copy_route above.
   copyRoute: string | null;
+  // last.campaign_lane, coalesced to null. Optional so older fixtures still type.
+  campaignLane?: string | null;
 }
 
 /* ==========================================================================
@@ -485,6 +490,7 @@ export function groupThreads(
       blacklisted: Boolean(last.prospect_blacklisted),
       lane: last.lane ?? null,
       copyRoute: last.copy_route ?? null,
+      campaignLane: last.campaign_lane ?? null,
       messages,
     })
   }
