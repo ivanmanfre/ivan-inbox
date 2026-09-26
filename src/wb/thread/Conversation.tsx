@@ -32,6 +32,7 @@ import {
   approveDraft, channelFamilies, canComposeEmail, composeReply, discardLegs, draftLegs, legFailureText, holdReason, isEngineRetired, retiredLabel, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
   saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId, emailRowSender, ladderSteps, sendFailed,
+  offersReplyMyself, REPLY_MYSELF, type DiscardMode,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../../lib/inbox'
 import { copyRouteTag, label, threadLaneLabel } from '../../lib/labels'
 import { deleteThread, markNotSpam, markSpam } from '../../lib/inbox'
@@ -370,6 +371,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
     // One bump per person, ever: the bump lane never redrafts someone whose bump
     // was discarded. Later is the safe answer, so the sheet says so.
     const bump = isBump(draft)
+    let mode: DiscardMode = null
     const ok = await confirm({
       title: companion ? 'Discard both drafts?' : bump ? 'Discard this follow-up?' : 'Discard this draft?',
       message: (companion
@@ -377,6 +379,8 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
         : 'It will not be sent.')
         + (bump ? ` A discarded follow-up is never redrafted for ${thread.prospect_name.split(' ')[0]}. Later keeps it for another day.` : ''),
       confirmText: 'Discard',
+      altText: offersReplyMyself(thread) ? "Discard, I'll reply myself" : undefined,
+      onAlt: () => { mode = REPLY_MYSELF },
       danger: true,
     })
     if (!ok) return
@@ -387,7 +391,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
       // message still went out on the next tick; the write now refuses it and
       // every refused leg is named here. The companion's refusal used to be
       // swallowed.
-      const failed = await discardLegs(draftLegs(thread))
+      const failed = await discardLegs(draftLegs(thread), mode)
       if (failed.length) setDraftErr(failed.map(legFailureText).join(' '))
       refresh()
     } catch (e) { setDraftErr(errText(e)) }
@@ -539,7 +543,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
       />
       <Bar>
         <Ladder thread={thread} />
-        {mobile ? (
+        {mobile ? ((thread.spam || thread.client_id !== 'ivan' || thread.chat_provider_id) ? (
           /* Phone: the thread's own verbs sit behind ⋯ so the ladder keeps the bar. */
           <span className="wb-thread-morehost">
             <IconButton icon="more" label="More for this conversation" active={moreOpen !== null} onClick={e => {
@@ -549,7 +553,6 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
             }} />
             <Popover open={moreOpen !== null} label="More for this conversation" className="wb-thread-more"
               style={moreOpen ? { position: 'fixed', top: moreOpen.top, right: moreOpen.right } : undefined}>
-              <PopoverItem icon="ask" onClick={() => { setMoreOpen(null); onAsk() }}>Ask Claude</PopoverItem>
               {thread.spam
                 ? <PopoverItem icon="undo" disabled={busy} onClick={() => { setMoreOpen(null); void onNotSpam() }}>Not spam</PopoverItem>
                 : thread.client_id !== 'ivan'
@@ -560,7 +563,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
               )}
             </Popover>
           </span>
-        ) : <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        ) : null) : <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           {thread.spam
             ? <Button variant="quiet" size="sm" busy={busy} onClick={busy ? undefined : onNotSpam}>Not spam</Button>
             : thread.client_id !== 'ivan'

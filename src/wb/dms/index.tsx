@@ -7,7 +7,8 @@
    app still ships.
    ========================================================================== */
 import { useEffect, useState } from 'react'
-import { InboxList } from './InboxList'
+import { InboxList, type HoldAction } from './InboxList'
+import { chatLink } from '../../components/CopyChatLink'
 import { DraftCard, PushedBar, StaleBar } from './DraftCard'
 import { DmCount } from './DmHistory'
 import { WarmSignals } from './WarmSignals'
@@ -201,6 +202,21 @@ export function Dms({
           quiet
         />
       )}
+      rowHold={t => {
+        const out: HoldAction[] = []
+        const st = pre.get(t.prospect_id)
+        if (preReadWorthwhile(t) && st.s !== 'done' && st.s !== 'running') {
+          out.push({ label: st.s === 'error' ? 'Sum up again' : 'Sum up', icon: 'quote', run: () => pre.run(t) })
+        }
+        const link = chatLink(t.chat_provider_id, t.linkedin_url)
+        if (link) {
+          out.push({
+            label: link.isChat ? 'Copy chat' : 'Copy profile', icon: 'copy',
+            run: () => { navigator.clipboard.writeText(link.href).catch(() => window.prompt('Copy this link', link.href)) },
+          })
+        }
+        return out
+      }}
       renderRow={status === 'approve'
         ? t => <DraftCard key={t.prospect_id} thread={t} onOpenThread={onOpenThread} refresh={refresh} />
         : undefined}

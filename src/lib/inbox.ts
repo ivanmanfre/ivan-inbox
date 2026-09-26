@@ -48,6 +48,9 @@ export type InboxMessage = {
   // lane_of(campaign name) (db/215, 2026-09-26): cold / warm / engager / harvest / partner / signal.
   // The row's lane chip falls back to it where `lane` is unset (almost every Ivan and RISE row).
   campaign_lane?: string | null;
+  // db/216 (decision 12): 'reply_myself' when the draft was discarded with "I'll reply myself", which
+  // keeps the thread under Needs your reply. Null for a plain discard and for every other row.
+  discard_mode?: string | null;
   // Not in inbox_messages_v — annotated onto pending drafts by useInbox from the
   // fetchDraftEmailStamps() probe. When set on a draft, approving it makes the
   // dispatcher ALSO email the scan to this address (rise_dm2_scan_delivery_v1 rows).
@@ -716,6 +719,9 @@ function unansweredSince(t: Thread): string | null {
   // Saskia von Stamm) is the same kind of decision, made by the drafter.
   const discarded = t.messages
     .filter(m => m.direction === 'outbound' && !m.sent_at
+      // "Discard, I'll reply myself" (decision 12) threw the draft away WITHOUT answering the
+      // question, so the reply is still owed and the thread stays under Needs your reply.
+      && !(m.send_blocked_reason === DISCARD_REASON && m.discard_mode === REPLY_MYSELF)
       && (m.send_blocked_reason === DISCARD_REASON || /^(model_meta_no_reply|writer_no_reply)/.test(m.send_blocked_reason ?? '')))
     .map(eventTime).sort().at(-1) ?? null
   if (discarded !== null && discarded > lastInbound) return null
@@ -1334,10 +1340,20 @@ export function applyDraftGuard<Q extends GuardedQuery<Q>>(
 // reports no error for a zero-row update, so without this a stale view asking
 // to discard an already-approved row would look identical to a successful
 // discard. A silent no-op on the send path is its own bug.
-export async function discardDraft(id: string): Promise<boolean> {
+// Decision 12's marker value (db/216). The reason stays DISCARD_REASON, so no drafter redrafts.
+export const REPLY_MYSELF = 'reply_myself'
+
+// Offered only where it means something: a REPLY draft on a thread that owes an answer. A follow-up
+// or bump owes nothing, so "I'll reply myself" would leave the thread anyway.
+export function offersReplyMyself(t: Thread): boolean {
+  return t.draft !== null && !isFollowUp(t.draft) && unansweredSince(t) !== null
+}
+export type DiscardMode = typeof REPLY_MYSELF | null
+
+export async function discardDraft(id: string, mode: DiscardMode = null): Promise<boolean> {
   const { data, error } = await applyDraftGuard(
     supabase.from('outreach_messages')
-      .update({ send_blocked_reason: DISCARD_REASON, send_blocked_at: new Date().toISOString() }),
+      .update({ send_blocked_reason: DISCARD_REASON, send_blocked_at: new Date().toISOString(), discard_mode: mode }),
     id, DISCARD_GUARD,
   ).select('id')
   if (error) throw error
@@ -1351,12 +1367,12 @@ export async function discardDraft(id: string): Promise<boolean> {
 // {})`), so an approved email leg looked discarded while it went out.
 export type LegFailure = { leg: InboxMessage; error: string | null }
 
-export async function discardLegs(legs: readonly (InboxMessage | null | undefined)[]): Promise<LegFailure[]> {
+export async function discardLegs(legs: readonly (InboxMessage | null | undefined)[], mode: DiscardMode = null): Promise<LegFailure[]> {
   const out: LegFailure[] = []
   for (const leg of legs) {
     if (!leg) continue
     try {
-      if (!(await discardDraft(leg.id))) out.push({ leg, error: null })
+      if (!(await discardDraft(leg.id, mode))) out.push({ leg, error: null })
     } catch (e) {
       out.push({ leg, error: e instanceof Error ? e.message : String(e) })
     }
@@ -1409,7 +1425,7 @@ export async function dismissConfirmation(id: string): Promise<boolean> {
 export async function restoreDraft(id: string): Promise<boolean> {
   const { data, error } = await applyDraftGuard(
     supabase.from('outreach_messages')
-      .update({ send_blocked_reason: null, send_blocked_at: null }),
+      .update({ send_blocked_reason: null, send_blocked_at: null, discard_mode: null }),
     id, RESTORE_GUARD,
   ).select('id')
   if (error) throw error

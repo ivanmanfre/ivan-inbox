@@ -639,3 +639,10 @@
 @supports not (content-visibility:hidden){
   .a-brain-root[data-covered]{ visibility:hidden }
 }
+
+/* Decision 12: three answers do not fit side by side on a phone. Stacked, the
+   destructive default on top where the thumb lands, Cancel last. */
+@media (max-width:640px){
+  .a-confirm-foot[data-three]{ flex-direction:column-reverse; align-items:stretch }
+  .a-confirm-foot[data-three] > *{ flex:0 0 auto; width:100% }
+}

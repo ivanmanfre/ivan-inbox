@@ -1,4 +1,4 @@
-import { internalHoldSummary, isReplyRetryPending } from '../../lib/inbox'
+import { internalHoldSummary, isReplyRetryPending, offersReplyMyself, restoreDraft, REPLY_MYSELF, type DiscardMode } from '../../lib/inbox'
 /* ==========================================================================
    src/wb/dms/InboxList.tsx — S02 / S33: the conversation list.
 
@@ -15,7 +15,10 @@ import { internalHoldSummary, isReplyRetryPending } from '../../lib/inbox'
    number, used by the arithmetic and by the box, so the two cannot drift.
    ========================================================================== */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Banner, Button, Chip, DayHeader, EmptyState, FilterTokens, IconButton, Input } from '../../ds'
+import { createPortal } from 'react-dom'
+
+export type HoldAction = { label: string; icon: IconName; run: () => void }
+import { Banner, Button, Chip, PopoverItem, Sheet, type IconName, DayHeader, EmptyState, FilterTokens, IconButton, Input } from '../../ds'
 import { Body, Group, Head, Bar, Row, Rows, Screen } from '../kit'
 import { Face, PullMark, Pill, timeAgo } from './parts'
 import { InboxSkeleton } from '../chrome/Skeleton'
@@ -295,12 +298,51 @@ export function hoverVerbFor({ desktopHover, pendingDraft, preRead }: {
 // against is untouched.
 const ROW_SWIPE_THRESHOLD = 72
 
-function RowHost({ height, onDiscard, children }: {
+// DMs rebuild: HOLD a row (touch only, 500ms, finger still) for its menu: Sum up, Copy chat,
+// Ask Claude. A pointer has the hover verbs instead. The click the lift would fire is swallowed so
+// a hold never also opens the thread.
+const HOLD_MS = 500
+function useHold(onHold: (() => void) | undefined) {
+  const timer = useRef<number | null>(null)
+  const at = useRef({ x: 0, y: 0 })
+  const held = useRef(false)
+  const clear = () => { if (timer.current !== null) { clearTimeout(timer.current); timer.current = null } }
+  useEffect(() => clear, [])
+  return {
+    down(e: React.PointerEvent) {
+      held.current = false
+      clear()
+      if (!onHold || e.pointerType === 'mouse') return
+      at.current = { x: e.clientX, y: e.clientY }
+      timer.current = window.setTimeout(() => {
+        timer.current = null
+        held.current = true
+        navigator.vibrate?.(10)
+        onHold()
+      }, HOLD_MS)
+    },
+    move(e: React.PointerEvent) {
+      if (timer.current !== null && Math.hypot(e.clientX - at.current.x, e.clientY - at.current.y) > 8) clear()
+    },
+    up: clear,
+    click(e: React.MouseEvent) {
+      if (!held.current) return false
+      held.current = false
+      e.stopPropagation()
+      e.preventDefault()
+      return true
+    },
+  }
+}
+
+function RowHost({ height, onDiscard, onHold, children }: {
   height: number
   /** Absent on any row with nothing to discard: no gesture is bound at all. */
   onDiscard?: () => void
+  onHold?: () => void
   children: ReactNode
 }) {
+  const hold = useHold(onHold)
   const [dx, setDx] = useState(0)
   const [dragging, setDragging] = useState(false)
   const start = useRef({ x: 0, y: 0 })
@@ -318,7 +360,19 @@ function RowHost({ height, onDiscard, children }: {
   const swiped = useRef(false)
 
   if (!onDiscard) {
-    return <div className="a-dms-rowhost" style={{ height }}>{children}</div>
+    return (
+      <div
+        className="a-dms-rowhost"
+        data-hold={onHold ? '' : undefined}
+        style={{ height }}
+        onPointerDown={hold.down}
+        onPointerMove={hold.move}
+        onPointerUp={hold.up}
+        onPointerCancel={hold.up}
+        onClickCapture={e => { hold.click(e) }}
+        onContextMenu={onHold ? e => e.preventDefault() : undefined}
+      >{children}</div>
+    )
   }
   const reset = () => {
     setDragging(false)
@@ -330,18 +384,22 @@ function RowHost({ height, onDiscard, children }: {
     <div
       className="a-dms-rowhost"
       data-swipe=""
+      data-hold={onHold ? '' : undefined}
+      onContextMenu={onHold ? e => e.preventDefault() : undefined}
       style={{
         height,
         transform: dx ? `translateX(${dx}px)` : undefined,
         transition: dragging ? 'none' : 'transform var(--ds-dur) var(--ds-ease)',
       }}
       onPointerDown={e => {
+        hold.down(e)
         start.current = { x: e.clientX, y: e.clientY }
         axis.current = 'none'
         swiped.current = false
         setDragging(true)
       }}
       onPointerMove={e => {
+        hold.move(e)
         if (!dragging) return
         const ddx = e.clientX - start.current.x
         const ddy = e.clientY - start.current.y
@@ -359,13 +417,15 @@ function RowHost({ height, onDiscard, children }: {
         setDx(dxRef.current)
       }}
       onPointerUp={() => {
+        hold.up()
         if (!dragging) return
         const final = axis.current === 'x' ? dxRef.current : 0
         reset()
         if (final < -ROW_SWIPE_THRESHOLD) onDiscard()
       }}
-      onPointerCancel={reset}
+      onPointerCancel={() => { hold.up(); reset() }}
       onClickCapture={e => {
+        if (hold.click(e)) return
         if (!swiped.current) return
         swiped.current = false
         e.stopPropagation()
@@ -375,7 +435,7 @@ function RowHost({ height, onDiscard, children }: {
   )
 }
 
-export function InboxList({ threads, filter, setFilter, tokens, setTokens, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, refreshing = false, cachedAt = null, error = null, title = 'Inbox', status, browse = false, before, after, rowsFor, renderRow, rowNote, rowChip, rowTag, renderNote, emptyLine }: {
+export function InboxList({ threads, filter, setFilter, tokens, setTokens, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, refreshing = false, cachedAt = null, error = null, title = 'Inbox', status, browse = false, before, after, rowsFor, renderRow, rowNote, rowChip, rowTag, renderNote, rowHold, emptyLine }: {
   threads: Thread[]
   filter: Filter
   setFilter: (f: Filter) => void
@@ -449,6 +509,9 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
   // whoever supplies it is the one `rowNote` carries: render ONE line and do not
   // grow the row.
   renderNote?: (t: Thread, note: string) => ReactNode
+  // DMs rebuild: what holding a row offers on the phone (Sum up, Copy chat, Ask Claude). The host
+  // owns every verb; the list only draws the sheet. Empty = the row has no hold.
+  rowHold?: (t: Thread) => HoldAction[]
   emptyLine?: string
 }) {
   const rowsRef = useRef<HTMLDivElement>(null)
@@ -460,6 +523,21 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
   // input stays mounted there for CommandLayer's focusSearch to find.
   const [searchOpen, setSearchOpen] = useState(false)
   const confirm = useConfirm()
+  // The receipt of a discard made FROM THE LIST, with Bring it back. It stays until he dismisses it,
+  // brings it back, or discards another (the newest replaces it).
+  const [held, setHeld] = useState<{ t: Thread; actions: HoldAction[] } | null>(null)
+  const [receipt, setReceipt] = useState<{ name: string; ids: string[]; mine: boolean } | null>(null)
+  const [restoring, setRestoring] = useState(false)
+  async function onBringBack() {
+    if (!receipt) return
+    setRestoring(true)
+    try {
+      for (const id of receipt.ids) await restoreDraft(id)
+      setReceipt(null)
+    } catch (e) {
+      window.alert(`Could not bring it back: ${e instanceof Error ? e.message : String(e)}`)
+    } finally { setRestoring(false); refresh() }
+  }
   // Row-level draft actions (preview text + inline discard) are gated on
   // `status` being passed at all, the same opt-in signal the draft banner above
   // already uses.
@@ -470,18 +548,25 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
     e?.stopPropagation()
     if (!t.draft) return
     const pair = t.companionDraft != null
+    let mode: DiscardMode = null
     const ok = await confirm({
       title: pair ? 'Discard both drafts?' : 'Discard this draft?',
       message: pair ? 'Neither the LinkedIn message nor the email will be sent.' : 'It will not be sent.',
       confirmText: 'Discard',
+      altText: offersReplyMyself(t) ? "Discard, I'll reply myself" : undefined,
+      onAlt: () => { mode = REPLY_MYSELF },
       danger: true,
     })
     if (!ok) return
     // Every leg, and a leg that would not stop is said out loud: the row and
     // the swipe used to discard the DM alone and leave the email pending.
     try {
-      const failed = await discardLegs(draftLegs(t))
+      const legs = draftLegs(t)
+      const failed = await discardLegs(legs, mode)
       if (failed.length) window.alert(failed.map(legFailureText).join(' '))
+      // The receipt: the list is where the draft disappeared, so Bring it back lives here too.
+      const stopped = legs.filter((l): l is NonNullable<typeof l> => l != null && !failed.some(f => f.leg.id === l.id))
+      if (stopped.length) setReceipt({ name: t.prospect_name, ids: stopped.map(l => l.id), mine: mode === REPLY_MYSELF })
     } finally { refresh() }
   }
   const tokenMode = tokens !== undefined && setTokens !== undefined
@@ -675,6 +760,25 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
 
       {head}
 
+      {held && createPortal(
+        <Sheet open onClose={() => setHeld(null)} title={held.t.prospect_name} sub={held.t.prospect_company ?? undefined} className="a-dms-holdsheet">
+          <div role="menu" aria-label={`Actions for ${held.t.prospect_name}`}>
+            {held.actions.map(a => (
+              <PopoverItem key={a.label} icon={a.icon} onClick={() => { setHeld(null); a.run() }}>{a.label}</PopoverItem>
+            ))}
+          </div>
+        </Sheet>,
+        document.body,
+      )}
+      {receipt && (
+        <Banner
+          icon="discard"
+          className="a-dms-receipt"
+          title={`Discarded the draft to ${receipt.name.split(' ')[0]}.`}
+          action={<Button variant="quiet" size="sm" icon="undo" busy={restoring} onClick={restoring ? undefined : onBringBack}>Bring it back</Button>}
+          onDismiss={() => setReceipt(null)}
+        >{receipt.mine ? 'Still under Needs your reply, for your own answer.' : undefined}</Banner>
+      )}
       <Body innerRef={rowsRef} className="a-dms-body">
         <PullMark pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         {/* With a status axis present, "drafts" is one of the statuses, a banner
@@ -791,6 +895,10 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
                     key={t.prospect_id}
                     height={rowH}
                     onDiscard={phone && pendingDraft ? () => { void onRowDiscard(null, t) } : undefined}
+                    onHold={phone && rowHold ? () => {
+                      const actions = rowHold(t)
+                      if (actions.length) setHeld({ t, actions })
+                    } : undefined}
                   >
                     {/* A conversation carries NO bulk capability — an answer is
                         written one at a time, and the bulk bar says that in words
