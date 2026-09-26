@@ -18,16 +18,21 @@
 
 import { isWorkJob, type Job } from '../../v2c/layout'
 
-export type Place = 'ask' | 'today' | 'sales' | 'dms' | 'content' | 'sends' | 'ops'
+export type Place = 'ask' | 'sales' | 'dms' | 'content' | 'sends' | 'ops'
 
 // `sales` joined 2026-09-06 next to Today, because a call starting in ten
 // minutes is the one thing on the phone with a deadline. Seven tabs at 390
 // is the measured ceiling: the bar is a flex row of equal parts, so each is
 // 55px wide and still clears the 44px tap floor `.ds-tab` enforces.
-export const TABS: Place[] = ['ask', 'today', 'sales', 'dms', 'content', 'sends', 'ops']
+//
+// REBUILD 2026-09-26 (blueprint v3, decisions 1-2): Today is gone and Lanes is
+// home. The bar reads Lanes, DMs, Content, Ops, Sales, then the Claude key
+// last. Pending work is a number on each place, never a queue screen (Ivan
+// 26 Sep: "main section with sliding cards doesn't make much sense").
+export const TABS: Place[] = ['sends', 'dms', 'content', 'ops', 'sales', 'ask']
 
 export const TAB_LABEL: Record<Place, string> = {
-  ask: 'Ask', today: 'Today', sales: 'Sales', dms: 'DMs', content: 'Content', sends: 'Lanes', ops: 'Ops',
+  ask: 'Claude', sales: 'Sales', dms: 'DMs', content: 'Content', sends: 'Lanes', ops: 'Ops',
 }
 
 // The per-tab mark is a lucide icon now and it lives with the bar that draws
@@ -40,13 +45,16 @@ export const TAB_LABEL: Record<Place, string> = {
  * with no tab of their own) collapsed onto the tab that represents it. */
 export function tabForJob(job: Job): Place {
   if (isWorkJob(job)) return 'content'
-  if (job === 'settings' || job === 'money') return 'today'
+  // Today, Settings and Money have no tab: they land on Lanes, the home.
+  // Every writer that still links Today (bot actions, notification fallback,
+  // Inbox Notify Relay, the menu bar) resolves here unchanged.
+  if (job === 'today' || job === 'settings' || job === 'money') return 'sends'
   // Orbit (2026-09-11) has no tab of its own — it collapses onto Sales, the
   // same place its one entry button lives, so re-entering the tab bar after
   // opening it lands back where the button was tapped from.
   if (job === 'orbit') return 'sales'
-  if (job === 'today' || job === 'sales' || job === 'dms' || job === 'sends' || job === 'ops') return job
-  return 'today'
+  if (job === 'sales' || job === 'dms' || job === 'sends' || job === 'ops') return job
+  return 'sends'
 }
 
 /** The Job to hand `goJob` for a tap on a given tab. Ask has none — it is not a Job. */
@@ -61,6 +69,8 @@ const PLACE_KEY = 'brain-b-place'
 export function readPlace(): Place | null {
   try {
     const v = localStorage.getItem(PLACE_KEY)
+    // A phone that saved "Today" before the rebuild moves to Lanes.
+    if (v === 'today') return 'sends'
     return (TABS as string[]).includes(v ?? '') ? (v as Place) : null
   } catch { return null }
 }
@@ -91,5 +101,5 @@ export function resolveBootPlace(boot: Boot, persisted: Place | null): Place {
   // (`#exp/v2/ask?thread=<uuid>`, where 'ask' is not a Job so no place is
   // named), Ask is where that thread lives.
   if (boot.thread) return 'ask'
-  return persisted ?? 'ask'
+  return persisted ?? 'sends'
 }

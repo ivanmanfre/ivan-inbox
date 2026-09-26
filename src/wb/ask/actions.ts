@@ -16,7 +16,7 @@
    `body` always has the block removed, valid or not. A raw JSON fence in the
    middle of a conversation is the surface leaking its own contract.
    ========================================================================== */
-import { notificationDeepLink, NOTIFICATION_FALLBACK_HASH } from '../../lib/turns'
+import { routableHash } from '../../lib/turns'
 
 export type ActionKind = 'open' | 'task' | 'fold' | 'reply'
 
@@ -51,9 +51,9 @@ function urlOk(url: unknown): url is string {
   if (/^https:\/\/\S+$/i.test(raw)) return true
   // Not https: it must be a route this app will actually navigate. A url that
   // falls back is a url this surface could not honour, so it is a violation
-  // rather than a link to the Today screen nobody asked for.
+  // rather than a link to the fallback place nobody asked for.
   if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) return false
-  return notificationDeepLink({ url: raw }) !== NOTIFICATION_FALLBACK_HASH
+  return routableHash(raw) !== null
 }
 
 const str = (v: unknown, max = Infinity): v is string =>

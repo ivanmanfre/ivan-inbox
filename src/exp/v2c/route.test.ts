@@ -40,7 +40,7 @@ describe('parseWbHash', () => {
   })
 
   it('treats a bare /chat as chat over the default job', () => {
-    expect(parseWbHash('#exp/v2/chat')).toEqual({ job: 'dms', focus: 'chat' })
+    expect(parseWbHash('#exp/v2/chat')).toEqual({ job: 'sends', focus: 'chat' })
   })
 
   it('still reads the tournament-era v2c links', () => {
@@ -121,8 +121,8 @@ describe('deep links', () => {
   })
 
   it('does not mistake a query for a job or a focus', () => {
-    expect(parseWbHash('#exp/v2?feed=1')).toEqual({ job: 'dms', focus: null, feed: true })
-    expect(parseWbHash('#exp/v2/chat?feed=1')).toEqual({ job: 'dms', focus: 'chat', feed: true })
+    expect(parseWbHash('#exp/v2?feed=1')).toEqual({ job: 'sends', focus: null, feed: true })
+    expect(parseWbHash('#exp/v2/chat?feed=1')).toEqual({ job: 'sends', focus: 'chat', feed: true })
   })
 })
 
@@ -160,7 +160,7 @@ describe('the brain-candidate prefixes', () => {
 describe('ask deep link', () => {
   it('#exp/v2/ask?thread=… focuses chat over the default job and keeps the ids', () => {
     const r = parseWbHash('#exp/v2/ask?thread=e53d8fb8-382c-43fd-87a9-f0f668f408d4&turn=0b3e74fc-d702-4a3b-9984-7549b1eb0148')
-    expect(r.job).toBe('dms')
+    expect(r.job).toBe('sends')
     expect(r.focus).toBe('chat')
     expect(r.thread).toBe('e53d8fb8-382c-43fd-87a9-f0f668f408d4')
     expect(r.turn).toBe('0b3e74fc-d702-4a3b-9984-7549b1eb0148')
@@ -179,7 +179,7 @@ describe('ask deep link', () => {
     expect(dm.focus).toBeNull()
     expect(dm.thread).toBe(TH)
     const ask = parseWbHash(`#exp/brain-b/ask?thread=${TH}`)
-    expect(ask.job).toBe('dms')
+    expect(ask.job).toBe('sends')
     expect(ask.focus).toBe('chat')
     expect(ask.thread).toBe(TH)
   })

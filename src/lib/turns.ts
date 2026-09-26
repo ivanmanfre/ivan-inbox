@@ -462,7 +462,7 @@ export function groupNotifications(rows: Notification[]): NotificationGroup[] {
 // index.tsx`'s `getExpVariant` now self-heals a `v2`/`v2c` cold boot on the
 // phone regardless, but writing the working prefix here means this path
 // never needed healing in the first place.
-export const NOTIFICATION_FALLBACK_HASH = '#exp/brain-b/today'
+export const NOTIFICATION_FALLBACK_HASH = '#exp/brain-b/sends'
 
 // A hash this app will actually route. Anything with whitespace, a quote or a
 // scheme in it is not a route, it is someone's idea of one.
@@ -482,15 +482,22 @@ const SAFE_HASH_RE = /^#[A-Za-z0-9/_\-.~!$&'()*+,;=:@%?[\]]*$/
  * - Missing, malformed or non-hash urls fall back rather than throwing.
  */
 export function notificationDeepLink(n: { url?: string | null }): string {
-  const raw = (n.url ?? '').trim()
-  if (!raw) return NOTIFICATION_FALLBACK_HASH
-  if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) return NOTIFICATION_FALLBACK_HASH
+  return routableHash(n.url) ?? NOTIFICATION_FALLBACK_HASH
+}
+
+/** The in-app hash a url routes to, or null when it would fall back. Split out
+ * so a caller can tell "routes to Lanes" from "fell back to Lanes" now that the
+ * fallback IS a real place (rebuild, 2026-09-26). */
+export function routableHash(url?: string | null): string | null {
+  const raw = (url ?? '').trim()
+  if (!raw) return null
+  if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) return null
   const at = raw.indexOf('#')
-  if (at < 0) return NOTIFICATION_FALLBACK_HASH
+  if (at < 0) return null
   // './#exp/…' and '/#exp/…' and a bare '#exp/…' all reduce to the same thing.
   const head = raw.slice(0, at)
-  if (head && head !== './' && head !== '/' && head !== '.') return NOTIFICATION_FALLBACK_HASH
+  if (head && head !== './' && head !== '/' && head !== '.') return null
   const hash = raw.slice(at)
-  if (hash.length < 2 || !SAFE_HASH_RE.test(hash)) return NOTIFICATION_FALLBACK_HASH
+  if (hash.length < 2 || !SAFE_HASH_RE.test(hash)) return null
   return hash
 }

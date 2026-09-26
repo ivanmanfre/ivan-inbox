@@ -26,14 +26,15 @@ describe('tabForJob', () => {
     expect(tabForJob('strategy')).toBe('content')
   })
   it('sends the five lanes back to themselves', () => {
-    expect(tabForJob('today')).toBe('today')
+    expect(tabForJob('sales')).toBe('sales')
     expect(tabForJob('dms')).toBe('dms')
     expect(tabForJob('sends')).toBe('sends')
     expect(tabForJob('ops')).toBe('ops')
   })
-  it('a job with no tab of its own lands on Today rather than throwing', () => {
-    expect(tabForJob('settings')).toBe('today')
-    expect(tabForJob('money')).toBe('today')
+  it('a job with no tab of its own lands on Lanes, the home, rather than throwing', () => {
+    expect(tabForJob('today')).toBe('sends')
+    expect(tabForJob('settings')).toBe('sends')
+    expect(tabForJob('money')).toBe('sends')
   })
 })
 
@@ -62,8 +63,12 @@ describe('resolveBootPlace', () => {
   it('with no deep link, the persisted place survives', () => {
     expect(resolveBootPlace({}, 'sends')).toBe('sends')
   })
-  it('with nothing persisted and no deep link, Ask is the default landing', () => {
-    expect(resolveBootPlace({}, null)).toBe('ask')
+  it('with nothing persisted and no deep link, Lanes is the default landing', () => {
+    expect(resolveBootPlace({}, null)).toBe('sends')
+  })
+  it('a phone that saved Today before the rebuild lands on Lanes', () => {
+    localStorage.setItem('brain-b-place', 'today')
+    expect(readPlace()).toBe('sends')
   })
 })
 

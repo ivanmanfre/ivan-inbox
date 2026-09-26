@@ -45,7 +45,7 @@ const AXIS_LOCK_PX = 8
  * six distinctions the phone and the desktop rail already agreed on, by name
  * rather than by a typed character. */
 const TAB_ICON: Record<Place, IconName> = {
-  ask: 'ask', today: 'today', sales: 'sales', dms: 'dms', content: 'content', sends: 'sends', ops: 'ops',
+  ask: 'ask', sales: 'sales', dms: 'dms', content: 'content', sends: 'sends', ops: 'ops',
 }
 
 /** The five Job counts/severities, folded onto the five lane tabs (Ask carries

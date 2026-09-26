@@ -27,7 +27,7 @@ import {
   Avatar, Badge, Icon, IconButton, Kbd, LiveDot, Rail as DsRail, RailGroup,
   RailItem, RailSeparator, TabBar, type TabItem,
 } from '../../ds'
-import { JOBS, JOB_LABEL, JOB_MARK, WORK_JOBS, isWorkJob, type Job } from '../../exp/v2c/layout'
+import { JOB_LABEL, JOB_MARK, WORK_JOBS, isWorkJob, type Job } from '../../exp/v2c/layout'
 import { relAge } from '../kit'
 import './chrome.css'
 
@@ -148,8 +148,10 @@ export function Rail({
   // at this point". A row he does not use is a row he has to read past.
   // Orbit (2026-09-11) gets the same treatment on purpose: its one entry
   // point is a button on the Sales head, not a second rail row.
-  const before = JOBS.filter(j => j !== 'settings' && !isWorkJob(j) && j !== 'sends' && j !== 'ops' && j !== 'money' && j !== 'orbit')
-  const after = JOBS.filter(j => j === 'sends' || j === 'ops')
+  // Rebuild 2026-09-26: Lanes, DMs, Sales, the Content group, then Ops. Today
+  // left the rail with the phone bar; Lanes is home on both.
+  const before: Job[] = ['sends', 'dms', 'sales']
+  const after: Job[] = ['ops']
 
   return (
     <DsRail
@@ -267,7 +269,9 @@ export function Rail({
 // when it left the rail is the one it fills. Measured at 390 before it shipped:
 // six job tabs plus Claude leave the active tab 98px, and the row's right edge
 // lands at 382 of 390, so nothing spills and no tab drops under the 44px floor.
-const MOBILE: Job[] = ['today', 'sales', 'dms', 'content', 'sends', 'ops']
+// Rebuild 2026-09-26 (blueprint v3 decision 2): Lanes, DMs, Content, Ops,
+// Sales, then Claude. Today is gone; Lanes is home.
+const MOBILE: Job[] = ['sends', 'dms', 'content', 'ops', 'sales']
 
 export function MobileTabs({ job, counts, sev, chatLive, onJob, onChat }: {
   job: Job
