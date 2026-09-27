@@ -21,7 +21,7 @@ export function menuItems(t: Thread, staleN: number, withAsk = false): { head: s
       { act: 'sum', label: 'Sum up', hint: 'Claude reads it' },
       { act: 'copy-chat', label: 'Copy chat link', hint: `for ${owner}` },
       { act: 'context', label: 'Context', hint: 'fit, scan, your note' },
-      { act: 'agent', label: 'Conversation agent', hint: 'Pause, Resume, Stop contact' },
+      { act: 'agent', label: 'Conversation agent', hint: 'Take over, approve, Stop contact' },
     ] },
     ...(filing.length ? [{ head: 'Filing', items: filing }] : []),
     { head: 'This list', items: [

@@ -1,13 +1,15 @@
 // A seat column (desktop) or the one seat list (phone). Sections in the mock's order.
 import { useState } from 'react'
 import { internalHoldSummary, threadBucket, type Thread } from '../../lib/inbox'
-import { cameBackLine, type CameBackCard } from '../../wb/dms/cameBackData'
-import { evidenceLine, inviteLine, primaryAction, type WarmCard } from '../../wb/dms/warmSignalsData'
+import { cameBackLine, firstComment, sentLine, type CameBackCard } from '../../wb/dms/cameBackData'
+import { agentCardsWithoutWarmCards, type ConversationAgentCard } from '../../wb/dms/conversationAgentData'
+import { WARM_GROUPS, dm1Deliverable, evidenceLine, inviteLine, isWaiting, primaryAction, warmGroup, type WarmCard } from '../../wb/dms/warmSignalsData'
 import { seatOf, type Seat } from '../seats'
 import { needsCount, type SeatView } from './model'
 import { Fold, Quiet, Row, Sec } from './Row'
 import { AnyRow, DraftRow, LaterRow, NoDraftRow, SentRow, SpamRow, ThrownRow, dayMonth, type RowCtx } from './threadRows'
-import type { Side } from './useDmsData'
+import type { AgentSide, Side } from './useDmsData'
+import { noteOf, type WarmVerbs } from './warmVerbs'
 
 export type Mode = 'conversations' | 'email' | 'spam' | 'search'
 
@@ -21,7 +23,9 @@ export type ColumnProps = {
   cameBack: Side<CameBackCard>
   dropCameBack: (pid: string) => void
   warm: Side<WarmCard>
-  dropWarm: (pid: string) => void
+  agent: AgentSide
+  warmVerbs: WarmVerbs
+  openWarm: (pid: string) => void
   dated: { prospect_id: string; at: string }[]
   scanDays: ReadonlyMap<string, number>
 }
@@ -85,29 +89,14 @@ export function ColumnBody(p: ColumnProps) {
     <Sec label="Came back, no reply" n={p.cameBack.failed ? '?' : came.length} />
     {p.cameBack.failed ? <Quiet>Could not read who came back.</Quiet> : came.map(x => {
       const t = p.byId.get(x.prospect_id)
-      return <Row key={x.prospect_id} id={x.prospect_id} name={x.name} company={x.company} conversation={Boolean(t)} line={cameBackLine(x)}
+      const comment = firstComment(x)
+      return <Row key={x.prospect_id} id={x.prospect_id} name={x.name} company={x.company} conversation={Boolean(t)}
+        line={`${cameBackLine(x)}. ${sentLine(x)}${comment ? ` “${comment}”` : ''}${x.icp_score !== null ? ` · ICP ${x.icp_score}` : ''}`}
         selected={c.selected === x.prospect_id} onOpen={t ? () => c.open(t) : undefined}
         verbs={[{ label: 'Dismiss', verb: 'dismiss', busy: c.busy === `cb:${x.prospect_id}`, run: () => { c.setBusy(`cb:${x.prospect_id}`); void c.verbs.cameBackDismiss(x.prospect_id, x.name, () => p.dropCameBack(x.prospect_id)).finally(() => c.setBusy(null)) } }]} />
     })}
 
-    {seat === 'ivan' && <>
-      <Sec label="Warm signals" n={p.warm.failed ? '?' : p.warm.rows.length} />
-      {p.warm.failed ? <Quiet>Could not read the warm signals.</Quiet>
-        : p.warm.loaded && p.warm.rows.length === 0 ? <Quiet>No warm signals now. New profile views and post engagers land here before any invite goes out.</Quiet>
-          : p.warm.rows.map(w => {
-            const act = primaryAction(w)
-            const done = () => p.dropWarm(w.prospect_id)
-            const run = (a: 'approve_invite' | 'approve_dm1_stage' | 'skip', k: string) => () => { c.setBusy(k); void c.verbs.warm(w.prospect_id, a, done).finally(() => c.setBusy(null)) }
-            const t = p.byId.get(w.prospect_id)
-            return <Row key={w.prospect_id} id={w.prospect_id} name={w.name} company={w.company} conversation={Boolean(t)}
-              line={`${evidenceLine(w)} · ${inviteLine(w).text}`} onOpen={t ? () => c.open(t) : undefined}
-              verbs={[
-                ...(act === 'invite' ? [{ label: 'Approve invite', verb: 'approve-invite', run: run('approve_invite', `w:${w.prospect_id}`), busy: c.busy === `w:${w.prospect_id}` }] : []),
-                ...(act === 'dm1' ? [{ label: 'Approve DM1', verb: 'approve-dm1', run: run('approve_dm1_stage', `w:${w.prospect_id}`), busy: c.busy === `w:${w.prospect_id}` }] : []),
-                { label: 'Skip', verb: 'skip', quiet: true, run: run('skip', `ws:${w.prospect_id}`), busy: c.busy === `ws:${w.prospect_id}` },
-              ]} />
-          })}
-    </>}
+    {seat === 'ivan' && <WarmSection p={p} />}
 
     {v.thrown.length > 0 && <>
       <Sec label="Thrown away, 3 days" n={v.thrown.length} />
@@ -129,5 +118,56 @@ export function ColumnBody(p: ColumnProps) {
     })}
     {v.rest.length > REST_CAP && <button type="button" className="dm-note" onClick={() => tog('rest')}>
       {open.rest ? 'Show fewer' : `Show all ${v.rest.length}`}</button>}
+  </>
+}
+
+const GROUP_LABEL = Object.fromEntries(WARM_GROUPS.map(g => [g.key, g.label])) as Record<string, string>
+
+/** Ivan's Warm signals: today's three groups (people waiting on an accept with nothing to decide are
+ *  one count line), then today's "Agent conversations". A row opens the whole card (`?warm=`). */
+function WarmSection({ p }: { p: ColumnProps }) {
+  const { c } = p
+  const agentBy = new Map(p.agent.cards.map(a => [a.prospect_id, a] as const))
+  let waiting = 0
+  const shown: WarmCard[] = []
+  for (const w of p.warm.rows) { if (isWaiting(w) && !agentBy.has(w.prospect_id)) waiting++; else shown.push(w) }
+  const order = WARM_GROUPS.map(g => g.key) as string[]
+  shown.sort((a, b) => order.indexOf(warmGroup(a)) - order.indexOf(warmGroup(b)))
+  const agentOnly: ConversationAgentCard[] = agentCardsWithoutWarmCards(p.agent.cards, new Set(p.warm.rows.map(w => w.prospect_id)))
+  const total = shown.length + agentOnly.length
+  return <>
+    <span id="dm-warm" aria-hidden="true" />
+    <Sec label="Warm signals" n={p.warm.failed ? '?' : total} />
+    {p.agent.failed && <Quiet>Agent status could not be verified. Agent approvals are blocked; warm review still works.</Quiet>}
+    {p.agent.note && !p.agent.failed && <Quiet>{p.agent.note}</Quiet>}
+    {p.warm.failed ? <Quiet>Could not read the warm signals.</Quiet>
+      : p.warm.loaded && total === 0 ? <Quiet>No warm signals now. New profile views and post engagers land here before any invite goes out.</Quiet>
+        : shown.map(w => {
+          const act = primaryAction(w)
+          const ag = agentBy.get(w.prospect_id) ?? null
+          const managed = ag !== null && ag.mode !== 'shadow'
+          const k = `w:${w.prospect_id}`
+          const go = (fn: () => Promise<string | null>, key: string) => () => {
+            c.setBusy(key)
+            void fn().then(e => { if (e) c.fail(e) }).finally(() => c.setBusy(null))
+          }
+          return <Row key={w.prospect_id} id={w.prospect_id} name={w.name} company={w.company} conversation={false}
+            tags={[{ kind: 'lane', text: GROUP_LABEL[warmGroup(w)] ?? 'Warm' }]}
+            line={`${evidenceLine(w)} · ${inviteLine(w).text}${ag ? ` · agent: ${ag.owner === 'agent' ? 'owns it' : 'you own it'}` : ''}`}
+            selected={c.selected === w.prospect_id} onOpen={() => p.openWarm(w.prospect_id)}
+            verbs={[
+              ...(act === 'invite' ? [{ label: 'Approve invite', verb: 'approve-invite', run: go(() => p.warmVerbs.approveInvite(w, noteOf(w)), k), busy: c.busy === k }] : []),
+              ...(act === 'dm1' && !managed && dm1Deliverable(w) && w.draft_id ? [{ label: 'Approve DM1', verb: 'approve-dm1', run: go(() => p.warmVerbs.approveDm1(w, w.draft_text ?? '', managed), k), busy: c.busy === k }] : []),
+              ...(!managed ? [{ label: 'Skip', verb: 'skip', quiet: true, run: go(() => p.warmVerbs.skip(w), `ws:${w.prospect_id}`), busy: c.busy === `ws:${w.prospect_id}` }] : []),
+            ]} />
+        })}
+    {agentOnly.length > 0 && <>
+      <Sec label="Agent conversations" n={agentOnly.length} />
+      {agentOnly.map(a => <Row key={a.thread_id} id={a.prospect_id} name={a.prospect_name} conversation={false}
+        tags={[{ kind: 'lane', text: a.owner === 'agent' ? 'Agent' : 'Human' }]}
+        line={a.latest_inbound?.text ?? 'Conversation under agent control'}
+        selected={c.selected === a.prospect_id} onOpen={() => p.openWarm(a.prospect_id)} />)}
+    </>}
+    {waiting > 0 && <Quiet>{waiting === 1 ? '1 invite out, waiting on their accept.' : `${waiting} invites out, waiting on their accept.`}</Quiet>}
   </>
 }

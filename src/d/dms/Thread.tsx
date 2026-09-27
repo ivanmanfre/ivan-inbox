@@ -119,7 +119,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
       <div className="dm-foot">{foot}</div>
       {menu && <ThreadMenu t={t} phone={phone} withAsk={phone} staleN={staleN} onClose={() => setMenu(false)} run={menuRun} />}
       {sheet === 'context' && <ContextSheet t={t} all={all} onClose={() => setSheet(null)} />}
-      {sheet === 'agent' && <AgentSheet t={t} onClose={() => setSheet(null)} />}
+      {sheet === 'agent' && <AgentSheet t={t} onClose={() => setSheet(null)} onChanged={reload} />}
     </section>
   )
 }

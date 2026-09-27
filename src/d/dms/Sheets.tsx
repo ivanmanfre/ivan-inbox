@@ -6,7 +6,9 @@ import { useEffect, useState } from 'react'
 import { fetchProspectContext, fetchScan, saveOperatorNote, type ProspectContext, type ScanInfo } from '../../lib/context'
 import type { Thread } from '../../lib/inbox'
 import { supabase } from '../../lib/supabase'
-import { controlConversationAgent, fetchConversationAgentCards, modeCopy, ownerCopy, type ConversationAgentCard, type ConversationAgentCommand } from '../../wb/dms/conversationAgentData'
+import { fetchConversationAgentCards, type ConversationAgentCard } from '../../wb/dms/conversationAgentData'
+import { seatOf } from '../seats'
+import { AgentEnrollment, AgentPanel } from './Agent'
 import { Key } from '../ui/Key'
 import { Sheet } from '../ui/Sheet'
 import { Failed, Skeleton } from '../ui/states'
@@ -75,41 +77,29 @@ export function ContextSheet({ t, all, onClose }: { t: Thread; all: readonly Thr
   )
 }
 
-export function AgentSheet({ t, onClose }: { t: Thread; onClose: () => void }) {
-  const toast = useToast()
+export function AgentSheet({ t, onClose, onChanged }: { t: Thread; onClose: () => void; onChanged?: () => void }) {
   const [card, setCard] = useState<ConversationAgentCard | null | undefined>(undefined)
   const [why, setWhy] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState(false)
   const load = () => {
-    setCard(undefined); setWhy(null)
-    fetchConversationAgentCards().then(f => {
-      if (f.kind !== 'ready') { setWhy(f.reason); setCard(null); return }
+    setWhy(null); setFailed(false)
+    return fetchConversationAgentCards().then(f => {
+      if (f.kind !== 'ready') { setWhy(f.reason); setFailed(f.kind === 'error'); setCard(null); return }
       setCard(f.cards.find(c => c.prospect_id === t.prospect_id) ?? null)
-    }).catch(e => { setWhy(e instanceof Error ? e.message : String(e)); setCard(null) })
+    }).catch(e => { setWhy(e instanceof Error ? e.message : String(e)); setFailed(true); setCard(null) })
   }
-  useEffect(load, [t.prospect_id]) // eslint-disable-line react-hooks/exhaustive-deps
-  const run = async (cmd: ConversationAgentCommand) => {
-    if (!card) return
-    setBusy(true)
-    try { await controlConversationAgent(card.thread_id, cmd, card.revision); toast.show({ message: cmd === 'stop' ? `Stopped all contact with ${t.prospect_name}.` : `Agent ${cmd === 'pause' ? 'paused' : 'resumed'}.` }); load() }
-    catch (e) { toast.show({ message: e instanceof Error ? e.message : String(e), tone: 'failed' }) }
-    finally { setBusy(false) }
-  }
+  useEffect(() => { setCard(undefined); void load() }, [t.prospect_id]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <Sheet open onClose={onClose} title="Conversation agent" sub={t.prospect_name}
-      foot={card ? <>
-        {card.state === 'paused' ? <Key verb="agent-resume" disabled={busy} onClick={() => run('resume')}>Resume</Key> : <Key verb="agent-pause" disabled={busy || card.state !== 'active'} onClick={() => run('pause')}>Pause</Key>}
-        <Key verb="agent-stop" disabled={busy || card.state === 'stopped'} onClick={() => run('stop')} className="dm-key-warn">Stop contact</Key>
-      </> : undefined}>
+    <Sheet open onClose={onClose} title="Conversation agent" sub={t.prospect_name}>
       <div className="dm-ctx">
-        {card === undefined ? <Skeleton lines={3} /> : card === null
-          ? <p className="dm-meta">{why ?? `The agent is not on this conversation. Enrolling and reviewing agent actions stay in today's DMs page for now.`}</p>
-          : <dl>
-            <div><dt>Owner</dt><dd>{ownerCopy(card.owner)}</dd></div>
-            <div><dt>Mode</dt><dd>{modeCopy(card.mode)}</dd></div>
-            <div><dt>State</dt><dd>{card.state}{card.pause_reason ? ` · ${card.pause_reason.replace(/_/g, ' ')}` : ''}</dd></div>
-            <div><dt>Next</dt><dd>{card.next_action ? card.next_action.kind : 'nothing planned'}</dd></div>
-          </dl>}
+        {card === undefined ? <Skeleton lines={3} />
+          : failed ? <Failed what="the conversation agent" detail={why ?? undefined} onRetry={() => { setCard(undefined); void load() }} />
+            : card === null ? <>
+              {why && <p className="dm-meta">{why}</p>}
+              {!why && <p className="dm-meta">The agent is not on this conversation.</p>}
+              {!why && seatOf(t.client_id) === 'ivan' && <AgentEnrollment />}
+            </>
+              : <AgentPanel card={card} onChanged={async () => { await load(); onChanged?.() }} />}
       </div>
     </Sheet>
   )

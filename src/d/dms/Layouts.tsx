@@ -18,13 +18,14 @@ import { ThreadPane } from './Thread'
 import type { RowCtx } from './threadRows'
 import type { DmsData } from './useDmsData'
 import type { DmVerbs } from './verbs'
+import type { WarmVerbs } from './warmVerbs'
 
 export type PageModel = {
   layout: Layout; mode: Mode; folder: string | null
   q: string; setQ: (s: string) => void; tokens: FilterToken[]; setTokens: (t: FilterToken[]) => void; searchRef: RefObject<HTMLInputElement | null>
   views: Record<Seat, SeatView>; stats: Record<Seat, { days: DayOut[]; replied: number }>; matches: Record<Seat, Thread[]>
   open: Thread | null; threadId: string | null; auto: boolean; threads: Thread[]; byId: ReadonlyMap<string, Thread>
-  data: DmsData; counts: FrameCounts; verbs: DmVerbs; now: number
+  data: DmsData; counts: FrameCounts; verbs: DmVerbs; warmVerbs: WarmVerbs; now: number; fail: (m: string) => void; openWarm: (pid: string) => void
   busy: string | null; setBusy: (s: string | null) => void; checked: Set<string>; setChecked: (s: Set<string>) => void
   openThread: (t: Thread) => void; closeThread: () => void; ask: (t: Thread, i: 'ask' | 'draft') => void
   onMenu: (t: Thread, a: MenuAct) => void; staleN: number; pre: PreReadHandle
@@ -32,7 +33,7 @@ export type PageModel = {
 }
 
 function rowCtx(m: PageModel): RowCtx {
-  return { selected: m.open?.prospect_id ?? m.threadId, checked: m.checked, open: m.openThread, now: m.now, verbs: m.verbs, busy: m.busy, setBusy: m.setBusy }
+  return { selected: m.open?.prospect_id ?? m.threadId, checked: m.checked, open: m.openThread, now: m.now, verbs: m.verbs, busy: m.busy, setBusy: m.setBusy, fail: m.fail }
 }
 
 function Body({ m, seat }: { m: PageModel; seat: Seat }) {
@@ -40,7 +41,7 @@ function Body({ m, seat }: { m: PageModel; seat: Seat }) {
   if (!d.threads.length && d.loading) return <Skeleton lines={6} label={`Reading ${SEAT_NAME[seat]}'s conversations`} />
   if (!d.threads.length && d.error) return <Failed what="the conversations" detail={d.error} onRetry={d.refreshAll} />
   return <ColumnBody seat={seat} view={m.views[seat]} mode={m.mode} matches={m.matches[seat]} c={rowCtx(m)} byId={m.byId}
-    cameBack={d.cameBack} dropCameBack={d.dropCameBack} warm={d.warm} dropWarm={d.dropWarm} dated={d.dated.rows} scanDays={d.scanDays} />
+    cameBack={d.cameBack} dropCameBack={d.dropCameBack} warm={d.warm} agent={d.agent} warmVerbs={m.warmVerbs} openWarm={m.openWarm} dated={d.dated.rows} scanDays={d.scanDays} />
 }
 
 function Pane({ m, phone }: { m: PageModel; phone: boolean }) {

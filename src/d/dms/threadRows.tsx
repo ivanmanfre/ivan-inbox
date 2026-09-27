@@ -14,7 +14,7 @@ export function when(iso: string, now: number = Date.now()): string {
   return dayMonth(iso)
 }
 
-export type RowCtx = { selected: string | null; checked: ReadonlySet<string>; open: (t: Thread) => void; now: number; verbs: DmVerbs; busy: string | null; setBusy: (id: string | null) => void }
+export type RowCtx = { selected: string | null; checked: ReadonlySet<string>; open: (t: Thread) => void; now: number; verbs: DmVerbs; busy: string | null; setBusy: (id: string | null) => void; fail: (m: string) => void }
 
 export function DraftRow({ t, c }: { t: Thread; c: RowCtx }) {
   return <Row id={t.prospect_id} name={t.prospect_name} company={t.prospect_company} tags={rowTags(t)}

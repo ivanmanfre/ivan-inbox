@@ -20,9 +20,13 @@ import { outByDay, replied7d, seatView } from './model'
 import { copyText } from './Thread'
 import { useDmsData } from './useDmsData'
 import { useDmVerbs } from './verbs'
+import { AgentOnlySheet, WarmSheet } from './Warm'
+import { useWarmVerbs } from './warmVerbs'
+import { useToast } from '../ui/toast'
 import { useDmKeys } from './useDmKeys'
 import './dms.css'
 import './dms-thread.css'
+import './dms-more.css'
 
 export default function DmsPage(props: PlaceProps) {
   return <DmAsks><Dms {...props} /></DmAsks>
@@ -47,6 +51,10 @@ function Dms({ layout, route, navigate }: PlaceProps) {
   const ctx = useMemo(() => ({ refresh: () => { data.refreshList(); data.reloadCame(); refreshCounts('dms') }, patch: data.patch }),
     [data.refreshList, data.reloadCame, data.patch, refreshCounts]) // eslint-disable-line react-hooks/exhaustive-deps
   const verbs = useDmVerbs(ctx)
+  const toast = useToast()
+  const fail = useCallback((message: string) => { toast.show({ message, tone: 'failed' }) }, [toast])
+  const warmAfter = useCallback(() => { data.reloadWarm(); data.reloadAgent(); ctx.refresh() }, [data.reloadWarm, data.reloadAgent, ctx]) // eslint-disable-line react-hooks/exhaustive-deps
+  const warmVerbs = useWarmVerbs(warmAfter)
 
   const folder = route.query.get('folder')
   const mode: Mode = folder === 'spam' ? 'spam' : folder === 'email' ? 'email' : q.trim() || tokens.length ? 'search' : 'conversations'
@@ -79,7 +87,20 @@ function Dms({ layout, route, navigate }: PlaceProps) {
     for (const [k, v] of Object.entries(extra)) { if (v == null) next.delete(k); else next.set(k, v) }
     navigate(dHash('dms', null, next))
   }, [route.query, navigate])
-  const openThread = useCallback((t: Thread) => go({ thread: t.prospect_id }), [go])
+  const openThread = useCallback((t: Thread) => go({ thread: t.prospect_id, warm: null }), [go])
+  // `?warm=1` lands on the Warm signals section; `?warm=<prospect>` opens that card (today's deep link).
+  const warm = route.query.get('warm')
+  const openWarm = useCallback((pid: string) => go({ warm: pid }), [go])
+  const closeWarm = useCallback(() => go({ warm: null }), [go])
+  const warmFocused = useRef<string | null>(null)
+  useEffect(() => {
+    if (!warm || warmFocused.current === warm || !data.warm.loaded) return
+    warmFocused.current = warm
+    const el = warm === '1' ? document.getElementById('dm-warm') : document.querySelector(`[data-pid="${CSS.escape(warm)}"]`) ?? document.getElementById('dm-warm')
+    el?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }, [warm, data.warm.loaded])
+  const warmCard = warm && warm !== '1' ? data.warm.rows.find(w => w.prospect_id === warm) ?? null : null
+  const agentOnlyCard = warm && warm !== '1' && !warmCard ? data.agent.cards.find(a => a.prospect_id === warm) ?? null : null
   const closeThread = useCallback(() => go({ thread: null }), [go])
   const toggleCheck = useCallback((id: string) => setChecked(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n }), [])
 
@@ -101,8 +122,14 @@ function Dms({ layout, route, navigate }: PlaceProps) {
 
   const model: PageModel = {
     layout, mode, folder, q, setQ, tokens, setTokens, searchRef, views, stats, matches, open, threadId, auto: autoOpen !== null, threads, byId,
-    data, counts, verbs, now, busy, setBusy, checked, setChecked, openThread, closeThread, ask, onMenu, staleN: stale.length, pre,
+    data, counts, verbs, warmVerbs, fail, openWarm, now, busy, setBusy, checked, setChecked, openThread, closeThread, ask, onMenu, staleN: stale.length, pre,
     phoneSeat, setPhoneSeat: (s: Seat) => go({ seat: s }), setFolder: (f: string | null) => go({ folder: f, thread: null }),
   }
-  return layout === 'desktop' ? <DesktopDms m={model} /> : <PhoneDms m={model} />
+  const agentChanged = () => { data.reloadAgent(); data.reloadWarm() }
+  return <>
+    {layout === 'desktop' ? <DesktopDms m={model} /> : <PhoneDms m={model} />}
+    {warmCard && <WarmSheet c={warmCard} agent={data.agent.cards.find(a => a.prospect_id === warmCard.prospect_id) ?? null} thread={byId.get(warmCard.prospect_id) ?? null}
+      verbs={warmVerbs} onClose={closeWarm} onOpenThread={openThread} onAgentChanged={agentChanged} />}
+    {agentOnlyCard && <AgentOnlySheet card={agentOnlyCard} thread={byId.get(agentOnlyCard.prospect_id) ?? null} onClose={closeWarm} onOpenThread={openThread} onAgentChanged={agentChanged} />}
+  </>
 }

@@ -11,7 +11,6 @@ import {
 import { clearFollowUp, setFollowUp } from '../../lib/followUp'
 import { formatReturn } from '../../lib/pushLater'
 import { dismissCameBack, undismissCameBack } from '../../wb/dms/cameBackData'
-import { decideWarm, type DecideAction } from '../../wb/dms/warmSignalsData'
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
 import { useAsks } from './asks'
@@ -254,15 +253,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       ctx.refresh()
     }
 
-    async function warm(id: string, action: DecideAction, after: () => void) {
-      try {
-        const r = await decideWarm(id, action)
-        if (!r.ok) fail(r.error ?? 'Nothing changed.')
-      } catch (e) { fail(errText(e)) }
-      after()
-    }
-
-    return { send, discard, later, bringBackNow, saveEdit, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, askOwner, bulkDiscard, warm, isFollowUp }
+    return { send, discard, later, bringBackNow, saveEdit, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, askOwner, bulkDiscard, isFollowUp }
   }, [ctx, confirm, toast, askDiscard, askDate])
 }
 
