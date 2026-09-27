@@ -10,6 +10,7 @@ import { BellButton, BellFeed } from './shell/Bell'
 import { FrameCtx, useFrame, type Frame } from './shell/frame'
 import { lastSynced } from './shell/navModel'
 import { DLayer } from './shell/Layer'
+import { useKeepScroll } from './shell/keepScroll'
 import { WorkflowsHost } from './shell/Workflows'
 import { DPalette } from './shell/Palette'
 import { Dock, PhonePanel, PhoneTop } from './shell/Phone'
@@ -53,6 +54,11 @@ function useLayout(): Layout {
 }
 
 const isD = (h: string) => /^#exp\/d(?:[/?]|$)/.test(h)
+
+const DRAWER_KEY = 'd-claude-open'
+const SIDE_MIN_KEY = 'd-side-min'
+function readFlag(k: string): boolean { try { return localStorage.getItem(k) === '1' } catch { return false } }
+function writeFlag(k: string, v: boolean) { try { localStorage.setItem(k, v ? '1' : '0') } catch { /* private mode */ } }
 
 // The phone reopens where he left it (today's brain-b-place): a hash-less cold
 // start (the home-screen icon) lands on the last place, not always on Lanes.
@@ -164,11 +170,14 @@ function AnswerBar({ setTitleSlot, setToolsSlot }: { setTitleSlot: (el: HTMLElem
   )
 }
 
-function Desktop({ setTitleSlot, setToolsSlot }: { setTitleSlot: (el: HTMLElement | null) => void; setToolsSlot: (el: HTMLElement | null) => void }) {
+function Desktop({ setTitleSlot, setToolsSlot, sideMin, setSideMin }: {
+  setTitleSlot: (el: HTMLElement | null) => void; setToolsSlot: (el: HTMLElement | null) => void
+  sideMin: boolean; setSideMin: (m: boolean) => void
+}) {
   const f = useFrame()
   return (
     <>
-      <Side />
+      <Side min={sideMin} setMin={setSideMin} />
       <main className="d-main">
         <SeatHealthBanner />
         <OfflineLine />
@@ -228,7 +237,9 @@ export default function DShell() {
   const layout = useLayout()
   const route = useDRoute()
   const [bellOpen, setBellOpen] = useState(false)
-  const [claudeOpen, setClaudeOpen] = useState(false)
+  // Desktop keeps the Claude drawer and the panel's width where he left them (today's wb-drawer / wb-railmin).
+  const [claudeOpen, setClaudeOpen] = useState(() => readFlag(DRAWER_KEY) && window.matchMedia?.(DESK_MQ).matches === true)
+  const [sideMin, setSideMin] = useState(() => readFlag(SIDE_MIN_KEY))
   const [palette, setPalette] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [titleSlot, setTitleSlot] = useState<HTMLElement | null>(null)
@@ -238,6 +249,11 @@ export default function DShell() {
   const openBell = useCallback((o: boolean) => { setBellOpen(o); if (o) setPanelOpen(false) }, [])
   const openClaude = useCallback((o: boolean) => { setClaudeOpen(o); if (o) setPanelOpen(false) }, [])
   const openPalette = useCallback(() => setPalette(true), [])
+
+  useEffect(() => { if (layout === 'desktop') writeFlag(DRAWER_KEY, claudeOpen) }, [claudeOpen, layout])
+  useEffect(() => { writeFlag(SIDE_MIN_KEY, sideMin) }, [sideMin])
+
+  useKeepScroll(route.place, layout, location.hash)
 
   // Moving to another place closes the transient layers.
   useEffect(() => { setBellOpen(false); setPanelOpen(false) }, [route.place])
@@ -286,7 +302,7 @@ export default function DShell() {
           <ToastProvider>
             <DConfirmProvider>
               {layout === 'desktop'
-                ? <Desktop setTitleSlot={setTitleSlot} setToolsSlot={setToolsSlot} />
+                ? <Desktop setTitleSlot={setTitleSlot} setToolsSlot={setToolsSlot} sideMin={sideMin} setSideMin={setSideMin} />
                 : <PhoneFrame setToolsSlot={setToolsSlot} panelOpen={panelOpen} setPanelOpen={setPanelOpen} />}
               <WorkflowsHost />
               <DLayer>

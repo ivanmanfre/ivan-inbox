@@ -75,19 +75,26 @@ export function WorkflowsKey({ onOpen }: { onOpen?: () => void }) {
   )
 }
 
-export function Side() {
+export function Side({ min = false, setMin }: { min?: boolean; setMin?: (m: boolean) => void }) {
   const f = useFrame()
   const { items, synced } = useNavModel()
   const main = items.filter(i => PLACES[i.id].nav === 'main')
   const low = items.filter(i => PLACES[i.id].nav === 'low')
   return (
-    <aside className="d-side" aria-label="Places">
+    <aside className={`d-side${min ? ' d-side-min' : ''}`} aria-label="Places">
       <Brand />
+      {setMin && (
+        <button type="button" className="d-side-fold" data-verb="side-fold" aria-pressed={min}
+          aria-label={min ? 'Show the panel' : 'Narrow the panel'} title={min ? 'Show the panel' : 'Narrow the panel'} onClick={() => setMin(!min)}>
+          <DIcon name={min ? 'more' : 'back'} />
+        </button>
+      )}
       <nav className="d-nav">
         {main.map(i => (
           <div key={i.id} className="d-navi">
-            <a href={dHash(i.id)} className={f.route.place === i.id ? 'd-on' : undefined} aria-current={f.route.place === i.id ? 'page' : undefined}>
+            <a href={dHash(i.id)} className={f.route.place === i.id ? 'd-on' : undefined} aria-current={f.route.place === i.id ? 'page' : undefined} title={min ? i.label : undefined}>
               <DIcon name={PLACES[i.id].icon} /><span>{i.label}</span>{i.id === 'claude' && <ClaudeWorking />}
+              {min && i.failed > 0 && <em className="d-side-pip" aria-label={`${i.failed} failed`}>!</em>}
             </a>
             <NavLineView item={i} />
           </div>
