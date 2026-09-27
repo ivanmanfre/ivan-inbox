@@ -35,13 +35,12 @@ export function Queue({ lane, setLane, seat, fresh, older, counts, openId, onOpe
             </button>
           ))}
         </div>
-        <small>{cap}</small>
-        <span className="cn-kk"><kbd>j</kbd><kbd>k</kbd>walk</span>
+        <span className="cn-kk" title={`${cap}. j and k walk the list.`} />
       </div>
       {seat.error ? <Failed what={`${LANE_NAME[lane]}'s drafts`} detail={seat.error} onRetry={seat.refresh} />
         : seat.loading && !seat.loadedAt ? <Skeleton lines={5} title={false} label="Reading the queue" />
           : fresh.length === 0 && older.length === 0 ? (
-            <div className="cn-fold"><span>Nothing waits on you here. Every draft in review is decided{lane === 'ivan' ? '' : ' or already on the board'}.</span></div>
+            <div className="cn-fold"><span>Nothing waiting.</span></div>
           ) : (
             <div role="list">
               {fresh.length === 0 && <div className="cn-fold"><span>Nothing from the last two weeks.</span></div>}

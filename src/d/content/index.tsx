@@ -5,7 +5,7 @@ import { useReportFailed } from '../shell/health'
 import { AnswerRow, N } from '../ui/AnswerRow'
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
-import { warsawDay, warsawDayTime, warsawHm } from '../ui/time'
+import { warsawDayTime, warsawHm } from '../ui/time'
 import { localDay } from '../../lib/content'
 import { scheduleGuarded } from './writes'
 import { DraftWindow } from './DraftWindow'
@@ -87,7 +87,6 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   useReportFailed('content', data.failed + LANES.filter(l => banks[l].error).length)
 
   const n = (l: Lane) => (data.seats[l].error || !data.seats[l].loadedAt ? null : scheduledIn(data.seats[l].rows, l, wk1))
-  const archReview = data.seats.arch.rows.filter(r => r.status === 'review' && r.board_visible === true && r.scheduled_at && wk1.some(d => d.key === warsawDay(r.scheduled_at as string))).length
   const blocked = data.verdict?.find(p => p.errors)?.text ?? null
   const ivanStuck = errorRows(data.seats.ivan.rows, 'ivan', now).filter(r => r.status === 'scheduled').length
   const stuck = blocked ? 'a post is blocked, see Errors' : ivanStuck ? `${ivanStuck} post${ivanStuck === 1 ? '' : 's'} never went out` : null
@@ -103,11 +102,9 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   ) : reading ? <>Reading {sub === 'ideas' ? 'the idea banks' : 'the posts of all three seats'}…</> : sub === 'ideas'
     ? <>Ideas to decide: <N v={ideasN.ivan} /> yours, <N v={ideasN.risedtc} /> Mattan’s, <N v={ideasN.arch} /> Davorin’s.</>
     : <>{weekWord(now)}: <N v={n('ivan')} /> yours, <N v={n('risedtc')} /> Rise, <N v={n('arch')} /> Arch posts scheduled.</>
-  const subLine = sub === 'ideas' ? 'Approving an idea starts a draft. Nothing here reaches a client.'
-    : sub === 'errors' ? [`Publisher-stopped posts count here, as in today's Errors tab.`, stalledLine].filter(Boolean).join(' ')
-      : sub === 'queue' ? 'Your feed only: what the publisher holds for LinkedIn. Unpublish asks first.'
-        : !native ? null
-          : [archReview ? `Arch’s ${archReview} ${archReview === 1 ? 'is' : 'are'} in review on Davorin’s board.` : null, blocked, stalledLine].filter(Boolean).join(' ') || null
+  // One headline; a second line only for posts stuck in generation (work that needs Ivan).
+  // A lint-blocked post is said once, in Ivan's seat column and the Errors count.
+  const subLine = sub === 'queue' ? 'Your feed only.' : stalledLine || null
 
   const armIt = useCallback(async (id: string) => {
     const r = data.seats.ivan.rows.find(x => x.id === id)
@@ -215,7 +212,6 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
                 {plan === 'weeks' && (draft ? [0, 1].map(i => (
                   <button key={i} type="button" className={wkIdx === i ? 'cn-on' : ''} onClick={() => setWeek(i as 0 | 1)}>Week of {days[i * 5].dm}</button>
                 )) : <button type="button" className="cn-on">Weeks of {days[0].dm} and {days[5].dm}</button>)}
-                <em>{plan === 'month' ? 'Every post of one seat, weekends included; drag a post or an undated draft onto a day' : draft ? 'Both weeks side by side when no post is open' : 'Tap a post to open it; ⇄ or drag it to another day'}</em>
               </div>
               {plan === 'month' ? month : <Wall {...wallProps} days={shownDays} ghost={moveGhost ?? ghost} lift={moveRow?.id ?? null} />}
             </>

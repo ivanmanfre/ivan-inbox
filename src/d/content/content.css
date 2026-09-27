@@ -40,7 +40,7 @@
 .cn-gap{background:var(--gap)}
 .cn-feed{padding:10px 10px 8px;border-right:1px solid var(--strong);border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:2px;min-width:0}
 .cn-feed b{font:600 16px var(--f)}.cn-feed small{color:var(--t2);font-size:12.5px}
-.cn-feed .cn-fn{margin-top:8px;font-size:13px;color:var(--t2)}.cn-feed .cn-fn em{font:500 19px var(--m);font-style:normal;color:var(--t1);margin-right:4px}
+.cn-feed .cn-fn{margin-top:8px;font-size:13px;color:var(--t2)}.cn-feed .cn-fn em{font:500 26px var(--m);font-style:normal;color:var(--t1);margin-right:4px}
 .cn-feed .cn-warn{color:var(--warn)}
 .cn-cell{min-height:150px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:5px;min-width:0;position:relative}
 .cn-cell.cn-none{background:repeating-linear-gradient(135deg,transparent 0 7px,rgba(255,255,255,.035) 7px 8px)}
