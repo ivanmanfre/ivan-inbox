@@ -21,6 +21,8 @@ import { Failed, Offline } from '../ui/states'
 import { useOnline } from '../ui/useOnline'
 import { CampaignsCell, DeliveryCell, InboundCell, type BandCtx } from './bandCells'
 import { CampaignSheet } from './CampaignSheet'
+import { ControlSheet } from './ControlSheet'
+import { monitorLiveness } from '../../lib/campaignControl'
 import { answerOf, hm, RANGES, type Range } from './model'
 import { monitorLine, RangeKeys } from './foot'
 import { Phone } from './Phone'
@@ -55,6 +57,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
     d: data, now, range, selected: sheet === 'campaign' ? q.get('c') : null,
     openCampaign: id => go({ sheet: 'campaign', c: id, seat: q.get('seat') }),
     openSheet: (kind, seat) => go({ sheet: kind, c: null, for: seat ?? null }),
+    openControl: seat => go({ sheet: 'control', c: null, for: seat }),
   }
   const glance = useGlance(now)
   const g: GlanceCtx = {
@@ -74,15 +77,21 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
   const forSeat = (SEATS as readonly string[]).includes(q.get('for') ?? '') ? (q.get('for') as Seat) : null
   const probs = (data.cc.value?.recurrence?.items ?? []).filter(i => i.rank?.daily_pick).slice(0, 3).length
 
+  const p = data.cc.value
+  const staleMin = p && monitorLiveness(p, now) === 'stale' && p.monitor.last_tick_at ? Math.max(1, Math.round((now - Date.parse(p.monitor.last_tick_at)) / 6e4)) : null
   const top = <>
     {!online && <Offline since={at ? hm(at) : null} />}
     {data.cc.failed && !data.cc.value && <Failed what="the send monitor" detail={data.cc.failed} onRetry={refresh} />}
+    {staleMin != null && <p className="dl-notice dl-al">The monitor last reported {staleMin} minutes ago, past its own staleness budget, so every seat below reads unverified whatever the snapshot said.</p>}
+    {p?.coverage.degraded && <p className="dl-notice">Coverage degraded{p.coverage.degraded_reasons.length ? `: ${p.coverage.degraded_reasons.join(' · ')}` : '.'}</p>}
   </>
   const sheets = <>
     {camp && <CampaignSheet c={camp} now={now} onClose={close} />}
     {sheet === 'campaign' && !camp && data.perf.value && (
       <Sheet open onClose={close} title="Campaign not found" sub="This campaign is archived or no longer in the list." className="dl-sheet"><p className="dl-sl">Nothing to show.</p></Sheet>
     )}
+    {sheet === 'control' && <ControlSheet seat={forSeat ?? cols[0]} p={data.cc.value} gov={data.gov.value?.find(x => x.client_id === (forSeat ?? cols[0])) ?? null}
+      pauses={data.pauses.value} pausesFailed={data.pauses.failed} now={now} onClose={close} />}
     {sheet && (SHEETS as string[]).includes(sheet) && <LanesSheet kind={sheet as SheetKind} seat={forSeat} p={data.cc.value} range={range} onClose={close} />}
   </>
   const doors = (

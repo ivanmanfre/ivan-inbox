@@ -9,7 +9,7 @@ import { ackId, useAck } from './ack'
 import { clientOf, controlOf, dm, hm, seatWord, todayOf } from './model'
 import type { LanesData } from './useLanesData'
 
-export type CellCtx = { d: LanesData; now: number }
+export type CellCtx = { d: LanesData; now: number; openControl?: (seat: Seat) => void }
 
 export const PERSON: Record<Seat, string> = { ivan: 'Iván Manfredi', risedtc: 'Mattan Danino', arch: 'Davorin Smit' }
 const Sep = () => <span className="dl-sep">·</span>
@@ -98,7 +98,11 @@ export function ControlCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
   const inc = v?.incident ?? null
   const [acked, ack] = useAck(inc ? ackId(inc) : null, Boolean(inc?.acknowledged))
   const pause = ctx.d.pauses.value?.[seat]
+  const kill = ctx.d.pauses.value?.all
   const pausedUntil = inc?.pausedUntil ?? (pause && Date.parse(pause) > ctx.now ? hm(pause) : null)
+  // A pause with no incident still stops the seat: say so (seat key, or the manual stop for every seat).
+  const bare = !inc && pause && Date.parse(pause) > ctx.now ? `Paused until ${dm(pause)} ${hm(pause)} (this seat's pause after refused invites).` : null
+  const stop = kill && Date.parse(kill) > ctx.now ? `Manual stop on every seat until ${dm(kill)} ${hm(kill)}.` : null
   if (!v) return <div className="dl-ct"><p className="dl-unk">{ctx.d.cc.failed ? `The send monitor could not be read: ${ctx.d.cc.failed}` : 'Reading the send monitor…'}</p></div>
   return (
     <div className="dl-ct">
@@ -114,12 +118,16 @@ export function ControlCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
             <Key size="small" verb="acknowledge" disabled={acked} onClick={ack} aria-label={acked ? 'Acknowledged' : 'Acknowledge this incident'}>{acked ? 'Acknowledged' : 'Acknowledge'}</Key>
           </div>
         </div>
-      ) : <p className="dl-lead">{v.lead}</p>}
+      ) : null}
+      {(!inc || v.lead !== inc.lead) && <p className={inc ? 'dl-kv' : 'dl-lead'}>{v.lead}</p>}
+      {(bare || stop) && <p className="dl-kv dl-al">{[stop, bare].filter(Boolean).join(' ')}</p>}
+      {v.blockers.length > 0 && <p className="dl-kv dl-al">Cannot send right now: {v.blockers.join('; ')}.</p>}
       <div className="dl-kv"><span className="dl-k">Window</span> {v.window}<Sep />
         {v.closed ? <>opens <b>{v.opens ?? 'not scheduled'}</b></> : <>{v.pct ?? '?'}% gone<Sep />{v.pace}{v.planned != null ? ` (${v.sent} of ${v.planned})` : ''}</>}
       </div>
       <div className="dl-kv"><span className="dl-k">Waiting</span> {v.pools.length ? v.pools.map(([k, n], i) => <span key={k}>{i ? ', ' : ''}{k} <b>{n}</b></span>) : 'unknown'}<Supply seat={seat} ctx={ctx} /></div>
-      {!inc && v.next && <div className="dl-kv"><span className="dl-k">Next</span> {v.next}</div>}
+      {v.next && <div className="dl-kv"><span className="dl-k">Next</span> {v.next}</div>}
+      {ctx.openControl && <button type="button" className="dl-more" data-open="control" onClick={() => ctx.openControl!(seat)}>Detail: session, pauses, lanes, governor, incidents ›</button>}
     </div>
   )
 }

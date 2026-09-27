@@ -145,6 +145,19 @@ export function reasonWord(r: string): string {
   return r.replace(/_/g, ' ')
 }
 
+/* The seat's eligible supply counted ONCE (today's Control.tsx seatEligible): the
+   producer stamps the seat-wide figure on every source lane and adds the lanes
+   up for the channel, so the channel figure is that number times the lane count. */
+export function seatEligible(ch: { eligible_stock?: number | null; eligible_stock_by_pool?: Record<string, unknown> | null; by_lane?: Array<{ eligible_stock?: number | null }> }): number | null {
+  const lv = (ch.by_lane ?? []).map(l => l.eligible_stock).filter((v): v is number => typeof v === 'number')
+  if (lv.length > 0 && lv.every(v => v === lv[0])) return lv[0]
+  const raw = (ch.eligible_stock_by_pool ?? {}) as Record<string, unknown>
+  const inner = (raw.by_pool && typeof raw.by_pool === 'object' ? raw.by_pool : raw) as Record<string, unknown>
+  const pools = Object.values(inner).filter((v): v is number => typeof v === 'number')
+  if (pools.length) return pools.reduce((a, v) => a + v, 0)
+  return ch.eligible_stock ?? null
+}
+
 export type ControlView = {
   incident: (CcIncident & { lead: string; pausedUntil: string | null; check: string | null }) | null
   lead: string; window: string; closed: boolean; opens: string | null; pct: number | null; pace: string
