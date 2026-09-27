@@ -8,7 +8,8 @@ import {
   saveDraftEmail, saveDraftText, snoozeDraft, threadChatId, unsnoozeDraft, REPLY_MYSELF,
   type InboxMessage, type Thread,
 } from '../../lib/inbox'
-import { clearFollowUp, setFollowUp } from '../../lib/followUp'
+import { clearFollowUp, fetchFollowUp, followUpSuggestion, setFollowUp, type FollowUp } from '../../lib/followUp'
+import { laterPath } from './later'
 import { formatReturn } from '../../lib/pushLater'
 import { dismissCameBack, undismissCameBack } from '../../wb/dms/cameBackData'
 import { useDConfirm } from '../ui/confirm'
@@ -25,6 +26,8 @@ export type VerbCtx = {
   patch: (ids: string[], p: Partial<InboxMessage>) => void
   /** Show a solve (or its undo) at once on every reader of the frame's inbox. */
   solved?: (pid: string, at: string | null) => void
+  /** Re-read the dated follow-ups (the Later section). */
+  dated?: () => void
 }
 
 // supabase-js hands back a plain PostgrestError object ({message, code}), not an Error: read its
@@ -164,11 +167,17 @@ export function useDmVerbs(ctx: VerbCtx) {
       ctx.refresh()
     }
 
+    /** Later: ONE key. A pending draft is snoozed (today's push); a draftless Rise/Arch thread gets
+     *  today's dated follow-up. laterPath (later.ts) picks the path; both carry Undo. */
     async function later(t: Thread, ed: Edits): Promise<string | null> {
+      const path = laterPath(t)
+      if (path === 'followup') { await followUp(t, null, ''); return null }
+      if (path !== 'snooze') return null
       const draft = t.draft
       if (!draft) return null
-      const until = await askDate(t.prospect_name, 'draft')
-      if (!until) return null
+      const ans = await askDate(t.prospect_name, 'draft')
+      if (!ans) return null
+      const until = ans.at
       const comp = t.companionDraft
       try {
         // His edits travel with the push (today's order: text, email, park; then the other leg).
@@ -184,7 +193,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       ctx.patch(ids, { snoozed_until: until, snoozed_at: new Date().toISOString() })
       ctx.refresh()
       toast.show({
-        message: `Pushed ${first(t)} to ${formatReturn(until)}.`, sub: 'Nothing is sent. It comes back sooner if they write.',
+        message: `Later: ${first(t)} comes back ${formatReturn(until)}.`, sub: 'Nothing is sent. It comes back sooner if they write.',
         action: { label: 'Undo', verb: 'undo', run: () => { void bringBackNow(t) } },
       })
       return null
@@ -207,6 +216,22 @@ export function useDmVerbs(ctx: VerbCtx) {
       ctx.patch([draft.id], { message_text: ed.main })
       toast.show({ message: 'Draft saved.', sub: 'Nothing is sent until you press Send.' })
       ctx.refresh()
+      return null
+    }
+
+    /** Inline edit (Ivan 09-27: "I have to click on Edit to edit any drafts"): the same guarded
+     *  writes as Save, quiet (no receipt, no list re-read). Returns the failure, or null. */
+    async function autosave(t: Thread, ed: Edits): Promise<string | null> {
+      const draft = t.draft
+      if (!draft) return null
+      const comp = t.companionDraft
+      try {
+        if (ed.main !== draft.message_text) await saveDraftText(draft.id, ed.main)
+        if (draft.email_mirror_text != null && ed.email != null && ed.email !== draft.email_mirror_text) await saveDraftEmail(draft.id, ed.email)
+        if (comp && ed.companion != null && ed.companion !== comp.message_text) await saveDraftText(comp.id, ed.companion)
+      } catch (e) { return errText(e) }
+      ctx.patch([draft.id], draft.email_mirror_text != null && ed.email != null ? { message_text: ed.main, email_mirror_text: ed.email } : { message_text: ed.main })
+      if (comp && ed.companion != null) ctx.patch([comp.id], { message_text: ed.companion })
       return null
     }
 
@@ -263,16 +288,28 @@ export function useDmVerbs(ctx: VerbCtx) {
       return true
     }
 
+    /** Today's dated follow-up (setFollowUp). `at` given = the one-tap suggestion; null asks the
+     *  Later picker (with the note). Undo puts the previous date back, or clears it. */
     async function followUp(t: Thread, at: string | null, why: string): Promise<boolean> {
-      const when = at ?? await askDate(t.prospect_name, 'followup')
-      if (!when) return false
-      try { await setFollowUp(t.prospect_id, when, why) } catch (e) { fail(errText(e)); return false }
-      toast.show({ message: `A follow-up to ${first(t)} drafts ${formatReturn(when)}.`, sub: `If ${first(t)} writes first, the date is dropped.` })
+      let prev: FollowUp | null = null
+      try { prev = await fetchFollowUp(t.prospect_id) } catch { prev = null }
+      let when = at, note = why
+      if (!when) {
+        const ans = await askDate(t.prospect_name, 'followup', { note: true, noteInit: why || prev?.note || '', suggest: followUpSuggestion(t.draft?.draft_evidence) })
+        if (!ans) return false
+        when = ans.at; note = ans.note
+      }
+      try { await setFollowUp(t.prospect_id, when, note) } catch (e) { fail(errText(e)); return false }
+      ctx.dated?.()
+      toast.show({
+        message: `Later: a follow-up to ${first(t)} drafts ${formatReturn(when)}.`, sub: `If ${first(t)} writes first, the date is dropped.`,
+        action: { label: 'Undo', verb: 'undo', run: () => { void (prev ? setFollowUp(t.prospect_id, prev.at, prev.note ?? '') : clearFollowUp(t.prospect_id)).then(() => ctx.dated?.()).catch(e => fail(`Could not undo: ${errText(e)}`)) } },
+      })
       return true
     }
 
     async function followUpClear(t: Thread): Promise<boolean> {
-      try { await clearFollowUp(t.prospect_id); return true } catch (e) { fail(errText(e)); return false }
+      try { await clearFollowUp(t.prospect_id); ctx.dated?.(); return true } catch (e) { fail(errText(e)); return false }
     }
 
     async function holdDiscard(t: Thread) {
@@ -314,7 +351,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       await bulkDiscard(stale, '', { title: `Discard ${stale.length} stale draft${stale.length === 1 ? '' : 's'}?`, message: 'These threads already have your own reply after the last inbound message. Nothing is sent.', confirmText: 'Discard stale' })
     }
 
-    return { rowDiscard, discardStale, send, discard, solved, later, bringBackNow, saveEdit, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, askOwner, bulkDiscard, isFollowUp }
+    return { rowDiscard, discardStale, send, discard, solved, later, bringBackNow, saveEdit, autosave, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, askOwner, bulkDiscard, isFollowUp }
   }, [ctx, confirm, toast, askDiscard, askDate])
 }
 

@@ -31,6 +31,8 @@ export type SeatView = {
   /** The Email folder: threads whose email reply (or pending email leg) waits on him, and the rest. */
   emailWaiting: Thread[]
   emailRest: Thread[]
+  /** Every live conversation on the seat, newest activity first (All conversations). */
+  all: Thread[]
 }
 
 /** Nobody on LinkedIn: every message rode email. Such a thread stays in the Email folder only
@@ -61,7 +63,7 @@ export function isThrownRecently(t: Thread, now: number = Date.now()): boolean {
 export function seatView(threads: Thread[], seat: Seat, now: number = Date.now(), scanDays: ReadonlyMap<string, number> = new Map()): SeatView {
   const mine = seatThreads(threads, seat).filter(isConversation)
   const live = mine.filter(t => !t.spam)
-  const v: SeatView = { seat, owner: [], drafted: [], nodraft: [], later: [], older: [], auto: [], rest: [], thrown: [], spam: [], email: [], emailOwed: [], emailWaiting: [], emailRest: [] }
+  const v: SeatView = { seat, owner: [], drafted: [], nodraft: [], later: [], older: [], auto: [], rest: [], thrown: [], spam: [], email: [], emailOwed: [], emailWaiting: [], emailRest: [], all: [] }
   for (const t of live) {
     const bucket = threadBucket(t, now)
     if (isEmailOnly(t)) {
@@ -93,6 +95,7 @@ export function seatView(threads: Thread[], seat: Seat, now: number = Date.now()
   const em = splitEmail(v.email, now)
   v.emailWaiting = em.waiting
   v.emailRest = em.rest
+  v.all = [...live].sort((a, b) => Date.parse(eventTime(b.last)) - Date.parse(eventTime(a.last)))
   return v
 }
 

@@ -6,6 +6,7 @@ import { warsawDay, warsawDm, warsawDow, warsawHm } from '../ui/time'
 import { ago, firstLine, flat, lastDiscard, owedSince, rowTags } from './model'
 import { Row } from './Row'
 import type { DmVerbs } from './verbs'
+import type { CameTag } from './signals'
 
 export const dayMonth = (iso: string) => `${warsawDow(iso)} ${warsawDm(iso)}`
 
@@ -17,13 +18,15 @@ export function when(iso: string, now: number = Date.now()): string {
 }
 
 export type RowCtx = { selected: string | null; checked: ReadonlySet<string>; open: (t: Thread) => void; now: number; verbs: DmVerbs; busy: string | null; setBusy: (id: string | null) => void; fail: (m: string) => void
-  pre: PreReadHandle; more: (t: Thread) => void }
+  pre: PreReadHandle; more: (t: Thread) => void
+  /** Came-back tags by person (signals.ts): shown beside the name on every row of theirs. */
+  came?: ReadonlyMap<string, CameTag> }
 
-/** The row extras every conversation row carries: unread dot, ⋯ key, the Sum up line. */
-function extras(t: Thread, c: RowCtx): { unread: boolean; onMore: () => void; note: ReactNode } {
+/** The row extras every conversation row carries: unread dot, ⋯ key, the Sum up line, the came-back tag. */
+export function extras(t: Thread, c: RowCtx): { unread: boolean; onMore: () => void; note: ReactNode; signal: CameTag | null } {
   const st = c.pre.get(t.prospect_id)
   const note = st.s === 'done' ? st.line : st.s === 'running' ? 'Reading it…' : st.s === 'error' ? st.why : null
-  return { unread: t.unread > 0, onMore: () => c.more(t), note }
+  return { unread: t.unread > 0, onMore: () => c.more(t), note, signal: c.came?.get(t.prospect_id) ?? null }
 }
 
 export function DraftRow({ t, c }: { t: Thread; c: RowCtx }) {

@@ -3,12 +3,15 @@ import { internalHoldSummary, threadBucket, type Thread } from '../../lib/inbox'
 import { cameBackLine, firstComment, sentLine, type CameBackCard } from '../../wb/dms/cameBackData'
 import { agentCardsWithoutWarmCards, type ConversationAgentCard } from '../../wb/dms/conversationAgentData'
 import { WARM_GROUPS, dm1Deliverable, evidenceLine, inviteLine, isWaiting, primaryAction, warmGroup, type WarmCard } from '../../wb/dms/warmSignalsData'
-import { seatOf, type Seat } from '../seats'
+import { type Seat } from '../seats'
 import { needsCount, type SeatView } from './model'
+import { laterItems } from './later'
 import { Btn } from '../ui/Key'
 import { Quiet, Row, Sec } from './Row'
 import { Section, useFolds, type Folds } from './Section'
-import { AnyRow, DraftRow, LaterRow, NoDraftRow, SentRow, SpamRow, ThrownRow, dayMonth, type RowCtx } from './threadRows'
+import { AnyRow, DraftRow, LaterRow, NoDraftRow, SpamRow, ThrownRow, dayMonth, type RowCtx } from './threadRows'
+import { AllConvos } from './AllConvos'
+import { signalItems } from './signals'
 import type { AgentSide, Side } from './useDmsData'
 import { noteOf, type WarmVerbs } from './warmVerbs'
 
@@ -68,8 +71,8 @@ export function ColumnBody(p: ColumnProps) {
   }
 
   const came = p.cameBack.rows.filter(x => (x.tenant as string) === seat)
-  const dated = p.dated.map(d => ({ d, t: p.byId.get(d.prospect_id) })).filter(x => x.t != null && seatOf(x.t.client_id) === seat) as { d: { prospect_id: string; at: string }; t: Thread }[]
-  const olderNd = v.older.filter(t => !t.draft).length
+  const later = laterItems(v.later, p.dated, p.byId, seat)
+  const datedBy = new Map(p.dated.map(d => [d.prospect_id, d.at] as const))
   const needs = [
     ...v.owner.map(t => (
       <button key={t.prospect_id} type="button" className={`dm-hold${c.selected === t.prospect_id ? ' dm-sel' : ''}`} data-d-row={t.prospect_id} onClick={() => c.open(t)}>
@@ -96,95 +99,82 @@ export function ColumnBody(p: ColumnProps) {
         {needsCount(v) === 0 && <Quiet>Nothing waiting on {WHO[seat]}.</Quiet>}
       </>} />
 
-    {v.later.length > 0 && <Section id="later" foldable label="Later" n={v.later.length} folds={folds}
-      rows={v.later.map(t => <LaterRow key={t.prospect_id} t={t} c={c} />)} />}
+    {later.length > 0 && <Section id="later" foldable label="Later" n={later.length} folds={folds}
+      rows={later.map(i => i.kind === 'draft' ? <LaterRow key={i.t.prospect_id} t={i.t} c={c} />
+        : <Row key={i.t.prospect_id} id={i.t.prospect_id} name={i.t.prospect_name} company={i.t.prospect_company}
+          line="a follow-up drafts that morning" right={dayMonth(i.at)} rightKind="later" selected={c.selected === i.t.prospect_id} onOpen={() => c.open(i.t)} />)} />}
 
-    {seat !== 'ivan' && dated.length > 0 && <Section id="dated" foldable label="Follow up on a date" n={dated.length} folds={folds}
-      rows={dated.map(({ d, t }) => <Row key={t.prospect_id} id={t.prospect_id} name={t.prospect_name} company={t.prospect_company}
-        line="drafts that morning" right={dayMonth(d.at)} rightKind="fu" selected={c.selected === t.prospect_id} onOpen={() => c.open(t)} />)} />}
-
-    {(p.cameBack.failed || came.length > 0) && <Section id="came" foldable label="Came back, no reply" n={p.cameBack.failed ? '?' : came.length} folds={folds}
-      before={p.cameBack.failed ? <Quiet>Could not read who came back.</Quiet> : null}
-      rows={p.cameBack.failed ? [] : came.map(x => {
-        const t = p.byId.get(x.prospect_id)
-        const comment = firstComment(x)
-        return <Row key={x.prospect_id} id={x.prospect_id} name={x.name} company={x.company} conversation={Boolean(t)}
-          line={`${cameBackLine(x)}. ${sentLine(x)}${comment ? ` “${comment}”` : ''}${x.icp_score !== null ? ` · ICP ${x.icp_score}` : ''}`}
-          selected={c.selected === x.prospect_id} onOpen={t ? () => c.open(t) : undefined}
-          verbs={[{ label: 'Dismiss', verb: 'dismiss', busy: c.busy === `cb:${x.prospect_id}`, run: () => { c.setBusy(`cb:${x.prospect_id}`); void c.verbs.cameBackDismiss(x.prospect_id, x.name, () => p.dropCameBack(x.prospect_id)).finally(() => c.setBusy(null)) } }]} />
-      })} />}
-
-    {seat === 'ivan' && <WarmSection p={p} folds={folds} />}
+    <SignalsSection p={p} folds={folds} came={came} />
 
     {v.thrown.length > 0 && <Section id="thrown" foldable defaultOpen={false} label="Discarded, 3 days" n={v.thrown.length} folds={folds}
       rows={v.thrown.map(t => <ThrownRow key={t.prospect_id} t={t} c={c} />)} />}
 
-    {v.rest.length > 0 && <Section id="rest" foldable defaultOpen={false} label="Sent, waiting on them" n={v.rest.length} folds={folds}
-      rows={v.rest.map(t => {
-        const days = seat === 'ivan' ? p.scanDays.get(t.prospect_id) ?? 0 : 0
-        return <SentRow key={t.prospect_id} t={t} c={c} note={days >= 2 ? `opened your scan again on ${days} days` : null} />
-      })} />}
-
-    {v.older.length > 0 && <Section id="older" foldable defaultOpen={false} n={v.older.length} folds={folds}
-      label={<>Older than 2 weeks{olderNd ? <> · <b>{olderNd} no draft</b></> : null}</>}
-      rows={v.older.map(t => t.draft ? <DraftRow key={t.prospect_id} t={t} c={c} /> : <NoDraftRow key={t.prospect_id} t={t} c={c} />)} />}
-
-    {v.auto.length > 0 && <Section id="auto" foldable defaultOpen={false} label="Auto-replies" n={v.auto.length} folds={folds}
-      rows={v.auto.map(t => <SentRow key={t.prospect_id} t={t} c={c} />)} />}
+    <AllConvos threads={v.all} c={c} folds={folds} dated={datedBy} />
   </>
 }
 
-const GROUP_LABEL = Object.fromEntries(WARM_GROUPS.map(g => [g.key, g.label])) as Record<string, string>
-
-/** Ivan's Warm signals: today's three groups (people waiting on an accept with nothing to decide are
- *  one count line), then today's "Agent conversations". A row opens the whole card (`?warm=`). */
-function WarmSection({ p, folds }: { p: ColumnProps; folds: Folds }) {
-  const { c } = p
+/** Signals: every pre-reply interest signal on the seat in ONE list (signals.ts): Ivan's warm cards
+ *  (their verbs and confirms unchanged), agent-only conversations, and came-back people who have no
+ *  conversation yet. Each row says its kind in words. Open while there is anything in it. */
+function SignalsSection({ p, folds, came }: { p: ColumnProps; folds: Folds; came: CameBackCard[] }) {
+  const { c, seat } = p
   const agentBy = new Map(p.agent.cards.map(a => [a.prospect_id, a] as const))
   let waiting = 0
   const shown: WarmCard[] = []
-  for (const w of p.warm.rows) { if (isWaiting(w) && !agentBy.has(w.prospect_id)) waiting++; else shown.push(w) }
+  if (seat === 'ivan') for (const w of p.warm.rows) { if (isWaiting(w) && !agentBy.has(w.prospect_id)) waiting++; else shown.push(w) }
   const order = WARM_GROUPS.map(g => g.key) as string[]
   shown.sort((a, b) => order.indexOf(warmGroup(a)) - order.indexOf(warmGroup(b)))
-  const agentOnly: ConversationAgentCard[] = agentCardsWithoutWarmCards(p.agent.cards, new Set(p.warm.rows.map(w => w.prospect_id)))
-  const total = shown.length + agentOnly.length
-  const rows = shown.map(w => {
-    const act = primaryAction(w)
-    const ag = agentBy.get(w.prospect_id) ?? null
-    const managed = ag !== null && ag.mode !== 'shadow'
-    const k = `w:${w.prospect_id}`
-    const go = (fn: () => Promise<string | null>, key: string) => () => {
-      c.setBusy(key)
-      void fn().then(e => { if (e) c.fail(e) }).finally(() => c.setBusy(null))
+  const agentOnly: ConversationAgentCard[] = seat === 'ivan' ? agentCardsWithoutWarmCards(p.agent.cards, new Set(p.warm.rows.map(w => w.prospect_id))) : []
+  const items = signalItems(seat, shown, agentOnly, came, p.byId)
+  const rows = items.map(it => {
+    if (it.kind === 'warm') {
+      const w = it.w
+      const act = primaryAction(w)
+      const ag = agentBy.get(w.prospect_id) ?? null
+      const managed = ag !== null && ag.mode !== 'shadow'
+      const k = `w:${w.prospect_id}`
+      const go = (fn: () => Promise<string | null>, key: string) => () => {
+        c.setBusy(key)
+        void fn().then(e => { if (e) c.fail(e) }).finally(() => c.setBusy(null))
+      }
+      return <Row key={`w${w.prospect_id}`} id={w.prospect_id} name={w.name} company={w.company} conversation={false}
+        tags={[{ kind: 'lane', text: it.label }]}
+        line={`${evidenceLine(w)} · ${inviteLine(w).text}${ag ? ` · agent: ${ag.owner === 'agent' ? 'owns it' : 'you own it'}` : ''}`}
+        selected={c.selected === w.prospect_id} onOpen={() => p.openWarm(w.prospect_id)}
+        verbs={[
+          ...(act === 'invite' ? [{ label: 'Approve invite', verb: 'approve-invite', run: go(() => p.warmVerbs.approveInvite(w, noteOf(w)), k), busy: c.busy === k }] : []),
+          ...(act === 'dm1' && !managed && dm1Deliverable(w) && w.draft_id ? [{ label: 'Approve DM1', verb: 'approve-dm1', run: go(() => p.warmVerbs.approveDm1(w, w.draft_text ?? '', managed), k), busy: c.busy === k }] : []),
+          ...(!managed ? [{ label: 'Skip', verb: 'skip', quiet: true, run: go(() => p.warmVerbs.skip(w), `ws:${w.prospect_id}`), busy: c.busy === `ws:${w.prospect_id}` }] : []),
+        ]} />
     }
-    return <Row key={w.prospect_id} id={w.prospect_id} name={w.name} company={w.company} conversation={false}
-      tags={[{ kind: 'lane', text: GROUP_LABEL[warmGroup(w)] ?? 'Warm' }]}
-      line={`${evidenceLine(w)} · ${inviteLine(w).text}${ag ? ` · agent: ${ag.owner === 'agent' ? 'owns it' : 'you own it'}` : ''}`}
-      selected={c.selected === w.prospect_id} onOpen={() => p.openWarm(w.prospect_id)}
-      verbs={[
-        ...(act === 'invite' ? [{ label: 'Approve invite', verb: 'approve-invite', run: go(() => p.warmVerbs.approveInvite(w, noteOf(w)), k), busy: c.busy === k }] : []),
-        ...(act === 'dm1' && !managed && dm1Deliverable(w) && w.draft_id ? [{ label: 'Approve DM1', verb: 'approve-dm1', run: go(() => p.warmVerbs.approveDm1(w, w.draft_text ?? '', managed), k), busy: c.busy === k }] : []),
-        ...(!managed ? [{ label: 'Skip', verb: 'skip', quiet: true, run: go(() => p.warmVerbs.skip(w), `ws:${w.prospect_id}`), busy: c.busy === `ws:${w.prospect_id}` }] : []),
-      ]} />
+    if (it.kind === 'agent') {
+      const a = it.a
+      return <Row key={`a${a.thread_id}`} id={a.prospect_id} name={a.prospect_name} conversation={false}
+        tags={[{ kind: 'lane', text: it.label }, { kind: 'lane', text: a.owner === 'agent' ? 'Agent' : 'Human' }]}
+        line={a.latest_inbound?.text ?? 'Conversation under agent control'}
+        selected={c.selected === a.prospect_id} onOpen={() => p.openWarm(a.prospect_id)} />
+    }
+    const x = it.c, t = it.t
+    const comment = firstComment(x)
+    return <Row key={`c${x.prospect_id}`} id={x.prospect_id} name={x.name} company={x.company} conversation={Boolean(t)}
+      tags={[{ kind: 'lane', text: it.label }]}
+      line={`${cameBackLine(x)}. ${sentLine(x)}${comment ? ` “${comment}”` : ''}${x.icp_score !== null ? ` · ICP ${x.icp_score}` : ''}`}
+      selected={c.selected === x.prospect_id} onOpen={t ? () => c.open(t) : undefined}
+      verbs={[{ label: 'Dismiss', verb: 'dismiss', busy: c.busy === `cb:${x.prospect_id}`, run: () => { c.setBusy(`cb:${x.prospect_id}`); void c.verbs.cameBackDismiss(x.prospect_id, x.name, () => p.dropCameBack(x.prospect_id)).finally(() => c.setBusy(null)) } }]} />
   })
-  // Folded by default only while there is nothing in it (a failed read stays open: it says so).
-  const empty = p.warm.loaded && !p.warm.failed && total === 0
+  const failed = (seat === 'ivan' && p.warm.failed) || p.cameBack.failed
+  const loaded = p.cameBack.loaded && (seat !== 'ivan' || p.warm.loaded)
+  const empty = loaded && !failed && items.length === 0
   return <>
     <span id="dm-warm" aria-hidden="true" />
-    <Section id="warm" foldable defaultOpen={!empty} label="Warm signals" n={p.warm.failed ? '?' : total} folds={folds} rows={rows}
+    <Section key={empty ? 'sig-empty' : 'sig'} id={empty ? 'signals-empty' : 'signals'} foldable defaultOpen={!empty} label="Signals" n={failed ? '?' : items.length} folds={folds} rows={rows}
       before={<>
-        {p.agent.failed && <Quiet>Agent status could not be verified. Agent approvals are blocked; warm review still works.</Quiet>}
-        {p.agent.note && !p.agent.failed && <Quiet>{p.agent.note}</Quiet>}
-        {p.warm.failed ? <Quiet>Could not read the warm signals.</Quiet>
-          : empty ? <Quiet>No warm signals now. New profile views and post engagers land here before any invite goes out.</Quiet> : null}
+        {seat === 'ivan' && p.agent.failed && <Quiet>Agent status could not be verified. Agent approvals are blocked; warm review still works.</Quiet>}
+        {seat === 'ivan' && p.agent.note && !p.agent.failed && <Quiet>{p.agent.note}</Quiet>}
+        {seat === 'ivan' && p.warm.failed && <Quiet>Could not read the warm signals.</Quiet>}
+        {p.cameBack.failed && <Quiet>Could not read who came back.</Quiet>}
+        {empty && <Quiet>No signals now. Profile views, post engagers and people who came back without replying land here.</Quiet>}
       </>}
-      after={<>
-        {agentOnly.length > 0 && <Section id="agent" label="Agent conversations" n={agentOnly.length} folds={folds}
-          rows={agentOnly.map(a => <Row key={a.thread_id} id={a.prospect_id} name={a.prospect_name} conversation={false}
-            tags={[{ kind: 'lane', text: a.owner === 'agent' ? 'Agent' : 'Human' }]}
-            line={a.latest_inbound?.text ?? 'Conversation under agent control'}
-            selected={c.selected === a.prospect_id} onOpen={() => p.openWarm(a.prospect_id)} />)} />}
-        {waiting > 0 && <Quiet>{waiting === 1 ? '1 invite out, waiting on their accept.' : `${waiting} invites out, waiting on their accept.`}</Quiet>}
-      </>} />
+      after={waiting > 0 ? <Quiet>{waiting === 1 ? '1 invite out, waiting on their accept.' : `${waiting} invites out, waiting on their accept.`}</Quiet> : null} />
   </>
 }
