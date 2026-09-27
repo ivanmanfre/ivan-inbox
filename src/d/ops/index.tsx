@@ -6,7 +6,7 @@ import { outboundFeedId, pendingOps } from '../../lib/ops'
 import { useFrameCounts } from '../counts/useFrameCounts'
 import type { PlaceProps } from '../places'
 import { dHash } from '../route'
-import { SEATS, SEAT_NAME, type Seat } from '../seats'
+import { SEATS, type Seat } from '../seats'
 import { useReportFailed } from '../shell/health'
 import { AnswerRow, N } from '../ui/AnswerRow'
 import { DIcon } from '../ui/icons'
@@ -14,8 +14,8 @@ import { Btn } from '../ui/Key'
 import { Failed, Skeleton } from '../ui/states'
 import { warsawHm } from '../ui/time'
 import { OpsCard } from './Card'
-import { DeskLanes, PhoneLanes } from './Lanes'
-import { KIND_TITLE, positionOf, readBoard, timeLeft } from './model'
+import { DeskLanes, PhoneLanes, type QueueLine } from './Lanes'
+import { kindTitle, positionOf, readBoard, timeLeft } from './model'
 import { Reactions } from './Reactions'
 import { TakeoverCard } from './Takeover'
 import { Tasks } from './Tasks'
@@ -72,12 +72,13 @@ export default function OpsPage({ layout, route, navigate }: PlaceProps) {
 
   // ---- the answer ----
   const w = board.waiting
-  const title = <>Waiting on you: <N v={w.ivan} /> yours, <N v={w.risedtc} /> Rise, <N v={w.arch} /> Arch.</>
+  const otherN = board.other.reduce((a, o) => a + o.waiting, 0)
+  const title = <>Waiting on you: <N v={w.ivan} /> yours, <N v={w.risedtc} /> Rise, <N v={w.arch} /> Arch{otherN > 0 && <>, <N v={otherN} /> in other lanes</>}.</>
   const nj = board.flat.find(d => d.kind === 'newsjack' && timeLeft(d.context?.expires_at) !== 'expired')
   const onList = SEATS.reduce((a, s) => a + board.tasks[s], 0)
   // One sentence, the most urgent one: a newsjack's clock, else the ideas
   // waiting for later, else how much of the number sits on the list.
-  const sub = nj ? `A ${SEAT_NAME[SEATS.find(s => board.lanes[s].includes(nj)) ?? 'ivan']} newsjack has ${timeLeft(nj.context?.expires_at)}.`
+  const sub = nj ? `A ${positionOf(board, nj).lane} newsjack has ${timeLeft(nj.context?.expires_at)}.`
     : board.later.length > 0 ? `${board.later.length} more comment ideas wait for later.`
       : onList > 0 ? `${onList} of them ${onList === 1 ? 'is' : 'are'} on your list.` : ''
   const answer = <AnswerRow title={title} sub={ops.loading && ops.drafts.length === 0 ? 'Reading the queue…' : sub} />
@@ -106,6 +107,16 @@ export default function OpsPage({ layout, route, navigate }: PlaceProps) {
   })() : null
 
   const checked = ops.loadedAt ? warsawHm(ops.loadedAt) : '…'
+  // Always-on freshness (today's head sub): an empty queue and a stalled feed look alike otherwise.
+  const fresh = <div className="op-fresh" data-ops-checked>{ops.loadedAt ? `Checked ${checked}` : 'Not read yet'}{ops.error ? ' · the last refresh failed' : ''}</div>
+  // Today's per-lane banner: how many of this lane's comments wait in the poster's line.
+  const queueLine: QueueLine = ids => {
+    const n = queue.waiting.filter(e => ids.has(e.id)).length
+    if (n === 0) return null
+    return queue.cappedToday
+      ? { warn: true, text: `${n} comment${n === 1 ? '' : 's'} held, the poster hit its 3-a-day cap. They stay here for tomorrow.` }
+      : { warn: false, text: `${n} comment${n === 1 ? '' : 's'} queued here, the poster takes one at a time, so this retries the next as its window opens. Leave the tab open.` }
+  }
 
   if (layout === 'phone' && want && sel) {
     const p = positionOf(board, sel)
@@ -113,7 +124,7 @@ export default function OpsPage({ layout, route, navigate }: PlaceProps) {
       <div className="op-page op-phone op-open">
         <div className="op-back">
           <button type="button" className="d-ib" aria-label="Back to Ops" onClick={() => navigate(dHash('ops'))}><DIcon name="back" /></button>
-          <div className="op-backt"><small>{SEAT_NAME[p.seat]} lane · {p.at} of {p.of}</small><b>{KIND_TITLE[sel.kind]}</b></div>
+          <div className="op-backt"><small>{p.lane} lane · {p.at} of {p.of}</small><b>{kindTitle(sel)}</b></div>
         </div>
         {card}
       </div>
@@ -131,9 +142,10 @@ export default function OpsPage({ layout, route, navigate }: PlaceProps) {
     return (
       <div className="op-page op-phone">
         {answer}
+        {fresh}
         {stale}
         {want && !sel && <div className="op-ban">That card is not waiting any more: it was handled or it aged out.</div>}
-        <PhoneLanes board={board} seat={phoneSeat} setSeat={setSeat} onPick={pick} refresh={refresh} />
+        <PhoneLanes board={board} seat={phoneSeat} setSeat={setSeat} onPick={pick} refresh={refresh} queueLine={queueLine} sel={null} />
         {side}
       </div>
     )
@@ -144,8 +156,9 @@ export default function OpsPage({ layout, route, navigate }: PlaceProps) {
       {answer}
       <div className="op-desk">
         <div className="op-left">
+          {fresh}
           {stale}
-          <DeskLanes board={board} sel={sel?.id ?? null} onPick={pick} refresh={refresh} />
+          <DeskLanes board={board} sel={sel?.id ?? null} onPick={pick} refresh={refresh} queueLine={queueLine} />
           <div className="op-master">
             {card ?? <div className="op-quiet op-big">Nothing waiting on you, and this is a live read, not a stall.<br />Checked {checked}.</div>}
           </div>

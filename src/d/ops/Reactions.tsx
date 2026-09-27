@@ -36,14 +36,15 @@ function Card({ r, rx }: { r: ReactionRow; rx: Rx }) {
       <div className="op-rxb">
         {ev?.excerpt ? <blockquote className="op-quote">{ev.excerpt}</blockquote> : r.raw_topic ? <div className="op-note">Angle: {r.raw_topic}</div> : null}
         <Mono parts={[`${fmt(ev?.quotes)} quotes`, `${fmt(ev?.comments)} replies`, `${fmt(ev?.likes)} likes`, `${fmt(ev?.views)} views`]} />
-        <Mono parts={[url && <a className="op-lk" href={url} target="_blank" rel="noreferrer">read the thread</a>, r.shot_url ? 'screenshot captured' : 'no screenshot yet, approving posts the text alone']} />
+        <Mono parts={[url && <a className="op-lk" href={url} target="_blank" rel="noreferrer">read the thread</a>, !r.shot_url && 'no screenshot yet, approving posts the text alone']} />
+        {r.shot_url && <img className="op-shot" src={r.shot_url} alt="Screenshot of the post being answered" loading="lazy" />}
         <label className="op-tape">
           <span className="op-tm"><span>Your reaction</span></span>
           <textarea rows={3} value={body} onChange={e => rx.setBody(r.id, e.target.value)} placeholder="Type your take. Nothing is generated here." />
         </label>
         <div className="op-keys">
           <div className="op-k"><Key verb="kill" size="small" disabled={busy} onClick={async () => {
-            if (await confirm({ title: 'Kill this reaction?', message: 'It comes off the desk for good. Nothing is posted and nothing else happens.', confirmText: 'Kill it' })) void rx.kill(r)
+            if (await confirm({ title: 'Kill this reaction?', message: 'It comes off the desk for good. Nothing is posted and nothing else happens.', confirmText: 'Kill it', danger: true })) void rx.kill(r)
           }}>Kill</Key></div>
           <div className="op-k op-kp"><Key primary verb="reaction-approve" size="small" disabled={busy || !ready} onClick={async () => {
             if (await confirm({
@@ -63,6 +64,7 @@ export function Reactions({ rx }: { rx: Rx }) {
   return (
     <section className="op-rxs" aria-label="Reactions">
       <div className="op-sec"><span>Reactions <b className={rx.rows.length ? '' : 'op-dim'}>{rx.loading && rx.rows.length === 0 ? '…' : rx.rows.length}</b></span></div>
+      {(rx.rows.length > 0 || rx.error) && <p className="op-quiet op-pad">Takes people are already arguing about. On Ivan’s lane approving dates the post for the earliest free day; on Rise it goes to Mattan’s board for his call. Neither publishes anything.</p>}
       {rx.error && <Failed what="the reaction desk" detail={rx.error} onRetry={rx.refresh} />}
       {rx.actionError && <div className="op-err op-pad">{rx.actionError}</div>}
       {rx.done && <div className="op-ban op-pad">{rx.done.lane === 'risedtc'

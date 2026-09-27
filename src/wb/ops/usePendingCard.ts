@@ -11,7 +11,7 @@ import type { ConfirmOpts } from '../../lib/confirm'
 import {
   approveOpsDraft, approveWeeklyReport, canGenerateDraft, canTagCommenter, isCloseOnlyComment,
   discardOpsDraft, DRAFT_CONTINUE_MAX, engineLabel, expiresIn, generateCommentDraft, likeComment,
-  markCommentHandled, outboundApproveUrl, outboundSkipUrl, postCommentReply, isHandWritten, seatLabel, seatPerson,
+  markCommentHandled, outboundApproveUrl, outboundSkipUrl, postCommentReply, isHandWritten, seatFullName, seatLabel, seatPerson,
   dispatchCommentGate, cardStateOf, weeklyReportDispatches, weeklySendAfter,
   archOutcome, archSources, markNeedsDavor, DRAFTER_BUSY,
   type OpsDraft, type GateVerdict, type FeedState,
@@ -97,7 +97,7 @@ export function usePendingCard({ draft, refresh, feed, held, onGateResult, confi
     }
     : isComment
       ? {
-        title: commentCloseOnly ? 'Mark this handled?' : `Post this reply as ${where}?`,
+        title: commentCloseOnly ? 'Mark this handled?' : `Post this reply as ${seatFullName(draft.client_id)}?`,
         message: commentCloseOnly
           ? 'Nothing is posted. The card clears and you stop being reminded about this comment.'
           : `Goes live on LinkedIn under their comment, from the client seat.${tag && canTag && commenterName ? ` Tags ${commenterName} so they get the notification, like a native reply.` : ''}${liked ? '' : ' Their comment gets a like too.'} Checks first that they have not already been answered.`,

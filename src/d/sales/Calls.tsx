@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { LEAD_LABEL, actionItems, callStats, callTitle, leadLine, owedByMe, people, segmentCalls, type CallRow, type CallSegment } from '../../lib/transcripts'
 import { warsawDm } from '../ui/time'
 import type { ReadState } from './useSalesData'
@@ -20,7 +20,8 @@ export function CallsOnRecord({ calls, state, seg, setSeg, openId, onOpen, onRet
   }, [openId, seg])
   const st = callStats(calls)
   const queue = segmentCalls(calls, seg)
-  const shown = limit ? queue.slice(0, limit) : queue
+  const [more, setMore] = useState(false)
+  const shown = limit && !more ? queue.slice(0, limit) : queue
   const counts: Record<CallSegment, number> = { open: st.withActions, recent: st.week, all: st.total }
   return (
     <section className="sl-rec" aria-label="Calls on record" ref={box}>
@@ -53,7 +54,11 @@ export function CallsOnRecord({ calls, state, seg, setSeg, openId, onOpen, onRet
           </button>
         )
       })}
-      {limit && queue.length > limit && <div className="sl-quiet">{queue.length - limit} more in this list: open one and step with Next.</div>}
+      {limit && queue.length > limit && !more && (
+        <button type="button" className="sl-fold" data-verb="show-more" onClick={() => setMore(true)}>
+          <span>{queue.length - limit} more in this list</span><small>show them</small>
+        </button>
+      )}
     </section>
   )
 }

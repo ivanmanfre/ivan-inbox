@@ -24,12 +24,23 @@ export function useSalesData() {
   const [reads, setReads] = useState(0)
   const retry = useCallback(() => setReads(n => n + 1), [])
   const alive = useRef(true)
+  const readAt = useRef(0)
+  // Back on the screen after five minutes away = read again, quietly (today's
+  // Sales): a booking or a new transcript lands without a Retry.
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === 'visible' && readAt.current > 0 && Date.now() - readAt.current > 5 * 60_000) setReads(n => n + 1)
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [])
 
   useEffect(() => {
     alive.current = true
     void (async () => {
       const [e, p, c] = await Promise.allSettled([fetchWeekEvents(week.from, week.to), fetchPackIndex(), fetchCalls()])
       if (!alive.current) return
+      readAt.current = Date.now()
       if (e.status === 'fulfilled') { setEvents(e.value); setEv('ok'); setEvErr('') }
       else { setEv('failed'); setEvErr(e.reason instanceof Error ? e.reason.message : String(e.reason?.message ?? e.reason)) }
       if (p.status === 'fulfilled') { setPacks(p.value); setPk('ok') } else setPk('failed')

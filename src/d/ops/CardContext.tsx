@@ -74,6 +74,7 @@ export function CardContext({ d, liked, needsDavor }: { d: OpsDraft; liked: bool
       return <>
         <Who name={`Update for ${SEAT_PERSON[seat]}`} />
         {receipts.length > 0 && <ul className="op-rc">{receipts.map((r, i) => <li key={i}>{r}</li>)}</ul>}
+        {c.replay === true && <Mono parts={['replay']} />}
       </>
     }
     case 'newsjack':

@@ -138,3 +138,18 @@
 .op-card-phone .op-k.op-kp small{display:block}
 .op-card-phone .op-k .d-face{font-size:14px}
 .op-card-phone .op-tm span:last-child{display:none}
+/* parity pass 09-27 */
+.op-shot{display:block;max-width:100%;border:1px solid var(--line);border-radius:6px;margin:6px 0}
+details.op-why{padding-top:8px}
+details.op-why>summary{cursor:pointer;list-style:none}
+details.op-why>summary::-webkit-details-marker{display:none}
+details.op-why:not([open])>summary::after{content:' ›'}
+.op-qbi{display:flex;flex-direction:column;gap:4px;padding:6px 0;border-top:1px solid var(--line)}
+.op-qbi-r{display:flex;gap:8px;align-items:flex-start}
+.op-qbi-r>span{flex:1;min-width:0;font-size:12.5px;color:var(--t2);white-space:pre-wrap;overflow-wrap:anywhere}
+.op-qbi-k{display:flex;gap:6px;flex:none}
+.op-qbl{background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer;text-align:left}
+.op-other{margin-top:12px}
+.op-fresh{font:400 11px var(--m);color:var(--t3);padding:2px 0 6px}
+.op-desktop .op-fresh{padding:6px 14px 4px}
+.op-phone .op-fresh{padding:0 16px 6px}

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { actionItems, callTitle, fetchCallBody, people, splitBody, type ActionItem, type CallRow } from '../../lib/transcripts'
+import { actionItems, callTitle, callTopics, fetchCallBody, hasOpenBusiness, people, splitBody, type ActionItem, type CallRow } from '../../lib/transcripts'
 import { DIcon } from '../ui/icons'
 import { Key } from '../ui/Key'
-import { warsawDm, warsawDow } from '../ui/time'
+import { CallRoom, callWhen, Topics } from './CallRoom'
 
 // THE CALL WINDOW. What was promised (yours apart from theirs), the next step,
 // what they pushed back on, the summary, the follow-up draft IN FULL (the judge
@@ -53,11 +53,13 @@ function Said({ id }: { id: string }) {
   )
 }
 
-export function CallWindow({ row, at, of, onStep, layout }: {
+export function CallWindow({ row, at, of, onStep, layout, missing }: {
   row: CallRow | null; at: number; of: number; onStep: (d: 1 | -1) => void; layout: 'desktop' | 'phone'
+  /** The address asked for a call that is not in the archive (today's "This call didn't load"). */
+  missing?: boolean
 }) {
+  // j / k at every width, as today's call window (not while typing).
   useEffect(() => {
-    if (layout !== 'desktop') return
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || (e.key !== 'j' && e.key !== 'k')) return
       const el = document.activeElement as HTMLElement | null
@@ -67,35 +69,39 @@ export function CallWindow({ row, at, of, onStep, layout }: {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [layout, onStep])
+  }, [onStep])
 
+  if (missing) return <div className="sl-cw" data-call-missing><div className="sl-quiet sl-big">This call didn't load. It is not in the archive that was read: it may have been removed, or the link is from another account. Pick one from calls on record.</div></div>
   if (!row) return <div className="sl-cw"><div className="sl-quiet sl-big">No call open. Pick one from calls on record.</div></div>
   const items = actionItems(row)
   const b = row.brief
   const who = people(row.participants)
   const objections = (b?.objections ?? []).map(x => (x ?? '').trim()).filter(Boolean)
-  const extracted = items.length > 0 || (row.summary ?? '').trim() || (row.follow_up_draft ?? '').trim() || b
+  const extracted = items.length > 0 || callTopics(row).length > 0 || (row.summary ?? '').trim() || (row.follow_up_draft ?? '').trim() || b
   return (
     <div className={`sl-cw sl-cw-${layout}`} data-open-call={row.id}>
       <div className="sl-cwh">
         <span className="sl-eb">Call</span>
         <b>{callTitle(row.title)}</b>
-        <small>{row.date ? `${warsawDow(row.date)} ${warsawDm(row.date)}` : 'date not recorded'} · {row.duration_minutes ? `${row.duration_minutes} minutes` : 'length not recorded'}{who.length ? ` · ${who.slice(0, 3).join(', ')}` : ''}</small>
+        <small>{callWhen(row.date)}{hasOpenBusiness(row) ? ` · ${items.length} still open` : ''} · {row.duration_minutes ? `${row.duration_minutes} minutes` : 'length not recorded'}{who.length ? ` · ${who.join(', ')}` : ''}</small>
       </div>
       <div className="sl-cwb">
         <Items head="You said you would" list={items.filter(i => i.mine)} />
         <Items head="They said they would" list={items.filter(i => !i.mine)} />
         <Text head="Next step" text={b?.next_step} />
         {objections.length > 0 && <div className="sl-cb"><div className="sl-cbh">They pushed back on</div><ul className="sl-dots">{objections.map((o, i) => <li key={i}>{o}</li>)}</ul></div>}
-        <Text head="Summary" text={row.summary} />
+        <Text head="The hook to open a proposal with" text={b?.proposal_hook} />
         <Text head="Follow-up draft" text={row.follow_up_draft} note={row.follow_up_sent ? 'Sent.' : 'Not sent. Shown as text, nothing here sends it.'} />
+        <Text head="Summary" text={row.summary} />
+        <Topics row={row} />
         {!extracted && <div className="sl-quiet">Nothing was pulled out of this call: no action items, no summary. The words are still here, below.</div>}
         <Said id={row.id} />
+        <CallRoom row={row} />
       </div>
       <div className="sl-cwk">
-        <Key verb="prev-call" disabled={at <= 1} onClick={() => onStep(-1)} sub={layout === 'desktop' ? 'k' : undefined}>Previous</Key>
+        <Key verb="prev-call" disabled={at <= 1} onClick={() => onStep(-1)} sub="k">Previous</Key>
         <div className="sl-cwq"><em>{at}</em>/{of}<small>in this queue</small></div>
-        <Key verb="next-call" disabled={at >= of} onClick={() => onStep(1)} sub={layout === 'desktop' ? 'j' : undefined}>Next</Key>
+        <Key verb="next-call" disabled={at >= of} onClick={() => onStep(1)} sub="j">Next</Key>
       </div>
     </div>
   )

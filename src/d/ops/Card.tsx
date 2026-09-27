@@ -7,8 +7,9 @@ import { useDConfirm } from '../ui/confirm'
 import { Key } from '../ui/Key'
 import { warsawDayTime } from '../ui/time'
 import { CardContext, tapeLabel } from './CardContext'
+import { ArchWhy } from './ArchWhy'
 import { More } from './More'
-import { KIND_TITLE, SEAT_PERSON } from './model'
+import { kindTitle, SEAT_PERSON } from './model'
 
 // THE OPEN CARD. One design for every kind: a mono head line, the context
 // (left on desktop), the draft box, the note, and at most four hardware keys
@@ -20,7 +21,7 @@ import { KIND_TITLE, SEAT_PERSON } from './model'
 export function useCardConfirm() {
   const confirm = useDConfirm()
   return useCallback((o: OldConfirmOpts) => confirm({
-    title: o.title, message: o.message, confirmText: o.confirmText ?? 'OK', cancelText: o.cancelText,
+    title: o.title, message: o.message, confirmText: o.confirmText ?? 'OK', cancelText: o.cancelText, danger: o.danger,
   }), [confirm])
 }
 
@@ -57,24 +58,27 @@ export function OpsCard({ d, refresh, feed, held, onGateResult, layout, pos, wai
   const confirm = useCardConfirm()
   const st = usePendingCard({ draft: d, refresh, feed, held, onGateResult, confirm })
   const [more, setMore] = useState(false)
-  const seat = seatOf(d.client_id) ?? 'ivan'
+  const seat = seatOf(d.client_id)
+  const laneName = seat ? SEAT_NAME[seat] : d.client_id
   const left = st.left
   const cap = captions(d, st)
   const name = String(d.context?.author_name ?? '')
-  const withMore = st.isComment && Boolean(d.context?.comment_id)
+  const hasComment = Boolean(d.context?.comment_id)
+  // Arch comments always get More: Needs Davor and Mark handled need no comment_id (today's card).
+  const withMore = st.isComment && (hasComment || st.isArchComment)
   const off = st.busy || st.drafting
   const primaryOff = st.drafting || (st.isArchComment && !st.body.trim())
   return (
     <section className={`op-card op-card-${layout}`} data-card={d.id} data-kind={d.kind}>
       <header className="op-ch">
-        <span className="op-eb">{KIND_TITLE[d.kind]}</span>
+        <span className="op-eb">{kindTitle(d)}</span>
         <span className="op-ew">
-          {SEAT_NAME[seat]} lane · {warsawDayTime(d.created_at).replace(',', '')} · {pos}{layout === 'desktop' ? ' · j / k' : ''}
+          {laneName} lane{st.where && !st.isComment && !st.isOutbound && st.where !== laneName ? ` · to ${st.where}` : ''} · {warsawDayTime(d.created_at).replace(',', '')} · {pos}{layout === 'desktop' ? ' · j / k' : ''}
           {left && <> · <b className={left === 'expired' ? '' : 'op-hot'}>{left}</b></>}
         </span>
       </header>
       <div className="op-cb">
-        <div className="op-ctx"><CardContext d={d} liked={st.liked} needsDavor={st.needsDavor} /></div>
+        <div className="op-ctx"><CardContext d={d} liked={st.liked} needsDavor={st.needsDavor} /><ArchWhy st={st} /></div>
         <div className="op-rep">
           <label className="op-tape">
             <span className="op-tm"><span>{tapeLabel(d)}</span><span>{st.body.trim() ? 'edit before approving' : 'no draft yet'}</span></span>
@@ -85,6 +89,7 @@ export function OpsCard({ d, refresh, feed, held, onGateResult, layout, pos, wai
             />
           </label>
           {st.editorNote && <div className="op-note">{st.editorNote}</div>}
+          {st.canTag && !st.isCloseOnly && st.tag && st.tagMayFail && <div className="op-note op-warn" data-tag-warn>@ tags {st.commenterName}: may not stick, hidden surname.</div>}
           {st.heldVerdict && <div className="op-ban op-ban-warn"><b>{GATE_HELD_LABEL}</b> {st.heldVerdict.message}</div>}
           {st.postState === 'queued' && !st.heldVerdict && <div className="op-ban">Queued: the poster has it. It posts after its jitter window unless you discard.</div>}
           {st.postState === 'posted' && <div className="op-ban">Posted to LinkedIn.</div>}
@@ -98,7 +103,7 @@ export function OpsCard({ d, refresh, feed, held, onGateResult, layout, pos, wai
             <div className="op-keys">
               <div className="op-k">
                 <Key verb="discard" disabled={off} onClick={() => void st.onDiscard()}>Discard</Key>
-                <small>{cap.discard}</small>
+                <small>{st.discardConfirm.message}</small>
               </div>
               {st.canDraft && (
                 <div className="op-k">
@@ -109,7 +114,7 @@ export function OpsCard({ d, refresh, feed, held, onGateResult, layout, pos, wai
               {withMore && (
                 <div className="op-k">
                   <Key verb="more" aria-expanded={more} onClick={() => setMore(m => !m)}>More</Key>
-                  <small>{st.isArchComment ? 'Like, tag, Davor, sources' : 'Like, tag, emoji'}</small>
+                  <small>{st.isArchComment ? (hasComment ? 'Like, tag, Davor, handled' : 'Davor, handled') : 'Like, tag, emoji'}</small>
                 </div>
               )}
               <div className="op-k op-kp">
@@ -120,7 +125,7 @@ export function OpsCard({ d, refresh, feed, held, onGateResult, layout, pos, wai
           )}
         </div>
       </div>
-      {withMore && <More st={st} name={name} layout={layout} open={more} onClose={() => setMore(false)} />}
+      {withMore && <More st={st} name={name} layout={layout} open={more} onClose={() => setMore(false)} hasComment={hasComment} />}
     </section>
   )
 }
