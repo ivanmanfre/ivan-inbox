@@ -16,9 +16,9 @@ function Row({ r, onReport }: { r: CallEvent; onReport: (id: string) => void }) 
       <div className="sl-fm">
         <div className="sl-fw"><b>{r.name}</b>{r.company && <span>{r.company}</span>}</div>
         <div className="sl-fs">{[r.day, r.rel, r.with && `with ${r.with}`].filter(Boolean).join(' · ')}</div>
-        <PackLinks slug={r.slug} have={r.have} noCompare report={Boolean(r.reportId)} onReport={() => r.reportId && onReport(r.reportId)} />
       </div>
       <Join r={r} />
+      <div className="sl-fl"><PackLinks slug={r.slug} have={r.have} noCompare report={Boolean(r.reportId)} onReport={() => r.reportId && onReport(r.reportId)} /></div>
     </div>
   )
 }
