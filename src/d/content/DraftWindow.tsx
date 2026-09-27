@@ -65,13 +65,15 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
       const el = e.target as HTMLElement | null
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
       if (document.querySelector('.d-confirm, .d-sheet')) return
-      if (e.key === 'j' && at >= 0 && at + 1 < queue.length) { e.preventDefault(); onPick(queue[at + 1]) }
-      else if (e.key === 'k' && at > 0) { e.preventDefault(); onPick(queue[at - 1]) }
-      else if (e.key === 'Escape') onClose()
-      else if (e.key === 'Enter' && (lane === 'ivan' || clientEditable(d.status, lane)) && !(el && /^(BUTTON|A|SUMMARY)$/.test(el.tagName))) { e.preventDefault(); v.startEdit() }
+      // The window owns j/k/Enter/Esc while it is open: the list's command layer under it must not also walk.
+      const own = () => { e.preventDefault(); e.stopImmediatePropagation() }
+      if (e.key === 'j') { own(); if (at >= 0 && at + 1 < queue.length) onPick(queue[at + 1]) }
+      else if (e.key === 'k') { own(); if (at > 0) onPick(queue[at - 1]) }
+      else if (e.key === 'Escape') { own(); onClose() }
+      else if (e.key === 'Enter' && (lane === 'ivan' || clientEditable(d.status, lane)) && !(el && /^(BUTTON|A|SUMMARY)$/.test(el.tagName))) { own(); v.startEdit() }
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
   }, [at, d.status, fix, lane, onClose, onPick, queue, v])
 
   const stage = stageOf(d)

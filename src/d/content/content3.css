@@ -118,3 +118,14 @@
 .d-phone .cn-mday{min-height:64px;padding:2px}
 .d-phone .cn-chip2 small,.d-phone .cn-chipk{display:none}
 .d-phone .cn-mcounts{flex-basis:100%}
+
+/* queue rows: selection mark (command layer), row writes */
+.cn-row{grid-template-columns:40px 44px minmax(0,1fr) 74px 40px auto;cursor:pointer}
+.cn-row>button.cn-t{font-weight:600;text-align:left;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13.5px}
+.cn-mark{display:flex;align-items:center;gap:4px}
+.cn-mark .a-ct-selmark{width:16px;height:16px;border:1px solid var(--line2);border-radius:4px;display:grid;place-items:center;padding:0;flex:none}
+.cn-row[data-wbsel='1']{background:var(--sel)}
+.cn-row[data-wbfocus='1']{box-shadow:inset 3px 0 0 var(--t2)}
+.cn-racts{display:flex;gap:4px;justify-content:flex-end;padding:0 8px 0 0}
+.d-phone .cn-row{grid-template-columns:34px 36px minmax(0,1fr) auto}
+.d-phone .cn-row>span:nth-child(4),.d-phone .cn-row>span:nth-child(5){display:none}
