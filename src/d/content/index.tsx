@@ -82,7 +82,12 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   }, [confirm, data, toast])
 
   const openLane = draft ? qLane : null
-  const queueIds = useMemo(() => (openLane ? [...waiting[openLane].fresh, ...waiting[openLane].older].map(r => r.id) : []), [openLane, waiting])
+  const queueIds = useMemo(() => {
+    if (!openLane) return []
+    const w = waiting[openLane]
+    // The walk is the fresh queue (what the frame counts); an older draft opened from the fold walks both.
+    return (w.older.some(r => r.id === draft) ? [...w.fresh, ...w.older] : w.fresh).map(r => r.id)
+  }, [draft, openLane, waiting])
   const slot = data.armed ? nextFreeWeekday(data.armed, now) : null
   const openRow = draft && openLane ? data.seats[openLane].rows.find(r => r.id === draft) : null
   const ghost: Ghost | null = draft && openLane === 'ivan' && slot && openRow?.status !== 'scheduled'

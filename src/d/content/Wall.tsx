@@ -89,7 +89,7 @@ export function Wall({ data, days, stuck, onOpen, onMove, onArm, ghost, lift, he
                   <Card r={r} lane={lane} onOpen={() => onOpen(r.id, lane)} />
                   <span className="cn-cellk">
                     {isPlanned(r, lane) && <button type="button" className="cn-mini" data-verb="schedule" onClick={() => onArm(r.id)}>Arm it</button>}
-                    {canMove && lift !== r.id && <button type="button" className="cn-mini" data-verb="move-day" aria-label={`Move ${titleOf(r)} to another day`} onClick={() => onMove(r.id, lane)}>Move</button>}
+                    {canMove && lift !== r.id && <button type="button" className="cn-mini" data-verb="move-day" aria-label={`Move ${titleOf(r)} to another day`} title="Move to another day" onClick={() => onMove(r.id, lane)}>⇄</button>}
                   </span>
                 </div>
               </Fragment>

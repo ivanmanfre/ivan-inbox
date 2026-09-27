@@ -24,7 +24,7 @@ export function Preview({ d, lane, body, editing, text, setText }: {
       {editing ? (
         <textarea className="cn-ed" aria-label="Post text" value={text} onChange={e => setText(e.target.value)} autoFocus />
       ) : (
-        <div className="cn-lib">{body || <span style={{ color: '#888' }}>No post text yet.</span>}</div>
+        <div className="cn-lib">{body ? body.split(/\n\s*\n/).map((para, i) => <p key={i}>{para}</p>) : <span style={{ color: '#888' }}>No post text yet.</span>}</div>
       )}
       {img && !editing && <img className="cn-liimg" src={img} alt="" loading="lazy" />}
       {d.type === 'carousel' && !editing && Array.isArray(d.image_urls) && d.image_urls.length > 0 && (

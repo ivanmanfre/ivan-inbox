@@ -43,8 +43,8 @@ describe('the wall', () => {
 
   it('shows Pacific time beside Warsaw on Rise only', () => {
     const at = '2026-09-28T14:00:00Z'
-    expect(ptOf(at)).toBe('07:00 PT')
-    expect(timeLine(at, 'risedtc')).toBe('16:00 · 07:00 PT')
+    expect(ptOf(at)).toBe('7:00 PT')
+    expect(timeLine(at, 'risedtc')).toBe('16:00 7:00 PT')
     expect(timeLine(at, 'arch')).toBe('16:00')
   })
 })

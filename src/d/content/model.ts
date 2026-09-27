@@ -85,12 +85,12 @@ export function publishedCount(rows: ContentDraft[]): number {
 }
 
 /** Rise schedules on Pacific time: "07:00 PT" beside the Warsaw time. */
-const PT = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Los_Angeles', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+const PT = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Los_Angeles', hour: 'numeric', minute: '2-digit', hourCycle: 'h23' })
 export function ptOf(iso: string): string { return `${PT.format(new Date(iso))} PT` }
 
-/** "09:00" (Warsaw) or, on Rise, "16:00 · 07:00 PT". */
+/** "09:00" (Warsaw) or, on Rise, "16:00 7:00 PT" (Warsaw, then Pacific). */
 export function timeLine(iso: string, lane: Lane): string {
-  return lane === 'risedtc' ? `${warsawHm(iso)} · ${ptOf(iso)}` : warsawHm(iso)
+  return lane === 'risedtc' ? `${warsawHm(iso)} ${ptOf(iso)}` : warsawHm(iso)
 }
 
 // ---------- the review queue ----------

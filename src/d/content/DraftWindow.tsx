@@ -5,6 +5,7 @@ import {
   normalizeQa, reviewActionable, stageOf, type ContentDraftDetail,
 } from '../../lib/content'
 import { DIcon } from '../ui/icons'
+import { warsawDm, warsawDow } from '../ui/time'
 import { Key } from '../ui/Key'
 import { Empty, Failed, Skeleton } from '../ui/states'
 import { Evidence, verdictWord } from './Evidence'
@@ -90,7 +91,7 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
       <Key verb="edit" onClick={v.startEdit} disabled={v.busy}>Edit</Key>
       <Key verb="approve" onClick={() => v.decide('approve')} disabled={!actionable || v.busy} sub="no date yet">Approve</Key>
       <Key primary verb="schedule" onClick={() => v.schedule(whenAt)} disabled={v.busy || Number.isNaN(whenAt.getTime())}
-        sub={Number.isNaN(whenAt.getTime()) ? 'pick a time' : `${whenAt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} · ${when.slice(11)}`}>
+        sub={Number.isNaN(whenAt.getTime()) ? 'pick a time' : `${warsawDow(whenAt)} ${warsawDm(whenAt)} · ${when.slice(11)}`}>
         {d.status === 'scheduled' ? 'Reschedule' : 'Schedule'}
       </Key>
     </>
