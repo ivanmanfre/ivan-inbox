@@ -1,0 +1,46 @@
+/* Settings, direction D dark. Classes prefixed ds2- (the design system owns ds-).
+   Lime only on live state: a selected preference is the PRESSED neutral key. */
+.ds2-root{flex:1;min-height:0;overflow:auto}
+.ds2-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;padding:14px 16px 24px;align-items:start}
+.ds2-col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.d-phone .ds2-col{padding:8px 16px 24px}
+.ds2-plate{border:1px solid var(--line2);border-radius:var(--r1);background:var(--p1);overflow:hidden}
+.d-phone .ds2-plate{border-radius:18px}
+.ds2-plate h3{margin:0;display:flex;justify-content:space-between;gap:8px;padding:9px 14px;border-bottom:1px solid var(--line2);font:500 11px var(--m);letter-spacing:.08em;text-transform:uppercase;color:var(--t3)}
+.ds2-plate h3 span{letter-spacing:.02em;text-transform:none;font-weight:400}
+.ds2-row{display:flex;align-items:center;gap:14px;padding:11px 14px;border-bottom:1px solid var(--line)}
+.ds2-row:last-child{border-bottom:0}
+.ds2-t{flex:1;min-width:0}
+.ds2-t b{display:block;font:500 14.5px var(--f);color:var(--t1)}
+.ds2-t small{display:block;font-size:12.5px;line-height:1.45;color:var(--t2);margin-top:2px}
+.ds2-lk{display:block;font:400 12px var(--m);color:var(--t3);margin-top:3px;overflow-wrap:anywhere}
+.ds2-pair{display:flex;gap:6px;flex:none}
+.ds2-pair .d-key{flex:none;width:auto;min-width:58px}
+.ds2-pair .d-key .d-face{padding:0 12px;white-space:nowrap}
+.ds2-pair .d-key.ds2-pressed .d-face{background:var(--p1);color:var(--t1);border-color:var(--strong);box-shadow:inset 0 2px 4px rgba(0,0,0,.65)}
+.ds2-pair .d-key.ds2-pressed{transform:translateY(2px)}
+.ds2-pair .d-key:not(.ds2-pressed) .d-face{color:var(--t2)}
+.ds2-pair .d-key:disabled{opacity:.55;cursor:not-allowed}
+.ds2-row>.d-key{flex:none;width:auto}.ds2-row>.d-key .d-face{padding:0 14px;white-space:nowrap}
+.ds2-warn .d-face{color:var(--warn)}
+.ds2-v{font:400 13px var(--m);color:var(--t2)}
+.ds2-note{margin:0;padding:9px 14px 11px;font-size:12.5px;line-height:1.5;color:var(--t3);border-bottom:1px solid var(--line)}
+.ds2-err{color:var(--warn)}
+.ds2-devs{list-style:none;margin:0;padding:0}
+.ds2-devs li{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:baseline;padding:8px 14px;border-bottom:1px solid var(--line);font-size:13px;color:var(--t1)}
+.ds2-devs i{font:400 11.5px var(--m);font-style:normal;color:var(--t3)}
+.ds2-devs small{color:var(--t2);font-size:12.5px}
+.ds2-devs em{font:400 12px var(--m);font-style:normal;color:var(--t3);white-space:nowrap}
+.ds2-open{flex:none;font:600 13px var(--f);color:var(--t1);text-decoration:none;border:1px solid var(--line2);background:var(--p3);border-radius:9px;padding:7px 12px;box-shadow:inset 0 1.5px 0 rgba(255,255,255,.09),0 3px 0 rgba(255,255,255,.12);white-space:nowrap}
+.ds2-open.ds2-off{opacity:.45;pointer-events:none}
+.ds2-money{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+.ds2-money>div{background:var(--bg);padding:9px 14px;min-width:0}
+.ds2-money small{display:block;font:400 11px var(--m);letter-spacing:.06em;text-transform:uppercase;color:var(--t3)}
+.ds2-money em{display:block;font:500 20px/1.3 var(--m);font-style:normal;color:var(--t1)}
+.ds2-money em.ds2-z{font:400 14px/1.6 var(--f);color:var(--t2)}
+.ds2-money u{display:block;text-decoration:none;font:400 11.5px/1.4 var(--m);color:var(--t3)}
+.ds2-build{margin:0;padding:10px 14px;font:400 12px var(--m);color:var(--t3)}
+.ds2-moneyview{padding:0 8px 24px}
+@media (max-width:1300px){.ds2-row{flex-wrap:wrap}.ds2-money>div{padding:8px 10px}}
+.d-phone .ds2-row{flex-wrap:wrap}
+.d-phone .ds2-money{grid-template-columns:1fr 1fr 1fr}

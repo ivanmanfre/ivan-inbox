@@ -7,7 +7,8 @@ import { buildLedger, fetchDayLedger } from '../../lib/kpis'
 import { fetchSendLog, fetchSendLogTotals } from '../../lib/sends'
 import { SEATS, SEAT_NAME, seatOf, type Seat } from '../seats'
 import { Sheet } from '../ui/Sheet'
-import { LoadLine, Shs, useRead } from './CampaignSheet'
+import { LoadLine, Shs } from './CampaignSheet'
+import { useRead } from './useRead'
 import { dm, hm, type Range } from './model'
 
 const CH: Record<string, string> = { invitation: 'Invites', dm: 'DMs', inmail: 'InMail' }

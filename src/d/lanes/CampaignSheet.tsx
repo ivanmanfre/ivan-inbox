@@ -1,6 +1,6 @@
 /* The campaign sheet: what opens when a campaign is tapped on Lanes. Read-only.
    Desktop: right sheet over the Arch column. Phone: bottom sheet. */
-import { useEffect, useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { shortName, type CampaignPerf } from '../../lib/campaignPerf'
 import { loadPerf, stepLabel, type PerfState } from '../../lib/outreachPerf'
 import { fetchCampaignRecent, type CampaignRecentSend } from '../../lib/sends'
@@ -11,20 +11,7 @@ import { LIVE_STAGES, OFF_STAGES, STAGE_LABEL, laneLabel } from './labels'
 import { ago } from './model'
 import { fetchCampaignReplies, fetchInviteArms, fetchStageCounts, fetchStoppedBrands, laneMixOnce, type LaneMix, type Reply } from './reads'
 import { SheetNotes } from './SheetNotes'
-
-export type Load<T> = { kind: 'loading' } | { kind: 'failed'; message: string } | { kind: 'ready'; data: T }
-export function useRead<T>(fn: (() => Promise<T>) | null, key: string): Load<T> {
-  const [s, set] = useState<Load<T>>({ kind: 'loading' })
-  useEffect(() => {
-    if (!fn) return
-    let live = true
-    set({ kind: 'loading' })
-    fn().then(data => { if (live) set({ kind: 'ready', data }) }, e => { if (live) set({ kind: 'failed', message: e instanceof Error ? e.message : String(e) }) })
-    return () => { live = false }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` names the read
-  }, [key])
-  return s
-}
+import { useRead, type Load } from './useRead'
 
 export function Shs({ children, tail }: { children: ReactNode; tail?: ReactNode }) {
   return <div className="dl-shs"><span>{children}</span><span>{tail}</span></div>

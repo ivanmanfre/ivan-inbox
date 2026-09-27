@@ -5,7 +5,7 @@
      LANES #10 Rise Company Expansion: brands stopped because a colleague replied.
    Each line reads real rows; a lane the campaign does not carry draws nothing. */
 import type { Seat } from '../seats'
-import type { Load } from './CampaignSheet'
+import type { Load } from './useRead'
 
 type Arms = Array<{ arm: string; n: number }>
 
