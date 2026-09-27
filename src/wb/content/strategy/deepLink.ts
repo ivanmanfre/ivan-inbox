@@ -61,7 +61,40 @@ export function exactBriefDeepLink(lane: ContentLane, briefId: string, version: 
  * default applies exactly as if the query had not been there, the same
  * fail-open-to-default rule `parseWbHash` already uses for `job`/`focus`.
  */
+/** D's Content sub that shows a Strategy tab (`#exp/d/content/<sub>`). */
+export function dStrategySub(section: string): 'strategy' | 'markets' | 'results' {
+  return section === 'markets' || section === 'outliers' ? 'markets' : section === 'results' ? 'results' : 'strategy'
+}
+
+export const D_STRATEGY_HASH = /^#exp\/d\/content\/(strategy|markets|results)(?=[?#]|$)/
+
+/**
+ * The same link in D's grammar: `#exp/d/content/strategy?lane=&section=&brief_id=`
+ * (or the `markets` / `results` sub, whose own name is the default tab; the old
+ * `?sources=1` / `section=sources` alias means Research).
+ */
+function readDStrategyLink(hash: string): StrategyDeepLink | null {
+  const m = hash.match(D_STRATEGY_HASH)
+  if (!m) return null
+  const query = new URLSearchParams(hash.split('?')[1] ?? '')
+  const lane = query.get('lane')
+  const raw = query.get('section')
+  const section = query.get('sources') === '1' || raw === 'sources' ? 'research'
+    : raw && isStrategyView(raw) ? raw : m[1] === 'markets' ? 'markets' : m[1] === 'results' ? 'results' : 'this-week'
+  const id = query.get('brief_id')
+  const rawVersion = query.get('brief_version')
+  const version = rawVersion && /^[1-9]\d*$/.test(rawVersion) ? Number(rawVersion) : null
+  const exact = isContentLane(lane) && section === 'this-week' && id && BRIEF_ID.test(id) && version !== null && Number.isSafeInteger(version)
+  return {
+    ...(isContentLane(lane) ? { lane } : {}),
+    ...(isStrategyView(section) ? { section } : {}),
+    ...(exact ? { briefId: id, briefVersion: version } : {}),
+  }
+}
+
 export function readStrategyDeepLink(hash: string): StrategyDeepLink {
+  const d = readDStrategyLink(hash)
+  if (d) return d
   const route = parseWbHash(hash)
   if (route.job !== 'strategy') return {}
   const query = new URLSearchParams(hash.split('?')[1] ?? '')

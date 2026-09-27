@@ -39,7 +39,8 @@ import { ThemesBlock } from './ThemesBlock'
 import { LeadMagnetsView } from './leadmagnets'
 import OutliersView from './outliers'
 import { ClientDirectionPanel, DemoPanel, ResearchPanel, ResultsPanel as EditorialResultsPanel, ThisWeekPanel as EditorialThisWeekPanel } from './research/ResearchWorkspace'
-import { isContentLane, isStrategyView, readStrategyDeepLink, type StrategyViewId } from './strategy/deepLink'
+import { D_STRATEGY_HASH, dStrategySub, isContentLane, isStrategyView, readStrategyDeepLink, type StrategyViewId } from './strategy/deepLink'
+import { MarketsView } from './markets'
 import { prefixOf, wbHash } from '../../exp/v2c/route'
 import './content.css'
 import './strategy-evidence.css'
@@ -352,8 +353,17 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
       if (!/^#exp\//.test(location.hash)) return
       const query = new URLSearchParams({ lane, section: view })
       if (view === 'this-week' && exactBrief) { query.set('brief_id', exactBrief.id); query.set('brief_version', String(exactBrief.version)) }
-      const hash = `${wbHash('strategy', null, prefixOf(location.hash))}?${query.toString()}`
+      // Inside D (#exp/d/content/...) the address is written in D's grammar,
+      // on the D sub that shows this tab, and the frame is told (a replaceState
+      // fires no hashchange), so its sub-nav highlight follows the tab.
+      const inD = D_STRATEGY_HASH.test(location.hash)
+      const hash = inD
+        ? `#exp/d/content/${dStrategySub(view)}?${query.toString()}`
+        : `${wbHash('strategy', null, prefixOf(location.hash))}?${query.toString()}`
+      if (hash === location.hash) { acceptedHash.current = hash; return }
+      const subMoved = inD && location.hash.match(D_STRATEGY_HASH)?.[1] !== dStrategySub(view)
       history.replaceState(null, '', hash); acceptedHash.current = hash
+      if (subMoved) window.dispatchEvent(new HashChangeEvent('hashchange'))
     }, 0)
     return () => window.clearTimeout(id)
   }, [lane, view, exactBrief])
@@ -363,12 +373,21 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
   const confirm = useConfirm()
   useEffect(() => {
     const onHashChange = () => { void (async () => {
-      if (!/^#exp\/(?:v2c?|brain-[abc])\/strategy(?:\?|$)/.test(location.hash)) return
+      const inD = D_STRATEGY_HASH.test(location.hash)
+      if (!inD && !/^#exp\/(?:v2c?|brain-[abc])\/strategy(?:\?|$)/.test(location.hash)) return
       const incoming = location.hash
+      // Our own write-back (and a cancelled switch put back) is not a link.
+      if (incoming === acceptedHash.current) return
       const link = readStrategyDeepLink(incoming)
       if (st.dirty || proposalDirty) {
         const ok = await confirm({ title: 'You have unsaved edits on this lane.', message: 'Open this link and lose them?', confirmText: 'Open and lose edits', danger: true })
-        if (!ok) { history.replaceState(null, '', acceptedHash.current); return }
+        if (!ok) {
+          history.replaceState(null, '', acceptedHash.current)
+          // D's sub-nav already moved on the click: tell the frame the address is back.
+          if (inD) window.dispatchEvent(new HashChangeEvent('hashchange'))
+          return
+        }
+        setProposalDirty(false)
       }
       if (location.hash !== incoming) return
       setExactBrief(link.briefId && link.briefVersion ? { id: link.briefId, version: link.briefVersion } : null)
@@ -494,7 +513,13 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
         {view === 'competitors' && <BenchmarkBlock key={`${lane}-${refreshTick}`} lane={lane} view="competitors" />}
         {view === 'magnets' && <LeadMagnetsView key={`${lane}-${refreshTick}`} lane={lane} />}
         {/* CB-21 (main 32e218d + d9a0d9c): the Markets tab is the Outliers view, self-keyed per lane. */}
-        {(view === 'markets' || view === 'outliers') && <OutliersView lane={lane} />}
+        {(view === 'markets' || view === 'outliers') && (
+          <>
+            <OutliersView key={`${lane}-${refreshTick}`} lane={lane} />
+            {/* Today's Markets readout (operator_market_readout), beside the outliers as it is live. */}
+            <MarketsView key={`m-${lane}-${refreshTick}`} lane={lane} />
+          </>
+        )}
         {view === 'outreach' && <div key={`${lane}-${refreshTick}`} className="a-strategy-panel"><OutreachBlock lane={lane} /></div>}
         {view === 'notes' && <>
         <div className="a-ct-sub">Private editorial notes{st.updatedAt ? ` · saved ${relAge(st.updatedAt)}` : ''}. These notes are not connected to the generator. Review dated claims against Competitors and Results before using them.</div>

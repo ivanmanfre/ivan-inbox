@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useContent } from '../../hooks/useContent'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useContent, useScheduledQueue } from '../../hooks/useContent'
+import { publishBlocksByDraft } from '../../lib/publishBlock'
 import { fetchIvanArmedDays, type ContentDraft } from '../../lib/content'
 import { fetchVerdict, verdictParts, type VerdictPart } from '../../lib/contentVerdict'
 import type { Lane } from './model'
@@ -20,6 +21,8 @@ export type ContentData = {
   armed: Set<string> | null
   armedFailed: boolean
   verdict: VerdictPart[] | null
+  /** Ivan's posts the publisher stopped (draft id -> reason), from today's publish-queue read; null until read. */
+  blocks: Map<string, string> | null
   refreshAll: () => void
   failed: number
 }
@@ -32,6 +35,8 @@ export function useContentData(): ContentData {
   const ivan = useContent('ivan')
   const rise = useContent('risedtc')
   const arch = useContent('arch')
+  const queue = useScheduledQueue(true)
+  const blocks = useMemo(() => (queue.loadedAt ? publishBlocksByDraft(queue.rows) : null), [queue.loadedAt, queue.rows])
   const [armed, setArmed] = useState<Set<string> | null>(null)
   const [armedFailed, setArmedFailed] = useState(false)
   const [verdict, setVerdict] = useState<VerdictPart[] | null>(null)
@@ -48,12 +53,12 @@ export function useContentData(): ContentData {
     return () => { live = false }
   }, [tick, ivan.drafts])
 
-  const { refresh: r1 } = ivan, { refresh: r2 } = rise, { refresh: r3 } = arch
-  const refreshAll = useCallback(() => { r1(); r2(); r3(); setTick(t => t + 1) }, [r1, r2, r3])
+  const { refresh: r1 } = ivan, { refresh: r2 } = rise, { refresh: r3 } = arch, { refresh: r4 } = queue
+  const refreshAll = useCallback(() => { r1(); r2(); r3(); r4(); setTick(t => t + 1) }, [r1, r2, r3, r4])
   const failed = [ivan, rise, arch].filter(s => s.error).length
 
   return {
     seats: { ivan: seat(ivan), risedtc: seat(rise), arch: seat(arch) },
-    armed, armedFailed, verdict, refreshAll, failed,
+    armed, armedFailed, verdict, blocks, refreshAll, failed,
   }
 }
