@@ -42,8 +42,8 @@ export function seatWarnings(d: LanesData, seat: Seat): string[] {
   return out
 }
 
-function Big({ label, v }: { label: string; v: number | null | undefined }) {
-  return <div className="dl-sqn"><em className={v == null ? 'dl-q' : v ? 'dl-on' : 'dl-z'}>{v == null ? '?' : v}</em><small>{label}</small></div>
+function Big({ label, short, v }: { label: string; short: string; v: number | null | undefined }) {
+  return <div className="dl-sqn" title={label}><em className={v == null ? 'dl-q' : v ? 'dl-on' : 'dl-z'}>{v == null ? '?' : v}</em><small><span className="dl-sql">{label}</span><span className="dl-sqsh">{short}</span></small></div>
 }
 
 function Square({ seat, d, now, on, pick }: { seat: Seat; d: LanesData; now: number; on: boolean; pick: (s: Seat) => void }) {
@@ -61,13 +61,13 @@ function Square({ seat, d, now, on, pick }: { seat: Seat; d: LanesData; now: num
         <span className={`dl-sqst dl-${w?.tone ?? 'dim'}`}>{w ? w.word : d.cc.failed ? 'Unknown, unverified' : 'Reading…'}{time && <span> · {time}</span>}</span>
       </div>
       <div className="dl-sqc">
-        {h ? <>{h.account === 'OK' ? 'LinkedIn connected' : ''}{h.sn_credits != null && <span title="Sales Navigator credits">{h.account === 'OK' ? ' · ' : ''}<b>{h.sn_credits}</b> credits</span>}</>
+        {h ? <>{h.account === 'OK' && <span className="dl-sqli">LinkedIn connected</span>}{h.sn_credits != null && <span title="Sales Navigator credits"><span className="dl-sqli">{h.account === 'OK' ? ' · ' : ''}</span><b>{h.sn_credits}</b> credits</span>}</>
           : <span className="dl-unk">{d.health.failed ? 'Seat health could not be read' : 'Reading seat health…'}</span>}
       </div>
       <div className="dl-sqr">
-        <Big label="invites today" v={t?.inv} />
-        <Big label="DMs today" v={t?.dm} />
-        <Big label="InMail today" v={t?.inmail} />
+        <Big label="invites today" short="invites" v={t?.inv} />
+        <Big label="DMs today" short="DMs" v={t?.dm} />
+        <Big label="InMail today" short="InMail" v={t?.inmail} />
       </div>
       {warns.length > 0 && <div className="dl-sqx">{warns.map(x => <p key={x} data-seat-warning>{x}</p>)}</div>}
       {h?.degraded && h.link && <a className="dl-reconnect dl-sqa" data-verb="reconnect" href={h.link} target="_blank" rel="noreferrer">Reconnect</a>}

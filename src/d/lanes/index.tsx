@@ -79,7 +79,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
   const p = data.cc.value
   const staleMin = p && monitorLiveness(p, now) === 'stale' && p.monitor.last_tick_at ? Math.max(1, Math.round((now - Date.parse(p.monitor.last_tick_at)) / 6e4)) : null
   const tools = (
-    <button type="button" className="d-ib dl-refresh" data-verb="refresh" onClick={refresh} title={`Read everything again · ${monitorLine(data, now)}`} aria-label="Refresh">
+    <button type="button" className={`d-ib dl-refresh dl-refresh-${layout}`} data-verb="refresh" onClick={refresh} title={`Read everything again · ${monitorLine(data, now)}`} aria-label="Refresh">
       <DIcon name="retry" /><span>{monitorShort(data, now)}</span>
     </button>
   )

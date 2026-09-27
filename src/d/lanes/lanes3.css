@@ -6,7 +6,7 @@
 .dl3 .dl-today{margin:0 0 12px}
 .dl3 .dl-notice{border:1px solid var(--line2);border-radius:10px;margin:0 0 10px}
 .dl-refresh{width:auto;display:inline-flex;align-items:center;gap:6px;padding:0 10px;font:400 12px var(--m);color:var(--t2);cursor:pointer}
-.dl3-phone .dl-refresh span{display:none}.dl3-phone .dl-refresh{padding:0;width:34px;justify-content:center}
+.dl-refresh-phone span{display:none}.dl-refresh.dl-refresh-phone{padding:0;width:34px;justify-content:center}
 
 /* seat squares */
 .dl-sqs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 16px}
@@ -45,7 +45,7 @@
 .dl-secb .dl-ib{padding:0}
 .dl-tc{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:16px;padding-top:14px;align-items:start}
 .dl-tc>div{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg);min-width:0}
-.dl-tc .dl-td em{font-size:30px}
+.dl-tc .dl-td em{font-size:22px}
 .dl-inl{padding-top:2px;min-width:0;overflow-x:auto}
 
 /* ready to invite */
@@ -129,3 +129,10 @@
 .dl-rb.dl-thin .dl-rbk i{opacity:.45}
 .dl-rbv small.dl-young{color:var(--t3);font-size:10.5px}
 .dl3-desktop .dl-rcs>.dl-rc:nth-child(3) .dl-rb{grid-template-columns:minmax(120px,320px) minmax(40px,1fr) auto}
+.dl-sqsh{display:none}
+.dl3-phone .dl-sql{display:none}.dl3-phone .dl-sqsh{display:inline}
+.dl3-phone .dl-sqli{display:none}
+.dl3-phone .dl-sqst span{display:block}
+.dl3-phone .dl-sqr{grid-template-columns:minmax(0,1fr);gap:3px}
+.dl3-phone .dl-sqn{display:flex;align-items:baseline;gap:6px}
+.dl3-phone .dl-sqn em{min-width:2ch}
