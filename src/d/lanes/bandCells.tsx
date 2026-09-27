@@ -5,6 +5,7 @@ import { groupBySeat, shortName, type CampaignPerf } from '../../lib/campaignPer
 import type { Seat } from '../seats'
 import { laneLabel } from './labels'
 import { dm as dayMonth, windowOf, type Range } from './model'
+import { seatAccept } from './rates'
 import { laneMixOnce, type LaneMix } from './reads'
 import { inboundStatus, type InboundDailyRow } from '../../lib/inbound'
 
@@ -96,6 +97,9 @@ export function WindowNotes({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
   const p = ctx.d.cc.value
   if (!p) return <p className="dl-fn dl-unk">{ctx.d.cc.failed ? 'The window could not be read.' : 'Reading the window…'}</p>
   const w = windowOf(p, seat, ctx.range)
+  // One set on both sides (rates.ts): accepted ÷ invited; the previous window is fully matured, so exact.
+  const acc = seatAccept(p, seat, ctx.range)
+  const prev = ctx.range === '90d' ? null : seatAccept(p, seat, ctx.range === '7d' ? 'prev7d' : 'prev30d')
   const o = ctx.d.outcomes.value?.find(x => x.client_id === seat)
   const vb = ctx.d.viewed.value?.find(x => x.client_id === seat)
   const sc = ctx.d.scans.value?.find(x => x.client_id === seat)
@@ -105,9 +109,9 @@ export function WindowNotes({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
   return (
     <div className="dl-fn">
       {!w.hasInterval ? <>No {RANGE_WORD[ctx.range]} window in this snapshot.</> : <>
-        {RANGE_WORD[ctx.range]}: <b>{num(w.inv)}</b> invites · <b>{num(w.dm)}</b> DMs · {w.matured
-          ? <><b>{w.accepted}</b> of {w.matured} accepted ≤72h (<b>{w.rate}%</b>{w.prevRate != null ? <>, <span className={(w.delta ?? 0) >= 0 ? 'dl-up' : 'dl-dn'}>was {w.prevRate}%</span></> : ctx.range === '90d' ? ', no earlier 90 days to compare' : ''})</>
-          : 'accept rate: nothing old enough yet'}
+        {RANGE_WORD[ctx.range]}: <b>{num(w.inv)}</b> invites · <b>{num(w.dm)}</b> DMs · {acc?.pct != null
+          ? <><b>{acc.hit}</b> of {acc.base} invited accepted ≤72h (<b>{acc.pct}%</b>{acc.young ? `, ${acc.young} still under 72h` : ''}{prev?.pct != null ? <>, <span className={acc.pct >= prev.pct ? 'dl-up' : 'dl-dn'}>previous {RANGE_WORD[ctx.range]} {prev.pct}%</span></> : ctx.range === '90d' ? ', no earlier 90 days to compare' : ''})</>
+          : 'accept rate: nobody invited in this window'}
         <br /><b>{num(w.repliers)}</b> people replied · <b>{num(convos)}</b> conversations · <b>{num(calls)}</b> calls · InMail <b>{num(w.inmail)}</b> · {num(w.invFailed)} invites refused
         {viewed && <><br />Viewed your profile back: <b>{viewed[0]}</b> of {viewed[1]} invited (a floor)</>}
         {sc && <><br />Scan opens: <b>{sc.opens_7d}</b> in 7d · {sc.opens_30d} in 30d · {sc.distinct_prospects} people{sc.last_open ? `, last ${dayMonth(sc.last_open)}` : ''}</>}

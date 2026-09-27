@@ -17,9 +17,9 @@
 .dl-sqhit:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
 .dl-sqh{display:flex;align-items:baseline;gap:10px;min-width:0}
 .dl-sqh b{font:600 22px/1.1 var(--f);letter-spacing:-.3px}
-.dl-sqs{margin-left:auto;font:500 12.5px/1.3 var(--m);color:var(--t2);text-align:right}
-.dl-sqs.dl-warn{color:var(--warn)}.dl-sqs.dl-live{color:var(--lime)}.dl-sqs.dl-dim{color:var(--t3)}
-.dl-sqs span{color:var(--t2);font-weight:400}
+.dl-sqst{margin-left:auto;font:500 12.5px/1.3 var(--m);color:var(--t2);text-align:right}
+.dl-sqst.dl-warn{color:var(--warn)}.dl-sqst.dl-live{color:var(--lime)}.dl-sqst.dl-dim{color:var(--t3)}
+.dl-sqst span{color:var(--t2);font-weight:400}
 .dl-sqc{font:400 12.5px var(--m);color:var(--t2);min-height:16px}
 .dl-sqc b{color:var(--t1);font-weight:600}
 .dl-sqr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;border-top:1px solid var(--line);padding-top:10px}
@@ -43,7 +43,7 @@
 .dl-secb{padding:0 16px 16px;border-top:1px solid var(--line);min-width:0}
 .dl-secb .dl-cp,.dl-secb .dl-fo,.dl-secb .dl-fold,.dl-secb .dl-quiet{padding-left:0;padding-right:0}
 .dl-secb .dl-ib{padding:0}
-.dl-tc{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:16px;padding-top:14px}
+.dl-tc{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:16px;padding-top:14px;align-items:start}
 .dl-tc>div{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg);min-width:0}
 .dl-tc .dl-td em{font-size:30px}
 .dl-inl{padding-top:2px;min-width:0;overflow-x:auto}
@@ -105,7 +105,7 @@
 .dl3-phone .dl-sq{padding:9px 9px 8px;gap:5px;border-radius:12px}
 .dl3-phone .dl-sqh{flex-direction:column;gap:2px;align-items:flex-start}
 .dl3-phone .dl-sqh b{font-size:16px}
-.dl3-phone .dl-sqs{margin-left:0;text-align:left;font-size:10.5px}
+.dl3-phone .dl-sqst{margin-left:0;text-align:left;font-size:10.5px}
 .dl3-phone .dl-sqc{font-size:10.5px;min-height:0}
 .dl3-phone .dl-sqr{gap:2px;padding-top:6px}
 .dl3-phone .dl-sqn em{font-size:19px;letter-spacing:-.5px}
@@ -126,3 +126,5 @@
 .dl3-phone .dl-ct .d-key,.dl3-phone .dl-ir .d-key{width:100%;flex:1 1 100%}
 .dl-trlt{display:none}
 .dl3-phone .dl-trlt{display:inline;font:400 11.5px var(--m);font-style:normal;color:var(--t3)}
+.dl-rb.dl-thin .dl-rbk i{opacity:.45}
+.dl-rbv small.dl-young{color:var(--t3);font-size:10.5px}

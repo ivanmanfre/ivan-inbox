@@ -24,7 +24,7 @@ export function Performance({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
   return (
     <div className="dl-perf">
       <div className="dl-rcs">
-        <RateBars title={`Acceptance per lane, ${days} days`} unit="judged invites" formula={FORMULA.accept(ctx.range)}
+        <RateBars title={`Acceptance per lane, ${days} days`} unit="people invited" formula={FORMULA.accept(ctx.range)}
           rates={p ? acceptByLane(p, seat, ctx.range) : null} failed={pf} empty={`No invite went out on this seat in the last ${days} days.`} />
         <RateBars title={`Reply rate per lane, ${days} days`} unit="people first messaged" formula={FORMULA.reply(ctx.range)}
           rates={p ? replyByLane(p, seat, ctx.range) : null} failed={pf} empty={`No first DM went out on this seat in the last ${days} days.`} />

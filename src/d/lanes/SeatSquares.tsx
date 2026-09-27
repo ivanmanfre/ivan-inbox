@@ -58,7 +58,7 @@ function Square({ seat, d, now, on, pick }: { seat: Seat; d: LanesData; now: num
       <button type="button" className="dl-sqhit" role="tab" aria-selected={on} data-pick={seat} aria-label={`Show ${SEAT_NAME[seat]}`} onClick={() => pick(seat)} />
       <div className="dl-sqh">
         <b>{SEAT_NAME[seat]}</b>
-        <span className={`dl-sqs dl-${w?.tone ?? 'dim'}`}>{w ? w.word : d.cc.failed ? 'Unknown, unverified' : 'Reading…'}{time && <span> · {time}</span>}</span>
+        <span className={`dl-sqst dl-${w?.tone ?? 'dim'}`}>{w ? w.word : d.cc.failed ? 'Unknown, unverified' : 'Reading…'}{time && <span> · {time}</span>}</span>
       </div>
       <div className="dl-sqc">
         {h ? <>{h.account === 'OK' ? 'LinkedIn connected' : ''}{h.sn_credits != null && <span title="Sales Navigator credits">{h.account === 'OK' ? ' · ' : ''}<b>{h.sn_credits}</b> credits</span>}</>

@@ -11,12 +11,18 @@ import { SEATS as ALL_SEATS, SEAT_NAME, type Seat } from '../seats'
 import { Sheet } from './LSheet'
 import { Shs } from './CampaignSheet'
 import { comparable, type Range } from './model'
+import { acceptOf } from './rates'
 
 const CH: Record<string, string> = { invitation: 'Invites', dm: 'DMs', inmail: 'InMail' }
 const n = (v: number | null | undefined) => (v == null ? '?' : v.toLocaleString('en-US'))
 
 export function cohortText(c: CcCohort | null | undefined, hit: 'accepted_within_72h' | 'replied_within_72h'): ReactNode {
   if (!c) return <span className="dl-dimt">no cohort</span>
+  // Acceptance: one set on both sides (rates.ts acceptOf), never accepts-of-everyone over matured-only.
+  if (hit === 'accepted_within_72h') {
+    const a = acceptOf(c)
+    if (a) return <>{n(a.hit)} of {n(a.base)} invited <span className="dl-dimt">({a.pct == null ? '—' : `${a.pct}%`}{a.young ? `, ${a.young} under 72h` : ''})</span></>
+  }
   const h = c[hit]
   if (c.matured_denominator == null) {
     const base = hit === 'accepted_within_72h' ? c.invited : c.first_messaged
@@ -58,7 +64,14 @@ export function DeliverySheet({ p, pFailed = null, range, onClose, seats }: { p:
         <Shs>Against the previous {iv.days} days</Shs>
         {cmp && cmp.rows.some(r => (SEATS as readonly string[]).includes(r.client_id)) ? cmp.rows.filter(r => (SEATS as readonly string[]).includes(r.client_id)).map(r => (
           <p className="dl-sl dl-m" key={`${r.client_id}:${r.channel}`}>{SEAT_NAME[r.client_id as 'ivan'] ?? r.client_id} {CH[r.channel] ?? r.channel}: {r.sent_current} against {r.sent_previous} ({r.delta >= 0 ? '+' : ''}{r.delta})
-            {r.delta_pp == null ? ' · no matured cohort on both sides' : ` · accept ${r.accept_rate_current_pct}% against ${r.accept_rate_previous_pct}%, ${r.delta_pp >= 0 ? '+' : ''}${r.delta_pp}pp${r.small_cohort ? ' · small cohort' : ''}`}</p>
+            {(() => {
+              // Accept on one set per side (rates.ts acceptOf), not the producer's mixed rate_pct.
+              const cur = r.channel === 'invitation' ? acceptOf(row(r.client_id, 'invitation', r.current)?.acceptance_cohort) : null
+              const prv = r.channel === 'invitation' ? acceptOf(row(r.client_id, 'invitation', r.previous)?.acceptance_cohort) : null
+              if (cur?.pct == null || prv?.pct == null) return ' · no accept rate on both sides'
+              const pp = Math.round((cur.pct - prv.pct) * 10) / 10
+              return ` · accept ${cur.pct}% against ${prv.pct}%, ${pp >= 0 ? '+' : ''}${pp}pp${cur.young ? `, ${cur.young} of this window's invites still under 72h` : ''}${r.small_cohort ? ' · small cohort' : ''}`
+            })()}</p>
         )) : <p className="dl-sl">No comparison for this window: a comparison needs two complete windows of equal length.</p>}
         {p.ranges.intervals.some(i => i.name === 'today') && <>
           <Shs>Today, a partial day, never compared</Shs>

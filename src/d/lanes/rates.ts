@@ -8,8 +8,14 @@
 
    Acceptance per lane: the send monitor's payload, `ranges.rows` for the seat,
      channel invitation, the chosen window, one row per source lane:
-     accepted_within_72h ÷ matured_denominator (invites in the window that are
-     at least 72h old; an invite younger than 72h is not judged yet).
+     accepted_within_72h ÷ invited (people whose FIRST invite went out in the
+     window). NOT ÷ matured_denominator: the producer counts accepts from ALL
+     invited people but only the invites >=72h old in matured_denominator, so
+     its own rate_pct mixes two sets (Ivan 7d on 09-27: 46 ÷ 130 = 35% where
+     the 130 matured invites alone had 35 accepts = 27%; checked in SQL,
+     O/B/lanes3-verify.md). accepted ÷ invited is one set; its newest invites
+     (under 72h old, `young`) can still accept, so it reads a little low and
+     only rises. A fully matured window (the previous 7 or 30 days) is exact.
    Reply per lane: the same payload, channel dm, per source lane, reply_cohort:
      replied_within_72h ÷ first_messaged (people whose FIRST DM went out in the
      window). The payload carries no matured denominator for replies, so the
@@ -18,13 +24,13 @@
    Acceptance per campaign: `inbox_campaign_perf_v` (db/214), last 7 days:
      accept_72h ÷ accept_judged (invites sent 7 days to 72h ago).
    ========================================================================== */
-import type { CcPayload, CcRangeRow } from '../../lib/campaignControl'
+import type { CcCohort, CcPayload, CcRangeRow } from '../../lib/campaignControl'
 import { shortName, type CampaignPerf } from '../../lib/campaignPerf'
 import type { Seat } from '../seats'
 import { laneLabel } from './labels'
 import type { Range } from './model'
 
-export type RateRow = { key: string; label: string; hit: number; base: number; pct: number | null; sent: number }
+export type RateRow = { key: string; label: string; hit: number; base: number; pct: number | null; sent: number; young?: number }
 
 const SOURCE: Record<string, string> = {
   cold: 'Cold', warm_engager: 'Warm engagers', competitor_engager: 'Competitor engagers', client_orbit: 'Client orbit',
@@ -46,11 +52,23 @@ function sortRows(rows: RateRow[]): RateRow[] {
 
 export type Rates = { total: RateRow | null; lanes: RateRow[] }
 
+/** One acceptance cohort as a proportion of ONE set: accepted within 72h ÷ everyone invited in the window. */
+export function acceptOf(c: CcCohort | null | undefined): { hit: number; base: number; young: number; pct: number | null } | null {
+  if (!c || c.invited == null) return null
+  const hit = c.accepted_within_72h ?? 0, base = c.invited
+  return { hit, base, young: Math.max(0, base - (c.matured_denominator ?? base)), pct: rate(hit, base) }
+}
+
+/** The seat's whole-window acceptance for an interval name (7d, 30d, prev7d...), or null. */
+export function seatAccept(p: CcPayload | null, seat: Seat, interval: string) {
+  const r = p?.ranges.rows.find(x => x.client_id === seat && x.channel === 'invitation' && x.interval === interval && x.source_lane === '__all__')
+  return acceptOf(r?.acceptance_cohort)
+}
+
 export function acceptByLane(p: CcPayload | null, seat: Seat, range: Range): Rates {
   const one = (r: CcRangeRow): RateRow => {
-    const c = r.acceptance_cohort
-    const hit = c?.accepted_within_72h ?? 0, base = c?.matured_denominator ?? 0
-    return { key: r.source_lane, label: r.source_lane === '__all__' ? 'All lanes' : sourceLabel(r.source_lane), hit, base, pct: rate(hit, base), sent: r.sent }
+    const a = acceptOf(r.acceptance_cohort) ?? { hit: 0, base: 0, young: 0, pct: null }
+    return { key: r.source_lane, label: r.source_lane === '__all__' ? 'All lanes' : sourceLabel(r.source_lane), hit: a.hit, base: a.base, pct: a.pct, sent: r.sent, young: a.young }
   }
   const rows = rowsOf(p, seat, 'invitation', range)
   const all = rows.find(r => r.source_lane === '__all__')
@@ -78,7 +96,7 @@ export function acceptByCampaign(perf: CampaignPerf[] | null, seat: Seat): Rates
 export const RANGE_DAYS: Record<Range, number> = { '7d': 7, '30d': 30, '90d': 90 }
 
 export const FORMULA = {
-  accept: (range: Range) => `Accepted within 72h ÷ invites sent in the last ${RANGE_DAYS[range]} completed days that are at least 72h old (younger invites are not judged yet). Source: the send monitor, one row per source lane.`,
+  accept: (range: Range) => `Accepted within 72h ÷ people first invited in the last ${RANGE_DAYS[range]} completed days (Warsaw). Invites under 72h old are counted and can still accept, so the rate reads a little low and only rises. Source: the send monitor, one row per source lane (lane = the campaign's name).`,
   reply: (range: Range) => `Replied within 72h ÷ people whose first DM went out in the last ${RANGE_DAYS[range]} completed days. The monitor gives no matured base for replies, so people first messaged in the last 3 days count before they had 72h: the rate reads a little low.`,
   campaign: 'Accepted within 72h ÷ invites sent between 7 days and 72h ago, per campaign (the campaign list\'s own numbers).',
 }

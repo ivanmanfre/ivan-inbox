@@ -13,12 +13,12 @@ function scaleMax(rows: RateRow[]): number {
 function Row({ r, max, unit, total }: { r: RateRow; max: number; unit: string; total?: boolean }) {
   const w = r.pct == null ? 0 : Math.max(r.pct > 0 ? 1.5 : 0, (r.pct / max) * 100)
   return (
-    <div className={`dl-rb${total ? ' dl-rbt' : ''}`} data-rate={r.key} title={`${r.label}: ${r.hit} of ${r.base} ${unit}${r.pct == null ? '' : ` = ${r.pct}%`}`}>
+    <div className={`dl-rb${total ? ' dl-rbt' : ''}${r.base > 0 && r.base < 20 ? ' dl-thin' : ''}`} data-rate={r.key} title={`${r.label}: ${r.hit} of ${r.base} ${unit}${r.pct == null ? '' : ` = ${r.pct}%`}`}>
       <span className="dl-rbl">{r.label}</span>
       <span className="dl-rbk"><i style={{ width: `${w}%` }} /></span>
       {r.pct == null
         ? <span className="dl-rbv dl-dimt">nothing to judge yet</span>
-        : <span className="dl-rbv"><b>{r.pct}%</b><small>{r.hit} of {r.base}</small></span>}
+        : <span className="dl-rbv"><b>{r.pct}%</b><small>{r.hit} of {r.base}{r.base < 20 ? ', few' : ''}</small>{r.young ? <small className="dl-young">{r.young} under 72h</small> : null}</span>}
     </div>
   )
 }
