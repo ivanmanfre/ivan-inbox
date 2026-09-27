@@ -469,6 +469,20 @@ export async function completeTask(d: OpsDraft): Promise<void> {
   return approveWeeklyReport(d.id, d.body)
 }
 
+// 2026-09-27 (Ofir Bello): the reply drafters no longer WhatsApp "book it by hand". They write a task
+// "Book X's calendar link, then tap Booked and enter the time" (context.action = 'book_link'). Booked
+// records the call through the one booking path (db/216 ops_task_mark_booked -> booking_ingest_event)
+// as a hand-entered booking, closes the task, and the client board refreshes within a minute.
+export const isBookLinkTask = (d: OpsDraft): boolean => d.kind === 'task' && d.context?.action === 'book_link'
+
+export async function markTaskBooked(d: OpsDraft, startIso: string): Promise<{ action: string; prospect: string | null }> {
+  const { data, error } = await supabase.rpc('ops_task_mark_booked', { p_draft_id: d.id, p_start_at: startIso })
+  if (error) throw error
+  const r = (data ?? {}) as { ok?: boolean; error?: string; action?: string; prospect?: string }
+  if (!r.ok) throw new Error(r.error || 'The booking was not recorded.')
+  return { action: String(r.action ?? ''), prospect: r.prospect ?? null }
+}
+
 // Approved but not yet done. Slack rows sit here for ~2 minutes; a newsjack sits here
 // while it generates and QA-gates (it clears once the draft is in the buffer), which
 // can run to an hour — without this group the card would just vanish on approve and

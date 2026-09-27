@@ -15,6 +15,7 @@ import { dHash } from '../route'
 import { SEAT_NAME, seatOf } from '../seats'
 import { useDConfirm } from '../ui/confirm'
 import { Btn } from '../ui/Key'
+import { BookedKey } from '../ops/BookedKey'
 
 const SHOWN = 6
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e))
@@ -46,7 +47,7 @@ function Row({ d, refresh }: { d: OpsDraft; refresh: () => void }) {
   return (
     <li className={`gt-row${ticked ? ' gt-done' : ''}`} data-task={d.id}>
       <Btn verb="tick" disabled={busy || ticked} onClick={() => void tick()} aria-label={`Done: ${title}`}>{ticked ? 'Done ✓' : 'Done'}</Btn>
-      <span className="gt-t">{title}{err && <small className="gt-err">{err}</small>}</span>
+      <span className="gt-t">{title}{err && <small className="gt-err">{err}</small>}<BookedKey d={d} onDone={() => setTimeout(refresh, 420)} /></span>
       <span className="gt-m">
         {dl && <b className={`gt-${dl.tone}`}>{dl.tone === 'over' ? 'overdue' : dl.text}</b>}
         {seat && seat !== 'ivan' && <span>{SEAT_NAME[seat]}</span>}

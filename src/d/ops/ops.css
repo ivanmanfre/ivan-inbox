@@ -153,3 +153,9 @@ details.op-why:not([open])>summary::after{content:' ›'}
 .op-fresh{font:400 11px var(--m);color:var(--t3);padding:2px 0 6px}
 .op-desktop .op-fresh{padding:6px 14px 4px}
 .op-phone .op-fresh{padding:0 16px 6px}
+
+/* Booked key on a book-their-link task (2026-09-27): the call-time field wraps under the title */
+.op-bk{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+.op-bk input{height:28px;font:inherit;font-size:12.5px;padding:0 8px;border:1px solid var(--line);border-radius:6px;background:transparent;color:inherit}
+.op-bk small{flex-basis:100%;color:var(--t3);font-size:12px}
+.op-tt>.d-btn[data-verb=booked],.gt-t>.d-btn[data-verb=booked]{margin-top:6px;height:28px;font-size:12.5px;padding:0 10px}

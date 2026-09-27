@@ -6,6 +6,7 @@ import {
 import { seatOf, SEAT_NAME } from '../seats'
 import { useDConfirm } from '../ui/confirm'
 import { Btn } from '../ui/Key'
+import { BookedKey } from './BookedKey'
 import { warsawHm } from '../ui/time'
 import { ago } from './model'
 
@@ -57,6 +58,7 @@ function Row({ d, refresh, onLeaving }: { d: OpsDraft; refresh: () => void; onLe
           {seat && seat !== 'ivan' && <span>{SEAT_NAME[seat]}</span>}
           <span><button type="button" className="op-rm" data-verb="remove" disabled={busy} onClick={() => void remove()} aria-label={`Remove: ${title}`}>remove</button></span>
         </div>
+        <BookedKey d={d} onDone={onLeaving} />
         {err && <div className="op-err">{err}</div>}
       </div>
       <Btn verb="tick" disabled={busy || ticked} onClick={() => void tick()} aria-label={`Done: ${title}`}>{ticked ? 'Done ✓' : 'Done'}</Btn>
