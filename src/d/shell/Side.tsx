@@ -11,6 +11,7 @@ import { openWorkflows, workflowsBadge } from './Workflows'
 import { healthNote } from '../counts/glance'
 import { useFrameCounts } from '../counts/useFrameCounts'
 import { useDInbox } from '../counts/inbox'
+import { SUB_LABEL, subOf, type Sub } from '../content/SubNav'
 
 // The left panel, desktop, and the same content as the phone's drawer. Brand,
 // the seat names once (Ivan · Rise · Arch) over the count columns, one line per place with its per-seat numbers
@@ -83,28 +84,63 @@ export function WorkflowsKey({ onOpen }: { onOpen?: () => void }) {
   )
 }
 
+// Content opens into its pages in the rail while you are on it, as the old app's rail did (Ivan 09-28:
+// "a collapsible navigation bar on the left like we had on the old version"). The rest of Content's
+// places stay on the page's own row.
+export const RAIL_SUBS: readonly Sub[] = ['planner', 'review', 'magnets', 'strategy', 'styles']
+
+function PlaceLink({ i, on, min }: { i: NavItem; on: boolean; min: boolean }) {
+  return (
+    <a href={dHash(i.id)} className={on ? 'd-on' : undefined} aria-current={on ? 'page' : undefined} title={min ? i.label : undefined}>
+      <DIcon name={PLACES[i.id].icon} /><span>{i.label}</span>{i.id === 'claude' && <ClaudeWorking />}<NavCount item={i} />
+      {min && i.failed > 0 && <em className="d-side-pip" aria-label={`${i.failed} failed`}>!</em>}
+    </a>
+  )
+}
+
+function ContentGroup({ i, min }: { i: NavItem; min: boolean }) {
+  const f = useFrame()
+  const here = f.route.place === 'content'
+  const sub = here ? subOf(f.route.sub) : null
+  const open = here && !min
+  return (
+    <div className="d-navi">
+      <PlaceLink i={i} on={here && !(open && RAIL_SUBS.includes(sub as Sub))} min={min} />
+      <NavLineView item={i} />
+      {open && (
+        <div className="d-navsub">
+          {RAIL_SUBS.map(s => {
+            const on = sub === s
+            return <a key={s} href={dHash('content', s === 'planner' ? null : s)} className={on ? 'd-on' : undefined} aria-current={on ? 'page' : undefined}>{SUB_LABEL[s]}</a>
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function Side({ min = false, setMin }: { min?: boolean; setMin?: (m: boolean) => void }) {
   const f = useFrame()
   const { items } = useNavModel()
   const main = items.filter(i => PLACES[i.id].nav === 'main')
   const low = items.filter(i => PLACES[i.id].nav === 'low')
+  const fold = min ? 'Expand the panel' : 'Collapse the panel'
   return (
     <aside className={`d-side${min ? ' d-side-min' : ''}`} aria-label="Places">
-      <Brand />
-      {setMin && (
-        <button type="button" className="d-side-fold" data-verb="side-fold" aria-pressed={min}
-          aria-label={min ? 'Show the panel' : 'Narrow the panel'} title={min ? 'Show the panel' : 'Narrow the panel'} onClick={() => setMin(!min)}>
-          <DIcon name={min ? 'more' : 'back'} />
-        </button>
-      )}
+      <div className="d-side-top">
+        <Brand />
+        {setMin && (
+          <button type="button" className="d-side-fold" data-verb="side-fold" aria-pressed={min}
+            aria-label={fold} title={`${fold} (⌘\\)`} onClick={() => setMin(!min)}>
+            <DIcon name={min ? 'foldOut' : 'foldIn'} />
+          </button>
+        )}
+      </div>
       {!min && <SeatHead />}
       <nav className="d-nav">
-        {main.map(i => (
+        {main.map(i => i.id === 'content' ? <ContentGroup key={i.id} i={i} min={min} /> : (
           <div key={i.id} className="d-navi">
-            <a href={dHash(i.id)} className={f.route.place === i.id ? 'd-on' : undefined} aria-current={f.route.place === i.id ? 'page' : undefined} title={min ? i.label : undefined}>
-              <DIcon name={PLACES[i.id].icon} /><span>{i.label}</span>{i.id === 'claude' && <ClaudeWorking />}<NavCount item={i} />
-              {min && i.failed > 0 && <em className="d-side-pip" aria-label={`${i.failed} failed`}>!</em>}
-            </a>
+            <PlaceLink i={i} on={f.route.place === i.id} min={min} />
             <NavLineView item={i} />
           </div>
         ))}
@@ -113,7 +149,7 @@ export function Side({ min = false, setMin }: { min?: boolean; setMin?: (m: bool
         <WorkflowsKey />
         {low.map(i => (
           <div key={i.id} className="d-navi">
-            <a href={dHash(i.id)} className={f.route.place === i.id ? 'd-on' : undefined} aria-current={f.route.place === i.id ? 'page' : undefined}>
+            <a href={dHash(i.id)} className={f.route.place === i.id ? 'd-on' : undefined} aria-current={f.route.place === i.id ? 'page' : undefined} title={min ? i.label : undefined}>
               <DIcon name={PLACES[i.id].icon} /><span>{i.label}</span>
             </a>
             {i.failed > 0 && <div className="d-navfail">{i.failed} failed</div>}

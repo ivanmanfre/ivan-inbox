@@ -275,6 +275,7 @@ export default function DShell() {
       const mod = e.metaKey || e.ctrlKey
       if (mod && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); setPalette(true); return }
       if (mod && (e.key === 'j' || e.key === 'J')) { e.preventDefault(); setClaudeOpen(o => !o); return }
+      if (mod && e.key === '\\') { e.preventDefault(); setSideMin(m => !m); return }
       if (e.key === 'Escape' && !document.querySelector('.d-sheet, .d-confirm')) {
         setBellOpen(false); setPanelOpen(false)
       }
