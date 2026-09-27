@@ -6,7 +6,7 @@
    reason, provisional, as of. Foot: the "split not implemented" caveat and
    the lineage summary. Read-only. */
 import type { CcPayload, CcRecurrenceItem } from '../../lib/campaignControl'
-import { Sheet } from '../ui/Sheet'
+import { Sheet } from './LSheet'
 import { dm, hm } from './model'
 
 const n = (v: number | null | undefined) => (v == null ? '?' : v.toLocaleString('en-US'))

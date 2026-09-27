@@ -13,7 +13,7 @@ import { useFrameCounts } from '../counts/useFrameCounts'
 import { useDInbox } from '../counts/inbox'
 
 // The left panel, desktop, and the same content as the phone's drawer. Brand,
-// the seat initials once (I R A), one line per place with its per-seat numbers
+// the seat names once (Ivan · Rise · Arch) over the count columns, one line per place with its per-seat numbers
 // on the right, the low nav, and the me/clock footer (it speaks only when a
 // read failed).
 
@@ -22,7 +22,7 @@ export function NavLineView({ item }: { item: NavItem }) {
   return item.failed > 0 ? <div className="d-navfail">{item.failed} failed</div> : null
 }
 
-/** On the place's line, right side: one number per seat under the I R A header (never a total), or a short text. */
+/** On the place's line, right side: one number per seat under the Ivan · Rise · Arch header (never a total), or a short text. */
 export function NavCount({ item }: { item: NavItem }) {
   const l = item.line
   if (!l) return null
@@ -38,9 +38,9 @@ export function NavCount({ item }: { item: NavItem }) {
   )
 }
 
-/** The seat initials, once, over the count column. */
+/** The seat names, once, over the count columns (Ivan asked what "I R A" meant: now the names). */
 export function SeatHead() {
-  return <div className="d-seathead" aria-hidden="true">{SEATS.map(s => <i key={s} title={SEAT_NAME[s]}>{SEAT_NAME[s][0]}</i>)}</div>
+  return <div className="d-seathead" aria-hidden="true">{SEATS.map(s => <i key={s}>{SEAT_NAME[s]}</i>)}</div>
 }
 
 export function Brand() {

@@ -7,16 +7,22 @@
    today as a partial day, and the payload's own notes. Read-only. */
 import type { ReactNode } from 'react'
 import type { CcCohort, CcPayload, CcRangeRow } from '../../lib/campaignControl'
-import { SEATS, SEAT_NAME } from '../seats'
-import { Sheet } from '../ui/Sheet'
+import { SEATS as ALL_SEATS, SEAT_NAME, type Seat } from '../seats'
+import { Sheet } from './LSheet'
 import { Shs } from './CampaignSheet'
 import { comparable, type Range } from './model'
+import { acceptOf } from './rates'
 
 const CH: Record<string, string> = { invitation: 'Invites', dm: 'DMs', inmail: 'InMail' }
 const n = (v: number | null | undefined) => (v == null ? '?' : v.toLocaleString('en-US'))
 
 export function cohortText(c: CcCohort | null | undefined, hit: 'accepted_within_72h' | 'replied_within_72h'): ReactNode {
   if (!c) return <span className="dl-dimt">no cohort</span>
+  // Acceptance: one set on both sides (rates.ts acceptOf), never accepts-of-everyone over matured-only.
+  if (hit === 'accepted_within_72h') {
+    const a = acceptOf(c)
+    if (a) return <>{n(a.hit)} of {n(a.base)} invited <span className="dl-dimt">({a.pct == null ? '—' : `${a.pct}%`}{a.young ? `, ${a.young} under 72h` : ''})</span></>
+  }
   const h = c[hit]
   if (c.matured_denominator == null) {
     const base = hit === 'accepted_within_72h' ? c.invited : c.first_messaged
@@ -25,7 +31,9 @@ export function cohortText(c: CcCohort | null | undefined, hit: 'accepted_within
   return <>{n(h)} / {n(c.matured_denominator)} <span className="dl-dimt">({c.rate_pct == null ? '—' : `${c.rate_pct}%`})</span></>
 }
 
-export function DeliverySheet({ p, pFailed = null, range, onClose }: { p: CcPayload | null; pFailed?: string | null; range: Range; onClose: () => void }) {
+/** `seats`: the seats to draw (Lanes 3 passes the chosen one); every seat when absent. */
+export function DeliverySheet({ p, pFailed = null, range, onClose, seats }: { p: CcPayload | null; pFailed?: string | null; range: Range; onClose: () => void; seats?: readonly Seat[] }) {
+  const SEATS = seats ?? ALL_SEATS
   const iv = p?.ranges.intervals.find(i => i.name === range) ?? null
   const row = (seat: string, ch: string, interval: string = range): CcRangeRow | undefined =>
     p?.ranges.rows.find(r => r.client_id === seat && r.channel === ch && r.interval === interval && r.source_lane === '__all__')
@@ -43,7 +51,7 @@ export function DeliverySheet({ p, pFailed = null, range, onClose }: { p: CcPayl
               <td className="dl-m">{d ? <>{cohortText(d.reply_cohort, 'replied_within_72h')} <span className="dl-dimt">{n(d.replies_people)} repliers</span></> : <span className="dl-dimt">no row</span>}</td></tr>
           })}
         </tbody></table>
-        <p className="dl-sl">{SEATS.map(s => { const i = row(s, 'invitation'); return `${SEAT_NAME[s]}: ${n(i?.attempted)} invites attempted, ${n(i?.failed)} refused, ${n(i?.phantom)} phantom rows that never left the seat` }).join('. ')}. A cohort shown as "n of m" has no matured denominator, so no rate is shown.</p>
+        <p className="dl-sl">{SEATS.map(s => { const i = row(s, 'invitation'); return `${SEAT_NAME[s]}: ${n(i?.attempted)} invites attempted, ${n(i?.failed)} refused, ${n(i?.phantom)} phantom rows that never left the seat` }).join('. ')}. Accepted ≤72h is of everyone first invited in the window (invites under 72h old can still accept). Replied ≤72h is shown as n of m: the monitor gives no matured base for replies.</p>
         {SEATS.map(s => {
           const rows = p.ranges.rows.filter(r => r.client_id === s && r.interval === range && r.source_lane !== '__all__' && r.sent)
           return rows.length ? <div key={s}>
@@ -54,9 +62,16 @@ export function DeliverySheet({ p, pFailed = null, range, onClose }: { p: CcPayl
           </div> : null
         })}
         <Shs>Against the previous {iv.days} days</Shs>
-        {cmp && cmp.rows.length ? cmp.rows.map(r => (
+        {cmp && cmp.rows.some(r => (SEATS as readonly string[]).includes(r.client_id)) ? cmp.rows.filter(r => (SEATS as readonly string[]).includes(r.client_id)).map(r => (
           <p className="dl-sl dl-m" key={`${r.client_id}:${r.channel}`}>{SEAT_NAME[r.client_id as 'ivan'] ?? r.client_id} {CH[r.channel] ?? r.channel}: {r.sent_current} against {r.sent_previous} ({r.delta >= 0 ? '+' : ''}{r.delta})
-            {r.delta_pp == null ? ' · no matured cohort on both sides' : ` · accept ${r.accept_rate_current_pct}% against ${r.accept_rate_previous_pct}%, ${r.delta_pp >= 0 ? '+' : ''}${r.delta_pp}pp${r.small_cohort ? ' · small cohort' : ''}`}</p>
+            {(() => {
+              // Accept on one set per side (rates.ts acceptOf), not the producer's mixed rate_pct.
+              const cur = r.channel === 'invitation' ? acceptOf(row(r.client_id, 'invitation', r.current)?.acceptance_cohort) : null
+              const prv = r.channel === 'invitation' ? acceptOf(row(r.client_id, 'invitation', r.previous)?.acceptance_cohort) : null
+              if (cur?.pct == null || prv?.pct == null) return ' · no accept rate on both sides'
+              const pp = Math.round((cur.pct - prv.pct) * 10) / 10
+              return ` · accept ${cur.pct}% against ${prv.pct}%, ${pp >= 0 ? '+' : ''}${pp}pp${cur.young ? `, ${cur.young} of this window's invites still under 72h` : ''}${r.small_cohort ? ' · small cohort' : ''}`
+            })()}</p>
         )) : <p className="dl-sl">No comparison for this window: a comparison needs two complete windows of equal length.</p>}
         {p.ranges.intervals.some(i => i.name === 'today') && <>
           <Shs>Today, a partial day, never compared</Shs>

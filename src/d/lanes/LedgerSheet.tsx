@@ -12,7 +12,7 @@ import type { CcPayload } from '../../lib/campaignControl'
 import { buildLedger, fetchDayLedger, fetchRangeKpis, type RangeKpiRow } from '../../lib/kpis'
 import { SEATS, SEAT_NAME, type Seat } from '../seats'
 import { Btn } from '../ui/Key'
-import { Sheet } from '../ui/Sheet'
+import { Sheet } from './LSheet'
 import { LoadLine, Shs } from './CampaignSheet'
 import { dm, type Range } from './model'
 import { useRead } from './useRead'
@@ -26,7 +26,8 @@ export function confirmedInvites(p: CcPayload | null, seat: Seat, day: string): 
   return r ? r.sent : null
 }
 
-export function LedgerSheet({ p, range, onClose }: { p: CcPayload | null; range: Range; onClose: () => void }) {
+/** `seats`: the seats to draw (Lanes 3 passes the chosen one); every seat when absent. */
+export function LedgerSheet({ p, range, onClose, seats = SEATS }: { p: CcPayload | null; range: Range; onClose: () => void; seats?: readonly Seat[] }) {
   const rows = useRead(fetchDayLedger, 'ledger')
   const days = range === '7d' ? 7 : 14
   const today = new Date().toISOString().slice(0, 10)
@@ -34,7 +35,7 @@ export function LedgerSheet({ p, range, onClose }: { p: CcPayload | null; range:
   return (
     <Sheet open onClose={onClose} className="dl-sheet" title="Daily ledger"
       sub={`Last ${days} days per seat · invites by Warsaw day, the rest by UTC day.`}>
-      <LoadLine l={rows} what="the daily ledger">{data => data.length === 0 ? <p className="dl-sl">The daily ledger has no rows.</p> : <>{SEATS.map(s => {
+      <LoadLine l={rows} what="the daily ledger">{data => data.length === 0 ? <p className="dl-sl">The daily ledger has no rows.</p> : <>{seats.map(s => {
         const led = buildLedger(data, s, days, today)
         let legacy = 0
         const inv = (day: string, fallback: number) => { const v = confirmedInvites(p, s, day); if (v == null) { legacy++; return fallback } return v }

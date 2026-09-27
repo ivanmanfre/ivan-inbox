@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { groupBySeat, shortName, type CampaignPerf } from '../../lib/campaignPerf'
 import type { Seat } from '../seats'
 import { laneLabel } from './labels'
-import { dm as dayMonth, seriesOf, windowOf, type Bar, type Range } from './model'
+import { dm as dayMonth, windowOf, type Range } from './model'
+import { seatAccept } from './rates'
 import { laneMixOnce, type LaneMix } from './reads'
 import { inboundStatus, type InboundDailyRow } from '../../lib/inbound'
 
@@ -88,30 +89,17 @@ export function CampaignsCell({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
   )
 }
 
-function Mult({ label, bars, total, sub }: { label: string; bars: Bar[]; total: number | null; sub: string }) {
-  const max = Math.max(1, ...bars.map(b => b.v ?? 0))
-  return (
-    <div className="dl-sm">
-      <span>{label}</span>
-      <div className="dl-bs" aria-label={`${label}, last 14 days`}>
-        {bars.map((b, i) => (
-          <i key={b.day} title={`${b.day}: ${b.v ?? 'no reading'}`}
-            className={[b.v == null ? 'dl-nil' : b.v ? '' : 'dl-z', b.today ? 'dl-now' : '', i === 7 ? 'dl-wk' : ''].filter(Boolean).join(' ')}
-            style={{ height: `${b.v ? Math.max(8, Math.round((b.v / max) * 100)) : 4}%` }} />
-        ))}
-      </div>
-      <b>{total == null ? '?' : total.toLocaleString('en-US')}<small>{sub}</small></b>
-    </div>
-  )
-}
-
 const RANGE_WORD: Record<Range, string> = { '7d': '7 days', '30d': '30 days', '90d': '90 days' }
 
-export function DeliveryCell({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
+/** The window's other outcomes for one seat, in words: accept (with the earlier window), conversations,
+    calls, InMail, refused invites, viewed back, scan opens. The same rows the old 14-days band printed. */
+export function WindowNotes({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
   const p = ctx.d.cc.value
-  if (!p) return <div className="dl-dv"><p className="dl-unk">{ctx.d.cc.failed ? 'Delivery could not be read.' : 'Reading delivery…'}</p></div>
+  if (!p) return <p className="dl-fn dl-unk">{ctx.d.cc.failed ? 'The window could not be read.' : 'Reading the window…'}</p>
   const w = windowOf(p, seat, ctx.range)
-  const inv = seriesOf(p, seat, ctx.now, 'invitation'), dmb = seriesOf(p, seat, ctx.now, 'dm'), rep = seriesOf(p, seat, ctx.now, 'dm', 'replies_people')
+  // One set on both sides (rates.ts): accepted ÷ invited; the previous window is fully matured, so exact.
+  const acc = seatAccept(p, seat, ctx.range)
+  const prev = ctx.range === '90d' ? null : seatAccept(p, seat, ctx.range === '7d' ? 'prev7d' : 'prev30d')
   const o = ctx.d.outcomes.value?.find(x => x.client_id === seat)
   const vb = ctx.d.viewed.value?.find(x => x.client_id === seat)
   const sc = ctx.d.scans.value?.find(x => x.client_id === seat)
@@ -119,21 +107,15 @@ export function DeliveryCell({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
   const calls = o ? (ctx.range === '7d' ? o.calls_7d : ctx.range === '30d' ? o.calls_30d : null) : null
   const viewed = vb && ctx.range !== '90d' ? (ctx.range === '7d' ? [vb.viewed_7d, vb.invited_7d] : [vb.viewed_30d, vb.invited_30d]) : null
   return (
-    <div className="dl-dv">
-      <Mult label="Invites" bars={inv} total={w.inv} sub={ctx.range} />
-      <Mult label="DMs" bars={dmb} total={w.dm} sub={ctx.range} />
-      <Mult label="Replied" bars={rep} total={w.repliers} sub="people" />
-      <div className="dl-ax"><span /><div>{inv.map((b, i) => <u key={b.day} className={i === 7 ? 'dl-wk' : ''}>{b.dow}</u>)}</div><span /></div>
-      <div className="dl-fn">
-        {!w.hasInterval ? <>No {RANGE_WORD[ctx.range]} window in this snapshot.</> : <>
-          {RANGE_WORD[ctx.range]}: {w.matured
-            ? <><b>{w.accepted}</b> of {w.matured} accepted ≤72h (<b>{w.rate}%</b>{w.prevRate != null ? <>, <span className={(w.delta ?? 0) >= 0 ? 'dl-up' : 'dl-dn'}>was {w.prevRate}%</span></> : ctx.range === '90d' ? ', no earlier 90 days to compare' : ''})</>
-            : 'accept rate: nothing old enough yet'}
-          <br /><b>{num(convos)}</b> conversations · <b>{num(calls)}</b> calls · InMail <b>{num(w.inmail)}</b> · {num(w.invFailed)} invites refused
-          {viewed && <><br />Viewed your profile back: <b>{viewed[0]}</b> of {viewed[1]} invited (a floor)</>}
-          {sc && <><br />Scan opens: <b>{sc.opens_7d}</b> in 7d · {sc.opens_30d} in 30d · {sc.distinct_prospects} people{sc.last_open ? `, last ${dayMonth(sc.last_open)}` : ''}</>}
-        </>}
-      </div>
+    <div className="dl-fn">
+      {!w.hasInterval ? <>No {RANGE_WORD[ctx.range]} window in this snapshot.</> : <>
+        {RANGE_WORD[ctx.range]}: <b>{num(w.inv)}</b> invites · <b>{num(w.dm)}</b> DMs · {acc?.pct != null
+          ? <><b>{acc.hit}</b> of {acc.base} invited accepted ≤72h (<b>{acc.pct}%</b>{acc.young ? `, ${acc.young} still under 72h` : ''}{prev?.pct != null ? <>, <span className={acc.pct >= prev.pct ? 'dl-up' : 'dl-dn'}>previous {RANGE_WORD[ctx.range]} {prev.pct}%</span></> : ctx.range === '90d' ? ', no earlier 90 days to compare' : ''})</>
+          : 'accept rate: nobody invited in this window'}
+        <br /><b>{num(w.repliers)}</b> people replied · <b>{num(convos)}</b> conversations · <b>{num(calls)}</b> calls · InMail <b>{num(w.inmail)}</b> · {num(w.invFailed)} invites refused
+        {viewed && <><br />Viewed your profile back: <b>{viewed[0]}</b> of {viewed[1]} invited (a floor)</>}
+        {sc && <><br />Scan opens: <b>{sc.opens_7d}</b> in 7d · {sc.opens_30d} in 30d · {sc.distinct_prospects} people{sc.last_open ? `, last ${dayMonth(sc.last_open)}` : ''}</>}
+      </>}
     </div>
   )
 }

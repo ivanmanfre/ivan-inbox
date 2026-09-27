@@ -23,14 +23,15 @@ describe('Lanes: today\'s sending lines', () => {
     expect(document.querySelector('[data-today-notes]')).toBeNull()
   })
 
-  it('carries the LinkedIn counters, cancelled slots, the cold-email note and the supply alarm', () => {
+  it('carries cancelled slots only: no all-seats LinkedIn line, no cold-email note, no supply alarm (it is on the seat square)', () => {
     today.brief = brief()
     today.health = { accept: [], replies: [], pipeline: [{ client_id: 'risedtc', lane: 'x', sendable: 0, sent_7d: 14 }], governor: [] }
     renderInFrame(<TodayNotes />)
-    expect(document.querySelector('[data-linkedin-counters]')!.textContent).toBe('LinkedIn lane, all seats: 40 fresh supply · 0 sent today · 3 accepts · 2 replies · 1 need reply · 2 stuck')
     expect(document.querySelector('[data-cancelled-slots]')!.textContent).toMatch(/^1 slot today cancelled/)
-    expect(screen.getByText('Cold email: not connected.')).toBeTruthy()
-    expect(document.querySelector('[data-supply-alarm]')!.textContent).toMatch(/is out of leads\.$/)
+    expect(document.querySelector('[data-linkedin-counters]')).toBeNull()
+    expect(document.querySelector('[data-cold-email]')).toBeNull()
+    expect(document.querySelector('[data-supply-alarm]')).toBeNull()
+    expect(document.body.textContent).not.toMatch(/need reply|Smartlead|Cold email/)
   })
 
   it('a failed brief says what is missing', () => {
