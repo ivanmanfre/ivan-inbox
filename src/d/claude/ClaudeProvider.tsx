@@ -50,6 +50,9 @@ export function useClaudeMaybe(): ClaudeCtx | null {
   return useContext(Ctx)
 }
 
+/** Tests only: hand the drawer a prepared value instead of a live chat. */
+export const ClaudeValueProvider = Ctx.Provider
+
 export function ClaudeProvider({ children }: { children: ReactNode }) {
   const chat = useChat()
   const f = useFrame()
