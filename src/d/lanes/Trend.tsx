@@ -24,12 +24,12 @@ function Line({ label, bars, note }: { label: string; bars: Bar[]; note: string 
   const tot = known.length ? known.reduce((a, b) => a + (b.v ?? 0), 0) : null
   return (
     <div className="dl-tr" title={note}>
-      <span className="dl-trl">{label}</span>
+      <span className="dl-trl">{label}<em className="dl-trlt">{tot == null ? '?' : tot.toLocaleString('en-US')} in 14 days</em></span>
       <div className="dl-trb" aria-label={`${label}, last 14 days`}>
         {bars.map((b, i) => (
           <div key={b.day} className={`dl-trc${b.today ? ' dl-now' : ''}${i === 7 ? ' dl-wk' : ''}`} title={`${b.day}: ${b.v ?? 'no reading'}`}>
             <small className={b.v ? '' : 'dl-z'}>{b.v == null ? '–' : b.v}</small>
-            <i className={b.v == null ? 'dl-nil' : b.v ? '' : 'dl-z'} style={{ height: `${b.v ? Math.max(6, Math.round((b.v / max) * 100)) : 3}%` }} />
+            <i className={b.v == null ? 'dl-nil' : b.v ? '' : 'dl-z'} style={{ height: `${b.v ? Math.max(5, Math.round((b.v / max) * 78)) : 3}%` }} />
           </div>
         ))}
       </div>

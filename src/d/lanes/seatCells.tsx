@@ -1,12 +1,11 @@
-/* Lanes cells, part 1: the seat plate, the Today band and the Control band.
-   Each renders ONE seat; the desktop grid lays three side by side, the phone
-   stacks the chosen one. Hooks stay at the top of every component. */
+/* Lanes cells, part 1: the Today band and the Control band of ONE seat (Lanes 3
+   draws them in the chosen seat's "Today & control" section; the seat plate
+   became SeatSquares). Hooks stay at the top of every component. */
 import type { ReactNode } from 'react'
-import { monitorLiveness } from '../../lib/campaignControl'
-import { SEAT_NAME, type Seat } from '../seats'
+import type { Seat } from '../seats'
 import { Key } from '../ui/Key'
 import { ackId, useAck } from './ack'
-import { clientOf, controlOf, dm, hm, seatWord, todayOf } from './model'
+import { clientOf, controlOf, dm, hm, todayOf } from './model'
 import type { LanesData } from './useLanesData'
 import { readyOf } from './glance/ready'
 
@@ -17,30 +16,6 @@ const Sep = () => <span className="dl-sep">·</span>
 /** A number or "unknown", never a made-up 0. */
 export const num = (v: number | null | undefined): ReactNode =>
   v == null ? <span className="dl-unk">unknown</span> : v.toLocaleString('en-US')
-
-export function Plate({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
-  const p = ctx.d.cc.value
-  const c = clientOf(p, seat)
-  const w = p ? seatWord(c, monitorLiveness(p, ctx.now)) : null
-  const h = ctx.d.health.value?.seats.find(x => x.name === PERSON[seat]) as
-    | { account: string; sn: string | null; degraded: boolean; link: string | null; sn_credits?: number | null } | undefined
-  return (
-    <div className="dl-plate">
-      <div className="dl-r1">
-        <b>{SEAT_NAME[seat]}</b>
-        {w ? <span className={`dl-st dl-${w.tone}`}>{w.word}</span> : <span className="dl-st dl-dim">{ctx.d.cc.failed ? 'Unknown, unverified' : 'Reading…'}</span>}
-      </div>
-      <div className="dl-hl">
-        {h ? <>
-          {h.account !== 'OK' && <span className="dl-bad">LinkedIn disconnected</span>}
-          {h.sn != null && h.sn !== 'OK' && <span className="dl-bad">Sales Nav not working</span>}
-          {h.sn_credits != null && <span className="dl-ok" title="Sales Navigator credits">{h.sn_credits} credits</span>}
-          {h.degraded && h.link && <a className="dl-reconnect" data-verb="reconnect" href={h.link} target="_blank" rel="noreferrer">Reconnect</a>}
-        </> : <span className="dl-bad">{ctx.d.health.failed ? 'seat health ?' : '…'}</span>}
-      </div>
-    </div>
-  )
-}
 
 function Fig({ label, v, sub }: { label: string; v: number | null | undefined; sub: ReactNode }) {
   return (
