@@ -107,7 +107,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     {t.chat_provider_id && <Key verb="delete-seat" disabled={busy} className="dm-key-warn" onClick={() => run(async () => { if (await verbs.deleteSeat(t)) onBack() })}>Delete from seat</Key>}
   </>
   else if (hasDraft && !t.ownerConfirmation) keys = <>
-    <Key verb="solved" disabled={busy} onClick={() => run(() => verbs.solved(t))}>Mark as solved</Key>
+    <Key verb="solved" className="dm-key-solved" disabled={busy} onClick={() => run(() => verbs.solved(t))}>{phone ? 'Solved' : 'Mark as solved'}</Key>
     <Key verb="discard" disabled={busy} onClick={() => run(() => verbs.discard(t))}>Discard</Key>
     {t.draftSnoozedUntil === null && <Key verb="later" disabled={busy} onClick={() => run(() => verbs.later(t, edits))}>Later</Key>}
     {editing ? <Key verb="save-edit" disabled={busy} onClick={() => run(async () => { if (!(await verbs.saveEdit(t, edits))) setEditing(false) })}>Save</Key>

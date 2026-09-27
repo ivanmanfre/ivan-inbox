@@ -98,7 +98,7 @@ export function ColumnBody(p: ColumnProps) {
       rows={dated.map(({ d, t }) => <Row key={t.prospect_id} id={t.prospect_id} name={t.prospect_name} company={t.prospect_company}
         line="drafts that morning" right={dayMonth(d.at)} rightKind="fu" selected={c.selected === t.prospect_id} onOpen={() => c.open(t)} />)} />}
 
-    <Section id="came" foldable label="Came back, no reply" n={p.cameBack.failed ? '?' : came.length} folds={folds}
+    {(p.cameBack.failed || came.length > 0) && <Section id="came" foldable label="Came back, no reply" n={p.cameBack.failed ? '?' : came.length} folds={folds}
       before={p.cameBack.failed ? <Quiet>Could not read who came back.</Quiet> : null}
       rows={p.cameBack.failed ? [] : came.map(x => {
         const t = p.byId.get(x.prospect_id)
@@ -107,7 +107,7 @@ export function ColumnBody(p: ColumnProps) {
           line={`${cameBackLine(x)}. ${sentLine(x)}${comment ? ` “${comment}”` : ''}${x.icp_score !== null ? ` · ICP ${x.icp_score}` : ''}`}
           selected={c.selected === x.prospect_id} onOpen={t ? () => c.open(t) : undefined}
           verbs={[{ label: 'Dismiss', verb: 'dismiss', busy: c.busy === `cb:${x.prospect_id}`, run: () => { c.setBusy(`cb:${x.prospect_id}`); void c.verbs.cameBackDismiss(x.prospect_id, x.name, () => p.dropCameBack(x.prospect_id)).finally(() => c.setBusy(null)) } }]} />
-      })} />
+      })} />}
 
     {seat === 'ivan' && <WarmSection p={p} folds={folds} />}
 
