@@ -140,6 +140,11 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
     // The walk is the fresh queue (what the frame counts); an older draft opened from the fold walks both.
     return (w.older.some(r => r.id === draft) ? [...w.fresh, ...w.older] : w.fresh).map(r => r.id)
   }, [data.blocks, data.seats, draft, inErrors, items, listQueue, now, openLane, q, waiting])
+  const titles = useMemo(() => {
+    const t: Record<string, string> = {}
+    if (openLane) for (const r of data.seats[openLane].rows) if (queueIds.includes(r.id)) t[r.id] = titleOf(r)
+    return t
+  }, [data.seats, openLane, queueIds])
   const slot = data.armed ? nextFreeWeekday(data.armed, now) : null
   const openRow = draft && openLane ? data.seats[openLane].rows.find(r => r.id === draft) : null
   const ghost: Ghost | null = draft && openLane === 'ivan' && slot && openRow?.status !== 'scheduled'
@@ -155,7 +160,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
     : null
   const window_ = draft && openLane ? (
     <DraftWindow id={draft} lane={openLane} queue={queueIds} onPick={id => (q.get('from') === 'plan' ? go({ draft: id, lane: openLane, from: 'plan' }) : openDraft(id, openLane))} onClose={close}
-      refresh={data.seats[openLane].refresh} days={days} armed={data.armed} armedFailed={data.armedFailed} />
+      refresh={data.seats[openLane].refresh} days={days} armed={data.armed} armedFailed={data.armedFailed} titles={titles} />
   ) : null
   const queue = (
     <Queue lane={qLane} setLane={setLane} seat={data.seats[qLane]} fresh={waiting[qLane].fresh} older={waiting[qLane].older}
@@ -189,7 +194,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const errWindow = inErrors && draft && openLane ? (
     <DraftWindow id={draft} lane={openLane} queue={queueIds} onPick={id => navigate(dHash('content', 'errors', { draft: id, lane: openLane }))}
       onClose={() => navigate(dHash('content', 'errors', openLane === 'ivan' ? {} : { lane: openLane }))}
-      refresh={data.seats[openLane].refresh} days={days} armed={data.armed} armedFailed={data.armedFailed} />
+      refresh={data.seats[openLane].refresh} days={days} armed={data.armed} armedFailed={data.armedFailed} titles={titles} />
   ) : null
 
   let body: React.ReactNode

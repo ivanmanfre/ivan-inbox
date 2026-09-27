@@ -129,3 +129,8 @@
 .cn-racts{display:flex;gap:4px;justify-content:flex-end;padding:0 8px 0 0}
 .d-phone .cn-row{grid-template-columns:34px 36px minmax(0,1fr) auto}
 .d-phone .cn-row>span:nth-child(4),.d-phone .cn-row>span:nth-child(5){display:none}
+.cn-jk button[data-verb=rail]{margin-left:4px}
+.cn-qrail{list-style:none;margin:0;padding:4px 8px;max-height:180px;overflow-y:auto;border-bottom:1px solid var(--line)}
+.cn-qrail button{display:flex;gap:8px;width:100%;text-align:left;padding:4px 8px;border-radius:6px;font-size:13px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cn-qrail button small{font:400 11px var(--m);color:var(--t3);flex:none;width:22px}
+.cn-qrail button.cn-on{background:var(--sel);color:var(--t1)}

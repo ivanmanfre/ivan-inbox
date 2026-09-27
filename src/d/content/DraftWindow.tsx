@@ -22,6 +22,8 @@ type Props = {
   id: string; lane: Lane; queue: string[]
   onPick: (id: string) => void; onClose: () => void; refresh: () => void
   days: WallDay[]; armed: Set<string> | null; armedFailed: boolean
+  /** Titles of the queue's rows, for the queue rail (today's persisted `wb-draft-rail`). */
+  titles?: Record<string, string>
 }
 
 export function DraftWindow(p: Props) {
@@ -42,8 +44,12 @@ export function DraftWindow(p: Props) {
   return <Loaded key={detail.id} {...p} d={detail} refresh={refresh} />
 }
 
-function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFailed }: Props & { d: ContentDraftDetail }) {
+const RAIL_KEY = 'wb-draft-rail'
+
+function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFailed, titles }: Props & { d: ContentDraftDetail }) {
   const at = queue.indexOf(d.id)
+  const [rail, setRailState] = useState(() => { try { return localStorage.getItem(RAIL_KEY) === '1' } catch { return false } })
+  const setRail = (v: boolean) => { setRailState(v); try { localStorage.setItem(RAIL_KEY, v ? '1' : '0') } catch { /* private mode */ } }
   const advance = useCallback(() => {
     const next = at >= 0 && at + 1 < queue.length ? queue[at + 1] : null
     if (next) onPick(next); else onClose()
@@ -137,9 +143,19 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
           <button type="button" aria-label="Previous (k)" disabled={at <= 0} onClick={() => at > 0 && onPick(queue[at - 1])}>k</button>
           <button type="button" aria-label="Next (j)" disabled={at < 0 || at + 1 >= queue.length} onClick={() => at >= 0 && at + 1 < queue.length && onPick(queue[at + 1])}>j</button>
           {at >= 0 ? `${at + 1} of ${queue.length}` : 'not in this queue'}
+          {queue.length > 1 && <button type="button" data-verb="rail" aria-expanded={rail} onClick={() => setRail(!rail)} title="Show the queue">{rail ? 'hide list' : 'list'}</button>}
         </span>
         <button type="button" className="cn-x" aria-label="Close" data-verb="close" onClick={onClose}><DIcon name="x" /></button>
       </div>
+      {rail && queue.length > 1 && (
+        <ol className="cn-qrail" aria-label="Queue">
+          {queue.map((id, i) => (
+            <li key={id}><button type="button" className={id === d.id ? 'cn-on' : ''} aria-current={id === d.id ? 'true' : undefined} onClick={() => id !== d.id && onPick(id)}>
+              <small>{i + 1}</small>{titles?.[id] ?? (id === d.id ? titleOf(d) : 'Draft')}
+            </button></li>
+          ))}
+        </ol>
+      )}
       <div className="cn-chips"><span className={`cn-st${stage === 'error' || stage === 'stuck' ? ' cn-st-bad' : ''}`}>{stateChip}</span><span>{line}</span>
         {internalOnly(d, stage) && <span className="cn-st cn-st-bad">Internal copy only · not approved for publication</span>}
         {v.editing && <span className="cn-st">Editing</span>}</div>

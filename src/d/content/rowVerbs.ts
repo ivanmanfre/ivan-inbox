@@ -61,7 +61,7 @@ export function useRowVerbs(onDone: () => void) {
       else if (v === 'board') await setBoardVisible(d.id, true)
       else await (lane !== 'ivan' ? deleteClientDraft(d.id, d.taxonomy) : deleteDraft(d.id, d.taxonomy))
       toast.show({ message: v === 'approve' ? 'Approved. Nothing publishes until it is scheduled.' : v === 'skip' ? 'Skipped. It left the queue.' : v === 'board' ? `On ${LANE_POSSESSIVE[lane]} board.` : 'Deleted.' })
-      onDone()
+      onDone(); window.dispatchEvent(new Event('wb-rows-changed'))
     } catch (e) {
       toast.show({ message: e instanceof Error ? e.message : 'That did not go through.', tone: 'failed' })
     } finally { setBusy(null) }

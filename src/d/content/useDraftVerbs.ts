@@ -12,7 +12,9 @@ import { scheduleGuarded } from './writes'
 // The draft window's writes. Every write is today's function with today's
 // payload (lib/content, lib/studioActions); every confirm keeps today's words.
 // `advance` walks to the next row in the queue (or closes) after a decision.
-export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => void, refresh: () => void) {
+export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => void, refreshOwn: () => void) {
+  // Today's contract: after a write, whatever list is mounted refetches (wb-rows-changed).
+  const refresh = useCallback(() => { refreshOwn(); window.dispatchEvent(new Event('wb-rows-changed')) }, [refreshOwn])
   const confirm = useDConfirm()
   const toast = useToast()
   const [editing, setEditing] = useState(false)
