@@ -281,5 +281,5 @@
   overflow-wrap:anywhere;
 }
 .a-ops-card .a-slack-preview strong{ font-weight:700 }
-.a-ops-card .a-slack-preview .a-slack-line + .a-slack-line{ margin-top:8px }
+.a-ops-card .a-slack-preview .a-slack-line + .a-slack-line{ margin-top:12px }
 .a-ops-card .a-ops-edit > summary{ cursor:pointer; margin-bottom:var(--ds-s2) }
