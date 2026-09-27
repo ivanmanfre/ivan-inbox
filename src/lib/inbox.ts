@@ -134,6 +134,11 @@ export type Thread = {
   // view — the reply-blindspot class of bug). Going by message rows alone would
   // make every one of them invisible, so the flag rides on the thread.
   needsManualReply: boolean;
+  // outreach_prospects.solved_at (db/20260927): Ivan's "Mark as solved", the thread needs no
+  // answer. Not in inbox_messages_v; D reads it separately and merges it (src/d/counts/solved.ts).
+  // The thread is settled while solved_at is at or after its last owed inbound; a newer inbound
+  // makes it owed again by itself. Absent (undefined) everywhere nobody merged it.
+  solvedAt?: string | null;
   // last.lane, coalesced to null. See InboxMessage.lane above.
   lane: string | null;
   // last.copy_route, coalesced to null. See InboxMessage.copy_route above.
@@ -708,6 +713,8 @@ function unansweredSince(t: Thread): string | null {
   const lastInbound = t.messages.filter(m => m.direction === 'inbound' && isOwedInbound(m))
     .map(eventTime).sort().at(-1) ?? null
   if (lastInbound === null) return null
+  // MARK AS SOLVED (2026-09-27) is the same kind of ruling, made by hand with no draft needed.
+  if (isSettledBySolve(t.solvedAt, lastInbound)) return null
   // DISCARDING A DRAFT IS AN ANSWER TO THE QUESTION "does this need a reply".
   // Gabriel Amarazeanu (2026-08-03): Mattan replied on LinkedIn by hand and
   // binned the drafted reply, so the thread's newest outbound row is a discard
@@ -729,6 +736,14 @@ function unansweredSince(t: Thread): string | null {
     .filter(m => m.direction === 'outbound' && m.sent_at)
     .map(m => m.sent_at!).sort().at(-1) ?? null
   return (lastSent === null || lastSent <= lastInbound) ? lastInbound : null
+}
+
+/** solved_at settles the thread while it is not older than the last owed inbound. Compared as
+ *  instants: PostgREST ('+00:00') and client ISO ('Z') strings do not sort alike. */
+export function isSettledBySolve(solvedAt: string | null | undefined, lastOwedInbound: string): boolean {
+  if (!solvedAt) return false
+  const s = Date.parse(solvedAt), i = Date.parse(lastOwedInbound)
+  return !Number.isNaN(s) && !Number.isNaN(i) && s >= i
 }
 
 export function needsAnswer(t: Thread, now: number = Date.now()): boolean {

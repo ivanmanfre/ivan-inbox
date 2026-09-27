@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useInbox } from '../../hooks/useInbox'
+import { useSolvedMerge, type SolvedApi } from './solved'
 
 // ONE inbox read for the whole D frame (today's shell mounted useInbox once,
 // hooks/useInbox.ts). It is what makes the reply chime ring on EVERY page (the
@@ -7,7 +8,9 @@ import { useInbox } from '../../hooks/useInbox'
 // band, and is the same list the DMs page draws, so a DMs visit costs no
 // second 20k-row read and no second realtime channel.
 
-export type DInbox = ReturnType<typeof useInbox>
+// `threads` carry solvedAt ("Mark as solved", merged here once), so every reader of the frame's
+// inbox, the DMs list, the per-seat counts, Home and ⌘K, settles the same threads.
+export type DInbox = ReturnType<typeof useInbox> & { solved: SolvedApi }
 
 const Ctx = createContext<DInbox | null>(null)
 
@@ -23,7 +26,9 @@ export function DInboxProvider({ children, now = false }: { children: ReactNode;
     return () => window.clearTimeout(t)
   }, [now, on])
   // The saved copy paints at once either way; only the live read waits.
-  const inbox = useInbox(on, true)
+  const raw = useInbox(on, true)
+  const { threads, solved } = useSolvedMerge(raw.threads, on)
+  const inbox = useMemo(() => ({ ...raw, threads, solved }), [raw, threads, solved])
   return <Ctx.Provider value={inbox}>{children}</Ctx.Provider>
 }
 
@@ -35,6 +40,8 @@ export function useDInboxMaybe(): DInbox | null {
 /** The frame's inbox; outside the frame (a page test) the page runs its own read. */
 export function useDInbox(): DInbox {
   const shared = useContext(Ctx)
-  const own = useInbox(shared == null)
+  const ownRaw = useInbox(shared == null)
+  const { threads, solved } = useSolvedMerge(ownRaw.threads, shared == null)
+  const own = useMemo(() => ({ ...ownRaw, threads, solved }), [ownRaw, threads, solved])
   return shared ?? own
 }

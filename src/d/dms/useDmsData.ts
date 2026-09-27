@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDInbox } from '../counts/inbox'
 import { groupThreads, type InboxMessage, type Thread } from '../../lib/inbox'
+import { withSolved } from '../counts/solved'
 import { supabase } from '../../lib/supabase'
 import { FOLLOW_UP_REASON } from '../../lib/followUp'
 import { scanOpenDays, scanReopenOnlyIvan, type CameBackCard } from '../../wb/dms/cameBackData'
@@ -90,7 +91,9 @@ export function useDmsData() {
       return hit ? { ...m, ...hit.p } : m
     }))
     const flags = new Set(inbox.threads.filter(t => t.needsManualReply).map(t => t.prospect_id))
-    return groupThreads(rows, flags)
+    // Regrouping drops what the view does not carry: put the merged "Mark as solved" stamps back.
+    const solved = new Map(inbox.threads.filter(t => t.solvedAt).map(t => [t.prospect_id, t.solvedAt ?? null] as const))
+    return withSolved(groupThreads(rows, flags), solved)
   }, [inbox.threads, patches])
 
   const cameBack = useMemo(() => cameRaw.rows.filter(c => !scanReopenOnlyIvan(c)), [cameRaw.rows])
@@ -102,7 +105,7 @@ export function useDmsData() {
 
   return {
     threads, loading: inbox.loading, error: inbox.error, loadedAt: inbox.loadedAt, fromCache: inbox.fromCache, cachedAt: inbox.cachedAt,
-    refreshList: inbox.refresh, refreshAll, patch,
+    refreshList: inbox.refresh, refreshAll, patch, solved: inbox.solved,
     cameBack: { ...cameRaw, rows: cameBack }, dropCameBack: (pid: string) => editCame(r => r.filter(c => c.prospect_id !== pid)), reloadCame,
     scanDays, warm, dropWarm: (pid: string) => editWarm(r => r.filter(c => c.prospect_id !== pid)), reloadWarm,
     dated, reloadDated,

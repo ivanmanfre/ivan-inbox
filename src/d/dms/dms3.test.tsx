@@ -9,12 +9,14 @@ vi.mock('../../lib/inbox', async orig => {
   const real = await orig<typeof import('../../lib/inbox')>()
   return { ...real, discardLegs: vi.fn(async () => []), restoreDraft: vi.fn(async () => true), markThreadRead: vi.fn(async () => {}) }
 })
-vi.mock('./solved', async orig => ({ ...(await orig<typeof import('./solved')>()), setNeedsManualReply: vi.fn(async () => {}) }))
+vi.mock('./solved', async orig => ({ ...(await orig<typeof import('./solved')>()), writeSolved: vi.fn(async () => {}) }))
 vi.mock('../../lib/followUp', async orig => ({ ...(await orig<typeof import('../../lib/followUp')>()), fetchFollowUp: vi.fn(async () => null) }))
 
 import * as lib from '../../lib/inbox'
 import * as solvedMod from './solved'
-import { groupThreads, threadBucket, type Thread } from '../../lib/inbox'
+import { groupThreads, isSettledBySolve, threadBucket, unansweredWaitSince, type Thread } from '../../lib/inbox'
+import { countDmSeat } from '../counts/dmDrafts'
+import { owedIds, withSolved } from '../counts/solved'
 import type { PreReadHandle } from '../../exp/v2c/chat/usePreRead'
 import { DmAsks } from './asks'
 import { Folders } from './Chrome'
@@ -121,42 +123,79 @@ function Pane({ t }: { t: Thread }) {
 const mount = (t: Thread) => renderInFrame(<DmAsks><Pane t={t} /></DmAsks>, { hash: '#exp/d/dms' })
 
 describe('Mark as solved', () => {
-  it('discards every leg (plain, no ask) then lowers the reply flag on this prospect; Undo restores both', async () => {
+  it('on a draft thread: discards every leg (plain, no ask), THEN one PATCH {solved_at, needs_manual_reply:false}; Undo restores all', async () => {
     const rows = drafted('s', { prospect_name: 'Sam' })
     const [t0] = groupThreads(rows, new Set(['s']), NOW)
-    expect(t0.needsManualReply).toBe(true)
     mount(t0)
     fireEvent.click(key('solved')!)
     await waitFor(() => expect(lib.discardLegs).toHaveBeenCalledWith([t0.draft], null))
-    await waitFor(() => expect(solvedMod.setNeedsManualReply).toHaveBeenCalledWith('s', false))
-    expect(vi.mocked(lib.discardLegs).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(solvedMod.setNeedsManualReply).mock.invocationCallOrder[0])
+    await waitFor(() => expect(solvedMod.writeSolved).toHaveBeenCalled())
+    const [pid, body] = vi.mocked(solvedMod.writeSolved).mock.calls[0]
+    expect(pid).toBe('s')
+    expect(body.needs_manual_reply).toBe(false)
+    expect(Date.parse(body.solved_at!)).toBe(NOW)
+    expect(vi.mocked(lib.discardLegs).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(solvedMod.writeSolved).mock.invocationCallOrder[0])
     expect(await screen.findByText('Marked Sam as solved.')).toBeTruthy()
     fireEvent.click(key('undo')!)
     await waitFor(() => expect(lib.restoreDraft).toHaveBeenCalledWith(t0.draft!.id))
-    await waitFor(() => expect(solvedMod.setNeedsManualReply).toHaveBeenLastCalledWith('s', true))
+    await waitFor(() => expect(solvedMod.writeSolved).toHaveBeenLastCalledWith('s', { solved_at: null, needs_manual_reply: true }))
   })
 
-  it('does not touch the flag when every leg refused (already approved)', async () => {
+  it('on an owed thread with NO draft: only the stamp (flag untouched when not raised); Undo puts the old stamp back', async () => {
+    const [t] = threads(owedNoDraft('n', { prospect_name: 'Nod' }))
+    mount(t)
+    fireEvent.click(key('solved')!)
+    await waitFor(() => expect(solvedMod.writeSolved).toHaveBeenCalled())
+    expect(lib.discardLegs).not.toHaveBeenCalled()
+    expect(Object.keys(vi.mocked(solvedMod.writeSolved).mock.calls[0][1])).toEqual(['solved_at'])
+    fireEvent.click(await waitFor(() => key('undo')!))
+    await waitFor(() => expect(solvedMod.writeSolved).toHaveBeenLastCalledWith('n', { solved_at: null }))
+  })
+
+  it('writes nothing more when every leg refused (already approved)', async () => {
     const [t] = threads(drafted('r', { prospect_name: 'Ray' }))
     vi.mocked(lib.discardLegs).mockResolvedValueOnce([{ leg: t.draft!, error: null }])
     mount(t)
     fireEvent.click(key('solved')!)
     await waitFor(() => expect(lib.discardLegs).toHaveBeenCalled())
     await vi.advanceTimersByTimeAsync(50)
-    expect(solvedMod.setNeedsManualReply).not.toHaveBeenCalled()
+    expect(solvedMod.writeSolved).not.toHaveBeenCalled()
   })
 
-  it('the discard rule takes the thread out of Needs you; a NEW inbound brings it back', () => {
-    const rows = drafted('b', { prospect_name: 'Bo' })
-    const draft = rows[2]
-    const solvedRows = [...rows.slice(0, 2), { ...draft, send_blocked_reason: 'discarded_in_inbox', send_blocked_at: iso(60_000) }]
+  it('settle/return rule: solved_at at or after the last owed inbound settles it; a newer inbound brings it back', () => {
+    const rows = owedNoDraft('b', { prospect_name: 'Bo' }, 30)
+    const [t] = threads(rows)
+    expect(threadBucket(t, NOW)).toBe('answer')
+    // PostgREST shape ('+00:00') vs the inbound's 'Z': compared as instants, not strings
+    const solvedPg = new Date(NOW - 60_000).toISOString().replace('Z', '+00:00')
+    const settled = withSolved([t], new Map([['b', solvedPg]]))[0]
+    expect(threadBucket(settled, NOW)).toBe('waiting')
+    expect(unansweredWaitSince(settled)).toBeNull()
+    expect(countDmSeat([settled], 'ivan', NOW).needs).toBe(0)
+    expect(seatView([settled], 'ivan', NOW).nodraft).toHaveLength(0)
+    const older = withSolved([t], new Map([['b', iso(40 * 3_600_000)]]))[0]
+    expect(threadBucket(older, NOW)).toBe('answer')
+    const again = threads([...rows, msg({ prospect_id: 'b', prospect_name: 'Bo', direction: 'inbound', sent_at: iso(1000), created_at: iso(1000), message_text: 'One more question: price?' })])
+    expect(threadBucket(withSolved(again, new Map([['b', solvedPg]]))[0], NOW)).toBe('answer')
+    expect(isSettledBySolve(null, iso(1000))).toBe(false)
+  })
+
+  it('owedIds lists owed threads by the message rule even when already solved (so the read keeps seeing them)', () => {
+    const ts = threads([...owedNoDraft('o', { prospect_name: 'O' }), ...waiting('w', { prospect_name: 'W' })])
+    expect(owedIds(withSolved(ts, new Map([['o', iso(1000)]])))).toEqual(['o'])
+  })
+
+  it('the discard rule still settles a solved draft thread after its stamp is gone', () => {
+    const rows = drafted('d', { prospect_name: 'Di' })
+    const solvedRows = [...rows.slice(0, 2), { ...rows[2], send_blocked_reason: 'discarded_in_inbox', send_blocked_at: iso(60_000) }]
     expect(threadBucket(threads(solvedRows)[0], NOW)).toBe('waiting')
-    const again = [...solvedRows, msg({ prospect_id: 'b', prospect_name: 'Bo', direction: 'inbound', sent_at: iso(1000), created_at: iso(1000), message_text: 'One more question: price?' })]
-    expect(threadBucket(threads(again)[0], NOW)).toBe('answer')
   })
 
-  it('is not offered on an owed thread with no draft', () => {
+  it('is offered on an owed thread with no draft, never on a filed pitch', () => {
     mount(threads(owedNoDraft('n', { prospect_name: 'Nod' }))[0])
+    expect(key('solved')).not.toBeNull()
+    cleanup()
+    mount(threads(owedNoDraft('p', { prospect_name: 'Pitch', client_id: 'risedtc', prospect_skip_reason: 'inbound_vendor_pitch' }))[0])
     expect(key('solved')).toBeNull()
   })
 })

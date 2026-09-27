@@ -4,6 +4,7 @@ import {
   type InboxMessage, type Thread,
 } from '../../lib/inbox'
 import { seatFilter, seatOf, type Seat } from '../seats'
+import { fetchSolvedAt, owedIds, withSolved } from './solved'
 
 // ---------------------------------------------------------------------------
 // DMs, per seat: "Drafts for you" and "Needs you".
@@ -116,5 +117,10 @@ export async function fetchDmSeatCount(seat: Seat, now: number = Date.now()): Pr
   const ids = await candidateIds(seat, now)
   if (ids.length === 0) return { drafts: 0, needs: 0 }
   const rows = await threadRows(ids)
-  return countDmSeatFromRows(rows, seat, now)
+  // "Mark as solved" (outreach_prospects.solved_at) is not in the view: one small read for the
+  // owed threads only, then TODAY'S rule (unansweredSince honours solvedAt). A failed read throws
+  // like any other: the count says it could not be read, never a guess.
+  const threads = groupThreads(dedupeMessages(rows), new Set(), now)
+  const solved = await fetchSolvedAt(owedIds(threads.filter(t => seatOf(t.client_id) === seat)))
+  return countDmSeat(withSolved(threads, solved), seat, now)
 }

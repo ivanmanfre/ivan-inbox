@@ -10,6 +10,7 @@ import { seatOf } from '../seats'
 import { Key } from '../ui/Key'
 import { Banners } from './ThreadBanners'
 import { Draft } from './Draft'
+import { canMarkSolved } from './solved'
 import { DraftWhy } from './DraftWhy'
 import { History } from './History'
 import { Composer } from './Keys'
@@ -101,13 +102,14 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   }
   const ps = pre.get(t.prospect_id)
 
+  const solvedKey = <Key verb="solved" className="dm-key-solved" disabled={busy} onClick={() => run(() => verbs.solved(t))}>{phone ? 'Solved' : 'Mark as solved'}</Key>
   let keys
   if (t.spam) keys = <>
     <Key verb="not-spam" disabled={busy} onClick={() => run(() => verbs.notSpam(t))}>Not spam</Key>
     {t.chat_provider_id && <Key verb="delete-seat" disabled={busy} className="dm-key-warn" onClick={() => run(async () => { if (await verbs.deleteSeat(t)) onBack() })}>Delete from seat</Key>}
   </>
   else if (hasDraft && !t.ownerConfirmation) keys = <>
-    <Key verb="solved" className="dm-key-solved" disabled={busy} onClick={() => run(() => verbs.solved(t))}>{phone ? 'Solved' : 'Mark as solved'}</Key>
+    {solvedKey}
     <Key verb="discard" disabled={busy} onClick={() => run(() => verbs.discard(t))}>Discard</Key>
     {t.draftSnoozedUntil === null && <Key verb="later" disabled={busy} onClick={() => run(() => verbs.later(t, edits))}>Later</Key>}
     {editing ? <Key verb="save-edit" disabled={busy} onClick={() => run(async () => { if (!(await verbs.saveEdit(t, edits))) setEditing(false) })}>Save</Key>
@@ -115,6 +117,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     <Key primary verb="send" disabled={busy} onClick={() => void send()}>{t.companionDraft ? 'Send both' : 'Send'}</Key>
   </>
   else keys = <>
+    {canMarkSolved(t) && solvedKey}
     {t.ownerConfirmation
       ? <Key verb="ask-owner-link" onClick={() => void copy()} sub="copies the chat link">{seat === 'ivan' ? 'Copy chat link' : `Ask ${from}`}</Key>
       : owed && <Key verb="draft-it" onClick={onDraftIt} sub="Claude writes">Draft it</Key>}
