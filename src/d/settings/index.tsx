@@ -6,7 +6,7 @@
    Lime only on live state (judge): a saved preference is the pressed neutral key.
    ========================================================================== */
 import { lazy, Suspense, type ReactNode } from 'react'
-import { fmtUsd, noteReason, provenanceText } from '../../lib/money'
+import { fmtUsd, PLAIN_UNVERIFIED, plainNote, plainProvenance } from '../../lib/money'
 import { supabase } from '../../lib/supabase'
 import type { PlaceProps } from '../places'
 import { dHash } from '../route'
@@ -14,7 +14,7 @@ import { AnswerRow, N } from '../ui/AnswerRow'
 import { useDConfirm } from '../ui/confirm'
 import { Key } from '../ui/Key'
 import { Failed, Skeleton } from '../ui/states'
-import { useRead } from '../lanes/useRead'
+import { useRead, useRetryRead } from '../lanes/useRead'
 import { warsawDm } from '../ui/time'
 import { useDensity, usePush, useSound, useStoredTheme } from './prefs'
 import { fetchBoards, fetchDevices, fetchMoneyPlate, type MoneyPlate } from './reads'
@@ -53,8 +53,8 @@ function MoneyCells({ m }: { m: MoneyPlate }) {
     const label = CLIENT_NAME[id] ?? id
     return (
       <div key={id}><small>{label} MRR</small>
-        {a ? <><em>{fmtUsd(a.amount_usd)}</em><u>{a.verified ? 'verified' : 'unverified'} · {provenanceText(a)}</u></>
-          : r ? <><em className="ds2-z">not recorded</em><u>{noteReason(r.latestRow.note ?? '') || 'awaiting a Stripe read'}</u></>
+        {a ? <><em>{fmtUsd(a.amount_usd)}</em><u>{a.verified ? 'verified' : PLAIN_UNVERIFIED} · {plainProvenance(a)}</u></>
+          : r ? <><em className="ds2-z">not recorded</em><u>{plainNote(r.latestRow.note)}</u></>
             : <><em className="ds2-z">not recorded</em><u>no MRR row on file</u></>}
       </div>
     )
@@ -73,9 +73,9 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
   const [density, setDensity] = useDensity()
   const [theme, resetTheme] = useStoredTheme()
   const confirm = useDConfirm()
-  const devices = useRead(fetchDevices, 'devices')
+  const [devices, retryDevices] = useRetryRead(fetchDevices, 'devices')
   const boards = useRead(fetchBoards, 'boards')
-  const money = useRead(fetchMoneyPlate, 'money')
+  const [money, retryMoney] = useRetryRead(fetchMoneyPlate, 'money')
 
   // The device by its user agent, never by the window width: a narrow Mac window is still a Mac.
   const here = /iPhone|iPad/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1) ? 'iPhone' : /Macintosh/.test(navigator.userAgent) ? 'Mac' : 'device'
@@ -83,7 +83,7 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
   const title = devs ? <>Pushes reach <N v={devs.length} /> {devs.length === 1 ? 'device' : 'devices'}.</> : <>Pushes reach <N v={null} /> devices.</>
   const sub = devs ? (devs[0] ? `Newest is your ${devs[0].device}, added ${warsawDm(devs[0].created_at)}. Dark is the only theme.` : 'No device gets pushes yet. Dark is the only theme.')
     : devices.kind === 'failed' ? 'The device list could not be read. Dark is the only theme.' : 'Reading devices…'
-  const pushSub = push.blocked ?? (push.state === 'on' ? `This ${here} gets a ping when a new reply lands.` : push.state === 'reading' ? 'Reading this device…' : `Get a ping on this ${here} when a new reply lands.`)
+  const pushSub = push.blocked ?? (push.state === 'on' ? `This ${here} gets a ping when a new reply lands.` : push.state === 'reading' ? 'Reading this device…' : push.state === 'unknown' ? `Could not read whether push is on for this ${here}.` : `Get a ping on this ${here} when a new reply lands.`)
   const board = (id: string) => (boards.kind === 'ready' ? boards.data.find(b => b.client_id === id) : undefined)
   const signOut = async () => {
     if (await confirm({ title: 'Sign out?', message: 'This signs the app out on this device. You sign back in with the 6-digit code or the email link.', confirmText: 'Sign out' })) void supabase.auth.signOut()
@@ -96,7 +96,7 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
           options={[{ id: 'on', label: 'On', verb: 'push-on' }, { id: 'off', label: 'Off', verb: 'push-off' }]} onPick={v => push.set(v === 'on')} />
       </Row>
       {devices.kind === 'loading' && <Skeleton lines={3} title={false} label="Reading devices" />}
-      {devices.kind === 'failed' && <Failed what="the device list" detail={devices.message} />}
+      {devices.kind === 'failed' && <Failed what="the device list" detail={devices.message} onRetry={retryDevices} />}
       {devs && <ol className="ds2-devs">{devs.map((x, i) => <li key={`${x.created_at}-${i}`}><i>{i + 1}</i><span>{x.device} <small>· {x.browser}</small></span><em>since {warsawDm(x.created_at)}</em></li>)}</ol>}
       {!push.blocked?.startsWith('On iPhone') && <p className="ds2-note">On iPhone, push works only from the Home Screen app (Share, then Add to Home Screen), then turn it on there.</p>}
       <Row title="New-reply sound" sub="A chime when a reply lands while the app is open. Turning it on plays it once, so you hear the volume.">
@@ -131,7 +131,7 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
   )
   const moneyPlate = (
     <Plate title="Money" note="read only · moved here from the rail">
-      {money.kind === 'loading' ? <Skeleton lines={2} title={false} label="Reading money" /> : money.kind === 'failed' ? <Failed what="the money figures" detail={money.message} /> : <MoneyCells m={money.data} />}
+      {money.kind === 'loading' ? <Skeleton lines={2} title={false} label="Reading money" /> : money.kind === 'failed' ? <Failed what="the money figures" detail={money.message} onRetry={retryMoney} /> : <MoneyCells m={money.data} />}
       <Row title="Money" sub="MRR, next charges, renewal risk, vendor spend, cost per lead. Every number shows where it came from.">
         <Key size="small" onClick={() => navigate(dHash('settings', 'money'))}>Open Money</Key>
       </Row>

@@ -30,21 +30,22 @@
    ========================================================================== */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
-  MONEY_TRUTH_RUN, NO_PRESETTLE_TEXT, NO_SOURCE_TEXT, RUNWAY_REFUSAL, STRIPE_UNVERIFIED_BANNER,
-  TOKEN_PRICED_LABEL, UNATTRIBUTED_LANE, UNVERIFIED_SUFFIX,
+  NO_PRESETTLE_TEXT, NO_SOURCE_TEXT, PLAIN_UNVERIFIED, RUNWAY_REFUSAL,
+  TOKEN_PRICED_LABEL, UNATTRIBUTED_LANE,
   aggregateByDay, aggregateByWeek, billingDay, clientLabel, computeRunway,
   costPerReadyLead, costWindowLabel, dataPerLeadAttr, dayRangeLabel,
   fetchActorDay, fetchCashConfig, fetchEngineCounterDay, fetchLaneDay,
   fetchMonthChargesAndInvoices, fetchMrrRows, fetchOpenMoneyDecisions,
   fetchRenewalRiskRows, fetchStripeKeyExists, fmtPerLead, fmtReadyUnavailable, fetchReadyDays, fmtReadyNotRecorded, lastReadyDay, fmtShareOfTotal, fmtUsd, fmtUsdPerUnit,
   isStale, isTokenPriced,
-  laneTotals, laneTotalsGrandTotal, lastNDays, mrrByClient, noteReason, provenanceText,
+  laneTotals, laneTotalsGrandTotal, lastNDays, mrrByClient, plainAge, plainNote, plainProvenance, plainTaskTitle,
   readyLeadWindowDays, riskNoteKind,
-  riskNoteText, taskTitle, topActors, type ActorDayRow, type ClientMrrRow, type CostPerLead,
+  taskTitle, topActors, type ActorDayRow, type ClientMrrRow, type CostPerLead,
   type EngineCounterDayRow, type LaneDayRow, type LaneTotal, type MoneyLedgerRow,
   type MoneyTaskRow, type PeriodAgg,
 } from '../../lib/money'
 import { type ReplacementRow } from '../../lib/kpis'
+import { withTimeout } from '../../d/ui/timeout'
 import { PullIndicator } from '../chrome/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { hasMock } from '../../exp/v2c/mock'
@@ -59,7 +60,7 @@ type Source = { source_kind: string; source_ref: string | null; observed_at: str
 
 // The one component licensed to render a number. `provenance` and `stale` are
 // passed in pre-computed (by DataCell, below) rather than derived here, so
-// there is exactly one place — provenanceText/isStale in lib/money — that
+// there is exactly one place — plainProvenance/isStale in lib/money — that
 // decides what a provenance line says and when a cell counts as stale.
 function Cell({ value, provenance, verified, stale }: {
   value: string
@@ -72,7 +73,7 @@ function Cell({ value, provenance, verified, stale }: {
       <span className="a-money-cv a-mono">{value}</span>
       <span className="a-money-cp a-mono">
         {provenance}
-        {!verified && <span className="a-money-unv"> · {UNVERIFIED_SUFFIX}</span>}
+        {!verified && <span className="a-money-unv"> · {PLAIN_UNVERIFIED}</span>}
       </span>
     </span>
   )
@@ -97,7 +98,7 @@ function DataCell({ value, source, now, verified = true }: {
   return (
     <Cell
       value={value}
-      provenance={provenanceText(source, now)}
+      provenance={plainProvenance(source, now)}
       verified={verified}
       stale={isStale(source.observed_at, now)}
     />
@@ -205,7 +206,7 @@ function MrrSection({ rows, now }: { rows: MoneyLedgerRow[]; now: number }) {
         return (
           <>
             <NoSource />
-            <span className="a-money-note a-meta">reason: {noteReason(c.latestRow.note ?? '')}</span>
+            <span className="a-money-note a-meta">{plainNote(c.latestRow.note)}</span>
           </>
         )
       },
@@ -258,11 +259,11 @@ function RiskSection({ rows, now, loadedAt }: { rows: MoneyLedgerRow[]; now: num
                   lead={<Chip tone={kind === 'renewal' ? 'quiet' : 'attention'}>{kind === 'renewal' ? 'Renewal' : 'Risk'}</Chip>}
                   title={clientLabel(r.client_id)}
                 >
-                  <span className="a-body-t">{riskNoteText(r.note ?? '')}</span>
+                  <span className="a-body-t">{plainNote(r.note, 'A renewal or risk note is recorded.')}</span>
                   {/* prose is a claim too: a verified=false row wears the same suffix a numeric cell does */}
                   <span className="a-money-cp a-mono">
-                    {provenanceText(r, now)}
-                    {!r.verified && <span className="a-money-unv"> · {UNVERIFIED_SUFFIX}</span>}
+                    {plainProvenance(r, now)}
+                    {!r.verified && <span className="a-money-unv"> · {PLAIN_UNVERIFIED}</span>}
                   </span>
                 </Row>
               )
@@ -294,7 +295,7 @@ function RunwaySection({
   return (
     <Group label={sectionLabel('3', 'Runway')} pad>
       {!stripeKeyExists && (
-        <Banner tone="attention" icon="alert">{STRIPE_UNVERIFIED_BANNER}</Banner>
+        <Banner tone="attention" icon="alert">Stripe figures are unverified: they come from notes, waiting on a Stripe read.</Banner>
       )}
       <div className="a-money-runway">
         {runway.ok
@@ -591,19 +592,19 @@ function DecisionsSection({ tasks }: { tasks: MoneyTaskRow[] }) {
       foot={tasks.length > 0 ? <span className="a-meta">Ticking stays on the Ops job.</span> : undefined}
     >
       {tasks.length === 0
-        ? <EmptyState icon="money" title="No open money decisions in this run." sub={MONEY_TRUTH_RUN} />
+        ? <EmptyState icon="money" title="No open money decisions." />
         : (
           <Rows>
             {tasks.map(t => (
               <Row
                 key={t.id}
                 titleWrap
-                title={taskTitle(t.body)}
+                title={plainTaskTitle(taskTitle(t.body))}
                 tail={<span className="a-mono a-dim">{t.context?.due_at ? `due ${t.context.due_at}` : 'no due date'}</span>}
               >
                 {/* a task title can carry a dollar figure; it is a source row too, so it wears the same tag */}
                 <span className="a-money-cp a-mono">
-                  ops_drafts · {t.id.slice(0, 8)} · observed {t.created_at ? relAge(t.created_at) : 'never'}
+                  from an Ops task · {plainAge(t.created_at ?? null)}
                 </span>
               </Row>
             ))}
@@ -647,11 +648,12 @@ function useMoney() {
 
   const refresh = useCallback(() => {
     setState(s => ({ ...s, loading: true }))
-    Promise.all([
+    // No answer in 12 s = the failed banner with Try again (it never sits on "Loading…").
+    withTimeout(Promise.all([
       fetchMrrRows(), fetchRenewalRiskRows(), fetchMonthChargesAndInvoices(),
       fetchLaneDay(30), fetchActorDay(30), fetchEngineCounterDay(30),
       fetchCashConfig(), fetchStripeKeyExists(), fetchOpenMoneyDecisions(), fetchReadyDays(),
-    ]).then(([mrrRows, riskRows, monthRows, laneDay, actorDay, engineDay, cash, stripeKeyExists, tasks, readyDays]) => {
+    ])).then(([mrrRows, riskRows, monthRows, laneDay, actorDay, engineDay, cash, stripeKeyExists, tasks, readyDays]) => {
       setState({
         loading: false, error: null, mrrRows, riskRows, monthRows, laneDay, actorDay, engineDay,
         readyDays, cash, stripeKeyExists, tasks, loadedAt: new Date().toISOString(),

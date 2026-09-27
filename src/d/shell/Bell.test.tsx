@@ -38,7 +38,7 @@ const readers = { bell: async () => ({ unreadGroups: 104, open: 1102 }) }
 describe('BellFeed verbs', () => {
   it('Clear all asks, clears every open row, and the receipt Undo restores that stamp', async () => {
     renderInFrame(<BellFeed />, { readers })
-    await screen.findByText('104 unread · 1,102 open')
+    await screen.findByText('104 unread · 1,102 not cleared')
     fireEvent.click(document.querySelector('[data-verb="clear-all"]')!)
     await screen.findByText('Clear every notification?')
     await act(async () => { fireEvent.click(document.querySelector('[data-verb="confirm"]')!) })
@@ -51,7 +51,7 @@ describe('BellFeed verbs', () => {
   it('a refused Clear all says so and offers Retry', async () => {
     feed.clearAll.mockResolvedValueOnce(null)
     renderInFrame(<BellFeed />, { readers })
-    await screen.findByText('104 unread · 1,102 open')
+    await screen.findByText('104 unread · 1,102 not cleared')
     fireEvent.click(document.querySelector('[data-verb="clear-all"]')!)
     await act(async () => { fireEvent.click((await screen.findByText('Clear all', { selector: '.d-confirm .d-face span' })).closest('button')!) })
     await screen.findByText('Could not clear. Nothing changed.')
@@ -62,6 +62,43 @@ describe('BellFeed verbs', () => {
     fireEvent.click(document.querySelector('[data-verb="clear-all"]')!)
     await act(async () => { fireEvent.click(await waitFor(() => document.querySelector('[data-verb="cancel"]')!)) })
     expect(feed.clearAll).not.toHaveBeenCalled()
+  })
+
+  it('Clear all is a danger confirm: Enter never clears (same as Clear alerts)', async () => {
+    renderInFrame(<BellFeed />, { readers })
+    await screen.findByText('104 unread · 1,102 not cleared')
+    fireEvent.click(document.querySelector('[data-verb="clear-all"]')!)
+    await screen.findByText('Clear every notification?')
+    expect(document.querySelector('.d-confirm .d-key-d')).not.toBeNull()
+    await act(async () => { fireEvent.keyDown(window, { key: 'Enter' }) })
+    // Cancel held the focus, so Enter cancelled: nothing written.
+    expect(feed.clearAll).not.toHaveBeenCalled()
+    expect(screen.queryByText('Clear every notification?')).toBeNull()
+  })
+
+  it('never draws an empty system-alerts box: none open, reading and failed are one line each', async () => {
+    renderInFrame(<BellFeed />, { readers: { ...readers, alerts: async () => ({ rows: [], groups: [], critical: 0 }) } })
+    await screen.findByText('No system alert open in 14 days. A critical one lights the bell.')
+    expect(document.querySelector('.d-sys')).toBeNull()
+    cleanup()
+    renderInFrame(<BellFeed />, { readers: { ...readers, alerts: async () => { throw new Error('503') } } })
+    await waitFor(() => expect(document.querySelector('[data-sys-alerts="failed"]')).not.toBeNull())
+    expect(document.querySelector('.d-sys')).toBeNull()
+    expect(document.querySelector('[data-sys-alerts="failed"] [data-verb="retry"]')).not.toBeNull()
+  })
+
+  it('a feed that never answers leaves the skeleton after 12 s for the failed line with Retry', async () => {
+    vi.useFakeTimers()
+    try {
+      feed.loaded = false; feed.groups = []
+      renderInFrame(<BellFeed />, { readers })
+      expect(screen.getByLabelText('Reading notifications')).toBeTruthy()
+      await act(async () => { vi.advanceTimersByTime(12_000) })
+      expect(screen.queryByLabelText('Reading notifications')).toBeNull()
+      expect(screen.getByText('Could not read the notifications.')).toBeTruthy()
+      await act(async () => { vi.advanceTimersByTime(20_000) })
+      expect(feed.refresh).toHaveBeenCalled()
+    } finally { feed.loaded = true; vi.useRealTimers() }
   })
 
   it('rows read as a person would say them; × dismisses with an Undo', async () => {

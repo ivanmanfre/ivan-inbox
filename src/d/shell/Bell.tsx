@@ -12,6 +12,7 @@ import { Empty, Failed, Skeleton } from '../ui/states'
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
 import { warsawHm } from '../ui/time'
+import { useStalled } from '../ui/timeout'
 import { useFrame } from './frame'
 import { feedDays } from './feedShape'
 import { FeedGroup, inChatTurnId } from './FeedRows'
@@ -93,6 +94,9 @@ export function BellFeed() {
   const f = useFrame()
   const c = useFrameCounts()
   const feed = useFeedData()
+  // The feed never sits on its skeleton: 12 s, then the failed line with Retry,
+  // and a quiet re-read every 20 s until it answers.
+  const feedStalled = useStalled(!feed.loaded, () => void feed.refresh())
   const confirm = useDConfirm()
   const toast = useToast()
   const [clearedAt, setClearedAt] = useState<string | null>(null)
@@ -177,7 +181,8 @@ export function BellFeed() {
       const ok = await confirm({
         title: 'Clear every notification?',
         message: `${n != null ? `All ${n.toLocaleString('en-US')} open` : 'Every open'} notification${n === 1 ? '' : 's'} go, not only the ones on screen. Undo stays on the receipt for a few seconds.`,
-        confirmText: 'Clear all',
+        // Danger, like Clear alerts: Cancel is focused and Enter never clears.
+        confirmText: 'Clear all', verb: 'confirm', danger: true,
       })
       if (!ok) return
       const stamp = await feed.clearAll()
@@ -220,9 +225,12 @@ export function BellFeed() {
     })()
   }
 
+  // One unit everywhere (coordinator ruling): unread GROUPS, the badge's number,
+  // the day headers' "N unread" and the rows below. The other figure is labelled
+  // as what it is: notification rows not cleared yet.
   const sub = clearedAt ? 'All read' : feed.error && !feed.loaded ? 'Could not read the feed'
     : unread == null ? (c.bell.failed ? 'Count could not be read' : 'Reading…')
-      : unread === 0 ? 'All read' : `${unread} unread · ${(open ?? 0).toLocaleString('en-US')} open`
+      : unread === 0 ? 'All read' : `${unread} unread · ${(open ?? 0).toLocaleString('en-US')} not cleared`
   const arrived = [...fresh].filter(k => feed.groups.some(g => g.key === k)).length
 
   return (
@@ -242,7 +250,8 @@ export function BellFeed() {
         )}
         <SystemBox groups={groups} failed={c.alerts.failed} onRetry={() => c.refresh('alerts')} onClear={clearAlerts} onDismiss={dismissAlert} />
         <WorkQueue go={go} />
-        {!feed.loaded && <Skeleton lines={5} label="Reading notifications" />}
+        {!feed.loaded && !feedStalled && <Skeleton lines={5} label="Reading notifications" />}
+        {feedStalled && <Failed what="the notifications" detail="No answer in 12 s. Still trying in the background." onRetry={() => void feed.refresh()} />}
         {feed.loaded && feed.error && feed.groups.length === 0 && <Failed what="the notifications" onRetry={() => void feed.refresh()} />}
         {feed.loaded && !feed.error && feed.groups.length === 0 && (
           <Empty

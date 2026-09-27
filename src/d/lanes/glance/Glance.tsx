@@ -16,6 +16,7 @@ import { clientOf, controlOf, hm, dm as dayMonth, todayOf } from '../model'
 import type { LanesData } from '../useLanesData'
 import { contentWeek, limitOf, nextWeekDays, type ContentWeek } from './model'
 import { readyOf, type ReadySeat } from './ready'
+import { useStalled } from '../../ui/timeout'
 import './glance.css'
 
 type Read<T> = { v: T } | { loading: true } | { failed: string }
@@ -34,9 +35,16 @@ export function useGlance(now: number): Pick<GlanceCtx, 'content' | 'drafts'> & 
   const rise = useContent('risedtc')
   const arch = useContent('arch')
   const counts = useFrameCounts()
+  // today's content hook has no timeout of its own: 12 s without an answer is
+  // "could not be read", and it keeps re-reading quietly until one lands.
+  const stalled = {
+    ivan: useStalled(!ivan.error && !ivan.loadedAt, ivan.refresh),
+    risedtc: useStalled(!rise.error && !rise.loadedAt, rise.refresh),
+    arch: useStalled(!arch.error && !arch.loadedAt, arch.refresh),
+  }
   const days = nextWeekDays(now)
   const wk = (r: ReturnType<typeof useContent>, s: Seat): Read<ContentWeek> =>
-    r.error ? { failed: r.error } : !r.loadedAt ? { loading: true } : { v: contentWeek(r.drafts, s, days) }
+    r.error ? { failed: r.error } : !r.loadedAt ? (stalled[s] ? { failed: 'no answer after 12 s' } : { loading: true }) : { v: contentWeek(r.drafts, s, days) }
   const dn = dmNumbers(counts, 'drafts')
   const dr = (s: Seat): Read<number> => {
     const v = dn[s]

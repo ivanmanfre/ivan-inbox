@@ -8,16 +8,17 @@
 import { useCallback, useEffect, useState } from 'react'
 import { disablePush, enablePush, getPushState, type PushState } from '../../lib/push'
 import { chimeEnabled, playChime, setChimeEnabled } from '../../lib/chime'
+import { ReadTimeout, withTimeout } from '../ui/timeout'
 
 export const isPreview = (): boolean => import.meta.env.VITE_PREVIEW === '1'
 export const isIOS = (): boolean => typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent)
 export const isStandalone = (): boolean => typeof window !== 'undefined' && (window.matchMedia?.('(display-mode: standalone)').matches
   || (navigator as unknown as { standalone?: boolean }).standalone === true)
 
-export type Push = { state: PushState | 'reading'; busy: boolean; error: string; blocked: string | null; set: (on: boolean) => void }
+export type Push = { state: PushState | 'reading' | 'unknown'; busy: boolean; error: string; blocked: string | null; set: (on: boolean) => void }
 
 /** Why the push keys cannot act on this device, or null when they can. */
-export function pushBlocked(state: PushState | 'reading', preview = isPreview()): string | null {
+export function pushBlocked(state: PushState | 'reading' | 'unknown', preview = isPreview()): string | null {
   if (preview) return 'This preview never turns push on or off. Use the live app for that.'
   if (isIOS() && !isStandalone()) return 'On iPhone, push works only from the Home Screen app (Share, then Add to Home Screen), then turn it on there.'
   if (state === 'unsupported') return 'This browser does not support web push.'
@@ -26,10 +27,15 @@ export function pushBlocked(state: PushState | 'reading', preview = isPreview())
 }
 
 export function usePush(): Push {
-  const [state, setState] = useState<PushState | 'reading'>('reading')
+  const [state, setState] = useState<PushState | 'reading' | 'unknown'>('reading')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  useEffect(() => { let live = true; void getPushState().then(s => { if (live) setState(s) }, () => { if (live) setState('unsupported') }); return () => { live = false } }, [])
+  // A service worker that never answers must not leave "Reading this device…" up: 12 s, then say so.
+  useEffect(() => {
+    let live = true
+    void withTimeout(getPushState()).then(s => { if (live) setState(s) }, e => { if (live) setState(e instanceof ReadTimeout ? 'unknown' : 'unsupported') })
+    return () => { live = false }
+  }, [])
   const blocked = pushBlocked(state)
   const set = useCallback((on: boolean) => {
     if (blocked || busy) return
