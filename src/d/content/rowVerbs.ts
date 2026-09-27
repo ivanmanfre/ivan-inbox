@@ -28,7 +28,7 @@ export function rowVerbsFor(d: ContentDraft, lane: Lane): RowVerb[] {
     ...(caps.includes('skip') ? ['skip' as const] : []),
     ...(caps.includes('approve') ? ['approve' as const] : []),
     ...(caps.includes('promote') ? ['board' as const] : []),
-    ...(lane !== 'ivan' && caps.includes('delete') ? ['delete' as const] : []),
+    ...(caps.includes('delete') ? ['delete' as const] : []),
   ]
 }
 
