@@ -3,6 +3,7 @@
    chosen seat below, band after band. The same cells the desktop grid draws. */
 import type { ReactNode } from 'react'
 import { monitorLiveness } from '../../lib/campaignControl'
+import { isWorking } from '../../lib/campaignPerf'
 import { SEAT_NAME, SEAT_OWNER, type Seat } from '../seats'
 import { CampaignsCell, DeliveryCell, InboundCell, type BandCtx } from './bandCells'
 import { RangeKeys } from './foot'
@@ -44,7 +45,7 @@ export function Phone({ seats, seat, pick, ctx, range, setRange, doors, monitor 
       </div>
       <TodayCell seat={seat} ctx={ctx} />
       <ControlCell seat={seat} ctx={ctx} />
-      <Sec tail={<span>{ctx.d.perf.value ? ctx.d.perf.value.filter(c => c.client_id === seat).length : ''}</span>}>Campaigns, last 7 days</Sec>
+      <Sec tail={<span>{ctx.d.perf.value ? ctx.d.perf.value.filter(c => c.client_id === seat && isWorking(c)).length : ''}</span>}>Campaigns, last 7 days</Sec>
       <CampaignsCell seat={seat} ctx={ctx} />
       <Sec tail={<RangeKeys range={range} setRange={setRange} />}>14 days, own scale</Sec>
       <DeliveryCell seat={seat} ctx={ctx} />

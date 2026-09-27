@@ -140,3 +140,16 @@ export function laneMixOnce(campaignId: string): Promise<LaneMix> {
   }
   return p
 }
+
+/** The sender's own pause keys per seat (Ivan's 422 pause, Arch's invite pause). */
+export const PAUSE_KEY: Partial<Record<Seat, string>> = { ivan: 'ivan_conn_422_pause_until', arch: 'arch_conn_send_pause_until' }
+export async function fetchPauses(): Promise<Partial<Record<Seat, string>>> {
+  const { data, error } = await supabase.from('integration_config').select('key, value').in('key', Object.values(PAUSE_KEY))
+  if (error) throw error
+  const out: Partial<Record<Seat, string>> = {}
+  for (const [seat, key] of Object.entries(PAUSE_KEY)) {
+    const v = ((data ?? []) as Array<{ key: string; value: string | null }>).find(r => r.key === key)?.value
+    if (v && Number.isFinite(Date.parse(v))) out[seat as Seat] = v
+  }
+  return out
+}

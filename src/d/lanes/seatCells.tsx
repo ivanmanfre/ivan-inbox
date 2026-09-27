@@ -6,7 +6,7 @@ import { monitorLiveness } from '../../lib/campaignControl'
 import { SEAT_NAME, SEAT_OWNER, type Seat } from '../seats'
 import { Key } from '../ui/Key'
 import { ackId, useAck } from './ack'
-import { clientOf, controlOf, dm, seatWord, todayOf } from './model'
+import { clientOf, controlOf, dm, hm, seatWord, todayOf } from './model'
 import type { LanesData } from './useLanesData'
 
 export type CellCtx = { d: LanesData; now: number }
@@ -97,6 +97,8 @@ export function ControlCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
   const v = c ? controlOf(c, ctx.now) : null
   const inc = v?.incident ?? null
   const [acked, ack] = useAck(inc ? ackId(inc) : null, Boolean(inc?.acknowledged))
+  const pause = ctx.d.pauses.value?.[seat]
+  const pausedUntil = inc?.pausedUntil ?? (pause && Date.parse(pause) > ctx.now ? hm(pause) : null)
   if (!v) return <div className="dl-ct"><p className="dl-unk">{ctx.d.cc.failed ? `The send monitor could not be read: ${ctx.d.cc.failed}` : 'Reading the send monitor…'}</p></div>
   return (
     <div className="dl-ct">
@@ -106,10 +108,10 @@ export function ControlCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
           <div className="dl-ir">
             <div className="dl-im">
               {inc.observed_failures != null && <><b>{inc.observed_failures.toLocaleString('en-US')}</b> refusals{inc.opened_at ? ` since ${dm(inc.opened_at, 'UTC')}` : ''}{inc.observed_distinct_prospects != null ? `, ${inc.observed_distinct_prospects} people` : ''}. </>}
-              Paused until <b>{inc.pausedUntil ?? 'not set'}</b>{inc.check ? `, next check ${inc.check}` : ''}.
+              Paused until <b>{pausedUntil ?? 'not set'}</b>{inc.check ? `, next check ${inc.check}` : ''}.
               {acked && <span className="dl-acked"> Acknowledged, not recovered.</span>}
             </div>
-            <Key verb="acknowledge" disabled={acked} onClick={ack} aria-label={acked ? 'Acknowledged' : 'Acknowledge this incident'}>{acked ? 'Acknowledged' : 'Acknowledge'}</Key>
+            <Key size="small" verb="acknowledge" disabled={acked} onClick={ack} aria-label={acked ? 'Acknowledged' : 'Acknowledge this incident'}>{acked ? 'Acknowledged' : 'Acknowledge'}</Key>
           </div>
         </div>
       ) : <p className="dl-lead">{v.lead}</p>}

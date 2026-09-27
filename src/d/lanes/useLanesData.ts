@@ -17,7 +17,7 @@ import { fetchInbound, type InboundRow } from '../../lib/inbound'
 import { fetchSeatHealth, type SeatHealthSummary } from '../../lib/seatHealth'
 import type { CameBackCard } from '../../wb/dms/cameBackData'
 import type { Seat } from '../seats'
-import { fetchCameBack, fetchCounters, fetchEngagers7d, fetchWarmCount, type Counter } from './reads'
+import { fetchCameBack, fetchCounters, fetchEngagers7d, fetchPauses, fetchWarmCount, type Counter } from './reads'
 
 export type Slot<T> = { value: T | null; failed: string | null }
 export type LanesData = {
@@ -34,6 +34,7 @@ export type LanesData = {
   warm: Slot<number>
   engagers: Slot<Record<Seat, number>>
   health: Slot<SeatHealthSummary>
+  pauses: Slot<Partial<Record<Seat, string>>>
 }
 type Key = keyof LanesData
 
@@ -59,6 +60,7 @@ const READS: { [K in Key]: () => Promise<NonNullable<LanesData[K]['value']>> } =
     if (!h) throw new Error('no seat health summary')
     return h
   },
+  pauses: fetchPauses,
 }
 const KEYS = Object.keys(READS) as Key[]
 
