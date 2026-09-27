@@ -1,6 +1,7 @@
 // The open conversation's head (mock `.mh` + `.df-chips`): avatar, the person's name
 // (data-d-thread-who), headline, Copy chat link, Ask Claude, ⋯; then seat · lane · copy route +
 // invite arm · channel and the real stage ladder, and the route line the coordinator assigned.
+import type { ReactNode } from 'react'
 import { channelFamilies, isDraft, isInternalConfirmation, ladderSteps, type Thread } from '../../lib/inbox'
 import { copyRouteTag, label } from '../../lib/labels'
 import { seatOf, SEAT_NAME } from '../seats'
@@ -21,11 +22,12 @@ function channels(t: Thread): string {
   return fams.length ? fams.map(f => name[f]).join(' + ') : 'LinkedIn'
 }
 
-export function ThreadHead({ t, phone, onBack, onCopy, copied, onAsk, onMore, moreOpen, onWho, onDelete, deleting, onSpam }: {
+export function ThreadHead({ t, phone, onBack, onCopy, copied, onAsk, onMore, moreOpen, onWho, onDelete, deleting, onSpam, signal }: {
   t: Thread; phone: boolean; onBack: () => void; onCopy: () => void; copied: boolean; onAsk: () => void; onMore: () => void; moreOpen: boolean
   /** The name opens Context, as today's name tap does. */ onWho?: () => void
   /** Delete from seat, a visible red key as today's thread bar (not only under ⋯). */ onDelete?: () => void; deleting?: boolean
   /** Spam, visible on client seats as today's thread bar. */ onSpam?: () => void
+  /** The came-back tag beside the name (cameBack.ts), with its own Dismiss. */ signal?: ReactNode
 }) {
   const seat = seatOf(t.client_id)
   const lane = laneChip(t)
@@ -44,6 +46,7 @@ export function ThreadHead({ t, phone, onBack, onCopy, copied, onAsk, onMore, mo
           <b data-d-thread-who="">{t.prospect_name}</b>
           {sub && <small>{sub}</small>}
         </button>
+        {signal}
         <button type="button" className={`dm-ib${copied ? ' dm-on' : ''}`} aria-label={copied ? 'Chat link copied' : 'Copy chat link'} title="Copy chat link, for Mattan or Davorin" data-verb="copy-link" onClick={onCopy}>
           <DIcon name={copied ? 'check' : 'external'} />
         </button>

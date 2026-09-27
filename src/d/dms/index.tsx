@@ -5,11 +5,12 @@ import { usePreRead } from '../../exp/v2c/chat/usePreRead'
 import { applyThreadTokens, readTokens, writeTokens, type FilterToken } from '../../lib/filterTokens'
 import { eventTime, isConversation, searchThreads, type Thread } from '../../lib/inbox'
 import { subjectForThread } from '../../wb/ask/askAbout'
-import { useFrameCounts } from '../counts/useFrameCounts'
+import { dmNumbers, useFrameCounts } from '../counts/useFrameCounts'
 import type { PlaceProps } from '../places'
 import { dHash } from '../route'
 import { SEATS, seatOf, type Seat } from '../seats'
 import { useFrame } from '../shell/frame'
+import { pickSeat, readSeat, writeSeat } from './SeatSquares'
 import { useReportFailed } from '../shell/health'
 import { handOffToClaude } from '../ui/claudeHandoff'
 import { DmAsks } from './asks'
@@ -23,6 +24,7 @@ import { useDmVerbs } from './verbs'
 import { AgentOnlySheet, WarmSheet } from './Warm'
 import { useWarmVerbs } from './warmVerbs'
 import { RowMenu } from './RowMenu'
+import { cameTags } from './signals'
 import { useToast } from '../ui/toast'
 import { rowsOnScreen, useDmKeys } from './useDmKeys'
 import { KeySheet } from './KeySheet'
@@ -32,6 +34,8 @@ import './dms.css'
 import './dms-thread.css'
 import './dms-more.css'
 import './dms-calm.css'
+import './dms-bubbles.css'
+import './dms-seats.css'
 
 export default function DmsPage(props: PlaceProps) {
   return <DmAsks><Dms {...props} /></DmAsks>
@@ -53,8 +57,8 @@ function Dms({ layout, route, navigate }: PlaceProps) {
 
   const setTokens = useCallback((t: FilterToken[]) => { setTokensState(t); writeTokens('dms', t) }, [])
   const refreshCounts = counts.refresh
-  const ctx = useMemo(() => ({ refresh: () => { data.refreshList(); data.reloadCame(); refreshCounts('dms') }, patch: data.patch, solved: data.solved.setLocal }),
-    [data.refreshList, data.reloadCame, data.patch, data.solved.setLocal, refreshCounts]) // eslint-disable-line react-hooks/exhaustive-deps
+  const ctx = useMemo(() => ({ refresh: () => { data.refreshList(); data.reloadCame(); refreshCounts('dms') }, patch: data.patch, solved: data.solved.setLocal, dated: data.reloadDated }),
+    [data.refreshList, data.reloadCame, data.patch, data.solved.setLocal, data.reloadDated, refreshCounts]) // eslint-disable-line react-hooks/exhaustive-deps
   const verbs = useDmVerbs(ctx)
   const toast = useToast()
   const fail = useCallback((message: string) => { toast.show({ message, tone: 'failed' }) }, [toast])
@@ -64,7 +68,9 @@ function Dms({ layout, route, navigate }: PlaceProps) {
   const folder = route.query.get('folder')
   const mode: Mode = folder === 'spam' ? 'spam' : folder === 'email' ? 'email' : q.trim() || tokens.length ? 'search' : 'conversations'
   const threadId = route.query.get('thread')
-  const phoneSeat = (SEATS as readonly string[]).includes(route.query.get('seat') ?? '') ? route.query.get('seat') as Seat : 'ivan'
+  // One seat at a time: the link's ?seat=, else the remembered pick, else the seat with most Needs you.
+  const [stored, setStored] = useState<Seat | null>(readSeat)
+  const seat = pickSeat(route.query.get('seat'), stored, dmNumbers(counts, 'needs'))
 
   const threads = data.threads
   const byId = useMemo(() => new Map(threads.map(t => [t.prospect_id, t])), [threads])
@@ -80,10 +86,12 @@ function Dms({ layout, route, navigate }: PlaceProps) {
   const [rowMenu, setRowMenu] = useState<Thread | null>(null)
   // Desktop with no ?thread: the first conversation that needs you is shown (as the mock does), but it
   // was not opened by Ivan, so its read stamp is not written (`auto`).
+  const sv = views[seat]
   const autoOpen = threadId || layout !== 'desktop' ? null
-    : mode === 'conversations' ? SEATS.map(s => { const v = views[s]; return v.owner[0] ?? v.drafted[0] ?? v.nodraft[0] }).find(Boolean) ?? null
-      : mode === 'spam' ? views.risedtc.spam[0] ?? views.arch.spam[0] ?? null
-        : mode === 'search' ? SEATS.map(s => matches[s][0]).find(Boolean) ?? null : null
+    : mode === 'conversations' ? sv.owner[0] ?? sv.drafted[0] ?? sv.nodraft[0] ?? null
+      : mode === 'spam' ? sv.spam[0] ?? null
+        : mode === 'email' ? sv.emailWaiting[0] ?? null
+          : mode === 'search' ? matches[seat][0] ?? null : null
   const open = threadId ? byId.get(threadId) ?? null : autoOpen
 
   const failedN = (data.error ? 1 : 0) + (data.cameBack.failed ? 1 : 0) + (data.warm.failed ? 1 : 0) + (data.dated.failed ? 1 : 0)
@@ -136,10 +144,13 @@ function Dms({ layout, route, navigate }: PlaceProps) {
     { id: 'dms.keys', title: 'Keyboard shortcuts', group: 'Open', key: '?', hint: 'Every key on this page.', ready: true, run: openKeys },
   ], [selectMany, openKeys]))
 
+  const came = useMemo(() => cameTags(data.cameBack.rows, now), [data.cameBack.rows, now])
+  const dropCame = data.dropCameBack
+  const dismissCame = useCallback((pid: string, name: string) => verbs.cameBackDismiss(pid, name, () => dropCame(pid)), [verbs, dropCame])
   const model: PageModel = {
     layout, mode, folder, q, setQ, tokens, setTokens, searchRef, views, stats, matches, open, threadId, auto: autoOpen !== null, threads, byId,
     data, counts, verbs, warmVerbs, fail, openWarm, now, busy, setBusy, checked, setChecked, openThread, closeThread, ask, onMenu, staleN: 0, staleBy, rowMore: setRowMenu, refreshAll: data.refreshAll, pre,
-    phoneSeat, setPhoneSeat: (s: Seat) => go({ seat: s }), setFolder: (f: string | null) => go({ folder: f, thread: null }),
+    came, dismissCame, seat, setSeat: (s: Seat) => { writeSeat(s); setStored(s); go({ seat: null, thread: null }) }, setFolder: (f: string | null) => go({ folder: f, thread: null }),
   }
   const agentChanged = () => { data.reloadAgent(); data.reloadWarm() }
   return <>
@@ -147,7 +158,8 @@ function Dms({ layout, route, navigate }: PlaceProps) {
     {warmCard && <WarmSheet c={warmCard} agent={data.agent.cards.find(a => a.prospect_id === warmCard.prospect_id) ?? null} thread={byId.get(warmCard.prospect_id) ?? null}
       verbs={warmVerbs} onClose={closeWarm} onOpenThread={openThread} onAgentChanged={agentChanged} />}
     {keysOpen && <KeySheet onClose={() => setKeysOpen(false)} />}
-    {rowMenu && <RowMenu t={rowMenu} pre={pre} verbs={verbs} onClose={() => setRowMenu(null)} onOpen={() => openThread(rowMenu)} onAsk={() => ask(rowMenu, 'ask')} />}
+    {rowMenu && <RowMenu t={rowMenu} pre={pre} verbs={verbs} onClose={() => setRowMenu(null)} onOpen={() => openThread(rowMenu)} onAsk={() => ask(rowMenu, 'ask')}
+      came={came.get(rowMenu.prospect_id) ?? null} onDismissCame={() => dismissCame(rowMenu.prospect_id, rowMenu.prospect_name)} />}
     {agentOnlyCard && <AgentOnlySheet card={agentOnlyCard} thread={byId.get(agentOnlyCard.prospect_id) ?? null} onClose={closeWarm} onOpenThread={openThread} onAgentChanged={agentChanged} />}
   </>
 }

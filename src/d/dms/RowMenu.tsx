@@ -11,9 +11,13 @@ import { Sheet } from '../ui/Sheet'
 import { copyText } from './Thread'
 import type { DmVerbs } from './verbs'
 import { canMarkSolved } from './solved'
+import { editsOf, laterPath } from './later'
+import type { CameTag } from './signals'
 
-export function RowMenu({ t, pre, verbs, onClose, onOpen, onAsk }: {
+export function RowMenu({ t, pre, verbs, onClose, onOpen, onAsk, came = null, onDismissCame }: {
   t: Thread; pre: PreReadHandle; verbs: DmVerbs; onClose: () => void; onOpen: () => void; onAsk: () => void
+  /** The came-back tag on this person, if any: its Dismiss lives here too. */
+  came?: CameTag | null; onDismissCame?: () => void
 }) {
   const [copied, setCopied] = useState(false)
   const link = chatLink(t.chat_provider_id, t.linkedin_url)
@@ -32,6 +36,8 @@ export function RowMenu({ t, pre, verbs, onClose, onOpen, onAsk }: {
         {st.s === 'done' && <p className="dm-qnote" style={{ padding: '4px 14px 8px' }}>{st.line}</p>}
         {link && item('row-copy-chat', copied ? 'Copied' : link.isChat ? 'Copy chat link' : 'Copy profile link', 'for Mattan or Davorin', () => { void copyText(link.href).then(ok => { if (ok) { setCopied(true); window.setTimeout(onClose, 700) } }) })}
         {item('row-ask', 'Ask Claude', 'with this person attached', () => { onClose(); onAsk() })}
+        {laterPath(t) && item('row-later', 'Later', laterPath(t) === 'followup' ? 'a follow-up drafts on the day you pick' : 'out of your queue until the day you pick', () => { onClose(); void verbs.later(t, editsOf(t)) })}
+        {came && onDismissCame && item('row-came-dismiss', 'Dismiss came back', came.text, () => { onClose(); onDismissCame() })}
         {canMarkSolved(t) && item('row-solved', 'Mark as solved', 'no reply needed · Undo on the receipt', () => { onClose(); void verbs.solved(t) })}
         {t.draft && item('row-discard', t.companionDraft ? 'Discard both drafts' : 'Discard the draft', 'asks first', () => { onClose(); void verbs.rowDiscard(t) }, true)}
       </div>

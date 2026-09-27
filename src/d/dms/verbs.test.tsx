@@ -98,7 +98,7 @@ describe('DM verbs', () => {
   it('Later saves the edit first, then parks the draft', async () => {
     const [t] = threads(drafted('l', { prospect_name: 'Lee' }))
     mount(t)
-    fireEvent.click(key('edit'))
+    expect(key('edit')).toBeNull()
     fireEvent.change(document.querySelector('.dm-edit')!, { target: { value: 'New words' } })
     fireEvent.click(key('later'))
     fireEvent.click(await waitFor(() => key('date-1w')))

@@ -1,0 +1,59 @@
+/* D · DMs 4: three seat squares on top (Lanes 3's look, .dl-sq), one list for the chosen seat, the
+   conversation on the right. Same tokens as dms.css. */
+.dm-sqs{flex:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:12px 20px 10px}
+.dm-sq{position:relative;min-width:0;border:1px solid var(--line2);border-radius:14px;background:var(--p1);padding:10px 14px 10px;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:14px;row-gap:2px;text-align:left;transition:border-color .12s,background .12s}
+.dm-sq:not(.dm-on):hover{border-color:var(--strong)}
+.dm-sq.dm-on{border-color:var(--lime);background:var(--sel);box-shadow:inset 0 0 0 1px var(--lime)}
+.dm-sq-h{grid-column:1 / -1;display:flex;align-items:baseline;gap:8px;min-width:0}
+.dm-sq-h b{font:600 17px var(--f);letter-spacing:-.2px}
+.dm-sq-h small{margin-left:auto;font:400 11px var(--m);color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dm-sq-n{display:flex;flex-direction:column;align-items:flex-start}
+.dm-sq-n em{font:500 30px/1.05 var(--m);font-style:normal;letter-spacing:-1px}
+.dm-sq-n em.dm-hot{color:var(--hot)}.dm-sq-n em.dm-zero,.dm-sq-n em.dm-q{color:var(--t3)}
+.dm-sq-n small{font:400 10.5px var(--m);color:var(--t3);letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+.dm-sq-l{display:flex;flex-direction:column;justify-content:flex-end;gap:1px;font:400 11.5px var(--m);color:var(--t3);min-width:0}
+.dm-sq-l span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dm-sq-l b{color:var(--t1);font-weight:500}
+/* desk grid: one list + the conversation */
+.dm-desk .dm-grid4{flex:1;min-height:0;display:grid;grid-template-columns:minmax(360px,480px) minmax(0,1fr);border-top:1px solid var(--line)}
+@media (max-width:1380px){.dm-desk .dm-grid4{grid-template-columns:minmax(330px,420px) minmax(0,1fr)}}
+.d-with-claude .dm-desk .dm-grid4{grid-template-columns:minmax(300px,360px) minmax(0,1fr)}
+.dm-desk .dm-list{border-right:1px solid var(--line)}
+.dm-desk .dm-list .dm-q{padding:9px 16px}
+.dm-desk .dm-list .dm-n{font-size:14.5px}
+.dm-desk .dm-list .dm-s{font-size:13px}
+.dm-desk .dm-list .dm-sec{padding:12px 16px 6px}
+.dm-desk .dm-list .dm-quiet,.dm-desk .dm-list .dm-note{padding-left:16px;padding-right:16px}
+@media (max-width:1380px){.dm-desk .dm-list .dm-n{white-space:nowrap;display:block}}
+/* phone: a 3-up strip */
+.dm-sqs-phone{gap:8px;padding:8px 12px 8px}
+.dm-sqs-phone .dm-sq{padding:8px 10px 8px;border-radius:12px;column-gap:8px}
+.dm-sqs-phone .dm-sq-h b{font-size:15px}
+.dm-sqs-phone .dm-sq-n em{font-size:24px}
+.dm-sqs-phone .dm-sq-n small{font-size:9.5px;letter-spacing:.02em}
+.dm-sqs-phone .dm-sq-l{font-size:11px}
+/* signal tag on a name (came back) */
+.dm-sig{display:inline-block;margin-left:6px;font:400 11px var(--m);color:#B9D86A;border:1px solid rgba(198,244,50,.3);border-radius:4px;padding:0 5px;vertical-align:1px;white-space:nowrap}
+button.dm-sig{cursor:pointer;background:none}
+button.dm-sig:hover{border-color:var(--lime)}
+.dm-sigwrap{position:relative;flex:none;align-self:center}
+.dm-sigpop{position:absolute;left:0;top:26px;z-index:30;width:300px;background:var(--p2);border:1px solid var(--strong);border-radius:10px;padding:10px 12px;box-shadow:0 18px 40px rgba(0,0,0,.55);font-size:13px;color:var(--t2);line-height:1.4;display:flex;flex-direction:column;gap:8px}
+.dm-sigpop b{color:var(--t1);font-weight:600}
+/* All conversations */
+.dm-all-f{display:flex;gap:8px;padding:6px 16px 8px;border-top:1px solid var(--line)}
+.dm-all-f input{flex:1;min-width:0;height:32px;border:1px solid var(--line2);border-radius:8px;background:var(--p1);color:var(--t1);padding:0 10px;font:400 13.5px var(--f)}
+.dm-all-f input::placeholder{color:var(--t3)}
+.dm-st{display:inline-block;font:400 10.5px var(--m);border-radius:4px;padding:0 5px;margin-right:5px;border:1px solid var(--line2);color:var(--t2);white-space:nowrap}
+.dm-st-needs{color:var(--ink);background:var(--lime);border-color:var(--lime)}
+.dm-st-later{color:var(--hot);border-color:var(--hotB)}
+.dm-st-replied{color:var(--t1)}
+.dm-st-solved,.dm-st-discarded,.dm-st-older,.dm-st-auto{color:var(--t3)}
+.dm-q.dm-x{background:var(--p2)}
+.dm-xlog{border-top:1px solid var(--line);background:var(--bg);padding:6px 0 10px}
+.dm-xlog .dm-hist{padding:2px 14px;display:flex;flex-direction:column;gap:3px}
+.dm-xlog .dm-b{max-width:88%}
+.dm-xlog .dm-b-body{font-size:14px;padding:7px 11px}
+.dm-xlog-k{display:flex;justify-content:flex-end;padding:6px 14px 0}
+.dm-sqs-phone .dm-sq{grid-template-columns:1fr;row-gap:0}
+.dm-sqs-phone .dm-sq-n{flex-direction:row;align-items:baseline;gap:6px}
+.dm-sqs-phone .dm-sq-l{justify-content:flex-start}

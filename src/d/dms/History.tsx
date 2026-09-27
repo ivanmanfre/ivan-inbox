@@ -1,13 +1,14 @@
-// The conversation, as the mock's ledger (`.df-hist`): who, kind pills, the words, when.
+// The conversation, as chat bubbles: who, the words, the channel and when.
 // Every message is shown whole with its links live (today's Linkified), a multi-bubble reply split
 // the way LinkedIn delivered it, "To <email>" on a sent email, "Not accepted yet" on a pending
 // invite note. Older messages sit behind one "N earlier" tap.
 // Drafts, internal questions and discarded rows are not history (they live in the pane below).
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { eventTime, isDraft, isEngineRetired, isInternalConfirmation, retiredLabel, sendFailed, messageChannel, type InboxMessage, type Thread } from '../../lib/inbox'
 import { label } from '../../lib/labels'
 import { Linkified } from '../ui/Linkified'
-import { warsawDm, warsawDow, warsawHm } from '../ui/time'
+import { warsawDay, warsawDayWord, warsawHm } from '../ui/time'
+import { seatOf } from '../seats'
 import { isReaction } from './model'
 
 export function kindPill(m: InboxMessage): string | null {
@@ -51,21 +52,36 @@ export function historyRows(t: Thread): InboxMessage[] {
     && (m.direction === 'inbound' || m.sent_at || m.approved_at || sendFailed(m) || isEngineRetired(m)))
 }
 
-export function History({ t, cap = 6 }: { t: Thread; cap?: number }) {
+const OURS: Record<string, string> = { ivan: 'You', risedtc: 'Mattan', arch: 'Davorin' }
+
+/** Who wrote our side of this thread: "You" on Ivan's seat, the seat owner's name on Rise and Arch. */
+export function oursLabel(t: Pick<Thread, 'client_id'>): string {
+  return OURS[seatOf(t.client_id) ?? 'ivan']
+}
+
+/** The conversation as chat bubbles (Ivan 09-27: "very hard to distinguish who is doing the DM"):
+ *  theirs on the left in grey with their first name on the first bubble of a run, ours on the right
+ *  tinted with "You" (or Mattan / Davorin), a day line between days, and each bubble's channel,
+ *  status and time underneath. The All conversations log reuses it as is. */
+export function History({ t, cap = 6, now = Date.now() }: { t: Thread; cap?: number; now?: number }) {
   const [all, setAll] = useState(false)
   const rows = historyRows(t)
   const shown = all ? rows : rows.slice(-cap)
   const first = t.prospect_name.split(' ')[0] || t.prospect_name
+  const ours = oursLabel(t)
   if (!rows.length) {
     return <div className="dm-hist"><p className="dm-hist-empty">No messages yet. {t.draft ? 'The draft below is the first one.' : 'Nothing has been sent or received on this thread yet.'}</p></div>
   }
+  let day = ''
+  let prevSide: 'in' | 'out' | null = null
   return (
     <div className="dm-hist">
       {rows.length > shown.length && (
-        <button type="button" className="dm-h dm-h-more" data-verb="history-earlier" onClick={() => setAll(true)}><b /><span>{rows.length - shown.length} earlier message{rows.length - shown.length > 1 ? 's' : ''}</span><time /></button>
+        <button type="button" className="dm-h-more" data-verb="history-earlier" onClick={() => setAll(true)}>{rows.length - shown.length} earlier message{rows.length - shown.length > 1 ? 's' : ''}</button>
       )}
       {shown.map(m => {
         const inb = m.direction === 'inbound'
+        const side = inb ? 'in' : 'out'
         const pill = kindPill(m)
         const st = statusPill(m, t.stage)
         const blank = pill === 'Invite, blank'
@@ -73,19 +89,30 @@ export function History({ t, cap = 6 }: { t: Thread; cap?: number }) {
         const parts = blank ? [] : inb ? [(m.message_text ?? '').trim()].filter(Boolean) : bubbles(m.message_text ?? '')
         const at = eventTime(m)
         const addr = email ? emailAddrLine(m) : null
+        const d = warsawDay(at)
+        const newDay = d !== day
+        day = d
+        const firstOfRun = newDay || prevSide !== side
+        prevSide = side
         return (
-          <div key={m.id} className={`dm-h dm-h-whole${inb ? ' dm-h-in' : ''}${st?.fail ? ' dm-h-fail' : ''}${email ? ' dm-h-email' : ''}`} data-msg={m.id} data-channel={email ? 'email' : undefined}>
-            <b>{inb ? first : 'You'}</b>
-            <span>
-              {st && <i className={st.fail ? 'dm-i-fail' : undefined}>{st.text}</i>}
-              {pill && <i>{pill}</i>}
-              {inb && isReaction(m) && <i>reaction</i>}
-              {addr && <small className="dm-h-addr">{addr}</small>}
-              {blank ? 'no note, by design' : parts.length === 0 ? '(no text: an image or a file)'
-                : parts.map((p, i) => <span key={i} className="dm-bub">{i > 0 && <br />}<Linkified text={p} /></span>)}
-            </span>
-            <time>{warsawDow(at)} {warsawDm(at)} {warsawHm(at)}</time>
-          </div>
+          <Fragment key={m.id}>
+            {newDay && <div className="dm-day" role="separator"><span>{warsawDayWord(at, now)}</span></div>}
+            <div className={`dm-b dm-b-${side} dm-h-whole${inb ? ' dm-h-in' : ''}${st?.fail ? ' dm-h-fail' : ''}${email ? ' dm-h-email' : ''}${firstOfRun ? ' dm-b-first' : ''}`}
+              data-msg={m.id} data-channel={email ? 'email' : undefined} data-side={side}>
+              {firstOfRun && <b className="dm-b-who">{inb ? first : ours}</b>}
+              <div className="dm-b-body">
+                {addr && <small className="dm-h-addr">{addr}</small>}
+                {blank ? <em className="dm-b-blank">Invite sent with no note, by design</em> : parts.length === 0 ? <em className="dm-b-blank">(no text: an image or a file)</em>
+                  : parts.map((p, i) => <span key={i} className="dm-bub">{i > 0 && <br />}<Linkified text={p} /></span>)}
+              </div>
+              <div className="dm-b-meta">
+                <i>{pill ?? 'LinkedIn'}</i>
+                {st && <i className={st.fail ? 'dm-i-fail' : undefined}>{st.text}</i>}
+                {inb && isReaction(m) && <i>reaction</i>}
+                <time dateTime={at}>{warsawHm(at)}</time>
+              </div>
+            </div>
+          </Fragment>
         )
       })}
     </div>

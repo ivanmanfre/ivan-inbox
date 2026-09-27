@@ -1,5 +1,5 @@
-// The two canvases. Desktop: bar, three seat columns (each scrolls) and the conversation pane.
-// Phone: seat tiles switch the one seat list; the conversation is its own page.
+// The two canvases. Desktop: bar, three seat squares, ONE list for the chosen seat and the
+// conversation pane. Phone: the squares as a 3-up strip, the list; the conversation is its own page.
 import type { RefObject } from 'react'
 import type { PreReadHandle } from '../../exp/v2c/chat/usePreRead'
 import type { FilterToken } from '../../lib/filterTokens'
@@ -7,7 +7,6 @@ import type { Thread } from '../../lib/inbox'
 import { dmNumbers, type FrameCounts } from '../counts/useFrameCounts'
 import type { Layout } from '../places'
 import { SEATS, SEAT_NAME, seatOf, type Seat } from '../seats'
-import { useFrameMaybe } from '../shell/frame'
 import { usePull } from './usePull'
 import { useRef, type ReactNode } from 'react'
 import { Empty, Failed, Skeleton } from '../ui/states'
@@ -16,7 +15,9 @@ import { ColumnBody, type Mode } from './Column'
 import type { MenuAct } from './Menu'
 import type { DayOut, SeatView } from './model'
 import { SearchField, TokenBar } from './Search'
-import { Bars, Plate, SeatStats } from './SeatStats'
+import { SeatSquares, type SquareStat } from './SeatSquares'
+import { CameSignal } from './CameSignal'
+import type { CameTag } from './signals'
 import { ThreadPane } from './Thread'
 import type { RowCtx } from './threadRows'
 import type { DmsData } from './useDmsData'
@@ -33,11 +34,13 @@ export type PageModel = {
   openThread: (t: Thread) => void; closeThread: () => void; ask: (t: Thread, i: 'ask' | 'draft') => void
   onMenu: (t: Thread, a: MenuAct) => void; staleN: number; pre: PreReadHandle
   staleBy: Record<Seat, Thread[]>; rowMore: (t: Thread) => void; refreshAll: () => void
-  phoneSeat: Seat; setPhoneSeat: (s: Seat) => void; setFolder: (f: string | null) => void
+  seat: Seat; setSeat: (s: Seat) => void; setFolder: (f: string | null) => void
+  /** Came-back tags by person, and their Dismiss (today's came_back_dismiss + Undo). */
+  came: ReadonlyMap<string, CameTag>; dismissCame: (pid: string, name: string) => Promise<void>
 }
 
 function rowCtx(m: PageModel): RowCtx {
-  return { selected: m.open?.prospect_id ?? m.threadId, checked: m.checked, open: m.openThread, now: m.now, verbs: m.verbs, busy: m.busy, setBusy: m.setBusy, fail: m.fail, pre: m.pre, more: m.rowMore }
+  return { selected: m.open?.prospect_id ?? m.threadId, checked: m.checked, open: m.openThread, now: m.now, verbs: m.verbs, busy: m.busy, setBusy: m.setBusy, fail: m.fail, pre: m.pre, more: m.rowMore, came: m.came }
 }
 
 function Body({ m, seat }: { m: PageModel; seat: Seat }) {
@@ -55,41 +58,35 @@ function Pane({ m, phone }: { m: PageModel; phone: boolean }) {
     if (m.threadId) return <section className="dm-pane"><Empty title="This conversation is not in the list." reason="It may have been deleted from the seat, or it is not a conversation yet (nobody wrote back)." /></section>
     return <section className="dm-pane dm-pane-none"><Empty title="Pick a conversation." /></section>
   }
+  const tag = m.came.get(t.prospect_id)
   return <ThreadPane t={t} auto={m.auto} all={m.threads} phone={phone} verbs={m.verbs} now={m.now} onBack={m.closeThread}
+    signal={tag ? <CameSignal tag={tag} onDismiss={() => m.dismissCame(t.prospect_id, t.prospect_name)} /> : null}
     onAsk={() => m.ask(t, 'ask')} onDraftIt={() => m.ask(t, 'draft')} onMenu={a => m.onMenu(t, a)} staleN={m.staleBy[seatOf(t.client_id) ?? 'ivan'].length} pre={m.pre} reload={m.data.refreshAll} />
 }
 
+function squareStats(m: PageModel): Record<Seat, SquareStat> {
+  const known = Boolean(m.data.loadedAt || m.data.fromCache)
+  return Object.fromEntries(SEATS.map(s => [s, {
+    replied: known ? m.stats[s].replied : null,
+    today: m.stats[s].days.at(-1),
+    extra: m.mode === 'search' ? `${m.matches[s].length} match${m.matches[s].length === 1 ? '' : 'es'}`
+      : m.mode === 'email' ? `${m.views[s].emailWaiting.length} email waiting`
+        : m.mode === 'spam' ? (s === 'ivan' ? 'no spam folder' : `${m.views[s].spam.length} likely spam`) : null,
+  }])) as Record<Seat, SquareStat>
+}
+
 export function DesktopDms({ m }: { m: PageModel }) {
-  const needs = dmNumbers(m.counts, 'needs')
-  const fold = !!useFrameMaybe()?.claudeOpen
+  const s = m.seat
   return (
     <div className="dm-page dm-desk">
       <Headline mode={m.mode} views={m.views} counts={m.counts} tools={<SearchField ref={m.searchRef} q={m.q} setQ={m.setQ} reach={m.data.threads.length || null} />} />
       <Bar folder={m.folder} setFolder={m.setFolder} views={m.views} tokens={m.tokens} setTokens={m.setTokens} data={m.data} />
       <BulkBar checked={m.checked} byId={m.byId} clear={() => m.setChecked(new Set())} onDiscard={ts => { void m.verbs.bulkDiscard(ts, 'The selected drafts.').then(() => m.setChecked(new Set())) }} />
-      <div className={`dm-grid${fold ? ' dm-grid-cf' : ''}`}>
-        {fold && (
-          // Claude docked (mock dark-claude.html): the three columns fold into one list,
-          // a subhead and a count per seat, never one total. Closing Claude brings them back.
-          <section className="dm-col dm-cf" aria-label="Conversations, every seat">
-            <div className="dm-colscroll">
-              {SEATS.map(s => (
-                <div key={s} className="dm-cf-seat">
-                  <div className="dm-cf-h"><b>{SEAT_NAME[s]}</b><em className={needs[s] ? '' : 'dm-z'}>{needs[s] ?? '?'}</em></div>
-                  <Body m={m} seat={s} />
-                </div>
-              ))}
-              <div className="dm-cf-note">Close Claude (⌘J) and the three seat columns come back.</div>
-            </div>
-          </section>
-        )}
-        {!fold && SEATS.map(s => (
-          <section key={s} className="dm-col" aria-label={`${SEAT_NAME[s]}'s conversations`}>
-            <Plate seat={s} />
-            <SeatStats seat={s} needs={needs[s]} nodraft={m.views[s].nodraft.length} replied={m.data.loadedAt || m.data.fromCache ? m.stats[s].replied : null} days={m.stats[s].days} />
-            <div className="dm-colscroll"><Body m={m} seat={s} /></div>
-          </section>
-        ))}
+      <SeatSquares seat={s} pick={m.setSeat} needs={dmNumbers(m.counts, 'needs')} drafts={dmNumbers(m.counts, 'drafts')} stats={squareStats(m)} />
+      <div className="dm-grid4">
+        <section className="dm-col dm-list" aria-label={`${SEAT_NAME[s]}'s conversations`} data-seat={s}>
+          <div className="dm-colscroll"><Body m={m} seat={s} /></div>
+        </section>
         <Pane m={m} phone={false} />
       </div>
     </div>
@@ -97,28 +94,21 @@ export function DesktopDms({ m }: { m: PageModel }) {
 }
 
 export function PhoneDms({ m }: { m: PageModel }) {
-  const needs = dmNumbers(m.counts, 'needs')
   if (m.threadId) return <div className="dm-page dm-phone dm-phone-thread"><Pane m={m} phone /></div>
-  const s = m.phoneSeat
+  const s = m.seat
   const st = m.stats[s]
   const today = st.days.at(-1)
   return (
     <div className="dm-page dm-phone">
       <Headline mode={m.mode} views={m.views} counts={m.counts} />
-      <div className="dm-tiles" role="tablist" aria-label="Seats">
-        {SEATS.map(x => (
-          <button key={x} type="button" role="tab" aria-selected={x === s} className={`dm-tile${x === s ? ' dm-on' : ''}`} onClick={() => m.setPhoneSeat(x)}>
-            <b>{SEAT_NAME[x]}</b>
-            <em className={needs[x] ? 'dm-hot' : 'dm-zero'}>{needs[x] ?? '…'}</em>
-            <Bars days={m.stats[x].days} tall />
-          </button>
-        ))}
-      </div>
+      <SeatSquares phone seat={s} pick={m.setSeat} needs={dmNumbers(m.counts, 'needs')} drafts={dmNumbers(m.counts, 'drafts')} stats={squareStats(m)} />
       <div className="dm-pstat">replied 7d <b>{st.replied}</b> · today <b>{today?.msg ?? 0}</b> msgs <b>{today?.inv ?? 0}</b> inv · <Health data={m.data} /></div>
       <div className="dm-psearch"><SearchField ref={m.searchRef} q={m.q} setQ={m.setQ} reach={m.data.threads.length || null} phone /><TokenBar tokens={m.tokens} setTokens={m.setTokens} /></div>
       <Folders folder={m.folder} setFolder={m.setFolder} views={m.views} phone />
       <BulkBar checked={m.checked} byId={m.byId} clear={() => m.setChecked(new Set())} onDiscard={ts => { void m.verbs.bulkDiscard(ts, 'The selected drafts.').then(() => m.setChecked(new Set())) }} />
-      <PullList onRefresh={m.refreshAll}><Body m={m} seat={s} /></PullList>
+      <section className="dm-col dm-list" aria-label={`${SEAT_NAME[s]}'s conversations`} data-seat={s}>
+        <PullList onRefresh={m.refreshAll}><Body m={m} seat={s} /></PullList>
+      </section>
     </div>
   )
 }

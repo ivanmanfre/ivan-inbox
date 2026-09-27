@@ -48,7 +48,7 @@ function List({ groups, run }: { groups: ReturnType<typeof menuItems>; run: (a: 
   </>
 }
 
-export function ThreadMenu({ t, phone, withAsk = false, staleN, onClose, run }: { t: Thread; phone: boolean; withAsk?: boolean; staleN: number; onClose: () => void; run: (a: MenuAct) => void }) {
+export function ThreadMenu({ t, phone, up = false, withAsk = false, staleN, onClose, run }: { t: Thread; phone: boolean; up?: boolean; withAsk?: boolean; staleN: number; onClose: () => void; run: (a: MenuAct) => void }) {
   const groups = menuItems(t, staleN, withAsk)
   const box = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -62,5 +62,5 @@ export function ThreadMenu({ t, phone, withAsk = false, staleN, onClose, run }: 
   const seat = seatOf(t.client_id)
   const sub: ReactNode = [t.prospect_company, seat ? SEAT_NAME[seat] : null].filter(Boolean).join(' · ')
   if (phone) return <Sheet open onClose={onClose} title={t.prospect_name} sub={sub} side="bottom"><div className="dm-menu-sheet" role="menu"><List groups={groups} run={go} /></div></Sheet>
-  return <div ref={box} className="dm-menu" role="menu" aria-label="More for this conversation"><List groups={groups} run={go} /></div>
+  return <div ref={box} className={`dm-menu${up ? ' dm-menu-up' : ''}`} role="menu" aria-label="More for this conversation"><List groups={groups} run={go} /></div>
 }

@@ -25,11 +25,13 @@ type Props = {
   onMore?: () => void
   /** The Sum up line under the row, once Claude has read it. */
   note?: ReactNode
+  /** A quiet signal beside the name ("came back · 2d"), its tooltip what they came back to. */
+  signal?: { text: string; title: string } | null
 }
 
 export type RowVerb = { label: string; verb: string; run: () => void; busy?: boolean; quiet?: boolean }
 
-export function Row({ id, name, company, tags = [], line, right, rightKind = 'plain', verbs, selected, checked, dim, conversation = true, onOpen, unread, onMore, note }: Props) {
+export function Row({ id, name, company, tags = [], line, right, rightKind = 'plain', verbs, selected, checked, dim, conversation = true, onOpen, unread, onMore, note, signal }: Props) {
   const onKey = (e: KeyboardEvent) => { if (e.key === 'Enter' && onOpen) { e.preventDefault(); onOpen() } }
   return (
     <div
@@ -43,7 +45,7 @@ export function Row({ id, name, company, tags = [], line, right, rightKind = 'pl
       onKeyDown={onKey}
     >
       <div className="dm-qm">
-        <div className="dm-n">{checked && <span className="dm-tick" aria-label="selected">✓</span>}{unread && <span className="dm-dot" role="img" aria-label="unread" />}{name}{company ? <span> {company}</span> : null}</div>
+        <div className="dm-n">{checked && <span className="dm-tick" aria-label="selected">✓</span>}{unread && <span className="dm-dot" role="img" aria-label="unread" />}{name}{signal && <span className="dm-sig" title={signal.title}>{signal.text}</span>}{company ? <span> {company}</span> : null}</div>
         <div className="dm-s">
           {tags.map((t, i) => <span key={i} className={`dm-tag dm-tag-${t.kind}`}>{t.text}</span>)}
           {line}

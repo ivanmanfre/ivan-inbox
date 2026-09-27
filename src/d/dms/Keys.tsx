@@ -29,8 +29,10 @@ function useDictate(onText: (s: string) => void) {
 }
 
 /** "Or write it yourself to X…" (small under the keys) or the big box on no-draft / owner / waiting. */
-export function Composer({ to, from, big, disabled, note, value, setValue, onSend, busy }: {
+export function Composer({ to, from, big, disabled, note, value, setValue, onSend, busy, noSend = false }: {
   to: string; from: string; big: boolean; disabled?: string | null; note?: string
+  /** No draft: the key row's Send sends this box, so the box draws no Send of its own. */
+  noSend?: boolean
   value: string; setValue: (s: string) => void; onSend: () => void; busy: boolean
 }) {
   const dict = useDictate(s => setValue((value ? value + ' ' : '') + s.trim()))
@@ -41,7 +43,7 @@ export function Composer({ to, from, big, disabled, note, value, setValue, onSen
     <div className={`dm-comp${grown ? ' dm-comp-big' : ''}`}>
       <textarea
         aria-label={`Write to ${to} yourself`}
-        placeholder={big ? `Write to ${to} as ${from}…` : `Or write it yourself to ${to}…`}
+        placeholder={big || noSend ? `Write to ${to} as ${from}…` : `Or write it yourself to ${to}…`}
         value={value} rows={grown ? 4 : 1}
         onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
         onChange={e => setValue(e.target.value)}
@@ -50,7 +52,7 @@ export function Composer({ to, from, big, disabled, note, value, setValue, onSen
       <div className="dm-comp-r">
         {dict.can && <button type="button" className={`dm-ib${dict.on ? ' dm-on' : ''}`} aria-label={dict.on ? 'Stop dictating' : 'Dictate'} onClick={dict.toggle}><Mic /></button>}
         {grown && <em>{note ?? `Sends from ${from === 'you' ? 'your' : `${from}'s`} LinkedIn · ⌘↩ or Send, it asks first`}</em>}
-        {value.trim() && (
+        {value.trim() && !noSend && (
           <Key primary verb="compose-send" disabled={busy} onClick={onSend}>Send</Key>
         )}
       </div>

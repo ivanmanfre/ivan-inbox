@@ -9,6 +9,7 @@ import {
 import { campaignLaneLabel, copyRouteTag, threadLaneLabel } from '../../lib/labels'
 import { seatOf, type Seat } from '../seats'
 import { warsawDay } from '../ui/time'
+import { splitEmail } from './emailFolder'
 
 const DAY = 86_400_000
 
@@ -27,6 +28,11 @@ export type SeatView = {
   /** Email-only people (no LinkedIn thread) who owe a reply: they live in the Email folder, and
    *  Needs you carries one pointer line so its count still matches the frame's. */
   emailOwed: Thread[]
+  /** The Email folder: threads whose email reply (or pending email leg) waits on him, and the rest. */
+  emailWaiting: Thread[]
+  emailRest: Thread[]
+  /** Every live conversation on the seat, newest activity first (All conversations). */
+  all: Thread[]
 }
 
 /** Nobody on LinkedIn: every message rode email. Such a thread stays in the Email folder only
@@ -57,7 +63,7 @@ export function isThrownRecently(t: Thread, now: number = Date.now()): boolean {
 export function seatView(threads: Thread[], seat: Seat, now: number = Date.now(), scanDays: ReadonlyMap<string, number> = new Map()): SeatView {
   const mine = seatThreads(threads, seat).filter(isConversation)
   const live = mine.filter(t => !t.spam)
-  const v: SeatView = { seat, owner: [], drafted: [], nodraft: [], later: [], older: [], auto: [], rest: [], thrown: [], spam: [], email: [], emailOwed: [] }
+  const v: SeatView = { seat, owner: [], drafted: [], nodraft: [], later: [], older: [], auto: [], rest: [], thrown: [], spam: [], email: [], emailOwed: [], emailWaiting: [], emailRest: [], all: [] }
   for (const t of live) {
     const bucket = threadBucket(t, now)
     if (isEmailOnly(t)) {
@@ -86,6 +92,10 @@ export function seatView(threads: Thread[], seat: Seat, now: number = Date.now()
   const lift = (t: Thread) => (seat === 'ivan' && (scanDays.get(t.prospect_id) ?? 0) >= 2 ? 1 : 0)
   v.rest.sort((a, b) => lift(b) - lift(a) || eventTime(b.last).localeCompare(eventTime(a.last)))
   v.email.sort(threadOrder)
+  const em = splitEmail(v.email, now)
+  v.emailWaiting = em.waiting
+  v.emailRest = em.rest
+  v.all = [...live].sort((a, b) => Date.parse(eventTime(b.last)) - Date.parse(eventTime(a.last)))
   return v
 }
 
