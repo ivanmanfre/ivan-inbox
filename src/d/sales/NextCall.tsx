@@ -48,7 +48,7 @@ export function NextCallPlate({ r, through, more = 0 }: { r: CallEvent | null; t
     return (
       <div className="sl-nx sl-none" data-next="none">
         <div className="sl-nxl">Next call</div>
-        <div className="sl-nxe">Nothing on the calendar through {through}.</div>
+        <div className="sl-nxe" title={`Nothing on the calendar through ${through}.`}>None booked.</div>
       </div>
     )
   }
