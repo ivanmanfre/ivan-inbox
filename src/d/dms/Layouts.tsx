@@ -6,7 +6,7 @@ import type { FilterToken } from '../../lib/filterTokens'
 import type { Thread } from '../../lib/inbox'
 import { dmNumbers, type FrameCounts } from '../counts/useFrameCounts'
 import type { Layout } from '../places'
-import { SEATS, SEAT_NAME, SEAT_OWNER, seatOf, type Seat } from '../seats'
+import { SEATS, SEAT_NAME, seatOf, type Seat } from '../seats'
 import { useFrameMaybe } from '../shell/frame'
 import { usePull } from './usePull'
 import { useRef, type ReactNode } from 'react'
@@ -75,7 +75,7 @@ export function DesktopDms({ m }: { m: PageModel }) {
             <div className="dm-colscroll">
               {SEATS.map(s => (
                 <div key={s} className="dm-cf-seat">
-                  <div className="dm-cf-h"><b>{SEAT_NAME[s]}</b><em className={needs[s] ? '' : 'dm-z'}>{needs[s] ?? '?'}</em><span>{SEAT_OWNER[s]}</span></div>
+                  <div className="dm-cf-h"><b>{SEAT_NAME[s]}</b><em className={needs[s] ? '' : 'dm-z'}>{needs[s] ?? '?'}</em></div>
                   <Body m={m} seat={s} />
                 </div>
               ))}
@@ -108,7 +108,7 @@ export function PhoneDms({ m }: { m: PageModel }) {
       <div className="dm-tiles" role="tablist" aria-label="Seats">
         {SEATS.map(x => (
           <button key={x} type="button" role="tab" aria-selected={x === s} className={`dm-tile${x === s ? ' dm-on' : ''}`} onClick={() => m.setPhoneSeat(x)}>
-            <b>{SEAT_NAME[x]}</b><small>{x === 'ivan' ? 'your seat' : x === 'risedtc' ? "Mattan's seat" : "Davorin's seat"}</small>
+            <b>{SEAT_NAME[x]}</b>
             <em className={needs[x] ? 'dm-hot' : 'dm-zero'}>{needs[x] ?? '…'}</em>
             <Bars days={m.stats[x].days} tall />
           </button>
