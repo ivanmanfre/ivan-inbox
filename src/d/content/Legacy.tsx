@@ -79,7 +79,7 @@ export function Legacy({ sub, lane, setLane, openDraft, openId, magnet, clearMag
   const closeMagnet = useCallback(() => { setOpen(null); if (magnet) clearMagnet() }, [clearMagnet, magnet])
   const strategy = sub === 'strategy' || sub === 'markets' || sub === 'results'
   return (
-    <div className="cn-legacy app wb ds-shell">
+    <div className="cn-legacy app wb ds-shell wb-work" data-wblane={lane}>
       <ConfirmProvider>
         <Suspense fallback={<Skeleton lines={6} label="Loading today's view" />}>
           {sub === 'magnets' && <MagnetsList lane={lane} setLane={setLane} onOpen={openMagnet} />}
