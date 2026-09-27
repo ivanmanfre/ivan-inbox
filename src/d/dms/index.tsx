@@ -33,7 +33,7 @@ function Dms({ layout, route, navigate }: PlaceProps) {
   const counts = useFrameCounts()
   const frame = useFrame()
   const pre = usePreRead()
-  const [q, setQ] = useState('')
+  const [q, setQ] = useState(() => route.query.get('q') ?? '')
   const [tokens, setTokensState] = useState<FilterToken[]>(() => readTokens('dms'))
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState<string | null>(null)
@@ -65,8 +65,10 @@ function Dms({ layout, route, navigate }: PlaceProps) {
   const stale = useMemo(() => threads.filter(t => t.draft && !t.spam && (t.draftStale || isOlderOwed(t, now))), [threads, now])
   // Desktop with no ?thread: the first conversation that needs you is shown (as the mock does), but it
   // was not opened by Ivan, so its read stamp is not written (`auto`).
-  const autoOpen = !threadId && layout === 'desktop' && mode === 'conversations'
-    ? SEATS.map(s => { const v = views[s]; return v.owner[0] ?? v.drafted[0] ?? v.nodraft[0] }).find(Boolean) ?? null : null
+  const autoOpen = threadId || layout !== 'desktop' ? null
+    : mode === 'conversations' ? SEATS.map(s => { const v = views[s]; return v.owner[0] ?? v.drafted[0] ?? v.nodraft[0] }).find(Boolean) ?? null
+      : mode === 'spam' ? views.risedtc.spam[0] ?? views.arch.spam[0] ?? null
+        : mode === 'search' ? SEATS.map(s => matches[s][0]).find(Boolean) ?? null : null
   const open = threadId ? byId.get(threadId) ?? null : autoOpen
 
   const failedN = (data.error ? 1 : 0) + (data.cameBack.failed ? 1 : 0) + (data.warm.failed ? 1 : 0) + (data.dated.failed ? 1 : 0)
