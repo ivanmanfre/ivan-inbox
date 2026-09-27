@@ -9,24 +9,20 @@ import { warsawHm } from '../ui/time'
 import type { Mode } from './Column'
 import type { SeatView } from './model'
 import { TokenBar } from './Search'
-import { dayMonth } from './threadRows'
 import type { DmsData } from './useDmsData'
 import type { FilterToken } from '../../lib/filterTokens'
 
 export function Headline({ mode, views, counts, tools }: { mode: Mode; views: Record<Seat, SeatView>; counts: FrameCounts; tools?: React.ReactNode }) {
   const needs = dmNumbers(counts, 'needs')
   if (mode === 'spam') {
-    return <AnswerRow title={<>Likely spam: <N v={views.risedtc.spam.length} /> Mattan's, <N v={views.arch.spam.length} /> Davorin's.</>}
-      sub="Filed by the reply check. Not spam puts a thread back." tools={tools} />
+    return <AnswerRow title={<>Likely spam: <N v={views.risedtc.spam.length} /> Mattan's, <N v={views.arch.spam.length} /> Davorin's.</>} tools={tools} />
   }
   if (mode === 'email') {
-    return <AnswerRow title={<>Email threads: <N v={views.ivan.email.length} /> yours, <N v={views.risedtc.email.length} /> Mattan's, <N v={views.arch.email.length} /> Davorin's.</>}
-      sub="Rise sends from itsmattan@, Arch from davorin@." tools={tools} />
+    return <AnswerRow title={<>Email threads: <N v={views.ivan.email.length} /> yours, <N v={views.risedtc.email.length} /> Mattan's, <N v={views.arch.email.length} /> Davorin's.</>} tools={tools} />
   }
   const nd = SEATS.map(s => views[s].nodraft.length)
-  const later = SEATS.flatMap(s => views[s].later).sort((a, b) => (a.draftSnoozedUntil ?? '').localeCompare(b.draftSnoozedUntil ?? ''))[0]
-  const sub = (nd.some(Boolean) ? `No draft yet: ${nd.join(', ')}.` : 'All drafted.')
-    + (later?.draftSnoozedUntil ? ` ${later.prospect_name.split(' ')[0]} comes back ${dayMonth(later.draftSnoozedUntil)}.` : '')
+  // One headline; the sub line only when a thread still has no draft (work Ivan must start).
+  const sub = nd.some(Boolean) ? `No draft yet: ${nd.join(', ')}.` : undefined
   return <AnswerRow title={<>Needs you: <N v={needs.ivan} /> yours, <N v={needs.risedtc} /> Mattan's, <N v={needs.arch} /> Davorin's.</>} sub={sub} tools={tools} />
 }
 

@@ -121,9 +121,8 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     {!composeOff && <Key primary verb="compose-send" disabled={busy || !reply.trim()} onClick={() => void compose()}>Send</Key>}
   </>
 
-  const foot = t.spam ? 'Filed as a vendor pitch. Not spam puts it back in Needs you; Delete from seat removes the LinkedIn chat.'
-    : hasDraft ? (phone ? 'Send and Discard both ask first.' : "Send asks first. Discard offers two keys: Discard, or Discard and I'll reply myself.")
-      : t.chat_provider_id ? 'Delete removes the chat from the seat. Spam and Not spam are under ⋯.' : 'Spam and Not spam are under ⋯.'
+  // The keys speak for themselves (Send and Discard both ask first); only a thread's spam state is said.
+  const foot = t.spam ? 'Filed as a vendor pitch.' : null
 
   return (
     <section className={`dm-pane${phone ? ' dm-pane-phone' : ''}`} aria-label={`Conversation with ${t.prospect_name}`}>
@@ -143,7 +142,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         {keys}
       </div>
       {hasDraft && !t.spam && <Composer to={first} from={from} big={false} disabled={composeOff} value={reply} setValue={setReply} busy={busy} onSend={() => void compose()} />}
-      <div className="dm-foot">{foot}</div>
+      {foot && <div className="dm-foot">{foot}</div>}
       {menu && <ThreadMenu t={t} phone={phone} withAsk={phone} staleN={staleN} onClose={() => setMenu(false)} run={menuRun} />}
       {sheet === 'context' && <ContextSheet t={t} all={all} onClose={() => setSheet(null)} />}
       {sheet === 'agent' && <AgentSheet t={t} onClose={() => setSheet(null)} onChanged={reload} />}

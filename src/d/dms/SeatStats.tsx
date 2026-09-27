@@ -7,7 +7,7 @@ import { SCHEDULE, type DayOut } from './model'
 const OWNER_LINE: Record<Seat, string> = { ivan: 'your seat', risedtc: "Mattan's seat", arch: "Davorin's seat" }
 
 export function Plate({ seat }: { seat: Seat }) {
-  return <div className="dm-plate"><b>{SEAT_NAME[seat]}</b><span>{OWNER_LINE[seat]}</span></div>
+  return <div className="dm-plate"><b title={OWNER_LINE[seat]}>{SEAT_NAME[seat]}</b></div>
 }
 
 export function Bars({ days, tall = false }: { days: DayOut[]; tall?: boolean }) {
@@ -32,22 +32,21 @@ export function SeatStats({ seat, needs, nodraft, replied, days }: {
   days: DayOut[]
 }) {
   const today = days.at(-1) ?? { msg: 0, inv: 0 }
-  const split = needs == null ? '' : needs === 0 ? 'clear' : nodraft > 0 ? `${nodraft} no draft` : 'all drafted'
+  const split = needs != null && needs > 0 && nodraft > 0
   return (
     <>
       <div className="dm-read">
         <div>
           <small>Needs you</small>
           <em className={needs ? 'dm-hot' : 'dm-zero'}>{needs ?? '…'}</em>
-          {split && <u>{nodraft > 0 && needs ? <><b>{nodraft}</b> no draft</> : split}</u>}
+          {split && <u><b>{nodraft}</b> no draft</u>}
         </div>
         <div><small>Replied, 7d</small><em>{replied ?? '…'}</em></div>
       </div>
       <div className="dm-out">
         <Bars days={days} />
-        <div className="dm-out-tx">
+        <div className="dm-out-tx" title={SCHEDULE[seat]}>
           <span><b>{today.msg}</b> msgs <b>{today.inv}</b> inv today</span>
-          <span>{SCHEDULE[seat]}</span>
         </div>
       </div>
     </>

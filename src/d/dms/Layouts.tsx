@@ -14,7 +14,7 @@ import { Empty, Failed, Skeleton } from '../ui/states'
 import { Bar, BulkBar, Folders, Headline, Health } from './Chrome'
 import { ColumnBody, type Mode } from './Column'
 import type { MenuAct } from './Menu'
-import { SCHEDULE, type DayOut, type SeatView } from './model'
+import type { DayOut, SeatView } from './model'
 import { SearchField, TokenBar } from './Search'
 import { Bars, Plate, SeatStats } from './SeatStats'
 import { ThreadPane } from './Thread'
@@ -53,7 +53,7 @@ function Pane({ m, phone }: { m: PageModel; phone: boolean }) {
   if (!t) {
     if (m.threadId && m.data.loading) return <section className="dm-pane"><Skeleton lines={8} label="Opening the conversation" /></section>
     if (m.threadId) return <section className="dm-pane"><Empty title="This conversation is not in the list." reason="It may have been deleted from the seat, or it is not a conversation yet (nobody wrote back)." /></section>
-    return <section className="dm-pane dm-pane-none"><Empty title="Pick a conversation." reason="j and k walk the rows, Enter opens one, / searches every message on every seat." /></section>
+    return <section className="dm-pane dm-pane-none"><Empty title="Pick a conversation." /></section>
   }
   return <ThreadPane t={t} auto={m.auto} all={m.threads} phone={phone} verbs={m.verbs} now={m.now} onBack={m.closeThread}
     onAsk={() => m.ask(t, 'ask')} onDraftIt={() => m.ask(t, 'draft')} onMenu={a => m.onMenu(t, a)} staleN={m.staleBy[seatOf(t.client_id) ?? 'ivan'].length} pre={m.pre} reload={m.data.refreshAll} />
@@ -114,7 +114,7 @@ export function PhoneDms({ m }: { m: PageModel }) {
           </button>
         ))}
       </div>
-      <div className="dm-pstat">replied 7d <b>{st.replied}</b> · today <b>{today?.msg ?? 0}</b> msgs <b>{today?.inv ?? 0}</b> inv<br />{SCHEDULE[s].replace(/^sends /, '')} · <Health data={m.data} /></div>
+      <div className="dm-pstat">replied 7d <b>{st.replied}</b> · today <b>{today?.msg ?? 0}</b> msgs <b>{today?.inv ?? 0}</b> inv · <Health data={m.data} /></div>
       <div className="dm-psearch"><SearchField ref={m.searchRef} q={m.q} setQ={m.setQ} reach={m.data.threads.length || null} phone /><TokenBar tokens={m.tokens} setTokens={m.setTokens} /></div>
       <Folders folder={m.folder} setFolder={m.setFolder} views={m.views} phone />
       <BulkBar checked={m.checked} byId={m.byId} clear={() => m.setChecked(new Set())} onDiscard={ts => { void m.verbs.bulkDiscard(ts, 'The selected drafts.').then(() => m.setChecked(new Set())) }} />
