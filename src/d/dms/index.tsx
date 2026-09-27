@@ -24,7 +24,10 @@ import { AgentOnlySheet, WarmSheet } from './Warm'
 import { useWarmVerbs } from './warmVerbs'
 import { RowMenu } from './RowMenu'
 import { useToast } from '../ui/toast'
-import { useDmKeys } from './useDmKeys'
+import { rowsOnScreen, useDmKeys } from './useDmKeys'
+import { KeySheet } from './KeySheet'
+import { useDCommands } from '../shell/commands'
+import type { WbCommand } from '../../exp/v2c/commandSource'
 import './dms.css'
 import './dms-thread.css'
 import './dms-more.css'
@@ -121,7 +124,16 @@ function Dms({ layout, route, navigate }: PlaceProps) {
     else if (a === 'copy-thread') void copyText(`${location.origin}${location.pathname}${dHash('dms', null, { thread: t.prospect_id })}`)
   }, [verbs, closeThread, toggleCheck, staleBy])
 
-  useDmKeys({ searchRef, open, openThread, closeThread, toggleCheck })
+  const [keysOpen, setKeysOpen] = useState(false)
+  const selectMany = useCallback((ids: string[]) => setChecked(s => new Set([...s, ...ids])), [])
+  const openKeys = useCallback(() => setKeysOpen(true), [])
+  useDmKeys({ searchRef, open, openThread, closeThread, toggleCheck, selectMany, openKeys })
+  // ⌘K rows for this page (today's CommandLayer: select all, clear, the shortcut sheet).
+  useDCommands(useMemo<WbCommand[]>(() => [
+    { id: 'dms.select-all', title: 'Select every conversation on screen', group: 'Select', icon: 'check', key: null, hint: 'Then Discard from the bar.', ready: true, run: () => selectMany(rowsOnScreen()) },
+    { id: 'dms.select-none', title: 'Clear the selection', group: 'Select', key: null, hint: 'Nothing is changed.', ready: true, run: () => setChecked(new Set()) },
+    { id: 'dms.keys', title: 'Keyboard shortcuts', group: 'Open', key: '?', hint: 'Every key on this page.', ready: true, run: openKeys },
+  ], [selectMany, openKeys]))
 
   const model: PageModel = {
     layout, mode, folder, q, setQ, tokens, setTokens, searchRef, views, stats, matches, open, threadId, auto: autoOpen !== null, threads, byId,
@@ -133,6 +145,7 @@ function Dms({ layout, route, navigate }: PlaceProps) {
     {layout === 'desktop' ? <DesktopDms m={model} /> : <PhoneDms m={model} />}
     {warmCard && <WarmSheet c={warmCard} agent={data.agent.cards.find(a => a.prospect_id === warmCard.prospect_id) ?? null} thread={byId.get(warmCard.prospect_id) ?? null}
       verbs={warmVerbs} onClose={closeWarm} onOpenThread={openThread} onAgentChanged={agentChanged} />}
+    {keysOpen && <KeySheet onClose={() => setKeysOpen(false)} />}
     {rowMenu && <RowMenu t={rowMenu} pre={pre} verbs={verbs} onClose={() => setRowMenu(null)} onOpen={() => openThread(rowMenu)} onAsk={() => ask(rowMenu, 'ask')} />}
     {agentOnlyCard && <AgentOnlySheet card={agentOnlyCard} thread={byId.get(agentOnlyCard.prospect_id) ?? null} onClose={closeWarm} onOpenThread={openThread} onAgentChanged={agentChanged} />}
   </>

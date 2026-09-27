@@ -1,6 +1,8 @@
 // The open conversation (desktop right pane / phone full page).
 // Hooks first, always: no hook sits after an early return (09-09).
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useDCommands } from '../shell/commands'
+import type { WbCommand } from '../../exp/v2c/commandSource'
 import { canComposeEmail, markThreadRead, threadBucket, unansweredWaitSince, type Thread as T } from '../../lib/inbox'
 import type { PreReadHandle } from '../../exp/v2c/chat/usePreRead'
 import { chatLink } from '../../components/CopyChatLink'
@@ -23,6 +25,7 @@ function seed(t: T): Edits {
   return { main: t.draft?.message_text ?? '', email: t.draft?.email_mirror_text ?? null, companion: t.companionDraft?.message_text ?? null }
 }
 
+const hasDraftNow = (t: T) => t.draft !== null
 const stamped = new Set<string>()
 /** markThreadRead once per (thread, newest inbound): the same PATCH today sends, never twice. */
 export function stampReadOnce(pid: string, lastInbound: string) {
@@ -77,6 +80,14 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
       : t.stage === 'engaged' ? 'Not connected yet. A reply here would go out as a connection invite, so compose is off for this thread.' : null
 
   const run = async (fn: () => Promise<unknown>) => { setBusy(true); try { await fn() } finally { setBusy(false) } }
+  // ⌘K "Push this conversation to later" (today's CommandLayer), while a pushable draft is open.
+  const canPush = hasDraftNow(t) && !t.spam && !t.ownerConfirmation && t.draftSnoozedUntil === null
+  const editsRef = useRef(edits); editsRef.current = edits
+  useDCommands(useMemo<WbCommand[]>(() => canPush ? [{
+    id: 'dms.later', title: 'Push this conversation to later', group: 'Thread', icon: 'time', key: null,
+    hint: `${t.prospect_name}: nothing is sent, it comes back on the day you pick.`, ready: true,
+    run: () => { void verbs.later(t, editsRef.current) },
+  }] : [], [canPush, t, verbs]))
   const copy = async () => { const l = chatLink(t.chat_provider_id, t.linkedin_url); if (l && await copyText(l.href)) { setCopied(true); window.setTimeout(() => setCopied(false), 1600) } }
   const send = () => run(async () => { await verbs.send(t, edits); setEditing(false) })
   const compose = () => run(async () => { if (await verbs.compose(t, reply)) setReply('') })
