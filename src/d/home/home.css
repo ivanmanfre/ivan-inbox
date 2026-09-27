@@ -69,5 +69,5 @@
 .hm-phone .gt-row{grid-template-columns:auto minmax(0,1fr)}
 .hm-phone .gt-m{grid-column:2}
 .hm-phone .gt-in{min-width:0;flex-basis:100%}
-.hm-phone .hm-word small{display:block;margin-top:4px}
-.hm-phone .hm-dot{display:none}
+.hm-word small{display:block;margin-top:4px}
+.hm-dot{display:none}
