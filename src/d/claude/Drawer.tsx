@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { buildSeeBlock, isOff } from '../../exp/v2c/chat/paneContext'
 import type { Layout } from '../places'
 import type { DRoute } from '../route'
@@ -82,8 +82,18 @@ export default function ClaudeDrawer({ layout, route, onClose }: ClaudeDrawerPro
     setView('chat')
   }
 
+  const edge = useRef<{ x: number; y: number } | null>(null)
+  const touch = layout === 'phone' ? {
+    onTouchStart: (e: React.TouchEvent) => { const t = e.touches[0]; edge.current = t.clientX < 24 ? { x: t.clientX, y: t.clientY } : null },
+    onTouchEnd: (e: React.TouchEvent) => {
+      const s = edge.current, t = e.changedTouches[0]
+      edge.current = null
+      if (s && t.clientX - s.x > 60 && Math.abs(t.clientY - s.y) < 50) setView('chats')
+    },
+  } : {}
+
   return (
-    <div className={`dcl dcl-${layout}`} data-claude-drawer>
+    <div className={`dcl dcl-${layout}`} data-claude-drawer {...touch}>
       {layout === 'phone' && <div className="dcl-grab" aria-hidden="true" />}
       <div className="dcl-head">
         <button type="button" className={`dcl-ib${view === 'chats' ? ' dcl-on' : ''}`} data-verb="chats" aria-pressed={view === 'chats'}

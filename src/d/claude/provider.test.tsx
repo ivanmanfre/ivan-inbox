@@ -5,16 +5,26 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, screen } from '@testing-library/react'
 
 const openThread = vi.fn()
+const abort = vi.fn()
 let busy = false
+let elsewhere = false
 vi.mock('../../exp/v2c/useChat', () => ({
-  useChat: () => ({ turns: [], busy, runningElsewhere: false, streamTools: [], turnsLoading: false, turnsStale: false, openThread }),
+  useChat: () => ({
+    turns: elsewhere ? [{ id: 'u', role: 'user', text: 'q', tools: [], error: null, status: 'running', turnId: 'turn-9', at: '2026-09-27T10:00:00Z' }] : [],
+    busy, runningElsewhere: elsewhere, streamTools: [], turnsLoading: false, turnsStale: false, openThread, abort, newThread: vi.fn(),
+  }),
 }))
+const abortTurn = vi.fn(async () => true)
+vi.mock('../../lib/turns', async orig => ({ ...(await orig<typeof import('../../lib/turns')>()), abortTurn: (id: string) => abortTurn(id) }))
 
 import { renderInFrame } from '../test-utils'
-import { ClaudeProvider } from './ClaudeProvider'
+import { ClaudeProvider, useClaude } from './ClaudeProvider'
+import { fireEvent } from '@testing-library/react'
 import { ClaudeWorking, Island } from './Island'
 
-afterEach(() => { cleanup(); openThread.mockClear(); busy = false })
+afterEach(() => { cleanup(); openThread.mockClear(); abort.mockClear(); abortTurn.mockClear(); busy = false; elsewhere = false })
+
+function StopKey() { const c = useClaude(); return <button type="button" onClick={c.stop}>stop</button> }
 const T = '941ef84c-7d86-4d27-bad2-895df2820bbc'
 const U = '33b27e4d-5460-42e7-a429-55a794b7d808'
 
@@ -39,5 +49,18 @@ describe('ClaudeProvider', () => {
     cleanup()
     renderInFrame(<ClaudeProvider><Island /></ClaudeProvider>, { hash: '#exp/d/dms', frame: { claudeOpen: true } })
     expect(document.querySelector('[data-island]')).toBeNull()
+  })
+  it('Stop on a turn running elsewhere writes the stop on that row (today\'s abortTurn)', () => {
+    elsewhere = true
+    renderInFrame(<ClaudeProvider><StopKey /></ClaudeProvider>, { hash: '#exp/d/dms' })
+    fireEvent.click(screen.getByText('stop'))
+    expect(abortTurn).toHaveBeenCalledWith('turn-9')
+    expect(abort).not.toHaveBeenCalled()
+  })
+  it('Stop on this tab\'s own stream aborts it', () => {
+    busy = true
+    renderInFrame(<ClaudeProvider><StopKey /></ClaudeProvider>, { hash: '#exp/d/dms' })
+    fireEvent.click(screen.getByText('stop'))
+    expect(abort).toHaveBeenCalled()
   })
 })

@@ -19,3 +19,5 @@
 .d-app .dcl-island-b b{font-weight:600;font-size:14px}
 .d-app .dcl-island-b span{font-size:13px;color:var(--t2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .d-app .dcl-island-k{display:flex;gap:6px;justify-content:flex-end}
+.d-app .dcl-kdot{position:absolute;top:3px;right:3px;width:10px;height:10px;border-radius:50%;background:var(--ink);box-shadow:0 0 0 2px var(--lime)}
+.d-app .d-ck{position:relative}

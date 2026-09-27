@@ -55,3 +55,11 @@ export function ClaudeWorking() {
   if (c.chat.botUnread) return <em className="dcl-working dcl-new-w" title="Claude's thread has something new">new</em>
   return null
 }
+
+/** The lime dock key's mark on the phone: Claude working, or Claude's thread has something new. */
+export function ClaudeKeyDot() {
+  const c = useClaudeMaybe()
+  if (!c) return null
+  const on = c.chat.busy || c.chat.runningElsewhere || c.chat.botUnread
+  return on ? <i className="dcl-kdot" aria-label={c.chat.botUnread && !c.chat.busy ? "Claude's thread has something new" : 'Claude is working'} /> : null
+}
