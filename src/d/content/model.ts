@@ -188,3 +188,11 @@ export function dayLabel(key: string): string {
   const t = Date.parse(`${key}T10:00:00Z`)
   return `${warsawDow(t)} ${warsawDm(t)}`
 }
+
+/** First image, Drive /view links turned into a thumbnail (same rule as today's window). */
+export function imgOf(urls: unknown, size = 800): string | null {
+  const u = Array.isArray(urls) ? urls.find(x => typeof x === 'string' && x) as string | undefined : undefined
+  if (!u) return null
+  const m = u.match(/drive\.google\.com\/file\/d\/([^/]+)/)
+  return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w${size}` : u
+}
