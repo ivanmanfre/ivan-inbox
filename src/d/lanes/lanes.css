@@ -170,3 +170,6 @@ em.dl-z,b.dl-z{color:var(--t3)}em.dl-on{color:var(--lime)}em.dl-q{color:var(--t3
 .dl-splits small{display:block;font:400 11px var(--m);color:var(--t3);letter-spacing:.05em;text-transform:uppercase}
 .dl-spr{display:flex;justify-content:space-between;gap:6px;font-size:12.5px;color:var(--t2);border-bottom:1px solid var(--line);padding:2px 0}.dl-spr b{font:400 12px var(--m);color:var(--t1)}
 .dl-msg p.dl-pre2{white-space:pre-wrap}
+.dl-chc{padding-bottom:8px}.dl-chc .dl-mh span{font:400 12px var(--m)}
+.dl-livet{color:var(--lime)}
+.dl-chb{height:30px;margin-top:6px}

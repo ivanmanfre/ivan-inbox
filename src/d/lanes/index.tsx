@@ -23,6 +23,7 @@ import { CampaignsCell, DeliveryCell, InboundCell, type BandCtx } from './bandCe
 import { CampaignSheet } from './CampaignSheet'
 import { RangeSheet } from './LedgerSheet'
 import { ControlSheet } from './ControlSheet'
+import { ChannelsSheet } from './ChannelsSheet'
 import { monitorLiveness } from '../../lib/campaignControl'
 import { answerOf, hm, RANGES, type Range } from './model'
 import { monitorLine, RangeKeys } from './foot'
@@ -92,6 +93,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
       <Sheet open onClose={close} title="Campaign not found" sub="This campaign is archived or no longer in the list." className="dl-sheet"><p className="dl-sl">Nothing to show.</p></Sheet>
     )}
     {sheet === 'range' && <RangeSheet from={q.get('from')} to={q.get('to')} setRange={(from, to) => go({ from, to })} onClose={() => go({ sheet: null, from: null, to: null })} />}
+    {sheet === 'channels' && <ChannelsSheet seat={forSeat ?? cols[0]} setSeat={s => go({ for: s })} now={now} onClose={close} />}
     {sheet === 'control' && <ControlSheet seat={forSeat ?? cols[0]} p={data.cc.value} gov={data.gov.value?.find(x => x.client_id === (forSeat ?? cols[0])) ?? null}
       pauses={data.pauses.value} pausesFailed={data.pauses.failed} now={now} onClose={close} />}
     {sheet && (SHEETS as string[]).includes(sheet) && <LanesSheet kind={sheet as SheetKind} seat={forSeat} p={data.cc.value} range={range} now={now} setSeat={s => go({ for: s })} onClose={close} />}
@@ -99,6 +101,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
   const doors = (
     <>
       <Key size="small" onClick={() => ctx.openSheet('delivery')}>Delivery</Key>
+      <Key size="small" onClick={() => go({ sheet: 'channels', c: null, for: q.get('seat') })}>Channels</Key>
       <Key size="small" onClick={() => ctx.openSheet('ledger')}>Daily ledger</Key>
       <Key size="small" onClick={() => ctx.openSheet('log')}>Send log</Key>
       <Key size="small" onClick={() => ctx.openSheet('problems')}>Recurring problems <span className="dl-kn">{data.cc.value ? probs : '?'}</span></Key>
