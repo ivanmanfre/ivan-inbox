@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { bootGate } from './lib/bootGate'
+import { claudeLandingHash } from './d/route'
 import { currentUserId } from './lib/swr'
 // P1 SPEED (2026-09-25). supabase-js (~240 KB parsed) and the design system
 // with motion used to sit in the entry chunk, so React could not mount until
@@ -233,6 +234,10 @@ function routeFor(gate: 'blank' | 'login' | 'app'): ReactNode | null {
   // faithful-revamp build the run verified — IS the app now. A load-time
   // #exp/ hash still reaches any candidate; #exp/stock is the escape hatch to
   // the pre-revamp shell.
+  // A Claude push (today's `#exp/brain-b/ask?thread=&turn=`, `?job=`) or the
+  // "Talk to Claude" shortcut lands in D's Claude drawer on this build.
+  const claudeLanding = claudeLandingHash(location.hash)
+  if (claudeLanding) history.replaceState(null, '', claudeLanding)
   const exp = getExpVariant()
   if (exp === 'stock') return <Suspense fallback={null}><StockShell /></Suspense>
   if (exp) return <ExpGate variant={exp} />

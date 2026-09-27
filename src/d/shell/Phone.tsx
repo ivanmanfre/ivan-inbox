@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { dmNumbers, contentNumbers, seatFailed, useFrameCounts } from '../counts/useFrameCounts'
 import { PLACES, PLACE_ORDER } from '../places'
 import { dHash } from '../route'
+import { ClaudeKeyDot } from '../claude/Island'
 import { DIcon } from '../ui/icons'
 import { SeatTrio } from '../ui/SeatCounts'
 import { useClock } from '../ui/useClock'
@@ -49,7 +50,7 @@ export function Dock() {
         ))}
         <button type="button" className={`d-ck${f.claudeOpen ? ' d-on' : ''}`} aria-label={f.claudeOpen ? 'Close Claude' : 'Ask Claude'} aria-pressed={f.claudeOpen}
           onClick={() => f.setClaudeOpen(!f.claudeOpen)}>
-          <DIcon name="claude" />
+          <DIcon name="claude" /><ClaudeKeyDot />
         </button>
       </nav>
     </>
