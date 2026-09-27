@@ -31,6 +31,7 @@ import type { WbCommand } from '../../exp/v2c/commandSource'
 import './dms.css'
 import './dms-thread.css'
 import './dms-more.css'
+import './dms-calm.css'
 
 export default function DmsPage(props: PlaceProps) {
   return <DmAsks><Dms {...props} /></DmAsks>
