@@ -41,7 +41,7 @@
 .sl-pk-big{font-size:13.5px}
 
 /* lists */
-.sl-cnt{padding:10px 14px 4px;font:400 11.5px var(--m);color:var(--t3)}
+.sl-cnt{padding:10px 14px 4px;font:400 11.5px var(--m);color:var(--t3);display:flex;align-items:center;justify-content:space-between;gap:10px}
 .sl-sec{font:400 11px var(--m);color:var(--t3);letter-spacing:.06em;text-transform:uppercase;padding:12px 14px 6px;display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line)}
 .sl-sec .sl-rt{text-transform:none;letter-spacing:0;white-space:nowrap}
 .sl-quiet{padding:10px 14px;font-size:13px;color:var(--t2);line-height:1.5}
@@ -127,3 +127,18 @@
 .sl-orbithost .a-orbit{flex:1;min-height:0}
 .sl-orbitback{flex:none;display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid var(--line)}
 .sl-orbitback small{font:400 11.5px var(--m);color:var(--t3)}
+/* call window parity 09-27 */
+.sl-room{padding:10px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.sl-kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;font-size:13px}
+.sl-kv>div{display:contents}
+.sl-kv dt{font:400 11px var(--m);color:var(--t3);letter-spacing:.04em;text-transform:uppercase;padding-top:2px}
+.sl-kv dd{margin:0;color:var(--t1)}
+.sl-cb li em{margin-left:2px}
+.sl-pl-off{color:var(--t3);opacity:.55;cursor:default;text-decoration:none}
+.sl-flt{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.sl-flt select{background:var(--bg2,transparent);color:var(--t1);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit;min-width:0;max-width:60%}
+.sl-fltl{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.sl-tools{display:flex;align-items:center;gap:10px}
+/* density B: the same rows as cards (today's sales.density = b) */
+.sl-page[data-density='b'] .sl-fr{border:1px solid var(--line);border-radius:8px;margin:6px 10px;padding:10px 12px}
+.sl-page[data-density='b'] .sl-grp{padding-bottom:4px}

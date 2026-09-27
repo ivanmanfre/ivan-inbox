@@ -1,6 +1,7 @@
 // D Sales: the pure reading. Every rule is today's (wb/sales/match.ts:
 // matchPack, groupEvents, describeTimes, callPhase, callEndMs, reportIdFor;
 // lib/transcripts.ts for calls on record). Both clocks, always: Warsaw and UTC.
+import { MEETING_TYPE_LABEL, resolveMeetingType } from '../../lib/nextCall'
 import type { PackKind, PackMeta, SalesPack, WeekEvent } from '../../lib/salesPacks'
 import type { CallRow } from '../../lib/transcripts'
 import type { PackDoc } from '../../wb/sales/Doc'
@@ -54,6 +55,12 @@ export type CallEvent = {
   rel: string
   /** Who is on it when no pack names them (Ivan's own address dropped). */
   with: string
+  /** Everyone on the invite but Ivan (today's Today WITH line). */
+  withAll: string
+  /** Today's TYPE: Discovery / Technical audit / Client kickoff / Internal, '' when unknown. */
+  type: string
+  /** Today's SOURCE: "via Calendly", '' when the row has none. */
+  source: string
   reportId: string | null
 }
 
@@ -76,6 +83,9 @@ export function readEvent(ev: WeekEvent, group: string, idx: PackIndex, calls: C
     endWarsaw: warsawHm(end), endUtc: utcHm(end),
     rel: past ? 'done' : phase === 'running' ? 'on now' : t.rel,
     with: slug ? '' : (ev.attendees ?? []).filter(a => !/ivanmanfred/i.test(a)).slice(0, 2).join(', '),
+    withAll: (ev.attendees ?? []).filter(a => !/ivanmanfred/i.test(a)).join(', '),
+    type: typeOf(ev),
+    source: ev.source ? `via ${ev.source.charAt(0).toUpperCase()}${ev.source.slice(1)}` : '',
     reportId: past ? reportIdFor(ev, slug, calls) : null,
   }
 }
@@ -91,6 +101,16 @@ export function readFortnight(events: WeekEvent[], idx: PackIndex, calls: CallRo
 /** The call the plate is about: running first, else the next one still to come. */
 export function nextCall(f: Fortnight): CallEvent | null {
   return [...f.today, ...f.later, ...f.next].find(r => !r.past) ?? null
+}
+
+/** Today's "THIS WEEK N more calls": calls still to come this week after the plate's one. */
+export function moreThisWeek(f: Fortnight, r: CallEvent | null): number {
+  return [...f.today, ...f.later].filter(x => !x.past && x !== r).length
+}
+
+function typeOf(ev: WeekEvent): string {
+  const t = ev.title ? resolveMeetingType({ meeting_type: ev.meeting_type, title: ev.title }) : null
+  return t ? MEETING_TYPE_LABEL[t] : ''
 }
 
 /** Warsaw label for "no calls booked through Sun 4 Oct". */

@@ -107,7 +107,8 @@ export function readDocHash(hash: string): { slug: string; doc: PackDoc } | null
 /** Back to the week. The experiment gate is read at MOUNT, so a hash write
  *  alone would leave this page on screen at the week's address — hence a
  *  deliberate reload on the way out. */
-const SALES_HREF = '#exp/brain-b/sales'
+// D is the app's default route (parity 09-27): the week is D's Sales, not the old one.
+const SALES_HREF = '#exp/d/sales'
 
 /** Is this body a page in its own right? `mime` is the publisher's word for it;
  *  the doctype sniff covers a row written before the column carried html. */

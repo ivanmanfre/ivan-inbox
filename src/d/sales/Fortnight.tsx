@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Join, PackLinks } from './NextCall'
 import type { CallEvent, Fortnight as F, PackIndex } from './model'
 import { throughLabel } from './model'
@@ -18,16 +19,29 @@ function Row({ r, onReport }: { r: CallEvent; onReport: (id: string) => void }) 
         <div className="sl-fs">{[r.day, r.rel, r.with && `with ${r.with}`].filter(Boolean).join(' · ')}</div>
       </div>
       <Join r={r} />
-      <div className="sl-fl"><PackLinks slug={r.slug} have={r.have} noCompare report={Boolean(r.reportId)} onReport={() => r.reportId && onReport(r.reportId)} /></div>
+      <div className="sl-fl"><PackLinks slug={r.slug} have={r.have} report={Boolean(r.reportId)} onReport={() => r.reportId && onReport(r.reportId)} /></div>
     </div>
   )
 }
 
-export function FortnightList({ f, from, onReport }: { f: F; from: Date; onReport: (id: string) => void }) {
+export function FortnightList({ f, from, onReport, packs, tools, filtered, onClear }: {
+  f: F; from: Date; onReport: (id: string) => void
+  /** Packs matched to a call in this window (today's head count, packsInWindow). */
+  packs?: number | null
+  /** The Filter key, right of the count line. */
+  tools?: ReactNode
+  /** What the filter keeps, in words; '' = no filter. */
+  filtered?: string
+  onClear?: () => void
+}) {
   const total = f.today.length + f.later.length + f.next.length + f.earlier.length
   return (
     <>
-      <div className="sl-cnt">{total} {total === 1 ? 'call' : 'calls'} · from {throughLabel(from)}</div>
+      <div className="sl-cnt">
+        <span>Week of {throughLabel(from)} · {total} {total === 1 ? 'call' : 'calls'}{packs != null && ` · ${packs} ${packs === 1 ? 'pack' : 'packs'}`}</span>
+        {tools}
+      </div>
+      {filtered && <div className="sl-quiet sl-fltl" data-filter-line>Showing calls where {filtered}. <button type="button" className="sl-pl" data-verb="filter-clear" onClick={onClear}>Clear</button></div>}
       {GROUPS.map(([k, label]) => {
         const list = f[k]
         if (list.length === 0 && k !== 'today') return null
@@ -38,6 +52,7 @@ export function FortnightList({ f, from, onReport }: { f: F; from: Date; onRepor
           </section>
         )
       })}
+      {filtered && total === 0 && <div className="sl-quiet">No call in the fortnight matches this filter.</div>}
     </>
   )
 }
