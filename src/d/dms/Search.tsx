@@ -12,7 +12,7 @@ export const SearchField = forwardRef<HTMLInputElement, { q: string; setQ: (s: s
       <label className={`dm-search${q ? ' dm-on' : ''}${phone ? ' dm-search-phone' : ''}`}>
         <DIcon name="search" />
         <input ref={ref} type="search" value={q} onChange={e => setQ(e.target.value)}
-          placeholder={`Search ${reach != null ? reach.toLocaleString('en-US') + ' ' : ''}people and messages`} aria-label="Search people and messages"
+          placeholder={phone ? "Search people and messages" : `Search ${reach != null ? reach.toLocaleString("en-US") + " " : ""}people and messages`} aria-label="Search people and messages"
           onKeyDown={e => { if (e.key === 'Escape') { setQ(''); (e.target as HTMLInputElement).blur() } }} />
         {!phone && <kbd>/</kbd>}
       </label>
