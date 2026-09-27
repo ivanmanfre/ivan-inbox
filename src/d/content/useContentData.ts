@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useContent, useScheduledQueue } from '../../hooks/useContent'
 import { publishBlocksByDraft } from '../../lib/publishBlock'
-import { fetchIvanArmedDays, type ContentDraft } from '../../lib/content'
+import { fetchIvanArmedDays, type ContentDraft, type ScheduledQueueRow } from '../../lib/content'
 import { fetchVerdict, verdictParts, type VerdictPart } from '../../lib/contentVerdict'
 import type { Lane } from './model'
 
@@ -23,6 +23,8 @@ export type ContentData = {
   verdict: VerdictPart[] | null
   /** Ivan's posts the publisher stopped (draft id -> reason), from today's publish-queue read; null until read. */
   blocks: Map<string, string> | null
+  /** Today's publish-queue read (scheduled_posts, Ivan's feed), for queue-only posts on the planner; null until read. */
+  queueRows: ScheduledQueueRow[] | null
   refreshAll: () => void
   failed: number
 }
@@ -59,6 +61,6 @@ export function useContentData(): ContentData {
 
   return {
     seats: { ivan: seat(ivan), risedtc: seat(rise), arch: seat(arch) },
-    armed, armedFailed, verdict, blocks, refreshAll, failed,
+    armed, armedFailed, verdict, blocks, queueRows: queue.loadedAt ? queue.rows : null, refreshAll, failed,
   }
 }

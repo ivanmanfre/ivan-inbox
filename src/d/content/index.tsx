@@ -16,6 +16,9 @@ import { PhoneWall } from './PhoneWall'
 import { Queue } from './Queue'
 import { SubNav, subOf, type Trio } from './SubNav'
 import { Wall, type Ghost } from './Wall'
+import { Month } from './Month'
+import { DayPanel } from './DayPanel'
+import { byDay, seatItems } from './planModel'
 import { LANES, dayLabel, errorRows, errorRowsWithBlocks, errorsLanding, generatingOf, nextFreeWeekday, scheduledIn, titleOf, wallDays, waitingRows, weekWord, type Lane } from './model'
 import { useLanes } from '../../hooks/useLanes'
 import type { ContentLane } from '../../lib/content'
@@ -47,6 +50,10 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const toast = useToast()
   const [week, setWeek] = useState<0 | 1 | null>(null)
   const [moveLand, setMoveLand] = useState<string | null>(null)
+  const [dayOpen, setDayOpen] = useState<{ lane: Lane; keys: string[] } | null>(null)
+  // Two weeks (the wall) or the month (today's calendar), remembered.
+  const [plan, setPlanState] = useState<'weeks' | 'month'>(() => { try { return localStorage.getItem('d-content-plan') === 'month' ? 'month' : 'weeks' } catch { return 'weeks' } })
+  const setPlan = (v: 'weeks' | 'month') => { setPlanState(v); try { localStorage.setItem('d-content-plan', v) } catch { /* private mode */ } }
   const sub = subOf(route.sub)
   const q = route.query
   const draft = q.get('draft')
@@ -69,6 +76,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const setLane = useCallback((l: Lane) => go(draft ? { draft, lane: l } : { lane: l }), [draft, go])
 
   const days = useMemo(() => wallDays(now), [now])
+  const items = useMemo(() => Object.fromEntries(LANES.map(l => [l, byDay(seatItems(data.seats[l].rows, l, data.queueRows, now))])) as Record<Lane, ReturnType<typeof byDay>>, [data.seats, data.queueRows, now])
   const wk1 = days.slice(0, 5)
   const waiting = useMemo(() => Object.fromEntries(LANES.map(l => [l, waitingRows(data.seats[l].rows, now)])) as Record<Lane, ReturnType<typeof waitingRows>>, [data.seats, now])
   const trio = (f: (l: Lane) => number): Trio => Object.fromEntries(LANES.map(l => [l, data.seats[l].error ? null : !data.seats[l].loadedAt ? undefined : f(l)])) as Trio
@@ -124,10 +132,14 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
       if (listQueue && listQueue.ids.includes(draft as string)) return listQueue.ids
       return errorRowsWithBlocks(data.seats[openLane].rows, openLane, now, data.blocks).map(r => r.id)
     }
+    // Opened from the wall or the month: walk that seat's dated posts in firing order.
+    if (q.get('from') === 'plan') {
+      return [...items[openLane].values()].flat().filter(it => it.source === 'draft').sort((a, b) => (a.at < b.at ? -1 : 1)).map(it => it.id)
+    }
     const w = waiting[openLane]
     // The walk is the fresh queue (what the frame counts); an older draft opened from the fold walks both.
     return (w.older.some(r => r.id === draft) ? [...w.fresh, ...w.older] : w.fresh).map(r => r.id)
-  }, [data.blocks, data.seats, draft, inErrors, listQueue, now, openLane, waiting])
+  }, [data.blocks, data.seats, draft, inErrors, items, listQueue, now, openLane, q, waiting])
   const slot = data.armed ? nextFreeWeekday(data.armed, now) : null
   const openRow = draft && openLane ? data.seats[openLane].rows.find(r => r.id === draft) : null
   const ghost: Ghost | null = draft && openLane === 'ivan' && slot && openRow?.status !== 'scheduled'
@@ -142,18 +154,30 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
     ? { lane: moveLane, key: moveLand, title: titleOf(moveRow), time: moveRow.scheduled_at ? warsawHm(moveRow.scheduled_at) : '09:00', label: `Lands ${dayLabel(moveLand)}` }
     : null
   const window_ = draft && openLane ? (
-    <DraftWindow id={draft} lane={openLane} queue={queueIds} onPick={id => openDraft(id, openLane)} onClose={close}
+    <DraftWindow id={draft} lane={openLane} queue={queueIds} onPick={id => (q.get('from') === 'plan' ? go({ draft: id, lane: openLane, from: 'plan' }) : openDraft(id, openLane))} onClose={close}
       refresh={data.seats[openLane].refresh} days={days} armed={data.armed} armedFailed={data.armedFailed} />
   ) : null
   const queue = (
     <Queue lane={qLane} setLane={setLane} seat={data.seats[qLane]} fresh={waiting[qLane].fresh} older={waiting[qLane].older}
       counts={reviewN} openId={draft} onOpen={id => openDraft(id, qLane)} now={now} />
   )
-  const wallProps = { data, stuck, onOpen: openDraft, onMove: (id: string, l: Lane) => go({ move: id, lane: l }, null), onArm: armIt, now }
+  const openFromPlan = (id: string, l: Lane) => go({ draft: id, lane: l, from: 'plan' }, sub === 'review' ? 'review' : null)
+  const onMove = (id: string, l: Lane, day?: string) => go({ move: id, lane: l, ...(day ? { day } : {}) }, null)
+  const wallProps = { data, items, stuck, onOpen: openFromPlan, onMove, onArm: armIt, onDay: (l: Lane, keys: string[]) => setDayOpen({ lane: l, keys }), now }
   const move = moveRow ? (
-    <MovePanel r={moveRow} lane={moveLane} first={days[0].key} seatRows={data.seats[moveLane].rows} phone={phone}
+    <MovePanel key={`${moveRow.id}:${q.get('day') ?? ''}`} r={moveRow} lane={moveLane} first={days[0].key} seatRows={data.seats[moveLane].rows} phone={phone} initialPick={q.get('day')}
       onClose={() => go(moveLane === 'ivan' ? {} : { lane: moveLane }, null)} onDone={data.refreshAll} onLand={setMoveLand} />
   ) : null
+  const dayPanel = dayOpen ? (
+    <DayPanel lane={dayOpen.lane} keys={dayOpen.keys} items={items[dayOpen.lane]} onClose={() => setDayOpen(null)} onOpen={openFromPlan} onMove={onMove} onArm={armIt} />
+  ) : null
+  const planSwitch = (
+    <span className="cn-planv" role="tablist" aria-label="Planner view">
+      <button type="button" role="tab" aria-selected={plan === 'weeks'} className={plan === 'weeks' ? 'cn-on' : ''} onClick={() => setPlan('weeks')}>Two weeks</button>
+      <button type="button" role="tab" aria-selected={plan === 'month'} className={plan === 'month' ? 'cn-on' : ''} onClick={() => setPlan('month')} data-verb="month">Month</button>
+    </span>
+  )
+  const month = <Month lane={qLane} setLane={setLane} items={items[qLane]} rows={data.seats[qLane].rows} onOpen={openFromPlan} onMove={onMove} onArm={armIt} onDay={wallProps.onDay} now={now} />
 
   const laneCounts = Object.fromEntries(LANES.filter(l => typeof reviewN[l] === 'number').map(l => [l, reviewN[l] as number])) as Partial<Record<ContentLane, number>>
   const wantGen = q.get('tab') === 'generating' ? 'generating' : 'errors'
@@ -174,7 +198,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   else if (sub !== 'planner' && sub !== 'review') body = legacy
   else if (phone && window_) body = window_
   else if (phone) {
-    body = <>{sub === 'planner' && <PhoneWall {...wallProps} days={days} />}<div className="cn-left">{queue}</div>{move}</>
+    body = <>{sub === 'planner' && <div className="cn-wk cn-wk-p">{planSwitch}</div>}{sub === 'planner' && (plan === 'month' ? month : <PhoneWall {...wallProps} days={days} />)}<div className="cn-left">{queue}</div>{move}</>
   } else {
     body = (
       <div className={`cn-split${window_ ? ' cn-open' : ''}`}>
@@ -182,12 +206,13 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
           {sub === 'planner' && (
             <>
               <div className="cn-wk">
-                {draft ? [0, 1].map(i => (
+                {planSwitch}
+                {plan === 'weeks' && (draft ? [0, 1].map(i => (
                   <button key={i} type="button" className={wkIdx === i ? 'cn-on' : ''} onClick={() => setWeek(i as 0 | 1)}>Week of {days[i * 5].dm}</button>
-                )) : <button type="button" className="cn-on">Weeks of {days[0].dm} and {days[5].dm}</button>}
-                <em>{draft ? 'Both weeks side by side when no post is open' : 'Tap a post to open it; Move puts it on another day'}</em>
+                )) : <button type="button" className="cn-on">Weeks of {days[0].dm} and {days[5].dm}</button>)}
+                <em>{plan === 'month' ? 'Every post of one seat, weekends included; drag a post or an undated draft onto a day' : draft ? 'Both weeks side by side when no post is open' : 'Tap a post to open it; ⇄ or drag it to another day'}</em>
               </div>
-              <Wall {...wallProps} days={shownDays} ghost={moveGhost ?? ghost} lift={moveRow?.id ?? null} />
+              {plan === 'month' ? month : <Wall {...wallProps} days={shownDays} ghost={moveGhost ?? ghost} lift={moveRow?.id ?? null} />}
             </>
           )}
           {move ?? queue}
@@ -202,6 +227,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
       <AnswerRow title={title} sub={subLine} />
       {!(phone && (window_ || errWindow) && (sub === 'planner' || sub === 'review' || sub === 'errors')) && <SubNav on={sub} counts={{ review: reviewN, ideas: ideasN, errors: errorsN, magnets: magnetsN }} gen={gen} />}
       {body}
+      {dayPanel}
     </div>
   )
 }
