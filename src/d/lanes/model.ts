@@ -203,12 +203,13 @@ export function controlOf(c: CcClient, now: number): ControlView {
 }
 
 /** One sentence per seat, today. Never a total across seats. */
-export function answerOf(p: CcPayload | null, seats: Seat[], now: number): { inv: Array<{ seat: Seat; v: number | null }>; sub: string } {
+export function answerOf(p: CcPayload | null, seats: Seat[], now: number, replies?: Partial<Record<Seat, { replied: number; calls: number }>> | null): { inv: Array<{ seat: Seat; v: number | null }>; sub: string } {
   const inv = seats.map(seat => ({ seat, v: todayOf(p, seat, now)?.inv ?? null }))
   if (!p) return { inv, sub: 'Reading the send monitor…' }
   const lim = seats.filter(s => { const c = clientOf(p, s); return c && rateLimitIncident(c) }).map(s => SEAT_NAME[s])
   const shut = seats.filter(s => { const c = clientOf(p, s); return c && !rateLimitIncident(c) && (c.status === 'outside_window' || !c.invitation.session?.open_now) && c.invitation.session?.next_opening_at })
     .map(s => `${SEAT_NAME[s]} opens ${hm(clientOf(p, s)!.invitation.session!.next_opening_at!)}`)
   const parts = [lim.length ? `LinkedIn is refusing ${lim.join(' and ')}` : '', ...shut].filter(Boolean)
-  return { inv, sub: parts.length ? parts.join('; ') + '.' : 'Every seat is sending inside its window.' }
+  const rep = replies ? ` Replied this week: ${seats.map(s => `${SEAT_NAME[s]} ${replies[s]?.replied ?? 0}`).join(', ')}; calls booked this week: ${seats.map(s => `${SEAT_NAME[s]} ${replies[s]?.calls ?? 0}`).join(', ')}.` : ''
+  return { inv, sub: (parts.length ? parts.join('; ') + '.' : 'Every seat is sending inside its window.') + rep }
 }

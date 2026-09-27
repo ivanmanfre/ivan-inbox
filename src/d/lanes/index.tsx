@@ -74,7 +74,9 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
   const setRange = (r: Range) => go({ range: r === '7d' ? null : r })
   const close = () => go({ sheet: null, c: null, for: null })
 
-  const ans = answerOf(data.cc.value, cols, now)
+  const perfRows = data.perf.value
+  const replies = perfRows ? Object.fromEntries(cols.map(s => [s, perfRows.filter(c => c.client_id === s).reduce((a, c) => ({ replied: a.replied + c.replied_7d, calls: a.calls + c.calls_7d }), { replied: 0, calls: 0 })])) : null
+  const ans = answerOf(data.cc.value, cols, now, replies)
   const title = <>Invites today: {ans.inv.map((x, i) => <span key={x.seat}>{i ? ', ' : ''}{SEAT_NAME[x.seat]} <N v={x.v} /></span>)}.</>
   const camp = sheet === 'campaign' ? data.perf.value?.find(c => c.campaign_id === q.get('c')) ?? null : null
   const forSeat = (SEATS as readonly string[]).includes(q.get('for') ?? '') ? (q.get('for') as Seat) : null

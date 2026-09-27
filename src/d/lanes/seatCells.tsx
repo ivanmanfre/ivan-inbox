@@ -8,6 +8,7 @@ import { Key } from '../ui/Key'
 import { ackId, useAck } from './ack'
 import { clientOf, controlOf, dm, hm, seatWord, todayOf } from './model'
 import type { LanesData } from './useLanesData'
+import { readyOf } from './glance/ready'
 
 export type CellCtx = { d: LanesData; now: number; openControl?: (seat: Seat) => void }
 
@@ -83,15 +84,20 @@ export function TodayCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
 }
 
 function Supply({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
+  // Runway = what the sender would pick now (the glance's ready count, the picker's own filter)
+  // over the invite pace; the old pipeline view's "sendable" is only the fallback.
   const pipe = (ctx.d.pipeline.value ?? []).filter(p => p.client_id === seat)
   const g = ctx.d.gov.value?.find(x => x.client_id === seat)
-  const sendable = pipe.reduce((a, p) => a + p.sendable, 0)
+  const ready = ctx.d.ready.value ? readyOf(ctx.d.ready.value, seat, g).total : null
+  const sendable = ready ?? pipe.reduce((a, p) => a + p.sendable, 0)
   const rate = Math.max(pipe.reduce((a, p) => a + p.sent_7d, 0) / 7, g?.daily_used ?? 0)
-  const runway = ctx.d.pipeline.value && rate > 0 ? Math.floor(sendable / rate) : null
+  const known = ready != null || ctx.d.pipeline.value
+  const runway = known ? (rate > 0 ? `${Math.floor(sendable / rate)}d` : sendable > 0 ? 'open-ended, nothing sent in 7 days' : null) : null
   const cut = new Date(ctx.now - 7 * 864e5).toISOString().slice(0, 10)
   const rep = (ctx.d.replacement.value ?? []).filter(r => r.client_id === seat && r.day >= cut)
   const so = rep.reduce((a, r) => a + r.sent_out, 0), qi = rep.reduce((a, r) => a + r.qualified_in, 0)
-  return <>{runway != null && <><Sep />runway {runway}d</>}{so > 0 && <><Sep />refill {(qi / so).toFixed(2)}x</>}</>
+  const short = runway && rate > 0 && sendable / rate < 3
+  return <>{runway != null && <><Sep /><span className={short ? 'dl-al' : ''}>runway {runway}</span></>}{so > 0 && <><Sep />refill {(qi / so).toFixed(2)}x{qi < so && rate > 0 ? `, empty in ${Math.max(0, Math.floor(sendable / Math.max(0.1, (so - qi) / 7)))}d` : ''}</>}</>
 }
 
 export function ControlCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
