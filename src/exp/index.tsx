@@ -28,10 +28,13 @@ import { lazy, Suspense } from 'react'
 // candidates a|b|c and the brain candidates a|c are off the disk, so the three
 // routes that reached them are gone with them. `stock`, `v2`/`v2c` and
 // `brain-b` are the surviving ids.
-export type ExpVariant = 'v2' | 'v2c' | 'stock' | 'brain-b'
+// d (goal-run outreach-fixes-and-inbox-v3, B3): direction D dark, new
+// component trees under src/d. `#exp/d/<place>` reaches it on any build; on the
+// rebuild/shell branch it is also the default (App.tsx routeFor).
+export type ExpVariant = 'v2' | 'v2c' | 'stock' | 'brain-b' | 'd'
 
 const KEY = 'exp_variant'
-const VARIANTS: ExpVariant[] = ['v2', 'v2c', 'stock', 'brain-b']
+const VARIANTS: ExpVariant[] = ['v2', 'v2c', 'stock', 'brain-b', 'd']
 
 // Mirrors `src/exp/v2c/Shell.tsx`'s own `MQ_DESKTOP` breakpoint. Duplicated
 // rather than imported: that file is lazy-loaded on purpose (kept out of the
@@ -44,7 +47,7 @@ function isPhoneWidth(): boolean {
 export function getExpVariant(): ExpVariant | null {
   // v2c before v2 — the alternation is ordered, so the shorter id must not eat
   // the longer one's prefix.
-  const m = location.hash.match(/^#exp\/(brain-b|v2c|v2|stock|off)\b/)
+  const m = location.hash.match(/^#exp\/(brain-b|v2c|v2|stock|off|d)\b/)
   if (m) {
     if (m[1] === 'off') { sessionStorage.removeItem(KEY); return null }
     // W1-1: v2/v2c's phone chrome is retired and does not lay out at 390px
@@ -78,12 +81,14 @@ export function getExpVariant(): ExpVariant | null {
 }
 
 const ShellV2 = lazy(() => import('./v2c/Shell'))
+const ShellD = lazy(() => import('../d/Shell'))
 
 export function ExpGate({ variant }: { variant: ExpVariant }) {
   return (
     <Suspense fallback={null}>
       {(variant === 'v2' || variant === 'v2c') && <ShellV2 />}
       {variant === 'brain-b' && <ShellV2 brain="b" />}
+      {variant === 'd' && <ShellD />}
     </Suspense>
   )
 }

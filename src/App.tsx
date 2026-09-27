@@ -74,7 +74,9 @@ const StockShell = lazy(() => import('./stockShell'))
   if (!m) return
   const id = decodeURIComponent(m[1])
   if (!id) return
-  history.replaceState(null, '', `#exp/brain-b/dms?thread=${encodeURIComponent(id)}`)
+  // rebuild/shell: D is the default app on this branch, so the conversation
+  // opens in D's DMs.
+  history.replaceState(null, '', `#exp/d/dms?thread=${encodeURIComponent(id)}`)
 })()
 import { getExpVariant, ExpGate } from './exp'
 
@@ -91,8 +93,13 @@ import { getExpVariant, ExpGate } from './exp'
   try { if (!/^#exp\//.test(location.hash) && sessionStorage.getItem('exp_variant') === 'stock') return } catch { /* private mode */ }
   void loadSupabase()
   void import('./providers')
-  void import('./exp/v2c/Shell')
-  if (window.innerWidth < 1000) void import('./exp/brain/b')
+  // rebuild/shell: D is the default; the old shell only when its hash asks.
+  if (/^#exp\/(v2c?|brain-b)\b/.test(location.hash)) {
+    void import('./exp/v2c/Shell')
+    if (window.innerWidth < 1000) void import('./exp/brain/b')
+  } else {
+    void import('./d/Shell')
+  }
 })()
 // DEV ONLY, see the bypass check in App() below. The `import.meta.env.DEV`
 // ternary (not just the render-site `if`) is required: `lazy(() =>
@@ -230,6 +237,8 @@ function routeFor(gate: 'blank' | 'login' | 'app'): ReactNode | null {
   if (exp === 'stock') return <Suspense fallback={null}><StockShell /></Suspense>
   if (exp) return <ExpGate variant={exp} />
   // Ivan picked finalist B, 2026-09-04 (goal run inbox-brain-app). #exp/v2 and
-  // #exp/brain-a stay reachable by hash.
-  return <ExpGate variant="brain-b" />
+  // #exp/brain-b stay reachable by hash.
+  // rebuild/shell (2026-09-27): Ivan picked direction D dark; on this branch D
+  // is the default app. `#exp/brain-b` still reaches today's app.
+  return <ExpGate variant="d" />
 }

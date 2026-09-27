@@ -1,0 +1,247 @@
+import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { FrameCountsProvider, useFrameCounts } from './counts/useFrameCounts'
+import { PLACES, type Layout } from './places'
+import { canonicalHash, parseDHash, toDHash, type DRoute } from './route'
+import { BellButton, BellFeed } from './shell/Bell'
+import { FrameCtx, useFrame, type Frame } from './shell/frame'
+import { lastSynced } from './shell/navModel'
+import { DPalette } from './shell/Palette'
+import { Dock, PhonePanel, PhoneTop } from './shell/Phone'
+import { SeatHealthBanner } from './shell/SeatHealth'
+import { Side } from './shell/Side'
+import { DConfirmProvider } from './ui/confirm'
+import { Failed, Offline, Skeleton } from './ui/states'
+import { ToastProvider } from './ui/toast'
+import { useOnline } from './ui/useOnline'
+import { warsawHm } from './ui/time'
+import './d.css'
+
+// ---------------------------------------------------------------------------
+// D, the frame. Desktop (>= 1000px): left panel, answer row (page title + the
+// frame's Commands ⌘K / Ask Claude ⌘J / bell), the page, and the Claude
+// drawer docked right when open. Phone: top bar, the page (document scroll),
+// the dock; the panel is a drawer, the bell a sheet under the top bar, Claude a
+// sheet from the lime key. The seat health banner and the offline line sit
+// above every page on both.
+//
+// Hooks rule: every hook in this file runs before any conditional return, and
+// no component here returns early above a hook (09-09: a hook after an early
+// return blanked every conversation tap for an hour).
+// ---------------------------------------------------------------------------
+
+const ClaudeDrawer = lazy(() => import('./claude/Drawer'))
+
+const DESK_MQ = '(min-width: 1000px)'
+
+function useLayout(): Layout {
+  return useSyncExternalStore(
+    f => {
+      const mq = window.matchMedia(DESK_MQ)
+      mq.addEventListener('change', f)
+      return () => mq.removeEventListener('change', f)
+    },
+    () => (window.matchMedia(DESK_MQ).matches ? 'desktop' : 'phone'),
+    () => 'desktop',
+  )
+}
+
+const isD = (h: string) => /^#exp\/d(?:[/?]|$)/.test(h)
+
+function useDRoute(): DRoute {
+  const read = useCallback(() => {
+    const h = location.hash
+    const want = canonicalHash(h)
+    if (want !== h) history.replaceState(null, '', want)
+    return want
+  }, [])
+  const [hash, setHash] = useState(read)
+  useEffect(() => {
+    const on = () => {
+      // A document route is its own page (App.tsx): load it fresh.
+      if (/^#doc(\?|$)/.test(location.hash)) { location.reload(); return }
+      setHash(read())
+    }
+    window.addEventListener('hashchange', on)
+    return () => window.removeEventListener('hashchange', on)
+  }, [read])
+  return useMemo(() => parseDHash(hash), [hash])
+}
+
+function navigateTo(hash: string) {
+  const d = isD(hash) ? hash : toDHash(hash)
+  if (d && d !== location.hash) location.hash = d
+}
+
+/** A page that throws must not take the frame down with it. */
+class PageBoundary extends Component<{ children: ReactNode; place: string }, { err: Error | null }> {
+  state = { err: null as Error | null }
+  static getDerivedStateFromError(err: Error) { return { err } }
+  componentDidCatch(err: Error) { console.error(`[d] ${this.props.place} page crashed`, err) }
+  render() {
+    if (this.state.err) {
+      return <div className="d-pagefail"><Failed what={`the ${this.props.place} page`} detail="The page stopped. The rest of the app still works." onRetry={() => location.reload()} /></div>
+    }
+    return this.props.children
+  }
+}
+
+function PageLoading() {
+  return <div className="d-pageload"><Skeleton lines={6} label="Loading the page" /></div>
+}
+
+function Page() {
+  const f = useFrame()
+  const P = PLACES[f.route.place].Page
+  return (
+    <PageBoundary key={f.route.place} place={PLACES[f.route.place].label}>
+      <Suspense fallback={<PageLoading />}>
+        <P layout={f.layout} route={f.route} navigate={f.navigate} />
+      </Suspense>
+    </PageBoundary>
+  )
+}
+
+function OfflineLine() {
+  const online = useOnline()
+  const c = useFrameCounts()
+  const synced = lastSynced(c)
+  if (online) return null
+  return <Offline since={synced ? warsawHm(synced) : null} />
+}
+
+function ClaudeSlot() {
+  const f = useFrame()
+  return (
+    <Suspense fallback={<div className="d-cslot"><Skeleton lines={3} label="Loading Claude" /></div>}>
+      <ClaudeDrawer layout={f.layout} route={f.route} onClose={() => f.setClaudeOpen(false)} />
+    </Suspense>
+  )
+}
+
+function AnswerBar({ setTitleSlot, setToolsSlot }: { setTitleSlot: (el: HTMLElement | null) => void; setToolsSlot: (el: HTMLElement | null) => void }) {
+  const f = useFrame()
+  const c = useFrameCounts()
+  const crit = (c.alerts.value?.critical ?? 0) > 0
+  return (
+    <header className={`d-ans${crit ? ' d-ans-crit' : ''}`}>
+      <div className="d-ans-title" ref={setTitleSlot} />
+      <div className="d-tools">
+        <div className="d-tools-page" ref={setToolsSlot} />
+        <button type="button" className="d-ask" onClick={f.openPalette}>Commands <kbd>⌘K</kbd></button>
+        <button type="button" className={`d-ask${f.claudeOpen ? ' d-on' : ''}`} aria-pressed={f.claudeOpen} onClick={() => f.setClaudeOpen(!f.claudeOpen)}>
+          {f.claudeOpen ? 'Claude open' : 'Ask Claude'} <kbd>⌘J</kbd>
+        </button>
+        <BellButton />
+      </div>
+    </header>
+  )
+}
+
+function Desktop({ setTitleSlot, setToolsSlot }: { setTitleSlot: (el: HTMLElement | null) => void; setToolsSlot: (el: HTMLElement | null) => void }) {
+  const f = useFrame()
+  return (
+    <>
+      <Side />
+      <main className="d-main">
+        <SeatHealthBanner />
+        <OfflineLine />
+        <AnswerBar setTitleSlot={setTitleSlot} setToolsSlot={setToolsSlot} />
+        <div className={`d-bodyrow${f.claudeOpen ? ' d-with-claude' : ''}`}>
+          <div className="d-body"><Page /></div>
+          {f.claudeOpen && <aside className="d-claude" aria-label="Claude"><ClaudeSlot /></aside>}
+          {f.bellOpen && <BellFeed />}
+        </div>
+      </main>
+    </>
+  )
+}
+
+function PhoneFrame({ setToolsSlot, panelOpen, setPanelOpen }: {
+  setToolsSlot: (el: HTMLElement | null) => void; panelOpen: boolean; setPanelOpen: (o: boolean) => void
+}) {
+  const f = useFrame()
+  const closePanel = useCallback(() => setPanelOpen(false), [setPanelOpen])
+  return (
+    <>
+      <PhoneTop onPanel={() => setPanelOpen(true)} setToolsSlot={setToolsSlot} />
+      <SeatHealthBanner />
+      <OfflineLine />
+      <div className="d-pbody"><Page /></div>
+      <Dock />
+      {panelOpen && <PhonePanel onClose={closePanel} />}
+      {f.bellOpen && (
+        <>
+          <div className="d-scrim d-scrim-bell" onClick={() => f.setBellOpen(false)} aria-hidden="true" />
+          <BellFeed />
+        </>
+      )}
+      {f.claudeOpen && <div className="d-psheet" role="dialog" aria-label="Claude"><ClaudeSlot /></div>}
+    </>
+  )
+}
+
+export default function DShell() {
+  const layout = useLayout()
+  const route = useDRoute()
+  const [bellOpen, setBellOpen] = useState(false)
+  const [claudeOpen, setClaudeOpen] = useState(false)
+  const [palette, setPalette] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [titleSlot, setTitleSlot] = useState<HTMLElement | null>(null)
+  const [toolsSlot, setToolsSlot] = useState<HTMLElement | null>(null)
+
+  // One overlay at a time on the phone: opening the bell closes Claude and the drawer.
+  const openBell = useCallback((o: boolean) => { setBellOpen(o); if (o) setPanelOpen(false) }, [])
+  const openClaude = useCallback((o: boolean) => { setClaudeOpen(o); if (o) setPanelOpen(false) }, [])
+  const openPalette = useCallback(() => setPalette(true), [])
+
+  // Moving to another place closes the transient layers.
+  useEffect(() => { setBellOpen(false); setPanelOpen(false) }, [route.place])
+
+  // The document behind the phone frame scrolls; paint it the frame's black.
+  useEffect(() => {
+    document.documentElement.classList.add('d-root')
+    return () => document.documentElement.classList.remove('d-root')
+  }, [])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey
+      if (mod && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); setPalette(true); return }
+      if (mod && (e.key === 'j' || e.key === 'J')) { e.preventDefault(); setClaudeOpen(o => !o); return }
+      if (e.key === 'Escape' && !document.querySelector('.d-sheet, .d-confirm')) {
+        setBellOpen(false); setPanelOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  const frame = useMemo<Frame>(() => ({
+    layout, route, navigate: navigateTo,
+    bellOpen, setBellOpen: openBell, claudeOpen, setClaudeOpen: openClaude, openPalette,
+    titleSlot: layout === 'desktop' ? titleSlot : null, toolsSlot,
+  }), [layout, route, bellOpen, openBell, claudeOpen, openClaude, openPalette, titleSlot, toolsSlot])
+
+  return (
+    <FrameCountsProvider>
+      <FrameCtx.Provider value={frame}>
+        <div className={`d-app d-${layout}`} data-bell={bellOpen ? 'open' : undefined} data-place={route.place}>
+          <ToastProvider>
+            <DConfirmProvider>
+              {layout === 'desktop'
+                ? <Desktop setTitleSlot={setTitleSlot} setToolsSlot={setToolsSlot} />
+                : <PhoneFrame setToolsSlot={setToolsSlot} panelOpen={panelOpen} setPanelOpen={setPanelOpen} />}
+              {palette && (
+                <DPalette
+                  onClose={() => setPalette(false)} navigate={navigateTo}
+                  toggleClaude={() => openClaude(!claudeOpen)} openBell={() => openBell(true)}
+                />
+              )}
+            </DConfirmProvider>
+          </ToastProvider>
+        </div>
+      </FrameCtx.Provider>
+    </FrameCountsProvider>
+  )
+}
