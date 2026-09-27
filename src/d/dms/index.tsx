@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePreRead } from '../../exp/v2c/chat/usePreRead'
 import { applyThreadTokens, readTokens, writeTokens, type FilterToken } from '../../lib/filterTokens'
-import { eventTime, isOlderOwed, searchThreads, type Thread } from '../../lib/inbox'
+import { eventTime, isConversation, searchThreads, type Thread } from '../../lib/inbox'
 import { subjectForThread } from '../../wb/ask/askAbout'
 import { useFrameCounts } from '../counts/useFrameCounts'
 import type { PlaceProps } from '../places'
@@ -22,6 +22,7 @@ import { useDmsData } from './useDmsData'
 import { useDmVerbs } from './verbs'
 import { AgentOnlySheet, WarmSheet } from './Warm'
 import { useWarmVerbs } from './warmVerbs'
+import { RowMenu } from './RowMenu'
 import { useToast } from '../ui/toast'
 import { useDmKeys } from './useDmKeys'
 import './dms.css'
@@ -70,7 +71,9 @@ function Dms({ layout, route, navigate }: PlaceProps) {
     const hits = applyThreadTokens(searchThreads(threads, q.trim()), tokens, now).sort((a, b) => eventTime(b.last).localeCompare(eventTime(a.last)))
     return Object.fromEntries(SEATS.map(s => [s, hits.filter(t => seatOf(t.client_id) === s)])) as Record<Seat, Thread[]>
   }, [mode, threads, q, tokens, now])
-  const stale = useMemo(() => threads.filter(t => t.draft && !t.spam && (t.draftStale || isOlderOwed(t, now))), [threads, now])
+  // Today's StaleBar set, per seat (lane-scoped): drafts answering a message he already replied to.
+  const staleBy = useMemo(() => Object.fromEntries(SEATS.map(s => [s, threads.filter(t => isConversation(t) && !t.spam && t.draft !== null && t.draftStale && seatOf(t.client_id) === s)])) as Record<Seat, Thread[]>, [threads])
+  const [rowMenu, setRowMenu] = useState<Thread | null>(null)
   // Desktop with no ?thread: the first conversation that needs you is shown (as the mock does), but it
   // was not opened by Ivan, so its read stamp is not written (`auto`).
   const autoOpen = threadId || layout !== 'desktop' ? null
@@ -114,15 +117,15 @@ function Dms({ layout, route, navigate }: PlaceProps) {
     else if (a === 'not-spam') void verbs.notSpam(t)
     else if (a === 'delete-seat') void verbs.deleteSeat(t).then(ok => { if (ok) closeThread() })
     else if (a === 'select') toggleCheck(t.prospect_id)
-    else if (a === 'stale-discard') void verbs.bulkDiscard(stale, 'Drafts nobody approved in 14 days, and drafts answering a message you already replied to.')
+    else if (a === 'stale-discard') void verbs.discardStale(staleBy[seatOf(t.client_id) ?? 'ivan'])
     else if (a === 'copy-thread') void copyText(`${location.origin}${location.pathname}${dHash('dms', null, { thread: t.prospect_id })}`)
-  }, [verbs, closeThread, toggleCheck, stale])
+  }, [verbs, closeThread, toggleCheck, staleBy])
 
   useDmKeys({ searchRef, open, openThread, closeThread, toggleCheck })
 
   const model: PageModel = {
     layout, mode, folder, q, setQ, tokens, setTokens, searchRef, views, stats, matches, open, threadId, auto: autoOpen !== null, threads, byId,
-    data, counts, verbs, warmVerbs, fail, openWarm, now, busy, setBusy, checked, setChecked, openThread, closeThread, ask, onMenu, staleN: stale.length, pre,
+    data, counts, verbs, warmVerbs, fail, openWarm, now, busy, setBusy, checked, setChecked, openThread, closeThread, ask, onMenu, staleN: 0, staleBy, rowMore: setRowMenu, refreshAll: data.refreshAll, pre,
     phoneSeat, setPhoneSeat: (s: Seat) => go({ seat: s }), setFolder: (f: string | null) => go({ folder: f, thread: null }),
   }
   const agentChanged = () => { data.reloadAgent(); data.reloadWarm() }
@@ -130,6 +133,7 @@ function Dms({ layout, route, navigate }: PlaceProps) {
     {layout === 'desktop' ? <DesktopDms m={model} /> : <PhoneDms m={model} />}
     {warmCard && <WarmSheet c={warmCard} agent={data.agent.cards.find(a => a.prospect_id === warmCard.prospect_id) ?? null} thread={byId.get(warmCard.prospect_id) ?? null}
       verbs={warmVerbs} onClose={closeWarm} onOpenThread={openThread} onAgentChanged={agentChanged} />}
+    {rowMenu && <RowMenu t={rowMenu} pre={pre} verbs={verbs} onClose={() => setRowMenu(null)} onOpen={() => openThread(rowMenu)} onAsk={() => ask(rowMenu, 'ask')} />}
     {agentOnlyCard && <AgentOnlySheet card={agentOnlyCard} thread={byId.get(agentOnlyCard.prospect_id) ?? null} onClose={closeWarm} onOpenThread={openThread} onAgentChanged={agentChanged} />}
   </>
 }

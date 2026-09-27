@@ -6,7 +6,9 @@ import type { FilterToken } from '../../lib/filterTokens'
 import type { Thread } from '../../lib/inbox'
 import { dmNumbers, type FrameCounts } from '../counts/useFrameCounts'
 import type { Layout } from '../places'
-import { SEATS, SEAT_NAME, type Seat } from '../seats'
+import { SEATS, SEAT_NAME, seatOf, type Seat } from '../seats'
+import { usePull } from './usePull'
+import { useRef, type ReactNode } from 'react'
 import { Empty, Failed, Skeleton } from '../ui/states'
 import { Bar, BulkBar, Folders, Headline, Health } from './Chrome'
 import { ColumnBody, type Mode } from './Column'
@@ -29,11 +31,12 @@ export type PageModel = {
   busy: string | null; setBusy: (s: string | null) => void; checked: Set<string>; setChecked: (s: Set<string>) => void
   openThread: (t: Thread) => void; closeThread: () => void; ask: (t: Thread, i: 'ask' | 'draft') => void
   onMenu: (t: Thread, a: MenuAct) => void; staleN: number; pre: PreReadHandle
+  staleBy: Record<Seat, Thread[]>; rowMore: (t: Thread) => void; refreshAll: () => void
   phoneSeat: Seat; setPhoneSeat: (s: Seat) => void; setFolder: (f: string | null) => void
 }
 
 function rowCtx(m: PageModel): RowCtx {
-  return { selected: m.open?.prospect_id ?? m.threadId, checked: m.checked, open: m.openThread, now: m.now, verbs: m.verbs, busy: m.busy, setBusy: m.setBusy, fail: m.fail }
+  return { selected: m.open?.prospect_id ?? m.threadId, checked: m.checked, open: m.openThread, now: m.now, verbs: m.verbs, busy: m.busy, setBusy: m.setBusy, fail: m.fail, pre: m.pre, more: m.rowMore }
 }
 
 function Body({ m, seat }: { m: PageModel; seat: Seat }) {
@@ -41,7 +44,7 @@ function Body({ m, seat }: { m: PageModel; seat: Seat }) {
   if (!d.threads.length && d.loading) return <Skeleton lines={6} label={`Reading ${SEAT_NAME[seat]}'s conversations`} />
   if (!d.threads.length && d.error) return <Failed what="the conversations" detail={d.error} onRetry={d.refreshAll} />
   return <ColumnBody seat={seat} view={m.views[seat]} mode={m.mode} matches={m.matches[seat]} c={rowCtx(m)} byId={m.byId}
-    cameBack={d.cameBack} dropCameBack={d.dropCameBack} warm={d.warm} agent={d.agent} warmVerbs={m.warmVerbs} openWarm={m.openWarm} dated={d.dated.rows} scanDays={d.scanDays} />
+    cameBack={d.cameBack} dropCameBack={d.dropCameBack} warm={d.warm} agent={d.agent} warmVerbs={m.warmVerbs} openWarm={m.openWarm} dated={d.dated.rows} scanDays={d.scanDays} stale={m.staleBy[seat]} />
 }
 
 function Pane({ m, phone }: { m: PageModel; phone: boolean }) {
@@ -52,7 +55,7 @@ function Pane({ m, phone }: { m: PageModel; phone: boolean }) {
     return <section className="dm-pane dm-pane-none"><Empty title="Pick a conversation." reason="j and k walk the rows, Enter opens one, / searches every message on every seat." /></section>
   }
   return <ThreadPane t={t} auto={m.auto} all={m.threads} phone={phone} verbs={m.verbs} now={m.now} onBack={m.closeThread}
-    onAsk={() => m.ask(t, 'ask')} onDraftIt={() => m.ask(t, 'draft')} onMenu={a => m.onMenu(t, a)} staleN={m.staleN} pre={m.pre} reload={m.data.refreshAll} />
+    onAsk={() => m.ask(t, 'ask')} onDraftIt={() => m.ask(t, 'draft')} onMenu={a => m.onMenu(t, a)} staleN={m.staleBy[seatOf(t.client_id) ?? 'ivan'].length} pre={m.pre} reload={m.data.refreshAll} />
 }
 
 export function DesktopDms({ m }: { m: PageModel }) {
@@ -98,7 +101,19 @@ export function PhoneDms({ m }: { m: PageModel }) {
       <div className="dm-psearch"><SearchField ref={m.searchRef} q={m.q} setQ={m.setQ} reach={m.data.threads.length || null} phone /><TokenBar tokens={m.tokens} setTokens={m.setTokens} /></div>
       <Folders folder={m.folder} setFolder={m.setFolder} views={m.views} phone />
       <BulkBar checked={m.checked} byId={m.byId} clear={() => m.setChecked(new Set())} onDiscard={ts => { void m.verbs.bulkDiscard(ts, 'The selected drafts.').then(() => m.setChecked(new Set())) }} />
-      <div className="dm-plist"><Body m={m} seat={s} /></div>
+      <PullList onRefresh={m.refreshAll}><Body m={m} seat={s} /></PullList>
+    </div>
+  )
+}
+
+/** Phone: pull the list down at the top to re-read it (today's pull-to-refresh on the DMs list). */
+function PullList({ onRefresh, children }: { onRefresh: () => void; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const ptr = usePull(ref, onRefresh)
+  return (
+    <div className="dm-plist" ref={ref}>
+      <div className="dm-ptr" style={{ height: ptr.pull }} aria-live="polite">{ptr.refreshing ? 'Reading…' : ptr.pull >= ptr.trigger ? 'Release to refresh' : ptr.pull > 0 ? 'Pull to refresh' : ''}</div>
+      {children}
     </div>
   )
 }

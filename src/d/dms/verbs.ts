@@ -240,10 +240,10 @@ export function useDmVerbs(ctx: VerbCtx) {
       try { return await escalateDraftToClient(t.draft.id) } catch (e) { const m = errText(e) || 'Could not queue that.'; fail(m); return m }
     }
 
-    async function bulkDiscard(ts: Thread[], what: string, o: { title?: string; confirmText?: string } = {}): Promise<void> {
+    async function bulkDiscard(ts: Thread[], what: string, o: { title?: string; confirmText?: string; message?: string } = {}): Promise<void> {
       const legs = ts.flatMap(draftLegs)
       if (!legs.length) return
-      const ok = await confirm({ title: o.title ?? `Discard ${ts.length} draft${ts.length === 1 ? '' : 's'}?`, message: `${what} None of them will be sent.`, confirmText: o.confirmText ?? 'Discard them', verb: 'confirm-bulk', danger: true })
+      const ok = await confirm({ title: o.title ?? `Discard ${ts.length} draft${ts.length === 1 ? '' : 's'}?`, message: o.message ?? `${what} None of them will be sent.`, confirmText: o.confirmText ?? 'Discard them', verb: 'confirm-bulk', danger: true })
       if (!ok) return
       try {
         const failed = await discardLegs(legs)
@@ -253,7 +253,19 @@ export function useDmVerbs(ctx: VerbCtx) {
       ctx.refresh()
     }
 
-    return { send, discard, later, bringBackNow, saveEdit, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, askOwner, bulkDiscard, isFollowUp }
+    /** Today's list-row Discard (InboxList onRowDiscard): every leg, danger confirm, today's words. */
+    async function rowDiscard(t: Thread): Promise<void> {
+      if (!t.draft) return
+      const pair = t.companionDraft != null
+      await bulkDiscard([t], '', { title: pair ? 'Discard both drafts?' : 'Discard this draft?', message: pair ? 'Neither the LinkedIn message nor the email will be sent.' : 'It will not be sent.', confirmText: 'Discard' })
+    }
+
+    /** Today's StaleBar: the seat's drafts answering a message he already replied to. */
+    async function discardStale(stale: Thread[]): Promise<void> {
+      await bulkDiscard(stale, '', { title: `Discard ${stale.length} stale draft${stale.length === 1 ? '' : 's'}?`, message: 'These threads already have your own reply after the last inbound message. Nothing is sent.', confirmText: 'Discard stale' })
+    }
+
+    return { rowDiscard, discardStale, send, discard, later, bringBackNow, saveEdit, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, askOwner, bulkDiscard, isFollowUp }
   }, [ctx, confirm, toast, askDiscard, askDate])
 }
 

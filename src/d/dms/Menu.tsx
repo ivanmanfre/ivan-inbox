@@ -26,7 +26,7 @@ export function menuItems(t: Thread, staleN: number, withAsk = false): { head: s
     ...(filing.length ? [{ head: 'Filing', items: filing }] : []),
     { head: 'This list', items: [
       { act: 'select', label: 'Select several', hint: 'x' },
-      { act: 'stale-discard', label: 'Discard stale drafts', hint: staleN ? `${staleN} older than 14 days` : 'none older than 14 days' },
+      ...(staleN ? [{ act: 'stale-discard' as const, label: 'Discard stale drafts', hint: `${staleN} where you already replied, this seat`, danger: true }] : []),
       { act: 'copy-thread', label: 'Copy link to this thread' },
     ] },
   ]

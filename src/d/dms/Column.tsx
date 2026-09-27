@@ -6,6 +6,7 @@ import { agentCardsWithoutWarmCards, type ConversationAgentCard } from '../../wb
 import { WARM_GROUPS, dm1Deliverable, evidenceLine, inviteLine, isWaiting, primaryAction, warmGroup, type WarmCard } from '../../wb/dms/warmSignalsData'
 import { seatOf, type Seat } from '../seats'
 import { needsCount, type SeatView } from './model'
+import { Btn } from '../ui/Key'
 import { Fold, Quiet, Row, Sec } from './Row'
 import { AnyRow, DraftRow, LaterRow, NoDraftRow, SentRow, SpamRow, ThrownRow, dayMonth, type RowCtx } from './threadRows'
 import type { AgentSide, Side } from './useDmsData'
@@ -28,6 +29,8 @@ export type ColumnProps = {
   openWarm: (pid: string) => void
   dated: { prospect_id: string; at: string }[]
   scanDays: ReadonlyMap<string, number>
+  /** This seat's drafts where he already replied (today's lane-scoped StaleBar). */
+  stale: Thread[]
 }
 
 const WHO: Record<Seat, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin' }
@@ -66,6 +69,12 @@ export function ColumnBody(p: ColumnProps) {
   const olderNd = v.older.filter(t => !t.draft).length
   const restShown = open.rest ? v.rest : v.rest.slice(0, REST_CAP)
   return <>
+    {p.stale.length > 0 && (
+      <div className="dm-stale" role="note">
+        <span>{p.stale.length} draft{p.stale.length === 1 ? '' : 's'} where you already replied</span>
+        <Btn danger verb="discard-stale" disabled={c.busy === `stale:${seat}`} onClick={() => { c.setBusy(`stale:${seat}`); void c.verbs.discardStale(p.stale).finally(() => c.setBusy(null)) }}>{c.busy === `stale:${seat}` ? 'Discarding…' : 'Discard stale'}</Btn>
+      </div>
+    )}
     {v.owner.map(t => (
       <button key={t.prospect_id} type="button" className={`dm-hold${c.selected === t.prospect_id ? ' dm-sel' : ''}`} data-d-row={t.prospect_id} onClick={() => c.open(t)}>
         <span className="dm-pill">{t.ownerConfirmation?.send_blocked_reason === 'reply_retry_pending' ? 'Retrying' : `Confirm with ${OWNER[seat]}`}</span>
