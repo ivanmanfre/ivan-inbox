@@ -45,7 +45,7 @@ import {
   type MoneyTaskRow, type PeriodAgg,
 } from '../../lib/money'
 import { type ReplacementRow } from '../../lib/kpis'
-import { withTimeout } from '../../d/ui/timeout'
+import { RETRY_MS, withTimeout } from '../../d/ui/timeout'
 import { PullIndicator } from '../chrome/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { hasMock } from '../../exp/v2c/mock'
@@ -664,6 +664,12 @@ function useMoney() {
   }, [])
 
   useEffect(() => { refresh() }, [refresh])
+  // A failed or timed-out read tries again quietly every 20 s until it answers.
+  useEffect(() => {
+    if (!state.error || state.loading) return
+    const t = window.setTimeout(refresh, RETRY_MS)
+    return () => window.clearTimeout(t)
+  }, [state.error, state.loading, refresh])
 
   return { ...state, refresh }
 }
@@ -689,7 +695,7 @@ export function MoneyView() {
   const head = (
     <Head
       title="Money"
-      sub={m.loadedAt ? `checked ${relAge(m.loadedAt)}` : 'loading'}
+      sub={m.loadedAt ? `checked ${relAge(m.loadedAt)}` : m.error ? 'not read yet, retrying' : 'loading'}
     />
   )
 

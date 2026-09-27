@@ -77,6 +77,8 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
   const perfRows = data.perf.value
   const replies = perfRows ? Object.fromEntries(cols.map(s => [s, perfRows.filter(c => c.client_id === s).reduce((a, c) => ({ replied: a.replied + c.replied_7d, calls: a.calls + c.calls_7d }), { replied: 0, calls: 0 })])) : null
   const ans = answerOf(data.cc.value, cols, now, replies)
+  // A failed or timed-out monitor read never keeps saying "Reading…" in the answer row.
+  const sub = !data.cc.value && data.cc.failed ? 'The send monitor could not be read. Retrying quietly.' : ans.sub
   const title = <>Invites today: {ans.inv.map((x, i) => <span key={x.seat}>{i ? ', ' : ''}{SEAT_NAME[x.seat]} <N v={x.v} /></span>)}.</>
   const camp = sheet === 'campaign' ? data.perf.value?.find(c => c.campaign_id === q.get('c')) ?? null : null
   const forSeat = (SEATS as readonly string[]).includes(q.get('for') ?? '') ? (q.get('for') as Seat) : null
@@ -121,7 +123,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
   if (layout === 'phone') {
     return (
       <>
-        <AnswerRow title={title} sub={ans.sub} />
+        <AnswerRow title={title} sub={sub} />
         {top}
         <GlancePhone seats={cols} g={g} />
         <div className="gl-ptasks"><div className="gl-phead">Your tasks<small>open, soonest first</small></div><GlanceTasks /></div>
@@ -138,7 +140,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
   </>
   return (
     <div className="dl-root">
-      <AnswerRow title={title} sub={ans.sub} />
+      <AnswerRow title={title} sub={sub} />
       {top}
       <div className="dl-grid" style={{ gridTemplateColumns: `var(--dl-gut) repeat(${cols.length}, minmax(0, 1fr))` }}>
         {band('Seat', null, s => <Plate seat={s} ctx={ctx} />, 'dl-top')}
