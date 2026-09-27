@@ -128,3 +128,15 @@ export async function fetchStoppedBrands(campaignId: string): Promise<number> {
   if (s.error) throw s.error
   return new Set(((s.data ?? []) as Array<{ id: string }>).map(r => byColleague.get(r.id))).size
 }
+
+// One lane-mix read per campaign per session (the board line and the sheet share it).
+const mixCache = new Map<string, Promise<LaneMix>>()
+export function laneMixOnce(campaignId: string): Promise<LaneMix> {
+  let p = mixCache.get(campaignId)
+  if (!p) {
+    p = fetchLaneMix(campaignId)
+    p.catch(() => mixCache.delete(campaignId))
+    mixCache.set(campaignId, p)
+  }
+  return p
+}

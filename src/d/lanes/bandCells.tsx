@@ -5,7 +5,7 @@ import { groupBySeat, isWorking, shortName, type CampaignPerf } from '../../lib/
 import type { Seat } from '../seats'
 import { laneLabel } from './labels'
 import { dm as dayMonth, seriesOf, windowOf, type Bar, type Range } from './model'
-import { fetchLaneMix, type LaneMix } from './reads'
+import { laneMixOnce, type LaneMix } from './reads'
 import { num, type CellCtx } from './seatCells'
 
 export type BandCtx = CellCtx & {
@@ -20,14 +20,11 @@ export function acceptShort(c: CampaignPerf): string {
   return `${Math.round((c.accept_72h / c.accept_judged) * 100)}% accepted within 72h, ${c.accept_72h} of ${c.accept_judged} judged`
 }
 
-// One read per Arch campaign per session: the lane mix moves slowly.
-const mixCache = new Map<string, Promise<LaneMix>>()
 function LaneLine({ id }: { id: string }) {
   const [mix, setMix] = useState<LaneMix | 'failed' | null>(null)
   useEffect(() => {
     let live = true
-    if (!mixCache.has(id)) mixCache.set(id, fetchLaneMix(id))
-    mixCache.get(id)!.then(m => { if (live) setMix(m) }, () => { mixCache.delete(id); if (live) setMix('failed') })
+    laneMixOnce(id).then(m => { if (live) setMix(m) }, () => { if (live) setMix('failed') })
     return () => { live = false }
   }, [id])
   if (mix === null) return <div className="dl-ln dl-unk">Inside: reading…</div>
