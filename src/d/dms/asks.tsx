@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { SNOOZE_PRESETS, snoozeTarget } from '../../lib/inbox'
 import { PUSH_COPY, fromLocalInput, formatReturn, toLocalInput, type PushVariant } from '../../lib/pushLater'
 import { useFrameMaybe } from '../shell/frame'
+import { useConfirmKeys } from '../ui/confirm'
 import { Key } from '../ui/Key'
 
 export type DiscardAnswer = 'plain' | 'myself' | null
@@ -52,18 +53,19 @@ function useEscape(fn: () => void) {
 
 function DiscardBox({ q, done }: { q: DiscardQ; done: (a: DiscardAnswer) => void }) {
   const f = useFrameMaybe()
-  const first = useRef<HTMLButtonElement>(null)
-  useEffect(() => { first.current?.focus() }, [])
-  useEscape(useCallback(() => done(null), [done]))
+  const ok = useRef<HTMLButtonElement>(null)
+  const cancel = useRef<HTMLButtonElement>(null)
+  // A discard is a danger confirm (today's ConfirmSheet danger): red key, Cancel focused, Enter never discards.
+  useConfirmKeys({ danger: true, cancel, ok, onCancel: useCallback(() => done(null), [done]) })
   return (
     <>
       <div className="d-scrim d-scrim-confirm" onClick={() => done(null)} aria-hidden="true" />
-      <div className={`d-confirm d-confirm-${f?.layout ?? 'desktop'} dm-ask`} role="alertdialog" aria-modal="true">
+      <div className={`d-confirm d-confirm-${f?.layout ?? 'desktop'} d-confirm-danger dm-ask`} role="alertdialog" aria-modal="true">
         <h3>{q.title}</h3>
         <p>{q.message}</p>
         <div className="d-confirm-k">
-          <Key onClick={() => done(null)} verb="cancel">Cancel</Key>
-          <Key ref={first} onClick={() => done('plain')} verb="discard-confirm" className="dm-key-warn">Discard</Key>
+          <Key ref={cancel} onClick={() => done(null)} verb="cancel">Cancel</Key>
+          <Key ref={ok} danger onClick={() => done('plain')} verb="discard-confirm">Discard</Key>
         </div>
         {q.myself && (
           <div className="d-confirm-k">

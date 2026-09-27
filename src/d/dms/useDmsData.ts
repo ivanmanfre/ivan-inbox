@@ -12,6 +12,7 @@ import { supabase } from '../../lib/supabase'
 import { FOLLOW_UP_REASON } from '../../lib/followUp'
 import { scanOpenDays, scanReopenOnlyIvan, type CameBackCard } from '../../wb/dms/cameBackData'
 import { fetchWarmCards, type WarmCard } from '../../wb/dms/warmSignalsData'
+import { fetchConversationAgentCards, type ConversationAgentCard, type ConversationAgentFeed } from '../../wb/dms/conversationAgentData'
 
 export type Side<T> = { rows: T[]; failed: boolean; loaded: boolean }
 export type DatedFollowUp = { prospect_id: string; at: string }
@@ -33,6 +34,10 @@ async function readDatedFollowUps(): Promise<DatedFollowUp[]> {
   return ((data ?? []) as { id: string; next_touch_after: string }[]).map(r => ({ prospect_id: r.id, at: r.next_touch_after }))
 }
 
+// Today's agent read (conversation_agent_cards): 'unavailable' is a reason to show, not a failure.
+async function readAgent(): Promise<ConversationAgentFeed[]> { return [await fetchConversationAgentCards()] }
+export type AgentSide = { cards: ConversationAgentCard[]; note: string | null; failed: boolean; loaded: boolean }
+
 function useSide<T>(read: () => Promise<T[]>): [Side<T>, () => void, (fn: (rows: T[]) => T[]) => void] {
   const [s, set] = useState<Side<T>>(none)
   const alive = useRef(true)
@@ -52,6 +57,11 @@ export function useDmsData() {
   const [cameRaw, reloadCame, editCame] = useSide(readCameBackRaw)
   const [warm, reloadWarm, editWarm] = useSide<WarmCard>(fetchWarmCards)
   const [dated, reloadDated] = useSide(readDatedFollowUps)
+  const [agentRaw, reloadAgent] = useSide(readAgent)
+  const agent: AgentSide = useMemo(() => {
+    const f = agentRaw.rows[0]
+    return { cards: f?.kind === 'ready' ? f.cards : [], note: f && f.kind !== 'ready' ? f.reason : null, failed: agentRaw.failed || f?.kind === 'error', loaded: agentRaw.loaded }
+  }, [agentRaw])
 
   // Optimistic overlay: a verb's effect shows at once and is dropped the moment a read that
   // started after it lands (that read already carries the write).
@@ -87,8 +97,8 @@ export function useDmsData() {
   const scanDays = useMemo(() => new Map(cameRaw.rows.map(c => [c.prospect_id, scanOpenDays(c)])), [cameRaw.rows])
 
   const refreshAll = useCallback(() => {
-    inbox.refresh(); reloadCame(); reloadWarm(); reloadDated()
-  }, [inbox, reloadCame, reloadWarm, reloadDated])
+    inbox.refresh(); reloadCame(); reloadWarm(); reloadDated(); reloadAgent()
+  }, [inbox, reloadCame, reloadWarm, reloadDated, reloadAgent])
 
   return {
     threads, loading: inbox.loading, error: inbox.error, loadedAt: inbox.loadedAt, fromCache: inbox.fromCache, cachedAt: inbox.cachedAt,
@@ -96,6 +106,7 @@ export function useDmsData() {
     cameBack: { ...cameRaw, rows: cameBack }, dropCameBack: (pid: string) => editCame(r => r.filter(c => c.prospect_id !== pid)), reloadCame,
     scanDays, warm, dropWarm: (pid: string) => editWarm(r => r.filter(c => c.prospect_id !== pid)), reloadWarm,
     dated, reloadDated,
+    agent, reloadAgent,
   }
 }
 

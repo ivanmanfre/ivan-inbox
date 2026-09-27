@@ -1,32 +1,8 @@
-// The pane's hardware keys and the free-typed composer.
-// HOLD TO SEND: a press opens the confirm (keyboard and a plain tap always reach it); holding the
-// key 0.6 s is the confirm itself, as the mock's "Send · hold" says. Discard always asks first.
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+// The pane's free-typed composer.
+// SEND ALWAYS ASKS: a press (or ⌘↩) opens the same confirm today's thread shows. There is no
+// hold-to-send: today has no path that sends without the confirm, so D has none either.
+import { useRef, useState } from 'react'
 import { Key } from '../ui/Key'
-
-const HOLD_MS = 600
-
-export function HoldKey({ children, sub = 'hold', verb, disabled, onPress, onHold }: {
-  children: ReactNode; sub?: ReactNode; verb: string; disabled?: boolean; onPress: () => void; onHold: () => void
-}) {
-  const timer = useRef<number | null>(null)
-  const held = useRef(false)
-  const [pressing, setPressing] = useState(false)
-  const stop = () => { if (timer.current !== null) { window.clearTimeout(timer.current); timer.current = null } setPressing(false) }
-  useEffect(() => stop, [])
-  return (
-    <Key primary verb={verb} sub={sub} disabled={disabled} className={pressing ? 'dm-holding' : undefined}
-      onPointerDown={e => {
-        if (disabled || e.button !== 0) return
-        held.current = false
-        setPressing(true)
-        timer.current = window.setTimeout(() => { timer.current = null; held.current = true; setPressing(false); onHold() }, HOLD_MS)
-      }}
-      onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}
-      onClick={() => { if (held.current) { held.current = false; return } onPress() }}
-    >{children}</Key>
-  )
-}
 
 export function Mic() {
   return <svg viewBox="0 0 24 24" className="d-ico" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM6 11a6 6 0 0 0 12 0M12 17v4" /></svg>
@@ -53,9 +29,9 @@ function useDictate(onText: (s: string) => void) {
 }
 
 /** "Or write it yourself to X…" (small under the keys) or the big box on no-draft / owner / waiting. */
-export function Composer({ to, from, big, disabled, note, value, setValue, onSend, onHoldSend, busy }: {
+export function Composer({ to, from, big, disabled, note, value, setValue, onSend, busy }: {
   to: string; from: string; big: boolean; disabled?: string | null; note?: string
-  value: string; setValue: (s: string) => void; onSend: () => void; onHoldSend: () => void; busy: boolean
+  value: string; setValue: (s: string) => void; onSend: () => void; busy: boolean
 }) {
   const dict = useDictate(s => setValue((value ? value + ' ' : '') + s.trim()))
   const [focus, setFocus] = useState(false)
@@ -73,9 +49,9 @@ export function Composer({ to, from, big, disabled, note, value, setValue, onSen
       />
       <div className="dm-comp-r">
         {dict.can && <button type="button" className={`dm-ib${dict.on ? ' dm-on' : ''}`} aria-label={dict.on ? 'Stop dictating' : 'Dictate'} onClick={dict.toggle}><Mic /></button>}
-        {grown && <em>{note ?? `Sends from ${from === 'you' ? 'your' : `${from}'s`} LinkedIn · ⌘↩ or hold Send`}</em>}
+        {grown && <em>{note ?? `Sends from ${from === 'you' ? 'your' : `${from}'s`} LinkedIn · ⌘↩ or Send, it asks first`}</em>}
         {value.trim() && (
-          <HoldKey verb="compose-send" disabled={busy} onPress={onSend} onHold={onHoldSend}>Send</HoldKey>
+          <Key primary verb="compose-send" disabled={busy} onClick={onSend}>Send</Key>
         )}
       </div>
     </div>

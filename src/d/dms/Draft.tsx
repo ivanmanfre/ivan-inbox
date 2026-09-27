@@ -4,6 +4,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { emailRowSender, emailSenderLabel, eventTime, holdReason, isFollowUp, messageChannel, type Thread } from '../../lib/inbox'
 import { DIcon } from '../ui/icons'
+import { Linkified } from '../ui/Linkified'
+import { Explain } from './Explain'
 import { ago } from './model'
 import { dayMonth } from './threadRows'
 import type { Edits } from './verbs'
@@ -30,8 +32,8 @@ function Grow({ value, onChange, label }: { value: string; onChange: (s: string)
   return <textarea ref={ref} className="dm-edit" aria-label={label} value={value} onChange={e => onChange(e.target.value)} />
 }
 
-export function Draft({ t, edits, setEdits, editing, now }: {
-  t: Thread; edits: Edits; setEdits: (e: Edits) => void; editing: boolean; now: number
+export function Draft({ t, edits, setEdits, editing, now, onRetry }: {
+  t: Thread; edits: Edits; setEdits: (e: Edits) => void; editing: boolean; now: number; onRetry: () => void
 }) {
   const draft = t.draft
   const [showEmail, setShowEmail] = useState(false)
@@ -53,7 +55,7 @@ export function Draft({ t, edits, setEdits, editing, now }: {
         {email && draft.recipient_email && <p className="dm-meta">Email to {draft.recipient_email} (from {emailRowSender(t.client_id)})</p>}
         {editing
           ? <Grow value={edits.main} onChange={main => setEdits({ ...edits, main })} label="The draft" />
-          : paras(edits.main).map((p, i) => <p key={i}>{p}</p>)}
+          : paras(edits.main).map((p, i) => <p key={i}><Linkified text={p} /></p>)}
       </div>
       {comp && (
         <div className="dm-leg">
@@ -63,7 +65,9 @@ export function Draft({ t, edits, setEdits, editing, now }: {
           </div>
           {editing
             ? <Grow value={edits.companion ?? ''} onChange={companion => setEdits({ ...edits, companion })} label="The other leg" />
-            : <p>{edits.companion}</p>}
+            : <p><Linkified text={edits.companion ?? ''} /></p>}
+          <Explain inset messageId={comp.id} messageText={comp.message_text} editedText={edits.companion ?? comp.message_text}
+            evidence={comp.draft_evidence} unavailable={comp.draft_evidence_unavailable} onRetry={onRetry} />
         </div>
       )}
       {rider && (
@@ -77,7 +81,11 @@ export function Draft({ t, edits, setEdits, editing, now }: {
           </div>
           {draft.email_mirror_text && (editing
             ? <Grow value={edits.email ?? ''} onChange={e => setEdits({ ...edits, email: e })} label="The email that goes with it" />
-            : showEmail && <p>{edits.email}</p>)}
+            : showEmail && <p><Linkified text={edits.email ?? ''} /></p>)}
+          {draft.email_mirror_text && (showEmail || editing) && (
+            <Explain inset messageId={`${draft.id}:email`} messageText={draft.email_mirror_text} editedText={edits.email ?? draft.email_mirror_text}
+              evidence={draft.draft_evidence?.email} unavailable={draft.draft_evidence_unavailable} onRetry={onRetry} />
+          )}
         </div>
       )}
     </>

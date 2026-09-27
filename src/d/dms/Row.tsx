@@ -19,11 +19,17 @@ type Props = {
   /** A conversation row (opens a thread). Came-back and warm rows without a thread pass false. */
   conversation?: boolean
   onOpen?: () => void
+  /** Unread inbound on the thread: a lime dot before the name (today's unread dot). */
+  unread?: boolean
+  /** The row's ⋯ key (Sum up, Copy chat link, Ask Claude, Discard): always drawn, never hover-only. */
+  onMore?: () => void
+  /** The Sum up line under the row, once Claude has read it. */
+  note?: ReactNode
 }
 
 export type RowVerb = { label: string; verb: string; run: () => void; busy?: boolean; quiet?: boolean }
 
-export function Row({ id, name, company, tags = [], line, right, rightKind = 'plain', verbs, selected, checked, dim, conversation = true, onOpen }: Props) {
+export function Row({ id, name, company, tags = [], line, right, rightKind = 'plain', verbs, selected, checked, dim, conversation = true, onOpen, unread, onMore, note }: Props) {
   const onKey = (e: KeyboardEvent) => { if (e.key === 'Enter' && onOpen) { e.preventDefault(); onOpen() } }
   return (
     <div
@@ -37,11 +43,12 @@ export function Row({ id, name, company, tags = [], line, right, rightKind = 'pl
       onKeyDown={onKey}
     >
       <div className="dm-qm">
-        <div className="dm-n">{checked && <span className="dm-tick" aria-label="selected">✓</span>}{name}{company ? <span> {company}</span> : null}</div>
+        <div className="dm-n">{checked && <span className="dm-tick" aria-label="selected">✓</span>}{unread && <span className="dm-dot" role="img" aria-label="unread" />}{name}{company ? <span> {company}</span> : null}</div>
         <div className="dm-s">
           {tags.map((t, i) => <span key={i} className={`dm-tag dm-tag-${t.kind}`}>{t.text}</span>)}
           {line}
         </div>
+        {note != null && <span className="dm-qnote" role="status">{note}</span>}
       </div>
       {verbs && verbs.length ? (
         <span className="dm-qvs">{verbs.map(v => (
@@ -49,6 +56,7 @@ export function Row({ id, name, company, tags = [], line, right, rightKind = 'pl
             onClick={e => { e.stopPropagation(); v.run() }}>{v.busy ? '…' : v.label}</button>
         ))}</span>
       ) : right != null && right !== '' ? <time className={`dm-t-${rightKind}`}>{right}</time> : null}
+      {onMore && <button type="button" className="dm-qmore" aria-label={`More for ${name}`} data-verb="row-more" onClick={e => { e.stopPropagation(); onMore() }}>⋯</button>}
     </div>
   )
 }
