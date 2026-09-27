@@ -8,6 +8,7 @@ import { Sheet } from '../ui/Sheet'
 import { LoadLine, Shs } from './CampaignSheet'
 import { LedgerSheet } from './LedgerSheet'
 import { LogSheet } from './LogSheet'
+import { ProblemsSheet } from './ProblemsSheet'
 import { useRead } from './useRead'
 import { dm, type Range } from './model'
 
@@ -37,20 +38,7 @@ export function LanesSheet({ kind, seat, p, range, now, setSeat, onClose }: { ki
       </Sheet>
     )
   }
-  const rec = p?.recurrence ?? null
-  const picks = (rec?.items ?? []).filter(i => i.rank?.daily_pick).slice(0, 3)
-  return (
-    <Sheet open onClose={onClose} className="dl-sheet" title="Recurring problems"
-      sub={rec ? `Weekly result: ${(rec.weekly?.result ?? 'unknown').replace(/_/g, ' ')}. Today's picks from the recurrence ledger.` : 'This snapshot carries no recurrence ledger, so nothing recurring is shown.'}>
-      {rec && !picks.length && <p className="dl-sl">No problem was picked for today.</p>}
-      {picks.map(i => (
-        <div className="dl-msg" key={i.recurrence_id}>
-          <div className="dl-mh"><b>{i.title}</b><em>{i.independent ? `${i.independent.distinct_events} events, ${i.independent.distinct_days} days` : ''}</em></div>
-          <p>{i.withheld ? `Repair withheld${i.withheld_reason ? `: ${i.withheld_reason}` : '.'}` : `Recommended repair: ${i.recommended_fix ?? 'none recorded'}`}</p>
-        </div>
-      ))}
-    </Sheet>
-  )
+  return <ProblemsSheet p={p} onClose={onClose} />
 }
 
 function DecisionsSheet({ seat, onClose }: { seat: Seat; onClose: () => void }) {
