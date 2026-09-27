@@ -3,41 +3,23 @@
    drawn in the mock; the Inbound band's "Each decision" opens it). Read-only. */
 import { type CcPayload } from '../../lib/campaignControl'
 import { fetchInboundDecisions, INBOUND_LABEL, type InboundDecision } from '../../lib/inbound'
-import { SEATS, SEAT_NAME, type Seat } from '../seats'
+import { SEAT_NAME, type Seat } from '../seats'
 import { Sheet } from '../ui/Sheet'
-import { LoadLine, Shs } from './CampaignSheet'
+import { LoadLine } from './CampaignSheet'
 import { LedgerSheet } from './LedgerSheet'
 import { LogSheet } from './LogSheet'
 import { ProblemsSheet } from './ProblemsSheet'
+import { DeliverySheet } from './DeliverySheet'
 import { useRead } from './useRead'
 import { dm, type Range } from './model'
 
-const CH: Record<string, string> = { invitation: 'Invites', dm: 'DMs', inmail: 'InMail' }
 export type SheetKind = 'decisions' | 'log' | 'ledger' | 'delivery' | 'problems'
 
 export function LanesSheet({ kind, seat, p, range, now, setSeat, onClose }: { kind: SheetKind; seat: Seat | null; p: CcPayload | null; range: Range; now: number; setSeat: (s: Seat | null) => void; onClose: () => void }) {
   if (kind === 'log') return <LogSheet seat={seat} setSeat={setSeat} now={now} onClose={onClose} />
   if (kind === 'ledger') return <LedgerSheet p={p} range={range} onClose={onClose} />
   if (kind === 'decisions') return <DecisionsSheet seat={seat ?? 'ivan'} onClose={onClose} />
-  if (kind === 'delivery') {
-    const rows = p ? p.ranges.rows.filter(r => r.interval === range && r.source_lane !== '__all__' && r.sent) : []
-    return (
-      <Sheet open onClose={onClose} className="dl-sheet" title="Delivery by lane" sub={`Last ${range.replace('d', ' days')}, confirmed sends only. Lanes are read from the campaign name, so an Arch lane can sit inside a campaign named for another.`}>
-        {!p ? <p className="dl-sl dl-bad">The send monitor could not be read.</p> : SEATS.map(s => (
-          <div key={s}>
-            <Shs>{SEAT_NAME[s]}</Shs>
-            <table className="dl-steps"><thead><tr><th>Lane</th><th>Channel</th><th>Sent</th><th>People</th></tr></thead><tbody>
-              {rows.filter(r => r.client_id === s).sort((a, b) => b.sent - a.sent).map(r => (
-                <tr key={`${r.channel}:${r.source_lane}`}><td>{r.source_lane.replace(/_/g, ' ')}</td><td>{CH[r.channel] ?? r.channel}</td><td className="dl-m">{r.sent}</td><td className="dl-m">{r.unique_recipients ?? 'unknown'}</td></tr>
-              ))}
-            </tbody></table>
-            <p className="dl-sl">{p.ranges.compare.filter(r => r.client_id === s && r.current === range).map(r =>
-              `${CH[r.channel] ?? r.channel} ${r.sent_current} against ${r.sent_previous} the ${range} before${r.delta_pp != null ? ` (accept ${r.accept_rate_current_pct}% against ${r.accept_rate_previous_pct}%)` : ''}`).join('. ') || `No earlier ${range} to compare with.`}</p>
-          </div>
-        ))}
-      </Sheet>
-    )
-  }
+  if (kind === 'delivery') return <DeliverySheet p={p} range={range} onClose={onClose} />
   return <ProblemsSheet p={p} onClose={onClose} />
 }
 

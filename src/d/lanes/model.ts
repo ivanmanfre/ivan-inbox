@@ -93,6 +93,15 @@ export function seriesOf(p: CcPayload | null, seat: Seat, now: number, ch: 'invi
   })
 }
 
+/** A compare needs two COMPLETE windows of equal length (today's Control.tsx rule); else there is none. */
+export function comparable(p: CcPayload, range: Range): { rows: CcCompareRow[] } | null {
+  const prev = PREV[range]
+  const iv = p.ranges.intervals.find(i => i.name === range)
+  const pv = prev ? p.ranges.intervals.find(i => i.name === prev) : undefined
+  if (!prev || !iv || !pv || !iv.complete || !pv.complete || iv.days !== pv.days) return null
+  return { rows: p.ranges.compare.filter(x => x.current === range && x.previous === prev) }
+}
+
 export type WindowView = {
   range: Range; inv: number | null; dm: number | null; inmail: number | null; repliers: number | null; invFailed: number | null
   accepted: number | null; matured: number | null; rate: number | null; prevRate: number | null; delta: number | null
@@ -104,7 +113,7 @@ export function windowOf(p: CcPayload | null, seat: Seat, range: Range): WindowV
   const inv = r('invitation'), dmr = r('dm'), im = r('inmail')
   const coh = inv?.acceptance_cohort
   const prev = PREV[range]
-  const compare = p && prev ? p.ranges.compare.filter(x => x.client_id === seat && x.current === range && x.previous === prev) : []
+  const compare = p && prev ? (comparable(p, range)?.rows ?? []).filter(x => x.client_id === seat) : []
   const ic = compare.find(x => x.channel === 'invitation')
   return {
     range, hasInterval: Boolean(iv),

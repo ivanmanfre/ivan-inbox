@@ -98,7 +98,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
   </>
   const doors = (
     <>
-      <Key size="small" onClick={() => ctx.openSheet('delivery')}>Delivery by lane</Key>
+      <Key size="small" onClick={() => ctx.openSheet('delivery')}>Delivery</Key>
       <Key size="small" onClick={() => ctx.openSheet('ledger')}>Daily ledger</Key>
       <Key size="small" onClick={() => ctx.openSheet('log')}>Send log</Key>
       <Key size="small" onClick={() => ctx.openSheet('problems')}>Recurring problems <span className="dl-kn">{data.cc.value ? probs : '?'}</span></Key>
