@@ -136,3 +136,5 @@ em.dl-z,b.dl-z{color:var(--t3)}em.dl-on{color:var(--lime)}em.dl-q{color:var(--t3
 .dl-phone .dl-cp{padding-left:16px;padding-right:16px}
 .dl-doors{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 16px}
 .dl-pmon{font:400 12px/1.45 var(--m);color:var(--t3);padding:0 16px 16px;margin:0}
+.dl-sheet .d-sheet-b{padding:4px 18px 20px;overflow-x:hidden}
+.dl-steps th:last-child,.dl-steps td:last-child{text-align:right}
