@@ -20,6 +20,7 @@ import { LANES, dayLabel, errorRows, nextFreeWeekday, scheduledIn, titleOf, wall
 import { useContentData } from './useContentData'
 import './content.css'
 import './content2.css'
+import './content3.css'
 
 // D · CONTENT. C's wall planner is the home (seats down, ten weekdays across),
 // the review queue under it, a post opens in the draft window docked right

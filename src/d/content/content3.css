@@ -1,0 +1,33 @@
+/* D · Content, part three: parity pass (27 Sep). Today's registers inside the
+   window, the notes above the post, the month planner, the rail, the lists. */
+
+/* today's registers (QaRegister, AgentRegister, Fold, KeyRows) inside a D tab */
+.cn-reg{margin-top:10px;background:transparent}
+.d-app .cn-reg.ds-shell{padding:0;gap:0;min-height:0;background:transparent}
+.cn-reg .ds-btn{padding:0 var(--ds-s5)}.cn-reg .ds-btn[data-size='sm']{padding:0 var(--ds-s4)}
+.cn-reg .ds-chip{padding:0 var(--ds-s4)}
+.cn-reg summary{cursor:pointer}
+.cn-src>*+*{margin-top:8px}
+.cn-pre{white-space:pre-wrap;font:400 12.5px/1.45 var(--m)}
+.cn-cap{display:block;font:400 11px var(--m);letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin:10px 0 4px}
+.cn-dim{color:var(--t2);font-size:13px}
+.cn-quote small{display:block;color:var(--t3);font:400 11.5px var(--m);margin-top:4px}
+.cn-notec{margin-top:10px}
+.cn-notec .cn-note{height:64px;padding:8px 12px;resize:vertical}
+.cn-notec .cn-ia{align-items:center;justify-content:flex-start}
+
+/* above the post: holds, topic, error banner, notes */
+.cn-above{max-width:520px;margin:0 auto 10px;display:flex;flex-direction:column;gap:6px}
+.cn-holds{margin:0;padding:6px 10px 6px 26px;border:1px solid var(--warn);border-radius:8px;color:var(--warn);font-size:13px}
+.cn-topic{font-size:13px;color:var(--t2)}
+.cn-banner{border:1px solid var(--bad,#ff6b5b);background:rgba(255,107,91,.08);color:var(--t1);border-radius:8px;padding:8px 10px;font-size:13px}
+.cn-banner small{color:var(--t2);font:400 12px var(--m)}
+.cn-st.cn-st-bad{color:var(--warn);border-color:var(--warn)}
+.cn-why2{display:block;margin-top:4px;color:var(--t2)}
+
+/* post: click to edit, slides, editor keys */
+.cn-lib-ed{cursor:text}
+.cn-lib-ed:hover{background:#f7f9f2}
+.cn-slides{display:flex;gap:6px;overflow-x:auto;padding:8px 12px 12px;background:#fff}
+.cn-slides img{height:120px;width:auto;border-radius:6px;border:1px solid #e3e3e3;flex:none}
+.cn-edk{display:block;font:400 11.5px var(--m);color:var(--t3);margin-top:4px}

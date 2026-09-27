@@ -136,5 +136,6 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
     catch (e) { fail(e, 'delete') } finally { setBusy(false) }
   }, [advance, busy, confirm, d.id, d.taxonomy, lane, refresh, toast])
 
-  return { editing, text, setText, shown, conflict, busy, err, visible, startEdit, cancelEdit, save, takeTheirs, keepMine, decide, schedule, board, removeClient }
+  const dismissConflict = useCallback(() => setConflict(null), [])
+  return { editing, text, setText, shown, conflict, busy, err, visible, startEdit, cancelEdit, save, takeTheirs, keepMine, dismissConflict, decide, schedule, board, removeClient }
 }

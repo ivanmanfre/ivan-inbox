@@ -1,4 +1,4 @@
-import type { ContentDraftDetail, SaveConflict } from '../../lib/content'
+import { normalizeImageUrls, type ContentDraftDetail, type SaveConflict } from '../../lib/content'
 import { Btn } from '../ui/Key'
 import { warsawDayTime } from '../ui/time'
 import { imgOf, type Lane } from './model'
@@ -13,33 +13,49 @@ const AUTHOR: Record<Lane, [string, string, string]> = {
   arch: ['Davorin Smit', 'Arch', 'DS'],
 }
 
-export function Preview({ d, lane, body, editing, text, setText }: {
+export function Preview({ d, lane, body, editing, text, setText, onStartEdit, onCancel, onSave }: {
   d: ContentDraftDetail; lane: Lane; body: string; editing: boolean; text: string; setText: (s: string) => void
+  /** Click on the post (or Enter) opens the editor, as today; null where the copy is not editable. */
+  onStartEdit?: (() => void) | null; onCancel?: () => void; onSave?: () => void
 }) {
   const [name, line, ini] = AUTHOR[lane]
   const img = d.type !== 'carousel' ? imgOf(d.image_urls) : null
+  const all = normalizeImageUrls(d.image_urls)
+  const slides = d.type === 'carousel' ? all : all.slice(1)
   return (
     <div className="cn-li">
       <div className="cn-lih"><i>{ini}</i><div><b>{name}</b> <span>· 1st</span><small>{line}</small><small>now</small></div></div>
       {editing ? (
-        <textarea className="cn-ed" aria-label="Post text" value={text} onChange={e => setText(e.target.value)} autoFocus />
+        <>
+          <textarea className="cn-ed" aria-label="Post text" value={text} onChange={e => setText(e.target.value)} autoFocus
+            onKeyDown={e => {
+              if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onCancel?.() }
+              else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onSave?.() }
+            }} />
+          <small className="cn-edk">esc cancels · ⌘↵ saves</small>
+        </>
       ) : (
-        <div className="cn-lib">{body ? body.split(/\n\s*\n/).map((para, i) => <p key={i}>{para}</p>) : <span style={{ color: '#888' }}>No post text yet.</span>}</div>
+        <div className={`cn-lib${onStartEdit ? ' cn-lib-ed' : ''}`} onClick={onStartEdit ?? undefined} title={onStartEdit ? 'Click to edit (Enter)' : undefined}>
+          {body ? body.split(/\n\s*\n/).map((para, i) => <p key={i}>{para}</p>) : <span style={{ color: '#888' }}>No post text yet.</span>}
+        </div>
       )}
       {img && !editing && <img className="cn-liimg" src={img} alt="" loading="lazy" />}
-      {d.type === 'carousel' && !editing && Array.isArray(d.image_urls) && d.image_urls.length > 0 && (
-        <div className="cn-lib" style={{ color: '#666' }}>Carousel, {d.image_urls.length} slides.</div>
+      {slides.length > 0 && !editing && (
+        <div className="cn-slides" aria-label={d.type === 'carousel' ? `Carousel, ${slides.length} slides` : 'More images'}>
+          {slides.map((u, i) => <img key={`${u}-${i}`} src={imgOf([u], 400) ?? u} alt="" loading="lazy" />)}
+        </div>
       )}
     </div>
   )
 }
 
-export function Conflict({ c, onTheirs, onMine, busy }: { c: SaveConflict; onTheirs: () => void; onMine: () => void; busy: boolean }) {
+export function Conflict({ c, onTheirs, onMine, onDismiss, busy }: { c: SaveConflict; onTheirs: () => void; onMine: () => void; onDismiss?: () => void; busy: boolean }) {
   if (c.kind === 'gone') {
     return (
       <div className="cn-conf" role="alert">
         <b>This draft was deleted while you were editing it.</b>
         <p>Nothing was written. Your text is still in the editor above; copy it if you want to keep it.</p>
+        {onDismiss && <div className="cn-ia"><Btn verb="dismiss" onClick={onDismiss}>Dismiss</Btn></div>}
       </div>
     )
   }

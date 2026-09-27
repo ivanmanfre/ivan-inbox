@@ -12,6 +12,7 @@ import { Evidence, verdictWord } from './Evidence'
 import { FixMenu } from './FixMenu'
 import { LANE_NAME, OWNER, POSS, age, canSchedule, kindOf, nextFreeWeekday, scheduleOpenByDefault, titleOf, type Lane, type WallDay } from './model'
 import { Conflict, Preview } from './Preview'
+import { AboveThePost, clientWhyNot, internalOnly, postsChip } from './DraftNotes'
 import { ScheduleRow, localInput } from './ScheduleRow'
 import { useDraftVerbs } from './useDraftVerbs'
 
@@ -67,16 +68,18 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
       if (e.key === 'j' && at >= 0 && at + 1 < queue.length) { e.preventDefault(); onPick(queue[at + 1]) }
       else if (e.key === 'k' && at > 0) { e.preventDefault(); onPick(queue[at - 1]) }
       else if (e.key === 'Escape') onClose()
+      else if (e.key === 'Enter' && (lane === 'ivan' || clientEditable(d.status, lane)) && !(el && /^(BUTTON|A|SUMMARY)$/.test(el.tagName))) { e.preventDefault(); v.startEdit() }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [at, fix, onClose, onPick, queue, v.editing])
+  }, [at, d.status, fix, lane, onClose, onPick, queue, v])
 
   const stage = stageOf(d)
   const qa = normalizeQa(d.qa)
   const stateChip = lane === 'ivan' ? (d.status === 'review' ? 'Needs review' : STAGE_LABEL[stage])
     : clientStageLabel(stage, boardGroupOf({ board_visible: v.visible }))
   const line = [
+    postsChip(d),
     lane !== 'ivan' ? (v.visible ? `On ${POSS[lane]} board` : `Not on ${POSS[lane]} board`) : null,
     lane !== 'ivan' && qa?.score != null ? `QA: ${verdictWord(qa.verdict).toLowerCase()}, ${qa.score}` : null,
     `edited ${age(d.updated_at)} ago`,
@@ -111,14 +114,16 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
       {schedulable && dateOpen && d.status === 'scheduled' && <><button type="button" data-verb="schedule-hide" onClick={() => setDateOpen(false)}>Hide date</button>. </>}<button type="button" data-verb="fix" onClick={() => setFix(true)}>Fix or remove: Regenerate · Swap image · Back to idea · Delete draft</button>. Esc closes, j/k walks.</>
   } else {
     const promotable = canPromote(d.status, lane) && !v.visible
+    const why = clientWhyNot(d, lane, stage, { promotable, unpromotable: canUnpromote(lane, v.visible), editable: clientEditable(d.status, lane) })
     keys = <>
       {clientDeletable(lane, v.visible) && <Key verb="delete" onClick={v.removeClient} disabled={v.busy}>Delete</Key>}
       {clientEditable(d.status, lane) && <Key verb="edit" onClick={v.startEdit} disabled={v.busy}>Edit</Key>}
       {promotable && <Key primary verb="board-on" onClick={() => v.board(true)} disabled={v.busy} sub={`${OWNER[lane]} sees it`}>Put on {POSS[lane]} board</Key>}
       {canUnpromote(lane, v.visible) && <Key verb="board-off" onClick={() => v.board(false)} disabled={v.busy}>Take off {POSS[lane]} board</Key>}
     </>
-    foot = v.visible ? `On his board: ${OWNER[lane]} decides from there. Take it off to delete it.`
-      : `The only act here that reaches a client. Nothing publishes: ${OWNER[lane]} approves, edits or schedules it on his board.`
+    foot = <>{v.visible ? `On his board: ${OWNER[lane]} decides from there. Take it off to delete it.`
+      : `The only act here that reaches a client. Nothing publishes: ${OWNER[lane]} approves, edits or schedules it on his board.`}
+      {why.map(w => <span key={w} className="cn-why2">{w}</span>)}</>
   }
 
   return (
@@ -133,19 +138,23 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
         </span>
         <button type="button" className="cn-x" aria-label="Close" data-verb="close" onClick={onClose}><DIcon name="x" /></button>
       </div>
-      <div className="cn-chips"><span className="cn-st">{stateChip}</span><span>{line}</span>{v.editing && <span className="cn-st">Editing</span>}</div>
+      <div className="cn-chips"><span className={`cn-st${stage === 'error' || stage === 'stuck' ? ' cn-st-bad' : ''}`}>{stateChip}</span><span>{line}</span>
+        {internalOnly(d, stage) && <span className="cn-st cn-st-bad">Internal copy only · not approved for publication</span>}
+        {v.editing && <span className="cn-st">Editing</span>}</div>
       <div className="cn-dwb">
-        <Preview d={d} lane={lane} body={v.shown} editing={v.editing} text={v.text} setText={v.setText} />
-        {v.conflict && <Conflict c={v.conflict} busy={v.busy} onTheirs={v.takeTheirs} onMine={v.keepMine} />}
+        <AboveThePost d={d} stage={stage} lane={lane} />
+        <Preview d={d} lane={lane} body={v.shown} editing={v.editing} text={v.text} setText={v.setText}
+          onStartEdit={lane === 'ivan' || clientEditable(d.status, lane) ? v.startEdit : null} onCancel={v.cancelEdit} onSave={() => void v.save()} />
+        {v.conflict && <Conflict c={v.conflict} busy={v.busy} onTheirs={v.takeTheirs} onMine={v.keepMine} onDismiss={v.dismissConflict} />}
       </div>
-      {!v.editing && <Evidence d={d} initial={lane === 'ivan' ? 'qa' : 'src'} />}
+      {!v.editing && <Evidence d={d} initial={lane === 'ivan' ? 'qa' : 'src'} noteable={lane === 'ivan'} onNote={refresh} />}
       {schedulable && dateOpen && !v.editing && (
         <ScheduleRow slot={d.scheduled_at ? null : slot} when={when} setWhen={setWhen} days={days} taken={armed} armedFailed={armedFailed} current={d.status === 'scheduled' ? d.scheduled_at : null} />
       )}
       {v.err && <p className="cn-say cn-bad" role="alert">{v.err}</p>}
       <div className="cn-acts">{keys}</div>
       <div className="cn-foot">{foot}</div>
-      {lane === 'ivan' && <FixMenu d={d} open={fix} onClose={() => setFix(false)} onDone={refresh} />}
+      {lane === 'ivan' && <FixMenu d={d} open={fix} onClose={() => setFix(false)} onDone={refresh} onDeleted={() => { refresh(); advance() }} />}
     </section>
   )
 }
