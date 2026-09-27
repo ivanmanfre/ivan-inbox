@@ -3,6 +3,7 @@ import { dHash } from '../route'
 import { DConfirmBridge } from '../shell/Layer'
 import { DIcon } from '../ui/icons'
 import { Skeleton } from '../ui/states'
+import { OrbitHead } from './OrbitHead'
 
 // TODAY'S ORBIT, mounted inside D's frame (parity 09-27: it used to be a
 // foreign link that reloaded into the old app). Same component, same reads
@@ -12,6 +13,8 @@ import { Skeleton } from '../ui/states'
 // confirms). Tenant and range come from the address (`?tenant=&range=`),
 // read once at mount, so an old `#exp/v2/orbit?tenant=arch&range=7d` link
 // lands on the same view. Open thread goes to D's DMs.
+// The head is D's (OrbitHead.tsx): answer row + one mono filter line, never
+// today's four pill rows.
 const Orbit = lazy(() => import('../../orbit/Orbit').then(m => ({ default: m.Orbit })))
 
 export function OrbitHost({ navigate, layout }: { navigate: (hash: string) => void; layout: 'desktop' | 'phone' }) {
@@ -24,7 +27,7 @@ export function OrbitHost({ navigate, layout }: { navigate: (hash: string) => vo
       <div className="app wb ds-shell d-oldhost">
         <DConfirmBridge>
           <Suspense fallback={<Skeleton lines={6} label="Loading Orbit" />}>
-            <Orbit />
+            <Orbit head={h => <OrbitHead {...h} />} />
           </Suspense>
         </DConfirmBridge>
       </div>
