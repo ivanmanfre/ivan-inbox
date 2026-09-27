@@ -136,7 +136,7 @@ export function ControlCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
         {v.closed ? <>opens <b>{v.opens ?? 'not scheduled'}</b></> : <>{v.pct ?? '?'}% gone<Sep />{v.pace}{v.planned != null ? ` (${v.sent} of ${v.planned})` : ''}</>}
       </div>
       <div className="dl-kv"><span className="dl-k">Waiting</span> {v.pools.length ? v.pools.map(([k, n], i) => <span key={k}>{i ? ', ' : ''}{k} <b>{n}</b></span>) : 'unknown'}<Supply seat={seat} ctx={ctx} /></div>
-      {v.next && <div className="dl-kv dl-clamp" title={v.next}><span className="dl-k">Next</span> {v.next}</div>}
+      {v.next && <div className="dl-kv dl-clamp1" title={v.next}><span className="dl-k">Next</span> {v.next}</div>}
       {ctx.openControl && <button type="button" className="dl-more" data-open="control" title="Session, pauses, lanes, governor, incidents" onClick={() => ctx.openControl!(seat)}>Detail ›</button>}
     </div>
   )
