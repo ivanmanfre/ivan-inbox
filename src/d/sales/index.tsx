@@ -5,13 +5,13 @@ import { dHash } from '../route'
 import { useReportFailed } from '../shell/health'
 import { AnswerRow } from '../ui/AnswerRow'
 import { DIcon } from '../ui/icons'
-import { ForeignLink } from '../ui/NotBuilt'
 import { Failed, Skeleton } from '../ui/states'
 import { CallsOnRecord } from './Calls'
 import { CallWindow } from './CallWindow'
 import { FortnightList, PacksOnFile } from './Fortnight'
 import { nextCall, packIndex, readFortnight, throughLabel } from './model'
 import { NextCallPlate } from './NextCall'
+import { OrbitHost } from './OrbitHost'
 import { useSalesData } from './useSalesData'
 import './sales.css'
 
@@ -22,7 +22,7 @@ import './sales.css'
 // the only things that leave are links (Join, packs) into new tabs.
 // Hooks rule: every hook runs before any branch that returns.
 
-const ORBIT = '#exp/brain-b/orbit?tenant=ivan&range=30d'
+const ORBIT = dHash('sales', 'orbit', { tenant: 'ivan', range: '30d' })
 const SEGS: CallSegment[] = ['open', 'recent', 'all']
 
 export default function SalesPage({ layout, route, navigate }: PlaceProps) {
@@ -45,8 +45,9 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
   const failedReads = (data.state.events === 'failed' ? 1 : 0) + (data.state.packs === 'failed' ? 1 : 0) + (data.state.calls === 'failed' ? 1 : 0)
   useReportFailed('sales', failedReads)
 
+  // Orbit opens inside the frame; the default view is today's (Ivan, 30 days).
   const orbit = (
-    <ForeignLink hash={ORBIT} className="sl-orbit"><DIcon name="eye" /><span>Orbit</span></ForeignLink>
+    <a href={ORBIT} className="sl-orbit" data-verb="open-orbit" onClick={e => { e.preventDefault(); navigate(ORBIT) }}><DIcon name="eye" /><span>Orbit</span></a>
   )
   const n = nextCall(f)
   const through = throughLabel(data.week.to)
@@ -60,14 +61,7 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
   const sub = n?.phase === 'running' ? '' : data.state.calls === 'ok' && stats.withActions > 0 ? `${stats.withActions} past calls still carry a promise.` : ''
   const answer = <AnswerRow title={title} sub={sub} tools={orbit} />
 
-  if (route.sub === 'orbit') {
-    return (
-      <div className={`sl-page sl-${layout}`}>
-        <AnswerRow title="Orbit" sub="Orbit opens in today's app." />
-        <div className="sl-orbitp"><ForeignLink hash={ORBIT} className="d-btn">Open Orbit</ForeignLink></div>
-      </div>
-    )
-  }
+  if (route.sub === 'orbit') return <OrbitHost navigate={navigate} layout={layout} />
 
   const soft = [
     data.state.packs === 'failed' ? 'The packs did not load, so a call reading "no pack yet" may have one.' : '',

@@ -73,7 +73,7 @@ export function OpsCard({ d, refresh, feed, held, onGateResult, layout, pos, wai
       <header className="op-ch">
         <span className="op-eb">{kindTitle(d)}</span>
         <span className="op-ew">
-          {laneName} lane · {warsawDayTime(d.created_at).replace(',', '')} · {pos}{layout === 'desktop' ? ' · j / k' : ''}
+          {laneName} lane{st.where && !st.isComment && !st.isOutbound && st.where !== laneName ? ` · to ${st.where}` : ''} · {warsawDayTime(d.created_at).replace(',', '')} · {pos}{layout === 'desktop' ? ' · j / k' : ''}
           {left && <> · <b className={left === 'expired' ? '' : 'op-hot'}>{left}</b></>}
         </span>
       </header>
@@ -103,7 +103,7 @@ export function OpsCard({ d, refresh, feed, held, onGateResult, layout, pos, wai
             <div className="op-keys">
               <div className="op-k">
                 <Key verb="discard" disabled={off} onClick={() => void st.onDiscard()}>Discard</Key>
-                <small>{cap.discard}</small>
+                <small>{st.discardConfirm.message}</small>
               </div>
               {st.canDraft && (
                 <div className="op-k">

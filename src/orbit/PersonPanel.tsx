@@ -85,7 +85,8 @@ export function PersonPanel({ person, tenant, lanes, onClose }: PersonPanelProps
 
   const openThread = useCallback(() => {
     if (!person?.pid) return
-    location.hash = '#exp/brain-b/dms?thread=' + person.pid
+    // Inside D's frame the thread opens in D's DMs; in today's app, in today's.
+    location.hash = (location.hash.startsWith('#exp/d/') ? '#exp/d/dms?thread=' : '#exp/brain-b/dms?thread=') + person.pid
   }, [person?.pid])
 
   // Decision 13 (review 2026-09-26): Queue invite, Skip and Add to lane each

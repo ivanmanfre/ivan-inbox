@@ -39,7 +39,7 @@ const KEYS_EVENT = 'd-keys-open'
 export function openKeySheet() { window.dispatchEvent(new Event(KEYS_EVENT)) }
 
 /** Today's bulk confirms (lib/confirm context) asked through D's confirm: danger = red key, Cancel focused. */
-function DConfirmBridge({ children }: { children: ReactNode }) {
+export function DConfirmBridge({ children }: { children: ReactNode }) {
   const confirm = useDConfirm()
   const ask = useCallback((o: ConfirmOpts) => confirm({
     title: o.title, message: o.message, confirmText: o.confirmText ?? 'Confirm', cancelText: o.cancelText,
