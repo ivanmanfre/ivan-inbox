@@ -6,7 +6,8 @@ import type { FilterToken } from '../../lib/filterTokens'
 import type { Thread } from '../../lib/inbox'
 import { dmNumbers, type FrameCounts } from '../counts/useFrameCounts'
 import type { Layout } from '../places'
-import { SEATS, SEAT_NAME, type Seat } from '../seats'
+import { SEATS, SEAT_NAME, SEAT_OWNER, type Seat } from '../seats'
+import { useFrameMaybe } from '../shell/frame'
 import { Empty, Failed, Skeleton } from '../ui/states'
 import { Bar, BulkBar, Folders, Headline, Health } from './Chrome'
 import { ColumnBody, type Mode } from './Column'
@@ -56,13 +57,29 @@ function Pane({ m, phone }: { m: PageModel; phone: boolean }) {
 
 export function DesktopDms({ m }: { m: PageModel }) {
   const needs = dmNumbers(m.counts, 'needs')
+  const fold = !!useFrameMaybe()?.claudeOpen
   return (
     <div className="dm-page dm-desk">
       <Headline mode={m.mode} views={m.views} counts={m.counts} tools={<SearchField ref={m.searchRef} q={m.q} setQ={m.setQ} reach={m.data.threads.length || null} />} />
       <Bar folder={m.folder} setFolder={m.setFolder} views={m.views} tokens={m.tokens} setTokens={m.setTokens} data={m.data} />
       <BulkBar checked={m.checked} byId={m.byId} clear={() => m.setChecked(new Set())} onDiscard={ts => { void m.verbs.bulkDiscard(ts, 'The selected drafts.').then(() => m.setChecked(new Set())) }} />
-      <div className="dm-grid">
-        {SEATS.map(s => (
+      <div className={`dm-grid${fold ? ' dm-grid-cf' : ''}`}>
+        {fold && (
+          // Claude docked (mock dark-claude.html): the three columns fold into one list,
+          // a subhead and a count per seat, never one total. Closing Claude brings them back.
+          <section className="dm-col dm-cf" aria-label="Conversations, every seat">
+            <div className="dm-colscroll">
+              {SEATS.map(s => (
+                <div key={s} className="dm-cf-seat">
+                  <div className="dm-cf-h"><b>{SEAT_NAME[s]}</b><em className={needs[s] ? '' : 'dm-z'}>{needs[s] ?? '?'}</em><span>{SEAT_OWNER[s]}</span></div>
+                  <Body m={m} seat={s} />
+                </div>
+              ))}
+              <div className="dm-cf-note">Close Claude (⌘J) and the three seat columns come back.</div>
+            </div>
+          </section>
+        )}
+        {!fold && SEATS.map(s => (
           <section key={s} className="dm-col" aria-label={`${SEAT_NAME[s]}'s conversations`}>
             <Plate seat={s} />
             <SeatStats seat={s} needs={needs[s]} nodraft={m.views[s].nodraft.length} replied={m.data.loadedAt || m.data.fromCache ? m.stats[s].replied : null} days={m.stats[s].days} />

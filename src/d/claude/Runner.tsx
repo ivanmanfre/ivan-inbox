@@ -67,33 +67,47 @@ export function visibleJobs(jobs: RunnerJob[], n = 3): RunnerJob[] {
   return [...shut, ...open]
 }
 
+/** The band's count: running and waiting are different facts (today's RunnerSection rule). */
+export function runnerCount(jobs: RunnerJob[]): string {
+  const running = jobs.filter(j => j.status === 'running').length
+  const queued = jobs.filter(j => j.status === 'queued').length
+  return running > 0 ? `${running} running` : queued > 0 ? `${queued} waiting` : `${jobs.length} recent`
+}
+
 export function RunnerJobs({ runner }: { runner: DRunner }) {
   const [now, setNow] = useState(() => Date.now())
+  const anyOpen = runner.jobs.some(j => isOpen(j.status))
+  const [shown, setShown] = useState<boolean | null>(null)
   const running = runner.jobs.some(j => j.status === 'running')
   useEffect(() => {
     if (!running) return
     const t = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(t)
   }, [running])
+  const open = shown ?? (anyOpen || !!runner.focus)
   const jobs = visibleJobs(runner.jobs)
   const reportJob = runner.jobs.find(j => j.id === runner.report) ?? null
-  if (jobs.length === 0 && !runner.note) return null
+  if (runner.jobs.length === 0 && !runner.note) return null
   return (
     <div className="dcl-jobs" data-runner>
       {runner.note && <div className="dcl-fail"><span>{runner.note}</span><Btn onClick={runner.clearNote}>Dismiss</Btn></div>}
-      {jobs.map(j => {
-        const line = logLines(j.log, 1)[0]
+      {runner.jobs.length > 0 && (
+        <button type="button" className="dcl-jobs-h" aria-expanded={open} onClick={() => setShown(!open)}>
+          <b>Runner</b><span>{runnerCount(runner.jobs)}</span><em>{open ? 'Hide' : 'Show'}</em>
+        </button>
+      )}
+      {open && jobs.map(j => {
+        const line = isOpen(j.status) ? logLines(j.log, 1)[0] : null
+        const el = elapsed(j, now)
         return (
           <div key={j.id} className={`dcl-job dcl-job-${j.status}${runner.focus === j.id ? ' dcl-focus' : ''}`} data-job={j.id}>
             <div className="dcl-job-h">
               <b>{jobTitle(j)}</b>
-              <span>{STATE[j.status]}{elapsed(j, now) ? ` · ${elapsed(j, now)}` : ''}</span>
+              <span>{STATE[j.status]}{el ? ` · ${el}` : ''}{typeof j.cost_usd === 'number' ? ` · $${j.cost_usd.toFixed(2)}` : ''}</span>
+              {(j.log || j.report_path) && <button type="button" className="dcl-link" onClick={() => runner.setReport(j.id)}>Log</button>}
+              {isOpen(j.status) && <button type="button" className="dcl-link" data-verb="stop-job" onClick={() => void runner.stop(j.id)}>Stop</button>}
             </div>
             {line && <div className="dcl-job-l">{line}</div>}
-            <div className="dcl-job-k">
-              {(j.log || j.report_path) && <Btn onClick={() => runner.setReport(j.id)}>Log</Btn>}
-              {isOpen(j.status) && <Btn verb="stop-job" onClick={() => void runner.stop(j.id)}>Stop</Btn>}
-            </div>
           </div>
         )
       })}

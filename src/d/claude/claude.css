@@ -88,16 +88,20 @@
 .dcl-chat.dcl-err span{color:var(--warn)}
 
 /* runner jobs */
-.dcl-jobs{flex:none;border-top:1px solid var(--line);padding:8px 12px 0;max-height:34%;overflow-y:auto}
-.dcl-job{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:8px;font-size:13px}
-.dcl-job-h{display:flex;gap:10px;align-items:baseline}
+.dcl-jobs{flex:none;border-top:1px solid var(--line);padding:0 12px;max-height:30%;overflow-y:auto}
+.dcl-jobs-h{display:flex;gap:8px;align-items:baseline;width:100%;padding:8px 0 7px;text-align:left}
+.dcl-jobs-h b{font:400 10.5px var(--m);letter-spacing:.06em;text-transform:uppercase;color:var(--t3)}
+.dcl-jobs-h span{flex:1;font:400 11.5px var(--m);color:var(--t2)}
+.dcl-jobs-h em{font:500 12px var(--f);font-style:normal;color:var(--t2)}
+.dcl-job{border-top:1px solid var(--line);padding:6px 0;font-size:13px}
+.dcl-job:last-child{padding-bottom:8px}
+.dcl-job-h{display:flex;gap:10px;align-items:baseline;min-width:0}
 .dcl-job-h b{flex:1;min-width:0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dcl-job-h span{font:400 11px var(--m);color:var(--t3);white-space:nowrap}
 .dcl-job-running .dcl-job-h span{color:var(--lime)}
 .dcl-job-error .dcl-job-h span{color:var(--warn)}
-.dcl-job-l{font:400 11.5px var(--m);color:var(--t2);margin-top:4px;overflow-wrap:anywhere}
-.dcl-job-k{display:flex;gap:6px;justify-content:flex-end;margin-top:6px}
-.dcl-job-k:empty{display:none}
+.dcl-job-l{font:400 11.5px var(--m);color:var(--t2);margin-top:3px;overflow-wrap:anywhere}
+.dcl-link{font:500 12px var(--f);color:var(--t1);text-decoration:underline;text-decoration-color:var(--t3);text-underline-offset:3px;white-space:nowrap}
 .dcl-log{font:400 11.5px/1.5 var(--m);white-space:pre-wrap;overflow-wrap:anywhere;color:var(--t2)}
 
 /* foot: context + composer */

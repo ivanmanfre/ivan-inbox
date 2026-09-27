@@ -135,7 +135,7 @@ export function Composer({ placeholder, onSend, lead }: {
           <button type="button" className={`dcl-ib${recording ? ' dcl-rec-on' : ''}`} data-verb="dictate" aria-pressed={recording}
             aria-label={recording ? 'Stop dictating' : 'Dictate (⌘D)'} title="Dictate (⌘D)" disabled={!stt.supported || stt.state === 'transcribing'} onClick={stt.toggle}><CIcon name="mic" /></button>
           {lead}
-          <span className="dcl-hint">⌘↩ send · / commands · never sends a DM</span>
+          <span className="dcl-hint">⌘↩ send · / commands</span>
           {chat.busy
             ? <button type="button" className="dcl-go dcl-stop" data-verb="stop" aria-label="Stop Claude" title="Stop" onClick={chat.abort}><CIcon name="stop" /></button>
             : <button type="button" className="dcl-go" data-verb="send" aria-label="Send to Claude" title="Send (⌘↩)" disabled={!canSend} onClick={send}><CIcon name="up" /></button>}
