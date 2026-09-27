@@ -1,0 +1,146 @@
+/* Strategy > Outliers (.ol-*). Direction B "Figure cards" from the CB-21 ballot.
+   Two container queries, no viewport breakpoints: the view lays out by the width
+   it is given (the Strategy body, whatever the rail takes).
+     .ol       >= 860px : a left column (count, freshness, week histogram, rule) + the cards
+     .ol-main  >= 720px : a card spreads into three zones (lift | post | who commented + actions)
+   Lime only on the selected week and the "On the board" dot. */
+.ol{ container-type:inline-size; container-name:ol; min-width:0 }
+.ol-in{ display:grid; grid-template-columns:minmax(0,1fr); gap:var(--ds-s5); align-items:start; padding-bottom:var(--ds-s8); min-width:0 }
+.ol p{ margin:0 }
+.ol-side{ display:flex; flex-direction:column; gap:var(--ds-s4); min-width:0 }
+.ol-fig{ display:flex; flex-direction:column; gap:var(--ds-s2) }
+.ol-n{ font-size:var(--ds-fs-figure); line-height:var(--ds-lh-figure); font-weight:var(--ds-fw-display); letter-spacing:var(--ds-tr-figure); font-variant-numeric:tabular-nums; color:var(--ds-text) }
+.ol-u{ font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text-2) }
+.ol-fresh{ display:flex; flex-direction:column; gap:var(--ds-s1); font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3) }
+.ol-fresh b{ color:var(--ds-text-2); font-weight:var(--ds-fw-medium) }
+
+/* weeks: a histogram list on desktop, a scrolling chip row on the phone */
+.ol-weeks{ display:none; list-style:none; margin:0; padding:0; border-top:1px solid var(--ds-line) }
+.ol[data-outliers-view] .ol-in button.ol-wk{ width:100%; display:grid; grid-template-columns:minmax(0,1fr) 5rem 2rem; align-items:center; gap:var(--ds-s3); min-height:36px;
+  padding:0 var(--ds-s3); border:0; border-bottom:1px solid var(--ds-line); background:transparent; color:var(--ds-text-3); cursor:pointer; text-align:left;
+  font:inherit; font-size:var(--ds-fs-meta); transition:background-color var(--ds-dur-hover) var(--ds-ease) }
+.ol[data-outliers-view] .ol-in button.ol-wk:hover{ background:var(--ds-wash); color:var(--ds-text) }
+.ol[data-outliers-view] .ol-in button.ol-wk[aria-pressed='true']{ color:var(--ds-text); background:var(--ds-wash-strong); box-shadow:inset 2px 0 0 var(--ds-accent) }
+.ol-wk-bar{ height:6px; border-radius:var(--ds-r1); background:var(--ds-surface-2); overflow:hidden }
+.ol-wk-bar i{ display:block; height:100%; background:var(--ds-text-3); border-radius:inherit }
+.ol[data-outliers-view] .ol-in button.ol-wk[aria-pressed='true'] .ol-wk-bar i{ background:var(--ds-text) }
+.ol-wk-n{ text-align:right; font-variant-numeric:tabular-nums }
+.ol-chips{ display:flex; gap:var(--ds-s2); overflow-x:auto; scrollbar-width:none; min-width:0; padding-bottom:var(--ds-s1) }
+.ol-chips::-webkit-scrollbar{ display:none }
+.ol[data-outliers-view] .ol-in button.ol-chip-w{ flex:0 0 auto; min-height:36px; padding:0 var(--ds-s4); border:0; border-radius:var(--ds-r-pill); background:var(--ds-surface-2); color:var(--ds-text-3);
+  font:inherit; font-size:var(--ds-fs-meta); white-space:nowrap; cursor:pointer; font-variant-numeric:tabular-nums }
+.ol[data-outliers-view] .ol-in button.ol-chip-w[aria-pressed='true']{ background:var(--ds-surface-3); color:var(--ds-text); box-shadow:inset 0 0 0 1px var(--ds-accent-line) }
+.ol-rule{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3) }
+.ol-rule > summary{ cursor:pointer; min-height:var(--ds-tap); display:flex; align-items:center; gap:var(--ds-s2); list-style:none;
+  transition:color var(--ds-dur-hover) var(--ds-ease) }
+.ol-rule > summary:hover{ color:var(--ds-text) }
+.ol-rule > summary::-webkit-details-marker{ display:none }
+/* flex drops the native marker, so the disclosure carries its own caret that turns on open */
+.ol-rule > summary::before{ content:'›'; display:inline-block; width:.75em; text-align:center; font-size:1.25em; line-height:1; color:var(--ds-text-3);
+  transition:transform var(--ds-dur-hover) var(--ds-ease-out) }
+.ol-rule[open] > summary::before{ transform:rotate(90deg) }
+.ol-rule > summary:focus-visible{ outline:2px solid var(--ds-accent-ring); outline-offset:2px }
+.ol-rule p{ padding-bottom:var(--ds-s3); max-width:70ch }
+
+.ol-main{ container-type:inline-size; container-name:olmain; display:flex; flex-direction:column; gap:var(--ds-s6); min-width:0 }
+.ol-ctl{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:var(--ds-s3); min-width:0 }
+.ol-ctl .ds-seg{ max-width:100% }
+.ol-grp{ display:flex; flex-direction:column; gap:var(--ds-s4); min-width:0 }
+.ol-gh{ margin:0; display:flex; align-items:baseline; gap:var(--ds-s3); font-size:var(--ds-fs-title); font-weight:var(--ds-fw-semi); color:var(--ds-text) }
+.ol-gh span{ font-size:var(--ds-fs-meta); font-weight:400; color:var(--ds-text-3); font-variant-numeric:tabular-nums }
+.ol-cards{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:var(--ds-s4); min-width:0 }
+
+/* the card, phone first: lift + who on one row, the post, then who commented + actions */
+.ol-card{ min-width:0; display:grid; grid-template-columns:auto minmax(0,1fr); grid-template-areas:"lift who" "post post" "side side";
+  gap:var(--ds-s4) var(--ds-s5); background:var(--ds-surface-1); border:1px solid var(--ds-line); border-radius:var(--ds-r4); padding:var(--ds-s5);
+  transition:border-color var(--ds-dur-hover) var(--ds-ease) }
+.ol-card:hover{ border-color:var(--ds-line-strong) }
+.ol-lift{ grid-area:lift; display:flex; flex-direction:column; gap:var(--ds-s1) }
+.ol-lift b{ font-size:var(--ds-fs-figure); line-height:var(--ds-lh-figure); font-weight:var(--ds-fw-display); letter-spacing:var(--ds-tr-figure); font-variant-numeric:tabular-nums; color:var(--ds-text) }
+.ol-lift b small{ font-size:.55em; font-weight:var(--ds-fw-semi); color:var(--ds-text-3); margin-left:1px }
+.ol-lift span{ font-size:var(--ds-fs-meta); color:var(--ds-text-3); font-variant-numeric:tabular-nums; white-space:nowrap }
+.ol-who{ grid-area:who; min-width:0; display:flex; flex-direction:column; gap:var(--ds-s2); padding-top:var(--ds-s1) }
+.ol-author{ font-size:var(--ds-fs-title); line-height:var(--ds-lh-title); font-weight:var(--ds-fw-semi); color:var(--ds-text); overflow-wrap:anywhere }
+.ol-meta{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-s2) var(--ds-s3); font-size:var(--ds-fs-meta); color:var(--ds-text-3) }
+.ol-chip{ display:inline-flex; align-items:center; height:20px; padding:0 var(--ds-s3); border-radius:var(--ds-r-pill); font-size:12px; color:var(--ds-text-2); box-shadow:inset 0 0 0 1px var(--ds-line-strong) }
+.ol-post{ grid-area:post; min-width:0; display:flex; flex-direction:column; gap:var(--ds-s3) }
+.ol-head{ font-size:var(--ds-fs-title); line-height:var(--ds-lh-title); font-weight:var(--ds-fw-semi); letter-spacing:var(--ds-tr-title); color:var(--ds-text); overflow-wrap:anywhere }
+.ol .ol-body{ margin-top:var(--ds-s2); font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text-2); white-space:pre-line; overflow-wrap:anywhere }
+.ol-body[data-clamped]{ display:-webkit-box; -webkit-line-clamp:4; line-clamp:4; -webkit-box-orient:vertical; overflow:hidden }
+.ol[data-outliers-view] .ol-in button.ol-more{ align-self:flex-start; border:0; background:transparent; padding:0; min-height:32px; color:var(--ds-text-3); font:inherit; font-size:var(--ds-fs-meta); cursor:pointer;
+  text-decoration:underline; text-underline-offset:3px; text-decoration-color:var(--ds-hairline-strong) }
+.ol[data-outliers-view] .ol-in button.ol-more:hover{ color:var(--ds-text) }
+.ol-traits{ list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:var(--ds-s2); min-width:0 }
+.ol-t{ display:inline-flex; align-items:center; gap:var(--ds-s2); min-height:24px; max-width:100%; padding:0 var(--ds-s3); border:0; border-radius:var(--ds-r2); font:inherit; font-size:12px;
+  background:var(--ds-surface-2); color:var(--ds-text-2); overflow-wrap:anywhere }
+.ol-t b{ font-weight:var(--ds-fw-semi); color:var(--ds-text) }
+.ol-t[data-sign='neg']{ background:transparent; box-shadow:inset 0 0 0 1px var(--ds-line-strong); color:var(--ds-text-3) }
+.ol-t[data-sign='neg'] b{ color:var(--ds-text-3) }
+.ol[data-outliers-view] .ol-in button.ol-t-more{ display:inline-flex; align-items:center; min-height:24px; padding:0 var(--ds-s3); border-radius:var(--ds-r2); font-size:12px; background:transparent; box-shadow:inset 0 0 0 1px var(--ds-line-strong); color:var(--ds-text-3); cursor:pointer }
+.ol[data-outliers-view] .ol-in button.ol-t-more:hover{ color:var(--ds-text) }
+.ol-sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap }
+.ol-tnote{ font-size:12px; color:var(--ds-text-4) }
+
+.ol-aside{ grid-area:side; min-width:0; display:flex; flex-direction:column; gap:var(--ds-s4); padding-top:var(--ds-s4); border-top:1px solid var(--ds-line) }
+.ol-buyer{ display:grid; grid-template-columns:minmax(0,1fr); gap:var(--ds-s2) }
+.ol-bl{ display:flex; flex-wrap:wrap; justify-content:space-between; gap:var(--ds-s1) var(--ds-s3); font-size:var(--ds-fs-meta); color:var(--ds-text-3) }
+.ol-bl b{ color:var(--ds-text); font-weight:var(--ds-fw-semi); font-variant-numeric:tabular-nums }
+.ol-meter{ height:6px; border-radius:var(--ds-r1); background:var(--ds-surface-2); overflow:hidden }
+.ol-meter i{ display:block; height:100%; background:var(--ds-text-2); border-radius:inherit }
+.ol-foot{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-s3) var(--ds-s4) }
+.ol-figs{ display:flex; flex-wrap:wrap; gap:var(--ds-s1) var(--ds-s4); font-size:var(--ds-fs-meta); color:var(--ds-text-3); font-variant-numeric:tabular-nums; flex:1 1 auto; min-width:0 }
+.ol-figs span{ white-space:nowrap }
+.ol-acts{ display:flex; align-items:center; gap:var(--ds-s2); margin-left:auto }
+.ol-link{ display:inline-flex; align-items:center; min-height:var(--ds-tap); padding:0 var(--ds-s3); font-size:var(--ds-fs-meta); color:var(--ds-text-2);
+  text-decoration:underline; text-underline-offset:3px; text-decoration-color:var(--ds-hairline-strong) }
+.ol-link:hover{ color:var(--ds-text) }
+.ol[data-outliers-view] .ol-in button.ol-use{ display:inline-flex; align-items:center; gap:var(--ds-s2); min-height:var(--ds-tap); padding:0 var(--ds-s4); border:0; border-radius:var(--ds-r3);
+  background:transparent; box-shadow:inset 0 0 0 1px var(--ds-line-strong); color:var(--ds-text); font:inherit; font-size:var(--ds-fs-meta); font-weight:var(--ds-fw-medium); cursor:pointer; white-space:nowrap;
+  transition:background-color var(--ds-dur-hover) var(--ds-ease) }
+.ol[data-outliers-view] .ol-in button.ol-use:hover:not(:disabled){ background:var(--ds-wash) }
+.ol[data-outliers-view] .ol-in button.ol-use[data-state='on']{ box-shadow:none; color:var(--ds-text-3); cursor:default; padding-inline:var(--ds-s2) }
+.ol[data-outliers-view] .ol-in button.ol-use[data-state='on']::before{ content:''; width:8px; height:8px; border-radius:50%; background:var(--ds-accent) }
+.ol[data-outliers-view] .ol-in button.ol-use[data-state='busy']{ opacity:.6; cursor:progress }
+.ol-usefail{ font-size:var(--ds-fs-meta); color:var(--ds-sev-urgent-ui) }
+
+.ol-empty,.ol-fail{ border:1px dashed var(--ds-line-strong); border-radius:var(--ds-r4); padding:var(--ds-s6); display:flex; flex-direction:column; gap:var(--ds-s3);
+  align-items:flex-start; font-size:var(--ds-fs-body); color:var(--ds-text-2); overflow-wrap:anywhere }
+.ol-fail{ border:0; background:var(--ds-sev-urgent-soft) }
+.ol-fail b{ color:var(--ds-sev-urgent-ui) }
+.ol-empty small,.ol-fail small{ color:var(--ds-text-3); font-size:var(--ds-fs-meta) }
+.ol-skel{ border-radius:var(--ds-r4); background:var(--ds-surface-1); height:220px; position:relative; overflow:hidden }
+.ol-skel::after{ content:''; position:absolute; inset:0; background:linear-gradient(90deg,transparent,var(--ds-wash-strong),transparent); animation:ol-sh 1.2s infinite }
+@keyframes ol-sh{ from{ transform:translateX(-100%) } to{ transform:translateX(100%) } }
+@media (prefers-reduced-motion:reduce){ .ol-skel::after{ animation:none } }
+.ol[data-outliers-view] .ol-in button.ol-pager{ align-self:center; display:inline-flex; align-items:center; gap:var(--ds-s3); min-height:var(--ds-tap); padding:0 var(--ds-s5); border:0; border-radius:var(--ds-r3);
+  background:var(--ds-surface-2); color:var(--ds-text); font:inherit; font-size:var(--ds-fs-meta); font-weight:var(--ds-fw-medium); cursor:pointer }
+.ol[data-outliers-view] .ol-in button.ol-pager span{ color:var(--ds-text-3); font-weight:400 }
+.ol[data-outliers-view] .ol-in button.ol-pager:hover{ background:var(--ds-surface-3) }
+
+/* the phone body runs edge to edge (wb.css N2b-2); the gutter lives on the view */
+@media (max-width:767px){
+  .ol{ padding-inline:var(--ds-gutter) }
+  .ol-chips{ margin-inline:calc(var(--ds-gutter) * -1); padding-inline:var(--ds-gutter) }
+}
+
+/* desktop: a designed left column, not a stretched phone */
+@container ol (min-width:860px){
+  .ol-in{ grid-template-columns:17rem minmax(0,1fr); gap:var(--ds-s8) }
+  /* not sticky: the Strategy head above is sticky itself and would cover it */
+  .ol-side{ gap:var(--ds-s6) }
+  .ol-n{ font-size:var(--ds-fs-display); line-height:var(--ds-lh-display); letter-spacing:var(--ds-tr-display) }
+  .ol-u{ font-size:var(--ds-fs-title); line-height:var(--ds-lh-title) }
+  .ol-weeks{ display:block; max-height:24rem; overflow-y:auto; scrollbar-width:thin }
+  .ol-chips{ display:none }
+  .ol[data-outliers-view] .ol-in button.ol-use,.ol-link{ min-height:var(--ds-control-h-sm) }
+}
+@container olmain (min-width:720px){
+  .ol-card{ grid-template-columns:8.5rem minmax(0,1fr) 13.5rem; grid-template-areas:"lift post side" "who post side"; grid-template-rows:auto 1fr;
+    gap:var(--ds-s3) var(--ds-s7); padding:var(--ds-s6) var(--ds-s7) }
+  .ol-lift b{ font-size:var(--ds-fs-display); line-height:var(--ds-lh-display); letter-spacing:var(--ds-tr-display) }
+  .ol-who{ padding-top:var(--ds-s3) }
+  .ol-aside{ border-top:0; padding-top:0; border-left:1px solid var(--ds-line); padding-left:var(--ds-s6) }
+  .ol-foot{ flex-direction:column; align-items:stretch; flex:1 1 auto }
+  .ol-figs{ flex-direction:column; flex:0 0 auto }
+  .ol-acts{ margin-left:0; margin-top:auto; justify-content:flex-start }
+}

@@ -22,7 +22,7 @@ import type { ContentLane } from '../../../lib/content'
 // component switches on rather than a hand-copied subset that rots.
 export const STRATEGY_VIEWS = [
   'this-week', 'research', 'results', 'direction',
-  'demos', 'recommendations', 'evidence', 'competitors', 'magnets', 'markets', 'outreach', 'notes',
+  'demos', 'recommendations', 'evidence', 'competitors', 'magnets', 'markets', 'outreach', 'notes', 'outliers',
 ] as const
 
 export type StrategyViewId = typeof STRATEGY_VIEWS[number]

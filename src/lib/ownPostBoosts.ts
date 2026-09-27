@@ -7,7 +7,7 @@
    · fetchOwnPostBoosts reads `operator_own_post_boosts` (db cb15u, this
      lane's own RPC) — the newest mark per post_ref, keyed by post_ref.
    · markOwnPostBoosted calls `operator_mark_own_post_boosted` (db cb15b,
-     lane B's RPC — same gate pattern as operator_market_outliers per
+     lane B's RPC — same gate pattern as the db/102 outliers RPC per
      PLAN.md). This file does not define that function; it only calls it.
 
    Both fail toward "nothing changes": a bad read renders every post

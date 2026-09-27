@@ -1,5 +1,8 @@
 name: Deploy
-on: { push: { branches: [main] } }
+on:
+  push: { branches: [main] }
+  # Re-run by hand to pick up new commits on the rebuild branch (served at /next/).
+  workflow_dispatch: {}
 permissions: { contents: read, pages: write, id-token: write }
 jobs:
   build:
@@ -10,6 +13,18 @@ jobs:
         with: { node-version: 20 }
       - run: npm ci && npm run build
         env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}
+      # Side by side (Ivan 2026-09-26: "see the previous version against the new version and
+      # decide"): the rebuild branch at /next/, same site, same login. The live app at the root is
+      # untouched. VITE_PREVIEW=1 keeps the preview off push notifications.
+      - uses: actions/checkout@v4
+        with: { ref: rebuild/shell, path: next-src }
+      - working-directory: next-src
+        run: npm ci && npm run build && mkdir -p ../dist/next && cp -R dist/. ../dist/next/
+        env:
+          VITE_PREVIEW: '1'
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}

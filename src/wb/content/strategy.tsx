@@ -37,7 +37,7 @@ import { BenchmarkBlock } from './BenchmarkBlock'
 import { ReachBlock } from './ReachBlock'
 import { ThemesBlock } from './ThemesBlock'
 import { LeadMagnetsView } from './leadmagnets'
-import { MarketsView } from './markets'
+import OutliersView from './outliers'
 import { ClientDirectionPanel, DemoPanel, ResearchPanel, ResultsPanel as EditorialResultsPanel, ThisWeekPanel as EditorialThisWeekPanel } from './research/ResearchWorkspace'
 import { isContentLane, isStrategyView, readStrategyDeepLink, type StrategyViewId } from './strategy/deepLink'
 import { prefixOf, wbHash } from '../../exp/v2c/route'
@@ -454,11 +454,21 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
 
   // Seven views overflow a phone, so the chosen one is scrolled into sight
   // (a jump from a deep link or More would otherwise land off screen).
+  // 2026-09-27 (MERGE-TODO, 390px): the old scrollIntoView ran once on mount, before the
+  // tab strip existed while lanes loaded, and never again. It now re-runs when the lanes
+  // arrive, waits a frame for layout, and scrolls only the strip (never the page).
   useEffect(() => {
-    // jsdom has no scrollIntoView; the guard keeps the tests honest.
-    document.querySelector<HTMLElement>('.a-strategy-nav [aria-selected="true"]')
-      ?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
-  }, [view])
+    const later = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (f: FrameRequestCallback) => window.setTimeout(() => f(0), 0) as unknown as number
+    const stop = typeof cancelAnimationFrame === 'function' ? cancelAnimationFrame : (id: number) => window.clearTimeout(id)
+    const id = later(() => {
+      const nav = document.querySelector<HTMLElement>('.a-strategy-nav')
+      const tab = nav?.querySelector<HTMLElement>('[aria-selected="true"]')
+      if (!nav || !tab) return
+      const n = nav.getBoundingClientRect(), t = tab.getBoundingClientRect()
+      if (t.left < n.left || t.right > n.right) nav.scrollLeft += (t.left - n.left) - (n.width - t.width) / 2
+    })
+    return () => stop(id)
+  }, [view, lanes.state])
 
   const blanks = blankCount(st.sections)
 
@@ -483,7 +493,8 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
         {view === 'evidence' && <div key={`${lane}-${refreshTick}`} className="a-strategy-panel"><EvidenceBlock lane={lane} /></div>}
         {view === 'competitors' && <BenchmarkBlock key={`${lane}-${refreshTick}`} lane={lane} view="competitors" />}
         {view === 'magnets' && <LeadMagnetsView key={`${lane}-${refreshTick}`} lane={lane} />}
-        {view === 'markets' && <MarketsView key={`${lane}-${refreshTick}`} lane={lane} />}
+        {/* CB-21 (main 32e218d + d9a0d9c): the Markets tab is the Outliers view, self-keyed per lane. */}
+        {(view === 'markets' || view === 'outliers') && <OutliersView lane={lane} />}
         {view === 'outreach' && <div key={`${lane}-${refreshTick}`} className="a-strategy-panel"><OutreachBlock lane={lane} /></div>}
         {view === 'notes' && <>
         <div className="a-ct-sub">Private editorial notes{st.updatedAt ? ` · saved ${relAge(st.updatedAt)}` : ''}. These notes are not connected to the generator. Review dated claims against Competitors and Results before using them.</div>
