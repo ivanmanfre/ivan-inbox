@@ -121,12 +121,12 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
   const boardsPlate = (
     <Plate title="Client boards">
       {([['risedtc', 'Rise', "Mattan's board: queue, drafts, schedule"], ['arch', 'Arch', "Davorin's board: queue, drafts, schedule"]] as const).map(([id, name, sub]) => (
-        <Row key={id} title={name} sub={<>{sub}<span className="ds2-lk">{boards.kind === 'ready' ? (board(id) ? `ivanmanfredi.com/client/${board(id)!.slug}` : 'board not found') : boards.kind === 'failed' ? 'could not be read' : 'reading…'}</span></>}>
-          <a className={`ds2-open${link(id) ? '' : ' ds2-off'}`} href={link(id)} target="_blank" rel="noreferrer" aria-disabled={!link(id)}>Open ↗</a>
+        <Row key={id} title={<span title={sub}>{name}</span>} sub={boards.kind === 'failed' ? 'could not be read' : boards.kind === 'ready' && !board(id) ? 'board not found' : undefined}>
+          <a className={`ds2-open${link(id) ? '' : ' ds2-off'}`} href={link(id)} target="_blank" rel="noreferrer" aria-disabled={!link(id)} title={board(id) ? `ivanmanfredi.com/client/${board(id)!.slug}` : undefined}>Open ↗</a>
         </Row>
       ))}
-      <Row title="Ivan" sub={<>Your own content, on the dashboard<span className="ds2-lk">ivanmanfredi.com/dashboard-v2?section=content</span></>}>
-        <a className="ds2-open" href="https://ivanmanfredi.com/dashboard-v2?section=content" target="_blank" rel="noreferrer">Open ↗</a>
+      <Row title={<span title="Your own content, on the dashboard">Ivan</span>}>
+        <a className="ds2-open" title="ivanmanfredi.com/dashboard-v2?section=content" href="https://ivanmanfredi.com/dashboard-v2?section=content" target="_blank" rel="noreferrer">Open ↗</a>
       </Row>
     </Plate>
   )
