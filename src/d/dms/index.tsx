@@ -22,6 +22,7 @@ import { useDmsData } from './useDmsData'
 import { useDmVerbs } from './verbs'
 import { useDmKeys } from './useDmKeys'
 import './dms.css'
+import './dms-thread.css'
 
 export default function DmsPage(props: PlaceProps) {
   return <DmAsks><Dms {...props} /></DmAsks>
