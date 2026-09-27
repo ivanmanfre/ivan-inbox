@@ -77,6 +77,9 @@ const READS: { [K in Key]: () => Promise<NonNullable<LanesData[K]['value']>> } =
   ready: () => fetchReady(),
 }
 const KEYS = Object.keys(READS) as Key[]
+/** Heavier reads that move slowly: re-read every 5 minutes, not on every 60s tick. */
+const SLOW = new Set<Key>(['ready', 'campSends', 'scans', 'inboundDaily'])
+const SLOW_MS = 5 * 60_000
 
 const empty = (): LanesData => Object.fromEntries(KEYS.map(k => [k, { value: null, failed: null }])) as unknown as LanesData
 
@@ -90,6 +93,7 @@ export function useLanesData(): { data: LanesData; loading: boolean; at: number 
   const [at, setAt] = useState<number | null>(null)
   const live = useRef(true)
   const pending = useRef(false)
+  const slowAt = useRef(0)
 
   const refresh = useCallback(() => {
     if (pending.current || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return
@@ -101,7 +105,9 @@ export function useLanesData(): { data: LanesData; loading: boolean; at: number 
       if (!live.current) return
       setData(prev => ({ ...prev, [k]: slot(prev[k] as Slot<unknown>) }) as LanesData)
     }
-    void Promise.allSettled(KEYS.map(k => READS[k]().then(
+    const withSlow = Date.now() - slowAt.current >= SLOW_MS
+    if (withSlow) slowAt.current = Date.now()
+    void Promise.allSettled(KEYS.filter(k => withSlow || !SLOW.has(k)).map(k => READS[k]().then(
       v => put(k, () => ({ value: v, failed: null })),
       e => { put(k, prev => ({ value: prev.value, failed: e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e ?? 'read failed') })); throw e },
     ))).then(() => {
