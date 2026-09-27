@@ -64,6 +64,8 @@
 /* Booking: the message as Slack posts it; tap to edit (Card.tsx). */
 .op-slack{color:var(--t1);font:400 14px/1.5 var(--f);cursor:text;overflow-wrap:anywhere}
 .op-slack strong{font-weight:700}
+.op-slack{padding:4px 2px}
+.op-slack .a-slack-line+.a-slack-line{margin-top:8px}
 .op-slack a{color:var(--lime);text-decoration:underline;text-underline-offset:3px}
 .op-note{font:400 12px/1.45 var(--m);color:var(--t3)}
 .op-ban{border:1px solid var(--line2);border-radius:var(--r1);padding:7px 10px;font-size:13px;color:var(--t2);background:var(--p2)}
