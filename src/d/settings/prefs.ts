@@ -67,3 +67,19 @@ export function useDensity(): [Density, (d: Density) => void] {
   }, [])
   return [d, set]
 }
+
+/* The theme key the old app wrote (`inbox-theme`). D is dark only, but main.tsx
+   still applies a stored "light" at boot, which turns the mounted old panels
+   (Money, legacy content) light inside D's dark frame. Reset removes it. */
+export function useStoredTheme(): ['light' | 'dark', () => void] {
+  const read = (): 'light' | 'dark' => {
+    try { return localStorage.getItem('inbox-theme') === 'light' || document.documentElement.dataset.theme === 'light' ? 'light' : 'dark' } catch { return 'dark' }
+  }
+  const [t, setT] = useState(read)
+  const reset = useCallback(() => {
+    try { localStorage.setItem('inbox-theme', 'dark') } catch { /* private window */ }
+    document.documentElement.dataset.theme = 'dark'
+    setT('dark')
+  }, [])
+  return [t, reset]
+}

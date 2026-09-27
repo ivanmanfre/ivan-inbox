@@ -9,6 +9,7 @@ vi.mock('../../lib/push', () => ({
   disablePush: push.disable,
 }))
 const auth = vi.hoisted(() => ({ signOut: vi.fn(async () => ({ error: null })) }))
+const calls = vi.hoisted(() => [] as string[])
 vi.mock('../../lib/supabase', () => {
   const q = () => {
     const chain: Record<string, unknown> = {}
@@ -16,7 +17,8 @@ vi.mock('../../lib/supabase', () => {
     chain.then = (r: (v: unknown) => unknown) => Promise.resolve({ data: [], error: null }).then(r)
     return chain
   }
-  return { supabase: { from: q, auth } }
+  const from = (t: string) => { calls.push(t); const c = q() as Record<string, unknown>; const eq = c.eq as () => unknown; c.eq = (col: string, v: unknown) => { calls.push(`${t}.eq.${col}=${String(v)}`); return eq() }; return c }
+  return { supabase: { from, auth } }
 })
 vi.mock('../../lib/money', async orig => ({ ...(await orig()), fetchMrrRows: async () => [], fetchCashConfig: async () => ({ cashOnHandUsd: null, cashAsOfDate: null, observedAt: null }) }))
 
@@ -80,5 +82,26 @@ describe('Settings keys', () => {
   it('no lime on saved preferences: the selected key is pressed, never primary', () => {
     renderInFrame(<SettingsPage {...props()} />)
     expect(document.querySelectorAll('.ds2-pair .d-key-p')).toHaveLength(0)
+  })
+})
+
+describe('Settings parity pass 2', () => {
+  it('a stored Light theme from the old app shows Reset, which stores dark and flips the page back', async () => {
+    localStorage.setItem('inbox-theme', 'light')
+    renderInFrame(<SettingsPage {...props()} />)
+    const k = await waitFor(() => document.querySelector('[data-verb="theme-reset"]') as HTMLButtonElement)
+    fireEvent.click(k)
+    expect(localStorage.getItem('inbox-theme')).toBe('dark')
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    await waitFor(() => expect(document.querySelector('[data-verb="theme-reset"]')).toBeNull())
+  })
+  it('the device list reads only this app\'s push rows', async () => {
+    renderInFrame(<SettingsPage {...props()} />)
+    await waitFor(() => expect(calls).toContain('push_subscriptions.eq.device_label=ivan-inbox'))
+  })
+  it('sign-out names both ways back in', async () => {
+    renderInFrame(<SettingsPage {...props()} />)
+    fireEvent.click(document.querySelector('[data-verb="sign-out"]')!)
+    await waitFor(() => expect(screen.getByText(/6-digit code or the email link/)).toBeTruthy())
   })
 })
