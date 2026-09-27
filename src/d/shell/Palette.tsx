@@ -71,7 +71,8 @@ export function DPalette({ onClose, navigate, toggleClaude, openBell, lane: star
   const runBulk = useLayerBulk()
   // Read once when the palette opens (it mounts on open), as today's layer did.
   const [layer] = useState(() => layerCommands({ page: [], openSheet: openKeySheet, closeTop: () => {}, runBulk }))
-  const [people] = useState(() => (desktop ? peopleFromThreads(inbox.threads) : []))
+  // Live: the inbox may still be landing when the palette opens.
+  const people = useMemo(() => (desktop ? peopleFromThreads(inbox.threads) : []), [desktop, inbox.threads])
   const [q, setQ] = useState('')
   const [lane, setLane] = useState<ContentLane>(startLane)
   const [res, setRes] = useState<CrossResults>(EMPTY)

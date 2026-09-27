@@ -100,3 +100,4 @@
 .d-side-min .d-nav a,.d-side-min .d-nav button{justify-content:center;padding:0;position:relative}
 .d-side-pip{position:absolute;top:4px;right:6px;font:700 10px var(--m);font-style:normal;color:#fff;background:var(--crit);border-radius:7px;padding:0 4px}
 .d-side-min .d-me{justify-content:center}
+.d-sys-golink{padding:0 11px 8px}

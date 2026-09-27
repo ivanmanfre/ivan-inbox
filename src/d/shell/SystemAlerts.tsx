@@ -68,9 +68,10 @@ function GroupRow({ g, onDismiss }: { g: AlertGroup; onDismiss: (ids: string[], 
           <b>{title}</b>
           <span>{warsawDow(g.newestCreatedAt)} {warsawHm(g.newestCreatedAt)}</span>
         </button>
-        {!grouped && rep.action_url && !open && <ActionLink m={rep} />}
         <X label={grouped ? `Dismiss all ${g.count}` : `Dismiss ${title}`} onClick={() => onDismiss(all, grouped ? `${g.count} alerts` : 'Alert')} />
       </div>
+      {/* The link stays one tap away while folded, on its own line so the title keeps its width. */}
+      {!grouped && rep.action_url && !open && <div className="d-sys-golink"><ActionLink m={rep} /></div>}
       {open && !grouped && <Body m={rep} />}
       {open && grouped && (
         <div className="d-sys-members">
