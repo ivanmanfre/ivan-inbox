@@ -75,23 +75,21 @@ export default function OpsPage({ layout, route, navigate }: PlaceProps) {
   const otherN = board.other.reduce((a, o) => a + o.waiting, 0)
   const title = <>Waiting on you: <N v={w.ivan} /> yours, <N v={w.risedtc} /> Rise, <N v={w.arch} /> Arch{otherN > 0 && <>, <N v={otherN} /> in other lanes</>}.</>
   const nj = board.flat.find(d => d.kind === 'newsjack' && timeLeft(d.context?.expires_at) !== 'expired')
-  const onList = SEATS.reduce((a, s) => a + board.tasks[s], 0)
   // One sentence, the most urgent one: a newsjack's clock, else the ideas
   // waiting for later, else how much of the number sits on the list.
-  const sub = nj ? `A ${positionOf(board, nj).lane} newsjack has ${timeLeft(nj.context?.expires_at)}.`
-    : board.later.length > 0 ? `${board.later.length} more comment ideas wait for later.`
-      : onList > 0 ? `${onList} of them ${onList === 1 ? 'is' : 'are'} on your list.` : ''
+  // Only a clock that runs out earns the second line.
+  const sub = nj ? `A ${positionOf(board, nj).lane} newsjack has ${timeLeft(nj.context?.expires_at)}.` : ''
   const answer = <AnswerRow title={title} sub={ops.loading && ops.drafts.length === 0 ? 'Reading the queue…' : sub} />
 
   if (ops.error && ops.drafts.length === 0) {
-    return <div className={`op-page op-${layout}`}>{answer}<Failed what="the ops queue" detail={`${ops.error} Nothing has loaded yet, so this is not an empty queue, it is an unread one.`} onRetry={refresh} /></div>
+    return <div className={`op-page op-${layout}`}>{answer}<Failed what="the ops queue" detail={ops.error} onRetry={refresh} /></div>
   }
   if (ops.loading && ops.drafts.length === 0) {
     return <div className={`op-page op-${layout}`}>{answer}<Skeleton lines={7} label="Reading the ops queue" /></div>
   }
 
   const stale = ops.error
-    ? <div className="op-ban op-ban-warn op-stale">Could not refresh{ops.loadedAt ? `, showing the copy from ${warsawHm(ops.loadedAt)}` : ''}. The cards may be out of date. <Btn verb="retry" onClick={refresh}>Retry</Btn></div>
+    ? <div className="op-ban op-ban-warn op-stale">Could not refresh{ops.loadedAt ? ` (showing ${warsawHm(ops.loadedAt)})` : ''}. <Btn verb="retry" onClick={refresh}>Retry</Btn></div>
     : null
 
   const card = sel ? (() => {
@@ -100,22 +98,22 @@ export default function OpsPage({ layout, route, navigate }: PlaceProps) {
     if (sel.kind === 'conversation_takeover') return <TakeoverCard key={sel.id} d={sel} refresh={refresh} pos={pos} />
     const wIdx = queue.positionOf(sel.id)
     const line = wIdx < 0 ? null : queue.cappedToday
-      ? 'Held: the poster hit its 3-a-day cap. It stays here for tomorrow.'
-      : `Queued here, number ${wIdx + 1} in line: the poster takes one at a time, so this retries as its window opens. Leave the tab open.`
+      ? 'Held: 3-a-day cap reached. Back tomorrow.'
+      : `Queued, number ${wIdx + 1} in line. Leave the tab open.`
     return <OpsCard key={sel.id} d={sel} refresh={refresh} feed={queue.feed.get(outboundFeedId(sel) ?? '')}
       held={queue.held.get(sel.id)} onGateResult={queue.record} layout={layout} pos={pos} waitingLine={line} />
   })() : null
 
   const checked = ops.loadedAt ? warsawHm(ops.loadedAt) : '…'
-  // Always-on freshness (today's head sub): an empty queue and a stalled feed look alike otherwise.
-  const fresh = <div className="op-fresh" data-ops-checked>{ops.loadedAt ? `Checked ${checked}` : 'Not read yet'}{ops.error ? ' · the last refresh failed' : ''}</div>
+  // Freshness is quiet now: the time sits in the tooltip, the line only speaks when the last refresh failed.
+  const fresh = <div className="op-fresh" data-ops-checked title={ops.loadedAt ? `Checked ${checked}` : 'Not read yet'}>{ops.error ? 'Last refresh failed' : null}</div>
   // Today's per-lane banner: how many of this lane's comments wait in the poster's line.
   const queueLine: QueueLine = ids => {
     const n = queue.waiting.filter(e => ids.has(e.id)).length
     if (n === 0) return null
     return queue.cappedToday
-      ? { warn: true, text: `${n} comment${n === 1 ? '' : 's'} held, the poster hit its 3-a-day cap. They stay here for tomorrow.` }
-      : { warn: false, text: `${n} comment${n === 1 ? '' : 's'} queued here, the poster takes one at a time, so this retries the next as its window opens. Leave the tab open.` }
+      ? { warn: true, text: `${n} held: 3-a-day cap reached. Back tomorrow.` }
+      : { warn: false, text: `${n} queued. Leave the tab open.` }
   }
 
   if (layout === 'phone' && want && sel) {
@@ -160,7 +158,7 @@ export default function OpsPage({ layout, route, navigate }: PlaceProps) {
           {stale}
           <DeskLanes board={board} sel={sel?.id ?? null} onPick={pick} refresh={refresh} queueLine={queueLine} />
           <div className="op-master">
-            {card ?? <div className="op-quiet op-big">Nothing waiting on you, and this is a live read, not a stall.<br />Checked {checked}.</div>}
+            {card ?? <div className="op-quiet op-big" title={`Checked ${checked}`}>Nothing waiting on you.</div>}
           </div>
         </div>
         <aside className="op-side">{side}</aside>

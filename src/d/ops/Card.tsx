@@ -73,7 +73,7 @@ export function OpsCard({ d, refresh, feed, held, onGateResult, layout, pos, wai
       <header className="op-ch">
         <span className="op-eb">{kindTitle(d)}</span>
         <span className="op-ew">
-          {laneName} lane{st.where && !st.isComment && !st.isOutbound && st.where !== laneName ? ` · to ${st.where}` : ''} · {warsawDayTime(d.created_at).replace(',', '')} · {pos}{layout === 'desktop' ? ' · j / k' : ''}
+          {laneName} lane{st.where && !st.isComment && !st.isOutbound && st.where !== laneName ? ` · to ${st.where}` : ''} · {warsawDayTime(d.created_at).replace(',', '')} · {pos}
           {left && <> · <b className={left === 'expired' ? '' : 'op-hot'}>{left}</b></>}
         </span>
       </header>
@@ -81,14 +81,13 @@ export function OpsCard({ d, refresh, feed, held, onGateResult, layout, pos, wai
         <div className="op-ctx"><CardContext d={d} liked={st.liked} needsDavor={st.needsDavor} /><ArchWhy st={st} /></div>
         <div className="op-rep">
           <label className="op-tape">
-            <span className="op-tm"><span>{tapeLabel(d)}</span><span>{st.body.trim() ? 'edit before approving' : 'no draft yet'}</span></span>
+            <span className="op-tm"><span>{tapeLabel(d)}</span></span>
             <textarea
-              value={st.body} rows={3} disabled={off}
+              value={st.body} rows={3} disabled={off} title={st.editorNote || undefined}
               onChange={e => st.setBody(e.target.value)}
               placeholder={st.canDraft && !(st.isArchComment && st.archOut && st.archOut !== 'DRAFT') ? 'Write his reply, or press Draft it.' : 'Empty.'}
             />
           </label>
-          {st.editorNote && <div className="op-note">{st.editorNote}</div>}
           {st.canTag && !st.isCloseOnly && st.tag && st.tagMayFail && <div className="op-note op-warn" data-tag-warn>@ tags {st.commenterName}: may not stick, hidden surname.</div>}
           {st.heldVerdict && <div className="op-ban op-ban-warn"><b>{GATE_HELD_LABEL}</b> {st.heldVerdict.message}</div>}
           {st.postState === 'queued' && !st.heldVerdict && <div className="op-ban">Queued: the poster has it. It posts after its jitter window unless you discard.</div>}
@@ -102,24 +101,20 @@ export function OpsCard({ d, refresh, feed, held, onGateResult, layout, pos, wai
           {!st.heldVerdict && (
             <div className="op-keys">
               <div className="op-k">
-                <Key verb="discard" disabled={off} onClick={() => void st.onDiscard()}>Discard</Key>
-                <small>{st.discardConfirm.message}</small>
+                <Key verb="discard" disabled={off} onClick={() => void st.onDiscard()} title={st.discardConfirm.message}>Discard</Key>
               </div>
               {st.canDraft && (
                 <div className="op-k">
-                  <Key verb="draft" disabled={st.busy || st.drafting} onClick={() => void st.onGenerate()}>{st.drafting ? 'Writing…' : 'Draft it'}</Key>
-                  <small>Fills the box.</small>
+                  <Key verb="draft" disabled={st.busy || st.drafting} onClick={() => void st.onGenerate()} title="Fills the box.">{st.drafting ? 'Writing…' : 'Draft it'}</Key>
                 </div>
               )}
               {withMore && (
                 <div className="op-k">
-                  <Key verb="more" aria-expanded={more} onClick={() => setMore(m => !m)}>More</Key>
-                  <small>{st.isArchComment ? (hasComment ? 'Like, tag, Davor, handled' : 'Davor, handled') : 'Like, tag, emoji'}</small>
+                  <Key verb="more" aria-expanded={more} onClick={() => setMore(m => !m)} title={st.isArchComment ? (hasComment ? 'Like, tag, Davor, handled' : 'Davor, handled') : 'Like, tag, emoji'}>More</Key>
                 </div>
               )}
               <div className="op-k op-kp">
-                <Key primary verb={st.commentCloseOnly ? 'mark-handled' : 'approve'} disabled={primaryOff || st.busy} onClick={() => void st.onApprove()}>{st.approveLabel}</Key>
-                <small>{cap.approve}</small>
+                <Key primary verb={st.commentCloseOnly ? 'mark-handled' : 'approve'} disabled={primaryOff || st.busy} onClick={() => void st.onApprove()} title={cap.approve}>{st.approveLabel}</Key>
               </div>
             </div>
           )}
