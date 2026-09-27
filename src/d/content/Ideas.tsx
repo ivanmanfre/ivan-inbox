@@ -123,14 +123,14 @@ export function Ideas({ banks, phone }: { banks: IdeaBanks; phone: boolean }) {
     const b = banks[l]
     const rows = view(l)
     const upto = pages[l] * PAGE
-    const sortWord = b.scores.ok && b.scores.validated ? 'Highest outlier score first' : 'Highest score first'
+    const sortWord = b.scores.ok && b.scores.validated ? 'Outlier score first' : 'Highest score first'
     return (
       <div className="cn-ch" key={l}>
         {!phone && <div className="cn-plate"><b>{LANE_NAME[l]}</b><span>{PLATE[l]}</span></div>}
         {!phone && (
           <div className="cn-read">
             <div><small>To decide</small><em className={b.n ? 'cn-hot' : ''}>{b.n ?? (b.error ? '?' : '…')}</em></div>
-            <div><small>Top score</small><em>{b.items[0] ? scoreText(b.items[0].score) : '0'}</em></div>
+            <div><small>Top score</small><em>{b.items.length ? scoreText(Math.max(...b.items.map(i => i.score ?? -1))) : '0'}</em></div>
           </div>
         )}
         {l === 'ivan' && (b.lm != null || !!b.unclassified) && (

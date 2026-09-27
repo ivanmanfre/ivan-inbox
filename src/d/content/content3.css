@@ -59,3 +59,4 @@
 .cn-ichips span{font:400 11.5px var(--m);border:1px solid var(--line2);border-radius:5px;padding:0 6px;color:var(--t2)}
 .cn-ilinks{display:flex;gap:14px;margin-top:6px}.cn-ilinks a{color:var(--t1);text-decoration:underline;text-underline-offset:3px}
 .cn-say button{text-decoration:underline;text-underline-offset:3px;color:var(--t1)}
+.cn-sec{gap:10px}.cn-sec span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cn-sec span:last-child{flex:none}
