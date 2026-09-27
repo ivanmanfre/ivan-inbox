@@ -270,3 +270,15 @@
   .a-ops-qb-body{ flex-basis:100% }
   .a-ops-qb-acts{ margin-inline-start:auto }
 }
+
+/* Booking card: the message as Slack will post it (slackPreview.tsx). */
+.a-ops-card .a-slack-preview{
+  padding:var(--ds-s3);
+  border-radius:var(--ds-r2);
+  background:var(--ds-surface-2);
+  color:var(--ds-text);
+  line-height:1.5;
+  overflow-wrap:anywhere;
+}
+.a-ops-card .a-slack-preview strong{ font-weight:700 }
+.a-ops-card .a-ops-edit > summary{ cursor:pointer; margin-bottom:var(--ds-s2) }

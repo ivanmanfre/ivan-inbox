@@ -21,6 +21,8 @@ import { Banner, Button, Chip, Textarea } from '../../ds'
 import { Group, KV, Sep } from '../kit'
 import './ops.css'
 import { ConversationTakeoverCard } from './ConversationTakeoverCard'
+import { formatBookingForSlack } from './slackFormat.js'
+import { renderMrkdwn } from './slackPreview'
 
 // 'OUTBOUND' said what the ENGINE calls the lane, not what the card is. Ivan
 // reads these as comments, so they say Comments; `comment_reply` becomes REPLY
@@ -125,16 +127,14 @@ function ContextBlock({ draft }: { draft: OpsDraft }) {
   // unmatched warning is load-bearing - without a prospect row we cannot claim the
   // lead came from outbound, and the body says "from outbound" by default.
   if (draft.kind === 'booking') {
-    const rows: Array<[React.ReactNode, React.ReactNode]> = [
-      ['Who', [ctx.prospect_name, ctx.company || ctx.domain].filter(Boolean).join(' · ')],
-    ]
-    if (ctx.when_str) rows.push(['When', ctx.when_str])
+    // Who, when and the brief are in the Slack preview under this block
+    // (2026-09-27), so only the rows that never reach Slack stay here.
+    const rows: Array<[React.ReactNode, React.ReactNode]> = []
     if (ctx.booked_note) rows.push(['Note', ctx.booked_note])
-    if (ctx.brief_url) rows.push(['Brief', <Link href={ctx.brief_url}>read the brief</Link>])
     if (ctx.hubspot_url) rows.push(['Record', <Link href={ctx.hubspot_url}>HubSpot</Link>])
     return (
       <>
-        <KV rows={rows} />
+        {rows.length > 0 && <KV rows={rows} />}
         {ctx.matched_prospect === false && (
           <div className="a-ops-warn a-meta">no lane history, check before claiming outbound</div>
         )}
@@ -364,18 +364,42 @@ function StandardPendingCard({ draft, refresh, feed, held, onGateResult }: {
             )}
           </div>
         )}
-        <Textarea
-          label="Draft"
-          labelHidden
-          className="a-ops-body"
-          value={body}
-          onChange={e => setBody(e.target.value)}
-          disabled={busy || drafting}
-          // An ARCH card whose verdict is "he answers this one" is not waiting on
-          // a draft, so nothing in the box invites one.
-          placeholder={canDraft && !(isArchComment && archOut && archOut !== 'DRAFT') ? 'Write his reply, or press Draft it.' : undefined}
-          hint={editorNote}
-        />
+        {draft.kind === 'booking' ? (
+          <>
+            {/* Ivan 2026-09-27: "I want to see it formatted". The card reads the
+                way the channel will, through the same formatter the Slack
+                sender runs; the raw text stays one tap away. */}
+            <div className="a-slack-preview">{renderMrkdwn(formatBookingForSlack(body, draft.context))}</div>
+            <details className="a-ops-edit">
+              <summary className="a-meta">Edit the text</summary>
+              <Textarea
+                label="Draft"
+                labelHidden
+                className="a-ops-body"
+                value={body}
+                onChange={e => setBody(e.target.value)}
+                disabled={busy || drafting}
+                // An ARCH card whose verdict is "he answers this one" is not waiting on
+                // a draft, so nothing in the box invites one.
+                placeholder={canDraft && !(isArchComment && archOut && archOut !== 'DRAFT') ? 'Write his reply, or press Draft it.' : undefined}
+                hint={editorNote}
+              />
+            </details>
+          </>
+        ) : (
+          <Textarea
+            label="Draft"
+            labelHidden
+            className="a-ops-body"
+            value={body}
+            onChange={e => setBody(e.target.value)}
+            disabled={busy || drafting}
+            // An ARCH card whose verdict is "he answers this one" is not waiting on
+            // a draft, so nothing in the box invites one.
+            placeholder={canDraft && !(isArchComment && archOut && archOut !== 'DRAFT') ? 'Write his reply, or press Draft it.' : undefined}
+            hint={editorNote}
+          />
+        )}
         {/* Comment tools (Ivan, 08-27): emoji into the draft, like their comment,
             and the tag chip. The mention itself is added server-side so the draft
             stays clean text here. The picker is user-selected CONTENT, which is
