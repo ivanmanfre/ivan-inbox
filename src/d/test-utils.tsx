@@ -15,7 +15,7 @@ export const ZERO_READERS: NonNullable<TestReaders> = {
   dm: async () => ({ drafts: 0, needs: 0 }),
   content: async () => 0,
   ops: async () => ({ ivan: 0, risedtc: 0, arch: 0 }),
-  nextCall: async () => ({ label: 'none booked this week', title: null, start: null }),
+  nextCall: async () => ({ label: 'none booked', title: null, start: null }),
   bell: async () => ({ unreadGroups: 0, open: 0 }),
   alerts: async () => ({ rows: [], groups: [], critical: 0 }),
 }

@@ -6,6 +6,7 @@ import { healthLines } from './healthLines'
 describe('cleanLine / bodyLine', () => {
   it('drops the emoji, the tenant tag, the em dash and bare links', () => {
     expect(cleanLine('🚨 [ARCH] Harvest ran — posts capped https://x.y/z')).toBe('Harvest ran, posts capped')
+    expect(cleanLine('*Ivan System* ❗ *Voice Corpus* failed')).toBe('Ivan System Voice Corpus failed')
   })
   it('drops a body that only repeats the title', () => {
     expect(bodyLine({ title: 'Publish queue', body: 'Publish queue' })).toBe('')

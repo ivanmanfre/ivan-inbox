@@ -93,7 +93,7 @@ function SystemBox({ groups, failed, onRetry, onClear }: {
         </div>
       ))}
       {groups.length > 4 && <div className="d-sys-ok">{groups.length - 4} more open in today's app.</div>}
-      {crit === 0 && <div className="d-sys-ok">{open === 0 ? 'No system alert open in 14 days.' : 'No critical alert open.'} A critical one turns the bell red.</div>}
+      {crit === 0 && <div className="d-sys-ok">{open === 0 ? 'No system alert open in 14 days.' : 'No critical alert open.'} A critical one lights the bell.</div>}
     </div>
   )
 }
@@ -208,7 +208,7 @@ export function BellFeed() {
     })()
   }
 
-  const sub = feed.error && !feed.loaded ? 'Could not read the feed'
+  const sub = clearedAt ? 'All read' : feed.error && !feed.loaded ? 'Could not read the feed'
     : unread == null ? (c.bell.failed ? 'Count could not be read' : 'Reading…')
       : unread === 0 ? 'All read' : `${unread} unread · ${(open ?? 0).toLocaleString('en-US')} open`
 

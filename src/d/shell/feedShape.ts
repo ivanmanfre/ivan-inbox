@@ -8,6 +8,8 @@ export function cleanLine(s: string | null | undefined): string {
   return String(s ?? '')
     .replace(/^(?:\p{Extended_Pictographic}|\u200d|\ufe0f|\s)+/u, '')
     .replace(/^\s*\[(ARCH|RISE|IVAN)\]\s*/i, '')
+    .replace(/(?:\p{Extended_Pictographic}|\u200d|\ufe0f)+\s*/gu, '')
+    .replace(/([*_`]{1,2})([^*_`\n]+?)\1/g, '$2')
     .replace(/\s*\u2014\s*/g, ', ')
     .replace(/https?:\/\/\S+/g, '')
     .replace(/[\s|:,-]+$/, '')

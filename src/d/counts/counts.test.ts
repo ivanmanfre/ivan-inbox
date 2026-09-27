@@ -47,6 +47,6 @@ describe('nextCallLine', () => {
     expect(r).toEqual({ label: 'Tue 29 Sep, 17:00', title: 'Dom', start: '2026-09-29T15:00:00Z' })
   })
   it('says none booked when the week is empty', () => {
-    expect(nextCallLine([], new Date(NOW)).label).toBe('none booked this week')
+    expect(nextCallLine([], new Date(NOW)).label).toBe('none booked')
   })
 })
