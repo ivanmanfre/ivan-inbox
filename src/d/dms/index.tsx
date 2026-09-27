@@ -31,6 +31,7 @@ import type { WbCommand } from '../../exp/v2c/commandSource'
 import './dms.css'
 import './dms-thread.css'
 import './dms-more.css'
+import './dms-calm.css'
 
 export default function DmsPage(props: PlaceProps) {
   return <DmAsks><Dms {...props} /></DmAsks>
@@ -52,8 +53,8 @@ function Dms({ layout, route, navigate }: PlaceProps) {
 
   const setTokens = useCallback((t: FilterToken[]) => { setTokensState(t); writeTokens('dms', t) }, [])
   const refreshCounts = counts.refresh
-  const ctx = useMemo(() => ({ refresh: () => { data.refreshList(); data.reloadCame(); refreshCounts('dms') }, patch: data.patch }),
-    [data.refreshList, data.reloadCame, data.patch, refreshCounts]) // eslint-disable-line react-hooks/exhaustive-deps
+  const ctx = useMemo(() => ({ refresh: () => { data.refreshList(); data.reloadCame(); refreshCounts('dms') }, patch: data.patch, solved: data.solved.setLocal }),
+    [data.refreshList, data.reloadCame, data.patch, data.solved.setLocal, refreshCounts]) // eslint-disable-line react-hooks/exhaustive-deps
   const verbs = useDmVerbs(ctx)
   const toast = useToast()
   const fail = useCallback((message: string) => { toast.show({ message, tone: 'failed' }) }, [toast])

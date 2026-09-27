@@ -35,6 +35,17 @@ export function bubbles(text: string): string[] {
   return text.split(/^[ \t]*-{3,}[ \t\r]*$/m).map(p => p.trim()).filter(Boolean)
 }
 
+/** An email in the DM timeline says where it went: "To <address>" on ours, "From <address>" on theirs.
+ *  Our email legs (a DM draft's email pair, a scan delivery) and their email replies share the
+ *  person's thread (grouped by prospect), so they interleave with the LinkedIn messages by time. */
+export function emailAddrLine(m: InboxMessage): string | null {
+  // On an inbound email row recipient_email holds the address it came FROM (the reply-to), so a
+  // colleague answering for them reads right; the prospect's own address is the fallback.
+  const addr = m.recipient_email || m.prospect_email
+  if (!addr) return null
+  return m.direction === 'inbound' ? `From ${addr}` : `To ${addr}`
+}
+
 export function historyRows(t: Thread): InboxMessage[] {
   return t.messages.filter(m => !isDraft(m) && !isInternalConfirmation(m) && m.send_blocked_reason !== 'discarded_in_inbox'
     && (m.direction === 'inbound' || m.sent_at || m.approved_at || sendFailed(m) || isEngineRetired(m)))
@@ -61,16 +72,15 @@ export function History({ t, cap = 6 }: { t: Thread; cap?: number }) {
         const email = messageChannel(m) === 'email'
         const parts = blank ? [] : inb ? [(m.message_text ?? '').trim()].filter(Boolean) : bubbles(m.message_text ?? '')
         const at = eventTime(m)
-        const to = !inb && email ? (m.recipient_email || m.prospect_email) : null
+        const addr = email ? emailAddrLine(m) : null
         return (
-          <div key={m.id} className={`dm-h dm-h-whole${inb ? ' dm-h-in' : ''}${st?.fail ? ' dm-h-fail' : ''}`} data-msg={m.id}>
+          <div key={m.id} className={`dm-h dm-h-whole${inb ? ' dm-h-in' : ''}${st?.fail ? ' dm-h-fail' : ''}${email ? ' dm-h-email' : ''}`} data-msg={m.id} data-channel={email ? 'email' : undefined}>
             <b>{inb ? first : 'You'}</b>
             <span>
               {st && <i className={st.fail ? 'dm-i-fail' : undefined}>{st.text}</i>}
               {pill && <i>{pill}</i>}
               {inb && isReaction(m) && <i>reaction</i>}
-              {email && inb && m.prospect_email && <i>from {m.prospect_email}</i>}
-              {to && <i>to {to}</i>}
+              {addr && <small className="dm-h-addr">{addr}</small>}
               {blank ? 'no note, by design' : parts.length === 0 ? '(no text: an image or a file)'
                 : parts.map((p, i) => <span key={i} className="dm-bub">{i > 0 && <br />}<Linkified text={p} /></span>)}
             </span>

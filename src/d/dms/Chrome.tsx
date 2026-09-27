@@ -35,15 +35,24 @@ export function Health({ data }: { data: DmsData }) {
   return <span className="dm-live">Reading…</span>
 }
 
+/** Any thread in the list carries an unread inbound (the same signal as a row's dot). */
+export function anyUnread(ts: readonly Thread[]): boolean {
+  return ts.some(t => t.unread > 0)
+}
+
+const Dot = ({ on }: { on: boolean }) => on ? <span className="dm-fdot" role="img" aria-label="unread" /> : null
+
 export function Folders({ folder, setFolder, views, phone }: { folder: string | null; setFolder: (f: string | null) => void; views: Record<Seat, SeatView>; phone?: boolean }) {
+  const emailDot = SEATS.some(s => anyUnread(views[s].email))
+  const spamDot = anyUnread(views.risedtc.spam) || anyUnread(views.arch.spam)
   return (
     <span className={`dm-folders${phone ? ' dm-folders-phone' : ''}`} role="tablist" aria-label="Folders">
       <button type="button" role="tab" aria-selected={!folder} className={`dm-fd${!folder ? ' dm-on' : ''}`} onClick={() => setFolder(null)}>Conversations</button>
-      <button type="button" role="tab" aria-selected={folder === 'email'} className={`dm-fd${folder === 'email' ? ' dm-on' : ''}`} onClick={() => setFolder('email')}>
-        Email <small>{SEATS.map(s => <span key={s}>{SEAT_NAME[s]} <b>{views[s].email.length}</b> </span>)}</small>
+      <button type="button" role="tab" aria-selected={folder === 'email'} className={`dm-fd${folder === 'email' ? ' dm-on' : ''}`} onClick={() => setFolder('email')} data-unread={emailDot ? 'true' : undefined}>
+        <Dot on={emailDot} />Email <small>{SEATS.map(s => <span key={s}>{SEAT_NAME[s]} <b>{views[s].email.length}</b> </span>)}</small>
       </button>
-      <button type="button" role="tab" aria-selected={folder === 'spam'} className={`dm-fd${folder === 'spam' ? ' dm-on' : ''}`} onClick={() => setFolder('spam')}>
-        Likely spam <small>Rise <b>{views.risedtc.spam.length}</b> Arch <b>{views.arch.spam.length}</b></small>
+      <button type="button" role="tab" aria-selected={folder === 'spam'} className={`dm-fd${folder === 'spam' ? ' dm-on' : ''}`} onClick={() => setFolder('spam')} data-unread={spamDot ? 'true' : undefined}>
+        <Dot on={spamDot} />Likely spam <small>Rise <b>{views.risedtc.spam.length}</b> Arch <b>{views.arch.spam.length}</b></small>
       </button>
     </span>
   )

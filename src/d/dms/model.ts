@@ -2,7 +2,7 @@
 // (threadBucket, isOlderOwed, isAutoReplyThread, threadOrder, isDiscarded,
 // isOwedInbound, isConversation), applied per seat. Nothing is re-judged here.
 import {
-  eventTime, isAutoReplyThread, isConversation, isDiscarded, isOlderOwed, isOwedInbound,
+  channelFamilies, eventTime, isAutoReplyThread, isConversation, isDiscarded, isOlderOwed, isOwedInbound,
   isLeadMagnet, messageChannel, threadBucket, threadKind, threadOrder,
   type InboxMessage, type Thread,
 } from '../../lib/inbox'
@@ -24,6 +24,16 @@ export type SeatView = {
   thrown: Thread[]     // a draft discarded in the last 3 days, nothing sent since
   spam: Thread[]
   email: Thread[]
+  /** Email-only people (no LinkedIn thread) who owe a reply: they live in the Email folder, and
+   *  Needs you carries one pointer line so its count still matches the frame's. */
+  emailOwed: Thread[]
+}
+
+/** Nobody on LinkedIn: every message rode email. Such a thread stays in the Email folder only
+ *  (Ivan 09-27: the email shows on the DM "only in cases where the DM is connected to the email"). */
+export function isEmailOnly(t: Thread): boolean {
+  const f = channelFamilies(t.messages)
+  return f.length === 1 && f[0] === 'email'
 }
 
 export function seatThreads(threads: Thread[], seat: Seat): Thread[] {
@@ -47,9 +57,14 @@ export function isThrownRecently(t: Thread, now: number = Date.now()): boolean {
 export function seatView(threads: Thread[], seat: Seat, now: number = Date.now(), scanDays: ReadonlyMap<string, number> = new Map()): SeatView {
   const mine = seatThreads(threads, seat).filter(isConversation)
   const live = mine.filter(t => !t.spam)
-  const v: SeatView = { seat, owner: [], drafted: [], nodraft: [], later: [], older: [], auto: [], rest: [], thrown: [], spam: [], email: [] }
+  const v: SeatView = { seat, owner: [], drafted: [], nodraft: [], later: [], older: [], auto: [], rest: [], thrown: [], spam: [], email: [], emailOwed: [] }
   for (const t of live) {
     const bucket = threadBucket(t, now)
+    if (isEmailOnly(t)) {
+      v.email.push(t)
+      if (bucket !== 'waiting') v.emailOwed.push(t)
+      continue
+    }
     if (bucket !== 'waiting') {
       if (t.ownerConfirmation) v.owner.push(t)
       else if (t.draft !== null && t.draftSnoozedUntil === null) v.drafted.push(t)
@@ -75,7 +90,7 @@ export function seatView(threads: Thread[], seat: Seat, now: number = Date.now()
 }
 
 export function needsCount(v: SeatView): number {
-  return v.owner.length + v.drafted.length + v.nodraft.length
+  return v.owner.length + v.drafted.length + v.nodraft.length + v.emailOwed.length
 }
 
 /** When the wait began on an owed thread (the newest owed inbound), for the lime age. */

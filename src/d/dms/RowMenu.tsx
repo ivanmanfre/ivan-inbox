@@ -10,6 +10,7 @@ import { seatOf, SEAT_NAME } from '../seats'
 import { Sheet } from '../ui/Sheet'
 import { copyText } from './Thread'
 import type { DmVerbs } from './verbs'
+import { canMarkSolved } from './solved'
 
 export function RowMenu({ t, pre, verbs, onClose, onOpen, onAsk }: {
   t: Thread; pre: PreReadHandle; verbs: DmVerbs; onClose: () => void; onOpen: () => void; onAsk: () => void
@@ -31,6 +32,7 @@ export function RowMenu({ t, pre, verbs, onClose, onOpen, onAsk }: {
         {st.s === 'done' && <p className="dm-qnote" style={{ padding: '4px 14px 8px' }}>{st.line}</p>}
         {link && item('row-copy-chat', copied ? 'Copied' : link.isChat ? 'Copy chat link' : 'Copy profile link', 'for Mattan or Davorin', () => { void copyText(link.href).then(ok => { if (ok) { setCopied(true); window.setTimeout(onClose, 700) } }) })}
         {item('row-ask', 'Ask Claude', 'with this person attached', () => { onClose(); onAsk() })}
+        {canMarkSolved(t) && item('row-solved', 'Mark as solved', 'no reply needed · Undo on the receipt', () => { onClose(); void verbs.solved(t) })}
         {t.draft && item('row-discard', t.companionDraft ? 'Discard both drafts' : 'Discard the draft', 'asks first', () => { onClose(); void verbs.rowDiscard(t) }, true)}
       </div>
     </Sheet>

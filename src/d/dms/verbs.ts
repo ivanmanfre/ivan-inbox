@@ -14,6 +14,7 @@ import { dismissCameBack, undismissCameBack } from '../../wb/dms/cameBackData'
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
 import { useAsks } from './asks'
+import { canMarkSolved, writeSolved } from './solved'
 
 export type Edits = { main: string; email: string | null; companion: string | null }
 
@@ -22,9 +23,14 @@ export type VerbCtx = {
   refresh: () => void
   /** Optimistic: show these rows changed until the next read lands. */
   patch: (ids: string[], p: Partial<InboxMessage>) => void
+  /** Show a solve (or its undo) at once on every reader of the frame's inbox. */
+  solved?: (pid: string, at: string | null) => void
 }
 
-const errText = (e: unknown) => (e instanceof Error ? e.message : String(e))
+// supabase-js hands back a plain PostgrestError object ({message, code}), not an Error: read its
+// message, or a failed write would say "[object Object]".
+const errText = (e: unknown) => (e instanceof Error ? e.message
+  : e && typeof e === 'object' && typeof (e as { message?: unknown }).message === 'string' ? (e as { message: string }).message : String(e))
 const first = (t: Thread) => t.prospect_name.split(' ')[0] || t.prospect_name
 
 export function legName(m: InboxMessage): string {
@@ -105,6 +111,49 @@ export function useDmVerbs(ctx: VerbCtx) {
         action: { label: 'Undo', verb: 'undo', run: () => { void undoDiscard(gone) } },
       })
       return null
+    }
+
+    /** Mark as solved: no answer needed. solved_at on the prospect; any pending legs discarded (plain)
+     *  first; the reply flag lowered when a draft exists or it is raised. Undo puts all of it back. */
+    async function solved(t: Thread): Promise<string | null> {
+      if (!canMarkSolved(t)) return null
+      const legs = draftLegs(t)
+      let gone: InboxMessage[] = []
+      if (legs.length) {
+        let failed
+        try { failed = await discardLegs(legs, null) } catch (e) { const m = errText(e); fail(`Not marked: ${m}`); return m }
+        gone = legs.filter(l => !failed.some(f => f.leg.id === l.id))
+        if (!gone.length) { const m = failed.map(legFailureText).join(' '); fail(m); return m }
+        ctx.patch(gone.map(l => l.id), { send_blocked_reason: 'discarded_in_inbox', send_blocked_at: new Date().toISOString(), discard_mode: null })
+        if (failed.length) fail(failed.map(legFailureText).join(' '))
+      }
+      const prevAt = t.solvedAt ?? null
+      const lower = legs.length > 0 || t.needsManualReply
+      const at = new Date().toISOString()
+      try { await writeSolved(t.prospect_id, lower ? { solved_at: at, needs_manual_reply: false } : { solved_at: at }) } catch (e) {
+        const m = errText(e)
+        fail(gone.length ? `The draft is discarded, but the solve was not saved: ${m}` : `Not marked: ${m}`)
+        ctx.refresh()
+        return m
+      }
+      ctx.solved?.(t.prospect_id, at)
+      ctx.refresh()
+      toast.show({
+        message: `Marked ${t.prospect_name} as solved.`,
+        sub: `It comes back if ${first(t)} writes again.${gone.length ? ' The draft stays under Thrown away for 3 days.' : ''}`,
+        action: { label: 'Undo', verb: 'undo', run: () => { void undoSolved(t.prospect_id, gone, prevAt, lower && t.needsManualReply) } },
+      })
+      return null
+    }
+
+    async function undoSolved(pid: string, legs: InboxMessage[], prevAt: string | null, raiseFlag: boolean) {
+      try {
+        for (const l of legs) await restoreDraft(l.id)
+        if (legs.length) ctx.patch(legs.map(l => l.id), { send_blocked_reason: null, send_blocked_at: null, discard_mode: null })
+        await writeSolved(pid, raiseFlag ? { solved_at: prevAt, needs_manual_reply: true } : { solved_at: prevAt })
+        ctx.solved?.(pid, prevAt)
+      } catch (e) { fail(`Could not undo: ${errText(e)}`) }
+      ctx.refresh()
     }
 
     async function undoDiscard(legs: InboxMessage[]) {
@@ -265,7 +314,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       await bulkDiscard(stale, '', { title: `Discard ${stale.length} stale draft${stale.length === 1 ? '' : 's'}?`, message: 'These threads already have your own reply after the last inbound message. Nothing is sent.', confirmText: 'Discard stale' })
     }
 
-    return { rowDiscard, discardStale, send, discard, later, bringBackNow, saveEdit, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, askOwner, bulkDiscard, isFollowUp }
+    return { rowDiscard, discardStale, send, discard, solved, later, bringBackNow, saveEdit, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, askOwner, bulkDiscard, isFollowUp }
   }, [ctx, confirm, toast, askDiscard, askDate])
 }
 

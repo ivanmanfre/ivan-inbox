@@ -1,0 +1,15 @@
+/* D · DMs 3: foldable sections, Show all, folder dots, the email line in a thread. Same tokens as dms.css. */
+.dm-sec-fold{width:100%;text-align:left;cursor:pointer;border-top:1px solid var(--line)}
+.dm-sec-fold:hover,.dm-sec-fold:focus-visible{color:var(--t2)}
+.dm-secwrap[data-open="false"] .dm-sec-fold{padding-bottom:9px}
+.dm-chev{display:inline-block;width:12px;color:var(--t3)}
+.dm-showall{color:var(--t2)}.dm-showall:hover{color:var(--t1)}
+.dm-fd .dm-fdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--lime);flex:none}
+.dm-h-addr{display:block;font:400 11.5px var(--m);color:var(--t3);margin:0 0 3px;word-break:break-all}
+.dm-h-email{border-left:2px solid var(--line2);padding-left:8px}
+.dm-keys .dm-key-solved{flex-grow:1.6}
+.dm-sec-fold>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+/* Phone, five keys: every key the same room, a hair smaller, so Discard never clips. */
+.dm-pane-phone .dm-keys:has(.dm-key-solved){gap:6px}
+.dm-pane-phone .dm-keys:has(.dm-key-solved) .d-key{flex:1 1 0}
+.dm-pane-phone .dm-keys:has(.dm-key-solved) .d-face{font-size:14px;padding:0 2px}
