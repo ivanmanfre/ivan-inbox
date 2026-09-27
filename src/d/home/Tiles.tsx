@@ -88,7 +88,7 @@ export function Limit({ seat, h }: P) {
   return (
     <Tile id="limit" seat={seat} href={dHash('lanes', null, { sheet: 'control', for: seat })} label="Rate limit" r={r} retry={h.retry.lanes}
       big={v => (
-        <span className={`hm-word${v.limited ? ' hm-w' : ''}`}>{v.limited ? 'Limited' : 'Clear'}{v.limited && v.resumes && <small> · resumes {when(v.resumes, h.now)}</small>}</span>
+        <span className={`hm-word${v.limited ? ' hm-w' : ''}`}>{v.limited ? 'Limited' : 'Clear'}{v.limited && v.resumes && <small><span className="hm-dot"> · </span>resumes {when(v.resumes, h.now)}</small>}</span>
       )}>
       {'v' in r && r.v.lastTry && <span className={`hm-sub${r.v.refused ? ' hm-wt' : ''}`}>last try {when(r.v.lastTry, h.now)}</span>}
     </Tile>
