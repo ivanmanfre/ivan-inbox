@@ -21,10 +21,11 @@ function channels(t: Thread): string {
   return fams.length ? fams.map(f => name[f]).join(' + ') : 'LinkedIn'
 }
 
-export function ThreadHead({ t, phone, onBack, onCopy, copied, onAsk, onMore, moreOpen, onWho, onDelete, deleting }: {
+export function ThreadHead({ t, phone, onBack, onCopy, copied, onAsk, onMore, moreOpen, onWho, onDelete, deleting, onSpam }: {
   t: Thread; phone: boolean; onBack: () => void; onCopy: () => void; copied: boolean; onAsk: () => void; onMore: () => void; moreOpen: boolean
   /** The name opens Context, as today's name tap does. */ onWho?: () => void
   /** Delete from seat, a visible red key as today's thread bar (not only under ⋯). */ onDelete?: () => void; deleting?: boolean
+  /** Spam, visible on client seats as today's thread bar. */ onSpam?: () => void
 }) {
   const seat = seatOf(t.client_id)
   const lane = laneChip(t)
@@ -48,7 +49,6 @@ export function ThreadHead({ t, phone, onBack, onCopy, copied, onAsk, onMore, mo
         </button>
         {!phone && <button type="button" className="dm-ib" aria-label={`Ask Claude about ${t.prospect_name}`} title={`Ask Claude about ${t.prospect_name.split(' ')[0]} (⌘J)`} data-verb="ask-claude" onClick={onAsk}><DIcon name="claude" /></button>}
         {!phone && <button type="button" className="dm-ib" aria-label="Close the conversation" data-verb="close" onClick={onBack}><DIcon name="x" /></button>}
-        {onDelete && <button type="button" className="dm-del" data-verb="delete-seat" disabled={deleting} title="Delete from the seat on LinkedIn (asks first)" onClick={onDelete}>Delete</button>}
         <button type="button" className={`dm-ib${moreOpen ? ' dm-on' : ''}`} aria-label="More for this conversation" aria-expanded={moreOpen} data-verb="more" onClick={onMore}><DIcon name="more" /></button>
       </div>
       <div className="dm-chips">
@@ -61,6 +61,10 @@ export function ThreadHead({ t, phone, onBack, onCopy, copied, onAsk, onMore, mo
             <span key={s.id}>{i > 0 && ' › '}{s.state === 'current' || s.state === 'failed' ? <b className={s.state === 'failed' ? 'dm-failed' : undefined}>{s.label}{s.state === 'failed' ? ' (send failed)' : ''}</b> : s.label}</span>
           ))}</span>
           : <span className="dm-lad">stage <b>{label(lad.stage) || 'none'}</b></span>}
+        {(onSpam || onDelete) && <span className="dm-filing">
+  {onSpam && !phone && <button type="button" className="dm-del dm-spam" data-verb="spam" disabled={deleting} title="File as likely spam (asks first)" onClick={onSpam}>Spam</button>}
+  {onDelete && <button type="button" className="dm-del" data-verb="delete-seat" disabled={deleting} title="Delete from the seat on LinkedIn (asks first)" onClick={onDelete}>Delete</button>}
+        </span>}
       </div>
       {rl && <div className="dm-route">{rl}</div>}
     </div>

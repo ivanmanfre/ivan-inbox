@@ -39,6 +39,8 @@
 .dm-bub{display:block}.dm-bub+.dm-bub{margin-top:4px}.dm-bub br{display:none}
 button.dm-who{background:none;border:0;padding:0;text-align:left;color:inherit;cursor:pointer;display:block}
 button.dm-who:hover b{text-decoration:underline;text-underline-offset:3px}
-.dm-del{height:34px;border-radius:var(--r1);border:1px solid rgba(255,69,58,.5);background:transparent;color:var(--critT);font:600 13px var(--f);padding:0 10px;flex:none}
+.dm-del{height:26px;border-radius:var(--r1);border:1px solid rgba(255,69,58,.5);background:transparent;color:var(--critT);font:600 13px var(--f);padding:0 10px;flex:none}
 .dm-del:hover{background:rgba(255,69,58,.1)}.dm-del:disabled{opacity:.5}
 .dm-guid{text-transform:none;letter-spacing:0;font:400 12.5px/1.45 var(--f);color:var(--t2)}.dm-guid b{color:var(--t1)}
+.dm-spam{color:var(--warn);border-color:rgba(232,160,143,.45)}
+.dm-chips>.dm-filing{margin-left:auto;display:flex;gap:6px;border:0;padding:0}.dm-filing .dm-del{font-size:12.5px;padding:0 9px}
