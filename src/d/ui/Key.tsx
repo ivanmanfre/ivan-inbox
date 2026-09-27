@@ -6,6 +6,8 @@ import type { ComponentPropsWithRef, ReactNode } from 'react'
 type Props = Omit<ComponentPropsWithRef<'button'>, 'children'> & {
   children: ReactNode
   primary?: boolean
+  /** Red face: the confirm key of an irreversible action (delete, spam, discard, stop contact). */
+  danger?: boolean
   /** Small second line under the label (e.g. the key's shortcut, "hold"). */
   sub?: ReactNode
   /** data-verb, e.g. 'approve', 'send', 'clear-all', 'undo', 'reconnect'. */
@@ -14,8 +16,8 @@ type Props = Omit<ComponentPropsWithRef<'button'>, 'children'> & {
   size?: 'plain' | 'wide' | 'small'
 }
 
-export function Key({ children, primary, sub, verb, size, className, type = 'button', ...rest }: Props) {
-  const cls = ['d-key', primary ? 'd-key-p' : '', size === 'wide' || (primary && size !== 'plain' && size !== 'small') ? 'd-key-w' : '', size === 'small' ? 'd-key-s' : '', className ?? '']
+export function Key({ children, primary, danger, sub, verb, size, className, type = 'button', ...rest }: Props) {
+  const cls = ['d-key', primary ? 'd-key-p' : '', danger ? 'd-key-d' : '', size === 'wide' || (primary && size !== 'plain' && size !== 'small') ? 'd-key-w' : '', size === 'small' ? 'd-key-s' : '', className ?? '']
     .filter(Boolean).join(' ')
   return (
     <button type={type} className={cls} data-verb={verb} {...rest}>
@@ -26,9 +28,9 @@ export function Key({ children, primary, sub, verb, size, className, type = 'but
 }
 
 /** A small flat button (the mocks' `.btn`): Clear all, Undo, Acknowledge, Dismiss. */
-export function Btn({ children, primary, verb, className, type = 'button', ...rest }: Omit<Props, 'sub' | 'size'>) {
+export function Btn({ children, primary, danger, verb, className, type = 'button', ...rest }: Omit<Props, 'sub' | 'size'>) {
   return (
-    <button type={type} className={`d-btn${primary ? ' d-btn-p' : ''}${className ? ' ' + className : ''}`} data-verb={verb} {...rest}>
+    <button type={type} className={`d-btn${primary ? ' d-btn-p' : ''}${danger ? ' d-btn-d' : ''}${className ? ' ' + className : ''}`} data-verb={verb} {...rest}>
       {children}
     </button>
   )
