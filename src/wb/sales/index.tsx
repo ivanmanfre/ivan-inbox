@@ -41,7 +41,7 @@ import { callStats, fetchCalls, type CallRow } from '../../lib/transcripts'
 import { MEETING_TYPE_LABEL, resolveMeetingType } from '../../lib/nextCall'
 import { CallLog } from './CallLog'
 import { docHref, DOC_LABEL, type PackDoc } from './Doc'
-import { callPhase, dayKey, describeTimes, groupEvents, matchPack, norm, packsInWindow, weekWindow } from './match'
+import { callPhase, dayKey, describeTimes, groupEvents, matchPack, packsInWindow, reportIdFor, weekWindow } from './match'
 import {
   SALES_FIELDS, readTokens, salesRowMatches, writeTokens,
   type FilterToken,
@@ -79,32 +79,6 @@ type GroupKey = keyof typeof GROUP_LABEL
 // ---------------------------------------------------------------------------
 // The past-call report (D8)
 // ---------------------------------------------------------------------------
-
-/**
- * `call_reports` carries no `calendar_event_id`, so the link from a past call to
- * its report is inferred, and deliberately narrowly: the transcript has to be
- * from the same WARSAW day AND share a word with the event. Either condition on
- * its own would attach the wrong report on any day that held two calls.
- */
-function reportIdFor(event: WeekEvent, slug: string | null, calls: CallRow[]): string | null {
-  const day = dayKey(event.start_time)
-  const sameDay = calls.filter(c => c.date && dayKey(c.date) === day)
-  if (sameDay.length === 0) return null
-  const words = new Set<string>()
-  for (const a of event.attendees ?? []) {
-    const local = norm(a.split('@')[0] ?? '')
-    if (local.length >= 4) words.add(local)
-  }
-  for (const w of `${event.title ?? ''} ${slug ?? ''}`.split(/[^A-Za-z0-9]+/)) {
-    const t = norm(w)
-    if (t.length >= 4) words.add(t)
-  }
-  const hit = sameDay.find(c => {
-    const t = norm(c.title ?? '')
-    return [...words].some(w => t.includes(w))
-  })
-  return hit?.id ?? null
-}
 
 /* ===========================================================================
    E3 · THE ONE VERB THIS ROW NEEDS (isaiahbjork/leads-data-table).
