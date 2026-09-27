@@ -21,6 +21,7 @@ import { Failed, Offline } from '../ui/states'
 import { useOnline } from '../ui/useOnline'
 import { CampaignsCell, DeliveryCell, InboundCell, type BandCtx } from './bandCells'
 import { CampaignSheet } from './CampaignSheet'
+import { RangeSheet } from './LedgerSheet'
 import { ControlSheet } from './ControlSheet'
 import { monitorLiveness } from '../../lib/campaignControl'
 import { answerOf, hm, RANGES, type Range } from './model'
@@ -90,6 +91,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
     {sheet === 'campaign' && !camp && data.perf.value && (
       <Sheet open onClose={close} title="Campaign not found" sub="This campaign is archived or no longer in the list." className="dl-sheet"><p className="dl-sl">Nothing to show.</p></Sheet>
     )}
+    {sheet === 'range' && <RangeSheet from={q.get('from')} to={q.get('to')} setRange={(from, to) => go({ from, to })} onClose={() => go({ sheet: null, from: null, to: null })} />}
     {sheet === 'control' && <ControlSheet seat={forSeat ?? cols[0]} p={data.cc.value} gov={data.gov.value?.find(x => x.client_id === (forSeat ?? cols[0])) ?? null}
       pauses={data.pauses.value} pausesFailed={data.pauses.failed} now={now} onClose={close} />}
     {sheet && (SHEETS as string[]).includes(sheet) && <LanesSheet kind={sheet as SheetKind} seat={forSeat} p={data.cc.value} range={range} onClose={close} />}
@@ -111,7 +113,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
         <GlancePhone seats={cols} g={g} />
         <div className="gl-ptasks"><div className="gl-phead">Your tasks<small>open, soonest first</small></div><GlanceTasks /></div>
         <Phone seats={cols} ctx={ctx} seat={(cols as string[]).includes(q.get('seat') ?? '') ? (q.get('seat') as Seat) : cols[0]}
-          pick={s => go({ seat: s })} range={range} setRange={setRange} doors={doors} monitor={monitorLine(data, now)} />
+          pick={s => go({ seat: s })} range={range} setRange={setRange} onCustom={() => go({ sheet: 'range', c: null })} doors={doors} monitor={monitorLine(data, now)} />
         {sheets}
       </>
     )
@@ -133,7 +135,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
         {band('Today', 'Warsaw day', s => <TodayCell seat={s} ctx={ctx} />, '', 'today')}
         {band('Control', 'live monitor', s => <ControlCell seat={s} ctx={ctx} />, '', 'control')}
         {band('Campaigns', 'last 7 days', s => <CampaignsCell seat={s} ctx={ctx} />)}
-        {band('14 days', <>own scale per seat<RangeKeys range={range} setRange={setRange} /></>, s => <DeliveryCell seat={s} ctx={ctx} />)}
+        {band('14 days', <>own scale per seat<RangeKeys range={range} setRange={setRange} onCustom={() => go({ sheet: 'range', c: null })} /></>, s => <DeliveryCell seat={s} ctx={ctx} />)}
         {band('Inbound', 'decided without you', s => <InboundCell seat={s} ctx={ctx} />)}
       </div>
       <div className="dl-foot">

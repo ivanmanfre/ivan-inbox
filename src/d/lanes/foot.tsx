@@ -12,10 +12,11 @@ export function monitorLine(d: LanesData, now: number): string {
   return `Monitor ${word} · as of ${hm(p.as_of)} Warsaw · last tick ${ago(p.monitor.last_tick_at, now)} · invites, DMs and InMail are counted apart and never added`
 }
 
-export function RangeKeys({ range, setRange }: { range: Range; setRange: (r: Range) => void }) {
+export function RangeKeys({ range, setRange, onCustom }: { range: Range; setRange: (r: Range) => void; onCustom?: () => void }) {
   return (
     <div className="dl-rk" role="group" aria-label="Window for the totals">
       {RANGES.map(r => <button key={r} type="button" className={`dl-rkey${r === range ? ' dl-on' : ''}`} aria-pressed={r === range} data-range={r} onClick={() => setRange(r)}>{r}</button>)}
+      {onCustom && <button type="button" className="dl-rkey" data-range="custom" onClick={onCustom}>Custom</button>}
     </div>
   )
 }

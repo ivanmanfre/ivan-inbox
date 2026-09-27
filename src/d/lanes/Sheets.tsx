@@ -3,11 +3,11 @@
    drawn in the mock; the Inbound band's "Each decision" opens it). Read-only. */
 import { type CcPayload } from '../../lib/campaignControl'
 import { fetchInboundDecisions, INBOUND_LABEL, type InboundDecision } from '../../lib/inbound'
-import { buildLedger, fetchDayLedger } from '../../lib/kpis'
 import { fetchSendLog, fetchSendLogTotals } from '../../lib/sends'
 import { SEATS, SEAT_NAME, seatOf, type Seat } from '../seats'
 import { Sheet } from '../ui/Sheet'
 import { LoadLine, Shs } from './CampaignSheet'
+import { LedgerSheet } from './LedgerSheet'
 import { useRead } from './useRead'
 import { fetchBlocked } from './reads'
 import { dm, hm, type Range } from './model'
@@ -17,7 +17,7 @@ export type SheetKind = 'decisions' | 'log' | 'ledger' | 'delivery' | 'problems'
 
 export function LanesSheet({ kind, seat, p, range, onClose }: { kind: SheetKind; seat: Seat | null; p: CcPayload | null; range: Range; onClose: () => void }) {
   if (kind === 'log') return <LogSheet onClose={onClose} />
-  if (kind === 'ledger') return <LedgerSheet onClose={onClose} />
+  if (kind === 'ledger') return <LedgerSheet p={p} range={range} onClose={onClose} />
   if (kind === 'decisions') return <DecisionsSheet seat={seat ?? 'ivan'} onClose={onClose} />
   if (kind === 'delivery') {
     const rows = p ? p.ranges.rows.filter(r => r.interval === range && r.source_lane !== '__all__' && r.sent) : []
@@ -72,27 +72,6 @@ function LogSheet({ onClose }: { onClose: () => void }) {
         <Shs tail={sent.length}>Sent, newest</Shs>
         {sent.map(m => <div className="dl-lg" key={m.id}><time>{dm(m.event_at)} {hm(m.event_at)}</time><span className="dl-k">{kind(m)}</span><p><span className="dl-nm">{m.prospect_name}</span> · {!m.message_text || /^\(blank invite/.test(m.message_text) ? 'no note' : m.message_text.replace(/\s+/g, ' ')}</p><span className="dl-s">{SEAT_NAME[seatOf(m.client_id) ?? 'ivan']}</span></div>)}
       </>}</LoadLine>
-    </Sheet>
-  )
-}
-
-function LedgerSheet({ onClose }: { onClose: () => void }) {
-  const rows = useRead(fetchDayLedger, 'ledger')
-  return (
-    <Sheet open onClose={onClose} className="dl-sheet" title="Daily ledger"
-      sub="Last 7 days per seat. Cap = the seat's counter, spent before LinkedIn answers; when it runs ahead of invites, those slots went to refused sends.">
-      <LoadLine l={rows} what="the daily ledger">{data => data.length === 0 ? <p className="dl-sl">The daily ledger has no rows.</p> : <>{SEATS.map(s => (
-        <div key={s}>
-          <Shs>{SEAT_NAME[s]}</Shs>
-          <table className="dl-steps"><thead><tr><th>Day</th><th>Invites</th><th>Accepted</th><th>DMs</th><th>InMail</th><th>Cap</th></tr></thead><tbody>
-            {buildLedger(data, s, 7).map((r, i) => (
-              <tr key={r.day}><td>{i === 0 ? 'Today' : new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${r.day}T12:00:00Z`))}</td>
-                <td className="dl-m">{r.invites}</td><td className="dl-m">{r.accepted}</td><td className="dl-m">{r.dms}</td><td className="dl-m">{r.inmails}</td>
-                <td className="dl-m">{r.cap_used == null ? '—' : `${r.cap_used}/${r.cap_limit}`}</td></tr>
-            ))}
-          </tbody></table>
-        </div>
-      ))}</>}</LoadLine>
     </Sheet>
   )
 }

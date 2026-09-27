@@ -14,9 +14,9 @@ function Sec({ children, tail }: { children: ReactNode; tail?: ReactNode }) {
   return <div className="dl-psec"><span>{children}</span>{tail}</div>
 }
 
-export function Phone({ seats, seat, pick, ctx, range, setRange, doors, monitor }: {
+export function Phone({ seats, seat, pick, ctx, range, setRange, onCustom, doors, monitor }: {
   seats: Seat[]; seat: Seat; pick: (s: Seat) => void; ctx: BandCtx
-  range: Range; setRange: (r: Range) => void; doors: ReactNode; monitor: string
+  range: Range; setRange: (r: Range) => void; onCustom?: () => void; doors: ReactNode; monitor: string
 }) {
   const p = ctx.d.cc.value
   const next = seats[(seats.indexOf(seat) + 1) % seats.length]
@@ -47,7 +47,7 @@ export function Phone({ seats, seat, pick, ctx, range, setRange, doors, monitor 
       <div data-band="control" data-seat={seat}><ControlCell seat={seat} ctx={ctx} /></div>
       <Sec tail={<span>{ctx.d.perf.value ? ctx.d.perf.value.filter(c => c.client_id === seat && isWorking(c)).length : ''}</span>}>Campaigns, last 7 days</Sec>
       <CampaignsCell seat={seat} ctx={ctx} />
-      <Sec tail={<RangeKeys range={range} setRange={setRange} />}>14 days, own scale</Sec>
+      <Sec tail={<RangeKeys range={range} setRange={setRange} onCustom={onCustom} />}>14 days, own scale</Sec>
       <DeliveryCell seat={seat} ctx={ctx} />
       <Sec>Inbound, decided without you</Sec>
       <InboundCell seat={seat} ctx={ctx} />
