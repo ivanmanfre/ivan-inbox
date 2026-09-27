@@ -10,6 +10,8 @@ import { CardContext, tapeLabel } from './CardContext'
 import { ArchWhy } from './ArchWhy'
 import { More } from './More'
 import { kindTitle, SEAT_PERSON } from './model'
+import { formatBookingForSlack } from '../../wb/ops/slackFormat.js'
+import { renderMrkdwn } from '../../wb/ops/slackPreview'
 
 // THE OPEN CARD. One design for every kind: a mono head line, the context
 // (left on desktop), the draft box, the note, and at most four hardware keys
@@ -58,6 +60,11 @@ export function OpsCard({ d, refresh, feed, held, onGateResult, layout, pos, wai
   const confirm = useCardConfirm()
   const st = usePendingCard({ draft: d, refresh, feed, held, onGateResult, confirm })
   const [more, setMore] = useState(false)
+  // Booking cards read as the Slack message they become (Ivan 2026-09-27: "I want
+  // to see it formatted"). Tap the message to edit the text; leave the box and
+  // it reads formatted again. Same formatter the Slack sender runs.
+  const [editing, setEditing] = useState(false)
+  const formatted = d.kind === 'booking' && !editing
   const seat = seatOf(d.client_id)
   const laneName = seat ? SEAT_NAME[seat] : d.client_id
   const left = st.left
@@ -82,11 +89,21 @@ export function OpsCard({ d, refresh, feed, held, onGateResult, layout, pos, wai
         <div className="op-rep">
           <label className="op-tape">
             <span className="op-tm"><span>{tapeLabel(d)}</span></span>
+            {formatted ? (
+              <div
+                className="op-slack" role="button" tabIndex={0} title="Tap to edit the text"
+                onClick={e => { if (!(e.target as HTMLElement).closest('a') && !off) setEditing(true) }}
+                onKeyDown={e => { if (e.key === 'Enter' && !off) setEditing(true) }}
+              >{renderMrkdwn(formatBookingForSlack(st.body, d.context))}</div>
+            ) : (
             <textarea
               value={st.body} rows={3} disabled={off} title={st.editorNote || undefined}
+              autoFocus={d.kind === 'booking'}
+              onBlur={d.kind === 'booking' ? () => setEditing(false) : undefined}
               onChange={e => st.setBody(e.target.value)}
               placeholder={st.canDraft && !(st.isArchComment && st.archOut && st.archOut !== 'DRAFT') ? 'Write his reply, or press Draft it.' : 'Empty.'}
             />
+            )}
           </label>
           {st.canTag && !st.isCloseOnly && st.tag && st.tagMayFail && <div className="op-note op-warn" data-tag-warn>@ tags {st.commenterName}: may not stick, hidden surname.</div>}
           {st.heldVerdict && <div className="op-ban op-ban-warn"><b>{GATE_HELD_LABEL}</b> {st.heldVerdict.message}</div>}

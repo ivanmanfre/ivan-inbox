@@ -61,6 +61,10 @@
 .op-tm{display:flex;justify-content:space-between;gap:10px;font:400 11px var(--m);color:var(--t3);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase}
 .op-tape textarea{display:block;width:100%;min-height:66px;max-height:55vh;field-sizing:content;resize:vertical;background:transparent;border:0;outline:0;color:var(--t1);font:400 14px/1.5 var(--f);padding:0}
 .op-tape textarea::placeholder{color:var(--t3)}
+/* Booking: the message as Slack posts it; tap to edit (Card.tsx). */
+.op-slack{color:var(--t1);font:400 14px/1.5 var(--f);cursor:text;overflow-wrap:anywhere}
+.op-slack strong{font-weight:700}
+.op-slack a{color:var(--lime);text-decoration:underline;text-underline-offset:3px}
 .op-note{font:400 12px/1.45 var(--m);color:var(--t3)}
 .op-ban{border:1px solid var(--line2);border-radius:var(--r1);padding:7px 10px;font-size:13px;color:var(--t2);background:var(--p2)}
 .op-ban-warn{border-color:rgba(232,160,143,.45);color:var(--t1)}
