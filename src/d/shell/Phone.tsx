@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { dmNumbers, contentNumbers, seatFailed, useFrameCounts } from '../counts/useFrameCounts'
+import { dmNumbers, contentNumbers, opsNumbers, seatFailed, useFrameCounts } from '../counts/useFrameCounts'
 import { PLACES, PLACE_ORDER } from '../places'
 import { dHash } from '../route'
 import { ClaudeKeyDot } from '../claude/Island'
@@ -10,7 +10,7 @@ import { warsawDm, warsawDow, warsawHm } from '../ui/time'
 import { BellButton } from './Bell'
 import { useFrame } from './frame'
 import { useNavModel } from './navModel'
-import { Brand, MeFooter, NavLineView } from './Side'
+import { Brand, MeFooter, NavLineView, WorkflowsKey } from './Side'
 
 // The phone frame (D pshell.js): top bar (panel key, place + Warsaw time,
 // bell), the dock (five places + the lime Claude key), and the left panel as a
@@ -37,7 +37,14 @@ export function PhoneTop({ onPanel, setToolsSlot }: { onPanel: () => void; setTo
 export function Dock() {
   const f = useFrame()
   const c = useFrameCounts()
-  const trio = { dms: { n: dmNumbers(c, 'drafts'), failed: seatFailed(c.dms) }, content: { n: contentNumbers(c), failed: seatFailed(c.content) } }
+  // Today's bar carried DMs, Content, Ops and Sales numbers; D keeps one per seat (never a total).
+  const opsF = { ivan: c.ops.failed, risedtc: c.ops.failed, arch: c.ops.failed }
+  const trio: Partial<Record<string, { n: ReturnType<typeof dmNumbers>; failed: ReturnType<typeof seatFailed> }>> = {
+    dms: { n: dmNumbers(c, 'needs'), failed: seatFailed(c.dms) },
+    content: { n: contentNumbers(c), failed: seatFailed(c.content) },
+    ops: { n: opsNumbers(c), failed: opsF },
+  }
+  const calls = c.calls.value
   return (
     <>
       <div className="d-fade" aria-hidden="true" />
@@ -45,7 +52,12 @@ export function Dock() {
         {PLACE_ORDER.filter(id => PLACES[id].dock).map(id => (
           <a key={id} href={dHash(id)} className={`d-dk${f.route.place === id ? ' d-on' : ''}`} aria-current={f.route.place === id ? 'page' : undefined}>
             <b>{PLACES[id].label}</b>
-            {(id === 'dms' || id === 'content') && <SeatTrio numbers={trio[id].n} failed={trio[id].failed} />}
+            {trio[id] && <SeatTrio numbers={trio[id]!.n} failed={trio[id]!.failed} />}
+            {id === 'sales' && (
+              <u className="d-trio" aria-label={calls == null ? (c.calls.failed ? 'calls today could not be read' : 'reading calls today') : `${calls} calls today not started`}>
+                <i className={calls == null ? (c.calls.failed ? 'd-unk' : 'd-wait') : calls > 0 ? 'd-hot' : ''}>{calls == null ? (c.calls.failed ? '?' : '…') : calls}</i>
+              </u>
+            )}
           </a>
         ))}
         <button type="button" className={`d-ck${f.claudeOpen ? ' d-on' : ''}`} aria-label={f.claudeOpen ? 'Close Claude' : 'Ask Claude'} aria-pressed={f.claudeOpen}
@@ -85,7 +97,7 @@ export function PhonePanel({ onClose }: { onClose: () => void }) {
         </nav>
         <nav className="d-nav d-low">
           <button type="button" onClick={() => { onClose(); f.setBellOpen(true) }}><DIcon name="bell" /><span>Alerts</span></button>
-          <button type="button" onClick={() => { onClose(); f.setBellOpen(true) }}><DIcon name="workflows" /><span>Workflows</span></button>
+          <WorkflowsKey onOpen={onClose} />
           <div className="d-navi">
             <a href={dHash('settings')} onClick={go} className={f.route.place === 'settings' ? 'd-on' : undefined}>
               <DIcon name="settings" /><span>Settings</span><em>Money is in here</em>

@@ -83,9 +83,56 @@ export function toDHash(hash: string): string | null {
   const query = m[3] ?? ''
   // `#exp/v2/inbox/chat` and `#exp/v2/ask` mean "Claude over this job".
   if (m[2] === 'chat' || seg === 'chat' || seg === 'ask') return dHash('claude', null, query)
+  const q = new URLSearchParams(query)
+  // The keep-today marker is ours, never a page's key.
+  q.delete(TODAY_APP_KEY)
+  // Content's historical Sources shortcut is the Strategy reader (today's route.ts sectionJob).
+  if (['content', 'strategy', ''].includes(seg) && (q.get('sources') === '1' || q.get('section') === 'sources')) {
+    q.delete('sources'); q.delete('section')
+    return dHash('content', 'strategy', q)
+  }
+  // `?warm=1|<uuid>` (the WhatsApp line) is a DMs card whatever job the link named.
+  if (q.get('warm') && ['', 'home', 'today', 'sends', 'inbox', 'drafts'].includes(seg)) return dHash('dms', null, q)
   // `?section=<job>` was the old dashboard's spelling of the job.
-  const hit = placeFor(seg || new URLSearchParams(query).get('section') || '')
-  return dHash(hit.place, hit.sub ?? null, query)
+  const hit = placeFor(seg || q.get('section') || '')
+  return dHash(hit.place, hit.sub ?? null, q)
+}
+
+/**
+ * The query key that says "open TODAY'S app here, on purpose" (a "Today's X"
+ * link from inside D, e.g. Orbit). Without it, an old-app address is a push, a
+ * shortcut or a bookmark, and it lands in D.
+ */
+export const TODAY_APP_KEY = 'app'
+const TODAY_APP_VALUE = 'today'
+
+/** An old-app address that must open today's app, because it asks to. */
+export function todayAppHash(hash: string): string {
+  const [path, query = ''] = hash.split('?')
+  const q = new URLSearchParams(query)
+  q.set(TODAY_APP_KEY, TODAY_APP_VALUE)
+  return `${path}?${q.toString()}`
+}
+
+/**
+ * THE COLD-START LANDING. Every address today's writers still produce
+ * (`./#exp/brain-b/ask?thread=&turn=` from inbox-turn-run, `./#exp/brain-b/ops|
+ * content|sends|today` from the notify registry and n8n, the manifest's Sales /
+ * Orbit / Claude shortcuts, `?feed=1`, `?warm=`, `#claude/voice`) lands in D on a
+ * build where D is the app, and never pins the tab to the old app. Returns the
+ * D hash to replace the address with, or null to leave it alone:
+ *   - a D hash, `#doc?`, `#exp/stock`, `#exp/off`, a Supabase `#access_token`;
+ *   - the bare `#exp/brain-b` (typed on purpose) and any old address carrying
+ *     `app=today` (a "Today's X" link from inside D).
+ */
+export function dLandingHash(hash: string): string | null {
+  if (/^#claude\/voice\b/.test(hash)) return toDHash(hash)
+  const m = hash.match(/^#exp\/(?:v2c?|brain-[abc])(?=[/?#]|$)(.*)$/)
+  if (!m) return null
+  if (m[1] === '' || m[1] === '/') return null
+  const q = new URLSearchParams(hash.split('?')[1] ?? '')
+  if (q.get(TODAY_APP_KEY) === TODAY_APP_VALUE) return null
+  return toDHash(hash)
 }
 
 /** Only for another shell's route: does this hash leave D? (Used by links that must reload.) */
@@ -105,6 +152,8 @@ const isD = (h: string) => /^#exp\/d(?:[/?]|$)/.test(h)
 /** The hash D should be on for whatever the address bar says now. */
 export function canonicalHash(h: string): string {
   if (isD(h)) return h
+  // A sign-in redirect's token: the auth client reads it, D never rewrites it.
+  if (/^#(?:access_token|error)=/.test(h)) return h
   return toDHash(h) ?? dHash(HOME)
 }
 

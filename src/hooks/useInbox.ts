@@ -12,11 +12,19 @@ import { readInboxCache, writeInboxCache } from '../lib/inboxCache'
 // A caller-initiated refresh() (pull-to-refresh, a retry tap) is never delayed.
 const COALESCE_MS = 1500
 
-export function useInbox() {
+/**
+ * `enabled` false: a second caller under a provider that already runs this read
+ * (D's frame shares ONE inbox with its DMs page) mounts no read, no channel and
+ * no focus listener. Default true: every existing caller is unchanged.
+ * `seedCache`: paint the saved copy even while the live read waits (D's frame
+ * starts its read a few seconds late off the DMs page, so the page's own reads go first).
+ */
+export function useInbox(enabled = true, seedCache = enabled) {
   // N3-1: the last reconciled list, read SYNCHRONOUSLY so the first render pass
   // already has rows. Anything async here (IndexedDB, supabase.auth.getSession)
   // paints a frame late, which is the skeleton flash this exists to remove.
-  const seed = useMemo(() => readInboxCache(), [])
+  // A disabled caller never pays for parsing the saved copy.
+  const seed = useMemo(() => (seedCache ? readInboxCache() : null), []) // eslint-disable-line react-hooks/exhaustive-deps
   const [threads, setThreads] = useState<Thread[]>(seed?.cache.threads ?? [])
   // True while the ONLY thing on screen came off the device. It is not a
   // freshness claim and must never be read as one: `loadedAt` stays null until a
@@ -94,6 +102,7 @@ export function useInbox() {
 
   const pending = useRef<number | null>(null)
   useEffect(() => {
+    if (!enabled) return
     refresh()
     // Trailing-edge coalesce: while a refresh is already scheduled, further
     // events are dropped rather than queued.
@@ -110,6 +119,6 @@ export function useInbox() {
       supabase.removeChannel(ch)
       window.removeEventListener('focus', nudge)
     }
-  }, [refresh, topic])
+  }, [refresh, topic, enabled])
   return { threads, loading, error, loadedAt, fromCache, cachedAt, refresh }
 }

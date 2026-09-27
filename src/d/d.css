@@ -275,3 +275,8 @@ html.d-root,html.d-root body{background:#0A0A09}
 .d-bellp-phone .d-bellp-t b{font-size:18px}
 .d-bellp-phone .d-fn-m b{font-size:15px}.d-bellp-phone .d-fn-m small{font-size:13.5px}
 .d-psheet{position:fixed;left:0;right:0;bottom:0;top:calc(58px + env(safe-area-inset-top));background:var(--p1);border-top:1px solid var(--strong);border-radius:22px 22px 0 0;z-index:20;display:flex;flex-direction:column;overflow:hidden;padding-bottom:calc(var(--dock-h) + 20px + env(safe-area-inset-bottom))}
+
+/* Today's command layer in D (shell/Layer.tsx): the old views keep today's
+   `.wb-work` hook (bulk "select all" reads it) without its overflow clip. */
+.d-app .cn-legacy.wb-work{overflow:visible}
+.d-oldhost{display:contents}
