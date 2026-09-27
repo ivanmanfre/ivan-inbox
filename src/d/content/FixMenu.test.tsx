@@ -13,6 +13,7 @@ const detail = { id: 'd1', client_id: null, status: 'review', type: 'text', titl
 vi.mock('../../hooks/useContent', () => ({ useDraftDetail: () => ({ detail, missing: false, loading: false, error: null }) }))
 import { DraftWindow } from './DraftWindow'
 afterEach(cleanup)
+window.matchMedia ??= ((q: string) => ({ matches: false, media: q, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia
 
 describe('Fix or remove', () => {
   it('Delete draft walks to the next row in the queue', () => {
