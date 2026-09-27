@@ -7,8 +7,8 @@
    today as a partial day, and the payload's own notes. Read-only. */
 import type { ReactNode } from 'react'
 import type { CcCohort, CcPayload, CcRangeRow } from '../../lib/campaignControl'
-import { SEATS, SEAT_NAME } from '../seats'
-import { Sheet } from '../ui/Sheet'
+import { SEATS as ALL_SEATS, SEAT_NAME, type Seat } from '../seats'
+import { Sheet } from './LSheet'
 import { Shs } from './CampaignSheet'
 import { comparable, type Range } from './model'
 
@@ -25,7 +25,9 @@ export function cohortText(c: CcCohort | null | undefined, hit: 'accepted_within
   return <>{n(h)} / {n(c.matured_denominator)} <span className="dl-dimt">({c.rate_pct == null ? '—' : `${c.rate_pct}%`})</span></>
 }
 
-export function DeliverySheet({ p, pFailed = null, range, onClose }: { p: CcPayload | null; pFailed?: string | null; range: Range; onClose: () => void }) {
+/** `seats`: the seats to draw (Lanes 3 passes the chosen one); every seat when absent. */
+export function DeliverySheet({ p, pFailed = null, range, onClose, seats }: { p: CcPayload | null; pFailed?: string | null; range: Range; onClose: () => void; seats?: readonly Seat[] }) {
+  const SEATS = seats ?? ALL_SEATS
   const iv = p?.ranges.intervals.find(i => i.name === range) ?? null
   const row = (seat: string, ch: string, interval: string = range): CcRangeRow | undefined =>
     p?.ranges.rows.find(r => r.client_id === seat && r.channel === ch && r.interval === interval && r.source_lane === '__all__')
@@ -54,7 +56,7 @@ export function DeliverySheet({ p, pFailed = null, range, onClose }: { p: CcPayl
           </div> : null
         })}
         <Shs>Against the previous {iv.days} days</Shs>
-        {cmp && cmp.rows.length ? cmp.rows.map(r => (
+        {cmp && cmp.rows.some(r => (SEATS as readonly string[]).includes(r.client_id)) ? cmp.rows.filter(r => (SEATS as readonly string[]).includes(r.client_id)).map(r => (
           <p className="dl-sl dl-m" key={`${r.client_id}:${r.channel}`}>{SEAT_NAME[r.client_id as 'ivan'] ?? r.client_id} {CH[r.channel] ?? r.channel}: {r.sent_current} against {r.sent_previous} ({r.delta >= 0 ? '+' : ''}{r.delta})
             {r.delta_pp == null ? ' · no matured cohort on both sides' : ` · accept ${r.accept_rate_current_pct}% against ${r.accept_rate_previous_pct}%, ${r.delta_pp >= 0 ? '+' : ''}${r.delta_pp}pp${r.small_cohort ? ' · small cohort' : ''}`}</p>
         )) : <p className="dl-sl">No comparison for this window: a comparison needs two complete windows of equal length.</p>}

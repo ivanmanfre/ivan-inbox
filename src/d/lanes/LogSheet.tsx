@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react'
 import { fetchLeadTags, fetchSendLog, fetchSendLogTotals, sendKind, type LeadTags, type SendLogItem } from '../../lib/sends'
 import { SEATS, SEAT_NAME, seatOf, type Seat } from '../seats'
-import { Sheet } from '../ui/Sheet'
+import { Sheet, useInline } from './LSheet'
 import { LoadLine, Shs } from './CampaignSheet'
 import { ago, dayKey, dm, hm } from './model'
 import { useRead } from './useRead'
@@ -53,6 +53,7 @@ function Row({ m, tags, now }: { m: SendLogItem; tags: LeadTags | undefined; now
 }
 
 export function LogSheet({ seat, setSeat, now, onClose }: { seat: Seat | null; setSeat: (s: Seat | null) => void; now: number; onClose: () => void }) {
+  const inline = useInline()
   const who = seat ?? 'all'
   const log = useRead(() => fetchSendLog(who), `log:${who}`)
   const tot = useRead(() => fetchSendLogTotals(who), `logtot:${who}`)
@@ -76,9 +77,9 @@ export function LogSheet({ seat, setSeat, now, onClose }: { seat: Seat | null; s
   return (
     <Sheet open onClose={onClose} className="dl-sheet" title="Send log"
       sub={`Newest ${sent} of ${t ? t.sent.toLocaleString('en-US') : '?'} sent · ${failed} of ${t ? t.blocked.toLocaleString('en-US') : '?'} blocked${seat ? `, ${SEAT_NAME[seat]} only` : ', all three seats'}. Tap a row for the full text and the lead.`}>
-      <div className="dl-rk" role="group" aria-label="Seat">
+      {!inline && <div className="dl-rk" role="group" aria-label="Seat">
         {[null, ...SEATS].map(s => <button key={s ?? 'all'} type="button" className={`dl-rkey${s === seat ? ' dl-on' : ''}`} aria-pressed={s === seat} onClick={() => setSeat(s)}>{s ? SEAT_NAME[s] : 'All seats'}</button>)}
-      </div>
+      </div>}
       <p className="dl-sl dl-dimt">Invite = note attached · Invite, no note = the deliberate no-note arm · Invite, bare = the note was refused, sent bare as a fallback · Open profile = a free message to an open profile.</p>
       <LoadLine l={log} what="the send log">{() => days.length === 0 ? <p className="dl-sl">No send activity yet, a verified zero.</p> : <>{days.map(d => (
         <div key={d.key}>

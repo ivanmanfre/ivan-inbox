@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { buildLanes, fetchLaneRecent, fetchSends, fetchSendsDaily, type Lane } from '../../lib/sends'
 import { SEATS, SEAT_NAME, type Seat } from '../seats'
 import { Linkified } from '../ui/Linkified'
-import { Sheet } from '../ui/Sheet'
+import { Sheet, useInline } from './LSheet'
 import { LoadLine, Shs } from './CampaignSheet'
 import { ago } from './model'
 import { useRead } from './useRead'
@@ -47,6 +47,7 @@ function Card({ l, seat, now }: { l: Lane; seat: Seat; now: number }) {
 }
 
 export function ChannelsSheet({ seat, setSeat, now, onClose }: { seat: Seat; setSeat: (s: Seat) => void; now: number; onClose: () => void }) {
+  const inline = useInline()
   const d = useRead(async () => {
     const [rows, daily] = await Promise.all([fetchSends(), fetchSendsDaily()])
     return { rows, daily }
@@ -54,9 +55,9 @@ export function ChannelsSheet({ seat, setSeat, now, onClose }: { seat: Seat; set
   return (
     <Sheet open onClose={onClose} className="dl-sheet" title={`Channels, ${SEAT_NAME[seat]}`}
       sub="Each channel on its own rule and its own count, never added together. Confirmed sends only.">
-      <div className="dl-rk" role="group" aria-label="Seat">
+      {!inline && <div className="dl-rk" role="group" aria-label="Seat">
         {SEATS.map(s => <button key={s} type="button" className={`dl-rkey${s === seat ? ' dl-on' : ''}`} aria-pressed={s === seat} onClick={() => setSeat(s)}>{SEAT_NAME[s]}</button>)}
-      </div>
+      </div>}
       <LoadLine l={d} what="the channels">{x => <>{buildLanes(x.rows, x.daily, seat).map(l => <div key={l.key}><Shs>{CH[l.key] ?? l.label}</Shs><Card l={l} seat={seat} now={now} /></div>)}</>}</LoadLine>
     </Sheet>
   )
