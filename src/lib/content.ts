@@ -2718,7 +2718,9 @@ export function selfContainedHtml(v: string | null | undefined): boolean {
 // folders, in the order an operator wants them: the general library first, then
 // the two selfie pools the assigner draws from.
 
-export const STILL_FOLDERS = ['library', 'selfie-pool-a', 'selfie-pool-b'] as const
+// 2026-09-27: + `places-2026-09` (169 tagged city/place shots) and
+// `ivan-photos` (13), both indexed in `public.content_photos` with the rest.
+export const STILL_FOLDERS = ['library', 'selfie-pool-a', 'selfie-pool-b', 'places-2026-09', 'ivan-photos'] as const
 export type StillFolder = (typeof STILL_FOLDERS)[number]
 export type Still = {
   name: string
@@ -2795,6 +2797,32 @@ export async function listStills(folder: StillFolder): Promise<Still[]> {
         .getPublicUrl(`${folder}/${o.name}`, { transform: { width: 200, quality: 70 } })
         .data.publicUrl,
     }))
+}
+
+/**
+ * Stills whose tags match a free-text query ("Warsaw night street"), via the
+ * `search_content_photos` RPC over `public.content_photos` (every word must hit
+ * a tag or the city; newest first). Same `Still` shape as `listStills`, so a
+ * result pins exactly like a browsed tile: `url` is the row's `public_url`.
+ */
+export async function searchStills(q: string): Promise<Still[]> {
+  const { data, error } = await supabase.rpc('search_content_photos', { q })
+  if (error) throw error
+  if (!Array.isArray(data)) throw new Error('The search returned a shape this app cannot read.')
+  return (data as { storage_path?: string; public_url?: string }[])
+    .filter(r => typeof r.storage_path === 'string' && typeof r.public_url === 'string')
+    .map(r => {
+      const path = r.storage_path as string
+      const i = path.lastIndexOf('/')
+      return {
+        name: path.slice(i + 1),
+        folder: path.slice(0, Math.max(i, 0)) as StillFolder,
+        url: r.public_url as string,
+        thumb: supabase.storage.from(STILL_BUCKET)
+          .getPublicUrl(path, { transform: { width: 200, quality: 70 } })
+          .data.publicUrl,
+      }
+    })
 }
 
 /**

@@ -13,7 +13,7 @@ import { Banner, Button, Chip, Icon, Input, Kbd, Textarea } from '../../ds'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import {
   LANE_OWNER, LANE_POSSESSIVE, clientDeletable, deleteClientDraft, deleteDraft, fetchIvanArmedDays, listStills,
-  localDay, normalizeImageUrls, restartDraftToIdea, setDraftImage, STILL_FOLDERS,
+  localDay, normalizeImageUrls, restartDraftToIdea, searchStills, setDraftImage, STILL_FOLDERS,
   type ContentDraft, type ContentDraftDetail, type ContentLane, type Still, type StillFolder,
 } from '../../lib/content'
 import { appendAgentNote, clearHumanEdit, planRegen, regenerateDraft, scheduleDraft } from '../../lib/studioActions'
@@ -258,6 +258,9 @@ export function SwapImage({ d, onDone, disabled }: {
   const [open, setOpen] = useState(false)
   const [folder, setFolder] = useState<StillFolder>(STILL_FOLDERS[0])
   const [stills, setStills] = useState<Still[] | null>(null)
+  // Tag search over content_photos. Empty box = the folder browse, unchanged.
+  const [q, setQ] = useState('')
+  const [query, setQuery] = useState('')
   const [busy, setBusy] = useState('')
   const [err, setErr] = useState('')
   const current = normalizeImageUrls(d.image_urls)[0] ?? null
@@ -268,11 +271,17 @@ export function SwapImage({ d, onDone, disabled }: {
     if (!open) return
     let live = true
     setStills(null); setErr('')
-    listStills(folder)
+    ;(query ? searchStills(query) : listStills(folder))
       .then(s => { if (live) setStills(s) })
       .catch(e => { if (live) setErr(e instanceof Error ? e.message : 'Could not read the library.') })
     return () => { live = false }
-  }, [open, folder])
+  }, [open, folder, query])
+
+  // One RPC per pause in typing, not per keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setQuery(q.trim()), 250)
+    return () => clearTimeout(t)
+  }, [q])
 
   const pick = async (url: string | null) => {
     setBusy(url ?? 'none'); setErr('')
@@ -294,9 +303,18 @@ export function SwapImage({ d, onDone, disabled }: {
       </Button>
       {open && (
         <div className="a-dw-shelfrow a-dw-swap">
+          <Input
+            label="Search photos"
+            labelHidden
+            icon="search"
+            type="search"
+            placeholder="Search photos: warsaw night street…"
+            value={q}
+            onChange={e => setQ(e.target.value)}
+          />
           <div className="a-dw-swap-h">
             {STILL_FOLDERS.map(f => (
-              <Chip key={f} selected={f === folder} onClick={() => setFolder(f)}>{f}</Chip>
+              <Chip key={f} selected={!query && f === folder} onClick={() => { setQ(''); setQuery(''); setFolder(f) }}>{f}</Chip>
             ))}
             <span className="a-grow" />
             {current && (
@@ -307,7 +325,7 @@ export function SwapImage({ d, onDone, disabled }: {
           </div>
           {err && <Say tone="urgent">{err}</Say>}
           {!stills && !err && <Say>Reading the library…</Say>}
-          {stills && stills.length === 0 && <Say>Nothing in this folder.</Say>}
+          {stills && stills.length === 0 && <Say>{query ? 'No photo is tagged with all of that.' : 'Nothing in this folder.'}</Say>}
           {stills && stills.length > 0 && (
             <div className="a-dw-swap-g">
               {stills.map(s => (
