@@ -63,7 +63,7 @@ export function ContentCell({ seat, g }: { seat: Seat; g: GlanceCtx }) {
   return (
     <a className="gl-cell gl-link" href={dHash('content', null, { lane: seat })} aria-label={`${SEAT_NAME[seat]} content next week, open Content`}>
       <div className="gl-top">
-        <Wait r={r}>{w => <><Big v={w.n} tone={w.below ? 'warn' : undefined} /><span className="gl-u"><span className="gl-long">posts scheduled</span><span className="gl-short">posts</span></span></>}</Wait>
+        <Wait r={r}>{w => <><Big v={w.n} tone={w.below ? 'warn' : undefined} /><span className="gl-u"><span className="gl-long">{w.n === 1 ? 'post' : 'posts'} scheduled</span><span className="gl-short">{w.n === 1 ? 'post' : 'posts'}</span></span></>}</Wait>
         {'v' in r && r.v.below && <span className="gl-warn">Below 3 pieces</span>}
       </div>
       <div className="gl-cal" aria-label={`Week of ${week[0]?.dm ?? ''}`}>
@@ -80,10 +80,12 @@ export function ContentCell({ seat, g }: { seat: Seat; g: GlanceCtx }) {
 }
 
 export function DraftsCell({ seat, g }: { seat: Seat; g: GlanceCtx }) {
+  const d = g.drafts[seat]
+  const one = 'v' in d && d.v === 1
   return (
     <a className="gl-cell gl-link gl-row" href={dHash('dms', null, { seat })} aria-label={`${SEAT_NAME[seat]} DM drafts, open DMs`}>
       <Wait r={g.drafts[seat]}>{v => <Big v={v} tone="live" />}</Wait>
-      <span className="gl-u"><span className="gl-long">drafts to approve, follow-ups too ›</span><span className="gl-short">drafts</span></span>
+      <span className="gl-u"><span className="gl-long">{one ? 'draft' : 'drafts'} to approve, follow-ups too ›</span><span className="gl-short">{one ? 'draft' : 'drafts'}</span></span>
     </a>
   )
 }
