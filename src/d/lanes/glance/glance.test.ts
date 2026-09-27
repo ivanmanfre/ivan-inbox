@@ -81,3 +81,36 @@ describe('glance: ready', () => {
     expect(domainOf('https://www.Brand.com/about')).toBe('brand.com')
   })
 })
+
+import { buildReady, laneOf, type Cand, type Ctx } from './ready'
+describe('glance: the picker filter, classified in code', () => {
+  const NOW = Date.parse('2026-09-27T13:00:00Z')
+  const x: Ctx = { now: NOW, cfg: { rise_company_expansion: 'on', profile_view_send_enabled: 'true', ivan_invite_retry_enabled: 'true' }, scorer: 17,
+    ivanIds: new Set(['iv']), riseLive: new Set(['b9c55e21-ed67-42e1-94ab-b9e948a4bed9', '92c745f2-bd37-4887-96c3-ef930d542e24']), archLive: new Set(['1a2701a0-931b-4949-95fb-9bbf2de16f09']),
+    stop: new Set(), touch: new Set(['spaced.com']), satNy: false }
+  const c = (o: Partial<Cand>): Cand => ({ id: Math.random().toString(36), campaign_id: 'iv', stage: 'enriched', icp_score: 7, trigger_type: null, trigger_confidence: null, scorer_version: '17', country: 'US',
+    preferred_channel: null, connection_sent_at: null, connected_at: null, last_dm_sent_at: null, liveness_checked_at: '2026-09-01', created_at: '2026-09-26T00:00:00Z', skip_state: null, skip_reason: null,
+    reply_count: 0, note_variant: null, hypertarget_reserved: null, company_domain: null, ed_lane: null, sig_ok: null, sig_note: null, rise_note: null, anchor: null, gate: null,
+    partner: null, colleague: null, refused: null, src: null, waived: null, lang_hold: null, copy_hold: null, ...o })
+  it('Ivan: engagers take icp 6, cold needs liveness, a fresh refusal holds the row, an old scorer never picks', () => {
+    expect(laneOf(c({ trigger_type: 'engaged_post', trigger_confidence: 3, icp_score: 6 }), x)).toEqual({ seat: 'ivan', lane: 'engage' })
+    expect(laneOf(c({ liveness_checked_at: null }), x)).toBeNull()
+    expect(laneOf(c({}), x)).toEqual({ seat: 'ivan', lane: 'cold' })
+    expect(laneOf(c({ refused: '2026-09-27T10:00:00Z' }), x)).toBeNull()
+    expect(laneOf(c({ scorer_version: '6' }), x)).toBeNull()
+  })
+  it('Rise: company expansion needs the colleague name and skips a company touched in 7 days; partners are exempt from spacing', () => {
+    const exp = 'b9c55e21-ed67-42e1-94ab-b9e948a4bed9'
+    expect(laneOf(c({ campaign_id: exp, colleague: 'Ann' }), x)).toEqual({ seat: 'risedtc', lane: 'expansion' })
+    expect(laneOf(c({ campaign_id: exp, colleague: 'Ann', company_domain: 'www.spaced.com' }), x)).toBeNull()
+    expect(laneOf(c({ campaign_id: '92c745f2-bd37-4887-96c3-ef930d542e24', partner: 'true', rise_note: 'hi', company_domain: 'spaced.com' }), x)).toEqual({ seat: 'risedtc', lane: 'partner' })
+  })
+  it('Arch: queued, icp 7 or waived, split by the enrichment lane', () => {
+    const a = (o: Partial<Cand>) => c({ campaign_id: '1a2701a0-931b-4949-95fb-9bbf2de16f09', stage: 'queued', country: null, ...o })
+    expect(laneOf(a({ ed_lane: 'company_expansion' }), x)).toEqual({ seat: 'arch', lane: 'company_expansion' })
+    expect(laneOf(a({ ed_lane: 'company_expansion', icp_score: 5 }), x)).toBeNull()
+    expect(laneOf(a({ ed_lane: 'company_expansion', icp_score: 5, waived: 'true' }), x)).not.toBeNull()
+    const r = buildReady([a({ ed_lane: 'company_expansion' }), a({ ed_lane: 'engager_warm' })], x, false)
+    expect(r.lanes.filter(l => l.seat === 'arch').map(l => [l.lane, l.n])).toEqual([['company_expansion', 1], ['engager_warm', 1]])
+  })
+})
