@@ -83,3 +83,16 @@ export function firstLine(text: string, max = 140): string {
 export function uuidOrNull(v: string | null | undefined): string | null {
   return v && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) ? v : null
 }
+
+/** A chat title on one line (today's ThreadMenu `shortTitle`, kept here so D does not load that menu's CSS). */
+export function shortTitle(title: string, max = 90): string {
+  const t = title.replace(/\s+/g, ' ').trim()
+  if (t.length <= max) return t
+  return `${t.slice(0, max - 1).replace(/[\s,.;:]+$/, '')}…`
+}
+
+/** A bot turn's bundle label (today's BotTurn `bundleLabel`: one `[` line per feed row the tick read). */
+export function bundleLabel(prompt: string): string {
+  const n = (prompt ?? '').split('\n').filter(l => l.trimStart().startsWith('[')).length
+  return n > 0 ? `${n} event${n === 1 ? '' : 's'}` : 'Feed rows'
+}
