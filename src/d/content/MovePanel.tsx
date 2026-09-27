@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ClientRpcError, setScheduleDateAt, type ContentDraft } from '../../lib/content'
 import { publishAtForDay } from '../../lib/calendarItems'
 import { moveConfirmCopy } from '../../wb/content/moveConfirm'
@@ -15,9 +15,9 @@ import { Card } from './Wall'
 // taken day to the next free weekday. The panel IS the confirm and says the
 // consequence in today's words (moveConfirmCopy); the receipt names the day the
 // database stored, never the day we asked for.
-export function MovePanel({ r, lane, first, seatRows, phone, onClose, onDone }: {
+export function MovePanel({ r, lane, first, seatRows, phone, onClose, onDone, onLand }: {
   r: ContentDraft; lane: Lane; first: string; seatRows: ContentDraft[]; phone: boolean
-  onClose: () => void; onDone: () => void
+  onClose: () => void; onDone: () => void; onLand?: (key: string | null) => void
 }) {
   const toast = useToast()
   const [pick, setPick] = useState<string | null>(null)
@@ -32,6 +32,7 @@ export function MovePanel({ r, lane, first, seatRows, phone, onClose, onDone }: 
   const from = r.scheduled_at ? warsawDay(r.scheduled_at) : null
   const time = r.scheduled_at ? warsawHm(r.scheduled_at) : '09:00'
   const land = pick ? landingDay(pick, new Set(taken.keys())) : null
+  useEffect(() => { onLand?.(land) }, [land, onLand])
   const copy = moveConfirmCopy(r, land ? dayLabel(land) : 'the day you pick', time)
 
   const run = async () => {

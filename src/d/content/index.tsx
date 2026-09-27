@@ -5,7 +5,7 @@ import { useReportFailed } from '../shell/health'
 import { AnswerRow, N } from '../ui/AnswerRow'
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
-import { warsawDay, warsawDayTime } from '../ui/time'
+import { warsawDay, warsawDayTime, warsawHm } from '../ui/time'
 import { localDay } from '../../lib/content'
 import { scheduleDraft } from '../../lib/studioActions'
 import { DraftWindow } from './DraftWindow'
@@ -16,7 +16,7 @@ import { PhoneWall } from './PhoneWall'
 import { Queue } from './Queue'
 import { SubNav, subOf, type Trio } from './SubNav'
 import { Wall, type Ghost } from './Wall'
-import { LANES, errorRows, nextFreeWeekday, scheduledIn, titleOf, wallDays, waitingRows, weekWord, type Lane } from './model'
+import { LANES, dayLabel, errorRows, nextFreeWeekday, scheduledIn, titleOf, wallDays, waitingRows, weekWord, type Lane } from './model'
 import { useContentData } from './useContentData'
 import './content.css'
 import './content2.css'
@@ -33,6 +33,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const confirm = useDConfirm()
   const toast = useToast()
   const [week, setWeek] = useState<0 | 1 | null>(null)
+  const [moveLand, setMoveLand] = useState<string | null>(null)
   const sub = subOf(route.sub)
   const q = route.query
   const draft = q.get('draft')
@@ -98,6 +99,9 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const moveLane = isLane(q.get('lane')) ? (q.get('lane') as Lane) : 'ivan'
   const moveRow = moveId ? data.seats[moveLane].rows.find(r => r.id === moveId) ?? null : null
 
+  const moveGhost: Ghost | null = moveRow && moveLand
+    ? { lane: moveLane, key: moveLand, title: titleOf(moveRow), time: moveRow.scheduled_at ? warsawHm(moveRow.scheduled_at) : '09:00', label: `Lands ${dayLabel(moveLand)}` }
+    : null
   const window_ = draft && openLane ? (
     <DraftWindow id={draft} lane={openLane} queue={queueIds} onPick={id => openDraft(id, openLane)} onClose={close}
       refresh={data.seats[openLane].refresh} days={days} armed={data.armed} armedFailed={data.armedFailed} />
@@ -109,7 +113,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const wallProps = { data, stuck, onOpen: openDraft, onMove: (id: string, l: Lane) => go({ move: id, lane: l }, null), onArm: armIt, now }
   const move = moveRow ? (
     <MovePanel r={moveRow} lane={moveLane} first={days[0].key} seatRows={data.seats[moveLane].rows} phone={phone}
-      onClose={() => go(moveLane === 'ivan' ? {} : { lane: moveLane }, null)} onDone={data.refreshAll} />
+      onClose={() => go(moveLane === 'ivan' ? {} : { lane: moveLane }, null)} onDone={data.refreshAll} onLand={setMoveLand} />
   ) : null
 
   let body: React.ReactNode
@@ -131,7 +135,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
                 )) : <button type="button" className="cn-on">Weeks of {days[0].dm} and {days[5].dm}</button>}
                 <em>{draft ? 'Both weeks side by side when no post is open' : 'Tap a post to open it; Move puts it on another day'}</em>
               </div>
-              <Wall {...wallProps} days={shownDays} ghost={ghost} lift={moveRow?.id ?? null} />
+              <Wall {...wallProps} days={shownDays} ghost={moveGhost ?? ghost} lift={moveRow?.id ?? null} />
             </>
           )}
           {move ?? queue}
