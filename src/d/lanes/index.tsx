@@ -94,7 +94,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
     {sheet === 'range' && <RangeSheet from={q.get('from')} to={q.get('to')} setRange={(from, to) => go({ from, to })} onClose={() => go({ sheet: null, from: null, to: null })} />}
     {sheet === 'control' && <ControlSheet seat={forSeat ?? cols[0]} p={data.cc.value} gov={data.gov.value?.find(x => x.client_id === (forSeat ?? cols[0])) ?? null}
       pauses={data.pauses.value} pausesFailed={data.pauses.failed} now={now} onClose={close} />}
-    {sheet && (SHEETS as string[]).includes(sheet) && <LanesSheet kind={sheet as SheetKind} seat={forSeat} p={data.cc.value} range={range} onClose={close} />}
+    {sheet && (SHEETS as string[]).includes(sheet) && <LanesSheet kind={sheet as SheetKind} seat={forSeat} p={data.cc.value} range={range} now={now} setSeat={s => go({ for: s })} onClose={close} />}
   </>
   const doors = (
     <>
