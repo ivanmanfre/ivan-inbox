@@ -44,7 +44,7 @@ export function TakeoverCard({ d, refresh, pos }: { d: OpsDraft; refresh: () => 
     try { await approveConversationTakeover(d.id, hash, body); refresh() } catch (e) { setErr(errText(e)) } finally { setBusy(null) }
   }
   async function skip() {
-    if (!(await confirm({ title: 'Skip this takeover?', message: 'Drops this proposal. Nothing is sent and the conversation stays with you.', confirmText: 'Skip' }))) return
+    if (!(await confirm({ title: 'Skip this takeover?', message: 'Drops this proposal. Nothing is sent and the conversation stays with you.', confirmText: 'Skip', danger: true }))) return
     setBusy('skip'); setErr('')
     try { await discardConversationTakeover(d.id, hash); refresh() } catch (e) { setErr(errText(e)) } finally { setBusy(null) }
   }
@@ -63,13 +63,13 @@ export function TakeoverCard({ d, refresh, pos }: { d: OpsDraft; refresh: () => 
         </div>
         <div className="op-rep">
           <label className="op-tape">
-            <span className="op-tm"><span>Opener</span><span>{body.length}/400</span></span>
+            <span className="op-tm"><span>Opener</span><span>{body.length}/400 · edit the exact opener that will be sent</span></span>
             <textarea rows={3} maxLength={400} value={body} disabled={busy !== null} onChange={e => setBody(e.target.value)} />
           </label>
           {err && <div className="op-err" role="alert">{err}</div>}
           <div className="op-keys">
             <div className="op-k"><Key verb="takeover-skip" disabled={busy !== null} onClick={() => void skip()}>Skip</Key><small>Nothing is sent. It stays with you.</small></div>
-            <div className="op-k op-kp"><Key primary verb="takeover-approve" disabled={busy !== null || !body.trim() || body.length > 400 || !hash || blocked || !sendingReady} onClick={() => void approve()}>Approve takeover</Key><small>The agent sends the opener.</small></div>
+            <div className="op-k op-kp"><Key primary verb="takeover-approve" disabled={busy !== null || !body.trim() || body.length > 400 || !hash || blocked || !sendingReady} onClick={() => void approve()}>Approve takeover</Key><small>{TAKEOVER_CONSEQUENCE}</small></div>
           </div>
         </div>
       </div>

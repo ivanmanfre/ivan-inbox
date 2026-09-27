@@ -1,64 +1,121 @@
 import { useState } from 'react'
-import { seatLabel, type OpsDraft } from '../../lib/ops'
+import { batchResultLine, isStillPending, runBatch } from '../../lib/focus'
+import { outboundApproveUrl, seatLabel, type GateOutcome, type OpsDraft } from '../../lib/ops'
 import { discardConfirm, dispatchApprove, dispatchDiscard, gateConfirm, inviteConfirm } from '../../wb/ops/batchActs'
 import { useDConfirm } from '../ui/confirm'
 import { Btn } from '../ui/Key'
 import { seatBatches, type SeatBatch } from './model'
-import type { Seat } from '../seats'
 
 // THE QUICK BATCH at the top of a lane: two or more cards of one batchable
-// kind (Ivan-lane comments through the gate, hand-sent invites). Every verb
-// asks first and the writes are the card's own (wb/ops/batchActs.ts).
+// kind (Ivan-lane comments through the gate, hand-sent invites). Today's
+// FocusBlock, move for move:
+//  - only cards STILL pending (pendingIdsOf): a gate-held comment is already
+//    approved and parked, so "Discard all" must never cancel it at the poster;
+//  - ids resolved here hide at once (doneIds), so a second tap cannot re-fire;
+//  - the label opens the list, each body with its own Approve / Discard and its
+//    own gate note (a `timing` refusal is a queue position, not an error).
+// Writes are the card's own (wb/ops/batchActs.ts).
 
+type Note = { message: string; outcome: GateOutcome | 'error' }
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
-export function Batch({ seat, cards, refresh, onDone }: {
-  seat: Seat; cards: OpsDraft[]; refresh: () => void; onDone?: (ids: string[]) => void
-}) {
+export function Batch({ lane, cards, refresh }: { lane: string; cards: OpsDraft[]; refresh: () => void }) {
   const confirm = useDConfirm()
-  const [busy, setBusy] = useState<string | null>(null)
+  const [done, setDone] = useState<Set<string>>(new Set())
+  const [busy, setBusy] = useState<Set<string>>(new Set())
+  const [open, setOpen] = useState<string | null>(null)
   const [note, setNote] = useState<Record<string, string>>({})
-  const batches = seatBatches(seat, cards)
-  if (batches.length === 0) return null
+  const [one, setOne] = useState<Record<string, Note>>({})
+  const batches = seatBatches(lane, cards.filter(d => !done.has(d.id) && isStillPending(d)))
+  // A batch that just emptied itself still says what happened (the result line outlives the row).
+  const gone = Object.keys(note).filter(k => !batches.some(b => b.key === k))
+  if (batches.length === 0 && gone.length === 0) return null
+
+  const mark = (ids: string[], on: boolean) => setBusy(s => {
+    const n = new Set(s); for (const id of ids) { if (on) n.add(id); else n.delete(id) } return n
+  })
+  const markDone = (id: string) => setDone(s => (s.has(id) ? s : new Set(s).add(id)))
+  const clearOne = (id: string) => setOne(s => { if (!(id in s)) return s; const { [id]: _drop, ...rest } = s; return rest })
+  const approveAsk = (b: SeatBatch, n: number) => b.kind === 'comment_outbound' ? gateConfirm(seatLabel(b.lane), n) : inviteConfirm(n)
+
+  async function approveOne(d: OpsDraft) {
+    if (busy.has(d.id) || done.has(d.id)) return
+    // Today: the gate asks first; a hand-sent invite is tap-through, same as its card.
+    if (d.kind === 'comment_outbound' && outboundApproveUrl(d) !== null && !(await confirm(gateConfirm(seatLabel(d.client_id))))) return
+    mark([d.id], true); clearOne(d.id)
+    try {
+      const r = await dispatchApprove(d)
+      if (r.ok) { markDone(d.id); refresh() } else setOne(s => ({ ...s, [d.id]: { message: r.message, outcome: r.outcome } }))
+    } catch (e) { setOne(s => ({ ...s, [d.id]: { message: errText(e), outcome: 'error' } })) }
+    finally { mark([d.id], false) }
+  }
+
+  async function discardOne(d: OpsDraft) {
+    if (busy.has(d.id) || done.has(d.id)) return
+    if (!(await confirm(discardConfirm(1)))) return
+    mark([d.id], true)
+    try { await dispatchDiscard(d); markDone(d.id); refresh() }
+    catch (e) { setOne(s => ({ ...s, [d.id]: { message: errText(e), outcome: 'error' } })) }
+    finally { mark([d.id], false) }
+  }
 
   async function run(b: SeatBatch, verb: 'approve' | 'discard') {
-    const n = b.cards.length
-    const ask = verb === 'discard' ? discardConfirm(n) : b.kind === 'comment_outbound' ? gateConfirm(seatLabel(b.seat), n) : inviteConfirm(n)
-    if (!(await confirm({ title: ask.title, message: ask.message, confirmText: ask.confirmText }))) return
-    setBusy(b.key)
-    let ok = 0
-    const failed: string[] = []
-    const gone: string[] = []
-    for (const d of b.cards) {
-      try {
-        if (verb === 'discard') await dispatchDiscard(d)
-        else {
-          const r = await dispatchApprove(d)
-          if (!r.ok) { failed.push(r.message); continue }
-        }
-        ok++; gone.push(d.id)
-      } catch (e) { failed.push(errText(e)) }
-    }
-    setBusy(null)
-    const past = verb === 'approve' ? 'approved' : 'discarded'
-    setNote(s => ({ ...s, [b.key]: failed.length === 0 ? `${ok} ${past}.` : `${ok} of ${n} ${past}. ${failed[0]}` }))
-    if (ok > 0) { onDone?.(gone); refresh() }
+    const list = b.cards.filter(d => !done.has(d.id) && !busy.has(d.id) && isStillPending(d))
+    const n = list.length
+    if (n === 0) return
+    const ask = verb === 'discard' ? discardConfirm(n) : approveAsk(b, n)
+    if (!(await confirm(ask))) return
+    const byId = new Map(list.map(d => [d.id, d]))
+    const ids = list.map(d => d.id)
+    mark(ids, true)
+    const r = await runBatch(ids, async id => {
+      const d = byId.get(id)!
+      if (verb === 'discard') { await dispatchDiscard(d); markDone(id); return }
+      const res = await dispatchApprove(d)
+      if (res.ok) { markDone(id); return }
+      setOne(s => ({ ...s, [id]: { message: res.message, outcome: res.outcome } }))
+      throw new Error(res.message)
+    })
+    mark(ids, false)
+    setNote(s => ({ ...s, [b.key]: batchResultLine(r, n, verb === 'approve' ? 'approved' : 'discarded').replace(/: open$/, ', open the list') }))
+    if (r.succeeded.length > 0) refresh()
   }
 
   return (
     <>
-      {batches.map(b => (
-        <div className="op-qb" key={b.key}>
-          <small>Quick batch · {b.label}</small>
-          <div className="op-qbk">
-            <Btn verb="batch-discard" disabled={busy !== null} onClick={() => void run(b, 'discard')}>Discard all</Btn>
-            <Btn primary verb="batch-approve" disabled={busy !== null} onClick={() => void run(b, 'approve')}>
-              {busy === b.key ? 'Working…' : b.kind === 'manual_invite' ? 'Mark all handled' : 'Approve all'}
-            </Btn>
+      {gone.map(k => <div className="op-note" key={k} data-batch-result>{note[k]}</div>)}
+      {batches.map(b => {
+        const isOpen = open === b.key
+        const any = b.cards.some(d => busy.has(d.id))
+        return (
+          <div className="op-qb" key={b.key} data-batch={b.key}>
+            <button type="button" className="op-qbl" aria-expanded={isOpen} data-verb="batch-open" onClick={() => setOpen(isOpen ? null : b.key)}>
+              <small>Quick batch · {b.label} {isOpen ? '▾' : '▸'}</small>
+            </button>
+            <div className="op-qbk">
+              <Btn verb="batch-discard" disabled={any} onClick={() => void run(b, 'discard')}>Discard all</Btn>
+              <Btn primary verb="batch-approve" disabled={any} onClick={() => void run(b, 'approve')}>
+                {any ? 'Working…' : b.kind === 'manual_invite' ? 'Mark all handled' : 'Approve all'}
+              </Btn>
+            </div>
+            {note[b.key] && <div className="op-note">{note[b.key]}</div>}
+            {isOpen && b.cards.map(d => (
+              <div className="op-qbi" key={d.id} data-batch-item={d.id}>
+                <div className="op-qbi-r">
+                  <span>{d.body}</span>
+                  <span className="op-qbi-k">
+                    <Btn verb="batch-item-discard" disabled={busy.has(d.id)} onClick={() => void discardOne(d)}>Discard</Btn>
+                    <Btn primary verb="batch-item-approve" disabled={busy.has(d.id)} onClick={() => void approveOne(d)}>
+                      {b.kind === 'comment_outbound' ? 'Approve' : 'Handled'}
+                    </Btn>
+                  </span>
+                </div>
+                {one[d.id] && <div className={one[d.id].outcome === 'timing' ? 'op-note' : 'op-err'}>{one[d.id].outcome === 'timing' ? `Waiting for the send window: ${one[d.id].message}` : one[d.id].message}</div>}
+              </div>
+            ))}
           </div>
-          {note[b.key] && <div className="op-note">{note[b.key]}</div>}
-        </div>
-      ))}
+        )
+      })}
     </>
   )
 }

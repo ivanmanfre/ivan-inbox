@@ -12,8 +12,8 @@
 import { useState } from 'react'
 import { Button, Icon } from '../../ds'
 import { useConfirm } from '../chrome/ConfirmSheet'
-import { isBatchable } from '../../lib/focus'
-import { seatLabel, type OpsDraft } from '../../lib/ops'
+import { isBatchable, isStillPending } from '../../lib/focus'
+import { seatLabel, type GateOutcome, type OpsDraft } from '../../lib/ops'
 import { discardConfirm, dispatchApprove, dispatchDiscard, gateConfirm, inviteConfirm } from './batchActs'
 import { quickBatches, type QuickBatch as Batch } from './lanes'
 
@@ -27,7 +27,10 @@ export function QuickBatch({ cards, refresh }: { cards: OpsDraft[]; refresh: () 
   const [busy, setBusy] = useState<Set<string>>(new Set())
   const [open, setOpen] = useState<string | null>(null)
   const [notes, setNotes] = useState<Record<string, string>>({})
-  const batches = quickBatches(cards.filter(d => !done.has(d.id)), isBatchable)
+  const [one, setOne] = useState<Record<string, { message: string; outcome: GateOutcome | 'error' }>>({})
+  // Still pending only (today's pendingIdsOf, parity fix 09-27): the board hands this the gate-HELD
+  // comments too, which are already approved; "Discard all" would cancel them at the poster.
+  const batches = quickBatches(cards.filter(d => !done.has(d.id) && isStillPending(d)), isBatchable)
   if (batches.length === 0) return null
 
   const mark = (ids: string[], on: boolean) => setBusy(s => {
@@ -37,7 +40,9 @@ export function QuickBatch({ cards, refresh }: { cards: OpsDraft[]; refresh: () 
     ? gateConfirm(seatLabel(b.client), n) : inviteConfirm(n)
 
   async function run(b: Batch, list: OpsDraft[], verb: 'approve' | 'discard') {
+    list = list.filter(d => !done.has(d.id) && !busy.has(d.id) && isStillPending(d))
     const n = list.length
+    if (n === 0) return
     if (!(await confirm(verb === 'approve' ? approveAsk(b, n) : discardConfirm(n)))) return
     const ids = list.map(d => d.id)
     mark(ids, true)
@@ -48,11 +53,11 @@ export function QuickBatch({ cards, refresh }: { cards: OpsDraft[]; refresh: () 
         if (verb === 'discard') await dispatchDiscard(d)
         else {
           const r = await dispatchApprove(d)
-          if (!r.ok) { failed.push(r.message); continue }
+          if (!r.ok) { failed.push(r.message); setOne(s => ({ ...s, [d.id]: { message: r.message, outcome: r.outcome } })); continue }
         }
         ok++
         setDone(s => new Set(s).add(d.id))
-      } catch (e) { failed.push(errText(e)) }
+      } catch (e) { failed.push(errText(e)); setOne(s => ({ ...s, [d.id]: { message: errText(e), outcome: 'error' } })) }
     }
     mark(ids, false)
     const past = verb === 'approve' ? 'approved' : 'discarded'
@@ -87,7 +92,7 @@ export function QuickBatch({ cards, refresh }: { cards: OpsDraft[]; refresh: () 
             </div>
             {notes[b.key] && <div className="a-ops-qb-note a-meta">{notes[b.key]}</div>}
             {isOpen && b.cards.map(d => (
-              <div key={d.id} className="a-ops-qb-one">
+              <div key={d.id} className="a-ops-qb-one" data-note={one[d.id]?.outcome}>
                 <span className="a-ops-qb-body">{d.body}</span>
                 <span className="a-ops-qb-acts">
                   <Button variant="quiet" size="sm" busy={busy.has(d.id)} onClick={() => run(b, [d], 'discard')}>Discard</Button>
@@ -95,6 +100,7 @@ export function QuickBatch({ cards, refresh }: { cards: OpsDraft[]; refresh: () 
                     {b.kind === 'comment_outbound' ? 'Approve' : 'Handled'}
                   </Button>
                 </span>
+                {one[d.id] && <span className="a-meta">{one[d.id].outcome === 'timing' ? `Waiting for the send window: ${one[d.id].message}` : one[d.id].message}</span>}
               </div>
             ))}
           </div>

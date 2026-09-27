@@ -7,6 +7,7 @@ import { seatOf, SEAT_NAME } from '../seats'
 import { useDConfirm } from '../ui/confirm'
 import { Btn } from '../ui/Key'
 import { warsawHm } from '../ui/time'
+import { ago } from './model'
 
 // YOUR LIST. A task is a row, never a card (Ivan 08-29): a small Done key, the
 // title (two lines), the detail, and one mono line "due · source · seat ·
@@ -39,7 +40,7 @@ function Row({ d, refresh, onLeaving }: { d: OpsDraft; refresh: () => void; onLe
     finally { setBusy(false) }
   }
   async function remove() {
-    if (!(await confirm({ title: 'Remove this task?', message: 'It comes off the board for good. Nothing else happens.', confirmText: 'Remove' }))) return
+    if (!(await confirm({ title: 'Remove this task?', message: 'It comes off the board for good. Nothing else happens.', confirmText: 'Remove', danger: true }))) return
     setBusy(true); setErr('')
     try { await discardOpsDraft(d.id, d.kind); refresh() }
     catch (e) { setErr(errText(e)) }
@@ -55,6 +56,7 @@ function Row({ d, refresh, onLeaving }: { d: OpsDraft; refresh: () => void; onLe
           {dl && <b className={dl.tone === 'over' || dl.tone === 'now' ? 'op-hot' : ''}>due {dl.text}</b>}
           {src && <span>{src === 'WA' ? 'WhatsApp' : src}</span>}
           {seat && seat !== 'ivan' && <span>{SEAT_NAME[seat]}</span>}
+          {ago(d.created_at) && <span>{ago(d.created_at)}</span>}
           <span><button type="button" className="op-rm" data-verb="remove" disabled={busy} onClick={() => void remove()} aria-label={`Remove: ${title}`}>remove</button></span>
         </div>
         {err && <div className="op-err">{err}</div>}
@@ -81,7 +83,7 @@ export function Tasks({ drafts, refresh }: { drafts: OpsDraft[]; refresh: () => 
     if (!(await confirm({
       title: n === 1 ? 'Delete the 1 pending task?' : `Delete all ${n} pending tasks?`,
       message: 'They come off the board for good. Nothing is sent and nothing else happens.',
-      confirmText: n === 1 ? 'Delete it' : `Delete all ${n}`,
+      confirmText: n === 1 ? 'Delete it' : `Delete all ${n}`, danger: true,
     }))) return
     setClearing(true); setErr('')
     try { await discardPendingTasks(tasks.map(t => t.id)); refresh() }

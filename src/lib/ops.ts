@@ -184,6 +184,13 @@ export function seatPerson(clientId: string): string {
 export function seatLabel(clientId: string): string {
   return SEAT_LABEL[clientId] ?? ENGINE_LABEL[clientId] ?? clientId
 }
+// The person a reply posts AS, in full, as today's confirm names them ("Post
+// this reply as Mattan Danino?", main SEAT_LABEL). Parity fix 09-27: the
+// rebuild's Rise/Arch lane label had leaked into that sentence.
+const SEAT_FULL_NAME: Record<string, string> = { ivan: 'Ivan', risedtc: 'Mattan Danino', rise: 'Mattan Danino', arch: 'Davorin Smit' }
+export function seatFullName(clientId: string | null | undefined): string {
+  return SEAT_FULL_NAME[(clientId ?? '').trim().toLowerCase() || 'ivan'] ?? seatLabel(clientId ?? '')
+}
 
 // Newsjack lift is ~24h and the card TTLs at 48h, so the countdown is the whole
 // point of the card — a stale one is worth discarding rather than running.
@@ -254,13 +261,34 @@ const warsawDay = (t: number | string) =>
  * today and the rest. Today's are the first `room` in board order, so the Ops
  * number, the board's lane rows and its "for later" fold are one reading.
  */
+// The seat a comment idea posts from: each seat's poster has its OWN 3 a day
+// (parity fix 09-27: the room was counted across every seat, so Rise/Arch
+// ideas past Ivan's 3 were folded away as "later" under Ivan). NULL / '' /
+// 'ivan' = Ivan, legacy 'rise' = Rise, any other id is its own seat.
+export function ideaSeatKey(clientId: string | null | undefined): string {
+  const id = (clientId ?? '').trim().toLowerCase()
+  return id === '' ? 'ivan' : id === 'rise' ? 'risedtc' : id
+}
+
 export function splitCommentIdeas(rows: OpsDraft[], now = Date.now()): { today: OpsDraft[]; later: OpsDraft[] } {
   const day = warsawDay(now)
-  const postedToday = rows.filter(d =>
-    d.kind === 'comment_outbound' && d.approved_at && warsawDay(d.approved_at) === day).length
-  const room = Math.max(0, COMMENT_IDEAS_PER_DAY - postedToday)
-  const ideas = pendingOps(rows, now).filter(d => d.kind === 'comment_outbound')
-  return { today: ideas.slice(0, room), later: ideas.slice(room) }
+  const postedToday = new Map<string, number>()
+  for (const d of rows) {
+    if (d.kind !== 'comment_outbound' || !d.approved_at || warsawDay(d.approved_at) !== day) continue
+    const k = ideaSeatKey(d.client_id)
+    postedToday.set(k, (postedToday.get(k) ?? 0) + 1)
+  }
+  const used = new Map<string, number>()
+  const today: OpsDraft[] = []
+  const later: OpsDraft[] = []
+  for (const d of pendingOps(rows, now)) {
+    if (d.kind !== 'comment_outbound') continue
+    const k = ideaSeatKey(d.client_id)
+    const room = Math.max(0, COMMENT_IDEAS_PER_DAY - (postedToday.get(k) ?? 0))
+    const n = used.get(k) ?? 0
+    if (n < room) { today.push(d); used.set(k, n + 1) } else later.push(d)
+  }
+  return { today, later }
 }
 
 export function opsBadge(rows: OpsDraft[], now = Date.now()): { n: number; ideasFolded: number } {

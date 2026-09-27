@@ -3,10 +3,10 @@
 // never summed. Order inside a lane is today's (wb/ops/lanes orderLane), the
 // kinds line is today's (kindsLine), the Ops number is today's (pendingOps
 // minus the comment ideas past what the poster can still post today).
-import { isBatchable } from '../../lib/focus'
-import { isTaskKind, pendingOps, pendingTasks, splitCommentIdeas, type OpsDraft, type OpsKind } from '../../lib/ops'
+import { isBatchable, isStillPending } from '../../lib/focus'
+import { ideaSeatKey, isTaskKind, pendingOps, pendingTasks, splitCommentIdeas, type OpsDraft, type OpsKind } from '../../lib/ops'
 import { orderLane } from '../../wb/ops/lanes'
-import { SEATS, seatOf, type Seat } from '../seats'
+import { SEATS, SEAT_NAME, seatOf, type Seat } from '../seats'
 
 /** The card's eyebrow, in plain words. */
 export const KIND_TITLE: Record<OpsKind, string> = {
@@ -16,24 +16,43 @@ export const KIND_TITLE: Record<OpsKind, string> = {
   conversation_takeover: 'Conversation takeover', task: 'Task', audn_recommendation: 'Audience proposal',
 }
 
+/** The eyebrow for this card: a reply sits under the SEAT's post, so only Ivan's reads "your post". */
+export function kindTitle(d: OpsDraft): string {
+  if (d.kind !== 'comment_reply') return KIND_TITLE[d.kind]
+  const seat = seatOf(d.client_id)
+  return seat === 'ivan' ? KIND_TITLE.comment_reply : `Reply under ${seat ? SEAT_PERSON[seat] : d.client_id}’s post`
+}
+
 /** Whose lane, as the plate prints it. */
 export const LANE_OWNER: Record<Seat, string> = { ivan: 'your lane', risedtc: "Mattan's lane", arch: "Davorin's lane" }
 export const SEAT_PERSON: Record<Seat, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin' }
 
+/** A client this app has no seat for: drawn as its own lane, never dropped (today's lanes.ts). */
+export type OtherLane = { key: string; name: string; cards: OpsDraft[]; later: OpsDraft[]; waiting: number }
+
 export type OpsBoard = {
   /** Cards (not tasks) per seat, in lane order. Comment ideas for later are not here. */
   lanes: Record<Seat, OpsDraft[]>
-  /** Comment ideas past today's room, board order. */
+  /** Comment ideas past each seat's own 3 a day, per seat (board order). */
+  laterBy: Record<Seat, OpsDraft[]>
+  /** Every seat's ideas for later, one list (Ivan's, Rise's, Arch's, then other lanes'). */
   later: OpsDraft[]
   /** Pending cards + tasks per seat, minus later: THE Ops number, per seat. */
   waiting: Record<Seat, number>
   /** Pending tasks per seat (the part of `waiting` that sits on the list). */
   tasks: Record<Seat, number>
-  /** Every card in the order j / k walks: Ivan's lane, Rise's, Arch's. */
+  /** Lanes for client ids that are not one of the three seats. */
+  other: OtherLane[]
+  /** Every card in the order j / k walks: Ivan's lane, Rise's, Arch's, then other lanes. */
   flat: OpsDraft[]
 }
 
 const bySeat = <T,>(f: () => T): Record<Seat, T> => ({ ivan: f(), risedtc: f(), arch: f() })
+
+/** The lane a row sits in: one of the three seats, else its own client id. */
+export function laneOf(clientId: string | null | undefined): string {
+  return seatOf(clientId) ?? ideaSeatKey(clientId)
+}
 
 /**
  * `held` = cards the comment gate accepted but parked (lane switched off): the
@@ -45,25 +64,36 @@ export function readBoard(rows: OpsDraft[], held: ReadonlySet<string> = new Set(
   const pendIds = new Set(pending.map(d => d.id))
   const cards = rows.filter(d => !isTaskKind(d.kind) && (pendIds.has(d.id) || held.has(d.id)))
   const lanes = bySeat<OpsDraft[]>(() => [])
+  const laterBy = bySeat<OpsDraft[]>(() => [])
   const waiting = bySeat(() => 0)
   const tasks = bySeat(() => 0)
+  const others = new Map<string, OtherLane>()
+  const otherOf = (k: string) => {
+    let o = others.get(k)
+    if (!o) { o = { key: k, name: k, cards: [], later: [], waiting: 0 }; others.set(k, o) }
+    return o
+  }
   for (const d of cards) {
     const s = seatOf(d.client_id)
-    if (!s || laterIds.has(d.id)) continue
-    lanes[s].push(d)
+    const later = laterIds.has(d.id)
+    if (s) (later ? laterBy : lanes)[s].push(d)
+    else { const o = otherOf(laneOf(d.client_id)); (later ? o.later : o.cards).push(d) }
   }
   for (const d of pending) {
+    if (laterIds.has(d.id)) continue
     const s = seatOf(d.client_id)
-    if (!s || laterIds.has(d.id)) continue
-    waiting[s] += 1
+    if (s) waiting[s] += 1
+    else otherOf(laneOf(d.client_id)).waiting += 1
   }
   for (const d of pendingTasks(rows, now)) {
     const s = seatOf(d.client_id)
     if (s) tasks[s] += 1
   }
   for (const s of SEATS) lanes[s] = orderLane(lanes[s])
-  const later = cards.filter(d => laterIds.has(d.id))
-  return { lanes, later, waiting, tasks, flat: SEATS.flatMap(s => lanes[s]) }
+  const other = [...others.values()].sort((a, b) => a.key.localeCompare(b.key))
+  for (const o of other) o.cards = orderLane(o.cards)
+  const later = [...SEATS.flatMap(s => laterBy[s]), ...other.flatMap(o => o.later)]
+  return { lanes, laterBy, later, waiting, tasks, other, flat: [...SEATS.flatMap(s => lanes[s]), ...other.flatMap(o => o.cards)] }
 }
 
 /** "13h left" / "45m left" / "expired", or '' with no expiry. */
@@ -99,25 +129,30 @@ export function rowLine(d: OpsDraft, now = Date.now()): { who: string; text: str
     : d.kind === 'escalation' ? (str(c.inbound) || firstLine(d.body))
       : firstLine(d.body)
   const time = d.kind === 'newsjack' ? timeLeft(str(c.expires_at), now) : ago(str(c.posted_at) || d.created_at, now)
-  return { who: who || KIND_TITLE[d.kind], text, time, hot: d.kind === 'newsjack' || d.kind === 'escalation' }
+  return { who: who || kindTitle(d), text, time, hot: d.kind === 'newsjack' || d.kind === 'escalation' }
 }
 
-export type SeatBatch = { key: string; kind: 'comment_outbound' | 'manual_invite'; seat: Seat; cards: OpsDraft[]; label: string }
+export type SeatBatch = { key: string; kind: 'comment_outbound' | 'manual_invite'; lane: string; cards: OpsDraft[]; label: string }
 
-/** Today's quick batch, per seat: two or more batchable cards of one kind. */
-export function seatBatches(seat: Seat, cards: OpsDraft[]): SeatBatch[] {
+/** Today's quick batch, per lane: two or more batchable, still-pending cards of one kind. */
+export function seatBatches(lane: string, cards: OpsDraft[]): SeatBatch[] {
   const out: SeatBatch[] = []
   for (const kind of ['comment_outbound', 'manual_invite'] as const) {
-    const list = cards.filter(d => d.kind === kind && isBatchable(d))
+    // Still pending only (today's pendingIdsOf): a gate-held comment is already
+    // approved and parked; a batch discard would cancel it at the poster.
+    const list = cards.filter(d => d.kind === kind && isBatchable(d) && isStillPending(d))
     if (list.length < 2) continue
-    out.push({ key: `${kind}:${seat}`, kind, seat, cards: list, label: `${list.length} ${kind === 'manual_invite' ? 'invites' : 'comments'}` })
+    out.push({ key: `${kind}:${lane}`, kind, lane, cards: list, label: `${list.length} ${kind === 'manual_invite' ? 'invites' : 'comments'}` })
   }
   return out
 }
 
-/** Where the card sits: "card 2 of 5" inside its lane. */
-export function positionOf(board: OpsBoard, d: OpsDraft): { seat: Seat; at: number; of: number } {
-  const seat = seatOf(d.client_id) ?? 'ivan'
-  const list = board.later.some(x => x.id === d.id) ? board.later : board.lanes[seat]
-  return { seat, at: list.findIndex(x => x.id === d.id) + 1, of: list.length }
+/** Where the card sits: "card 2 of 5" inside its lane (or its lane's ideas for later). */
+export function positionOf(board: OpsBoard, d: OpsDraft): { seat: Seat | null; lane: string; at: number; of: number } {
+  const seat = seatOf(d.client_id)
+  const o = seat ? null : board.other.find(x => x.key === laneOf(d.client_id)) ?? null
+  const later = seat ? board.laterBy[seat] : o?.later ?? []
+  const main = seat ? board.lanes[seat] : o?.cards ?? []
+  const list = later.some(x => x.id === d.id) ? later : main
+  return { seat, lane: seat ? SEAT_NAME[seat] : laneOf(d.client_id), at: list.findIndex(x => x.id === d.id) + 1, of: list.length }
 }

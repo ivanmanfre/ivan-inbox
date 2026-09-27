@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { OpsDraft } from '../../lib/ops'
-import { readBoard, rowLine, seatBatches, timeLeft } from './model'
+import { opsWaitingBySeat } from '../counts/ops'
+import { positionOf, readBoard, rowLine, seatBatches, timeLeft } from './model'
 
 const NOW = Date.parse('2026-09-27T10:00:00Z')
 let n = 0
@@ -55,5 +56,39 @@ describe('rows and batches', () => {
     expect(seatBatches('risedtc', [one])).toHaveLength(0)
     expect(seatBatches('risedtc', [one, two])[0]).toMatchObject({ kind: 'manual_invite', label: '2 invites' })
     expect(seatBatches('risedtc', [d('comment_outbound', 'risedtc'), d('comment_outbound', 'risedtc')])).toHaveLength(0)
+  })
+  it('a gate-held (approved) comment never joins a quick batch', () => {
+    const g = { approve_url: 'https://x/approve' }
+    const held = d('comment_outbound', 'ivan', { approved_at: '2026-09-27T09:30:00Z', sent_at: '2026-09-27T09:30:00Z' }, g)
+    expect(seatBatches('ivan', [held, d('comment_outbound', 'ivan', {}, g)])).toHaveLength(0)
+    expect(seatBatches('ivan', [held, d('comment_outbound', 'ivan', {}, g), d('comment_outbound', 'ivan', {}, g)])[0].cards).toHaveLength(2)
+  })
+})
+
+describe('parity 09-27: seats keep their own 3 a day; unknown clients keep a lane', () => {
+  it("files Rise and Arch ideas past 3 under their OWN seat, each seat's room counted on its own", () => {
+    const g = { approve_url: 'https://x/approve' }
+    const rows = [
+      ...Array.from({ length: 4 }, () => d('comment_outbound', 'ivan', {}, g)),
+      ...Array.from({ length: 5 }, () => d('comment_outbound', 'risedtc')),
+      d('comment_outbound', 'arch', { approved_at: '2026-09-27T08:00:00Z', sent_at: '2026-09-27T08:00:00Z' }),
+      ...Array.from({ length: 3 }, () => d('comment_outbound', 'arch')),
+    ]
+    const b = readBoard(rows, new Set(), NOW)
+    expect(b.lanes.ivan).toHaveLength(3)
+    expect(b.laterBy.ivan).toHaveLength(1)
+    expect(b.lanes.risedtc).toHaveLength(3)
+    expect(b.laterBy.risedtc).toHaveLength(2)
+    expect(b.lanes.arch).toHaveLength(2)
+    expect(b.laterBy.arch).toHaveLength(1)
+    expect(b.waiting).toEqual({ ivan: 3, risedtc: 3, arch: 2 })
+  })
+  it('draws a client with no seat as its own lane and counts it', () => {
+    const b = readBoard([d('escalation', 'acme'), d('update', 'acme'), d('booking', 'ivan')], new Set(), NOW)
+    expect(b.other).toHaveLength(1)
+    expect(b.other[0]).toMatchObject({ key: 'acme', waiting: 2 })
+    expect(b.flat.map(x => x.client_id)).toEqual(['ivan', 'acme', 'acme'])
+    expect(positionOf(b, b.other[0].cards[1])).toMatchObject({ seat: null, lane: 'acme', at: 2, of: 2 })
+    expect(opsWaitingBySeat([d('escalation', 'acme'), d('booking', 'arch')], NOW)).toEqual({ ivan: 0, risedtc: 0, arch: 1, other: 1 })
   })
 })

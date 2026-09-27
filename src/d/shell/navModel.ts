@@ -39,6 +39,9 @@ export function navExtras(c: FrameCounts): Partial<Record<PlaceId, { label: stri
   const n = (v: number | null, failed: boolean) => (v == null ? (failed ? 'could not read' : '…') : String(v))
   return {
     content: { label: 'Magnets at review', text: n(c.magnets.value, c.magnets.failed) },
+    // A client with no seat still counts (today's badge counted every pending card); only drawn when there is one.
+    ...(c.ops.value && 'other' in c.ops.value && (c.ops.value as { other?: number }).other
+      ? { ops: { label: 'Other lanes', text: String((c.ops.value as { other?: number }).other) } } : {}),
     sales: { label: 'Calls today not started', text: n(c.calls.value, c.calls.failed) },
   }
 }
