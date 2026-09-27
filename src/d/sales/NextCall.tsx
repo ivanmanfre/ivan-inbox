@@ -15,10 +15,10 @@ export function PackLinks({ slug, have, big, noCompare, report, onReport }: {
   return (
     <div className={`sl-pk${big ? ' sl-pk-big' : ''}`}>
       {slug ? links.map((l, i) => (
-        <span key={l.doc}>{i > 0 && <i> · </i>}<a className="sl-pl" href={docHref(slug, l.doc)} target="_blank" rel="noreferrer" data-doc={l.doc}>{l.label}</a></span>
+        <span key={l.doc}>{i > 0 && <i>·</i>}<a className="sl-pl" href={docHref(slug, l.doc)} target="_blank" rel="noreferrer" data-doc={l.doc}>{l.label}</a></span>
       )) : <span className="sl-np">no pack yet</span>}
-      {report && onReport && <span><i> · </i><button type="button" className="sl-pl" data-verb="open-report" onClick={onReport}>report</button></span>}
-      {slug && big && <span className="sl-nt"><a className="sl-pl" href={docHref(slug, 'compare')} target="_blank" rel="noreferrer" data-doc="compare">compare</a><i> · </i><DIcon name="external" /> each opens a new tab</span>}
+      {report && onReport && <span><i>·</i><button type="button" className="sl-pl" data-verb="open-report" onClick={onReport}>report</button></span>}
+      {slug && big && <span className="sl-nt"><a className="sl-pl" href={docHref(slug, 'compare')} target="_blank" rel="noreferrer" data-doc="compare">compare</a><i>·</i><DIcon name="external" /> each opens a new tab</span>}
     </div>
   )
 }
@@ -39,7 +39,7 @@ export function NextCallPlate({ r, through, from }: { r: CallEvent | null; throu
     return (
       <div className="sl-nx sl-none" data-next="none">
         <div className="sl-nxl">Next call</div>
-        <div className="sl-nxe">No calls booked through {through}.</div>
+        <div className="sl-nxe">Nothing on the calendar through {through}.</div>
         <p>Read live from the calendar for the fortnight from {from}. A booking shows here the minute it syncs.</p>
       </div>
     )
