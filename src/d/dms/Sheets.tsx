@@ -2,9 +2,9 @@
 // Conversation agent (owner, mode, state; Pause / Resume / Stop contact). Reads and writes are
 // today's: fetchProspectContext / fetchScan / saveOperatorNote (lib/context) and
 // conversation_agent_cards / conversation_agent_control (wb/dms/conversationAgentData).
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { fetchProspectContext, fetchScan, saveOperatorNote, type ProspectContext, type ScanInfo } from '../../lib/context'
-import type { Thread } from '../../lib/inbox'
+import { confirmationOwner, isOwnerConfirmation, type Thread } from '../../lib/inbox'
 import { supabase } from '../../lib/supabase'
 import { fetchConversationAgentCards, type ConversationAgentCard } from '../../wb/dms/conversationAgentData'
 import { seatOf } from '../seats'
@@ -24,6 +24,15 @@ async function readVertical(pid: string): Promise<string | null> {
   return r.copy_vertical || r.vertical || null
 }
 
+/** Today's Context "ago" (src/wb/sheets/Context.tsx): today, yesterday, Nd ago, then a date. */
+function ago(iso: string): string {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+  if (days <= 0) return 'today'
+  if (days === 1) return 'yesterday'
+  if (days < 30) return `${days}d ago`
+  return dayMonth(iso)
+}
+
 export function ContextSheet({ t, all, onClose }: { t: Thread; all: readonly Thread[]; onClose: () => void }) {
   const toast = useToast()
   const [ctx, setCtx] = useState<ProspectContext | null>(null)
@@ -33,6 +42,10 @@ export function ContextSheet({ t, all, onClose }: { t: Thread; all: readonly Thr
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [n, setN] = useState(0)
+  const noteRef = useRef<HTMLTextAreaElement>(null)
+  const hold = t.ownerConfirmation && isOwnerConfirmation(t.ownerConfirmation) ? t.ownerConfirmation.id : null
+  // Today: with an owner question open, the note is where the answer goes, so it takes the focus.
+  useEffect(() => { if (ctx && hold) { noteRef.current?.focus(); noteRef.current?.scrollIntoView({ block: 'center' }) } }, [ctx, hold])
   useEffect(() => {
     let live = true
     setFailed(false); setCtx(null)
@@ -65,11 +78,13 @@ export function ContextSheet({ t, all, onClose }: { t: Thread; all: readonly Thr
             <div><dt>Role</dt><dd>{ctx.title || ctx.headline || 'unknown'}</dd></div>
             <div><dt>Where</dt><dd>{[ctx.location, ctx.industry].filter(Boolean).join(' · ') || 'unknown'}</dd></div>
             <div><dt>Scan</dt><dd>{scan ? <>{scan.report_url ? <a className="d-link" href={scan.report_url} target="_blank" rel="noreferrer">{scan.company_slug}</a> : scan.company_slug}{scan.automation_grade ? ` · grade ${scan.automation_grade}` : ''}{scan.completed_at ? ` · ${dayMonth(scan.completed_at)}` : ''}</> : 'no completed scan'}</dd></div>
-            <div><dt>Sequence</dt><dd>{[ctx.connection_sent_at && `invited ${dayMonth(ctx.connection_sent_at)}`, ctx.connected_at && `connected ${dayMonth(ctx.connected_at)}`, ctx.dm_count != null && `${ctx.dm_count} messages`, ctx.reply_count != null && `${ctx.reply_count} replies`].filter(Boolean).join(' · ') || 'nothing recorded'}</dd></div>
+            <div><dt>Sequence</dt><dd>{[ctx.connection_sent_at && `invited ${dayMonth(ctx.connection_sent_at)}`, ctx.connected_at && `connected ${dayMonth(ctx.connected_at)}`, ctx.dm_count != null && `${ctx.dm_count} messages`, ctx.reply_count != null && `${ctx.reply_count} replies`, ctx.last_reply_at && `last reply ${ago(ctx.last_reply_at)}`].filter(Boolean).join(' · ') || 'nothing recorded'}</dd></div>
+            <div><dt>LinkedIn</dt><dd>{ctx.linkedin_url ? <a className="d-link" href={ctx.linkedin_url} target="_blank" rel="noreferrer" data-verb="open-linkedin">LinkedIn profile</a> : 'no profile link'}</dd></div>
             {ctx.notes && <div><dt>System notes</dt><dd>{ctx.notes}</dd></div>}
           </dl>
           <label className="dm-ctx-note"><span>Your note</span>
-            <textarea value={note} rows={3} onChange={e => setNote(e.target.value)} placeholder="Something the drafters should know about this person" />
+            {hold && <p className="dm-meta dm-guid">After checking with {confirmationOwner(t.client_id)}, add a new line beginning <b>Confirmed by {confirmationOwner(t.client_id)}:</b> followed by their confirmed answer. Keep existing notes. Save the note for reassessment on the next draft cycle, usually within 5 minutes. A new draft will still need approval.</p>}
+            <textarea ref={noteRef} value={note} rows={3} onChange={e => setNote(e.target.value)} placeholder="Something the drafters should know about this person" />
           </label>
         </>}
       </div>

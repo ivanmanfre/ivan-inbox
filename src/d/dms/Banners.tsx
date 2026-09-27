@@ -32,12 +32,15 @@ export function OwnerHoldBanner({ t, verbs, onNote, onRetry }: { t: Thread; verb
   )
 }
 
-/** Rise and Arch: the dated follow-up on this person, or the planner's one-tap suggestion. */
-export function FollowUpBanner({ t, verbs, reload }: { t: Thread; verbs: DmVerbs; reload: () => void }) {
+/** Rise and Arch: the dated follow-up on this person, the planner's one-tap suggestion, or "Follow up
+ *  on a date" (today's FollowUpStrip: with or without a draft, with the free-text note the drafter
+ *  picks up). `open`/`setOpen` is the note form, lifted so the pane's Follow up key can open it. */
+export function FollowUpBanner({ t, verbs, reload, open, setOpen }: { t: Thread; verbs: DmVerbs; reload: () => void; open: boolean; setOpen: (o: boolean) => void }) {
   const supported = seatOf(t.client_id) === 'risedtc' || seatOf(t.client_id) === 'arch'
   const [fu, setFu] = useState<FollowUp | null>(null)
   const [state, setState] = useState<'loading' | 'ok' | 'failed'>('loading')
   const [busy, setBusy] = useState(false)
+  const [why, setWhy] = useState('')
   useEffect(() => {
     if (!supported) return
     let live = true
@@ -48,34 +51,55 @@ export function FollowUpBanner({ t, verbs, reload }: { t: Thread; verbs: DmVerbs
   if (!supported || state === 'loading') return null
   if (state === 'failed') return <div className="dm-ban"><b><DIcon name="time" />Could not read the follow-up date.</b></div>
   const first = firstOf(t)
-  const stamp = async (at: string | null, why: string) => {
+  const stamp = async (at: string | null, note: string) => {
     setBusy(true)
-    const ok = await verbs.followUp(t, at, why)
-    if (ok) { const f = await fetchFollowUp(t.prospect_id).catch(() => null); setFu(f); reload() }
+    const ok = await verbs.followUp(t, at, note)
+    if (ok) { const f = await fetchFollowUp(t.prospect_id).catch(() => null); setFu(f); setOpen(false); setWhy(''); reload() }
     setBusy(false)
   }
+  const form = open && (
+    <div className="dm-fu-form">
+      <label className="dm-field"><span>What the follow-up should pick up (optional)</span>
+        <textarea rows={2} value={why} disabled={busy} onChange={e => setWhy(e.target.value)} placeholder="e.g. back mid October, we emailed the model, set the catch-up" />
+      </label>
+      <div className="dm-ban-row">
+        <Btn verb="follow-up-cancel" disabled={busy} onClick={() => { setOpen(false); setWhy('') }}>Cancel</Btn>
+        <Btn primary verb="follow-up-pick" disabled={busy} onClick={() => { void stamp(null, why) }}>Pick the date</Btn>
+      </div>
+    </div>
+  )
   if (fu) {
     return (
       <div className="dm-ban">
         <b><DIcon name="time" />Follow-up drafts {formatReturn(fu.at)}</b>
         <p>{returnsIn(fu.at)}{fu.note ? ` · ${fu.note}` : ''} · if {first} writes first, the date is dropped.</p>
-        <div className="dm-ban-row">
-          <Btn verb="follow-up-date" disabled={busy} onClick={() => { void stamp(null, fu.note ?? '') }}>Change</Btn>
+        {!open && <div className="dm-ban-row">
+          <Btn verb="follow-up-date" disabled={busy} onClick={() => { setWhy(fu.note ?? ''); setOpen(true) }}>Change</Btn>
           <Btn verb="follow-up-clear" disabled={busy} onClick={async () => { setBusy(true); if (await verbs.followUpClear(t)) { setFu(null); reload() } setBusy(false) }}>Clear</Btn>
-        </div>
+        </div>}
+        {form}
       </div>
     )
   }
   const sug = followUpSuggestion(t.draft?.draft_evidence)
-  if (!sug) return null
-  return (
-    <div className="dm-ban dm-ban-hl">
-      <b><DIcon name="time" />{first} asked to hear from you again later{sug.dated ? `, around ${formatReturn(sug.at)}` : ''}.</b>
-      <p>{sug.why ? <q>{sug.why}</q> : null} Send the reply now; on that date a follow-up is drafted for you to approve. If {first} writes first, the date is dropped.</p>
-      <div className="dm-ban-row">
-        <Btn verb="follow-up" disabled={busy} onClick={() => { void stamp(sug.at, sug.why) }}>Follow up {warsawDow(sug.at)} {warsawDm(sug.at)}</Btn>
-        <Btn verb="follow-up-date" disabled={busy} onClick={() => { void stamp(null, sug.why) }}>Another date</Btn>
+  if (sug && !open) {
+    return (
+      <div className="dm-ban dm-ban-hl">
+        <b><DIcon name="time" />{first} asked to hear from you again later{sug.dated ? `, around ${formatReturn(sug.at)}` : ''}.</b>
+        <p>{sug.why ? <q>{sug.why}</q> : null} Send the reply now; on that date a follow-up is drafted for you to approve. If {first} writes first, the date is dropped.</p>
+        <div className="dm-ban-row">
+          <Btn verb="follow-up" disabled={busy} onClick={() => { void stamp(sug.at, sug.why) }}>Follow up {warsawDow(sug.at)} {warsawDm(sug.at)}</Btn>
+          <Btn verb="follow-up-date" disabled={busy} onClick={() => { setWhy(sug.why); setOpen(true) }}>Another date</Btn>
+        </div>
       </div>
+    )
+  }
+  return (
+    <div className="dm-ban">
+      {!open ? <div className="dm-ban-row" style={{ marginTop: 0 }}>
+        <Btn verb="follow-up-open" onClick={() => setOpen(true)}><DIcon name="time" />Follow up on a date</Btn>
+        <span className="dm-meta">A follow-up is drafted that morning for you to approve.</span>
+      </div> : <><b><DIcon name="time" />Follow up on a date</b>{form}</>}
     </div>
   )
 }
@@ -127,6 +151,7 @@ export function GapBanner({ t, verbs }: { t: Thread; verbs: DmVerbs }) {
       {gap.question && <p>{owner ? `For ${owner.owner}: ` : ''}<q>{gap.question}</q></p>}
       <div className="dm-ban-row">
         {owner && <Btn verb="ask-owner" disabled={busy || Boolean(note)} onClick={async () => { setBusy(true); setNote(await verbs.askOwner(t)); setBusy(false) }}>{note ? 'Asked' : busy ? 'Queueing…' : `Ask ${owner.owner}`}</Btn>}
+        {gap.chat_url && <a className="d-link" href={gap.chat_url} target="_blank" rel="noreferrer" data-verb="gap-chat">open the conversation</a>}
         <span className="dm-meta">Optional. You can send this draft as it is.</span>
       </div>
       {note && <p className="dm-meta">{note}</p>}

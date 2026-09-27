@@ -1,8 +1,9 @@
-// "Why this draft · written by …" and "Where this came from" (mock `.df-why`, `.df-src`).
-// Only the explicit display projection of the evidence (normalizeDraftExplanation); never raw reasoning.
+// "Why this draft · written by …" (./Explain, today's DraftExplanation) and "Where this came from"
+// (mock `.df-src`). Only the explicit display projection of the evidence; never raw reasoning.
 import { useState } from 'react'
 import { clientOwner, type InboxMessage, type Thread } from '../../lib/inbox'
 import { normalizeDraftExplanation } from '../../lib/draftExplanation'
+import { Explain } from './Explain'
 import { SEAT_NAME, seatOf } from '../seats'
 import { warsawDm } from '../ui/time'
 
@@ -14,10 +15,8 @@ export const origin = (m: InboxMessage) => (ORIGIN.find(([re]) => re.test(m.ai_m
 
 const day = (iso: string | null | undefined) => (iso ? warsawDm(iso) : '')
 
-export function DraftWhy({ t, draft }: { t: Thread; draft: InboxMessage }) {
-  const [open, setOpen] = useState(false)
+export function DraftWhy({ t, draft, edited, onRetry }: { t: Thread; draft: InboxMessage; edited: string; onRetry: () => void }) {
   const [srcOpen, setSrcOpen] = useState(false)
-  if (draft.draft_evidence_unavailable) return <div className="dm-why"><small>Why this draft</small><p>Could not read why this draft was written. Refresh to try again.</p></div>
   const x = normalizeDraftExplanation(draft.draft_evidence)
   const ev = draft.draft_evidence
   const owner = clientOwner(t.client_id)?.owner ?? null
@@ -28,17 +27,8 @@ export function DraftWhy({ t, draft }: { t: Thread; draft: InboxMessage }) {
   const n = learned.length + exemplars.length + (facts ? 1 : 0) + x.sources.length
   return (
     <>
-      {x.theyMean || x.move || x.unresolved.length ? (
-        <button type="button" className={`dm-why${open ? ' dm-why-open' : ''}`} aria-expanded={open} onClick={() => setOpen(o => !o)}>
-          <small>Why this draft · written by {origin(draft)}</small>
-          {x.theyMean && <p><b>Their message:</b> {x.theyMean}</p>}
-          {x.move && <p><b>Suggested reply:</b> {x.move}</p>}
-          {x.limits && open && <p><b>Say what we cannot:</b> {x.limits}</p>}
-          {x.unresolved.length > 0 && <p><b>Still unclear:</b> {x.unresolved.join(' ')}</p>}
-        </button>
-      ) : (
-        <div className="dm-why"><small>Why this draft</small><p>No explanation was saved for this draft. Written by {origin(draft)}.</p></div>
-      )}
+      <Explain messageId={draft.id} messageText={draft.message_text} editedText={edited} evidence={draft.draft_evidence}
+        unavailable={draft.draft_evidence_unavailable} onRetry={onRetry} by={origin(draft)} />
       {n > 0 && (
         <div className="dm-src">
           <button type="button" className="dm-src-h" aria-expanded={srcOpen} onClick={() => setSrcOpen(o => !o)}>

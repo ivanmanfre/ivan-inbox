@@ -21,8 +21,10 @@ function channels(t: Thread): string {
   return fams.length ? fams.map(f => name[f]).join(' + ') : 'LinkedIn'
 }
 
-export function ThreadHead({ t, phone, onBack, onCopy, copied, onAsk, onMore, moreOpen }: {
+export function ThreadHead({ t, phone, onBack, onCopy, copied, onAsk, onMore, moreOpen, onWho, onDelete, deleting }: {
   t: Thread; phone: boolean; onBack: () => void; onCopy: () => void; copied: boolean; onAsk: () => void; onMore: () => void; moreOpen: boolean
+  /** The name opens Context, as today's name tap does. */ onWho?: () => void
+  /** Delete from seat, a visible red key as today's thread bar (not only under ⋯). */ onDelete?: () => void; deleting?: boolean
 }) {
   const seat = seatOf(t.client_id)
   const lane = laneChip(t)
@@ -37,15 +39,16 @@ export function ThreadHead({ t, phone, onBack, onCopy, copied, onAsk, onMore, mo
       <div className="dm-mh">
         {phone && <button type="button" className="dm-ib" aria-label="Back to the list" data-verb="back" onClick={onBack}><DIcon name="back" /></button>}
         <div className="dm-av" aria-hidden="true">{initials(t.prospect_name)}</div>
-        <div className="dm-who">
+        <button type="button" className="dm-who" onClick={onWho} title="Context: fit, scan, your note" data-verb="context">
           <b data-d-thread-who="">{t.prospect_name}</b>
           {sub && <small>{sub}</small>}
-        </div>
+        </button>
         <button type="button" className={`dm-ib${copied ? ' dm-on' : ''}`} aria-label={copied ? 'Chat link copied' : 'Copy chat link'} title="Copy chat link, for Mattan or Davorin" data-verb="copy-link" onClick={onCopy}>
           <DIcon name={copied ? 'check' : 'external'} />
         </button>
         {!phone && <button type="button" className="dm-ib" aria-label={`Ask Claude about ${t.prospect_name}`} title={`Ask Claude about ${t.prospect_name.split(' ')[0]} (⌘J)`} data-verb="ask-claude" onClick={onAsk}><DIcon name="claude" /></button>}
         {!phone && <button type="button" className="dm-ib" aria-label="Close the conversation" data-verb="close" onClick={onBack}><DIcon name="x" /></button>}
+        {onDelete && <button type="button" className="dm-del" data-verb="delete-seat" disabled={deleting} title="Delete from the seat on LinkedIn (asks first)" onClick={onDelete}>Delete</button>}
         <button type="button" className={`dm-ib${moreOpen ? ' dm-on' : ''}`} aria-label="More for this conversation" aria-expanded={moreOpen} data-verb="more" onClick={onMore}><DIcon name="more" /></button>
       </div>
       <div className="dm-chips">

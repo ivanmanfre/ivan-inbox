@@ -13,6 +13,7 @@ import { History } from './History'
 import { Composer } from './Keys'
 import { ThreadMenu, type MenuAct } from './Menu'
 import { AgentSheet, ContextSheet } from './Sheets'
+import { RestoreStrip } from './Restore'
 import { ThreadHead } from './ThreadHead'
 import type { DmVerbs, Edits } from './verbs'
 
@@ -20,6 +21,15 @@ const FROM: Record<string, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Da
 
 function seed(t: T): Edits {
   return { main: t.draft?.message_text ?? '', email: t.draft?.email_mirror_text ?? null, companion: t.companionDraft?.message_text ?? null }
+}
+
+const stamped = new Set<string>()
+/** markThreadRead once per (thread, newest inbound): the same PATCH today sends, never twice. */
+export function stampReadOnce(pid: string, lastInbound: string) {
+  const k = `${pid}:${lastInbound}`
+  if (stamped.has(k)) return
+  stamped.add(k)
+  markThreadRead(pid).catch(() => { stamped.delete(k) })
 }
 
 export async function copyText(s: string): Promise<boolean> {
@@ -38,6 +48,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   const [menu, setMenu] = useState(false)
   const [sheet, setSheet] = useState<'context' | 'agent' | null>(null)
   const [copied, setCopied] = useState(false)
+  const [fuOpen, setFuOpen] = useState(false)
   const seeded = useRef({ id: '', text: '' })
   const draftId = t.draft?.id ?? ''
   const draftText = t.draft?.message_text ?? ''
@@ -49,9 +60,11 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     else setEdits(e => (e.main === was.text ? { ...e, main: draftText } : e))
     seeded.current = { id: draftId, text: draftText }
   }, [draftId, draftText]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setReply(''); setMenu(false); setSheet(null) }, [t.prospect_id])
-  // Sanctioned read stamp on real inbound rows, as today.
-  useEffect(() => { if (!auto && t.unread > 0) markThreadRead(t.prospect_id).catch(() => {}) }, [auto, t.prospect_id, t.unread])
+  useEffect(() => { setReply(''); setMenu(false); setSheet(null); setFuOpen(false) }, [t.prospect_id])
+  // Sanctioned read stamp on real inbound rows, as today. Once per thread and unread set: a remount
+  // (the phone page, React's dev double effect) must not PATCH read_at a second time.
+  const lastIn = t.messages.filter(m => m.direction === 'inbound').at(-1)?.id ?? ''
+  useEffect(() => { if (!auto && t.unread > 0) stampReadOnce(t.prospect_id, lastIn) }, [auto, t.prospect_id, t.unread, lastIn])
 
   const seat = seatOf(t.client_id) ?? 'ivan'
   const from = FROM[seat]
@@ -93,23 +106,25 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     {t.ownerConfirmation
       ? <Key verb="ask-owner-link" onClick={() => void copy()} sub="copies the chat link">{seat === 'ivan' ? 'Copy chat link' : `Ask ${from}`}</Key>
       : owed && <Key verb="draft-it" onClick={onDraftIt} sub="Claude writes">Draft it</Key>}
-    {dated && !t.ownerConfirmation && <Key verb="follow-up-date" disabled={busy} sub="on a date" onClick={() => run(async () => { await verbs.followUp(t, null, ''); reload() })}>Follow up</Key>}
+    {dated && !t.ownerConfirmation && <Key verb="follow-up-date" disabled={busy} sub="on a date" onClick={() => setFuOpen(true)}>Follow up</Key>}
     {!composeOff && <Key primary verb="compose-send" disabled={busy || !reply.trim()} onClick={() => void compose()}>Send</Key>}
   </>
 
   const foot = t.spam ? 'Filed as a vendor pitch. Not spam puts it back in Needs you; Delete from seat removes the LinkedIn chat.'
     : hasDraft ? (phone ? 'Send and Discard both ask first.' : "Send asks first. Discard offers two keys: Discard, or Discard and I'll reply myself.")
-      : 'Spam, Not spam and Delete from seat are under ⋯.'
+      : t.chat_provider_id ? 'Delete removes the chat from the seat. Spam and Not spam are under ⋯.' : 'Spam and Not spam are under ⋯.'
 
   return (
     <section className={`dm-pane${phone ? ' dm-pane-phone' : ''}`} aria-label={`Conversation with ${t.prospect_name}`}>
-      <ThreadHead t={t} phone={phone} onBack={onBack} onCopy={() => void copy()} copied={copied} onAsk={onAsk} onMore={() => setMenu(m => !m)} moreOpen={menu} />
+      <ThreadHead t={t} phone={phone} onBack={onBack} onCopy={() => void copy()} copied={copied} onAsk={onAsk} onMore={() => setMenu(m => !m)} moreOpen={menu}
+        onWho={() => setSheet('context')} onDelete={t.chat_provider_id && !t.spam ? () => void run(async () => { if (await verbs.deleteSeat(t)) onBack() }) : undefined} deleting={busy} />
       {ps.s !== 'none' && <div className="dm-sum" role="status">{ps.s === 'done' ? ps.line : ps.s === 'running' ? 'Reading it…' : ps.why}</div>}
       <History t={t} cap={phone ? 4 : 6} />
       <div className="dm-scroll">
-        <Banners t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} />
-        <Draft t={t} edits={edits} setEdits={setEdits} editing={editing} now={now} />
-        {t.draft && !editing && <DraftWhy t={t} draft={t.draft} />}
+        <Banners t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuOpen={fuOpen} setFuOpen={setFuOpen} />
+        <Draft t={t} edits={edits} setEdits={setEdits} editing={editing} now={now} onRetry={reload} />
+        {t.draft && <DraftWhy t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
+        <RestoreStrip t={t} verbs={verbs} />
         {!hasDraft && !t.spam && <Composer to={first} from={from} big disabled={composeOff} value={reply} setValue={setReply} busy={busy} onSend={() => void compose()} />}
       </div>
       <div className="dm-keys">
