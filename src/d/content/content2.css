@@ -150,3 +150,6 @@
 .cn-fix .ds-btn{padding:0 var(--ds-s5)}
 .cn-fix .ds-btn[data-size='sm']{padding:0 var(--ds-s4)}
 .cn-fix .ds-chip{padding:0 var(--ds-s4)}
+.d-phone .cn-pick{gap:4px}
+.d-phone .cn-pick button{min-height:52px;padding:4px}
+.d-phone .cn-pick button span{display:none}

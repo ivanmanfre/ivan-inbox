@@ -14,7 +14,7 @@ import { scoreText, type IdeaItem } from './ideaModel'
 // (Ivan's bank only, as today) asks once.
 const BANK: Record<Lane, string> = { ivan: 'Your idea bank', risedtc: 'Mattan’s ideas', arch: 'Davorin’s ideas' }
 
-export function IdeaDetail({ it, onDone }: { it: IdeaItem; onDone: (id: string) => void }) {
+export function IdeaDetail({ it, onDone, compact }: { it: IdeaItem; onDone: (id: string) => void; compact?: boolean }) {
   const confirm = useDConfirm()
   const toast = useToast()
   const [note, setNote] = useState('')
@@ -46,10 +46,10 @@ export function IdeaDetail({ it, onDone }: { it: IdeaItem; onDone: (id: string) 
 
   return (
     <section className="cn-idm" aria-label="Idea">
-      <div className="cn-dwh" style={{ padding: 0, border: 0 }}>
+      {!compact && <div className="cn-dwh" style={{ padding: 0, border: 0 }}>
         <div className="cn-av">{scoreText(it.score)}</div>
         <div className="cn-who"><b style={{ whiteSpace: 'normal' }}>{it.title}</b><small>{BANK[it.lane]}{it.src ? ` · ${it.src}` : ''}{it.age ? ` · ${it.age} ago` : ''}</small></div>
-      </div>
+      </div>}
       {it.parts.length > 0 && (
         <div className="cn-parts">{it.parts.map(([k, v]) => <div key={k}><small>{k}</small>{Math.round(v * 10) / 10}</div>)}</div>
       )}

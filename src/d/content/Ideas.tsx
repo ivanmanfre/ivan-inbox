@@ -54,12 +54,14 @@ export function Ideas({ banks, phone }: { banks: IdeaBanks; phone: boolean }) {
     const b = banks[l]
     return (
       <div className="cn-ch" key={l}>
-        <div className="cn-plate"><b>{LANE_NAME[l]}</b><span>{PLATE[l]}</span></div>
-        <div className="cn-read">
-          <div><small>To decide</small><em className={b.n ? 'cn-hot' : ''}>{b.n ?? (b.error ? '?' : '…')}</em></div>
-          <div><small>Top score</small><em>{b.items[0] ? scoreText(b.items[0].score) : '0'}</em></div>
-        </div>
-        <div className="cn-sec"><span>Highest score first</span><span>{Math.min(SHOWN, b.items.length)} shown</span></div>
+        {!phone && <div className="cn-plate"><b>{LANE_NAME[l]}</b><span>{PLATE[l]}</span></div>}
+        {!phone && (
+          <div className="cn-read">
+            <div><small>To decide</small><em className={b.n ? 'cn-hot' : ''}>{b.n ?? (b.error ? '?' : '…')}</em></div>
+            <div><small>Top score</small><em>{b.items[0] ? scoreText(b.items[0].score) : '0'}</em></div>
+          </div>
+        )}
+        <div className="cn-sec"><span>{phone ? `${PLATE[l]}, highest score first` : 'Highest score first'}</span><span>{Math.min(SHOWN, b.items.length)} shown</span></div>
         <div className="cn-iqs">
           {b.error ? <Failed what={`${IDEA_OWNER[l]} ideas`} detail={b.error} onRetry={b.refresh} />
             : b.loading && b.items.length === 0 ? <Skeleton lines={5} title={false} label="Reading ideas" />
@@ -69,7 +71,7 @@ export function Ideas({ banks, phone }: { banks: IdeaBanks; phone: boolean }) {
                   return (
                     <div key={it.id}>
                       <Row it={it} on={on} pick={() => setSel({ lane: l, id: it.id })} />
-                      {phone && on && <IdeaDetail it={it} onDone={done(l)} />}
+                      {phone && on && <IdeaDetail it={it} onDone={done(l)} compact />}
                     </div>
                   )
                 })}
