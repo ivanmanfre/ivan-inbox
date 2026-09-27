@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { OpsDraft } from '../../lib/ops'
-import { groupOpsByLane, kindsLine, laneKeyOf } from './lanes'
+import { answerLine, groupOpsByLane, kindsLine, laneKeyOf, laneLabel, orderLane, quickBatches } from './lanes'
 
 let seq = 0
 const card = (o: Partial<OpsDraft> = {}): OpsDraft => ({
@@ -49,5 +49,56 @@ describe('kindsLine', () => {
   it('stays short past three kinds', () => {
     const cards = (['escalation', 'update', 'booking', 'newsjack', 'manual_invite'] as const).map(kind => card({ kind }))
     expect(kindsLine(cards)).toBe('1 escalation, 1 update, 1 booking, and 2 more kinds')
+  })
+})
+
+describe('orderLane', () => {
+  it('escalations first, newsjacks by time left, the rest in arrival order', () => {
+    const r1 = card({ kind: 'comment_reply' })
+    const nLate = card({ kind: 'newsjack', context: { expires_at: '2026-09-27T10:00:00Z' } as OpsDraft['context'] })
+    const nNone = card({ kind: 'newsjack' })
+    const nSoon = card({ kind: 'newsjack', context: { expires_at: '2026-09-26T12:00:00Z' } as OpsDraft['context'] })
+    const esc = card({ kind: 'escalation' })
+    const r2 = card({ kind: 'comment_reply' })
+    expect(orderLane([r1, nLate, nNone, nSoon, esc, r2]).map(d => d.id))
+      .toEqual([esc.id, nSoon.id, nLate.id, nNone.id, r1.id, r2.id])
+  })
+  it('groupOpsByLane applies it inside each lane', () => {
+    const r = card({ kind: 'comment_reply', client_id: 'risedtc' })
+    const n = card({ kind: 'newsjack', client_id: 'risedtc' })
+    expect(groupOpsByLane([r, n])[0].cards.map(d => d.id)).toEqual([n.id, r.id])
+  })
+})
+
+describe('answerLine', () => {
+  it('says the count and the kinds, comment ideas as today\'s', () => {
+    const items = [
+      card({ kind: 'comment_reply' }), card({ kind: 'comment_reply' }), card({ kind: 'comment_reply' }),
+      card({ kind: 'comment_outbound' }), card({ kind: 'comment_outbound' }), card({ kind: 'comment_outbound' }),
+      card({ kind: 'newsjack' }),
+    ]
+    expect(answerLine(items)).toBe('7 waiting on you: 3 comment replies, 3 comments for today, 1 newsjack.')
+    expect(answerLine([])).toBeNull()
+  })
+  it('names the lane in plain words', () => {
+    expect(laneLabel('risedtc')).toBe('Rise')
+    expect(laneLabel(null)).toBe('Ivan')
+    expect(laneLabel('arch')).toBe('Arch')
+  })
+})
+
+describe('quickBatches', () => {
+  it('two or more batchable cards of one kind in one lane make a batch, labelled by lane', () => {
+    const ok = () => true
+    const cards = [
+      card({ kind: 'comment_outbound' }), card({ kind: 'comment_outbound' }), card({ kind: 'comment_outbound' }),
+      card({ kind: 'manual_invite', client_id: 'risedtc' }), card({ kind: 'manual_invite', client_id: 'risedtc' }),
+      card({ kind: 'manual_invite', client_id: 'arch' }),
+    ]
+    expect(quickBatches(cards, ok).map(b => b.label)).toEqual(['3 comments · Ivan', '2 invites · Rise'])
+  })
+  it('skips what the predicate refuses', () => {
+    const cards = [card({ kind: 'comment_outbound' }), card({ kind: 'comment_outbound' })]
+    expect(quickBatches(cards, () => false)).toEqual([])
   })
 })

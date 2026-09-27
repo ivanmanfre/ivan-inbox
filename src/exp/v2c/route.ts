@@ -50,7 +50,8 @@ export type WbRoute = {
   section?: string
 }
 
-export const DEFAULT_ROUTE: WbRoute = { job: 'dms', focus: null }
+// Lanes is home since the rebuild (blueprint v3 decision 1).
+export const DEFAULT_ROUTE: WbRoute = { job: 'sends', focus: null }
 
 // The three tournament candidates mount behind their own experiment ids
 // (src/exp/index.tsx). They share this grammar rather than each inventing one,
@@ -89,7 +90,10 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-9a-f][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 // a default that happens to be right today and wrong after the next rename.
 // `wbHash` only ever WRITES the canonical id, so an alias is read-once and then
 // rewritten in the address bar.
-const JOB_ALIAS: Record<string, Job> = { inbox: 'dms', drafts: 'dms' }
+// `today` is gone as a place (rebuild, 2026-09-26): four writers still link it
+// (bot actions, the notification fallback, Inbox Notify Relay, the menu bar),
+// so it resolves to Lanes, the home, rather than to a dead screen.
+const JOB_ALIAS: Record<string, Job> = { inbox: 'dms', drafts: 'dms', today: 'sends' }
 
 // `?section=<job>` is the spelling the old dashboard's links used, and the one
 // the Sales section was specified with (`?section=sales`). It is a FALLBACK, not
@@ -112,9 +116,10 @@ export function parseWbHash(hash: string): WbRoute {
   const query = new URLSearchParams(m[3] ?? '')
   const contentSources = ['content', 'strategy', ''].includes(seg)
     && (query.get('sources') === '1' || query.get('section') === 'sources')
-  const job = contentSources ? 'strategy' : (JOBS as string[]).includes(seg)
+  const named = contentSources ? 'strategy' : (JOBS as string[]).includes(seg)
     ? (seg as Job)
     : JOB_ALIAS[seg] ?? sectionJob(query) ?? DEFAULT_ROUTE.job
+  const job: Job = named === 'today' ? 'sends' : named
   // Only 'chat' is addressable as a focus: a thread/draft peer key is a database
   // id, and a URL that pretends to restore one would 404 into an empty pane.
   // 'ask' is what a push notification for a finished turn links to (inbox-turn-run

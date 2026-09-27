@@ -35,7 +35,7 @@ import {
   useClientIdeas, useContent, useIdeaCandidates, useScheduledQueue,
 } from '../../hooks/useContent'
 import {
-  ERROR_ALARM_HOURS, LANE_LABEL, LANE_POSSESSIVE, PIPELINE_STAGES,
+  ERROR_ALARM_HOURS, LANE_LABEL, LANE_POSSESSIVE, LANE_SHORT, PIPELINE_STAGES,
   STAGE_LABEL, STAGE_SHORT, boardGroupOf, clientStageLabel,
   countBoardVisible, countUndated, groupByLaneStage, groupByStage,
   isRecentError, isStuckGenerating, stageOfLane, tabSev,
@@ -60,6 +60,8 @@ import { ClientIdeasSection, IdeasSection } from './ideas'
 import { InFlight, PillarMix, QueueStrip } from './queue'
 import { ContentCalendar } from './calendar'
 import { applyPublishBlocks, publishBlocksByDraft } from '../../lib/publishBlock'
+import { VerdictLine } from './verdict'
+import { OlderFold, splitByAge } from './older'
 import './content.css'
 
 // The Content area holds two views of the SAME rows, and the lane switch
@@ -123,15 +125,20 @@ function CommandStrip({
               lane says so by staying quiet, which is what lets a number mean
               something. */}
           <Segmented
-            label="Lane"
+            // "Client", not "Lane": lane now means an outreach lane (rebuild
+            // ruling). Chips name the client in sentence case, Ivan / Rise /
+            // Arch; the person stays in the tooltip. The count is decision 4's
+            // (waiting on you, 14 days), read by the shell.
+            label="Client"
             markerId="a-ct-lane"
             value={lane}
             onChange={k => setLane(k as ContentLane)}
             options={lanes.lanes.map(l => {
               const n = laneCounts?.[l.client_id as ContentLane] ?? 0
+              const short = LANE_SHORT[l.client_id as ContentLane] ?? l.display_name
               return {
                 id: l.client_id,
-                label: <span title={n > 0 ? `${l.display_name}: ${n} at review` : undefined}>{l.display_name}</span>,
+                label: <span title={`${l.display_name}${n > 0 ? `: ${n} waiting on you` : ''}`}>{short}</span>,
                 count: n > 0 ? n : undefined,
               }
             })}
@@ -386,6 +393,8 @@ function IvanLane({
   const blocks = useMemo(() => publishBlocksByDraft(queue.rows), [queue.rows])
   const shownStages = applyPublishBlocks(groupByStage(shown), blocks)
   const ideasHidden = draftFacetsActive(filters, q)
+  // The decision list shows the badge's own 14 days; older rows fold below.
+  const reviewAge = splitByAge(shownStages.review)
 
   const tabs: StageTab[] = TAB_ORDER
     .map(t => ({
@@ -435,6 +444,7 @@ function IvanLane({
 
       <Body innerRef={bodyRef}>
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
+        <VerdictLine lane={lane} setLane={setLane} laneCounts={laneCounts} />
         {view === 'calendar' ? (
           // BOTH SOURCES, one refresh. The calendar draws drafts AND the
           // publish queue, so a move that re-read only the drafts would leave
@@ -443,6 +453,7 @@ function IvanLane({
           <ContentCalendar
             rows={shown} queue={queue.rows} onOpen={onOpen}
             refresh={() => { refresh(); queue.refresh() }}
+            ivan
           />
         ) : tab === 'ideas' ? (
           <IdeasSection
@@ -460,7 +471,7 @@ function IvanLane({
         ) : (
           <>
             <StageTable
-              s={tab} rows={shownStages[tab]} lane="ivan"
+              s={tab} rows={tab === 'review' ? reviewAge.recent : shownStages[tab]} lane="ivan"
               refresh={refresh} onOpen={onOpen} openId={openId} blocks={blocks}
               sub={
                 tab === 'approved' && countUndated(shownStages.approved) > 0
@@ -484,8 +495,18 @@ function IvanLane({
                       ? 'Their time passed and no published post came back, they never went out.'
                       : null
               }
-              empty={tab === 'review' ? 'Nothing is waiting on you.' : undefined}
+              empty={tab === 'review'
+                ? (reviewAge.older.length > 0 ? 'Nothing from the last two weeks is waiting on you.' : 'Nothing is waiting on you.')
+                : undefined}
             />
+            {tab === 'review' && (
+              <OlderFold n={reviewAge.older.length}>
+                <StageTable
+                  s="review" rows={reviewAge.older} lane="ivan" groupLabel="Older than two weeks"
+                  refresh={refresh} onOpen={onOpen} openId={openId} blocks={blocks}
+                />
+              </OlderFold>
+            )}
             {/* The publish queue rides INSIDE the Scheduled tab: it answers the
                 one question the drafts table cannot — did the thing that was
                 scheduled actually go out. */}
@@ -607,6 +628,7 @@ function MattanLane({
     internal: groupByLaneStage(shown.filter(d => boardGroupOf(d) === 'internal'), lane),
     board: groupByLaneStage(shown.filter(d => boardGroupOf(d) === 'board'), lane),
   }
+  const waitingAge = splitByAge(byGroup.internal.review)
   const stageTabs: StageTab[] = BOARD_ORDER.flatMap(g => CLIENT_STAGES.map(st => ({
     key: `${g}_${st}`,
     label: clientStageLabel(st, g),
@@ -616,6 +638,14 @@ function MattanLane({
     // to do or Ivan's to chase.
     mark: g === 'internal' && st === 'review',
   }))).filter(t => t.key === CLIENT_TAB_ALWAYS || t.n > 0)
+  // Generating, Published, Errors, Stuck and Other have one label for both
+  // groups, so when both groups hold rows the bar printed the same word twice.
+  // The group name goes on the label then, and only then (blueprint v3).
+  const dup = new Set(stageTabs.map(t => t.label).filter((l, i, all) => all.indexOf(l) !== i))
+  for (const t of stageTabs) {
+    if (!dup.has(t.label)) continue
+    t.label = `${t.label} · ${t.key.startsWith('board_') ? 'on board' : 'ours'}`
+  }
   // Ideas FIRST, the same position the bank takes on Ivan's bar, and always on
   // — a staged-ideas count that goes quiet at zero is the one number that says
   // the miner has stopped feeding this lane.
@@ -676,6 +706,7 @@ function MattanLane({
 
       <Body innerRef={bodyRef}>
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
+        <VerdictLine lane={lane} setLane={setLane} laneCounts={laneCounts} />
         {view === 'calendar' ? (
           <ContentCalendar rows={shown} onOpen={onOpen} refresh={refresh} />
         ) : onIdeas ? (
@@ -699,8 +730,10 @@ function MattanLane({
         ) : shown.length === 0 && drafts.length > 0
           ? <FilteredEmpty noun="drafts" onClear={() => { setFilters({}); setQ('') }} />
           : (
+            <>
             <StageTable
-              s={activeStage} rows={byGroup[activeGroup][activeStage]}
+              s={activeStage}
+              rows={active === CLIENT_TAB_ALWAYS ? waitingAge.recent : byGroup[activeGroup][activeStage]}
               // `lane`, not a hardcoded client id. This component draws every
               // client lane, and the row uses it to decide whether to print the
               // source and whether the review controls are legal.
@@ -708,9 +741,18 @@ function MattanLane({
               groupLabel={clientStageLabel(activeStage, activeGroup)}
               refresh={refresh} onOpen={onOpen} openId={openId}
               empty={active === CLIENT_TAB_ALWAYS
-                ? 'Nothing is waiting on you.'
+                ? (waitingAge.older.length > 0 ? 'Nothing from the last two weeks is waiting on you.' : 'Nothing is waiting on you.')
                 : `Nothing at ${clientStageLabel(activeStage, activeGroup).toLowerCase()}.`}
             />
+            {active === CLIENT_TAB_ALWAYS && (
+              <OlderFold n={waitingAge.older.length}>
+                <StageTable
+                  s="review" rows={waitingAge.older} lane={lane} groupLabel="Older than two weeks"
+                  refresh={refresh} onOpen={onOpen} openId={openId}
+                />
+              </OlderFold>
+            )}
+            </>
           )}
       </Body>
 
@@ -809,6 +851,7 @@ export function ContentList({ lane, setLane, openId, onOpen, laneCounts }: {
           <Scope lane={lane} />
           <Body innerRef={rowsRef}>
             <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
+            <VerdictLine lane={lane} setLane={switchLane} laneCounts={laneCounts} />
             {err ? (
               <Failed
                 what="The content pipeline"

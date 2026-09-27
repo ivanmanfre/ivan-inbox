@@ -90,7 +90,7 @@ export function ThreadMenu({ chat }: { chat: ChatHandle }) {
           <PopoverItem
             icon={onBot ? 'check' : 'ask'}
             onClick={() => { setOpen(false); chat.openBot() }}
-            tail={chat.botUnread ? <span className="a-brain-bot-dot" data-bot-unread aria-label="Unread" /> : undefined}
+            tail={chat.botUnread ? <span className="cl-new" data-bot-unread>New</span> : undefined}
           >Claude&rsquo;s thread</PopoverItem>
         )}
         {onBot && (

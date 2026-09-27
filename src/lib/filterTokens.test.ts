@@ -263,7 +263,7 @@ describe('newToken / valueLabel / tokenSentence', () => {
     const tok = newToken(lane)
     expect(tok).toMatchObject({ field: 'lane', op: 'is', value: 'ivan' })
     expect(valueLabel(lane, tok)).toBe('Ivan')
-    expect(tokenSentence(lane, tok)).toBe('lane is Ivan')
+    expect(tokenSentence(lane, tok)).toBe('seat is Ivan')
   })
   it('a flag token has no value slot and reads as the operator alone', () => {
     const draft = findField(DM_FIELDS, 'draft')!
@@ -342,5 +342,17 @@ describe('content facets as fields', () => {
   it('an empty value is not a token, and a removed token is not a key', () => {
     expect(tokensFromFilterState({ stage: '' }, facets)).toEqual([])
     expect(filterStateFromTokens([{ id: '1', field: 'stage', op: 'is', value: '' }])).toEqual({})
+  })
+})
+
+describe('DMs rebuild: lane and copy-route tokens', () => {
+  it('reads the campaign lane (stored lane first) and the route without its Next: prefix', () => {
+    const lane = findField(DM_FIELDS, 'campaign lane')!
+    const route = findField(DM_FIELDS, 'route')!
+    const t = { lane: null, campaignLane: 'harvest', copyRoute: 'next:audit_offer' } as unknown as Parameters<typeof lane.of>[0]
+    expect(lane.of(t)).toBe('Harvested')
+    expect(route.of(t)).toBe('Audit offer')
+    expect(lane.values!.some(v => v.value === 'Harvested')).toBe(true)
+    expect(route.values!.some(v => v.value === 'Audit offer')).toBe(true)
   })
 })

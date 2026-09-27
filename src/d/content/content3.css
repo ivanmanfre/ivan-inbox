@@ -1,0 +1,139 @@
+/* D · Content, part three: parity pass (27 Sep). Today's registers inside the
+   window, the notes above the post, the month planner, the rail, the lists. */
+
+/* today's registers (QaRegister, AgentRegister, Fold, KeyRows) inside a D tab */
+.cn-reg{margin-top:10px;background:transparent}
+.d-app .cn-reg.ds-shell{padding:0;gap:0;min-height:0;background:transparent}
+.cn-reg .ds-btn{padding:0 var(--ds-s5)}.cn-reg .ds-btn[data-size='sm']{padding:0 var(--ds-s4)}
+.cn-reg .ds-chip{padding:0 var(--ds-s4)}
+.cn-reg summary{cursor:pointer}
+.cn-src>*+*{margin-top:8px}
+.cn-pre{white-space:pre-wrap;font:400 12.5px/1.45 var(--m)}
+.cn-cap{display:block;font:400 11px var(--m);letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin:10px 0 4px}
+.cn-dim{color:var(--t2);font-size:13px}
+.cn-quote small{display:block;color:var(--t3);font:400 11.5px var(--m);margin-top:4px}
+.cn-notec{margin-top:10px}
+.cn-notec .cn-note{height:64px;padding:8px 12px;resize:vertical}
+.cn-notec .cn-ia{align-items:center;justify-content:flex-start}
+
+/* above the post: holds, topic, error banner, notes */
+.cn-above{max-width:520px;margin:0 auto 10px;display:flex;flex-direction:column;gap:6px}
+.cn-holds{margin:0;padding:6px 10px 6px 26px;border:1px solid var(--warn);border-radius:8px;color:var(--warn);font-size:13px}
+.cn-topic{font-size:13px;color:var(--t2)}
+.cn-banner{border:1px solid var(--bad,#ff6b5b);background:rgba(255,107,91,.08);color:var(--t1);border-radius:8px;padding:8px 10px;font-size:13px}
+.cn-banner small{color:var(--t2);font:400 12px var(--m)}
+.cn-st.cn-st-bad{color:var(--warn);border-color:var(--warn)}
+.cn-why2{display:block;margin-top:4px;color:var(--t2)}
+
+/* post: click to edit, slides, editor keys */
+.cn-lib-ed{cursor:text}
+.cn-lib-ed:hover{background:#f7f9f2}
+.cn-slides{display:flex;gap:6px;overflow-x:auto;padding:8px 12px 12px;background:#fff}
+.cn-slides img{height:120px;width:auto;border-radius:6px;border:1px solid #e3e3e3;flex:none}
+.cn-edk{display:block;font:400 11.5px var(--m);color:var(--t3);margin-top:4px}
+
+/* generating mark (today's in-flight "generating · N stalled") */
+.cn-gen{flex:none;height:30px;display:flex;align-items:center;padding:0 10px;margin-right:8px;border:1px solid var(--line2);border-radius:15px;font:400 12px var(--m);color:var(--t2);white-space:nowrap}
+.cn-gen.cn-gen-bad{border-color:var(--warn);color:var(--warn)}
+.cn-more .cn-gen{height:auto;padding:10px 12px;margin:10px 0;border-radius:10px;white-space:normal}
+/* the Errors list beside the window */
+.cn-left.cn-left-legacy{padding:0;gap:0}
+.cn-left-legacy .cn-legacy{overflow:visible}
+/* today's in-flight mark: pinned above the phone dock, not at the end of the list */
+.d-phone .cn-legacy .a-ct-inflight{position:fixed;inset-inline-end:16px;inset-block-end:calc(var(--dock-h,62px) + 28px + env(safe-area-inset-bottom))}
+/* beside the window the list has no room for its table: fold the three columns
+   and the reserved action width, as today's list does below 1000px */
+.cn-left-legacy .a-ct-cols,.cn-left-legacy .a-ct-colhead{display:none}
+.cn-left-legacy .a-ct-row .a-row-actions{min-width:0}
+
+/* ideas: filters, outlier line, lead-magnet note, paging, facts */
+.cn-flt{display:flex;gap:6px;padding:6px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.cn-flt select{height:28px;max-width:100%;border:1px solid var(--line2);border-radius:7px;background:var(--bg);color:var(--t2);font:400 12.5px var(--f);padding:0 6px;color-scheme:dark;min-width:0}
+.cn-flt button{font:400 12px var(--m);color:var(--t2);text-decoration:underline;text-underline-offset:3px}
+.cn-iq .cn-ol{color:var(--t3);font:400 11.5px var(--m)}
+.cn-lmline{padding:6px 14px;font-size:12.5px;color:var(--t2);border-bottom:1px solid var(--line)}
+.cn-lmline a{color:var(--t1);text-decoration:underline;text-underline-offset:3px}
+.cn-pagemore{display:block;width:100%;padding:10px 14px;text-align:left;font:500 13px var(--f);color:var(--t2);border-bottom:1px solid var(--line)}
+.cn-pagemore:hover{color:var(--t1)}
+.cn-ichips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.cn-ichips span{font:400 11.5px var(--m);border:1px solid var(--line2);border-radius:5px;padding:0 6px;color:var(--t2)}
+.cn-ilinks{display:flex;gap:14px;margin-top:6px}.cn-ilinks a{color:var(--t1);text-decoration:underline;text-underline-offset:3px}
+.cn-say button{text-decoration:underline;text-underline-offset:3px;color:var(--t1)}
+.cn-sec{gap:10px}.cn-sec span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cn-sec span:last-child{flex:none}
+
+/* planner: weeks / month switch, extra posts, weekend marker */
+.cn-planv{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden;margin-right:6px}
+.cn-planv button{height:28px;padding:0 10px;font:500 13px var(--f);color:var(--t2);border:0;border-radius:0}
+.cn-planv button.cn-on{background:var(--p3);color:var(--t1)}
+.cn-wk-p{padding:10px 12px 0}
+.cn-cellk2{position:absolute;left:8px;bottom:6px;display:flex;gap:4px}
+.cn-more2{font:500 11px var(--m);border:1px solid var(--line2);border-radius:5px;padding:1px 6px;background:var(--p2);color:var(--t2)}
+.cn-more2:hover{color:var(--t1);border-color:var(--strong)}
+.cn-cell{padding-bottom:26px}
+.cn-na.cn-nd{background:var(--p1);color:var(--t2);border:1px solid var(--line2)}
+.cn-card.cn-inert{cursor:default;opacity:.85}
+.cn-card[draggable=true]{cursor:grab}
+.cn-cell.cn-none{min-height:150px}
+
+/* day panel */
+.cn-daylist section+section{margin-top:12px}
+.cn-dayrow{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;padding:10px 0;border-bottom:1px solid var(--line);align-items:start}
+.cn-dayrow>.cn-mono{font-size:12.5px;color:var(--t2);padding-top:2px}
+.cn-dayrow b{font:600 14px var(--f)}.cn-dayrow small{display:block;font-size:12.5px}
+.cn-dayrow .cn-ia{grid-column:2;justify-content:flex-start;margin-top:4px}
+.cn-warn{color:var(--warn)}
+
+/* month */
+.cn-month{border:1px solid var(--strong);background:var(--p1);flex:none;display:flex;flex-direction:column}
+.cn-mh{display:flex;align-items:center;gap:12px;padding:8px 10px;border-bottom:1px solid var(--strong);background:var(--p2);flex-wrap:wrap}
+.cn-mnav{display:flex;align-items:center;gap:6px}
+.cn-mnav b{font:600 15px var(--f);min-width:130px;text-align:center}
+.cn-mnav button{height:28px;min-width:28px;padding:0 8px;border:1px solid var(--line2);border-radius:7px;font:500 13px var(--f);color:var(--t2)}
+.cn-mcounts{display:flex;gap:12px;font:400 12px var(--m);color:var(--t2);flex:1;min-width:0;flex-wrap:wrap}
+.cn-railt{height:28px;padding:0 10px;border:1px solid var(--line2);border-radius:7px;font:500 12.5px var(--f);color:var(--t2)}
+.cn-mbody{display:grid;grid-template-columns:minmax(0,1fr)}
+.cn-mbody.cn-with-rail{grid-template-columns:minmax(0,1fr) 260px}
+.cn-mgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.cn-mday{min-height:96px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:4px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.cn-mday>small{font:400 11px var(--m);color:var(--t3)}
+.cn-mday.cn-out{background:repeating-linear-gradient(135deg,transparent 0 7px,rgba(255,255,255,.025) 7px 8px)}
+.cn-mday.cn-out>small{opacity:.5}
+.cn-mday.cn-today>small{color:var(--lime)}
+.cn-chip2{border:1px solid var(--line2);border-radius:6px;padding:3px 5px;background:var(--p2);min-width:0}
+.cn-chip2.cn-posted{opacity:.75}
+.cn-chip2.cn-chip-warn{border-color:var(--warn)}
+.cn-chip2 .cn-chipt{display:block;width:100%;text-align:left;font:600 11.5px/1.25 var(--f);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--t1)}
+.cn-chip2 small{display:block;font:400 10.5px var(--m);color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cn-chipk{display:flex;gap:4px;margin-top:2px}.cn-chipk button{font:500 10.5px var(--m);color:var(--t2);text-decoration:underline;text-underline-offset:2px}
+.cn-rail{border-left:1px solid var(--strong);padding:8px 10px;overflow-y:auto;max-height:640px}
+.cn-railrow{padding:8px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:4px}
+.cn-railrow[draggable=true]{cursor:grab}
+.cn-railt2{text-align:left;font:600 13px/1.3 var(--f);color:var(--t1)}
+.cn-railrow .d-btn{align-self:flex-start}
+.cn-any{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:13px;color:var(--t2)}
+.cn-any input{height:32px;border:1px solid var(--line2);border-radius:7px;background:var(--bg);color:var(--t1);font:400 13px var(--m);padding:0 8px;color-scheme:dark}
+.d-phone .cn-month{margin:10px 12px}
+.d-phone .cn-mbody.cn-with-rail{grid-template-columns:minmax(0,1fr)}
+.d-phone .cn-rail{border-left:0;border-top:1px solid var(--strong)}
+.d-phone .cn-mday{min-height:64px;padding:2px}
+.d-phone .cn-chip2 small,.d-phone .cn-chipk{display:none}
+.d-phone .cn-mcounts{flex-basis:100%}
+
+/* queue rows: selection mark (command layer), row writes */
+.cn-row{grid-template-columns:40px 44px minmax(0,1fr) 74px 40px auto;cursor:pointer}
+.cn-row>button.cn-t{font-weight:600;text-align:left;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13.5px}
+.cn-mark{display:flex;align-items:center;gap:4px}
+.cn-mark .a-ct-selmark{position:static;width:16px;height:16px;border:1px solid var(--line2);border-radius:4px;display:grid;place-items:center;padding:0;flex:none;opacity:.35;background:transparent}
+.cn-row:hover .cn-mark .a-ct-selmark,.cn-mark[data-wbfocus='1'] .a-ct-selmark,.cn-mark .a-ct-selmark[aria-checked='true']{opacity:1}
+.cn-mark .a-ct-selmark[aria-checked='true']{background:var(--lime);color:var(--ink);border-color:var(--lime)}
+.cn-mark .a-ct-selmark svg{width:12px;height:12px}
+.cn-row:has(>.cn-mark[data-wbsel='1']){background:var(--sel)}
+.cn-row:has(>.cn-mark[data-wbfocus='1']){box-shadow:inset 3px 0 0 var(--t2)}
+.cn-racts{display:flex;gap:4px;justify-content:flex-end;padding:0 8px 0 0}
+.d-phone .cn-row{grid-template-columns:34px 36px minmax(0,1fr) auto}
+.d-phone .cn-row>span:nth-child(4),.d-phone .cn-row>span:nth-child(5){display:none}
+.cn-jk button[data-verb=rail]{margin-left:4px}
+.cn-qrail{list-style:none;margin:0;padding:4px 8px;max-height:180px;overflow-y:auto;border-bottom:1px solid var(--line)}
+.cn-qrail button{display:flex;gap:8px;width:100%;text-align:left;padding:4px 8px;border-radius:6px;font-size:13px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cn-qrail button small{font:400 11px var(--m);color:var(--t3);flex:none;width:22px}
+.cn-qrail button.cn-on{background:var(--sel);color:var(--t1)}

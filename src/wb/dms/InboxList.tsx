@@ -1,4 +1,4 @@
-import { internalHoldSummary } from '../../lib/inbox'
+import { internalHoldSummary, isReplyRetryPending, offersReplyMyself, restoreDraft, REPLY_MYSELF, type DiscardMode } from '../../lib/inbox'
 /* ==========================================================================
    src/wb/dms/InboxList.tsx — S02 / S33: the conversation list.
 
@@ -15,7 +15,10 @@ import { internalHoldSummary } from '../../lib/inbox'
    number, used by the arithmetic and by the box, so the two cannot drift.
    ========================================================================== */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Badge, Banner, Button, Chip, DayHeader, EmptyState, FilterTokens, IconButton, Input } from '../../ds'
+import { createPortal } from 'react-dom'
+
+export type HoldAction = { label: string; icon: IconName; run: () => void }
+import { Banner, Button, Chip, PopoverItem, Sheet, type IconName, DayHeader, EmptyState, FilterTokens, IconButton, Input } from '../../ds'
 import { Body, Group, Head, Bar, Row, Rows, Screen } from '../kit'
 import { Face, PullMark, Pill, timeAgo } from './parts'
 import { InboxSkeleton } from '../chrome/Skeleton'
@@ -25,7 +28,7 @@ import { useConfirm } from '../chrome/ConfirmSheet'
 import { browseOrder, discardLegs, draftLegs, legFailureText, filterByStatus, filterThreads, inboxWaitingCount, isLeadMagnet, searchThreads, threadKind, type Filter, type Status, type Thread, eventTime } from '../../lib/inbox'
 import { DM_FIELDS, applyThreadTokens, hasStatusToken, tokensForFilter, type FilterToken } from '../../lib/filterTokens'
 import { checkedPhrase } from '../../lib/today'
-import { clientBadge } from '../../lib/labels'
+import { clientBadge, copyRouteTag, threadLaneLabel } from '../../lib/labels'
 import { RowSelect } from '../../exp/v2c/RowSelect'
 import './dms.css'
 
@@ -86,7 +89,7 @@ function useDesktopHover(): boolean {
 }
 
 /** The phone, as a boolean. The day groups are a desktop move. */
-function usePhone(): boolean {
+export function usePhone(): boolean {
   const [on, setOn] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia(PHONE_MQ).matches)
   useEffect(() => {
@@ -116,6 +119,7 @@ export function dayLabel(iso: string, now: Date = new Date()): string {
 
 type Item =
   | { kind: 'day'; key: string; label: string; count: number; section?: boolean }
+  | { kind: 'fold'; key: string; label: string; count: number; fold: 'older' | 'auto'; open: boolean }
   | { kind: 'row'; key: string; t: Thread }
 
 /** How far the reader has scrolled INTO the rows: 0 until the rows reach the top of the scroller. */
@@ -157,7 +161,7 @@ function useRowWindow(ref: React.RefObject<HTMLDivElement | null>, anchor: React
     const el = ref.current
     if (el && on) setTop(Math.floor(rowsScrollTop(el, anchor.current) / step) * step)
   })
-  const itemH = (it: Item) => (it.kind === 'day' ? DAY_H : rowH)
+  const itemH = (it: Item) => (it.kind === 'row' ? rowH : DAY_H)
   if (!on) return { start: 0, end: items.length, padTop: 0, padBottom: 0 }
   const offs: number[] = []
   let acc = 0
@@ -294,12 +298,51 @@ export function hoverVerbFor({ desktopHover, pendingDraft, preRead }: {
 // against is untouched.
 const ROW_SWIPE_THRESHOLD = 72
 
-function RowHost({ height, onDiscard, children }: {
+// DMs rebuild: HOLD a row (touch only, 500ms, finger still) for its menu: Sum up, Copy chat,
+// Ask Claude. A pointer has the hover verbs instead. The click the lift would fire is swallowed so
+// a hold never also opens the thread.
+const HOLD_MS = 500
+function useHold(onHold: (() => void) | undefined) {
+  const timer = useRef<number | null>(null)
+  const at = useRef({ x: 0, y: 0 })
+  const held = useRef(false)
+  const clear = () => { if (timer.current !== null) { clearTimeout(timer.current); timer.current = null } }
+  useEffect(() => clear, [])
+  return {
+    down(e: React.PointerEvent) {
+      held.current = false
+      clear()
+      if (!onHold || e.pointerType === 'mouse') return
+      at.current = { x: e.clientX, y: e.clientY }
+      timer.current = window.setTimeout(() => {
+        timer.current = null
+        held.current = true
+        navigator.vibrate?.(10)
+        onHold()
+      }, HOLD_MS)
+    },
+    move(e: React.PointerEvent) {
+      if (timer.current !== null && Math.hypot(e.clientX - at.current.x, e.clientY - at.current.y) > 8) clear()
+    },
+    up: clear,
+    click(e: React.MouseEvent) {
+      if (!held.current) return false
+      held.current = false
+      e.stopPropagation()
+      e.preventDefault()
+      return true
+    },
+  }
+}
+
+function RowHost({ height, onDiscard, onHold, children }: {
   height: number
   /** Absent on any row with nothing to discard: no gesture is bound at all. */
   onDiscard?: () => void
+  onHold?: () => void
   children: ReactNode
 }) {
+  const hold = useHold(onHold)
   const [dx, setDx] = useState(0)
   const [dragging, setDragging] = useState(false)
   const start = useRef({ x: 0, y: 0 })
@@ -317,7 +360,19 @@ function RowHost({ height, onDiscard, children }: {
   const swiped = useRef(false)
 
   if (!onDiscard) {
-    return <div className="a-dms-rowhost" style={{ height }}>{children}</div>
+    return (
+      <div
+        className="a-dms-rowhost"
+        data-hold={onHold ? '' : undefined}
+        style={{ height }}
+        onPointerDown={hold.down}
+        onPointerMove={hold.move}
+        onPointerUp={hold.up}
+        onPointerCancel={hold.up}
+        onClickCapture={e => { hold.click(e) }}
+        onContextMenu={onHold ? e => e.preventDefault() : undefined}
+      >{children}</div>
+    )
   }
   const reset = () => {
     setDragging(false)
@@ -329,18 +384,22 @@ function RowHost({ height, onDiscard, children }: {
     <div
       className="a-dms-rowhost"
       data-swipe=""
+      data-hold={onHold ? '' : undefined}
+      onContextMenu={onHold ? e => e.preventDefault() : undefined}
       style={{
         height,
         transform: dx ? `translateX(${dx}px)` : undefined,
         transition: dragging ? 'none' : 'transform var(--ds-dur) var(--ds-ease)',
       }}
       onPointerDown={e => {
+        hold.down(e)
         start.current = { x: e.clientX, y: e.clientY }
         axis.current = 'none'
         swiped.current = false
         setDragging(true)
       }}
       onPointerMove={e => {
+        hold.move(e)
         if (!dragging) return
         const ddx = e.clientX - start.current.x
         const ddy = e.clientY - start.current.y
@@ -358,13 +417,15 @@ function RowHost({ height, onDiscard, children }: {
         setDx(dxRef.current)
       }}
       onPointerUp={() => {
+        hold.up()
         if (!dragging) return
         const final = axis.current === 'x' ? dxRef.current : 0
         reset()
         if (final < -ROW_SWIPE_THRESHOLD) onDiscard()
       }}
-      onPointerCancel={reset}
+      onPointerCancel={() => { hold.up(); reset() }}
       onClickCapture={e => {
+        if (hold.click(e)) return
         if (!swiped.current) return
         swiped.current = false
         e.stopPropagation()
@@ -374,7 +435,7 @@ function RowHost({ height, onDiscard, children }: {
   )
 }
 
-export function InboxList({ threads, filter, setFilter, tokens, setTokens, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, refreshing = false, cachedAt = null, error = null, title = 'Inbox', status, browse = false, before, after, rowsFor, renderRow, rowNote, rowChip, rowTag, renderNote, emptyLine }: {
+export function InboxList({ threads, filter, setFilter, tokens, setTokens, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, refreshing = false, cachedAt = null, error = null, title = 'Inbox', status, browse = false, before, after, rowsFor, renderRow, rowNote, rowChip, rowTag, renderNote, rowHold, emptyLine }: {
   threads: Thread[]
   filter: Filter
   setFilter: (f: Filter) => void
@@ -448,6 +509,9 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
   // whoever supplies it is the one `rowNote` carries: render ONE line and do not
   // grow the row.
   renderNote?: (t: Thread, note: string) => ReactNode
+  // DMs rebuild: what holding a row offers on the phone (Sum up, Copy chat, Ask Claude). The host
+  // owns every verb; the list only draws the sheet. Empty = the row has no hold.
+  rowHold?: (t: Thread) => HoldAction[]
   emptyLine?: string
 }) {
   const rowsRef = useRef<HTMLDivElement>(null)
@@ -459,6 +523,21 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
   // input stays mounted there for CommandLayer's focusSearch to find.
   const [searchOpen, setSearchOpen] = useState(false)
   const confirm = useConfirm()
+  // The receipt of a discard made FROM THE LIST, with Bring it back. It stays until he dismisses it,
+  // brings it back, or discards another (the newest replaces it).
+  const [held, setHeld] = useState<{ t: Thread; actions: HoldAction[] } | null>(null)
+  const [receipt, setReceipt] = useState<{ name: string; ids: string[]; mine: boolean } | null>(null)
+  const [restoring, setRestoring] = useState(false)
+  async function onBringBack() {
+    if (!receipt) return
+    setRestoring(true)
+    try {
+      for (const id of receipt.ids) await restoreDraft(id)
+      setReceipt(null)
+    } catch (e) {
+      window.alert(`Could not bring it back: ${e instanceof Error ? e.message : String(e)}`)
+    } finally { setRestoring(false); refresh() }
+  }
   // Row-level draft actions (preview text + inline discard) are gated on
   // `status` being passed at all, the same opt-in signal the draft banner above
   // already uses.
@@ -469,18 +548,25 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
     e?.stopPropagation()
     if (!t.draft) return
     const pair = t.companionDraft != null
+    let mode: DiscardMode = null
     const ok = await confirm({
       title: pair ? 'Discard both drafts?' : 'Discard this draft?',
       message: pair ? 'Neither the LinkedIn message nor the email will be sent.' : 'It will not be sent.',
       confirmText: 'Discard',
+      altText: offersReplyMyself(t) ? "Discard, I'll reply myself" : undefined,
+      onAlt: () => { mode = REPLY_MYSELF },
       danger: true,
     })
     if (!ok) return
     // Every leg, and a leg that would not stop is said out loud: the row and
     // the swipe used to discard the DM alone and leave the email pending.
     try {
-      const failed = await discardLegs(draftLegs(t))
+      const legs = draftLegs(t)
+      const failed = await discardLegs(legs, mode)
       if (failed.length) window.alert(failed.map(legFailureText).join(' '))
+      // The receipt: the list is where the draft disappeared, so Bring it back lives here too.
+      const stopped = legs.filter((l): l is NonNullable<typeof l> => l != null && !failed.some(f => f.leg.id === l.id))
+      if (stopped.length) setReceipt({ name: t.prospect_name, ids: stopped.map(l => l.id), mine: mode === REPLY_MYSELF })
     } finally { refresh() }
   }
   const tokenMode = tokens !== undefined && setTokens !== undefined
@@ -506,15 +592,18 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
   const statusToken = tokenMode && hasStatusToken(tokens)
   const sectioned = !query && browse && filter !== 'spam' && !statusToken
   const ordered = useMemo(() => browseOrder(laned), [laned])
+  // DMs rebuild: two folds under "Sent, waiting on them", both closed on open. Owed past 14 days
+  // (the badge already dropped them; they used to be filed as waiting on THEM) and auto-replies.
+  const [folds, setFolds] = useState<{ older: boolean; auto: boolean }>({ older: false, auto: false })
   const shown = useMemo(() => (query
     ? searchThreads(laned, query)
     : sectioned
       // Conversations only (someone answered, a draft is waiting, a magnet went
       // out): the lane also holds every invite that never got a reply, and those
       // are not chats. Newest activity first, drafts dated by their own clock.
-      ? [...ordered.pending, ...ordered.rest]
+      ? [...ordered.pending, ...ordered.rest, ...(folds.older ? ordered.older : []), ...(folds.auto ? ordered.auto : [])]
       : (status && filter !== 'spam' && !statusToken ? filterByStatus(laned, status) : laned)),
-  [query, laned, sectioned, ordered, status, filter, statusToken])
+  [query, laned, sectioned, ordered, status, filter, statusToken, folds])
   const rowH = useRowH()
   const phone = usePhone()
   const desktopHover = useDesktopHover()
@@ -526,6 +615,41 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
     const items: Item[] = []
     let lastDay: string | null = null
     let head: Extract<Item, { kind: 'day' }> | null = null
+    if (sectioned) {
+      const blocks: ['pending' | 'rest' | 'older' | 'auto', Thread[]][] = [
+        ['pending', ordered.pending], ['rest', ordered.rest], ['older', ordered.older], ['auto', ordered.auto],
+      ]
+      for (const [s, list] of blocks) {
+        if (!list.length) continue
+        if (s === 'older' || s === 'auto') {
+          items.push({
+            kind: 'fold', key: `fold-${s}`, fold: s, open: folds[s], count: list.length,
+            label: s === 'older' ? 'Older than two weeks' : 'Auto-replies',
+          })
+          if (!folds[s]) continue
+        } else {
+          items.push({
+            kind: 'day', section: true, key: `section-${s}`,
+            label: s === 'pending' ? 'Needs your reply' : 'Sent, waiting on them', count: list.length,
+          })
+        }
+        lastDay = null
+        head = null
+        for (const t of list) {
+          if ((!phone || browse) && s !== 'pending') {
+            const d = dayLabel(eventTime(t.last))
+            if (d !== lastDay) {
+              lastDay = d
+              head = { kind: 'day', key: `day-${s}-${d}-${t.prospect_id}`, label: d, count: 0 }
+              items.push(head)
+            }
+            if (head) head.count += 1
+          }
+          items.push({ kind: 'row', key: t.prospect_id, t })
+        }
+      }
+      return items
+    }
     const pendingIds = new Set(ordered.pending.map(t => t.prospect_id))
     let section: 'pending' | 'rest' | null = null
     for (const t of shown) {
@@ -557,7 +681,7 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
       items.push({ kind: 'row', key: t.prospect_id, t })
     }
     return items
-  }, [shown, sectioned, ordered, phone, browse])
+  }, [shown, sectioned, ordered, phone, browse, folds])
   const rowsAnchor = useRef<HTMLDivElement>(null)
   const win = useRowWindow(rowsRef, rowsAnchor, items, windowed && !renderRow, rowH)
   const { draftTotal, waitingTotal, spamTotal } = useMemo(() => ({
@@ -636,6 +760,25 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
 
       {head}
 
+      {held && createPortal(
+        <Sheet open onClose={() => setHeld(null)} title={held.t.prospect_name} sub={held.t.prospect_company ?? undefined} className="a-dms-holdsheet">
+          <div role="menu" aria-label={`Actions for ${held.t.prospect_name}`}>
+            {held.actions.map(a => (
+              <PopoverItem key={a.label} icon={a.icon} onClick={() => { setHeld(null); a.run() }}>{a.label}</PopoverItem>
+            ))}
+          </div>
+        </Sheet>,
+        document.body,
+      )}
+      {receipt && (
+        <Banner
+          icon="discard"
+          className="a-dms-receipt"
+          title={`Discarded the draft to ${receipt.name.split(' ')[0]}.`}
+          action={<Button variant="quiet" size="sm" icon="undo" busy={restoring} onClick={restoring ? undefined : onBringBack}>Bring it back</Button>}
+          onDismiss={() => setReceipt(null)}
+        >{receipt.mine ? 'Still under Needs your reply, for your own answer.' : undefined}</Banner>
+      )}
       <Body innerRef={rowsRef} className="a-dms-body">
         <PullMark pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         {/* With a status axis present, "drafts" is one of the statuses, a banner
@@ -690,6 +833,21 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
                     </div>
                   )
                 }
+                if (it.kind === 'fold') {
+                  const f = it.fold
+                  return (
+                    <div key={it.key} className="a-dms-dayhost" data-section="1" style={{ height: DAY_H }}>
+                      <button
+                        type="button"
+                        className="wb-dms-fold"
+                        aria-expanded={it.open}
+                        onClick={() => setFolds(o => ({ ...o, [f]: !o[f] }))}
+                      >
+                        <DayHeader sticky={false} label={it.label} tail={it.open ? `${it.count} · Hide` : `${it.count} · Show`} />
+                      </button>
+                    </div>
+                  )
+                }
                 const t = it.t
                 const isDraftLast = t.draft != null && t.last.id === t.draft.id
                 // Discard costs 3 interactions per draft today (open the thread,
@@ -700,8 +858,16 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
                 // draft's own text whenever one is pending.
                 const pendingDraft = draftRowActions && t.draft != null && t.draftSnoozedUntil === null
                   ? t.draft : null
+                const laneTag = threadLaneLabel(t.lane, t.campaignLane)
+                const route = copyRouteTag(t.copyRoute)
+                const hold = t.ownerConfirmation
+                  ? (isReplyRetryPending(t.ownerConfirmation) ? 'Retry' : 'Owner question') : null
                 let snip = t.last.message_text
-                if (t.ownerConfirmation) snip = internalHoldSummary(t.ownerConfirmation)
+                if (t.ownerConfirmation) {
+                  snip = isReplyRetryPending(t.ownerConfirmation)
+                    ? internalHoldSummary(t.ownerConfirmation)
+                    : (t.ownerConfirmation.context_gap?.question || internalHoldSummary(t.ownerConfirmation))
+                }
                 else if (pendingDraft) snip = pendingDraft.message_text
                 else if (isDraftLast) snip = `Draft: ${t.last.message_text}`
                 else if (t.last.direction === 'outbound' && t.last.sent_at) snip = `You: ${t.last.message_text}`
@@ -729,6 +895,10 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
                     key={t.prospect_id}
                     height={rowH}
                     onDiscard={phone && pendingDraft ? () => { void onRowDiscard(null, t) } : undefined}
+                    onHold={phone && rowHold ? () => {
+                      const actions = rowHold(t)
+                      if (actions.length) setHeld({ t, actions })
+                    } : undefined}
                   >
                     {/* A conversation carries NO bulk capability — an answer is
                         written one at a time, and the bulk bar says that in words
@@ -778,8 +948,17 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
                          three-tenant inbox has to say whose row this is. Here
                          it costs the name nothing. */
                       sub={<>
+                        {/* DMs rebuild (blueprint v3 decision 3): the lane is back on
+                            every row, reversing the 24 Sep move into the thread
+                            header, because Ivan asked for it on 26 Sep ("every DM
+                            row must show the lane"). Seat (phone and the 420
+                            column only; the wide row has it on line 1), lane, the
+                            ARCH copy route, and one hold chip. */}
                         <span className="a-dms-lane">
-                          <Pill>{clientBadge(t.client_id)}</Pill>
+                          <span className="a-dms-seat"><Pill>{clientBadge(t.client_id)}</Pill></span>
+                          {laneTag && <Pill>{laneTag}</Pill>}
+                          {route && <span className="a-dms-route" title={route.title}><Pill>{route.label}</Pill></span>}
+                          {hold && <Pill>{hold}</Pill>}
                         </span>
                         <span className="a-dms-subtext">{note && renderNote
                           ? renderNote(t, note)
@@ -787,7 +966,6 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
                       </>}
                       tail={<>
                         <span className="a-mono">{timeAgo(eventTime(t.last))}</span>
-                        {t.unread > 0 && <Badge variant="dot" tone="accent" label={`${t.unread} unread`} />}
                         {/* A pushed draft says WHEN, not DRAFT — the row is the
                             only place a parked draft is visible from the list, so
                             it has to carry its return date rather than look like

@@ -30,10 +30,8 @@
 import { useState } from 'react'
 import { Button } from '../../ds'
 import { useConfirm } from '../chrome/ConfirmSheet'
-import {
-  approveWeeklyReport, discardOpsDraft, dispatchCommentGate, outboundApproveUrl,
-  outboundSkipUrl, seatLabel, type GateOutcome, type OpsDraft,
-} from '../../lib/ops'
+import { outboundApproveUrl, seatLabel, type GateOutcome, type OpsDraft } from '../../lib/ops'
+import { discardConfirm, dispatchApprove, dispatchDiscard, gateConfirm, inviteConfirm } from '../ops/batchActs'
 import {
   batchResultLine, focusSummary, pendingIdsOf, runBatch, type Batch,
 } from '../../lib/focus'
@@ -43,77 +41,6 @@ import './today.css'
 
 function errText(e: unknown): string {
   return e instanceof Error ? e.message : String(e)
-}
-
-// The exact confirm PendingCard.tsx:320-330 / OpsScreen.tsx:479-486 show
-// before firing the ivan-lane comment gate, kept byte-for-byte (title is the
-// part the review named exactly; message/confirmText copied from
-// PendingCard.tsx's already-copy-linted version, both files agree on it).
-function gateConfirm(where: string) {
-  return {
-    title: `Send this to the ${where} comment gate?`,
-    message: 'The poster’s rate caps, cooldown and jitter still decide. You get their answer on the card, no new tab.',
-    confirmText: 'Approve & queue',
-  }
-}
-
-// Ivan's rule: every destructive batch verb asks first. Discard is undoable
-// elsewhere, and the sheet still names what goes. One builder for the batch and
-// the single row, so the two can never ask different questions.
-function discardConfirm(n: number) {
-  return {
-    title: n === 1 ? 'Discard this one?' : `Discard these ${n}?`,
-    message: n === 1
-      ? 'Nothing gets posted. The draft is dropped.'
-      : `Nothing gets posted. All ${n} drafts are dropped.`,
-    confirmText: 'Discard',
-    danger: true,
-  }
-}
-
-type ApproveResult =
-  | { ok: true }
-  | { ok: false; message: string; outcome: GateOutcome | 'error' }
-
-// The same approve branch OpsScreen.tsx:476-579 runs, kept verbatim in
-// substance: manual_invite double-stamps (nothing is sent). comment_outbound
-// either fires the ivan-lane gate and only stamps on accepted/already, or
-// (risedtc lane, no approve_url; never reached from FocusBlock today since
-// groupBatches only batches the ivan-lane case, kept here so this function
-// mirrors the card's full contract rather than a narrowed copy) copies to
-// the clipboard and stamps. Never throws: the caller reads `ok` and, on a
-// gate refusal, the outcome (a `timing` refusal is a queue position, not an
-// error - OpsScreen.tsx:508-516).
-async function dispatchApprove(d: OpsDraft): Promise<ApproveResult> {
-  if (d.kind === 'manual_invite') {
-    await approveWeeklyReport(d.id, d.body)
-    return { ok: true }
-  }
-  if (d.kind === 'comment_outbound') {
-    const approveUrl = outboundApproveUrl(d)
-    if (approveUrl) {
-      const v = await dispatchCommentGate(approveUrl)
-      if (v.outcome === 'accepted' || v.outcome === 'already') {
-        await approveWeeklyReport(d.id, d.body)
-        return { ok: true }
-      }
-      return { ok: false, message: v.message, outcome: v.outcome }
-    }
-    await navigator.clipboard.writeText(d.body)
-    await approveWeeklyReport(d.id, d.body)
-    return { ok: true }
-  }
-  return { ok: false, message: `focus: kind ${d.kind} has no batch approve path`, outcome: 'error' }
-}
-
-// PendingCard.tsx:604-609: a best-effort cancel of the underlying feed row
-// (ivan-lane comment cards only - outboundSkipUrl returns null for every
-// other kind), fire-and-forget, before the real discard write. A failure here
-// is fine: the row expires on its own 5-day gate either way.
-async function dispatchDiscard(d: OpsDraft): Promise<void> {
-  const skip = outboundSkipUrl(d)
-  if (skip) { try { void fetch(skip, { mode: 'no-cors' }) } catch { /* fire and forget */ } }
-  await discardOpsDraft(d.id, d.kind)
 }
 
 type SingleNote = { message: string; outcome: GateOutcome | 'error' }
@@ -189,7 +116,7 @@ export function FocusBlock({
     if (needsGateConfirm(d)) {
       const ok = await confirm(gateConfirm(seatLabel(d.client_id)))
       if (!ok) return
-    }
+    } else if (d.kind === 'manual_invite' && !(await confirm(inviteConfirm(1)))) return
     markBusy([d.id], true)
     setSingleNotes(s => { if (!(d.id in s)) return s; const { [d.id]: _drop, ...rest } = s; return rest })
     try {
@@ -225,9 +152,9 @@ export function FocusBlock({
     const ids = pendingIdsOf(b, liveOpsDrafts)
     if (ids.length === 0) return
     if (b.kind === 'comment_outbound') {
-      const ok = await confirm(gateConfirm(seatLabel(b.client ?? 'ivan')))
+      const ok = await confirm(gateConfirm(seatLabel(b.client ?? 'ivan'), ids.length))
       if (!ok) return
-    }
+    } else if (!(await confirm(inviteConfirm(ids.length)))) return
     markBusy(ids, true)
     const r = await runBatch(ids, async id => {
       const d = byId.get(id)

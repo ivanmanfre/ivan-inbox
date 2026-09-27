@@ -16,7 +16,8 @@ import { useContent, useStyleRoster } from '../../hooks/useContent'
 import {
   LANE_POSSESSIVE, type ContentDraft, type ContentLane,
 } from '../../lib/content'
-import { laneOptions, useLanes } from '../../hooks/useLanes'
+import { useLanes } from '../../hooks/useLanes'
+import { clientOptions } from './laneChips'
 import {
   cleanStyleTitle, previewKeyFor, previewsByStyle, type StylePrompt,
 } from '../../lib/styles'
@@ -168,11 +169,11 @@ export function StylesList({ lane, setLane }: {
       <Head title="Styles" />
       <Bar>
         <Segmented
-          label="Lane"
+          label="Client"
           markerId="a-st-lane"
           value={lane}
           onChange={k => setLane(k as ContentLane)}
-          options={laneOptions(lanes.lanes)}
+          options={clientOptions(lanes.lanes)}
         />
       </Bar>
       <Body innerRef={rowsRef}>

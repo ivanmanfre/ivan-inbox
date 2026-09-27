@@ -18,7 +18,7 @@
 // forth stays in the session only: the thread model has no note/turn type a
 // client can write without going through the Claude brain.
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Icon, LiveDot, Working } from '../../../ds'
+import { Icon, Working } from '../../../ds'
 import type { Turn } from '../../../exp/v2c/chat/events'
 import { useRealtime } from '../../../lib/realtime/useRealtime'
 import { VOICE_COPY, type VoiceErrorReason, type VoiceState } from '../../../lib/realtime/voice'
@@ -114,7 +114,6 @@ export function LiveVoice({ onClose, send, turns }: LiveVoiceProps) {
     <div className="lv" role="dialog" aria-modal="true" aria-label="Live voice" data-state={s.s}>
       <div className="lv-top">
         <span className="lv-tag">
-          {live && <LiveDot label="Live" />}
           <span>{live ? 'Live' : s.s === 'ARMING' ? 'Connecting' : 'Voice'}</span>
           {startedAt !== null && <span className="lv-num">{clock(now - startedAt)}</span>}
           {cost && <span className="lv-num lv-cost" title="Estimated spend on this voice session">{cost}</span>}

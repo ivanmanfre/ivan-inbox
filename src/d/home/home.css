@@ -1,0 +1,73 @@
+/* Home. Classes hm- (tiles) and gt- (tasks). Tokens from d.css.
+   Calm: no boxes around tiles, space instead of lines, one big number each.
+   Lime only on a live number, salmon (--warn) only on a warning. */
+.hm{padding:28px 32px 48px;display:flex;flex-direction:column;gap:40px;max-width:1280px}
+.hm-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:48px;row-gap:28px;align-items:start}
+.hm-sn{margin:0;font:600 22px/1.1 var(--f);letter-spacing:-.3px;color:var(--t1);padding-bottom:10px;border-bottom:1px solid var(--line)}
+.hm-tile{position:relative;min-width:0}
+.hm-hit{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:4px;cursor:pointer;border-radius:10px;padding:8px 10px;margin:-8px -10px}
+.hm-hit:hover{background:var(--p1)}
+.hm-hit:focus-visible{outline:2px solid var(--lime);outline-offset:0}
+.hm-l{font:500 13px/1.2 var(--f);color:var(--t2)}
+.hm-row{display:flex;align-items:baseline;gap:12px}
+.hm-n{font:500 44px/1 var(--m);font-style:normal;letter-spacing:-1.5px;color:var(--t1);font-variant-numeric:tabular-nums}
+.hm-n.hm-on{color:var(--lime)}.hm-n.hm-z,.hm-n.hm-q{color:var(--t3)}.hm-n.hm-w{color:var(--warn)}
+.hm-flag{font:500 13px var(--f);color:var(--warn)}
+.hm-word{font:600 26px/1.1 var(--f);letter-spacing:-.4px;color:var(--t1)}
+.hm-word.hm-w{color:var(--warn)}
+.hm-word small{font:500 14px var(--f);letter-spacing:0;color:var(--warn)}
+.hm-sub{font:400 12.5px var(--m);color:var(--t3)}
+.hm-wt{color:var(--warn)}
+.hm-retry{all:unset;cursor:pointer;font:400 12px var(--f);color:var(--t3);text-decoration:underline;text-underline-offset:3px;margin-top:2px}
+.hm-retry:hover{color:var(--t1)}.hm-retry:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+/* next week: 5 cells, filled = a post, a number only when more than one */
+.hm-strip{display:grid;grid-template-columns:repeat(5,minmax(0,34px));gap:4px;margin-top:6px}
+.hm-strip i{font:500 11px/26px var(--m);font-style:normal;text-align:center;height:26px;border-radius:5px;background:var(--p2);color:var(--t3)}
+.hm-strip i.hm-on{background:var(--t1);color:var(--bg)}
+.hm-warn .hm-strip i.hm-on{background:var(--warn)}
+/* ready lanes: name + number */
+.hm-lanes{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:1px}
+.hm-lanes a{all:unset;box-sizing:border-box;cursor:pointer;display:flex;justify-content:space-between;gap:10px;padding:2px 0;font:400 13px/1.35 var(--f);color:var(--t2);width:100%}
+.hm-lanes a:hover{color:var(--t1)}.hm-lanes a:focus-visible{outline:2px solid var(--lime);outline-offset:1px}
+.hm-lanes b{font:500 13px var(--m);color:var(--t1)}
+.hm-lanes .hm-off a,.hm-lanes .hm-off b{color:var(--t3)}
+.hm-pair{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+/* phone: one block per seat */
+.hm-phone{padding:14px 16px 24px;gap:28px}
+.hm-stack{display:flex;flex-direction:column;gap:28px}
+.hm-seat{display:flex;flex-direction:column;gap:18px}
+.hm-phone .hm-sn{font-size:20px;padding-bottom:8px}
+.hm-phone .hm-n{font-size:40px}
+.hm-phone .hm-word{font-size:24px}
+.hm-phone .hm-strip{grid-template-columns:repeat(5,minmax(0,1fr));max-width:260px}
+.hm-phone .hm-hit{margin:-6px -8px;padding:6px 8px}
+/* tasks */
+.hm-h{margin:0 0 6px;font:600 22px/1.1 var(--f);letter-spacing:-.3px;display:flex;align-items:baseline;gap:10px}
+.hm-h a{all:unset;cursor:pointer;color:var(--t1)}
+.hm-h a:hover{text-decoration:underline;text-underline-offset:4px}
+.hm-h a:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+.hm-hn{font:500 16px var(--m);color:var(--t3)}
+.hm-q{font:500 20px var(--m);color:var(--t3)}
+.gt{display:flex;flex-direction:column;gap:10px;max-width:880px}
+.gt-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.gt-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:4px 14px;padding:8px 0}
+.gt-row.gt-done{opacity:.5}
+.gt-t{font:500 15px/1.35 var(--f);color:var(--t1);min-width:0;overflow-wrap:anywhere}
+.gt-m{display:flex;gap:12px;align-items:baseline;font:400 12.5px var(--f);color:var(--t3);white-space:nowrap}
+.gt-m b{font-weight:500}
+.gt-over{color:var(--warn)}.gt-now{color:var(--lime)}.gt-soon{color:var(--t1)}.gt-later{color:var(--t3)}
+.gt-rm{all:unset;cursor:pointer;font:400 12.5px var(--f);color:var(--t3)}
+.gt-rm:hover{color:var(--t1);text-decoration:underline;text-underline-offset:3px}.gt-rm:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+.gt-more{align-self:flex-start}
+.gt-q{font:400 13px var(--f);color:var(--t3);margin:0}
+.gt-err{display:block;font:400 12px var(--f);color:var(--warn)}
+.gt-add{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px}
+.gt-in{flex:1;min-width:200px;background:transparent;border:1px solid var(--line2);border-radius:8px;color:var(--t1);font:400 14px var(--f);padding:8px 10px}
+.gt-in:focus{outline:2px solid var(--lime);outline-offset:0;border-color:transparent}
+.gt-date{background:transparent;border:1px solid var(--line2);border-radius:8px;color:var(--t2);font:400 13px var(--m);padding:7px 8px;color-scheme:dark}
+.d-app .gt-on{color:var(--t1);border-color:var(--strong);background:var(--p1)}
+.hm-phone .gt-row{grid-template-columns:auto minmax(0,1fr)}
+.hm-phone .gt-m{grid-column:2}
+.hm-phone .gt-in{min-width:0;flex-basis:100%}
+.hm-word small{display:block;margin-top:4px}
+.hm-dot{display:none}

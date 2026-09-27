@@ -37,7 +37,7 @@
 /* Phone: the company and seat wrap onto a second line instead of cutting to
    "Face Matters Skincare · R…" (2026-09-26 review). */
 @media (max-width: 640px){ .a-thread-subline{ white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical } }
-.a-thread-tags{ display:flex; align-items:center; gap:var(--ds-s2); margin-top:var(--ds-s1) }
+.a-thread-tags{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-s1) var(--ds-s2); margin-top:var(--ds-s1) }
 /* Same neutral, raised-surface tag the list used for these two chips
    (dms.css `.a-dms-lane [data-ds='Chip']`) — a lane/route is a category,
    not a state, so no colour rides it here either. */
@@ -296,3 +296,21 @@
   .a-thread > .a-head > .a-head-t{ flex:1 1 0; min-width:9ch }
   .a-thread > .a-head > .a-head-tail{ flex:0 0 auto }
 }
+
+/* DMs rebuild 3: the route chip explains on tap (phone), and the ⋯ menu. */
+.a-root button.wb-thread-route{ padding:0; margin:0; border:0; background:none; color:inherit; font:inherit; cursor:pointer }
+.a-thread-routewhy{ margin-top:var(--ds-s1); color:var(--ds-text-2); font-size:var(--ds-fs-meta); white-space:normal }
+.wb-thread-morehost{ position:relative; margin-left:auto; flex-shrink:0 }
+.wb-thread-more{
+  z-index:70;
+  inline-size:min(16rem, calc(100vw - var(--ds-s5)));
+}
+/* Desktop: the person's details open as a right-hand pane, not a bottom sheet. */
+@media (min-width:1024px){
+  .ds-sheet.a-ctx-sheet{ left:auto; top:0; bottom:0; width:min(480px, 40vw); max-height:none;
+    border-radius:var(--ds-r4) 0 0 var(--ds-r4) }
+}
+
+/* Phone: in the thread head the resting "copy chat" words cost the name its width
+   ("Gustav Pastuch"). The icon stays; "copied" / "copy failed" still show. */
+@media (max-width:640px){ .a-thread .a-dms-link-t[data-rest]{ display:none } }

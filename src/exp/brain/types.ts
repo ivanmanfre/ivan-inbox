@@ -20,6 +20,8 @@ export interface BrainMobileProps {
   goJob: (j: Job) => void
   counts: Partial<Record<Job, number>>
   sev: Partial<Record<Job, 'attention' | 'urgent'>>
+  /** Places whose read failed: the icon shows a red mark, never a 0. */
+  failed?: Partial<Record<Job, boolean>>
   /** The Ops health alarm the ribbon shows today: n = open alerts, note = title. */
   health: { n: number; note: string }
   /** How fresh the inbox read is; the ribbon prints it. */

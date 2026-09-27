@@ -17,6 +17,10 @@ export type ConfirmOpts = {
   cancelText?: string
   /** The confirm removes something for good. */
   danger?: boolean
+  /** A second way to say yes (decision 12's "Discard, I'll reply myself"). Picking it runs
+   *  `onAlt` and then resolves true, so callers that do not pass it are untouched. */
+  altText?: string
+  onAlt?: () => void
 }
 
 export type PendingConfirm = ConfirmOpts & { resolve: (ok: boolean) => void }

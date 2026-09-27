@@ -1,4 +1,4 @@
-import { stageOf, type ContentDraft, type ContentStage, type ScheduledQueueRow } from './content'
+import { stageOf, stageOfLane, type ContentDraft, type ContentLane, type ContentStage, type ScheduledQueueRow } from './content'
 import { armingLabel } from './labels'
 
 // THE CALENDAR, derived — never a second copy of the rows.
@@ -256,7 +256,11 @@ export function buildCalendarItems(
   const drift = queueDriftByBody(rows, queue)
   for (const d of rows) {
     if (!d.scheduled_at) continue
-    const stage = stageOf(d, now)
+    // The lane's own rule, not status alone: a dated board row at review is
+    // SCHEDULED on a client lane (the publisher takes it), which is what the
+    // tab bar and the verdict line say too. check2-content: the calendar and
+    // the tabs used to disagree about exactly these posts.
+    const stage = stageOfLane(d, (d.client_id ?? 'ivan') as ContentLane, now)
     if (!DATED_STAGES.has(stage)) continue
     // A post that has not gone out fires on the QUEUE's clock, whatever the
     // draft says — see queueDriftByBody. A post that HAS gone out is placed on

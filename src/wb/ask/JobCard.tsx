@@ -101,10 +101,10 @@ export function JobCard({ job, focused, onCancel, onOpenReport }: {
           a fact already on screen. */}
       <div className="a-brain-tmeta">
         <span>{job.kind === 'goal' ? 'goal run' : 'prompt'}</span>
-        {job.ran_on && <><span className="a-brain-tdot" aria-hidden /><span className="a-brain-tmeta-n">{job.ran_on}</span></>}
-        {elapsed && <><span className="a-brain-tdot" aria-hidden /><span className="a-brain-tmeta-n">{elapsed}</span></>}
+        {job.ran_on && <><span className="a-brain-tsep" aria-hidden>·</span><span className="a-brain-tmeta-n">{job.ran_on}</span></>}
+        {elapsed && <><span className="a-brain-tsep" aria-hidden>·</span><span className="a-brain-tmeta-n">{elapsed}</span></>}
         {typeof job.cost_usd === 'number' && (
-          <><span className="a-brain-tdot" aria-hidden /><span>${job.cost_usd.toFixed(2)}</span></>
+          <><span className="a-brain-tsep" aria-hidden>·</span><span>${job.cost_usd.toFixed(2)}</span></>
         )}
       </div>
 

@@ -9,6 +9,12 @@ export interface TabItem {
   label: string
   count?: number
   sev?: 'attention' | 'urgent'
+  /** The read behind this place failed: the icon says so in red instead of
+      showing 0 or nothing (rebuild, blueprint v3 shell). */
+  failed?: boolean
+  /** Work is running behind this place (Claude answering). Drawn as a slow
+      ring on the key, never a dot. */
+  busy?: boolean
 }
 
 export interface TabBarProps {
@@ -37,6 +43,8 @@ export function TabBar({ items, active, onSelect, markerId = 'ds-tab-active', cl
           <button
             data-ds="Tab"
             key={t.id}
+            data-tab={t.id}
+            data-busy={t.busy || undefined}
             type="button"
             data-active={on}
             className="ds-tab"
@@ -47,7 +55,11 @@ export function TabBar({ items, active, onSelect, markerId = 'ds-tab-active', cl
             {on ? <motion.span layoutId={markerId} className="ds-tab-marker" /> : null}
             <Icon name={t.icon} size={20} />
             <span className="ds-tab-label">{t.label}</span>
-            {!on && t.count ? (
+            {!on && t.failed ? (
+              <span className="ds-tab-count">
+                <Badge tone="urgent" label={`Couldn't read ${t.label}`}>!</Badge>
+              </span>
+            ) : !on && t.count ? (
               <span className="ds-tab-count">
                 <Badge tone={t.sev ?? 'neutral'} label={`${t.count} in ${t.label}`}>
                   {t.count}

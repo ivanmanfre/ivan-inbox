@@ -1,0 +1,31 @@
+import type { PlaceProps } from '../places'
+import { useFrame } from '../shell/frame'
+import { AnswerRow, N } from '../ui/AnswerRow'
+import { Btn } from '../ui/Key'
+import { useClaude } from './ClaudeProvider'
+import { Chats, useChatList } from './Chats'
+import './claude.css'
+
+// The Claude place (`#exp/d/claude`, and today's `#exp/brain-b/ask?thread=&turn=`
+// push links, which map here). The page is the chats list; the conversation
+// is the ⌘J drawer, which ClaudeProvider opens on arrival (and on the push
+// link's thread and turn). Hooks first; no early return.
+
+export default function ClaudePage({ layout }: PlaceProps) {
+  const f = useFrame()
+  const { chat } = useClaude()
+  const list = useChatList()
+  const n = list.threads ? list.threads.filter(t => t.kind === 'ask').length : null
+  const title = <>Claude: <N v={list.failed ? null : n} /> chats{chat.botThread ? ", plus Claude's thread." : '.'}</>
+  const sub = chat.busy ? 'Claude is working on your last ask.' : 'Pick a chat and it opens in the drawer. Asking never sends a DM.'
+  return (
+    <div className={`dcl-page dcl-page-${layout}`}>
+      <AnswerRow title={title} sub={sub} tools={
+        <Btn verb="new-chat" onClick={() => { chat.newThread(); f.setClaudeOpen(true) }}>New chat</Btn>
+      } />
+      <div className="dcl-page-b">
+        <Chats list={list} onPicked={() => f.setClaudeOpen(true)} />
+      </div>
+    </div>
+  )
+}

@@ -99,7 +99,7 @@ export function TurnMeta({ turn, outcome }: { turn: Turn; outcome: ReturnType<ty
     <div className="a-brain-tmeta">
       <Icon name="ask" size={16} />
       <span className="a-brain-tmeta-n">Claude</span>
-      <span className="a-brain-tdot" data-outcome={outcome} />
+      {outcome !== 'ok' && <span className="a-brain-tout" data-outcome={outcome}>{outcome === 'error' ? 'Failed' : 'Stopped'}</span>}
       {parts.length > 0 && <span>{parts.join(' · ')}</span>}
     </div>
   )
@@ -126,7 +126,7 @@ export function LiveSteps({ calls }: { calls: ToolCall[] }) {
   return (
     <div className="cl-steps" data-live-steps>
       <div className="cl-steps-h">
-        <span className="cl-live" aria-hidden="true" />
+        <span className="cl-spin" aria-hidden="true" />
         <span>Working</span>
         <span className="cl-steps-s">{secs}s</span>
       </div>

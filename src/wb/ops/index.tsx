@@ -21,7 +21,7 @@
        no second column to draw, and the single one keeps its measure and centres.
    ========================================================================== */
 import { useRef, useState, type ReactNode } from 'react'
-import { doneTodayTasks, isTaskKind, outboundFeedId, pendingOps, pendingTasks, type OpsDraft } from '../../lib/ops'
+import { doneTodayTasks, isTaskKind, outboundFeedId, pendingOps, pendingTasks, splitCommentIdeas, COMMENT_IDEAS_PER_DAY, type OpsDraft } from '../../lib/ops'
 import { useCommentQueue } from '../../hooks/useCommentQueue'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { useReactions } from '../../hooks/useReactions'
@@ -31,9 +31,10 @@ import { Banner, Button, EmptyState, Icon } from '../../ds'
 import { OpsSkeleton } from '../chrome/Skeleton'
 import { Body, Group, Head, Screen } from '../kit'
 import { PendingCard } from './PendingCard'
+import { QuickBatch } from './QuickBatch'
 import { ReactionDesk } from './ReactionDesk'
 import { TaskList } from './TaskList'
-import { groupOpsByLane, kindsLine } from './lanes'
+import { answerLine, groupOpsByLane, kindsLine } from './lanes'
 import './ops.css'
 
 /** The pull-to-refresh mark, drawn with the icon set instead of arrow glyphs. */
@@ -62,8 +63,10 @@ function PullLine({ pull, refreshing, trigger }: { pull: number; refreshing: boo
  * board stays mounted. The closed header is one 44px row that says the lane,
  * the count and the kinds, so the board reads without opening anything.
  */
-function Fold({ id, title, count, sub, children }: {
+function Fold({ id, title, count, sub, quiet, children }: {
   id: string
+  /** A row that is not a lane (comment ideas for later): drawn a step down. */
+  quiet?: boolean
   title: string
   count: number
   sub?: string
@@ -72,9 +75,9 @@ function Fold({ id, title, count, sub, children }: {
   const [open, setOpen] = useState(false)
   const bodyId = `a-ops-fold-${id}`
   return (
-    <section className="a-ops-fold" data-open={open ? '' : undefined}>
+    <section className="a-ops-fold" data-open={open ? '' : undefined} data-quiet={quiet ? '' : undefined}>
       <button
-        type="button" className="a-ops-fold-head"
+        type="button" className="a-ops-fold-head wb-ops-fold"
         aria-expanded={open} aria-controls={bodyId}
         onClick={() => setOpen(o => !o)}
       >
@@ -110,6 +113,13 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
   const cards = queue.held.size === 0
     ? pendingCards
     : drafts.filter(d => pendingIds.has(d.id) || queue.held.has(d.id))
+  // Comment ideas past the 3 the poster can still post today wait in their
+  // own closed row (blueprint v3 decision 11): the lane rows and the first
+  // line count only today's, the same reading as the Ops icon (opsBadge).
+  const later = splitCommentIdeas(drafts).later
+  const laterIds = new Set(later.map(d => d.id))
+  const todayCards = cards.filter(d => !laterIds.has(d.id))
+  const answer = answerLine(pending.filter(d => !laterIds.has(d.id)))
   const taskCount = pendingTasks(drafts).length
   const doneCount = doneTodayTasks(drafts).length
   const hasTasks = pending.length !== pendingCards.length || doneCount > 0
@@ -196,8 +206,10 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
         <PullLine pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         {staleBanner}
         <div className="a-ops-canvas" data-wide={sideLive ? '' : undefined}>
+          {answer && <p className="a-ops-answer">{answer}</p>}
+          <QuickBatch cards={todayCards} refresh={refresh} />
           <div className="a-cols" data-cols={sideLive ? 'side' : undefined}>
-            <div className="a-stack">
+            <div className="a-stack a-ops-main">
               {empty ? (
                 <EmptyState
                   icon="ops"
@@ -220,7 +232,7 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
                 // "make sure ops are separated by client lane and start
                 // collapsed"). The comment-queue line rides inside the lane its
                 // comments belong to, and a held card counts in its lane.
-                groupOpsByLane(cards).map(lane => {
+                <>{groupOpsByLane(todayCards).map(lane => {
                   const ids = new Set(lane.cards.map(d => d.id))
                   const waiting = queue.waiting.filter(e => ids.has(e.id)).length
                   return (
@@ -248,7 +260,22 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
                       ))}
                     </Fold>
                   )
-                })
+                })}
+                {later.length > 0 && (
+                  <Fold
+                    id="later" quiet title="Comment ideas for later" count={later.length}
+                    sub={`the poster posts ${COMMENT_IDEAS_PER_DAY} a day`}
+                  >
+                    {later.map(d => (
+                      <PendingCard
+                        key={d.id} draft={d} refresh={refresh}
+                        feed={queue.feed.get(outboundFeedId(d) ?? '')}
+                        held={queue.held.get(d.id)}
+                        onGateResult={queue.record}
+                      />
+                    ))}
+                  </Fold>
+                )}</>
               )}
             </div>
             {/* The side column: the task list first (it is the thing he ticks

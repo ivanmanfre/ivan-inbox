@@ -45,6 +45,12 @@ export type InboxMessage = {
   // The copy route this ARCH person is on, '<sent|next>:<route>[:<invite arm>]' (db/213, 2026-09-24),
   // null for every other seat. Rendered by labels.ts copyRouteTag. Optional for the same fixture reason.
   copy_route?: string | null;
+  // lane_of(campaign name) (db/215, 2026-09-26): cold / warm / engager / harvest / partner / signal.
+  // The row's lane chip falls back to it where `lane` is unset (almost every Ivan and RISE row).
+  campaign_lane?: string | null;
+  // db/216 (decision 12): 'reply_myself' when the draft was discarded with "I'll reply myself", which
+  // keeps the thread under Needs your reply. Null for a plain discard and for every other row.
+  discard_mode?: string | null;
   // Not in inbox_messages_v — annotated onto pending drafts by useInbox from the
   // fetchDraftEmailStamps() probe. When set on a draft, approving it makes the
   // dispatcher ALSO email the scan to this address (rise_dm2_scan_delivery_v1 rows).
@@ -132,6 +138,8 @@ export type Thread = {
   lane: string | null;
   // last.copy_route, coalesced to null. See InboxMessage.copy_route above.
   copyRoute: string | null;
+  // last.campaign_lane, coalesced to null. Optional so older fixtures still type.
+  campaignLane?: string | null;
 }
 
 /* ==========================================================================
@@ -384,8 +392,17 @@ export function scanOpenerLifted(t: Thread): boolean {
   return t.draft !== null && t.draftSnoozedUntil === null && Number(t.draft.draft_evidence?.scan_open_days ?? 0) >= 2
 }
 
+// DMs rebuild (blueprint v3): an internal owner question is the first thing on the list. No reply is
+// queued behind it until Davorin/Mattan confirm the fact, so every hour it sits is an hour the person
+// waits. The automatic-retry hold is not lifted: it clears itself.
+export function ownerQuestionLifted(t: Thread): boolean {
+  return t.ownerConfirmation != null && t.ownerConfirmation.send_blocked_reason !== 'reply_retry_pending'
+}
+
 export function threadOrder(a: Thread, b: Thread): number {
-  return Number(scanOpenerLifted(b)) - Number(scanOpenerLifted(a)) || eventTime(b.last).localeCompare(eventTime(a.last))
+  return Number(ownerQuestionLifted(b)) - Number(ownerQuestionLifted(a))
+    || Number(scanOpenerLifted(b)) - Number(scanOpenerLifted(a))
+    || eventTime(b.last).localeCompare(eventTime(a.last))
 }
 
 export function groupThreads(
@@ -485,6 +502,7 @@ export function groupThreads(
       blacklisted: Boolean(last.prospect_blacklisted),
       lane: last.lane ?? null,
       copyRoute: last.copy_route ?? null,
+      campaignLane: last.campaign_lane ?? null,
       messages,
     })
   }
@@ -701,6 +719,9 @@ function unansweredSince(t: Thread): string | null {
   // Saskia von Stamm) is the same kind of decision, made by the drafter.
   const discarded = t.messages
     .filter(m => m.direction === 'outbound' && !m.sent_at
+      // "Discard, I'll reply myself" (decision 12) threw the draft away WITHOUT answering the
+      // question, so the reply is still owed and the thread stays under Needs your reply.
+      && !(m.send_blocked_reason === DISCARD_REASON && m.discard_mode === REPLY_MYSELF)
       && (m.send_blocked_reason === DISCARD_REASON || /^(model_meta_no_reply|writer_no_reply)/.test(m.send_blocked_reason ?? '')))
     .map(eventTime).sort().at(-1) ?? null
   if (discarded !== null && discarded > lastInbound) return null
@@ -808,12 +829,39 @@ export function filterByStatus(threads: Thread[], s: Status): Thread[] {
 // owe him a reply with his own sends ("I don't know what is actually pending on
 // my response"). Everything the badge counts goes FIRST, drafted or not, then
 // the conversations where the ball is with them. Newest first inside each.
-export function browseOrder(threads: Thread[]): { pending: Thread[]; rest: Thread[] } {
+// A thread whose newest message is their robot: an out-of-office or an auto-reply (tag or words).
+// Nothing to answer, nothing to wait on; it gets its own quiet fold (blueprint v3).
+const AUTO_TAG = /^\s*\[(ooo_autoreply|auto_reply)/i
+export function isAutoReplyThread(t: Thread): boolean {
+  if (t.last.direction !== 'inbound') return false
+  const text = (t.last.message_text ?? '').trim()
+  return AUTO_TAG.test(text) || OOO_TEXT.test(text)
+}
+
+// Owed but past the STALE_DAYS clock: a reply still owed after 14 days, or a draft nobody approved in
+// 14 days. The badge already stopped counting them; before the rebuild they were filed under "Sent,
+// waiting on them", which says the ball is with the other person when it is with Ivan.
+export function isOlderOwed(t: Thread, now: number = Date.now()): boolean {
+  if (threadBucket(t, now) !== 'waiting') return false
+  const cut = STALE_DAYS * 86_400_000
+  const since = unansweredSince(t)
+  if (since !== null && now - Date.parse(since) > cut) return true
+  return t.draft !== null && t.draftSnoozedUntil === null && now - Date.parse(eventTime(t.draft)) > cut
+}
+
+// The browsable DMs list: what needs him, then what waits on them, then two closed folds.
+export function browseOrder(threads: Thread[], now: number = Date.now()): {
+  pending: Thread[]; rest: Thread[]; older: Thread[]; auto: Thread[]
+} {
   const convs = threads.filter(isConversation)
-  return {
-    pending: convs.filter(t => threadBucket(t) !== 'waiting').sort(threadOrder),
-    rest: convs.filter(t => threadBucket(t) === 'waiting').sort(threadOrder),
+  const pending: Thread[] = [], rest: Thread[] = [], older: Thread[] = [], auto: Thread[] = []
+  for (const t of convs) {
+    if (threadBucket(t, now) !== 'waiting') pending.push(t)
+    else if (isOlderOwed(t, now)) older.push(t)
+    else if (isAutoReplyThread(t)) auto.push(t)
+    else rest.push(t)
   }
+  return { pending: pending.sort(threadOrder), rest: rest.sort(threadOrder), older: older.sort(threadOrder), auto: auto.sort(threadOrder) }
 }
 
 // THE badge number. Every surface that says "N waiting in the inbox" derives
@@ -1292,10 +1340,20 @@ export function applyDraftGuard<Q extends GuardedQuery<Q>>(
 // reports no error for a zero-row update, so without this a stale view asking
 // to discard an already-approved row would look identical to a successful
 // discard. A silent no-op on the send path is its own bug.
-export async function discardDraft(id: string): Promise<boolean> {
+// Decision 12's marker value (db/216). The reason stays DISCARD_REASON, so no drafter redrafts.
+export const REPLY_MYSELF = 'reply_myself'
+
+// Offered only where it means something: a REPLY draft on a thread that owes an answer. A follow-up
+// or bump owes nothing, so "I'll reply myself" would leave the thread anyway.
+export function offersReplyMyself(t: Thread): boolean {
+  return t.draft !== null && !isFollowUp(t.draft) && unansweredSince(t) !== null
+}
+export type DiscardMode = typeof REPLY_MYSELF | null
+
+export async function discardDraft(id: string, mode: DiscardMode = null): Promise<boolean> {
   const { data, error } = await applyDraftGuard(
     supabase.from('outreach_messages')
-      .update({ send_blocked_reason: DISCARD_REASON, send_blocked_at: new Date().toISOString() }),
+      .update({ send_blocked_reason: DISCARD_REASON, send_blocked_at: new Date().toISOString(), discard_mode: mode }),
     id, DISCARD_GUARD,
   ).select('id')
   if (error) throw error
@@ -1309,12 +1367,12 @@ export async function discardDraft(id: string): Promise<boolean> {
 // {})`), so an approved email leg looked discarded while it went out.
 export type LegFailure = { leg: InboxMessage; error: string | null }
 
-export async function discardLegs(legs: readonly (InboxMessage | null | undefined)[]): Promise<LegFailure[]> {
+export async function discardLegs(legs: readonly (InboxMessage | null | undefined)[], mode: DiscardMode = null): Promise<LegFailure[]> {
   const out: LegFailure[] = []
   for (const leg of legs) {
     if (!leg) continue
     try {
-      if (!(await discardDraft(leg.id))) out.push({ leg, error: null })
+      if (!(await discardDraft(leg.id, mode))) out.push({ leg, error: null })
     } catch (e) {
       out.push({ leg, error: e instanceof Error ? e.message : String(e) })
     }
@@ -1367,7 +1425,7 @@ export async function dismissConfirmation(id: string): Promise<boolean> {
 export async function restoreDraft(id: string): Promise<boolean> {
   const { data, error } = await applyDraftGuard(
     supabase.from('outreach_messages')
-      .update({ send_blocked_reason: null, send_blocked_at: null }),
+      .update({ send_blocked_reason: null, send_blocked_at: null, discard_mode: null }),
     id, RESTORE_GUARD,
   ).select('id')
   if (error) throw error

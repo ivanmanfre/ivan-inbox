@@ -56,7 +56,8 @@ export default defineConfig({
       }] },
     },
     manifest: {
-      name: 'Inbox', short_name: 'Inbox', display: 'standalone',
+      name: process.env.VITE_PREVIEW === '1' ? 'Inbox (new)' : 'Inbox',
+      short_name: process.env.VITE_PREVIEW === '1' ? 'Inbox new' : 'Inbox', display: 'standalone',
       // goal run inbox-agent-drawer-2026-09-12 (Seat B): `id` pins the
       // installed app's identity to this scope regardless of a later
       // `start_url` change, and `display_override` asks for the desktop
@@ -89,6 +90,9 @@ export default defineConfig({
         { name: 'Sales', url: './#exp/brain-b/sales', icons: [{ src: './icon-192.png', sizes: '192x192', type: 'image/png' }] },
         { name: 'Orbit', url: './#exp/brain-b/orbit', icons: [{ src: './icon-192.png', sizes: '192x192', type: 'image/png' }] },
         { name: 'Claude', url: './#exp/brain-b/ask', icons: [{ src: './icon-192.png', sizes: '192x192', type: 'image/png' }] },
+        // Rebuild: live voice in one press (blueprint, Claude "NEW"). Lands on the voice screen,
+        // which asks for the tap iOS needs before the microphone opens.
+        { name: 'Talk to Claude', url: './#claude/voice', icons: [{ src: './icon-192.png', sizes: '192x192', type: 'image/png' }] },
       ],
       // The install-picker screenshots (Chrome/Android and desktop both read
       // these): one per `form_factor` so each surface shows its own shape

@@ -19,21 +19,26 @@ import { Icon, Popover, PopoverItem, Sheet } from '../../ds'
 import type { ChatHandle } from '../../exp/v2c/useChat'
 import type { Job } from '../../exp/v2c/layout'
 import type { FeedData } from '../../exp/brain/b/useFeedData'
-import { AskThread } from './AskThread'
+import { AskThread, sessionLine } from './AskThread'
 import { Feed } from './Feed'
 import { ChatsPage } from './ChatsPage'
 import { threadLabel } from './ThreadMenu'
 import { usePalette } from './Palette'
+import { See } from './See'
+import { EMPTY_SEE, attached, buildSeeBlock, type SeeState, type Subject } from '../../exp/v2c/chat/paneContext'
 import { LiveVoice, VOICE_HASH, hhmm, unreadRows, useOnline, useSavedAt } from './claudeState'
 import './claude.css'
 
 export function ClaudeScreen({
-  chat, job, about, feed, health, alertsOpen, setAlertsOpen, goJobFromFeed, openThreadAt,
+  chat, job, about: aboutIn, subjects = [], feed, health, alertsOpen, setAlertsOpen, goJobFromFeed, openThreadAt,
   focusTurn, onFocused, morphFrom, onMorphed, onSettings,
 }: {
   chat: ChatHandle
   job: Job
   about: string | null
+  /** A person asked about from a DM thread or a held row (askAbout.ts). Shown
+   *  as the same removable, names-only-by-default chip the desktop pane has. */
+  subjects?: Subject[]
   feed: FeedData
   health: { n: number; note: string }
   alertsOpen: boolean
@@ -50,6 +55,14 @@ export function ClaudeScreen({
   const offline = !online
   const savedAt = useSavedAt(online, chat.turns.length, chat.busy)
   const [text, setText] = useState('')
+  // Which chips are off / opened to full text. Reset when the subject changes:
+  // an off-list keyed on the last person must not detach the next one.
+  const [see, setSee] = useState<SeeState>(EMPTY_SEE)
+  const subjectKey = subjects.map(x => x.key).join('|')
+  useEffect(() => { setSee(EMPTY_SEE) }, [subjectKey])
+  const seeBlock = buildSeeBlock(subjects, see)
+  // The person's name leads the placeholder only while the chip is attached.
+  const about = attached(subjects, see)[0]?.label ?? aboutIn
   const palette = usePalette(chat, text, setText)
   const [chatsOpen, setChatsOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -104,7 +117,7 @@ export function ClaudeScreen({
       <header className="cl-top">
         <button type="button" className="wb-cl cl-iconbtn" aria-label="Chats" onClick={() => setChatsOpen(true)}>
           <Icon name="list" size={24} />
-          {chat.botUnread && <span className="cl-dot cl-dot-on" data-bot-unread aria-label="Unread" />}
+          {chat.botUnread && <span className="cl-count" data-bot-unread aria-label="1 unread from Claude">1</span>}
         </button>
 
         <span className="cl-titlewrap">
@@ -117,14 +130,17 @@ export function ClaudeScreen({
           </button>
           {offline
             ? <span className="cl-sub" data-offline-mark>Offline{savedAt ? ` · saved ${hhmm(savedAt)}` : ''}</span>
-            : chat.busy && <span className="cl-sub" data-live-sub><span className="cl-live" aria-hidden="true" />Working</span>}
+            : chat.busy
+              ? <span className="cl-sub" data-live-sub>Working</span>
+              // Which session this is, on the phone too (it was a desktop tooltip).
+              : chat.turns.length > 0 && <span className="cl-sub" data-session>{sessionLine(chat.grounding)}</span>}
           <Popover open={menuOpen} label="Thread menu" className="cl-menu">
             <PopoverItem icon="edit" onClick={newChat}>New chat</PopoverItem>
             <PopoverItem icon="list" onClick={() => { setMenuOpen(false); setChatsOpen(true) }}>All chats</PopoverItem>
             {chat.botThread && !onBot && (
               <PopoverItem
                 icon="ask" onClick={() => { setMenuOpen(false); chat.openBot() }}
-                tail={chat.botUnread ? <span className="cl-dot cl-dot-on" aria-label="Unread" /> : undefined}
+                tail={chat.botUnread ? <span className="cl-new">New</span> : undefined}
               >Claude&rsquo;s thread</PopoverItem>
             )}
             {onBot && (
@@ -147,7 +163,7 @@ export function ClaudeScreen({
         >
           <Icon name="bell" size={24} />
           {!offline && unread > 0 && <span className="cl-count">{unread > 99 ? '99+' : unread}</span>}
-          {!offline && unread === 0 && health.n > 0 && <span className="cl-dot cl-dot-warn" aria-hidden="true" />}
+          {!offline && unread === 0 && health.n > 0 && <span className="cl-count" data-tone="warn" aria-hidden="true">!</span>}
         </button>
         <button type="button" className="wb-cl cl-iconbtn" aria-label="New chat" onClick={newChat}>
           <Icon name="edit" size={24} />
@@ -161,6 +177,8 @@ export function ClaudeScreen({
           morphFrom={morphFrom} onMorphed={onMorphed}
           onDragBack={() => { onFocused(); setAlertsOpen(true) }}
           composerExtras={palette}
+          see={seeBlock}
+          context={subjects.length ? <See subjects={subjects} see={see} setSee={setSee} /> : undefined}
           text={text} onText={setText}
           claude={{
             onVoice: LiveVoice ? () => setVoiceOpen(true) : undefined,
@@ -204,7 +222,7 @@ export function ClaudeScreen({
         <Suspense fallback={<div className="cl-voice-wait" role="status">Starting voice</div>}>
           <LiveVoice
             onClose={closeVoice}
-            send={t => { void chat.send(t, about ?? undefined) }}
+            send={t => { void chat.send(t, about ?? undefined, seeBlock) }}
             turns={chat.turns}
           />
         </Suspense>

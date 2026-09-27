@@ -77,7 +77,7 @@ export function ChatsPage({ chat, onClose, offline }: {
           >
             <span className="cl-chat-i"><Icon name="ask" size={20} /></span>
             <span className="cl-chat-t">Claude&rsquo;s thread</span>
-            {chat.botUnread && <span className="cl-dot" data-bot-unread aria-label="Unread" />}
+            {chat.botUnread && <span className="cl-new" data-bot-unread>New</span>}
           </button>
         )}
 
@@ -99,7 +99,7 @@ export function ChatsPage({ chat, onClose, offline }: {
                 >
                   <span className="cl-chat-t">{t.title ? shortTitle(t.title, 60) : 'Untitled'}</span>
                   {running
-                    ? <span className="cl-chat-run"><span className="cl-live" aria-hidden="true" />Running</span>
+                    ? <span className="cl-chat-run">Running</span>
                     : t.last_turn_at && <span className="cl-chat-m">{clock(t.last_turn_at)}</span>}
                 </button>
               )

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, browseOrder, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISMISS_HOLD_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, missingManualGuardMeansPreMigration, isEngineRetired, retiredLabel, holdReason, isSenderMirrorEmail, draftLegs, isOwedInbound, threadOrder, DELETED_REASON, type InboxMessage, type Status, type DraftGuard } from './inbox'
+import { offersReplyMyself, isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, browseOrder, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISMISS_HOLD_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, missingManualGuardMeansPreMigration, isEngineRetired, retiredLabel, holdReason, isSenderMirrorEmail, draftLegs, isOwedInbound, threadOrder, DELETED_REASON, type InboxMessage, type Status, type DraftGuard } from './inbox'
 
 // inbox.ts:191 gates needsAnswer on a 14-day wall-clock staleness window
 // (STALE_DAYS), measured against Date.now() by default -- and most callers
@@ -1164,5 +1164,58 @@ describe('drafts with email and follow-ups, 2026-09-26 live fixes', () => {
     const threads = groupThreads(rows)
     expect(browseOrder(threads).pending.map(t => t.prospect_id)).toEqual(['opener', 'new'])
     expect([...threads].sort(threadOrder)[0].prospect_id).toBe('opener')
+  })
+})
+
+describe('DMs rebuild 2: owner questions first, older-owed and auto-reply folds', () => {
+  const now = Date.parse('2026-09-26T12:00:00Z')
+  const m = (id: string, pid: string, direction: 'inbound' | 'outbound', at: string, extra: Partial<InboxMessage> = {}): InboxMessage =>
+    ({ ...base, id, prospect_id: pid, direction, sent_at: at, created_at: at, ...extra })
+  it('files a reply owed past 14 days under Older, not under waiting', () => {
+    const threads = groupThreads([
+      m('a1', 'old-owed', 'inbound', '2026-09-01T10:00:00Z'),
+      m('b1', 'waiting', 'inbound', '2026-09-20T10:00:00Z'),
+      m('b2', 'waiting', 'outbound', '2026-09-21T10:00:00Z'),
+    ], new Set(), now)
+    const o = browseOrder(threads, now)
+    expect(o.older.map(t => t.prospect_id)).toEqual(['old-owed'])
+    expect(o.rest.map(t => t.prospect_id)).toEqual(['waiting'])
+  })
+  it('folds a thread that ends on their out-of-office', () => {
+    const threads = groupThreads([
+      m('c1', 'ooo', 'outbound', '2026-09-24T10:00:00Z'),
+      m('c2', 'ooo', 'inbound', '2026-09-24T10:05:00Z', { message_text: "Thanks for your message. I'm out of the office until Monday." }),
+    ], new Set(), now)
+    const o = browseOrder(threads, now)
+    expect(o.auto.map(t => t.prospect_id)).toEqual(['ooo'])
+    expect(o.pending).toHaveLength(0)
+  })
+  it('lifts an owner question above newer replies', () => {
+    const threads = groupThreads([
+      m('d1', 'owner', 'inbound', '2026-09-24T10:00:00Z'),
+      m('d2', 'owner', 'outbound', '2026-09-24T11:00:00Z', { sent_at: null, send_blocked_at: '2026-09-24T11:00:00Z', send_blocked_reason: 'owner_confirmation' }),
+      m('e1', 'fresh', 'inbound', '2026-09-26T10:00:00Z'),
+    ], new Set(), now)
+    expect(browseOrder(threads, now).pending.map(t => t.prospect_id)).toEqual(['owner', 'fresh'])
+  })
+})
+
+describe("decision 12: Discard, I'll reply myself", () => {
+  const now = Date.parse('2026-09-26T12:00:00Z')
+  const m = (id: string, direction: 'inbound' | 'outbound', at: string, extra: Partial<InboxMessage> = {}): InboxMessage =>
+    ({ ...base, id, prospect_id: 'lou', direction, sent_at: at, created_at: at, ...extra })
+  const discarded = (mode: string | null) => groupThreads([
+    m('a', 'inbound', '2026-09-25T10:00:00Z'),
+    m('b', 'outbound', '2026-09-25T11:00:00Z', { sent_at: null, send_blocked_reason: DISCARD_REASON, send_blocked_at: '2026-09-25T12:00:00Z', discard_mode: mode }),
+  ], new Set(), now)[0]
+  it('a plain discard answers the thread', () => {
+    expect(needsAnswer(discarded(null), now)).toBe(false)
+  })
+  it('reply_myself keeps it under Needs your reply', () => {
+    expect(needsAnswer(discarded('reply_myself'), now)).toBe(true)
+  })
+  it('is offered on a reply draft to an owed message, not on a follow-up', () => {
+    const t = groupThreads([m('a', 'inbound', '2026-09-25T10:00:00Z'), m('d', 'outbound', '2026-09-25T11:00:00Z', { sent_at: null })], new Set(), now)[0]
+    expect(offersReplyMyself(t)).toBe(true)
   })
 })

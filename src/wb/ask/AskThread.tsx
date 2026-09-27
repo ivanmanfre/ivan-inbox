@@ -602,7 +602,7 @@ export function AskThread({
               >
                 <span className="a-brain-bot-chip-l">
                   Claude
-                  {chat.botUnread && <span className="a-brain-bot-dot" data-bot-unread aria-label="Unread" />}
+                  {chat.botUnread && <span className="cl-new" data-bot-unread>New</span>}
                 </span>
               </Chip>
             </span>

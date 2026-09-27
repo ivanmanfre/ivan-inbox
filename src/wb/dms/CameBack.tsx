@@ -16,12 +16,12 @@
    The data and the pure helpers live in ./cameBackData.ts.
    ========================================================================== */
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Banner, Chip, Icon, IconButton } from '../../ds'
+import { Banner, Button, Chip, Icon, IconButton } from '../../ds'
 import { Group, Row, Rows } from '../kit'
 import { Face } from './parts'
 import type { Filter } from '../../lib/inbox'
 import {
-  cameBackLine, cardsFor, dismissCameBack, fetchCameBack, firstComment, scanOpenDays, sentLine, tenantLabel,
+  cameBackLine, cardsFor, dismissCameBack, undismissCameBack, fetchCameBack, firstComment, scanOpenDays, sentLine, tenantLabel,
   type CameBackCard,
 } from './cameBackData'
 import './dms.css'
@@ -36,6 +36,8 @@ export function CameBack({ filter, inboxLoadedAt, onOpenThread }: {
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
+  // The last dismiss, with its Undo (DMs rebuild). Replaced by the next one.
+  const [undo, setUndo] = useState<{ id: string; name: string } | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -55,6 +57,7 @@ export function CameBack({ filter, inboxLoadedAt, onOpenThread }: {
     setBusy(id)
     try {
       if (!(await dismissCameBack(id))) throw new Error('could not dismiss')
+      setUndo({ id, name: cards?.find(c => c.prospect_id === id)?.name ?? 'them' })
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not dismiss')
@@ -63,11 +66,35 @@ export function CameBack({ filter, inboxLoadedAt, onOpenThread }: {
     }
   }
 
-  if (cards === null && !error) return null
-  if (shown.length === 0 && !error) return null
+  async function onUndo() {
+    if (!undo || busy) return
+    setBusy(undo.id)
+    try {
+      if (!(await undismissCameBack(undo.id))) throw new Error('could not undo')
+      setUndo(null)
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not undo')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const undoBar = undo ? (
+    <Banner
+      icon="remove"
+      title={`Dismissed ${undo.name.split(' ')[0]}. They come back on a newer signal.`}
+      action={<Button variant="quiet" size="sm" icon="undo" busy={busy === undo.id} onClick={() => { void onUndo() }}>Undo</Button>}
+      onDismiss={() => setUndo(null)}
+    />
+  ) : null
+
+  if (cards === null && !error) return undoBar
+  if (shown.length === 0 && !error) return undoBar
 
   return (
     <section className="a-warm" data-open={open ? '' : undefined} aria-label="Came back">
+      {undoBar}
       <Group
         label={<button type="button" className="a-warm-toggle" onClick={() => setOpen(o => !o)} aria-expanded={open}>
           <Icon name={open ? 'collapse' : 'expand'} size={16} />Came back, no reply

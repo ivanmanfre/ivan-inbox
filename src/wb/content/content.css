@@ -1228,3 +1228,61 @@ a.a-prop-src:hover{ color:var(--ds-text) }
 /* The undated rail and the day panel sit on the card surface with the kit's
    one hairline rather than floating on the canvas. */
 .a-ct-daylist{ border-radius:var(--ds-r4); overflow:hidden }
+
+/* THE VERDICT LINE (rebuild): one sentence over every lane, top of the list.
+   B "Instrument": plain text, no plate, no dot; red only where a board runs
+   thin or the publisher stopped a post. Parts that jump are wb- buttons so
+   the .a-root button reset leaves them alone. */
+.wb-ct-verdict{
+  margin:0; padding:var(--ds-s2) var(--ds-row-x) 0;
+  font-size:var(--ds-fs-title, 17px); line-height:1.4; color:var(--ds-text);
+  max-width:calc(68ch + var(--ds-row-x) * 2); text-wrap:pretty;
+}
+.wb-ct-verdict[data-state='loading']{ color:var(--ds-text-3); font-size:var(--ds-fs-meta) }
+.wb-ct-vpart{ font:inherit; color:inherit; background:none; border:0; padding:0; margin:0; text-align:left; display:inline }
+button.wb-ct-vpart{ cursor:pointer; text-decoration:underline; text-decoration-color:var(--ds-hairline-strong); text-underline-offset:3px }
+button.wb-ct-vpart:hover{ text-decoration-color:currentColor }
+.wb-ct-vpart.a-sev-urgent{ color:var(--ds-sev-urgent-ui) }
+@media (max-width:767px){
+  .wb-ct-verdict{ font-size:15px; padding-top:var(--ds-s1) }
+}
+
+/* NO DOTS (Ivan 25 Sep, "small dots everywhere"). Every dot in Content,
+   Magnets, Styles and Strategy repeats a word already printed beside it (the
+   stage name, "Pass 84", the queue status, "N generating"), so the mark goes
+   and the word stays. The QA corner pip on the thumbnail goes with them. */
+.a-ct .a-dot, .a-ct .a-ct-qa{ display:none }
+
+/* DESKTOP ACTIONS ALWAYS SHOWN (blueprint FIX). Delete used to appear only on
+   hover, which Ivan complained about; in Content every row verb is shown. */
+.a-ct .a-row-actions{ opacity:1 }
+
+/* "Older than two weeks": a closed fold under the decision list, read as a
+   group header you can open. */
+.wb-ct-older{ margin-top:var(--ds-s4) }
+.wb-ct-older-h{
+  display:flex; align-items:center; justify-content:space-between; gap:var(--ds-s3);
+  width:100%; min-height:44px; padding:var(--ds-s3) var(--ds-row-x); margin:0;
+  font:inherit; font-size:var(--ds-fs-meta); color:var(--ds-text-2); text-align:left;
+  background:var(--ds-surface-1); border:1px solid var(--ds-hairline); border-radius:var(--ds-r4); cursor:pointer;
+}
+.wb-ct-older-h:hover{ color:var(--ds-text) }
+.wb-ct-older-n{ font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono); color:var(--ds-text-3) }
+.wb-ct-older[data-open] .wb-ct-older-h{ margin-bottom:var(--ds-s3) }
+/* The fold's own button is the header; the table under it drops its repeat. */
+.wb-ct-older .a-group-h{ display:none }
+@media (max-width:767px){
+  .wb-ct-older-h{ border-radius:0; border-inline:0 }
+}
+
+/* Today's schedule zone, on top of the calendar (moved from Today). */
+.wb-ct-zone{ padding:var(--ds-s3) var(--ds-row-x) var(--ds-s4); display:flex; flex-direction:column; gap:var(--ds-s3) }
+.wb-ct-zone-cx{ margin:0; font-size:var(--ds-fs-meta); color:var(--ds-sev-attention-ui) }
+.wb-ct-zone-list{ display:flex; flex-direction:column; gap:var(--ds-s1) }
+.wb-ct-zone-item{ display:block; font:inherit; color:inherit; background:none; border:0; padding:0; margin:0; text-align:left; cursor:pointer; overflow-wrap:anywhere }
+.wb-ct-zone-item:disabled{ cursor:default }
+.wb-ct-zone-item:not(:disabled):hover{ color:var(--ds-text) }
+.wb-ct-zone-item b{ color:var(--ds-text); font-weight:var(--ds-fw-medium) }
+.wb-ct-zone-row{ display:grid; grid-template-columns:6.5rem minmax(0,1fr); gap:var(--ds-s3); align-items:start }
+.wb-ct-zone-k{ font-size:var(--ds-fs-meta); color:var(--ds-text-3); font-weight:var(--ds-fw-medium) }
+.wb-ct-zone-v{ font-size:var(--ds-fs-meta); line-height:1.4; color:var(--ds-text-2); min-width:0 }

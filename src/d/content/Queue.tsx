@@ -1,0 +1,74 @@
+import { useState } from 'react'
+import type { ContentDraft } from '../../lib/content'
+import { Failed, Skeleton } from '../ui/states'
+import { RowSelect } from '../../wb/content/select'
+import { LANES, LANE_NAME, POSS, age, aimOf, titleOf, type Lane } from './model'
+import { VERB_LABEL, rowCaps, rowVerbsFor, useRowVerbs } from './rowVerbs'
+import type { SeatRead } from './useContentData'
+
+// The queue the draft window walks (j/k): what waits on Ivan per seat, newest
+// first. Ivan: his drafts in review. Rise / Arch: in review and not on the
+// client's board yet. Older than two weeks sits in its own fold with its real
+// count (the frame's "Waiting on you" stops counting them at 14 days).
+export function Queue({ lane, setLane, seat, fresh, older, counts, openId, onOpen, now }: {
+  lane: Lane
+  setLane: (l: Lane) => void
+  seat: SeatRead
+  fresh: ContentDraft[]
+  older: ContentDraft[]
+  counts: Record<Lane, number | null | undefined>
+  openId: string | null
+  onOpen: (id: string) => void
+  now?: number
+}) {
+  const [showOld, setShowOld] = useState(false)
+  const verbs = useRowVerbs(seat.refresh)
+  const cap = lane === 'ivan' ? 'Your drafts in review, newest first' : `Not on ${POSS[lane]} board yet, newest first`
+  const rows = showOld ? [...fresh, ...older] : fresh
+  return (
+    <section className="cn-q" aria-label="Waiting on you">
+      <div className="cn-qh">
+        <div className="cn-seg" role="tablist" aria-label="Seat">
+          {LANES.map(l => (
+            <button key={l} type="button" role="tab" aria-selected={l === lane} className={l === lane ? 'cn-on' : ''} onClick={() => setLane(l)}>
+              {LANE_NAME[l]}<b>{counts[l] === undefined ? '…' : counts[l] ?? '?'}</b>
+            </button>
+          ))}
+        </div>
+        <span className="cn-kk" title={`${cap}. j and k walk the list.`} />
+      </div>
+      {seat.error ? <Failed what={`${LANE_NAME[lane]}'s drafts`} detail={seat.error} onRetry={seat.refresh} />
+        : seat.loading && !seat.loadedAt ? <Skeleton lines={5} title={false} label="Reading the queue" />
+          : fresh.length === 0 && older.length === 0 ? (
+            <div className="cn-fold"><span>Nothing waiting.</span></div>
+          ) : (
+            <div role="list">
+              {fresh.length === 0 && <div className="cn-fold"><span>Nothing from the last two weeks.</span></div>}
+              {rows.map((r, i) => (
+                // The row is the command layer's row (data-wbrow via today's RowSelect mark): j/k walk it,
+                // x selects it, Enter opens it, and the bulk bar acts on the selection.
+                <div key={r.id} role="listitem" className={`cn-row${r.id === openId ? ' cn-sel' : ''}`}
+                  aria-current={r.id === openId ? 'true' : undefined} onClick={() => onOpen(r.id)}>
+                  <span className="cn-m cn-mark"><RowSelect id={r.id} kind="draft" label={titleOf(r)} caps={rowCaps(r, lane)} taxonomy={r.taxonomy} lane={lane} />{i + 1}</span>
+                  <span className="cn-m">{age(r.created_at, now)}</span>
+                  <button type="button" className="cn-t" data-verb="open" onClick={e => { e.stopPropagation(); onOpen(r.id) }}>{titleOf(r)}</button>
+                  <span className="cn-m">{aimOf(r)}</span>
+                  <span className="cn-m">{r.qa_score ? Math.round(Number(r.qa_score)) || r.qa_score : ''}</span>
+                  <span className="cn-racts" onClick={e => e.stopPropagation()}>
+                    {rowVerbsFor(r, lane).map(v => (
+                      <button key={v} type="button" className="cn-mini" data-verb={`row-${v}`} disabled={verbs.busy === r.id} onClick={() => void verbs.run(r, lane, v)}>{VERB_LABEL[v]}</button>
+                    ))}
+                  </span>
+                </div>
+              ))}
+              {older.length > 0 && (
+                <div className="cn-fold">
+                  <span>Older than two weeks</span>
+                  <button type="button" onClick={() => setShowOld(o => !o)} aria-expanded={showOld}>{older.length} · {showOld ? 'Hide' : 'Show'}</button>
+                </div>
+              )}
+            </div>
+          )}
+    </section>
+  )
+}

@@ -63,7 +63,7 @@ const BATCH_NOUN: Record<string, string> = { manual_invite: 'manual invites', co
 // one confirm up front. The risedtc lane (no approve_url) is clipboard +
 // stamp, one paste per card, and stays a single card every time (fable
 // review, HIGH, 2026-09-22).
-function isBatchable(d: OpsDraft): boolean {
+export function isBatchable(d: OpsDraft): boolean {
   return d.kind === 'manual_invite'
     || (d.kind === 'comment_outbound' && outboundApproveUrl(d) !== null)
 }
@@ -159,8 +159,13 @@ export function pendingIdsOf(batch: Batch, drafts: OpsDraft[]): string[] {
   const byId = new Map(drafts.map(d => [d.id, d]))
   return batch.ids.filter(id => {
     const d = byId.get(id)
-    return !!d && !d.approved_at && !d.sent_at && !d.send_blocked_reason
+    return !!d && isStillPending(d)
   })
+}
+
+/** Nothing has happened to it yet: not approved (a gate-held comment IS), not sent, not blocked. */
+export function isStillPending(d: OpsDraft): boolean {
+  return !d.approved_at && !d.sent_at && !d.send_blocked_reason
 }
 
 export type BatchAct = (id: string) => Promise<void>

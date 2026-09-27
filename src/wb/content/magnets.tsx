@@ -20,7 +20,8 @@ import {
   elapsedMinutes, LANE_POSSESSIVE, STUCK_GENERATING_MINUTES,
   type ContentLane, type IdeaCandidate,
 } from '../../lib/content'
-import { laneOptions, useLanes } from '../../hooks/useLanes'
+import { useLanes } from '../../hooks/useLanes'
+import { clientOptions } from './laneChips'
 import {
   groupByLmStage, isStuckGeneratingLm, isStuckResource,
   LM_PIPELINE_STAGES, LM_STAGE_LABEL, normalizeLmStatus, stageOfLm,
@@ -310,11 +311,11 @@ export function MagnetsList({ lane, setLane, onOpen }: {
       <Head title="Lead magnets">
         <div className="a-ct-headrow">
           <Segmented
-            label="Lane"
+            label="Client"
             markerId="a-lm-lane"
             value={lane}
             onChange={k => setLane(k as ContentLane)}
-            options={laneOptions(lanes.lanes)}
+            options={clientOptions(lanes.lanes)}
           />
         </div>
       </Head>

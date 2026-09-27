@@ -18,8 +18,8 @@
    ========================================================================== */
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import {
-  buildLanes, fetchSends, fetchSendsDaily, fetchCampaignSends,
-  type Lane, type DailyRow, type CampaignSend,
+  buildLanes, fetchSends, fetchSendsDaily,
+  type Lane, type DailyRow,
 } from '../../lib/sends'
 import { getExpVariant } from '../../exp'
 import { hasMock } from '../../exp/v2c/mock'
@@ -35,10 +35,11 @@ import { BarLine, Body, Cell, Dot, Group, KV, Ledger, Row, Rows, Sep, Spark, typ
 import { SendsSkeleton } from '../chrome/Skeleton'
 import { Section, BarGauge, TableOrRecords } from './parts'
 import {
-  ControlSection, DeliverySection, RecurrenceSection, useCampaignControl,
+  ControlSection, DeliverySection, RecurrenceSection, SeatStrip, useCampaignControl,
   ccPayload, ccInvitationsForDay, ccInvitationsInWindow, ccAcceptCohort,
 } from './Control'
 import type { CcPayload } from '../../lib/campaignControl'
+import { AnswerLine, CampaignBoard, useCampaignPerf } from './CampaignBoard'
 import './sends.css'
 
 type Client = 'all' | 'ivan' | 'risedtc' | 'arch'
@@ -988,73 +989,6 @@ function Pipeline({ rows, governor, client }: {
   )
 }
 
-// ---- Campaigns ----
-// Zero-send PAUSED campaigns are collapsed behind an expander by default so the
-// active / sending campaigns aren't buried under a wall of "PAUSED 0" rows.
-function Campaigns({ rows, client }: { rows: CampaignSend[]; client: Client }) {
-  const [showPaused, setShowPaused] = useState(false)
-  // Ivan ruling 2026-07-25: paused campaigns are retired history on the Ivan
-  // scope — hide them outright (no expander). Rise keeps the expander.
-  const visible = client === 'ivan' ? rows.filter(c => c.is_active) : rows
-  const shown = visible.filter(c => c.is_active || c.sent > 0)
-  const hidden = client === 'ivan' ? [] : visible.filter(c => !c.is_active && c.sent === 0)
-  const tableRows = showPaused ? [...shown, ...hidden] : shown
-
-  const columns: Array<TableColumn<CampaignSend>> = [
-    { id: 'name', header: 'Campaign', cell: c => <span className="a-sends-nm">{c.campaign_name}</span> },
-    {
-      id: 'state',
-      header: 'State',
-      width: '7rem',
-      cell: c => (
-        <Badge tone={c.is_active ? 'clear' : 'neutral'} label={c.is_active ? 'Active' : 'Paused'}>
-          {c.is_active ? 'Active' : 'Paused'}
-        </Badge>
-      ),
-    },
-    // The three trailing columns are as wide as their contents ever get, which
-    // hands the rest of the table to the name — the one column that needs it,
-    // and the one whose ellipsis only works once its width is decided (an auto
-    // table gives a nowrap cell whatever it asks for, which is how a campaign
-    // called after its ICP pushed this table 8px past its own column).
-    { id: 'sent7', header: '7d', numeric: true, width: '5rem', cell: c => (c.sent_7d != null ? c.sent_7d : <span className="a-dim-2">—</span>) },
-    { id: 'sent', header: 'Sent', numeric: true, width: '6rem', cell: c => c.sent },
-  ]
-
-  return (
-    <Section label="Campaigns">
-      {rows.length === 0 ? (
-        <div className="a-sends-empty">No campaigns.</div>
-      ) : (
-        <>
-          <TableOrRecords
-            label="Campaigns by sends"
-            columns={columns}
-            rows={tableRows}
-            rowKey={c => c.campaign_id}
-          />
-          {hidden.length > 0 && (
-            <button type="button" className="a-sends-more" onClick={() => setShowPaused(v => !v)}>
-              <Icon name={showPaused ? 'minus' : 'add'} size={16} />
-              {hidden.length} paused, 0 sent
-            </button>
-          )}
-          {/* M4 — the table's Total is the sum of the rows it is SHOWING, and it
-              says so: `visible` is the scoped set, `shown` is what rendered.
-              inbox_campaign_sends_v is a server-side aggregate, so these are full
-              counts, not a page. */}
-          <div className="a-sends-foot">
-            <span>{shown.length} of {visible.length} campaigns shown</span>
-            <span className="a-sends-tot">
-              Total: <b>{shown.reduce((s, c) => s + c.sent, 0).toLocaleString()}</b> sent
-            </span>
-          </div>
-        </>
-      )}
-    </Section>
-  )
-}
-
 type OverviewData = {
   rows: Awaited<ReturnType<typeof fetchSends>>
   daily: Awaited<ReturnType<typeof fetchSendsDaily>>
@@ -1064,7 +998,6 @@ type OverviewData = {
   scans: ScanOpenRow[]
   viewedBack: ViewedBackRow[]
   outcomes: OutcomeRow[]
-  campaigns: CampaignSend[]
   replacement: ReplacementRow[]
   reply: ReplyRow[]
   ledger: LedgerRow[]
@@ -1079,6 +1012,14 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
   // OUTSIDE the legacy Promise.all: a failed control read must never take the
   // instruments below it down, and a failed legacy read must never hide Control.
   const cc = useCampaignControl()
+  // Its own read, outside the legacy Promise.all: the campaign cards and the
+  // answer line fail alone and never take the seat row down with them.
+  const perf = useCampaignPerf()
+  const [openSeat, setOpenSeat] = useState<string | null>(null)
+  const pickSeat = (id: string) => {
+    setOpenSeat(id)
+    requestAnimationFrame(() => document.getElementById('a-cc-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -1087,11 +1028,11 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
     setLoading(true); setError(null)
     Promise.all([
       fetchSends(), fetchSendsDaily(), fetchAccept(), fetchPipeline(),
-      fetchGovernor(), fetchScanOpens(), fetchOutcomes(), fetchCampaignSends(client),
+      fetchGovernor(), fetchScanOpens(), fetchOutcomes(),
       fetchReplacement(), fetchReply(), fetchDayLedger(), fetchViewedBack(),
     ])
-      .then(([rows, daily, accept, pipeline, governor, scans, outcomes, campaigns, replacement, reply, ledger, viewedBack]) => {
-        if (live) setData({ rows, daily, accept, pipeline, governor, scans, outcomes, campaigns, replacement, reply, ledger, viewedBack })
+      .then(([rows, daily, accept, pipeline, governor, scans, outcomes, replacement, reply, ledger, viewedBack]) => {
+        if (live) setData({ rows, daily, accept, pipeline, governor, scans, outcomes, replacement, reply, ledger, viewedBack })
       })
       .catch(e => { if (live) setError(e instanceof Error ? e.message : 'Failed to load') })
       .finally(() => { if (live) setLoading(false) })
@@ -1104,9 +1045,16 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
   const ccp = ccPayload(cc)
   // Control answers for itself in every state, so it renders even when the
   // legacy fetch is still in flight or failed outright.
+  // Rebuild order: the answer, the seat row (kept exactly as it was), then
+  // every campaign in detail. The instruments follow underneath.
   const control = (
     <>
-      <ControlSection cc={cc} client={client} />
+      <AnswerLine perf={perf} client={client} />
+      <SeatStrip cc={cc} onPick={pickSeat} />
+      <CampaignBoard perf={perf} client={client} />
+      <div id="a-cc-detail">
+        <ControlSection cc={cc} client={client} openSeat={openSeat} onOpenSeat={setOpenSeat} />
+      </div>
       <DeliverySection cc={cc} timeframe={timeframe} range={range} client={client} />
       <RecurrenceSection cc={cc} />
     </>
@@ -1132,7 +1080,6 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
         <Governor rows={data.governor} client={client} />
         <div className="a-stack" data-wide>
           <Seats data={data} client={client} setClient={setClient} />
-          <Campaigns rows={data.campaigns} client={client} />
         </div>
       </div>
     </Body>

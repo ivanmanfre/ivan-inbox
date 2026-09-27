@@ -465,13 +465,59 @@ function ControlPanel({ c, payload, asOf }: { c: CcClient; payload: CcPayload; a
 
 // ---- Control -------------------------------------------------------------
 
-export function ControlSection({ cc, client, now = Date.now() }: {
+/* THE SEAT STRIP (rebuild, Ivan 26 Sep): every seat's sends today side by
+   side, on top, in one row that never scrolls apart: name, the big number,
+   the state word and yesterday. Same figures and same words as the Control
+   rows below (Warsaw day from ranges.daily, stale monitor = unverified); the
+   long reasons live in Control. Tapping a seat opens its detail there. */
+export function SeatStrip({ cc, onPick, now = Date.now() }: {
+  cc: CcState | null; onPick: (clientId: string) => void; now?: number
+}) {
+  if (cc === null || cc.state !== 'ok') return null
+  const p = cc.payload
+  const stale = monitorLiveness(p, now) === 'stale' && !!p.monitor.last_tick_at
+  const asOf = Number.isFinite(Date.parse(p.as_of)) ? Date.parse(p.as_of) : now
+  const { today, yesterday } = localDays(asOf, p.ranges.tz || 'UTC')
+  return (
+    <div className="a-seatstrip" role="list" aria-label="Invitations today, per seat">
+      {p.clients.map(c => {
+        const shown: CcStatus = stale ? 'unknown' : c.status
+        const tone = STATUS_TONE[shown]
+        const limited = stale ? null : rateLimitIncident(c)
+        const queueEmpty = !stale && !limited && isQueueEmptyClient(c)
+        const word = limited ? RATE_LIMITED_WORD : queueEmpty ? QUEUE_EMPTY_WORD : STATUS_WORD[shown]
+        return (
+          <button
+            key={c.client_id} type="button" role="listitem" className="a-seat wb-seat"
+            onClick={() => onPick(c.client_id)}
+            aria-label={`${c.label}: ${ccInvitationsForDay(p, c.client_id as Client, today) ?? 'unknown'} invitations today, ${word}`}
+          >
+            <span className="a-seat-name">{c.label}</span>
+            <b className="a-seat-n">{num(ccInvitationsForDay(p, c.client_id as Client, today))}</b>
+            <span className="a-cc-status a-seat-st" data-tone={tone ?? 'none'}>{word}{shown === 'unknown' ? ', unverified' : ''}</span>
+            <span className="a-seat-y">yday {num(ccInvitationsForDay(p, c.client_id as Client, yesterday))}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+export function ControlSection({ cc, client, now = Date.now(), openSeat, onOpenSeat }: {
   cc: CcState | null; client: Client; now?: number
+  /** Lifted when a host (the seat strip) opens a seat from outside. */
+  openSeat?: string | null
+  onOpenSeat?: (id: string | null) => void
 }) {
   /* Which seat's detail is open. The chip's seat opens by default, and so does
      a seat with an open incident: a red row that hides its own cause behind a
      click is a row that gets skipped, and the cause is the whole point of it. */
-  const [openId, setOpenId] = useState<string | null>(null)
+  const [ownOpenId, setOwnOpenId] = useState<string | null>(null)
+  const openId = openSeat !== undefined ? openSeat : ownOpenId
+  const setOpenId = (v: string | null | ((cur: string | null) => string | null)) => {
+    const next = typeof v === 'function' ? v(openId) : v
+    if (onOpenSeat) onOpenSeat(next); else setOwnOpenId(next)
+  }
   if (cc === null) {
     return <Section label="Control" tail="reading" wrapTail><SkeletonRows rows={3} label="Reading the control payload" /></Section>
   }

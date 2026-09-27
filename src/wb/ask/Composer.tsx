@@ -386,7 +386,7 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
             className="cl-pill-input"
             rows={1}
             value={value}
-            placeholder={pill.offline ? 'Sends when you are back' : placeholder}
+            placeholder={pill.offline ? 'Offline. Nothing sends until you are back' : placeholder}
             aria-label="Message Claude"
             onChange={e => { onChange(e.target.value); setHeard(null) }}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !('ontouchstart' in window)) { e.preventDefault(); doSend() } }}

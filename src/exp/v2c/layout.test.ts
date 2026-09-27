@@ -117,19 +117,19 @@ describe('job taxonomy', () => {
 
 describe('hash route', () => {
   it('round-trips a job and a focused chat', () => {
-    expect(parseWbHash('#exp/v2c')).toEqual({ job: 'dms', focus: null })
+    expect(parseWbHash('#exp/v2c')).toEqual({ job: 'sends', focus: null })
     expect(parseWbHash('#exp/v2c/content')).toEqual({ job: 'content', focus: null })
     expect(parseWbHash('#exp/v2c/dms/chat')).toEqual({ job: 'dms', focus: 'chat' })
     expect(parseWbHash(wbHash('sends', 'chat'))).toEqual({ job: 'sends', focus: 'chat' })
   })
 
   it('treats an unknown job as the default rather than rendering nothing', () => {
-    expect(parseWbHash('#exp/v2c/nope')).toEqual({ job: 'dms', focus: null })
-    expect(parseWbHash('#today')).toEqual({ job: 'dms', focus: null })
+    expect(parseWbHash('#exp/v2c/nope')).toEqual({ job: 'sends', focus: null })
+    expect(parseWbHash('#today')).toEqual({ job: 'sends', focus: null })
   })
 
   it('reads a bare /chat as chat over the default job', () => {
-    expect(parseWbHash('#exp/v2c/chat')).toEqual({ job: 'dms', focus: 'chat' })
+    expect(parseWbHash('#exp/v2c/chat')).toEqual({ job: 'sends', focus: 'chat' })
   })
 })
 

@@ -261,3 +261,50 @@
   .a-sl-verb{ transform:translateY(-50%) }
   .a-sl-row:hover .a-sl-verb{ transform:translateY(-50%) }
 }
+
+/* ==========================================================================
+   REBUILD 2026-09-26 · Today's call facts and "Calls on record" land here.
+   ========================================================================== */
+
+/* The kind of call, where it was booked, who is on it: its own full line, so
+   it never fights the name or Join for width. */
+.a-sl-kind{ flex:1 1 100%; min-width:0; color:var(--ds-text-3) }
+
+/* The head's "N calls · N packs" line is dropped on the phone (five tiles
+   leave the week no room), so it rides the filter band there instead. */
+.a-sl-barcount{ display:none }
+@media (max-width:767px){
+  .a-sl-filterbar{ display:flex; align-items:center; gap:var(--ds-s3) }
+  .a-sl-barcount{ display:inline; margin-inline-start:auto; flex:0 0 auto; color:var(--ds-text-3); font-size:var(--ds-fs-meta) }
+  .a-sl-logseg .ds-seg{ display:flex; width:100% }
+  .a-sl-logseg .ds-seg-item{ padding-inline:var(--ds-s2) }
+}
+
+/* The archive sits under the week, a step apart, with its segments padded to
+   the row inset and allowed to scroll sideways on a narrow phone. */
+.a-sl-log{ margin-block-start:var(--ds-s6) }
+.a-sl-logseg{ padding:var(--ds-s3) var(--ds-row-x); overflow-x:auto; scrollbar-width:none }
+.a-sl-logseg::-webkit-scrollbar{ display:none }
+.a-sl-logrow .a-row-sub{ color:var(--ds-text-2) }
+
+/* Density B turns the WEEK into cards; the archive stays a list. */
+.a-sl[data-density='b'] .a-sl-log .a-group{ background:var(--ds-surface-1); border-radius:var(--ds-r4) }
+.a-sl[data-density='b'] .a-sl-log .a-rows{ gap:0 }
+
+/* A read that failed says so on one line, with the one verb that fixes it.
+   `wb-` class: the `.a-root button` reset beats a plain one. */
+.a-sl-warn{
+  display:flex; align-items:center; gap:var(--ds-s4);
+  padding:var(--ds-row-y) var(--ds-row-x);
+}
+.a-sl-warn > .a-sl-err{ padding:0; flex:1 1 auto; min-width:0 }
+.wb-sl-retry{
+  flex:0 0 auto;
+  min-height:var(--ds-tap); padding-inline:var(--ds-s4);
+  border:0; border-radius:var(--ds-r3);
+  background:var(--ds-surface-2); color:var(--ds-text);
+  font:inherit; font-size:var(--ds-fs-meta); font-weight:var(--ds-fw-medium);
+  cursor:pointer;
+}
+.wb-sl-retry:active{ transform:scale(.98); background:var(--ds-surface-3) }
+.a-sl[data-density='b'] .a-sl-log .a-rows > .a-row + .a-row{ box-shadow:inset 0 1px 0 var(--ds-line) }

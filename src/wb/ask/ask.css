@@ -1430,3 +1430,38 @@
 /* The unread mark rides the same corner every badge on this system rides. */
 .a-ask-fab > .a-brain-bot-dot{ position:absolute; top:8px; right:8px }
 .a-ask-fab > .ds-live-dot{ position:absolute; bottom:6px; right:6px }
+
+/* ==========================================================================
+   Rebuild 2026-09-26: NO DOTS. Every unread/live/outcome mark in the Claude
+   area is a word or a count now (Ivan 25 Sep, "small dots everywhere").
+   ========================================================================== */
+.cl-new{
+  flex:0 0 auto; padding:2px 8px; border-radius:var(--ds-r-pill);
+  background:var(--ds-accent); color:var(--ds-accent-ink);
+  font-size:var(--ds-fs-meta); font-weight:var(--ds-fw-semi); line-height:1.3;
+}
+.a-brain-bot-chip-l > .cl-new{ margin-left:var(--ds-s1) }
+.a-brain-tout{ font-weight:var(--ds-fw-semi) }
+.a-brain-tout[data-outcome='error']{ color:var(--ds-sev-urgent) }
+.a-brain-tout[data-outcome='aborted']{ color:var(--ds-text-3) }
+.a-brain-state{
+  font-size:var(--ds-fs-meta); color:var(--ds-text-3); white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+.a-brain-state[data-state='busy']{ color:var(--ds-text) }
+.a-brain-state[data-state='error']{ color:var(--ds-sev-urgent) }
+.a-brain-state:empty{ display:none }
+.a-ask-fab-n{
+  position:absolute; top:4px; right:4px; min-width:18px; height:18px; padding:0 4px;
+  display:grid; place-items:center; border-radius:var(--ds-r-pill);
+  background:var(--ds-accent); color:var(--ds-accent-ink);
+  font-size:var(--ds-fs-meta); font-weight:var(--ds-fw-semi); line-height:1;
+}
+/* Busy: the same slow ring the Claude key carries on the dock. */
+.a-ask-fab[data-busy]::after{
+  content:''; position:absolute; inset:-3px; border-radius:inherit;
+  border:2px solid transparent; border-top-color:var(--ds-accent); border-right-color:var(--ds-accent);
+  animation:a-dock-spin 1.1s linear infinite; pointer-events:none;
+}
+@media (prefers-reduced-motion: reduce){ .a-ask-fab[data-busy]::after{ animation:none; border-color:var(--ds-accent) } }
+.a-brain-tsep{ color:var(--ds-text-4) }

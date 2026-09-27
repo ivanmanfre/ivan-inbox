@@ -19,6 +19,7 @@ import {
   STATUS_LABEL, eventTime, filterByStatus, isConversation, isLeadMagnet,
   type Status, type Thread, type Filter,
 } from './inbox'
+import { copyRouteName, copyRouteValues, laneLabelValues, threadLaneLabel } from './labels'
 import { STAGE_LADDER, stageIsOff, stageStep } from '../exp/v2c/stage'
 
 /* --------------------------------------------------------------------------
@@ -217,8 +218,16 @@ export function stageValue(t: Thread): string | null {
 }
 
 export const DM_FIELDS: FieldSpec<Thread>[] = [
-  { key: 'lane', label: 'lane', kind: 'enum', ops: ['is', 'is not'], values: LANE_VALUES,
+  // Key stays 'lane' (saved token sets and the seat chips write it); the word on screen is
+  // "seat", because "lane" now means the campaign lane below (blueprint v3).
+  { key: 'lane', label: 'seat', kind: 'enum', ops: ['is', 'is not'], values: LANE_VALUES,
     of: t => t.client_id || null },
+  { key: 'campaign lane', label: 'lane', kind: 'enum', ops: ['is', 'is not'],
+    values: laneLabelValues().map(v => ({ value: v, label: v })),
+    of: t => threadLaneLabel(t.lane, t.campaignLane) || null },
+  { key: 'route', label: 'copy route', kind: 'enum', ops: ['is', 'is not'],
+    values: copyRouteValues().map(v => ({ value: v, label: v })),
+    of: t => copyRouteName(t.copyRoute) },
   { key: 'channel', label: 'channel', kind: 'enum', ops: ['is', 'is not'], values: CHANNEL_VALUES,
     of: threadChannel },
   // Set-shaped: filterByStatus owns the definition of 'needs' and 'all', and a

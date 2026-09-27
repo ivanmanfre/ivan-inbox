@@ -27,17 +27,19 @@ import {
   Avatar, Badge, Icon, IconButton, Kbd, LiveDot, Rail as DsRail, RailGroup,
   RailItem, RailSeparator, TabBar, type TabItem,
 } from '../../ds'
-import { JOBS, JOB_LABEL, JOB_MARK, WORK_JOBS, isWorkJob, type Job } from '../../exp/v2c/layout'
+import { JOB_LABEL, JOB_MARK, WORK_JOBS, isWorkJob, type Job } from '../../exp/v2c/layout'
 import { relAge } from '../kit'
 import './chrome.css'
+import './instrument.css'
 
 type Counts = Partial<Record<Job, number>>
 type Sev = Partial<Record<Job, 'attention' | 'urgent'>>
+type Failed = Partial<Record<Job, boolean>>
 
 // The group's four members, and the label each one wears inside the group. The
 // rail, the phone bar and the segment all read this one map.
 export const WORK_LANE_LABEL: Record<string, string> = {
-  content: 'Content', magnets: 'Magnets', styles: 'Styles', strategy: 'Strategy',
+  content: 'Posts', magnets: 'Magnets', styles: 'Styles', strategy: 'Strategy',
 }
 
 // The lucide mark per job (SYSTEM.md's icon map). One name per job, the same
@@ -95,7 +97,7 @@ export function WorkSegment({ job, counts, onJob }: {
 // S38 · the desktop rail.
 // --------------------------------------------------------------------------
 export function Rail({
-  job, counts, countNote, health, sev, chatOn, chatLive, chatUnread, onJob, onChat,
+  job, counts, countNote, health, sev, failed = {}, chatOn, chatLive, chatUnread, onJob, onChat,
   loadedAt, stale, onRefresh, collapsed = false, onToggle,
 }: {
   job: Job
@@ -110,6 +112,7 @@ export function Rail({
   // A count that is a PROBLEM rather than a workload takes a severity tone; a
   // plain backlog never does.
   sev: Sev
+  failed?: Failed
   chatOn: boolean
   chatLive: boolean
   /** A Claude turn landed unread. The collapsed right drawer used to carry this dot; it lives here now. */
@@ -136,6 +139,7 @@ export function Rail({
       nested={nested}
       count={counts[j] ?? 0}
       sev={sev[j]}
+      failed={failed[j]}
       countNote={(counts[j] ?? 0) > 0 ? countNote?.[j] : undefined}
       collapsed={collapsed}
       markerId="a-rail-active"
@@ -148,8 +152,10 @@ export function Rail({
   // at this point". A row he does not use is a row he has to read past.
   // Orbit (2026-09-11) gets the same treatment on purpose: its one entry
   // point is a button on the Sales head, not a second rail row.
-  const before = JOBS.filter(j => j !== 'settings' && !isWorkJob(j) && j !== 'sends' && j !== 'ops' && j !== 'money' && j !== 'orbit')
-  const after = JOBS.filter(j => j === 'sends' || j === 'ops')
+  // Rebuild 2026-09-26: Lanes, DMs, Sales, the Content group, then Ops. Today
+  // left the rail with the phone bar; Lanes is home on both.
+  const before: Job[] = ['sends', 'dms', 'sales']
+  const after: Job[] = ['ops']
 
   return (
     <DsRail
@@ -267,28 +273,31 @@ export function Rail({
 // when it left the rail is the one it fills. Measured at 390 before it shipped:
 // six job tabs plus Claude leave the active tab 98px, and the row's right edge
 // lands at 382 of 390, so nothing spills and no tab drops under the 44px floor.
-const MOBILE: Job[] = ['today', 'sales', 'dms', 'content', 'sends', 'ops']
+// Rebuild 2026-09-26 (blueprint v3 decision 2): Lanes, DMs, Content, Ops,
+// Sales, then Claude. Today is gone; Lanes is home.
+const MOBILE: Job[] = ['sends', 'dms', 'content', 'ops', 'sales']
 
-export function MobileTabs({ job, counts, sev, chatLive, onJob, onChat }: {
+export function MobileTabs({ job, counts, sev, failed = {}, chatLive, onJob, onChat }: {
   job: Job
   counts: Counts
   // The same severity map the rail reads. Without it the bar painted EVERY
   // count red, and 19 posts to review is a workload, not an alarm.
   sev: Sev
+  failed?: Failed
   chatLive: boolean
   onJob: (j: Job) => void
   onChat: () => void
 }) {
-  // The Content slot's badge sums every group member that carries a count, so
-  // a lane joining the group never needs this line edited again.
-  const workCount = WORK_JOBS.reduce((s, j) => s + (counts[j] ?? 0), 0)
+  // The Content slot's badge is Content's own decisions (rebuild, decision
+  // 4): Magnets keep their own number on the Magnets pill inside Content.
+  const workCount = counts.content
   const workSev: 'attention' | 'urgent' | undefined =
     WORK_JOBS.map(j => sev[j]).find(Boolean) ?? undefined
 
   const items: TabItem[] = [
     ...MOBILE.map<TabItem>(j => j === 'content'
-      ? { id: 'content', icon: JOB_MARK.content, label: 'Content', count: workCount, sev: workSev }
-      : { id: j, icon: JOB_MARK[j], label: JOB_LABEL[j], count: counts[j] ?? 0, sev: sev[j] }),
+      ? { id: 'content', icon: JOB_MARK.content, label: 'Content', count: workCount, sev: workSev, failed: failed.content }
+      : { id: j, icon: JOB_MARK[j], label: JOB_LABEL[j], count: counts[j], sev: sev[j], failed: failed[j] }),
     { id: 'chat', icon: 'ask', label: 'Claude' },
   ]
   const active = isWorkJob(job) ? 'content' : MOBILE.includes(job) ? job : ''

@@ -173,9 +173,23 @@ export function engineLabel(clientId: string): string {
 // BY a person from their account, so the card names the person; "your feed" is
 // the newsjack/publishing register and stays there. Derived from the row's own
 // client_id — never hardcoded, because both lanes render this card.
-export const SEAT_LABEL: Record<string, string> = { ivan: 'Ivan', risedtc: 'Mattan Danino', arch: 'Davorin Smit' }
+// Rebuild decision 8 (26 Sep): the label reads Ivan / Rise / Arch, as every
+// chip in the app has since 20 Sep; a SENTENCE names the person (seatPerson).
+export const SEAT_LABEL: Record<string, string> = { ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch' }
+const SEAT_PERSON: Record<string, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin' }
+/** Who posts from this seat, for a sentence: "you", "Mattan", "Davorin". */
+export function seatPerson(clientId: string): string {
+  return SEAT_PERSON[clientId] ?? seatLabel(clientId)
+}
 export function seatLabel(clientId: string): string {
   return SEAT_LABEL[clientId] ?? ENGINE_LABEL[clientId] ?? clientId
+}
+// The person a reply posts AS, in full, as today's confirm names them ("Post
+// this reply as Mattan Danino?", main SEAT_LABEL). Parity fix 09-27: the
+// rebuild's Rise/Arch lane label had leaked into that sentence.
+const SEAT_FULL_NAME: Record<string, string> = { ivan: 'Ivan', risedtc: 'Mattan Danino', rise: 'Mattan Danino', arch: 'Davorin Smit' }
+export function seatFullName(clientId: string | null | undefined): string {
+  return SEAT_FULL_NAME[(clientId ?? '').trim().toLowerCase() || 'ivan'] ?? seatLabel(clientId ?? '')
 }
 
 // Newsjack lift is ~24h and the card TTLs at 48h, so the countdown is the whole
@@ -228,6 +242,59 @@ export function pendingOps(rows: OpsDraft[], now = Date.now()): OpsDraft[] {
   return rows.filter(d =>
     !d.approved_at && !d.sent_at && !d.send_blocked_reason
     && !isAudnKind(d.kind) && !isStaleComment(d, now) && !isExpiredNewsjack(d, now))
+}
+
+// THE OPS NUMBER (rebuild, blueprint v3 decision 11). Approvals waiting and
+// tasks, every kind `pendingOps` keeps, EXCEPT that comment ideas
+// (comment_outbound) count only up to what the poster can still post today:
+// it posts 3 a day, so idea 4 and on is not work for today. They sit in their
+// own counted fold on Ops instead ("rn i mainly use it for notifications
+// important, tasks, and approval pending items", 31 Aug; comments "i approve
+// in ops", 22 Sep).
+export const COMMENT_IDEAS_PER_DAY = 3
+
+const warsawDay = (t: number | string) =>
+  new Date(t).toLocaleDateString('en-CA', { timeZone: 'Europe/Warsaw' })
+
+/**
+ * The pending comment ideas split into the ones the poster can still take
+ * today and the rest. Today's are the first `room` in board order, so the Ops
+ * number, the board's lane rows and its "for later" fold are one reading.
+ */
+// The seat a comment idea posts from: each seat's poster has its OWN 3 a day
+// (parity fix 09-27: the room was counted across every seat, so Rise/Arch
+// ideas past Ivan's 3 were folded away as "later" under Ivan). NULL / '' /
+// 'ivan' = Ivan, legacy 'rise' = Rise, any other id is its own seat.
+export function ideaSeatKey(clientId: string | null | undefined): string {
+  const id = (clientId ?? '').trim().toLowerCase()
+  return id === '' ? 'ivan' : id === 'rise' ? 'risedtc' : id
+}
+
+export function splitCommentIdeas(rows: OpsDraft[], now = Date.now()): { today: OpsDraft[]; later: OpsDraft[] } {
+  const day = warsawDay(now)
+  const postedToday = new Map<string, number>()
+  for (const d of rows) {
+    if (d.kind !== 'comment_outbound' || !d.approved_at || warsawDay(d.approved_at) !== day) continue
+    const k = ideaSeatKey(d.client_id)
+    postedToday.set(k, (postedToday.get(k) ?? 0) + 1)
+  }
+  const used = new Map<string, number>()
+  const today: OpsDraft[] = []
+  const later: OpsDraft[] = []
+  for (const d of pendingOps(rows, now)) {
+    if (d.kind !== 'comment_outbound') continue
+    const k = ideaSeatKey(d.client_id)
+    const room = Math.max(0, COMMENT_IDEAS_PER_DAY - (postedToday.get(k) ?? 0))
+    const n = used.get(k) ?? 0
+    if (n < room) { today.push(d); used.set(k, n + 1) } else later.push(d)
+  }
+  return { today, later }
+}
+
+export function opsBadge(rows: OpsDraft[], now = Date.now()): { n: number; ideasFolded: number } {
+  const pend = pendingOps(rows, now)
+  const { later } = splitCommentIdeas(rows, now)
+  return { n: pend.length - later.length, ideasFolded: later.length }
 }
 
 // A newsjack past its `expires_at` is a story that has moved on: the card's own
@@ -466,23 +533,40 @@ export async function fetchOpsDrafts(): Promise<OpsDraft[]> {
  * Never any other kind: the spec says so in one sentence and this is the only
  * place that could break it.
  */
-export async function createBotTask(
-  turnId: string, index: number, title: string, body?: string,
-): Promise<boolean> {
+// THE one task insert. Every task a person or Claude adds goes through here, so
+// the row shape (client_id 'ivan', kind 'task', body = title [+ blank line +
+// detail], context { source, card_key, due_at? }) cannot drift between callers.
+async function insertTask(title: string, detail: string, context: Record<string, string>): Promise<boolean> {
   const head = (title ?? '').trim()
   if (!head) return false
-  const detail = (body ?? '').trim()
+  const rest = (detail ?? '').trim()
   try {
     const { error } = await supabase.from('ops_drafts').insert({
       client_id: 'ivan',
       kind: 'task',
-      body: detail ? `${head}\n\n${detail}` : head,
-      context: { source: 'claude', card_key: `bot:${turnId}:${index}` },
+      body: rest ? `${head}\n\n${rest}` : head,
+      context,
     })
     return !error
   } catch {
     return false
   }
+}
+
+export async function createBotTask(
+  turnId: string, index: number, title: string, body?: string,
+): Promise<boolean> {
+  return insertTask(title, body ?? '', { source: 'claude', card_key: `bot:${turnId}:${index}` })
+}
+
+/** A task Ivan types himself (the Lanes glance): optional due day 'YYYY-MM-DD', a unique card_key. */
+export async function createInboxTask(title: string, dueAt?: string | null, key: string = newTaskKey()): Promise<boolean> {
+  const due = (dueAt ?? '').trim()
+  if (due && !/^\d{4}-\d{2}-\d{2}$/.test(due)) return false
+  return insertTask(title, '', { source: 'inbox', ...(due ? { due_at: due } : {}), card_key: `inbox:${key}` })
+}
+function newTaskKey(): string {
+  try { return crypto.randomUUID() } catch { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}` }
 }
 
 // Approve stamps the (possibly edited) body and approved_at together, same

@@ -226,7 +226,18 @@ export function ReactionDesk({ rx }: { rx: ReactionsState }) {
             })
             if (ok) rx.kill(r)
           }}
-          onApprove={() => rx.approve(r)}
+          onApprove={async () => {
+            // Approve had no confirm while Kill did (check2). It dates a draft
+            // (Ivan) or puts it on Mattan's board (Rise); neither publishes.
+            const ok = await confirm({
+              title: r.lane === 'risedtc' ? 'Put this on Mattan’s board?' : 'Date this reaction as a draft?',
+              message: r.lane === 'risedtc'
+                ? 'It waits there for his call. Nothing is dated and nothing is posted.'
+                : `It lands on the calendar for ${slotLabel(rx.nextSlot)} as a draft. Nothing is posted.`,
+              confirmText: 'Approve',
+            })
+            if (ok) rx.approve(r)
+          }}
         />
       ))}
     </div>

@@ -22,8 +22,10 @@
    the section hides itself on the Rise / Arch / Email lanes.
    The data and the pure helpers live in ./warmSignalsData.ts.
    ========================================================================== */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Banner, Button, Chip, Icon } from '../../ds'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { Banner, Button, Chip, Icon, Sheet } from '../../ds'
+import { usePhone } from './InboxList'
 import { Group, Row, Rows } from '../kit'
 import { Face } from './parts'
 import { useConfirm } from '../chrome/ConfirmSheet'
@@ -91,6 +93,7 @@ export function WarmSignals({ filter, refresh, inboxLoadedAt, focus, onOpenThrea
     el.scrollIntoView({ block: 'start', behavior: 'smooth' })
   }, [focus, cards, agentFeed])
 
+  const phone = usePhone()
   const visible = filter === 'all' || filter === 'ivan'
   const agentByProspect = useMemo(() => new Map(
     agentFeed?.kind === 'ready' ? agentFeed.cards.map(card => [card.prospect_id, card] as const) : [],
@@ -144,10 +147,15 @@ export function WarmSignals({ filter, refresh, inboxLoadedAt, focus, onOpenThrea
           <div className="a-warm-group" key={g.key} data-group={g.key}>
             <div className="a-warm-sub">{g.label} <span className="a-mono">{g.cards.length}</span></div>
             {g.cards.map(c => (
-              <WarmCardView
-                key={c.prospect_id} card={c} agentCard={agentByProspect.get(c.prospect_id) ?? null}
-                reload={load} refresh={refresh} onOpenThread={onOpenThread}
-              />
+              <OnPhoneAsSheet
+                key={c.prospect_id} phone={phone} id={c.prospect_id} name={c.name} startOpen={focus === c.prospect_id}
+                line={evidenceLine(c)} icp={c.icp_score}
+              >
+                <WarmCardView
+                  card={c} agentCard={agentByProspect.get(c.prospect_id) ?? null}
+                  reload={load} refresh={refresh} onOpenThread={onOpenThread}
+                />
+              </OnPhoneAsSheet>
             ))}
           </div>
         ))}
@@ -155,7 +163,12 @@ export function WarmSignals({ filter, refresh, inboxLoadedAt, focus, onOpenThrea
           <div className="a-warm-group" data-group="agent_conversations">
             <div className="a-warm-sub">Agent conversations <span className="a-mono">{agentOnlyCards.length}</span></div>
             {agentOnlyCards.map(card => (
-              <AgentConversationCard key={card.thread_id} card={card} reload={load} onOpenThread={onOpenThread} />
+              <OnPhoneAsSheet
+                key={card.thread_id} phone={phone} id={card.prospect_id} name={card.prospect_name}
+                line={card.latest_inbound?.text ?? 'Conversation under agent control'} icp={null}
+              >
+                <AgentConversationCard card={card} reload={load} onOpenThread={onOpenThread} />
+              </OnPhoneAsSheet>
             ))}
           </div>
         )}
@@ -166,6 +179,34 @@ export function WarmSignals({ filter, refresh, inboxLoadedAt, focus, onOpenThrea
         )}
       </Group>
     </section>
+  )
+}
+
+// DMs rebuild (blueprint v3): on the phone a warm card is one row, and the full card (notes, DM1,
+// agent controls, every confirm it had) opens as a sheet over the list. The desktop keeps the
+// inline card. The sheet is portaled to body so the dock never paints over it.
+function OnPhoneAsSheet({ phone, id, name, line, icp, startOpen = false, children }: {
+  phone: boolean; id: string; name: string; line: string; icp: number | null; startOpen?: boolean; children: ReactNode
+}) {
+  // `?warm=<uuid>` (a WhatsApp line landing on one card) opens that card's sheet.
+  const [open, setOpen] = useState(startOpen)
+  if (!phone) return <>{children}</>
+  return (
+    <div className="a-warm-card" data-warm-card={id} data-compact="">
+      <Rows>
+        <Row
+          lead={<Face name={name} />}
+          title={name}
+          sub={line}
+          tail={icp !== null ? <Chip tone="quiet">ICP {icp}</Chip> : undefined}
+          onClick={() => setOpen(true)}
+        />
+      </Rows>
+      {open && createPortal(
+        <Sheet open onClose={() => setOpen(false)} title="Warm signal" className="a-warm-sheet">{children}</Sheet>,
+        document.body,
+      )}
+    </div>
   )
 }
 

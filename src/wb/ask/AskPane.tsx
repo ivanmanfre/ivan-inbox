@@ -26,7 +26,7 @@
    ========================================================================== */
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import {
-  Badge, Banner, Button, Chip, IconButton, LiveDot, PopoverItem, Sheet,
+  Badge, Banner, Button, Chip, IconButton, PopoverItem, Sheet,
 } from '../../ds'
 import { Head } from '../kit'
 import type { BrainAskPaneProps } from '../../exp/brain/types'
@@ -167,15 +167,13 @@ export function AskPane({ chat, job, about, aboutContext, subjects = [], onClose
             {/* Live, busy, or the last turn failed. Three states, one mark —
                 and the mark carries the session line the shelf used to print
                 as a row of its own. */}
-            {chat.busy
-              ? <LiveDot label={`Claude is working. ${sessionLine(chat.grounding)}`} />
-              : (
-                <span
-                  className="a-brain-dot" data-state={lastErr ? 'error' : 'ready'} role="status"
-                  title={sessionLine(chat.grounding)}
-                  aria-label={lastErr ? `The last turn failed. ${sessionLine(chat.grounding)}` : sessionLine(chat.grounding)}
-                />
-              )}
+            {/* Rebuild (no dots): busy and failed are said in words; at rest
+                nothing, and the session line stays the tooltip (the 380px head
+                has no room for it beside the thread's name). */}
+            <span
+              className="a-brain-state" data-state={chat.busy ? 'busy' : lastErr ? 'error' : 'ready'} role="status"
+              title={sessionLine(chat.grounding)}
+            >{chat.busy ? 'Working' : lastErr ? 'Failed' : ''}</span>
             {mock && <Chip tone="quiet">mock transport</Chip>}
             <span className="a-brain-feedbtn">
               <IconButton

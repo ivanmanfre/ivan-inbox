@@ -22,7 +22,8 @@ import {
   addSection, blankCount, lineShape, moveSection, removeSection, sectionIsBlank, updateSection,
 } from '../../lib/strategy'
 import { LANE_LABEL, type ContentLane } from '../../lib/content'
-import { laneOptions, resolveLane, useLanes } from '../../hooks/useLanes'
+import { resolveLane, useLanes } from '../../hooks/useLanes'
+import { clientOptions } from './laneChips'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import { Badge, Button, Card, IconButton, Input, Segmented, spring } from '../../ds'
 import { Bar, Body, Group, Head, Screen } from '../kit'
@@ -36,10 +37,10 @@ import { BenchmarkBlock } from './BenchmarkBlock'
 import { ReachBlock } from './ReachBlock'
 import { ThemesBlock } from './ThemesBlock'
 import { LeadMagnetsView } from './leadmagnets'
-import { MarketsView } from './markets'
 import OutliersView from './outliers'
 import { ClientDirectionPanel, DemoPanel, ResearchPanel, ResultsPanel as EditorialResultsPanel, ThisWeekPanel as EditorialThisWeekPanel } from './research/ResearchWorkspace'
-import { isContentLane, isStrategyView, readStrategyDeepLink, type StrategyViewId } from './strategy/deepLink'
+import { D_STRATEGY_HASH, dStrategySub, isContentLane, isStrategyView, readStrategyDeepLink, type StrategyViewId } from './strategy/deepLink'
+import { MarketsView } from './markets'
 import { prefixOf, wbHash } from '../../exp/v2c/route'
 import './content.css'
 import './strategy-evidence.css'
@@ -352,8 +353,17 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
       if (!/^#exp\//.test(location.hash)) return
       const query = new URLSearchParams({ lane, section: view })
       if (view === 'this-week' && exactBrief) { query.set('brief_id', exactBrief.id); query.set('brief_version', String(exactBrief.version)) }
-      const hash = `${wbHash('strategy', null, prefixOf(location.hash))}?${query.toString()}`
+      // Inside D (#exp/d/content/...) the address is written in D's grammar,
+      // on the D sub that shows this tab, and the frame is told (a replaceState
+      // fires no hashchange), so its sub-nav highlight follows the tab.
+      const inD = D_STRATEGY_HASH.test(location.hash)
+      const hash = inD
+        ? `#exp/d/content/${dStrategySub(view)}?${query.toString()}`
+        : `${wbHash('strategy', null, prefixOf(location.hash))}?${query.toString()}`
+      if (hash === location.hash) { acceptedHash.current = hash; return }
+      const subMoved = inD && location.hash.match(D_STRATEGY_HASH)?.[1] !== dStrategySub(view)
       history.replaceState(null, '', hash); acceptedHash.current = hash
+      if (subMoved) window.dispatchEvent(new HashChangeEvent('hashchange'))
     }, 0)
     return () => window.clearTimeout(id)
   }, [lane, view, exactBrief])
@@ -361,14 +371,30 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
   const [proposalDirty, setProposalDirty] = useState(false)
   const rowsRef = useRef<HTMLDivElement>(null)
   const confirm = useConfirm()
+  // ONE listener for the life of the view, reading the latest state through a ref.
+  // Re-subscribing on every render (setLane is a new function per render inside D)
+  // removed the listener in the middle of the very hashchange that re-rendered us,
+  // so a sub-nav click or a link never reached it.
+  const live = useRef({ confirm, lane, proposalDirty, setLane, dirty: st.dirty })
+  live.current = { confirm, lane, proposalDirty, setLane, dirty: st.dirty }
   useEffect(() => {
     const onHashChange = () => { void (async () => {
-      if (!/^#exp\/(?:v2c?|brain-[abc])\/strategy(?:\?|$)/.test(location.hash)) return
+      const inD = D_STRATEGY_HASH.test(location.hash)
+      if (!inD && !/^#exp\/(?:v2c?|brain-[abc])\/strategy(?:\?|$)/.test(location.hash)) return
       const incoming = location.hash
+      // Our own write-back (and a cancelled switch put back) is not a link.
+      if (incoming === acceptedHash.current) return
       const link = readStrategyDeepLink(incoming)
-      if (st.dirty || proposalDirty) {
+      const { confirm, lane, proposalDirty, setLane, dirty } = live.current
+      if (dirty || proposalDirty) {
         const ok = await confirm({ title: 'You have unsaved edits on this lane.', message: 'Open this link and lose them?', confirmText: 'Open and lose edits', danger: true })
-        if (!ok) { history.replaceState(null, '', acceptedHash.current); return }
+        if (!ok) {
+          history.replaceState(null, '', acceptedHash.current)
+          // D's sub-nav already moved on the click: tell the frame the address is back.
+          if (inD) window.dispatchEvent(new HashChangeEvent('hashchange'))
+          return
+        }
+        setProposalDirty(false)
       }
       if (location.hash !== incoming) return
       setExactBrief(link.briefId && link.briefVersion ? { id: link.briefId, version: link.briefVersion } : null)
@@ -378,7 +404,7 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
     })() }
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
-  }, [confirm, lane, proposalDirty, setLane, st.dirty])
+  }, [])
   // Pull-to-refresh would discard unsaved edits, so it is wired to a refresh
   // that refuses while dirty rather than being wired to nothing (a dead pull
   // gesture reads as a broken surface).
@@ -405,7 +431,7 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
     />
     <Bar>
         <Segmented
-          label="Lane"
+          label="Client"
           markerId="a-strat-lane"
           value={lane}
           onChange={async k => {
@@ -425,7 +451,7 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
             setExactBrief(null)
             setLane(k as ContentLane)
           }}
-          options={laneOptions(lanes.lanes)}
+          options={clientOptions(lanes.lanes)}
         />
     </Bar>
     <Bar>
@@ -443,11 +469,32 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
           { id: 'research', label: 'Research' },
           { id: 'results', label: 'Results' },
           { id: 'direction', label: 'Client direction' },
-          { id: 'outliers', label: 'Outliers' },
+          // Moved up from More (blueprint v3): the three that are read weekly.
+          { id: 'outreach', label: 'Outreach' },
+          { id: 'markets', label: 'Markets' },
+          { id: 'magnets', label: 'Lead magnets' },
         ]} />
     </Bar>
     </>
   )
+
+  // Seven views overflow a phone, so the chosen one is scrolled into sight
+  // (a jump from a deep link or More would otherwise land off screen).
+  // 2026-09-27 (MERGE-TODO, 390px): the old scrollIntoView ran once on mount, before the
+  // tab strip existed while lanes loaded, and never again. It now re-runs when the lanes
+  // arrive, waits a frame for layout, and scrolls only the strip (never the page).
+  useEffect(() => {
+    const later = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (f: FrameRequestCallback) => window.setTimeout(() => f(0), 0) as unknown as number
+    const stop = typeof cancelAnimationFrame === 'function' ? cancelAnimationFrame : (id: number) => window.clearTimeout(id)
+    const id = later(() => {
+      const nav = document.querySelector<HTMLElement>('.a-strategy-nav')
+      const tab = nav?.querySelector<HTMLElement>('[aria-selected="true"]')
+      if (!nav || !tab) return
+      const n = nav.getBoundingClientRect(), t = tab.getBoundingClientRect()
+      if (t.left < n.left || t.right > n.right) nav.scrollLeft += (t.left - n.left) - (n.width - t.width) / 2
+    })
+    return () => stop(id)
+  }, [view, lanes.state])
 
   const blanks = blankCount(st.sections)
 
@@ -456,7 +503,7 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
       {head}
       <Body innerRef={rowsRef} className="a-strat">
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
-        <details className="a-strategy-disclosure"><summary>More: demos, legacy analysis and private notes</summary><div className="a-research-actions"><Button size="sm" variant="quiet" onClick={() => setView('demos')}>Demos</Button><Button size="sm" variant="quiet" onClick={() => setView('recommendations')}>Legacy suggestions</Button><Button size="sm" variant="quiet" onClick={() => setView('evidence')}>Evidence archive</Button><Button size="sm" variant="quiet" onClick={() => setView('competitors')}>Competitors</Button><Button size="sm" variant="quiet" onClick={() => setView('magnets')}>Lead magnets</Button><Button size="sm" variant="quiet" onClick={() => setView('outreach')}>Outreach</Button><Button size="sm" variant="quiet" onClick={() => setView('markets')}>Markets</Button><Button size="sm" variant="quiet" onClick={() => setView('notes')}>{st.dirty ? 'Notes •' : 'Notes'}</Button></div></details>
+        <details className="a-strategy-disclosure"><summary>More: demos, legacy analysis, competitors and private notes</summary><div className="a-research-actions"><Button size="sm" variant="quiet" onClick={() => setView('demos')}>Demos</Button><Button size="sm" variant="quiet" onClick={() => setView('recommendations')}>Legacy suggestions</Button><Button size="sm" variant="quiet" onClick={() => setView('evidence')}>Evidence archive</Button><Button size="sm" variant="quiet" onClick={() => setView('competitors')}>Competitors</Button><Button size="sm" variant="quiet" onClick={() => setView('notes')}>{st.dirty ? 'Notes, unsaved' : 'Notes'}</Button></div></details>
         {view === 'this-week' && <div className="a-strategy-panel"><EditorialThisWeekPanel key={`${lane}-${refreshTick}`} lane={lane} exactBrief={exactBrief} /></div>}
         {view === 'research' && <div className="a-strategy-panel"><ResearchPanel key={`${lane}-${refreshTick}`} lane={lane} /></div>}
         {view === 'results' && <div key={`${lane}-${refreshTick}`} className="a-strategy-results">
@@ -472,8 +519,14 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
         {view === 'evidence' && <div key={`${lane}-${refreshTick}`} className="a-strategy-panel"><EvidenceBlock lane={lane} /></div>}
         {view === 'competitors' && <BenchmarkBlock key={`${lane}-${refreshTick}`} lane={lane} view="competitors" />}
         {view === 'magnets' && <LeadMagnetsView key={`${lane}-${refreshTick}`} lane={lane} />}
-        {view === 'markets' && <MarketsView key={`${lane}-${refreshTick}`} lane={lane} />}
-        {view === 'outliers' && <OutliersView key={`${lane}-${refreshTick}`} lane={lane} />}
+        {/* CB-21 (main 32e218d + d9a0d9c): the Markets tab is the Outliers view, self-keyed per lane. */}
+        {(view === 'markets' || view === 'outliers') && (
+          <>
+            {/* Today's Markets readout (operator_market_readout) first, then the outliers: both are live today. */}
+            <MarketsView key={`m-${lane}-${refreshTick}`} lane={lane} />
+            <OutliersView key={`${lane}-${refreshTick}`} lane={lane} />
+          </>
+        )}
         {view === 'outreach' && <div key={`${lane}-${refreshTick}`} className="a-strategy-panel"><OutreachBlock lane={lane} /></div>}
         {view === 'notes' && <>
         <div className="a-ct-sub">Private editorial notes{st.updatedAt ? ` · saved ${relAge(st.updatedAt)}` : ''}. These notes are not connected to the generator. Review dated claims against Competitors and Results before using them.</div>

@@ -19,6 +19,15 @@ export const LANE_LABEL: Record<ContentLane, string> = {
   arch: 'Davorin Smit',
 }
 
+// The chip name, sentence case (rebuild ruling 2026-09-26: "Ivan / Rise /
+// Arch"). The person's name stays in sentences (LANE_OWNER); the switch and
+// the verdict line name the client, not the man.
+export const LANE_SHORT: Record<ContentLane, string> = {
+  ivan: 'Ivan',
+  risedtc: 'Rise',
+  arch: 'Arch',
+}
+
 // The client's own first name, for a sentence about him ("Davorin sees it").
 // Ivan's lane names nobody: his own posts have no one else to see them.
 export const LANE_OWNER: Record<ContentLane, string> = {
@@ -1774,12 +1783,18 @@ export function stageOfLane(
   r: ContentDraft, lane: ContentLane, now: number = Date.now(),
 ): ContentStage {
   if (lane === 'ivan' || !clientScheduleArmed(r)) return stageOf(r, now)
+  const t = Date.parse(r.scheduled_at as string)
+  // A FUTURE date on an armed board row is a schedule, full stop: that is the
+  // publisher's own pick rule. `source_post_id` is not read here, because it
+  // also carries the idea a draft came from ("ir-…"), and reading it as a
+  // writeback filed ARCH's Oct 1 post under "On buffer" while the verdict and
+  // the publisher both had it going out (rebuild, 2026-09-26).
+  if (!Number.isFinite(t) || t >= now) return 'scheduled'
   // Past its time with nothing published back = it never went out, the same
   // reading isStuckScheduled makes on Ivan's lane. `source_post_id` is the
   // publisher's own writeback, so its absence past the hour is the signal.
   if (r.source_post_id) return stageOf(r, now)
-  const t = Date.parse(r.scheduled_at as string)
-  return Number.isFinite(t) && t < now ? 'stuck' : 'scheduled'
+  return 'stuck'
 }
 
 export type ContentStages = Record<ContentStage, ContentDraft[]>

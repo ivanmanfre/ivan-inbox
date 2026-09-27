@@ -239,6 +239,31 @@ export async function fetchLaneRecent(
   return out
 }
 
+// The newest sends of ONE campaign, every kind (invite note, DM, InMail,
+// email), for the Lanes campaign sheet. Same wide-window dedupe as above.
+export type CampaignRecentSend = RecentSend & { message_type: string; channel: string }
+
+export async function fetchCampaignRecent(campaignName: string, limit = 25): Promise<CampaignRecentSend[]> {
+  const { data, error } = await supabase.from('inbox_messages_v')
+    .select('id, prospect_id, prospect_name, message_text, sent_at, client_id, message_type, channel')
+    .eq('campaign_name', campaignName)
+    .eq('direction', 'outbound')
+    .not('sent_at', 'is', null)
+    .order('sent_at', { ascending: false })
+    .limit(400)
+  if (error) throw error
+  const seen = new Set<string>()
+  const out: CampaignRecentSend[] = []
+  for (const m of (data ?? []) as CampaignRecentSend[]) {
+    const dk = `${m.prospect_id}|${m.sent_at}|${m.message_text}`
+    if (seen.has(dk)) continue
+    seen.add(dk)
+    out.push(m)
+    if (out.length >= limit) break
+  }
+  return out
+}
+
 export type CampaignSend = {
   campaign_id: string
   campaign_name: string

@@ -18,6 +18,7 @@ import { useConfirm } from '../chrome/ConfirmSheet'
 import { returnsIn, usePushLater } from '../../lib/pushLater'
 import {
   approveDraft, discardLegs, draftLegs, legFailureText, emailSenderLabel, isFollowUp, snoozeDraft, threadChatId, type Thread,
+  offersReplyMyself, REPLY_MYSELF, type DiscardMode,
 } from '../../lib/inbox'
 import './dms.css'
 
@@ -133,10 +134,13 @@ export function DraftCard({ thread, onOpenThread, refresh }: {
 
   async function handleDiscard() {
     if (busy) return
+    let mode: DiscardMode = null
     const ok = await confirm({
       title: `Discard this draft?`,
       message: `It won't be sent to ${thread.prospect_name}.`,
       confirmText: 'Discard',
+      altText: offersReplyMyself(thread) ? "Discard, I'll reply myself" : undefined,
+      onAlt: () => { mode = REPLY_MYSELF },
       danger: true,
     })
     if (!ok) { springBack(); return }
@@ -146,7 +150,7 @@ export function DraftCard({ thread, onOpenThread, refresh }: {
       // A zero-row update is not an error and it is not a discard. See the same
       // guard on the thread's onDiscard: an already-approved row is refused,
       // and saying nothing here would claim a send was stopped when it was not.
-      const failed = await discardLegs(draftLegs(thread))
+      const failed = await discardLegs(draftLegs(thread), mode)
       if (failed.length) {
         setError(failed.map(legFailureText).join(' '))
         springBack()

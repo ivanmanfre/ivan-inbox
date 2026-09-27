@@ -7,7 +7,8 @@
    app still ships.
    ========================================================================== */
 import { useEffect, useState } from 'react'
-import { InboxList } from './InboxList'
+import { InboxList, type HoldAction } from './InboxList'
+import { chatLink } from '../../components/CopyChatLink'
 import { DraftCard, PushedBar, StaleBar } from './DraftCard'
 import { DmCount } from './DmHistory'
 import { WarmSignals } from './WarmSignals'
@@ -22,6 +23,7 @@ import {
 } from '../../lib/filterTokens'
 import { preReadWorthwhile, waitingDays } from '../../exp/v2c/chat/preread'
 import { usePreRead } from '../../exp/v2c/chat/usePreRead'
+import { askAbout } from '../ask/askAbout'
 import './dms.css'
 
 // DMs — the one surface a person waiting on Ivan can appear on.
@@ -201,6 +203,23 @@ export function Dms({
           quiet
         />
       )}
+      rowHold={t => {
+        const out: HoldAction[] = []
+        const st = pre.get(t.prospect_id)
+        if (preReadWorthwhile(t) && st.s !== 'done' && st.s !== 'running') {
+          out.push({ label: st.s === 'error' ? 'Sum up again' : 'Sum up', icon: 'quote', run: () => pre.run(t) })
+        }
+        const link = chatLink(t.chat_provider_id, t.linkedin_url)
+        if (link) {
+          out.push({
+            label: link.isChat ? 'Copy chat' : 'Copy profile', icon: 'copy',
+            run: () => { navigator.clipboard.writeText(link.href).catch(() => window.prompt('Copy this link', link.href)) },
+          })
+        }
+        // Rebuild: Claude opens with this person attached (askAbout.ts). Nothing is sent.
+        out.push({ label: 'Ask Claude', icon: 'ask', run: () => askAbout(t) })
+        return out
+      }}
       renderRow={status === 'approve'
         ? t => <DraftCard key={t.prospect_id} thread={t} onOpenThread={onOpenThread} refresh={refresh} />
         : undefined}

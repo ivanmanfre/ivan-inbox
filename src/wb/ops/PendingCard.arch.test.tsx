@@ -181,7 +181,7 @@ describe('an ARCH comment card says what the drafter decided', () => {
   it('keeps every ARCH card on Davorin’s seat and offers the three ARCH actions', () => {
     for (const card of [draftCard, needsDavorCard, escalateCard, handledCard, undraftedCard]) {
       const out = html(card)
-      expect(out).toContain('Davorin Smit')
+      expect(out).toContain('>Arch<')
       expect(out).not.toContain('Mattan')
       expect(out).toContain('Needs Davor')
       expect(out).toContain('Mark handled')
@@ -223,7 +223,7 @@ describe('a RISE comment card is untouched', () => {
   it('keeps Mattan’s copy and carries none of the ARCH furniture', () => {
     const out = html(riseEmpty)
     expect(out).toContain('No draft on purpose: this one wants Mattan in his own words. Type above and the button posts it, or press Draft it for a starting point.')
-    expect(out).toContain('Mattan Danino')
+    expect(out).toContain('>Rise<')
     expect(out).not.toContain('Needs Davor')
     expect(out).not.toContain('Rests on:')
     expect(out).not.toContain('Davorin')

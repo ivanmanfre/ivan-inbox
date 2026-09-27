@@ -222,3 +222,51 @@
   color:var(--ds-text-3); font-size:var(--ds-fs-meta);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
+
+/* The board's first line: the Ops number and what it is made of (rebuild). */
+.a-ops-answer{
+  margin:0 0 var(--ds-s4);
+  font-size:var(--ds-fs-body); line-height:var(--ds-lh-body);
+  color:var(--ds-text);
+}
+.a-ops-fold[data-quiet] .a-ops-fold-t{ font-weight:var(--ds-fw-regular); color:var(--ds-text-2) }
+
+/* Phone: the closed rows run edge to edge like every native list here, one
+   hairline between them, no inset plates floating against the glass. */
+@media (max-width:767px){
+  .a-ops-answer{ padding-inline:var(--ds-s4) }
+  .a-ops-main, .a-ops-side{ gap:var(--ds-s0) }
+  .a-ops-fold-head{
+    border-radius:0; background:transparent;
+    min-height:calc(var(--ds-tap) + var(--ds-s2));
+    padding-inline:var(--ds-s4);
+    box-shadow:inset 0 -1px 0 var(--ds-line);
+  }
+  .a-ops-fold-head:hover{ background:transparent }
+  .a-ops-fold[data-open] .a-ops-fold-body{ padding-block:var(--ds-s3) var(--ds-s5) }
+}
+
+/* The quick batch (moved from Today): one closed row per batch, its two
+   verbs on the right, the cards listed under it when the label is tapped. */
+.a-ops-qb{ display:flex; flex-direction:column; gap:var(--ds-s2); margin-block-end:var(--ds-s4); min-width:0 }
+.a-ops-qb-batch{ display:flex; flex-direction:column; gap:var(--ds-s2); padding:var(--ds-s2) var(--ds-s3); border-radius:var(--ds-r2); background:var(--ds-surface-2); min-width:0 }
+.a-ops-qb-row, .a-ops-qb-one{ display:flex; align-items:center; gap:var(--ds-s3); min-width:0 }
+.a-ops-qb-label{
+  flex:1 1 auto; min-width:0; min-height:var(--ds-tap);
+  display:flex; align-items:center; gap:var(--ds-s3);
+  border:0; background:transparent; color:var(--ds-text);
+  font:inherit; font-weight:var(--ds-fw-semi); text-align:start; cursor:pointer; padding:0;
+}
+.a-ops-qb-label > .ds-icon{ flex:0 0 auto; color:var(--ds-text-3) }
+.a-ops-qb-acts{ display:flex; gap:var(--ds-s2); flex:0 0 auto }
+.a-ops-qb-note{ color:var(--ds-text-3) }
+.a-ops-qb-one{ padding-inline-start:calc(16px + var(--ds-s3)); box-shadow:inset 0 1px 0 var(--ds-line); padding-block-start:var(--ds-s2) }
+.a-ops-qb-body{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ds-text-2) }
+@media (max-width:767px){
+  .a-ops-qb{ gap:var(--ds-s0) }
+  .a-ops-qb-batch{ border-radius:0; background:transparent; padding-inline:var(--ds-s4); box-shadow:inset 0 -1px 0 var(--ds-line) }
+  .a-ops-qb-row, .a-ops-qb-one{ flex-wrap:wrap }
+  .a-ops-qb-one{ padding-inline-start:var(--ds-s0) }
+  .a-ops-qb-body{ flex-basis:100% }
+  .a-ops-qb-acts{ margin-inline-start:auto }
+}

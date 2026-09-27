@@ -66,6 +66,9 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   const foot = pending ? (
     <>
       <Button variant="quiet" onClick={() => settle(false)}>{pending.cancelText ?? 'Cancel'}</Button>
+      {pending.altText && (
+        <Button variant="quiet" onClick={() => { pending.onAlt?.(); settle(true) }}>{pending.altText}</Button>
+      )}
       <Button
         variant={pending.danger ? 'danger' : 'primary'}
         onClick={() => settle(true)}
@@ -83,7 +86,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
           title={pending?.title}
           sub={pending?.message}
           grip={false}
-          foot={<div className="a-confirm-foot">{foot}</div>}
+          foot={<div className="a-confirm-foot" data-three={pending?.altText ? '' : undefined}>{foot}</div>}
           className="a-confirm"
         />
       ) : (
@@ -93,7 +96,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
           title={pending?.title}
           sub={pending?.message}
           danger={pending?.danger}
-          foot={<div className="a-confirm-foot">{foot}</div>}
+          foot={<div className="a-confirm-foot" data-three={pending?.altText ? '' : undefined}>{foot}</div>}
           className="a-confirm"
         />
       )}
