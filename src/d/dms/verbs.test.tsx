@@ -60,13 +60,29 @@ describe('DM verbs', () => {
     expect(vi.mocked(lib.approveDraft).mock.calls[1]).toEqual([t.companionDraft!.id, 'Email leg', null])
   })
 
-  it('Holding Send sends without the confirm', async () => {
+  it('Holding Send never skips the confirm (today always asks)', async () => {
     const [t] = threads(drafted('h', { prospect_name: 'Hold' }))
     mount(t)
     fireEvent.pointerDown(key('send'), { button: 0 })
-    await vi.advanceTimersByTimeAsync(700)
-    await waitFor(() => expect(lib.approveDraft).toHaveBeenCalledTimes(1))
-    expect(screen.queryByText('Approve & send')).toBeNull()
+    await vi.advanceTimersByTimeAsync(900)
+    fireEvent.pointerUp(key('send'))
+    expect(lib.approveDraft).not.toHaveBeenCalled()
+    fireEvent.click(key('send'))
+    expect(await screen.findByText('Approve & send')).toBeTruthy()
+    expect(lib.approveDraft).not.toHaveBeenCalled()
+  })
+
+  it('Discard is a danger confirm: Enter on it does not discard', async () => {
+    const [t] = threads(drafted('e', { prospect_name: 'Eve' }))
+    mount(t)
+    fireEvent.click(key('discard'))
+    const red = await waitFor(() => key('discard-confirm'))
+    expect(red.className).toContain('d-key-d')
+    expect(document.activeElement).toBe(key('cancel'))
+    red.focus()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    await vi.advanceTimersByTimeAsync(50)
+    expect(lib.discardLegs).not.toHaveBeenCalled()
   })
 
   it('Discard offers two keys; "I\'ll reply myself" passes the mode, and Undo restores', async () => {
