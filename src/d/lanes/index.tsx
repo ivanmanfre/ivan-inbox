@@ -24,6 +24,7 @@ import { CampaignSheet } from './CampaignSheet'
 import { answerOf, hm, RANGES, type Range } from './model'
 import { monitorLine, RangeKeys } from './foot'
 import { Phone } from './Phone'
+import { TodayNotes } from './TodayNotes'
 import { ControlCell, Plate, TodayCell } from './seatCells'
 import { LanesSheet, type SheetKind } from './Sheets'
 import { failedCount, useLanesData } from './useLanesData'
@@ -66,6 +67,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
   const top = <>
     {!online && <Offline since={at ? hm(at) : null} />}
     {data.cc.failed && !data.cc.value && <Failed what="the send monitor" detail={data.cc.failed} onRetry={refresh} />}
+    <TodayNotes />
   </>
   const sheets = <>
     {camp && <CampaignSheet c={camp} now={now} onClose={close} />}
