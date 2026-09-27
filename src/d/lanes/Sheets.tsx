@@ -9,6 +9,7 @@ import { SEATS, SEAT_NAME, seatOf, type Seat } from '../seats'
 import { Sheet } from '../ui/Sheet'
 import { LoadLine, Shs } from './CampaignSheet'
 import { useRead } from './useRead'
+import { fetchBlocked } from './reads'
 import { dm, hm, type Range } from './model'
 
 const CH: Record<string, string> = { invitation: 'Invites', dm: 'DMs', inmail: 'InMail' }
@@ -54,18 +55,20 @@ export function LanesSheet({ kind, seat, p, range, onClose }: { kind: SheetKind;
 }
 
 function LogSheet({ onClose }: { onClose: () => void }) {
-  const log = useRead(() => fetchSendLog('all', 40), 'log')
+  const log = useRead(() => fetchSendLog('all', 30), 'log')
+  const blk = useRead(() => fetchBlocked(8), 'blocked')
   const tot = useRead(() => fetchSendLogTotals('all'), 'logtot')
   const t = tot.kind === 'ready' ? tot.data : null
   const items = log.kind === 'ready' ? log.data : []
-  const sent = items.filter(x => x.kind === 'sent'), failed = items.filter(x => x.kind === 'failed')
+  const sent = items.filter(x => x.kind === 'sent'), failed = blk.kind === 'ready' ? blk.data : []
   const kind = (m: { message_type: string }) => (m.message_type === 'connection_note' ? 'Invite' : m.message_type === 'inmail' ? 'InMail' : m.message_type === 'email' ? 'Email' : 'DM')
   return (
     <Sheet open onClose={onClose} className="dl-sheet" title="Send log"
       sub={t ? `Newest ${sent.length} of ${t.sent.toLocaleString('en-US')} sent · ${failed.length} of ${t.blocked.toLocaleString('en-US')} blocked. All three seats, each row says whose.` : 'All three seats, each row says whose.'}>
       <LoadLine l={log} what="the send log">{() => <>
         <Shs tail={failed.length}>Blocked, newest</Shs>
-        {failed.map(b => <div className="dl-lg dl-f" key={b.id}><time>{dm(b.event_at)} {hm(b.event_at)}</time><span className="dl-k">Failed</span><p><span className="dl-nm">{b.prospect_name}</span> · {(b.reason ?? 'send failed').replace(/_/g, ' ')}</p><span className="dl-s">{SEAT_NAME[seatOf(b.client_id) ?? 'ivan']}</span></div>)}
+        {blk.kind === 'failed' && <p className="dl-sl dl-bad">Could not read the blocked sends: {blk.message}</p>}
+        {failed.map(b => <div className="dl-lg dl-f" key={b.id}><time>{dm(b.send_blocked_at)} {hm(b.send_blocked_at)}</time><span className="dl-k">Failed</span><p><span className="dl-nm">{b.prospect_name}</span> · {(b.send_blocked_reason ?? 'send failed').replace(/_/g, ' ')}</p><span className="dl-s">{SEAT_NAME[seatOf(b.client_id) ?? 'ivan']}</span></div>)}
         <Shs tail={sent.length}>Sent, newest</Shs>
         {sent.map(m => <div className="dl-lg" key={m.id}><time>{dm(m.event_at)} {hm(m.event_at)}</time><span className="dl-k">{kind(m)}</span><p><span className="dl-nm">{m.prospect_name}</span> · {!m.message_text || /^\(blank invite/.test(m.message_text) ? 'no note' : m.message_text.replace(/\s+/g, ' ')}</p><span className="dl-s">{SEAT_NAME[seatOf(m.client_id) ?? 'ivan']}</span></div>)}
       </>}</LoadLine>

@@ -153,3 +153,14 @@ export async function fetchPauses(): Promise<Partial<Record<Seat, string>>> {
   }
   return out
 }
+
+export type Blocked = { id: string; prospect_name: string; client_id: string; send_blocked_at: string; send_blocked_reason: string | null }
+/** Newest blocked sends across seats, same exclusions as the send log (discards and owner holds are not failures). */
+export async function fetchBlocked(limit = 8): Promise<Blocked[]> {
+  const { data, error } = await supabase.from('inbox_messages_v').select('id, prospect_name, client_id, send_blocked_at, send_blocked_reason')
+    .eq('direction', 'outbound').not('send_blocked_at', 'is', null)
+    .or('send_blocked_reason.is.null,send_blocked_reason.not.in.(discarded_in_inbox,owner_confirmation,owner_confirmation_superseded,reply_retry_pending)')
+    .order('send_blocked_at', { ascending: false }).limit(limit)
+  if (error) throw error
+  return (data ?? []) as Blocked[]
+}
