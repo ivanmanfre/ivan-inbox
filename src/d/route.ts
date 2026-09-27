@@ -86,9 +86,9 @@ export function toDHash(hash: string): string | null {
   const q = new URLSearchParams(query)
   // The keep-today marker is ours, never a page's key.
   q.delete(TODAY_APP_KEY)
-  // Content's historical Sources shortcut is the Strategy reader (today's route.ts sectionJob).
+  // Content's historical Sources shortcut is the Strategy reader on its Research tab (today's StrategyView alias).
   if (['content', 'strategy', ''].includes(seg) && (q.get('sources') === '1' || q.get('section') === 'sources')) {
-    q.delete('sources'); q.delete('section')
+    q.delete('sources'); q.set('section', 'research')
     return dHash('content', 'strategy', q)
   }
   // `?warm=1|<uuid>` (the WhatsApp line) is a DMs card whatever job the link named.
