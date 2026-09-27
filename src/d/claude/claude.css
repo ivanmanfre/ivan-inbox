@@ -161,3 +161,8 @@
 .dcl-page-b{flex:1;min-height:0;display:flex;flex-direction:column;max-width:760px;width:100%}
 .dcl-page-desktop .dcl-page-b{padding:4px 12px 0}
 .dcl-page-phone .dcl-chats{overflow:visible}
+/* The frame's phone sheet keeps room for the dock under it, but the sheet covers the dock
+   (mock: the sheet runs to the home indicator). Take that band back for the composer. */
+.dcl-phone{margin-bottom:calc(-1 * (var(--dock-h) + 20px));padding-bottom:calc(6px + env(safe-area-inset-bottom))}
+.dcl-hint-p{display:none}
+.dcl-phone .dcl-hint-k{display:none}.dcl-phone .dcl-hint-p{display:inline}
