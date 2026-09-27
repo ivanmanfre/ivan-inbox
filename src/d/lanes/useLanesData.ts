@@ -13,7 +13,7 @@ import {
   fetchGovernor, fetchOutcomes, fetchPipeline, fetchReplacement, fetchViewedBack,
   type GovernorRow, type OutcomeRow, type PipelineRow, type ReplacementRow, type ViewedBackRow,
 } from '../../lib/kpis'
-import { fetchInbound, type InboundRow } from '../../lib/inbound'
+import { fetchInbound, fetchInboundDaily, type InboundDailyRow, type InboundRow } from '../../lib/inbound'
 import { fetchSeatHealth, type SeatHealthSummary } from '../../lib/seatHealth'
 import type { CameBackCard } from '../../wb/dms/cameBackData'
 import type { Seat } from '../seats'
@@ -33,6 +33,7 @@ export type LanesData = {
   viewed: Slot<ViewedBackRow[]>
   counters: Slot<Counter[]>
   inbound: Slot<InboundRow[]>
+  inboundDaily: Slot<InboundDailyRow[]>
   cameBack: Slot<CameBackCard[]>
   warm: Slot<number>
   engagers: Slot<Record<Seat, number>>
@@ -57,6 +58,7 @@ const READS: { [K in Key]: () => Promise<NonNullable<LanesData[K]['value']>> } =
   viewed: fetchViewedBack,
   counters: () => fetchCounters(),
   inbound: fetchInbound,
+  inboundDaily: fetchInboundDaily,
   cameBack: fetchCameBack,
   warm: fetchWarmCount,
   engagers: fetchEngagers7d,

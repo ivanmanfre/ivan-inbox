@@ -25,7 +25,7 @@ export function LanesSheet({ kind, seat, p, range, now, setSeat, onClose }: { ki
 
 function DecisionsSheet({ seat, onClose }: { seat: Seat; onClose: () => void }) {
   const d = useRead(async () => {
-    const [a, b] = await Promise.all([fetchInboundDecisions('requests', seat, 30), fetchInboundDecisions('filtered', seat, 30)])
+    const [a, b] = await Promise.all([fetchInboundDecisions('requests', seat, 60), fetchInboundDecisions('filtered', seat, 60)])
     return [...a, ...b].sort((x, y) => y.decided_at.localeCompare(x.decided_at))
   }, `dec:${seat}`)
   const row = (x: InboundDecision) => (
@@ -33,13 +33,14 @@ function DecisionsSheet({ seat, onClose }: { seat: Seat; onClose: () => void }) 
       <div className="dl-mh"><b>{x.who}</b><span className="dl-tag">{INBOUND_LABEL[x.lane]}</span><span className={x.outcome === 'dropped' ? 'dl-tag dl-warnt' : 'dl-tag'}>{x.outcome === 'passed' ? 'let in' : 'dropped'}</span><em>{dm(x.decided_at)}</em></div>
       <p>{x.reason ?? 'no reason recorded'}{x.score != null ? ` · score ${x.score}` : ''}{x.detail ? ` · ${x.detail}` : ''}</p>
       {x.quote && <p className="dl-quote">“{x.quote}”</p>}
-      {x.link && <a className="dl-more" href={x.link} target="_blank" rel="noreferrer">Open profile ↗</a>}
+      {(x.judged_blind || x.surfaced) && <p className="dl-m">{x.judged_blind && <span className="dl-al">judged without a profile</span>}{x.judged_blind && x.surfaced ? ' · ' : ''}{x.surfaced && 're-admitted by hand'}</p>}
+      {x.link ? <a className="dl-more" href={x.link} target="_blank" rel="noreferrer">Open profile ↗</a> : <p className="dl-m dl-dimt">no profile link</p>}
     </div>
   )
   return (
     <Sheet open onClose={onClose} className="dl-sheet" title={`Inbound decisions, ${SEAT_NAME[seat]}`}
       sub="Each stranger the automations decided about without you: invitations to this seat and the cold-DM filter. Newest first.">
-      <LoadLine l={d} what="the inbound decisions">{rows => rows.length ? <>{rows.map(row)}</> : <p className="dl-sl">No decisions recorded for this seat yet.</p>}</LoadLine>
+      <LoadLine l={d} what="the inbound decisions">{rows => rows.length ? <>{rows.map(row)}</> : <p className="dl-sl">Nothing recorded for this seat. Either nothing has come in, or the lane was never armed here: the data cannot tell those apart yet.</p>}</LoadLine>
     </Sheet>
   )
 }

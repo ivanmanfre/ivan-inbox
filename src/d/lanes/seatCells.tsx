@@ -32,7 +32,7 @@ export function Plate({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
       <div className="dl-hl">
         {h ? <>
           <span className={h.account === 'OK' ? 'dl-ok' : 'dl-bad'}>LinkedIn {h.account === 'OK' ? 'connected' : 'disconnected'}</span>
-          <span className={h.sn === 'OK' ? 'dl-ok' : 'dl-bad'}>Sales Nav {h.sn === 'OK' ? 'on' : 'not working'}{h.sn_credits != null ? `, ${h.sn_credits} credits` : ''}</span>
+          <span className={h.sn === 'OK' || h.sn == null ? 'dl-ok' : 'dl-bad'}>Sales Nav {h.sn === 'OK' ? 'on' : h.sn == null ? 'not reported' : 'not working'}{h.sn_credits != null ? `, ${h.sn_credits} credits` : ''}</span>
           {h.degraded && h.link && <a className="dl-reconnect" data-verb="reconnect" href={h.link} target="_blank" rel="noreferrer">Reconnect</a>}
         </> : <span className="dl-bad">{ctx.d.health.failed ? 'seat health could not be read' : 'reading seat health…'}</span>}
       </div>

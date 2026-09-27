@@ -17,7 +17,7 @@ const slot = <T,>(value: T | null, failed: string | null = null) => ({ value, fa
 function data(over: Partial<LanesData> = {}): LanesData {
   return {
     cc: slot(p), perf: slot([]), gov: slot([]), outcomes: slot([]), pipeline: slot([]), replacement: slot([]), viewed: slot([]),
-    counters: slot([]), inbound: slot([]), cameBack: slot([]), warm: slot(0), engagers: slot({ ivan: 0, risedtc: 0, arch: 0 }),
+    counters: slot([]), inbound: slot([]), inboundDaily: slot([]), cameBack: slot([]), warm: slot(0), engagers: slot({ ivan: 0, risedtc: 0, arch: 0 }),
     health: slot(null), pauses: slot({}), attempts: slot(null), ready: slot(null), ...over,
   }
 }

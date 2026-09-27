@@ -1,11 +1,21 @@
 /* Lanes cells, part 2: Campaigns, 14 days (with the range keys) and Inbound.
    One seat per render; the desktop grid lays three side by side. */
 import { useEffect, useState } from 'react'
-import { groupBySeat, isWorking, shortName, type CampaignPerf } from '../../lib/campaignPerf'
+import { groupBySeat, shortName, type CampaignPerf } from '../../lib/campaignPerf'
 import type { Seat } from '../seats'
 import { laneLabel } from './labels'
 import { dm as dayMonth, seriesOf, windowOf, type Bar, type Range } from './model'
 import { laneMixOnce, type LaneMix } from './reads'
+import { inboundStatus, type InboundDailyRow } from '../../lib/inbound'
+
+/** 14 UTC days of inbound decisions for one seat and lane, oldest first; null when unread. */
+function spark(daily: InboundDailyRow[] | null, seat: Seat, k: string, now: number): number[] | null {
+  if (!daily) return null
+  return Array.from({ length: 14 }, (_, i) => {
+    const day = new Date(now - (13 - i) * 864e5).toISOString().slice(0, 10)
+    return daily.filter(d => d.client_id === seat && d.lane === k && d.day.slice(0, 10) === day).reduce((a, d) => a + d.n, 0)
+  })
+}
 import { num, type CellCtx } from './seatCells'
 
 export type BandCtx = CellCtx & {
@@ -50,9 +60,10 @@ export function CampaignsCell({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
   const rows = ctx.d.perf.value
   if (!rows) return <div className="dl-cps"><p className="dl-fo dl-unk">{ctx.d.perf.failed ? `Campaigns could not be read: ${ctx.d.perf.failed}` : 'Reading campaigns…'}</p></div>
   const g = groupBySeat(rows, [seat])[0]
-  const retired = seat === 'ivan' ? rows.filter(r => r.client_id === seat && !isWorking(r) && !r.is_active) : []
-  const rest = [...g.quiet, ...g.paused, ...retired]
-  const fold = [g.quiet.length ? `${g.quiet.length} quiet this week` : '', g.paused.length ? `${g.paused.length} paused` : '', retired.length ? `${retired.length} retired` : ''].filter(Boolean).join(', ')
+  // Ivan's paused campaigns are hidden outright (ruling 07-25, today's Overview); clients' paused ones fold.
+  const paused = seat === 'ivan' ? [] : g.paused
+  const rest = [...g.quiet, ...paused]
+  const fold = [g.quiet.length ? `${g.quiet.length} quiet this week` : '', paused.length ? `${paused.length} paused` : ''].filter(Boolean).join(', ')
   return (
     <div className="dl-cps">
       {g.shown.length ? g.shown.map(c => <Camp key={c.campaign_id} c={c} ctx={ctx} />) : <p className="dl-fo">Nothing went out on this seat this week.</p>}
@@ -63,7 +74,7 @@ export function CampaignsCell({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
       )}
       {show && rest.map(c => (
         <button type="button" key={c.campaign_id} className="dl-quiet" onClick={() => ctx.openCampaign(c.campaign_id)}>
-          <span>{shortName(c.campaign_name)}</span><em>{c.is_active ? 'quiet' : seat === 'ivan' ? 'retired' : 'paused'}</em>
+          <span>{shortName(c.campaign_name)}</span><em>{c.is_active ? 'quiet' : 'paused'}</em>
         </button>
       ))}
     </div>
@@ -124,10 +135,15 @@ export function InboundCell({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
   const cb = (ctx.d.cameBack.value ?? []).filter(x => x.tenant === seat)
   const line = (label: string, k: 'requests' | 'filtered', a: string, b: string) => {
     const x = lane(k)
+    const st = x ? inboundStatus(x.last_at, x.total, new Date(ctx.now).toISOString()) : 'off'
+    const word = !x || st === 'off' ? 'no decisions recorded yet' : st === 'live' ? `live, last ${dayMonth(x.last_at!)}` : `quiet for ${Math.floor((ctx.now - Date.parse(x.last_at!)) / 864e5)} days`
+    const days = spark(ctx.d.inboundDaily.value, seat, k, ctx.now)
     return (
       <div className="dl-il" key={k}>
-        <span>{label}{!rows ? (ctx.d.inbound.failed ? ': could not be read' : ': reading…') : x ? <>: <b>{x.passed}</b> {a}, <b>{x.dropped}</b> {b}</> : ': no decisions recorded yet'}</span>
-        <em>{x ? `${x.d30} in 30d${x.last_at ? `, last ${dayMonth(x.last_at)}` : ''}` : ''}</em>
+        <span>{label}{!rows ? (ctx.d.inbound.failed ? ': could not be read' : ': reading…') : x ? <>: <b>{x.passed}</b> {a}, <b>{x.dropped}</b> {b}</> : ''}
+          <small className={`dl-ist${st === 'live' ? ' dl-livet' : ''}`}>{rows ? word : ''}</small></span>
+        <em>{x ? `${x.d7} in 7d · ${x.d30} in 30d` : ''}
+          {days && <span className="dl-mini dl-ispk" aria-label="decisions per day, 14 days">{days.map((v, i) => <i key={i} className={v ? '' : 'dl-z'} style={{ height: `${v ? Math.max(3, Math.round((v / Math.max(1, ...days)) * 12)) : 2}px` }} />)}</span>}</em>
       </div>
     )
   }
