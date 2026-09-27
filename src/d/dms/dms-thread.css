@@ -98,3 +98,6 @@
 .dm-pane-phone .dm-keys{position:sticky;bottom:calc(var(--dock-h) + 14px + env(safe-area-inset-bottom));background:var(--bg);padding:10px 12px 6px;z-index:4;border-top:1px solid var(--line)}
 .dm-pane-phone .dm-keys .d-key{min-width:0}
 .dm-pane-phone .dm-foot{text-align:center}
+.dm-pane-phone>.dm-comp{order:9;margin-bottom:6px}
+.dm-pane-phone>.dm-keys{order:10}
+.dm-pane-phone>.dm-foot{order:11;padding-bottom:calc(var(--dock-h) + 24px)}

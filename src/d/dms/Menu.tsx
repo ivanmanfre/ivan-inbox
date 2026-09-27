@@ -4,11 +4,11 @@ import type { Thread } from '../../lib/inbox'
 import { seatOf, SEAT_NAME } from '../seats'
 import { Sheet } from '../ui/Sheet'
 
-export type MenuAct = 'sum' | 'copy-chat' | 'context' | 'agent' | 'spam' | 'not-spam' | 'delete-seat' | 'select' | 'stale-discard' | 'copy-thread'
+export type MenuAct = 'ask' | 'sum' | 'copy-chat' | 'context' | 'agent' | 'spam' | 'not-spam' | 'delete-seat' | 'select' | 'stale-discard' | 'copy-thread'
 
 type Item = { act: MenuAct; label: string; hint?: string; danger?: boolean }
 
-export function menuItems(t: Thread, staleN: number): { head: string; items: Item[] }[] {
+export function menuItems(t: Thread, staleN: number, withAsk = false): { head: string; items: Item[] }[] {
   const seat = seatOf(t.client_id)
   const owner = seat === 'risedtc' ? 'Mattan' : seat === 'arch' ? 'Davorin' : 'Mattan or Davorin'
   const filing: Item[] = []
@@ -17,6 +17,7 @@ export function menuItems(t: Thread, staleN: number): { head: string; items: Ite
   if (t.chat_provider_id) filing.push({ act: 'delete-seat', label: 'Delete from seat', danger: true })
   return [
     { head: 'This conversation', items: [
+      ...(withAsk ? [{ act: 'ask' as const, label: 'Ask Claude', hint: 'with this person attached' }] : []),
       { act: 'sum', label: 'Sum up', hint: 'Claude reads it' },
       { act: 'copy-chat', label: 'Copy chat link', hint: `for ${owner}` },
       { act: 'context', label: 'Context', hint: 'fit, scan, your note' },
@@ -47,8 +48,8 @@ function List({ groups, run }: { groups: ReturnType<typeof menuItems>; run: (a: 
   </>
 }
 
-export function ThreadMenu({ t, phone, staleN, onClose, run }: { t: Thread; phone: boolean; staleN: number; onClose: () => void; run: (a: MenuAct) => void }) {
-  const groups = menuItems(t, staleN)
+export function ThreadMenu({ t, phone, withAsk = false, staleN, onClose, run }: { t: Thread; phone: boolean; withAsk?: boolean; staleN: number; onClose: () => void; run: (a: MenuAct) => void }) {
+  const groups = menuItems(t, staleN, withAsk)
   const box = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (phone) return

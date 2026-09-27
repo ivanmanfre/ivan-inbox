@@ -72,6 +72,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     else if (a === 'agent') setSheet('agent')
     else if (a === 'copy-chat') void copy()
     else if (a === 'sum') pre.run(t)
+    else if (a === 'ask') onAsk()
     else onMenu(a)
   }
   const ps = pre.get(t.prospect_id)
@@ -112,12 +113,11 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         {!hasDraft && !t.spam && <Composer to={first} from={from} big disabled={composeOff} value={reply} setValue={setReply} busy={busy} onSend={() => void compose(false)} onHoldSend={() => void compose(true)} />}
       </div>
       <div className="dm-keys">
-        {phone && <button type="button" className="dm-claudekey" aria-label={`Ask Claude about ${first}`} data-verb="ask-claude" onClick={onAsk}><svg viewBox="0 0 24 24" className="d-ico" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l3 3M15 15l3 3M18 6l-3 3M9 15l-3 3" /></svg></button>}
         {keys}
       </div>
       {hasDraft && !t.spam && <Composer to={first} from={from} big={false} disabled={composeOff} value={reply} setValue={setReply} busy={busy} onSend={() => void compose(false)} onHoldSend={() => void compose(true)} />}
       <div className="dm-foot">{foot}</div>
-      {menu && <ThreadMenu t={t} phone={phone} staleN={staleN} onClose={() => setMenu(false)} run={menuRun} />}
+      {menu && <ThreadMenu t={t} phone={phone} withAsk={phone} staleN={staleN} onClose={() => setMenu(false)} run={menuRun} />}
       {sheet === 'context' && <ContextSheet t={t} all={all} onClose={() => setSheet(null)} />}
       {sheet === 'agent' && <AgentSheet t={t} onClose={() => setSheet(null)} />}
     </section>
