@@ -5,6 +5,7 @@ import type { Resource } from '../../lib/styles'
 import { ConfirmProvider } from '../../wb/chrome/ConfirmSheet'
 import { Skeleton } from '../ui/states'
 import type { Sub } from './SubNav'
+import { dHash } from '../route'
 
 // TODAY'S VIEWS, mounted inside D's frame. Magnets, Errors (every post: stage
 // tabs, filters, search, bulk, calendar), Publish queue, Strategy (incl. the
@@ -34,6 +35,25 @@ function Errors({ lane, setLane, openDraft }: { lane: ContentLane; setLane: (l: 
   return <ContentList lane={lane} setLane={setLane} openId={null} onOpen={id => openDraft(id, lane)} />
 }
 
+// Today's Strategy writes its own address (`#exp/v2/strategy?lane=&section=`)
+// with replaceState. Inside D that address is put back into D's grammar at
+// once, so a reload lands on the same D place and tab.
+function useKeepDAddress(on: boolean) {
+  useEffect(() => {
+    if (!on) return
+    const fix = () => {
+      const m = location.hash.match(/^#exp\/(?:v2c?|brain-[abc])\/strategy\?(.*)$/)
+      if (!m) return
+      const q = new URLSearchParams(m[1])
+      const sec = q.get('section') ?? ''
+      const sub = sec === 'markets' || sec === 'outliers' ? 'markets' : sec === 'results' ? 'results' : 'strategy'
+      history.replaceState(history.state, '', dHash('content', sub, q))
+    }
+    const t = window.setInterval(fix, 300)
+    return () => window.clearInterval(t)
+  }, [on])
+}
+
 export function Legacy({ sub, lane, setLane, openDraft, magnet, phone }: {
   sub: Sub; lane: ContentLane; setLane: (l: ContentLane) => void
   openDraft: (id: string, lane: ContentLane) => void; magnet: string | null; phone: boolean
@@ -42,6 +62,7 @@ export function Legacy({ sub, lane, setLane, openDraft, magnet, phone }: {
   const openMagnet = useCallback((id: string, _label: string, queue: Resource[]) => {
     setOpen({ id, queue: queue.map(r => ({ id: r.id, title: r.topic ?? 'Untitled', type: r.format, updated_at: r.updated_at, status: r.status })) })
   }, [])
+  useKeepDAddress(sub === 'strategy' || sub === 'markets' || sub === 'results')
   const section = sub === 'markets' ? 'markets' : sub === 'results' ? 'results' : 'this-week'
   return (
     <div className="cn-legacy app wb ds-shell">
