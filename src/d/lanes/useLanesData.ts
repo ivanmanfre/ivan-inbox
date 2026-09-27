@@ -22,6 +22,7 @@ import { fetchCameBack, fetchCounters, fetchEngagers7d, fetchPauses, fetchWarmCo
 import type { Attempt } from './glance/model'
 import { fetchLastAttempts } from './glance/reads'
 import { fetchReady, type ReadyRead } from './glance/ready'
+import { RETRY_MS, withTimeout } from '../ui/timeout'
 
 export type Slot<T> = { value: T | null; failed: string | null }
 export type LanesData = {
@@ -95,28 +96,47 @@ export function useLanesData(): { data: LanesData; loading: boolean; at: number 
   const pending = useRef(false)
   const slowAt = useRef(0)
 
-  const refresh = useCallback(() => {
-    if (pending.current || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return
-    pending.current = true
+  const retryT = useRef<number | null>(null)
+  const readKeys = useCallback((keys: Key[], done: () => void) => {
     // Each read lands on its own: a slow read (the ready counts) never holds the
     // monitor or the campaigns back. A failed re-read keeps the last good value
-    // on screen and says it failed.
+    // on screen and says it failed. No read waits past READ_TIMEOUT_MS: it
+    // turns into that failed state, and the failed keys re-read quietly after
+    // RETRY_MS.
     const put = (k: Key, slot: (prev: Slot<unknown>) => Slot<unknown>) => {
       if (!live.current) return
       setData(prev => ({ ...prev, [k]: slot(prev[k] as Slot<unknown>) }) as LanesData)
     }
+    const failed: Key[] = []
+    void Promise.allSettled(keys.map(k => withTimeout<unknown>(READS[k]()).then(
+      v => put(k, () => ({ value: v, failed: null })),
+      e => {
+        failed.push(k)
+        put(k, prev => ({ value: prev.value, failed: e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e ?? 'read failed') }))
+        throw e
+      },
+    ))).then(() => {
+      done()
+      if (!live.current || failed.length === 0 || retryT.current != null) return
+      retryT.current = window.setTimeout(() => {
+        retryT.current = null
+        if (live.current && !pending.current) { pending.current = true; readKeys(failed, () => { pending.current = false }) }
+      }, RETRY_MS)
+    })
+  }, [])
+
+  const refresh = useCallback(() => {
+    if (pending.current || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return
+    pending.current = true
     const withSlow = Date.now() - slowAt.current >= SLOW_MS
     if (withSlow) slowAt.current = Date.now()
-    void Promise.allSettled(KEYS.filter(k => withSlow || !SLOW.has(k)).map(k => READS[k]().then(
-      v => put(k, () => ({ value: v, failed: null })),
-      e => { put(k, prev => ({ value: prev.value, failed: e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e ?? 'read failed') })); throw e },
-    ))).then(() => {
+    readKeys(KEYS.filter(k => withSlow || !SLOW.has(k)), () => {
       pending.current = false
       if (!live.current) return
       setAt(Date.now())
       setLoading(false)
     })
-  }, [])
+  }, [readKeys])
 
   useEffect(() => {
     live.current = true
@@ -127,6 +147,7 @@ export function useLanesData(): { data: LanesData; loading: boolean; at: number 
     return () => {
       live.current = false
       clearInterval(t)
+      if (retryT.current != null) { window.clearTimeout(retryT.current); retryT.current = null }
       window.removeEventListener('focus', refresh)
       document.removeEventListener('visibilitychange', refresh)
     }

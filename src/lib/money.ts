@@ -941,3 +941,73 @@ export function dataPerLeadAttr(perLead: number | null): string {
 export function costWindowLabel(days: string[]): string {
   return `${days[0]}..${days[days.length - 1]}`
 }
+
+// ---------------------------------------------------------------------------
+// PLAIN ENGLISH for the screen (final gate 09-27). The ledger's provenance is
+// stored as enums, file paths and row ids (`memory_claim`,
+// `memory/arch-billing-date-moved-2026-08-31.md`, `vs_lane_day_v`,
+// `ops_drafts · f612a610`). Those stay in the data and in provenanceText (the
+// tests pin its shape); what Ivan reads is where it came from in words, how old
+// it is and whether it is stale. The data does not change.
+// ---------------------------------------------------------------------------
+
+const SOURCE_WORDS: Array<[RegExp, string]> = [
+  [/^memory/i, 'from a note, not a Stripe reading'],
+  [/^stripe/i, 'from Stripe'],
+  [/^vs_(lane|actor)_day_v$/i, 'from the vendor spend log'],
+  [/^engine_counter_day_v$/i, "from the engines' own run counts"],
+  [/^client_api_usage/i, 'a token-priced estimate'],
+  [/^ops_drafts$/i, 'from an Ops task'],
+  [/^computed$/i, 'worked out from the figures on this page'],
+  [/^(invoice|receipt)/i, 'from an invoice'],
+  [/^(manual|ivan|hand)/i, 'typed in by hand'],
+]
+
+/** Where a figure came from, in words. Never an enum, a path or an id. */
+export function sourceWords(kind: string | null | undefined): string {
+  const k = (kind ?? '').trim()
+  for (const [re, words] of SOURCE_WORDS) if (re.test(k)) return words
+  return k ? 'from a recorded entry' : 'source not recorded'
+}
+
+/** "3 days ago" / "today" / "never", for a sentence (relAge is the mono short form). */
+export function plainAge(iso: string | null, now: number = Date.now()): string {
+  const d = daysSince(iso, now)
+  if (!Number.isFinite(d)) return 'never checked'
+  if (d <= 0) return 'observed today'
+  return `observed ${d} day${d === 1 ? '' : 's'} ago`
+}
+
+/** One provenance line for the screen: "from a note, not a Stripe reading · observed 25 days ago · stale". */
+export function plainProvenance(
+  row: { source_kind: string; observed_at: string | null },
+  now: number = Date.now(),
+): string {
+  const base = `${sourceWords(row.source_kind)} · ${plainAge(row.observed_at, now)}`
+  return isStale(row.observed_at, now) ? `${base} · stale` : base
+}
+
+export const PLAIN_UNVERIFIED = 'unverified, waiting on a Stripe read'
+
+// A note that talks about where WE keep things (memory files, MEMORY.md,
+// goal-run paths, table or view names) says nothing Ivan can act on and leaks
+// internals; it is replaced by the plain fact it stands for.
+const INTERNAL_NOTE = /\.md\b|memory|core-refs|goal-runs|\b[a-z]+_[a-z_]+_v\b|\bops_drafts\b|\bmoney_ledger\b|\bsource_(kind|ref)\b/i
+
+/** A ledger note's reason, in plain words (verbatim when it carries no internals). */
+export function plainNote(note: string | null | undefined, fallback = 'Not recorded in any table yet. Waiting on a Stripe read.'): string {
+  const r = noteReason(note ?? '').trim()
+  if (!r) return fallback
+  return INTERNAL_NOTE.test(r) ? fallback : r
+}
+
+// A to-do whose words are about handling secrets (keys, webhook signing
+// secrets, tokens, passwords) is not printed as a checklist line: the screen
+// says one is recorded and where to open it.
+const SECRET_TASK = /\bsecret|api[ _-]?key|signing (key|secret)|\btoken\b|password|credential|plaintext/i
+export const SECURITY_TODO_TEXT = 'A security to-do is recorded. Open it in Ops or ask Claude.'
+
+/** The task line for the screen: its title, or the neutral security line. */
+export function plainTaskTitle(title: string): string {
+  return SECRET_TASK.test(title) ? SECURITY_TODO_TEXT : title
+}

@@ -101,3 +101,7 @@
 .d-side-pip{position:absolute;top:4px;right:6px;font:700 10px var(--m);font-style:normal;color:#fff;background:var(--crit);border-radius:7px;padding:0 4px}
 .d-side-min .d-me{justify-content:center}
 .d-sys-golink{padding:0 11px 8px}
+/* System alerts as one line when there is nothing to box (reading / failed / none open). */
+.d-sysline{margin:0 0 10px;padding:2px 0;font:400 11.5px var(--m);color:var(--t3);line-height:1.5}
+.d-sysline-bad{color:var(--warn)}
+.d-sysline-k{font:inherit;color:var(--t1);text-decoration:underline;text-underline-offset:2px;padding:0;background:none;border:0;cursor:pointer}

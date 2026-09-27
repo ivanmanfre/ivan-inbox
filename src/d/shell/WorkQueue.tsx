@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useToday } from '../../hooks/useToday'
-import { focusSummary } from '../../lib/focus'
+import { focusSummary, laneName } from '../../lib/focus'
 import { fetchOpsDrafts, type OpsDraft } from '../../lib/ops'
 import { ago, todayLoad, todayPlate, countsFromBrief } from '../../lib/today'
 import {
@@ -10,7 +10,9 @@ import {
 import { useDInbox } from '../counts/inbox'
 import { dHash } from '../route'
 import { SEAT_NAME, seatOf } from '../seats'
+import { Btn } from '../ui/Key'
 import { Failed, Skeleton } from '../ui/states'
+import { RETRY_MS, useStalled, withTimeout } from '../ui/timeout'
 import { warsawHm } from '../ui/time'
 import { cleanLine } from './feedShape'
 
@@ -42,10 +44,17 @@ function useQueueReads() {
   useEffect(() => {
     let alive = true
     setFailed(false)
-    Promise.all([fetchOpsDrafts(), fetchContentReviewPile(), fetchContentErrorPile(), fetchStagedIdeaPile()])
+    // 12 s at most, then the failed line with Retry; a failure re-reads quietly after RETRY_MS.
+    let again: number | undefined
+    withTimeout(Promise.all([fetchOpsDrafts(), fetchContentReviewPile(), fetchContentErrorPile(), fetchStagedIdeaPile()]))
       .then(([o, review, errors, ideas]) => { if (alive) { setOps(o); setPiles({ review, errors, ideas }) } })
-      .catch(e => { console.error('[d] work queue read failed', e); if (alive) setFailed(true) })
-    return () => { alive = false }
+      .catch(e => {
+        console.warn('[d] work queue read failed', e)
+        if (!alive) return
+        setFailed(true)
+        again = window.setTimeout(() => { if (alive) setTick(t => t + 1) }, RETRY_MS)
+      })
+    return () => { alive = false; window.clearTimeout(again) }
   }, [tick])
   return { ops, piles, failed, retry: () => setTick(t => t + 1) }
 }
@@ -98,25 +107,35 @@ export function WorkQueue({ go }: { go: (hash: string) => void }) {
   const plate = todayPlate(t.brief, 'all')
   const synced = t.brief?.generated_at ?? t.counts?.generated_at ?? t.cachedAt ?? null
   const stale = t.fromCache || t.degraded || (t.error != null && t.brief != null)
+  // The brief never sits on "Reading…": 12 s, then it says so (and keeps trying quietly).
+  const briefStalled = useStalled(!counts && !t.error, () => void t.refresh())
   const focus = q.ops ? focusSummary({ threads: inbox.threads, opsDrafts: q.ops, pipeline: t.health?.pipeline ?? [], governor: t.health?.governor ?? [] }) : null
 
   const never = (items ?? []).filter(i => i.tier === 0).length
   const fold = items ? foldQueue(items) : null
+  // ONE number for "waiting on you" (final gate: 30 / 2 / 22 disagreed): the rows
+  // of the list below, counted once. The morning brief's own tally is a
+  // different unit and is labelled as the brief's.
+  const n = items?.length ?? null
+  const briefLine = !counts
+    ? (t.error ? 'Morning brief: could not be read.' : briefStalled ? 'Morning brief: no answer in 12 s, still trying.' : 'Morning brief: reading…')
+    : `Morning brief: ${load.urgent} urgent, ${load.approvals} to approve, ${load.going} going out today.`
   return (
     <section className="d-wq" data-work-queue>
-      <div className="d-fday"><span>Waiting on you</span><span>{items ? `${items.length} across every lane` : ''}</span></div>
+      <div className="d-fday"><span>Waiting on you</span><span>every lane</span></div>
       <div className="d-wq-plate" data-plate>
-        <b>{counts ? load.total : '–'}</b>
+        <b data-waiting-n>{n ?? (q.failed ? '?' : '…')}</b>
         <span>
-          {!counts ? (t.error ? 'Could not read the brief.' : 'Reading the brief…') : `${load.total === 1 ? 'thing' : 'things'} on your plate: ${load.urgent} urgent, ${load.approvals} to approve, ${load.going} going out`}
-          {t.brief && <small>New today {plate.newCount} · Carried over {plate.carriedCount}{plate.oldest ? ` · Oldest ${plate.oldest}` : ''}</small>}
-          <small className={stale ? 'd-wq-stale' : undefined}>{synced ? `${stale ? 'Cached' : 'Synced'} ${warsawHm(synced)} · ${ago(synced)}${t.refreshing ? ' · refreshing…' : ''}` : 'Syncing…'}</small>
+          {n == null ? (q.failed ? 'The list could not be read.' : 'Reading the list…') : `${n === 1 ? 'thing' : 'things'} waiting on you, listed below, oldest first.`}
+          <small data-brief-line>{briefLine}{t.brief && ` New today ${plate.newCount} · Carried over ${plate.carriedCount}${plate.oldest ? ` · Oldest ${plate.oldest}` : ''}`}</small>
+          <small className={stale ? 'd-wq-stale' : undefined}>{synced ? `${stale ? 'Cached' : 'Synced'} ${warsawHm(synced)} · ${ago(synced)}${t.refreshing ? ' · refreshing…' : ''}` : briefStalled || t.error ? 'Not synced yet' : 'Syncing…'}</small>
+          {(briefStalled || (t.error && !t.brief)) && <Btn verb="retry" onClick={() => void t.refresh()}>Retry</Btn>}
         </span>
       </div>
       {t.authError && <p className="d-wq-focus d-wq-alarm">Signed out: this is the last brief saved on this device. Sign in again from Settings.</p>}
       {!t.authError && t.degraded && <p className="d-wq-focus">Counts only: this session is not allowed the full brief. Sign in again to see the rows.</p>}
       {!t.authError && !t.degraded && t.error && t.brief && <p className="d-wq-focus">Could not refresh; this is the last brief on this device.</p>}
-      {focus && <p className={`d-wq-focus${focus.alarmLane ? ' d-wq-alarm' : ''}`} data-focus-line>{focus.line}</p>}
+      {focus?.alarmLane && <p className="d-wq-focus d-wq-alarm" data-focus-line>{laneName(focus.alarmLane)} is out of leads.</p>}
       {q.failed && !items && <Failed what="the work queue" onRetry={q.retry} />}
       {!q.failed && !items && <Skeleton lines={3} title={false} label="Reading the work queue" />}
       {items && items.length === 0 && <p className="d-wq-none">Nothing crossing every lane is waiting on you right now.</p>}

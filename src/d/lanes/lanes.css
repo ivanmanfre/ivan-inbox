@@ -80,8 +80,8 @@ em.dl-z,b.dl-z{color:var(--t3)}em.dl-on{color:var(--lime)}em.dl-q{color:var(--t3
 .dl-more{all:unset;cursor:pointer;display:inline-block;margin-top:7px;font:400 12px var(--m);color:var(--t2)}
 .dl-more:hover{color:var(--t1)}
 /* foot bar */
-.dl-foot{flex:none;display:flex;align-items:center;gap:10px;padding:7px 16px;border-top:1px solid var(--strong);background:var(--p1)}
-.dl-mon{flex:1;min-width:0;font:400 12px/1.4 var(--m);color:var(--t3)}
+.dl-foot{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:7px 16px;border-top:1px solid var(--strong);background:var(--p1)}
+.dl-mon{flex:1 1 280px;min-width:0;font:400 12px/1.4 var(--m);color:var(--t3)}
 .dl-foot .d-key{flex:none;width:auto}.dl-foot .d-key .d-face{padding:0 14px;white-space:nowrap}
 .dl-ir .d-key{flex:none;width:auto}.dl-ir .d-key .d-face{padding:0 14px}
 .dl-kn{font-family:var(--m);color:var(--t2);margin-left:5px}
@@ -182,3 +182,9 @@ em.dl-z,b.dl-z{color:var(--t3)}em.dl-on{color:var(--lime)}em.dl-q{color:var(--t3
 .dl-today .dl-today-alarm{color:var(--critT);font-weight:600}
 .dl-today .dl-today-warn,.dl-today .dl-today-warn b{color:var(--warn)}
 .dl-today .dl-today-bad,.dl-today .dl-today-bad b{color:var(--critT)}
+/* Claude docked beside Lanes (final gate 09-27): the footer keys wrap under the monitor line
+   instead of squeezing it to one word per line, and the seat table keeps every row. */
+.d-with-claude .dl-foot .d-key .d-face{padding:0 10px}
+.d-with-claude .dl-root{--dl-gut:64px}
+.d-with-claude .gl-day span{display:none}
+.d-with-claude .dl-r1{flex-wrap:wrap;row-gap:4px}

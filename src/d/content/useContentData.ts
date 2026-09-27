@@ -4,6 +4,7 @@ import { publishBlocksByDraft } from '../../lib/publishBlock'
 import { fetchIvanArmedDays, type ContentDraft, type ScheduledQueueRow } from '../../lib/content'
 import { fetchVerdict, verdictParts, type VerdictPart } from '../../lib/contentVerdict'
 import type { Lane } from './model'
+import { useStalled } from '../ui/timeout'
 
 // The page's reads: today's useContent once per seat (a fixed three calls, never
 // in a loop or behind a condition), the days Ivan's feed already holds, and
@@ -29,8 +30,10 @@ export type ContentData = {
   failed: number
 }
 
-function seat(r: ReturnType<typeof useContent>): SeatRead {
-  return { rows: r.drafts, loading: r.loading, error: r.error, loadedAt: r.loadedAt, refresh: r.refresh }
+function seat(r: ReturnType<typeof useContent>, stalled: boolean): SeatRead {
+  // A first read with no answer in 12 s is a failed read ("could not read"), never a lasting "…".
+  const error = r.error ?? (stalled ? 'no answer after 12 s' : null)
+  return { rows: r.drafts, loading: r.loading, error, loadedAt: r.loadedAt, refresh: r.refresh }
 }
 
 export function useContentData(): ContentData {
@@ -38,6 +41,11 @@ export function useContentData(): ContentData {
   const rise = useContent('risedtc')
   const arch = useContent('arch')
   const queue = useScheduledQueue(true)
+  const st = {
+    ivan: useStalled(!ivan.error && !ivan.loadedAt, ivan.refresh),
+    rise: useStalled(!rise.error && !rise.loadedAt, rise.refresh),
+    arch: useStalled(!arch.error && !arch.loadedAt, arch.refresh),
+  }
   const blocks = useMemo(() => (queue.loadedAt ? publishBlocksByDraft(queue.rows) : null), [queue.loadedAt, queue.rows])
   const [armed, setArmed] = useState<Set<string> | null>(null)
   const [armedFailed, setArmedFailed] = useState(false)
@@ -57,10 +65,10 @@ export function useContentData(): ContentData {
 
   const { refresh: r1 } = ivan, { refresh: r2 } = rise, { refresh: r3 } = arch, { refresh: r4 } = queue
   const refreshAll = useCallback(() => { r1(); r2(); r3(); r4(); setTick(t => t + 1) }, [r1, r2, r3, r4])
-  const failed = [ivan, rise, arch].filter(s => s.error).length
+  const failed = [ivan.error || st.ivan, rise.error || st.rise, arch.error || st.arch].filter(Boolean).length
 
   return {
-    seats: { ivan: seat(ivan), risedtc: seat(rise), arch: seat(arch) },
+    seats: { ivan: seat(ivan, st.ivan), risedtc: seat(rise, st.rise), arch: seat(arch, st.arch) },
     armed, armedFailed, verdict, blocks, queueRows: queue.loadedAt ? queue.rows : null, refreshAll, failed,
   }
 }

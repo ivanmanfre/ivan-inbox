@@ -3,7 +3,7 @@
 // React.lazy boundary) plus the two panels. No graph math and no canvas
 // rendering lives here — this file is state + chrome only.
 
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Button, Chip, EmptyState, IconButton, LiveDot } from '../ds'
 import { relAge } from '../wb/kit'
 import { computeWindow, endOfDayIso } from './layout'
@@ -12,7 +12,7 @@ import { PostPanel } from './PostPanel'
 import { useOrbit } from './useOrbit'
 import {
   computeStats, defaultFilters, matchesFilters, rangeOf, shortLaneLabel, sortedLaneChips,
-  type DatePreset, type OrbitFilters,
+  type DatePreset, type OrbitFilters, type OrbitStatsView,
 } from './filters'
 import type { OrbitPerson, OrbitTenant } from './types'
 import './orbit.css'
@@ -101,7 +101,28 @@ function usePrefersReducedMotion(): boolean {
   return reduced
 }
 
-export function Orbit() {
+/** Everything a host needs to draw its own head for Orbit (D draws an answer
+ *  row and one mono filter line instead of today's pill rows). */
+export type OrbitHeadProps = {
+  filters: OrbitFilters
+  setFilters: React.Dispatch<React.SetStateAction<OrbitFilters>>
+  setTenant: (id: string) => void
+  setPreset: (id: string) => void
+  custom: { open: boolean; from: string; to: string; setFrom: (v: string) => void; setTo: (v: string) => void; apply: () => void; cancel: () => void }
+  laneChips: ReturnType<typeof sortedLaneChips>
+  toggleLane: (id: string) => void
+  nrCounts: { icpUnasked: number; judgedOut: number; unjudged: number }
+  stats: OrbitStatsView
+  loading: boolean
+  error: string | null
+  loadedAt: string | null
+  refresh: () => void
+  retry: () => void
+  /** A graph has been read (false while the first read is out or after it failed): no number is shown without one. */
+  hasGraph: boolean
+}
+
+export function Orbit({ head }: { head?: (h: OrbitHeadProps) => ReactNode } = {}) {
   const [filters, setFilters] = useState<OrbitFilters>(initialFiltersFromHash)
   const [sel, setSel] = useState<Sel>(initialSelFromHash)
   const [customFrom, setCustomFrom] = useState('')
@@ -173,7 +194,12 @@ export function Orbit() {
   const scrubLabel = scrubDay != null && win ? new Date(scrubDay * 86400000).toISOString().slice(0, 10) : 'Live'
 
   return (
-    <div className="a-root ds-body a-orbit" data-surface="orbit">
+    <div className={`a-root ds-body a-orbit${head ? ' a-orbit-hosted' : ''}`} data-surface="orbit">
+      {head ? head({
+        filters, setFilters, setTenant, setPreset,
+        custom: { open: customOpen, from: customFrom, to: customTo, setFrom: setCustomFrom, setTo: setCustomTo, apply: applyCustom, cancel: () => setCustomOpen(false) },
+        laneChips, toggleLane, nrCounts, stats, loading, error, loadedAt, refresh, retry, hasGraph: graph != null,
+      }) : <>
       <div className="a-orbit-head">
         <div className="a-orbit-head-row1">
           <span className="a-orbit-title">Orbit</span>
@@ -218,12 +244,13 @@ export function Orbit() {
       </div>
 
       <ChipRow filters={filters} setFilters={setFilters} laneChips={laneChips} toggleLane={toggleLane} nrCounts={nrCounts} />
+      </>}
 
       {/* Four numbers, one phone row, no card chrome, no scroll — the
           coordinator's fix: the old StatTile row measured 950px of 390
           visible. The two rate readings are prose below rather than two
           more wide cards. */}
-      <div className="a-orbit-stats">
+      {!head && <div className="a-orbit-stats">
         <div className="a-orbit-stat">
           <span className="a-orbit-stat-n">{stats.people}</span>
           <span className="a-orbit-stat-l">People</span>
@@ -240,8 +267,8 @@ export function Orbit() {
           <span className="a-orbit-stat-n">{stats.booked}</span>
           <span className="a-orbit-stat-l">Booked</span>
         </div>
-      </div>
-      <div className="a-orbit-rates">
+      </div>}
+      {(!head || graph) && <div className="a-orbit-rates">
         <p className="a-orbit-rate-line">
           {stats.movedFirstRate != null
             ? <><strong>{Math.round(stats.movedFirstRate * 100)}%</strong> of reached people who moved first went on to reply.</>
@@ -252,10 +279,17 @@ export function Orbit() {
             ? <><strong>{Math.round(stats.coldFirstRate * 100)}%</strong> of reached people we moved on first went on to reply.</>
             : 'No reached people we moved on first yet.'}
         </p>
-      </div>
+      </div>}
 
       <div className="a-orbit-canvas">
-        {error ? (
+        {error && head && !graph ? (
+          /* Hosted in D: a failed first read is the failed state alone, never
+             text drawn over an empty ring (it collided with the "You" node). */
+          <div className="a-orbit-canvas-empty a-orbit-failed">
+            <EmptyState icon="alert" title={errorLine(error)} sub="No number is shown until the graph is read."
+              action={<Button variant="quiet" icon="refresh" onClick={retry}>Retry</Button>} />
+          </div>
+        ) : error ? (
           /* R4a · ONE SENTENCE, AND A WAY OUT. The title and the sub said the
              same thing twice ("The graph did not load" over "the orbit graph
              did not load", which is the hook's own fallback message), and
@@ -276,7 +310,7 @@ export function Orbit() {
             <EmptyState icon="chart" ghosts title="Nothing in this window" sub="Widen the range or clear a filter." />
           </div>
         ) : null}
-        <Suspense fallback={<div className="a-orbit-canvas-fallback" />}>
+        {!(error && head && !graph) && <Suspense fallback={<div className="a-orbit-canvas-fallback" />}>
           <OrbitCanvasLazy
             graph={graph}
             prev={prev}
@@ -286,7 +320,7 @@ export function Orbit() {
             time={scrubTime}
             reducedMotion={reducedMotion}
           />
-        </Suspense>
+        </Suspense>}
       </div>
 
       {win ? (

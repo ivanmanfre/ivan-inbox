@@ -77,16 +77,23 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
   const perfRows = data.perf.value
   const replies = perfRows ? Object.fromEntries(cols.map(s => [s, perfRows.filter(c => c.client_id === s).reduce((a, c) => ({ replied: a.replied + c.replied_7d, calls: a.calls + c.calls_7d }), { replied: 0, calls: 0 })])) : null
   const ans = answerOf(data.cc.value, cols, now, replies)
+  // A failed or timed-out monitor read never keeps saying "Reading…" in the answer row.
+  const sub = !data.cc.value && data.cc.failed ? 'The send monitor could not be read. Retrying quietly.' : ans.sub
   const title = <>Invites today: {ans.inv.map((x, i) => <span key={x.seat}>{i ? ', ' : ''}{SEAT_NAME[x.seat]} <N v={x.v} /></span>)}.</>
   const camp = sheet === 'campaign' ? data.perf.value?.find(c => c.campaign_id === q.get('c')) ?? null : null
   const forSeat = (SEATS as readonly string[]).includes(q.get('for') ?? '') ? (q.get('for') as Seat) : null
   const probs = (data.cc.value?.recurrence?.items ?? []).filter(i => i.rank?.daily_pick).slice(0, 3).length
 
+  // Every read that failed or timed out (12 s) besides the monitor, said once, with Retry.
+  const glanceFailed = cols.reduce((n, s) => n + ('failed' in glance.content[s] ? 1 : 0) + ('failed' in glance.drafts[s] ? 1 : 0), 0)
+  const otherFailed = failedCount(data) - (data.cc.failed && !data.cc.value ? 1 : 0) + glanceFailed
   const p = data.cc.value
   const staleMin = p && monitorLiveness(p, now) === 'stale' && p.monitor.last_tick_at ? Math.max(1, Math.round((now - Date.parse(p.monitor.last_tick_at)) / 6e4)) : null
   const top = <>
     {!online && <Offline since={at ? hm(at) : null} />}
     {data.cc.failed && !data.cc.value && <Failed what="the send monitor" detail={data.cc.failed} onRetry={refresh} />}
+    {otherFailed > 0 && <Failed what={otherFailed === 1 ? 'one of the reads on this page' : `${otherFailed} of the reads on this page`}
+      detail="The cells marked ? could not be read. Retrying quietly every 20 s." onRetry={() => { refresh(); glance.refresh() }} />}
     {staleMin != null && <p className="dl-notice dl-al">The monitor last reported {staleMin} minutes ago, past its own staleness budget, so every seat below reads unverified whatever the snapshot said.</p>}
     {p?.coverage.degraded && <p className="dl-notice">Coverage degraded{p.coverage.degraded_reasons.length ? `: ${p.coverage.degraded_reasons.join(' · ')}` : '.'}</p>}
     <TodayNotes />
@@ -116,7 +123,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
   if (layout === 'phone') {
     return (
       <>
-        <AnswerRow title={title} sub={ans.sub} />
+        <AnswerRow title={title} sub={sub} />
         {top}
         <GlancePhone seats={cols} g={g} />
         <div className="gl-ptasks"><div className="gl-phead">Your tasks<small>open, soonest first</small></div><GlanceTasks /></div>
@@ -133,7 +140,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
   </>
   return (
     <div className="dl-root">
-      <AnswerRow title={title} sub={ans.sub} />
+      <AnswerRow title={title} sub={sub} />
       {top}
       <div className="dl-grid" style={{ gridTemplateColumns: `var(--dl-gut) repeat(${cols.length}, minmax(0, 1fr))` }}>
         {band('Seat', null, s => <Plate seat={s} ctx={ctx} />, 'dl-top')}

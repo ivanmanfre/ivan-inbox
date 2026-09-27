@@ -67,7 +67,7 @@ function Plate({ lane, data, days, stuck, compact, now }: { lane: Lane; data: Co
       <b>{LANE_NAME[lane]}</b>
       <small>{FEED[lane]}</small>
       {s.error ? <small className="cn-warn">could not read</small> : (
-        <span className="cn-fn"><em>{s.loading && !s.loadedAt ? '…' : scheduledIn(s.rows, lane, days)}</em>in {days.length === 10 ? '2 weeks' : 'this week'}</span>
+        <span className="cn-fn"><em>{!s.loadedAt ? '…' : scheduledIn(s.rows, lane, days)}</em>in {days.length === 10 ? '2 weeks' : 'this week'}</span>
       )}
       {!compact && !s.error && s.loadedAt && (
         <>

@@ -20,7 +20,8 @@ vi.mock('../../lib/supabase', () => {
   const from = (t: string) => { calls.push(t); const c = q() as Record<string, unknown>; const eq = c.eq as () => unknown; c.eq = (col: string, v: unknown) => { calls.push(`${t}.eq.${col}=${String(v)}`); return eq() }; return c }
   return { supabase: { from, auth } }
 })
-vi.mock('../../lib/money', async orig => ({ ...(await orig()), fetchMrrRows: async () => [], fetchCashConfig: async () => ({ cashOnHandUsd: null, cashAsOfDate: null, observedAt: null }) }))
+const mrr = vi.hoisted(() => ({ rows: [] as unknown[] }))
+vi.mock('../../lib/money', async orig => ({ ...(await orig()), fetchMrrRows: async () => mrr.rows, fetchCashConfig: async () => ({ cashOnHandUsd: null, cashAsOfDate: null, observedAt: null }) }))
 
 vi.mock('../../wb/money', () => ({ MoneyView: () => <div data-testid="money-view">old money view</div> }))
 import { renderInFrame } from '../test-utils'
@@ -29,7 +30,7 @@ import { pushBlocked } from './prefs'
 import SettingsPage from './index'
 
 const props = () => ({ layout: 'desktop' as const, route: parseDHash('#exp/d/settings'), navigate: vi.fn() })
-beforeEach(() => { push.state = 'off'; push.enable.mockClear(); push.disable.mockClear(); auth.signOut.mockClear() })
+beforeEach(() => { mrr.rows = []; push.state = 'off'; push.enable.mockClear(); push.disable.mockClear(); auth.signOut.mockClear() })
 afterEach(() => { cleanup(); localStorage.clear() })
 
 describe('Settings keys', () => {
@@ -113,5 +114,22 @@ describe('Money inside D', () => {
     renderInFrame(<SettingsPage layout="desktop" route={parseDHash('#exp/d/settings/money')} navigate={nav} />)
     await waitFor(() => expect(screen.getByTestId('money-view')).toBeTruthy())
     expect(document.querySelector('.ds2-moneyview')).toBeTruthy()
+  })
+})
+
+describe('Money plate in plain English (final gate 09-27)', () => {
+  it('never prints memory_claim, a file path or MEMORY.md; keeps unverified and stale', async () => {
+    const old = new Date(Date.now() - 25 * 86_400_000).toISOString()
+    mrr.rows = [
+      { id: 'a1', client_id: 'arch', kind: 'mrr', amount_usd: 3000, currency: 'USD', occurred_on: '2026-08-31', source_kind: 'memory_claim', source_ref: 'memory/arch-billing-date-moved-2026-08-31.md', observed_at: old, verified: false, note: null },
+      { id: 'r1', client_id: 'risedtc', kind: 'mrr', amount_usd: null, currency: 'USD', occurred_on: '2026-08-30', source_kind: 'memory_claim', source_ref: 'memory/rise-first-closed-wons-2026-08-30.md', observed_at: old, verified: false, note: 'resolve live: no memory file states the amount; MEMORY.md core-refs says "MATTAN PAID 07-17 = 1st client $3k" (a mention, not a reading).' },
+    ]
+    renderInFrame(<SettingsPage {...props()} />)
+    const plate = await waitFor(() => { const m = document.querySelector('.ds2-money'); expect(m).not.toBeNull(); return m! })
+    const text = plate.textContent ?? ''
+    expect(text).not.toMatch(/memory_claim|\.md|MEMORY|core-refs|_/)
+    expect(text).toContain('$3,000')
+    expect(text).toContain('unverified, waiting on a Stripe read · from a note, not a Stripe reading · observed 25 days ago · stale')
+    expect(text).toContain('Not recorded in any table yet. Waiting on a Stripe read.')
   })
 })

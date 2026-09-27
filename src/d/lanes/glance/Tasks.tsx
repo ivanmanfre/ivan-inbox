@@ -9,6 +9,7 @@
    ========================================================================== */
 import { useRef, useState, type FormEvent } from 'react'
 import { useOps } from '../../../hooks/useOps'
+import { useStalled } from '../../ui/timeout'
 import { completeTask, createInboxTask, discardOpsDraft, dueLabel, localDay, pendingTasks, taskDue, taskTitle, type OpsDraft } from '../../../lib/ops'
 import { dHash } from '../../route'
 import { SEAT_NAME, seatOf } from '../../seats'
@@ -87,11 +88,13 @@ export function GlanceTasks() {
   const [all, setAll] = useState(false)
   const tasks = pendingTasks(ops.drafts)
   const shown = all ? tasks : tasks.slice(0, SHOWN)
-  const reading = ops.loading && !ops.loadedAt
+  // 12 s without a first answer = the failed line with Retry (and a quiet re-read every 20 s).
+  const stalled = useStalled(!ops.loadedAt && !ops.error, ops.refresh)
+  const reading = ops.loading && !ops.loadedAt && !stalled
   return (
     <section className="gt" aria-label="Your tasks">
       {reading ? <p className="gt-q">Reading your tasks…</p>
-        : ops.error && !ops.loadedAt ? <p className="gt-err">Your tasks could not be read: {ops.error} <button type="button" className="gt-rm" onClick={ops.refresh}>Retry</button></p>
+        : (ops.error || stalled) && !ops.loadedAt ? <p className="gt-err">Your tasks could not be read: {ops.error ?? 'no answer after 12 s'} <button type="button" className="gt-rm" onClick={ops.refresh}>Retry</button></p>
         : tasks.length === 0 ? <p className="gt-q">Nothing on your list.</p>
         : <ul className="gt-list">{shown.map(d => <Row key={d.id} d={d} refresh={ops.refresh} />)}</ul>}
       <div className="gt-foot">

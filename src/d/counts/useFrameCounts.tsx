@@ -9,6 +9,7 @@ import { fetchAutomationHealth, fetchCallsToday, fetchMagnetsReview, type Automa
 import { fetchNextCall, type NextCall } from './nextCall'
 import { supabase } from '../../lib/supabase'
 import { fetchOpsWaiting } from './ops'
+import { ReadTimeout, RETRY_MS, withTimeout } from '../ui/timeout'
 
 // ---------------------------------------------------------------------------
 // THE FRAME'S NUMBERS. One provider, mounted once by the Shell, read by the
@@ -125,10 +126,16 @@ export function FrameCountsProvider({ children, readers = LIVE }: { children: Re
   // the cleanup once, and a flag left false would drop every read that lands.
   useEffect(() => { alive.current = true; return () => { alive.current = false } }, [])
 
-  const run = useCallback(<T,>(key: string, read: () => Promise<T>, set: (f: (prev: Slice<T>) => Slice<T>) => void) => {
+  // A failed or timed-out read tries again quietly after RETRY_MS, one timer per key.
+  const retries = useRef(new Map<string, number>())
+  useEffect(() => () => { for (const t of retries.current.values()) window.clearTimeout(t); retries.current.clear() }, [])
+
+  const run = useCallback(function go<T>(key: string, read: () => Promise<T>, set: (f: (prev: Slice<T>) => Slice<T>) => void) {
     if (busy.current.has(key)) return
     busy.current.add(key)
-    read().then(
+    // No read waits forever: past READ_TIMEOUT_MS it counts as failed (the UI
+    // says "could not read" with Retry) and busy is released for the retry.
+    withTimeout(read()).then(
       v => {
         if (!alive.current) return
         const slice = { value: v, failed: false, at: Date.now() }
@@ -139,8 +146,16 @@ export function FrameCountsProvider({ children, readers = LIVE }: { children: Re
         }
       },
       (e: unknown) => {
-        console.error(`[d] ${key} count read failed`, e)
-        if (alive.current) set(prev => ({ ...prev, failed: true }))
+        if (e instanceof ReadTimeout) console.warn(`[d] ${key} count read: ${e.message}`)
+        else console.error(`[d] ${key} count read failed`, e)
+        if (!alive.current) return
+        set(prev => ({ ...prev, failed: true }))
+        if (!retries.current.has(key)) {
+          retries.current.set(key, window.setTimeout(() => {
+            retries.current.delete(key)
+            if (alive.current) go(key, read, set)
+          }, RETRY_MS))
+        }
       },
     ).finally(() => busy.current.delete(key))
   }, [live])

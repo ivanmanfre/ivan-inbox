@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { bodyPreview, cleanTitle, groupHeadline, type AlertGroup, type AlertMember } from '../../lib/systemAlerts'
 import { DIcon } from '../ui/icons'
-import { Failed, Skeleton } from '../ui/states'
 import { warsawDow, warsawHm } from '../ui/time'
 import { cleanLine } from './feedShape'
 
@@ -93,11 +92,14 @@ export function SystemBox({ groups, failed, onRetry, onClear, onDismiss }: {
   onDismiss: (ids: string[], what: string) => void
 }) {
   const [all, setAll] = useState(false)
+  // Never an empty box (final gate 09-27): reading, failed and "none open" are
+  // one mono line each; the bordered box is drawn only around real alerts.
   if (groups == null) {
     return failed
-      ? <div className="d-sys"><Failed what="system alerts" onRetry={onRetry} /></div>
-      : <div className="d-sys"><Skeleton lines={2} title={false} label="Reading system alerts" /></div>
+      ? <p className="d-sysline d-sysline-bad" data-sys-alerts="failed">System alerts could not be read · <button type="button" className="d-sysline-k" data-verb="retry" onClick={onRetry}>Retry</button></p>
+      : <p className="d-sysline" data-sys-alerts="reading" role="status">Reading system alerts…</p>
   }
+  if (groups.length === 0) return <p className="d-sysline" data-sys-alerts="none">No system alert open in 14 days. A critical one lights the bell.</p>
   const crit = groups.filter(g => g.severity === 'critical').length
   const open = groups.reduce((a, g) => a + g.count, 0)
   const shown = all ? groups : groups.slice(0, FIRST)

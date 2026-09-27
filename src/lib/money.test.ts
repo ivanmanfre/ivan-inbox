@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  RUNWAY_REFUSAL, aggregateByDay, aggregateByWeek, billingDay, clientLabel,
+  RUNWAY_REFUSAL, SECURITY_TODO_TEXT, plainNote, plainProvenance, plainTaskTitle, aggregateByDay, aggregateByWeek, billingDay, clientLabel,
   computeRunway, costPerReadyLead, costWindowLabel, dataPerLeadAttr, dayRangeLabel,
   daysSince, deltaRatio, fmtPerLead, fmtReadyNotRecorded, fmtReadyUnavailable, fmtShareOfTotal, fmtUsd, lastReadyDay,
   fmtUsdPerUnit, isStale, isTokenPriced, isoWeekKey, laneTotals, laneTotalsGrandTotal,
@@ -591,5 +591,29 @@ describe('ready count not recorded', () => {
     expect(lastReadyDay(rows, 'risedtc')).toBeNull()
     expect(fmtReadyNotRecorded(21.36, '2026-09-10')).toBe('$21.36 settled · ready count not recorded since 2026-09-10')
     expect(fmtReadyNotRecorded(5, null)).toBe('$5.00 settled · ready count not recorded in 30 days')
+  })
+})
+
+describe('plain English for the screen (final gate 09-27)', () => {
+  const NOW2 = Date.parse('2026-09-27T12:00:00Z')
+  it('never prints a source enum, a path or an id', () => {
+    const line = plainProvenance({ source_kind: 'memory_claim', observed_at: '2026-09-02T12:00:00Z' }, NOW2)
+    expect(line).toBe('from a note, not a Stripe reading · observed 25 days ago · stale')
+    for (const k of ['vs_lane_day_v', 'vs_actor_day_v', 'engine_counter_day_v', 'ops_drafts', 'computed', 'weird_new_kind']) {
+      const l = plainProvenance({ source_kind: k, observed_at: '2026-09-26T12:00:00Z' }, NOW2)
+      expect(l).not.toMatch(/_|\.md|\bv\b/)
+      expect(l).toMatch(/observed 1 day ago$/)
+    }
+  })
+  it('a note about where we keep things becomes the plain fact; a plain note stays verbatim', () => {
+    expect(plainNote('resolve live: no memory file states the amount; MEMORY.md core-refs says "MATTAN PAID 07-17"'))
+      .toBe('Not recorded in any table yet. Waiting on a Stripe read.')
+    expect(plainNote('risk: Davorin asked to pause in October')).toBe('Davorin asked to pause in October')
+    expect(plainNote(null)).toBe('Not recorded in any table yet. Waiting on a Stripe read.')
+  })
+  it('a secrets-handling to-do is never a plain checklist line', () => {
+    expect(plainTaskTitle('Rotate the live Stripe secret key and both webhook signing secrets (plaintext in memory…'))
+      .toBe(SECURITY_TODO_TEXT)
+    expect(plainTaskTitle('Send Arch the September invoice')).toBe('Send Arch the September invoice')
   })
 })
