@@ -16,6 +16,11 @@ export function DInboxProvider({ children }: { children: ReactNode }) {
   return <Ctx.Provider value={inbox}>{children}</Ctx.Provider>
 }
 
+/** The frame's inbox when one is mounted (the counts provider reads it), else null. */
+export function useDInboxMaybe(): DInbox | null {
+  return useContext(Ctx)
+}
+
 /** The frame's inbox; outside the frame (a page test) the page runs its own read. */
 export function useDInbox(): DInbox {
   const shared = useContext(Ctx)

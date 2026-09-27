@@ -9,6 +9,7 @@ import { BellButton, BellFeed } from './shell/Bell'
 import { FrameCtx, useFrame, type Frame } from './shell/frame'
 import { lastSynced } from './shell/navModel'
 import { DLayer } from './shell/Layer'
+import { WorkflowsHost } from './shell/Workflows'
 import { DPalette } from './shell/Palette'
 import { Dock, PhonePanel, PhoneTop } from './shell/Phone'
 import { SeatHealthBanner } from './shell/SeatHealth'
@@ -19,6 +20,7 @@ import { ToastProvider } from './ui/toast'
 import { useOnline } from './ui/useOnline'
 import { warsawHm } from './ui/time'
 import './d.css'
+import './shell/frame2.css'
 
 // ---------------------------------------------------------------------------
 // D, the frame. Desktop (>= 1000px): left panel, answer row (page title + the
@@ -260,8 +262,8 @@ export default function DShell() {
   }), [layout, route, bellOpen, openBell, claudeOpen, openClaude, openPalette, titleSlot, toolsSlot])
 
   return (
-    <FrameCountsProvider>
-      <DInboxProvider>
+    <DInboxProvider>
+      <FrameCountsProvider>
       <FrameCtx.Provider value={frame}>
         <ClaudeProvider>
         <div className={`d-app d-${layout}`} data-bell={bellOpen ? 'open' : undefined} data-place={route.place}>
@@ -270,6 +272,7 @@ export default function DShell() {
               {layout === 'desktop'
                 ? <Desktop setTitleSlot={setTitleSlot} setToolsSlot={setToolsSlot} />
                 : <PhoneFrame setToolsSlot={setToolsSlot} panelOpen={panelOpen} setPanelOpen={setPanelOpen} />}
+              <WorkflowsHost />
               <DLayer>
                 {palette && (
                   <DPalette
@@ -283,7 +286,7 @@ export default function DShell() {
         </div>
         </ClaudeProvider>
       </FrameCtx.Provider>
-      </DInboxProvider>
-    </FrameCountsProvider>
+      </FrameCountsProvider>
+    </DInboxProvider>
   )
 }

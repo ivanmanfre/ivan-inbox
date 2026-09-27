@@ -1,0 +1,15 @@
+/* Frame parity pass 2: Workflows, nav extras, bell additions, work queue. */
+.d-per.d-per-x{padding-top:0;margin-top:-4px}
+.d-per.d-per-x small{width:auto}
+.d-wfn{margin-left:auto;font:600 11px var(--m);font-style:normal;color:var(--ink,#0A0A09);background:var(--warn);border-radius:9px;padding:1px 7px}
+
+.d-wfs{display:flex;flex-direction:column;gap:2px}
+.d-wf-note{font-size:13.5px;color:var(--t1);margin:4px 0 8px;line-height:1.45}
+.d-wf{border-top:1px solid var(--line);padding:9px 0 10px}
+.d-wf-h{display:flex;gap:10px;align-items:baseline}
+.d-wf-h b{flex:1;min-width:0;font-weight:600;font-size:14px;overflow-wrap:anywhere}
+.d-wf-h time{font:400 11px var(--m);color:var(--t3);white-space:nowrap}
+.d-wf small{display:block;font:400 11.5px var(--m);color:var(--t2);margin-top:2px}
+.d-wf.d-wf-hot small{color:var(--warn)}
+.d-wf p{font:400 12px var(--m);color:var(--t3);margin:5px 0 0;overflow-wrap:anywhere;line-height:1.45}
+.d-wf-older{font-size:12px;color:var(--t3);margin:10px 0 0}

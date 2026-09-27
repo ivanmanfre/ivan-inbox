@@ -7,6 +7,9 @@ import { useClock } from '../ui/useClock'
 import { warsawDayTime, warsawHm } from '../ui/time'
 import { useFrame } from './frame'
 import { useNavModel, type NavItem } from './navModel'
+import { openWorkflows, workflowsBadge } from './Workflows'
+import { healthNote } from '../counts/glance'
+import { useFrameCounts } from '../counts/useFrameCounts'
 
 // The left panel (D shell.js side()), desktop, and the same content as the
 // phone's drawer (pshell.js panel()). Brand line with the seat roster, places
@@ -20,6 +23,9 @@ export function NavLineView({ item }: { item: NavItem }) {
       {item.line?.kind === 'seats' && <SeatCounts label={item.line.label} numbers={item.line.numbers} failed={item.line.failed} />}
       {item.line?.kind === 'text' && (
         <div className="d-per"><small>{item.line.label}</small><span className="d-per-t">{item.line.text}</span></div>
+      )}
+      {item.extra && (
+        <div className="d-per d-per-x"><small>{item.extra.label}</small><span className="d-per-t">{item.extra.text}</span></div>
       )}
     </>
   )
@@ -48,6 +54,18 @@ export function MeFooter({ synced }: { synced: number | null }) {
   )
 }
 
+/** The Workflows key: opens automation health (not the bell), with today's corroborated number. */
+export function WorkflowsKey({ onOpen }: { onOpen?: () => void }) {
+  const c = useFrameCounts()
+  const badge = workflowsBadge(c)
+  const note = c.health.value ? healthNote(c.health.value) : ''
+  return (
+    <button type="button" data-verb="workflows" title={note || undefined} onClick={() => { onOpen?.(); openWorkflows() }}>
+      <DIcon name="workflows" /><span>Workflows</span>{badge && <em className="d-wfn">{badge}</em>}
+    </button>
+  )
+}
+
 export function Side() {
   const f = useFrame()
   const { items, synced } = useNavModel()
@@ -67,7 +85,7 @@ export function Side() {
         ))}
       </nav>
       <nav className="d-nav d-low">
-        <button type="button" onClick={() => f.setBellOpen(true)}><DIcon name="workflows" /><span>Workflows</span></button>
+        <WorkflowsKey />
         {low.map(i => (
           <div key={i.id} className="d-navi">
             <a href={dHash(i.id)} className={f.route.place === i.id ? 'd-on' : undefined} aria-current={f.route.place === i.id ? 'page' : undefined}>
