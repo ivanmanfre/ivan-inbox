@@ -6,7 +6,7 @@
 //   · dated follow-ups    (outreach_prospects skip_reason='follow_up_dated': id + date only;
 //                          the seat comes from the conversation's own client_id)
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useInbox } from '../../hooks/useInbox'
+import { useDInbox } from '../counts/inbox'
 import { groupThreads, type InboxMessage, type Thread } from '../../lib/inbox'
 import { supabase } from '../../lib/supabase'
 import { FOLLOW_UP_REASON } from '../../lib/followUp'
@@ -53,7 +53,7 @@ function useSide<T>(read: () => Promise<T[]>): [Side<T>, () => void, (fn: (rows:
 type Patch = { at: number; p: Partial<InboxMessage> }
 
 export function useDmsData() {
-  const inbox = useInbox()
+  const inbox = useDInbox()
   const [cameRaw, reloadCame, editCame] = useSide(readCameBackRaw)
   const [warm, reloadWarm, editWarm] = useSide<WarmCard>(fetchWarmCards)
   const [dated, reloadDated] = useSide(readDatedFollowUps)

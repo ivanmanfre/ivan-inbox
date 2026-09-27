@@ -65,7 +65,7 @@ export function Legacy({ sub, lane, setLane, openDraft, magnet, phone }: {
   useKeepDAddress(sub === 'strategy' || sub === 'markets' || sub === 'results')
   const section = sub === 'markets' ? 'markets' : sub === 'results' ? 'results' : 'this-week'
   return (
-    <div className="cn-legacy app wb ds-shell">
+    <div className="cn-legacy app wb ds-shell wb-work">
       <p className="cn-legacy-note">Today’s view, inside the new frame.</p>
       <ConfirmProvider>
         <Suspense fallback={<Skeleton lines={6} label="Loading today's view" />}>

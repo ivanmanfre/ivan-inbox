@@ -1,12 +1,14 @@
 import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { ClaudeProvider } from './claude/ClaudeProvider'
 import { Island } from './claude/Island'
+import { DInboxProvider } from './counts/inbox'
 import { FrameCountsProvider, useFrameCounts } from './counts/useFrameCounts'
 import { PLACES, type Layout } from './places'
 import { canonicalHash, dHash, dLandingHash, isForeignHash, parseDHash, toDHash, type DRoute } from './route'
 import { BellButton, BellFeed } from './shell/Bell'
 import { FrameCtx, useFrame, type Frame } from './shell/frame'
 import { lastSynced } from './shell/navModel'
+import { DLayer } from './shell/Layer'
 import { DPalette } from './shell/Palette'
 import { Dock, PhonePanel, PhoneTop } from './shell/Phone'
 import { SeatHealthBanner } from './shell/SeatHealth'
@@ -259,6 +261,7 @@ export default function DShell() {
 
   return (
     <FrameCountsProvider>
+      <DInboxProvider>
       <FrameCtx.Provider value={frame}>
         <ClaudeProvider>
         <div className={`d-app d-${layout}`} data-bell={bellOpen ? 'open' : undefined} data-place={route.place}>
@@ -267,17 +270,20 @@ export default function DShell() {
               {layout === 'desktop'
                 ? <Desktop setTitleSlot={setTitleSlot} setToolsSlot={setToolsSlot} />
                 : <PhoneFrame setToolsSlot={setToolsSlot} panelOpen={panelOpen} setPanelOpen={setPanelOpen} />}
-              {palette && (
-                <DPalette
-                  onClose={() => setPalette(false)} navigate={navigateTo}
-                  toggleClaude={() => openClaude(!claudeOpen)} openBell={() => openBell(true)}
-                />
-              )}
+              <DLayer>
+                {palette && (
+                  <DPalette
+                    onClose={() => setPalette(false)} navigate={navigateTo} desktop={layout === 'desktop'}
+                    toggleClaude={() => openClaude(!claudeOpen)} openBell={() => openBell(true)}
+                  />
+                )}
+              </DLayer>
             </DConfirmProvider>
           </ToastProvider>
         </div>
         </ClaudeProvider>
       </FrameCtx.Provider>
+      </DInboxProvider>
     </FrameCountsProvider>
   )
 }
