@@ -54,3 +54,6 @@ button.dm-sig:hover{border-color:var(--lime)}
 .dm-xlog .dm-b{max-width:88%}
 .dm-xlog .dm-b-body{font-size:14px;padding:7px 11px}
 .dm-xlog-k{display:flex;justify-content:flex-end;padding:6px 14px 0}
+.dm-sqs-phone .dm-sq{grid-template-columns:1fr;row-gap:0}
+.dm-sqs-phone .dm-sq-n{flex-direction:row;align-items:baseline;gap:6px}
+.dm-sqs-phone .dm-sq-l{justify-content:flex-start}

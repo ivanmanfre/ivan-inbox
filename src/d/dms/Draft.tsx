@@ -21,7 +21,7 @@ function legPipe(t: Thread): string {
   return c === 'email' ? ' + email' : c === 'inmail' ? ' + InMail' : c ? ' + DM' : ''
 }
 
-function Grow({ value, onChange, label, onBlur, max = 340 }: { value: string; onChange: (s: string) => void; label: string; onBlur?: () => void; max?: number }) {
+function Grow({ value, onChange, label, onBlur, max = 240 }: { value: string; onChange: (s: string) => void; label: string; onBlur?: () => void; max?: number }) {
   const ref = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
     const el = ref.current

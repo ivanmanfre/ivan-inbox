@@ -39,7 +39,7 @@ export function SeatSquares({ seat, pick, needs, drafts, stats, phone = false }:
             <span className="dm-sq-h"><b>{SEAT_NAME[s]}</b>{!phone && st.extra && <small>{st.extra}</small>}</span>
             <span className="dm-sq-n">
               <em className={n == null ? 'dm-q' : n ? 'dm-hot' : 'dm-zero'}>{n ?? '?'}</em>
-              <small>Needs you</small>
+              <small>{phone ? 'need you' : 'Needs you'}</small>
             </span>
             <span className="dm-sq-l">
               <span><b>{d ?? '?'}</b> draft{d === 1 ? '' : 's'}</span>
