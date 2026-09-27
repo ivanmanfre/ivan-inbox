@@ -100,7 +100,7 @@ export function CallWindow({ row, at, of, onStep, layout, missing }: {
       </div>
       <div className="sl-cwk">
         <Key verb="prev-call" disabled={at <= 1} onClick={() => onStep(-1)} sub="k">Previous</Key>
-        <div className="sl-cwq"><em>{at}</em>/{of}<small>in this queue</small></div>
+        <div className="sl-cwq"><em>{at}</em>/{of}</div>
         <Key verb="next-call" disabled={at >= of} onClick={() => onStep(1)} sub="j">Next</Key>
       </div>
     </div>

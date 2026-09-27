@@ -73,8 +73,8 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
         ? <>On now: <mark>{n.name}</mark>, until {n.endWarsaw} Warsaw.</>
         : <>Next call: {n.name}, <b className="d-n">{n.day.split(' ')[0]} {n.warsaw}</b>.</>)
         : <>No calls booked through {through}.</>
-  const sub = n?.phase === 'running' ? '' : data.state.calls === 'ok' && stats.withActions > 0 ? `${stats.withActions} past calls still carry a promise.` : ''
-  const answer = <AnswerRow title={title} sub={sub} tools={orbit} />
+  // One headline; the open promises are the "Action items" tab's count.
+  const answer = <AnswerRow title={title} tools={orbit} />
 
   if (route.sub === 'orbit') return <OrbitHost navigate={navigate} layout={layout} />
 

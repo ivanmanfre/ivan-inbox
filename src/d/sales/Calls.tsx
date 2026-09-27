@@ -25,7 +25,7 @@ export function CallsOnRecord({ calls, state, seg, setSeg, openId, onOpen, onRet
   const counts: Record<CallSegment, number> = { open: st.withActions, recent: st.week, all: st.total }
   return (
     <section className="sl-rec" aria-label="Calls on record" ref={box}>
-      <div className="sl-sec"><span>Calls on record</span><span className="sl-rt">{st.total} kept · {st.meanMinutes}m average</span></div>
+      <div className="sl-sec"><span>Calls on record</span><span className="sl-rt" title={`${st.total} kept · ${st.meanMinutes}m average`}>{st.meanMinutes}m avg</span></div>
       {state === 'failed' && (
         <div className="sl-warn">{calls.length ? 'The last read failed. These are the calls that loaded before it.' : 'The call archive did not load. This is not an empty archive, it is an unread one.'}
           <button type="button" data-verb="retry" onClick={onRetry}>Read again</button></div>
