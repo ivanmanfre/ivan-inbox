@@ -10,6 +10,7 @@
    ========================================================================== */
 import { isStartingSoon, type When } from '../../lib/nextCall'
 import type { PackMeta, WeekEvent } from '../../lib/salesPacks'
+import type { CallRow } from '../../lib/transcripts'
 
 export const WARSAW = 'Europe/Warsaw'
 
@@ -305,3 +306,35 @@ export function packsInWindow(
   }
   return hit.size
 }
+
+// ---------------------------------------------------------------------------
+// The past-call report (D8). Moved here from index.tsx so the D Sales page
+// reads the same rule.
+// ---------------------------------------------------------------------------
+
+/**
+ * `call_reports` carries no `calendar_event_id`, so the link from a past call to
+ * its report is inferred, and deliberately narrowly: the transcript has to be
+ * from the same WARSAW day AND share a word with the event. Either condition on
+ * its own would attach the wrong report on any day that held two calls.
+ */
+export function reportIdFor(event: WeekEvent, slug: string | null, calls: CallRow[]): string | null {
+  const day = dayKey(event.start_time)
+  const sameDay = calls.filter(c => c.date && dayKey(c.date) === day)
+  if (sameDay.length === 0) return null
+  const words = new Set<string>()
+  for (const a of event.attendees ?? []) {
+    const local = norm(a.split('@')[0] ?? '')
+    if (local.length >= 4) words.add(local)
+  }
+  for (const w of `${event.title ?? ''} ${slug ?? ''}`.split(/[^A-Za-z0-9]+/)) {
+    const t = norm(w)
+    if (t.length >= 4) words.add(t)
+  }
+  const hit = sameDay.find(c => {
+    const t = norm(c.title ?? '')
+    return [...words].some(w => t.includes(w))
+  })
+  return hit?.id ?? null
+}
+
