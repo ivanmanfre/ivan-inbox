@@ -90,7 +90,7 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
       {devices.kind === 'loading' && <Skeleton lines={3} title={false} label="Reading devices" />}
       {devices.kind === 'failed' && <Failed what="the device list" detail={devices.message} />}
       {devs && <ol className="ds2-devs">{devs.map((x, i) => <li key={`${x.created_at}-${i}`}><i>{i + 1}</i><span>{x.device} <small>· {x.browser}</small></span><em>since {warsawDm(x.created_at)}</em></li>)}</ol>}
-      <p className="ds2-note">On iPhone, push works only from the Home Screen app (Share, then Add to Home Screen), then turn it on there.</p>
+      {!push.blocked?.startsWith('On iPhone') && <p className="ds2-note">On iPhone, push works only from the Home Screen app (Share, then Add to Home Screen), then turn it on there.</p>}
       <Row title="New-reply sound" sub="A chime when a reply lands while the app is open. Turning it on plays it once, so you hear the volume.">
         <Pair name="New-reply sound" value={sound ? 'on' : 'off'} options={[{ id: 'on', label: 'On', verb: 'sound-on' }, { id: 'off', label: 'Off', verb: 'sound-off' }]} onPick={v => setSound(v === 'on')} />
       </Row>
@@ -130,7 +130,7 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
   const acct = (
     <Plate title="Account">
       <Row title="Ivan Manfredi" sub="The only account on this app."><Key size="small" verb="sign-out" className="ds2-warn" onClick={() => void signOut()}>Sign out</Key></Row>
-      <p className="ds2-build">Build {__BUILD__}. A stale tab shows an older build here.</p>
+      <p className="ds2-build">Build {typeof __BUILD__ === 'undefined' ? 'unknown' : __BUILD__}. A stale tab shows an older build here.</p>
     </Plate>
   )
   return (
