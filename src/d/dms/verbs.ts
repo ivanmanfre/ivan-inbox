@@ -27,7 +27,10 @@ export type VerbCtx = {
   solved?: (pid: string, at: string | null) => void
 }
 
-const errText = (e: unknown) => (e instanceof Error ? e.message : String(e))
+// supabase-js hands back a plain PostgrestError object ({message, code}), not an Error: read its
+// message, or a failed write would say "[object Object]".
+const errText = (e: unknown) => (e instanceof Error ? e.message
+  : e && typeof e === 'object' && typeof (e as { message?: unknown }).message === 'string' ? (e as { message: string }).message : String(e))
 const first = (t: Thread) => t.prospect_name.split(' ')[0] || t.prospect_name
 
 export function legName(m: InboxMessage): string {
