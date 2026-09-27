@@ -371,6 +371,12 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
   const [proposalDirty, setProposalDirty] = useState(false)
   const rowsRef = useRef<HTMLDivElement>(null)
   const confirm = useConfirm()
+  // ONE listener for the life of the view, reading the latest state through a ref.
+  // Re-subscribing on every render (setLane is a new function per render inside D)
+  // removed the listener in the middle of the very hashchange that re-rendered us,
+  // so a sub-nav click or a link never reached it.
+  const live = useRef({ confirm, lane, proposalDirty, setLane, dirty: st.dirty })
+  live.current = { confirm, lane, proposalDirty, setLane, dirty: st.dirty }
   useEffect(() => {
     const onHashChange = () => { void (async () => {
       const inD = D_STRATEGY_HASH.test(location.hash)
@@ -379,7 +385,8 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
       // Our own write-back (and a cancelled switch put back) is not a link.
       if (incoming === acceptedHash.current) return
       const link = readStrategyDeepLink(incoming)
-      if (st.dirty || proposalDirty) {
+      const { confirm, lane, proposalDirty, setLane, dirty } = live.current
+      if (dirty || proposalDirty) {
         const ok = await confirm({ title: 'You have unsaved edits on this lane.', message: 'Open this link and lose them?', confirmText: 'Open and lose edits', danger: true })
         if (!ok) {
           history.replaceState(null, '', acceptedHash.current)
@@ -397,7 +404,7 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
     })() }
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
-  }, [confirm, lane, proposalDirty, setLane, st.dirty])
+  }, [])
   // Pull-to-refresh would discard unsaved edits, so it is wired to a refresh
   // that refuses while dirty rather than being wired to nothing (a dead pull
   // gesture reads as a broken surface).
@@ -515,9 +522,9 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
         {/* CB-21 (main 32e218d + d9a0d9c): the Markets tab is the Outliers view, self-keyed per lane. */}
         {(view === 'markets' || view === 'outliers') && (
           <>
-            <OutliersView key={`${lane}-${refreshTick}`} lane={lane} />
-            {/* Today's Markets readout (operator_market_readout), beside the outliers as it is live. */}
+            {/* Today's Markets readout (operator_market_readout) first, then the outliers: both are live today. */}
             <MarketsView key={`m-${lane}-${refreshTick}`} lane={lane} />
+            <OutliersView key={`${lane}-${refreshTick}`} lane={lane} />
           </>
         )}
         {view === 'outreach' && <div key={`${lane}-${refreshTick}`} className="a-strategy-panel"><OutreachBlock lane={lane} /></div>}
