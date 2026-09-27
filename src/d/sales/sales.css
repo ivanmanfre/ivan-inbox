@@ -142,3 +142,10 @@
 /* density B: the same rows as cards (today's sales.density = b) */
 .sl-page[data-density='b'] .sl-fr{border:1px solid var(--line);border-radius:8px;margin:6px 10px;padding:10px 12px}
 .sl-page[data-density='b'] .sl-grp{padding-bottom:4px}
+.sl-cnt>span:first-child{min-width:0;flex:1}
+.sl-tools{white-space:nowrap;flex:none}
+.sl-tools .d-btn{padding:4px 10px;min-height:0;font-size:12.5px}
+/* phone: the page scrolls and the clock keeps a usable height under the head, chips and stats */
+.sl-orbithost-phone{height:auto}
+.sl-orbithost-phone .a-orbit{height:auto}
+.sl-orbithost-phone .a-orbit-canvas{flex:none;height:min(78vw,420px);min-height:320px}

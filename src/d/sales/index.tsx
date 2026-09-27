@@ -92,7 +92,7 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
           filtered={tokenLine(tokens)} onClear={() => setTokens([])}
           tools={<span className="sl-tools">
             <SalesFilter tokens={tokens} setTokens={setTokens} />
-            <button type="button" className="sl-pl" data-verb="density" onClick={flipDensity}>{density === 'a' ? 'as cards' : 'as rows'}</button>
+            <button type="button" className="sl-pl" data-verb="density" onClick={flipDensity}>{density === 'a' ? 'cards' : 'rows'}</button>
           </span>} />
       </>
   const calls = (limit?: number) => (
