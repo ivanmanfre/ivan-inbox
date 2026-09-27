@@ -45,12 +45,12 @@ export function useDmVerbs(ctx: VerbCtx) {
   return useMemo(() => {
     const fail = (message: string) => { toast.show({ message, tone: 'failed' }) }
 
-    /** Approve & send (both legs on a pair). `held` = the hold gesture already confirmed it. */
-    async function send(t: Thread, ed: Edits, held = false): Promise<string | null> {
+    /** Approve & send (both legs on a pair). Always asks first, as today's thread does. */
+    async function send(t: Thread, ed: Edits): Promise<string | null> {
       const draft = t.draft
       if (!draft) return null
       const comp = t.companionDraft
-      if (!held) {
+      {
         const ok = await confirm({
           title: `Send to ${t.prospect_name}?`,
           message: comp ? `Both legs go out: the ${legName(draft)} and the ${legName(comp)}. The sender picks them up within about 2 minutes.`
@@ -162,10 +162,10 @@ export function useDmVerbs(ctx: VerbCtx) {
       return null
     }
 
-    async function compose(t: Thread, text: string, held = false): Promise<boolean> {
+    async function compose(t: Thread, text: string): Promise<boolean> {
       const body = text.trim()
       if (!body) return false
-      if (!held) {
+      {
         const ok = await confirm({ title: `Send this to ${t.prospect_name}?`, message: 'Your own words, not a reviewed draft. The sender picks it up within about 2 minutes.', confirmText: 'Send it', verb: 'confirm-compose' })
         if (!ok) return false
       }
@@ -196,7 +196,7 @@ export function useDmVerbs(ctx: VerbCtx) {
     }
 
     async function spam(t: Thread) {
-      const ok = await confirm({ title: 'File as likely spam?', message: `${t.prospect_name} leaves the inbox and the reply lane, and any pending draft is discarded. "Not spam" on the thread brings it back.`, confirmText: 'File as spam', verb: 'confirm-spam' })
+      const ok = await confirm({ title: 'File as likely spam?', message: `${t.prospect_name} leaves the inbox and the reply lane, and any pending draft is discarded. "Not spam" on the thread brings it back.`, confirmText: 'File as spam', verb: 'confirm-spam', danger: true })
       if (!ok) return
       try { await markSpam(t); toast.show({ message: `Filed ${t.prospect_name} as likely spam.` }) } catch (e) { fail(errText(e)) }
       ctx.refresh()
@@ -208,7 +208,7 @@ export function useDmVerbs(ctx: VerbCtx) {
     }
 
     async function deleteSeat(t: Thread): Promise<boolean> {
-      const ok = await confirm({ title: 'Delete from the seat on LinkedIn?', message: `The conversation with ${t.prospect_name} is deleted from the seat's LinkedIn inbox and this person is closed for every lane. It cannot be undone, and ${t.prospect_name} still has their own copy.`, confirmText: 'Delete from seat', verb: 'confirm-delete' })
+      const ok = await confirm({ title: 'Delete from the seat on LinkedIn?', message: `The conversation with ${t.prospect_name} is deleted from the seat's LinkedIn inbox and this person is closed for every lane. It cannot be undone, and ${t.prospect_name} still has their own copy.`, confirmText: 'Delete from seat', verb: 'confirm-delete', danger: true })
       if (!ok) return false
       try { await deleteThread(t); toast.show({ message: `Deleted ${t.prospect_name} from the seat.` }) } catch (e) { fail(`Not deleted: ${errText(e)}`); return false }
       ctx.refresh()
@@ -230,7 +230,7 @@ export function useDmVerbs(ctx: VerbCtx) {
     async function holdDiscard(t: Thread) {
       const hold = t.ownerConfirmation
       if (!hold) return
-      const ok = await confirm({ title: 'Discard this internal question?', message: 'No reply will be drafted for it. The thread stays reachable, and a new message from them starts a fresh draft.', confirmText: 'Discard', verb: 'confirm-hold-discard' })
+      const ok = await confirm({ title: 'Discard this internal question?', message: 'No reply will be drafted for it. The thread stays reachable, and a new message from them starts a fresh draft.', confirmText: 'Discard', verb: 'confirm-hold-discard', danger: true })
       if (!ok) return
       try { if (!(await dismissConfirmation(hold.id))) fail('This question was already retired or answered. Nothing was changed.') } catch (e) { fail(errText(e)) }
       ctx.refresh()
@@ -241,10 +241,10 @@ export function useDmVerbs(ctx: VerbCtx) {
       try { return await escalateDraftToClient(t.draft.id) } catch (e) { const m = errText(e) || 'Could not queue that.'; fail(m); return m }
     }
 
-    async function bulkDiscard(ts: Thread[], what: string): Promise<void> {
+    async function bulkDiscard(ts: Thread[], what: string, o: { title?: string; confirmText?: string } = {}): Promise<void> {
       const legs = ts.flatMap(draftLegs)
       if (!legs.length) return
-      const ok = await confirm({ title: `Discard ${ts.length} draft${ts.length === 1 ? '' : 's'}?`, message: `${what} None of them will be sent.`, confirmText: 'Discard them', verb: 'confirm-bulk' })
+      const ok = await confirm({ title: o.title ?? `Discard ${ts.length} draft${ts.length === 1 ? '' : 's'}?`, message: `${what} None of them will be sent.`, confirmText: o.confirmText ?? 'Discard them', verb: 'confirm-bulk', danger: true })
       if (!ok) return
       try {
         const failed = await discardLegs(legs)

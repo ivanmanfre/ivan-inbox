@@ -10,7 +10,7 @@ import { Banners } from './ThreadBanners'
 import { Draft } from './Draft'
 import { DraftWhy } from './DraftWhy'
 import { History } from './History'
-import { Composer, HoldKey } from './Keys'
+import { Composer } from './Keys'
 import { ThreadMenu, type MenuAct } from './Menu'
 import { AgentSheet, ContextSheet } from './Sheets'
 import { ThreadHead } from './ThreadHead'
@@ -65,8 +65,8 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
 
   const run = async (fn: () => Promise<unknown>) => { setBusy(true); try { await fn() } finally { setBusy(false) } }
   const copy = async () => { const l = chatLink(t.chat_provider_id, t.linkedin_url); if (l && await copyText(l.href)) { setCopied(true); window.setTimeout(() => setCopied(false), 1600) } }
-  const send = (held: boolean) => run(async () => { await verbs.send(t, edits, held); setEditing(false) })
-  const compose = (held: boolean) => run(async () => { if (await verbs.compose(t, reply, held)) setReply('') })
+  const send = () => run(async () => { await verbs.send(t, edits); setEditing(false) })
+  const compose = () => run(async () => { if (await verbs.compose(t, reply)) setReply('') })
   const menuRun = (a: MenuAct) => {
     if (a === 'context') setSheet('context')
     else if (a === 'agent') setSheet('agent')
@@ -87,18 +87,18 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     {t.draftSnoozedUntil === null && <Key verb="later" disabled={busy} onClick={() => run(() => verbs.later(t, edits))}>Later</Key>}
     {editing ? <Key verb="save-edit" disabled={busy} onClick={() => run(async () => { if (!(await verbs.saveEdit(t, edits))) setEditing(false) })}>Save</Key>
       : <Key verb="edit" disabled={busy} onClick={() => setEditing(true)}>Edit</Key>}
-    <HoldKey verb="send" disabled={busy} onPress={() => void send(false)} onHold={() => void send(true)}>{t.companionDraft ? 'Send both' : 'Send'}</HoldKey>
+    <Key primary verb="send" disabled={busy} onClick={() => void send()}>{t.companionDraft ? 'Send both' : 'Send'}</Key>
   </>
   else keys = <>
     {t.ownerConfirmation
       ? <Key verb="ask-owner-link" onClick={() => void copy()} sub="copies the chat link">{seat === 'ivan' ? 'Copy chat link' : `Ask ${from}`}</Key>
       : owed && <Key verb="draft-it" onClick={onDraftIt} sub="Claude writes">Draft it</Key>}
     {dated && !t.ownerConfirmation && <Key verb="follow-up-date" disabled={busy} sub="on a date" onClick={() => run(async () => { await verbs.followUp(t, null, ''); reload() })}>Follow up</Key>}
-    {!composeOff && <HoldKey verb="compose-send" disabled={busy || !reply.trim()} onPress={() => void compose(false)} onHold={() => void compose(true)}>Send</HoldKey>}
+    {!composeOff && <Key primary verb="compose-send" disabled={busy || !reply.trim()} onClick={() => void compose()}>Send</Key>}
   </>
 
   const foot = t.spam ? 'Filed as a vendor pitch. Not spam puts it back in Needs you; Delete from seat removes the LinkedIn chat.'
-    : hasDraft ? (phone ? 'Hold Send to send. Discard asks first.' : "Discard offers two keys: Discard, or Discard and I'll reply myself.")
+    : hasDraft ? (phone ? 'Send and Discard both ask first.' : "Send asks first. Discard offers two keys: Discard, or Discard and I'll reply myself.")
       : 'Spam, Not spam and Delete from seat are under ⋯.'
 
   return (
@@ -110,12 +110,12 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         <Banners t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} />
         <Draft t={t} edits={edits} setEdits={setEdits} editing={editing} now={now} />
         {t.draft && !editing && <DraftWhy t={t} draft={t.draft} />}
-        {!hasDraft && !t.spam && <Composer to={first} from={from} big disabled={composeOff} value={reply} setValue={setReply} busy={busy} onSend={() => void compose(false)} onHoldSend={() => void compose(true)} />}
+        {!hasDraft && !t.spam && <Composer to={first} from={from} big disabled={composeOff} value={reply} setValue={setReply} busy={busy} onSend={() => void compose()} />}
       </div>
       <div className="dm-keys">
         {keys}
       </div>
-      {hasDraft && !t.spam && <Composer to={first} from={from} big={false} disabled={composeOff} value={reply} setValue={setReply} busy={busy} onSend={() => void compose(false)} onHoldSend={() => void compose(true)} />}
+      {hasDraft && !t.spam && <Composer to={first} from={from} big={false} disabled={composeOff} value={reply} setValue={setReply} busy={busy} onSend={() => void compose()} />}
       <div className="dm-foot">{foot}</div>
       {menu && <ThreadMenu t={t} phone={phone} withAsk={phone} staleN={staleN} onClose={() => setMenu(false)} run={menuRun} />}
       {sheet === 'context' && <ContextSheet t={t} all={all} onClose={() => setSheet(null)} />}

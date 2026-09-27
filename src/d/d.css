@@ -168,6 +168,11 @@ html.d-root,html.d-root body{background:#0A0A09}
 .d-key:active:not(:disabled) .d-face{transform:translateY(3px)}
 .d-key.d-key-p .d-lip{background:var(--limeD)}
 .d-key.d-key-p .d-face{background:var(--lime);color:var(--ink);border-color:var(--limeL);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.6)}
+.d-key.d-key-d .d-lip{background:#8f2a23}
+.d-key.d-key-d .d-face{background:var(--crit);color:#fff;border-color:var(--critT);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.3)}
+.d-key:focus-visible .d-face{outline:2px solid var(--t1);outline-offset:2px}
+.d-btn.d-btn-d{background:transparent;color:var(--critT);border-color:rgba(255,69,58,.5)}
+.d-confirm-danger{border-color:rgba(255,69,58,.55)}
 .d-key:disabled{cursor:not-allowed}.d-key:disabled .d-face{opacity:.45}
 .d-key.d-key-s{height:40px}.d-key.d-key-s .d-face{height:36px;font-size:14px;border-radius:10px}.d-key.d-key-s .d-lip{border-radius:10px}
 .d-btn{height:32px;border-radius:9px;padding:0 12px;border:1px solid var(--line2);background:var(--p3);font:600 13.5px var(--f);color:var(--t1);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 2px 0 rgba(255,255,255,.1);white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
