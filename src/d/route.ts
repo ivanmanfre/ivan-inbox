@@ -12,9 +12,9 @@ import type { CrossHit } from '../lib/crossSearch'
 
 export const D_PREFIX = '#exp/d'
 
-export const PLACE_IDS: readonly PlaceId[] = ['lanes', 'dms', 'content', 'ops', 'sales', 'claude', 'settings']
+export const PLACE_IDS: readonly PlaceId[] = ['home', 'lanes', 'dms', 'content', 'ops', 'sales', 'claude', 'settings']
 
-export const HOME: PlaceId = 'lanes'
+export const HOME: PlaceId = 'home'
 
 export type DRoute = {
   place: PlaceId
@@ -26,10 +26,9 @@ export type DRoute = {
 
 /** Old job ids and aliases, and the place (and sub) each one now lives in. */
 const ALIAS: Record<string, { place: PlaceId; sub?: string }> = {
-  '': { place: 'lanes' },
-  home: { place: 'lanes' },
+  '': { place: 'home' },
   sends: { place: 'lanes' },
-  today: { place: 'lanes' },
+  today: { place: 'home' },
   inbox: { place: 'dms' },
   drafts: { place: 'dms' },
   magnets: { place: 'content', sub: 'magnets' },

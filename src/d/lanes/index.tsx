@@ -1,5 +1,5 @@
 /* ==========================================================================
-   src/d/lanes — Lanes, Ivan's home, direction D. Read-only except Acknowledge.
+   src/d/lanes — Lanes, the detail page behind Home, direction D. Read-only except Acknowledge.
 
    Desktop: one instrument. Bands run down (Seat, Today, Control, Campaigns,
    14 days, Inbound), the three seats run across in fixed columns and share
@@ -8,7 +8,7 @@
    Phone: three seat plates side by side, the chosen seat below (Phone.tsx).
    Address: #exp/d/lanes[?seat=][&range=30d][&sheet=campaign&c=<id>|log|ledger|delivery|problems|decisions]
    ========================================================================== */
-import { Fragment, useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useLanes } from '../../hooks/useLanes'
 import type { PlaceProps } from '../places'
 import { dHash } from '../route'
@@ -32,8 +32,6 @@ import { TodayNotes } from './TodayNotes'
 import { ControlCell, Plate, TodayCell } from './seatCells'
 import { LanesSheet, type SheetKind } from './Sheets'
 import { failedCount, useLanesData } from './useLanesData'
-import { GLANCE_ROWS, GlancePhone, useGlance, type GlanceCtx } from './glance/Glance'
-import { GlanceTasks } from './glance/Tasks'
 import './lanes.css'
 
 const SHEETS: SheetKind[] = ['decisions', 'log', 'ledger', 'delivery', 'problems']
@@ -62,15 +60,6 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
     openSheet: (kind, seat) => go({ sheet: kind, c: null, for: seat ?? null }),
     openControl: seat => go({ sheet: 'control', c: null, for: seat }),
   }
-  const glance = useGlance(now)
-  const g: GlanceCtx = {
-    d: data, now, ...glance, openCampaign: ctx.openCampaign,
-    // The glance's Invites and Rate limit rows open the band that acts on them.
-    jump: (band, seat) => {
-      if (layout === 'phone' && q.get('seat') !== seat) go({ seat })
-      requestAnimationFrame(() => document.querySelector(`[data-band="${band}"][data-seat="${seat}"], .dl-phone [data-band="${band}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
-    },
-  }
   const setRange = (r: Range) => go({ range: r === '7d' ? null : r })
   const close = () => go({ sheet: null, c: null, for: null })
 
@@ -85,15 +74,14 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
   const probs = (data.cc.value?.recurrence?.items ?? []).filter(i => i.rank?.daily_pick).slice(0, 3).length
 
   // Every read that failed or timed out (12 s) besides the monitor, said once, with Retry.
-  const glanceFailed = cols.reduce((n, s) => n + ('failed' in glance.content[s] ? 1 : 0) + ('failed' in glance.drafts[s] ? 1 : 0), 0)
-  const otherFailed = failedCount(data) - (data.cc.failed && !data.cc.value ? 1 : 0) + glanceFailed
+  const otherFailed = failedCount(data) - (data.cc.failed && !data.cc.value ? 1 : 0)
   const p = data.cc.value
   const staleMin = p && monitorLiveness(p, now) === 'stale' && p.monitor.last_tick_at ? Math.max(1, Math.round((now - Date.parse(p.monitor.last_tick_at)) / 6e4)) : null
   const top = <>
     {!online && <Offline since={at ? hm(at) : null} />}
     {data.cc.failed && !data.cc.value && <Failed what="the send monitor" detail={data.cc.failed} onRetry={refresh} />}
     {otherFailed > 0 && <Failed what={otherFailed === 1 ? 'one of the reads on this page' : `${otherFailed} of the reads on this page`}
-      detail="The cells marked ? could not be read. Retrying quietly every 20 s." onRetry={() => { refresh(); glance.refresh() }} />}
+      detail="The cells marked ? could not be read. Retrying quietly every 20 s." onRetry={refresh} />}
     {staleMin != null && <p className="dl-notice dl-al">The monitor last reported {staleMin} minutes ago, past its own staleness budget, so every seat below reads unverified whatever the snapshot said.</p>}
     {p?.coverage.degraded && <p className="dl-notice">Coverage degraded{p.coverage.degraded_reasons.length ? `: ${p.coverage.degraded_reasons.join(' · ')}` : '.'}</p>}
     <TodayNotes />
@@ -115,7 +103,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
       <Key size="small" onClick={() => go({ sheet: 'channels', c: null, for: q.get('seat') })}>Channels</Key>
       <Key size="small" onClick={() => ctx.openSheet('ledger')}>Daily ledger</Key>
       <Key size="small" onClick={() => ctx.openSheet('log')}>Send log</Key>
-      <Key size="small" verb="refresh" onClick={() => { refresh(); glance.refresh() }}>Refresh</Key>
+      <Key size="small" verb="refresh" onClick={refresh}>Refresh</Key>
       <Key size="small" onClick={() => ctx.openSheet('problems')}>Recurring problems <span className="dl-kn">{data.cc.value ? probs : '?'}</span></Key>
     </>
   )
@@ -125,8 +113,6 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
       <>
         <AnswerRow title={title} sub={sub} />
         {top}
-        <GlancePhone seats={cols} g={g} />
-        <div className="gl-ptasks"><div className="gl-phead">Your tasks<small>open, soonest first</small></div><GlanceTasks /></div>
         <Phone seats={cols} ctx={ctx} seat={(cols as string[]).includes(q.get('seat') ?? '') ? (q.get('seat') as Seat) : cols[0]}
           pick={s => go({ seat: s })} range={range} setRange={setRange} onCustom={() => go({ sheet: 'range', c: null })} doors={doors} monitor={monitorLine(data, now)} />
         {sheets}
@@ -144,9 +130,6 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
       {top}
       <div className="dl-grid" style={{ gridTemplateColumns: `var(--dl-gut) repeat(${cols.length}, minmax(0, 1fr))` }}>
         {band('Seat', null, s => <Plate seat={s} ctx={ctx} />, 'dl-top')}
-        {GLANCE_ROWS.map(({ id, label, note, Cell }) => <Fragment key={id}>{band(label, note, s => <Cell seat={s} g={g} />, 'dl-gl', `glance-${id}`)}</Fragment>)}
-        <div className="dl-gut dl-gl dl-gl-last">Tasks<small>yours, soonest first</small></div>
-        <div className="dl-cell dl-glc dl-gl-last dl-lc" style={{ gridColumn: `2 / span ${cols.length}` }} data-band="glance-tasks"><GlanceTasks /></div>
         {band('Today', 'Warsaw day', s => <TodayCell seat={s} ctx={ctx} />, '', 'today')}
         {band('Control', 'live monitor', s => <ControlCell seat={s} ctx={ctx} />, '', 'control')}
         {band('Campaigns', 'last 7 days', s => <CampaignsCell seat={s} ctx={ctx} />)}
