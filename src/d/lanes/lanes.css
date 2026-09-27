@@ -138,3 +138,11 @@ em.dl-z,b.dl-z{color:var(--t3)}em.dl-on{color:var(--lime)}em.dl-q{color:var(--t3
 .dl-pmon{font:400 12px/1.45 var(--m);color:var(--t3);padding:0 16px 16px;margin:0}
 .dl-sheet .d-sheet-b{padding:4px 18px 20px;overflow-x:hidden}
 .dl-steps th:last-child,.dl-steps td:last-child{text-align:right}
+
+/* Today's sending lines (TodayNotes.tsx) */
+.dl-today{margin:0 0 12px;padding:8px 12px;border:1px solid var(--line);border-radius:11px;background:var(--p1);display:flex;flex-direction:column;gap:4px}
+.dl-today p{margin:0;font-size:13px;color:var(--t2);line-height:1.45}
+.dl-today b{font:600 13px var(--m);color:var(--t1)}
+.dl-today .dl-today-alarm{color:var(--critT);font-weight:600}
+.dl-today .dl-today-warn,.dl-today .dl-today-warn b{color:var(--warn)}
+.dl-today .dl-today-bad,.dl-today .dl-today-bad b{color:var(--critT)}
