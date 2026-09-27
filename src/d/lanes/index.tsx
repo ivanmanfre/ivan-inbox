@@ -104,6 +104,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
       <Key size="small" onClick={() => go({ sheet: 'channels', c: null, for: q.get('seat') })}>Channels</Key>
       <Key size="small" onClick={() => ctx.openSheet('ledger')}>Daily ledger</Key>
       <Key size="small" onClick={() => ctx.openSheet('log')}>Send log</Key>
+      <Key size="small" verb="refresh" onClick={() => { refresh(); glance.refresh() }}>Refresh</Key>
       <Key size="small" onClick={() => ctx.openSheet('problems')}>Recurring problems <span className="dl-kn">{data.cc.value ? probs : '?'}</span></Key>
     </>
   )

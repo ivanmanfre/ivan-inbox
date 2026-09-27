@@ -7,6 +7,7 @@
    the Evidence / Private detail folds. Read-only. */
 import { STATUS_WORD, monitorLiveness, type CcChannel, type CcPayload } from '../../lib/campaignControl'
 import type { GovernorRow } from '../../lib/kpis'
+import { dHash } from '../route'
 import { SEAT_NAME, type Seat } from '../seats'
 import { Sheet } from '../ui/Sheet'
 import { Shs } from './CampaignSheet'
@@ -75,6 +76,7 @@ export function ControlSheet({ seat, p, gov, pauses, pausesFailed, now, onClose 
             ))}
           </tbody></table>
         )}
+        <a className="dl-more" href={dHash('content', 'strategy')}>What we filter on ›</a>
         <Shs>Governor</Shs>
         {gov ? <GovernorDetail g={gov} /> : <p className="dl-sl dl-unk">No governor reading for this seat.</p>}
         <Shs tail={incidents.length}>Incidents, open and closed</Shs>

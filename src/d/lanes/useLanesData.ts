@@ -10,9 +10,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchPayload, type CcPayload } from '../../lib/campaignControl'
 import { fetchCampaignPerf, type CampaignPerf } from '../../lib/campaignPerf'
 import {
-  fetchGovernor, fetchOutcomes, fetchPipeline, fetchReplacement, fetchViewedBack,
-  type GovernorRow, type OutcomeRow, type PipelineRow, type ReplacementRow, type ViewedBackRow,
+  fetchGovernor, fetchOutcomes, fetchPipeline, fetchReplacement, fetchScanOpens, fetchViewedBack,
+  type GovernorRow, type ScanOpenRow, type OutcomeRow, type PipelineRow, type ReplacementRow, type ViewedBackRow,
 } from '../../lib/kpis'
+import { fetchCampaignSends, type CampaignSend } from '../../lib/sends'
 import { fetchInbound, fetchInboundDaily, type InboundDailyRow, type InboundRow } from '../../lib/inbound'
 import { fetchSeatHealth, type SeatHealthSummary } from '../../lib/seatHealth'
 import type { CameBackCard } from '../../wb/dms/cameBackData'
@@ -34,6 +35,8 @@ export type LanesData = {
   counters: Slot<Counter[]>
   inbound: Slot<InboundRow[]>
   inboundDaily: Slot<InboundDailyRow[]>
+  scans: Slot<ScanOpenRow[]>
+  campSends: Slot<CampaignSend[]>
   cameBack: Slot<CameBackCard[]>
   warm: Slot<number>
   engagers: Slot<Record<Seat, number>>
@@ -59,6 +62,8 @@ const READS: { [K in Key]: () => Promise<NonNullable<LanesData[K]['value']>> } =
   counters: () => fetchCounters(),
   inbound: fetchInbound,
   inboundDaily: fetchInboundDaily,
+  scans: fetchScanOpens,
+  campSends: () => fetchCampaignSends('all'),
   cameBack: fetchCameBack,
   warm: fetchWarmCount,
   engagers: fetchEngagers7d,

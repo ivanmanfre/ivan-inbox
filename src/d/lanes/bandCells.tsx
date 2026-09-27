@@ -44,11 +44,13 @@ function LaneLine({ id }: { id: string }) {
 }
 
 function Camp({ c, ctx }: { c: CampaignPerf; ctx: BandCtx }) {
+  const all = ctx.d.campSends.value?.find(x => x.campaign_id === c.campaign_id)?.sent ?? null
   const nb = (v: number, l: string) => <span><b className={v ? '' : 'dl-z'}>{v}</b>{l}</span>
   return (
     <button type="button" className={`dl-cp${ctx.selected === c.campaign_id ? ' dl-sel' : ''}`} onClick={() => ctx.openCampaign(c.campaign_id)}>
       <span className="dl-cn">{shortName(c.campaign_name)}</span><span className="dl-go">open ›</span>
-      <span className="dl-nums">{nb(c.invites_7d, 'invites')}{nb(c.dms_7d, 'DMs')}{nb(c.replied_7d, 'replied')}{nb(c.calls_30d, 'calls 30d')}</span>
+      <span className="dl-nums">{nb(c.invites_7d, 'invites')}{nb(c.dms_7d, 'DMs')}{nb(c.replied_7d, 'replied')}{nb(c.calls_30d, 'calls 30d')}
+        {all != null && <span className="dl-dimt">{all.toLocaleString('en-US')} sent all time</span>}</span>
       <span className="dl-ln">{c.replied_7d ? `${c.positive_7d} positive of ${c.replied_7d}. ` : 'No replies yet. '}{acceptShort(c)}</span>
       {c.client_id === 'arch' && <LaneLine id={c.campaign_id} />}
     </button>
@@ -72,6 +74,10 @@ export function CampaignsCell({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
           <span>{fold}</span><span>{show ? 'hide' : 'show'}</span>
         </button>
       )}
+      {ctx.d.campSends.value && (() => {
+        const mine = ctx.d.campSends.value.filter(x => rows.some(r => r.campaign_id === x.campaign_id && r.client_id === seat) && (seat !== 'ivan' || x.is_active))
+        return <p className="dl-fo dl-tot2"><span>{g.shown.length} of {mine.length} shown</span><span>{mine.reduce((a, x) => a + x.sent, 0).toLocaleString('en-US')} sent all time</span></p>
+      })()}
       {show && rest.map(c => (
         <button type="button" key={c.campaign_id} className="dl-quiet" onClick={() => ctx.openCampaign(c.campaign_id)}>
           <span>{shortName(c.campaign_name)}</span><em>{c.is_active ? 'quiet' : 'paused'}</em>
@@ -107,6 +113,7 @@ export function DeliveryCell({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
   const inv = seriesOf(p, seat, ctx.now, 'invitation'), dmb = seriesOf(p, seat, ctx.now, 'dm'), rep = seriesOf(p, seat, ctx.now, 'dm', 'replies_people')
   const o = ctx.d.outcomes.value?.find(x => x.client_id === seat)
   const vb = ctx.d.viewed.value?.find(x => x.client_id === seat)
+  const sc = ctx.d.scans.value?.find(x => x.client_id === seat)
   const convos = o ? (ctx.range === '7d' ? o.convos_7d : ctx.range === '30d' ? o.convos_30d : null) : null
   const calls = o ? (ctx.range === '7d' ? o.calls_7d : ctx.range === '30d' ? o.calls_30d : null) : null
   const viewed = vb && ctx.range !== '90d' ? (ctx.range === '7d' ? [vb.viewed_7d, vb.invited_7d] : [vb.viewed_30d, vb.invited_30d]) : null
@@ -123,6 +130,7 @@ export function DeliveryCell({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
             : 'accept rate: nothing old enough yet'}
           <br /><b>{num(convos)}</b> conversations · <b>{num(calls)}</b> calls · InMail <b>{num(w.inmail)}</b> · {num(w.invFailed)} invites refused
           {viewed && <><br />Viewed your profile back: <b>{viewed[0]}</b> of {viewed[1]} invited (a floor)</>}
+          {sc && <><br />Scan opens: <b>{sc.opens_7d}</b> in 7d · {sc.opens_30d} in 30d · {sc.distinct_prospects} people{sc.last_open ? `, last ${dayMonth(sc.last_open)}` : ''}</>}
         </>}
       </div>
     </div>

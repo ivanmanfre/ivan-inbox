@@ -29,7 +29,7 @@ export type GlanceCtx = {
 }
 
 /** The glance's own reads that Lanes does not already hold: content x3 (the Content place's read) and the frame's draft counts. */
-export function useGlance(now: number): Pick<GlanceCtx, 'content' | 'drafts'> {
+export function useGlance(now: number): Pick<GlanceCtx, 'content' | 'drafts'> & { refresh: () => void } {
   const ivan = useContent('ivan')
   const rise = useContent('risedtc')
   const arch = useContent('arch')
@@ -45,6 +45,7 @@ export function useGlance(now: number): Pick<GlanceCtx, 'content' | 'drafts'> {
   return {
     content: { ivan: wk(ivan, 'ivan'), risedtc: wk(rise, 'risedtc'), arch: wk(arch, 'arch') },
     drafts: { ivan: dr('ivan'), risedtc: dr('risedtc'), arch: dr('arch') },
+    refresh: () => { ivan.refresh(); rise.refresh(); arch.refresh(); counts.refresh('dms') },
   }
 }
 

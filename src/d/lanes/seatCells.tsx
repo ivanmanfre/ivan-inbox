@@ -54,7 +54,9 @@ export function TodayCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
   const t = todayOf(ctx.d.cc.value, seat, ctx.now)
   const cd = ctx.d.counters.value?.find(x => x.seat === seat && x.action_type === 'dm')
   const g = ctx.d.gov.value?.find(x => x.client_id === seat)
-  const dmSub = ctx.d.counters.failed && !ctx.d.counters.value ? 'cap unknown' : cd ? `${cd.count} of ${cd.daily_limit ?? 50} cap` : 'cap 50, unused'
+  // The DM cap: the sender's own counter row, else the monitor's payload, else the ratified 50.
+  const dmCap = cd?.daily_limit ?? clientOf(ctx.d.cc.value, seat)?.dm?.capacity?.daily_cap ?? 50
+  const dmSub = ctx.d.counters.failed && !ctx.d.counters.value ? 'cap unknown' : cd ? `${cd.count} of ${dmCap} cap` : `cap ${dmCap}, unused`
   return (
     <>
       <div className="dl-td">
