@@ -34,7 +34,7 @@ function Card({ r, rx }: { r: ReactionRow; rx: Rx }) {
     <section className="op-rx" data-reaction={r.id}>
       <div className="op-ch"><span className="op-eb">Reaction · {rise ? 'Rise' : 'Ivan'}</span><span className="op-ew">{[ev?.who ?? (ev?.author ? '@' + ev.author : ''), ev?.tier_weight, age].filter(Boolean).join(' · ')}</span></div>
       <div className="op-rxb">
-        {ev?.excerpt ? <blockquote className="op-q">{ev.excerpt}</blockquote> : r.raw_topic ? <div className="op-note">Angle: {r.raw_topic}</div> : null}
+        {ev?.excerpt ? <blockquote className="op-quote">{ev.excerpt}</blockquote> : r.raw_topic ? <div className="op-note">Angle: {r.raw_topic}</div> : null}
         <Mono parts={[`${fmt(ev?.quotes)} quotes`, `${fmt(ev?.comments)} replies`, `${fmt(ev?.likes)} likes`, `${fmt(ev?.views)} views`]} />
         <Mono parts={[url && <a className="op-lk" href={url} target="_blank" rel="noreferrer">read the thread</a>, r.shot_url ? 'screenshot captured' : 'no screenshot yet, approving posts the text alone']} />
         <label className="op-tape">

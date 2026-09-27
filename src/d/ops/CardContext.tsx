@@ -30,7 +30,7 @@ function Who({ name, sub }: { name: string; sub?: string }) {
 }
 
 function Quote({ text }: { text: string }) {
-  return text ? <blockquote className="op-q">{text}</blockquote> : null
+  return text ? <blockquote className="op-quote">{text}</blockquote> : null
 }
 
 const ARCH_WORD: Record<string, string> = { DRAFT: 'drafted', NEEDS_DAVOR: 'needs Davor', ESCALATE: 'escalate: answer by hand', HANDLED: 'no reply needed' }
