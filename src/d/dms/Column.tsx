@@ -41,7 +41,7 @@ const OWNER: Record<Seat, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Dav
 export function ColumnBody(p: ColumnProps) {
   const { seat, view: v, mode, c } = p
   const f = useFolds()
-  // One remembered fold per seat and section, so folding Mattan's Thrown away leaves yours alone.
+  // One remembered fold per seat and section, so folding Mattan's Discarded leaves yours alone.
   const folds: Folds = { isOpen: (id, def) => f.isOpen(`${seat}:${id}`, def), toggle: (id, def) => f.toggle(`${seat}:${id}`, def) }
 
   if (mode === 'spam') {
@@ -50,8 +50,13 @@ export function ColumnBody(p: ColumnProps) {
       rows={v.spam.map(t => <SpamRow key={t.prospect_id} t={t} c={c} />)} before={v.spam.length ? null : <Quiet>Nothing filed on this seat.</Quiet>} />
   }
   if (mode === 'email') {
-    return <Section id="email" label="Email threads" n={v.email.length} folds={folds}
-      rows={v.email.map(t => <AnyRow key={t.prospect_id} t={t} c={c} owed={threadBucket(t, c.now) !== 'waiting'} />)} before={v.email.length ? null : <Quiet>No email threads.</Quiet>} />
+    return <>
+      <Section id="email" label="Email waiting on you" n={v.emailWaiting.length} folds={folds}
+        rows={v.emailWaiting.map(t => <AnyRow key={t.prospect_id} t={t} c={c} owed />)}
+        before={v.emailWaiting.length ? null : <Quiet>No email is waiting on {WHO[seat]}. Old replies and our own sends are under All email.</Quiet>} />
+      {v.emailRest.length > 0 && <Section id="email-all" foldable defaultOpen={false} label="All email" n={v.emailRest.length} folds={folds}
+        rows={v.emailRest.map(t => <AnyRow key={t.prospect_id} t={t} c={c} owed={false} />)} />}
+    </>
   }
   if (mode === 'search') {
     return <>
@@ -111,7 +116,7 @@ export function ColumnBody(p: ColumnProps) {
 
     {seat === 'ivan' && <WarmSection p={p} folds={folds} />}
 
-    {v.thrown.length > 0 && <Section id="thrown" foldable defaultOpen={false} label="Thrown away, 3 days" n={v.thrown.length} folds={folds}
+    {v.thrown.length > 0 && <Section id="thrown" foldable defaultOpen={false} label="Discarded, 3 days" n={v.thrown.length} folds={folds}
       rows={v.thrown.map(t => <ThrownRow key={t.prospect_id} t={t} c={c} />)} />}
 
     {v.rest.length > 0 && <Section id="rest" foldable defaultOpen={false} label="Sent, waiting on them" n={v.rest.length} folds={folds}

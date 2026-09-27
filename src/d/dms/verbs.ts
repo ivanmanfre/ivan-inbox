@@ -107,7 +107,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       if (failed.length) { const m = failed.map(legFailureText).join(' '); fail(m); return m }
       toast.show({
         message: `Discarded the draft to ${t.prospect_name}.`,
-        sub: ans === 'myself' ? 'The reply stays owed. It stays under Thrown away for 3 days.' : 'It stays under Thrown away for 3 days.',
+        sub: ans === 'myself' ? 'The reply stays owed. It stays under Discarded for 3 days.' : 'It stays under Discarded for 3 days.',
         action: { label: 'Undo', verb: 'undo', run: () => { void undoDiscard(gone) } },
       })
       return null
@@ -140,7 +140,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       ctx.refresh()
       toast.show({
         message: `Marked ${t.prospect_name} as solved.`,
-        sub: `It comes back if ${first(t)} writes again.${gone.length ? ' The draft stays under Thrown away for 3 days.' : ''}`,
+        sub: `It comes back if ${first(t)} writes again.${gone.length ? ' The draft stays under Discarded for 3 days.' : ''}`,
         action: { label: 'Undo', verb: 'undo', run: () => { void undoSolved(t.prospect_id, gone, prevAt, lower && t.needsManualReply) } },
       })
       return null
@@ -297,7 +297,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       try {
         const failed = await discardLegs(legs)
         if (failed.length) fail(failed.map(legFailureText).join(' '))
-        else toast.show({ message: `Discarded ${ts.length} draft${ts.length === 1 ? '' : 's'}.`, sub: 'Each stays under Thrown away for 3 days.' })
+        else toast.show({ message: `Discarded ${ts.length} draft${ts.length === 1 ? '' : 's'}.`, sub: 'Each stays under Discarded for 3 days.' })
       } catch (e) { fail(errText(e)) }
       ctx.refresh()
     }

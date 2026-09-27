@@ -18,7 +18,7 @@ export function Headline({ mode, views, counts, tools }: { mode: Mode; views: Re
     return <AnswerRow title={<>Likely spam: <N v={views.risedtc.spam.length} /> Mattan's, <N v={views.arch.spam.length} /> Davorin's.</>} tools={tools} />
   }
   if (mode === 'email') {
-    return <AnswerRow title={<>Email threads: <N v={views.ivan.email.length} /> yours, <N v={views.risedtc.email.length} /> Mattan's, <N v={views.arch.email.length} /> Davorin's.</>} tools={tools} />
+    return <AnswerRow title={<>Email waiting on you: <N v={views.ivan.emailWaiting.length} /> yours, <N v={views.risedtc.emailWaiting.length} /> Mattan's, <N v={views.arch.emailWaiting.length} /> Davorin's.</>} tools={tools} />
   }
   const nd = SEATS.map(s => views[s].nodraft.length)
   // One headline; the sub line only when a thread still has no draft (work Ivan must start).
@@ -43,13 +43,14 @@ export function anyUnread(ts: readonly Thread[]): boolean {
 const Dot = ({ on }: { on: boolean }) => on ? <span className="dm-fdot" role="img" aria-label="unread" /> : null
 
 export function Folders({ folder, setFolder, views, phone }: { folder: string | null; setFolder: (f: string | null) => void; views: Record<Seat, SeatView>; phone?: boolean }) {
-  const emailDot = SEATS.some(s => anyUnread(views[s].email))
+  // Waiting only (emailFolder.ts): an old archived reply nobody stamped read never lights it.
+  const emailDot = SEATS.some(s => anyUnread(views[s].emailWaiting))
   const spamDot = anyUnread(views.risedtc.spam) || anyUnread(views.arch.spam)
   return (
     <span className={`dm-folders${phone ? ' dm-folders-phone' : ''}`} role="tablist" aria-label="Folders">
       <button type="button" role="tab" aria-selected={!folder} className={`dm-fd${!folder ? ' dm-on' : ''}`} onClick={() => setFolder(null)}>Conversations</button>
       <button type="button" role="tab" aria-selected={folder === 'email'} className={`dm-fd${folder === 'email' ? ' dm-on' : ''}`} onClick={() => setFolder('email')} data-unread={emailDot ? 'true' : undefined}>
-        <Dot on={emailDot} />Email <small>{SEATS.map(s => <span key={s}>{SEAT_NAME[s]} <b>{views[s].email.length}</b> </span>)}</small>
+        <Dot on={emailDot} />Email <small>{SEATS.map(s => <span key={s}>{SEAT_NAME[s]} <b>{views[s].emailWaiting.length}</b> </span>)}</small>
       </button>
       <button type="button" role="tab" aria-selected={folder === 'spam'} className={`dm-fd${folder === 'spam' ? ' dm-on' : ''}`} onClick={() => setFolder('spam')} data-unread={spamDot ? 'true' : undefined}>
         <Dot on={spamDot} />Likely spam <small>Rise <b>{views.risedtc.spam.length}</b> Arch <b>{views.arch.spam.length}</b></small>

@@ -22,7 +22,7 @@ export function whyHeld(t: Thread, m: InboxMessage): string {
     return Number.isNaN(when) || Number.isNaN(at) || when > at
   })
   if (spoke) {
-    return 'You have written on this thread since this draft was thrown away, so '
+    return 'You have written on this thread since this draft was discarded, so '
       + 'bringing it back would answer the same message twice.'
   }
   return 'This one cannot come back from here.'

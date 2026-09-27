@@ -33,7 +33,7 @@ describe('seatView', () => {
     expect(lifted).toEqual(['Scan Opener', 'John'])
   })
 
-  it('files a recent discard under Thrown away and a pushed draft under Later only', () => {
+  it('files a recent discard under Discarded and a pushed draft under Later only', () => {
     const r = [
       ...owedNoDraft('x', { prospect_name: 'Thrown', client_id: 'ivan' }, 5),
       msg({ prospect_id: 'x', prospect_name: 'Thrown', send_blocked_reason: DISCARD_REASON, send_blocked_at: iso(2 * H), created_at: iso(3 * H) }),
