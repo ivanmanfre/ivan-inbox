@@ -17,6 +17,8 @@ const feed = {
   clearAll: vi.fn(async (): Promise<string | null> => 'STAMP'), undoClear: vi.fn(async () => {}),
 }
 vi.mock('../../exp/brain/b/useFeedData', () => ({ useFeedData: () => feed }))
+// Waiting on you reads the brief and the queue piles; it has its own test.
+vi.mock('./WorkQueue', () => ({ WorkQueue: () => null }))
 
 const { BellButton, BellFeed } = await import('./Bell')
 
@@ -64,7 +66,10 @@ describe('BellFeed verbs', () => {
 
   it('rows read as a person would say them; × dismisses with an Undo', async () => {
     renderInFrame(<BellFeed />, { readers })
-    expect(await screen.findByText('New inbound reply, Martti')).toBeTruthy()
+    const row = await waitFor(() => document.querySelector('[data-feed-row] .d-fn-open')!)
+    expect(row.textContent).toContain('Martti')
+    expect(row.textContent).not.toContain('[ARCH]')
+    expect(row.textContent).not.toContain('—')
     await act(async () => { fireEvent.click(document.querySelector('[data-verb="dismiss"]')!) })
     expect(feed.dismissOne).toHaveBeenCalledWith('n1', note)
     await act(async () => { fireEvent.click(await waitFor(() => document.querySelector('.d-toast [data-verb="undo"]')!)) })
@@ -74,7 +79,7 @@ describe('BellFeed verbs', () => {
   it('tapping a row marks it read and opens its link inside D', async () => {
     const navigate = vi.fn()
     renderInFrame(<BellFeed />, { readers, frame: { navigate } })
-    fireEvent.click((await screen.findByText('New inbound reply, Martti')).closest('button')!)
+    fireEvent.click(await waitFor(() => document.querySelector<HTMLElement>('[data-feed-row] .d-fn-open')!))
     expect(feed.markRead).toHaveBeenCalledWith(note)
     expect(navigate).toHaveBeenCalledWith('#exp/d/dms?thread=abc')
   })

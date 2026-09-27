@@ -18,6 +18,9 @@ export const ZERO_READERS: NonNullable<TestReaders> = {
   nextCall: async () => ({ label: 'none booked', title: null, start: null }),
   bell: async () => ({ unreadGroups: 0, open: 0 }),
   alerts: async () => ({ rows: [], groups: [], critical: 0 }),
+  health: async () => ({ urgent: [], alerts: [], olderErrored: 0, olderStalled: 0, acknowledged: 0 }),
+  magnets: async () => 0,
+  calls: async () => 0,
 }
 
 export function renderInFrame(ui: ReactElement, opts: { layout?: Layout; hash?: string; readers?: Partial<NonNullable<TestReaders>>; frame?: Partial<Frame> } = {}) {

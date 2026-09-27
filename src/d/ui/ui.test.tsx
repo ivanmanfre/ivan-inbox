@@ -54,6 +54,6 @@ describe('NotBuilt', () => {
   it('says so honestly and links today\'s page', () => {
     renderInFrame(<NotBuilt place="ops" layout="phone" />, { layout: 'phone' })
     expect(screen.getByText('Not built yet in this preview. Open today\'s page:')).toBeTruthy()
-    expect(screen.getByText("Today's Ops").getAttribute('href')).toBe('#exp/brain-b/ops')
+    expect(screen.getByText("Today's Ops").getAttribute('href')).toBe('#exp/brain-b/ops?app=today')
   })
 })

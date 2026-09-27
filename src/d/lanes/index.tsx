@@ -28,6 +28,7 @@ import { monitorLiveness } from '../../lib/campaignControl'
 import { answerOf, hm, RANGES, type Range } from './model'
 import { monitorLine, RangeKeys } from './foot'
 import { Phone } from './Phone'
+import { TodayNotes } from './TodayNotes'
 import { ControlCell, Plate, TodayCell } from './seatCells'
 import { LanesSheet, type SheetKind } from './Sheets'
 import { failedCount, useLanesData } from './useLanesData'
@@ -86,6 +87,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
     {data.cc.failed && !data.cc.value && <Failed what="the send monitor" detail={data.cc.failed} onRetry={refresh} />}
     {staleMin != null && <p className="dl-notice dl-al">The monitor last reported {staleMin} minutes ago, past its own staleness budget, so every seat below reads unverified whatever the snapshot said.</p>}
     {p?.coverage.degraded && <p className="dl-notice">Coverage degraded{p.coverage.degraded_reasons.length ? `: ${p.coverage.degraded_reasons.join(' · ')}` : '.'}</p>}
+    <TodayNotes />
   </>
   const sheets = <>
     {camp && <CampaignSheet c={camp} now={now} onClose={close} />}
