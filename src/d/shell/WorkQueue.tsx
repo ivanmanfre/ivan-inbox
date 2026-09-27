@@ -30,6 +30,8 @@ import { cleanLine } from './feedShape'
 // Read only. A row opens the D place that holds it.
 // ---------------------------------------------------------------------------
 
+const FIRST = 3
+
 type Piles = { review: Awaited<ReturnType<typeof fetchContentReviewPile>>; errors: Awaited<ReturnType<typeof fetchContentErrorPile>>; ideas: Awaited<ReturnType<typeof fetchStagedIdeaPile>> }
 
 function useQueueReads() {
@@ -80,6 +82,8 @@ export function WorkQueue({ go }: { go: (hash: string) => void }) {
   const t = useToday()
   const q = useQueueReads()
   const [older, setOlder] = useState(false)
+  // The bell is for what just happened: the queue shows its first three, the rest one tap away.
+  const [all, setAll] = useState(false)
   const now = Date.now()
   const items = useMemo(() => (q.ops && q.piles ? rankQueue([
     ...buildReplyItems(inbox.threads, now),
@@ -114,8 +118,13 @@ export function WorkQueue({ go }: { go: (hash: string) => void }) {
       {!q.failed && !items && <Skeleton lines={3} title={false} label="Reading the work queue" />}
       {items && items.length === 0 && <p className="d-wq-none">Nothing crossing every lane is waiting on you right now.</p>}
       {never > 0 && <p className="d-wq-never" data-never-opened>{never} {never === 1 ? 'person' : 'people'} wrote and {never === 1 ? 'was' : 'were'} never opened here.</p>}
-      {fold?.live.map(i => <QueueRow key={i.id} i={i} go={go} />)}
-      {fold && fold.older.length > 0 && (
+      {fold?.live.slice(0, all ? undefined : FIRST).map(i => <QueueRow key={i.id} i={i} go={go} />)}
+      {fold && fold.live.length > FIRST && (
+        <button type="button" className="d-wq-fold" aria-expanded={all} data-verb="expand" onClick={() => setAll(a => !a)}>
+          {all ? 'Show the first three' : `Show all ${fold.live.length} from the last two weeks`}
+        </button>
+      )}
+      {fold && fold.older.length > 0 && (all || fold.live.length <= FIRST) && (
         <button type="button" className="d-wq-fold" aria-expanded={older} onClick={() => setOlder(o => !o)}>
           {fold.older.length} older than two weeks · {older ? 'Hide' : 'Still waiting. Show them'}
         </button>

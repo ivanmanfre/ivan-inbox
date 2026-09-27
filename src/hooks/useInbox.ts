@@ -16,13 +16,15 @@ const COALESCE_MS = 1500
  * `enabled` false: a second caller under a provider that already runs this read
  * (D's frame shares ONE inbox with its DMs page) mounts no read, no channel and
  * no focus listener. Default true: every existing caller is unchanged.
+ * `seedCache`: paint the saved copy even while the live read waits (D's frame
+ * starts its read a few seconds late off the DMs page, so the page's own reads go first).
  */
-export function useInbox(enabled = true) {
+export function useInbox(enabled = true, seedCache = enabled) {
   // N3-1: the last reconciled list, read SYNCHRONOUSLY so the first render pass
   // already has rows. Anything async here (IndexedDB, supabase.auth.getSession)
   // paints a frame late, which is the skeleton flash this exists to remove.
   // A disabled caller never pays for parsing the saved copy.
-  const seed = useMemo(() => (enabled ? readInboxCache() : null), []) // eslint-disable-line react-hooks/exhaustive-deps
+  const seed = useMemo(() => (seedCache ? readInboxCache() : null), []) // eslint-disable-line react-hooks/exhaustive-deps
   const [threads, setThreads] = useState<Thread[]>(seed?.cache.threads ?? [])
   // True while the ONLY thing on screen came off the device. It is not a
   // freshness claim and must never be read as one: `loadedAt` stays null until a

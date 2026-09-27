@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useInbox } from '../../hooks/useInbox'
 
 // ONE inbox read for the whole D frame (today's shell mounted useInbox once,
@@ -11,8 +11,19 @@ export type DInbox = ReturnType<typeof useInbox>
 
 const Ctx = createContext<DInbox | null>(null)
 
-export function DInboxProvider({ children }: { children: ReactNode }) {
-  const inbox = useInbox()
+/** Off the DMs page the whole-inbox read waits this long, so the page's own reads go first. */
+const OFF_DMS_DELAY_MS = 4000
+
+export function DInboxProvider({ children, now = false }: { children: ReactNode; now?: boolean }) {
+  const [on, setOn] = useState(now)
+  useEffect(() => {
+    if (on) return
+    if (now) { setOn(true); return }
+    const t = window.setTimeout(() => setOn(true), OFF_DMS_DELAY_MS)
+    return () => window.clearTimeout(t)
+  }, [now, on])
+  // The saved copy paints at once either way; only the live read waits.
+  const inbox = useInbox(on, true)
   return <Ctx.Provider value={inbox}>{children}</Ctx.Provider>
 }
 

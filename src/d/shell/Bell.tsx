@@ -240,8 +240,8 @@ export function BellFeed() {
             <em>Open</em>
           </button>
         )}
-        <WorkQueue go={go} />
         <SystemBox groups={groups} failed={c.alerts.failed} onRetry={() => c.refresh('alerts')} onClear={clearAlerts} onDismiss={dismissAlert} />
+        <WorkQueue go={go} />
         {!feed.loaded && <Skeleton lines={5} label="Reading notifications" />}
         {feed.loaded && feed.error && feed.groups.length === 0 && <Failed what="the notifications" onRetry={() => void feed.refresh()} />}
         {feed.loaded && !feed.error && feed.groups.length === 0 && (

@@ -52,8 +52,8 @@ export function actionWord(n: Notification): string | null {
 function Payload({ n, word, subject }: { n: Notification; word: string; subject: string | null }) {
   const form = formFor(n.family)
   if (form === 'quote') {
-    const { quote } = quoteCard(n)
-    return quote ? <blockquote className="d-fn-q">{cleanLine(quote)}</blockquote> : null
+    const quote = cleanLine(quoteCard(n).quote)
+    return quote ? <blockquote className="d-fn-q">{quote}</blockquote> : null
   }
   if (form === 'time') {
     const detail = detailLine(n.body, `${word} ${subject ?? ''}`, 90)
@@ -62,7 +62,8 @@ function Payload({ n, word, subject }: { n: Notification; word: string; subject:
   }
   if (form === 'page') {
     const { snippet, asked } = pageCard(n)
-    return <>{snippet && <blockquote className="d-fn-q">{cleanLine(snippet)}</blockquote>}{asked && <small className="d-fn-asked">You asked: {asked}</small>}</>
+    const snip = cleanLine(snippet)
+    return <>{snip && <blockquote className="d-fn-q">{snip}</blockquote>}{asked && <small className="d-fn-asked">You asked: {asked}</small>}</>
   }
   const line = detailLine(n.body, `${word} ${subject ?? ''}`)
   return line ? <small>{cleanLine(line)}</small> : null

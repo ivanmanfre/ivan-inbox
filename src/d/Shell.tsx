@@ -294,7 +294,7 @@ export default function DShell() {
   }), [layout, route, bellOpen, openBell, claudeOpen, openClaude, openPalette, titleSlot, toolsSlot])
 
   return (
-    <DInboxProvider>
+    <DInboxProvider now={route.place === 'dms'}>
       <FrameCountsProvider>
       <FrameCtx.Provider value={frame}>
         <ClaudeProvider>
