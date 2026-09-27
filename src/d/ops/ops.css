@@ -23,7 +23,7 @@
 .op-q:hover{background:rgba(255,255,255,.03)}
 .op-q.op-on{background:var(--sel);box-shadow:inset 3px 0 0 var(--lime)}
 .op-qm{flex:1;min-width:0;display:flex;flex-direction:column}
-.op-qn{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.op-qn{font-size:13.5px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .op-qn b{font-weight:600}.op-qn span{color:var(--t2)}
 .op-qs{font-size:12.5px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .op-q time{font:400 11.5px var(--m);color:var(--t3);white-space:nowrap;padding-top:2px}
