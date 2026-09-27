@@ -1,4 +1,6 @@
 import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { ClaudeProvider } from './claude/ClaudeProvider'
+import { Island } from './claude/Island'
 import { FrameCountsProvider, useFrameCounts } from './counts/useFrameCounts'
 import { PLACES, type Layout } from './places'
 import { canonicalHash, parseDHash, toDHash, type DRoute } from './route'
@@ -151,6 +153,7 @@ function Desktop({ setTitleSlot, setToolsSlot }: { setTitleSlot: (el: HTMLElemen
           {f.claudeOpen && <aside className="d-claude" aria-label="Claude"><ClaudeSlot /></aside>}
           {f.bellOpen && <BellFeed />}
         </div>
+        <Island />
       </main>
     </>
   )
@@ -168,6 +171,7 @@ function PhoneFrame({ setToolsSlot, panelOpen, setPanelOpen }: {
       <OfflineLine />
       <div className="d-pbody"><Page /></div>
       <Dock />
+      <Island />
       {panelOpen && <PhonePanel onClose={closePanel} />}
       {f.bellOpen && (
         <>
@@ -226,6 +230,7 @@ export default function DShell() {
   return (
     <FrameCountsProvider>
       <FrameCtx.Provider value={frame}>
+        <ClaudeProvider>
         <div className={`d-app d-${layout}`} data-bell={bellOpen ? 'open' : undefined} data-place={route.place}>
           <ToastProvider>
             <DConfirmProvider>
@@ -241,6 +246,7 @@ export default function DShell() {
             </DConfirmProvider>
           </ToastProvider>
         </div>
+        </ClaudeProvider>
       </FrameCtx.Provider>
     </FrameCountsProvider>
   )

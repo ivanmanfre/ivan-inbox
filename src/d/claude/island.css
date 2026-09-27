@@ -1,0 +1,18 @@
+/* D · Claude status pill + "Claude answered" card (shown by the frame while the drawer is closed),
+   and the "working" word on the panel's Claude item. Loaded eagerly with the frame. */
+.dcl-working{margin-left:auto;font:500 11px var(--m);font-style:normal;color:var(--lime);border:1px solid var(--hotB);border-radius:5px;padding:0 6px;line-height:18px}
+.dcl-island{position:fixed;z-index:15;right:18px;bottom:18px;background:var(--p2);border:1px solid var(--strong);box-shadow:0 14px 34px rgba(0,0,0,.55);color:var(--t1)}
+.d-phone .dcl-island{right:12px;left:12px;bottom:calc(var(--dock-h) + 26px + env(safe-area-inset-bottom))}
+.dcl-island-pill{display:inline-flex;align-items:center;gap:8px;height:36px;border-radius:18px;padding:0 14px 0 11px;font-size:13.5px}
+.d-phone .dcl-island-pill{left:auto}
+.dcl-island-pill i{width:12px;height:12px;border-radius:50%;border:2px solid var(--seg);border-top-color:var(--lime);animation:dcl-ispin 1s linear infinite}
+.dcl-island-pill span{font:400 12px var(--m);color:var(--t2)}
+@keyframes dcl-ispin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.dcl-island-pill i{animation:none}}
+.dcl-island-card{width:360px;border-radius:14px;padding:12px 12px 10px 14px;display:flex;flex-direction:column;gap:8px}
+.d-phone .dcl-island-card{width:auto}
+.dcl-island-card.dcl-bad{border-color:rgba(232,160,143,.55)}
+.dcl-island-b{text-align:left;display:flex;flex-direction:column;gap:3px}
+.dcl-island-b b{font-weight:600;font-size:14px}
+.dcl-island-b span{font-size:13px;color:var(--t2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dcl-island-k{display:flex;gap:6px;justify-content:flex-end}
