@@ -28,6 +28,7 @@ import { ControlCell, Plate, TodayCell } from './seatCells'
 import { LanesSheet, type SheetKind } from './Sheets'
 import { failedCount, useLanesData } from './useLanesData'
 import { GLANCE_ROWS, GlancePhone, useGlance, type GlanceCtx } from './glance/Glance'
+import { GlanceTasks } from './glance/Tasks'
 import './lanes.css'
 
 const SHEETS: SheetKind[] = ['decisions', 'log', 'ledger', 'delivery', 'problems']
@@ -99,6 +100,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
         <AnswerRow title={title} sub={ans.sub} />
         {top}
         <GlancePhone seats={cols} g={g} />
+        <div className="gl-ptasks"><div className="gl-phead">Your tasks<small>open, soonest first</small></div><GlanceTasks /></div>
         <Phone seats={cols} ctx={ctx} seat={(cols as string[]).includes(q.get('seat') ?? '') ? (q.get('seat') as Seat) : cols[0]}
           pick={s => go({ seat: s })} range={range} setRange={setRange} doors={doors} monitor={monitorLine(data, now)} />
         {sheets}
@@ -108,7 +110,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
 
   const band = (label: string, note: ReactNode, cell: (s: Seat) => ReactNode, cls = '', id?: string) => <>
     <div className={`dl-gut ${cls}`}>{label}{note != null && <small>{note}</small>}</div>
-    {cols.map(s => <div key={s} className={cls === 'dl-top' ? 'dl-pl' : ['dl-cell', ...cls.split(' ').filter(Boolean).map(c => c === 'dl-gl' ? 'dl-glc' : c)].join(' ')} data-seat={s} data-band={id}>{cell(s)}</div>)}
+    {cols.map((s, i) => <div key={s} className={[cls === 'dl-top' ? 'dl-pl' : 'dl-cell', ...cls.split(' ').filter(c => c && c !== 'dl-top').map(c => c === 'dl-gl' ? 'dl-glc' : c), i === cols.length - 1 ? 'dl-lc' : ''].filter(Boolean).join(' ')} data-seat={s} data-band={id}>{cell(s)}</div>)}
   </>
   return (
     <div className="dl-root">
@@ -116,7 +118,9 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
       {top}
       <div className="dl-grid" style={{ gridTemplateColumns: `var(--dl-gut) repeat(${cols.length}, minmax(0, 1fr))` }}>
         {band('Seat', null, s => <Plate seat={s} ctx={ctx} />, 'dl-top')}
-        {GLANCE_ROWS.map(({ id, label, note, Cell }, i) => <Fragment key={id}>{band(label, note, s => <Cell seat={s} g={g} />, i === GLANCE_ROWS.length - 1 ? 'dl-gl dl-gl-last' : 'dl-gl', `glance-${id}`)}</Fragment>)}
+        {GLANCE_ROWS.map(({ id, label, note, Cell }) => <Fragment key={id}>{band(label, note, s => <Cell seat={s} g={g} />, 'dl-gl', `glance-${id}`)}</Fragment>)}
+        <div className="dl-gut dl-gl dl-gl-last">Tasks<small>yours, soonest first</small></div>
+        <div className="dl-cell dl-glc dl-gl-last dl-lc" style={{ gridColumn: `2 / span ${cols.length}` }} data-band="glance-tasks"><GlanceTasks /></div>
         {band('Today', 'Warsaw day', s => <TodayCell seat={s} ctx={ctx} />, '', 'today')}
         {band('Control', 'live monitor', s => <ControlCell seat={s} ctx={ctx} />, '', 'control')}
         {band('Campaigns', 'last 7 days', s => <CampaignsCell seat={s} ctx={ctx} />)}

@@ -64,3 +64,30 @@
 .gl-offl b{color:var(--t3)}
 .gl-short{display:none}
 .gl-phone .gl-long{display:none}.gl-phone .gl-short{display:inline}
+/* tasks strip */
+.gt{padding:8px 12px 10px;display:flex;flex-direction:column;gap:6px}
+.gt-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:0 18px}
+.gt-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:4px 10px;padding:5px 0;border-bottom:1px solid var(--line)}
+.gt-row.gt-done{opacity:.5}
+.gt-t{font:500 13.5px/1.35 var(--f);color:var(--t1);min-width:0;overflow-wrap:anywhere}
+.gt-m{display:flex;gap:8px;align-items:baseline;font:400 12px var(--m);color:var(--t3);white-space:nowrap}
+.gt-m b{font-weight:500}
+.gt-over{color:var(--warn)}.gt-now{color:var(--lime)}.gt-soon{color:var(--t1)}.gt-later,.gt-nod{color:var(--t3)}
+.gt-rm{all:unset;cursor:pointer;font:400 12px var(--m);color:var(--t2);text-decoration:underline;text-decoration-color:var(--line2);text-underline-offset:3px}
+.gt-rm:hover{color:var(--t1)}.gt-rm:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+.gt-q{font:400 12px var(--m);color:var(--t3);margin:0}
+.gt-err{display:block;font:400 12px var(--m);color:var(--warn)}
+.gt-foot{display:flex;gap:14px}
+.gt-add{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.gt-in{flex:1;min-width:200px;background:var(--bg);border:1px solid var(--line2);border-radius:8px;color:var(--t1);font:400 14px var(--f);padding:7px 10px}
+.gt-in:focus{outline:2px solid var(--lime);outline-offset:0;border-color:transparent}
+.gt-date{background:var(--bg);border:1px solid var(--line2);border-radius:8px;color:var(--t2);font:400 13px var(--m);padding:6px 8px;color-scheme:dark}
+.d-app .gt-on{color:var(--t1);border-color:var(--strong);background:var(--p1)}
+.gl-ptasks{border-bottom:2px solid var(--strong);background:var(--p1)}
+.gl-ptasks .gt-list{grid-template-columns:1fr}
+.gl-ptasks .gt-row{grid-template-columns:auto minmax(0,1fr);}
+.gl-ptasks .gt-m{grid-column:2}
+.gl-ptasks .gt-in{min-width:0;flex-basis:100%}
+.gl-lanes li.gl-none{font:400 11.5px/1.35 var(--m);color:var(--t3);padding:3px 0}
+.gl-row .gl-n{font-size:24px}
+.gl-cell.gl-row{padding-top:6px;padding-bottom:7px}

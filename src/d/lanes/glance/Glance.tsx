@@ -83,8 +83,7 @@ export function DraftsCell({ seat, g }: { seat: Seat; g: GlanceCtx }) {
   return (
     <a className="gl-cell gl-link gl-row" href={dHash('dms', null, { seat })} aria-label={`${SEAT_NAME[seat]} DM drafts, open DMs`}>
       <Wait r={g.drafts[seat]}>{v => <Big v={v} tone="live" />}</Wait>
-      <span className="gl-u"><span className="gl-long">DM drafts waiting on you, follow-ups included</span><span className="gl-short">drafts</span></span>
-      <span className="gl-go">DMs ›</span>
+      <span className="gl-u"><span className="gl-long">drafts to approve, follow-ups too ›</span><span className="gl-short">drafts</span></span>
     </a>
   )
 }
@@ -95,7 +94,7 @@ export function InvitesCell({ seat, g }: { seat: Seat; g: GlanceCtx }) {
   return (
     <button type="button" className="gl-cell gl-link gl-row" onClick={() => g.jump('today', seat)}>
       <Wait r={r}>{v => <Big v={v} tone="live" />}</Wait>
-      <span className="gl-u"><span className="gl-long">invites sent today (Warsaw day)</span><span className="gl-short">today</span>{t?.invY != null ? `, ${t.invY} yesterday` : ''}</span>
+      <span className="gl-u"><span className="gl-long">sent today (Warsaw)</span><span className="gl-short">today</span>{t?.invY != null ? ` · ${t.invY} yday` : ''}</span>
     </button>
   )
 }
@@ -111,7 +110,7 @@ export function ReadyCell({ seat, g }: { seat: Seat; g: GlanceCtx }) {
       </div>
       {'v' in r && (r.v.lanes.length ? (
         <ul className="gl-lanes">
-          {r.v.lanes.map(l => {
+          {r.v.lanes.filter(l => l.n > 0).map(l => {
             const label = <span>{l.label}{l.off && <small className="gl-off">{l.off}</small>}</span>
             return (
               <li key={l.lane} className={l.off ? 'gl-offl' : undefined}>
@@ -121,6 +120,7 @@ export function ReadyCell({ seat, g }: { seat: Seat; g: GlanceCtx }) {
               </li>
             )
           })}
+          {r.v.lanes.some(l => l.n === 0) && <li className="gl-none">None ready: {r.v.lanes.filter(l => l.n === 0).map(l => l.label).join(', ')}</li>}
         </ul>
       ) : <p className="gl-note">No live lane on this seat.</p>)}
     </div>
