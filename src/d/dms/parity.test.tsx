@@ -129,7 +129,7 @@ describe('History', () => {
     const a = document.querySelector('.dm-hist a') as HTMLAnchorElement
     expect(a.href).toBe('https://inboundonsteroids.com/scan/hana')
     const text = document.querySelector('.dm-hist')!.textContent!
-    expect(text).toContain('to hana@x.com')
+    expect(text).toContain('To hana@x.com')
     expect(text).toContain('Not accepted yet')
     expect(document.querySelectorAll('.dm-bub').length).toBeGreaterThanOrEqual(2)
   })

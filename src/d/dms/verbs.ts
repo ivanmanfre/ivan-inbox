@@ -14,6 +14,7 @@ import { dismissCameBack, undismissCameBack } from '../../wb/dms/cameBackData'
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
 import { useAsks } from './asks'
+import { canMarkSolved, setNeedsManualReply } from './solved'
 
 export type Edits = { main: string; email: string | null; companion: string | null }
 
@@ -105,6 +106,38 @@ export function useDmVerbs(ctx: VerbCtx) {
         action: { label: 'Undo', verb: 'undo', run: () => { void undoDiscard(gone) } },
       })
       return null
+    }
+
+    /** Mark as solved: no answer needed. Every pending leg discarded (plain), the reply flag lowered. */
+    async function solved(t: Thread): Promise<string | null> {
+      if (!canMarkSolved(t)) return null
+      const legs = draftLegs(t)
+      let failed
+      try { failed = await discardLegs(legs, null) } catch (e) { const m = errText(e); fail(`Not marked: ${m}`); return m }
+      const gone = legs.filter(l => !failed.some(f => f.leg.id === l.id))
+      if (!gone.length) { const m = failed.map(legFailureText).join(' '); fail(m); return m }
+      ctx.patch(gone.map(l => l.id), { send_blocked_reason: 'discarded_in_inbox', send_blocked_at: new Date().toISOString(), discard_mode: null })
+      const wasFlag = t.needsManualReply
+      let flagErr: string | null = null
+      try { await setNeedsManualReply(t.prospect_id, false) } catch (e) { flagErr = errText(e) }
+      ctx.refresh()
+      if (failed.length) fail(failed.map(legFailureText).join(' '))
+      toast.show({
+        message: `Marked ${t.prospect_name} as solved.`,
+        sub: flagErr ? `It left Needs you, but the reply flag could not be lowered: ${flagErr}`
+          : `It comes back if ${first(t)} writes again. The draft stays under Thrown away for 3 days.`,
+        action: { label: 'Undo', verb: 'undo', run: () => { void undoSolved(t.prospect_id, gone, wasFlag) } },
+      })
+      return null
+    }
+
+    async function undoSolved(pid: string, legs: InboxMessage[], wasFlag: boolean) {
+      try {
+        for (const l of legs) await restoreDraft(l.id)
+        ctx.patch(legs.map(l => l.id), { send_blocked_reason: null, send_blocked_at: null, discard_mode: null })
+        if (wasFlag) await setNeedsManualReply(pid, true)
+      } catch (e) { fail(`Could not undo: ${errText(e)}`) }
+      ctx.refresh()
     }
 
     async function undoDiscard(legs: InboxMessage[]) {
@@ -265,7 +298,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       await bulkDiscard(stale, '', { title: `Discard ${stale.length} stale draft${stale.length === 1 ? '' : 's'}?`, message: 'These threads already have your own reply after the last inbound message. Nothing is sent.', confirmText: 'Discard stale' })
     }
 
-    return { rowDiscard, discardStale, send, discard, later, bringBackNow, saveEdit, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, askOwner, bulkDiscard, isFollowUp }
+    return { rowDiscard, discardStale, send, discard, solved, later, bringBackNow, saveEdit, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, askOwner, bulkDiscard, isFollowUp }
   }, [ctx, confirm, toast, askDiscard, askDate])
 }
 
