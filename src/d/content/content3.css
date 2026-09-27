@@ -53,6 +53,10 @@
 .cn-iq .cn-ol{color:var(--t3);font:400 11.5px var(--m)}
 .cn-lmline{padding:6px 14px;font-size:12.5px;color:var(--t2);border-bottom:1px solid var(--line)}
 .cn-lmline a{color:var(--t1);text-decoration:underline;text-underline-offset:3px}
+/* CB-19 P4(b) reach-slot bandit chip: same quiet, informational treatment as
+   the outlier line (.cn-ol) — never lime, that color is reserved for a live
+   state, and this is a read-only recommendation, not a status. */
+.cn-iq .cn-bd{color:var(--t3);font:400 11.5px var(--m)}
 .cn-pagemore{display:block;width:100%;padding:10px 14px;text-align:left;font:500 13px var(--f);color:var(--t2);border-bottom:1px solid var(--line)}
 .cn-pagemore:hover{color:var(--t1)}
 .cn-ichips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}

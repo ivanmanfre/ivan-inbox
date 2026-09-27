@@ -12,7 +12,7 @@ import { Ideas, filtered } from './Ideas'
 const cand = (n: number, o: Partial<IdeaCandidate> = {}) => ({ id: `i${n}`, normalized_topic: `Idea ${n}`, raw_topic: null, composite_score: 100 - n, source: n % 2 ? 'manual' : 'ivan_call',
   icp_fit_score: null, virality_score: null, gap_score: null, beat_fit_score: null, signal_strength: null, why_score: null, post_angle: null, format_recommendation: null,
   ingested_at: null, content_type: 'post', ivan_engaged: null, source_ref: null, slack_permalink: null, scored_at: null, status: 'reviewing', ...o } as unknown as IdeaCandidate)
-const empty = { items: [], n: 0, loading: false, error: null, refresh: vi.fn(), scores: { ok: false, byRef: new Map(), validated: false }, facets: [] }
+const empty = { items: [], n: 0, loading: false, error: null, refresh: vi.fn(), scores: { ok: false, byRef: new Map(), validated: false }, facets: [], chip: { ok: false, weekStart: null, byRef: new Map(), slots: [] } }
 afterEach(cleanup)
 
 describe('ideas parity', () => {
