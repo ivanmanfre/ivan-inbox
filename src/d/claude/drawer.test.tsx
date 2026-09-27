@@ -44,7 +44,7 @@ function fakeChat(over: Partial<ChatHandle> = {}): ChatHandle {
 function Host({ chat }: { chat: ChatHandle }) {
   const [text, setText] = useState('')
   const [see, setSee] = useState<SeeState>(EMPTY_SEE)
-  const v: ClaudeCtx = { chat, online: true, text, setText, see, setSee, focusTurn: null, clearFocus: () => {}, since: null, stepAt: () => undefined, landed: null, clearLanded: () => {}, savedAt: null }
+  const v: ClaudeCtx = { chat, online: true, text, setText, see, setSee, focusTurn: null, clearFocus: () => {}, since: null, stepAt: () => undefined, landed: null, clearLanded: () => {}, savedAt: null, stop: () => chat.abort(), voiceOpen: false, setVoiceOpen: () => {}, dictateOnOpen: false, clearDictateOnOpen: () => {} }
   return <ClaudeValueProvider value={v}><ClaudeDrawer layout="desktop" route={{ place: 'dms', sub: null, query: new URLSearchParams() }} onClose={() => {}} /></ClaudeValueProvider>
 }
 
@@ -58,13 +58,38 @@ const field = () => screen.getByLabelText('Message to Claude') as HTMLTextAreaEl
 const verb = (v: string) => document.querySelector(`[data-verb="${v}"]`) as HTMLElement
 
 describe('Claude drawer verbs', () => {
-  it('send: the typed text goes to chat.send with no subject; the field clears', async () => {
+  it('send: the typed text goes to chat.send with the page subject only; the field clears', async () => {
     const chat = fakeChat()
     renderInFrame(<Host chat={chat} />)
     fireEvent.change(field(), { target: { value: 'what is waiting' } })
     fireEvent.click(verb('send'))
-    expect(chat.send).toHaveBeenCalledWith('what is waiting', undefined, undefined)
+    const [text, about, see] = (chat.send as ReturnType<typeof vi.fn>).mock.calls[0]
+    expect([text, about]).toEqual(['what is waiting', undefined])
+    expect(see).toMatch(/He is on the DMs screen, in all lanes\./)
     expect(field().value).toBe('')
+  })
+  it('detach all: nothing travels', async () => {
+    const chat = fakeChat()
+    renderInFrame(<Host chat={chat} />)
+    fireEvent.click(verb('peek'))
+    fireEvent.click(verb('detach-all'))
+    fireEvent.change(field(), { target: { value: 'x' } })
+    fireEvent.click(verb('send'))
+    expect((chat.send as ReturnType<typeof vi.fn>).mock.calls[0][2]).toBeUndefined()
+  })
+  it('/model via the Send key runs the command and never sends the text', () => {
+    const chat = fakeChat()
+    renderInFrame(<Host chat={chat} />)
+    fireEvent.change(field(), { target: { value: '/model default' } })
+    fireEvent.click(verb('send'))
+    expect(chat.send).not.toHaveBeenCalled()
+    expect(chat.setWanted).toHaveBeenCalledWith(null)
+  })
+  it('a starter on an empty chat sends today\'s words', () => {
+    const chat = fakeChat()
+    renderInFrame(<Host chat={chat} />)
+    fireEvent.click(screen.getByText('What needs me'))
+    expect((chat.send as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe('What is waiting on me right now?')
   })
   it('send carries the DMs hand-off: about = the name, see = names-only block; remove-subject drops it', async () => {
     const chat = fakeChat()
@@ -79,7 +104,11 @@ describe('Claude drawer verbs', () => {
     expect(see).toMatch(/Open conversation with Angel Wang/)
     expect(see).toMatch(/not attached/)
     fireEvent.click(verb('remove-subject'))
-    await waitFor(() => expect(document.querySelector('.dcl-chip')).toBeNull())
+    expect(await screen.findByText('Attach Angel Wang')).toBeTruthy()
+    fireEvent.change(field(), { target: { value: 'after detach' } })
+    fireEvent.click(verb('send'))
+    const [, , see2] = (chat.send as ReturnType<typeof vi.fn>).mock.calls[1]
+    expect(see2 ?? '').not.toMatch(/Angel Wang/)
   })
   it('attach-full switches the next message to the whole conversation', async () => {
     const chat = fakeChat()
@@ -103,7 +132,7 @@ describe('Claude drawer verbs', () => {
     fireEvent.click(verb('chats'))
     fireEvent.click(await screen.findByRole('switch'))
     expect(chat.setBotPushMuted).toHaveBeenCalledWith(true)
-    expect(await screen.findByText('1 turn · failed')).toBeTruthy()
+    expect(await screen.findByText(/1 turn · failed/)).toBeTruthy()
   })
   it('new chat and opening a chat use the handle', async () => {
     const chat = fakeChat()
@@ -118,7 +147,7 @@ describe('Claude drawer verbs', () => {
     const chat = fakeChat()
     renderInFrame(<Host chat={chat} />)
     fireEvent.change(field(), { target: { value: 'run this' } })
-    fireEvent.click(screen.getByLabelText('Run on the runner'))
+    fireEvent.click(screen.getByLabelText('More: commands, model, runner'))
     fireEvent.click(verb('run-job'))
     await waitFor(() => expect(jobs.dispatchJob).toHaveBeenCalledWith({ kind: 'prompt', input: 'run this', cwd: null, model: null }))
   })

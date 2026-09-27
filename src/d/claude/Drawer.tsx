@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { buildSeeBlock } from '../../exp/v2c/chat/paneContext'
+import { buildSeeBlock, isOff } from '../../exp/v2c/chat/paneContext'
 import type { Layout } from '../places'
 import type { DRoute } from '../route'
 import { useClaudeHandoff } from '../ui/claudeHandoff'
@@ -9,8 +9,11 @@ import { Composer } from './Composer'
 import { Context } from './Context'
 import { Conversation } from './Conversation'
 import { CIcon } from './icons'
-import { secsSince, statusOf, subjectMeta } from './model'
-import { RunnerJobs, RunnerMenu, useDRunner } from './Runner'
+import { secsSince, shortTitle, statusOf, subjectMeta } from './model'
+import { More } from './More'
+import { RunnerJobs, useDRunner } from './Runner'
+import { useSubjects } from './useSubjects'
+import { hasLiveVoice } from './VoiceLayer'
 import './claude.css'
 
 export type ClaudeDrawerProps = {
@@ -52,16 +55,20 @@ export function StatusPill() {
   )
 }
 
-export default function ClaudeDrawer({ layout, onClose }: ClaudeDrawerProps) {
-  const { chat, text, setText, see } = useClaude()
+export default function ClaudeDrawer({ layout, route, onClose }: ClaudeDrawerProps) {
+  const { chat, text, setText, see, setVoiceOpen, online } = useClaude()
   const handoff = useClaudeHandoff()
   const [view, setView] = useState<'chat' | 'chats'>('chat')
   const list = useChatList()
   const runner = useDRunner(chat.wanted ?? null)
-  const subject = handoff?.subject ?? null
-  const meta = subject ? subjectMeta(subject) : null
+  const subjects = useSubjects(route)
+  const person = handoff && !isOff(see, handoff.subject.key) ? subjectMeta(handoff.subject) : null
   const chatsN = list.threads ? list.threads.length : null
   const { reload } = list
+  const last = chat.turns[chat.turns.length - 1]
+  // Today's honest-degrade: a picked model the container refused keeps the pick and says so.
+  const modelRefused = !!(last?.role === 'assistant' && last.error && /model/i.test(last.error.message) && chat.wanted !== null)
+  const title = chat.thread?.kind === 'bot' ? "Claude's thread" : chat.thread?.title ? shortTitle(chat.thread.title, 48) : chat.turns.length ? null : 'New chat'
 
   // A hand-off from DMs brings the conversation back to the front.
   const handoffAt = handoff?.at ?? null
@@ -70,9 +77,8 @@ export default function ClaudeDrawer({ layout, onClose }: ClaudeDrawerProps) {
   useEffect(() => { if (view === 'chats') reload() }, [view, reload])
 
   const send = (message: string) => {
-    const seeBlock = subject ? buildSeeBlock([subject], see) : undefined
     setText('')
-    void chat.send(message, meta?.name, seeBlock)
+    void chat.send(message, person?.name, buildSeeBlock(subjects, see))
     setView('chat')
   }
 
@@ -81,13 +87,19 @@ export default function ClaudeDrawer({ layout, onClose }: ClaudeDrawerProps) {
       {layout === 'phone' && <div className="dcl-grab" aria-hidden="true" />}
       <div className="dcl-head">
         <button type="button" className={`dcl-ib${view === 'chats' ? ' dcl-on' : ''}`} data-verb="chats" aria-pressed={view === 'chats'}
-          aria-label={view === 'chats' ? 'Back to the chat' : 'Chats'} title="Chats" onClick={() => setView(v => (v === 'chats' ? 'chat' : 'chats'))}>
-          <CIcon name="chats" />
+          aria-label={view === 'chats' ? 'Back to the chat' : chat.botUnread ? "Chats, Claude's thread has something new" : 'Chats'} title="Chats" onClick={() => setView(v => (v === 'chats' ? 'chat' : 'chats'))}>
+          <CIcon name="chats" />{chat.botUnread && <i className="dcl-dot" aria-hidden="true" />}
         </button>
         <div className="dcl-title">
           <b>{view === 'chats' ? 'Chats' : 'Claude'}</b>
           {view === 'chats' ? <small>{chatsN == null ? 'reading…' : `${chatsN} chats`}</small> : <StatusPill />}
+          {view === 'chat' && title && <small className="dcl-tname" title={chat.thread?.title ?? undefined}>{title}</small>}
         </div>
+        {hasLiveVoice && (
+          <button type="button" className="dcl-ib" data-verb="talk" aria-label="Talk to Claude live" title="Talk live" disabled={!online} onClick={() => setVoiceOpen(true)}>
+            <CIcon name="voice" />
+          </button>
+        )}
         <button type="button" className="dcl-ib" data-verb="new-chat" aria-label="New chat" title="New chat" onClick={() => { chat.newThread(); setView('chat') }}>
           <CIcon name="plus" />
         </button>
@@ -95,16 +107,22 @@ export default function ClaudeDrawer({ layout, onClose }: ClaudeDrawerProps) {
           <CIcon name="x" />
         </button>
       </div>
+      {modelRefused && (
+        <div className="dcl-fail dcl-banner" role="alert">
+          <span>{last.error?.message}</span>
+          <button type="button" className="dcl-link" data-verb="model-default" onClick={() => chat.setWanted(null)}>Use the Claude default</button>
+        </div>
+      )}
       {view === 'chats'
         ? <Chats list={list} onPicked={() => setView('chat')} />
-        : <Conversation first={meta?.first ?? null} />}
+        : <Conversation first={person?.first ?? null} send={send} />}
       <RunnerJobs runner={runner} />
       <div className="dcl-foot">
-        <Context subject={subject} />
+        <Context subjects={subjects} />
         <Composer
-          placeholder={meta ? `Ask about ${meta.first}…` : 'Ask Claude…'}
+          placeholder={person ? `Ask about ${person.first}…` : 'Ask Claude…'}
           onSend={send}
-          lead={<RunnerMenu runner={runner} text={text} onSent={() => setText('')} disabled={!!runner.busy} />}
+          more={a => <More chat={chat} runner={runner} text={text} onSent={() => setText('')} onCommands={a.onCommands} onPaste={a.onPaste} phone={layout === 'phone'} />}
         />
       </div>
     </div>

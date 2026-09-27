@@ -96,3 +96,42 @@ export function bundleLabel(prompt: string): string {
   const n = (prompt ?? '').split('\n').filter(l => l.trimStart().startsWith('[')).length
   return n > 0 ? `${n} event${n === 1 ? '' : 's'}` : 'Feed rows'
 }
+
+/**
+ * Today's plain words for transport failures (wb/ask/AskThread.tsx errorCopy), so
+ * the glass never names the broker. Unmapped text falls through with "broker" swapped out.
+ */
+const ERROR_COPY: [RegExp, string][] = [
+  [/broker unreachable|could not reach|econnrefused|network error/i, 'Claude could not be reached. Nothing was sent.'],
+  [/stream ended early|dropped the connection|stream (?:closed|aborted)/i, 'The answer stopped early. Send it again.'],
+  [/timed? ?out|timeout/i, 'That took too long and stopped. Send it again.'],
+]
+export function errorCopy(message: string): string {
+  for (const [re, plain] of ERROR_COPY) if (re.test(message)) return plain
+  return message.replace(/\bbrokers?\b/gi, 'Claude').replace(/\s+,\s+/g, '. ')
+}
+/** Today's thread-busy refusal: never offered as a Retry. */
+export const THREAD_BUSY_RE = /still working on the last one/i
+
+/** "2.1s · $0.0123" (today's TurnMeta): only what the row actually reported. */
+export function turnMetaLine(t: { durationMs?: number | null; costUsd?: number | null }): string {
+  const parts: string[] = []
+  if (t.durationMs != null) parts.push(`${(t.durationMs / 1000).toFixed(1)}s`)
+  if (t.costUsd != null) parts.push(`$${t.costUsd.toFixed(4)}`)
+  return parts.join(' · ')
+}
+
+/** Today's session line (AskThread sessionLine). */
+export function sessionWords(g: { session: 'new' | 'resumed' } | null): string {
+  if (!g) return 'New conversation'
+  return g.session === 'resumed' ? 'Continuing this thread' : 'Fresh session'
+}
+
+/** Today's empty-chat starters (send word for word) and quick asks (insert only), AskThread QUICK_ASKS. */
+export const QUICK_ASKS: { label: string; send?: string; insert?: string }[] = [
+  { label: 'What needs me', send: 'What is waiting on me right now?' },
+  { label: 'Failed today', send: 'What broke today?' },
+  { label: 'Look first', send: 'What should I look at first?' },
+  { label: 'Draft a reply', insert: 'Draft a reply to ' },
+  { label: 'Run a scan', insert: 'Run a scan on ' },
+]

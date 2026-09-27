@@ -47,9 +47,11 @@ export function Island() {
   )
 }
 
-/** The "working" word on the panel's Claude item while a turn runs. */
+/** The panel's Claude item: "working" while a turn runs, "new" when Claude's own thread has an unread turn. */
 export function ClaudeWorking() {
   const c = useClaudeMaybe()
-  if (!c || !(c.chat.busy || c.chat.runningElsewhere)) return null
-  return <em className="dcl-working">working</em>
+  if (!c) return null
+  if (c.chat.busy || c.chat.runningElsewhere) return <em className="dcl-working">working</em>
+  if (c.chat.botUnread) return <em className="dcl-working dcl-new-w" title="Claude's thread has something new">new</em>
+  return null
 }

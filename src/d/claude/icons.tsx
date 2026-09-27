@@ -10,6 +10,10 @@ const G = {
   x: <path d="M6 6l12 12M18 6 6 18" />,
   search: <><circle cx="11" cy="11" r="6" /><path d="M16 16l4 4" /></>,
   run: <path d="M5 5h14v10H5zM9 19h6M12 15v4" />,
+  more: <><circle cx="5" cy="12" r="1.3" /><circle cx="12" cy="12" r="1.3" /><circle cx="19" cy="12" r="1.3" /></>,
+  voice: <path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4" />,
+  play: <path d="M8 5l11 7-11 7z" />,
+  pause: <path d="M8 5v14M16 5v14" />,
 } as const
 
 export type CIconName = keyof typeof G

@@ -73,6 +73,8 @@ export function dHash(place: PlaceId, sub?: string | null, query?: string | URLS
 export function toDHash(hash: string): string | null {
   if (!hash || hash[0] !== '#') return null
   if (/^#exp\/d(?:[/?]|$)/.test(hash)) return hash
+  // The manifest's "Talk to Claude" shortcut (vite.config.ts) opens live voice in the Claude drawer.
+  if (/^#claude\/voice\b/.test(hash)) return dHash('claude', null, { voice: '1' })
   const t = hash.match(/^#thread\/([^?#]+)/)
   if (t) return dHash('dms', null, { thread: decodeURIComponent(t[1]) })
   const m = hash.match(/^#exp\/(?:v2c?|brain-[abc])(?:\/([^/?#]*))?(?:\/([^/?#]*))?(?:\?([^#]*))?/)
@@ -104,4 +106,21 @@ const isD = (h: string) => /^#exp\/d(?:[/?]|$)/.test(h)
 export function canonicalHash(h: string): string {
   if (isD(h)) return h
   return toDHash(h) ?? dHash(HOME)
+}
+
+/**
+ * A cold tap on a push opens the address the push was written with: today's
+ * `./#exp/brain-b/ask?thread=…&turn=…` (inbox-turn-run), `…/ask?job=…&report=1`
+ * (runner) and the `#claude/voice` shortcut. On a build where D is the app,
+ * those land in D's Claude drawer instead of booting the old shell. Returns the
+ * D hash to replace the address with, or null to leave it alone (every other
+ * `#exp/brain-b/...` still reaches today's app on purpose).
+ */
+export function claudeLandingHash(hash: string): string | null {
+  if (/^#claude\/voice\b/.test(hash)) return toDHash(hash)
+  const m = hash.match(/^#exp\/(?:v2c?|brain-[abc])\/(?:[^/?#]+\/)?(?:ask|chat)\?([^#]*)/)
+  if (!m) return null
+  const q = new URLSearchParams(m[1])
+  if (!q.get('thread') && !q.get('job') && !q.get('turn')) return null
+  return toDHash(hash)
 }

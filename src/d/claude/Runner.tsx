@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  RunnerError, cancelJob, dispatchJob, fetchSpecs, isOpen, jobTitle, logLines, logTail, useJobDeepLink, useRunnerJobs,
-  type GoalSpec, type JobStatus, type RunnerJob,
+  RunnerError, cancelJob, dispatchJob, isOpen, jobTitle, logLines, logTail, useJobDeepLink, useRunnerJobs,
+  type JobStatus, type RunnerJob,
 } from '../../wb/ask/jobs'
 import { Sheet } from '../ui/Sheet'
 import { Btn } from '../ui/Key'
-import { CIcon } from './icons'
 
 // Runner jobs: today's runner (`inbox-runner-dispatch` for writes, `runner_jobs`
 // rows + realtime for reads, wb/ask/jobs.ts), drawn in D. A job runs on the
@@ -60,11 +59,17 @@ function elapsed(j: RunnerJob, now: number): string | null {
   return s >= 3600 ? `${Math.floor(s / 3600)}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}` : `${Math.floor(s / 60)}:${pad(s % 60)}`
 }
 
-/** The jobs that matter now: every open one, plus the newest finished ones. */
-export function visibleJobs(jobs: RunnerJob[], n = 3): RunnerJob[] {
-  const open = jobs.filter(j => isOpen(j.status))
-  const shut = jobs.filter(j => !isOpen(j.status)).slice(-Math.max(0, n - open.length))
-  return [...shut, ...open]
+/** Every loaded job (today lists all 20), newest first so the one running is on top. */
+export function visibleJobs(jobs: RunnerJob[]): RunnerJob[] {
+  return [...jobs].reverse()
+}
+
+/** Today's per-state notes (wb/ask/JobCard.tsx). */
+export function jobNote(j: RunnerJob): string | null {
+  if (j.status === 'queued') return 'Waiting for the runner. It picks the next job up within about fifteen seconds.'
+  if (j.status === 'cancelled') return 'Stopped. Nothing more runs for this job.'
+  if (j.status === 'error') return j.error_detail || 'The job failed and left no reason.'
+  return null
 }
 
 /** The band's count: running and waiting are different facts (today's RunnerSection rule). */
@@ -87,6 +92,9 @@ export function RunnerJobs({ runner }: { runner: DRunner }) {
   const open = shown ?? (anyOpen || !!runner.focus)
   const jobs = visibleJobs(runner.jobs)
   const reportJob = runner.jobs.find(j => j.id === runner.report) ?? null
+  const [stopping, setStopping] = useState<string | null>(null)
+  const focusRef = useRef<HTMLDivElement>(null)
+  useEffect(() => { if (open && runner.focus) focusRef.current?.scrollIntoView({ block: 'center' }) }, [open, runner.focus])
   if (runner.jobs.length === 0 && !runner.note) return null
   return (
     <div className="dcl-jobs" data-runner>
@@ -97,21 +105,28 @@ export function RunnerJobs({ runner }: { runner: DRunner }) {
         </button>
       )}
       {open && jobs.map(j => {
-        const line = isOpen(j.status) ? logLines(j.log, 1)[0] : null
+        const lines = isOpen(j.status) ? logLines(j.log, 3) : []
         const el = elapsed(j, now)
+        const note = jobNote(j)
         return (
-          <div key={j.id} className={`dcl-job dcl-job-${j.status}${runner.focus === j.id ? ' dcl-focus' : ''}`} data-job={j.id}>
+          <div key={j.id} ref={runner.focus === j.id ? focusRef : undefined} className={`dcl-job dcl-job-${j.status}${runner.focus === j.id ? ' dcl-focus' : ''}`} data-job={j.id}>
             <div className="dcl-job-h">
               <b>{jobTitle(j)}</b>
               <span>{STATE[j.status]}{el ? ` · ${el}` : ''}{typeof j.cost_usd === 'number' ? ` · $${j.cost_usd.toFixed(2)}` : ''}</span>
               {(j.log || j.report_path) && <button type="button" className="dcl-link" onClick={() => runner.setReport(j.id)}>Log</button>}
-              {isOpen(j.status) && <button type="button" className="dcl-link" data-verb="stop-job" onClick={() => void runner.stop(j.id)}>Stop</button>}
+              {isOpen(j.status) && (
+                <button type="button" className="dcl-link" data-verb="stop-job" disabled={stopping === j.id}
+                  onClick={() => { setStopping(j.id); void runner.stop(j.id).finally(() => setStopping(null)) }}>{stopping === j.id ? 'Stopping…' : 'Stop'}</button>
+              )}
             </div>
-            {line && <div className="dcl-job-l">{line}</div>}
+            <div className="dcl-job-m">{j.kind === 'goal' ? 'goal run' : 'prompt'}{j.ran_on ? ` · ${j.ran_on}` : ''}{j.report_path ? ` · report ${j.report_path}` : ''}</div>
+            {lines.map((l, i) => <div key={i} className="dcl-job-l">{l}</div>)}
+            {note && <div className={`dcl-job-l${j.status === 'error' ? ' dcl-bad' : ''}`}>{note}</div>}
           </div>
         )
       })}
-      <Sheet open={!!reportJob} onClose={() => runner.setReport(null)} title={reportJob ? jobTitle(reportJob) : 'Runner'} sub={reportJob ? STATE[reportJob.status] : undefined}>
+      <Sheet open={!!reportJob} onClose={() => runner.setReport(null)} title={reportJob ? jobTitle(reportJob) : 'Runner'} sub={reportJob ? `${reportJob.kind === 'goal' ? 'goal run' : 'prompt'} · ${STATE[reportJob.status]}` : undefined}>
+        {reportJob?.cwd && <p className="dcl-dim">Ran in {reportJob.cwd}</p>}
         <pre className="dcl-log">{reportJob ? (logTail(reportJob.log).join('\n') || 'Nothing written yet.') : ''}</pre>
         {reportJob?.report_path && <p className="dcl-dim">Report: {reportJob.report_path}</p>}
       </Sheet>
@@ -119,43 +134,3 @@ export function RunnerJobs({ runner }: { runner: DRunner }) {
   )
 }
 
-/** The runner key in the composer row: run what is typed, or a goal spec off disk. */
-export function RunnerMenu({ runner, text, onSent, disabled }: { runner: DRunner; text: string; onSent: () => void; disabled: boolean }) {
-  const [open, setOpen] = useState(false)
-  const [specs, setSpecs] = useState<GoalSpec[] | null>(null)
-  const [err, setErr] = useState<string | null>(null)
-  useEffect(() => {
-    if (!open) return
-    let live = true
-    setErr(null)
-    fetchSpecs().then(s => { if (live) setSpecs(s) }, e => {
-      if (live) setErr(e instanceof RunnerError && e.code === 'runner_not_configured' ? 'The runner has no address yet.' : 'The runner is not answering, so its specs cannot be listed.')
-    })
-    return () => { live = false }
-  }, [open])
-  const go = (kind: 'prompt' | 'goal', input: string, cwd?: string | null) => {
-    setOpen(false)
-    void runner.run(kind, input, cwd).then(ok => { if (ok && kind === 'prompt') onSent() })
-  }
-  return (
-    <span className="dcl-menuw">
-      <button type="button" className="dcl-ib" aria-expanded={open} aria-label="Run on the runner" title="Run on the runner" disabled={disabled} onClick={() => setOpen(o => !o)}><CIcon name="run" /></button>
-      {open && (
-        <div className="dcl-menu" role="menu">
-          <button type="button" role="menuitem" data-verb="run-job" disabled={!text.trim() || runner.busy} onClick={() => go('prompt', text)}>
-            Run what is typed on the runner
-          </button>
-          {!specs && !err && <div className="dcl-dim">Asking the runner what it can see…</div>}
-          {err && <div className="dcl-dim">{err}</div>}
-          {specs && specs.length === 0 && <div className="dcl-dim">The runner sees no goal specs on disk.</div>}
-          {specs?.map(s => (
-            <button type="button" role="menuitem" key={s.path} data-verb="run-goal" onClick={() => go('goal', s.path, s.cwd ?? null)}>
-              {s.name || s.path.split('/').pop()}{s.mtime ? <small>{s.mtime.slice(0, 10)}</small> : null}
-            </button>
-          ))}
-          <div className="dcl-dim">A job runs on the runner, not in this tab. Its finish lands in the bell.</div>
-        </div>
-      )}
-    </span>
-  )
-}

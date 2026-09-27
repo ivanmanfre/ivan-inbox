@@ -1,5 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useChat, type ChatHandle } from '../../exp/v2c/useChat'
+import { abortTurn } from '../../lib/turns'
+import { useSavedAt } from '../../wb/ask/claudeState'
+import { useClaudeKeys } from './useClaudeKeys'
+import { VoiceLayer } from './VoiceLayer'
 import { EMPTY_SEE, type SeeState } from '../../exp/v2c/chat/paneContext'
 import { useFrame } from '../shell/frame'
 import { useOnline } from '../ui/useOnline'
@@ -34,8 +38,16 @@ export type ClaudeCtx = {
   /** A turn finished while the drawer was closed: the card says so until he answers it. */
   landed: Landed | null
   clearLanded: () => void
-  /** The moment the transcript was last known good (the offline line prints it). */
+  /** The moment the transcript was last known good (the offline line prints it; kept across reloads). */
   savedAt: number | null
+  /** Stop the turn on screen: this tab's stream, or a turn running elsewhere (today's abortTurn). */
+  stop: () => void
+  /** Live voice (today's LiveVoice), open or not. */
+  voiceOpen: boolean
+  setVoiceOpen: (o: boolean) => void
+  /** ⌘D with the drawer closed opens it and starts dictation: the composer reads this once. */
+  dictateOnOpen: boolean
+  clearDictateOnOpen: () => void
 }
 
 const Ctx = createContext<ClaudeCtx | null>(null)
@@ -63,7 +75,8 @@ export function ClaudeProvider({ children }: { children: ReactNode }) {
   const [focusTurn, setFocusTurn] = useState<string | null>(null)
   const [landed, setLanded] = useState<Landed | null>(null)
   const [busySince, setBusySince] = useState<number | null>(null)
-  const [savedAt, setSavedAt] = useState<number | null>(null)
+  const [voiceOpen, setVoiceOpen] = useState(false)
+  const [dictateOnOpen, setDictateOnOpen] = useState(false)
   const steps = useRef(new Map<string, number>())
   const wasBusy = useRef(chat.busy)
   const { setClaudeOpen, claudeOpen, route } = f
@@ -80,6 +93,7 @@ export function ClaudeProvider({ children }: { children: ReactNode }) {
       chat.openThread(thread)
       setFocusTurn(uuidOrNull(q.get('turn')))
     }
+    if (q.get('voice') === '1') setVoiceOpen(true)
     setClaudeOpen(true)
     // chat.openThread is stable (useCallback); only the address decides this.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
@@ -91,6 +105,10 @@ export function ClaudeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!handoff) return
     setSee(EMPTY_SEE)
+    // A person gets a fresh chat when the open one is idle and already about
+    // something else (today's rb rule, wb/ask/Mobile.tsx), so the replay does
+    // not carry the previous topic into the question about them.
+    if (!chat.busy && !chat.runningElsewhere && chat.turns.length > 0) chat.newThread()
     if (handoff.intent === 'draft') setText(t => (t.trim() ? t : draftStarter(subjectMeta(handoff.subject))))
     // one run per hand-off
     // oxlint-disable-next-line react-hooks/exhaustive-deps
@@ -122,10 +140,8 @@ export function ClaudeProvider({ children }: { children: ReactNode }) {
     for (const t of chat.streamTools) if (!steps.current.has(t.id)) steps.current.set(t.id, now)
   }, [chat.streamTools])
 
-  // The last moment the transcript on screen was a fresh, settled read.
-  useEffect(() => {
-    if (online && !chat.busy && !chat.turnsLoading && !chat.turnsStale) setSavedAt(Date.now())
-  }, [online, chat.busy, chat.turnsLoading, chat.turnsStale, chat.turns.length])
+  // When the thread was last known good while online (today's claudeState, localStorage).
+  const savedAt = useSavedAt(online, chat.turns.length, chat.busy)
 
   // A turn found running with no stream here counts from when it was asked.
   const openAsk = chat.runningElsewhere ? [...chat.turns].reverse().find(t => t.role === 'user' && t.status === 'running') : undefined
@@ -134,10 +150,25 @@ export function ClaudeProvider({ children }: { children: ReactNode }) {
   const clearFocus = useCallback(() => setFocusTurn(null), [])
   const clearLanded = useCallback(() => setLanded(null), [])
   const stepAt = useCallback((id: string) => steps.current.get(id), [])
+  const clearDictateOnOpen = useCallback(() => setDictateOnOpen(false), [])
+  const lastAsk = chat.runningElsewhere ? openAsk?.turnId ?? null : null
+  const stop = useCallback(() => {
+    if (chat.busy) { chat.abort(); return }
+    // Running elsewhere (started on the phone): today writes the stop down on the row.
+    if (lastAsk) void abortTurn(lastAsk)
+  }, [chat, lastAsk])
+
+  useClaudeKeys({ chat, claudeOpen, setClaudeOpen, layout: f.layout, setVoiceOpen, setDictateOnOpen })
 
   const value = useMemo<ClaudeCtx>(() => ({
     chat, online, text, setText, see, setSee, focusTurn, clearFocus, since, stepAt, landed, clearLanded, savedAt,
-  }), [chat, online, text, see, focusTurn, clearFocus, since, stepAt, landed, clearLanded, savedAt])
+    stop, voiceOpen, setVoiceOpen, dictateOnOpen, clearDictateOnOpen,
+  }), [chat, online, text, see, focusTurn, clearFocus, since, stepAt, landed, clearLanded, savedAt, stop, voiceOpen, dictateOnOpen, clearDictateOnOpen])
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>
+  return (
+    <Ctx.Provider value={value}>
+      {children}
+      {voiceOpen && <VoiceLayer chat={chat} onClose={() => setVoiceOpen(false)} />}
+    </Ctx.Provider>
+  )
 }

@@ -88,12 +88,53 @@ describe('status and steps', () => {
 
 describe('runner band', () => {
   const j = (id: string, status: RunnerJob['status']) => ({ id, status } as RunnerJob)
-  it('every open job, then the newest finished, up to three', () => {
-    expect(visibleJobs([j('a', 'done'), j('b', 'done'), j('c', 'done'), j('d', 'running')]).map(x => x.id)).toEqual(['b', 'c', 'd'])
+  it('every loaded job, newest first (today lists all of them)', () => {
+    expect(visibleJobs([j('a', 'done'), j('b', 'done'), j('c', 'done'), j('d', 'running')]).map(x => x.id)).toEqual(['d', 'c', 'b', 'a'])
   })
   it('running and waiting are different facts', () => {
     expect(runnerCount([j('a', 'queued'), j('b', 'done')])).toBe('1 waiting')
     expect(runnerCount([j('a', 'running'), j('b', 'queued')])).toBe('1 running')
     expect(runnerCount([j('a', 'done')])).toBe('1 recent')
+  })
+})
+
+import { claudeLandingHash } from '../route'
+import { errorCopy, turnMetaLine, sessionWords } from './model'
+import { modelLabel, modelNote } from './More'
+import { jobNote } from './Runner'
+
+describe('push landing (cold tap)', () => {
+  const T = '941ef84c-7d86-4d27-bad2-895df2820bbc', U = '33b27e4d-5460-42e7-a429-55a794b7d808'
+  it('today\'s turn and job pushes land in D\'s Claude place', () => {
+    expect(claudeLandingHash(`#exp/brain-b/ask?thread=${T}&turn=${U}`)).toBe(`#exp/d/claude?thread=${T}&turn=${U}`)
+    expect(claudeLandingHash('#exp/brain-b/ask?job=j1&report=1')).toBe('#exp/d/claude?job=j1&report=1')
+    expect(claudeLandingHash('#claude/voice')).toBe('#exp/d/claude?voice=1')
+  })
+  it('every other old address is left alone', () => {
+    expect(claudeLandingHash('#exp/brain-b/dms')).toBeNull()
+    expect(claudeLandingHash('#exp/brain-b/ask')).toBeNull()
+    expect(claudeLandingHash('#exp/d/lanes')).toBeNull()
+  })
+})
+
+describe('plain words and meta', () => {
+  it('never names the broker', () => {
+    expect(errorCopy('broker unreachable')).toBe('Claude could not be reached. Nothing was sent.')
+    expect(errorCopy('the broker said no')).toBe('the Claude said no')
+  })
+  it('meta prints only what was reported', () => {
+    expect(turnMetaLine({ durationMs: 2100, costUsd: 0.01234 })).toBe('2.1s · $0.0123')
+    expect(turnMetaLine({})).toBe('')
+    expect(sessionWords(null)).toBe('New conversation')
+    expect(sessionWords({ session: 'resumed' })).toBe('Continuing this thread')
+  })
+  it('model note: what ran, else what will run', () => {
+    expect(modelLabel('claude-haiku-4-5-20251001')).not.toBe('')
+    expect(modelNote({ model: null, wanted: null })).toBe('Claude default.')
+  })
+  it('job notes', () => {
+    expect(jobNote({ status: 'error', error_detail: 'disk full' } as RunnerJob)).toBe('disk full')
+    expect(jobNote({ status: 'queued' } as RunnerJob)).toMatch(/fifteen seconds/)
+    expect(jobNote({ status: 'done' } as RunnerJob)).toBeNull()
   })
 })

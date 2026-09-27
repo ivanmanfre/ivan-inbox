@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { summarizeTool } from '../../exp/v2c/chat/toolSummaries'
+import { formatInput, summarizeTool } from '../../exp/v2c/chat/toolSummaries'
 import type { ToolCall } from '../../exp/v2c/chat/events'
 import { stepOffset } from './model'
 
@@ -25,6 +25,7 @@ export function Steps({ calls, live, t0, stepAt }: {
   stepAt?: (id: string) => number | undefined
 }) {
   const [all, setAll] = useState(false)
+  const [openId, setOpenId] = useState<string | null>(null)
   if (calls.length === 0) return null
   const hidden = all ? 0 : Math.max(0, calls.length - SHOW)
   const shown = calls.slice(hidden)
@@ -43,9 +44,13 @@ export function Steps({ calls, live, t0, stepAt }: {
         const last = live && hidden + i === calls.length - 1
         const at = stepOffset(stepAt?.(c.id), t0)
         return (
-          <div key={c.id} className={`dcl-step${last ? ' dcl-run' : ''}`}>
-            <span className="dcl-step-t">{stepWords(c)}</span>
-            <span className="dcl-step-m">{last ? 'running' : at ?? ''}</span>
+          <div key={c.id}>
+            <button type="button" className={`dcl-step${last ? ' dcl-run' : ''}`} aria-expanded={openId === c.id}
+              title="Show what this step was given" onClick={() => setOpenId(openId === c.id ? null : c.id)}>
+              <span className="dcl-step-t">{stepWords(c)}</span>
+              <span className="dcl-step-m">{last ? 'running' : at ?? ''}</span>
+            </button>
+            {openId === c.id && <pre className="dcl-step-in"><code>{c.tool}{'\n'}{formatInput(c.input)}</code></pre>}
           </div>
         )
       })}

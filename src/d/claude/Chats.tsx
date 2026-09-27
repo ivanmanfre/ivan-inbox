@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { listThreads, type Thread } from '../../lib/turns'
 import { Failed, Skeleton } from '../ui/states'
-import { warsawDm, warsawDow } from '../ui/time'
+import { warsawDm, warsawDow, warsawHm } from '../ui/time'
 import { useClaude } from './ClaudeProvider'
 import { CIcon } from './icons'
 import { chatTail, chatsByDay, shortTitle } from './model'
@@ -70,7 +70,7 @@ export function Chats({ onPicked, list }: { onPicked: () => void; list: ReturnTy
               <button type="button" key={t.id} className={`dcl-chat${current ? ' dcl-cur' : ''}${tail.failed ? ' dcl-err' : ''}`}
                 aria-current={current || undefined} onClick={() => pick(() => chat.openThread(t.id))}>
                 <b>{t.title ? shortTitle(t.title, 90) : 'Untitled chat'}</b>
-                <span>{current && chat.busy ? 'running' : tail.text}</span>
+                <span>{current && chat.busy ? 'running' : tail.text}{t.last_turn_at ? ` · ${warsawHm(t.last_turn_at)}` : ''}</span>
               </button>
             )
           })}

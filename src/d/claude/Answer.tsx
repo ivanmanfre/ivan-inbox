@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Turn } from '../../exp/v2c/chat/events'
 import { groundedClause, sourceBasenames, sourcesChipLabel } from '../../exp/brain/b/brainMeta'
 import { parseActions, type Action } from '../../wb/ask/actions'
@@ -6,7 +6,11 @@ import { createBotTask } from '../../lib/ops'
 import { dismissGroup, listGroupRows, notificationDeepLink, restoreNotifications } from '../../lib/turns'
 import { useToast } from '../ui/toast'
 import { Btn } from '../ui/Key'
-import { Markdown } from './Markdown'
+import { Markdown, buildCites } from './Markdown'
+import { LinkCard } from './LinkCard'
+import { detectLinks } from '../../lib/unfurl'
+import { buildRecallCommand } from '../../exp/brain/b/recall'
+import { errorCopy, THREAD_BUSY_RE, turnMetaLine } from './model'
 import { Steps } from './Steps'
 
 // One answer: the steps it took, the prose, what it was grounded on, and (on
@@ -39,7 +43,7 @@ function openUrl(url: string): void {
 
 const VERB: Record<Action['kind'], string> = { open: 'action-open', reply: 'action-reply', task: 'action-task', fold: 'action-fold' }
 
-function BotActions({ turnId, actions, setText }: { turnId: string; actions: Action[]; setText: (v: string) => void }) {
+function BotActions({ turnId, actions, setText, offline }: { turnId: string; actions: Action[]; setText: (v: string) => void; offline: boolean }) {
   const toast = useToast()
   const [done, setDone] = useState<Record<number, string>>({})
   const [busy, setBusy] = useState<number | null>(null)
@@ -76,33 +80,62 @@ function BotActions({ turnId, actions, setText }: { turnId: string; actions: Act
     <div className="dcl-acts">
       {actions.map((a, i) => done[i]
         ? <span key={i} className="dcl-act-done">{done[i]}</span>
-        : <Btn key={i} verb={VERB[a.kind]} disabled={busy === i} onClick={() => run(a, i)}>{a.label}</Btn>)}
+        : <Btn key={i} verb={VERB[a.kind]} disabled={busy === i || (offline && a.kind !== 'reply')} onClick={() => run(a, i)}>{a.label}</Btn>)}
     </div>
   )
 }
 
-export function Answer({ turn, setText, onRetry, canRetry }: {
+/** Copy the answer, and Ask again on the newest good answer (today's TurnFoot). */
+function Foot({ text, onAgain, offline }: { text: string; onAgain?: () => void; offline: boolean }) {
+  const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    if (!copied) return
+    const t = window.setTimeout(() => setCopied(false), 1600)
+    return () => window.clearTimeout(t)
+  }, [copied])
+  if (!text && !onAgain) return null
+  return (
+    <div className="dcl-foot-k">
+      {text && <button type="button" className="dcl-link" data-verb="copy-answer" onClick={() => { void navigator.clipboard?.writeText(text).then(() => setCopied(true), () => undefined) }}>{copied ? 'Copied' : 'Copy'}</button>}
+      {onAgain && <button type="button" className="dcl-link" data-verb="ask-again" disabled={offline} onClick={onAgain}>Ask again</button>}
+    </div>
+  )
+}
+
+export function Answer({ turn, setText, onRetry, last, busy, offline, send }: {
   turn: Turn
   setText: (v: string) => void
   onRetry: () => void
-  canRetry: boolean
+  /** The newest answer: the only one that carries Retry / Ask again (chat.retry replays the last ask). */
+  last: boolean
+  busy: boolean
+  offline: boolean
+  /** A recall noun asks Claude to recall it (today's buildRecallCommand). */
+  send: (text: string) => void
 }) {
   const bot = turn.origin === 'bot'
   const parsed = bot ? parseActions(turn.text || '') : null
   const body = parsed ? parsed.body : turn.text
+  const meta = turnMetaLine(turn)
+  const outcome = turn.error ? 'Failed' : turn.aborted ? 'Stopped' : null
+  const busyRefusal = THREAD_BUSY_RE.test(turn.error?.message ?? '')
+  const link = detectLinks(body || '')[0]?.url
   return (
     <div className="dcl-ans" data-turn={turn.turnId}>
+      {(meta || outcome) && <div className="dcl-meta">{outcome && <b>{outcome}</b>}{meta && <span>{meta}</span>}</div>}
       <Steps calls={turn.tools} live={false} t0={null} />
-      {body && <Markdown text={body} />}
-      {turn.aborted && <div className="dcl-note">Stopped. What came in before the stop is kept.</div>}
+      {body && <Markdown text={body} cites={buildCites(sourceBasenames(turn.sources))} onRecall={busy ? undefined : n => send(buildRecallCommand(n))} recallOff={offline} />}
+      {parsed && turn.turnId && parsed.actions.length > 0 && <BotActions turnId={turn.turnId} actions={parsed.actions} setText={setText} offline={offline} />}
+      {link && <LinkCard url={link} />}
+      {turn.aborted && <div className="dcl-note">You stopped this one. Nothing more is coming.</div>}
       {turn.error && (
         <div className="dcl-fail" role="alert">
-          <span>{turn.error.message}</span>
-          {turn.error.retryable && canRetry && <Btn verb="retry" onClick={onRetry}>Retry</Btn>}
+          <span>{errorCopy(turn.error.message)}</span>
+          {turn.error.retryable && !busyRefusal && last && !busy && <Btn verb="retry" disabled={offline} onClick={onRetry}>Retry</Btn>}
         </div>
       )}
       <Sources turn={turn} />
-      {parsed && turn.turnId && parsed.actions.length > 0 && <BotActions turnId={turn.turnId} actions={parsed.actions} setText={setText} />}
+      <Foot text={body || ''} offline={offline} onAgain={last && !turn.error && !busy ? onRetry : undefined} />
     </div>
   )
 }
