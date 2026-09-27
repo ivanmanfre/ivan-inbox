@@ -11,8 +11,6 @@ export type NavLine =
 
 export type NavItem = {
   id: PlaceId; label: string; line: NavLine | null; failed: number
-  /** A second, smaller line (Content: the Magnets review count; Sales: calls today). */
-  extra?: { label: string; text: string } | null
 }
 
 const allFailed = (b: boolean): Record<Seat, boolean> => ({ ivan: b, risedtc: b, arch: b })
@@ -27,25 +25,13 @@ export function navLines(c: FrameCounts): Partial<Record<PlaceId, { line: NavLin
     content: { line: { kind: 'seats', label: 'Waiting on you', numbers: contentNumbers(c), failed: contentF }, failed: nFailed(contentF) },
     ops: { line: { kind: 'seats', label: 'Waiting on you', numbers: opsNumbers(c), failed: allFailed(c.ops.failed) }, failed: c.ops.failed ? 1 : 0 },
     sales: {
-      line: { kind: 'text', label: 'Next call', text: c.nextCall.value?.label ?? (c.nextCall.failed ? 'could not read the calendar' : '…') },
+      line: { kind: 'text', label: 'Next call', text: c.nextCall.value?.label ?? (c.nextCall.failed ? '?' : '…') },
       failed: c.nextCall.failed ? 1 : 0,
     },
   }
 }
 
-/** The newest successful read of any frame count, for "synced HH:MM". */
-/** The second line under a place: Magnets at review (Content), calls today (Sales). */
-export function navExtras(c: FrameCounts): Partial<Record<PlaceId, { label: string; text: string }>> {
-  const n = (v: number | null, failed: boolean) => (v == null ? (failed ? 'could not read' : '…') : String(v))
-  return {
-    content: { label: 'Magnets at review', text: n(c.magnets.value, c.magnets.failed) },
-    // A client with no seat still counts (today's badge counted every pending card); only drawn when there is one.
-    ...(c.ops.value && 'other' in c.ops.value && (c.ops.value as { other?: number }).other
-      ? { ops: { label: 'Other lanes', text: String((c.ops.value as { other?: number }).other) } } : {}),
-    sales: { label: 'Calls today not started', text: n(c.calls.value, c.calls.failed) },
-  }
-}
-
+/** The newest successful read of any frame count (the offline line's "read at"). */
 export function lastSynced(c: FrameCounts): number | null {
   const ats = [
     ...Object.values(c.dms).map(s => s.at), ...Object.values(c.content).map(s => s.at),
@@ -58,12 +44,10 @@ export function useNavModel(): { items: NavItem[]; synced: number | null } {
   const c = useFrameCounts()
   const reported = useReportedFailures()
   const lines = navLines(c)
-  const extras = navExtras(c)
   const items = PLACE_ORDER.map<NavItem>(id => ({
     id,
     label: PLACES[id].label,
     line: lines[id]?.line ?? null,
-    extra: extras[id] ?? null,
     failed: (lines[id]?.failed ?? 0) + (reported[id] ?? 0),
   }))
   return { items, synced: lastSynced(c) }

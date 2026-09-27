@@ -26,7 +26,8 @@ import './shell/frame2.css'
 
 // ---------------------------------------------------------------------------
 // D, the frame. Desktop (>= 1000px): left panel, answer row (page title + the
-// frame's Commands ⌘K / Ask Claude ⌘J / bell), the page, and the Claude
+// bell; ⌘K = commands and ⌘J = Claude stay as keys, Claude also sits in the
+// left panel), the page, and the Claude
 // drawer docked right when open. Phone: top bar, the page (document scroll),
 // the dock; the panel is a drawer, the bell a sheet under the top bar, Claude a
 // sheet from the lime key. The seat health banner and the offline line sit
@@ -152,7 +153,6 @@ function ClaudeSlot() {
 }
 
 function AnswerBar({ setTitleSlot, setToolsSlot }: { setTitleSlot: (el: HTMLElement | null) => void; setToolsSlot: (el: HTMLElement | null) => void }) {
-  const f = useFrame()
   const c = useFrameCounts()
   const crit = (c.alerts.value?.critical ?? 0) > 0
   return (
@@ -160,10 +160,6 @@ function AnswerBar({ setTitleSlot, setToolsSlot }: { setTitleSlot: (el: HTMLElem
       <div className="d-ans-title" ref={setTitleSlot} />
       <div className="d-tools">
         <div className="d-tools-page" ref={setToolsSlot} />
-        <button type="button" className="d-ask" onClick={f.openPalette}>Commands <kbd>⌘K</kbd></button>
-        <button type="button" className={`d-ask${f.claudeOpen ? ' d-on' : ''}`} aria-pressed={f.claudeOpen} onClick={() => f.setClaudeOpen(!f.claudeOpen)}>
-          {f.claudeOpen ? 'Claude open' : 'Ask Claude'} <kbd>⌘J</kbd>
-        </button>
         <BellButton />
       </div>
     </header>
