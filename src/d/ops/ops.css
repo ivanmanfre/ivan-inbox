@@ -137,3 +137,4 @@
 .op-card-phone .op-k small{display:none}
 .op-card-phone .op-k.op-kp small{display:block}
 .op-card-phone .op-k .d-face{font-size:14px}
+.op-card-phone .op-tm span:last-child{display:none}
