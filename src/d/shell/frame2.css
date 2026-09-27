@@ -82,3 +82,9 @@
 .d-routine-h{display:flex;align-items:center;gap:10px;width:100%;padding:10px 0;font:400 10.5px var(--m);letter-spacing:.06em;text-transform:uppercase;color:var(--t3)}
 .d-routine-h span{flex:1;text-align:left}.d-routine-h b{color:var(--t1)}.d-routine-h em{font-style:normal;color:var(--t2)}
 .d-newpill{position:absolute;top:62px;left:50%;transform:translateX(-50%);height:28px;padding:0 12px;border-radius:14px;background:var(--lime);color:#0A0A09;font:600 12.5px var(--f);z-index:2;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+
+/* sync line: tap to read again; phone pull */
+.d-me button.d-sync{display:block;text-align:left;font:400 11.5px var(--m);color:var(--sideM);padding:0}
+.d-me button.d-sync:hover{color:var(--sideT)}
+.d-me button.d-sync.d-sync-fail{color:var(--warn)}
+.d-ptr{display:flex;align-items:flex-end;justify-content:center;overflow:hidden;font:400 12px var(--m);color:var(--t2);padding-bottom:6px}

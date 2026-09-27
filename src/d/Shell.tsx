@@ -1,7 +1,8 @@
-import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { ClaudeProvider } from './claude/ClaudeProvider'
 import { Island } from './claude/Island'
-import { DInboxProvider } from './counts/inbox'
+import { DInboxProvider, useDInbox } from './counts/inbox'
+import { usePull } from './dms/usePull'
 import { FrameCountsProvider, useFrameCounts } from './counts/useFrameCounts'
 import { PLACES, type Layout } from './places'
 import { canonicalHash, dHash, dLandingHash, isForeignHash, parseDHash, toDHash, type DRoute } from './route'
@@ -115,11 +116,11 @@ function PageLoading() {
   return <div className="d-pageload"><Skeleton lines={6} label="Loading the page" /></div>
 }
 
-function Page() {
+function Page({ rev = 0 }: { rev?: number }) {
   const f = useFrame()
   const P = PLACES[f.route.place].Page
   return (
-    <PageBoundary key={f.route.place} place={PLACES[f.route.place].label}>
+    <PageBoundary key={`${f.route.place}:${rev}`} place={PLACES[f.route.place].label}>
       <Suspense fallback={<PageLoading />}>
         <P layout={f.layout} route={f.route} navigate={f.navigate} />
       </Suspense>
@@ -187,13 +188,28 @@ function PhoneFrame({ setToolsSlot, panelOpen, setPanelOpen }: {
   setToolsSlot: (el: HTMLElement | null) => void; panelOpen: boolean; setPanelOpen: (o: boolean) => void
 }) {
   const f = useFrame()
+  const c = useFrameCounts()
+  const inbox = useDInbox()
   const closePanel = useCallback(() => setPanelOpen(false), [setPanelOpen])
+  // Pull to refresh on every page (today's usePullToRefresh): the frame's numbers and inbox are
+  // re-read and the page is mounted afresh, so it re-reads its own data. DMs keeps its own pull.
+  const body = useRef<HTMLDivElement>(null)
+  const [rev, setRev] = useState(0)
+  const { refresh } = c
+  const onDms = f.route.place === 'dms'
+  // Re-made when the place changes, so the pull re-binds (off on DMs, whose list has its own).
+  const inboxRefresh = inbox.refresh
+  const onPull = useCallback(() => { refresh(); inboxRefresh(); setRev(r => r + 1) }, [refresh, inboxRefresh, onDms]) // eslint-disable-line react-hooks/exhaustive-deps
+  const ptr = usePull(body, onPull)
   return (
     <>
       <PhoneTop onPanel={() => setPanelOpen(true)} setToolsSlot={setToolsSlot} />
       <SeatHealthBanner />
       <OfflineLine />
-      <div className="d-pbody"><Page /></div>
+      <div className="d-pbody" ref={onDms ? undefined : body}>
+        {ptr.pull > 0 && <div className="d-ptr" style={{ height: ptr.pull }} aria-live="polite">{ptr.refreshing ? 'Reading…' : ptr.pull >= ptr.trigger ? 'Release to refresh' : 'Pull to refresh'}</div>}
+        <Page rev={rev} />
+      </div>
       <Dock />
       <Island />
       {panelOpen && <PhonePanel onClose={closePanel} />}

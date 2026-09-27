@@ -10,6 +10,7 @@ import { useNavModel, type NavItem } from './navModel'
 import { openWorkflows, workflowsBadge } from './Workflows'
 import { healthNote } from '../counts/glance'
 import { useFrameCounts } from '../counts/useFrameCounts'
+import { useDInbox } from '../counts/inbox'
 
 // The left panel (D shell.js side()), desktop, and the same content as the
 // phone's drawer (pshell.js panel()). Brand line with the seat roster, places
@@ -42,13 +43,21 @@ export function Brand() {
 
 export function MeFooter({ synced }: { synced: number | null }) {
   const now = useClock()
+  const c = useFrameCounts()
+  const inbox = useDInbox()
+  const failed = c.ops.failed || c.bell.failed || c.alerts.failed || c.health.failed
+  // Tap the sync line to read everything the frame shows again (today's rail sync line).
+  const resync = () => { c.refresh(); inbox.refresh() }
   return (
     <div className="d-me">
       <i aria-hidden="true">IM</i>
       <div>
         <b>Ivan Manfredi</b>
         <small>{warsawDayTime(now)} Warsaw</small>
-        <small className="d-sync">{synced ? `synced ${warsawHm(synced)}` : 'not synced yet'}</small>
+        <button type="button" className={`d-sync${failed ? ' d-sync-fail' : ''}`} data-verb="resync" onClick={resync}
+          title={failed ? 'A read failed. Tap to read again.' : 'Tap to read again'}>
+          {synced ? `synced ${warsawHm(synced)}` : 'not synced yet'}{failed ? ' · a read failed' : ''} · read again
+        </button>
       </div>
     </div>
   )
