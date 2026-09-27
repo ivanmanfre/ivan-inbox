@@ -3,7 +3,7 @@ import { ClaudeProvider } from './claude/ClaudeProvider'
 import { Island } from './claude/Island'
 import { FrameCountsProvider, useFrameCounts } from './counts/useFrameCounts'
 import { PLACES, type Layout } from './places'
-import { canonicalHash, parseDHash, toDHash, type DRoute } from './route'
+import { canonicalHash, dHash, dLandingHash, isForeignHash, parseDHash, toDHash, type DRoute } from './route'
 import { BellButton, BellFeed } from './shell/Bell'
 import { FrameCtx, useFrame, type Frame } from './shell/frame'
 import { lastSynced } from './shell/navModel'
@@ -49,9 +49,22 @@ function useLayout(): Layout {
 
 const isD = (h: string) => /^#exp\/d(?:[/?]|$)/.test(h)
 
+// The phone reopens where he left it (today's brain-b-place): a hash-less cold
+// start (the home-screen icon) lands on the last place, not always on Lanes.
+const LAST_PLACE = 'd-last-place'
+
+function resumeHash(h: string): string {
+  if (h && h !== '#') return h
+  if (typeof window === 'undefined' || window.matchMedia?.(DESK_MQ).matches) return h
+  try {
+    const saved = localStorage.getItem(LAST_PLACE)
+    return saved && isD(saved) ? saved : h
+  } catch { return h }
+}
+
 function useDRoute(): DRoute {
   const read = useCallback(() => {
-    const h = location.hash
+    const h = resumeHash(location.hash)
     const want = canonicalHash(h)
     if (want !== h) history.replaceState(null, '', want)
     return want
@@ -59,13 +72,20 @@ function useDRoute(): DRoute {
   const [hash, setHash] = useState(read)
   useEffect(() => {
     const on = () => {
-      // A document route is its own page (App.tsx): load it fresh.
-      if (/^#doc(\?|$)/.test(location.hash)) { location.reload(); return }
+      // A document route, the stock shell, the experiment reset and an explicit
+      // "today's app" link are their own pages (App.tsx): load them fresh.
+      const h = location.hash
+      if (/^#doc(\?|$)/.test(h) || (isForeignHash(h) && !dLandingHash(h))) { location.reload(); return }
       setHash(read())
     }
     window.addEventListener('hashchange', on)
     return () => window.removeEventListener('hashchange', on)
   }, [read])
+  useEffect(() => {
+    // Only the place and its sub: a one-shot key (thread, turn, feed, warm) must not replay on the next open.
+    const r = parseDHash(hash)
+    try { localStorage.setItem(LAST_PLACE, dHash(r.place, r.sub)) } catch { /* private mode */ }
+  }, [hash])
   return useMemo(() => parseDHash(hash), [hash])
 }
 
@@ -201,6 +221,16 @@ export default function DShell() {
 
   // Moving to another place closes the transient layers.
   useEffect(() => { setBellOpen(false); setPanelOpen(false) }, [route.place])
+
+  // `?feed=1` (a push or a link naming the feed) opens the bell once, then leaves the address.
+  const feedAsk = route.query.get('feed')
+  useEffect(() => {
+    if (feedAsk !== '1' && feedAsk !== 'true') return
+    setBellOpen(true); setPanelOpen(false)
+    const q = new URLSearchParams(route.query)
+    q.delete('feed')
+    history.replaceState(null, '', dHash(route.place, route.sub, q))
+  }, [feedAsk, route.place, route.sub, route.query])
 
   // The document behind the phone frame scrolls; paint it the frame's black.
   useEffect(() => {

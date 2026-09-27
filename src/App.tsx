@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { bootGate } from './lib/bootGate'
-import { claudeLandingHash } from './d/route'
+import { dLandingHash } from './d/route'
 import { currentUserId } from './lib/swr'
 // P1 SPEED (2026-09-25). supabase-js (~240 KB parsed) and the design system
 // with motion used to sit in the entry chunk, so React could not mount until
@@ -95,7 +95,7 @@ import { getExpVariant, ExpGate } from './exp'
   void loadSupabase()
   void import('./providers')
   // rebuild/shell: D is the default; the old shell only when its hash asks.
-  if (/^#exp\/(v2c?|brain-b)\b/.test(location.hash)) {
+  if (/^#exp\/(v2c?|brain-b)\b/.test(location.hash) && !dLandingHash(location.hash)) {
     void import('./exp/v2c/Shell')
     if (window.innerWidth < 1000) void import('./exp/brain/b')
   } else {
@@ -234,10 +234,12 @@ function routeFor(gate: 'blank' | 'login' | 'app'): ReactNode | null {
   // faithful-revamp build the run verified — IS the app now. A load-time
   // #exp/ hash still reaches any candidate; #exp/stock is the escape hatch to
   // the pre-revamp shell.
-  // A Claude push (today's `#exp/brain-b/ask?thread=&turn=`, `?job=`) or the
-  // "Talk to Claude" shortcut lands in D's Claude drawer on this build.
-  const claudeLanding = claudeLandingHash(location.hash)
-  if (claudeLanding) history.replaceState(null, '', claudeLanding)
+  // Every push, notification link and home-screen shortcut today's writers
+  // produce (`#exp/brain-b/...`, `#claude/voice`) lands in the matching D place
+  // on this build and never pins the tab to the old app (d/route.ts
+  // dLandingHash). Today's app stays one explicit link away (`app=today`).
+  const landing = dLandingHash(location.hash)
+  if (landing) history.replaceState(null, '', landing)
   const exp = getExpVariant()
   if (exp === 'stock') return <Suspense fallback={null}><StockShell /></Suspense>
   if (exp) return <ExpGate variant={exp} />
