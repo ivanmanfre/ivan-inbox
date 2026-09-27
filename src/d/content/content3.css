@@ -41,3 +41,7 @@
 .cn-left-legacy .cn-legacy{overflow:visible}
 /* today's in-flight mark: pinned above the phone dock, not at the end of the list */
 .d-phone .cn-legacy .a-ct-inflight{position:fixed;inset-inline-end:16px;inset-block-end:calc(var(--dock-h,62px) + 28px + env(safe-area-inset-bottom))}
+/* beside the window the list has no room for its table: fold the three columns
+   and the reserved action width, as today's list does below 1000px */
+.cn-left-legacy .a-ct-cols,.cn-left-legacy .a-ct-colhead{display:none}
+.cn-left-legacy .a-ct-row .a-row-actions{min-width:0}

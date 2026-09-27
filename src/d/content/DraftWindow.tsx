@@ -122,7 +122,7 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
       {canUnpromote(lane, v.visible) && <Key verb="board-off" onClick={() => v.board(false)} disabled={v.busy}>Take off {POSS[lane]} board</Key>}
     </>
     foot = <>{v.visible ? `On his board: ${OWNER[lane]} decides from there. Take it off to delete it.`
-      : `The only act here that reaches a client. Nothing publishes: ${OWNER[lane]} approves, edits or schedules it on his board.`}
+      : promotable ? `The only act here that reaches a client. Nothing publishes: ${OWNER[lane]} approves, edits or schedules it on his board.` : null}
       {why.map(w => <span key={w} className="cn-why2">{w}</span>)}</>
   }
 
