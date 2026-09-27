@@ -1,3 +1,4 @@
+import { ClaudeWorking } from '../claude/Island'
 import { PLACES } from '../places'
 import { dHash } from '../route'
 import { DIcon } from '../ui/icons'
@@ -59,7 +60,7 @@ export function Side() {
         {main.map(i => (
           <div key={i.id} className="d-navi">
             <a href={dHash(i.id)} className={f.route.place === i.id ? 'd-on' : undefined} aria-current={f.route.place === i.id ? 'page' : undefined}>
-              <DIcon name={PLACES[i.id].icon} /><span>{i.label}</span>
+              <DIcon name={PLACES[i.id].icon} /><span>{i.label}</span>{i.id === 'claude' && <ClaudeWorking />}
             </a>
             <NavLineView item={i} />
           </div>
