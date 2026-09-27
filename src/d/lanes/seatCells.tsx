@@ -3,7 +3,7 @@
    stacks the chosen one. Hooks stay at the top of every component. */
 import type { ReactNode } from 'react'
 import { monitorLiveness } from '../../lib/campaignControl'
-import { SEAT_NAME, SEAT_OWNER, type Seat } from '../seats'
+import { SEAT_NAME, type Seat } from '../seats'
 import { Key } from '../ui/Key'
 import { ackId, useAck } from './ack'
 import { clientOf, controlOf, dm, hm, seatWord, todayOf } from './model'
@@ -27,15 +27,16 @@ export function Plate({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
   return (
     <div className="dl-plate">
       <div className="dl-r1">
-        <b>{SEAT_NAME[seat]}</b><span className="dl-who">{SEAT_OWNER[seat]}</span>
+        <b>{SEAT_NAME[seat]}</b>
         {w ? <span className={`dl-st dl-${w.tone}`}>{w.word}</span> : <span className="dl-st dl-dim">{ctx.d.cc.failed ? 'Unknown, unverified' : 'Reading…'}</span>}
       </div>
       <div className="dl-hl">
         {h ? <>
-          <span className={h.account === 'OK' ? 'dl-ok' : 'dl-bad'}>LinkedIn {h.account === 'OK' ? 'connected' : 'disconnected'}</span>
-          <span className={h.sn === 'OK' || h.sn == null ? 'dl-ok' : 'dl-bad'}>Sales Nav {h.sn === 'OK' ? 'on' : h.sn == null ? 'not reported' : 'not working'}{h.sn_credits != null ? `, ${h.sn_credits} credits` : ''}</span>
+          {h.account !== 'OK' && <span className="dl-bad">LinkedIn disconnected</span>}
+          {h.sn != null && h.sn !== 'OK' && <span className="dl-bad">Sales Nav not working</span>}
+          {h.sn_credits != null && <span className="dl-ok" title="Sales Navigator credits">{h.sn_credits} credits</span>}
           {h.degraded && h.link && <a className="dl-reconnect" data-verb="reconnect" href={h.link} target="_blank" rel="noreferrer">Reconnect</a>}
-        </> : <span className="dl-bad">{ctx.d.health.failed ? 'seat health could not be read' : 'reading seat health…'}</span>}
+        </> : <span className="dl-bad">{ctx.d.health.failed ? 'seat health ?' : '…'}</span>}
       </div>
     </div>
   )

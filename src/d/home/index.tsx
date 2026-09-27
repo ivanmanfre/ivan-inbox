@@ -33,7 +33,9 @@ export default function HomePage({ layout }: PlaceProps) {
   const online = useOnline()
   // Desktop: rows of the same tile across the three seats, so a number sits beside its peers.
   const rows: Array<[string, (p: { seat: Seat; h: HomeData }) => ReactNode]> = [
-    ['week', NextWeek], ['drafts', Drafts], ['invites', Invites], ['ready', Ready], ['limit', Limit],
+    ['week', NextWeek],
+    ['work', p => <div className="hm-pair"><Drafts {...p} /><Invites {...p} /></div>],
+    ['send', p => <div className="hm-pair"><Ready {...p} /><Limit {...p} /></div>],
   ]
   return (
     <div className={`hm hm-${layout}`}>

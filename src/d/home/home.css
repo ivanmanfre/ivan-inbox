@@ -2,9 +2,8 @@
    Calm: no boxes around tiles, space instead of lines, one big number each.
    Lime only on a live number, salmon (--warn) only on a warning. */
 .hm{padding:28px 32px 48px;display:flex;flex-direction:column;gap:40px;max-width:1280px}
-.hm-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:40px;row-gap:22px;align-items:start}
+.hm-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:48px;row-gap:28px;align-items:start}
 .hm-sn{margin:0;font:600 22px/1.1 var(--f);letter-spacing:-.3px;color:var(--t1);padding-bottom:10px;border-bottom:1px solid var(--line)}
-.hm-c-drafts,.hm-c-invites,.hm-c-limit{padding-top:2px}
 .hm-tile{position:relative;min-width:0}
 .hm-hit{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:4px;cursor:pointer;border-radius:10px;padding:8px 10px;margin:-8px -10px}
 .hm-hit:hover{background:var(--p1)}

@@ -12,6 +12,14 @@ export function monitorLine(d: LanesData, now: number): string {
   return `Monitor ${word} · as of ${hm(p.as_of)} Warsaw · last tick ${ago(p.monitor.last_tick_at, now)} · invites, DMs and InMail are counted apart and never added`
 }
 
+/** The foot's short form: the full line stays in the tooltip. */
+export function monitorShort(d: LanesData, now: number): string {
+  const p = d.cc.value
+  if (!p) return d.cc.failed ? 'Monitor ?' : ''
+  const live = monitorLiveness(p, now)
+  return live === 'fresh' ? `Monitor ${hm(p.as_of)}` : live === 'stale' ? 'Monitor stale' : 'Monitor unknown'
+}
+
 export function RangeKeys({ range, setRange, onCustom }: { range: Range; setRange: (r: Range) => void; onCustom?: () => void }) {
   return (
     <div className="dl-rk" role="group" aria-label="Window for the totals">
