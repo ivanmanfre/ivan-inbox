@@ -95,7 +95,7 @@
 .d-side-fold:hover{background:rgba(255,255,255,.06)}
 .d-side-fold .d-ico{width:14px;height:14px;stroke:var(--sideM)}
 .d-side.d-side-min{width:64px;padding-left:8px;padding-right:8px}
-.d-side-min .d-brand>div,.d-side-min .d-nav a>span,.d-side-min .d-nav button>span,.d-side-min .d-per,.d-side-min .d-navfail,.d-side-min .d-me>div,.d-side-min .d-wfn,.d-side-min .d-nav a>em:not(.d-side-pip){display:none}
+.d-side-min .d-brand>div:not(.d-mark),.d-side-min .d-nav a>span,.d-side-min .d-nav button>span,.d-side-min .d-per,.d-side-min .d-navfail,.d-side-min .d-me>div,.d-side-min .d-wfn,.d-side-min .d-nav a>em:not(.d-side-pip){display:none}
 .d-side-min .d-side-fold{position:static;margin:0 auto 12px}
 .d-side-min .d-nav a,.d-side-min .d-nav button{justify-content:center;padding:0;position:relative}
 .d-side-pip{position:absolute;top:4px;right:6px;font:700 10px var(--m);font-style:normal;color:#fff;background:var(--crit);border-radius:7px;padding:0 4px}

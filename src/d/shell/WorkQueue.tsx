@@ -113,6 +113,9 @@ export function WorkQueue({ go }: { go: (hash: string) => void }) {
           <small className={stale ? 'd-wq-stale' : undefined}>{synced ? `${stale ? 'Cached' : 'Synced'} ${warsawHm(synced)} · ${ago(synced)}${t.refreshing ? ' · refreshing…' : ''}` : 'Syncing…'}</small>
         </span>
       </div>
+      {t.authError && <p className="d-wq-focus d-wq-alarm">Signed out: this is the last brief saved on this device. Sign in again from Settings.</p>}
+      {!t.authError && t.degraded && <p className="d-wq-focus">Counts only: this session is not allowed the full brief. Sign in again to see the rows.</p>}
+      {!t.authError && !t.degraded && t.error && t.brief && <p className="d-wq-focus">Could not refresh; this is the last brief on this device.</p>}
       {focus && <p className={`d-wq-focus${focus.alarmLane ? ' d-wq-alarm' : ''}`} data-focus-line>{focus.line}</p>}
       {q.failed && !items && <Failed what="the work queue" onRetry={q.retry} />}
       {!q.failed && !items && <Skeleton lines={3} title={false} label="Reading the work queue" />}
