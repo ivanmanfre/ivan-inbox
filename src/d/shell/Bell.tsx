@@ -1,18 +1,23 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFeedData } from '../../exp/brain/b/useFeedData'
-import { lookOf } from '../../wb/ask/alertLook'
-import { routableHash, type Notification, type NotificationGroup } from '../../lib/turns'
-import { cleanTitle, groupHeadline, resolveAllSystemAlerts, undoResolveAll, type AlertGroup } from '../../lib/systemAlerts'
+import { ALERT_LOOK, kindOf } from '../../wb/ask/alertLook'
+import { getTurn, routableHash, type Notification, type NotificationGroup } from '../../lib/turns'
+import { dismissSystemAlert, resolveAllSystemAlerts, undoResolveAll } from '../../lib/systemAlerts'
+import { healthNote } from '../counts/glance'
 import { useFrameCounts } from '../counts/useFrameCounts'
-import { toDHash } from '../route'
-import { DIcon, type DIconName } from '../ui/icons'
+import { dHash, toDHash } from '../route'
+import { DIcon } from '../ui/icons'
 import { Btn } from '../ui/Key'
 import { Empty, Failed, Skeleton } from '../ui/states'
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
-import { warsawDow, warsawHm } from '../ui/time'
+import { warsawHm } from '../ui/time'
 import { useFrame } from './frame'
-import { bodyLine, cleanLine, feedDays } from './feedShape'
+import { feedDays } from './feedShape'
+import { FeedGroup, inChatTurnId } from './FeedRows'
+import { SystemBox } from './SystemAlerts'
+import { WorkQueue } from './WorkQueue'
+import { openWorkflows } from './Workflows'
 
 // ---------------------------------------------------------------------------
 // THE BELL. The button (desktop: right end of the answer row; phone: top bar)
@@ -29,8 +34,14 @@ import { bodyLine, cleanLine, feedDays } from './feedShape'
 //                 open row, not only the 200 loaded; db/056 supersede path)
 //   its Undo   -> restoreDismissedAt(stamp)       PATCH ... dismissed_at=null where dismissed_at=<stamp>
 //   row ×      -> dismissOne / dismissGroupRows, Undo -> restore
-//   row tap    -> markRead + open its deep link inside D
+//   member ×   -> dismissOne (one row inside an opened group), Undo -> restore
+//   row tap    -> markRead + open its deep link inside D; a row Claude folded
+//                 (`bot:<turn>`) opens that Claude turn; a url nothing routes -> Lanes
 //   Clear alerts (system box) -> resolveAllSystemAlerts, Undo -> undoResolveAll
+//   alert ×    -> dismissSystemAlert per id (resolved_by 'inbox'), final as today
+// Above the feed: the Workflows alarm (corroborated failures, opens Workflows),
+// Waiting on you (WorkQueue.tsx) and the system alerts (SystemAlerts.tsx).
+// Digests fold under "Routine updates"; a row landing while scrolled shows "N new".
 // ---------------------------------------------------------------------------
 
 export function BellButton() {
@@ -61,67 +72,21 @@ export function BellButton() {
   )
 }
 
-const KIND_ICON: Record<string, DIconName> = {
-  needs_you: 'person', failed: 'alert', reply: 'dms', booking: 'time', reminder: 'time', done: 'check', seen: 'eye', digest: 'sum',
-}
-const KIND_TONE: Record<string, string> = { needs_you: 'd-k-hl', failed: 'd-k-bad', booking: 'd-k-hl' }
-const TENANT: Record<string, string> = { arch: 'Arch', rise: 'Rise', risedtc: 'Rise', ivan: 'Ivan' }
+/** A group that is a routine digest (today's "Routine updates" fold). */
+const isRoutine = (g: NotificationGroup) => ALERT_LOOK[kindOf(g.family, g.latest.severity)].routine
 
-const SEV_WORD: Record<string, string> = { critical: 'critical', warn: 'warning', info: 'note' }
-
-function SystemBox({ groups, failed, onRetry, onClear }: {
-  groups: AlertGroup[] | null; failed: boolean; onRetry: () => void; onClear: () => void
-}) {
-  const crit = (groups ?? []).filter(g => g.severity === 'critical').length
-  const open = (groups ?? []).reduce((a, g) => a + g.count, 0)
-  if (groups == null) {
-    return failed
-      ? <div className="d-sys"><Failed what="system alerts" onRetry={onRetry} /></div>
-      : <div className="d-sys"><Skeleton lines={2} title={false} label="Reading system alerts" /></div>
-  }
-  return (
-    <div className={`d-sys${crit ? ' d-sys-crit' : ''}`} data-sys-alerts>
-      <div className="d-sys-h">
-        <span>System alerts · {open} open, 14 days</span>
-        {open > 0 && <button type="button" className="d-sys-clear" data-verb="clear-alerts" onClick={onClear}>Clear alerts</button>}
-      </div>
-      {groups.slice(0, 4).map(g => (
-        <div key={g.key} className="d-sys-a">
-          <i className={`d-sev d-sev-${g.severity}`}>{SEV_WORD[g.severity] ?? g.severity}</i>
-          <b>{g.count > 1 ? groupHeadline(g) : cleanLine(cleanTitle(g.members[0].title))}</b>
-          <span>{warsawDow(g.newestCreatedAt)} {warsawHm(g.newestCreatedAt)}</span>
-        </div>
-      ))}
-      {groups.length > 4 && <div className="d-sys-ok">{groups.length - 4} more open in today's app.</div>}
-      {crit === 0 && <div className="d-sys-ok">{open === 0 ? 'No system alert open in 14 days.' : 'No critical alert open.'} A critical one lights the bell.</div>}
-    </div>
-  )
-}
-
-function FeedRow({ g, onOpen, onDismiss }: { g: NotificationGroup; onOpen: (n: Notification) => void; onDismiss: (g: NotificationGroup) => void }) {
-  const n = g.latest
-  const look = lookOf(n.family, n.severity)
-  const tenant = TENANT[(n.tenant ?? '').toLowerCase()] ?? ''
-  const body = bodyLine(n)
-  return (
-    <div className={`d-fn${g.unread ? ' d-fn-u' : ''}`} data-feed-row>
-      <button type="button" className="d-fn-open" onClick={() => onOpen(n)}>
-        <span className={`d-fn-k ${KIND_TONE[look.kind] ?? ''}`}><DIcon name={KIND_ICON[look.kind] ?? 'sum'} /></span>
-        <span className="d-fn-m">
-          <u>{look.label}{tenant ? ` · ${tenant}` : ''}</u>
-          <b>{cleanLine(n.title) || look.label}</b>
-          {body && <small>{body}</small>}
-        </span>
-        <span className="d-fn-r">
-          <time>{warsawHm(g.lastSeenAt)}</time>
-          {g.count > 1 && <span className="d-fn-ct" aria-label={`${g.count} times`}>{g.count}×</span>}
-        </span>
-      </button>
-      <button type="button" className="d-fn-x" data-verb="dismiss" aria-label={`Dismiss ${cleanLine(n.title)}`} onClick={() => onDismiss(g)}>
-        <DIcon name="x" />
-      </button>
-    </div>
-  )
+/** Keys that arrived after the first paint (today's arrival pill). */
+function useArrivals(keys: string[]): Set<string> {
+  const seen = useRef<Set<string> | null>(null)
+  const [fresh, setFresh] = useState<Set<string>>(new Set())
+  const sig = keys.join('|')
+  useEffect(() => {
+    if (seen.current == null) { if (keys.length) seen.current = new Set(keys); return }
+    const add = keys.filter(k => !seen.current!.has(k))
+    for (const k of add) seen.current.add(k)
+    if (add.length) setFresh(prev => new Set([...prev, ...add]))
+  }, [sig]) // eslint-disable-line react-hooks/exhaustive-deps
+  return fresh
 }
 
 export function BellFeed() {
@@ -131,21 +96,44 @@ export function BellFeed() {
   const confirm = useDConfirm()
   const toast = useToast()
   const [clearedAt, setClearedAt] = useState<string | null>(null)
-  const days = useMemo(() => feedDays(feed.groups), [feed.groups])
+  const [routineOpen, setRoutineOpen] = useState(false)
+  const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [scrolled, setScrolled] = useState(false)
+  const scroller = useRef<HTMLDivElement>(null)
+  const routine = useMemo(() => feed.groups.filter(isRoutine), [feed.groups])
+  const days = useMemo(() => feedDays(feed.groups.filter(g => !isRoutine(g))), [feed.groups])
+  const fresh = useArrivals(feed.groups.map(g => g.key))
   const open = c.bell.value?.open ?? null
   const unread = c.bell.value?.unreadGroups ?? null
+  const health = c.health.value
+  const groups = useMemo(() => {
+    const gs = c.alerts.value?.groups ?? null
+    if (!gs || hidden.size === 0) return gs
+    return gs.map(g => ({ ...g, members: g.members.filter(m => !m.ids.every(id => hidden.has(id))) }))
+      .map(g => ({ ...g, count: g.members.length })).filter(g => g.count > 0)
+  }, [c.alerts.value, hidden])
+  // The newest unread row that needs him takes the lime "Pick this up" (today's primary).
+  const primaryKey = useMemo(() => feed.groups.find(g => g.unread > 0 && kindOf(g.family, g.latest.severity) === 'needs_you')?.key ?? null, [feed.groups])
 
   const close = () => f.setBellOpen(false)
+  const go = (hash: string) => { close(); f.navigate(hash) }
 
   const openRow = (n: Notification) => {
     feed.markRead(n)
     c.refresh('bell')
     const url = (n.url ?? '').trim()
+    const turn = inChatTurnId(n)
+    if (turn) {
+      // Claude already wrote about it: open that turn, as today (Feed.tsx getTurn).
+      void getTurn(turn).then(row => {
+        go(row ? dHash('claude', null, { thread: row.thread_id, turn: row.id }) : (toDHash(routableHash(url) ?? '') ?? dHash('lanes')))
+      }).catch(() => go(toDHash(routableHash(url) ?? '') ?? dHash('lanes')))
+      return
+    }
     if (/^https?:\/\//i.test(url)) { window.open(url, '_blank', 'noopener,noreferrer'); return }
     const h = routableHash(url)
-    const d = h ? toDHash(h) : null
-    close()
-    if (d) f.navigate(d)
+    // An address nothing routes lands on Lanes, today's fallback, never nowhere.
+    go((h ? toDHash(h) : null) ?? dHash('lanes'))
   }
 
   const dismiss = (g: NotificationGroup) => {
@@ -158,6 +146,29 @@ export function BellFeed() {
         action: { label: 'Undo', verb: 'undo', run: () => { feed.restore(g.items); c.refresh('bell') } },
       })
     })()
+  }
+
+  // One row inside an opened group: that row only, the rest of the group stays.
+  const dismissMember = (n: Notification) => {
+    void (async () => {
+      const ok = await feed.dismissOne(n.id, n)
+      c.refresh('bell')
+      if (!ok) { toast.show({ id: `dismiss-${n.id}`, message: 'Could not dismiss. Nothing changed.', tone: 'failed', action: { label: 'Retry', verb: 'retry', run: () => dismissMember(n) } }); return }
+      toast.show({ id: `dismiss-${n.id}`, message: 'Dismissed.', action: { label: 'Undo', verb: 'undo', run: () => { feed.restore([n]); c.refresh('bell') } } })
+    })()
+  }
+
+  const dismissAlert = (ids: string[], what: string) => {
+    setHidden(prev => new Set([...prev, ...ids]))
+    void Promise.all(ids.map(id => dismissSystemAlert(id))).then(() => {
+      c.refresh('alerts')
+      toast.show({ id: `alert-${ids[0]}`, message: `${what} dismissed. It does not come back.` })
+    }, (e: unknown) => {
+      console.error('[d] dismiss alert failed', e)
+      setHidden(prev => { const next = new Set(prev); for (const id of ids) next.delete(id); return next })
+      c.refresh('alerts')
+      toast.show({ id: `alert-${ids[0]}`, message: 'Could not dismiss the alert. Nothing changed.', tone: 'failed', action: { label: 'Retry', verb: 'retry', run: () => dismissAlert(ids, what) } })
+    })
   }
 
   const clearAll = () => {
@@ -187,11 +198,12 @@ export function BellFeed() {
 
   const clearAlerts = () => {
     void (async () => {
-      const n = (c.alerts.value?.groups ?? []).reduce((a, g) => a + g.count, 0)
+      const n = (groups ?? []).reduce((a, g) => a + g.count, 0)
+      // Today's strip asks this one as a danger confirm: Cancel focused, Enter never clears.
       const ok = await confirm({
         title: 'Clear the system alerts?',
-        message: `The ${n} open in the last 14 days are marked resolved. Undo stays on the receipt for a few seconds.`,
-        confirmText: 'Clear alerts', verb: 'confirm',
+        message: `The ${n} open in the last 14 days are marked resolved. New ones still land. Undo stays on the receipt for a few seconds.`,
+        confirmText: 'Clear alerts', verb: 'confirm', danger: true,
       })
       if (!ok) return
       let stamp: string
@@ -211,6 +223,7 @@ export function BellFeed() {
   const sub = clearedAt ? 'All read' : feed.error && !feed.loaded ? 'Could not read the feed'
     : unread == null ? (c.bell.failed ? 'Count could not be read' : 'Reading…')
       : unread === 0 ? 'All read' : `${unread} unread · ${(open ?? 0).toLocaleString('en-US')} open`
+  const arrived = [...fresh].filter(k => feed.groups.some(g => g.key === k)).length
 
   return (
     <div className={`d-bellp d-bellp-${f.layout}`} role="dialog" aria-label="Alerts" data-bell-feed>
@@ -219,8 +232,16 @@ export function BellFeed() {
         {feed.groups.length > 0 && <Btn verb="clear-all" onClick={clearAll}>Clear all</Btn>}
         <button type="button" className="d-ib" aria-label="Close alerts" onClick={close}><DIcon name="x" /></button>
       </div>
-      <div className="d-bellp-b">
-        <SystemBox groups={c.alerts.value?.groups ?? null} failed={c.alerts.failed} onRetry={() => c.refresh('alerts')} onClear={clearAlerts} />
+      <div className="d-bellp-b" ref={scroller} onScroll={e => setScrolled((e.currentTarget.scrollTop ?? 0) > 8)}>
+        {health && health.urgent.length > 0 && (
+          <button type="button" className="d-wfban" data-verb="workflows" onClick={() => { close(); openWorkflows() }}>
+            <DIcon name="workflows" />
+            <span><b>{health.urgent.length} automation alert{health.urgent.length === 1 ? '' : 's'}</b><small>{healthNote(health)}</small></span>
+            <em>Open</em>
+          </button>
+        )}
+        <WorkQueue go={go} />
+        <SystemBox groups={groups} failed={c.alerts.failed} onRetry={() => c.refresh('alerts')} onClear={clearAlerts} onDismiss={dismissAlert} />
         {!feed.loaded && <Skeleton lines={5} label="Reading notifications" />}
         {feed.loaded && feed.error && feed.groups.length === 0 && <Failed what="the notifications" onRetry={() => void feed.refresh()} />}
         {feed.loaded && !feed.error && feed.groups.length === 0 && (
@@ -232,10 +253,21 @@ export function BellFeed() {
         {days.map(d => (
           <section key={d.day}>
             <div className="d-fday"><span>{d.day}</span>{d.unread > 0 && <span>{d.unread} unread</span>}</div>
-            {d.groups.map(g => <FeedRow key={g.key} g={g} onOpen={openRow} onDismiss={dismiss} />)}
+            {d.groups.map(g => <FeedGroup key={g.key} g={g} onOpen={openRow} onDismissAll={dismiss} onDismissOne={dismissMember} primary={g.key === primaryKey} />)}
           </section>
         ))}
+        {routine.length > 0 && (
+          <section className="d-routine" data-routine>
+            <button type="button" className="d-routine-h" aria-expanded={routineOpen} onClick={() => setRoutineOpen(o => !o)}>
+              <span>Routine updates</span><b>{routine.length}</b><em>{routineOpen ? 'Hide' : 'Show'}</em>
+            </button>
+            {routineOpen && routine.map(g => <FeedGroup key={g.key} g={g} onOpen={openRow} onDismissAll={dismiss} onDismissOne={dismissMember} />)}
+          </section>
+        )}
       </div>
+      {arrived > 0 && scrolled && (
+        <button type="button" className="d-newpill" onClick={() => scroller.current?.scrollTo({ top: 0, behavior: 'smooth' })}>{arrived} new</button>
+      )}
     </div>
   )
 }
