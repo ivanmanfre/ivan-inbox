@@ -43,8 +43,8 @@ export function Phone({ seats, seat, pick, ctx, range, setRange, doors, monitor 
         <span>{SEAT_NAME[seat]}: {SEAT_OWNER[seat]} · {h ? (h.account === 'OK' ? 'LinkedIn connected' : 'LinkedIn disconnected') : 'seat health unknown'}</span>
         {next !== seat && <button type="button" onClick={() => pick(next)}>{SEAT_NAME[next]} ›</button>}
       </div>
-      <TodayCell seat={seat} ctx={ctx} />
-      <ControlCell seat={seat} ctx={ctx} />
+      <div data-band="today" data-seat={seat}><TodayCell seat={seat} ctx={ctx} /></div>
+      <div data-band="control" data-seat={seat}><ControlCell seat={seat} ctx={ctx} /></div>
       <Sec tail={<span>{ctx.d.perf.value ? ctx.d.perf.value.filter(c => c.client_id === seat && isWorking(c)).length : ''}</span>}>Campaigns, last 7 days</Sec>
       <CampaignsCell seat={seat} ctx={ctx} />
       <Sec tail={<RangeKeys range={range} setRange={setRange} />}>14 days, own scale</Sec>

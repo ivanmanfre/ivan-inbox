@@ -17,7 +17,10 @@ import { fetchInbound, type InboundRow } from '../../lib/inbound'
 import { fetchSeatHealth, type SeatHealthSummary } from '../../lib/seatHealth'
 import type { CameBackCard } from '../../wb/dms/cameBackData'
 import type { Seat } from '../seats'
-import { fetchCameBack, fetchCounters, fetchEngagers7d, fetchPauses, fetchWarmCount, type Counter } from './reads'
+import { fetchCameBack, fetchCounters, fetchEngagers7d, fetchPauses, fetchWarmCount, type Counter, type Pauses } from './reads'
+import type { Attempt } from './glance/model'
+import { fetchLastAttempts } from './glance/reads'
+import { fetchReady, type ReadyRead } from './glance/ready'
 
 export type Slot<T> = { value: T | null; failed: string | null }
 export type LanesData = {
@@ -34,7 +37,9 @@ export type LanesData = {
   warm: Slot<number>
   engagers: Slot<Record<Seat, number>>
   health: Slot<SeatHealthSummary>
-  pauses: Slot<Partial<Record<Seat, string>>>
+  pauses: Slot<Pauses>
+  attempts: Slot<Record<Seat, Attempt | null | 'failed'>>
+  ready: Slot<ReadyRead>
 }
 type Key = keyof LanesData
 
@@ -61,6 +66,8 @@ const READS: { [K in Key]: () => Promise<NonNullable<LanesData[K]['value']>> } =
     return h
   },
   pauses: fetchPauses,
+  attempts: fetchLastAttempts,
+  ready: () => fetchReady(),
 }
 const KEYS = Object.keys(READS) as Key[]
 

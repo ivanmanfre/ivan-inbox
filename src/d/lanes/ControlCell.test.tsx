@@ -18,7 +18,7 @@ function data(over: Partial<LanesData> = {}): LanesData {
   return {
     cc: slot(p), perf: slot([]), gov: slot([]), outcomes: slot([]), pipeline: slot([]), replacement: slot([]), viewed: slot([]),
     counters: slot([]), inbound: slot([]), cameBack: slot([]), warm: slot(0), engagers: slot({ ivan: 0, risedtc: 0, arch: 0 }),
-    health: slot(null), pauses: slot({}), ...over,
+    health: slot(null), pauses: slot({}), attempts: slot(null), ready: slot(null), ...over,
   }
 }
 const NOW = Date.parse(p.as_of)

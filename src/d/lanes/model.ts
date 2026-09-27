@@ -127,10 +127,30 @@ export function poolsOf(c: CcClient): Array<[string, number]> {
   return Object.entries(inner).filter(([, v]) => typeof v === 'number').map(([k, v]) => [POOL[k] ?? k.replace(/_/g, ' '), v as number])
 }
 
+/* The contract's "sendable-open" (today's Control.tsx `sendableOpen`): the shared
+   sender reports Saturday as open_now with a view_only reason, so open_now alone
+   does not mean a seat can send. A seat that is not sendable-open is never paced. */
+const NOT_SENDABLE = /view_only|_closed|outside_window/
+export function sendableOpen(ch: { session?: { open_now: boolean } | null; executable_reasons?: string[] }): boolean {
+  if (!ch.session?.open_now) return false
+  return !NOT_SENDABLE.test((ch.executable_reasons ?? []).join(' '))
+}
+/** One executable reason (`cooldown:arch_conn_send_pause_until`) in plain words. */
+export function reasonWord(r: string): string {
+  const [k, v = ''] = r.split(':')
+  if (k === 'cooldown') return `paused (${v.replace(/_/g, ' ')})`
+  if (k === 'window_state') return `window ${v.split('=').pop()}`
+  if (/view_only/.test(r)) return 'view-only day (Saturday rule)'
+  if (/outside_window|_closed/.test(r)) return 'outside the sending window'
+  return r.replace(/_/g, ' ')
+}
+
 export type ControlView = {
   incident: (CcIncident & { lead: string; pausedUntil: string | null; check: string | null }) | null
   lead: string; window: string; closed: boolean; opens: string | null; pct: number | null; pace: string
   sent: number; planned: number | null; pools: Array<[string, number]>; next: string | null
+  /** "Cannot send right now": the channel's executable_reasons, in words (empty when it can send). */
+  blockers: string[]
 }
 export function controlOf(c: CcClient, now: number): ControlView {
   const inv = c.invitation, s = inv.session
@@ -153,7 +173,8 @@ export function controlOf(c: CcClient, now: number): ControlView {
       check: inc.next_check_at ? `${hm(inc.next_check_at)}${until(inc.next_check_at, now) ? ', ' + until(inc.next_check_at, now) : ''}` : null,
     } : null,
     lead: c.status_reason,
-    window, closed: !s?.open_now || c.status === 'outside_window', opens,
+    window, closed: !sendableOpen(inv) || c.status === 'outside_window', opens,
+    blockers: inv.executable_now === false ? (inv.executable_reasons ?? []).map(reasonWord) : [],
     pct: s?.progress_pct ?? null, pace: PACE[inv.pace] ?? inv.pace, sent: inv.confirmed_sent, planned: inv.planned_by_now,
     pools: poolsOf(c), next: c.next_action?.action ?? null,
   }

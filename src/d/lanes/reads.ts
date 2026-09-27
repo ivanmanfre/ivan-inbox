@@ -141,15 +141,19 @@ export function laneMixOnce(campaignId: string): Promise<LaneMix> {
   return p
 }
 
-/** The sender's own pause keys per seat (Ivan's 422 pause, Arch's invite pause). */
-export const PAUSE_KEY: Partial<Record<Seat, string>> = { ivan: 'ivan_conn_422_pause_until', arch: 'arch_conn_send_pause_until' }
-export async function fetchPauses(): Promise<Partial<Record<Seat, string>>> {
-  const { data, error } = await supabase.from('integration_config').select('key, value').in('key', Object.values(PAUSE_KEY))
+/** The senders' own pause keys: one per seat (a 422 streak arms it for 2h) and the
+    global manual kill switch `conn_send_pause_until` (stops every seat's invites). */
+export const PAUSE_KEY: Record<Seat, string> = { ivan: 'ivan_conn_422_pause_until', risedtc: 'risedtc_conn_422_pause_until', arch: 'arch_conn_send_pause_until' }
+export const KILL_SWITCH_KEY = 'conn_send_pause_until'
+export type Pauses = Partial<Record<Seat | 'all', string>>
+export async function fetchPauses(): Promise<Pauses> {
+  const { data, error } = await supabase.from('integration_config').select('key, value').in('key', [...Object.values(PAUSE_KEY), KILL_SWITCH_KEY])
   if (error) throw error
-  const out: Partial<Record<Seat, string>> = {}
-  for (const [seat, key] of Object.entries(PAUSE_KEY)) {
-    const v = ((data ?? []) as Array<{ key: string; value: string | null }>).find(r => r.key === key)?.value
-    if (v && Number.isFinite(Date.parse(v))) out[seat as Seat] = v
+  const rows = (data ?? []) as Array<{ key: string; value: string | null }>
+  const out: Pauses = {}
+  for (const [seat, key] of [...Object.entries(PAUSE_KEY), ['all', KILL_SWITCH_KEY]] as Array<[Seat | 'all', string]>) {
+    const v = rows.find(r => r.key === key)?.value
+    if (v && Number.isFinite(Date.parse(v))) out[seat] = v
   }
   return out
 }
