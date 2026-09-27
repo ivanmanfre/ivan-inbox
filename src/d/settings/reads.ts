@@ -15,7 +15,8 @@ export function deviceOf(ua: string | null | undefined): Pick<Device, 'device' |
 
 /** Newest first. */
 export async function fetchDevices(): Promise<Device[]> {
-  const { data, error } = await supabase.from('push_subscriptions').select('user_agent, created_at').order('created_at', { ascending: false })
+  // Only this app's subscriptions: the dashboard writes its own rows to the same table.
+  const { data, error } = await supabase.from('push_subscriptions').select('user_agent, created_at').eq('device_label', 'ivan-inbox').order('created_at', { ascending: false })
   if (error) throw error
   return ((data ?? []) as Array<{ user_agent: string | null; created_at: string }>).map(r => ({ ...deviceOf(r.user_agent), created_at: r.created_at }))
 }

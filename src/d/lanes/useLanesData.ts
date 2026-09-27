@@ -10,14 +10,18 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchPayload, type CcPayload } from '../../lib/campaignControl'
 import { fetchCampaignPerf, type CampaignPerf } from '../../lib/campaignPerf'
 import {
-  fetchGovernor, fetchOutcomes, fetchPipeline, fetchReplacement, fetchViewedBack,
-  type GovernorRow, type OutcomeRow, type PipelineRow, type ReplacementRow, type ViewedBackRow,
+  fetchGovernor, fetchOutcomes, fetchPipeline, fetchReplacement, fetchScanOpens, fetchViewedBack,
+  type GovernorRow, type ScanOpenRow, type OutcomeRow, type PipelineRow, type ReplacementRow, type ViewedBackRow,
 } from '../../lib/kpis'
-import { fetchInbound, type InboundRow } from '../../lib/inbound'
+import { fetchCampaignSends, type CampaignSend } from '../../lib/sends'
+import { fetchInbound, fetchInboundDaily, type InboundDailyRow, type InboundRow } from '../../lib/inbound'
 import { fetchSeatHealth, type SeatHealthSummary } from '../../lib/seatHealth'
 import type { CameBackCard } from '../../wb/dms/cameBackData'
 import type { Seat } from '../seats'
-import { fetchCameBack, fetchCounters, fetchEngagers7d, fetchPauses, fetchWarmCount, type Counter } from './reads'
+import { fetchCameBack, fetchCounters, fetchEngagers7d, fetchPauses, fetchWarmCount, type Counter, type Pauses } from './reads'
+import type { Attempt } from './glance/model'
+import { fetchLastAttempts } from './glance/reads'
+import { fetchReady, type ReadyRead } from './glance/ready'
 
 export type Slot<T> = { value: T | null; failed: string | null }
 export type LanesData = {
@@ -30,11 +34,16 @@ export type LanesData = {
   viewed: Slot<ViewedBackRow[]>
   counters: Slot<Counter[]>
   inbound: Slot<InboundRow[]>
+  inboundDaily: Slot<InboundDailyRow[]>
+  scans: Slot<ScanOpenRow[]>
+  campSends: Slot<CampaignSend[]>
   cameBack: Slot<CameBackCard[]>
   warm: Slot<number>
   engagers: Slot<Record<Seat, number>>
   health: Slot<SeatHealthSummary>
-  pauses: Slot<Partial<Record<Seat, string>>>
+  pauses: Slot<Pauses>
+  attempts: Slot<Record<Seat, Attempt | null | 'failed'>>
+  ready: Slot<ReadyRead>
 }
 type Key = keyof LanesData
 
@@ -52,6 +61,9 @@ const READS: { [K in Key]: () => Promise<NonNullable<LanesData[K]['value']>> } =
   viewed: fetchViewedBack,
   counters: () => fetchCounters(),
   inbound: fetchInbound,
+  inboundDaily: fetchInboundDaily,
+  scans: fetchScanOpens,
+  campSends: () => fetchCampaignSends('all'),
   cameBack: fetchCameBack,
   warm: fetchWarmCount,
   engagers: fetchEngagers7d,
@@ -61,8 +73,13 @@ const READS: { [K in Key]: () => Promise<NonNullable<LanesData[K]['value']>> } =
     return h
   },
   pauses: fetchPauses,
+  attempts: fetchLastAttempts,
+  ready: () => fetchReady(),
 }
 const KEYS = Object.keys(READS) as Key[]
+/** Heavier reads that move slowly: re-read every 5 minutes, not on every 60s tick. */
+const SLOW = new Set<Key>(['ready', 'campSends', 'scans', 'inboundDaily'])
+const SLOW_MS = 5 * 60_000
 
 const empty = (): LanesData => Object.fromEntries(KEYS.map(k => [k, { value: null, failed: null }])) as unknown as LanesData
 
@@ -76,24 +93,26 @@ export function useLanesData(): { data: LanesData; loading: boolean; at: number 
   const [at, setAt] = useState<number | null>(null)
   const live = useRef(true)
   const pending = useRef(false)
+  const slowAt = useRef(0)
 
   const refresh = useCallback(() => {
     if (pending.current || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return
     pending.current = true
-    void Promise.allSettled(KEYS.map(k => READS[k]())).then(res => {
+    // Each read lands on its own: a slow read (the ready counts) never holds the
+    // monitor or the campaigns back. A failed re-read keeps the last good value
+    // on screen and says it failed.
+    const put = (k: Key, slot: (prev: Slot<unknown>) => Slot<unknown>) => {
+      if (!live.current) return
+      setData(prev => ({ ...prev, [k]: slot(prev[k] as Slot<unknown>) }) as LanesData)
+    }
+    const withSlow = Date.now() - slowAt.current >= SLOW_MS
+    if (withSlow) slowAt.current = Date.now()
+    void Promise.allSettled(KEYS.filter(k => withSlow || !SLOW.has(k)).map(k => READS[k]().then(
+      v => put(k, () => ({ value: v, failed: null })),
+      e => { put(k, prev => ({ value: prev.value, failed: e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e ?? 'read failed') })); throw e },
+    ))).then(() => {
       pending.current = false
       if (!live.current) return
-      setData(prev => {
-        const next = { ...prev } as Record<Key, Slot<unknown>>
-        res.forEach((r, i) => {
-          const k = KEYS[i]
-          // A failed re-read keeps the last good value on screen and says it failed.
-          next[k] = r.status === 'fulfilled'
-            ? { value: r.value, failed: null }
-            : { value: prev[k].value, failed: r.reason instanceof Error ? r.reason.message : String(r.reason ?? 'read failed') }
-        })
-        return next as unknown as LanesData
-      })
       setAt(Date.now())
       setLoading(false)
     })

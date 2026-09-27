@@ -1,11 +1,21 @@
 /* Lanes cells, part 2: Campaigns, 14 days (with the range keys) and Inbound.
    One seat per render; the desktop grid lays three side by side. */
 import { useEffect, useState } from 'react'
-import { groupBySeat, isWorking, shortName, type CampaignPerf } from '../../lib/campaignPerf'
+import { groupBySeat, shortName, type CampaignPerf } from '../../lib/campaignPerf'
 import type { Seat } from '../seats'
 import { laneLabel } from './labels'
 import { dm as dayMonth, seriesOf, windowOf, type Bar, type Range } from './model'
 import { laneMixOnce, type LaneMix } from './reads'
+import { inboundStatus, type InboundDailyRow } from '../../lib/inbound'
+
+/** 14 UTC days of inbound decisions for one seat and lane, oldest first; null when unread. */
+function spark(daily: InboundDailyRow[] | null, seat: Seat, k: string, now: number): number[] | null {
+  if (!daily) return null
+  return Array.from({ length: 14 }, (_, i) => {
+    const day = new Date(now - (13 - i) * 864e5).toISOString().slice(0, 10)
+    return daily.filter(d => d.client_id === seat && d.lane === k && d.day.slice(0, 10) === day).reduce((a, d) => a + d.n, 0)
+  })
+}
 import { num, type CellCtx } from './seatCells'
 
 export type BandCtx = CellCtx & {
@@ -34,11 +44,13 @@ function LaneLine({ id }: { id: string }) {
 }
 
 function Camp({ c, ctx }: { c: CampaignPerf; ctx: BandCtx }) {
+  const all = ctx.d.campSends.value?.find(x => x.campaign_id === c.campaign_id)?.sent ?? null
   const nb = (v: number, l: string) => <span><b className={v ? '' : 'dl-z'}>{v}</b>{l}</span>
   return (
     <button type="button" className={`dl-cp${ctx.selected === c.campaign_id ? ' dl-sel' : ''}`} onClick={() => ctx.openCampaign(c.campaign_id)}>
       <span className="dl-cn">{shortName(c.campaign_name)}</span><span className="dl-go">open ›</span>
-      <span className="dl-nums">{nb(c.invites_7d, 'invites')}{nb(c.dms_7d, 'DMs')}{nb(c.replied_7d, 'replied')}{nb(c.calls_30d, 'calls 30d')}</span>
+      <span className="dl-nums">{nb(c.invites_7d, 'invites')}{nb(c.dms_7d, 'DMs')}{nb(c.replied_7d, 'replied')}{nb(c.calls_30d, 'calls 30d')}
+        {all != null && <span className="dl-dimt">{all.toLocaleString('en-US')} sent all time</span>}</span>
       <span className="dl-ln">{c.replied_7d ? `${c.positive_7d} positive of ${c.replied_7d}. ` : 'No replies yet. '}{acceptShort(c)}</span>
       {c.client_id === 'arch' && <LaneLine id={c.campaign_id} />}
     </button>
@@ -50,9 +62,10 @@ export function CampaignsCell({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
   const rows = ctx.d.perf.value
   if (!rows) return <div className="dl-cps"><p className="dl-fo dl-unk">{ctx.d.perf.failed ? `Campaigns could not be read: ${ctx.d.perf.failed}` : 'Reading campaigns…'}</p></div>
   const g = groupBySeat(rows, [seat])[0]
-  const retired = seat === 'ivan' ? rows.filter(r => r.client_id === seat && !isWorking(r) && !r.is_active) : []
-  const rest = [...g.quiet, ...g.paused, ...retired]
-  const fold = [g.quiet.length ? `${g.quiet.length} quiet this week` : '', g.paused.length ? `${g.paused.length} paused` : '', retired.length ? `${retired.length} retired` : ''].filter(Boolean).join(', ')
+  // Ivan's paused campaigns are hidden outright (ruling 07-25, today's Overview); clients' paused ones fold.
+  const paused = seat === 'ivan' ? [] : g.paused
+  const rest = [...g.quiet, ...paused]
+  const fold = [g.quiet.length ? `${g.quiet.length} quiet this week` : '', paused.length ? `${paused.length} paused` : ''].filter(Boolean).join(', ')
   return (
     <div className="dl-cps">
       {g.shown.length ? g.shown.map(c => <Camp key={c.campaign_id} c={c} ctx={ctx} />) : <p className="dl-fo">Nothing went out on this seat this week.</p>}
@@ -61,9 +74,13 @@ export function CampaignsCell({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
           <span>{fold}</span><span>{show ? 'hide' : 'show'}</span>
         </button>
       )}
+      {ctx.d.campSends.value && (() => {
+        const mine = ctx.d.campSends.value.filter(x => rows.some(r => r.campaign_id === x.campaign_id && r.client_id === seat) && (seat !== 'ivan' || x.is_active))
+        return <p className="dl-fo dl-tot2"><span>{g.shown.length} of {mine.length} shown</span><span>{mine.reduce((a, x) => a + x.sent, 0).toLocaleString('en-US')} sent all time</span></p>
+      })()}
       {show && rest.map(c => (
         <button type="button" key={c.campaign_id} className="dl-quiet" onClick={() => ctx.openCampaign(c.campaign_id)}>
-          <span>{shortName(c.campaign_name)}</span><em>{c.is_active ? 'quiet' : seat === 'ivan' ? 'retired' : 'paused'}</em>
+          <span>{shortName(c.campaign_name)}</span><em>{c.is_active ? 'quiet' : 'paused'}</em>
         </button>
       ))}
     </div>
@@ -96,6 +113,7 @@ export function DeliveryCell({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
   const inv = seriesOf(p, seat, ctx.now, 'invitation'), dmb = seriesOf(p, seat, ctx.now, 'dm'), rep = seriesOf(p, seat, ctx.now, 'dm', 'replies_people')
   const o = ctx.d.outcomes.value?.find(x => x.client_id === seat)
   const vb = ctx.d.viewed.value?.find(x => x.client_id === seat)
+  const sc = ctx.d.scans.value?.find(x => x.client_id === seat)
   const convos = o ? (ctx.range === '7d' ? o.convos_7d : ctx.range === '30d' ? o.convos_30d : null) : null
   const calls = o ? (ctx.range === '7d' ? o.calls_7d : ctx.range === '30d' ? o.calls_30d : null) : null
   const viewed = vb && ctx.range !== '90d' ? (ctx.range === '7d' ? [vb.viewed_7d, vb.invited_7d] : [vb.viewed_30d, vb.invited_30d]) : null
@@ -112,6 +130,7 @@ export function DeliveryCell({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
             : 'accept rate: nothing old enough yet'}
           <br /><b>{num(convos)}</b> conversations · <b>{num(calls)}</b> calls · InMail <b>{num(w.inmail)}</b> · {num(w.invFailed)} invites refused
           {viewed && <><br />Viewed your profile back: <b>{viewed[0]}</b> of {viewed[1]} invited (a floor)</>}
+          {sc && <><br />Scan opens: <b>{sc.opens_7d}</b> in 7d · {sc.opens_30d} in 30d · {sc.distinct_prospects} people{sc.last_open ? `, last ${dayMonth(sc.last_open)}` : ''}</>}
         </>}
       </div>
     </div>
@@ -124,10 +143,15 @@ export function InboundCell({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
   const cb = (ctx.d.cameBack.value ?? []).filter(x => x.tenant === seat)
   const line = (label: string, k: 'requests' | 'filtered', a: string, b: string) => {
     const x = lane(k)
+    const st = x ? inboundStatus(x.last_at, x.total, new Date(ctx.now).toISOString()) : 'off'
+    const word = !x || st === 'off' ? 'no decisions recorded yet' : st === 'live' ? `live, last ${dayMonth(x.last_at!)}` : `quiet for ${Math.floor((ctx.now - Date.parse(x.last_at!)) / 864e5)} days`
+    const days = spark(ctx.d.inboundDaily.value, seat, k, ctx.now)
     return (
       <div className="dl-il" key={k}>
-        <span>{label}{!rows ? (ctx.d.inbound.failed ? ': could not be read' : ': reading…') : x ? <>: <b>{x.passed}</b> {a}, <b>{x.dropped}</b> {b}</> : ': no decisions recorded yet'}</span>
-        <em>{x ? `${x.d30} in 30d${x.last_at ? `, last ${dayMonth(x.last_at)}` : ''}` : ''}</em>
+        <span>{label}{!rows ? (ctx.d.inbound.failed ? ': could not be read' : ': reading…') : x ? <>: <b>{x.passed}</b> {a}, <b>{x.dropped}</b> {b}</> : ''}
+          <small className={`dl-ist${st === 'live' ? ' dl-livet' : ''}`}>{rows ? word : ''}</small></span>
+        <em>{x ? `${x.d7} in 7d · ${x.d30} in 30d` : ''}
+          {days && <span className="dl-mini dl-ispk" aria-label="decisions per day, 14 days">{days.map((v, i) => <i key={i} className={v ? '' : 'dl-z'} style={{ height: `${v ? Math.max(3, Math.round((v / Math.max(1, ...days)) * 12)) : 2}px` }} />)}</span>}</em>
       </div>
     )
   }

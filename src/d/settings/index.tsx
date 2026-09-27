@@ -6,7 +6,7 @@
    Lime only on live state (judge): a saved preference is the pressed neutral key.
    ========================================================================== */
 import { lazy, Suspense, type ReactNode } from 'react'
-import { fmtUsd } from '../../lib/money'
+import { fmtUsd, noteReason, provenanceText } from '../../lib/money'
 import { supabase } from '../../lib/supabase'
 import type { PlaceProps } from '../places'
 import { dHash } from '../route'
@@ -16,7 +16,7 @@ import { Key } from '../ui/Key'
 import { Failed, Skeleton } from '../ui/states'
 import { useRead } from '../lanes/useRead'
 import { warsawDm } from '../ui/time'
-import { useDensity, usePush, useSound } from './prefs'
+import { useDensity, usePush, useSound, useStoredTheme } from './prefs'
 import { fetchBoards, fetchDevices, fetchMoneyPlate, type MoneyPlate } from './reads'
 import './settings.css'
 
@@ -42,20 +42,26 @@ function Plate({ title, note, children }: { title: string; note?: string; childr
   return <section className="ds2-plate"><h3>{title}{note && <span>{note}</span>}</h3>{children}</section>
 }
 
+const CLIENT_NAME: Record<string, string> = { risedtc: 'Rise', arch: 'Arch' }
+
 function MoneyCells({ m }: { m: MoneyPlate }) {
-  const cell = (id: string, label: string) => {
+  // Every client the ledger carries an MRR row for (Rise and Arch first), never a typed-in pair.
+  const ids = [...new Set(['risedtc', 'arch', ...m.mrr.map(r => r.clientId).filter((x): x is string => Boolean(x))])]
+  const cell = (id: string) => {
     const r = m.mrr.find(x => x.clientId === id)
     const a = r?.amountRow
+    const label = CLIENT_NAME[id] ?? id
     return (
       <div key={id}><small>{label} MRR</small>
-        {a ? <><em>{fmtUsd(a.amount_usd)}</em><u>{a.verified ? 'verified' : `unverified, ${a.source_kind.replace(/_/g, ' ')}`}</u></>
-          : <><em className="ds2-z">not recorded</em><u>awaiting a Stripe read</u></>}
+        {a ? <><em>{fmtUsd(a.amount_usd)}</em><u>{a.verified ? 'verified' : 'unverified'} · {provenanceText(a)}</u></>
+          : r ? <><em className="ds2-z">not recorded</em><u>{noteReason(r.latestRow.note ?? '') || 'awaiting a Stripe read'}</u></>
+            : <><em className="ds2-z">not recorded</em><u>no MRR row on file</u></>}
       </div>
     )
   }
   return (
     <div className="ds2-money">
-      {cell('risedtc', 'Rise')}{cell('arch', 'Arch')}
+      {ids.map(cell)}
       <div><small>Runway</small>{m.cash == null ? <><em className="ds2-z">not computed</em><u>no cash on hand recorded</u></> : <><em className="ds2-z">in Money</em><u>cash as of {m.cashAsOf ?? 'unknown'}</u></>}</div>
     </div>
   )
@@ -65,12 +71,14 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
   const push = usePush()
   const [sound, setSound] = useSound()
   const [density, setDensity] = useDensity()
+  const [theme, resetTheme] = useStoredTheme()
   const confirm = useDConfirm()
   const devices = useRead(fetchDevices, 'devices')
   const boards = useRead(fetchBoards, 'boards')
   const money = useRead(fetchMoneyPlate, 'money')
 
-  const here = layout === 'phone' || /iPhone|iPad/.test(navigator.userAgent) ? 'iPhone' : /Macintosh/.test(navigator.userAgent) ? 'Mac' : 'device'
+  // The device by its user agent, never by the window width: a narrow Mac window is still a Mac.
+  const here = /iPhone|iPad/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1) ? 'iPhone' : /Macintosh/.test(navigator.userAgent) ? 'Mac' : 'device'
   const devs = devices.kind === 'ready' ? devices.data : null
   const title = devs ? <>Pushes reach <N v={devs.length} /> {devs.length === 1 ? 'device' : 'devices'}.</> : <>Pushes reach <N v={null} /> devices.</>
   const sub = devs ? (devs[0] ? `Newest is your ${devs[0].device}, added ${warsawDm(devs[0].created_at)}. Dark is the only theme.` : 'No device gets pushes yet. Dark is the only theme.')
@@ -78,7 +86,7 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
   const pushSub = push.blocked ?? (push.state === 'on' ? `This ${here} gets a ping when a new reply lands.` : push.state === 'reading' ? 'Reading this device…' : `Get a ping on this ${here} when a new reply lands.`)
   const board = (id: string) => (boards.kind === 'ready' ? boards.data.find(b => b.client_id === id) : undefined)
   const signOut = async () => {
-    if (await confirm({ title: 'Sign out?', message: 'This signs the app out. You sign back in with the email link.', confirmText: 'Sign out' })) void supabase.auth.signOut()
+    if (await confirm({ title: 'Sign out?', message: 'This signs the app out on this device. You sign back in with the 6-digit code or the email link.', confirmText: 'Sign out' })) void supabase.auth.signOut()
   }
 
   const notif = (
@@ -99,8 +107,10 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
   )
   const look = (
     <Plate title="Appearance" note="this device">
-      <Row title="Theme" sub="Dark. The app has one theme."><span className="ds2-v">Dark</span></Row>
-      <Row title="Density" sub="Compact tightens list rows. Comfortable is unchanged.">
+      <Row title="Theme" sub={theme === 'light' ? 'Dark is the only theme, but this device still stores Light from the old app, which turns the Money and legacy panels light. Reset clears it.' : 'Dark. The app has one theme.'}>
+        {theme === 'light' ? <Key size="small" verb="theme-reset" onClick={resetTheme}>Reset to dark</Key> : <span className="ds2-v">Dark</span>}
+      </Row>
+      <Row title="Density" sub="Compact tightens the list rows (conversations, campaigns, tasks, logs). Comfortable gives them more air.">
         <Pair name="Density" value={density} options={[{ id: 'comfortable', label: 'Comfortable', verb: 'density-comfortable' }, { id: 'compact', label: 'Compact', verb: 'density-compact' }]} onPick={setDensity} />
       </Row>
     </Plate>
@@ -146,7 +156,7 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
 function MoneyPlace({ navigate }: PlaceProps) {
   return (
     <div className="ds2-root ds2-moneyplace">
-      <AnswerRow title="Money" sub="Read only. Every number shows where it came from." tools={<Key size="small" onClick={() => navigate(dHash('settings'))}>Back to Settings</Key>} />
+      <AnswerRow title="Money" sub="Read only. Every number shows where it came from, and when it was last checked." tools={<Key size="small" onClick={() => navigate(dHash('settings'))}>Back to Settings</Key>} />
       <div className="ds2-moneyview"><Suspense fallback={<Skeleton lines={6} label="Loading Money" />}><MoneyView /></Suspense></div>
     </div>
   )

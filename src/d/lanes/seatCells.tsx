@@ -8,8 +8,9 @@ import { Key } from '../ui/Key'
 import { ackId, useAck } from './ack'
 import { clientOf, controlOf, dm, hm, seatWord, todayOf } from './model'
 import type { LanesData } from './useLanesData'
+import { readyOf } from './glance/ready'
 
-export type CellCtx = { d: LanesData; now: number }
+export type CellCtx = { d: LanesData; now: number; openControl?: (seat: Seat) => void }
 
 export const PERSON: Record<Seat, string> = { ivan: 'Iván Manfredi', risedtc: 'Mattan Danino', arch: 'Davorin Smit' }
 const Sep = () => <span className="dl-sep">·</span>
@@ -32,7 +33,7 @@ export function Plate({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
       <div className="dl-hl">
         {h ? <>
           <span className={h.account === 'OK' ? 'dl-ok' : 'dl-bad'}>LinkedIn {h.account === 'OK' ? 'connected' : 'disconnected'}</span>
-          <span className={h.sn === 'OK' ? 'dl-ok' : 'dl-bad'}>Sales Nav {h.sn === 'OK' ? 'on' : 'not working'}{h.sn_credits != null ? `, ${h.sn_credits} credits` : ''}</span>
+          <span className={h.sn === 'OK' || h.sn == null ? 'dl-ok' : 'dl-bad'}>Sales Nav {h.sn === 'OK' ? 'on' : h.sn == null ? 'not reported' : 'not working'}{h.sn_credits != null ? `, ${h.sn_credits} credits` : ''}</span>
           {h.degraded && h.link && <a className="dl-reconnect" data-verb="reconnect" href={h.link} target="_blank" rel="noreferrer">Reconnect</a>}
         </> : <span className="dl-bad">{ctx.d.health.failed ? 'seat health could not be read' : 'reading seat health…'}</span>}
       </div>
@@ -54,7 +55,9 @@ export function TodayCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
   const t = todayOf(ctx.d.cc.value, seat, ctx.now)
   const cd = ctx.d.counters.value?.find(x => x.seat === seat && x.action_type === 'dm')
   const g = ctx.d.gov.value?.find(x => x.client_id === seat)
-  const dmSub = ctx.d.counters.failed && !ctx.d.counters.value ? 'cap unknown' : cd ? `${cd.count} of ${cd.daily_limit ?? 50} cap` : 'cap 50, unused'
+  // The DM cap: the sender's own counter row, else the monitor's payload, else the ratified 50.
+  const dmCap = cd?.daily_limit ?? clientOf(ctx.d.cc.value, seat)?.dm?.capacity?.daily_cap ?? 50
+  const dmSub = ctx.d.counters.failed && !ctx.d.counters.value ? 'cap unknown' : cd ? `${cd.count} of ${dmCap} cap` : `cap ${dmCap}, unused`
   return (
     <>
       <div className="dl-td">
@@ -81,15 +84,20 @@ export function TodayCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
 }
 
 function Supply({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
+  // Runway = what the sender would pick now (the glance's ready count, the picker's own filter)
+  // over the invite pace; the old pipeline view's "sendable" is only the fallback.
   const pipe = (ctx.d.pipeline.value ?? []).filter(p => p.client_id === seat)
   const g = ctx.d.gov.value?.find(x => x.client_id === seat)
-  const sendable = pipe.reduce((a, p) => a + p.sendable, 0)
+  const ready = ctx.d.ready.value ? readyOf(ctx.d.ready.value, seat, g).total : null
+  const sendable = ready ?? pipe.reduce((a, p) => a + p.sendable, 0)
   const rate = Math.max(pipe.reduce((a, p) => a + p.sent_7d, 0) / 7, g?.daily_used ?? 0)
-  const runway = ctx.d.pipeline.value && rate > 0 ? Math.floor(sendable / rate) : null
+  const known = ready != null || ctx.d.pipeline.value
+  const runway = known ? (rate > 0 ? `${Math.floor(sendable / rate)}d` : sendable > 0 ? 'open-ended, nothing sent in 7 days' : null) : null
   const cut = new Date(ctx.now - 7 * 864e5).toISOString().slice(0, 10)
   const rep = (ctx.d.replacement.value ?? []).filter(r => r.client_id === seat && r.day >= cut)
   const so = rep.reduce((a, r) => a + r.sent_out, 0), qi = rep.reduce((a, r) => a + r.qualified_in, 0)
-  return <>{runway != null && <><Sep />runway {runway}d</>}{so > 0 && <><Sep />refill {(qi / so).toFixed(2)}x</>}</>
+  const short = runway && rate > 0 && sendable / rate < 3
+  return <>{runway != null && <><Sep /><span className={short ? 'dl-al' : ''}>runway {runway}</span></>}{so > 0 && <><Sep />refill {(qi / so).toFixed(2)}x{qi < so && rate > 0 ? `, empty in ${Math.max(0, Math.floor(sendable / Math.max(0.1, (so - qi) / 7)))}d` : ''}</>}</>
 }
 
 export function ControlCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
@@ -98,7 +106,11 @@ export function ControlCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
   const inc = v?.incident ?? null
   const [acked, ack] = useAck(inc ? ackId(inc) : null, Boolean(inc?.acknowledged))
   const pause = ctx.d.pauses.value?.[seat]
+  const kill = ctx.d.pauses.value?.all
   const pausedUntil = inc?.pausedUntil ?? (pause && Date.parse(pause) > ctx.now ? hm(pause) : null)
+  // A pause with no incident still stops the seat: say so (seat key, or the manual stop for every seat).
+  const bare = !inc && pause && Date.parse(pause) > ctx.now ? `Paused until ${dm(pause)} ${hm(pause)} (this seat's pause after refused invites).` : null
+  const stop = kill && Date.parse(kill) > ctx.now ? `Manual stop on every seat until ${dm(kill)} ${hm(kill)}.` : null
   if (!v) return <div className="dl-ct"><p className="dl-unk">{ctx.d.cc.failed ? `The send monitor could not be read: ${ctx.d.cc.failed}` : 'Reading the send monitor…'}</p></div>
   return (
     <div className="dl-ct">
@@ -114,12 +126,16 @@ export function ControlCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
             <Key size="small" verb="acknowledge" disabled={acked} onClick={ack} aria-label={acked ? 'Acknowledged' : 'Acknowledge this incident'}>{acked ? 'Acknowledged' : 'Acknowledge'}</Key>
           </div>
         </div>
-      ) : <p className="dl-lead">{v.lead}</p>}
+      ) : null}
+      {(!inc || v.lead !== inc.lead) && <p className={inc ? 'dl-kv' : 'dl-lead'}>{v.lead}</p>}
+      {(bare || stop) && <p className="dl-kv dl-al">{[stop, bare].filter(Boolean).join(' ')}</p>}
+      {v.blockers.length > 0 && <p className="dl-kv dl-al">Cannot send right now: {v.blockers.join('; ')}.</p>}
       <div className="dl-kv"><span className="dl-k">Window</span> {v.window}<Sep />
         {v.closed ? <>opens <b>{v.opens ?? 'not scheduled'}</b></> : <>{v.pct ?? '?'}% gone<Sep />{v.pace}{v.planned != null ? ` (${v.sent} of ${v.planned})` : ''}</>}
       </div>
       <div className="dl-kv"><span className="dl-k">Waiting</span> {v.pools.length ? v.pools.map(([k, n], i) => <span key={k}>{i ? ', ' : ''}{k} <b>{n}</b></span>) : 'unknown'}<Supply seat={seat} ctx={ctx} /></div>
-      {!inc && v.next && <div className="dl-kv"><span className="dl-k">Next</span> {v.next}</div>}
+      {v.next && <div className="dl-kv"><span className="dl-k">Next</span> {v.next}</div>}
+      {ctx.openControl && <button type="button" className="dl-more" data-open="control" onClick={() => ctx.openControl!(seat)}>Detail: session, pauses, lanes, governor, incidents ›</button>}
     </div>
   )
 }

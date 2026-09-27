@@ -280,3 +280,13 @@ html.d-root,html.d-root body{background:#0A0A09}
    `.wb-work` hook (bulk "select all" reads it) without its overflow clip. */
 .d-app .cn-legacy.wb-work{overflow:visible}
 .d-oldhost{display:contents}
+
+/* ---- density (Settings → Density, html[data-density]) ----
+   Compact (the default on desktop) is the D mocks' row height. Comfortable
+   gives every D list row more air: conversations, ops tasks, campaigns, logs,
+   the glance tasks. One rule per list, so the setting reaches D's own lists. */
+html[data-density='comfortable'] .d-app .dm-q{padding-top:13px;padding-bottom:13px}
+html[data-density='comfortable'] .d-app .op-tk{padding-top:13px;padding-bottom:13px}
+html[data-density='comfortable'] .d-app .dl-cp{padding-top:12px;padding-bottom:12px}
+html[data-density='comfortable'] .d-app .dl-lgr .dl-lg,html[data-density='comfortable'] .d-app .dl-msg{padding-top:11px;padding-bottom:11px}
+html[data-density='comfortable'] .d-app .gt-row{padding-top:9px;padding-bottom:9px}

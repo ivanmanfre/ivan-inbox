@@ -1,0 +1,93 @@
+/* The glance, top of Lanes. Classes gl-. Tokens from d.css. Lime only on a live
+   number/state, salmon (--warn) only on a warning or a failure. No chips, no dots. */
+.dl-gut.dl-gl{background:var(--p2)}
+.dl-grid>div.dl-glc{background:var(--p1)}
+.dl-grid>div.dl-gl-last{border-bottom:2px solid var(--strong)}
+.gl-cell{all:unset;box-sizing:border-box;display:block;width:100%;height:100%;padding:9px 12px 10px;min-width:0;color:var(--t2)}
+.gl-link{cursor:pointer}
+.gl-link:hover{background:var(--p2)}
+.gl-link:focus-visible{outline:2px solid var(--lime);outline-offset:-2px}
+.gl-row{display:flex;align-items:baseline;gap:4px 10px;flex-wrap:wrap}
+.gl-top{display:flex;align-items:baseline;gap:4px 10px;flex-wrap:wrap}
+.gl-n{font:500 28px/1.05 var(--m);font-style:normal;letter-spacing:-1px;color:var(--t1);font-variant-numeric:tabular-nums}
+.gl-n.gl-on{color:var(--lime)}.gl-n.gl-z,.gl-n.gl-q{color:var(--t3)}.gl-n.gl-w{color:var(--warn)}
+.gl-u{font:400 12px/1.35 var(--m);color:var(--t2)}
+.gl-go{margin-left:auto;font:400 12px var(--m);color:var(--t3)}
+.gl-warn{font:500 12px var(--m);color:var(--warn)}
+.gl-fail{font:400 12px var(--m);color:var(--warn);display:inline-flex;align-items:baseline;gap:6px}
+.gl-wt{color:var(--warn)}
+.gl-word{font:600 22px/1.1 var(--f);letter-spacing:-.3px}
+.gl-word.gl-on{color:var(--lime)}.gl-word.gl-w{color:var(--warn)}
+.gl-note{font:400 12px var(--m);color:var(--t3);margin-top:6px}
+/* calendar strip: Mon–Fri, count + title stub */
+.gl-cal{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-top:8px}
+.gl-day{background:var(--bg);padding:4px 6px 5px;min-width:0;display:flex;flex-direction:column;gap:1px}
+.gl-day small{font:400 10.5px var(--m);color:var(--t3);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.gl-day b{font:500 15px var(--m);color:var(--t3)}
+.gl-day.gl-has b{color:var(--t1)}
+.gl-day span{font-size:11.5px;line-height:1.25;color:var(--t2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:1.25em;overflow-wrap:anywhere}
+/* ready lanes */
+.gl-lanes{list-style:none;padding:0;margin:6px 0 0;display:flex;flex-direction:column}
+.gl-lanes li{border-top:1px solid var(--line)}
+.gl-lanes button,.gl-li{all:unset;box-sizing:border-box;width:100%;display:flex;justify-content:space-between;gap:8px;padding:3px 0;font:400 12.5px/1.35 var(--f);color:var(--t2)}
+.gl-lanes button{cursor:pointer}
+.gl-lanes button:hover{color:var(--t1)}
+.gl-lanes button:focus-visible{outline:2px solid var(--lime);outline-offset:1px}
+.gl-lanes b{font:500 13px var(--m);color:var(--t1)}.gl-lanes b.gl-z{color:var(--t3)}
+.gl-kv{font:400 12px/1.5 var(--m);color:var(--t2);display:flex;gap:6px;flex-wrap:wrap}
+.gl-kv>span:first-child{color:var(--t3);min-width:68px}
+.gl-kv b{color:var(--t1);font-weight:500}
+/* phone */
+.gl-phone{border-bottom:2px solid var(--strong);background:var(--p1)}
+.gl-pseats{display:grid;padding:6px 10px 4px;gap:6px;position:sticky;top:0;background:var(--p1);z-index:2;border-bottom:1px solid var(--line2)}
+.gl-pseats b{font:600 14px var(--f)}
+.gl-phead{padding:7px 10px 0;font:500 11px var(--m);letter-spacing:.07em;text-transform:uppercase;color:var(--t3)}
+.gl-phead small{font:400 11px var(--m);letter-spacing:.02em;text-transform:none;margin-left:6px}
+.gl-prow{border-bottom:1px solid var(--line)}
+.gl-pcols{display:grid}
+.gl-pcols>div{min-width:0;border-right:1px solid var(--line)}
+.gl-pcols>div:last-child{border-right:0}
+.gl-phone .gl-cell{padding:5px 8px 8px}
+.gl-phone .gl-n{font-size:22px}
+.gl-phone .gl-word{font-size:17px}
+.gl-phone .gl-u,.gl-phone .gl-kv{font-size:11px}
+.gl-phone .gl-kv{flex-direction:column;gap:0}
+.gl-phone .gl-kv>span:first-child{min-width:0}
+.gl-phone .gl-go{display:none}
+.gl-phone .gl-cal{grid-template-columns:1fr;border-radius:4px}
+.gl-phone .gl-day{flex-direction:row;align-items:baseline;gap:6px;padding:2px 5px}
+.gl-phone .gl-day span{display:none}
+.gl-phone .gl-day b{font-size:12px;margin-left:auto}
+.gl-phone .gl-lanes button,.gl-phone .gl-li{font-size:11px}
+.gl-phone .gl-lanes b{font-size:11.5px}
+.gl-off{display:block;font:400 11px var(--m);color:var(--t3)}
+.gl-offl b{color:var(--t3)}
+.gl-short{display:none}
+.gl-phone .gl-long{display:none}.gl-phone .gl-short{display:inline}
+/* tasks strip */
+.gt{padding:8px 12px 10px;display:flex;flex-direction:column;gap:6px}
+.gt-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:0 18px}
+.gt-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:4px 10px;padding:5px 0;border-bottom:1px solid var(--line)}
+.gt-row.gt-done{opacity:.5}
+.gt-t{font:500 13.5px/1.35 var(--f);color:var(--t1);min-width:0;overflow-wrap:anywhere}
+.gt-m{display:flex;gap:8px;align-items:baseline;font:400 12px var(--m);color:var(--t3);white-space:nowrap}
+.gt-m b{font-weight:500}
+.gt-over{color:var(--warn)}.gt-now{color:var(--lime)}.gt-soon{color:var(--t1)}.gt-later,.gt-nod{color:var(--t3)}
+.gt-rm{all:unset;cursor:pointer;font:400 12px var(--m);color:var(--t2);text-decoration:underline;text-decoration-color:var(--line2);text-underline-offset:3px}
+.gt-rm:hover{color:var(--t1)}.gt-rm:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+.gt-q{font:400 12px var(--m);color:var(--t3);margin:0}
+.gt-err{display:block;font:400 12px var(--m);color:var(--warn)}
+.gt-foot{display:flex;gap:14px}
+.gt-add{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.gt-in{flex:1;min-width:200px;background:var(--bg);border:1px solid var(--line2);border-radius:8px;color:var(--t1);font:400 14px var(--f);padding:7px 10px}
+.gt-in:focus{outline:2px solid var(--lime);outline-offset:0;border-color:transparent}
+.gt-date{background:var(--bg);border:1px solid var(--line2);border-radius:8px;color:var(--t2);font:400 13px var(--m);padding:6px 8px;color-scheme:dark}
+.d-app .gt-on{color:var(--t1);border-color:var(--strong);background:var(--p1)}
+.gl-ptasks{border-bottom:2px solid var(--strong);background:var(--p1)}
+.gl-ptasks .gt-list{grid-template-columns:1fr}
+.gl-ptasks .gt-row{grid-template-columns:auto minmax(0,1fr);}
+.gl-ptasks .gt-m{grid-column:2}
+.gl-ptasks .gt-in{min-width:0;flex-basis:100%}
+.gl-lanes li.gl-none{font:400 11.5px/1.35 var(--m);color:var(--t3);padding:3px 0}
+.gl-row .gl-n{font-size:24px}
+.gl-cell.gl-row{padding-top:6px;padding-bottom:7px}

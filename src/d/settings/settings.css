@@ -44,3 +44,11 @@
 @media (max-width:1300px){.ds2-row{flex-wrap:wrap}.ds2-money>div{padding:8px 10px}}
 .d-phone .ds2-row{flex-wrap:wrap}
 .d-phone .ds2-money{grid-template-columns:1fr 1fr 1fr}
+/* Money inside D: one title (the answer row), D's canvas, the stack when the
+   COLUMN is narrow (not only the viewport), and on the phone the old view
+   scrolls in its own box so its pull-to-refresh only fires at its own top. */
+.ds2-moneyview{container-type:inline-size}
+.ds2-moneyview .a-head-title{display:none}
+.ds2-moneyview .a-money,.ds2-moneyview .a-screen,.ds2-moneyview .a-body{background:transparent}
+@container (max-width:1100px){.ds2-moneyview .a-money-wide{display:none}.ds2-moneyview .a-money-narrow{display:block}}
+.d-phone .ds2-moneyview .a-body{max-height:calc(100dvh - 190px - var(--dock-h));overflow:auto;overscroll-behavior:contain}

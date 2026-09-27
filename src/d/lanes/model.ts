@@ -93,6 +93,15 @@ export function seriesOf(p: CcPayload | null, seat: Seat, now: number, ch: 'invi
   })
 }
 
+/** A compare needs two COMPLETE windows of equal length (today's Control.tsx rule); else there is none. */
+export function comparable(p: CcPayload, range: Range): { rows: CcCompareRow[] } | null {
+  const prev = PREV[range]
+  const iv = p.ranges.intervals.find(i => i.name === range)
+  const pv = prev ? p.ranges.intervals.find(i => i.name === prev) : undefined
+  if (!prev || !iv || !pv || !iv.complete || !pv.complete || iv.days !== pv.days) return null
+  return { rows: p.ranges.compare.filter(x => x.current === range && x.previous === prev) }
+}
+
 export type WindowView = {
   range: Range; inv: number | null; dm: number | null; inmail: number | null; repliers: number | null; invFailed: number | null
   accepted: number | null; matured: number | null; rate: number | null; prevRate: number | null; delta: number | null
@@ -104,7 +113,7 @@ export function windowOf(p: CcPayload | null, seat: Seat, range: Range): WindowV
   const inv = r('invitation'), dmr = r('dm'), im = r('inmail')
   const coh = inv?.acceptance_cohort
   const prev = PREV[range]
-  const compare = p && prev ? p.ranges.compare.filter(x => x.client_id === seat && x.current === range && x.previous === prev) : []
+  const compare = p && prev ? (comparable(p, range)?.rows ?? []).filter(x => x.client_id === seat) : []
   const ic = compare.find(x => x.channel === 'invitation')
   return {
     range, hasInterval: Boolean(iv),
@@ -127,10 +136,43 @@ export function poolsOf(c: CcClient): Array<[string, number]> {
   return Object.entries(inner).filter(([, v]) => typeof v === 'number').map(([k, v]) => [POOL[k] ?? k.replace(/_/g, ' '), v as number])
 }
 
+/* The contract's "sendable-open" (today's Control.tsx `sendableOpen`): the shared
+   sender reports Saturday as open_now with a view_only reason, so open_now alone
+   does not mean a seat can send. A seat that is not sendable-open is never paced. */
+const NOT_SENDABLE = /view_only|_closed|outside_window/
+export function sendableOpen(ch: { session?: { open_now: boolean } | null; executable_reasons?: string[] }): boolean {
+  if (!ch.session?.open_now) return false
+  return !NOT_SENDABLE.test((ch.executable_reasons ?? []).join(' '))
+}
+/** One executable reason (`cooldown:arch_conn_send_pause_until`) in plain words. */
+export function reasonWord(r: string): string {
+  const [k, v = ''] = r.split(':')
+  if (k === 'cooldown') return `paused (${v.replace(/_/g, ' ')})`
+  if (k === 'window_state') return `window ${v.split('=').pop()}`
+  if (/view_only/.test(r)) return 'view-only day (Saturday rule)'
+  if (/outside_window|_closed/.test(r)) return 'outside the sending window'
+  return r.replace(/_/g, ' ')
+}
+
+/* The seat's eligible supply counted ONCE (today's Control.tsx seatEligible): the
+   producer stamps the seat-wide figure on every source lane and adds the lanes
+   up for the channel, so the channel figure is that number times the lane count. */
+export function seatEligible(ch: { eligible_stock?: number | null; eligible_stock_by_pool?: Record<string, unknown> | null; by_lane?: Array<{ eligible_stock?: number | null }> }): number | null {
+  const lv = (ch.by_lane ?? []).map(l => l.eligible_stock).filter((v): v is number => typeof v === 'number')
+  if (lv.length > 0 && lv.every(v => v === lv[0])) return lv[0]
+  const raw = (ch.eligible_stock_by_pool ?? {}) as Record<string, unknown>
+  const inner = (raw.by_pool && typeof raw.by_pool === 'object' ? raw.by_pool : raw) as Record<string, unknown>
+  const pools = Object.values(inner).filter((v): v is number => typeof v === 'number')
+  if (pools.length) return pools.reduce((a, v) => a + v, 0)
+  return ch.eligible_stock ?? null
+}
+
 export type ControlView = {
   incident: (CcIncident & { lead: string; pausedUntil: string | null; check: string | null }) | null
   lead: string; window: string; closed: boolean; opens: string | null; pct: number | null; pace: string
   sent: number; planned: number | null; pools: Array<[string, number]>; next: string | null
+  /** "Cannot send right now": the channel's executable_reasons, in words (empty when it can send). */
+  blockers: string[]
 }
 export function controlOf(c: CcClient, now: number): ControlView {
   const inv = c.invitation, s = inv.session
@@ -153,19 +195,21 @@ export function controlOf(c: CcClient, now: number): ControlView {
       check: inc.next_check_at ? `${hm(inc.next_check_at)}${until(inc.next_check_at, now) ? ', ' + until(inc.next_check_at, now) : ''}` : null,
     } : null,
     lead: c.status_reason,
-    window, closed: !s?.open_now || c.status === 'outside_window', opens,
+    window, closed: !sendableOpen(inv) || c.status === 'outside_window', opens,
+    blockers: inv.executable_now === false ? (inv.executable_reasons ?? []).map(reasonWord) : [],
     pct: s?.progress_pct ?? null, pace: PACE[inv.pace] ?? inv.pace, sent: inv.confirmed_sent, planned: inv.planned_by_now,
     pools: poolsOf(c), next: c.next_action?.action ?? null,
   }
 }
 
 /** One sentence per seat, today. Never a total across seats. */
-export function answerOf(p: CcPayload | null, seats: Seat[], now: number): { inv: Array<{ seat: Seat; v: number | null }>; sub: string } {
+export function answerOf(p: CcPayload | null, seats: Seat[], now: number, replies?: Partial<Record<Seat, { replied: number; calls: number }>> | null): { inv: Array<{ seat: Seat; v: number | null }>; sub: string } {
   const inv = seats.map(seat => ({ seat, v: todayOf(p, seat, now)?.inv ?? null }))
   if (!p) return { inv, sub: 'Reading the send monitor…' }
   const lim = seats.filter(s => { const c = clientOf(p, s); return c && rateLimitIncident(c) }).map(s => SEAT_NAME[s])
   const shut = seats.filter(s => { const c = clientOf(p, s); return c && !rateLimitIncident(c) && (c.status === 'outside_window' || !c.invitation.session?.open_now) && c.invitation.session?.next_opening_at })
     .map(s => `${SEAT_NAME[s]} opens ${hm(clientOf(p, s)!.invitation.session!.next_opening_at!)}`)
   const parts = [lim.length ? `LinkedIn is refusing ${lim.join(' and ')}` : '', ...shut].filter(Boolean)
-  return { inv, sub: parts.length ? parts.join('; ') + '.' : 'Every seat is sending inside its window.' }
+  const rep = replies ? ` Replied this week: ${seats.map(s => `${SEAT_NAME[s]} ${replies[s]?.replied ?? 0}`).join(', ')}; calls booked this week: ${seats.map(s => `${SEAT_NAME[s]} ${replies[s]?.calls ?? 0}`).join(', ')}.` : ''
+  return { inv, sub: (parts.length ? parts.join('; ') + '.' : 'Every seat is sending inside its window.') + rep }
 }
