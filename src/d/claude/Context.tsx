@@ -33,19 +33,21 @@ export function Context({ subjects }: { subjects: Subject[] }) {
           )
           : (
             <span key={s.key} className={`dcl-chip${s.kind === 'lane' ? ' dcl-chip-q' : ''}`} data-subject={s.key}>
-              <span className="dcl-chip-t">{subjectWords(s)}</span>
+              <span className="dcl-chip-t">{subjectWords(s)}{isDeep(see, s.key) && s.full ? ' · full text' : ''}</span>
               <button type="button" data-verb="remove-subject" aria-label={`Detach ${s.label}; Claude stops seeing it`} onClick={() => setSee(toggleOff(see, s.key))}>
                 <CIcon name="x" />
               </button>
             </span>
           ))}
+      </div>
+      <div className="dcl-ctx-k">
         {deepable && (
-          <button type="button" className={`dcl-seg${deep ? ' dcl-on' : ''}`} data-verb="attach-full" aria-pressed={deep}
+          <button type="button" className={`dcl-link${deep ? ' dcl-on' : ''}`} data-verb="attach-full" aria-pressed={deep}
             onClick={() => setSee(toggleDeep(see, deepable.key))}>
-            {deep ? `Full text (${deepable.bodies ?? 0})` : 'Names only'}
+            {deep ? 'Back to names only' : `Attach full text (${deepable.bodies ?? 0})`}
           </button>
         )}
-        <button type="button" className="dcl-seg" data-verb="peek" aria-expanded={peek} onClick={() => setPeek(p => !p)}>What travels</button>
+        <button type="button" className="dcl-link" data-verb="peek" aria-expanded={peek} onClick={() => setPeek(p => !p)}>What travels</button>
       </div>
       {peek && (
         <div className="dcl-peek" role="dialog" aria-label="What travels with the next message">

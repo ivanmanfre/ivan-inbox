@@ -114,7 +114,7 @@ describe('Claude drawer verbs', () => {
     const chat = fakeChat()
     renderInFrame(<Host chat={chat} />)
     act(() => handOffToClaude({ subject: angel(), intent: 'ask' }))
-    fireEvent.click(await screen.findByText('Names only'))
+    fireEvent.click(await screen.findByText(/Attach full text/))
     fireEvent.change(field(), { target: { value: 'x' } })
     fireEvent.click(verb('send'))
     expect((chat.send as ReturnType<typeof vi.fn>).mock.calls[0][2]).toMatch(/Angel Wang: later/)
