@@ -75,11 +75,11 @@ export default function OpsPage({ layout, route, navigate }: PlaceProps) {
   const title = <>Waiting on you: <N v={w.ivan} /> yours, <N v={w.risedtc} /> Rise, <N v={w.arch} /> Arch.</>
   const nj = board.flat.find(d => d.kind === 'newsjack' && timeLeft(d.context?.expires_at) !== 'expired')
   const onList = SEATS.reduce((a, s) => a + board.tasks[s], 0)
-  const sub = [
-    nj ? `A ${SEAT_NAME[SEATS.find(s => board.lanes[s].includes(nj)) ?? 'ivan']} newsjack has ${timeLeft(nj.context?.expires_at)}.` : '',
-    onList > 0 ? `${onList} of them ${onList === 1 ? 'is' : 'are'} on your list.` : '',
-    board.later.length > 0 ? `${board.later.length} more comment ideas wait for later.` : '',
-  ].filter(Boolean).join(' ')
+  // One sentence, the most urgent one: a newsjack's clock, else the ideas
+  // waiting for later, else how much of the number sits on the list.
+  const sub = nj ? `A ${SEAT_NAME[SEATS.find(s => board.lanes[s].includes(nj)) ?? 'ivan']} newsjack has ${timeLeft(nj.context?.expires_at)}.`
+    : board.later.length > 0 ? `${board.later.length} more comment ideas wait for later.`
+      : onList > 0 ? `${onList} of them ${onList === 1 ? 'is' : 'are'} on your list.` : ''
   const answer = <AnswerRow title={title} sub={ops.loading && ops.drafts.length === 0 ? 'Reading the queue…' : sub} />
 
   if (ops.error && ops.drafts.length === 0) {

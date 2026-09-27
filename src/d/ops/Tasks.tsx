@@ -55,7 +55,7 @@ function Row({ d, refresh, onLeaving }: { d: OpsDraft; refresh: () => void; onLe
           {dl && <b className={dl.tone === 'over' || dl.tone === 'now' ? 'op-hot' : ''}>due {dl.text}</b>}
           {src && <span>{src === 'WA' ? 'WhatsApp' : src}</span>}
           {seat && seat !== 'ivan' && <span>{SEAT_NAME[seat]}</span>}
-          <button type="button" className="op-rm" data-verb="remove" disabled={busy} onClick={() => void remove()} aria-label={`Remove: ${title}`}>remove</button>
+          <span><button type="button" className="op-rm" data-verb="remove" disabled={busy} onClick={() => void remove()} aria-label={`Remove: ${title}`}>remove</button></span>
         </div>
         {err && <div className="op-err">{err}</div>}
       </div>
