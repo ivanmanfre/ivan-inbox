@@ -39,11 +39,11 @@ export function PhoneWall({ data, items, days, stuck, onOpen, onMove, onArm, now
         return (
           <section key={l} className="cn-band" aria-label={LANE_NAME[l]}>
             <div className="cn-bh">
-              <div><b>{LANE_NAME[l]}</b> <small>{FEED[l]}</small></div>
+              <div><b title={FEED[l]}>{LANE_NAME[l]}</b></div>
               {s.error ? <small className="cn-warn">could not read</small> : (
                 <div><em>{s.loadedAt ? scheduledIn(s.rows, l, days) : '…'}</em>{s.loadedAt
-                  ? <small>in 2 weeks · next {next?.scheduled_at ? `${warsawDow(next.scheduled_at)} ${warsawDm(next.scheduled_at)}` : 'none'} · published {publishedCount(s.rows)}</small>
-                  : <small>in 2 weeks · next … · published …</small>}</div>
+                  ? <small title={next?.scheduled_at ? `next ${warsawDow(next.scheduled_at)} ${warsawDm(next.scheduled_at)}` : 'nothing next'}>in 2 weeks · published {publishedCount(s.rows)}</small>
+                  : <small>in 2 weeks</small>}</div>
               )}
               {l === 'ivan' && stuck && <small className="cn-warn">{stuck}</small>}
             </div>
