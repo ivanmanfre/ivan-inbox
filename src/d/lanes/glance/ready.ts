@@ -28,6 +28,7 @@ export type ReadyRead = { lanes: ReadyLane[]; saturdayNy: boolean }
 export type ReadySeat = { total: number; lanes: ReadyLane[] }
 
 const PAGE = 1000
+const MAX_PAGES = 3
 const DAY = 864e5
 const iso = (t: number) => new Date(t).toISOString()
 export const domainOf = (d: string | null | undefined) => (d ?? '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '')
@@ -179,15 +180,29 @@ export async function fetchReady(now = Date.now()): Promise<ReadyRead> {
   const archLive = new Set(ARCH_IDS.filter(id => camps.some(c => c.id === id && live(c))))
   const ids = [...ivanIds, ...riseLive, ...archLive]
   const riseAll = camps.filter(c => c.client_id === 'risedtc').map(c => c.id)
+  // The retry branch is narrowed in the query to what the retry lane can take (its campaigns, 42 days since
+  // the withdrawn invite), and the select pages, so a big pool never truncates into a silent undercount.
+  const retry = `and(skip_reason.eq.invite_withdrawn_stale,icp_score.gte.7,reply_count.eq.0,connection_sent_at.lte.${iso(now - 42 * DAY)},campaign_id.in.(${IVAN_RETRY.join(',')}))`
+  const page = (from: number) => supabase.from('outreach_prospects').select(COLS).in('campaign_id', ids).eq('blacklisted', false).is('connected_at', null)
+    .or(`and(connection_sent_at.is.null,stage.in.(enriched,identified,queued,dm_sent,inmail_ready)),${retry}`)
+    .order('id').range(from, from + PAGE - 1)
+  const candidates = async (): Promise<{ rows: Cand[]; capped: boolean }> => {
+    const rows: Cand[] = []
+    for (let i = 0; i < MAX_PAGES; i++) {
+      const { data, error } = await page(i * PAGE)
+      if (error) throw new Error(error.message)
+      const got = (data ?? []) as unknown as Cand[]
+      rows.push(...got)
+      if (got.length < PAGE) return { rows, capped: false }
+    }
+    return { rows, capped: true }
+  }
   const [cand, dom] = await Promise.all([
-    ids.length ? supabase.from('outreach_prospects').select(COLS).in('campaign_id', ids).eq('blacklisted', false).is('connected_at', null)
-      .or('and(connection_sent_at.is.null,stage.in.(enriched,identified,queued,dm_sent,inmail_ready)),and(skip_reason.eq.invite_withdrawn_stale,icp_score.gte.7,reply_count.eq.0)')
-      .order('id').limit(PAGE) : Promise.resolve({ data: [], error: null }),
+    ids.length ? candidates() : Promise.resolve({ rows: [] as Cand[], capped: false }),
     cfg.rise_company_expansion === 'on' && riseAll.length ? riseDomains(riseAll, now) : Promise.resolve({ stop: new Set<string>(), touch: new Set<string>() }),
   ])
-  if (cand.error) throw new Error(cand.error.message)
-  const rows = (cand.data ?? []) as unknown as Cand[]
-  return buildReady(rows, { now, cfg, scorer, ivanIds, riseLive, archLive, stop: dom.stop, touch: dom.touch, satNy: isSaturdayNy(now) }, rows.length >= PAGE)
+  const rows = cand.rows
+  return buildReady(rows, { now, cfg, scorer, ivanIds, riseLive, archLive, stop: dom.stop, touch: dom.touch, satNy: isSaturdayNy(now) }, cand.capped)
 }
 
 /** One seat's lanes, busiest first; the total counts only lanes the sender would pick today. Governor warm-only drops Ivan's cold. */
