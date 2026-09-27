@@ -26,8 +26,8 @@ export async function copyText(s: string): Promise<boolean> {
   try { await navigator.clipboard.writeText(s); return true } catch { window.prompt('Copy this link', s); return false }
 }
 
-export function ThreadPane({ t, all, phone, verbs, now, onBack, onAsk, onDraftIt, onMenu, staleN, pre, reload }: {
-  t: T; all: readonly T[]; phone: boolean; verbs: DmVerbs; now: number
+export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, onAsk, onDraftIt, onMenu, staleN, pre, reload }: {
+  t: T; auto?: boolean; all: readonly T[]; phone: boolean; verbs: DmVerbs; now: number
   onBack: () => void; onAsk: () => void; onDraftIt: () => void
   onMenu: (a: MenuAct) => void; staleN: number; pre: PreReadHandle; reload: () => void
 }) {
@@ -51,7 +51,7 @@ export function ThreadPane({ t, all, phone, verbs, now, onBack, onAsk, onDraftIt
   }, [draftId, draftText]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setReply(''); setMenu(false); setSheet(null) }, [t.prospect_id])
   // Sanctioned read stamp on real inbound rows, as today.
-  useEffect(() => { if (t.unread > 0) markThreadRead(t.prospect_id).catch(() => {}) }, [t.prospect_id, t.unread])
+  useEffect(() => { if (!auto && t.unread > 0) markThreadRead(t.prospect_id).catch(() => {}) }, [auto, t.prospect_id, t.unread])
 
   const seat = seatOf(t.client_id) ?? 'ivan'
   const from = FROM[seat]

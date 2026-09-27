@@ -23,7 +23,7 @@ export type PageModel = {
   layout: Layout; mode: Mode; folder: string | null
   q: string; setQ: (s: string) => void; tokens: FilterToken[]; setTokens: (t: FilterToken[]) => void; searchRef: RefObject<HTMLInputElement | null>
   views: Record<Seat, SeatView>; stats: Record<Seat, { days: DayOut[]; replied: number }>; matches: Record<Seat, Thread[]>
-  open: Thread | null; threadId: string | null; threads: Thread[]; byId: ReadonlyMap<string, Thread>
+  open: Thread | null; threadId: string | null; auto: boolean; threads: Thread[]; byId: ReadonlyMap<string, Thread>
   data: DmsData; counts: FrameCounts; verbs: DmVerbs; now: number
   busy: string | null; setBusy: (s: string | null) => void; checked: Set<string>; setChecked: (s: Set<string>) => void
   openThread: (t: Thread) => void; closeThread: () => void; ask: (t: Thread, i: 'ask' | 'draft') => void
@@ -32,7 +32,7 @@ export type PageModel = {
 }
 
 function rowCtx(m: PageModel): RowCtx {
-  return { selected: m.threadId, checked: m.checked, open: m.openThread, now: m.now, verbs: m.verbs, busy: m.busy, setBusy: m.setBusy }
+  return { selected: m.open?.prospect_id ?? m.threadId, checked: m.checked, open: m.openThread, now: m.now, verbs: m.verbs, busy: m.busy, setBusy: m.setBusy }
 }
 
 function Body({ m, seat }: { m: PageModel; seat: Seat }) {
@@ -50,7 +50,7 @@ function Pane({ m, phone }: { m: PageModel; phone: boolean }) {
     if (m.threadId) return <section className="dm-pane"><Empty title="This conversation is not in the list." reason="It may have been deleted from the seat, or it is not a conversation yet (nobody wrote back)." /></section>
     return <section className="dm-pane dm-pane-none"><Empty title="Pick a conversation." reason="j and k walk the rows, Enter opens one, / searches every message on every seat." /></section>
   }
-  return <ThreadPane t={t} all={m.threads} phone={phone} verbs={m.verbs} now={m.now} onBack={m.closeThread}
+  return <ThreadPane t={t} auto={m.auto} all={m.threads} phone={phone} verbs={m.verbs} now={m.now} onBack={m.closeThread}
     onAsk={() => m.ask(t, 'ask')} onDraftIt={() => m.ask(t, 'draft')} onMenu={a => m.onMenu(t, a)} staleN={m.staleN} pre={m.pre} reload={m.data.refreshAll} />
 }
 

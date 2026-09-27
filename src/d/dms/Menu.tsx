@@ -35,7 +35,7 @@ function List({ groups, run }: { groups: ReturnType<typeof menuItems>; run: (a: 
   return <>
     {groups.map(g => (
       <div key={g.head} role="group" aria-label={g.head}>
-        <div className="dm-mh">{g.head}</div>
+        <div className="dm-mhd">{g.head}</div>
         {g.items.map(i => (
           <button key={i.act} type="button" role="menuitem" className={`dm-mi${i.danger ? ' dm-mi-danger' : ''}`} data-verb={i.act} onClick={() => run(i.act)}>
             <span>{i.label}</span>{i.hint && <small>{i.hint}</small>}
@@ -43,7 +43,7 @@ function List({ groups, run }: { groups: ReturnType<typeof menuItems>; run: (a: 
         ))}
       </div>
     ))}
-    <div className="dm-mh dm-mh-keys">Keys: j k move · x select · / search · ⌘J Claude</div>
+    <div className="dm-mhd dm-mhd-keys">Keys: j k move · x select · / search · ⌘J Claude</div>
   </>
 }
 

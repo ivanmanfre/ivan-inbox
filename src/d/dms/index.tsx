@@ -63,7 +63,11 @@ function Dms({ layout, route, navigate }: PlaceProps) {
     return Object.fromEntries(SEATS.map(s => [s, hits.filter(t => seatOf(t.client_id) === s)])) as Record<Seat, Thread[]>
   }, [mode, threads, q, tokens, now])
   const stale = useMemo(() => threads.filter(t => t.draft && !t.spam && (t.draftStale || isOlderOwed(t, now))), [threads, now])
-  const open = threadId ? byId.get(threadId) ?? null : null
+  // Desktop with no ?thread: the first conversation that needs you is shown (as the mock does), but it
+  // was not opened by Ivan, so its read stamp is not written (`auto`).
+  const autoOpen = !threadId && layout === 'desktop' && mode === 'conversations'
+    ? SEATS.map(s => { const v = views[s]; return v.owner[0] ?? v.drafted[0] ?? v.nodraft[0] }).find(Boolean) ?? null : null
+  const open = threadId ? byId.get(threadId) ?? null : autoOpen
 
   const failedN = (data.error ? 1 : 0) + (data.cameBack.failed ? 1 : 0) + (data.warm.failed ? 1 : 0) + (data.dated.failed ? 1 : 0)
   useReportFailed('dms', failedN)
@@ -94,7 +98,7 @@ function Dms({ layout, route, navigate }: PlaceProps) {
   useDmKeys({ searchRef, open, openThread, closeThread, toggleCheck })
 
   const model: PageModel = {
-    layout, mode, folder, q, setQ, tokens, setTokens, searchRef, views, stats, matches, open, threadId, threads, byId,
+    layout, mode, folder, q, setQ, tokens, setTokens, searchRef, views, stats, matches, open, threadId, auto: autoOpen !== null, threads, byId,
     data, counts, verbs, now, busy, setBusy, checked, setChecked, openThread, closeThread, ask, onMenu, staleN: stale.length, pre,
     phoneSeat, setPhoneSeat: (s: Seat) => go({ seat: s }), setFolder: (f: string | null) => go({ folder: f, thread: null }),
   }

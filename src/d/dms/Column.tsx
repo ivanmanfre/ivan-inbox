@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { internalHoldSummary, threadBucket, type Thread } from '../../lib/inbox'
 import { cameBackLine, type CameBackCard } from '../../wb/dms/cameBackData'
 import { evidenceLine, inviteLine, primaryAction, type WarmCard } from '../../wb/dms/warmSignalsData'
-import type { Seat } from '../seats'
+import { seatOf, type Seat } from '../seats'
 import { needsCount, type SeatView } from './model'
 import { Fold, Quiet, Row, Sec } from './Row'
 import { AnyRow, DraftRow, LaterRow, NoDraftRow, SentRow, SpamRow, ThrownRow, dayMonth, type RowCtx } from './threadRows'
@@ -58,7 +58,7 @@ export function ColumnBody(p: ColumnProps) {
   }
 
   const came = p.cameBack.rows.filter(x => (x.tenant as string) === seat)
-  const dated = p.dated.map(d => ({ d, t: p.byId.get(d.prospect_id) })).filter(x => x.t != null) as { d: { prospect_id: string; at: string }; t: Thread }[]
+  const dated = p.dated.map(d => ({ d, t: p.byId.get(d.prospect_id) })).filter(x => x.t != null && seatOf(x.t.client_id) === seat) as { d: { prospect_id: string; at: string }; t: Thread }[]
   const olderNd = v.older.filter(t => !t.draft).length
   const restShown = open.rest ? v.rest : v.rest.slice(0, REST_CAP)
   return <>
