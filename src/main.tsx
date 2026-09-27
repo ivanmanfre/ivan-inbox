@@ -10,6 +10,7 @@ import App from './App.tsx'
 // lazily (P1 speed, 2026-09-25). Mounted from here they pulled motion, lucide
 // and the whole design system into the entry chunk ahead of React's mount.
 import { adoptPrefetchedInbox, adoptPrefetchedThread } from './lib/handoff'
+import { armUpdateReload } from './lib/updateReload'
 
 if (localStorage.getItem('inbox-theme') === 'light') {
   document.documentElement.dataset.theme = 'light'
@@ -75,13 +76,14 @@ if ('serviceWorker' in navigator) {
   //
   // Tracking it as state instead of a snapshot: the first handover is absorbed,
   // every later one reloads.
+  //
+  // 2026-09-28: the reload waits for a quiet moment (src/lib/updateReload.ts). Reloading at once
+  // wiped what Ivan was typing every time a deploy landed.
   let controlled = Boolean(navigator.serviceWorker.controller)
-  let reloading = false
+  const update = armUpdateReload()
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (!controlled) { controlled = true; return }
-    if (reloading) return
-    reloading = true
-    window.location.reload()
+    update.request()
   })
 
   // ASK WHETHER A NEWER BUILD EXISTS. Nothing else in this app ever did.

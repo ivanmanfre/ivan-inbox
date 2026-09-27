@@ -4,6 +4,7 @@ import { type Thread, SPAM_REASON } from '../lib/inbox'
 import { loadInbox } from '../lib/inboxLoad'
 import { playChime } from '../lib/chime'
 import { readInboxCache, writeInboxCache } from '../lib/inboxCache'
+import { isEditing } from '../lib/updateReload'
 
 // A burst of dispatcher writes (one row every ~2 min per active lane, plus
 // phantom-duplicate bursts) used to trigger one full 20k-row re-page EACH.
@@ -11,6 +12,7 @@ import { readInboxCache, writeInboxCache } from '../lib/inboxCache'
 // first event schedules a refresh, every event inside the window rides on it.
 // A caller-initiated refresh() (pull-to-refresh, a retry tap) is never delayed.
 const COALESCE_MS = 1500
+const TYPING_HOLD_MS = 30_000
 
 /**
  * `enabled` false: a second caller under a provider that already runs this read
@@ -106,9 +108,18 @@ export function useInbox(enabled = true, seedCache = enabled) {
     refresh()
     // Trailing-edge coalesce: while a refresh is already scheduled, further
     // events are dropped rather than queued.
+    // 2026-09-28 (Ivan: "When I'm writing something it refreshes"): while a field is focused the
+    // background re-read waits, up to TYPING_HOLD_MS, so a save of the draft being typed does not
+    // re-page the whole inbox under the cursor.
     const nudge = () => {
       if (pending.current !== null) return
-      pending.current = window.setTimeout(() => { pending.current = null; refresh() }, COALESCE_MS)
+      const since = Date.now()
+      const run = () => {
+        if (isEditing(document) && Date.now() - since < TYPING_HOLD_MS) { pending.current = window.setTimeout(run, COALESCE_MS); return }
+        pending.current = null
+        refresh()
+      }
+      pending.current = window.setTimeout(run, COALESCE_MS)
     }
     const ch = supabase.channel(topic)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'outreach_messages' }, nudge)

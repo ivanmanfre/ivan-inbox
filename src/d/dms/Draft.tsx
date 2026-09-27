@@ -29,7 +29,7 @@ function Grow({ value, onChange, label, onBlur, max = 240 }: { value: string; on
     el.style.height = 'auto'
     el.style.height = `${Math.min(el.scrollHeight + 2, max)}px`
   }, [value, max])
-  return <textarea ref={ref} className="dm-edit" aria-label={label} value={value} rows={2} spellCheck onBlur={onBlur} onChange={e => onChange(e.target.value)} />
+  return <textarea ref={ref} className="dm-edit" data-autosave aria-label={label} value={value} rows={2} spellCheck onBlur={onBlur} onChange={e => onChange(e.target.value)} />
 }
 
 const SAVE_WORD: Record<SaveState, string> = { idle: '', saving: 'Saving…', saved: 'Saved', failed: 'Not saved' }
