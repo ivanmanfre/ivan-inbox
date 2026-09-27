@@ -43,13 +43,12 @@ export function Join({ r, big }: { r: CallEvent; big?: boolean }) {
   )
 }
 
-export function NextCallPlate({ r, through, from, more = 0 }: { r: CallEvent | null; through: string; from: string; more?: number }) {
+export function NextCallPlate({ r, through, more = 0 }: { r: CallEvent | null; through: string; from: string; more?: number }) {
   if (!r) {
     return (
       <div className="sl-nx sl-none" data-next="none">
         <div className="sl-nxl">Next call</div>
-        <div className="sl-nxe">Nothing on the calendar through {through}.</div>
-        <p>Read live from the calendar for the fortnight from {from}. A booking shows here the minute it syncs.</p>
+        <div className="sl-nxe" title={`Nothing on the calendar through ${through}.`}>None booked.</div>
       </div>
     )
   }

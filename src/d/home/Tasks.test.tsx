@@ -3,19 +3,19 @@
 // and the one task insert writes exactly createBotTask's row shape with source 'inbox'.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, waitFor } from '@testing-library/react'
-import { renderInFrame } from '../../test-utils'
-import type { OpsDraft } from '../../../lib/ops'
+import { renderInFrame } from '../test-utils'
+import type { OpsDraft } from '../../lib/ops'
 
 const insert = vi.fn(async (_row: unknown) => ({ error: null }))
-vi.mock('../../../lib/supabase', () => ({ supabase: { from: () => ({ insert }) } }))
+vi.mock('../../lib/supabase', () => ({ supabase: { from: () => ({ insert }) } }))
 const rows: OpsDraft[] = []
-vi.mock('../../../hooks/useOps', () => ({ useOps: () => ({ drafts: rows, loading: false, error: null, loadedAt: '2026-09-27T12:00:00Z', refresh: vi.fn() }) }))
-vi.mock('../../../lib/ops', async orig => {
-  const real = await orig<typeof import('../../../lib/ops')>()
+vi.mock('../../hooks/useOps', () => ({ useOps: () => ({ drafts: rows, loading: false, error: null, loadedAt: '2026-09-27T12:00:00Z', refresh: vi.fn() }) }))
+vi.mock('../../lib/ops', async orig => {
+  const real = await orig<typeof import('../../lib/ops')>()
   return { ...real, completeTask: vi.fn(async () => {}), discardOpsDraft: vi.fn(async () => {}) }
 })
-import * as lib from '../../../lib/ops'
-import { GlanceTasks } from './Tasks'
+import * as lib from '../../lib/ops'
+import { HomeTasks } from './Tasks'
 
 const task = (id: string, body: string, due?: string): OpsDraft => ({
   id, client_id: 'ivan', kind: 'task', slack_channel: '', body, context: due ? { due_at: due } : {},
@@ -26,16 +26,16 @@ const key = (v: string, i = 0) => document.querySelectorAll(`[data-verb="${v}"]`
 beforeEach(() => { vi.clearAllMocks(); rows.splice(0, rows.length, task('a', 'Undated one'), task('b', 'Send Liton the follow-up email', lib.localDay(Date.now() + 864e5))) })
 afterEach(cleanup)
 
-describe('glance tasks', () => {
+describe('home tasks', () => {
   it('dated before undated; Done completes that row', async () => {
-    renderInFrame(<GlanceTasks />, { hash: '#exp/d/lanes' })
+    renderInFrame(<HomeTasks />, { hash: '#exp/d/home' })
     const titles = [...document.querySelectorAll('.gt-t')].map(e => e.textContent)
     expect(titles).toEqual(['Send Liton the follow-up email', 'Undated one'])
     fireEvent.click(key('tick'))
     await waitFor(() => expect(lib.completeTask).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' })))
   })
   it('Remove asks with the danger confirm first, then discards', async () => {
-    renderInFrame(<GlanceTasks />, { hash: '#exp/d/lanes' })
+    renderInFrame(<HomeTasks />, { hash: '#exp/d/home' })
     fireEvent.click(key('remove', 1))
     await waitFor(() => expect(document.querySelector('.d-confirm-danger')).toBeTruthy())
     expect(lib.discardOpsDraft).not.toHaveBeenCalled()
@@ -43,7 +43,7 @@ describe('glance tasks', () => {
     await waitFor(() => expect(lib.discardOpsDraft).toHaveBeenCalledWith('a', 'task'))
   })
   it('Add with Tomorrow inserts the one task row shape', async () => {
-    renderInFrame(<GlanceTasks />, { hash: '#exp/d/lanes' })
+    renderInFrame(<HomeTasks />, { hash: '#exp/d/home' })
     fireEvent.change(document.querySelector('.gt-in')!, { target: { value: '  Call Basile  ' } })
     fireEvent.click(key('due-tomorrow'))
     fireEvent.click(key('add-task'))

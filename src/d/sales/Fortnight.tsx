@@ -62,7 +62,7 @@ export function PacksOnFile({ idx }: { idx: PackIndex }) {
   const title = (s: string) => s.split('-').map(w => (w ? w[0].toUpperCase() + w.slice(1) : w)).join(' ')
   return (
     <section className="sl-grp" aria-label="Packs on file">
-      <div className="sl-sec"><span>Packs on file · links open a new tab</span><span>{rows.length}</span></div>
+      <div className="sl-sec"><span>Packs on file</span><span>{rows.length}</span></div>
       {rows.length === 0 && <div className="sl-quiet">No packs published yet.</div>}
       {rows.map(({ s, m }) => (
         <div className="sl-pf" key={s} data-slug={s}>

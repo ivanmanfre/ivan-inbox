@@ -1,6 +1,7 @@
 // The D mocks' own line glyphs (shell.js / pshell.js / dms-full-frame.js),
 // drawn at 24x24 with the stroke inherited from the text colour.
 const P = {
+  home: <path d="M4 11l8-7 8 7M6 9.5V20h12V9.5M10 20v-6h4v6" />,
   lanes: <path d="M7 4v16M7 4 3 8M7 4l4 4M17 20V4M17 20l-4-4M17 20l4-4" />,
   dms: <path d="M4 5h16v11H9l-5 4z" />,
   content: <path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" />,

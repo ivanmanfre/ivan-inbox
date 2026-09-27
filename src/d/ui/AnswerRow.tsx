@@ -7,8 +7,7 @@ import { useFrameMaybe } from '../shell/frame'
 //   <AnswerRow title={<>Needs you: <N v={2} /> yours, <N v={2} /> Mattan's.</>}
 //              sub="Rise opens 14:00." tools={<Btn>Orbit</Btn>} />
 //
-// Desktop: the frame owns the row (so the Commands / Ask Claude keys and the
-// bell sit at its right on every place, and the critical tint is the frame's);
+// Desktop: the frame owns the row (so the bell sits at its right on every place, and the critical tint is the frame's);
 // the page's title, sub line and tools are placed into it. Phone: the title
 // renders here, at the top of the page under the top bar, and `tools` go to
 // the top bar left of the bell.

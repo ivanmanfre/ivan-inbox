@@ -11,11 +11,11 @@ describe('parseDHash', () => {
     expect(parseDHash('#exp/d/content/magnets?lane=arch')).toMatchObject({ place: 'content', sub: 'magnets' })
   })
   it('falls back to Lanes, maps old job ids', () => {
-    expect(parseDHash('#exp/d').place).toBe('lanes')
-    expect(parseDHash('#exp/d/nowhere').place).toBe('lanes')
+    expect(parseDHash('#exp/d').place).toBe('home')
+    expect(parseDHash('#exp/d/nowhere').place).toBe('home')
     expect(parseDHash('#exp/d/sends').place).toBe('lanes')
     expect(parseDHash('#exp/d/money')).toMatchObject({ place: 'settings', sub: 'money' })
-    expect(parseDHash('#exp/dms').place).toBe('lanes')
+    expect(parseDHash('#exp/dms').place).toBe('home')
   })
 })
 
@@ -35,7 +35,7 @@ describe('toDHash (old addresses land in D)', () => {
     ['#exp/v2/ask?thread=t&turn=u', '#exp/d/claude?thread=t&turn=u'],
     ['#exp/v2/inbox/chat', '#exp/d/claude'],
     ['#exp/brain-b/sends', '#exp/d/lanes'],
-    ['#exp/v2/today', '#exp/d/lanes'],
+    ['#exp/v2/today', '#exp/d/home'],
     ['#exp/v2/inbox', '#exp/d/dms'],
     ['#exp/brain-b/magnets', '#exp/d/content/magnets'],
     ['#exp/v2/money', '#exp/d/settings/money'],
@@ -49,7 +49,7 @@ describe('toDHash (old addresses land in D)', () => {
     expect(toDHash('')).toBeNull()
   })
   it('canonicalHash sends anything else home', () => {
-    expect(canonicalHash('')).toBe('#exp/d/lanes')
+    expect(canonicalHash('')).toBe('#exp/d/home')
     expect(canonicalHash('#exp/brain-b/ops')).toBe('#exp/d/ops')
   })
 })

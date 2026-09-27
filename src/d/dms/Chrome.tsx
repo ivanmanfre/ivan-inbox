@@ -9,31 +9,28 @@ import { warsawHm } from '../ui/time'
 import type { Mode } from './Column'
 import type { SeatView } from './model'
 import { TokenBar } from './Search'
-import { dayMonth } from './threadRows'
 import type { DmsData } from './useDmsData'
 import type { FilterToken } from '../../lib/filterTokens'
 
 export function Headline({ mode, views, counts, tools }: { mode: Mode; views: Record<Seat, SeatView>; counts: FrameCounts; tools?: React.ReactNode }) {
   const needs = dmNumbers(counts, 'needs')
   if (mode === 'spam') {
-    return <AnswerRow title={<>Likely spam: <N v={views.risedtc.spam.length} /> Mattan's, <N v={views.arch.spam.length} /> Davorin's.</>}
-      sub="Filed by the reply check. Not spam puts a thread back." tools={tools} />
+    return <AnswerRow title={<>Likely spam: <N v={views.risedtc.spam.length} /> Mattan's, <N v={views.arch.spam.length} /> Davorin's.</>} tools={tools} />
   }
   if (mode === 'email') {
-    return <AnswerRow title={<>Email threads: <N v={views.ivan.email.length} /> yours, <N v={views.risedtc.email.length} /> Mattan's, <N v={views.arch.email.length} /> Davorin's.</>}
-      sub="Rise sends from itsmattan@, Arch from davorin@." tools={tools} />
+    return <AnswerRow title={<>Email threads: <N v={views.ivan.email.length} /> yours, <N v={views.risedtc.email.length} /> Mattan's, <N v={views.arch.email.length} /> Davorin's.</>} tools={tools} />
   }
   const nd = SEATS.map(s => views[s].nodraft.length)
-  const later = SEATS.flatMap(s => views[s].later).sort((a, b) => (a.draftSnoozedUntil ?? '').localeCompare(b.draftSnoozedUntil ?? ''))[0]
-  const sub = (nd.some(Boolean) ? `No draft yet: ${nd.join(', ')}.` : 'All drafted.')
-    + (later?.draftSnoozedUntil ? ` ${later.prospect_name.split(' ')[0]} comes back ${dayMonth(later.draftSnoozedUntil)}.` : '')
+  // One headline; the sub line only when a thread still has no draft (work Ivan must start).
+  const sub = nd.some(Boolean) ? `No draft yet: ${SEATS.flatMap((s, i) => (nd[i] ? [`${SEAT_NAME[s]} ${nd[i]}`] : [])).join(', ')}.` : undefined
   return <AnswerRow title={<>Needs you: <N v={needs.ivan} /> yours, <N v={needs.risedtc} /> Mattan's, <N v={needs.arch} /> Davorin's.</>} sub={sub} tools={tools} />
 }
 
 export function Health({ data }: { data: DmsData }) {
   if (data.error && data.loadedAt == null && !data.threads.length) return null
   if (data.error) return <span className="dm-live dm-live-bad">Could not refresh{data.loadedAt ? ` · last read ${warsawHm(data.loadedAt)}` : data.cachedAt ? ` · saved copy ${warsawHm(data.cachedAt)}` : ''} <Btn verb="retry" onClick={data.refreshAll}>Retry</Btn></span>
-  if (data.loadedAt) return <span className="dm-live">Live · read {warsawHm(data.loadedAt)}</span>
+  // Live and fresh says nothing (the time stays in the tooltip); only a saved copy, a read or a failure speaks.
+  if (data.loadedAt) return <span className="dm-live" title={`Live · read ${warsawHm(data.loadedAt)}`} />
   if (data.fromCache) return <span className="dm-live">Saved copy{data.cachedAt ? ` from ${warsawHm(data.cachedAt)}` : ''} · reading…</span>
   return <span className="dm-live">Reading…</span>
 }

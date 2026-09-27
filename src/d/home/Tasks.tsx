@@ -1,5 +1,5 @@
 /* ==========================================================================
-   src/d/lanes/glance/Tasks.tsx — "Your tasks" on the Lanes glance.
+   src/d/home/Tasks.tsx — "Tasks" on Home.
 
    The same rows and order as Ops' list (lib/ops pendingTasks: overdue, today,
    tomorrow, later, then undated), the same writes: Done = completeTask,
@@ -8,13 +8,13 @@
    with Claude's createBotTask): a title and an optional day, Tomorrow is one tap.
    ========================================================================== */
 import { useRef, useState, type FormEvent } from 'react'
-import { useOps } from '../../../hooks/useOps'
-import { useStalled } from '../../ui/timeout'
-import { completeTask, createInboxTask, discardOpsDraft, dueLabel, localDay, pendingTasks, taskDue, taskTitle, type OpsDraft } from '../../../lib/ops'
-import { dHash } from '../../route'
-import { SEAT_NAME, seatOf } from '../../seats'
-import { useDConfirm } from '../../ui/confirm'
-import { Btn } from '../../ui/Key'
+import { useOps } from '../../hooks/useOps'
+import { useStalled } from '../ui/timeout'
+import { completeTask, createInboxTask, discardOpsDraft, dueLabel, localDay, pendingTasks, taskDue, taskTitle, type OpsDraft } from '../../lib/ops'
+import { dHash } from '../route'
+import { SEAT_NAME, seatOf } from '../seats'
+import { useDConfirm } from '../ui/confirm'
+import { Btn } from '../ui/Key'
 
 const SHOWN = 6
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e))
@@ -48,7 +48,7 @@ function Row({ d, refresh }: { d: OpsDraft; refresh: () => void }) {
       <Btn verb="tick" disabled={busy || ticked} onClick={() => void tick()} aria-label={`Done: ${title}`}>{ticked ? 'Done ✓' : 'Done'}</Btn>
       <span className="gt-t">{title}{err && <small className="gt-err">{err}</small>}</span>
       <span className="gt-m">
-        <b className={dl ? `gt-${dl.tone}` : 'gt-nod'}>{dl ? (dl.tone === 'over' ? dl.text : `due ${dl.text}`) : 'no date'}</b>
+        {dl && <b className={`gt-${dl.tone}`}>{dl.tone === 'over' ? 'overdue' : dl.text}</b>}
         {seat && seat !== 'ivan' && <span>{SEAT_NAME[seat]}</span>}
         <button type="button" className="gt-rm" data-verb="remove" disabled={busy} onClick={() => void remove()} aria-label={`Remove: ${title}`}>remove</button>
       </span>
@@ -83,24 +83,23 @@ function Add({ refresh }: { refresh: () => void }) {
   )
 }
 
-export function GlanceTasks() {
+export function HomeTasks() {
   const ops = useOps()
   const [all, setAll] = useState(false)
   const tasks = pendingTasks(ops.drafts)
   const shown = all ? tasks : tasks.slice(0, SHOWN)
-  // 12 s without a first answer = the failed line with Retry (and a quiet re-read every 20 s).
+  // 12 s without a first answer = the quiet "?" with Retry (and a quiet re-read every 20 s).
   const stalled = useStalled(!ops.loadedAt && !ops.error, ops.refresh)
   const reading = ops.loading && !ops.loadedAt && !stalled
+  const failed = (ops.error || stalled) && !ops.loadedAt
   return (
-    <section className="gt" aria-label="Your tasks">
-      {reading ? <p className="gt-q">Reading your tasks…</p>
-        : (ops.error || stalled) && !ops.loadedAt ? <p className="gt-err">Your tasks could not be read: {ops.error ?? 'no answer after 12 s'} <button type="button" className="gt-rm" onClick={ops.refresh}>Retry</button></p>
-        : tasks.length === 0 ? <p className="gt-q">Nothing on your list.</p>
+    <section className="gt" aria-label="Tasks">
+      <h2 className="hm-h"><a href={dHash('ops')}>Tasks</a>{ops.loadedAt && tasks.length > 0 && <span className="hm-hn">{tasks.length}</span>}</h2>
+      {reading ? <p className="gt-q" aria-label="Reading your tasks">…</p>
+        : failed ? <p className="gt-q" title={ops.error ?? 'no answer after 12 s'}><span className="hm-q">?</span> <button type="button" className="gt-rm" data-verb="retry" onClick={ops.refresh}>Retry</button></p>
+        : tasks.length === 0 ? <p className="gt-q">Nothing open.</p>
         : <ul className="gt-list">{shown.map(d => <Row key={d.id} d={d} refresh={ops.refresh} />)}</ul>}
-      <div className="gt-foot">
-        {tasks.length > SHOWN && <button type="button" className="gt-rm" aria-expanded={all} onClick={() => setAll(a => !a)}>{all ? 'Show fewer' : `${tasks.length - SHOWN} more`}</button>}
-        <a className="gt-rm" href={dHash('ops')}>All in Ops ›</a>
-      </div>
+      {tasks.length > SHOWN && <button type="button" className="gt-rm gt-more" aria-expanded={all} onClick={() => setAll(a => !a)}>{all ? 'Fewer' : `${tasks.length - SHOWN} more`}</button>}
       <Add refresh={ops.refresh} />
     </section>
   )

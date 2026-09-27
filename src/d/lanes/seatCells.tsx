@@ -3,7 +3,7 @@
    stacks the chosen one. Hooks stay at the top of every component. */
 import type { ReactNode } from 'react'
 import { monitorLiveness } from '../../lib/campaignControl'
-import { SEAT_NAME, SEAT_OWNER, type Seat } from '../seats'
+import { SEAT_NAME, type Seat } from '../seats'
 import { Key } from '../ui/Key'
 import { ackId, useAck } from './ack'
 import { clientOf, controlOf, dm, hm, seatWord, todayOf } from './model'
@@ -27,15 +27,16 @@ export function Plate({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
   return (
     <div className="dl-plate">
       <div className="dl-r1">
-        <b>{SEAT_NAME[seat]}</b><span className="dl-who">{SEAT_OWNER[seat]}</span>
+        <b>{SEAT_NAME[seat]}</b>
         {w ? <span className={`dl-st dl-${w.tone}`}>{w.word}</span> : <span className="dl-st dl-dim">{ctx.d.cc.failed ? 'Unknown, unverified' : 'Reading…'}</span>}
       </div>
       <div className="dl-hl">
         {h ? <>
-          <span className={h.account === 'OK' ? 'dl-ok' : 'dl-bad'}>LinkedIn {h.account === 'OK' ? 'connected' : 'disconnected'}</span>
-          <span className={h.sn === 'OK' || h.sn == null ? 'dl-ok' : 'dl-bad'}>Sales Nav {h.sn === 'OK' ? 'on' : h.sn == null ? 'not reported' : 'not working'}{h.sn_credits != null ? `, ${h.sn_credits} credits` : ''}</span>
+          {h.account !== 'OK' && <span className="dl-bad">LinkedIn disconnected</span>}
+          {h.sn != null && h.sn !== 'OK' && <span className="dl-bad">Sales Nav not working</span>}
+          {h.sn_credits != null && <span className="dl-ok" title="Sales Navigator credits">{h.sn_credits} credits</span>}
           {h.degraded && h.link && <a className="dl-reconnect" data-verb="reconnect" href={h.link} target="_blank" rel="noreferrer">Reconnect</a>}
-        </> : <span className="dl-bad">{ctx.d.health.failed ? 'seat health could not be read' : 'reading seat health…'}</span>}
+        </> : <span className="dl-bad">{ctx.d.health.failed ? 'seat health ?' : '…'}</span>}
       </div>
     </div>
   )
@@ -63,7 +64,7 @@ export function TodayCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
       <div className="dl-td">
         <Fig label="Invites" v={t?.inv} sub={<>yday {num(t?.invY)}</>} />
         <Fig label="DMs" v={t?.dm} sub={dmSub} />
-        <Fig label="InMail" v={t?.inmail} sub="kept apart" />
+        <Fig label="InMail" v={t?.inmail} sub="" />
       </div>
       <div className="dl-caps">
         {t ? <>
@@ -116,7 +117,7 @@ export function ControlCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
     <div className="dl-ct">
       {inc ? (
         <div className="dl-inc">
-          <p className="dl-lead">{inc.lead}</p>
+          <p className="dl-lead dl-clamp" title={inc.lead}>{inc.lead}</p>
           <div className="dl-ir">
             <div className="dl-im">
               {inc.observed_failures != null && <><b>{inc.observed_failures.toLocaleString('en-US')}</b> refusals{inc.opened_at ? ` since ${dm(inc.opened_at, 'UTC')}` : ''}{inc.observed_distinct_prospects != null ? `, ${inc.observed_distinct_prospects} people` : ''}. </>}
@@ -127,15 +128,16 @@ export function ControlCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
           </div>
         </div>
       ) : null}
-      {(!inc || v.lead !== inc.lead) && <p className={inc ? 'dl-kv' : 'dl-lead'}>{v.lead}</p>}
+      {/* With an incident open, the monitor's own reading of it is the same fact: said once (tooltip keeps it). */}
+      {!inc && <p className="dl-lead dl-clamp" title={v.lead}>{v.lead}</p>}
       {(bare || stop) && <p className="dl-kv dl-al">{[stop, bare].filter(Boolean).join(' ')}</p>}
       {v.blockers.length > 0 && <p className="dl-kv dl-al">Cannot send right now: {v.blockers.join('; ')}.</p>}
       <div className="dl-kv"><span className="dl-k">Window</span> {v.window}<Sep />
         {v.closed ? <>opens <b>{v.opens ?? 'not scheduled'}</b></> : <>{v.pct ?? '?'}% gone<Sep />{v.pace}{v.planned != null ? ` (${v.sent} of ${v.planned})` : ''}</>}
       </div>
       <div className="dl-kv"><span className="dl-k">Waiting</span> {v.pools.length ? v.pools.map(([k, n], i) => <span key={k}>{i ? ', ' : ''}{k} <b>{n}</b></span>) : 'unknown'}<Supply seat={seat} ctx={ctx} /></div>
-      {v.next && <div className="dl-kv"><span className="dl-k">Next</span> {v.next}</div>}
-      {ctx.openControl && <button type="button" className="dl-more" data-open="control" onClick={() => ctx.openControl!(seat)}>Detail: session, pauses, lanes, governor, incidents ›</button>}
+      {v.next && <div className="dl-kv dl-clamp1" title={v.next}><span className="dl-k">Next</span> {v.next}</div>}
+      {ctx.openControl && <button type="button" className="dl-more" data-open="control" title="Session, pauses, lanes, governor, incidents" onClick={() => ctx.openControl!(seat)}>Detail ›</button>}
     </div>
   )
 }

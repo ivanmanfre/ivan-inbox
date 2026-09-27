@@ -67,7 +67,7 @@ export function WarmSheet({ c, agent, thread, verbs, onClose, onOpenThread, onAg
           <div className="dm-field">
             <span>Invite note{invite.kind === 'pending' && !viewer && <Counter n={note.length} max={200} />}</span>
             {invite.kind !== 'pending' && <p className="dm-meta">{invite.text}</p>}
-            {invite.kind === 'pending' && viewer && <p className="dm-meta">Blank invite, by rule. The question rides the DM once they accept.{windowEnds ? ` The view window closes ${windowEnds}.` : ''}</p>}
+            {invite.kind === 'pending' && viewer && windowEnds && <p className="dm-meta" title="Blank invite, by rule. The question rides the DM once they accept.">Window closes {windowEnds}.</p>}
             {invite.kind === 'pending' && !viewer && (
               <textarea rows={2} value={note} maxLength={240} onChange={e => setNote(e.target.value)} aria-label={`Invite note to ${c.name}`}
                 placeholder={c.signal_note_draft === null ? 'Drafting at 09:45 UTC, or write it here' : ''} />
@@ -82,16 +82,16 @@ export function WarmSheet({ c, agent, thread, verbs, onClose, onOpenThread, onAg
           <div className="dm-field">
             <span>DM after accept{c.draft_id && !c.draft_approved_at && <Counter n={dm1.length} max={400} />}</span>
             {c.draft_id ? (
-              c.draft_approved_at ? <p className="dm-meta">Approved {dayOf(c.draft_approved_at)}. The sender picks it up within about 2 minutes.</p>
-                : managed ? <p className="dm-meta">Managed through the revision-bound conversation agent action below.</p>
+              c.draft_approved_at ? <p className="dm-meta" title="The sender picks it up within about 2 minutes.">Approved {dayOf(c.draft_approved_at)}.</p>
+                : managed ? <p className="dm-meta">Managed below.</p>
                   : <>
                     <textarea rows={4} value={dm1} onChange={e => setDm1(e.target.value)} aria-label={`DM to ${c.name}`} />
                     {!deliverable && <small>Approve unlocks once {first} accepts.</small>}
                   </>
             ) : (
               <p className="dm-meta">{viewer
-                ? (invite.kind === 'sent' ? 'Drafted from the ruled opener once they accept.' : 'Drafts once they accept.')
-                : (c.dm_sent_count > 0 ? 'A DM already went out. The reply drafter owns the thread now.' : 'Drafting at 09:45 UTC.')}</p>
+                ? 'Drafts once they accept.'
+                : (c.dm_sent_count > 0 ? 'A DM already went out.' : 'Drafts at 09:45 UTC.')}</p>
             )}
           </div>
           {c.draft_id && !c.draft_approved_at && !managed && dm1Dirty && (

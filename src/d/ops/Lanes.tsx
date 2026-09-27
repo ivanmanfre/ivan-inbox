@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { COMMENT_IDEAS_PER_DAY, type OpsDraft } from '../../lib/ops'
+import type { OpsDraft } from '../../lib/ops'
 import { kindsLine } from '../../wb/ops/lanes'
 import { SEATS, SEAT_NAME, type Seat } from '../seats'
 import { Batch } from './Batch'
@@ -37,7 +37,7 @@ function Later({ later, sel, onPick }: { later: OpsDraft[]; sel: string | null; 
   return (
     <>
       <button type="button" className="op-fold" aria-expanded={open} data-later={later.length} onClick={() => setOpen(o => !o)}>
-        <span>Ideas for later</span><b>{later.length}</b><small>{COMMENT_IDEAS_PER_DAY} a day</small>
+        <span>Ideas for later</span><b>{later.length}</b>
       </button>
       {open && later.map(d => <Row key={d.id} d={d} on={d.id === sel} onPick={onPick} />)}
     </>
@@ -62,11 +62,10 @@ function Column({ lane, name, owner, cards, later, sel, onPick, refresh, queueLi
   const selHere = cards.some(d => d.id === sel) || later.some(d => d.id === sel)
   return (
     <section className={`op-col${selHere ? ' op-col-on' : ''}`} data-seat={lane} aria-label={`${name} lane`}>
-      <div className="op-plate"><b>{name}</b><span>{owner}</span></div>
+      <div className="op-plate"><b title={owner}>{name}</b></div>
       <div className="op-cnt"><em className={n ? '' : 'op-dim'}>{n}</em><small>{n ? kindsLine(cards, true) : 'Nothing waiting'}</small></div>
       <QueueBan cards={cards} queueLine={queueLine} />
       <Batch lane={lane} cards={cards} refresh={refresh} />
-      {n === 0 && <div className="op-quiet">Nothing waiting on you here.</div>}
       {vis.map(d => <Row key={d.id} d={d} on={d.id === sel} onPick={onPick} />)}
       {n > SHOW && (
         <button type="button" className="op-fold" aria-expanded={all} onClick={() => setAll(a => !a)}>
@@ -107,7 +106,7 @@ export function PhoneLanes({ board, seat, setSeat, onPick, refresh, queueLine }:
       <div className="op-plates" role="tablist" aria-label="Lanes">
         {SEATS.map(s => (
           <button key={s} type="button" role="tab" aria-selected={s === seat} className={`op-pt${s === seat ? ' op-on' : ''}`} onClick={() => setSeat(s)}>
-            <b>{SEAT_NAME[s]}</b><small>{LANE_OWNER[s]}</small>
+            <b>{SEAT_NAME[s]}</b>
             <em className={board.lanes[s].length ? '' : 'op-dim'}>{board.lanes[s].length}</em>
           </button>
         ))}

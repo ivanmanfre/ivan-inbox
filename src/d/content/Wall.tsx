@@ -64,15 +64,13 @@ function Plate({ lane, data, days, stuck, compact, now }: { lane: Lane; data: Co
   const next = nextScheduled(s.rows, lane, now)
   return (
     <div className="cn-feed">
-      <b>{LANE_NAME[lane]}</b>
-      <small>{FEED[lane]}</small>
+      <b title={FEED[lane]}>{LANE_NAME[lane]}</b>
       {s.error ? <small className="cn-warn">could not read</small> : (
         <span className="cn-fn"><em>{!s.loadedAt ? '…' : scheduledIn(s.rows, lane, days)}</em>in {days.length === 10 ? '2 weeks' : 'this week'}</span>
       )}
       {!compact && !s.error && s.loadedAt && (
         <>
-          <small>next {next?.scheduled_at ? `${warsawDow(next.scheduled_at)} ${warsawDm(next.scheduled_at)}` : 'none'}</small>
-          <small>published {publishedCount(s.rows)}</small>
+          <small title={next?.scheduled_at ? `next ${warsawDow(next.scheduled_at)} ${warsawDm(next.scheduled_at)}` : 'nothing next'}>published {publishedCount(s.rows)}</small>
         </>
       )}
       {lane === 'ivan' && stuck && <small className="cn-warn">{stuck}</small>}

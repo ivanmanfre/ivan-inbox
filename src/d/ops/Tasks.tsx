@@ -50,13 +50,11 @@ function Row({ d, refresh, onLeaving }: { d: OpsDraft; refresh: () => void; onLe
   return (
     <div className={`op-tk${ticked ? ' op-tk-done' : ''}`} data-task={d.id}>
       <div className="op-tt">
-        <b>{title}</b>
+        <b title={[src === 'WA' ? 'WhatsApp' : src, ago(d.created_at)].filter(Boolean).join(' · ') || undefined}>{title}</b>
         {detail && <small>{detail}</small>}
         <div className="op-tm2">
-          {dl && <b className={dl.tone === 'over' || dl.tone === 'now' ? 'op-hot' : ''}>due {dl.text}</b>}
-          {src && <span>{src === 'WA' ? 'WhatsApp' : src}</span>}
+          {dl && <b className={dl.tone === 'over' || dl.tone === 'now' ? 'op-hot' : ''}>{dl.tone === 'over' ? 'overdue' : dl.text}</b>}
           {seat && seat !== 'ivan' && <span>{SEAT_NAME[seat]}</span>}
-          {ago(d.created_at) && <span>{ago(d.created_at)}</span>}
           <span><button type="button" className="op-rm" data-verb="remove" disabled={busy} onClick={() => void remove()} aria-label={`Remove: ${title}`}>remove</button></span>
         </div>
         {err && <div className="op-err">{err}</div>}
@@ -98,7 +96,7 @@ export function Tasks({ drafts, refresh }: { drafts: OpsDraft[]; refresh: () => 
         {tasks.length > 0 && <Btn verb="clear-all" disabled={clearing} onClick={() => void clearAll()}>{clearing ? 'Clearing…' : 'Clear all'}</Btn>}
       </div>
       {err && <div className="op-err op-pad">{err}</div>}
-      {tasks.length === 0 && <div className="op-quiet">Nothing on your list. A task lands here when you dictate one to WhatsApp or a Claude session writes one.</div>}
+      {tasks.length === 0 && <div className="op-quiet">Nothing on your list.</div>}
       {shown.map(d => <Row key={d.id} d={d} refresh={refresh} onLeaving={() => { timers.current.push(setTimeout(refresh, LEAVE_MS)) }} />)}
       {tasks.length > SHOWN && (
         <button type="button" className="op-fold" aria-expanded={all} onClick={() => setAll(a => !a)}>

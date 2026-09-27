@@ -70,7 +70,7 @@ export function Reactions({ rx }: { rx: Rx }) {
       {rx.done && <div className="op-ban op-pad">{rx.done.lane === 'risedtc'
         ? 'On Mattan’s board, waiting on him. Nothing is dated and nothing is armed.'
         : `Scheduled for ${slot(rx.done.scheduledAt)}. A draft on the calendar, not a publish.`}</div>}
-      {!rx.error && !rx.loading && rx.rows.length === 0 && <div className="op-quiet">No reaction waiting. A take lands here only after it clears the reaction gate.</div>}
+      {!rx.error && !rx.loading && rx.rows.length === 0 && <div className="op-quiet">No reaction waiting.</div>}
       {rx.rows.map(r => <Card key={r.id} r={r} rx={rx} />)}
     </section>
   )

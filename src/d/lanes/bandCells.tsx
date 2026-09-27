@@ -48,10 +48,11 @@ function Camp({ c, ctx }: { c: CampaignPerf; ctx: BandCtx }) {
   const nb = (v: number, l: string) => <span><b className={v ? '' : 'dl-z'}>{v}</b>{l}</span>
   return (
     <button type="button" className={`dl-cp${ctx.selected === c.campaign_id ? ' dl-sel' : ''}`} onClick={() => ctx.openCampaign(c.campaign_id)}>
-      <span className="dl-cn">{shortName(c.campaign_name)}</span><span className="dl-go">open ›</span>
-      <span className="dl-nums">{nb(c.invites_7d, 'invites')}{nb(c.dms_7d, 'DMs')}{nb(c.replied_7d, 'replied')}{nb(c.calls_30d, 'calls 30d')}
-        {all != null && <span className="dl-dimt">{all.toLocaleString('en-US')} sent all time</span>}</span>
-      <span className="dl-ln">{c.replied_7d ? `${c.positive_7d} positive of ${c.replied_7d}. ` : 'No replies yet. '}{acceptShort(c)}</span>
+      <span className="dl-cn">{shortName(c.campaign_name)}</span>
+      <span className="dl-nums">{nb(c.invites_7d, 'invites')}{nb(c.dms_7d, 'DMs')}{nb(c.replied_7d, 'replied')}{nb(c.calls_30d, 'calls 30d')}</span>
+      {/* The long accept sentence and the all-time total stay one hover (and one tap, in the campaign sheet) away. */}
+      <span className="dl-ln" title={`${acceptShort(c)}${all != null ? ` · ${all.toLocaleString('en-US')} sent all time` : ''}`}>
+        {c.replied_7d ? `${c.positive_7d} positive of ${c.replied_7d}` : 'No replies yet'}{c.accept_judged ? ` · ${Math.round((c.accept_72h / c.accept_judged) * 100)}% accepted` : ''}</span>
       {c.client_id === 'arch' && <LaneLine id={c.campaign_id} />}
     </button>
   )

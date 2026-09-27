@@ -46,7 +46,8 @@ export type LanesData = {
   attempts: Slot<Record<Seat, Attempt | null | 'failed'>>
   ready: Slot<ReadyRead>
 }
-type Key = keyof LanesData
+export type LanesKey = keyof LanesData
+type Key = LanesKey
 
 const READS: { [K in Key]: () => Promise<NonNullable<LanesData[K]['value']>> } = {
   cc: async () => {
@@ -88,7 +89,8 @@ export function failedCount(d: LanesData): number {
   return KEYS.filter(k => d[k].failed && d[k].value == null).length
 }
 
-export function useLanesData(): { data: LanesData; loading: boolean; at: number | null; refresh: () => void } {
+/** `only`: read just these keys (Home reads the five it draws, never the whole Lanes set). Pass a module-level constant. */
+export function useLanesData(only?: readonly Key[]): { data: LanesData; loading: boolean; at: number | null; refresh: () => void } {
   const [data, setData] = useState<LanesData>(empty)
   const [loading, setLoading] = useState(true)
   const [at, setAt] = useState<number | null>(null)
@@ -130,13 +132,13 @@ export function useLanesData(): { data: LanesData; loading: boolean; at: number 
     pending.current = true
     const withSlow = Date.now() - slowAt.current >= SLOW_MS
     if (withSlow) slowAt.current = Date.now()
-    readKeys(KEYS.filter(k => withSlow || !SLOW.has(k)), () => {
+    readKeys((only ?? KEYS).filter(k => withSlow || !SLOW.has(k)), () => {
       pending.current = false
       if (!live.current) return
       setAt(Date.now())
       setLoading(false)
     })
-  }, [readKeys])
+  }, [readKeys, only])
 
   useEffect(() => {
     live.current = true

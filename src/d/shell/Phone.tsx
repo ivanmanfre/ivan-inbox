@@ -10,7 +10,7 @@ import { warsawDm, warsawDow, warsawHm } from '../ui/time'
 import { BellButton } from './Bell'
 import { useFrame } from './frame'
 import { useNavModel } from './navModel'
-import { Brand, MeFooter, NavLineView, WorkflowsKey } from './Side'
+import { Brand, MeFooter, NavCount, NavLineView, SeatHead, WorkflowsKey } from './Side'
 
 // The phone frame (D pshell.js): top bar (panel key, place + Warsaw time,
 // bell), the dock (five places + the lime Claude key), and the left panel as a
@@ -71,7 +71,7 @@ export function Dock() {
 
 export function PhonePanel({ onClose }: { onClose: () => void }) {
   const f = useFrame()
-  const { items, synced } = useNavModel()
+  const { items } = useNavModel()
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
@@ -85,11 +85,12 @@ export function PhonePanel({ onClose }: { onClose: () => void }) {
       <div className="d-scrim d-scrim-panel" onClick={onClose} aria-hidden="true" />
       <aside className="d-pn" role="dialog" aria-modal="true" aria-label="Places">
         <Brand />
+        <SeatHead />
         <nav className="d-nav">
           {main.map(i => (
             <div key={i.id} className="d-navi">
               <a href={dHash(i.id)} onClick={go} className={f.route.place === i.id ? 'd-on' : undefined} aria-current={f.route.place === i.id ? 'page' : undefined}>
-                <DIcon name={PLACES[i.id].icon} /><span>{i.label}</span>
+                <DIcon name={PLACES[i.id].icon} /><span>{i.label}</span><NavCount item={i} />
               </a>
               <NavLineView item={i} />
             </div>
@@ -100,12 +101,12 @@ export function PhonePanel({ onClose }: { onClose: () => void }) {
           <WorkflowsKey onOpen={onClose} />
           <div className="d-navi">
             <a href={dHash('settings')} onClick={go} className={f.route.place === 'settings' ? 'd-on' : undefined}>
-              <DIcon name="settings" /><span>Settings</span><em>Money is in here</em>
+              <DIcon name="settings" /><span>Settings</span>
             </a>
             {settings && settings.failed > 0 && <div className="d-navfail">{settings.failed} failed</div>}
           </div>
         </nav>
-        <MeFooter synced={synced} />
+        <MeFooter />
       </aside>
     </>
   )

@@ -6,7 +6,7 @@ import type { FilterToken } from '../../lib/filterTokens'
 import type { Thread } from '../../lib/inbox'
 import { dmNumbers, type FrameCounts } from '../counts/useFrameCounts'
 import type { Layout } from '../places'
-import { SEATS, SEAT_NAME, SEAT_OWNER, seatOf, type Seat } from '../seats'
+import { SEATS, SEAT_NAME, seatOf, type Seat } from '../seats'
 import { useFrameMaybe } from '../shell/frame'
 import { usePull } from './usePull'
 import { useRef, type ReactNode } from 'react'
@@ -14,7 +14,7 @@ import { Empty, Failed, Skeleton } from '../ui/states'
 import { Bar, BulkBar, Folders, Headline, Health } from './Chrome'
 import { ColumnBody, type Mode } from './Column'
 import type { MenuAct } from './Menu'
-import { SCHEDULE, type DayOut, type SeatView } from './model'
+import type { DayOut, SeatView } from './model'
 import { SearchField, TokenBar } from './Search'
 import { Bars, Plate, SeatStats } from './SeatStats'
 import { ThreadPane } from './Thread'
@@ -53,7 +53,7 @@ function Pane({ m, phone }: { m: PageModel; phone: boolean }) {
   if (!t) {
     if (m.threadId && m.data.loading) return <section className="dm-pane"><Skeleton lines={8} label="Opening the conversation" /></section>
     if (m.threadId) return <section className="dm-pane"><Empty title="This conversation is not in the list." reason="It may have been deleted from the seat, or it is not a conversation yet (nobody wrote back)." /></section>
-    return <section className="dm-pane dm-pane-none"><Empty title="Pick a conversation." reason="j and k walk the rows, Enter opens one, / searches every message on every seat." /></section>
+    return <section className="dm-pane dm-pane-none"><Empty title="Pick a conversation." /></section>
   }
   return <ThreadPane t={t} auto={m.auto} all={m.threads} phone={phone} verbs={m.verbs} now={m.now} onBack={m.closeThread}
     onAsk={() => m.ask(t, 'ask')} onDraftIt={() => m.ask(t, 'draft')} onMenu={a => m.onMenu(t, a)} staleN={m.staleBy[seatOf(t.client_id) ?? 'ivan'].length} pre={m.pre} reload={m.data.refreshAll} />
@@ -75,7 +75,7 @@ export function DesktopDms({ m }: { m: PageModel }) {
             <div className="dm-colscroll">
               {SEATS.map(s => (
                 <div key={s} className="dm-cf-seat">
-                  <div className="dm-cf-h"><b>{SEAT_NAME[s]}</b><em className={needs[s] ? '' : 'dm-z'}>{needs[s] ?? '?'}</em><span>{SEAT_OWNER[s]}</span></div>
+                  <div className="dm-cf-h"><b>{SEAT_NAME[s]}</b><em className={needs[s] ? '' : 'dm-z'}>{needs[s] ?? '?'}</em></div>
                   <Body m={m} seat={s} />
                 </div>
               ))}
@@ -108,13 +108,13 @@ export function PhoneDms({ m }: { m: PageModel }) {
       <div className="dm-tiles" role="tablist" aria-label="Seats">
         {SEATS.map(x => (
           <button key={x} type="button" role="tab" aria-selected={x === s} className={`dm-tile${x === s ? ' dm-on' : ''}`} onClick={() => m.setPhoneSeat(x)}>
-            <b>{SEAT_NAME[x]}</b><small>{x === 'ivan' ? 'your seat' : x === 'risedtc' ? "Mattan's seat" : "Davorin's seat"}</small>
+            <b>{SEAT_NAME[x]}</b>
             <em className={needs[x] ? 'dm-hot' : 'dm-zero'}>{needs[x] ?? '…'}</em>
             <Bars days={m.stats[x].days} tall />
           </button>
         ))}
       </div>
-      <div className="dm-pstat">replied 7d <b>{st.replied}</b> · today <b>{today?.msg ?? 0}</b> msgs <b>{today?.inv ?? 0}</b> inv<br />{SCHEDULE[s].replace(/^sends /, '')} · <Health data={m.data} /></div>
+      <div className="dm-pstat">replied 7d <b>{st.replied}</b> · today <b>{today?.msg ?? 0}</b> msgs <b>{today?.inv ?? 0}</b> inv · <Health data={m.data} /></div>
       <div className="dm-psearch"><SearchField ref={m.searchRef} q={m.q} setQ={m.setQ} reach={m.data.threads.length || null} phone /><TokenBar tokens={m.tokens} setTokens={m.setTokens} /></div>
       <Folders folder={m.folder} setFolder={m.setFolder} views={m.views} phone />
       <BulkBar checked={m.checked} byId={m.byId} clear={() => m.setChecked(new Set())} onDiscard={ts => { void m.verbs.bulkDiscard(ts, 'The selected drafts.').then(() => m.setChecked(new Set())) }} />
