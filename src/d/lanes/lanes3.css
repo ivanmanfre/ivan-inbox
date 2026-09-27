@@ -128,3 +128,4 @@
 .dl3-phone .dl-trlt{display:inline;font:400 11.5px var(--m);font-style:normal;color:var(--t3)}
 .dl-rb.dl-thin .dl-rbk i{opacity:.45}
 .dl-rbv small.dl-young{color:var(--t3);font-size:10.5px}
+.dl3-desktop .dl-rcs>.dl-rc:nth-child(3) .dl-rb{grid-template-columns:minmax(120px,320px) minmax(40px,1fr) auto}

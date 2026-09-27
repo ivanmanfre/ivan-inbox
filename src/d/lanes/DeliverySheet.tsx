@@ -51,7 +51,7 @@ export function DeliverySheet({ p, pFailed = null, range, onClose, seats }: { p:
               <td className="dl-m">{d ? <>{cohortText(d.reply_cohort, 'replied_within_72h')} <span className="dl-dimt">{n(d.replies_people)} repliers</span></> : <span className="dl-dimt">no row</span>}</td></tr>
           })}
         </tbody></table>
-        <p className="dl-sl">{SEATS.map(s => { const i = row(s, 'invitation'); return `${SEAT_NAME[s]}: ${n(i?.attempted)} invites attempted, ${n(i?.failed)} refused, ${n(i?.phantom)} phantom rows that never left the seat` }).join('. ')}. A cohort shown as "n of m" has no matured denominator, so no rate is shown.</p>
+        <p className="dl-sl">{SEATS.map(s => { const i = row(s, 'invitation'); return `${SEAT_NAME[s]}: ${n(i?.attempted)} invites attempted, ${n(i?.failed)} refused, ${n(i?.phantom)} phantom rows that never left the seat` }).join('. ')}. Accepted ≤72h is of everyone first invited in the window (invites under 72h old can still accept). Replied ≤72h is shown as n of m: the monitor gives no matured base for replies.</p>
         {SEATS.map(s => {
           const rows = p.ranges.rows.filter(r => r.client_id === s && r.interval === range && r.source_lane !== '__all__' && r.sent)
           return rows.length ? <div key={s}>
