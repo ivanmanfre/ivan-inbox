@@ -94,20 +94,19 @@ export function useLanesData(): { data: LanesData; loading: boolean; at: number 
   const refresh = useCallback(() => {
     if (pending.current || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return
     pending.current = true
-    void Promise.allSettled(KEYS.map(k => READS[k]())).then(res => {
+    // Each read lands on its own: a slow read (the ready counts) never holds the
+    // monitor or the campaigns back. A failed re-read keeps the last good value
+    // on screen and says it failed.
+    const put = (k: Key, slot: (prev: Slot<unknown>) => Slot<unknown>) => {
+      if (!live.current) return
+      setData(prev => ({ ...prev, [k]: slot(prev[k] as Slot<unknown>) }) as LanesData)
+    }
+    void Promise.allSettled(KEYS.map(k => READS[k]().then(
+      v => put(k, () => ({ value: v, failed: null })),
+      e => { put(k, prev => ({ value: prev.value, failed: e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e ?? 'read failed') })); throw e },
+    ))).then(() => {
       pending.current = false
       if (!live.current) return
-      setData(prev => {
-        const next = { ...prev } as Record<Key, Slot<unknown>>
-        res.forEach((r, i) => {
-          const k = KEYS[i]
-          // A failed re-read keeps the last good value on screen and says it failed.
-          next[k] = r.status === 'fulfilled'
-            ? { value: r.value, failed: null }
-            : { value: prev[k].value, failed: r.reason instanceof Error ? r.reason.message : String(r.reason ?? 'read failed') }
-        })
-        return next as unknown as LanesData
-      })
       setAt(Date.now())
       setLoading(false)
     })

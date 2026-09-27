@@ -15,12 +15,12 @@ import { dm, type Range } from './model'
 
 export type SheetKind = 'decisions' | 'log' | 'ledger' | 'delivery' | 'problems'
 
-export function LanesSheet({ kind, seat, p, range, now, setSeat, onClose }: { kind: SheetKind; seat: Seat | null; p: CcPayload | null; range: Range; now: number; setSeat: (s: Seat | null) => void; onClose: () => void }) {
+export function LanesSheet({ kind, seat, p, pFailed, range, now, setSeat, onClose }: { kind: SheetKind; seat: Seat | null; p: CcPayload | null; pFailed: string | null; range: Range; now: number; setSeat: (s: Seat | null) => void; onClose: () => void }) {
   if (kind === 'log') return <LogSheet seat={seat} setSeat={setSeat} now={now} onClose={onClose} />
   if (kind === 'ledger') return <LedgerSheet p={p} range={range} onClose={onClose} />
   if (kind === 'decisions') return <DecisionsSheet seat={seat ?? 'ivan'} onClose={onClose} />
-  if (kind === 'delivery') return <DeliverySheet p={p} range={range} onClose={onClose} />
-  return <ProblemsSheet p={p} onClose={onClose} />
+  if (kind === 'delivery') return <DeliverySheet p={p} pFailed={pFailed} range={range} onClose={onClose} />
+  return <ProblemsSheet p={p} pFailed={pFailed} onClose={onClose} />
 }
 
 function DecisionsSheet({ seat, onClose }: { seat: Seat; onClose: () => void }) {

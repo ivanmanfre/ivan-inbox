@@ -42,13 +42,13 @@ function Item({ it, p }: { it: CcRecurrenceItem; p: CcPayload }) {
   )
 }
 
-export function ProblemsSheet({ p, onClose }: { p: CcPayload | null; onClose: () => void }) {
+export function ProblemsSheet({ p, pFailed = null, onClose }: { p: CcPayload | null; pFailed?: string | null; onClose: () => void }) {
   const r = p?.recurrence ?? null
   const picks = (r?.items ?? []).filter(i => i.rank?.daily_pick).slice(0, 3)
   const w = r?.weekly
   return (
     <Sheet open onClose={onClose} className="dl-sheet" title="Recurring problems"
-      sub={!p ? 'The send monitor could not be read.' : !r ? 'This snapshot carries no recurrence ledger, so nothing recurring is shown. That is an absent section, not an empty one.'
+      sub={!p ? (pFailed ? `The send monitor could not be read: ${pFailed}` : 'Reading the send monitor…') : !r ? 'This snapshot carries no recurrence ledger, so nothing recurring is shown. That is an absent section, not an empty one.'
         : `Weekly result: ${(w?.result ?? 'unknown').replace(/_/g, ' ')}${w?.reason ? `: ${w.reason}` : ''}${w?.provisional ? ' (provisional)' : ''}${r.as_of ? ` · as of ${dm(r.as_of)} ${hm(r.as_of)}` : ''}`}>
       {r && !picks.length && <p className="dl-sl">No problem was picked for today.</p>}
       {p && picks.map(i => <Item key={i.recurrence_id} it={i} p={p} />)}

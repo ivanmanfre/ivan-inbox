@@ -30,8 +30,8 @@ function Channel({ ch, title }: { ch: CcChannel | null | undefined; title: strin
   )
 }
 
-export function ControlSheet({ seat, p, gov, pauses, pausesFailed, now, onClose }: {
-  seat: Seat; p: CcPayload | null; gov: GovernorRow | null; pauses: Pauses | null; pausesFailed: string | null; now: number; onClose: () => void
+export function ControlSheet({ seat, p, pFailed = null, gov, pauses, pausesFailed, now, onClose }: {
+  seat: Seat; p: CcPayload | null; pFailed?: string | null; gov: GovernorRow | null; pauses: Pauses | null; pausesFailed: string | null; now: number; onClose: () => void
 }) {
   const c = clientOf(p, seat)
   const v = c ? controlOf(c, now) : null
@@ -48,7 +48,7 @@ export function ControlSheet({ seat, p, gov, pauses, pausesFailed, now, onClose 
   return (
     <Sheet open onClose={onClose} className="dl-sheet" title={`${SEAT_NAME[seat]}, control detail`}
       sub={c ? `${STATUS_WORD[stale ? 'unknown' : c.status]} · data ${fr?.data_age_s != null ? `${Math.round(fr.data_age_s / 60)} min old` : 'age unknown'} · rules ${fr?.rule_version ?? 'unknown'} · ${p?.source_mode ?? 'snapshot'}` : 'This seat has no control reading in the snapshot.'}>
-      {!p ? <p className="dl-sl dl-bad">The send monitor could not be read.</p> : !c || !v || !inv ? <p className="dl-sl">No control reading for this seat.</p> : <>
+      {!p ? <p className={`dl-sl ${pFailed ? 'dl-bad' : 'dl-unk'}`}>{pFailed ? `The send monitor could not be read: ${pFailed}` : 'Reading the send monitor…'}</p> : !c || !v || !inv ? <p className="dl-sl">No control reading for this seat.</p> : <>
         {stale != null && <p className="dl-sl dl-bad">The monitor has not reported in for {stale} minutes; these figures may be out of date. Payload said: {STATUS_WORD[c.status].toLowerCase()}, {c.status_reason}</p>}
         {stale == null && <p className="dl-sl">{c.status_reason}</p>}
         <div className="dl-kv"><span className="dl-k">Next</span> {c.next_action?.action ?? 'nothing recorded'}{c.next_action?.owner ? ` · owner ${c.next_action.owner}` : ''} · {v.closed ? 'opens' : 'next check'} {at(v.closed ? s?.next_opening_at : c.next_check_at, now)}</div>

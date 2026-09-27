@@ -25,15 +25,15 @@ export function cohortText(c: CcCohort | null | undefined, hit: 'accepted_within
   return <>{n(h)} / {n(c.matured_denominator)} <span className="dl-dimt">({c.rate_pct == null ? '—' : `${c.rate_pct}%`})</span></>
 }
 
-export function DeliverySheet({ p, range, onClose }: { p: CcPayload | null; range: Range; onClose: () => void }) {
+export function DeliverySheet({ p, pFailed = null, range, onClose }: { p: CcPayload | null; pFailed?: string | null; range: Range; onClose: () => void }) {
   const iv = p?.ranges.intervals.find(i => i.name === range) ?? null
   const row = (seat: string, ch: string, interval: string = range): CcRangeRow | undefined =>
     p?.ranges.rows.find(r => r.client_id === seat && r.channel === ch && r.interval === interval && r.source_lane === '__all__')
   const cmp = p ? comparable(p, range) : null
   return (
     <Sheet open onClose={onClose} className="dl-sheet" title="Delivery by seat and lane"
-      sub={iv ? `${iv.from.slice(0, 10)} to ${iv.to.slice(0, 10)} · ${iv.days} days · ${p!.ranges.tz}. Confirmed sends only.` : `No ${range} window in this snapshot.`}>
-      {!p ? <p className="dl-sl dl-bad">The send monitor could not be read.</p> : !iv ? null : <>
+      sub={!p ? undefined : iv ? `${iv.from.slice(0, 10)} to ${iv.to.slice(0, 10)} · ${iv.days} days · ${p!.ranges.tz}. Confirmed sends only.` : `No ${range} window in this snapshot.`}>
+      {!p ? <p className={`dl-sl ${pFailed ? 'dl-bad' : 'dl-unk'}`}>{pFailed ? `The send monitor could not be read: ${pFailed}` : 'Reading the send monitor…'}</p> : !iv ? null : <>
         <table className="dl-steps"><thead><tr><th>Seat</th><th>Invites</th><th>DMs</th><th>InMail</th><th>Accepted ≤72h</th><th>Replied ≤72h</th></tr></thead><tbody>
           {SEATS.map(s => {
             const i = row(s, 'invitation'), d = row(s, 'dm'), m = row(s, 'inmail')
