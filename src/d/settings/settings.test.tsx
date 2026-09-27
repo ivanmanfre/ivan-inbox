@@ -22,6 +22,7 @@ vi.mock('../../lib/supabase', () => {
 })
 vi.mock('../../lib/money', async orig => ({ ...(await orig()), fetchMrrRows: async () => [], fetchCashConfig: async () => ({ cashOnHandUsd: null, cashAsOfDate: null, observedAt: null }) }))
 
+vi.mock('../../wb/money', () => ({ MoneyView: () => <div data-testid="money-view">old money view</div> }))
 import { renderInFrame } from '../test-utils'
 import { parseDHash } from '../route'
 import { pushBlocked } from './prefs'
@@ -103,5 +104,14 @@ describe('Settings parity pass 2', () => {
     renderInFrame(<SettingsPage {...props()} />)
     fireEvent.click(document.querySelector('[data-verb="sign-out"]')!)
     await waitFor(() => expect(screen.getByText(/6-digit code or the email link/)).toBeTruthy())
+  })
+})
+
+describe('Money inside D', () => {
+  it('#exp/d/settings/money mounts today\'s Money view under one D title, with a way back', async () => {
+    const nav = vi.fn()
+    renderInFrame(<SettingsPage layout="desktop" route={parseDHash('#exp/d/settings/money')} navigate={nav} />)
+    await waitFor(() => expect(screen.getByTestId('money-view')).toBeTruthy())
+    expect(document.querySelector('.ds2-moneyview')).toBeTruthy()
   })
 })
