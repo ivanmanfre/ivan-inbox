@@ -386,7 +386,9 @@ export function dedupeMessages(rows: InboxMessage[]): InboxMessage[] {
 // far newer than its sent_at, so ordering by created_at renders it below messages it in fact
 // preceded. Unsent drafts have no sent_at, so they fall back to created_at and sort last,
 // which is what we want for a pending draft.
-export const eventTime = (m: InboxMessage): string => m.sent_at ?? m.created_at
+// 2026-09-28 (Ivan: "I respond at midnight and it shows I replied at 4 pm"): a reply approved but not
+// yet picked up by the sender is timed at the approval, never at the hour its draft was written.
+export const eventTime = (m: InboxMessage): string => m.sent_at ?? (m.direction === 'outbound' && m.approved_at ? m.approved_at : null) ?? m.created_at
 
 // Ivan 2026-09-24: "'Viewed the scan' can trigger the next touch". A pending (not pushed) stall-bump
 // draft for someone who opened their scan on 2+ distinct days goes to the top; everything else keeps
