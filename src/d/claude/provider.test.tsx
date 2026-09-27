@@ -14,7 +14,7 @@ vi.mock('../../exp/v2c/useChat', () => ({
     busy, runningElsewhere: elsewhere, streamTools: [], turnsLoading: false, turnsStale: false, openThread, abort, newThread: vi.fn(),
   }),
 }))
-const abortTurn = vi.fn(async () => true)
+const abortTurn = vi.fn(async (_id: string) => true)
 vi.mock('../../lib/turns', async orig => ({ ...(await orig<typeof import('../../lib/turns')>()), abortTurn: (id: string) => abortTurn(id) }))
 
 import { renderInFrame } from '../test-utils'
