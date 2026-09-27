@@ -138,7 +138,7 @@ export function MarketsPanel({ read, onRetry }: { read: MarketRead | null; onRet
       <div className="a-mk" data-mk-state={state}>
         <Group className="a-mk-g" label="Markets" pad>
           {state === 'loading'
-            ? <p className="a-mk-sub">Reading this market\u2026</p>
+            ? <p className="a-mk-sub">{'Reading this market\u2026'}</p>
             : (
               <div className="a-mk-fail">
                 <p className="a-mk-sub">{read && read.kind !== 'ready' ? read.message : 'The market readout failed.'}</p>

@@ -3,16 +3,18 @@ import {
   ClientRpcError, DraftSaveConflict, approveDraft, deleteClientDraft, saveClientDraftBody, saveDraftBody,
   setBoardVisible, skipDraft, type ContentDraftDetail, type SaveConflict,
 } from '../../lib/content'
-import { scheduleDraft } from '../../lib/studioActions'
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
 import { warsawDayTime } from '../ui/time'
-import { OWNER, POSS, type Lane } from './model'
+import { OWNER, POSS, canSchedule, type Lane } from './model'
+import { scheduleGuarded } from './writes'
 
 // The draft window's writes. Every write is today's function with today's
 // payload (lib/content, lib/studioActions); every confirm keeps today's words.
 // `advance` walks to the next row in the queue (or closes) after a decision.
-export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => void, refresh: () => void) {
+export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => void, refreshOwn: () => void) {
+  // Today's contract: after a write, whatever list is mounted refetches (wb-rows-changed).
+  const refresh = useCallback(() => { refreshOwn(); window.dispatchEvent(new Event('wb-rows-changed')) }, [refreshOwn])
   const confirm = useDConfirm()
   const toast = useToast()
   const [editing, setEditing] = useState(false)
@@ -69,7 +71,7 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
       message: 'QA refused this one. Approving overrides that verdict. Nothing publishes, scheduling is the separate act below.',
       confirmText: 'Approve', verb: 'confirm',
     } : {
-      title: 'Skip this draft?', message: 'Marks it disqualified, it drops out of the queue for good.', confirmText: 'Skip', verb: 'confirm',
+      title: 'Skip this draft?', message: 'Marks it disqualified, it drops out of the queue for good.', confirmText: 'Skip', verb: 'confirm', danger: true,
     })
     if (!ok) return
     setBusy(true); setErr('')
@@ -83,6 +85,7 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
   const schedule = useCallback(async (at: Date) => {
     if (editing || busy) return
     if (Number.isNaN(at.getTime())) { setErr('That is not a time.'); return }
+    if (!canSchedule(d)) { setErr(`Not offered: this draft is ${d.published_at ? 'published' : d.status}. Only a draft in review, approved or already scheduled can be put on LinkedIn.`); return }
     const already = d.status === 'scheduled'
     const ok = await confirm({
       title: already ? 'Move this post?' : 'Put this post on LinkedIn?',
@@ -93,11 +96,11 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
     if (!ok) return
     setBusy(true); setErr('')
     try {
-      await scheduleDraft(d.id, at.toISOString())
+      await scheduleGuarded(d.id, at.toISOString())
       toast.show({ message: `Armed for ${warsawDayTime(at)} Warsaw.`, sub: 'The publisher posts it then.' })
       refresh(); if (!already) advance()
     } catch (e) { fail(e, 'schedule it') } finally { setBusy(false) }
-  }, [advance, busy, confirm, d.id, d.status, editing, refresh, toast])
+  }, [advance, busy, confirm, d, editing, refresh, toast])
 
   const board = useCallback(async (next: boolean) => {
     if (busy) return
@@ -127,7 +130,7 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
     if (busy) return
     const ok = await confirm({
       title: 'Delete this draft?', message: `${OWNER[lane]} has never seen it, and this removes it permanently.`,
-      confirmText: 'Delete', verb: 'confirm',
+      confirmText: 'Delete', verb: 'confirm', danger: true,
     })
     if (!ok) return
     setBusy(true); setErr('')
@@ -135,5 +138,6 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
     catch (e) { fail(e, 'delete') } finally { setBusy(false) }
   }, [advance, busy, confirm, d.id, d.taxonomy, lane, refresh, toast])
 
-  return { editing, text, setText, shown, conflict, busy, err, visible, startEdit, cancelEdit, save, takeTheirs, keepMine, decide, schedule, board, removeClient }
+  const dismissConflict = useCallback(() => setConflict(null), [])
+  return { editing, text, setText, shown, conflict, busy, err, visible, startEdit, cancelEdit, save, takeTheirs, keepMine, dismissConflict, decide, schedule, board, removeClient }
 }

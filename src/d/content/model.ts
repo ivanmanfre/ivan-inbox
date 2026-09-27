@@ -6,7 +6,7 @@
 // and dated, even while a client row is still in review; Ivan's feed = status
 // scheduled, unpublished, dated. Posts, not days. Seats are never summed.
 import {
-  clientScheduleArmed, localDay, stageOfLane,
+  boardGroupOf, clientScheduleArmed, isStuckGenerating, localDay, stageOfLane,
   type ContentDraft, type ContentLane,
 } from '../../lib/content'
 import { warsawDay, warsawDm, warsawDow, warsawHm } from '../ui/time'
@@ -28,6 +28,26 @@ export type WallDay = { key: string; dow: string; dm: string; n: number }
 export function isScheduled(r: ContentDraft, lane: Lane): boolean {
   if (lane !== 'ivan') return clientScheduleArmed(r)
   return r.status === 'scheduled' && !r.published_at && !!r.scheduled_at
+}
+
+// ---------- who may be scheduled (the hazard guard) ----------
+
+/**
+ * Today's Schedule toggle opens by default only at review or approved
+ * (wb/draft/index.tsx `more`). D goes one step further, as ruled on 27 Sep:
+ * Schedule is not offered at all, and the write refuses, on a draft that is
+ * published, errored, generating, an idea or skipped. Re-arming a published
+ * post or arming a QA-refused one would put it on LinkedIn.
+ */
+export const SCHEDULABLE = ['review', 'approved', 'scheduled'] as const
+
+export function canSchedule(r: Pick<ContentDraft, 'status' | 'published_at'>): boolean {
+  return (SCHEDULABLE as readonly string[]).includes(r.status ?? '') && !r.published_at
+}
+
+/** Today's default: the date row is open at review or approved, folded on an armed row. */
+export function scheduleOpenByDefault(r: Pick<ContentDraft, 'status'>): boolean {
+  return r.status === 'review' || r.status === 'approved'
 }
 
 /** An Ivan row that holds a date but nothing will publish it until it is armed. */
@@ -105,6 +125,42 @@ export function waitingRows(rows: ContentDraft[], now: number = Date.now()): { f
 
 export function errorRows(rows: ContentDraft[], lane: Lane, now: number = Date.now()): ContentDraft[] {
   return rows.filter(r => { const s = stageOfLane(r, lane, now); return s === 'error' || s === 'stuck' })
+}
+
+/**
+ * The Errors count and list as today's Errors tab has them: errored and stuck
+ * rows, plus (Ivan) every unpublished post the publisher STOPPED, which is
+ * written on the queue row only (applyPublishBlocks).
+ */
+export function errorRowsWithBlocks(rows: ContentDraft[], lane: Lane, now: number = Date.now(), blocks?: Map<string, string> | null): ContentDraft[] {
+  const base = errorRows(rows, lane, now)
+  if (lane !== 'ivan' || !blocks?.size) return base
+  const ids = new Set(base.map(r => r.id))
+  return [...rows.filter(r => blocks.has(r.id) && !r.published_at && !ids.has(r.id)), ...base]
+}
+
+/** In flight (generating or planned), and how many of those ran past the stall threshold. */
+export function generatingOf(rows: ContentDraft[], lane: Lane, now: number = Date.now()): { n: number; stalled: number } {
+  const g = rows.filter(r => stageOfLane(r, lane, now) === 'generating')
+  return { n: g.length, stalled: g.filter(r => isStuckGenerating(r, now)).length }
+}
+
+/**
+ * The tab the Errors sub opens on, in today's per-lane vocabulary: Ivan's
+ * stage tabs ('error', 'stuck', 'generating'), a client's group_stage tabs
+ * ('internal_error', 'board_stuck', ...). The first one that holds rows wins.
+ */
+export function errorsLanding(rows: ContentDraft[], lane: Lane, now: number = Date.now(), blocks?: Map<string, string> | null, want: 'errors' | 'generating' = 'errors'): string {
+  if (lane === 'ivan') {
+    if (want === 'generating') return 'generating'
+    const errs = errorRowsWithBlocks(rows, lane, now, blocks)
+    return errs.some(r => (blocks?.has(r.id) ?? false) || stageOfLane(r, lane, now) === 'error') ? 'error'
+      : errs.length ? 'stuck' : 'error'
+  }
+  const stages = want === 'generating' ? ['generating'] : ['error', 'stuck']
+  const order = stages.flatMap(s => [`internal_${s}`, `board_${s}`])
+  const held = new Set(rows.map(r => `${boardGroupOf(r)}_${stageOfLane(r, lane, now)}`))
+  return order.find(k => held.has(k)) ?? order[0]
 }
 
 export function age(iso: string, now: number = Date.now()): string {

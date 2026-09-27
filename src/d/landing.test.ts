@@ -25,8 +25,8 @@ describe('dLandingHash: every address today writes lands in D on a cold start', 
     ['#exp/brain-b/?warm=1', '#exp/d/dms?warm=1'],
     [`#exp/v2/dms?warm=${T}`, `#exp/d/dms?warm=${T}`],
     [`#exp/brain-b/today?warm=${T}`, `#exp/d/dms?warm=${T}`],
-    ['#exp/brain-b/content?sources=1', '#exp/d/content/strategy'],
-    ['#exp/v2?section=sources', '#exp/d/content/strategy'],
+    ['#exp/brain-b/content?sources=1', '#exp/d/content/strategy?section=research'],
+    ['#exp/v2?section=sources', '#exp/d/content/strategy?section=research'],
     ['#exp/v2/content?section=sales', '#exp/d/content?section=sales'],
   ])('%s -> %s', (from, to) => { expect(dLandingHash(from)).toBe(to) })
 
