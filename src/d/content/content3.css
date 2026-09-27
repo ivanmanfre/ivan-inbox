@@ -45,3 +45,17 @@
    and the reserved action width, as today's list does below 1000px */
 .cn-left-legacy .a-ct-cols,.cn-left-legacy .a-ct-colhead{display:none}
 .cn-left-legacy .a-ct-row .a-row-actions{min-width:0}
+
+/* ideas: filters, outlier line, lead-magnet note, paging, facts */
+.cn-flt{display:flex;gap:6px;padding:6px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.cn-flt select{height:28px;max-width:100%;border:1px solid var(--line2);border-radius:7px;background:var(--bg);color:var(--t2);font:400 12.5px var(--f);padding:0 6px;color-scheme:dark;min-width:0}
+.cn-flt button{font:400 12px var(--m);color:var(--t2);text-decoration:underline;text-underline-offset:3px}
+.cn-iq .cn-ol{color:var(--t3);font:400 11.5px var(--m)}
+.cn-lmline{padding:6px 14px;font-size:12.5px;color:var(--t2);border-bottom:1px solid var(--line)}
+.cn-lmline a{color:var(--t1);text-decoration:underline;text-underline-offset:3px}
+.cn-pagemore{display:block;width:100%;padding:10px 14px;text-align:left;font:500 13px var(--f);color:var(--t2);border-bottom:1px solid var(--line)}
+.cn-pagemore:hover{color:var(--t1)}
+.cn-ichips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.cn-ichips span{font:400 11.5px var(--m);border:1px solid var(--line2);border-radius:5px;padding:0 6px;color:var(--t2)}
+.cn-ilinks{display:flex;gap:14px;margin-top:6px}.cn-ilinks a{color:var(--t1);text-decoration:underline;text-underline-offset:3px}
+.cn-say button{text-decoration:underline;text-underline-offset:3px;color:var(--t1)}
