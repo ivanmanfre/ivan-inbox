@@ -136,3 +136,17 @@
 .d-phone .cn-row{grid-template-columns:24px 36px minmax(0,1fr) 30px}
 .d-phone .cn-row>span:nth-child(4){display:none}
 .d-phone .cn-qh small{display:none}
+.d-app .cn-legacy.ds-shell{background:var(--bg);padding:0;gap:0;min-height:0}
+/* The frame resets button padding under .d-app; give today's controls theirs back inside the legacy mount. */
+.cn-legacy .ds-seg-item{padding:0 var(--ds-s4)}
+.cn-legacy .ds-btn{padding:0 var(--ds-s5)}
+.cn-legacy .ds-btn[data-size='sm']{padding:0 var(--ds-s4)}
+.cn-legacy .ds-btn[data-size='lg']{padding:0 var(--ds-s6)}
+.cn-legacy .ds-chip{padding:0 var(--ds-s4)}
+.cn-legacy .ds-chip-x{padding:var(--ds-s1)}
+.cn-legacy .ds-tab{padding:var(--ds-s2) 0}
+.cn-legacy .ds-tabs-item{padding:var(--ds-s2) var(--ds-s0) var(--ds-s3)}
+.cn-legacy .ds-popover-item{padding:var(--ds-s2) var(--ds-s3)}
+.cn-fix .ds-btn{padding:0 var(--ds-s5)}
+.cn-fix .ds-btn[data-size='sm']{padding:0 var(--ds-s4)}
+.cn-fix .ds-chip{padding:0 var(--ds-s4)}

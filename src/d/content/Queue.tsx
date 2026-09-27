@@ -14,7 +14,7 @@ export function Queue({ lane, setLane, seat, fresh, older, counts, openId, onOpe
   seat: SeatRead
   fresh: ContentDraft[]
   older: ContentDraft[]
-  counts: Record<Lane, number | null>
+  counts: Record<Lane, number | null | undefined>
   openId: string | null
   onOpen: (id: string) => void
   now?: number
@@ -28,7 +28,7 @@ export function Queue({ lane, setLane, seat, fresh, older, counts, openId, onOpe
         <div className="cn-seg" role="tablist" aria-label="Seat">
           {LANES.map(l => (
             <button key={l} type="button" role="tab" aria-selected={l === lane} className={l === lane ? 'cn-on' : ''} onClick={() => setLane(l)}>
-              {LANE_NAME[l]}<b>{counts[l] ?? '?'}</b>
+              {LANE_NAME[l]}<b>{counts[l] === undefined ? '…' : counts[l] ?? '?'}</b>
             </button>
           ))}
         </div>

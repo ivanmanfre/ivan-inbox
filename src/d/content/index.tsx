@@ -50,10 +50,10 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const days = useMemo(() => wallDays(now), [now])
   const wk1 = days.slice(0, 5)
   const waiting = useMemo(() => Object.fromEntries(LANES.map(l => [l, waitingRows(data.seats[l].rows, now)])) as Record<Lane, ReturnType<typeof waitingRows>>, [data.seats, now])
-  const trio = (f: (l: Lane) => number): Trio => Object.fromEntries(LANES.map(l => [l, data.seats[l].error || !data.seats[l].loadedAt ? null : f(l)])) as Trio
+  const trio = (f: (l: Lane) => number): Trio => Object.fromEntries(LANES.map(l => [l, data.seats[l].error ? null : !data.seats[l].loadedAt ? undefined : f(l)])) as Trio
   const reviewN = trio(l => waiting[l].fresh.length)
   const errorsN = trio(l => errorRows(data.seats[l].rows, l, now).length)
-  const ideasN = Object.fromEntries(LANES.map(l => [l, banks[l].n])) as Trio
+  const ideasN = Object.fromEntries(LANES.map(l => [l, banks[l].error ? null : banks[l].n ?? undefined])) as Trio
   useReportFailed('content', data.failed + LANES.filter(l => banks[l].error).length)
 
   const n = (l: Lane) => (data.seats[l].error || !data.seats[l].loadedAt ? null : scheduledIn(data.seats[l].rows, l, wk1))
@@ -62,7 +62,8 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const ivanStuck = errorRows(data.seats.ivan.rows, 'ivan', now).filter(r => r.status === 'scheduled').length
   const stuck = blocked ? 'a post is blocked, see Errors' : ivanStuck ? `${ivanStuck} post${ivanStuck === 1 ? '' : 's'} never went out` : null
 
-  const title = sub === 'ideas'
+  const reading = sub === 'ideas' ? LANES.some(l => ideasN[l] === undefined) : LANES.some(l => !data.seats[l].loadedAt && !data.seats[l].error)
+  const title = reading ? <>Reading {sub === 'ideas' ? 'the idea banks' : 'the posts of all three seats'}…</> : sub === 'ideas'
     ? <>Ideas to decide: <N v={ideasN.ivan} /> yours, <N v={ideasN.risedtc} /> Mattan’s, <N v={ideasN.arch} /> Davorin’s.</>
     : <>{weekWord(now)}: <N v={n('ivan')} /> yours, <N v={n('risedtc')} /> Rise, <N v={n('arch')} /> Arch posts scheduled.</>
   const subLine = sub === 'ideas' ? 'Approving an idea starts a draft. Nothing here reaches a client.'

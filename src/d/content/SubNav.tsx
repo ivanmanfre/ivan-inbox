@@ -29,13 +29,14 @@ export function subOf(s: string | null): Sub {
   return (SUBS as readonly string[]).includes(s ?? '') ? (s as Sub) : 'planner'
 }
 
-export type Trio = Record<Lane, number | null>
+/** Per seat: a number, null = could not read, undefined = still reading. */
+export type Trio = Record<Lane, number | null | undefined>
 
 export function TrioN({ v, tone }: { v: Trio; tone?: 'hot' | 'warn' }) {
   return (
     <span className="cn-trio">
       {LANES.map((l, i) => (
-        <span key={l}>{i > 0 && '·'}<i className={v[l] ? (tone === 'hot' ? 'cn-hot' : tone === 'warn' ? 'cn-warn' : '') : ''}>{v[l] ?? '?'}</i></span>
+        <span key={l}>{i > 0 && '·'}<i className={v[l] ? (tone === 'hot' ? 'cn-hot' : tone === 'warn' ? 'cn-warn' : '') : ''}>{v[l] === undefined ? '…' : v[l] ?? '?'}</i></span>
       ))}
     </span>
   )
