@@ -10,7 +10,7 @@ import { Key } from '../ui/Key'
 import { Empty, Failed, Skeleton } from '../ui/states'
 import { Evidence, verdictWord } from './Evidence'
 import { FixMenu } from './FixMenu'
-import { LANE_NAME, OWNER, POSS, age, kindOf, nextFreeWeekday, titleOf, type Lane, type WallDay } from './model'
+import { LANE_NAME, OWNER, POSS, age, canSchedule, kindOf, nextFreeWeekday, scheduleOpenByDefault, titleOf, type Lane, type WallDay } from './model'
 import { Conflict, Preview } from './Preview'
 import { ScheduleRow, localInput } from './ScheduleRow'
 import { useDraftVerbs } from './useDraftVerbs'
@@ -49,6 +49,11 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
   }, [at, onClose, onPick, queue])
   const v = useDraftVerbs(d, lane, advance, refresh)
   const [fix, setFix] = useState(false)
+  // TODAY'S SCHEDULE TOGGLE: open by default at review / approved, folded on
+  // an armed row, and (27 Sep ruling) not offered at all on a draft that is
+  // published, errored, generating, an idea or skipped.
+  const schedulable = lane === 'ivan' && canSchedule(d)
+  const [dateOpen, setDateOpen] = useState(() => scheduleOpenByDefault(d))
   const slot = useMemo(() => (armed ? nextFreeWeekday(armed) : armedFailed ? nextFreeWeekday(new Set()) : null), [armed, armedFailed])
   const [when, setWhen] = useState(() => localInput(d.scheduled_at ? new Date(d.scheduled_at) : nextFreeWeekday(new Set()).at))
   useEffect(() => { if (!d.scheduled_at && slot) setWhen(localInput(slot.at)) }, [d.scheduled_at, slot])
@@ -89,13 +94,21 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
     keys = <>
       <Key verb="skip" onClick={() => v.decide('skip')} disabled={!actionable || v.busy}>Skip</Key>
       <Key verb="edit" onClick={v.startEdit} disabled={v.busy}>Edit</Key>
-      <Key verb="approve" onClick={() => v.decide('approve')} disabled={!actionable || v.busy} sub="no date yet">Approve</Key>
-      <Key primary verb="schedule" onClick={() => v.schedule(whenAt)} disabled={v.busy || Number.isNaN(whenAt.getTime())}
-        sub={Number.isNaN(whenAt.getTime()) ? 'pick a time' : `${warsawDow(whenAt)} ${warsawDm(whenAt)} · ${when.slice(11)}`}>
-        {d.status === 'scheduled' ? 'Reschedule' : 'Schedule'}
-      </Key>
+      <Key primary={!schedulable} verb="approve" onClick={() => v.decide('approve')} disabled={!actionable || v.busy} sub="no date yet">Approve</Key>
+      {schedulable && (dateOpen ? (
+        <Key primary verb="schedule" onClick={() => v.schedule(whenAt)} disabled={v.busy || Number.isNaN(whenAt.getTime())}
+          sub={Number.isNaN(whenAt.getTime()) ? 'pick a time' : `${warsawDow(whenAt)} ${warsawDm(whenAt)} · ${when.slice(11)}`}>
+          {d.status === 'scheduled' ? 'Reschedule' : 'Schedule'}
+        </Key>
+      ) : (
+        <Key verb="schedule-open" onClick={() => setDateOpen(true)} disabled={v.busy} sub={d.scheduled_at ? 'change the time' : 'pick a time'}>
+          {d.status === 'scheduled' ? 'Reschedule' : 'Schedule'}
+        </Key>
+      ))}
     </>
-    foot = <>{!actionable && `Approve and Skip act on drafts in review; this one is ${STAGE_LABEL[stage].toLowerCase()}. `}<button type="button" data-verb="fix" onClick={() => setFix(true)}>Fix or remove: Regenerate · Swap image · Back to idea · Delete draft</button>. Esc closes, j/k walks.</>
+    foot = <>{!actionable && `Approve and Skip act on drafts in review; this one is ${STAGE_LABEL[stage].toLowerCase()}. `}
+      {!schedulable && `Schedule is not offered: only a draft in review, approved or already scheduled can go on LinkedIn, and this one is ${d.published_at ? 'published' : STAGE_LABEL[stage].toLowerCase()}. `}
+      {schedulable && dateOpen && d.status === 'scheduled' && <><button type="button" data-verb="schedule-hide" onClick={() => setDateOpen(false)}>Hide date</button>. </>}<button type="button" data-verb="fix" onClick={() => setFix(true)}>Fix or remove: Regenerate · Swap image · Back to idea · Delete draft</button>. Esc closes, j/k walks.</>
   } else {
     const promotable = canPromote(d.status, lane) && !v.visible
     keys = <>
@@ -126,7 +139,7 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
         {v.conflict && <Conflict c={v.conflict} busy={v.busy} onTheirs={v.takeTheirs} onMine={v.keepMine} />}
       </div>
       {!v.editing && <Evidence d={d} initial={lane === 'ivan' ? 'qa' : 'src'} />}
-      {lane === 'ivan' && !v.editing && (
+      {schedulable && dateOpen && !v.editing && (
         <ScheduleRow slot={d.scheduled_at ? null : slot} when={when} setWhen={setWhen} days={days} taken={armed} armedFailed={armedFailed} current={d.status === 'scheduled' ? d.scheduled_at : null} />
       )}
       {v.err && <p className="cn-say cn-bad" role="alert">{v.err}</p>}

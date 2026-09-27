@@ -23,7 +23,7 @@ vi.mock('../../lib/content', async orig => {
   return { ...real, saveDraftBody: lib.saveDraftBody, approveDraft: lib.approveDraft, skipDraft: lib.skipDraft, setBoardVisible: lib.setBoardVisible }
 })
 const sa = vi.hoisted(() => ({ scheduleDraft: vi.fn() }))
-vi.mock('../../lib/studioActions', async orig => ({ ...(await orig<object>()), scheduleDraft: sa.scheduleDraft }))
+vi.mock('./writes', () => ({ scheduleGuarded: sa.scheduleDraft }))
 
 import { DraftSaveConflict } from '../../lib/content'
 import { DraftWindow } from './DraftWindow'
@@ -101,5 +101,34 @@ describe('draft window', () => {
     await screen.findByText('Put this on Davorin’s board?')
     fireEvent.click(document.querySelector('[data-verb="confirm"]')!)
     await waitFor(() => expect(lib.setBoardVisible).toHaveBeenCalledWith('d1', true))
+  })
+
+  it('HAZARD: no Schedule on a published, errored or generating draft, and the verb refuses', () => {
+    for (const st of [{ status: 'published', published_at: '2026-09-20T09:00:00Z' }, { status: 'error' }, { status: 'generating' }, { status: 'idea' }]) {
+      current = { ...detail, ...st }
+      renderInFrame(<DraftWindow {...props()} />)
+      expect(document.querySelector('[data-verb="schedule"]')).toBeNull()
+      expect(document.querySelector('[data-verb="schedule-open"]')).toBeNull()
+      expect(screen.getByText(/Schedule is not offered/)).toBeTruthy()
+      cleanup()
+    }
+    expect(sa.scheduleDraft).not.toHaveBeenCalled()
+  })
+
+  it('an armed row keeps Reschedule behind its toggle (today: folded on a scheduled row)', async () => {
+    current = { ...detail, status: 'scheduled', scheduled_at: '2026-10-01T08:45:00Z' }
+    renderInFrame(<DraftWindow {...props()} />)
+    expect(document.querySelector('[data-verb="schedule"]')).toBeNull()
+    fireEvent.click(document.querySelector('[data-verb="schedule-open"]')!)
+    expect(document.querySelector('[data-verb="schedule"]')!.textContent).toContain('Reschedule')
+  })
+
+  it('Skip asks with the red danger confirm and Enter never confirms it', async () => {
+    renderInFrame(<DraftWindow {...props()} />)
+    fireEvent.click(document.querySelector('[data-verb="skip"]')!)
+    await screen.findByText('Skip this draft?')
+    expect(document.querySelector('.d-confirm-danger')).toBeTruthy()
+    fireEvent.keyDown(window, { key: 'Enter' })
+    expect(lib.skipDraft).not.toHaveBeenCalled()
   })
 })

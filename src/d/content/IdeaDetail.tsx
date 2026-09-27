@@ -24,7 +24,7 @@ export function IdeaDetail({ it, onDone, compact }: { it: IdeaItem; onDone: (id:
 
   const run = async (kind: 'approve' | 'reject' | 'delete') => {
     if (busy) return
-    if (kind === 'delete' && !await confirm({ title: 'Delete this idea?', message: 'It is removed from the bank for good, or archived if the database refuses the delete.', confirmText: 'Delete', verb: 'confirm' })) return
+    if (kind === 'delete' && !await confirm({ title: 'Delete this idea?', message: 'It is removed from the bank for good, or archived if the database refuses the delete.', confirmText: 'Delete', verb: 'confirm', danger: true })) return
     setBusy(true); setErr('')
     try {
       if (it.lane === 'ivan' && it.ivan) {

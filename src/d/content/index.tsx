@@ -7,7 +7,7 @@ import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
 import { warsawDay, warsawDayTime, warsawHm } from '../ui/time'
 import { localDay } from '../../lib/content'
-import { scheduleDraft } from '../../lib/studioActions'
+import { scheduleGuarded } from './writes'
 import { DraftWindow } from './DraftWindow'
 import { Ideas, useIdeaBanks } from './Ideas'
 import { Legacy } from './Legacy'
@@ -79,7 +79,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
       confirmText: 'Schedule it', verb: 'confirm',
     })
     if (!ok) return
-    try { await scheduleDraft(id, at.toISOString()); toast.show({ message: `Armed for ${warsawDayTime(at)} Warsaw.` }); data.refreshAll() }
+    try { await scheduleGuarded(id, at.toISOString()); toast.show({ message: `Armed for ${warsawDayTime(at)} Warsaw.` }); data.refreshAll() }
     catch (e) { toast.show({ message: e instanceof Error ? e.message : 'Could not arm it.', tone: 'failed' }) }
   }, [confirm, data, toast])
 

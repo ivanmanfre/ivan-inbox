@@ -30,6 +30,26 @@ export function isScheduled(r: ContentDraft, lane: Lane): boolean {
   return r.status === 'scheduled' && !r.published_at && !!r.scheduled_at
 }
 
+// ---------- who may be scheduled (the hazard guard) ----------
+
+/**
+ * Today's Schedule toggle opens by default only at review or approved
+ * (wb/draft/index.tsx `more`). D goes one step further, as ruled on 27 Sep:
+ * Schedule is not offered at all, and the write refuses, on a draft that is
+ * published, errored, generating, an idea or skipped. Re-arming a published
+ * post or arming a QA-refused one would put it on LinkedIn.
+ */
+export const SCHEDULABLE = ['review', 'approved', 'scheduled'] as const
+
+export function canSchedule(r: Pick<ContentDraft, 'status' | 'published_at'>): boolean {
+  return (SCHEDULABLE as readonly string[]).includes(r.status ?? '') && !r.published_at
+}
+
+/** Today's default: the date row is open at review or approved, folded on an armed row. */
+export function scheduleOpenByDefault(r: Pick<ContentDraft, 'status'>): boolean {
+  return r.status === 'review' || r.status === 'approved'
+}
+
 /** An Ivan row that holds a date but nothing will publish it until it is armed. */
 export function isPlanned(r: ContentDraft, lane: Lane): boolean {
   return lane === 'ivan' && !r.published_at && !!r.scheduled_at
