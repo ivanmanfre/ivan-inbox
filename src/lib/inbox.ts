@@ -1228,6 +1228,16 @@ export function threadChatId(t: Thread): string | null {
 // recovery path. Approving clears the block so the row leaves the ops failed
 // list and a later bounce starts clean.
 export async function approveDraft(id: string, editedText: string, chatId?: string | null): Promise<void> {
+  const { data: draft, error: readError } = await supabase.from('outreach_messages')
+    .select('ai_model').eq('id', id).single()
+  if (readError) throw readError
+  if (draft?.ai_model === 'inbox_on_demand_reply') {
+    const { error } = await supabase.rpc('approve_inbox_on_demand_reply', {
+      p_message_id: id, p_text: editedText, p_chat_id: chatId ?? null,
+    })
+    if (error) throw error
+    return
+  }
   const patch: Record<string, unknown> = {
     message_text: editedText, approved_at: new Date().toISOString(),
     send_blocked_reason: null, send_blocked_at: null,
