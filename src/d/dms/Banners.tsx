@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { clientOwner, eventTime, isReplyRetryExhausted, isReplyRetryPending, type Thread } from '../../lib/inbox'
 import { fetchFollowUp, followUpSuggestion, type FollowUp } from '../../lib/followUp'
+import { fetchScanHold, type ScanHold } from '../../lib/scanHold'
 import { formatReturn, returnsIn } from '../../lib/pushLater'
 import { seatOf } from '../seats'
 import { Btn } from '../ui/Key'
@@ -84,9 +85,25 @@ export function FollowUpBanner({ t, verbs, tick }: { t: Thread; verbs: DmVerbs; 
 }
 
 export function NoDraftBanner({ t, now }: { t: Thread; now: number }) {
+  const rise = seatOf(t.client_id) === 'risedtc'
+  const [hold, setHold] = useState<ScanHold | null>(null)
+  useEffect(() => {
+    setHold(null)
+    if (!rise) return
+    let live = true
+    fetchScanHold(t.prospect_id).then(h => { if (live) setHold(h) }).catch(() => {})
+    return () => { live = false }
+  }, [t.prospect_id, rise])
   const since = owedSince(t)
   if (!since) return null
   const days = Math.max(0, Math.round((now - Date.parse(since)) / 86_400_000))
+  if (hold) return (
+    <div className="dm-ban dm-ban-hl">
+      <b><DIcon name="alert" />{firstOf(t)} said yes to the scan, but the page is held, so nothing was drafted.</b>
+      <p>Why: {hold.reason} Ship the page as it is, or write the reply yourself.</p>
+      {hold.url && <div className="dm-ban-row"><a className="d-link" href={hold.url} target="_blank" rel="noreferrer" data-verb="scan-hold-page">Open the held page</a></div>}
+    </div>
+  )
   return (
     <div className="dm-ban dm-ban-hl">
       <b><DIcon name="alert" />{firstOf(t)} is owed a reply: {days === 0 ? 'today' : `${days} day${days === 1 ? '' : 's'}`}, no draft.</b>
