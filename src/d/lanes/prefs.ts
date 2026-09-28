@@ -4,12 +4,13 @@ import { useCallback, useState } from 'react'
 import { SEATS, type Seat } from '../seats'
 
 export const SEAT_KEY = 'd-lanes-seat-v1'
-export const OPEN_KEY = 'd-lanes-open-v1'
+export const OPEN_KEY = 'd-lanes-open-v2'
 
-export type SectionId = 'today' | 'lanes' | 'perf' | 'channels' | 'log' | 'problems'
-export const SECTIONS: SectionId[] = ['today', 'lanes', 'perf', 'channels', 'log', 'problems']
-/** First section open, the rest folded, until Ivan changes it. */
-export const DEFAULT_OPEN: Record<SectionId, boolean> = { today: true, lanes: false, perf: false, channels: false, log: false, problems: false }
+/** The folded sections under the seat's first screen (KPIs, supply, campaigns and charts are always open). */
+export type SectionId = 'control' | 'inbound' | 'detail' | 'channels' | 'log' | 'problems'
+export const SECTIONS: SectionId[] = ['control', 'inbound', 'detail', 'channels', 'log', 'problems']
+/** All folded until Ivan opens one (Ivan 09-28: "we can have everything collapsed"). */
+export const DEFAULT_OPEN: Record<SectionId, boolean> = { control: false, inbound: false, detail: false, channels: false, log: false, problems: false }
 
 const read = (k: string): string | null => { try { return localStorage.getItem(k) } catch { return null } }
 const write = (k: string, v: string) => { try { localStorage.setItem(k, v) } catch { /* private mode: view state only */ } }

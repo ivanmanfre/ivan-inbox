@@ -57,12 +57,12 @@ describe('Lanes 3 rates', () => {
   })
 })
 
-describe('Lanes 3 remembered sections', () => {
-  it('first section open by default, the rest folded; a stored choice wins; junk falls back', () => {
+describe('Lanes remembered sections', () => {
+  it('every folded section starts closed (Ivan 09-28); a stored choice wins; junk falls back', () => {
     expect(parseOpen(null)).toEqual(DEFAULT_OPEN)
-    expect(DEFAULT_OPEN.today).toBe(true)
-    expect(Object.values(DEFAULT_OPEN).filter(Boolean)).toHaveLength(1)
-    expect(parseOpen('{"today":false,"perf":true}')).toMatchObject({ today: false, perf: true, lanes: false })
+    expect(Object.values(DEFAULT_OPEN).filter(Boolean)).toHaveLength(0)
+    expect(parseOpen('{"log":true,"perf":true}')).toMatchObject({ log: true, problems: false })
+    expect(parseOpen('{"log":true,"perf":true}')).not.toHaveProperty('perf')
     expect(parseOpen('not json')).toEqual(DEFAULT_OPEN)
   })
 })
