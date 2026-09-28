@@ -1,6 +1,7 @@
 // The open conversation (desktop right pane / phone full page).
 // Hooks first, always: no hook sits after an early return (09-09).
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { requestDmDraft } from '../../lib/dmDraft'
 import { useDCommands } from '../shell/commands'
 import type { WbCommand } from '../../exp/v2c/commandSource'
 import { canComposeEmail, isReplyRetryExhausted, markThreadRead, threadBucket, unansweredWaitSince, type Thread as T } from '../../lib/inbox'
@@ -42,15 +43,17 @@ export async function copyText(s: string): Promise<boolean> {
   try { await navigator.clipboard.writeText(s); return true } catch { window.prompt('Copy this link', s); return false }
 }
 
-export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, onAsk, onDraftIt, onMenu, staleN, pre, reload, signal }: {
+export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, onAsk, onMenu, staleN, pre, reload, signal }: {
   t: T; auto?: boolean; all: readonly T[]; phone: boolean; verbs: DmVerbs; now: number
-  onBack: () => void; onAsk: () => void; onDraftIt: () => void
+  onBack: () => void; onAsk: () => void
   onMenu: (a: MenuAct) => void; staleN: number; pre: PreReadHandle; reload: () => void
   /** The came-back tag beside the name, with its Dismiss (cameBack.ts). */
   signal?: ReactNode
 }) {
   const [edits, setEdits] = useState<Edits>(() => seed(t))
   const [reply, setReply] = useState('')
+  const [draftJob, setDraftJob] = useState<{ pid: string; running: boolean; error: string | null } | null>(null)
+  const drafting = useRef(false)
   const [busy, setBusy] = useState(false)
   const [menu, setMenu] = useState<'top' | 'keys' | null>(null)
   const [sheet, setSheet] = useState<'context' | 'agent' | null>(null)
@@ -87,6 +90,22 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   const composeOff = t.ownerConfirmation && !manualReply ? 'Reply paused while an internal fact is confirmed. Add the answer as a note, or discard the question.'
     : t.channel === 'email' && !canComposeEmail(t) ? 'Email compose is on for Arch threads only. Approving email drafts works here.'
       : t.stage === 'engaged' ? 'Not connected yet. A reply here would go out as a connection invite, so compose is off for this thread.' : null
+
+  const draftIt = async () => {
+    if (drafting.current) return
+    drafting.current = true
+    const pid = t.prospect_id
+    setDraftJob({ pid, running: true, error: null })
+    try {
+      await requestDmDraft(t)
+      setDraftJob({ pid, running: false, error: null })
+      reload()
+    } catch (e) {
+      setDraftJob({ pid, running: false, error: e instanceof Error ? e.message : 'Drafting failed. Try again.' })
+    } finally { drafting.current = false }
+  }
+  const draftRunning = draftJob?.pid === t.prospect_id && draftJob.running
+  const draftError = draftJob?.pid === t.prospect_id ? draftJob.error : null
 
   const run = async (fn: () => Promise<unknown>) => { setBusy(true); try { await fn() } finally { setBusy(false) } }
   // ⌘K "Push this conversation to later" (today's CommandLayer), while a pushable draft is open.
@@ -134,7 +153,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     small = <>
       {t.ownerConfirmation && !manualReply
         ? <Btn verb="ask-owner-link" className="dm-k" onClick={() => void copy()} title="copies the chat link">{seat === 'ivan' ? 'Copy chat link' : `Ask ${from}`}</Btn>
-        : owed && <Btn verb="draft-it" className="dm-k" onClick={onDraftIt} title="Claude writes it">Draft it</Btn>}
+        : owed && <Btn verb="draft-it" className="dm-k" disabled={Boolean(draftJob?.running)} onClick={() => void draftIt()} title="Create a reply draft">{draftRunning ? 'Drafting…' : 'Draft it'}</Btn>}
       {laterKey}
       {canMarkSolved(t) && solvedKey}
     </>
@@ -155,6 +174,8 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         <RestoreStrip t={t} verbs={verbs} />
       </div>
       <div className="dm-dock">
+        {draftRunning && <p className="dm-meta" role="status">Reading the conversation and writing a draft. It will appear here for review.</p>}
+        {draftError && <p className="dm-meta" role="alert">{draftError}</p>}
         {!hasDraft && !t.spam && <Composer to={first} from={from} big={false} noSend disabled={composeOff} value={reply} setValue={setReply} busy={busy} onSend={() => void compose()} />}
         <div className="dm-keys">
           <div className="dm-keys-s">{small}{more}</div>

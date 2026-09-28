@@ -17,6 +17,8 @@ vi.mock('../../lib/inbox', async orig => {
 vi.mock('../../lib/followUp', async orig => ({ ...(await orig<typeof import('../../lib/followUp')>()),
   fetchFollowUp: vi.fn(async () => null), setFollowUp: vi.fn(async () => {}), clearFollowUp: vi.fn(async () => {}) }))
 
+vi.mock('../../lib/dmDraft', () => ({ requestDmDraft: vi.fn() }))
+import { requestDmDraft } from '../../lib/dmDraft'
 import * as lib from '../../lib/inbox'
 import * as fu from '../../lib/followUp'
 import { DISCARD_REASON, type Thread } from '../../lib/inbox'
@@ -37,7 +39,7 @@ const pre: PreReadHandle = { get: () => ({ s: 'none' }), run: () => {}, busy: fa
 const ctx = { refresh: vi.fn(), patch: vi.fn(), dated: vi.fn() }
 function Pane({ t }: { t: Thread }) {
   const verbs = useDmVerbs(ctx)
-  return <ThreadPane t={t} all={[t]} phone={false} verbs={verbs} now={NOW} onBack={() => {}} onAsk={() => {}} onDraftIt={() => {}} onMenu={() => {}} staleN={0} pre={pre} reload={() => {}} />
+  return <ThreadPane t={t} all={[t]} phone={false} verbs={verbs} now={NOW} onBack={() => {}} onAsk={() => {}} onMenu={() => {}} staleN={0} pre={pre} reload={() => {}} />
 }
 const mount = (t: Thread) => renderInFrame(<DmAsks><Pane t={t} /></DmAsks>, { hash: '#exp/d/dms' })
 const key = (v: string) => document.querySelector(`[data-verb="${v}"]`) as HTMLElement
@@ -212,5 +214,25 @@ describe('manual reply after drafting fails', () => {
     expect(screen.getByText('Confirm with Davorin')).toBeTruthy()
     expect(key('hold-note')).not.toBeNull()
     expect(key('compose-send')).toBeNull()
+  })
+})
+
+
+describe('Draft it runs in the thread', () => {
+  it('shows loading, prevents repeated clicks, and offers an inline retry on failure', async () => {
+    let reject!: (reason: Error) => void
+    vi.mocked(requestDmDraft).mockImplementation(() => new Promise((_resolve, no) => { reject = no }))
+    const [t] = threads(owedNoDraft('draft-click', { client_id: 'arch', prospect_name: 'Tetiana' }))
+    mount(t)
+    fireEvent.click(key('draft-it'))
+    expect(screen.getByText('Drafting…')).toBeTruthy()
+    expect((key('draft-it') as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(key('draft-it'))
+    expect(requestDmDraft).toHaveBeenCalledTimes(1)
+    expect(requestDmDraft).toHaveBeenCalledWith(t)
+    reject(new Error('The drafting service is busy. Try again.'))
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('The drafting service is busy. Try again.'))
+    expect((key('draft-it') as HTMLButtonElement).disabled).toBe(false)
+    expect(screen.getByText('Draft it')).toBeTruthy()
   })
 })

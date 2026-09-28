@@ -118,7 +118,7 @@ describe('folder dots', () => {
 
 function Pane({ t }: { t: Thread }) {
   const verbs = useDmVerbs(ctx)
-  return <ThreadPane t={t} all={[t]} phone={false} verbs={verbs} now={NOW} onBack={() => {}} onAsk={() => {}} onDraftIt={() => {}} onMenu={() => {}} staleN={0} pre={pre} reload={() => {}} />
+  return <ThreadPane t={t} all={[t]} phone={false} verbs={verbs} now={NOW} onBack={() => {}} onAsk={() => {}} onMenu={() => {}} staleN={0} pre={pre} reload={() => {}} />
 }
 const mount = (t: Thread) => renderInFrame(<DmAsks><Pane t={t} /></DmAsks>, { hash: '#exp/d/dms' })
 
