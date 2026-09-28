@@ -7,6 +7,7 @@ import { FrameCountsProvider, useFrameCounts } from './counts/useFrameCounts'
 import { PLACES, type Layout } from './places'
 import { canonicalHash, dHash, dLandingHash, isForeignHash, parseDHash, toDHash, type DRoute } from './route'
 import { BellButton, BellFeed } from './shell/Bell'
+import { ForegroundAlerts } from './shell/ForegroundAlerts'
 import { FrameCtx, useFrame, type Frame } from './shell/frame'
 import { lastSynced } from './shell/navModel'
 import { DLayer } from './shell/Layer'
@@ -166,6 +167,12 @@ function AnswerBar({ setTitleSlot, setToolsSlot }: { setTitleSlot: (el: HTMLElem
   )
 }
 
+function ForegroundInD() {
+  const f = useFrame()
+  const c = useFrameCounts()
+  return <ForegroundAlerts host={{ bellOpen: f.bellOpen, openBell: () => f.setBellOpen(true), navigate: f.navigate, refreshBell: () => c.refresh('bell') }} />
+}
+
 function Desktop({ setTitleSlot, setToolsSlot, sideMin, setSideMin }: {
   setTitleSlot: (el: HTMLElement | null) => void; setToolsSlot: (el: HTMLElement | null) => void
   sideMin: boolean; setSideMin: (m: boolean) => void
@@ -298,6 +305,7 @@ export default function DShell() {
         <div className={`d-app d-${layout}`} data-bell={bellOpen ? 'open' : undefined} data-place={route.place}>
           <ToastProvider>
             <DConfirmProvider>
+              <ForegroundInD />
               {layout === 'desktop'
                 ? <Desktop setTitleSlot={setTitleSlot} setToolsSlot={setToolsSlot} sideMin={sideMin} setSideMin={setSideMin} />
                 : <PhoneFrame setToolsSlot={setToolsSlot} panelOpen={panelOpen} setPanelOpen={setPanelOpen} />}

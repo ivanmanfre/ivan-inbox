@@ -8,6 +8,7 @@ import { INBOX_QUERY, buildInboxCache, type InboxCache } from './lib/inboxCache'
 import { CLAUDE_HANDOFF_KEY, SESSION_KEY, readHandoff, shouldPrefetch, swrHandoffKey, writeHandoff, type ClaudeHandoff } from './lib/handoff'
 import type { SwrEntry } from './lib/swr'
 import { getBotThread, isUuid, latestThread, listTurns } from './lib/turns'
+import { forwardPushToClients } from './lib/pushEvent'
 
 // A new build must REPLACE the running one, not queue behind it. Without these
 // two lines an updated worker sits in `waiting` until every tab of the app is
@@ -84,7 +85,7 @@ self.addEventListener('push', (e) => {
     const options: NotificationOptions & { image?: string } = {
       body: d.body, icon: './icon-192.png', badge: './badge-96.png',
       image: typeof d.image === 'string' ? d.image : pushArt(d.family),
-      data: { url, family: d.family },
+      data: { url, family: d.family, notificationId: d.notificationId },
       ...(d.tag ? { tag: d.tag } : {}),
       // Explicitly non-silent so the OS plays its notification sound (macOS:
       // Settings → Notifications → browser → "Play sound" must be on).
@@ -96,7 +97,7 @@ self.addEventListener('push', (e) => {
     // updates on the next refetch, which is the state that makes an operator
     // stop trusting a feed.
     const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-    for (const c of clients) c.postMessage({ type: 'push', url, family: d.family })
+    forwardPushToClients({ url, family: d.family, notificationId: d.notificationId }, clients)
     // A Claude push opens the Claude thread, so that read goes first; the two
     // run one after the other because either may rotate the refresh token.
     if (isClaudeFamily(d.family)) await prefetchClaude(clients.length, d.family, url)

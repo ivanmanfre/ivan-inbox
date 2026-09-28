@@ -27,6 +27,7 @@ import { SeatHealthBanner } from './components/SeatHealthBanner'
 import { InboxSkeleton } from './components/Skeleton'
 import { useInbox } from './hooks/useInbox'
 import { useDesktop } from './hooks/useDesktop'
+import { ForegroundAlerts } from './d/shell/ForegroundAlerts'
 import type { Filter } from './lib/inbox'
 
 const StockStyles = lazy(() => import('./stockStyles'))
@@ -36,7 +37,15 @@ type Tab = 'inbox' | 'drafts' | 'sends' | 'ops' | 'settings' | 'today'
 export default function StockShell() {
   return (
     <Suspense fallback={null}>
-      <StockStyles><Shell /></StockStyles>
+      <StockStyles>
+        <Shell />
+        <ForegroundAlerts host={{
+          bellOpen: false,
+          openBell: () => { history.replaceState(null, '', '#exp/d/lanes?feed=1'); location.reload() },
+          navigate: hash => { history.replaceState(null, '', hash); location.reload() },
+          refreshBell: () => navigator.serviceWorker?.dispatchEvent?.(new MessageEvent('message', { data: { type: 'push' } })),
+        }} />
+      </StockStyles>
     </Suspense>
   )
 }

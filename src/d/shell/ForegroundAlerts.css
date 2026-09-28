@@ -1,0 +1,7 @@
+.d-foreground{position:fixed;z-index:69;top:74px;right:16px;width:min(416px,calc(100vw - 20px));padding:12px 14px;border:1px solid var(--hotB,#6E8A12);border-radius:12px;background:var(--p2,#1B1B19);color:var(--t1,#EDEDE8);font-family:Geist,Arial,sans-serif;box-shadow:0 12px 32px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:10px;overflow-wrap:anywhere}
+.d-foreground-copy b{display:block;font-size:13.5px;line-height:1.35}.d-foreground-copy small{display:block;color:var(--t2,#9A9A93);font-size:12px;line-height:1.4;margin-top:3px;max-height:3.9em;overflow:hidden}
+.d-foreground-copy .d-foreground-error{color:var(--warn,#E8A08F)}
+.d-foreground-actions{display:flex;gap:8px}.d-foreground-actions button{min-width:80px;min-height:44px;padding:0 12px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:#242421;color:#EDEDE8;font:600 12px Geist,Arial,sans-serif;cursor:pointer}
+.d-foreground-actions button:focus-visible{outline:2px solid #EDEDE8;outline-offset:2px}
+.d-foreground-actions .d-foreground-open{background:#C6F432;color:#0A0A09;border-color:#C6F432}
+.d-phone .d-foreground,.wb-foreground-phone .d-foreground{top:auto;right:10px;left:10px;bottom:calc(var(--dock-h,56px) + 40px + env(safe-area-inset-bottom));width:auto}

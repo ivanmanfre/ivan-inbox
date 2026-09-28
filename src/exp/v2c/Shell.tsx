@@ -6,6 +6,7 @@ import { useOps } from '../../hooks/useOps'
 import { opsBadge } from '../../lib/ops'
 import { useSalesToday } from './useSalesToday'
 import { alertsIntent, voiceIntent } from '../../wb/chrome/intents'
+import { ForegroundAlerts } from '../../d/shell/ForegroundAlerts'
 import { inboxWaitingCount, type Filter, type Status } from '../../lib/inbox'
 import { CONTENT_LANES, LANE_LABEL, type ContentDraft, type ContentLane } from '../../lib/content'
 import type { Resource } from '../../lib/styles'
@@ -164,6 +165,21 @@ function useCanvas(): Canvas {
 // candidate (src/exp/brain/<id>) owns the PHONE chrome and the desktop Ask pane;
 // every lane still renders here. Unset = the workbench exactly as shipped.
 export default function Shell({ brain }: { brain?: BrainId } = {}) {
+  const mobile = useCanvas() === 'mobile'
+  return <>
+    <ShellBody brain={brain} />
+    <div className={mobile ? 'wb-foreground-phone' : undefined}>
+      <ForegroundAlerts host={{
+        bellOpen: false,
+        openBell: () => { history.replaceState(null, '', '#exp/d/lanes?feed=1'); location.reload() },
+        navigate: hash => { history.replaceState(null, '', hash); location.reload() },
+        refreshBell: () => navigator.serviceWorker?.dispatchEvent?.(new MessageEvent('message', { data: { type: 'push' } })),
+      }} />
+    </div>
+  </>
+}
+
+function ShellBody({ brain }: { brain?: BrainId } = {}) {
   const canvas = useCanvas()
   const BrainMobile = useMemo(() => (brain ? lazyBrainMobile(brain) : null), [brain])
   const BrainAsk = useMemo(() => (brain ? lazyBrainAsk(brain) : null), [brain])
