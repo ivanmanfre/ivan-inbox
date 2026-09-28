@@ -6,12 +6,23 @@ import { fetchDraftContextGaps, fetchDraftEmailStamps, fetchEmailRecipients, fet
  * service worker's push-time prefetch (src/sw.ts) builds the SAME rows the
  * open app does; a second assembly would drift and the saved copy would lie.
  */
-export async function loadInbox(knownRows: number): Promise<{ rows: InboxMessage[]; threads: Thread[] }> {
+export async function loadInbox(knownRows: number): Promise<{ viewRows: InboxMessage[]; rows: InboxMessage[]; threads: Thread[] }> {
+  const viewRows = await fetchMessages(knownRows)
+  return { viewRows, ...(await assembleInbox(viewRows)) }
+}
+
+/**
+ * The side probes and grouping over rows already read (the full read, or the
+ * rows an incremental read merged). `viewRows` are the view's rows as read and
+ * are never written to: the annotations go on copies, so an incremental read
+ * can re-assemble the same rows later without last time's annotations sticking.
+ */
+export async function assembleInbox(viewRows: readonly InboxMessage[]): Promise<{ rows: InboxMessage[]; threads: Thread[] }> {
+  const rows = viewRows.map(m => ({ ...m }))
   // The needs_manual_reply probe rides alongside the message fetch, never in
   // front of it: a failed flag read degrades the badge (those threads drop to
   // "waiting"), it must not take the whole inbox down with it.
-  const [rows, manualReplyIds, emailStamps, emailTo] = await Promise.all([
-    fetchMessages(knownRows),
+  const [manualReplyIds, emailStamps, emailTo] = await Promise.all([
     fetchManualReplyIds().catch(() => new Set<string>()),
     // Same degrade rule as the flag probe: a failed stamp read must never take
     // the inbox down. But it is no longer SILENT: null marks every pending
