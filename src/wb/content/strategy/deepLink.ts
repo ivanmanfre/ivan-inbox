@@ -62,8 +62,9 @@ export function exactBriefDeepLink(lane: ContentLane, briefId: string, version: 
  * fail-open-to-default rule `parseWbHash` already uses for `job`/`focus`.
  */
 /** D's Content sub that shows a Strategy tab (`#exp/d/content/<sub>`). */
-export function dStrategySub(section: string): 'strategy' | 'markets' | 'results' {
-  return section === 'markets' || section === 'outliers' ? 'markets' : section === 'results' ? 'results' : 'strategy'
+export function dStrategySub(section: string): 'strategy' | 'results' {
+  // CB-22: D's own `markets` address now opens Content > Inputs, so Strategy's Markets / Outliers tab stays inside Strategy.
+  return section === 'results' ? 'results' : 'strategy'
 }
 
 export const D_STRATEGY_HASH = /^#exp\/d\/content\/(strategy|markets|results)(?=[?#]|$)/

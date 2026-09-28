@@ -141,3 +141,12 @@
 .cn-qrail button{display:flex;gap:8px;width:100%;text-align:left;padding:4px 8px;border-radius:6px;font-size:13px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cn-qrail button small{font:400 11px var(--m);color:var(--t3);flex:none;width:22px}
 .cn-qrail button.cn-on{background:var(--sel);color:var(--t1)}
+/* CB-22 source badge placement */
+.cn-cbrow{padding:0 14px 8px 62px;margin-top:-4px;border-bottom:1px solid var(--line)}
+.cn-cbline{margin:0 0 8px}
+.cn-iq:has(+ .cn-cbrow){border-bottom:0}
+/* CB-22: five phone pills (Inputs joined the main row) */
+.cn-ptabs{gap:4px;padding:12px 10px}
+.cn-ptabs a{padding:0 10px;font-size:14px}
+.cn-ptabs .cn-trio{font-size:12px}
+.cn-ptabs a.cn-pmore{padding:0 11px;font-size:16px}

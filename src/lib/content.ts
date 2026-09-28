@@ -607,6 +607,8 @@ export type IdeaCandidate = {
   // decision leaves this app. Optional on the type so existing fixtures compile.
   workspace_type?: string | null
   campaign_id?: string | null
+  /** CB-22: read for the outlier source badge only (evidence[0] of outlier:* / cb22:* rows). */
+  evidence?: unknown
 }
 
 const IDEA_COLS =
@@ -619,7 +621,9 @@ const IDEA_COLS =
   // a client-scoped idea VANISH from every surface this app has, which is the
   // failure mode the partition note above refuses for content_type. The row is
   // shown; the decision is what gets withheld (ideaDecidable).
-  'workspace_type, campaign_id'
+  'workspace_type, campaign_id, ' +
+  // CB-22: the outlier source badge reads author / platform / lift / url from evidence[0] (outlier:* and cb22:* rows).
+  'evidence'
 
 // ---------- the idea split (phase 6 ask 3) ----------
 //

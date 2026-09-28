@@ -10,6 +10,7 @@ import { Failed, Skeleton } from '../ui/states'
 import { IDEA_OWNER, LANES, LANE_NAME, type Lane } from './model'
 import { byScore, fromCandidate, fromClient, scoreText, type IdeaItem } from './ideaModel'
 import { IdeaDetail, outlierLine } from './IdeaDetail'
+import { SourceBadge, ideaOutlierSource } from './SourceBadge'
 
 // Ideas: one channel per seat (Ivan's POST ideas + each client's bank), the
 // picked idea's detail beside them (desktop) or under its row (phone). Counts
@@ -97,7 +98,7 @@ function Row({ it, on, pick, scores, chip }: { it: IdeaItem; on: boolean; pick: 
   const line = outlierLine(scores.byRef.get(it.id), scores.ok && !scores.validated)
   const bandit = banditChipLine(chip.byRef.get(it.id))
   return (
-    <button type="button" className={`cn-iq${on ? ' cn-sel' : ''}`} aria-current={on ? 'true' : undefined} onClick={pick} data-verb="open">
+    <button type="button" className={`cn-iq${on ? ' cn-sel' : ''}`} aria-current={on ? 'true' : undefined} onClick={pick} data-verb="open" data-idea-id={it.id}>
       <span className="cn-sc">{scoreText(it.score)}</span>
       <span className="cn-n">{it.title}</span>
       <time>{it.age}</time>
@@ -178,6 +179,7 @@ export function Ideas({ banks, phone }: { banks: IdeaBanks; phone: boolean }) {
                     return (
                       <div key={it.id}>
                         <Row it={it} on={on} pick={() => setSel({ lane: l, id: it.id })} scores={b.scores} chip={b.chip} />
+                        {ideaOutlierSource(it) && <div className="cn-cbrow" data-idea-id={it.id}><SourceBadge src={ideaOutlierSource(it)} /></div>}
                         {phone && on && <IdeaDetail it={it} onDone={done(l)} compact scores={b.scores} />}
                       </div>
                     )

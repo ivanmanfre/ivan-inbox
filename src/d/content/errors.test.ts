@@ -36,7 +36,7 @@ describe('Errors parity', () => {
     expect(readStrategyDeepLink('#exp/d/content/results')).toEqual({ section: 'results' })
     expect(readStrategyDeepLink('#exp/d/content/strategy?sources=1').section).toBe('research')
     expect(readStrategyDeepLink('#exp/d/content/strategy?lane=arch&section=this-week&brief_id=b1&brief_version=2')).toEqual({ lane: 'arch', section: 'this-week', briefId: 'b1', briefVersion: 2 })
-    expect(dStrategySub('outliers')).toBe('markets')
+    expect(dStrategySub('outliers')).toBe('strategy')
     expect(dStrategySub('direction')).toBe('strategy')
   })
 })

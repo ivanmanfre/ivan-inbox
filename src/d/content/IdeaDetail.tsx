@@ -9,6 +9,7 @@ import { Key } from '../ui/Key'
 import { useToast } from '../ui/toast'
 import { LANE_NAME, OWNER, type Lane } from './model'
 import { linkOf, scoreText, type IdeaItem } from './ideaModel'
+import { SourceBadge, ideaOutlierSource } from './SourceBadge'
 
 // One idea, read and decided. Ivan's bank goes through today's edge function
 // (lm-curator-decide: approve fires the promote run, reject archives, with the
@@ -55,11 +56,12 @@ export function IdeaDetail({ it, onDone, compact, scores }: { it: IdeaItem; onDo
   }
 
   return (
-    <section className="cn-idm" aria-label="Idea">
+    <section className="cn-idm" aria-label="Idea" data-idea-detail={it.id}>
       {!compact && <div className="cn-dwh" style={{ padding: 0, border: 0 }}>
         <div className="cn-av">{scoreText(it.score)}</div>
         <div className="cn-who"><b style={{ whiteSpace: 'normal' }}>{it.title}</b><small>{BANK[it.lane]}{it.src ? ` · ${it.src}` : ''}{it.age ? ` · ${it.age} ago` : ''}</small></div>
       </div>}
+      {ideaOutlierSource(it) && <p className="cn-cbline"><SourceBadge src={ideaOutlierSource(it)} /></p>}
       {it.parts.length > 0 && (
         <div className="cn-parts">{it.parts.map(([k, v]) => <div key={k}><small>{k}</small>{Math.round(v * 10) / 10}</div>)}</div>
       )}

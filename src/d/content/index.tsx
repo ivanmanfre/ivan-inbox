@@ -18,6 +18,7 @@ import { SubNav, subOf, type Trio } from './SubNav'
 import { Wall, type Ghost } from './Wall'
 import { Month } from './Month'
 import { DayPanel } from './DayPanel'
+import { Inputs, inputsTitle, layoutOf, useInputs } from './inputs/Inputs'
 import { byDay, seatItems } from './planModel'
 import { LANES, dayLabel, errorRows, errorRowsWithBlocks, errorsLanding, generatingOf, nextFreeWeekday, scheduledIn, titleOf, wallDays, waitingRows, weekWord, type Lane } from './model'
 import { useLanes } from '../../hooks/useLanes'
@@ -223,12 +224,27 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
     )
   }
 
+  const nav = <SubNav on={sub} counts={{ review: reviewN, ideas: ideasN, errors: errorsN, magnets: magnetsN }} gen={gen} />
+  if (sub === 'inputs') return <InputsPlace nav={nav} lane={qLane} setLane={l => go(l === 'ivan' ? {} : { lane: l })} query={q} phone={phone} />
+
   return (
     <div className="cn">
       <AnswerRow title={title} sub={subLine} />
       {!(phone && (window_ || errWindow) && (sub === 'planner' || sub === 'review' || sub === 'errors')) && <SubNav on={sub} counts={{ review: reviewN, ideas: ideasN, errors: errorsN, magnets: magnetsN }} gen={gen} />}
       {body}
       {dayPanel}
+    </div>
+  )
+}
+
+/** Content > Inputs (CB-22): its own answer line, the shared sub-nav, then the page. Reads only while it is open. */
+function InputsPlace({ nav, lane, setLane, query, phone }: { nav: React.ReactNode; lane: Lane; setLane: (l: Lane) => void; query: URLSearchParams; phone: boolean }) {
+  const { reads, refresh } = useInputs()
+  return (
+    <div className="cn">
+      <AnswerRow title={inputsTitle(reads, lane)} />
+      {nav}
+      <Inputs lane={lane} setLane={setLane} layout={layoutOf(query)} reads={reads} refresh={refresh} phone={phone} />
     </div>
   )
 }

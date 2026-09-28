@@ -1,0 +1,82 @@
+/* CB-22 Content > Inputs. D's vocabulary: section heads in small mono caps (cn-sec), lime only on live state. */
+.in{display:flex;flex-direction:column;min-height:0;overflow:auto;padding-bottom:24px}
+.d-phone .in{overflow:visible}
+.in-block{border-bottom:1px solid var(--line)}
+.in-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 14px;font:400 11px var(--m);letter-spacing:.06em;text-transform:uppercase;color:var(--t3);border-bottom:1px solid var(--line)}
+.in-h-top{flex-wrap:wrap;row-gap:6px}
+.in-h-top>span{color:var(--t1);font-weight:500}
+.in-n{color:var(--t2)}
+.in-seats{display:flex;gap:4px;text-transform:none;letter-spacing:0}
+.in-seats button{display:flex;flex-direction:column;align-items:flex-start;padding:3px 9px;border:1px solid var(--line2);border-radius:6px;color:var(--t2);min-height:34px}
+.in-seats button b{font:600 12.5px var(--f);color:var(--t1)}
+.in-seats button small{font:400 10.5px var(--m);color:var(--t3)}
+.in-seats button.in-on{border-color:var(--lime);background:var(--sel)}
+.in-seats button.in-on small{color:var(--lime)}
+.in-list,.in-buyers,.in-cards,.in-chips{list-style:none;margin:0;padding:0}
+.in-row{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:4px 10px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.in-row:last-child{border-bottom:0}
+.in-rk{font:500 16px/1.2 var(--m);color:var(--t3)}
+.in-main{min-width:0}
+.in-meta{margin:0;font:400 12px/1.4 var(--f);color:var(--t2);display:flex;flex-wrap:wrap;align-items:center;gap:0 6px}
+.in-meta b{color:var(--t1);font-weight:600}
+.in-meta a{color:inherit;text-decoration:none}
+.in-lift{font:500 12px var(--m);color:var(--t1)}
+.in-hook{margin:3px 0 0;font:500 14px/1.35 var(--f);color:var(--t1);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.in-why{margin:3px 0 0;font:400 11.5px/1.4 var(--m);color:var(--t3);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.in-why.in-bad{color:var(--warn)}
+.in-side{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.in-act{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:0 12px;border-radius:7px;font:600 12.5px var(--f);white-space:nowrap;text-decoration:none;border:1px solid var(--line2);color:var(--t1);background:var(--p2)}
+.in-act-p{background:var(--lime);border-color:var(--lime);color:var(--ink)}
+.in-act-p:disabled{opacity:.6}
+.in-act-go{color:var(--lime);border-color:var(--limeD);background:transparent}
+.in-open{font:400 11px var(--m);color:var(--t3);text-decoration:none}
+.in-open:hover{color:var(--t1)}
+.in-chip{font:500 10.5px var(--m);letter-spacing:.04em;text-transform:uppercase;border-radius:5px;padding:1px 6px}
+.in-chip-rev{background:var(--lime);color:var(--ink)}
+.in-chip-rec{border:1px solid var(--limeD);color:var(--lime)}
+.in-foot{margin:0;padding:6px 14px 8px;font:400 11px var(--m);color:var(--t3);border-top:1px solid var(--line)}
+.in-say{margin:0;padding:10px 14px;font-size:13px;color:var(--t2)}
+.in-buyer{display:grid;grid-template-columns:22px minmax(0,1fr);gap:0 10px;padding:8px 14px;border-bottom:1px solid var(--line)}
+.in-buyer:last-child{border-bottom:0}
+.in-icp{font:500 14px/1.3 var(--m);color:var(--lime)}
+.in-folds{display:flex;flex-direction:column}
+.in-fold{border-bottom:1px solid var(--line)}
+.in-fold>summary{cursor:pointer;padding:10px 14px;font:400 12px var(--m);color:var(--t2);list-style:none}
+.in-fold>summary::-webkit-details-marker{display:none}
+.in-fold>summary::before{content:'▸ ';color:var(--t3)}
+.in-fold[open]>summary::before{content:'▾ '}
+.in-fold>.cn-legacy{overflow:visible}
+/* layout B: cards */
+.in-cards{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(240px,80%);gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:12px 14px}
+.d-desktop .in-cards{grid-auto-flow:row;grid-auto-columns:auto;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));overflow:visible}
+.in-card{scroll-snap-align:start;display:flex;flex-direction:column;gap:4px;padding:12px;border:1px solid var(--line2);border-radius:var(--r1);background:var(--p1);min-width:0}
+.in-card-top{display:flex;align-items:center;justify-content:space-between}
+.in-big{font:500 30px/1 var(--m);color:var(--t1)}
+.in-card .in-hook{-webkit-line-clamp:3}
+.in-card-foot{margin-top:auto;display:flex;align-items:center;justify-content:space-between;padding-top:6px}
+.in-chips{display:flex;flex-wrap:wrap;gap:6px;padding:8px 14px}
+.in-chips li a,.in-chips li span{display:inline-flex;gap:6px;align-items:center;padding:3px 9px;border:1px solid var(--line2);border-radius:14px;font:500 12px var(--f);color:var(--t1);text-decoration:none}
+.in-chips i{font:500 11px var(--m);font-style:normal;color:var(--lime)}
+/* the source badge on idea rows / the idea (Ideas list, idea detail) */
+.cb-badge{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px;font:500 11px var(--m);color:var(--lime);border:1px solid var(--limeD);border-radius:5px;padding:1px 6px;text-decoration:none;max-width:100%}
+.cb-badge b{font-weight:600;color:var(--lime)}
+.cb-badge span{color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
+/* keep the phone snap row inside the page (a flex child's min-width:auto let it widen the document) */
+.in,.in>*,.in-block{min-width:0;max-width:100%}
+.in-cards{max-width:100%;overscroll-behavior-x:contain}
+/* phone snap row: flex with a viewport-based card width (a % column of an indefinite grid widened the page) */
+.in-cards{display:flex;width:100%;box-sizing:border-box;overflow-x:auto}
+.in-cards>.in-card{flex:0 0 min(300px,78vw)}
+.d-desktop .in-cards{display:grid}
+.d-desktop .in-cards>.in-card{flex:none}
+/* P1 judge improvements */
+.in-rk.in-rec{color:var(--lime)}
+a.in-hook-a{display:-webkit-box;text-decoration:none;color:var(--t1)}
+a.in-hook-a:hover{text-decoration:underline;text-underline-offset:3px}
+.d-phone .in-row .in-why{-webkit-line-clamp:1}
+.in-side{justify-content:center}
+/* H2-ui fixes: neutral "decided" state; 44 px touch targets on the phone */
+.in-chip-dec{border:1px solid var(--line2);color:var(--t3)}
+.in-act-done{color:var(--t3);background:transparent;cursor:default}
+.d-phone .in-act{min-height:44px}
+.d-phone .in-seats button{min-height:44px;justify-content:center}

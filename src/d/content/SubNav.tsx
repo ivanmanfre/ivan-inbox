@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { dHash } from '../route'
 import { useFrame } from '../shell/frame'
 import { Sheet } from '../ui/Sheet'
@@ -6,12 +6,14 @@ import { LANES, LANE_NAME, type Lane } from './model'
 
 // Every Content place, one row under the answer line (desktop), or Planner /
 // Review / Ideas / More + a More sheet (phone). Counts per seat, never added.
-export type Sub = 'planner' | 'review' | 'ideas' | 'magnets' | 'errors' | 'queue' | 'strategy' | 'markets' | 'results' | 'styles'
+export type Sub = 'planner' | 'review' | 'ideas' | 'inputs' | 'magnets' | 'errors' | 'queue' | 'strategy' | 'markets' | 'results' | 'styles'
 
-export const SUBS: readonly Sub[] = ['planner', 'review', 'ideas', 'magnets', 'errors', 'queue', 'strategy', 'markets', 'results', 'styles']
+// 'markets' stays a valid address (old links, ⌘K) but is no longer listed: CB-22 folds the market readout and
+// every outlier under Inputs, and subOf() sends 'markets' there.
+export const SUBS: readonly Sub[] = ['planner', 'review', 'ideas', 'inputs', 'magnets', 'errors', 'queue', 'strategy', 'results', 'styles']
 
 export const SUB_LABEL: Record<Sub, string> = {
-  planner: 'Planner', review: 'Review', ideas: 'Ideas', magnets: 'Magnets', errors: 'Errors',
+  planner: 'Planner', review: 'Review', ideas: 'Ideas', inputs: 'Inputs', magnets: 'Magnets', errors: 'Errors',
   queue: 'Publish queue', strategy: 'Strategy', markets: 'Outliers & Markets', results: 'Results', styles: 'Styles',
 }
 
@@ -20,12 +22,14 @@ const MORE_LINE: Partial<Record<Sub, string>> = {
   errors: 'errors and stuck, every post, filters, bulk',
   queue: 'what goes out on your feed, Unpublish',
   strategy: 'this week, research briefs, client direction',
+  inputs: 'top outliers, buyers on your posts, market readout',
   markets: 'Use this, market readout',
   results: 'reach, boosted, benchmark, themes, audience',
   styles: 'looks and templates',
 }
 
 export function subOf(s: string | null): Sub {
+  if (s === 'markets') return 'inputs'
   return (SUBS as readonly string[]).includes(s ?? '') ? (s as Sub) : 'planner'
 }
 
@@ -72,19 +76,27 @@ export function GenMark({ gen }: { gen: Gen }) {
 export function SubNav({ on, counts, gen }: { on: Sub; counts: Counts; gen?: Gen }) {
   const f = useFrame()
   const [more, setMore] = useState(false)
+  // Five phone pills (Planner, Review, Ideas, Inputs, More) overflow 390 px: keep the current one in view (the strip only, never the page).
+  const strip = useRef<HTMLElement | null>(null)
+  useEffect(() => {
+    const nav = strip.current, tab = nav?.querySelector<HTMLElement>('a.cn-on')
+    if (!nav || !tab) return
+    const n = nav.getBoundingClientRect(), t = tab.getBoundingClientRect()
+    if (t.left < n.left || t.right > n.right) nav.scrollLeft += (t.left - n.left) - (n.width - t.width) / 2
+  }, [on, f.layout])
   if (f.layout === 'phone') {
-    const main: Sub[] = ['planner', 'review', 'ideas']
+    const main: Sub[] = ['planner', 'review', 'ideas', 'inputs']
     const inMore = !main.includes(on)
     return (
       <>
-        <nav className="cn-ptabs" aria-label="Content places">
+        <nav className="cn-ptabs" aria-label="Content places" ref={strip}>
           {main.map(s => (
             <a key={s} href={dHash('content', s === 'planner' ? null : s)} className={s === on ? 'cn-on' : ''}>
               {SUB_LABEL[s]}{s === 'review' && tail(s, counts)}
             </a>
           ))}
-          <a href="#more" className={inMore ? 'cn-on' : ''} onClick={e => { e.preventDefault(); setMore(true) }}>
-            {inMore ? SUB_LABEL[on] : 'More'}
+          <a href="#more" className={`cn-pmore${inMore ? ' cn-on' : ''}`} aria-label={inMore ? `${SUB_LABEL[on]}, more places` : 'More places'} onClick={e => { e.preventDefault(); setMore(true) }}>
+            {inMore ? SUB_LABEL[on] : '⋯'}
           </a>
         </nav>
         <Sheet open={more} onClose={() => setMore(false)} title="More in Content">
