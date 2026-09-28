@@ -76,9 +76,11 @@ describe('inbox notification lifecycle migration', () => {
   it('denies authenticated execution and keeps suppression rows through rollback', async () => {
     const db = await setup(); await db.exec(migration)
     const first = (await claim(db, alert('rise:w:step:failed:error'))).rows[0]
-    const grant = await db.query<{ can_execute: boolean }>(
-      `select has_function_privilege('authenticated', 'public.claim_inbox_workflow_notification(jsonb)', 'EXECUTE') as can_execute`)
-    expect(grant.rows[0].can_execute).toBe(false)
+    const grant = await db.query<{ authed: boolean; anonymous: boolean; service: boolean }>(
+      `select has_function_privilege('authenticated', 'public.claim_inbox_workflow_notification(jsonb)', 'EXECUTE') as authed,
+              has_function_privilege('anon', 'public.claim_inbox_workflow_notification(jsonb)', 'EXECUTE') as anonymous,
+              has_function_privilege('service_role', 'public.claim_inbox_workflow_notification(jsonb)', 'EXECUTE') as service`)
+    expect(grant.rows[0]).toEqual({ authed: false, anonymous: false, service: true })
     await db.exec(rollback)
     const repeat = (await claim(db, alert('rise:w:step:failed:error'))).rows[0]
     expect(repeat).toMatchObject({ id: first.id, created: false })
