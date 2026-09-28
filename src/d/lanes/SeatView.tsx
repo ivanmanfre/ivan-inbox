@@ -1,8 +1,8 @@
 /* Everything below the seat squares, for the chosen seat only (Ivan 09-28:
    "show the important things on the first side without collapsible stuff...
    the log collapsed for sure, and the recurring problems as well").
-   Open: one status line, the key numbers for the window, lead supply beside
-   lanes & campaigns, the rate charts and the last 14 days.
+   Open: one status line, the key numbers for the window, invites sent by lane
+   (today / 7 days) and lead supply beside lanes & campaigns, the rate charts and the last 14 days.
    Folded (remembered): Caps & control · Inbound · Numbers in detail ·
    Channels · Send log · Recurring problems. A folded section does not mount,
    so it reads nothing. An open incident shows its Control cell open. */
@@ -20,6 +20,7 @@ import { useOpenSections } from './prefs'
 import { ProblemsSheet } from './ProblemsSheet'
 import { Refill } from './Refill'
 import { Section } from './Section'
+import { SendMix } from './SendMix'
 import { ControlCell, TodayCell } from './seatCells'
 import { supplyOf } from './supply'
 
@@ -54,7 +55,10 @@ export function SeatView({ seat, ctx, range, setRange, onCustom }: { seat: Seat;
       </div>
       <Kpis seat={seat} ctx={ctx} s={s} />
       <div className="dl-grid2">
-        <Refill seat={seat} d={ctx.d} s={s} now={ctx.now} />
+        <div className="dl-col">
+          <SendMix seat={seat} now={ctx.now} />
+          <Refill seat={seat} d={ctx.d} s={s} now={ctx.now} />
+        </div>
         <div className="dl-panel dl-camps" data-band="campaigns" data-seat={seat}>
           <div className="dl-panh"><b>Lanes & campaigns</b><span>{working != null ? `${working} sending this week, 7 days` : '7 days'}</span></div>
           <CampaignsCell seat={seat} ctx={ctx} />

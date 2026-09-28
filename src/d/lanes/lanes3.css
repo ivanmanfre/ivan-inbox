@@ -196,3 +196,20 @@ i.dl-out{background:#6f6f68}
 .dl3-phone .dl-grid2{grid-template-columns:minmax(0,1fr)}
 .dl3-phone .dl-rcs.dl-rcs2{grid-template-columns:minmax(0,1fr)}
 .dl3-phone .dl-kpih{flex-wrap:wrap}
+
+/* invites sent, by lane (and vertical on Arch) */
+.dl-col{display:flex;flex-direction:column;gap:12px;min-width:0}
+.dl-bl .dl-panh span:nth-child(2){flex:1}
+.dl-bl-keys{display:flex;gap:4px;flex:none}
+.dl-bl-lanes{display:flex;flex-direction:column;gap:10px}
+.dl-bl-row{display:grid;grid-template-columns:minmax(0,9.5em) minmax(0,1fr) auto;gap:10px;align-items:center}
+.dl-bl-l{font-size:13.5px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dl-bl-row>b{font:500 15px var(--m);color:var(--t1);min-width:2ch;text-align:right}
+.dl-bl-bar{display:flex;height:12px;border-radius:4px;overflow:hidden;gap:2px;justify-self:start}
+.dl-bl-bar i{display:block;height:100%;min-width:3px}
+.dl-bl-v{display:flex;flex-wrap:wrap;gap:2px 14px;margin:4px 0 0 calc(9.5em + 10px);font:400 12px var(--m);color:var(--t2)}
+.dl-bl-v i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:0}
+.dl-bl-v b{color:var(--t1);font-weight:500}
+.dl-v-games{background:var(--lime)}.dl-v-apps{background:#7FB2FF}.dl-v-d2c{background:#D6A6FF}.dl-v-pc{background:#E8C46A}.dl-v-none{background:#55554f}.dl-v-all{background:var(--limeD)}
+.dl3-phone .dl-bl-row{grid-template-columns:minmax(0,7.5em) minmax(0,1fr) auto}
+.dl3-phone .dl-bl-v{margin-left:0}
