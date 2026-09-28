@@ -25,7 +25,7 @@ import { openWorkflows } from './Workflows'
 // and the feed it opens (desktop: a panel under the answer row, right; phone:
 // a sheet dropped under the top bar, which stays visible).
 //
-// Count (coordinator ruling): unread GROUPS, see counts/bell.ts. The badge is a
+// Count: unread groups from the last four hours, see counts/bell.ts. The badge is a
 // white count; it turns lime only while a CRITICAL system alert is open (the
 // answer row gets the critical tint, a red top rule, at the same time).
 //
@@ -50,14 +50,14 @@ export function BellButton() {
   const c = useFrameCounts()
   const n = c.bell.value?.unreadGroups ?? null
   const crit = c.alerts.value?.critical ?? 0
-  // Final ruling: a WHITE count of unread groups; the badge turns lime only
+  // A WHITE count of recent unread groups; the badge turns lime only
   // while a critical system alert (today's rule: an open critical group in
   // system_alerts, 14 days) is open. With nothing unread but a critical open,
   // the lime badge says "!".
   const badge = n == null ? (c.bell.failed ? '?' : crit > 0 ? '!' : null) : n > 0 ? (n > 99 ? '99+' : String(n)) : crit > 0 ? '!' : null
   const label = [
     'Alerts',
-    n == null ? (c.bell.failed ? 'count could not be read' : null) : `${n} unread`,
+    n == null ? (c.bell.failed ? 'count could not be read' : null) : `${n} unread in the last 4 hours`,
     crit > 0 ? `${crit} critical alert${crit === 1 ? '' : 's'} open` : null,
   ].filter(Boolean).join(', ')
   return (
@@ -225,12 +225,11 @@ export function BellFeed() {
     })()
   }
 
-  // One unit everywhere (coordinator ruling): unread GROUPS, the badge's number,
-  // the day headers' "N unread" and the rows below. The other figure is labelled
-  // as what it is: notification rows not cleared yet.
+  // The badge's number covers recent unread incidents; day headers
+  // describe all unread groups visible in that day's feed.
   const sub = clearedAt ? 'All read' : feed.error && !feed.loaded ? 'Could not read the feed'
     : unread == null ? (c.bell.failed ? 'Count could not be read' : 'Reading…')
-      : unread === 0 ? 'All read' : `${unread} unread · ${(open ?? 0).toLocaleString('en-US')} not cleared`
+      : `${unread === 0 ? 'No' : unread} unread in the last 4 hours · ${(open ?? 0).toLocaleString('en-US')} not cleared`
   const arrived = [...fresh].filter(k => feed.groups.some(g => g.key === k)).length
 
   return (

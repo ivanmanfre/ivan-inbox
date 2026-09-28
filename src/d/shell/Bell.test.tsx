@@ -38,7 +38,7 @@ const readers = { bell: async () => ({ unreadGroups: 104, open: 1102 }) }
 describe('BellFeed verbs', () => {
   it('Clear all asks, clears every open row, and the receipt Undo restores that stamp', async () => {
     renderInFrame(<BellFeed />, { readers })
-    await screen.findByText('104 unread · 1,102 not cleared')
+    await screen.findByText('104 unread in the last 4 hours · 1,102 not cleared')
     fireEvent.click(document.querySelector('[data-verb="clear-all"]')!)
     await screen.findByText('Clear every notification?')
     await act(async () => { fireEvent.click(document.querySelector('[data-verb="confirm"]')!) })
@@ -51,7 +51,7 @@ describe('BellFeed verbs', () => {
   it('a refused Clear all says so and offers Retry', async () => {
     feed.clearAll.mockResolvedValueOnce(null)
     renderInFrame(<BellFeed />, { readers })
-    await screen.findByText('104 unread · 1,102 not cleared')
+    await screen.findByText('104 unread in the last 4 hours · 1,102 not cleared')
     fireEvent.click(document.querySelector('[data-verb="clear-all"]')!)
     await act(async () => { fireEvent.click((await screen.findByText('Clear all', { selector: '.d-confirm .d-face span' })).closest('button')!) })
     await screen.findByText('Could not clear. Nothing changed.')
@@ -66,7 +66,7 @@ describe('BellFeed verbs', () => {
 
   it('Clear all is a danger confirm: Enter never clears (same as Clear alerts)', async () => {
     renderInFrame(<BellFeed />, { readers })
-    await screen.findByText('104 unread · 1,102 not cleared')
+    await screen.findByText('104 unread in the last 4 hours · 1,102 not cleared')
     fireEvent.click(document.querySelector('[data-verb="clear-all"]')!)
     await screen.findByText('Clear every notification?')
     expect(document.querySelector('.d-confirm .d-key-d')).not.toBeNull()
@@ -123,15 +123,25 @@ describe('BellFeed verbs', () => {
 })
 
 describe('BellButton', () => {
-  it('a white count of unread groups, capped at 99+', async () => {
+  it('shows no number when only older unread history remains', async () => {
+    renderInFrame(<BellButton />, { readers: { ...readers, bell: async () => ({ unreadGroups: 0, open: 1102 }) } })
+    await waitFor(() => expect(document.querySelector('.d-bell')!.getAttribute('aria-label')).toBe('Alerts, 0 unread in the last 4 hours'))
+    expect(document.querySelector('.d-bell-n')).toBeNull()
+  })
+  it('a white count of recent unread groups, capped at 99+', async () => {
     renderInFrame(<BellButton />, { readers })
     const b = await screen.findByText('99+')
     expect(b.closest('button')!.className).not.toContain('d-crit')
-    expect(b.closest('button')!.getAttribute('aria-label')).toBe('Alerts, 104 unread')
+    expect(b.closest('button')!.getAttribute('aria-label')).toBe('Alerts, 104 unread in the last 4 hours')
   })
   it('turns lime (d-crit) only while a critical alert is open', async () => {
     renderInFrame(<BellButton />, { readers: { ...readers, alerts: async () => ({ rows: [], groups: [], critical: 1 }) } })
     await waitFor(() => expect(document.querySelector('.d-bell')!.className).toContain('d-crit'))
+  })
+  it('keeps the critical alert fallback when recent unread count is zero', async () => {
+    renderInFrame(<BellButton />, { readers: { ...readers, bell: async () => ({ unreadGroups: 0, open: 1102 }), alerts: async () => ({ rows: [], groups: [], critical: 1 }) } })
+    await screen.findByText('!')
+    expect(document.querySelector('.d-bell')!.getAttribute('aria-label')).toBe('Alerts, 0 unread in the last 4 hours, 1 critical alert open')
   })
   it('says so when the count could not be read', async () => {
     renderInFrame(<BellButton />, { readers: { bell: async () => { throw new Error('down') } } })
