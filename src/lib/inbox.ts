@@ -719,7 +719,6 @@ export function isOwedInbound(m: InboxMessage): boolean {
 // moment the wait began, or null when the thread does not owe a reply at all.
 function unansweredSince(t: Thread): string | null {
   if (CLOSED_STAGES.has(t.stage) || t.blacklisted) return null
-  if (t.ownerConfirmation) return eventTime(t.ownerConfirmation)
   // PUSHING A DRAFT IS AN ANSWER TO "does this need a reply TODAY" — the same
   // move as the discard rule below, with a return date on it. Ivan read the
   // thread, the person said they were travelling, and he said "not yet". A
@@ -729,6 +728,11 @@ function unansweredSince(t: Thread): string | null {
   if (t.draftSnoozedUntil !== null) return null
   const lastInbound = t.messages.filter(m => m.direction === 'inbound' && isOwedInbound(m))
     .map(eventTime).sort().at(-1) ?? null
+  if (t.ownerConfirmation) {
+    const heldAt = eventTime(t.ownerConfirmation)
+    if (isSettledBySolve(t.solvedAt, heldAt) && (lastInbound === null || isSettledBySolve(t.solvedAt, lastInbound))) return null
+    return lastInbound !== null && Date.parse(lastInbound) > Date.parse(heldAt) ? lastInbound : heldAt
+  }
   if (lastInbound === null) return null
   // MARK AS SOLVED (2026-09-27) is the same kind of ruling, made by hand with no draft needed.
   if (isSettledBySolve(t.solvedAt, lastInbound)) return null
@@ -764,9 +768,8 @@ export function isSettledBySolve(solvedAt: string | null | undefined, lastOwedIn
 }
 
 export function needsAnswer(t: Thread, now: number = Date.now()): boolean {
-  if (t.ownerConfirmation && !CLOSED_STAGES.has(t.stage)) return true
   const since = unansweredSince(t)
-  return since !== null && now - Date.parse(since) <= STALE_DAYS * 86_400_000
+  return since !== null && (Boolean(t.ownerConfirmation) || now - Date.parse(since) <= STALE_DAYS * 86_400_000)
 }
 
 // Same "does this owe a reply" test as needsAnswer, but with no STALE_DAYS
@@ -1445,11 +1448,28 @@ export const DISMISS_HOLD_GUARD: readonly DraftGuard[] = [
   { op: 'eq', column: 'send_blocked_reason', value: 'owner_confirmation' },
 ]
 
-export async function dismissConfirmation(id: string): Promise<boolean> {
+export async function dismissConfirmation(id: string, reason: 'owner_confirmation' | 'reply_retry_pending' = 'owner_confirmation', at = new Date().toISOString()): Promise<boolean> {
   const { data, error } = await applyDraftGuard(
     supabase.from('outreach_messages')
-      .update({ send_blocked_reason: 'owner_confirmation_superseded', send_blocked_at: new Date().toISOString() }),
-    id, DISMISS_HOLD_GUARD,
+      .update({ send_blocked_reason: 'owner_confirmation_superseded', send_blocked_at: at }),
+    id, reason === 'owner_confirmation' ? DISMISS_HOLD_GUARD : [
+      { op: 'is', column: 'sent_at' }, { op: 'is', column: 'approved_at' },
+      { op: 'eq', column: 'send_blocked_reason', value: 'reply_retry_pending' },
+    ],
+  ).select('id')
+  if (error) throw error
+  return (data ?? []).length > 0
+}
+
+/** Undo only the specific internal hold retired by Mark as solved. */
+export async function restoreConfirmation(id: string, reason: 'owner_confirmation' | 'reply_retry_pending', retiredAt: string, previousAt: string | null): Promise<boolean> {
+  const { data, error } = await applyDraftGuard(
+    supabase.from('outreach_messages').update({ send_blocked_reason: reason, send_blocked_at: previousAt }),
+    id, [
+      { op: 'is', column: 'sent_at' }, { op: 'is', column: 'approved_at' },
+      { op: 'eq', column: 'send_blocked_reason', value: 'owner_confirmation_superseded' },
+      { op: 'eq', column: 'send_blocked_at', value: retiredAt },
+    ],
   ).select('id')
   if (error) throw error
   return (data ?? []).length > 0

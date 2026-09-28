@@ -18,10 +18,9 @@
 import { supabase } from '../../lib/supabase'
 import { unansweredWaitSince, type Thread } from '../../lib/inbox'
 
-/** Every thread that owes a reply (draft or not), or carries a draft; never a filed pitch or an
- *  internal owner question (that one has its own Discard). */
+/** Every thread that owes a reply (draft or not), or carries a draft; never a filed pitch. */
 export function canMarkSolved(t: Thread): boolean {
-  if (t.spam || t.ownerConfirmation) return false
+  if (t.spam) return false
   return t.draft !== null || unansweredWaitSince(t) !== null
 }
 

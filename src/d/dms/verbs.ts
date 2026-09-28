@@ -4,7 +4,7 @@
 import { useMemo } from 'react'
 import {
   approveDraft, composeReply, deleteThread, discardLegs, dismissConfirmation, draftLegs, escalateDraftToClient,
-  isFollowUp, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreDraft,
+  isFollowUp, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft,
   saveDraftEmail, saveDraftText, snoozeDraft, threadChatId, unsnoozeDraft, REPLY_MYSELF,
   type InboxMessage, type Thread,
 } from '../../lib/inbox'
@@ -133,27 +133,44 @@ export function useDmVerbs(ctx: VerbCtx) {
       const prevAt = t.solvedAt ?? null
       const lower = legs.length > 0 || t.needsManualReply
       const at = new Date().toISOString()
+      const hold = t.ownerConfirmation
+      const holdReason = hold?.send_blocked_reason === 'reply_retry_pending' ? 'reply_retry_pending' : 'owner_confirmation'
+      if (hold) {
+        try {
+          if (!(await dismissConfirmation(hold.id, holdReason, at))) { const m = 'The internal question changed. Refresh and try again.'; fail(m); ctx.refresh(); return m }
+        } catch (e) { const m = errText(e); fail(`Not marked: ${m}`); ctx.refresh(); return m }
+      }
       try { await writeSolved(t.prospect_id, lower ? { solved_at: at, needs_manual_reply: false } : { solved_at: at }) } catch (e) {
         const m = errText(e)
+        if (hold) {
+          try {
+            if (!(await restoreConfirmation(hold.id, holdReason, at, hold.send_blocked_at))) fail('Could not restore the internal question after the solve failed. Refresh this thread.')
+          } catch { fail('Could not restore the internal question after the solve failed. Refresh this thread.') }
+        }
         fail(gone.length ? `The draft is discarded, but the solve was not saved: ${m}` : `Not marked: ${m}`)
         ctx.refresh()
         return m
       }
+      if (hold) ctx.patch([hold.id], { send_blocked_reason: 'owner_confirmation_superseded', send_blocked_at: at })
       ctx.solved?.(t.prospect_id, at)
       ctx.refresh()
       toast.show({
         message: `Marked ${t.prospect_name} as solved.`,
         sub: `It comes back if ${first(t)} writes again.${gone.length ? ' The draft stays under Discarded for 3 days.' : ''}`,
-        action: { label: 'Undo', verb: 'undo', run: () => { void undoSolved(t.prospect_id, gone, prevAt, lower && t.needsManualReply) } },
+        action: { label: 'Undo', verb: 'undo', run: () => { void undoSolved(t.prospect_id, gone, prevAt, lower && t.needsManualReply, hold?.id, holdReason, at, hold?.send_blocked_at) } },
       })
       return null
     }
 
-    async function undoSolved(pid: string, legs: InboxMessage[], prevAt: string | null, raiseFlag: boolean) {
+    async function undoSolved(pid: string, legs: InboxMessage[], prevAt: string | null, raiseFlag: boolean, holdId?: string, holdReason?: 'owner_confirmation' | 'reply_retry_pending', retiredAt?: string, previousHoldAt?: string | null) {
       try {
         for (const l of legs) await restoreDraft(l.id)
         if (legs.length) ctx.patch(legs.map(l => l.id), { send_blocked_reason: null, send_blocked_at: null, discard_mode: null })
         await writeSolved(pid, raiseFlag ? { solved_at: prevAt, needs_manual_reply: true } : { solved_at: prevAt })
+        if (holdId && holdReason && retiredAt && previousHoldAt !== undefined) {
+          if (!(await restoreConfirmation(holdId, holdReason, retiredAt, previousHoldAt))) throw new Error('The internal question changed; refresh this thread.')
+          ctx.patch([holdId], { send_blocked_reason: holdReason, send_blocked_at: previousHoldAt })
+        }
         ctx.solved?.(pid, prevAt)
       } catch (e) { fail(`Could not undo: ${errText(e)}`) }
       ctx.refresh()

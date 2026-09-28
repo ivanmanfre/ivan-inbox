@@ -7,7 +7,8 @@ import { renderInFrame } from '../test-utils'
 
 vi.mock('../../lib/inbox', async orig => {
   const real = await orig<typeof import('../../lib/inbox')>()
-  return { ...real, discardLegs: vi.fn(async () => []), restoreDraft: vi.fn(async () => true), markThreadRead: vi.fn(async () => {}) }
+  return { ...real, discardLegs: vi.fn(async () => []), restoreDraft: vi.fn(async () => true),
+    dismissConfirmation: vi.fn(async () => true), restoreConfirmation: vi.fn(async () => true), markThreadRead: vi.fn(async () => {}) }
 })
 vi.mock('./solved', async orig => ({ ...(await orig<typeof import('./solved')>()), writeSolved: vi.fn(async () => {}) }))
 vi.mock('../../lib/followUp', async orig => ({ ...(await orig<typeof import('../../lib/followUp')>()), fetchFollowUp: vi.fn(async () => null) }))
@@ -123,6 +124,58 @@ function Pane({ t }: { t: Thread }) {
 const mount = (t: Thread) => renderInFrame(<DmAsks><Pane t={t} /></DmAsks>, { hash: '#exp/d/dms' })
 
 describe('Mark as solved', () => {
+  it.each(['reply_retry_pending', 'owner_confirmation'])('lets a draftless %s hold be solved and retires it before saving', async reason => {
+    const pid = `held-${reason}`
+    const rows = [
+      ...waiting(pid, { client_id: 'arch', prospect_name: 'Dawoon' }, 3),
+      msg({ prospect_id: pid, client_id: 'arch', prospect_name: 'Dawoon', direction: 'inbound',
+        sent_at: iso(2 * 3_600_000), created_at: iso(2 * 3_600_000), message_text: '👍' }),
+      msg({ prospect_id: pid, client_id: 'arch', prospect_name: 'Dawoon', message_text: '',
+        created_at: iso(3_600_000), send_blocked_at: iso(3_600_000), send_blocked_reason: reason }),
+    ]
+    const [t] = threads(rows)
+    expect(t.draft).toBeNull()
+    expect(t.ownerConfirmation?.send_blocked_reason).toBe(reason)
+    mount(t)
+    fireEvent.click(key('solved')!)
+    await waitFor(() => expect(solvedMod.writeSolved).toHaveBeenCalledWith(pid, { solved_at: iso(0) }))
+    expect(lib.dismissConfirmation).toHaveBeenCalledWith(t.ownerConfirmation!.id, reason, iso(0))
+    expect(vi.mocked(lib.dismissConfirmation).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(solvedMod.writeSolved).mock.invocationCallOrder[0])
+    expect(lib.discardLegs).not.toHaveBeenCalled()
+    expect(threadBucket({ ...t, solvedAt: iso(0) }, NOW)).toBe('waiting')
+    expect(owedIds([{ ...t, solvedAt: iso(0) }])).toEqual([pid])
+    const reopened = threads([...rows, msg({ prospect_id: pid, client_id: 'arch', prospect_name: 'Dawoon', direction: 'inbound',
+      sent_at: iso(-60_000), created_at: iso(-60_000), message_text: 'One more question' })])[0]
+    expect(threadBucket({ ...reopened, solvedAt: iso(0) }, NOW + 60_000)).toBe('answer')
+    fireEvent.click(key('undo')!)
+    await waitFor(() => expect(lib.restoreConfirmation).toHaveBeenCalledWith(t.ownerConfirmation!.id, reason, iso(0), t.ownerConfirmation!.send_blocked_at))
+    await waitFor(() => expect(solvedMod.writeSolved).toHaveBeenLastCalledWith(pid, { solved_at: null }))
+  })
+
+  it('does not save a solve when the retry hold changed before it could be retired', async () => {
+    const [t] = threads([...owedNoDraft('changed', { client_id: 'arch', prospect_name: 'Changed' }), msg({
+      prospect_id: 'changed', client_id: 'arch', message_text: '', created_at: iso(60_000),
+      send_blocked_at: iso(60_000), send_blocked_reason: 'reply_retry_pending',
+    })])
+    vi.mocked(lib.dismissConfirmation).mockResolvedValueOnce(false)
+    mount(t)
+    fireEvent.click(key('solved')!)
+    await waitFor(() => expect(lib.dismissConfirmation).toHaveBeenCalled())
+    expect(solvedMod.writeSolved).not.toHaveBeenCalled()
+  })
+
+  it('restores a retired retry hold when the solve stamp fails', async () => {
+    const [t] = threads([...owedNoDraft('failed', { client_id: 'arch', prospect_name: 'Failed' }), msg({
+      prospect_id: 'failed', client_id: 'arch', message_text: '', created_at: iso(60_000),
+      send_blocked_at: iso(60_000), send_blocked_reason: 'reply_retry_pending',
+    })])
+    vi.mocked(solvedMod.writeSolved).mockRejectedValueOnce(new Error('write failed'))
+    mount(t)
+    fireEvent.click(key('solved')!)
+    await waitFor(() => expect(lib.restoreConfirmation).toHaveBeenCalledWith(t.ownerConfirmation!.id, 'reply_retry_pending', iso(0), t.ownerConfirmation!.send_blocked_at))
+    expect(ctx.patch).not.toHaveBeenCalled()
+    expect(screen.queryByText('Marked Failed as solved.')).toBeNull()
+  })
   it('on a draft thread: discards every leg (plain, no ask), THEN one PATCH {solved_at, needs_manual_reply:false}; Undo restores all', async () => {
     const rows = drafted('s', { prospect_name: 'Sam' })
     const [t0] = groupThreads(rows, new Set(['s']), NOW)
