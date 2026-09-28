@@ -177,3 +177,40 @@ describe('All conversations status words', () => {
     expect(statusOf(ooo, NOW).word).toBe('auto-reply')
   })
 })
+
+
+describe('manual reply after drafting fails', () => {
+  function held(why: string | null) {
+    return threads([...owedNoDraft('tetiana', { client_id: 'arch', prospect_name: 'Tetiana Klimonova' }), msg({
+      prospect_id: 'tetiana', client_id: 'arch', prospect_name: 'Tetiana Klimonova', message_text: '',
+      created_at: iso(0), send_blocked_at: iso(0), send_blocked_reason: 'owner_confirmation',
+      context_gap: { question: 'The reply pipeline failed 3 times on this thread. Write this one by hand.', why, chat_url: null },
+    })])[0]
+  }
+
+  it('lets the operator type after the retry ceiling, then confirms before queueing', async () => {
+    const t = held('Retry ceiling reached: Request failed with status code 503')
+    mount(t)
+    expect(screen.getByText('Write this reply yourself')).toBeTruthy()
+    expect(screen.queryByText('Confirm with Davorin')).toBeNull()
+    expect(key('hold-note')).toBeNull()
+    expect(key('ask-owner-link')).toBeNull()
+    const box = screen.getByRole('textbox', { name: 'Write to Tetiana yourself' })
+    fireEvent.change(box, { target: { value: 'Thanks for letting me know.' } })
+    expect((box as HTMLTextAreaElement).value).toBe('Thanks for letting me know.')
+    expect(lib.composeReply).not.toHaveBeenCalled()
+    fireEvent.click(key('compose-send'))
+    expect(await screen.findByText('Send this to Tetiana Klimonova?')).toBeTruthy()
+    expect(lib.composeReply).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('Send it'))
+    await waitFor(() => expect(lib.composeReply).toHaveBeenCalledWith(t, 'Thanks for letting me know.'))
+  })
+
+  it.each(['The company notes do not establish this.', null])('keeps real or unreadable owner questions blocked: %s', why => {
+    mount(held(why))
+    expect(screen.queryByRole('textbox', { name: 'Write to Tetiana yourself' })).toBeNull()
+    expect(screen.getByText('Confirm with Davorin')).toBeTruthy()
+    expect(key('hold-note')).not.toBeNull()
+    expect(key('compose-send')).toBeNull()
+  })
+})

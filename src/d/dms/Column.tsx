@@ -1,5 +1,5 @@
 // A seat column (desktop) or the one seat list (phone). Sections in the mock's order.
-import { internalHoldSummary, threadBucket, type Thread } from '../../lib/inbox'
+import { internalHoldSummary, isReplyRetryExhausted, threadBucket, type Thread } from '../../lib/inbox'
 import { cameBackLine, firstComment, sentLine, type CameBackCard } from '../../wb/dms/cameBackData'
 import { agentCardsWithoutWarmCards, type ConversationAgentCard } from '../../wb/dms/conversationAgentData'
 import { WARM_GROUPS, dm1Deliverable, evidenceLine, inviteLine, isWaiting, primaryAction, warmGroup, type WarmCard } from '../../wb/dms/warmSignalsData'
@@ -76,7 +76,7 @@ export function ColumnBody(p: ColumnProps) {
   const needs = [
     ...v.owner.map(t => (
       <button key={t.prospect_id} type="button" className={`dm-hold${c.selected === t.prospect_id ? ' dm-sel' : ''}`} data-d-row={t.prospect_id} onClick={() => c.open(t)}>
-        <span className="dm-pill">{t.ownerConfirmation?.send_blocked_reason === 'reply_retry_pending' ? 'Retrying' : `Confirm with ${OWNER[seat]}`}</span>
+        <span className="dm-pill">{t.ownerConfirmation && isReplyRetryExhausted(t.ownerConfirmation) ? 'Write reply' : t.ownerConfirmation?.send_blocked_reason === 'reply_retry_pending' ? 'Retrying' : `Confirm with ${OWNER[seat]}`}</span>
         <b>{t.prospect_name}</b>
         <p>{t.ownerConfirmation ? internalHoldSummary(t.ownerConfirmation) : ''}</p>
       </button>

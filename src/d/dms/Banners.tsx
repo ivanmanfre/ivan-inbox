@@ -1,7 +1,7 @@
 // The pane's banners (mock `.df-ban`): owner question, dated follow-up + one-tap suggestion,
 // owed with no draft, waiting on them, pushed to later, context gap (+ Ask Mattan/Davorin).
 import { useEffect, useState } from 'react'
-import { clientOwner, eventTime, isReplyRetryPending, type Thread } from '../../lib/inbox'
+import { clientOwner, eventTime, isReplyRetryExhausted, isReplyRetryPending, type Thread } from '../../lib/inbox'
 import { fetchFollowUp, followUpSuggestion, type FollowUp } from '../../lib/followUp'
 import { formatReturn, returnsIn } from '../../lib/pushLater'
 import { seatOf } from '../seats'
@@ -18,13 +18,14 @@ export function OwnerHoldBanner({ t, verbs, onNote, onRetry }: { t: Thread; verb
   if (!hold) return null
   const owner = clientOwner(t.client_id)?.owner ?? 'the owner'
   const retry = isReplyRetryPending(hold)
+  const manualReply = isReplyRetryExhausted(hold)
   return (
     <div className="dm-ban dm-ban-hl" role="note">
-      <b><DIcon name="person" />{retry ? 'Drafting retries on its own' : `Confirm with ${owner}`}</b>
+      <b><DIcon name="person" />{manualReply ? 'Write this reply yourself' : retry ? 'Drafting retries on its own' : `Confirm with ${owner}`}</b>
       <p>{hold.context_gap?.question || (retry ? 'The reply drafter will try again shortly.' : 'The drafter has a question only the owner can answer.')}</p>
-      {hold.context_gap?.why && <p className="dm-meta">{hold.context_gap.why} · internal question, no reply is queued</p>}
+      {hold.context_gap?.why && <p className="dm-meta">{hold.context_gap.why} · {manualReply ? 'no reply is queued' : 'internal question, no reply is queued'}</p>}
       {!retry && <div className="dm-ban-row">
-        <Btn verb="hold-note" onClick={onNote}>Add the answer as a note</Btn>
+        {!manualReply && <Btn verb="hold-note" onClick={onNote}>Add the answer as a note</Btn>}
         <Btn verb="retry" onClick={onRetry}>Retry</Btn>
         <Btn verb="hold-discard" onClick={() => { void verbs.holdDiscard(t) }}>Discard</Btn>
       </div>}

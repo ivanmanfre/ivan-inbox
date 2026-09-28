@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useDCommands } from '../shell/commands'
 import type { WbCommand } from '../../exp/v2c/commandSource'
-import { canComposeEmail, markThreadRead, threadBucket, unansweredWaitSince, type Thread as T } from '../../lib/inbox'
+import { canComposeEmail, isReplyRetryExhausted, markThreadRead, threadBucket, unansweredWaitSince, type Thread as T } from '../../lib/inbox'
 import type { PreReadHandle } from '../../exp/v2c/chat/usePreRead'
 import { chatLink } from '../../components/CopyChatLink'
 import { seatOf } from '../seats'
@@ -83,7 +83,8 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   const owed = threadBucket(t, now) !== 'waiting' || unansweredWaitSince(t) !== null
   const hasDraft = t.draft !== null
   const lp = laterPath(t)
-  const composeOff = t.ownerConfirmation ? 'Reply paused while an internal fact is confirmed. Add the answer as a note, or discard the question.'
+  const manualReply = Boolean(t.ownerConfirmation && isReplyRetryExhausted(t.ownerConfirmation))
+  const composeOff = t.ownerConfirmation && !manualReply ? 'Reply paused while an internal fact is confirmed. Add the answer as a note, or discard the question.'
     : t.channel === 'email' && !canComposeEmail(t) ? 'Email compose is on for Arch threads only. Approving email drafts works here.'
       : t.stage === 'engaged' ? 'Not connected yet. A reply here would go out as a connection invite, so compose is off for this thread.' : null
 
@@ -131,7 +132,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     primary = <Key primary verb="send" className="dm-send" disabled={busy} onClick={() => void send()}>{t.companionDraft ? 'Send both' : 'Send'}</Key>
   } else {
     small = <>
-      {t.ownerConfirmation
+      {t.ownerConfirmation && !manualReply
         ? <Btn verb="ask-owner-link" className="dm-k" onClick={() => void copy()} title="copies the chat link">{seat === 'ivan' ? 'Copy chat link' : `Ask ${from}`}</Btn>
         : owed && <Btn verb="draft-it" className="dm-k" onClick={onDraftIt} title="Claude writes it">Draft it</Btn>}
       {laterKey}

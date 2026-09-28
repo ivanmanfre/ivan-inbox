@@ -323,9 +323,16 @@ export function isReplyRetryPending(m: InboxMessage): boolean {
   return isInternalConfirmation(m) && m.send_blocked_reason === 'reply_retry_pending'
 }
 
+// Older drafter failures use the owner hold slot, but require a manual reply,
+// not a business fact. Only the explicit retry-ceiling marker unlocks compose.
+export function isReplyRetryExhausted(m: InboxMessage): boolean {
+  return isOwnerConfirmation(m) && m.context_gap?.why?.startsWith('Retry ceiling reached:') === true
+}
+
 export function internalHoldSummary(m: InboxMessage): string {
   return isReplyRetryPending(m) ? 'Waiting for automatic retry'
-    : `Needs owner confirmation: ${m.context_gap?.question || 'Open the internal question'}`
+    : isReplyRetryExhausted(m) ? 'Drafting failed. Write this reply yourself.'
+      : `Needs owner confirmation: ${m.context_gap?.question || 'Open the internal question'}`
 }
 
 export function isDraft(m: InboxMessage): boolean {
