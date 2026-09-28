@@ -213,3 +213,10 @@ i.dl-out{background:#6f6f68}
 .dl-v-games{background:var(--lime)}.dl-v-apps{background:#7FB2FF}.dl-v-d2c{background:#D6A6FF}.dl-v-pc{background:#E8C46A}.dl-v-none{background:#55554f}.dl-v-all{background:var(--limeD)}
 .dl3-phone .dl-bl-row{grid-template-columns:minmax(0,7.5em) minmax(0,1fr) auto}
 .dl3-phone .dl-bl-v{margin-left:0}
+/* a lane name that explains itself: hover title on desktop, tap opens the line below */
+.dl-bl-lq{all:unset;box-sizing:border-box;cursor:help;text-decoration:underline dotted var(--t3,#6b6b64);text-underline-offset:3px}
+.dl-bl-lq:focus-visible{outline:2px solid var(--lime);outline-offset:2px;border-radius:2px}
+.dl-bl-l.dl-bl-lq{font-size:13.5px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dl-rbl.dl-bl-lq{font-size:13.5px;color:var(--t1);overflow-wrap:anywhere;line-height:1.25}
+.dl-rbt .dl-rbl.dl-bl-lq{font-weight:600}
+.dl-bl-why{margin:6px 0 2px;font-size:12.5px;line-height:1.45;color:var(--t2);max-width:62ch}

@@ -8,10 +8,10 @@
    One SELECT per seat, invites confirmed sent (connection_sent_at), last 7
    Warsaw days; "today" is the Warsaw day. Nothing writes. */
 import { supabase } from '../../lib/supabase'
-import { shortName } from '../../lib/campaignPerf'
 import type { Seat } from '../seats'
 import { warsawDay } from '../ui/time'
 import { laneLabel } from './labels'
+import { campaignDisplay, laneInfo } from './laneInfo'
 
 export type SentRow = { campaign_id: string; sent_at: string; lane: string | null; vertical: string | null }
 export type SeatSends = { rows: SentRow[]; campaigns: Record<string, string> }
@@ -36,7 +36,7 @@ export async function fetchSeatSends(seat: Seat, now = Date.now()): Promise<Seat
   return { rows: (data ?? []) as SentRow[], campaigns }
 }
 
-export type MixLane = { key: string; label: string; n: number; verts: Array<{ key: string; n: number }> }
+export type MixLane = { key: string; label: string; info: string | null; n: number; verts: Array<{ key: string; n: number }> }
 export type Mix = { total: number; lanes: MixLane[]; byVertical: boolean }
 
 /** PURE: the window's invites per lane, largest first, each split by vertical when the seat has verticals (Arch). */
@@ -48,8 +48,8 @@ export function mixOf(s: SeatSends, seat: Seat, window: 'today' | '7d', now: num
   const lanes = new Map<string, MixLane>()
   for (const r of rows) {
     const key = byVertical ? (r.lane ?? 'none') : r.campaign_id
-    const label = byVertical ? (r.lane ? (r.lane === 'engager_warm' ? 'Warm engagers' : laneLabel(r.lane)) : 'No lane recorded') : shortName(s.campaigns[r.campaign_id] ?? 'Unknown campaign')
-    const l = lanes.get(key) ?? { key, label, n: 0, verts: [] }
+    const label = byVertical ? (r.lane ? (r.lane === 'engager_warm' ? 'Warm engagers' : laneLabel(r.lane)) : 'No lane recorded') : campaignDisplay(s.campaigns[r.campaign_id] ?? 'Unknown campaign')
+    const l = lanes.get(key) ?? { key, label, info: laneInfo(seat, byVertical ? (r.lane ?? 'none') : s.campaigns[r.campaign_id]), n: 0, verts: [] }
     l.n += 1
     if (byVertical) {
       const v = r.vertical && VERT[r.vertical] ? r.vertical : 'none'
