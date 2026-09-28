@@ -3,13 +3,11 @@ import { useFeedData } from '../../exp/brain/b/useFeedData'
 import { ALERT_LOOK, kindOf } from '../../wb/ask/alertLook'
 import { getTurn, routableHash, type Notification, type NotificationGroup } from '../../lib/turns'
 import { dismissSystemAlert, resolveAllSystemAlerts, undoResolveAll } from '../../lib/systemAlerts'
-import { healthNote } from '../counts/glance'
 import { useFrameCounts } from '../counts/useFrameCounts'
 import { dHash, toDHash } from '../route'
 import { DIcon } from '../ui/icons'
 import { Btn } from '../ui/Key'
 import { Empty, Failed, Skeleton } from '../ui/states'
-import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
 import { warsawHm } from '../ui/time'
 import { useStalled } from '../ui/timeout'
@@ -17,8 +15,6 @@ import { useFrame } from './frame'
 import { feedDays } from './feedShape'
 import { FeedGroup, inChatTurnId } from './FeedRows'
 import { SystemBox } from './SystemAlerts'
-import { WorkQueue } from './WorkQueue'
-import { openWorkflows } from './Workflows'
 
 // ---------------------------------------------------------------------------
 // THE BELL. The button (desktop: right end of the answer row; phone: top bar)
@@ -30,18 +26,14 @@ import { openWorkflows } from './Workflows'
 // answer row gets the critical tint, a red top rule, at the same time).
 //
 // Feed: today's data hook (exp/brain/b/useFeedData) and today's verbs:
-//   Clear all  -> dismissAllNotifications(stamp)  PATCH inbox_notifications
-//                 set dismissed_at=<stamp> where dismissed_at is null (every
-//                 open row, not only the 200 loaded; db/056 supersede path)
-//   its Undo   -> restoreDismissedAt(stamp)       PATCH ... dismissed_at=null where dismissed_at=<stamp>
+//   Clear all  -> dismiss every open notification and resolve system alerts
+//                 inside their 14-day reader window; Undo restores both stamps
 //   row ×      -> dismissOne / dismissGroupRows, Undo -> restore
 //   member ×   -> dismissOne (one row inside an opened group), Undo -> restore
 //   row tap    -> markRead + open its deep link inside D; a row Claude folded
 //                 (`bot:<turn>`) opens that Claude turn; a url nothing routes -> Lanes
-//   Clear alerts (system box) -> resolveAllSystemAlerts, Undo -> undoResolveAll
 //   alert ×    -> dismissSystemAlert per id (resolved_by 'inbox'), final as today
-// Above the feed: the Workflows alarm (corroborated failures, opens Workflows),
-// Waiting on you (WorkQueue.tsx) and the system alerts (SystemAlerts.tsx).
+// Above the feed: the system alerts (SystemAlerts.tsx).
 // Digests fold under "Routine updates"; a row landing while scrolled shows "N new".
 // ---------------------------------------------------------------------------
 
@@ -97,9 +89,10 @@ export function BellFeed() {
   // The feed never sits on its skeleton: 12 s, then the failed line with Retry,
   // and a quiet re-read every 20 s until it answers.
   const feedStalled = useStalled(!feed.loaded, () => void feed.refresh())
-  const confirm = useDConfirm()
   const toast = useToast()
   const [clearedAt, setClearedAt] = useState<string | null>(null)
+  const [clearing, setClearing] = useState(false)
+  const clearingRef = useRef(false)
   const [routineOpen, setRoutineOpen] = useState(false)
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [scrolled, setScrolled] = useState(false)
@@ -109,7 +102,6 @@ export function BellFeed() {
   const fresh = useArrivals(feed.groups.map(g => g.key))
   const open = c.bell.value?.open ?? null
   const unread = c.bell.value?.unreadGroups ?? null
-  const health = c.health.value
   const groups = useMemo(() => {
     const gs = c.alerts.value?.groups ?? null
     if (!gs || hidden.size === 0) return gs
@@ -176,58 +168,52 @@ export function BellFeed() {
   }
 
   const clearAll = () => {
+    if (clearingRef.current) return
+    clearingRef.current = true
+    setClearing(true)
     void (async () => {
-      const n = open
-      const ok = await confirm({
-        title: 'Clear every notification?',
-        message: `${n != null ? `All ${n.toLocaleString('en-US')} open` : 'Every open'} notification${n === 1 ? '' : 's'} go, not only the ones on screen. Undo stays on the receipt for a few seconds.`,
-        // Danger, like Clear alerts: Cancel is focused and Enter never clears.
-        confirmText: 'Clear all', verb: 'confirm', danger: true,
-      })
-      if (!ok) return
-      const stamp = await feed.clearAll()
-      if (!stamp) {
-        toast.show({ id: 'clear-all', message: 'Could not clear. Nothing changed.', tone: 'failed', action: { label: 'Retry', verb: 'retry', run: clearAll } })
+      const [notificationResult, alertResult] = await Promise.allSettled([feed.clearAll(), resolveAllSystemAlerts()])
+      const notificationStamp = notificationResult.status === 'fulfilled' ? notificationResult.value : null
+      const alertStamp = alertResult.status === 'fulfilled' ? alertResult.value : null
+      if (notificationResult.status === 'rejected') console.error('[d] clear notifications failed', notificationResult.reason)
+      if (alertResult.status === 'rejected') console.error('[d] clear alerts failed', alertResult.reason)
+      if (notificationStamp) setClearedAt(new Date().toISOString())
+      if (alertStamp) setHidden(prev => new Set([...prev, ...(groups ?? []).flatMap(g => g.members.flatMap(m => m.ids))]))
+      c.refresh(['bell', 'alerts'])
+      clearingRef.current = false
+      setClearing(false)
+      const failed = !notificationStamp || !alertStamp
+      const message = failed
+        ? [!notificationStamp && 'Could not clear notifications.', !alertStamp && 'Could not clear system alerts.'].filter(Boolean).join(' ')
+        : 'Alerts cleared.'
+      if (!notificationStamp && !alertStamp) {
+        toast.show({ id: 'clear-all', message, tone: 'failed', action: { label: 'Retry', verb: 'retry', run: clearAll } })
         return
       }
-      setClearedAt(new Date().toISOString())
-      c.refresh('bell')
       toast.show({
-        id: 'clear-all',
-        message: `Cleared ${n != null ? n.toLocaleString('en-US') + ' ' : ''}notification${n === 1 ? '' : 's'}.`,
-        sub: 'Every one, not only the ones on screen.',
-        action: { label: 'Undo', verb: 'undo', run: () => { void feed.undoClear(stamp).then(() => { setClearedAt(null); c.refresh('bell') }) } },
-      })
-    })()
-  }
-
-  const clearAlerts = () => {
-    void (async () => {
-      const n = (groups ?? []).reduce((a, g) => a + g.count, 0)
-      // Today's strip asks this one as a danger confirm: Cancel focused, Enter never clears.
-      const ok = await confirm({
-        title: 'Clear the system alerts?',
-        message: `The ${n} open in the last 14 days are marked resolved. New ones still land. Undo stays on the receipt for a few seconds.`,
-        confirmText: 'Clear alerts', verb: 'confirm', danger: true,
-      })
-      if (!ok) return
-      let stamp: string
-      try { stamp = await resolveAllSystemAlerts() } catch (e) {
-        console.error('[d] clear alerts failed', e)
-        toast.show({ id: 'clear-alerts', message: 'Could not clear the alerts. Nothing changed.', tone: 'failed' })
-        return
-      }
-      c.refresh('alerts')
-      toast.show({
-        id: 'clear-alerts', message: `${n} alert${n === 1 ? '' : 's'} cleared.`,
-        action: { label: 'Undo', verb: 'undo', run: () => { void undoResolveAll(stamp).catch(e => console.error('[d] undo clear alerts failed', e)).then(() => c.refresh('alerts')) } },
+        id: 'clear-all', message, tone: failed ? 'failed' : undefined,
+        action: { label: 'Undo', verb: 'undo', run: () => {
+          void Promise.allSettled([
+            notificationStamp ? feed.undoClear(notificationStamp) : Promise.resolve(),
+            alertStamp ? undoResolveAll(alertStamp) : Promise.resolve(),
+          ]).then(([notifications, alerts]) => {
+            if (notifications.status === 'fulfilled' && notificationStamp) setClearedAt(null)
+            if (alerts.status === 'fulfilled' && alertStamp) setHidden(new Set())
+            c.refresh(['bell', 'alerts'])
+            if (notifications.status === 'rejected' || alerts.status === 'rejected') {
+              console.error('[d] undo clear failed', notifications.status === 'rejected' ? notifications.reason : alerts.status === 'rejected' ? alerts.reason : null)
+              toast.show({ id: 'clear-all-undo', message: 'Could not restore every alert.', tone: 'failed' })
+            }
+          })
+        } },
       })
     })()
   }
 
   // The badge's number covers recent unread incidents; day headers
   // describe all unread groups visible in that day's feed.
-  const sub = clearedAt ? 'All read' : feed.error && !feed.loaded ? 'Could not read the feed'
+  const systemEmpty = groups != null && groups.length === 0 && !c.alerts.failed
+  const sub = clearedAt && !clearing && !feed.error && feed.groups.length === 0 && systemEmpty ? 'All clear' : feed.error && !feed.loaded ? 'Could not read the feed'
     : unread == null ? (c.bell.failed ? 'Count could not be read' : 'Reading…')
       : `${unread === 0 ? 'No' : unread} unread in the last 4 hours · ${(open ?? 0).toLocaleString('en-US')} not cleared`
   const arrived = [...fresh].filter(k => feed.groups.some(g => g.key === k)).length
@@ -236,23 +222,15 @@ export function BellFeed() {
     <div className={`d-bellp d-bellp-${f.layout}`} role="dialog" aria-label="Alerts" data-bell-feed>
       <div className="d-bellp-h">
         <div className="d-bellp-t"><b>Alerts</b><small>{sub}</small></div>
-        {feed.groups.length > 0 && <Btn verb="clear-all" onClick={clearAll}>Clear all</Btn>}
+        {(feed.groups.length > 0 || (groups?.length ?? 0) > 0) && <Btn verb="clear-all" onClick={clearAll} disabled={clearing}>Clear all</Btn>}
         <button type="button" className="d-ib" aria-label="Close alerts" onClick={close}><DIcon name="x" /></button>
       </div>
       <div className="d-bellp-b" ref={scroller} onScroll={e => setScrolled((e.currentTarget.scrollTop ?? 0) > 8)}>
-        {health && health.urgent.length > 0 && (
-          <button type="button" className="d-wfban" data-verb="workflows" onClick={() => { close(); openWorkflows() }}>
-            <DIcon name="workflows" />
-            <span><b>{health.urgent.length} automation alert{health.urgent.length === 1 ? '' : 's'}</b><small>{healthNote(health)}</small></span>
-            <em>Open</em>
-          </button>
-        )}
-        <SystemBox groups={groups} failed={c.alerts.failed} onRetry={() => c.refresh('alerts')} onClear={clearAlerts} onDismiss={dismissAlert} />
-        <WorkQueue go={go} />
+        <SystemBox groups={groups} failed={c.alerts.failed} onRetry={() => c.refresh('alerts')} onDismiss={dismissAlert} />
         {!feed.loaded && !feedStalled && <Skeleton lines={5} label="Reading notifications" />}
         {feedStalled && <Failed what="the notifications" detail="No answer in 12 s. Still trying in the background." onRetry={() => void feed.refresh()} />}
         {feed.loaded && feed.error && feed.groups.length === 0 && <Failed what="the notifications" onRetry={() => void feed.refresh()} />}
-        {feed.loaded && !feed.error && feed.groups.length === 0 && (
+        {feed.loaded && !feed.error && !clearing && feed.groups.length === 0 && systemEmpty && (
           <Empty
             title={clearedAt ? `Nothing new since ${warsawHm(clearedAt)}.` : feed.lastEmptySince ? `Nothing new since ${warsawHm(feed.lastEmptySince)}.` : 'Nothing here yet.'}
             reason="New replies, failures and bookings land here and on your phone."

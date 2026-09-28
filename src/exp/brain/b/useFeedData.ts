@@ -27,11 +27,16 @@ export function useFeedData() {
   // claim the data does not hold, and the one that makes him miss a lead.
   const [error, setError] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const clearGeneration = useRef(0)
+  const clearPending = useRef(false)
 
   const refresh = useCallback(async () => {
     if (FEED_MOCK) { setRows(mockNotificationRows()); setLoaded(true); return }
+    if (clearPending.current) return
+    const generation = clearGeneration.current
     try {
       const live = await listNotifications()
+      if (generation !== clearGeneration.current) return
       setRows(live)
       setError(false)
       setLoaded(true)
@@ -42,6 +47,7 @@ export function useFeedData() {
         } catch { /* the empty state still renders without a time */ }
       }
     } catch (e) {
+      if (generation !== clearGeneration.current) return
       // The detail stays in the console, where it is useful; the surface says
       // one fixed sentence rather than a column name off a failed read.
       console.error('[brain-b] feed read failed', e)
@@ -164,22 +170,29 @@ export function useFeedData() {
   const clearAll = useCallback(async (): Promise<string | null> => {
     const stamp = new Date().toISOString()
     const before = rowsRef.current
+    clearGeneration.current++
+    clearPending.current = true
     setRows([])
-    if (FEED_MOCK) return stamp
+    if (FEED_MOCK) { clearPending.current = false; return stamp }
     try {
       await dismissAllNotifications(stamp)
+      clearGeneration.current++
+      clearPending.current = false
+      void refresh()
       return stamp
     } catch (e) {
       console.error('[brain-b] clear all failed', e)
+      clearPending.current = false
       setRows(prev => mergeBackRows(prev, before))
       return null
     }
-  }, [])
+  }, [refresh])
 
   const undoClear = useCallback(async (stamp: string) => {
-    if (!FEED_MOCK) {
-      try { await restoreDismissedAt(stamp) } catch (e) { console.error('[brain-b] undo clear failed', e) }
-    }
+    clearGeneration.current++
+    clearPending.current = true
+    try { if (!FEED_MOCK) await restoreDismissedAt(stamp) }
+    finally { clearPending.current = false }
     await refresh()
   }, [refresh])
 

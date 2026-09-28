@@ -2,6 +2,7 @@
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { NotificationGroup, Notification } from '../../lib/turns'
+import type { SystemAlert } from '../../lib/systemAlerts'
 import { renderInFrame } from '../test-utils'
 
 afterEach(() => { cleanup(); document.body.innerHTML = '' })
@@ -20,6 +21,9 @@ vi.mock('../../exp/brain/b/useFeedData', () => ({ useFeedData: () => feed }))
 // Waiting on you reads the brief and the queue piles; it has its own test.
 vi.mock('./WorkQueue', () => ({ WorkQueue: () => null }))
 
+const resolveAllSystemAlerts = vi.fn(async () => 'ALERT-STAMP')
+const undoResolveAll = vi.fn(async (_stamp: string) => {})
+vi.mock('../../lib/systemAlerts', async orig => ({ ...(await orig<typeof import('../../lib/systemAlerts')>()), resolveAllSystemAlerts: () => resolveAllSystemAlerts(), undoResolveAll: (stamp: string) => undoResolveAll(stamp) }))
 const { BellButton, BellFeed } = await import('./Bell')
 
 const note: Notification = {
@@ -34,51 +38,75 @@ beforeEach(() => {
 })
 
 const readers = { bell: async () => ({ unreadGroups: 104, open: 1102 }) }
+const alert: SystemAlert = { id: 'a1', source: 'test', dedupe_key: 'a1', severity: 'critical', title: 'Test alert', body: null, action_url: null, action_label: null, created_at: '2026-09-28T08:00:00Z', resolved_at: null }
+const alertReaders = { ...readers, alerts: async () => ({ rows: [alert], groups: [{ key: 'a1', severity: 'critical' as const, members: [{ ids: ['a1'], source: 'test', severity: 'critical' as const, title: 'Test alert', body: null, action_url: null, action_label: null, created_at: alert.created_at }], count: 1, newestCreatedAt: alert.created_at }], critical: 1 }) }
 
 describe('BellFeed verbs', () => {
-  it('Clear all asks, clears every open row, and the receipt Undo restores that stamp', async () => {
-    renderInFrame(<BellFeed />, { readers })
+  it('one click clears notifications and alerts, then Undo restores both stamps', async () => {
+    renderInFrame(<BellFeed />, { readers: alertReaders })
     await screen.findByText('104 unread in the last 4 hours · 1,102 not cleared')
-    fireEvent.click(document.querySelector('[data-verb="clear-all"]')!)
-    await screen.findByText('Clear every notification?')
-    await act(async () => { fireEvent.click(document.querySelector('[data-verb="confirm"]')!) })
+    await act(async () => { fireEvent.click(document.querySelector('[data-verb="clear-all"]')!) })
     expect(feed.clearAll).toHaveBeenCalledTimes(1)
-    await screen.findByText('Cleared 1,102 notifications.')
+    expect(resolveAllSystemAlerts).toHaveBeenCalledTimes(1)
+    expect(document.querySelector('.d-confirm')).toBeNull()
+    expect(document.querySelector('[data-sys-group]')).toBeNull()
     await act(async () => { fireEvent.click(document.querySelector('.d-toast [data-verb="undo"]')!) })
     expect(feed.undoClear).toHaveBeenCalledWith('STAMP')
+    expect(undoResolveAll).toHaveBeenCalledWith('ALERT-STAMP')
   })
 
   it('a refused Clear all says so and offers Retry', async () => {
     feed.clearAll.mockResolvedValueOnce(null)
     renderInFrame(<BellFeed />, { readers })
     await screen.findByText('104 unread in the last 4 hours · 1,102 not cleared')
-    fireEvent.click(document.querySelector('[data-verb="clear-all"]')!)
-    await act(async () => { fireEvent.click((await screen.findByText('Clear all', { selector: '.d-confirm .d-face span' })).closest('button')!) })
-    await screen.findByText('Could not clear. Nothing changed.')
+    await act(async () => { fireEvent.click(document.querySelector('[data-verb="clear-all"]')!) })
+    await screen.findByText('Could not clear notifications.')
   })
 
-  it('Cancel on the confirm writes nothing', async () => {
-    renderInFrame(<BellFeed />, { readers })
-    fireEvent.click(document.querySelector('[data-verb="clear-all"]')!)
-    await act(async () => { fireEvent.click(await waitFor(() => document.querySelector('[data-verb="cancel"]')!)) })
-    expect(feed.clearAll).not.toHaveBeenCalled()
+  it('offers Clear all when system alerts are the only rows', async () => {
+    feed.groups = []
+    renderInFrame(<BellFeed />, { readers: { ...alertReaders, bell: async () => ({ unreadGroups: 0, open: 0 }) } })
+    await screen.findByText('Test alert')
+    await act(async () => { fireEvent.click(document.querySelector('[data-verb="clear-all"]')!) })
+    expect(resolveAllSystemAlerts).toHaveBeenCalledTimes(1)
+    expect(document.querySelector('[data-sys-group]')).toBeNull()
   })
 
-  it('Clear all is a danger confirm: Enter never clears (same as Clear alerts)', async () => {
-    renderInFrame(<BellFeed />, { readers })
-    await screen.findByText('104 unread in the last 4 hours · 1,102 not cleared')
-    fireEvent.click(document.querySelector('[data-verb="clear-all"]')!)
-    await screen.findByText('Clear every notification?')
-    expect(document.querySelector('.d-confirm .d-key-d')).not.toBeNull()
-    await act(async () => { fireEvent.keyDown(window, { key: 'Enter' }) })
-    // Cancel held the focus, so Enter cancelled: nothing written.
-    expect(feed.clearAll).not.toHaveBeenCalled()
-    expect(screen.queryByText('Clear every notification?')).toBeNull()
+  it('keeps system rows visible when alert clearing fails and offers Undo for cleared notifications', async () => {
+    resolveAllSystemAlerts.mockRejectedValueOnce(new Error('offline'))
+    renderInFrame(<BellFeed />, { readers: alertReaders })
+    await screen.findByText('Test alert')
+    await act(async () => { fireEvent.click(document.querySelector('[data-verb="clear-all"]')!) })
+    expect(document.querySelector('[data-sys-group]')).not.toBeNull()
+    expect(screen.queryByText('All clear')).toBeNull()
+    await screen.findByText('Could not clear system alerts.')
+    await act(async () => { fireEvent.click(document.querySelector('.d-toast [data-verb="undo"]')!) })
+    expect(feed.undoClear).toHaveBeenCalledWith('STAMP')
+    expect(undoResolveAll).not.toHaveBeenCalled()
+  })
+
+  it('does not claim All clear when a new notification arrives after clearing', async () => {
+    renderInFrame(<BellFeed />, { readers: alertReaders })
+    await screen.findByText('Test alert')
+    await act(async () => { fireEvent.click(document.querySelector('[data-verb="clear-all"]')!) })
+    feed.groups = [{ key: 'new', groupKey: null, family: note.family, latest: { ...note, id: 'new' }, items: [{ ...note, id: 'new' }], count: 1, unread: 1, lastSeenAt: note.last_seen_at! } as NotificationGroup]
+    await act(async () => { fireEvent(window, new Event('focus')) })
+    expect(screen.queryByText('All clear')).toBeNull()
+    expect(document.querySelector('[data-feed-row]')).not.toBeNull()
+  })
+
+  it('shows Retry if the system alert reread fails after clear', async () => {
+    const alerts = vi.fn().mockResolvedValueOnce(await alertReaders.alerts()).mockRejectedValue(new Error('offline'))
+    renderInFrame(<BellFeed />, { readers: { ...alertReaders, alerts } })
+    await screen.findByText('Test alert')
+    await act(async () => { fireEvent.click(document.querySelector('[data-verb="clear-all"]')!) })
+    await waitFor(() => expect(document.querySelector('[data-sys-alerts="failed"] [data-verb="retry"]')).not.toBeNull())
+    expect(screen.queryByText('All clear')).toBeNull()
   })
 
   it('never draws an empty system-alerts box: none open, reading and failed are one line each', async () => {
     renderInFrame(<BellFeed />, { readers: { ...readers, alerts: async () => ({ rows: [], groups: [], critical: 0 }) } })
-    await screen.findByText('No system alert open in 14 days. A critical one lights the bell.')
+    await waitFor(() => expect(document.querySelector('[data-sys-alerts]')).toBeNull())
     expect(document.querySelector('.d-sys')).toBeNull()
     cleanup()
     renderInFrame(<BellFeed />, { readers: { ...readers, alerts: async () => { throw new Error('503') } } })

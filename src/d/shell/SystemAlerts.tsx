@@ -87,19 +87,16 @@ function GroupRow({ g, onDismiss }: { g: AlertGroup; onDismiss: (ids: string[], 
   )
 }
 
-export function SystemBox({ groups, failed, onRetry, onClear, onDismiss }: {
-  groups: AlertGroup[] | null; failed: boolean; onRetry: () => void; onClear: () => void
+export function SystemBox({ groups, failed, onRetry, onDismiss }: {
+  groups: AlertGroup[] | null; failed: boolean; onRetry: () => void
   onDismiss: (ids: string[], what: string) => void
 }) {
   const [all, setAll] = useState(false)
+  if (failed) return <p className="d-sysline d-sysline-bad" data-sys-alerts="failed">System alerts could not be read · <button type="button" className="d-sysline-k" data-verb="retry" onClick={onRetry}>Retry</button></p>
   // Never an empty box (final gate 09-27): reading, failed and "none open" are
   // one mono line each; the bordered box is drawn only around real alerts.
-  if (groups == null) {
-    return failed
-      ? <p className="d-sysline d-sysline-bad" data-sys-alerts="failed">System alerts could not be read · <button type="button" className="d-sysline-k" data-verb="retry" onClick={onRetry}>Retry</button></p>
-      : <p className="d-sysline" data-sys-alerts="reading" role="status">Reading system alerts…</p>
-  }
-  if (groups.length === 0) return <p className="d-sysline" data-sys-alerts="none">No system alert open in 14 days. A critical one lights the bell.</p>
+  if (groups == null) return <p className="d-sysline" data-sys-alerts="reading" role="status">Reading system alerts…</p>
+  if (groups.length === 0) return null
   const crit = groups.filter(g => g.severity === 'critical').length
   const open = groups.reduce((a, g) => a + g.count, 0)
   const shown = all ? groups : groups.slice(0, FIRST)
@@ -107,7 +104,6 @@ export function SystemBox({ groups, failed, onRetry, onClear, onDismiss }: {
     <div className={`d-sys${crit ? ' d-sys-crit' : ''}`} data-sys-alerts>
       <div className="d-sys-h">
         <span>System alerts · {open} open, 14 days</span>
-        {open > 0 && <button type="button" className="d-sys-clear" data-verb="clear-alerts" onClick={onClear}>Clear alerts</button>}
       </div>
       {shown.map(g => <GroupRow key={g.key} g={g} onDismiss={onDismiss} />)}
       {groups.length > FIRST && (
@@ -115,7 +111,6 @@ export function SystemBox({ groups, failed, onRetry, onClear, onDismiss }: {
           {all ? 'Show the first four' : `Show ${groups.length - FIRST} more`}
         </button>
       )}
-      {crit === 0 && <div className="d-sys-ok">{open === 0 ? 'No system alert open in 14 days.' : 'No critical alert open.'} A critical one lights the bell.</div>}
     </div>
   )
 }

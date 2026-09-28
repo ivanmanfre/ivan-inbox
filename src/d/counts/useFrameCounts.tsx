@@ -121,6 +121,7 @@ export function FrameCountsProvider({ children, readers = LIVE }: { children: Re
   // One read in flight per key: a focus event during a slow read does not
   // stack a second one on the database.
   const busy = useRef(new Set<string>())
+  const pending = useRef(new Map<string, () => void>())
   const alive = useRef(true)
   // Set on every mount, not only the first: StrictMode's rehearsal unmount runs
   // the cleanup once, and a flag left false would drop every read that lands.
@@ -131,7 +132,7 @@ export function FrameCountsProvider({ children, readers = LIVE }: { children: Re
   useEffect(() => () => { for (const t of retries.current.values()) window.clearTimeout(t); retries.current.clear() }, [])
 
   const run = useCallback(function go<T>(key: string, read: () => Promise<T>, set: (f: (prev: Slice<T>) => Slice<T>) => void) {
-    if (busy.current.has(key)) return
+    if (busy.current.has(key)) { pending.current.set(key, () => go(key, read, set)); return }
     busy.current.add(key)
     // No read waits forever: past READ_TIMEOUT_MS it counts as failed (the UI
     // says "could not read" with Retry) and busy is released for the retry.
@@ -157,7 +158,12 @@ export function FrameCountsProvider({ children, readers = LIVE }: { children: Re
           }, RETRY_MS))
         }
       },
-    ).finally(() => busy.current.delete(key))
+    ).finally(() => {
+      busy.current.delete(key)
+      const next = pending.current.get(key)
+      pending.current.delete(key)
+      next?.()
+    })
   }, [live])
 
   const refresh = useCallback((what?: CountKey | CountKey[]) => {

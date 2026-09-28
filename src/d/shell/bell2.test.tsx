@@ -7,7 +7,7 @@ import { renderInFrame } from '../test-utils'
 
 // Parity pass 2 for the bell: one system alert at a time, its link, body and
 // members; a group's members one at a time; the Claude-turn route; the
-// fallback for an address nothing routes; the routine fold; the Workflows alarm.
+// fallback for an address nothing routes; the routine fold.
 
 afterEach(() => { cleanup() })
 
@@ -94,12 +94,11 @@ describe('bell system alerts', () => {
     expect(document.body.textContent).not.toContain("in today's app")
   })
 
-  it('Clear alerts is a danger confirm (Cancel takes the focus)', async () => {
+  it('system alerts use the header Clear all without a second clear button', async () => {
     renderInFrame(<BellFeed />, { readers: readersWith([alert({})]) })
-    fireEvent.click(await q('[data-verb="clear-alerts"]'))
-    await screen.findByText('Clear the system alerts?')
-    expect(document.querySelector('.d-confirm-danger')).toBeTruthy()
-    expect(document.activeElement?.getAttribute('data-verb')).toBe('cancel')
+    await q('[data-sys-group]')
+    expect(document.querySelector('[data-verb="clear-all"]')).not.toBeNull()
+    expect(document.querySelector('[data-verb="clear-alerts"]')).toBeNull()
   })
 })
 
@@ -153,14 +152,10 @@ describe('bell rows', () => {
     expect(document.querySelector('.d-routine [data-feed-row]')).toBeTruthy()
   })
 
-  it('corroborated workflow failures head the bell and open Workflows', async () => {
+  it('workflow health summaries do not remain in the bell after clearing rows', async () => {
     const health = async () => ({ urgent: [{ key: 'w', name: 'Rise DM sender', kind: 'both' as const, source: 'n8n', category: null, lastAt: null, detail: null, acknowledged: false }], alerts: [], olderErrored: 0, olderStalled: 0, acknowledged: 0 })
-    const opened = vi.fn()
-    window.addEventListener('d-workflows-open', opened)
     renderInFrame(<BellFeed />, { readers: readersWith([], { health }) })
-    const ban = await screen.findByText('1 automation alert')
-    fireEvent.click(ban.closest('button')!)
-    expect(opened).toHaveBeenCalled()
-    window.removeEventListener('d-workflows-open', opened)
+    await q('[data-bell-feed]')
+    expect(document.querySelector('.d-wfban')).toBeNull()
   })
 })
