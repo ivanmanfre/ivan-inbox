@@ -59,8 +59,8 @@ export function Refill({ seat, d, s, now }: { seat: Seat; d: LanesData; s: Suppl
   return (
     <div className="dl-panel dl-rf" data-band="refill" data-seat={seat}>
       <div className="dl-panh"><b>Lead supply</b><span>ready now, by lane</span></div>
-      {!d.ready.value && !d.pipeline.value
-        ? <p className={`dl-sl ${d.ready.failed ? 'dl-bad' : 'dl-unk'}`}>{d.ready.failed ? `Could not be read: ${d.ready.failed}` : 'Reading who is ready…'}</p>
+      {!d.ready.value
+        ? <p className={`dl-sl ${d.ready.failed ? 'dl-bad' : 'dl-unk'}`}>{d.ready.failed ? `Who is ready could not be read: ${d.ready.failed}` : 'Reading who is ready…'}</p>
         : s.lanes.length ? <Lanes s={s} /> : <p className="dl-sl">No lane has anyone ready.</p>}
       {v && <p className={`dl-rf-v${v.bad ? ' dl-bad' : ''}`}>{v.text}</p>}
       {s.days ? <InOut s={s} now={now} /> : <p className={`dl-sl ${d.replacement.failed ? 'dl-bad' : 'dl-unk'}`}>{d.replacement.failed ? 'The refill could not be read.' : 'Reading the refill…'}</p>}
