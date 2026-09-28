@@ -61,7 +61,7 @@ describe('campaign-sheet lines', () => {
     expect(armOf({ ai_model: null, message_text: '(blank invite)' })).toBe('blank')
     expect(armOf({ ai_model: 'arch_games_note_v1', message_text: 'Hey' })).toBe('games note')
     expect(armOf({ ai_model: null, message_text: 'Hey' })).toBe('no arm recorded')
-    expect(armsLine([{ arm: 'blank', n: 51 }, { arm: 'games note', n: 19 }])).toMatch(/^Company expansion invites, 30 days: 51 blank, 19 games note\./)
+    expect(armsLine([{ arm: 'blank', n: 51 }, { arm: 'games note', n: 19 }])).toMatch(/^Colleague invites, 30 days: 51 blank, 19 games note\./)
   })
 })
 

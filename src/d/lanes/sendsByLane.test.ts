@@ -20,7 +20,7 @@ describe('invites sent, by lane', () => {
   it('Arch today: lanes largest first, each split by the vertical the sender chose (Warsaw day)', () => {
     const m = mixOf(arch, 'arch', 'today', NOW)
     expect(m.total).toBe(6)
-    expect(m.lanes.map(l => [l.label, l.n])).toEqual([['Company expansion', 3], ['Warm engagers', 2], ['Hiring signal', 1]])
+    expect(m.lanes.map(l => [l.label, l.n])).toEqual([['Colleagues of good leads', 3], ['Warm engagers', 2], ['Hiring signal', 1]])
     expect(m.lanes[0].verts).toEqual([{ key: 'games', n: 1 }, { key: 'apps', n: 2 }])
     expect(m.lanes[1].verts).toEqual([{ key: 'games', n: 1 }, { key: 'd2c', n: 1 }])
     expect(m.lanes[2].verts).toEqual([{ key: 'none', n: 1 }])

@@ -60,7 +60,7 @@ describe('glance: ready', () => {
       { seat: 'ivan', lane: 'cold', label: 'Cold', n: 108, capped: false, campaignId: 'c', off: null },
       { seat: 'ivan', lane: 'engage', label: 'Warm engagers', n: 114, capped: false, campaignId: 'e', off: null },
       { seat: 'ivan', lane: 'view', label: 'Profile views', n: 3, capped: false, campaignId: 'v', off: 'switched off' },
-      { seat: 'arch', lane: 'company_expansion', label: 'Company expansion', n: 143, capped: false, campaignId: 'a', off: null },
+      { seat: 'arch', lane: 'company_expansion', label: 'Colleagues of good leads', n: 143, capped: false, campaignId: 'a', off: null },
     ],
   }
   it('never adds seats; the total leaves out lanes the sender skips; busiest first', () => {

@@ -186,7 +186,7 @@ export function clientBadge(id: string): string {
 // beside the seat pill without wrapping the row. A value not in this map still renders (via
 // label()'s sentenceCase fallback) rather than vanishing, so a lane added later is never blank.
 const LANE: Record<string, string> = {
-  company_expansion: 'Company expansion',
+  company_expansion: 'Colleagues of good leads',
   engager_warm: 'Engager',
   hiring_signal: 'Hiring signal',
   funding_signal: 'Funding',

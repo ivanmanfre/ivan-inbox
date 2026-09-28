@@ -11,8 +11,8 @@ type Arms = Array<{ arm: string; n: number }>
 
 export function armsLine(arms: Arms): string {
   const total = arms.reduce((a, x) => a + x.n, 0)
-  if (!total) return 'Company expansion invites, 30 days: none went out.'
-  return `Company expansion invites, 30 days: ${arms.map(a => `${a.n} ${a.arm}`).join(', ')}. Games and apps get their note; D2C and unknown go blank on purpose, plus the half of every invite that goes blank.`
+  if (!total) return 'Colleague invites, 30 days: none went out.'
+  return `Colleague invites, 30 days: ${arms.map(a => `${a.n} ${a.arm}`).join(', ')}. Games and apps get their note; D2C and unknown go blank on purpose, plus the half of every invite that goes blank.`
 }
 
 export function SheetNotes({ seat, lanes, arms, stopped }: {
