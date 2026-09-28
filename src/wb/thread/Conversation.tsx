@@ -29,7 +29,7 @@ import { Linkified } from '../chrome/Linkified'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import { formatReturn, returnsIn, usePushLater } from '../../lib/pushLater'
 import {
-  approveDraft, channelFamilies, canComposeEmail, composeReply, discardLegs, draftLegs, legFailureText, holdReason, isEngineRetired, retiredLabel, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
+  approveDraft, channelFamilies, canComposeEmail, composeReply, discardLegs, draftLegs, legFailureText, holdReason, isEngineRetired, isHiddenRetired, retiredLabel, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
   saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId, emailRowSender, ladderSteps, sendFailed,
   offersReplyMyself, REPLY_MYSELF, type DiscardMode,
@@ -464,7 +464,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
   // Messages: everything except discarded rows and unapproved drafts (drafts
   // live in the card).
   const bubbles = thread.messages.filter(
-    m => m.send_blocked_reason !== 'discarded_in_inbox' && !isDraft(m) && !isInternalConfirmation(m),
+    m => m.send_blocked_reason !== 'discarded_in_inbox' && !isDraft(m) && !isInternalConfirmation(m) && !isHiddenRetired(m),
   )
   const onScreen = bubbles.filter(m => !isEngineRetired(m))
   // Judged on what is actually ON SCREEN — a pending email draft sitting in the

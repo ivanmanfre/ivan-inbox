@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { offersReplyMyself, isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, browseOrder, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISMISS_HOLD_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, missingManualGuardMeansPreMigration, isEngineRetired, retiredLabel, holdReason, isSenderMirrorEmail, draftLegs, isOwedInbound, threadOrder, DELETED_REASON, type InboxMessage, type Status, type DraftGuard } from './inbox'
+import { offersReplyMyself, isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, browseOrder, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISMISS_HOLD_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, missingManualGuardMeansPreMigration, isEngineRetired, isHiddenRetired, retiredLabel, holdReason, isSenderMirrorEmail, draftLegs, isOwedInbound, threadOrder, DELETED_REASON, type InboxMessage, type Status, type DraftGuard } from './inbox'
 
 // inbox.ts:191 gates needsAnswer on a 14-day wall-clock staleness window
 // (STALE_DAYS), measured against Date.now() by default -- and most callers
@@ -1123,6 +1123,17 @@ describe('drafts with email and follow-ups, 2026-09-26 live fixes', () => {
     expect(retiredLabel({ ...r, send_blocked_reason: 'model_meta_no_reply_2026-09-25' })).toMatch(/no reply/)
     // A real sender block stays a failure.
     expect(sendFailed({ ...r, send_blocked_reason: 'duplicate_in_thread' })).toBe(true)
+  })
+  // Danil Kontsevoy (2026-09-28): the canned inbound-request opener, pulled
+  // because he wrote first, showed as "Send failed" + "Replied (send failed)".
+  it('a qualifier pulled because they wrote first is hidden, never failed', () => {
+    const q = { ...base, id: 'q', ai_model: 'inbound_request_dm_v1', send_blocked_at: '2026-09-28T07:00:00Z', send_blocked_reason: 'replied_before_qualifier' }
+    expect(sendFailed(q)).toBe(false)
+    expect(isHiddenRetired(q)).toBe(true)
+    expect(isHiddenRetired({ ...q, send_blocked_reason: 'superseded_by_v2_redraft' })).toBe(false)
+    const them = { ...base, id: 'in', direction: 'inbound' as const, sent_at: '2026-09-28T06:00:00Z', created_at: '2026-09-28T06:00:00Z' }
+    const v = ladderSteps({ stage: 'replied', messages: [them, q] })
+    expect(v.kind === 'steps' && v.steps.some(s => s.state === 'failed')).toBe(false)
   })
   it('a recoverable hold says why it came back', () => {
     const race = { ...base, send_blocked_at: '2026-07-22T11:00:00Z', send_blocked_reason: `${RACE_HOLD_PREFIX}inbound` }

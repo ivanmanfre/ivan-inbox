@@ -4,7 +4,7 @@
 // invite note. Older messages sit behind one "N earlier" tap.
 // Drafts, internal questions and discarded rows are not history (they live in the pane below).
 import { Fragment, useState } from 'react'
-import { eventTime, isDraft, isEngineRetired, isInternalConfirmation, retiredLabel, sendFailed, messageChannel, type InboxMessage, type Thread } from '../../lib/inbox'
+import { eventTime, isDraft, isEngineRetired, isHiddenRetired, isInternalConfirmation, retiredLabel, sendFailed, messageChannel, type InboxMessage, type Thread } from '../../lib/inbox'
 import { label } from '../../lib/labels'
 import { Linkified } from '../ui/Linkified'
 import { warsawDay, warsawDayWord, warsawHm } from '../ui/time'
@@ -48,7 +48,7 @@ export function emailAddrLine(m: InboxMessage): string | null {
 }
 
 export function historyRows(t: Thread): InboxMessage[] {
-  return t.messages.filter(m => !isDraft(m) && !isInternalConfirmation(m) && m.send_blocked_reason !== 'discarded_in_inbox'
+  return t.messages.filter(m => !isDraft(m) && !isInternalConfirmation(m) && !isHiddenRetired(m) && m.send_blocked_reason !== 'discarded_in_inbox'
     && (m.direction === 'inbound' || m.sent_at || m.approved_at || sendFailed(m) || isEngineRetired(m)))
 }
 

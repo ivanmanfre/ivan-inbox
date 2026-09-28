@@ -184,11 +184,19 @@ export function sendFailed(m: InboxMessage): boolean {
 // never wears "Send failed" (JeongHyun Bae carried six red "Send failed" bubbles
 // for six superseded redrafts, 2026-09-26 review). Matched on the unsent row
 // only: a sent row is history whatever its reason says.
-const ENGINE_RETIRED = /^(superseded_by|stale_draft_expired|model_meta_no_reply|writer_no_reply)/
+const ENGINE_RETIRED = /^(superseded_by|stale_draft_expired|model_meta_no_reply|writer_no_reply|replied_before_qualifier)/
 
 export function isEngineRetired(m: InboxMessage): boolean {
   return m.direction === 'outbound' && !m.sent_at && !m.approved_at
     && ENGINE_RETIRED.test(m.send_blocked_reason ?? '')
+}
+
+// An engine-retired draft that shows NOTHING, not even the quiet line: the
+// inbound-request lane's canned opener, pulled because the person wrote first.
+// It was never Mattan's message and the thread already shows their note (Ivan
+// 2026-09-28 on Danil Kontsevoy: "why do I need to see send failed").
+export function isHiddenRetired(m: InboxMessage): boolean {
+  return isEngineRetired(m) && m.send_blocked_reason === 'replied_before_qualifier'
 }
 
 /** The quiet line an engine-retired draft shows in place of a bubble. */
