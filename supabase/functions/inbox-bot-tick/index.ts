@@ -218,6 +218,7 @@ Deno.serve(async (req) => {
     .select('id, family, severity, tenant, count, title, body, url, group_key, created_at')
     .is('read_at', null)
     .is('dismissed_at', null)
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
     .not('family', 'in', `(${MUTED_FAMILIES.join(',')})`)
     .order('created_at', { ascending: true })
     .limit(SELECT_LIMIT)

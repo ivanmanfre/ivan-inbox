@@ -25,6 +25,8 @@ export interface PushPayload {
   tag?: string
   /** The feed family, forwarded by the service worker to the open tabs. */
   family?: string
+  /** Canonical persisted feed row. Older direct push producers may omit it. */
+  notificationId?: string
   data?: Record<string, unknown>
 }
 

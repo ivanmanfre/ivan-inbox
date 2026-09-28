@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   dismissAllNotifications, dismissGroup, dismissNotification, groupNotifications, listNotifications,
   markNotificationsRead, mergeBackRows, restoreDismissedAt, restoreNotifications,
+  isActiveNotification, nextNotificationExpiry,
   type Notification, type NotificationGroup,
 } from '../../../lib/turns'
 import { mockFlag } from '../../v2c/mock'
@@ -18,6 +19,7 @@ const FEED_MOCK = mockFlag('feed') === 'demo'
 // could disagree with each other about the count.
 export function useFeedData() {
   const [rows, setRows] = useState<Notification[]>([])
+  const [nowMs, setNowMs] = useState(() => Date.now())
   const [lastEmptySince, setLastEmptySince] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
   // A read that FAILED is not an empty inbox. Without this flag the catch below
@@ -50,6 +52,17 @@ export function useFeedData() {
 
   useEffect(() => { void refresh() }, [refresh])
 
+  const nextExpiry = nextNotificationExpiry(rows, nowMs)
+  useEffect(() => {
+    if (!nextExpiry) return
+    const timer = window.setTimeout(() => {
+      setNowMs(Date.now())
+      setRows(prev => prev.filter(row => isActiveNotification(row)))
+      void refresh()
+    }, Math.max(1, Date.parse(nextExpiry) - Date.now() + 1))
+    return () => window.clearTimeout(timer)
+  }, [nextExpiry, refresh])
+
   // Poll on mount (above), on visibilitychange, and when the service worker
   // posts {type:'push'} — the three named triggers (D4: polling stands in for
   // a realtime publication edit this run deliberately left out of scope).
@@ -69,8 +82,9 @@ export function useFeedData() {
   // Memoised on the rows (feel pass, 2026-09-25): a new `groups` array on every
   // render made the phone's feed sheet re-render all of its rows on every tab
   // tap. groupNotifications is a pure function of the rows.
-  const groups = useMemo(() => groupNotifications(rows), [rows])
-  const unreadTotal = rows.filter(r => !r.read_at).length
+  const activeRows = useMemo(() => rows.filter(r => isActiveNotification(r, nowMs)), [rows, nowMs])
+  const groups = useMemo(() => groupNotifications(activeRows), [activeRows])
+  const unreadTotal = activeRows.filter(r => !r.read_at).length
 
   // MARK-READ ON OPEN, not on scroll-into-view: a fast scroll through a feed
   // with a hundred rows would stamp every one of them read before Ivan had
@@ -176,7 +190,7 @@ export function useFeedData() {
   }), [])
 
   return {
-    rows, groups, unreadTotal, loaded, error, lastEmptySince, expanded,
+    rows: activeRows, groups, unreadTotal, loaded, error, lastEmptySince, expanded,
     refresh, markRead, dismissOne, dismissGroupRows, restore, toggle, clearAll, undoClear,
   }
 }

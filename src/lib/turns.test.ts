@@ -27,6 +27,7 @@ function chain(step: Step) {
     select(cols?: string) { step.cols = cols; return c },
     eq(k: string, v: unknown) { step.filters.push(`eq:${k}=${String(v)}`); return c },
     is(k: string, v: unknown) { step.filters.push(`is:${k}=${String(v)}`); return c },
+    or(v: string) { step.filters.push(`or:${v}`); return c },
     in(k: string, v: unknown[]) { step.filters.push(`in:${k}=${v.join('|')}`); return c },
     order(k: string, o?: { ascending?: boolean; nullsFirst?: boolean }) {
       step.order = `${k}:${o?.ascending ? 'asc' : 'desc'}${o?.nullsFirst === false ? ':nullslast' : ''}`
@@ -59,7 +60,8 @@ vi.mock('./supabase', () => ({
 const {
   NOTIFICATION_FALLBACK_HASH, NOTIFICATIONS_TABLE, NOTIFICATIONS_VIEW, THREADS_VIEW,
   THREADS_TABLE, TURNS_TABLE, TURNS_VIEW, abortTurn, dismissGroup, dismissNotification,
-  getBotThread, getThread, getTurn, groupNotifications, isUuid, latestThread, listGroupRows,
+  getActiveNotification, getBotThread, getThread, getTurn, groupNotifications, isActiveNotification,
+  isUuid, latestThread, listGroupRows, nextNotificationExpiry,
   listNotifications, listThreads, listTurns, markBotSeen, markNotificationsRead, mergeBackRows,
   notificationDeepLink, setBotPushMuted,
 } = await import('./turns')
@@ -213,13 +215,34 @@ describe('reads go through the views, never the base tables', () => {
     await listNotifications()
     expect(steps[0].table).toBe(NOTIFICATIONS_VIEW)
     expect(steps[0].filters).toContain('is:dismissed_at=null')
-    expect(steps[0].order).toBe('created_at:desc')
+    expect(steps[0].order).toBe('id:desc')
+    expect(steps[0].filters.some(f => f.startsWith('or:expires_at.is.null,expires_at.gt.'))).toBe(true)
     expect(steps[0].limit).toBe(200)
 
     queue.push({ data: [], error: null })
     await listNotifications({ includeDismissed: true, limit: 5 })
     expect(steps[1].filters).toEqual([])
     expect(steps[1].limit).toBe(5)
+  })
+})
+
+describe('notification expiry contract', () => {
+  it('ends visibility exactly at four hours without changing read or incident state', () => {
+    const at = Date.parse('2026-09-28T12:00:00Z')
+    const row = { dismissed_at: null, expires_at: '2026-09-28T12:00:00Z' }
+    expect(isActiveNotification(row, at - 1)).toBe(true)
+    expect(isActiveNotification(row, at)).toBe(false)
+    expect(isActiveNotification({ ...row, expires_at: null }, at)).toBe(true)
+    expect(nextNotificationExpiry([row, { dismissed_at: null, expires_at: null }], at - 1)).toBe(new Date(at).toISOString())
+    expect(nextNotificationExpiry([row], at)).toBeNull()
+  })
+
+  it('gets a canonical active row by ID and refuses an expired result', async () => {
+    queue.push({ data: { id: U1, dismissed_at: null, expires_at: '2020-01-01T00:00:00Z' }, error: null })
+    expect(await getActiveNotification(U1)).toBeNull()
+    expect(steps[0].table).toBe(NOTIFICATIONS_VIEW)
+    expect(steps[0].filters).toContain('is:dismissed_at=null')
+    expect(steps[0].filters.some(f => f.startsWith('or:expires_at.is.null,expires_at.gt.'))).toBe(true)
   })
 })
 
@@ -275,6 +298,15 @@ const notif = (o: Partial<Notification>): Notification => ({
 })
 
 describe('groupNotifications', () => {
+  it('keeps different conditions from one workflow in separate visible groups', () => {
+    const rows = [
+      notif({ id: 'config', family: 'system_infra_alarm', group_key: 'workflow', incident_key: 'rise:w:config:read_failed:attention' }),
+      notif({ id: 'auth', family: 'system_infra_alarm', group_key: 'workflow', incident_key: 'rise:w:hubspot:auth_rejected:attention' }),
+    ]
+    const groups = groupNotifications(rows)
+    expect(groups).toHaveLength(2)
+    expect(groups.every(g => g.groupKey === null)).toBe(true)
+  })
   it('a producer that set group_key decides its own fold', () => {
     const g = groupNotifications([
       notif({ id: 'a', group_key: 'turn:1', title: 'One', last_seen_at: '2026-09-04T09:00:00.000Z' }),

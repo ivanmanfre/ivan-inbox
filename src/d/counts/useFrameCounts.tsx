@@ -194,6 +194,16 @@ export function FrameCountsProvider({ children, readers = LIVE }: { children: Re
     }
   }, [refresh])
 
+  // The count query finds the earliest expiry across every open row, including
+  // rows already read and rows outside the feed's 200-row window.
+  useEffect(() => {
+    const at = bell.value?.nextExpiryAt
+    if (!at) return
+    const delay = Math.max(1, Date.parse(at) - Date.now() + 1)
+    const timer = window.setTimeout(() => refresh('bell'), delay)
+    return () => window.clearTimeout(timer)
+  }, [bell.value?.nextExpiryAt, refresh])
+
   // LIVE: today's realtime tables, one coalesced re-read per count.
   useEffect(() => {
     if (!live) return

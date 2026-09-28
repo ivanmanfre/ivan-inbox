@@ -6,6 +6,7 @@
 // What these pin is the two rules that decide whether a feed row gets told to
 // Ivan twice: the open-turn exclusion, and "only what fits gets stamped".
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
 import { buildBundle, BUNDLE_MAX_CHARS, type FeedRow, MUTED_FAMILIES, selectRows } from './bundle.ts'
 
 function row(over: Partial<FeedRow> & { id: string; created_at: string }): FeedRow {
@@ -23,6 +24,13 @@ function row(over: Partial<FeedRow> & { id: string; created_at: string }): FeedR
 }
 
 describe('selectRows', () => {
+  it('filters expired rows in SQL before the 200-row bot limit', () => {
+    const source = readFileSync('supabase/functions/inbox-bot-tick/index.ts', 'utf8')
+    const query = source.slice(source.indexOf(".from('inbox_notifications')", source.indexOf('// ---- 5. the rows')),
+      source.indexOf('.limit(SELECT_LIMIT)', source.indexOf('// ---- 5. the rows')))
+    expect(query).toContain('.is(\'dismissed_at\', null)')
+    expect(query).toContain('expires_at.is.null,expires_at.gt.')
+  })
   it('keeps rows oldest first', () => {
     const rows = [
       row({ id: 'c', created_at: '2026-09-11T12:00:00Z' }),

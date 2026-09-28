@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { isImportantWorkflowFamily } from '../../supabase/functions/_shared/notification-lifecycle'
 
 // turns.ts — the client data layer for db/049: persisted Claude turns, the
 // threads that hold their CLI session, and the one notification feed.
@@ -104,6 +105,8 @@ export type Notification = {
   created_at: string
   read_at: string | null
   dismissed_at: string | null
+  expires_at?: string | null
+  incident_key?: string | null
 }
 
 export const THREADS_VIEW = 'inbox_threads_v'
@@ -127,7 +130,7 @@ const TURN_COLS =
 
 const NOTIFICATION_COLS =
   'id, family, source, severity, title, body, url, media, group_key, tenant, count, ' +
-  'first_seen_at, last_seen_at, created_at, read_at, dismissed_at'
+  'first_seen_at, last_seen_at, created_at, read_at, dismissed_at, expires_at, incident_key'
 
 // A turn id is minted in the browser and travels to the broker, to Railway and
 // back through a webhook. Anything that is not a uuid on the way in is a
@@ -307,10 +310,33 @@ export async function listNotifications(
 ): Promise<Notification[]> {
   const { limit = 200, includeDismissed = false } = opts
   let q = supabase.from(NOTIFICATIONS_VIEW).select(NOTIFICATION_COLS)
-  if (!includeDismissed) q = q.is('dismissed_at', null)
-  const { data, error } = await q.order('created_at', { ascending: false }).limit(limit)
+  if (!includeDismissed) q = q.is('dismissed_at', null).or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+  const { data, error } = await q.order('last_seen_at', { ascending: false }).order('id', { ascending: false }).limit(limit)
   if (error) throw error
   return (data ?? []) as unknown as Notification[]
+}
+
+export function isActiveNotification(n: Pick<Notification, 'dismissed_at' | 'expires_at'>, nowMs = Date.now()): boolean {
+  return !n.dismissed_at && (n.expires_at == null || Date.parse(n.expires_at) > nowMs)
+}
+
+export function nextNotificationExpiry(rows: Pick<Notification, 'dismissed_at' | 'expires_at'>[], nowMs = Date.now()): string | null {
+  let next = Infinity
+  for (const row of rows) {
+    if (!isActiveNotification(row, nowMs) || !row.expires_at) continue
+    next = Math.min(next, Date.parse(row.expires_at))
+  }
+  return Number.isFinite(next) ? new Date(next).toISOString() : null
+}
+
+export async function getActiveNotification(id: string): Promise<Notification | null> {
+  if (!isUuid(id)) return null
+  const { data, error } = await supabase.from(NOTIFICATIONS_VIEW).select(NOTIFICATION_COLS)
+    .eq('id', id).is('dismissed_at', null)
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`).maybeSingle()
+  if (error) throw error
+  const row = data as Notification | null
+  return row && isActiveNotification(row) ? row : null
 }
 
 /** Stamp read_at on rows that do not have it. An empty list is not a query. */
@@ -404,6 +430,7 @@ export type NotificationGroup = {
 // because "3 drafts waiting" and "5 drafts waiting" are one situation reported
 // twice, not two situations.
 function foldKey(n: Notification): string {
+  if (isImportantWorkflowFamily(n.family) && n.incident_key) return `i:${n.incident_key}`
   if (n.group_key) return `g:${n.group_key}`
   const shape = n.title.replace(/\d+/g, '').replace(/\s+/g, ' ').trim().toLowerCase()
   return `f:${n.family}:${shape}`
@@ -418,7 +445,7 @@ const seenAt = (n: Notification): string => n.last_seen_at || n.created_at
 // restore-on-Undo, so there is one merge rule instead of two that could drift.
 export function mergeBackRows(rows: Notification[], restored: Notification[]): Notification[] {
   const have = new Set(rows.map(r => r.id))
-  const add = restored.filter(r => !have.has(r.id))
+  const add = restored.filter(r => !have.has(r.id) && isActiveNotification(r))
   if (!add.length) return rows
   return [...rows, ...add].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
 }
@@ -439,7 +466,7 @@ export function groupNotifications(rows: Notification[]): NotificationGroup[] {
     const latest = sorted[0]
     groups.push({
       key,
-      groupKey: latest.group_key ?? null,
+      groupKey: key.startsWith('i:') ? null : latest.group_key ?? null,
       family: latest.family,
       latest,
       items: sorted,

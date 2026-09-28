@@ -12,6 +12,7 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { sendPush } from './push-send.ts'
 import { presentPush } from './alert-kinds.ts'
+import { fallbackIncidentKey, isImportantWorkflowFamily } from './notification-lifecycle.ts'
 
 const FAMILY_RE = /^[a-z][a-z0-9_]{1,39}$/
 const SEVERITIES = ['info', 'attention', 'error'] as const
@@ -103,6 +104,7 @@ export interface NotifyInput {
   family: string
   source?: string | null
   dedupe_key?: string | null
+  incident_key?: string | null
   severity?: string | null
   title: string
   body?: string | null
@@ -177,6 +179,11 @@ export function validateNotify(raw: unknown): Required<Pick<NotifyInput, 'family
   if (b.media != null && media === null) throw new NotifyError(400, 'bad_media', 'media must be an object')
 
   const push = typeof b.push === 'boolean' ? b.push : null
+  const incidentKey = str(b.incident_key)
+  if (b.incident_key != null && (!incidentKey || incidentKey.length > 1000 ||
+    !/^[a-zA-Z0-9:_./-]+$/.test(incidentKey) || incidentKey.split(':').length < 4)) {
+    throw new NotifyError(400, 'bad_incident_key')
+  }
 
   return {
     family,
@@ -188,6 +195,7 @@ export function validateNotify(raw: unknown): Required<Pick<NotifyInput, 'family
     push,
     source: str(b.source),
     dedupe_key: str(b.dedupe_key),
+    incident_key: incidentKey,
     group_key: str(b.group_key),
     tenant,
   }
@@ -199,6 +207,23 @@ export function validateNotify(raw: unknown): Required<Pick<NotifyInput, 'family
  */
 export async function notify(db: SupabaseClient, raw: unknown): Promise<NotifyResult> {
   const n = validateNotify(raw)
+
+  if (isImportantWorkflowFamily(n.family)) {
+    const key = n.incident_key ?? await fallbackIncidentKey(n)
+    if (key.length > 1000 || !/^[a-zA-Z0-9:_./-]+$/.test(key)) {
+      throw new NotifyError(400, 'bad_incident_key')
+    }
+    const { data: claimed, error: claimErr } = await db.rpc('claim_inbox_workflow_notification', {
+      p_alert: { ...n, incident_key: key },
+    })
+    if (claimErr) throw new NotifyError(500, 'incident_claim_failed', claimErr.message)
+    const claim = Array.isArray(claimed) ? claimed[0] : claimed
+    if (!claim?.id || typeof claim.created !== 'boolean') {
+      throw new NotifyError(500, 'incident_claim_empty')
+    }
+    if (!claim.created) return { id: claim.id, pushed: false, deduped: true, subs: 0, results: [] }
+    return pushCreatedRow(db, n, claim.id)
+  }
 
   // ---- dedupe: same key, seen inside the window, not already dismissed -----
   if (n.dedupe_key) {
@@ -266,6 +291,13 @@ export async function notify(db: SupabaseClient, raw: unknown): Promise<NotifyRe
   const shouldPush = n.push ?? pushDefault(n.family, (n.severity ?? 'info') as Severity)
   if (!shouldPush) return { id: row.id, pushed: false, deduped: false, subs: 0, results: [] }
 
+  return pushCreatedRow(db, n, row.id)
+}
+
+async function pushCreatedRow(db: SupabaseClient, n: ReturnType<typeof validateNotify>, id: string): Promise<NotifyResult> {
+  const shouldPush = n.push ?? pushDefault(n.family, (n.severity ?? 'info') as Severity)
+  if (!shouldPush) return { id, pushed: false, deduped: false, subs: 0, results: [] }
+
   // The stored row keeps the producer's own n.title / n.body untouched
   // (written above). Only the push payload is reshaped, into one of a
   // handful of KINDS (glyph + label + cleaned subject) so a lock screen can
@@ -284,12 +316,14 @@ export async function notify(db: SupabaseClient, raw: unknown): Promise<NotifyRe
     // The service worker resolves this against its own scope, so './' is the
     // form that lands inside the app rather than at the user root.
     url: n.url ?? './',
-    // Same group collapses on the device instead of stacking; a row with no
-    // group is its own tag so it can never swallow an unrelated notification.
-    tag: n.group_key ?? row.id,
+    // Operational incidents always tag by row ID: a coarse producer group
+    // must not collapse a different failure on the device. Other families
+    // retain their existing group-tag behavior.
+    tag: isImportantWorkflowFamily(n.family) ? id : n.group_key ?? id,
     // The worker forwards this to every open tab so a feed can refetch just its
     // own family instead of reloading everything on every push.
     family: n.family,
+    notificationId: id,
   })
 
   // Nobody subscribed is not a delivery. Stamping pushed_at on a send that
@@ -300,7 +334,7 @@ export async function notify(db: SupabaseClient, raw: unknown): Promise<NotifyRe
       ...(delivered ? { pushed_at: new Date().toISOString() } : {}),
       push_result: out,
     })
-    .eq('id', row.id)
+    .eq('id', id)
 
-  return { id: row.id, pushed: delivered, deduped: false, subs: out.subs, results: out.results }
+  return { id, pushed: delivered, deduped: false, subs: out.subs, results: out.results }
 }

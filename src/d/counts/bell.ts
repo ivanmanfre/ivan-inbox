@@ -5,7 +5,7 @@ import { NOTIFICATIONS_VIEW } from '../../lib/turns'
 // coalesce(group_key, id) over rows with read_at and dismissed_at both null in
 // inbox_notifications_v. Counted over every open row, not the newest 200 the
 // feed loads. `open` is every row not dismissed, for the panel's sub line.
-export type BellCounts = { unreadGroups: number; open: number }
+export type BellCounts = { unreadGroups: number; open: number; nextExpiryAt?: string | null }
 
 export function unreadGroups(rows: { id: string; group_key: string | null }[]): number {
   return new Set(rows.map(r => r.group_key || r.id)).size
@@ -14,21 +14,26 @@ export function unreadGroups(rows: { id: string; group_key: string | null }[]): 
 const PAGE = 1000
 
 export async function fetchBellCounts(): Promise<BellCounts> {
-  const rows: { id: string; group_key: string | null }[] = []
+  const now = new Date().toISOString()
+  const rows: { id: string; group_key: string | null; read_at: string | null; expires_at: string | null }[] = []
   for (let from = 0; from < 50_000; from += PAGE) {
     const { data, error } = await supabase.from(NOTIFICATIONS_VIEW)
-      .select('id,group_key')
-      .is('read_at', null).is('dismissed_at', null)
+      .select('id,group_key,read_at,expires_at')
+      .is('dismissed_at', null)
+      .or(`expires_at.is.null,expires_at.gt.${now}`)
       .order('created_at', { ascending: false }).order('id', { ascending: true })
       .range(from, from + PAGE - 1)
     if (error) throw error
-    const page = (data ?? []) as { id: string; group_key: string | null }[]
+    const page = (data ?? []) as { id: string; group_key: string | null; read_at: string | null; expires_at: string | null }[]
     rows.push(...page)
     if (page.length < PAGE) break
+    if (from + PAGE >= 50_000) throw new Error('bell_count_page_limit')
   }
-  const { count, error } = await supabase.from(NOTIFICATIONS_VIEW)
-    .select('id', { count: 'exact', head: true })
-    .is('dismissed_at', null)
-  if (error) throw error
-  return { unreadGroups: unreadGroups(rows), open: count ?? rows.length }
+  const next = rows.reduce<number>((min, row) => row.expires_at
+    ? Math.min(min, Date.parse(row.expires_at)) : min, Infinity)
+  return {
+    unreadGroups: unreadGroups(rows.filter(row => !row.read_at)),
+    open: rows.length,
+    nextExpiryAt: Number.isFinite(next) ? new Date(next).toISOString() : null,
+  }
 }
