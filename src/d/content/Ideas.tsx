@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useClientIdeas, useIdeaCandidates } from '../../hooks/useContent'
 import { fetchIdeaScores, sortByScore, type IdeaScoreRead } from '../../lib/ideaScores'
+import { banditChipLine, currentIsoWeekMonday, fetchBanditChip, personalFloorLine, type BanditChipRead } from '../../lib/banditChip'
 import { applyFilters, buildFacets, CLIENT_IDEA_SPECS, IDEA_PROMINENT, IDEA_SPECS, splitFacets, type Facet, type FilterState } from '../../lib/contentFilters'
 import type { IdeaCandidate } from '../../lib/content'
 import type { ClientIdea } from '../../lib/clientIdeas'
@@ -19,10 +20,13 @@ import { IdeaDetail, outlierLine } from './IdeaDetail'
 export type IdeaBank = {
   items: IdeaItem[]; n: number | null; loading: boolean; error: string | null; refresh: () => void
   scores: IdeaScoreRead; facets: Facet[]; lm?: number | null; unclassified?: number
+  /** CB-19 P4(b) reach-slot bandit chip (D2 grant), read-only, fail-quiet. */
+  chip: BanditChipRead
 }
 export type IdeaBanks = Record<Lane, IdeaBank>
 
 const NO_SCORES: IdeaScoreRead = { ok: false, byRef: new Map(), validated: false }
+const NO_CHIP: BanditChipRead = { ok: false, weekStart: null, byRef: new Map(), slots: [] }
 
 function useScores(lane: Lane, loadedAt: string | null): IdeaScoreRead {
   const [s, setS] = useState<IdeaScoreRead>(NO_SCORES)
@@ -34,6 +38,20 @@ function useScores(lane: Lane, loadedAt: string | null): IdeaScoreRead {
   return s
 }
 
+// One RPC call per lane per list render (never per row): fetched exactly
+// where useScores is, keyed on the same loadedAt so a refresh re-reads both
+// together. The RPC does not exist live until CB-19 applies; fetchBanditChip
+// fails quiet to NO_CHIP and every render site below renders nothing extra.
+function useBanditChip(lane: Lane, loadedAt: string | null): BanditChipRead {
+  const [c, setC] = useState<BanditChipRead>(NO_CHIP)
+  useEffect(() => {
+    let live = true
+    void fetchBanditChip(lane, lane === 'ivan' ? 'lm_idea_candidates' : 'client_ideas', currentIsoWeekMonday()).then(r => { if (live) setC(r) })
+    return () => { live = false }
+  }, [lane, loadedAt])
+  return c
+}
+
 export function useIdeaBanks(): IdeaBanks {
   const ivan = useIdeaCandidates(true)
   const rise = useClientIdeas('risedtc', true)
@@ -41,6 +59,9 @@ export function useIdeaBanks(): IdeaBanks {
   const sIvan = useScores('ivan', ivan.loadedAt)
   const sRise = useScores('risedtc', rise.loadedAt)
   const sArch = useScores('arch', arch.loadedAt)
+  const cIvan = useBanditChip('ivan', ivan.loadedAt)
+  const cRise = useBanditChip('risedtc', rise.loadedAt)
+  const cArch = useBanditChip('arch', arch.loadedAt)
   return useMemo(() => {
     const ivanRows = [...ivan.split.post, ...ivan.split.other]
     const other = new Set(ivan.split.other.map(i => i.id))
@@ -50,12 +71,12 @@ export function useIdeaBanks(): IdeaBanks {
     return {
       ivan: {
         items: ivanItems, n: ivan.loadedAt ? ivan.counts.post ?? ivan.split.post.length : null, loading: ivan.loading, error: ivan.error, refresh: ivan.refresh,
-        scores: sIvan, facets: prominent, lm: ivan.loadedAt ? ivan.counts.lead_magnet : null, unclassified: ivan.split.other.length,
+        scores: sIvan, facets: prominent, lm: ivan.loadedAt ? ivan.counts.lead_magnet : null, unclassified: ivan.split.other.length, chip: cIvan,
       },
-      risedtc: { items: client(rise.rows, 'risedtc', sRise), n: rise.loadedAt ? rise.rows.length : null, loading: rise.loading, error: rise.error, refresh: rise.refresh, scores: sRise, facets: splitFacets(buildFacets(rise.rows, CLIENT_IDEA_SPECS), ['source']).prominent },
-      arch: { items: client(arch.rows, 'arch', sArch), n: arch.loadedAt ? arch.rows.length : null, loading: arch.loading, error: arch.error, refresh: arch.refresh, scores: sArch, facets: splitFacets(buildFacets(arch.rows, CLIENT_IDEA_SPECS), ['source']).prominent },
+      risedtc: { items: client(rise.rows, 'risedtc', sRise), n: rise.loadedAt ? rise.rows.length : null, loading: rise.loading, error: rise.error, refresh: rise.refresh, scores: sRise, facets: splitFacets(buildFacets(rise.rows, CLIENT_IDEA_SPECS), ['source']).prominent, chip: cRise },
+      arch: { items: client(arch.rows, 'arch', sArch), n: arch.loadedAt ? arch.rows.length : null, loading: arch.loading, error: arch.error, refresh: arch.refresh, scores: sArch, facets: splitFacets(buildFacets(arch.rows, CLIENT_IDEA_SPECS), ['source']).prominent, chip: cArch },
     }
-  }, [ivan.split, ivan.counts, ivan.loadedAt, ivan.loading, ivan.error, ivan.refresh, rise.rows, rise.loadedAt, rise.loading, rise.error, rise.refresh, arch.rows, arch.loadedAt, arch.loading, arch.error, arch.refresh, sIvan, sRise, sArch])
+  }, [ivan.split, ivan.counts, ivan.loadedAt, ivan.loading, ivan.error, ivan.refresh, rise.rows, rise.loadedAt, rise.loading, rise.error, rise.refresh, arch.rows, arch.loadedAt, arch.loading, arch.error, arch.refresh, sIvan, sRise, sArch, cIvan, cRise, cArch])
 }
 
 /** A channel's rows after its filters (today's facet specs, applied to the raw rows). */
@@ -72,8 +93,9 @@ export function filtered(items: IdeaItem[], lane: Lane, f: FilterState): IdeaIte
 const PLATE: Record<Lane, string> = { ivan: 'your post ideas', risedtc: 'Mattan’s ideas', arch: 'Davorin’s ideas' }
 export const PAGE = 40
 
-function Row({ it, on, pick, scores }: { it: IdeaItem; on: boolean; pick: () => void; scores: IdeaScoreRead }) {
+function Row({ it, on, pick, scores, chip }: { it: IdeaItem; on: boolean; pick: () => void; scores: IdeaScoreRead; chip: BanditChipRead }) {
   const line = outlierLine(scores.byRef.get(it.id), scores.ok && !scores.validated)
+  const bandit = banditChipLine(chip.byRef.get(it.id))
   return (
     <button type="button" className={`cn-iq${on ? ' cn-sel' : ''}`} aria-current={on ? 'true' : undefined} onClick={pick} data-verb="open">
       <span className="cn-sc">{scoreText(it.score)}</span>
@@ -81,6 +103,7 @@ function Row({ it, on, pick, scores }: { it: IdeaItem; on: boolean; pick: () => 
       <time>{it.age}</time>
       <span className="cn-s">{it.unclassified ? 'no content type · ' : ''}{it.src}</span>
       {line && <span className="cn-s cn-ol">{line}</span>}
+      {bandit && <span className="cn-s cn-bd">{bandit}</span>}
     </button>
   )
 }
@@ -124,6 +147,7 @@ export function Ideas({ banks, phone }: { banks: IdeaBanks; phone: boolean }) {
     const rows = view(l)
     const upto = pages[l] * PAGE
     const sortWord = b.scores.ok && b.scores.validated ? 'Outlier score first' : 'Highest score first'
+    const floorLine = personalFloorLine(b.chip.slots)
     return (
       <div className="cn-ch" key={l}>
         {!phone && <div className="cn-plate"><b>{LANE_NAME[l]}</b><span>{PLATE[l]}</span></div>}
@@ -139,6 +163,9 @@ export function Ideas({ banks, phone }: { banks: IdeaBanks; phone: boolean }) {
             {b.unclassified ? `${b.unclassified} with no content type are shown here rather than dropped.` : ''}
           </p>
         )}
+        {floorLine && (
+          <p className="cn-lmline cn-bd">{floorLine}: one of this week's reach posts is your own pick from the bank below, not an arm recommendation.</p>
+        )}
         <Filters facets={b.facets} f={flt[l]} set={f => { setFlt(p => ({ ...p, [l]: f })); setPages(p => ({ ...p, [l]: 1 })) }} />
         <div className="cn-sec"><span>{phone ? `${PLATE[l]}, ${sortWord.toLowerCase()}` : sortWord}</span><span>{Math.min(upto, rows.length)} of {rows.length} shown</span></div>
         <div className="cn-iqs">
@@ -150,7 +177,7 @@ export function Ideas({ banks, phone }: { banks: IdeaBanks; phone: boolean }) {
                     const on = shown?.id === it.id
                     return (
                       <div key={it.id}>
-                        <Row it={it} on={on} pick={() => setSel({ lane: l, id: it.id })} scores={b.scores} />
+                        <Row it={it} on={on} pick={() => setSel({ lane: l, id: it.id })} scores={b.scores} chip={b.chip} />
                         {phone && on && <IdeaDetail it={it} onDone={done(l)} compact scores={b.scores} />}
                       </div>
                     )
