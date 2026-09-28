@@ -66,4 +66,24 @@ describe('notify transient workflow claim', () => {
     expect(raisedFloor).not.toBe(measured1)
     expect(status429).not.toBe(status500)
   })
+
+  it('normalizes measured leads and percentages but preserves a changed floor with its unit', async () => {
+    const base = { family: 'lane_supply_alarm', source: 'workflow-a', tenant: 'rise', severity: 'attention', title: 'Lane below floor' }
+    const a = await fallbackIncidentKey({ ...base, body: '12 leads, 8%; under floor 20 leads' })
+    const b = await fallbackIncidentKey({ ...base, body: '15 leads, 11%; under floor 20 leads' })
+    const c = await fallbackIncidentKey({ ...base, body: '12 leads, 8%; under floor 30 leads' })
+    expect(a).toBe(b)
+    expect(c).not.toBe(a)
+  })
+
+  it.each(['floor is', 'minimum', 'required', 'target of', 'threshold:', 'limit >=', 'min at'])(
+    'protects an explicit %s threshold through measured-count normalization', async (phrase) => {
+      const base = { family: 'lane_supply_alarm', source: 'workflow-a', tenant: 'rise', severity: 'attention', title: 'Lane below floor' }
+      const a = await fallbackIncidentKey({ ...base, body: `12 leads, 8%; ${phrase} 20 leads` })
+      const b = await fallbackIncidentKey({ ...base, body: `15 leads, 11%; ${phrase} 20 leads` })
+      const c = await fallbackIncidentKey({ ...base, body: `12 leads, 8%; ${phrase} 30 leads` })
+      expect(a).toBe(b)
+      expect(c).not.toBe(a)
+    },
+  )
 })
