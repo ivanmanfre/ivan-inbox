@@ -42,6 +42,22 @@ const alert: SystemAlert = { id: 'a1', source: 'test', dedupe_key: 'a1', severit
 const alertReaders = { ...readers, alerts: async () => ({ rows: [alert], groups: [{ key: 'a1', severity: 'critical' as const, members: [{ ids: ['a1'], source: 'test', severity: 'critical' as const, title: 'Test alert', body: null, action_url: null, action_label: null, created_at: alert.created_at }], count: 1, newestCreatedAt: alert.created_at }], critical: 1 }) }
 
 describe('BellFeed verbs', () => {
+  it('files auto-queued DM1 progress under Routine updates without an approval action', async () => {
+    const queued = ['Jamie Woodbridge', 'Kate Sikora', 'Sambhav Chadha', 'Ben Wood'].map((name, i) => ({
+      ...note, id: `queued-${i}`, family: 'reply_draft_pending', severity: 'info' as const,
+      title: `DM1 wins auto-queued for ${name}:`, body: `DM1 wins auto-queued for ${name}:`,
+      group_key: 'reply_draft_pending:wins-builder', tenant: null,
+    }))
+    feed.groups = [{ key: 'queue', groupKey: queued[0].group_key, family: queued[0].family,
+      latest: queued[0], items: queued, count: 4, unread: 4, lastSeenAt: queued[0].last_seen_at! } as NotificationGroup]
+    renderInFrame(<BellFeed />, { readers })
+    expect(await screen.findByText('Routine updates')).toBeTruthy()
+    fireEvent.click(screen.getByText('Routine updates'))
+    expect(document.querySelector('[data-feed-group] .d-fn-m b')?.textContent).toContain('4 queued')
+    expect(document.querySelector('[data-feed-group]')?.textContent).not.toContain('Needs you')
+    expect(document.querySelector('[data-feed-group]')?.textContent).not.toContain('Pick this up')
+  })
+
   it('one click clears notifications and alerts, then Undo restores both stamps', async () => {
     renderInFrame(<BellFeed />, { readers: alertReaders })
     await screen.findByText('104 unread in the last 4 hours · 1,102 not cleared')

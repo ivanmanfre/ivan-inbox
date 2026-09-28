@@ -135,7 +135,7 @@ export function Feed({ feed, goJob, openThread, onNavigated, onScrolled }: {
   const rows: Slot[] = withLeaving(feed.groups, leaving).map((r, at) => ({ ...r, at }))
   // Routine kinds (digests, heartbeats) fold into ONE group at the end, so the
   // rows that need him are not buried under the rows that only report.
-  const isRoutine = (s: Slot) => ALERT_LOOK[kindOf(s.g.family, s.g.latest.severity)].routine
+  const isRoutine = (s: Slot) => ALERT_LOOK[kindOf(s.g.family, s.g.latest.severity, s.g.latest.title)].routine
   const routine = rows.filter(isRoutine)
   const days = byDay(rows.filter(s => !isRoutine(s)))
   const [routineOpen, setRoutineOpen] = useState(false)
@@ -143,7 +143,7 @@ export function Feed({ feed, goJob, openThread, onNavigated, onScrolled }: {
   // one lime action on the sheet.
   const primaryKey = rows.find(s => {
     if (s.going || s.g.unread === 0) return false
-    const k = kindOf(s.g.family, s.g.latest.severity)
+    const k = kindOf(s.g.family, s.g.latest.severity, s.g.latest.title)
     return k === 'needs_you' || k === 'failed'
   })?.g.key ?? null
 

@@ -41,8 +41,8 @@ import './ask.css'
  * 2026-09-25: "Everything looks kind of the same"). The severity Mark stays in
  * the DOM for the instruments and greyscale; the tile is what the eye reads.
  */
-export function KindTile({ family, severity }: { family: string; severity: string | null }) {
-  const look = lookOf(family, severity)
+export function KindTile({ family, severity, title = '' }: { family: string; severity: string | null; title?: string }) {
+  const look = lookOf(family, severity, title)
   return (
     <span className="cl-kind" data-kind={look.kind} data-tone={look.tone} aria-hidden="true">
       <Icon name={look.icon} size={20} />
@@ -50,8 +50,8 @@ export function KindTile({ family, severity }: { family: string; severity: strin
   )
 }
 
-export function KindLabel({ family, severity }: { family: string; severity: string | null }) {
-  const look = lookOf(family, severity)
+export function KindLabel({ family, severity, title = '' }: { family: string; severity: string | null; title?: string }) {
+  const look = lookOf(family, severity, title)
   return <span className="cl-kind-l" data-kind={look.kind} data-tone={look.tone}>{look.label}</span>
 }
 
@@ -164,7 +164,7 @@ export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = 
     )
   }
 
-  const kind = lookOf(n.family, n.severity).kind
+  const kind = lookOf(n.family, n.severity, n.title).kind
   // Every row is tappable already (Row onClick). A row that needs him or that
   // broke says so on its one action: Pick this up, which is the same open.
   const pickUp = kind === 'needs_you' || kind === 'failed' || form === 'page'
@@ -198,7 +198,7 @@ export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = 
         onTouchEnd={swipe.onTouchEnd} onTouchCancel={swipe.onTouchCancel}
       >
         <Row
-          lead={<><span className="cl-kind-mark"><Mark shape={shape} /></span><KindTile family={n.family} severity={n.severity} /></>}
+          lead={<><span className="cl-kind-mark"><Mark shape={shape} /></span><KindTile family={n.family} severity={n.severity} title={n.title} /></>}
           title={
             <>
               <span className={running ? 'a-brain-state a-working' : 'a-brain-state'} data-live={running ? '' : undefined}>{word}</span>
@@ -208,7 +208,7 @@ export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = 
           titleWrap
           meta={
             <>
-              <KindLabel family={n.family} severity={n.severity} />
+              <KindLabel family={n.family} severity={n.severity} title={n.title} />
               <TenantChip tenant={n.tenant} />
               <InChatMark n={n} />
               <span>{time}</span>
@@ -283,10 +283,10 @@ export function GroupRow({ g, open, onToggle, onOpen, onDismissAll, onDismissOne
       <div className="a-brain-deck-front">
         <Row
           className="a-brain-deck-head"
-          lead={<><span className="cl-kind-mark"><Mark shape={shape} /></span><KindTile family={g.family} severity={g.latest.severity} /></>}
+          lead={<><span className="cl-kind-mark"><Mark shape={shape} /></span><KindTile family={g.family} severity={g.latest.severity} title={g.latest.title} /></>}
           title={
             <>
-              <span className="a-brain-state">{groupStateWord(g.count, g.family)}</span>
+              <span className="a-brain-state">{groupStateWord(g.count, g.family, g.latest.title)}</span>
               {subjectFor(g.latest) && <><Sep /><span className="a-ink">{subjectFor(g.latest)}</span></>}
             </>
           }
@@ -295,7 +295,7 @@ export function GroupRow({ g, open, onToggle, onOpen, onDismissAll, onDismissOne
           subWrap
           meta={
             <>
-              <KindLabel family={g.family} severity={g.latest.severity} />
+              <KindLabel family={g.family} severity={g.latest.severity} title={g.latest.title} />
               <TenantChip tenant={g.latest.tenant} />
               <InChatMark n={g.latest} />
               <MarkStack items={g.items} />

@@ -20,6 +20,7 @@
 
 import type { Job } from '../../v2c/layout'
 import type { Notification, NotificationSeverity } from '../../../lib/turns'
+import { isAutoQueuedDraft } from '../../../lib/alertKinds'
 
 export type FamilyKey =
   | 'reply_draft_pending' | 'system_infra_alarm' | 'outreach_engine_ops'
@@ -244,7 +245,7 @@ export function stateWord(n: Pick<Notification, 'family' | 'title' | 'body' | 's
   const family = n.family as FamilyKey
   let word: string
   switch (family) {
-    case 'reply_draft_pending': word = n.count > 1 ? `${n.count} waiting on you` : 'Waiting on you'; break
+    case 'reply_draft_pending': word = isAutoQueuedDraft(family, n.title) ? 'Queued' : n.count > 1 ? `${n.count} waiting on you` : 'Waiting on you'; break
     case 'system_infra_alarm': word = 'Broke'; break
     case 'outreach_engine_ops': word = extractOutreach(body); break
     case 'post_generation_failed': word = n.count > 1 ? `${n.count} failed` : 'Failed'; break
@@ -318,7 +319,8 @@ const COUNTED_NOUN: Record<FamilyKey, [one: string, many: string]> = {
 }
 
 /** The hero line for a folded GROUP: the count and the thing it counts. */
-export function groupStateWord(count: number, family: string): string {
+export function groupStateWord(count: number, family: string, title = ''): string {
+  if (isAutoQueuedDraft(family, title)) return `${count} queued`
   const noun = COUNTED_NOUN[family as FamilyKey] ?? ['update', 'updates']
   return `${count} ${count === 1 ? noun[0] : noun[1]}`
 }

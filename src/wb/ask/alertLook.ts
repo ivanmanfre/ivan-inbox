@@ -46,12 +46,12 @@ export const ALERT_LOOK = Object.fromEntries(
 ) as Record<AlertKind, AlertLook>
 
 /** The kind for one row: the push payload's own resolver. Severity 'error' always wins. */
-export function kindOf(family: string, severity: string | null | undefined): AlertKind {
+export function kindOf(family: string, severity: string | null | undefined, title = ''): AlertKind {
   const sev = severity === 'error' || severity === 'attention' ? severity : 'info'
-  return kindFor(family, sev)
+  return kindFor(family, sev, title)
 }
 
-export function lookOf(family: string, severity: string | null | undefined): AlertLook & { kind: AlertKind } {
-  const kind = kindOf(family, severity)
+export function lookOf(family: string, severity: string | null | undefined, title = ''): AlertLook & { kind: AlertKind } {
+  const kind = kindOf(family, severity, title)
   return { kind, ...ALERT_LOOK[kind] }
 }

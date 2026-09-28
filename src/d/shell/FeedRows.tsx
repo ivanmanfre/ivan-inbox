@@ -42,7 +42,7 @@ function placeLabel(family: string): string | null {
 /** The row's one action word, as today: needs him / broke / a page -> Pick this up. */
 export function actionWord(n: Notification): string | null {
   const form = formFor(n.family)
-  const kind = lookOf(n.family, n.severity).kind
+  const kind = lookOf(n.family, n.severity, n.title).kind
   if (kind === 'needs_you' || kind === 'failed' || form === 'page') return 'Pick this up'
   const lane = placeLabel(n.family)
   if (!lane) return null
@@ -95,7 +95,7 @@ export function FeedRow({ n, onOpen, onDismiss, nested = false, primary = false,
   headline?: string
 }) {
   const swipe = useSwipe(() => onDismiss(n))
-  const look = lookOf(n.family, n.severity)
+  const look = lookOf(n.family, n.severity, n.title)
   const word = formFor(n.family) === 'page' ? pageCard(n).state : stateWord(n)
   const subject = subjectFor(n)
   const tenant = TENANT[(n.tenant ?? '').toLowerCase()] ?? ''
@@ -141,7 +141,7 @@ export function FeedGroup({ g, onOpen, onDismissOne, onDismissAll, primary = fal
   const toggle = <button type="button" className="d-btn" aria-expanded={open} data-verb="expand" onClick={() => setOpen(o => !o)}>{open ? 'Hide these' : `Show each one (${g.items.length})`}</button>
   return (
     <div className={`d-fg${open ? ' d-open' : ''}`} data-feed-group>
-      <FeedRow n={{ ...g.latest, count: 1, read_at: g.unread > 0 ? null : g.latest.read_at }} headline={groupStateWord(g.count, g.family)}
+      <FeedRow n={{ ...g.latest, count: 1, read_at: g.unread > 0 ? null : g.latest.read_at }} headline={groupStateWord(g.count, g.family, g.latest.title)}
         onOpen={() => setOpen(o => !o)} onDismiss={() => onDismissAll(g)} tail={toggle} />
       {open && (
         <div className="d-fg-items">

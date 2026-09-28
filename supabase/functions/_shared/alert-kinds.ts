@@ -27,6 +27,11 @@ export type Severity = 'info' | 'attention' | 'error'
 
 export type Kind = 'needs_you' | 'reply' | 'failed' | 'done' | 'booking' | 'reminder' | 'seen' | 'digest'
 
+/** This producer reports queue progress under the same family as approval drafts. */
+export function isAutoQueuedDraft(family: string, title: string): boolean {
+  return family === 'reply_draft_pending' && /^DM1 wins auto-queued for\s+.+/i.test(title)
+}
+
 /** Client-side tone name. Mapped to an actual `--ds-*` token by the feed UI, not here. */
 export type Tone = 'accent' | 'warn' | 'danger' | 'info' | 'quiet'
 
@@ -149,8 +154,9 @@ function nameFallback(family: string): Kind {
  * severity says error (including reply_draft_pending, whose error rows are
  * genuine drafter crashes, not drafts waiting on a read).
  */
-export function kindFor(family: string, severity: Severity): Kind {
+export function kindFor(family: string, severity: Severity, title = ''): Kind {
   if (severity === 'error') return 'failed'
+  if (isAutoQueuedDraft(family, title)) return 'digest'
   return BASE_KIND[family] ?? nameFallback(family)
 }
 
@@ -284,7 +290,7 @@ const MAX_TITLE_CHARS = 60
  */
 export function presentPush(input: PresentInput): PresentedPush {
   const { family, severity, title, body } = input
-  let kind = kindFor(family, severity)
+  let kind = kindFor(family, severity, title)
 
   const subject = cleanSubject(title)
   const rawBody = body ?? ''

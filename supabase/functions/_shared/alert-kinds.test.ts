@@ -72,6 +72,11 @@ const CENSUS: ReadonlyArray<{ family: string; severity: Severity }> = [
 ]
 
 describe('kindFor: every census family resolves to a real kind', () => {
+  it('auto-queued DM1 progress is routine, while a drafted reply still needs approval', () => {
+    expect(kindFor('reply_draft_pending', 'info', 'DM1 wins auto-queued for Jamie Woodbridge:')).toBe('digest')
+    expect(kindFor('reply_draft_pending', 'info', 'ARCH reply drafted for Tetiana Klimonova')).toBe('needs_you')
+    expect(presentPush({ family: 'reply_draft_pending', severity: 'info', title: 'DM1 wins auto-queued for Jamie Woodbridge:' }).title).toMatch(/Update/)
+  })
   it.each(CENSUS)('$family / $severity', ({ family, severity }) => {
     const kind = kindFor(family, severity)
     expect(Object.keys(ALERT_KINDS)).toContain(kind)

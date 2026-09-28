@@ -63,6 +63,11 @@ describe('looksRaw', () => {
 })
 
 describe('stateWord — every family, on its own verbatim bodies', () => {
+  it('reports auto-queued DM1 progress as queued, not waiting for approval', () => {
+    const item = n('reply_draft_pending', 'DM1 wins auto-queued for Jamie Woodbridge:', { title: 'DM1 wins auto-queued for Jamie Woodbridge:' })
+    expect(stateWord(item)).toBe('Queued')
+    expect(groupStateWord(4, item.family, item.title)).toBe('4 queued')
+  })
   it('reply_draft_pending', () => {
     const body = "[risedtc seat] Stalled convo bump drafted for Alec Lorenzo (ICP 7, silent 8d, judged interest_then_silence):\n\nAlec -- Want to get some time next week to have a look at this? Cheers"
     // 'Waiting on you' is a substring of the family label 'Reply waiting on

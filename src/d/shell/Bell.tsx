@@ -66,7 +66,7 @@ export function BellButton() {
 }
 
 /** A group that is a routine digest (today's "Routine updates" fold). */
-const isRoutine = (g: NotificationGroup) => ALERT_LOOK[kindOf(g.family, g.latest.severity)].routine
+const isRoutine = (g: NotificationGroup) => ALERT_LOOK[kindOf(g.family, g.latest.severity, g.latest.title)].routine
 
 /** Keys that arrived after the first paint (today's arrival pill). */
 function useArrivals(keys: string[]): Set<string> {
@@ -109,7 +109,7 @@ export function BellFeed() {
       .map(g => ({ ...g, count: g.members.length })).filter(g => g.count > 0)
   }, [c.alerts.value, hidden])
   // The newest unread row that needs him takes the lime "Pick this up" (today's primary).
-  const primaryKey = useMemo(() => feed.groups.find(g => g.unread > 0 && kindOf(g.family, g.latest.severity) === 'needs_you')?.key ?? null, [feed.groups])
+  const primaryKey = useMemo(() => feed.groups.find(g => g.unread > 0 && kindOf(g.family, g.latest.severity, g.latest.title) === 'needs_you')?.key ?? null, [feed.groups])
 
   const close = () => f.setBellOpen(false)
   const go = (hash: string) => { close(); f.navigate(hash) }
