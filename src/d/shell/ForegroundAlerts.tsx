@@ -31,8 +31,10 @@ export function ForegroundAlerts({ host }: { host: ForegroundHost }) {
       const row = await getActiveNotification(id)
       if (!row || document.visibilityState !== 'visible' || !navigator.onLine
         || !isImportantWorkflowFamily(row.family) || !isActiveNotification(row)) return
-      const destination = routableHash(row.url)
-      if (bellOpen.current || (destination && toDHash(destination) === location.hash)) return
+      // A place such as Workflows can hold many distinct incidents. Only the
+      // canonical UUID (seen above), or an already open bell showing its feed,
+      // can make an arrival redundant.
+      if (bellOpen.current) return
       setError(false)
       setPopup(prev => prev ? { ...prev, count: prev.count + 1 } : { row, count: 1, shownAt: Date.now() })
     } catch {

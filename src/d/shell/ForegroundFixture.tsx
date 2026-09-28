@@ -3,6 +3,7 @@ import { renderInFrame } from '../test-utils'
 import { ForegroundAlerts } from './ForegroundAlerts'
 import { useFrame } from './frame'
 import { useFrameCounts } from '../counts/useFrameCounts'
+import { parseDHash } from '../route'
 import '../d.css'
 import './frame2.css'
 
@@ -35,7 +36,8 @@ renderInFrame(
 Object.assign(window, {
   foregroundPush(id: string, family = 'system_infra_alarm') {
     navigator.serviceWorker.dispatchEvent(new MessageEvent('message', {
-      data: { type: 'push', notificationId: id, family, url: './#exp/d/workflows' },
+      data: { type: 'push', notificationId: id, family, url: './#exp/d/ops' },
     }))
   },
+  foregroundRoute(hash: string) { return parseDHash(hash).place },
 })

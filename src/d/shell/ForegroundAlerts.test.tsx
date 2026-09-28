@@ -4,12 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderInFrame } from '../test-utils'
 import { useFrame } from './frame'
 import { useFrameCounts } from '../counts/useFrameCounts'
+import { parseDHash } from '../route'
 import type { Notification } from '../../lib/turns'
 
 const id = '123e4567-e89b-42d3-a456-426614174000'
 const row = (overrides: Partial<Notification> = {}): Notification => ({
   id, family: 'system_infra_alarm', source: 'tracker', severity: 'error', title: 'Mattan: booking checks paused',
-  body: 'HubSpot read failed.', url: './#exp/d/workflows', media: null, group_key: null, tenant: 'rise', count: 1,
+  body: 'HubSpot read failed.', url: './#exp/d/ops', media: null, group_key: null, tenant: 'rise', count: 1,
   first_seen_at: new Date().toISOString(), last_seen_at: new Date().toISOString(), created_at: new Date().toISOString(),
   read_at: null, dismissed_at: null, expires_at: new Date(Date.now() + 4 * 60 * 60_000).toISOString(), incident_key: 'one',
   ...overrides,
@@ -99,7 +100,8 @@ describe('foreground important alerts', () => {
     renderInFrame(<Alert />, { frame: { navigate } })
     await push()
     fireEvent.click(screen.getByRole('button', { name: 'Open' }))
-    expect(navigate).toHaveBeenCalledWith('#exp/d/workflows')
+    expect(navigate).toHaveBeenCalledWith('#exp/d/ops')
+    expect(parseDHash(navigate.mock.calls[0][0]).place).toBe('ops')
     await waitFor(() => expect(markNotificationsRead).toHaveBeenCalledWith([id]))
   })
 
@@ -125,12 +127,14 @@ describe('foreground important alerts', () => {
     expect(screen.queryByLabelText('Important alert')).toBeNull()
   })
 
-  it('stays quiet for the row already open in the current place or visible bell', async () => {
-    getActiveNotification.mockResolvedValueOnce(row({ url: './#exp/d/lanes' }))
+  it('shows a distinct incident while its shared Ops destination is open', async () => {
+    location.hash = '#exp/d/ops'
     renderInFrame(<Alert />)
     await push()
-    expect(screen.queryByLabelText('Important alert')).toBeNull()
-    cleanup()
+    expect(screen.getByText('Mattan: booking checks paused')).toBeTruthy()
+  })
+
+  it('stays quiet while the bell is already open and reading arrivals', async () => {
     renderInFrame(<Alert />, { frame: { bellOpen: true } })
     await push()
     expect(screen.queryByLabelText('Important alert')).toBeNull()
