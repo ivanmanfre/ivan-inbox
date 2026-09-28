@@ -141,7 +141,7 @@ export function FeedGroup({ g, onOpen, onDismissOne, onDismissAll, primary = fal
   const toggle = <button type="button" className="d-btn" aria-expanded={open} data-verb="expand" onClick={() => setOpen(o => !o)}>{open ? 'Hide these' : `Show each one (${g.items.length})`}</button>
   return (
     <div className={`d-fg${open ? ' d-open' : ''}`} data-feed-group>
-      <FeedRow n={{ ...g.latest, count: 1, read_at: g.unread > 0 ? null : g.latest.read_at }} headline={groupStateWord(g.count, g.family, g.latest.title)}
+      <FeedRow n={{ ...g.latest, count: 1, read_at: g.unread > 0 ? null : g.latest.read_at }} headline={groupStateWord(g.count, g.family, g.latest.title, g.latest.severity)}
         onOpen={() => setOpen(o => !o)} onDismiss={() => onDismissAll(g)} tail={toggle} />
       {open && (
         <div className="d-fg-items">

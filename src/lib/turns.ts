@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { kindFor } from './alertKinds'
 import { isImportantWorkflowFamily } from '../../supabase/functions/_shared/notification-lifecycle'
 
 // turns.ts — the client data layer for db/049: persisted Claude turns, the
@@ -430,10 +431,11 @@ export type NotificationGroup = {
 // because "3 drafts waiting" and "5 drafts waiting" are one situation reported
 // twice, not two situations.
 function foldKey(n: Notification): string {
+  const kind = n.family === 'reply_draft_pending' ? `:kind:${kindFor(n.family, n.severity, n.title)}` : ''
   if (isImportantWorkflowFamily(n.family) && n.incident_key) return `i:${n.incident_key}`
-  if (n.group_key) return `g:${n.group_key}`
+  if (n.group_key) return `g:${n.group_key}${kind}`
   const shape = n.title.replace(/\d+/g, '').replace(/\s+/g, ' ').trim().toLowerCase()
-  return `f:${n.family}:${shape}`
+  return `f:${n.family}:${shape}${kind}`
 }
 
 const seenAt = (n: Notification): string => n.last_seen_at || n.created_at
@@ -466,7 +468,9 @@ export function groupNotifications(rows: Notification[]): NotificationGroup[] {
     const latest = sorted[0]
     groups.push({
       key,
-      groupKey: key.startsWith('i:') ? null : latest.group_key ?? null,
+      // Reply rows may share the raw producer key across different kinds, so a
+      // server-side group-key dismiss would also clear an unseen sibling kind.
+      groupKey: key.startsWith('i:') || latest.family === 'reply_draft_pending' ? null : latest.group_key ?? null,
       family: latest.family,
       latest,
       items: sorted,

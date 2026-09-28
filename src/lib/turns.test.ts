@@ -298,6 +298,16 @@ const notif = (o: Partial<Notification>): Notification => ({
 })
 
 describe('groupNotifications', () => {
+  it('keeps a queued DM1 digest separate from approval and failure sharing its producer group key', () => {
+    const g = groupNotifications([
+      notif({ id: 'queued', family: 'reply_draft_pending', group_key: 'dm1', title: 'DM1 wins auto-queued for Dawoon:', severity: 'info' }),
+      notif({ id: 'approval', family: 'reply_draft_pending', group_key: 'dm1', title: 'Reply drafted for Dawoon', severity: 'attention' }),
+      notif({ id: 'failed', family: 'reply_draft_pending', group_key: 'dm1', title: 'DM1 wins auto-queued for Dawoon:', severity: 'error' }),
+    ])
+    expect(g).toHaveLength(3)
+    expect(g.map(x => x.items.map(n => n.id))).toEqual([['queued'], ['approval'], ['failed']])
+    expect(g.every(x => x.groupKey === null)).toBe(true)
+  })
   it('keeps different conditions from one workflow in separate visible groups', () => {
     const rows = [
       notif({ id: 'config', family: 'system_infra_alarm', group_key: 'workflow', incident_key: 'rise:w:config:read_failed:attention' }),

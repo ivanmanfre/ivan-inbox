@@ -286,7 +286,7 @@ export function GroupRow({ g, open, onToggle, onOpen, onDismissAll, onDismissOne
           lead={<><span className="cl-kind-mark"><Mark shape={shape} /></span><KindTile family={g.family} severity={g.latest.severity} title={g.latest.title} /></>}
           title={
             <>
-              <span className="a-brain-state">{groupStateWord(g.count, g.family, g.latest.title)}</span>
+              <span className="a-brain-state">{groupStateWord(g.count, g.family, g.latest.title, g.latest.severity)}</span>
               {subjectFor(g.latest) && <><Sep /><span className="a-ink">{subjectFor(g.latest)}</span></>}
             </>
           }

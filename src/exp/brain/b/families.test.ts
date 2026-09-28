@@ -67,6 +67,9 @@ describe('stateWord — every family, on its own verbatim bodies', () => {
     const item = n('reply_draft_pending', 'DM1 wins auto-queued for Jamie Woodbridge:', { title: 'DM1 wins auto-queued for Jamie Woodbridge:' })
     expect(stateWord(item)).toBe('Queued')
     expect(groupStateWord(4, item.family, item.title)).toBe('4 queued')
+    const failed = { ...item, severity: 'error' as const }
+    expect(stateWord(failed)).toBe('Failed')
+    expect(groupStateWord(4, failed.family, failed.title, failed.severity)).toBe('4 failed')
   })
   it('reply_draft_pending', () => {
     const body = "[risedtc seat] Stalled convo bump drafted for Alec Lorenzo (ICP 7, silent 8d, judged interest_then_silence):\n\nAlec -- Want to get some time next week to have a look at this? Cheers"

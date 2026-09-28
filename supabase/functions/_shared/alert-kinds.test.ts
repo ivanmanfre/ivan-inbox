@@ -77,6 +77,10 @@ describe('kindFor: every census family resolves to a real kind', () => {
     expect(kindFor('reply_draft_pending', 'info', 'ARCH reply drafted for Tetiana Klimonova')).toBe('needs_you')
     expect(presentPush({ family: 'reply_draft_pending', severity: 'info', title: 'DM1 wins auto-queued for Jamie Woodbridge:' }).title).toMatch(/Update/)
   })
+  it('lane supply attention needs an operator while an error is a failure', () => {
+    expect(kindFor('lane_supply_alarm', 'attention', 'Lane below floor')).toBe('needs_you')
+    expect(kindFor('lane_supply_alarm', 'error', 'Lane halted')).toBe('failed')
+  })
   it.each(CENSUS)('$family / $severity', ({ family, severity }) => {
     const kind = kindFor(family, severity)
     expect(Object.keys(ALERT_KINDS)).toContain(kind)

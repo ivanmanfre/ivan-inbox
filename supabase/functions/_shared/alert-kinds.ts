@@ -157,6 +157,7 @@ function nameFallback(family: string): Kind {
 export function kindFor(family: string, severity: Severity, title = ''): Kind {
   if (severity === 'error') return 'failed'
   if (isAutoQueuedDraft(family, title)) return 'digest'
+  if (family === 'lane_supply_alarm' && severity === 'attention') return 'needs_you'
   return BASE_KIND[family] ?? nameFallback(family)
 }
 
