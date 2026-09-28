@@ -25,12 +25,13 @@
      accept_72h ÷ accept_judged (invites sent 7 days to 72h ago).
    ========================================================================== */
 import type { CcCohort, CcPayload, CcRangeRow } from '../../lib/campaignControl'
-import { shortName, type CampaignPerf } from '../../lib/campaignPerf'
+import type { CampaignPerf } from '../../lib/campaignPerf'
 import type { Seat } from '../seats'
 import { laneLabel } from './labels'
+import { campaignDisplay, laneInfo } from './laneInfo'
 import type { Range } from './model'
 
-export type RateRow = { key: string; label: string; hit: number; base: number; pct: number | null; sent: number; young?: number }
+export type RateRow = { key: string; label: string; info?: string | null; hit: number; base: number; pct: number | null; sent: number; young?: number }
 
 const SOURCE: Record<string, string> = {
   cold: 'Cold', warm_engager: 'Warm engagers', competitor_engager: 'Competitor engagers', client_orbit: 'Client orbit',
@@ -68,7 +69,7 @@ export function seatAccept(p: CcPayload | null, seat: Seat, interval: string) {
 export function acceptByLane(p: CcPayload | null, seat: Seat, range: Range): Rates {
   const one = (r: CcRangeRow): RateRow => {
     const a = acceptOf(r.acceptance_cohort) ?? { hit: 0, base: 0, young: 0, pct: null }
-    return { key: r.source_lane, label: r.source_lane === '__all__' ? 'All lanes' : sourceLabel(r.source_lane), hit: a.hit, base: a.base, pct: a.pct, sent: r.sent, young: a.young }
+    return { key: r.source_lane, label: r.source_lane === '__all__' ? 'All lanes' : sourceLabel(r.source_lane), info: laneInfo(seat, r.source_lane), hit: a.hit, base: a.base, pct: a.pct, sent: r.sent, young: a.young }
   }
   const rows = rowsOf(p, seat, 'invitation', range)
   const all = rows.find(r => r.source_lane === '__all__')
@@ -79,7 +80,7 @@ export function replyByLane(p: CcPayload | null, seat: Seat, range: Range): Rate
   const one = (r: CcRangeRow): RateRow => {
     const c = r.reply_cohort
     const hit = c?.replied_within_72h ?? 0, base = c?.first_messaged ?? 0
-    return { key: r.source_lane, label: r.source_lane === '__all__' ? 'All lanes' : sourceLabel(r.source_lane), hit, base, pct: rate(hit, base), sent: r.sent }
+    return { key: r.source_lane, label: r.source_lane === '__all__' ? 'All lanes' : sourceLabel(r.source_lane), info: laneInfo(seat, r.source_lane), hit, base, pct: rate(hit, base), sent: r.sent }
   }
   const rows = rowsOf(p, seat, 'dm', range)
   const all = rows.find(r => r.source_lane === '__all__')
@@ -88,7 +89,7 @@ export function replyByLane(p: CcPayload | null, seat: Seat, range: Range): Rate
 
 export function acceptByCampaign(perf: CampaignPerf[] | null, seat: Seat): Rates {
   const mine = (perf ?? []).filter(c => c.client_id === seat && c.invites_7d > 0)
-  const lanes = sortRows(mine.map(c => ({ key: c.campaign_id, label: shortName(c.campaign_name), hit: c.accept_72h, base: c.accept_judged, pct: rate(c.accept_72h, c.accept_judged), sent: c.invites_7d })))
+  const lanes = sortRows(mine.map(c => ({ key: c.campaign_id, label: campaignDisplay(c.campaign_name), info: laneInfo(seat, c.campaign_name), hit: c.accept_72h, base: c.accept_judged, pct: rate(c.accept_72h, c.accept_judged), sent: c.invites_7d })))
   const hit = mine.reduce((a, c) => a + c.accept_72h, 0), base = mine.reduce((a, c) => a + c.accept_judged, 0)
   return { total: mine.length ? { key: '__all__', label: 'All campaigns', hit, base, pct: rate(hit, base), sent: mine.reduce((a, c) => a + c.invites_7d, 0) } : null, lanes }
 }

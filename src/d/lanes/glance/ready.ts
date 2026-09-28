@@ -59,8 +59,8 @@ const RISE = {
 const ARCH_IDS = ['15de1a7c-86f4-40b7-bdbd-3c1fce94b6b9', '1a2701a0-931b-4949-95fb-9bbf2de16f09', '12c53034-7176-4950-be20-1c1bf5ba11a7', 'f17e4dac-d6b7-4c66-8d5c-8f1b2ace0685']
 const LABEL: Record<string, string> = {
   view: 'Profile views', signal: 'Content signal', engage: 'Warm engagers', hiring: 'Hiring signal', cold: 'Cold', retry: 'Warm invite retry',
-  orbit: 'Client orbit', engager: 'Competitor engagers', expansion: 'Colleagues of good leads', partner: 'CMO partners', reconnect: 'InMail reconnect',
-  engager_warm: 'Warm engagers', company_expansion: 'Colleagues of good leads', hiring_signal: 'Hiring signal', funding_signal: 'Funding', new_in_role: 'New in role',
+  orbit: 'Client orbit', engager: 'Competitor engagers', expansion: 'Colleagues of our leads', partner: 'CMO partners', reconnect: 'InMail reconnect',
+  engager_warm: 'Warm engagers', company_expansion: 'Colleagues of our leads', hiring_signal: 'Hiring signal', funding_signal: 'Funding', new_in_role: 'New in role',
   cold_games: 'Cold (games)', cold_apps: 'Cold (apps)', profile_view: 'Profile views', sponsor_mined: 'Sponsors', sponsor_team: 'Sponsor team',
 }
 
