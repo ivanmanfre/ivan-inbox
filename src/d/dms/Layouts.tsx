@@ -61,7 +61,7 @@ function Pane({ m, phone }: { m: PageModel; phone: boolean }) {
   const tag = m.came.get(t.prospect_id)
   return <ThreadPane t={t} auto={m.auto} all={m.threads} phone={phone} verbs={m.verbs} now={m.now} onBack={m.closeThread}
     signal={tag ? <CameSignal tag={tag} onDismiss={() => m.dismissCame(t.prospect_id, t.prospect_name)} /> : null}
-    onAsk={() => m.ask(t, 'ask')} onMenu={a => m.onMenu(t, a)} staleN={m.staleBy[seatOf(t.client_id) ?? 'ivan'].length} pre={m.pre} reload={m.data.refreshAll} />
+    onAsk={() => m.ask(t, 'ask')} onDraftStart={() => m.openThread(t)} onMenu={a => m.onMenu(t, a)} staleN={m.staleBy[seatOf(t.client_id) ?? 'ivan'].length} pre={m.pre} reload={m.data.refreshAll} />
 }
 
 function squareStats(m: PageModel): Record<Seat, SquareStat> {

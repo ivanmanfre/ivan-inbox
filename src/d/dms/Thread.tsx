@@ -43,9 +43,10 @@ export async function copyText(s: string): Promise<boolean> {
   try { await navigator.clipboard.writeText(s); return true } catch { window.prompt('Copy this link', s); return false }
 }
 
-export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, onAsk, onMenu, staleN, pre, reload, signal }: {
+export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, onAsk, onDraftStart, onMenu, staleN, pre, reload, signal }: {
   t: T; auto?: boolean; all: readonly T[]; phone: boolean; verbs: DmVerbs; now: number
   onBack: () => void; onAsk: () => void
+  onDraftStart?: () => void
   onMenu: (a: MenuAct) => void; staleN: number; pre: PreReadHandle; reload: () => void
   /** The came-back tag beside the name, with its Dismiss (cameBack.ts). */
   signal?: ReactNode
@@ -95,6 +96,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     if (drafting.current) return
     drafting.current = true
     const pid = t.prospect_id
+    onDraftStart?.()
     setDraftJob({ pid, running: true, error: null })
     try {
       await requestDmDraft(t)
