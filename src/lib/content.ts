@@ -2852,15 +2852,175 @@ export async function searchStills(q: string): Promise<Still[]> {
  */
 export async function setDraftImage(id: string, url: string | null): Promise<void> {
   const pre = await supabase.from('carousel_drafts')
-    .select('taxonomy')
+    .select('taxonomy, type')
     .eq('id', id).is('client_id', null)
     .maybeSingle()
   if (pre.error) throw pre.error
   if (!pre.data) throw new Error('This draft is gone, so there is no picture to change.')
+  // 🔴 THE CAROUSEL WIPE. image_urls is written wholesale, so [url] on a
+  // carousel replaces the deck with one image, and the propagate trigger hands
+  // that to scheduled_posts.media_urls: a scheduled carousel would publish as a
+  // single photo. Refused here AND in the update's own predicate, so a type
+  // change between the read and the write cannot slip through either.
+  if (!singlePhoto(pre.data.type as string | null)) throw new Error(CAROUSEL_REFUSAL)
   const { data, error } = await supabase.from('carousel_drafts')
     .update({ image_urls: url ? [url] : [], taxonomy: stampTaxonomy(pre.data.taxonomy, { no_photo: !url }) })
-    .eq('id', id).is('client_id', null)
+    .eq('id', id).is('client_id', null).in('type', [...SINGLE_PHOTO_TYPES])
     .select('id')
   if (error) throw error
   if (!data || data.length === 0) throw new Error('The picture did not change: the database refused the write.')
+}
+
+// ---------------------------------------------------------------------------
+// THE PICTURE ROW — one gated write for every lane (db/230)
+// ---------------------------------------------------------------------------
+//
+// Ivan, 29 Sep: "can't do basic shit like change the pictures from there".
+// Client rows had no picture control at all: setDraftImage is Ivan-only, and a
+// direct image_urls write on a client row misses the board's cached queue and
+// the set_media action the RISE Photo Assigner treats as the real pick.
+// operator_set_draft_media (db/230) routes client rows through the board's own
+// _client_board_apply_media and does Ivan rows itself.
+
+/** The only formats one picture can belong to. Anything else carries a deck or a video. */
+export const SINGLE_PHOTO_TYPES = ['text', 'single_image'] as const
+export function singlePhoto(type: string | null | undefined): boolean {
+  return (SINGLE_PHOTO_TYPES as readonly string[]).includes(type ?? '')
+}
+export const CAROUSEL_REFUSAL =
+  'A carousel keeps its slides: one picture would replace the whole deck. Nothing changed.'
+
+/**
+ * Whether the Picture row may offer Change / Upload / Remove on this draft.
+ * db/230's rules, verbatim, so the row is never a button the database refuses:
+ *   · text or single_image, not published (both lanes)
+ *   · Ivan: review, approved or scheduled
+ *   · client: review or scheduled (_client_board_apply_media's own gate)
+ */
+export function pictureEditable(
+  d: { status: string; type: string | null; published_at?: string | null },
+  lane: ContentLane,
+): boolean {
+  if (!singlePhoto(d.type) || d.published_at) return false
+  return lane === 'ivan'
+    ? d.status === 'review' || d.status === 'approved' || d.status === 'scheduled'
+    : d.status === 'review' || d.status === 'scheduled'
+}
+
+/**
+ * The board each client lane's pictures live under: client_boards.slug for
+ * client_boards.client_id (read live 2026-09-29; one board each). The RPC
+ * resolves the board itself; this only names the client-photos folder the
+ * library reads and uploads land in.
+ */
+export const BOARD_SLUG: Record<Exclude<ContentLane, 'ivan'>, string> = {
+  risedtc: 'risedtc-com',
+  arch: 'arch-agency',
+}
+
+// db/230's refusal codes in words. `bad_status` is looked up here FIRST: the
+// shared table's entry for it is about re-dating, which is not what refused.
+const PICTURE_RPC_MESSAGES: Record<string, string> = {
+  bad_url: 'That picture address is not one the database accepts. Nothing changed.',
+  not_single_photo: CAROUSEL_REFUSAL,
+  published: 'This post is already published, so its picture is fixed. Nothing changed.',
+  bad_status: 'Only a draft at Needs review, Approved or Scheduled can change its picture. Nothing changed.',
+  draft_not_editable: 'The client board only takes a picture change while the post is at Needs review or Scheduled. Nothing changed.',
+  unschedule_first: 'A scheduled carousel keeps its slides. Nothing changed.',
+  no_board: 'This client has no board to put the picture on. Nothing changed.',
+  ambiguous_board: 'This client has more than one board, so the picture was not changed on either.',
+}
+
+/**
+ * Change or remove a draft's picture, any lane. `null` removes it.
+ *
+ * On Ivan's rows a removal also stamps taxonomy.no_photo so the selfie
+ * assigner leaves the post bare; on client rows the board copy gets
+ * `no_photo` and set_media is logged by 'operator'. Status, dates and board
+ * visibility are never written.
+ *
+ * @returns the URL the database now holds ('' after a removal).
+ * @throws ClientRpcError carrying the server's own refusal code.
+ */
+export async function setDraftMedia(id: string, url: string | null): Promise<string> {
+  const { data, error } = await supabase.rpc('operator_set_draft_media', {
+    p_gate: CLIENT_OPS_GATE, p_draft_id: id, p_url: url ?? '',
+  })
+  if (error) throw new Error(error.message)
+  const r = (data ?? {}) as Record<string, unknown>
+  if (r.ok !== true) {
+    const code = typeof r.error === 'string' ? r.error : 'unknown'
+    throw new ClientRpcError(code, PICTURE_RPC_MESSAGES[code] ?? clientRpcMessage(code))
+  }
+  return typeof r.media_url === 'string' ? r.media_url : url ?? ''
+}
+
+/** A picture in a library grid. Same `url` / `thumb` contract as Still. */
+export type Picture = { name: string; url: string; thumb: string }
+
+const CLIENT_BUCKET = 'client-photos'
+
+function anonHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY
+  return { apikey: key, Authorization: `Bearer ${key}`, ...extra }
+}
+
+/**
+ * A client's photo library: the ROOT of client-photos/<slug>/, newest first,
+ * the same folder the client board's pool lists (one-off uploads under
+ * <slug>/onepost/ never join it). 🔴 Listed as ANON, for the reason listStills
+ * gives: the operator's session lists storage as empty with no error.
+ */
+export async function listClientPhotos(slug: string): Promise<Picture[]> {
+  const base = import.meta.env.VITE_SUPABASE_URL
+  const res = await fetch(`${base}/storage/v1/object/list/${CLIENT_BUCKET}`, {
+    method: 'POST',
+    headers: anonHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ prefix: slug, limit: 200, sortBy: { column: 'created_at', order: 'desc' } }),
+  })
+  if (!res.ok) throw new Error(`The client's photos would not list (${res.status}).`)
+  const data: unknown = await res.json()
+  if (!Array.isArray(data)) throw new Error('The photo library returned a shape this app cannot read.')
+  return (data as { name?: string }[])
+    .filter(o => typeof o.name === 'string' && IMAGE_RE.test(o.name))
+    .map(o => {
+      const path = `${slug}/${o.name}`
+      return {
+        name: o.name as string,
+        url: supabase.storage.from(CLIENT_BUCKET).getPublicUrl(path).data.publicUrl,
+        thumb: supabase.storage.from(CLIENT_BUCKET).getPublicUrl(path, { transform: { width: 200, quality: 70 } }).data.publicUrl,
+      }
+    })
+}
+
+export const MAX_UPLOAD_BYTES = 15 * 1024 * 1024
+
+/**
+ * Upload a one-off picture for ONE post and return its public URL (the caller
+ * then pins it with setDraftMedia).
+ *
+ *   Ivan   -> post-stills/onepost/<id8>-<ts>-<name>
+ *   client -> client-photos/<slug>/onepost/<id8>-<ts>-<name>  (the board's own
+ *             one-off folder, so it never joins the client's library)
+ *
+ * 🔴 Uploaded as ANON. post-stills' INSERT policy is granted to anon only
+ * (storage policies read 2026-09-29), so the operator's session would be
+ * refused there; client-photos takes both roles and anon keeps one path.
+ * Never upserts: a name clash is a refusal, not an overwrite.
+ */
+export async function uploadDraftPicture(lane: ContentLane, draftId: string, file: File): Promise<string> {
+  if (!/^image\//.test(file.type)) throw new Error('That file is not an image. Pick a JPG, PNG or WebP.')
+  if (file.size > MAX_UPLOAD_BYTES) throw new Error('That image is over 15 MB. Pick a smaller one.')
+  const safe = (file.name || 'photo').replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-+/g, '-').toLowerCase()
+  const name = `${draftId.slice(0, 8)}-${Date.now()}-${safe}`
+  const bucket = lane === 'ivan' ? STILL_BUCKET : CLIENT_BUCKET
+  const path = lane === 'ivan' ? `onepost/${name}` : `${BOARD_SLUG[lane]}/onepost/${name}`
+  const base = import.meta.env.VITE_SUPABASE_URL
+  const res = await fetch(`${base}/storage/v1/object/${bucket}/${path.split('/').map(encodeURIComponent).join('/')}`, {
+    method: 'POST',
+    headers: anonHeaders({ 'Content-Type': file.type, 'x-upsert': 'false' }),
+    body: file,
+  })
+  if (!res.ok) throw new Error(`The upload did not go through (${res.status}). Nothing changed on the post.`)
+  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl
 }

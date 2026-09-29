@@ -13,7 +13,7 @@ import { Banner, Button, Chip, Icon, Input, Kbd, Textarea } from '../../ds'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import {
   LANE_OWNER, LANE_POSSESSIVE, clientDeletable, deleteClientDraft, deleteDraft, fetchIvanArmedDays, listStills,
-  localDay, normalizeImageUrls, restartDraftToIdea, searchStills, setDraftImage, STILL_FOLDERS,
+  localDay, normalizeImageUrls, restartDraftToIdea, searchStills, setDraftImage, singlePhoto, STILL_FOLDERS,
   type ContentDraft, type ContentDraftDetail, type ContentLane, type Still, type StillFolder,
 } from '../../lib/content'
 import { appendAgentNote, clearHumanEdit, planRegen, regenerateDraft, scheduleDraft } from '../../lib/studioActions'
@@ -295,6 +295,11 @@ export function SwapImage({ d, onDone, disabled }: {
       setBusy('')
     }
   }
+
+  // 🔴 THE CAROUSEL WIPE, refused at the component too, not only by its mounts:
+  // one pinned picture replaces a carousel's whole deck. AFTER every hook above
+  // (a hook below an early return blanks the app; see the 09-09 P0).
+  if (!singlePhoto(d.type)) return null
 
   return (
     <>
