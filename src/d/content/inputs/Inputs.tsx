@@ -144,7 +144,7 @@ function ListRow({ o, lane, use, onUse }: { o: InputsOutlier; lane: Lane; use: U
       <span className={`in-rk${o.state === 'recommended' ? ' in-rec' : ''}`} data-state={o.state ?? undefined} title={o.state === 'recommended' ? 'Recommended this week' : undefined}>{o.rank}</span>
       <div className="in-main">
         <p className="in-meta">
-          <b data-author>{o.author}</b> · {PLAT[o.platform]} · <span className="in-lift" data-lift={o.lift ?? undefined}>{liftText(o)}</span>{o.published_at ? ` · ${ago(o.published_at)}` : ''}
+          <b data-author>{o.author}</b> · {PLAT[o.platform]} · <span className="in-lift" data-lift={o.lift ?? ''}>{liftText(o)}</span>{o.published_at ? ` · ${ago(o.published_at)}` : ''}
           <SourceTags o={o} /><StateChip o={o} />
         </p>
         {o.url ? <a className="in-hook in-hook-a" href={o.url} target="_blank" rel="noreferrer" data-verb="open-post">{hook(o.text)}</a> : <p className="in-hook">{hook(o.text)}</p>}
@@ -163,7 +163,7 @@ function Card({ o, lane, use, onUse }: { o: InputsOutlier; lane: Lane; use: UseS
   const k = rowKey(lane, o)
   return (
     <li className="in-card" data-outlier-rank={o.rank} data-platform={o.platform} data-post-id={o.post_id}>
-      <div className="in-card-top"><span className="in-big" data-lift={o.lift ?? undefined}>{liftText(o)}</span><StateChip o={o} card /></div>
+      <div className="in-card-top"><span className="in-big" data-lift={o.lift ?? ''}>{liftText(o)}</span><StateChip o={o} card /></div>
       <p className="in-meta"><b data-author>{o.author}</b> · {PLAT[o.platform]}{o.published_at ? ` · ${ago(o.published_at)}` : ''}<SourceTags o={o} /></p>
       <p className="in-hook">{hook(o.text)}</p>
       {o.reason && <p className="in-why">{o.fit != null ? `Fit ${o.fit}/10 · ` : ''}{o.reason}</p>}
