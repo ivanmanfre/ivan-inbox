@@ -14,14 +14,9 @@ import { HOLD_MS, holdDecision, undoDecision } from './decisions'
 // Undo receipt (decisions.ts, 29 Sep); To board keeps its confirm (it reaches the
 // client) and Delete keeps the red one (nothing undoes it). And what a bulk
 // action may do to the row (today's Card caps), for the command layer's mark.
-//
-// ARCH ROWS GET NONE (29 Sep): Arch's publisher posts rows at review without an
-// approval, so a board or delete write on an Arch row is live. Davorin reviews
-// on Friday; Arch rows are view (and picture) only in this app.
 export type RowVerb = 'approve' | 'skip' | 'board' | 'delete'
 
 export function rowCaps(d: ContentDraft, lane: Lane): RowCap[] {
-  if (lane === 'arch') return []
   return [
     ...(reviewActionable(d.status, lane) ? (['approve', 'skip'] as RowCap[]) : []),
     ...(canPromote(d.status, lane) && boardGroupOf(d) !== 'board' ? (['promote'] as RowCap[]) : []),
@@ -45,7 +40,6 @@ export function useRowVerbs(onDone: () => void) {
   const [busy, setBusy] = useState<string | null>(null)
   const run = useCallback(async (d: ContentDraft, lane: Lane, v: RowVerb) => {
     if (busy) return
-    if (lane === 'arch') return
     if (v === 'approve' || v === 'skip') {
       holdDecision(d.id, v, {
         onCommitted: onDone,

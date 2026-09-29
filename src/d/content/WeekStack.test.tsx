@@ -117,7 +117,7 @@ describe('This week stack', () => {
   it('the Arch chip says why it is view only', () => {
     renderInFrame(<Harness />)
     fireEvent.click(document.querySelector('[data-verb="show-arch"]')!)
-    expect(screen.getByText(/Arch is view only here/)).toBeTruthy()
+    expect(screen.getByText(/Arch cards here are view only/)).toBeTruthy()
     expect(card('i1')).toBeNull()
     expect(card('a1')).toBeTruthy()
   })

@@ -18,13 +18,9 @@ afterEach(() => { cleanup(); resetDecisionsForTest() })
 describe('queue row writes (today’s inline Approve / Skip / To board / Delete)', () => {
   it('caps match today’s Card: a board row is never deletable or promotable from here', () => {
     expect(rowCaps(row({}), 'ivan')).toEqual(['approve', 'skip', 'delete'])
-    expect(rowCaps(row({ client_id: 'risedtc' }), 'risedtc')).toEqual(['promote', 'delete'])
-    expect(rowCaps(row({ client_id: 'risedtc', board_visible: true }), 'risedtc')).toEqual([])
-    expect(rowVerbsFor(row({ client_id: 'risedtc' }), 'risedtc')).toEqual(['board', 'delete'])
-  })
-  it('ARCH rows carry no row verb and no bulk cap (view only: its publisher posts from review)', () => {
-    expect(rowCaps(row({ client_id: 'arch' }), 'arch')).toEqual([])
-    expect(rowVerbsFor(row({ client_id: 'arch' }), 'arch')).toEqual([])
+    expect(rowCaps(row({ client_id: 'arch' }), 'arch')).toEqual(['promote', 'delete'])
+    expect(rowCaps(row({ client_id: 'arch', board_visible: true }), 'arch')).toEqual([])
+    expect(rowVerbsFor(row({ client_id: 'arch' }), 'arch')).toEqual(['board', 'delete'])
   })
   it('Skip on a row is one tap: no confirm, the write waits on its Undo receipt, then lands', async () => {
     lib.skipDraft.mockResolvedValue(undefined)
@@ -38,7 +34,7 @@ describe('queue row writes (today’s inline Approve / Skip / To board / Delete)
   })
   it('To board on a client row writes setBoardVisible(true) after the confirm', async () => {
     lib.setBoardVisible.mockResolvedValue(undefined)
-    renderInFrame(<Queue lane="risedtc" setLane={vi.fn()} seat={seat} fresh={[row({ client_id: 'risedtc' })]} older={[]} counts={{ ivan: 0, risedtc: 1, arch: 0 }} openId={null} onOpen={vi.fn()} />)
+    renderInFrame(<Queue lane="arch" setLane={vi.fn()} seat={seat} fresh={[row({ client_id: 'arch' })]} older={[]} counts={{ ivan: 0, risedtc: 0, arch: 1 }} openId={null} onOpen={vi.fn()} />)
     fireEvent.click(document.querySelector('[data-verb="row-board"]')!)
     fireEvent.click(await screen.findByText('Put it on his board'))
     await waitFor(() => expect(lib.setBoardVisible).toHaveBeenCalledWith('r1', true))

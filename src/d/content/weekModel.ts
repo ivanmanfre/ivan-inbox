@@ -8,10 +8,10 @@
 // seven, then the drafts still in review with no date this week (newest first,
 // older than two weeks in a fold).
 //
-// ARCH IS VIEW ONLY. Arch's publisher posts rows at review without an approval,
-// so any board or date write on an Arch row is live (Davorin reviews on
-// Friday). An Arch card never carries a date control or a status action: its
-// one key is Open.
+// AN ARCH CARD IS VIEW ONLY. Arch's publisher posts rows at review without an
+// approval (Davorin reviews on Friday), so the stack's one-tap keys stay off
+// Arch cards: no date control, no status action, its one key is Open. The open
+// post and the Planner keep every Arch control they had before.
 import { canMoveDate } from '../../lib/calendarItems'
 import { normalizeImageUrls, singlePhoto, stageOfLane, type ContentDraft } from '../../lib/content'
 import { warsawDay, warsawDm, warsawDow, warsawHm } from '../ui/time'
@@ -142,7 +142,7 @@ export function flagsOf(r: ContentDraft, lane: Lane, o: { now: number; overdue: 
     const pass = !v || PASSY.test(v)
     f.push({ key: 'qa', text: `QA ${pass ? '' : `${v.toLowerCase().replace(/_/g, ' ')} `}${s}`.trim(), tone: pass ? 'dim' : 'warn', title: v ? `QA verdict: ${v}` : undefined })
   }
-  if (lane === 'arch') f.push({ key: 'view', text: 'View only', tone: 'dim', title: 'Davorin reviews Arch posts on Friday; a board or date change here would go live.' })
+  if (lane === 'arch') f.push({ key: 'view', text: 'View only', tone: 'dim', title: 'Davorin reviews Arch posts on Friday. Open the post for its board, date and picture controls.' })
   return f
 }
 

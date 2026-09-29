@@ -13,14 +13,10 @@ import { DAY_MS, type Lane } from './model'
 
 export type PlanItem = CalendarItem & { lane: Lane }
 
-/**
- * Every dated post of a seat (Ivan's also carries the publish queue), keyed by its Warsaw day.
- * ARCH is never movable or armable here (29 Sep): Arch's publisher posts rows at review without
- * an approval, so a date write on an Arch row is live, and Davorin reviews on Friday.
- */
+/** Every dated post of a seat (Ivan's also carries the publish queue), keyed by its Warsaw day. */
 export function seatItems(rows: ContentDraft[], lane: Lane, queue: ScheduledQueueRow[] | null, now: number = Date.now()): PlanItem[] {
   return buildCalendarItems(rows, lane === 'ivan' ? queue ?? [] : [], now)
-    .map(it => ({ ...it, lane, day: warsawDay(itemDayISO(it.at, it.postedAt)), ...(lane === 'arch' ? { movable: false, armable: false } : {}) }))
+    .map(it => ({ ...it, lane, day: warsawDay(itemDayISO(it.at, it.postedAt)) }))
 }
 
 export function byDay(items: PlanItem[]): Map<string, PlanItem[]> {

@@ -107,30 +107,15 @@ describe('draft window', () => {
     expect([0, 6]).not.toContain(at.getDay())
   })
 
-  it('a Rise row offers Put on his board (confirmed) and never Approve', async () => {
-    current = { ...detail, client_id: 'risedtc', board_visible: false }
+  it('a client row offers Put on his board (confirmed) and never Approve', async () => {
+    current = { ...detail, client_id: 'arch', board_visible: false }
     lib.setBoardVisible.mockResolvedValue(undefined)
-    renderInFrame(<DraftWindow {...props({ lane: 'risedtc' })} />)
+    renderInFrame(<DraftWindow {...props({ lane: 'arch' })} />)
     expect(document.querySelector('[data-verb="approve"]')).toBeNull()
     fireEvent.click(document.querySelector('[data-verb="board-on"]')!)
-    await screen.findByText('Put this on Mattan’s board?')
+    await screen.findByText('Put this on Davorin’s board?')
     fireEvent.click(document.querySelector('[data-verb="confirm"]')!)
     await waitFor(() => expect(lib.setBoardVisible).toHaveBeenCalledWith('d1', true))
-  })
-
-  it('ARCH is view only: no board, date, approve, skip or delete key; Edit and the Picture row stay', () => {
-    for (const board_visible of [false, true]) {
-      current = { ...detail, client_id: 'arch', board_visible }
-      renderInFrame(<DraftWindow {...props({ lane: 'arch' })} />)
-      for (const v of ['board-on', 'board-off', 'delete', 'approve', 'skip', 'schedule', 'schedule-open']) {
-        expect(document.querySelector(`[data-verb="${v}"]`), v).toBeNull()
-      }
-      expect(document.querySelector('[data-verb="edit"]')).toBeTruthy()
-      expect(document.querySelector('.cn-pic2')).toBeTruthy()
-      expect(screen.getByText(/View only on Arch/)).toBeTruthy()
-      cleanup()
-    }
-    expect(lib.setBoardVisible).not.toHaveBeenCalled()
   })
 
   it('HAZARD: no Schedule on a published, errored or generating draft, and the verb refuses', () => {
@@ -262,5 +247,22 @@ describe('the picture, under the post (every lane)', () => {
     current = { ...detail, client_id: 'risedtc', status: 'approved' }
     renderInFrame(<DraftWindow {...props({ lane: 'risedtc' })} />)
     expect(document.querySelector('.cn-pic2')).toBeNull()
+  })
+})
+
+describe('Arch in the open post keeps every control it had', () => {
+  beforeEach(() => { resetDecisionsForTest() })
+  it('board off still asks first on Arch, and Delete is offered off the board', async () => {
+    current = { ...detail, client_id: 'arch', board_visible: true }
+    lib.setBoardVisible.mockResolvedValue(undefined)
+    renderInFrame(<DraftWindow {...props({ lane: 'arch' })} />)
+    expect(document.querySelector('[data-verb="edit"]')).toBeTruthy()
+    fireEvent.click(document.querySelector('[data-verb="board-off"]')!)
+    await screen.findByText('Take this off Davorin’s board?')
+    expect(lib.setBoardVisible).not.toHaveBeenCalled()
+    cleanup()
+    current = { ...detail, client_id: 'arch', board_visible: false }
+    renderInFrame(<DraftWindow {...props({ lane: 'arch' })} />)
+    expect(document.querySelector('[data-verb="delete"]')).toBeTruthy()
   })
 })

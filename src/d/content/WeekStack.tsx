@@ -21,8 +21,9 @@ import './week.css'
 // The keys: Approve (Ivan, one tap, Undo for 8 s, then the next card), Put on
 // board (Rise, confirmed: it reaches Mattan), Schedule (Ivan, confirmed: it goes
 // out on LinkedIn), Open (everything else). The date control (Ivan, Rise) is
-// today's move sheet, operator_set_schedule_date, the day only. ARCH is view
-// only: no date, no status, no board key anywhere on an Arch card.
+// today's move sheet, operator_set_schedule_date, the day only. An ARCH card is
+// view only (Open + picture): no Approve, Skip, board or date key on the card.
+// The open post and the Planner keep every Arch control they had.
 const SHOW_LABEL: Record<Show, string> = { all: 'All', ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch' }
 
 export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onChanged, firstDay, seatRows }: {
@@ -136,7 +137,7 @@ export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onCh
       </div>
       <Sync read={read} />
       {show === 'arch' && (
-        <p className="cn-wk2-note">Arch is view only here. Davorin reviews his posts on Friday, and his publisher posts from review, so a board or date change here would go live.</p>
+        <p className="cn-wk2-note">Arch cards here are view only: Davorin reviews his posts on Friday and his publisher posts from review. Open a post for its board, date and picture controls.</p>
       )}
       {read.source === 'none' && !read.settled ? <Skeleton lines={6} title={false} label="Reading this week" />
         : read.source === 'none' && read.error ? <Failed what="this week's posts" detail={read.error} onRetry={read.refresh} />

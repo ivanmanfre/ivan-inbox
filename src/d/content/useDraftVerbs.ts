@@ -112,18 +112,24 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
     } catch (e) { fail(e, 'schedule it') } finally { setBusy(false) }
   }, [advance, busy, confirm, d, editing, refresh, toast])
 
-  // Put on board asks first (it reaches the client). Taking it off is one tap:
-  // the receipt carries Undo, which puts it straight back.
+  // Put on board asks first (it reaches the client). Taking it off is one tap on
+  // Rise: the receipt carries Undo, which puts it straight back. Arch keeps
+  // today's take-off confirm unchanged (Ivan manages Arch from here as before).
   const board = useCallback(async (next: boolean) => {
     if (busy) return
-    if (next) {
-      const ok = await confirm({
+    if (next || lane === 'arch') {
+      const ok = await confirm(next ? {
         title: `Put this on ${POSS[lane]} board?`,
         message: `${OWNER[lane]} sees it. This is the one action here that reaches a client, it fires his board’s `
           + 'own sync, so it lands on his board within moments, not at some later batch. From there '
           + 'the decisions are his: approve, edit, veto, schedule. '
           + 'Nothing publishes, this writes board visibility and never touches the publisher.',
         confirmText: 'Put it on his board', verb: 'confirm',
+      } : {
+        title: `Take this off ${POSS[lane]} board?`,
+        message: 'It goes back to our side only and disappears from his board on the same sync. Nothing is '
+          + 'deleted and no status changes, the draft stays here, and you can put it back.',
+        confirmText: 'Take it off', verb: 'confirm',
       })
       if (!ok) return
     }

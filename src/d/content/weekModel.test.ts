@@ -137,12 +137,10 @@ describe('this week: ARCH is view only', () => {
     expect(c.primary).toBe('board')
   })
 
-  it('the planner never offers a move or an arm on an Arch post either', () => {
+  it('the card rule stays on the card: the Planner still moves an Arch post as before', () => {
     const items = seatItems([row({ client_id: 'arch', board_visible: true, scheduled_at: at(D) })], 'arch', null, NOW)
     expect(items).toHaveLength(1)
-    expect(items[0].movable).toBe(false)
-    expect(items[0].armable).toBe(false)
-    expect(seatItems([row({ client_id: 'risedtc', board_visible: true, scheduled_at: at(D) })], 'risedtc', null, NOW)[0].movable).toBe(true)
+    expect(items[0].movable).toBe(true)
   })
 })
 

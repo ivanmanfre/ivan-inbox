@@ -72,10 +72,10 @@ export function Month({ lane, setLane, items, rows, onOpen, onMove, onArm, onDay
             <small className="cn-cap">No date yet, oldest first · drag one onto a day</small>
             {loose.length === 0 && <p className="cn-dim">Every draft that can take a date has one.</p>}
             {loose.map(r => (
-              <div key={r.id} className="cn-railrow" draggable={r.movable && lane !== 'arch'} onDragStart={dragRail(r.id)}>
+              <div key={r.id} className="cn-railrow" draggable={r.movable} onDragStart={dragRail(r.id)}>
                 <button type="button" className="cn-railt2" data-verb="open" onClick={() => onOpen(r.id, lane)}>{r.title}</button>
                 <small className="cn-dim">waited {waited(r.createdAt, now)}</small>
-                {r.movable && lane !== 'arch' && <Btn verb="give-date" onClick={() => onMove(r.id, lane)}>Give it a date</Btn>}
+                {r.movable && <Btn verb="give-date" onClick={() => onMove(r.id, lane)}>Give it a date</Btn>}
               </div>
             ))}
           </aside>

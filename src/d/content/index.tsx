@@ -191,8 +191,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const wkIdx: 0 | 1 = week ?? (ghost && days.slice(5).some(d => d.key === ghost.key) ? 1 : 0)
   const shownDays = draft && !phone ? days.slice(wkIdx * 5, wkIdx * 5 + 5) : days
   const moveLane = isLane(q.get('lane')) ? (q.get('lane') as Lane) : 'ivan'
-  // Never on Arch: a date write on an Arch row is live (its publisher posts from review). Every move entry point lands here.
-  const moveRow = moveId && moveLane !== 'arch' ? data.seats[moveLane].rows.find(r => r.id === moveId) ?? null : null
+  const moveRow = moveId ? data.seats[moveLane].rows.find(r => r.id === moveId) ?? null : null
 
   const moveGhost: Ghost | null = moveRow && moveLand
     ? { lane: moveLane, key: moveLand, title: titleOf(moveRow), time: moveRow.scheduled_at ? warsawHm(moveRow.scheduled_at) : '09:00', label: `Lands ${dayLabel(moveLand)}` }
