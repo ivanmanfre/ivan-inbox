@@ -14,7 +14,10 @@ import {
   type Resource, type ResourceDetail, type StylePrompt,
 } from '../lib/styles'
 
-export function useContent(lane: ContentLane = 'ivan') {
+// `enabled` = false holds the read (no fetch, no realtime binding) until the
+// caller lets it go: D Content > Review paints this week from its own small
+// read first and starts these after it (d/content/useWeek.ts).
+export function useContent(lane: ContentLane = 'ivan', enabled: boolean = true) {
   const [drafts, setDrafts] = useState<ContentDraft[]>([])
   const [buckets, setBuckets] = useState<ContentBuckets>(() => bucketDrafts([]))
   // The same rows grouped a second way: triage (buckets) for the candidates
@@ -63,6 +66,7 @@ export function useContent(lane: ContentLane = 'ivan') {
   }, [lane])
 
   useEffect(() => {
+    if (!enabled) return
     refresh()
     const ch = supabase.channel(topic)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'carousel_drafts' }, refresh)
@@ -70,7 +74,7 @@ export function useContent(lane: ContentLane = 'ivan') {
     const onFocus = () => refresh()
     window.addEventListener('focus', onFocus)
     return () => { supabase.removeChannel(ch); window.removeEventListener('focus', onFocus) }
-  }, [refresh, topic])
+  }, [enabled, refresh, topic])
 
   // `buckets` stays first and unchanged in the shape — cand-b destructures it.
   return { drafts, buckets, stages, matched, laneTotal, loading, error, loadedAt, refresh }

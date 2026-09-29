@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { normalizeImageUrls, type ContentDraftDetail, type SaveConflict } from '../../lib/content'
 import { Btn } from '../ui/Key'
 import { warsawDayTime } from '../ui/time'
 import { imgOf, type Lane } from './model'
+import { foldText } from './weekModel'
 
 // The LinkedIn-faithful preview: the platform's own light card at its own
 // measure, because widening it would make the preview lie. While editing, the
@@ -19,6 +21,10 @@ export function Preview({ d, lane, body, editing, text, setText, onStartEdit, on
   onStartEdit?: (() => void) | null; onCancel?: () => void; onSave?: () => void
 }) {
   const [name, line, ini] = AUTHOR[lane]
+  // LinkedIn's fold (29 Sep, "honest preview"): the feed shows about three lines, then "…see more".
+  const [more, setMore] = useState(false)
+  const fold = foldText(body, 3, 52)
+  const shown = more || !fold.folded ? body : fold.head
   const img = d.type !== 'carousel' ? imgOf(d.image_urls) : null
   const all = normalizeImageUrls(d.image_urls)
   const slides = d.type === 'carousel' ? all : all.slice(1)
@@ -36,7 +42,11 @@ export function Preview({ d, lane, body, editing, text, setText, onStartEdit, on
         </>
       ) : (
         <div className={`cn-lib${onStartEdit ? ' cn-lib-ed' : ''}`} onClick={onStartEdit ?? undefined} title={onStartEdit ? 'Click to edit (Enter)' : undefined}>
-          {body ? body.split(/\n\s*\n/).map((para, i) => <p key={i}>{para}</p>) : <span style={{ color: '#888' }}>No post text yet.</span>}
+          {body ? shown.split(/\n\s*\n/).map((para, i, all) => (
+            <p key={i}>{para}{i === all.length - 1 && fold.folded && !more && (
+              <>{' '}<button type="button" className="cn-lisee" data-verb="see-more" onClick={e => { e.stopPropagation(); setMore(true) }}>…see more</button></>
+            )}</p>
+          )) : <span style={{ color: '#888' }}>No post text yet.</span>}
         </div>
       )}
       {img && !editing && <img className="cn-liimg" src={img} alt="" loading="lazy" />}

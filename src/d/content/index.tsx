@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { PlaceProps } from '../places'
 import { dHash } from '../route'
 import { useReportFailed } from '../shell/health'
@@ -24,6 +24,10 @@ import { LANES, dayLabel, errorRows, errorRowsWithBlocks, errorsLanding, generat
 import { useLanes } from '../../hooks/useLanes'
 import type { ContentLane } from '../../lib/content'
 import { useContentData } from './useContentData'
+import { usePendingDecisions } from './decisions'
+import { useWeekRead } from './useWeek'
+import { WeekStack } from './WeekStack'
+import { SHOWS, buildWeek, laneOfRow, type Show } from './weekModel'
 import { useMagnetCounts } from './useMagnetCounts'
 import { SUB_LABEL } from './SubNav'
 import './content.css'
@@ -36,8 +40,27 @@ import './content3.css'
 // other Content place hangs off the sub-nav, and those are today's views.
 const isLane = (s: string | null): s is Lane => s === 'ivan' || s === 'risedtc' || s === 'arch'
 
+const SHOW_KEY = 'd-content-review-show'
+
 export default function ContentPage({ layout, route, navigate }: PlaceProps) {
-  const data = useContentData()
+  const sub = subOf(route.sub)
+  const onReview = sub === 'review'
+  const [now] = useState(() => Date.now())
+  // REVIEW PAINTS THIS WEEK FIRST: its saved copy at once, then one small read of
+  // the week (useWeek). The three full lane reads (1,000 rows each) start once
+  // that has answered, or after 2.5 s, whichever is first, and then stay on.
+  const weekRead = useWeekRead(onReview, now)
+  const [fullOn, setFullOn] = useState(!onReview)
+  useEffect(() => {
+    if (fullOn) return
+    if (!onReview || weekRead.settled) { setFullOn(true); return }
+    const t = setTimeout(() => setFullOn(true), 2500)
+    return () => clearTimeout(t)
+  }, [fullOn, onReview, weekRead.settled])
+  const data = useContentData(fullOn)
+  const pending = usePendingDecisions()
+  const [show, setShowState] = useState<Show>(() => { try { const v = localStorage.getItem(SHOW_KEY) as Show | null; return v && (SHOWS as readonly string[]).includes(v) ? v : 'all' } catch { return 'all' } })
+  const setShow = (v: Show) => { setShowState(v); try { localStorage.setItem(SHOW_KEY, v) } catch { /* private mode */ } }
   const registry = useLanes()
   // Today's views take any lane the registry lists (a 4th client included); D's own wall reads the three seats.
   const legacyLane = ((): ContentLane => {
@@ -55,13 +78,11 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   // Two weeks (the wall) or the month (today's calendar), remembered.
   const [plan, setPlanState] = useState<'weeks' | 'month'>(() => { try { return localStorage.getItem('d-content-plan') === 'month' ? 'month' : 'weeks' } catch { return 'weeks' } })
   const setPlan = (v: 'weeks' | 'month') => { setPlanState(v); try { localStorage.setItem('d-content-plan', v) } catch { /* private mode */ } }
-  const sub = subOf(route.sub)
   const q = route.query
   const draft = q.get('draft')
   const moveId = q.get('move')
   const qLane: Lane = isLane(q.get('lane')) ? (q.get('lane') as Lane) : 'ivan'
   const phone = layout === 'phone'
-  const [now] = useState(() => Date.now())
 
   const go = useCallback((params: Record<string, string>, s: string | null = route.sub) => navigate(dHash('content', s, params)), [navigate, route.sub])
   const openDraft = useCallback((id: string, lane: Lane) => go({ draft: id, lane }, sub === 'review' ? 'review' : null), [go, sub])
@@ -79,9 +100,20 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const days = useMemo(() => wallDays(now), [now])
   const items = useMemo(() => Object.fromEntries(LANES.map(l => [l, byDay(seatItems(data.seats[l].rows, l, data.queueRows, now))])) as Record<Lane, ReturnType<typeof byDay>>, [data.seats, data.queueRows, now])
   const wk1 = days.slice(0, 5)
-  const waiting = useMemo(() => Object.fromEntries(LANES.map(l => [l, waitingRows(data.seats[l].rows, now)])) as Record<Lane, ReturnType<typeof waitingRows>>, [data.seats, now])
+  // A decision waiting on its Undo has already left the queue on screen (decisions.ts).
+  const waiting = useMemo(() => Object.fromEntries(LANES.map(l => [l, waitingRows(data.seats[l].rows.filter(r => !pending.has(r.id)), now)])) as Record<Lane, ReturnType<typeof waitingRows>>, [data.seats, now, pending])
   const trio = (f: (l: Lane) => number): Trio => Object.fromEntries(LANES.map(l => [l, data.seats[l].error ? null : !data.seats[l].loadedAt ? undefined : f(l)])) as Trio
-  const reviewN = trio(l => waiting[l].fresh.length)
+  // Until a seat's full read lands, Review's count comes from the week read, which holds every row in review
+  // (any age), so the number is the same one. Only a LIVE week read counts: a saved copy is never a count.
+  const weekWaiting = useMemo(() => {
+    const live = weekRead.source === 'live' ? weekRead.rows.filter(r => !pending.has(r.id)) : null
+    return Object.fromEntries(LANES.map(l => [l, live ? waitingRows(live.filter(r => laneOfRow(r) === l), now).fresh.length : undefined])) as Record<Lane, number | undefined>
+  }, [now, pending, weekRead.rows, weekRead.source])
+  const reviewN = Object.fromEntries(LANES.map(l => [l, data.seats[l].error ? null : data.seats[l].loadedAt ? waiting[l].fresh.length : weekWaiting[l]])) as Trio
+  const weekModel = useMemo(() => buildWeek(weekRead.rows, { now, show, pending, blocks: data.blocks }), [data.blocks, now, pending, show, weekRead.rows])
+  const refreshWeek = weekRead.refresh
+  const refreshAll = data.refreshAll
+  const weekChanged = useCallback(() => { refreshWeek(); refreshAll() }, [refreshAll, refreshWeek])
   const errorsN = trio(l => errorRowsWithBlocks(data.seats[l].rows, l, now, data.blocks).length)
   const gen = Object.fromEntries(LANES.map(l => [l, generatingOf(data.seats[l].rows, l, now)])) as Record<Lane, { n: number; stalled: number }>
   const ideasN = Object.fromEntries(LANES.map(l => [l, banks[l].error ? null : banks[l].n ?? undefined])) as Trio
@@ -92,7 +124,9 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const ivanStuck = errorRows(data.seats.ivan.rows, 'ivan', now).filter(r => r.status === 'scheduled').length
   const stuck = blocked ? 'a post is blocked, see Errors' : ivanStuck ? `${ivanStuck} post${ivanStuck === 1 ? '' : 's'} never went out` : null
 
-  const reading = sub === 'ideas' ? LANES.some(l => ideasN[l] === undefined) : LANES.some(l => !data.seats[l].loadedAt && !data.seats[l].error)
+  const reading = sub === 'ideas' ? LANES.some(l => ideasN[l] === undefined)
+    : onReview ? weekRead.source === 'none' && !weekRead.settled
+      : LANES.some(l => !data.seats[l].loadedAt && !data.seats[l].error)
   const stalledLine = LANES.filter(l => gen[l].stalled).map(l => `${gen[l].stalled} ${l === 'ivan' ? 'of yours' : `of ${l === 'arch' ? 'Arch’s' : 'Rise’s'}`} stalled in generation`).join(', ')
   // Each place answers its own question; the planner's sentence stays on the planner.
   const native = sub === 'planner' || sub === 'review' || sub === 'ideas'
@@ -100,8 +134,11 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
     sub === 'errors' ? <>Errors and stuck: <N v={errorsN.ivan} /> yours, <N v={errorsN.risedtc} /> Rise, <N v={errorsN.arch} /> Arch.</>
       : sub === 'magnets' ? <>Lead magnets in review: <N v={magnetsN.ivan} /> yours, <N v={magnetsN.risedtc} /> Rise, <N v={magnetsN.arch} /> Arch.</>
         : <>{SUB_LABEL[sub]}</>
-  ) : reading ? <>Reading {sub === 'ideas' ? 'the idea banks' : 'the posts of all three seats'}…</> : sub === 'ideas'
+  ) : reading ? <>Reading {sub === 'ideas' ? 'the idea banks' : onReview ? 'this week' : 'the posts of all three seats'}…</> : sub === 'ideas'
     ? <>Ideas to decide: <N v={ideasN.ivan} /> yours, <N v={ideasN.risedtc} /> Mattan’s, <N v={ideasN.arch} /> Davorin’s.</>
+    : onReview ? (weekRead.source === 'none' && weekRead.error ? <>This week: could not read it.</>
+      // A saved copy's numbers say so (a cached count never passes as a live one).
+      : <>{weekRead.source === 'cache' ? 'Saved copy, to decide' : 'To decide'}: <N v={weekModel.toDecide.ivan} /> yours, <N v={weekModel.toDecide.risedtc} /> Rise. Arch: <N v={weekModel.perLane.arch} /> to look at.</>)
     : <>{weekWord(now)}: <N v={n('ivan')} /> yours, <N v={n('risedtc')} /> Rise, <N v={n('arch')} /> Arch posts scheduled.</>
   // One headline; a second line only for posts stuck in generation (work that needs Ivan).
   // A lint-blocked post is said once, in Ivan's seat column and the Errors count.
@@ -134,15 +171,18 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
     if (q.get('from') === 'plan') {
       return [...items[openLane].values()].flat().filter(it => it.source === 'draft').sort((a, b) => (a.at < b.at ? -1 : 1)).map(it => it.id)
     }
+    // Review walks the week stack in reading order, across seats (the lane filter applies).
+    if (onReview && weekModel.ids.includes(draft as string)) return weekModel.ids
     const w = waiting[openLane]
     // The walk is the fresh queue (what the frame counts); an older draft opened from the fold walks both.
     return (w.older.some(r => r.id === draft) ? [...w.fresh, ...w.older] : w.fresh).map(r => r.id)
-  }, [data.blocks, data.seats, draft, inErrors, items, listQueue, now, openLane, q, waiting])
+  }, [data.blocks, data.seats, draft, inErrors, items, listQueue, now, onReview, openLane, q, waiting, weekModel.ids])
   const titles = useMemo(() => {
     const t: Record<string, string> = {}
     if (openLane) for (const r of data.seats[openLane].rows) if (queueIds.includes(r.id)) t[r.id] = titleOf(r)
+    if (onReview) for (const r of weekRead.rows) if (!t[r.id] && queueIds.includes(r.id)) t[r.id] = titleOf(r)
     return t
-  }, [data.seats, openLane, queueIds])
+  }, [data.seats, onReview, openLane, queueIds, weekRead.rows])
   const slot = data.armed ? nextFreeWeekday(data.armed, now) : null
   const openRow = draft && openLane ? data.seats[openLane].rows.find(r => r.id === draft) : null
   const ghost: Ghost | null = draft && openLane === 'ivan' && slot && openRow?.status !== 'scheduled'
@@ -151,16 +191,21 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const wkIdx: 0 | 1 = week ?? (ghost && days.slice(5).some(d => d.key === ghost.key) ? 1 : 0)
   const shownDays = draft && !phone ? days.slice(wkIdx * 5, wkIdx * 5 + 5) : days
   const moveLane = isLane(q.get('lane')) ? (q.get('lane') as Lane) : 'ivan'
-  const moveRow = moveId ? data.seats[moveLane].rows.find(r => r.id === moveId) ?? null : null
+  // Never on Arch: a date write on an Arch row is live (its publisher posts from review). Every move entry point lands here.
+  const moveRow = moveId && moveLane !== 'arch' ? data.seats[moveLane].rows.find(r => r.id === moveId) ?? null : null
 
   const moveGhost: Ghost | null = moveRow && moveLand
     ? { lane: moveLane, key: moveLand, title: titleOf(moveRow), time: moveRow.scheduled_at ? warsawHm(moveRow.scheduled_at) : '09:00', label: `Lands ${dayLabel(moveLand)}` }
     : null
   const window_ = draft && openLane ? (
-    <DraftWindow id={draft} lane={openLane} queue={queueIds} onPick={id => (q.get('from') === 'plan' ? go({ draft: id, lane: openLane, from: 'plan' }) : openDraft(id, openLane))} onClose={close}
-      refresh={data.seats[openLane].refresh} days={days} armed={data.armed} armedFailed={data.armedFailed} titles={titles} />
+    <DraftWindow id={draft} lane={openLane} queue={queueIds} onPick={id => (q.get('from') === 'plan' ? go({ draft: id, lane: openLane, from: 'plan' }) : openDraft(id, weekModel.lanes.get(id) ?? openLane))} onClose={close}
+      refresh={onReview ? weekChanged : data.seats[openLane].refresh} days={days} armed={data.armed} armedFailed={data.armedFailed} titles={titles} />
   ) : null
-  const queue = (
+  const queue = onReview ? (
+    <WeekStack week={weekModel} read={weekRead} show={show} setShow={setShow} now={now} openId={draft} onOpen={openDraft}
+      onChanged={weekChanged} firstDay={days[0].key}
+      seatRows={l => (data.seats[l].loadedAt ? data.seats[l].rows : weekRead.rows.filter(r => laneOfRow(r) === l))} />
+  ) : (
     <Queue lane={qLane} setLane={setLane} seat={data.seats[qLane]} fresh={waiting[qLane].fresh} older={waiting[qLane].older}
       counts={reviewN} openId={draft} onOpen={id => openDraft(id, qLane)} now={now} />
   )

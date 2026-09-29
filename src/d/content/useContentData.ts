@@ -36,23 +36,27 @@ function seat(r: ReturnType<typeof useContent>, stalled: boolean): SeatRead {
   return { rows: r.drafts, loading: r.loading, error, loadedAt: r.loadedAt, refresh: r.refresh }
 }
 
-export function useContentData(): ContentData {
-  const ivan = useContent('ivan')
-  const rise = useContent('risedtc')
-  const arch = useContent('arch')
-  const queue = useScheduledQueue(true)
+// `enabled` = false holds all four reads (Review paints its week first; see
+// useWeek). Once let go it stays on: the caller latches it.
+export function useContentData(enabled: boolean = true): ContentData {
+  const ivan = useContent('ivan', enabled)
+  const rise = useContent('risedtc', enabled)
+  const arch = useContent('arch', enabled)
+  const queue = useScheduledQueue(enabled)
   const st = {
-    ivan: useStalled(!ivan.error && !ivan.loadedAt, ivan.refresh),
-    rise: useStalled(!rise.error && !rise.loadedAt, rise.refresh),
-    arch: useStalled(!arch.error && !arch.loadedAt, arch.refresh),
+    ivan: useStalled(enabled && !ivan.error && !ivan.loadedAt, ivan.refresh),
+    rise: useStalled(enabled && !rise.error && !rise.loadedAt, rise.refresh),
+    arch: useStalled(enabled && !arch.error && !arch.loadedAt, arch.refresh),
   }
-  const blocks = useMemo(() => (queue.loadedAt ? publishBlocksByDraft(queue.rows) : null), [queue.loadedAt, queue.rows])
+  const qLoaded = enabled && !!queue.loadedAt
+  const blocks = useMemo(() => (qLoaded ? publishBlocksByDraft(queue.rows) : null), [qLoaded, queue.rows])
   const [armed, setArmed] = useState<Set<string> | null>(null)
   const [armedFailed, setArmedFailed] = useState(false)
   const [verdict, setVerdict] = useState<VerdictPart[] | null>(null)
   const [tick, setTick] = useState(0)
 
   useEffect(() => {
+    if (!enabled) return
     let live = true
     fetchIvanArmedDays()
       .then(s => { if (live) { setArmed(s); setArmedFailed(false) } })
@@ -61,7 +65,7 @@ export function useContentData(): ContentData {
       .then(v => { if (live) setVerdict(verdictParts(v)) })
       .catch(() => { if (live) setVerdict(null) })
     return () => { live = false }
-  }, [tick, ivan.drafts])
+  }, [enabled, tick, ivan.drafts])
 
   const { refresh: r1 } = ivan, { refresh: r2 } = rise, { refresh: r3 } = arch, { refresh: r4 } = queue
   const refreshAll = useCallback(() => { r1(); r2(); r3(); r4(); setTick(t => t + 1) }, [r1, r2, r3, r4])
@@ -69,6 +73,6 @@ export function useContentData(): ContentData {
 
   return {
     seats: { ivan: seat(ivan, st.ivan), risedtc: seat(rise, st.rise), arch: seat(arch, st.arch) },
-    armed, armedFailed, verdict, blocks, queueRows: queue.loadedAt ? queue.rows : null, refreshAll, failed,
+    armed, armedFailed, verdict, blocks, queueRows: qLoaded ? queue.rows : null, refreshAll, failed,
   }
 }

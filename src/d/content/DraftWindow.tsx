@@ -9,7 +9,7 @@ import { warsawDm, warsawDow } from '../ui/time'
 import { Key } from '../ui/Key'
 import { Empty, Failed, Skeleton } from '../ui/states'
 import { Evidence, verdictWord } from './Evidence'
-import { FixMenu } from './FixMenu'
+import { FixRow } from './FixMenu'
 import { LANE_NAME, OWNER, POSS, age, canSchedule, kindOf, nextFreeWeekday, scheduleOpenByDefault, titleOf, type Lane, type WallDay } from './model'
 import { Conflict, Preview } from './Preview'
 import { PictureRow } from './PictureRow'
@@ -56,7 +56,6 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
     if (next) onPick(next); else onClose()
   }, [at, onClose, onPick, queue])
   const v = useDraftVerbs(d, lane, advance, refresh)
-  const [fix, setFix] = useState(false)
   // The Picture row's optimistic picture: shown in the preview from the tap
   // until the refetch lands (or the write fails and the row clears it).
   const [pic, setPic] = useState<string[] | undefined>(undefined)
@@ -72,7 +71,7 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || v.editing || fix) return
+      if (e.metaKey || e.ctrlKey || e.altKey || v.editing) return
       const el = e.target as HTMLElement | null
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
       if (document.querySelector('.d-confirm, .d-sheet')) return
@@ -85,7 +84,7 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [at, d.status, fix, lane, onClose, onPick, queue, v])
+  }, [at, d.status, lane, onClose, onPick, queue, v])
 
   const stage = stageOf(d)
   const qa = normalizeQa(d.qa)
@@ -124,7 +123,13 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
     </>
     foot = <>{!actionable && `Approve and Skip act on drafts in review; this one is ${STAGE_LABEL[stage].toLowerCase()}. `}
       {!schedulable && `Schedule is not offered: only a draft in review, approved or already scheduled can go on LinkedIn, and this one is ${d.published_at ? 'published' : STAGE_LABEL[stage].toLowerCase()}. `}
-      {schedulable && dateOpen && d.status === 'scheduled' && <><button type="button" data-verb="schedule-hide" onClick={() => setDateOpen(false)}>Hide date</button>. </>}<button type="button" data-verb="fix" onClick={() => setFix(true)}>Fix or remove: Regenerate · Back to idea · Delete draft</button>. Esc closes, j/k walks.</>
+      {schedulable && dateOpen && d.status === 'scheduled' && <><button type="button" data-verb="schedule-hide" onClick={() => setDateOpen(false)}>Hide date</button>. </>}<span className="cn-kk-hint">Esc closes, j/k walks.</span></>
+  } else if (lane === 'arch') {
+    // ARCH IS VIEW ONLY (29 Sep): Arch's publisher posts rows at review without an
+    // approval, so a board, date or delete write here would be live. Davorin
+    // reviews on Friday. The copy (Edit) and the Picture row stay.
+    keys = clientEditable(d.status, lane) ? <Key verb="edit" onClick={v.startEdit} disabled={v.busy}>Edit</Key> : null
+    foot = 'View only on Arch. Davorin reviews these on Friday and his publisher posts from review, so no board, date or delete key is offered here.'
   } else {
     const promotable = canPromote(d.status, lane) && !v.visible
     const why = clientWhyNot(d, lane, stage, { promotable, unpromotable: canUnpromote(lane, v.visible), editable: clientEditable(d.status, lane) })
@@ -182,9 +187,9 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
         <ScheduleRow slot={d.scheduled_at ? null : slot} when={when} setWhen={setWhen} days={days} taken={armed} armedFailed={armedFailed} current={d.status === 'scheduled' ? d.scheduled_at : null} />
       )}
       {v.err && <p className="cn-say cn-bad" role="alert">{v.err}</p>}
-      <div className="cn-acts">{keys}</div>
+      {keys && <div className="cn-acts">{keys}</div>}
+      {lane === 'ivan' && !v.editing && <FixRow d={d} onDone={refresh} onDeleted={() => { refresh(); advance() }} disabled={v.busy} />}
       <div className="cn-foot">{foot}</div>
-      {lane === 'ivan' && <FixMenu d={d} open={fix} onClose={() => setFix(false)} onDone={refresh} onDeleted={() => { refresh(); advance() }} />}
     </section>
   )
 }

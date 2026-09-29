@@ -214,3 +214,18 @@
 .d-phone .cn-row.cn-qrow{grid-template-columns:34px 52px minmax(0,1fr)}
 .d-phone .cn-row.cn-qrow>.cn-racts{grid-column:3;justify-content:flex-start;padding:6px 0 0 4px}
 .d-phone .cn-qthumb img,.d-phone .cn-qthumb i{width:44px;height:44px}
+
+/* FIX OR REMOVE, as keys in the open post (29 Sep; was footer link text opening a sheet).
+   Today's components (ds Button) drawn at the frame's size: 44px, the neutral key face,
+   Delete draft in the danger outline. Their inline confirms wrap under the row. */
+.cn-fix2{padding:12px 16px 4px;border-top:1px solid var(--line);margin-top:6px}
+.cn-fix2 .cn-cap{display:block;margin:0 0 8px}
+.cn-fix2-row{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
+.cn-fix2 .cn-fix2-row .ds-btn{height:44px;flex:1 1 0;min-width:120px;justify-content:center;border-radius:10px;padding:0 14px;
+  border:1px solid var(--line2);background:var(--p3);color:var(--t1);font:600 14px var(--f);box-shadow:inset 0 1px 0 rgba(255,255,255,.07)}
+.cn-fix2 .cn-fix2-row .ds-btn[data-variant='danger']{background:transparent;color:var(--critT);border-color:rgba(255,69,58,.5)}
+.cn-fix2-row .a-dw-shelfrow{flex:1 0 100%}
+.cn-fix2-row .a-dw-inline{padding:10px 12px;border:1px solid var(--line2);border-radius:10px;background:var(--p2);color:var(--t1);font-size:13.5px;gap:10px;display:flex;flex-direction:column}
+.cn-fix2-row .a-dw-inline-a{display:flex;flex-wrap:wrap;gap:8px}
+.cn-fix2 .cn-fix2-row .a-dw-inline-a .ds-btn{flex:0 1 auto}
+.d-phone .cn-kk-hint{display:none}

@@ -1,20 +1,27 @@
 import { useCallback, useState } from 'react'
 import {
-  LANE_LABEL, LANE_POSSESSIVE, approveDraft, boardGroupOf, canPromote, deleteClientDraft, deleteDraft,
-  reviewActionable, setBoardVisible, skipDraft, type ContentDraft,
+  LANE_LABEL, LANE_POSSESSIVE, boardGroupOf, canPromote, deleteClientDraft, deleteDraft,
+  reviewActionable, setBoardVisible, type ContentDraft,
 } from '../../lib/content'
 import type { RowCap } from '../../exp/v2c/commandStore'
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
 import type { Lane } from './model'
+import { HOLD_MS, holdDecision, undoDecision } from './decisions'
 
 // TODAY'S ROW WRITES on a D list row (wb/content/actions.tsx: ReviewActions,
-// PromoteRow, RowDelete): same lib writes, same confirms in the same words,
-// Skip and Delete behind the red danger confirm. And what a bulk action may do
-// to the row (today's Card caps), for the command layer's selection mark.
+// PromoteRow, RowDelete): same lib writes. Approve and Skip are one tap with an
+// Undo receipt (decisions.ts, 29 Sep); To board keeps its confirm (it reaches the
+// client) and Delete keeps the red one (nothing undoes it). And what a bulk
+// action may do to the row (today's Card caps), for the command layer's mark.
+//
+// ARCH ROWS GET NONE (29 Sep): Arch's publisher posts rows at review without an
+// approval, so a board or delete write on an Arch row is live. Davorin reviews
+// on Friday; Arch rows are view (and picture) only in this app.
 export type RowVerb = 'approve' | 'skip' | 'board' | 'delete'
 
 export function rowCaps(d: ContentDraft, lane: Lane): RowCap[] {
+  if (lane === 'arch') return []
   return [
     ...(reviewActionable(d.status, lane) ? (['approve', 'skip'] as RowCap[]) : []),
     ...(canPromote(d.status, lane) && boardGroupOf(d) !== 'board' ? (['promote'] as RowCap[]) : []),
@@ -38,11 +45,20 @@ export function useRowVerbs(onDone: () => void) {
   const [busy, setBusy] = useState<string | null>(null)
   const run = useCallback(async (d: ContentDraft, lane: Lane, v: RowVerb) => {
     if (busy) return
-    const ok = await confirm(v === 'approve' ? {
-      title: 'Approve this draft?', message: 'Marks approved. Nothing publishes, scheduling stays on the board.', confirmText: 'Approve', verb: 'confirm',
-    } : v === 'skip' ? {
-      title: 'Skip this draft?', message: 'Marks it disqualified, it drops out of the queue for good.', confirmText: 'Skip', verb: 'confirm', danger: true,
-    } : v === 'board' ? {
+    if (lane === 'arch') return
+    if (v === 'approve' || v === 'skip') {
+      holdDecision(d.id, v, {
+        onCommitted: onDone,
+        onFailed: e => toast.show({ message: e instanceof Error ? e.message : 'That did not go through.', sub: 'It is back in review.', tone: 'failed' }),
+      })
+      toast.show({
+        id: `decide-${d.id}`, ms: HOLD_MS, message: v === 'approve' ? 'Approved.' : 'Skipped.',
+        sub: v === 'approve' ? 'Nothing publishes until it is scheduled.' : 'It leaves the queue for good.',
+        action: { label: 'Undo', verb: 'undo-decision', run: () => { if (!undoDecision(d.id)) toast.show({ message: 'Too late to undo: it was already written.' }) } },
+      })
+      return
+    }
+    const ok = await confirm(v === 'board' ? {
       title: `Put this on ${LANE_POSSESSIVE[lane]} board?`,
       message: `${LANE_LABEL[lane]} sees it. This is the one action here that reaches a client, and it fires his board’s own `
         + 'sync, so it lands within moments and not at some later batch. From there the decisions are his: '
@@ -56,11 +72,9 @@ export function useRowVerbs(onDone: () => void) {
     if (!ok) return
     setBusy(d.id)
     try {
-      if (v === 'approve') await approveDraft(d.id)
-      else if (v === 'skip') await skipDraft(d.id)
-      else if (v === 'board') await setBoardVisible(d.id, true)
+      if (v === 'board') await setBoardVisible(d.id, true)
       else await (lane !== 'ivan' ? deleteClientDraft(d.id, d.taxonomy) : deleteDraft(d.id, d.taxonomy))
-      toast.show({ message: v === 'approve' ? 'Approved. Nothing publishes until it is scheduled.' : v === 'skip' ? 'Skipped. It left the queue.' : v === 'board' ? `On ${LANE_POSSESSIVE[lane]} board.` : 'Deleted.' })
+      toast.show({ message: v === 'board' ? `On ${LANE_POSSESSIVE[lane]} board.` : 'Deleted.' })
       onDone(); window.dispatchEvent(new Event('wb-rows-changed'))
     } catch (e) {
       toast.show({ message: e instanceof Error ? e.message : 'That did not go through.', tone: 'failed' })

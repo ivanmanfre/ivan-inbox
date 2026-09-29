@@ -2,6 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderInFrame } from '../test-utils'
+// The inline Fix row mounts today's wb components, which read matchMedia (jsdom has none).
+window.matchMedia ??= ((q: string) => ({ matches: false, media: q, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia
 
 const detail = {
   id: 'd1', client_id: null, status: 'review', type: 'text', title: 'A profitable cold email channel', topic: null,
@@ -27,13 +29,14 @@ vi.mock('./writes', () => ({ scheduleGuarded: sa.scheduleDraft }))
 
 import { DraftSaveConflict } from '../../lib/content'
 import { DraftWindow } from './DraftWindow'
+import { flushDecisions, resetDecisionsForTest } from './decisions'
 
 const props = (over = {}) => ({
   id: 'd1', lane: 'ivan' as const, queue: ['d0', 'd1', 'd2'], onPick: vi.fn(), onClose: vi.fn(), refresh: vi.fn(),
   days: [], armed: new Set<string>(), armedFailed: false, ...over,
 })
 
-beforeEach(() => { current = detail; Object.values(lib).forEach(f => f.mockReset()); sa.scheduleDraft.mockReset() })
+beforeEach(() => { current = detail; Object.values(lib).forEach(f => f.mockReset()); sa.scheduleDraft.mockReset(); resetDecisionsForTest() })
 afterEach(cleanup)
 
 describe('draft window', () => {
@@ -45,13 +48,25 @@ describe('draft window', () => {
     expect(screen.getByText('Opener reuses a sample.')).toBeTruthy()
   })
 
-  it('approve writes through approveDraft and walks to the next row (no confirm on a clean approve)', async () => {
+  it('approve is one tap: it walks on at once, holds the write for Undo, then writes through approveDraft', async () => {
     const p = props()
     lib.approveDraft.mockResolvedValue(undefined)
     renderInFrame(<DraftWindow {...p} />)
     fireEvent.click(document.querySelector('[data-verb="approve"]')!)
-    await waitFor(() => expect(lib.approveDraft).toHaveBeenCalledWith('d1'))
-    await waitFor(() => expect(p.onPick).toHaveBeenCalledWith('d2'))
+    expect(p.onPick).toHaveBeenCalledWith('d2')
+    expect(document.querySelector('.d-confirm')).toBeNull()
+    expect(await screen.findByText('Approved.')).toBeTruthy()
+    expect(lib.approveDraft).not.toHaveBeenCalled()
+    await flushDecisions()
+    expect(lib.approveDraft).toHaveBeenCalledWith('d1')
+  })
+
+  it('Undo on the approve receipt means nothing is ever written', async () => {
+    renderInFrame(<DraftWindow {...props()} />)
+    fireEvent.click(document.querySelector('[data-verb="approve"]')!)
+    fireEvent.click(await screen.findByText('Undo'))
+    await flushDecisions()
+    expect(lib.approveDraft).not.toHaveBeenCalled()
   })
 
   it('j/k walk the queue and wait while editing', () => {
@@ -92,15 +107,30 @@ describe('draft window', () => {
     expect([0, 6]).not.toContain(at.getDay())
   })
 
-  it('a client row offers Put on his board (confirmed) and never Approve', async () => {
-    current = { ...detail, client_id: 'arch', board_visible: false }
+  it('a Rise row offers Put on his board (confirmed) and never Approve', async () => {
+    current = { ...detail, client_id: 'risedtc', board_visible: false }
     lib.setBoardVisible.mockResolvedValue(undefined)
-    renderInFrame(<DraftWindow {...props({ lane: 'arch' })} />)
+    renderInFrame(<DraftWindow {...props({ lane: 'risedtc' })} />)
     expect(document.querySelector('[data-verb="approve"]')).toBeNull()
     fireEvent.click(document.querySelector('[data-verb="board-on"]')!)
-    await screen.findByText('Put this on Davorin’s board?')
+    await screen.findByText('Put this on Mattan’s board?')
     fireEvent.click(document.querySelector('[data-verb="confirm"]')!)
     await waitFor(() => expect(lib.setBoardVisible).toHaveBeenCalledWith('d1', true))
+  })
+
+  it('ARCH is view only: no board, date, approve, skip or delete key; Edit and the Picture row stay', () => {
+    for (const board_visible of [false, true]) {
+      current = { ...detail, client_id: 'arch', board_visible }
+      renderInFrame(<DraftWindow {...props({ lane: 'arch' })} />)
+      for (const v of ['board-on', 'board-off', 'delete', 'approve', 'skip', 'schedule', 'schedule-open']) {
+        expect(document.querySelector(`[data-verb="${v}"]`), v).toBeNull()
+      }
+      expect(document.querySelector('[data-verb="edit"]')).toBeTruthy()
+      expect(document.querySelector('.cn-pic2')).toBeTruthy()
+      expect(screen.getByText(/View only on Arch/)).toBeTruthy()
+      cleanup()
+    }
+    expect(lib.setBoardVisible).not.toHaveBeenCalled()
   })
 
   it('HAZARD: no Schedule on a published, errored or generating draft, and the verb refuses', () => {
@@ -123,13 +153,39 @@ describe('draft window', () => {
     expect(document.querySelector('[data-verb="schedule"]')!.textContent).toContain('Reschedule')
   })
 
-  it('Skip asks with the red danger confirm and Enter never confirms it', async () => {
-    renderInFrame(<DraftWindow {...props()} />)
+  it('Skip is one tap with Undo: no confirm, and Undo writes nothing', async () => {
+    const p = props()
+    renderInFrame(<DraftWindow {...p} />)
     fireEvent.click(document.querySelector('[data-verb="skip"]')!)
-    await screen.findByText('Skip this draft?')
-    expect(document.querySelector('.d-confirm-danger')).toBeTruthy()
-    fireEvent.keyDown(window, { key: 'Enter' })
+    expect(document.querySelector('.d-confirm')).toBeNull()
+    expect(p.onPick).toHaveBeenCalledWith('d2')
+    fireEvent.click(await screen.findByText('Undo'))
+    await flushDecisions()
     expect(lib.skipDraft).not.toHaveBeenCalled()
+  })
+
+  it('the QA override keeps its confirm: approving an errored draft asks first', async () => {
+    current = { ...detail, status: 'error' }
+    renderInFrame(<DraftWindow {...props()} />)
+    fireEvent.click(document.querySelector('[data-verb="approve"]')!)
+    expect(await screen.findByText('Approve this draft anyway?')).toBeTruthy()
+  })
+
+  it('Fix or remove are keys in the open post, Regenerate named for what it does', () => {
+    renderInFrame(<DraftWindow {...props()} />)
+    const fix = document.querySelector('.cn-fix2')!
+    expect(fix).toBeTruthy()
+    const labels = [...fix.querySelectorAll('button')].map(b => b.textContent)
+    expect(labels).toEqual(['Rewrite the copy', 'Back to idea', 'Delete draft'])
+    expect(document.querySelector('[data-verb="fix"]')).toBeNull()
+  })
+
+  it('the preview folds like the feed: three lines, then …see more', () => {
+    current = { ...detail, post_body: 'Line one of the hook.\nLine two.\nLine three.\nLine four is below the fold.' }
+    renderInFrame(<DraftWindow {...props()} />)
+    expect(screen.queryByText(/Line four/)).toBeNull()
+    fireEvent.click(document.querySelector('[data-verb="see-more"]')!)
+    expect(screen.getByText(/Line four/)).toBeTruthy()
   })
 })
 

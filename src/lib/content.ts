@@ -389,6 +389,25 @@ export async function fetchContentDrafts(lane: ContentLane): Promise<ContentPage
   return { rows, count: count ?? null }
 }
 
+// THIS WEEK, every seat, one read (D Content > Review, 29 Sep). The three
+// lane reads above pull up to 1,000 rows each, bodies included, before the
+// Review page can draw a card. This is the same columns and the same
+// operator-deleted rule over only the rows the week can show: everything in
+// review (any age, any seat) plus everything dated inside [from, to). Rows of
+// any other tenant come back too and are dropped by the caller (laneOfRow),
+// because a second `or` filter for client_id is not something this read
+// should lean on. `count` is exact, so a capped page says so.
+export async function fetchWeekDrafts(fromIso: string, toIso: string): Promise<ContentPage> {
+  const { data, error, count } = await supabase.from('carousel_drafts')
+    .select(COLS, { count: 'exact' })
+    .or(`status.eq.review,and(scheduled_at.gte."${fromIso}",scheduled_at.lt."${toIso}")`)
+    .order('created_at', { ascending: false })
+    .limit(1000)
+  if (error) throw error
+  const rows = ((data ?? []) as unknown as ContentDraft[]).filter(r => !operatorDeleted(r.taxonomy))
+  return { rows, count: count ?? null }
+}
+
 export type ScheduledQueueRow = {
   id: string
   clickup_task_id: string | null

@@ -16,10 +16,9 @@ afterEach(cleanup)
 window.matchMedia ??= ((q: string) => ({ matches: false, media: q, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia
 
 describe('Fix or remove', () => {
-  it('Delete draft walks to the next row in the queue', () => {
+  it('Delete draft is a key in the open post and walks to the next row in the queue', () => {
     const onPick = vi.fn()
     renderInFrame(<DraftWindow id="d1" lane="ivan" queue={['d1', 'd2']} onPick={onPick} onClose={vi.fn()} refresh={vi.fn()} days={[]} armed={new Set()} armedFailed={false} />)
-    fireEvent.click(document.querySelector('[data-verb="fix"]')!)
     fireEvent.click(document.querySelector('[data-verb="fake-delete"]')!)
     expect(onPick).toHaveBeenCalledWith('d2')
   })

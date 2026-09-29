@@ -2,6 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderInFrame } from '../test-utils'
+// The inline Fix row mounts today's wb components, which read matchMedia (jsdom has none).
+window.matchMedia ??= ((q: string) => ({ matches: false, media: q, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia
 
 const base = {
   id: 'd1', client_id: null, status: 'review', type: 'text', title: 'A title', topic: 'The topic line', published_at: null,

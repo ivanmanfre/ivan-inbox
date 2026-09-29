@@ -36,8 +36,10 @@ function Say({ tone, children }: { tone?: 'attention' | 'urgent'; children: Reac
 //     lands nothing. The window says so up front and offers the documented
 //     escape hatch as its own deliberate act.
 // ---------------------------------------------------------------------------
-export function RegenDraft({ d, onDone, disabled }: {
+export function RegenDraft({ d, onDone, disabled, label }: {
   d: ContentDraftDetail; onDone: () => void; disabled?: boolean
+  /** The key's words (D Content says what it does: "Rewrite the copy"). Default: today's "Regenerate". */
+  label?: string
 }) {
   const [asking, setAsking] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -70,7 +72,7 @@ export function RegenDraft({ d, onDone, disabled }: {
       {note && <div className="a-dw-shelfrow"><Say>{note}</Say></div>}
       {err && <div className="a-dw-shelfrow"><Say tone="urgent">{err}</Say></div>}
       <Button variant="quiet" disabled={disabled} aria-expanded={asking} onClick={() => setAsking(a => !a)}>
-        {first ? 'Generate' : 'Regenerate'}
+        {first ? 'Generate' : label ?? 'Regenerate'}
       </Button>
       {asking && (
         <div className="a-dw-shelfrow a-dw-inline">

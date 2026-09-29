@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ClientRpcError, DraftSaveConflict, approveDraft, deleteClientDraft, saveClientDraftBody, saveDraftBody,
-  setBoardVisible, skipDraft, type ContentDraftDetail, type SaveConflict,
+  ClientRpcError, DraftSaveConflict, deleteClientDraft, saveClientDraftBody, saveDraftBody,
+  setBoardVisible, type ContentDraftDetail, type SaveConflict,
 } from '../../lib/content'
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
 import { warsawDayTime } from '../ui/time'
 import { OWNER, POSS, canSchedule, type Lane } from './model'
 import { scheduleGuarded } from './writes'
+import { HOLD_MS, holdDecision, undoDecision } from './decisions'
 
 // The draft window's writes. Every write is today's function with today's
 // payload (lib/content, lib/studioActions); every confirm keeps today's words.
@@ -63,23 +64,32 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
     await save(text)
   }, [conflict, save, text])
 
+  // Approve and Skip are one tap: the decision is held for the life of its Undo
+  // toast and written when it ends (decisions.ts), and the window walks on at
+  // once. The one confirm left is the QA override: approving a draft QA refused.
   const decide = useCallback(async (kind: 'approve' | 'skip') => {
     if (editing || busy) return
-    const overriding = d.status === 'error'
-    const ok = (kind === 'approve' && !overriding) || await confirm(kind === 'approve' ? {
-      title: 'Approve this draft anyway?',
-      message: 'QA refused this one. Approving overrides that verdict. Nothing publishes, scheduling is the separate act below.',
-      confirmText: 'Approve', verb: 'confirm',
-    } : {
-      title: 'Skip this draft?', message: 'Marks it disqualified, it drops out of the queue for good.', confirmText: 'Skip', verb: 'confirm', danger: true,
+    if (kind === 'approve' && d.status === 'error') {
+      const ok = await confirm({
+        title: 'Approve this draft anyway?',
+        message: 'QA refused this one. Approving overrides that verdict. Nothing publishes, scheduling is the separate act below.',
+        confirmText: 'Approve', verb: 'confirm',
+      })
+      if (!ok) return
+    }
+    setErr('')
+    const id = d.id
+    holdDecision(id, kind, {
+      onCommitted: refresh,
+      onFailed: e => toast.show({ tone: 'failed', message: e instanceof Error ? e.message : `The ${kind} did not go through.`, sub: 'It is back in review.' }),
     })
-    if (!ok) return
-    setBusy(true); setErr('')
-    try {
-      await (kind === 'approve' ? approveDraft(d.id) : skipDraft(d.id))
-      toast.show({ message: kind === 'approve' ? 'Approved. Nothing publishes until it is scheduled.' : 'Skipped. It left the queue.' })
-      refresh(); advance()
-    } catch (e) { fail(e, kind) } finally { setBusy(false) }
+    toast.show({
+      id: `decide-${id}`, ms: HOLD_MS,
+      message: kind === 'approve' ? 'Approved.' : 'Skipped.',
+      sub: kind === 'approve' ? 'Nothing publishes until it is scheduled.' : 'It leaves the queue for good.',
+      action: { label: 'Undo', verb: 'undo-decision', run: () => { if (!undoDecision(id)) toast.show({ message: 'Too late to undo: it was already written.' }) } },
+    })
+    advance()
   }, [advance, busy, confirm, d.id, d.status, editing, refresh, toast])
 
   const schedule = useCallback(async (at: Date) => {
@@ -102,26 +112,32 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
     } catch (e) { fail(e, 'schedule it') } finally { setBusy(false) }
   }, [advance, busy, confirm, d, editing, refresh, toast])
 
+  // Put on board asks first (it reaches the client). Taking it off is one tap:
+  // the receipt carries Undo, which puts it straight back.
   const board = useCallback(async (next: boolean) => {
     if (busy) return
-    const ok = await confirm(next ? {
-      title: `Put this on ${POSS[lane]} board?`,
-      message: `${OWNER[lane]} sees it. This is the one action here that reaches a client, it fires his board’s `
-        + 'own sync, so it lands on his board within moments, not at some later batch. From there '
-        + 'the decisions are his: approve, edit, veto, schedule. '
-        + 'Nothing publishes, this writes board visibility and never touches the publisher.',
-      confirmText: 'Put it on his board', verb: 'confirm',
-    } : {
-      title: `Take this off ${POSS[lane]} board?`,
-      message: 'It goes back to our side only and disappears from his board on the same sync. Nothing is '
-        + 'deleted and no status changes, the draft stays here, and you can put it back.',
-      confirmText: 'Take it off', verb: 'confirm',
-    })
-    if (!ok) return
+    if (next) {
+      const ok = await confirm({
+        title: `Put this on ${POSS[lane]} board?`,
+        message: `${OWNER[lane]} sees it. This is the one action here that reaches a client, it fires his board’s `
+          + 'own sync, so it lands on his board within moments, not at some later batch. From there '
+          + 'the decisions are his: approve, edit, veto, schedule. '
+          + 'Nothing publishes, this writes board visibility and never touches the publisher.',
+        confirmText: 'Put it on his board', verb: 'confirm',
+      })
+      if (!ok) return
+    }
     setBusy(true); setErr(''); setVisible(next)
+    const id = d.id
+    const flip = (to: boolean) => setBoardVisible(id, to)
+      .then(() => { toast.show({ message: to ? `Back on ${POSS[lane]} board.` : `Off ${POSS[lane]} board again.` }); refresh() })
+      .catch(e => toast.show({ tone: 'failed', message: e instanceof Error ? e.message : 'Could not change the board.' }))
     try {
-      await setBoardVisible(d.id, next)
-      toast.show({ message: next ? `On ${POSS[lane]} board.` : `Off ${POSS[lane]} board.`, sub: next ? 'Undo: open it again and Take off his board.' : 'Nothing was deleted.' })
+      await setBoardVisible(id, next)
+      toast.show({
+        message: next ? `On ${POSS[lane]} board.` : `Off ${POSS[lane]} board.`, sub: next ? `${OWNER[lane]} decides from there.` : 'Nothing was deleted.',
+        action: { label: 'Undo', verb: 'undo-board', run: () => { void flip(!next) } },
+      })
       refresh(); if (next) advance()
     } catch (e) { setVisible(!next); fail(e, 'change the board') } finally { setBusy(false) }
   }, [advance, busy, confirm, d.id, lane, refresh, toast])
