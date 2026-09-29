@@ -10,6 +10,7 @@ import { Key } from '../ui/Key'
 import { Empty, Failed, Skeleton } from '../ui/states'
 import { Evidence, verdictWord } from './Evidence'
 import { FixMenu } from './FixMenu'
+import { SwapImage } from '../../wb/draft/actions'
 import { LANE_NAME, OWNER, POSS, age, canSchedule, kindOf, nextFreeWeekday, scheduleOpenByDefault, titleOf, type Lane, type WallDay } from './model'
 import { Conflict, Preview } from './Preview'
 import { AboveThePost, clientWhyNot, internalOnly, postsChip } from './DraftNotes'
@@ -119,7 +120,7 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
     </>
     foot = <>{!actionable && `Approve and Skip act on drafts in review; this one is ${STAGE_LABEL[stage].toLowerCase()}. `}
       {!schedulable && `Schedule is not offered: only a draft in review, approved or already scheduled can go on LinkedIn, and this one is ${d.published_at ? 'published' : STAGE_LABEL[stage].toLowerCase()}. `}
-      {schedulable && dateOpen && d.status === 'scheduled' && <><button type="button" data-verb="schedule-hide" onClick={() => setDateOpen(false)}>Hide date</button>. </>}<button type="button" data-verb="fix" onClick={() => setFix(true)}>Fix or remove: Regenerate · Swap image · Back to idea · Delete draft</button>. Esc closes, j/k walks.</>
+      {schedulable && dateOpen && d.status === 'scheduled' && <><button type="button" data-verb="schedule-hide" onClick={() => setDateOpen(false)}>Hide date</button>. </>}<button type="button" data-verb="fix" onClick={() => setFix(true)}>Fix or remove: Regenerate · Back to idea · Delete draft</button>. Esc closes, j/k walks.</>
   } else {
     const promotable = canPromote(d.status, lane) && !v.visible
     const why = clientWhyNot(d, lane, stage, { promotable, unpromotable: canUnpromote(lane, v.visible), editable: clientEditable(d.status, lane) })
@@ -164,6 +165,12 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
         <Preview d={d} lane={lane} body={v.shown} editing={v.editing} text={v.text} setText={v.setText}
           onStartEdit={lane === 'ivan' || clientEditable(d.status, lane) ? v.startEdit : null} onCancel={v.cancelEdit} onSave={() => void v.save()} />
         {v.conflict && <Conflict c={v.conflict} busy={v.busy} onTheirs={v.takeTheirs} onMine={v.keepMine} onDismiss={v.dismissConflict} />}
+        {/* THE PICTURE, NEXT TO THE POST IT BELONGS TO. It sat inside "Fix or
+            remove" and Ivan could not find it on a scheduled post (29 Sep).
+            Not on carousels: one pinned photo would replace the whole deck. */}
+        {lane === 'ivan' && d.type !== 'carousel' && !d.published_at && d.status !== 'generating' && !v.editing && (
+          <div className="cn-fix a-dw"><div className="a-dw-remake cn-pic"><SwapImage d={d} onDone={refresh} disabled={v.busy} /></div></div>
+        )}
       </div>
       {!v.editing && <Evidence d={d} initial={lane === 'ivan' ? 'qa' : 'src'} noteable={lane === 'ivan'} onNote={refresh} />}
       {schedulable && dateOpen && !v.editing && (

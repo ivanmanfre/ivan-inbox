@@ -721,7 +721,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
       {shelf && lane === 'ivan' && (
         <div className="a-dw-remake">
           <RegenDraft d={d} onDone={refresh} disabled={editing} />
-          <SwapImage d={d} onDone={refresh} disabled={editing} />
+          {d.type !== 'carousel' && <SwapImage d={d} onDone={refresh} disabled={editing} />}
           {canRestartToIdea(d.status, lane) && (
             <RestartDraft d={d} onDone={refresh} disabled={editing} />
           )}

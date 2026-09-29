@@ -17,10 +17,10 @@ vi.mock('../../hooks/useContent', () => ({
   useDraftDetail: () => ({ detail: current, missing: false, loading: false, error: null }),
 }))
 
-const lib = vi.hoisted(() => ({ saveDraftBody: vi.fn(), approveDraft: vi.fn(), skipDraft: vi.fn(), setBoardVisible: vi.fn() }))
+const lib = vi.hoisted(() => ({ saveDraftBody: vi.fn(), approveDraft: vi.fn(), skipDraft: vi.fn(), setBoardVisible: vi.fn(), setDraftImage: vi.fn() }))
 vi.mock('../../lib/content', async orig => {
   const real = await orig<typeof import('../../lib/content')>()
-  return { ...real, saveDraftBody: lib.saveDraftBody, approveDraft: lib.approveDraft, skipDraft: lib.skipDraft, setBoardVisible: lib.setBoardVisible }
+  return { ...real, saveDraftBody: lib.saveDraftBody, approveDraft: lib.approveDraft, skipDraft: lib.skipDraft, setBoardVisible: lib.setBoardVisible, setDraftImage: lib.setDraftImage }
 })
 const sa = vi.hoisted(() => ({ scheduleDraft: vi.fn() }))
 vi.mock('./writes', () => ({ scheduleGuarded: sa.scheduleDraft }))
@@ -130,5 +130,30 @@ describe('draft window', () => {
     expect(document.querySelector('.d-confirm-danger')).toBeTruthy()
     fireEvent.keyDown(window, { key: 'Enter' })
     expect(lib.skipDraft).not.toHaveBeenCalled()
+  })
+})
+
+describe('the picture, under the post', () => {
+  const img = 'https://x.supabase.co/storage/v1/object/public/post-stills/selfie-pool-a/selfie-12.jpg'
+  it('a scheduled text post offers Change and Remove without opening Fix or remove, and Remove clears it', async () => {
+    current = { ...detail, status: 'scheduled', scheduled_at: '2026-09-29T18:16:00Z', image_urls: [img] }
+    lib.setDraftImage.mockResolvedValue(undefined)
+    const refresh = vi.fn()
+    renderInFrame(<DraftWindow {...props({ refresh })} />)
+    expect(screen.getByText('Change picture')).toBeTruthy()
+    fireEvent.click(screen.getByText('Remove picture'))
+    await waitFor(() => expect(lib.setDraftImage).toHaveBeenCalledWith('d1', null))
+    await waitFor(() => expect(refresh).toHaveBeenCalled())
+  })
+  it('an image-less post offers Add, not Remove', () => {
+    renderInFrame(<DraftWindow {...props()} />)
+    expect(screen.getByText('Add picture')).toBeTruthy()
+    expect(screen.queryByText('Remove picture')).toBeNull()
+  })
+  it('a carousel gets no picture controls: one photo would replace the deck', () => {
+    current = { ...detail, type: 'carousel', image_urls: [img, img] }
+    renderInFrame(<DraftWindow {...props()} />)
+    expect(screen.queryByText('Change picture')).toBeNull()
+    expect(screen.queryByText('Remove picture')).toBeNull()
   })
 })

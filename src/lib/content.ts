@@ -2843,10 +2843,24 @@ export async function searchStills(q: string): Promise<Still[]> {
  * from overwriting words Ivan wrote (protect_human_edited_draft, which also
  * preserves image_urls when the old row had any). Setting it from a photo swap
  * would freeze the COPY too, and the operator only said which picture to use.
+ *
+ * A REMOVAL stamps `taxonomy.no_photo`, and pinning a photo clears it. Without
+ * the flag the removal did not stick: the Text Post Photo Assigner
+ * (NuQTHLHmOOC6U6tf, every 10 min) re-selfies any image-less review text post,
+ * and now skips a row carrying the flag. The taxonomy is re-read here, never
+ * taken from the window, so the stamp cannot roll back a newer write.
  */
 export async function setDraftImage(id: string, url: string | null): Promise<void> {
-  const { error } = await supabase.from('carousel_drafts')
-    .update({ image_urls: url ? [url] : [] })
+  const pre = await supabase.from('carousel_drafts')
+    .select('taxonomy')
     .eq('id', id).is('client_id', null)
+    .maybeSingle()
+  if (pre.error) throw pre.error
+  if (!pre.data) throw new Error('This draft is gone, so there is no picture to change.')
+  const { data, error } = await supabase.from('carousel_drafts')
+    .update({ image_urls: url ? [url] : [], taxonomy: stampTaxonomy(pre.data.taxonomy, { no_photo: !url }) })
+    .eq('id', id).is('client_id', null)
+    .select('id')
   if (error) throw error
+  if (!data || data.length === 0) throw new Error('The picture did not change: the database refused the write.')
 }

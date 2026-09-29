@@ -299,8 +299,15 @@ export function SwapImage({ d, onDone, disabled }: {
   return (
     <>
       <Button variant="quiet" disabled={disabled} aria-expanded={open} onClick={() => setOpen(o => !o)}>
-        {current ? 'Swap image' : 'Add image'}
+        {current ? 'Change picture' : 'Add picture'}
       </Button>
+      {/* One tap, no picker: removing is its own act, not a choice inside the library. */}
+      {current && (
+        <Button variant="quiet" disabled={disabled || !!busy} onClick={() => pick(null)}>
+          {busy === 'none' ? 'Removing…' : 'Remove picture'}
+        </Button>
+      )}
+      {!open && err && <Say tone="urgent">{err}</Say>}
       {open && (
         <div className="a-dw-shelfrow a-dw-swap">
           <Input
@@ -316,12 +323,6 @@ export function SwapImage({ d, onDone, disabled }: {
             {STILL_FOLDERS.map(f => (
               <Chip key={f} selected={!query && f === folder} onClick={() => { setQ(''); setQuery(''); setFolder(f) }}>{f}</Chip>
             ))}
-            <span className="a-grow" />
-            {current && (
-              <Button variant="quiet" size="sm" disabled={!!busy} onClick={() => pick(null)}>
-                {busy === 'none' ? 'Removing…' : 'Remove photo'}
-              </Button>
-            )}
           </div>
           {err && <Say tone="urgent">{err}</Say>}
           {!stills && !err && <Say>Reading the library…</Say>}
