@@ -24,6 +24,15 @@ import './week.css'
 // today's move sheet, operator_set_schedule_date, the day only. An ARCH card is
 // view only (Open + picture): no Approve, Skip, board or date key on the card.
 // The open post and the Planner keep every Arch control they had.
+// Quick filters (21st.dev data-table move, 30 Sep): the same stack cut by what needs a person, with live counts.
+type Quick = 'all' | 'decide' | 'flagged' | 'noimg'
+const QUICK: [Quick, string, (c: WeekCard) => boolean][] = [
+  ['all', 'Everything', () => true],
+  ['decide', 'To decide', c => c.primary !== 'open'],
+  ['flagged', 'Flagged', c => c.flags.some(f => f.tone === 'warn')],
+  ['noimg', 'No image', c => c.flags.some(f => f.key === 'noimg')],
+]
+
 const SHOW_LABEL: Record<Show, string> = { all: 'All', ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch' }
 
 export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onChanged, firstDay, seatRows }: {
@@ -46,6 +55,7 @@ export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onCh
   const [busy, setBusy] = useState<string | null>(null)
   const [moving, setMoving] = useState<WeekCard | null>(null)
   const [showOld, setShowOld] = useState(false)
+  const [quick, setQuick] = useState<Quick>('all')
 
   // Auto-advance: the next card's key takes the focus (and comes into view) once this one has moved on.
   const advance = useCallback((id: string) => {
@@ -120,7 +130,12 @@ export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onCh
     else onOpen(c.r.id, c.lane)
   }
 
-  const empty = week.groups.length === 0 && week.older.length === 0
+  const all = [...week.groups.flatMap(g => g.cards), ...week.older]
+  const qn = Object.fromEntries(QUICK.map(([k, , f]) => [k, all.filter(f).length])) as Record<Quick, number>
+  const qf = (QUICK.find(x => x[0] === quick) ?? QUICK[0])[2]
+  const groups = quick === 'all' ? week.groups : week.groups.map(g => ({ ...g, cards: g.cards.filter(qf) })).filter(g => g.cards.length)
+  const older = quick === 'all' ? week.older : week.older.filter(qf)
+  const empty = groups.length === 0 && older.length === 0
   const cards = (list: WeekCard[], dayed: boolean) => list.map(c => (
     <Card key={c.r.id} c={c} when={whenOf(c, now, dayed)} open={c.r.id === openId} busy={busy === c.r.id}
       onOpen={() => onOpen(c.r.id, c.lane)} onKey={() => act(c)} onDate={() => setMoving(c)} />
@@ -135,6 +150,15 @@ export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onCh
           </button>
         ))}
       </div>
+      {all.length > 0 && (
+        <div className="cn-wk2-quick" role="tablist" aria-label="Filter the stack">
+          {QUICK.filter(([k]) => k === 'all' || k === quick || qn[k] > 0).map(([k, label]) => (
+            <button key={k} type="button" role="tab" aria-selected={k === quick} data-verb={`quick-${k}`} onClick={() => setQuick(k)}>
+              {label}<b>{qn[k]}</b>
+            </button>
+          ))}
+        </div>
+      )}
       <Sync read={read} />
       {show === 'arch' && (
         <p className="cn-wk2-note">Arch cards here are view only: Davorin reviews his posts on Friday and his publisher posts from review. Open a post for its board, date and picture controls.</p>
@@ -142,22 +166,22 @@ export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onCh
       {read.source === 'none' && !read.settled ? <Skeleton lines={6} title={false} label="Reading this week" />
         : read.source === 'none' && read.error ? <Failed what="this week's posts" detail={read.error} onRetry={read.refresh} />
           : empty ? (
-            <p className="cn-wk2-empty">{show === 'all' ? 'Nothing this week, and nothing waits in review.' : `Nothing of ${SHOW_LABEL[show]}’s this week, and nothing in review.`}</p>
+            <p className="cn-wk2-empty">{quick !== 'all' ? 'Nothing matches this filter.' : show === 'all' ? 'Nothing this week, and nothing waits in review.' : `Nothing of ${SHOW_LABEL[show]}’s this week, and nothing in review.`}</p>
           ) : (
             <>
-              {week.groups.map(g => (
+              {groups.map(g => (
                 <section key={g.key} className={`cn-wk2-g cn-wk2-${g.kind}`} aria-label={`${g.label}${g.date ? `, ${g.date}` : ''}`}>
                   <h2 className="cn-wk2-h"><b>{g.label}</b>{g.date && <span>{g.kind === 'review' ? g.date : g.date.replace(/^\w+ /, '')}</span>}<i>{g.cards.length}</i></h2>
                   {cards(g.cards, g.kind !== 'review')}
                 </section>
               ))}
-              {week.older.length > 0 && (
+              {older.length > 0 && (
                 <section className="cn-wk2-g" aria-label="Older than two weeks">
                   <div className="cn-wk2-fold">
                     <span>In review, older than two weeks</span>
-                    <button type="button" data-verb="show-older" aria-expanded={showOld} onClick={() => setShowOld(o => !o)}>{week.older.length} · {showOld ? 'Hide' : 'Show'}</button>
+                    <button type="button" data-verb="show-older" aria-expanded={showOld} onClick={() => setShowOld(o => !o)}>{older.length} · {showOld ? 'Hide' : 'Show'}</button>
                   </div>
-                  {showOld && cards(week.older, false)}
+                  {showOld && cards(older, false)}
                 </section>
               )}
             </>
