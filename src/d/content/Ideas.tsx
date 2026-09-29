@@ -9,7 +9,8 @@ import { dHash } from '../route'
 import { Failed, Skeleton } from '../ui/states'
 import { IDEA_OWNER, LANES, LANE_NAME, type Lane } from './model'
 import { byScore, fromCandidate, fromClient, scoreText, type IdeaItem } from './ideaModel'
-import { IdeaDetail, outlierLine } from './IdeaDetail'
+import { IdeaDetail } from './IdeaDetail'
+import { IdeaTags, ScorePill } from './ideaTags'
 import { SourceBadge, ideaOutlierSource } from './SourceBadge'
 
 // Ideas: one channel per seat (Ivan's POST ideas + each client's bank), the
@@ -95,17 +96,35 @@ const PLATE: Record<Lane, string> = { ivan: 'your post ideas', risedtc: 'Mattan�
 export const PAGE = 40
 
 function Row({ it, on, pick, scores, chip }: { it: IdeaItem; on: boolean; pick: () => void; scores: IdeaScoreRead; chip: BanditChipRead }) {
-  const line = outlierLine(scores.byRef.get(it.id), scores.ok && !scores.validated)
   const bandit = banditChipLine(chip.byRef.get(it.id))
   return (
     <button type="button" className={`cn-iq${on ? ' cn-sel' : ''}`} aria-current={on ? 'true' : undefined} onClick={pick} data-verb="open" data-idea-id={it.id}>
-      <span className="cn-sc">{scoreText(it.score)}</span>
+      <ScorePill score={it.score} />
       <span className="cn-n">{it.title}</span>
       <time>{it.age}</time>
-      <span className="cn-s">{it.unclassified ? 'no content type · ' : ''}{it.src}</span>
-      {line && <span className="cn-s cn-ol">{line}</span>}
+      <IdeaTags src={it.src} row={scores.byRef.get(it.id)} unvalidated={scores.ok && !scores.validated} unclassified={it.unclassified} />
       {bandit && <span className="cn-s cn-bd">{bandit}</span>}
     </button>
+  )
+}
+
+/** One lane at a time, full width, so every title reads whole (Ivan 09-29). */
+function LaneTabs({ banks, seat, pick }: { banks: IdeaBanks; seat: Lane; pick: (l: Lane) => void }) {
+  return (
+    <div className="cn-lanes" role="tablist" aria-label="Seat">
+      {LANES.map(l => {
+        const b = banks[l]
+        const top = b.items.length ? Math.max(...b.items.map(i => i.score ?? -1)) : null
+        return (
+          <button key={l} type="button" role="tab" aria-selected={seat === l} className={seat === l ? 'cn-on' : ''} onClick={() => pick(l)} data-verb="lane" data-lane={l}>
+            <b>{LANE_NAME[l]}</b>
+            <span className="cn-lane-n">{b.n ?? (b.error ? '?' : '…')}<small>to decide</small></span>
+            <span className="cn-lane-top"><small>top</small>{top != null && top >= 0 ? scoreText(top) : '–'}</span>
+            <small className="cn-lane-who">{PLATE[l]}</small>
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -133,7 +152,8 @@ export function Ideas({ banks, phone }: { banks: IdeaBanks; phone: boolean }) {
   const [pages, setPages] = useState<Record<Lane, number>>({ ivan: 1, risedtc: 1, arch: 1 })
   const view = (l: Lane) => filtered(banks[l].items, l, flt[l])
   const current = sel ? banks[sel.lane].items.find(i => i.id === sel.id) ?? null : null
-  const shown = current ?? view(seat)[0] ?? view('ivan')[0] ?? null
+  const shown = current ?? view(seat)[0] ?? null
+  const pickSeat = (l: Lane) => { setSeat(l); setSel(null) }
 
   const done = (lane: Lane) => (id: string) => {
     const list = view(lane)
@@ -151,13 +171,6 @@ export function Ideas({ banks, phone }: { banks: IdeaBanks; phone: boolean }) {
     const floorLine = personalFloorLine(b.chip.slots)
     return (
       <div className="cn-ch" key={l}>
-        {!phone && <div className="cn-plate"><b>{LANE_NAME[l]}</b><span>{PLATE[l]}</span></div>}
-        {!phone && (
-          <div className="cn-read">
-            <div><small>To decide</small><em className={b.n ? 'cn-hot' : ''}>{b.n ?? (b.error ? '?' : '…')}</em></div>
-            <div><small>Top score</small><em>{b.items.length ? scoreText(Math.max(...b.items.map(i => i.score ?? -1))) : '0'}</em></div>
-          </div>
-        )}
         {l === 'ivan' && (b.lm != null || !!b.unclassified) && (
           <p className="cn-lmline">
             {b.lm != null && <>{b.lm} lead-magnet idea{b.lm === 1 ? '' : 's'} decide{b.lm === 1 ? 's' : ''} in <a href={dHash('content', 'magnets')}>Magnets</a>, not here. </>}
@@ -197,22 +210,15 @@ export function Ideas({ banks, phone }: { banks: IdeaBanks; phone: boolean }) {
   if (phone) {
     return (
       <div>
-        <div className="cn-read" style={{ gridTemplateColumns: 'repeat(3,1fr)' }} role="tablist" aria-label="Seat">
-          {LANES.map(l => (
-            <button key={l} type="button" role="tab" aria-selected={seat === l} onClick={() => { setSeat(l); setSel(null) }}
-              style={{ textAlign: 'left', padding: '8px 14px', boxShadow: seat === l ? 'inset 0 -2px 0 var(--t1)' : undefined }}>
-              <b style={{ display: 'block', fontSize: 18 }}>{LANE_NAME[l]}</b><small>To decide</small>
-              <em className={seat === l && banks[l].n ? 'cn-hot' : ''}>{banks[l].n ?? '…'}</em>
-            </button>
-          ))}
-        </div>
+        <LaneTabs banks={banks} seat={seat} pick={pickSeat} />
         {channel(seat)}
       </div>
     )
   }
   return (
     <div className="cn-ideas">
-      {LANES.map(channel)}
+      <LaneTabs banks={banks} seat={seat} pick={pickSeat} />
+      {channel(seat)}
       {shown ? <IdeaDetail key={shown.id} it={shown} onDone={done(shown.lane)} scores={banks[shown.lane].scores} /> : <div className="cn-idm"><p className="cn-say">Pick an idea to read it.</p></div>}
     </div>
   )

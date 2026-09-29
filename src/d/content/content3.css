@@ -150,3 +150,44 @@
 .cn-ptabs a{padding:0 10px;font-size:14px}
 .cn-ptabs .cn-trio{font-size:12px}
 .cn-ptabs a.cn-pmore{padding:0 11px;font-size:16px}
+
+/* ideas, 09-29 readability pass: one lane at a time at full width (tabs),
+   whole titles, score + outlier on color ranges, source as a hued tag.
+   Lime stays for live state only, so the ranges use their own ramp. */
+.cn-ideas{grid-template-columns:minmax(0,1fr) minmax(420px,.8fr);grid-template-rows:auto minmax(0,1fr)}
+.cn-ideas>.cn-ch{grid-column:1;grid-row:2}
+.cn-ideas>.cn-idm{grid-column:2;grid-row:2}
+.cn-lanes{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid var(--line)}
+.cn-lanes button{display:grid;grid-template-columns:1fr auto auto;grid-template-rows:auto auto;align-items:baseline;gap:0 18px;padding:10px 16px 9px;text-align:left;border-right:1px solid var(--line);color:var(--t2)}
+.cn-lanes button:last-child{border-right:0}
+.cn-lanes button:hover{background:rgba(255,255,255,.025)}
+.cn-lanes button.cn-on{background:var(--p1);color:var(--t1);box-shadow:inset 0 -2px 0 var(--t1)}
+.cn-lanes b{font:600 19px var(--f)}
+.cn-lanes small{font:400 10.5px var(--m);letter-spacing:.06em;text-transform:uppercase;color:var(--t3)}
+.cn-lane-n,.cn-lane-top{font:500 20px var(--m);display:flex;align-items:baseline;gap:6px}
+.cn-lanes .cn-on .cn-lane-n{color:var(--lime)}
+.cn-lane-who{grid-column:1/-1}
+.cn-ideas .cn-iq{grid-template-columns:48px minmax(0,1fr) auto;gap:6px 12px;padding:12px 18px}
+.cn-iq .cn-n{font:500 15px/1.35 var(--f);display:block;-webkit-line-clamp:unset;overflow:visible;color:var(--t1)}
+.cn-iq .cn-tags{grid-column:2/-1}
+.cn-iq .cn-bd{grid-column:2/-1;white-space:normal}
+.cn-cbrow{padding-left:78px}
+.d-phone .cn-cbrow{padding-left:62px}
+
+/* score pill: range colors */
+.cn-pill{display:inline-grid;place-items:center;min-width:40px;height:26px;padding:0 6px;border-radius:7px;font:600 13.5px var(--m);border:1px solid transparent;align-self:start}
+.cn-pill-big{min-width:48px;height:40px;font-size:17px;border-radius:9px;flex:none}
+.cn-pill.cn-t-top{background:#5FD8A6;color:#08140E}
+.cn-pill.cn-t-good{background:rgba(95,216,166,.14);color:#7FE3B8;border-color:rgba(95,216,166,.35)}
+.cn-pill.cn-t-mid{background:rgba(242,184,91,.13);color:#F2C377;border-color:rgba(242,184,91,.32)}
+.cn-pill.cn-t-low{background:rgba(232,160,143,.12);color:var(--warn);border-color:rgba(232,160,143,.3)}
+.cn-pill.cn-t-none{color:var(--t3);border:1px dashed var(--line2)}
+
+/* tags */
+.cn-tags{display:flex;flex-wrap:wrap;gap:5px;min-width:0}
+.cn-tag{--h:#9A9A93;display:inline-flex;align-items:center;height:21px;padding:0 7px;border-radius:5px;font:500 11.5px var(--f);color:var(--h);background:color-mix(in srgb,var(--h) 12%,transparent);border:1px solid color-mix(in srgb,var(--h) 28%,transparent);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cn-h-grey{--h:#A8A8A1}.cn-h-violet{--h:#B79CFF}.cn-h-sky{--h:#62C6F2}.cn-h-coral{--h:#F08C7A}
+.cn-h-pink{--h:#F28DC7}.cn-h-mint{--h:#5FD8A6}.cn-h-amber{--h:#F2B85B}
+.cn-tag.cn-ot{font-family:var(--m);font-weight:500}
+.cn-tag.cn-ot.cn-t-top{--h:#5FD8A6}.cn-tag.cn-ot.cn-t-mid{--h:#F2B85B}.cn-tag.cn-ot.cn-t-low{--h:#8A8A83}
+.cn-tag.cn-unv{border-style:dashed}

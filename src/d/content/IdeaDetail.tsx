@@ -8,7 +8,8 @@ import { useDConfirm } from '../ui/confirm'
 import { Key } from '../ui/Key'
 import { useToast } from '../ui/toast'
 import { LANE_NAME, OWNER, type Lane } from './model'
-import { linkOf, scoreText, type IdeaItem } from './ideaModel'
+import { linkOf, type IdeaItem } from './ideaModel'
+import { ScorePill } from './ideaTags'
 import { SourceBadge, ideaOutlierSource } from './SourceBadge'
 
 // One idea, read and decided. Ivan's bank goes through today's edge function
@@ -58,7 +59,7 @@ export function IdeaDetail({ it, onDone, compact, scores }: { it: IdeaItem; onDo
   return (
     <section className="cn-idm" aria-label="Idea" data-idea-detail={it.id}>
       {!compact && <div className="cn-dwh" style={{ padding: 0, border: 0 }}>
-        <div className="cn-av">{scoreText(it.score)}</div>
+        <ScorePill score={it.score} big />
         <div className="cn-who"><b style={{ whiteSpace: 'normal' }}>{it.title}</b><small>{BANK[it.lane]}{it.src ? ` · ${it.src}` : ''}{it.age ? ` · ${it.age} ago` : ''}</small></div>
       </div>}
       {ideaOutlierSource(it) && <p className="cn-cbline"><SourceBadge src={ideaOutlierSource(it)} /></p>}

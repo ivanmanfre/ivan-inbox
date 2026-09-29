@@ -39,4 +39,20 @@ describe('ideas parity', () => {
     expect(document.querySelector('[data-verb="source"]')!.getAttribute('href')).toBe('https://x.test/a')
     expect(document.querySelector('[data-verb="slack"]')).toBeTruthy()
   })
+  it('desktop shows one lane at a time, with whole titles, score ranges and tags', () => {
+    const ivanItems = [fromCandidate(cand(1)), fromCandidate(cand(40, { composite_score: null }))]
+    const scores = { ok: true, validated: false, byRef: new Map([['i1', { idea_table: 'lm_idea_candidates', idea_ref: 'i1', model_version: null, stage: 'idea', score: 2.03, validated: false, contributions: [], recommended_format: 'single_image', scored_at: null }]]) }
+    const rise = [fromCandidate(cand(7, { normalized_topic: 'Rise idea' }))].map(i => ({ ...i, lane: 'risedtc' as const }))
+    const banks = { ivan: { ...empty, items: ivanItems, n: 2, scores }, risedtc: { ...empty, items: rise, n: 1 }, arch: empty } as unknown as IdeaBanks
+    renderInFrame(<Ideas banks={banks} phone={false} />)
+    expect(screen.queryByText('Rise idea')).toBeNull()
+    const r1 = document.querySelector('.cn-iq[data-idea-id="i1"]')!
+    expect(r1.querySelector('.cn-pill.cn-t-top')!.textContent).toBe('99')
+    expect(r1.querySelector('.cn-tag.cn-ot.cn-t-top.cn-unv')!.textContent).toBe('Outlier 2.03')
+    expect(r1.querySelector('.cn-tag.cn-h-grey')!.textContent).toBe('Manual')
+    expect(document.querySelector('.cn-iq[data-idea-id="i40"] .cn-pill.cn-t-none')!.textContent).toBe('–')
+    fireEvent.click(document.querySelector('[data-verb="lane"][data-lane="risedtc"]')!)
+    expect(screen.getAllByText('Rise idea').length).toBeGreaterThan(0)
+    expect(document.querySelector('.cn-iq[data-idea-id="i1"]')).toBeNull()
+  })
 })
