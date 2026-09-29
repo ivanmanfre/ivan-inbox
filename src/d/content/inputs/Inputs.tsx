@@ -117,6 +117,26 @@ function StateChip({ o, card }: { o: InputsOutlier; card?: boolean }) {
   return null
 }
 
+/** "3.2×" for a lifted row; a search row has no lift, so it shows its likes ("212 likes"). Never "null×" or NaN. */
+function liftText(o: InputsOutlier): string {
+  if (o.lift != null && Number.isFinite(o.lift)) return `${o.lift}×`
+  const n = o.likes ?? o.likes_line
+  return n != null && Number.isFinite(n) ? `${n} like${n === 1 ? '' : 's'}` : '—'
+}
+
+/** CB-27 source / seller tags (risedtc and arch rows only; Ivan's rows carry none). */
+function SourceTags({ o }: { o: InputsOutlier }) {
+  const sl = o.seller?.seller
+  return (
+    <>
+      {o.sources?.includes('search') && <span className="in-tag" data-source-tag="search">Search</span>}
+      {o.sources?.includes('steady') && <span className="in-tag" data-source-tag="steady">Steady</span>}
+      {sl === 'true' && <span className="in-tag" data-seller-tag="true" title={o.seller?.sells || o.seller?.reason || undefined}>Seller</span>}
+      {sl === 'unclear' && <span className="in-tag" data-seller-tag="unclear" title={o.seller?.reason || undefined}>Seller?</span>}
+    </>
+  )
+}
+
 function ListRow({ o, lane, use, onUse }: { o: InputsOutlier; lane: Lane; use: UseSt; onUse: (o: InputsOutlier) => void }) {
   const k = rowKey(lane, o)
   return (
@@ -124,11 +144,12 @@ function ListRow({ o, lane, use, onUse }: { o: InputsOutlier; lane: Lane; use: U
       <span className={`in-rk${o.state === 'recommended' ? ' in-rec' : ''}`} data-state={o.state ?? undefined} title={o.state === 'recommended' ? 'Recommended this week' : undefined}>{o.rank}</span>
       <div className="in-main">
         <p className="in-meta">
-          <b data-author>{o.author}</b> · {PLAT[o.platform]} · <span className="in-lift" data-lift={o.lift}>{o.lift}×</span>{o.published_at ? ` · ${ago(o.published_at)}` : ''}
-          <StateChip o={o} />
+          <b data-author>{o.author}</b> · {PLAT[o.platform]} · <span className="in-lift" data-lift={o.lift ?? undefined}>{liftText(o)}</span>{o.published_at ? ` · ${ago(o.published_at)}` : ''}
+          <SourceTags o={o} /><StateChip o={o} />
         </p>
         {o.url ? <a className="in-hook in-hook-a" href={o.url} target="_blank" rel="noreferrer" data-verb="open-post">{hook(o.text)}</a> : <p className="in-hook">{hook(o.text)}</p>}
         {o.reason && <p className="in-why">{o.fit != null ? `Fit ${o.fit}/10 · ` : ''}{o.reason}</p>}
+        {o.calendar_note && <p className="in-note" data-calendar-note>{o.calendar_note}</p>}
         {use[k] && use[k] !== 'busy' && use[k] !== 'done' && <p className="in-why in-bad" role="alert">{use[k]}</p>}
       </div>
       <div className="in-side">
@@ -142,10 +163,11 @@ function Card({ o, lane, use, onUse }: { o: InputsOutlier; lane: Lane; use: UseS
   const k = rowKey(lane, o)
   return (
     <li className="in-card" data-outlier-rank={o.rank} data-platform={o.platform} data-post-id={o.post_id}>
-      <div className="in-card-top"><span className="in-big" data-lift={o.lift}>{o.lift}×</span><StateChip o={o} card /></div>
-      <p className="in-meta"><b data-author>{o.author}</b> · {PLAT[o.platform]}{o.published_at ? ` · ${ago(o.published_at)}` : ''}</p>
+      <div className="in-card-top"><span className="in-big" data-lift={o.lift ?? undefined}>{liftText(o)}</span><StateChip o={o} card /></div>
+      <p className="in-meta"><b data-author>{o.author}</b> · {PLAT[o.platform]}{o.published_at ? ` · ${ago(o.published_at)}` : ''}<SourceTags o={o} /></p>
       <p className="in-hook">{hook(o.text)}</p>
       {o.reason && <p className="in-why">{o.fit != null ? `Fit ${o.fit}/10 · ` : ''}{o.reason}</p>}
+      {o.calendar_note && <p className="in-note" data-calendar-note>{o.calendar_note}</p>}
       {use[k] && use[k] !== 'busy' && use[k] !== 'done' && <p className="in-why in-bad" role="alert">{use[k]}</p>}
       <div className="in-card-foot">
         <Action o={o} lane={lane} use={use} onUse={onUse} />

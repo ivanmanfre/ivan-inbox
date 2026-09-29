@@ -80,3 +80,6 @@ a.in-hook-a:hover{text-decoration:underline;text-underline-offset:3px}
 .in-act-done{color:var(--t3);background:transparent;cursor:default}
 .d-phone .in-act{min-height:44px}
 .d-phone .in-seats button{min-height:44px;justify-content:center}
+/* CB-27: source / seller tags and the calendar note (muted; no new colours) */
+.in-tag{font:500 10.5px var(--m);letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line2);color:var(--t3);border-radius:5px;padding:1px 6px}
+.in-note{margin:3px 0 0;font:400 11.5px/1.4 var(--m);color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

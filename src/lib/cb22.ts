@@ -15,11 +15,15 @@ import { supabase } from './supabase'
 import { CLIENT_OPS_GATE } from './content'
 
 export type InputsState = 'in_review' | 'recommended' | 'decided' | null
+export type InputsSource = 'outlier' | 'steady' | 'search'
+export type InputsSeller = { seller: 'true' | 'false' | 'unclear'; sells: string | null; reason: string }
 export type InputsOutlier = {
   rank: number; platform: 'linkedin' | 'x'; post_id: string; author: string; author_url: string | null; url: string | null
-  text: string; published_at: string | null; lift: number; likes: number | null; comments: number | null; views: number | null
+  text: string; published_at: string | null; lift: number | null; likes: number | null; comments: number | null; views: number | null
   is_5x: boolean; fit: number | null; purpose: string | null; lane: string | null; reason: string | null
   state: InputsState; idea: { id: string; status?: string; table?: string; source_ref?: string } | null
+  // CB-27 (risedtc / arch only; absent for Ivan): where the row came from, the seller check, a calendar hint, a likes line
+  sources?: InputsSource[]; seller?: InputsSeller | null; calendar_note?: string | null; likes_line?: number | null
 }
 export type InputsBuyer = {
   name: string; headline: string | null; icp: number; why: string | null; url: string | null
@@ -27,7 +31,7 @@ export type InputsBuyer = {
 }
 export type InputsPayload = {
   client: string; week_start: string; top: InputsOutlier[]; buyers: InputsBuyer[]
-  counts: { window: number; recommended: number; in_review: number; judged: number; on_strategy?: number; outliers: number; buyers: number }
+  counts: { window: number; recommended: number; in_review: number; judged: number; on_strategy?: number; outliers: number; buyers: number; search?: number; steady?: number; seller?: number }
   last_run: { run_key: string; finished_at: string | null } | null
   rule: string
 }
@@ -43,7 +47,12 @@ export function parseInputs(data: unknown): InputsRead {
   for (const x of d.top as Record<string, unknown>[]) {
     const platform = x.platform === 'x' ? 'x' : x.platform === 'linkedin' ? 'linkedin' : null
     const lift = num(x.lift)
-    if (!platform || typeof x.post_id !== 'string' || lift === null) continue
+    const sources = Array.isArray(x.sources) ? (x.sources as unknown[]).filter((v): v is InputsSource => v === 'outlier' || v === 'steady' || v === 'search') : null
+    // a pure search row has no lift (null); every other row still needs one
+    const liftless = lift === null && sources !== null && sources.length > 0 && !sources.includes('outlier')
+    if (!platform || typeof x.post_id !== 'string' || (lift === null && !liftless)) continue
+    const sl = x.seller && typeof x.seller === 'object' ? x.seller as Record<string, unknown> : null
+    const seller: InputsSeller | null = sl && (sl.seller === 'true' || sl.seller === 'false' || sl.seller === 'unclear') ? { seller: sl.seller, sells: str(sl.sells), reason: typeof sl.reason === 'string' ? sl.reason : '' } : null
     const idea = x.idea && typeof x.idea === 'object' ? (x.idea as InputsOutlier['idea']) : null
     top.push({
       rank: num(x.rank) ?? top.length + 1, platform, post_id: x.post_id, author: str(x.author) ?? 'Unknown author', author_url: str(x.author_url),
@@ -51,6 +60,8 @@ export function parseInputs(data: unknown): InputsRead {
       likes: num(x.likes), comments: num(x.comments), views: num(x.views), is_5x: x.is_5x === true,
       fit: num(x.fit), purpose: str(x.purpose), lane: str(x.lane), reason: str(x.reason),
       state: x.state === 'in_review' || x.state === 'recommended' || x.state === 'decided' ? x.state : null, idea,
+      ...(sources ? { sources } : {}), ...(seller ? { seller } : {}),
+      ...(str(x.calendar_note) ? { calendar_note: str(x.calendar_note) } : {}), ...(num(x.likes_line) !== null ? { likes_line: num(x.likes_line) } : {}),
     })
   }
   const buyers: InputsBuyer[] = []
@@ -65,7 +76,8 @@ export function parseInputs(data: unknown): InputsRead {
   return { kind: 'ready', data: {
     client: String(d.client ?? ''), week_start: String(d.week_start ?? ''), top, buyers,
     counts: { window: num(c.window) ?? 0, recommended: num(c.recommended) ?? 0, in_review: num(c.in_review) ?? 0, judged: num(c.judged) ?? 0,
-      on_strategy: num(c.on_strategy) ?? undefined, outliers: num(c.outliers) ?? 0, buyers: num(c.buyers) ?? buyers.length },
+      on_strategy: num(c.on_strategy) ?? undefined, outliers: num(c.outliers) ?? 0, buyers: num(c.buyers) ?? buyers.length,
+      ...(num(c.search) !== null ? { search: num(c.search) as number } : {}), ...(num(c.steady) !== null ? { steady: num(c.steady) as number } : {}), ...(num(c.seller) !== null ? { seller: num(c.seller) as number } : {}) },
     last_run: lr && typeof lr.run_key === 'string' ? { run_key: lr.run_key, finished_at: str(lr.finished_at) } : null,
     rule: str(d.rule) ?? '',
   } }
