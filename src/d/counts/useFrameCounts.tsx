@@ -166,10 +166,14 @@ export function FrameCountsProvider({ children, readers = LIVE }: { children: Re
     })
   }, [live])
 
+  // True while the frame's ONE inbox has rows: the DMs numbers shown are then counted off that
+  // list (dmsLive below), so the per-seat read would only re-read inbox_messages_v for a value
+  // nobody sees (2026-09-29, CB-24: ~14 view requests every 3 min on an idle app).
+  const inboxCovers = useRef(false)
   const refresh = useCallback((what?: CountKey | CountKey[]) => {
     const keys = what == null ? ALL : Array.isArray(what) ? what : [what]
     for (const k of keys) {
-      if (k === 'dms') for (const s of SEATS) run(`dms:${s}`, () => readers.dm(s), f => setDms(p => ({ ...p, [s]: f(p[s]) })))
+      if (k === 'dms' && !inboxCovers.current) for (const s of SEATS) run(`dms:${s}`, () => readers.dm(s), f => setDms(p => ({ ...p, [s]: f(p[s]) })))
       if (k === 'content') for (const s of SEATS) run(`content:${s}`, () => readers.content(s), f => setContent(p => ({ ...p, [s]: f(p[s]) })))
       if (k === 'ops') run('ops', readers.ops, setOps)
       if (k === 'nextCall') run('nextCall', readers.nextCall, setNextCall)
@@ -239,6 +243,7 @@ export function FrameCountsProvider({ children, readers = LIVE }: { children: Re
     const one = (s: Seat): Slice<DmSeatCount> => ({ value: countDmSeat(inboxThreads, s, now), failed: false, at: inboxAt })
     return { ivan: one('ivan'), risedtc: one('risedtc'), arch: one('arch') }
   }, [inboxThreads, inboxAt])
+  useEffect(() => { inboxCovers.current = dmsLive != null }, [dmsLive])
 
   const value = useMemo<FrameCounts>(
     () => ({ dms: dmsLive ?? dms, content, ops, nextCall, bell, alerts, health, magnets, calls, refresh }),
