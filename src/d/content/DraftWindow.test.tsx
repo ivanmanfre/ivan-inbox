@@ -17,10 +17,10 @@ vi.mock('../../hooks/useContent', () => ({
   useDraftDetail: () => ({ detail: current, missing: false, loading: false, error: null }),
 }))
 
-const lib = vi.hoisted(() => ({ saveDraftBody: vi.fn(), approveDraft: vi.fn(), skipDraft: vi.fn(), setBoardVisible: vi.fn(), setDraftImage: vi.fn() }))
+const lib = vi.hoisted(() => ({ saveDraftBody: vi.fn(), approveDraft: vi.fn(), skipDraft: vi.fn(), setBoardVisible: vi.fn(), setDraftImage: vi.fn(), setDraftMedia: vi.fn(), listClientPhotos: vi.fn(), listStills: vi.fn() }))
 vi.mock('../../lib/content', async orig => {
   const real = await orig<typeof import('../../lib/content')>()
-  return { ...real, saveDraftBody: lib.saveDraftBody, approveDraft: lib.approveDraft, skipDraft: lib.skipDraft, setBoardVisible: lib.setBoardVisible, setDraftImage: lib.setDraftImage }
+  return { ...real, saveDraftBody: lib.saveDraftBody, approveDraft: lib.approveDraft, skipDraft: lib.skipDraft, setBoardVisible: lib.setBoardVisible, setDraftImage: lib.setDraftImage, setDraftMedia: lib.setDraftMedia, listClientPhotos: lib.listClientPhotos, listStills: lib.listStills }
 })
 const sa = vi.hoisted(() => ({ scheduleDraft: vi.fn() }))
 vi.mock('./writes', () => ({ scheduleGuarded: sa.scheduleDraft }))
@@ -133,27 +133,78 @@ describe('draft window', () => {
   })
 })
 
-describe('the picture, under the post', () => {
+describe('the picture, under the post (every lane)', () => {
   const img = 'https://x.supabase.co/storage/v1/object/public/post-stills/selfie-pool-a/selfie-12.jpg'
-  it('a scheduled text post offers Change and Remove without opening Fix or remove, and Remove clears it', async () => {
+  const arch = 'https://x.supabase.co/storage/v1/object/public/client-photos/arch-agency/davorin-1.jpg'
+  const verb = (v: string) => document.querySelector(`[data-verb="${v}"]`) as HTMLButtonElement | null
+  const previewImg = () => document.querySelector('.cn-liimg') as HTMLImageElement | null
+
+  it('a scheduled text post offers Change and Remove; Remove goes through the gated RPC and says so', async () => {
     current = { ...detail, status: 'scheduled', scheduled_at: '2026-09-29T18:16:00Z', image_urls: [img] }
-    lib.setDraftImage.mockResolvedValue(undefined)
+    lib.setDraftMedia.mockResolvedValue('')
     const refresh = vi.fn()
     renderInFrame(<DraftWindow {...props({ refresh })} />)
-    expect(screen.getByText('Change picture')).toBeTruthy()
-    fireEvent.click(screen.getByText('Remove picture'))
-    await waitFor(() => expect(lib.setDraftImage).toHaveBeenCalledWith('d1', null))
+    expect(verb('picture-change')!.textContent).toBe('Change')
+    fireEvent.click(verb('picture-remove')!)
+    await waitFor(() => expect(lib.setDraftMedia).toHaveBeenCalledWith('d1', null))
     await waitFor(() => expect(refresh).toHaveBeenCalled())
+    expect(await screen.findByText('Picture removed.')).toBeTruthy()
+    expect(lib.setDraftImage).not.toHaveBeenCalled()
   })
+
   it('an image-less post offers Add, not Remove', () => {
     renderInFrame(<DraftWindow {...props()} />)
-    expect(screen.getByText('Add picture')).toBeTruthy()
-    expect(screen.queryByText('Remove picture')).toBeNull()
+    expect(verb('picture-change')!.textContent).toBe('Add')
+    expect(verb('picture-remove')).toBeNull()
   })
-  it('a carousel gets no picture controls: one photo would replace the deck', () => {
+
+  it('a carousel gets no picture row at all: one photo would replace the deck', () => {
     current = { ...detail, type: 'carousel', image_urls: [img, img] }
     renderInFrame(<DraftWindow {...props()} />)
-    expect(screen.queryByText('Change picture')).toBeNull()
-    expect(screen.queryByText('Remove picture')).toBeNull()
+    expect(document.querySelector('.cn-pic2')).toBeNull()
+    expect(verb('picture-change')).toBeNull()
+  })
+
+  it('a published post gets no picture row', () => {
+    current = { ...detail, status: 'published', published_at: '2026-09-28T08:00:00Z', image_urls: [img] }
+    renderInFrame(<DraftWindow {...props()} />)
+    expect(document.querySelector('.cn-pic2')).toBeNull()
+  })
+
+  it("a client post gets the row too, and picks from the client's own library", async () => {
+    current = { ...detail, client_id: 'arch', status: 'review', board_visible: true, image_urls: null }
+    lib.listClientPhotos.mockResolvedValue([{ name: 'davorin-1.jpg', url: arch, thumb: arch + '?w=200' }])
+    let resolve!: (v: string) => void
+    lib.setDraftMedia.mockImplementation(() => new Promise<string>(r => { resolve = r }))
+    const refresh = vi.fn()
+    renderInFrame(<DraftWindow {...props({ lane: 'arch', refresh })} />)
+    fireEvent.click(verb('picture-change')!)
+    await waitFor(() => expect(lib.listClientPhotos).toHaveBeenCalledWith('arch-agency'))
+    fireEvent.click(await screen.findByLabelText('Use davorin-1.jpg'))
+    // Optimistic: the preview shows the pick before the database answers.
+    await waitFor(() => expect(previewImg()?.getAttribute('src')).toBe(arch))
+    expect(lib.setDraftMedia).toHaveBeenCalledWith('d1', arch)
+    resolve(arch)
+    await waitFor(() => expect(refresh).toHaveBeenCalled())
+    expect(await screen.findByText('Davorin’s board shows it now.')).toBeTruthy()
+  })
+
+  it('a refused write puts the old picture back and raises a failed toast', async () => {
+    current = { ...detail, image_urls: [img] }
+    lib.listStills.mockResolvedValue([{ name: 'b.jpg', folder: 'library', url: 'https://x/b.jpg', thumb: 'https://x/b.jpg' }])
+    lib.setDraftMedia.mockRejectedValue(new Error('Only a draft at Needs review, Approved or Scheduled can change its picture. Nothing changed.'))
+    const refresh = vi.fn()
+    renderInFrame(<DraftWindow {...props({ refresh })} />)
+    fireEvent.click(verb('picture-change')!)
+    fireEvent.click(await screen.findByLabelText('Use b.jpg'))
+    expect(await screen.findByText(/can change its picture/)).toBeTruthy()
+    await waitFor(() => expect(previewImg()?.getAttribute('src')).toBe(img))
+    expect(refresh).not.toHaveBeenCalled()
+  })
+
+  it('a client post at Approved gets no row (the board function refuses it)', () => {
+    current = { ...detail, client_id: 'risedtc', status: 'approved' }
+    renderInFrame(<DraftWindow {...props({ lane: 'risedtc' })} />)
+    expect(document.querySelector('.cn-pic2')).toBeNull()
   })
 })

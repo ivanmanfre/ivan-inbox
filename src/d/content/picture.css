@@ -1,0 +1,32 @@
+/* D · Content: the Picture row under the post (29 Sep). Ledger: dark plate,
+   hairline, mono caps label, lime only on the live state (the picked tile, the
+   selected folder). Every target is 44px tall; tiles are larger still. */
+.cn-pic2{max-width:520px;margin:10px auto 0;border:1px solid var(--line2);border-radius:12px;background:var(--p1);padding:10px 12px}
+.cn-pic2-h{display:flex;gap:12px;align-items:center;min-width:0}
+.cn-pic2-th{flex:none;width:56px;height:56px;border-radius:8px;overflow:hidden;background:var(--p3);border:1px solid var(--line2);display:grid;place-items:center}
+.cn-pic2-th img{width:100%;height:100%;object-fit:cover;display:block}
+.cn-pic2-th>span{font:400 11px var(--m);color:var(--t3);text-transform:uppercase;letter-spacing:.06em}
+.cn-pic2-m{min-width:0;flex:1}
+.cn-pic2-m .cn-cap{margin:0 0 2px}
+.cn-pic2-m b{display:block;font:500 14px var(--m);color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cn-pic2-m>span{display:block;font-size:12.5px;color:var(--t2);line-height:1.35;margin-top:1px}
+.cn-pic2-acts{display:flex;gap:8px;margin-top:10px}
+.cn-pic2-acts .d-btn{height:44px;flex:1;justify-content:center;border-radius:10px;font-size:14px}
+.cn-pic2-acts .d-btn:disabled{opacity:.45;cursor:not-allowed}
+.cn-pic2[data-busy] .cn-pic2-th{opacity:.6}
+.cn-pic2-lib{margin-top:12px;border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:8px}
+.cn-pic2-lib .cn-cap{margin:0}
+.cn-pic2-q{height:44px;border:1px solid var(--line2);border-radius:10px;background:var(--bg);color:var(--t1);font:400 14px var(--f);padding:0 12px;width:100%;color-scheme:dark}
+/* chips: 40px visible inside a 44px hit area (the native pass's chip rule) */
+.cn-pic2-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -2px;padding:2px}
+.cn-pic2-chips button{flex:none;height:44px;padding:0 12px;border:0;font:400 12px var(--m);color:var(--t2);white-space:nowrap;
+  background:linear-gradient(var(--p3),var(--p3)) center/100% 40px no-repeat;border-radius:20px}
+.cn-pic2-chips button[aria-pressed='true']{background-image:linear-gradient(var(--lime),var(--lime));color:var(--ink)}
+.cn-pic2-chips button:focus-visible{outline:2px solid var(--t1);outline-offset:-2px}
+.cn-pic2-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px;max-height:320px;overflow-y:auto}
+.cn-pic2-g button{aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid var(--line2);background:var(--p3);padding:0;min-height:44px}
+.cn-pic2-g button img{width:100%;height:100%;object-fit:cover;display:block}
+.cn-pic2-g button[aria-current='true']{border-color:var(--lime);box-shadow:inset 0 0 0 2px var(--lime)}
+.cn-pic2-g button:disabled{opacity:.5}
+.d-phone .cn-pic2{margin-left:0;margin-right:0}
+.d-phone .cn-pic2-g{grid-template-columns:repeat(3,minmax(0,1fr))}

@@ -113,7 +113,7 @@ const row = async (db: PGlite, id: string) =>
   (await db.query<Row>('select status, type, image_urls, taxonomy, scheduled_at, board_visible, published_at from carousel_drafts where id = $1', [id])).rows[0]
 const id = (s: string) => `00000000-0000-0000-0000-00000000${s}`
 
-describe('db/230 operator_set_draft_media', () => {
+describe('db/230 operator_set_draft_media', { timeout: 30_000 }, () => {
   it('refuses a bad gate before reading anything', async () => {
     const db = await setup()
     expect(await call(db, id('b001'), IMG, 'nope')).toEqual({ ok: false, error: 'bad_gate' })

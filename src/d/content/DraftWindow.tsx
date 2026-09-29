@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDraftDetail } from '../../hooks/useContent'
 import {
   STAGE_LABEL, boardGroupOf, canPromote, canUnpromote, clientDeletable, clientEditable, clientStageLabel,
-  normalizeQa, reviewActionable, stageOf, type ContentDraftDetail,
+  normalizeQa, pictureEditable, reviewActionable, stageOf, type ContentDraftDetail,
 } from '../../lib/content'
 import { DIcon } from '../ui/icons'
 import { warsawDm, warsawDow } from '../ui/time'
@@ -10,9 +10,9 @@ import { Key } from '../ui/Key'
 import { Empty, Failed, Skeleton } from '../ui/states'
 import { Evidence, verdictWord } from './Evidence'
 import { FixMenu } from './FixMenu'
-import { SwapImage } from '../../wb/draft/actions'
 import { LANE_NAME, OWNER, POSS, age, canSchedule, kindOf, nextFreeWeekday, scheduleOpenByDefault, titleOf, type Lane, type WallDay } from './model'
 import { Conflict, Preview } from './Preview'
+import { PictureRow } from './PictureRow'
 import { AboveThePost, clientWhyNot, internalOnly, postsChip } from './DraftNotes'
 import { ScheduleRow, localInput } from './ScheduleRow'
 import { useDraftVerbs } from './useDraftVerbs'
@@ -57,6 +57,10 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
   }, [at, onClose, onPick, queue])
   const v = useDraftVerbs(d, lane, advance, refresh)
   const [fix, setFix] = useState(false)
+  // The Picture row's optimistic picture: shown in the preview from the tap
+  // until the refetch lands (or the write fails and the row clears it).
+  const [pic, setPic] = useState<string[] | undefined>(undefined)
+  useEffect(() => { setPic(undefined) }, [d.image_urls])
   // TODAY'S SCHEDULE TOGGLE: open by default at review / approved, folded on
   // an armed row, and (27 Sep ruling) not offered at all on a draft that is
   // published, errored, generating, an idea or skipped.
@@ -162,14 +166,15 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
         {v.editing && <span className="cn-st">Editing</span>}</div>
       <div className="cn-dwb">
         <AboveThePost d={d} stage={stage} lane={lane} />
-        <Preview d={d} lane={lane} body={v.shown} editing={v.editing} text={v.text} setText={v.setText}
+        <Preview d={pic ? { ...d, image_urls: pic } : d} lane={lane} body={v.shown} editing={v.editing} text={v.text} setText={v.setText}
           onStartEdit={lane === 'ivan' || clientEditable(d.status, lane) ? v.startEdit : null} onCancel={v.cancelEdit} onSave={() => void v.save()} />
         {v.conflict && <Conflict c={v.conflict} busy={v.busy} onTheirs={v.takeTheirs} onMine={v.keepMine} onDismiss={v.dismissConflict} />}
-        {/* THE PICTURE, NEXT TO THE POST IT BELONGS TO. It sat inside "Fix or
-            remove" and Ivan could not find it on a scheduled post (29 Sep).
-            Not on carousels: one pinned photo would replace the whole deck. */}
-        {lane === 'ivan' && d.type !== 'carousel' && !d.published_at && d.status !== 'generating' && !v.editing && (
-          <div className="cn-fix a-dw"><div className="a-dw-remake cn-pic"><SwapImage d={d} onDone={refresh} disabled={v.busy} /></div></div>
+        {/* THE PICTURE, NEXT TO THE POST IT BELONGS TO, on every lane (29 Sep:
+            it sat inside "Fix or remove" on Ivan's lane and did not exist on the
+            client lanes). Offered only where db/230 accepts the write, so never
+            on a carousel: one pinned photo would replace the whole deck. */}
+        {pictureEditable(d, lane) && !v.editing && (
+          <PictureRow d={d} lane={lane} onShow={setPic} onDone={refresh} disabled={v.busy} />
         )}
       </div>
       {!v.editing && <Evidence d={d} initial={lane === 'ivan' ? 'qa' : 'src'} noteable={lane === 'ivan'} onNote={refresh} />}
