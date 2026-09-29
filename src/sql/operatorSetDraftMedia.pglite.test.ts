@@ -9,6 +9,8 @@ import { PGlite } from '@electric-sql/pglite'
 // gate against integration_config).
 const migration = readFileSync('db/230_operator_set_draft_media.sql', 'utf8')
 const rollback = readFileSync('db/230_operator_set_draft_media_rollback.sql', 'utf8')
+const revoke231 = readFileSync('db/231_revoke_client_board_apply_media.sql', 'utf8')
+const unrevoke231 = readFileSync('db/231_revoke_client_board_apply_media_rollback.sql', 'utf8')
 
 const schema = `
 create role anon; create role authenticated; create role service_role;
@@ -229,6 +231,25 @@ describe('db/230 operator_set_draft_media', { timeout: 30_000 }, () => {
     await db.exec(rollback)
     const left = (await db.query("select 1 from pg_proc where proname = 'operator_set_draft_media'")).rows
     expect(left).toHaveLength(0)
+    await db.close()
+  })
+
+  it('231 (optional): anon loses the inner function, and the operator path still works as authenticated', async () => {
+    const db = await setup()
+    const sig = 'public._client_board_apply_media(client_boards,text,uuid,text,text)'
+    const before = (await db.query<{ a: boolean }>(`select has_function_privilege('anon', '${sig}', 'EXECUTE') as a`)).rows[0]
+    expect(before.a).toBe(true)
+    await db.exec(revoke231)
+    const after = (await db.query<{ a: boolean; u: boolean }>(`select
+      has_function_privilege('anon', '${sig}', 'EXECUTE') as a,
+      has_function_privilege('authenticated', '${sig}', 'EXECUTE') as u`)).rows[0]
+    expect(after).toEqual({ a: false, u: false })
+    await db.exec('set role authenticated')
+    const r = (await db.query<{ r: Row }>('select public.operator_set_draft_media($1, $2::uuid, $3) as r', ['clientops', id('a001'), IMG2])).rows[0].r
+    expect(r).toMatchObject({ ok: true, slug: 'arch-agency' })
+    await db.exec('reset role')
+    await db.exec(unrevoke231)
+    expect((await db.query<{ a: boolean }>(`select has_function_privilege('anon', '${sig}', 'EXECUTE') as a`)).rows[0].a).toBe(true)
     await db.close()
   })
 })
