@@ -765,10 +765,14 @@ export async function fetchLaneProbe(lane: ContentLane): Promise<LaneProbe> {
 // Approve is a status write and does NOT publish (phase1b §4): publishing needs
 // scheduled_at + status='scheduled', or the explicit publish-now webhook.
 export async function approveDraft(id: string): Promise<void> {
-  const { error } = await supabase.from('carousel_drafts')
+  const { data, error } = await supabase.from('carousel_drafts')
     .update({ status: 'approved' })
     .eq('id', id).is('client_id', null)
+    .select('id')
   if (error) throw error
+  // Zero rows = the post is not an Ivan-lane draft this write owns (e.g. an editorial-native row,
+  // client_id='ivan', which runs its own statuses). Say so instead of reporting a silent success.
+  if (!data || data.length === 0) throw new Error('This post could not be updated from here.')
 }
 
 // The dashboard's 's' key "skip" is session-local only — it adds the id to a
@@ -779,10 +783,14 @@ export async function approveDraft(id: string): Promise<void> {
 export const SKIP_STATUS = 'disqualified'
 
 export async function skipDraft(id: string): Promise<void> {
-  const { error } = await supabase.from('carousel_drafts')
+  const { data, error } = await supabase.from('carousel_drafts')
     .update({ status: SKIP_STATUS })
     .eq('id', id).is('client_id', null)
+    .select('id')
   if (error) throw error
+  // Zero rows = the post is not an Ivan-lane draft this write owns (e.g. an editorial-native row,
+  // client_id='ivan', which runs its own statuses). Say so instead of reporting a silent success.
+  if (!data || data.length === 0) throw new Error('This post could not be updated from here.')
 }
 
 // ---------- restart-to-idea (old-board parity 3b) ----------
