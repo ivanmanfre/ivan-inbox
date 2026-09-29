@@ -1586,7 +1586,7 @@ type EmailReplyTarget = { recipient_email: string; message_text_prefix: string; 
 // The reply goes to whoever last emailed us on this thread, as "Re: <their subject>", with
 // In-Reply-To/References so it lands under their message. Send Messages sends it from the
 // client identity (Davorin from ARCH <davorin@madebyarch.com>).
-async function emailReplyTarget(prospectId: string): Promise<EmailReplyTarget> {
+export async function emailReplyTarget(prospectId: string): Promise<EmailReplyTarget> {
   const { data, error } = await supabase.from('outreach_messages')
     .select('direction,recipient_email,draft_evidence,message_text')
     .eq('prospect_id', prospectId).eq('channel', 'email').not('recipient_email', 'is', null)

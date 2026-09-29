@@ -1,10 +1,10 @@
 // The open conversation (desktop right pane / phone full page).
 // Hooks first, always: no hook sits after an early return (09-09).
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { requestDmDraft } from '../../lib/dmDraft'
 import { useDCommands } from '../shell/commands'
 import type { WbCommand } from '../../exp/v2c/commandSource'
-import { canComposeEmail, isReplyRetryExhausted, markThreadRead, threadBucket, unansweredWaitSince, type Thread as T } from '../../lib/inbox'
+import { canComposeEmail, emailReplyTarget, emailRowSender, isReplyRetryExhausted, markThreadRead, messageChannel, threadBucket, unansweredWaitSince, type Thread as T } from '../../lib/inbox'
 import type { PreReadHandle } from '../../exp/v2c/chat/usePreRead'
 import { chatLink } from '../../components/CopyChatLink'
 import { seatOf } from '../seats'
@@ -53,6 +53,10 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
 }) {
   const [edits, setEdits] = useState<Edits>(() => seed(t))
   const [reply, setReply] = useState('')
+  const [emailReplyFor, setEmailReplyFor] = useState<string | null>(null)
+  const [emailTarget, setEmailTarget] = useState<{ key: string; address?: string; error?: string } | null>(null)
+  const [emailRetry, setEmailRetry] = useState(0)
+  const dock = useRef<HTMLDivElement>(null)
   const [draftJob, setDraftJob] = useState<{ pid: string; running: boolean; error: string | null } | null>(null)
   const drafting = useRef(false)
   const [busy, setBusy] = useState(false)
@@ -72,7 +76,10 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     else setEdits(e => (e.main === was.text ? { ...e, main: draftText } : e))
     seeded.current = { id: draftId, text: draftText }
   }, [draftId, draftText]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setReply(''); setMenu(null); setSheet(null) }, [t.prospect_id])
+  useEffect(() => { setReply(''); setEmailReplyFor(null); setMenu(null); setSheet(null) }, [t.prospect_id])
+  useLayoutEffect(() => {
+    if (emailReplyFor === t.prospect_id) dock.current?.querySelector('textarea')?.focus()
+  }, [emailReplyFor, t.prospect_id])
   // Open at the newest message, as a chat does (desktop: the pane scrolls; phone: the page does).
   useEffect(() => { const el = scroll.current; if (el && !phone) el.scrollTop = el.scrollHeight }, [t.prospect_id, phone])
   // Sanctioned read stamp on real inbound rows, as today. Once per thread and unread set: a remount
@@ -88,9 +95,32 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   const hasDraft = t.draft !== null
   const lp = laterPath(t)
   const manualReply = Boolean(t.ownerConfirmation && isReplyRetryExhausted(t.ownerConfirmation))
+  const replyThread = emailReplyFor === t.prospect_id ? { ...t, channel: 'email' as const } : t
+  const replyingByEmail = replyThread.channel === 'email'
+  const lastEmail = t.messages.filter(m => m.direction === 'inbound' && messageChannel(m) === 'email').at(-1)
+  const emailKey = `${t.prospect_id}:${lastEmail?.id ?? ''}`
+  const resolvedEmail = emailTarget?.key === emailKey ? emailTarget : null
+  const emailBlocked = replyingByEmail && !resolvedEmail?.address
+  const composeNote = replyingByEmail ? `From ${emailRowSender(t.client_id)} · ${resolvedEmail?.address ? `To ${resolvedEmail.address}` : resolvedEmail?.error ? 'Email address unavailable' : 'Loading email recipient…'}` : undefined
+  const composeLabel = replyingByEmail ? 'Send email' : 'Send'
+  useEffect(() => {
+    if (!replyingByEmail || !canComposeEmail(t)) return
+    let current = true
+    setEmailTarget(null)
+    void emailReplyTarget(t.prospect_id).then(target => {
+      if (current) setEmailTarget({ key: emailKey, address: target.recipient_email })
+    }).catch(e => {
+      if (current) setEmailTarget({ key: emailKey, error: e instanceof Error ? e.message : 'Could not load the email recipient.' })
+    })
+    return () => { current = false }
+  }, [replyingByEmail, t.prospect_id, t.client_id, emailKey, emailRetry]) // eslint-disable-line react-hooks/exhaustive-deps
   const composeOff = t.ownerConfirmation && !manualReply ? 'Reply paused while an internal fact is confirmed. Add the answer as a note, or discard the question.'
-    : t.channel === 'email' && !canComposeEmail(t) ? 'Email compose is on for Arch threads only. Approving email drafts works here.'
-      : t.stage === 'engaged' ? 'Not connected yet. A reply here would go out as a connection invite, so compose is off for this thread.' : null
+    : replyingByEmail && !canComposeEmail(t) ? 'Email compose is on for Arch threads only. Approving email drafts works here.'
+      : !replyingByEmail && t.stage === 'engaged' ? 'Not connected yet. A reply here would go out as a connection invite, so compose is off for this thread.' : null
+  const openEmailReply = () => {
+    setEmailReplyFor(t.prospect_id)
+    dock.current?.querySelector('textarea')?.focus()
+  }
 
   const draftIt = async () => {
     if (drafting.current) return
@@ -122,7 +152,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   // A verb that writes the draft itself carries the text on screen; a pending autosave is dropped.
   const send = () => run(async () => { saver.cancel(); await verbs.send(t, edits) })
   const later = () => run(async () => { saver.cancel(); await verbs.later(t, edits); setFuTick(x => x + 1) })
-  const compose = () => run(async () => { if (await verbs.compose(t, reply)) setReply('') })
+  const compose = () => run(async () => { if (!composeOff && !emailBlocked && await verbs.compose(replyThread, reply)) setReply('') })
   const menuRun = (a: MenuAct) => {
     if (a === 'context') setSheet('context')
     else if (a === 'agent') setSheet('agent')
@@ -159,7 +189,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
       {laterKey}
       {canMarkSolved(t) && solvedKey}
     </>
-    if (!composeOff) primary = <Key primary verb="compose-send" className="dm-send" disabled={busy || !reply.trim()} onClick={() => void compose()}>Send</Key>
+    if (!composeOff) primary = <Key primary verb="compose-send" className="dm-send" disabled={busy || emailBlocked || !reply.trim()} onClick={() => void compose()}>{composeLabel}</Key>
   }
 
   return (
@@ -169,21 +199,22 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         onSpam={!t.spam && seat !== 'ivan' ? () => void run(() => verbs.spam(t)) : undefined} signal={signal} />
       {ps.s !== 'none' && <div className="dm-sum" role="status">{ps.s === 'done' ? ps.line : ps.s === 'running' ? 'Reading it…' : ps.why}</div>}
       <div className="dm-scroll" ref={scroll}>
-        <History t={t} cap={phone ? 6 : 12} now={now} />
+        <History t={t} cap={phone ? 6 : 12} now={now} onReplyEmail={canComposeEmail(t) && !t.spam && (!t.ownerConfirmation || manualReply) && !busy ? openEmailReply : undefined} />
         <Banners t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} />
         <Draft t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
         {t.draft && <DraftWhy t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
         <RestoreStrip t={t} verbs={verbs} />
       </div>
-      <div className="dm-dock">
+      <div className="dm-dock" ref={dock}>
         {draftRunning && <p className="dm-meta" role="status">Reading the conversation and writing a draft. It will appear here for review.</p>}
         {draftError && <p className="dm-meta" role="alert">{draftError}</p>}
-        {!hasDraft && !t.spam && <Composer to={first} from={from} big={false} noSend disabled={composeOff} value={reply} setValue={setReply} busy={busy} onSend={() => void compose()} />}
+        {replyingByEmail && resolvedEmail?.error && <div className="dm-meta" role="alert"><span>{resolvedEmail.error}</span> <Btn className="dm-k" onClick={() => setEmailRetry(n => n + 1)}>Retry email details</Btn></div>}
+        {!hasDraft && !t.spam && <Composer to={first} from={from} big={emailReplyFor === t.prospect_id} noSend note={composeNote} sendLabel={composeLabel} disabled={composeOff} value={reply} setValue={setReply} busy={busy || emailBlocked} onSend={() => void compose()} />}
         <div className="dm-keys">
           <div className="dm-keys-s">{small}{more}</div>
           {primary}
         </div>
-        {hasDraft && !t.spam && <Composer to={first} from={from} big={false} disabled={composeOff} value={reply} setValue={setReply} busy={busy} onSend={() => void compose()} />}
+        {hasDraft && !t.spam && <Composer to={first} from={from} big={emailReplyFor === t.prospect_id} note={composeNote} sendLabel={composeLabel} disabled={composeOff} value={reply} setValue={setReply} busy={busy || emailBlocked} onSend={() => void compose()} />}
         {t.spam && <div className="dm-foot">Filed as a vendor pitch.</div>}
       </div>
       {menu && <ThreadMenu t={t} phone={phone} up={menu === 'keys'} withAsk={phone} staleN={staleN} onClose={() => setMenu(null)} run={menuRun} />}

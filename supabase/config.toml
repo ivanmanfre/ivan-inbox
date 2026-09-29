@@ -1,0 +1,4 @@
+# Database-triggered inbound alerts authenticate with x-inbox-secret in the handler.
+# A gateway JWT check blocks pg_net before that authentication can run.
+[functions.inbox-push]
+verify_jwt = false
