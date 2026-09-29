@@ -26,6 +26,7 @@ export function OwnerHoldBanner({ t, verbs, onNote, onRetry }: { t: Thread; verb
       <p>{hold.context_gap?.question || (retry ? 'The reply drafter will try again shortly.' : 'The drafter has a question only the owner can answer.')}</p>
       {hold.context_gap?.why && <p className="dm-meta">{hold.context_gap.why} · {manualReply ? 'no reply is queued' : 'internal question, no reply is queued'}</p>}
       {!retry && <div className="dm-ban-row">
+        {!manualReply && <Btn verb="hold-release" title="You have the answer: write the reply yourself" onClick={() => { void verbs.holdRelease(t) }}>Release hold</Btn>}
         {!manualReply && <Btn verb="hold-note" onClick={onNote}>Add the answer as a note</Btn>}
         <Btn verb="retry" onClick={onRetry}>Retry</Btn>
         <Btn verb="hold-discard" onClick={() => { void verbs.holdDiscard(t) }}>Discard</Btn>

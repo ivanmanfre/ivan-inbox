@@ -12,6 +12,7 @@ vi.mock('../../lib/inbox', async orig => {
     approveDraft: vi.fn(async () => {}), saveDraftText: vi.fn(async () => {}), saveDraftEmail: vi.fn(async () => {}),
     snoozeDraft: vi.fn(async () => {}), unsnoozeDraft: vi.fn(async () => {}), restoreDraft: vi.fn(async () => true),
     discardLegs: vi.fn(async () => []), composeReply: vi.fn(async () => []), markThreadRead: vi.fn(async () => {}),
+    dismissConfirmation: vi.fn(async () => true), restoreConfirmation: vi.fn(async () => true),
   }
 })
 vi.mock('../../lib/followUp', async orig => ({ ...(await orig<typeof import('../../lib/followUp')>()),
@@ -206,6 +207,20 @@ describe('manual reply after drafting fails', () => {
     expect(lib.composeReply).not.toHaveBeenCalled()
     fireEvent.click(screen.getByText('Send it'))
     await waitFor(() => expect(lib.composeReply).toHaveBeenCalledWith(t, 'Thanks for letting me know.'))
+  })
+
+  it('Release hold retires the owner question without a confirm, patches it out, and offers Undo', async () => {
+    const t = held('The company notes do not establish this.')
+    const hold = t.ownerConfirmation!
+    mount(t)
+    fireEvent.click(key('hold-release'))
+    await waitFor(() => expect(lib.dismissConfirmation).toHaveBeenCalledWith(hold.id, 'owner_confirmation', expect.any(String)))
+    expect(screen.queryByText('Discard this internal question?')).toBeNull()
+    expect(ctx.patch).toHaveBeenCalledWith([hold.id], expect.objectContaining({ send_blocked_reason: 'owner_confirmation_superseded' }))
+    expect(await screen.findByText('Hold released on Tetiana Klimonova.')).toBeTruthy()
+    const at = vi.mocked(lib.dismissConfirmation).mock.calls[0][2]
+    fireEvent.click(key('undo'))
+    await waitFor(() => expect(lib.restoreConfirmation).toHaveBeenCalledWith(hold.id, 'owner_confirmation', at, hold.send_blocked_at))
   })
 
   it.each(['The company notes do not establish this.', null])('keeps real or unreadable owner questions blocked: %s', why => {

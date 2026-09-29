@@ -338,6 +338,28 @@ export function useDmVerbs(ctx: VerbCtx) {
       ctx.refresh()
     }
 
+    /** Release hold (Ivan 09-29): he has the owner's answer and writes the reply himself. The same
+     *  guarded retire as Discard, without the danger confirm; the compose box opens at once. Undo
+     *  puts the question back. */
+    async function holdRelease(t: Thread) {
+      const hold = t.ownerConfirmation
+      if (!hold) return
+      const at = new Date().toISOString()
+      try {
+        if (!(await dismissConfirmation(hold.id, 'owner_confirmation', at))) { fail('This question was already retired or answered. Nothing was changed.'); ctx.refresh(); return }
+      } catch (e) { fail(errText(e)); return }
+      ctx.patch([hold.id], { send_blocked_reason: 'owner_confirmation_superseded', send_blocked_at: at })
+      ctx.refresh()
+      toast.show({
+        message: `Hold released on ${t.prospect_name}.`, sub: 'Write the reply below. Nothing is sent until you press Send.',
+        action: { label: 'Undo', verb: 'undo', run: () => {
+          void restoreConfirmation(hold.id, 'owner_confirmation', at, hold.send_blocked_at)
+            .then(ok => { if (!ok) fail('The question changed since. Refresh this thread.'); ctx.refresh() })
+            .catch(e => fail(`Could not undo: ${errText(e)}`))
+        } },
+      })
+    }
+
     async function askOwner(t: Thread): Promise<string> {
       if (!t.draft) return ''
       try { return await escalateDraftToClient(t.draft.id) } catch (e) { const m = errText(e) || 'Could not queue that.'; fail(m); return m }
@@ -368,7 +390,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       await bulkDiscard(stale, '', { title: `Discard ${stale.length} stale draft${stale.length === 1 ? '' : 's'}?`, message: 'These threads already have your own reply after the last inbound message. Nothing is sent.', confirmText: 'Discard stale' })
     }
 
-    return { rowDiscard, discardStale, send, discard, solved, later, bringBackNow, saveEdit, autosave, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, askOwner, bulkDiscard, isFollowUp }
+    return { rowDiscard, discardStale, send, discard, solved, later, bringBackNow, saveEdit, autosave, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, holdRelease, askOwner, bulkDiscard, isFollowUp }
   }, [ctx, confirm, toast, askDiscard, askDate])
 }
 
