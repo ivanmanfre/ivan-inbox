@@ -93,7 +93,7 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
   const line = [
     postsChip(d),
     lane !== 'ivan' ? (v.visible ? `On ${POSS[lane]} board` : `Not on ${POSS[lane]} board`) : null,
-    lane !== 'ivan' && qa?.score != null ? `QA: ${verdictWord(qa.verdict).toLowerCase()}, ${qa.score}` : null,
+    qa?.score != null ? `QA: ${verdictWord(qa.verdict).toLowerCase()}, ${qa.score}` : null,
     `edited ${age(d.updated_at)} ago`,
     d.funnel_stage ? `Aim: ${d.funnel_stage[0].toUpperCase()}${d.funnel_stage.slice(1)}` : null,
   ].filter(Boolean).join(' · ')
@@ -122,7 +122,7 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
       ))}
     </>
     foot = <>{!actionable && `Approve and Skip act on drafts in review; this one is ${STAGE_LABEL[stage].toLowerCase()}. `}
-      {!schedulable && `Schedule is not offered: only a draft in review, approved or already scheduled can go on LinkedIn, and this one is ${d.published_at ? 'published' : STAGE_LABEL[stage].toLowerCase()}. `}
+      {!schedulable && `Schedule is not offered: this draft is ${d.published_at ? 'published' : STAGE_LABEL[stage].toLowerCase()}. `}
       {schedulable && dateOpen && d.status === 'scheduled' && <><button type="button" data-verb="schedule-hide" onClick={() => setDateOpen(false)}>Hide date</button>. </>}<span className="cn-kk-hint">Esc closes, j/k walks.</span></>
   } else {
     const promotable = canPromote(d.status, lane) && !v.visible
@@ -175,15 +175,17 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
         {pictureEditable(d, lane) && !v.editing && (
           <PictureRow d={d} lane={lane} onShow={setPic} onDone={refresh} disabled={v.busy} />
         )}
+        {!v.editing && <Evidence d={d} initial={lane === 'ivan' ? 'qa' : 'src'} noteable={lane === 'ivan'} onNote={refresh} />}
+        {lane === 'ivan' && !v.editing && <FixRow d={d} onDone={refresh} onDeleted={() => { refresh(); advance() }} disabled={v.busy} />}
       </div>
-      {!v.editing && <Evidence d={d} initial={lane === 'ivan' ? 'qa' : 'src'} noteable={lane === 'ivan'} onNote={refresh} />}
-      {schedulable && dateOpen && !v.editing && (
-        <ScheduleRow slot={d.scheduled_at ? null : slot} when={when} setWhen={setWhen} days={days} taken={armed} armedFailed={armedFailed} current={d.status === 'scheduled' ? d.scheduled_at : null} />
-      )}
-      {v.err && <p className="cn-say cn-bad" role="alert">{v.err}</p>}
-      <div className="cn-acts">{keys}</div>
-      {lane === 'ivan' && !v.editing && <FixRow d={d} onDone={refresh} onDeleted={() => { refresh(); advance() }} disabled={v.busy} />}
-      <div className="cn-foot">{foot}</div>
+      <div className="cn-dwbar">
+        {schedulable && dateOpen && !v.editing && (
+          <ScheduleRow slot={d.scheduled_at ? null : slot} when={when} setWhen={setWhen} days={days} taken={armed} armedFailed={armedFailed} current={d.status === 'scheduled' ? d.scheduled_at : null} />
+        )}
+        {v.err && <p className="cn-say cn-bad" role="alert">{v.err}</p>}
+        <div className="cn-acts">{keys}</div>
+        <div className="cn-foot">{foot}</div>
+      </div>
     </section>
   )
 }

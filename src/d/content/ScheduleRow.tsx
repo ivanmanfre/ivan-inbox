@@ -32,7 +32,7 @@ export function ScheduleRow({ slot, when, setWhen, days, taken, armedFailed, cur
       <div>
         <small className="cn-cap">{current ? 'Scheduled on your feed' : 'Schedule on your feed'}</small>
         <b>{ok ? `${warsawDow(at)} ${warsawDm(at)}, ${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}` : 'Pick a time'}</b>
-        <span className="cn-why">
+        <span className="cn-why" title={current ? 'Already armed. A new time reschedules it.' : skip}>
           {current ? 'Already armed. A new time reschedules it.'
             : armedFailed ? 'Could not read which days your feed holds, so this is 3 days out, unchecked.'
               : slot ? `Next free weekday, 3 days out. ${skip}` : 'Reading your feed…'}

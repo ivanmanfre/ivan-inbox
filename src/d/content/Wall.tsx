@@ -1,6 +1,6 @@
 import { Fragment, type CSSProperties, type DragEvent } from 'react'
 import type { ContentDraft } from '../../lib/content'
-import { warsawDm, warsawDow } from '../ui/time'
+import { warsawDay, warsawDm, warsawDow } from '../ui/time'
 import {
   FEED, LANES, LANE_NAME, imgOf, nextScheduled, publishedCount, scheduledIn,
   timeLine, titleOf, type Lane, type WallDay,
@@ -50,9 +50,9 @@ export function Card({ r, it, lane, onOpen }: { r: ContentDraft | null; it: Plan
       <small>{timeLine(it.postedAt ?? it.at, lane)}{it.plannedAt ? ' ⚠' : ''}</small>
     </>
   )
-  if (inert) return <div className="cn-card cn-inert" title={describe(it)} aria-label={`${it.title}. ${describe(it)}`}>{body}</div>
+  if (inert) return <div className={`cn-card cn-inert${it.stage === 'published' ? ' cn-past' : ''}`} title={describe(it)} aria-label={`${it.title}. ${describe(it)}`}>{body}</div>
   return (
-    <button type="button" className="cn-card" onClick={onOpen} data-verb="open" aria-label={`Open ${titleOf(r!)}`} title={describe(it)}
+    <button type="button" className={`cn-card${it.stage === 'published' ? ' cn-past' : ''}`} onClick={onOpen} data-verb="open" aria-label={`Open ${titleOf(r!)}`} title={describe(it)}
       draggable={drag} onDragStart={drag ? onDragStart : undefined}>
       {body}
     </button>
@@ -94,12 +94,13 @@ export function dropZone(lane: Lane, key: string, onMove: WallProps['onMove']) {
 export function Wall({ data, items, days, stuck, onOpen, onMove, onArm, onDay, ghost, lift, held, now }: WallProps) {
   const ten = days.length > 5
   const cols = ten ? 'var(--feedw) repeat(5,minmax(0,1fr)) 6px repeat(5,minmax(0,1fr))' : 'var(--feedw) repeat(5,minmax(0,1fr))'
+  const today = warsawDay(now ?? Date.now())
   const gap = (i: number) => (ten && i === 5 ? <div className="cn-gap" aria-hidden="true" /> : null)
   const style = { gridTemplateColumns: cols, '--feedw': ten ? '118px' : '124px' } as CSSProperties
   return (
     <div className="cn-wall" style={style} role="grid" aria-label="Posts by seat and day">
       <div className="cn-wh">Feed</div>
-      {days.map((d, i) => <Fragment key={d.key}>{gap(i)}<div className="cn-wh"><b>{d.dow}</b> {d.n}{ten ? '' : ` ${d.dm.split(' ')[1]}`}</div></Fragment>)}
+      {days.map((d, i) => <Fragment key={d.key}>{gap(i)}<div className={`cn-wh${d.key === today ? ' cn-tod' : ''}`}><b>{d.dow}</b> {d.n}{ten ? '' : ` ${d.dm.split(' ')[1]}`}{d.key === today && <em>today</em>}</div></Fragment>)}
       {LANES.map(lane => (
         <Fragment key={lane}>
           <Plate lane={lane} data={data} days={days} stuck={stuck} compact={!ten} now={now} />
@@ -113,9 +114,9 @@ export function Wall({ data, items, days, stuck, onOpen, onMove, onArm, onDay, g
             }
             const drop = dropZone(lane, d.key, onMove)
             const it = on[0]
-            if (!it) return <Fragment key={d.key}>{gap(i)}<div className="cn-cell cn-none" {...drop}>{weekend && <span className="cn-cellk2">{weekend}</span>}</div></Fragment>
+            if (!it) return <Fragment key={d.key}>{gap(i)}<div className={`cn-cell cn-none${d.key === today ? ' cn-tod' : ''}`} {...drop}>{weekend && <span className="cn-cellk2">{weekend}</span>}</div></Fragment>
             const r = it.source === 'draft' ? data.seats[lane].rows.find(x => x.id === it.id) ?? null : null
-            const cls = ['cn-cell', lift === it.id ? 'cn-lifted' : '', held && held.lane === lane && held.key === d.key ? 'cn-held' : ''].filter(Boolean).join(' ')
+            const cls = ['cn-cell', d.key === today ? 'cn-tod' : '', lift === it.id ? 'cn-lifted' : '', held && held.lane === lane && held.key === d.key ? 'cn-held' : ''].filter(Boolean).join(' ')
             return (
               <Fragment key={d.key}>
                 {gap(i)}

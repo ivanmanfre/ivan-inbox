@@ -218,14 +218,45 @@
 /* FIX OR REMOVE, as keys in the open post (29 Sep; was footer link text opening a sheet).
    Today's components (ds Button) drawn at the frame's size: 44px, the neutral key face,
    Delete draft in the danger outline. Their inline confirms wrap under the row. */
-.cn-fix2{padding:12px 16px 4px;border-top:1px solid var(--line);margin-top:6px}
+.cn-fix2{padding:16px 0 4px;border-top:1px solid var(--line);margin-top:20px}
 .cn-fix2 .cn-cap{display:block;margin:0 0 8px}
 .cn-fix2-row{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
-.cn-fix2 .cn-fix2-row .ds-btn{height:44px;flex:1 1 0;min-width:120px;justify-content:center;border-radius:10px;padding:0 14px;
-  border:1px solid var(--line2);background:var(--p3);color:var(--t1);font:600 14px var(--f);box-shadow:inset 0 1px 0 rgba(255,255,255,.07)}
+.cn-fix2 .cn-fix2-row .ds-btn{height:34px;flex:0 0 auto;justify-content:center;border-radius:9px;padding:0 14px;
+  border:1px solid var(--line2);background:var(--p3);color:var(--t1);font:600 13px var(--f);box-shadow:inset 0 1px 0 rgba(255,255,255,.07)}
 .cn-fix2 .cn-fix2-row .ds-btn[data-variant='danger']{background:transparent;color:var(--critT);border-color:rgba(255,69,58,.5)}
+.d-phone .cn-fix2{padding:12px 16px 4px}
+.d-phone .cn-fix2 .cn-fix2-row .ds-btn{height:44px;flex:1 1 0;min-width:120px;border-radius:10px;font-size:14px}
 .cn-fix2-row .a-dw-shelfrow{flex:1 0 100%}
 .cn-fix2-row .a-dw-inline{padding:10px 12px;border:1px solid var(--line2);border-radius:10px;background:var(--p2);color:var(--t1);font-size:13.5px;gap:10px;display:flex;flex-direction:column}
 .cn-fix2-row .a-dw-inline-a{display:flex;flex-wrap:wrap;gap:8px}
 .cn-fix2 .cn-fix2-row .a-dw-inline-a .ds-btn{flex:0 1 auto}
 .d-phone .cn-kk-hint{display:none}
+
+/* PLANNER READABILITY PASS (30 Sep). Today is marked, posted history recedes, cards read at a glance,
+   the row verbs under the wall are real targets. Lime stays for live state: today's date only. */
+.cn-wh{padding:8px 10px;font-size:11.5px}
+.cn-wh.cn-tod{box-shadow:inset 0 -2px 0 var(--lime)}
+.cn-wh.cn-tod b,.cn-wh.cn-tod{color:var(--t1)}
+.cn-wh em{font:600 10px var(--m);font-style:normal;letter-spacing:.06em;color:var(--ink);background:var(--lime);border-radius:3px;padding:1px 5px;margin-left:8px;vertical-align:1px;text-transform:uppercase}
+.cn-cell.cn-tod{background:rgba(255,255,255,.028)}
+.cn-cell{min-height:158px;padding:6px 6px 28px}
+.cn-cell.cn-none{background:repeating-linear-gradient(135deg,transparent 0 7px,rgba(255,255,255,.022) 7px 8px);min-height:158px}
+.cn-cell.cn-none.cn-tod{background:repeating-linear-gradient(135deg,rgba(255,255,255,.02) 0 7px,rgba(255,255,255,.04) 7px 8px)}
+.cn-card{gap:6px}
+.cn-im{height:72px}
+.cn-im.cn-txt{padding:7px 8px;font-size:12px;line-height:1.35}
+.cn-card>b{font:600 13px/1.3 var(--f)}
+.cn-card>small{font:400 11.5px var(--m);color:var(--t2)}
+.cn-na{font:600 10px var(--m);padding:1px 5px;border-radius:4px;left:5px;top:5px}
+.cn-na.cn-nd{background:rgba(10,10,9,.82);color:var(--t2);border:1px solid var(--line2)}
+.cn-past .cn-im{filter:saturate(.5) brightness(.78)}
+.cn-past>b{color:var(--t2);font-weight:500}
+.cn-cellk{top:50px}
+.cn-mini{font:600 11.5px var(--f);padding:2px 8px;border-radius:6px}
+/* the review rows under the wall: verbs a thumb-free cursor can hit */
+.cn-racts{gap:6px}
+.cn-racts .cn-mini{height:28px;padding:0 11px;font-size:12.5px;border-radius:7px}
+.cn-racts .cn-mini[data-verb='row-approve']{border-color:var(--strong);color:var(--t1)}
+.cn-racts .cn-mini[data-verb='row-delete']{color:var(--t2)}
+
+.cn-pill.cn-t-none{border-color:transparent;opacity:.4}

@@ -83,3 +83,17 @@ a.in-hook-a:hover{text-decoration:underline;text-underline-offset:3px}
 /* CB-27: source / seller tags and the calendar note (muted; no new colours) */
 .in-tag{font:500 10.5px var(--m);letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line2);color:var(--t3);border-radius:5px;padding:1px 6px}
 .in-note{margin:3px 0 0;font:400 11.5px/1.4 var(--m);color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 30 Sep readability pass: a list of five "Use this" keys is five primaries, so the key is neutral until it is hovered
+   or busy (lime is the one live state on the page: recommended / in review). Rows get room, the reason gets a size a
+   person can read. */
+.d-desktop .in-row{padding:14px 20px;gap:4px 14px;grid-template-columns:26px minmax(0,1fr) auto}
+.d-desktop .in-h{padding:10px 20px}
+.d-desktop .in-buyer{padding:11px 20px}
+.d-desktop .in-foot,.d-desktop .in-say,.d-desktop .in-fold>summary{padding-left:20px;padding-right:20px}
+.in-rk{font-size:17px}
+.in-hook{font-size:15px;line-height:1.4}
+.in-why{font-size:12.5px;line-height:1.45}
+.in-meta{font-size:12.5px}
+.in-act-p{background:var(--p3);border-color:var(--line2);color:var(--t1)}
+.in-act-p:hover:not(:disabled){background:var(--lime);border-color:var(--lime);color:var(--ink)}
+.d-desktop .in-act{min-height:34px;min-width:88px}

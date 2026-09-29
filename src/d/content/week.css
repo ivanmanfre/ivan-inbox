@@ -65,12 +65,29 @@
 .d-phone .cn-wc-on{padding-left:10px;padding-right:8px}
 .d-phone .cn-wc-pic{width:76px}
 
-/* desktop: the keys sit under the words, the picture holds the right column */
-.d-desktop .cn-wc{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:20px;row-gap:8px}
+/* desktop (30 Sep pass): the stack fills the pane. Picture column | words | keys column, one rhythm
+   down the whole page, so the eye reads title after title instead of hunting a centered strip.
+   Keys are 34px rectangles here (the pill + 44px target is the phone's). */
+.d-desktop .cn-wk2{max-width:none;margin:0}
+.d-desktop .cn-wk2-chips{padding:0 0 10px}
+.d-desktop .cn-wk2-chips button{height:34px;padding:0 12px;border-radius:8px;font-size:13.5px;background-size:100% 34px}
+.d-desktop .cn-wk2-h{position:sticky;top:0;z-index:2;background:var(--bg);padding:16px 4px 8px}
+.d-desktop .cn-wk2-g:first-of-type .cn-wk2-h{padding-top:6px}
+.d-desktop .cn-wc{display:grid;grid-template-columns:104px minmax(0,1fr) 112px;grid-template-rows:auto 1fr;column-gap:18px;row-gap:6px;padding:16px 4px 16px;align-items:start}
+.d-desktop .cn-wc-on{padding-left:12px;padding-right:12px}
 .d-desktop .cn-wc-main{display:contents}
-.d-desktop .cn-wc-meta{grid-column:1/-1}
-.d-desktop .cn-wc-text{grid-column:1;grid-row:2}
-.d-desktop .cn-wc-pic{grid-column:2;grid-row:2/span 2;width:112px}
-.d-desktop .cn-wc-pic img{max-height:150px;min-height:63px}
-.d-desktop .cn-wc-acts{grid-column:1;grid-row:3}
-.d-desktop .cn-wc-key,.d-desktop .cn-wc-date{height:40px}
+.d-desktop .cn-wc-pic,.d-desktop .cn-wc-nopic{grid-column:1;grid-row:1/span 2;width:104px;height:78px;border-radius:8px;overflow:hidden}
+.d-desktop .cn-wc-pic img{width:100%;height:100%;min-height:0;max-height:none;object-fit:cover}
+.cn-wc-nopic{display:flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--p2);font:400 10.5px var(--m);letter-spacing:.05em;text-transform:uppercase;color:var(--t3)}
+.d-phone .cn-wc-nopic{display:none}
+.d-desktop .cn-wc-meta{grid-column:2;grid-row:1}
+.d-desktop .cn-wc-text{grid-column:2;grid-row:2}
+.d-desktop .cn-wc-acts{grid-column:3;grid-row:1/span 2;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:6px}
+.d-desktop .cn-wc-acts .cn-grow{display:none}
+.d-desktop .cn-wc-key,.d-desktop .cn-wc-date{height:34px;min-width:0;padding:0 10px;border-radius:8px;font-size:13px}
+.d-desktop .cn-wc-key{order:-1}
+.d-desktop .cn-wc-date{color:var(--t3);border-color:var(--line)}
+.d-desktop .cn-wc-title{font-size:16px;-webkit-line-clamp:2}
+.d-desktop .cn-wc-body{font-size:14px;line-height:1.5;max-width:74ch}
+.cn-open .cn-wk2 .cn-wc{grid-template-columns:76px minmax(0,1fr) 104px;column-gap:14px}
+.cn-open .cn-wk2 .cn-wc-pic,.cn-open .cn-wk2 .cn-wc-nopic{width:76px;height:64px}

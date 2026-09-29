@@ -212,16 +212,16 @@ function Card({ c, when, open, busy, onOpen, onKey, onDate }: {
           <button type="button" className="cn-wc-title" data-verb="card-open" onClick={e => { stop(e); onOpen() }}>{c.title}</button>
           {c.body.trim() && (
             <p className="cn-wc-body">
-              {more ? c.body.trim() : fold.head}
+              {(more ? c.body.trim() : fold.head).replace(/\n{2,}/g, '\n')}
               {fold.folded && !more && <>{' '}<button type="button" className="cn-wc-more" data-verb="see-more" onClick={e => { stop(e); setMore(true) }}>…see more</button></>}
             </p>
           )}
         </div>
-        {c.thumb && !broken && (
+        {c.thumb && !broken ? (
           <button type="button" className="cn-wc-pic" aria-label="Open the post" onClick={e => { stop(e); onOpen() }}>
             <img src={c.thumb} alt="" loading="lazy" onError={() => setBroken(true)} />
           </button>
-        )}
+        ) : <span className="cn-wc-nopic" aria-hidden="true">Text</span>}
       </div>
       <div className="cn-wc-acts">
         {c.canDate && (
