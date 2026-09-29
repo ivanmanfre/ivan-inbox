@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase'
 import {
-  dedupeMessages, groupThreads, isConversation, threadBucket,
+  dedupeMessages, fetchManualReplyIds, groupThreads, isConversation, threadBucket,
   type InboxMessage, type Thread,
 } from '../../lib/inbox'
 import { seatFilter, seatOf, type Seat } from '../seats'
@@ -59,8 +59,8 @@ export function countDmSeat(threads: Thread[], seat: Seat, now: number = Date.no
 }
 
 /** Pure: the whole path after the reads, so a test can feed rows straight in. */
-export function countDmSeatFromRows(rows: InboxMessage[], seat: Seat, now: number = Date.now()): DmSeatCount {
-  return countDmSeat(groupThreads(dedupeMessages(rows), new Set(), now), seat, now)
+export function countDmSeatFromRows(rows: InboxMessage[], seat: Seat, now: number = Date.now(), manualReplyIds: Set<string> = new Set()): DmSeatCount {
+  return countDmSeat(groupThreads(dedupeMessages(rows), manualReplyIds, now), seat, now)
 }
 
 // A read the database clamps at 1000 rows is paged until a short page, never
@@ -116,11 +116,11 @@ async function threadRows(ids: string[]): Promise<InboxMessage[]> {
 export async function fetchDmSeatCount(seat: Seat, now: number = Date.now()): Promise<DmSeatCount> {
   const ids = await candidateIds(seat, now)
   if (ids.length === 0) return { drafts: 0, needs: 0 }
-  const rows = await threadRows(ids)
+  const [rows, manualReplyIds] = await Promise.all([threadRows(ids), fetchManualReplyIds()])
   // "Mark as solved" (outreach_prospects.solved_at) is not in the view: one small read for the
   // owed threads only, then TODAY'S rule (unansweredSince honours solvedAt). A failed read throws
   // like any other: the count says it could not be read, never a guess.
-  const threads = groupThreads(dedupeMessages(rows), new Set(), now)
+  const threads = groupThreads(dedupeMessages(rows), manualReplyIds, now)
   const solved = await fetchSolvedAt(owedIds(threads.filter(t => seatOf(t.client_id) === seat)))
   return countDmSeat(withSolved(threads, solved), seat, now)
 }

@@ -16,7 +16,7 @@ export function emailWaiting(t: Thread, now: number = Date.now()): boolean {
   if (t.spam || !isConversation(t)) return false
   const emailLeg = draftLegs(t).some(l => messageChannel(l) === 'email')
   if (emailLeg && t.draftSnoozedUntil === null && threadBucket(t, now) !== 'waiting') return true
-  const lastOwed = t.messages.filter(m => m.direction === 'inbound' && isOwedInbound(m)).at(-1)
+  const lastOwed = t.messages.filter(m => m.direction === 'inbound' && isOwedInbound(m, t.needsManualReply)).at(-1)
   if (!lastOwed || messageChannel(lastOwed) !== 'email') return false
   return needsAnswer(t, now)
 }

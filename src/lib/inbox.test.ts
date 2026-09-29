@@ -1158,6 +1158,22 @@ describe('drafts with email and follow-ups, 2026-09-26 live fixes', () => {
     expect(isOwedInbound({ ...rows[1], message_text: '👍' })).toBe(true)
     expect(isOwedInbound({ ...rows[1], reply_intent: 'negative' })).toBe(false)
   })
+  // Lis Anderson, 2026-09-29: captured and flagged, but the sign-off regex hid her reply.
+  it.each(['ivan', 'risedtc', 'arch'] as const)('keeps a flagged thank-you visible on %s while the writer decides', client_id => {
+    const rows: InboxMessage[] = [
+      { ...base, id: 'offer', client_id, message_text: 'May I send you your complete plan?', sent_at: '2026-07-22T09:00:00Z', created_at: '2026-07-22T09:00:00Z' },
+      { ...base, id: 'thanks', client_id, direction: 'inbound', message_text: 'Thanks Iván', reply_intent: 'neutral', sent_at: '2026-07-22T10:00:00Z', created_at: '2026-07-22T10:00:00Z' },
+    ]
+    const thread = groupThreads(rows, new Set([base.prospect_id]))[0]
+    expect(needsAnswer(thread)).toBe(true)
+    expect(browseOrder([thread]).pending.map(t => t.prospect_id)).toEqual([base.prospect_id])
+    // A flag alone cannot reopen a handled, declined, or automatic reply.
+    expect(needsAnswer(groupThreads(rows, new Set())[0])).toBe(false)
+    expect(needsAnswer(groupThreads([...rows, { ...rows[0], id: 'answered', sent_at: '2026-07-22T11:00:00Z', created_at: '2026-07-22T11:00:00Z' }], new Set([base.prospect_id]))[0])).toBe(false)
+    expect(needsAnswer(groupThreads([rows[0], { ...rows[1], reply_intent: 'negative' }], new Set([base.prospect_id]))[0])).toBe(false)
+    expect(needsAnswer(groupThreads([rows[0], { ...rows[1], message_text: "Thanks for your message. I'm out of the office until Monday." }], new Set([base.prospect_id]))[0])).toBe(false)
+    expect(needsAnswer(groupThreads([...rows, { ...base, id: 'ruled', client_id, created_at: '2026-07-22T10:05:00Z', send_blocked_reason: 'writer_no_reply_2026-09-29' }], new Set([base.prospect_id]))[0])).toBe(false)
+  })
   it("the writer's no-reply ruling after a reaction answers it", () => {
     const rows: InboxMessage[] = [
       { ...base, id: 'out', sent_at: '2026-07-22T09:00:00Z', created_at: '2026-07-22T09:00:00Z' },

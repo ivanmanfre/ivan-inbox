@@ -105,7 +105,7 @@ export function needsCount(v: SeatView): number {
 
 /** When the wait began on an owed thread (the newest owed inbound), for the lime age. */
 export function owedSince(t: Thread): string | null {
-  const m = t.messages.filter(x => x.direction === 'inbound' && isOwedInbound(x)).at(-1)
+  const m = t.messages.filter(x => x.direction === 'inbound' && isOwedInbound(x, t.needsManualReply)).at(-1)
   return m ? eventTime(m) : null
 }
 

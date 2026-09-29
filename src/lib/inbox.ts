@@ -704,10 +704,13 @@ function isRealReply(m: InboxMessage): boolean {
 // on any line, on every seat. The drafters already treat it as their turn; the
 // badge used to drop it with the sign-offs, so a reaction with no draft yet
 // owed nothing here. A reaction the detector judged negative still doesn't.
-export function isOwedInbound(m: InboxMessage): boolean {
+export function isOwedInbound(m: InboxMessage, needsManualReply = false): boolean {
   if (isRealReply(m)) return true
   if (m.reply_intent === 'negative') return false
-  return REACTION.test((m.message_text ?? '').trim())
+  const text = (m.message_text ?? '').trim()
+  // Lis Anderson, 2026-09-29: the detector flagged her thank-you while the writer
+  // built her plan. Keep that turn visible until a send or saved no-reply decision.
+  return REACTION.test(text) || (needsManualReply && SIGNOFF.test(text))
 }
 
 // The core "does this thread owe a reply" test, with no staleness cutoff.
@@ -726,7 +729,7 @@ function unansweredSince(t: Thread): string | null {
   // him. It rings again the moment the push expires, and instantly if they
   // write back (which voids draftSnoozedUntil in groupThreads).
   if (t.draftSnoozedUntil !== null) return null
-  const lastInbound = t.messages.filter(m => m.direction === 'inbound' && isOwedInbound(m))
+  const lastInbound = t.messages.filter(m => m.direction === 'inbound' && isOwedInbound(m, t.needsManualReply))
     .map(eventTime).sort().at(-1) ?? null
   if (t.ownerConfirmation) {
     const heldAt = eventTime(t.ownerConfirmation)

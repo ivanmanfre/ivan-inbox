@@ -36,6 +36,13 @@ describe('countDmSeatFromRows', () => {
     expect(countDmSeatFromRows(rows, 'ivan', NOW)).toEqual({ drafts: 1, needs: 1 })
   })
 
+  it('counts the flagged thank-you that the inbox lists while its draft is pending', () => {
+    const rows = replied('lis', 3 * H).map(row => row.direction === 'inbound'
+      ? { ...row, message_text: 'Thanks Iván', reply_intent: 'neutral' } : row)
+    expect(countDmSeatFromRows(rows, 'ivan', NOW, new Set(['lis']))).toEqual({ drafts: 0, needs: 1 })
+    expect(countDmSeatFromRows(rows, 'ivan', NOW)).toEqual({ drafts: 0, needs: 0 })
+  })
+
   it('an owed reply with no draft needs you but is not a draft', () => {
     expect(countDmSeatFromRows(replied('b', 3 * H), 'ivan', NOW)).toEqual({ drafts: 0, needs: 1 })
   })
