@@ -175,6 +175,36 @@ export function titleOf(r: Pick<ContentDraft, 'title' | 'topic' | 'post_body'>):
   return first || 'Untitled'
 }
 
+// A leading "[tag]" some generators stamp on a title ("[X outlier @thekevinjon] Warsaw…",
+// "[new voice test] Why…"). It is provenance, not headline: the queue reads it off the title
+// and shows it with the source (Ivan 29 Sep: "no image preview, no source no nothing").
+export function splitTitleTag(t: string): { tag: string | null; text: string } {
+  const m = t.match(/^\s*\[([^\]]{1,80})\]\s*(.+)$/s)
+  return m ? { tag: m[1].trim(), text: m[2].trim() } : { tag: null, text: t }
+}
+
+// Where a queue row came from, in one short line, linked when the row carries a real URL.
+// X outliers stamp a long source_label ("X outlier by @x (tracked account; 73 likes vs own
+// median 22), light adaptation, …"); that becomes "X outlier · @x · 73 likes, 3.3× median".
+// Call-sourced editorial drafts carry "Call with …, 18 Sep 2026" (db/220). Anything else
+// falls back to the label as written, then to the taxonomy source slug.
+export function queueSourceOf(r: Pick<ContentDraft, 'source_label' | 'source_ref' | 'taxonomy'>,
+  slugLabel: (s: string) => string = s => s): { text: string; href: string | null } | null {
+  const href = typeof r.source_ref === 'string' && /^https?:\/\//i.test(r.source_ref) ? r.source_ref : null
+  const sl = (r.source_label ?? '').trim()
+  const x = sl.match(/^X outlier by (@[\w.]+)(?:.*?(\d[\d,]*) likes vs own median ([\d.]+))?/i)
+  if (x) {
+    const likes = x[2] ? Number(x[2].replace(/,/g, '')) : null
+    const med = x[3] ? Number(x[3]) : null
+    const lift = likes != null && med ? `, ${Math.round((likes / med) * 10) / 10}× median` : ''
+    return { text: `X outlier · ${x[1]}${likes != null ? ` · ${likes} likes${lift}` : ''}`, href }
+  }
+  if (sl) return { text: sl.length > 90 ? `${sl.slice(0, 89).trimEnd()}…` : sl, href }
+  const tax = r.taxonomy && typeof r.taxonomy === 'object' ? (r.taxonomy as Record<string, unknown>).source : null
+  if (typeof tax === 'string' && tax.trim()) return { text: slugLabel(tax.trim()), href }
+  return href ? { text: 'Source', href } : null
+}
+
 export function aimOf(r: Pick<ContentDraft, 'funnel_stage'>): string {
   const a = (r.funnel_stage ?? '').trim()
   return a ? a[0].toUpperCase() + a.slice(1) : ''

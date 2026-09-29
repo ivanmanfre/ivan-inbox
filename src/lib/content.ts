@@ -98,6 +98,9 @@ export type ContentDraft = {
   // TABLE SHEDS COLUMNS"). Optional on the TYPE so every existing fixture
   // keeps compiling — the column is selected below, so live rows carry it.
   source_label?: string | null
+  // The source post's URL on X-outlier drafts (and any other row that keeps a link). The review
+  // queue links its source line to it (Ivan 29 Sep). Optional on the TYPE so fixtures compile.
+  source_ref?: string | null
   // THE TERMINAL agent_log ENTRY, projected as three scalars.
   //
   // 🔴 Why these are on the LIST row. The reason an errored card prints used to
@@ -130,7 +133,7 @@ const COLS =
   'id, client_id, status, type, title, topic, post_body, scheduled_at, published_at, ' +
   'source_post_id, image_urls, taxonomy, updated_at, created_at, board_visible, ' +
   'funnel_stage, qa_verdict:qa->>verdict, qa_score:qa->>score, ' +
-  'qa_regen:qa->>qa_regen_attempts, qa_backfilled:qa->>backfilled, source_label, ' +
+  'qa_regen:qa->>qa_regen_attempts, qa_backfilled:qa->>backfilled, source_label, source_ref, ' +
   'log_agent:agent_log->-1->>agent, log_body:agent_log->-1->>body, log_ts:agent_log->-1->>ts'
 
 // ---------- lane scoping ----------

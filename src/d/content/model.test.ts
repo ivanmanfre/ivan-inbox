@@ -85,3 +85,25 @@ describe('move landing', () => {
     expect(landingDay('2026-10-02', new Set(['2026-10-02']))).toBe('2026-10-05')
   })
 })
+
+describe('queue row source + title tag (Ivan 29 Sep, review list had no source)', () => {
+  it('moves a leading [tag] off the title', async () => {
+    const { splitTitleTag } = await import('./model')
+    expect(splitTitleTag('[X outlier @thekevinjon] Polish food is goated')).toEqual({ tag: 'X outlier @thekevinjon', text: 'Polish food is goated' })
+    expect(splitTitleTag('[new voice test] Why agency owners')).toEqual({ tag: 'new voice test', text: 'Why agency owners' })
+    expect(splitTitleTag('Cold vs warm: 0 calls')).toEqual({ tag: null, text: 'Cold vs warm: 0 calls' })
+  })
+  it('reads the live X-outlier label into handle, likes and lift, linked to the post', async () => {
+    const { queueSourceOf } = await import('./model')
+    expect(queueSourceOf({
+      source_label: 'X outlier by @denisyurchak (tracked account; 73 likes vs own median 22), light adaptation, straight to Review per Ivan 2026-09-27',
+      source_ref: 'https://x.com/denisyurchak/status/2104248242179326359', taxonomy: {},
+    })).toEqual({ text: 'X outlier · @denisyurchak · 73 likes, 3.3× median', href: 'https://x.com/denisyurchak/status/2104248242179326359' })
+  })
+  it('keeps a call label, falls back to the taxonomy source, else null', async () => {
+    const { queueSourceOf } = await import('./model')
+    expect(queueSourceOf({ source_label: 'Call with Leighto ("Lito"), 18 Sep 2026', source_ref: null, taxonomy: null })?.text).toBe('Call with Leighto ("Lito"), 18 Sep 2026')
+    expect(queueSourceOf({ source_label: null, source_ref: null, taxonomy: { source: 'manual' } }, s => s.toUpperCase())).toEqual({ text: 'MANUAL', href: null })
+    expect(queueSourceOf({ source_label: null, source_ref: null, taxonomy: {} })).toBeNull()
+  })
+})
