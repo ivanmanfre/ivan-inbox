@@ -89,6 +89,22 @@ export async function fetchInputs(lane: string): Promise<InputsRead> {
   return parseInputs(data)
 }
 
+/** The seat switch's per-client counts: ONE light call (`p_client: 'counts'`), so a page load needs one heavy read, not three. A missing lane is absent. */
+export type InputsCounts = Partial<Record<string, { in_review: number; recommended: number }>>
+
+export async function fetchInputsCounts(): Promise<InputsCounts | null> {
+  const { data, error } = await supabase.rpc('cb22_inputs', { p_gate: CLIENT_OPS_GATE, p_client: 'counts' })
+  const d = data as Record<string, unknown> | null
+  if (error || !d || d.ok !== true || !d.counts || typeof d.counts !== 'object') return null
+  const out: InputsCounts = {}
+  for (const [lane, v] of Object.entries(d.counts as Record<string, unknown>)) {
+    const c = v && typeof v === 'object' ? v as Record<string, unknown> : null
+    const in_review = c ? num(c.in_review) : null, recommended = c ? num(c.recommended) : null
+    if (in_review !== null && recommended !== null) out[lane] = { in_review, recommended }
+  }
+  return out
+}
+
 /* ---------------------------------------------------------------- badge -- */
 
 export type OutlierSource = {

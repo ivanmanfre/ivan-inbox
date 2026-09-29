@@ -1,5 +1,5 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { fetchInputs, type InputsBuyer, type InputsOutlier, type InputsPayload, type InputsRead } from '../../../lib/cb22'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { fetchInputs, fetchInputsCounts, type InputsBuyer, type InputsCounts, type InputsOutlier, type InputsPayload, type InputsRead } from '../../../lib/cb22'
 import { putOutlierOnBoard } from '../../../lib/outliers'
 import { readSwr, writeSwr } from '../../../lib/swr'
 import { ConfirmProvider } from '../../../wb/chrome/ConfirmSheet'
@@ -33,7 +33,13 @@ function rememberLayout(l: InputsLayout) { try { localStorage.setItem(LAYOUT_KEY
 
 const swrQ = (lane: Lane) => `cb22-inputs:${lane}`
 
-/** One read per seat (the seat switch shows every seat's counts); a failed read is never cached. */
+// The light seat counts live at module level so SeatSwitch (inside Inputs) reads them without a new prop on index.tsx.
+let lightCounts: InputsCounts | null = null
+const countSubs = new Set<() => void>()
+const subCounts = (f: () => void) => { countSubs.add(f); return () => { countSubs.delete(f) } }
+const getCounts = () => lightCounts
+
+/** The first paint is cached per seat; the seat counts come from ONE light call; a seat's heavy read happens when it is selected (see Inputs). A failed read is never cached. */
 export function useInputs(): { reads: Record<Lane, InputsRead | null>; refresh: (l: Lane) => void } {
   const [reads, setReads] = useState<Record<Lane, InputsRead | null>>(() => Object.fromEntries(LANES.map(l => {
     const s = readSwr<InputsPayload>(swrQ(l)); return [l, s ? { kind: 'ready', data: s.payload } : null]
@@ -48,7 +54,9 @@ export function useInputs(): { reads: Record<Lane, InputsRead | null>; refresh: 
       if (r.kind === 'ready') writeSwr(swrQ(l), r.data)
     })
   }, [])
-  useEffect(() => { LANES.forEach(load) }, [load])
+  useEffect(() => {
+    void fetchInputsCounts().then(c => { if (c) { lightCounts = c; countSubs.forEach(f => f()) } })
+  }, [])
   return { reads, refresh: load }
 }
 
@@ -76,11 +84,14 @@ function hook(text: string): string {
 }
 
 function SeatSwitch({ lane, setLane, reads }: { lane: Lane; setLane: (l: Lane) => void; reads: Record<Lane, InputsRead | null> }) {
+  const light = useSyncExternalStore(subCounts, getCounts)
   return (
     <div className="in-seats" role="tablist" aria-label="Client">
       {LANES.map(l => {
         const r = reads[l]
-        const c = r?.kind === 'ready' ? r.data.counts : null
+        // the selected seat shows its own read; another seat shows the light call's counts (its cached read may be days old)
+        const heavy = r?.kind === 'ready' ? r.data.counts : null
+        const c = l === lane ? heavy ?? light?.[l] ?? null : light?.[l] ?? heavy
         return (
           <button key={l} type="button" role="tab" aria-selected={lane === l} className={lane === l ? 'in-on' : ''} onClick={() => setLane(l)} data-verb="inputs-seat">
             <b>{LANE_NAME[l]}</b>
@@ -131,8 +142,8 @@ function SourceTags({ o }: { o: InputsOutlier }) {
     <>
       {o.sources?.includes('search') && <span className="in-tag" data-source-tag="search">Search</span>}
       {o.sources?.includes('steady') && <span className="in-tag" data-source-tag="steady">Steady</span>}
-      {sl === 'true' && <span className="in-tag" data-seller-tag="true" title={o.seller?.sells || o.seller?.reason || undefined}>Seller</span>}
-      {sl === 'unclear' && <span className="in-tag" data-seller-tag="unclear" title={o.seller?.reason || undefined}>Seller?</span>}
+      {sl === 'true' && <span className="in-tag" data-seller-tag="true" title={o.seller?.sells || o.seller?.reason || undefined}>Sells to this reader</span>}
+      {sl === 'unclear' && <span className="in-tag" data-seller-tag="unclear" title={o.seller?.reason || undefined}>Sells to this reader?</span>}
     </>
   )
 }
@@ -229,6 +240,13 @@ export function Inputs({ lane, setLane, layout, reads, refresh, phone }: {
   const toast = useToast()
   const [use, setUse] = useState<UseSt>({})
   const r = reads[lane]
+  // a seat's heavy read runs once per page session, the first time it is selected (a "Use this" still re-reads)
+  const fetched = useRef<Set<Lane>>(new Set())
+  useEffect(() => {
+    if (fetched.current.has(lane)) return
+    fetched.current.add(lane)
+    refresh(lane)
+  }, [lane, refresh])
   const onUse = useCallback(async (o: InputsOutlier) => {
     const k = rowKey(lane, o)
     setUse(p => ({ ...p, [k]: 'busy' }))
