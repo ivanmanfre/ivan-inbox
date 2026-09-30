@@ -12,7 +12,7 @@ import './inputs.css'
 // CONTENT > INPUTS (CB-22). What to act on this week, per client, in this order:
 //   1. the top outliers (<= 5, ranked by cb22_inputs: in review, recommended, the
 //      strategy-fit judge, then lift), each with one tap (Use this / Open in Ideas);
-//   2. the buyer-fit people (ICP 7+) who engaged with the client's own posts in the last 7 days;
+//   2. potential buyers (ICP 7+) recorded on the client's own posts in the last 7 days;
 //   3. everything else folded: every outlier, the market readout, the evidence archive.
 // Two layouts: 'list' (default, the ballot winner) and 'cards' (the runner-up), switched by
 // ?layout=cards or the remembered choice (localStorage d-inputs-layout). Correlation only:
@@ -62,11 +62,11 @@ export function useInputs(): { reads: Record<Lane, InputsRead | null>; refresh: 
 
 export function inputsTitle(reads: Record<Lane, InputsRead | null>, lane: Lane): string {
   const r = reads[lane]
-  if (!r) return `Inputs for ${LANE_NAME[lane]}: reading…`
-  if (r.kind === 'failed') return `Inputs for ${LANE_NAME[lane]}: the read failed`
+  if (!r) return `Outliers for ${LANE_NAME[lane]}: reading…`
+  if (r.kind === 'failed') return `Outliers for ${LANE_NAME[lane]}: the read failed`
   const c = r.data.counts, b = r.data.buyers.length
   // one line, no zero counts (P1 judge): "Rise · 2 in review · 3 recommended · 1 buyer"
-  const parts = [c.in_review ? `${c.in_review} in review` : '', c.recommended ? `${c.recommended} recommended` : '', b ? `${b} buyer${b === 1 ? '' : 's'}` : ''].filter(Boolean)
+  const parts = [c.in_review ? `${c.in_review} in review` : '', c.recommended ? `${c.recommended} recommended` : '', b ? `${b} potential buyer${b === 1 ? '' : 's'}` : ''].filter(Boolean)
   return `${LANE_NAME[lane]} · ${parts.length ? parts.join(' · ') : `${r.data.top.length} top outliers`}`
 }
 
@@ -192,8 +192,9 @@ function Buyers({ buyers, lane, compact }: { buyers: InputsBuyer[]; lane: Lane; 
   const whose = lane === 'ivan' ? 'your' : `${OWNER[lane]}’s`
   return (
     <section className={`in-block${compact ? ' in-buyers-strip' : ''}`} data-inputs-buyers>
-      <div className="in-h"><span>Buyers on {whose} posts · last 7 days</span><span className="in-n">{buyers.length}</span></div>
-      {buyers.length === 0 ? <p className="in-say">No one judged ICP 7+ engaged with {whose} posts in the last 7 days.</p> : (
+      <div className="in-h"><span>Potential buyers on {whose} posts</span><span className="in-n">{buyers.length}</span></div>
+      <p className="in-say">People scored 7/10 or higher for buyer fit and recorded in the past 7 days. Reactions and comments may be older.</p>
+      {buyers.length === 0 ? <p className="in-say">No people with a buyer-fit score of 7/10 or higher were recorded for {whose} posts in the past 7 days.</p> : (
         <ul className={compact ? 'in-chips' : 'in-buyers'}>
           {buyers.map(b => compact ? (
             <li key={b.name + (b.url ?? '')}>{b.url ? <a href={b.url} target="_blank" rel="noreferrer" data-verb="open-buyer">{b.name} <i>{b.icp}</i></a> : <span>{b.name} <i>{b.icp}</i></span>}</li>
@@ -201,7 +202,7 @@ function Buyers({ buyers, lane, compact }: { buyers: InputsBuyer[]; lane: Lane; 
             <li key={b.name + (b.url ?? '')} className="in-buyer">
               <span className="in-icp" title="ICP fit, 0-10">{b.icp}</span>
               <div className="in-main">
-                <p className="in-meta">{b.url ? <a href={b.url} target="_blank" rel="noreferrer" data-verb="open-buyer"><b>{b.name}</b></a> : <b>{b.name}</b>} · {b.commented ? 'commented' : 'reacted'}{b.posts > 1 ? ` on ${b.posts} posts` : ''}{b.last_seen ? ` · ${ago(b.last_seen)}` : ''}</p>
+                <p className="in-meta">{b.url ? <a href={b.url} target="_blank" rel="noreferrer" data-verb="open-buyer"><b>{b.name}</b></a> : <b>{b.name}</b>} · {b.commented ? 'commented' : 'reacted'}{b.posts > 1 ? ` on ${b.posts} posts` : ''}{b.last_seen ? <> · last recorded <time dateTime={b.last_seen} title={b.last_seen}>{ago(b.last_seen)}</time></> : ''}</p>
                 {b.headline && <p className="in-why">{b.headline}</p>}
               </div>
             </li>
@@ -273,7 +274,7 @@ export function Inputs({ lane, setLane, layout, reads, refresh, phone, insightsO
           <SeatSwitch lane={lane} setLane={setLane} reads={reads} />
         </div>
         {!r ? <Skeleton lines={5} title={false} label="Reading the outliers" />
-          : r.kind === 'failed' ? <Failed what={`${LANE_NAME[lane]}’s inputs`} detail={r.message} onRetry={() => refresh(lane)} />
+          : r.kind === 'failed' ? <Failed what={`${LANE_NAME[lane]}’s outliers`} detail={r.message} onRetry={() => refresh(lane)} />
             : r.data.top.length === 0 ? <p className="in-say">No outlier in the last 21 days for {LANE_NAME[lane]}. Older ones are under Every outlier.</p>
               : layout === 'cards' ? (
                 <ol className="in-cards">{r.data.top.map(o => <Card key={o.platform + o.post_id} o={o} lane={lane} use={use} onUse={onUse} />)}</ol>

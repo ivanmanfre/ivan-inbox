@@ -36,7 +36,7 @@ describe('Content navigation', () => {
     expect([...nav.querySelectorAll('a')].map(a => a.textContent)).toEqual(['Ideas', 'Review', 'Lead magnets', 'Results'])
     expect(screen.getByLabelText('Needs a tap')).toBeTruthy()
     const tools = screen.getByRole('navigation', { name: 'Content planning' })
-    expect([...tools.querySelectorAll('a')].map(a => a.textContent)).toEqual(['Strategy', 'Content brain', 'Inputs'])
+    expect([...tools.querySelectorAll('a')].map(a => a.textContent)).toEqual(['Strategy', 'Content brain', 'Outliers'])
     expect(screen.getByRole('link', { name: 'Content brain' }).getAttribute('href')).toBe('#exp/d/content/strategy?lane=arch&section=this-week')
     expect(nav.querySelector('a')?.getAttribute('href')).toBe('#exp/d/content/ideas?lane=arch')
     fireEvent.click(screen.getByRole('button', { name: 'More in Content' }))

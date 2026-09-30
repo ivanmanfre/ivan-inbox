@@ -4,7 +4,8 @@
    `cb22_inputs(p_gate, p_client)` returns, for one client: the top outliers of
    the last 21 days (<= 5, ranked: in review, recommended, then the strategy-fit
    judge, then lift) and the buyer-fit people (ICP 7+) who engaged with the
-   client's own posts in the last 7 days. Correlation only: an engager is who
+   client's own posts and were recorded in the last 7 days. The window uses
+   seen_at; the reaction or comment may be older. Correlation only: an engager is who
    reacted or commented, never what a post caused.
 
    The badge is drawn from source_ref ONLY: `outlier:<platform>:<id>` (a "Use

@@ -6,11 +6,11 @@ import type { Lane } from './model'
 
 export type Sub = 'now' | 'ideas' | 'results' | 'strategy' | 'styles' | 'planner' | 'review' | 'inputs' | 'magnets' | 'errors' | 'queue' | 'markets'
 export const SUBS: readonly Sub[] = ['ideas', 'now', 'magnets', 'results']
-export const SUB_LABEL: Record<Sub, string> = { now: 'Review', ideas: 'Ideas', results: 'Results', strategy: 'Strategy', styles: 'Styles', planner: 'Planner', review: 'Review', inputs: 'Inputs', magnets: 'Lead magnets', errors: 'Errors', queue: 'Publish queue', markets: 'Outliers & Markets' }
+export const SUB_LABEL: Record<Sub, string> = { now: 'Review', ideas: 'Ideas', results: 'Results', strategy: 'Strategy', styles: 'Styles', planner: 'Planner', review: 'Review', inputs: 'Outliers', magnets: 'Lead magnets', errors: 'Errors', queue: 'Publish queue', markets: 'Outliers & Markets' }
 export const PLANNING = [
   { sub: 'strategy', section: 'direction', label: 'Strategy' },
   { sub: 'strategy', section: 'this-week', label: 'Content brain' },
-  { sub: 'inputs', section: null, label: 'Inputs' },
+  { sub: 'inputs', section: null, label: 'Outliers' },
 ] as const
 export function subOf(s: string | null, query = new URLSearchParams()): Sub {
   if (!s) return query.has('magnet') ? 'magnets' : query.has('draft') || query.has('view') ? 'now' : 'ideas'
