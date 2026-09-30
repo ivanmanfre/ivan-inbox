@@ -171,3 +171,9 @@ it.each(['ivan', 'risedtc'] as const)('a red %s Now card Fix opens its guarded p
   expect(await screen.findByText(/Run the pipeline again for this/)).toBeTruthy()
   expect(lib.approveDraft).not.toHaveBeenCalled()
 })
+
+it('shows a failed QA verdict before a review decision', () => {
+  const rows = [row({ id: 'qa-warn', title: 'Check this one', qa_verdict: 'FAIL', qa_score: '38' })]
+  renderInFrame(<WeekStack week={buildNow(rows, { now: NOW })} read={{ ...read, rows }} show="all" setShow={vi.fn()} now={NOW} openId={null} onOpen={vi.fn()} onChanged={vi.fn()} firstDay="2026-09-28" seatRows={() => rows} nowView />)
+  expect(screen.getByText('QA fail 38')).toBeTruthy()
+})

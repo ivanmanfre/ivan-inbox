@@ -194,7 +194,10 @@ export function Row({
       {lead && <span className="a-row-lead">{lead}</span>}
       {(title || sub || meta || children) && (
         <span className="a-row-main">
-          {title && <span className="a-row-title" data-wrap={titleWrap ? '' : undefined}>{title}</span>}
+          {title && (onClick
+            ? <button type="button" className="a-row-title a-row-open" data-wrap={titleWrap ? '' : undefined}
+                onClick={e => { e.stopPropagation(); onClick() }}>{title}</button>
+            : <span className="a-row-title" data-wrap={titleWrap ? '' : undefined}>{title}</span>)}
           {sub && <span className="a-row-sub" data-wrap={subWrap ? '' : undefined}>{sub}</span>}
           {meta && <span className="a-row-meta">{meta}</span>}
           {children}
@@ -218,10 +221,10 @@ export function Row({
       id={id}
       title={title_}
       data-interactive=""
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
+      onClick={e => {
+        if ((e.target as Element).closest('button, a, input, textarea, select, [role="button"], [role="checkbox"], [contenteditable="true"]')) return
+        onClick()
+      }}
       {...data}
     >{inner}</div>
   )

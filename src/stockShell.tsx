@@ -1,3 +1,4 @@
+import { hashNavigationAllowed } from './lib/navigationGuard'
 /* ==========================================================================
    src/stockShell.tsx: the pre-revamp shell, behind `#exp/stock`.
 
@@ -74,6 +75,7 @@ function Shell() {
   // edge case of an #access_token fragment still sitting in the URL.
   useEffect(() => {
     const applyHash = () => {
+      if (!hashNavigationAllowed()) return
       const route = parseHash(location.hash)
       if (!route) return
       if (route.thread) {

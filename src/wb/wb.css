@@ -287,6 +287,10 @@
   white-space:nowrap;
 }
 .a-row-title[data-wrap]{ white-space:normal }
+.a-row-open{
+  appearance:none; background:none; border:0; padding:0; margin:0;
+  text-align:left; font-family:inherit; cursor:pointer;
+}
 .a-row-sub{
   font-size:var(--ds-fs-meta);
   line-height:var(--ds-lh-meta);

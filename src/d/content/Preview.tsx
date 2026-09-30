@@ -15,10 +15,10 @@ const AUTHOR: Record<Lane, [string, string, string]> = {
   arch: ['Davorin Smit', 'Arch', 'DS'],
 }
 
-export function Preview({ d, lane, body, editing, text, setText, onStartEdit, onCancel, onSave }: {
+export function Preview({ d, lane, body, editing, text, setText, busy = false, onStartEdit, onCancel, onSave }: {
   d: ContentDraftDetail; lane: Lane; body: string; editing: boolean; text: string; setText: (s: string) => void
   /** Click on the post (or Enter) opens the editor, as today; null where the copy is not editable. */
-  onStartEdit?: (() => void) | null; onCancel?: () => void; onSave?: () => void
+  busy?: boolean; onStartEdit?: (() => void) | null; onCancel?: () => void; onSave?: () => void
 }) {
   const [name, line, ini] = AUTHOR[lane]
   // LinkedIn's fold (29 Sep, "honest preview"): the feed shows about three lines, then "…see more".
@@ -33,8 +33,9 @@ export function Preview({ d, lane, body, editing, text, setText, onStartEdit, on
       <div className="cn-lih"><i>{ini}</i><div><b>{name}</b> <span>· 1st</span><small>{line}</small><small>now</small></div></div>
       {editing ? (
         <>
-          <textarea className="cn-ed" aria-label="Post text" value={text} onChange={e => setText(e.target.value)} autoFocus
+          <textarea className="cn-ed" aria-label="Post text" value={text} disabled={busy} onChange={e => { if (!busy) setText(e.target.value) }} autoFocus
             onKeyDown={e => {
+              if (busy) { e.preventDefault(); return }
               if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onCancel?.() }
               else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onSave?.() }
             }} />
@@ -46,7 +47,7 @@ export function Preview({ d, lane, body, editing, text, setText, onStartEdit, on
             <p key={i}>{para}{i === all.length - 1 && fold.folded && !more && (
               <>{' '}<button type="button" className="cn-lisee" data-verb="see-more" onClick={e => { e.stopPropagation(); setMore(true) }}>…see more</button></>
             )}</p>
-          )) : <span style={{ color: '#888' }}>No post text yet.</span>}
+          )) : <span style={{ color: '#666' }}>No post text yet.</span>}
         </div>
       )}
       {img && !editing && <img className="cn-liimg" src={img} alt="" loading="lazy" />}

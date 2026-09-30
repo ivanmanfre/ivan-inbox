@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { exactBriefDeepLink, isContentLane, isStrategyView, readStrategyDeepLink, STRATEGY_VIEWS } from './deepLink'
+import { dStrategyLink } from './deepLink'
+
+it('keeps full analytics addressable when selecting Results and switching clients', () => {
+  const link = dStrategyLink
+  expect(link('ivan', 'results')).toBe('#exp/d/content/results?lane=ivan&section=results&view=analytics')
+  expect(link('arch', 'results')).toBe('#exp/d/content/results?lane=arch&section=results&view=analytics')
+  expect(link('arch', 'research')).toBe('#exp/d/content/strategy?lane=arch&section=research')
+})
 
 describe('readStrategyDeepLink', () => {
   it('reads a client-scoped lane and section together', () => {

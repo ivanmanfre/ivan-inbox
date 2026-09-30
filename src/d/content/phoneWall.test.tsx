@@ -20,7 +20,7 @@ describe('PhoneWall seat lines', () => {
     const { container } = render(<PhoneWall data={data({ ivan: reading, risedtc: loaded, arch: reading })} items={items} days={[]} stuck={null} onOpen={vi.fn()} onMove={vi.fn()} onArm={vi.fn()} />)
     const lines = [...container.querySelectorAll('.cn-bh small')].map(x => x.textContent)
     expect(lines.filter(t => t === 'in 2 weeks')).toHaveLength(2)
-    expect(lines.filter(t => t === 'in 2 weeks · published 0')).toHaveLength(1)
+    expect(lines.filter(t => t === 'scheduled in 2 weeks · published 0')).toHaveLength(1)
     expect([...container.querySelectorAll('.cn-bh em')].map(x => x.textContent)).toEqual(['…', '0', '…'])
   })
 })

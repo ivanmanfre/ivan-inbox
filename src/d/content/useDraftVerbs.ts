@@ -24,6 +24,7 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
   const base = useRef(d.post_body ?? '')
   const [conflict, setConflict] = useState<SaveConflict | null>(null)
   const [busy, setBusy] = useState(false)
+  const saving = useRef(false)
   const [err, setErr] = useState('')
   const [visible, setVisible] = useState(d.board_visible === true)
 
@@ -37,9 +38,11 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
   const fail = (e: unknown, what: string) => setErr(e instanceof ClientRpcError || e instanceof Error ? e.message : `Could not ${what}.`)
 
   const startEdit = useCallback(() => { setText(shown); setEditing(true); setErr(''); setConflict(null) }, [shown])
-  const cancelEdit = useCallback(() => { setEditing(false); setText(shown); setConflict(null); setErr('') }, [shown])
+  const cancelEdit = useCallback(() => { if (saving.current || busy) return; setEditing(false); setText(shown); setConflict(null); setErr('') }, [shown, busy])
 
   const save = useCallback(async (body: string = text) => {
+    if (saving.current || busy) return
+    saving.current = true
     setBusy(true); setErr(''); setConflict(null)
     try {
       await (lane === 'ivan'
@@ -51,8 +54,8 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
     } catch (e) {
       if (e instanceof DraftSaveConflict) setConflict(e.detail)
       else fail(e, 'save')
-    } finally { setBusy(false) }
-  }, [d.id, d.taxonomy, d.updated_at, lane, refresh, text, toast])
+    } finally { saving.current = false; setBusy(false) }
+  }, [busy, d.id, d.taxonomy, d.updated_at, lane, refresh, text, toast])
 
   const takeTheirs = useCallback(() => {
     const t = conflict?.theirs ?? ''

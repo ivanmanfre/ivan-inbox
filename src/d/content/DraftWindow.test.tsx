@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderInFrame } from '../test-utils'
 // The inline Fix row mounts today's wb components, which read matchMedia (jsdom has none).
 window.matchMedia ??= ((q: string) => ({ matches: false, media: q, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia
@@ -77,6 +77,28 @@ describe('draft window', () => {
     fireEvent.click(document.querySelector('[data-verb="edit"]')!)
     fireEvent.keyDown(window, { key: 'j' })
     expect(p.onPick).toHaveBeenCalledTimes(1)
+  })
+
+  it('locks the editor and keyboard exits during a deferred save, then retains text on failure', async () => {
+    let reject!: (e: Error) => void
+    lib.saveDraftBody.mockImplementation(() => new Promise((_resolve, fail) => { reject = fail }))
+    const p = props()
+    renderInFrame(<DraftWindow {...p} />)
+    fireEvent.click(document.querySelector('[data-verb="edit"]')!)
+    const editor = screen.getByRole('textbox', { name: 'Post text' }) as HTMLTextAreaElement
+    fireEvent.change(editor, { target: { value: 'Unsaved copy' } })
+    fireEvent.keyDown(editor, { key: 'Enter', metaKey: true })
+    expect(editor.disabled).toBe(true)
+    fireEvent.keyDown(editor, { key: 'Enter', metaKey: true })
+    fireEvent.keyDown(editor, { key: 'Escape' })
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(lib.saveDraftBody).toHaveBeenCalledOnce()
+    expect(p.onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('textbox', { name: 'Post text' })).toBe(editor)
+    await act(async () => reject(new Error('Save unavailable')))
+    await screen.findByText('Save unavailable')
+    expect(editor.disabled).toBe(false)
+    expect(editor.value).toBe('Unsaved copy')
   })
 
   it('a save conflict never picks a winner; keep mine re-bases on theirs and saves again', async () => {
@@ -264,5 +286,33 @@ describe('Arch in the open post keeps every control it had', () => {
     current = { ...detail, client_id: 'arch', board_visible: false }
     renderInFrame(<DraftWindow {...props({ lane: 'arch' })} />)
     expect(document.querySelector('[data-verb="delete"]')).toBeTruthy()
+  })
+})
+
+describe('draft edit protection', () => {
+  it('keeps dirty text when closing is cancelled and leaves only after discard', async () => {
+    const p = props()
+    renderInFrame(<DraftWindow {...p} />)
+    fireEvent.click(document.querySelector('[data-verb="edit"]')!)
+    fireEvent.change(screen.getByRole('textbox', { name: 'Post text' }), { target: { value: 'Unsaved revised copy' } })
+    fireEvent.click(document.querySelector('[data-verb="close"]')!)
+    expect(p.onClose).not.toHaveBeenCalled()
+    expect(await screen.findByRole('alertdialog')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect((screen.getByRole('textbox', { name: 'Post text' }) as HTMLTextAreaElement).value).toBe('Unsaved revised copy')
+    fireEvent.click(document.querySelector('[data-verb="close"]')!)
+    fireEvent.click(await screen.findByRole('button', { name: 'Discard edits' }))
+    await waitFor(() => expect(p.onClose).toHaveBeenCalledTimes(1))
+    expect(lib.saveDraftBody).not.toHaveBeenCalled()
+  })
+
+  it('closes an unchanged edit without a discard question', async () => {
+    const p = props()
+    renderInFrame(<DraftWindow {...p} />)
+    fireEvent.click(document.querySelector('[data-verb="edit"]')!)
+    fireEvent.click(document.querySelector('[data-verb="close"]')!)
+    await waitFor(() => expect(p.onClose).toHaveBeenCalledTimes(1))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
   })
 })

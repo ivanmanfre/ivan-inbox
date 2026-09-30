@@ -1,3 +1,4 @@
+import { hashNavigationAllowed } from '../lib/navigationGuard'
 import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { ClaudeProvider } from './claude/ClaudeProvider'
 import { Island } from './claude/Island'
@@ -85,6 +86,7 @@ function useDRoute(): DRoute {
   const [hash, setHash] = useState(read)
   useEffect(() => {
     const on = () => {
+      if (!hashNavigationAllowed()) return
       // A document route, the stock shell, the experiment reset and an explicit
       // "today's app" link are their own pages (App.tsx): load them fresh.
       const h = location.hash

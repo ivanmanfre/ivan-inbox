@@ -1,3 +1,4 @@
+import { useUnsavedNavigation } from '../../hooks/useUnsavedNavigation'
 /* ==========================================================================
    S07 — STRATEGY. The one work surface that WRITES what it shows.
 
@@ -39,7 +40,7 @@ import { ThemesBlock } from './ThemesBlock'
 import { LeadMagnetsView } from './leadmagnets'
 import OutliersView from './outliers'
 import { ClientDirectionPanel, DemoPanel, ResearchPanel, ResultsPanel as EditorialResultsPanel, ThisWeekPanel as EditorialThisWeekPanel } from './research/ResearchWorkspace'
-import { D_STRATEGY_HASH, dStrategySub, isContentLane, isStrategyView, readStrategyDeepLink, type StrategyViewId } from './strategy/deepLink'
+import { D_STRATEGY_HASH, dStrategyLink, dStrategySub, isContentLane, isStrategyView, readStrategyDeepLink, type StrategyViewId } from './strategy/deepLink'
 import { MarketsView } from './markets'
 import { prefixOf, wbHash } from '../../exp/v2c/route'
 import './content.css'
@@ -306,7 +307,7 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
   // `?lane=&section=` deep link (`readStrategyDeepLink`) over the plain
   // default. Every branch here is read-once, at mount, on purpose — this is
   // an initializer, not a subscription.
-  const [view, setView] = useState<string>(() => {
+  const [view, setView] = useState<StrategyViewId>(() => {
     if (import.meta.env.DEV && typeof window !== 'undefined'
       && evidenceFixtureBypassActive(import.meta.env.DEV, window.location.search)) return 'evidence'
     if (initialSection && isStrategyView(initialSection)) return initialSection
@@ -319,6 +320,16 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
     if (typeof location === 'undefined') return null
     const link = readStrategyDeepLink(location.hash)
     return link.briefId && link.briefVersion ? { id: link.briefId, version: link.briefVersion } : null
+  })
+  const [refreshTick, setRefreshTick] = useState(0)
+  const [proposalDirty, setProposalDirty] = useState(false)
+  const rowsRef = useRef<HTMLDivElement>(null)
+  const confirm = useConfirm()
+  const { rememberHash } = useUnsavedNavigation(st.dirty || proposalDirty, async () => {
+    if (st.saving) return false
+    const ok = await confirm({ title: 'You have unsaved edits on this lane.', message: 'Leave and discard them?', confirmText: 'Discard and leave', danger: true })
+    if (ok) { if (st.dirty) st.refresh(); setProposalDirty(false) }
+    return ok
   })
   const acceptedHash = useRef(typeof location === 'undefined' ? '' : location.hash)
   // Same deep link, the other half: `?lane=` restores the CLIENT the link was
@@ -358,25 +369,21 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
       // fires no hashchange), so its sub-nav highlight follows the tab.
       const inD = D_STRATEGY_HASH.test(location.hash)
       const hash = inD
-        ? `#exp/d/content/${dStrategySub(view)}?${query.toString()}`
+        ? dStrategyLink(lane, view, exactBrief)
         : `${wbHash('strategy', null, prefixOf(location.hash))}?${query.toString()}`
-      if (hash === location.hash) { acceptedHash.current = hash; return }
+      if (hash === location.hash) { acceptedHash.current = hash; rememberHash(); return }
       const subMoved = inD && location.hash.match(D_STRATEGY_HASH)?.[1] !== dStrategySub(view)
-      history.replaceState(null, '', hash); acceptedHash.current = hash
+      history.replaceState(null, '', hash); acceptedHash.current = hash; rememberHash()
       if (subMoved) window.dispatchEvent(new HashChangeEvent('hashchange'))
     }, 0)
     return () => window.clearTimeout(id)
-  }, [lane, view, exactBrief])
-  const [refreshTick, setRefreshTick] = useState(0)
-  const [proposalDirty, setProposalDirty] = useState(false)
-  const rowsRef = useRef<HTMLDivElement>(null)
-  const confirm = useConfirm()
+  }, [lane, view, exactBrief, rememberHash])
   // ONE listener for the life of the view, reading the latest state through a ref.
   // Re-subscribing on every render (setLane is a new function per render inside D)
   // removed the listener in the middle of the very hashchange that re-rendered us,
   // so a sub-nav click or a link never reached it.
-  const live = useRef({ confirm, lane, proposalDirty, setLane, dirty: st.dirty })
-  live.current = { confirm, lane, proposalDirty, setLane, dirty: st.dirty }
+  const live = useRef({ lane, setLane })
+  live.current = { lane, setLane }
   useEffect(() => {
     const onHashChange = () => { void (async () => {
       const inD = D_STRATEGY_HASH.test(location.hash)
@@ -385,17 +392,7 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
       // Our own write-back (and a cancelled switch put back) is not a link.
       if (incoming === acceptedHash.current) return
       const link = readStrategyDeepLink(incoming)
-      const { confirm, lane, proposalDirty, setLane, dirty } = live.current
-      if (dirty || proposalDirty) {
-        const ok = await confirm({ title: 'You have unsaved edits on this lane.', message: 'Open this link and lose them?', confirmText: 'Open and lose edits', danger: true })
-        if (!ok) {
-          history.replaceState(null, '', acceptedHash.current)
-          // D's sub-nav already moved on the click: tell the frame the address is back.
-          if (inD) window.dispatchEvent(new HashChangeEvent('hashchange'))
-          return
-        }
-        setProposalDirty(false)
-      }
+      const { lane, setLane } = live.current
       if (location.hash !== incoming) return
       setExactBrief(link.briefId && link.briefVersion ? { id: link.briefId, version: link.briefVersion } : null)
       if (link.section) setView(link.section)
@@ -422,6 +419,17 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
     const next = resolveLane(lane, lanes.lanes)
     if (next !== lane) setLane(next as ContentLane)
   }, [lane, lanes.state, lanes.lanes, setLane])
+
+  const changeView = async (next: StrategyViewId) => {
+    if (next === view || st.saving) return
+    if (st.dirty || proposalDirty) {
+      if (!await confirm({ title: 'You have unsaved edits on this lane.', message: 'Switch view and discard them?', confirmText: 'Discard and switch', danger: true })) return
+      if (st.dirty) st.refresh()
+      setProposalDirty(false)
+    }
+    setExactBrief(null)
+    setView(next)
+  }
 
   const head = (
     <>
@@ -456,15 +464,7 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
     </Bar>
     <Bar>
       <Segmented label="Strategy views" className="a-strategy-nav" markerId="a-strategy-view"
-        value={view} onChange={async next => {
-          if (proposalDirty && view === 'direction') {
-            const ok = await confirm({ title: 'You have unsaved weekly policy edits.', message: 'Switch view and lose them?', confirmText: 'Switch and lose them', danger: true })
-            if (!ok) return
-            setProposalDirty(false)
-          }
-          setExactBrief(null)
-          setView(next)
-        }} options={[
+        value={view} onChange={next => { if (isStrategyView(next)) void changeView(next) }} options={[
           { id: 'this-week', label: 'This week' },
           { id: 'research', label: 'Research' },
           { id: 'results', label: 'Results' },
@@ -503,7 +503,7 @@ export function StrategyView({ lane, setLane, initialSection, initialLane }: {
       {head}
       <Body innerRef={rowsRef} className="a-strat">
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
-        <details className="a-strategy-disclosure"><summary>More: demos, legacy analysis, competitors and private notes</summary><div className="a-research-actions"><Button size="sm" variant="quiet" onClick={() => setView('demos')}>Demos</Button><Button size="sm" variant="quiet" onClick={() => setView('recommendations')}>Legacy suggestions</Button><Button size="sm" variant="quiet" onClick={() => setView('evidence')}>Evidence archive</Button><Button size="sm" variant="quiet" onClick={() => setView('competitors')}>Competitors</Button><Button size="sm" variant="quiet" onClick={() => setView('notes')}>{st.dirty ? 'Notes, unsaved' : 'Notes'}</Button></div></details>
+        <details className="a-strategy-disclosure"><summary>{['demos', 'recommendations', 'evidence', 'competitors', 'notes'].includes(view) ? `More · ${view === 'recommendations' ? 'Legacy suggestions' : view === 'evidence' ? 'Evidence archive' : view.charAt(0).toUpperCase() + view.slice(1)}` : 'More: demos, legacy analysis, competitors and private notes'}</summary><div className="a-research-actions"><Button size="sm" variant="quiet" onClick={() => void changeView('demos')}>Demos</Button><Button size="sm" variant="quiet" onClick={() => void changeView('recommendations')}>Legacy suggestions</Button><Button size="sm" variant="quiet" onClick={() => void changeView('evidence')}>Evidence archive</Button><Button size="sm" variant="quiet" onClick={() => void changeView('competitors')}>Competitors</Button><Button size="sm" variant="quiet" onClick={() => void changeView('notes')}>{st.dirty ? 'Notes, unsaved' : 'Notes'}</Button></div></details>
         {view === 'this-week' && <div className="a-strategy-panel"><EditorialThisWeekPanel key={`${lane}-${refreshTick}`} lane={lane} exactBrief={exactBrief} /></div>}
         {view === 'research' && <div className="a-strategy-panel"><ResearchPanel key={`${lane}-${refreshTick}`} lane={lane} /></div>}
         {view === 'results' && <div key={`${lane}-${refreshTick}`} className="a-strategy-results">

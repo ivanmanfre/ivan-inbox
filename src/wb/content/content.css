@@ -128,6 +128,7 @@
   flex:0 0 auto;
 }
 .a-ct-tabsbar::-webkit-scrollbar{ display:none }
+.a-ct .a-ct-lm-link{ display:inline-flex; align-items:center; min-height:var(--ds-tap); min-width:var(--ds-tap) }
 /* The strip WRAPS instead of scrolling, at EVERY width. W1 made that call for
    the phone ("seven stages behind an edge with no affordance is a stage nobody
    finds; two rows cost 44px and hide nothing"), and the measurement extends it:

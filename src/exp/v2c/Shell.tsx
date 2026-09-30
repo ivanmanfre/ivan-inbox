@@ -1,3 +1,4 @@
+import { hashNavigationAllowed } from '../../lib/navigationGuard'
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
 import { SeatHealthBanner } from '../../wb/chrome/SeatHealthBanner'
 import { InboxSkeleton } from '../../wb/chrome/Skeleton'
@@ -512,6 +513,7 @@ function ShellBody({ brain }: { brain?: BrainId } = {}) {
   // ---- hash: job + focus are addressable, so every surface has a fresh-load URL ----
   useEffect(() => {
     const apply = () => {
+      if (!hashNavigationAllowed()) return
       const r = parseWbHash(location.hash)
       setJob(r.job)
       if (r.focus === 'chat') {

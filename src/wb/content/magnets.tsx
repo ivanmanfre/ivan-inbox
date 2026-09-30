@@ -12,7 +12,7 @@
    stage, the meta line never reflows, the landing link rides in the row's own
    actions, and the stage strip is the ds `Tabs` the post lane already reads.
    ========================================================================== */
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { useIdeaCandidates, useResources } from '../../hooks/useContent'
 import { useSectionState } from '../../hooks/useSectionState'
@@ -61,7 +61,7 @@ function LmRow({ r, onOpen, queue }: { r: Resource; onOpen?: OpenMagnet; queue: 
   const stalled = isStuckGeneratingLm(r)
   const stuck = isStuckResource(r)
   const mins = stalled ? elapsedMinutes(r.updated_at) : null
-  const title = r.topic ?? 'Untitled'
+  const title = r.topic?.trim() || `${r.format || 'Lead magnet'} · ${r.id.slice(0, 8)}`
   const { selected, focused } = useRowState(r.id)
   // The fold stays auditable from the row: a reader can find out that "Idea" is
   // thirty-seven rows the database still calls `pending` without a mark being
@@ -120,7 +120,7 @@ function LmRow({ r, onOpen, queue }: { r: Resource; onOpen?: OpenMagnet; queue: 
         r.landing_url
           ? (
             <a
-              className="a-link a-wrapline" href={r.landing_url}
+              className="a-link a-wrapline a-ct-lm-link" href={r.landing_url}
               target="_blank" rel="noreferrer"
               onClick={e => e.stopPropagation()}
             >
@@ -204,6 +204,19 @@ function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loadedAt, 
     setTabState(t)
     try { localStorage.setItem(LM_TAB_KEY(lane), t) } catch { /* private mode */ }
   }
+  const tabsRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const later = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (f: FrameRequestCallback) => window.setTimeout(() => f(0), 0)
+    const stop = typeof cancelAnimationFrame === 'function' ? cancelAnimationFrame : (id: number) => window.clearTimeout(id)
+    const frame = later(() => {
+      const strip = tabsRef.current
+      const selected = strip?.querySelector<HTMLElement>('[aria-selected="true"]')
+      if (!strip || !selected) return
+      const s = strip.getBoundingClientRect(), t = selected.getBoundingClientRect()
+      if (t.left < s.left || t.right > s.right) strip.scrollLeft += (t.left - s.left) - (s.width - t.width) / 2
+    })
+    return () => stop(frame)
+  }, [tab, lane, loading, error, rows.length])
   const facets = buildFacets(rows, RESOURCE_SPECS)
   const { prominent, demoted } = splitFacets(facets, RESOURCE_PROMINENT)
   const shown = applySearch(applyFilters(rows, RESOURCE_SPECS, filters), sect.q, r => [r.topic])
@@ -215,7 +228,7 @@ function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loadedAt, 
 
   if (error) return <Failed what="Lead magnets" message={error} onRetry={refresh} loadedAt={null} />
   if (loading && rows.length === 0) return <div className="a-ct-sub">Reading the lead-magnet pipeline…</div>
-  if (rows.length === 0) {
+  if (rows.length === 0 && !ideas) {
     return <CalmEmpty line={`No lead magnets in ${LANE_POSSESSIVE[lane]} lane.`} loadedAt={loadedAt} />
   }
 
@@ -248,7 +261,7 @@ function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loadedAt, 
         />
       </Bar>
 
-      <div className="a-ct-tabsbar">
+      <div className="a-ct-tabsbar" ref={tabsRef}>
         <Tabs
           label="Stage"
           markerId="a-lm-stage"
@@ -267,7 +280,7 @@ function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loadedAt, 
         />
       </div>
 
-      {ideas && ideaState && (
+      {tab === 'idea' && ideas && ideaState && (
         <IdeasSection
           ideas={ideas} kind="lead_magnet" count={ideaCount}
           loading={ideaState.loading} error={ideaState.error}
@@ -276,7 +289,9 @@ function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loadedAt, 
         />
       )}
 
-      {shown.length === 0
+      {rows.length === 0
+        ? <CalmEmpty line={`No lead magnets in ${LANE_POSSESSIVE[lane]} lane.`} loadedAt={loadedAt} />
+        : shown.length === 0
         ? <FilteredEmpty noun="lead magnets" onClear={() => setSect(cur => ({ ...cur, filters: {}, q: '' }))} />
         : <LmStageTable s={tab} rows={stages[tab]} onOpen={onOpen} />}
     </div>
@@ -323,6 +338,7 @@ export function MagnetsList({ lane, setLane, onOpen }: {
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         {lane === 'ivan' ? (
           <ResourceLane
+            key="ivan"
             rows={resources.rows.filter(r => r.source !== 'hypertarget_demo')} lane="ivan"
             ideas={ideas.split.lead_magnet} ideaCount={ideas.counts.lead_magnet}
             ideaState={ideas}
@@ -332,6 +348,7 @@ export function MagnetsList({ lane, setLane, onOpen }: {
           />
         ) : (
           <ResourceLane
+            key={lane}
             rows={resources.rows.filter(r => r.source !== 'hypertarget_demo')} lane={lane} ideas={null} ideaCount={null}
             loading={resources.loading}
             error={resources.error} loadedAt={resources.loadedAt} refresh={resources.refresh}

@@ -1,7 +1,9 @@
-import type { ContentDraftDetail } from '../../lib/content'
+import type { ContentDraft, ContentDraftDetail, ContentLane } from '../../lib/content'
 import { canRestartToIdea } from '../../lib/content'
 import { ConfirmProvider } from '../../wb/chrome/ConfirmSheet'
 import { DeleteDraft, RegenDraft, RestartDraft } from '../../wb/draft/actions'
+import { RetryDraft } from '../../wb/content/actions'
+import { canRetryLane } from '../../lib/studioActions'
 
 // FIX OR REMOVE, as real keys in the open post (29 Sep: they were one line of
 // footer link text that opened a sheet). Rewrite the copy (today's Regenerate,
@@ -23,4 +25,16 @@ export function FixRow({ d, onDone, onDeleted, disabled }: { d: ContentDraftDeta
       </ConfirmProvider>
     </section>
   )
+}
+
+/** Existing client generator, with a deliberate replacement decision for protected internal copy. */
+export function ClientFixRow({ d, lane, onDone, disabled }: { d: ContentDraftDetail; lane: ContentLane; onDone: () => void; disabled?: boolean }) {
+  if (!canRetryLane(lane)) return <p className="cn-dim">This client has no available retry generator. Keep this draft for inspection; no retry has been started.</p>
+  return <section className="cn-fix2" aria-label="Recover this draft">
+    <small className="cn-cap">Recover this draft</small>
+    <ConfirmProvider><div className="cn-fix2-row a-dw">
+      <RetryDraft d={d as unknown as ContentDraft} lane={lane} onDone={onDone} disabled={disabled} allowProtectedCopy label="Regenerate copy" />
+    </div></ConfirmProvider>
+    <p className="cn-dim">Runs this client's generator after confirmation. The result stays internal for review.</p>
+  </section>
 }

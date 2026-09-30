@@ -67,6 +67,13 @@ export function dStrategySub(section: string): 'strategy' | 'results' {
   return section === 'results' ? 'results' : 'strategy'
 }
 
+export function dStrategyLink(lane: ContentLane, section: StrategyViewId, exact?: { id: string; version: number } | null): string {
+  const query = new URLSearchParams({ lane, section })
+  if (section === 'results') query.set('view', 'analytics')
+  if (section === 'this-week' && exact) { query.set('brief_id', exact.id); query.set('brief_version', String(exact.version)) }
+  return `#exp/d/content/${dStrategySub(section)}?${query}`
+}
+
 export const D_STRATEGY_HASH = /^#exp\/d\/content\/(strategy|markets|results)(?=[?#]|$)/
 
 /**

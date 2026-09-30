@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDraftDetail } from '../../hooks/useContent'
+import { useUnsavedNavigation } from '../../hooks/useUnsavedNavigation'
+import { useDConfirm } from '../ui/confirm'
 import {
   STAGE_LABEL, boardGroupOf, canPromote, canUnpromote, clientDeletable, clientEditable, clientStageLabel,
   normalizeQa, pictureEditable, reviewActionable, stageOf, type ContentDraftDetail,
@@ -9,7 +11,7 @@ import { warsawDm, warsawDow } from '../ui/time'
 import { Key } from '../ui/Key'
 import { Empty, Failed, Skeleton } from '../ui/states'
 import { Evidence, verdictWord } from './Evidence'
-import { FixRow } from './FixMenu'
+import { ClientFixRow, FixRow } from './FixMenu'
 import { LANE_NAME, OWNER, POSS, age, canSchedule, kindOf, nextFreeWeekday, scheduleOpenByDefault, titleOf, type Lane, type WallDay } from './model'
 import { Conflict, Preview } from './Preview'
 import { PictureRow } from './PictureRow'
@@ -47,15 +49,31 @@ export function DraftWindow(p: Props) {
 
 const RAIL_KEY = 'wb-draft-rail'
 
-function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFailed, titles }: Props & { d: ContentDraftDetail }) {
+function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, armed, armedFailed, titles }: Props & { d: ContentDraftDetail }) {
   const at = queue.indexOf(d.id)
   const [rail, setRailState] = useState(() => { try { return localStorage.getItem(RAIL_KEY) === '1' } catch { return false } })
   const setRail = (v: boolean) => { setRailState(v); try { localStorage.setItem(RAIL_KEY, v ? '1' : '0') } catch { /* private mode */ } }
   const advance = useCallback(() => {
     const next = at >= 0 && at + 1 < queue.length ? queue[at + 1] : null
-    if (next) onPick(next); else onClose()
-  }, [at, onClose, onPick, queue])
+    if (next) pick(next); else close()
+  }, [at, close, pick, queue])
   const v = useDraftVerbs(d, lane, advance, refresh)
+  const confirm = useDConfirm()
+  const dirty = v.editing && (v.text !== v.shown || v.busy)
+  const { canLeave } = useUnsavedNavigation(dirty, useCallback(() => v.busy ? Promise.resolve(false) : confirm({
+    title: 'Discard unsaved edits?', message: 'Your changed copy has not been saved. Keep editing to save it, or discard these changes.',
+    confirmText: 'Discard edits', cancelText: 'Keep editing', danger: true,
+  }), [confirm, v.busy]))
+  const onClose = useCallback(() => {
+    if (v.busy) return
+    if (!dirty) close()
+    else void canLeave().then(ok => { if (ok) close() })
+  }, [canLeave, close, dirty, v.busy])
+  const onPick = useCallback((id: string) => {
+    if (v.busy) return
+    if (!dirty) pick(id)
+    else void canLeave().then(ok => { if (ok) pick(id) })
+  }, [canLeave, dirty, pick, v.busy])
   // The Picture row's optimistic picture: shown in the preview from the tap
   // until the refetch lands (or the write fails and the row clears it).
   const [pic, setPic] = useState<string[] | undefined>(undefined)
@@ -165,7 +183,8 @@ function Loaded({ d, lane, queue, onPick, onClose, refresh, days, armed, armedFa
         {v.editing && <span className="cn-st">Editing</span>}</div>
       <div className="cn-dwb">
         <AboveThePost d={d} stage={stage} lane={lane} />
-        <Preview d={pic ? { ...d, image_urls: pic } : d} lane={lane} body={v.shown} editing={v.editing} text={v.text} setText={v.setText}
+        {lane !== 'ivan' && !v.visible && (stage === 'error' || stage === 'stuck') && <ClientFixRow d={d} lane={lane} onDone={refresh} disabled={v.editing || v.busy} />}
+        <Preview d={pic ? { ...d, image_urls: pic } : d} lane={lane} body={v.shown} editing={v.editing} busy={v.busy} text={v.text} setText={v.setText}
           onStartEdit={lane === 'ivan' || clientEditable(d.status, lane) ? v.startEdit : null} onCancel={v.cancelEdit} onSave={() => void v.save()} />
         {v.conflict && <Conflict c={v.conflict} busy={v.busy} onTheirs={v.takeTheirs} onMine={v.keepMine} onDismiss={v.dismissConflict} />}
         {/* THE PICTURE, NEXT TO THE POST IT BELONGS TO, on every lane (29 Sep:

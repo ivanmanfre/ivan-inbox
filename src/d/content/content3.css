@@ -260,3 +260,38 @@
 .cn-racts .cn-mini[data-verb='row-delete']{color:var(--t2)}
 
 .cn-pill.cn-t-none{border-color:transparent;opacity:.4}
+
+/* Content audit: readable supporting evidence and usable phone controls. */
+.cn{--t3:#a2a49a}
+.cn-planv button[aria-selected=true]{background:var(--p3);color:var(--t1)}
+.d-phone .cn-dwh{flex-wrap:wrap}
+.d-phone .cn-jk{order:4;flex-basis:100%;gap:8px;flex-wrap:wrap;white-space:normal}
+.d-phone .cn-jk button,.d-phone .cn-x{min-width:44px;min-height:44px;font-size:12px}
+.d-phone .cn-evh{gap:12px}
+.d-phone .cn-evh button{min-height:44px;min-width:44px;padding-inline:6px}
+.d-phone .cn-planv button,.d-phone .cn-mnav button,.d-phone .cn-railt{min-height:44px;min-width:44px}
+.d-phone .cn .a-row-actions{gap:8px;flex-wrap:wrap}
+.d-phone .cn .a-row-actions .ds-btn,.d-phone .cn .a-ct-acts .ds-btn{min-height:44px;min-width:44px}
+.d-phone .cn .a-ct-acts{gap:8px;flex-wrap:wrap}
+
+.cn [data-ds="Badge"][data-tone="urgent"][data-variant="count"]{color:var(--bg)}
+.d-phone .cn .a-row-open,.d-phone .cn .wb-ct-vpart,.d-phone .cn .cn-seg button{min-height:44px}
+.d-phone .cn .wb-ct-vpart{display:inline-flex;align-items:center}
+.d-phone .cn-mday{padding:0;gap:0}
+.d-phone .cn-mday>small{padding:2px}
+.d-phone .cn-mday-count{width:100%;min-height:44px;background:var(--p2);color:var(--t1);font:600 14px var(--f);border-top:1px solid var(--line)}
+.d-phone .cn-mday-count small{display:block;font:400 11px var(--f);color:var(--t2)}
+.d-phone .cn-lanes small{font-size:11px}
+.d-phone .cn [data-verb="open-post"]{min-height:44px}
+.cn-li .cn-edk{color:#666}
+
+.cn-chip2 small{font-size:11px}
+.cn-chip2.cn-posted small{color:var(--t1)}
+
+.cn-result-card small{display:block}
+
+.d-phone .cn .a-strategy-panel a{min-height:44px;display:inline-flex;align-items:center}
+.d-phone .cn .a-policy-add-input{min-height:44px}
+
+
+.d-phone .cn-na{font-size:11px}

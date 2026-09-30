@@ -5,6 +5,7 @@ import { contributionsLine, type IdeaScoreRead, type IdeaScoreRow } from '../../
 import { label } from '../../lib/labels'
 import { absTime } from '../../exp/v2c/fmt'
 import { useDConfirm } from '../ui/confirm'
+import { dHash } from '../route'
 import { Key } from '../ui/Key'
 import { useToast } from '../ui/toast'
 import { LANE_NAME, OWNER, type Lane } from './model'
@@ -45,8 +46,8 @@ export function IdeaDetail({ it, onDone, compact, scores }: { it: IdeaItem; onDo
         await decideClientIdea(it.id, kind === 'approve' ? 'approved' : 'rejected')
       }
       toast.show({
-        message: kind === 'approve' ? 'Approved. The draft starts generating.' : kind === 'reject' ? 'Rejected. The idea is archived.' : 'Deleted.',
-        sub: it.lane === 'ivan' ? undefined : `Nothing reached ${OWNER[it.lane]}; the draft lands in review, internal.`,
+        message: kind === 'approve' ? 'Draft requested. It will appear in Review.' : kind === 'reject' ? 'Idea archived.' : 'Deleted.',
+        sub: it.lane === 'ivan' ? undefined : kind === 'approve' ? `The draft stays in our team's Review. Nothing reaches ${OWNER[it.lane]}.` : 'Nothing is scheduled or sent.',
       })
       setNote('')
       onDone(it.id)
@@ -69,15 +70,15 @@ export function IdeaDetail({ it, onDone, compact, scores }: { it: IdeaItem; onDo
       {err && <p className="cn-say cn-bad" role="alert">{err}</p>}
       {!it.outlier && !it.generating && <div className="cn-acts">
         {it.lane === 'ivan' && <Key verb="idea-delete" onClick={() => run('delete')} disabled={busy}>Delete</Key>}
-        <Key verb="idea-reject" onClick={() => run('reject')} disabled={busy || !ours}>Reject</Key>
-        <Key primary verb="idea-approve" onClick={() => run('approve')} disabled={busy || !ours} sub="starts the draft">Approve</Key>
+        <Key verb="idea-reject" onClick={() => run('reject')} disabled={busy || !ours}>Archive idea</Key>
+        <Key primary verb="idea-approve" onClick={() => run('approve')} disabled={busy || !ours}>Generate draft</Key>
       </div>}
-      {it.generating && <p className="cn-say">Added ✓ · The draft will appear in Now.</p>}
+      {it.generating && <p className="cn-say">Draft requested. It will appear in Review. <a href={dHash('content', 'now', { lane: it.lane })}>Open Review</a></p>}
       {it.outlier?.url && <a href={it.outlier.url} target="_blank" rel="noreferrer" data-verb="source">Open source post ↗</a>}
       {!it.outlier && !it.generating && <p className="cn-foot" style={{ padding: 0 }}>
         {it.lane === 'ivan'
-          ? 'Approve fires the promote run and the draft shows up in Generating. Reject archives the idea.'
-          : `Approve hands it to generation for ${LANE_NAME[it.lane]}; the draft lands in review on our side and nothing reaches ${OWNER[it.lane]}. Reject archives it.`}
+          ? 'Generate draft sends this idea to generation. The draft will appear in Review. Archive idea removes it from the waiting list.'
+          : `Generate draft sends this idea to generation for ${LANE_NAME[it.lane]}. The draft appears in Review for our team. Nothing reaches ${OWNER[it.lane]}. Archive idea removes it from the waiting list.`}
       </p>}
     </section>
   )

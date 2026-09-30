@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { ContentDraft, ContentLane } from './content'
+import { stampHumanEdit, type ContentDraft, type ContentLane } from './content'
 
 // The old dashboard's ACTIONS, brought to the inbox's reading window.
 //
@@ -232,6 +232,28 @@ export async function clearHumanEdit(d: ContentDraft): Promise<void> {
   const tax = { ...taxObj(d.taxonomy), human_edited: 'false' }
   const { error } = await supabase.from('carousel_drafts').update({ taxonomy: tax }).eq('id', d.id)
   if (error) throw error
+}
+
+/** Restore protection only while the original internal client copy survives a failed retry. */
+export async function restoreHumanEdit(d: ContentDraft): Promise<boolean> {
+  if (!d.client_id || d.board_visible === true || !isHumanEdited(d)) return false
+  const cur = await supabase.from('carousel_drafts')
+    .select('post_body, taxonomy, updated_at, client_id, board_visible')
+    .eq('id', d.id).eq('client_id', d.client_id)
+    .maybeSingle()
+  if (cur.error) throw cur.error
+  const row = cur.data
+  if (!row || row.client_id !== d.client_id || row.board_visible === true
+    || (row.post_body ?? '') !== (d.post_body ?? '') || !row.updated_at) return false
+
+  // Merge the fresh taxonomy and compare its timestamp so a generator landing
+  // or a board decision after the read cannot be overwritten by this rollback.
+  const restored = await supabase.from('carousel_drafts')
+    .update({ taxonomy: stampHumanEdit(row.taxonomy) })
+    .eq('id', d.id).eq('client_id', d.client_id).eq('updated_at', row.updated_at)
+    .select('id')
+  if (restored.error) throw restored.error
+  return restored.data?.some(row => row.id === d.id) ?? false
 }
 
 // ---------------------------------------------------------------------------

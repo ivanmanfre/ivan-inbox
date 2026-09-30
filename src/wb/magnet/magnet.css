@@ -6,6 +6,9 @@
    sheet adds the window frame, the three columns, and the evidence disclosure.
    ========================================================================== */
 
+.a-mg-handoff{ margin:0; color:var(--ds-text-2); font-size:var(--ds-fs-body); line-height:var(--ds-lh-body) }
+.a-mg-sec-body[hidden]{ display:none }
+
 /* --------------------------------------------------------------------------
    1 · The frame. Below the confirm layer, because a delete flow opens its
    dialog ON TOP of this window.

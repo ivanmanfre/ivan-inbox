@@ -22,6 +22,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useResourceDetail } from '../../hooks/useContent'
 import { useSectionState } from '../../hooks/useSectionState'
+import { useUnsavedNavigation } from '../../hooks/useUnsavedNavigation'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import {
   LANE_LABEL, normalizeAgentLog, normalizeImageUrls, normalizeQa, selfContainedHtml,
@@ -53,6 +54,9 @@ export type MagnetQueueItem = {
   status: string
 }
 
+type EditState = { dirty: boolean; busy: boolean }
+type OnEditState = (field: string, state: EditState) => void
+
 // ---------------------------------------------------------------------------
 // 01 · The queue rail
 // ---------------------------------------------------------------------------
@@ -81,7 +85,7 @@ function QueueRail({ queue, id, onPick }: {
               key={q.id}
               selected={q.id === id}
               onClick={() => onPick(q.id)}
-              title={q.title || 'Untitled'}
+              title={q.title?.trim() && q.title !== 'Untitled' ? q.title : `${q.type || 'Lead magnet'} · ${q.id.slice(0, 8)}`}
               titleWrap
               meta={<>{q.type ?? 'Lead magnet'} · {relTime(q.updated_at)}</>}
             />
@@ -96,11 +100,14 @@ function QueueRail({ queue, id, onPick }: {
 // The evidence disclosure
 // ---------------------------------------------------------------------------
 
-function Sec({ k, label: name, tail, open, toggle, children }: {
+function Sec({ k, label: name, tail, open, toggle, children, keepMounted = false }: {
   k: string; label: string; tail?: ReactNode
   open: string[]; toggle: (k: string) => void; children: ReactNode
+  keepMounted?: boolean
 }) {
   const on = open.includes(k)
+  const opened = useRef(on)
+  if (on) opened.current = true
   return (
     <section className="a-mg-sec" data-on={on ? '' : undefined}>
       <button type="button" className="a-mg-sec-b" onClick={() => toggle(k)} aria-expanded={on}>
@@ -108,7 +115,7 @@ function Sec({ k, label: name, tail, open, toggle, children }: {
         <span className="a-mg-sec-n">{name}</span>
         {tail && <span className="a-mg-sec-t">{tail}</span>}
       </button>
-      <AnimatePresence initial={false}>
+      {keepMounted ? (opened.current && <div className="a-mg-sec-body" hidden={!on}>{children}</div>) : <AnimatePresence initial={false}>
         {on && (
           <motion.div
             className="a-mg-sec-body"
@@ -117,7 +124,7 @@ function Sec({ k, label: name, tail, open, toggle, children }: {
             exit={{ opacity: 0, transition: fadeT }}
           >{children}</motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>}
     </section>
   )
 }
@@ -189,13 +196,14 @@ function LmActions({ d, hasCover, onDone }: {
 
 // One editable text field on the row, split per field so a save says which
 // words it wrote. Explicit save, verified write, and never a status write.
-function LmField({ id, label: name, field, value, hint, onDone }: {
+function LmField({ id, label: name, field, value, hint, onDone, onEditState }: {
   id: string
   label: string
   field: 'post_body' | 'email_copy'
   value: string
   hint?: string
   onDone: () => void
+  onEditState: OnEditState
 }) {
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState(value)
@@ -204,8 +212,11 @@ function LmField({ id, label: name, field, value, hint, onDone }: {
   const [err, setErr] = useState('')
   const [saved, setSaved] = useState(false)
   useEffect(() => { if (!editing) { setShown(value); setText(value) } }, [value, editing])
+  useEffect(() => { onEditState(field, { dirty: editing && text !== shown, busy }) }, [field, editing, text, shown, busy, onEditState])
+  useEffect(() => () => onEditState(field, { dirty: false, busy: false }), [field, onEditState])
 
   const save = async () => {
+    if (busy) return
     setBusy(true); setErr('')
     try {
       await saveLmField(id, field, text)
@@ -271,13 +282,15 @@ function LmField({ id, label: name, field, value, hint, onDone }: {
   )
 }
 
-function NoteComposer({ id, onDone }: { id: string; onDone: () => void }) {
+function NoteComposer({ id, onDone, onEditState }: { id: string; onDone: () => void; onEditState: OnEditState }) {
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  useEffect(() => { onEditState('note', { dirty: text.trim().length > 0, busy }) }, [text, busy, onEditState])
+  useEffect(() => () => onEditState('note', { dirty: false, busy: false }), [onEditState])
   const send = async () => {
     const body = text.trim()
-    if (!body) return
+    if (!body || busy) return
     setBusy(true); setErr('')
     try {
       await appendAgentNote('lm_drafts_v2', id, body)
@@ -291,7 +304,7 @@ function NoteComposer({ id, onDone }: { id: string; onDone: () => void }) {
     <div className="a-mg-note">
       {err && <Banner tone="urgent" icon="error" title={err} />}
       <textarea
-        className="ds-textarea a-mg-ta" value={text}
+        className="ds-textarea a-mg-ta" value={text} disabled={busy}
         placeholder="Add a note for future-you…"
         aria-label="Add a note to the generation register"
         onChange={e => setText(e.target.value)}
@@ -317,7 +330,7 @@ function NoteComposer({ id, onDone }: { id: string; onDone: () => void }) {
 // move. The card itself is deliberately NOT on the design system: it depicts
 // another product's surface, and drawing it in our own tokens would be a
 // preview that lies about the render.
-function LmPromo({ d, lane, refresh }: { d: ResourceDetail; lane: ContentLane; refresh: () => void }) {
+function LmPromo({ d, lane, refresh, onEditState }: { d: ResourceDetail; lane: ContentLane; refresh: () => void; onEditState: OnEditState }) {
   const value = d.post_body ?? ''
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState(value)
@@ -330,8 +343,11 @@ function LmPromo({ d, lane, refresh }: { d: ResourceDetail; lane: ContentLane; r
     setShown(value)
     setText(value)
   }, [value, editing])
+  useEffect(() => { onEditState('post_body', { dirty: editing && text !== shown, busy }) }, [editing, text, shown, busy, onEditState])
+  useEffect(() => () => onEditState('post_body', { dirty: false, busy: false }), [onEditState])
 
   const save = async () => {
+    if (busy) return
     setBusy(true); setErr('')
     try {
       await saveLmField(d.id, 'post_body', text)
@@ -383,12 +399,13 @@ function LmPromo({ d, lane, refresh }: { d: ResourceDetail; lane: ContentLane; r
 // The body
 // ---------------------------------------------------------------------------
 
-function MagnetBody({ d, lane, queue, refresh, onPick }: {
+function MagnetBody({ d, lane, queue, refresh, onPick, onEditState }: {
   d: ResourceDetail
   lane: ContentLane
   queue: MagnetQueueItem[]
   refresh: () => void
   onPick: (id: string) => void
+  onEditState: OnEditState
 }) {
   const stage = stageOfLm(d)
   const log = normalizeAgentLog(d.agent_log)
@@ -478,7 +495,7 @@ function MagnetBody({ d, lane, queue, refresh, onPick }: {
   const main = (
     <div className="a-mg-main">
       <div className="a-mg-cap">
-        <h3 className="a-page-t">{d.topic ?? 'Untitled'}</h3>
+        <h3 className="a-page-t">{d.topic?.trim() || `${d.format || 'Lead magnet'} · ${d.id.slice(0, 8)}`}</h3>
         {hasRail && at >= 0 && <span className="a-dim a-mono">{at + 1} of {queue.length}</span>}
       </div>
       <div className="a-mg-chips">
@@ -499,6 +516,9 @@ function MagnetBody({ d, lane, queue, refresh, onPick }: {
           <span className="a-dim-2">{label(d.status)}</span>
         )}
       </div>
+      <p className="a-mg-handoff">
+        Review the copy, cover and landing page here. To approve publication, continue in your existing publishing workflow.
+      </p>
       {/* Holds the editorial release stamped on the row (spec.holds), verbatim,
           one per line, same contract as the Content draft window (Run6 C04 F1). */}
       {specHolds.length > 0 && (
@@ -509,7 +529,7 @@ function MagnetBody({ d, lane, queue, refresh, onPick }: {
 
       {/* The promo post is what a lead magnet SHIPS AS on the feed, so it gets
           the same faithful card, and the same in-place editing, as a draft. */}
-      <LmPromo d={d} lane={lane} refresh={refresh} />
+      <LmPromo d={d} lane={lane} refresh={refresh} onEditState={onEditState} />
 
       {heroImgs.length > 0 && (
         <Block label={heroImgs.length === 1 ? 'Cover' : `Covers · ${heroImgs.length}`}>
@@ -603,10 +623,10 @@ function MagnetBody({ d, lane, queue, refresh, onPick }: {
         </Sec>
       )}
 
-      <Sec k="copy" label="Copy" open={open} toggle={toggle}>
+      <Sec k="copy" label="Copy" open={open} toggle={toggle} keepMounted>
         <LmField
           id={d.id} label="Email copy" field="email_copy" value={d.email_copy ?? ''}
-          hint="The 24-hour follow-up." onDone={refresh}
+          hint="The 24-hour follow-up." onDone={refresh} onEditState={onEditState}
         />
         {(d.description ?? '').trim() && (
           <Block label="Description"><Prose text={(d.description ?? '').trim()} /></Block>
@@ -615,10 +635,10 @@ function MagnetBody({ d, lane, queue, refresh, onPick }: {
 
       <Sec
         k="log" label="Generation register" tail={log.length ? `${log.length}` : 'note only'}
-        open={open} toggle={toggle}
+        open={open} toggle={toggle} keepMounted
       >
         <AgentRegister log={log} />
-        <NoteComposer id={d.id} onDone={refresh} />
+        <NoteComposer id={d.id} onDone={refresh} onEditState={onEditState} />
       </Sec>
 
       <Sec k="meta" label="Dates and fields" open={open} toggle={toggle}>
@@ -634,10 +654,6 @@ function MagnetBody({ d, lane, queue, refresh, onPick }: {
         {d.notes !== null && d.notes !== undefined && (
           <Block label="Notes"><div className="a-mg-card"><Val v={d.notes} /></div></Block>
         )}
-        <div className="a-ct-sub">
-          No approve here. Whether a watcher treats an approved status as a publish trigger is
-          not readable from this app, so the one status this window will not write is that one.
-        </div>
       </Sec>
     </aside>
   )
@@ -663,12 +679,40 @@ export function MagnetWindow({ id, lane, queue, onClose, onPick, mobile }: {
   const reload = useCallback(() => setBump(b => b + 1), [])
   const { detail, missing, loading, error } = useResourceDetail(id, bump)
   const sub = `${LANE_LABEL[lane]}${detail?.format ? ` · ${detail.format}` : ''}`
+  const [edits, setEdits] = useState<Record<string, EditState>>({})
+  const onEditState = useCallback<OnEditState>((field, state) => {
+    const key = `${id}:${field}`
+    setEdits(cur => {
+      const prev = cur[key]
+      if (!state.dirty && !state.busy) {
+        if (!prev) return cur
+        const next = { ...cur }; delete next[key]; return next
+      }
+      if (prev?.dirty === state.dirty && prev?.busy === state.busy) return cur
+      return { ...cur, [key]: state }
+    })
+  }, [id])
+  const current = Object.entries(edits).filter(([key]) => key.startsWith(`${id}:`)).map(([, state]) => state)
+  const dirty = current.some(state => state.dirty)
+  const saving = current.some(state => state.busy)
+  const confirm = useConfirm()
+  const confirmLeave = useCallback(() => saving ? Promise.resolve(false) : confirm({
+    title: 'Discard unsaved edits?', confirmText: 'Discard edits', cancelText: 'Keep editing', danger: true,
+  }), [saving, confirm])
+  const { canLeave, rememberHash } = useUnsavedNavigation(dirty || saving, confirmLeave)
+  const close = useCallback(async () => { if (await canLeave()) onClose() }, [canLeave, onClose])
+  const pick = useCallback(async (nextId: string) => {
+    if (nextId === id || !await canLeave()) return
+    setEdits({})
+    onPick(nextId)
+    rememberHash()
+  }, [id, canLeave, onPick, rememberHash])
 
   return (
-    <Takeover label="Lead magnet" sub={sub} onClose={onClose} mobile={mobile} bodyClass="a-mg-scroll">
-      {error ? (
-        <Failed what="This lead magnet" message={error} loadedAt={null} />
-      ) : loading && !detail ? (
+    <Takeover label="Lead magnet" sub={sub} onClose={() => { void close() }} mobile={mobile} bodyClass="a-mg-scroll">
+      {error && (!detail || detail.id !== id) ? (
+        <Failed what="This lead magnet" message={error} loadedAt={null} onRetry={reload} />
+      ) : (loading && !detail) || (detail && detail.id !== id) ? (
         <div className="a-mg-load"><SkeletonRows rows={4} label="Reading this lead magnet" /></div>
       ) : missing || !detail ? (
         <EmptyState
@@ -677,7 +721,12 @@ export function MagnetWindow({ id, lane, queue, onClose, onPick, mobile }: {
           sub="It was removed while the lane was open."
         />
       ) : (
-        <MagnetBody key={detail.id} d={detail} lane={lane} queue={queue} refresh={reload} onPick={onPick} />
+        <>
+          {error && <Banner tone="attention" icon="alert" title="Could not refresh this lead magnet"
+            action={<Button onClick={reload}>Try again</Button>}>{error}</Banner>}
+          <MagnetBody key={detail.id} d={detail} lane={lane} queue={queue} refresh={reload}
+            onPick={nextId => { void pick(nextId) }} onEditState={onEditState} />
+        </>
       )}
     </Takeover>
   )

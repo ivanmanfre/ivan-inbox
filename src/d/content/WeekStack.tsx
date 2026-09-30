@@ -211,7 +211,7 @@ function Sync({ read }: { read: WeekRead }) {
 /** Inside a day group the header already names the day, so the card says the time only (Rise: Pacific too). */
 function whenOf(c: WeekCard, now: number, dayed: boolean): string {
   const at = c.r.scheduled_at
-  if (!at) return `in review ${age(c.r.created_at, now)}`
+  if (!at) return `created ${age(c.r.created_at, now)} ago`
   const hm = c.lane === 'risedtc' ? `${warsawHm(at)} · ${ptOf(at)}` : warsawHm(at)
   return dayed && !c.overdue ? hm : `${dayLabel(warsawDay(at))}, ${hm}`
 }
@@ -234,7 +234,7 @@ function Card({ c, when, open, busy, onOpen, onKey, onDate, nowView, onChanged }
       <div className="cn-wc-meta">
         <span className={`cn-wc-lane cn-wc-l-${c.lane}`}>{LANE_NAME[c.lane]}</span>
         <span className="cn-wc-when">{when}</span>
-        {c.flags.filter(f => f.key !== 'qa').map(f => <span key={f.key} className={`cn-wc-flag cn-wc-${f.tone}`} title={f.title}>{f.text}</span>)}
+        {c.flags.filter(f => f.key !== 'qa' || f.tone === 'warn').map(f => <span key={f.key} className={`cn-wc-flag cn-wc-${f.tone}`} title={f.title}>{f.text}</span>)}
       </div>
       <div className="cn-wc-main" onClick={onOpen}>
         <div className="cn-wc-text">

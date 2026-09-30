@@ -97,3 +97,12 @@ a.in-hook-a:hover{text-decoration:underline;text-underline-offset:3px}
 .in-act-p{background:var(--p3);border-color:var(--line2);color:var(--t1)}
 .in-act-p:hover:not(:disabled){background:var(--lime);border-color:var(--lime);color:var(--ink)}
 .d-desktop .in-act{min-height:34px;min-width:88px}
+/* Keep the client fit and calendar conditions readable before a source is saved. */
+.in-row .in-why,.in-card .in-why,.in-buyer .in-why{display:block;overflow:visible;-webkit-line-clamp:unset;color:var(--t2)}
+.in-note{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;color:var(--t2);font-size:12.5px}
+.in .in-h,.in .in-foot,.in-seats button small,.in-tag,.in-chip-dec,.in-act-done,.in-rk{color:var(--t2)}
+.in-h-top>span{color:var(--t1)}.in-rk.in-rec{color:var(--lime)}.in-seats button.in-on small{color:var(--lime)}
+.in-buyer a[data-verb="open-buyer"],.in-act,.d-desktop .in-act,.in-seats button,.in-fold>summary{min-height:44px}
+.in-buyer a[data-verb="open-buyer"]{display:inline-flex;align-items:center}
+.in-refresh-notice{padding:14px;border:1px solid var(--line2);font-size:13px}.in-refresh-notice p{margin:0 0 8px}
+.in-refresh-notice button{min-height:44px;padding:8px 16px;border:1px solid var(--line2);border-radius:7px;background:var(--p2);color:var(--t1);font:inherit}

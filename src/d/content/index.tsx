@@ -76,7 +76,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const draft = q.get('draft')
   const moveId = q.get('move')
   const go = useCallback((params: Record<string, string>, target = sub) => navigate(dHash('content', target, params)), [navigate, sub])
-  const context = () => ({ ...(view ? { view } : {}), ...(qLane !== 'ivan' ? { lane: qLane } : {}) })
+  const context = () => ({ ...(view ? { view } : {}), ...(q.get('section') ? { section: q.get('section')! } : {}), ...(qLane !== 'ivan' ? { lane: qLane } : {}) })
   const close = () => go(context())
   const setLane = (lane: Lane) => go({ ...context(), lane, ...(draft ? { draft } : {}) })
   const openDraft = (id: string, lane: Lane) => go({ ...context(), draft: id, lane }, 'now')

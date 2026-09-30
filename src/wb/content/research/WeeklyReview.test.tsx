@@ -36,7 +36,8 @@ it('refreshes the exact saved proposed week and refuses refreshing a stale direc
   vi.mocked(readEditorialDirection).mockResolvedValue({client_id:lane,active_version:'newer',direction:{statement:'Changed'},status:'active',audience:null,source:'fixture',updated_at:'2026-09-23'})
   await act(async()=>refresh().click())
   expect(client.functions.invoke).toHaveBeenCalledTimes(1)
-  expect(host.textContent).toContain('refresh requires a plan for the current direction')
+  expect(host.textContent).toMatch(/Refresh requires a saved evidence plan for the current direction/)
+  expect(refresh().disabled).toBe(true)
  }finally{await act(async()=>root.unmount());host.remove()}
 })
 

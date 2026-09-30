@@ -116,6 +116,7 @@
   cursor:pointer;
 }
 .li-btn:hover{ background:var(--li-wash) }
+.li-card .li-btn:not(.p){ color:var(--li-ink-2) }
 .li-btn.p{ background:var(--li-brand); border-color:var(--li-brand); color:var(--li-card) }
 .li-btn.p:hover{ background:var(--li-brand-deep) }
 .li-btn:disabled{ opacity:.5; cursor:default }

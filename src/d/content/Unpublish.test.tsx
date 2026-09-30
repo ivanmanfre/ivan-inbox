@@ -68,7 +68,7 @@ function PhoneMonth({ matched }: { matched: boolean }) {
 }
 it.each([false, true])('phone Month posted actions reveal the correct day and full Unpublish action (matched draft=%s)', async matched => {
   renderInFrame(<PhoneMonth matched={matched} />, { layout: 'phone' })
-  fireEvent.click(screen.getByRole('button', { name: `Actions for ${matched ? 'Matched published draft' : 'Our own post'}` }))
+  fireEvent.click(screen.getByRole('button', { name: '1 post on 2026-09-30' }))
   expect(document.querySelector('.cn-daylist')!.textContent).toContain(matched ? 'Matched published draft' : 'Our own post')
   expect(screen.getByRole('dialog').textContent).toContain('Wed 30 Sep')
   expect(screen.getByRole('link', { name: 'Open post' }).getAttribute('href')).toBe(queue.unipile_share_url)

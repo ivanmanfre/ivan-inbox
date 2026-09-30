@@ -61,7 +61,9 @@ export function clientWhyNot(d: ContentDraftDetail, lane: Lane, stage: ContentSt
       : `Not promotable at ${STAGE_LABEL[stage].toLowerCase()}, the database only promotes a draft that is still at Needs review.`)
   }
   if (!o.editable) {
-    out.push(`${POSS[lane]} copy is only editable while the draft is at Needs review or Scheduled. At ${STAGE_LABEL[stage].toLowerCase()} the words are settled — edit it on his board instead.`)
+    out.push(d.board_visible === true
+      ? `${POSS[lane]} copy is only editable here at Needs review or Scheduled. Open his board to manage this visible copy.`
+      : `This internal draft is ${STAGE_LABEL[stage].toLowerCase()}. Editing is available at Needs review or Scheduled; recover the generation here first.`)
   }
   return out
 }

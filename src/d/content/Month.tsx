@@ -54,7 +54,7 @@ export function Month({ lane, setLane, items, rows, onOpen, onMove, onArm, onDay
         </button>
       </div>
       <div className={`cn-mbody${rail ? ' cn-with-rail' : ''}`}>
-        <div className="cn-mgrid" role="grid" aria-label={`${FEED[lane]}, ${monthLabel(ym.year, ym.month)}`}>
+        <div className="cn-mgrid" role="group" aria-label={`${FEED[lane]}, ${monthLabel(ym.year, ym.month)}`}>
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => <div key={d} className="cn-wh">{d}</div>)}
           {weeks.flat().map(k => {
             const on = cellOrder(items.get(k) ?? [])
@@ -62,8 +62,10 @@ export function Month({ lane, setLane, items, rows, onOpen, onMove, onArm, onDay
             return (
               <div key={k} className={cls} {...dropZone(lane, k, onMove)}>
                 <small>{Number(k.slice(8))}</small>
-                {on.slice(0, VISIBLE).map(it => <Chip key={it.id} it={it} lane={lane} onOpen={onOpen} onMove={onMove} onArm={onArm} onDay={onDay} onChanged={onChanged} phone={phone} />)}
-                {on.length > VISIBLE && <button type="button" className="cn-more2" data-verb="day" onClick={() => onDay(lane, [k])}>+{on.length - VISIBLE} more</button>}
+                {phone ? on.length > 0 && <button type="button" className="cn-mday-count" aria-label={`${on.length} post${on.length === 1 ? '' : 's'} on ${k}`} onClick={() => onDay(lane, [k])}>{on.length}<small>post{on.length === 1 ? '' : 's'}</small></button> : <>
+                  {on.slice(0, VISIBLE).map(it => <Chip key={it.id} it={it} lane={lane} onOpen={onOpen} onMove={onMove} onArm={onArm} onDay={onDay} onChanged={onChanged} phone={phone} />)}
+                  {on.length > VISIBLE && <button type="button" className="cn-more2" data-verb="day" onClick={() => onDay(lane, [k])}>+{on.length - VISIBLE} more</button>}
+                </>}
               </div>
             )
           })}

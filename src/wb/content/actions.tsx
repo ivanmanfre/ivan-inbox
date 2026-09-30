@@ -16,7 +16,7 @@ import {
   type ContentDraft, type ContentLane,
 } from '../../lib/content'
 import {
-  canRetryLane, isHumanEdited, planRegen, regenerateClientDraft, regenerateDraft,
+  canRetryLane, clearHumanEdit, isHumanEdited, planRegen, regenerateClientDraft, regenerateDraft, restoreHumanEdit,
 } from '../../lib/studioActions'
 import { Button } from '../../ds'
 import './content.css'
@@ -95,8 +95,10 @@ export function ReviewActions({ id, onDone, demoteApprove }: {
 
 /** RETRY, ON THE ROW. The same regeneration the takeover fires, copy only,
     behind ONE confirm, on every lane whose generator is live. */
-export function RetryDraft({ d, lane, onDone, label = 'Retry' }: {
+export function RetryDraft({ d, lane, onDone, label = 'Retry', disabled, allowProtectedCopy = false }: {
   label?: string
+  disabled?: boolean
+  allowProtectedCopy?: boolean
   d: ContentDraft
   lane: ContentLane
   onDone: () => void
@@ -109,6 +111,7 @@ export function RetryDraft({ d, lane, onDone, label = 'Retry' }: {
   if (!canRetryLane(lane)) return null
 
   const guarded = isHumanEdited(d)
+  const replaceProtected = allowProtectedCopy && lane !== 'ivan' && boardGroupOf(d) === 'internal' && (d.status === 'error' || d.status === 'generating')
   const plan = planRegen(d)
   const failure = draftFailure(d)
   const kind = plan.postFormat.toLowerCase()
@@ -116,48 +119,65 @@ export function RetryDraft({ d, lane, onDone, label = 'Retry' }: {
   async function run() {
     // The guard is the one case where firing costs money and lands nothing, so
     // it is refused here instead of confirmed and wasted.
-    if (guarded) {
+    if (guarded && !replaceProtected) {
       await confirm({
         title: 'Your own edit is protecting this draft',
         message:
           'You edited this post by hand, so the database refuses to let the pipeline overwrite your words. '
-          + 'A retry from here would run for minutes and change nothing. Open the draft and use Regenerate '
-          + 'there, which can clear that protection as its own decision.',
+          + (lane === 'ivan' ? 'Open the draft and use Rewrite the copy to choose whether to replace your edits.' : 'Open the internal error draft and choose Regenerate copy to explicitly replace your edits.'),
         confirmText: 'Understood',
       })
       return
     }
 
     const ok = await confirm({
-      title: `Run the pipeline again for this ${kind}?`,
+      title: guarded ? 'Replace your edited copy?' : `Run the pipeline again for this ${kind}?`,
       message:
-        `This spends a real generation on one draft and replaces its copy. `
+        `${guarded ? 'This clears the protection on your manual edits and replaces them. ' : ''}This spends a real generation on one draft and replaces its copy. `
         + `${lane === 'ivan' ? '' : `It runs ${LANE_POSSESSIVE[lane]} generator, in his voice, and the draft stays internal. `}`
         + `${plan.keepsPinnedImage ? 'Your pinned image is kept. ' : ''}`
         + `The row leaves this list for Generating and comes back in minutes. `
         + `${failure.kind === 'completed'
           ? 'Worth knowing first: the last thing this row logged was a pass, so the copy sitting on it may already be finished.'
           : ''}`,
-      confirmText: 'Run it again',
+      confirmText: guarded ? 'Replace edited copy' : 'Run it again',
+      danger: guarded,
     })
     if (!ok) return
 
     setBusy(true); setErr(''); setNote('')
+    let protectionCleared = false
     try {
+      let retry = d
+      if (guarded) {
+        await clearHumanEdit(d)
+        protectionCleared = true
+        const tax = d.taxonomy && typeof d.taxonomy === 'object' && !Array.isArray(d.taxonomy) ? d.taxonomy : {}
+        retry = { ...d, taxonomy: { ...tax, human_edited: 'false' } }
+      }
       const p = lane === 'ivan'
-        ? await regenerateDraft(d, false)
-        : await regenerateClientDraft(d, lane)
+        ? await regenerateDraft(retry, false)
+        : await regenerateClientDraft(retry, lane)
       setNote(`Firing ${p.postFormat} (copy only). It sits in Generating until it lands.`)
       onDone()
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Could not start the regeneration')
+      let message = e instanceof Error ? e.message : 'Could not start the regeneration'
+      if (protectionCleared) {
+        try {
+          const restored = await restoreHumanEdit(d)
+          message += restored ? '. Manual copy is protected again.' : '. The draft changed, so protection was not restored. Reload to inspect the current copy.'
+        } catch (rollback) {
+          message += `. Edit protection could not be restored: ${rollback instanceof Error ? rollback.message : 'unknown failure'}. Reload to inspect the current copy.`
+        }
+      }
+      setErr(message)
     } finally { setBusy(false) }
   }
 
   return (
     <>
       <Button
-        variant="quiet" size="sm" busy={busy}
+        variant="quiet" size="sm" busy={busy} disabled={disabled}
         title={guarded
           ? 'This draft carries your own edit, which the database protects from the pipeline.'
           : 'Runs the pipeline again on this one draft. Costs a generation.'}
