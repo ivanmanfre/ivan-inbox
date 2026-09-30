@@ -14,6 +14,8 @@ import { AllConvos } from './AllConvos'
 import { signalItems } from './signals'
 import type { AgentSide, Side } from './useDmsData'
 import { noteOf, type WarmVerbs } from './warmVerbs'
+import { blockedFollowup, upcomingItems, type FollowupProjection } from './upcoming'
+import { warsawHm } from '../ui/time'
 
 export type Mode = 'conversations' | 'email' | 'spam' | 'search'
 
@@ -31,6 +33,7 @@ export type ColumnProps = {
   warmVerbs: WarmVerbs
   openWarm: (pid: string) => void
   dated: { prospect_id: string; at: string }[]
+  upcoming?: Side<FollowupProjection>
   scanDays: ReadonlyMap<string, number>
   /** This seat's drafts where he already replied (today's lane-scoped StaleBar). */
   stale: Thread[]
@@ -71,7 +74,13 @@ export function ColumnBody(p: ColumnProps) {
   }
 
   const came = p.cameBack.rows.filter(x => (x.tenant as string) === seat)
-  const later = laterItems(v.later, p.dated, p.byId, seat)
+  const allLater = laterItems(v.later, p.dated, p.byId, seat)
+  const coming = upcomingItems(p.upcoming?.failed ? [] : p.upcoming?.rows ?? [], allLater, p.byId, seat, c.now)
+  const due = coming.filter(i => Date.parse(i.at) <= c.now)
+  const future = coming.filter(i => Date.parse(i.at) > c.now)
+  const comingIds = new Set(coming.map(i => i.t.prospect_id))
+  const later = allLater.filter(i => !comingIds.has(i.t.prospect_id))
+  const blocked = v.all.map(t => ({ t, hold: blockedFollowup(t) })).filter(i => i.hold !== null)
   const datedBy = new Map(p.dated.map(d => [d.prospect_id, d.at] as const))
   const needs = [
     ...v.owner.map(t => (
@@ -96,8 +105,23 @@ export function ColumnBody(p: ColumnProps) {
       after={<>
         {emailOwed > 0 && <button type="button" className="dm-note" data-verb="to-email" onClick={p.toEmail}>
           {emailOwed === 1 ? '1 email thread needs you too, in the Email folder' : `${emailOwed} email threads need you too, in the Email folder`}</button>}
-        {needsCount(v) === 0 && <Quiet>Nothing waiting on {WHO[seat]}.</Quiet>}
+        {needsCount(v) === 0 && <Quiet>{blocked.length ? 'No drafts ready. Check the blocked follow-ups below.' : `Nothing waiting on ${WHO[seat]}.`}</Quiet>}
       </>} />
+
+    {blocked.length > 0 && <Section id="followup-blocked" label="Blocked follow-ups" n={blocked.length} folds={folds}
+      rows={blocked.map(({t,hold}) => <Row key={t.prospect_id} id={t.prospect_id} name={t.prospect_name} company={t.prospect_company}
+        line={hold!.reason} right="Review" rightKind="needs" selected={c.selected === t.prospect_id} onOpen={() => c.open(t)} />)} />}
+
+    {due.length > 0 && <Section id="followup-due" foldable label="Due, awaiting draft" n={due.length} folds={folds}
+      before={<Quiet>These dates have arrived. The system still needs to check each conversation.</Quiet>}
+      rows={due.map(i => <Row key={i.t.prospect_id} id={i.t.prospect_id} name={i.t.prospect_name} company={i.t.prospect_company}
+        line={i.line} right={dayMonth(i.at)} rightKind="fu" selected={c.selected === i.t.prospect_id} onOpen={() => c.open(i.t)} />)} />}
+
+    <Section id="upcoming" foldable label="Upcoming, next 3 days" n={p.upcoming?.failed ? '?' : future.length} folds={folds}
+      before={p.upcoming?.failed ? <Quiet>Could not refresh the follow-up schedule. Use Refresh to try again.</Quiet> : !p.upcoming?.loaded ? <Quiet>Reading the follow-up schedule…</Quiet> : future.length === 0 ? <Quiet>No follow-ups scheduled in the next three days.</Quiet> : null}
+      rows={future.map(i => <Row key={i.t.prospect_id} id={i.t.prospect_id} name={i.t.prospect_name} company={i.t.prospect_company}
+        line={i.line} right={`${dayMonth(i.at)} ${warsawHm(i.at)}`} rightKind="later" selected={c.selected === i.t.prospect_id} onOpen={() => c.open(i.t)} />)}
+      after={future.length > 0 ? <Quiet>Estimated dates are checked against the conversation before a draft is created.</Quiet> : null} />
 
     {later.length > 0 && <Section id="later" foldable label="Later" n={later.length} folds={folds}
       rows={later.map(i => i.kind === 'draft' ? <LaterRow key={i.t.prospect_id} t={i.t} c={c} />

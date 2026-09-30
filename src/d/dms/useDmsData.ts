@@ -14,6 +14,7 @@ import { FOLLOW_UP_REASON } from '../../lib/followUp'
 import { scanOpenDays, scanReopenOnlyIvan, type CameBackCard } from '../../wb/dms/cameBackData'
 import { fetchWarmCards, type WarmCard } from '../../wb/dms/warmSignalsData'
 import { fetchConversationAgentCards, type ConversationAgentCard, type ConversationAgentFeed } from '../../wb/dms/conversationAgentData'
+import { projectFollowups, type FollowupSource } from './upcoming'
 
 export type Side<T> = { rows: T[]; failed: boolean; loaded: boolean }
 export type DatedFollowUp = { prospect_id: string; at: string }
@@ -30,6 +31,8 @@ async function readDatedFollowUps(): Promise<DatedFollowUp[]> {
   const { data, error } = await supabase.from('outreach_prospects')
     .select('id,next_touch_after')
     .eq('skip_reason', FOLLOW_UP_REASON).not('next_touch_after', 'is', null)
+    .is('call_booked_at', null).eq('blacklisted', false).is('skip_state', null)
+    .in('stage', ['replied','positive_reply','dm_sent','connected'])
     .order('next_touch_after', { ascending: true }).limit(500)
   if (error) throw error
   return ((data ?? []) as { id: string; next_touch_after: string }[]).map(r => ({ prospect_id: r.id, at: r.next_touch_after }))
@@ -37,14 +40,22 @@ async function readDatedFollowUps(): Promise<DatedFollowUp[]> {
 
 // Today's agent read (conversation_agent_cards): 'unavailable' is a reason to show, not a failure.
 async function readAgent(): Promise<ConversationAgentFeed[]> { return [await fetchConversationAgentCards()] }
+async function readFollowupSources(): Promise<FollowupSource[]> {
+  const { data, error } = await supabase.rpc('inbox_followup_sources')
+  if (error) throw error
+  if (!Array.isArray(data)) throw new Error('Could not read the follow-up schedule')
+  return data as FollowupSource[]
+}
 export type AgentSide = { cards: ConversationAgentCard[]; note: string | null; failed: boolean; loaded: boolean }
 
 function useSide<T>(read: () => Promise<T[]>): [Side<T>, () => void, (fn: (rows: T[]) => T[]) => void] {
   const [s, set] = useState<Side<T>>(none)
   const alive = useRef(true)
+  const request = useRef(0)
   const load = useCallback(() => {
-    read().then(rows => { if (alive.current) set({ rows, failed: false, loaded: true }) })
-      .catch(() => { if (alive.current) set(p => ({ ...p, failed: true, loaded: true })) })
+    const id = ++request.current
+    read().then(rows => { if (alive.current && id === request.current) set({ rows, failed: false, loaded: true }) })
+      .catch(() => { if (alive.current && id === request.current) set(p => ({ ...p, failed: true, loaded: true })) })
   }, [read])
   useEffect(() => { alive.current = true; load(); return () => { alive.current = false } }, [load])
   const edit = useCallback((fn: (rows: T[]) => T[]) => set(p => ({ ...p, rows: fn(p.rows) })), [])
@@ -57,7 +68,17 @@ export function useDmsData() {
   const inbox = useDInbox()
   const [cameRaw, reloadCame, editCame] = useSide(readCameBackRaw)
   const [warm, reloadWarm, editWarm] = useSide<WarmCard>(fetchWarmCards)
-  const [dated, reloadDated] = useSide(readDatedFollowUps)
+  const [dated, readDates] = useSide(readDatedFollowUps)
+  const [followupRaw, reloadFollowups] = useSide(readFollowupSources)
+  const upcoming = useMemo(() => ({ ...followupRaw, rows: projectFollowups(followupRaw.rows) }), [followupRaw])
+  const reloadDated = useCallback(() => { readDates(); reloadFollowups() }, [readDates, reloadFollowups])
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState !== 'hidden') reloadDated() }
+    const interval = window.setInterval(refresh, 60_000)
+    window.addEventListener('focus', refresh)
+    return () => { window.clearInterval(interval); window.removeEventListener('focus', refresh) }
+  }, [reloadDated])
+  useEffect(() => { if (inbox.loadedAt) reloadDated() }, [inbox.loadedAt, reloadDated])
   const [agentRaw, reloadAgent] = useSide(readAgent)
   const agent: AgentSide = useMemo(() => {
     const f = agentRaw.rows[0]
@@ -108,7 +129,7 @@ export function useDmsData() {
     refreshList: inbox.refresh, refreshAll, patch, solved: inbox.solved,
     cameBack: { ...cameRaw, rows: cameBack }, dropCameBack: (pid: string) => editCame(r => r.filter(c => c.prospect_id !== pid)), reloadCame,
     scanDays, warm, dropWarm: (pid: string) => editWarm(r => r.filter(c => c.prospect_id !== pid)), reloadWarm,
-    dated, reloadDated,
+    dated, reloadDated, upcoming,
     agent, reloadAgent,
   }
 }

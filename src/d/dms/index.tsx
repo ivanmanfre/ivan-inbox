@@ -94,7 +94,7 @@ function Dms({ layout, route, navigate }: PlaceProps) {
           : mode === 'search' ? matches[seat][0] ?? null : null
   const open = threadId ? byId.get(threadId) ?? null : autoOpen
 
-  const failedN = (data.error ? 1 : 0) + (data.cameBack.failed ? 1 : 0) + (data.warm.failed ? 1 : 0) + (data.dated.failed ? 1 : 0)
+  const failedN = (data.error ? 1 : 0) + (data.cameBack.failed ? 1 : 0) + (data.warm.failed ? 1 : 0) + (data.dated.failed ? 1 : 0) + (data.upcoming?.failed ? 1 : 0)
   useReportFailed('dms', failedN)
 
   const go = useCallback((extra: Record<string, string | null>) => {

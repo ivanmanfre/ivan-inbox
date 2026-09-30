@@ -48,7 +48,7 @@ function Body({ m, seat }: { m: PageModel; seat: Seat }) {
   if (!d.threads.length && d.loading) return <Skeleton lines={6} label={`Reading ${SEAT_NAME[seat]}'s conversations`} />
   if (!d.threads.length && d.error) return <Failed what="the conversations" detail={d.error} onRetry={d.refreshAll} />
   return <ColumnBody seat={seat} view={m.views[seat]} mode={m.mode} matches={m.matches[seat]} c={rowCtx(m)} byId={m.byId}
-    cameBack={d.cameBack} dropCameBack={d.dropCameBack} warm={d.warm} agent={d.agent} warmVerbs={m.warmVerbs} openWarm={m.openWarm} dated={d.dated.rows} scanDays={d.scanDays} stale={m.staleBy[seat]} toEmail={() => m.setFolder('email')} />
+    cameBack={d.cameBack} dropCameBack={d.dropCameBack} warm={d.warm} agent={d.agent} warmVerbs={m.warmVerbs} openWarm={m.openWarm} dated={d.dated.rows} upcoming={d.upcoming} scanDays={d.scanDays} stale={m.staleBy[seat]} toEmail={() => m.setFolder('email')} />
 }
 
 function Pane({ m, phone }: { m: PageModel; phone: boolean }) {
