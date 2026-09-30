@@ -9,7 +9,7 @@ import type { Notification } from '../../lib/turns'
 
 const id = '123e4567-e89b-42d3-a456-426614174000'
 const row = (overrides: Partial<Notification> = {}): Notification => ({
-  id, family: 'system_infra_alarm', source: 'tracker', severity: 'error', title: 'Mattan: booking checks paused',
+  id, family: 'send_failed_alert', source: 'tracker', severity: 'error', title: 'Mattan: booking checks paused',
   body: 'HubSpot read failed.', url: './#exp/d/ops', media: null, group_key: null, tenant: 'rise', count: 1,
   first_seen_at: new Date().toISOString(), last_seen_at: new Date().toISOString(), created_at: new Date().toISOString(),
   read_at: null, dismissed_at: null, expires_at: new Date(Date.now() + 4 * 60 * 60_000).toISOString(), incident_key: 'one',
@@ -34,12 +34,13 @@ function Alert() {
   return <ForegroundAlerts host={{ bellOpen: frame.bellOpen, openBell: () => frame.setBellOpen(true), navigate: frame.navigate, refreshBell: () => counts.refresh('bell') }} />
 }
 
-async function push(family = 'system_infra_alarm', notificationId = id) {
+async function push(family = 'send_failed_alert', notificationId = id) {
   await act(async () => worker.dispatchEvent(new MessageEvent('message', { data: { type: 'push', family, notificationId } })))
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
+  getActiveNotification.mockReset().mockResolvedValue(row())
   Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: worker })
   Object.defineProperty(navigator, 'onLine', { configurable: true, value: true })
   Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
@@ -48,6 +49,13 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.useRealTimers() })
 
 describe('foreground important alerts', () => {
+  it('ignores generic workflow-error pushes even when a producer bypasses the phone policy', async () => {
+    getActiveNotification.mockResolvedValueOnce(row({ family: 'system_infra_alarm', title: 'Workflow Error' }))
+    renderInFrame(<Alert />)
+    await push('system_infra_alarm')
+    expect(screen.queryByLabelText('Important alert')).toBeNull()
+  })
+
   it('shows a canonical eligible row only while visible, once per ID; ordinary pushes stay quiet', async () => {
     renderInFrame(<Alert />)
     await push('claude_turn')

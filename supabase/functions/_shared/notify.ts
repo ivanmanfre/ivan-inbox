@@ -12,7 +12,7 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { sendPush } from './push-send.ts'
 import { presentPush } from './alert-kinds.ts'
-import { fallbackIncidentKey, isImportantWorkflowFamily } from './notification-lifecycle.ts'
+import { fallbackIncidentKey, isImportantWorkflowFamily, isMutedNotificationFamily } from './notification-lifecycle.ts'
 
 const FAMILY_RE = /^[a-z][a-z0-9_]{1,39}$/
 const SEVERITIES = ['info', 'attention', 'error'] as const
@@ -38,7 +38,7 @@ const PUSH_BODY_CHARS = 140
  * absent  fall through to severity: only a hard 'error' (critical) wakes the
  *         phone; 'attention' (warn) and 'info' wait in the feed.
  *
- * A producer that passes an explicit `push` flag still wins over all of this.
+ * A producer may override defaults, except for Ivan's muted technical families.
  */
 export const PUSH_DEFAULT: Record<string, boolean> = {
   // --- interrupt --------------------------------------------------------
@@ -54,13 +54,9 @@ export const PUSH_DEFAULT: Record<string, boolean> = {
   night_brief: true,          // the night brief
   thursday_brief: true,       // the Thursday brief
 
-  // Added 2026-09-06 after the first live day of the WhatsApp migration. The
-  // fall-through below is `severity === 'error'`, and the n8n relay classifies
-  // at most `attention` — so BEFORE this block nothing a workflow broke on ever
-  // reached the phone. These two are the "something is broken / a send to a
-  // human failed" families, both already collapsed to one row per workflow per
-  // 24h by the 08-20 shared error ledger, so the volume is ~3/day, not 23.
-  system_infra_alarm: true,   // a workflow is failing (Error Handler / Client Health Monitor)
+  // Generic infrastructure failures stay recorded for diagnostics. Failed
+  // prospect sends still interrupt because an actual message did not go out.
+  system_infra_alarm: false,  // generic workflow errors stay in technical history
   send_failed_alert: true,    // a message to a prospect did not go out
   // Ivan 2026-09-06: "alerts of low supply from mattan, arch or ivan lane are very
   // important.... Also if daily sends on any seat are below 20 its also a disaster".
@@ -95,6 +91,7 @@ export const PUSH_DEFAULT: Record<string, boolean> = {
  * definition and the tests can name it.
  */
 export function pushDefault(family: string, severity: Severity): boolean {
+  if (isMutedNotificationFamily(family)) return false
   const explicit = PUSH_DEFAULT[family]
   if (typeof explicit === 'boolean') return explicit
   return severity === 'error'
@@ -285,17 +282,18 @@ export async function notify(db: SupabaseClient, raw: unknown): Promise<NotifyRe
     .single()
   if (insErr || !row) throw new NotifyError(500, 'insert_failed', insErr?.message)
 
-  // Producer's call if it made one; otherwise the family map decides and a
-  // family it has never seen falls through to severity. Silence is the
-  // default for routine chatter.
-  const shouldPush = n.push ?? pushDefault(n.family, (n.severity ?? 'info') as Severity)
+  // Muted technical families stay quiet even when a producer requests push.
+  // For other families, preserve producer overrides and the family default.
+  const shouldPush = !isMutedNotificationFamily(n.family) &&
+    (n.push ?? pushDefault(n.family, (n.severity ?? 'info') as Severity))
   if (!shouldPush) return { id: row.id, pushed: false, deduped: false, subs: 0, results: [] }
 
   return pushCreatedRow(db, n, row.id)
 }
 
 async function pushCreatedRow(db: SupabaseClient, n: ReturnType<typeof validateNotify>, id: string): Promise<NotifyResult> {
-  const shouldPush = n.push ?? pushDefault(n.family, (n.severity ?? 'info') as Severity)
+  const shouldPush = !isMutedNotificationFamily(n.family) &&
+    (n.push ?? pushDefault(n.family, (n.severity ?? 'info') as Severity))
   if (!shouldPush) return { id, pushed: false, deduped: false, subs: 0, results: [] }
 
   // The stored row keeps the producer's own n.title / n.body untouched

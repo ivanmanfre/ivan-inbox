@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { kindFor } from './alertKinds'
-import { isImportantWorkflowFamily } from '../../supabase/functions/_shared/notification-lifecycle'
+import { isImportantWorkflowFamily, MUTED_NOTIFICATION_FAMILIES } from '../../supabase/functions/_shared/notification-lifecycle'
 
 // turns.ts — the client data layer for db/049: persisted Claude turns, the
 // threads that hold their CLI session, and the one notification feed.
@@ -311,7 +311,9 @@ export async function listNotifications(
 ): Promise<Notification[]> {
   const { limit = 200, includeDismissed = false } = opts
   let q = supabase.from(NOTIFICATIONS_VIEW).select(NOTIFICATION_COLS)
-  if (!includeDismissed) q = q.is('dismissed_at', null).or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+  if (!includeDismissed) q = q.is('dismissed_at', null)
+    .not('family', 'in', `(${MUTED_NOTIFICATION_FAMILIES.join(',')})`)
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
   const { data, error } = await q.order('last_seen_at', { ascending: false }).order('id', { ascending: false }).limit(limit)
   if (error) throw error
   return (data ?? []) as unknown as Notification[]

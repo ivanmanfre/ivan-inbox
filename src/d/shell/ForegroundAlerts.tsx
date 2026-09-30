@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { isImportantWorkflowFamily } from '../../../supabase/functions/_shared/notification-lifecycle'
+import { isImportantWorkflowFamily, isMutedNotificationFamily } from '../../../supabase/functions/_shared/notification-lifecycle'
 import {
   dismissNotification, getActiveNotification, isActiveNotification, listNotifications,
   markNotificationsRead, routableHash, type Notification,
@@ -30,7 +30,7 @@ export function ForegroundAlerts({ host }: { host: ForegroundHost }) {
     try {
       const row = await getActiveNotification(id)
       if (!row || document.visibilityState !== 'visible' || !navigator.onLine
-        || !isImportantWorkflowFamily(row.family) || !isActiveNotification(row)) return
+        || isMutedNotificationFamily(row.family) || !isImportantWorkflowFamily(row.family) || !isActiveNotification(row)) return
       // A place such as Workflows can hold many distinct incidents. Only the
       // canonical UUID (seen above), or an already open bell showing its feed,
       // can make an arrival redundant.
@@ -47,7 +47,7 @@ export function ForegroundAlerts({ host }: { host: ForegroundHost }) {
       const data = e.data as { type?: string; url?: unknown; family?: unknown; notificationId?: unknown } | null
       if (data?.type !== 'push') return
       const event = pushClientEvent(data)
-      if (event.notificationId && event.family && isImportantWorkflowFamily(event.family)) void arrive(event.notificationId)
+      if (event.notificationId && event.family && isImportantWorkflowFamily(event.family) && !isMutedNotificationFamily(event.family)) void arrive(event.notificationId)
     }
     navigator.serviceWorker?.addEventListener?.('message', onMessage)
     return () => navigator.serviceWorker?.removeEventListener?.('message', onMessage)
@@ -61,7 +61,7 @@ export function ForegroundAlerts({ host }: { host: ForegroundHost }) {
     const poll = async () => {
       if (document.visibilityState !== 'visible' || !navigator.onLine) return
       try {
-        const rows = (await listNotifications()).filter(row => isImportantWorkflowFamily(row.family))
+        const rows = (await listNotifications()).filter(row => isImportantWorkflowFamily(row.family) && !isMutedNotificationFamily(row.family))
         if (!alive) return
         const fresh = baseline ? [] : rows.filter(row => !seen.current.has(row.id))
         if (baseline) for (const row of rows) seen.current.add(row.id)

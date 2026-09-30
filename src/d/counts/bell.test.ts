@@ -9,6 +9,7 @@ vi.mock('../../lib/supabase', () => ({
     const q = {
       select: () => q,
       is: (key: string) => { f.push(`is:${key}`); return q },
+      not: (key: string, op: string, value: string) => { f.push(`not:${key}:${op}:${value}`); return q },
       or: (value: string) => { f.push(`or:${value}`); return q },
       order: () => q,
       range: async () => ({ data: pages.shift() ?? [], error: null }),
@@ -29,10 +30,16 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date(NOW)); pages.le
 afterEach(() => vi.useRealTimers())
 
 describe('bell counts and exact expiry', () => {
+  it('uses the same technical-family exclusion as the feed before counting', async () => {
+    await fetchBellCounts()
+    expect(filters[0].some(f => f.startsWith('not:family:in:') && f.includes('system_infra_alarm') && f.includes('system_watchdog_digest'))).toBe(true)
+    expect(filters[0].some(f => f.startsWith('not:family:in:') && f.includes('send_failed_alert'))).toBe(false)
+  })
+
   it('leaves a large old unread backlog out of the badge while retaining every open row', async () => {
     const future = at(-1)
     pages.push(Array.from({ length: 1000 }, (_, i) => row(`old${i}`, 241)))
-    pages.push([row('read-late-page', 1, { family: 'system_infra_alarm', read_at: at(0), expires_at: future })])
+    pages.push([row('read-late-page', 1, { family: 'send_failed_alert', read_at: at(0), expires_at: future })])
     expect(await fetchBellCounts()).toEqual({ unreadGroups: 0, open: 1001, nextExpiryAt: future })
     expect(filters).toHaveLength(2)
     expect(filters.every(f => f.includes('is:dismissed_at') && f.some(x => x.startsWith('or:expires_at.is.null,expires_at.gt.')))).toBe(true)
@@ -40,8 +47,8 @@ describe('bell counts and exact expiry', () => {
 
   it('counts recent routine and important rows, grouping distinct incidents separately', async () => {
     pages.push([
-      row('config', 5, { family: 'system_infra_alarm', incident_key: 'rise:w:config:failed:attention', group_key: 'workflow' }),
-      row('auth', 5, { family: 'system_infra_alarm', incident_key: 'rise:w:auth:failed:attention', group_key: 'workflow' }),
+      row('config', 5, { family: 'send_failed_alert', incident_key: 'rise:w:config:failed:attention', group_key: 'workflow' }),
+      row('auth', 5, { family: 'send_failed_alert', incident_key: 'rise:w:auth:failed:attention', group_key: 'workflow' }),
       row('routine-a', 10, { group_key: 'board' }),
       row('routine-b', 10, { group_key: 'board' }),
       row('seen', 15, { family: 'page_open_notice' }),

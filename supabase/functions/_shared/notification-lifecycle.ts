@@ -38,3 +38,14 @@ export async function fallbackIncidentKey(n: {
   const hash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('')
   return `auto:${n.tenant ?? '_'}:${n.source ?? '_'}:${n.family}:${n.severity ?? 'info'}:${hash}`
 }
+
+/** Ivan's bell and phone exclude technical chatter; rows remain available to diagnostics. */
+export const MUTED_NOTIFICATION_FAMILIES = [
+  'system_infra_alarm', 'system_watchdog_digest', 'seat_health',
+  'content_sourcing_pipeline', 'arch_build_progress', 'lane_run_summary',
+  'ops_other', 'runner_sync', 'smoke_push', 'smoke_test', 'relay_smoke',
+] as const
+
+export function isMutedNotificationFamily(family: string): boolean {
+  return (MUTED_NOTIFICATION_FAMILIES as readonly string[]).includes(family)
+}

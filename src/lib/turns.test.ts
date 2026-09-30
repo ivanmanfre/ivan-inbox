@@ -27,6 +27,7 @@ function chain(step: Step) {
     select(cols?: string) { step.cols = cols; return c },
     eq(k: string, v: unknown) { step.filters.push(`eq:${k}=${String(v)}`); return c },
     is(k: string, v: unknown) { step.filters.push(`is:${k}=${String(v)}`); return c },
+    not(k: string, op: string, v: string) { step.filters.push(`not:${k}:${op}:${v}`); return c },
     or(v: string) { step.filters.push(`or:${v}`); return c },
     in(k: string, v: unknown[]) { step.filters.push(`in:${k}=${v.join('|')}`); return c },
     order(k: string, o?: { ascending?: boolean; nullsFirst?: boolean }) {
@@ -208,6 +209,14 @@ describe('reads go through the views, never the base tables', () => {
   it('a read error is thrown, never swallowed into an empty list', async () => {
     queue.push({ data: null, error: { message: 'boom' } })
     await expect(listThreads()).rejects.toBeTruthy()
+  })
+
+  it('excludes muted technical families before the feed limit, retaining them in explicit history reads', async () => {
+    await listNotifications()
+    expect(steps[0].filters.some(f => f.startsWith('not:family:in:') && f.includes('system_infra_alarm') && f.includes('system_watchdog_digest'))).toBe(true)
+    steps.length = 0
+    await listNotifications({ includeDismissed: true })
+    expect(steps[0].filters.some(f => f.startsWith('not:family:'))).toBe(false)
   })
 
   it('listNotifications hides dismissed rows unless asked', async () => {

@@ -25,7 +25,7 @@ beforeEach(() => { sent.length = 0 })
 describe('notify transient workflow claim', () => {
   it('uses the atomic claim as the only push gate and sends canonical ID', async () => {
     const a = db(true)
-    const input = { family: 'system_infra_alarm', source: 'wa-relay:siEM4bDSfevuVCII', tenant: 'rise',
+    const input = { family: 'send_failed_alert', source: 'wa-relay:siEM4bDSfevuVCII', tenant: 'rise',
       incident_key: 'rise:siEM4bDSfevuVCII:hubspot:config_read_failed:attention',
       severity: 'attention', title: 'HubSpot read failed', group_key: 'workflow' }
     const first = await notify(a.client as never, input)
@@ -33,10 +33,26 @@ describe('notify transient workflow claim', () => {
     expect(a.client.rpc).toHaveBeenCalledWith('claim_inbox_workflow_notification', expect.objectContaining({
       p_alert: expect.objectContaining({ incident_key: input.incident_key }),
     }))
-    expect(sent[0]).toMatchObject({ notificationId: first.id, tag: first.id, family: 'system_infra_alarm' })
+    expect(sent[0]).toMatchObject({ notificationId: first.id, tag: first.id, family: 'send_failed_alert' })
     const b = db(false)
     const repeat = await notify(b.client as never, input)
     expect(repeat).toMatchObject({ id: first.id, deduped: true, pushed: false })
+    expect(sent).toHaveLength(1)
+  })
+
+  it('stores generic workflow errors but suppresses even an explicit phone push', async () => {
+    const a = db(true)
+    const out = await notify(a.client as never, { family: 'system_infra_alarm', severity: 'error',
+      title: '⚠️ Workflow Error', source: 'wa-relay:error-handler', push: true })
+    expect(out).toMatchObject({ id: '11111111-1111-4111-8111-111111111111', pushed: false, deduped: false })
+    expect(a.client.rpc).toHaveBeenCalledOnce()
+    expect(sent).toHaveLength(0)
+  })
+
+  it.each(['send_failed_alert', 'lane_supply_alarm'])('still pushes the business-impact family %s', async family => {
+    const a = db(true)
+    const out = await notify(a.client as never, { family, severity: 'error', title: 'Prospect outreach blocked' })
+    expect(out.pushed).toBe(true)
     expect(sent).toHaveLength(1)
   })
 

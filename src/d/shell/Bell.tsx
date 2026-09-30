@@ -233,7 +233,7 @@ export function BellFeed() {
         {feed.loaded && !feed.error && !clearing && feed.groups.length === 0 && systemEmpty && (
           <Empty
             title={clearedAt ? `Nothing new since ${warsawHm(clearedAt)}.` : feed.lastEmptySince ? `Nothing new since ${warsawHm(feed.lastEmptySince)}.` : 'Nothing here yet.'}
-            reason="New replies, failures and bookings land here and on your phone."
+            reason="Replies, bookings, reminders and actions that need you land here."
           />
         )}
         {days.map(d => (

@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase'
 import { NOTIFICATIONS_VIEW } from '../../lib/turns'
-import { isImportantWorkflowFamily } from '../../../supabase/functions/_shared/notification-lifecycle'
+import { isImportantWorkflowFamily, MUTED_NOTIFICATION_FAMILIES } from '../../../supabase/functions/_shared/notification-lifecycle'
 
 // The badge counts unread incidents from the last four hours.
 // The full active history remains available in the feed and `open` count.
@@ -24,6 +24,7 @@ export async function fetchBellCounts(): Promise<BellCounts> {
     const { data, error } = await supabase.from(NOTIFICATIONS_VIEW)
       .select('id,family,incident_key,group_key,created_at,read_at,expires_at')
       .is('dismissed_at', null)
+      .not('family', 'in', `(${MUTED_NOTIFICATION_FAMILIES.join(',')})`)
       .or(`expires_at.is.null,expires_at.gt.${now}`)
       .order('created_at', { ascending: false }).order('id', { ascending: true })
       .range(from, from + PAGE - 1)
