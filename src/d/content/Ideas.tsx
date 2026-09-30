@@ -1,225 +1,137 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useClientIdeas, useIdeaCandidates } from '../../hooks/useContent'
-import { fetchIdeaScores, sortByScore, type IdeaScoreRead } from '../../lib/ideaScores'
-import { banditChipLine, currentIsoWeekMonday, fetchBanditChip, personalFloorLine, type BanditChipRead } from '../../lib/banditChip'
-import { applyFilters, buildFacets, CLIENT_IDEA_SPECS, IDEA_PROMINENT, IDEA_SPECS, splitFacets, type Facet, type FilterState } from '../../lib/contentFilters'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { readSwr, writeSwr } from '../../lib/swr'
+import { fetchRankedIdeas, visibleIdeas } from '../../lib/rankedIdeas'
+import { decideIdea, ideaDecidable } from '../../lib/content'
+import { decideClientIdea } from '../../lib/clientIdeas'
+import { putOutlierOnBoard } from '../../lib/outliers'
+import type { IdeaScoreRead } from '../../lib/ideaScores'
+import type { BanditChipRead } from '../../lib/banditChip'
+import { applyFilters, CLIENT_IDEA_SPECS, IDEA_SPECS, type Facet, type FilterState } from '../../lib/contentFilters'
 import type { IdeaCandidate } from '../../lib/content'
 import type { ClientIdea } from '../../lib/clientIdeas'
-import { dHash } from '../route'
 import { Failed, Skeleton } from '../ui/states'
-import { IDEA_OWNER, LANES, LANE_NAME, type Lane } from './model'
-import { byScore, fromCandidate, fromClient, scoreText, type IdeaItem } from './ideaModel'
+import { useToast } from '../ui/toast'
+import { LANES, LANE_NAME, type Lane } from './model'
+import type { IdeaItem } from './ideaModel'
 import { IdeaDetail } from './IdeaDetail'
-import { IdeaTags, ScorePill } from './ideaTags'
+import { IdeaTags } from './ideaTags'
 import { SourceBadge, ideaOutlierSource } from './SourceBadge'
+import './ideas.css'
 
-// Ideas: one channel per seat (Ivan's POST ideas + each client's bank), the
-// picked idea's detail beside them (desktop) or under its row (phone). Counts
-// per seat, never added. As today: Ivan's lead-magnet ideas are NOT here (they
-// are Magnets' ideas, counted apart), a row with no content type rides with the
-// posts labelled, the outlier score orders a validated bank, filters narrow a
-// channel, and every row is reachable (pages of 40, no cap).
 export type IdeaBank = {
   items: IdeaItem[]; n: number | null; loading: boolean; error: string | null; refresh: () => void
-  scores: IdeaScoreRead; facets: Facet[]; lm?: number | null; unclassified?: number
-  /** CB-19 P4(b) reach-slot bandit chip (D2 grant), read-only, fail-quiet. */
-  chip: BanditChipRead
+  scores: IdeaScoreRead; facets: Facet[]; lm?: number | null; unclassified?: number; chip: BanditChipRead
 }
 export type IdeaBanks = Record<Lane, IdeaBank>
-
 const NO_SCORES: IdeaScoreRead = { ok: false, byRef: new Map(), validated: false }
 const NO_CHIP: BanditChipRead = { ok: false, weekStart: null, byRef: new Map(), slots: [] }
-
-function useScores(lane: Lane, loadedAt: string | null): IdeaScoreRead {
-  const [s, setS] = useState<IdeaScoreRead>(NO_SCORES)
+function useBank(lane: Lane, enabled: boolean): IdeaBank {
+  const [items, setItems] = useState<IdeaItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [version, setVersion] = useState(0)
+  const refresh = useCallback(() => setVersion(v => v + 1), [])
   useEffect(() => {
+    if (!enabled) return
     let live = true
-    void fetchIdeaScores(lane, lane === 'ivan' ? 'lm_idea_candidates' : 'client_ideas').then(r => { if (live) setS(r) })
-    return () => { live = false }
-  }, [lane, loadedAt])
-  return s
+    const controller = new AbortController()
+    setLoading(true)
+    void fetchRankedIdeas(lane, controller.signal).then(rows => { if (live) { setItems(rows); setError(null) } })
+      .catch(e => { if (live) setError(e instanceof Error ? e.message : 'Could not read ideas.') })
+      .finally(() => { if (live) setLoading(false) })
+    return () => { live = false; controller.abort() }
+  }, [lane, version, enabled])
+  return { items, n: loading && !items.length ? null : items.length, loading, error, refresh, scores: NO_SCORES, facets: [], chip: NO_CHIP }
 }
-
-// One RPC call per lane per list render (never per row): fetched exactly
-// where useScores is, keyed on the same loadedAt so a refresh re-reads both
-// together. The RPC does not exist live until CB-19 applies; fetchBanditChip
-// fails quiet to NO_CHIP and every render site below renders nothing extra.
-function useBanditChip(lane: Lane, loadedAt: string | null): BanditChipRead {
-  const [c, setC] = useState<BanditChipRead>(NO_CHIP)
-  useEffect(() => {
-    let live = true
-    void fetchBanditChip(lane, lane === 'ivan' ? 'lm_idea_candidates' : 'client_ideas', currentIsoWeekMonday()).then(r => { if (live) setC(r) })
-    return () => { live = false }
-  }, [lane, loadedAt])
-  return c
+export function useIdeaBanks(enabled = true, activeLane?: Lane): IdeaBanks {
+  const ivan = useBank('ivan', enabled && (!activeLane || activeLane === 'ivan'))
+  const risedtc = useBank('risedtc', enabled && (!activeLane || activeLane === 'risedtc'))
+  const arch = useBank('arch', enabled && (!activeLane || activeLane === 'arch'))
+  return { ivan, risedtc, arch }
 }
-
-export function useIdeaBanks(): IdeaBanks {
-  const ivan = useIdeaCandidates(true)
-  const rise = useClientIdeas('risedtc', true)
-  const arch = useClientIdeas('arch', true)
-  const sIvan = useScores('ivan', ivan.loadedAt)
-  const sRise = useScores('risedtc', rise.loadedAt)
-  const sArch = useScores('arch', arch.loadedAt)
-  const cIvan = useBanditChip('ivan', ivan.loadedAt)
-  const cRise = useBanditChip('risedtc', rise.loadedAt)
-  const cArch = useBanditChip('arch', arch.loadedAt)
-  return useMemo(() => {
-    const ivanRows = [...ivan.split.post, ...ivan.split.other]
-    const other = new Set(ivan.split.other.map(i => i.id))
-    const ivanItems = sortByScore(ivanRows.map(i => fromCandidate(i, undefined, other.has(i.id))).sort(byScore), sIvan, x => x.id)
-    const client = (rows: ClientIdea[], lane: Lane, scores: IdeaScoreRead) => sortByScore(rows.map(i => fromClient(i, lane)).sort(byScore), scores, x => x.id)
-    const { prominent } = splitFacets(buildFacets(ivanRows, IDEA_SPECS), IDEA_PROMINENT)
-    return {
-      ivan: {
-        items: ivanItems, n: ivan.loadedAt ? ivan.counts.post ?? ivan.split.post.length : null, loading: ivan.loading, error: ivan.error, refresh: ivan.refresh,
-        scores: sIvan, facets: prominent, lm: ivan.loadedAt ? ivan.counts.lead_magnet : null, unclassified: ivan.split.other.length, chip: cIvan,
-      },
-      risedtc: { items: client(rise.rows, 'risedtc', sRise), n: rise.loadedAt ? rise.rows.length : null, loading: rise.loading, error: rise.error, refresh: rise.refresh, scores: sRise, facets: splitFacets(buildFacets(rise.rows, CLIENT_IDEA_SPECS), ['source']).prominent, chip: cRise },
-      arch: { items: client(arch.rows, 'arch', sArch), n: arch.loadedAt ? arch.rows.length : null, loading: arch.loading, error: arch.error, refresh: arch.refresh, scores: sArch, facets: splitFacets(buildFacets(arch.rows, CLIENT_IDEA_SPECS), ['source']).prominent, chip: cArch },
-    }
-  }, [ivan.split, ivan.counts, ivan.loadedAt, ivan.loading, ivan.error, ivan.refresh, rise.rows, rise.loadedAt, rise.loading, rise.error, rise.refresh, arch.rows, arch.loadedAt, arch.loading, arch.error, arch.refresh, sIvan, sRise, sArch, cIvan, cRise, cArch])
-}
-
-/** A channel's rows after its filters (today's facet specs, applied to the raw rows). */
+// Kept for callers of the previous facet helper; the best-five surface needs no filters.
 export function filtered(items: IdeaItem[], lane: Lane, f: FilterState): IdeaItem[] {
   if (!Object.keys(f).length) return items
-  if (lane === 'ivan') {
-    const keep = new Set(applyFilters(items.map(i => i.ivan).filter((x): x is IdeaCandidate => !!x), IDEA_SPECS, f).map(i => i.id))
-    return items.filter(i => keep.has(i.id))
-  }
-  const keep = new Set(applyFilters(items.map(i => i.client).filter((x): x is ClientIdea => !!x), CLIENT_IDEA_SPECS, f).map(i => i.id))
+  const keep = new Set(lane === 'ivan'
+    ? applyFilters(items.map(i => i.ivan).filter((x): x is IdeaCandidate => !!x), IDEA_SPECS, f).map(i => i.id)
+    : applyFilters(items.map(i => i.client).filter((x): x is ClientIdea => !!x), CLIENT_IDEA_SPECS, f).map(i => i.id))
   return items.filter(i => keep.has(i.id))
 }
-
-const PLATE: Record<Lane, string> = { ivan: 'your post ideas', risedtc: 'Mattan’s ideas', arch: 'Davorin’s ideas' }
 export const PAGE = 40
-
-function Row({ it, on, pick, scores, chip }: { it: IdeaItem; on: boolean; pick: () => void; scores: IdeaScoreRead; chip: BanditChipRead }) {
-  const bandit = banditChipLine(chip.byRef.get(it.id))
-  return (
-    <button type="button" className={`cn-iq${on ? ' cn-sel' : ''}`} aria-current={on ? 'true' : undefined} onClick={pick} data-verb="open" data-idea-id={it.id}>
-      <ScorePill score={it.score} />
-      <span className="cn-n">{it.title}</span>
-      <time>{it.age}</time>
-      <IdeaTags src={it.src} row={scores.byRef.get(it.id)} unvalidated={scores.ok && !scores.validated} unclassified={it.unclassified} />
-      {bandit && <span className="cn-s cn-bd">{bandit}</span>}
-    </button>
-  )
+const Insights = lazy(() => import('./inputs/Inputs').then(m => ({ default: m.IdeaInsights })))
+function readPicks(): Record<Lane, IdeaItem[]> {
+  return Object.fromEntries(LANES.map(l => { const r = readSwr<IdeaItem[]>(`content-idea-picks:${l}`); return [l, r && Date.now() - Date.parse(r.savedAt) < 86400000 && Array.isArray(r.payload) ? r.payload : []] })) as Record<Lane, IdeaItem[]>
 }
-
-/** One lane at a time, full width, so every title reads whole (Ivan 09-29). */
-function LaneTabs({ banks, seat, pick }: { banks: IdeaBanks; seat: Lane; pick: (l: Lane) => void }) {
-  return (
-    <div className="cn-lanes" role="tablist" aria-label="Seat">
-      {LANES.map(l => {
-        const b = banks[l]
-        const top = b.items.length ? Math.max(...b.items.map(i => i.score ?? -1)) : null
-        return (
-          <button key={l} type="button" role="tab" aria-selected={seat === l} className={seat === l ? 'cn-on' : ''} onClick={() => pick(l)} data-verb="lane" data-lane={l}>
-            <b>{LANE_NAME[l]}</b>
-            <span className="cn-lane-n">{b.n ?? (b.error ? '?' : '…')}<small>to decide</small></span>
-            <span className="cn-lane-top"><small>top</small>{top != null && top >= 0 ? scoreText(top) : '–'}</span>
-            <small className="cn-lane-who">{PLATE[l]}</small>
-          </button>
-        )
-      })}
-    </div>
-  )
+function readSkips(): Record<Lane, string[]> {
+  try { const d = readSwr<Record<Lane, string[]>>('content-idea-skips-v1')?.payload || {} as Record<Lane, string[]>; return Object.fromEntries(LANES.map(l => [l, Array.isArray(d[l]) ? d[l].filter((id: unknown) => typeof id === 'string') : []])) as Record<Lane, string[]> }
+  catch { return { ivan: [], risedtc: [], arch: [] } }
 }
-
-function Filters({ facets, f, set }: { facets: Facet[]; f: FilterState; set: (f: FilterState) => void }) {
-  if (!facets.length) return null
-  return (
-    <div className="cn-flt" aria-label="Idea filters">
-      {facets.map(fc => (
-        <select key={fc.key} aria-label={fc.label} value={f[fc.key] ?? ''} onChange={e => {
-          const n = { ...f }; if (e.target.value) n[fc.key] = e.target.value; else delete n[fc.key]; set(n)
-        }}>
-          <option value="">{fc.label}: all</option>
-          {fc.options.map(o => <option key={o.value} value={o.value}>{o.label} ({o.n})</option>)}
-        </select>
-      ))}
-      {Object.keys(f).length > 0 && <button type="button" onClick={() => set({})}>Clear</button>}
+export function Ideas({ banks, phone, lane, onLaneChange }: { banks: IdeaBanks; phone: boolean; lane?: Lane; onLaneChange?: (lane: Lane) => void }) {
+  const toast = useToast()
+  const [internalSeat, setInternalSeat] = useState<Lane>('ivan')
+  const seat = lane ?? internalSeat
+  const setSeat = (l: Lane) => { setInternalSeat(l); onLaneChange?.(l) }
+  const [sel, setSel] = useState<string | null>(null)
+  const [bench, setBench] = useState(false)
+  const [saved, setSaved] = useState<Record<Lane, IdeaItem[]>>(readPicks)
+  const [skipped, setSkipped] = useState(readSkips)
+  const [insights, setInsights] = useState(false)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const b = banks[seat]
+  const rows = visibleIdeas(b.items, saved[seat], skipped[seat])
+  const shown = bench ? rows : rows.slice(0, 5)
+  const current = rows.find(i => i.id === sel)
+  const open = (id: string) => { setSel(id); requestAnimationFrame(() => Array.from(document.querySelectorAll<HTMLElement>('[data-idea-detail]')).find(el => el.dataset.ideaDetail === id)?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })) }
+  const done = (id: string) => { setSel(null); setSaved(s => { const list = s[seat].filter(i => i.id !== id); writeSwr(`content-idea-picks:${seat}`,list); return { ...s,[seat]:list } }); b.refresh() }
+  const run = async (it: IdeaItem, use: boolean) => {
+    if (busy || it.saved) return
+    setBusy(it.id); setError('')
+    try {
+      let picked = it
+      if (it.outlier) {
+        if (use) {
+          const r = await putOutlierOnBoard(it.lane, it.outlier.platform, it.outlier.post_id)
+          if (!r.ok) throw new Error(r.message)
+          picked = { ...it, id: r.id, saved: true }
+        }
+      } else if (it.ivan) await decideIdea(it.ivan, use ? 'approve' : 'reject', '')
+      else await decideClientIdea(it.id, use ? 'approved' : 'rejected')
+      if (use) {
+        picked = { ...picked, saved: true, generating: !it.outlier }
+        setSaved(s => { const list = [picked, ...s[it.lane].filter(i => i.id !== picked.id)]; writeSwr(`content-idea-picks:${it.lane}`, list); return { ...s, [it.lane]: list } })
+        toast.show({ message: 'Added ✓', action: { label: 'open', verb: 'open', run: () => { setSeat(it.lane); open(picked.id) } } })
+      } else {
+        setSkipped(s => { const next = { ...s, [it.lane]: [...s[it.lane], it.id] }; writeSwr('content-idea-skips-v1', next); return next })
+        toast.show({ message: 'Skipped.', ...(it.outlier ? { sub: 'Hidden on this device.' } : {}) })
+      }
+      banks[it.lane].refresh()
+    } catch (e) { setError(e instanceof Error ? e.message : 'The idea did not change.') }
+    finally { setBusy(null) }
+  }
+  return <div className={`cn-bestideas${phone ? ' cn-bestideas-phone' : ''}`}>
+    <div className="cn-client-switch" role="tablist" aria-label="Client">
+      {LANES.map(l => <button key={l} type="button" role="tab" aria-selected={seat === l} className={seat === l ? 'cn-on' : ''} data-verb="lane" data-lane={l} onClick={() => { setSeat(l); setSel(null); setBench(false); setError('') }}>{LANE_NAME[l]}</button>)}
     </div>
-  )
-}
-
-export function Ideas({ banks, phone }: { banks: IdeaBanks; phone: boolean }) {
-  const [sel, setSel] = useState<{ lane: Lane; id: string } | null>(null)
-  const [seat, setSeat] = useState<Lane>('ivan')
-  const [flt, setFlt] = useState<Record<Lane, FilterState>>({ ivan: {}, risedtc: {}, arch: {} })
-  const [pages, setPages] = useState<Record<Lane, number>>({ ivan: 1, risedtc: 1, arch: 1 })
-  const view = (l: Lane) => filtered(banks[l].items, l, flt[l])
-  const current = sel ? banks[sel.lane].items.find(i => i.id === sel.id) ?? null : null
-  const shown = current ?? view(seat)[0] ?? null
-  const pickSeat = (l: Lane) => { setSeat(l); setSel(null) }
-
-  const done = (lane: Lane) => (id: string) => {
-    const list = view(lane)
-    const at = list.findIndex(i => i.id === id)
-    const next = list[at + 1] ?? list[at - 1] ?? null
-    setSel(next ? { lane, id: next.id } : null)
-    banks[lane].refresh()
-  }
-
-  const channel = (l: Lane) => {
-    const b = banks[l]
-    const rows = view(l)
-    const upto = pages[l] * PAGE
-    const sortWord = b.scores.ok && b.scores.validated ? 'Outlier score first' : 'Highest score first'
-    const floorLine = personalFloorLine(b.chip.slots)
-    return (
-      <div className="cn-ch" key={l}>
-        {l === 'ivan' && (b.lm != null || !!b.unclassified) && (
-          <p className="cn-lmline">
-            {b.lm != null && <>{b.lm} lead-magnet idea{b.lm === 1 ? '' : 's'} decide{b.lm === 1 ? 's' : ''} in <a href={dHash('content', 'magnets')}>Magnets</a>, not here. </>}
-            {b.unclassified ? `${b.unclassified} with no content type are shown here rather than dropped.` : ''}
-          </p>
-        )}
-        {floorLine && (
-          <p className="cn-lmline cn-bd">{floorLine}: one of this week's reach posts is your own pick from the bank below, not an arm recommendation.</p>
-        )}
-        <Filters facets={b.facets} f={flt[l]} set={f => { setFlt(p => ({ ...p, [l]: f })); setPages(p => ({ ...p, [l]: 1 })) }} />
-        <div className="cn-sec"><span>{phone ? `${PLATE[l]}, ${sortWord.toLowerCase()}` : sortWord}</span><span>{Math.min(upto, rows.length)} of {rows.length} shown</span></div>
-        <div className="cn-iqs">
-          {b.error ? <Failed what={`${IDEA_OWNER[l]} ideas`} detail={b.error} onRetry={b.refresh} />
-            : b.loading && b.items.length === 0 ? <Skeleton lines={5} title={false} label="Reading ideas" />
-              : b.items.length === 0 ? <p className="cn-say">Nothing to decide. Every staged idea here has been approved or rejected.</p>
-                : rows.length === 0 ? <p className="cn-say">No idea matches these filters. <button type="button" onClick={() => setFlt(p => ({ ...p, [l]: {} }))}>Clear the filters</button></p>
-                  : rows.slice(0, upto).map(it => {
-                    const on = shown?.id === it.id
-                    return (
-                      <div key={it.id}>
-                        <Row it={it} on={on} pick={() => setSel({ lane: l, id: it.id })} scores={b.scores} chip={b.chip} />
-                        {ideaOutlierSource(it) && <div className="cn-cbrow" data-idea-id={it.id}><SourceBadge src={ideaOutlierSource(it)} /></div>}
-                        {phone && on && <IdeaDetail it={it} onDone={done(l)} compact scores={b.scores} />}
-                      </div>
-                    )
-                  })}
-          {rows.length > upto && (
-            <button type="button" className="cn-pagemore" data-verb="more" onClick={() => setPages(p => ({ ...p, [l]: p[l] + 1 }))}>
-              Show {Math.min(PAGE, rows.length - upto)} more of {rows.length - upto}
-            </button>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  if (phone) {
-    return (
-      <div>
-        <LaneTabs banks={banks} seat={seat} pick={pickSeat} />
-        {channel(seat)}
-      </div>
-    )
-  }
-  return (
-    <div className="cn-ideas">
-      <LaneTabs banks={banks} seat={seat} pick={pickSeat} />
-      {channel(seat)}
-      {shown ? <IdeaDetail key={shown.id} it={shown} onDone={done(shown.lane)} scores={banks[shown.lane].scores} /> : <div className="cn-idm"><p className="cn-say">Pick an idea to read it.</p></div>}
-    </div>
-  )
+    <p className="cn-best-caption">{bench ? 'On the bench' : 'Best 5'} <span>· proof × freshness</span></p>
+    {error && <p className="cn-say cn-bad" role="alert">{error}</p>}
+    {b.error && <Failed what="Ideas" detail={b.error} onRetry={b.refresh} />}
+    {b.loading && !rows.length ? <Skeleton lines={5} title={false} label="Reading ideas" />
+      : !rows.length ? !b.error && <p className="cn-say">No fresh ideas waiting.</p>
+      : <div className="cn-best-list">{shown.map(it => <article key={it.id} className={`cn-best-card${it.saved ? ' cn-best-added' : ''}`} data-idea-id={it.id}>
+        <button type="button" className="cn-best-open" data-verb="open" onClick={() => setSel(sel === it.id ? null : it.id)} aria-expanded={sel === it.id}>
+          <span className="cn-best-title">{it.title}</span>
+          <span className="cn-best-proof">{it.proof || it.src || 'Idea bank'}</span>
+        </button>
+        <div className="cn-best-meta"><IdeaTags src={it.src} unvalidated={false} unclassified={it.unclassified}/><time>{it.age}</time></div>
+        {ideaOutlierSource(it) && <div className="cn-cbrow" data-idea-id={it.id}><SourceBadge src={ideaOutlierSource(it)}/></div>}
+        <div className="cn-best-acts">{it.saved ? <button type="button" className="cn-best-use" onClick={() => open(it.id)}>Added ✓ · open</button> : <>
+          <button type="button" className="cn-best-use" data-verb="idea-use" disabled={!!busy || !!it.ivan && !ideaDecidable(it.ivan)} onClick={() => void run(it, true)}>{busy === it.id ? 'Working…' : 'Use'}</button>
+          <button type="button" data-verb="idea-skip" disabled={!!busy} onClick={() => void run(it, false)}>Skip</button>
+        </>}</div>
+        {current?.id === it.id && <IdeaDetail it={it} onDone={done} compact/>}
+      </article>)}</div>}
+    <details className="cn-idea-insights" onToggle={e => setInsights(e.currentTarget.open)}><summary>Insights & evidence</summary>{insights && <Suspense fallback={<Skeleton lines={3} label="Reading insights"/>}><Insights lane={seat} phone={phone}/></Suspense>}</details>
+    {rows.length > 5 && <button type="button" className="cn-bench-link" data-verb="bench" onClick={() => { setBench(v => !v); setSel(null) }}>{bench ? 'Back to best 5' : 'See the bench'}</button>}
+  </div>
 }

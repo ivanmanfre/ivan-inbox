@@ -14,7 +14,8 @@ import { FEED, LANE_NAME, dayLabel, isScheduled, landingDay, pickDays, titleOf, 
 // taken day to the next free weekday. The panel IS the confirm and says the
 // consequence in today's words (moveConfirmCopy); the receipt names the day the
 // database stored, never the day we asked for.
-export function MovePanel({ r, lane, first, seatRows, phone, onClose, onDone, onLand, initialPick }: {
+export function MovePanel({ r, lane, first, seatRows, phone, onClose, onDone, onLand, initialPick, quickCommit = false }: {
+  quickCommit?: boolean
   r: ContentDraft; lane: Lane; first: string; seatRows: ContentDraft[]; phone: boolean
   onClose: () => void; onDone: () => void; onLand?: (key: string | null) => void
   /** A day dropped on (drag) or asked for; any date, not only the fourteen shown. */
@@ -37,11 +38,11 @@ export function MovePanel({ r, lane, first, seatRows, phone, onClose, onDone, on
   useEffect(() => { onLand?.(land) }, [land, onLand])
   const copy = moveConfirmCopy(r, land ? dayLabel(land) : 'the day you pick', time)
 
-  const run = async () => {
-    if (!pick || busy) return
+  const run = async (day: string | null = pick) => {
+    if (!day || busy) return
     setBusy(true); setErr('')
     try {
-      const stored = await setScheduleDateAt(r.id, publishAtForDay(r.scheduled_at, pick))
+      const stored = await setScheduleDateAt(r.id, publishAtForDay(r.scheduled_at, day))
       toast.show({ message: `Moved to ${warsawDayTime(stored)} Warsaw.`, sub: 'That is the day the database stored.' })
       onDone(); onClose()
     } catch (e) {
@@ -55,7 +56,7 @@ export function MovePanel({ r, lane, first, seatRows, phone, onClose, onDone, on
       {days.map(d => {
         const cls = [d.weekend ? 'cn-we' : '', d.key === from ? 'cn-from' : '', pick === d.key && land !== d.key ? 'cn-aim' : '', land === d.key ? 'cn-land' : ''].filter(Boolean).join(' ')
         return (
-          <button key={d.key} type="button" role="option" aria-selected={pick === d.key} className={cls} onClick={() => setPick(d.key)}>
+          <button key={d.key} type="button" role="option" aria-selected={pick === d.key} className={cls} disabled={busy} onClick={() => { setPick(d.key); if (quickCommit) void run(d.key) }}>
             <small>{d.dow}</small><b>{d.n}</b>
             <span>{d.key === from ? 'this post' : taken.get(d.key) ?? (d.weekend ? 'weekend' : '')}</span>
           </button>
@@ -77,14 +78,14 @@ export function MovePanel({ r, lane, first, seatRows, phone, onClose, onDone, on
   const keys = (
     <>
       <Key verb="cancel" onClick={onClose} disabled={busy}>Cancel</Key>
-      <Key primary verb="move-day" onClick={run} disabled={!pick || busy} sub={land ? `${dayLabel(land)} · ${time}` : 'pick a day'}>{busy ? 'Moving…' : copy.confirmText}</Key>
+      <Key primary verb="move-day" onClick={() => { void run() }} disabled={!pick || busy} sub={land ? `${dayLabel(land)} · ${time}` : 'pick a day'}>{busy ? 'Moving…' : copy.confirmText}</Key>
     </>
   )
 
   if (phone) {
     return (
       <Sheet open onClose={onClose} title={title} sub={`${titleOf(r)} · ${LANE_NAME[lane]} · ${FEED[lane]} · ${time} kept`}>
-        {picker}{bump}
+        {quickCommit && <p className="cn-bump">Tap a day to move it. {copy.message}</p>}{picker}{bump}
         <p className="cn-bump">{copy.message}</p>
         {err && <p className="cn-say cn-bad" role="alert">{err}</p>}
         <div className="cn-acts">{keys}</div>
@@ -102,7 +103,7 @@ export function MovePanel({ r, lane, first, seatRows, phone, onClose, onDone, on
       </div>
       <div>
         <small className="cn-cap">Pick a day · {LANE_NAME[lane]} · its time of day, {time} Warsaw, is kept</small>
-        {picker}{bump}
+        {quickCommit && <p className="cn-bump">Tap a day to move it. {copy.message}</p>}{picker}{bump}
       </div>
       <div>
         <h3>{copy.title}</h3>

@@ -13,7 +13,7 @@
 // Arch cards: no date control, no status action, its one key is Open. The open
 // post and the Planner keep every Arch control they had before.
 import { canMoveDate } from '../../lib/calendarItems'
-import { normalizeImageUrls, singlePhoto, stageOfLane, type ContentDraft } from '../../lib/content'
+import { isStuckGenerating, normalizeImageUrls, singlePhoto, stageOfLane, type ContentDraft } from '../../lib/content'
 import { warsawDay, warsawDm, warsawDow, warsawHm } from '../ui/time'
 import { DAY_MS, WAIT_DAYS, imgOf, splitTitleTag, titleOf, type Lane } from './model'
 
@@ -267,4 +267,41 @@ export function buildWeek(rows: readonly ContentDraft[], o: {
   for (const g of groups) for (const c of g.cards) lanes.set(c.r.id, c.lane)
   for (const c of older) lanes.set(c.r.id, c.lane)
   return { groups, older, ids, lanes, perLane, toDecide }
+}
+
+/** Now holds only unfinished work. The planner owns already armed and published posts. */
+export function buildNow(rows: readonly ContentDraft[], o: { now: number; show?: Show; pending?: Pending; blocks?: Map<string, string> | null }): Week {
+  const { now, show = 'all', pending, blocks } = o
+  const needsFix: WeekCard[] = [], drafts: WeekCard[] = []
+  const perLane: Record<Lane, number> = { ivan: 0, risedtc: 0, arch: 0 }
+  const toDecide: Record<Lane, number> = { ivan: 0, risedtc: 0, arch: 0 }
+  const seen = new Set<string>()
+  for (const r of rows) {
+    const lane = laneOfRow(r)
+    if (!lane || seen.has(r.id) || pending?.has(r.id) || r.published_at || r.status === 'published') continue
+    seen.add(r.id)
+    const stage = stageOfLane(r, lane, now)
+    const stalled = stage === 'generating' && isStuckGenerating(r, now)
+    const bad = r.status === 'error' || stage === 'stuck' || stalled || !!blocks?.has(r.id)
+    const needsDraft = lane === 'ivan' ? r.status === 'review' || r.status === 'approved' : r.status === 'review' && r.board_visible !== true
+    if (!bad && !needsDraft) continue
+    const c = cardOf(r, lane, now, stage === 'stuck', blocks)
+    if (stalled) c.flags.unshift({ key: 'stalled', text: 'Generation stalled', tone: 'warn' })
+    if (bad) { c.primary = 'open'; c.canDate = false }
+    perLane[lane]++
+    if (c.primary !== 'open') toDecide[lane]++
+    if (show !== 'all' && show !== lane) continue
+    ;(bad ? needsFix : drafts).push(c)
+  }
+  const order = (a: WeekCard, b: WeekCard) => {
+    if (a.r.scheduled_at && !b.r.scheduled_at) return -1
+    if (!a.r.scheduled_at && b.r.scheduled_at) return 1
+    return a.r.scheduled_at && b.r.scheduled_at ? byAt(a, b) : byNewest(a, b) || LANE_ORDER[a.lane] - LANE_ORDER[b.lane]
+  }
+  needsFix.sort(order); drafts.sort(order)
+  const groups: WeekGroup[] = []
+  if (needsFix.length) groups.push({ key: 'fix', kind: 'review', label: 'Needs a fix', date: null, cards: needsFix })
+  if (drafts.length) groups.push({ key: 'drafts', kind: 'review', label: 'Drafts', date: null, cards: drafts })
+  const cards = [...needsFix, ...drafts]
+  return { groups, older: [], ids: cards.map(c => c.r.id), lanes: new Map(cards.map(c => [c.r.id, c.lane])), perLane, toDecide }
 }

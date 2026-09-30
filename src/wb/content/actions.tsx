@@ -95,7 +95,8 @@ export function ReviewActions({ id, onDone, demoteApprove }: {
 
 /** RETRY, ON THE ROW. The same regeneration the takeover fires, copy only,
     behind ONE confirm, on every lane whose generator is live. */
-export function RetryDraft({ d, lane, onDone }: {
+export function RetryDraft({ d, lane, onDone, label = 'Retry' }: {
+  label?: string
   d: ContentDraft
   lane: ContentLane
   onDone: () => void
@@ -162,7 +163,7 @@ export function RetryDraft({ d, lane, onDone }: {
           : 'Runs the pipeline again on this one draft. Costs a generation.'}
         onClick={e => { e.stopPropagation(); void run() }}
       >
-        {busy ? 'Firing…' : 'Retry'}
+        {busy ? 'Firing…' : label}
       </Button>
       {note && <span className="a-ct-msg">{note}</span>}
       {err && <span className="a-ct-msg a-ct-err">{err}</span>}

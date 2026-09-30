@@ -4,19 +4,41 @@
 // and draft, the stuck post) so the wall and the month draw every kind of post
 // today's month grid draws. Days are re-keyed to Warsaw, the wall's clock.
 import {
-  buildCalendarItems, buildCalendarRail, itemDayISO,
+  bodyKey, buildCalendarItems, buildCalendarRail, itemDayISO, queueDraftId, queueOnlyItems,
   type CalendarItem, type CalendarRail,
 } from '../../lib/calendarItems'
 import type { ContentDraft, ScheduledQueueRow } from '../../lib/content'
 import { warsawDay, warsawHm } from '../ui/time'
 import { DAY_MS, type Lane } from './model'
 
-export type PlanItem = CalendarItem & { lane: Lane }
+export type PlanItem = CalendarItem & { lane: Lane; unpublishId?: string | null; postedUrl?: string | null }
 
 /** Every dated post of a seat (Ivan's also carries the publish queue), keyed by its Warsaw day. */
 export function seatItems(rows: ContentDraft[], lane: Lane, queue: ScheduledQueueRow[] | null, now: number = Date.now()): PlanItem[] {
-  return buildCalendarItems(rows, lane === 'ivan' ? queue ?? [] : [], now)
-    .map(it => ({ ...it, lane, day: warsawDay(itemDayISO(it.at, it.postedAt)) }))
+  const items = buildCalendarItems(rows, lane === 'ivan' ? queue ?? [] : [], now)
+    .map(it => {
+      const draft = it.source === 'draft' ? rows.find(r => r.id === it.id) : null
+      const posted = lane === 'ivan' && it.stage === 'published' ? (queue ?? []).filter(q => q.status === 'posted' && !!q.unipile_share_url) : []
+      const exact = posted.find(q => it.source === 'queue' ? q.id === it.id : queueDraftId(q) === it.id)
+      const bodyMatches = draft && bodyKey(draft.post_body) ? posted.filter(q => bodyKey(q.post_text) === bodyKey(draft.post_body)) : []
+      const q = exact ?? (bodyMatches.length === 1 ? bodyMatches[0] : null)
+      const postedAt = q?.posted_at && Number.isFinite(Date.parse(q.posted_at)) ? q.posted_at : it.postedAt
+      return { ...it, lane, postedAt, day: warsawDay(itemDayISO(it.at, postedAt)), unpublishId: q?.id ?? null, postedUrl: q?.unipile_share_url ?? null }
+    })
+  // The shared calendar's instant dedupe can hide a different historical post.
+  // Keep every removable publisher row without guessing that it is the draft at that time.
+  if (lane === 'ivan') {
+    const represented = new Set(items.map(it => it.unpublishId).filter(Boolean))
+    for (const q of queue ?? []) {
+      if (q.status !== 'posted' || !q.unipile_share_url || represented.has(q.id)) continue
+      const presentation = !q.scheduled_at && q.posted_at && Number.isFinite(Date.parse(q.posted_at)) ? { ...q, scheduled_at: q.posted_at } : q
+      for (const it of queueOnlyItems([], [presentation], now)) {
+        items.push({ ...it, lane, day: warsawDay(itemDayISO(it.at, it.postedAt)), unpublishId: q.id, postedUrl: q.unipile_share_url })
+        represented.add(q.id)
+      }
+    }
+  }
+  return items
 }
 
 export function byDay(items: PlanItem[]): Map<string, PlanItem[]> {

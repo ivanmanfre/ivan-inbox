@@ -233,9 +233,9 @@ function Folds({ lane, total }: { lane: Lane; total: number }) {
   )
 }
 
-export function Inputs({ lane, setLane, layout, reads, refresh, phone }: {
+export function Inputs({ lane, setLane, layout, reads, refresh, phone, insightsOnly }: {
   lane: Lane; setLane: (l: Lane) => void; layout: InputsLayout
-  reads: Record<Lane, InputsRead | null>; refresh: (l: Lane) => void; phone?: boolean
+  reads: Record<Lane, InputsRead | null>; refresh: (l: Lane) => void; phone?: boolean; insightsOnly?: boolean
 }) {
   const toast = useToast()
   const [use, setUse] = useState<UseSt>({})
@@ -267,7 +267,7 @@ export function Inputs({ lane, setLane, layout, reads, refresh, phone }: {
 
   return (
     <div className={`in in-${layout}`} data-inputs-view data-client={lane} data-layout={layout}>
-      <section className="in-block in-top" data-inputs-top>
+      {!insightsOnly && <section className="in-block in-top" data-inputs-top>
         <div className="in-h in-h-top">
           <span>Top outliers</span>
           <SeatSwitch lane={lane} setLane={setLane} reads={reads} />
@@ -281,9 +281,17 @@ export function Inputs({ lane, setLane, layout, reads, refresh, phone }: {
                 <ol className="in-list">{r.data.top.map(o => <ListRow key={o.platform + o.post_id} o={o} lane={lane} use={use} onUse={onUse} />)}</ol>
               )}
         {data && <p className="in-foot">{note}</p>}
-      </section>
+      </section>}
+      {insightsOnly && !r && <Skeleton lines={3} label="Reading insights"/>}
+      {insightsOnly && r?.kind === 'failed' && <Failed what="Insights" detail={r.message} onRetry={() => refresh(lane)}/>}
       {data && <Buyers buyers={data.buyers} lane={lane} compact={layout === 'cards' || phone} />}
       <Folds lane={lane} total={data?.counts.outliers ?? 0} />
     </div>
   )
+}
+
+/** The existing buyer and evidence readers, folded under Ideas. */
+export function IdeaInsights({ lane, phone }: { lane: Lane; phone?: boolean }) {
+  const { reads, refresh } = useInputs()
+  return <Inputs lane={lane} setLane={() => {}} layout="list" reads={reads} refresh={refresh} phone={phone} insightsOnly/>
 }

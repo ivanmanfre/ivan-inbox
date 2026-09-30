@@ -290,3 +290,7 @@ html[data-density='comfortable'] .d-app .op-tk{padding-top:13px;padding-bottom:1
 html[data-density='comfortable'] .d-app .dl-cp{padding-top:12px;padding-bottom:12px}
 html[data-density='comfortable'] .d-app .dl-lgr .dl-lg,html[data-density='comfortable'] .d-app .dl-msg{padding-top:11px;padding-bottom:11px}
 html[data-density='comfortable'] .d-app .gt-row{padding-top:9px;padding-bottom:9px}
+
+/* Content has an attention mark, never a per-client numeric badge. */
+.d-content-attention{display:inline-block;margin-left:auto;width:6px;height:6px;background:var(--warn);border-radius:50%}
+.d-dock .d-content-attention{margin-left:0}

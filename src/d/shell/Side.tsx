@@ -27,6 +27,7 @@ export function NavLineView({ item }: { item: NavItem }) {
 export function NavCount({ item }: { item: NavItem }) {
   const l = item.line
   if (!l) return null
+  if (item.id === 'content') return l.kind === 'seats' && SEATS.some(s => (l.numbers[s] ?? 0) > 0) ? <i className="d-content-attention" aria-label="Content needs a tap" /> : null
   if (l.kind === 'text') return <span className="d-nct" title={l.label}>{l.text}</span>
   const cell = (s: Seat) => {
     const n = l.numbers[s]
@@ -87,7 +88,7 @@ export function WorkflowsKey({ onOpen }: { onOpen?: () => void }) {
 // Content opens into its pages in the rail while you are on it, as the old app's rail did (Ivan 09-28:
 // "a collapsible navigation bar on the left like we had on the old version"). The rest of Content's
 // places stay on the page's own row.
-export const RAIL_SUBS: readonly Sub[] = ['planner', 'review', 'magnets', 'strategy', 'styles']
+export const RAIL_SUBS: readonly Sub[] = ['now', 'ideas', 'results']
 
 function PlaceLink({ i, on, min }: { i: NavItem; on: boolean; min: boolean }) {
   return (
@@ -111,7 +112,7 @@ function ContentGroup({ i, min }: { i: NavItem; min: boolean }) {
         <div className="d-navsub">
           {RAIL_SUBS.map(s => {
             const on = sub === s
-            return <a key={s} href={dHash('content', s === 'planner' ? null : s)} className={on ? 'd-on' : undefined} aria-current={on ? 'page' : undefined}>{SUB_LABEL[s]}</a>
+            return <a key={s} href={dHash('content', s)} className={on ? 'd-on' : undefined} aria-current={on ? 'page' : undefined}>{SUB_LABEL[s]}</a>
           })}
         </div>
       )}

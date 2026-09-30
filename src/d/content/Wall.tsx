@@ -1,3 +1,4 @@
+import { Unpublish } from './Unpublish'
 import { Fragment, type CSSProperties, type DragEvent } from 'react'
 import type { ContentDraft } from '../../lib/content'
 import { warsawDay, warsawDm, warsawDow } from '../ui/time'
@@ -123,6 +124,7 @@ export function Wall({ data, items, days, stuck, onOpen, onMove, onArm, onDay, g
                 <div className={cls} {...drop}>
                   <Card r={r} it={it} lane={lane} onOpen={() => onOpen(it.id, lane)} />
                   <span className="cn-cellk">
+                    {it.unpublishId && <Unpublish id={it.unpublishId} onDone={data.refreshAll} />}
                     {it.armable && <button type="button" className="cn-mini" data-verb="schedule" onClick={() => onArm(it.id)}>Arm it</button>}
                     {it.movable && it.source === 'draft' && lift !== it.id && <button type="button" className="cn-mini" data-verb="move-day" aria-label={`Move ${it.title} to another day`} title="Move to another day" onClick={() => onMove(it.id, lane)}>⇄</button>}
                   </span>

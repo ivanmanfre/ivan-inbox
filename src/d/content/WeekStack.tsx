@@ -1,4 +1,6 @@
 import { useCallback, useState } from 'react'
+import { ConfirmProvider } from '../../wb/chrome/ConfirmSheet'
+import { RetryDraft } from '../../wb/content/actions'
 import { setBoardVisible, type ContentDraft } from '../../lib/content'
 import { useFrameMaybe } from '../shell/frame'
 import { useDConfirm } from '../ui/confirm'
@@ -35,7 +37,8 @@ const QUICK: [Quick, string, (c: WeekCard) => boolean][] = [
 
 const SHOW_LABEL: Record<Show, string> = { all: 'All', ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch' }
 
-export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onChanged, firstDay, seatRows }: {
+export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onChanged, firstDay, seatRows, nowView = false }: {
+  nowView?: boolean
   week: WeekModel
   read: WeekRead
   show: Show
@@ -138,19 +141,19 @@ export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onCh
   const empty = groups.length === 0 && older.length === 0
   const cards = (list: WeekCard[], dayed: boolean) => list.map(c => (
     <Card key={c.r.id} c={c} when={whenOf(c, now, dayed)} open={c.r.id === openId} busy={busy === c.r.id}
-      onOpen={() => onOpen(c.r.id, c.lane)} onKey={() => act(c)} onDate={() => setMoving(c)} />
+      nowView={nowView} onChanged={onChanged} onOpen={() => onOpen(c.r.id, c.lane)} onKey={() => act(c)} onDate={() => setMoving(c)} />
   ))
 
   return (
-    <section className="cn-wk2" aria-label="This week">
+    <section className="cn-wk2" aria-label={nowView ? "Needs your tap" : "This week"}>
       <div className="cn-wk2-chips" role="tablist" aria-label="Seat">
         {SHOWS.map(s => (
           <button key={s} type="button" role="tab" aria-selected={s === show} data-verb={`show-${s}`} onClick={() => setShow(s)}>
-            {SHOW_LABEL[s]}{s !== 'all' && <b>{week.perLane[s]}</b>}
+            {SHOW_LABEL[s]}{!nowView && s !== 'all' && <b>{week.perLane[s]}</b>}
           </button>
         ))}
       </div>
-      {all.length > 0 && (
+      {!nowView && all.length > 0 && (
         <div className="cn-wk2-quick" role="tablist" aria-label="Filter the stack">
           {QUICK.filter(([k]) => k === 'all' || k === quick || qn[k] > 0).map(([k, label]) => (
             <button key={k} type="button" role="tab" aria-selected={k === quick} data-verb={`quick-${k}`} onClick={() => setQuick(k)}>
@@ -166,12 +169,12 @@ export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onCh
       {read.source === 'none' && !read.settled ? <Skeleton lines={6} title={false} label="Reading this week" />
         : read.source === 'none' && read.error ? <Failed what="this week's posts" detail={read.error} onRetry={read.refresh} />
           : empty ? (
-            <p className="cn-wk2-empty">{quick !== 'all' ? 'Nothing matches this filter.' : show === 'all' ? 'Nothing this week, and nothing waits in review.' : `Nothing of ${SHOW_LABEL[show]}’s this week, and nothing in review.`}</p>
+            <p className="cn-wk2-empty">{quick !== 'all' ? 'Nothing matches this filter.' : show === 'all' ? (nowView ? "No drafts need you." : 'Nothing this week, and nothing waits in review.') : `Nothing of ${SHOW_LABEL[show]}’s this week, and nothing in review.`}</p>
           ) : (
             <>
               {groups.map(g => (
-                <section key={g.key} className={`cn-wk2-g cn-wk2-${g.kind}`} aria-label={`${g.label}${g.date ? `, ${g.date}` : ''}`}>
-                  <h2 className="cn-wk2-h"><b>{g.label}</b>{g.date && <span>{g.kind === 'review' ? g.date : g.date.replace(/^\w+ /, '')}</span>}<i>{g.cards.length}</i></h2>
+                <section key={g.key} className={`cn-wk2-g cn-wk2-${g.kind}${g.key === 'fix' ? ' cn-needs-fix' : ''}`} aria-label={`${g.label}${g.date ? `, ${g.date}` : ''}`}>
+                  <h2 className="cn-wk2-h"><b>{g.label}</b>{g.date && <span>{g.kind === 'review' ? g.date : g.date.replace(/^\w+ /, '')}</span>}{!nowView && <i>{g.cards.length}</i>}</h2>
                   {cards(g.cards, g.kind !== 'review')}
                 </section>
               ))}
@@ -187,7 +190,7 @@ export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onCh
             </>
           )}
       {moving && (
-        <MovePanel key={moving.r.id} r={moving.r} lane={moving.lane} first={firstDay} seatRows={seatRows(moving.lane)} phone
+        <MovePanel key={moving.r.id} r={moving.r} lane={moving.lane} first={firstDay} seatRows={seatRows(moving.lane)} phone quickCommit={nowView}
           onClose={() => setMoving(null)} onDone={onChanged} />
       )}
     </section>
@@ -213,7 +216,9 @@ function whenOf(c: WeekCard, now: number, dayed: boolean): string {
   return dayed && !c.overdue ? hm : `${dayLabel(warsawDay(at))}, ${hm}`
 }
 
-function Card({ c, when, open, busy, onOpen, onKey, onDate }: {
+function Card({ c, when, open, busy, onOpen, onKey, onDate, nowView, onChanged }: {
+  nowView: boolean
+  onChanged: () => void
   c: WeekCard; when: string; open: boolean; busy: boolean
   onOpen: () => void; onKey: () => void; onDate: () => void
 }) {
@@ -229,7 +234,7 @@ function Card({ c, when, open, busy, onOpen, onKey, onDate }: {
       <div className="cn-wc-meta">
         <span className={`cn-wc-lane cn-wc-l-${c.lane}`}>{LANE_NAME[c.lane]}</span>
         <span className="cn-wc-when">{when}</span>
-        {c.flags.map(f => <span key={f.key} className={`cn-wc-flag cn-wc-${f.tone}`} title={f.title}>{f.text}</span>)}
+        {c.flags.filter(f => f.key !== 'qa').map(f => <span key={f.key} className={`cn-wc-flag cn-wc-${f.tone}`} title={f.title}>{f.text}</span>)}
       </div>
       <div className="cn-wc-main" onClick={onOpen}>
         <div className="cn-wc-text">
@@ -253,7 +258,9 @@ function Card({ c, when, open, busy, onOpen, onKey, onDate }: {
             {c.r.scheduled_at ? 'Move date' : 'Add a date'}
           </button>
         )}
+        {nowView && c.lane !== 'arch' && c.flags.some(f => ['blocked', 'stuck', 'stalled', 'error'].includes(f.key)) && <ConfirmProvider><RetryDraft d={c.r} lane={c.lane} onDone={onChanged} label="Fix" /></ConfirmProvider>}
         <span className="cn-grow" />
+        {nowView && decision && <button type="button" className="cn-wc-date" data-verb="card-open" onClick={onOpen}>Open</button>}
         <button type="button" className={`cn-wc-key${decision ? ' cn-wc-key-d' : ''}`} data-verb={`card-${c.primary}`} disabled={busy} onClick={onKey}>
           {busy ? 'Working…' : PRIMARY_LABEL[c.primary]}
         </button>

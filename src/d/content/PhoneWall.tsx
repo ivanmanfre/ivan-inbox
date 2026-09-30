@@ -1,3 +1,4 @@
+import { Unpublish } from './Unpublish'
 import { Fragment } from 'react'
 import { warsawDm, warsawDow } from '../ui/time'
 import { FEED, LANES, LANE_NAME, nextScheduled, publishedCount, scheduledIn, type Lane, type WallDay } from './model'
@@ -56,6 +57,7 @@ export function PhoneWall({ data, items, days, stuck, onOpen, onMove, onArm, now
                     <div className="cn-dd"><b>{warsawDow(it.postedAt ?? it.at)}</b> {warsawDm(it.postedAt ?? it.at)}</div>
                     <Card r={r} it={it} lane={l} onOpen={() => onOpen(it.id, l)} />
                     <div className="cn-ia">
+                      {it.unpublishId && <Unpublish id={it.unpublishId} onDone={data.refreshAll} />}
                       {it.armable && <button type="button" className="cn-mini" data-verb="schedule" onClick={() => onArm(it.id)}>Arm it</button>}
                       {it.movable && it.source === 'draft' && <button type="button" className="cn-mini" data-verb="move-day" aria-label={`Move ${it.title}`} onClick={() => onMove(it.id, l)}>Move</button>}
                     </div>

@@ -1,0 +1,54 @@
+/* Content keeps the dark ledger and existing type. Only the hierarchy changes. */
+.cn-now-tabs { gap: 4px; }
+.cn-now-tabs > a { display: flex; align-items: center; gap: 8px; }
+.cn-more-key { min-width: 44px; min-height: 44px; font: inherit; font-size: 22px; color: var(--t2); background: transparent; border: 0; cursor: pointer; }
+.cn-attention { width: 6px; height: 6px; flex: 0 0 6px; background: var(--warn); border-radius: 50%; }
+.cn-now-tools { display: flex; align-items: center; gap: 20px; padding: 14px 16px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.cn-now-tools a, .cn-quiet-link { color: var(--t2); text-decoration: none; }
+.cn-now-tools a:first-child { color: var(--t1); }
+.cn-now-tools .cn-planv { margin-left: auto; }
+.cn-needs-fix .cn-wc { border-left: 3px solid var(--warn); background: color-mix(in srgb, var(--warn) 5%, var(--p2)); }
+.cn-needs-fix .cn-wk2-h b { color: var(--warn); }
+.cn-needs-fix .cn-wc-key { color: var(--warn); border-color: var(--warn); }
+.cn-wc-flag[title] { cursor: help; }
+.cn-magnet-ready { margin: 16px; padding: 16px; display: flex; flex-direction: column; gap: 8px; background: var(--p2); border: 1px solid var(--line); color: var(--t1); text-decoration: none; }
+.cn-magnet-ready small { color: var(--t2); font-size: 12px; }
+.cn-magnet-ready b { font-weight: 500; }
+.cn-week-strip { padding: 20px 16px; border-top: 1px solid var(--line); }
+.cn-week-strip-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; font-size: 13px; }
+.cn-week-strip-head b { font-weight: 500; }
+.cn-week-strip-head a { color: var(--t2); text-decoration: none; }
+.cn-week-strip-days { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.cn-week-strip-days a { min-width: 0; display: flex; flex-direction: column; gap: 7px; padding: 10px 6px; border: 1px solid var(--line); color: var(--t2); text-decoration: none; font-size: 11px; text-align: center; }
+.cn-week-strip-days b { color: var(--t1); font-size: 12px; font-weight: 500; }
+.cn-week-strip-days small { font-size: 11px; }
+.cn-now-failed { padding: 12px 16px; color: var(--warn); font-size: 13px; }
+.cn-now-failed button { color: inherit; background: transparent; border: 0; text-decoration: underline; min-height: 44px; }
+.cn-results { max-width: 1000px; }
+.cn-results-verdict { margin: 0; padding: 16px; color: var(--t1); font-size: 14px; line-height: 1.5; }
+.cn-result-section { padding: 10px 16px 20px; }
+.cn-result-section h2 { color: var(--t2); font: 500 12px var(--m); margin: 0 0 12px; }
+.cn-result-card { border-top: 1px solid var(--line); padding: 16px 0; }
+.cn-result-card small { color: var(--t2); font-size: 12px; }
+.cn-result-card h3 { margin: 7px 0; font-size: 17px; font-weight: 500; line-height: 1.4; overflow-wrap: anywhere; }
+.cn-result-card p { color: var(--t2); font-size: 13px; line-height: 1.5; margin: 7px 0; }
+.cn-result-card a { display: inline-flex; align-items: center; min-height: 44px; color: var(--t1); font-size: 13px; }
+.cn-results .cn-quiet-link { display: inline-flex; align-items: center; min-height: 44px; margin: 8px 16px 24px; font-size: 13px; }
+@media (max-width: 767px) {
+  .cn-now-tabs > a { flex: 1; justify-content: center; padding-inline: 12px; min-height: 44px; border-radius: 22px; }
+  .cn-ia .cn-mini { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  .cn-now-tabs > .cn-grow { display: none; }
+  .cn-now-tools { padding-block: 10px; }
+  .cn-now-tools > a { display: inline-flex; align-items: center; min-height: 44px; }
+  .cn-week-strip-days { gap: 4px; }
+  .cn-week-strip-days a { padding-inline: 2px; }
+}
+
+.d-desktop .cn-results { overflow-y: auto; min-height: 0; }
+.cn-now-tabs .cn-more-key { color: var(--t2); }
+
+.cn-unpublish{min-height:44px;padding:0 6px;color:var(--warn);font:500 11px var(--f);white-space:nowrap}
+
+.cn-needs-fix .cn-wc-acts .ds-btn{min-height:44px;min-width:64px;padding:0 12px;border:1px solid var(--warn);border-radius:22px;color:var(--warn);font:500 13px var(--f)}
+
+.d-phone .cn-chip2 [data-verb="posted-actions"]{min-height:44px;min-width:44px;width:calc(100% + 12px);margin-inline:-6px;padding-inline:5px;text-align:left}

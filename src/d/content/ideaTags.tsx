@@ -45,19 +45,13 @@ export function ScorePill({ score, big }: { score: number | null; big?: boolean 
 
 /** The row's tag strip: source, format, outlier lift, unclassified. */
 export function IdeaTags({ src, row, unvalidated, unclassified }: { src: string; row?: IdeaScoreRow; unvalidated: boolean; unclassified?: boolean }) {
-  const bare = src.replace(/^From /, '')
+  const bare = src.replace(/^From /, '').replace(/\s*\(personal pass[^)]*\)$/i, '')
   const name = bare.charAt(0).toUpperCase() + bare.slice(1)
-  const ol = row?.score ?? null
+  void unvalidated
   return (
     <span className="cn-tags">
       {name && <span className={`cn-tag cn-h-${sourceHue(src)}`} title={src}>{name}</span>}
       {row?.recommended_format && <span className="cn-tag cn-h-grey">{label(row.recommended_format)}</span>}
-      {ol != null && (
-        <span className={`cn-tag cn-ot cn-t-${outlierTier(ol)}${unvalidated ? ' cn-unv' : ''}`}
-          title={unvalidated ? 'Outlier score, not yet validated for this bank' : 'Outlier score (1.0 = baseline)'}>
-          Outlier {ol.toFixed(2)}
-        </span>
-      )}
       {unclassified && <span className="cn-tag cn-h-coral">no content type</span>}
     </span>
   )

@@ -116,7 +116,8 @@ describe('SourceBadge inside the real Ideas list row + IdeaDetail pane (fixture 
     expect(document.querySelector('.cn-cbrow[data-idea-id="i3"]')).toBeNull()
     expect(document.querySelector('.cn-cbrow[data-idea-id="i4"]')).toBeNull()
 
-    // Detail pane: i1 is the default-shown idea (first item, ivan seat) -> badge inside [data-idea-detail].
+    // Detail opens in one tap from the new best-five row.
+    fireEvent.click(screen.getByText('Idea 1'))
     const detail1 = document.querySelector('[data-idea-detail="i1"]')!
     expect(detail1.querySelector('a[data-source-badge="cb-outlier"]')).toBeTruthy()
 

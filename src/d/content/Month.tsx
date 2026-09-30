@@ -1,3 +1,4 @@
+import { Unpublish } from './Unpublish'
 import { useMemo, useState, type DragEvent } from 'react'
 import { monthLabel, monthWeeks, shiftMonth } from '../../lib/calendarItems'
 import type { ContentDraft } from '../../lib/content'
@@ -16,9 +17,9 @@ import { DRAG_MIME, dropZone, type WallProps } from './Wall'
 const RAIL_KEY = 'ct-cal-rail'
 const VISIBLE = 2
 
-export function Month({ lane, setLane, items, rows, onOpen, onMove, onArm, onDay, now = Date.now() }: {
+export function Month({ lane, setLane, items, rows, onOpen, onMove, onArm, onDay, onChanged = () => {}, now = Date.now(), phone = false }: {
   lane: Lane; setLane: (l: Lane) => void; items: Map<string, PlanItem[]>; rows: ContentDraft[]
-  onOpen: WallProps['onOpen']; onMove: WallProps['onMove']; onArm: WallProps['onArm']; onDay: WallProps['onDay']; now?: number
+  onOpen: WallProps['onOpen']; onMove: WallProps['onMove']; onArm: WallProps['onArm']; onDay: WallProps['onDay']; onChanged?: () => void; now?: number; phone?: boolean
 }) {
   const today = new Date(now)
   const [ym, setYm] = useState({ year: today.getFullYear(), month: today.getMonth() })
@@ -61,7 +62,7 @@ export function Month({ lane, setLane, items, rows, onOpen, onMove, onArm, onDay
             return (
               <div key={k} className={cls} {...dropZone(lane, k, onMove)}>
                 <small>{Number(k.slice(8))}</small>
-                {on.slice(0, VISIBLE).map(it => <Chip key={it.id} it={it} lane={lane} onOpen={onOpen} onMove={onMove} onArm={onArm} />)}
+                {on.slice(0, VISIBLE).map(it => <Chip key={it.id} it={it} lane={lane} onOpen={onOpen} onMove={onMove} onArm={onArm} onDay={onDay} onChanged={onChanged} phone={phone} />)}
                 {on.length > VISIBLE && <button type="button" className="cn-more2" data-verb="day" onClick={() => onDay(lane, [k])}>+{on.length - VISIBLE} more</button>}
               </div>
             )
@@ -85,18 +86,20 @@ export function Month({ lane, setLane, items, rows, onOpen, onMove, onArm, onDay
   )
 }
 
-function Chip({ it, lane, onOpen, onMove, onArm }: { it: PlanItem; lane: Lane; onOpen: WallProps['onOpen']; onMove: WallProps['onMove']; onArm: WallProps['onArm'] }) {
+function Chip({ it, lane, onOpen, onMove, onArm, onDay, onChanged, phone }: { it: PlanItem; lane: Lane; onOpen: WallProps['onOpen']; onMove: WallProps['onMove']; onArm: WallProps['onArm']; onDay: WallProps['onDay']; onChanged: () => void; phone: boolean }) {
   const b = badgeOf(it)
   const inert = it.source === 'queue'
   const drag = !inert && it.movable
   return (
     <div className={`cn-chip2${it.stage === 'published' ? ' cn-posted' : ''}${b?.tone === 'warn' ? ' cn-chip-warn' : ''}`} title={describe(it)}
       draggable={drag} onDragStart={drag ? (e => { e.dataTransfer.setData(DRAG_MIME, JSON.stringify({ id: it.id, lane })); e.dataTransfer.effectAllowed = 'move' }) : undefined}>
-      {inert ? <span className="cn-chipt">{it.title}</span>
+      {phone && it.unpublishId ? <button type="button" className="cn-chipt" data-verb="posted-actions" aria-label={`Actions for ${it.title}`} onClick={() => onDay(lane, [it.day])}>{it.title}</button>
+        : inert ? <span className="cn-chipt">{it.title}</span>
         : <button type="button" className="cn-chipt" data-verb="open" onClick={() => onOpen(it.id, lane)}>{it.title}</button>}
       <small>{b ? b.text : ''}{it.plannedAt ? ' · time differs' : ''}</small>
-      {(it.armable || (drag && it.source === 'draft')) && (
+      {(it.unpublishId || it.armable || (drag && it.source === 'draft')) && (
         <span className="cn-chipk">
+          {it.unpublishId && !phone && <Unpublish id={it.unpublishId} onDone={onChanged} />}
           {it.armable && <button type="button" data-verb="schedule" onClick={() => onArm(it.id)}>Arm it</button>}
           {drag && <button type="button" data-verb="move-day" aria-label={`Move ${it.title}`} onClick={() => onMove(it.id, lane)}>Move</button>}
         </span>

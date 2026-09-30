@@ -11,7 +11,7 @@ const sa = vi.hoisted(() => ({ scheduleGuarded: vi.fn() }))
 vi.mock('./writes', () => sa)
 
 import { WeekStack } from './WeekStack'
-import { buildWeek, type Show } from './weekModel'
+import { buildNow, buildWeek, type Show } from './weekModel'
 import { flushDecisions, resetDecisionsForTest, usePendingDecisions } from './decisions'
 import type { WeekRead } from './useWeek'
 
@@ -45,7 +45,7 @@ const card = (id: string) => document.querySelector(`[data-card-id="${id}"]`) as
 const key = (id: string) => card(id)?.querySelector('.cn-wc-key') as HTMLButtonElement | null
 
 beforeEach(() => { Object.values(lib).forEach(f => f.mockReset()); sa.scheduleGuarded.mockReset(); resetDecisionsForTest() })
-afterEach(cleanup)
+afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
 describe('This week stack', () => {
   it('draws the day, then review, with the seat chips counting per seat', () => {
@@ -136,4 +136,38 @@ describe('This week stack', () => {
       show="all" setShow={vi.fn()} now={NOW} openId={null} onOpen={vi.fn()} onChanged={vi.fn()} firstDay="2026-09-28" seatRows={() => []} />)
     expect(screen.getByText(/Saved copy 10:14/).textContent).toContain('refreshing')
   })
+})
+
+// Now must not split the same decision stack into competing categories.
+it('Now is one actionable stack with quiet missing-image tags, no QA score, and one-tap fix/open', () => {
+  const rows = [row({ id: 'bad', status: 'error', title: 'Broken post' }), row({ id: 'pic', type: 'single_image', qa_score: '95', qa_verdict: 'pass' })]
+  const onOpen = vi.fn()
+  renderInFrame(<WeekStack week={buildWeek(rows, { now: NOW })} read={{ ...read, rows }} show="all" setShow={vi.fn()} now={NOW} openId={null} onOpen={onOpen} onChanged={vi.fn()} firstDay="2026-09-28" seatRows={() => rows} nowView />)
+  expect(screen.queryByRole('tablist', { name: 'Filter the stack' })).toBeNull()
+  expect(screen.queryByText(/QA 95/)).toBeNull()
+  expect(screen.getByText('No image')).toBeTruthy()
+  expect(document.querySelector('[data-verb="show-ivan"]')!.textContent).toBe('Ivan')
+})
+
+it('a Now day picker commits the chosen day directly, with no third Save tap', async () => {
+  lib.setScheduleDateAt.mockResolvedValue('2026-10-02T07:00:00Z')
+  renderInFrame(<WeekStack week={buildNow(ROWS, { now: NOW })} read={read} show="all" setShow={vi.fn()} now={NOW} openId={null} onOpen={vi.fn()} onChanged={vi.fn()} firstDay="2026-09-28" seatRows={() => ROWS} nowView />)
+  fireEvent.click(card('i1')!.querySelector('[data-verb="card-date"]')!)
+  fireEvent.click(screen.getAllByRole('option').find(o => o.textContent?.startsWith('Fri'))!)
+  await waitFor(() => expect(lib.setScheduleDateAt).toHaveBeenCalledTimes(1))
+  expect(lib.setScheduleDateAt.mock.calls[0][0]).toBe('i1')
+  expect(sa.scheduleGuarded).not.toHaveBeenCalled()
+})
+
+it.each(['ivan', 'risedtc'] as const)('a red %s Now card Fix opens its guarded pipeline confirmation and Open opens the draft, with ARCH view only', async lane => {
+  vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
+  const rows = [row({ id: 'bad', client_id: lane === 'ivan' ? null : lane, status: 'error', title: 'Broken post' }), row({ id: 'abad', client_id: 'arch', status: 'error', title: 'Broken Arch post' })]
+  const onOpen = vi.fn()
+  renderInFrame(<WeekStack week={buildNow(rows, { now: NOW })} read={{ ...read, rows }} show="all" setShow={vi.fn()} now={NOW} openId={null} onOpen={onOpen} onChanged={vi.fn()} firstDay="2026-09-28" seatRows={() => rows} nowView />)
+  expect(card('abad')!.querySelectorAll('.cn-wc-acts button')).toHaveLength(1)
+  fireEvent.click(card('bad')!.querySelector('[data-verb="card-open"].cn-wc-key')!)
+  expect(onOpen).toHaveBeenCalledWith('bad', lane)
+  fireEvent.click(screen.getByRole('button', { name: 'Fix' }))
+  expect(await screen.findByText(/Run the pipeline again for this/)).toBeTruthy()
+  expect(lib.approveDraft).not.toHaveBeenCalled()
 })

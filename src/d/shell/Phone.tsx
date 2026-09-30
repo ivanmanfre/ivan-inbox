@@ -41,7 +41,6 @@ export function Dock() {
   const opsF = { ivan: c.ops.failed, risedtc: c.ops.failed, arch: c.ops.failed }
   const trio: Partial<Record<string, { n: ReturnType<typeof dmNumbers>; failed: ReturnType<typeof seatFailed> }>> = {
     dms: { n: dmNumbers(c, 'needs'), failed: seatFailed(c.dms) },
-    content: { n: contentNumbers(c), failed: seatFailed(c.content) },
     ops: { n: opsNumbers(c), failed: opsF },
   }
   const calls = c.calls.value
@@ -52,6 +51,7 @@ export function Dock() {
         {PLACE_ORDER.filter(id => PLACES[id].dock).map(id => (
           <a key={id} href={dHash(id)} className={`d-dk${f.route.place === id ? ' d-on' : ''}`} aria-current={f.route.place === id ? 'page' : undefined}>
             <b>{PLACES[id].label}</b>
+            {id === 'content' && Object.values(contentNumbers(c)).some(n => (n ?? 0) > 0) && <i className="d-content-attention" aria-label="Content needs a tap" />}
             {trio[id] && <SeatTrio numbers={trio[id]!.n} failed={trio[id]!.failed} />}
             {id === 'sales' && (
               <u className="d-trio" aria-label={calls == null ? (c.calls.failed ? 'calls today could not be read' : 'reading calls today') : `${calls} calls today not started`}>

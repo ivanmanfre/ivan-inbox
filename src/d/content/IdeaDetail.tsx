@@ -9,7 +9,6 @@ import { Key } from '../ui/Key'
 import { useToast } from '../ui/toast'
 import { LANE_NAME, OWNER, type Lane } from './model'
 import { linkOf, type IdeaItem } from './ideaModel'
-import { ScorePill } from './ideaTags'
 import { SourceBadge, ideaOutlierSource } from './SourceBadge'
 
 // One idea, read and decided. Ivan's bank goes through today's edge function
@@ -59,29 +58,27 @@ export function IdeaDetail({ it, onDone, compact, scores }: { it: IdeaItem; onDo
   return (
     <section className="cn-idm" aria-label="Idea" data-idea-detail={it.id}>
       {!compact && <div className="cn-dwh" style={{ padding: 0, border: 0 }}>
-        <ScorePill score={it.score} big />
         <div className="cn-who"><b style={{ whiteSpace: 'normal' }}>{it.title}</b><small>{BANK[it.lane]}{it.src ? ` · ${it.src}` : ''}{it.age ? ` · ${it.age} ago` : ''}</small></div>
       </div>}
       {ideaOutlierSource(it) && <p className="cn-cbline"><SourceBadge src={ideaOutlierSource(it)} /></p>}
-      {it.parts.length > 0 && (
-        <div className="cn-parts">{it.parts.map(([k, v]) => <div key={k}><small>{k}</small>{Math.round(v * 10) / 10}</div>)}</div>
-      )}
       <IdeaFacts it={it} scores={scores} />
-      {it.lane === 'ivan' && (
+      {!it.outlier && !it.generating && it.lane === 'ivan' && (
         <input className="cn-note" value={note} onChange={e => setNote(e.target.value)} placeholder="Optional note, steers the curator, and is logged as the reject reason" aria-label="Note" />
       )}
       {!ours && <p className="cn-say cn-bad">{IDEA_NOT_OURS}</p>}
       {err && <p className="cn-say cn-bad" role="alert">{err}</p>}
-      <div className="cn-acts">
+      {!it.outlier && !it.generating && <div className="cn-acts">
         {it.lane === 'ivan' && <Key verb="idea-delete" onClick={() => run('delete')} disabled={busy}>Delete</Key>}
         <Key verb="idea-reject" onClick={() => run('reject')} disabled={busy || !ours}>Reject</Key>
         <Key primary verb="idea-approve" onClick={() => run('approve')} disabled={busy || !ours} sub="starts the draft">Approve</Key>
-      </div>
-      <p className="cn-foot" style={{ padding: 0 }}>
+      </div>}
+      {it.generating && <p className="cn-say">Added ✓ · The draft will appear in Now.</p>}
+      {it.outlier?.url && <a href={it.outlier.url} target="_blank" rel="noreferrer" data-verb="source">Open source post ↗</a>}
+      {!it.outlier && !it.generating && <p className="cn-foot" style={{ padding: 0 }}>
         {it.lane === 'ivan'
           ? 'Approve fires the promote run and the draft shows up in Generating. Reject archives the idea.'
           : `Approve hands it to generation for ${LANE_NAME[it.lane]}; the draft lands in review on our side and nothing reaches ${OWNER[it.lane]}. Reject archives it.`}
-      </p>
+      </p>}
     </section>
   )
 }
@@ -89,9 +86,8 @@ export function IdeaDetail({ it, onDone, compact, scores }: { it: IdeaItem; onDo
 /** Everything today's idea card says once it is open (ideas.tsx IdeaCard / ClientIdeaCard). */
 function IdeaFacts({ it, scores }: { it: IdeaItem; scores?: IdeaScoreRead }) {
   const i = it.ivan, c = it.client
-  const row = scores?.byRef.get(it.id)
-  const ol = outlierLine(row, !!scores?.ok && !scores.validated)
-  const quote = c ? quoteLabel(c) : null
+  void scores
+  const quote = it.evidenceQuote ? c ? quoteLabel(c) || 'Stored source quote' : 'Stored source quote' : null
   const src = linkOf(i?.source_ref ?? c?.source_ref)
   const chips = i
     ? [i.content_type ? label(i.content_type) : 'no content type', i.ivan_engaged === true ? 'engaged' : null].filter(Boolean)
@@ -103,11 +99,10 @@ function IdeaFacts({ it, scores }: { it: IdeaItem; scores?: IdeaScoreRead }) {
       {c?.reuse_of && (
         <p>Reuse of a winner{c.eligible_at ? `, eligible since ${c.eligible_at.slice(0, 10)}` : ''}. Keep the idea and the hook shape, update the numbers and examples.</p>
       )}
-      <small>{quote ? 'The line from the call' : 'Why it scored'}{it.format ? ` · ${it.format}` : ''}</small>
-      {quote && it.why ? <blockquote className="cn-quote">{it.why}<small>{quote}</small></blockquote>
-        : <p>{it.why || 'The scorer left no reason on this row.'}</p>}
+      <small>{quote ? 'The line from the call' : 'Source notes'}{it.format ? ` · ${it.format}` : ''}</small>
+      {quote && it.evidenceQuote ? <blockquote className="cn-quote">{it.evidenceQuote}<small>{quote}</small></blockquote>
+        : <p>{it.why || it.proof || it.src || 'Idea bank'}</p>}
       {it.angle && <><small>{c ? 'Hook' : 'Angle'}</small><p>{it.angle}</p></>}
-      {ol && <><small>Outlier score</small><p>{ol}</p></>}
       {(src || i?.slack_permalink) && (
         <p className="cn-ilinks">
           {src && <a href={src} target="_blank" rel="noreferrer" data-verb="source">Source ↗</a>}
