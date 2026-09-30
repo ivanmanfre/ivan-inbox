@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
 import type { PlaceProps } from '../places'
 import { dHash } from '../route'
 import { useReportFailed } from '../shell/health'
@@ -9,6 +9,7 @@ import { warsawDayTime } from '../ui/time'
 import { scheduleGuarded } from './writes'
 import { DraftWindow } from './DraftWindow'
 import { Ideas, useIdeaBanks } from './Ideas'
+import { Skeleton } from '../ui/states'
 import { Legacy } from './Legacy'
 import { MovePanel } from './MovePanel'
 import { PhoneWall } from './PhoneWall'
@@ -32,11 +33,13 @@ import './content2.css'
 import './content3.css'
 import './now.css'
 
+const InputsPage = lazy(() => import('./inputs/Inputs').then(m => ({ default: m.InputsPage })))
+
 const isLane = (s: string | null): s is Lane => s === 'ivan' || s === 'risedtc' || s === 'arch'
 const SHOW_KEY = 'd-content-review-show'
 
 export default function ContentPage({ layout, route, navigate }: PlaceProps) {
-  const sub = subOf(route.sub)
+  const sub = subOf(route.sub, route.query)
   const q = route.query
   const view = q.get('view') ?? (route.sub === 'planner' || route.sub === 'queue' ? 'planner' : route.sub === 'errors' ? 'posts' : route.sub === 'magnets' ? 'magnets' : null)
   const onNow = sub === 'now'
@@ -108,10 +111,10 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const window_ = draft ? <DraftWindow id={draft} lane={qLane} queue={queueIds} onPick={id => planner ? openFromPlan(id, qLane) : openDraft(id, nowModel.lanes.get(id) ?? qLane)} onClose={close} refresh={refresh} days={days} armed={data.armed} armedFailed={data.armedFailed} titles={titles} /> : null
   const moveRow = moveId ? data.seats[qLane].rows.find(r => r.id === moveId) : null
   const move = moveRow ? <MovePanel key={`${moveId}:${q.get('day') ?? ''}`} r={moveRow} lane={qLane} first={days[0].key} seatRows={data.seats[qLane].rows} phone={phone} quickCommit initialPick={q.get('day')} onClose={close} onDone={refresh} /> : null
-  const clearMagnet = () => { const p = new URLSearchParams(q); p.delete('magnet'); navigate(dHash('content', 'now', p)) }
+  const clearMagnet = () => { const p = new URLSearchParams(q); p.delete('magnet'); navigate(dHash('content', sub, p)) }
   const legacy = (s: 'errors' | 'magnets' | 'queue' | 'strategy' | 'styles' | 'results') => <Legacy sub={s} lane={legacyLane} setLane={l => go({ ...context(), lane: l })} openDraft={openFromList} openId={draft} magnet={q.get('magnet')} clearMagnet={clearMagnet} phone={phone} land={view === 'posts' && !q.get('tab') ? (qLane === 'ivan' ? 'all' : 'internal_review') : errorsLanding(data.seats[qLane].rows, qLane, now, data.blocks, q.get('tab') === 'generating' ? 'generating' : 'errors')} />
   const plannerBody = <>
-    <div className="cn-now-tools"><a href={dHash('content', 'now')}>← Now</a><span className="cn-planv" role="tablist" aria-label="Planner view"><button type="button" role="tab" aria-selected={plan === 'weeks'} onClick={() => setPlan('weeks')}>Two weeks</button><button type="button" role="tab" data-verb="month" aria-selected={plan === 'month'} onClick={() => setPlan('month')}>Month</button></span></div>
+    <div className="cn-now-tools"><a href={dHash('content', 'now')}>← Review</a><span className="cn-planv" role="tablist" aria-label="Planner view"><button type="button" role="tab" aria-selected={plan === 'weeks'} onClick={() => setPlan('weeks')}>Two weeks</button><button type="button" role="tab" data-verb="month" aria-selected={plan === 'month'} onClick={() => setPlan('month')}>Month</button></span></div>
     {plan === 'month' ? <Month lane={qLane} setLane={setLane} items={items[qLane]} rows={data.seats[qLane].rows} onOpen={openFromPlan} onMove={onMove} onArm={armIt} onDay={wallProps.onDay} onChanged={refresh} now={now} phone={phone} /> : phone ? <PhoneWall {...wallProps} days={days} /> : <Wall {...wallProps} days={days} />}
     {move}
   </>
@@ -119,8 +122,8 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const nowBody = <>
     <div className="cn-now-tools"><a href={dHash('content', 'now', { view: 'planner' })}>Planner →</a><a href={dHash('content', 'now', { view: 'posts' })}>All posts</a></div>
     {data.failed > 0 && <p className="cn-now-failed" role="alert">Could not read every client. <button type="button" onClick={refresh}>Retry</button></p>}
+    {magnetLanes.length > 0 && <div className="cn-magnet-summary" aria-label="Lead magnets awaiting review"><span>Lead magnets to review</span>{magnetLanes.map(l => <a key={l} href={dHash('content', 'magnets', { lane: l })}>{LANE_NAME[l]} · {magnets[l]} →</a>)}</div>}
     <WeekStack week={nowModel} read={stackRead} show={show} setShow={setShow} now={now} openId={draft} onOpen={openDraft} onChanged={refresh} firstDay={days[0].key} seatRows={l => rows.filter(r => laneOfRow(r) === l)} nowView />
-    {magnetLanes.map(l => <a className="cn-magnet-ready" key={l} href={dHash('content', 'now', { view: 'magnets', lane: l })}><small>Lead magnet ready · {LANE_NAME[l]}</small><b>Review lead magnets →</b></a>)}
     <section className="cn-week-strip" aria-label="Upcoming week"><div className="cn-week-strip-head"><b>This week</b><a href={dHash('content', 'now', { view: 'planner' })}>Full planner →</a></div><div className="cn-week-strip-days">{windowDays(now, 5).map(key => {
       const n = LANES.reduce((v, l) => v + (items[l].get(key)?.length ?? 0), 0)
       return <a key={key} href={dHash('content', 'now', { view: 'planner', day: key })}><b>{dayWord(key, now)}</b><small>{dayDate(key).replace(/^\w+ /, '')}</small><span>{reading ? '…' : `${n} post${n === 1 ? '' : 's'}`}</span></a>
@@ -129,13 +132,15 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   let body: React.ReactNode
   if (sub === 'ideas') body = <Ideas banks={banks} phone={phone} lane={qLane} onLaneChange={lane => go({ lane }, 'ideas')} />
   else if (sub === 'results') body = view === 'analytics' ? legacy('results') : <Results lane={qLane} setLane={setLane} />
+  else if (sub === 'inputs') body = <Suspense fallback={<Skeleton lines={5} label="Reading inputs" />}><InputsPage lane={qLane} setLane={setLane} phone={phone} query={q} /></Suspense>
+  else if (sub === 'magnets') body = legacy('magnets')
   else if (sub === 'strategy' || sub === 'styles') body = legacy(sub)
   else {
-    const left = planner ? plannerBody : magnetView ? <><div className="cn-now-tools"><a href={dHash('content', 'now')}>← Now</a></div>{legacy('magnets')}</> : allPosts ? <><div className="cn-now-tools"><a href={dHash('content', 'now')}>← Now</a></div>{legacy('errors')}</> : nowBody
+    const left = planner ? plannerBody : magnetView ? <><div className="cn-now-tools"><a href={dHash('content', 'now')}>← Review</a></div>{legacy('magnets')}</> : allPosts ? <><div className="cn-now-tools"><a href={dHash('content', 'now')}>← Review</a></div>{legacy('errors')}</> : nowBody
     body = phone && window_ ? window_ : <div className={`cn-split${window_ ? ' cn-open' : ''}`}><div className={`cn-left${allPosts ? ' cn-left-legacy' : ''}`}>{left}</div>{window_}</div>
   }
-  const title = sub === 'ideas' ? 'Best ideas for your next post' : sub === 'results' ? 'What worked' : sub === 'strategy' ? 'Strategy' : sub === 'styles' ? 'Styles' : planner ? 'Planner' : allPosts ? 'All posts' : magnetView ? 'Lead magnets' : reading ? 'Reading what needs you…' : data.failed || LANES.some(l => magnets[l] === null) ? 'Some work could not be read' : needs ? `${needs} need you` : "You're done"
-  return <div className="cn"><AnswerRow title={title} /><SubNav on={sub} attention={needs > 0} />{body}
+  const title = sub === 'ideas' ? 'Best ideas for your next post' : sub === 'results' ? 'What worked' : sub === 'strategy' ? (q.get('section') === 'direction' ? 'Strategy' : q.get('section') === 'this-week' ? 'Content brain' : 'Strategy') : sub === 'inputs' ? 'Inputs' : sub === 'magnets' ? 'Lead magnets' : sub === 'styles' ? 'Styles' : planner ? 'Planner' : allPosts ? 'All posts' : magnetView ? 'Lead magnets' : 'Review'
+  return <div className="cn"><AnswerRow title={title} /><SubNav on={sub} attention={needs > 0} lane={qLane} section={q.get('section')} />{body}
     {dayOpen && <DayPanel lane={dayOpen.lane} keys={dayOpen.keys} items={items[dayOpen.lane]} onClose={() => setDayOpen(null)} onOpen={openFromPlan} onMove={onMove} onArm={armIt} onChanged={refresh} />}
   </div>
 }

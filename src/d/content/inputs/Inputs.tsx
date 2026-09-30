@@ -253,7 +253,7 @@ export function Inputs({ lane, setLane, layout, reads, refresh, phone, insightsO
     const res = await putOutlierOnBoard(lane, o.platform, o.post_id)
     if (res.ok) {
       setUse(p => ({ ...p, [k]: 'done' }))
-      toast.show({ message: lane === 'ivan' ? 'Queued for scoring; it shows in Ideas once scored.' : `Added to ${OWNER[lane]}’s ideas for review.`, sub: 'Nothing is scheduled or sent.' })
+      toast.show({ message: lane === 'ivan' ? 'Added to Ideas.' : `Added to ${OWNER[lane]}’s ideas for review.`, sub: 'Nothing is scheduled or sent.' })
       refresh(lane)
     } else setUse(p => ({ ...p, [k]: res.message }))
   }, [lane, refresh, toast])
@@ -294,4 +294,10 @@ export function Inputs({ lane, setLane, layout, reads, refresh, phone, insightsO
 export function IdeaInsights({ lane, phone }: { lane: Lane; phone?: boolean }) {
   const { reads, refresh } = useInputs()
   return <Inputs lane={lane} setLane={() => {}} layout="list" reads={reads} refresh={refresh} phone={phone} insightsOnly/>
+}
+
+/** Full source inputs, loaded only for the selected client. */
+export function InputsPage({ lane, setLane, phone, query }: { lane: Lane; setLane: (lane: Lane) => void; phone?: boolean; query: URLSearchParams }) {
+  const { reads, refresh } = useInputs()
+  return <Inputs lane={lane} setLane={setLane} layout={layoutOf(query)} reads={reads} refresh={refresh} phone={phone} />
 }

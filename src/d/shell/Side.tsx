@@ -11,7 +11,7 @@ import { openWorkflows, workflowsBadge } from './Workflows'
 import { healthNote } from '../counts/glance'
 import { useFrameCounts } from '../counts/useFrameCounts'
 import { useDInbox } from '../counts/inbox'
-import { SUB_LABEL, subOf, type Sub } from '../content/SubNav'
+import { SUB_LABEL, SUBS, PLANNING, subOf, type Sub } from '../content/SubNav'
 
 // The left panel, desktop, and the same content as the phone's drawer. Brand,
 // the seat names once (Ivan · Rise · Arch) over the count columns, one line per place with its per-seat numbers
@@ -88,7 +88,7 @@ export function WorkflowsKey({ onOpen }: { onOpen?: () => void }) {
 // Content opens into its pages in the rail while you are on it, as the old app's rail did (Ivan 09-28:
 // "a collapsible navigation bar on the left like we had on the old version"). The rest of Content's
 // places stay on the page's own row.
-export const RAIL_SUBS: readonly Sub[] = ['now', 'ideas', 'results']
+export const RAIL_SUBS: readonly Sub[] = SUBS
 
 function PlaceLink({ i, on, min }: { i: NavItem; on: boolean; min: boolean }) {
   return (
@@ -102,7 +102,7 @@ function PlaceLink({ i, on, min }: { i: NavItem; on: boolean; min: boolean }) {
 function ContentGroup({ i, min }: { i: NavItem; min: boolean }) {
   const f = useFrame()
   const here = f.route.place === 'content'
-  const sub = here ? subOf(f.route.sub) : null
+  const sub = here ? subOf(f.route.sub, f.route.query) : null
   const open = here && !min
   return (
     <div className="d-navi">
@@ -112,7 +112,11 @@ function ContentGroup({ i, min }: { i: NavItem; min: boolean }) {
         <div className="d-navsub">
           {RAIL_SUBS.map(s => {
             const on = sub === s
-            return <a key={s} href={dHash('content', s)} className={on ? 'd-on' : undefined} aria-current={on ? 'page' : undefined}>{SUB_LABEL[s]}</a>
+            return <a key={s} href={dHash('content', s, { lane: f.route.query.get('lane') ?? 'ivan' })} className={on ? 'd-on' : undefined} aria-current={on ? 'page' : undefined}>{SUB_LABEL[s]}</a>
+          })}
+          {PLANNING.map(p => {
+            const on = sub === p.sub && (p.sub !== 'strategy' || (f.route.query.get('section') ?? 'this-week') === p.section)
+            return <a key={p.label} href={dHash('content', p.sub, { lane: f.route.query.get('lane') ?? 'ivan', ...(p.section ? { section: p.section } : {}) })} className={on ? 'd-on' : undefined} aria-current={on ? 'page' : undefined}>{p.label}</a>
           })}
         </div>
       )}

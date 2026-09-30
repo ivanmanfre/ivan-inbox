@@ -30,24 +30,32 @@ describe('Now actionable content', () => {
   })
 })
 describe('Content navigation', () => {
-  it.each(['desktop', 'phone'] as const)('shows three primary places without number badges on %s', layout => {
-    renderInFrame(<SubNav on="now" attention />, { layout })
+  it.each(['desktop', 'phone'] as const)('shows the generation flow and visible planning tools on %s', layout => {
+    renderInFrame(<SubNav on="now" attention lane="arch" />, { layout })
     const nav = screen.getByRole('navigation', { name: 'Content places' })
-    expect([...nav.querySelectorAll('a')].map(a => a.textContent)).toEqual(['Now', 'Ideas', 'Results'])
+    expect([...nav.querySelectorAll('a')].map(a => a.textContent)).toEqual(['Ideas', 'Review', 'Lead magnets', 'Results'])
     expect(screen.getByLabelText('Needs a tap')).toBeTruthy()
+    const tools = screen.getByRole('navigation', { name: 'Content planning' })
+    expect([...tools.querySelectorAll('a')].map(a => a.textContent)).toEqual(['Strategy', 'Content brain', 'Inputs'])
+    expect(screen.getByRole('link', { name: 'Content brain' }).getAttribute('href')).toBe('#exp/d/content/strategy?lane=arch&section=this-week')
+    expect(nav.querySelector('a')?.getAttribute('href')).toBe('#exp/d/content/ideas?lane=arch')
     fireEvent.click(screen.getByRole('button', { name: 'More in Content' }))
-    expect(screen.getByRole('link', { name: /Strategy/ })).toBeTruthy()
     expect(screen.getByRole('link', { name: /Styles/ })).toBeTruthy()
   })
   it.each([
-    ['inputs', '#exp/d/content/ideas?lane=arch&draft=x'], ['queue', '#exp/d/content/now?lane=arch&draft=x&view=planner'],
+    ['markets', '#exp/d/content/inputs?lane=arch&draft=x'], ['queue', '#exp/d/content/now?lane=arch&draft=x&view=planner'],
     ['planner', '#exp/d/content/now?lane=arch&draft=x&view=planner'], ['errors', '#exp/d/content/now?lane=arch&draft=x&view=posts'],
-    ['review', '#exp/d/content/now?lane=arch&draft=x'], ['magnets', '#exp/d/content/now?lane=arch&draft=x&view=magnets'],
+    ['review', '#exp/d/content/now?lane=arch&draft=x'],
   ])('redirects %s while keeping deep-link identities', (old, want) => {
     expect(contentRedirect(old, new URLSearchParams('lane=arch&draft=x'))).toBe(want)
   })
   it('maps old tabs to primary selection and leaves canonical URLs alone', () => {
-    expect(subOf('inputs')).toBe('ideas'); expect(subOf('errors')).toBe('now'); expect(subOf(null)).toBe('now')
+    expect(subOf('inputs')).toBe('inputs'); expect(subOf('errors')).toBe('now'); expect(subOf(null)).toBe('ideas')
+    expect(contentRedirect('inputs', new URLSearchParams('lane=arch'))).toBeNull()
+    expect(contentRedirect('magnets', new URLSearchParams('magnet=x'))).toBeNull()
+    expect(contentRedirect(null, new URLSearchParams('lane=arch'))).toBe('#exp/d/content/ideas?lane=arch')
+    expect(contentRedirect(null, new URLSearchParams('draft=x'))).toBe('#exp/d/content/now?draft=x')
+    expect(contentRedirect(null, new URLSearchParams('magnet=x'))).toBe('#exp/d/content/magnets?magnet=x')
     expect(contentRedirect('now', new URLSearchParams('draft=x'))).toBeNull()
   })
 })
