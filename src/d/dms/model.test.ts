@@ -7,6 +7,15 @@ import { companyStopLine, inviteArmLine, routeLine } from './nextLine'
 const H = 3_600_000
 
 describe('seatView', () => {
+  it('lifts a verified return above a delayed first visit across client seats', () => {
+    const ts = threads([
+      ...waiting('fresh', { client_id: 'arch' }, 2),
+      ...waiting('first', { client_id: 'arch' }, 20),
+      ...waiting('return', { client_id: 'arch' }, 40),
+    ])
+    expect(seatView(ts, 'arch', NOW, new Map(), new Map([['first', 1], ['return', 2]])).rest.map(t => t.prospect_id))
+      .toEqual(['return', 'first', 'fresh'])
+  })
   const rows = [
     ...drafted('a', { prospect_name: 'Geraldine', client_id: 'ivan' }),
     ...owedNoDraft('b', { prospect_name: 'Danijel', client_id: 'risedtc' }),

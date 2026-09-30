@@ -2,7 +2,7 @@
    src/wb/dms/cameBackData.ts — the data and the pure helpers behind the
    "Came back" section. The component lives in ./CameBack.tsx.
 
-   Reads: rpc came_back_cards() (db/087), all three tenants.
+   Reads: rpc inbox_interest_cards() (db/20260930), all three tenants.
    Writes: rpc came_back_dismiss() (db/087) — one jsonb stamp, never a send and
    never a stage move. The scheduled next step of the sequence is untouched.
    ========================================================================== */
@@ -12,7 +12,7 @@ import type { Filter } from '../../lib/inbox'
 import { dayOf } from './warmSignalsData'
 
 // post_title / post_url (db/20260924): the post a reaction or comment landed on, from our post tracker.
-export type CameBackSignal = { kind: string; at: string; detail: string | null; post_title?: string | null; post_url?: string | null }
+export type CameBackSignal = { kind: string; at: string; detail: string | null; post_title?: string | null; post_url?: string | null; profile_return?: boolean | null }
 
 const POST_TITLE_MAX = 60
 
@@ -69,7 +69,7 @@ export function cameBackLine(c: Pick<CameBackCard, 'n_views' | 'n_engagements' |
   const scans = scanOpenDays(c)
   // db/211: a scan_open signal is now a REOPEN (the first open never reaches this list), so say so.
   if (scans > 0) parts.push(scans === 1 ? 'opened the scan again' : `opened the scan again on ${scans} days`)
-  if (c.n_views > 0) parts.push(c.n_views === 1 ? 'viewed the profile' : `viewed the profile on ${c.n_views} days`)
+  if (c.n_views > 0) parts.push(hasProfileReturn(c) ? 'viewed the profile again' : c.n_views === 1 ? 'viewed the profile' : `viewed the profile on ${c.n_views} days`)
   if (c.n_engagements > 0) {
     const commented = (c.signals ?? []).some(s => s.kind === 'comment')
     const word = commented ? 'commented on' : 'reacted to'
@@ -83,6 +83,26 @@ export function cameBackLine(c: Pick<CameBackCard, 'n_views' | 'n_engagements' |
 
 export function scanOpenDays(c: Pick<CameBackCard, 'signals'>): number {
   return (c.signals ?? []).filter(s => s.kind === 'scan_open').length
+}
+
+export function hasProfileReturn(c: Pick<CameBackCard, 'signals'>): boolean {
+  return (c.signals ?? []).some(s => s.kind === 'view' && s.profile_return === true)
+}
+
+/** A first visit earns a quiet label; only a verified return claims they came back. */
+export function interestLabel(c: Pick<CameBackCard, 'signals' | 'n_views' | 'n_engagements'>): string {
+  if (hasProfileReturn(c)) return 'came back'
+  if (scanOpenDays(c) > 0) return 'opened scan again'
+  if (c.n_engagements > 0) return (c.signals ?? []).some(s => s.kind === 'comment') ? 'commented on post' : 'engaged post'
+  if ((c.signals ?? []).some(s => s.kind === 'view' && s.profile_return === false)) return 'viewed profile'
+  return 'came back'
+}
+
+export function interestPriority(c: Pick<CameBackCard, 'signals' | 'n_views' | 'n_engagements'>): number {
+  const returned = hasProfileReturn(c)
+  if (returned && (c.signals ?? []).some(s => s.kind === 'comment' || s.kind === 'scan_open')) return 3
+  if (returned || c.n_engagements > 0 || scanOpenDays(c) > 0) return 2
+  return 1
 }
 
 /** Where the sequence stands, in words. */
@@ -104,7 +124,7 @@ export function scanReopenOnlyIvan(c: Pick<CameBackCard, 'tenant' | 'n_views' | 
 }
 
 export async function fetchCameBack(): Promise<CameBackCard[]> {
-  const { data, error } = await supabase.rpc('came_back_cards')
+  const { data, error } = await supabase.rpc('inbox_interest_cards')
   if (error) throw error
   return ((data ?? []) as CameBackCard[]).filter(c => !scanReopenOnlyIvan(c))
 }

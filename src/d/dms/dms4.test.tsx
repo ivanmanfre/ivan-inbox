@@ -140,6 +140,19 @@ const card = (p: Partial<CameBackCard> & { prospect_id: string }): CameBackCard 
 } as CameBackCard)
 
 describe('came back = a tag on the name; Signals = one list', () => {
+  it('labels a delayed first profile visit without claiming a return', () => {
+    const first = card({ prospect_id: 'first', signals: [{ kind: 'view', at: iso(2 * D), detail: null, profile_return: false }] })
+    expect(cameTag(first, NOW).text).toBe('viewed profile · 2d')
+    expect(signalItems('ivan', [], [], [first], new Map())[0].label).toBe('viewed profile')
+  })
+  it('keeps the return label when a profile return also carries a post comment', () => {
+    const returned = card({ prospect_id: 'return', n_engagements: 1, signals: [
+      { kind: 'view', at: iso(2 * D), detail: null, profile_return: true },
+      { kind: 'comment', at: iso(D), detail: 'Useful' },
+    ] })
+    expect(cameTag(returned, NOW).text).toBe('came back · 2d')
+    expect(cameTag(returned, NOW).title).toContain('viewed the profile again')
+  })
   it('cameTag says came back and how long ago, and its tooltip what they came back to', () => {
     const tag = cameTag(card({ prospect_id: 'x' }), NOW)
     expect(tag.text).toBe('came back · 2d')

@@ -97,7 +97,7 @@ export function CameBack({ filter, inboxLoadedAt, onOpenThread }: {
       {undoBar}
       <Group
         label={<button type="button" className="a-warm-toggle" onClick={() => setOpen(o => !o)} aria-expanded={open}>
-          <Icon name={open ? 'collapse' : 'expand'} size={16} />Came back, no reply
+          <Icon name={open ? 'collapse' : 'expand'} size={16} />Interest, no reply
         </button>}
         tail={<span className="a-mono">{shown.length}</span>}
         quiet

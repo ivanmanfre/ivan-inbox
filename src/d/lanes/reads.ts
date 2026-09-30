@@ -18,7 +18,7 @@ export async function fetchCounters(now = Date.now()): Promise<Counter[]> {
 }
 
 export async function fetchCameBack(): Promise<CameBackCard[]> {
-  const { data, error } = await supabase.rpc('came_back_cards')
+  const { data, error } = await supabase.rpc('inbox_interest_cards')
   if (error) throw error
   return (data ?? []) as CameBackCard[]
 }

@@ -74,7 +74,7 @@ function Dms({ layout, route, navigate }: PlaceProps) {
 
   const threads = data.threads
   const byId = useMemo(() => new Map(threads.map(t => [t.prospect_id, t])), [threads])
-  const views = useMemo(() => Object.fromEntries(SEATS.map(s => [s, seatView(threads, s, now, data.scanDays)])) as Record<Seat, ReturnType<typeof seatView>>, [threads, now, data.scanDays])
+  const views = useMemo(() => Object.fromEntries(SEATS.map(s => [s, seatView(threads, s, now, data.scanDays, data.interestRanks)])) as Record<Seat, ReturnType<typeof seatView>>, [threads, now, data.scanDays, data.interestRanks])
   const stats = useMemo(() => Object.fromEntries(SEATS.map(s => [s, { days: outByDay(threads, s, now), replied: replied7d(threads, s, now) }])) as PageModel['stats'], [threads, now])
   const matches = useMemo(() => {
     if (mode !== 'search') return { ivan: [], risedtc: [], arch: [] } as Record<Seat, Thread[]>

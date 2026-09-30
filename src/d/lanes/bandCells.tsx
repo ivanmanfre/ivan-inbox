@@ -143,8 +143,8 @@ export function InboundCell({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
       {line('Invites to this seat', 'requests', 'accepted', 'left pending')}
       {line('Cold-DM filter', 'filtered', 'let in', 'dropped')}
       <div className="dl-il">
-        <span>Came back, no reply: {ctx.d.cameBack.value ? (cb.length ? <span className="dl-nm">{cb.map(x => x.name).join(', ')}</span> : 'nobody') : ctx.d.cameBack.failed ? 'could not be read' : 'reading…'}</span>
-        <em>{cb[0] ? `${cb[0].signals?.[0]?.kind === 'scan_open' ? 'opened scan' : 'back'} ${dayMonth(cb[0].last_signal_at)}` : ''}</em>
+        <span>Interest, no reply: {ctx.d.cameBack.value ? (cb.length ? <span className="dl-nm">{cb.map(x => x.name).join(', ')}</span> : 'nobody') : ctx.d.cameBack.failed ? 'could not be read' : 'reading…'}</span>
+        <em>{cb[0] ? `${cb[0].signals?.[0]?.kind === 'scan_open' ? 'opened scan' : 'profile or post'} ${dayMonth(cb[0].last_signal_at)}` : ''}</em>
       </div>
       <div className="dl-il"><span>New people found</span><em><b>{num(ctx.d.engagers.value?.[seat])}</b> in 7d</em></div>
       {seat === 'ivan' && <div className="dl-il"><span>Warm signals to approve</span><em>{ctx.d.warm.value == null ? num(null) : ctx.d.warm.value ? <b>{ctx.d.warm.value}</b> : 'none today'}</em></div>}

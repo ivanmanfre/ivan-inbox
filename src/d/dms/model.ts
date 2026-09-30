@@ -59,8 +59,8 @@ export function isThrownRecently(t: Thread, now: number = Date.now()): boolean {
   return !t.messages.some(m => m.direction === 'outbound' && m.sent_at && Date.parse(m.sent_at) > at)
 }
 
-/** scanDays: prospect_id -> distinct days the scan was opened (came_back_cards). */
-export function seatView(threads: Thread[], seat: Seat, now: number = Date.now(), scanDays: ReadonlyMap<string, number> = new Map()): SeatView {
+/** scanDays: prospect_id -> distinct days the scan was reopened (inbox_interest_cards). */
+export function seatView(threads: Thread[], seat: Seat, now: number = Date.now(), scanDays: ReadonlyMap<string, number> = new Map(), interestRanks: ReadonlyMap<string, number> = new Map()): SeatView {
   const mine = seatThreads(threads, seat).filter(isConversation)
   const live = mine.filter(t => !t.spam)
   const v: SeatView = { seat, owner: [], drafted: [], nodraft: [], later: [], older: [], auto: [], rest: [], thrown: [], spam: [], email: [], emailOwed: [], emailWaiting: [], emailRest: [], all: [] }
@@ -88,9 +88,9 @@ export function seatView(threads: Thread[], seat: Seat, now: number = Date.now()
   v.later.sort((a, b) => (a.draftSnoozedUntil ?? '').localeCompare(b.draftSnoozedUntil ?? ''))
   v.thrown.sort((a, b) => (lastDiscard(b)?.send_blocked_at ?? '').localeCompare(lastDiscard(a)?.send_blocked_at ?? ''))
   // Coordinator row (LANES #14): on Ivan's seat, people who opened their scan on 2+ days lead
-  // "Sent, waiting on them"; everyone else keeps newest first.
+  // "Sent, waiting on them". Interest then ranks returns above delayed first views.
   const lift = (t: Thread) => (seat === 'ivan' && (scanDays.get(t.prospect_id) ?? 0) >= 2 ? 1 : 0)
-  v.rest.sort((a, b) => lift(b) - lift(a) || eventTime(b.last).localeCompare(eventTime(a.last)))
+  v.rest.sort((a, b) => lift(b) - lift(a) || (interestRanks.get(b.prospect_id) ?? 0) - (interestRanks.get(a.prospect_id) ?? 0) || eventTime(b.last).localeCompare(eventTime(a.last)))
   v.email.sort(threadOrder)
   const em = splitEmail(v.email, now)
   v.emailWaiting = em.waiting

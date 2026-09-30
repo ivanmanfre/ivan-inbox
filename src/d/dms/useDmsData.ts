@@ -1,7 +1,7 @@
 // The DMs page's reads. The list is TODAY'S read (useInbox: the whole message view, the four
 // side probes, groupThreads, the saved copy for a fast first paint). Around it, three small reads
 // the sections need, each failing on its own without taking the list down:
-//   · came_back_cards()   (all seats; the raw rows also give Ivan's scan-open days for the lift)
+//   · inbox_interest_cards() (all seats; the raw rows also give Ivan's scan-open days for the lift)
 //   · warm_signal_cards() (Ivan's seat)
 //   · dated follow-ups    (outreach_prospects skip_reason='follow_up_dated': id + date only;
 //                          the seat comes from the conversation's own client_id)
@@ -11,7 +11,7 @@ import { groupThreads, type InboxMessage, type Thread } from '../../lib/inbox'
 import { withSolved } from '../counts/solved'
 import { supabase } from '../../lib/supabase'
 import { FOLLOW_UP_REASON } from '../../lib/followUp'
-import { scanOpenDays, scanReopenOnlyIvan, type CameBackCard } from '../../wb/dms/cameBackData'
+import { interestPriority, scanOpenDays, scanReopenOnlyIvan, type CameBackCard } from '../../wb/dms/cameBackData'
 import { fetchWarmCards, type WarmCard } from '../../wb/dms/warmSignalsData'
 import { fetchConversationAgentCards, type ConversationAgentCard, type ConversationAgentFeed } from '../../wb/dms/conversationAgentData'
 import { projectFollowups, type FollowupSource } from './upcoming'
@@ -22,7 +22,7 @@ export type DatedFollowUp = { prospect_id: string; at: string }
 const none = <T,>(): Side<T> => ({ rows: [], failed: false, loaded: false })
 
 async function readCameBackRaw(): Promise<CameBackCard[]> {
-  const { data, error } = await supabase.rpc('came_back_cards')
+  const { data, error } = await supabase.rpc('inbox_interest_cards')
   if (error) throw error
   return (data ?? []) as CameBackCard[]
 }
@@ -119,6 +119,7 @@ export function useDmsData() {
 
   const cameBack = useMemo(() => cameRaw.rows.filter(c => !scanReopenOnlyIvan(c)), [cameRaw.rows])
   const scanDays = useMemo(() => new Map(cameRaw.rows.map(c => [c.prospect_id, scanOpenDays(c)])), [cameRaw.rows])
+  const interestRanks = useMemo(() => new Map(cameRaw.rows.map(c => [c.prospect_id, interestPriority(c)])), [cameRaw.rows])
 
   const refreshAll = useCallback(() => {
     inbox.refresh(); reloadCame(); reloadWarm(); reloadDated(); reloadAgent()
@@ -128,7 +129,7 @@ export function useDmsData() {
     threads, loading: inbox.loading, error: inbox.error, loadedAt: inbox.loadedAt, fromCache: inbox.fromCache, cachedAt: inbox.cachedAt,
     refreshList: inbox.refresh, refreshAll, patch, solved: inbox.solved,
     cameBack: { ...cameRaw, rows: cameBack }, dropCameBack: (pid: string) => editCame(r => r.filter(c => c.prospect_id !== pid)), reloadCame,
-    scanDays, warm, dropWarm: (pid: string) => editWarm(r => r.filter(c => c.prospect_id !== pid)), reloadWarm,
+    scanDays, interestRanks, warm, dropWarm: (pid: string) => editWarm(r => r.filter(c => c.prospect_id !== pid)), reloadWarm,
     dated, reloadDated, upcoming,
     agent, reloadAgent,
   }

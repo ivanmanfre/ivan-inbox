@@ -7,7 +7,7 @@
 //     cards (Ivan's seat), agent-only conversations, and came-back people who have no conversation
 //     yet (they would be lost otherwise). Each labelled by kind in words.
 import { isConversation, type Thread } from '../../lib/inbox'
-import { cameBackLine, firstComment, sentLine, type CameBackCard } from '../../wb/dms/cameBackData'
+import { cameBackLine, firstComment, interestLabel, sentLine, type CameBackCard } from '../../wb/dms/cameBackData'
 import type { ConversationAgentCard } from '../../wb/dms/conversationAgentData'
 import { warmGroup, type WarmCard } from '../../wb/dms/warmSignalsData'
 import type { Seat } from '../seats'
@@ -21,7 +21,7 @@ export function cameTag(c: CameBackCard, now: number = Date.now()): CameTag {
   const comment = firstComment(c)
   return {
     pid: c.prospect_id, name: c.name,
-    text: `came back · ${Number.isNaN(days) ? '?' : days === 0 ? 'today' : `${days}d`}`,
+    text: `${interestLabel(c)} · ${Number.isNaN(days) ? '?' : days === 0 ? 'today' : `${days}d`}`,
     title: `${cameBackLine(c)}. ${sentLine(c)}${comment ? ` “${comment}”` : ''}`,
   }
 }
@@ -57,7 +57,7 @@ export function signalItems(seat: Seat, warm: readonly WarmCard[], agentOnly: re
     if ((c.tenant as string) !== seat || seen.has(c.prospect_id)) continue
     const t = byId.get(c.prospect_id) ?? null
     if (t && isConversation(t) && !t.spam) continue
-    out.push({ kind: 'came', pid: c.prospect_id, label: 'came back', c, t })
+    out.push({ kind: 'came', pid: c.prospect_id, label: interestLabel(c), c, t })
   }
   return out
 }

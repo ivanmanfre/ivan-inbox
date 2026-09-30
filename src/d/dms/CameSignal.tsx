@@ -19,8 +19,8 @@ export function CameSignal({ tag, onDismiss }: { tag: CameTag; onDismiss: () => 
     <span className="dm-sigwrap" ref={box}>
       <button type="button" className="dm-sig" title={tag.title} aria-expanded={open} data-verb="came-back-tag" onClick={() => setOpen(o => !o)}>{tag.text}</button>
       {open && (
-        <span className="dm-sigpop" role="dialog" aria-label="Came back">
-          <span><b>{tag.name.split(' ')[0]} came back.</b> {tag.title}</span>
+        <span className="dm-sigpop" role="dialog" aria-label="Interest signal">
+          <span><b>{tag.name.split(' ')[0]}.</b> {tag.title}</span>
           <span><Btn verb="came-back-dismiss" disabled={busy} onClick={async () => { setBusy(true); await onDismiss(); setBusy(false); setOpen(false) }}>Dismiss</Btn></span>
         </span>
       )}
