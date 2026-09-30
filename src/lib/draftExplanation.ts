@@ -16,6 +16,9 @@ function texts(value: unknown): string[] {
 export function normalizeDraftExplanation(value: unknown) {
   const evidence = object(value)
   const brief = object(evidence.brief)
+  const followup = object(evidence.followup)
+  const judgement = followup.v === 'conversation_followup_v1' ? object(followup.judgement) : {}
+  const continuation = judgement.follow_up === true
   const sources: { title: string; url: string }[] = []
   const seen = new Set<string>()
   for (const research of Array.isArray(evidence.research) ? evidence.research : []) {
@@ -33,7 +36,9 @@ export function normalizeDraftExplanation(value: unknown) {
     }
   }
   return {
-    theyMean: text(brief.they_mean), move: text(brief.the_move), limits: text(brief.limits_to_name),
+    theyMean: text(brief.they_mean) ?? (continuation ? text(judgement.reason) : null),
+    move: text(brief.the_move) ?? (continuation ? text(judgement.angle) : null),
+    limits: text(brief.limits_to_name) ?? (continuation ? 'Review the latest conversation before sending; this draft assumes no new reply.' : null),
     unresolved: texts(brief.unresolved), facts: texts(evidence.facts), sources,
     // Preserve the exact body, including whitespace, for per-leg edit detection.
     generatedText: typeof evidence.generated_text === 'string' && evidence.generated_text.length

@@ -38,3 +38,12 @@ describe('saved draft explanation', () => {
     expect(draftExplanationFreshness('new body', 'new body', 'old body')).toBe('edited')
   })
 })
+
+
+it('displays the saved follow-up reason and proposed continuation without exposing lineage or raw reasoning', () => {
+ const x=normalizeDraftExplanation({followup:{v:'conversation_followup_v1',judgement:{follow_up:true,reason:'They offered to pass the deck to their team',angle:'Ask whether the team has reviewed the deck',reasoning:'never display this'},input_message_ids:['private-id']}})
+ expect(x.theyMean).toBe('They offered to pass the deck to their team')
+ expect(x.move).toBe('Ask whether the team has reviewed the deck')
+ expect(x.limits).toMatch(/latest conversation/)
+ expect(JSON.stringify(x)).not.toMatch(/private-id|never display/)
+})
