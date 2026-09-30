@@ -55,6 +55,16 @@ describe('home tiles', () => {
     expect(li.map(a => a.textContent)).toEqual(['Warm engagers12'])
     expect(li[0].getAttribute('href')).toBe('#exp/d/lanes?sheet=campaign&c=c1')
   })
+  it('keeps the last Ready count visibly stale and offers a retry after a failed refresh', () => {
+    const ready: ReadyRead = { saturdayNy: false, lanes: [{ seat: 'ivan', lane: 'engage', label: 'Warm engagers', n: 12, capped: false, campaignId: 'c1', off: null }] }
+    const h = home({ lanes: lanes({ ready: { value: ready, failed: 'timeout' } }) })
+    renderInFrame(<Ready seat="ivan" h={h} />, { hash: '#exp/d/home' })
+    expect(document.querySelector('.hm-n')!.textContent).toBe('12')
+    const retry = document.querySelector('[data-verb="retry"]')!
+    expect(retry?.textContent).toContain('Stale')
+    fireEvent.click(retry)
+    expect(h.retry.lanes).toHaveBeenCalledOnce()
+  })
   it('rate limit: Limited · resumes + last try when a pause is ahead', () => {
     const d = lanes({
       cc: { value: { clients: [] } as never, failed: null },

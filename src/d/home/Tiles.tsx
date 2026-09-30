@@ -69,7 +69,9 @@ export function Ready({ seat, h }: P) {
   return (
     <Tile id="ready" seat={seat} href={dHash('lanes', null, { seat })} label="Ready" r={r} retry={h.retry.lanes}
       big={v => num(v.total)}
-      after={lanes.length > 0 && (
+      after={<>
+        {h.lanes.ready.failed && <button type="button" className="hm-retry" data-verb="retry" title={h.lanes.ready.failed} onClick={h.retry.lanes}>Stale · Retry</button>}
+        {lanes.length > 0 && (
         <ul className="hm-lanes">
           {lanes.map(l => (
             <li key={l.lane} className={l.off ? 'hm-off' : undefined} title={l.off ?? undefined}>
@@ -79,7 +81,7 @@ export function Ready({ seat, h }: P) {
             </li>
           ))}
         </ul>
-      )} />
+      )}</>} />
   )
 }
 

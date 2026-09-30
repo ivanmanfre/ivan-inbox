@@ -127,10 +127,10 @@ export function useLanesData(only?: readonly Key[]): { data: LanesData; loading:
     })
   }, [])
 
-  const refresh = useCallback(() => {
+  const poll = useCallback((force = false) => {
     if (pending.current || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return
     pending.current = true
-    const withSlow = Date.now() - slowAt.current >= SLOW_MS
+    const withSlow = force || Date.now() - slowAt.current >= SLOW_MS
     if (withSlow) slowAt.current = Date.now()
     readKeys((only ?? KEYS).filter(k => withSlow || !SLOW.has(k)), () => {
       pending.current = false
@@ -140,20 +140,23 @@ export function useLanesData(only?: readonly Key[]): { data: LanesData; loading:
     })
   }, [readKeys, only])
 
+  const refresh = useCallback(() => poll(true), [poll])
+
   useEffect(() => {
     live.current = true
-    refresh()
-    const t = setInterval(refresh, 60_000)
-    window.addEventListener('focus', refresh)
-    document.addEventListener('visibilitychange', refresh)
+    const tick = () => poll()
+    tick()
+    const t = setInterval(tick, 60_000)
+    window.addEventListener('focus', tick)
+    document.addEventListener('visibilitychange', tick)
     return () => {
       live.current = false
       clearInterval(t)
       if (retryT.current != null) { window.clearTimeout(retryT.current); retryT.current = null }
-      window.removeEventListener('focus', refresh)
-      document.removeEventListener('visibilitychange', refresh)
+      window.removeEventListener('focus', tick)
+      document.removeEventListener('visibilitychange', tick)
     }
-  }, [refresh])
+  }, [poll])
 
   return { data, loading, at, refresh }
 }

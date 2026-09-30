@@ -17,7 +17,8 @@
    Checks the senders make only in code at send time (geo gate, ads gate,
    live gate, exclusion ledgers, qualification) are NOT replayed: the count
    is "passes the sender's filter", a ceiling, and the UI says so.
-   Every read is a SELECT, scoped to one seat's campaigns. Nothing writes.
+   Fresh stock excludes prior contact and holds. RISE warm stock comes from the
+   canonical supply RPC; other RISE pools remain visible as candidates. No writes.
    ========================================================================== */
 import { supabase } from '../../../lib/supabase'
 import type { GovernorRow } from '../../../lib/kpis'
@@ -40,9 +41,10 @@ export type Cand = {
   last_dm_sent_at: string | null; liveness_checked_at: string | null; created_at: string; skip_state: string | null; skip_reason: string | null
   reply_count: number | null; note_variant: string | null; hypertarget_reserved: boolean | null; company_domain: string | null
   ed_lane: string | null; sig_ok: string | null; sig_note: string | null; rise_note: string | null; anchor: string | null; gate: string | null
+  next_touch_after?: string | null; call_booked_at?: string | null; needs_manual_reply?: boolean | null; recycled_at?: string | null; last_reply_at?: string | null; dm_count?: number | null
   partner: string | null; colleague: string | null; refused: string | null; src: string | null; waived: string | null; lang_hold: string | null; copy_hold: string | null
 }
-const COLS = 'id, campaign_id, stage, icp_score, trigger_type, trigger_confidence, scorer_version, country, preferred_channel, connection_sent_at, connected_at, last_dm_sent_at, liveness_checked_at, created_at, skip_state, skip_reason, reply_count, note_variant, hypertarget_reserved, company_domain, '
+const COLS = 'id, campaign_id, stage, icp_score, trigger_type, trigger_confidence, scorer_version, country, preferred_channel, connection_sent_at, connected_at, last_dm_sent_at, liveness_checked_at, created_at, skip_state, skip_reason, reply_count, note_variant, hypertarget_reserved, company_domain, next_touch_after, call_booked_at, needs_manual_reply, recycled_at, last_reply_at, dm_count, '
   + 'ed_lane:enrichment_data->>lane, sig_ok:enrichment_data->>signal_approved_at, sig_note:enrichment_data->>signal_note_final, rise_note:enrichment_data->>rise_note_final, anchor:enrichment_data->>anchor_client, gate:enrichment_data->name_gate->>status, '
   + 'partner:enrichment_data->>partner_lane, colleague:enrichment_data->expansion->>colleague_first, refused:enrichment_data->invite_refused->>last_at, src:enrichment_data->>source_kind, waived:enrichment_data->>icp_floor_waived, lang_hold:enrichment_data->>lang_hold, copy_hold:enrichment_data->>copy_hold'
 
@@ -64,10 +66,15 @@ const LABEL: Record<string, string> = {
   cold_games: 'Cold (games)', cold_apps: 'Cold (apps)', profile_view: 'Profile views', sponsor_mined: 'Sponsors', sponsor_team: 'Sponsor team',
 }
 
-export type Ctx = { now: number; cfg: Cfg; scorer: number; ivanIds: Set<string>; riseLive: Set<string>; archLive: Set<string>; stop: Set<string>; touch: Set<string>; satNy: boolean }
+export type Ctx = { now: number; cfg: Cfg; scorer: number; ivanIds: Set<string>; riseLive: Set<string>; archLive: Set<string>; stop: Set<string>; touch: Set<string>; satNy: boolean; riseReadyIds?: Set<string>; riseReadyCount?: number }
 
 /** PURE: which lane (if any) the seat's sender would pick this row from, by its own filter. */
 export function laneOf(r: Cand, x: Ctx): { seat: Seat; lane: string } | null {
+  if (r.skip_state || r.hypertarget_reserved || r.call_booked_at || r.needs_manual_reply || r.last_reply_at || r.reply_count || r.dm_count || r.lang_hold || r.copy_hold
+    || (r.next_touch_after && Date.parse(r.next_touch_after) > x.now) || r.icp_score == null) return null
+  const retry = r.skip_reason === 'invite_withdrawn_stale'
+  if (!retry && (r.skip_reason || r.connection_sent_at || r.connected_at || r.last_dm_sent_at || r.recycled_at)) return null
+  if (r.campaign_id === RISE.engager) return x.riseLive.has(r.campaign_id) && x.riseReadyIds?.has(r.id) ? { seat: 'risedtc', lane: 'engager' } : null
   const held = (h: number) => Boolean(r.refused && Date.parse(r.refused) >= x.now - h * 36e5)
   const li = !r.preferred_channel || r.preferred_channel === 'linkedin'
   const icp = r.icp_score ?? -1, conf = r.trigger_confidence
@@ -85,7 +92,7 @@ export function laneOf(r: Cand, x: Ctx): { seat: Seat; lane: string } | null {
     if (r.trigger_type === 'content_signal') return icp >= 7 && r.sig_note ? { seat: 'ivan', lane: 'signal' } : null
     if (r.trigger_type === 'engaged_post' || r.trigger_type === 'content_engagement')
       return conf != null && conf >= 3 && icp >= 6 && (r.ed_lane !== 'own_post_engager' || r.sig_note) ? { seat: 'ivan', lane: 'engage' } : null
-    if (r.trigger_type === 'hiring') return conf != null && conf >= 3 && Date.parse(r.created_at) >= x.now - 3 * DAY ? { seat: 'ivan', lane: 'hiring' } : null
+    if (r.trigger_type === 'hiring') return icp >= 7 && conf != null && conf >= 3 && Date.parse(r.created_at) >= x.now - 3 * DAY ? { seat: 'ivan', lane: 'hiring' } : null
     return conf == null && icp >= 7 && r.liveness_checked_at ? { seat: 'ivan', lane: 'cold' } : null
   }
   if (x.riseLive.has(r.campaign_id)) {
@@ -132,6 +139,8 @@ export function buildReady(rows: Cand[], x: Ctx, capped: boolean): ReadyRead {
   ]
   const lanes: ReadyLane[] = fixed.map(([seat, lane, off]) => { const xs = by.get(`${seat}|${lane}`) ?? []; return { seat, lane, label: LABEL[lane] ?? lane, n: xs.length, capped, campaignId: top(xs) ?? (seat === 'risedtc' ? RISE[lane as keyof typeof RISE] ?? null : null), off } })
   for (const [k, xs] of by) if (k.startsWith('arch|')) { const lane = k.slice(5); lanes.push({ seat: 'arch', lane, label: LABEL[lane] ?? lane.replace(/_/g, ' '), n: xs.length, capped, campaignId: top(xs), off: null }) }
+  const warm = lanes.find(l => l.seat === 'risedtc' && l.lane === 'engager')
+  if (warm && x.riseReadyCount != null) { warm.n = x.riseReadyCount; warm.capped = false }
   return { lanes, saturdayNy: x.satNy }
 }
 
@@ -174,7 +183,9 @@ export function isSaturdayNy(now: number): boolean {
 
 /** THE read: config (3 small selects), ONE candidate select over the three seats' live campaigns, and the Rise domain list. */
 export async function fetchReady(now = Date.now()): Promise<ReadyRead> {
-  const { cfg, camps, scorer } = await config()
+  const [{ cfg, camps, scorer }, supply] = await Promise.all([config(), supabase.rpc('inbox_rise_ready')])
+  if (supply.error) throw new Error(supply.error.message)
+  if (!supply.data || !Number.isInteger(supply.data.ready_count) || supply.data.ready_count < 0 || !Array.isArray(supply.data.ready_ids)) throw new Error('RISE ready stock could not be verified')
   const ivanIds = new Set(camps.filter(c => live(c) && c.client_id == null).map(c => c.id))
   const riseLive = new Set(Object.values(RISE).filter(id => camps.some(c => c.id === id && live(c))))
   const archLive = new Set(ARCH_IDS.filter(id => camps.some(c => c.id === id && live(c))))
@@ -202,12 +213,14 @@ export async function fetchReady(now = Date.now()): Promise<ReadyRead> {
     cfg.rise_company_expansion === 'on' && riseAll.length ? riseDomains(riseAll, now) : Promise.resolve({ stop: new Set<string>(), touch: new Set<string>() }),
   ])
   const rows = cand.rows
-  return buildReady(rows, { now, cfg, scorer, ivanIds, riseLive, archLive, stop: dom.stop, touch: dom.touch, satNy: isSaturdayNy(now) }, cand.capped)
+  return buildReady(rows, { now, cfg, scorer, ivanIds, riseLive, archLive, stop: dom.stop, touch: dom.touch, satNy: isSaturdayNy(now), riseReadyIds: new Set(supply.data.ready_ids), riseReadyCount: supply.data.ready_count }, cand.capped)
 }
 
 /** One seat's lanes, busiest first; the total counts only lanes the sender would pick today. Governor warm-only drops Ivan's cold. */
 export function readyOf(r: ReadyRead, seat: Seat, gov?: GovernorRow | null): ReadySeat {
   const lanes = r.lanes.filter(l => l.seat === seat).map(l =>
+    ['retry', 'reconnect'].includes(l.lane) ? { ...l, off: l.off ?? 'Previously contacted; excluded from fresh stock' } :
+    seat === 'risedtc' && l.lane !== 'engager' ? { ...l, label: l.label + ' candidates', off: l.off ?? 'Qualification not yet verified for this stock count' } :
     seat === 'ivan' && l.lane === 'cold' && !l.off && gov && gov.mode !== 'normal' ? { ...l, off: gov.mode === 'warm_only' ? 'warm only this week' : 'cold paused' } : l)
     .sort((a, b) => Number(Boolean(a.off)) - Number(Boolean(b.off)) || b.n - a.n)
   return { total: lanes.filter(l => !l.off).reduce((a, l) => a + l.n, 0), lanes }
