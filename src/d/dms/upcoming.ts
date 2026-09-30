@@ -50,6 +50,7 @@ export function blockedFollowup(t: Thread): { message: InboxMessage; reason: str
  const at = ts(m.send_blocked_at)
  if (t.messages.some(r => r.id !== m.id && ((r.direction === 'outbound' && r.sent_at && ts(r.sent_at) > at) || (r.direction === 'inbound' && ts(eventTime(r)) > at)))) return null
  const raw = m.send_blocked_reason ?? ''
+ if (/^(discarded|superseded)(?:_|$)/.test(raw)) return null
  const reason = raw === 'arch_conversation_owner_only' ? 'Conversation ownership check failed' : raw.startsWith('followup_') ? `Follow-up held: ${raw.slice(9).replaceAll('_',' ')}` : `Delivery blocked: ${raw.replaceAll('_',' ')}`
  return { message: m, reason }
 }

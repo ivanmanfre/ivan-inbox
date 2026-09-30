@@ -42,6 +42,13 @@ describe('upcoming follow-ups', () => {
   })
 })
 describe('blocked follow-ups', () => {
+  it('does not ask for review of deliberately discarded or retired historical drafts', () => {
+    for (const reason of ['discarded_repeat_ask_bump','superseded_war_room_2026-07-17']) {
+      const rows = waiting('b', { client_id:'ivan' });
+      rows.push(msg({ prospect_id:'b', ai_model:'ivan_stall_bump_ctx_v1', created_at:'2026-09-29T09:00:00Z', send_blocked_at:'2026-09-29T09:01:00Z', send_blocked_reason:reason }));
+      expect(blockedFollowup(threads(rows)[0])).toBeNull()
+    }
+  })
   it('surfaces ARCH ownership failures until a new message or draft supersedes them', () => {
     const rows = waiting('b', { client_id: 'arch' })
     rows.push(msg({ prospect_id: 'b', client_id: 'arch', ai_model: 'arch_stall_bump_ctx_v1', created_at: '2026-09-29T09:00:00Z', send_blocked_at: '2026-09-29T09:01:00Z', send_blocked_reason: 'arch_conversation_owner_only' }))
