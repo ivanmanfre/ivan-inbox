@@ -1124,6 +1124,14 @@ describe('drafts with email and follow-ups, 2026-09-26 live fixes', () => {
     // A real sender block stays a failure.
     expect(sendFailed({ ...r, send_blocked_reason: 'duplicate_in_thread' })).toBe(true)
   })
+  it('a draft retired after the conversation closed is history, not a sending failure', () => {
+    const old = { ...base, send_blocked_at:'2026-07-16T17:40:27Z', send_blocked_reason:'stale_convo_closed_2026-07-16' }
+    expect(isEngineRetired(old)).toBe(true)
+    expect(sendFailed(old)).toBe(false)
+    expect(isDraft(old)).toBe(false)
+    expect(retiredLabel(old)).toMatch(/conversation was closed/)
+    expect(sendFailed({ ...old, send_blocked_reason:'copy_lint:hedge_curious_if' })).toBe(true)
+  })
   // Danil Kontsevoy (2026-09-28): the canned inbound-request opener, pulled
   // because he wrote first, showed as "Send failed" + "Replied (send failed)".
   it('a qualifier pulled because they wrote first is hidden, never failed', () => {

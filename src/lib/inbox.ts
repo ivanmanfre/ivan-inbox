@@ -179,12 +179,12 @@ export function sendFailed(m: InboxMessage): boolean {
 }
 
 // A pending draft the ENGINE itself took off the table because something newer
-// replaced it: a redraft, a fresher inbound, the 3-day expiry, or a writer that
+// replaced it: a redraft, a fresher inbound, a closed conversation, the 3-day expiry, or a writer that
 // answered "no reply needed". Nothing was attempted and nothing failed, so it
 // never wears "Send failed" (JeongHyun Bae carried six red "Send failed" bubbles
 // for six superseded redrafts, 2026-09-26 review). Matched on the unsent row
 // only: a sent row is history whatever its reason says.
-const ENGINE_RETIRED = /^(superseded_by|stale_draft_expired|model_meta_no_reply|writer_no_reply|replied_before_qualifier)/
+const ENGINE_RETIRED = /^(superseded_by|stale_draft_expired|stale_convo_closed|model_meta_no_reply|writer_no_reply|replied_before_qualifier)/
 
 export function isEngineRetired(m: InboxMessage): boolean {
   return m.direction === 'outbound' && !m.sent_at && !m.approved_at
@@ -204,6 +204,7 @@ export function retiredLabel(m: InboxMessage): string {
   const r = m.send_blocked_reason ?? ''
   if (r.startsWith('superseded_by')) return 'Draft not sent, replaced by a newer one'
   if (r.startsWith('stale_draft_expired')) return 'Draft not sent, it expired'
+  if (r.startsWith('stale_convo_closed')) return 'Draft not sent, the conversation was closed'
   return 'Draft not sent, no reply was needed'
 }
 

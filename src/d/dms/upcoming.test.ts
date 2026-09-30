@@ -49,6 +49,14 @@ describe('blocked follow-ups', () => {
       expect(blockedFollowup(threads(rows)[0])).toBeNull()
     }
   })
+  it('keeps Nick’s July closed conversation out of the blocked review queue', () => {
+    const rows = [
+      msg({ prospect_id:'nick', prospect_name:'Nick Fouriezos', direction:'inbound', sent_at:'2026-07-09T00:04:09Z', created_at:'2026-07-09T00:17:10Z', message_text:"I'm not interested, but appreciate you sending it over" }),
+      msg({ prospect_id:'nick', prospect_name:'Nick Fouriezos', sent_at:'2026-07-09T00:42:36Z', created_at:'2026-07-16T17:31:47Z', message_text:'No problem Nick, have a good one' }),
+      msg({ prospect_id:'nick', prospect_name:'Nick Fouriezos', ai_model:'stall_bump_v1', created_at:'2026-07-12T04:00:48Z', send_blocked_at:'2026-07-16T17:40:27Z', send_blocked_reason:'stale_convo_closed_2026-07-16' }),
+    ]
+    expect(blockedFollowup(threads(rows)[0])).toBeNull()
+  })
   it('surfaces ARCH ownership failures until a new message or draft supersedes them', () => {
     const rows = waiting('b', { client_id: 'arch' })
     rows.push(msg({ prospect_id: 'b', client_id: 'arch', ai_model: 'arch_stall_bump_ctx_v1', created_at: '2026-09-29T09:00:00Z', send_blocked_at: '2026-09-29T09:01:00Z', send_blocked_reason: 'arch_conversation_owner_only' }))
