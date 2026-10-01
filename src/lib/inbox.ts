@@ -1325,7 +1325,7 @@ export async function saveDraftEmailCc(id: string, value: unknown): Promise<stri
     .update({ draft_evidence: { ...evidence, email_cc: cc } })
     .eq('id', id).is('sent_at', null).is('approved_at', null)
     .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*`)
-  query = evidence == null ? query.is('draft_evidence', null) : query.eq('draft_evidence', evidence)
+  query = evidence == null ? query.is('draft_evidence', null) : query.eq('draft_evidence', JSON.stringify(evidence))
   const { data, error } = await query.select('id')
   if (error) throw error
   if (!data?.length) throw new Error('The draft changed. Refresh before approving.')

@@ -15,7 +15,7 @@ beforeEach(() => {
 it('preserves unrelated evidence and guards the exact evidence and pending state', async () => {
   expect(await saveDraftEmailCc('d', 'michael@vmisports.com')).toEqual(['michael@vmisports.com'])
   expect(db.update).toHaveBeenCalledWith({ draft_evidence: { generated_text: 'keep this', email_cc: ['michael@vmisports.com'] } })
-  expect(db.filters).toContainEqual(['eq', 'draft_evidence', { generated_text: 'keep this', email_cc: [] }])
+  expect(db.filters).toContainEqual(['eq', 'draft_evidence', JSON.stringify({ generated_text: 'keep this', email_cc: [] })])
   expect(db.filters).toContainEqual(['is', 'approved_at', null])
   expect(db.filters).toContainEqual(['is', 'sent_at', null])
 })
