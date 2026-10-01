@@ -33,6 +33,8 @@ begin
   if guard->>'revision' is not null then
     evidence := evidence || jsonb_build_object('conversation_agent_manual_revision',(guard->>'revision')::bigint);
   end if;
+  evidence := evidence || jsonb_build_object('operator_copy_approval', jsonb_build_object(
+    'source','inbox','text',p_text,'approved_at',now()));
   update public.outreach_messages set message_type='manual_reply', message_text=p_text,
     approved_at=now(), send_blocked_at=null, send_blocked_reason=null,
     unipile_chat_id=coalesce(nullif(p_chat_id,''),m.unipile_chat_id), draft_evidence=evidence

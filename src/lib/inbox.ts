@@ -1241,7 +1241,7 @@ export function threadChatId(t: Thread): string | null {
 // list and a later bounce starts clean.
 export async function approveDraft(id: string, editedText: string, chatId?: string | null): Promise<void> {
   const { data: draft, error: readError } = await supabase.from('outreach_messages')
-    .select('ai_model').eq('id', id).single()
+    .select('ai_model,draft_evidence').eq('id', id).single()
   if (readError) throw readError
   if (draft?.ai_model === 'inbox_on_demand_reply') {
     const { error } = await supabase.rpc('approve_inbox_on_demand_reply', {
@@ -1250,16 +1250,24 @@ export async function approveDraft(id: string, editedText: string, chatId?: stri
     if (error) throw error
     return
   }
+  const approvedAt = new Date().toISOString()
   const patch: Record<string, unknown> = {
-    message_text: editedText, approved_at: new Date().toISOString(),
+    message_text: editedText, approved_at: approvedAt,
+    draft_evidence: {
+      ...(draft?.draft_evidence ?? {}),
+      operator_copy_approval: { source: 'inbox', text: editedText, approved_at: approvedAt },
+    },
     send_blocked_reason: null, send_blocked_at: null,
   }
   if (chatId) patch.unipile_chat_id = chatId
-  const { error } = await supabase.from('outreach_messages')
+  let query = supabase.from('outreach_messages')
     .update(patch)
-    .eq('id', id).is('sent_at', null)
+    .eq('id', id).is('sent_at', null).is('approved_at', null)
     .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*`)
+  query = draft?.draft_evidence == null ? query.is('draft_evidence', null) : query.eq('draft_evidence', JSON.stringify(draft.draft_evidence))
+  const { data, error } = await query.select('id')
   if (error) throw error
+  if (!data?.length) throw new Error('The draft changed before approval. Refresh before sending.')
 }
 
 // The presets on the card. Ivan named "one more week" and "a custom time"; the

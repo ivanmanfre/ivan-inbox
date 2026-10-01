@@ -30,10 +30,27 @@ it('fails closed when draft identity cannot be read', async () => {
 })
 it('keeps existing pipeline drafts on their established approval path', async () => {
   db.read.mockResolvedValue({ data: { ai_model: 'arch_reply_draft_v2' }, error: null })
-  const chain = { eq: () => chain, is: () => chain, or: async () => ({ error: null }) }
+  const chain = { eq: () => chain, is: () => chain, or: () => chain, select: async () => ({ data: [{ id: 'pipeline-draft' }], error: null }) }
   db.update.mockReturnValue(chain)
   await approveDraft('pipeline-draft', 'Reviewed pipeline reply', 'chat')
   expect(db.rpc).not.toHaveBeenCalled()
   expect(db.update).toHaveBeenCalledWith(expect.objectContaining({ message_text: 'Reviewed pipeline reply', unipile_chat_id: 'chat' }))
   expect(db.update.mock.calls[0][0]).not.toHaveProperty('message_type')
+})
+it('records the exact operator-approved copy and timestamp without losing draft provenance', async () => {
+  db.read.mockResolvedValue({ data: { ai_model: 'arch_reply_draft_v2', draft_evidence: { generated_text: 'Original', inbound_id: 'inbound-1' } }, error: null })
+  const chain = { eq: () => chain, is: () => chain, or: () => chain, select: async () => ({ data: [{ id: 'draft' }], error: null }) }
+  db.update.mockReturnValue(chain)
+  await approveDraft('draft', 'Reviewed $2k–$3k reply')
+  const patch = db.update.mock.calls[0][0]
+  expect(patch.draft_evidence).toEqual({
+    generated_text: 'Original', inbound_id: 'inbound-1',
+    operator_copy_approval: { source: 'inbox', text: 'Reviewed $2k–$3k reply', approved_at: patch.approved_at },
+  })
+})
+it('reports a concurrent metadata change instead of pretending approval succeeded', async () => {
+  db.read.mockResolvedValue({ data: { ai_model: 'arch_reply_draft_v2', draft_evidence: { inbound_id: 'old' } }, error: null })
+  const chain = { eq: () => chain, is: () => chain, or: () => chain, select: async () => ({ data: [], error: null }) }
+  db.update.mockReturnValue(chain)
+  await expect(approveDraft('draft', 'Reviewed reply')).rejects.toThrow(/changed|refresh/i)
 })

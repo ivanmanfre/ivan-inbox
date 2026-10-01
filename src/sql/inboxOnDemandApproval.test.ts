@@ -37,6 +37,9 @@ describe('operator approval of an on-demand draft', () => {
       message_text: 'Reviewed reply', unipile_chat_id: 'chat-1', sent_at: null,
       draft_evidence: { v: 'inbox_on_demand_reply_v1', generated_text: 'Draft', model: 'test-model', conversation_agent_manual_revision: 8 } })
     expect((await row()).approved_at).toBeTruthy()
+    const approved = await row()
+    expect(approved.draft_evidence).toMatchObject({ operator_copy_approval: { source: 'inbox', text: 'Reviewed reply' } })
+    expect(Date.parse((approved.draft_evidence as { operator_copy_approval: { approved_at: string } }).operator_copy_approval.approved_at)).toBe(new Date(approved.approved_at as string).getTime())
   })
   it('rejects repeated approval before incrementing ownership again', async () => {
     await approve()
