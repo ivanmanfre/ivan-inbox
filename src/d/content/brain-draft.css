@@ -1,0 +1,7 @@
+.cn-brain-draft{padding:10px 12px;border-left:2px solid var(--lime);font-size:12px;line-height:1.5;min-width:0;overflow-wrap:anywhere}
+.cn-brain-draft>div{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.cn-brain-draft b{font:600 11px var(--m);color:var(--lime)}
+.cn-brain-draft a{color:var(--lime);text-decoration:underline;min-height:44px;display:inline-flex;align-items:center}
+.cn-brain-draft a:focus-visible{outline:2px solid var(--lime);outline-offset:3px}
+.cn-brain-draft p{margin:4px 0;color:var(--t2)}
+.cn-brain-draft strong{color:var(--t1)}

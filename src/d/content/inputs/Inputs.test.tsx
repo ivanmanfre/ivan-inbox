@@ -9,6 +9,7 @@ import { Inputs, InputsPage } from './Inputs'
 
 vi.mock('../../../lib/cb22', async original => ({ ...await original<typeof import('../../../lib/cb22')>(), fetchInputs: vi.fn(), fetchInputsCounts: vi.fn().mockResolvedValue(null) }))
 vi.mock('../../../lib/outliers', async original => ({ ...await original<typeof import('../../../lib/outliers')>(), putOutlierOnBoard: vi.fn().mockResolvedValue({ ok: true, id: 'saved', created: true }) }))
+vi.mock('../../../lib/brainAccount', async original => ({ ...await original<typeof import('../../../lib/brainAccount')>(), fetchOutlierLabels: vi.fn().mockResolvedValue({ client: 'arch', rows: [], calibration: { state: 'waiting_for_labels', labelN: 0, requiredN: 30, runnerReady: false, reason: 'Fixture waiting' } }) }))
 const payload = (patch: Partial<InputsPayload> = {}): InputsPayload => ({ client: 'arch', week_start: '2026-09-28', top: [], buyers: [], counts: { window: 67, recommended: 0, in_review: 0, judged: 57, outliers: 73, buyers: 0 }, last_run: null, rule: '', ...patch })
 beforeEach(() => { vi.mocked(fetchInputs).mockReset(); vi.mocked(fetchInputs).mockResolvedValue({ kind: 'ready', data: payload() }) })
 afterEach(() => { cleanup(); localStorage.clear(); vi.clearAllMocks() })

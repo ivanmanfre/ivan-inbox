@@ -136,7 +136,7 @@ export function useGlanceCounts(): GlanceCounts {
     // updated_at and would roughly double the count (check2-data 4d).
     const decisionCut = new Date(Date.now() - 14 * 86_400_000).toISOString()
     const [drafts, magnets, wf, jobs] = await Promise.all([
-      supabase.from('carousel_drafts')
+      supabase.from('cb34_p2_safe_drafts')
         .select('client_id', { count: 'exact' })
         .eq('status', 'review')
         .gte('created_at', decisionCut)

@@ -147,7 +147,7 @@ export async function crossSearch(query: string, lane: ContentLane): Promise<Cro
 
   const f = laneFilter(lane)
 
-  let draftQ = supabase.from('carousel_drafts')
+  let draftQ = supabase.from('cb34_p2_safe_drafts')
     .select('id,title,topic,post_body,status,type,updated_at')
   draftQ = f.op === 'is' ? draftQ.is(f.column, null) : draftQ.eq(f.column, f.value)
 
@@ -271,7 +271,7 @@ export async function crossSearchOtherLanes(
   const others = lanes.filter(l => l !== lane)
   const counts = await Promise.all(others.map(async (l): Promise<LaneCount> => {
     const lf = laneFilter(l)
-    let q = supabase.from('carousel_drafts').select('id', { count: 'exact', head: true })
+    let q = supabase.from('cb34_p2_safe_drafts').select('id', { count: 'exact', head: true })
     q = lf.op === 'is' ? q.is(lf.column, null) : q.eq(lf.column, lf.value)
     const { count, error } = await q.or(orIlike(['title', 'topic', 'post_body'], term))
     return { lane: l, n: error ? 0 : (count ?? 0) }

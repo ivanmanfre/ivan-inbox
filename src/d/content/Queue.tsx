@@ -1,3 +1,4 @@
+import { BrainDraftBadge } from './BrainDraftBadge'
 import { useState } from 'react'
 import type { ContentDraft } from '../../lib/content'
 import { Failed, Skeleton } from '../ui/states'
@@ -91,6 +92,7 @@ function QueueRow({ r, i, lane, open, onOpen, verbs, now }: {
       <span className="cn-qmain">
         <button type="button" className="cn-t" data-verb="open" title={full} onClick={e => { e.stopPropagation(); onOpen(r.id) }}>{text}</button>
         {excerpt && <span className="cn-qex">{excerpt}</span>}
+        <BrainDraftBadge draft={r} />
         <span className="cn-qsrc">
           <span>{age(r.created_at, now)}</span>
           {src && (src.href

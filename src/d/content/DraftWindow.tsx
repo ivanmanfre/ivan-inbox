@@ -1,3 +1,4 @@
+import { BrainDraftBadge } from './BrainDraftBadge'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDraftDetail } from '../../hooks/useContent'
 import { useUnsavedNavigation } from '../../hooks/useUnsavedNavigation'
@@ -187,6 +188,7 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
         <EarlyReadChip read={earlyReads.get(d.id)} lane={lane} unsaved={dirty} /></div>
       <div className="cn-dwb">
         <AboveThePost d={d} stage={stage} lane={lane} />
+        <BrainDraftBadge draft={d} />
         {lane !== 'ivan' && !v.visible && (stage === 'error' || stage === 'stuck') && <ClientFixRow d={d} lane={lane} onDone={refresh} disabled={v.editing || v.busy} />}
         <Preview d={pic ? { ...d, image_urls: pic } : d} lane={lane} body={v.shown} editing={v.editing} busy={v.busy} text={v.text} setText={v.setText}
           onStartEdit={lane === 'ivan' || clientEditable(d.status, lane) ? v.startEdit : null} onCancel={v.cancelEdit} onSave={() => void v.save()} />

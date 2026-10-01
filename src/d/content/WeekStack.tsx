@@ -1,3 +1,4 @@
+import { BrainDraftBadge } from './BrainDraftBadge'
 import { useCallback, useState } from 'react'
 import { ConfirmProvider } from '../../wb/chrome/ConfirmSheet'
 import { RetryDraft } from '../../wb/content/actions'
@@ -258,6 +259,7 @@ function Card({ c, when, open, busy, onOpen, onKey, onDate, nowView, onChanged, 
           </button>
         ) : <span className="cn-wc-nopic" aria-hidden="true">Text</span>}
       </div>
+      <BrainDraftBadge draft={c.r} />
       <div className="cn-wc-acts">
         {c.canDate && (
           <button type="button" className="cn-wc-date" data-verb="card-date" onClick={onDate} disabled={busy}>

@@ -17,7 +17,7 @@ import { laneOfRow } from './weekModel'
 //   · an EMPTY answer over a saved copy that held posts is a failed refresh,
 //     never a truth: the copy stays, and the page says the refresh failed;
 //   · capability links never reach storage (bodies redacted, writeSwr refuses).
-export const WEEK_CACHE = 'content-week-v1'
+export const WEEK_CACHE = 'content-week-guarded-v2'
 
 export type WeekRead = {
   rows: ContentDraft[]
@@ -40,7 +40,7 @@ type Saved = { rows: ContentDraft[] }
 export function toSaved(rows: ContentDraft[]): Saved {
   const clean = (s: string | null | undefined) => (s == null ? s ?? null : redactCapability(s))
   return {
-    rows: rows.filter(r => laneOfRow(r) !== null).map(r => ({
+    rows: rows.filter(r => laneOfRow(r) !== null && r.cb34_p2_member !== true).map(r => ({
       ...r,
       title: clean(r.title), topic: clean(r.topic), post_body: clean(r.post_body),
       source_label: clean(r.source_label), log_body: clean(r.log_body),
@@ -62,16 +62,25 @@ export function useWeekRead(enabled: boolean, now: number): WeekRead {
   const [error, setError] = useState<string | null>(null)
   const [capped, setCapped] = useState<number | null>(null)
   const [settled, setSettled] = useState(false)
-  const shown = useRef(rows.length)
-  shown.current = rows.length
+  const shown = useRef(rows.filter(r => r.cb34_p2_member !== true).length)
+  shown.current = rows.filter(r => r.cb34_p2_member !== true).length
   const topic = `carousel_drafts:week:${useId()}`
+  const generation = useRef(0)
+  const active = useRef(false)
+  const scope = useRef({ enabled, now })
+  scope.current = { enabled, now }
 
   const refresh = useCallback(() => {
-    if (!enabled) return
+    if (!active.current || !enabled || !scope.current.enabled || scope.current.now !== now) return
+    const request = ++generation.current
+    const current = () => active.current && request === generation.current && scope.current.enabled && scope.current.now === now
     setLoading(true)
+    // A saved release is not current validation. Keep ordinary SWR rows only.
+    setRows(previous => previous.filter(r => r.cb34_p2_member !== true))
     const { from, to } = weekRange(now)
     fetchWeekDrafts(from, to)
       .then(page => {
+        if (!current()) return
         const mine = page.rows.filter(r => laneOfRow(r) !== null)
         if (mine.length === 0 && shown.current > 0) {
           setError('The refresh came back empty over a saved week that held posts, so the saved copy stays.')
@@ -81,8 +90,8 @@ export function useWeekRead(enabled: boolean, now: number): WeekRead {
           writeSwr(WEEK_CACHE, toSaved(mine))
         }
       })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'this week is unavailable'))
-      .finally(() => { setLoading(false); setSettled(true) })
+      .catch((e: unknown) => { if (current()) setError(e instanceof Error ? e.message : 'this week is unavailable') })
+      .finally(() => { if (current()) { setLoading(false); setSettled(true) } })
   }, [enabled, now])
 
   // Opened on another Content place first (the page mounts once): paint the saved copy the moment Review is picked.
@@ -94,9 +103,17 @@ export function useWeekRead(enabled: boolean, now: number): WeekRead {
 
   useEffect(() => {
     if (!enabled) return
+    active.current = true
     refresh()
     let t: ReturnType<typeof setTimeout> | null = null
-    const soon = () => { if (t) clearTimeout(t); t = setTimeout(refresh, 700) }
+    const soon = () => {
+      if (!active.current) return
+      ++generation.current
+      setRows(previous => previous.filter(r => r.cb34_p2_member !== true))
+      setLoading(true)
+      if (t) clearTimeout(t)
+      t = setTimeout(refresh, 700)
+    }
     let ch: ReturnType<typeof supabase.channel> | null = null
     try {
       ch = supabase.channel(topic).on('postgres_changes', { event: '*', schema: 'public', table: 'carousel_drafts' }, soon).subscribe()
@@ -105,6 +122,8 @@ export function useWeekRead(enabled: boolean, now: number): WeekRead {
     window.addEventListener('focus', onFocus)
     window.addEventListener('wb-rows-changed', soon)
     return () => {
+      active.current = false
+      ++generation.current
       if (t) clearTimeout(t)
       if (ch) void supabase.removeChannel(ch)
       window.removeEventListener('focus', onFocus)

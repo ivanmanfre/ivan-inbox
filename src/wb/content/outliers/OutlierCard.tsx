@@ -15,7 +15,7 @@ const SHOWN_TRAITS = 5
 const plural = (n: number | null, one: string, many = `${one}s`) =>
   `${numText(n)} ${Math.round(Number(n) || 0) === 1 ? one : many}`
 
-export function OutlierCard({ row, use, fail, onUse }: { row: OutlierRow; use: UseState; fail?: string; onUse: () => void }) {
+export function OutlierCard({ row, use, fail, onUse, labelControl }: { row: OutlierRow; use: UseState; fail?: string; onUse: () => void; labelControl?: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [head, body] = splitText(row.text)
   const clamp = needsClamp(body)
@@ -76,6 +76,7 @@ export function OutlierCard({ row, use, fail, onUse }: { row: OutlierRow; use: U
           </ul>
         ) : null}
         {row.traits_note ? <p className="ol-tnote">{row.traits_note}</p> : null}
+        {labelControl}
       </div>
 
       <div className="ol-aside">

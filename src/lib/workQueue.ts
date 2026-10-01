@@ -145,11 +145,11 @@ async function pileByLane(table: string, status: string): Promise<LanePile[]> {
 }
 
 export async function fetchContentReviewPile(): Promise<LanePile[]> {
-  return pileByLane('carousel_drafts', 'review')
+  return pileByLane('cb34_p2_safe_drafts', 'review')
 }
 
 export async function fetchContentErrorPile(): Promise<LanePile[]> {
-  return pileByLane('carousel_drafts', 'error')
+  return pileByLane('cb34_p2_safe_drafts', 'error')
 }
 
 export async function fetchStagedIdeaPile(): Promise<LanePile[]> {

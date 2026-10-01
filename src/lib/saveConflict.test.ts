@@ -14,6 +14,7 @@ function builder(table: string) {
     const chain = {
       eq(k: string, v: unknown) { step.filters[`eq:${k}`] = v; return chain },
       is(k: string, v: unknown) { step.filters[`is:${k}`] = v; return chain },
+      not(k: string, op: string, v: unknown) { step.filters[`not:${k}:${op}`] = v; return chain },
       select() { return op === 'update' ? Promise.resolve(updateQueue.shift() ?? { data: [{ id: 'd1' }], error: null }) : chain },
       maybeSingle() { return Promise.resolve(selectQueue.shift() ?? { data: null, error: null }) },
     }
@@ -27,7 +28,7 @@ function builder(table: string) {
 
 vi.mock('./supabase', () => ({ supabase: { from: (t: string) => builder(t) } }))
 
-const { saveDraftBody, DraftSaveConflict } = await import('./content')
+const { saveDraftBody, saveClientDraftBody, DraftSaveConflict } = await import('./content')
 
 beforeEach(() => { steps.length = 0; selectQueue = []; updateQueue = [] })
 
@@ -115,4 +116,31 @@ describe('saveDraftBody — a conflict surfaces, it never picks a winner', () =>
     await saveDraftBody('d1', 'edited', {}, 'mine', null)
     expect(steps.find(s => s.op === 'update')!.filters['eq:updated_at']).toBeUndefined()
   })
+})
+
+it('an invalidated member is unavailable at preflight and never supplies hidden conflict text or writes', async () => {
+ selectQueue = [{ data: null, error: null }]
+ const err = await saveDraftBody('member', 'my edit', {}, 'old released body', OLD).catch(e => e)
+ expect(err).toBeInstanceOf(DraftSaveConflict)
+ expect(err.detail).toEqual({ kind: 'gone', theirs: null, theirUpdatedAt: null })
+ expect(steps.map(s => [s.table, s.op])).toEqual([['cb34_p2_safe_drafts', 'select']])
+})
+it('a save race uses guarded postflight so hidden text cannot become Preview theirs', async () => {
+ selectQueue = [{ data: { post_body: 'mine', updated_at: OLD }, error: null }, { data: null, error: null }]
+ updateQueue = [{ data: [], error: null }]
+ const err = await saveDraftBody('member', 'edit', {}, 'mine', OLD).catch(e => e)
+ expect(err.detail).toEqual({ kind: 'gone', theirs: null, theirUpdatedAt: null })
+ expect(steps.map(s => [s.table, s.op])).toEqual([['cb34_p2_safe_drafts', 'select'], ['carousel_drafts', 'update'], ['cb34_p2_safe_drafts', 'select']])
+})
+it('ordinary conflicts still return the other body from guarded reads while mutations stay raw', async () => {
+ selectQueue = [{ data: { post_body: 'ordinary other body', updated_at: OLD }, error: null }]
+ const err = await saveDraftBody('ordinary', 'edit', {}, 'base', OLD).catch(e => e)
+ expect(err.detail.theirs).toBe('ordinary other body')
+ expect(steps[0].table).toBe('cb34_p2_safe_drafts')
+})
+it('client conflict preflight has the same guarded unavailable behavior', async () => {
+ selectQueue = [{ data: null, error: null }]
+ const err = await saveClientDraftBody('client-member', 'edit', {}, 'base', OLD).catch(e => e)
+ expect(err.detail.theirs).toBeNull()
+ expect(steps.map(s => [s.table, s.op])).toEqual([['cb34_p2_safe_drafts', 'select']])
 })

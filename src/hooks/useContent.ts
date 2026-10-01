@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   bucketDrafts, groupByStage, fetchContentDrafts, fetchDraftDetail, fetchIdeaCandidates,
@@ -46,10 +46,23 @@ export function useContent(lane: ContentLane = 'ivan', enabled: boolean = true) 
   // 754d32d fix, see useOps.ts). The lane is in the topic too, so the Ivan and
   // Mattan views can be mounted side by side.
   const topic = `carousel_drafts:${lane}:${useId()}`
+  const generation = useRef(0)
+  const active = useRef(false)
+  const scope = useRef({ lane, enabled })
+  scope.current = { lane, enabled }
 
   const refresh = useCallback(() => {
+    if (!active.current || !enabled || scope.current.lane !== lane || !scope.current.enabled) return
+    const request = ++generation.current
+    const current = () => active.current && request === generation.current && scope.current.lane === lane && scope.current.enabled
+    setLoading(true)
+    // Member drafts require a fresh server validation, never a stale release.
+    setDrafts(previous => previous.filter(r => r.cb34_p2_member !== true))
+    setBuckets(previous => Object.fromEntries(Object.entries(previous).map(([key, rows]) => [key, rows.filter(r => r.cb34_p2_member !== true)])) as ContentBuckets)
+    setStages(previous => Object.fromEntries(Object.entries(previous).map(([key, rows]) => [key, rows.filter(r => r.cb34_p2_member !== true)])) as ContentStages)
     Promise.all([fetchContentDrafts(lane), fetchLaneProbe(lane)])
       .then(([page, probe]) => {
+        if (!current()) return
         setDrafts(page.rows)
         setBuckets(bucketDrafts(page.rows))
         setStages(groupByStage(page.rows))
@@ -60,30 +73,31 @@ export function useContent(lane: ContentLane = 'ivan', enabled: boolean = true) 
         setLoading(false)
       })
       .catch((e: unknown) => {
+        if (!current()) return
         setError(e instanceof Error ? e.message : 'content unavailable')
         setLoading(false)
       })
-  }, [lane])
+  }, [lane, enabled])
 
   useEffect(() => {
     if (!enabled) return
+    active.current = true
     refresh()
     const ch = supabase.channel(topic)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'carousel_drafts' }, refresh)
       .subscribe()
     const onFocus = () => refresh()
     window.addEventListener('focus', onFocus)
-    return () => { supabase.removeChannel(ch); window.removeEventListener('focus', onFocus) }
+    return () => { active.current = false; ++generation.current; supabase.removeChannel(ch); window.removeEventListener('focus', onFocus) }
   }, [enabled, refresh, topic])
 
   // `buckets` stays first and unchanged in the shape — cand-b destructures it.
   return { drafts, buckets, stages, matched, laneTotal, loading, error, loadedAt, refresh }
 }
 
-// One full row, fetched only when a card is opened. Deliberately NOT realtime-
-// subscribed: the list hook above already re-fetches on any carousel_drafts
-// change and passes a new id/refresh down, and a second postgres_changes
-// binding per opened draft is exactly the collision the 754d32d fix exists for.
+// One full row, fetched only when a card is opened. Ordinary editors keep
+// their local edit state. Member drafts also revalidate on external changes
+// using a unique, draft-scoped subscription so an old release cannot persist.
 //
 // `missing` is its own state, separate from `error`: a draft that was deleted
 // while the queue was open and a draft that couldn't be READ are different
@@ -93,26 +107,44 @@ export function useDraftDetail(id: string | null, reloadKey: unknown = 0) {
   const [missing, setMissing] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const detailGeneration = useRef(0)
+  const [externalRevision, setExternalRevision] = useState(0)
+  const [knownMemberId, setKnownMemberId] = useState<string | null>(null)
+  const member = knownMemberId === id
+  const detailTopic = `carousel_drafts:detail:${useId()}`
 
   useEffect(() => {
     if (!id) return
     let live = true
+    const request = ++detailGeneration.current
     setLoading(true)
+    setDetail(previous => previous?.cb34_p2_member === true ? null : previous)
     fetchDraftDetail(id)
       .then(row => {
-        if (!live) return
+        if (!live || request !== detailGeneration.current) return
         setDetail(row)
+        if (row) setKnownMemberId(row.cb34_p2_member === true ? id : null)
         setMissing(row === null)
         setError(null)
         setLoading(false)
       })
       .catch((e: unknown) => {
-        if (!live) return
+        if (!live || request !== detailGeneration.current) return
         setError(e instanceof Error ? e.message : 'draft unavailable')
         setLoading(false)
       })
-    return () => { live = false }
-  }, [id, reloadKey])
+    return () => { live = false; ++detailGeneration.current }
+  }, [id, reloadKey, externalRevision])
+
+  useEffect(() => {
+    if (!id || !member) return
+    let subscribed = true
+    const invalidate = () => { if (!subscribed) return; ++detailGeneration.current; setDetail(null); setLoading(true); setExternalRevision(n => n + 1) }
+    const ch = supabase.channel(detailTopic).on('postgres_changes', { event: '*', schema: 'public', table: 'carousel_drafts', filter: `id=eq.${id}` }, invalidate).subscribe()
+    window.addEventListener('wb-rows-changed', invalidate)
+    window.addEventListener('focus', invalidate)
+    return () => { subscribed = false; supabase.removeChannel(ch); window.removeEventListener('wb-rows-changed', invalidate); window.removeEventListener('focus', invalidate) }
+  }, [id, member, detailTopic])
 
   return { detail, missing, loading, error }
 }

@@ -300,7 +300,7 @@ function Chip({ e, phone, onOpen }: { e: Entry; phone: boolean; onOpen: (id: str
   const face = <>
     {e.thumb ? <img src={e.thumb} alt="" loading="lazy" draggable={false} /> : null}
     <span className="cal-hook">{e.hook}</span>
-    {e.lm && <em className="cal-lm">LM</em>}
+    {e.lm && <em className="cal-lm">LM</em>}{e.brain && <em className="cal-brain">Brain</em>}
     <i className="cal-dot" aria-label={DOT_WORD[e.dot]} />
   </>
   if (phone || !e.r) return <span className={cls} {...attrs}>{face}</span>
@@ -335,7 +335,7 @@ function LooseTile({ l, onOpen, onMove }: { l: Loose; onOpen: (id: string, lane:
     <div className={`cal-tile cal-l-${l.lane}`} data-cal-id={l.id} data-cal-lane={l.lane}>
       <button type="button" data-verb="open" onClick={() => onOpen(l.id, l.lane)}>
         {l.thumb && <img src={l.thumb} alt="" loading="lazy" draggable={false} />}
-        <span className={`cal-tl${l.thumb ? '' : ' cal-tl-only'}`}><i className={`cal-c cal-c-${l.lane}`} />{l.lm && <em className="cal-lm">LM</em>}{l.hook}</span>
+        <span className={`cal-tl${l.thumb ? '' : ' cal-tl-only'}`}><i className={`cal-c cal-c-${l.lane}`} />{l.lm && <em className="cal-lm">LM</em>}{l.brain && <em className="cal-brain">Brain</em>}{l.hook}</span>
       </button>
       <button type="button" className="cal-give" data-verb="give-date" onClick={() => onMove(l.id, l.lane)}>Give it a date</button>
     </div>

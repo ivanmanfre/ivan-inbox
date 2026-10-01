@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
-import { draftSubject, laneSubject, type DraftLike, type Subject } from '../../exp/v2c/chat/paneContext'
-import { LANE_LABEL, type ContentLane } from '../../lib/content'
-import { supabase } from '../../lib/supabase'
+import { useMemo } from 'react'
+import { draftSubject, laneSubject, type Subject } from '../../exp/v2c/chat/paneContext'
+import { LANE_LABEL, normalizeQa, type ContentLane } from '../../lib/content'
+import { useDraftDetail } from '../../hooks/useContent'
 import { PLACES } from '../places'
 import type { DRoute } from '../route'
 import { seatOf } from '../seats'
@@ -15,8 +15,6 @@ import { useClaudeHandoff } from '../ui/claudeHandoff'
 //    the post text only when he switches the chip to full text).
 // Nothing here is sent by itself; the drawer's send carries the attached ones.
 
-const DRAFT_COLS = 'id, client_id, status, type, title, topic, post_body, scheduled_at, updated_at, qa_verdict:qa->>verdict, qa_score:qa->>score'
-
 function laneName(route: DRoute): string {
   const lane = route.query.get('lane')
   if (lane) return LANE_LABEL[lane as ContentLane] ?? lane
@@ -26,15 +24,8 @@ function laneName(route: DRoute): string {
 export function useSubjects(route: DRoute): Subject[] {
   const handoff = useClaudeHandoff()
   const draftId = route.place === 'content' ? route.query.get('draft') : null
-  const [draft, setDraft] = useState<(DraftLike & { client_id?: string | null }) | null>(null)
-  useEffect(() => {
-    let live = true
-    setDraft(null)
-    if (!draftId) return
-    void supabase.from('carousel_drafts').select(DRAFT_COLS).eq('id', draftId).maybeSingle()
-      .then(({ data }) => { if (live) setDraft((data as DraftLike | null) ?? null) }, () => undefined)
-    return () => { live = false }
-  }, [draftId])
+  const { detail, error, missing } = useDraftDetail(draftId)
+  const draft = !error && !missing && detail?.id === draftId ? detail : null
 
   const page = PLACES[route.place]?.label ?? route.place
   const lane = laneName(route)
@@ -43,7 +34,8 @@ export function useSubjects(route: DRoute): Subject[] {
     if (handoff) out.push(handoff.subject)
     if (draft) {
       const seat = seatOf(draft.client_id)
-      out.push(draftSubject(draft, seat ? LANE_LABEL[seat] : lane))
+      const qa = normalizeQa(draft.qa)
+      out.push(draftSubject({ ...draft, qa_verdict: draft.qa_verdict ?? qa?.verdict, qa_score: draft.qa_score ?? qa?.score }, seat ? LANE_LABEL[seat] : lane))
     }
     out.push(laneSubject(page, lane))
     return out

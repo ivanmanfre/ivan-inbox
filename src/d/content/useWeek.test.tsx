@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, renderHook, waitFor } from '@testing-library/react'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import type { ContentDraft } from '../../lib/content'
 
 const lib = vi.hoisted(() => ({ fetchWeekDrafts: vi.fn() }))
@@ -81,4 +81,72 @@ describe('the week read: saved copy first, then one small read', () => {
     expect(saved.rows[0].post_body).toBe('Grab it: [link] here')
     expect(saved.rows[0].source_ref).toBeNull()
   })
+})
+
+it('never caches a member draft, even when its mutable taxonomy was erased', () => {
+  expect(toSaved([row({ id: 'ordinary' }), row({ id: 'member', cb34_p2_member: true, taxonomy: null })]).rows.map(r => r.id)).toEqual(['ordinary'])
+})
+it('hides a previously released member while a revalidation fails, keeping ordinary rows', async () => {
+  lib.fetchWeekDrafts.mockResolvedValueOnce({ rows: [row({ id: 'ordinary' }), row({ id: 'member', cb34_p2_member: true, taxonomy: null })], count: 2 })
+  const { result } = renderHook(() => useWeekRead(true, NOW))
+  await waitFor(() => expect(result.current.source).toBe('live'))
+  expect(result.current.rows).toHaveLength(2)
+  lib.fetchWeekDrafts.mockRejectedValueOnce(new Error('guard unavailable'))
+  act(() => result.current.refresh())
+  await waitFor(() => expect(result.current.error).toBe('guard unavailable'))
+  expect(result.current.rows.map(r => r.id)).toEqual(['ordinary'])
+})
+it('accepts the safe empty response after the only member draft was invalidated', async () => {
+  lib.fetchWeekDrafts.mockResolvedValueOnce({ rows: [row({ id: 'member', cb34_p2_member: true })], count: 1 })
+  const { result } = renderHook(() => useWeekRead(true, NOW))
+  await waitFor(() => expect(result.current.source).toBe('live'))
+  lib.fetchWeekDrafts.mockResolvedValueOnce({ rows: [], count: 0 })
+  act(() => result.current.refresh())
+  await waitFor(() => expect(result.current.rows).toEqual([]))
+  expect(result.current.error).toBeNull()
+})
+
+it('rejects an obsolete delayed member response after a newer safe empty read', async () => {
+ let older!: (page: { rows: ContentDraft[]; count: number }) => void
+ lib.fetchWeekDrafts.mockReturnValueOnce(new Promise(resolve => { older = resolve }))
+ const { result } = renderHook(() => useWeekRead(true, NOW))
+ lib.fetchWeekDrafts.mockResolvedValueOnce({ rows: [], count: 0 })
+ act(() => result.current.refresh())
+ await waitFor(() => expect(result.current.source).toBe('live'))
+ await act(async () => older({ rows: [row({ id: 'obsolete-member', cb34_p2_member: true })], count: 1 }))
+ expect(result.current.rows).toEqual([])
+ expect(result.current.error).toBeNull()
+ expect(result.current.loading).toBe(false)
+})
+it('an obsolete failure/finally cannot settle a newer pending refresh', async () => {
+ let fail!: (error: Error) => void
+ lib.fetchWeekDrafts.mockReturnValueOnce(new Promise((_resolve, reject) => { fail = reject }))
+ const { result } = renderHook(() => useWeekRead(true, NOW))
+ let newer!: (page: { rows: ContentDraft[]; count: number }) => void
+ lib.fetchWeekDrafts.mockReturnValueOnce(new Promise(resolve => { newer = resolve }))
+ act(() => result.current.refresh())
+ await act(async () => fail(new Error('obsolete failure')))
+ expect(result.current.error).toBeNull(); expect(result.current.loading).toBe(true); expect(result.current.settled).toBe(false)
+ await act(async () => newer({ rows: [], count: 0 }))
+ expect(result.current.loading).toBe(false)
+})
+
+it('external week invalidation hides members immediately before its debounced reread', async () => {
+ lib.fetchWeekDrafts.mockResolvedValueOnce({ rows: [row({ id: 'ordinary' }), row({ id: 'member', cb34_p2_member: true })], count: 2 })
+ const { result } = renderHook(() => useWeekRead(true, NOW))
+ await waitFor(() => expect(result.current.source).toBe('live'))
+ act(() => window.dispatchEvent(new Event('wb-rows-changed')))
+ expect(result.current.rows.map(r => r.id)).toEqual(['ordinary'])
+ expect(result.current.loading).toBe(true)
+})
+
+it('does not paint or cache a late member response after unmount', async () => {
+ let resolve!: (page: { rows: ContentDraft[]; count: number }) => void
+ lib.fetchWeekDrafts.mockReturnValueOnce(new Promise(done => { resolve = done }))
+ const { result, unmount } = renderHook(() => useWeekRead(true, NOW))
+ const refresh = result.current.refresh
+ unmount(); refresh()
+ await act(async () => resolve({ rows: [row({ id: 'member', cb34_p2_member: true })], count: 1 }))
+ expect(lib.fetchWeekDrafts).toHaveBeenCalledTimes(1)
+ expect(readSwr(WEEK_CACHE)).toBeNull()
 })

@@ -1,7 +1,7 @@
 /* The Outliers view without the fetch: `read` in, markup out. Filters, the
    week, the sort and the pager are local state; the lane's read is fetched
    once by index.tsx and never refetched for a filter change. */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Segmented } from '../../../ds'
 import {
   ALL_WEEKS, OUTLIER_RULE, TRAIT_RULE, dayText, filterRows, freshnessLines, groupByWeek, platformCounts,
@@ -19,6 +19,9 @@ export type OutliersPanelProps = {
   failOf?: (r: OutlierRow) => string | undefined
   onUse: (r: OutlierRow) => void
   onRetry: () => void
+  labelControl?: (r: OutlierRow) => React.ReactNode
+  onVisibleRows?: (rows: Pick<OutlierRow, 'platform' | 'post_id'>[]) => void
+  labelsSummary?: React.ReactNode
 }
 
 function Loading() {
@@ -29,7 +32,7 @@ function Loading() {
   )
 }
 
-export function OutliersPanel({ read, stateOf, failOf, onUse, onRetry }: OutliersPanelProps) {
+export function OutliersPanel({ read, stateOf, failOf, onUse, onRetry, labelControl, onVisibleRows, labelsSummary }: OutliersPanelProps) {
   const [platform, setPlatform] = useState<PlatformFilter>('all')
   const [week, setWeek] = useState<string>(ALL_WEEKS)
   const [sort, setSort] = useState<OutlierSort>('lift')
@@ -55,6 +58,8 @@ export function OutliersPanel({ read, stateOf, failOf, onUse, onRetry }: Outlier
     left -= xs.length
   }
   const remaining = Math.max(0, rows.length - shown)
+  const visibleKey = JSON.stringify(paged.flatMap(([, xs]) => xs.map(r => ({ platform: r.platform, post_id: r.post_id }))))
+  useEffect(() => { onVisibleRows?.(JSON.parse(visibleKey) as Pick<OutlierRow, 'platform' | 'post_id'>[]) }, [visibleKey, onVisibleRows])
 
   let body
   if (!read) body = <Loading />
@@ -83,7 +88,7 @@ export function OutliersPanel({ read, stateOf, failOf, onUse, onRetry }: Outlier
           <section className="ol-grp" key={w}>
             <h3 className="ol-gh">{weekLabel(w)}<span>{total} {total === 1 ? 'post' : 'posts'}</span></h3>
             <ul className="ol-cards">
-              {xs.map(r => <OutlierCard key={rowKey(r)} row={r} use={stateOf(r)} fail={failOf?.(r)} onUse={() => onUse(r)} />)}
+              {xs.map(r => <OutlierCard key={rowKey(r)} row={r} use={stateOf(r)} fail={failOf?.(r)} onUse={() => onUse(r)} labelControl={labelControl?.(r)} />)}
             </ul>
           </section>
         ))}
@@ -151,6 +156,7 @@ export function OutliersPanel({ read, stateOf, failOf, onUse, onRetry }: Outlier
             options={[{ id: 'lift', label: 'Lift' }, { id: 'buyer', label: 'Who commented' }]} />
         </div>
         {body}
+        {labelsSummary}
       </div>
       </div>
     </div>

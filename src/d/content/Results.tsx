@@ -4,6 +4,7 @@ import { fetchPostAudience, reachWinners, type ReachRead } from '../../lib/reach
 import { dHash } from '../route'
 import { Failed, Skeleton } from '../ui/states'
 import { dayLabel, LANES, LANE_NAME, type Lane } from './model'
+import { BrainScoreboard } from './BrainScoreboard'
 import { WhatWorksNow } from './WhatWorksNow'
 
 export function Results({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => void }) {
@@ -22,6 +23,8 @@ export function Results({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => v
   return <div className="cn-results">
     <div className="cn-wk2-chips" role="tablist" aria-label="Client">{LANES.map(l => <button key={l} type="button" role="tab" aria-selected={lane === l} onClick={() => setLane(l)}>{LANE_NAME[l]}</button>)}</div>
     <a className="cn-quiet-link" href={dHash('content', 'results', { lane, view: 'analytics' })}>Reach, audience and all analytics →</a>
+    <a className="cn-quiet-link" href={dHash('content', 'brain', { lane })}>Brain →</a>
+    <BrainScoreboard key={`scoreboard:${lane}`} lane={lane} />
     <WhatWorksNow key={lane} lane={lane} />
     <ResultsBody key={lane} own={own} evidence={evidence} evidenceError={evidenceError} now={Date.now()} onRetry={retry} />
   </div>

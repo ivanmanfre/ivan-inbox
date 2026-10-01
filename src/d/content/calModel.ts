@@ -5,6 +5,7 @@
 // Built on planModel (today's calendar builder), so the calendar shows every
 // kind of post the planner did.
 import { taxonomyValue, type ContentDraft } from '../../lib/content'
+import { isBrainPost } from '../../lib/brainDraft'
 import { LANES, imgOf, titleOf, type Lane } from './model'
 import { cellOrder, type PlanItem } from './planModel'
 
@@ -32,6 +33,7 @@ export type Entry = {
   thumb: string | null
   hook: string
   lm: boolean
+  brain: boolean
   dot: Dot
   /** Why it cannot be moved, or null when it can. */
   refuse: string | null
@@ -68,7 +70,7 @@ export function refuseOf(it: PlanItem, r: ContentDraft | null): string | null {
 
 export function entryOf(it: PlanItem, rows: ContentDraft[]): Entry {
   const r = it.source === 'draft' ? rows.find(x => x.id === it.id) ?? null : null
-  return { it, lane: it.lane, r, thumb: r ? imgOf(r.image_urls, 400) : null, hook: hookOf(r, it.title), lm: isMagnetPost(r), dot: dotOf(it), refuse: refuseOf(it, r) }
+  return { it, lane: it.lane, r, thumb: r ? imgOf(r.image_urls, 400) : null, hook: hookOf(r, it.title), lm: isMagnetPost(r), brain: isBrainPost(r), dot: dotOf(it), refuse: refuseOf(it, r) }
 }
 
 /**
@@ -97,13 +99,13 @@ export function calendarDays(
 }
 
 /** Undated drafts that can take a date, newest first, across the picked seats. */
-export type Loose = { id: string; lane: Lane; hook: string; thumb: string | null; lm: boolean; createdAt: string }
+export type Loose = { id: string; lane: Lane; hook: string; thumb: string | null; lm: boolean; brain: boolean; createdAt: string }
 export function looseOf(rows: Record<Lane, ContentDraft[]>, pick: Pick, moved: Map<string, string>): Loose[] {
   const out: Loose[] = []
   for (const lane of lanesOf(pick)) {
     for (const r of rows[lane]) {
       if (r.scheduled_at || moved.has(r.id) || (r.status !== 'review' && r.status !== 'scheduled')) continue
-      out.push({ id: r.id, lane, hook: hookOf(r, titleOf(r)), thumb: imgOf(r.image_urls, 400), lm: isMagnetPost(r), createdAt: r.created_at })
+      out.push({ id: r.id, lane, hook: hookOf(r, titleOf(r)), thumb: imgOf(r.image_urls, 400), lm: isMagnetPost(r), brain: isBrainPost(r), createdAt: r.created_at })
     }
   }
   return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt))

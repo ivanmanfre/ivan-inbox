@@ -5,6 +5,7 @@ import { readSwr, writeSwr } from '../../../lib/swr'
 import { ConfirmProvider } from '../../../wb/chrome/ConfirmSheet'
 import { dHash } from '../../route'
 import { Failed, Skeleton } from '../../ui/states'
+import { useOutlierLabels } from '../OutlierLabels'
 import { useToast } from '../../ui/toast'
 import { LANES, LANE_NAME, OWNER, type Lane } from '../model'
 import './inputs.css'
@@ -153,7 +154,7 @@ function SourceTags({ o }: { o: InputsOutlier }) {
   )
 }
 
-function ListRow({ o, lane, use, onUse }: { o: InputsOutlier; lane: Lane; use: UseSt; onUse: (o: InputsOutlier) => void }) {
+function ListRow({ o, lane, use, onUse, labelControl }: { o: InputsOutlier; lane: Lane; use: UseSt; onUse: (o: InputsOutlier) => void; labelControl?: React.ReactNode }) {
   const k = rowKey(lane, o)
   return (
     <li className="in-row" data-outlier-rank={o.rank} data-platform={o.platform} data-post-id={o.post_id}>
@@ -167,6 +168,7 @@ function ListRow({ o, lane, use, onUse }: { o: InputsOutlier; lane: Lane; use: U
         {o.reason && <p className="in-why">{o.fit != null ? `Fit ${o.fit}/10 · ` : ''}{o.reason}</p>}
         {o.calendar_note && <p className="in-note" data-calendar-note>{o.calendar_note}</p>}
         {use[k] && use[k] !== 'busy' && use[k] !== 'done' && <p className="in-why in-bad" role="alert">{use[k]}</p>}
+        {labelControl}
       </div>
       <div className="in-side">
         <Action o={o} lane={lane} use={use} onUse={onUse} />
@@ -175,7 +177,7 @@ function ListRow({ o, lane, use, onUse }: { o: InputsOutlier; lane: Lane; use: U
   )
 }
 
-function Card({ o, lane, use, onUse }: { o: InputsOutlier; lane: Lane; use: UseSt; onUse: (o: InputsOutlier) => void }) {
+function Card({ o, lane, use, onUse, labelControl }: { o: InputsOutlier; lane: Lane; use: UseSt; onUse: (o: InputsOutlier) => void; labelControl?: React.ReactNode }) {
   const k = rowKey(lane, o)
   return (
     <li className="in-card" data-outlier-rank={o.rank} data-platform={o.platform} data-post-id={o.post_id}>
@@ -185,6 +187,7 @@ function Card({ o, lane, use, onUse }: { o: InputsOutlier; lane: Lane; use: UseS
       {o.reason && <p className="in-why">{o.fit != null ? `Fit ${o.fit}/10 · ` : ''}{o.reason}</p>}
       {o.calendar_note && <p className="in-note" data-calendar-note>{o.calendar_note}</p>}
       {use[k] && use[k] !== 'busy' && use[k] !== 'done' && <p className="in-why in-bad" role="alert">{use[k]}</p>}
+      {labelControl}
       <div className="in-card-foot">
         <Action o={o} lane={lane} use={use} onUse={onUse} />
         {o.url && <a className="in-open" href={o.url} target="_blank" rel="noreferrer" data-verb="open-post">Open ↗</a>}
@@ -230,7 +233,7 @@ function Folds({ lane, total }: { lane: Lane; total: number }) {
   )
   return (
     <div className="in-folds">
-      {fold('all', `Every outlier (${total})`, <OutliersView key={lane} lane={lane} />)}
+      {fold('all', `Every outlier (${total})`, <OutliersView key={lane} lane={lane} humanLabels />)}
       {fold('markets', 'Market readout', <MarketsView key={lane} lane={lane} />)}
       {fold('evidence', 'Evidence: this week, winners, coverage, results', <EvidenceBlock key={lane} lane={lane} />)}
     </div>
@@ -244,6 +247,7 @@ export function Inputs({ lane, setLane, layout, reads, refresh, phone, insightsO
   const toast = useToast()
   const [use, setUse] = useState<UseSt>({})
   const r = reads[lane]
+  const labels = useOutlierLabels(lane, !insightsOnly && r?.kind === 'ready' && r.data.client === lane ? r.data.top : null)
   // a seat's heavy read runs once per page session, the first time it is selected (a "Save idea" still re-reads)
   const fetched = useRef<Set<Lane>>(new Set())
   useEffect(() => {
@@ -282,10 +286,11 @@ export function Inputs({ lane, setLane, layout, reads, refresh, phone, insightsO
           : r.kind === 'failed' ? <Failed what={`${LANE_NAME[lane]}’s outliers`} detail={r.message} onRetry={() => refresh(lane)} />
             : r.data.top.length === 0 ? <p className="in-say">No sources currently pass the selection checks for {LANE_NAME[lane]}. Browse Every outlier below for other sources.</p>
               : layout === 'cards' ? (
-                <ol className="in-cards">{r.data.top.map(o => <Card key={o.platform + o.post_id} o={o} lane={lane} use={use} onUse={onUse} />)}</ol>
+                <ol className="in-cards">{r.data.top.map(o => <Card key={o.platform + o.post_id} o={o} lane={lane} use={use} onUse={onUse} labelControl={labels.control(o)} />)}</ol>
               ) : (
-                <ol className="in-list">{r.data.top.map(o => <ListRow key={o.platform + o.post_id} o={o} lane={lane} use={use} onUse={onUse} />)}</ol>
+                <ol className="in-list">{r.data.top.map(o => <ListRow key={o.platform + o.post_id} o={o} lane={lane} use={use} onUse={onUse} labelControl={labels.control(o)} />)}</ol>
               )}
+        {labels.summary}
         {data && <p className="in-foot">{note}</p>}
       </section>}
       {insightsOnly && !r && <Skeleton lines={3} label="Reading insights"/>}

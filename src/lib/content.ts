@@ -49,6 +49,8 @@ export const LANE_POSSESSIVE: Record<ContentLane, string> = {
 // SELECT_COLS in personal-site/hooks/useContentLibrary.ts:61.
 export type ContentDraft = {
   id: string
+  /** Membership comes from the guarded view, independent of mutable taxonomy. */
+  cb34_p2_member?: boolean
   client_id: string | null
   status: string
   type: string | null
@@ -130,7 +132,7 @@ export type ContentDraft = {
 }
 
 const COLS =
-  'id, client_id, status, type, title, topic, post_body, scheduled_at, published_at, ' +
+  'id, cb34_p2_member, client_id, status, type, title, topic, post_body, scheduled_at, published_at, ' +
   'source_post_id, image_urls, taxonomy, updated_at, created_at, board_visible, ' +
   'funnel_stage, qa_verdict:qa->>verdict, qa_score:qa->>score, ' +
   'qa_regen:qa->>qa_regen_attempts, qa_backfilled:qa->>backfilled, source_label, source_ref, ' +
@@ -361,7 +363,7 @@ export type ContentPage = {
 
 export async function fetchContentDrafts(lane: ContentLane): Promise<ContentPage> {
   const f = contentLaneFilter(lane)
-  let q = supabase.from('carousel_drafts').select(COLS, { count: 'exact' })
+  let q = supabase.from('cb34_p2_safe_drafts').select(COLS, { count: 'exact' })
   q = applyContentLaneFilter(q, f)
   // THE WHOLE LANE, the same set dashboard-v2's useContentLibrary reads (Ivan,
   // 2026-08-04: "u missing stuff from dashboard-v2"). The recent-or-active
@@ -398,7 +400,7 @@ export async function fetchContentDrafts(lane: ContentLane): Promise<ContentPage
 // because a second `or` filter for client_id is not something this read
 // should lean on. `count` is exact, so a capped page says so.
 export async function fetchWeekDrafts(fromIso: string, toIso: string): Promise<ContentPage> {
-  const { data, error, count } = await supabase.from('carousel_drafts')
+  const { data, error, count } = await supabase.from('cb34_p2_safe_drafts')
     .select(COLS, { count: 'exact' })
     .or(`status.eq.review,and(scheduled_at.gte."${fromIso}",scheduled_at.lt."${toIso}")`)
     .order('created_at', { ascending: false })
@@ -744,7 +746,7 @@ export async function fetchLaneProbe(lane: ContentLane): Promise<LaneProbe> {
   // total are the same probe — the shape survives because useContent and the
   // blank-board diagnosis read both names.
   const f = contentLaneFilter(lane)
-  const q = supabase.from('carousel_drafts').select('id', { count: 'exact', head: true })
+  const q = supabase.from('cb34_p2_safe_drafts').select('id', { count: 'exact', head: true })
   const totalRes = await applyContentLaneFilter(q, f)
   if (totalRes.error) throw totalRes.error
   const total = totalRes.count ?? 0
@@ -993,7 +995,7 @@ export async function saveDraftBody(
   baseUpdatedAt: string | null,
 ): Promise<void> {
   // 1 — pre-flight. A `maybeSingle` so a deleted row is a fact, not an error.
-  const pre = await supabase.from('carousel_drafts')
+  const pre = await supabase.from('cb34_p2_safe_drafts')
     .select('post_body, updated_at')
     .eq('id', id).is('client_id', null)
     .maybeSingle()
@@ -1023,7 +1025,7 @@ export async function saveDraftBody(
     // Zero rows means the predicate stopped matching. Re-read to say WHICH of
     // the two reasons it was, rather than blaming the operator's session for a
     // race or a race for an RLS refusal.
-    const post = await supabase.from('carousel_drafts')
+    const post = await supabase.from('cb34_p2_safe_drafts')
       .select('post_body, updated_at')
       .eq('id', id).is('client_id', null)
       .maybeSingle()
@@ -1493,7 +1495,7 @@ export async function saveClientDraftBody(
   base: string | null,
   baseUpdatedAt: string | null,
 ): Promise<void> {
-  const pre = await supabase.from('carousel_drafts')
+  const pre = await supabase.from('cb34_p2_safe_drafts')
     .select('post_body, updated_at')
     .eq('id', id).not('client_id', 'is', null)
     .maybeSingle()
@@ -1518,7 +1520,7 @@ export async function saveClientDraftBody(
   if (!stamped.data || stamped.data.length === 0) {
     // The predicate stopped matching between the read and the write. Say WHICH
     // of the two reasons it was rather than blaming a race for an RLS refusal.
-    const post = await supabase.from('carousel_drafts')
+    const post = await supabase.from('cb34_p2_safe_drafts')
       .select('post_body, updated_at')
       .eq('id', id).not('client_id', 'is', null)
       .maybeSingle()
@@ -1933,7 +1935,7 @@ export type ContentDraftDetail = ContentDraft & {
 // agent starts writing a new one. Returns null (not an error) when the id is
 // gone — a deleted draft and an unreadable one must not render the same (D10).
 export async function fetchDraftDetail(id: string): Promise<ContentDraftDetail | null> {
-  const { data, error } = await supabase.from('carousel_drafts')
+  const { data, error } = await supabase.from('cb34_p2_safe_drafts')
     .select('*').eq('id', id).maybeSingle()
   if (error) throw error
   return (data ?? null) as ContentDraftDetail | null

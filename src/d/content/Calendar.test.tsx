@@ -105,3 +105,16 @@ describe('Calendar', () => {
     expect(props.setPick).toHaveBeenCalledWith('risedtc')
   })
 })
+
+it('renders the Brain mark on an undated review draft on phone and desktop with Open intact', () => {
+ const brain = row('brain', { taxonomy: { source: 'content-brain' } })
+ const { data, items } = setup({ ivan: [brain], risedtc: [], arch: [] })
+ const open = vi.fn()
+ for (const phone of [true, false]) {
+  const view = renderInFrame(<Calendar data={data} items={items} now={NOW} phone={phone} pick="all" setPick={() => {}} onOpen={open} onMove={() => {}} onArm={() => {}} onDay={() => {}} onChanged={() => {}} />)
+  expect(screen.getAllByText('Brain').length).toBeGreaterThan(0)
+  fireEvent.click(screen.getByRole('button', { name: /brain hook line/ }))
+  expect(open).toHaveBeenCalledWith('brain', 'ivan')
+  view.unmount()
+ }
+})

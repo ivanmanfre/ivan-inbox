@@ -12,7 +12,7 @@ export const CONTENT_WAIT_DAYS = 14
 
 export async function fetchContentWaiting(seat: Seat, now: number = Date.now()): Promise<number> {
   const since = new Date(now - CONTENT_WAIT_DAYS * 86_400_000).toISOString()
-  let q = supabase.from('carousel_drafts')
+  let q = supabase.from('cb34_p2_safe_drafts')
     .select('id', { count: 'exact', head: true })
     .or(seatFilter(seat))
     .eq('status', 'review')
@@ -22,6 +22,6 @@ export async function fetchContentWaiting(seat: Seat, now: number = Date.now()):
   if (seat !== 'ivan') q = q.not('board_visible', 'is', true)
   const { count, error } = await q
   if (error) throw error
-  if (count == null) throw new Error('carousel_drafts count missing')
+  if (count == null) throw new Error('Guarded draft count missing')
   return count
 }

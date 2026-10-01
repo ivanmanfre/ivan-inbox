@@ -20,17 +20,22 @@ import {
 } from '../../../lib/outliers'
 import { OutliersPanel } from './OutliersPanel'
 import type { UseState } from './OutlierCard'
+import { useOutlierLabels, type OutlierLabelSource } from '../../../d/content/OutlierLabels'
+import type { Lane } from '../../../d/content/model'
 import './outliers.css'
 
 const swrQuery = (lane: string) => `outliers:${lane}`
 
 type UseEntry = { state: UseState; message?: string }
 
-function OutliersInner({ lane }: { lane: string }) {
+function OutliersInner({ lane, humanLabels = false }: { lane: string; humanLabels?: boolean }) {
   const seed = useMemo(() => readSwr<OutliersPayload>(swrQuery(lane)), [lane])
   const [read, setRead] = useState<OutliersRead | null>(seed ? { kind: 'ready', data: seed.payload } : null)
   const [tick, setTick] = useState(0)
   const [uses, setUses] = useState<Record<string, UseEntry>>({})
+  const [visible, setVisible] = useState<OutlierLabelSource[] | null>(null)
+  const validLane = lane === 'ivan' || lane === 'risedtc' || lane === 'arch'
+  const labels = useOutlierLabels(lane as Lane, humanLabels && validLane && read?.kind === 'ready' && read.data.client === lane ? visible : null)
 
   useEffect(() => {
     let live = true
@@ -55,9 +60,9 @@ function OutliersInner({ lane }: { lane: string }) {
     })
   }, [lane])
 
-  return <OutliersPanel read={read} stateOf={stateOf} failOf={failOf} onUse={onUse} onRetry={retry} />
+  return <OutliersPanel read={read} stateOf={stateOf} failOf={failOf} onUse={onUse} onRetry={retry} labelControl={humanLabels && validLane ? labels.control : undefined} onVisibleRows={humanLabels && validLane ? setVisible : undefined} labelsSummary={humanLabels ? labels.summary : null} />
 }
 
-export default function OutliersView({ lane }: { lane: string }) {
-  return <OutliersInner key={lane} lane={lane} />
+export default function OutliersView({ lane, humanLabels = false }: { lane: string; humanLabels?: boolean }) {
+  return <OutliersInner key={lane} lane={lane} humanLabels={humanLabels} />
 }
