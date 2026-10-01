@@ -87,7 +87,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
       {rider && (
         <div className="dm-leg dm-leg-rider">
           <b className="dm-email-title">Email draft</b>
-          <p className="dm-meta">To: {draft.recipient_email} · From: {emailRowSender(t.client_id)}</p>
+          <p className="dm-email-envelope">To: {draft.recipient_email} · From: {emailRowSender(t.client_id)}</p>
           <div className="dm-tm">
             <span>{draft.email_mirror_text && !emailSenderLabel(t.client_id)
               ? `This email does not send from your seat, only the DM goes. Copy it into Gmail to ${draft.recipient_email} if you want it sent.`
