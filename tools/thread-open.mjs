@@ -33,7 +33,7 @@ function verifiedBubble(bubble, messages, prospectId, seat) {
   const parts = (m.direction === 'outbound' ? m.message_text.split(/^[ \t]*-{3,}[ \t\r]*$/m) : [m.message_text]).map(normalize).filter(Boolean)
   if (parts.includes(shown)) return true
   const fragment = shown.replace(/(?:…|\.{3})$/, '').trim()
-  return fragment.length >= 24 && parts.some(part => part.startsWith(fragment))
+  return /(?:…|\.{3})$/.test(shown) && fragment.length >= 24 && parts.some(part => part.startsWith(fragment))
 }
 // End live-history helpers.
 
