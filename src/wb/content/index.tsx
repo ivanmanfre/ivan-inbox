@@ -785,7 +785,7 @@ export function ContentList({ lane, setLane, openId, onOpen, laneCounts }: {
   laneCounts?: Partial<Record<ContentLane, number>>
 }) {
   const lanes = useLanes()
-  const { drafts, stages, matched, laneTotal, loading, error, loadedAt, refresh } = useContent(lane)
+  const { drafts, stages, matched, laneTotal, loading, error, loadedAt, memberReadState, refresh } = useContent(lane)
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, () => refresh())
   // PERSISTENCE, and the reset it deliberately replaces. Filter state used to
@@ -831,12 +831,13 @@ export function ContentList({ lane, setLane, openId, onOpen, laneCounts }: {
 
   const err = error ?? (hasMock('fetch-error') ? 'PostgREST returned 500 for carousel_drafts' : null)
   const firstLoad = loading && drafts.length === 0
-  const nothingMatched = !loading && (matched ?? 0) === 0
+  const nothingMatched = !loading && matched === 0
   const filteredAway = nothingMatched && (laneTotal ?? 0) > 0
   const onBoard = useMemo(() => countBoardVisible(drafts), [drafts])
 
   return (
     <Screen className="a-ct" lanes={lanes.state}>
+      {memberReadState !== 'idle' && <p role="status">{memberReadState === 'pending' ? 'Checking brain draft visibility.' : memberReadState === 'failed' ? 'Brain drafts are hidden until visibility can be verified.' : 'Brain draft visibility checked. Full lane totals await refresh.'}</p>}
       {(err || firstLoad || nothingMatched) ? (
         <>
           {/* The lane switch is the ONE control that must survive every data

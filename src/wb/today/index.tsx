@@ -1,3 +1,5 @@
+import { useBrainMembers } from '../../hooks/useBrainMembers'
+import { pileMemberRows, clearPileMembers, restorePileMembers } from '../../lib/workQueue'
 /* ==========================================================================
    S01 Today, Direction A — the instrument.
 
@@ -1119,17 +1121,38 @@ export function Today({
   const [reviewPile, setReviewPile] = useState<Awaited<ReturnType<typeof fetchContentReviewPile>>>([])
   const [errorPile, setErrorPile] = useState<Awaited<ReturnType<typeof fetchContentErrorPile>>>([])
   const [ideaPile, setIdeaPile] = useState<Awaited<ReturnType<typeof fetchStagedIdeaPile>>>([])
+  const pileGeneration = useRef(0)
+  const pileVisibilityEpoch = useRef(0)
+  const pileFullAccepted = useRef(false)
+  const pilePendingEpoch = useRef<number | null>(null)
+  const [pileRevision, setPileRevision] = useState(0)
+  useEffect(() => { const changed = () => { ++pileGeneration.current; setReviewPile(clearPileMembers); setErrorPile(clearPileMembers); setPileRevision(n => n + 1) }; window.addEventListener('wb-rows-changed', changed); return () => window.removeEventListener('wb-rows-changed', changed) }, [])
+
   useEffect(() => {
     if (threads === undefined) return
     let alive = true
+    const epoch = pileVisibilityEpoch.current
+    pileFullAccepted.current = false
+    pilePendingEpoch.current = epoch
+    const request = ++pileGeneration.current
     Promise.all([fetchContentReviewPile(), fetchContentErrorPile(), fetchStagedIdeaPile()])
       .then(([review, error, ideas]) => {
-        if (!alive) return
+        if (!alive || request !== pileGeneration.current || epoch !== pileVisibilityEpoch.current) return
+        pileFullAccepted.current = true; pilePendingEpoch.current = null
         setReviewPile(review); setErrorPile(error); setIdeaPile(ideas)
       })
-      .catch(() => { /* additive, the DM/ops half of the queue still renders */ })
+      .catch(() => { if (alive && request === pileGeneration.current && epoch === pileVisibilityEpoch.current) pilePendingEpoch.current = null /* additive ordinary queue remains */ })
     return () => { alive = false }
-  }, [threads !== undefined])
+  }, [threads !== undefined, pileRevision])
+
+  useBrainMembers(pileMemberRows([...reviewPile, ...errorPile]), () => {
+    pileFullAccepted.current = false; ++pileVisibilityEpoch.current
+    ++pileGeneration.current; setReviewPile(clearPileMembers); setErrorPile(clearPileMembers)
+  }, (fresh, checkedIds) => {
+    if (pileFullAccepted.current) return true
+    if (pilePendingEpoch.current === pileVisibilityEpoch.current) return false
+    setReviewPile(p => restorePileMembers(p, fresh, 'review', checkedIds)); setErrorPile(p => restorePileMembers(p, fresh, 'error', checkedIds))
+  }, 'today-queue', threads !== undefined, () => {}, () => pilePendingEpoch.current === pileVisibilityEpoch.current)
 
   const queue = threads === undefined ? null : rankQueue([
     ...buildReplyItems(threads, Date.now()),

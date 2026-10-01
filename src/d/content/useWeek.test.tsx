@@ -11,7 +11,7 @@ vi.mock('../../lib/supabase', () => {
 })
 
 import { readSwr, writeSwr } from '../../lib/swr'
-import { WEEK_CACHE, toSaved, useWeekRead } from './useWeek'
+import { WEEK_CACHE, toSaved, useWeekRead, memberFitsWeek } from './useWeek'
 
 const NOW = Date.parse('2026-09-29T10:00:00Z')
 const row = (o: Partial<ContentDraft>): ContentDraft => ({
@@ -149,4 +149,12 @@ it('does not paint or cache a late member response after unmount', async () => {
  await act(async () => resolve({ rows: [row({ id: 'member', cb34_p2_member: true })], count: 1 }))
  expect(lib.fetchWeekDrafts).toHaveBeenCalledTimes(1)
  expect(readSwr(WEEK_CACHE)).toBeNull()
+})
+
+it('fresh members moving outside the exact week or to an unrelated tenant are not restored', () => {
+ expect(memberFitsWeek(row({ status: 'review', scheduled_at: null }), NOW)).toBe(true)
+ expect(memberFitsWeek(row({ status: 'scheduled', scheduled_at: '2026-09-30T10:00:00Z' }), NOW)).toBe(true)
+ expect(memberFitsWeek(row({ status: 'scheduled', scheduled_at: '2026-11-01T10:00:00Z' }), NOW)).toBe(false)
+ expect(memberFitsWeek(row({ status: 'published', scheduled_at: null }), NOW)).toBe(false)
+ expect(memberFitsWeek(row({ client_id: 'unrelated' }), NOW)).toBe(false)
 })

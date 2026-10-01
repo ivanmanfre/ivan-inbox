@@ -1,3 +1,5 @@
+import { useBrainMembers } from '../../hooks/useBrainMembers'
+import { freshMemberHits, memberSearchRows, withSearchHits } from '../../lib/crossSearch'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { parseWbHash, wbHash } from './route'
 import type { Job } from './layout'
@@ -182,31 +184,56 @@ export function CommandLayer({ people = [] }: { people?: Thread[] } = {}) {
   // Only the newest query is allowed to write a result. Without this a slow
   // three-letter search landing after a fast five-letter one would repaint the
   // list with answers to a question he has already finished asking.
+  const [memberRevision, setMemberRevision] = useState(0)
   const findSeq = useRef(0)
+  const visibilityEpoch = useRef(0)
+  const fullAccepted = useRef(false)
+  const fullPendingEpoch = useRef<number | null>(null)
+  useBrainMembers(memberSearchRows(findRes.hits), () => { fullAccepted.current = false; ++visibilityEpoch.current; ++findSeq.current; setFindRes(r => withSearchHits(r, r.hits.filter(h => h.cb34_p2_member !== true))) }, (fresh, checkedIds) => {
+    if (fullAccepted.current) return true
+    if (fullPendingEpoch.current === visibilityEpoch.current) return false
+    setFindBusy(false)
+    const ids = new Set(checkedIds)
+    setFindRes(r => withSearchHits(r, [...r.hits.filter(h => !ids.has(h.id) || h.surface !== 'draft'), ...freshMemberHits(fresh, findQ, findLane)]))
+  }, findLane + ':' + findQ, true, () => {}, () => fullPendingEpoch.current === visibilityEpoch.current)
+
+  useEffect(() => {
+    const refresh = () => { ++findSeq.current; setFindRes(r => withSearchHits(r, r.hits.filter(h => h.cb34_p2_member !== true))); setMemberRevision(n => n + 1) }
+    window.addEventListener('wb-rows-changed', refresh)
+    return () => window.removeEventListener('wb-rows-changed', refresh)
+  }, [])
+
+
 
   useEffect(() => {
     const q = findQ.trim()
     if (q.length < CROSS_MIN) {
       setFindRes(EMPTY_FIND); setFindElsewhere([]); setFindBusy(false); return
     }
+    setFindRes(r => withSearchHits(r, r.hits.filter(h => h.cb34_p2_member !== true)))
     setFindBusy(true)
+    const epoch = visibilityEpoch.current
+    fullAccepted.current = false
+    fullPendingEpoch.current = epoch
     const mine = ++findSeq.current
     const t = window.setTimeout(() => {
       void crossSearchOtherLanes(q, findLane, CONTENT_LANES).then(c => {
-        if (findSeq.current === mine) setFindElsewhere(c)
+        if (findSeq.current === mine && epoch === visibilityEpoch.current) setFindElsewhere(c)
       }).catch(() => { /* a missing hint is not an error worth printing */ })
       void crossSearch(q, findLane).then(r => {
-        if (findSeq.current !== mine) return
+        if (findSeq.current !== mine || epoch !== visibilityEpoch.current) return
+        fullAccepted.current = true; fullPendingEpoch.current = null
         setFindRes(r)
         setFindBusy(false)
       }).catch(() => {
-        if (findSeq.current !== mine) return
+        if (findSeq.current !== mine || epoch !== visibilityEpoch.current) return
+        fullPendingEpoch.current = null
         setFindRes({ ...EMPTY_FIND, lane: findLane, failed: ['anything'] })
         setFindBusy(false)
       })
     }, FIND_DEBOUNCE_MS)
-    return () => window.clearTimeout(t)
-  }, [findQ, findLane])
+    return () => { ++findSeq.current; window.clearTimeout(t) }
+  }, [findQ, findLane, memberRevision])
 
   const openHit = useCallback((h: CrossHit) => {
     window.dispatchEvent(new CustomEvent('wb-open', {

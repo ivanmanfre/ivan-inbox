@@ -1,3 +1,4 @@
+import { useBrainMembers, mergeCheckedMembers } from '../../hooks/useBrainMembers'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { fetchWeekDrafts, type ContentDraft } from '../../lib/content'
 import { supabase } from '../../lib/supabase'
@@ -23,6 +24,7 @@ export type WeekRead = {
   rows: ContentDraft[]
   /** Where the rows on screen came from. */
   source: 'none' | 'cache' | 'live'
+  memberReadState?: 'idle' | 'pending' | 'partial' | 'failed'
   /** When the rows on screen were read (the saved copy's stamp while it is shown). */
   at: string | null
   loading: boolean
@@ -53,9 +55,15 @@ export function weekRange(now: number): { from: string; to: string } {
   return { from: new Date(now - 8 * DAY_MS).toISOString(), to: new Date(now + 9 * DAY_MS).toISOString() }
 }
 
+export function memberFitsWeek(r: ContentDraft, now: number): boolean {
+  const { from, to } = weekRange(now)
+  return laneOfRow(r) !== null && (r.status === 'review' || r.scheduled_at != null && r.scheduled_at >= from && r.scheduled_at < to)
+}
+
 export function useWeekRead(enabled: boolean, now: number): WeekRead {
   const [saved] = useState(() => (enabled ? readSwr<Saved>(WEEK_CACHE) : null))
   const [rows, setRows] = useState<ContentDraft[]>(() => saved?.payload.rows ?? [])
+  const [memberReadState, setMemberReadState] = useState<'idle' | 'pending' | 'partial' | 'failed'>('idle')
   const [source, setSource] = useState<WeekRead['source']>(saved ? 'cache' : 'none')
   const [at, setAt] = useState<string | null>(saved?.savedAt ?? null)
   const [loading, setLoading] = useState(enabled)
@@ -66,14 +74,20 @@ export function useWeekRead(enabled: boolean, now: number): WeekRead {
   shown.current = rows.filter(r => r.cb34_p2_member !== true).length
   const topic = `carousel_drafts:week:${useId()}`
   const generation = useRef(0)
+  const fullAccepted = useRef(false)
+  const visibilityEpoch = useRef(0)
+  const fullPendingEpoch = useRef<number | null>(null)
   const active = useRef(false)
   const scope = useRef({ enabled, now })
   scope.current = { enabled, now }
 
   const refresh = useCallback(() => {
     if (!active.current || !enabled || !scope.current.enabled || scope.current.now !== now) return
+    const epoch = visibilityEpoch.current
+    fullAccepted.current = false
+    fullPendingEpoch.current = epoch
     const request = ++generation.current
-    const current = () => active.current && request === generation.current && scope.current.enabled && scope.current.now === now
+    const current = () => active.current && request === generation.current && epoch === visibilityEpoch.current && scope.current.enabled && scope.current.now === now
     setLoading(true)
     // A saved release is not current validation. Keep ordinary SWR rows only.
     setRows(previous => previous.filter(r => r.cb34_p2_member !== true))
@@ -85,13 +99,13 @@ export function useWeekRead(enabled: boolean, now: number): WeekRead {
         if (mine.length === 0 && shown.current > 0) {
           setError('The refresh came back empty over a saved week that held posts, so the saved copy stays.')
         } else {
-          setRows(mine); setSource('live'); setAt(new Date().toISOString()); setError(null)
+          fullAccepted.current = true; setMemberReadState('idle'); setRows(mine); setSource('live'); setAt(new Date().toISOString()); setError(null)
           setCapped(page.count != null && page.count > page.rows.length ? page.count : null)
           writeSwr(WEEK_CACHE, toSaved(mine))
         }
       })
       .catch((e: unknown) => { if (current()) setError(e instanceof Error ? e.message : 'this week is unavailable') })
-      .finally(() => { if (current()) { setLoading(false); setSettled(true) } })
+      .finally(() => { if (current()) { fullPendingEpoch.current = null; setLoading(false); setSettled(true) } })
   }, [enabled, now])
 
   // Opened on another Content place first (the page mounts once): paint the saved copy the moment Review is picked.
@@ -131,5 +145,13 @@ export function useWeekRead(enabled: boolean, now: number): WeekRead {
     }
   }, [enabled, refresh, topic])
 
-  return { rows, source, at, loading, error, capped, settled, refresh }
+  useBrainMembers(rows, () => { fullAccepted.current = false; ++visibilityEpoch.current; setMemberReadState('pending'); setCapped(null); ++generation.current; setRows(previous => previous.filter(r => r.cb34_p2_member !== true)) }, (fresh, checkedIds) => {
+    if (fullAccepted.current) return true
+    if (fullPendingEpoch.current === visibilityEpoch.current) return false
+    const mine = fresh.filter(r => memberFitsWeek(r, now))
+    setRows(previous => mergeCheckedMembers(previous, mine, checkedIds))
+    setMemberReadState('partial'); setLoading(false)
+  }, String(now), enabled, () => { if (!fullAccepted.current) setMemberReadState('failed') }, () => fullPendingEpoch.current === visibilityEpoch.current)
+
+  return { rows, source, at, loading, error, capped, settled, memberReadState, refresh }
 }

@@ -121,8 +121,8 @@ export function buildOpsItems(drafts: OpsDraft[], now: number): QueueItem[] {
 
 // ---------- the two piles Today has never carried: content and ideas ----------
 
-type PileRow = { client_id: string | null; created_at: string; title: string | null }
-type LanePile = { lane: string; n: number; oldestCreatedAt: string; oldestTitle: string | null }
+export type PileRow = { id?: string; cb34_p2_member?: boolean; client_id: string | null; created_at: string; title: string | null }
+export type LanePile = { lane: string; n: number; oldestCreatedAt: string; oldestTitle: string | null; rows?: PileRow[] }
 
 async function pileByLane(table: string, status: string): Promise<LanePile[]> {
   // Read-only. All three call sites below (review, error, staged ideas) are
@@ -130,18 +130,12 @@ async function pileByLane(table: string, status: string): Promise<LanePile[]> {
   // single unpaged select is honest here, no Range headers needed.
   const { data, error } = await supabase
     .from(table)
-    .select('client_id, created_at, title')
+    .select(table === 'cb34_p2_safe_drafts' ? 'id, cb34_p2_member, client_id, created_at, title' : 'client_id, created_at, title')
     .eq('status', status)
     .order('created_at', { ascending: true })
   if (error) throw error
-  const byLane = new Map<string, LanePile>()
-  for (const r of (data ?? []) as PileRow[]) {
-    const lane = rowClient(r)
-    const existing = byLane.get(lane)
-    if (existing) existing.n += 1
-    else byLane.set(lane, { lane, n: 1, oldestCreatedAt: r.created_at, oldestTitle: r.title })
-  }
-  return [...byLane.values()]
+  return groupPileRows((data ?? []) as unknown as PileRow[])
+
 }
 
 export async function fetchContentReviewPile(): Promise<LanePile[]> {
@@ -204,3 +198,16 @@ export function foldQueue(items: QueueItem[], liveDays = QUEUE_LIVE_DAYS): { liv
   for (const i of items) (i.ageDays > liveDays ? older : live).push(i)
   return { live, older }
 }
+
+export function groupPileRows(rows: PileRow[]): LanePile[] {
+  const byLane = new Map<string, LanePile>()
+  for (const r of [...rows].sort((a, b) => a.created_at.localeCompare(b.created_at))) {
+    const lane = rowClient(r), p = byLane.get(lane)
+    if (p) { ++p.n; p.rows!.push(r) }
+    else byLane.set(lane, { lane, n: 1, oldestCreatedAt: r.created_at, oldestTitle: r.title, rows: [r] })
+  }
+  return [...byLane.values()]
+}
+export function pileMemberRows(piles: LanePile[]) { return piles.flatMap(p => p.rows ?? []).filter(r => r.cb34_p2_member === true && r.id).map(r => ({ id: r.id!, client_id: r.client_id, cb34_p2_member: true })) }
+export function clearPileMembers(piles: LanePile[]) { return piles.flatMap(p => p.rows ? groupPileRows(p.rows.filter(r => r.cb34_p2_member !== true)) : [p]) }
+export function restorePileMembers(piles: LanePile[], fresh: import('./content').ContentDraftDetail[], status: string, checkedIds: string[] = fresh.map(r => r.id)) { return [...piles.filter(p => !p.rows), ...groupPileRows([...piles.flatMap(p => p.rows ?? []).filter(r => !r.id || !checkedIds.includes(r.id)), ...fresh.filter(r => r.status === status).map(r => ({ id: r.id, client_id: r.client_id, cb34_p2_member: true, created_at: r.created_at, title: r.title }))])] }

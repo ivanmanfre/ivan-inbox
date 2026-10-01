@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useBrainMembers } from '../../hooks/useBrainMembers'
+import { pileMemberRows, clearPileMembers, restorePileMembers } from '../../lib/workQueue'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useToday } from '../../hooks/useToday'
 import { focusSummary, laneName } from '../../lib/focus'
 import { fetchOpsDrafts, type OpsDraft } from '../../lib/ops'
@@ -41,21 +43,40 @@ function useQueueReads() {
   const [piles, setPiles] = useState<Piles | null>(null)
   const [failed, setFailed] = useState(false)
   const [tick, setTick] = useState(0)
+  const generation = useRef(0)
+  const visibilityEpoch = useRef(0)
+  const fullAccepted = useRef(false)
+  const fullPendingEpoch = useRef<number | null>(null)
+  useEffect(() => { const changed = () => { ++generation.current; setPiles(p => p && ({ ...p, review: clearPileMembers(p.review), errors: clearPileMembers(p.errors) })); setTick(t => t + 1) }; window.addEventListener('wb-rows-changed', changed); return () => window.removeEventListener('wb-rows-changed', changed) }, [])
   useEffect(() => {
     let alive = true
+    const epoch = visibilityEpoch.current
+    fullAccepted.current = false
+    fullPendingEpoch.current = epoch
+    const request = ++generation.current
     setFailed(false)
     // 12 s at most, then the failed line with Retry; a failure re-reads quietly after RETRY_MS.
     let again: number | undefined
     withTimeout(Promise.all([fetchOpsDrafts(), fetchContentReviewPile(), fetchContentErrorPile(), fetchStagedIdeaPile()]))
-      .then(([o, review, errors, ideas]) => { if (alive) { setOps(o); setPiles({ review, errors, ideas }) } })
+      .then(([o, review, errors, ideas]) => { if (alive && request === generation.current && epoch === visibilityEpoch.current) { fullAccepted.current = true; fullPendingEpoch.current = null; setOps(o); setPiles({ review, errors, ideas }) } })
       .catch(e => {
         console.warn('[d] work queue read failed', e)
-        if (!alive) return
+        if (!alive || request !== generation.current || epoch !== visibilityEpoch.current) return
+        fullPendingEpoch.current = null
         setFailed(true)
         again = window.setTimeout(() => { if (alive) setTick(t => t + 1) }, RETRY_MS)
       })
     return () => { alive = false; window.clearTimeout(again) }
   }, [tick])
+  useBrainMembers(piles ? pileMemberRows([...piles.review, ...piles.errors]) : [], () => {
+    fullAccepted.current = false; ++visibilityEpoch.current
+    ++generation.current
+    setPiles(p => p && ({ ...p, review: clearPileMembers(p.review), errors: clearPileMembers(p.errors) }))
+  }, (fresh, checkedIds) => {
+    if (fullAccepted.current) return true
+    if (fullPendingEpoch.current === visibilityEpoch.current) return false
+    setPiles(p => p && ({ ...p, review: restorePileMembers(p.review, fresh, 'review', checkedIds), errors: restorePileMembers(p.errors, fresh, 'error', checkedIds) }))
+  }, 'work-queue', true, () => {}, () => fullPendingEpoch.current === visibilityEpoch.current)
   return { ops, piles, failed, retry: () => setTick(t => t + 1) }
 }
 

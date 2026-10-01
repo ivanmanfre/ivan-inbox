@@ -1,3 +1,5 @@
+import { groupPileRows, clearPileMembers, restorePileMembers, pileMemberRows } from './workQueue'
+import type { ContentDraftDetail } from './content'
 import { describe, it, expect } from 'vitest'
 import { groupThreads, type InboxMessage } from './inbox'
 import type { OpsDraft } from './ops'
@@ -137,4 +139,15 @@ describe('foldQueue', () => {
     const { live, older } = foldQueue(items)
     expect(live.length + older.length).toBe(items.length)
   })
+})
+
+it('hold prunes member counts/oldest titles while ordinary queue actions survive; changed status moves pile', () => {
+ const piles = groupPileRows([{ id: 'member', cb34_p2_member: true, client_id: null, title: 'Held oldest title', created_at: '2026-09-01' },{ id: 'ordinary', cb34_p2_member: false, client_id: null, title: 'Ordinary title', created_at: '2026-09-02' }])
+ expect(pileMemberRows(piles)).toEqual([{ id: 'member', client_id: null, cb34_p2_member: true }])
+ const cleared = clearPileMembers(piles)
+ expect(cleared[0]).toMatchObject({ n: 1, oldestTitle: 'Ordinary title' })
+ expect(pileItems(cleared,'contentReview',NOW)[0].openId).toBe('ivan')
+ const fresh = { id: 'member', client_id: null, cb34_p2_member: true, title: 'Current error title', created_at: '2026-09-01', status: 'error' } as ContentDraftDetail
+ expect(restorePileMembers(cleared,[fresh],'review')[0]).toMatchObject({ n: 1, oldestTitle: 'Ordinary title' })
+ expect(restorePileMembers([], [fresh], 'error')[0]).toMatchObject({ n: 1, oldestTitle: 'Current error title' })
 })

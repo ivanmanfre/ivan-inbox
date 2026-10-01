@@ -1,3 +1,4 @@
+import { useBrainMembers, mergeCheckedMembers } from './useBrainMembers'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import {
@@ -29,6 +30,7 @@ export function useContent(lane: ContentLane = 'ivan', enabled: boolean = true) 
   // in this lane. rows can be capped by PostgREST long before a header count
   // notices, and a filter bug that eats every row looks identical to an empty
   // board without laneTotal to compare against (D10 / blank-board #5).
+  const [memberReadState, setMemberReadState] = useState<'idle' | 'pending' | 'partial' | 'failed'>('idle')
   const [matched, setMatched] = useState<number | null>(null)
   const [laneTotal, setLaneTotal] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
@@ -47,14 +49,20 @@ export function useContent(lane: ContentLane = 'ivan', enabled: boolean = true) 
   // Mattan views can be mounted side by side.
   const topic = `carousel_drafts:${lane}:${useId()}`
   const generation = useRef(0)
+  const fullAccepted = useRef(false)
+  const visibilityEpoch = useRef(0)
+  const fullPendingEpoch = useRef<number | null>(null)
   const active = useRef(false)
   const scope = useRef({ lane, enabled })
   scope.current = { lane, enabled }
 
   const refresh = useCallback(() => {
     if (!active.current || !enabled || scope.current.lane !== lane || !scope.current.enabled) return
+    const epoch = visibilityEpoch.current
+    fullAccepted.current = false
+    fullPendingEpoch.current = epoch
     const request = ++generation.current
-    const current = () => active.current && request === generation.current && scope.current.lane === lane && scope.current.enabled
+    const current = () => active.current && request === generation.current && epoch === visibilityEpoch.current && scope.current.lane === lane && scope.current.enabled
     setLoading(true)
     // Member drafts require a fresh server validation, never a stale release.
     setDrafts(previous => previous.filter(r => r.cb34_p2_member !== true))
@@ -63,9 +71,11 @@ export function useContent(lane: ContentLane = 'ivan', enabled: boolean = true) 
     Promise.all([fetchContentDrafts(lane), fetchLaneProbe(lane)])
       .then(([page, probe]) => {
         if (!current()) return
+        fullAccepted.current = true
         setDrafts(page.rows)
         setBuckets(bucketDrafts(page.rows))
         setStages(groupByStage(page.rows))
+        setMemberReadState('idle')
         setMatched(page.count ?? probe.scoped)
         setLaneTotal(probe.total)
         setError(null)
@@ -77,6 +87,7 @@ export function useContent(lane: ContentLane = 'ivan', enabled: boolean = true) 
         setError(e instanceof Error ? e.message : 'content unavailable')
         setLoading(false)
       })
+      .finally(() => { if (current()) fullPendingEpoch.current = null })
   }, [lane, enabled])
 
   useEffect(() => {
@@ -88,11 +99,28 @@ export function useContent(lane: ContentLane = 'ivan', enabled: boolean = true) 
       .subscribe()
     const onFocus = () => refresh()
     window.addEventListener('focus', onFocus)
-    return () => { active.current = false; ++generation.current; supabase.removeChannel(ch); window.removeEventListener('focus', onFocus) }
+    window.addEventListener('wb-rows-changed', onFocus)
+    return () => { active.current = false; ++generation.current; supabase.removeChannel(ch); window.removeEventListener('focus', onFocus); window.removeEventListener('wb-rows-changed', onFocus) }
   }, [enabled, refresh, topic])
 
+  useBrainMembers(drafts, () => {
+    fullAccepted.current = false
+    ++visibilityEpoch.current
+    setMemberReadState('pending'); setMatched(null); setLaneTotal(null)
+    ++generation.current
+    setDrafts(previous => previous.filter(r => r.cb34_p2_member !== true))
+    setBuckets(previous => Object.fromEntries(Object.entries(previous).map(([key, rows]) => [key, rows.filter(r => r.cb34_p2_member !== true)])) as ContentBuckets)
+    setStages(previous => Object.fromEntries(Object.entries(previous).map(([key, rows]) => [key, rows.filter(r => r.cb34_p2_member !== true)])) as ContentStages)
+  }, (fresh, checkedIds) => {
+    if (fullAccepted.current) return true
+    if (fullPendingEpoch.current === visibilityEpoch.current) return false
+    setMemberReadState('partial')
+    setDrafts(previous => { const rows = mergeCheckedMembers(previous, fresh, checkedIds); setBuckets(bucketDrafts(rows)); setStages(groupByStage(rows)); return rows })
+    setLoading(false)
+  }, lane, enabled, () => { if (!fullAccepted.current) setMemberReadState('failed') }, () => fullPendingEpoch.current === visibilityEpoch.current)
+
   // `buckets` stays first and unchanged in the shape — cand-b destructures it.
-  return { drafts, buckets, stages, matched, laneTotal, loading, error, loadedAt, refresh }
+  return { drafts, buckets, stages, matched, laneTotal, loading, error, loadedAt, memberReadState, refresh }
 }
 
 // One full row, fetched only when a card is opened. Ordinary editors keep
@@ -108,6 +136,9 @@ export function useDraftDetail(id: string | null, reloadKey: unknown = 0) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const detailGeneration = useRef(0)
+  const detailFullAccepted = useRef(false)
+  const detailVisibilityEpoch = useRef(0)
+  const detailPendingEpoch = useRef<number | null>(null)
   const [externalRevision, setExternalRevision] = useState(0)
   const [knownMemberId, setKnownMemberId] = useState<string | null>(null)
   const member = knownMemberId === id
@@ -116,12 +147,16 @@ export function useDraftDetail(id: string | null, reloadKey: unknown = 0) {
   useEffect(() => {
     if (!id) return
     let live = true
+    const epoch = detailVisibilityEpoch.current
+    detailFullAccepted.current = false
+    detailPendingEpoch.current = epoch
     const request = ++detailGeneration.current
     setLoading(true)
     setDetail(previous => previous?.cb34_p2_member === true ? null : previous)
     fetchDraftDetail(id)
       .then(row => {
-        if (!live || request !== detailGeneration.current) return
+        if (!live || request !== detailGeneration.current || epoch !== detailVisibilityEpoch.current) return
+        detailFullAccepted.current = true
         setDetail(row)
         if (row) setKnownMemberId(row.cb34_p2_member === true ? id : null)
         setMissing(row === null)
@@ -129,10 +164,11 @@ export function useDraftDetail(id: string | null, reloadKey: unknown = 0) {
         setLoading(false)
       })
       .catch((e: unknown) => {
-        if (!live || request !== detailGeneration.current) return
+        if (!live || request !== detailGeneration.current || epoch !== detailVisibilityEpoch.current) return
         setError(e instanceof Error ? e.message : 'draft unavailable')
         setLoading(false)
       })
+      .finally(() => { if (live && request === detailGeneration.current && epoch === detailVisibilityEpoch.current) detailPendingEpoch.current = null })
     return () => { live = false; ++detailGeneration.current }
   }, [id, reloadKey, externalRevision])
 
@@ -145,6 +181,18 @@ export function useDraftDetail(id: string | null, reloadKey: unknown = 0) {
     window.addEventListener('focus', invalidate)
     return () => { subscribed = false; supabase.removeChannel(ch); window.removeEventListener('wb-rows-changed', invalidate); window.removeEventListener('focus', invalidate) }
   }, [id, member, detailTopic])
+
+  useBrainMembers(detail ? [detail] : [], () => {
+    if (!member) return
+    detailFullAccepted.current = false
+    ++detailVisibilityEpoch.current
+    ++detailGeneration.current; setDetail(null); setLoading(true)
+  }, fresh => {
+    if (detailFullAccepted.current) return true
+    if (detailPendingEpoch.current === detailVisibilityEpoch.current) return false
+    const row = fresh.find(r => r.id === id) ?? null
+    setDetail(row); setMissing(row === null); setLoading(false); setError(null)
+  }, id ?? '', member, () => {}, () => detailPendingEpoch.current === detailVisibilityEpoch.current)
 
   return { detail, missing, loading, error }
 }

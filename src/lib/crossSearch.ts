@@ -40,6 +40,8 @@ export type CrossSurface = 'dm' | 'draft' | 'magnet'
 
 export type CrossHit = {
   surface: CrossSurface
+  cb34_p2_member?: boolean
+  client_id?: string | null
   /** The id the app opens: a prospect for a conversation, a row id otherwise. */
   id: string
   title: string
@@ -129,6 +131,7 @@ type DmRow = {
 type DraftRow = {
   id: string; title: string | null; topic: string | null; post_body: string | null
   status: string | null; type: string | null; updated_at: string | null
+  cb34_p2_member?: boolean; client_id: string | null
 }
 
 type MagnetRow = {
@@ -148,7 +151,7 @@ export async function crossSearch(query: string, lane: ContentLane): Promise<Cro
   const f = laneFilter(lane)
 
   let draftQ = supabase.from('cb34_p2_safe_drafts')
-    .select('id,title,topic,post_body,status,type,updated_at')
+    .select('id,cb34_p2_member,client_id,title,topic,post_body,status,type,updated_at')
   draftQ = f.op === 'is' ? draftQ.is(f.column, null) : draftQ.eq(f.column, f.value)
 
   let magnetQ = supabase.from('lm_drafts_v2')
@@ -193,6 +196,7 @@ export async function crossSearch(query: string, lane: ContentLane): Promise<Cro
     for (const r of (draft.value.data ?? []) as DraftRow[]) {
       hits.push({
         surface: 'draft',
+        cb34_p2_member: r.cb34_p2_member, client_id: r.client_id,
         id: r.id,
         title: r.title || r.topic || 'Untitled draft',
         // Through the label map, never the raw value: this string is rendered.
@@ -287,3 +291,15 @@ export const SURFACE_LABEL: Record<CrossSurface, string> = {
 }
 
 export function laneName(lane: ContentLane): string { return LANE_LABEL[lane] ?? lane }
+
+/** Restore only still-matching, fresh same-scope search members. */
+export function freshMemberHits(rows: import('./content').ContentDraftDetail[], query: string, lane: ContentLane): CrossHit[] {
+  const term = safeTerm(query).toLowerCase()
+  if (term.length < CROSS_MIN) return []
+  return rows.filter(r => (lane === 'ivan' ? r.client_id === null : r.client_id === lane) && [r.title, r.topic, r.post_body].some(s => s?.toLowerCase().includes(term))).map(r => ({
+    surface: 'draft', id: r.id, cb34_p2_member: true, client_id: r.client_id, title: r.title || r.topic || 'Untitled draft', sub: label(r.status), snippet: snippet(r.post_body ?? r.topic, term), lane,
+    row: { id: r.id, title: r.title || r.topic || 'Untitled draft', type: r.type, updated_at: r.updated_at, status: r.status },
+  }))
+}
+export function memberSearchRows(hits: CrossHit[]) { return hits.filter(h => h.cb34_p2_member === true && h.client_id !== undefined).map(h => ({ id: h.id, client_id: h.client_id!, cb34_p2_member: true })) }
+export function withSearchHits(result: CrossResults, hits: CrossHit[]): CrossResults { return { ...result, hits, counts: { dm: hits.filter(h => h.surface === 'dm').length, draft: hits.filter(h => h.surface === 'draft').length, magnet: hits.filter(h => h.surface === 'magnet').length } } }

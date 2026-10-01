@@ -1,3 +1,5 @@
+import { freshMemberHits, memberSearchRows, withSearchHits } from './crossSearch'
+import type { ContentDraftDetail } from './content'
 import { describe, expect, it } from 'vitest'
 import { laneFilter, type ContentLane } from './content'
 import {
@@ -96,4 +98,13 @@ describe('what a badge prints', () => {
   it('is plain words, never a table name', () => {
     expect(Object.values(SURFACE_LABEL)).toEqual(['Conversation', 'Draft', 'Lead magnet'])
   })
+})
+
+it('fresh member search uses current title/body/query and never restores another tenant', () => {
+ const r = { id: 'm', client_id: null, cb34_p2_member: true, title: 'New scope', post_body: 'Current hiring topic', status: 'review', type: 'text', updated_at: 'now' } as ContentDraftDetail
+ expect(freshMemberHits([r], 'old vanished title', 'ivan')).toEqual([])
+ expect(freshMemberHits([r], 'hiring', 'arch')).toEqual([])
+ const hits = freshMemberHits([r], 'hiring', 'ivan')
+ expect(hits[0].title).toBe('New scope'); expect(memberSearchRows(hits)).toEqual([{ id: 'm', client_id: null, cb34_p2_member: true }])
+ expect(withSearchHits({ hits, counts: { dm: 0, draft: 99, magnet: 0 }, lane: 'ivan', failed: [] }, []).counts.draft).toBe(0)
 })

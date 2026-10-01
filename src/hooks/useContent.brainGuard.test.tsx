@@ -82,3 +82,16 @@ it('cancels refresh callbacks after unmount', async () => {
  unmount(); refresh()
  expect(lib.fetchContentDrafts).toHaveBeenCalledTimes(1)
 })
+
+it('membership-only wb invalidation synchronously clears list members but keeps ordinary rows while safe refresh is pending', async () => {
+ lib.fetchContentDrafts.mockResolvedValueOnce({ rows: [row('member', true),row('ordinary')], count: 2 })
+ const { result } = renderHook(() => useContent('ivan'))
+ await waitFor(() => expect(result.current.drafts).toHaveLength(2))
+ let done!: (p: ContentPage) => void
+ lib.fetchContentDrafts.mockReturnValueOnce(new Promise(resolve => { done = resolve }))
+ act(() => window.dispatchEvent(new Event('wb-rows-changed')))
+ expect(result.current.drafts.map(r => r.id)).toEqual(['ordinary'])
+ expect(result.current.buckets.review.map(r => r.id)).toEqual(['ordinary'])
+ await act(async () => done({ rows: [row('ordinary')], count: 1 }))
+ expect(result.current.drafts.map(r => r.id)).toEqual(['ordinary'])
+})

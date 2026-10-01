@@ -203,6 +203,7 @@ export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onCh
 }
 
 function Sync({ read }: { read: WeekRead }) {
+  if (read.memberReadState && read.memberReadState !== 'idle') return <p className="cn-wk2-sync" role="status">{read.memberReadState === 'pending' ? 'Checking brain draft visibility.' : read.memberReadState === 'failed' ? 'Brain drafts are hidden until visibility can be verified.' : 'Brain draft visibility checked. Full week refresh is still available.'} <button type="button" onClick={read.refresh}>Refresh week</button></p>
   if (read.source === 'cache') {
     return <p className="cn-wk2-sync" role="status">Saved copy {read.at ? warsawHm(read.at) : ''}{read.error ? <> · could not refresh: {read.error} <button type="button" onClick={read.refresh}>Retry</button></> : ' · refreshing…'}</p>
   }

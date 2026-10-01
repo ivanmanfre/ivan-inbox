@@ -1,3 +1,5 @@
+import { useBrainMembers } from '../../hooks/useBrainMembers'
+import { freshMemberHits, memberSearchRows, withSearchHits } from '../../lib/crossSearch'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CommandPalette, type FindState } from '../../exp/v2c/CommandPalette'
 import type { WbCommand } from '../../exp/v2c/commandSource'
@@ -78,25 +80,50 @@ export function DPalette({ onClose, navigate, toggleClaude, openBell, lane: star
   const [res, setRes] = useState<CrossResults>(EMPTY)
   const [busy, setBusy] = useState(false)
   const [elsewhere, setElsewhere] = useState<LaneCount[]>([])
+  const [memberRevision, setMemberRevision] = useState(0)
   const seq = useRef(0)
+  const visibilityEpoch = useRef(0)
+  const fullAccepted = useRef(false)
+  const fullPendingEpoch = useRef<number | null>(null)
+  useBrainMembers(memberSearchRows(res.hits), () => { fullAccepted.current = false; ++visibilityEpoch.current; ++seq.current; setRes(r => withSearchHits(r, r.hits.filter(h => h.cb34_p2_member !== true))) }, (fresh, checkedIds) => {
+    if (fullAccepted.current) return true
+    if (fullPendingEpoch.current === visibilityEpoch.current) return false
+    setBusy(false)
+    const ids = new Set(checkedIds)
+    setRes(r => withSearchHits(r, [...r.hits.filter(h => !ids.has(h.id) || h.surface !== 'draft'), ...freshMemberHits(fresh, q, lane)]))
+  }, lane + ':' + q, true, () => {}, () => fullPendingEpoch.current === visibilityEpoch.current)
+
+  useEffect(() => {
+    const refresh = () => { ++seq.current; setRes(r => withSearchHits(r, r.hits.filter(h => h.cb34_p2_member !== true))); setMemberRevision(n => n + 1) }
+    window.addEventListener('wb-rows-changed', refresh)
+    return () => window.removeEventListener('wb-rows-changed', refresh)
+  }, [])
+
+
 
   useEffect(() => {
     const term = q.trim()
     if (term.length < CROSS_MIN) { setRes(EMPTY); setElsewhere([]); setBusy(false); return }
+    setRes(r => withSearchHits(r, r.hits.filter(h => h.cb34_p2_member !== true)))
     setBusy(true)
+    const epoch = visibilityEpoch.current
+    fullAccepted.current = false
+    fullPendingEpoch.current = epoch
     const mine = ++seq.current
     const t = window.setTimeout(() => {
-      void crossSearchOtherLanes(term, lane, CONTENT_LANES).then(c => { if (seq.current === mine) setElsewhere(c) }).catch(() => {})
+      void crossSearchOtherLanes(term, lane, CONTENT_LANES).then(c => { if (seq.current === mine && epoch === visibilityEpoch.current) setElsewhere(c) }).catch(() => {})
       void crossSearch(term, lane).then(r => {
-        if (seq.current !== mine) return
+        if (seq.current !== mine || epoch !== visibilityEpoch.current) return
+        fullAccepted.current = true; fullPendingEpoch.current = null
         setRes(r); setBusy(false)
       }).catch(() => {
-        if (seq.current !== mine) return
+        if (seq.current !== mine || epoch !== visibilityEpoch.current) return
+        fullPendingEpoch.current = null
         setRes({ ...EMPTY, lane, failed: ['anything'] }); setBusy(false)
       })
     }, DEBOUNCE)
-    return () => window.clearTimeout(t)
-  }, [q, lane])
+    return () => { ++seq.current; window.clearTimeout(t) }
+  }, [q, lane, memberRevision])
 
   const find: FindState = { ...res, lane, q, busy, elsewhere, setLane }
 
