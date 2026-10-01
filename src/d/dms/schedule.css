@@ -1,0 +1,13 @@
+/* Scheduled sends use the existing DM form and sheet tokens. */
+.dm-schedule-form{display:flex;flex-direction:column;gap:16px;min-width:0;padding:16px}
+.dm-schedule-form label{display:flex;flex-direction:column;gap:6px;font:500 13px var(--f);min-width:0}
+.dm-schedule-form input,.dm-schedule-form select{width:100%;min-width:0;min-height:44px;padding:9px 10px;background:var(--p2);color:var(--t1);border:1px solid var(--line2);border-radius:8px;font:400 14px var(--f);box-sizing:border-box;color-scheme:dark}
+.dm-schedule-form input:focus-visible,.dm-schedule-form select:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+.dm-schedule-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.dm-schedule-form .dm-meta{font-size:12px;line-height:1.6;margin:0;color:var(--t2)}
+.dm-scheduled>b{font-size:13px;color:var(--t1)}
+.dm-scheduled>p{font-size:12px;margin:6px 0}
+.dm-scheduled>div{margin-top:12px;gap:8px;justify-content:flex-start}
+.dm-scheduled .dm-k{min-height:44px;padding:6px 10px}
+.dm-schedule-key{min-height:32px}
+@media(max-width:600px){.dm-schedule-key{min-height:44px}.dm-scheduled>div{flex-wrap:wrap}.dm-schedule-form .dm-quote{font-size:14px}.dm-schedule-form input,.dm-schedule-form select{font-size:16px}}

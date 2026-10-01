@@ -173,7 +173,7 @@ export type Thread = {
 export function sendFailed(m: InboxMessage): boolean {
   if (m.direction !== 'outbound') return false
   if (m.send_blocked_at === null) return false
-  if (m.send_blocked_reason === DISCARD_REASON) return false
+  if (m.send_blocked_reason === DISCARD_REASON || ['scheduled_in_inbox','scheduled_send_cancelled'].includes(m.send_blocked_reason ?? '')) return false
   if (isRecoverableHold(m.send_blocked_reason)) return false
   if (isInternalConfirmation(m)) return false
   if (isEngineRetired(m)) return false
@@ -341,7 +341,7 @@ export function internalHoldSummary(m: InboxMessage): string {
 }
 
 export function isDraft(m: InboxMessage): boolean {
-  return m.direction === 'outbound' && !m.sent_at && !m.approved_at && !isInternalConfirmation(m) &&
+  return m.direction === 'outbound' && !m.sent_at && !m.approved_at && m.send_blocked_reason !== 'post_approval_race:scheduled_thread_changed' && !isInternalConfirmation(m) &&
     (!m.send_blocked_at || isRecoverableHold(m.send_blocked_reason))
 }
 
