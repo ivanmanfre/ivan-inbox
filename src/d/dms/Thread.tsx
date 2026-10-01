@@ -86,8 +86,8 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   useLayoutEffect(() => {
     if (emailReplyFor === t.prospect_id) dock.current?.querySelector('textarea')?.focus()
   }, [emailReplyFor, t.prospect_id])
-  // Open at the newest message, as a chat does (desktop: the pane scrolls; phone: the page does).
-  useEffect(() => { const el = scroll.current; if (el && !phone) el.scrollTop = el.scrollHeight }, [t.prospect_id, phone])
+  // Open at the newest message on both layouts; the conversation owns its scroll.
+  useEffect(() => { const el = scroll.current; if (el) el.scrollTop = el.scrollHeight }, [t.prospect_id, phone])
   // Sanctioned read stamp on real inbound rows, as today. Once per thread and unread set: a remount
   // (the phone page, React's dev double effect) must not PATCH read_at a second time.
   const lastIn = t.messages.filter(m => m.direction === 'inbound').at(-1)?.id ?? ''
