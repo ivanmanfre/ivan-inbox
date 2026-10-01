@@ -44,7 +44,7 @@ export function emailAddrLine(m: InboxMessage): string | null {
   // colleague answering for them reads right; the prospect's own address is the fallback.
   const addr = m.recipient_email || m.prospect_email
   if (!addr) return null
-  return m.direction === 'inbound' ? `From ${addr}` : `To ${addr}`
+  return m.direction === 'inbound' ? `From ${addr}` : `To ${addr}${m.email_cc?.length ? ` · Cc ${m.email_cc.join(', ')}` : ''}`
 }
 
 export function historyRows(t: Thread): InboxMessage[] {

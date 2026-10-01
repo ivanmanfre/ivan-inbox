@@ -1,3 +1,4 @@
+import { parseEmailCc } from '../../lib/emailCc'
 // Every DM write, wired to TODAY'S lib calls with today's payloads, guards and order
 // (src/wb/thread/Conversation.tsx, RestoreStrip, FollowUpStrip, CameBack). Nothing here
 // invents a write path: each verb names the lib function it calls.
@@ -5,7 +6,7 @@ import { useMemo } from 'react'
 import {
   approveDraft, composeReply, deleteThread, discardLegs, dismissConfirmation, draftLegs, escalateDraftToClient,
   isFollowUp, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft,
-  saveDraftEmail, saveDraftText, snoozeDraft, threadChatId, unsnoozeDraft, REPLY_MYSELF,
+  saveDraftEmail, saveDraftEmailCc, saveDraftText, snoozeDraft, threadChatId, unsnoozeDraft, REPLY_MYSELF,
   type InboxMessage, type Thread,
 } from '../../lib/inbox'
 import { clearFollowUp, fetchFollowUp, followUpSuggestion, setFollowUp, type FollowUp } from '../../lib/followUp'
@@ -17,7 +18,7 @@ import { useToast } from '../ui/toast'
 import { useAsks } from './asks'
 import { canMarkSolved, writeSolved } from './solved'
 
-export type Edits = { main: string; email: string | null; companion: string | null }
+export type Edits = { main: string; email: string | null; companion: string | null; cc?: string; companionCc?: string }
 
 export type VerbCtx = {
   /** Re-read the list (and the frame's DM counts). */
@@ -53,6 +54,20 @@ export function useDmVerbs(ctx: VerbCtx) {
   return useMemo(() => {
     const fail = (message: string) => { toast.show({ message, tone: 'failed' }) }
 
+    async function saveCcs(t: Thread, ed: Edits) {
+      const legs = [[t.draft, ed.cc], [t.companionDraft, ed.companionCc]] as const
+      // Validate every leg before approving any leg.
+      for (const [row, value] of legs) if (row && value !== undefined) parseEmailCc(value)
+      for (const [row, value] of legs) {
+        if (!row || value === undefined) continue
+        if (row.email_stamp_unavailable) throw new Error('Refresh to check the email recipients before approving.')
+        const cc = parseEmailCc(value)
+        // Re-check persisted evidence even when the visible recipients are unchanged.
+        await saveDraftEmailCc(row.id, value)
+        ctx.patch([row.id], { email_cc: cc })
+      }
+    }
+
     /** Approve & send (both legs on a pair). Always asks first, as today's thread does. */
     async function send(t: Thread, ed: Edits): Promise<string | null> {
       const draft = t.draft
@@ -69,6 +84,8 @@ export function useDmVerbs(ctx: VerbCtx) {
         if (!ok) return null
       }
       try {
+        if (draft.email_stamp_unavailable || comp?.email_stamp_unavailable) throw new Error('Refresh to check the email recipients before approving.')
+        await saveCcs(t, ed)
         // Email first: approveDraft stamps approved_at and the email save guards on it being null.
         if (draft.email_mirror_text != null && ed.email != null && ed.email !== draft.email_mirror_text) await saveDraftEmail(draft.id, ed.email)
         await approveDraft(draft.id, ed.main, threadChatId(t))
@@ -197,6 +214,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       const until = ans.at
       const comp = t.companionDraft
       try {
+        await saveCcs(t, ed)
         // His edits travel with the push (today's order: text, email, park; then the other leg).
         if (ed.main !== draft.message_text) await saveDraftText(draft.id, ed.main)
         if (draft.email_mirror_text != null && ed.email != null && ed.email !== draft.email_mirror_text) await saveDraftEmail(draft.id, ed.email)
@@ -226,6 +244,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       const draft = t.draft
       if (!draft) return null
       try {
+        await saveCcs(t, ed)
         if (ed.main !== draft.message_text) await saveDraftText(draft.id, ed.main)
         if (draft.email_mirror_text != null && ed.email != null && ed.email !== draft.email_mirror_text) await saveDraftEmail(draft.id, ed.email)
         if (t.companionDraft && ed.companion != null && ed.companion !== t.companionDraft.message_text) await saveDraftText(t.companionDraft.id, ed.companion)
@@ -243,6 +262,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       if (!draft) return null
       const comp = t.companionDraft
       try {
+        await saveCcs(t, ed)
         if (ed.main !== draft.message_text) await saveDraftText(draft.id, ed.main)
         if (draft.email_mirror_text != null && ed.email != null && ed.email !== draft.email_mirror_text) await saveDraftEmail(draft.id, ed.email)
         if (comp && ed.companion != null && ed.companion !== comp.message_text) await saveDraftText(comp.id, ed.companion)

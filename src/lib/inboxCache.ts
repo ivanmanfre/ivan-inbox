@@ -119,6 +119,7 @@ function projectMessage(m: InboxMessage): InboxMessage {
     reply_intent: m.reply_intent ?? null, prospect_blacklisted: m.prospect_blacklisted ?? null,
     lane: m.lane ?? null, copy_route: m.copy_route ?? null, campaign_lane: m.campaign_lane ?? null, discard_mode: m.discard_mode ?? null,
     recipient_email: m.recipient_email ?? null,
+    email_cc: m.email_cc ?? null,
     email_mirror_text: capBody(m.email_mirror_text ?? null, cap),
     context_gap: m.context_gap ?? null,
     // draft_evidence is deliberately dropped (see the header). The card that

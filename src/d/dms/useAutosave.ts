@@ -11,7 +11,7 @@ export type SaveState = 'idle' | 'saving' | 'saved' | 'failed'
 
 export const AUTOSAVE_MS = 800
 
-const same = (a: Edits, b: Edits) => a.main === b.main && a.email === b.email && a.companion === b.companion
+const same = (a: Edits, b: Edits) => a.main === b.main && a.email === b.email && a.companion === b.companion && a.cc === b.cc && a.companionCc === b.companionCc
 
 export function useAutosave(t: Thread, edits: Edits, base: Edits, save: (t: Thread, ed: Edits) => Promise<string | null>) {
   const [state, setState] = useState<SaveState>('idle')

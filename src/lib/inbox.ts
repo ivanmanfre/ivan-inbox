@@ -1,3 +1,4 @@
+import { parseEmailCc } from './emailCc'
 import { supabase } from './supabase'
 import { STAGE_LADDER, stageIsOff, stageStep } from '../exp/v2c/stage'
 
@@ -55,6 +56,7 @@ export type InboxMessage = {
   // fetchDraftEmailStamps() probe. When set on a draft, approving it makes the
   // dispatcher ALSO email the scan to this address (rise_dm2_scan_delivery_v1 rows).
   recipient_email?: string | null;
+  email_cc?: string[] | null;
   // The exact email body the dispatcher will send (composed + stored by the
   // drafter). Shown verbatim under the badge so approval sees the real send.
   email_mirror_text?: string | null;
@@ -216,6 +218,8 @@ export function holdReason(m: InboxMessage): string | null {
   if (isRaceHold(r)) return r === `${RACE_HOLD_PREFIX}outbound`
     ? 'Came back: a message went out on this thread while it was queued. Re-read the thread, then approve again.'
     : 'Came back: they wrote while it was queued. Re-read their message, then approve again.'
+  if (r === 'lint_email_cc_invalid') return 'Email held: check the CC addresses before approving.'
+  if (r === 'lint_scan_quality_hold') return 'Scan held: the latest review found no supported recommendation. Review the scan before approving; the sender will keep it held.'
   if (r === 'lint_unbacked_commitment') return 'Came back: the DM promises an email that is not attached. Fix the line or add the email, then approve again.'
   return 'Came back: the send check flagged a line. Fix it, then approve again.'
 }
@@ -1063,7 +1067,7 @@ export async function fetchManualReplyIds(): Promise<Set<string>> {
 // The view doesn't expose recipient_email, so this reads the base table directly
 // (authed role already reads outreach_prospects the same way). Tiny by
 // construction: only unsent, unapproved, unblocked drafts with a stamp.
-export type DraftEmailStamp = { recipient_email: string; email_mirror_text: string | null }
+export type DraftEmailStamp = { recipient_email: string; email_mirror_text: string | null; email_cc?: string[] | null }
 
 // Answerability gate: the drafter answered something rise-company-facts does not cover.
 // Same probe shape as the email stamps below (the view doesn't expose context_gap either),
@@ -1082,6 +1086,7 @@ export type DraftContextGap = { question: string | null; why: string | null; cha
 export type DraftEvidenceFact = { id: string; fact: string; topic: string; at: string; from: string | null }
 export type DraftEvidenceExemplar = { they: string | null; reply: string | null; at: string | null; prospect: string | null }
 export type DraftEvidence = {
+  email_cc?: string[] | null
   // Stall Bump (2026-09-24): the prospect opened the scan on this many distinct days and has not
   // replied since. 2+ floats the thread to the top of the list while the draft waits (groupThreads).
   scan_open_days?: number | null
@@ -1176,7 +1181,7 @@ export async function escalateDraftToClient(messageId: string): Promise<string> 
 
 export async function fetchDraftEmailStamps(): Promise<Map<string, DraftEmailStamp>> {
   const { data, error } = await supabase.from('outreach_messages')
-    .select('id,recipient_email,email_mirror_text')
+    .select('id,recipient_email,email_mirror_text,email_cc:draft_evidence->email_cc')
     .eq('direction', 'outbound')
     .is('sent_at', null).is('approved_at', null)
     // A race- or lint-held row is a pending draft again (isDraft), and approving
@@ -1188,8 +1193,8 @@ export async function fetchDraftEmailStamps(): Promise<Map<string, DraftEmailSta
     .limit(500)
   if (error) throw error
   const m = new Map<string, DraftEmailStamp>()
-  for (const r of (data ?? []) as { id: string; recipient_email: string | null; email_mirror_text: string | null }[]) {
-    if (r.recipient_email) m.set(r.id, { recipient_email: r.recipient_email, email_mirror_text: r.email_mirror_text })
+  for (const r of (data ?? []) as { id: string; recipient_email: string | null; email_mirror_text: string | null; email_cc?: string[] | null }[]) {
+    if (r.recipient_email) m.set(r.id, { recipient_email: r.recipient_email, email_mirror_text: r.email_mirror_text, email_cc: r.email_cc ?? [] })
   }
   return m
 }
@@ -1198,17 +1203,17 @@ export async function fetchDraftEmailStamps(): Promise<Map<string, DraftEmailSta
 // mirror mailed to a colleague (Heather Sloan's went to philip@) printed no
 // recipient, or the wrong one. Newest 1000 email rows, enough for every thread
 // the list shows.
-export async function fetchEmailRecipients(): Promise<Map<string, string>> {
+export async function fetchEmailRecipients(): Promise<Map<string, { recipient_email: string; email_cc: string[] }>> {
   const { data, error } = await supabase.from('outreach_messages')
-    .select('id,recipient_email')
+    .select('id,recipient_email,email_cc:draft_evidence->email_cc')
     .eq('channel', 'email')
     .not('recipient_email', 'is', null)
     .order('created_at', { ascending: false })
     .limit(1000)
   if (error) throw error
-  const m = new Map<string, string>()
-  for (const r of (data ?? []) as { id: string; recipient_email: string | null }[]) {
-    if (r.recipient_email) m.set(r.id, r.recipient_email)
+  const m = new Map<string, { recipient_email: string; email_cc: string[] }>()
+  for (const r of (data ?? []) as { id: string; recipient_email: string | null; email_cc?: string[] }[]) {
+    if (r.recipient_email) m.set(r.id, { recipient_email: r.recipient_email, email_cc: r.email_cc ?? [] })
   }
   return m
 }
@@ -1306,6 +1311,25 @@ export async function saveDraftEmail(id: string, text: string): Promise<void> {
     .eq('id', id).is('sent_at', null).is('approved_at', null)
     .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*`)
   if (error) throw error
+}
+
+/** Preserve evidence and fail closed if the draft or its evidence changed while editing. */
+export async function saveDraftEmailCc(id: string, value: unknown): Promise<string[]> {
+  const cc = parseEmailCc(value)
+  const { data: row, error: readError } = await supabase.from('outreach_messages')
+    .select('draft_evidence').eq('id', id).single()
+  if (readError) throw readError
+  if (!row) throw new Error('The draft changed. Refresh before approving.')
+  const evidence = row.draft_evidence
+  let query = supabase.from('outreach_messages')
+    .update({ draft_evidence: { ...evidence, email_cc: cc } })
+    .eq('id', id).is('sent_at', null).is('approved_at', null)
+    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*`)
+  query = evidence == null ? query.is('draft_evidence', null) : query.eq('draft_evidence', evidence)
+  const { data, error } = await query.select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('The draft changed. Refresh before approving.')
+  return cc
 }
 
 // Push a pending draft to later. Same staleness guard as approveDraft: a row

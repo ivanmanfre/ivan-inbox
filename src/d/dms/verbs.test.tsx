@@ -9,7 +9,7 @@ vi.mock('../../lib/inbox', async orig => {
   const real = await orig<typeof import('../../lib/inbox')>()
   return {
     ...real,
-    approveDraft: vi.fn(async () => {}), saveDraftText: vi.fn(async () => {}), saveDraftEmail: vi.fn(async () => {}),
+    approveDraft: vi.fn(async () => {}), saveDraftText: vi.fn(async () => {}), saveDraftEmail: vi.fn(async () => {}), saveDraftEmailCc: vi.fn(async () => []),
     snoozeDraft: vi.fn(async () => {}), unsnoozeDraft: vi.fn(async () => {}), restoreDraft: vi.fn(async () => true),
     discardLegs: vi.fn(async () => []), composeReply: vi.fn(async () => []), markThreadRead: vi.fn(async () => {}),
     emailReplyTarget: vi.fn(async () => ({ recipient_email: 'ofir.b@doktorabc.com', message_text_prefix: 'Subject: Re: Meeting\n\n' })),
@@ -36,7 +36,7 @@ function Pane({ t }: { t: Thread }) {
 const mount = (t: Thread) => renderInFrame(<DmAsks><Pane t={t} /></DmAsks>, { hash: '#exp/d/dms' })
 const key = (v: string) => document.querySelector(`[data-verb="${v}"]`) as HTMLElement
 
-beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); vi.setSystemTime(NOW); vi.clearAllMocks() })
+beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); vi.setSystemTime(NOW); vi.clearAllMocks(); vi.mocked(lib.saveDraftEmailCc).mockReset().mockResolvedValue([]) })
 afterEach(() => { cleanup(); vi.useRealTimers() })
 
 describe('direct email reply', () => {
@@ -103,6 +103,27 @@ describe('direct email reply', () => {
 })
 
 describe('DM verbs', () => {
+  it('shows saved CC beside the mirror and saves edited CC before approval', async () => {
+    const [t] = threads(drafted('thomas', { prospect_name: 'Thomas', client_id: 'risedtc', recipient_email: 'thomas@vmisports.com', email_mirror_text: 'Subject: VMI scan\n\nHey Thomas and Michael,', email_cc: ['michael@vmisports.com'] }))
+    mount(t)
+    const cc = screen.getByRole('textbox', { name: 'CC recipients' })
+    expect((cc as HTMLInputElement).value).toBe('michael@vmisports.com')
+    fireEvent.change(cc, { target: { value: 'michael@vmisports.com, other@vmisports.com' } })
+    fireEvent.click(key('send'))
+    fireEvent.click(await screen.findByText('Approve & send'))
+    await waitFor(() => expect(lib.saveDraftEmailCc).toHaveBeenCalledWith(t.draft!.id, 'michael@vmisports.com, other@vmisports.com'))
+    expect(vi.mocked(lib.saveDraftEmailCc).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(lib.approveDraft).mock.invocationCallOrder[0])
+  })
+  it('keeps the whole draft unapproved when CC cannot be saved', async () => {
+    const [t] = threads(drafted('thomas', { prospect_name: 'Thomas', client_id: 'risedtc', recipient_email: 'thomas@vmisports.com', email_mirror_text: 'Subject: VMI scan\n\nScan', email_cc: [] }))
+    vi.mocked(lib.saveDraftEmailCc).mockRejectedValueOnce(new Error('Enter a valid CC email address.'))
+    mount(t)
+    fireEvent.change(screen.getByRole('textbox', { name: 'CC recipients' }), { target: { value: 'Michael' } })
+    fireEvent.click(key('send'))
+    fireEvent.click(await screen.findByText('Approve & send'))
+    await screen.findByText(/Enter a valid CC email address/)
+    expect(lib.approveDraft).not.toHaveBeenCalled()
+  })
   it('Send confirms, then approves the draft with its text and the chat id', async () => {
     const [t] = threads(drafted('a', { prospect_name: 'Geraldine', unipile_chat_id: 'chat1' }))
     mount(t)

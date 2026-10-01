@@ -29,7 +29,7 @@ export async function assembleInbox(viewRows: readonly InboxMessage[]): Promise<
     // draft below, and the card says it cannot tell whether an email rides
     // along, because approving still mails it (check3-drafts E1.5).
     fetchDraftEmailStamps().catch(() => null),
-    fetchEmailRecipients().catch(() => new Map<string, string>()),
+    fetchEmailRecipients().catch(() => new Map<string, { recipient_email: string; email_cc: string[] }>()),
   ])
   const draftIds = groupThreads(rows, manualReplyIds).flatMap(t =>
     [t.draft, t.companionDraft, t.ownerConfirmation].flatMap(m => m ? [m.id] : []))
@@ -40,8 +40,8 @@ export async function assembleInbox(viewRows: readonly InboxMessage[]): Promise<
   const pendingIds = new Set(draftIds)
   for (const m of rows) {
     const em = emailStamps?.get(m.id)
-    if (em) { m.recipient_email = em.recipient_email; m.email_mirror_text = em.email_mirror_text }
-    else if (m.recipient_email == null) m.recipient_email = emailTo.get(m.id) ?? m.recipient_email
+    if (em) { m.recipient_email = em.recipient_email; m.email_mirror_text = em.email_mirror_text; m.email_cc = em.email_cc ?? [] }
+    else { const sent = emailTo.get(m.id); if (sent) { m.recipient_email = sent.recipient_email; m.email_cc = sent.email_cc } }
     m.email_stamp_unavailable = emailStamps === null && pendingIds.has(m.id)
     const cg = contextGaps.get(m.id)
     if (cg) m.context_gap = cg

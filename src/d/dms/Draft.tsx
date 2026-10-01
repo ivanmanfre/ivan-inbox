@@ -1,3 +1,4 @@
+import { parseEmailCc } from '../../lib/emailCc'
 // The draft on the tape (mock `.tape`), its email leg (`.df-leg`, Send both), the mirror email
 // rider, and the warnings today's card carries (held, email check failed, you already replied).
 // The tape IS the editor: typing saves (useAutosave); Send sends what is in it.
@@ -32,6 +33,12 @@ function Grow({ value, onChange, label, onBlur, max = 240 }: { value: string; on
   return <textarea ref={ref} className="dm-edit" data-autosave aria-label={label} value={value} rows={2} spellCheck onBlur={onBlur} onChange={e => onChange(e.target.value)} />
 }
 
+function Cc({ value, onChange, onBlur, label = 'CC recipients' }: { value: string; onChange: (value: string) => void; onBlur: () => void; label?: string }) {
+  let error = ''
+  try { parseEmailCc(value) } catch (e) { error = (e as Error).message }
+  return <div className="dm-email-cc"><label>CC <input aria-label={label} aria-invalid={!!error} type="text" inputMode="email" autoComplete="off" value={value} placeholder="Add CC email addresses" onChange={e => onChange(e.target.value)} onBlur={onBlur} /></label>{error && <p role="alert">{error}</p>}</div>
+}
+
 const SAVE_WORD: Record<SaveState, string> = { idle: '', saving: 'Saving…', saved: 'Saved', failed: 'Not saved' }
 
 /** The draft is the last bubble of the conversation, on our side, and it IS the editor (Ivan 09-27:
@@ -63,6 +70,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
           </span>
         </div>
         {email && draft.recipient_email && <p className="dm-meta">Email to {draft.recipient_email} (from {emailRowSender(t.client_id)})</p>}
+        {email && draft.recipient_email && <Cc value={edits.cc ?? ''} onChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} />}
         <Grow value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" />
       </div>
       {comp && (
@@ -71,6 +79,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
             <span>{messageChannel(comp) === 'email' ? `Email leg${comp.recipient_email ? ` · to ${comp.recipient_email}` : ''}` : 'LinkedIn DM leg'}</span>
             <span>{messageChannel(comp) === 'email' ? `from ${emailRowSender(t.client_id)}` : 'rides with the draft'}</span>
           </div>
+          {messageChannel(comp) === 'email' && comp.recipient_email && <Cc value={edits.companionCc ?? ''} onChange={companionCc => setEdits({ ...edits, companionCc })} onBlur={onBlur} label="Email leg CC recipients" />}
           <Grow value={edits.companion ?? ''} onChange={companion => setEdits({ ...edits, companion })} onBlur={onBlur} label="The other leg" max={360} />
           <Explain inset messageId={comp.id} messageText={comp.message_text} editedText={edits.companion ?? comp.message_text}
             evidence={comp.draft_evidence} unavailable={comp.draft_evidence_unavailable} onRetry={onRetry} />
@@ -85,6 +94,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
                 : `Approving also emails the scan link to ${draft.recipient_email}${emailSenderLabel(t.client_id)}. The sender writes that email itself.`}</span>
             {draft.email_mirror_text && <button type="button" className="dm-linkbtn" data-verb="show-email" onClick={() => setShowEmail(v => !v)}>{showEmail ? 'Hide email' : 'Show email'}</button>}
           </div>
+          <Cc value={edits.cc ?? ''} onChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} />
           {draft.email_mirror_text && showEmail && <>
             <Grow value={edits.email ?? ''} onChange={e => setEdits({ ...edits, email: e })} onBlur={onBlur} label="The email that goes with it" max={360} />
             <Explain inset messageId={`${draft.id}:email`} messageText={draft.email_mirror_text} editedText={edits.email ?? draft.email_mirror_text}
