@@ -13,6 +13,9 @@ import { laterPath } from './later'
 import { useAutosave } from './useAutosave'
 import { Banners } from './ThreadBanners'
 import { Draft } from './Draft'
+import { ScheduleSheet, ScheduledSends, type ScheduleTarget } from './Schedule'
+import { scheduleHeld } from '../../lib/dmSchedule'
+
 import { canMarkSolved } from './solved'
 import { DraftWhy } from './DraftWhy'
 import { History } from './History'
@@ -53,6 +56,8 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
 }) {
   const [edits, setEdits] = useState<Edits>(() => seed(t))
   const [reply, setReply] = useState('')
+  const [schedule, setSchedule] = useState<ScheduleTarget | null>(null)
+  const [scheduleFailure, setScheduleFailure] = useState('')
   const [emailReplyFor, setEmailReplyFor] = useState<string | null>(null)
   const [emailTarget, setEmailTarget] = useState<{ key: string; address?: string; error?: string } | null>(null)
   const [emailRetry, setEmailRetry] = useState(0)
@@ -77,7 +82,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     else setEdits(e => ({ ...e, main: e.main === was.text ? draftText : e.main, cc: e.cc === was.cc ? recipients.cc : e.cc, companionCc: e.companionCc === was.companionCc ? recipients.companionCc : e.companionCc }))
     seeded.current = { id: draftId, text: draftText, cc: recipients.cc, companionCc: recipients.companionCc }
   }, [draftId, draftText, recipients.cc, recipients.companionCc]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setReply(''); setEmailReplyFor(null); setMenu(null); setSheet(null) }, [t.prospect_id])
+  useEffect(() => { setReply(''); setEmailReplyFor(null); setMenu(null); setSheet(null); setSchedule(null); setScheduleFailure('') }, [t.prospect_id])
   useLayoutEffect(() => {
     if (emailReplyFor === t.prospect_id) dock.current?.querySelector('textarea')?.focus()
   }, [emailReplyFor, t.prospect_id])
@@ -115,7 +120,8 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     })
     return () => { current = false }
   }, [replyingByEmail, t.prospect_id, t.client_id, emailKey, emailRetry]) // eslint-disable-line react-hooks/exhaustive-deps
-  const composeOff = t.ownerConfirmation && !manualReply ? 'Reply paused while an internal fact is confirmed. Add the answer as a note, or discard the question.'
+  const scheduledPending = t.messages.some(m => scheduleHeld(m.send_blocked_reason) && !m.sent_at && !m.approved_at)
+  const composeOff = scheduledPending ? 'A DM is scheduled. Cancel the scheduled send to write another reply.' : t.ownerConfirmation && !manualReply ? 'Reply paused while an internal fact is confirmed. Add the answer as a note, or discard the question.'
     : replyingByEmail && !canComposeEmail(t) ? 'Email compose is on for Arch threads only. Approving email drafts works here.'
       : !replyingByEmail && t.stage === 'engaged' ? 'Not connected yet. A reply here would go out as a connection invite, so compose is off for this thread.' : null
   const openEmailReply = () => {
@@ -151,7 +157,17 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   }] : [], [canPush, t, verbs]))
   const copy = async () => { const l = chatLink(t.chat_provider_id, t.linkedin_url); if (l && await copyText(l.href)) { setCopied(true); window.setTimeout(() => setCopied(false), 1600) } }
   // A verb that writes the draft itself carries the text on screen; a pending autosave is dropped.
-  const send = () => run(async () => { saver.cancel(); await verbs.send(t, edits) })
+  const send = () => run(async () => { if (scheduledPending) return; saver.cancel(); await verbs.send(t, edits) })
+  const openSchedule = () => run(async () => {
+    saver.cancel(); setScheduleFailure('')
+    if (reply.trim()) { setSchedule({ ids: [], texts: [reply.trim()], manual: true }); return }
+    if (!t.draft) return
+    if (t.draft.email_stamp_unavailable || t.companionDraft?.email_stamp_unavailable) { setScheduleFailure('Refresh to check the email recipients before scheduling.'); return }
+    const failure = await verbs.autosave(t, edits)
+    if (failure) { setScheduleFailure(failure); return }
+    const legs = t.companionDraft ? [t.draft, t.companionDraft] : [t.draft]
+    setSchedule({ ids: legs.map(m => m.id), texts: legs.map((m, i) => i === 0 ? edits.main : edits.companion ?? m.message_text) })
+  })
   const later = () => run(async () => { saver.cancel(); await verbs.later(t, edits); setFuTick(x => x + 1) })
   const compose = () => run(async () => { if (!composeOff && !emailBlocked && await verbs.compose(replyThread, reply)) setReply('') })
   const menuRun = (a: MenuAct) => {
@@ -181,7 +197,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
       {laterKey}
       {solvedKey}
     </>
-    primary = <Key primary verb="send" className="dm-send" disabled={busy} onClick={() => void send()}>{t.companionDraft ? 'Send both' : 'Send'}</Key>
+    primary = <Key primary verb="send" className="dm-send" disabled={busy || scheduledPending} onClick={() => void send()}>{t.companionDraft ? 'Send both' : 'Send'}</Key>
   } else {
     small = <>
       {t.ownerConfirmation && !manualReply
@@ -205,20 +221,23 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         <Draft t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
         {t.draft && <DraftWhy t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
         <RestoreStrip t={t} verbs={verbs} />
+        {scheduledPending && <ScheduledSends t={t} reload={reload} onEdit={setSchedule} />}
       </div>
       <div className="dm-dock" ref={dock}>
         {draftRunning && <p className="dm-meta" role="status">Reading the conversation and writing a draft. It will appear here for review.</p>}
+        {scheduleFailure && <p className="dm-meta" role="alert">{scheduleFailure}</p>}
         {draftError && <p className="dm-meta" role="alert">{draftError}</p>}
         {replyingByEmail && resolvedEmail?.error && <div className="dm-meta" role="alert"><span>{resolvedEmail.error}</span> <Btn className="dm-k" onClick={() => setEmailRetry(n => n + 1)}>Retry email details</Btn></div>}
         {!hasDraft && !t.spam && <Composer to={first} from={from} big={emailReplyFor === t.prospect_id} noSend note={composeNote} sendLabel={composeLabel} disabled={composeOff} value={reply} setValue={setReply} busy={busy || emailBlocked} onSend={() => void compose()} />}
         <div className="dm-keys">
-          <div className="dm-keys-s">{small}{more}</div>
+          <div className="dm-keys-s">{!t.spam && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim()) && <Btn verb="schedule-send" className="dm-k dm-schedule-key" disabled={busy} onClick={() => void openSchedule()}>{reply.trim() ? 'Schedule reply' : 'Schedule send'}</Btn>}{small}{more}</div>
           {primary}
         </div>
         {hasDraft && !t.spam && <Composer to={first} from={from} big={emailReplyFor === t.prospect_id} note={composeNote} sendLabel={composeLabel} disabled={composeOff} value={reply} setValue={setReply} busy={busy || emailBlocked} onSend={() => void compose()} />}
         {t.spam && <div className="dm-foot">Filed as a vendor pitch.</div>}
       </div>
       {menu && <ThreadMenu t={t} phone={phone} up={menu === 'keys'} withAsk={phone} staleN={staleN} onClose={() => setMenu(null)} run={menuRun} />}
+      {schedule && <ScheduleSheet t={t} target={schedule} onClose={() => setSchedule(null)} onSaved={() => { if (schedule.manual) setReply(''); reload() }} />}
       {sheet === 'context' && <ContextSheet t={t} all={all} onClose={() => setSheet(null)} />}
       {sheet === 'agent' && <AgentSheet t={t} onClose={() => setSheet(null)} onChanged={reload} />}
     </section>

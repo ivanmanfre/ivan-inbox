@@ -173,7 +173,7 @@ export type Thread = {
 export function sendFailed(m: InboxMessage): boolean {
   if (m.direction !== 'outbound') return false
   if (m.send_blocked_at === null) return false
-  if (m.send_blocked_reason === DISCARD_REASON) return false
+  if (m.send_blocked_reason === DISCARD_REASON || ['scheduled_in_inbox','scheduled_send_cancelled'].includes(m.send_blocked_reason ?? '')) return false
   if (isRecoverableHold(m.send_blocked_reason)) return false
   if (isInternalConfirmation(m)) return false
   if (isEngineRetired(m)) return false
@@ -341,7 +341,7 @@ export function internalHoldSummary(m: InboxMessage): string {
 }
 
 export function isDraft(m: InboxMessage): boolean {
-  return m.direction === 'outbound' && !m.sent_at && !m.approved_at && !isInternalConfirmation(m) &&
+  return m.direction === 'outbound' && !m.sent_at && !m.approved_at && m.send_blocked_reason !== 'post_approval_race:scheduled_thread_changed' && !isInternalConfirmation(m) &&
     (!m.send_blocked_at || isRecoverableHold(m.send_blocked_reason))
 }
 
@@ -1325,7 +1325,7 @@ export async function saveDraftEmailCc(id: string, value: unknown): Promise<stri
     .update({ draft_evidence: { ...evidence, email_cc: cc } })
     .eq('id', id).is('sent_at', null).is('approved_at', null)
     .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*`)
-  query = evidence == null ? query.is('draft_evidence', null) : query.eq('draft_evidence', evidence)
+  query = evidence == null ? query.is('draft_evidence', null) : query.eq('draft_evidence', JSON.stringify(evidence))
   const { data, error } = await query.select('id')
   if (error) throw error
   if (!data?.length) throw new Error('The draft changed. Refresh before approving.')
