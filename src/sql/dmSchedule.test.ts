@@ -9,8 +9,10 @@ beforeEach(async () => {
  await db.exec(`
  create role authenticated; create role service_role;
  create table outreach_prospects(id uuid primary key,stage text,blacklisted boolean,skip_reason text,skip_state text,linkedin_profile_id text,linkedin_url text);
- create table outreach_agent_threads(id uuid,prospect_id uuid,person_key text,revision bigint,owner text,state text,pause_reason text);
+ create table outreach_agent_threads(id uuid,prospect_id uuid,person_key text,account_id text,revision bigint,owner text,state text,pause_reason text);
  create table outreach_messages(id uuid primary key default gen_random_uuid(),prospect_id uuid,direction text,message_type text,ai_model text,message_text text,sent_at timestamptz,approved_at timestamptz,unipile_message_id text,unipile_chat_id text,send_blocked_reason text,send_blocked_at timestamptz,draft_evidence jsonb,channel text,created_at timestamptz default now());
+ create function conversation_agent_is_service() returns boolean language sql as $$select false$$;
+ create function conversation_agent_is_operator(text) returns boolean language sql as $$select true$$;
  create function conversation_agent_before_manual_send(uuid) returns jsonb language sql as $$select '{"ok":true,"allow_send":true,"in_flight":false}'::jsonb$$;
  insert into outreach_prospects(id,stage,blacklisted) values('${pid}','replied',false);
  insert into outreach_messages(id,prospect_id,direction,message_type,ai_model,message_text) values('${id}','${pid}','outbound','dm','rise_reply_draft_v1','Draft');
@@ -71,4 +73,9 @@ it('works for the authenticated operator without exposing the private agent tabl
  await schedule(); expect((await row()).send_blocked_reason).toBe('scheduled_in_inbox');
  await expect(db.query('select * from outreach_agent_threads')).rejects.toThrow(/permission denied/);
  await db.exec('reset role');
+})
+
+it('denies direct snapshot access to a caller outside the conversation operators',async()=>{
+ await db.exec(`insert into outreach_agent_threads(id,prospect_id,account_id,revision) values(gen_random_uuid(),'${pid}','rise',7); create or replace function conversation_agent_is_operator(text) returns boolean language sql as $$select false$$; set role authenticated`);
+ await expect(db.query('select inbox_schedule_snapshot($1)',[pid])).rejects.toThrow(/access denied/); await db.exec('reset role');
 })

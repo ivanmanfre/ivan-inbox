@@ -1,6 +1,8 @@
 -- Scheduling keeps approval NULL until due. The existing sender remains the only transport.
 create or replace function public.inbox_schedule_snapshot(p_prospect_id uuid) returns jsonb
-language sql stable security definer set search_path=public,pg_temp as $$
+language plpgsql stable security definer set search_path=public,pg_temp as $$
+declare snapshot jsonb;
+begin
  select jsonb_build_object(
   'inbound',(select id from outreach_messages where prospect_id=p.id and direction='inbound' order by coalesce(sent_at,created_at) desc,id desc limit 1),
   'outbound',(select id from outreach_messages where prospect_id=p.id and direction='outbound' and (sent_at is not null or approved_at is not null) order by coalesce(sent_at,approved_at,created_at) desc,id desc limit 1),
@@ -8,7 +10,12 @@ language sql stable security definer set search_path=public,pg_temp as $$
   'owners',coalesce((select jsonb_agg(jsonb_build_array(t.id,t.revision,t.owner,t.state,t.pause_reason) order by t.id) from outreach_agent_threads t
     where t.prospect_id=p.id or t.person_key=case when nullif(trim(p.linkedin_profile_id),'') is not null then 'linkedin_profile_id:'||trim(p.linkedin_profile_id)
       when lower(p.linkedin_url)~'^https://(www\.)?linkedin\.com/in/' then 'linkedin_url:'||regexp_replace(split_part(lower(trim(p.linkedin_url)),'?',1),'/+$','') end),'[]'::jsonb))
- from outreach_prospects p where p.id=p_prospect_id;
+ into snapshot from outreach_prospects p where p.id=p_prospect_id;
+ if not public.conversation_agent_is_service() and exists(select 1 from outreach_agent_threads t
+   where t.id in (select (x->>0)::uuid from jsonb_array_elements(snapshot->'owners') x)
+   and not public.conversation_agent_is_operator(t.account_id)) then raise exception 'Conversation ownership access denied.'; end if;
+ return snapshot;
+end;
 $$;
 
 create or replace function public.schedule_inbox_dm(p_prospect_id uuid,p_message_ids uuid[],p_texts text[],p_at timestamptz,p_timezone text,p_chat_id text default null)
