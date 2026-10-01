@@ -17,6 +17,7 @@ import type { IdeaItem } from './ideaModel'
 import { IdeaDetail } from './IdeaDetail'
 import { IdeaTags } from './ideaTags'
 import { SourceBadge, ideaOutlierSource } from './SourceBadge'
+import { EarlyReadChip } from './EarlyReadChip'
 import './ideas.css'
 
 export type IdeaBank = {
@@ -119,7 +120,7 @@ export function Ideas({ banks, phone, lane, onLaneChange }: { banks: IdeaBanks; 
       <span className="cn-best-title">{it.title}</span>
       <span className="cn-best-proof">{it.proof || it.src || 'Idea bank'}</span>
     </button>
-    <div className="cn-best-meta"><IdeaTags src={it.src} unvalidated={false} unclassified={it.unclassified}/><time>{it.age}</time></div>
+    <div className="cn-best-meta"><IdeaTags src={it.src} unvalidated={false} unclassified={it.unclassified}/><time>{it.age}</time><EarlyReadChip read={it.patternRead} lane={it.lane} /></div>
     {ideaOutlierSource(it) && <div className="cn-cbrow" data-idea-id={it.id}><SourceBadge src={ideaOutlierSource(it)}/></div>}
     {!(current?.id === it.id && !it.outlier && !it.generating) && <div className="cn-best-acts">{it.generating
       ? <a className="cn-best-use" href={dHash('content', 'now', { lane: it.lane })}>Open Review</a>

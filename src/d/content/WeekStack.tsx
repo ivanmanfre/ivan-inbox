@@ -13,6 +13,9 @@ import { MovePanel } from './MovePanel'
 import type { WeekRead } from './useWeek'
 import { PRIMARY_LABEL, SHOWS, foldText, type Show, type Week as WeekModel, type WeekCard } from './weekModel'
 import { scheduleGuarded } from './writes'
+import { EarlyReadChip } from './EarlyReadChip'
+import { useEarlyReads } from './useEarlyReads'
+import type { PatternRead } from '../../lib/earlyReads'
 import './week.css'
 
 // CONTENT > REVIEW: THIS WEEK. One stack across the three seats, by day (today
@@ -59,6 +62,7 @@ export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onCh
   const [moving, setMoving] = useState<WeekCard | null>(null)
   const [showOld, setShowOld] = useState(false)
   const [quick, setQuick] = useState<Quick>('all')
+  const earlyReads = useEarlyReads([...week.groups.flatMap(g => g.cards), ...week.older].map(c => c.r))
 
   // Auto-advance: the next card's key takes the focus (and comes into view) once this one has moved on.
   const advance = useCallback((id: string) => {
@@ -141,7 +145,7 @@ export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onCh
   const empty = groups.length === 0 && older.length === 0
   const cards = (list: WeekCard[], dayed: boolean) => list.map(c => (
     <Card key={c.r.id} c={c} when={whenOf(c, now, dayed)} open={c.r.id === openId} busy={busy === c.r.id}
-      nowView={nowView} onChanged={onChanged} onOpen={() => onOpen(c.r.id, c.lane)} onKey={() => act(c)} onDate={() => setMoving(c)} />
+      read={earlyReads.get(c.r.id)} nowView={nowView} onChanged={onChanged} onOpen={() => onOpen(c.r.id, c.lane)} onKey={() => act(c)} onDate={() => setMoving(c)} />
   ))
 
   return (
@@ -216,7 +220,8 @@ function whenOf(c: WeekCard, now: number, dayed: boolean): string {
   return dayed && !c.overdue ? hm : `${dayLabel(warsawDay(at))}, ${hm}`
 }
 
-function Card({ c, when, open, busy, onOpen, onKey, onDate, nowView, onChanged }: {
+function Card({ c, when, open, busy, onOpen, onKey, onDate, nowView, onChanged, read }: {
+  read?: PatternRead
   nowView: boolean
   onChanged: () => void
   c: WeekCard; when: string; open: boolean; busy: boolean
@@ -234,6 +239,7 @@ function Card({ c, when, open, busy, onOpen, onKey, onDate, nowView, onChanged }
       <div className="cn-wc-meta">
         <span className={`cn-wc-lane cn-wc-l-${c.lane}`}>{LANE_NAME[c.lane]}</span>
         <span className="cn-wc-when">{when}</span>
+        <EarlyReadChip read={read} lane={c.lane} />
         {c.flags.filter(f => f.key !== 'qa' || f.tone === 'warn').map(f => <span key={f.key} className={`cn-wc-flag cn-wc-${f.tone}`} title={f.title}>{f.text}</span>)}
       </div>
       <div className="cn-wc-main" onClick={onOpen}>

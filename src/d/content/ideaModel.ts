@@ -1,6 +1,7 @@
 import type { IdeaCandidate } from '../../lib/content'
 import { ideaWhy, type ClientIdea } from '../../lib/clientIdeas'
 import type { OutlierRow } from '../../lib/outliers'
+import type { PatternRead } from '../../lib/earlyReads'
 import { age, type Lane } from './model'
 
 // One shape for an idea from either bank: Ivan's (lm_idea_candidates) and a
@@ -11,6 +12,7 @@ export type IdeaItem = {
   evidenceQuote?: string | null
   proof?: string
   rank?: number
+  patternRead?: PatternRead
   outlier?: OutlierRow
   saved?: boolean
   generating?: boolean

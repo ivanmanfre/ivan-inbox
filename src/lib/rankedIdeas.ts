@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { parsePatternRead } from './earlyReads'
 import { CLIENT_OPS_GATE, type IdeaCandidate } from './content'
 import type { ClientIdea } from './clientIdeas'
 import { splitText, type OutlierRow } from './outliers'
@@ -9,7 +10,7 @@ export function parseRankedIdeas(data: unknown, lane: Lane): IdeaItem[] {
   const d = data as { ok?: boolean; client?: string; rows?: unknown[] } | null
   if (!d || d.ok !== true || d.client !== lane || !Array.isArray(d.rows)) throw new Error('Ideas returned no usable list.')
   return d.rows.map(raw => {
-    const r = raw as { kind: string; id: string; bank?: IdeaCandidate | ClientIdea; outlier?: OutlierRow; proof?: string; rank?: number }
+    const r = raw as { kind: string; id: string; bank?: IdeaCandidate | ClientIdea; outlier?: OutlierRow; proof?: string; rank?: number; pattern_read?: unknown }
     if (!r.id || !Number.isFinite(Number(r.rank))) throw new Error('An idea returned no ranking.')
     let item: IdeaItem
     if (r.kind === 'bank' && r.bank?.id) item = lane === 'ivan'
@@ -20,7 +21,7 @@ export function parseRankedIdeas(data: unknown, lane: Lane): IdeaItem[] {
       item = { id: r.id, lane, title: title || `Post from ${r.outlier.author}`, src: r.outlier.platform === 'x' ? 'X' : 'LinkedIn',
         age: age(r.outlier.published_at), score: null, parts: [], why: body, angle: null, format: null, outlier: r.outlier }
     } else throw new Error('An idea returned no source row.')
-    return { ...item, proof: typeof r.proof === 'string' && r.proof.trim() ? r.proof : item.src, rank: Number(r.rank) }
+    return { ...item, proof: typeof r.proof === 'string' && r.proof.trim() ? r.proof : item.src, rank: Number(r.rank), patternRead: parsePatternRead(r.pattern_read, lane) }
   })
 }
 

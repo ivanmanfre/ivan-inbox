@@ -11,6 +11,7 @@ import { useToast } from '../ui/toast'
 import { LANE_NAME, OWNER, type Lane } from './model'
 import { linkOf, type IdeaItem } from './ideaModel'
 import { SourceBadge, ideaOutlierSource } from './SourceBadge'
+import { EarlyReadChip } from './EarlyReadChip'
 
 // One idea, read and decided. Ivan's bank goes through today's edge function
 // (lm-curator-decide: approve fires the promote run, reject archives, with the
@@ -62,6 +63,7 @@ export function IdeaDetail({ it, onDone, compact, scores }: { it: IdeaItem; onDo
         <div className="cn-who"><b style={{ whiteSpace: 'normal' }}>{it.title}</b><small>{BANK[it.lane]}{it.src ? ` · ${it.src}` : ''}{it.age ? ` · ${it.age} ago` : ''}</small></div>
       </div>}
       {ideaOutlierSource(it) && <p className="cn-cbline"><SourceBadge src={ideaOutlierSource(it)} /></p>}
+      {!compact && <EarlyReadChip read={it.patternRead} lane={it.lane} />}
       <IdeaFacts it={it} scores={scores} />
       {!it.outlier && !it.generating && it.lane === 'ivan' && (
         <input className="cn-note" value={note} onChange={e => setNote(e.target.value)} placeholder="Optional note, steers the curator, and is logged as the reject reason" aria-label="Note" />

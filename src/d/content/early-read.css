@@ -1,0 +1,21 @@
+/* The stored niche evidence shares the current dark Content tokens. */
+.cn-early-wrap{display:contents}
+.cn-early-chip{display:inline-flex;align-items:center;min-height:44px;max-width:100%;padding:4px 8px;border:1px solid var(--line2);border-radius:var(--r1);background:transparent;color:var(--t2);font:400 11.5px var(--m);text-align:left;overflow-wrap:anywhere;cursor:pointer}
+.cn-early-ready{color:var(--lime)}
+.cn-early-chip:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+.cn-read-sheet p{font-size:14px;line-height:1.55;overflow-wrap:anywhere}
+.cn-read-note{color:var(--t2);font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.cn-best-meta .cn-early-chip{flex-shrink:1}
+.cn-pattern-caption{font-size:13px;line-height:1.5;color:var(--t2);margin:0 0 12px}
+.cn-pattern-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.cn-pattern-groups h3{font:500 12px var(--m);color:var(--t1);margin:0 0 8px}
+.cn-pattern-list{list-style:none;margin:0;padding:0}
+.cn-pattern-list li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;border-top:1px solid var(--line);padding:12px 0;min-width:0}
+.cn-pattern-list b{font-weight:500;font-size:14px;overflow-wrap:anywhere}
+.cn-pattern-list small{display:block;color:var(--t2);font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.cn-pattern-rate{text-align:right;font-family:var(--m);color:var(--lime)}
+.cn-pattern-base{grid-column:1 / -1}
+.cn-pattern-check{border-top:1px solid var(--line);padding-top:12px;margin-top:12px;font-size:13px;line-height:1.5}
+.cn-pattern-check>b{font:500 12px var(--m)}
+.cn-pattern-check p{margin:6px 0;color:var(--t2);overflow-wrap:anywhere}
+@media(max-width:599px){.cn-pattern-groups{grid-template-columns:minmax(0,1fr);gap:16px}}

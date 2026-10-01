@@ -18,6 +18,8 @@ import { PictureRow } from './PictureRow'
 import { AboveThePost, clientWhyNot, internalOnly, postsChip } from './DraftNotes'
 import { ScheduleRow, localInput } from './ScheduleRow'
 import { useDraftVerbs } from './useDraftVerbs'
+import { EarlyReadChip } from './EarlyReadChip'
+import { useEarlyReads } from './useEarlyReads'
 
 // THE DRAFT WINDOW. Desktop: docked right of the wall. Phone: the page itself
 // (takeover), keys at the foot of the content. j/k walk the queue, Esc closes.
@@ -58,6 +60,7 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
     if (next) pick(next); else close()
   }, [at, close, pick, queue])
   const v = useDraftVerbs(d, lane, advance, refresh)
+  const earlyReads = useEarlyReads([{ ...d, post_body: v.shown }])
   const confirm = useDConfirm()
   const dirty = v.editing && (v.text !== v.shown || v.busy)
   const { canLeave } = useUnsavedNavigation(dirty, useCallback(() => v.busy ? Promise.resolve(false) : confirm({
@@ -180,7 +183,8 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
       )}
       <div className="cn-chips"><span className={`cn-st${stage === 'error' || stage === 'stuck' ? ' cn-st-bad' : ''}`}>{stateChip}</span><span>{line}</span>
         {internalOnly(d, stage) && <span className="cn-st cn-st-bad">Internal copy only · not approved for publication</span>}
-        {v.editing && <span className="cn-st">Editing</span>}</div>
+        {v.editing && <span className="cn-st">Editing</span>}
+        <EarlyReadChip read={earlyReads.get(d.id)} lane={lane} unsaved={dirty} /></div>
       <div className="cn-dwb">
         <AboveThePost d={d} stage={stage} lane={lane} />
         {lane !== 'ivan' && !v.visible && (stage === 'error' || stage === 'stuck') && <ClientFixRow d={d} lane={lane} onDone={refresh} disabled={v.editing || v.busy} />}

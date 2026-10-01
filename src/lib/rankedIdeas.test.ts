@@ -15,3 +15,11 @@ describe('ranked idea source contract',()=>{
   expect(visibleIdeas([item('a'),item('confirmed'),item('x:123'),item('skip')],[pick],['skip']).map(i=>i.id)).toEqual(['confirmed','a'])
  })
 })
+
+it('keeps a stored eligible pattern read attached to the ranked idea without changing rank or proof', () => {
+ const read = { state: 'ready', pattern: { client_id: 'ivan', dimension: 'angle', value: 'personal', n: 100, breakouts: 12, rate: .12, base_n: 1000, base_rate: .045, lift: 2.6667, computed_at: '2026-10-01', study_id: 'study' }, sentence: 'Stored niche sentence.', reason: null }
+ const rows = parseRankedIdeas({ ok: true, client: 'ivan', rows: [{ kind: 'bank', id: 'a', rank: 2, proof: 'Stored proof', bank: { id: 'a', normalized_topic: 'A', source: 'calls' }, pattern_read: read }] }, 'ivan')
+ expect(rows[0].patternRead?.pattern?.rate).toBe(.12)
+ expect(rows[0].rank).toBe(2)
+ expect(rows[0].proof).toBe('Stored proof')
+})
