@@ -24,7 +24,9 @@ export function usePull(ref: RefObject<HTMLElement | null>, onRefresh: () => voi
     if (!el) return
     const onStart = (e: TouchEvent) => { if (!refreshing && scrollTopOf(el) <= 0) { start.current = e.touches[0].clientY; active.current = true } }
     const onMove = (e: TouchEvent) => {
-      if (!active.current) return
+      // A move a deeper handler already claimed (the calendar holding a post or
+      // paging months) is that gesture, never a pull: no indicator, no re-render.
+      if (!active.current || e.defaultPrevented) return
       const dy = e.touches[0].clientY - start.current
       if (dy <= 0) { cur.current = 0; setPull(0); return }
       if (e.cancelable) e.preventDefault()

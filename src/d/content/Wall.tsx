@@ -1,5 +1,5 @@
 import { Unpublish } from './Unpublish'
-import { Fragment, type CSSProperties, type DragEvent } from 'react'
+import { Fragment, type CSSProperties } from 'react'
 import type { ContentDraft } from '../../lib/content'
 import { warsawDay, warsawDm, warsawDow } from '../ui/time'
 import {
@@ -31,17 +31,18 @@ export type WallProps = {
   lift?: string | null
   held?: { lane: Lane; key: string } | null
   now?: number
+  /** The seats drawn, in order (the calendar's client switch); every seat when absent. */
+  lanes?: readonly Lane[]
 }
-
-export const DRAG_MIME = 'application/x-d-draft'
 
 export function Card({ r, it, lane, onOpen }: { r: ContentDraft | null; it: PlanItem; lane: Lane; onOpen: () => void }) {
   const img = r ? imgOf(r.image_urls, 400) : null
   const b = badgeOf(it)
   const badge = b ? <span className={`cn-na${b.tone === 'warn' ? ' cn-ns' : b.tone === 'dim' ? ' cn-nd' : ''}`}>{b.text}</span> : null
   const inert = it.source === 'queue' || !r
-  const drag = !inert && it.movable
-  const onDragStart = (e: DragEvent) => { e.dataTransfer.setData(DRAG_MIME, JSON.stringify({ id: it.id, lane })); e.dataTransfer.effectAllowed = 'move' }
+  // The calendar's pointer engine lifts it (calGestures); a post that must not move says why.
+  const refuse = it.stage === 'published' ? 'Already posted. It stays on the day it went out.' : inert ? 'This one lives only in the publish queue, so it can’t move here.' : !it.movable ? `This post is ${r!.status}. Only posts in review or scheduled can move.` : undefined
+  const cal = { 'data-cal-id': it.id, 'data-cal-lane': lane, 'data-cal-refuse': refuse }
   const body = (
     <>
       {img
@@ -51,10 +52,9 @@ export function Card({ r, it, lane, onOpen }: { r: ContentDraft | null; it: Plan
       <small>{timeLine(it.postedAt ?? it.at, lane)}{it.plannedAt ? ' ⚠' : ''}</small>
     </>
   )
-  if (inert) return <div className={`cn-card cn-inert${it.stage === 'published' ? ' cn-past' : ''}`} title={describe(it)} aria-label={`${it.title}. ${describe(it)}`}>{body}</div>
+  if (inert) return <div className={`cn-card cn-inert${it.stage === 'published' ? ' cn-past' : ''}`} title={describe(it)} aria-label={`${it.title}. ${describe(it)}`} {...cal}>{body}</div>
   return (
-    <button type="button" className={`cn-card${it.stage === 'published' ? ' cn-past' : ''}`} onClick={onOpen} data-verb="open" aria-label={`Open ${titleOf(r!)}`} title={describe(it)}
-      draggable={drag} onDragStart={drag ? onDragStart : undefined}>
+    <button type="button" className={`cn-card${it.stage === 'published' ? ' cn-past' : ''}`} onClick={onOpen} data-verb="open" aria-label={`Open ${titleOf(r!)}`} title={describe(it)} {...cal}>
       {body}
     </button>
   )
@@ -79,20 +79,12 @@ function Plate({ lane, data, days, stuck, compact, now }: { lane: Lane; data: Co
   )
 }
 
-/** Accept a dragged card; the drop opens the move (the confirm), never writes by itself. */
-export function dropZone(lane: Lane, key: string, onMove: WallProps['onMove']) {
-  return {
-    onDragOver: (e: DragEvent) => { if (e.dataTransfer.types.includes(DRAG_MIME)) { e.preventDefault(); e.dataTransfer.dropEffect = 'move' } },
-    onDrop: (e: DragEvent) => {
-      const raw = e.dataTransfer.getData(DRAG_MIME)
-      if (!raw) return
-      e.preventDefault()
-      try { const v = JSON.parse(raw) as { id: string; lane: Lane }; if (v.lane === lane) onMove(v.id, lane, key) } catch { /* not ours */ }
-    },
-  }
+/** A day the calendar's pointer engine can drop a post of this seat on. */
+export function dropDay(lane: Lane, key: string) {
+  return { 'data-cal-day': key, 'data-cal-lane': lane }
 }
 
-export function Wall({ data, items, days, stuck, onOpen, onMove, onArm, onDay, ghost, lift, held, now }: WallProps) {
+export function Wall({ data, items, days, stuck, onOpen, onMove, onArm, onDay, ghost, lift, held, now, lanes = LANES }: WallProps) {
   const ten = days.length > 5
   const cols = ten ? 'var(--feedw) repeat(5,minmax(0,1fr)) 6px repeat(5,minmax(0,1fr))' : 'var(--feedw) repeat(5,minmax(0,1fr))'
   const today = warsawDay(now ?? Date.now())
@@ -102,7 +94,7 @@ export function Wall({ data, items, days, stuck, onOpen, onMove, onArm, onDay, g
     <div className="cn-wall" style={style} role="group" aria-label="Posts by seat and day">
       <div className="cn-wh">Feed</div>
       {days.map((d, i) => <Fragment key={d.key}>{gap(i)}<div className={`cn-wh${d.key === today ? ' cn-tod' : ''}`}><b>{d.dow}</b> {d.n}{ten ? '' : ` ${d.dm.split(' ')[1]}`}{d.key === today && <em>today</em>}</div></Fragment>)}
-      {LANES.map(lane => (
+      {lanes.map(lane => (
         <Fragment key={lane}>
           <Plate lane={lane} data={data} days={days} stuck={stuck} compact={!ten} now={now} />
           {days.map((d, i) => {
@@ -113,7 +105,7 @@ export function Wall({ data, items, days, stuck, onOpen, onMove, onArm, onDay, g
             if (ghost && ghost.lane === lane && ghost.key === d.key) {
               return <Fragment key={d.key}>{gap(i)}<div className="cn-cell cn-land"><div className="cn-ghost"><b>{ghost.label}</b><span>{ghost.title}</span><small>{ghost.time}</small></div></div></Fragment>
             }
-            const drop = dropZone(lane, d.key, onMove)
+            const drop = dropDay(lane, d.key)
             const it = on[0]
             if (!it) return <Fragment key={d.key}>{gap(i)}<div className={`cn-cell cn-none${d.key === today ? ' cn-tod' : ''}`} {...drop}>{weekend && <span className="cn-cellk2">{weekend}</span>}</div></Fragment>
             const r = it.source === 'draft' ? data.seats[lane].rows.find(x => x.id === it.id) ?? null : null

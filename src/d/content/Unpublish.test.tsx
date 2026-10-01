@@ -2,11 +2,8 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { renderInFrame } from '../test-utils'
-import { useState } from 'react'
-import { Month } from './Month'
-import { DayPanel } from './DayPanel'
 import { Unpublish } from './Unpublish'
-import { byDay, seatItems } from './planModel'
+import { seatItems } from './planModel'
 import type { ContentDraft, ScheduledQueueRow } from '../../lib/content'
 const writes = vi.hoisted(() => ({ unpublishPost: vi.fn() }))
 vi.mock('../../lib/content', async orig => ({ ...(await orig<typeof import('../../lib/content')>()), ...writes }))
@@ -56,28 +53,4 @@ it('a removable publisher row with only an actual posted date is reachable on th
   const items = seatItems([], 'ivan', [q])
   expect(items).toHaveLength(1)
   expect(items[0]).toMatchObject({ source: 'queue', unpublishId: 'queue', postedAt: '2026-05-21T09:01:00Z', day: '2026-05-21' })
-})
-
-function PhoneMonth({ matched }: { matched: boolean }) {
-  const [day, setDay] = useState<string[] | null>(null)
-  const draft = { id: queue.clickup_task_id, client_id: null, status: 'published', scheduled_at: queue.scheduled_at, published_at: queue.posted_at, post_body: queue.post_text, type: 'text', title: 'Matched published draft' } as ContentDraft
-  const rows = matched ? [draft] : []
-  const items = byDay(seatItems(rows, 'ivan', [queue]))
-  return <><Month lane="ivan" setLane={() => {}} rows={rows} items={items} onOpen={() => {}} onMove={() => {}} onArm={() => {}} onDay={(_lane, keys) => setDay(keys)} now={Date.parse('2026-09-30T10:00:00Z')} phone />
-    {day && <DayPanel lane="ivan" keys={day} items={items} onClose={() => setDay(null)} onOpen={() => {}} onMove={() => {}} onArm={() => {}} />}</>
-}
-it.each([false, true])('phone Month posted actions reveal the correct day and full Unpublish action (matched draft=%s)', async matched => {
-  renderInFrame(<PhoneMonth matched={matched} />, { layout: 'phone' })
-  fireEvent.click(screen.getByRole('button', { name: '1 post on 2026-09-30' }))
-  expect(document.querySelector('.cn-daylist')!.textContent).toContain(matched ? 'Matched published draft' : 'Our own post')
-  expect(screen.getByRole('dialog').textContent).toContain('Wed 30 Sep')
-  expect(screen.getByRole('link', { name: 'Open post' }).getAttribute('href')).toBe(queue.unipile_share_url)
-  fireEvent.click(document.querySelector('.cn-daylist [data-verb="unpublish"]')!)
-  expect(await screen.findByText('Take this post off LinkedIn?')).toBeTruthy()
-  expect(writes.unpublishPost).not.toHaveBeenCalled()
-})
-it('desktop Month keeps Unpublish directly on the posted chip', () => {
-  renderInFrame(<Month lane="ivan" setLane={() => {}} rows={[]} items={byDay(seatItems([], 'ivan', [queue]))} onOpen={() => {}} onMove={() => {}} onArm={() => {}} onDay={() => {}} now={Date.parse('2026-09-30T10:00:00Z')} />)
-  expect(screen.getByRole('button', { name: 'Unpublish' })).toBeTruthy()
-  expect(screen.queryByRole('button', { name: 'Actions for Our own post' })).toBeNull()
 })

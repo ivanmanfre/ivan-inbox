@@ -1434,6 +1434,18 @@ export async function setScheduleDateAt(id: string, scheduledAt: string): Promis
   return typeof r.scheduled_at === 'string' ? r.scheduled_at : scheduledAt
 }
 
+/**
+ * Take the date back off a draft (the calendar's Undo after dating an undated
+ * post). The same gated RPC with a null date: it writes scheduled_at and
+ * nothing else, and refuses any status but review / scheduled.
+ */
+export async function clearScheduleDate(id: string): Promise<void> {
+  const { data, error } = await supabase.rpc('operator_set_schedule_date', {
+    p_gate: CLIENT_OPS_GATE, p_draft_id: id, p_scheduled_at: null,
+  })
+  rpcOk(data, error)
+}
+
 export async function setBoardVisible(id: string, visible: boolean): Promise<void> {
   const { data, error } = await supabase.rpc('operator_set_board_visible', {
     p_gate: CLIENT_OPS_GATE, p_draft_id: id, p_visible: visible,
