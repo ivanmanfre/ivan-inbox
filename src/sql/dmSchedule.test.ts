@@ -65,3 +65,10 @@ it('a handwritten schedule replaces older pending drafts and cancellation never 
  await db.query('select cancel_scheduled_inbox_dm($1)',[newId]);
  expect((await db.query(`select approved_at,send_blocked_reason from outreach_messages where id=$1`,[newId])).rows[0]).toMatchObject({approved_at:null,send_blocked_reason:'scheduled_send_cancelled'});
 })
+
+it('works for the authenticated operator without exposing the private agent table',async()=>{
+ await db.exec('grant usage on schema public to authenticated; grant select,insert,update on outreach_messages,outreach_prospects to authenticated; set role authenticated');
+ await schedule(); expect((await row()).send_blocked_reason).toBe('scheduled_in_inbox');
+ await expect(db.query('select * from outreach_agent_threads')).rejects.toThrow(/permission denied/);
+ await db.exec('reset role');
+})

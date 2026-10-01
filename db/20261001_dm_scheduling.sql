@@ -1,6 +1,6 @@
 -- Scheduling keeps approval NULL until due. The existing sender remains the only transport.
 create or replace function public.inbox_schedule_snapshot(p_prospect_id uuid) returns jsonb
-language sql stable security invoker set search_path=public,pg_temp as $$
+language sql stable security definer set search_path=public,pg_temp as $$
  select jsonb_build_object(
   'inbound',(select id from outreach_messages where prospect_id=p.id and direction='inbound' order by coalesce(sent_at,created_at) desc,id desc limit 1),
   'outbound',(select id from outreach_messages where prospect_id=p.id and direction='outbound' and (sent_at is not null or approved_at is not null) order by coalesce(sent_at,approved_at,created_at) desc,id desc limit 1),
