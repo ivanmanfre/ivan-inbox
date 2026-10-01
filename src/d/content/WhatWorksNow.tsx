@@ -35,7 +35,7 @@ export function WhatWorksNowBody({ lane, data, error, onRetry }: { lane: Lane; d
         <div><h3>More breakouts</h3>{top.length ? list(top) : <p>No eligible stronger patterns.</p>}</div>
         <div><h3>Fewer breakouts</h3>{bottom.length ? list(bottom) : <p>No other eligible patterns.</p>}</div>
       </div>}
-      <p className="cn-read-note">A breakout is at least three times that author’s usual engagement. These rates describe the niche, never a promise for a post.</p>
+      <p className="cn-read-note">A stored breakout has at least 40 likes and three times that author’s usual score (likes + 3× reposts). These rates describe the niche, never a promise for a post.</p>
       <div className="cn-pattern-check"><b>Recent-post check</b><p>{h ? holdoutText(h) : 'No recent-post check is stored yet.'}</p>
         {h && <p>{h.top.n == null ? 'Top n not recorded' : `Top n=${h.top.n}${h.top.rate != null ? ` · ${rateText(h.top.rate)} breakouts` : ''}`} · {h.bottom.n == null ? 'Bottom n not recorded' : `bottom n=${h.bottom.n}${h.bottom.rate != null ? ` · ${rateText(h.bottom.rate)} breakouts` : ''}`}</p>}
         {h?.limitation && <p>{h.limitation}</p>}
