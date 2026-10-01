@@ -73,3 +73,5 @@
 .dm-pane-phone{padding-bottom:calc(var(--dock-h) + 20px)}
 
 .dm-email-cc{margin:8px 0}.dm-email-cc label{display:flex;align-items:center;gap:10px;font:400 12px var(--m);color:var(--t2)}.dm-email-cc input{flex:1;min-width:0;min-height:44px;border:1px solid var(--line2);border-radius:8px;background:var(--p1);color:var(--t1);padding:8px 10px;font:400 14px var(--f)}.dm-email-cc input:focus-visible{outline:2px solid var(--t2);outline-offset:2px}.dm-email-cc p{color:var(--danger);font:400 12px var(--f);margin:4px 0}
+
+.dm-email-title{display:block;font:600 14px var(--f);color:var(--t1);margin-bottom:5px}

@@ -2,7 +2,7 @@ import { parseEmailCc } from '../../lib/emailCc'
 // The draft on the tape (mock `.tape`), its email leg (`.df-leg`, Send both), the mirror email
 // rider, and the warnings today's card carries (held, email check failed, you already replied).
 // The tape IS the editor: typing saves (useAutosave); Send sends what is in it.
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { emailRowSender, emailSenderLabel, eventTime, holdReason, isFollowUp, messageChannel, type Thread } from '../../lib/inbox'
 import { DIcon } from '../ui/icons'
 import { Explain } from './Explain'
@@ -48,7 +48,6 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
   t: Thread; edits: Edits; setEdits: (e: Edits) => void; save: SaveState; onBlur: () => void; onRetrySave: () => void; now: number; onRetry: () => void
 }) {
   const draft = t.draft
-  const [showEmail, setShowEmail] = useState(false)
   if (!draft) return null
   const comp = t.companionDraft
   const title = t.draftSnoozedUntil ? `Later: back ${dayMonth(t.draftSnoozedUntil)}`
@@ -87,15 +86,16 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
       )}
       {rider && (
         <div className="dm-leg dm-leg-rider">
+          <b className="dm-email-title">Email draft</b>
+          <p className="dm-meta">To: {draft.recipient_email} · From: {emailRowSender(t.client_id)}</p>
           <div className="dm-tm">
             <span>{draft.email_mirror_text && !emailSenderLabel(t.client_id)
               ? `This email does not send from your seat, only the DM goes. Copy it into Gmail to ${draft.recipient_email} if you want it sent.`
               : draft.email_mirror_text ? `Approving also sends this email to ${draft.recipient_email}${emailSenderLabel(t.client_id)}`
                 : `Approving also emails the scan link to ${draft.recipient_email}${emailSenderLabel(t.client_id)}. The sender writes that email itself.`}</span>
-            {draft.email_mirror_text && <button type="button" className="dm-linkbtn" data-verb="show-email" onClick={() => setShowEmail(v => !v)}>{showEmail ? 'Hide email' : 'Show email'}</button>}
           </div>
           <Cc value={edits.cc ?? ''} onChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} />
-          {draft.email_mirror_text && showEmail && <>
+          {draft.email_mirror_text && <>
             <Grow value={edits.email ?? ''} onChange={e => setEdits({ ...edits, email: e })} onBlur={onBlur} label="The email that goes with it" max={360} />
             <Explain inset messageId={`${draft.id}:email`} messageText={draft.email_mirror_text} editedText={edits.email ?? draft.email_mirror_text}
               evidence={draft.draft_evidence?.email} unavailable={draft.draft_evidence_unavailable} onRetry={onRetry} />

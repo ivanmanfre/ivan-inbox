@@ -106,6 +106,9 @@ describe('DM verbs', () => {
   it('shows saved CC beside the mirror and saves edited CC before approval', async () => {
     const [t] = threads(drafted('thomas', { prospect_name: 'Thomas', client_id: 'risedtc', recipient_email: 'thomas@vmisports.com', email_mirror_text: 'Subject: VMI scan\n\nHey Thomas and Michael,', email_cc: ['michael@vmisports.com'] }))
     mount(t)
+    expect((screen.getByRole('textbox', { name: 'The email that goes with it' }) as HTMLTextAreaElement).value).toBe(t.draft!.email_mirror_text)
+    expect(screen.getByText('Email draft')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Show email' })).toBeNull()
     const cc = screen.getByRole('textbox', { name: 'CC recipients' })
     expect((cc as HTMLInputElement).value).toBe('michael@vmisports.com')
     fireEvent.change(cc, { target: { value: 'michael@vmisports.com, other@vmisports.com' } })
