@@ -5,3 +5,5 @@
 .cn-brain-draft a:focus-visible{outline:2px solid var(--lime);outline-offset:3px}
 .cn-brain-draft p{margin:4px 0;color:var(--t2)}
 .cn-brain-draft strong{color:var(--t1)}
+/* desktop Review card: the badge sits under the post text (column 2), never in the thumbnail column */
+.d-desktop .cn-wc>.cn-brain-draft{grid-column:2;grid-row:3}
