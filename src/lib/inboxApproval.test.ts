@@ -28,29 +28,46 @@ it('fails closed when draft identity cannot be read', async () => {
   expect(db.rpc).not.toHaveBeenCalled()
   expect(db.update).not.toHaveBeenCalled()
 })
-it('keeps existing pipeline drafts on their established approval path', async () => {
-  db.read.mockResolvedValue({ data: { ai_model: 'arch_reply_draft_v2' }, error: null })
-  const chain = { eq: () => chain, is: () => chain, or: () => chain, select: async () => ({ data: [{ id: 'pipeline-draft' }], error: null }) }
-  db.update.mockReturnValue(chain)
+it('routes pipeline approval through the guarded RPC with its current evidence', async () => {
+  const evidence = { generated_text: 'Original', inbound_id: 'inbound-1' }
+  db.read.mockResolvedValue({ data: { ai_model: 'arch_reply_draft_v2', draft_evidence: evidence }, error: null })
   await approveDraft('pipeline-draft', 'Reviewed pipeline reply', 'chat')
-  expect(db.rpc).not.toHaveBeenCalled()
-  expect(db.update).toHaveBeenCalledWith(expect.objectContaining({ message_text: 'Reviewed pipeline reply', unipile_chat_id: 'chat' }))
-  expect(db.update.mock.calls[0][0]).not.toHaveProperty('message_type')
+  expect(db.rpc).toHaveBeenCalledWith('approve_inbox_pipeline_draft', {
+    p_message_id: 'pipeline-draft', p_text: 'Reviewed pipeline reply', p_expected_evidence: evidence, p_chat_id: 'chat',
+  })
+  expect(db.update).not.toHaveBeenCalled()
 })
-it('records the exact operator-approved copy and timestamp without losing draft provenance', async () => {
-  db.read.mockResolvedValue({ data: { ai_model: 'arch_reply_draft_v2', draft_evidence: { generated_text: 'Original', inbound_id: 'inbound-1' } }, error: null })
-  const chain = { eq: () => chain, is: () => chain, or: () => chain, select: async () => ({ data: [{ id: 'draft' }], error: null }) }
-  db.update.mockReturnValue(chain)
-  await approveDraft('draft', 'Reviewed $2k–$3k reply')
-  const patch = db.update.mock.calls[0][0]
-  expect(patch.draft_evidence).toEqual({
-    generated_text: 'Original', inbound_id: 'inbound-1',
-    operator_copy_approval: { source: 'inbox', text: 'Reviewed $2k–$3k reply', approved_at: patch.approved_at },
+it('passes absent evidence and chat as SQL null', async () => {
+  db.read.mockResolvedValue({ data: { ai_model: 'arch_reply_draft_v2', draft_evidence: null }, error: null })
+  await approveDraft('draft', 'Reviewed reply')
+  expect(db.rpc).toHaveBeenCalledWith('approve_inbox_pipeline_draft', {
+    p_message_id: 'draft', p_text: 'Reviewed reply', p_expected_evidence: null, p_chat_id: null,
   })
 })
-it('reports a concurrent metadata change instead of pretending approval succeeded', async () => {
+it('surfaces a concurrent metadata change without falling back to an unguarded approval', async () => {
   db.read.mockResolvedValue({ data: { ai_model: 'arch_reply_draft_v2', draft_evidence: { inbound_id: 'old' } }, error: null })
-  const chain = { eq: () => chain, is: () => chain, or: () => chain, select: async () => ({ data: [], error: null }) }
-  db.update.mockReturnValue(chain)
+  db.rpc.mockResolvedValue({ error: new Error('The draft changed before approval. Refresh before sending.') })
   await expect(approveDraft('draft', 'Reviewed reply')).rejects.toThrow(/changed|refresh/i)
+  expect(db.update).not.toHaveBeenCalled()
+})
+it('approves a research-heavy draft without putting its evidence in the request URL', async () => {
+  const { createClient } = await import('@supabase/supabase-js')
+  const evidence = { generated_text: 'Original', research: 'x'.repeat(90000) }
+  db.read.mockResolvedValue({ data: { ai_model: 'arch_reply_draft_v2', draft_evidence: evidence }, error: null })
+  const requests: { url: string; body: string }[] = []
+  const client = createClient('https://test.supabase.co', 'test-key', {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { fetch: async (input, init) => {
+      const url = String(input)
+      requests.push({ url, body: String(init?.body ?? '') })
+      if (url.length > 8192) throw new TypeError('Failed to fetch')
+      return new Response('null', { headers: { 'Content-Type': 'application/json' } })
+    } },
+  })
+  db.update.mockImplementation(client.from('outreach_messages').update.bind(client.from('outreach_messages')))
+  db.rpc.mockImplementation(client.rpc.bind(client))
+  await expect(approveDraft('draft', 'Reviewed PC games reply', 'chat')).resolves.toBeUndefined()
+  expect(requests).toHaveLength(1)
+  expect(requests[0].url.length).toBeLessThan(8192)
+  expect(JSON.parse(requests[0].body)).toMatchObject({ p_message_id: 'draft', p_text: 'Reviewed PC games reply', p_expected_evidence: evidence })
 })

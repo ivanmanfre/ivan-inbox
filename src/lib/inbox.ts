@@ -1250,24 +1250,13 @@ export async function approveDraft(id: string, editedText: string, chatId?: stri
     if (error) throw error
     return
   }
-  const approvedAt = new Date().toISOString()
-  const patch: Record<string, unknown> = {
-    message_text: editedText, approved_at: approvedAt,
-    draft_evidence: {
-      ...(draft?.draft_evidence ?? {}),
-      operator_copy_approval: { source: 'inbox', text: editedText, approved_at: approvedAt },
-    },
-    send_blocked_reason: null, send_blocked_at: null,
-  }
-  if (chatId) patch.unipile_chat_id = chatId
-  let query = supabase.from('outreach_messages')
-    .update(patch)
-    .eq('id', id).is('sent_at', null).is('approved_at', null)
-    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*`)
-  query = draft?.draft_evidence == null ? query.is('draft_evidence', null) : query.eq('draft_evidence', JSON.stringify(draft.draft_evidence))
-  const { data, error } = await query.select('id')
+  // Research evidence can exceed the proxy's URL limit. The RPC compares it
+  // atomically in the request body and records the reviewed copy server-side.
+  const { error } = await supabase.rpc('approve_inbox_pipeline_draft', {
+    p_message_id: id, p_text: editedText,
+    p_expected_evidence: draft?.draft_evidence ?? null, p_chat_id: chatId ?? null,
+  })
   if (error) throw error
-  if (!data?.length) throw new Error('The draft changed before approval. Refresh before sending.')
 }
 
 // The presets on the card. Ivan named "one more week" and "a custom time"; the
