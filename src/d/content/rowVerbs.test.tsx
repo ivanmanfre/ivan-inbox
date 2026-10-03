@@ -40,3 +40,19 @@ describe('queue row writes (today’s inline Approve / Skip / To board / Delete)
     await waitFor(() => expect(lib.setBoardVisible).toHaveBeenCalledWith('r1', true))
   })
 })
+
+describe('run 39: a brain draft in review or error is judged, never bulk-approved, skipped or deleted', () => {
+  const brain = (o: Partial<ContentDraft> = {}) => row({ cb34_p2_member: true, ...o })
+  it('rowCaps drops approve, skip and delete for a brain draft in review or error', () => {
+    expect(rowCaps(brain(), 'ivan')).toEqual([])
+    expect(rowCaps(brain({ status: 'error' }), 'ivan')).toEqual([])
+    expect(rowCaps(row({ taxonomy: { source: 'content-brain' } }), 'ivan')).toEqual([])
+    expect(rowCaps(brain({ client_id: 'arch' }), 'arch')).toEqual(['promote'])
+    expect(rowVerbsFor(brain({ client_id: 'arch' }), 'arch')).toEqual(['board'])
+    expect(rowVerbsFor(brain(), 'ivan')).toEqual([])
+  })
+  it('a brain draft past review keeps today’s caps, and a normal draft is untouched', () => {
+    expect(rowCaps(brain({ status: 'approved' }), 'ivan')).toEqual(['delete'])
+    expect(rowCaps(row({ cb34_p2_member: false }), 'ivan')).toEqual(['approve', 'skip', 'delete'])
+  })
+})

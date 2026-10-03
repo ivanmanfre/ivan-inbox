@@ -18,6 +18,7 @@ import {
 import {
   canRetryLane, clearHumanEdit, isHumanEdited, planRegen, regenerateClientDraft, regenerateDraft, restoreHumanEdit,
 } from '../../lib/studioActions'
+import { brainNeedsVerdict } from '../../lib/brainVerdictGate'
 import { Button } from '../../ds'
 import './content.css'
 
@@ -199,6 +200,8 @@ export function RowDelete({ d, lane, onDone }: { d: ContentDraft; lane: ContentL
   const [err, setErr] = useState('')
   const confirm = useConfirm()
   if (lane !== 'ivan' && boardGroupOf(d) === 'board') return null
+  // Run 39: Drop is the delete for a brain draft in review or error.
+  if (brainNeedsVerdict(d)) return null
   const run = async (e: React.MouseEvent) => {
     // A tap on the row opens the window; this must not also fire that.
     e.stopPropagation()
