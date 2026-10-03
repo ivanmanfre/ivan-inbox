@@ -14,6 +14,8 @@
 // post and the Planner keep every Arch control they had before.
 import { canMoveDate } from '../../lib/calendarItems'
 import { isStuckGenerating, normalizeImageUrls, singlePhoto, stageOfLane, type ContentDraft } from '../../lib/content'
+import { isBrainPost } from '../../lib/brainDraft'
+import type { Verdict } from '../../lib/verdicts'
 import { warsawDay, warsawDm, warsawDow, warsawHm } from '../ui/time'
 import { DAY_MS, WAIT_DAYS, imgOf, splitTitleTag, titleOf, type Lane } from './model'
 
@@ -42,6 +44,12 @@ export type WeekCard = {
   thumb: string | null
   title: string
   body: string
+  /** A brain draft Ivan can still judge: its one key is Drop + Keep (run 39). */
+  judge: boolean
+  /** An open verdict strip (held / saving / saved / failed) stands in this card's place. */
+  strip: boolean
+  /** Judged Keep and put away (this session or a saved verdict): a normal card with a "Kept" flag. */
+  kept: boolean
 }
 
 export type WeekGroup = { key: string; kind: 'today' | 'day' | 'review'; label: string; date: string | null; cards: WeekCard[] }
@@ -57,7 +65,13 @@ export type Week = {
   perLane: Record<Lane, number>
   /** Cards whose one key is a decision (approve / put on board / schedule), per seat; the older fold is not counted. */
   toDecide: Record<Lane, number>
+  /** Brain drafts still to judge (Keep or Drop), before the seat filter; per seat in toJudgeByLane. */
+  toJudge: number
+  toJudgeByLane: Record<Lane, number>
 }
+
+/** The part of a session verdict (verdictStore.Judged) the model needs. */
+export type JudgedLite = { verdict: Verdict; phase: 'held' | 'saving' | 'saved' | 'failed'; collapsed: boolean }
 
 export type Pending = ReadonlyMap<string, 'approve' | 'skip'>
 
@@ -193,6 +207,7 @@ function cardOf(r: ContentDraft, lane: Lane, now: number, overdue: boolean, bloc
     flags: flagsOf(r, lane, { now, overdue, blocked: blocks?.get(r.id) ?? null }),
     thumb: imgOf(r.image_urls, 240),
     title, body,
+    judge: false, strip: false, kept: false,
   }
 }
 
@@ -266,20 +281,38 @@ export function buildWeek(rows: readonly ContentDraft[], o: {
   const lanes = new Map<string, Lane>()
   for (const g of groups) for (const c of g.cards) lanes.set(c.r.id, c.lane)
   for (const c of older) lanes.set(c.r.id, c.lane)
-  return { groups, older, ids, lanes, perLane, toDecide }
+  return { groups, older, ids, lanes, perLane, toDecide, toJudge: 0, toJudgeByLane: { ivan: 0, risedtc: 0, arch: 0 } }
 }
 
-/** Now holds only unfinished work. The planner owns already armed and published posts. */
-export function buildNow(rows: readonly ContentDraft[], o: { now: number; show?: Show; pending?: Pending; blocks?: Map<string, string> | null }): Week {
-  const { now, show = 'all', pending, blocks } = o
+/**
+ * Now holds only unfinished work. The planner owns already armed and published posts.
+ *
+ * KEEP / DROP (run 39). `verdicts` = the saved verdicts read from the database, `judged` = this session's
+ * taps (verdictStore). A failed tap counts as no verdict. A Dropped draft is hidden once its strip is put
+ * away; a Kept one stays as a normal card with a "Kept" flag and no Keep/Drop keys. While a strip is open
+ * (held, saving, saved, not yet put away) the card's slot stays in the model (`strip`) so the list can draw
+ * the strip in place, and the card is not counted as work (not in the counts, `ids`, `lanes`).
+ */
+export function buildNow(rows: readonly ContentDraft[], o: {
+  now: number; show?: Show; pending?: Pending; blocks?: Map<string, string> | null
+  verdicts?: ReadonlyMap<string, Verdict>
+  judged?: ReadonlyMap<string, JudgedLite>
+}): Week {
+  const { now, show = 'all', pending, blocks, verdicts, judged } = o
   const needsFix: WeekCard[] = [], drafts: WeekCard[] = []
+  const quiet = new Set<string>()
   const perLane: Record<Lane, number> = { ivan: 0, risedtc: 0, arch: 0 }
   const toDecide: Record<Lane, number> = { ivan: 0, risedtc: 0, arch: 0 }
+  const toJudgeByLane: Record<Lane, number> = { ivan: 0, risedtc: 0, arch: 0 }
   const seen = new Set<string>()
   for (const r of rows) {
     const lane = laneOfRow(r)
     if (!lane || seen.has(r.id) || pending?.has(r.id) || r.published_at || r.status === 'published') continue
     seen.add(r.id)
+    const s = judged?.get(r.id)
+    const verdict = (s && s.phase !== 'failed' ? s.verdict : undefined) ?? verdicts?.get(r.id)
+    const strip = !!s && !s.collapsed
+    if (verdict === 'drop' && !strip) continue
     const stage = stageOfLane(r, lane, now)
     const stalled = stage === 'generating' && isStuckGenerating(r, now)
     const bad = r.status === 'error' || stage === 'stuck' || stalled || !!blocks?.has(r.id)
@@ -288,8 +321,22 @@ export function buildNow(rows: readonly ContentDraft[], o: { now: number; show?:
     const c = cardOf(r, lane, now, stage === 'stuck', blocks)
     if (stalled) c.flags.unshift({ key: 'stalled', text: 'Generation stalled', tone: 'warn' })
     if (bad) { c.primary = 'open'; c.canDate = false }
-    perLane[lane]++
-    if (c.primary !== 'open') toDecide[lane]++
+    c.judge = isBrainPost(r) && (r.status === 'review' || r.status === 'error') && !verdict
+    c.strip = strip
+    if (verdict === 'keep' && !strip) {
+      c.kept = true
+      c.flags.unshift({ key: 'kept', text: 'Kept', tone: 'dim', title: 'You kept this draft' })
+      // Keep on Ivan's seat approved it; a read that still says review must not offer Approve again.
+      if (lane === 'ivan' && r.status === 'review') c.primary = 'open'
+    }
+    // An open strip (not a failed one: that draft is still undecided) is not work.
+    const counted = !strip || s?.phase === 'failed'
+    if (!counted) quiet.add(r.id)
+    else {
+      perLane[lane]++
+      if (c.primary !== 'open') toDecide[lane]++
+      if (c.judge) toJudgeByLane[lane]++
+    }
     if (show !== 'all' && show !== lane) continue
     ;(bad ? needsFix : drafts).push(c)
   }
@@ -302,6 +349,9 @@ export function buildNow(rows: readonly ContentDraft[], o: { now: number; show?:
   const groups: WeekGroup[] = []
   if (needsFix.length) groups.push({ key: 'fix', kind: 'review', label: 'Needs a fix', date: null, cards: needsFix })
   if (drafts.length) groups.push({ key: 'drafts', kind: 'review', label: 'Drafts', date: null, cards: drafts })
-  const cards = [...needsFix, ...drafts]
-  return { groups, older: [], ids: cards.map(c => c.r.id), lanes: new Map(cards.map(c => [c.r.id, c.lane])), perLane, toDecide }
+  const cards = [...needsFix, ...drafts].filter(c => !quiet.has(c.r.id))
+  return {
+    groups, older: [], ids: cards.map(c => c.r.id), lanes: new Map(cards.map(c => [c.r.id, c.lane])), perLane, toDecide,
+    toJudge: toJudgeByLane.ivan + toJudgeByLane.risedtc + toJudgeByLane.arch, toJudgeByLane,
+  }
 }

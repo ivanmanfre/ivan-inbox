@@ -4,6 +4,7 @@ import {
   sanitizeBody, severityShape, stateWord, stripMarkdown, type FamilyKey,
 } from './families'
 import type { Notification } from '../../../lib/turns'
+import { isExplicitFamily, kindFor } from '../../../lib/alertKinds'
 
 // Every body below is copied verbatim (or near-verbatim, trimmed) from
 // 00-notification-families.md §3 "Verbatim examples per family" — the brief's
@@ -33,10 +34,12 @@ const ALL_FAMILIES: FamilyKey[] = [
   'claude_turn',
   // db/065: the tick's own push row, superseded rather than accumulated.
   'bot',
+  // Run 39: brain drafts waiting for a Keep or Drop.
+  'brain_drafts_pending',
 ]
 
 describe('FAMILY_LABEL', () => {
-  it('covers all 17 keys plus chat, claude_turn and bot', () => {
+  it('covers all 17 keys plus chat, claude_turn, bot and brain_drafts_pending', () => {
     expect(Object.keys(FAMILY_LABEL).sort()).toEqual([...ALL_FAMILIES].sort())
   })
   it('never leaks a raw DB value as the label', () => {
@@ -398,5 +401,22 @@ describe('heroSaysFailed', () => {
       'Three drafts are waiting on you', 'The lane is running again',
       'Booked for Tuesday', 'Here is what the scan found',
     ]) expect(heroSaysFailed(hero)).toBe(false)
+  })
+})
+
+describe('brain_drafts_pending (run 39)', () => {
+  it('is labelled Brain drafts and points at the content lane', () => {
+    expect(FAMILY_LABEL.brain_drafts_pending).toBe('Brain drafts')
+    expect(familyLabel('brain_drafts_pending')).toBe('Brain drafts')
+    expect(FAMILY_LANE.brain_drafts_pending).toBe('content')
+  })
+  it('resolves to needs_you through the name fallback, no shared-file edit', () => {
+    expect(kindFor('brain_drafts_pending', 'info', 'x')).toBe('needs_you')
+    expect(kindFor('brain_drafts_pending', 'attention', 'x')).toBe('needs_you')
+    expect(isExplicitFamily('brain_drafts_pending')).toBe(false)
+  })
+  it('has a state word and a counted noun', () => {
+    expect(stateWord(n('brain_drafts_pending', 'Three brain drafts are ready to judge.'))).toBe('To judge')
+    expect(groupStateWord(3, 'brain_drafts_pending')).toBe('3 drafts to judge')
   })
 })

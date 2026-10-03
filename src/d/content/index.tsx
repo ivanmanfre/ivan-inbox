@@ -23,6 +23,8 @@ import type { ContentLane } from '../../lib/content'
 import { useContentData } from './useContentData'
 import { usePendingDecisions } from './decisions'
 import { useWeekRead } from './useWeek'
+import { useVerdicts } from './useVerdicts'
+import { useJudged } from './verdictStore'
 import { WeekStack } from './WeekStack'
 import { SHOWS, buildNow, laneOfRow, windowDays, dayWord, dayDate, type Show } from './weekModel'
 import { useMagnetCounts } from './useMagnetCounts'
@@ -86,8 +88,13 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const items = useMemo(() => Object.fromEntries(LANES.map(l => [l, byDay(seatItems(data.seats[l].rows, l, data.queueRows, now))])) as Record<Lane, ReturnType<typeof byDay>>, [data.seats, data.queueRows, now])
   // Use the fast saved week until a full seat read has arrived; it never overrides a newer live seat.
   const rows = useMemo(() => LANES.flatMap(l => data.seats[l].loadedAt ? data.seats[l].rows : weekRead.rows.filter(r => laneOfRow(r) === l)), [data.seats, weekRead.rows])
-  const nowModel = useMemo(() => buildNow(rows, { now, show, pending, blocks: data.blocks }), [rows, now, show, pending, data.blocks])
-  const allNow = useMemo(() => buildNow(rows, { now, pending, blocks: data.blocks }), [rows, now, pending, data.blocks])
+  // Keep / Drop (run 39): saved verdicts from the database + this session's taps. A dropped draft leaves the list,
+  // a kept one stays with a flag, an open strip holds its card's place and is not counted as work.
+  const saved = useVerdicts()
+  const judged = useJudged()
+  const verdicts = useMemo(() => new Map([...saved.map].map(([id, v]) => [id, v.verdict])), [saved.map])
+  const nowModel = useMemo(() => buildNow(rows, { now, show, pending, blocks: data.blocks, verdicts, judged }), [rows, now, show, pending, data.blocks, verdicts, judged])
+  const allNow = useMemo(() => buildNow(rows, { now, pending, blocks: data.blocks, verdicts, judged }), [rows, now, pending, data.blocks, verdicts, judged])
   const reading = LANES.some(l => !data.seats[l].loadedAt && !data.seats[l].error) || LANES.some(l => magnets[l] === undefined)
   const magnetLanes = LANES.filter(l => (magnets[l] ?? 0) > 0)
   const needs = allNow.ids.length + magnetLanes.reduce((n, l) => n + (magnets[l] ?? 0), 0)
