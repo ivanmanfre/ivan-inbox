@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ContentDraft } from '../../lib/content'
 import { seatItems } from './planModel'
-import { buildWeek, foldText, laneOfRow, openingOf, primaryOf, windowDays } from './weekModel'
+import { buildNow, buildWeek, foldText, laneOfRow, openingOf, primaryOf, windowDays } from './weekModel'
 
 // Tue 29 Sep 2026, 12:00 Warsaw.
 const NOW = Date.parse('2026-09-29T10:00:00Z')
@@ -192,5 +192,96 @@ describe('the fold and the opening', () => {
 
   it('the window is seven Warsaw days from today', () => {
     expect(windowDays(NOW)).toEqual(['2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05'])
+  })
+})
+
+describe('Review list: Approve / Drop on brain drafts (run 39)', () => {
+  const brain = (o: Partial<ContentDraft>) => row({ cb34_p2_member: true, ...o })
+  const now = (rows: ContentDraft[], extra: Partial<Parameters<typeof buildNow>[1]> = {}) => buildNow(rows, { now: NOW, ...extra })
+  const card = (w: ReturnType<typeof buildNow>, id: string) => w.groups.flatMap(g => g.cards).find(c => c.r.id === id)
+
+  it('the judge flag is only on brain cards in review or error that have no verdict', () => {
+    const w = now([
+      brain({ id: 'b-rev' }), brain({ id: 'b-err', status: 'error' }), brain({ id: 'b-rise', client_id: 'risedtc' }), brain({ id: 'b-arch', client_id: 'arch' }),
+      brain({ id: 'b-appr', status: 'approved' }), row({ id: 'plain' }), row({ id: 'tax', taxonomy: { source: 'content-brain' } as ContentDraft['taxonomy'] }),
+    ])
+    const judge = (id: string) => card(w, id)?.judge
+    expect(['b-rev', 'b-err', 'b-rise', 'b-arch', 'tax'].map(judge)).toEqual([true, true, true, true, true])
+    expect(judge('b-appr')).toBe(false)
+    expect(judge('plain')).toBe(false)
+    expect(w.toJudge).toBe(5)
+    expect(w.toJudgeByLane).toEqual({ ivan: 3, risedtc: 1, arch: 1 })
+  })
+
+  it('the count is taken before the seat filter, so the line says the same on every chip', () => {
+    const rows = [brain({ id: 'i' }), brain({ id: 'r', client_id: 'risedtc' })]
+    const w = now(rows, { show: 'risedtc' })
+    expect(w.groups.flatMap(g => g.cards).map(c => c.r.id)).toEqual(['r'])
+    expect(w.toJudge).toBe(2)
+  })
+
+  it('a saved Drop hides the card and it is not counted', () => {
+    const rows = [brain({ id: 'gone' }), brain({ id: 'stays' })]
+    const w = now(rows, { verdicts: new Map([['gone', 'drop']]) })
+    expect(w.ids).toEqual(['stays'])
+    expect(card(w, 'gone')).toBeUndefined()
+    expect(w.perLane.ivan).toBe(1)
+    expect(w.toDecide.ivan).toBe(1)
+    expect(w.toJudge).toBe(1)
+  })
+
+  it('a saved Approve (keep or edited) stays as a normal card with an Approved flag and no judge keys', () => {
+    const w = now([brain({ id: 'k', client_id: 'risedtc' }), brain({ id: 'ik' })], { verdicts: new Map<string, 'keep' | 'edited' | 'drop'>([['k', 'keep'], ['ik', 'edited']]) })
+    const k = card(w, 'k')!
+    expect(k.judge).toBe(false)
+    expect(k.kept).toBe(true)
+    expect(k.flags.some(f => f.key === 'kept' && f.text === 'Approved' && f.tone === 'dim')).toBe(true)
+    expect(k.primary).toBe('board')
+    // Keep on Ivan's seat approved it; a stale read that still says review must not offer Approve again.
+    expect(card(w, 'ik')!.primary).toBe('open')
+    expect(card(w, 'ik')!.kept).toBe(true)
+    expect(w.toJudge).toBe(0)
+    expect(w.perLane).toEqual({ ivan: 1, risedtc: 1, arch: 0 })
+  })
+
+  it('an open strip keeps its card slot but is not counted, not in ids and not in lanes', () => {
+    const rows = [brain({ id: 'held' }), brain({ id: 'next', created_at: new Date(NOW - 2 * H).toISOString() })]
+    for (const phase of ['held', 'saving', 'saved'] as const) {
+      const w = now(rows, { judged: new Map([['held', { verdict: 'keep' as const, phase, collapsed: false }]]) })
+      expect(card(w, 'held')?.strip).toBe(true)
+      expect(w.ids).toEqual(['next'])
+      expect(w.lanes.has('held')).toBe(false)
+      expect(w.perLane.ivan).toBe(1)
+      expect(w.toDecide.ivan).toBe(1)
+      expect(w.toJudge).toBe(1)
+    }
+  })
+
+  it('a Dropped strip still shows while it is open, then the card is gone once it is put away', () => {
+    const rows = [brain({ id: 'd' })]
+    const open = now(rows, { judged: new Map([['d', { verdict: 'drop' as const, phase: 'saved' as const, collapsed: false }]]) })
+    expect(card(open, 'd')?.strip).toBe(true)
+    const away = now(rows, { judged: new Map([['d', { verdict: 'drop' as const, phase: 'saved' as const, collapsed: true }]]) })
+    expect(card(away, 'd')).toBeUndefined()
+    expect(away.ids).toEqual([])
+  })
+
+  it('a collapsed Approve is a normal Approved card, counted', () => {
+    const w = now([brain({ id: 'k', client_id: 'risedtc' })], { judged: new Map([['k', { verdict: 'keep' as const, phase: 'saved' as const, collapsed: true }]]) })
+    expect(card(w, 'k')).toMatchObject({ kept: true, strip: false, judge: false })
+    expect(w.ids).toEqual(['k'])
+  })
+
+  it('a failed tap is no verdict: the card is still to judge, and its strip shows the failure', () => {
+    const w = now([brain({ id: 'f' })], { judged: new Map([['f', { verdict: 'drop' as const, phase: 'failed' as const, collapsed: false }]]) })
+    expect(card(w, 'f')).toMatchObject({ judge: true, strip: true, kept: false })
+    expect(w.ids).toEqual(['f'])
+    expect(w.toJudge).toBe(1)
+  })
+
+  it('held approve/skip decisions still drop the card, as before', () => {
+    const w = now([brain({ id: 'p' })], { pending: new Map([['p', 'approve' as const]]) })
+    expect(w.ids).toEqual([])
+    expect(w.toJudge).toBe(0)
   })
 })

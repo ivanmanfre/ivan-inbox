@@ -1,5 +1,5 @@
 import { BrainDraftBadge } from './BrainDraftBadge'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ConfirmProvider } from '../../wb/chrome/ConfirmSheet'
 import { RetryDraft } from '../../wb/content/actions'
 import { setBoardVisible, type ContentDraft } from '../../lib/content'
@@ -17,13 +17,19 @@ import { scheduleGuarded } from './writes'
 import { EarlyReadChip } from './EarlyReadChip'
 import { useEarlyReads } from './useEarlyReads'
 import type { PatternRead } from '../../lib/earlyReads'
+import { VerdictStrip } from './VerdictStrip'
+import { judge, markShown, useJudged } from './verdictStore'
 import './week.css'
+import './verdict.css'
 
 // CONTENT > REVIEW: THIS WEEK. One stack across the three seats, by day (today
 // first), then what is still in review with no date this week. A chip row
 // filters by seat. Each card: seat, time, the picture at its own shape, the
 // post's first lines with LinkedIn's "…see more", its flags, and ONE key.
 //
+// A BRAIN DRAFT still to judge carries two keys instead: Drop and Approve (run 39). One tap, then a strip in the
+// card's place with Undo (5 s); after Drop, the why is one more tap. Approve on Ivan's seat approves it (nothing publishes);
+// Approve on Rise or Arch records the verdict only; Drop deletes (or archives). Arch stays view only otherwise.
 // The keys: Approve (Ivan, one tap, Undo for 8 s, then the next card), Put on
 // board (Rise, confirmed: it reaches Mattan), Schedule (Ivan, confirmed: it goes
 // out on LinkedIn), Open (everything else). The date control (Ivan, Rise) is
@@ -64,6 +70,7 @@ export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onCh
   const [showOld, setShowOld] = useState(false)
   const [quick, setQuick] = useState<Quick>('all')
   const earlyReads = useEarlyReads([...week.groups.flatMap(g => g.cards), ...week.older].map(c => c.r))
+  const judged = useJudged()
 
   // Auto-advance: the next card's key takes the focus (and comes into view) once this one has moved on.
   const advance = useCallback((id: string) => {
@@ -71,7 +78,9 @@ export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onCh
     const next = i >= 0 ? week.ids.slice(i + 1).find(x => x !== id) : null
     if (!next) return
     requestAnimationFrame(() => {
-      const el = document.querySelector<HTMLElement>(`[data-card-id="${next}"] .cn-wc-key`)
+      const at = document.querySelector<HTMLElement>(`[data-card-id="${next}"]`)
+      // Approve is the safe key of the pair (it never publishes), so it takes the focus on a card to judge.
+      const el = at?.querySelector<HTMLElement>('.cn-wc-key-d') ?? at?.querySelector<HTMLElement>('.cn-wc-key')
       if (!el) return
       el.focus({ preventScroll: true })
       el.closest('article')?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
@@ -131,6 +140,21 @@ export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onCh
     finally { setBusy(null) }
   }, [advance, confirm, onChanged, onOpen, toast])
 
+  // Approve / Drop: one tap, held for the Undo window (verdictStore). The one question is the QA override:
+  // Approve on Ivan's seat approves, and a draft QA refused must say so first.
+  const judgeIt = useCallback(async (c: WeekCard, verdict: 'keep' | 'drop') => {
+    if (verdict === 'keep' && c.lane === 'ivan' && c.r.status === 'error') {
+      const ok = await confirm({
+        title: 'Approve this draft anyway?',
+        message: 'QA refused this one. Approving overrides that verdict. Nothing publishes, scheduling is the separate act below.',
+        confirmText: 'Approve', verb: 'confirm',
+      })
+      if (!ok) return
+    }
+    judge(c.r.id, verdict, { lane: c.lane, title: c.title, onCommitted: onChanged })
+    advance(c.r.id)
+  }, [advance, confirm, onChanged])
+
   const act = (c: WeekCard) => {
     if (c.primary === 'approve') approve(c)
     else if (c.primary === 'board') void board(c)
@@ -143,11 +167,23 @@ export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onCh
   const qf = (QUICK.find(x => x[0] === quick) ?? QUICK[0])[2]
   const groups = quick === 'all' ? week.groups : week.groups.map(g => ({ ...g, cards: g.cards.filter(qf) })).filter(g => g.cards.length)
   const older = quick === 'all' ? week.older : week.older.filter(qf)
-  const empty = groups.length === 0 && older.length === 0
-  const cards = (list: WeekCard[], dayed: boolean) => list.map(c => (
-    <Card key={c.r.id} c={c} when={whenOf(c, now, dayed)} open={c.r.id === openId} busy={busy === c.r.id}
-      read={earlyReads.get(c.r.id)} nowView={nowView} onChanged={onChanged} onOpen={() => onOpen(c.r.id, c.lane)} onKey={() => act(c)} onDate={() => setMoving(c)} />
-  ))
+  // An open strip whose draft has left the list (a refetch, the brain's visibility recheck, a dropped row that is
+  // gone) must not vanish with it: it stands at the top of Drafts, in the order they were judged.
+  const inList = new Set(all.map(c => c.r.id))
+  const orphans = nowView ? [...judged.values()]
+    .filter(e => !e.collapsed && !inList.has(e.id) && (show === 'all' || show === e.lane))
+    .sort((a, b) => a.at - b.at) : []
+  const orphanStrips = orphans.map(e => <VerdictStrip key={e.id} e={e} />)
+  const empty = groups.length === 0 && older.length === 0 && orphans.length === 0
+  const cards = (list: WeekCard[], dayed: boolean) => list.map(c => {
+    const e = c.strip ? judged.get(c.r.id) : undefined
+    if (e) return <VerdictStrip key={c.r.id} e={e} />
+    return (
+      <Card key={c.r.id} c={c} when={whenOf(c, now, dayed)} open={c.r.id === openId} busy={busy === c.r.id}
+        read={earlyReads.get(c.r.id)} nowView={nowView} onChanged={onChanged} onOpen={() => onOpen(c.r.id, c.lane)} onKey={() => act(c)} onDate={() => setMoving(c)}
+        onJudge={v => { void judgeIt(c, v) }} />
+    )
+  })
 
   return (
     <section className="cn-wk2" aria-label={nowView ? "Needs your tap" : "This week"}>
@@ -158,6 +194,9 @@ export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onCh
           </button>
         ))}
       </div>
+      {nowView && week.toJudge > 0 && (
+        <p className="cn-judge-line" role="status"><b>{week.toJudge}</b> brain draft{week.toJudge === 1 ? '' : 's'} to judge · Approve or Drop on each card</p>
+      )}
       {!nowView && all.length > 0 && (
         <div className="cn-wk2-quick" role="tablist" aria-label="Filter the stack">
           {QUICK.filter(([k]) => k === 'all' || k === quick || qn[k] > 0).map(([k, label]) => (
@@ -180,9 +219,16 @@ export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onCh
               {groups.map(g => (
                 <section key={g.key} className={`cn-wk2-g cn-wk2-${g.kind}${g.key === 'fix' ? ' cn-needs-fix' : ''}`} aria-label={`${g.label}${g.date ? `, ${g.date}` : ''}`}>
                   <h2 className="cn-wk2-h"><b>{g.label}</b>{g.date && <span>{g.kind === 'review' ? g.date : g.date.replace(/^\w+ /, '')}</span>}{!nowView && <i>{g.cards.length}</i>}</h2>
+                  {g.key === 'drafts' && orphanStrips}
                   {cards(g.cards, g.kind !== 'review')}
                 </section>
               ))}
+              {orphans.length > 0 && !groups.some(g => g.key === 'drafts') && (
+                <section className="cn-wk2-g cn-wk2-review" aria-label="Drafts">
+                  <h2 className="cn-wk2-h"><b>Drafts</b></h2>
+                  {orphanStrips}
+                </section>
+              )}
               {older.length > 0 && (
                 <section className="cn-wk2-g" aria-label="Older than two weeks">
                   <div className="cn-wk2-fold">
@@ -222,8 +268,9 @@ function whenOf(c: WeekCard, now: number, dayed: boolean): string {
   return dayed && !c.overdue ? hm : `${dayLabel(warsawDay(at))}, ${hm}`
 }
 
-function Card({ c, when, open, busy, onOpen, onKey, onDate, nowView, onChanged, read }: {
+function Card({ c, when, open, busy, onOpen, onKey, onDate, onJudge, nowView, onChanged, read }: {
   read?: PatternRead
+  onJudge: (v: 'keep' | 'drop') => void
   nowView: boolean
   onChanged: () => void
   c: WeekCard; when: string; open: boolean; busy: boolean
@@ -236,8 +283,22 @@ function Card({ c, when, open, busy, onOpen, onKey, onDate, nowView, onChanged, 
   const fold = foldText(c.body, 3, wide ? 90 : 40)
   const decision = c.primary !== 'open'
   const stop = (e: React.SyntheticEvent) => e.stopPropagation()
+  // Time to verdict starts when a card to judge is first half on screen (once per draft).
+  const ref = useRef<HTMLElement>(null)
+  const judgeable = c.judge
+  const id = c.r.id
+  useEffect(() => {
+    if (!judgeable) return
+    const el = ref.current
+    if (!el || typeof IntersectionObserver === 'undefined') { markShown(id); return }
+    const io = new IntersectionObserver(entries => {
+      if (entries.some(en => en.isIntersecting)) { markShown(id); io.disconnect() }
+    }, { threshold: 0.5 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [judgeable, id])
   return (
-    <article className={`cn-wc${open ? ' cn-wc-on' : ''}`} data-card-id={c.r.id} data-lane={c.lane} aria-current={open ? 'true' : undefined}>
+    <article ref={ref} className={`cn-wc${open ? ' cn-wc-on' : ''}`} data-card-id={c.r.id} data-lane={c.lane} aria-current={open ? 'true' : undefined}>
       <div className="cn-wc-meta">
         <span className={`cn-wc-lane cn-wc-l-${c.lane}`}>{LANE_NAME[c.lane]}</span>
         <span className="cn-wc-when">{when}</span>
@@ -261,7 +322,7 @@ function Card({ c, when, open, busy, onOpen, onKey, onDate, nowView, onChanged, 
         ) : <span className="cn-wc-nopic" aria-hidden="true">Text</span>}
       </div>
       <BrainDraftBadge draft={c.r} />
-      <div className="cn-wc-acts">
+      <div className={`cn-wc-acts${c.judge ? ' cn-wc-acts-j' : ''}`}>
         {c.canDate && (
           <button type="button" className="cn-wc-date" data-verb="card-date" onClick={onDate} disabled={busy}>
             {c.r.scheduled_at ? 'Move date' : 'Add a date'}
@@ -269,10 +330,18 @@ function Card({ c, when, open, busy, onOpen, onKey, onDate, nowView, onChanged, 
         )}
         {nowView && c.lane !== 'arch' && c.flags.some(f => ['blocked', 'stuck', 'stalled', 'error'].includes(f.key)) && <ConfirmProvider><RetryDraft d={c.r} lane={c.lane} onDone={onChanged} label="Fix" /></ConfirmProvider>}
         <span className="cn-grow" />
-        {nowView && decision && <button type="button" className="cn-wc-date" data-verb="card-open" onClick={onOpen}>Open</button>}
-        <button type="button" className={`cn-wc-key${decision ? ' cn-wc-key-d' : ''}`} data-verb={`card-${c.primary}`} disabled={busy} onClick={onKey}>
-          {busy ? 'Working…' : PRIMARY_LABEL[c.primary]}
-        </button>
+        {/* A card to judge has four keys: on the phone the title and the picture already open the post, so Open goes. */}
+        {nowView && (c.judge ? wide : decision) && <button type="button" className="cn-wc-date" data-verb="card-open" onClick={onOpen}>Open</button>}
+        {c.judge ? (
+          <>
+            <button type="button" className="cn-wc-key cn-judge-key" data-verb="card-drop" disabled={busy} onClick={() => onJudge('drop')}>Drop</button>
+            <button type="button" className="cn-wc-key cn-wc-key-d cn-judge-key cn-judge-keep" data-verb="card-keep" disabled={busy} onClick={() => onJudge('keep')}>Approve</button>
+          </>
+        ) : (
+          <button type="button" className={`cn-wc-key${decision ? ' cn-wc-key-d' : ''}`} data-verb={`card-${c.primary}`} disabled={busy} onClick={onKey}>
+            {busy ? 'Working…' : PRIMARY_LABEL[c.primary]}
+          </button>
+        )}
       </div>
     </article>
   )

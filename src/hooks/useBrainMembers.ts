@@ -71,8 +71,11 @@ function bridge() {
   let channel: ReturnType<typeof supabase.channel> | null = null
   let live = true
   const onExternal = () => { invalidate(); void revalidate() }
+  // Only the WINDOW regaining focus counts. With capture on, every button's own focus (Chrome focuses a button on
+  // mousedown) used to land here too, hide the brain cards mid-click and swallow the click (run 39 harness probe).
+  const onFocus = (e: FocusEvent) => { if (e.target === window || e.target === document) onExternal() }
   const onVisibility = () => { invalidate(); if (document.visibilityState === 'visible') void revalidate() }
-  window.addEventListener('focus', onExternal, true)
+  window.addEventListener('focus', onFocus, true)
   window.addEventListener('wb-rows-changed', onExternal, true)
   document.addEventListener('visibilitychange', onVisibility)
   const timer = window.setInterval(() => { void revalidate() }, 5000)
@@ -105,7 +108,7 @@ function bridge() {
     if (session?.user.id) bind(session.user.id)
   })
 
-  return () => { live = false; ++revision; activeRequest?.abort(); auth?.data.subscription.unsubscribe(); window.clearInterval(timer); if (channel) void supabase.removeChannel(channel); window.removeEventListener('focus', onExternal, true); window.removeEventListener('wb-rows-changed', onExternal, true); document.removeEventListener('visibilitychange', onVisibility) }
+  return () => { live = false; ++revision; activeRequest?.abort(); auth?.data.subscription.unsubscribe(); window.clearInterval(timer); if (channel) void supabase.removeChannel(channel); window.removeEventListener('focus', onFocus, true); window.removeEventListener('wb-rows-changed', onExternal, true); document.removeEventListener('visibilitychange', onVisibility) }
 }
 
 /** Shared feed and one serial fallback worker for every on-screen member consumer. */

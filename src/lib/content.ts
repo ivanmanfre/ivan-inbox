@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { label } from './labels'
+import { captureOrigin } from './verdicts'
 
 // Content domain: Ivan's own posts/carousels AND Mattan Danino's board, both out
 // of the same carousel_drafts table. There is no per-client table fork — the
@@ -980,6 +981,16 @@ export class DraftSaveConflict extends Error {
 }
 
 /**
+ * Run 39: before the first edit save of a brain draft, ask the database to keep
+ * the body as it stood (cb39_capture_origin, idempotent). A failure is ignored:
+ * Ivan's edit is never blocked by it.
+ */
+async function captureBrainOrigin(id: string, taxonomy: unknown): Promise<void> {
+  if (taxonomyValue(taxonomy, 'source') !== 'content-brain') return
+  try { await captureOrigin(id) } catch { /* the server still detects the edit from the released hash */ }
+}
+
+/**
  * Save an edited body, refusing to clobber a body that moved underneath it.
  *
  * @param base  the post_body the editor was opened on — the compare half of the
@@ -1009,6 +1020,12 @@ export async function saveDraftBody(
       theirUpdatedAt: (pre.data.updated_at ?? null) as string | null,
     })
   }
+
+  // 1b — a brain draft: store its current body as the pre-edit original before
+  // the first edit lands, so the server can tell what Ivan changed. Idempotent
+  // (first capture wins). Never blocks the edit: the server still detects the
+  // edit from the released hash.
+  await captureBrainOrigin(id, taxonomy)
 
   // 2 — the write, gated on updated_at not having moved since the pre-flight
   // read. Using the PRE-FLIGHT value (not the load-time one) keeps the CAS about
@@ -1509,6 +1526,9 @@ export async function saveClientDraftBody(
       theirUpdatedAt: (pre.data.updated_at ?? null) as string | null,
     })
   }
+
+  // A brain draft: capture its pre-edit body first (see saveDraftBody, step 1b).
+  await captureBrainOrigin(id, taxonomy)
 
   const freshUpdatedAt = (pre.data.updated_at ?? baseUpdatedAt) as string | null
   let stamp = supabase.from('carousel_drafts')

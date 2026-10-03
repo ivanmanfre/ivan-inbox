@@ -9,6 +9,7 @@
    varied only in fill.
    ========================================================================== */
 import { useEffect, useState } from 'react'
+import { brainNeedsVerdict } from '../../lib/brainVerdictGate'
 import { Banner, Button, Chip, Icon, Input, Kbd, Textarea } from '../../ds'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import {
@@ -386,6 +387,8 @@ export function DeleteDraft({ d, onDone, disabled }: {
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  // Run 39: Drop is the delete for a brain draft in review or error.
+  if (brainNeedsVerdict(d)) return null
 
   const run = async () => {
     setBusy(true); setErr('')
@@ -439,6 +442,9 @@ export function DeleteClientDraft({ d, lane, onDone }: {
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+
+  // Run 39: Drop is the delete for a brain draft in review or error.
+  if (brainNeedsVerdict(d)) return null
 
   if (!clientDeletable(lane, d.board_visible)) {
     return (

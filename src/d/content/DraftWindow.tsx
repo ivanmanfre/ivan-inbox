@@ -21,6 +21,9 @@ import { ScheduleRow, localInput } from './ScheduleRow'
 import { useDraftVerbs } from './useDraftVerbs'
 import { EarlyReadChip } from './EarlyReadChip'
 import { useEarlyReads } from './useEarlyReads'
+import { useJudged, retryVerdict, markShown } from './verdictStore'
+import { useVerdicts } from './useVerdicts'
+import { brainNeedsVerdict } from '../../lib/brainVerdictGate'
 
 // THE DRAFT WINDOW. Desktop: docked right of the wall. Phone: the page itself
 // (takeover), keys at the foot of the content. j/k walk the queue, Esc closes.
@@ -120,6 +123,21 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
     d.funnel_stage ? `Aim: ${d.funnel_stage[0].toUpperCase()}${d.funnel_stage.slice(1)}` : null,
   ].filter(Boolean).join(' · ')
   const actionable = reviewActionable(d.status, lane)
+  // RUN 39: a brain draft in review or error is judged, never approved, skipped
+  // or deleted. `entry` is this session's tap on it (held, saving, saved or failed).
+  const judgeable = brainNeedsVerdict(d)
+  // Time to verdict starts when the open post shows a draft to judge (first time only).
+  const draftId = d.id
+  useEffect(() => { if (judgeable) markShown(draftId) }, [judgeable, draftId])
+  const entry = useJudged().get(d.id)
+  // A verdict saved earlier (another tab, a reload) counts as judged too.
+  const saved = useVerdicts(judgeable).map.get(d.id)
+  const fresh = judgeable && !entry && !saved
+  const dropKey = fresh ? <Key verb="dw-drop" onClick={() => void v.verdict('drop')} disabled={v.busy}>Drop</Key> : null
+  const keepKey = fresh ? <Key primary verb="dw-keep" onClick={() => void v.verdict('keep')} disabled={v.busy} sub={lane === 'ivan' ? 'no date yet' : undefined}>Approve</Key> : null
+  const verdictNote = !judgeable || (!entry && !saved) ? null : entry?.phase === 'failed'
+    ? <Key primary verb="dw-verdict-retry" onClick={() => retryVerdict(d.id)}>Try again</Key>
+    : <span className="cn-dim" data-verb="dw-verdict-done">{(entry ?? saved)?.verdict === 'drop' ? 'Dropped' : 'Approved'}</span>
   const whenAt = new Date(when)
 
   let keys: React.ReactNode
@@ -129,11 +147,12 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
     foot = 'Save or cancel the edit first. Approve, Skip and j/k wait until the edit ends.'
   } else if (lane === 'ivan') {
     keys = <>
-      <Key verb="skip" onClick={() => v.decide('skip')} disabled={!actionable || v.busy}>Skip</Key>
+      {judgeable ? dropKey : <Key verb="skip" onClick={() => v.decide('skip')} disabled={!actionable || v.busy}>Skip</Key>}
       <Key verb="edit" onClick={v.startEdit} disabled={v.busy}>Edit</Key>
-      <Key primary={!schedulable} verb="approve" onClick={() => v.decide('approve')} disabled={!actionable || v.busy} sub="no date yet">Approve</Key>
+      {judgeable ? <>{keepKey}{verdictNote}</>
+        : <Key primary={!schedulable} verb="approve" onClick={() => v.decide('approve')} disabled={!actionable || v.busy} sub="no date yet">Approve</Key>}
       {schedulable && (dateOpen ? (
-        <Key primary verb="schedule" onClick={() => v.schedule(whenAt)} disabled={v.busy || Number.isNaN(whenAt.getTime())}
+        <Key primary={!judgeable} verb="schedule" onClick={() => v.schedule(whenAt)} disabled={v.busy || Number.isNaN(whenAt.getTime())}
           sub={Number.isNaN(whenAt.getTime()) ? 'pick a time' : `${warsawDow(whenAt)} ${warsawDm(whenAt)} · ${when.slice(11)}`}>
           {d.status === 'scheduled' ? 'Reschedule' : 'Schedule'}
         </Key>
@@ -143,19 +162,21 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
         </Key>
       ))}
     </>
-    foot = <>{!actionable && `Approve and Skip act on drafts in review; this one is ${STAGE_LABEL[stage].toLowerCase()}. `}
+    foot = <>{judgeable ? 'Approve approves it and Drop deletes it. Nothing publishes until it is scheduled. '
+      : !actionable && `Approve and Skip act on drafts in review; this one is ${STAGE_LABEL[stage].toLowerCase()}. `}
       {!schedulable && `Schedule is not offered: this draft is ${d.published_at ? 'published' : STAGE_LABEL[stage].toLowerCase()}. `}
       {schedulable && dateOpen && d.status === 'scheduled' && <><button type="button" data-verb="schedule-hide" onClick={() => setDateOpen(false)}>Hide date</button>. </>}<span className="cn-kk-hint">Esc closes, j/k walks.</span></>
   } else {
     const promotable = canPromote(d.status, lane) && !v.visible
     const why = clientWhyNot(d, lane, stage, { promotable, unpromotable: canUnpromote(lane, v.visible), editable: clientEditable(d.status, lane) })
     keys = <>
-      {clientDeletable(lane, v.visible) && <Key verb="delete" onClick={v.removeClient} disabled={v.busy}>Delete</Key>}
+      {judgeable ? <>{dropKey}{keepKey}{verdictNote}</>
+        : clientDeletable(lane, v.visible) && <Key verb="delete" onClick={v.removeClient} disabled={v.busy}>Delete</Key>}
       {clientEditable(d.status, lane) && <Key verb="edit" onClick={v.startEdit} disabled={v.busy}>Edit</Key>}
       {promotable && <Key primary verb="board-on" onClick={() => v.board(true)} disabled={v.busy} sub={`${OWNER[lane]} sees it`}>Put on {POSS[lane]} board</Key>}
       {canUnpromote(lane, v.visible) && <Key verb="board-off" onClick={() => v.board(false)} disabled={v.busy}>Take off {POSS[lane]} board</Key>}
     </>
-    foot = <>{v.visible ? `On his board: ${OWNER[lane]} decides from there. Take it off to delete it.`
+    foot = <>{judgeable && `Approve records your verdict only, ${OWNER[lane]} sees nothing. Drop deletes the draft. `}{v.visible ? `On his board: ${OWNER[lane]} decides from there. Take it off to delete it.`
       : promotable ? `The only act here that reaches a client. Nothing publishes: ${OWNER[lane]} approves, edits or schedules it on his board.` : null}
       {why.map(w => <span key={w} className="cn-why2">{w}</span>)}</>
   }
@@ -208,6 +229,7 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
           <ScheduleRow slot={d.scheduled_at ? null : slot} when={when} setWhen={setWhen} days={days} taken={armed} armedFailed={armedFailed} current={d.status === 'scheduled' ? d.scheduled_at : null} />
         )}
         {v.err && <p className="cn-say cn-bad" role="alert">{v.err}</p>}
+        {judgeable && entry?.phase === 'failed' && entry.error && <p className="cn-say cn-bad" role="alert">{entry.error}</p>}
         <div className="cn-acts">{keys}</div>
         <div className="cn-foot">{foot}</div>
       </div>

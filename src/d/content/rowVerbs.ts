@@ -4,6 +4,7 @@ import {
   reviewActionable, setBoardVisible, type ContentDraft,
 } from '../../lib/content'
 import type { RowCap } from '../../exp/v2c/commandStore'
+import { brainNeedsVerdict } from '../../lib/brainVerdictGate'
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
 import type { Lane } from './model'
@@ -17,6 +18,9 @@ import { HOLD_MS, holdDecision, undoDecision } from './decisions'
 export type RowVerb = 'approve' | 'skip' | 'board' | 'delete'
 
 export function rowCaps(d: ContentDraft, lane: Lane): RowCap[] {
+  // Run 39: a brain draft in review or error is judged (Keep or Drop), so the
+  // bulk layer gets neither approve, skip nor delete for it. Board still applies.
+  if (brainNeedsVerdict(d)) return canPromote(d.status, lane) && boardGroupOf(d) !== 'board' ? ['promote'] : []
   return [
     ...(reviewActionable(d.status, lane) ? (['approve', 'skip'] as RowCap[]) : []),
     ...(canPromote(d.status, lane) && boardGroupOf(d) !== 'board' ? (['promote'] as RowCap[]) : []),
