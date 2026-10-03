@@ -6,9 +6,11 @@ import {
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
 import { warsawDayTime } from '../ui/time'
-import { OWNER, POSS, canSchedule, type Lane } from './model'
+import { OWNER, POSS, canSchedule, titleOf, type Lane } from './model'
 import { scheduleGuarded } from './writes'
 import { HOLD_MS, holdDecision, undoDecision } from './decisions'
+import { VERDICT_HOLD_MS, judge, undoVerdict } from './verdictStore'
+import type { Verdict } from '../../lib/verdicts'
 
 // The draft window's writes. Every write is today's function with today's
 // payload (lib/content, lib/studioActions); every confirm keeps today's words.
@@ -95,6 +97,32 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
     advance()
   }, [advance, busy, confirm, d.id, d.status, editing, refresh, toast])
 
+  // KEEP / DROP on a brain draft (run 39). One tap, held for the Undo window and
+  // then written by verdictStore (one database call: the verdict, then today's
+  // approve or delete). Ivan-lane Keep on an errored draft asks the same QA
+  // override first. The window walks on at once, like decide().
+  const verdict = useCallback(async (kind: Verdict) => {
+    if (editing || busy) return
+    if (kind === 'keep' && lane === 'ivan' && d.status === 'error') {
+      const ok = await confirm({
+        title: 'Approve this draft anyway?',
+        message: 'QA refused this one. Approving overrides that verdict. Nothing publishes, scheduling is the separate act below.',
+        confirmText: 'Approve', verb: 'confirm',
+      })
+      if (!ok) return
+    }
+    setErr('')
+    const id = d.id
+    judge(id, kind, { lane, title: titleOf(d), onCommitted: refresh })
+    toast.show({
+      id: `verdict-${id}`, ms: VERDICT_HOLD_MS,
+      message: kind === 'keep' ? 'Kept.' : 'Dropped.',
+      sub: 'Add a reason on its card in Review, or move on.',
+      action: { label: 'Undo', verb: 'undo-verdict', run: () => { if (!undoVerdict(id)) toast.show({ message: 'Too late to undo: it was already written.' }) } },
+    })
+    advance()
+  }, [advance, busy, confirm, d, editing, lane, refresh, toast])
+
   const schedule = useCallback(async (at: Date) => {
     if (editing || busy) return
     if (Number.isNaN(at.getTime())) { setErr('That is not a time.'); return }
@@ -164,5 +192,5 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
   }, [advance, busy, confirm, d.id, d.taxonomy, lane, refresh, toast])
 
   const dismissConflict = useCallback(() => setConflict(null), [])
-  return { editing, text, setText, shown, conflict, busy, err, visible, startEdit, cancelEdit, save, takeTheirs, keepMine, dismissConflict, decide, schedule, board, removeClient }
+  return { editing, text, setText, shown, conflict, busy, err, visible, startEdit, cancelEdit, save, takeTheirs, keepMine, dismissConflict, decide, verdict, schedule, board, removeClient }
 }

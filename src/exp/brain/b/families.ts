@@ -41,6 +41,9 @@ export type FamilyKey =
   // any turn (operator or bot) that finishes while the phone is away: `bot` is
   // raised only for a bot turn that actually carries a pill worth surfacing.
   | 'bot'
+  // Run 39: brain drafts waiting for Ivan's Keep or Drop. Its kind resolves to
+  // 'needs_you' through alert-kinds' name fallback ("pending"), no shared edit.
+  | 'brain_drafts_pending'
 
 // ---------------------------------------------------------------------------
 // 1. The human label. What "family" printed on screen actually says.
@@ -66,6 +69,7 @@ export const FAMILY_LABEL: Record<FamilyKey, string> = {
   chat: 'Conversation',
   claude_turn: 'Claude answered',
   bot: 'Claude needs you',
+  brain_drafts_pending: 'Brain drafts',
 }
 
 /** Any string, mapped to its human label; an unknown key falls back rather than throwing. */
@@ -106,6 +110,8 @@ export const FAMILY_LANE: Record<FamilyKey, Job | null> = {
   // Same reason as claude_turn: the row's own url already carries
   // `?thread=<bot thread>&turn=<id>`, so the tap goes straight to the answer.
   bot: null,
+  // The drafts to judge live in Review.
+  brain_drafts_pending: 'content',
 }
 
 // ---------------------------------------------------------------------------
@@ -272,6 +278,7 @@ export function stateWord(n: Pick<Notification, 'family' | 'title' | 'body' | 's
     // finished), just on the tick's own push path rather than the "phone was
     // away" one.
     case 'bot': word = n.severity === 'error' ? 'The turn failed' : 'Answered'; break
+    case 'brain_drafts_pending': word = n.count > 1 ? `${n.count} to judge` : 'To judge'; break
     default: word = FALLBACK_BY_SEVERITY[n.severity] ?? 'Update'
   }
   // The safety net: whatever branch ran, a raw enum token never survives to
@@ -317,6 +324,7 @@ const COUNTED_NOUN: Record<FamilyKey, [one: string, many: string]> = {
   chat: ['message', 'messages'],
   claude_turn: ['answer', 'answers'],
   bot: ['answer', 'answers'],
+  brain_drafts_pending: ['draft to judge', 'drafts to judge'],
 }
 
 /** The hero line for a folded GROUP: the count and the thing it counts. */

@@ -16,6 +16,7 @@ import {
   type ContentDraft, type ContentLane, type ContentStage,
 } from '../../lib/content'
 import { draftScore } from '../../lib/contentFilters'
+import { brainNeedsVerdict } from '../../lib/brainVerdictGate'
 import { label } from '../../lib/labels'
 import { publishStoppedLine } from '../../lib/publishBlock'
 import type { RowCap } from '../../exp/v2c/commandStore'
@@ -93,7 +94,12 @@ export function Card({ d, lane, refresh, onOpen, active, queue, glance, blocked 
   const failure = stage === 'error' && !blocked ? draftFailure(d) : null
   // WHAT A BULK ACTION MAY DO TO THIS ROW. Both rules are the ones the
   // single-row controls already obey, read from the same functions.
-  const caps: RowCap[] = [
+  // Run 39: a brain draft in review or error is judged in Review (Keep or Drop),
+  // so it offers no approve, skip or delete here.
+  const judgeOnly = brainNeedsVerdict(d)
+  const caps: RowCap[] = judgeOnly ? [
+    ...(canPromote(d.status, lane) && boardGroupOf(d) !== 'board' ? (['promote'] as RowCap[]) : []),
+  ] : [
     ...(reviewActionable(d.status, lane) ? (['approve', 'skip'] as RowCap[]) : []),
     ...(canPromote(d.status, lane) && boardGroupOf(d) !== 'board' ? (['promote'] as RowCap[]) : []),
     ...(lane === 'ivan' || boardGroupOf(d) !== 'board' ? (['delete'] as RowCap[]) : []),
@@ -207,13 +213,22 @@ export function Card({ d, lane, refresh, onOpen, active, queue, glance, blocked 
           {/* The two review controls stay INSIDE the row rather than growing a
               button bar underneath it, which is what keeps a 285-row list
               inside the density band. */}
-          {reviewActionable(d.status, lane) && (
+          {judgeOnly && (
+            <span className="a-ct-acts" onClick={e => e.stopPropagation()}>
+              <button type="button" className="a-ct-judge" data-verb="judge-in-review"
+                onClick={() => { window.location.hash = '#exp/d/content/now' }}
+                style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '0 8px', background: 'none', border: 0, color: 'inherit', font: 'inherit', textDecoration: 'underline', cursor: 'pointer' }}>
+                Judge in Review
+              </button>
+            </span>
+          )}
+          {!judgeOnly && reviewActionable(d.status, lane) && (
             <ReviewActions id={d.id} onDone={refresh} demoteApprove={stage === 'error'} />
           )}
           {/* The client lane's equivalent, in the same slot. The two are
               mutually exclusive by lane. */}
           {boardGroupOf(d) !== 'board' && <PromoteRow d={d} lane={lane} onDone={refresh} />}
-          <RowDelete d={d} lane={lane} onDone={refresh} />
+          {!judgeOnly && <RowDelete d={d} lane={lane} onDone={refresh} />}
         </>
       }
     />
