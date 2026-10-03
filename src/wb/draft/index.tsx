@@ -55,6 +55,7 @@ import {
   DeleteClientDraft, DeleteDraft, NoteComposer, RegenDraft, RestartDraft, ScheduleDraft, SwapImage,
 } from './actions'
 import { LinkedInPost } from './LinkedInPost'
+import { brainNeedsVerdict } from '../../lib/brainVerdictGate'
 import { absTime, linkedInPostUrl, postTime, relOrAhead, relTime, typeLabel } from '../../exp/v2c/fmt'
 import './draft.css'
 
@@ -262,7 +263,9 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
   }
 
   // ---- decisions ----------------------------------------------------------
-  const actionable = reviewActionable(d.status, lane)
+  // A brain draft in review is judged with Keep / Drop in Review (run 39): no Approve or Skip here.
+  const judgeInReview = brainNeedsVerdict(d)
+  const actionable = reviewActionable(d.status, lane) && !judgeInReview
   const at = queue.findIndex(q => q.id === d.id)
   const nextId = at >= 0 && at + 1 < queue.length ? queue[at + 1].id : null
 
@@ -672,6 +675,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
   const decisionBar = (
     <div className="a-dw-acts">
       <div className="a-dw-decide">
+        {judgeInReview && <a className="a-dw-judge" href="#exp/d/content/now">Judge it in Review</a>}
         {actionable && (
           // A row that already failed does not get to keep Approve at primary
           // weight: approving it is an override, not a clean pass.
