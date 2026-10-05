@@ -223,3 +223,5 @@ i.dl-out{background:#6f6f68}
 /* run 51: the DM outreach report moved here from Content > Strategy */
 .dl-outreach-link{display:inline-flex;align-items:center;min-height:44px;margin:14px 2px 8px;font:500 13px var(--m);color:var(--t2);text-decoration:underline;text-underline-offset:3px}
 .dl-outreach-link:hover{color:var(--t1)}
+/* the report is today's component: give its shell the frame's ground, as Content does (content2.css) */
+.d-app .dl-sheet .cn-legacy.ds-shell{background:var(--bg);padding:0;gap:0;min-height:0}
