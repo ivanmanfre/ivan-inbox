@@ -15,6 +15,12 @@ type ReceivedEmail = {
   attachments?: { id: string; filename: string; content_type?: string; content_id?: string | null; size: number }[]
 }
 const escape = (s: string) => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
+const fitImages = (html: string) => html.replace(/<img\b[^>]*>/gi, tag => {
+  const sizing = 'max-width:100%;height:auto'
+  return /\bstyle\s*=\s*(["'])(.*?)\1/i.test(tag)
+    ? tag.replace(/\bstyle\s*=\s*(["'])(.*?)\1/i, (_, quote: string, style: string) => `style=${quote}${style};${sizing}${quote}`)
+    : tag.replace(/\s*\/?>(?=$)/, ending => ` style="${sizing}"${ending}`)
+})
 const base64 = (bytes: Uint8Array) => {
   let binary = ''
   for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192))
@@ -48,7 +54,7 @@ export async function forwardReceivedEmail(resendId: string, from: string, input
     method: 'POST', headers: { ...headers, 'Content-Type': 'application/json', 'Idempotency-Key': `inbox-forward/${input.message_id}/${input.request_id}` },
     body: JSON.stringify({ from, to: [input.to], subject, ...(email.test(replyTo.trim()) ? { reply_to: replyTo.trim() } : {}),
       ...(original.text ? { text: intro + original.text } : {}),
-      html: `<div style="white-space:pre-wrap">${escape(intro)}</div>${original.html || `<div style="white-space:pre-wrap">${escape(original.text || '')}</div>`}`,
+      html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;overflow-wrap:anywhere"><div style="white-space:pre-wrap">${escape(intro)}</div>${original.html ? fitImages(original.html) : `<div style="white-space:pre-wrap">${escape(original.text || '')}</div>`}</div>`,
       ...(attachments.length ? { attachments } : {}), tags: [{ name: 'source', value: 'inbox-forward' }] }),
   })
   const result = await sent.json()

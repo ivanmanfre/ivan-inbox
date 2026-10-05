@@ -6,6 +6,17 @@ const original = { id: 'received-id', from: 'Ofir <ofir.b@doktorabc.com>', to: [
 const json = (v: unknown, status = 200) => new Response(JSON.stringify(v), { status })
 
 describe('forwarding an original email', () => {
+  it('constrains original signature images on mobile while retaining image URLs and styles', async () => {
+    const source = { ...original, html: '<p>Deck</p><img src="https://example.com/logo.png" width="467" style="border:0"><img src="cid:logo" width="500">' }
+    const request = vi.fn().mockResolvedValueOnce(json(source)).mockResolvedValueOnce(json({ id: 'sent-id' }))
+    await forwardReceivedEmail('received-id', 'Davorin <davorin@madebyarch.com>', input, 'key', request)
+    const html = JSON.parse(request.mock.calls[1][1].body).html
+    expect(html).toContain('style="border:0;max-width:100%;height:auto"')
+    expect(html).toContain('src="https://example.com/logo.png"')
+    expect(html).toContain('src="cid:logo"')
+    expect(html.match(/max-width:100%;height:auto/g)).toHaveLength(2)
+    expect(html).toContain('font-family:Arial,sans-serif')
+  })
   it('forwards an attachment-only email and requests CID HTML for inline images', async () => {
     const request = vi.fn().mockResolvedValueOnce(json({ ...original, text: null, html: null, attachments: [{ id: 'image', filename: 'logo.png', size: 3, content_id: 'logo', content_type: 'image/png' }] }))
       .mockResolvedValueOnce(json({ download_url: 'https://storage.resend.com/logo.png' }))
