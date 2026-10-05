@@ -19,6 +19,7 @@ import { scheduleHeld } from '../../lib/dmSchedule'
 
 import { canMarkSolved } from './solved'
 import { DraftWhy } from './DraftWhy'
+import { ReferralCard } from './ReferralCard'
 import { History } from './History'
 import { Composer } from './Keys'
 import { ThreadMenu, type MenuAct } from './Menu'
@@ -221,6 +222,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         <History t={t} cap={phone ? 6 : 12} now={now} onReplyEmail={canComposeEmail(t) && !t.spam && (!t.ownerConfirmation || manualReply) && !busy ? openEmailReply : undefined}
           onForwardEmail={['arch', 'risedtc'].includes(t.client_id) && !busy ? setForwardEmail : undefined} />
         <Banners t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} />
+        <ReferralCard key={t.prospect_id} t={t} />
         <Draft t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
         {t.draft && <DraftWhy t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
         <RestoreStrip t={t} verbs={verbs} />

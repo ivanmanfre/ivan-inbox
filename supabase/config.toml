@@ -6,3 +6,7 @@ verify_jwt = false
 # The handler verifies the signed-in inbox owner with auth.getUser.
 [functions.inbox-email-forward]
 verify_jwt = false
+
+# The handler verifies the signed-in inbox owner with auth.getUser.
+[functions.inbox-dm-draft]
+verify_jwt = false
