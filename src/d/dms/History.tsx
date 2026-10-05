@@ -63,7 +63,7 @@ export function oursLabel(t: Pick<Thread, 'client_id'>): string {
  *  theirs on the left in grey with their first name on the first bubble of a run, ours on the right
  *  tinted with "You" (or Mattan / Davorin), a day line between days, and each bubble's channel,
  *  status and time underneath. The All conversations log reuses it as is. */
-export function History({ t, cap = 6, now = Date.now(), onReplyEmail }: { t: Thread; cap?: number; now?: number; onReplyEmail?: () => void }) {
+export function History({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail }: { t: Thread; cap?: number; now?: number; onReplyEmail?: () => void; onForwardEmail?: (m: InboxMessage) => void }) {
   const [all, setAll] = useState(false)
   const rows = historyRows(t)
   const lastEmail = rows.filter(m => m.direction === 'inbound' && messageChannel(m) === 'email').at(-1)?.id
@@ -112,7 +112,10 @@ export function History({ t, cap = 6, now = Date.now(), onReplyEmail }: { t: Thr
                 {inb && isReaction(m) && <i>reaction</i>}
                 <time dateTime={at}>{warsawHm(at)}</time>
               </div>
-              {m.id === lastEmail && onReplyEmail && <button type="button" className="dm-email-reply" data-verb="reply-email" onClick={onReplyEmail}>Reply by email</button>}
+              {inb && email && (onReplyEmail || onForwardEmail) && <div className="dm-email-actions">
+                {m.id === lastEmail && onReplyEmail && <button type="button" className="dm-email-reply" data-verb="reply-email" onClick={onReplyEmail}>Reply by email</button>}
+                {onForwardEmail && <button type="button" className="dm-email-reply" data-verb="forward-email" onClick={() => onForwardEmail(m)}>Forward to email</button>}
+              </div>}
             </div>
           </Fragment>
         )

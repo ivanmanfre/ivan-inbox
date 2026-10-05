@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode }
 import { requestDmDraft } from '../../lib/dmDraft'
 import { useDCommands } from '../shell/commands'
 import type { WbCommand } from '../../exp/v2c/commandSource'
-import { canComposeEmail, emailReplyTarget, emailRowSender, isReplyRetryExhausted, markThreadRead, messageChannel, threadBucket, unansweredWaitSince, type Thread as T } from '../../lib/inbox'
+import { canComposeEmail, emailReplyTarget, emailRowSender, isReplyRetryExhausted, markThreadRead, messageChannel, threadBucket, unansweredWaitSince, type InboxMessage, type Thread as T } from '../../lib/inbox'
 import type { PreReadHandle } from '../../exp/v2c/chat/usePreRead'
 import { chatLink } from '../../components/CopyChatLink'
 import { seatOf } from '../seats'
@@ -14,6 +14,7 @@ import { useAutosave } from './useAutosave'
 import { Banners } from './ThreadBanners'
 import { Draft } from './Draft'
 import { ScheduleSheet, ScheduledSends, type ScheduleTarget } from './Schedule'
+import { ForwardEmailSheet } from './ForwardEmail'
 import { scheduleHeld } from '../../lib/dmSchedule'
 
 import { canMarkSolved } from './solved'
@@ -57,6 +58,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   const [edits, setEdits] = useState<Edits>(() => seed(t))
   const [reply, setReply] = useState('')
   const [schedule, setSchedule] = useState<ScheduleTarget | null>(null)
+  const [forwardEmail, setForwardEmail] = useState<InboxMessage | null>(null)
   const [scheduleFailure, setScheduleFailure] = useState('')
   const [emailReplyFor, setEmailReplyFor] = useState<string | null>(null)
   const [emailTarget, setEmailTarget] = useState<{ key: string; address?: string; error?: string } | null>(null)
@@ -82,7 +84,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     else setEdits(e => ({ ...e, main: e.main === was.text ? draftText : e.main, cc: e.cc === was.cc ? recipients.cc : e.cc, companionCc: e.companionCc === was.companionCc ? recipients.companionCc : e.companionCc }))
     seeded.current = { id: draftId, text: draftText, cc: recipients.cc, companionCc: recipients.companionCc }
   }, [draftId, draftText, recipients.cc, recipients.companionCc]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setReply(''); setEmailReplyFor(null); setMenu(null); setSheet(null); setSchedule(null); setScheduleFailure('') }, [t.prospect_id])
+  useEffect(() => { setReply(''); setEmailReplyFor(null); setMenu(null); setSheet(null); setSchedule(null); setForwardEmail(null); setScheduleFailure('') }, [t.prospect_id])
   useLayoutEffect(() => {
     if (emailReplyFor === t.prospect_id) dock.current?.querySelector('textarea')?.focus()
   }, [emailReplyFor, t.prospect_id])
@@ -216,7 +218,8 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         onSpam={!t.spam && seat !== 'ivan' ? () => void run(() => verbs.spam(t)) : undefined} signal={signal} />
       {ps.s !== 'none' && <div className="dm-sum" role="status">{ps.s === 'done' ? ps.line : ps.s === 'running' ? 'Reading it…' : ps.why}</div>}
       <div className="dm-scroll" ref={scroll}>
-        <History t={t} cap={phone ? 6 : 12} now={now} onReplyEmail={canComposeEmail(t) && !t.spam && (!t.ownerConfirmation || manualReply) && !busy ? openEmailReply : undefined} />
+        <History t={t} cap={phone ? 6 : 12} now={now} onReplyEmail={canComposeEmail(t) && !t.spam && (!t.ownerConfirmation || manualReply) && !busy ? openEmailReply : undefined}
+          onForwardEmail={['arch', 'risedtc'].includes(t.client_id) && !busy ? setForwardEmail : undefined} />
         <Banners t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} />
         <Draft t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
         {t.draft && <DraftWhy t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
@@ -238,6 +241,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
       </div>
       {menu && <ThreadMenu t={t} phone={phone} up={menu === 'keys'} withAsk={phone} staleN={staleN} onClose={() => setMenu(null)} run={menuRun} />}
       {schedule && <ScheduleSheet t={t} target={schedule} onClose={() => setSchedule(null)} onSaved={() => { if (schedule.manual) setReply(''); reload() }} />}
+      {forwardEmail && <ForwardEmailSheet key={forwardEmail.id} message={forwardEmail} onClose={() => setForwardEmail(null)} />}
       {sheet === 'context' && <ContextSheet t={t} all={all} onClose={() => setSheet(null)} />}
       {sheet === 'agent' && <AgentSheet t={t} onClose={() => setSheet(null)} onChanged={reload} />}
     </section>

@@ -1,0 +1,15 @@
+.dm-forward-form{display:flex;flex-direction:column;gap:16px;min-width:0;padding:16px}
+.dm-forward-sheet .d-sheet-h>.d-ib{width:44px;height:44px;flex-shrink:0}
+.dm-forward-form label{display:flex;flex-direction:column;gap:6px;font:500 13px var(--f);min-width:0}
+.dm-forward-form label small{font-weight:400;color:var(--t2)}
+.dm-forward-form input,.dm-forward-form textarea{width:100%;min-width:0;min-height:44px;padding:9px 10px;background:var(--p2);color:var(--t1);border:1px solid var(--line2);border-radius:8px;font:400 14px var(--f);box-sizing:border-box;color-scheme:dark}
+.dm-forward-form textarea{resize:vertical}
+.dm-forward-form input:focus-visible,.dm-forward-form textarea:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+.dm-forward-form .dm-meta{font-size:13px;line-height:1.6;margin:0;color:var(--t2)}
+.dm-forward-original{border-top:1px solid var(--line2);padding-top:16px;font:400 14px/1.6 var(--f);overflow-wrap:anywhere}
+.dm-forward-original>b,.dm-forward-original>small{display:block}
+.dm-forward-original>small{font-size:13px;color:var(--t2)}
+.dm-forward-original>p{white-space:pre-wrap;margin-bottom:0}
+.dm-email-actions{display:flex;flex-wrap:wrap;gap:8px}
+.dm-email-actions .dm-email-reply{min-height:44px}
+@media(max-width:600px){.dm-forward-form input,.dm-forward-form textarea{font-size:16px}}

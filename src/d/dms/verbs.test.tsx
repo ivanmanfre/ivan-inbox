@@ -23,6 +23,7 @@ import { DmAsks } from './asks'
 import { NOW, drafted, msg, threads } from './fixtures'
 import { ThreadPane } from './Thread'
 import { useDmVerbs } from './verbs'
+import { forwardInboxEmail } from '../../lib/emailForward'
 import type { Thread } from '../../lib/inbox'
 import type { PreReadHandle } from '../../exp/v2c/chat/usePreRead'
 
@@ -36,6 +37,8 @@ function Pane({ t }: { t: Thread }) {
 const mount = (t: Thread) => renderInFrame(<DmAsks><Pane t={t} /></DmAsks>, { hash: '#exp/d/dms' })
 const key = (v: string) => document.querySelector(`[data-verb="${v}"]`) as HTMLElement
 
+vi.mock('../../lib/emailForward', async orig => ({ ...(await orig<typeof import('../../lib/emailForward')>()), forwardInboxEmail: vi.fn(async () => 'forwarded-id') }))
+
 beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); vi.setSystemTime(NOW); vi.clearAllMocks(); vi.mocked(lib.saveDraftEmailCc).mockReset().mockResolvedValue([]) })
 afterEach(() => { cleanup(); vi.useRealTimers() })
 
@@ -44,6 +47,19 @@ describe('direct email reply', () => {
     msg({ prospect_id: 'ofir', prospect_name: 'Ofir Bello', client_id: client, direction: 'inbound', channel: 'email', message_type: 'email_reply', recipient_email: 'ofir.b@doktorabc.com', prospect_email: 'ofir.b@doktorabc.com', sent_at: '2026-09-27T08:00:00Z', message_text: 'Are you still in the meeting?' }),
     msg({ prospect_id: 'ofir', prospect_name: 'Ofir Bello', client_id: client, direction: 'inbound', channel: 'linkedin', sent_at: '2026-09-27T09:00:00Z', created_at: '2026-09-27T09:00:00Z', message_text: 'I emailed you.' }),
   ])[0]
+
+  it('forwards a received email without approving, discarding, or replying to the prospect', async () => {
+    const t = emailThread()
+    mount(t)
+    fireEvent.click(screen.getByRole('button', { name: 'Forward to email' }))
+    expect(forwardInboxEmail).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Forward email' }))
+    await screen.findByText('Forwarded to davorinsmit@arch.agency.')
+    expect(forwardInboxEmail).toHaveBeenCalledWith(t.messages[0].id, 'davorinsmit@arch.agency', '', expect.any(String))
+    expect(lib.composeReply).not.toHaveBeenCalled()
+    expect(lib.discardLegs).not.toHaveBeenCalled()
+    expect(lib.approveDraft).not.toHaveBeenCalled()
+  })
 
   it('opens and focuses an email reply from a mixed thread; sends only after confirmation', async () => {
     const t = emailThread()

@@ -2,3 +2,7 @@
 # A gateway JWT check blocks pg_net before that authentication can run.
 [functions.inbox-push]
 verify_jwt = false
+
+# The handler verifies the signed-in inbox owner with auth.getUser.
+[functions.inbox-email-forward]
+verify_jwt = false
