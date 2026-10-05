@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { forwardReceivedEmail, validateForwardInput } from './forward.ts'
+import { checkForwardUser } from './auth.ts'
 
 const url = Deno.env.get('SUPABASE_URL')
 const anon = Deno.env.get('SUPABASE_ANON_KEY')
@@ -16,12 +17,10 @@ Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   if (req.method !== 'POST') return reply(405, { ok: false, error: 'Method not allowed.' })
   if (!url || !anon || !service || !allowedUser || !resendKey) return reply(503, { ok: false, error: 'Email forwarding is not configured.' })
-  const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
-  if (!token) return reply(401, { ok: false, error: 'Sign in again to forward email.' })
+  const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '').trim() || ''
   const auth = createClient(url, anon, { auth: { persistSession: false } })
-  const { data: who, error: authError } = await auth.auth.getUser(token)
-  if (authError || !who.user) return reply(401, { ok: false, error: 'Sign in again to forward email.' })
-  if (who.user.id !== allowedUser) return reply(403, { ok: false, error: 'Email forwarding is available to the inbox owner only.' })
+  const authFailure = await checkForwardUser(auth.auth, token, allowedUser)
+  if (authFailure) return reply(authFailure.status, { ok: false, error: authFailure.error })
   let input
   try { input = validateForwardInput(await req.json()) } catch (e) { return reply(400, { ok: false, error: e instanceof Error ? e.message : 'Invalid forwarding request.' }) }
   const db = createClient(url, service, { auth: { persistSession: false } })
