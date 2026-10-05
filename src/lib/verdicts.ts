@@ -28,7 +28,15 @@ export const DROP_REASONS = [
   ['skip', 'Skip'],
 ] as const
 export type Reason = (typeof DROP_REASONS)[number][0]
-export const reasonLabel = (slug: string) => DROP_REASONS.find(r => r[0] === slug)?.[1] ?? slug
+// The Content Brain page (run 51): a Drop there needs a reason, so no Skip. 'other' carries the free text.
+export const BRAIN_DROP_REASONS = [
+  ['already_said', 'Already said'],
+  ['wrong_topic', 'Wrong topic'],
+  ['not_my_voice', 'Not my voice'],
+  ['needs_proof', 'Needs proof'],
+  ['weak_hook', 'Weak hook'],
+] as const
+export const reasonLabel = (slug: string) => DROP_REASONS.find(r => r[0] === slug)?.[1] ?? BRAIN_DROP_REASONS.find(r => r[0] === slug)?.[1] ?? slug
 
 export type DraftAction = 'pending' | 'approved' | 'none' | 'deleted' | 'archived' | 'backfill'
 export type SavedVerdict = {

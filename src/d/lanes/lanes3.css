@@ -220,3 +220,6 @@ i.dl-out{background:#6f6f68}
 .dl-rbl.dl-bl-lq{font-size:13.5px;color:var(--t1);overflow-wrap:anywhere;line-height:1.25}
 .dl-rbt .dl-rbl.dl-bl-lq{font-weight:600}
 .dl-bl-why{margin:6px 0 2px;font-size:12.5px;line-height:1.45;color:var(--t2);max-width:62ch}
+/* run 51: the DM outreach report moved here from Content > Strategy */
+.dl-outreach-link{display:inline-flex;align-items:center;min-height:44px;margin:14px 2px 8px;font:500 13px var(--m);color:var(--t2);text-decoration:underline;text-underline-offset:3px}
+.dl-outreach-link:hover{color:var(--t1)}

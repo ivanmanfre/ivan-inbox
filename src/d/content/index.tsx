@@ -29,6 +29,7 @@ import { WeekStack } from './WeekStack'
 import { SHOWS, buildNow, laneOfRow, windowDays, dayWord, dayDate, type Show } from './weekModel'
 import { useMagnetCounts } from './useMagnetCounts'
 import { Results } from './Results'
+import { ContentBrain, waitsForReview } from './ContentBrain'
 import './content.css'
 import './content2.css'
 import './content3.css'
@@ -45,18 +46,23 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const q = route.query
   const view = q.get('view') ?? (route.sub === 'errors' ? 'posts' : route.sub === 'magnets' ? 'magnets' : null)
   const onNow = sub === 'now'
+  // Run 51: Content Brain reads the same fast week (every draft in review) Review paints from.
+  const onBrain = sub === 'brain' && view !== 'patterns'
   const onCal = sub === 'calendar'
   const allPosts = onNow && view === 'posts'
   const magnetView = onNow && (view === 'magnets' || !!q.get('magnet'))
   const [now] = useState(() => Date.now())
-  const weekRead = useWeekRead(onNow, now)
-  const [fullOn, setFullOn] = useState(!onNow)
+  const weekRead = useWeekRead(onNow || onBrain, now)
+  const [fullOn, setFullOn] = useState(!onNow && !onBrain)
+  // Content Brain needs only the fast week until a draft is opened (the open post's date controls read the full
+  // seats): the three 1,000-row lane reads are the heaviest thing this page could ask of a small database.
+  const lean = onBrain && !q.get('draft')
   useEffect(() => {
-    if (fullOn) return
-    if (!onNow || weekRead.settled) { setFullOn(true); return }
+    if (fullOn || lean) return
+    if ((!onNow && !onBrain) || weekRead.settled) { setFullOn(true); return }
     const t = setTimeout(() => setFullOn(true), 2500)
     return () => clearTimeout(t)
-  }, [fullOn, onNow, weekRead.settled])
+  }, [fullOn, lean, onNow, onBrain, weekRead.settled])
   useEffect(() => {
     const target = contentRedirect(route.sub, route.query)
     if (target) navigate(target)
@@ -82,6 +88,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const close = () => go(context())
   const setLane = (lane: Lane) => go({ ...context(), lane, ...(draft ? { draft } : {}) })
   const openDraft = (id: string, lane: Lane) => go({ ...context(), draft: id, lane }, 'now')
+  const openFromBrain = (id: string, lane: Lane) => go({ draft: id, lane }, 'brain')
   const openFromPlan = (id: string, lane: Lane) => go({ draft: id, lane }, 'calendar')
   const openFromList = (id: string, lane: ContentLane, ids: string[]) => { setListIds(ids); go({ draft: id, lane, view: 'posts' }, 'now') }
   const days = useMemo(() => wallDays(now), [now])
@@ -113,9 +120,10 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   }
   const onMove = (id: string, lane: Lane, day?: string) => go({ move: id, lane, ...(day ? { day } : {}) }, 'calendar')
   const wallProps = { data, items, stuck: null, onOpen: openFromPlan, onMove, onArm: armIt, onDay: (lane: Lane, keys: string[]) => setDayOpen({ lane, keys }), now }
-  const queueIds = allPosts ? listIds : onCal ? [...items[qLane].values()].flat().filter(i => i.source === 'draft').sort((a, b) => a.at.localeCompare(b.at)).map(i => i.id) : nowModel.ids
+  const brainIds = onBrain ? rows.filter(r => waitsForReview(r) && laneOfRow(r) === qLane && !verdicts.has(r.id)).sort((a, b) => b.created_at.localeCompare(a.created_at)).map(r => r.id) : []
+  const queueIds = onBrain ? brainIds : allPosts ? listIds : onCal ? [...items[qLane].values()].flat().filter(i => i.source === 'draft').sort((a, b) => a.at.localeCompare(b.at)).map(i => i.id) : nowModel.ids
   const titles = Object.fromEntries(rows.filter(r => queueIds.includes(r.id)).map(r => [r.id, titleOf(r)]))
-  const window_ = draft ? <DraftWindow id={draft} lane={qLane} queue={queueIds} onPick={id => onCal ? openFromPlan(id, qLane) : openDraft(id, nowModel.lanes.get(id) ?? qLane)} onClose={close} refresh={refresh} days={days} armed={data.armed} armedFailed={data.armedFailed} titles={titles} /> : null
+  const window_ = draft ? <DraftWindow id={draft} lane={qLane} queue={queueIds} onPick={id => onCal ? openFromPlan(id, qLane) : onBrain ? openFromBrain(id, qLane) : openDraft(id, nowModel.lanes.get(id) ?? qLane)} onClose={close} refresh={refresh} days={days} armed={data.armed} armedFailed={data.armedFailed} titles={titles} /> : null
   const moveRow = moveId ? data.seats[qLane].rows.find(r => r.id === moveId) : null
   const move = moveRow ? <MovePanel key={`${moveId}:${q.get('day') ?? ''}`} r={moveRow} lane={qLane} first={days[0].key} seatRows={data.seats[qLane].rows} phone={phone} quickCommit initialPick={q.get('day')} onClose={close} onDone={refresh} /> : null
   const clearMagnet = () => { const p = new URLSearchParams(q); p.delete('magnet'); navigate(dHash('content', sub, p)) }
@@ -137,7 +145,11 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   </>
   let body: React.ReactNode
   if (sub === 'ideas') body = <Ideas banks={banks} phone={phone} lane={qLane} onLaneChange={lane => go({ lane }, 'ideas')} />
-  else if (sub === 'brain') body = <Suspense fallback={<Skeleton lines={5} label="Reading the brain area" />}><BrainArea lane={qLane} setLane={setLane} phone={phone} query={q} /></Suspense>
+  else if (sub === 'brain' && !onBrain) body = <Suspense fallback={<Skeleton lines={5} label="Reading the brain area" />}><div className="cn-now-tools"><a href={dHash('content', 'brain', qLane === 'ivan' ? {} : { lane: qLane })}>← Content Brain</a></div><BrainArea lane={qLane} setLane={setLane} phone={phone} query={q} /></Suspense>
+  else if (onBrain) {
+    const brainBody = <ContentBrain lane={qLane} setLane={l => go({ lane: l }, 'brain')} read={stackRead} verdicts={saved.map} openId={draft} onOpen={openFromBrain} onChanged={refresh} />
+    body = phone && window_ ? window_ : <div className={`cn-split${window_ ? ' cn-open' : ''}`}><div className="cn-left">{brainBody}</div>{window_}</div>
+  }
   else if (sub === 'results') body = view === 'analytics' ? legacy('results') : <Results lane={qLane} setLane={setLane} />
   else if (sub === 'inputs') body = <Suspense fallback={<Skeleton lines={5} label="Reading outliers" />}><InputsPage lane={qLane} setLane={setLane} phone={phone} query={q} /></Suspense>
   else if (sub === 'magnets') body = legacy('magnets')
@@ -147,7 +159,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
     const left = magnetView ? <><div className="cn-now-tools"><a href={dHash('content', 'now')}>← Review</a></div>{legacy('magnets')}</> : allPosts ? <><div className="cn-now-tools"><a href={dHash('content', 'now')}>← Review</a></div>{legacy('errors')}</> : nowBody
     body = phone && window_ ? window_ : <div className={`cn-split${window_ ? ' cn-open' : ''}`}><div className={`cn-left${allPosts ? ' cn-left-legacy' : ''}`}>{left}</div>{window_}</div>
   }
-  const title = sub === 'brain' ? 'Brain' : sub === 'ideas' ? 'Best ideas for your next post' : sub === 'results' ? 'What worked' : sub === 'strategy' ? (q.get('section') === 'direction' ? 'Strategy' : q.get('section') === 'this-week' ? 'Content brain' : 'Strategy') : sub === 'inputs' ? 'Outliers' : sub === 'magnets' ? 'Lead magnets' : sub === 'styles' ? 'Styles' : onCal ? 'Calendar' : allPosts ? 'All posts' : magnetView ? 'Lead magnets' : 'Review'
+  const title = sub === 'brain' ? (onBrain ? 'Content Brain' : 'Patterns and benchmarks') : sub === 'ideas' ? 'Best ideas for your next post' : sub === 'results' ? 'What worked' : sub === 'strategy' ? (q.get('section') === 'direction' ? 'Strategy' : q.get('section') === 'this-week' ? 'Content brain' : 'Strategy') : sub === 'inputs' ? 'Outliers' : sub === 'magnets' ? 'Lead magnets' : sub === 'styles' ? 'Styles' : onCal ? 'Calendar' : allPosts ? 'All posts' : magnetView ? 'Lead magnets' : 'Review'
   return <div className="cn"><AnswerRow title={title} /><SubNav on={sub} attention={needs > 0} lane={qLane} section={q.get('section')} />{body}
     {dayOpen && <DayPanel lane={dayOpen.lane} keys={dayOpen.keys} items={items[dayOpen.lane]} onClose={() => setDayOpen(null)} onOpen={openFromPlan} onMove={onMove} onArm={armIt} onChanged={refresh} />}
   </div>

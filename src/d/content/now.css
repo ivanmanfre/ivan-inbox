@@ -14,6 +14,9 @@
 .cn-planning { display: flex; flex: 0 0 auto; align-items: center; gap: 18px; padding: 0 16px; border-bottom: 1px solid var(--line); }
 .cn-planning > a { display: inline-flex; align-items: center; min-height: 44px; color: var(--t2); text-decoration: none; font-size: 13px; white-space: nowrap; }
 .cn-planning > a.cn-on { color: var(--lime); }
+/* run 51: the planning links moved under More; the row names what is there */
+.cn-planning > .cn-more-text { min-height: 44px; padding: 0; font: inherit; font-size: 13px; color: var(--t2); background: transparent; border: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.cn-planning > .cn-more-text:hover { color: var(--t1); }
 .cn-magnet-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; padding: 8px 16px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--t2); }
 .cn-magnet-summary a { display: inline-flex; align-items: center; min-height: 44px; color: var(--t1); text-decoration: none; }
 .cn-week-strip { padding: 20px 16px; border-top: 1px solid var(--line); }

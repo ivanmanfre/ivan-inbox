@@ -33,12 +33,12 @@ describe('Content navigation', () => {
   it.each(['desktop', 'phone'] as const)('shows the generation flow and visible planning tools on %s', layout => {
     renderInFrame(<SubNav on="now" attention lane="arch" />, { layout })
     const nav = screen.getByRole('navigation', { name: 'Content places' })
-    expect([...nav.querySelectorAll('a')].map(a => a.textContent)).toEqual(['Calendar', 'Ideas', 'Review', 'Lead magnets', 'Results'])
-    expect(screen.getByLabelText('Needs a tap')).toBeTruthy()
+    expect([...nav.querySelectorAll('a')].map(a => a.textContent)).toEqual(['Content Brain', 'Calendar', 'Ideas', 'Review', 'Lead magnets'])
+    expect(screen.getAllByLabelText('Needs a tap').length).toBeGreaterThan(0)
+    // Run 51: the planning row keeps only More; Strategy, the saved week and Outliers live there now.
     const tools = screen.getByRole('navigation', { name: 'Content planning' })
-    expect([...tools.querySelectorAll('a')].map(a => a.textContent)).toEqual(['Strategy', 'Content brain', 'Outliers'])
-    expect(screen.getByRole('link', { name: 'Content brain' }).getAttribute('href')).toBe('#exp/d/content/strategy?lane=arch&section=this-week')
-    expect(nav.querySelector('a')?.getAttribute('href')).toBe('#exp/d/content/calendar?lane=arch')
+    expect([...tools.querySelectorAll('a')]).toHaveLength(0)
+    expect(nav.querySelector('a')?.getAttribute('href')).toBe('#exp/d/content/brain?lane=arch')
     fireEvent.click(screen.getByRole('button', { name: 'More in Content' }))
     expect(screen.getByRole('link', { name: /Styles/ })).toBeTruthy()
   })

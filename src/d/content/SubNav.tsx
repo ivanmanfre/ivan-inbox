@@ -5,13 +5,29 @@ import { Sheet } from '../ui/Sheet'
 import type { Lane } from './model'
 
 export type Sub = 'calendar' | 'now' | 'ideas' | 'results' | 'strategy' | 'styles' | 'planner' | 'review' | 'inputs' | 'magnets' | 'errors' | 'queue' | 'markets' | 'brain'
-export const SUBS: readonly Sub[] = ['calendar', 'ideas', 'now', 'magnets', 'results']
-export const SUB_LABEL: Record<Sub, string> = { calendar: 'Calendar', now: 'Review', ideas: 'Ideas', results: 'Results', strategy: 'Strategy', styles: 'Styles', planner: 'Planner', review: 'Review', inputs: 'Outliers', magnets: 'Lead magnets', errors: 'Errors', queue: 'Publish queue', markets: 'Outliers & Markets', brain: 'Brain' }
-export const PLANNING = [
-  { sub: 'strategy', section: 'direction', label: 'Strategy' },
-  { sub: 'strategy', section: 'this-week', label: 'Content brain' },
-  { sub: 'inputs', section: null, label: 'Outliers' },
-] as const
+// Run 51: Content Brain is the daily entry (drafts waiting, source beside each). Results, Strategy, the old
+// Content brain week and Outliers left the daily row; they stay one tap away under More and on the page.
+export const SUBS: readonly Sub[] = ['brain', 'calendar', 'ideas', 'now', 'magnets']
+export const SUB_LABEL: Record<Sub, string> = { calendar: 'Calendar', now: 'Review', ideas: 'Ideas', results: 'Results', strategy: 'Strategy', styles: 'Styles', planner: 'Planner', review: 'Review', inputs: 'Outliers', magnets: 'Lead magnets', errors: 'Errors', queue: 'Publish queue', markets: 'Outliers & Markets', brain: 'Content Brain' }
+export const PLANNING: readonly { sub: Sub; section: string | null; label: string }[] = []
+/** The More sheet: every place that left the daily row, under the job it does. */
+const MORE: readonly { group: string; items: readonly { label: string; sub: Sub; q?: Record<string, string>; small?: string }[] }[] = [
+  { group: 'Browse sources', items: [
+    { label: 'Research library', sub: 'strategy', q: { section: 'research' } },
+    { label: 'Outliers', sub: 'inputs' },
+    { label: 'Markets', sub: 'strategy', q: { section: 'markets' } },
+  ] },
+  { group: 'History and evidence', items: [
+    { label: 'Results', sub: 'results' },
+    { label: 'Saved weekly plans', sub: 'strategy', q: { section: 'this-week' } },
+    { label: 'Patterns and benchmarks', sub: 'brain', q: { view: 'patterns' } },
+    { label: 'Strategy', sub: 'strategy', q: { section: 'direction' }, small: 'Client direction, lead magnets, notes' },
+  ] },
+  { group: 'More', items: [
+    { label: 'Styles', sub: 'styles' },
+    { label: 'All posts', sub: 'now', q: { view: 'posts' }, small: 'Filters, search and bulk actions' },
+  ] },
+]
 export function subOf(s: string | null, query = new URLSearchParams()): Sub {
   if (!s) return query.has('magnet') ? 'magnets' : query.has('draft') || query.has('view') ? 'now' : 'calendar'
   if (s === 'markets') return 'inputs'
@@ -36,7 +52,7 @@ export function SubNav({ on, attention = false, lane = 'ivan', section }: { on: 
   return <>
     <nav className={`cn-now-tabs ${f.layout === 'phone' ? 'cn-ptabs' : 'cn-sub'}`} aria-label="Content places">
       {SUBS.map(s => <a key={s} href={dHash('content', s, context)} className={s === on ? 'cn-on' : ''} aria-current={s === on ? 'page' : undefined}>
-        {SUB_LABEL[s]}{s === 'now' && attention && <i className="cn-attention" aria-label="Needs a tap" />}
+        {SUB_LABEL[s]}{(s === 'now' || s === 'brain') && attention && <i className="cn-attention" aria-label="Needs a tap" />}
       </a>)}
       <span className="cn-grow" />
     </nav>
@@ -45,12 +61,14 @@ export function SubNav({ on, attention = false, lane = 'ivan', section }: { on: 
         const active = on === p.sub && (p.sub !== 'strategy' || (section ?? 'this-week') === p.section)
         return <a key={p.label} href={dHash('content', p.sub, { ...context, ...(p.section ? { section: p.section } : {}) })} className={active ? 'cn-on' : undefined} aria-current={active ? 'page' : undefined}>{p.label}</a>
       })}
+      {PLANNING.length === 0 && <button type="button" className="cn-more-text" data-verb="content-more" aria-expanded={more} onClick={() => setMore(true)}>Sources, history and more</button>}
       <span className="cn-grow" />
       <button type="button" className="cn-more-key" aria-label="More in Content" aria-expanded={more} onClick={() => setMore(true)}>⋯</button>
     </nav>
     <Sheet open={more} onClose={() => setMore(false)} title="More in Content"><div className="cn-more">
-      {(['brain', 'styles'] as const).map(s => <a key={s} href={dHash('content', s, context)} onClick={() => setMore(false)}><b>{SUB_LABEL[s]}</b></a>)}
-      <a href={dHash('content', 'now', { ...context, view: 'posts' })} onClick={() => setMore(false)}><b>All posts</b><small>Filters, search and bulk actions</small></a>
+      {MORE.map(g => <div key={g.group} className="cn-more-g"><span className="cn-more-h">{g.group}</span>
+        {g.items.map(i => <a key={i.label} href={dHash('content', i.sub, { ...context, ...(i.q ?? {}) })} onClick={() => setMore(false)}><b>{i.label}</b>{i.small && <small>{i.small}</small>}</a>)}
+      </div>)}
       <a href="#search" onClick={e => { e.preventDefault(); setMore(false); f.openPalette() }}><b>Search every post</b></a>
     </div></Sheet>
   </>

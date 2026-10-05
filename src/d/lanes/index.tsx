@@ -9,7 +9,7 @@
    Address: #exp/d/lanes[?seat=][&range=30d][&sheet=campaign&c=<id>|control&for=|range|decisions&for=]
    (the old sheet addresses — log, ledger, delivery, problems, channels — still open their sheet)
    ========================================================================== */
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { useLanes } from '../../hooks/useLanes'
 import { monitorLiveness } from '../../lib/campaignControl'
 import type { PlaceProps } from '../places'
@@ -36,6 +36,9 @@ import { TodayNotes } from './TodayNotes'
 import { failedCount, useLanesData } from './useLanesData'
 import './lanes.css'
 import './lanes3.css'
+
+// Run 51: the DM outreach report (sends -> replies per lane and step) moved here from Content > Strategy.
+const OutreachBlock = lazy(() => import('../../wb/content/OutreachBlock').then(m => ({ default: m.OutreachBlock })))
 
 const SHEETS: SheetKind[] = ['decisions', 'log', 'ledger', 'delivery', 'problems']
 const isSeat = (v: string | null): v is Seat => (SEATS as readonly string[]).includes(v ?? '')
@@ -95,6 +98,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
         <TodayNotes />
         <SeatSquares seats={cols} seat={seat} pick={pick} d={data} now={now} />
         <SeatView key={seat} seat={seat} ctx={ctx} range={range} setRange={setRange} onCustom={() => go({ sheet: 'range', c: null })} />
+        <a className="dl-outreach-link" href={dHash('lanes', null, { ...Object.fromEntries(q), sheet: 'outreach', for: seat })} data-verb="open-outreach">DM outreach results: sends to replies by step →</a>
       </div>
       {camp && <CampaignSheet c={camp} now={now} onClose={close} />}
       {sheet === 'campaign' && !camp && data.perf.value && (
@@ -104,7 +108,12 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
       {sheet === 'channels' && <ChannelsSheet seat={forSeat ?? seat} setSeat={s => go({ for: s })} now={now} onClose={close} />}
       {sheet === 'control' && <ControlSheet seat={forSeat ?? seat} p={data.cc.value} pFailed={data.cc.failed} gov={data.gov.value?.find(x => x.client_id === (forSeat ?? seat)) ?? null}
         pauses={data.pauses.value} pausesFailed={data.pauses.failed} now={now} onClose={close} />}
-      {sheet && (SHEETS as string[]).includes(sheet) && <LanesSheet kind={sheet as SheetKind} seat={forSeat} p={data.cc.value} pFailed={data.cc.failed} range={range} now={now} setSeat={s => go({ for: s })} onClose={close} />}
+      {sheet === 'outreach' && (
+        <Sheet open onClose={close} title="DM outreach results" sub="Matured sends and replies per lane and step, against the prior period" className="dl-sheet">
+          <div className="cn-legacy app wb ds-shell wb-work"><Suspense fallback={<p className="dl-sl">Reading…</p>}><OutreachBlock lane={forSeat ?? seat} /></Suspense></div>
+        </Sheet>
+      )}
+      {sheet && (SHEETS as string[]).includes(sheet) &&<LanesSheet kind={sheet as SheetKind} seat={forSeat} p={data.cc.value} pFailed={data.cc.failed} range={range} now={now} setSeat={s => go({ for: s })} onClose={close} />}
     </div>
   )
 }

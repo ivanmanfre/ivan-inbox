@@ -14,7 +14,8 @@ const verdictWord = (e: Pick<Judged, 'verdict' | 'lane' | 'saved'>) =>
     : e.saved?.verdict === 'edited' ? 'Approved after your edit'
     : e.lane === 'ivan' ? 'Approved' : 'Approved · board unchanged'
 
-export function VerdictStrip({ e }: { e: Judged }) {
+/** `chips`: the reason set to offer (the Content Brain page passes its own, without Skip). */
+export function VerdictStrip({ e, chips = DROP_REASONS }: { e: Judged; chips?: ReadonlyArray<readonly [string, string]> }) {
   const keep = e.verdict === 'keep'
   const drop = !keep
   const [other, setOther] = useState(false)
@@ -57,7 +58,7 @@ export function VerdictStrip({ e }: { e: Judged }) {
           {drop && (
             <div className="cn-vs-why" role="group" aria-label="Why drop it">
               <span className="cn-vs-lbl">Why? One tap</span>
-              {DROP_REASONS.map(([slug, label]) => (
+              {chips.map(([slug, label]) => (
                 <button key={slug} type="button" data-verb="verdict-reason" data-reason={slug} aria-pressed={chosen === slug} disabled={e.reasonSaving} onClick={() => pick(slug)}>{label}</button>
               ))}
             </div>
