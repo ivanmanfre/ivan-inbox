@@ -192,7 +192,13 @@ export function useCalGestures(root: React.RefObject<HTMLElement | null>, opts: 
       if (mode === 'swipe') { o.current.onSwipeMove(dx); return }
       if (mode === 'drag') { px = e.clientX; py = e.clientY; if (!raf) raf = requestAnimationFrame(paint) }
     }
-    const up = (e: PointerEvent) => { if (e.pointerId === pid) end(true) }
+    const up = (e: PointerEvent) => {
+      if (e.pointerId !== pid) return
+      // A quick release can land beyond the last pointermove, including the
+      // move that only lifted the card. Hit-test where the pointer was released.
+      if (mode === 'drag') { px = e.clientX; py = e.clientY }
+      end(true)
+    }
     const cancel = (e: PointerEvent) => { if (e.pointerId === pid) end(false) }
     // A finger holding a lifted post must not scroll the page. Registered
     // non-passive up front: the browser decides on the FIRST touchmove.

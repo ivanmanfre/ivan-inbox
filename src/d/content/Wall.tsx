@@ -93,7 +93,7 @@ export function Wall({ data, items, days, stuck, onOpen, onMove, onArm, onDay, g
   return (
     <div className="cn-wall" style={style} role="group" aria-label="Posts by seat and day">
       <div className="cn-wh">Feed</div>
-      {days.map((d, i) => <Fragment key={d.key}>{gap(i)}<div className={`cn-wh${d.key === today ? ' cn-tod' : ''}`}><b>{d.dow}</b> {d.n}{ten ? '' : ` ${d.dm.split(' ')[1]}`}{d.key === today && <em>today</em>}</div></Fragment>)}
+      {days.map((d, i) => <Fragment key={d.key}>{gap(i)}<div className={`cn-wh${d.key === today ? ' cn-tod' : ''}`} data-cal-day={d.key}><b>{d.dow}</b> {d.n}{ten ? '' : ` ${d.dm.split(' ')[1]}`}{d.key === today && <em>today</em>}</div></Fragment>)}
       {lanes.map(lane => (
         <Fragment key={lane}>
           <Plate lane={lane} data={data} days={days} stuck={stuck} compact={!ten} now={now} />

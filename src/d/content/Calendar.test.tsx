@@ -18,7 +18,13 @@ vi.mock('../../lib/supabase', () => {
   return { supabase: chain }
 })
 beforeEach(() => { window.matchMedia = ((q: string) => ({ matches: q.includes('reduce'), media: q, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia })
-afterEach(() => { cleanup(); vi.clearAllMocks(); localStorage.clear() })
+afterEach(() => { cleanup(); vi.clearAllMocks(); vi.restoreAllMocks(); localStorage.clear() })
+
+function pointer(target: Element | Window, type: string, x: number, y: number) {
+  const event = new Event(type, { bubbles: true })
+  Object.assign(event, { pointerId: 1, pointerType: 'mouse', button: 0, clientX: x, clientY: y })
+  fireEvent(target, event)
+}
 
 const NOW = Date.parse('2026-09-30T10:00:00Z')
 const row = (id: string, extra: Partial<ContentDraft> = {}) => ({ id, client_id: null, status: 'review', type: 'text', title: id, post_body: `${id} hook line\nbody`, created_at: '2026-09-20T09:00:00Z', updated_at: '2026-09-20T09:00:00Z', scheduled_at: null, published_at: null, board_visible: false, image_urls: null, taxonomy: null, ...extra } as ContentDraft)
@@ -65,6 +71,39 @@ describe('calendar model', () => {
 
 describe('Calendar', () => {
   const props = { now: NOW, setPick: vi.fn(), onOpen: vi.fn(), onMove: vi.fn(), onArm: vi.fn(), onDay: vi.fn(), onChanged: vi.fn() }
+  const dragSetup = () => {
+    const r = row('Matt was my employee for 12 years', { client_id: 'risedtc', status: 'scheduled', scheduled_at: '2026-09-28T14:00:00Z', board_visible: true })
+    const { data, items } = setup({ ivan: [], risedtc: [r], arch: [] })
+    renderInFrame(<Calendar {...props} data={data} items={items} phone={false} pick="all" />)
+    const card = screen.getByRole('button', { name: 'Open Matt was my employee for 12 years' })
+    const start = card.closest('[data-cal-day]')!
+    const target = document.querySelector('.cn-cell[data-cal-lane="risedtc"][data-cal-day="2026-09-29"]')!
+    return { card, start, target }
+  }
+  it('dropping on a Lines day heading opens the client confirmation for that day', async () => {
+    const { card, start } = dragSetup()
+    const heading = [...document.querySelectorAll('.cn-wh')].find(el => el.textContent?.includes('Tue 29'))!
+    Object.defineProperty(document, 'elementFromPoint', { configurable: true, value: vi.fn((x: number) => x >= 200 ? heading : start) })
+    pointer(card, 'pointerdown', 100, 100)
+    pointer(window, 'pointermove', 200, 20)
+    pointer(window, 'pointermove', 201, 20)
+    pointer(window, 'pointerup', 201, 20)
+    fireEvent.click(card)
+    expect(await screen.findByRole('heading', { name: 'Schedule this to post?' })).toBeTruthy()
+    expect(screen.getByText(/publisher will post it on Tue 29 Sep at 16:00/)).toBeTruthy()
+    expect(writes.setScheduleDateAt).not.toHaveBeenCalled()
+  })
+  it('a quick drag uses the release position when the first move only lifted the card', async () => {
+    const { card, start, target } = dragSetup()
+    Object.defineProperty(document, 'elementFromPoint', { configurable: true, value: vi.fn((x: number) => x >= 200 ? target : start) })
+    pointer(card, 'pointerdown', 100, 100)
+    pointer(window, 'pointermove', 110, 100)
+    pointer(window, 'pointerup', 200, 100)
+    fireEvent.click(card)
+    expect(await screen.findByRole('heading', { name: 'Schedule this to post?' })).toBeTruthy()
+    expect(screen.getByText(/publisher will post it on Tue 29 Sep at 16:00/)).toBeTruthy()
+    expect(writes.setScheduleDateAt).not.toHaveBeenCalled()
+  })
   it('opens on today with the posted post, Open post and Unpublish on its card', async () => {
     const { data, items } = setup({ ivan: [], risedtc: [], arch: [] }, [queue])
     renderInFrame(<Calendar {...props} data={data} items={items} phone={false} pick="ivan" />)
