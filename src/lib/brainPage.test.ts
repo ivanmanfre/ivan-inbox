@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resultLine, sourceOf, type DraftSourceRead } from './brainPage'
+import { learnedFrom, resultLine, sourceOf, type DraftSourceRead } from './brainPage'
 
 // Shapes copied from live rows read 2026-10-05 (cb51_draft_sources + carousel_drafts), trimmed.
 const read = (o: Partial<DraftSourceRead>): DraftSourceRead => ({ draft_id: 'd', member_state: null, slot: null, source_ref: null, source_text: null, detail: null, x: null, linkedin: null, ...o })
@@ -57,5 +57,27 @@ describe('resultLine', () => {
   it('stays empty when nothing was measured', () => {
     expect(resultLine(null)).toBeNull()
     expect(resultLine({})).toBeNull()
+  })
+})
+
+// Actual selected-post provenance from the 2026-10-06 learning picker replay.
+const decision = { id: 'win:de9336b6-17dd-4722-8ad3-75b34fdffeb7', origin: 'chosen_post', action: 'published' }
+const learning = { version: 'cb52-a', client: 'ivan', applied: [{ decision_id: decision.id, effect: 'prefer_win', decision }], learned_from: { id: decision.id, text: 'published: 3-month minimum' } }
+const learnedDraft = (value: unknown) => draft({ brain_brief: { brief_v3: { learning: value } } })
+describe('learnedFrom', () => {
+  it('shows the recorded choice that shaped this account’s new draft', () => {
+    expect(learnedFrom(learnedDraft(learning), 'ivan')).toBe('published: 3-month minimum')
+    expect(learnedFrom(draft(JSON.stringify({ brain_brief: { brief_v3: { learning } } })), 'ivan')).toBe('published: 3-month minimum')
+  })
+  it('does not disclose another account’s decision or imply learning on old drafts', () => {
+    expect(learnedFrom(learnedDraft(learning), 'arch')).toBeNull()
+    expect(learnedFrom(draft({ source: 'content-brain' }), 'ivan')).toBeNull()
+    expect(learnedFrom(draft('bad json'), 'ivan')).toBeNull()
+  })
+  it('requires a referenced decision record before presenting the claim', () => {
+    expect(learnedFrom(learnedDraft({ ...learning, applied: [] }), 'ivan')).toBeNull()
+    expect(learnedFrom(learnedDraft({ ...learning, learned_from: { id: 'unrecorded', text: 'Claim' } }), 'ivan')).toBeNull()
+    expect(learnedFrom(learnedDraft({ ...learning, applied: [{ decision_id: decision.id }] }), 'ivan')).toBeNull()
+    expect(learnedFrom(learnedDraft({ ...learning, applied: [{}], learned_from: { text: 'Claim' } }), 'ivan')).toBeNull()
   })
 })

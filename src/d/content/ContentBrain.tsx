@@ -1,5 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { fetchDecisionHistory, fetchDraftSources, sourceOf, type DecisionHistory, type DraftSourceRead, type SourceView } from '../../lib/brainPage'
+import { fetchDecisionHistory, fetchDraftSources, learnedFrom, sourceOf, type DecisionHistory, type DraftSourceRead, type SourceView } from '../../lib/brainPage'
 import type { ContentDraft } from '../../lib/content'
 import { readEditorialDirection, type EditorialDirectionRead } from '../../lib/editorialDirection'
 import type { EditorialClient } from '../../lib/editorialTypes'
@@ -151,6 +151,7 @@ function DraftCard({ r, lane, src, srcLoading, open, onOpen, onChanged }: {
   const ref = useRef<HTMLElement>(null)
   const title = titleOf(r)
   const body = (r.post_body ?? '').trim()
+  const learning = learnedFrom(r, lane)
   const fold = foldText(body, wide ? 9 : 6, wide ? 64 : 40)
   const id = r.id
   // Time to verdict starts when the card is half on screen (once per draft), as on Review.
@@ -176,6 +177,7 @@ function DraftCard({ r, lane, src, srcLoading, open, onOpen, onChanged }: {
         <button type="button" className="cb-title" data-verb="brain-open" onClick={onOpen}>{title}</button>
         {body && <p className="cb-body">{(more ? body : fold.head).replace(/\n{3,}/g, '\n\n')}
           {fold.folded && !more && <>{' '}<button type="button" className="cb-see" data-verb="brain-see-more" onClick={() => setMore(true)}>…see more</button></>}</p>}
+        {learning && <p className="cb-meta" data-learned-from>Learned from: {learning}</p>}
         {!why ? (
           <div className="cb-acts">
             <button type="button" className="cb-key cb-use" data-verb="brain-use" onClick={use}>Use</button>

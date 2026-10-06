@@ -82,6 +82,17 @@ const num = (v: unknown): number | null => typeof v === 'number' && Number.isFin
 const first = (o: Record<string, unknown>, keys: string[]) => { for (const k of keys) { const s = str(o[k]); if (s) return s } return null }
 const fmt = (n: number) => n >= 100 ? Math.round(n).toLocaleString('en-US') : String(Math.round(n * 10) / 10)
 
+/** Only show a learning receipt when this account's brief records an applied decision. */
+export function learnedFrom(r: Pick<ContentDraft, 'taxonomy'>, lane: string): string | null {
+  const tax = rec(typeof r.taxonomy === 'string' ? (() => { try { return JSON.parse(r.taxonomy as string) } catch { return {} } })() : r.taxonomy)
+  const learning = rec(rec(rec(tax.brain_brief).brief_v3).learning)
+  const receipt = rec(learning.learned_from)
+  if (learning.version !== 'cb52-a' || learning.client !== lane || !Array.isArray(learning.applied)) return null
+  const id = str(receipt.id)
+  if (!id || !learning.applied.some(a => rec(a).decision_id === id && rec(rec(a).decision).id === id)) return null
+  return str(receipt.text)
+}
+
 /** "5,915 likes · 14.2x their usual (usual 538, 60 posts)" from measured numbers only. */
 export function resultLine(s: OutlierStats | null | undefined): string | null {
   if (!s) return null
