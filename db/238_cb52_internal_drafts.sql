@@ -1,7 +1,7 @@
 CREATE FUNCTION public.cb52_mark_internal_draft() RETURNS trigger LANGUAGE plpgsql SET search_path TO public,pg_temp AS $$
 BEGIN
  IF jsonb_typeof(NEW.taxonomy)='object' AND NEW.taxonomy->'internal_test'='true'::jsonb
-    OR left(ltrim(coalesce(NEW.title,'')),16)='[new voice test]'
+    OR coalesce(NEW.title,'') ~* '^[[:space:]]*\[new voice test\]'
     OR TG_OP='UPDATE' AND jsonb_typeof(OLD.taxonomy)='object' AND OLD.taxonomy->'internal_test'='true'::jsonb THEN
    NEW.taxonomy := (CASE WHEN jsonb_typeof(NEW.taxonomy)='object' THEN NEW.taxonomy ELSE '{}'::jsonb END) || '{"internal_test":true}'::jsonb;
  END IF;
