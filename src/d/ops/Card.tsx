@@ -106,6 +106,13 @@ export function OpsCard({ d, refresh, feed, held, onGateResult, layout, pos, wai
             )}
           </label>
           {st.canTag && !st.isCloseOnly && st.tag && st.tagMayFail && <div className="op-note op-warn" data-tag-warn>@ tags {st.commenterName}: may not stick, hidden surname.</div>}
+          {st.canTagAuthor && (
+            <button type="button" className="op-tagline" data-verb="tag" aria-pressed={st.tag} disabled={off} onClick={() => st.setTag(t => !t)}>
+              {st.tag
+                ? <><b>@ tags {st.authorName}</b> {st.authorTagMayFail ? 'may not stick, hidden surname' : 'opens the comment'} · tap to post untagged</>
+                : <><b>No tag</b> · tap to tag {st.authorName}</>}
+            </button>
+          )}
           {st.heldVerdict && <div className="op-ban op-ban-warn"><b>{GATE_HELD_LABEL}</b> {st.heldVerdict.message}</div>}
           {st.postState === 'queued' && !st.heldVerdict && <div className="op-ban">Queued: the poster has it. It posts after its jitter window unless you discard.</div>}
           {st.postState === 'posted' && <div className="op-ban">Posted to LinkedIn.</div>}

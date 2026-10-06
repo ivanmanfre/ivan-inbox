@@ -80,6 +80,12 @@ export function usePendingCard({ draft, refresh, feed, held, onGateResult, confi
   const liked = likedNow || draft.context?.liked === true
   const isOutbound = draft.kind === 'comment_outbound'
   const approveUrl = outboundApproveUrl(draft)
+  // Outbound comments open with an @mention of the post author by default (Ivan
+  // 10-06). Only the poster seat can tag; the copy path is hand-posted. Same `tag`
+  // toggle as replies; off sends notag=1 to the gate, which stamps comment_feed.
+  const authorName = isOutbound && approveUrl ? String(draft.context?.target_name ?? '').trim() : ''
+  const canTagAuthor = Boolean(authorName)
+  const authorTagMayFail = /\s[A-Za-z]\.$/.test(authorName)
   const where = isComment || isOutbound
     ? seatLabel(draft.client_id)
     : isNewsjack || isWeekly || !draft.slack_channel
@@ -91,7 +97,7 @@ export function usePendingCard({ draft, refresh, feed, held, onGateResult, confi
     ? {
       title: approveUrl ? `Send this to the ${where} comment gate?` : `Copy this to post as ${seatPerson(draft.client_id)}?`,
       message: approveUrl
-        ? 'The poster’s rate caps, cooldown and jitter still decide. You get their answer on the card, no new tab.'
+        ? `${canTagAuthor ? (tag ? `Opens with @${authorName} so they get tagged. ` : 'Posts without a tag. ') : ''}The poster’s rate caps, cooldown and jitter still decide. You get their answer on the card, no new tab.`
         : 'Nothing is posted by the system. The comment goes to your clipboard - paste it under the post from Mattan’s seat.',
       confirmText: approveUrl ? 'Approve & queue' : 'Approve & copy',
     }
@@ -171,7 +177,7 @@ export function usePendingCard({ draft, refresh, feed, held, onGateResult, confi
     if (isOutbound) {
       await run(async () => {
         if (approveUrl) {
-          const v = await dispatchCommentGate(approveUrl)
+          const v = await dispatchCommentGate(canTagAuthor && !tag ? `${approveUrl}&notag=1` : approveUrl)
           if (v.outcome === 'accepted' || v.outcome === 'already') {
             await approveWeeklyReport(draft.id, body)
             setGate(v)
@@ -307,7 +313,7 @@ export function usePendingCard({ draft, refresh, feed, held, onGateResult, confi
     body, setBody, busy, drafting, tag, setTag, liking, liked, needsDavor, busyNote, refusal, error, gate,
     postState, heldVerdict, isNewsjack, isWeekly, isComment, isOutbound, isArchComment, isCloseOnly,
     commentCloseOnly, canDraft, canTag, commenterName, tagMayFail, onDemand, archOut, archReason, archBasis,
-    archCaution, archSrc, approveUrl, where, left, weeklyDispatches,
+    archCaution, archSrc, approveUrl, canTagAuthor, authorName, authorTagMayFail, where, left, weeklyDispatches,
     approveConfirm, discardConfirm, handledConfirm, editorNote, approveLabel,
     onApprove, onLike, onGenerate, onNeedsDavor, onMarkHandled, onDiscard, addEmoji,
   }

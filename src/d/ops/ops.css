@@ -68,6 +68,11 @@
 .op-slack .a-slack-line+.a-slack-line{margin-top:12px}
 .op-slack a{color:var(--lime);text-decoration:underline;text-underline-offset:3px}
 .op-note{font:400 12px/1.45 var(--m);color:var(--t3)}
+/* Outbound comment: the author @tag, on by default (Card.tsx). 44px tap row. */
+.op-tagline{display:block;width:100%;min-height:44px;text-align:left;background:transparent;border:0;padding:0 2px;font:400 12px/1.45 var(--m);color:var(--t3);cursor:pointer}
+.op-tagline b{font-weight:600;color:var(--t1)}
+.op-tagline[aria-pressed="true"] b{color:var(--lime)}
+.op-tagline:disabled{opacity:.5;cursor:default}
 .op-ban{border:1px solid var(--line2);border-radius:var(--r1);padding:7px 10px;font-size:13px;color:var(--t2);background:var(--p2)}
 .op-ban-warn{border-color:rgba(232,160,143,.45);color:var(--t1)}
 .op-ban b{font-weight:600}
