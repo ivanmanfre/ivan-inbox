@@ -10,7 +10,7 @@ describe('referral research guard', () => {
   it.each(['ben Patton does that side of biz', 'Speak to Jane Smith about marketing', 'John Doe handles our paid ads', 'Please contact Anna on our team', 'Reach out to bob@example.com'])('recognizes a handoff: %s', text => {
     expect(referralCandidate(text)).toBe(true)
   })
-  it.each(['No thanks', 'Thanks Ben, I handle our ads myself', 'Do you handle paid ads?', 'I do that side of the business', 'We are happy with our current agency'])('leaves ordinary replies alone: %s', text => {
+  it.each(['No thanks', 'Thanks Ben, I handle our ads myself', 'Do you handle paid ads?', 'I do that side of the business', 'We are happy with our current agency', 'Hi there! Happy to check out :)', 'Happy to connect!', 'Happy to connect with you', 'Sure, talk to you soon', 'Feel free to contact me'])('leaves ordinary replies alone: %s', text => {
     expect(referralCandidate(text)).toBe(false)
   })
   it('accepts a researched profile belonging to the named referral and the same company', () => {

@@ -14,7 +14,9 @@ export type ReferralDraft = {
 
 /** A cheap trigger only. The researcher must confirm a named human handoff. */
 export function referralCandidate(text: string): boolean {
-  if (/\b(?:speak|talk|reach out|contact|connect|check)\s+(?:to|with)?\s*\S+/i.test(text)) return true
+  // The object must be someone other than the two people in the thread: "happy to check out",
+  // "happy to connect" and "talk to you soon" are acceptances, never handoffs.
+  if (/\b(?:(?:speak|talk|reach out|connect|check)\s+(?:to|with)|contact)\s+(?!(?:me|us|you|him|her|them)\b)\S+/i.test(text)) return true
   const named = text.match(/\b([\p{L}][\p{L}'-]*(?:\s+[\p{L}][\p{L}'-]*){0,3})\s+(?:handles?|does|manages?|runs?|looks after|is responsible for|is in charge of)\b/iu)
   return Boolean(named && !/\b(?:i|we|you|he|she|they|it)\b/i.test(named[1]))
 }
