@@ -388,7 +388,7 @@ export async function fetchContentDrafts(lane: ContentLane): Promise<ContentPage
   // through) rather than per-bucket. The server-side `count` can therefore run
   // a few rows high — it is a denominator, not a list.
   const rows = ((data ?? []) as unknown as ContentDraft[])
-    .filter(r => !operatorDeleted(r.taxonomy))
+    .filter(r => !operatorDeleted(r.taxonomy) && !internalTestDraft(r.taxonomy))
   return { rows, count: count ?? null }
 }
 
@@ -407,7 +407,7 @@ export async function fetchWeekDrafts(fromIso: string, toIso: string): Promise<C
     .order('created_at', { ascending: false })
     .limit(1000)
   if (error) throw error
-  const rows = ((data ?? []) as unknown as ContentDraft[]).filter(r => !operatorDeleted(r.taxonomy))
+  const rows = ((data ?? []) as unknown as ContentDraft[]).filter(r => !operatorDeleted(r.taxonomy) && !internalTestDraft(r.taxonomy))
   return { rows, count: count ?? null }
 }
 
@@ -923,6 +923,13 @@ export function operatorDeleted(t: unknown): boolean {
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false
   const v = (parsed as Record<string, unknown>).deleted_by_operator
   return v === true || v === 'true'
+}
+
+// Internal fixtures remain stored and can be opened by ID. Lists use explicit provenance.
+export function internalTestDraft(t: unknown): boolean {
+  const parsed = parseMaybeJson(t)
+  return !!parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+    && (parsed as Record<string, unknown>).internal_test === true
 }
 
 // The explicit-save edit. Editing NEVER touches status — approve stays the

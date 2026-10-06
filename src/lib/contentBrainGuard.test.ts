@@ -50,3 +50,14 @@ it('a safely hidden lane reports zero visible rows and zero waiting count withou
  expect(await fetchLaneProbe('arch')).toEqual({ scoped: 3, total: 3 })
  expect(await fetchContentWaiting('arch')).toBe(3)
 })
+
+it('hides explicit internal fixtures from both readers while retaining real posts about tests', async () => {
+ mock.result.data = [
+  { id: 'fixture', title: '[new voice test] Example', taxonomy: { internal_test: true } },
+  { id: 'image', title: 'Internal researched image verification', taxonomy: '{"internal_test":true}' },
+  { id: 'real', title: 'What I would test with a first creator budget', taxonomy: { human_edited: true } },
+  { id: 'ordinary', title: 'Testing structures', taxonomy: { internal_test: false } },
+ ]
+ expect((await fetchContentDrafts('ivan')).rows.map(r => r.id)).toEqual(['real', 'ordinary'])
+ expect((await fetchWeekDrafts('2026-10-01', '2026-10-08')).rows.map(r => r.id)).toEqual(['real', 'ordinary'])
+})
