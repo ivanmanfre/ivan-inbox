@@ -34,6 +34,8 @@
 .hm-pair{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 /* phone: one block per seat */
 .hm-phone{padding:14px 16px 24px;gap:28px}
+/* Desktop: Home is its own scroller (SPEC-shell-spacing G12; .d-body never scrolls). */
+.hm-desktop{overflow-y:auto}
 .hm-stack{display:flex;flex-direction:column;gap:28px}
 .hm-seat{display:flex;flex-direction:column;gap:18px}
 .hm-phone .hm-sn{font-size:20px;padding-bottom:8px}

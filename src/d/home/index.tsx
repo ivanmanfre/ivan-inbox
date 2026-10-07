@@ -38,7 +38,7 @@ export default function HomePage({ layout }: PlaceProps) {
     ['send', p => <div className="hm-pair"><Ready {...p} /><Limit {...p} /></div>],
   ]
   return (
-    <div className={`hm hm-${layout}`}>
+    <div className={`hm hm-${layout}`} data-d-scroll={layout === 'desktop' ? '' : undefined}>
       {layout === 'desktop' && <AnswerRow title="Home" />}
       {!online && <Offline since={null} />}
       {layout === 'desktop' ? (

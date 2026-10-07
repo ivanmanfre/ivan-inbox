@@ -8,6 +8,18 @@
 
    Every rule in this file has a row in SYSTEM.md's motion table, which is the
    table the S4 gate parses.
+
+   BRIEF 4 (2026-10-07, SPEC-foundation §2.2): the brief skin's `motion`
+   section REPLACES this contract on purpose, for the surfaces it owns. Under
+   html[data-skin-on~='motion'] the app moves on Oxygen's ladder: four curves
+   plus three linear() springs (tokens.css §10 --ds-e-*), durations
+   160/220/240/380/480 ms (--ds-d-*), and the springs below (springCrit /
+   springSettle / springPop). Ambient loops are allowed only when tied to live
+   work and paused offscreen / hidden / Subtle / Reduce Motion
+   (useMotionLevel). Two layout-property transitions are allowed, and only
+   these two: the hover pill and the segmented thumb, each on an absolutely
+   positioned isolated pseudo-element with no layout siblings. Flag off, the
+   original contract above still holds untouched. Do not "fix" the skin back.
    ========================================================================== */
 import type { Transition, Variants } from 'motion/react'
 
@@ -73,3 +85,21 @@ export const list: Variants = {
 export const stagger = (i: number): number => i * STAGGER
 
 export const presence = { fade, rise, pop, sheet, list }
+
+/* --- Brief skin motion (owned by the `motion` section) -------------------- */
+
+/** Pointer-tracked: critically damped, about 150ms. */
+export const springCrit: Transition = { type: 'spring', visualDuration: 0.15, bounce: 0 }
+/** Thumbs and menus: about 1% overshoot (ζ 0.83). */
+export const springSettle: Transition = { type: 'spring', stiffness: 420, damping: 34 }
+/** Counts and pills: about 5.7% overshoot (ζ 0.67). */
+export const springPop: Transition = { type: 'spring', stiffness: 500, damping: 30 }
+
+export const easeContent: [number, number, number, number] = [0.16, 1, 0.3, 1]
+export const easeUi: [number, number, number, number] = [0.2, 0.7, 0.2, 1]
+export const easePanel: [number, number, number, number] = [0.22, 1, 0.36, 1]
+export const easeExit: [number, number, number, number] = [0.23, 1, 0.32, 1]
+export const easeIn: [number, number, number, number] = [0.4, 0, 1, 1]
+
+/** The tween ladder, in seconds (matches --ds-d-*). */
+export const D = { fast: 0.16, nav: 0.22, ui: 0.24, content: 0.38, slow: 0.48, exit: 0.12 } as const

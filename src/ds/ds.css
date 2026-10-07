@@ -14,6 +14,7 @@
    ========================================================================== */
 
 @import './tokens.css';
+@import './fonts.css';
 
 /* ==========================================================================
    0 · BASE. src/styles.css is stock-only (DECISIONS D4), so the design system

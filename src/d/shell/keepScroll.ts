@@ -8,7 +8,9 @@ const saved = new Map<string, number>()
 
 function scroller(layout: Layout): { get: () => number; set: (y: number) => void; room: () => number } {
   if (layout === 'desktop') {
-    const el = () => document.querySelector<HTMLElement>('.d-body')
+    // SPEC-shell-spacing §2.6: .d-body never scrolls; each page marks its primary scroller
+    // data-d-scroll (first match). A page that has not marked one keeps the .d-body fallback.
+    const el = () => document.querySelector<HTMLElement>('.d-body [data-d-scroll]') ?? document.querySelector<HTMLElement>('.d-body')
     return { get: () => el()?.scrollTop ?? 0, set: y => { const e = el(); if (e) e.scrollTop = y }, room: () => { const e = el(); return e ? e.scrollHeight - e.clientHeight : 0 } }
   }
   const se = () => document.scrollingElement ?? document.documentElement

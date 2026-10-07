@@ -10,18 +10,7 @@
    `.dm-…`, `.ct-…`), and use the variables below; never restyle d- classes.
    ========================================================================== */
 
-@font-face { font-family: 'Geist'; font-style: normal; font-display: swap; font-weight: 100 900;
-  src: url('./fonts/geist-latin-wght-normal.woff2') format('woff2-variations');
-  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
-@font-face { font-family: 'Geist'; font-style: normal; font-display: swap; font-weight: 100 900;
-  src: url('./fonts/geist-latin-ext-wght-normal.woff2') format('woff2-variations');
-  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
-@font-face { font-family: 'Geist Mono'; font-style: normal; font-display: swap; font-weight: 100 900;
-  src: url('./fonts/geist-mono-latin-wght-normal.woff2') format('woff2-variations');
-  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
-@font-face { font-family: 'Geist Mono'; font-style: normal; font-display: swap; font-weight: 100 900;
-  src: url('./fonts/geist-mono-latin-ext-wght-normal.woff2') format('woff2-variations');
-  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@import '../ds/fonts.css';
 
 /* ---- tokens (dark.css :root, scoped) ---- */
 .d-app{
@@ -43,6 +32,29 @@
   -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
 }
 html.d-root,html.d-root body{background:#0A0A09}
+
+/* ---- Brief skin (src/ds/skin.ts; SPEC-foundation §2.4). D's own variables re-pointed at the
+   --ds-* roles, which tokens.css §10 sets. No literals here: tokens.css is the colour file.
+   Flag off = no data-skin-on = the dark frame above, unchanged. ---- */
+:root[data-skin-on~='tokens'] .d-app{
+  --bg:var(--ds-sticky);--p1:var(--ds-surface-1);--p2:var(--ds-surface-2);--p3:var(--ds-surface-3);
+  --line:var(--ds-line);--line2:var(--ds-line-strong);--strong:var(--ds-line-3);
+  --t1:var(--ds-text);--t2:var(--ds-text-2);--t3:var(--ds-text-3);
+  --lime:var(--ds-accent);--limeD:var(--ds-accent-deep);--limeL:var(--ds-accent-hover);--num:var(--ds-accent);--hot:var(--ds-accent);--hotB:var(--ds-accent-line);
+  --warn:var(--ds-sev-attention-ui);--crit:var(--ds-sev-urgent-ui);--critT:var(--ds-sev-urgent-ui);
+  --sel:var(--ds-accent-soft);--selT:var(--ds-nav-text-on);--selT2:var(--ds-nav-text);--selHot:var(--ds-accent);
+  --seg:var(--ds-hairline);--segOn:var(--ds-seg-on);--segNow:var(--ds-accent);--gap:var(--ds-gap-fill);--h1:var(--ds-surface-1);--h2:var(--ds-surface-2);
+  --chbg:transparent;
+  --side:var(--ds-glass-rail);--sideT:var(--ds-text-2);--sideH:var(--ds-text);--sideM:var(--ds-text-3);--sideOn:var(--ds-fill-sel);--sideL:var(--ds-line);
+  --ink:var(--ds-accent-ink);
+  background:var(--ds-canvas);color:var(--t1);
+}
+:root[data-skin-on~='tokens'].d-root,:root[data-skin-on~='tokens'].d-root body{background:var(--ds-ground-web)}
+:root.brief-native[data-skin-on~='tokens'].d-root,:root.brief-native[data-skin-on~='tokens'].d-root body{background:transparent}
+:root.brief-opaque[data-skin-on~='tokens'].d-root,:root.brief-opaque[data-skin-on~='tokens'].d-root body{background:var(--ds-canvas)}
+:root[data-skin-on~='tokens'] ::selection{background:var(--ds-selection);color:var(--ds-text)}
+:root[data-skin-on~='tokens'] .d-app :where(button,a,[tabindex]):focus-visible{outline-color:var(--ds-focus)}
+:root[data-skin-on~='type'] .d-app{--f:var(--ds-font);--m:var(--ds-font);font-family:var(--ds-font)}
 .d-app *,.d-app *::before,.d-app *::after{box-sizing:border-box}
 .d-app :where(h1,h2,h3,h4,p,ul,ol,figure){margin:0}
 .d-app :where(button){font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
@@ -56,11 +68,14 @@ html.d-root,html.d-root body{background:#0A0A09}
 .d-app.d-desktop{display:flex;height:100vh;height:100dvh;overflow:hidden}
 .d-main{flex:1;min-width:0;display:flex;flex-direction:column;height:100%;position:relative}
 .d-bodyrow{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);position:relative}
-.d-bodyrow.d-with-claude{grid-template-columns:minmax(0,1fr) 430px}
-@media (max-width:1380px){.d-bodyrow.d-with-claude{grid-template-columns:minmax(0,1fr) 390px}}
 .d-body{min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .d-body>*{flex:1;min-height:0}
-.d-claude{min-height:0;min-width:0;background:var(--bg);box-shadow:inset 1px 0 0 var(--line2);display:flex;flex-direction:column}
+/* S0 (SPEC-shell-spacing §2.1): the Claude drawer is the last child of .d-app, beside the main
+   column (full height), never under the answer band. --drawer-col is the width it takes from
+   the main column; page overlays (toasts, right sheets) stay left of it. */
+.d-claude{flex:none;width:430px;height:100%;min-height:0;min-width:0;background:var(--bg);box-shadow:inset 1px 0 0 var(--line2);display:flex;flex-direction:column}
+.d-app.d-desktop[data-claude="dock"]{--drawer-col:430px}
+@media (max-width:1380px){.d-claude{width:390px}.d-app.d-desktop[data-claude="dock"]{--drawer-col:390px}}
 
 /* left panel */
 .d-side{width:212px;flex:none;background:var(--side);color:var(--sideT);display:flex;flex-direction:column;padding:18px 10px 14px;border-right:1px solid var(--sideL);overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
@@ -203,7 +218,7 @@ html.d-root,html.d-root body{background:#0A0A09}
 /* ---- sheets, scrims, confirm, toasts ---- */
 .d-scrim{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50}
 .d-sheet{position:fixed;z-index:51;background:var(--p1);border:1px solid var(--strong);display:flex;flex-direction:column;overflow:hidden;outline:none}
-.d-sheet-right{top:0;right:0;bottom:0;width:min(520px,92vw);border-radius:14px 0 0 14px;border-right:0;box-shadow:-24px 0 60px rgba(0,0,0,.5)}
+.d-sheet-right{top:0;right:var(--drawer-col,0px);bottom:0;width:min(520px,92vw);border-radius:14px 0 0 14px;border-right:0;box-shadow:-24px 0 60px rgba(0,0,0,.5)}
 .d-sheet-bottom{left:0;right:0;bottom:0;max-height:88dvh;border-radius:20px 20px 0 0;border-bottom:0;padding-bottom:env(safe-area-inset-bottom)}
 .d-sheet-top{left:0;right:0;top:calc(58px + env(safe-area-inset-top));max-height:calc(100dvh - 120px);border-radius:0 0 20px 20px;border-top:1px solid var(--line2)}
 .d-grab{width:38px;height:5px;border-radius:3px;background:var(--line2);margin:8px auto 2px;flex:none}
@@ -219,8 +234,8 @@ html.d-root,html.d-root body{background:#0A0A09}
 .d-confirm p{color:var(--t2);font-size:14px;line-height:1.45}
 .d-confirm-k{display:flex;gap:9px;margin-top:10px}
 .d-toasts{position:fixed;z-index:70;display:flex;flex-direction:column;gap:8px;pointer-events:none}
-.d-desktop .d-toasts{top:74px;right:16px;width:416px}
-.d-desktop[data-bell="open"] .d-toasts{top:auto;bottom:26px;right:26px}
+.d-desktop .d-toasts{top:74px;right:calc(var(--drawer-col,0px) + 16px);width:416px}
+.d-desktop[data-bell="open"] .d-toasts{top:auto;bottom:26px;right:calc(var(--drawer-col,0px) + 26px)}
 .d-phone .d-toasts{left:10px;right:10px;bottom:calc(var(--dock-h) + 40px + env(safe-area-inset-bottom))}
 .d-toast{pointer-events:auto;border:1px solid var(--strong);border-radius:12px;background:var(--p2);padding:10px 10px 10px 14px;display:flex;gap:10px;align-items:center;font-size:13.5px;box-shadow:0 12px 32px rgba(0,0,0,.5)}
 .d-toast>div{flex:1;min-width:0}.d-toast small{display:block;color:var(--t2);font-size:12px;margin-top:1px}

@@ -1,0 +1,73 @@
+/* ==========================================================================
+   Brief skin · shell (SPEC-shell-spacing §2-§3). Owned by the `shell` section
+   (src/ds/skin.ts): every rule is scoped :root[data-skin-on~='shell'], so flag
+   off this file matches nothing. Numbers are the role tokens of tokens.css §10.
+
+   The frame: [web rail] [main column: banners · 52 band · body] [drawer].
+   One left edge (--ds-edge, 24) for the band title and page content; one
+   rule line at y = 52 for the band and the drawer head; tiers key off the
+   main column (.d-main[data-tier], written by useShellGeometry), never the
+   viewport. Hysteresis and the native frame handshake live in that hook.
+   ========================================================================== */
+
+:root[data-skin-on~='shell'] .d-app.d-desktop{position:relative}
+:root[data-skin-on~='shell'] .d-desktop .d-main{container:main / inline-size}
+/* Foundation: no width transitions. The rail snaps; the tier is set before paint. */
+:root[data-skin-on~='shell'] .d-desktop .d-side{transition:none}
+
+/* ---- the answer band: the page's only header, 52 tall, never wraps its tools ---- */
+:root[data-skin-on~='shell'] .d-desktop .d-ans{height:var(--ds-header-h);min-height:var(--ds-header-h);padding:0 var(--ds-edge);gap:12px}
+:root[data-skin-on~='shell'] .d-desktop .d-ans .d-at{flex-wrap:nowrap;align-items:baseline;gap:0 12px;overflow:hidden}
+:root[data-skin-on~='shell'] .d-desktop .d-ans .d-at h1{font:var(--ds-fw-em) 20px/24px var(--f);letter-spacing:-.02em;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none;max-width:100%}
+:root[data-skin-on~='shell'] .d-desktop .d-at h1 .d-n{font:500 20px/24px var(--f);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+:root[data-skin-on~='shell'] .d-desktop .d-ans .d-at p{font-size:12px;line-height:16px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* T3/T4: the sub drops under the title (24 + 16 = 40 inside the 52 band). */
+:root[data-skin-on~='shell'] .d-desktop .d-main:is([data-tier='t3'],[data-tier='t4']) .d-ans .d-at{flex-direction:column;align-items:flex-start;gap:0}
+:root[data-skin-on~='shell'] .d-desktop .d-main:is([data-tier='t3'],[data-tier='t4']) .d-ans .d-at p{max-width:100%}
+
+:root[data-skin-on~='shell'] .d-desktop .d-tools,
+:root[data-skin-on~='shell'] .d-desktop .d-tools-page{gap:var(--ds-ctl-gap);flex-wrap:nowrap;white-space:nowrap}
+:root[data-skin-on~='shell'] .d-desktop .d-tools .d-ask{height:var(--ds-control-h)}
+/* A page's search field in the band is a control: 32, like every other tool. */
+:root[data-skin-on~='shell'] .d-desktop .d-tools-page :is(.dm-search,.d-search){height:var(--ds-control-h);min-height:0}
+:root[data-skin-on~='shell'] .d-desktop .d-bell{width:var(--ds-control-h);min-width:var(--ds-control-h);height:var(--ds-control-h)}
+/* A tool with a label (Lanes' refresh) is a .d-tool, not a 32 square: auto width, one line. */
+:root[data-skin-on~='shell'] .d-desktop .d-tools .d-ib{width:auto;min-width:var(--ds-control-h);height:var(--ds-control-h);padding:0 7px;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;font-size:12px;font-weight:500}
+/* The bell count sits inside its own 32 box and never covers the neighbouring tool (G15). */
+:root[data-skin-on~='shell'] .d-desktop .d-bell-n{top:2px;right:2px;min-width:16px;height:16px;padding:0 4px;border:0;border-radius:8px;font-size:10px;line-height:16px;text-align:center}
+
+/* ---- banners above the band share the edge ---- */
+:root[data-skin-on~='shell'] .d-desktop :is(.d-health,.d-offline){padding:8px var(--ds-edge)}
+
+/* ---- the Claude drawer (SPEC-shell-spacing §2.2): a pane, docked at a canvas >= 1080,
+   an overlay below it. Same node in both modes (Shell.tsx), so the chat survives. ---- */
+:root[data-skin-on~='shell'] .d-app.d-desktop[data-claude="dock"]{--drawer-col:398px}
+:root[data-skin-on~='shell'] .d-app.d-desktop[data-claude="over"]{--drawer-col:0px}
+:root[data-skin-on~='shell'] .d-desktop > aside.d-claude{
+  width:var(--ds-peer-w);height:auto;align-self:stretch;margin:8px 8px 8px 0;
+  border-radius:var(--ds-r-pane);overflow:hidden;
+  background:var(--ds-glass-pane);
+  box-shadow:var(--ds-shadow-soft),var(--ds-hi),0 0 0 1px var(--ds-line);
+}
+:root[data-skin-on~='shell'] .d-desktop[data-claude="over"] > aside.d-claude{
+  position:absolute;top:8px;right:8px;bottom:8px;margin:0;z-index:46;
+  /* Over the page it is opaque: page text must never read through the conversation. */
+  background:var(--ds-surface-1);
+  box-shadow:var(--ds-shadow-float),var(--ds-hi),0 0 0 1px var(--ds-line-strong);
+}
+:root[data-skin-on~='shell'] .d-desktop > aside.d-claude .dcl{background:transparent}
+/* Head row 1 is 44 (its bottom hairline at y = 8 + 44 = 52, level with the band's);
+   the chat title moves to a 20px line under it, so it never truncates to "Na…" (G14). */
+:root[data-skin-on~='shell'] .d-desktop > aside.d-claude .dcl-head{height:var(--ds-toolbar-h);min-height:var(--ds-toolbar-h);padding:0 8px;position:relative}
+:root[data-skin-on~='shell'] .d-desktop > aside.d-claude .dcl-head:has(.dcl-tname){margin-bottom:20px}
+:root[data-skin-on~='shell'] .d-desktop > aside.d-claude .dcl-tname{position:absolute;left:16px;right:16px;top:var(--ds-toolbar-h);height:20px;line-height:20px;font:400 12px/20px var(--f);color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:root[data-skin-on~='shell'] .d-desktop > aside.d-claude .dcl-ib{width:var(--ds-control-h);height:var(--ds-control-h)}
+
+/* ---- overlays anchor to the main column (§2.5.6) ---- */
+:root[data-skin-on~='shell'] .d-desktop .d-bellp-desktop{top:8px;right:8px;bottom:8px}
+:root[data-skin-on~='shell'] .d-desktop .d-toasts{top:calc(var(--ds-header-h) + 8px)}
+
+/* ---- drawer entrance (motion section): the pane slides in 16px; the main column reflows once.
+   One keyframe for both modes, so a dock <-> over switch never restarts it. ---- */
+@keyframes d-drawer-in{from{opacity:0;transform:translateX(16px)}}
+:root[data-skin-on~='shell'][data-skin-on~='motion'] .d-desktop[data-claude] > aside.d-claude{animation:d-drawer-in var(--ds-d-content) var(--ds-e-panel) both}
