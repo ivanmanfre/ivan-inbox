@@ -20,6 +20,7 @@ import * as lib from '../../lib/ops'
 import type { OpsDraft } from '../../lib/ops'
 import { Batch } from './Batch'
 import { OpsCard } from './Card'
+import { CardV4 } from './v4/Card'
 
 let n = 0
 const row = (kind: OpsDraft['kind'], client_id: string, extra: Partial<OpsDraft> = {}, context: Record<string, unknown> = {}): OpsDraft => ({
@@ -33,12 +34,12 @@ const refresh = vi.fn()
 beforeEach(() => { vi.clearAllMocks() })
 afterEach(cleanup)
 
-describe('Quick batch', () => {
+describe.each(['v3', 'v4'] as const)('Quick batch (%s)', look => {
   it('leaves a gate-held (already approved) comment out of Discard all, and the danger confirm counts only the pending ones', async () => {
     const held = row('comment_outbound', 'ivan', { approved_at: new Date().toISOString(), sent_at: new Date().toISOString() }, gate)
     const a = row('comment_outbound', 'ivan', {}, gate)
     const b = row('comment_outbound', 'ivan', {}, gate)
-    renderInFrame(<Batch lane="ivan" cards={[held, a, b]} refresh={refresh} />, { hash: '#exp/d/ops' })
+    renderInFrame(<Batch look={look} lane="ivan" cards={[held, a, b]} refresh={refresh} />, { hash: '#exp/d/ops' })
     expect(document.body.textContent).toContain('2 comments')
     fireEvent.click(key('batch-discard'))
     await waitFor(() => expect(document.querySelector('.d-confirm-danger')).toBeTruthy())
@@ -56,7 +57,7 @@ describe('Quick batch', () => {
 
   it('hides handled ids at once, so a second Approve all cannot re-fire them', async () => {
     const a = row('manual_invite', 'risedtc'); const b = row('manual_invite', 'risedtc')
-    renderInFrame(<Batch lane="risedtc" cards={[a, b]} refresh={refresh} />, { hash: '#exp/d/ops' })
+    renderInFrame(<Batch look={look} lane="risedtc" cards={[a, b]} refresh={refresh} />, { hash: '#exp/d/ops' })
     fireEvent.click(key('batch-approve'))
     fireEvent.click(await waitFor(() => key('confirm')))
     await waitFor(() => expect(acts.dispatchApprove).toHaveBeenCalledTimes(2))
@@ -68,7 +69,7 @@ describe('Quick batch', () => {
   it('opens to each body with its own Approve / Discard and prints a timing refusal as a queue position', async () => {
     const a = row('comment_outbound', 'ivan', {}, gate); const b = row('comment_outbound', 'ivan', {}, gate)
     ;(acts.dispatchApprove as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ ok: false, message: 'next slot 14:20', outcome: 'timing' })
-    renderInFrame(<Batch lane="ivan" cards={[a, b]} refresh={refresh} />, { hash: '#exp/d/ops' })
+    renderInFrame(<Batch look={look} lane="ivan" cards={[a, b]} refresh={refresh} />, { hash: '#exp/d/ops' })
     fireEvent.click(key('batch-open'))
     const approves = document.querySelectorAll('[data-verb="batch-item-approve"]')
     expect(approves).toHaveLength(2)
@@ -83,8 +84,8 @@ describe('Quick batch', () => {
   })
 })
 
-describe('Ops card parity', () => {
-  const card = (d: OpsDraft) => renderInFrame(<OpsCard d={d} refresh={refresh} layout="desktop" pos="card 1 of 1" />, { hash: '#exp/d/ops' })
+describe.each([OpsCard, CardV4])('Ops card parity (%s)', Card => {
+  const card = (d: OpsDraft) => renderInFrame(<Card d={d} refresh={refresh} layout="desktop" pos="card 1 of 1" />, { hash: '#exp/d/ops' })
 
   it('an Arch comment with no comment_id keeps Needs Davor, Mark handled and the why', async () => {
     card(row('comment_reply', 'arch', { body: '' }, { author_name: 'Kamran Arshad', arch_outcome: 'NEEDS_DAVOR', arch_reason: 'Pricing question, his call.' }))

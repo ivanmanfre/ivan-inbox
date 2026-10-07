@@ -3,6 +3,7 @@ import { batchResultLine, isStillPending, runBatch } from '../../lib/focus'
 import { outboundApproveUrl, seatLabel, type GateOutcome, type OpsDraft } from '../../lib/ops'
 import { discardConfirm, dispatchApprove, dispatchDiscard, gateConfirm, inviteConfirm } from '../../wb/ops/batchActs'
 import { useDConfirm } from '../ui/confirm'
+import { Working } from '../../ds/Working'
 import { Btn } from '../ui/Key'
 import { seatBatches, type SeatBatch } from './model'
 
@@ -19,14 +20,16 @@ import { seatBatches, type SeatBatch } from './model'
 type Note = { message: string; outcome: GateOutcome | 'error' }
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
-export function Batch({ lane, cards, refresh }: { lane: string; cards: OpsDraft[]; refresh: () => void }) {
+export function Batch({ lane, cards, refresh, look = 'v3', onActed, onHighlight }: { lane: string; cards: OpsDraft[]; refresh: () => void; look?: 'v3' | 'v4'; onActed?: (id: string, verb: string) => void; onHighlight?: (ids: string[]) => void }) {
   const confirm = useDConfirm()
   const [done, setDone] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState<Set<string>>(new Set())
   const [open, setOpen] = useState<string | null>(null)
   const [note, setNote] = useState<Record<string, string>>({})
   const [one, setOne] = useState<Record<string, Note>>({})
-  const batches = seatBatches(lane, cards.filter(d => !done.has(d.id) && isStillPending(d)))
+  const [running, setRunning] = useState<{ ids: string[]; verb: 'approve' | 'discard'; batch: SeatBatch } | null>(null)
+  const current = seatBatches(lane, cards.filter(d => !done.has(d.id) && isStillPending(d)))
+  const batches = running ? [running.batch, ...current.filter(b => b.key !== running.batch.key)] : current
   // A batch that just emptied itself still says what happened (the result line outlives the row).
   const gone = Object.keys(note).filter(k => !batches.some(b => b.key === k))
   if (batches.length === 0 && gone.length === 0) return null
@@ -44,6 +47,7 @@ export function Batch({ lane, cards, refresh }: { lane: string; cards: OpsDraft[
     if (d.kind === 'comment_outbound' && outboundApproveUrl(d) !== null && !(await confirm(gateConfirm(seatLabel(d.client_id))))) return
     mark([d.id], true); clearOne(d.id)
     try {
+      onActed?.(d.id, 'Approved')
       const r = await dispatchApprove(d)
       if (r.ok) { markDone(d.id); refresh() } else setOne(s => ({ ...s, [d.id]: { message: r.message, outcome: r.outcome } }))
     } catch (e) { setOne(s => ({ ...s, [d.id]: { message: errText(e), outcome: 'error' } })) }
@@ -54,7 +58,7 @@ export function Batch({ lane, cards, refresh }: { lane: string; cards: OpsDraft[
     if (busy.has(d.id) || done.has(d.id)) return
     if (!(await confirm(discardConfirm(1)))) return
     mark([d.id], true)
-    try { await dispatchDiscard(d); markDone(d.id); refresh() }
+    try { onActed?.(d.id, 'Discarded'); await dispatchDiscard(d); markDone(d.id); refresh() }
     catch (e) { setOne(s => ({ ...s, [d.id]: { message: errText(e), outcome: 'error' } })) }
     finally { mark([d.id], false) }
   }
@@ -67,15 +71,18 @@ export function Batch({ lane, cards, refresh }: { lane: string; cards: OpsDraft[
     if (!(await confirm(ask))) return
     const byId = new Map(list.map(d => [d.id, d]))
     const ids = list.map(d => d.id)
+    if (look === 'v4') setRunning({ ids, verb, batch: b })
     mark(ids, true)
     const r = await runBatch(ids, async id => {
       const d = byId.get(id)!
+      onActed?.(id, verb === 'discard' ? 'Discarded' : 'Approved')
       if (verb === 'discard') { await dispatchDiscard(d); markDone(id); return }
       const res = await dispatchApprove(d)
       if (res.ok) { markDone(id); return }
       setOne(s => ({ ...s, [id]: { message: res.message, outcome: res.outcome } }))
       throw new Error(res.message)
     })
+    if (look === 'v4') setRunning(null)
     mark(ids, false)
     setNote(s => ({ ...s, [b.key]: batchResultLine(r, n, verb === 'approve' ? 'approved' : 'discarded').replace(/: open$/, ', open the list') }))
     if (r.succeeded.length > 0) refresh()
@@ -88,29 +95,31 @@ export function Batch({ lane, cards, refresh }: { lane: string; cards: OpsDraft[
         const isOpen = open === b.key
         const any = b.cards.some(d => busy.has(d.id))
         return (
-          <div className="op-qb" key={b.key} data-batch={b.key}>
+          <div className={`op-qb${look === 'v4' ? ' op4-batch' : ''}`} key={b.key} data-batch={b.key}
+            onMouseEnter={() => onHighlight?.(b.cards.map(d => d.id))} onMouseLeave={() => onHighlight?.([])}
+            onFocus={() => onHighlight?.(b.cards.map(d => d.id))} onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) onHighlight?.([]) }}>
             <button type="button" className="op-qbl" aria-expanded={isOpen} data-verb="batch-open" onClick={() => setOpen(isOpen ? null : b.key)}>
-              <small>Quick batch · {b.label} {isOpen ? '▾' : '▸'}</small>
+              <small>{look === 'v4' && any && running ? <Working>{running.verb === 'approve' ? 'Approving' : 'Discarding'} {Math.min(running.ids.filter(id => done.has(id)).length + 1, running.ids.length)} of {running.ids.length}…</Working> : <>{look === 'v3' ? 'Quick batch · ' : ''}{b.label} {isOpen ? '▾' : '▸'}</>}</small>
             </button>
             <div className="op-qbk">
               <Btn verb="batch-discard" disabled={any} onClick={() => void run(b, 'discard')}>Discard all</Btn>
-              <Btn primary verb="batch-approve" disabled={any} onClick={() => void run(b, 'approve')}>
+              <Btn primary={look === 'v3'} verb="batch-approve" disabled={any} onClick={() => void run(b, 'approve')}>
                 {any ? 'Working…' : b.kind === 'manual_invite' ? 'Mark all handled' : 'Approve all'}
               </Btn>
             </div>
             {note[b.key] && <div className="op-note">{note[b.key]}</div>}
-            {isOpen && b.cards.map(d => (
+            {isOpen && b.cards.filter(d => !done.has(d.id)).map(d => (
               <div className="op-qbi" key={d.id} data-batch-item={d.id}>
                 <div className="op-qbi-r">
                   <span>{d.body}</span>
                   <span className="op-qbi-k">
                     <Btn verb="batch-item-discard" disabled={busy.has(d.id)} onClick={() => void discardOne(d)}>Discard</Btn>
-                    <Btn primary verb="batch-item-approve" disabled={busy.has(d.id)} onClick={() => void approveOne(d)}>
+                    <Btn primary={look === 'v3'} verb="batch-item-approve" disabled={busy.has(d.id)} onClick={() => void approveOne(d)}>
                       {b.kind === 'comment_outbound' ? 'Approve' : 'Handled'}
                     </Btn>
                   </span>
                 </div>
-                {one[d.id] && <div className={one[d.id].outcome === 'timing' ? 'op-note' : 'op-err'}>{one[d.id].outcome === 'timing' ? `Waiting for the send window: ${one[d.id].message}` : one[d.id].message}</div>}
+                {one[d.id] && <div data-batch-note={look === 'v4' || undefined} className={one[d.id].outcome === 'timing' ? 'op-note' : 'op-err'}>{one[d.id].outcome === 'timing' ? `Waiting for the send window: ${one[d.id].message}` : one[d.id].message}</div>}
               </div>
             ))}
           </div>

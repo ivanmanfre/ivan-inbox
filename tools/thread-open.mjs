@@ -48,6 +48,13 @@ assert(JSON.parse(session).access_token, 'Smoke session has no access token')
 const readRpcs = new Set(['inbox_changed_since', 'inbox_interest_cards', 'inbox_followup_sources', 'warm_signal_cards', 'conversation_agent_cards',
   // Reply-source reads (db/20261007_reply_sources.sql): STABLE security-definer functions, no writes.
   'inbox_reply_source', 'outreach_reply_sources', 'client_board_reply_source', 'client_board_reply_sources'])
+const replySourceRpcs = new Set(['inbox_reply_source', 'outreach_reply_sources', 'client_board_reply_source', 'client_board_reply_sources'])
+function missingReplySource(url, method, status, payload) {
+  const u = new URL(url)
+  return method === 'POST' && u.hostname === 'bjbvqvzbzczjbatgmccb.supabase.co'
+    && u.pathname.startsWith('/rest/v1/rpc/') && replySourceRpcs.has(u.pathname.slice('/rest/v1/rpc/'.length))
+    && status === 404 && payload?.code === 'PGRST202'
+}
 const report = { ok: false, engine, seat, checks: [], failure: null }
 let browser
 try {
@@ -59,6 +66,7 @@ try {
     try {
       page = await context.newPage()
       const errors = [], forbidden = []
+      const resourceErrors = [], missing404s = new Map()
       const messages = new Map(), pendingReads = new Set(), failedReads = []
       let successfulReads = 0
       let clickedId = null, readStamps = 0
@@ -69,6 +77,17 @@ try {
       // Installed before navigation: includes the cold-load preload, not just
       // requests caused by opening the pane. Bodies stay in this context's memory.
       page.on('response', response => {
+        // The reply-source migration can be intentionally absent. Confirm the
+        // exact 404 body before excusing its browser-generated console error.
+        if (response.status() === 404) {
+          const reading = response.json().then(payload => {
+            if (missingReplySource(response.url(), response.request().method(), response.status(), payload)) {
+              missing404s.set(response.url(), (missing404s.get(response.url()) || 0) + 1)
+            }
+          }).catch(() => {})
+          pendingReads.add(reading)
+          void reading.finally(() => pendingReads.delete(reading))
+        }
         if (!isMessageGet(response.request())) return
         const reading = (async () => {
           if (!response.ok()) { failedReads.push(`HTTP ${response.status()}`); return }
@@ -82,7 +101,11 @@ try {
       })
       page.on('requestfailed', req => { if (isMessageGet(req)) failedReads.push('inbox request failed') })
       page.on('pageerror', () => errors.push('uncaught page error'))
-      page.on('console', m => { if (m.type() === 'error') errors.push('console error') })
+      page.on('console', m => {
+        if (m.type() !== 'error') return
+        if (/^Failed to load resource: the server responded with a status of 404 \((?:Not Found)?\)$/.test(m.text())) resourceErrors.push(m.location().url)
+        else errors.push('console error')
+      })
       await page.route('**/*', async route => {
         const req = route.request(), url = new URL(req.url()), method = req.method()
         if (url.hostname === 'bjbvqvzbzczjbatgmccb.supabase.co') {
@@ -112,9 +135,9 @@ try {
         sessionStorage.setItem('dm-smoke-seat', seat)
       }, { session, authKey, seat })
       await page.goto(`${base.replace(/#.*$/, '')}#exp/d/dms?seat=${seat}`, { waitUntil: 'domcontentloaded' })
-      await page.waitForFunction(() => Boolean(document.querySelector('.dm-page, .login')), { timeout: 45_000 })
+      await page.waitForFunction(() => Boolean(document.querySelector('.dm-page, .login')), undefined, { timeout: 45_000 })
       assert.equal(await page.locator('.login').count(), 0, 'Auth failure: login is visible')
-      await page.waitForFunction(() => Array.from(document.querySelectorAll('.dm-list [data-d-row]')).some(e => e.getBoundingClientRect().height > 0), { timeout: 45_000 })
+      await page.waitForFunction(() => Array.from(document.querySelectorAll('.dm-list [data-d-row]')).some(e => e.getBoundingClientRect().height > 0), undefined, { timeout: 45_000 })
       const visibleRows = page.locator('.dm-list [data-d-row]:visible')
       const rows = await visibleRows.count()
       assert(rows > 0, 'Known nonempty DMs returned no conversation rows')
@@ -154,7 +177,7 @@ try {
       assert.equal(await control.count(), 1, 'Open pane lost Back or Close')
       if (phone) assert.equal(await page.locator('.dm-phone-thread').count(), 1, 'Phone thread takeover missing')
       await control.click()
-      await page.waitForFunction(() => !new URLSearchParams(location.hash.split('?')[1] || '').get('thread'), { timeout: 15_000 })
+      await page.waitForFunction(() => !new URLSearchParams(location.hash.split('?')[1] || '').get('thread'), undefined, { timeout: 15_000 })
       await page.locator('.dm-list').waitFor({ state: 'visible' })
       await page.waitForTimeout(300)
       assert.equal(await page.locator('.login').count(), 0, 'Auth regressed after thread close')
@@ -162,6 +185,13 @@ try {
       await Promise.all([...pendingReads])
       assert.equal(failedReads.length, 0, `Live inbox read failed: ${failedReads.join(', ')}`)
       assert.equal(forbidden.length, 0, `Unexpected mutation was blocked: ${forbidden.join(', ')}`)
+      // Match one console event to one verified response. Other 404s, error
+      // codes, endpoints and application console errors remain fatal.
+      for (const url of resourceErrors) {
+        const count = missing404s.get(url) || 0
+        if (count) missing404s.set(url, count - 1)
+        else errors.push('console error')
+      }
       assert.equal(errors.length, 0, `Console/page errors: ${errors.join(' | ')}`)
       session = await page.evaluate(key => localStorage.getItem(key), authKey) || session
       report.checks.push({ width, rows, threadHash: createHash('sha256').update(clickedId).digest('hex').slice(0, 12), verifiedMessageHash: createHash('sha256').update(verified.id).digest('hex').slice(0, 12), verifiedBodyHash: createHash('sha256').update(verifiedMessage.message_text).digest('hex'), successfulInboxGets: successfulReads, opened: true, returnedToList: true, mockedReadStamps: readStamps, consoleErrors: errors.length, forbiddenWrites: forbidden.length })

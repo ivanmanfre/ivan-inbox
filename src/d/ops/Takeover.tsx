@@ -15,7 +15,7 @@ import { ago } from './model'
 
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
-export function TakeoverCard({ d, refresh, pos }: { d: OpsDraft; refresh: () => void; pos: string }) {
+export function TakeoverCard({ d, refresh, pos, onActed }: { d: OpsDraft; refresh: () => void; pos: string; onActed?: (id: string, verb: string) => void }) {
   const confirm = useDConfirm()
   const c = d.context ?? {}
   const hash = typeof c.proposal_hash === 'string' ? c.proposal_hash : ''
@@ -40,11 +40,13 @@ export function TakeoverCard({ d, refresh, pos }: { d: OpsDraft; refresh: () => 
   async function approve() {
     if (!sendingReady) return
     if (!(await confirm({ title: `Send this opener to ${who}?`, message: TAKEOVER_CONSEQUENCE, confirmText: 'Approve takeover' }))) return
+    onActed?.(d.id, 'Approved')
     setBusy('approve'); setErr('')
     try { await approveConversationTakeover(d.id, hash, body); refresh() } catch (e) { setErr(errText(e)) } finally { setBusy(null) }
   }
   async function skip() {
     if (!(await confirm({ title: 'Skip this takeover?', message: 'Drops this proposal. Nothing is sent and the conversation stays with you.', confirmText: 'Skip', danger: true }))) return
+    onActed?.(d.id, 'Discarded')
     setBusy('skip'); setErr('')
     try { await discardConversationTakeover(d.id, hash); refresh() } catch (e) { setErr(errText(e)) } finally { setBusy(null) }
   }

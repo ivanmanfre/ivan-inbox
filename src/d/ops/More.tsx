@@ -9,7 +9,7 @@ import { Sheet } from '../ui/Sheet'
 
 const EMOJI = ['🙂', '😄', '😂', '😅', '😉', '😎', '🙌', '👏', '🤝', '🙏', '🔥', '💪', '🚀', '🎯', '💯', '✅', '⚡', '👍', '❤️', '🥂']
 
-function MoreBody({ st, name, hasComment }: { st: PendingCardState; name: string; hasComment: boolean }) {
+export function MoreBody({ st, name, hasComment }: { st: PendingCardState; name: string; hasComment: boolean }) {
   const off = st.busy || st.drafting
   const first = name.split(' ')[0] || name
   return (
