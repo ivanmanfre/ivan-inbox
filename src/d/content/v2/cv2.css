@@ -515,3 +515,19 @@
 :root[data-skin-on~='content.review'] .cv2-rc-meta :is(.cn-er,.cn-early,.er-chip,[class*='early']){white-space:nowrap}
 :root[data-skin-on~='content.review'] .d-phone .cv2-rc-meta{flex-wrap:wrap;height:auto;row-gap:6px}
 :root[data-skin-on~='content.review'] .d-phone .cv2-rc-meta .cv2-grow{flex-basis:0}
+/* a narrow main column (drawer docked at a small window): the key hints go, the toolbar may wrap */
+@container main (max-width:839px){
+  :root[data-skin-on~='content.review'] .cv2-keyhint{display:none}
+  :root[data-skin-on~='content'] .cv2-review .cv2-bar,:root[data-skin-on~='content'] .cv2-ideas .cv2-bar,:root[data-skin-on~='content'] .cv2-lms .cv2-bar{flex-wrap:wrap}
+}
+:root[data-skin-on~='content.review'] .cv2-pic .cn-pic2-th > span{font-size:0}
+:root[data-skin-on~='content.review'] .cv2-pic .cn-pic2-th > span::after{content:"–";font-size:12px;color:var(--ds-text-3)}
+/* the body budget at 840 high: wall rows 136, buffer tiles 68 (thumb 52 + 2-line hook, the date key under the hook) */
+:root[data-skin-on~='content.calendar'] .cv2-cell{height:136px}
+:root[data-skin-on~='content.calendar'] .cv2-tile{position:relative;padding:6px;width:220px;height:66px;gap:0}
+:root[data-skin-on~='content.calendar'] .cv2-tile-main{height:52px}
+:root[data-skin-on~='content.calendar'] .cv2-tile:not(.cv2-tile-lm) .cv2-tile-t{-webkit-line-clamp:2;padding-bottom:20px}
+:root[data-skin-on~='content.calendar'] .cv2-tile-give{position:absolute;left:66px;bottom:6px;height:20px;padding:0 6px;margin-left:-6px}
+:root[data-skin-on~='content.calendar'] .cv2-buf{padding:6px 10px 8px;gap:6px}
+:root[data-skin-on~='content.calendar'] .cv2-buf-v .cv2-tile{height:auto;width:auto}
+:root[data-skin-on~='content.calendar'] .d-phone .cv2-tile{width:200px}

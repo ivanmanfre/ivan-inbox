@@ -367,7 +367,8 @@ function ReviewCard({ c, i, now, focused, open, busy, read, repeat, slot, src, s
   ]
   const head = <>{tag && <span>Source tag: {tag}</span>}{c.viewOnly && <span>Arch is view only here: Davorin reviews his posts on Friday and his publisher posts from review.</span>}</>
   const body = (c.r.post_body ?? '').trim() || c.title
-  const editablePic = pictureEditable(c.r, c.lane)
+  // Arch stays view only on the card (SPEC §4 invariant): its picture is changed from the open post.
+  const editablePic = c.lane !== 'arch' && pictureEditable(c.r, c.lane)
   const kind = c.r.type === 'carousel' ? `Carousel · ${(Array.isArray(c.r.image_urls) ? c.r.image_urls.length : 0) || '?'} slides` : c.r.type === 'video' ? 'Video' : null
 
   let keys: React.ReactNode

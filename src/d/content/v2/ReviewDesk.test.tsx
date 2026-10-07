@@ -186,3 +186,12 @@ describe('the card', () => {
     expect(verb(a, 'card-open')).toBeTruthy()
   })
 })
+
+describe('Arch picture', () => {
+  it('an Arch card never offers a picture write; Ivan\'s does', () => {
+    renderInFrame(<Harness rows={[row({ id: 'a1', client_id: 'arch', type: 'single_image' }), row({ id: 'i1', type: 'single_image' })]} />)
+    expect(verb(card('a1'), 'picture-change')).toBeNull()
+    expect(verb(card('a1'), 'picture-upload')).toBeNull()
+    expect(verb(card('i1'), 'picture-change')).toBeTruthy()
+  })
+})
