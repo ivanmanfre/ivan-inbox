@@ -7,8 +7,11 @@ const sources = [{ url: profile, title: 'Ben Patton - Saint Spritz' }, { url: 'h
 const found = { status: 'verified', name: 'Ben Patton', company: 'Saint Spritz', role: 'CEO', linkedin_url: profile, summary: 'Ben is the CEO of Saint Spritz.', draft: 'Hey Ben, Mallory pointed me your way about paid growth at Saint Spritz. Want me to send you the growth scan?', sources }
 
 describe('referral research guard', () => {
-  it.each(['ben Patton does that side of biz', 'Speak to Jane Smith about marketing', 'John Doe handles our paid ads', 'Please contact Anna on our team', 'Reach out to bob@example.com'])('recognizes a handoff: %s', text => {
+  it.each(['ben Patton does that side of biz', 'Speak to Jane Smith about marketing', 'John Doe handles our paid ads', 'Please contact Anna on our team', 'Reach out to Jane Smith at jane@example.com'])('recognizes a handoff: %s', text => {
     expect(referralCandidate(text)).toBe(true)
+  })
+  it.each(['Reach out to bob@example.com', 'We are, feel free to reach out to\u00a0creators@avalanchestudios.com to share details.', 'Contact support@example.com'])('keeps an email handoff out of named-person research: %s', text => {
+    expect(referralCandidate(text)).toBe(false)
   })
   it.each(['No thanks', 'Thanks Ben, I handle our ads myself', 'Do you handle paid ads?', 'I do that side of the business', 'We are happy with our current agency', 'Hi there! Happy to check out :)', 'Happy to connect!', 'Happy to connect with you', 'Sure, talk to you soon', 'Feel free to contact me'])('leaves ordinary replies alone: %s', text => {
     expect(referralCandidate(text)).toBe(false)
