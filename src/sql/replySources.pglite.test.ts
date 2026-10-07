@@ -417,3 +417,17 @@ it('keeps empty roster, null fields, and ARCH employee slug rules',async()=>{
  const p=await db.query<{prospect_id:string,excluded:boolean|null}>("select prospect_id,excluded from reply_source_private.people('arch',$1) order by prospect_id",[AS_OF])
  expect(p.rows).toEqual([{prospect_id:id(41),excluded:null},{prospect_id:id(42),excluded:true}])
 })
+it('keeps combined LIKE wildcard and escape characters literal in roster substrings',async()=>{
+ await campaign(db,2,'risedtc')
+ const pairs=[['literal\\%_.test','literal\\AB.test'],['escape\\\\%.test','escape\\\\X.test'],
+  ['edge_.test','edgeX.test'],['edge%.test','edgeExtra.test']]
+ await db.query("insert into integration_config(key,value) values ('rise_do_not_target',$1)",[JSON.stringify(pairs.map(x=>x[0]))])
+ const expected=[]
+ for(let n=0;n<pairs.length;n++)for(let side=0;side<2;side++) {
+  const prospect=1100+n*2+side
+  await person(db,prospect,2,{headline:null,title:`before\n${pairs[n][side]}\nafter`,company:null})
+  expected.push({prospect_id:id(prospect),excluded:side===0})
+ }
+ const p=await db.query<{prospect_id:string,excluded:boolean}>("select prospect_id,excluded from reply_source_private.people('risedtc',$1) order by prospect_id",[AS_OF])
+ expect(p.rows).toEqual(expected)
+})

@@ -201,16 +201,17 @@ roster as materialized (
    where p_client_id = 'arch' and e->>'reason' = 'arch_own_employee'
 ), roster_keys as materialized (
  select array_agg(key) filter(where kind='d') domains,
- string_agg(regexp_replace(key,'([\\.^$|?*+(){}\[\]])','\\\1','g'),'|') filter(where kind='d') domain_pattern,
- string_agg(key,'|') filter(where kind='n') name_pattern,
+ -- LIKE patterns keep the original literal substring rule. Escape backslash before its wildcards.
+ array_agg('%'||replace(replace(replace(key,chr(92),chr(92)||chr(92)),'%',chr(92)||'%'),'_',chr(92)||'_')||'%') filter(where kind='d') domain_likes,
+ array_agg('%'||key||'%') filter(where kind='n') name_likes,
  array_agg(key) filter(where kind='p') person_slugs from roster
 ),
 raw as (
- select p.id,p.campaign_id,p.linkedin_profile_id,p.linkedin_url,p.call_booked_at,
+ select p.id,p.campaign_id,p.linkedin_profile_id,p.call_booked_at,
  case when k.domains is not null then public._bk_host(p.company_domain) end staff_host,case when k.domains is not null then public._bk_email_domain(p.email) end staff_email,
- case when k.domain_pattern is not null then lower(coalesce(p.headline,'')||' '||coalesce(p.title,'')) end staff_text,
- case when k.name_pattern is not null then regexp_replace(lower(coalesce(p.company,'')),'[^a-z0-9]','','g') end staff_company,
- case when k.name_pattern is not null then regexp_replace(lower(coalesce(p.headline,'')||' '||coalesce(p.title,'')),'[^a-z0-9]','','g') end staff_normal_text,
+ case when k.domain_likes is not null then lower(coalesce(p.headline,'')||' '||coalesce(p.title,'')) end staff_text,
+ case when k.name_likes is not null then regexp_replace(lower(coalesce(p.company,'')),'[^a-z0-9]','','g') end staff_company,
+ case when k.name_likes is not null then regexp_replace(lower(coalesce(p.headline,'')||' '||coalesce(p.title,'')),'[^a-z0-9]','','g') end staff_normal_text,
  case when k.person_slugs is not null then public.li_slug(p.linkedin_url) end staff_slug,c.name campaign_name,nullif(btrim(p.linkedin_profile_id),'') profile,
  case when lower(btrim(p.linkedin_url)) ~ '^(https?://)?(www[.])?linkedin[.]com/in/[^/?#]+/?([?#].*)?$'
  then regexp_replace(regexp_replace(regexp_replace(lower(btrim(p.linkedin_url)),'^(https?://)?(www[.])?',''),'[?#].*$',''),'/+$','') end url
@@ -221,14 +222,14 @@ raw as (
 ), aliases as (
  select url,count(distinct profile) ids,min(profile) profile from raw where url is not null group by url
 ), identified as (
- select r.*,coalesce('profile:'||r.profile,case when a.ids=1 then 'profile:'||a.profile when coalesce(a.ids,0)<2 then 'url:'||r.url end,'record:'||r.id::text) person,
+ select r.id,r.campaign_id,r.call_booked_at,coalesce('profile:'||r.profile,case when a.ids=1 then 'profile:'||a.profile when coalesce(a.ids,0)<2 then 'url:'||r.url end,'record:'||r.id::text) person,
  case when r.profile is not null or a.ids=1 then 'profile' when r.url is not null and coalesce(a.ids,0)<2 then 'url' else 'record' end basis,
  coalesce(a.ids>1,false) conflict,
  (p_client_id='arch' and r.campaign_name ilike '%inbound request%')
  or exists(select 1 from operators o where o.person_key=r.linkedin_profile_id)
  or coalesce(r.staff_host=any(k.domains) or r.staff_email=any(k.domains)
- or r.staff_text ~ k.domain_pattern
- or r.staff_company ~ k.name_pattern or r.staff_normal_text ~ k.name_pattern
+ or r.staff_text like any(k.domain_likes)
+ or r.staff_company like any(k.name_likes) or r.staff_normal_text like any(k.name_likes)
  or r.staff_slug=any(k.person_slugs),false) staff,
  exists(select 1 from public.outreach_messages m where m.prospect_id=r.id and m.direction='inbound'
  and m.reply_intent='vendor_pitch' and coalesce(m.sent_at,m.created_at)<=p_as_of) vendor
