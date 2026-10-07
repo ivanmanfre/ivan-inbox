@@ -262,3 +262,82 @@ it('treats an empty intent as missing classification',async()=>{
  await reply(db,101,'2026-09-21T12:00:00Z',{reply_intent:' '})
  expect(source(await payload(db),'unknown').unclassified).toBe(1)
 })
+it('review 1 retains an explicit purpose conflict through duplicate receipts',async()=>{
+ await db.exec("insert into outreach_templates(key,client_id,step) values ('fixture-recycle','ivan','recycle')")
+ await message(db,100,'2026-09-20T12:00:00Z')
+ await message(db,102,'2026-09-20T12:00:00Z',{unipile_message_id:'fixture-receipt-100',draft_evidence:{template_key:'fixture-recycle'}})
+ await reply(db,101,'2026-09-21T12:00:00Z')
+ const p=await payload(db);expect(row(p,'dm4')).toMatchObject({sends:0,replies_7d:0});expect(source(p,'dm4').responders).toBe(0)
+ expect(p.coverage).toMatchObject({unknown_purpose:1,duplicate_rows:1})
+ const e=await db.query<{touch:string,purpose_basis:string}>("select touch,purpose_basis from reply_source_private.events('ivan',$1) where direction='outbound'",[AS_OF])
+ expect(e.rows).toEqual([{touch:'unknown',purpose_basis:'purpose_conflict'}]);expect((await detail(db)).first_reply.touch).toBe('unknown')
+})
+it('review 1 keeps a duplicate purpose conflict uncertain inside a multi-bubble action',async()=>{
+ await db.exec("insert into outreach_templates(key,client_id,step) values ('fixture-recycle','ivan','recycle')")
+ await message(db,100,'2026-09-20T12:00:00Z',{agent_action_id:id(800)})
+ await message(db,102,'2026-09-20T12:00:00Z',{agent_action_id:id(800),unipile_message_id:'fixture-receipt-100',draft_evidence:{template_key:'fixture-recycle'}})
+ await message(db,103,'2026-09-20T12:01:00Z',{agent_action_id:id(800)})
+ await reply(db,101,'2026-09-21T12:00:00Z')
+ const p=await payload(db);expect(row(p,'dm4').sends).toBe(0);expect(source(p,'dm4').responders).toBe(0);expect(p.coverage.uncertain_sends).toBe(1)
+})
+it('review 2 groups DM and InMail bubbles into one same-family action',async()=>{
+ await message(db,100,'2026-09-20T12:00:00Z',{agent_action_id:id(800)})
+ await message(db,102,'2026-09-20T12:01:00Z',{agent_action_id:id(800),message_type:'inmail'})
+ await reply(db,101,'2026-09-21T12:00:00Z')
+ const p=await payload(db);expect(row(p,'dm4')).toMatchObject({sends:1,repeated:0,replies_7d:1});expect(p.coverage.uncertain_sends).toBe(0)
+ const d=(await detail(db)).first_reply;expect(d).toMatchObject({source_id:id(100),touch:'dm4',product:'unknown',method:'inferred_same_chat'})
+ expect(new Date(d.sent_at).toISOString()).toBe('2026-09-20T12:00:00.000Z')
+})
+it.each([
+ ['missing channel',{channel:null}],['missing chat',{unipile_chat_id:null}],
+ ['missing channel and chat',{channel:null,unipile_chat_id:null}],
+])('review 3 merges a receipt alias with %s',async(_,extra)=>{
+ await message(db,100,'2026-09-20T12:00:00Z')
+ await message(db,102,'2026-09-20T12:00:00Z',{ai_model:'manual_mirror',sequence_step:null,unipile_message_id:'fixture-receipt-100',...extra})
+ await reply(db,101,'2026-09-21T12:00:00Z')
+ const p=await payload(db);expect(row(p,'dm4')).toMatchObject({sends:1,replies_7d:1});expect(source(p,'dm4').responders).toBe(1)
+ expect(p.coverage).toMatchObject({duplicate_rows:1,uncertain_sends:0})
+ expect((await detail(db)).first_reply).toMatchObject({method:'inferred_same_chat',touch:'dm4',channel:'linkedin',product:'dm'})
+})
+it.each([
+ ['two known families',{channel:'email'}],['two known chats',{unipile_chat_id:'other-chat'}],
+ ['two profile identities',{prospect_id:id(11)}],
+])('review 3 does not reconcile receipt aliases with %s',async(_,extra)=>{
+ await person(db,11);await message(db,100,'2026-09-20T12:00:00Z')
+ await message(db,102,'2026-09-20T12:00:00Z',{ai_model:'manual_mirror',sequence_step:null,unipile_message_id:'fixture-receipt-100',...extra})
+ await message(db,103,'2026-09-20T12:00:00Z',{ai_model:'manual_mirror',sequence_step:null,unipile_message_id:'fixture-receipt-100',channel:null,unipile_chat_id:null})
+ await reply(db,101,'2026-09-21T12:00:00Z')
+ const p=await payload(db);expect(row(p,'dm4').sends).toBe(0);expect(source(p,'dm4').responders).toBe(0);expect(p.coverage.uncertain_sends).toBeGreaterThan(0)
+})
+it('review 4 excludes an incompatible unlocated email from the outbound tie count',async()=>{
+ await message(db,100,'2026-09-20T12:00:00Z')
+ await message(db,102,'2026-09-20T12:00:00Z',{message_type:'email',channel:'email',unipile_chat_id:null,ai_model:null,sequence_step:null})
+ await reply(db,101,'2026-09-21T12:00:00Z',{channel:'linkedin'})
+ expect(source(await payload(db),'dm4').responders).toBe(1);expect((await detail(db)).first_reply.method).toBe('inferred_same_chat')
+})
+it.each(['linkedin',null])('review 4 retains a possible unlocated %s-channel outbound as a tie',async(channel)=>{
+ await message(db,100,'2026-09-20T12:00:00Z')
+ await message(db,102,'2026-09-20T12:00:00Z',{channel,unipile_chat_id:null,ai_model:null,sequence_step:null})
+ await reply(db,101,'2026-09-21T12:00:00Z',{channel:'linkedin'})
+ expect(source(await payload(db),'unknown').responders).toBe(1)
+})
+it.each(['before','after'])('review 5 ignores an incompatible unlocated email %s a LinkedIn follow-up',async(position)=>{
+ await reply(db,90,'2026-08-01T12:00:00Z',{channel:'linkedin'})
+ await message(db,100,'2026-09-20T12:00:00Z',{ai_model:'ivan_cameback_followup_v1'})
+ await message(db,102,position==='before'?'2026-09-19T12:00:00Z':'2026-09-21T12:00:00Z',{message_type:'email',channel:'email',unipile_chat_id:null,ai_model:null,sequence_step:null})
+ await reply(db,101,'2026-09-22T12:00:00Z',{channel:'linkedin'})
+ const p=await payload(db);expect(p.coverage.unknown_episodes).toBe(0);expect(p.totals.followup_responders).toBe(1)
+ expect(p.followups).toEqual([{ordinal:1,episodes:1,responders:1,mature:1,pending:0,replies_7d:1,rate_pct:100,late:0}])
+ expect((await detail(db)).latest_reply).toMatchObject({touch:'followup',source_id:id(100),followup_ordinal:1,episode_outcome:'replied'})
+})
+it.each([
+ ['before',null,null],['after',null,null],['before','linkedin',null],['after','linkedin',null],
+ ['before','email','fixture-chat'],['after','email','fixture-chat'],
+])('review 5 keeps a %s possible channel %s chat %s as an episode barrier',async(position,channel,chat)=>{
+ await reply(db,90,'2026-08-01T12:00:00Z',{channel:'linkedin'})
+ await message(db,100,'2026-09-20T12:00:00Z',{ai_model:'ivan_cameback_followup_v1'})
+ await message(db,102,position==='before'?'2026-09-19T12:00:00Z':'2026-09-21T12:00:00Z',{channel,unipile_chat_id:chat,ai_model:null,sequence_step:null})
+ await reply(db,101,'2026-09-22T12:00:00Z',{channel:'linkedin'})
+ const p=await payload(db);expect(p.coverage.unknown_episodes).toBe(1);expect(p.totals.followup_responders).toBe(0)
+ expect((await detail(db)).latest_reply.episode_outcome).toBe('unknown')
+})

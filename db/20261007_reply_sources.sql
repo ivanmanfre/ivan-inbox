@@ -263,28 +263,36 @@ with raw as materialized (
  (m.direction='outbound' and (m.sent_at is not null or nullif(btrim(m.unipile_message_id),'') is not null)))
 ), receipt_conflicts as (
  select receipt,count(distinct person_key)>1 identities,
- count(distinct coalesce(chat,''))>1 or count(distinct family)>1 or count(distinct direction)>1 scope_conflict
+ count(distinct chat)>1 or count(distinct family) filter(where family<>'unknown')>1 or count(distinct direction)>1 scope_conflict,
+ min(chat) known_chat,min(family) filter(where family<>'unknown') known_family
  from raw where receipt is not null group by receipt
+), receipt_rows as (
+ -- Missing metadata can use one unambiguous receipt scope; incompatible known scopes cannot merge.
+ select r.*,c.identities,c.scope_conflict,
+ case when not coalesce(c.identities or c.scope_conflict,false) then coalesce(r.chat,c.known_chat) else r.chat end receipt_chat,
+ case when r.family='unknown' and not coalesce(c.identities or c.scope_conflict,false)
+ then coalesce(c.known_family,'unknown') else r.family end receipt_family
+ from raw r left join receipt_conflicts c on c.receipt=r.receipt
 ), receipts as (
  select (array_agg(r.id order by (r.touch<>'unknown') desc,r.id))[1] id,array_agg(r.id order by r.id) source_ids,
  (array_agg(r.prospect_id order by (r.touch<>'unknown') desc,r.id))[1] prospect_id,r.person_key,min(r.identity_basis) identity_basis,
  (array_agg(r.campaign_id order by (r.touch<>'unknown') desc,r.id))[1] campaign_id,
  coalesce(min(r.event_at) filter(where r.confirmed),min(r.event_at)) event_at,
  coalesce(max(r.event_at) filter(where r.confirmed),max(r.event_at)) end_at,r.direction,bool_or(r.is_text) is_text,bool_or(r.is_reaction) is_reaction,
- case when count(distinct r.touch) filter(where r.touch<>'unknown')>1 then 'unknown'
+ case when bool_or(r.purpose_basis='purpose_conflict') or count(distinct r.touch) filter(where r.touch<>'unknown')>1 then 'unknown'
  else coalesce(min(r.touch) filter(where r.touch<>'unknown'),'unknown') end touch,
  case when count(distinct r.sequence_step)=1 then min(r.sequence_step) end sequence_step,
- case when count(distinct r.touch) filter(where r.touch<>'unknown')>1 then 'purpose_conflict'
+ case when bool_or(r.purpose_basis='purpose_conflict') or count(distinct r.touch) filter(where r.touch<>'unknown')>1 then 'purpose_conflict'
  else (array_agg(r.purpose_basis order by (r.touch<>'unknown') desc,r.id))[1] end purpose_basis,
- r.family,(array_agg(r.product order by (r.touch<>'unknown') desc,r.id))[1] product,r.chat,r.receipt,
- bool_or(r.confirmed) and not bool_or(r.blocked) and not coalesce(bool_or(c.identities or c.scope_conflict),false) confirmed,
- case when bool_or(c.identities) then 'receipt_identity_conflict' when bool_or(c.scope_conflict) then 'receipt_scope_conflict'
+ r.receipt_family family,(array_agg(r.product order by (r.touch<>'unknown') desc,(r.product<>'unknown') desc,r.id))[1] product,r.receipt_chat chat,r.receipt,
+ bool_or(r.confirmed) and not bool_or(r.blocked) and not coalesce(bool_or(r.identities or r.scope_conflict),false) confirmed,
+ case when bool_or(r.identities) then 'receipt_identity_conflict' when bool_or(r.scope_conflict) then 'receipt_scope_conflict'
  when bool_or(r.blocked) then 'blocked_or_partial' when not bool_or(r.confirmed) and r.direction='outbound' then 'missing_delivery_evidence' end uncertain_reason,
  case when count(distinct r.reply_intent)=1 then min(r.reply_intent) end reply_intent,
  (count(*)-1)::integer duplicate_rows,bool_or(r.excluded) excluded,
  case when count(distinct r.agent_action_id)=1 then (array_agg(r.agent_action_id) filter(where r.agent_action_id is not null))[1] end action_id
- from raw r left join receipt_conflicts c on c.receipt=r.receipt
- group by r.person_key,r.direction,r.family,r.chat,r.receipt,case when r.receipt is null then r.id end
+ from receipt_rows r
+ group by r.person_key,r.direction,r.receipt_family,r.receipt_chat,r.receipt,case when r.receipt is null then r.id end
 ), action_conflicts as (
  select action_id,count(distinct person_key)>1 or count(distinct coalesce(chat,''))>1 or count(distinct family)>1
  or count(distinct touch) filter(where touch<>'unknown')>1 or bool_or(purpose_basis='purpose_conflict') conflict
@@ -294,16 +302,17 @@ with raw as materialized (
  array_agg(r.id) receipt_ids,(array_agg(r.prospect_id order by r.event_at,r.id))[1] prospect_id,r.person_key,min(r.identity_basis) identity_basis,
  (array_agg(r.campaign_id order by r.event_at,r.id))[1] campaign_id,min(r.event_at) event_at,max(r.end_at) end_at,r.direction,
  bool_or(r.is_text) is_text,bool_or(r.is_reaction) is_reaction,
- case when bool_or(a.conflict) or count(distinct r.touch) filter(where r.touch<>'unknown')>1 then 'unknown'
+ case when bool_or(a.conflict) or bool_or(r.purpose_basis='purpose_conflict') or count(distinct r.touch) filter(where r.touch<>'unknown')>1 then 'unknown'
  else coalesce(min(r.touch) filter(where r.touch<>'unknown'),'unknown') end touch,
  case when count(distinct r.sequence_step)=1 then min(r.sequence_step) end sequence_step,
- case when bool_or(a.conflict) then 'purpose_conflict' else (array_agg(r.purpose_basis order by (r.touch<>'unknown') desc,r.id))[1] end purpose_basis,
- r.family,r.product,r.chat,min(r.receipt) receipt,bool_and(r.confirmed) and not coalesce(bool_or(a.conflict),false) confirmed,
+ case when bool_or(a.conflict) or bool_or(r.purpose_basis='purpose_conflict') then 'purpose_conflict' else (array_agg(r.purpose_basis order by (r.touch<>'unknown') desc,r.id))[1] end purpose_basis,
+ r.family,case when count(distinct r.product) filter(where r.product<>'unknown')=1
+ then min(r.product) filter(where r.product<>'unknown') else 'unknown' end product,r.chat,min(r.receipt) receipt,bool_and(r.confirmed) and not coalesce(bool_or(a.conflict),false) confirmed,
  case when bool_or(a.conflict) then 'action_conflict' else min(r.uncertain_reason) end uncertain_reason,
  case when count(distinct r.reply_intent)=1 then min(r.reply_intent) end reply_intent,
  sum(r.duplicate_rows)::integer duplicate_rows,bool_or(r.excluded) excluded
  from receipts r left join action_conflicts a on a.action_id=r.action_id
- group by r.person_key,r.direction,r.family,r.product,r.chat,
+ group by r.person_key,r.direction,r.family,r.chat,
  case when r.direction='outbound' and r.action_id is not null then r.action_id else r.id end
 )
 select g.event_id,(select array_agg(s order by s) from receipts r cross join lateral unnest(r.source_ids) s where r.id=any(g.receipt_ids)),
@@ -329,7 +338,9 @@ ins as (
  o.event_id outbound_id,o.event_at sent_at,o.end_at,o.campaign_id outbound_campaign,o.touch,o.sequence_step,o.confirmed,o.uncertain_reason,
  o.channel_family outbound_family,o.channel_product,o.chat_id outbound_chat,c.families,c.family,
  (select count(*) from e t where t.person_key=i.person_key and t.direction='outbound' and t.end_at=o.end_at
- and (t.chat_id=r.chat_id or t.chat_id is null or r.chat_id is null)) outbound_ties
+ and t.event_at<=i.event_at
+ and (t.chat_id=r.chat_id or r.chat_id is null or (t.chat_id is null and
+ (t.channel_family='unknown' or r.channel_family='unknown' or t.channel_family=r.channel_family)))) outbound_ties
  from ins i join e r on r.event_id=i.id
  left join lateral (
  select * from e x where x.person_key=i.person_key and x.direction='outbound' and x.event_at<=i.event_at
@@ -384,7 +395,8 @@ with e as materialized(select * from reply_source_private.events(p_client_id,p_a
 ), numbered as (
  select f.*,
  case when not f.confirmed or exists(select 1 from e x where x.person_key=f.person_key and x.direction='outbound'
- and (x.chat_id=f.chat_id or x.chat_id is null) and x.event_at>f.episode_at and x.event_at<=f.event_at
+ and (x.chat_id=f.chat_id or (x.chat_id is null and
+ (x.channel_family='unknown' or f.channel_family='unknown' or x.channel_family=f.channel_family))) and x.event_at>f.episode_at and x.event_at<=f.event_at
  and (not x.confirmed or x.purpose_basis in ('unknown','purpose_conflict') or x.touch='unknown' or (x.event_at=f.event_at and x.event_id<>f.event_id))) then null
  else (select count(*)::integer from f f2 where f2.person_key=f.person_key and f2.chat_id=f.chat_id
  and f2.episode_id=f.episode_id and f2.event_at<=f.event_at) end ordinal
@@ -392,7 +404,8 @@ with e as materialized(select * from reply_source_private.events(p_client_id,p_a
 )
 select n.event_id,n.person_key,n.campaign_id,n.event_at,n.episode_id,n.ordinal,r.reply_id,r.reply_at,
  case when n.ordinal is null or exists(select 1 from e x where x.person_key=n.person_key and x.direction='outbound'
- and (x.chat_id=n.chat_id or x.chat_id is null) and x.event_at>n.episode_at and x.event_at<=coalesce(n.next_at,p_as_of)
+ and (x.chat_id=n.chat_id or (x.chat_id is null and
+ (x.channel_family='unknown' or n.channel_family='unknown' or x.channel_family=n.channel_family))) and x.event_at>n.episode_at and x.event_at<=coalesce(n.next_at,p_as_of)
  and (not x.confirmed or x.purpose_basis in ('unknown','purpose_conflict') or x.touch='unknown')) then 'unknown' when n.next_id is null then null
  when r.source_id=n.event_id and r.touch='followup' then 'replied'
  when r.source_id is null or exists(select 1 from numbered x where x.episode_id=n.episode_id and x.ordinal is null) then 'unknown'
