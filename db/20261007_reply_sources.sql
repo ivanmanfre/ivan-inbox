@@ -199,18 +199,24 @@ roster as materialized (
   select 'p', lower(e->>'slug')
     from jsonb_array_elements(coalesce((select value::jsonb->'people' from public.integration_config where key = 'arch_person_exclusions'), '[]'::jsonb)) e
    where p_client_id = 'arch' and e->>'reason' = 'arch_own_employee'
+), roster_keys as materialized (
+ select array_agg(key) filter(where kind='d') domains,
+ string_agg(regexp_replace(key,'([\\.^$|?*+(){}\[\]])','\\\1','g'),'|') filter(where kind='d') domain_pattern,
+ string_agg(key,'|') filter(where kind='n') name_pattern,
+ array_agg(key) filter(where kind='p') person_slugs from roster
 ),
 raw as (
  select p.id,p.campaign_id,p.linkedin_profile_id,p.linkedin_url,p.call_booked_at,
- public._bk_host(p.company_domain) staff_host,public._bk_email_domain(p.email) staff_email,
- lower(coalesce(p.headline,'')||' '||coalesce(p.title,'')) staff_text,
- regexp_replace(lower(coalesce(p.company,'')),'[^a-z0-9]','','g') staff_company,
- regexp_replace(lower(coalesce(p.headline,'')||' '||coalesce(p.title,'')),'[^a-z0-9]','','g') staff_normal_text,
- public.li_slug(p.linkedin_url) staff_slug,c.name campaign_name,nullif(btrim(p.linkedin_profile_id),'') profile,
+ case when k.domains is not null then public._bk_host(p.company_domain) end staff_host,case when k.domains is not null then public._bk_email_domain(p.email) end staff_email,
+ case when k.domain_pattern is not null then lower(coalesce(p.headline,'')||' '||coalesce(p.title,'')) end staff_text,
+ case when k.name_pattern is not null then regexp_replace(lower(coalesce(p.company,'')),'[^a-z0-9]','','g') end staff_company,
+ case when k.name_pattern is not null then regexp_replace(lower(coalesce(p.headline,'')||' '||coalesce(p.title,'')),'[^a-z0-9]','','g') end staff_normal_text,
+ case when k.person_slugs is not null then public.li_slug(p.linkedin_url) end staff_slug,c.name campaign_name,nullif(btrim(p.linkedin_profile_id),'') profile,
  case when lower(btrim(p.linkedin_url)) ~ '^(https?://)?(www[.])?linkedin[.]com/in/[^/?#]+/?([?#].*)?$'
  then regexp_replace(regexp_replace(regexp_replace(lower(btrim(p.linkedin_url)),'^(https?://)?(www[.])?',''),'[?#].*$',''),'/+$','') end url
  from public.outreach_prospects p join public.outreach_campaigns c on c.id=p.campaign_id
  join public.client_registry cr on cr.client_id=coalesce(c.client_id,'ivan') and cr.is_active
+ cross join roster_keys k
  where cr.client_id=p_client_id
 ), aliases as (
  select url,count(distinct profile) ids,min(profile) profile from raw where url is not null group by url
@@ -220,15 +226,13 @@ raw as (
  coalesce(a.ids>1,false) conflict,
  (p_client_id='arch' and r.campaign_name ilike '%inbound request%')
  or exists(select 1 from operators o where o.person_key=r.linkedin_profile_id)
- or exists(select 1 from roster x where
- (x.kind='d' and (x.key=r.staff_host or x.key=r.staff_email
- or position(x.key in r.staff_text)>0))
- or (x.kind='n' and (position(x.key in r.staff_company)>0
- or position(x.key in r.staff_normal_text)>0))
- or (x.kind='p' and x.key=r.staff_slug)) staff,
+ or coalesce(r.staff_host=any(k.domains) or r.staff_email=any(k.domains)
+ or r.staff_text ~ k.domain_pattern
+ or r.staff_company ~ k.name_pattern or r.staff_normal_text ~ k.name_pattern
+ or r.staff_slug=any(k.person_slugs),false) staff,
  exists(select 1 from public.outreach_messages m where m.prospect_id=r.id and m.direction='inbound'
  and m.reply_intent='vendor_pitch' and coalesce(m.sent_at,m.created_at)<=p_as_of) vendor
- from raw r left join aliases a on a.url=r.url
+ from raw r cross join roster_keys k left join aliases a on a.url=r.url
 ), population as (
  select person,bool_or(staff) or (bool_or(vendor) and not bool_or(call_booked_at is not null)) excluded
  from identified group by person
@@ -344,14 +348,20 @@ ins as (
 ), chat_channels as (
  select person_key,chat_id,count(distinct channel_family) filter(where channel_family<>'unknown') families,
  min(channel_family) filter(where channel_family<>'unknown') family from e group by person_key,chat_id
+), outbound_by_person as materialized (
+ select jsonb_object_agg(person_key,events) events from (
+ select person_key,jsonb_agg(e) events from e where direction='outbound' group by person_key
+ ) grouped
 ), outbound_candidates as (
  select i.*,r.prospect_id,r.campaign_id inbound_campaign,r.chat_id,r.channel_family inbound_family,r.uncertain_reason inbound_conflict,
  o.event_id outbound_id,o.event_at sent_at,o.end_at,o.campaign_id outbound_campaign,o.touch,o.sequence_step,o.confirmed,o.uncertain_reason,
  o.channel_family outbound_family,o.channel_product,o.chat_id outbound_chat,coalesce(c.families,0) families,c.family,
  count(o.event_id) over(partition by i.person_key,i.event_at,o.end_at) outbound_ties,
  row_number() over(partition by i.person_key,i.event_at order by o.end_at desc,o.event_id) source_position
- from ins i join e r on r.event_id=i.id
- left join e o on o.person_key=i.person_key and o.direction='outbound' and o.event_at<=i.event_at
+ from ins i join e r on r.event_id=i.id cross join outbound_by_person op
+ left join lateral jsonb_to_recordset(op.events->i.person_key) o(event_id uuid,event_at timestamptz,end_at timestamptz,
+ campaign_id uuid,touch text,sequence_step integer,confirmed boolean,uncertain_reason text,channel_family text,channel_product text,chat_id text)
+ on o.event_at<=i.event_at
  and (o.chat_id=r.chat_id or r.chat_id is null or (o.chat_id is null and
  (o.channel_family='unknown' or r.channel_family='unknown' or o.channel_family=r.channel_family)))
  left join chat_channels c on c.person_key=i.person_key and c.chat_id=r.chat_id

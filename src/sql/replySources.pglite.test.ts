@@ -379,3 +379,41 @@ it('keeps an unlocated compatible tie but ignores a different chat at the same t
  await message(db,103,'2026-09-20T12:00:00Z',{unipile_chat_id:null})
  expect((await detail(db)).first_reply).toMatchObject({source_id:null,reason:'outbound_time_tie'})
 })
+it('treats every roster regex metacharacter as literal text',async()=>{
+ await campaign(db,2,'risedtc')
+ const pairs=[['dot.alpha.test','dotXalphaXtest'],['pipe|alpha.test','pipealpha.test'],
+  ['left[alpha.test','leftalpha.test'],['right]alpha.test','rightalpha.test'],
+  ['back\\alpha.test','backalpha.test'],['cash$alpha.test','cashalpha.test'],
+  ['plus+alpha.test','plusalpha.test'],['question?alpha.test','questionalpha.test'],
+  ['open(alpha.test','openalpha.test'],['close)alpha.test','closealpha.test'],
+  ['brace{2}.test','bracee.test'],['caret^alpha.test','caretalpha.test'],
+  ['star*alpha.test','staralpha.test'],['percent%alpha.test','percentXalpha.test'],
+  ['under_alpha.test','underXalpha.test'],['café.test','cafe.test']]
+ await db.query("insert into integration_config(key,value) values ('rise_do_not_target',$1)",[JSON.stringify(pairs.map(x=>x[0]))])
+ const expected=[]
+ for(let n=0;n<pairs.length;n++)for(let side=0;side<2;side++) {
+  const prospect=1000+n*2+side
+  await person(db,prospect,2,{headline:`Prefix ${pairs[n][side]} suffix`})
+  expected.push({prospect_id:id(prospect),excluded:side===0})
+ }
+ const p=await db.query<{prospect_id:string,excluded:boolean}>("select prospect_id,excluded from reply_source_private.people('risedtc',$1) order by prospect_id",[AS_OF])
+ expect(p.rows).toEqual(expected)
+})
+it('keeps team and operator exclusions despite booking while a booked vendor stays included',async()=>{
+ await campaign(db,2,'risedtc')
+ await db.exec(`insert into integration_config(key,value) values ('rise_do_not_target','["client.test"]')`)
+ for(const n of [40,41,42,43])await person(db,n,2,{call_booked_at:n===43?null:'2026-09-01T12:00:00Z',headline:n===40?'Works at client.test':null})
+ await db.exec("insert into audn_person_label_v(person_key,is_operator) values ('fixture-person-41',true)")
+ for(const n of [40,41,42,43])await reply(db,200+n,'2026-09-20T12:00:00Z',{prospect_id:id(n),reply_intent:'vendor_pitch'})
+ const p=await db.query<{prospect_id:string,excluded:boolean}>("select prospect_id,excluded from reply_source_private.people('risedtc',$1) order by prospect_id",[AS_OF])
+ expect(p.rows).toEqual([40,41,42,43].map(n=>({prospect_id:id(n),excluded:n!==42})))
+})
+it('keeps empty roster, null fields, and ARCH employee slug rules',async()=>{
+ await campaign(db,2,'risedtc');await person(db,40,2,{linkedin_url:null,headline:null,company:null,email:null,company_domain:null})
+ expect((await db.query<{excluded:boolean}>("select excluded from reply_source_private.people('risedtc',$1)",[AS_OF])).rows).toEqual([{excluded:false}])
+ await campaign(db,3,'arch',{name:null});await person(db,41,3,{linkedin_url:null})
+ await campaign(db,4,'arch');await person(db,42,4,{linkedin_url:'https://linkedin.com/in/fixture-employee',call_booked_at:'2026-09-01T12:00:00Z'})
+ await db.exec(`insert into integration_config(key,value) values ('arch_person_exclusions','{"people":[{"slug":"FIXTURE-EMPLOYEE","reason":"arch_own_employee"},{"reason":"arch_own_employee"}]}')`)
+ const p=await db.query<{prospect_id:string,excluded:boolean|null}>("select prospect_id,excluded from reply_source_private.people('arch',$1) order by prospect_id",[AS_OF])
+ expect(p.rows).toEqual([{prospect_id:id(41),excluded:null},{prospect_id:id(42),excluded:true}])
+})
