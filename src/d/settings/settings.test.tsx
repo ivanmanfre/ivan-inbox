@@ -97,6 +97,43 @@ describe('Settings parity pass 2', () => {
     expect(document.documentElement.dataset.theme).toBe('dark')
     await waitFor(() => expect(document.querySelector('[data-verb="theme-reset"]')).toBeNull())
   })
+  it('in Daily Brief the Theme row reads the STORED theme, never the page attribute Brief forces', async () => {
+    // Brief's bridge writes data-theme=light on its light-only page; nothing is stored.
+    document.documentElement.classList.add('brief-native')
+    document.documentElement.dataset.theme = 'light'
+    try {
+      renderInFrame(<SettingsPage {...props()} />)
+      await waitFor(() => expect(document.querySelector('[data-verb="density-compact"]')).not.toBeNull())
+      expect(document.querySelector('[data-verb="theme-reset"]')).toBeNull()
+      expect(screen.queryByText(/still stores Light/)).toBeNull()
+    } finally { document.documentElement.classList.remove('brief-native'); delete document.documentElement.dataset.theme }
+  })
+  it('in Daily Brief a stored Light never offers Reset to dark, and Brief is never flipped dark', async () => {
+    localStorage.setItem('inbox-theme', 'light')
+    document.documentElement.classList.add('brief-native')
+    document.documentElement.dataset.theme = 'light'
+    try {
+      renderInFrame(<SettingsPage {...props()} />)
+      await waitFor(() => expect(document.querySelector('[data-verb="density-compact"]')).not.toBeNull())
+      expect(document.querySelector('[data-verb="theme-reset"]')).toBeNull()
+      expect(document.documentElement.dataset.theme).toBe('light')
+    } finally { document.documentElement.classList.remove('brief-native'); delete document.documentElement.dataset.theme }
+  })
+  it('the theme reset, if reached inside Brief, stores dark but leaves Brief\'s light page attribute alone', async () => {
+    const { useStoredTheme } = await import('./prefs')
+    const { renderHook, act } = await import('@testing-library/react')
+    localStorage.setItem('inbox-theme', 'light')
+    document.documentElement.classList.add('brief-native')
+    document.documentElement.dataset.theme = 'light'
+    try {
+      const h = renderHook(() => useStoredTheme())
+      expect(h.result.current[0]).toBe('light')
+      act(() => h.result.current[1]())
+      expect(localStorage.getItem('inbox-theme')).toBe('dark')
+      expect(document.documentElement.dataset.theme).toBe('light')
+      expect(h.result.current[0]).toBe('dark')
+    } finally { document.documentElement.classList.remove('brief-native'); delete document.documentElement.dataset.theme }
+  })
   it('the device list reads only this app\'s push rows', async () => {
     renderInFrame(<SettingsPage {...props()} />)
     await waitFor(() => expect(calls).toContain('push_subscriptions.eq.device_label=ivan-inbox'))

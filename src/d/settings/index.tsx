@@ -17,6 +17,7 @@ import { Failed, Skeleton } from '../ui/states'
 import { useRead, useRetryRead } from '../lanes/useRead'
 import { warsawDm } from '../ui/time'
 import { useDensity, usePush, useSound, useStoredTheme } from './prefs'
+import { isBriefNative } from '../../ds/skin'
 import { fetchBoards, fetchDevices, fetchMoneyPlate, type MoneyPlate } from './reads'
 import './settings.css'
 
@@ -72,6 +73,7 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
   const [sound, setSound] = useSound()
   const [density, setDensity] = useDensity()
   const [theme, resetTheme] = useStoredTheme()
+  const brief = isBriefNative()
   const confirm = useDConfirm()
   const [devices, retryDevices] = useRetryRead(fetchDevices, 'devices')
   const boards = useRead(fetchBoards, 'boards')
@@ -106,8 +108,9 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
   )
   const look = (
     <Plate title="Appearance">
-      {/* Dark is the only theme: the row only shows when this device still stores Light from the old app. */}
-      {theme === 'light' && (
+      {/* Dark is the only theme: the row only shows when this device still stores Light from the old app.
+          Never in Daily Brief: Brief is light-only, and resetting there would flip it dark. */}
+      {theme === 'light' && !brief && (
         <Row title="Theme" sub="This device still stores Light from the old app, which turns the Money and legacy panels light.">
           <Key size="small" verb="theme-reset" onClick={resetTheme}>Reset to dark</Key>
         </Row>

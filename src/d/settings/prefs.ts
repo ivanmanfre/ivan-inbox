@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { disablePush, enablePush, getPushState, type PushState } from '../../lib/push'
 import { chimeEnabled, playChime, setChimeEnabled } from '../../lib/chime'
 import { ReadTimeout, withTimeout } from '../ui/timeout'
+import { isBriefNative } from '../../ds/skin'
 
 export const isPreview = (): boolean => import.meta.env.VITE_PREVIEW === '1'
 export const isIOS = (): boolean => typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent)
@@ -76,15 +77,20 @@ export function useDensity(): [Density, (d: Density) => void] {
 
 /* The theme key the old app wrote (`inbox-theme`). D is dark only, but main.tsx
    still applies a stored "light" at boot, which turns the mounted old panels
-   (Money, legacy content) light inside D's dark frame. Reset removes it. */
+   (Money, legacy content) light inside D's dark frame. Reset removes it.
+   It reports the STORED value only. html[data-theme] is not a stored choice:
+   Daily Brief writes data-theme=light on its own light-only page, so reading the
+   attribute made Brief always show "still stores Light", and its reset flipped
+   Brief dark. Inside Brief the reset never touches the page attribute. */
+export function readStoredTheme(): 'light' | 'dark' {
+  try { return localStorage.getItem('inbox-theme') === 'light' ? 'light' : 'dark' } catch { return 'dark' }
+}
+
 export function useStoredTheme(): ['light' | 'dark', () => void] {
-  const read = (): 'light' | 'dark' => {
-    try { return localStorage.getItem('inbox-theme') === 'light' || document.documentElement.dataset.theme === 'light' ? 'light' : 'dark' } catch { return 'dark' }
-  }
-  const [t, setT] = useState(read)
+  const [t, setT] = useState(readStoredTheme)
   const reset = useCallback(() => {
     try { localStorage.setItem('inbox-theme', 'dark') } catch { /* private window */ }
-    document.documentElement.dataset.theme = 'dark'
+    if (!isBriefNative()) document.documentElement.dataset.theme = 'dark'
     setT('dark')
   }, [])
   return [t, reset]
