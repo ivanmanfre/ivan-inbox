@@ -1317,15 +1317,12 @@ export async function saveDraftEmailCc(id: string, value: unknown): Promise<stri
     .select('draft_evidence').eq('id', id).single()
   if (readError) throw readError
   if (!row) throw new Error('The draft changed. Refresh before approving.')
-  const evidence = row.draft_evidence
-  let query = supabase.from('outreach_messages')
-    .update({ draft_evidence: { ...evidence, email_cc: cc } })
-    .eq('id', id).is('sent_at', null).is('approved_at', null)
-    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*`)
-  query = evidence == null ? query.is('draft_evidence', null) : query.eq('draft_evidence', JSON.stringify(evidence))
-  const { data, error } = await query.select('id')
+  // Research evidence can exceed the proxy's URL limit. Compare it in the
+  // RPC body, just as approval does, while keeping the save atomic.
+  const { error } = await supabase.rpc('save_inbox_draft_email_cc', {
+    p_message_id: id, p_cc: cc, p_expected_evidence: row.draft_evidence ?? null,
+  })
   if (error) throw error
-  if (!data?.length) throw new Error('The draft changed. Refresh before approving.')
   return cc
 }
 
