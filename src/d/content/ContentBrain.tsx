@@ -123,7 +123,7 @@ function ReadState({ read }: { read: WeekRead }) {
   return null
 }
 
-function useSources(ids: string[]) {
+export function useSources(ids: string[]) {
   const key = ids.join(',')
   const [state, setState] = useState<{ key: string; map: Map<string, DraftSourceRead>; loaded: boolean; error: string | null }>({ key: '', map: new Map(), loaded: false, error: null })
   const [tick, setTick] = useState(0)
@@ -205,7 +205,7 @@ function DraftCard({ r, lane, src, srcLoading, open, onOpen, onChanged }: {
   )
 }
 
-function SourceCol({ src, loading }: { src: SourceView; loading: boolean }) {
+export function SourceCol({ src, loading }: { src: SourceView; loading: boolean }) {
   const [full, setFull] = useState(false)
   const text = src.text?.trim() ?? ''
   const fold = foldText(text, 8, 58)
@@ -229,7 +229,7 @@ function SourceCol({ src, loading }: { src: SourceView; loading: boolean }) {
   )
 }
 
-function DirectionLine({ lane }: { lane: Lane }) {
+export function DirectionLine({ lane }: { lane: Lane }) {
   const [d, setD] = useState<EditorialDirectionRead | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [edit, setEdit] = useState(false)
@@ -261,7 +261,7 @@ function DirectionLine({ lane }: { lane: Lane }) {
   )
 }
 
-function NextIdeas({ lane }: { lane: Lane }) {
+export function NextIdeas({ lane }: { lane: Lane }) {
   const toast = useToast()
   const seed = useMemo(() => readSwr<OutliersPayload>(`outliers:${lane}`), [lane])
   const [rows, setRows] = useState<OutlierRow[] | null>(() => seed?.payload?.rows ?? null)
@@ -332,7 +332,7 @@ function NextIdeas({ lane }: { lane: Lane }) {
   )
 }
 
-function RecentDecisions({ lane, verdicts }: { lane: Lane; verdicts: Map<string, SavedVerdict> }) {
+export function RecentDecisions({ lane, verdicts }: { lane: Lane; verdicts: Map<string, SavedVerdict> }) {
   const [h, setH] = useState<DecisionHistory | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const mine = useMemo(() => [...verdicts.values()].filter(v => v.client_id === lane).sort((a, b) => b.decided_at.localeCompare(a.decided_at)).slice(0, 10), [verdicts, lane])

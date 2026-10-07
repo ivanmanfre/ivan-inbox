@@ -9,7 +9,7 @@ import { foldText } from './weekModel'
 // measure, because widening it would make the preview lie. While editing, the
 // same card becomes the editor (lime outline). A save conflict shows the
 // database's text and two named outcomes; nothing is written until one is picked.
-const AUTHOR: Record<Lane, [string, string, string]> = {
+export const AUTHOR: Record<Lane, [string, string, string]> = {
   ivan: ['Iván Manfredi', 'AI content systems for agencies', 'IM'],
   risedtc: ['Mattan Danino', 'Rise DTC', 'MD'],
   arch: ['Davorin Smit', 'Arch', 'DS'],
