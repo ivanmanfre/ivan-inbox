@@ -21,7 +21,7 @@ function slot(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
-function Card({ r, rx }: { r: ReactionRow; rx: Rx }) {
+export function ReactionCard({ r, rx, onActed }: { r: ReactionRow; rx: Rx; onActed?: (id: string, verb: string) => void }) {
   const confirm = useDConfirm()
   const ev = r.evidence
   const body = rx.bodies[r.id] ?? ''
@@ -44,14 +44,14 @@ function Card({ r, rx }: { r: ReactionRow; rx: Rx }) {
         </label>
         <div className="op-keys">
           <div className="op-k"><Key verb="kill" size="small" disabled={busy} onClick={async () => {
-            if (await confirm({ title: 'Kill this reaction?', message: 'It comes off the desk for good. Nothing is posted and nothing else happens.', confirmText: 'Kill it', danger: true })) void rx.kill(r)
+            if (await confirm({ title: 'Kill this reaction?', message: 'It comes off the desk for good. Nothing is posted and nothing else happens.', confirmText: 'Kill it', danger: true })) { onActed?.(r.id, 'Discarded'); void rx.kill(r) }
           }}>Kill</Key></div>
           <div className="op-k op-kp"><Key primary verb="reaction-approve" size="small" disabled={busy || !ready} onClick={async () => {
             if (await confirm({
               title: rise ? 'Put this on Mattan’s board?' : 'Date this reaction as a draft?',
               message: rise ? 'It waits there for his call. Nothing is dated and nothing is posted.' : `It lands on the calendar for ${slot(rx.nextSlot)} as a draft. Nothing is posted.`,
               confirmText: 'Approve',
-            })) void rx.approve(r)
+            })) { onActed?.(r.id, 'Approved'); void rx.approve(r) }
           }}>{busy ? 'Working…' : rise ? 'Approve → Mattan’s board' : `Approve → ${slot(rx.nextSlot)}`}</Key>
             <small>{ready ? (rise ? 'On his board, not published.' : `Schedules for ${slot(rx.nextSlot)}.`) : 'Write the reaction first.'}</small></div>
         </div>
@@ -71,7 +71,7 @@ export function Reactions({ rx }: { rx: Rx }) {
         ? 'On Mattan’s board, waiting on him. Nothing is dated and nothing is armed.'
         : `Scheduled for ${slot(rx.done.scheduledAt)}. A draft on the calendar, not a publish.`}</div>}
       {!rx.error && !rx.loading && rx.rows.length === 0 && <div className="op-quiet">No reaction waiting.</div>}
-      {rx.rows.map(r => <Card key={r.id} r={r} rx={rx} />)}
+      {rx.rows.map(r => <ReactionCard key={r.id} r={r} rx={rx} />)}
     </section>
   )
 }

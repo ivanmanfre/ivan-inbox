@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSkin } from '../../ds/useSkin'
+import { OpsPageV4 } from './v4/Page'
 import { useCommentQueue } from '../../hooks/useCommentQueue'
 import { useOps } from '../../hooks/useOps'
 import { useReactions } from '../../hooks/useReactions'
@@ -9,6 +11,7 @@ import { dHash } from '../route'
 import { SEATS, type Seat } from '../seats'
 import { useReportFailed } from '../shell/health'
 import { AnswerRow, N } from '../ui/AnswerRow'
+import { useDConfirmOpen } from '../ui/confirm'
 import { DIcon } from '../ui/icons'
 import { Btn } from '../ui/Key'
 import { Failed, Skeleton } from '../ui/states'
@@ -27,7 +30,7 @@ import './ops.css'
 // full page (`?card=<id>`) with its keys right under its content.
 // Hooks rule: every hook runs before any branch that returns.
 
-export default function OpsPage({ layout, route, navigate }: PlaceProps) {
+export function OpsPage({ layout, route, navigate }: PlaceProps) {
   const ops = useOps()
   const c = useFrameCounts()
   const pending = useMemo(() => pendingOps(ops.drafts), [ops.drafts])
@@ -40,6 +43,8 @@ export default function OpsPage({ layout, route, navigate }: PlaceProps) {
   const board = useMemo(() => readBoard(ops.drafts, heldIds), [ops.drafts, heldIds])
   useReportFailed('ops', ops.error ? 1 : 0)
 
+  const confirmOpen = useDConfirmOpen()
+  const lockedCard = useRef<import('../../lib/ops').OpsDraft | null>(null)
   const want = route.query.get('card')
   const lastAt = useRef(0)
   const all = useMemo(() => [...board.flat, ...board.later], [board])
@@ -47,10 +52,15 @@ export default function OpsPage({ layout, route, navigate }: PlaceProps) {
   // Desktop always has a card open: the asked one, else the one that took the
   // handled card's place, else the first.
   if (!sel && layout === 'desktop' && board.flat.length > 0) sel = board.flat[Math.min(lastAt.current, board.flat.length - 1)]
+  if (confirmOpen) sel = lockedCard.current
+  useEffect(() => { if (!confirmOpen) lockedCard.current = sel }, [confirmOpen, sel])
   const selIdx = sel ? board.flat.findIndex(d => d.id === sel!.id) : -1
   useEffect(() => { if (selIdx >= 0) lastAt.current = selIdx }, [selIdx])
 
-  const pick = useCallback((id: string) => navigate(dHash('ops', null, { card: id })), [navigate])
+  const pick = useCallback((id: string) => {
+    if (confirmOpen || document.querySelector('.d-confirm, .d-sheet, .d-palette')) return
+    navigate(dHash('ops', null, { card: id }))
+  }, [navigate, confirmOpen])
   const [seat, setSeat] = useState<Seat | null>(null)
   const phoneSeat: Seat = seat ?? SEATS.find(s => board.lanes[s].length > 0) ?? 'ivan'
 
@@ -58,6 +68,7 @@ export default function OpsPage({ layout, route, navigate }: PlaceProps) {
   useEffect(() => {
     if (layout !== 'desktop') return
     const onKey = (e: KeyboardEvent) => {
+      if (confirmOpen || document.querySelector('.d-confirm, .d-sheet, .d-palette')) return
       if (e.metaKey || e.ctrlKey || e.altKey || (e.key !== 'j' && e.key !== 'k')) return
       const el = document.activeElement as HTMLElement | null
       if (el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable)) return
@@ -68,7 +79,7 @@ export default function OpsPage({ layout, route, navigate }: PlaceProps) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [layout, selIdx, board.flat, pick])
+  }, [layout, selIdx, board.flat, pick, confirmOpen])
 
   // ---- the answer ----
   const w = board.waiting
@@ -81,10 +92,10 @@ export default function OpsPage({ layout, route, navigate }: PlaceProps) {
   const sub = nj ? `A ${positionOf(board, nj).lane} newsjack has ${timeLeft(nj.context?.expires_at)}.` : ''
   const answer = <AnswerRow title={title} sub={ops.loading && ops.drafts.length === 0 ? 'Reading the queue…' : sub} />
 
-  if (ops.error && ops.drafts.length === 0) {
+  if (!confirmOpen && ops.error && ops.drafts.length === 0) {
     return <div className={`op-page op-${layout}`}>{answer}<Failed what="the ops queue" detail={ops.error} onRetry={refresh} /></div>
   }
-  if (ops.loading && ops.drafts.length === 0) {
+  if (!confirmOpen && ops.loading && ops.drafts.length === 0) {
     return <div className={`op-page op-${layout}`}>{answer}<Skeleton lines={7} label="Reading the ops queue" /></div>
   }
 
@@ -116,12 +127,12 @@ export default function OpsPage({ layout, route, navigate }: PlaceProps) {
       : { warn: false, text: `${n} queued. Leave the tab open.` }
   }
 
-  if (layout === 'phone' && want && sel) {
+  if (layout === 'phone' && (want || confirmOpen) && sel) {
     const p = positionOf(board, sel)
     return (
       <div className="op-page op-phone op-open">
         <div className="op-back">
-          <button type="button" className="d-ib" aria-label="Back to Ops" onClick={() => navigate(dHash('ops'))}><DIcon name="back" /></button>
+          <button type="button" className="d-ib" aria-label="Back to Ops" onClick={() => { if (!confirmOpen && !document.querySelector('.d-confirm, .d-sheet, .d-palette')) navigate(dHash('ops')) }}><DIcon name="back" /></button>
           <div className="op-backt"><small>{p.lane} lane · {p.at} of {p.of}</small><b>{kindTitle(sel)}</b></div>
         </div>
         {card}
@@ -165,4 +176,9 @@ export default function OpsPage({ layout, route, navigate }: PlaceProps) {
       </div>
     </div>
   )
+}
+
+export default function OpsPlace(props: PlaceProps) {
+  const on = useSkin('ops')
+  return on ? <OpsPageV4 {...props} /> : <OpsPage {...props} />
 }

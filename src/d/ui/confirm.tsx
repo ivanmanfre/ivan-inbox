@@ -17,6 +17,7 @@ import { Key } from './Key'
 export type ConfirmOpts = { title: ReactNode; message?: ReactNode; confirmText: string; cancelText?: string; verb?: string; danger?: boolean }
 
 type Pending = ConfirmOpts & { resolve: (ok: boolean) => void }
+const OpenCtx = createContext(false)
 const Ctx = createContext<((o: ConfirmOpts) => Promise<boolean>) | null>(null)
 
 export function DConfirmProvider({ children }: { children: ReactNode }) {
@@ -24,10 +25,10 @@ export function DConfirmProvider({ children }: { children: ReactNode }) {
   const ask = useCallback((o: ConfirmOpts) => new Promise<boolean>(resolve => setP({ ...o, resolve })), [])
   const done = useCallback((ok: boolean) => { setP(cur => { cur?.resolve(ok); return null }) }, [])
   return (
-    <Ctx.Provider value={ask}>
+    <OpenCtx.Provider value={p !== null}><Ctx.Provider value={ask}>
       {children}
       {p && <ConfirmBox p={p} done={done} />}
-    </Ctx.Provider>
+    </Ctx.Provider></OpenCtx.Provider>
   )
 }
 
@@ -79,3 +80,6 @@ export function useDConfirm(): (o: ConfirmOpts) => Promise<boolean> {
   if (!v) throw new Error('useDConfirm outside the D Shell')
   return v
 }
+
+/** Presentation lock: navigation must not replace the item under an open confirm. */
+export function useDConfirmOpen(): boolean { return useContext(OpenCtx) }

@@ -27,7 +27,7 @@ export function useCardConfirm() {
   }), [confirm])
 }
 
-function captions(d: OpsDraft, st: PendingCardState) {
+export function captions(d: OpsDraft, st: PendingCardState) {
   const seat = seatOf(d.client_id) ?? 'ivan'
   const slack = channelName(d.slack_channel) ?? 'Slack'
   switch (d.kind) {

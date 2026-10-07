@@ -19,6 +19,7 @@ vi.mock('../../lib/ops', async orig => {
 import * as lib from '../../lib/ops'
 import type { OpsDraft } from '../../lib/ops'
 import { OpsCard } from './Card'
+import { CardV4 } from './v4/Card'
 import { Tasks } from './Tasks'
 
 const row = (kind: OpsDraft['kind'], client_id: string, body = 'Body', context: Record<string, unknown> = {}): OpsDraft => ({
@@ -28,12 +29,12 @@ const row = (kind: OpsDraft['kind'], client_id: string, body = 'Body', context: 
 const key = (v: string) => document.querySelector(`[data-verb="${v}"]`) as HTMLElement
 const yes = async () => { await waitFor(() => expect(key('confirm')).toBeTruthy()); fireEvent.click(key('confirm')) }
 const refresh = vi.fn()
-const card = (d: OpsDraft) => renderInFrame(<OpsCard d={d} refresh={refresh} layout="desktop" pos="card 1 of 1" />, { hash: '#exp/d/ops' })
 
 beforeEach(() => { vi.clearAllMocks() })
 afterEach(cleanup)
 
-describe('Ops card verbs', () => {
+describe.each([OpsCard, CardV4])('Ops card verbs (%s)', Card => {
+  const card = (d: OpsDraft) => renderInFrame(<Card d={d} refresh={refresh} layout="desktop" pos="card 1 of 1" />, { hash: '#exp/d/ops' })
   it('escalation: Approve & send asks, then stamps approved_at through approveOpsDraft', async () => {
     card(row('escalation', 'rise', 'Tell Mattan'))
     fireEvent.click(key('approve')); await yes()
@@ -51,6 +52,7 @@ describe('Ops card verbs', () => {
     fireEvent.click(key('more'))
     fireEvent.click(key('needs-davor'))
     await waitFor(() => expect(lib.markNeedsDavor).toHaveBeenCalled())
+    await waitFor(() => expect((key('mark-handled') as HTMLButtonElement).disabled).toBe(false))
     fireEvent.click(key('mark-handled')); await yes()
     await waitFor(() => expect(lib.markCommentHandled).toHaveBeenCalledWith('id-comment_reply-arch'))
   })
