@@ -4,6 +4,25 @@ create schema reply_source_private;
 revoke all on schema reply_source_private from public, anon, authenticated;
 grant usage on schema reply_source_private to service_role;
 
+-- Typed rows keep shared history in SQL without an intermediate JSON round trip.
+create type reply_source_private.people_row as (prospect_id uuid,campaign_id uuid,person_key text,identity_basis text,identity_conflict boolean,excluded boolean);
+revoke all on type reply_source_private.people_row from public,anon,authenticated;
+grant usage on type reply_source_private.people_row to service_role;
+create type reply_source_private.events_row as (event_id uuid,source_ids uuid[],prospect_id uuid,person_key text,identity_basis text,campaign_id uuid,
+ event_at timestamptz,end_at timestamptz,direction text,is_text boolean,is_reaction boolean,touch text,sequence_step integer,
+ purpose_basis text,channel_family text,channel_product text,channel_basis text,chat_id text,receipt text,
+ confirmed boolean,uncertain_reason text,reply_intent text,duplicate_rows integer,excluded boolean);
+revoke all on type reply_source_private.events_row from public,anon,authenticated;
+grant usage on type reply_source_private.events_row to service_role;
+create type reply_source_private.replies_row as (person_key text,prospect_id uuid,reply_id uuid,reply_at timestamptz,reply_intent text,
+ campaign_id uuid,source_id uuid,source_at timestamptz,touch text,is_first boolean,source jsonb);
+revoke all on type reply_source_private.replies_row from public,anon,authenticated;
+grant usage on type reply_source_private.replies_row to service_role;
+create type reply_source_private.followup_events_row as (event_id uuid,person_key text,campaign_id uuid,event_at timestamptz,episode_id uuid,ordinal integer,
+ reply_id uuid,reply_at timestamptz,outcome text);
+revoke all on type reply_source_private.followup_events_row from public,anon,authenticated;
+grant usage on type reply_source_private.followup_events_row to service_role;
+
 create function reply_source_private.purpose(p_type text,p_model text,p_step integer,p_template_key text,p_template_step text)
 returns jsonb language sql immutable set search_path=pg_catalog as $$
 -- Fixed names from the 239 audited groups and the approved purpose rules, 2026-10-07.
@@ -244,7 +263,7 @@ $$;
 -- Read all history before period, campaign, and population filters.
 -- Materialize one shared history for each aggregate or detail read.
 create function reply_source_private.history(p_client_id text,p_as_of timestamptz)
-returns jsonb language sql stable set search_path=pg_catalog as $$
+returns table(people reply_source_private.people_row[],events reply_source_private.events_row[],replies reply_source_private.replies_row[],followup_events reply_source_private.followup_events_row[]) language sql stable set search_path=pg_catalog as $$
 with people_rows as materialized (select * from reply_source_private.people(p_client_id,p_as_of)),
 event_rows(event_id,source_ids,prospect_id,person_key,identity_basis,campaign_id,event_at,end_at,direction,is_text,is_reaction,touch,sequence_step,purpose_basis,channel_family,channel_product,channel_basis,chat_id,receipt,confirmed,uncertain_reason,reply_intent,duplicate_rows,excluded) as materialized (
 with message_inputs as materialized (
@@ -395,17 +414,19 @@ from resolved
 followup_rows(event_id,person_key,campaign_id,event_at,episode_id,ordinal,reply_id,reply_at,outcome) as materialized (
 with e as materialized(select * from event_rows),
  r as materialized(select * from reply_rows),
+ -- Keep all history, but search only the current person for episode boundaries and barriers.
+ by_person as materialized(select person_key,array_agg(row(e.*)::reply_source_private.events_row) events from e group by person_key),
  f as (
- select o.*,prev.event_id episode_id,prev.event_at episode_at,nxt.event_id next_id,nxt.event_at next_at
- from e o
- join lateral(select * from e i where i.person_key=o.person_key and i.chat_id=o.chat_id and i.direction='inbound'
+ select o.*,b.events person_events,prev.event_id episode_id,prev.event_at episode_at,nxt.event_id next_id,nxt.event_at next_at
+ from e o join by_person b on b.person_key=o.person_key
+ join lateral(select * from unnest(b.events) i where i.person_key=o.person_key and i.chat_id=o.chat_id and i.direction='inbound'
  and i.is_text and not i.is_reaction and i.event_at<o.event_at order by i.event_at desc,i.event_id limit 1) prev on true
- left join lateral(select * from e i where i.person_key=o.person_key and i.chat_id=o.chat_id and i.direction='inbound'
+ left join lateral(select * from unnest(b.events) i where i.person_key=o.person_key and i.chat_id=o.chat_id and i.direction='inbound'
  and i.is_text and not i.is_reaction and i.event_at>=o.event_at order by i.event_at,i.event_id limit 1) nxt on true
  where o.direction='outbound' and o.touch='followup' and not o.excluded and o.chat_id is not null
 ), numbered as (
  select f.*,
- case when not f.confirmed or exists(select 1 from e x where x.person_key=f.person_key and x.direction='outbound'
+ case when not f.confirmed or exists(select 1 from unnest(f.person_events) x where x.person_key=f.person_key and x.direction='outbound'
  and (x.chat_id=f.chat_id or (x.chat_id is null and
  (x.channel_family='unknown' or f.channel_family='unknown' or x.channel_family=f.channel_family))) and x.event_at>f.episode_at and x.event_at<=f.event_at
  and (not x.confirmed or x.purpose_basis in ('unknown','purpose_conflict') or x.touch='unknown' or (x.event_at=f.event_at and x.event_id<>f.event_id))) then null
@@ -414,7 +435,7 @@ with e as materialized(select * from event_rows),
  from f
 )
 select n.event_id,n.person_key,n.campaign_id,n.event_at,n.episode_id,n.ordinal,r.reply_id,r.reply_at,
- case when n.ordinal is null or exists(select 1 from e x where x.person_key=n.person_key and x.direction='outbound'
+ case when n.ordinal is null or exists(select 1 from unnest(n.person_events) x where x.person_key=n.person_key and x.direction='outbound'
  and (x.chat_id=n.chat_id or (x.chat_id is null and
  (x.channel_family='unknown' or n.channel_family='unknown' or x.channel_family=n.channel_family))) and x.event_at>n.episode_at and x.event_at<=coalesce(n.next_at,p_as_of)
  and (not x.confirmed or x.purpose_basis in ('unknown','purpose_conflict') or x.touch='unknown')) then 'unknown' when n.next_id is null then null
@@ -423,7 +444,7 @@ select n.event_id,n.person_key,n.campaign_id,n.event_at,n.episode_id,n.ordinal,r
  when r.touch='conversation_reply' then 'interrupted' else null end
 from numbered n left join r on r.person_key=n.person_key and r.reply_at=n.next_at
 )
-select jsonb_build_object('people',coalesce((select jsonb_agg(x) from people_rows x),'[]'::jsonb),'events',coalesce((select jsonb_agg(x) from event_rows x),'[]'::jsonb),'replies',coalesce((select jsonb_agg(x) from reply_rows x),'[]'::jsonb),'followup_events',coalesce((select jsonb_agg(x) from followup_rows x),'[]'::jsonb));
+select (select array_agg(row(x.*)::reply_source_private.people_row) from people_rows x),(select array_agg(row(x.*)::reply_source_private.events_row) from event_rows x),(select array_agg(row(x.*)::reply_source_private.replies_row) from reply_rows x),(select array_agg(row(x.*)::reply_source_private.followup_events_row) from followup_rows x);
 $$;
 
 -- Read all relevant history before period, campaign, and population filters.
@@ -433,10 +454,7 @@ returns table(event_id uuid,source_ids uuid[],prospect_id uuid,person_key text,i
  purpose_basis text,channel_family text,channel_product text,channel_basis text,chat_id text,receipt text,
  confirmed boolean,uncertain_reason text,reply_intent text,duplicate_rows integer,excluded boolean)
 language sql stable set search_path=pg_catalog as $$
- select * from jsonb_to_recordset(reply_source_private.history(p_client_id,p_as_of)->'events') x(event_id uuid,source_ids uuid[],prospect_id uuid,person_key text,identity_basis text,campaign_id uuid,
- event_at timestamptz,end_at timestamptz,direction text,is_text boolean,is_reaction boolean,touch text,sequence_step integer,
- purpose_basis text,channel_family text,channel_product text,channel_basis text,chat_id text,receipt text,
- confirmed boolean,uncertain_reason text,reply_intent text,duplicate_rows integer,excluded boolean);
+ select x.* from reply_source_private.history(p_client_id,p_as_of) h cross join lateral unnest(h.events) x;
 $$;
 
 -- One inbound time group per person. Equal earliest times never establish provider order.
@@ -444,38 +462,23 @@ create function reply_source_private.replies(p_client_id text,p_as_of timestampt
 returns table(person_key text,prospect_id uuid,reply_id uuid,reply_at timestamptz,reply_intent text,
  campaign_id uuid,source_id uuid,source_at timestamptz,touch text,is_first boolean,source jsonb)
 language sql stable set search_path=pg_catalog as $$
- select * from jsonb_to_recordset(reply_source_private.history(p_client_id,p_as_of)->'replies') x(person_key text,prospect_id uuid,reply_id uuid,reply_at timestamptz,reply_intent text,
- campaign_id uuid,source_id uuid,source_at timestamptz,touch text,is_first boolean,source jsonb);
+ select x.* from reply_source_private.history(p_client_id,p_as_of) h cross join lateral unnest(h.replies) x;
 $$;
 
 create function reply_source_private.followup_events(p_client_id text,p_as_of timestamptz)
 returns table(event_id uuid,person_key text,campaign_id uuid,event_at timestamptz,episode_id uuid,ordinal integer,
  reply_id uuid,reply_at timestamptz,outcome text)
 language sql stable set search_path=pg_catalog as $$
- select * from jsonb_to_recordset(reply_source_private.history(p_client_id,p_as_of)->'followup_events') x(event_id uuid,person_key text,campaign_id uuid,event_at timestamptz,episode_id uuid,ordinal integer,
- reply_id uuid,reply_at timestamptz,outcome text);
+ select x.* from reply_source_private.history(p_client_id,p_as_of) h cross join lateral unnest(h.followup_events) x;
 $$;
 
-create function reply_source_private.payload(p_client_id text,p_days integer,p_campaign_id uuid,p_as_of timestamptz)
-returns jsonb language plpgsql stable set search_path=pg_catalog set timezone='UTC' as $$
-declare result jsonb;
-begin
- if p_days is null or p_days not in (7,30,90) then raise exception 'invalid_days' using errcode='22023'; end if;
- if not exists(select 1 from public.client_registry where client_id=p_client_id and is_active) then
- raise exception 'client_denied' using errcode='42501'; end if;
- if p_campaign_id is not null and not exists(select 1 from public.outreach_campaigns where id=p_campaign_id and coalesce(client_id,'ivan')=p_client_id) then
- raise exception 'campaign_denied' using errcode='42501'; end if;
- if not exists(select 1 from public.outreach_campaigns where coalesce(client_id,'ivan')=p_client_id) then return null; end if;
- with h as materialized(select reply_source_private.history(p_client_id,p_as_of) data),
- e as materialized(select x.* from h cross join lateral jsonb_to_recordset(h.data->'events') x(event_id uuid,source_ids uuid[],prospect_id uuid,person_key text,identity_basis text,campaign_id uuid,
- event_at timestamptz,end_at timestamptz,direction text,is_text boolean,is_reaction boolean,touch text,sequence_step integer,
- purpose_basis text,channel_family text,channel_product text,channel_basis text,chat_id text,receipt text,
- confirmed boolean,uncertain_reason text,reply_intent text,duplicate_rows integer,excluded boolean)),
- people as materialized(select x.* from h cross join lateral jsonb_to_recordset(h.data->'people') x(prospect_id uuid,campaign_id uuid,person_key text,identity_basis text,identity_conflict boolean,excluded boolean)),
- r as materialized(select x.* from h cross join lateral jsonb_to_recordset(h.data->'replies') x(person_key text,prospect_id uuid,reply_id uuid,reply_at timestamptz,reply_intent text,
- campaign_id uuid,source_id uuid,source_at timestamptz,touch text,is_first boolean,source jsonb)),
- f as materialized(select x.* from h cross join lateral jsonb_to_recordset(h.data->'followup_events') x(event_id uuid,person_key text,campaign_id uuid,event_at timestamptz,episode_id uuid,ordinal integer,
- reply_id uuid,reply_at timestamptz,outcome text)),
+create function reply_source_private.payload_from_history(p_client_id text,p_days integer,p_campaign_id uuid,p_as_of timestamptz,p_people reply_source_private.people_row[],p_events reply_source_private.events_row[],p_replies reply_source_private.replies_row[],p_followups reply_source_private.followup_events_row[])
+returns jsonb language sql stable set search_path=pg_catalog set timezone='UTC' as $$
+ with h as materialized(select p_people people,p_events events,p_replies replies,p_followups followup_events),
+ e as materialized(select x.* from h cross join lateral unnest(h.events) x),
+ people as materialized(select x.* from h cross join lateral unnest(h.people) x),
+ r as materialized(select x.* from h cross join lateral unnest(h.replies) x),
+ f as materialized(select x.* from h cross join lateral unnest(h.followup_events) x),
  touches(touch,position) as (select t,ord from unnest(array['connection_note','dm1','dm2','dm3','dm4','dm5','recycle','followup','conversation_reply','requested_delivery','inmail','email','unknown']) with ordinality x(t,ord)),
  period_replies as (
  select * from r where is_first and reply_at>p_as_of-make_interval(days=>p_days)
@@ -547,19 +550,31 @@ begin
  'followup_responders',(select count(distinct person_key) from followups where outcome='replied' and ordinal is not null)),
  'sources',(select jsonb_agg(value order by position) from source_rows),
  'touches',(select jsonb_agg(value order by position) from touch_rows),
- 'followups',coalesce((select jsonb_agg(value order by ordinal) from followup_rows),'[]'::jsonb)) into result;
+ 'followups',coalesce((select jsonb_agg(value order by ordinal) from followup_rows),'[]'::jsonb));
+$$;
+
+create function reply_source_private.payload(p_client_id text,p_days integer,p_campaign_id uuid,p_as_of timestamptz)
+returns jsonb language plpgsql stable set search_path=pg_catalog set timezone='UTC' as $$
+declare result jsonb;
+begin
+ if p_days is null or p_days not in (7,30,90) then raise exception 'invalid_days' using errcode='22023'; end if;
+ if not exists(select 1 from public.client_registry where client_id=p_client_id and is_active) then
+ raise exception 'client_denied' using errcode='42501'; end if;
+ if p_campaign_id is not null and not exists(select 1 from public.outreach_campaigns where id=p_campaign_id and coalesce(client_id,'ivan')=p_client_id) then
+ raise exception 'campaign_denied' using errcode='42501'; end if;
+ if not exists(select 1 from public.outreach_campaigns where coalesce(client_id,'ivan')=p_client_id) then return null; end if;
+ select reply_source_private.payload_from_history(p_client_id,p_days,p_campaign_id,p_as_of,h.people,h.events,h.replies,h.followup_events)
+ into result from reply_source_private.history(p_client_id,p_as_of) h;
  return result;
 end;
 $$;
 
-create function reply_source_private.detail(p_client_id text,p_prospect_id uuid,p_as_of timestamptz)
+create function reply_source_private.detail_from_history(p_prospect_id uuid,p_as_of timestamptz,p_people reply_source_private.people_row[],p_events reply_source_private.events_row[],p_replies reply_source_private.replies_row[],p_followups reply_source_private.followup_events_row[])
 returns jsonb language sql stable set search_path=pg_catalog as $$
-with h as materialized(select reply_source_private.history(p_client_id,p_as_of) data),
- p as (select x.* from h cross join lateral jsonb_to_recordset(h.data->'people') x(prospect_id uuid,campaign_id uuid,person_key text,identity_basis text,identity_conflict boolean,excluded boolean) where prospect_id=p_prospect_id and not excluded),
- r as (select x.* from h cross join lateral jsonb_to_recordset(h.data->'replies') x(person_key text,prospect_id uuid,reply_id uuid,reply_at timestamptz,reply_intent text,
- campaign_id uuid,source_id uuid,source_at timestamptz,touch text,is_first boolean,source jsonb) where person_key=(select person_key from p)),
- f as (select x.* from h cross join lateral jsonb_to_recordset(h.data->'followup_events') x(event_id uuid,person_key text,campaign_id uuid,event_at timestamptz,episode_id uuid,ordinal integer,
- reply_id uuid,reply_at timestamptz,outcome text)),
+with h as materialized(select p_people people,p_events events,p_replies replies,p_followups followup_events),
+ p as (select x.* from h cross join lateral unnest(h.people) x where prospect_id=p_prospect_id and not excluded),
+ r as (select x.* from h cross join lateral unnest(h.replies) x where person_key=(select person_key from p)),
+ f as (select x.* from h cross join lateral unnest(h.followup_events) x),
  enriched as (
  select r.reply_at,r.reply_id,r.source||jsonb_build_object('followup_ordinal',
  (select ordinal from f where f.event_id=r.source_id and f.outcome='replied'),
@@ -572,10 +587,155 @@ select case when exists(select 1 from p) then jsonb_build_object('schema_version
  'latest_reply',(select source from enriched order by reply_at desc,reply_id desc limit 1)) end;
 $$;
 
+create function reply_source_private.detail(p_client_id text,p_prospect_id uuid,p_as_of timestamptz)
+returns jsonb language sql stable set search_path=pg_catalog as $$
+ select reply_source_private.detail_from_history(p_prospect_id,p_as_of,h.people,h.events,h.replies,h.followup_events)
+ from reply_source_private.history(p_client_id,p_as_of) h;
+$$;
+
+-- One atomic generation per client. Identity metadata stays at this generation's as_of.
+create type reply_source_private.prospect_owner_row as (prospect_id uuid,campaign_id uuid);
+create type reply_source_private.campaign_owner_row as (campaign_id uuid,client_id text);
+create type reply_source_private.message_owner_row as (message_id uuid,prospect_id uuid);
+create table reply_source_private.snapshots (
+ client_id text primary key, calculation_version text not null, as_of timestamptz not null,
+ people reply_source_private.people_row[], events reply_source_private.events_row[],
+ replies reply_source_private.replies_row[], followup_events reply_source_private.followup_events_row[],
+ prospects reply_source_private.prospect_owner_row[] not null,
+ campaigns reply_source_private.campaign_owner_row[] not null,
+ messages reply_source_private.message_owner_row[] not null
+);
+revoke all on table reply_source_private.snapshots from public,anon,authenticated,service_role;
+revoke all on type reply_source_private.snapshots from public,anon,authenticated,service_role;
+revoke all on type reply_source_private.prospect_owner_row from public,anon,authenticated,service_role;
+revoke all on type reply_source_private.campaign_owner_row from public,anon,authenticated,service_role;
+revoke all on type reply_source_private.message_owner_row from public,anon,authenticated,service_role;
+
+-- Controller/scheduler only. One INSERT statement gives history and manifests one MVCC snapshot.
+create function reply_source_private.refresh_one(p_client_id text,p_as_of timestamptz default statement_timestamp())
+returns boolean language plpgsql volatile set search_path=pg_catalog as $$
+declare written integer;
+begin
+ if not pg_try_advisory_xact_lock(20261007,741) then return false; end if;
+ if p_as_of is null or not isfinite(p_as_of) then raise exception 'invalid_snapshot_time' using errcode='22023'; end if;
+ if not exists(select 1 from public.client_registry where client_id=p_client_id and is_active) then
+ raise exception 'client_denied' using errcode='42501'; end if;
+ with h as materialized(select * from reply_source_private.history(p_client_id,p_as_of)),
+ p as materialized(select prospect_id,campaign_id from h cross join lateral unnest(h.people)),
+ c as materialized(select id,client_id from public.outreach_campaigns where coalesce(client_id,'ivan')=p_client_id)
+ insert into reply_source_private.snapshots as previous
+ select p_client_id,'reply-touch-snapshot-v1',p_as_of,h.people,h.events,h.replies,h.followup_events,
+ coalesce((select array_agg(row(p.*)::reply_source_private.prospect_owner_row) from p),'{}'),
+ coalesce((select array_agg(row(c.*)::reply_source_private.campaign_owner_row) from c),'{}'),
+ coalesce((select array_agg(row(m.id,m.prospect_id)::reply_source_private.message_owner_row)
+ from public.outreach_messages m join p on p.prospect_id=m.prospect_id),'{}')
+ from h
+ on conflict(client_id) do update set calculation_version=excluded.calculation_version,as_of=excluded.as_of,
+ people=excluded.people,events=excluded.events,replies=excluded.replies,followup_events=excluded.followup_events,
+ prospects=excluded.prospects,campaigns=excluded.campaigns,messages=excluded.messages
+ where previous.as_of<excluded.as_of;
+ get diagnostics written=row_count;
+ return written=1;
+end;
+$$;
+revoke all on function reply_source_private.refresh_one(text,timestamptz) from public,anon,authenticated,service_role;
+
+-- One bounded status row per active client. Never record source text or exception messages.
+create table reply_source_private.refresh_status (
+ client_id text primary key, attempted_at timestamptz not null, completed_at timestamptz not null,
+ error_code text check(error_code is null or length(error_code)=5)
+);
+create table reply_source_private.scheduler (
+ singleton boolean primary key default true check(singleton), job_id bigint, disabled boolean not null default false
+);
+insert into reply_source_private.scheduler(singleton) values(true);
+revoke all on table reply_source_private.refresh_status,reply_source_private.scheduler from public,anon,authenticated,service_role;
+revoke all on type reply_source_private.refresh_status,reply_source_private.scheduler from public,anon,authenticated,service_role;
+
+-- Cron supplies a 90s statement bound and 2s lock bound. Manual warmup uses the same controller bounds.
+create function reply_source_private.refresh_all()
+returns void language plpgsql volatile set search_path=pg_catalog as $$
+declare cid text; started timestamptz:=clock_timestamp(); attempted timestamptz;
+begin
+ if not pg_try_advisory_xact_lock(20261007,741) then return; end if;
+ delete from reply_source_private.snapshots s where not exists(select 1 from public.client_registry c where c.client_id=s.client_id and c.is_active);
+ delete from reply_source_private.refresh_status s where not exists(select 1 from public.client_registry c where c.client_id=s.client_id and c.is_active);
+ if (select count(*) from public.client_registry where is_active)>64 then raise exception 'client_limit' using errcode='54000'; end if;
+ for cid in select client_id from public.client_registry where is_active order by client_id loop
+  exit when clock_timestamp()>started+interval '80 seconds';
+  attempted:=clock_timestamp();
+  begin
+   perform reply_source_private.refresh_one(cid,attempted);
+   insert into reply_source_private.refresh_status values(cid,attempted,clock_timestamp(),null)
+   on conflict(client_id) do update set attempted_at=excluded.attempted_at,completed_at=excluded.completed_at,error_code=null;
+  exception when query_canceled then
+   insert into reply_source_private.refresh_status values(cid,attempted,clock_timestamp(),'57014')
+   on conflict(client_id) do update set attempted_at=excluded.attempted_at,completed_at=excluded.completed_at,error_code=excluded.error_code;
+   exit;
+  when others then
+   insert into reply_source_private.refresh_status values(cid,attempted,clock_timestamp(),sqlstate)
+   on conflict(client_id) do update set attempted_at=excluded.attempted_at,completed_at=excluded.completed_at,error_code=excluded.error_code;
+  end;
+ end loop;
+end;
+$$;
+revoke all on function reply_source_private.refresh_all() from public,anon,authenticated,service_role;
+
+-- Registration is a separate approved controller step, after warmup and the code gate.
+-- Dynamic cron SQL lets fixtures exercise all data/auth functions without replacing scheduler behavior.
+create function reply_source_private.register_job()
+returns bigint language plpgsql volatile set search_path=pg_catalog as $$
+declare saved_id bigint; found_id bigint; valid boolean; command text:='set statement_timeout=''90s''; set lock_timeout=''2s''; select reply_source_private.refresh_all();';
+begin
+ if not pg_try_advisory_xact_lock(20261007,742) then raise exception 'scheduler_busy' using errcode='55P03'; end if;
+ select job_id into saved_id from reply_source_private.scheduler where singleton for update;
+ execute 'select min(jobid),count(*)=1 and bool_and(command=$1 and schedule=$2 and username=$3 and database=current_database() and active) from cron.job where jobname=$4'
+ into found_id,valid using command,'*/5 * * * *','postgres','reply-source-snapshot-v1';
+ if saved_id is not null or found_id is not null then
+  if saved_id is distinct from found_id or valid is distinct from true then raise exception 'scheduler_identity_mismatch' using errcode='42501'; end if;
+  return saved_id;
+ end if;
+ execute 'select cron.schedule($1,$2,$3)' into found_id using 'reply-source-snapshot-v1','*/5 * * * *',command;
+ update reply_source_private.scheduler set job_id=found_id,disabled=false where singleton;
+ return found_id;
+end;
+$$;
+revoke all on function reply_source_private.register_job() from public,anon,authenticated,service_role;
+
+create function reply_source_private.unschedule_job()
+returns void language plpgsql volatile set search_path=pg_catalog as $$
+declare saved_id bigint; found_id bigint; valid boolean; is_disabled boolean;
+begin
+ if not pg_try_advisory_xact_lock(20261007,742) then raise exception 'scheduler_busy' using errcode='55P03'; end if;
+ select job_id,disabled into saved_id,is_disabled from reply_source_private.scheduler where singleton for update;
+ if saved_id is null then return; end if;
+ execute 'select min(jobid),count(*)=1 and bool_and(command=$1 and schedule=$2 and username=$3 and database=current_database() and jobname=$5) from cron.job where jobid=$4 or jobname=$5'
+ into found_id,valid using 'set statement_timeout=''90s''; set lock_timeout=''2s''; select reply_source_private.refresh_all();','*/5 * * * *','postgres',saved_id,'reply-source-snapshot-v1';
+ if is_disabled and found_id is null then return; end if;
+ if saved_id is distinct from found_id or valid is distinct from true then raise exception 'scheduler_identity_mismatch' using errcode='42501'; end if;
+ execute 'select cron.unschedule($1)' using saved_id;
+ update reply_source_private.scheduler set disabled=true where singleton;
+end;
+$$;
+revoke all on function reply_source_private.unschedule_job() from public,anon,authenticated,service_role;
+
+-- Every raw message remains in the manifest, including drafts and collapsed receipt/action mirrors.
+-- Ownership changes invalidate the whole generation. New identity metadata waits for the next refresh.
+create function reply_source_private.snapshot_owned(s reply_source_private.snapshots)
+returns boolean language sql stable set search_path=pg_catalog as $$
+ select not exists(select 1 from unnest(s.prospects) x left join public.outreach_prospects p on p.id=x.prospect_id
+ where p.id is null or p.campaign_id is distinct from x.campaign_id)
+ and not exists(select 1 from unnest(s.campaigns) x left join public.outreach_campaigns c on c.id=x.campaign_id
+ where c.id is null or c.client_id is distinct from x.client_id)
+ and not exists(select 1 from unnest(s.messages) x left join public.outreach_messages m on m.id=x.message_id
+ where m.id is null or m.prospect_id is distinct from x.prospect_id);
+$$;
+revoke all on function reply_source_private.snapshot_owned(reply_source_private.snapshots) from public,anon,authenticated,service_role;
+
 -- One envelope for operator and board reads. Only authenticated wrappers call this helper.
 create function reply_source_private.read_result(p_client_id text,p_days integer,p_campaign_id uuid,p_prospect_id uuid,p_detail boolean,p_as_of timestamptz)
 returns jsonb language plpgsql stable set search_path=pg_catalog as $$
-declare result jsonb;
+declare result jsonb; s reply_source_private.snapshots%rowtype;
 begin
  if not exists(select 1 from public.client_registry where client_id=p_client_id and is_active) then
  raise exception 'client_denied' using errcode='42501'; end if;
@@ -583,11 +743,27 @@ begin
   if not exists(select 1 from public.outreach_prospects p join public.outreach_campaigns c on c.id=p.campaign_id
    where p.id=p_prospect_id and coalesce(c.client_id,'ivan')=p_client_id) then
    raise exception 'prospect_denied' using errcode='42501'; end if;
-  result:=reply_source_private.detail(p_client_id,p_prospect_id,p_as_of);
+ else
+  if p_days is null or p_days not in (7,30,90) then raise exception 'invalid_days' using errcode='22023'; end if;
+  if p_campaign_id is not null and not exists(select 1 from public.outreach_campaigns where id=p_campaign_id and coalesce(client_id,'ivan')=p_client_id) then
+   raise exception 'campaign_denied' using errcode='42501'; end if;
+ end if;
+ select * into s from reply_source_private.snapshots where client_id=p_client_id;
+ if not p_detail and not exists(select 1 from public.outreach_campaigns where coalesce(client_id,'ivan')=p_client_id) then
+  return jsonb_build_object('status',case when cardinality(s.campaigns)>0 then 'unavailable' else 'not_configured' end,'data',null); end if;
+ if s.client_id is null or s.calculation_version<>'reply-touch-snapshot-v1' or not isfinite(s.as_of)
+ or s.as_of>p_as_of or s.as_of<p_as_of-interval '15 minutes' then
+  return jsonb_build_object('status','unavailable','data',null); end if;
+ if not reply_source_private.snapshot_owned(s)
+ or (p_detail and not exists(select 1 from unnest(s.prospects) p where p.prospect_id=p_prospect_id))
+ or (p_campaign_id is not null and not exists(select 1 from unnest(s.campaigns) c where c.campaign_id=p_campaign_id)) then
+  return jsonb_build_object('status','unavailable','data',null); end if;
+ if p_detail then
+  result:=reply_source_private.detail_from_history(p_prospect_id,s.as_of,s.people,s.events,s.replies,s.followup_events);
   return jsonb_build_object('status',case when result is null then 'not_found' else 'ok' end,'data',result);
  end if;
- result:=reply_source_private.payload(p_client_id,p_days,p_campaign_id,p_as_of);
- return jsonb_build_object('status',case when result is null then 'not_configured' else 'ok' end,'data',result);
+ result:=reply_source_private.payload_from_history(p_client_id,p_days,p_campaign_id,s.as_of,s.people,s.events,s.replies,s.followup_events);
+ return jsonb_build_object('status','ok','data',result);
 end;
 $$;
 
@@ -705,6 +881,11 @@ grant execute on function public.client_board_reply_sources_v2(text,text,integer
 
 revoke all on function public.client_board_reply_source_v2(text,text,uuid) from public,anon,authenticated,service_role;
 grant execute on function public.client_board_reply_source_v2(text,text,uuid) to anon,authenticated,service_role;
+
+revoke all on function reply_source_private.payload_from_history(text,integer,uuid,timestamptz,reply_source_private.people_row[],reply_source_private.events_row[],reply_source_private.replies_row[],reply_source_private.followup_events_row[]) from public,anon,authenticated;
+grant execute on function reply_source_private.payload_from_history(text,integer,uuid,timestamptz,reply_source_private.people_row[],reply_source_private.events_row[],reply_source_private.replies_row[],reply_source_private.followup_events_row[]) to service_role;
+revoke all on function reply_source_private.detail_from_history(uuid,timestamptz,reply_source_private.people_row[],reply_source_private.events_row[],reply_source_private.replies_row[],reply_source_private.followup_events_row[]) from public,anon,authenticated;
+grant execute on function reply_source_private.detail_from_history(uuid,timestamptz,reply_source_private.people_row[],reply_source_private.events_row[],reply_source_private.replies_row[],reply_source_private.followup_events_row[]) to service_role;
 
 notify pgrst,'reload schema';
 commit;

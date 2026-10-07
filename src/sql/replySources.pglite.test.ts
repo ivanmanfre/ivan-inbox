@@ -210,6 +210,7 @@ it('exports a real SQL payload contract with known DM4 and a follow-up episode',
  await message(db,100,'2026-09-20T12:00:00Z');await reply(db,101,'2026-09-21T12:00:00Z',{reply_intent:'positive'})
  await message(db,102,'2026-09-22T12:00:00Z',{ai_model:'ivan_cameback_followup_v1',sequence_step:null})
  await reply(db,103,'2026-09-23T12:00:00Z',{reply_intent:'soft_yes'})
+ await db.query('select reply_source_private.refresh_one($1,$2)',['ivan',AS_OF])
  const metrics=(await db.query<{p:any}>("select reply_source_private.read_result('ivan',30,null,null,false,$1) p",[AS_OF])).rows[0].p
  const narrow=(await db.query<{p:any}>("select reply_source_private.read_result('ivan',30,null,$1,true,$2) p",[id(10),AS_OF])).rows[0].p
  expect(metrics.data.sources).toHaveLength(13);expect(row(metrics.data,'dm5').rate_pct).toBeNull()
@@ -430,4 +431,17 @@ it('keeps combined LIKE wildcard and escape characters literal in roster substri
  }
  const p=await db.query<{prospect_id:string,excluded:boolean}>("select prospect_id,excluded from reply_source_private.people('risedtc',$1) order by prospect_id",[AS_OF])
  expect(p.rows).toEqual(expected)
+})
+it('keeps follow-up barriers local to one person when chats and times are shared',async()=>{
+ await person(db,11)
+ for(const [prospect,inbound,followup,response] of [[10,90,100,101],[11,91,102,104]]) {
+  await reply(db,inbound,'2026-08-01T12:00:00Z',{prospect_id:id(prospect)})
+  await message(db,followup,'2026-09-20T12:00:00Z',{prospect_id:id(prospect),ai_model:'ivan_cameback_followup_v1'})
+  await reply(db,response,'2026-09-22T12:00:00Z',{prospect_id:id(prospect)})
+ }
+ await message(db,103,'2026-09-21T12:00:00Z',{prospect_id:id(11),ai_model:null,sequence_step:null})
+ const p=await payload(db)
+ expect(p.coverage.unknown_episodes).toBe(1);expect(p.totals.followup_responders).toBe(1)
+ expect((await detail(db,10)).latest_reply).toMatchObject({source_id:id(100),touch:'followup',followup_ordinal:1,episode_outcome:'replied'})
+ expect((await detail(db,11)).latest_reply.episode_outcome).toBe('unknown')
 })
