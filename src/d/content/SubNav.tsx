@@ -45,10 +45,34 @@ export function contentRedirect(sub: string | null, query: URLSearchParams): str
 }
 export type Trio = Record<Lane, number | null | undefined>
 export type Gen = Record<Lane, { n: number; stalled: number }>
-export function SubNav({ on, attention = false, lane = 'ivan', section }: { on: Sub; attention?: boolean; lane?: Lane; section?: string | null }) {
+export function SubNav({ on, attention = false, lane = 'ivan', section, v2 = false, counts }: {
+  on: Sub; attention?: boolean; lane?: Lane; section?: string | null
+  /** Brief 4 frame (SPEC-content §2.0): counts on the tabs, the ⋯ at the end of the tab row, no second row. */
+  v2?: boolean
+  counts?: Partial<Record<Sub, number | null>>
+}) {
   const f = useFrame()
   const context = { lane }
   const [more, setMore] = useState(false)
+  const sheet = <Sheet open={more} onClose={() => setMore(false)} title="More in Content"><div className="cn-more">
+    {MORE.map(g => <div key={g.group} className="cn-more-g"><span className="cn-more-h">{g.group}</span>
+      {g.items.map(i => <a key={i.label} href={dHash('content', i.sub, { ...context, ...(i.q ?? {}) })} onClick={() => setMore(false)}><b>{i.label}</b>{i.small && <small>{i.small}</small>}</a>)}
+    </div>)}
+    <a href="#search" onClick={e => { e.preventDefault(); setMore(false); f.openPalette() }}><b>Search every post</b></a>
+  </div></Sheet>
+  if (v2) return <>
+    <nav className={`cn-now-tabs cv2-tabs ${f.layout === 'phone' ? 'cn-ptabs' : 'cn-sub'}`} aria-label="Content places">
+      {SUBS.map(s => {
+        const n = counts?.[s]
+        return <a key={s} href={dHash('content', s, context)} className={s === on ? 'cn-on' : ''} aria-current={s === on ? 'page' : undefined} data-sub={s}>
+          {SUB_LABEL[s]}{n !== undefined && <b className="cv2-tabn" aria-label={n == null ? 'counting' : `${n} waiting`}>{n == null ? '…' : n}</b>}
+        </a>
+      })}
+      <span className="cn-grow" />
+      <button type="button" className="cn-more-key cv2-tabs-more" data-verb="content-more" aria-label="Sources, history and more" aria-expanded={more} onClick={() => setMore(true)}>⋯</button>
+    </nav>
+    {sheet}
+  </>
   return <>
     <nav className={`cn-now-tabs ${f.layout === 'phone' ? 'cn-ptabs' : 'cn-sub'}`} aria-label="Content places">
       {SUBS.map(s => <a key={s} href={dHash('content', s, context)} className={s === on ? 'cn-on' : ''} aria-current={s === on ? 'page' : undefined}>
@@ -65,11 +89,6 @@ export function SubNav({ on, attention = false, lane = 'ivan', section }: { on: 
       <span className="cn-grow" />
       <button type="button" className="cn-more-key" aria-label="More in Content" aria-expanded={more} onClick={() => setMore(true)}>⋯</button>
     </nav>
-    <Sheet open={more} onClose={() => setMore(false)} title="More in Content"><div className="cn-more">
-      {MORE.map(g => <div key={g.group} className="cn-more-g"><span className="cn-more-h">{g.group}</span>
-        {g.items.map(i => <a key={i.label} href={dHash('content', i.sub, { ...context, ...(i.q ?? {}) })} onClick={() => setMore(false)}><b>{i.label}</b>{i.small && <small>{i.small}</small>}</a>)}
-      </div>)}
-      <a href="#search" onClick={e => { e.preventDefault(); setMore(false); f.openPalette() }}><b>Search every post</b></a>
-    </div></Sheet>
+    {sheet}
   </>
 }

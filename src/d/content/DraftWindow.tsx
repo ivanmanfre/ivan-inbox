@@ -1,5 +1,5 @@
 import { BrainDraftBadge } from './BrainDraftBadge'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDraftDetail } from '../../hooks/useContent'
 import { useUnsavedNavigation } from '../../hooks/useUnsavedNavigation'
 import { useDConfirm } from '../ui/confirm'
@@ -33,6 +33,8 @@ type Props = {
   days: WallDay[]; armed: Set<string> | null; armedFailed: boolean
   /** Titles of the queue's rows, for the queue rail (today's persisted `wb-draft-rail`). */
   titles?: Record<string, string>
+  /** Brief 4 review desk: `e` opens the post with its editor already open (today's startEdit, UI only). */
+  startInEdit?: boolean
 }
 
 export function DraftWindow(p: Props) {
@@ -55,7 +57,7 @@ export function DraftWindow(p: Props) {
 
 const RAIL_KEY = 'wb-draft-rail'
 
-function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, armed, armedFailed, titles }: Props & { d: ContentDraftDetail }) {
+function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, armed, armedFailed, titles, startInEdit = false }: Props & { d: ContentDraftDetail }) {
   const at = queue.indexOf(d.id)
   const [rail, setRailState] = useState(() => { try { return localStorage.getItem(RAIL_KEY) === '1' } catch { return false } })
   const setRail = (v: boolean) => { setRailState(v); try { localStorage.setItem(RAIL_KEY, v ? '1' : '0') } catch { /* private mode */ } }
@@ -64,6 +66,13 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
     if (next) pick(next); else close()
   }, [at, close, pick, queue])
   const v = useDraftVerbs(d, lane, advance, refresh)
+  // Once per opened draft: the desk's Edit lands in the editor (the same rule as Enter here).
+  const editOnce = useRef(startInEdit)
+  useEffect(() => {
+    if (!editOnce.current) return
+    editOnce.current = false
+    if (lane === 'ivan' || clientEditable(d.status, lane)) v.startEdit()
+  }, [d.status, lane, v])
   const earlyReads = useEarlyReads([{ ...d, post_body: v.shown }])
   const confirm = useDConfirm()
   const dirty = v.editing && (v.text !== v.shown || v.busy)

@@ -32,7 +32,8 @@ function whereFrom(url: string): string {
 }
 
 export function PictureRow({ d, lane, onShow, onDone, disabled }: {
-  d: ContentDraftDetail
+  /** The fields this row reads (the open post's detail, or a review card's row). */
+  d: Pick<ContentDraftDetail, 'id' | 'image_urls' | 'taxonomy' | 'status' | 'type'>
   lane: Lane
   /** Show this picture list in the preview now (optimistic), or `undefined` to show what is stored. */
   onShow: (urls: string[] | undefined) => void
