@@ -13,6 +13,7 @@ drop function reply_source_private.payload(text,integer,uuid,timestamptz);
 drop function reply_source_private.followup_events(text,timestamptz);
 drop function reply_source_private.replies(text,timestamptz);
 drop function reply_source_private.events(text,timestamptz);
+drop function reply_source_private.history(text,timestamptz);
 drop function reply_source_private.people(text,timestamptz);
 drop function reply_source_private.purpose(text,text,integer,text,text);
 drop schema reply_source_private;

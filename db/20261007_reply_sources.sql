@@ -175,7 +175,8 @@ create function reply_source_private.people(p_client_id text,p_as_of timestamptz
 returns table(prospect_id uuid,campaign_id uuid,person_key text,identity_basis text,identity_conflict boolean,excluded boolean)
 language sql stable set search_path=pg_catalog as $$
 with
-roster as (
+operators as materialized (select distinct person_key from public.audn_person_label_v where is_operator),
+roster as materialized (
   select 'd'::text as kind, lower(btrim(x)) as key
     from jsonb_array_elements_text(coalesce((select value::jsonb from public.integration_config where key = 'rise_do_not_target'), '[]'::jsonb)) x
    where p_client_id = 'risedtc' and position('.' in x) > 0
@@ -200,7 +201,12 @@ roster as (
    where p_client_id = 'arch' and e->>'reason' = 'arch_own_employee'
 ),
 raw as (
- select p.*,c.name campaign_name,nullif(btrim(p.linkedin_profile_id),'') profile,
+ select p.id,p.campaign_id,p.linkedin_profile_id,p.linkedin_url,p.call_booked_at,
+ public._bk_host(p.company_domain) staff_host,public._bk_email_domain(p.email) staff_email,
+ lower(coalesce(p.headline,'')||' '||coalesce(p.title,'')) staff_text,
+ regexp_replace(lower(coalesce(p.company,'')),'[^a-z0-9]','','g') staff_company,
+ regexp_replace(lower(coalesce(p.headline,'')||' '||coalesce(p.title,'')),'[^a-z0-9]','','g') staff_normal_text,
+ public.li_slug(p.linkedin_url) staff_slug,c.name campaign_name,nullif(btrim(p.linkedin_profile_id),'') profile,
  case when lower(btrim(p.linkedin_url)) ~ '^(https?://)?(www[.])?linkedin[.]com/in/[^/?#]+/?([?#].*)?$'
  then regexp_replace(regexp_replace(regexp_replace(lower(btrim(p.linkedin_url)),'^(https?://)?(www[.])?',''),'[?#].*$',''),'/+$','') end url
  from public.outreach_prospects p join public.outreach_campaigns c on c.id=p.campaign_id
@@ -213,13 +219,13 @@ raw as (
  case when r.profile is not null or a.ids=1 then 'profile' when r.url is not null and coalesce(a.ids,0)<2 then 'url' else 'record' end basis,
  coalesce(a.ids>1,false) conflict,
  (p_client_id='arch' and r.campaign_name ilike '%inbound request%')
- or exists(select 1 from public.audn_person_label_v o where o.is_operator and o.person_key=r.linkedin_profile_id)
+ or exists(select 1 from operators o where o.person_key=r.linkedin_profile_id)
  or exists(select 1 from roster x where
- (x.kind='d' and (x.key=public._bk_host(r.company_domain) or x.key=public._bk_email_domain(r.email)
- or position(x.key in lower(coalesce(r.headline,'')||' '||coalesce(r.title,'')))>0))
- or (x.kind='n' and (position(x.key in regexp_replace(lower(coalesce(r.company,'')),'[^a-z0-9]','','g'))>0
- or position(x.key in regexp_replace(lower(coalesce(r.headline,'')||' '||coalesce(r.title,'')),'[^a-z0-9]','','g'))>0))
- or (x.kind='p' and x.key=public.li_slug(r.linkedin_url))) staff,
+ (x.kind='d' and (x.key=r.staff_host or x.key=r.staff_email
+ or position(x.key in r.staff_text)>0))
+ or (x.kind='n' and (position(x.key in r.staff_company)>0
+ or position(x.key in r.staff_normal_text)>0))
+ or (x.kind='p' and x.key=r.staff_slug)) staff,
  exists(select 1 from public.outreach_messages m where m.prospect_id=r.id and m.direction='inbound'
  and m.reply_intent='vendor_pitch' and coalesce(m.sent_at,m.created_at)<=p_as_of) vendor
  from raw r left join aliases a on a.url=r.url
@@ -230,15 +236,29 @@ raw as (
 select i.id,i.campaign_id,i.person,i.basis,i.conflict,p.excluded from identified i join population p on p.person=i.person;
 $$;
 
--- Read all relevant history before period, campaign, and population filters.
-create function reply_source_private.events(p_client_id text,p_as_of timestamptz)
-returns table(event_id uuid,source_ids uuid[],prospect_id uuid,person_key text,identity_basis text,campaign_id uuid,
- event_at timestamptz,end_at timestamptz,direction text,is_text boolean,is_reaction boolean,touch text,sequence_step integer,
- purpose_basis text,channel_family text,channel_product text,channel_basis text,chat_id text,receipt text,
- confirmed boolean,uncertain_reason text,reply_intent text,duplicate_rows integer,excluded boolean)
-language sql stable set search_path=pg_catalog as $$
-with raw as materialized (
- select m.id,m.prospect_id,p.person_key,p.identity_basis,p.campaign_id,p.excluded,p.identity_conflict,
+-- Read all history before period, campaign, and population filters.
+-- Materialize one shared history for each aggregate or detail read.
+create function reply_source_private.history(p_client_id text,p_as_of timestamptz)
+returns jsonb language sql stable set search_path=pg_catalog as $$
+with people_rows as materialized (select * from reply_source_private.people(p_client_id,p_as_of)),
+event_rows(event_id,source_ids,prospect_id,person_key,identity_basis,campaign_id,event_at,end_at,direction,is_text,is_reaction,touch,sequence_step,purpose_basis,channel_family,channel_product,channel_basis,chat_id,receipt,confirmed,uncertain_reason,reply_intent,duplicate_rows,excluded) as materialized (
+with message_inputs as materialized (
+ select m.id,m.prospect_id,m.sent_at,m.created_at,m.direction,m.message_text,m.is_reaction,m.message_type,
+ m.sequence_step,m.channel,m.unipile_chat_id,m.unipile_message_id,m.send_blocked_at,m.send_blocked_reason,
+ m.reply_intent,m.agent_action_id,p.person_key,p.identity_basis,p.campaign_id,p.excluded,p.identity_conflict,
+ jsonb_build_array(m.message_type,m.ai_model,m.sequence_step,m.draft_evidence->>'template_key',t.step) purpose_key
+ from public.outreach_messages m join people_rows p on p.prospect_id=m.prospect_id
+ left join lateral (
+ select case when count(distinct t.step)=1 then min(t.step) end step from public.outreach_templates t
+ where t.client_id=p_client_id and t.key=nullif(btrim(m.draft_evidence->>'template_key'),'')
+ ) t on true
+ where coalesce(m.sent_at,m.created_at)<=p_as_of and (m.direction='inbound' or
+ (m.direction='outbound' and (m.sent_at is not null or nullif(btrim(m.unipile_message_id),'') is not null)))
+), purposes as materialized (
+ select purpose_key,reply_source_private.purpose(purpose_key->>0,purpose_key->>1,(purpose_key->>2)::integer,purpose_key->>3,purpose_key->>4) cl
+ from (select distinct purpose_key from message_inputs) keys
+), raw as materialized (
+ select m.id,m.prospect_id,m.person_key,m.identity_basis,m.campaign_id,m.excluded,m.identity_conflict,
  coalesce(m.sent_at,m.created_at) event_at,m.direction,
  nullif(btrim(m.message_text),'') is not null and m.is_reaction is not true and m.message_type is distinct from 'connection_note' is_text,
  coalesce(m.is_reaction,false) is_reaction,case when cl->>'purpose_basis'='unknown' then 'unknown' else cl->>'touch' end touch,m.sequence_step,cl->>'purpose_basis' purpose_basis,
@@ -253,14 +273,7 @@ with raw as materialized (
  and m.send_blocked_at is null and nullif(btrim(m.send_blocked_reason),'') is null confirmed,
  m.send_blocked_at is not null or nullif(btrim(m.send_blocked_reason),'') is not null blocked,
  nullif(btrim(m.reply_intent),'') reply_intent,m.agent_action_id
- from public.outreach_messages m join reply_source_private.people(p_client_id,p_as_of) p on p.prospect_id=m.prospect_id
- left join lateral (
- select case when count(distinct t.step)=1 then min(t.step) end step from public.outreach_templates t
- where t.client_id=p_client_id and t.key=nullif(btrim(m.draft_evidence->>'template_key'),'')
- ) t on true
- cross join lateral reply_source_private.purpose(m.message_type,m.ai_model,m.sequence_step,m.draft_evidence->>'template_key',t.step) cl
- where coalesce(m.sent_at,m.created_at)<=p_as_of and (m.direction='inbound' or
- (m.direction='outbound' and (m.sent_at is not null or nullif(btrim(m.unipile_message_id),'') is not null)))
+ from message_inputs m join purposes using(purpose_key)
 ), receipt_conflicts as (
  select receipt,count(distinct person_key)>1 identities,
  count(distinct chat)>1 or count(distinct family) filter(where family<>'unknown')>1 or count(distinct direction)>1 scope_conflict,
@@ -299,7 +312,7 @@ with raw as materialized (
  from receipts where action_id is not null group by action_id
 ), grouped as (
  select (array_agg(r.id order by r.event_at,r.id))[1] event_id,
- array_agg(r.id) receipt_ids,(array_agg(r.prospect_id order by r.event_at,r.id))[1] prospect_id,r.person_key,min(r.identity_basis) identity_basis,
+ jsonb_agg(r.source_ids) source_arrays,(array_agg(r.prospect_id order by r.event_at,r.id))[1] prospect_id,r.person_key,min(r.identity_basis) identity_basis,
  (array_agg(r.campaign_id order by r.event_at,r.id))[1] campaign_id,min(r.event_at) event_at,max(r.end_at) end_at,r.direction,
  bool_or(r.is_text) is_text,bool_or(r.is_reaction) is_reaction,
  case when bool_or(a.conflict) or bool_or(r.purpose_basis='purpose_conflict') or count(distinct r.touch) filter(where r.touch<>'unknown')>1 then 'unknown'
@@ -315,45 +328,36 @@ with raw as materialized (
  group by r.person_key,r.direction,r.family,r.chat,
  case when r.direction='outbound' and r.action_id is not null then r.action_id else r.id end
 )
-select g.event_id,(select array_agg(s order by s) from receipts r cross join lateral unnest(r.source_ids) s where r.id=any(g.receipt_ids)),
+select g.event_id,(select array_agg(s::uuid order by s::uuid) from jsonb_array_elements(g.source_arrays) a cross join lateral jsonb_array_elements_text(a) s),
  g.prospect_id,g.person_key,g.identity_basis,g.campaign_id,g.event_at,g.end_at,g.direction,g.is_text,g.is_reaction,
  case when g.touch='unknown' and g.purpose_basis<>'purpose_conflict' and g.product in ('email','inmail') then g.product else g.touch end,
  g.sequence_step,g.purpose_basis,g.family,g.product,case when g.family='unknown' then 'unknown' else 'recorded' end,
- g.chat,g.receipt,g.confirmed,g.uncertain_reason,g.reply_intent,g.duplicate_rows,g.excluded from grouped g;
-$$;
-
--- One inbound time group per person. Equal earliest times never establish provider order.
-create function reply_source_private.replies(p_client_id text,p_as_of timestamptz)
-returns table(person_key text,prospect_id uuid,reply_id uuid,reply_at timestamptz,reply_intent text,
- campaign_id uuid,source_id uuid,source_at timestamptz,touch text,is_first boolean,source jsonb)
-language sql stable set search_path=pg_catalog as $$
-with e as materialized (select * from reply_source_private.events(p_client_id,p_as_of)),
+ g.chat,g.receipt,g.confirmed,g.uncertain_reason,g.reply_intent,g.duplicate_rows,g.excluded from grouped g
+),
+reply_rows(person_key,prospect_id,reply_id,reply_at,reply_intent,campaign_id,source_id,source_at,touch,is_first,source) as materialized (
+with e as materialized (select * from event_rows),
 ins as (
  select person_key,event_at,(array_agg(event_id order by event_id))[1] id,
  count(*) tie_count,case when count(distinct reply_intent)=1 and bool_and(reply_intent is not null) then min(reply_intent) end intent,
  row_number() over(partition by person_key order by event_at)=1 first
  from e where direction='inbound' and is_text and not is_reaction and not excluded group by person_key,event_at
-), candidates as (
+), chat_channels as (
+ select person_key,chat_id,count(distinct channel_family) filter(where channel_family<>'unknown') families,
+ min(channel_family) filter(where channel_family<>'unknown') family from e group by person_key,chat_id
+), outbound_candidates as (
  select i.*,r.prospect_id,r.campaign_id inbound_campaign,r.chat_id,r.channel_family inbound_family,r.uncertain_reason inbound_conflict,
  o.event_id outbound_id,o.event_at sent_at,o.end_at,o.campaign_id outbound_campaign,o.touch,o.sequence_step,o.confirmed,o.uncertain_reason,
- o.channel_family outbound_family,o.channel_product,o.chat_id outbound_chat,c.families,c.family,
- (select count(*) from e t where t.person_key=i.person_key and t.direction='outbound' and t.end_at=o.end_at
- and t.event_at<=i.event_at
- and (t.chat_id=r.chat_id or r.chat_id is null or (t.chat_id is null and
- (t.channel_family='unknown' or r.channel_family='unknown' or t.channel_family=r.channel_family)))) outbound_ties
+ o.channel_family outbound_family,o.channel_product,o.chat_id outbound_chat,coalesce(c.families,0) families,c.family,
+ count(o.event_id) over(partition by i.person_key,i.event_at,o.end_at) outbound_ties,
+ row_number() over(partition by i.person_key,i.event_at order by o.end_at desc,o.event_id) source_position
  from ins i join e r on r.event_id=i.id
- left join lateral (
- select * from e x where x.person_key=i.person_key and x.direction='outbound' and x.event_at<=i.event_at
- and (x.chat_id=r.chat_id or r.chat_id is null or (x.chat_id is null and
- (x.channel_family='unknown' or r.channel_family='unknown' or x.channel_family=r.channel_family)))
- order by x.end_at desc,x.event_id limit 1
- ) o on true
- left join lateral (
- select count(distinct channel_family) filter(where channel_family<>'unknown') families,
- min(channel_family) filter(where channel_family<>'unknown') family from e x
- where x.person_key=i.person_key and x.chat_id=r.chat_id
- ) c on true
-), resolved as (
+ left join e o on o.person_key=i.person_key and o.direction='outbound' and o.event_at<=i.event_at
+ and (o.chat_id=r.chat_id or r.chat_id is null or (o.chat_id is null and
+ (o.channel_family='unknown' or r.channel_family='unknown' or o.channel_family=r.channel_family)))
+ left join chat_channels c on c.person_key=i.person_key and c.chat_id=r.chat_id
+), candidates as materialized (
+ select * from outbound_candidates where source_position=1
+), resolved as materialized (
  select *,case when tie_count>1 then 'reply_time_tie' when inbound_conflict is not null then inbound_conflict when chat_id is null then 'missing_chat'
  when outbound_id is null then 'no_prior_send' when outbound_chat is null then 'unlocated_later_send'
  when outbound_ties>1 or sent_at=event_at then 'outbound_time_tie' when end_at>=event_at then 'unfinished_action'
@@ -375,15 +379,11 @@ select person_key,prospect_id,id,event_at,intent,case when reason is null then o
  'product',case when reason is null then channel_product else 'unknown' end,
  'channel_basis',case when reason is not null then 'unknown' when inbound_family='unknown' or outbound_family='unknown' then 'chat_inferred' else 'recorded' end,
  'followup_ordinal',null,'episode_outcome',null)
-from resolved;
-$$;
-
-create function reply_source_private.followup_events(p_client_id text,p_as_of timestamptz)
-returns table(event_id uuid,person_key text,campaign_id uuid,event_at timestamptz,episode_id uuid,ordinal integer,
- reply_id uuid,reply_at timestamptz,outcome text)
-language sql stable set search_path=pg_catalog as $$
-with e as materialized(select * from reply_source_private.events(p_client_id,p_as_of)),
- r as materialized(select * from reply_source_private.replies(p_client_id,p_as_of)),
+from resolved
+),
+followup_rows(event_id,person_key,campaign_id,event_at,episode_id,ordinal,reply_id,reply_at,outcome) as materialized (
+with e as materialized(select * from event_rows),
+ r as materialized(select * from reply_rows),
  f as (
  select o.*,prev.event_id episode_id,prev.event_at episode_at,nxt.event_id next_id,nxt.event_at next_at
  from e o
@@ -410,7 +410,39 @@ select n.event_id,n.person_key,n.campaign_id,n.event_at,n.episode_id,n.ordinal,r
  when r.source_id=n.event_id and r.touch='followup' then 'replied'
  when r.source_id is null or exists(select 1 from numbered x where x.episode_id=n.episode_id and x.ordinal is null) then 'unknown'
  when r.touch='conversation_reply' then 'interrupted' else null end
-from numbered n left join r on r.person_key=n.person_key and r.reply_at=n.next_at;
+from numbered n left join r on r.person_key=n.person_key and r.reply_at=n.next_at
+)
+select jsonb_build_object('people',coalesce((select jsonb_agg(x) from people_rows x),'[]'::jsonb),'events',coalesce((select jsonb_agg(x) from event_rows x),'[]'::jsonb),'replies',coalesce((select jsonb_agg(x) from reply_rows x),'[]'::jsonb),'followup_events',coalesce((select jsonb_agg(x) from followup_rows x),'[]'::jsonb));
+$$;
+
+-- Read all relevant history before period, campaign, and population filters.
+create function reply_source_private.events(p_client_id text,p_as_of timestamptz)
+returns table(event_id uuid,source_ids uuid[],prospect_id uuid,person_key text,identity_basis text,campaign_id uuid,
+ event_at timestamptz,end_at timestamptz,direction text,is_text boolean,is_reaction boolean,touch text,sequence_step integer,
+ purpose_basis text,channel_family text,channel_product text,channel_basis text,chat_id text,receipt text,
+ confirmed boolean,uncertain_reason text,reply_intent text,duplicate_rows integer,excluded boolean)
+language sql stable set search_path=pg_catalog as $$
+ select * from jsonb_to_recordset(reply_source_private.history(p_client_id,p_as_of)->'events') x(event_id uuid,source_ids uuid[],prospect_id uuid,person_key text,identity_basis text,campaign_id uuid,
+ event_at timestamptz,end_at timestamptz,direction text,is_text boolean,is_reaction boolean,touch text,sequence_step integer,
+ purpose_basis text,channel_family text,channel_product text,channel_basis text,chat_id text,receipt text,
+ confirmed boolean,uncertain_reason text,reply_intent text,duplicate_rows integer,excluded boolean);
+$$;
+
+-- One inbound time group per person. Equal earliest times never establish provider order.
+create function reply_source_private.replies(p_client_id text,p_as_of timestamptz)
+returns table(person_key text,prospect_id uuid,reply_id uuid,reply_at timestamptz,reply_intent text,
+ campaign_id uuid,source_id uuid,source_at timestamptz,touch text,is_first boolean,source jsonb)
+language sql stable set search_path=pg_catalog as $$
+ select * from jsonb_to_recordset(reply_source_private.history(p_client_id,p_as_of)->'replies') x(person_key text,prospect_id uuid,reply_id uuid,reply_at timestamptz,reply_intent text,
+ campaign_id uuid,source_id uuid,source_at timestamptz,touch text,is_first boolean,source jsonb);
+$$;
+
+create function reply_source_private.followup_events(p_client_id text,p_as_of timestamptz)
+returns table(event_id uuid,person_key text,campaign_id uuid,event_at timestamptz,episode_id uuid,ordinal integer,
+ reply_id uuid,reply_at timestamptz,outcome text)
+language sql stable set search_path=pg_catalog as $$
+ select * from jsonb_to_recordset(reply_source_private.history(p_client_id,p_as_of)->'followup_events') x(event_id uuid,person_key text,campaign_id uuid,event_at timestamptz,episode_id uuid,ordinal integer,
+ reply_id uuid,reply_at timestamptz,outcome text);
 $$;
 
 create function reply_source_private.payload(p_client_id text,p_days integer,p_campaign_id uuid,p_as_of timestamptz)
@@ -423,10 +455,16 @@ begin
  if p_campaign_id is not null and not exists(select 1 from public.outreach_campaigns where id=p_campaign_id and coalesce(client_id,'ivan')=p_client_id) then
  raise exception 'campaign_denied' using errcode='42501'; end if;
  if not exists(select 1 from public.outreach_campaigns where coalesce(client_id,'ivan')=p_client_id) then return null; end if;
- with e as materialized(select * from reply_source_private.events(p_client_id,p_as_of)),
- people as materialized(select * from reply_source_private.people(p_client_id,p_as_of)),
- r as materialized(select * from reply_source_private.replies(p_client_id,p_as_of)),
- f as materialized(select * from reply_source_private.followup_events(p_client_id,p_as_of)),
+ with h as materialized(select reply_source_private.history(p_client_id,p_as_of) data),
+ e as materialized(select x.* from h cross join lateral jsonb_to_recordset(h.data->'events') x(event_id uuid,source_ids uuid[],prospect_id uuid,person_key text,identity_basis text,campaign_id uuid,
+ event_at timestamptz,end_at timestamptz,direction text,is_text boolean,is_reaction boolean,touch text,sequence_step integer,
+ purpose_basis text,channel_family text,channel_product text,channel_basis text,chat_id text,receipt text,
+ confirmed boolean,uncertain_reason text,reply_intent text,duplicate_rows integer,excluded boolean)),
+ people as materialized(select x.* from h cross join lateral jsonb_to_recordset(h.data->'people') x(prospect_id uuid,campaign_id uuid,person_key text,identity_basis text,identity_conflict boolean,excluded boolean)),
+ r as materialized(select x.* from h cross join lateral jsonb_to_recordset(h.data->'replies') x(person_key text,prospect_id uuid,reply_id uuid,reply_at timestamptz,reply_intent text,
+ campaign_id uuid,source_id uuid,source_at timestamptz,touch text,is_first boolean,source jsonb)),
+ f as materialized(select x.* from h cross join lateral jsonb_to_recordset(h.data->'followup_events') x(event_id uuid,person_key text,campaign_id uuid,event_at timestamptz,episode_id uuid,ordinal integer,
+ reply_id uuid,reply_at timestamptz,outcome text)),
  touches(touch,position) as (select t,ord from unnest(array['connection_note','dm1','dm2','dm3','dm4','dm5','recycle','followup','conversation_reply','requested_delivery','inmail','email','unknown']) with ordinality x(t,ord)),
  period_replies as (
  select * from r where is_first and reply_at>p_as_of-make_interval(days=>p_days)
@@ -505,9 +543,12 @@ $$;
 
 create function reply_source_private.detail(p_client_id text,p_prospect_id uuid,p_as_of timestamptz)
 returns jsonb language sql stable set search_path=pg_catalog as $$
-with p as (select * from reply_source_private.people(p_client_id,p_as_of) where prospect_id=p_prospect_id and not excluded),
- r as (select * from reply_source_private.replies(p_client_id,p_as_of) where person_key=(select person_key from p)),
- f as (select * from reply_source_private.followup_events(p_client_id,p_as_of)),
+with h as materialized(select reply_source_private.history(p_client_id,p_as_of) data),
+ p as (select x.* from h cross join lateral jsonb_to_recordset(h.data->'people') x(prospect_id uuid,campaign_id uuid,person_key text,identity_basis text,identity_conflict boolean,excluded boolean) where prospect_id=p_prospect_id and not excluded),
+ r as (select x.* from h cross join lateral jsonb_to_recordset(h.data->'replies') x(person_key text,prospect_id uuid,reply_id uuid,reply_at timestamptz,reply_intent text,
+ campaign_id uuid,source_id uuid,source_at timestamptz,touch text,is_first boolean,source jsonb) where person_key=(select person_key from p)),
+ f as (select x.* from h cross join lateral jsonb_to_recordset(h.data->'followup_events') x(event_id uuid,person_key text,campaign_id uuid,event_at timestamptz,episode_id uuid,ordinal integer,
+ reply_id uuid,reply_at timestamptz,outcome text)),
  enriched as (
  select r.reply_at,r.reply_id,r.source||jsonb_build_object('followup_ordinal',
  (select ordinal from f where f.event_id=r.source_id and f.outcome='replied'),
@@ -611,6 +652,9 @@ grant execute on function reply_source_private.purpose(text,text,integer,text,te
 
 revoke all on function reply_source_private.people(text,timestamptz) from public,anon,authenticated;
 grant execute on function reply_source_private.people(text,timestamptz) to service_role;
+
+revoke all on function reply_source_private.history(text,timestamptz) from public,anon,authenticated;
+grant execute on function reply_source_private.history(text,timestamptz) to service_role;
 
 revoke all on function reply_source_private.events(text,timestamptz) from public,anon,authenticated;
 grant execute on function reply_source_private.events(text,timestamptz) to service_role;

@@ -341,3 +341,41 @@ it.each([
  const p=await payload(db);expect(p.coverage.unknown_episodes).toBe(1);expect(p.totals.followup_responders).toBe(0)
  expect((await detail(db)).latest_reply.episode_outcome).toBe('unknown')
 })
+it('keeps all purpose inputs distinct when a read shares classifier results',async()=>{
+ await db.exec("insert into outreach_templates(key,client_id,step) values ('fixture-recycle','ivan','recycle'),('fixture-dm5','ivan','dm5')")
+ const variants=[{}, {draft_evidence:{template_key:'fixture-recycle'}}, {sequence_step:5},
+  {message_type:'manual_reply'}, {ai_model:null}, {ai_model:null,sequence_step:5,draft_evidence:{template_key:'fixture-dm5'}}]
+ for(let n=0;n<variants.length;n++)await message(db,200+n,`2026-09-20T12:0${n}:00Z`,variants[n])
+ const e=await db.query<{touch:string,purpose_basis:string}>("select touch,purpose_basis from reply_source_private.events('ivan',$1) order by event_id",[AS_OF])
+ expect(e.rows).toEqual([
+  {touch:'dm4',purpose_basis:'reviewed_model'}, {touch:'unknown',purpose_basis:'purpose_conflict'},
+  {touch:'unknown',purpose_basis:'unknown'}, {touch:'unknown',purpose_basis:'purpose_conflict'},
+  {touch:'unknown',purpose_basis:'unknown'}, {touch:'dm5',purpose_basis:'recorded_template_current_metadata'},
+ ])
+})
+it('keeps every sorted source ID across receipt mirrors and action bubbles',async()=>{
+ await message(db,203,'2026-09-20T12:00:00Z',{agent_action_id:id(800)})
+ await message(db,201,'2026-09-20T12:01:00Z',{agent_action_id:id(800)})
+ await message(db,204,'2026-09-20T12:00:00Z',{unipile_message_id:'fixture-receipt-203',agent_action_id:id(800),ai_model:'manual_mirror'})
+ await message(db,202,'2026-09-20T12:01:00Z',{unipile_message_id:'fixture-receipt-201',agent_action_id:id(800),ai_model:'manual_mirror'})
+ const e=await db.query<{source_ids:string[],duplicate_rows:number}>("select source_ids,duplicate_rows from reply_source_private.events('ivan',$1)",[AS_OF])
+ expect(e.rows).toEqual([{source_ids:[id(201),id(202),id(203),id(204)],duplicate_rows:2}])
+})
+it('keeps normalized roster comparisons and whole-person exclusions with shared person history',async()=>{
+ await campaign(db,2,'risedtc')
+ await db.exec(`insert into integration_config(key,value) values ('rise_do_not_target','["client.test","Acme Labs"]')`)
+ const fields=[{company_domain:'HTTPS://WWW.CLIENT.TEST/team'}, {email:'PERSON@CLIENT.TEST'},
+  {headline:'Founder at CLIENT.TEST'}, {company:'ACME, Labs!'}, {title:'Acme / Labs engineer'}, {company:'Other'}]
+ for(let n=0;n<fields.length;n++)await person(db,20+n,2,fields[n])
+ await person(db,30,2,{linkedin_profile_id:'fixture-person-20',company:'Other',call_booked_at:'2026-09-01'})
+ const p=await db.query<{prospect_id:string,excluded:boolean}>("select prospect_id,excluded from reply_source_private.people('risedtc',$1) order by prospect_id",[AS_OF])
+ expect(p.rows).toEqual([...fields.map((_,n)=>({prospect_id:id(20+n),excluded:n<5})),{prospect_id:id(30),excluded:true}])
+})
+it('keeps an unlocated compatible tie but ignores a different chat at the same time',async()=>{
+ await message(db,100,'2026-09-20T12:00:00Z')
+ await message(db,102,'2026-09-20T12:00:00Z',{unipile_chat_id:'different-chat'})
+ await reply(db,101,'2026-09-21T12:00:00Z')
+ expect((await detail(db)).first_reply).toMatchObject({source_id:id(100),touch:'dm4'})
+ await message(db,103,'2026-09-20T12:00:00Z',{unipile_chat_id:null})
+ expect((await detail(db)).first_reply).toMatchObject({source_id:null,reason:'outbound_time_tie'})
+})
