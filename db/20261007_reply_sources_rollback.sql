@@ -1,0 +1,20 @@
+-- Remove only this additive API. All source objects and source rows remain intact.
+begin;
+drop function public.client_board_reply_source_v2(text,text,uuid);
+drop function public.client_board_reply_sources_v2(text,text,integer);
+drop function public.client_board_reply_source(text,text,uuid);
+drop function public.client_board_reply_sources(text,text,integer);
+drop function public.inbox_reply_source(uuid);
+drop function public.outreach_reply_sources(text,integer,uuid);
+drop function reply_source_private.board_read(text,text,boolean,integer,uuid,boolean,timestamptz);
+drop function reply_source_private.read_result(text,integer,uuid,uuid,boolean,timestamptz);
+drop function reply_source_private.detail(text,uuid,timestamptz);
+drop function reply_source_private.payload(text,integer,uuid,timestamptz);
+drop function reply_source_private.followup_events(text,timestamptz);
+drop function reply_source_private.replies(text,timestamptz);
+drop function reply_source_private.events(text,timestamptz);
+drop function reply_source_private.people(text,timestamptz);
+drop function reply_source_private.purpose(text,text,integer,text,text);
+drop schema reply_source_private;
+notify pgrst,'reload schema';
+commit;
