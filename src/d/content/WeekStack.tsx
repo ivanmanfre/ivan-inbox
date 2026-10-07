@@ -256,7 +256,7 @@ function Sync({ read }: { read: WeekRead }) {
   if (read.source === 'live' && read.error) {
     return <p className="cn-wk2-sync cn-wk2-bad" role="alert">Could not refresh: {read.error} <button type="button" onClick={read.refresh}>Retry</button></p>
   }
-  if (read.capped) return <p className="cn-wk2-sync cn-wk2-bad" role="status">Showing the newest 1,000 of {read.capped} rows.</p>
+  if (read.capped) return <p className="cn-wk2-sync cn-wk2-bad" role="status">Showing the newest 1,000 of {read.capped.toLocaleString('en-US')} rows.</p>
   return null
 }
 
