@@ -65,7 +65,7 @@ function InOut({ s, now }: { s: Supply; now: number }) {
   )
 }
 
-function verdict(s: Supply): { text: string; bad: boolean } | null {
+export function verdict(s: Supply): { text: string; bad: boolean } | null {
   if (s.ready == null) return null
   if (s.ready === 0) return { text: 'Nobody is ready to invite: the seat has nothing to send.', bad: true }
   if (s.refill == null) return { text: 'Nothing was invited in the last 7 days, so the pool is not moving.', bad: false }

@@ -1,3 +1,4 @@
+@import './ui/figures.css';
 /* ==========================================================================
    D · the frame's tokens and the shared primitives' styles.
    Tokens: DESK/d/dark.css (B Instrument, matte, no glow, no blur, lime only on
@@ -234,7 +235,7 @@ html.d-root,html.d-root body{background:#0A0A09}
 .d-confirm p{color:var(--t2);font-size:14px;line-height:1.45}
 .d-confirm-k{display:flex;gap:9px;margin-top:10px}
 .d-toasts{position:fixed;z-index:70;display:flex;flex-direction:column;gap:8px;pointer-events:none}
-.d-desktop .d-toasts{top:74px;right:calc(var(--drawer-col,0px) + 16px);width:416px}
+.d-desktop .d-toasts{top:auto;bottom:24px;right:calc(var(--drawer-col,0px) + 16px);width:416px}
 .d-desktop[data-bell="open"] .d-toasts{top:auto;bottom:26px;right:calc(var(--drawer-col,0px) + 26px)}
 .d-phone .d-toasts{left:10px;right:10px;bottom:calc(var(--dock-h) + 40px + env(safe-area-inset-bottom))}
 .d-toast{pointer-events:auto;border:1px solid var(--strong);border-radius:12px;background:var(--p2);padding:10px 10px 10px 14px;display:flex;gap:10px;align-items:center;font-size:13.5px;box-shadow:0 12px 32px rgba(0,0,0,.5)}

@@ -10,7 +10,7 @@ import { CallRoom, callWhen, Topics } from './CallRoom'
 // fold, read only when opened. Previous (k) / Next (j) step the queue. Read
 // only: nothing on this pane writes or reaches anybody.
 
-function Items({ head, list }: { head: string; list: ActionItem[] }) {
+export function Items({ head, list }: { head: string; list: ActionItem[] }) {
   if (list.length === 0) return null
   return (
     <div className="sl-cb">
@@ -24,13 +24,13 @@ function Items({ head, list }: { head: string; list: ActionItem[] }) {
   )
 }
 
-function Text({ head, text, note }: { head: string; text: string | null | undefined; note?: string }) {
+export function Text({ head, text, note }: { head: string; text: string | null | undefined; note?: string }) {
   const t = (text ?? '').trim()
   if (!t) return null
   return <div className="sl-cb"><div className="sl-cbh">{head}</div><p>{t}</p>{note && <div className="sl-note">{note}</div>}</div>
 }
 
-function Said({ id }: { id: string }) {
+export function Said({ id }: { id: string }) {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState<string | null>(null)
   const [err, setErr] = useState('')

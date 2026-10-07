@@ -21,7 +21,7 @@ const SHOWN = 6
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const tomorrow = (now = Date.now()) => localDay(now + 864e5)
 
-function Row({ d, refresh }: { d: OpsDraft; refresh: () => void }) {
+function Row({ d, refresh, v4 = false }: { d: OpsDraft; refresh: () => void; v4?: boolean }) {
   const confirm = useDConfirm()
   const [busy, setBusy] = useState(false)
   const [ticked, setTicked] = useState(false)
@@ -46,7 +46,7 @@ function Row({ d, refresh }: { d: OpsDraft; refresh: () => void }) {
   }
   return (
     <li className={`gt-row${ticked ? ' gt-done' : ''}`} data-task={d.id}>
-      <Btn verb="tick" disabled={busy || ticked} onClick={() => void tick()} aria-label={`Done: ${title}`}>{ticked ? 'Done ✓' : 'Done'}</Btn>
+      <Btn verb="tick" disabled={busy || ticked} onClick={() => void tick()} aria-label={`Done: ${title}`}>{v4 ? <span aria-hidden="true">{ticked ? '✓' : '○'}</span> : ticked ? 'Done ✓' : 'Done'}</Btn>
       <span className="gt-t">{title}{err && <small className="gt-err">{err}</small>}<BookedKey d={d} onDone={() => setTimeout(refresh, 420)} /></span>
       <span className="gt-m">
         {dl && <b className={`gt-${dl.tone}`}>{dl.tone === 'over' ? 'overdue' : dl.text}</b>}
@@ -57,12 +57,14 @@ function Row({ d, refresh }: { d: OpsDraft; refresh: () => void }) {
   )
 }
 
-function Add({ refresh }: { refresh: () => void }) {
+function Add({ refresh, v4 = false }: { refresh: () => void; v4?: boolean }) {
   const [text, setText] = useState('')
   const [due, setDue] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const input = useRef<HTMLInputElement>(null)
+  const date = useRef<HTMLInputElement>(null)
+  const [pickDate, setPickDate] = useState(false)
   async function submit(e?: FormEvent) {
     e?.preventDefault()
     if (!text.trim() || busy) return
@@ -76,32 +78,34 @@ function Add({ refresh }: { refresh: () => void }) {
   return (
     <form className="gt-add" onSubmit={e => void submit(e)}>
       <input ref={input} className="gt-in" value={text} onChange={e => setText(e.target.value)} placeholder="Add a task…" aria-label="New task" maxLength={300} />
-      <input className="gt-date" type="date" value={due} min={localDay()} onChange={e => setDue(e.target.value)} aria-label="Due day (optional)" />
+      <input ref={date} hidden={v4 && !pickDate} className="gt-date" type="date" value={due} min={localDay()} onChange={e => setDue(e.target.value)} aria-label="Due day (optional)" />
+      {v4 && <Btn verb="due-today" aria-pressed={due === localDay()} onClick={() => setDue(due === localDay() ? '' : localDay())}>Today</Btn>}
       <Btn verb="due-tomorrow" className={due === tm ? 'gt-on' : undefined} onClick={() => setDue(due === tm ? '' : tm)} aria-pressed={due === tm}>Tomorrow</Btn>
+      {v4 && <Btn verb="due-pick" aria-pressed={pickDate} onClick={() => { setPickDate(true); try { date.current?.showPicker?.() } catch { date.current?.focus() } }}>{due && due !== tm && due !== localDay() ? due : 'Pick…'}</Btn>}
       <Btn primary verb="add-task" type="submit" disabled={busy || !text.trim()}>{busy ? 'Adding…' : 'Add'}</Btn>
       {err && <span className="gt-err" role="alert">{err}</span>}
     </form>
   )
 }
 
-export function HomeTasks() {
+export function HomeTasks({ v4 = false }: { v4?: boolean } = {}) {
   const ops = useOps()
   const [all, setAll] = useState(false)
   const tasks = pendingTasks(ops.drafts)
-  const shown = all ? tasks : tasks.slice(0, SHOWN)
+  const shown = all || v4 ? tasks : tasks.slice(0, SHOWN)
   // 12 s without a first answer = the quiet "?" with Retry (and a quiet re-read every 20 s).
   const stalled = useStalled(!ops.loadedAt && !ops.error, ops.refresh)
   const reading = ops.loading && !ops.loadedAt && !stalled
   const failed = (ops.error || stalled) && !ops.loadedAt
   return (
-    <section className="gt" aria-label="Tasks">
+    <section className={v4 ? "gt hm4-tasks" : "gt"} aria-label="Tasks" data-bx-block={v4 ? "" : undefined}>
       <h2 className="hm-h"><a href={dHash('ops')}>Tasks</a>{ops.loadedAt && tasks.length > 0 && <span className="hm-hn">{tasks.length}</span>}</h2>
-      {reading ? <p className="gt-q" aria-label="Reading your tasks">…</p>
+      {reading ? <p className="gt-q" aria-label="Reading your tasks">{v4 ? <span className="ols-skeleton" /> : '…'}</p>
         : failed ? <p className="gt-q" title={ops.error ?? 'no answer after 12 s'}><span className="hm-q">?</span> <button type="button" className="gt-rm" data-verb="retry" onClick={ops.refresh}>Retry</button></p>
         : tasks.length === 0 ? <p className="gt-q">Nothing open.</p>
-        : <ul className="gt-list">{shown.map(d => <Row key={d.id} d={d} refresh={ops.refresh} />)}</ul>}
-      {tasks.length > SHOWN && <button type="button" className="gt-rm gt-more" aria-expanded={all} onClick={() => setAll(a => !a)}>{all ? 'Fewer' : `${tasks.length - SHOWN} more`}</button>}
-      <Add refresh={ops.refresh} />
+        : <ul className="gt-list">{shown.map(d => <Row key={d.id} v4={v4} d={d} refresh={ops.refresh} />)}</ul>}
+      {!v4 && tasks.length > SHOWN && <button type="button" className="gt-rm gt-more" aria-expanded={all} onClick={() => setAll(a => !a)}>{all ? 'Fewer' : `${tasks.length - SHOWN} more`}</button>}
+      <Add refresh={ops.refresh} v4={v4} />
     </section>
   )
 }

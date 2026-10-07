@@ -175,3 +175,24 @@
 .ob-t.ob-on b{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
 /* hosted Orbit: the rate lines sit under the head, no stats strip (the numbers are in the answer row) */
 .a-orbit-hosted .a-orbit-rates{padding-top:6px}
+
+/* Narrow main columns: the two master panes share one rail. This fixes the
+   1180 / collapsed sidebar / Claude-open overflow for every skin. */
+.sl-rail-tabs{display:none}
+.d-main{container-type:inline-size}
+@container (max-width:999px){
+ .sl-desk{grid-template-columns:280px minmax(0,1fr);grid-template-rows:40px minmax(0,1fr)}
+ .sl-rail-tabs{display:flex;grid-column:1;grid-row:1;gap:4px;padding:4px 8px}
+ .sl-rail-tabs button{flex:1;min-width:0;border-radius:7px;font-size:12px}
+ .sl-rail-tabs [aria-selected=true]{background:var(--p3);box-shadow:var(--ds-hi)}
+ .sl-desk .sl-cal,.sl-desk .sl-mid{grid-column:1;grid-row:2}
+ .sl-desk[data-rail=schedule] .sl-mid,.sl-desk[data-rail=calls] .sl-cal{display:none}
+ .sl-win{grid-column:2;grid-row:1 / 3;overflow-wrap:anywhere}
+ .sl-nt{white-space:normal}.sl-seg{flex-wrap:wrap}.sl-seg button{white-space:normal}
+ .sl-cwk{gap:4px;padding:8px}.sl-cwk .d-key{min-width:0;flex:1}
+}
+@container (max-width:679px){
+ .sl-desk{grid-template-columns:minmax(0,1fr);overflow-y:auto}
+ .sl-win{grid-column:1;grid-row:3;min-height:400px}
+ .sl-desk .sl-cal,.sl-desk .sl-mid{max-height:380px}
+}

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { LEAD_LABEL, actionItems, callStats, callTitle, leadLine, owedByMe, people, segmentCalls, type CallRow, type CallSegment } from '../../lib/transcripts'
-import { warsawDm } from '../ui/time'
-import type { ReadState } from './useSalesData'
+import { LEAD_LABEL, actionItems, callStats, leadLine, owedByMe, segmentCalls, type CallRow, type CallSegment } from '../../../lib/transcripts'
+import { warsawDm } from '../../ui/time'
+import { Segmented } from '../../../ds/Segmented'
+import { callsByWeek, otherPerson } from './model'
+import type { ReadState } from '../useSalesData'
 
 // CALLS ON RECORD: three segments with their counts (unfinished business
 // first), then the rows. Read only: nothing here marks an item done.
@@ -20,25 +22,21 @@ export function CallsOnRecord({ calls, state, seg, setSeg, openId, onOpen, onRet
   }, [openId, seg])
   const known = state === 'ok' || calls.length > 0
   const st = callStats(calls)
+  const weeks = callsByWeek(calls, new Date(), state)
+  const max = Math.max(1, ...(weeks?.map(w => w.n) ?? []))
   const queue = segmentCalls(calls, seg)
   const [more, setMore] = useState(false)
   const shown = limit && !more ? queue.slice(0, limit) : queue
   const counts: Record<CallSegment, number> = { open: st.withActions, recent: st.week, all: st.total }
   return (
-    <section className="sl-rec" aria-label="Calls on record" ref={box}>
-      <div className="sl-sec"><span>Calls on record</span><span className="sl-rt" title={known ? `${st.total} kept · ${st.meanMinutes}m average` : 'Call archive unverified'}>{known ? `${st.meanMinutes}m avg` : state === 'failed' ? '?' : <span className="ols-skeleton" aria-label="Reading average" />}</span></div>
+    <section className="sl4-rec" aria-label="Calls on record" ref={box}>
+      <div className="sl4-record-head"><h2 className="sl4-eyebrow">Calls on record</h2>{weeks && <div className="sl4-spark" aria-label="Calls in the last 8 weeks">{weeks.map(w => <button key={w.day} type="button" title={`Week of ${w.day}: ${w.n} calls${w.avg != null ? ` · ${w.avg}m avg` : ''}`} aria-label={`Week of ${w.day}: ${w.n} calls`}><i data-current={w.current} style={{ height: `${Math.max(2,w.n / max * 100)}%` }} /></button>)}</div>}</div>
       {state === 'failed' && (
         <div className="sl-warn">{calls.length ? 'The last read failed. These are the calls that loaded before it.' : 'The call archive did not load. This is not an empty archive, it is an unread one.'}
           <button type="button" data-verb="retry" onClick={onRetry}>Read again</button></div>
       )}
       {state === 'loading' && calls.length === 0 && <div className="sl-quiet">Reading the call archive…</div>}
-      <div className="sl-seg" role="tablist" aria-label="Calls on record">
-        {(['open', 'recent', 'all'] as CallSegment[]).map(s => (
-          <button key={s} type="button" role="tab" aria-selected={s === seg} className={s === seg ? 'sl-on' : ''} onClick={() => setSeg(s)}>
-            {SEG_LABEL[s]} <b>{known ? counts[s] : state === 'failed' ? '?' : <span className="ols-skeleton" aria-label="Reading count" />}</b>
-          </button>
-        ))}
-      </div>
+      <Segmented markerId="sl4-segment" className="sl4-segments" label="Calls on record" value={seg} onChange={s => setSeg(s as CallSegment)} options={(['open','recent','all'] as CallSegment[]).map(s => ({ id: s, label: <>{s === 'recent' ? '7 days' : SEG_LABEL[s]} <b>{known ? counts[s] : state === 'failed' ? '?' : <span className="ols-skeleton" aria-label="Reading count" />}</b></> }))} />
       {state === 'ok' && queue.length === 0 && (
         <div className="sl-quiet">{seg === 'open' ? 'Nothing was left open on any call.' : seg === 'recent' ? 'No calls in the last seven days.' : 'No calls have been transcribed yet.'}</div>
       )}
@@ -46,12 +44,11 @@ export function CallsOnRecord({ calls, state, seg, setSeg, openId, onOpen, onRet
         const n = actionItems(c).length
         const mine = owedByMe(c)
         const lead = leadLine(c)
-        const who = people(c.participants).slice(0, 3).join(', ')
-        return (
-          <button key={c.id} type="button" className={`sl-cr${c.id === openId ? ' sl-on' : ''}`} data-call={c.id} onClick={() => onOpen(c.id)}>
-            <span className="sl-crt"><b>{callTitle(c.title)}</b>{n > 0 && <span>{mine > 0 ? `${mine} yours` : `${n} open`}</span>}</span>
-            {lead && <span className="sl-crl"><i>{LEAD_LABEL[lead.kind]}:</i> {lead.text}</span>}
-            <span className="sl-crm">{[c.date ? warsawDm(c.date) : 'date not recorded', c.duration_minutes ? `${c.duration_minutes}m` : '', who].filter(Boolean).join(' · ')}</span>
+                return (
+          <button key={c.id} type="button" className={`sl4-cr${c.id === openId ? ' sl-on' : ''}`} data-call={c.id} onClick={() => onOpen(c.id)}>
+            <span className="sl4-crt"><b>{otherPerson(c)}</b>{n > 0 && <span>{mine > 0 ? `${mine} yours` : `${n} open`}</span>}</span>
+            {lead && <span className="sl4-crl"><i>{LEAD_LABEL[lead.kind]}:</i> {lead.text}</span>}
+            <span className="sl4-crm">{[c.date ? warsawDm(c.date) : 'date not recorded', c.duration_minutes ? `${c.duration_minutes}m` : ''].filter(Boolean).join(' · ')}</span>
           </button>
         )
       })}

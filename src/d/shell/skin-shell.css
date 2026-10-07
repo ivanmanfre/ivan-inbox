@@ -65,7 +65,7 @@
 
 /* ---- overlays anchor to the main column (§2.5.6) ---- */
 :root[data-skin-on~='shell'] .d-desktop .d-bellp-desktop{top:8px;right:8px;bottom:8px}
-:root[data-skin-on~='shell'] .d-desktop .d-toasts{top:calc(var(--ds-header-h) + 8px)}
+:root[data-skin-on~='shell'] .d-desktop .d-toasts{top:auto;bottom:24px}
 
 /* ---- drawer entrance (motion section): the pane slides in 16px; the main column reflows once.
    One keyframe for both modes, so a dock <-> over switch never restarts it. ---- */

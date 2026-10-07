@@ -1,4 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
+import { useSkin } from '../../ds/useSkin'
+import { TodayNotes } from '../lanes/TodayNotes'
 import type { PlaceProps } from '../places'
 import { dHash } from '../route'
 import { useReportFailed } from '../shell/health'
@@ -42,6 +44,7 @@ const isLane = (s: string | null): s is Lane => s === 'ivan' || s === 'risedtc' 
 const SHOW_KEY = 'd-content-review-show'
 
 export default function ContentPage({ layout, route, navigate }: PlaceProps) {
+  const lanesV4 = useSkin('lanes')
   const sub = subOf(route.sub, route.query)
   const q = route.query
   const view = q.get('view') ?? (route.sub === 'errors' ? 'posts' : route.sub === 'magnets' ? 'magnets' : null)
@@ -134,6 +137,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   </>
   const stackRead = LANES.every(l => !!data.seats[l].loadedAt) ? { ...weekRead, source: 'live' as const, rows, settled: true, error: null } : weekRead
   const nowBody = <>
+    {lanesV4 && <TodayNotes />}
     <div className="cn-now-tools"><a href={dHash('content', 'calendar')}>Calendar →</a><a href={dHash('content', 'now', { view: 'posts' })}>All posts</a></div>
     {data.failed > 0 && <p className="cn-now-failed" role="alert">Could not read every client. <button type="button" onClick={refresh}>Retry</button></p>}
     {magnetLanes.length > 0 && <div className="cn-magnet-summary" aria-label="Lead magnets awaiting review"><span>Lead magnets to review</span>{magnetLanes.map(l => <a key={l} href={dHash('content', 'magnets', { lane: l })}>{LANE_NAME[l]} · {magnets[l]} →</a>)}</div>}

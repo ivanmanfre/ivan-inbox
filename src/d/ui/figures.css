@@ -1,0 +1,27 @@
+.ols-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.ols-figure{display:inline-flex;align-items:baseline;color:var(--t1);font-weight:500;letter-spacing:-.035em;line-height:36px}
+.ols-figure-xl{font-size:32px}.ols-figure-l{font-size:28px;line-height:32px}.ols-figure-m{font-size:22px;line-height:28px}
+.ols-figure small{font-size:13px;color:var(--t3);letter-spacing:0;margin-left:8px}
+.ols-figure[data-read=stale],.ols-zero{color:var(--t2)}.ols-figure[data-read=failed]{color:var(--t3)}
+.ols-retry{font:500 11px/20px var(--f);letter-spacing:0;margin-left:8px;border-radius:var(--ds-r-chip);padding:0 4px;background:var(--p2);color:var(--t2)}
+.ols-reveal{display:inline-block}.ols-revealed{display:inline-block;animation:ols-reveal var(--ds-d-ui) var(--ds-e-ui)}
+.ols-skeleton{display:inline-block;width:2.2em;height:.7em;min-width:24px;vertical-align:baseline;border-radius:4px;background:var(--line2);position:relative;overflow:hidden}
+.ols-skeleton::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,var(--p1),transparent);animation:ols-shimmer 1.6s ease-in-out infinite}
+.ols-count{font-variant-numeric:tabular-nums}.ols-digit{position:relative;display:inline-block;overflow:hidden;vertical-align:bottom}
+.ols-digit-in{display:inline-block;animation:ols-digit-in 380ms var(--ds-e-panel)}
+.ols-digit-out{position:absolute;inset:0;animation:ols-digit-out 380ms var(--ds-e-panel) forwards}
+.ols-count-down{--ols-dir:-1}.ols-reveal[data-motion=off] *{animation:none!important}.ols-reveal[data-motion=subtle] .ols-skeleton::after{animation:none}
+@keyframes ols-digit-in{from{transform:translateY(calc(var(--ols-dir,1)*.6em));opacity:0}}
+@keyframes ols-digit-out{to{transform:translateY(calc(var(--ols-dir,1)*-.6em));opacity:0}}
+@keyframes ols-reveal{from{transform:translateY(5px);opacity:0}}
+@keyframes ols-shimmer{from{transform:translateX(-120%)}to{transform:translateX(120%)}}
+@media(prefers-reduced-motion:reduce){.ols-revealed,.ols-digit-in,.ols-digit-out,.ols-skeleton::after{animation:none}.ols-digit-out{display:none}}
+html.brief-motion-off :is(.ols-revealed,.ols-digit-in,.ols-digit-out,.ols-skeleton::after){animation:none}
+/* OLS uses the shared Segmented component without depending on the WB bundle. */
+:is(.dl4,.sl4) .ds-seg{display:inline-flex;align-items:center;gap:4px;padding:4px;border-radius:var(--ds-r-tab);background:var(--ds-well-fill);box-shadow:var(--ds-well-shadow)}
+:is(.dl4,.sl4) .ds-seg[data-block=true]{display:flex;width:100%}
+:is(.dl4,.sl4) .ds-seg-item{position:relative;flex:1 1 auto;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:28px;padding:0 12px;white-space:nowrap;border-radius:var(--ds-r-btn);font-size:12px;color:var(--t2)}
+:is(.dl4,.sl4) .ds-seg-item[data-active=true]{color:var(--t1)}
+:is(.dl4,.sl4) .ds-seg-item>span:not(.ds-seg-marker){position:relative;z-index:1}
+:is(.dl4,.sl4) .ds-seg-marker{position:absolute;inset:0;border-radius:inherit;background:var(--ds-fill-tab);box-shadow:var(--ds-hi),var(--ds-shadow-soft)}
+.d-phone :is(.dl4,.sl4) .ds-seg-item{min-height:44px}

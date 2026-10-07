@@ -15,7 +15,7 @@ import type { LanesData } from '../lanes/useLanesData'
 import { limitOf } from '../lanes/glance/model'
 import { readyOf, type ReadySeat } from '../lanes/glance/ready'
 
-export type Read<T> = { v: T } | { wait: true } | { fail: string }
+export type Read<T> = { v: T; stale?: string } | { wait: true } | { fail: string }
 
 export const val = <T,>(v: T): Read<T> => ({ v })
 const slot = <T, U>(s: { value: T | null; failed: string | null }, f: (v: T) => U): Read<U> =>

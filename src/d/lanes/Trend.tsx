@@ -11,7 +11,7 @@ import type { Seat } from '../seats'
 import { seriesOf, type Bar } from './model'
 import type { Load } from './useRead'
 
-function accSeries(rows: LedgerRow[] | null, seat: Seat, days: Bar[]): Bar[] {
+export function accSeries(rows: LedgerRow[] | null, seat: Seat, days: Bar[]): Bar[] {
   if (!rows || rows.length === 0) return days.map(b => ({ ...b, v: null }))
   const today = new Date().toISOString().slice(0, 10)
   const led = buildLedger(rows, seat, 16, today)

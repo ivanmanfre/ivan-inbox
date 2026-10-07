@@ -32,9 +32,9 @@ export function Topics({ row }: { row: CallRow }) {
 }
 
 /** "The call" facts (When, Length, Kind, everyone on it) and the Read of the room fold. */
-export function CallRoom({ row }: { row: CallRow }) {
+export function CallRoom({ row, clean = false }: { row: CallRow; clean?: boolean }) {
   const b = row.brief
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(!clean)
   const facts: Array<[string, string]> = [['When', callWhen(row.date)]]
   if (row.duration_minutes) facts.push(['Length', `${row.duration_minutes} minutes`])
   if (row.meeting_type) facts.push(['Kind', label(row.meeting_type)])
@@ -48,7 +48,7 @@ export function CallRoom({ row }: { row: CallRow }) {
   if (b?.budget_signal) kv.push(['Budget signal', label(b.budget_signal)])
   return (
     <div className="sl-room" data-call-room>
-      <dl className="sl-kv">{facts.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
+      {!clean && <dl className="sl-kv">{facts.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>}
       <button type="button" className="sl-fold" aria-expanded={open} onClick={() => setOpen(o => !o)}>
         <span>Read of the room</span><small>{b ? '' : 'none written'}</small>
       </button>
@@ -62,7 +62,7 @@ export function CallRoom({ row }: { row: CallRow }) {
       ) : (
         <div className="sl-note">The extractor writes this for sales calls and it never ran on this one. Only 1 of the 96 calls on record carries it, so an empty panel here is the normal state and not a failure.</div>
       ))}
-      <div className="sl-note">Reading only. Nothing on this screen writes to the database, and nothing here can reach the people who were on the call.</div>
+      {!clean && <div className="sl-note">Reading only. Nothing on this screen writes to the database, and nothing here can reach the people who were on the call.</div>}
     </div>
   )
 }
