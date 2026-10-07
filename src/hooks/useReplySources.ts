@@ -18,7 +18,13 @@ function useReplyRead<T>(scope: ReplyScope, input: string | number, enabled: boo
   const [read, setRead] = useState<{ key: string; state: ReadState<T> }>({ key: '', state: { kind: 'loading' } })
   useEffect(() => {
     if (scope.kind !== 'operator') return
+    let firstAuthEvent = true
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      const initial = firstAuthEvent
+      firstAuthEvent = false
+      // RPC auth awaits the SDK session initialization. Its first non-null initial
+      // notification belongs to that same read, rather than a session change.
+      if (initial && event === 'INITIAL_SESSION' && session && !auth.denied) return
       generation.current++ // Invalidate before React performs effect cleanup.
       setRead({ key: '', state: { kind: event === 'SIGNED_OUT' || !session ? 'denied' : 'loading' } })
       setAuth(a => ({ generation: a.generation + 1, denied: event === 'SIGNED_OUT' || !session }))

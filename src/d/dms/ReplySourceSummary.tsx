@@ -26,7 +26,8 @@ function SourceRow({ label, source, displayZone }: { label: string; source: Repl
     <p className="rs-note">{source.method === 'inferred_same_chat' ? 'Same chat inference' : 'Unknown source'}{source.channel_basis === 'chat_inferred' ? ' · channel inferred from chat' : ''}. {source.reason ? REASONS[source.reason] ?? 'Source not established' : ''}</p>
     <p className="rs-note">Reply: <time dateTime={source.reply_at}>{replyTimestamp(source.reply_at, displayZone)}</time> · {displayZone}{source.sent_at ? ` · Source sent: ${replyTimestamp(source.sent_at, displayZone)}` : ''}</p>
     {source.sequence_step !== null && <p className="rs-note">Sequence position {source.sequence_step}</p>}
-    {source.followup_ordinal !== null && <p className="rs-note">Delivered follow-up {source.followup_ordinal}. Episode: {source.episode_outcome ?? 'unknown'}.</p>}
+    {source.followup_ordinal !== null && <p className="rs-note">Delivered follow-up {source.followup_ordinal}.</p>}
+    {source.episode_outcome !== null && <p className="rs-note">Episode: {source.episode_outcome}.</p>}
   </> : <p className="rs-note">No observed text reply.</p>}</div>
 }
 // History reads once and shares that state with the thread summary and ID badges.

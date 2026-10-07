@@ -101,3 +101,12 @@ it.each([
  rpc.mockResolvedValue({ data: detail, error: null }); render(<ReplySourceSummary scope={scope} prospectId="p-a" />)
  expect(await screen.findByText(new RegExp(label))).toBeTruthy(); expect(screen.queryByText(new RegExp(reason))).toBeNull()
 })
+
+it.each(['interrupted', 'unknown'] as const)('shows episode outcome %s without an attributed follow-up ordinal', async outcome => {
+ const detail = structuredClone({ ...fixture.detail, data: { ...fixture.detail.data, latest_reply: null } })
+ Object.assign(detail.data.first_reply!, { followup_ordinal: null, episode_outcome: outcome })
+ rpc.mockResolvedValue({ data: detail, error: null })
+ render(<ReplySourceSummary scope={scope} prospectId="p-a" />)
+ expect(await screen.findByText(`Episode: ${outcome}.`)).toBeTruthy()
+ expect(screen.queryByText(/Delivered follow-up/)).toBeNull()
+})

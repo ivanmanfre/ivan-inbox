@@ -58,3 +58,23 @@ it('does not replace the next prospect source with the previous prospect source'
  h.rerender({ id: 'p-b' }); await act(async () => next.resolve({ data: { status: 'not_found', data: null }, error: null }))
  await act(async () => old.resolve({ data: fixture.detail, error: null })); expect(h.result.current).toEqual({ kind: 'empty' })
 })
+
+it.each(['aggregate', 'source'] as const)('makes one %s read with the asynchronous SDK INITIAL_SESSION event', async kind => {
+ const pending = deferred(); rpc.mockReturnValueOnce(pending.promise)
+ const h = renderHook(() => kind === 'aggregate' ? useReplySources(scope('ivan'), 30) : useReplySource(scope('ivan'), 'p-a', true))
+ expect(rpc).toHaveBeenCalledOnce()
+ await act(async () => { await Promise.resolve(); auth('INITIAL_SESSION', { user: { id: 'operator' }, access_token: 'fixture-session' }) })
+ expect(rpc).toHaveBeenCalledOnce()
+ expect(h.result.current.kind).toBe('loading')
+ await act(async () => pending.resolve({ data: kind === 'aggregate' ? fixture.metrics : fixture.detail, error: null }))
+ await waitFor(() => expect(h.result.current.kind).toBe('ready'))
+ expect(rpc).toHaveBeenCalledOnce()
+})
+it('denies an asynchronously resolved empty initial operator session', async () => {
+ const pending = deferred(); rpc.mockReturnValueOnce(pending.promise)
+ const h = renderHook(() => useReplySource(scope('ivan'), 'p-a', true))
+ await act(async () => { await Promise.resolve(); auth('INITIAL_SESSION', null) })
+ expect(h.result.current.kind).toBe('denied')
+ await act(async () => pending.resolve({ data: fixture.detail, error: null }))
+ expect(h.result.current.kind).toBe('denied'); expect(rpc).toHaveBeenCalledOnce()
+})
