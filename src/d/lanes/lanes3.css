@@ -159,10 +159,15 @@
 .dl-camps .dl-cp,.dl-camps .dl-fo,.dl-camps .dl-fold,.dl-camps .dl-quiet{padding-left:0;padding-right:0}
 /* lead supply */
 .dl-rf-lanes{display:flex;flex-direction:column;gap:8px}
+.dl-rf-group{margin:0 0 8px;font:500 12.5px var(--m);color:var(--t2)}
+.dl-rf-candidates,.dl-rf-excluded{margin-top:12px;padding-top:12px;border-top:1px solid var(--line2)}
+.dl-rf-note{margin:8px 0 0;font-size:12.5px;line-height:1.45;color:var(--t2)}
 .dl-rf-lane{display:grid;grid-template-columns:minmax(0,9.5em) minmax(0,1fr) auto;gap:10px;align-items:center;font-size:13.5px;color:var(--t2)}
 .dl-rf-ll{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dl-rf[data-seat="risedtc"] .dl-rf-ll{white-space:normal}
 .dl-rf-bar{height:10px;border-radius:5px;background:var(--p3);overflow:hidden}
 .dl-rf-bar i{display:block;height:100%;background:var(--lime);border-radius:5px}
+.dl-rf-lane.dl-candidate .dl-rf-bar i{background:var(--t3)}
 .dl-rf-lane b{font:500 14px var(--m);color:var(--t1);text-align:right;min-width:3ch}
 .dl-rf-lane.dl-off b{font:400 12px var(--m);color:var(--t3)}
 .dl-rf-v{margin:12px 0 0;font-size:13.5px;line-height:1.45;color:var(--t2)}

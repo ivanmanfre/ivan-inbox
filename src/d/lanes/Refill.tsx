@@ -6,21 +6,41 @@ import type { Seat } from '../seats'
 import { dm } from './model'
 import type { Supply } from './supply'
 import type { LanesData } from './useLanesData'
+import type { ReadyLane } from './glance/ready'
 
-function Lanes({ s }: { s: Supply }) {
-  const on = s.lanes.filter(l => !l.off)
+function LaneRows({ lanes }: { lanes: ReadyLane[] }) {
+  const on = lanes.filter(l => !l.off)
   const max = Math.max(1, ...on.map(l => l.n))
   return (
     <div className="dl-rf-lanes">
-      {s.lanes.map(l => (
-        <div key={l.lane} className={`dl-rf-lane${l.off ? ' dl-off' : ''}`} title={l.off ? `${l.label}: ${l.off}` : `${l.label}: ${l.capped ? 'at least ' : ''}${l.n} ready`}>
+      {lanes.map(l => (
+        <div key={l.lane} className={`dl-rf-lane${l.off ? ' dl-off' : ''}${l.candidate ? ' dl-candidate' : ''}`} title={l.off ? `${l.label}: ${l.off}` : `${l.label}: ${l.capped ? 'at least ' : ''}${l.n} ${l.candidate ? 'candidates; ready count unverified' : 'ready'}`}>
           <span className="dl-rf-ll">{l.label}</span>
           <span className="dl-rf-bar"><i style={{ width: `${l.off ? 0 : Math.max(l.n ? 2 : 0, (l.n / max) * 100)}%` }} /></span>
-          <b>{l.off ? l.off : `${l.capped ? '≥' : ''}${l.n.toLocaleString('en-US')}`}</b>
+          <b>{l.off ? ['retry', 'reconnect'].includes(l.lane) ? 'Excluded' : l.off : `${l.capped ? '≥' : ''}${l.n.toLocaleString('en-US')}`}</b>
         </div>
       ))}
     </div>
   )
+}
+
+function Lanes({ s }: { s: Supply }) {
+  const ready = s.lanes.filter(l => !l.candidate && !l.off)
+  const candidates = s.lanes.filter(l => l.candidate)
+  const excluded = s.lanes.filter(l => !l.candidate && l.off)
+  return <>
+    {candidates.length > 0 && <p className="dl-rf-group">Verified ready stock</p>}
+    <LaneRows lanes={ready} />
+    {candidates.length > 0 && <div role="group" aria-label="Other candidate pools" className="dl-rf-candidates">
+      <p className="dl-rf-group">Other candidate pools</p>
+      <LaneRows lanes={candidates} />
+      <p className="dl-rf-note">Ready counts for these lanes are unverified, so they are excluded from the ready total.</p>
+    </div>}
+    {excluded.length > 0 && <div className="dl-rf-excluded">
+      <LaneRows lanes={excluded} />
+      {excluded.some(l => ['retry', 'reconnect'].includes(l.lane)) && <p className="dl-rf-note">Previously contacted leads are excluded from fresh stock.</p>}
+    </div>}
+  </>
 }
 
 function InOut({ s, now }: { s: Supply; now: number }) {
@@ -58,7 +78,7 @@ export function Refill({ seat, d, s, now }: { seat: Seat; d: LanesData; s: Suppl
   const v = verdict(s)
   return (
     <div className="dl-panel dl-rf" data-band="refill" data-seat={seat}>
-      <div className="dl-panh"><b>Lead supply</b><span>ready now, by lane</span></div>
+      <div className="dl-panh"><b>Lead supply</b><span>{seat === 'risedtc' ? 'ready stock and candidates' : 'ready now, by lane'}</span></div>
       {!d.ready.value
         ? <p className={`dl-sl ${d.ready.failed ? 'dl-bad' : 'dl-unk'}`}>{d.ready.failed ? `Who is ready could not be read: ${d.ready.failed}` : 'Reading who is ready…'}</p>
         : s.lanes.length ? <Lanes s={s} /> : <p className="dl-sl">No lane has anyone ready.</p>}

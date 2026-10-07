@@ -22,7 +22,13 @@ describe('fresh qualified stock', () => {
     const r = buildReady([c({ campaign_id: rise }), c({ campaign_id: rise, id: 'duplicate' })], { ...x, riseReadyIds: new Set(['allowed','duplicate']), riseReadyCount: 1 }, false)
     r.lanes.push({ seat: 'risedtc', lane: 'partner', label: 'CMO partners', n: 18, capped: false, campaignId: null, off: null })
     expect(readyOf(r, 'risedtc').total).toBe(1)
-    expect(readyOf(r, 'risedtc').lanes.find(l => l.lane === 'partner')?.label).toBe('CMO partners candidates')
+    expect(readyOf(r, 'risedtc').lanes.find(l => l.lane === 'partner')).toMatchObject({ label: 'CMO partners', n: 18, candidate: true, off: null })
+  })
+  it('keeps a candidate lane’s real pause reason separate from count verification', () => {
+    const r = buildReady([], { ...x, riseReadyCount: 0 }, false)
+    r.lanes.push({ seat: 'risedtc', lane: 'expansion', label: 'Colleagues of our leads', n: 12, capped: true, campaignId: null, off: 'expansion off' })
+    expect(readyOf(r, 'risedtc').total).toBe(0)
+    expect(readyOf(r, 'risedtc').lanes.find(l => l.lane === 'expansion')).toMatchObject({ n: 12, candidate: true, off: 'expansion off' })
   })
   it('requires a score even for ARCH waiver sources', () => {
     expect(laneOf(c({ campaign_id: 'arch', stage: 'queued', ed_lane: 'engager_warm', icp_score: null, waived: 'true' }), x)).toBeNull()

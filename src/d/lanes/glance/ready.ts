@@ -24,7 +24,7 @@ import { supabase } from '../../../lib/supabase'
 import type { GovernorRow } from '../../../lib/kpis'
 import type { Seat } from '../../seats'
 
-export type ReadyLane = { seat: Seat; lane: string; label: string; n: number; capped: boolean; campaignId: string | null; off: string | null }
+export type ReadyLane = { seat: Seat; lane: string; label: string; n: number; capped: boolean; campaignId: string | null; off: string | null; candidate?: boolean }
 export type ReadyRead = { lanes: ReadyLane[]; saturdayNy: boolean }
 export type ReadySeat = { total: number; lanes: ReadyLane[] }
 
@@ -220,8 +220,8 @@ export async function fetchReady(now = Date.now()): Promise<ReadyRead> {
 export function readyOf(r: ReadyRead, seat: Seat, gov?: GovernorRow | null): ReadySeat {
   const lanes = r.lanes.filter(l => l.seat === seat).map(l =>
     ['retry', 'reconnect'].includes(l.lane) ? { ...l, off: l.off ?? 'Previously contacted; excluded from fresh stock' } :
-    seat === 'risedtc' && l.lane !== 'engager' ? { ...l, label: l.label + ' candidates', off: l.off ?? 'Qualification not yet verified for this stock count' } :
+    seat === 'risedtc' && l.lane !== 'engager' ? { ...l, candidate: true } :
     seat === 'ivan' && l.lane === 'cold' && !l.off && gov && gov.mode !== 'normal' ? { ...l, off: gov.mode === 'warm_only' ? 'warm only this week' : 'cold paused' } : l)
     .sort((a, b) => Number(Boolean(a.off)) - Number(Boolean(b.off)) || b.n - a.n)
-  return { total: lanes.filter(l => !l.off).reduce((a, l) => a + l.n, 0), lanes }
+  return { total: lanes.filter(l => !l.off && !l.candidate).reduce((a, l) => a + l.n, 0), lanes }
 }
