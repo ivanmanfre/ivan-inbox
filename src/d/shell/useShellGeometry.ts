@@ -10,8 +10,9 @@ import { isNarrowing, targetFor, type DrawerMode, type Geometry, type Tier } fro
 // The native frame handshake: Daily Brief dispatches `brief:frame` with the
 // canvas width the window WILL have, before its sidebar animation. A narrowing
 // target applies at once; a widening one waits for the animation to end. While
-// a target is held, ResizeObserver callbacks are ignored; at ms + 50 the frame
-// is measured once more and the truth wins.
+// a target is held, ResizeObserver callbacks are ignored; from ms + 50 the frame
+// is measured once the canvas has reached the announced width (or after ms + 600
+// at the latest), and the truth wins.
 //
 // Hooks rule: called unconditionally at the top of DShell (09-09).
 
@@ -53,6 +54,8 @@ export function useShellGeometry(appRef: RefObject<HTMLElement | null>, { layout
 
     const measure = () => {
       const c = canvas()
+      // Not laid out yet (hidden, mid-mount): a 0 width must not seed the hysteresis.
+      if (!(c > 0)) return
       const g = targetFor(c, { drawerOpen: claudeOpen, shell, prevMode: cur.current.mode, prevTier: cur.current.tier, drawerWidth: drawerWidth() })
       // The real main width wins when it is known (banners, rails); the target is the fallback.
       const main = q('.d-main')
@@ -76,10 +79,18 @@ export function useShellGeometry(appRef: RefObject<HTMLElement | null>, { layout
       const ms = Math.max(0, Math.min(2000, Number(d.ms) || 0))
       const target = targetFor(d.width, { drawerOpen: claudeOpen, shell, prevMode: cur.current.mode, prevTier: cur.current.tier, drawerWidth: drawerWidth() })
       if (isNarrowing(cur.current, target)) apply(target)
-      // Wider: hold the current tier and mode until the animation ends.
-      holdUntil.current = Date.now() + ms + 50
+      // Wider: hold the current tier and mode until the animation ends. The web view may land a
+      // few frames after the native animation, so the hold lasts until the canvas reaches the
+      // announced width (bounded: a window being dragged at the same time lets the truth win).
+      const deadline = Date.now() + ms + 600
+      holdUntil.current = deadline
       clearTimeout(settle)
-      settle = window.setTimeout(() => { holdUntil.current = 0; measure() }, ms + 50)
+      const settleCheck = () => {
+        if (Math.abs(canvas() - d.width) > 2 && Date.now() < deadline) { settle = window.setTimeout(settleCheck, 50); return }
+        holdUntil.current = 0
+        measure()
+      }
+      settle = window.setTimeout(settleCheck, ms + 50)
     }
 
     measure()

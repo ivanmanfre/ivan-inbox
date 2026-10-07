@@ -74,6 +74,22 @@ describe('useShellGeometry', () => {
     expect(out.tier).toBe('t1')
   })
 
+  it('a web view that lands late does not flip the tier back and forth', () => {
+    const out: { mode?: string; tier?: string | null } = {}
+    const { container } = render(<Frame claudeOpen shell out={out} />)
+    setCanvas(container, 1092, 398); act(() => { fireRO() })
+    expect(out).toMatchObject({ mode: 'dock', tier: 't3' })
+    act(() => { window.dispatchEvent(new CustomEvent(BRIEF_FRAME_EVENT, { detail: { width: 964, ms: 380 } })) })
+    expect(out).toMatchObject({ mode: 'over', tier: 't2' })
+    // The native animation is over, the web view is still 1092 wide: nothing changes.
+    setCanvas(container, 1092, 0)
+    act(() => { vi.advanceTimersByTime(431) })
+    expect(out).toMatchObject({ mode: 'over', tier: 't2' })
+    setCanvas(container, 964, 0)
+    act(() => { vi.advanceTimersByTime(60) })
+    expect(out).toMatchObject({ mode: 'over', tier: 't2' })
+  })
+
   it('the drawer docks at a 1144 canvas and goes over below 1064 (shell on); always docks with shell off', () => {
     const out: { mode?: string } = {}
     const { container, rerender } = render(<Frame claudeOpen shell out={out} />)

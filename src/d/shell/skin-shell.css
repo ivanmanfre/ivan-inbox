@@ -29,7 +29,7 @@
 :root[data-skin-on~='shell'] .d-desktop .d-tools-page{gap:var(--ds-ctl-gap);flex-wrap:nowrap;white-space:nowrap}
 :root[data-skin-on~='shell'] .d-desktop .d-tools .d-ask{height:var(--ds-control-h)}
 /* A page's search field in the band is a control: 32, like every other tool. */
-:root[data-skin-on~='shell'] .d-desktop .d-tools-page :is(.dm-search,.d-search){height:var(--ds-control-h);min-height:0}
+:root[data-skin-on~='shell'] .d-desktop .d-tools-page :is(.dm-search,.d-search,.sl-orbit){height:var(--ds-control-h);min-height:0}
 :root[data-skin-on~='shell'] .d-desktop .d-bell{width:var(--ds-control-h);min-width:var(--ds-control-h);height:var(--ds-control-h)}
 /* A tool with a label (Lanes' refresh) is a .d-tool, not a 32 square: auto width, one line. */
 :root[data-skin-on~='shell'] .d-desktop .d-tools .d-ib{width:auto;min-width:var(--ds-control-h);height:var(--ds-control-h);padding:0 7px;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;font-size:12px;font-weight:500}
