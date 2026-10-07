@@ -1,3 +1,5 @@
+import { ReplySources } from '../../d/lanes/ReplySources'
+import { SEATS, SEAT_NAME } from '../../d/seats'
 /* ==========================================================================
    src/wb/sends/Overview.tsx — S09, the Sends overview, as an instrument.
 
@@ -1057,6 +1059,10 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
       </div>
       <DeliverySection cc={cc} timeframe={timeframe} range={range} client={client} />
       <RecurrenceSection cc={cc} />
+      {(client === 'all' ? SEATS : [client]).map(seat => <section key={seat} aria-label={`Reply sources for ${SEAT_NAME[seat]}`}>
+        <h2>{SEAT_NAME[seat]}</h2>
+        <ReplySources scope={{ kind: 'operator', clientId: seat }} />
+      </section>)}
     </>
   )
   if (loading && !data) return <Body>{control}<SendsSkeleton /></Body>

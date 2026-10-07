@@ -1,3 +1,4 @@
+import { ReplySources } from '../../d/lanes/ReplySources'
 /* ==========================================================================
    Outreach performance. Reads the matured DM send/reply cells for the open
    lane, puts what is off the pace first, and keeps every raw cell one
@@ -80,5 +81,8 @@ export function OutreachBlock({ lane }: { lane: ContentLane }) {
     void loadPerf(lane).then(setState, e => setState({ kind: 'failed', message: String((e && e.message) || e) }))
   }, [lane])
   useEffect(() => { load() }, [load])
-  return <OutreachView lane={lane} state={state} onRetry={load} />
+  return <>
+    <ReplySources scope={{ kind: 'operator', clientId: lane }} />
+    <OutreachView lane={lane} state={state} onRetry={load} />
+  </>
 }

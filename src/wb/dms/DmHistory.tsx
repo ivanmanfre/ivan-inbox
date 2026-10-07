@@ -1,3 +1,5 @@
+import { Fragment } from 'react'
+import { ReplySourceSummary } from '../../d/dms/ReplySourceSummary'
 import { internalHoldSummary } from '../../lib/inbox'
 /* ==========================================================================
    src/wb/dms/DmHistory.tsx — S02-30 to S02-32, the receipt.
@@ -141,8 +143,8 @@ export function DmHistory({ threads, onOpen, verified = true }: {
               ? `You: ${last.message_text}`
               : last.message_text
             return (
+              <Fragment key={t.prospect_id}>
               <Row
-                key={t.prospect_id}
                 onClick={() => onOpen(t.prospect_id)}
                 lead={<Face name={t.prospect_name} size="sm" />}
                 title={
@@ -162,10 +164,20 @@ export function DmHistory({ threads, onOpen, verified = true }: {
                 sub={snip}
                 tail={<span className="a-mono">{relTime(eventTime(last))}</span>}
               />
+              <ThreadSource t={t} />
+              </Fragment>
             )
           })}
         </Rows>
       )}
     </Group>
   )
+}
+
+function ThreadSource({ t }: { t: Thread }) {
+  const [open, setOpen] = useState(false)
+  return <details onToggle={e => setOpen(e.currentTarget.open)}>
+    <summary>Reply source for {t.prospect_name}</summary>
+    {open && <ReplySourceSummary scope={{ kind: 'operator', clientId: t.client_id ?? 'ivan' }} prospectId={t.prospect_id} />}
+  </details>
 }

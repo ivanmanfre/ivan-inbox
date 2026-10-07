@@ -1,3 +1,6 @@
+import { useReplySource } from '../../hooks/useReplySources'
+import { touchLabel } from '../../lib/replySources'
+import { ReplySourceContent } from './ReplySourceSummary'
 // The conversation, as chat bubbles: who, the words, the channel and when.
 // Every message is shown whole with its links live (today's Linkified), a multi-bubble reply split
 // the way LinkedIn delivered it, "To <email>" on a sent email, "Not accepted yet" on a pending
@@ -63,7 +66,15 @@ export function oursLabel(t: Pick<Thread, 'client_id'>): string {
  *  theirs on the left in grey with their first name on the first bubble of a run, ours on the right
  *  tinted with "You" (or Mattan / Davorin), a day line between days, and each bubble's channel,
  *  status and time underneath. The All conversations log reuses it as is. */
-export function History({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail }: { t: Thread; cap?: number; now?: number; onReplyEmail?: () => void; onForwardEmail?: (m: InboxMessage) => void }) {
+type HistoryProps = { t: Thread; cap?: number; now?: number; onReplyEmail?: () => void; onForwardEmail?: (m: InboxMessage) => void }
+
+export function History(props: HistoryProps) {
+  const [retry, setRetry] = useState(0)
+  return <HistoryRead key={`${props.t.prospect_id}:${retry}`} {...props} retry={() => setRetry(n => n + 1)} />
+}
+
+function HistoryRead({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail, retry }: HistoryProps & { retry: () => void }) {
+  const source = useReplySource({ kind: 'operator', clientId: t.client_id ?? 'ivan' }, t.prospect_id, true)
   const [all, setAll] = useState(false)
   const rows = historyRows(t)
   const lastEmail = rows.filter(m => m.direction === 'inbound' && messageChannel(m) === 'email').at(-1)?.id
@@ -71,12 +82,13 @@ export function History({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardE
   const first = t.prospect_name.split(' ')[0] || t.prospect_name
   const ours = oursLabel(t)
   if (!rows.length) {
-    return <div className="dm-hist"><p className="dm-hist-empty">No messages yet. {t.draft ? 'The draft below is the first one.' : 'Nothing has been sent or received on this thread yet.'}</p></div>
+    return <div className="dm-hist"><ReplySourceContent state={source} retry={retry} /><p className="dm-hist-empty">No messages yet. {t.draft ? 'The draft below is the first one.' : 'Nothing has been sent or received on this thread yet.'}</p></div>
   }
   let day = ''
   let prevSide: 'in' | 'out' | null = null
   return (
     <div className="dm-hist">
+      <ReplySourceContent state={source} retry={retry} />
       {rows.length > shown.length && (
         <button type="button" className="dm-h-more" data-verb="history-earlier" onClick={() => setAll(true)}>{rows.length - shown.length} earlier message{rows.length - shown.length > 1 ? 's' : ''}</button>
       )}
@@ -110,6 +122,8 @@ export function History({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardE
                 <i>{pill ?? 'LinkedIn'}</i>
                 {st && <i className={st.fail ? 'dm-i-fail' : undefined}>{st.text}</i>}
                 {inb && isReaction(m) && <i>reaction</i>}
+                {source.kind === 'ready' && source.data.first_reply?.reply_id === m.id && <i>First observed reply · {touchLabel(source.data.first_reply.touch)}</i>}
+                {source.kind === 'ready' && source.data.latest_reply?.reply_id === m.id && <i>Latest observed reply · {touchLabel(source.data.latest_reply.touch)}</i>}
                 <time dateTime={at}>{warsawHm(at)}</time>
               </div>
               {inb && email && (onReplyEmail || onForwardEmail) && <div className="dm-email-actions">

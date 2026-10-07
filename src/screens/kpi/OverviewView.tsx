@@ -1,3 +1,5 @@
+import { ReplySources } from '../../d/lanes/ReplySources'
+import { SEATS, SEAT_NAME } from '../../d/seats'
 import { useEffect, useState } from 'react'
 import {
   buildLanes, fetchSends, fetchSendsDaily, fetchCampaignSends,
@@ -881,6 +883,10 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
 
   return (
     <div className="rows ov">
+      {(client === 'all' ? SEATS : [client]).map(seat => <section key={seat} aria-label={`Reply sources for ${SEAT_NAME[seat]}`}>
+        <h2>{SEAT_NAME[seat]}</h2>
+        <ReplySources scope={{ kind: 'operator', clientId: seat }} />
+      </section>)}
       <Hero accept={data.accept} governor={data.governor} pipeline={data.pipeline} replacement={data.replacement} client={client} />
       {timeframe === 'custom' && range && <RangeSummary range={range} client={client} />}
       <DayLedger rows={data.ledger} client={client} timeframe={timeframe} />

@@ -1,3 +1,4 @@
+import { ReplySources } from '../../d/lanes/ReplySources'
 /* ==========================================================================
    The campaign sheet (rebuild, blueprint v3): what opens when you tap a
    campaign card on Lanes. Read-only.
@@ -147,7 +148,8 @@ export function CampaignSheet({ c, onClose }: { c: CampaignPerf | null; onClose:
           <p className="a-camp-line">
             This week: {c.invites_7d} invites, {c.dms_7d} DMs, {c.replied_7d} replied ({c.positive_7d} positive). {c.calls_30d} calls in 30 days. {acceptLine(c)}.
           </p>
-          <Group label="Reply rate by DM step" pad>
+          <ReplySources scope={{ kind: 'operator', clientId: c.client_id ?? 'ivan', campaignId: c.campaign_id }} />
+          <Group label="Shared lane comparison" pad>
             <Performance state={perf} c={c} />
           </Group>
           <Group label="Newest sends" tail={sends.kind === 'ready' ? `${sends.data.length}` : undefined}>

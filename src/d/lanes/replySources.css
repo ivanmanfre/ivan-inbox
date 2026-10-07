@@ -1,0 +1,24 @@
+.reply-sources, .reply-source-summary { color:inherit; font:inherit; min-width:0; margin:1.2rem 0; padding:1rem; border:1px solid var(--cb-line,var(--ec-rule,var(--ds-line,currentColor))); }
+.reply-sources h2, .reply-source-summary h2 { font:inherit; font-weight:700; margin:0 0 .7rem; }
+.reply-sources h3, .reply-source-summary h3 { font:inherit; font-weight:600; margin:0 0 .3rem; }
+.rs-note, .rs-coverage, .rs-notice { font-size:.875em; line-height:1.5; }
+.rs-note { margin:.65rem 0; }
+.rs-period { display:flex; flex-wrap:wrap; gap:8px; border:0; padding:0; margin:0 0 1rem; }
+.rs-period legend { font-size:.875em; margin-bottom:.4rem; }
+.rs-period button, .rs-notice button { color:inherit; font:inherit; background:transparent; border:1px solid currentColor; min-height:44px; padding:.4rem .8rem; cursor:pointer; }
+.rs-period button[aria-pressed="true"] { font-weight:700; text-decoration:underline; text-underline-offset:4px; }
+.reply-sources :focus-visible, .reply-source-summary :focus-visible { outline:2px solid currentColor; outline-offset:3px; }
+.rs-scroll { overflow-x:auto; max-width:100%; margin:1rem 0 .4rem; }
+.rs-scroll table { border-collapse:collapse; font:inherit; font-size:.875em; min-width:100%; width:max-content; }
+.rs-scroll caption { text-align:left; font-weight:700; padding:.4rem 0 .7rem; }
+.rs-scroll th, .rs-scroll td { text-align:left; padding:.5rem .7rem; border-bottom:1px solid var(--cb-line,var(--ec-rule,var(--ds-line,currentColor))); vertical-align:top; }
+.rs-scroll thead th { white-space:nowrap; }
+.rs-scroll th:first-child { position:sticky; left:0; min-width:9.5rem; z-index:1; background:var(--cb-paper,var(--ec-paper,var(--ds-surface-1,var(--ds-canvas,var(--paper,#fff))))); }
+.rs-scroll td { font-variant-numeric:tabular-nums; }
+.rs-sample { display:block; font:inherit; font-size:.85em; white-space:nowrap; }
+.rs-coverage summary { cursor:pointer; padding:.6rem 0; }
+.rs-source-row { margin:1rem 0; }
+.rs-source-row p { margin:.35rem 0; }
+
+.d-app .reply-sources, .d-app .reply-source-summary, .d-app .rs-scroll th, .d-app .rs-scroll td { border-color:var(--line); }
+.d-app .rs-scroll th:first-child { background:var(--p1,var(--bg)); }

@@ -1,0 +1,349 @@
+{
+  "metrics": {
+    "data": {
+      "as_of": "2026-10-07T12:00:00+00:00",
+      "period": {
+        "to": "2026-10-07T12:00:00+00:00",
+        "days": 30,
+        "from": "2026-09-07T12:00:00+00:00",
+        "basis": "rolling_utc",
+        "observation_days": 7
+      },
+      "totals": {
+        "reactions": 0,
+        "recipients": 1,
+        "first_responders": 1,
+        "followup_responders": 1
+      },
+      "sources": [
+        {
+          "touch": "connection_note",
+          "positive": 0,
+          "share_pct": 0,
+          "responders": 0,
+          "unclassified": 0
+        },
+        {
+          "touch": "dm1",
+          "positive": 0,
+          "share_pct": 0,
+          "responders": 0,
+          "unclassified": 0
+        },
+        {
+          "touch": "dm2",
+          "positive": 0,
+          "share_pct": 0,
+          "responders": 0,
+          "unclassified": 0
+        },
+        {
+          "touch": "dm3",
+          "positive": 0,
+          "share_pct": 0,
+          "responders": 0,
+          "unclassified": 0
+        },
+        {
+          "touch": "dm4",
+          "positive": 1,
+          "share_pct": 100,
+          "responders": 1,
+          "unclassified": 0
+        },
+        {
+          "touch": "dm5",
+          "positive": 0,
+          "share_pct": 0,
+          "responders": 0,
+          "unclassified": 0
+        },
+        {
+          "touch": "recycle",
+          "positive": 0,
+          "share_pct": 0,
+          "responders": 0,
+          "unclassified": 0
+        },
+        {
+          "touch": "followup",
+          "positive": 0,
+          "share_pct": 0,
+          "responders": 0,
+          "unclassified": 0
+        },
+        {
+          "touch": "conversation_reply",
+          "positive": 0,
+          "share_pct": 0,
+          "responders": 0,
+          "unclassified": 0
+        },
+        {
+          "touch": "requested_delivery",
+          "positive": 0,
+          "share_pct": 0,
+          "responders": 0,
+          "unclassified": 0
+        },
+        {
+          "touch": "inmail",
+          "positive": 0,
+          "share_pct": 0,
+          "responders": 0,
+          "unclassified": 0
+        },
+        {
+          "touch": "email",
+          "positive": 0,
+          "share_pct": 0,
+          "responders": 0,
+          "unclassified": 0
+        },
+        {
+          "touch": "unknown",
+          "positive": 0,
+          "share_pct": 0,
+          "responders": 0,
+          "unclassified": 0
+        }
+      ],
+      "touches": [
+        {
+          "late": 0,
+          "sends": 0,
+          "touch": "connection_note",
+          "mature": 0,
+          "pending": 0,
+          "eligible": 0,
+          "rate_pct": null,
+          "repeated": 0,
+          "recipients": 0,
+          "replies_7d": 0
+        },
+        {
+          "late": 0,
+          "sends": 0,
+          "touch": "dm1",
+          "mature": 0,
+          "pending": 0,
+          "eligible": 0,
+          "rate_pct": null,
+          "repeated": 0,
+          "recipients": 0,
+          "replies_7d": 0
+        },
+        {
+          "late": 0,
+          "sends": 0,
+          "touch": "dm2",
+          "mature": 0,
+          "pending": 0,
+          "eligible": 0,
+          "rate_pct": null,
+          "repeated": 0,
+          "recipients": 0,
+          "replies_7d": 0
+        },
+        {
+          "late": 0,
+          "sends": 0,
+          "touch": "dm3",
+          "mature": 0,
+          "pending": 0,
+          "eligible": 0,
+          "rate_pct": null,
+          "repeated": 0,
+          "recipients": 0,
+          "replies_7d": 0
+        },
+        {
+          "late": 0,
+          "sends": 1,
+          "touch": "dm4",
+          "mature": 1,
+          "pending": 0,
+          "eligible": 1,
+          "rate_pct": 100,
+          "repeated": 0,
+          "recipients": 1,
+          "replies_7d": 1
+        },
+        {
+          "late": 0,
+          "sends": 0,
+          "touch": "dm5",
+          "mature": 0,
+          "pending": 0,
+          "eligible": 0,
+          "rate_pct": null,
+          "repeated": 0,
+          "recipients": 0,
+          "replies_7d": 0
+        },
+        {
+          "late": 0,
+          "sends": 0,
+          "touch": "recycle",
+          "mature": 0,
+          "pending": 0,
+          "eligible": 0,
+          "rate_pct": null,
+          "repeated": 0,
+          "recipients": 0,
+          "replies_7d": 0
+        },
+        {
+          "late": 0,
+          "sends": 1,
+          "touch": "followup",
+          "mature": 0,
+          "pending": 0,
+          "eligible": 0,
+          "rate_pct": null,
+          "repeated": 0,
+          "recipients": 1,
+          "replies_7d": 0
+        },
+        {
+          "late": 0,
+          "sends": 0,
+          "touch": "conversation_reply",
+          "mature": 0,
+          "pending": 0,
+          "eligible": 0,
+          "rate_pct": null,
+          "repeated": 0,
+          "recipients": 0,
+          "replies_7d": 0
+        },
+        {
+          "late": 0,
+          "sends": 0,
+          "touch": "requested_delivery",
+          "mature": 0,
+          "pending": 0,
+          "eligible": 0,
+          "rate_pct": null,
+          "repeated": 0,
+          "recipients": 0,
+          "replies_7d": 0
+        },
+        {
+          "late": 0,
+          "sends": 0,
+          "touch": "inmail",
+          "mature": 0,
+          "pending": 0,
+          "eligible": 0,
+          "rate_pct": null,
+          "repeated": 0,
+          "recipients": 0,
+          "replies_7d": 0
+        },
+        {
+          "late": 0,
+          "sends": 0,
+          "touch": "email",
+          "mature": 0,
+          "pending": 0,
+          "eligible": 0,
+          "rate_pct": null,
+          "repeated": 0,
+          "recipients": 0,
+          "replies_7d": 0
+        },
+        {
+          "late": 0,
+          "sends": 0,
+          "touch": "unknown",
+          "mature": 0,
+          "pending": 0,
+          "eligible": 0,
+          "rate_pct": null,
+          "repeated": 0,
+          "recipients": 0,
+          "replies_7d": 0
+        }
+      ],
+      "coverage": {
+        "seat_basis": "registered_client_lane",
+        "missing_chats": 0,
+        "campaign_basis": "current_prospect_membership",
+        "duplicate_rows": 0,
+        "first_event_at": "2026-09-20T12:00:00+00:00",
+        "excluded_people": 0,
+        "uncertain_sends": 0,
+        "unknown_purpose": 0,
+        "unknown_sources": 0,
+        "history_complete": false,
+        "missing_receipts": 0,
+        "population_basis": "message_history_v1",
+        "unknown_episodes": 0,
+        "channel_conflicts": 0,
+        "record_identities": 0,
+        "classifier_version": "reply-touch-v1",
+        "feature_started_on": "2026-10-07",
+        "identity_conflicts": 0,
+        "interrupted_episodes": 0,
+        "unknown_campaign_basis": "inbound_current_campaign",
+        "current_template_purpose": 0
+      },
+      "client_id": "ivan",
+      "followups": [
+        {
+          "late": 0,
+          "mature": 1,
+          "ordinal": 1,
+          "pending": 0,
+          "episodes": 1,
+          "rate_pct": 100,
+          "replies_7d": 1,
+          "responders": 1
+        }
+      ],
+      "configured": true,
+      "schema_version": 1
+    },
+    "status": "ok"
+  },
+  "detail": {
+    "data": {
+      "as_of": "2026-10-07T12:00:00+00:00",
+      "first_reply": {
+        "touch": "dm4",
+        "method": "inferred_same_chat",
+        "reason": null,
+        "channel": "linkedin",
+        "product": "dm",
+        "sent_at": "2026-09-20T12:00:00+00:00",
+        "reply_at": "2026-09-21T12:00:00+00:00",
+        "reply_id": "00000000-0000-0000-0000-000000000101",
+        "source_id": "00000000-0000-0000-0000-000000000100",
+        "campaign_id": "00000000-0000-0000-0000-000000000001",
+        "channel_basis": "chat_inferred",
+        "sequence_step": 4,
+        "episode_outcome": null,
+        "followup_ordinal": null
+      },
+      "latest_reply": {
+        "touch": "followup",
+        "method": "inferred_same_chat",
+        "reason": null,
+        "channel": "linkedin",
+        "product": "dm",
+        "sent_at": "2026-09-22T12:00:00+00:00",
+        "reply_at": "2026-09-23T12:00:00+00:00",
+        "reply_id": "00000000-0000-0000-0000-000000000103",
+        "source_id": "00000000-0000-0000-0000-000000000102",
+        "campaign_id": "00000000-0000-0000-0000-000000000001",
+        "channel_basis": "chat_inferred",
+        "sequence_step": null,
+        "episode_outcome": "replied",
+        "followup_ordinal": 1
+      },
+      "schema_version": 1
+    },
+    "status": "ok"
+  }
+}

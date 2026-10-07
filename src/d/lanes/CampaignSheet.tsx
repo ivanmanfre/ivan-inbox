@@ -1,3 +1,4 @@
+import { ReplySources } from './ReplySources'
 /* The campaign sheet: what opens when a campaign is tapped on Lanes. Read-only.
    Desktop: right sheet over the Arch column. Phone: bottom sheet. */
 import type { ReactNode } from 'react'
@@ -54,7 +55,8 @@ export function CampaignSheet({ c, onClose, now }: { c: CampaignPerf; onClose: (
         <Shs>Lanes inside, touched in 30 days</Shs>
         <div className="dl-lanemix">{mix.data.lanes.slice(0, 8).map(l => <span key={l.lane}>{laneLabel(l.lane)} <b>{mix.data.capped ? '≥' : ''}{l.n}</b></span>)}</div>
       </>}
-      <Shs>Reply rate by DM step</Shs>
+      <ReplySources scope={{ kind: 'operator', clientId: seat, campaignId: c.campaign_id }} />
+      <Shs>Shared lane comparison</Shs>
       <CampaignPerfBlock state={perf} c={c} />
       <LoadLine l={replies} what="the newest replies">{rs => <>
         <Shs tail={rs.length}>Newest replies</Shs>

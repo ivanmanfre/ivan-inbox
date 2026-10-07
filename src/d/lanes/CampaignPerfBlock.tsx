@@ -30,7 +30,7 @@ export function CampaignPerfBlock({ state, c }: { state: Load<PerfState>; c: Cam
       const others = lane.campaigns.filter(n => n !== c.campaign_name).map(shortName)
       const split = splitsFor(lane)
       return <>
-        <p className="dl-sl">Measured on the {lane.lane} lane{others.length ? `, shared with ${others.join(', ')}` : ''}. Last 14 matured days against the 60 before. Viewed back is a floor: LinkedIn shows only some viewers.</p>
+        <p className="dl-sl">Shared lane comparison. Measured on the {lane.lane} lane{others.length ? `, shared with ${others.join(', ')}` : ''}. Last 14 matured days against the 60 before. Viewed back is a floor: LinkedIn shows only some viewers.</p>
         {lane.alarms.map((a, i) => (
           <div className="dl-inc dl-alarm" key={`${a.kind}-${a.step}-${a.variant ?? ''}-${i}`}>
             <p className="dl-lead">{stepLabel(a.step)}{a.variant ? ` · ${a.variant}` : ''} is below {a.kind === 'drift' ? 'its prior 60 days' : 'its siblings'}</p>

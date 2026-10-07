@@ -1,3 +1,4 @@
+import { ReplySources } from './ReplySources'
 /* Performance of the chosen seat. Open (PerfCharts): acceptance and reply
    rate per lane for the window picked with 7d / 30d / 90d, and the last 14
    days big. Folded (PerfDetail): acceptance per campaign, the window in words,
@@ -24,6 +25,7 @@ export function PerfCharts({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
   const days = RANGE_DAYS[ctx.range]
   return (
     <div className="dl-perf">
+      <ReplySources scope={{ kind: 'operator', clientId: seat }} />
       <div className="dl-rcs dl-rcs2">
         <RateBars title={`Acceptance per lane, ${days} days`} unit="people invited" formula={FORMULA.accept(ctx.range)}
           rates={p ? acceptByLane(p, seat, ctx.range) : null} failed={pf} empty={`No invite went out on this seat in the last ${days} days.`} />
