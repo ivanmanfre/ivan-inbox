@@ -360,6 +360,10 @@ export type ContentPage = {
   // PostgREST's 1000-row ceiling long before the caller notices, so a surface
   // that says "12 waiting" off rows.length is lying whenever count > rows.length.
   count: number | null
+  // How many rows the server sent before the operator-deleted / test filter.
+  // The 1,000-row limit was hit only when THIS reached it; `count` minus
+  // rows.length is mostly filtered rows, never proof of a cap.
+  raw?: number
 }
 
 export async function fetchContentDrafts(lane: ContentLane): Promise<ContentPage> {
@@ -408,7 +412,7 @@ export async function fetchWeekDrafts(fromIso: string, toIso: string): Promise<C
     .limit(1000)
   if (error) throw error
   const rows = ((data ?? []) as unknown as ContentDraft[]).filter(r => !operatorDeleted(r.taxonomy) && !internalTestDraft(r.taxonomy))
-  return { rows, count: count ?? null }
+  return { rows, count: count ?? null, raw: (data ?? []).length }
 }
 
 export type ScheduledQueueRow = {
