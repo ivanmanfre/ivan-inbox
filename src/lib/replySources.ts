@@ -79,7 +79,7 @@ const string = (v: unknown): v is string => typeof v === 'string' && v.length > 
 const counts = (v: Record<string, unknown>, keys: readonly string[]) => keys.every(k => count(v[k]))
 const fixedRows = (v: unknown, check: (v: Record<string, unknown>) => boolean) => Array.isArray(v) && v.length === TOUCHES.length && v.every((r, i) => object(r) && r.touch === TOUCHES[i] && check(r))
 function metrics(v: unknown): v is ReplyMetrics {
-  if (!object(v) || v.schema_version !== 1 || !string(v.client_id) || snapshotFreshness(v.as_of) === 'unavailable' || v.configured !== true) return false
+  if (!object(v) || v.schema_version !== 1 || !string(v.client_id) || !string(v.as_of) || snapshotFreshness(v.as_of) === 'unavailable' || v.configured !== true) return false
   const p = v.period, c = v.coverage, t = v.totals
   if (!object(p) || ![7, 30, 90].includes(p.days as number) || p.basis !== 'rolling_utc' || p.observation_days !== 7 || !date(p.from) || !date(p.to) || Date.parse(p.to) !== Date.parse(v.as_of) || Date.parse(p.to) - Date.parse(p.from) !== Number(p.days) * 86400000) return false
   if (!object(c) || c.history_complete !== false || !nullable(c.first_event_at, date) || c.feature_started_on !== '2026-10-07' || c.classifier_version !== 'reply-touch-v1' || c.seat_basis !== 'registered_client_lane' || c.campaign_basis !== 'current_prospect_membership' || c.population_basis !== 'message_history_v1' || c.unknown_campaign_basis !== 'inbound_current_campaign') return false
