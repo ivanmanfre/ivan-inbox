@@ -3,6 +3,8 @@
    and the "working" word on the panel's Claude item. Loaded eagerly with the frame. */
 .d-app .dcl-working{margin-left:auto;font:500 11px var(--m);font-style:normal;color:var(--lime);border:1px solid var(--hotB);border-radius:5px;padding:0 6px;line-height:18px}
 .d-app .dcl-island{position:fixed;z-index:15;left:12px;bottom:150px;background:var(--p2);border:1px solid var(--strong);box-shadow:0 14px 34px rgba(0,0,0,.55);color:var(--t1)}
+/* In Daily Brief the web rail is hidden (the native sidebar replaces it): sit on the main column's edge. */
+html.brief-native .d-desktop .dcl-island{left:24px}
 .d-phone .dcl-island{right:12px;left:12px;top:auto;bottom:calc(var(--dock-h) + 26px + env(safe-area-inset-bottom))}
 .d-app .dcl-island-pill{display:inline-flex;align-items:center;gap:8px;height:36px;border-radius:18px;padding:0 14px 0 11px;font-size:13.5px}
 .d-phone .dcl-island-pill{left:auto}

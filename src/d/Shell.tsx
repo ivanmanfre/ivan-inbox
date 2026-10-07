@@ -1,5 +1,7 @@
 import { hashNavigationAllowed } from '../lib/navigationGuard'
-import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { Component, Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { applySkin, subscribeSkin } from '../ds/skin'
+import { useSkin } from '../ds/useSkin'
 import { ClaudeProvider } from './claude/ClaudeProvider'
 import { Island } from './claude/Island'
 import { DInboxProvider, useDInbox } from './counts/inbox'
@@ -13,6 +15,8 @@ import { FrameCtx, useFrame, type Frame } from './shell/frame'
 import { lastSynced } from './shell/navModel'
 import { DLayer } from './shell/Layer'
 import { useKeepScroll } from './shell/keepScroll'
+import { deskQuery, isDeskNow, DESK_MQ, DESK_MQ_SHELL } from './shell/layoutQuery'
+import { useShellGeometry } from './shell/useShellGeometry'
 import { WorkflowsHost } from './shell/Workflows'
 import { DPalette } from './shell/Palette'
 import { Dock, PhonePanel, PhoneTop } from './shell/Phone'
@@ -25,6 +29,7 @@ import { useOnline } from './ui/useOnline'
 import { warsawHm } from './ui/time'
 import './d.css'
 import './shell/frame2.css'
+import './shell/skin-shell.css'
 
 // ---------------------------------------------------------------------------
 // D, the frame. Desktop (>= 1000px): left panel, answer row (page title + the
@@ -42,16 +47,17 @@ import './shell/frame2.css'
 
 const ClaudeDrawer = lazy(() => import('./claude/Drawer'))
 
-const DESK_MQ = '(min-width: 1000px)'
-
+// The predicate is src/d/shell/layoutQuery.ts: 1000px today, and any
+// fine-pointer window from 720px under the `shell` skin section (G7).
 function useLayout(): Layout {
   return useSyncExternalStore(
     f => {
-      const mq = window.matchMedia(DESK_MQ)
-      mq.addEventListener('change', f)
-      return () => mq.removeEventListener('change', f)
+      const a = window.matchMedia(DESK_MQ), b = window.matchMedia(DESK_MQ_SHELL)
+      a.addEventListener('change', f); b.addEventListener('change', f)
+      const off = subscribeSkin(f)
+      return () => { a.removeEventListener('change', f); b.removeEventListener('change', f); off() }
     },
-    () => (window.matchMedia(DESK_MQ).matches ? 'desktop' : 'phone'),
+    () => (window.matchMedia(deskQuery()).matches ? 'desktop' : 'phone'),
     () => 'desktop',
   )
 }
@@ -69,7 +75,7 @@ const LAST_PLACE = 'd-last-place'
 
 function resumeHash(h: string): string {
   if (h && h !== '#') return h
-  if (typeof window === 'undefined' || window.matchMedia?.(DESK_MQ).matches) return h
+  if (typeof window === 'undefined' || isDeskNow()) return h
   try {
     const saved = localStorage.getItem(LAST_PLACE)
     return saved && isD(saved) ? saved : h
@@ -175,7 +181,8 @@ function ForegroundInD() {
   return <ForegroundAlerts host={{ bellOpen: f.bellOpen, openBell: () => f.setBellOpen(true), navigate: f.navigate, refreshBell: () => c.refresh('bell') }} />
 }
 
-function Desktop({ setTitleSlot, setToolsSlot, sideMin, setSideMin }: {
+/** Exported for the S0 structure test (shellLayout.test.tsx) only. */
+export function Desktop({ setTitleSlot, setToolsSlot, sideMin, setSideMin }: {
   setTitleSlot: (el: HTMLElement | null) => void; setToolsSlot: (el: HTMLElement | null) => void
   sideMin: boolean; setSideMin: (m: boolean) => void
 }) {
@@ -187,13 +194,16 @@ function Desktop({ setTitleSlot, setToolsSlot, sideMin, setSideMin }: {
         <SeatHealthBanner />
         <OfflineLine />
         <AnswerBar setTitleSlot={setTitleSlot} setToolsSlot={setToolsSlot} />
-        <div className={`d-bodyrow${f.claudeOpen ? ' d-with-claude' : ''}`}>
+        <div className="d-bodyrow">
           <div className="d-body"><Page /></div>
-          {f.claudeOpen && <aside className="d-claude" aria-label="Claude"><ClaudeSlot /></aside>}
           {f.bellOpen && <BellFeed />}
         </div>
         <Island />
       </main>
+      {/* S0 (SPEC-shell-spacing §2.1): the drawer is a sibling of the main column, so the answer
+          band, the bell feed and every page overlay belong to the main column only. One tree
+          position in both modes (dock | over), so switching never remounts the conversation. */}
+      {f.claudeOpen && <aside className="d-claude" aria-label="Claude"><ClaudeSlot /></aside>}
     </>
   )
 }
@@ -243,12 +253,20 @@ export default function DShell() {
   const route = useDRoute()
   const [bellOpen, setBellOpen] = useState(false)
   // Desktop keeps the Claude drawer and the panel's width where he left them (today's wb-drawer / wb-railmin).
-  const [claudeOpen, setClaudeOpen] = useState(() => readFlag(DRAWER_KEY) && window.matchMedia?.(DESK_MQ).matches === true)
+  const [claudeOpen, setClaudeOpen] = useState(() => readFlag(DRAWER_KEY) && isDeskNow())
   const [sideMin, setSideMin] = useState(() => readFlag(SIDE_MIN_KEY))
   const [palette, setPalette] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [titleSlot, setTitleSlot] = useState<HTMLElement | null>(null)
   const [toolsSlot, setToolsSlot] = useState<HTMLElement | null>(null)
+  const appRef = useRef<HTMLDivElement>(null)
+  const shell = useSkin('shell')
+  // The skin follows React's layout (html[data-layout]), never its own media query.
+  useLayoutEffect(() => { applySkin(layout) }, [layout])
+  const geo = useShellGeometry(appRef, { layout, claudeOpen, shell })
+  const drawer = layout === 'desktop' && claudeOpen ? geo.mode : null
+  const drawerRef = useRef(drawer)
+  drawerRef.current = drawer
 
   // One overlay at a time on the phone: opening the bell closes Claude and the drawer.
   const openBell = useCallback((o: boolean) => { setBellOpen(o); if (o) setPanelOpen(false) }, [])
@@ -287,6 +305,8 @@ export default function DShell() {
       if (mod && e.key === '\\') { e.preventDefault(); setSideMin(m => !m); return }
       if (e.key === 'Escape' && !document.querySelector('.d-sheet, .d-confirm')) {
         setBellOpen(false); setPanelOpen(false)
+        // The overlay drawer (shell skin, canvas < 1080) closes on Escape while focus is inside it.
+        if (drawerRef.current === 'over' && document.activeElement?.closest('aside.d-claude')) setClaudeOpen(false)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -304,7 +324,8 @@ export default function DShell() {
       <FrameCountsProvider>
       <FrameCtx.Provider value={frame}>
         <ClaudeProvider>
-        <div className={`d-app d-${layout}`} data-bell={bellOpen ? 'open' : undefined} data-place={route.place}>
+        <div ref={appRef} className={`d-app d-${layout}${drawer === 'dock' ? ' d-with-claude' : ''}`} data-bell={bellOpen ? 'open' : undefined} data-place={route.place}
+          data-claude={drawer ?? undefined}>
           <ToastProvider>
             <DConfirmProvider>
               <ForegroundInD />

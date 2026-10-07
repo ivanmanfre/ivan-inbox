@@ -11,6 +11,8 @@ import App from './App.tsx'
 // and the whole design system into the entry chunk ahead of React's mount.
 import { adoptPrefetchedInbox, adoptPrefetchedThread } from './lib/handoff'
 import { armUpdateReload } from './lib/updateReload'
+import { applySkin, skinHas } from './ds/skin'
+import { DESK_MQ, DESK_MQ_SHELL } from './d/shell/layoutQuery'
 
 if (localStorage.getItem('inbox-theme') === 'light') {
   document.documentElement.dataset.theme = 'light'
@@ -53,6 +55,17 @@ if (density === 'compact' || (density === null && window.matchMedia('(min-width:
 const frame = localStorage.getItem('inbox-frame')
 document.documentElement.dataset.frame =
   frame === 'a' || frame === 'b' || frame === 'c' ? frame : 'b'
+
+// Brief 4 design flag (src/ds/skin.ts): resolved here, before React mounts, so
+// a flagged section never flashes its old look. Defaults are empty, so with no
+// ?skin= / stored value nothing is written but html[data-layout]. The `shell`
+// section also widens the desktop frame to any fine-pointer window >= 720px
+// (SPEC-shell-spacing G7), so the layout is resolved twice when it is on.
+{
+  const desk = window.matchMedia(DESK_MQ).matches ? 'desktop' : 'phone'
+  applySkin(desk)
+  if (desk === 'phone' && skinHas('shell') && window.matchMedia(DESK_MQ_SHELL).matches) applySkin('desktop')
+}
 
 // A new worker skips waiting and claims this page immediately (src/sw.ts) -- but a
 // CLAIMED page is still running the bundle it loaded with. Nothing re-fetches

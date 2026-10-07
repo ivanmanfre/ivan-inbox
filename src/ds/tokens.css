@@ -445,3 +445,262 @@
   --li-fs-av:14px;
   --li-fs-react:10px;
 }
+
+/* ==========================================================================
+   §10 · BRIEF SKIN (Brief 4, SPEC-foundation §2.2, SPEC-shell-spacing §3).
+
+   Oxygen's measured light design, ported from Daily Brief 3.0's injected
+   glass.css §1. Owned per section through src/ds/skin.ts, which writes
+   html[data-skin-on~='tokens' | 'type' | 'motion' | 'shell' | …].
+
+   10.0 declares every NEW role token with a default that reproduces today's
+   look exactly, so flag off = zero pixel change. 10.1-10.6 re-point them, and
+   the existing tokens, only under the owning section. This block sits last in
+   the file so (0,2,0) beats [data-theme], [data-density] and the phone query
+   without !important. The skin is light-only: it wins over a stored dark theme.
+   ========================================================================== */
+:root{
+  /* role colours */
+  --ds-nav-text:var(--ds-text-2);
+  --ds-nav-text-on:var(--ds-text);
+  --ds-accent-hover:var(--ds-accent);
+  --ds-accent-deep:var(--ds-accent);
+  --ds-focus:var(--ds-accent-ring);
+  --ds-linen:var(--ds-surface-2);
+  --ds-line-3:var(--ds-line-strong);
+  --ds-ground-web:var(--ds-ground);
+  --ds-sticky:var(--ds-canvas);
+  --ds-seg-on:var(--ds-text-3);
+  --ds-gap-fill:var(--ds-surface-2);
+  --ds-info-ui:var(--ds-text-2);
+  --ds-info-soft:var(--ds-surface-2);
+  --ds-selection:var(--ds-accent-soft);
+  /* glass ladder and elevation (flat by default) */
+  --ds-glass-pane:var(--ds-surface-1);
+  --ds-glass-large:var(--ds-surface-1);
+  --ds-glass-rail:var(--ds-surface-1);
+  --ds-glass-chrome:transparent;
+  --ds-fill-hover:var(--ds-wash);
+  --ds-fill-sel:var(--ds-accent-soft);
+  --ds-fill-tab:var(--ds-surface-3);
+  --ds-hi:none;
+  --ds-shadow-sel:none;
+  --ds-shadow-soft:none;
+  --ds-glass-fill:none;
+  --ds-glass-insets:none;
+  --ds-chip-face:var(--ds-surface-2);
+  --ds-chip-shadow:none;
+  --ds-chip-overlay:transparent;
+  --ds-well-shadow:inset 0 0 0 1px var(--ds-line);
+  --ds-well-fill:var(--ds-surface-2);
+  --ds-cap-shadow:inset 0 0 0 1px var(--ds-line);
+  /* type roles */
+  --ds-fs-message:var(--ds-fs-body);
+  --ds-lh-message:1.45;
+  --ds-fs-input:var(--ds-fs-body);
+  --ds-fw-em:var(--ds-fw-medium);
+  /* sizing */
+  --ds-hit:var(--ds-control-h);
+  --ds-ichip:var(--ds-control-h);
+  /* role radii */
+  --ds-r-rail:var(--ds-r4);
+  --ds-r-chrome:var(--ds-r3);
+  --ds-r-pane:var(--ds-r4);
+  --ds-r-tab:var(--ds-r3);
+  --ds-r-nav:var(--ds-r2);
+  --ds-r-btn:var(--ds-r3);
+  --ds-r-chip:var(--ds-r2);
+  --ds-r-thumb:var(--ds-r2);
+  /* spacing roles (SPEC-shell-spacing §3.1). One scale: --ds-s*. */
+  --ds-edge:calc(var(--ds-plate-gap) + var(--ds-gutter));
+  --ds-grid-gap:var(--ds-s5);
+  --ds-detail-pad:var(--ds-card-pad);
+  --ds-ctl-gap:var(--ds-s3);
+  --ds-label-gap:var(--ds-s3);
+  --ds-toolbar-h:44px;
+  --ds-head-2:64px;
+
+  /* motion (new names; nothing reads them until a section opts in) */
+  --ds-e-content:cubic-bezier(.16,1,.3,1);
+  --ds-e-ui:cubic-bezier(.2,.7,.2,1);
+  --ds-e-panel:cubic-bezier(.22,1,.36,1);
+  --ds-e-over:cubic-bezier(.34,1.56,.64,1);
+  --ds-e-exit:cubic-bezier(.23,1,.32,1);
+  --ds-e-in:cubic-bezier(.4,0,1,1);
+  --ds-e-press:cubic-bezier(.4,1.5,.3,1);
+  --ds-e-crit:linear(0,.115,.313,.502,.653,.771,.847,.9,.935,.958,.974,.983,.989,.993,.996,.997,.998,.999,.999,1,1,1,1,1,1);
+  --ds-e-settle:linear(0,.063,.204,.368,.526,.661,.77,.853,.912,.952,.979,.995,1.003,1.008,1.009,1.008,1.007,1.006,1.004,1.003,1.002,1.001,1.001,1,1);
+  --ds-e-pop:linear(0,.091,.291,.515,.713,.865,.967,1.026,1.052,1.057,1.05,1.038,1.026,1.015,1.007,1.001,.998,.997,.997,.997,.998,.999,.999,1,1);
+  --ds-d-fast:160ms;--ds-d-nav:220ms;--ds-d-ui:240ms;--ds-d-content:380ms;--ds-d-slow:480ms;
+  --ds-d-exit:120ms;--ds-d-exit-fast:60ms;
+  --ds-m-fast:150ms;--ds-m-quick:200ms;--ds-m-mod:280ms;--ds-m-slow:460ms;--ds-m-pop:500ms;
+}
+/* iOS < 17.2 has no linear(): the same fallbacks Brief's bridge used. */
+@supports not (transition-timing-function:linear(0, 1)){
+  :root{
+    --ds-e-crit:cubic-bezier(.2,.7,.2,1);
+    --ds-e-settle:cubic-bezier(.2,.7,.2,1);
+    --ds-e-pop:cubic-bezier(.34,1.56,.64,1);
+  }
+}
+/* Native View options → Motion: Subtle is ~70% of every duration; Off and Reduce Motion are instant. */
+:root.brief-motion-subtle{
+  --ds-d-fast:110ms;--ds-d-nav:150ms;--ds-d-ui:170ms;--ds-d-content:270ms;--ds-d-slow:340ms;
+  --ds-m-fast:100ms;--ds-m-quick:140ms;--ds-m-mod:200ms;--ds-m-slow:320ms;--ds-m-pop:350ms;
+}
+:root.brief-motion-off{
+  --ds-d-fast:0ms;--ds-d-nav:0ms;--ds-d-ui:0ms;--ds-d-content:0ms;--ds-d-slow:0ms;--ds-d-exit:0ms;--ds-d-exit-fast:0ms;
+  --ds-m-fast:0ms;--ds-m-quick:0ms;--ds-m-mod:0ms;--ds-m-slow:0ms;--ds-m-pop:0ms;
+}
+@media (prefers-reduced-motion:reduce){
+  :root{
+    --ds-d-fast:0ms;--ds-d-nav:0ms;--ds-d-ui:0ms;--ds-d-content:0ms;--ds-d-slow:0ms;--ds-d-exit:0ms;--ds-d-exit-fast:0ms;
+    --ds-m-fast:0ms;--ds-m-quick:0ms;--ds-m-mod:0ms;--ds-m-slow:0ms;--ds-m-pop:0ms;
+  }
+}
+
+/* 10.1 · tokens: colour, glass, elevation, radii (glass.css 4-40). */
+:root[data-skin-on~='tokens']{
+  color-scheme:light;
+  --ds-text:#18251f;
+  --ds-text-2:#546358;
+  --ds-text-3:#5a675d;
+  --ds-text-4:#5a675d;
+  --ds-nav-text:#2f3b30;
+  --ds-nav-text-on:#172019;
+  --ds-accent:#18392a;
+  --ds-accent-ui:#18392a;
+  --ds-accent-hover:#294f39;
+  --ds-accent-deep:#102a1f;
+  --ds-accent-ink:#fefefc;
+  --ds-accent-ring:#315c35;
+  --ds-focus:#315c35;
+  --ds-accent-soft:#e1eadb;
+  --ds-accent-line:#bcc8b7;
+  --ds-hairline-strong:#bcc8b7;
+  --ds-linen:#f1f0eb;
+  --ds-line:rgba(24,57,42,.12);
+  --ds-line-strong:rgba(24,57,42,.18);
+  --ds-line-3:rgba(24,57,42,.26);
+  --ds-hairline:#d5ddd0;
+  --ds-canvas:#f6f8f3;
+  --ds-sticky:#f6f8f3;
+  --ds-ground:#e9efe3;
+  --ds-ground-web:#e3e5df;
+  --ds-surface-1:#ffffff;
+  --ds-surface-2:#f3f6ef;
+  --ds-surface-3:#e9eee5;
+  --ds-seg-on:#7c8c7d;
+  --ds-gap-fill:#dfe6da;
+  --ds-sev-clear-ui:#134d11;
+  --ds-sev-clear-soft:#dfecdd;
+  --ds-sev-attention-ui:#865d19;
+  --ds-sev-attention-soft:#fcf1e2;
+  --ds-sev-urgent-ui:#822f2d;
+  --ds-sev-urgent-soft:#fee6e3;
+  --ds-info-ui:#1f477a;
+  --ds-info-soft:#e0ebf9;
+  --ds-scrim:rgba(24,37,31,.24);
+  --ds-selection:#d3e3c9;
+  --ds-wash:rgba(24,57,42,.04);
+  --ds-wash-strong:rgba(24,57,42,.07);
+  --ds-glass-pane:rgba(255,255,255,.91);
+  --ds-glass-large:rgba(254,254,252,.86);
+  --ds-glass-rail:rgba(245,248,237,.41);
+  --ds-glass-chrome:rgba(238,243,223,.25);
+  --ds-fill-hover:rgba(255,255,255,.36);
+  --ds-fill-sel:rgba(255,255,255,.71);
+  --ds-fill-tab:rgba(255,255,255,.85);
+  --ds-hi:inset 0 1px 0 rgba(255,255,255,.75);
+  --ds-shadow-sel:0 2px 4px rgba(24,48,28,.03),inset 0 1px 0 rgba(255,255,255,.75);
+  --ds-shadow-soft:0 1px 3px rgba(24,57,42,.04),0 6px 20px -12px rgba(24,57,42,.14);
+  --ds-shadow-float:0 8px 40px -12px rgba(24,57,42,.2);
+  --ds-glass-fill:linear-gradient(135deg,rgba(255,255,255,.41),rgba(238,243,223,.25) 45%,rgba(255,255,255,.29));
+  --ds-glass-insets:inset 0 1px 0 rgba(255,255,255,.85),inset 1px 0 0 rgba(255,255,255,.45),inset 0 -1px 0 rgba(255,255,255,.25),inset 0 3px 5px -3px #fff,inset 2px 0 5px -3px #fff,inset -2px -2px 4px -3px rgba(255,255,255,.8);
+  --ds-chip-face:linear-gradient(#fff,#f6f8f3) padding-box,linear-gradient(rgba(24,57,42,.12),rgba(24,57,42,.24)) border-box;
+  --ds-chip-shadow:0 1px 2px rgba(24,57,42,.06),inset 0 1px 0 #fff;
+  --ds-chip-overlay:linear-gradient(rgba(24,57,42,.035),rgba(24,57,42,.075));
+  --ds-well-shadow:inset 0 1px 2px rgba(24,57,42,.06),inset 0 0 0 1px rgba(24,57,42,.09);
+  --ds-well-fill:rgba(243,246,239,.8);
+  --ds-cap-shadow:0 1.5px 0 rgba(24,57,42,.10),inset 0 0 0 1px rgba(24,57,42,.11);
+  --ds-r-rail:15px;
+  --ds-r-chrome:13px;
+  --ds-r-pane:14px;
+  --ds-r-tab:12px;
+  --ds-r-nav:8px;
+  --ds-r-btn:7px;
+  --ds-r-chip:5px;
+  --ds-r-thumb:9px;
+}
+/* Inside Daily Brief the page is see-through over the native frame glass. */
+:root.brief-native[data-skin-on~='tokens']{ --ds-canvas:transparent; --ds-fill-hover:rgba(255,255,255,.24) }
+/* Reduce Transparency (native .brief-opaque, or the OS setting): opaque panes, no blur. */
+:root.brief-opaque[data-skin-on~='tokens']{
+  --ds-canvas:#f6f8f3;
+  --ds-glass-pane:#ffffff;--ds-glass-large:#ffffff;--ds-glass-rail:#ffffff;--ds-glass-chrome:#ffffff;
+}
+@media (prefers-reduced-transparency:reduce){
+  :root[data-skin-on~='tokens']{
+    --ds-canvas:#f6f8f3;
+    --ds-glass-pane:#ffffff;--ds-glass-large:#ffffff;--ds-glass-rail:#ffffff;--ds-glass-chrome:#ffffff;
+  }
+}
+
+/* 10.2 · type: Geist, Oxygen's sizes (glass.css 18-19; teardown §5). The eyebrow goes
+   back to 11px uppercase .16em on purpose: Oxygen measured it, and Ivan judged 3.0 nicer. */
+:root[data-skin-on~='type']{
+  --ds-font:'Geist',-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;
+  --ds-font-mono:var(--ds-font);
+  --ds-fs-eyebrow:11px;
+  --ds-tt-eyebrow:uppercase;
+  --ds-tr-eyebrow:.16em;
+  --ds-fs-meta:12px;
+  --ds-fs-body:13px;
+  --ds-fs-message:14px;
+  --ds-lh-message:1.55;
+  --ds-fs-input:13px;
+  --ds-fs-title:16px;
+  --ds-fs-page:20px;
+  --ds-tr-page:-.02em;
+  --ds-fs-figure:28px;
+  --ds-tr-figure:-.035em;
+  --ds-fw-em:550;
+}
+:root[data-skin-on~='type'][data-layout='phone']{
+  --ds-fs-meta:13px;
+  --ds-fs-body:15px;
+  --ds-fs-message:15px;
+  --ds-fs-input:16px;
+  --ds-fs-title:17px;
+  --ds-fs-figure:32px;
+}
+
+/* 10.3 · shell: sizing and the spacing roles (SPEC-shell-spacing §3.1). */
+:root[data-skin-on~='shell']{
+  --ds-control-h:32px;
+  --ds-control-h-sm:28px;
+  --ds-hit:32px;
+  --ds-ichip:28px;
+  --ds-plate-gap:8px;
+  --ds-gutter:16px;
+  --ds-edge:24px;
+  --ds-section-gap:24px;
+  --ds-grid-gap:16px;
+  --ds-card-pad:16px;
+  --ds-detail-pad:24px;
+  --ds-row-x:8px;
+  --ds-row-y:12px;
+  --ds-ctl-gap:8px;
+  --ds-label-gap:8px;
+  --ds-header-h:52px;
+  --ds-toolbar-h:44px;
+  --ds-head-2:64px;
+  --ds-peer-w:390px;
+}
+:root[data-skin-on~='shell'][data-density='compact']{ --ds-row-y:8px }
+:root[data-skin-on~='shell'][data-layout='phone']{
+  --ds-control-h:44px;
+  --ds-control-h-sm:32px;
+  --ds-hit:44px;
+  --ds-ichip:32px;
+}
