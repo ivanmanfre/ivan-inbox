@@ -51,6 +51,18 @@ export function toSaved(rows: ContentDraft[]): Saved {
   }
 }
 
+/** The read's row limit (fetchWeekDrafts `.limit(1000)`). */
+export const WEEK_LIMIT = 1000
+
+/** The server's count, but only when the read actually hit the row limit.
+ *  `count` runs above rows.length whenever operator-deleted or test rows were
+ *  filtered out after the read, so that gap alone is never a cap (it printed
+ *  "Showing the newest 1,000 of 114 rows"). */
+export function cappedOf(page: { rows: unknown[]; count: number | null; raw?: number }): number | null {
+  const raw = page.raw ?? page.rows.length
+  return page.count != null && raw >= WEEK_LIMIT && page.count > raw ? page.count : null
+}
+
 export function weekRange(now: number): { from: string; to: string } {
   return { from: new Date(now - 8 * DAY_MS).toISOString(), to: new Date(now + 9 * DAY_MS).toISOString() }
 }
@@ -100,7 +112,7 @@ export function useWeekRead(enabled: boolean, now: number): WeekRead {
           setError('The refresh came back empty over a saved week that held posts, so the saved copy stays.')
         } else {
           fullAccepted.current = true; setMemberReadState('idle'); setRows(mine); setSource('live'); setAt(new Date().toISOString()); setError(null)
-          setCapped(page.count != null && page.count > page.rows.length ? page.count : null)
+          setCapped(cappedOf(page))
           writeSwr(WEEK_CACHE, toSaved(mine))
         }
       })
