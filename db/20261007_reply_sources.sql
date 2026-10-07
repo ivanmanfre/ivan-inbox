@@ -685,10 +685,11 @@ revoke all on function reply_source_private.refresh_all() from public,anon,authe
 -- Dynamic cron SQL lets fixtures exercise all data/auth functions without replacing scheduler behavior.
 create function reply_source_private.register_job()
 returns bigint language plpgsql volatile set search_path=pg_catalog as $$
-declare saved_id bigint; found_id bigint; valid boolean; command text:='set statement_timeout=''90s''; set lock_timeout=''2s''; select reply_source_private.refresh_all();';
+declare saved_id bigint; found_id bigint; valid boolean; is_disabled boolean; command text:='set statement_timeout=''90s''; set lock_timeout=''2s''; select reply_source_private.refresh_all();';
 begin
  if not pg_try_advisory_xact_lock(20261007,742) then raise exception 'scheduler_busy' using errcode='55P03'; end if;
- select job_id into saved_id from reply_source_private.scheduler where singleton for update;
+ select job_id,disabled into saved_id,is_disabled from reply_source_private.scheduler where singleton for update;
+ if is_disabled then raise exception 'scheduler_disabled' using errcode='55000'; end if;
  execute 'select min(jobid),count(*)=1 and bool_and(command=$1 and schedule=$2 and username=$3 and database=current_database() and active) from cron.job where jobname=$4'
  into found_id,valid using command,'*/5 * * * *','postgres','reply-source-snapshot-v1';
  if saved_id is not null or found_id is not null then
@@ -708,13 +709,14 @@ declare saved_id bigint; found_id bigint; valid boolean; is_disabled boolean;
 begin
  if not pg_try_advisory_xact_lock(20261007,742) then raise exception 'scheduler_busy' using errcode='55P03'; end if;
  select job_id,disabled into saved_id,is_disabled from reply_source_private.scheduler where singleton for update;
+ -- This marker survives the inverse's first commit, even before the first registration.
+ update reply_source_private.scheduler set disabled=true where singleton;
  if saved_id is null then return; end if;
  execute 'select min(jobid),count(*)=1 and bool_and(command=$1 and schedule=$2 and username=$3 and database=current_database() and jobname=$5) from cron.job where jobid=$4 or jobname=$5'
  into found_id,valid using 'set statement_timeout=''90s''; set lock_timeout=''2s''; select reply_source_private.refresh_all();','*/5 * * * *','postgres',saved_id,'reply-source-snapshot-v1';
  if is_disabled and found_id is null then return; end if;
  if saved_id is distinct from found_id or valid is distinct from true then raise exception 'scheduler_identity_mismatch' using errcode='42501'; end if;
  execute 'select cron.unschedule($1)' using saved_id;
- update reply_source_private.scheduler set disabled=true where singleton;
 end;
 $$;
 revoke all on function reply_source_private.unschedule_job() from public,anon,authenticated,service_role;

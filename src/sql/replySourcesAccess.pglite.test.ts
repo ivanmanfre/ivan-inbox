@@ -223,3 +223,17 @@ it('snapshot: an empty full history is valid and public reads leave the generati
  await db.exec('reset role')
  expect(await call('(select to_jsonb(s) from reply_source_private.snapshots s where client_id=\'risedtc\')')).toEqual(before)
 })
+it('rollback: commits the disabled marker before object removal even without a registered job',async()=>{
+ await db.exec('begin; select reply_source_private.unschedule_job(); commit;')
+ expect(await call('(select disabled from reply_source_private.scheduler where singleton)')).toBe(true)
+ // This separate transaction is the registration window between the inverse's two transactions.
+ await expect(call('reply_source_private.register_job()')).rejects.toMatchObject({code:'55000',message:'scheduler_disabled'})
+ expect(await call('(select job_id from reply_source_private.scheduler where singleton)')).toBeNull()
+})
+it.each([null,42])('rollback: disabled registration rejects stored job ID %s before cron access',async(jobId)=>{
+ await db.query('update reply_source_private.scheduler set disabled=true,job_id=$1 where singleton',[jobId])
+ // There is no cron substitute in this fixture. The disabled guard must reject before cron access.
+ await expect(call('reply_source_private.register_job()')).rejects.toMatchObject({code:'55000',message:'scheduler_disabled'})
+ expect(await call('(select disabled from reply_source_private.scheduler where singleton)')).toBe(true)
+ expect(await call('(select job_id::int from reply_source_private.scheduler where singleton)')).toBe(jobId)
+})
