@@ -32,6 +32,11 @@ describe('S0: the Claude drawer is beside the main column', () => {
     expect(container.querySelector('.d-main > header.d-ans')).toBeTruthy()
     expect(container.querySelector('.d-bodyrow')!.classList.contains('d-with-claude')).toBe(false)
   })
+  it('Brief 4 claude section: no drawer column on the Claude workspace, even while open', () => {
+    const { container } = renderInFrame(<Desktop setTitleSlot={() => {}} setToolsSlot={() => {}} sideMin={false} setSideMin={() => {}} drawer={false} />,
+      { layout: 'desktop', hash: '#exp/d/claude', frame: { claudeOpen: true } })
+    expect(container.querySelector('aside.d-claude')).toBeNull()
+  })
   it('no drawer when closed', () => {
     const { container } = renderDesktop(false)
     expect(container.querySelector('aside.d-claude')).toBeNull()

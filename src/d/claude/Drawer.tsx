@@ -14,12 +14,18 @@ import { More } from './More'
 import { RunnerJobs, useDRunner } from './Runner'
 import { useSubjects } from './useSubjects'
 import { hasLiveVoice } from './VoiceLayer'
+import { runnerCount } from './Runner'
+import { useSkin } from '../../ds/useSkin'
 import './claude.css'
+import './v4/claude-v4.css'
 
 export type ClaudeDrawerProps = {
   layout: Layout
   route: DRoute
   onClose: () => void
+  /** Brief 4 (`claude` section): 'page' = the conversation column of the Claude workspace, where the
+   *  chats list is the page's rail, so the drawer's chats toggle and close key are not drawn. */
+  variant?: 'drawer' | 'page'
 }
 
 // The ⌘J drawer (desktop: docked right under the answer row, beside the page;
@@ -55,10 +61,13 @@ export function StatusPill() {
   )
 }
 
-export default function ClaudeDrawer({ layout, route, onClose }: ClaudeDrawerProps) {
+export default function ClaudeDrawer({ layout, route, onClose, variant = 'drawer' }: ClaudeDrawerProps) {
   const { chat, text, setText, see, setVoiceOpen, online } = useClaude()
   const handoff = useClaudeHandoff()
   const [view, setView] = useState<'chat' | 'chats'>('chat')
+  // Brief 4 (`claude` section), read as a plain value; the runner moves into a header pill's popover.
+  const v4 = useSkin('claude')
+  const [runOpen, setRunOpen] = useState(false)
   const list = useChatList()
   const runner = useDRunner(chat.wanted ?? null)
   const subjects = useSubjects(route)
@@ -75,6 +84,9 @@ export default function ClaudeDrawer({ layout, route, onClose }: ClaudeDrawerPro
   useEffect(() => { if (handoffAt) setView('chat') }, [handoffAt])
   // Re-read the chat list whenever it is shown.
   useEffect(() => { if (view === 'chats') reload() }, [view, reload])
+  // A job deep link (?job=) opens the runner popover, as it opened the inline list before.
+  const runFocus = runner.focus
+  useEffect(() => { if (runFocus) setRunOpen(true) }, [runFocus])
 
   const send = (message: string) => {
     setText('')
@@ -82,6 +94,7 @@ export default function ClaudeDrawer({ layout, route, onClose }: ClaudeDrawerPro
     setView('chat')
   }
 
+  const page = v4 && variant === 'page'
   const edge = useRef<{ x: number; y: number } | null>(null)
   const touch = layout === 'phone' ? {
     onTouchStart: (e: React.TouchEvent) => { const t = e.touches[0]; edge.current = t.clientX < 24 ? { x: t.clientX, y: t.clientY } : null },
@@ -93,13 +106,13 @@ export default function ClaudeDrawer({ layout, route, onClose }: ClaudeDrawerPro
   } : {}
 
   return (
-    <div className={`dcl dcl-${layout}`} data-claude-drawer {...touch}>
+    <div className={`dcl dcl-${layout}${v4 ? ' dcl-v4' : ''}${page ? ' dcl-ws' : ''}`} data-claude-drawer {...touch}>
       {layout === 'phone' && <div className="dcl-grab" aria-hidden="true" />}
       <div className="dcl-head">
-        <button type="button" className={`dcl-ib${view === 'chats' ? ' dcl-on' : ''}`} data-verb="chats" aria-pressed={view === 'chats'}
+        {!page && <button type="button" className={`dcl-ib${view === 'chats' ? ' dcl-on' : ''}`} data-verb="chats" aria-pressed={view === 'chats'}
           aria-label={view === 'chats' ? 'Back to the chat' : chat.botUnread ? "Chats, Claude's thread has something new" : 'Chats'} title="Chats" onClick={() => setView(v => (v === 'chats' ? 'chat' : 'chats'))}>
           <CIcon name="chats" />{chat.botUnread && <i className="dcl-dot" aria-hidden="true" />}
-        </button>
+        </button>}
         <div className="dcl-title">
           <b>{view === 'chats' ? 'Chats' : 'Claude'}</b>
           {view === 'chats' ? <small>{chatsN == null ? 'reading…' : `${chatsN} chats`}</small> : <StatusPill />}
@@ -110,28 +123,37 @@ export default function ClaudeDrawer({ layout, route, onClose }: ClaudeDrawerPro
             <CIcon name="voice" />
           </button>
         )}
-        <button type="button" className="dcl-ib" data-verb="new-chat" aria-label="New chat" title="New chat" onClick={() => { chat.newThread(); setView('chat') }}>
+        {v4 && runner.jobs.length > 0 && (
+          <button type="button" className={`dcl-runpill${runOpen ? ' dcl-on' : ''}`} data-verb="runner" aria-expanded={runOpen} aria-label={`Runner jobs: ${runnerCount(runner.jobs)}`}
+            title="Runner jobs" onClick={() => setRunOpen(o => !o)}><i aria-hidden="true" />Runner · {runnerCount(runner.jobs)}</button>
+        )}
+        {!page && <button type="button" className="dcl-ib" data-verb="new-chat" aria-label="New chat" title="New chat" onClick={() => { chat.newThread(); setView('chat') }}>
           <CIcon name="plus" />
-        </button>
-        <button type="button" className="dcl-ib" aria-label="Close Claude (⌘J)" title="Close (⌘J)" onClick={onClose}>
+        </button>}
+        {!page && <button type="button" className="dcl-ib" aria-label="Close Claude (⌘J)" title="Close (⌘J)" onClick={onClose}>
           <CIcon name="x" />
-        </button>
+        </button>}
       </div>
+      {v4 && runOpen && (runner.jobs.length > 0 || runner.note) && (
+        <div className="dcl-runpop" role="dialog" aria-label="Runner jobs"><RunnerJobs runner={runner} /></div>
+      )}
       {modelRefused && (
         <div className="dcl-fail dcl-banner" role="alert">
           <span>{last.error?.message}</span>
           <button type="button" className="dcl-link" data-verb="model-default" onClick={() => chat.setWanted(null)}>Use the Claude default</button>
         </div>
       )}
-      {view === 'chats'
+      {view === 'chats' && !page
         ? <Chats list={list} onPicked={() => setView('chat')} />
         : <Conversation first={person?.first ?? null} send={send} />}
-      <RunnerJobs runner={runner} />
+      {!v4 && <RunnerJobs runner={runner} />}
       <div className="dcl-foot">
-        <Context subjects={subjects} />
+        {v4 && runner.note && <div className="dcl-fail" role="alert"><span>{runner.note}</span><button type="button" className="dcl-link" onClick={runner.clearNote}>Dismiss</button></div>}
+        {!v4 && <Context subjects={subjects} />}
         <Composer
           placeholder={person ? `Ask about ${person.first}…` : 'Ask Claude…'}
           onSend={send}
+          top={v4 ? <Context subjects={subjects} /> : undefined}
           more={a => <More chat={chat} runner={runner} text={text} onSent={() => setText('')} onCommands={a.onCommands} onPaste={a.onPaste} phone={layout === 'phone'} />}
         />
       </div>

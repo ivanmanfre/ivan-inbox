@@ -10,7 +10,7 @@ import { SEATS, SEAT_NAME, seatOf, type Seat } from '../seats'
 import { usePull } from './usePull'
 import { useRef, type ReactNode } from 'react'
 import { Empty, Failed, Skeleton } from '../ui/states'
-import { Bar, BulkBar, Folders, Headline, Health } from './Chrome'
+import { Bar, BulkBar, Folders, Headline, Health, noDraftLine } from './Chrome'
 import { ColumnBody, type Mode } from './Column'
 import type { MenuAct } from './Menu'
 import type { DayOut, SeatView } from './model'
@@ -23,6 +23,8 @@ import type { RowCtx } from './threadRows'
 import type { DmsData } from './useDmsData'
 import type { DmVerbs } from './verbs'
 import type { WarmVerbs } from './warmVerbs'
+import { ListHead, SeatSeg } from './v4/Chrome'
+import { DesktopDmsV4, ListScroll, PhoneDmsV4 } from './v4/Layout'
 
 export type PageModel = {
   layout: Layout; mode: Mode; folder: string | null
@@ -37,10 +39,14 @@ export type PageModel = {
   seat: Seat; setSeat: (s: Seat) => void; setFolder: (f: string | null) => void
   /** Came-back tags by person, and their Dismiss (today's came_back_dismiss + Undo). */
   came: ReadonlyMap<string, CameTag>; dismissCame: (pid: string, name: string) => Promise<void>
+  /** Brief 4 (skin section `dms`): the v4 layouts. Read once per render in Dms(), above any branch. */
+  v4: boolean
+  /** Brief 4: the open thread registers its unsaved check here (SPEC-dms §3.4). */
+  registerGuard: (f: (() => boolean) | null) => void
 }
 
 function rowCtx(m: PageModel): RowCtx {
-  return { selected: m.open?.prospect_id ?? m.threadId, checked: m.checked, open: m.openThread, now: m.now, verbs: m.verbs, busy: m.busy, setBusy: m.setBusy, fail: m.fail, pre: m.pre, more: m.rowMore, came: m.came }
+  return { selected: m.open?.prospect_id ?? m.threadId, checked: m.checked, open: m.openThread, now: m.now, verbs: m.verbs, busy: m.busy, setBusy: m.setBusy, fail: m.fail, pre: m.pre, more: m.rowMore, came: m.came, v4: m.v4 }
 }
 
 function Body({ m, seat }: { m: PageModel; seat: Seat }) {
@@ -59,7 +65,7 @@ function Pane({ m, phone }: { m: PageModel; phone: boolean }) {
     return <section className="dm-pane dm-pane-none"><Empty title="Pick a conversation." /></section>
   }
   const tag = m.came.get(t.prospect_id)
-  return <ThreadPane t={t} auto={m.auto} all={m.threads} phone={phone} verbs={m.verbs} now={m.now} onBack={m.closeThread}
+  return <ThreadPane t={t} auto={m.auto} all={m.threads} phone={phone} verbs={m.verbs} now={m.now} onBack={m.closeThread} v4={m.v4} registerGuard={m.v4 ? m.registerGuard : undefined}
     signal={tag ? <CameSignal tag={tag} onDismiss={() => m.dismissCame(t.prospect_id, t.prospect_name)} /> : null}
     onAsk={() => m.ask(t, 'ask')} onDraftStart={() => m.openThread(t)} onMenu={a => m.onMenu(t, a)} staleN={m.staleBy[seatOf(t.client_id) ?? 'ivan'].length} pre={m.pre} reload={m.data.refreshAll} />
 }
@@ -77,6 +83,23 @@ function squareStats(m: PageModel): Record<Seat, SquareStat> {
 
 export function DesktopDms({ m }: { m: PageModel }) {
   const s = m.seat
+  if (m.v4) {
+    const bulk = m.checked.size > 0
+    const sq = squareStats(m)
+    return <DesktopDmsV4 seat={s} replied={sq[s].replied} today={sq[s].today}
+      headline={<Headline mode={m.mode} views={m.views} counts={m.counts} noSub tools={<>
+        <SeatSeg seat={s} pick={m.setSeat} needs={dmNumbers(m.counts, 'needs')} drafts={dmNumbers(m.counts, 'drafts')} stats={sq} />
+        <span className="dx-grow" />
+        {noDraftLine(m.views) && <span className="dx-nodraft">{noDraftLine(m.views)}</span>}
+        <SearchField ref={m.searchRef} q={m.q} setQ={m.setQ} reach={m.data.threads.length || null} />
+      </>} />}
+      head={bulk
+        ? <BulkBar checked={m.checked} byId={m.byId} clear={() => m.setChecked(new Set())} onDiscard={ts => { void m.verbs.bulkDiscard(ts, 'The selected drafts.').then(() => m.setChecked(new Set())) }} />
+        : <ListHead pick={m.folder ?? ''} folders={<Folders v4 folder={m.folder} setFolder={m.setFolder} views={m.views} />} filter={<TokenBar tokens={m.tokens} setTokens={m.setTokens} />} />}
+      health={<div className="dx-health"><Health data={m.data} /></div>}
+      list={<ListScroll key={`${s}:${m.folder ?? ''}:${m.mode}`}><Body m={m} seat={s} /></ListScroll>}
+      pane={<Pane m={m} phone={false} />} />
+  }
   return (
     <div className="dm-page dm-desk">
       <Headline mode={m.mode} views={m.views} counts={m.counts} tools={<SearchField ref={m.searchRef} q={m.q} setQ={m.setQ} reach={m.data.threads.length || null} />} />
@@ -94,10 +117,21 @@ export function DesktopDms({ m }: { m: PageModel }) {
 }
 
 export function PhoneDms({ m }: { m: PageModel }) {
-  if (m.threadId) return <div className="dm-page dm-phone dm-phone-thread"><Pane m={m} phone /></div>
+  if (m.threadId) return <div className={`dm-page dm-phone dm-phone-thread${m.v4 ? ' dx-phone' : ''}`} data-v4-guard={m.v4 ? '' : undefined}><Pane m={m} phone /></div>
   const s = m.seat
   const st = m.stats[s]
   const today = st.days.at(-1)
+  if (m.v4) {
+    const sq = squareStats(m)
+    return <PhoneDmsV4 seat={s}
+      headline={<Headline mode={m.mode} views={m.views} counts={m.counts} />}
+      seats={<SeatSeg phone seat={s} pick={m.setSeat} needs={dmNumbers(m.counts, 'needs')} drafts={dmNumbers(m.counts, 'drafts')} stats={sq} />}
+      stat={<div className="dm-pstat">replied 7d <b>{st.replied}</b> · today <b>{today?.msg ?? 0}</b> msgs <b>{today?.inv ?? 0}</b> inv · <Health data={m.data} /></div>}
+      search={<div className="dm-psearch"><SearchField ref={m.searchRef} q={m.q} setQ={m.setQ} reach={m.data.threads.length || null} phone /><TokenBar tokens={m.tokens} setTokens={m.setTokens} /></div>}
+      folders={<Folders v4 folder={m.folder} setFolder={m.setFolder} views={m.views} phone />}
+      bulk={<BulkBar checked={m.checked} byId={m.byId} clear={() => m.setChecked(new Set())} onDiscard={ts => { void m.verbs.bulkDiscard(ts, 'The selected drafts.').then(() => m.setChecked(new Set())) }} />}
+      list={<PullList onRefresh={m.refreshAll}><Body m={m} seat={s} /></PullList>} />
+  }
   return (
     <div className="dm-page dm-phone">
       <Headline mode={m.mode} views={m.views} counts={m.counts} />

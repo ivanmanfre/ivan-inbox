@@ -28,11 +28,13 @@ export function outgoing(text: string, atts: { name: string }[]): string {
 
 const isTouch = () => typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches
 
-export function Composer({ placeholder, onSend, more }: {
+export function Composer({ placeholder, onSend, more, top }: {
   placeholder: string
   onSend: (message: string) => void
   /** The More key, built by the drawer (it owns the runner); handed the composer's own actions. */
   more: (a: { onCommands: () => void; onPaste: () => void }) => ReactNode
+  /** Brief 4 (`claude` section): what travels (the context chips) drawn inside the well, above the field. */
+  top?: ReactNode
 }) {
   const { chat, online, text, setText, savedAt, stop, dictateOnOpen, clearDictateOnOpen } = useClaude()
   const [atts, setAtts] = useState<Att[]>([])
@@ -157,6 +159,7 @@ export function Composer({ placeholder, onSend, more }: {
       {!recording && stt.note && <div className="dcl-rec" role="status">{stt.note}</div>}
       {!recording && <Heard text={heard} clip={stt.clip} onDismiss={() => { setHeard(null); stt.clearClip() }} />}
       <div className="dcl-box">
+        {top}
         <textarea
           ref={field} rows={2} value={text} placeholder={placeholder} aria-label="Message to Claude" enterKeyHint={isTouch() ? 'enter' : 'send'}
           onChange={e => setText(e.target.value)} onKeyDown={onKey}

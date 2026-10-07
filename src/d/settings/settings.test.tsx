@@ -27,6 +27,8 @@ vi.mock('../../wb/money', () => ({ MoneyView: () => <div data-testid="money-view
 import { renderInFrame } from '../test-utils'
 import { parseDHash } from '../route'
 import { pushBlocked } from './prefs'
+import { __resetSkinForTests } from '../../ds/skin'
+import { setSkinHere } from './skinSwitch'
 import SettingsPage from './index'
 
 const props = () => ({ layout: 'desktop' as const, route: parseDHash('#exp/d/settings'), navigate: vi.fn() })
@@ -168,5 +170,51 @@ describe('Money plate in plain English (final gate 09-27)', () => {
     expect(text).toContain('$3,000')
     expect(text).toContain('unverified, waiting on a Stripe read · from a note, not a Stripe reading · observed 25 days ago · stale')
     expect(text).toContain('Not recorded in any table yet. Waiting on a Stripe read.')
+  })
+})
+
+describe('Brief 4 Settings (settings section)', () => {
+  afterEach(() => { __resetSkinForTests(new Set()) })
+  it('grouped list with the same keys: push, sound, density, the switch, sign out; no primary on a saved pref', async () => {
+    __resetSkinForTests(new Set(['settings', 'tokens', 'type', 'motion', 'shell']))
+    renderInFrame(<SettingsPage {...props()} />)
+    await waitFor(() => expect(document.querySelector('.ds4')).not.toBeNull())
+    for (const g of ['notifications', 'appearance', 'boards', 'money', 'account']) expect(document.querySelector(`[data-group="${g}"]`), g).not.toBeNull()
+    for (const v of ['push-on', 'push-off', 'sound-on', 'sound-off', 'density-comfortable', 'density-compact', 'skin-on', 'skin-off', 'sign-out']) expect(document.querySelector(`[data-verb="${v}"]`), v).not.toBeNull()
+    expect(document.querySelectorAll('.ds2-pair .d-key-p')).toHaveLength(0)
+    expect(document.querySelector('[data-verb="skin-on"]')!.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(document.querySelector('[data-verb="density-compact"]')!)
+    expect(localStorage.getItem('inbox-density')).toBe('compact')
+  })
+  it('sign out still asks first in the grouped list', async () => {
+    __resetSkinForTests(new Set(['settings', 'tokens', 'type', 'motion', 'shell']))
+    renderInFrame(<SettingsPage {...props()} />)
+    fireEvent.click(await waitFor(() => document.querySelector('[data-verb="sign-out"]') as HTMLElement))
+    await waitFor(() => expect(document.querySelector('[data-verb="confirm"]')).not.toBeNull())
+    expect(auth.signOut).not.toHaveBeenCalled()
+  })
+  it('in Brief the grouped list never offers Reset to dark either', async () => {
+    __resetSkinForTests(new Set(['settings', 'tokens', 'type', 'motion', 'shell']))
+    localStorage.setItem('inbox-theme', 'light')
+    document.documentElement.classList.add('brief-native')
+    try {
+      renderInFrame(<SettingsPage {...props()} />)
+      await waitFor(() => expect(document.querySelector('.ds4')).not.toBeNull())
+      expect(document.querySelector('[data-verb="theme-reset"]')).toBeNull()
+    } finally { document.documentElement.classList.remove('brief-native') }
+  })
+  it('the switch: Off stores off for this device and reloads; On removes it; legacy shows the way back only after Off', async () => {
+    const reload = vi.fn()
+    sessionStorage.setItem('ds-skin', 'brief:all')
+    setSkinHere(false, reload)
+    expect(localStorage.getItem('ds-skin')).toBe('off'); expect(sessionStorage.getItem('ds-skin')).toBeNull(); expect(reload).toHaveBeenCalledTimes(1)
+    renderInFrame(<SettingsPage {...props()} />)
+    await waitFor(() => expect(document.querySelector('[data-verb="skin-on"]')).not.toBeNull())
+    cleanup()
+    setSkinHere(true, reload)
+    expect(localStorage.getItem('ds-skin')).toBeNull()
+    renderInFrame(<SettingsPage {...props()} />)
+    await waitFor(() => expect(document.querySelector('[data-verb="density-compact"]')).not.toBeNull())
+    expect(document.querySelector('[data-verb="skin-on"]')).toBeNull()
   })
 })

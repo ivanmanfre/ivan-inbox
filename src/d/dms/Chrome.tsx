@@ -12,7 +12,14 @@ import { TokenBar } from './Search'
 import type { DmsData } from './useDmsData'
 import type { FilterToken } from '../../lib/filterTokens'
 
-export function Headline({ mode, views, counts, tools }: { mode: Mode; views: Record<Seat, SeatView>; counts: FrameCounts; tools?: React.ReactNode }) {
+/** "No draft yet: Rise 1, Arch 2." or null: work Ivan must start (the headline's sub line). */
+export function noDraftLine(views: Record<Seat, SeatView>): string | undefined {
+  const nd = SEATS.map(s => views[s].nodraft.length)
+  return nd.some(Boolean) ? `No draft yet: ${SEATS.flatMap((s, i) => (nd[i] ? [`${SEAT_NAME[s]} ${nd[i]}`] : [])).join(', ')}.` : undefined
+}
+
+export function Headline({ mode, views, counts, tools, noSub = false }: { mode: Mode; views: Record<Seat, SeatView>; counts: FrameCounts; tools?: React.ReactNode
+  /** Brief 4: the sub line is drawn by the page's band tools instead. */ noSub?: boolean }) {
   const needs = dmNumbers(counts, 'needs')
   if (mode === 'spam') {
     return <AnswerRow title={<>Likely spam: <N v={views.risedtc.spam.length} /> Mattan's, <N v={views.arch.spam.length} /> Davorin's.</>} tools={tools} />
@@ -20,9 +27,8 @@ export function Headline({ mode, views, counts, tools }: { mode: Mode; views: Re
   if (mode === 'email') {
     return <AnswerRow title={<>Email waiting on you: <N v={views.ivan.emailWaiting.length} /> yours, <N v={views.risedtc.emailWaiting.length} /> Mattan's, <N v={views.arch.emailWaiting.length} /> Davorin's.</>} tools={tools} />
   }
-  const nd = SEATS.map(s => views[s].nodraft.length)
   // One headline; the sub line only when a thread still has no draft (work Ivan must start).
-  const sub = nd.some(Boolean) ? `No draft yet: ${SEATS.flatMap((s, i) => (nd[i] ? [`${SEAT_NAME[s]} ${nd[i]}`] : [])).join(', ')}.` : undefined
+  const sub = noSub ? undefined : noDraftLine(views)
   return <AnswerRow title={<>Needs you: <N v={needs.ivan} /> yours, <N v={needs.risedtc} /> Mattan's, <N v={needs.arch} /> Davorin's.</>} sub={sub} tools={tools} />
 }
 
@@ -42,10 +48,28 @@ export function anyUnread(ts: readonly Thread[]): boolean {
 
 const Dot = ({ on }: { on: boolean }) => on ? <span className="dm-fdot" role="img" aria-label="unread" /> : null
 
-export function Folders({ folder, setFolder, views, phone }: { folder: string | null; setFolder: (f: string | null) => void; views: Record<Seat, SeatView>; phone?: boolean }) {
+export function Folders({ folder, setFolder, views, phone, v4 }: { folder: string | null; setFolder: (f: string | null) => void; views: Record<Seat, SeatView>; phone?: boolean
+  /** Brief 4: counts move to the tooltip and the label; "Likely " can drop at narrow widths. */ v4?: boolean }) {
   // Waiting only (emailFolder.ts): an old archived reply nobody stamped read never lights it.
   const emailDot = SEATS.some(s => anyUnread(views[s].emailWaiting))
   const spamDot = anyUnread(views.risedtc.spam) || anyUnread(views.arch.spam)
+  if (v4) {
+    const emailN = SEATS.map(s => `${SEAT_NAME[s]} ${views[s].emailWaiting.length}`).join(', ')
+    const spamN = `Rise ${views.risedtc.spam.length}, Arch ${views.arch.spam.length}`
+    return (
+      <span className={`dm-folders dx-folders${phone ? ' dm-folders-phone' : ''}`} role="tablist" aria-label="Folders">
+        <button type="button" role="tab" aria-selected={!folder} className={`dm-fd${!folder ? ' dm-on' : ''}`} onClick={() => setFolder(null)}>Conversations</button>
+        <button type="button" role="tab" aria-selected={folder === 'email'} className={`dm-fd${folder === 'email' ? ' dm-on' : ''}`} onClick={() => setFolder('email')} data-unread={emailDot ? 'true' : undefined}
+          title={`Email waiting: ${emailN}`} aria-label={`Email${emailDot ? ', unread' : ''}. Waiting: ${emailN}`}>
+          <Dot on={emailDot} />Email
+        </button>
+        <button type="button" role="tab" aria-selected={folder === 'spam'} className={`dm-fd${folder === 'spam' ? ' dm-on' : ''}`} onClick={() => setFolder('spam')} data-unread={spamDot ? 'true' : undefined}
+          title={`Likely spam: ${spamN}`} aria-label={`Likely spam${spamDot ? ', unread' : ''}. ${spamN}`}>
+          <Dot on={spamDot} /><span className="dx-long">Likely </span>spam
+        </button>
+      </span>
+    )
+  }
   return (
     <span className={`dm-folders${phone ? ' dm-folders-phone' : ''}`} role="tablist" aria-label="Folders">
       <button type="button" role="tab" aria-selected={!folder} className={`dm-fd${!folder ? ' dm-on' : ''}`} onClick={() => setFolder(null)}>Conversations</button>

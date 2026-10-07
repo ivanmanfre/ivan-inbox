@@ -6,7 +6,7 @@ import { ReplySourceContent } from './ReplySourceSummary'
 // the way LinkedIn delivered it, "To <email>" on a sent email, "Not accepted yet" on a pending
 // invite note. Older messages sit behind one "N earlier" tap.
 // Drafts, internal questions and discarded rows are not history (they live in the pane below).
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { eventTime, isDraft, isEngineRetired, isHiddenRetired, isInternalConfirmation, retiredLabel, sendFailed, messageChannel, type InboxMessage, type Thread } from '../../lib/inbox'
 import { label } from '../../lib/labels'
 import { Linkified } from '../ui/Linkified'
@@ -24,7 +24,7 @@ export function kindPill(m: InboxMessage): string | null {
   return null
 }
 
-function statusPill(m: InboxMessage, stage: string): { text: string; fail: boolean } | null {
+export function statusPill(m: InboxMessage, stage: string): { text: string; fail: boolean } | null {
   if (m.direction !== 'outbound') return null
   if (sendFailed(m)) return { text: `Send failed: ${label(m.send_blocked_reason)}`, fail: true }
   if (isEngineRetired(m)) return { text: retiredLabel(m), fail: false }
@@ -66,17 +66,28 @@ export function oursLabel(t: Pick<Thread, 'client_id'>): string {
  *  theirs on the left in grey with their first name on the first bubble of a run, ours on the right
  *  tinted with "You" (or Mattan / Davorin), a day line between days, and each bubble's channel,
  *  status and time underneath. The All conversations log reuses it as is. */
-type HistoryProps = { t: Thread; cap?: number; now?: number; onReplyEmail?: () => void; onForwardEmail?: (m: InboxMessage) => void }
+type HistoryProps = { t: Thread; cap?: number; now?: number; onReplyEmail?: () => void; onForwardEmail?: (m: InboxMessage) => void
+  /** Brief 4: meta once per run (status, reaction, email and a channel change always), arrivals grow from their tail. */
+  v4?: boolean }
 
 export function History(props: HistoryProps) {
   const [retry, setRetry] = useState(0)
   return <HistoryRead key={`${props.t.prospect_id}:${retry}`} {...props} retry={() => setRetry(n => n + 1)} />
 }
 
-function HistoryRead({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail, retry }: HistoryProps & { retry: () => void }) {
+function HistoryRead({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail, retry, v4 = false }: HistoryProps & { retry: () => void }) {
   const source = useReplySource({ kind: 'operator', clientId: t.client_id ?? 'ivan' }, t.prospect_id, true)
   const [all, setAll] = useState(false)
+  // Above the empty return (09-09 rule). Which bubbles were already on screen for this thread, and
+  // which arrived while it was open (>400 ms after it opened): those keep the arrival class.
+  const seen = useRef<{ pid: string; at: number; ids: Set<string>; arrived: Set<string> }>({ pid: '', at: 0, ids: new Set(), arrived: new Set() })
   const rows = historyRows(t)
+  const idsKey = rows.map(m => m.id).join(',')
+  useEffect(() => {
+    const s = seen.current
+    if (s.pid !== t.prospect_id) { seen.current = { pid: t.prospect_id, at: Date.now(), ids: new Set(idsKey.split(',')), arrived: new Set() }; return }
+    for (const id of idsKey.split(',')) s.ids.add(id)
+  }, [t.prospect_id, idsKey])
   const lastEmail = rows.filter(m => m.direction === 'inbound' && messageChannel(m) === 'email').at(-1)?.id
   const shown = all ? rows : rows.slice(-cap)
   const first = t.prospect_name.split(' ')[0] || t.prospect_name
@@ -86,13 +97,22 @@ function HistoryRead({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmai
   }
   let day = ''
   let prevSide: 'in' | 'out' | null = null
+  // v4 run bookkeeping: a run is the same side on the same day; meta sits on its last bubble.
+  const s0 = seen.current
+  const fresh = v4 && s0.pid === t.prospect_id && Date.now() - s0.at > 400
+  const lastOfRun = (i: number) => {
+    const a = shown[i], b = shown[i + 1]
+    return !b || a.direction !== b.direction || warsawDay(eventTime(a)) !== warsawDay(eventTime(b))
+  }
+  let prevPill: string | null = null
+  let runShown: string | null = null
   return (
     <div className="dm-hist">
       <ReplySourceContent state={source} retry={retry} />
       {rows.length > shown.length && (
         <button type="button" className="dm-h-more" data-verb="history-earlier" onClick={() => setAll(true)}>{rows.length - shown.length} earlier message{rows.length - shown.length > 1 ? 's' : ''}</button>
       )}
-      {shown.map(m => {
+      {shown.map((m, i) => {
         const inb = m.direction === 'inbound'
         const side = inb ? 'in' : 'out'
         const pill = kindPill(m)
@@ -107,25 +127,43 @@ function HistoryRead({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmai
         day = d
         const firstOfRun = newDay || prevSide !== side
         prevSide = side
+        const kind = pill ?? 'LinkedIn'
+        const channelChanged = !firstOfRun && prevPill !== null && prevPill !== kind
+        prevPill = kind
+        const reaction = inb && isReaction(m)
+        // v4: plain "LinkedIn · 10:46" only on the last bubble of a run; a non-default kind ("typed on
+        // LinkedIn", Invite) once per run; a status, a reaction, an email and a channel change always on
+        // their own bubble. Every bubble keeps its full meta in the tooltip.
+        if (firstOfRun) runShown = null
+        const last = lastOfRun(i)
+        const needKind = pill !== null ? kind !== runShown : (last && runShown === null) || channelChanged
+        const firstObs = source.kind === 'ready' && source.data.first_reply?.reply_id === m.id
+        const latestObs = source.kind === 'ready' && source.data.latest_reply?.reply_id === m.id
+        const showMeta = !v4 || last || Boolean(st) || reaction || email || needKind || firstObs || latestObs
+        const showKind = !v4 || needKind || (last && kind !== runShown)
+        if (showMeta && showKind) runShown = kind
+        if (fresh && !s0.ids.has(m.id)) s0.arrived.add(m.id)
+        const arrive = v4 && s0.arrived.has(m.id)
         return (
           <Fragment key={m.id}>
             {newDay && <div className="dm-day" role="separator"><span>{warsawDayWord(at, now)}</span></div>}
-            <div className={`dm-b dm-b-${side} dm-h-whole${inb ? ' dm-h-in' : ''}${st?.fail ? ' dm-h-fail' : ''}${email ? ' dm-h-email' : ''}${firstOfRun ? ' dm-b-first' : ''}`}
-              data-msg={m.id} data-channel={email ? 'email' : undefined} data-side={side}>
+            <div className={`dm-b dm-b-${side} dm-h-whole${inb ? ' dm-h-in' : ''}${st?.fail ? ' dm-h-fail' : ''}${email ? ' dm-h-email' : ''}${firstOfRun ? ' dm-b-first' : ''}${v4 && last ? ' dx-b-last' : ''}${arrive ? ' dx-arrive' : ''}`}
+              data-msg={m.id} data-channel={email ? 'email' : undefined} data-side={side}
+              title={v4 ? [kind, st?.text, reaction ? 'reaction' : null, warsawHm(at)].filter(Boolean).join(' · ') : undefined}>
               {firstOfRun && <b className="dm-b-who">{inb ? first : ours}</b>}
               <div className="dm-b-body">
                 {addr && <small className="dm-h-addr">{addr}</small>}
                 {blank ? <em className="dm-b-blank">Invite sent with no note, by design</em> : parts.length === 0 ? <em className="dm-b-blank">(no text: an image or a file)</em>
                   : parts.map((p, i) => <span key={i} className="dm-bub">{i > 0 && <br />}<Linkified text={p} /></span>)}
               </div>
-              <div className="dm-b-meta">
-                <i>{pill ?? 'LinkedIn'}</i>
+              {showMeta ? <div className="dm-b-meta">
+                {showKind && <i>{kind}</i>}
                 {st && <i className={st.fail ? 'dm-i-fail' : undefined}>{st.text}</i>}
-                {inb && isReaction(m) && <i>reaction</i>}
-                {source.kind === 'ready' && source.data.first_reply?.reply_id === m.id && <i>First observed reply · {touchLabel(source.data.first_reply.touch)}</i>}
-                {source.kind === 'ready' && source.data.latest_reply?.reply_id === m.id && <i>Latest observed reply · {touchLabel(source.data.latest_reply.touch)}</i>}
+                {reaction && <i>reaction</i>}
+                {firstObs && <i>First observed reply · {touchLabel(source.data.first_reply!.touch)}</i>}
+                {latestObs && <i>Latest observed reply · {touchLabel(source.data.latest_reply!.touch)}</i>}
                 <time dateTime={at}>{warsawHm(at)}</time>
-              </div>
+              </div> : <time className="dx-sr" dateTime={at}>{warsawHm(at)}</time>}
               {inb && email && (onReplyEmail || onForwardEmail) && <div className="dm-email-actions">
                 {m.id === lastEmail && onReplyEmail && <button type="button" className="dm-email-reply" data-verb="reply-email" onClick={onReplyEmail}>Reply by email</button>}
                 {onForwardEmail && <button type="button" className="dm-email-reply" data-verb="forward-email" onClick={() => onForwardEmail(m)}>Forward to email</button>}

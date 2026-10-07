@@ -1,10 +1,10 @@
 // A seat column (desktop) or the one seat list (phone). Sections in the mock's order.
-import { internalHoldSummary, isReplyRetryExhausted, threadBucket, type Thread } from '../../lib/inbox'
+import { eventTime, internalHoldSummary, isReplyRetryExhausted, threadBucket, type Thread } from '../../lib/inbox'
 import { cameBackLine, firstComment, sentLine, type CameBackCard } from '../../wb/dms/cameBackData'
 import { agentCardsWithoutWarmCards, type ConversationAgentCard } from '../../wb/dms/conversationAgentData'
 import { WARM_GROUPS, dm1Deliverable, evidenceLine, inviteLine, isWaiting, primaryAction, warmGroup, type WarmCard } from '../../wb/dms/warmSignalsData'
 import { type Seat } from '../seats'
-import { needsCount, type SeatView } from './model'
+import { ago, needsCount, type SeatView } from './model'
 import { laterItems } from './later'
 import { Btn } from '../ui/Key'
 import { Quiet, Row, Sec } from './Row'
@@ -16,6 +16,7 @@ import type { AgentSide, Side } from './useDmsData'
 import { noteOf, type WarmVerbs } from './warmVerbs'
 import { blockedFollowup, upcomingItems, type FollowupProjection } from './upcoming'
 import { warsawHm } from '../ui/time'
+import { ComingUp } from './v4/ComingUp'
 
 export type Mode = 'conversations' | 'email' | 'spam' | 'search'
 
@@ -94,6 +95,51 @@ export function ColumnBody(p: ColumnProps) {
     ...v.nodraft.map(t => <NoDraftRow key={t.prospect_id} t={t} c={c} />),
   ]
   const emailOwed = v.emailOwed.length
+  const staleKey = p.stale.length > 0 ? (
+    <Btn danger verb="discard-stale" disabled={c.busy === `stale:${seat}`} onClick={() => { c.setBusy(`stale:${seat}`); void c.verbs.discardStale(p.stale).finally(() => c.setBusy(null)) }}>{c.busy === `stale:${seat}` ? 'Discarding…' : 'Discard stale'}</Btn>
+  ) : null
+  if (c.v4) {
+    // Brief 4 (SPEC-dms §2.3): three groups. Needs you (the stale strip inside it, owner holds through
+    // the shared row), Blocked follow-ups, Coming up (Due + next 3 days + Later as one timeline), More.
+    // Same rows, same sections, same handlers as below; only the arrangement differs.
+    const needsV4 = [
+      ...v.owner.map((t, i) => {
+        const oc = t.ownerConfirmation
+        const hold = oc && isReplyRetryExhausted(oc) ? 'Write reply' : oc?.send_blocked_reason === 'reply_retry_pending' ? 'Retrying' : `Confirm with ${OWNER[seat]}`
+        return <Row key={t.prospect_id} v4 index={i} id={t.prospect_id} name={t.prospect_name} company={t.prospect_company} pill={{ text: hold, tone: 'warn' }}
+          line={oc ? internalHoldSummary(oc) : ''} right={oc ? ago(eventTime(oc), c.now) : ''} rightKind="needs" unread={t.unread > 0}
+          selected={c.selected === t.prospect_id} onOpen={() => c.open(t)} />
+      }),
+      ...v.drafted.map(t => <DraftRow key={t.prospect_id} t={t} c={c} />),
+      ...v.nodraft.map(t => <NoDraftRow key={t.prospect_id} t={t} c={c} />),
+    ]
+    return <>
+      <Section id="needs" label="Needs you" n={needsCount(v)} folds={folds} rows={needsV4}
+        before={staleKey && (
+          <div className="dm-stale dx-strip" role="note">
+            <span>{p.stale.length} draft{p.stale.length === 1 ? '' : 's'} where you already replied</span>
+            {staleKey}
+          </div>
+        )}
+        after={<>
+          {emailOwed > 0 && <button type="button" className="dm-note" data-verb="to-email" onClick={p.toEmail}>
+            {emailOwed === 1 ? '1 email thread needs you too, in the Email folder' : `${emailOwed} email threads need you too, in the Email folder`}</button>}
+          {needsCount(v) === 0 && <Quiet>{blocked.length ? 'No drafts ready. Check the blocked follow-ups below.' : `Nothing waiting on ${WHO[seat]}.`}</Quiet>}
+        </>} />
+
+      {blocked.length > 0 && <Section id="followup-blocked" label="Blocked follow-ups" n={blocked.length} folds={folds}
+        rows={blocked.map(({ t, hold }) => <Row key={t.prospect_id} v4 id={t.prospect_id} name={t.prospect_name} company={t.prospect_company}
+          pill={{ text: 'Review', tone: 'bad' }} line={hold!.reason} selected={c.selected === t.prospect_id} onOpen={() => c.open(t)} />)} />}
+
+      <ComingUp c={c} folds={folds} due={due} future={future} later={later} failed={Boolean(p.upcoming?.failed)} loaded={Boolean(p.upcoming?.loaded)} />
+
+      <div className="dx-grp" aria-hidden="true">More</div>
+      <SignalsSection p={p} folds={folds} came={came} />
+      {v.thrown.length > 0 && <Section id="thrown" foldable defaultOpen={false} label="Discarded, 3 days" n={v.thrown.length} folds={folds}
+        rows={v.thrown.map(t => <ThrownRow key={t.prospect_id} t={t} c={c} />)} />}
+      <AllConvos threads={v.all} c={c} folds={folds} dated={datedBy} />
+    </>
+  }
   return <>
     {p.stale.length > 0 && (
       <div className="dm-stale" role="note">
@@ -161,7 +207,7 @@ function SignalsSection({ p, folds, came }: { p: ColumnProps; folds: Folds; came
         c.setBusy(key)
         void fn().then(e => { if (e) c.fail(e) }).finally(() => c.setBusy(null))
       }
-      return <Row key={`w${w.prospect_id}`} id={w.prospect_id} name={w.name} company={w.company} conversation={false}
+      return <Row key={`w${w.prospect_id}`} v4={c.v4} id={w.prospect_id} name={w.name} company={w.company} conversation={false}
         tags={[{ kind: 'lane', text: it.label }]}
         line={`${evidenceLine(w)} · ${inviteLine(w).text}${ag ? ` · agent: ${ag.owner === 'agent' ? 'owns it' : 'you own it'}` : ''}`}
         selected={c.selected === w.prospect_id} onOpen={() => p.openWarm(w.prospect_id)}
@@ -173,14 +219,14 @@ function SignalsSection({ p, folds, came }: { p: ColumnProps; folds: Folds; came
     }
     if (it.kind === 'agent') {
       const a = it.a
-      return <Row key={`a${a.thread_id}`} id={a.prospect_id} name={a.prospect_name} conversation={false}
+      return <Row key={`a${a.thread_id}`} v4={c.v4} id={a.prospect_id} name={a.prospect_name} conversation={false}
         tags={[{ kind: 'lane', text: it.label }, { kind: 'lane', text: a.owner === 'agent' ? 'Agent' : 'Human' }]}
         line={a.latest_inbound?.text ?? 'Conversation under agent control'}
         selected={c.selected === a.prospect_id} onOpen={() => p.openWarm(a.prospect_id)} />
     }
     const x = it.c, t = it.t
     const comment = firstComment(x)
-    return <Row key={`c${x.prospect_id}`} id={x.prospect_id} name={x.name} company={x.company} conversation={Boolean(t)}
+    return <Row key={`c${x.prospect_id}`} v4={c.v4} id={x.prospect_id} name={x.name} company={x.company} conversation={Boolean(t)}
       tags={[{ kind: 'lane', text: it.label }]}
       line={`${cameBackLine(x)}. ${sentLine(x)}${comment ? ` “${comment}”` : ''}${x.icp_score !== null ? ` · ICP ${x.icp_score}` : ''}`}
       selected={c.selected === x.prospect_id} onOpen={t ? () => c.open(t) : undefined}

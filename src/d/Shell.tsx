@@ -182,9 +182,11 @@ function ForegroundInD() {
 }
 
 /** Exported for the S0 structure test (shellLayout.test.tsx) only. */
-export function Desktop({ setTitleSlot, setToolsSlot, sideMin, setSideMin }: {
+export function Desktop({ setTitleSlot, setToolsSlot, sideMin, setSideMin, drawer = true }: {
   setTitleSlot: (el: HTMLElement | null) => void; setToolsSlot: (el: HTMLElement | null) => void
   sideMin: boolean; setSideMin: (m: boolean) => void
+  /** False on the Claude place under the `claude` skin section: the page IS the workspace there. */
+  drawer?: boolean
 }) {
   const f = useFrame()
   return (
@@ -203,7 +205,7 @@ export function Desktop({ setTitleSlot, setToolsSlot, sideMin, setSideMin }: {
       {/* S0 (SPEC-shell-spacing §2.1): the drawer is a sibling of the main column, so the answer
           band, the bell feed and every page overlay belong to the main column only. One tree
           position in both modes (dock | over), so switching never remounts the conversation. */}
-      {f.claudeOpen && <aside className="d-claude" aria-label="Claude"><ClaudeSlot /></aside>}
+      {f.claudeOpen && drawer && <aside className="d-claude" aria-label="Claude"><ClaudeSlot /></aside>}
     </>
   )
 }
@@ -261,12 +263,19 @@ export default function DShell() {
   const [toolsSlot, setToolsSlot] = useState<HTMLElement | null>(null)
   const appRef = useRef<HTMLDivElement>(null)
   const shell = useSkin('shell')
+  // Brief 4 `claude` section: on the Claude place the page is the workspace, so no drawer column there
+  // (a render condition only; the provider's open state is untouched and returns on other places).
+  const claudeV4 = useSkin('claude')
+  const claudeHere = layout === 'desktop' && claudeV4 && route.place === 'claude'
+  const claudeShown = claudeOpen && !claudeHere
   // The skin follows React's layout (html[data-layout]), never its own media query.
   useLayoutEffect(() => { applySkin(layout) }, [layout])
-  const geo = useShellGeometry(appRef, { layout, claudeOpen, shell })
-  const drawer = layout === 'desktop' && claudeOpen ? geo.mode : null
+  const geo = useShellGeometry(appRef, { layout, claudeOpen: claudeShown, shell })
+  const drawer = layout === 'desktop' && claudeShown ? geo.mode : null
   const drawerRef = useRef(drawer)
   drawerRef.current = drawer
+  const claudeHereRef = useRef(claudeHere)
+  claudeHereRef.current = claudeHere
 
   // One overlay at a time on the phone: opening the bell closes Claude and the drawer.
   const openBell = useCallback((o: boolean) => { setBellOpen(o); if (o) setPanelOpen(false) }, [])
@@ -301,7 +310,13 @@ export default function DShell() {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey
       if (mod && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); setPalette(true); return }
-      if (mod && (e.key === 'j' || e.key === 'J')) { e.preventDefault(); setClaudeOpen(o => !o); return }
+      if (mod && (e.key === 'j' || e.key === 'J')) {
+        e.preventDefault()
+        // On the Claude workspace (claude section) ⌘J goes to its composer instead of a drawer.
+        const ws = claudeHereRef.current ? document.querySelector<HTMLTextAreaElement>('.dcl-ws textarea') : null
+        if (ws) ws.focus(); else setClaudeOpen(o => !o)
+        return
+      }
       if (mod && e.key === '\\') { e.preventDefault(); setSideMin(m => !m); return }
       if (e.key === 'Escape' && !document.querySelector('.d-sheet, .d-confirm')) {
         setBellOpen(false); setPanelOpen(false)
@@ -330,7 +345,7 @@ export default function DShell() {
             <DConfirmProvider>
               <ForegroundInD />
               {layout === 'desktop'
-                ? <Desktop setTitleSlot={setTitleSlot} setToolsSlot={setToolsSlot} sideMin={sideMin} setSideMin={setSideMin} />
+                ? <Desktop setTitleSlot={setTitleSlot} setToolsSlot={setToolsSlot} sideMin={sideMin} setSideMin={setSideMin} drawer={!claudeHere} />
                 : <PhoneFrame setToolsSlot={setToolsSlot} panelOpen={panelOpen} setPanelOpen={setPanelOpen} />}
               <WorkflowsHost />
               <DLayer>

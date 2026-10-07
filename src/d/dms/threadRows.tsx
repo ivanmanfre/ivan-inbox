@@ -20,13 +20,15 @@ export function when(iso: string, now: number = Date.now()): string {
 export type RowCtx = { selected: string | null; checked: ReadonlySet<string>; open: (t: Thread) => void; now: number; verbs: DmVerbs; busy: string | null; setBusy: (id: string | null) => void; fail: (m: string) => void
   pre: PreReadHandle; more: (t: Thread) => void
   /** Came-back tags by person (signals.ts): shown beside the name on every row of theirs. */
-  came?: ReadonlyMap<string, CameTag> }
+  came?: ReadonlyMap<string, CameTag>
+  /** Brief 4 (skin section `dms`): rows draw the v4 anatomy. Same handlers. */
+  v4?: boolean }
 
 /** The row extras every conversation row carries: unread dot, ⋯ key, the Sum up line, the came-back tag. */
-export function extras(t: Thread, c: RowCtx): { unread: boolean; onMore: () => void; note: ReactNode; signal: CameTag | null } {
+export function extras(t: Thread, c: RowCtx): { unread: boolean; onMore: () => void; note: ReactNode; signal: CameTag | null; v4?: boolean } {
   const st = c.pre.get(t.prospect_id)
   const note = st.s === 'done' ? st.line : st.s === 'running' ? 'Reading it…' : st.s === 'error' ? st.why : null
-  return { unread: t.unread > 0, onMore: () => c.more(t), note, signal: c.came?.get(t.prospect_id) ?? null }
+  return { unread: t.unread > 0, onMore: () => c.more(t), note, signal: c.came?.get(t.prospect_id) ?? null, ...(c.v4 ? { v4: true } : {}) }
 }
 
 export function DraftRow({ t, c }: { t: Thread; c: RowCtx }) {

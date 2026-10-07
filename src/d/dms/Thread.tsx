@@ -11,7 +11,7 @@ import { seatOf } from '../seats'
 import { Btn, Key } from '../ui/Key'
 import { laterPath } from './later'
 import { useAutosave } from './useAutosave'
-import { Banners } from './ThreadBanners'
+import { Banners, DraftStrips } from './ThreadBanners'
 import { Draft } from './Draft'
 import { ScheduleSheet, ScheduledSends, type ScheduleTarget } from './Schedule'
 import { ForwardEmailSheet } from './ForwardEmail'
@@ -27,6 +27,9 @@ import { AgentSheet, ContextSheet } from './Sheets'
 import { RestoreStrip } from './Restore'
 import { ThreadHead } from './ThreadHead'
 import type { DmVerbs, Edits } from './verbs'
+import { HeadV4 } from './v4/HeadV4'
+import { ThreadV4 } from './v4/ThreadV4'
+import { useStickToEnd } from './v4/motion'
 
 const FROM: Record<string, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin' }
 
@@ -48,13 +51,17 @@ export async function copyText(s: string): Promise<boolean> {
   try { await navigator.clipboard.writeText(s); return true } catch { window.prompt('Copy this link', s); return false }
 }
 
-export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, onAsk, onDraftStart, onMenu, staleN, pre, reload, signal }: {
+export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, onAsk, onDraftStart, onMenu, staleN, pre, reload, signal, v4 = false, registerGuard }: {
   t: T; auto?: boolean; all: readonly T[]; phone: boolean; verbs: DmVerbs; now: number
   onBack: () => void; onAsk: () => void
   onDraftStart?: () => void
   onMenu: (a: MenuAct) => void; staleN: number; pre: PreReadHandle; reload: () => void
   /** The came-back tag beside the name, with its Dismiss (cameBack.ts). */
   signal?: ReactNode
+  /** Brief 4 (skin section `dms`): the v4 view, picked at the final return only. */
+  v4?: boolean
+  /** Brief 4: where this pane registers its unsaved check (SPEC-dms §3.4). Only given under v4. */
+  registerGuard?: (f: (() => boolean) | null) => void
 }) {
   const [edits, setEdits] = useState<Edits>(() => seed(t))
   const [reply, setReply] = useState('')
@@ -96,6 +103,18 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   const lastIn = t.messages.filter(m => m.direction === 'inbound').at(-1)?.id ?? ''
   useEffect(() => { if (!auto && t.unread > 0) stampReadOnce(t.prospect_id, lastIn) }, [auto, t.prospect_id, t.unread, lastIn])
   const saver = useAutosave(t, edits, seed(t), verbs.autosave)
+  // Brief 4 unsaved guard (SPEC-dms §3.4, placed right after the saver, H1): dirty = a typed reply, an
+  // edit still waiting to save, a save in flight or a save that failed. Read through a ref, so the
+  // registration never goes stale. beforeunload covers a reload and Brief's own canLeave().
+  const dirty = useRef<() => boolean>(() => false)
+  dirty.current = () => reply.trim() !== '' || saver.isPending() || saver.state === 'saving' || saver.state === 'failed'
+  useLayoutEffect(() => {
+    if (!registerGuard) return
+    registerGuard(() => dirty.current())
+    const onUnload = (e: BeforeUnloadEvent) => { if (dirty.current()) { e.preventDefault(); e.returnValue = '' } }
+    window.addEventListener('beforeunload', onUnload)
+    return () => { registerGuard(null); window.removeEventListener('beforeunload', onUnload) }
+  }, [registerGuard])
 
   const seat = seatOf(t.client_id) ?? 'ivan'
   const from = FROM[seat]
@@ -158,6 +177,8 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     hint: `${t.prospect_name}: nothing is sent, it comes back on the day you pick.`, ready: true,
     run: () => { void verbs.later(t, editsRef.current) },
   }] : [], [canPush, t, verbs]))
+  // Brief 4: the thread stays at its end while the dock grows (H1: here, after the last existing hook).
+  useStickToEnd(scroll, v4)
   const copy = async () => { const l = chatLink(t.chat_provider_id, t.linkedin_url); if (l && await copyText(l.href)) { setCopied(true); window.setTimeout(() => setCopied(false), 1600) } }
   // A verb that writes the draft itself carries the text on screen; a pending autosave is dropped.
   const send = () => run(async () => { if (scheduledPending) return; saver.cancel(); await verbs.send(t, edits) })
@@ -212,6 +233,51 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     if (!composeOff) primary = <Key primary verb="compose-send" className="dm-send" disabled={busy || emailBlocked || !reply.trim()} onClick={() => void compose()}>{composeLabel}</Key>
   }
 
+  if (v4) {
+    // Same closures, same keys; only the arrangement and the one-primary rule differ (SPEC-dms §2.5):
+    // a stale draft, or a draft with his own words in the composer, draws Send outlined.
+    const canSendDraft = hasDraft && !t.ownerConfirmation && !t.spam
+    const sendV4 = canSendDraft
+      ? <Key primary={!t.draftStale && !reply.trim()} verb="send" className="dm-send" disabled={busy || scheduledPending} onClick={() => void send()}>{t.companionDraft ? 'Send both' : 'Send'}</Key>
+      : primary
+    const scheduleKey = !t.spam && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim())
+      ? <Btn verb="schedule-send" className="dm-k dm-schedule-key" disabled={busy} onClick={() => void openSchedule()}>{reply.trim() ? 'Schedule reply' : 'Schedule send'}</Btn> : null
+    return <ThreadV4 name={t.prospect_name} phone={phone} pid={t.prospect_id} scrollRef={scroll} dockRef={dock}
+      head={<HeadV4 t={t} phone={phone} onBack={onBack} onCopy={() => void copy()} copied={copied} onAsk={onAsk} onMore={() => setMenu(m => (m ? null : 'top'))} moreOpen={menu === 'top'}
+        onWho={() => setSheet('context')} onDelete={t.chat_provider_id && !t.spam ? () => void run(async () => { if (await verbs.deleteSeat(t)) onBack() }) : undefined} deleting={busy}
+        onSpam={!t.spam && seat !== 'ivan' ? () => void run(() => verbs.spam(t)) : undefined} signal={signal} />}
+      sum={ps.s !== 'none' && <div className="dm-sum" role="status"><span className={ps.s === 'running' ? 'dx-busy' : undefined}>{ps.s === 'done' ? ps.line : ps.s === 'running' ? 'Reading it…' : ps.why}</span></div>}
+      conv={<>
+        <History v4 t={t} cap={phone ? 6 : 12} now={now} onReplyEmail={canComposeEmail(t) && !t.spam && (!t.ownerConfirmation || manualReply) && !busy ? openEmailReply : undefined}
+          onForwardEmail={['arch', 'risedtc'].includes(t.client_id) && !busy ? setForwardEmail : undefined} />
+        {draftRunning && <div className="dm-b dm-b-in dx-typing" aria-hidden="true"><div className="dm-b-body"><i /><i /><i /></div></div>}
+        <Banners v4 t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} />
+        <ReferralCard key={t.prospect_id} t={t} />
+        <Draft v4 t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload}
+          strips={<DraftStrips t={t} verbs={verbs} />}
+          foot={t.draft && <DraftWhy v4 t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
+          onSend={canSendDraft ? () => { if (!busy && !scheduledPending) void send() } : undefined} />
+        <RestoreStrip t={t} verbs={verbs} />
+        {scheduledPending && <ScheduledSends t={t} reload={reload} onEdit={setSchedule} />}
+      </>}
+      status={<>
+        {draftRunning && <p className="dm-meta dx-status" role="status"><span className="dx-busy">Reading the conversation and writing a draft. It will appear here for review.</span></p>}
+        {scheduleFailure && <p className="dm-meta" role="alert">{scheduleFailure}</p>}
+        {draftError && <p className="dm-meta" role="alert">{draftError}</p>}
+        {replyingByEmail && resolvedEmail?.error && <div className="dm-meta" role="alert"><span>{resolvedEmail.error}</span> <Btn className="dm-k" onClick={() => setEmailRetry(n => n + 1)}>Retry email details</Btn></div>}
+      </>}
+      keys={<>{scheduleKey}{small}{more}</>}
+      primary={sendV4}
+      composer={!t.spam && <Composer to={first} from={from} big={emailReplyFor === t.prospect_id} noSend={!hasDraft} note={composeNote} sendLabel={composeLabel} disabled={composeOff} value={reply} setValue={setReply} busy={busy || emailBlocked} onSend={() => void compose()} />}
+      foot={t.spam && <div className="dm-foot">Filed as a vendor pitch.</div>}
+      overlays={<>
+        {menu && <ThreadMenu t={t} phone={phone} up={menu === 'keys'} withAsk={phone} staleN={staleN} onClose={() => setMenu(null)} run={menuRun} />}
+        {schedule && <ScheduleSheet t={t} target={schedule} onClose={() => setSchedule(null)} onSaved={() => { if (schedule.manual) setReply(''); reload() }} />}
+        {forwardEmail && <ForwardEmailSheet key={forwardEmail.id} message={forwardEmail} onClose={() => setForwardEmail(null)} />}
+        {sheet === 'context' && <ContextSheet t={t} all={all} onClose={() => setSheet(null)} />}
+        {sheet === 'agent' && <AgentSheet t={t} onClose={() => setSheet(null)} onChanged={reload} />}
+      </>} />
+  }
   return (
     <section className={`dm-pane${phone ? ' dm-pane-phone' : ''}`} aria-label={`Conversation with ${t.prospect_name}`}>
       <ThreadHead t={t} phone={phone} onBack={onBack} onCopy={() => void copy()} copied={copied} onAsk={onAsk} onMore={() => setMenu(m => (m ? null : 'top'))} moreOpen={menu === 'top'}

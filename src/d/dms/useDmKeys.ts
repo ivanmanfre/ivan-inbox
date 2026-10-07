@@ -3,8 +3,9 @@
 // closes the thread. Never while typing in a field or a sheet is open.
 import { useEffect, useRef, type RefObject } from 'react'
 import type { Thread } from '../../lib/inbox'
+import { SEATS, type Seat } from '../seats'
 
-export function useDmKeys({ searchRef, open, closeThread, toggleCheck, selectMany, openKeys }: {
+export function useDmKeys({ searchRef, open, closeThread, toggleCheck, selectMany, openKeys, setSeat }: {
   searchRef: RefObject<HTMLInputElement | null>
   open: Thread | null
   openThread: (t: Thread) => void
@@ -12,6 +13,9 @@ export function useDmKeys({ searchRef, open, closeThread, toggleCheck, selectMan
   toggleCheck: (id: string) => void
   selectMany: (ids: string[]) => void
   openKeys: () => void
+  /** Brief 4 only (given when the `dms` skin section is on): 1 / 2 / 3 pick a seat through the guarded
+   *  seat pick, e focuses the draft editor, r the composer. Same guards as every key here. */
+  setSeat?: (s: Seat) => void
 }) {
   const anchor = useRef<string | null>(null)
   useEffect(() => {
@@ -23,6 +27,14 @@ export function useDmKeys({ searchRef, open, closeThread, toggleCheck, selectMan
       if (e.key === '/') { e.preventDefault(); searchRef.current?.focus(); return }
       if (e.key === '?') { e.preventDefault(); openKeys(); return }
       if (e.key === 'Escape' && open) { closeThread(); return }
+      if (setSeat) {
+        const i = ['1', '2', '3'].indexOf(e.key)
+        if (i >= 0) { e.preventDefault(); setSeat(SEATS[i]); return }
+        if (e.key === 'e' || e.key === 'r') {
+          const field = document.querySelector<HTMLTextAreaElement>(e.key === 'e' ? '.dm-pane .dm-edit' : '.dm-pane .dm-comp textarea')
+          if (field) { e.preventDefault(); field.focus(); return }
+        }
+      }
       const rows = [...document.querySelectorAll<HTMLElement>('.dm-page [data-d-row]')]
       if (!rows.length) return
       const at = rows.findIndex(r => r === document.activeElement)
@@ -45,7 +57,7 @@ export function useDmKeys({ searchRef, open, closeThread, toggleCheck, selectMan
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [searchRef, open, closeThread, toggleCheck, selectMany, openKeys])
+  }, [searchRef, open, closeThread, toggleCheck, selectMany, openKeys, setSeat])
 }
 
 /** Every DM row on screen, in order (select all). */

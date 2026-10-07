@@ -62,5 +62,7 @@ export function useAutosave(t: Thread, edits: Edits, base: Edits, save: (t: Thre
   useEffect(() => () => { if (timer.current != null) window.clearTimeout(timer.current) }, [])
 
   const retry = useCallback(() => { if (!pending.current && t.draft) pending.current = { t, ed: edits }; void flush() }, [flush, t, edits])
-  return { state, why, flush, cancel, retry }
+  /** An edit typed and not yet written (the 800 ms wait). Read through the ref, so no new hook. */
+  const isPending = () => pending.current !== null
+  return { state, why, flush, cancel, retry, isPending }
 }

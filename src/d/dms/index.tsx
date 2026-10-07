@@ -30,12 +30,14 @@ import { rowsOnScreen, useDmKeys } from './useDmKeys'
 import { KeySheet } from './KeySheet'
 import { useDCommands } from '../shell/commands'
 import type { WbCommand } from '../../exp/v2c/commandSource'
+import { useSkin } from '../../ds/useSkin'
 import './dms.css'
 import './dms-thread.css'
 import './dms-more.css'
 import './dms-calm.css'
 import './dms-bubbles.css'
 import './dms-seats.css'
+import './v4/dms-v4.css'
 
 export default function DmsPage(props: PlaceProps) {
   return <DmAsks><Dms {...props} /></DmAsks>
@@ -52,6 +54,12 @@ function Dms({ layout, route, navigate }: PlaceProps) {
   const [busy, setBusy] = useState<string | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const searchRef = useRef<HTMLInputElement>(null)
+  // Brief 4 (skin section `dms`). A plain value for the whole render: it only picks views at final returns.
+  const v4 = useSkin('dms')
+  // The unsaved reply/draft guard, owned by React under v4 (SPEC-dms §3.4; Brief's bridge stands down
+  // while [data-v4-guard] is on the page). The open ThreadPane registers its dirty check here.
+  const guard = useRef<(() => boolean) | null>(null)
+  const registerGuard = useCallback((f: (() => boolean) | null) => { guard.current = f }, [])
   useEffect(() => { const i = window.setInterval(() => setNow(Date.now()), 60_000); return () => window.clearInterval(i) }, [])
   useEffect(() => { setNow(Date.now()) }, [data.loadedAt])
 
@@ -97,11 +105,17 @@ function Dms({ layout, route, navigate }: PlaceProps) {
   const failedN = (data.error ? 1 : 0) + (data.cameBack.failed ? 1 : 0) + (data.warm.failed ? 1 : 0) + (data.dated.failed ? 1 : 0) + (data.upcoming?.failed ? 1 : 0)
   useReportFailed('dms', failedN)
 
+  const openId = open?.prospect_id ?? null
   const go = useCallback((extra: Record<string, string | null>) => {
+    // v4: leaving the open conversation (another thread, a close, a seat or a folder) asks first while
+    // it holds an unsaved reply or draft edit. Same words as Brief's bridge guard. A warm card or a
+    // query that keeps the thread never asks.
+    const leaves = ('thread' in extra && (extra.thread ?? null) !== openId) || 'seat' in extra || 'folder' in extra
+    if (v4 && leaves && guard.current?.() && !window.confirm('Discard the unsaved reply or draft changes and continue?')) return
     const next = new URLSearchParams(route.query)
     for (const [k, v] of Object.entries(extra)) { if (v == null) next.delete(k); else next.set(k, v) }
     navigate(dHash('dms', null, next))
-  }, [route.query, navigate])
+  }, [route.query, navigate, v4, openId])
   const openThread = useCallback((t: Thread) => go({ thread: t.prospect_id, warm: null }), [go])
   // `?warm=1` lands on the Warm signals section; `?warm=<prospect>` opens that card (today's deep link).
   const warm = route.query.get('warm')
@@ -136,7 +150,8 @@ function Dms({ layout, route, navigate }: PlaceProps) {
   const [keysOpen, setKeysOpen] = useState(false)
   const selectMany = useCallback((ids: string[]) => setChecked(s => new Set([...s, ...ids])), [])
   const openKeys = useCallback(() => setKeysOpen(true), [])
-  useDmKeys({ searchRef, open, openThread, closeThread, toggleCheck, selectMany, openKeys })
+  const pickSeatKey = useCallback((s: Seat) => { writeSeat(s); setStored(s); go({ seat: null, thread: null }) }, [go])
+  useDmKeys({ searchRef, open, openThread, closeThread, toggleCheck, selectMany, openKeys, setSeat: v4 ? pickSeatKey : undefined })
   // ⌘K rows for this page (today's CommandLayer: select all, clear, the shortcut sheet).
   useDCommands(useMemo<WbCommand[]>(() => [
     { id: 'dms.select-all', title: 'Select every conversation on screen', group: 'Select', icon: 'check', key: null, hint: 'Then Discard from the bar.', ready: true, run: () => selectMany(rowsOnScreen()) },
@@ -151,13 +166,14 @@ function Dms({ layout, route, navigate }: PlaceProps) {
     layout, mode, folder, q, setQ, tokens, setTokens, searchRef, views, stats, matches, open, threadId, auto: autoOpen !== null, threads, byId,
     data, counts, verbs, warmVerbs, fail, openWarm, now, busy, setBusy, checked, setChecked, openThread, closeThread, ask, onMenu, staleN: 0, staleBy, rowMore: setRowMenu, refreshAll: data.refreshAll, pre,
     came, dismissCame, seat, setSeat: (s: Seat) => { writeSeat(s); setStored(s); go({ seat: null, thread: null }) }, setFolder: (f: string | null) => go({ folder: f, thread: null }),
+    v4, registerGuard,
   }
   const agentChanged = () => { data.reloadAgent(); data.reloadWarm() }
   return <>
     {layout === 'desktop' ? <DesktopDms m={model} /> : <PhoneDms m={model} />}
     {warmCard && <WarmSheet c={warmCard} agent={data.agent.cards.find(a => a.prospect_id === warmCard.prospect_id) ?? null} thread={byId.get(warmCard.prospect_id) ?? null}
       verbs={warmVerbs} onClose={closeWarm} onOpenThread={openThread} onAgentChanged={agentChanged} />}
-    {keysOpen && <KeySheet onClose={() => setKeysOpen(false)} />}
+    {keysOpen && <KeySheet v4={v4} onClose={() => setKeysOpen(false)} />}
     {rowMenu && <RowMenu t={rowMenu} pre={pre} verbs={verbs} onClose={() => setRowMenu(null)} onOpen={() => openThread(rowMenu)} onAsk={() => ask(rowMenu, 'ask')}
       came={came.get(rowMenu.prospect_id) ?? null} onDismissCame={() => dismissCame(rowMenu.prospect_id, rowMenu.prospect_name)} />}
     {agentOnlyCard && <AgentOnlySheet card={agentOnlyCard} thread={byId.get(agentOnlyCard.prospect_id) ?? null} onClose={closeWarm} onOpenThread={openThread} onAgentChanged={agentChanged} />}

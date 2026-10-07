@@ -4,6 +4,10 @@
 // THREAD_SESSION_OUT, if supplied, must name NEW files (never overwritten).
 // THREAD_FAILURE_PREFIX optionally names a NEW private screenshot prefix;
 // a failure at 390px writes <prefix>-390.png before its context is closed.
+// Brief 4: THREAD_SKIN sets the skin for the run (e.g. brief:dms, off); THREAD_V4=1|0 is
+// brief:dms,claude,settings | off. THREAD_OPEN_N=3 opens up to 3 live threads; on desktop the
+// 2nd..Nth are opened DIRECTLY from the open one, without Close (the same ThreadPane instance, the
+// risky transition). React's "An error occurred in the <" warnings count as errors.
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
@@ -55,7 +59,9 @@ function missingReplySource(url, method, status, payload) {
     && u.pathname.startsWith('/rest/v1/rpc/') && replySourceRpcs.has(u.pathname.slice('/rest/v1/rpc/'.length))
     && status === 404 && payload?.code === 'PGRST202'
 }
-const report = { ok: false, engine, seat, checks: [], failure: null }
+const skinValue = process.env.THREAD_SKIN ?? (process.env.THREAD_V4 === '1' ? 'brief:dms,claude,settings' : process.env.THREAD_V4 === '0' ? 'off' : null)
+const openN = Math.max(1, Math.min(5, Number(process.env.THREAD_OPEN_N) || 1))
+const report = { ok: false, engine, seat, skin: skinValue, openN, checks: [], failure: null }
 let browser
 try {
   browser = await engines[engine].launch()
@@ -102,6 +108,7 @@ try {
       page.on('requestfailed', req => { if (isMessageGet(req)) failedReads.push('inbox request failed') })
       page.on('pageerror', () => errors.push('uncaught page error'))
       page.on('console', m => {
+        if (m.type() === 'warning' && /An error occurred in the <|change in the order of Hooks|Rendered (more|fewer) hooks/.test(m.text())) { errors.push('react hook/render warning'); return }
         if (m.type() !== 'error') return
         if (/^Failed to load resource: the server responded with a status of 404 \((?:Not Found)?\)$/.test(m.text())) resourceErrors.push(m.location().url)
         else errors.push('console error')
@@ -128,31 +135,39 @@ try {
         forbidden.push(`${method} ${url.pathname.replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, '[id]')}`)
         return route.fulfill({ status: 403, contentType: 'application/json', body: '{"error":"Smoke blocked a mutation"}' })
       })
-      await page.addInitScript(({ session, authKey, seat }) => {
+      await page.addInitScript(({ session, authKey, seat, skinValue }) => {
         localStorage.setItem(authKey, session)
+        if (skinValue) sessionStorage.setItem('ds-skin', skinValue)
         localStorage.setItem('d.dms.folds.v1', JSON.stringify({ all: true }))
         localStorage.removeItem('dms-filter-tokens')
         sessionStorage.setItem('dm-smoke-seat', seat)
-      }, { session, authKey, seat })
+      }, { session, authKey, seat, skinValue })
       await page.goto(`${base.replace(/#.*$/, '')}#exp/d/dms?seat=${seat}`, { waitUntil: 'domcontentloaded' })
       await page.waitForFunction(() => Boolean(document.querySelector('.dm-page, .login')), undefined, { timeout: 45_000 })
       assert.equal(await page.locator('.login').count(), 0, 'Auth failure: login is visible')
       await page.waitForFunction(() => Array.from(document.querySelectorAll('.dm-list [data-d-row]')).some(e => e.getBoundingClientRect().height > 0), undefined, { timeout: 45_000 })
+      // The first paint can be the saved copy; the live read then reshuffles the rows. Pick a row only
+      // once the list says it is live, so a click never lands on a row that just moved.
+      await page.waitForFunction(() => !/Saved copy|Reading…/.test(Array.from(document.querySelectorAll('.dm-live')).map(e => e.textContent).join(' ')), null, { timeout: 45_000 }).catch(() => {})
+      await page.waitForTimeout(500)
       const visibleRows = page.locator('.dm-list [data-d-row]:visible')
       const rows = await visibleRows.count()
       assert(rows > 0, 'Known nonempty DMs returned no conversation rows')
       // A legitimate first draft can have no history. Choose a visible row
       // whose nonempty history belongs to this seat in a successful live read.
-      let row
+      let row, eligibleIds = []
       const deadline = Date.now() + 45_000
       while (!row && Date.now() < deadline) {
         await Promise.all([...pendingReads])
         assert.equal(failedReads.length, 0, `Live inbox read failed: ${failedReads.join(', ')}`)
         const ids = await visibleRows.evaluateAll(els => els.map(el => el.getAttribute('data-d-row')))
-        const index = ids.findIndex(id => [...messages.values()].some(m => eligibleMessage(m, id, seat)))
+        eligibleIds = [...new Set(ids.filter(id => id && [...messages.values()].some(m => eligibleMessage(m, id, seat))))]
+        const index = ids.findIndex(id => id === eligibleIds[0])
         if (index >= 0) row = visibleRows.nth(index)
         else await page.waitForTimeout(200)
       }
+      const v4 = Boolean(skinValue && /dms|all|^brief$/.test(skinValue) && skinValue !== 'off')
+      if (v4) assert.equal(await page.locator('.dm-page[data-v4-guard]').count(), 1, 'v4 DMs page lost its React guard marker')
       assert(successfulReads > 0, 'No successful live inbox GET was captured')
       assert(row, 'No visible conversation has nonempty live history for this seat')
       clickedId = await row.getAttribute('data-d-row')
@@ -173,7 +188,33 @@ try {
       assert(verified, 'Visible history did not match a live message ID, owner and real body fragment')
       const verifiedMessage = messages.get(verified.id)
       assert((await pane.innerText()).trim().length > 0, 'Open pane is blank')
-      const control = pane.locator(`[data-verb="${phone ? 'back' : 'close'}"]`)
+      let switched = 0
+      if (!phone) for (const nextId of eligibleIds.slice(1, openN)) {
+        // A -> B without Close: the same ThreadPane instance takes the next conversation.
+        const next = page.locator(`.dm-list [data-d-row="${nextId}"]:visible`).first()
+        if (!await next.count()) continue
+        const nextName = await next.locator('.dm-n').evaluate(el => Array.from(el.childNodes).filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim())
+        clickedId = nextId
+        await next.click()
+        await page.waitForFunction(id => new URLSearchParams(location.hash.split('?')[1] || '').get('thread') === id, nextId, { timeout: 15_000 })
+        const p2 = page.getByRole('region', { name: `Conversation with ${nextName}`, exact: true })
+        await p2.waitFor({ state: 'visible', timeout: 15_000 })
+        await Promise.all([...pendingReads])
+        const b2 = await p2.locator('.dm-hist [data-msg]:visible .dm-bub:visible').evaluateAll(els => els.map(el => ({ id: el.closest('[data-msg]')?.getAttribute('data-msg'), text: el.textContent || '' })))
+        assert(b2.some(b => verifiedBubble(b, messages, nextId, seat)), 'Switched pane did not show a verified live message')
+        switched++
+      }
+      if (v4) {
+        // SPEC-dms §4.1-6: Send never clips (right edge at least 12px inside the pane).
+        const clip = await page.evaluate(() => {
+          const pane = document.querySelector('section.dm-pane')?.getBoundingClientRect()
+          const keys = [...document.querySelectorAll('section.dm-pane [data-verb="send"], section.dm-pane [data-verb="compose-send"]')].filter(k => k.getBoundingClientRect().width > 0)
+          return pane ? keys.map(k => Math.round(pane.right - k.getBoundingClientRect().right)) : []
+        })
+        assert(clip.every(gap => gap >= 12), `Send clipped at the pane edge: ${clip.join(',')}`)
+      }
+      const livePane = page.locator('section.dm-pane').first()
+      const control = livePane.locator(`[data-verb="${phone ? 'back' : 'close'}"]`)
       assert.equal(await control.count(), 1, 'Open pane lost Back or Close')
       if (phone) assert.equal(await page.locator('.dm-phone-thread').count(), 1, 'Phone thread takeover missing')
       await control.click()
@@ -194,7 +235,7 @@ try {
       }
       assert.equal(errors.length, 0, `Console/page errors: ${errors.join(' | ')}`)
       session = await page.evaluate(key => localStorage.getItem(key), authKey) || session
-      report.checks.push({ width, rows, threadHash: createHash('sha256').update(clickedId).digest('hex').slice(0, 12), verifiedMessageHash: createHash('sha256').update(verified.id).digest('hex').slice(0, 12), verifiedBodyHash: createHash('sha256').update(verifiedMessage.message_text).digest('hex'), successfulInboxGets: successfulReads, opened: true, returnedToList: true, mockedReadStamps: readStamps, consoleErrors: errors.length, forbiddenWrites: forbidden.length })
+      report.checks.push({ width, rows, threadHash: createHash('sha256').update(clickedId).digest('hex').slice(0, 12), verifiedMessageHash: createHash('sha256').update(verified.id).digest('hex').slice(0, 12), verifiedBodyHash: createHash('sha256').update(verifiedMessage.message_text).digest('hex'), successfulInboxGets: successfulReads, opened: true, returnedToList: true, mockedReadStamps: readStamps, switchedWithoutClose: switched, consoleErrors: errors.length, forbiddenWrites: forbidden.length })
     } catch (e) {
       if (page && process.env.THREAD_FAILURE_PREFIX) {
         const target = `${process.env.THREAD_FAILURE_PREFIX}-${width}.png`

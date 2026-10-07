@@ -6,7 +6,6 @@
    Lime only on live state (judge): a saved preference is the pressed neutral key.
    ========================================================================== */
 import { lazy, Suspense, type ReactNode } from 'react'
-import { fmtUsd, PLAIN_UNVERIFIED, plainNote, plainProvenance } from '../../lib/money'
 import { supabase } from '../../lib/supabase'
 import type { PlaceProps } from '../places'
 import { dHash } from '../route'
@@ -18,54 +17,21 @@ import { useRead, useRetryRead } from '../lanes/useRead'
 import { warsawDm } from '../ui/time'
 import { useDensity, usePush, useSound, useStoredTheme } from './prefs'
 import { isBriefNative } from '../../ds/skin'
-import { fetchBoards, fetchDevices, fetchMoneyPlate, type MoneyPlate } from './reads'
+import { fetchBoards, fetchDevices, fetchMoneyPlate } from './reads'
+import { MoneyCells, Pair } from './parts'
+import { useSkin } from '../../ds/useSkin'
+import { setSkinHere, skinOnHere, storedSkinOff } from './skinSwitch'
+import { Group, Row4, SettingsV4 } from './v4/SettingsV4'
+import './v4/settings-v4.css'
 import './settings.css'
 
 const MoneyView = lazy(() => import('../../wb/money').then(m => ({ default: m.MoneyView })))
-
-function Pair<T extends string>({ value, options, onPick, disabled, name }: {
-  value: T | null; options: Array<{ id: T; label: string; verb: string }>; onPick: (v: T) => void; disabled?: boolean; name: string
-}) {
-  return (
-    <div className="ds2-pair" role="group" aria-label={name}>
-      {options.map(o => (
-        <Key key={o.id} size="small" verb={o.verb} aria-pressed={value === o.id} className={value === o.id ? 'ds2-pressed' : ''}
-          disabled={disabled} onClick={() => { if (value !== o.id) onPick(o.id) }}>{o.label}</Key>
-      ))}
-    </div>
-  )
-}
 
 function Row({ title, sub, children }: { title: ReactNode; sub?: ReactNode; children?: ReactNode }) {
   return <div className="ds2-row"><div className="ds2-t"><b>{title}</b>{sub != null && <small>{sub}</small>}</div>{children}</div>
 }
 function Plate({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
   return <section className="ds2-plate"><h3>{title}{note && <span>{note}</span>}</h3>{children}</section>
-}
-
-const CLIENT_NAME: Record<string, string> = { risedtc: 'Rise', arch: 'Arch' }
-
-function MoneyCells({ m }: { m: MoneyPlate }) {
-  // Every client the ledger carries an MRR row for (Rise and Arch first), never a typed-in pair.
-  const ids = [...new Set(['risedtc', 'arch', ...m.mrr.map(r => r.clientId).filter((x): x is string => Boolean(x))])]
-  const cell = (id: string) => {
-    const r = m.mrr.find(x => x.clientId === id)
-    const a = r?.amountRow
-    const label = CLIENT_NAME[id] ?? id
-    return (
-      <div key={id}><small>{label} MRR</small>
-        {a ? <><em>{fmtUsd(a.amount_usd)}</em><u>{a.verified ? 'verified' : PLAIN_UNVERIFIED} · {plainProvenance(a)}</u></>
-          : r ? <><em className="ds2-z">not recorded</em><u>{plainNote(r.latestRow.note)}</u></>
-            : <><em className="ds2-z">not recorded</em><u>no MRR row on file</u></>}
-      </div>
-    )
-  }
-  return (
-    <div className="ds2-money">
-      {ids.map(cell)}
-      <div><small>Runway</small>{m.cash == null ? <><em className="ds2-z">not computed</em><u>no cash on hand recorded</u></> : <><em className="ds2-z">in Money</em><u>cash as of {m.cashAsOf ?? 'unknown'}</u></>}</div>
-    </div>
-  )
 }
 
 function SettingsHome({ layout, navigate }: PlaceProps) {
@@ -78,6 +44,8 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
   const [devices, retryDevices] = useRetryRead(fetchDevices, 'devices')
   const boards = useRead(fetchBoards, 'boards')
   const [money, retryMoney] = useRetryRead(fetchMoneyPlate, 'money')
+  // Brief 4 (`settings` section); plain values below, never a hook inside a branch (H17).
+  const v4 = useSkin('settings')
 
   // The device by its user agent, never by the window width: a narrow Mac window is still a Mac.
   const here = /iPhone|iPad/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1) ? 'iPhone' : /Macintosh/.test(navigator.userAgent) ? 'Mac' : 'device'
@@ -118,6 +86,12 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
       <Row title="Density">
         <Pair name="Density" value={density} options={[{ id: 'comfortable', label: 'Comfortable', verb: 'density-comfortable' }, { id: 'compact', label: 'Compact', verb: 'density-compact' }]} onPick={setDensity} />
       </Row>
+      {/* Only on a device where the Brief 4 switch stored Off: the way back on. */}
+      {storedSkinOff() && (
+        <Row title="Brief 4 layouts" sub="Off on this device.">
+          <Key size="small" verb="skin-on" onClick={() => setSkinHere(true)}>Turn back on</Key>
+        </Row>
+      )}
     </Plate>
   )
   const link = (id: string) => { const b = board(id); return b ? `https://ivanmanfredi.com/client/${b.slug}?k=${encodeURIComponent(b.token)}` : undefined }
@@ -147,6 +121,54 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
       <p className="ds2-build">Build {typeof __BUILD__ === 'undefined' ? 'unknown' : __BUILD__}</p>
     </Plate>
   )
+  if (v4) {
+    const native = typeof window !== 'undefined' ? (window as unknown as { __brief?: { setView?: (v: { density: string }) => void } }).__brief : undefined
+    const pickDensity = (d: typeof density) => { setDensity(d); native?.setView?.({ density: d }) }
+    return <SettingsV4 head={<AnswerRow title={title} sub={sub} />} build={<>Build {typeof __BUILD__ === 'undefined' ? 'unknown' : __BUILD__}</>} groups={<>
+      <Group label="Notifications" id="notifications">
+        <Row4 title={`Push on this ${here}`} sub={pushSub || push.error ? <>{pushSub}{push.error && <span className="ds2-err"> {push.error}</span>}</> : undefined}>
+          <Pair name="Push" value={push.state === 'on' ? 'on' : push.state === 'off' || push.state === 'denied' ? 'off' : null} disabled={Boolean(push.blocked) || push.busy}
+            options={[{ id: 'on', label: 'On', verb: 'push-on' }, { id: 'off', label: 'Off', verb: 'push-off' }]} onPick={v => push.set(v === 'on')} />
+        </Row4>
+        {devices.kind === 'loading' && <div className="ds4-sub"><Skeleton lines={2} title={false} label="Reading devices" /></div>}
+        {devices.kind === 'failed' && <div className="ds4-sub"><Failed what="the device list" detail={devices.message} onRetry={retryDevices} /></div>}
+        {devs && devs.length > 0 && <ol className="ds2-devs ds4-devs">{devs.map((x, i) => <li key={`${x.created_at}-${i}`}><i>{i + 1}</i><span>{x.device} <small>· {x.browser}</small></span><em>since {warsawDm(x.created_at)}</em></li>)}</ol>}
+        <Row4 title="New-reply sound">
+          <Pair name="New-reply sound" value={sound ? 'on' : 'off'} options={[{ id: 'on', label: 'On', verb: 'sound-on' }, { id: 'off', label: 'Off', verb: 'sound-off' }]} onPick={v => setSound(v === 'on')} />
+        </Row4>
+      </Group>
+      <Group label="Appearance" id="appearance">
+        <Row4 title="Density">
+          <Pair name="Density" value={density} options={[{ id: 'comfortable', label: 'Comfortable', verb: 'density-comfortable' }, { id: 'compact', label: 'Compact', verb: 'density-compact' }]} onPick={pickDensity} />
+        </Row4>
+        <Row4 title="Brief 4 layouts" sub="Off keeps today's look on this device. The page reloads.">
+          <Pair name="Brief 4 layouts" value={skinOnHere() ? 'on' : 'off'} options={[{ id: 'on', label: 'On', verb: 'skin-on' }, { id: 'off', label: 'Off', verb: 'skin-off' }]} onPick={v => setSkinHere(v === 'on')} />
+        </Row4>
+        {theme === 'light' && !brief && (
+          <Row4 title="Theme" sub="This device still stores Light from the old app, which turns the Money and legacy panels light.">
+            <Key size="small" verb="theme-reset" onClick={resetTheme}>Reset to dark</Key>
+          </Row4>
+        )}
+      </Group>
+      <Group label="Client boards" id="boards">
+        {([['risedtc', 'Rise', "Mattan's board: queue, drafts, schedule"], ['arch', 'Arch', "Davorin's board: queue, drafts, schedule"]] as const).map(([id, name, what]) => (
+          <Row4 key={id} title={name} sub={boards.kind === 'failed' ? 'could not be read' : boards.kind === 'ready' && !board(id) ? 'board not found' : what}>
+            <a className={`ds2-open${link(id) ? '' : ' ds2-off'}`} href={link(id)} target="_blank" rel="noreferrer" aria-disabled={!link(id)} title={board(id) ? `ivanmanfredi.com/client/${board(id)!.slug}` : undefined}>Open ↗</a>
+          </Row4>
+        ))}
+        <Row4 title="Ivan" sub="Your own content, on the dashboard">
+          <a className="ds2-open" title="ivanmanfredi.com/dashboard-v2?section=content" href="https://ivanmanfredi.com/dashboard-v2?section=content" target="_blank" rel="noreferrer">Open ↗</a>
+        </Row4>
+      </Group>
+      <Group label="Money" id="money">
+        <div className="ds4-sub">{money.kind === 'loading' ? <Skeleton lines={2} title={false} label="Reading money" /> : money.kind === 'failed' ? <Failed what="the money figures" detail={money.message} onRetry={retryMoney} /> : <MoneyCells m={money.data} />}</div>
+        <button type="button" className="ds4-row ds4-link" data-verb="open-money" onClick={() => navigate(dHash('settings', 'money'))}><span className="ds4-t"><b>Open Money</b></span><span className="ds4-chev" aria-hidden="true">›</span></button>
+      </Group>
+      <Group label="Account" id="account">
+        <Row4 title="Ivan Manfredi"><Key size="small" verb="sign-out" className="ds2-warn" onClick={() => void signOut()}>Sign out</Key></Row4>
+      </Group>
+    </>} />
+  }
   return (
     <div className="ds2-root">
       <AnswerRow title={title} sub={sub} />
