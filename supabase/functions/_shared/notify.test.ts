@@ -8,11 +8,15 @@ vi.mock('./push-send.ts', () => ({ sendPush: async (_db: unknown, payload: unkno
 const { notify, validateNotify, pushDefault } = await import('./notify.ts')
 const { fallbackIncidentKey } = await import('./notification-lifecycle.ts')
 
-function db(created: boolean) {
+function db(created: boolean, rangBefore: unknown[] = []) {
   const updates: unknown[] = []
+  // The cooldown lookup is a select chain that resolves to `rangBefore`.
+  const lookup: Record<string, unknown> = {}
+  for (const m of ['select', 'eq', 'neq', 'not', 'gt', 'is', 'limit']) lookup[m] = () => lookup
+  lookup.then = (ok: (v: unknown) => unknown) => ok({ data: rangBefore, error: null })
   const client = {
     rpc: vi.fn(async () => ({ data: [{ id: '11111111-1111-4111-8111-111111111111', created, expires_at: '2026-09-28T12:00:00Z' }], error: null })),
-    from: () => ({ update: (payload: unknown) => {
+    from: () => ({ ...lookup, update: (payload: unknown) => {
       updates.push(payload)
       return { eq: async () => ({ error: null }) }
     } }),
@@ -54,6 +58,14 @@ describe('notify transient workflow claim', () => {
     const out = await notify(a.client as never, { family, severity: 'error', title: 'Prospect outreach blocked' })
     expect(out.pushed).toBe(true)
     expect(sent).toHaveLength(1)
+  })
+
+  it('stores but does not ring the same alert again inside the cooldown', async () => {
+    const a = db(true, [{ id: '22222222-2222-4222-8222-222222222222' }])
+    const out = await notify(a.client as never, { family: 'lane_supply_alarm', source: 'runner', severity: 'error',
+      title: 'rise-warm-engager failed on the runner', body: 'Run 20261006T102300Z-d4afdd ended error (exit 1)' })
+    expect(out).toMatchObject({ id: '11111111-1111-4111-8111-111111111111', pushed: false, deduped: false })
+    expect(sent).toHaveLength(0)
   })
 
   it('retains booking and Claude policy and rejects malformed explicit keys', () => {

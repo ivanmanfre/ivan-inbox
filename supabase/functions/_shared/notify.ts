@@ -219,6 +219,7 @@ export async function notify(db: SupabaseClient, raw: unknown): Promise<NotifyRe
       throw new NotifyError(500, 'incident_claim_empty')
     }
     if (!claim.created) return { id: claim.id, pushed: false, deduped: true, subs: 0, results: [] }
+    if (await rangRecently(db, n, claim.id)) return { id: claim.id, pushed: false, deduped: false, subs: 0, results: [] }
     return pushCreatedRow(db, n, claim.id)
   }
 
@@ -289,6 +290,32 @@ export async function notify(db: SupabaseClient, raw: unknown): Promise<NotifyRe
   if (!shouldPush) return { id: row.id, pushed: false, deduped: false, subs: 0, results: [] }
 
   return pushCreatedRow(db, n, row.id)
+}
+
+/** Same alert, same producer, already on the phone inside this window. */
+const RING_COOLDOWN_MS = 12 * 60 * 60 * 1000
+
+/**
+ * True when a row with this family, source and title already pushed inside the
+ * cooldown. Run ids in the body made every hourly "rise-warm-engager failed on
+ * the runner" a new incident, so one outage rang 12 times on 2026-10-06 (Ivan
+ * 2026-10-07: "too many annoying ones"). The new row still lands in the feed.
+ */
+async function rangRecently(db: SupabaseClient, n: ReturnType<typeof validateNotify>, id: string): Promise<boolean> {
+  let q = db
+    .from('inbox_notifications')
+    .select('id')
+    .eq('family', n.family)
+    .eq('title', n.title)
+    .neq('id', id)
+    .not('pushed_at', 'is', null)
+    .gt('pushed_at', new Date(Date.now() - RING_COOLDOWN_MS).toISOString())
+    .limit(1)
+  q = n.source ? q.eq('source', n.source) : q.is('source', null)
+  const { data, error } = await q
+  // A failed lookup rings: a missed alarm costs more than a repeat.
+  if (error) return false
+  return (data ?? []).length > 0
 }
 
 async function pushCreatedRow(db: SupabaseClient, n: ReturnType<typeof validateNotify>, id: string): Promise<NotifyResult> {
