@@ -16,16 +16,26 @@ export function ReadNotice({ state, retry }: { state: ReadState<unknown>; retry?
 function Percent({ value }: { value: number | null }) {
   return <>{formatReplyPct(value)}{value === null && <small className="rs-sample">No mature sample</small>}</>
 }
-export function replyTimestamp(at: string, displayZone: string): string {
-  try { return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: displayZone }).format(new Date(at)) }
-  catch { return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(new Date(at)) + ' UTC' }
+export function replyDisplayZone(displayZone: string): string {
+  try { new Intl.DateTimeFormat('en-GB', { timeZone: displayZone }); return displayZone }
+  catch { return 'UTC' }
 }
-function ReplyTables({ data: d, displayZone }: { data: ReplyMetrics; displayZone: string }) {
+export function replyTimestamp(at: string, displayZone: string): string {
+  return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: replyDisplayZone(displayZone) }).format(new Date(at))
+}
+export function SnapshotNotice({ asOf, displayZone, delayed }: { asOf: string; displayZone: string; delayed?: true }) {
+  return <>
+    <p className="rs-note">Source data refreshes about every 5 minutes. As of <time dateTime={asOf}>{replyTimestamp(asOf, displayZone)}</time> · {replyDisplayZone(displayZone)}.</p>
+    {delayed && <p className="rs-note" role="status">Source data refresh is delayed. Data above 15 minutes is unavailable.</p>}
+  </>
+}
+function ReplyTables({ data: d, displayZone, delayed }: { data: ReplyMetrics; displayZone: string; delayed?: true }) {
   const c = d.coverage
   const empty = !d.totals.first_responders && !d.totals.reactions && d.touches.every(r => r.sends === 0) && d.followups.length === 0
   return <>
     <p className="rs-note">Last {d.period.days} days · rolling UTC</p>
-    <p className="rs-note">As of <time dateTime={d.as_of}>{replyTimestamp(d.as_of, displayZone)}</time> · {displayZone}. All recorded channels.</p>
+    <SnapshotNotice asOf={d.as_of} displayZone={displayZone} delayed={delayed} />
+    <p className="rs-note">All recorded channels.</p>
     <p className="rs-note">UTC interval: ({d.period.from}, {d.period.to}]. Seven-day observation interval.</p>
     {empty && <p role="status">No qualifying events in this period.</p>}
     <div className="rs-scroll" tabIndex={0} role="region" aria-label="Reply source shares table">
@@ -59,7 +69,7 @@ function ReplyTables({ data: d, displayZone }: { data: ReplyMetrics; displayZone
 }
 function ReadBlock({ scope, days, displayZone, retry }: { scope: ReplyScope; days: Days; displayZone: string; retry: () => void }) {
   const state = useReplySources(scope, days)
-  return state.kind === 'ready' ? <ReplyTables data={state.data} displayZone={displayZone} /> : <ReadNotice state={state} retry={retry} />
+  return state.kind === 'ready' ? <ReplyTables data={state.data} displayZone={replyDisplayZone(displayZone)} delayed={state.delayed} /> : <ReadNotice state={state} retry={retry} />
 }
 export function ReplySources({ scope, displayZone = 'Europe/Warsaw' }: { scope: ReplyScope; displayZone?: string }): React.ReactElement {
   const [days, setDays] = useState<Days>(30)

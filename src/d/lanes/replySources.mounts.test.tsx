@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import fixture from '../../lib/reply-source-v1.fixture.json'
 const { rpc, from } = vi.hoisted(() => {
  const rpc = vi.fn()
@@ -28,11 +28,11 @@ const campaign: CampaignPerf = { campaign_id: 'campaign-a', campaign_name: 'Shar
 const detail = () => ({ data: fixture.detail, error: null })
 const replies = () => rpc.mock.calls.filter(([name]) => name === 'inbox_reply_source')
 const aggregate = () => rpc.mock.calls.filter(([name]) => name === 'outreach_reply_sources')
-beforeEach(() => {
+beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date(fixture.metrics.data.as_of));
  localStorage.clear()
  rpc.mockImplementation(async name => name === 'outreach_reply_sources' ? { data: fixture.metrics, error: null } : name === 'inbox_reply_source' ? detail() : { data: null, error: null })
 })
-afterEach(() => { cleanup(); vi.clearAllMocks() })
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.clearAllMocks() })
 it('mounts seat metrics in Performance without replacing the old lane rates', async () => {
  const ctx = { d: { cc: { value: null, failed: null } }, range: '30d', now: Date.now() } as unknown as BandCtx
  render(<PerfCharts seat="arch" ctx={ctx} />)
@@ -116,4 +116,34 @@ it('keeps messages and legacy Performance usable when the new RPC is missing', a
  const ctx = { d: { cc: { value: null, failed: null } }, range: '7d', now: Date.now() } as unknown as BandCtx
  render(<PerfCharts seat="arch" ctx={ctx} />)
  expect(await screen.findByText(/Reply sources are unavailable/)).toBeTruthy(); expect(screen.getByText('Reply rate per lane, 7 days')).toBeTruthy()
+})
+
+it('removes first/latest source badges above fifteen minutes while the original thread stays available', async () => {
+ vi.useRealTimers(); vi.useFakeTimers(); vi.setSystemTime(new Date(fixture.detail.data.as_of))
+ const first = fixture.detail.data.first_reply!, latest = fixture.detail.data.latest_reply!
+ const [t] = threads([
+  msg({ id: first.reply_id, prospect_id: 'p-a', direction: 'inbound', sent_at: first.reply_at, message_text: 'First text' }),
+  msg({ id: latest.reply_id, prospect_id: 'p-a', direction: 'inbound', sent_at: latest.reply_at, message_text: 'Latest text' }),
+ ])
+ render(<History t={t} />); await act(async () => { await Promise.resolve(); await Promise.resolve() })
+ expect(screen.getByText(/First observed reply ·/)).toBeTruthy(); expect(screen.getByText(/Latest observed reply ·/)).toBeTruthy()
+ rpc.mockReturnValue(new Promise(() => {}))
+ await act(async () => { await vi.advanceTimersByTimeAsync(900000) })
+ expect(screen.getByText(/First observed reply ·/)).toBeTruthy()
+ await act(async () => { await vi.advanceTimersByTimeAsync(1) })
+ expect(screen.queryByText(/First observed reply ·/)).toBeNull(); expect(screen.queryByText(/Latest observed reply ·/)).toBeNull()
+ expect(screen.getByText('First text')).toBeTruthy(); expect(screen.getByText('Latest text')).toBeTruthy()
+ expect(screen.getByText(/Reply sources are unavailable/)).toBeTruthy()
+})
+
+it('keeps a new reply without a badge until a later source snapshot contains its ID', async () => {
+ vi.useRealTimers(); vi.useFakeTimers(); vi.setSystemTime(new Date(fixture.detail.data.as_of))
+ const [t] = threads([msg({ id: 'new-reply', prospect_id: 'p-a', direction: 'inbound', sent_at: '2026-10-07T12:00:00Z', message_text: 'New reply text' })])
+ render(<History t={t} />); await act(async () => { await Promise.resolve(); await Promise.resolve() })
+ expect(screen.getByText('New reply text')).toBeTruthy(); expect(screen.queryByText(/Latest observed reply ·/)).toBeNull()
+ const next = structuredClone(fixture.detail)
+ next.data.as_of = '2026-10-07T12:01:00Z'; next.data.latest_reply!.reply_id = 'new-reply'; next.data.latest_reply!.reply_at = '2026-10-07T12:00:00Z'
+ rpc.mockResolvedValue({ data: next, error: null })
+ await act(async () => { await vi.advanceTimersByTimeAsync(60000) })
+ expect(screen.getByText(/Latest observed reply ·/)).toBeTruthy(); expect(screen.getByText('New reply text')).toBeTruthy()
 })

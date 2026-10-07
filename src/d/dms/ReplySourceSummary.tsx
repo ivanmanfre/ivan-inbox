@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import type { ReadState, ReplyScope, ReplySource, SourceDetail } from '../../lib/replySources'
 import { touchLabel } from '../../lib/replySources'
 import { useReplySource } from '../../hooks/useReplySources'
-import { ReadNotice, replyTimestamp } from '../lanes/ReplySources'
+import { ReadNotice, replyTimestamp, replyDisplayZone, SnapshotNotice } from '../lanes/ReplySources'
 import '../lanes/replySources.css'
 
 const REASONS: Record<string, string> = {
@@ -30,16 +30,19 @@ function SourceRow({ label, source, displayZone }: { label: string; source: Repl
     {source.episode_outcome !== null && <p className="rs-note">Episode: {source.episode_outcome}.</p>}
   </> : <p className="rs-note">No observed text reply.</p>}</div>
 }
-// History reads once and shares that state with the thread summary and ID badges.
+// History shares that state with the thread summary and ID badges.
 export function ReplySourceContent({ state, retry, displayZone = 'Europe/Warsaw' }: { state: ReadState<SourceDetail>; retry?: () => void; displayZone?: string }): React.ReactElement {
   if (state.kind !== 'ready') return <div className="reply-source-summary"><ReadNotice state={state} retry={retry} /></div>
+  const zone = replyDisplayZone(displayZone)
   return <section className="reply-source-summary" aria-label="Observed reply sources">
     <h2>Observed reply sources</h2>
     {!state.data.first_reply && !state.data.latest_reply ? <p>No observed text replies. Reactions are separate.</p> : <>
-      <SourceRow label="First observed text reply" source={state.data.first_reply} displayZone={displayZone} />
-      <SourceRow label="Latest observed text reply" source={state.data.latest_reply} displayZone={displayZone} />
+      <SourceRow label="First observed text reply" source={state.data.first_reply} displayZone={zone} />
+      <SourceRow label="Latest observed text reply" source={state.data.latest_reply} displayZone={zone} />
     </>}
-    <p className="rs-note">As of {replyTimestamp(state.data.as_of, displayZone)} · {displayZone}. Full stored history, which is incomplete. Source labels do not establish cause.</p>
+    <SnapshotNotice asOf={state.data.as_of} displayZone={zone} delayed={state.delayed} />
+    <p className="rs-note">A new reply can lack a source badge until the next snapshot.</p>
+    <p className="rs-note">Full stored history, which is incomplete. Source labels do not establish cause.</p>
   </section>
 }
 function SummaryRead({ scope, prospectId, enabled, retry, displayZone }: { scope: ReplyScope; prospectId: string; enabled: boolean; retry: () => void; displayZone: string }) {

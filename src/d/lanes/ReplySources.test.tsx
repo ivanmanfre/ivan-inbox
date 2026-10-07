@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import fixture from '../../lib/reply-source-v1.fixture.json'
 const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }))
 vi.mock('../../lib/supabase', () => ({ supabase: { rpc, auth: { onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }) } } }))
 import { ReplySources } from './ReplySources'
 import { ReplySourceSummary } from '../dms/ReplySourceSummary'
 const scope = { kind: 'operator', clientId: 'ivan' } as const
-beforeEach(() => { rpc.mockResolvedValue({ data: fixture.metrics, error: null }) })
-afterEach(() => { cleanup(); vi.resetAllMocks() })
+beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date(fixture.metrics.data.as_of)); rpc.mockResolvedValue({ data: fixture.metrics, error: null }) })
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.resetAllMocks() })
 it('renders SQL data as three semantic tables with null samples and real zero rates', async () => {
  render(<ReplySources scope={scope} />)
  const tables = await screen.findAllByRole('table'); expect(tables).toHaveLength(3)
@@ -80,7 +80,7 @@ it('renders source timestamps in the supplied board zone without changing the RP
  rpc.mockResolvedValue({ data: fixture.detail, error: null })
  render(<ReplySourceSummary scope={{ kind: 'board-token', slug: 'fixture', token: 'test-token' }} prospectId="p-a" displayZone="America/New_York" />)
  await screen.findByText('First observed text reply')
- expect(screen.getByText(/As of 7 Oct 2026, 08:00 · America\/New_York/)).toBeTruthy()
+ expect(screen.getByText((_, element) => element?.tagName === 'P' && !!element.textContent?.includes('As of 7 Oct 2026, 08:00 · America/New_York'))).toBeTruthy()
  expect(screen.queryByText(/Europe\/Warsaw/)).toBeNull()
  expect(rpc).toHaveBeenCalledWith('client_board_reply_source', { p_slug: 'fixture', p_token: 'test-token', p_prospect_id: 'p-a' })
 })
@@ -109,4 +109,36 @@ it.each(['interrupted', 'unknown'] as const)('shows episode outcome %s without a
  render(<ReplySourceSummary scope={scope} prospectId="p-a" />)
  expect(await screen.findByText(`Episode: ${outcome}.`)).toBeTruthy()
  expect(screen.queryByText(/Delivered follow-up/)).toBeNull()
+})
+
+it('shows the snapshot refresh interval, delayed state, and expiry without old tables', async () => {
+ vi.useRealTimers(); vi.useFakeTimers(); vi.setSystemTime(new Date(fixture.metrics.data.as_of))
+ render(<ReplySources scope={scope} />)
+ await act(async () => { await Promise.resolve(); await Promise.resolve() })
+ expect(screen.getAllByRole('table')).toHaveLength(3)
+ expect(screen.getByText(/Source data refreshes about every 5 minutes/)).toBeTruthy()
+ rpc.mockReturnValue(new Promise(() => {}))
+ await act(async () => { await vi.advanceTimersByTimeAsync(300001) })
+ expect(screen.getByRole('status').textContent).toMatch(/refresh is delayed/i)
+ await act(async () => { await vi.advanceTimersByTimeAsync(600000) })
+ expect(screen.queryByRole('table')).toBeNull(); expect(screen.getByText(/Reply sources are unavailable/)).toBeTruthy()
+})
+it('explains the possible new-reply badge delay with each source snapshot timestamp', async () => {
+ rpc.mockResolvedValue({ data: fixture.detail, error: null }); render(<ReplySourceSummary scope={scope} prospectId="p-a" displayZone="America/New_York" />)
+ await screen.findByText('First observed text reply')
+ expect(screen.getByText(/A new reply can lack a source badge until the next snapshot/)).toBeTruthy()
+ expect(screen.getByText(/Source data refreshes about every 5 minutes/)).toBeTruthy()
+ expect(screen.getByText((_, element) => element?.tagName === 'P' && !!element.textContent?.includes('As of 7 Oct 2026, 08:00 · America/New_York'))).toBeTruthy()
+})
+it('shows UTC when the supplied display zone is invalid', async () => {
+ render(<ReplySources scope={scope} displayZone="invalid-zone" />); await screen.findAllByRole('table')
+ expect(screen.getByText(/Source data refreshes.*As of.*UTC/)).toBeTruthy(); expect(screen.getByText('All recorded channels.')).toBeTruthy()
+ expect(screen.queryByText(/invalid-zone/)).toBeNull()
+})
+
+it('uses the actual UTC fallback zone for each source row when the requested zone is invalid', async () => {
+ rpc.mockResolvedValue({ data: fixture.detail, error: null }); render(<ReplySourceSummary scope={scope} prospectId="p-a" displayZone="invalid-zone" />)
+ await screen.findByText('First observed text reply')
+ expect(screen.queryByText(/invalid-zone/)).toBeNull()
+ expect(screen.getAllByText(/UTC/).length).toBeGreaterThan(0)
 })

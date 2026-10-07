@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import fixture from './reply-source-v1.fixture.json'
 const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }))
 vi.mock('./supabase', () => ({ supabase: { rpc } }))
 import { loadReplySources, loadReplySource, formatReplyPct, touchLabel } from './replySources'
-afterEach(() => vi.resetAllMocks())
+beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date(fixture.metrics.data.as_of)) })
+afterEach(() => { vi.useRealTimers(); vi.resetAllMocks() })
 const operator = { kind: 'operator', clientId: 'risedtc', campaignId: 'campaign-a' } as const
 const clone = () => structuredClone(fixture.metrics)
 describe('reply source API boundary', () => {
@@ -72,4 +73,23 @@ describe('reply source API boundary', () => {
   const data = structuredClone(fixture.detail); (data.data.first_reply as any).method = 'explicit'
   rpc.mockResolvedValue({ data, error: null }); expect(await loadReplySource(operator, 'p-a')).toEqual({ kind: 'unavailable' })
  })
+})
+
+it.each(['aggregate', 'source'] as const)('parses explicit unavailable for %s with no numeric payload', async kind => {
+ rpc.mockResolvedValue({ data: { status: 'unavailable', data: null }, error: null })
+ expect(await (kind === 'aggregate' ? loadReplySources(operator, 30) : loadReplySource(operator, 'p-a'))).toEqual({ kind: 'unavailable' })
+})
+it.each(['aggregate', 'source'] as const)('rejects future and expired %s snapshots with unchanged schema', async kind => {
+ const envelope = kind === 'aggregate' ? fixture.metrics : fixture.detail
+ rpc.mockResolvedValue({ data: envelope, error: null })
+ vi.setSystemTime(new Date(Date.parse(envelope.data.as_of) - 1))
+ expect((await (kind === 'aggregate' ? loadReplySources(operator, 30) : loadReplySource(operator, 'p-a'))).kind).toBe('unavailable')
+ vi.setSystemTime(new Date(Date.parse(envelope.data.as_of) + 900000))
+ expect((await (kind === 'aggregate' ? loadReplySources(operator, 30) : loadReplySource(operator, 'p-a'))).kind).toBe('ready')
+ vi.setSystemTime(new Date(Date.parse(envelope.data.as_of) + 900001))
+ expect((await (kind === 'aggregate' ? loadReplySources(operator, 30) : loadReplySource(operator, 'p-a'))).kind).toBe('unavailable')
+})
+it.each(['invalid', '2026-10-07T12:00:00', '2026-02-30T12:00:00Z'])('rejects an invalid or unzoned snapshot timestamp %s', async as_of => {
+ rpc.mockResolvedValue({ data: { ...fixture.detail, data: { ...fixture.detail.data, as_of } }, error: null })
+ expect(await loadReplySource(operator, 'p-a')).toEqual({ kind: 'unavailable' })
 })

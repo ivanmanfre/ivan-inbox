@@ -37,9 +37,9 @@ export type SourceDetail = {
   first_reply: ReplySource | null; latest_reply: ReplySource | null;
 };
 export type ReadResult<T> = { status: 'ok'; data: T }
-  | { status: 'preview' | 'not_configured' | 'not_found'; data: null };
+  | { status: 'preview' | 'not_configured' | 'not_found' | 'unavailable'; data: null };
 export type ReadState<T> = { kind: 'loading' }
-  | { kind: 'ready'; data: T }
+  | { kind: 'ready'; data: T; delayed?: true }
   | { kind: 'preview' | 'not_configured' | 'empty' | 'unavailable' | 'denied' }
   | { kind: 'error'; message: string };
 
@@ -54,6 +54,22 @@ const LABELS: Record<Touch, string> = { connection_note: 'Connection note', dm1:
 export const formatReplyPct = (value: number | null): string => value === null ? '—' : `${value.toFixed(1)}%`
 export const touchLabel = (touch: Touch): string => LABELS[touch]
 
+export const SNAPSHOT_REFRESH_MS = 5 * 60000
+export const SNAPSHOT_MAX_AGE_MS = 15 * 60000
+export function snapshotTime(at: unknown): number {
+  if (typeof at !== 'string') return NaN
+  const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.exec(at)
+  if (!parts) return NaN
+  const [, year, month, day, hour, minute, second] = parts.map(Number)
+  if (month < 1 || month > 12 || day < 1 || day > new Date(Date.UTC(year, month, 0)).getUTCDate() || hour > 23 || minute > 59 || second > 59) return NaN
+  return Date.parse(at)
+}
+export function snapshotFreshness(at: unknown, now = Date.now()): 'current' | 'delayed' | 'unavailable' {
+  const age = now - snapshotTime(at)
+  if (!Number.isFinite(age) || age < 0 || age > SNAPSHOT_MAX_AGE_MS) return 'unavailable'
+  return age > SNAPSHOT_REFRESH_MS ? 'delayed' : 'current'
+}
+
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
 const count = (v: unknown): v is number => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0
 const pct = (v: unknown) => v === null || typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 100
@@ -63,7 +79,7 @@ const string = (v: unknown): v is string => typeof v === 'string' && v.length > 
 const counts = (v: Record<string, unknown>, keys: readonly string[]) => keys.every(k => count(v[k]))
 const fixedRows = (v: unknown, check: (v: Record<string, unknown>) => boolean) => Array.isArray(v) && v.length === TOUCHES.length && v.every((r, i) => object(r) && r.touch === TOUCHES[i] && check(r))
 function metrics(v: unknown): v is ReplyMetrics {
-  if (!object(v) || v.schema_version !== 1 || !string(v.client_id) || !date(v.as_of) || v.configured !== true) return false
+  if (!object(v) || v.schema_version !== 1 || !string(v.client_id) || snapshotFreshness(v.as_of) === 'unavailable' || v.configured !== true) return false
   const p = v.period, c = v.coverage, t = v.totals
   if (!object(p) || ![7, 30, 90].includes(p.days as number) || p.basis !== 'rolling_utc' || p.observation_days !== 7 || !date(p.from) || !date(p.to) || Date.parse(p.to) !== Date.parse(v.as_of) || Date.parse(p.to) - Date.parse(p.from) !== Number(p.days) * 86400000) return false
   if (!object(c) || c.history_complete !== false || !nullable(c.first_event_at, date) || c.feature_started_on !== '2026-10-07' || c.classifier_version !== 'reply-touch-v1' || c.seat_basis !== 'registered_client_lane' || c.campaign_basis !== 'current_prospect_membership' || c.population_basis !== 'message_history_v1' || c.unknown_campaign_basis !== 'inbound_current_campaign') return false
@@ -85,7 +101,7 @@ function source(v: unknown): v is ReplySource {
     && nullable(v.followup_ordinal, x => count(x) && x > 0) && (v.episode_outcome === null || ['replied', 'interrupted', 'unknown'].includes(v.episode_outcome as string))
 }
 function detail(v: unknown): v is SourceDetail {
-  return object(v) && v.schema_version === 1 && date(v.as_of) && nullable(v.first_reply, source) && nullable(v.latest_reply, source)
+  return object(v) && v.schema_version === 1 && snapshotFreshness(v.as_of) !== 'unavailable' && nullable(v.first_reply, source) && nullable(v.latest_reply, source)
 }
 const readError = { kind: 'error', message: 'Could not read reply sources. Try again.' } as const
 async function read<T>(name: string, params: Record<string, unknown>, check: (v: unknown) => v is T): Promise<ReadState<T>> {
@@ -97,6 +113,7 @@ async function read<T>(name: string, params: Record<string, unknown>, check: (v:
       return readError
     }
     if (!object(data)) return { kind: 'unavailable' }
+    if (data.status === 'unavailable' && data.data === null) return { kind: 'unavailable' }
     if (['preview', 'not_configured', 'not_found'].includes(data.status as string) && data.data === null) return { kind: data.status === 'not_found' ? 'empty' : data.status as 'preview' | 'not_configured' }
     if (data.status !== 'ok' || !check(data.data)) return { kind: 'unavailable' }
     return { kind: 'ready', data: data.data }
