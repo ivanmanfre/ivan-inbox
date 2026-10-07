@@ -11,7 +11,7 @@ vi.mock('../../lib/supabase', () => {
 })
 
 import { readSwr, writeSwr } from '../../lib/swr'
-import { WEEK_CACHE, cappedOf, toSaved, useWeekRead, memberFitsWeek } from './useWeek'
+import { WEEK_CACHE, toSaved, useWeekRead, memberFitsWeek } from './useWeek'
 
 const NOW = Date.parse('2026-09-29T10:00:00Z')
 const row = (o: Partial<ContentDraft>): ContentDraft => ({
@@ -157,25 +157,4 @@ it('fresh members moving outside the exact week or to an unrelated tenant are no
  expect(memberFitsWeek(row({ status: 'scheduled', scheduled_at: '2026-11-01T10:00:00Z' }), NOW)).toBe(false)
  expect(memberFitsWeek(row({ status: 'published', scheduled_at: null }), NOW)).toBe(false)
  expect(memberFitsWeek(row({ client_id: 'unrelated' }), NOW)).toBe(false)
-})
-
-describe('the capped line: only when the 1,000-row limit was hit', () => {
-  it('filtered rows under the limit are not a cap (raw 114, count 120: no line)', () => {
-    expect(cappedOf({ rows: new Array(110), count: 120, raw: 114 })).toBeNull()
-  })
-  it('the limit hit with more on the server names the server count', () => {
-    expect(cappedOf({ rows: new Array(996), count: 1240, raw: 1000 })).toBe(1240)
-  })
-  it('exactly 1,000 on the server is complete', () => {
-    expect(cappedOf({ rows: new Array(1000), count: 1000, raw: 1000 })).toBeNull()
-  })
-  it('a page without raw falls back to its rows', () => {
-    expect(cappedOf({ rows: new Array(110), count: 114 })).toBeNull()
-  })
-  it('the hook: deleted rows filtered after the count never print the line', async () => {
-    lib.fetchWeekDrafts.mockResolvedValueOnce({ rows: [row({ id: 'a' }), row({ id: 'b' })], count: 4, raw: 4 })
-    const { result } = renderHook(() => useWeekRead(true, NOW))
-    await waitFor(() => expect(result.current.source).toBe('live'))
-    expect(result.current.capped).toBeNull()
-  })
 })

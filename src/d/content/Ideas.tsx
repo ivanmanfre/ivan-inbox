@@ -10,8 +10,6 @@ import { applyFilters, CLIENT_IDEA_SPECS, IDEA_SPECS, type Facet, type FilterSta
 import type { IdeaCandidate } from '../../lib/content'
 import type { ClientIdea } from '../../lib/clientIdeas'
 import { Failed, Skeleton } from '../ui/states'
-import { useStalled } from '../ui/timeout'
-import { Answer, Menu, Pill, SeatAv, Seg, type Tone } from './v2/ui'
 import { useToast } from '../ui/toast'
 import { dHash } from '../route'
 import { LANES, LANE_NAME, type Lane } from './model'
@@ -70,7 +68,7 @@ function readSkips(): Record<Lane, string[]> {
   try { const d = readSwr<Record<Lane, string[]>>('content-idea-skips-v1')?.payload || {} as Record<Lane, string[]>; return Object.fromEntries(LANES.map(l => [l, Array.isArray(d[l]) ? d[l].filter((id: unknown) => typeof id === 'string') : []])) as Record<Lane, string[]> }
   catch { return { ivan: [], risedtc: [], arch: [] } }
 }
-export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks: IdeaBanks; phone: boolean; lane?: Lane; onLaneChange?: (lane: Lane) => void; v2?: boolean }) {
+export function Ideas({ banks, phone, lane, onLaneChange }: { banks: IdeaBanks; phone: boolean; lane?: Lane; onLaneChange?: (lane: Lane) => void }) {
   const toast = useToast()
   const [internalSeat, setInternalSeat] = useState<Lane>('ivan')
   const seat = lane ?? internalSeat
@@ -90,8 +88,6 @@ export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks:
   const hidden = skipped[seat].filter(id => /^(x|linkedin):/.test(id))
   const restore = (lane: Lane, ids: string[]) => setSkipped(s => { const next = { ...s, [lane]: s[lane].filter(id => !ids.includes(id)) }; writeSwr('content-idea-skips-v1', next); return next })
   const current = rows.find(i => i.id === sel)
-  // Brief 4: a first read with no answer in 12 s says so (SPEC-content §2.5); it never stays an endless skeleton.
-  const stalled = useStalled(v2 && b.loading && !fresh.length && !b.error, b.refresh)
   const open = (id: string) => { setSel(id); requestAnimationFrame(() => Array.from(document.querySelectorAll<HTMLElement>('[data-idea-detail]')).find(el => el.dataset.ideaDetail === id)?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })) }
   const done = (id: string) => { setSel(null); setSaved(s => { const list = s[seat].filter(i => i.id !== id); writeSwr(`content-idea-picks:${seat}`,list); return { ...s,[seat]:list } }); b.refresh() }
   const run = async (it: IdeaItem, use: boolean) => {
@@ -134,58 +130,6 @@ export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks:
       </>}</div>}
     {current?.id === it.id && <IdeaDetail it={it} onDone={done} compact/>}
   </article>
-  if (v2) {
-    const who = seat === 'ivan' ? 'Ivan' : LANE_NAME[seat]
-    const v2card = (it: IdeaItem, rank: number | null) => {
-      const expanded = sel === it.id
-      const src = ideaOutlierSource(it)
-      return <article key={it.id} className={`cv2-idea${it.saved ? ' cv2-idea-saved' : ''}${it.generating ? ' cv2-idea-gen' : ''}`} data-idea-id={it.id} style={{ '--i': rank ?? 0 } as React.CSSProperties}>
-        {rank != null && <span className="cv2-rank" aria-hidden="true">{rank}</span>}
-        <div className="cv2-idea-main">
-          <button type="button" className="cv2-idea-t" data-verb="open" aria-expanded={expanded} onClick={() => setSel(expanded ? null : it.id)}>{it.title}</button>
-          <div className="cv2-idea-meta">
-            {it.proof && <b>{it.proof}</b>}
-            <Pill tone={ideaTone(it.src)}>{it.src || 'Idea bank'}</Pill>
-            <time>{it.age}</time>
-            <EarlyReadChip read={it.patternRead} lane={it.lane} />
-            {src && <SourceBadge src={src} />}
-          </div>
-          {it.generating && <p className="cv2-shimmer" role="status">Drafting… it appears in Review</p>}
-          {expanded && <IdeaDetail it={it} onDone={done} compact />}
-        </div>
-        <div className="cv2-idea-acts">
-          {it.generating ? <a className="cv2-k" href={dHash('content', 'now', { lane: it.lane })}>Open in Review →</a>
-            : it.saved ? <button type="button" className="cv2-k" onClick={() => open(it.id)}>Open saved idea</button>
-              : !(expanded && !it.outlier) && <button type="button" className="cv2-k cv2-k-p" data-verb="idea-use" disabled={!!busy || !!it.ivan && !ideaDecidable(it.ivan)} onClick={() => void run(it, true)}>{busy === it.id ? 'Working…' : it.outlier ? 'Save idea' : 'Generate draft'}</button>}
-          {!it.saved && !it.generating && <Menu label="More for this idea" verb="idea-more" items={[{ key: 'skip', label: it.outlier ? 'Hide on this device' : 'Archive idea', run: () => void run(it, false) }]} />}
-        </div>
-      </article>
-    }
-    return <div className={`cv2 cv2-ideas${phone ? ' cv2-phone' : ''}`} data-cv2="ideas">
-      <div className="cv2-bar">
-        <Seg label="Client" verb="lane" value={seat} onChange={id => { setSeat(id as Lane); setSel(null); setBench(false); setError('') }}
-          options={LANES.map(l => ({ id: l, label: <><SeatAv lane={l} />{LANE_NAME[l]}</>, count: banks[l].n ?? '…' }))} />
-        <span className="cv2-grow" />
-        <button type="button" className="cv2-k cv2-k-q" aria-expanded={insights} data-verb="idea-insights" onClick={() => setInsights(v => !v)}>Insights & evidence {insights ? '▾' : '▸'}</button>
-      </div>
-      <Answer>{b.loading && !fresh.length ? `Reading ${who}’s ideas…` : !fresh.length ? `No fresh ideas wait for ${who}.`
-        : <>Best {Math.min(5, fresh.length)} for {who} · proof × freshness.{fresh.length > 5 && ` ${fresh.length - 5} more on the bench.`}</>}</Answer>
-      {insights && <section className="cv2-panel" aria-label="Insights and evidence"><Suspense fallback={<Skeleton lines={3} label="Reading insights" />}><Insights lane={seat} phone={phone} /></Suspense></section>}
-      {error && <div className="cv2-banner cv2-banner-bad" role="alert"><span>{error}</span></div>}
-      {b.error ? <div className="cv2-banner cv2-banner-bad" role="alert"><span>Ideas could not be read: {b.error}</span><button type="button" onClick={b.refresh}>Retry</button></div>
-        : stalled && <div className="cv2-banner cv2-banner-warn" role="alert"><span>Ideas did not answer in 12 s.</span><button type="button" data-verb="ideas-retry" onClick={b.refresh}>Retry</button></div>}
-      {selected.length > 0 && <section aria-label="Selected ideas" className="cv2-sec"><h2 className="cv2-h">Selected <span>drafts you requested and saved ideas</span></h2><div className="cv2-ideas-list">{selected.map(it => v2card(it, null))}</div></section>}
-      <section aria-label={bench ? 'On the bench' : 'Best 5'} className="cv2-sec">
-        {selected.length > 0 && <h2 className="cv2-h">{bench ? 'On the bench' : 'Best 5'}</h2>}
-        {b.loading && !fresh.length && !stalled ? <div className="cv2-ideas-list" aria-busy="true">{[0, 1, 2].map(i => <div key={i} className="cv2-ghost cv2-ghost-idea" />)}</div>
-          : fresh.length > 0 && <div className="cv2-ideas-list">{shown.map((it, i) => v2card(it, i + 1))}</div>}
-      </section>
-      <div className="cv2-foot">
-        {fresh.length > 5 && <button type="button" className="cv2-showmore" data-verb="bench" aria-expanded={bench} onClick={() => { setBench(v => !v); setSel(null) }}>{bench ? 'Back to the best 5' : `See the bench · ${fresh.length - 5}`}</button>}
-        {hidden.length > 0 && <button type="button" className="cv2-link" onClick={() => restore(seat, hidden)}>Restore hidden ideas ({hidden.length})</button>}
-      </div>
-    </div>
-  }
   return <div className={`cn-bestideas${phone ? ' cn-bestideas-phone' : ''}`}>
     <div className="cn-client-switch" role="tablist" aria-label="Client">
       {LANES.map(l => <button key={l} type="button" role="tab" aria-selected={seat === l} className={seat === l ? 'cn-on' : ''} data-verb="lane" data-lane={l} onClick={() => { setSeat(l); setSel(null); setBench(false); setError('') }}>{LANE_NAME[l]}</button>)}
@@ -203,13 +147,4 @@ export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks:
     {hidden.length > 0 && <button type="button" className="cn-bench-link" onClick={() => restore(seat, hidden)}>Restore hidden ideas ({hidden.length})</button>}
     <details className="cn-idea-insights" onToggle={e => setInsights(e.currentTarget.open)}><summary>Insights & evidence</summary>{insights && <Suspense fallback={<Skeleton lines={3} label="Reading insights"/>}><Insights lane={seat} phone={phone}/></Suspense>}</details>
   </div>
-}
-
-/** Source tags on the status pairs (SPEC-content §2.5): calls = info, competitor = danger-soft, X = neutral, sessions = success-soft. */
-function ideaTone(src: string | null | undefined): Tone {
-  const v = (src ?? '').toLowerCase()
-  if (/call/.test(v)) return 'info'
-  if (/competitor|rival/.test(v)) return 'bad'
-  if (/session|claude|own/.test(v)) return 'ok'
-  return 'neutral'
 }

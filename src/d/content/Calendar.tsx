@@ -19,9 +19,6 @@ import { Unpublish } from './Unpublish'
 import { Wall } from './Wall'
 import type { ContentData } from './useContentData'
 import './calendar.css'
-import { coverageOf } from './v2/coverage'
-import { BufferDock, CoverageBar, DayList, WallV2, type CardActs } from './v2/CalendarV2'
-import { SeatAv, Seg } from './v2/ui'
 
 // D · CONTENT > CALENDAR. The first tab (Ivan, 30 Sep: "The calendar is the
 // calendar... the most important thing"). One client or all of them; this
@@ -51,11 +48,6 @@ export type CalendarProps = {
   onArm: (id: string) => void
   onDay: (lane: Lane, keys: string[]) => void
   onChanged: () => void
-  /** Brief 4 (`content.calendar`): coverage, clean cards, the buffer dock. Every hook and write below is the same either way. */
-  v2?: boolean
-  /** The main column is wide (tier 1, >= 1000): Lines shows two weeks; narrower shows one. */
-  wide?: boolean
-  magnetCount?: number
 }
 
 /** A tiny spring on one number, no library: x'' = -k(x - to) - c x'. */
@@ -73,7 +65,7 @@ function spring(from: number, to: number, set: (v: number) => void, done: () => 
   return () => cancelAnimationFrame(raf)
 }
 
-export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMove, onArm, onDay, onChanged, v2 = false, wide = true }: CalendarProps) {
+export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMove, onArm, onDay, onChanged }: CalendarProps) {
   const confirm = useDConfirm()
   const toast = useToast()
   // Desktop "All" opens on the lines wall; a single client, and every phone, opens on the month.
@@ -124,10 +116,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
   const weeks = useMemo(() => monthWeeks(ym.year, ym.month), [ym.year, ym.month])
   const keys = useMemo(() => weeks.flat(), [weeks])
   const inMonth = useMemo(() => new Set(keys.filter(k => Number(k.slice(5, 7)) - 1 === ym.month)), [keys, ym.month])
-  // Brief 4 narrow (Claude open, a small window): one week of five days, paged by the week.
-  const week5 = v2 && !wide && !phone
-  const lineDays = useMemo(() => (week5 ? wallDays(now + off * 7 * DAY_MS).slice(0, 5) : wallDays(now + off * 14 * DAY_MS)), [now, off, week5])
-  const cov = useMemo(() => coverageOf(items, now), [items, now])
+  const lineDays = useMemo(() => wallDays(now + off * 14 * DAY_MS), [now, off])
   const label = view === 'month' ? monthLabel(ym.year, ym.month) : `${dayLabel(lineDays[0].key)} – ${dayLabel(lineDays[lineDays.length - 1].key)}`
   const day = sel ?? (view === 'month' ? openDay(keys, inMonth, days, todayKey) : (lineDays.some(d => d.key === todayKey) ? todayKey : lineDays[0].key))
 
@@ -224,76 +213,8 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
     return () => { window.removeEventListener('keydown', key); el?.removeEventListener('wheel', wheel) }
   }, [page]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Brief 4 keys: M / L switch the view, 1-4 pick the seat (B folds the buffer, in BufferDock). None of them write.
-  useEffect(() => {
-    if (!v2) return
-    const key = (e: KeyboardEvent) => {
-      const t = e.target instanceof Element ? e.target : null
-      if (e.metaKey || e.ctrlKey || e.altKey || t?.closest('input,textarea,select,[contenteditable="true"],[role="dialog"]') || document.querySelector('.d-confirm, .d-sheet, .cv2-menu:not([hidden])')) return
-      if (e.key === 'm' || e.key === 'M') setView('month')
-      else if (e.key === 'l' || e.key === 'L') setView('lines')
-      else if (/^[1-4]$/.test(e.key)) choose(PICKS[Number(e.key) - 1])
-    }
-    window.addEventListener('keydown', key)
-    return () => window.removeEventListener('keydown', key)
-  })
-
   const agenda = days.get(day) ?? []
   const laneBound = pick === 'all' ? undefined : pick
-
-  if (v2) {
-    const acts: CardActs = { onOpen, onMove, onArm, onChanged }
-    const lanes = lanesOf(pick)
-    const nextWeek = new Set(lanes.flatMap(l => (data.seats[l].loadedAt ? cov.seats[l].gaps : [])))
-    const riseLine = (pick === 'all' || pick === 'risedtc') ? warsawDay(now + 14 * DAY_MS) : null
-    return (
-      <section ref={root} className={`cal cv2 cv2-cal${phone ? ' cal-phone' : ''} cal-${view}${week5 ? ' cv2-week5' : ''}`} aria-label="Content calendar" data-cv2="calendar">
-        <header className="cv2-bar cv2-cal-bar">
-          <Seg label="Client" verb="cal-pick" value={pick} onChange={id => choose(id as Pick)} options={PICKS.map(p => ({ id: p, label: p === 'all' ? 'All' : <><SeatAv lane={p} />{PICK_NAME[p]}</> }))} />
-          <Seg label="View" verb="cal-view" size="sm" value={view} onChange={id => setView(id as View)} options={[{ id: 'month', label: 'Month', title: 'M' }, { id: 'lines', label: 'Lines', title: 'L' }]} />
-          <span className="cv2-grow" />
-          <div className="cv2-calnav">
-            <button type="button" data-verb="cal-prev" aria-label={view === 'month' ? 'Previous month' : week5 ? 'Previous week' : 'Previous two weeks'} onClick={() => page(-1)}>‹</button>
-            <b aria-live="polite">{label}</b>
-            <button type="button" data-verb="cal-next" aria-label={view === 'month' ? 'Next month' : week5 ? 'Next week' : 'Next two weeks'} onClick={() => page(1)}>›</button>
-            <button type="button" className="cv2-today" data-verb="cal-today" disabled={off === 0} onClick={today}>Today</button>
-          </div>
-        </header>
-        <CoverageBar cov={cov} lanes={lanes} phone={phone} loaded={l => !!data.seats[l].loadedAt} />
-        <div className={`cv2-cal-body cv2-cal-${view}`}>
-          <div ref={stage} className="cal-stage cv2-stage">
-            <div ref={track} className="cal-track">
-              {view === 'month' ? (
-                <div className="cal-grid cv2-month" role="group" aria-label={`${PICK_NAME[pick]}, ${label}`}>
-                  {DOW.map(d => <div key={d} className="cal-wh">{phone ? d[0] : d}</div>)}
-                  {keys.map(k => {
-                    const on = days.get(k) ?? []
-                    const cls = ['cal-day', inMonth.has(k) ? '' : 'out', k === todayKey ? 'today' : '', k === day ? 'sel' : '', k < todayKey ? 'past' : '', !on.length && nextWeek.has(k) ? 'cv2-gapday' : '', k === riseLine ? 'cv2-riseline' : ''].filter(Boolean).join(' ')
-                    return (
-                      <div key={k} className={cls} data-cal-day={k} data-cal-lane={laneBound} onClick={() => setSel(k)} title={k === riseLine ? `${dayLabel(k)} · Mattan’s two-week line` : dayLabel(k)}>
-                        <span className="cal-dn">{Number(k.slice(8))}</span>
-                        {on.slice(0, 3).map(e => <Chip key={e.it.id} e={e} phone={phone} onOpen={onOpen} />)}
-                        {on.length > 3 && <span className="cal-more">+{on.length - 3}</span>}
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : phone
-                ? <PhoneWall data={data} items={items} days={lineDays} stuck={null} onOpen={onOpen} onMove={onMove} onArm={onArm} now={now} lanes={lanes} />
-                : <WallV2 data={data} items={items} days={lineDays} entryOf={(l, k) => (days.get(k) ?? []).filter(e => e.lane === l)} cov={cov} lanes={lanes} now={now} today={todayKey} a={acts} onDay={onDay} />}
-            </div>
-          </div>
-          {(view === 'month' || phone) && (
-            <aside className="cv2-side">
-              <DayList day={day} isToday={day === todayKey} entries={agenda} reading={!data.seats.ivan.loadedAt} a={acts} />
-              {!phone && <BufferDock loose={loose} lms={lms} a={acts} vertical />}
-            </aside>
-          )}
-        </div>
-        {(view === 'lines' || phone) && <BufferDock loose={loose} lms={lms} a={acts} />}
-      </section>
-    )
-  }
 
   return (
     <section ref={root} className={`cal${phone ? ' cal-phone' : ''} cal-${view}`} aria-label="Content calendar">

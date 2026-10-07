@@ -45,9 +45,7 @@ assert(engines[engine], 'Unknown browser engine')
 const authKey = 'sb-bjbvqvzbzczjbatgmccb-auth-token'
 let session = readFileSync(process.env.THREAD_SESSION_PATH || new URL('../.session.json', import.meta.url), 'utf8')
 assert(JSON.parse(session).access_token, 'Smoke session has no access token')
-const readRpcs = new Set(['inbox_changed_since', 'inbox_interest_cards', 'inbox_followup_sources', 'warm_signal_cards', 'conversation_agent_cards',
-  // Reply-source reads (db/20261007_reply_sources.sql): STABLE security-definer functions, no writes.
-  'inbox_reply_source', 'outreach_reply_sources', 'client_board_reply_source', 'client_board_reply_sources'])
+const readRpcs = new Set(['inbox_changed_since', 'inbox_interest_cards', 'inbox_followup_sources', 'warm_signal_cards', 'conversation_agent_cards'])
 const report = { ok: false, engine, seat, checks: [], failure: null }
 let browser
 try {
