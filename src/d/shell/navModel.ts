@@ -25,7 +25,7 @@ export function navLines(c: FrameCounts): Partial<Record<PlaceId, { line: NavLin
     content: { line: { kind: 'seats', label: 'Waiting on you', numbers: contentNumbers(c), failed: contentF }, failed: nFailed(contentF) },
     ops: { line: { kind: 'seats', label: 'Waiting on you', numbers: opsNumbers(c), failed: allFailed(c.ops.failed) }, failed: c.ops.failed ? 1 : 0 },
     sales: {
-      line: { kind: 'text', label: 'Next call', text: c.nextCall.value?.label ?? (c.nextCall.failed ? '?' : '…') },
+      line: { kind: 'text', label: 'Next call', text: c.nextCall.value ? c.nextCall.value.label.replace(/^(\w{3}) \d{1,2} \w{3}, /, '$1 ') : (c.nextCall.failed ? '?' : '…') },
       failed: c.nextCall.failed ? 1 : 0,
     },
   }

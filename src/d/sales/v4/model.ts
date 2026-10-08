@@ -22,6 +22,25 @@ export function callsByWeek(calls: CallRow[], now: Date, state: ReadState = 'ok'
     return { day, n: rows.length, avg: lengths.length ? Math.round(lengths.reduce((a, c) => a + c.duration_minutes!, 0) / lengths.length) : null, current: i === 7 }
   })
 }
+const IVAN = /^ivan(?:\s+manfredi)?$/i
+
+/** The other person, read off a calendar title when the attendee list is empty:
+ *  "Meet - 30 min with Ivan (Derek Chinners)" → Derek Chinners, "Meet - Paolo and Ivan Manfredi"
+ *  → Paolo, "Meet - Mattan x Ivan - IOS Biweekly" → Mattan. Anything else keeps its title. */
+export function nameFromTitle(title: string | null | undefined): string {
+  const t = callTitle(title)
+  const s = t.replace(/^(?:meet|zoom meeting|google meet)\s*[-–:]\s*/i, '').trim()
+  const paren = s.match(/\bwith ivan(?: manfredi)?\s*\(([^)]+)\)/i)
+  if (paren) return paren[1].trim()
+  for (const part of s.split(/\s+[-–|/]+\s+/)) {
+    const names = part.split(/\s+(?:x|and|&|<>)\s+/i).map(n => n.trim())
+    if (names.length < 2 || !names.some(n => IVAN.test(n))) continue
+    const other = names.find(n => n && !IVAN.test(n))
+    if (other) return other
+  }
+  return t
+}
+
 export function otherPerson(row: CallRow) {
-  return people(row.participants).find(p => !/^ivan(?:\s+manfredi)?$/i.test(p.trim())) ?? callTitle(row.title)
+  return people(row.participants).find(p => !IVAN.test(p.trim())) ?? nameFromTitle(row.title)
 }

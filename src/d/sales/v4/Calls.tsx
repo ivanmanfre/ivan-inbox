@@ -46,9 +46,11 @@ export function CallsOnRecord({ calls, state, seg, setSeg, openId, onOpen, onRet
         const lead = leadLine(c)
                 return (
           <button key={c.id} type="button" className={`sl4-cr${c.id === openId ? ' sl-on' : ''}`} data-call={c.id} onClick={() => onOpen(c.id)}>
-            <span className="sl4-crt"><b>{otherPerson(c)}</b>{n > 0 && <span>{mine > 0 ? `${mine} yours` : `${n} open`}</span>}</span>
-            {lead && <span className="sl4-crl"><i>{LEAD_LABEL[lead.kind]}:</i> {lead.text}</span>}
-            <span className="sl4-crm">{[c.date ? warsawDm(c.date) : 'date not recorded', c.duration_minutes ? `${c.duration_minutes}m` : ''].filter(Boolean).join(' · ')}</span>
+            <span className="sl4-crt"><b>{otherPerson(c)}</b><span className="sl4-crm">{c.date ? warsawDm(c.date) : 'no date'}</span></span>
+            <span className="sl4-crb">
+              {lead ? <span className="sl4-crl"><i>{LEAD_LABEL[lead.kind]}:</i> {lead.text}</span> : <span className="sl4-crl" />}
+              {n > 0 && <span className={`sl4-crn${mine > 0 ? ' sl4-mine' : ''}`} title={mine > 0 ? `${mine} of ${n} open items are yours` : `${n} open item${n === 1 ? '' : 's'}, none yours`}>{mine > 0 ? `${mine} for you` : `${n} open`}</span>}
+            </span>
           </button>
         )
       })}

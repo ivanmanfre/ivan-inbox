@@ -40,7 +40,7 @@ export function Schedule({ f, shown, now, next, idx, packs, tools, filtered, cle
       </button>)}</div>
     </section>
     {next && <Plate r={next} />}
-    <div className="sl4-list-head"><small>{total} {total === 1 ? 'call' : 'calls'}{packs != null && ` · ${packs} ${packs === 1 ? 'pack' : 'packs'} matched`}</small>{tools}</div>
+    <div className="sl4-list-head"><small>{total} {total === 1 ? 'call' : 'calls'}{packs != null && ` · ${packs === 0 ? 'no prep packs' : packs === 1 ? '1 with a prep pack' : `${packs} with prep packs`}`}</small>{tools}</div>
     {filtered && <p className="sl4-note" data-filter-line>Showing calls where {filtered}. <button type="button" data-verb="filter-clear" onClick={clear}>Clear</button></p>}
     {GROUPS.map(([key, label]) => shown[key].length || key === 'today' ? <section key={key} data-group={key}>
       <h3 className="sl4-eyebrow">{label}<small>{shown[key].length || ''}</small></h3>

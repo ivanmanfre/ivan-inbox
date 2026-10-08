@@ -222,9 +222,17 @@ describe('leadLine', () => {
       action_items: [AI({ owner: 'Client', action: 'they do this' }), AI({ owner: 'Ivan', action: 'I do this' })],
     }))).toEqual({ kind: 'action', text: 'I do this' })
   })
-  it('uses the first item when none of them is Ivan', () => {
+  it('uses the first item when none of them is Ivan, labelled as theirs', () => {
     expect(leadLine(row({ action_items: [AI({ owner: 'Client', action: 'they do this' })] })))
-      .toEqual({ kind: 'action', text: 'they do this' })
+      .toEqual({ kind: 'owed', text: 'they do this' })
+  })
+  it('reads the owner off a plain-text "Name: action" item', () => {
+    expect(leadLine(row({ action_items: ['Mattan: decide the margin question', 'Ivan: remove food & beverage'] })))
+      .toEqual({ kind: 'action', text: 'remove food & beverage' })
+    expect(leadLine(row({ action_items: ['Mattan: decide the margin question'] }))).toEqual({ kind: 'owed', text: 'decide the margin question' })
+    expect(leadLine(row({ action_items: [AI({ owner: 'Unclear', action: 'clarify Upwork' })] }))?.kind).toBe('open')
+    expect(leadLine(row({ action_items: ['send the deck'] }))).toEqual({ kind: 'open', text: 'send the deck' })
+    expect(leadLine(row({ action_items: ['Next step: send the deck'] }))).toEqual({ kind: 'open', text: 'Next step: send the deck' })
   })
   it('falls all the way to the summary', () => {
     expect(leadLine(row({ summary: 'we talked' }))).toEqual({ kind: 'summary', text: 'we talked' })

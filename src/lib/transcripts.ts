@@ -114,7 +114,11 @@ export function parseAgentItem(item: ActionItemRaw): Record<string, unknown> {
         if (p && typeof p === 'object' && !Array.isArray(p)) return p as Record<string, unknown>
       } catch { /* not JSON after all, fall through to the plain-text shape */ }
     }
-    return { action: item }
+    // Plain-text items name their owner up front: "Ivan: remove food & beverage…".
+    const tagged = s.match(/^([A-Z][\w.'-]*(?: [A-Z][\w.'-]*){0,2}):\s+(\S[\s\S]*)$/)
+    // Labels that are not owners ("Next step: …", "Note: …") keep the whole line as the action.
+    return tagged && !/^(?:next(?: steps?)?|note|notes|action|todo|to do|follow[ -]?up|deadline|summary|update|important)$/i.test(tagged[1])
+      ? { owner: tagged[1], action: tagged[2] } : { action: item }
   }
   return item && typeof item === 'object' ? item : {}
 }
@@ -352,12 +356,14 @@ export function segmentCalls(
 // item beats the summary, and the summary beats nothing. The source leads with
 // the summary unconditionally, which on a sales call is the least actionable
 // sentence on the row.
-export type LeadLine = { kind: 'next' | 'objection' | 'action' | 'summary'; text: string }
+export type LeadLine = { kind: 'next' | 'objection' | 'action' | 'owed' | 'open' | 'summary'; text: string }
 
 export const LEAD_LABEL: Record<LeadLine['kind'], string> = {
   next: 'Next step',
   objection: 'They pushed back on',
   action: 'You owe',
+  owed: 'They owe',
+  open: 'Open',
   summary: 'Summary',
 }
 
@@ -369,7 +375,9 @@ export function leadLine(row: CallRow): LeadLine | null {
   if (objection) return { kind: 'objection', text: objection }
   const items = actionItems(row)
   const owed = items.find(i => i.mine) ?? items[0]
-  if (owed) return { kind: 'action', text: owed.action }
+  // "You owe" only for Ivan's own item; a named other owner reads "They owe"; no owner (or
+  // "Unclear") is just "Open".
+  if (owed) return { kind: owed.mine ? 'action' : owed.owner && !/^unclear|unknown|tbd$/i.test(owed.owner) ? 'owed' : 'open', text: owed.action }
   const summary = str(row.summary)
   if (summary) return { kind: 'summary', text: summary }
   return null

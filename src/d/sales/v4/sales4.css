@@ -46,3 +46,12 @@ html.brief-motion-off .sl4 *,html.brief-motion-subtle .sl4 .sl-join::after{anima
 .sl4-next[data-motion=off] .sl-join::after{animation:none!important}.sl4-next .sl-join{position:relative}
 
 .sl4[data-motion=off] *{animation:none!important;transition:none!important}
+
+/* Readability pass 10-08: two lines per call (who · when / what is owed · count), 56px, Oxygen-calm. */
+.sl4-cr{height:auto;min-height:56px;padding:9px 10px;gap:3px;justify-content:center}
+.sl4-crt>.sl4-crm{flex:none;background:none;padding:0;color:var(--t3);font:400 11px/16px var(--f);font-variant-numeric:tabular-nums}
+.sl4-crb{display:flex;gap:8px;align-items:center;min-width:0}
+.sl4-crb>.sl4-crl{flex:1;min-width:0}
+.sl4-crl i{color:var(--t3)}
+.sl4-crn{flex:none;font:500 11px/16px var(--f);padding:0 6px;border-radius:var(--ds-r-chip);background:var(--ds-well-fill);color:var(--t2)}
+.sl4-crn.sl4-mine{background:var(--ds-sev-attention-soft);color:var(--warn)}
