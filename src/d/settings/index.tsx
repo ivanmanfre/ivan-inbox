@@ -125,7 +125,7 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
   if (v4) {
     const native = typeof window !== 'undefined' ? (window as unknown as { __brief?: { setView?: (v: { density?: string; motion?: string }) => void } }).__brief : undefined
     const pickDensity = (d: typeof density) => { setDensity(d); native?.setView?.({ density: d }) }
-    return <SettingsV4 head={<AnswerRow title={title} sub={sub} />} build={<>Build {typeof __BUILD__ === 'undefined' ? 'unknown' : __BUILD__}</>} groups={<>
+    return <SettingsV4 head={<AnswerRow title="Settings" sub={sub} />} build={<>Build {typeof __BUILD__ === 'undefined' ? 'unknown' : __BUILD__}</>} groups={<>
       <Group label="Notifications" id="notifications">
         <Row4 title={`Push on this ${here}`} sub={pushSub || push.error ? <>{pushSub}{push.error && <span className="ds2-err"> {push.error}</span>}</> : undefined}>
           <Pair name="Push" value={push.state === 'on' ? 'on' : push.state === 'off' || push.state === 'denied' ? 'off' : null} disabled={Boolean(push.blocked) || push.busy}

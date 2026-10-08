@@ -14,7 +14,7 @@
    ========================================================================== */
 import { useConfirm } from '../chrome/ConfirmSheet'
 import {
-  archOutcomeLabel, GATE_HELD_LABEL, type OpsDraft, type OpsKind, type GateVerdict, type FeedState,
+  archOutcomeLabel, GATE_HELD_LABEL, personHeadline, type OpsDraft, type OpsKind, type GateVerdict, type FeedState,
 } from '../../lib/ops'
 import { usePendingCard } from './usePendingCard'
 import { Banner, Button, Chip, Textarea } from '../../ds'
@@ -172,7 +172,7 @@ function ContextBlock({ draft }: { draft: OpsDraft }) {
   // the post itself. The draft below is unjudgeable without the excerpt.
   if (draft.kind === 'comment_outbound') {
     const rows: Array<[React.ReactNode, React.ReactNode]> = [
-      ['Who', [ctx.target_name, ctx.target_headline].filter(Boolean).join(' · ')],
+      ['Who', [ctx.target_name, personHeadline(ctx.target_headline)].filter(Boolean).join(' · ')],
     ]
     if (ctx.post_url) rows.push(['Post', <Link href={ctx.post_url}>open the post</Link>])
     return (

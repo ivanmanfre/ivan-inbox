@@ -1,6 +1,6 @@
 import { useReplySource } from '../../hooks/useReplySources'
 import { touchLabel } from '../../lib/replySources'
-import { ReplySourceContent } from './ReplySourceSummary'
+import { ReplySourceContent, ReplySourceLine, knownSource } from './ReplySourceSummary'
 // The conversation, as chat bubbles: who, the words, the channel and when.
 // Every message is shown whole with its links live (today's Linkified), a multi-bubble reply split
 // the way LinkedIn delivered it, "To <email>" on a sent email, "Not accepted yet" on a pending
@@ -93,7 +93,7 @@ function HistoryRead({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmai
   const first = t.prospect_name.split(' ')[0] || t.prospect_name
   const ours = oursLabel(t)
   if (!rows.length) {
-    return <div className="dm-hist"><ReplySourceContent state={source} retry={retry} /><p className="dm-hist-empty">No messages yet. {t.draft ? 'The draft below is the first one.' : 'Nothing has been sent or received on this thread yet.'}</p></div>
+    return <div className="dm-hist">{v4 ? <ReplySourceLine state={source} retry={retry} /> : <ReplySourceContent state={source} retry={retry} />}<p className="dm-hist-empty">No messages yet. {t.draft ? 'The draft below is the first one.' : 'Nothing has been sent or received on this thread yet.'}</p></div>
   }
   let day = ''
   let prevSide: 'in' | 'out' | null = null
@@ -108,7 +108,7 @@ function HistoryRead({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmai
   let runShown: string | null = null
   return (
     <div className="dm-hist">
-      <ReplySourceContent state={source} retry={retry} />
+      {v4 ? <ReplySourceLine state={source} retry={retry} /> : <ReplySourceContent state={source} retry={retry} />}
       {rows.length > shown.length && (
         <button type="button" className="dm-h-more" data-verb="history-earlier" onClick={() => setAll(true)}>{rows.length - shown.length} earlier message{rows.length - shown.length > 1 ? 's' : ''}</button>
       )}
@@ -137,8 +137,9 @@ function HistoryRead({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmai
         if (firstOfRun) runShown = null
         const last = lastOfRun(i)
         const needKind = pill !== null ? kind !== runShown : (last && runShown === null) || channelChanged
-        const firstObs = source.kind === 'ready' && source.data.first_reply?.reply_id === m.id
-        const latestObs = source.kind === 'ready' && source.data.latest_reply?.reply_id === m.id
+        // Brief 4: only a known source earns a badge, and only on the first reply (the latest one repeats it).
+        const firstObs = source.kind === 'ready' && source.data.first_reply?.reply_id === m.id && (!v4 || knownSource(source.data.first_reply))
+        const latestObs = source.kind === 'ready' && source.data.latest_reply?.reply_id === m.id && !v4
         const showMeta = !v4 || last || Boolean(st) || reaction || email || needKind || firstObs || latestObs
         const showKind = !v4 || needKind || (last && kind !== runShown)
         if (showMeta && showKind) runShown = kind
@@ -160,7 +161,7 @@ function HistoryRead({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmai
                 {showKind && <i>{kind}</i>}
                 {st && <i className={st.fail ? 'dm-i-fail' : undefined}>{st.text}</i>}
                 {reaction && <i>reaction</i>}
-                {firstObs && <i>First observed reply · {touchLabel(source.data.first_reply!.touch)}</i>}
+                {firstObs && <i>{v4 ? `Replied after ${touchLabel(source.data.first_reply!.touch)}` : `First observed reply · ${touchLabel(source.data.first_reply!.touch)}`}</i>}
                 {latestObs && <i>Latest observed reply · {touchLabel(source.data.latest_reply!.touch)}</i>}
                 <time dateTime={at}>{warsawHm(at)}</time>
               </div> : <time className="dx-sr" dateTime={at}>{warsawHm(at)}</time>}

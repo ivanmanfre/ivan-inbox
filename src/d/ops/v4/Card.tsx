@@ -6,7 +6,7 @@ import { Preview } from './Preview'
 import { CardMore } from './More'
 import { captions, OpsCard, useCardConfirm } from '../Card'
 import type { ConfirmOpts as OldConfirmOpts } from '../../../lib/confirm'
-import { GATE_HELD_LABEL } from '../../../lib/ops'
+import { GATE_HELD_LABEL, personHeadline } from '../../../lib/ops'
 import { usePendingCard } from '../../../wb/ops/usePendingCard'
 import { seatOf, SEAT_NAME } from '../../seats'
 import { Key } from '../../ui/Key'
@@ -46,7 +46,7 @@ export function CardV4({ d, refresh, feed, held, onGateResult, layout, pos, wait
   const initials = who.split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase()
   const excerptKey = st.isOutbound ? 'post_excerpt' : st.isComment ? 'comment_text' : null
   const excerpt = excerptKey ? String(d.context?.[excerptKey] ?? '') : ''
-  const displayDraft = /(?:volume lane|\bmode\s*\d+|contentless)/i.test(String(d.context?.target_headline ?? '')) ? { ...d, context: { ...d.context, target_headline: '' } } : d
+  const displayDraft = String(d.context?.target_headline ?? '') && !personHeadline(d.context?.target_headline) ? { ...d, context: { ...d.context, target_headline: '' } } : d
   const context = excerptKey && excerpt && !/[.!?…]$/.test(excerpt.trim()) ? { ...displayDraft, context: { ...displayDraft.context, [excerptKey]: excerpt.trimEnd() + '…' } } : displayDraft
   const contextLabel = st.isOutbound ? 'Their post' : st.isComment ? 'Their comment' : d.kind === 'newsjack' ? 'The story' : d.kind === 'weekly_report' ? 'The week' : d.kind === 'booking' || d.kind === 'precall_email' ? 'The call' : 'The person'
   const left = st.left

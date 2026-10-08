@@ -1147,3 +1147,10 @@ export function cardStateOf(f: FeedState | undefined): CardPostState {
   if (f.status === 'dismissed') return 'dismissed'
   return null
 }
+
+/** The Volume Lane writes its own mode ("volume lane, mode 2 (contentless)") into
+ *  `target_headline`. That is an internal label, never the person's headline. */
+export function personHeadline(h: unknown): string {
+  const v = typeof h === 'string' ? h.trim() : ''
+  return /(?:volume lane|\bmode\s*\d+|contentless)/i.test(v) ? '' : v
+}

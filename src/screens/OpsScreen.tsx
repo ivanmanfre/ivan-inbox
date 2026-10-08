@@ -6,7 +6,7 @@ import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useOps } from '../hooks/useOps'
 import {
   approveOpsDraft, approveWeeklyReport, blockedOps, canGenerateDraft, canTagCommenter, isCloseOnlyComment, claimingOps, discardOpsDraft, DRAFT_CONTINUE_MAX, engineLabel, expiresIn, generateCommentDraft, likeComment, markCommentHandled, outboundApproveUrl, outboundSkipUrl, pendingOps, postCommentReply, seatLabel, sentOps, weeklyReportDispatches, weeklySendAfter,
-  dispatchCommentGate, cardStateOf,
+  dispatchCommentGate, cardStateOf, personHeadline,
   completeTask, doneTodayTasks, dueLabel, isTaskKind, pendingTasks, taskDetails, taskDue, taskSource, taskTitle,
   type OpsDraft, type OpsKind, type GateVerdict, type FeedState,
 } from '../lib/ops'
@@ -171,7 +171,7 @@ function ContextLine({ draft }: { draft: OpsDraft }) {
   if (draft.kind === 'comment_outbound') {
     return (
       <div className="ops-ctx">
-        <span>{[ctx.target_name, ctx.target_headline].filter(Boolean).join(' · ')}</span>
+        <span>{[ctx.target_name, personHeadline(ctx.target_headline)].filter(Boolean).join(' · ')}</span>
         {ctx.post_excerpt && <span>&ldquo;{ctx.post_excerpt}&rdquo;</span>}
         {ctx.hook && <span className="ops-replay">{ctx.hook}</span>}
         {ctx.post_url && (

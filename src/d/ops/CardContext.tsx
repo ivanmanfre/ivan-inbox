@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { archOutcome, archSources, outboundApproveUrl, type OpsDraft } from '../../lib/ops'
+import { archOutcome, archSources, outboundApproveUrl, personHeadline, type OpsDraft } from '../../lib/ops'
 import { seatOf } from '../seats'
 import { SEAT_NAME } from '../seats'
 import { DIcon } from '../ui/icons'
@@ -41,7 +41,7 @@ export function CardContext({ d, liked, needsDavor }: { d: OpsDraft; liked: bool
   switch (d.kind) {
     case 'comment_outbound':
       return <>
-        <Who name={s(c.target_name)} sub={s(c.target_headline)} />
+        <Who name={s(c.target_name)} sub={personHeadline(c.target_headline)} />
         <Mono parts={[s(c.post_url) && <Out href={s(c.post_url)}>open the post</Out>, s(c.posted_at) && `posted ${ago(s(c.posted_at))}`, s(c.hook)]} />
         <Quote text={s(c.post_excerpt)} />
       </>

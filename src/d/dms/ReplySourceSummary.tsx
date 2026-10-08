@@ -45,6 +45,18 @@ export function ReplySourceContent({ state, retry, displayZone = 'Europe/Warsaw'
     <p className="rs-note">Full stored history, which is incomplete. Source labels do not establish cause.</p>
   </section>
 }
+/** A source the snapshot actually established (not "unknown", not an unknown touch). */
+export function knownSource(s: ReplySource | null): s is ReplySource {
+  return !!s && s.method === 'inferred_same_chat' && s.touch !== 'unknown'
+}
+/** Brief 4 thread view: one quiet line when the source is known, full detail behind it. Nothing otherwise. */
+export function ReplySourceLine({ state, retry, displayZone = 'Europe/Warsaw' }: { state: ReadState<SourceDetail>; retry?: () => void; displayZone?: string }): React.ReactElement | null {
+  if (state.kind !== 'ready') return null
+  const s = knownSource(state.data.first_reply) ? state.data.first_reply : knownSource(state.data.latest_reply) ? state.data.latest_reply : null
+  if (!s) return null
+  return <details className="dx-src"><summary>Replied after {touchLabel(s.touch)} · {PRODUCTS[s.product]}</summary>
+    <ReplySourceContent state={state} retry={retry} displayZone={displayZone} /></details>
+}
 function SummaryRead({ scope, prospectId, enabled, retry, displayZone }: { scope: ReplyScope; prospectId: string; enabled: boolean; retry: () => void; displayZone: string }) {
   const state = useReplySource(scope, prospectId, enabled)
   return enabled ? <ReplySourceContent state={state} retry={retry} displayZone={displayZone} /> : null
