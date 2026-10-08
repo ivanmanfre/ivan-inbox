@@ -11,6 +11,7 @@ import { BellButton } from './Bell'
 import { useFrame } from './frame'
 import { useNavModel } from './navModel'
 import { Brand, MeFooter, NavCount, NavLineView, SeatHead } from './Side'
+import { Glance } from './Glance'
 
 // The phone frame (D pshell.js): top bar (panel key, place + Warsaw time,
 // bell), the dock (five places + the lime Claude key), and the left panel as a
@@ -96,6 +97,7 @@ export function PhonePanel({ onClose }: { onClose: () => void }) {
             </div>
           ))}
         </nav>
+        <Glance onGo={go} eager />
         <nav className="d-nav d-low">
           <button type="button" onClick={() => { onClose(); f.setBellOpen(true) }}><DIcon name="bell" /><span>Alerts</span></button>
           <div className="d-navi">
