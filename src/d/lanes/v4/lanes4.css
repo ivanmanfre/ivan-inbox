@@ -54,3 +54,7 @@ html.brief-motion-off .dl4-seat{animation:none}
 
 .dl4-no-pace{font:400 13px/20px var(--f);color:var(--t2)}
 .dl4-phone .dl-sech .dl-sect{min-height:44px}
+/* Phone: name over status on every seat, so a short chip ("Healthy") never sits higher than a long one. */
+.dl4-phone .dl4-tab-head{flex-direction:column;align-items:flex-start;flex-wrap:nowrap;gap:3px}
+.dl4-phone .dl4-strip .ds-seg-item{padding:8px}
+.dl4-phone .dl4-strip .ds-seg-item.ds-seg-item{height:auto;min-height:64px;align-items:flex-start}
