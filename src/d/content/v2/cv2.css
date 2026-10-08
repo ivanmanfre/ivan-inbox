@@ -531,3 +531,7 @@
 :root[data-skin-on~='content.calendar'] .cv2-buf{padding:6px 10px 8px;gap:6px}
 :root[data-skin-on~='content.calendar'] .cv2-buf-v .cv2-tile{height:auto;width:auto}
 :root[data-skin-on~='content.calendar'] .d-phone .cv2-tile{width:200px}
+:root[data-skin-on~='content.calendar'] .cv2-tile:not(.cv2-tile-lm) .cv2-tile-t{-webkit-line-clamp:2;max-height:32px;padding-bottom:0}
+/* a cell that also carries "+N more" / "Sat/Sun": a shorter picture, so the chips never sit on the card */
+:root[data-skin-on~='content.calendar'] .cv2-cell:has(.cv2-cellk) .cv2-cc-pic{height:36px}
+:root[data-skin-on~='content.calendar'] .cv2-cell:has(.cv2-cellk) .cv2-cc-text .cv2-cc-t{-webkit-line-clamp:3;max-height:60px}
