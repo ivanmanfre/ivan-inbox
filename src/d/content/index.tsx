@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useRef, useEffect, useMemo, useState } from 'react'
+import { useClientBoardState } from '../../lib/clientBoardState'
 import { useSkin } from '../../ds/useSkin'
 import { TodayNotes } from '../lanes/TodayNotes'
 import type { PlaceProps } from '../places'
@@ -59,6 +60,8 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const q = route.query
   // Brief 4 (SPEC-content): the frame flag and one flag per sub-tab; every hook below runs either way.
   const cv2 = useContentFlags()
+  // The client panels' approvals, removals and change requests (db/243), refreshed on focus.
+  useClientBoardState()
   const presentation = useRef<HTMLDivElement>(null)
   useSubtabMotion(presentation, route.sub ?? 'now', cv2.frame)
   const tier = useMainTier(cv2.frame)

@@ -179,19 +179,19 @@ describe('the card', () => {
     expect(pillOf(cards.find(c => c.r.id === 'p')!)).toEqual({ tone: 'bad', text: 'Error' })
     expect(pillOf(cards.find(c => c.r.id === 'q')!)).toEqual({ tone: 'info', text: 'Needs review' })
   })
-  it('Arch cards that are not brain drafts have no decision key (view only)', () => {
+  it('Arch cards edit like the other lanes (2026-10-08): Edit and Details, no view-only note', () => {
     renderInFrame(<Harness rows={[row({ id: 'a1', client_id: 'arch', status: 'review' })]} />)
     const a = card('a1')!
-    for (const v of ['card-keep', 'card-drop', 'card-approve', 'card-skip', 'card-board', 'card-schedule', 'card-date-it', 'card-edit']) expect(verb(a, v)).toBeNull()
+    expect(verb(a, 'card-edit')).toBeTruthy()
     expect(verb(a, 'card-open')).toBeTruthy()
   })
 })
 
 describe('Arch picture', () => {
-  it('an Arch card never offers a picture write; Ivan\'s does', () => {
+  it('an Arch card offers the same picture writes as Ivan\'s', () => {
     renderInFrame(<Harness rows={[row({ id: 'a1', client_id: 'arch', type: 'single_image' }), row({ id: 'i1', type: 'single_image' })]} />)
-    expect(verb(card('a1'), 'picture-change')).toBeNull()
-    expect(verb(card('a1'), 'picture-upload')).toBeNull()
+    expect(verb(card('a1'), 'picture-change')).toBeTruthy()
+    expect(verb(card('a1'), 'picture-upload')).toBeTruthy()
     expect(verb(card('i1'), 'picture-change')).toBeTruthy()
   })
 })

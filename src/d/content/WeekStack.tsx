@@ -26,7 +26,7 @@ import './verdict.css'
 //
 // A BRAIN DRAFT still to judge carries two keys instead: Drop and Approve (run 39). One tap, then a strip in the
 // card's place with Undo (5 s); after Drop, the why is one more tap. Approve on Ivan's seat approves it (nothing publishes);
-// Approve on Rise or Arch records the verdict only; Drop deletes (or archives). Arch stays view only otherwise.
+// Approve on Rise or Arch records the verdict only; Drop deletes (or archives).
 // The keys: Approve (Ivan, one tap, Undo for 8 s, then the next card), Put on
 // board (Rise, confirmed: it reaches Mattan), Schedule (Ivan, confirmed: it goes
 // out on LinkedIn), Open (everything else). The date control (Ivan, Rise) is
@@ -115,7 +115,7 @@ export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onCh
       )}
       <Sync read={read} />
       {show === 'arch' && (
-        <p className="cn-wk2-note">Arch cards here are view only: Davorin reviews his posts on Friday and his publisher posts from review. Open a post for its board, date and picture controls.</p>
+        <p className="cn-wk2-note">Arch posts go out only after Davorin approves them on his panel. A card says when one is still waiting for his OK.</p>
       )}
       {read.source === 'none' && !read.settled ? <Skeleton lines={6} title={false} label="Reading this week" />
         : read.source === 'none' && read.error ? <Failed what="this week's posts" detail={read.error} onRetry={read.refresh} />

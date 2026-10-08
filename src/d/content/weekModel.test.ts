@@ -92,7 +92,7 @@ describe('this week: grouping and order', () => {
     const w = buildWeek(rows, { now: NOW, show: 'risedtc' })
     expect(w.ids).toHaveLength(1)
     expect(w.perLane).toEqual({ ivan: 2, risedtc: 1, arch: 1 })
-    expect(w.toDecide).toEqual({ ivan: 2, risedtc: 1, arch: 0 })
+    expect(w.toDecide).toEqual({ ivan: 2, risedtc: 1, arch: 1 })
   })
 
   it('a held decision shows at once: Skip leaves, Approve on a dated draft turns its key into Schedule', () => {
@@ -111,33 +111,23 @@ describe('this week: grouping and order', () => {
   })
 })
 
-describe('this week: ARCH is view only', () => {
-  it('an Arch card never carries a date control or a status key, whatever its state', () => {
+describe('this week: ARCH edits like Rise (2026-10-08)', () => {
+  it('an Arch card dates and puts on the board like a Rise card; nothing says view only', () => {
     const arch = [
       row({ client_id: 'arch' }),
-      row({ client_id: 'arch', board_visible: false, scheduled_at: at(D) }),
       row({ client_id: 'arch', board_visible: true, scheduled_at: at(2 * D) }),
-      row({ client_id: 'arch', status: 'scheduled', board_visible: true, scheduled_at: at(3 * D) }),
     ]
-    const w = buildWeek(arch, { now: NOW })
-    const cards = [...w.groups.flatMap(g => g.cards), ...w.older]
-    expect(cards).toHaveLength(4)
+    const cards = (() => { const w = buildWeek(arch, { now: NOW }); return [...w.groups.flatMap(g => g.cards), ...w.older] })()
+    expect(cards).toHaveLength(2)
     for (const c of cards) {
-      expect(c.canDate).toBe(false)
-      expect(c.primary).toBe('open')
-      expect(c.viewOnly).toBe(true)
-      expect(c.flags.map(f => f.key)).toContain('view')
+      expect(c.canDate).toBe(true)
+      expect(c.viewOnly).toBe(false)
+      expect(c.flags.map(f => f.key)).not.toContain('view')
     }
-    expect(w.toDecide.arch).toBe(0)
+    expect(cards.find(c => !c.r.board_visible)!.primary).toBe('board')
   })
 
-  it('the same rows on Rise do get the date control and Put on board', () => {
-    const c = buildWeek([row({ client_id: 'risedtc' })], { now: NOW }).groups[0].cards[0]
-    expect(c.canDate).toBe(true)
-    expect(c.primary).toBe('board')
-  })
-
-  it('the card rule stays on the card: the Planner still moves an Arch post as before', () => {
+  it('the Planner still moves an Arch post as before', () => {
     const items = seatItems([row({ client_id: 'arch', board_visible: true, scheduled_at: at(D) })], 'arch', null, NOW)
     expect(items).toHaveLength(1)
     expect(items[0].movable).toBe(true)

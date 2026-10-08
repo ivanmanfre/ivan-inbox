@@ -18,11 +18,14 @@ export function FixRow({ d, onDone, onDeleted, disabled }: { d: ContentDraftDeta
       <small className="cn-cap">Fix or remove</small>
       <ConfirmProvider>
         <div className="cn-fix2-row a-dw">
-          <RegenDraft d={d} onDone={onDone} disabled={disabled} label="Rewrite the copy" />
+          {/* A scheduled post's queue row takes the new body at once (propagate trigger), so a rewrite
+              there would publish unreviewed copy: unschedule first (audit 2026-10-08). */}
+          <RegenDraft d={d} onDone={onDone} disabled={disabled || d.status === 'scheduled'} label="Rewrite the copy" />
           {canRestartToIdea(d.status, 'ivan') && <RestartDraft d={d} onDone={onDone} disabled={disabled} />}
           <DeleteDraft d={d} disabled={disabled} onDone={onDeleted} />
         </div>
       </ConfirmProvider>
+      {d.status === 'scheduled' && <p className="cn-dim">Rewriting is off while it is scheduled: the new copy would go out unreviewed. Unschedule it first.</p>}
     </section>
   )
 }

@@ -18,7 +18,8 @@ describe('Now actionable content', () => {
     ], { now: NOW })
     expect(w.ids).toEqual(['error', 'stalled', 'first', 'later', 'undated', 'arch'])
     const arch = w.groups.flatMap(g => g.cards).find(c => c.r.id === 'arch')!
-    expect(arch.primary).toBe('open'); expect(arch.canDate).toBe(false)
+    // 2026-10-08: Arch edits like Rise (its publisher waits for Davorin's panel approval).
+    expect(arch.primary).toBe('board'); expect(arch.canDate).toBe(true)
   })
   it('shows ancient failures and undated approved drafts that still need a date', () => {
     const w = buildNow([row('old', { status: 'scheduled', scheduled_at: '2026-07-01T09:00:00Z' }), row('date', { status: 'approved' })], { now: NOW })

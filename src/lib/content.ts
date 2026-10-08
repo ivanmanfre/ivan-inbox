@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { label } from './labels'
 import { captureOrigin } from './verdicts'
+import { clientWillPublish } from './clientBoardState'
 
 // Content domain: Ivan's own posts/carousels AND Mattan Danino's board, both out
 // of the same carousel_drafts table. There is no per-client table fork — the
@@ -1333,6 +1334,8 @@ export const CLIENT_RPC_MESSAGES: Record<string, string> = {
   bad_status:
     'Only a draft at Needs review or Scheduled can be re-dated. '
     + 'Nothing changed — its date is exactly as it was.',
+  // db/241: a date in the past would publish on the next tick.
+  past_date: 'That time has already passed. Pick a later one. Nothing changed.',
 }
 
 export function clientRpcMessage(code: string): string {
@@ -1340,6 +1343,8 @@ export function clientRpcMessage(code: string): string {
 }
 
 function rpcOk(data: unknown, error: { message: string } | null): Record<string, unknown> {
+  // The RISE "needs Mattan's OK" trigger raises (db rise_mattan_ok_gate): say it in words.
+  if (error && /rise_mattan_ok_gate/.test(error.message)) throw new Error('This post needs Mattan’s OK before it can get a date: its idea is flagged for him. Nothing changed.')
   if (error) throw new Error(error.message)
   const r = (data ?? {}) as Record<string, unknown>
   if (r.ok !== true) {
@@ -1856,6 +1861,9 @@ export function clientScheduleArmed(r: ContentDraft): boolean {
     && !r.published_at
     && !!r.scheduled_at
     && (r.status === 'review' || r.status === 'scheduled')
+    // The publishers' own rule (2026-10-08): RISE sends only status=scheduled since the 10-07
+    // hardening, ARCH only after Davorin's panel approval, and a client removal stops both.
+    && clientWillPublish(r)
 }
 
 export function stageOfLane(

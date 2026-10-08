@@ -7,12 +7,13 @@ const row = (over: Partial<Parameters<typeof moveConfirmCopy>[0] & object> = {})
 })
 
 describe('moveConfirmCopy: a date on a board post is a schedule', () => {
-  it('says Davorin’s publisher posts an on-board ARCH post, with day and time', () => {
+  // 2026-10-08: the ARCH publisher sends only after Davorin approves on his panel.
+  it('says an on-board ARCH post goes out once Davorin approves it, with day and time', () => {
     const c = moveConfirmCopy(row(), 'Tue, Sep 29', '9:00 AM')
-    expect(c.title).toBe('Schedule this to post?')
-    expect(c.confirmText).toBe('Schedule to post')
-    expect(c.message).toContain('Davorin’s board')
-    expect(c.message).toContain('post it on Tue, Sep 29 at 9:00 AM')
+    expect(c.title).toBe('Set the date?')
+    expect(c.confirmText).toBe('Set the date')
+    expect(c.message).toContain('once Davorin approves it on his panel')
+    expect(c.message).toContain('goes out on Tue, Sep 29 at 9:00 AM')
     expect(c.message).not.toContain('Mattan')
     expect(c.message).not.toContain('—')
   })

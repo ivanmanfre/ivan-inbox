@@ -24,6 +24,7 @@ import { forgetVerdict, giveReason, markShown, retryVerdict, undoVerdict, useJud
 import { useWeekVerbs } from '../weekVerbs'
 import { SHOWS, type Show, type Week, type WeekCard } from '../weekModel'
 import { useReviewMotion } from './motion'
+import { clientHoldOf } from '../../../lib/clientBoardState'
 import { LinkedInCard } from './LinkedInCard'
 import { picRepeats, type Repeat } from './picRepeat'
 import { Answer, Menu, Pill, SeatAv, Seg, useDeferred, type MenuItem, type Tone } from './ui'
@@ -36,7 +37,7 @@ import { Answer, Menu, Pill, SeatAv, Seg, useDeferred, type MenuItem, type Tone 
 // Writes are today's functions, unchanged: useWeekVerbs (Approve held 8 s, board
 // and schedule confirmed), verdictStore.judge + giveReason (held 5 s),
 // useRowVerbs (Skip held 8 s), PictureRow.write (Undo), MovePanel (stored-day
-// receipt). Arch stays view only on the card.
+// receipt). Arch edits like the other lanes since its publisher waits for Davorin's approval (2026-10-08).
 
 const SEAT_WORD: Record<Show, string> = { all: 'All', ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch' }
 const FIRST = 6
@@ -363,20 +364,21 @@ function ReviewCard({ c, i, now, focused, open, busy, read, repeat, slot, src, s
   }, [judgeable, id])
   useEffect(() => { setPic(undefined) }, [c.r.image_urls])
 
-  const pill = pillOf(c)
+  // What the client said on the panel outranks the desk's own reading (db/243).
+  const hold = c.lane === 'ivan' ? null : clientHoldOf(c.r, OWNER[c.lane])
+  const pill = hold ? { tone: (hold.kind === 'removed' ? 'bad' : 'warn') as Tone, text: hold.text } : pillOf(c)
   const qa = c.flags.find(f => f.key === 'qa' && f.tone === 'warn')
   const tag = splitTitleTag(titleOf(c.r)).tag
   const next = nextOf(c)
-  const editable = c.lane !== 'arch'
+  const editable = true
   const menu: MenuItem[] = [
     { key: 'open', label: 'Open post', run: onOpen },
     ...(c.canDate ? [{ key: 'date', label: c.r.scheduled_at ? 'Move date' : 'Add a date', run: onDate }] : []),
     ...(editable ? [{ key: 'edit', label: 'Edit', run: onEdit }] : []),
   ]
-  const head = <>{tag && <span>Source tag: {tag}</span>}{c.viewOnly && <span>Arch is view only here: Davorin reviews his posts on Friday and his publisher posts from review.</span>}</>
+  const head = <>{tag && <span>Source tag: {tag}</span>}</>
   const body = (c.r.post_body ?? '').trim() || c.title
-  // Arch stays view only on the card (SPEC §4 invariant): its picture is changed from the open post.
-  const editablePic = c.lane !== 'arch' && pictureEditable(c.r, c.lane)
+  const editablePic = pictureEditable(c.r, c.lane)
   const kind = c.r.type === 'carousel' ? `Carousel · ${(Array.isArray(c.r.image_urls) ? c.r.image_urls.length : 0) || '?'} slides` : c.r.type === 'video' ? 'Video' : null
 
   let keys: React.ReactNode
@@ -410,13 +412,15 @@ function ReviewCard({ c, i, now, focused, open, busy, read, repeat, slot, src, s
         <span className="cv2-grow" />
         {/* Only a real read earns header space; "unavailable" and "no read yet" live in Details. */}
         {read?.state === 'ready' && <EarlyReadChip read={read} lane={c.lane} />}
-        <Pill tone={pill.tone}>{pill.text}</Pill>
+        <Pill tone={pill.tone} title={hold?.kind === 'changes' ? undefined : hold?.detail}>{pill.text}</Pill>
         <Menu label="More for this draft" items={menu} head={tag || c.viewOnly ? head : undefined} />
       </header>
       <div className="cv2-rc-post" onClick={onOpen}>
         <LinkedInCard lane={c.lane} body={body} images={pic ?? c.r.image_urls} type={c.r.type} open={more} onToggle={setMore} bare />
       </div>
       <BrainDraftBadge draft={c.r} />
+      {hold?.kind === 'changes' && hold.detail && <p className="cv2-ask" data-ask><b>{OWNER[c.lane]} on the panel:</b> “{hold.detail}”</p>}
+      {hold && hold.kind !== 'changes' && hold.detail && <p className="cv2-ask cv2-ask-hold">{hold.detail}</p>}
       <div className={`cv2-pic${editablePic ? '' : ' cv2-pic-ro'}`} data-repeat={repeat ? 'yes' : undefined}>
         {editablePic ? <PictureRow d={c.r} lane={c.lane} onShow={setPic} onDone={onChanged} disabled={busy} />
           : <span className="cv2-pic-line">{kind ?? (c.r.image_urls && Array.isArray(c.r.image_urls) && c.r.image_urls.length ? 'Picture' : 'Text only')}{kind === null && c.r.published_at ? ' · posted' : ''}</span>}

@@ -74,14 +74,13 @@ describe('Review list: Approve / Drop', () => {
     expect(verb(n, 'card-keep')).toBeNull()
   })
 
-  it('Rise and Arch brain cards get Approve and Drop too, with no Put on board key; Arch still has no date', () => {
+  it('Rise and Arch brain cards get Approve and Drop too, with no Put on board key', () => {
     renderInFrame(<Harness />)
     for (const id of ['br', 'ba']) {
       expect(verb(card(id), 'card-keep')).toBeTruthy()
       expect(verb(card(id), 'card-drop')).toBeTruthy()
       expect(verb(card(id), 'card-board')).toBeNull()
     }
-    expect(verb(card('ba'), 'card-date')).toBeNull()
   })
 
   it('says how many brain drafts wait for a verdict, and nothing when none do', () => {

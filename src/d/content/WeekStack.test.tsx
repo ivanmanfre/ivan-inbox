@@ -90,16 +90,10 @@ describe('This week stack', () => {
     await waitFor(() => expect(lib.setBoardVisible).toHaveBeenLastCalledWith('r1', false))
   })
 
-  it('an Arch card is view only: Open is its one key and it has no date control', () => {
-    const onOpen = vi.fn()
-    renderInFrame(<Harness onOpen={onOpen} />)
-    const a = card('a1')!
-    expect(a.querySelector('[data-verb="card-date"]')).toBeNull()
-    expect(a.querySelectorAll('.cn-wc-acts button')).toHaveLength(1)
-    expect(key('a1')!.textContent).toBe('Open')
-    expect(a.textContent).toContain('View only')
-    fireEvent.click(key('a1')!)
-    expect(onOpen).toHaveBeenCalledWith('a1', 'arch')
+  it('an Arch card has a date control like the other lanes (2026-10-08)', () => {
+    renderInFrame(<Harness />)
+    expect(card('a1')!.querySelector('[data-verb="card-date"]')).toBeTruthy()
+    expect(card('a1')!.textContent).not.toContain('View only')
   })
 
   it('the date control opens today’s move sheet and writes the day only (operator_set_schedule_date)', async () => {
@@ -114,10 +108,10 @@ describe('This week stack', () => {
     expect(lib.approveDraft).not.toHaveBeenCalled()
   })
 
-  it('the Arch chip says why it is view only', () => {
+  it('the Arch chip says Arch posts wait for Davorin’s approval', () => {
     renderInFrame(<Harness />)
     fireEvent.click(document.querySelector('[data-verb="show-arch"]')!)
-    expect(screen.getByText(/Arch cards here are view only/)).toBeTruthy()
+    expect(screen.getByText(/only after Davorin approves them on his panel/)).toBeTruthy()
     expect(card('i1')).toBeNull()
     expect(card('a1')).toBeTruthy()
   })

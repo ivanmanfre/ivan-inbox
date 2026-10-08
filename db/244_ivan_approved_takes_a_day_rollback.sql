@@ -1,0 +1,1 @@
+-- Re-apply db/242's operator_set_schedule_date.

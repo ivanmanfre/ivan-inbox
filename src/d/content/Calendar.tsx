@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { monthLabel, monthWeeks, publishAtForDay } from '../../lib/calendarItems'
+import { LANE_DEFAULT_HM, LANE_TZ, hmIn, laneTimeWord, zonedToUtc } from './laneTime'
+import { monthLabel, monthWeeks } from '../../lib/calendarItems'
 import { clearScheduleDate, setScheduleDateAt } from '../../lib/content'
 import { supabase } from '../../lib/supabase'
 import { moveConfirmCopy, movePublishesForClient } from '../../wb/content/moveConfirm'
 import { dHash } from '../route'
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
-import { warsawDay, warsawDayTime, warsawHm } from '../ui/time'
+import { warsawDay, warsawDayTime } from '../ui/time'
 import { useCalGestures } from './calGestures'
 import {
   DOT_WORD, PICKS, PICK_KEY, calendarDays, coverOf, lanesOf, looseOf, magnetLane, monthOf, openDay,
@@ -159,19 +160,22 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
     if (!r) return
     const prev = r.scheduled_at
     if ((prev ? warsawDay(prev) : null) === to) return
+    // The time of day is kept in the lane's own clock (RISE in PT), so a clock change never shifts it.
+    const tz = LANE_TZ[lane]
+    const when = zonedToUtc(to, prev ? hmIn(prev, tz) : LANE_DEFAULT_HM[lane], tz)
     if (movePublishesForClient(r)) {
-      const copy = moveConfirmCopy(r, dayLabel(to), prev ? warsawHm(prev) : '09:00')
+      const copy = moveConfirmCopy(r, dayLabel(to), laneTimeWord(when, lane))
       if (!await confirm({ title: copy.title, message: copy.message, confirmText: copy.confirmText, verb: 'confirm' })) return
     }
     setMoved(m => new Map(m).set(id, to))
     setSel(to)
     try {
-      const stored = await setScheduleDateAt(id, publishAtForDay(prev, to))
+      const stored = await setScheduleDateAt(id, when)
       const landed = warsawDay(stored)
       if (landed !== to) setMoved(m => new Map(m).set(id, landed))
       toast.show({
-        message: `Moved to ${warsawDayTime(stored)}.`,
-        sub: landed !== to ? `${dayLabel(to)} was taken or a weekend, so it landed on ${dayLabel(landed)}.` : `${LANE_NAME[lane]} · Warsaw time`,
+        message: `Moved to ${dayLabel(landed)} · ${laneTimeWord(stored, lane)}.`,
+        sub: landed !== to ? `${dayLabel(to)} was taken or a weekend, so it landed on ${dayLabel(landed)}.` : LANE_NAME[lane],
         action: { label: 'Undo', verb: 'undo', run: () => { void undo(id, lane, prev) } },
       })
       onChanged()

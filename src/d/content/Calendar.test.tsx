@@ -90,7 +90,7 @@ describe('Calendar', () => {
     pointer(window, 'pointerup', 201, 20)
     fireEvent.click(card)
     expect(await screen.findByRole('heading', { name: 'Schedule this to post?' })).toBeTruthy()
-    expect(screen.getByText(/publisher will post it on Tue 29 Sep at 16:00/)).toBeTruthy()
+    expect(screen.getByText(/publisher will post it on Tue 29 Sep at 7:00 AM PT/)).toBeTruthy()
     expect(writes.setScheduleDateAt).not.toHaveBeenCalled()
   })
   it('a quick drag uses the release position when the first move only lifted the card', async () => {
@@ -101,7 +101,7 @@ describe('Calendar', () => {
     pointer(window, 'pointerup', 200, 100)
     fireEvent.click(card)
     expect(await screen.findByRole('heading', { name: 'Schedule this to post?' })).toBeTruthy()
-    expect(screen.getByText(/publisher will post it on Tue 29 Sep at 16:00/)).toBeTruthy()
+    expect(screen.getByText(/publisher will post it on Tue 29 Sep at 7:00 AM PT/)).toBeTruthy()
     expect(writes.setScheduleDateAt).not.toHaveBeenCalled()
   })
   it('opens on today with the posted post, Open post and Unpublish on its card', async () => {

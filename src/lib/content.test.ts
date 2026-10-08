@@ -1,3 +1,4 @@
+import { clearBoardState, setBoardState } from './clientBoardState'
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import {
   bucketDrafts, isStuckScheduled, laneFilter, contentLaneFilter, applyContentLaneFilter, draftLane,
@@ -289,13 +290,13 @@ describe('stageOfLane — the client lane reads the DATE, not the status', () =>
   // predicate.
   const dated = (o: Partial<ContentDraft> = {}): ContentDraft => row({
     status: 'review', board_visible: true, scheduled_at: '2026-08-04T09:00:00Z',
-    client_id: 'risedtc', ...o,
+    client_id: 'arch', ...o,
   })
 
   it('files a dated board row at review as SCHEDULED on a client lane', () => {
     // The six rows that were reading as "On buffer" while their publish times
     // were already set.
-    expect(stageOfLane(dated(), 'risedtc', now)).toBe('scheduled')
+    expect(stageOfLane(dated(), 'arch', now)).toBe('scheduled')
     expect(stageOf(dated(), now)).toBe('review')
   })
 
@@ -306,24 +307,42 @@ describe('stageOfLane — the client lane reads the DATE, not the status', () =>
   it('refuses a dated draft we have NOT promoted', () => {
     // The publisher requires board_visible; an internal dated row is not
     // scheduled to do anything, so it stays at its status.
-    expect(stageOfLane(dated({ board_visible: false }), 'risedtc', now)).toBe('review')
-    expect(stageOfLane(dated({ board_visible: null }), 'risedtc', now)).toBe('review')
+    expect(stageOfLane(dated({ board_visible: false }), 'arch', now)).toBe('review')
+    expect(stageOfLane(dated({ board_visible: null }), 'arch', now)).toBe('review')
   })
 
   it('refuses a status the picker does not accept', () => {
     // A leftover date on an archived or errored row is not a schedule.
-    expect(stageOfLane(dated({ status: 'skipped' }), 'risedtc', now)).toBe('archived')
-    expect(stageOfLane(dated({ status: 'error' }), 'risedtc', now)).toBe('error')
-    expect(stageOfLane(dated({ status: 'published' }), 'risedtc', now)).toBe('published')
+    expect(stageOfLane(dated({ status: 'skipped' }), 'arch', now)).toBe('archived')
+    expect(stageOfLane(dated({ status: 'error' }), 'arch', now)).toBe('error')
+    expect(stageOfLane(dated({ status: 'published' }), 'arch', now)).toBe('published')
   })
 
   it('reads a past-due dated board row as stuck, never as done', () => {
     // Same reading isStuckScheduled makes on Ivan's lane: its time came and
     // went and the publisher wrote nothing back.
-    expect(stageOfLane(dated({ scheduled_at: '2026-07-29T09:00:00Z' }), 'risedtc', now)).toBe('stuck')
+    expect(stageOfLane(dated({ scheduled_at: '2026-07-29T09:00:00Z' }), 'arch', now)).toBe('stuck')
     expect(stageOfLane(dated({
       scheduled_at: '2026-07-29T09:00:00Z', source_post_id: 'urn:li:activity:9',
-    }), 'risedtc', now)).toBe('review')
+    }), 'arch', now)).toBe('review')
+  })
+
+  // 2026-10-08: the publishers changed. RISE (WpC67D1eHMAWiZy4, hardening 10-07) sends only
+  // status=scheduled; ARCH (JfZldgbf22AbG9ew) sends only after Davorin's panel approval, read from
+  // operator_client_board_state. Until that state is read ARCH keeps the date reading above.
+  it('on RISE only a scheduled row is armed; a dated review row is not', () => {
+    expect(stageOfLane(dated({ client_id: 'risedtc', status: 'scheduled', scheduled_at: '2026-08-04T09:00:00Z' }), 'risedtc', now)).toBe('scheduled')
+    expect(stageOfLane(dated({ client_id: 'risedtc' }), 'risedtc', now)).toBe('review')
+  })
+
+  it('on ARCH, once the panel state is read, a dated row waits for the approval', () => {
+    setBoardState('arch', [{ id: 'ok', approval: 'approve', approval_at: '2026-08-01T00:00:00Z', veto: null, veto_at: null, note: null, note_by: null, note_at: null },
+      { id: 'gone', approval: 'approve', approval_at: '2026-08-01T00:00:00Z', veto: 'post_removed', veto_at: '2026-08-02T00:00:00Z', note: null, note_by: null, note_at: null }])
+    try {
+      expect(stageOfLane(dated({ id: 'ok' }), 'arch', now)).toBe('scheduled')
+      expect(stageOfLane(dated({ id: 'waiting' }), 'arch', now)).toBe('review')
+      expect(stageOfLane(dated({ id: 'gone' }), 'arch', now)).toBe('review')
+    } finally { setBoardState('arch', []); clearBoardState('arch') }
   })
 
   it('groups a lane through its own rule and drops nothing', () => {
@@ -332,9 +351,9 @@ describe('stageOfLane — the client lane reads the DATE, not the status', () =>
       dated({ id: 'stuck', scheduled_at: '2026-07-29T09:00:00Z' }),
       dated({ id: 'armed', status: 'scheduled' }),
       dated({ id: 'internal', board_visible: false }),
-      row({ id: 'undated', status: 'review', board_visible: true, client_id: 'risedtc' }),
+      row({ id: 'undated', status: 'review', board_visible: true, client_id: 'arch' }),
     ]
-    const s = groupByLaneStage(rows, 'risedtc', now)
+    const s = groupByLaneStage(rows, 'arch', now)
     expect(s.scheduled.map(r => r.id)).toEqual(['sched', 'armed'])
     expect(s.stuck.map(r => r.id)).toEqual(['stuck'])
     expect(s.review.map(r => r.id)).toEqual(['internal', 'undated'])

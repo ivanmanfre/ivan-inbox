@@ -128,3 +128,4 @@ html.cal-dragging,html.cal-dragging *{cursor:grabbing!important;user-select:none
 
 .cal-brain{font:600 11px var(--m);font-style:normal;color:var(--lime);border:1px solid var(--limeD);padding:0 3px;line-height:16px;flex:none}
 .cal-chip .cal-brain{grid-column:3;margin:0}
+.cn-when{display:flex;gap:12px;flex-wrap:wrap}.cn-when .cn-any{flex:1 1 160px}

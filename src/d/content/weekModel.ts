@@ -13,11 +13,12 @@
 // Arch cards: no date control, no status action, its one key is Open. The open
 // post and the Planner keep every Arch control they had before.
 import { canMoveDate } from '../../lib/calendarItems'
-import { isStuckGenerating, normalizeImageUrls, singlePhoto, stageOfLane, type ContentDraft } from '../../lib/content'
+import { clientScheduleArmed, isStuckGenerating, normalizeImageUrls, singlePhoto, stageOfLane, type ContentDraft } from '../../lib/content'
+import { clientHoldOf } from '../../lib/clientBoardState'
 import { isBrainPost } from '../../lib/brainDraft'
 import type { StoredVerdict, Verdict } from '../../lib/verdicts'
 import { warsawDay, warsawDm, warsawDow, warsawHm } from '../ui/time'
-import { DAY_MS, WAIT_DAYS, imgOf, splitTitleTag, titleOf, type Lane } from './model'
+import { DAY_MS, OWNER, WAIT_DAYS, imgOf, splitTitleTag, titleOf, type Lane } from './model'
 
 export type Show = 'all' | Lane
 export const SHOWS: readonly Show[] = ['all', 'ivan', 'risedtc', 'arch']
@@ -112,15 +113,16 @@ export function dayDate(key: string): string {
   return `${warsawDow(t)} ${warsawDm(t)}`
 }
 
-/** Armed = something will publish it on its date (Ivan: status scheduled; a client: on his board at review/scheduled). */
+/** Armed = something will publish it on its date (Ivan: status scheduled; a client: the publisher's own
+ *  rule, clientScheduleArmed: RISE scheduled, ARCH approved by Davorin, neither removed). */
 export function armed(r: ContentDraft, lane: Lane): boolean {
   if (r.published_at || !r.scheduled_at) return false
   if (lane === 'ivan') return r.status === 'scheduled'
-  return r.board_visible === true && (r.status === 'review' || r.status === 'scheduled')
+  return clientScheduleArmed(r)
 }
 
 export function primaryOf(r: ContentDraft, lane: Lane): Primary {
-  if (lane === 'arch' || r.published_at || r.status === 'published') return 'open'
+  if (r.published_at || r.status === 'published') return 'open'
   if (lane === 'ivan') {
     if (r.status === 'review') return 'approve'
     if (r.status === 'approved' && r.scheduled_at) return 'schedule'
@@ -129,8 +131,8 @@ export function primaryOf(r: ContentDraft, lane: Lane): Primary {
   return r.status === 'review' && r.board_visible !== true ? 'board' : 'open'
 }
 
-export function canDateOf(r: ContentDraft, lane: Lane): boolean {
-  return lane !== 'arch' && !r.published_at && canMoveDate(r)
+export function canDateOf(r: ContentDraft, _lane: Lane): boolean {
+  return !r.published_at && canMoveDate(r)
 }
 
 const PASSY = /^(pass|approved|rewrite_ok|ok)$/i
@@ -156,7 +158,9 @@ export function flagsOf(r: ContentDraft, lane: Lane, o: { now: number; overdue: 
     const pass = !v || PASSY.test(v)
     f.push({ key: 'qa', text: `QA ${pass ? '' : `${v.toLowerCase().replace(/_/g, ' ')} `}${s}`.trim(), tone: pass ? 'dim' : 'warn', title: v ? `QA verdict: ${v}` : undefined })
   }
-  if (lane === 'arch') f.push({ key: 'view', text: 'View only', tone: 'dim', title: 'Davorin reviews Arch posts on Friday. Open the post for its board, date and picture controls.' })
+  // What the client said on the panel (db/243): removed, waiting for the OK, not scheduled, or a change asked for.
+  const hold = lane === 'ivan' ? null : clientHoldOf(r, OWNER[lane])
+  if (hold) f.push({ key: 'hold', text: hold.text, tone: 'warn', title: hold.detail })
   return f
 }
 
@@ -202,7 +206,9 @@ function cardOf(r: ContentDraft, lane: Lane, now: number, overdue: boolean, bloc
     day: r.scheduled_at ? warsawDay(r.scheduled_at) : null,
     primary: primaryOf(r, lane),
     canDate: canDateOf(r, lane),
-    viewOnly: lane === 'arch',
+    // Arch was view only while its publisher posted straight from review. Since 2026-10-05 it sends
+    // only after Davorin approves on his panel, so an edit here can never publish early.
+    viewOnly: false,
     overdue,
     flags: flagsOf(r, lane, { now, overdue, blocked: blocks?.get(r.id) ?? null }),
     thumb: imgOf(r.image_urls, 240),

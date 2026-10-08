@@ -1,4 +1,5 @@
 import { LANE_OWNER, type ContentDraft, type ContentLane } from '../../lib/content'
+import { boardStateOf } from '../../lib/clientBoardState'
 
 // ---------------------------------------------------------------------------
 // WHAT A CALENDAR MOVE REALLY DOES, said in the confirm.
@@ -14,7 +15,7 @@ import { LANE_OWNER, type ContentDraft, type ContentLane } from '../../lib/conte
 
 export type MoveConfirm = { title: string; message: string; confirmText: string }
 
-type MoveRow = Pick<ContentDraft, 'client_id' | 'board_visible' | 'status' | 'published_at'>
+type MoveRow = Pick<ContentDraft, 'client_id' | 'board_visible' | 'status' | 'published_at'> & { id?: string }
 
 /** True when a date on this row makes the client's publisher post it. */
 export function movePublishesForClient(r: MoveRow | null | undefined): boolean {
@@ -33,12 +34,20 @@ export function movePublishesForClient(r: MoveRow | null | undefined): boolean {
 export function moveConfirmCopy(r: MoveRow | null | undefined, day: string, time: string): MoveConfirm {
   if (movePublishesForClient(r)) {
     const owner = LANE_OWNER[r!.client_id as ContentLane] || 'the client'
+    // 2026-10-08: ARCH sends only after Davorin approves on his panel; RISE is armed by the date (db/242).
+    if (r!.client_id === 'arch') {
+      const ok = boardStateOf((r as { id?: string }).id ?? '')?.approval === 'approve'
+      return {
+        title: 'Set the date?',
+        message: ok
+          ? `${owner} has approved this on his panel, so it goes out on ${day} at ${time}.`
+          : `It goes out on ${day} at ${time} once ${owner} approves it on his panel. Until then his publisher holds it.`,
+        confirmText: 'Set the date',
+      }
+    }
     return {
       title: 'Schedule this to post?',
-      message:
-        `This post is on ${owner}’s board, so a date means it goes out. `
-        + `His publisher will post it on ${day} at ${time}. `
-        + 'A weekend or a day that already has a post moves it to the next free weekday.',
+      message: `This post is on ${owner}’s board, so a date schedules it. His publisher will post it on ${day} at ${time}.`,
       confirmText: 'Schedule to post',
     }
   }
