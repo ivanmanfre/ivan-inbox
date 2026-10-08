@@ -167,6 +167,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
     })}</div></section>
   </>
   const deskBody = <>
+    {lanesV4 && <TodayNotes />}
     {data.failed > 0 && <div className="cv2-banner cv2-banner-bad" role="alert"><span>Could not read every client.</span><button type="button" onClick={refresh}>Retry</button></div>}
     <ReviewDesk week={nowModel} total={allNow} read={stackRead} show={show} setShow={setShow} now={now} openId={draft} focusId={q.get('focus')}
       onOpen={openDraft} onEdit={(id, lane) => go({ ...context(), draft: id, lane, edit: '1' }, 'now')} onChanged={refresh}
