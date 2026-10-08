@@ -11,7 +11,7 @@ import { withTimeout } from '../ui/timeout'
 import { dmsToAnswer, sendAlerts, stockAlerts, type GlanceAlert, type GlanceWire, type SentAt } from './glanceModel'
 import './glance.css'
 
-// The side panel's Glance: DMs waiting on Ivan and the seat alerts (no warm stock, low sends,
+// The Glance (Brief's Mac menu bar item; the phone drawer's card): DMs waiting on Ivan and the seat alerts (no warm stock, low sends,
 // LinkedIn refusing, queue empty). The DMs come off the frame's one inbox (no new read); the
 // alerts from three reads made every 10 minutes while the window is visible, the first a few
 // seconds after the page's own reads. Brief's native sidebar draws the same thing from the
@@ -80,7 +80,7 @@ export function useGlanceAlerts(eager = false): Alerts | null {
   return a
 }
 
-export function Glance({ onGo, eager = false }: { onGo?: () => void; eager?: boolean }) {
+export function Glance({ onGo, eager = false, dataOnly = false }: { onGo?: () => void; eager?: boolean; dataOnly?: boolean }) {
   const inbox = useDInbox()
   const alerts = useGlanceAlerts(eager)
   const [now, setNow] = useState(() => Date.now())
@@ -96,6 +96,8 @@ export function Glance({ onGo, eager = false }: { onGo?: () => void; eager?: boo
     top: dms.slice(0, SHOW_DMS).map(d => ({ name: d.name, seat: SEAT_NAME[d.seat], kind: d.kind, age: ago(d.since), href: d.href })),
     alerts: list.map(x => ({ text: x.text, tone: x.tone, href: x.href })),
   }
+  // Desktop: the Mac menu bar draws it (Brief, from this line); the side panel keeps only the line.
+  if (dataOnly) return <span hidden data-glance>{JSON.stringify(wire)}</span>
   return (
     <section className="d-gl" aria-label="Glance">
       <span hidden data-glance>{JSON.stringify(wire)}</span>
