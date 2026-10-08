@@ -29,12 +29,12 @@ export const SECTIONS: readonly Section[] = ['tokens', 'type', 'motion', 'shell'
 export const FOUNDATION: readonly Section[] = ['tokens', 'type', 'motion', 'shell']
 
 // Verified sections. Each starts empty and grows only after that section's
-// acceptance passes live (BUILD_PLAN decision 1). PHONE grows only after a
-// check on Ivan's real phone.
+// acceptance passes live (BUILD_PLAN decision 1). PHONE: on 2026-10-08 after
+// Ivan handed the phone check over (WebKit 390px, every section, old vs new).
 export const BRIEF_DESKTOP: Section[] = ['tokens', 'type', 'motion', 'shell', 'home', 'dms', 'content',
   'content.brain', 'content.calendar', 'content.ideas', 'content.review', 'content.lms', 'lanes', 'ops', 'sales', 'claude', 'settings']
 export const WEB_DESKTOP: Section[] = []
-export const PHONE: Section[] = []
+export const PHONE: Section[] = [...BRIEF_DESKTOP]
 
 export const SKIN_KEY = 'ds-skin'
 
