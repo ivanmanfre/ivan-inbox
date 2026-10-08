@@ -23,6 +23,7 @@ import type { Attempt } from './glance/model'
 import { fetchLastAttempts } from './glance/reads'
 import { fetchReady, type ReadyRead } from './glance/ready'
 import { RETRY_MS, withTimeout } from '../ui/timeout'
+import { recall, remember } from '../../lib/pageMemo'
 
 export type Slot<T> = { value: T | null; failed: string | null }
 export type LanesData = {
@@ -89,11 +90,33 @@ export function failedCount(d: LanesData): number {
   return KEYS.filter(k => d[k].failed && d[k].value == null).length
 }
 
+const memoKey = (k: Key) => `lanes:${k}`
+
+/**
+ * PERF-SMOOTH (2026-10-08): the last good value of each read (lib/pageMemo: this session, this user,
+ * at most 30 min old), so a revisit of Lanes or Home paints the numbers it showed a minute ago instead
+ * of 2.5 s of skeleton; the reads start on mount exactly as before and replace them. `at` is the
+ * oldest seeded read's time, and only when every asked key was seeded: the page then judges the
+ * monitor as of that read, never "silent" because the copy is old.
+ */
+export function seedLanes(keys: readonly Key[], now: number = Date.now()): { data: LanesData; at: number | null } {
+  const data = empty()
+  let oldest: number | null = null, all = keys.length > 0
+  for (const k of keys) {
+    const hit = recall<unknown>(memoKey(k), now)
+    if (!hit) { all = false; continue }
+    ;(data as Record<Key, Slot<unknown>>)[k] = { value: hit.value, failed: null }
+    oldest = oldest == null ? hit.at : Math.min(oldest, hit.at)
+  }
+  return { data, at: all ? oldest : null }
+}
+
 /** `only`: read just these keys (Home reads the five it draws, never the whole Lanes set). Pass a module-level constant. */
 export function useLanesData(only?: readonly Key[]): { data: LanesData; loading: boolean; at: number | null; refresh: () => void } {
-  const [data, setData] = useState<LanesData>(empty)
-  const [loading, setLoading] = useState(true)
-  const [at, setAt] = useState<number | null>(null)
+  const [seed] = useState(() => seedLanes(only ?? KEYS))
+  const [data, setData] = useState<LanesData>(seed.data)
+  const [loading, setLoading] = useState(seed.at == null)
+  const [at, setAt] = useState<number | null>(seed.at)
   const live = useRef(true)
   const pending = useRef(false)
   const slowAt = useRef(0)
@@ -111,7 +134,7 @@ export function useLanesData(only?: readonly Key[]): { data: LanesData; loading:
     }
     const failed: Key[] = []
     void Promise.allSettled(keys.map(k => withTimeout<unknown>(READS[k]()).then(
-      v => put(k, () => ({ value: v, failed: null })),
+      v => { remember(memoKey(k), v); put(k, () => ({ value: v, failed: null })) },
       e => {
         failed.push(k)
         put(k, prev => ({ value: prev.value, failed: e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e ?? 'read failed') }))

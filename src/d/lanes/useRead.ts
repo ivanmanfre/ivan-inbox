@@ -2,22 +2,39 @@
 // No read waits forever: past READ_TIMEOUT_MS it is `failed` ("no answer after
 // 12 s"), and a failed read tries again quietly every RETRY_MS. A read that
 // already has data keeps it while a quiet retry is out.
-import { useCallback, useEffect, useState } from 'react'
+//
+// PERF-SMOOTH (2026-10-08): a key read before in this session (lib/pageMemo: this user, at most 30 min
+// old) opens on that answer instead of a skeleton, and the read runs exactly as before behind it (Lanes'
+// "Sending today" sat on 0.5-1 s of skeleton on every visit). A Retry still shows loading. Only answers
+// are remembered, never a failure, and an empty list never replaces a non-empty one in memory.
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { recall, remember } from '../../lib/pageMemo'
 import { RETRY_MS, withTimeout } from '../ui/timeout'
 
 export type Load<T> = { kind: 'loading' } | { kind: 'failed'; message: string } | { kind: 'ready'; data: T }
 
+const memoKey = (key: string) => `read:${key}`
+function opening<T>(key: string, on: boolean): Load<T> {
+  const hit = on ? recall<T>(memoKey(key)) : null
+  return hit ? { kind: 'ready', data: hit.value } : { kind: 'loading' }
+}
+
 /** The read and a Retry for it (a Retry shows loading again, then the answer). */
 export function useRetryRead<T>(fn: (() => Promise<T>) | null, key: string): [Load<T>, () => void] {
-  const [s, set] = useState<Load<T>>({ kind: 'loading' })
+  const [s, set] = useState<Load<T>>(() => opening<T>(key, fn != null))
   const [tick, setTick] = useState(0)
   const [quiet, setQuiet] = useState(0)
+  const opened = useRef<{ key: string; tick: number } | null>(null)
   useEffect(() => {
     if (!fn) return
     let live = true
-    set({ kind: 'loading' })
+    // First run: the state already holds the remembered answer (or loading). A new key opens on its
+    // own remembered answer; a Retry (tick) shows loading, as it always did.
+    const prev = opened.current
+    if (prev) set(prev.tick !== tick ? { kind: 'loading' } : opening<T>(key, true))
+    opened.current = { key, tick }
     withTimeout(fn()).then(
-      data => { if (live) set({ kind: 'ready', data }) },
+      data => { if (live) { remember(memoKey(key), data); set({ kind: 'ready', data }) } },
       e => { if (live) set({ kind: 'failed', message: e instanceof Error ? e.message : String(e) }) },
     )
     return () => { live = false }
@@ -28,7 +45,7 @@ export function useRetryRead<T>(fn: (() => Promise<T>) | null, key: string): [Lo
     if (!fn || s.kind !== 'failed') return
     let live = true
     const t = setTimeout(() => {
-      withTimeout(fn()).then(data => { if (live) set({ kind: 'ready', data }) }, () => { if (live) setQuiet(q => q + 1) })
+      withTimeout(fn()).then(data => { if (live) { remember(memoKey(key), data); set({ kind: 'ready', data }) } }, () => { if (live) setQuiet(q => q + 1) })
     }, RETRY_MS)
     return () => { live = false; clearTimeout(t) }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- re-armed per failure

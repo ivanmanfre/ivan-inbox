@@ -47,8 +47,9 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
   const { data, at, refresh } = useLanesData()
   const reg = useLanes()
   const online = useOnline()
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => { setNow(Date.now()) }, [at])
+  // A remembered copy (useLanesData's seed) is judged as of its own read, so an old copy never reads as a silent monitor.
+  const [now, setNow] = useState(() => at ?? Date.now())
+  useEffect(() => { setNow(at ?? Date.now()) }, [at])
   useReportFailed('lanes', failedCount(data))
 
   const q = route.query

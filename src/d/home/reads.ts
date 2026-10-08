@@ -18,21 +18,22 @@ const KEYS: readonly LanesKey[] = ['cc', 'gov', 'pauses', 'attempts', 'ready']
 
 export function useHome() {
   const lanes = useLanesData(KEYS)
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => { setNow(Date.now()) }, [lanes.at])
+  // A remembered copy (useLanesData's seed) is judged as of its own read, never as a silent monitor.
+  const [now, setNow] = useState(() => lanes.at ?? Date.now())
+  useEffect(() => { setNow(lanes.at ?? Date.now()) }, [lanes.at])
   const ivan = useContent('ivan')
   const rise = useContent('risedtc')
   const arch = useContent('arch')
   const counts = useFrameCounts()
   // Today's content hook has no timeout of its own: 12 s without an answer reads as failed, and it re-reads quietly.
   const stalled = {
-    ivan: useStalled(!ivan.error && !ivan.loadedAt, ivan.refresh),
-    risedtc: useStalled(!rise.error && !rise.loadedAt, rise.refresh),
-    arch: useStalled(!arch.error && !arch.loadedAt, arch.refresh),
+    ivan: useStalled(!ivan.error && (!ivan.loadedAt || ivan.fromMemo), ivan.refresh),
+    risedtc: useStalled(!rise.error && (!rise.loadedAt || rise.fromMemo), rise.refresh),
+    arch: useStalled(!arch.error && (!arch.loadedAt || arch.fromMemo), arch.refresh),
   }
   const days = nextWeekDays(now)
   const wk = (r: ReturnType<typeof useContent>, s: Seat): Read<ContentWeek> =>
-    r.error ? { fail: r.error } : !r.loadedAt ? (stalled[s] ? { fail: 'no answer after 12 s' } : { wait: true }) : { v: contentWeek(r.drafts, s, days) }
+    r.error ? { fail: r.error } : stalled[s] ? { fail: 'no answer after 12 s' } : !r.loadedAt ? { wait: true } : { v: contentWeek(r.drafts, s, days) }
   const dn = dmNumbers(counts, 'drafts')
   const dr = (s: Seat): Read<number> => {
     const v = dn[s]

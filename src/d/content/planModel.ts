@@ -15,13 +15,42 @@ export type PlanItem = CalendarItem & { lane: Lane; unpublishId?: string | null;
 
 /** Every dated post of a seat (Ivan's also carries the publish queue), keyed by its Warsaw day. */
 export function seatItems(rows: ContentDraft[], lane: Lane, queue: ScheduledQueueRow[] | null, now: number = Date.now()): PlanItem[] {
+  // PERF-SMOOTH (2026-10-08): this ran a rows.find per item and, per published item, a bodyKey
+  // (whitespace regex over the whole post) of every posted queue row: 100-190 ms of main thread on
+  // every Content render with 3 x 1,000 seat rows. Same answers, each key computed once: the first
+  // row per id (find), the first posted row per id / draft link (find), posted rows per body in
+  // queue order (filter). Built lazily, only when a published Ivan item asks.
+  let byId: Map<string, ContentDraft> | null = null
+  const draftOf = (id: string) => {
+    if (!byId) { byId = new Map(); for (const r of rows) if (!byId.has(r.id)) byId.set(r.id, r) }
+    return byId.get(id)
+  }
+  let pub: { byQueueId: Map<string, ScheduledQueueRow>; byDraftId: Map<string, ScheduledQueueRow>; byBody: Map<string, ScheduledQueueRow[]> } | null = null
+  const postedIndex = () => {
+    if (pub) return pub
+    const byQueueId = new Map<string, ScheduledQueueRow>(), byDraftId = new Map<string, ScheduledQueueRow>(), byBody = new Map<string, ScheduledQueueRow[]>()
+    for (const q of queue ?? []) {
+      if (q.status !== 'posted' || !q.unipile_share_url) continue
+      if (!byQueueId.has(q.id)) byQueueId.set(q.id, q)
+      const link = queueDraftId(q)
+      if (link && !byDraftId.has(link)) byDraftId.set(link, q)
+      const b = bodyKey(q.post_text)
+      const list = byBody.get(b)
+      if (list) list.push(q); else byBody.set(b, [q])
+    }
+    return (pub = { byQueueId, byDraftId, byBody })
+  }
   const items = buildCalendarItems(rows, lane === 'ivan' ? queue ?? [] : [], now)
     .map(it => {
-      const draft = it.source === 'draft' ? rows.find(r => r.id === it.id) : null
-      const posted = lane === 'ivan' && it.stage === 'published' ? (queue ?? []).filter(q => q.status === 'posted' && !!q.unipile_share_url) : []
-      const exact = posted.find(q => it.source === 'queue' ? q.id === it.id : queueDraftId(q) === it.id)
-      const bodyMatches = draft && bodyKey(draft.post_body) ? posted.filter(q => bodyKey(q.post_text) === bodyKey(draft.post_body)) : []
-      const q = exact ?? (bodyMatches.length === 1 ? bodyMatches[0] : null)
+      let q: ScheduledQueueRow | null = null
+      if (lane === 'ivan' && it.stage === 'published') {
+        const p = postedIndex()
+        const exact = it.source === 'queue' ? p.byQueueId.get(it.id) : p.byDraftId.get(it.id)
+        const draft = it.source === 'draft' ? draftOf(it.id) : null
+        const key = draft ? bodyKey(draft.post_body) : ''
+        const bodyMatches = key ? p.byBody.get(key) ?? [] : []
+        q = exact ?? (bodyMatches.length === 1 ? bodyMatches[0] : null)
+      }
       const postedAt = q?.posted_at && Number.isFinite(Date.parse(q.posted_at)) ? q.posted_at : it.postedAt
       return { ...it, lane, postedAt, day: warsawDay(itemDayISO(it.at, postedAt)), unpublishId: q?.id ?? null, postedUrl: q?.unipile_share_url ?? null }
     })

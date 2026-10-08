@@ -339,8 +339,20 @@ export function queueTitle(text: string | null | undefined): string {
 }
 
 /** Whitespace-insensitive body compare — the second dedupe net. */
+// PERF-SMOOTH (2026-10-08): the planner keys every draft and queue row by body three times per build
+// (drift by body, queue-only dedupe, the posted join) over 3 x 1,000 rows of full post text, on every
+// Content render: 35-160 ms of whitespace regex. The same body strings come back on every build, so
+// the answer is kept per string (bounded; a full map starts again, it never grows past the cap).
+const BODY_KEYS = new Map<string, string>()
+const BODY_KEYS_CAP = 6000
 export function bodyKey(s: string | null | undefined): string {
-  return (s ?? '').replace(/\s+/g, ' ').trim()
+  if (!s) return ''
+  const hit = BODY_KEYS.get(s)
+  if (hit !== undefined) return hit
+  const k = s.replace(/\s+/g, ' ').trim()
+  if (BODY_KEYS.size >= BODY_KEYS_CAP) BODY_KEYS.clear()
+  BODY_KEYS.set(s, k)
+  return k
 }
 
 /**

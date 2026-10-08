@@ -21,11 +21,22 @@ export const RANGES: Range[] = ['7d', '30d', '90d']
 const PREV: Record<Range, string | null> = { '7d': 'prev7d', '30d': 'prev30d', '90d': null }
 
 const WARSAW = 'Europe/Warsaw'
+// PERF-SMOOTH (2026-10-08): one formatter per (locale, options), not one per call. Building an
+// Intl.DateTimeFormat costs ~0.1 ms (more in Safari); the 14-day series and the strip built hundreds
+// on every Lanes / Home render (~70 ms of Lanes' mount). Same formatter, same output; a bad zone
+// still throws on every call (a failed construction is never cached).
+const FORMATTERS = new Map<string, Intl.DateTimeFormat>()
+export function formatterFor(locale: string, o: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const k = `${locale}|${JSON.stringify(o)}`
+  let f = FORMATTERS.get(k)
+  if (!f) { f = new Intl.DateTimeFormat(locale, o); FORMATTERS.set(k, f) }
+  return f
+}
 const fmt = (t: string | number | Date, o: Intl.DateTimeFormatOptions, tz = WARSAW) =>
-  new Intl.DateTimeFormat('en-GB', { timeZone: tz, ...o }).format(new Date(t)).replace('Sept', 'Sep')
+  formatterFor('en-GB', { timeZone: tz, ...o }).format(new Date(t)).replace('Sept', 'Sep')
 export const hm = (t: string | number | Date, tz = WARSAW) => fmt(t, { hour: '2-digit', minute: '2-digit', hour12: false }, tz)
 export const dm = (t: string | number | Date, tz = WARSAW) => fmt(t, { day: 'numeric', month: 'short' }, tz)
-export const dayKey = (t: string | number | Date, tz = WARSAW) => new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date(t))
+export const dayKey = (t: string | number | Date, tz = WARSAW) => formatterFor('en-CA', { timeZone: tz }).format(new Date(t))
 
 export function ago(t: string | null | undefined, now: number): string {
   if (!t) return 'never'

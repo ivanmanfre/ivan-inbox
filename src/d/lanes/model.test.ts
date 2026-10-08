@@ -83,3 +83,18 @@ describe('acknowledge is local only', () => {
     expect(a.k0).toBeUndefined()
   })
 })
+
+describe('lanes model formatters (PERF-SMOOTH cache)', () => {
+  it('a cached formatter prints what a fresh one prints, per zone and option set', async () => {
+    const { formatterFor, hm, dm, dayKey } = await import('./model')
+    const t = Date.parse('2026-10-08T21:30:00Z')
+    expect(formatterFor('en-GB', { timeZone: 'UTC', hour: '2-digit' })).toBe(formatterFor('en-GB', { timeZone: 'UTC', hour: '2-digit' }))
+    expect(hm(t)).toBe(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Warsaw', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(t)))
+    expect(hm(t, 'America/New_York')).toBe(new Intl.DateTimeFormat('en-GB', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(t)))
+    expect(dm(t)).toBe(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Warsaw', day: 'numeric', month: 'short' }).format(new Date(t)).replace('Sept', 'Sep'))
+    expect(dayKey(t)).toBe('2026-10-08')
+    expect(dayKey(t, 'Asia/Tokyo')).toBe('2026-10-09')
+    expect(() => dayKey(t, 'Not/AZone')).toThrow()
+    expect(() => dayKey(t, 'Not/AZone')).toThrow()
+  })
+})

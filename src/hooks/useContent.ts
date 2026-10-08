@@ -14,32 +14,55 @@ import {
   fetchResourceDetail, fetchResources, fetchStyleRoster,
   type Resource, type ResourceDetail, type StylePrompt,
 } from '../lib/styles'
+import { recall, remember } from '../lib/pageMemo'
+
+// PERF-SMOOTH (2026-10-08): the last good lane read of this session (lib/pageMemo: this user, at most
+// 30 min old), so Home and Content's calendar paint at once on a revisit instead of reading 3 x 1,000
+// rows behind a skeleton; the read starts on mount exactly as before and replaces it. MEMBER DRAFTS
+// ARE NEVER KEPT: the copy holds only ordinary rows, the same filter refresh() applies before every
+// read ("Member drafts require a fresh server validation, never a stale release"), so a member card
+// still waits for its own validation. Seeded only when the hook is enabled at mount: Review holds
+// these reads behind its fast week and keeps painting from that.
+type LaneMemo = { rows: ContentDraft[]; matched: number | null; laneTotal: number | null; loadedAt: string }
+const laneMemoKey = (lane: ContentLane) => `content:${lane}`
+export function seedLane(lane: ContentLane, enabled: boolean): LaneMemo | null {
+  if (!enabled) return null
+  const hit = recall<LaneMemo>(laneMemoKey(lane))
+  return hit ? { ...hit.value, rows: hit.value.rows.filter(r => r.cb34_p2_member !== true) } : null
+}
+export function rememberLane(lane: ContentLane, rows: ContentDraft[], matched: number | null, laneTotal: number | null, loadedAt: string): void {
+  remember(laneMemoKey(lane), { rows: rows.filter(r => r.cb34_p2_member !== true), matched, laneTotal, loadedAt } satisfies LaneMemo, { list: v => (v as LaneMemo).rows })
+}
 
 // `enabled` = false holds the read (no fetch, no realtime binding) until the
 // caller lets it go: D Content > Review paints this week from its own small
 // read first and starts these after it (d/content/useWeek.ts).
 export function useContent(lane: ContentLane = 'ivan', enabled: boolean = true) {
-  const [drafts, setDrafts] = useState<ContentDraft[]>([])
-  const [buckets, setBuckets] = useState<ContentBuckets>(() => bucketDrafts([]))
+  const [seed] = useState(() => seedLane(lane, enabled))
+  const [drafts, setDrafts] = useState<ContentDraft[]>(() => seed?.rows ?? [])
+  const [buckets, setBuckets] = useState<ContentBuckets>(() => bucketDrafts(seed?.rows ?? []))
   // The same rows grouped a second way: triage (buckets) for the candidates
   // that render "what needs me", lifecycle (stages) for the pipeline queue.
   // Both are derived from ONE fetch — adding the second grouping costs a pass
   // over an already-loaded array, not a second round trip.
-  const [stages, setStages] = useState<ContentStages>(() => groupByStage([]))
+  const [stages, setStages] = useState<ContentStages>(() => groupByStage(seed?.rows ?? []))
   // matched = server-side exact count of the SAME filter, laneTotal = every row
   // in this lane. rows can be capped by PostgREST long before a header count
   // notices, and a filter bug that eats every row looks identical to an empty
   // board without laneTotal to compare against (D10 / blank-board #5).
   const [memberReadState, setMemberReadState] = useState<'idle' | 'pending' | 'partial' | 'failed'>('idle')
-  const [matched, setMatched] = useState<number | null>(null)
-  const [laneTotal, setLaneTotal] = useState<number | null>(null)
+  const [matched, setMatched] = useState<number | null>(seed?.matched ?? null)
+  const [laneTotal, setLaneTotal] = useState<number | null>(seed?.laneTotal ?? null)
   const [loading, setLoading] = useState(true)
   // Errors are surfaced, not swallowed to a calm empty list: an unreadable
   // board and an empty board must never render the same.
   const [error, setError] = useState<string | null>(null)
   // When the last SUCCESSFUL read landed. An empty board with a fresh stamp is
   // confirmed empty; an empty board with no stamp has never been read at all.
-  const [loadedAt, setLoadedAt] = useState<string | null>(null)
+  const [loadedAt, setLoadedAt] = useState<string | null>(seed?.loadedAt ?? null)
+  // True while the screen holds the remembered copy and no read of this mount has landed: the
+  // callers' 12 s stall clock keys on it, so a hung read over a remembered copy still says so.
+  const [fromMemo, setFromMemo] = useState(seed != null)
 
   // Every mount gets its own topic. supabase.channel() hands back the EXISTING
   // channel for a topic it already holds, so a second useContent() on screen
@@ -79,8 +102,11 @@ export function useContent(lane: ContentLane = 'ivan', enabled: boolean = true) 
         setMatched(page.count ?? probe.scoped)
         setLaneTotal(probe.total)
         setError(null)
-        setLoadedAt(new Date().toISOString())
+        const stamp = new Date().toISOString()
+        setLoadedAt(stamp)
+        setFromMemo(false)
         setLoading(false)
+        rememberLane(lane, page.rows, page.count ?? probe.scoped, probe.total, stamp)
       })
       .catch((e: unknown) => {
         if (!current()) return
@@ -120,7 +146,7 @@ export function useContent(lane: ContentLane = 'ivan', enabled: boolean = true) 
   }, lane, enabled, () => { if (!fullAccepted.current) setMemberReadState('failed') }, () => fullPendingEpoch.current === visibilityEpoch.current)
 
   // `buckets` stays first and unchanged in the shape — cand-b destructures it.
-  return { drafts, buckets, stages, matched, laneTotal, loading, error, loadedAt, memberReadState, refresh }
+  return { drafts, buckets, stages, matched, laneTotal, loading, error, loadedAt, fromMemo, memberReadState, refresh }
 }
 
 // One full row, fetched only when a card is opened. Ordinary editors keep

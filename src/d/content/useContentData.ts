@@ -44,9 +44,9 @@ export function useContentData(enabled: boolean = true): ContentData {
   const arch = useContent('arch', enabled)
   const queue = useScheduledQueue(enabled)
   const st = {
-    ivan: useStalled(enabled && !ivan.error && !ivan.loadedAt, ivan.refresh),
-    rise: useStalled(enabled && !rise.error && !rise.loadedAt, rise.refresh),
-    arch: useStalled(enabled && !arch.error && !arch.loadedAt, arch.refresh),
+    ivan: useStalled(enabled && !ivan.error && (!ivan.loadedAt || ivan.fromMemo), ivan.refresh),
+    rise: useStalled(enabled && !rise.error && (!rise.loadedAt || rise.fromMemo), rise.refresh),
+    arch: useStalled(enabled && !arch.error && (!arch.loadedAt || arch.fromMemo), arch.refresh),
   }
   const qLoaded = enabled && !!queue.loadedAt
   const blocks = useMemo(() => (qLoaded ? publishBlocksByDraft(queue.rows) : null), [qLoaded, queue.rows])
@@ -65,14 +65,26 @@ export function useContentData(enabled: boolean = true): ContentData {
       .then(v => { if (live) setVerdict(verdictParts(v)) })
       .catch(() => { if (live) setVerdict(null) })
     return () => { live = false }
-  }, [enabled, tick, ivan.drafts])
+    // PERF-SMOOTH (2026-10-08): keyed on Ivan's read LANDING (loadedAt), not on the drafts array. The
+    // brain-member recheck hides and re-adds member cards every 5 s, which made a new array twice per
+    // cycle and re-ran these two reads (3 requests) each time: ~70 requests a minute while Content was
+    // open. Neither answer depends on which member cards are on screen; both follow the lane read,
+    // which every carousel_drafts change already re-runs.
+  }, [enabled, tick, ivan.loadedAt])
 
   const { refresh: r1 } = ivan, { refresh: r2 } = rise, { refresh: r3 } = arch, { refresh: r4 } = queue
   const refreshAll = useCallback(() => { r1(); r2(); r3(); r4(); setTick(t => t + 1) }, [r1, r2, r3, r4])
   const failed = [ivan.error || st.ivan, rise.error || st.rise, arch.error || st.arch].filter(Boolean).length
 
+  // PERF-SMOOTH (2026-10-08): one object per change of a seat's read, not per render. The page keys
+  // its planner (seatItems over 3 x 1,000 rows, 100-190 ms) and its week model on `seats`; a fresh
+  // object every render re-ran both on every tab switch, hover and toast.
+  const seats = useMemo(() => ({ ivan: seat(ivan, st.ivan), risedtc: seat(rise, st.rise), arch: seat(arch, st.arch) }),
+    [ivan.drafts, ivan.loading, ivan.error, ivan.loadedAt, ivan.refresh, st.ivan, // eslint-disable-line react-hooks/exhaustive-deps
+      rise.drafts, rise.loading, rise.error, rise.loadedAt, rise.refresh, st.rise,
+      arch.drafts, arch.loading, arch.error, arch.loadedAt, arch.refresh, st.arch])
   return {
-    seats: { ivan: seat(ivan, st.ivan), risedtc: seat(rise, st.rise), arch: seat(arch, st.arch) },
+    seats,
     armed, armedFailed, verdict, blocks, queueRows: qLoaded ? queue.rows : null, refreshAll, failed,
   }
 }
