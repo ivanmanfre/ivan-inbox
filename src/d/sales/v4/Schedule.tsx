@@ -5,7 +5,7 @@ import { dayKey } from '../../../wb/sales/match'
 import { Join, PackLinks } from '../NextCall'
 import { PacksOnFile } from '../Fortnight'
 import { PACK_LINKS, meetingKind, type CallEvent, type Fortnight, type PackIndex } from '../model'
-import { fortnightDays } from './model'
+import { fortnightDays, nameFromTitle } from './model'
 import type { ReactNode } from 'react'
 
 function Plate({ r }: { r: CallEvent }) {
@@ -47,7 +47,7 @@ export function Schedule({ f, shown, now, next, idx, packs, tools, filtered, cle
       {!shown[key].length && <p className="sl4-note">No calls today.</p>}
       {shown[key].map(r => <div className="sl4-cal-row" key={r.ev.id} data-cal-id={r.ev.id} data-cal-day={dayKey(r.ev.start_time)} data-slug={r.slug ?? undefined}>
         <div className="sl4-time"><b>{r.warsaw}</b><small>{r.utc} UTC</small></div>
-        <div className="sl4-who"><b>{r.name}</b><small>{[r.company, r.day, r.rel].filter(Boolean).join(' · ')}</small></div>
+        <div className="sl4-who"><b>{r.name === r.ev.title ? nameFromTitle(r.ev.title) : r.name}</b><small>{[r.company, r.day, r.rel].filter(Boolean).join(' · ')}</small></div>
         {r.live && <Join r={r} />}
         <div className="sl4-row-docs">{r.past ? <>{r.reportId && <button type="button" data-verb="open-report" onClick={() => report(r.reportId!)}>report</button>}{r.slug && <a data-doc="card" href={docHref(r.slug,'card')} target="_blank" rel="noreferrer">card ↗</a>}</> : <PackLinks slug={r.slug} have={r.have} />}</div>
       </div>)}

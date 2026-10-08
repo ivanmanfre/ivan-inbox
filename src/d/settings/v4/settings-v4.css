@@ -6,20 +6,20 @@
 :root[data-skin-on~='settings'] .ds4{flex:1;min-height:0;overflow:auto}
 :root[data-skin-on~='settings'] .ds4-col{max-width:680px;margin:0 auto;padding:16px 24px 32px;display:flex;flex-direction:column;gap:24px}
 :root[data-skin-on~='settings'] .d-phone .ds4-col{padding:8px 16px 32px}
-:root[data-skin-on~='settings'] .ds4-label{margin:0 0 8px 4px;font:500 11px/16px var(--f);letter-spacing:.16em;text-transform:uppercase;color:var(--t3)}
+:root[data-skin-on~='settings'] .ds4-label{margin:0 0 8px 4px;font:500 12px/16px var(--f);letter-spacing:.16em;text-transform:uppercase;color:var(--t3)}
 :root[data-skin-on~='settings'] .ds4-list{border-radius:12px;background:var(--ds-glass-pane);box-shadow:var(--ds-shadow-soft),var(--ds-hi),0 0 0 1px var(--ds-line);overflow:hidden}
 :root[data-skin-on~='settings'] .ds4-row{display:flex;align-items:center;gap:16px;min-height:44px;padding:6px 16px;border:0;width:100%;text-align:left}
 :root[data-skin-on~='settings'] .ds4-list > * + *{box-shadow:inset 0 1px 0 var(--ds-line)}
 :root[data-skin-on~='settings'] .d-phone .ds4-row{min-height:48px;flex-wrap:wrap}
 :root[data-skin-on~='settings'] .ds4-t{flex:1;min-width:0}
 :root[data-skin-on~='settings'] .ds4-t b{display:block;font:450 13px/18px var(--f);color:var(--t1)}
-:root[data-skin-on~='settings'] .ds4-t small{display:block;margin-top:1px;font:400 12px/16px var(--f);color:var(--t2)}
+:root[data-skin-on~='settings'] .ds4-t small{display:block;margin-top:1px;font:400 13px/16px var(--f);color:var(--t2)}
 :root[data-skin-on~='settings'] .ds4-c{flex:none;display:flex;align-items:center;gap:8px}
 :root[data-skin-on~='settings'] .ds4-sub{padding:8px 16px}
 :root[data-skin-on~='settings'] .ds4-link{cursor:pointer;transition:background-color var(--ds-d-fast) var(--ds-e-content)}
 :root[data-skin-on~='settings'] .ds4-link:hover{background:var(--ds-fill-hover)}
 :root[data-skin-on~='settings'] .ds4-chev{font:400 16px var(--f);color:var(--t3)}
-:root[data-skin-on~='settings'] .ds4-build{padding:0 4px;font:400 11px var(--f);color:var(--t3);font-variant-numeric:tabular-nums}
+:root[data-skin-on~='settings'] .ds4-build{padding:0 4px;font:400 12px var(--f);color:var(--t3);font-variant-numeric:tabular-nums}
 /* segmented pair: sunken track, the pressed segment a porcelain chip (neutral, never forest) */
 :root[data-skin-on~='settings'] .ds4 .ds2-pair{gap:0;padding:2px;border-radius:8px;background:rgba(24,57,42,.05);box-shadow:var(--ds-well-shadow)}
 :root[data-skin-on~='settings'] .d-phone .ds4 .ds2-pair{padding:3px}
@@ -27,26 +27,26 @@
 :root[data-skin-on~='settings'] .d-phone .ds4 .ds2-pair .d-key{height:38px}
 :root[data-skin-on~='settings'] .ds4 .ds2-pair .d-key .d-lip{display:none}
 :root[data-skin-on~='settings'] .ds4 .ds2-pair .d-key .d-face{position:static;inset:auto;height:100%;transform:none;display:flex;align-items:center;padding:0 12px;border:0;border-radius:6px;background:transparent;box-shadow:none;
-  font:450 12px/1 var(--f);color:var(--t2);transition:color var(--ds-d-fast) var(--ds-e-content),background-color var(--ds-d-fast) var(--ds-e-content)}
+  font:450 13px/1 var(--f);color:var(--t2);transition:color var(--ds-d-fast) var(--ds-e-content),background-color var(--ds-d-fast) var(--ds-e-content)}
 :root[data-skin-on~='settings'] .ds4 .ds2-pair .d-key:hover:not(:disabled) .d-face{color:var(--t1)}
 :root[data-skin-on~='settings'] .ds4 .ds2-pair .d-key.ds2-pressed .d-face{background:linear-gradient(#fff,#fbfcfa);color:var(--t1);font-weight:var(--ds-fw-em);box-shadow:0 1px 3px rgba(24,57,42,.08),inset 0 1px 0 #fff,0 0 0 1px rgba(24,57,42,.07)}
 :root[data-skin-on~='settings'] .ds4 .ds2-pair .d-key:disabled{opacity:.5}
 /* small keys: Reset to dark, Sign out as quiet glass chips; Sign out reads danger */
 :root[data-skin-on~='settings'] .ds4 .ds4-c > .d-key{width:auto;height:28px;padding:0;border:0;background:transparent;transform:none}
 :root[data-skin-on~='settings'] .ds4 .ds4-c > .d-key .d-lip{display:none}
-:root[data-skin-on~='settings'] .ds4 .ds4-c > .d-key .d-face{position:static;inset:auto;height:100%;transform:none;display:flex;align-items:center;padding:0 12px;border:0;border-radius:var(--ds-r-btn);background:var(--ds-chip-face);box-shadow:var(--ds-chip-shadow);font:500 12px/1 var(--f);color:var(--t1)}
+:root[data-skin-on~='settings'] .ds4 .ds4-c > .d-key .d-face{position:static;inset:auto;height:100%;transform:none;display:flex;align-items:center;padding:0 12px;border:0;border-radius:var(--ds-r-btn);background:var(--ds-chip-face);box-shadow:var(--ds-chip-shadow);font:500 13px/1 var(--f);color:var(--t1)}
 :root[data-skin-on~='settings'] .ds4 .ds4-c > .d-key:hover .d-face{background:var(--ds-accent-soft)}
 :root[data-skin-on~='settings'] .ds4 .ds4-c > .d-key.ds2-warn .d-face{color:var(--ds-sev-urgent-ui)}
 :root[data-skin-on~='settings'] .ds4 .ds4-c > .d-key.ds2-warn:hover .d-face{background:var(--ds-sev-urgent-soft)}
-:root[data-skin-on~='settings'] .ds4 .ds2-open{height:28px;display:inline-flex;align-items:center;padding:0 12px;border:0;border-radius:var(--ds-r-btn);background:var(--ds-chip-face);box-shadow:var(--ds-chip-shadow);font:500 12px var(--f);color:var(--t1)}
+:root[data-skin-on~='settings'] .ds4 .ds2-open{height:28px;display:inline-flex;align-items:center;padding:0 12px;border:0;border-radius:var(--ds-r-btn);background:var(--ds-chip-face);box-shadow:var(--ds-chip-shadow);font:500 13px var(--f);color:var(--t1)}
 :root[data-skin-on~='settings'] .ds4 .ds2-open:hover{background:var(--ds-accent-soft)}
 /* device sub-rows and the money strip */
-:root[data-skin-on~='settings'] .ds4 .ds4-devs li{padding:0 16px 0 28px;min-height:36px;align-items:center;border:0;font:400 12px var(--f);color:var(--t2)}
-:root[data-skin-on~='settings'] .ds4 .ds4-devs i,:root[data-skin-on~='settings'] .ds4 .ds4-devs em{font:400 11px var(--f);color:var(--t3);font-variant-numeric:tabular-nums}
+:root[data-skin-on~='settings'] .ds4 .ds4-devs li{padding:0 16px 0 28px;min-height:36px;align-items:center;border:0;font:400 13px var(--f);color:var(--t2)}
+:root[data-skin-on~='settings'] .ds4 .ds4-devs i,:root[data-skin-on~='settings'] .ds4 .ds4-devs em{font:400 12px var(--f);color:var(--t3);font-variant-numeric:tabular-nums}
 :root[data-skin-on~='settings'] .ds4 .ds2-money{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;border:0}
 :root[data-skin-on~='settings'] .d-phone .ds4 .ds2-money{grid-template-columns:minmax(0,1fr)}
 :root[data-skin-on~='settings'] .ds4 .ds2-money > div{padding:10px 12px;border-radius:10px;background:var(--ds-surface-2);box-shadow:none}
-:root[data-skin-on~='settings'] .ds4 .ds2-money small{font:500 11px/16px var(--f);letter-spacing:.16em;color:var(--t3)}
+:root[data-skin-on~='settings'] .ds4 .ds2-money small{font:500 12px/16px var(--f);letter-spacing:.16em;color:var(--t3)}
 :root[data-skin-on~='settings'] .ds4 .ds2-money em{font:var(--ds-fw-em) 20px/1.3 var(--f);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 :root[data-skin-on~='settings'] .ds4 .ds2-money em.ds2-z{font:400 13px/1.6 var(--f);letter-spacing:0;color:var(--t2)}
-:root[data-skin-on~='settings'] .ds4 .ds2-money u{font:400 11px/1.4 var(--f);color:var(--t3)}
+:root[data-skin-on~='settings'] .ds4 .ds2-money u{font:400 12px/1.4 var(--f);color:var(--t3)}

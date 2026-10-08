@@ -22,12 +22,12 @@
 :root[data-skin-on~='claude'] .dcl-rail .dcl-search{margin:0 0 8px;height:32px;border:0;border-radius:var(--ds-r-btn);background:var(--ds-well-fill);box-shadow:var(--ds-well-shadow);font:400 13px var(--f)}
 :root[data-skin-on~='claude'] .dcl-rail .dcl-bot{margin:0 0 4px;padding:10px 12px;border:0;border-radius:10px;background:var(--ds-surface-1);box-shadow:var(--ds-shadow-soft),0 0 0 1px var(--ds-line)}
 :root[data-skin-on~='claude'] .dcl-rail .dcl-bot-m b{font:var(--ds-fw-em) 13px var(--f)}
-:root[data-skin-on~='claude'] .dcl-rail .dcl-bot-m small,:root[data-skin-on~='claude'] .dcl-rail .dcl-bot-l{font:400 11px var(--f);color:var(--t3)}
-:root[data-skin-on~='claude'] .dcl-rail .dcl-dd{padding:12px 8px 4px;font:500 11px/16px var(--f);letter-spacing:.16em;text-transform:uppercase;color:var(--t3)}
+:root[data-skin-on~='claude'] .dcl-rail .dcl-bot-m small,:root[data-skin-on~='claude'] .dcl-rail .dcl-bot-l{font:400 12px var(--f);color:var(--t3)}
+:root[data-skin-on~='claude'] .dcl-rail .dcl-dd{padding:12px 8px 4px;font:500 12px/16px var(--f);letter-spacing:.16em;text-transform:uppercase;color:var(--t3)}
 :root[data-skin-on~='claude'] .dcl-rail .dcl-chat{flex-direction:column;align-items:stretch;gap:1px;min-height:40px;padding:6px 8px;border:0;border-radius:8px;transition:background-color var(--ds-d-fast) var(--ds-e-content)}
 :root[data-skin-on~='claude'] .dcl-rail .dcl-chat:hover{background:var(--ds-fill-hover)}
 :root[data-skin-on~='claude'] .dcl-rail .dcl-chat b{font:450 13px/18px var(--f);color:var(--t1)}
-:root[data-skin-on~='claude'] .dcl-rail .dcl-chat span{font:400 11px/16px var(--f);color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:root[data-skin-on~='claude'] .dcl-rail .dcl-chat span{font:400 12px/16px var(--f);color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 :root[data-skin-on~='claude'] .dcl-rail .dcl-chat.dcl-cur{padding-left:8px;background:var(--ds-fill-sel);box-shadow:inset 2px 0 0 var(--ds-accent),inset 0 1px 0 rgba(255,255,255,.75)}
 :root[data-skin-on~='claude'] .dcl-rail .dcl-chat.dcl-cur b{font-weight:var(--ds-fw-em)}
 :root[data-skin-on~='claude'] .dcl-rail .dcl-chat.dcl-err span{color:var(--ds-sev-attention-ui)}
@@ -43,10 +43,10 @@
 :root[data-skin-on~='claude'] .dcl-v4 .dcl-ib{width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--t2)}
 :root[data-skin-on~='claude'] .dcl-v4 .dcl-ib:hover:not(:disabled){background:var(--ds-accent-soft);color:var(--t1)}
 :root[data-skin-on~='claude'] .dcl-v4 .dcl-ib.dcl-on{background:var(--ds-fill-sel);color:var(--t1);box-shadow:inset 0 0 0 1px var(--ds-line)}
-:root[data-skin-on~='claude'] .dcl-v4 .dcl-pill{height:24px;border:0;border-radius:999px;background:var(--ds-accent-soft);color:var(--ds-accent);font:500 12px var(--f)}
-:root[data-skin-on~='claude'] .dcl-v4 .dcl-pill span{font:400 11px var(--f);color:var(--t2);font-variant-numeric:tabular-nums}
+:root[data-skin-on~='claude'] .dcl-v4 .dcl-pill{height:24px;border:0;border-radius:999px;background:var(--ds-accent-soft);color:var(--ds-accent);font:500 13px var(--f)}
+:root[data-skin-on~='claude'] .dcl-v4 .dcl-pill span{font:400 12px var(--f);color:var(--t2);font-variant-numeric:tabular-nums}
 :root[data-skin-on~='claude'] .dcl-v4 .dcl-pill-failed{background:var(--ds-sev-attention-soft);color:var(--ds-sev-attention-ui)}
-:root[data-skin-on~='claude'] .dcl-runpill{flex:none;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;background:var(--ds-chip-face);box-shadow:var(--ds-chip-shadow);font:500 11px var(--f);color:var(--t2);white-space:nowrap}
+:root[data-skin-on~='claude'] .dcl-runpill{flex:none;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;background:var(--ds-chip-face);box-shadow:var(--ds-chip-shadow);font:500 12px var(--f);color:var(--t2);white-space:nowrap}
 :root[data-skin-on~='claude'] .dcl-runpill i{width:6px;height:6px;border-radius:50%;background:var(--ds-accent)}
 :root[data-skin-on~='claude'] .dcl-runpill:hover,:root[data-skin-on~='claude'] .dcl-runpill.dcl-on{color:var(--t1)}
 :root[data-skin-on~='claude'] .dcl-v4{position:relative}
@@ -63,8 +63,8 @@
 :root[data-skin-on~='claude'] .dcl-v4 .dcl-box .dcl-ctxw{display:flex;align-items:center;gap:8px;margin:0 0 6px;min-width:0}
 :root[data-skin-on~='claude'] .dcl-v4 .dcl-box .dcl-ctx{padding:0;flex:0 1 auto;min-width:0}
 :root[data-skin-on~='claude'] .dcl-v4 .dcl-box .dcl-ctx-k{padding:0;gap:10px;flex:none}
-:root[data-skin-on~='claude'] .dcl-v4 .dcl-box .dcl-ctx-k .dcl-link{font:500 11px var(--f);color:var(--t2)}
-:root[data-skin-on~='claude'] .dcl-v4 .dcl-chip{height:22px;border:0;border-radius:6px;padding:0 2px 0 8px;background:var(--ds-accent-soft);color:var(--ds-accent);font:500 11px var(--f)}
+:root[data-skin-on~='claude'] .dcl-v4 .dcl-box .dcl-ctx-k .dcl-link{font:500 12px var(--f);color:var(--t2)}
+:root[data-skin-on~='claude'] .dcl-v4 .dcl-chip{height:22px;border:0;border-radius:6px;padding:0 2px 0 8px;background:var(--ds-accent-soft);color:var(--ds-accent);font:500 12px var(--f)}
 :root[data-skin-on~='claude'] .dcl-v4 .dcl-chip-q{background:var(--ds-surface-3);color:var(--t2)}
 :root[data-skin-on~='claude'] .dcl-v4 .dcl-chip button{width:18px;height:18px}
 :root[data-skin-on~='claude'] .dcl-v4 .dcl-box .dcl-peek{bottom:calc(100% + 6px)}
@@ -73,7 +73,7 @@
 :root[data-skin-on~='claude'] .dcl-v4 .dcl-go:hover:not(:disabled){background:var(--ds-accent-hover)}
 :root[data-skin-on~='claude'] .dcl-v4 .dcl-go:disabled{background:var(--ds-surface-3);color:var(--t3);box-shadow:none;border:0}
 :root[data-skin-on~='claude'] .dcl-v4 .dcl-go.dcl-stop{background:var(--ds-surface-1);color:var(--t1);box-shadow:0 0 0 1px var(--ds-line-3)}
-:root[data-skin-on~='claude'] .dcl-v4 .dcl-hint{font:400 11px var(--f);color:var(--t3)}
+:root[data-skin-on~='claude'] .dcl-v4 .dcl-hint{font:400 12px var(--f);color:var(--t3)}
 /* messages: the user bubble grows from its corner */
 :root[data-skin-on~='claude'] .dcl-v4 .dcl-me{background:var(--ds-accent-soft);color:var(--t1);border:0;border-radius:12px 12px 5px 12px}
 @keyframes dcl-v4-in{from{opacity:0;transform:translateY(12px) scale(.98)}}

@@ -20,7 +20,7 @@
 :root[data-skin-on~='shell'] .d-desktop .d-ans .d-at{flex-wrap:nowrap;align-items:baseline;gap:0 12px;overflow:hidden}
 :root[data-skin-on~='shell'] .d-desktop .d-ans .d-at h1{font:var(--ds-fw-em) 20px/24px var(--f);letter-spacing:-.02em;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none;max-width:100%}
 :root[data-skin-on~='shell'] .d-desktop .d-at h1 .d-n{font:500 20px/24px var(--f);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-:root[data-skin-on~='shell'] .d-desktop .d-ans .d-at p{font-size:12px;line-height:16px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:root[data-skin-on~='shell'] .d-desktop .d-ans .d-at p{font-size:13px;line-height:16px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* T3/T4: the sub drops under the title (24 + 16 = 40 inside the 52 band). */
 :root[data-skin-on~='shell'] .d-desktop .d-main:is([data-tier='t3'],[data-tier='t4']) .d-ans .d-at{flex-direction:column;align-items:flex-start;gap:0}
 :root[data-skin-on~='shell'] .d-desktop .d-main:is([data-tier='t3'],[data-tier='t4']) .d-ans .d-at p{max-width:100%}
@@ -32,7 +32,7 @@
 :root[data-skin-on~='shell'] .d-desktop .d-tools-page :is(.dm-search,.d-search,.sl-orbit){height:var(--ds-control-h);min-height:0}
 :root[data-skin-on~='shell'] .d-desktop .d-bell{width:var(--ds-control-h);min-width:var(--ds-control-h);height:var(--ds-control-h)}
 /* A tool with a label (Lanes' refresh) is a .d-tool, not a 32 square: auto width, one line. */
-:root[data-skin-on~='shell'] .d-desktop .d-tools .d-ib{width:auto;min-width:var(--ds-control-h);height:var(--ds-control-h);padding:0 7px;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;font-size:12px;font-weight:500}
+:root[data-skin-on~='shell'] .d-desktop .d-tools .d-ib{width:auto;min-width:var(--ds-control-h);height:var(--ds-control-h);padding:0 7px;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;font-size:13px;font-weight:500}
 /* The bell count sits inside its own 32 box and never covers the neighbouring tool (G15). */
 :root[data-skin-on~='shell'] .d-desktop .d-bell-n{top:2px;right:2px;min-width:16px;height:16px;padding:0 4px;border:0;border-radius:8px;font-size:10px;line-height:16px;text-align:center}
 
@@ -60,7 +60,7 @@
    the chat title moves to a 20px line under it, so it never truncates to "Na…" (G14). */
 :root[data-skin-on~='shell'] .d-desktop > aside.d-claude .dcl-head{height:var(--ds-toolbar-h);min-height:var(--ds-toolbar-h);padding:0 8px;position:relative}
 :root[data-skin-on~='shell'] .d-desktop > aside.d-claude .dcl-head:has(.dcl-tname){margin-bottom:20px}
-:root[data-skin-on~='shell'] .d-desktop > aside.d-claude .dcl-tname{position:absolute;left:16px;right:16px;top:var(--ds-toolbar-h);height:20px;line-height:20px;font:400 12px/20px var(--f);color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:root[data-skin-on~='shell'] .d-desktop > aside.d-claude .dcl-tname{position:absolute;left:16px;right:16px;top:var(--ds-toolbar-h);height:20px;line-height:20px;font:400 13px/20px var(--f);color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 :root[data-skin-on~='shell'] .d-desktop > aside.d-claude .dcl-ib{width:var(--ds-control-h);height:var(--ds-control-h)}
 
 /* ---- overlays anchor to the main column (§2.5.6) ---- */
