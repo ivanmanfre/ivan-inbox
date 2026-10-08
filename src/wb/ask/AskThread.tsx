@@ -218,6 +218,14 @@ function AnswerBody({ text, onRecall, stream, cites }: {
             </pre>
           )
         }
+        if (b.t === 'table') {
+          return (
+            <div className="dcl-table" key={i}><table>
+              <thead><tr>{b.head.map((c, j) => <th key={j}>{renderInline(c, nouns, onRecall, { used: true }, opt)}</th>)}</tr></thead>
+              <tbody>{b.rows.map((r, j) => <tr key={j}>{r.map((c, k) => <td key={k}>{renderInline(c, nouns, onRecall, { used: true }, opt)}</td>)}</tr>)}</tbody>
+            </table></div>
+          )
+        }
         if (b.t === 'h') return <div className={`wb-mh h${b.level}`} key={i}>{renderInline(b.nodes, nouns, onRecall, claim, opt)}</div>
         if (b.t === 'ul') {
           return (

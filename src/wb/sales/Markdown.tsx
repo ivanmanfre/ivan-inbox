@@ -44,6 +44,10 @@ function renderBlock(b: Block, key: string): ReactNode {
     return <h5 key={key} className="a-eyebrow a-pk-h">{renderInline(b.nodes)}</h5>
   }
   if (b.t === 'code') return <pre key={key} className="a-pre a-mono a-pk-pre">{b.text}</pre>
+  if (b.t === 'table') return <div key={key} className="dcl-table"><table>
+    <thead><tr>{b.head.map((c, i) => <th key={i}>{renderInline(c)}</th>)}</tr></thead>
+    <tbody>{b.rows.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j}>{renderInline(c)}</td>)}</tr>)}</tbody>
+  </table></div>
   if (b.t === 'ul') {
     const items = b.items.map((it, i) => <li key={i} className="a-body-t">{renderInline(it)}</li>)
     return b.ordered

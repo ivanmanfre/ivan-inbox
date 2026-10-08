@@ -74,3 +74,17 @@ describe('parseMarkdown', () => {
     expect(blockWords(parseMarkdown('a b\n\n- c d\n\n```\ne f\n```'))).toBe(6)
   })
 })
+
+describe('parseMarkdown tables', () => {
+  it('turns a pipe table with a rule row into one table block', () => {
+    const b = parseMarkdown('Totals:\n\n| | Held | Price |\n|---|---|---:|\n| BTC | 0.14 | $83,492 |\n| VOO | 33.4 | **$716** |\n\nAfter.')
+    expect(b.map(x => x.t)).toEqual(['p', 'table', 'p'])
+    const t = b[1] as Extract<typeof b[number], { t: 'table' }>
+    expect(t.head.map(c => c.map(n => n.v).join(''))).toEqual(['', 'Held', 'Price'])
+    expect(t.rows).toHaveLength(2)
+    expect(t.rows[1][2][0]).toEqual({ t: 'strong', v: '$716' })
+  })
+  it('keeps a header with no rule row yet (still streaming) as prose', () => {
+    expect(parseMarkdown('| a | b |').map(x => x.t)).toEqual(['p'])
+  })
+})

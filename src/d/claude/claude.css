@@ -229,3 +229,10 @@ button.dcl-step:hover{background:var(--p1)}
 .dcl-menu button[role=menuitemradio] small{font-size:11px}
 .dcl-phone .dcl-title{flex-wrap:wrap;row-gap:0}
 .dcl-phone .dcl-tname{flex-basis:100%;order:3}
+
+/* Markdown tables in Claude and Sales answers: scroll sideways inside the bubble, never the page. */
+.dcl-table{margin-top:7px;overflow-x:auto;max-width:100%;border:1px solid var(--line);border-radius:8px}
+.dcl-table table{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums}
+.dcl-table th,.dcl-table td{padding:5px 9px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line);white-space:nowrap}
+.dcl-table th{font-weight:600;background:var(--p2)}
+.dcl-table tr:last-child td{border-bottom:0}

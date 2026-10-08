@@ -31,6 +31,7 @@ export type Block =
   | { t: 'h'; level: number; nodes: InlineNode[] }
   | { t: 'ul'; ordered: boolean; items: InlineNode[][] }
   | { t: 'code'; lang: string | null; text: string; open: boolean }
+  | { t: 'table'; head: InlineNode[][]; rows: InlineNode[][][] }
 
 const URL_RE = /https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"]/g
 
@@ -85,6 +86,11 @@ export function parseInline(src: string): InlineNode[] {
   return out
 }
 
+// A pipe row: `| a | b |` (outer pipes optional). Escaped pipes stay literal.
+const cells = (line: string): string[] =>
+  line.trim().replace(/^\|/, '').replace(/\|$/, '').split(/(?<!\\)\|/).map(c => c.trim().replace(/\\\|/g, '|'))
+const isRule = (line: string) => /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/.test(line)
+
 export function parseMarkdown(src: string): Block[] {
   const lines = src.replace(/\r\n?/g, '\n').split('\n')
   const out: Block[] = []
@@ -122,6 +128,19 @@ export function parseMarkdown(src: string): Block[] {
       continue
     }
     if (!line.trim()) { closeAll(); continue }
+    // A table needs its rule row; until that streams in, the header stays prose.
+    if (line.includes('|') && i + 1 < lines.length && isRule(lines[i + 1])) {
+      closeAll()
+      const head = cells(line)
+      const rows: InlineNode[][][] = []
+      for (i += 2; i < lines.length && lines[i].trim() && lines[i].includes('|'); i++) {
+        const r = cells(lines[i])
+        rows.push(head.map((_, c) => parseInline(r[c] ?? '')))
+      }
+      i--
+      out.push({ t: 'table', head: head.map(parseInline), rows })
+      continue
+    }
     const h = line.match(/^(#{1,4})\s+(.*)$/)
     if (h) {
       closeAll()
@@ -155,6 +174,7 @@ export function blockWords(blocks: Block[]): number {
   for (const b of blocks) {
     if (b.t === 'code') n += b.text.split(/\s+/).filter(Boolean).length
     else if (b.t === 'ul') n += b.items.flat().reduce((s, x) => s + x.v.split(/\s+/).length, 0)
+    else if (b.t === 'table') n += [b.head, ...b.rows].flat(2).reduce((s, x) => s + x.v.split(/\s+/).length, 0)
     else n += b.nodes.reduce((s, x) => s + x.v.split(/\s+/).length, 0)
   }
   return n
