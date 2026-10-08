@@ -150,7 +150,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   }, [focusId, stream.map(c => c.r.id).join(','), folded.map(c => c.r.id).join(',')])
 
   // Focus lands on the first card, or on the card Content Brain sent.
-  const cardIds = useMemo(() => shown.filter(c => !c.strip).map(c => c.r.id), [shown])
+  const cardIds = useMemo(() => [...shown, ...(fixOpen ? folded : [])].filter(c => !c.strip).map(c => c.r.id), [shown, fixOpen, folded])
   useEffect(() => {
     if (focus && (cardIds.includes(focus) || !cardIds.length)) return
     setFocus(cardIds[0] ?? null)
@@ -278,7 +278,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
             <span className="cv2-grow" /><span className="cv2-fold-word">{fixOpen ? 'Hide' : 'Show'}</span>
           </button>
           {fixOpen && <div className="cv2-fixlist">{folded.map(c => (
-            <article key={c.r.id} className="cv2-fixrow" data-card-id={c.r.id} data-lane={c.lane}>
+            <article key={c.r.id} className="cv2-fixrow" data-card-id={c.r.id} data-lane={c.lane} aria-current={c.r.id === focus ? 'true' : undefined}>
               <SeatAv lane={c.lane} />
               <span className="cv2-fixt"><b>{splitTitleTag(c.title).text}</b><small>{c.flags.filter(f => f.tone === 'warn').map(f => f.text).join(' · ')} · created {age(c.r.created_at, now)} ago</small></span>
               {c.lane !== 'arch' && <ConfirmProvider><RetryDraft d={c.r} lane={c.lane} onDone={onChanged} label="Fix" /></ConfirmProvider>}

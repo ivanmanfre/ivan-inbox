@@ -37,10 +37,10 @@ const ROWS = [
 ]
 const read = (rows: ContentDraft[]): WeekRead => ({ rows, source: 'live', at: at(0), loading: false, error: null, capped: null, settled: true, refresh: vi.fn() })
 
-function Harness({ rows = ROWS, onOpen = vi.fn(), onEdit = vi.fn() }: { rows?: ContentDraft[]; onOpen?: () => void; onEdit?: () => void }) {
+function Harness({ rows = ROWS, onOpen = vi.fn(), onEdit = vi.fn(), focusId = null }: { rows?: ContentDraft[]; onOpen?: () => void; onEdit?: () => void; focusId?: string | null }) {
   const judged = useJudged()
   const week = buildNow(rows, { now: NOW, judged })
-  return <ReviewDesk week={week} total={week} read={read(rows)} show="all" setShow={vi.fn()} now={NOW} openId={null} focusId={null}
+  return <ReviewDesk week={week} total={week} read={read(rows)} show="all" setShow={vi.fn()} now={NOW} openId={null} focusId={focusId}
     onOpen={onOpen} onEdit={onEdit} onChanged={vi.fn()} firstDay="2026-09-28" seatRows={() => rows} rows={rows}
     armed={new Set()} armedFailed={false} />
 }
@@ -193,5 +193,23 @@ describe('Arch picture', () => {
     expect(verb(card('a1'), 'picture-change')).toBeNull()
     expect(verb(card('a1'), 'picture-upload')).toBeNull()
     expect(verb(card('i1'), 'picture-change')).toBeTruthy()
+  })
+})
+
+
+describe('Ideas landing reveals and selects the exact draft', () => {
+  it('reveals a draft beyond the first six and keeps it selected', async () => {
+    const rows = Array.from({ length: 8 }, (_, i) => brain({ id: `landing-${i}`, created_at: at(-(i+1)*H) }))
+    renderInFrame(<Harness rows={rows} focusId="landing-7" />)
+    await waitFor(() => expect(card('landing-7')?.getAttribute('aria-current')).toBe('true'))
+    expect(card('landing-0')?.getAttribute('aria-current')).not.toBe('true')
+  })
+  it('reveals a folded fix draft and keeps its selection after the effects settle', async () => {
+    const rows = [...ROWS, row({ id: 'fix-landing', status: 'error' })]
+    renderInFrame(<Harness rows={rows} focusId="fix-landing" />)
+    await waitFor(() => expect(card('fix-landing')?.getAttribute('aria-current')).toBe('true'))
+    expect(verb(document, 'fix-fold')?.getAttribute('aria-expanded')).toBe('true')
+    expect(card('b1')?.getAttribute('aria-current')).not.toBe('true')
+    expect(lib.setVerdict).not.toHaveBeenCalled()
   })
 })
