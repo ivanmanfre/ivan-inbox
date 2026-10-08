@@ -2881,7 +2881,7 @@ export async function listStills(folder: StillFolder): Promise<Still[]> {
       // tile falls back to `url` in the picker's onError — a heavy grid is a
       // worse outcome than a slow one, and a blank grid is worse than both.
       thumb: supabase.storage.from(STILL_BUCKET)
-        .getPublicUrl(`${folder}/${o.name}`, { transform: { width: 200, quality: 70 } })
+        .getPublicUrl(`${folder}/${o.name}`, { transform: { width: 480, height: 600, resize: 'contain', quality: 75 } })
         .data.publicUrl,
     }))
 }
@@ -2906,7 +2906,7 @@ export async function searchStills(q: string): Promise<Still[]> {
         folder: path.slice(0, Math.max(i, 0)) as StillFolder,
         url: r.public_url as string,
         thumb: supabase.storage.from(STILL_BUCKET)
-          .getPublicUrl(path, { transform: { width: 200, quality: 70 } })
+          .getPublicUrl(path, { transform: { width: 480, height: 600, resize: 'contain', quality: 75 } })
           .data.publicUrl,
       }
     })
@@ -3068,7 +3068,7 @@ export async function listClientPhotos(slug: string): Promise<Picture[]> {
       return {
         name: o.name as string,
         url: supabase.storage.from(CLIENT_BUCKET).getPublicUrl(path).data.publicUrl,
-        thumb: supabase.storage.from(CLIENT_BUCKET).getPublicUrl(path, { transform: { width: 200, quality: 70 } }).data.publicUrl,
+        thumb: supabase.storage.from(CLIENT_BUCKET).getPublicUrl(path, { transform: { width: 480, height: 600, resize: 'contain', quality: 75 } }).data.publicUrl,
       }
     })
 }

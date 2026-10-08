@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  BOARD_SLUG, STILL_FOLDERS, listClientPhotos, listStills, normalizeImageUrls, searchStills, setDraftMedia,
+  BOARD_SLUG, listClientPhotos, listStills, normalizeImageUrls, searchStills, setDraftMedia,
   uploadDraftPicture, type ContentDraftDetail, type Picture, type StillFolder,
 } from '../../lib/content'
 import { Btn } from '../ui/Key'
@@ -21,6 +21,12 @@ import './picture.css'
 //
 // The caller mounts this only where pictureEditable() says the RPC will accept
 // the write (text / single_image, not published, the lane's statuses).
+
+// The storage folders in words (Ivan 2026-10-08: "the tags are weird"). Both selfie pools are one choice.
+type FolderKey = 'all' | 'selfies' | 'places' | 'yours'
+const FOLDER_KEYS: readonly FolderKey[] = ['all', 'selfies', 'places', 'yours']
+const FOLDER_LABEL: Record<FolderKey, string> = { all: 'Library', selfies: 'Selfies', places: 'Places', yours: 'Your photos' }
+const FOLDER_GROUPS: Record<FolderKey, StillFolder[]> = { all: ['library'], selfies: ['selfie-pool-a', 'selfie-pool-b'], places: ['places-2026-09'], yours: ['ivan-photos'] }
 
 const nameOf = (url: string) => decodeURIComponent(url.split('?')[0].split('/').pop() ?? url)
 
@@ -44,10 +50,12 @@ export function PictureRow({ d, lane, onShow, onDone, disabled }: {
   const stored = normalizeImageUrls(d.image_urls)[0] ?? null
   const [shown, setShown] = useState<string | null>(stored)
   const [open, setOpen] = useState(false)
-  const [folder, setFolder] = useState<StillFolder>(STILL_FOLDERS[0])
+  const [folder, setFolder] = useState<FolderKey>('all')
   const [q, setQ] = useState('')
   const [query, setQuery] = useState('')
   const [pics, setPics] = useState<Picture[] | null>(null)
+  // The picture being looked at full size before it is used (Ivan 2026-10-08: "i cant even open them to see").
+  const [look, setLook] = useState<number | null>(null)
   const [libErr, setLibErr] = useState('')
   const [busy, setBusy] = useState<'' | 'pick' | 'upload' | 'remove'>('')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -61,8 +69,9 @@ export function PictureRow({ d, lane, onShow, onDone, disabled }: {
   useEffect(() => {
     if (!open) return
     let live = true
-    setPics(null); setLibErr('')
-    const read = slug ? listClientPhotos(slug) : query ? searchStills(query) : listStills(folder)
+    setPics(null); setLibErr(''); setLook(null)
+    const read = slug ? listClientPhotos(slug) : query ? searchStills(query)
+      : Promise.all(FOLDER_GROUPS[folder].map(listStills)).then(all => all.flat())
     read.then(p => { if (live) setPics(p) })
       .catch(e => { if (live) setLibErr(e instanceof Error ? e.message : 'Could not read the library.') })
     return () => { live = false }
@@ -136,14 +145,14 @@ export function PictureRow({ d, lane, onShow, onDone, disabled }: {
       {open && (
         <div className="cn-pic2-lib">
           {slug ? (
-            <small className="cn-cap">{OWNER[lane]}’s photos · client-photos/{slug}</small>
+            <small className="cn-cap">{OWNER[lane]}’s photos</small>
           ) : (
             <>
               <input className="cn-pic2-q" type="search" placeholder="Search photos: warsaw night street…" aria-label="Search photos"
                 value={q} onChange={e => setQ(e.target.value)} />
               <div className="cn-pic2-chips" role="group" aria-label="Folder">
-                {STILL_FOLDERS.map(f => (
-                  <button key={f} type="button" aria-pressed={!query && f === folder} onClick={() => { setQ(''); setQuery(''); setFolder(f) }}>{f}</button>
+                {FOLDER_KEYS.map(f => (
+                  <button key={f} type="button" aria-pressed={!query && f === folder} onClick={() => { setQ(''); setQuery(''); setFolder(f) }}>{FOLDER_LABEL[f]}</button>
                 ))}
               </div>
             </>
@@ -151,11 +160,30 @@ export function PictureRow({ d, lane, onShow, onDone, disabled }: {
           {libErr && <p className="cn-say cn-bad" role="alert">{libErr}</p>}
           {!pics && !libErr && <p className="cn-say">Reading the library…</p>}
           {pics && pics.length === 0 && <p className="cn-say">{query ? 'No photo is tagged with all of that.' : slug ? `No photos in ${POSS[lane]} library yet. Upload one.` : 'Nothing in this folder.'}</p>}
-          {pics && pics.length > 0 && (
+          {pics && pics.length > 0 && look !== null && pics[look] && (
+            <div className="cn-pic2-look" role="dialog" aria-label="Picture preview"
+              onKeyDown={e => {
+                if (e.key === 'Escape') { e.stopPropagation(); setLook(null) }
+                if (e.key === 'ArrowRight') { e.preventDefault(); setLook(i => i === null ? i : Math.min(pics.length - 1, i + 1)) }
+                if (e.key === 'ArrowLeft') { e.preventDefault(); setLook(i => i === null ? i : Math.max(0, i - 1)) }
+              }}>
+              <div className="cn-pic2-look-img"><img src={pics[look].url} alt="" /></div>
+              <div className="cn-pic2-look-bar">
+                <Btn aria-label="Previous picture" disabled={look === 0} onClick={() => setLook(look - 1)}>‹</Btn>
+                <span>{look + 1} of {pics.length}</span>
+                <Btn aria-label="Next picture" disabled={look === pics.length - 1} onClick={() => setLook(look + 1)}>›</Btn>
+                <span className="cn-grow" />
+                <Btn verb="picture-look-back" autoFocus onClick={() => setLook(null)}>Back</Btn>
+                <Btn primary verb="picture-use" disabled={off || pics[look].url === shown}
+                  onClick={() => { const u = pics[look].url; setLook(null); void write(u, 'pick') }}>{pics[look].url === shown ? 'On this post' : 'Use this picture'}</Btn>
+              </div>
+            </div>
+          )}
+          {pics && pics.length > 0 && look === null && (
             <div className="cn-pic2-g">
-              {pics.map(p => (
-                <button key={p.url} type="button" aria-label={`Use ${p.name}`} title={p.name} disabled={off}
-                  aria-current={p.url === shown ? 'true' : undefined} onClick={() => void write(p.url, 'pick')}>
+              {pics.map((p, i) => (
+                <button key={p.url} type="button" aria-label={`Look at ${p.name}`} title="Look at it full size" disabled={off}
+                  aria-current={p.url === shown ? 'true' : undefined} onClick={() => setLook(i)}>
                   <img src={p.thumb} alt="" loading="lazy"
                     // The render endpoint is a paid storage feature; if it is off, show the original.
                     onError={e => { const el = e.currentTarget; if (el.src !== p.url) el.src = p.url }} />

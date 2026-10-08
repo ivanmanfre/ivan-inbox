@@ -156,10 +156,11 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
     foot = 'Save or cancel the edit first. Approve, Skip and j/k wait until the edit ends.'
   } else if (lane === 'ivan') {
     keys = <>
-      {judgeable ? dropKey : <Key verb="skip" onClick={() => v.decide('skip')} disabled={!actionable || v.busy}>Skip</Key>}
+      {/* Skip and Approve only where they act (a draft in review); greyed keys on a scheduled post were noise. */}
+      {judgeable ? dropKey : actionable && <Key verb="skip" onClick={() => v.decide('skip')} disabled={v.busy}>Skip</Key>}
       <Key verb="edit" onClick={v.startEdit} disabled={v.busy}>Edit</Key>
       {judgeable ? <>{keepKey}{verdictNote}</>
-        : <Key primary={!schedulable} verb="approve" onClick={() => v.decide('approve')} disabled={!actionable || v.busy} sub="no date yet">Approve</Key>}
+        : actionable && <Key primary={!schedulable} verb="approve" onClick={() => v.decide('approve')} disabled={v.busy} sub="no date yet">Approve</Key>}
       {schedulable && (dateOpen ? (
         <Key primary={!judgeable} verb="schedule" onClick={() => v.schedule(whenAt)} disabled={v.busy || Number.isNaN(whenAt.getTime())}
           sub={Number.isNaN(whenAt.getTime()) ? 'pick a time' : `${warsawDow(whenAt)} ${warsawDm(whenAt)} · ${when.slice(11)}`}>
@@ -172,7 +173,7 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
       ))}
     </>
     foot = <>{judgeable ? 'Approve approves it and Drop deletes it. Nothing publishes until it is scheduled. '
-      : !actionable && `Approve and Skip act on drafts in review; this one is ${STAGE_LABEL[stage].toLowerCase()}. `}
+      : null}
       {!schedulable && `Schedule is not offered: this draft is ${d.published_at ? 'published' : STAGE_LABEL[stage].toLowerCase()}. `}
       {schedulable && dateOpen && d.status === 'scheduled' && <><button type="button" data-verb="schedule-hide" onClick={() => setDateOpen(false)}>Hide date</button>. </>}<span className="cn-kk-hint">Esc closes, j/k walks.</span></>
   } else {

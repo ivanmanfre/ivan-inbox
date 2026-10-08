@@ -63,7 +63,9 @@ describe('brain draft in the open post: Approve or Drop', () => {
     current = { ...base, status: 'approved' }
     renderInFrame(<DraftWindow {...props()} />)
     expect(verb('dw-keep')).toBeNull()
-    expect(verb('skip')).toBeTruthy()
+    // Skip only shows where it acts (a draft in review), 2026-10-08.
+    expect(verb('skip')).toBeNull()
+    expect(verb('edit')).toBeTruthy()
   })
 
   it('Rise brain draft: Approve and Drop, no Delete, Put on board stays', () => {

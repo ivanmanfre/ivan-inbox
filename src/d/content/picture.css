@@ -30,3 +30,26 @@
 .cn-pic2-g button:disabled{opacity:.5}
 .d-phone .cn-pic2{margin-left:0;margin-right:0}
 .d-phone .cn-pic2-g{grid-template-columns:repeat(3,minmax(0,1fr))}
+/* 2026-10-08 (Ivan: "i cant see my pictures properly... focused wrong... cant even open them"):
+   tiles show the whole picture at its own shape, larger; a tap opens it full size first. */
+.cn-pic2-g{grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px;max-height:460px}
+.cn-pic2-g button{aspect-ratio:4/5;background:var(--ds-surface-2,var(--p3));border-color:var(--line);transition:transform var(--ds-d-fast,.16s) var(--ds-e-ui,ease),box-shadow var(--ds-d-fast,.16s)}
+.cn-pic2-g button img{object-fit:contain}
+.cn-pic2-g button:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 16px -8px rgba(19,18,16,.25)}
+.cn-pic2-g button[aria-current='true']{border-color:var(--t1);box-shadow:inset 0 0 0 2px var(--t1)}
+.cn-pic2-chips button{font:500 13px var(--f);color:var(--t2)}
+.cn-pic2-chips button[aria-pressed='true']{background-image:linear-gradient(var(--t1),var(--t1));color:var(--p1)}
+.cn-pic2-q{color-scheme:light}
+.cn-pic2-look{display:flex;flex-direction:column;gap:10px}
+.cn-pic2-look-img{border-radius:10px;overflow:hidden;background:var(--ds-surface-2,var(--p3));display:grid;place-items:center;max-height:62vh}
+.cn-pic2-look-img img{max-width:100%;max-height:62vh;object-fit:contain;display:block}
+.cn-pic2-look-bar{display:flex;align-items:center;gap:8px;font:400 12.5px var(--f);color:var(--t2)}
+.cn-pic2-look-bar .cn-grow{flex:1}
+.cn-pic2-look-bar .d-btn{height:40px;padding:0 14px;border-radius:10px}
+.cn-pic2-look-bar .d-btn[aria-label]{width:40px;padding:0;justify-content:center}
+.d-phone .cn-pic2-g{grid-template-columns:repeat(2,minmax(0,1fr))}
+/* The header's status and early read: quiet pills instead of outlined boxes. */
+.cn-chips .cn-st{color:var(--t1);border:0;background:var(--ds-surface-2,var(--p3));border-radius:999px;padding:3px 10px;font:500 12px var(--f)}
+.cn-chips .cn-st-bad{color:var(--crit);background:var(--ds-sev-urgent-soft,#fee6e3)}
+.cn-chips .cn-early-chip{min-height:0;border:0;padding:3px 10px;border-radius:999px;background:var(--ds-surface-2,var(--p3));color:var(--t2);font:400 12px var(--f)}
+.cn-chips .cn-early-chip:hover{color:var(--t1)}

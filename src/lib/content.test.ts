@@ -937,7 +937,7 @@ describe('listStills', () => {
     expect(first.url).not.toContain('width=')
     // What the 84px tile loads is not the 1-2MB original.
     expect(first.thumb).toContain('/render/image/public/post-stills/library/selfie-14.jpg')
-    expect(first.thumb).toContain('width=200')
+    expect(first.thumb).toContain('resize=contain')
     expect(first.thumb).not.toBe(first.url)
   })
 
