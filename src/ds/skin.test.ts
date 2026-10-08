@@ -95,7 +95,7 @@ describe('applySkin (the live store)', () => {
     const meta = document.createElement('meta'); meta.name = 'theme-color'; meta.content = '#000000'
     document.head.appendChild(meta)
     sessionStorage.setItem(SKIN_KEY, 'brief:tokens'); applySkin('phone')
-    expect(meta.content).toBe('#f6f8f3')
+    expect(meta.content).toBe('#FAF9F7')
     sessionStorage.setItem(SKIN_KEY, 'off'); applySkin('phone')
     expect(meta.content).toBe('#000000')
     meta.remove()

@@ -41,7 +41,7 @@ html.d-root,html.d-root body{background:#0A0A09}
   --bg:var(--ds-sticky);--p1:var(--ds-surface-1);--p2:var(--ds-surface-2);--p3:var(--ds-surface-3);
   --line:var(--ds-line);--line2:var(--ds-line-strong);--strong:var(--ds-line-3);
   --t1:var(--ds-text);--t2:var(--ds-text-2);--t3:var(--ds-text-3);
-  --lime:var(--ds-accent);--limeD:var(--ds-accent-deep);--limeL:var(--ds-accent-hover);--num:var(--ds-accent);--hot:var(--ds-accent);--hotB:var(--ds-accent-line);
+  --lime:var(--ds-accent);--limeD:var(--ds-accent-deep);--limeL:var(--ds-accent-hover);--num:var(--ds-text);--hot:var(--ds-accent);--hotB:var(--ds-accent-line);
   --warn:var(--ds-sev-attention-ui);--crit:var(--ds-sev-urgent-ui);--critT:var(--ds-sev-urgent-ui);
   --sel:var(--ds-accent-soft);--selT:var(--ds-nav-text-on);--selT2:var(--ds-nav-text);--selHot:var(--ds-accent);
   --seg:var(--ds-hairline);--segOn:var(--ds-seg-on);--segNow:var(--ds-accent);--gap:var(--ds-gap-fill);--h1:var(--ds-surface-1);--h2:var(--ds-surface-2);
@@ -310,3 +310,9 @@ html[data-density='comfortable'] .d-app .gt-row{padding-top:9px;padding-bottom:9
 /* Content has an attention mark, never a per-client numeric badge. */
 .d-content-attention{display:inline-block;margin-left:auto;width:6px;height:6px;background:var(--warn);border-radius:50%}
 .d-dock .d-content-attention{margin-left:0}
+/* InboundOnSteroids brand (Ivan 2026-10-08): the site's wordmark and ON mark. */
+.d-brand .d-wordmark{font:500 14px/1 'Schibsted Grotesk',Arial,sans-serif;letter-spacing:-.02em;white-space:nowrap;color:var(--sideH,#131210)}
+.d-brand .d-wordmark .on{font-weight:900;color:#C8361B}
+.d-mark.d-mark-on{background:#fff;color:#C8361B;font:900 11px/1 'Schibsted Grotesk',Arial,sans-serif;letter-spacing:-.02em;box-shadow:inset 0 0 0 2px #131210;border-radius:4px;display:none}
+.d-side-min .d-mark.d-mark-on{display:grid}
+.d-mark.d-mark-on.d-mark-btn{display:grid}

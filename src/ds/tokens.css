@@ -559,39 +559,40 @@
   }
 }
 
-/* 10.1 · tokens: colour, glass, elevation, radii (glass.css 4-40). */
+/* 10.1 · tokens: colour, glass, elevation, radii (glass.css 4-40). Colour = inboundonsteroids.com
+   (Ivan 2026-10-08): ink #131210, red #C8361B, warm paper. Severity colours keep their meaning. */
 :root[data-skin-on~='tokens']{
   color-scheme:light;
-  --ds-text:#18251f;
-  --ds-text-2:#546358;
-  --ds-text-3:#5a675d;
-  --ds-text-4:#5a675d;
-  --ds-nav-text:#2f3b30;
-  --ds-nav-text-on:#172019;
-  --ds-accent:#18392a;
-  --ds-accent-ui:#18392a;
-  --ds-accent-hover:#294f39;
-  --ds-accent-deep:#102a1f;
-  --ds-accent-ink:#fefefc;
-  --ds-accent-ring:#315c35;
-  --ds-focus:#315c35;
-  --ds-accent-soft:#e1eadb;
-  --ds-accent-line:#bcc8b7;
-  --ds-hairline-strong:#bcc8b7;
-  --ds-linen:#f1f0eb;
-  --ds-line:rgba(24,57,42,.12);
-  --ds-line-strong:rgba(24,57,42,.18);
-  --ds-line-3:rgba(24,57,42,.26);
-  --ds-hairline:#d5ddd0;
-  --ds-canvas:#f6f8f3;
-  --ds-sticky:#f6f8f3;
-  --ds-ground:#e9efe3;
-  --ds-ground-web:#e3e5df;
+  --ds-text:#131210;
+  --ds-text-2:#4A463E;
+  --ds-text-3:#6B675E;
+  --ds-text-4:#6B675E;
+  --ds-nav-text:#3A3631;
+  --ds-nav-text-on:#131210;
+  --ds-accent:#C8361B;
+  --ds-accent-ui:#B3301A;
+  --ds-accent-hover:#AC2E17;
+  --ds-accent-deep:#8F2613;
+  --ds-accent-ink:#FFFFFF;
+  --ds-accent-ring:#C8361B;
+  --ds-focus:#C8361B;
+  --ds-accent-soft:#F6EEE8;
+  --ds-accent-line:#E7C4B8;
+  --ds-hairline-strong:#D9D3C8;
+  --ds-linen:#F3F1ED;
+  --ds-line:rgba(19,18,16,.12);
+  --ds-line-strong:rgba(19,18,16,.18);
+  --ds-line-3:rgba(19,18,16,.26);
+  --ds-hairline:#E2DDD4;
+  --ds-canvas:#FAF9F7;
+  --ds-sticky:#FAF9F7;
+  --ds-ground:#EFECE6;
+  --ds-ground-web:#EEEAE5;
   --ds-surface-1:#ffffff;
-  --ds-surface-2:#f3f6ef;
-  --ds-surface-3:#e9eee5;
-  --ds-seg-on:#7c8c7d;
-  --ds-gap-fill:#dfe6da;
+  --ds-surface-2:#F6F4F0;
+  --ds-surface-3:#EEEAE5;
+  --ds-seg-on:#8A847A;
+  --ds-gap-fill:#E8E4DD;
   --ds-sev-clear-ui:#134d11;
   --ds-sev-clear-soft:#dfecdd;
   --ds-sev-attention-ui:#865d19;
@@ -600,29 +601,29 @@
   --ds-sev-urgent-soft:#fee6e3;
   --ds-info-ui:#1f477a;
   --ds-info-soft:#e0ebf9;
-  --ds-scrim:rgba(24,37,31,.24);
-  --ds-selection:#d3e3c9;
-  --ds-wash:rgba(24,57,42,.04);
-  --ds-wash-strong:rgba(24,57,42,.07);
+  --ds-scrim:rgba(19,18,16,.24);
+  --ds-selection:#F3DCD3;
+  --ds-wash:rgba(19,18,16,.04);
+  --ds-wash-strong:rgba(19,18,16,.07);
   --ds-glass-pane:rgba(255,255,255,.91);
   --ds-glass-large:rgba(254,254,252,.86);
-  --ds-glass-rail:rgba(245,248,237,.41);
-  --ds-glass-chrome:rgba(238,243,223,.25);
+  --ds-glass-rail:rgba(250,249,247,.41);
+  --ds-glass-chrome:rgba(244,240,234,.25);
   --ds-fill-hover:rgba(255,255,255,.36);
   --ds-fill-sel:rgba(255,255,255,.71);
   --ds-fill-tab:rgba(255,255,255,.85);
   --ds-hi:inset 0 1px 0 rgba(255,255,255,.75);
-  --ds-shadow-sel:0 2px 4px rgba(24,48,28,.03),inset 0 1px 0 rgba(255,255,255,.75);
-  --ds-shadow-soft:0 1px 3px rgba(24,57,42,.04),0 6px 20px -12px rgba(24,57,42,.14);
-  --ds-shadow-float:0 8px 40px -12px rgba(24,57,42,.2);
-  --ds-glass-fill:linear-gradient(135deg,rgba(255,255,255,.41),rgba(238,243,223,.25) 45%,rgba(255,255,255,.29));
+  --ds-shadow-sel:0 2px 4px rgba(19,18,16,.03),inset 0 1px 0 rgba(255,255,255,.75);
+  --ds-shadow-soft:0 1px 3px rgba(19,18,16,.04),0 6px 20px -12px rgba(19,18,16,.14);
+  --ds-shadow-float:0 8px 40px -12px rgba(19,18,16,.2);
+  --ds-glass-fill:linear-gradient(135deg,rgba(255,255,255,.41),rgba(244,240,234,.25) 45%,rgba(255,255,255,.29));
   --ds-glass-insets:inset 0 1px 0 rgba(255,255,255,.85),inset 1px 0 0 rgba(255,255,255,.45),inset 0 -1px 0 rgba(255,255,255,.25),inset 0 3px 5px -3px #fff,inset 2px 0 5px -3px #fff,inset -2px -2px 4px -3px rgba(255,255,255,.8);
-  --ds-chip-face:linear-gradient(#fff,#f6f8f3) padding-box,linear-gradient(rgba(24,57,42,.12),rgba(24,57,42,.24)) border-box;
-  --ds-chip-shadow:0 1px 2px rgba(24,57,42,.06),inset 0 1px 0 #fff;
-  --ds-chip-overlay:linear-gradient(rgba(24,57,42,.035),rgba(24,57,42,.075));
-  --ds-well-shadow:inset 0 1px 2px rgba(24,57,42,.06),inset 0 0 0 1px rgba(24,57,42,.09);
-  --ds-well-fill:rgba(243,246,239,.8);
-  --ds-cap-shadow:0 1.5px 0 rgba(24,57,42,.10),inset 0 0 0 1px rgba(24,57,42,.11);
+  --ds-chip-face:linear-gradient(#fff,#FAF9F7) padding-box,linear-gradient(rgba(19,18,16,.12),rgba(19,18,16,.24)) border-box;
+  --ds-chip-shadow:0 1px 2px rgba(19,18,16,.06),inset 0 1px 0 #fff;
+  --ds-chip-overlay:linear-gradient(rgba(19,18,16,.035),rgba(19,18,16,.075));
+  --ds-well-shadow:inset 0 1px 2px rgba(19,18,16,.06),inset 0 0 0 1px rgba(19,18,16,.09);
+  --ds-well-fill:rgba(246,244,240,.8);
+  --ds-cap-shadow:0 1.5px 0 rgba(19,18,16,.10),inset 0 0 0 1px rgba(19,18,16,.11);
   --ds-r-rail:15px;
   --ds-r-chrome:13px;
   --ds-r-pane:14px;
@@ -636,12 +637,12 @@
 :root.brief-native[data-skin-on~='tokens']{ --ds-canvas:transparent; --ds-fill-hover:rgba(255,255,255,.24) }
 /* Reduce Transparency (native .brief-opaque, or the OS setting): opaque panes, no blur. */
 :root.brief-opaque[data-skin-on~='tokens']{
-  --ds-canvas:#f6f8f3;
+  --ds-canvas:#FAF9F7;
   --ds-glass-pane:#ffffff;--ds-glass-large:#ffffff;--ds-glass-rail:#ffffff;--ds-glass-chrome:#ffffff;
 }
 @media (prefers-reduced-transparency:reduce){
   :root[data-skin-on~='tokens']{
-    --ds-canvas:#f6f8f3;
+    --ds-canvas:#FAF9F7;
     --ds-glass-pane:#ffffff;--ds-glass-large:#ffffff;--ds-glass-rail:#ffffff;--ds-glass-chrome:#ffffff;
   }
 }

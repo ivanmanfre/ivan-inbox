@@ -80,7 +80,7 @@ export default defineConfig({
         { src: './icon-512.png', sizes: '512x512', type: 'image/png' },
         // Full-bleed ground with the mark inside the safe zone, so Android can
         // cut its own shape without clipping the pill.
-        { src: './icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        { src: './icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
       ],
       // The three destinations a long-press (Android) or right-click (desktop
       // PWA) on the dock/taskbar icon jumps straight to, on the 192 icon: no

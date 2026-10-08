@@ -21,7 +21,7 @@
 :root[data-skin-on~='settings'] .ds4-chev{font:400 16px var(--f);color:var(--t3)}
 :root[data-skin-on~='settings'] .ds4-build{padding:0 4px;font:400 12px var(--f);color:var(--t3);font-variant-numeric:tabular-nums}
 /* segmented pair: sunken track, the pressed segment a porcelain chip (neutral, never forest) */
-:root[data-skin-on~='settings'] .ds4 .ds2-pair{gap:0;padding:2px;border-radius:8px;background:rgba(24,57,42,.05);box-shadow:var(--ds-well-shadow)}
+:root[data-skin-on~='settings'] .ds4 .ds2-pair{gap:0;padding:2px;border-radius:8px;background:rgba(19,18,16,.05);box-shadow:var(--ds-well-shadow)}
 :root[data-skin-on~='settings'] .d-phone .ds4 .ds2-pair{padding:3px}
 :root[data-skin-on~='settings'] .ds4 .ds2-pair .d-key{min-width:0;height:24px;padding:0;border:0;background:transparent;transform:none}
 :root[data-skin-on~='settings'] .d-phone .ds4 .ds2-pair .d-key{height:38px}
@@ -29,7 +29,7 @@
 :root[data-skin-on~='settings'] .ds4 .ds2-pair .d-key .d-face{position:static;inset:auto;height:100%;transform:none;display:flex;align-items:center;padding:0 12px;border:0;border-radius:6px;background:transparent;box-shadow:none;
   font:450 13px/1 var(--f);color:var(--t2);transition:color var(--ds-d-fast) var(--ds-e-content),background-color var(--ds-d-fast) var(--ds-e-content)}
 :root[data-skin-on~='settings'] .ds4 .ds2-pair .d-key:hover:not(:disabled) .d-face{color:var(--t1)}
-:root[data-skin-on~='settings'] .ds4 .ds2-pair .d-key.ds2-pressed .d-face{background:linear-gradient(#fff,#fbfcfa);color:var(--t1);font-weight:var(--ds-fw-em);box-shadow:0 1px 3px rgba(24,57,42,.08),inset 0 1px 0 #fff,0 0 0 1px rgba(24,57,42,.07)}
+:root[data-skin-on~='settings'] .ds4 .ds2-pair .d-key.ds2-pressed .d-face{background:linear-gradient(#fff,#fbfcfa);color:var(--t1);font-weight:var(--ds-fw-em);box-shadow:0 1px 3px rgba(19,18,16,.08),inset 0 1px 0 #fff,0 0 0 1px rgba(19,18,16,.07)}
 :root[data-skin-on~='settings'] .ds4 .ds2-pair .d-key:disabled{opacity:.5}
 /* small keys: Reset to dark, Sign out as quiet glass chips; Sign out reads danger */
 :root[data-skin-on~='settings'] .ds4 .ds4-c > .d-key{width:auto;height:28px;padding:0;border:0;background:transparent;transform:none}

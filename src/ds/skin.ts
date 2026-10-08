@@ -136,7 +136,7 @@ export function applySkin(layout: SkinLayout): Set<Section> {
   const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
   if (meta) {
     if (!meta.dataset.base) meta.dataset.base = meta.content
-    meta.content = r.set.has('tokens') ? '#f6f8f3' : meta.dataset.base
+    meta.content = r.set.has('tokens') ? '#FAF9F7' : meta.dataset.base
   }
   const changed = skinAttr(current) !== attr
   current = r.set

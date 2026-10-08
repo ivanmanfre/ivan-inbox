@@ -45,11 +45,13 @@ export function SeatHead() {
   return <div className="d-seathead" aria-hidden="true">{SEATS.map(s => <i key={s}>{SEAT_NAME[s]}</i>)}</div>
 }
 
+/** The InboundOnSteroids wordmark (inboundonsteroids.com: INBOUND ON STEROIDS, "ON" heavy in red).
+ *  Collapsed, only the ON mark shows (the site's favicon). */
 export function Brand() {
   return (
-    <div className="d-brand">
-      <div className="d-mark" aria-hidden="true">IM</div>
-      <div><b>Ivan's inbox</b></div>
+    <div className="d-brand" aria-label="InboundOnSteroids inbox">
+      <div className="d-mark d-mark-on" aria-hidden="true">ON</div>
+      <div className="d-wordmark" aria-hidden="true"><span>INBOUND</span><span className="on">ON</span><span>STEROIDS</span></div>
     </div>
   )
 }

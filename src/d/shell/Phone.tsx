@@ -23,7 +23,7 @@ export function PhoneTop({ onPanel, setToolsSlot }: { onPanel: () => void; setTo
   const failed = items.find(i => i.id === f.route.place)?.failed ?? 0
   return (
     <header className="d-ptop">
-      <button type="button" className="d-mark" aria-label="Open the panel" onClick={onPanel}>IM</button>
+      <button type="button" className="d-mark d-mark-on d-mark-btn" aria-label="Open the panel" onClick={onPanel}>ON</button>
       <div className="d-pl">
         <span>{PLACES[f.route.place].label}{failed > 0 && <em className="d-pl-fail"> · failed</em>}</span>
         <b>{warsawDow(now)} {warsawDm(now)} · {warsawHm(now)} Warsaw</b>
