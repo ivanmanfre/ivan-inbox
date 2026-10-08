@@ -554,3 +554,33 @@
 .cv2-ask{margin:8px 0 0;padding:8px 10px;border-radius:8px;background:var(--ds-sev-attention-soft,#fcf1e2);color:var(--ds-text);font:400 13px/1.45 var(--ds-font)}
 .cv2-ask b{font-weight:600}
 .cv2-ask-hold{background:var(--ds-surface-2);color:var(--ds-text-2)}
+
+/* 2026-10-08 Ivan "make the review posts section smaller so i can scroll easier":
+   cards were ~670px tall, two to a row. Now as many 300px+ columns as fit, the picture
+   capped at 200px and shown whole, the "now · 🌐" line dropped, tighter padding. */
+:root[data-skin-on~='content.review'] .cv2-grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+@container main (max-width:999px){
+  :root[data-skin-on~='content.review'] .cv2-grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));justify-content:stretch}
+}
+:root[data-skin-on~='content.review'] .cv2-split.cn-open[data-wide='yes'] .cv2-grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+:root[data-skin-on~='content.review'] .d-phone .cv2-grid{grid-template-columns:minmax(0,1fr)}
+:root[data-skin-on~='content.review'] .cv2-rc{gap:8px;padding:12px}
+:root[data-skin-on~='content.review'] .cv2-rc .cv2-li-h{padding:10px 12px 0}
+:root[data-skin-on~='content.review'] .cv2-rc .cv2-li-h > i{width:32px;height:32px;font-size:12px}
+:root[data-skin-on~='content.review'] .cv2-rc .cv2-li-h small + small{display:none}
+:root[data-skin-on~='content.review'] .cv2-rc .cv2-li-b{padding:6px 12px 6px;font-size:13px;line-height:18px}
+:root[data-skin-on~='content.review'] .cv2-rc .cv2-li-b p{margin-bottom:12px}
+:root[data-skin-on~='content.review'] .cv2-rc .cv2-li-m{max-height:200px}
+:root[data-skin-on~='content.review'] .cv2-rc .cv2-li-m img{object-fit:contain}
+:root[data-skin-on~='content.review'] .cv2-rc .cv2-li-strip{display:none}
+:root[data-skin-on~='content.review'] .cv2-rc-keys{flex-wrap:wrap;min-height:36px;padding-top:8px}
+:root[data-skin-on~='content.review'] .cv2-rc-meta .cv2-dim{flex:none}
+:root[data-skin-on~='content.review'] .cv2-rc-meta :is(.cn-er,.cn-early,.er-chip,[class*='early']):not(.cv2-pill){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+:root[data-skin-on~='content.review'] .cv2-rc .cv2-pic .cn-pic2-m span{display:none}
+:root[data-skin-on~='content.review'] .cv2-rc .cv2-pic .cn-pic2-m b{max-width:none}
+:root[data-skin-on~='content.review'] .cv2-rc-meta{gap:6px}
+:root[data-skin-on~='content.review'] .cv2-rc-meta .cn-early-wrap{display:flex;flex:0 1 auto;min-width:76px}
+:root[data-skin-on~='content.review'] .cv2-rc-meta .cn-early-wrap .cn-early-chip{max-width:100%}
+/* the sample size sits in the chip's sheet and label; a clipped "n=40" for 401 misread */
+:root[data-skin-on~='content.review'] .cv2-rc-meta .cn-early-wrap{flex:none;min-width:auto}
+:root[data-skin-on~='content.review'] .cv2-rc-meta .cn-early-n{display:none}

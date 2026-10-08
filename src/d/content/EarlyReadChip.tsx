@@ -30,7 +30,7 @@ export function EarlyReadChip({ read, lane, unsaved = false }: { read?: PatternR
   }, [open])
   return <span className="cn-early-wrap" onClick={e => e.stopPropagation()}>
     <button ref={trigger} type="button" className={`cn-early-chip${pattern ? ' cn-early-ready' : ''}`} data-verb="early-read" aria-haspopup="dialog" aria-expanded={open}
-      aria-label={`${text}${small ? ' · small sample' : ''}`} onClick={e => { e.stopPropagation(); setOpen(true) }}>{text}</button>
+      aria-label={`${text}${small ? ' · small sample' : ''}`} onClick={e => { e.stopPropagation(); setOpen(true) }}>{pattern ? <>{rateText(pattern.rate)} early read<span className="cn-early-n"> · n={pattern.n}</span></> : text}</button>
     <Sheet open={open} onClose={close} title="Early read" className="cn-read-sheet" sub={small ? 'Small sample · niche evidence' : 'Niche evidence'}>
       <div onClick={e => e.stopPropagation()}>
         <p>{pattern ? shown.sentence || 'No stored explanation is available for this read.' : readReasonText(shown.reason)}</p>
