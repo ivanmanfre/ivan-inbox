@@ -8,14 +8,18 @@ import { useEffect, useRef } from 'react'
 //    scrolling while you hold it. Move before the hold ends and it is a
 //    scroll or a swipe, never a drag.
 //  · A horizontal swipe anywhere on the grid pages months (or two-week lines).
-//  · Holding a lifted post at the screen edge pages too, so a post can travel
-//    into next month.
+//  · Holding a lifted post at the calendar's left or right edge (or past it, over
+//    the draft panel), or over the ‹ › keys, pages too, so a post can travel to
+//    any later week or month. The edges light up while you drag (2026-10-09: the
+//    old trigger was the SCREEN edge, which the draft panel covered).
 //
 // Contract with the markup (plain data attributes, so any view can join):
 //   [data-cal-id][data-cal-lane]   a post that can be lifted
 //   [data-cal-refuse="why"]        a post that must not move (says why on lift)
 //   [data-cal-day][data-cal-lane?] a day that accepts a drop (lane-bound if set)
 //   [data-cal-noswipe]             a strip that scrolls sideways itself (no paging)
+//   [data-cal-page="-1|1"]         a key that pages while a post hovers it
+//   .cal-stage                     the paged area; its edges page a held post
 // The engine never writes: a drop calls onDrop, which owns the confirm and Undo.
 // Moves are applied to the DOM directly (transform), never through React state,
 // so a drag costs no re-render per frame.
@@ -34,8 +38,9 @@ export type CalGestureOpts = {
 
 const HOLD_MS = 320
 const SLOP = 8
-const EDGE = 28
-const EDGE_MS = 650
+const EDGE = 44
+const EDGE_MS = 480
+const EDGE_REPEAT_MS = 1200
 
 type Mode = 'idle' | 'press' | 'pending' | 'swipe' | 'drag'
 
@@ -55,10 +60,11 @@ export function useCalGestures(root: React.RefObject<HTMLElement | null>, opts: 
     let hold = 0, edgeT = 0, edgeDir: -1 | 0 | 1 = 0
     let raf = 0, px = 0, py = 0
     let noswipe = false
+    let seenStage = false
     let layer: HTMLElement | null = null
 
     const clearHold = () => { if (hold) { window.clearTimeout(hold); hold = 0 } }
-    const clearEdge = () => { if (edgeT) { window.clearTimeout(edgeT); edgeT = 0 } edgeDir = 0 }
+    const clearEdge = () => { if (edgeT) { window.clearTimeout(edgeT); edgeT = 0 } edgeDir = 0; el.querySelector('.cal-stage')?.setAttribute('data-cal-edge', '0') }
     const setHot = (d: HTMLElement | null) => {
       if (d === hot) return
       hot?.classList.remove('cal-hot')
@@ -72,6 +78,19 @@ export function useCalGestures(root: React.RefObject<HTMLElement | null>, opts: 
       const lane = d.dataset.calLane
       return lane && lane !== item.dataset.calLane ? null : d
     }
+    const stageEl = () => el.querySelector<HTMLElement>('.cal-stage')
+    /** -1 / 1 when a held post rests on a paging key, at the calendar's side edge, or past it (the draft panel). */
+    const edgeDirAt = (x: number, y: number): -1 | 0 | 1 => {
+      const key = (document.elementFromPoint(x, y) as HTMLElement | null)?.closest<HTMLElement>('[data-cal-page]')
+      if (key) return key.dataset.calPage === '-1' ? -1 : 1
+      const b = stageEl()?.getBoundingClientRect()
+      if (!b || y < b.top - 8 || y > b.bottom + 8) return x < EDGE ? -1 : x > window.innerWidth - EDGE ? 1 : 0
+      // A post lifted from the side rail starts outside the calendar: its edges count once it has been over it.
+      const inside = x >= b.left + EDGE && x <= b.right - EDGE
+      if (inside) seenStage = true
+      if (!seenStage) return 0
+      return x < b.left + EDGE ? -1 : x > b.right - EDGE ? 1 : 0
+    }
     const swallowClick = () => {
       const stop = (e: Event) => { e.stopPropagation(); e.preventDefault() }
       window.addEventListener('click', stop, { capture: true, once: true })
@@ -82,12 +101,13 @@ export function useCalGestures(root: React.RefObject<HTMLElement | null>, opts: 
       if (!ghost) return
       ghost.style.transform = `translate3d(${px - gx}px,${py - gy}px,0) scale(1.04)`
       setHot(dayAt(px, py))
-      const dir: -1 | 0 | 1 = px < EDGE ? -1 : px > window.innerWidth - EDGE ? 1 : 0
+      const dir = edgeDirAt(px, py)
       if (dir !== edgeDir) {
         clearEdge()
         edgeDir = dir
+        stageEl()?.setAttribute('data-cal-edge', String(dir))
         if (dir) {
-          const tick = () => { o.current.onEdgePage(dir as -1 | 1); edgeT = window.setTimeout(tick, EDGE_MS * 1.6) }
+          const tick = () => { o.current.onEdgePage(dir as -1 | 1); edgeT = window.setTimeout(tick, EDGE_REPEAT_MS) }
           edgeT = window.setTimeout(tick, EDGE_MS)
         }
       }
@@ -120,6 +140,7 @@ export function useCalGestures(root: React.RefObject<HTMLElement | null>, opts: 
       document.documentElement.classList.add('cal-dragging')
       navigator.vibrate?.(8)
       mode = 'drag'
+      seenStage = false
       px = sx; py = sy
       if (!raf) raf = requestAnimationFrame(paint)
     }
@@ -130,7 +151,7 @@ export function useCalGestures(root: React.RefObject<HTMLElement | null>, opts: 
       if (!g) return
       const done = () => { lay?.remove(); it?.classList.remove('cal-lifted') }
       if (o.current.reducedMotion) { done(); return }
-      const from = it?.getBoundingClientRect()
+      const from = it?.isConnected ? it.getBoundingClientRect() : null
       const target = to ?? from
       if (!target) { done(); return }
       g.classList.add('cal-ghost-land')

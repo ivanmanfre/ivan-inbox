@@ -158,14 +158,15 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
     try { await scheduleGuarded(id, at.toISOString()); toast.show({ message: `Armed for ${warsawDayTime(at)} Warsaw.` }); refresh() }
     catch (e) { toast.show({ message: e instanceof Error ? e.message : 'Could not arm it.', tone: 'failed' }) }
   }
-  const onMove = (id: string, lane: Lane, day?: string) => go({ move: id, lane, ...(day ? { day } : {}) }, 'calendar')
+  // The open draft stays open behind the move sheet when it is on the same seat (2026-10-09).
+  const onMove = (id: string, lane: Lane, day?: string) => go({ move: id, lane, ...(day ? { day } : {}), ...(draft && lane === qLane ? { draft } : {}) }, 'calendar')
   const wallProps = { data, items, stuck: null, onOpen: openFromPlan, onMove, onArm: armIt, onDay: (lane: Lane, keys: string[]) => setDayOpen({ lane, keys }), now }
   const brainIds = onBrain ? rows.filter(r => waitsForReview(r) && laneOfRow(r) === qLane && !verdicts.has(r.id)).sort((a, b) => b.created_at.localeCompare(a.created_at)).map(r => r.id) : []
   const queueIds = onBrain ? brainIds : allPosts ? listIds : onCal ? [...items[qLane].values()].flat().filter(i => i.source === 'draft').sort((a, b) => a.at.localeCompare(b.at)).map(i => i.id) : nowModel.ids
   const titles = Object.fromEntries(rows.filter(r => queueIds.includes(r.id)).map(r => [r.id, titleOf(r)]))
   const window_ = draft ? <DraftWindow id={draft} lane={qLane} queue={queueIds} onPick={id => onCal ? openFromPlan(id, qLane) : onBrain ? openFromBrain(id, qLane) : openDraft(id, nowModel.lanes.get(id) ?? qLane)} onClose={close} refresh={refresh} days={days} armed={data.armed} armedFailed={data.armedFailed} titles={titles} startInEdit={cv2.review && q.get('edit') === '1'} /> : null
   const moveRow = moveId ? data.seats[qLane].rows.find(r => r.id === moveId) : null
-  const move = moveRow ? <MovePanel key={`${moveId}:${q.get('day') ?? ''}`} r={moveRow} lane={qLane} first={days[0].key} seatRows={data.seats[qLane].rows} phone={phone} quickCommit initialPick={q.get('day')} onClose={close} onDone={refresh} /> : null
+  const move = moveRow ? <MovePanel key={`${moveId}:${q.get('day') ?? ''}`} r={moveRow} lane={qLane} first={days[0].key} seatRows={data.seats[qLane].rows} phone={phone} quickCommit initialPick={q.get('day')} onClose={() => go({ ...context(), ...(q.get('lane') ? { lane: q.get('lane')! } : {}), ...(draft ? { draft } : {}) })} onDone={refresh} /> : null
   const clearMagnet = () => { const p = new URLSearchParams(q); p.delete('magnet'); navigate(dHash('content', sub, p)) }
   const legacy = (s: 'errors' | 'magnets' | 'queue' | 'strategy' | 'styles' | 'results') => <Legacy sub={s} lane={legacyLane} setLane={l => go({ ...context(), lane: l })} openDraft={openFromList} openId={draft} magnet={q.get('magnet')} clearMagnet={clearMagnet} phone={phone} land={view === 'posts' && !q.get('tab') ? (qLane === 'ivan' ? 'all' : 'internal_review') : errorsLanding(data.seats[qLane].rows, qLane, now, data.blocks, q.get('tab') === 'generating' ? 'generating' : 'errors')} />
   const calendarBody = <>

@@ -176,3 +176,30 @@
 .d-phone .cn-pick{gap:4px}
 .d-phone .cn-pick button{min-height:52px;padding:4px}
 .d-phone .cn-pick button span{display:none}
+
+/* Move sheet (MovePanel, 2026-10-09): time first, then a month you can page. */
+.cn-mv{display:flex;flex-direction:column;gap:14px;padding:6px 18px 20px}
+.cn-mv-now{font-size:13px;color:var(--t2)}
+.cn-mv-time{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
+.cn-mv-time label{display:flex;flex-direction:column;gap:4px;font:400 11px var(--m);color:var(--t3);text-transform:uppercase}
+.cn-mv-time input{font:500 16px var(--m);padding:7px 10px;border:1px solid var(--line2);border-radius:8px;background:var(--bg);color:var(--t1,inherit);min-width:120px}
+.cn-mv-time button{display:flex;flex-direction:column;align-items:flex-start;padding:5px 10px;border:1px solid var(--line2);border-radius:8px;background:var(--bg);font:500 13px var(--m)}
+.cn-mv-time button small{font:400 10.5px var(--f);color:var(--t3)}
+.cn-mv-time button.on{border-color:var(--lime);box-shadow:inset 0 0 0 1px var(--lime)}
+.cn-mv-mh{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.cn-mv-mh b{font:600 14px var(--f)}
+.cn-mv-mh button{width:32px;height:32px;border-radius:8px;font-size:18px;color:var(--t2)}
+.cn-mv-mh button:hover{background:var(--line2)}
+.cn-mv-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cn-mv-grid>i{font:400 10.5px var(--m);color:var(--t3);text-transform:uppercase;text-align:center;font-style:normal;padding-bottom:2px}
+.cn-mv-grid button{position:relative;height:40px;border:1px solid var(--line2);border-radius:8px;background:var(--bg);font:500 14px var(--m);transition:border-color .12s,background .12s}
+.cn-mv-grid button:hover:not(:disabled){border-color:var(--t3)}
+.cn-mv-grid button.out{opacity:.5}
+.cn-mv-grid button.we{color:var(--t3)}
+.cn-mv-grid button.past{opacity:.3;cursor:default}
+.cn-mv-grid button.tod{font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.cn-mv-grid button.from{border-style:dashed;border-color:var(--t3)}
+.cn-mv-grid button.pick{border-color:var(--lime);box-shadow:inset 0 0 0 1px var(--lime)}
+.cn-mv-grid button.land{border-color:var(--warn)}
+.cn-mv-grid button em{position:absolute;left:50%;bottom:5px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--t3)}
+.cn-mv-say{font-size:12.5px;color:var(--t3);line-height:1.4}

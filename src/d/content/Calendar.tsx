@@ -257,9 +257,9 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
           <Seg label="View" verb="cal-view" size="sm" value={view} onChange={id => setView(id as View)} options={[{ id: 'month', label: 'Month', title: 'M' }, { id: 'lines', label: 'By client', title: 'L' }]} />
           <span className="cv2-grow" />
           <div className="cv2-calnav">
-            <button type="button" data-verb="cal-prev" aria-label={view === 'month' ? 'Previous month' : week5 ? 'Previous week' : 'Previous two weeks'} onClick={() => page(-1)}>‹</button>
+            <button type="button" data-cal-page="-1" data-verb="cal-prev" aria-label={view === 'month' ? 'Previous month' : week5 ? 'Previous week' : 'Previous two weeks'} onClick={() => page(-1)}>‹</button>
             <b aria-live="polite">{label}</b>
-            <button type="button" data-verb="cal-next" aria-label={view === 'month' ? 'Next month' : week5 ? 'Next week' : 'Next two weeks'} onClick={() => page(1)}>›</button>
+            <button type="button" data-cal-page="1" data-verb="cal-next" aria-label={view === 'month' ? 'Next month' : week5 ? 'Next week' : 'Next two weeks'} onClick={() => page(1)}>›</button>
             <button type="button" className="cv2-today" data-verb="cal-today" disabled={off === 0} onClick={today}>Today</button>
           </div>
         </header>
@@ -310,9 +310,9 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
           <button type="button" role="tab" aria-selected={view === 'lines'} className={view === 'lines' ? 'on' : ''} onClick={() => setView('lines')}>By client</button>
         </div>
         <div className="cal-nav">
-          <button type="button" data-verb="cal-prev" aria-label={view === 'month' ? 'Previous month' : 'Previous two weeks'} onClick={() => page(-1)}>‹</button>
+          <button type="button" data-cal-page="-1" data-verb="cal-prev" aria-label={view === 'month' ? 'Previous month' : 'Previous two weeks'} onClick={() => page(-1)}>‹</button>
           <b aria-live="polite">{label}</b>
-          <button type="button" data-verb="cal-next" aria-label={view === 'month' ? 'Next month' : 'Next two weeks'} onClick={() => page(1)}>›</button>
+          <button type="button" data-cal-page="1" data-verb="cal-next" aria-label={view === 'month' ? 'Next month' : 'Next two weeks'} onClick={() => page(1)}>›</button>
           {off !== 0 && <button type="button" className="cal-today" data-verb="cal-today" onClick={today}>Today</button>}
         </div>
       </header>
