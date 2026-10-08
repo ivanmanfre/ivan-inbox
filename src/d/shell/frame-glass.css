@@ -1,0 +1,96 @@
+/* ==========================================================================
+   frame-glass.css: the web desktop frame drawn the way Brief's native window draws it
+   (apps/daily-brief DailyBrief.swift: BriefWindow, OxygenGlass, BriefMotion). Ivan 2026-10-08:
+   the web inbox "doesn't feel like the inbox app, it's less stylish and worse animations".
+   A floating glass sidebar (184 / 56 px, radius 15) and a floating page pane (radius 14) on a soft
+   ground, 8px apart, 12px from the window. Nav rows 34px, one selection pill and one hover pill
+   that glide between rows, one count per place that rolls when it changes, Workspace / System groups.
+   Brief itself (html.brief-native) keeps its native frame: nothing here applies inside it.
+   ========================================================================== */
+
+:root[data-skin-on~='shell']:not(.brief-native) .d-app.d-desktop{
+  padding:12px;gap:8px;
+  background:
+    radial-gradient(1100px 700px at 0% 0%,rgba(255,255,255,.7),transparent 70%),
+    radial-gradient(900px 700px at 100% 100%,rgba(222,214,202,.55),transparent 70%),
+    linear-gradient(135deg,#F4F1EC,#ECE7E0 55%,#F1EEE9);
+}
+
+/* Glass: fill, 1px white 46% border, the inset highlight stack, a soft float. */
+:root[data-skin-on~='shell']:not(.brief-native) .d-desktop .d-side{
+  width:184px;padding:0 8px 8px;border:1px solid rgba(255,255,255,.46);border-right:1px solid rgba(255,255,255,.46);
+  border-radius:15px;background:rgba(250,249,247,.62);
+  -webkit-backdrop-filter:blur(24px) saturate(1.3);backdrop-filter:blur(24px) saturate(1.3);
+  box-shadow:var(--ds-glass-insets),0 1px 2px rgba(19,18,16,.04),0 6px 20px -10px rgba(19,18,16,.10);
+  transition:width var(--ds-d-content) var(--ds-e-panel),padding var(--ds-d-content) var(--ds-e-panel);
+}
+:root[data-skin-on~='shell']:not(.brief-native) .d-desktop .d-side.d-side-min{width:56px;padding:0 6px 8px}
+:root[data-skin-on~='shell']:not(.brief-native) .d-desktop .d-main{
+  border-radius:14px;overflow:hidden;background:var(--ds-canvas);border:1px solid rgba(255,255,255,.46);
+  box-shadow:var(--ds-hi),0 14px 44px -14px rgba(19,18,16,.16),0 6px 16px -8px rgba(19,18,16,.10);
+}
+:root[data-skin-on~='shell']:not(.brief-native) .d-desktop > aside.d-claude{margin:0;box-shadow:var(--ds-hi),0 14px 44px -14px rgba(19,18,16,.16),0 6px 16px -8px rgba(19,18,16,.10)}
+:root[data-skin-on~='shell']:not(.brief-native) .d-desktop[data-claude="over"] > aside.d-claude{top:12px;right:12px;bottom:12px}
+:root.brief-opaque[data-skin-on~='shell'] .d-desktop .d-side{background:#fff;-webkit-backdrop-filter:none;backdrop-filter:none}
+@media (prefers-reduced-transparency:reduce){
+  :root[data-skin-on~='shell']:not(.brief-native) .d-desktop .d-side{background:#fff;-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+
+/* Brand row 56px, then the groups: 11px caps, tracked 1.76px. */
+:root[data-skin-on~='shell'] .d-desktop .d-side-top{height:56px;align-items:center;padding:0 4px 0 12px;flex:none}
+:root[data-skin-on~='shell'] .d-desktop .d-side-top .d-brand{padding:0}
+:root[data-skin-on~='shell'] .d-desktop .d-side-min .d-side-top{padding:0;justify-content:center}
+:root[data-skin-on~='shell'] .d-desktop .d-brand .d-wordmark{font-size:13px;letter-spacing:.01em}
+:root[data-skin-on~='shell'] .d-desktop .d-navgroup{font:500 11px/14px var(--f);letter-spacing:.16em;text-transform:uppercase;color:var(--ds-text-3);padding:12px 12px 4px}
+:root[data-skin-on~='shell'] .d-desktop .d-low-wrap{margin-top:auto;padding-top:20px}
+:root[data-skin-on~='shell'] .d-desktop .d-nav.d-low{margin-top:0;padding-top:0;border-top:0}
+
+/* Rows: 34px, radius 8, 13px label (550 when selected), the glide pills draw the fills. */
+:root[data-skin-on~='shell'] .d-desktop .d-nav{position:relative;isolation:isolate}
+:root[data-skin-on~='shell'] .d-desktop .d-nav a,
+:root[data-skin-on~='shell'] .d-desktop .d-nav button{height:34px;gap:10px;padding:0 10px;margin-bottom:3px;border-radius:8px;font:430 13px/1 var(--f);color:var(--ds-nav-text);background:transparent;box-shadow:none;position:relative}
+:root[data-skin-on~='shell'] .d-desktop .d-nav a.d-on{font-weight:550;color:var(--ds-nav-text-on);background:transparent;box-shadow:none}
+:root[data-skin-on~='shell'] .d-desktop .d-nav a .d-ico{width:17px;height:17px;color:var(--ds-text-2)}
+:root[data-skin-on~='shell'] .d-desktop .d-nav a.d-on .d-ico{color:var(--ds-nav-text-on)}
+:root[data-skin-on~='shell'] .d-desktop .d-nav .d-navsub{margin:0 0 4px 19px;padding-left:8px}
+:root[data-skin-on~='shell'] .d-desktop .d-nav .d-navsub a{height:30px;margin-bottom:1px;font-size:12.5px;color:var(--ds-text-3)}
+:root[data-skin-on~='shell'] .d-desktop .d-nav .d-navsub a.d-on{color:var(--ds-nav-text-on)}
+:root[data-skin-on~='shell'] .d-desktop .d-side-min .d-nav a,
+:root[data-skin-on~='shell'] .d-desktop .d-side-min .d-nav button{padding:0;justify-content:center}
+
+.d-glide{position:absolute;left:0;top:0;z-index:-1;border-radius:8px;pointer-events:none;opacity:0;font-style:normal}
+.d-glide[data-on]{opacity:1}
+/* Selection: white 71%, a top highlight, a 2px soft drop. */
+.d-glide-sel{background:rgba(255,255,255,.71);box-shadow:inset 0 1px 0 rgba(255,255,255,.75),0 2px 4px rgba(19,18,16,.05),0 0 0 1px rgba(19,18,16,.04)}
+/* Hover: one pill, white 24% with a top highlight, that glides between rows. */
+.d-glide-hov{background:rgba(255,255,255,.42);box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
+:root.brief-opaque .d-glide-sel{background:var(--ds-surface-2)}
+.d-nav[data-glide='ready'] .d-glide-sel{transition:transform var(--ds-d-nav) var(--ds-e-settle),width var(--ds-d-nav) var(--ds-e-settle),height var(--ds-d-nav) var(--ds-e-settle),opacity var(--ds-d-fast) var(--ds-e-ui)}
+.d-nav[data-glide='ready'] .d-glide-hov{transition:transform var(--ds-d-fast) var(--ds-e-ui),width var(--ds-d-fast) var(--ds-e-ui),height var(--ds-d-fast) var(--ds-e-ui),opacity var(--ds-d-fast) var(--ds-e-ui)}
+.d-nav:not([data-glide='ready']) .d-glide{transition:none}
+/* Without the shell skin the rows keep their own fills, so the pills stay out of the way. */
+:root:not([data-skin-on~='shell']) .d-glide{display:none}
+
+/* One count per place, 11px, tabular, ink (never red: red is kept for the ON mark and real alarms). */
+.d-nt{margin-left:auto;font:550 11px/1 var(--f);font-variant-numeric:tabular-nums;color:var(--ds-text-3);display:inline-flex;overflow:hidden;height:14px;align-items:center}
+.d-nt.d-hot{color:var(--ds-text)}
+.d-nt.d-unk{color:var(--warn)}
+.d-side-min .d-nt{display:none}
+.d-roll{display:inline-block}
+.d-roll[data-rolled]{animation:d-roll-in var(--ds-d-slow) var(--ds-e-pop) both}
+@keyframes d-roll-in{from{transform:translateY(70%);opacity:0}to{transform:none;opacity:1}}
+
+/* The me line: quieter, the avatar in ink. */
+:root[data-skin-on~='shell'] .d-desktop .d-me{border-top:0;margin-top:8px;padding:8px 6px 0}
+:root[data-skin-on~='shell'] .d-desktop .d-me b{font-size:12.5px}
+:root[data-skin-on~='shell'] .d-desktop .d-me small{font-size:11px}
+:root[data-skin-on~='shell'] .d-desktop .d-me i{width:26px;height:26px;font-size:10px}
+/* The Claude drawer is a pane like the page: same border, its head on the page header's line. */
+:root[data-skin-on~='shell']:not(.brief-native) .d-desktop > aside.d-claude{border:1px solid rgba(255,255,255,.46)}
+:root[data-skin-on~='shell']:not(.brief-native) .d-desktop > aside.d-claude .dcl-head{height:var(--ds-header-h);min-height:var(--ds-header-h)}
+:root[data-skin-on~='shell']:not(.brief-native) .d-desktop > aside.d-claude .dcl-tname{top:var(--ds-header-h)}
+/* Narrow windows give the page the room back. */
+@media (max-width:1100px){
+  :root[data-skin-on~='shell']:not(.brief-native) .d-app.d-desktop{padding:8px;gap:6px}
+  :root[data-skin-on~='shell']:not(.brief-native) .d-desktop[data-claude="over"] > aside.d-claude{top:8px;right:8px;bottom:8px}
+}

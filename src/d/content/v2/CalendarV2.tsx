@@ -160,7 +160,7 @@ export function WallV2({ data, items, days, entryOf, cov, lanes, now, today, a, 
   return (
     <div className="cv2-wall" style={style} role="group" aria-label="Posts by seat and day">
       <div className="cv2-wh" />
-      {days.map((d, i) => <Fragment key={d.key}>{gap(i)}<div className={`cv2-wh${d.key === today ? ' cv2-tod' : ''}`} data-cal-day={d.key}><b>{d.dow}</b> {d.n}{d.key === today && <em>Today</em>}</div></Fragment>)}
+      {days.map((d, i) => <Fragment key={d.key}>{gap(i)}<div className={`cv2-wh${d.key === today ? ' cv2-tod' : ''}`} data-cal-day={d.key}>{d.key === today ? <><em>Today</em> {d.n}</> : <><b>{d.dow}</b> {d.n}</>}</div></Fragment>)}
       {lanes.map(lane => {
         const s = data.seats[lane]
         const gaps = new Set(s.loadedAt ? cov.seats[lane].gaps : [])

@@ -30,6 +30,7 @@ import { warsawHm } from './ui/time'
 import './d.css'
 import './shell/frame2.css'
 import './shell/skin-shell.css'
+import './shell/frame-glass.css'
 
 // ---------------------------------------------------------------------------
 // D, the frame. Desktop (>= 1000px): left panel, answer row (page title + the

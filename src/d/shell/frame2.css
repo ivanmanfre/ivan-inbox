@@ -126,3 +126,7 @@
 .d-pn .d-seathead{margin-top:-8px}
 .d-pn .d-nc i{font-size:13px;width:32px}.d-pn .d-seathead i{width:32px}
 .d-side-min .d-nc,.d-side-min .d-nct{display:none}
+/* The fold sits beside the me line at the foot of the panel; stacked under it when collapsed. */
+.d-side-foot{display:flex;align-items:flex-end;gap:4px}
+.d-side-foot .d-me{flex:1;min-width:0}
+.d-side-min .d-side-foot{flex-direction:column;align-items:center;gap:6px}

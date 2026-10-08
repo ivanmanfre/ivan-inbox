@@ -12,6 +12,8 @@ import { healthNote } from '../counts/glance'
 import { useFrameCounts } from '../counts/useFrameCounts'
 import { useDInbox } from '../counts/inbox'
 import { SUB_LABEL, SUBS, PLANNING, subOf, type Sub } from '../content/SubNav'
+import { useEffect, useRef, useState } from 'react'
+import { glideStyle, useNavGlide } from './useNavGlide'
 
 // The left panel, desktop, and the same content as the phone's drawer. Brand,
 // the seat names once (Ivan · Rise · Arch) over the count columns, one line per place with its per-seat numbers
@@ -23,12 +25,31 @@ export function NavLineView({ item }: { item: NavItem }) {
   return item.failed > 0 ? <div className="d-navfail">{item.failed} failed</div> : null
 }
 
-/** On the place's line, right side: one number per seat under the Ivan · Rise · Arch header (never a total), or a short text. */
-export function NavCount({ item }: { item: NavItem }) {
+/** A count that rolls in when its value really changes (Brief's numericText); the first value just appears. */
+function Roll({ v }: { v: string }) {
+  const prev = useRef(v)
+  const [n, setN] = useState(0)
+  useEffect(() => { if (prev.current !== v) { prev.current = v; setN(x => x + 1) } }, [v])
+  return <span key={n} className="d-roll" data-rolled={n > 0 || undefined}>{v}</span>
+}
+
+/** On the place's line, right side: one number per seat under the Ivan · Rise · Arch header, or a short text.
+ *  `total` (desktop, as Brief's native sidebar): one number for the place, the per-seat split in the tooltip. */
+export function NavCount({ item, total = false }: { item: NavItem; total?: boolean }) {
   const l = item.line
   if (!l) return null
   if (item.id === 'content') return l.kind === 'seats' && SEATS.some(s => (l.numbers[s] ?? 0) > 0) ? <i className="d-content-attention" aria-label="Content needs a tap" /> : null
   if (l.kind === 'text') return <span className="d-nct" title={l.label}>{l.text}</span>
+  if (total) {
+    const unk = SEATS.some(s => l.failed[s] && l.numbers[s] == null)
+    const wait = SEATS.some(s => l.numbers[s] == null && !l.failed[s])
+    const sum = SEATS.reduce((a, s) => a + (l.numbers[s] ?? 0), 0)
+    // Known work stays visible beside a failed or pending read; a failure never draws blank.
+    const shown = sum > 0 ? `${sum}${unk ? '?' : ''}` : unk ? '?' : wait ? '…' : ''
+    if (!shown) return null
+    const split = SEATS.map(s => `${SEAT_NAME[s]} ${l.failed[s] && l.numbers[s] == null ? 'could not read' : l.numbers[s] ?? 'reading'}`).join(', ')
+    return <span className={`d-nt${sum > 0 ? ' d-hot' : ''}${unk ? ' d-unk' : ''}`} title={split} aria-label={`${l.label}: ${split}`}><Roll v={shown} /></span>
+  }
   const cell = (s: Seat) => {
     const n = l.numbers[s]
     return l.failed[s] && n == null ? { t: '?', c: 'd-unk', a: 'could not read' } : n == null ? { t: '…', c: 'd-wait', a: 'reading' } : { t: String(n), c: n > 0 ? 'd-hot' : '', a: String(n) }
@@ -97,7 +118,7 @@ export const RAIL_SUBS: readonly Sub[] = SUBS
 function PlaceLink({ i, on, min }: { i: NavItem; on: boolean; min: boolean }) {
   return (
     <a href={dHash(i.id)} className={on ? 'd-on' : undefined} aria-current={on ? 'page' : undefined} title={min ? i.label : undefined}>
-      <DIcon name={PLACES[i.id].icon} /><span>{i.label}</span>{i.id === 'claude' && <ClaudeWorking />}<NavCount item={i} />
+      <DIcon name={PLACES[i.id].icon} /><span>{i.label}</span>{i.id === 'claude' && <ClaudeWorking />}<NavCount item={i} total />
       {min && i.failed > 0 && <em className="d-side-pip" aria-label={`${i.failed} failed`}>!</em>}
     </a>
   )
@@ -134,19 +155,21 @@ export function Side({ min = false, setMin }: { min?: boolean; setMin?: (m: bool
   const main = items.filter(i => PLACES[i.id].nav === 'main')
   const low = items.filter(i => PLACES[i.id].nav === 'low')
   const fold = min ? 'Expand the panel' : 'Collapse the panel'
+  const at = `${f.route.place}/${f.route.sub ?? ''}/${f.route.query.toString()}/${min}`
+  const top = useNavGlide(at)
+  const sys = useNavGlide(at)
+  const pills = (g: ReturnType<typeof useNavGlide>) => <>
+    <i className="d-glide d-glide-hov" aria-hidden="true" data-on={g.hov ? '' : undefined} style={glideStyle(g.hov)} />
+    <i className="d-glide d-glide-sel" aria-hidden="true" data-on={g.sel ? '' : undefined} style={glideStyle(g.sel)} />
+  </>
   return (
     <aside className={`d-side${min ? ' d-side-min' : ''}`} aria-label="Places">
       <div className="d-side-top">
         <Brand />
-        {setMin && (
-          <button type="button" className="d-side-fold" data-verb="side-fold" aria-pressed={min}
-            aria-label={fold} title={`${fold} (⌘\\)`} onClick={() => setMin(!min)}>
-            <DIcon name={min ? 'foldOut' : 'foldIn'} />
-          </button>
-        )}
       </div>
-      {!min && <SeatHead />}
-      <nav className="d-nav">
+      {!min && <div className="d-navgroup" role="presentation">Workspace</div>}
+      <nav className="d-nav" data-glide={top.ready ? 'ready' : ''} ref={top.ref} onPointerOver={top.onPointerOver} onPointerLeave={top.onPointerLeave}>
+        {pills(top)}
         {main.map(i => i.id === 'content' ? <ContentGroup key={i.id} i={i} min={min} /> : (
           <div key={i.id} className="d-navi">
             <PlaceLink i={i} on={f.route.place === i.id} min={min} />
@@ -154,7 +177,10 @@ export function Side({ min = false, setMin }: { min?: boolean; setMin?: (m: bool
           </div>
         ))}
       </nav>
-      <nav className="d-nav d-low">
+      <div className="d-low-wrap">
+      {!min && <div className="d-navgroup" role="presentation">System</div>}
+      <nav className="d-nav d-low" data-glide={sys.ready ? 'ready' : ''} ref={sys.ref} onPointerOver={sys.onPointerOver} onPointerLeave={sys.onPointerLeave}>
+        {pills(sys)}
         <WorkflowsKey hidden />
         {low.map(i => (
           <div key={i.id} className="d-navi">
@@ -165,7 +191,18 @@ export function Side({ min = false, setMin }: { min?: boolean; setMin?: (m: bool
           </div>
         ))}
       </nav>
-      <MeFooter />
+      </div>
+      {/* The fold sits with the me line at the foot, as Brief's native sidebar keeps it in its tool row,
+          so the wordmark has the whole brand row. */}
+      <div className="d-side-foot">
+        <MeFooter />
+        {setMin && (
+          <button type="button" className="d-side-fold" data-verb="side-fold" aria-pressed={min}
+            aria-label={fold} title={`${fold} (⌘\\)`} onClick={() => setMin(!min)}>
+            <DIcon name={min ? 'foldOut' : 'foldIn'} />
+          </button>
+        )}
+      </div>
     </aside>
   )
 }

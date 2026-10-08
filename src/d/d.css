@@ -41,10 +41,10 @@ html.d-root,html.d-root body{background:#0A0A09}
   --bg:var(--ds-sticky);--p1:var(--ds-surface-1);--p2:var(--ds-surface-2);--p3:var(--ds-surface-3);
   --line:var(--ds-line);--line2:var(--ds-line-strong);--strong:var(--ds-line-3);
   --t1:var(--ds-text);--t2:var(--ds-text-2);--t3:var(--ds-text-3);
-  --lime:var(--ds-accent);--limeD:var(--ds-accent-deep);--limeL:var(--ds-accent-hover);--num:var(--ds-text);--hot:var(--ds-accent);--hotB:var(--ds-accent-line);
+  --lime:var(--ds-accent);--limeD:var(--ds-accent-deep);--limeL:var(--ds-accent-hover);--num:var(--ds-text);--hot:var(--ds-signal);--hotB:var(--ds-signal-soft);
   --warn:var(--ds-sev-attention-ui);--crit:var(--ds-sev-urgent-ui);--critT:var(--ds-sev-urgent-ui);
   --sel:var(--ds-accent-soft);--selT:var(--ds-nav-text-on);--selT2:var(--ds-nav-text);--selHot:var(--ds-accent);
-  --seg:var(--ds-hairline);--segOn:var(--ds-seg-on);--segNow:var(--ds-accent);--gap:var(--ds-gap-fill);--h1:var(--ds-surface-1);--h2:var(--ds-surface-2);
+  --seg:var(--ds-hairline);--segOn:var(--ds-seg-on);--segNow:var(--ds-signal);--gap:var(--ds-gap-fill);--h1:var(--ds-surface-1);--h2:var(--ds-surface-2);
   --chbg:transparent;
   --side:var(--ds-glass-rail);--sideT:var(--ds-text-2);--sideH:var(--ds-text);--sideM:var(--ds-text-3);--sideOn:var(--ds-fill-sel);--sideL:var(--ds-line);
   --ink:var(--ds-accent-ink);

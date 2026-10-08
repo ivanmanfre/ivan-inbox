@@ -542,3 +542,6 @@
 :root[data-skin-on~='content.calendar'] .cv2-key>span{display:inline-flex;gap:5px;align-items:center;white-space:nowrap}
 :root[data-skin-on~='content.calendar'] .cv2-key b{font-weight:600;color:var(--ds-accent-line)}
 :root[data-skin-on~='content.calendar'] .d-main:is([data-tier=t3],[data-tier=t4]) .cv2-key{display:none}
+/* The Today pill fits its day column instead of being cut ("THU 8 TODA"). */
+.cv2-wh.cv2-tod{padding:0 6px;gap:4px}
+.cv2-wh em{flex:none;margin-left:0;font-size:10.5px;letter-spacing:.06em;padding:2px 5px}
