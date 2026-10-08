@@ -1020,29 +1020,84 @@ export async function markNotSpam(t: Thread): Promise<void> {
    page in a batch is issued in the same instant, so there is less wall-clock
    room for an insert to shift the window under it than there was between seven
    sequential requests. `dedupeMessages` still runs on the result. */
+/* PERF-COLD · NEWEST PAGE FIRST, NO PAGE PAST THE END (2026-10-08).
+
+   Measured on the live site with a fresh profile: 24.8 s to the first DMs row.
+   The view is ~12,000 rows (13 pages, ~1.3 MB each); four pages at a time in
+   lockstep batches meant every batch waited for its slowest page (3.3 s - 6.9 s
+   under the frame's other cold reads), the newest conversations arrived in the
+   LAST batch, and the end was found by three extra pages past it that each
+   cost a full read of the view (6.6 s apiece) for zero rows.
+
+   Now:
+   - pages are read NEWEST FIRST (created_at desc, id desc). Page 0 alone is the
+     last ~3 days, and `onNewest` hands it to the caller the moment it lands so
+     a cold screen can paint something while the rest fills in (the rest waits
+     for that paint, at most EARLY_PAINT_WAIT_MS). The caller
+     decides whether that paint is allowed (useInbox: only over an empty
+     screen, never cached, never stamped as a live read);
+   - a head count (cheap: ids only, no rows) rides alongside page 0, so exactly
+     the pages that exist are asked for; if the last counted page still comes
+     back full (rows arrived meanwhile, or the count failed), the read goes on
+     one page at a time until a short page, the old end rule;
+   - the remaining pages go through a pool of MSG_BATCH (the same load on the
+     database as R4c's four at once), a new page starting as each one lands.
+
+   THE RESULT IS THE SAME LIST IN THE SAME ORDER. The desc pages, concatenated
+   and reversed, are exactly the old created_at asc, id asc order (id is unique,
+   so the order is total). A row inserted mid-read shifts the desc offsets by
+   one, which can only repeat a row at a page edge, never skip one; repeated ids
+   are dropped before dedupeMessages runs, as before, over the asc rows. */
 const MSG_PAGE = 1000
 const MSG_BATCH = 4
+const MSG_MAX_PAGES = 20
+const EARLY_PAINT_WAIT_MS = 2500
 
-export async function fetchMessages(knownRows = 0): Promise<InboxMessage[]> {
-  const all: InboxMessage[] = []
-  const span = MSG_PAGE * MSG_BATCH
-  for (let from = 0; from < 20000; from += span) {
-    const offsets: number[] = []
-    for (let i = 0; i < MSG_BATCH && from + i * MSG_PAGE < 20000; i += 1) offsets.push(from + i * MSG_PAGE)
-    const pages = await Promise.all(offsets.map(o => supabase.from('inbox_messages_v')
+export async function fetchMessages(knownRows = 0, onNewest?: (rows: InboxMessage[]) => void | Promise<unknown>): Promise<InboxMessage[]> {
+  const read = async (i: number): Promise<InboxMessage[]> => {
+    const { data, error } = await supabase.from('inbox_messages_v')
       .select('*')
-      .order('created_at', { ascending: true }).order('id', { ascending: true })
-      .range(o, o + MSG_PAGE - 1)))
-    // A short page anywhere in the batch means the end of the view is inside
-    // it. The whole batch is still appended, in offset order, before stopping.
-    let last = false
-    for (const { data, error } of pages) {
-      if (error) throw error
-      all.push(...(data as InboxMessage[]))
-      if (!data || data.length < MSG_PAGE) last = true
-    }
-    if (last) break
+      .order('created_at', { ascending: false }).order('id', { ascending: false })
+      .range(i * MSG_PAGE, i * MSG_PAGE + MSG_PAGE - 1)
+    if (error) throw error
+    return (data ?? []) as InboxMessage[]
   }
+  // A failed count is not a failed read: it only costs the old discover-the-end behaviour.
+  const counted = Promise.resolve(supabase.from('inbox_messages_v').select('id', { count: 'exact', head: true }))
+    .then(({ count, error }) => (error || typeof count !== 'number' ? null : count), () => null)
+  const pages: InboxMessage[][] = [await read(0)]
+  if (pages[0].length === MSG_PAGE) {
+    // The early paint goes first: its side probes would otherwise queue behind four heavy pages
+    // (measured: 2.9 s instead of 0.4 s on a busy database). Capped, so a probe that never
+    // answers can only delay the rest of the read, never stall it.
+    const painted = onNewest?.(dedupeMessages([...pages[0]].reverse()))
+    if (painted) {
+      let timer: ReturnType<typeof setTimeout> | undefined
+      await Promise.race([painted, new Promise(r => { timer = setTimeout(r, EARLY_PAINT_WAIT_MS) })]).catch(() => {})
+      clearTimeout(timer)
+    }
+    const total = await counted
+    let planned = total === null ? MSG_MAX_PAGES : Math.min(MSG_MAX_PAGES, Math.max(1, Math.ceil(total / MSG_PAGE)))
+    let next = 1
+    let end = Infinity // the first short page: the end of the view is inside it
+    let failed = false // one failed page fails the read: the other workers stop asking
+    const worker = async () => {
+      while (!failed && next < Math.min(planned, end)) {
+        const i = next++
+        const rows = await read(i).catch((e: unknown) => { failed = true; throw e })
+        pages[i] = rows
+        if (rows.length < MSG_PAGE) end = Math.min(end, i)
+      }
+    }
+    await Promise.all(Array.from({ length: MSG_BATCH }, worker))
+    // Every counted page came back full: rows arrived since the count. Read on until a short page.
+    while (end === Infinity && next < MSG_MAX_PAGES) { planned = next + 1; await worker() }
+    pages.length = Math.min(pages.length, end + 1)
+  }
+  const seen = new Set<string>()
+  const all: InboxMessage[] = []
+  for (const page of pages) for (const m of page) if (!seen.has(m.id)) { seen.add(m.id); all.push(m) }
+  all.reverse()
   if (all.length === 0 && knownRows > 0) throw new Error('The inbox read came back empty')
   return dedupeMessages(all)
 }

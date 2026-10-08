@@ -4,7 +4,7 @@ import { applySkin, subscribeSkin } from '../ds/skin'
 import { useSkin } from '../ds/useSkin'
 import { ClaudeProvider } from './claude/ClaudeProvider'
 import { Island } from './claude/Island'
-import { DInboxProvider, useDInbox } from './counts/inbox'
+import { DInboxProvider, HEAVY_PAGE_DELAY_MS, useDInbox } from './counts/inbox'
 import { usePull } from './dms/usePull'
 import { FrameCountsProvider, useFrameCounts } from './counts/useFrameCounts'
 import { PLACES, type Layout } from './places'
@@ -335,7 +335,7 @@ export default function DShell() {
   }), [layout, route, bellOpen, openBell, claudeOpen, openClaude, openPalette, titleSlot, toolsSlot])
 
   return (
-    <DInboxProvider now={route.place === 'dms'}>
+    <DInboxProvider now={route.place === 'dms'} delayMs={route.place === 'content' && route.sub === 'ideas' ? HEAVY_PAGE_DELAY_MS : undefined}>
       <FrameCountsProvider>
       <FrameCtx.Provider value={frame}>
         <ClaudeProvider>

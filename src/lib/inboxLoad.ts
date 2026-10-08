@@ -1,4 +1,4 @@
-import { fetchDraftContextGaps, fetchDraftEmailStamps, fetchEmailRecipients, fetchDraftEvidence, fetchManualReplyIds, fetchMessages, groupThreads, type DraftContextGap, type InboxMessage, type Thread } from './inbox'
+import { fetchDraftContextGaps, fetchDraftEmailStamps, fetchEmailRecipients, fetchDraftEvidence, fetchManualReplyIds, fetchMessages, groupThreads, type DraftContextGap, type DraftEmailStamp, type InboxMessage, type Thread } from './inbox'
 
 /**
  * The DMs list exactly as the screen assembles it: the message read, the four
@@ -6,9 +6,30 @@ import { fetchDraftContextGaps, fetchDraftEmailStamps, fetchEmailRecipients, fet
  * service worker's push-time prefetch (src/sw.ts) builds the SAME rows the
  * open app does; a second assembly would drift and the saved copy would lie.
  */
-export async function loadInbox(knownRows: number): Promise<{ viewRows: InboxMessage[]; rows: InboxMessage[]; threads: Thread[] }> {
-  const viewRows = await fetchMessages(knownRows)
-  return { viewRows, ...(await assembleInbox(viewRows)) }
+export async function loadInbox(knownRows: number, onNewest?: (threads: Thread[]) => void): Promise<{ viewRows: InboxMessage[]; rows: InboxMessage[]; threads: Thread[] }> {
+  // PERF-COLD (2026-10-08): `onNewest` gets the newest page assembled the same way (same probes,
+  // same grouping) while older history is still being read. Its probes start WITH the message
+  // read, not after it, so the early paint does not wait two more round trips. It can never land
+  // after the full result: `settled` is set before this returns. The full result below still
+  // runs its own probes, after the whole read, exactly as before.
+  let settled = false
+  const early = onNewest ? sideProbes() : null
+  const viewRows = await fetchMessages(knownRows, early && onNewest ? rows =>
+    assembleInbox(rows, early).then(r => { if (!settled) onNewest(r.threads) }, () => {}) : undefined)
+  const full = await assembleInbox(viewRows)
+  settled = true
+  return { viewRows, ...full }
+}
+
+type Probes = [Set<string>, Map<string, DraftEmailStamp> | null, Map<string, { recipient_email: string; email_cc: string[] }>]
+
+/** The three row-independent side probes, each degrading on its own (see assembleInbox). */
+function sideProbes(): Promise<Probes> {
+  return Promise.all([
+    fetchManualReplyIds().catch(() => new Set<string>()),
+    fetchDraftEmailStamps().catch(() => null),
+    fetchEmailRecipients().catch(() => new Map<string, { recipient_email: string; email_cc: string[] }>()),
+  ])
 }
 
 /**
@@ -17,20 +38,16 @@ export async function loadInbox(knownRows: number): Promise<{ viewRows: InboxMes
  * are never written to: the annotations go on copies, so an incremental read
  * can re-assemble the same rows later without last time's annotations sticking.
  */
-export async function assembleInbox(viewRows: readonly InboxMessage[]): Promise<{ rows: InboxMessage[]; threads: Thread[] }> {
+export async function assembleInbox(viewRows: readonly InboxMessage[], probes?: Promise<Probes> | null): Promise<{ rows: InboxMessage[]; threads: Thread[] }> {
   const rows = viewRows.map(m => ({ ...m }))
   // The needs_manual_reply probe rides alongside the message fetch, never in
   // front of it: a failed flag read degrades the badge (those threads drop to
   // "waiting"), it must not take the whole inbox down with it.
-  const [manualReplyIds, emailStamps, emailTo] = await Promise.all([
-    fetchManualReplyIds().catch(() => new Set<string>()),
-    // Same degrade rule as the flag probe: a failed stamp read must never take
-    // the inbox down. But it is no longer SILENT: null marks every pending
-    // draft below, and the card says it cannot tell whether an email rides
-    // along, because approving still mails it (check3-drafts E1.5).
-    fetchDraftEmailStamps().catch(() => null),
-    fetchEmailRecipients().catch(() => new Map<string, { recipient_email: string; email_cc: string[] }>()),
-  ])
+  // Same degrade rule for the stamp read (sideProbes): a failed stamp read must
+  // never take the inbox down. But it is no longer SILENT: null marks every
+  // pending draft below, and the card says it cannot tell whether an email
+  // rides along, because approving still mails it (check3-drafts E1.5).
+  const [manualReplyIds, emailStamps, emailTo] = await (probes ?? sideProbes())
   const draftIds = groupThreads(rows, manualReplyIds).flatMap(t =>
     [t.draft, t.companionDraft, t.ownerConfirmation].flatMap(m => m ? [m.id] : []))
   const [evidence, contextGaps] = await Promise.all([

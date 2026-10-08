@@ -76,6 +76,9 @@ export function useInbox(enabled = true, seedCache = enabled) {
   const watermark = useRef<string | null>(null)
   const lastFull = useRef(0)
   const busy = useRef(false)
+  // PERF-COLD: which whole read may still paint its newest page, and whether the screen holds one.
+  const fullRun = useRef(0)
+  const provisional = useRef(false)
   // When the last background conversation re-read started (the MIN_GAP_MS clock), and the
   // effect's scheduler, so a run that ends with work still owed hands it back to the schedule.
   const lastIncremental = useRef(0)
@@ -103,6 +106,7 @@ export function useInbox(enabled = true, seedCache = enabled) {
     }
     if (latest && newestInbound.current && latest > newestInbound.current) playChime()
     if (latest) newestInbound.current = latest
+    provisional.current = false
     knownRows.current = grouped.length
     setThreads(grouped)
     setFromCache(false)
@@ -124,8 +128,23 @@ export function useInbox(enabled = true, seedCache = enabled) {
         if (due.full || viewRows.current === null) {
           // A whole read settles everything owed before it started.
           owed.current = { full: false, pids: new Set(), sweep: false, urgent: false }
-          const mark = await changedSince(null).then(c => c.now, () => null)
-          const res = await loadInbox(knownRows.current)
+          // PERF-COLD (2026-10-08): the clock is asked WITH the read, not before it (it cost a
+          // serial round trip on every cold open). The watermark can now trail the first page's
+          // snapshot by a few hundred ms; every sweep re-reads from withOverlap(watermark), two
+          // minutes earlier, so nothing committed in that gap is missed.
+          const markRead = changedSince(null).then(c => c.now, () => null)
+          // A cold screen (nothing on it: no saved copy, no good read yet) paints the newest page
+          // while the rest is read. That paint is PROVISIONAL: it never touches knownRows, the
+          // cache, the chime or loadedAt (the screen still says Reading…, loading stays true, so a
+          // ?thread= link that is not in it yet waits instead of saying "not in the list"), and a
+          // failed read takes it back off the screen (below), the pre-2026-10-08 cold failure.
+          const run = ++fullRun.current
+          const res = await loadInbox(knownRows.current, knownRows.current === 0 ? early => {
+            if (fullRun.current !== run || knownRows.current !== 0 || early.length === 0) return
+            provisional.current = true
+            setThreads(early)
+          } : undefined)
+          const mark = await markRead
           // An empty read over a known-non-empty inbox is a failure (land says so): stop, never loop on it.
           if (!land(res.rows, res.threads)) break
           viewRows.current = res.viewRows; watermark.current = mark; lastFull.current = Date.now()
@@ -161,6 +180,8 @@ export function useInbox(enabled = true, seedCache = enabled) {
         if (nextMark) watermark.current = nextMark
       }
     } catch (e: unknown) {
+      // A newest-page paint is not a read that landed: never leave it on screen as the last good list.
+      if (provisional.current) { provisional.current = false; setThreads([]) }
       setError(e instanceof Error ? e.message : 'inbox unavailable')
       setLoading(false)
     } finally {

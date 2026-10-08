@@ -16,15 +16,18 @@ const Ctx = createContext<DInbox | null>(null)
 
 /** Off the DMs page the whole-inbox read waits this long, so the page's own reads go first. */
 const OFF_DMS_DELAY_MS = 4000
+/** PERF-COLD (2026-10-08): Content > Ideas is one read of ~5 s of database time on its own; the
+ *  inbox's 13 pages starting at 4 s cost it ~1.5 s on a cold open. There the inbox waits longer. */
+export const HEAVY_PAGE_DELAY_MS = 9000
 
-export function DInboxProvider({ children, now = false }: { children: ReactNode; now?: boolean }) {
+export function DInboxProvider({ children, now = false, delayMs = OFF_DMS_DELAY_MS }: { children: ReactNode; now?: boolean; delayMs?: number }) {
   const [on, setOn] = useState(now)
   useEffect(() => {
     if (on) return
     if (now) { setOn(true); return }
-    const t = window.setTimeout(() => setOn(true), OFF_DMS_DELAY_MS)
+    const t = window.setTimeout(() => setOn(true), delayMs)
     return () => window.clearTimeout(t)
-  }, [now, on])
+  }, [now, on, delayMs])
   // The saved copy paints at once either way; only the live read waits.
   const raw = useInbox(on, true)
   const { threads, solved } = useSolvedMerge(raw.threads, on)

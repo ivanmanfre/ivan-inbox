@@ -50,6 +50,8 @@ const InputsPage = lazy(() => import('./inputs/Inputs').then(m => ({ default: m.
 
 const isLane = (s: string | null): s is Lane => s === 'ivan' || s === 'risedtc' || s === 'arch'
 const SHOW_KEY = 'd-content-review-show'
+/** The longest the Ideas tab holds the other seats' reads back for the shown seat's ideas. */
+const IDEAS_FIRST_MS = 12_000
 
 export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const lanesV4 = useSkin('lanes')
@@ -70,17 +72,18 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const magnetView = onNow && (view === 'magnets' || !!q.get('magnet'))
   const [now] = useState(() => Date.now())
   const weekRead = useWeekRead(onNow || onBrain, now)
-  const [fullOn, setFullOn] = useState(!onNow && !onBrain)
+  const onIdeas = sub === 'ideas'
+  const [fullOn, setFullOn] = useState(!onNow && !onBrain && !onIdeas)
   // Content Brain needs only the fast week until a draft is opened (the open post's date controls read the full
   // seats): the three 1,000-row lane reads are the heaviest thing this page could ask of a small database.
   // Brief 4 Brain shows dated / posted counts, which need the seat reads.
   const lean = onBrain && !q.get('draft') && !cv2.brain
   useEffect(() => {
-    if (fullOn || lean) return
+    if (fullOn || lean || onIdeas) return
     if ((!onNow && !onBrain) || weekRead.settled) { setFullOn(true); return }
     const t = setTimeout(() => setFullOn(true), 2500)
     return () => clearTimeout(t)
-  }, [fullOn, lean, onNow, onBrain, weekRead.settled])
+  }, [fullOn, lean, onNow, onBrain, onIdeas, weekRead.settled])
   useEffect(() => {
     const target = contentRedirect(route.sub, route.query)
     if (target) navigate(target)
@@ -88,12 +91,20 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const data = useContentData(fullOn)
   const pending = usePendingDecisions()
   const [bankCounts, setBankCounts] = useState(false)
-  useEffect(() => {
-    if (!cv2.ideas || sub !== 'ideas' || bankCounts) return
-    const t = setTimeout(() => setBankCounts(true), 1500)
-    return () => clearTimeout(t)
-  }, [cv2.ideas, sub, bankCounts])
   const banks = useIdeaBanks(sub === 'ideas' || (cv2.brain && onBrain), bankCounts ? undefined : isLane(q.get('lane')) ? q.get('lane') as Lane : 'ivan')
+  // PERF-COLD (2026-10-08): Ideas is one heavy read (operator_ranked_ideas: ~4.4 s of database time
+  // for Ivan's seat on an idle database, 11 s on a cold open). It used to share the database with the
+  // other two seats' ranked reads (from 1.5 s) and the three 1,000-row seat reads behind the sub-tab
+  // counts (from 0 s), and finished last. Now the shown seat's ideas go first; the other seats' counts
+  // and the full seat reads start the moment it answers (or fails), or after IDEAS_FIRST_MS at most.
+  const ideasSettled = !banks[isLane(q.get('lane')) ? q.get('lane') as Lane : 'ivan'].loading
+  useEffect(() => {
+    if (!onIdeas || ((bankCounts || !cv2.ideas) && fullOn)) return
+    const go = () => { if (cv2.ideas) setBankCounts(true); setFullOn(true) }
+    if (ideasSettled) { go(); return }
+    const t = setTimeout(go, IDEAS_FIRST_MS)
+    return () => clearTimeout(t)
+  }, [onIdeas, ideasSettled, cv2.ideas, bankCounts, fullOn])
   const magnets = useMagnetCounts()
   const registry = useLanes()
   const qLane: Lane = isLane(q.get('lane')) ? q.get('lane') as Lane : 'ivan'
