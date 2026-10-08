@@ -35,6 +35,15 @@ describe('ClaudeProvider', () => {
     expect(openThread).toHaveBeenCalledWith(T)
     expect(setClaudeOpen).toHaveBeenCalledWith(true)
   })
+  it('Brief 4 claude section, desktop: the workspace opens the chat in the page, the drawer flag stays put', async () => {
+    const { __resetSkinForTests } = await import('../../ds/skin')
+    __resetSkinForTests(new Set(['claude', 'tokens', 'type', 'motion', 'shell']))
+    try {
+      const setClaudeOpen = vi.fn()
+      renderInFrame(<ClaudeProvider><span /></ClaudeProvider>, { hash: `#exp/d/claude?thread=${T}&turn=${U}`, frame: { setClaudeOpen } })
+      expect(setClaudeOpen).not.toHaveBeenCalled()
+    } finally { __resetSkinForTests(new Set()) }
+  })
   it('another place does not open anything', () => {
     const setClaudeOpen = vi.fn()
     renderInFrame(<ClaudeProvider><span /></ClaudeProvider>, { hash: '#exp/d/dms', frame: { setClaudeOpen } })
