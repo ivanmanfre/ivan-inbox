@@ -51,7 +51,9 @@ let session = readFileSync(process.env.THREAD_SESSION_PATH || new URL('../.sessi
 assert(JSON.parse(session).access_token, 'Smoke session has no access token')
 const readRpcs = new Set(['inbox_changed_since', 'inbox_interest_cards', 'inbox_followup_sources', 'warm_signal_cards', 'conversation_agent_cards',
   // Reply-source reads (db/20261007_reply_sources.sql): STABLE security-definer functions, no writes.
-  'inbox_reply_source', 'outreach_reply_sources', 'client_board_reply_source', 'client_board_reply_sources'])
+  'inbox_reply_source', 'outreach_reply_sources', 'client_board_reply_source', 'client_board_reply_sources',
+  // The side panel Glance's ready read (glance/ready.ts): STABLE security-definer, no writes.
+  'inbox_rise_ready'])
 const replySourceRpcs = new Set(['inbox_reply_source', 'outreach_reply_sources', 'client_board_reply_source', 'client_board_reply_sources'])
 function missingReplySource(url, method, status, payload) {
   const u = new URL(url)
