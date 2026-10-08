@@ -93,8 +93,9 @@ export function Glance({ onGo, eager = false, dataOnly = false }: { onGo?: () =>
   const wire: GlanceWire = {
     clear,
     dms: dms.length,
-    top: dms.slice(0, SHOW_DMS).map(d => ({ name: d.name, seat: SEAT_NAME[d.seat], kind: d.kind, age: ago(d.since), href: d.href })),
-    alerts: list.map(x => ({ text: x.text, tone: x.tone, href: x.href })),
+    // Up to 10 so a dismissed row in the menu bar is replaced by the next; the key changes when a newer message lands.
+    top: dms.slice(0, 10).map(d => ({ key: `${d.id}:${Date.parse(d.since) || 0}`, name: d.name, seat: SEAT_NAME[d.seat], kind: d.kind, age: ago(d.since), href: d.href })),
+    alerts: list.map(x => ({ key: x.key, text: x.text, tone: x.tone, href: x.href })),
   }
   // Desktop: the Mac menu bar draws it (Brief, from this line); the side panel keeps only the line.
   if (dataOnly) return <span hidden data-glance>{JSON.stringify(wire)}</span>

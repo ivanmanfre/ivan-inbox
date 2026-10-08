@@ -94,4 +94,4 @@ export function sendAlerts(p: CcPayload | null, sends: readonly SentAt[] | null,
 }
 
 /** What the bridge hands Brief's native sidebar: plain strings and hashes only. */
-export type GlanceWire = { clear: boolean; dms: number; top: Array<{ name: string; seat: string; kind: string; age: string; href: string }>; alerts: Array<{ text: string; tone: string; href: string }> }
+export type GlanceWire = { clear: boolean; dms: number; top: Array<{ key: string; name: string; seat: string; kind: string; age: string; href: string }>; alerts: Array<{ key: string; text: string; tone: string; href: string }> }
