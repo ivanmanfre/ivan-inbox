@@ -168,11 +168,11 @@ export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks:
         <span className="cv2-grow" />
         <button type="button" className="cv2-k cv2-k-q" aria-expanded={insights} data-verb="idea-insights" onClick={() => setInsights(v => !v)}>Insights & evidence {insights ? '▾' : '▸'}</button>
       </div>
-      <Answer>{b.loading && !fresh.length ? `Reading ${who}’s ideas…` : !fresh.length ? `No fresh ideas wait for ${who}.`
+      <Answer>{b.loading && !fresh.length ? `Reading ${who}’s ideas…` : b.error && !fresh.length ? `${who}’s ideas could not be read.` : !fresh.length ? `No fresh ideas wait for ${who}.`
         : <>Best {Math.min(5, fresh.length)} for {who} · proof × freshness.{fresh.length > 5 && ` ${fresh.length - 5} more on the bench.`}</>}</Answer>
       {insights && <section className="cv2-panel" aria-label="Insights and evidence"><Suspense fallback={<Skeleton lines={3} label="Reading insights" />}><Insights lane={seat} phone={phone} /></Suspense></section>}
       {error && <div className="cv2-banner cv2-banner-bad" role="alert"><span>{error}</span></div>}
-      {b.error ? <div className="cv2-banner cv2-banner-bad" role="alert"><span>Ideas could not be read: {b.error}</span><button type="button" onClick={b.refresh}>Retry</button></div>
+      {b.error ? <div className="cv2-banner cv2-banner-bad" role="alert"><span>{fresh.length ? 'Ideas could not be refreshed. These are from the last read.' : 'The ideas read did not come back.'}</span><button type="button" onClick={b.refresh}>Retry</button></div>
         : stalled && <div className="cv2-banner cv2-banner-warn" role="alert"><span>Ideas did not answer in 12 s.</span><button type="button" data-verb="ideas-retry" onClick={b.refresh}>Retry</button></div>}
       {selected.length > 0 && <section aria-label="Selected ideas" className="cv2-sec"><h2 className="cv2-h">Selected <span>drafts you requested and saved ideas</span></h2><div className="cv2-ideas-list">{selected.map(it => v2card(it, null))}</div></section>}
       <section aria-label={bench ? 'On the bench' : 'Best 5'} className="cv2-sec">

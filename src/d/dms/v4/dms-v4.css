@@ -436,3 +436,8 @@ html.brief-motion-off .dx-thumb-jump .dx-seats-thumb > span,html.brief-motion-of
 :root[data-skin-on~='dms'] .dx-src[open]{align-self:stretch}
 :root[data-skin-on~='dms'] .dx-src[open]>summary{display:table;margin:0 auto 6px}
 :root[data-skin-on~='dms'] .dx-src .reply-source-summary{margin:0;padding:12px 14px;border-radius:var(--ds-r-pane);font-size:12px}
+/* Phone: the quiet keys take one full row, Send a full-width row under it (no orphan "Solved"). */
+:root[data-skin-on~='dms'] .dx-pane.dm-pane-phone .dm-keys.dx-keys{grid-template-columns:minmax(0,1fr)}
+:root[data-skin-on~='dms'] .dx-pane.dm-pane-phone .dx-keys .dm-keys-s{flex-wrap:nowrap;justify-content:space-between;gap:2px}
+:root[data-skin-on~='dms'] .dx-pane.dm-pane-phone .dx-keys .dm-keys-s>*{white-space:nowrap}
+:root[data-skin-on~='dms'] .dx-pane.dm-pane-phone .dx-keys>:last-child:not(.dm-keys-s){width:100%;flex:none}
