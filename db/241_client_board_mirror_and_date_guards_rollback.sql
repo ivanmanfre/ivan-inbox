@@ -1,0 +1,83 @@
+drop trigger if exists client_board_mirror_draft on public.carousel_drafts;
+drop function if exists public.client_board_mirror_draft();
+-- Restore the previous bodies of tg_carousel_drafts_propagate_media and operator_set_schedule_date:
+-- CREATE OR REPLACE FUNCTION public.tg_carousel_drafts_propagate_media()
+--  RETURNS trigger
+--  LANGUAGE plpgsql
+-- AS $function$
+-- BEGIN
+--   -- Only propagate when image_urls actually changed AND the draft is in a
+--   -- state where a scheduled_posts row likely exists (scheduled or published).
+--   -- Published rows are still patched so re-publishes / write-backs see the
+--   -- canonical URL.
+--   IF NEW.image_urls IS DISTINCT FROM OLD.image_urls
+--      AND NEW.status IN ('scheduled', 'published') THEN
+--     UPDATE public.scheduled_posts
+--        SET media_urls = NEW.image_urls
+--      WHERE clickup_task_id = NEW.id::text
+--        AND status IN ('pending', 'queued_v2');
+--   END IF;
+-- 
+--   -- THE COPY, same rule, added 2026-08-11. Deliberately NOT gated on status:
+--   -- the edit that matters most is the one Ivan makes on a row sitting in review
+--   -- with a queue slot already booked, and that edit has to reach the table that
+--   -- fires. An empty or whitespace-only body is never propagated, and a draft
+--   -- mid-regeneration is left alone.
+--   IF NEW.post_body IS DISTINCT FROM OLD.post_body
+--      AND NEW.post_body IS NOT NULL
+--      AND length(btrim(NEW.post_body)) > 0
+--      AND NEW.status <> 'generating' THEN
+--     UPDATE public.scheduled_posts
+--        SET post_text = NEW.post_body
+--      WHERE clickup_task_id = NEW.id::text
+--        AND status IN ('pending', 'queued_v2')
+--        AND post_text IS DISTINCT FROM NEW.post_body;
+--   END IF;
+-- 
+--   RETURN NEW;
+-- END;
+-- $function$;
+-- CREATE OR REPLACE FUNCTION public.operator_set_schedule_date(p_gate text, p_draft_id uuid, p_scheduled_at timestamp with time zone)
+--  RETURNS jsonb
+--  LANGUAGE plpgsql
+--  SECURITY DEFINER
+--  SET search_path TO 'public', 'extensions'
+-- AS $function$
+-- declare
+--   d carousel_drafts;
+--   v_at timestamptz;
+--   v_queued int := 0;
+--   v_sync bigint;
+-- begin
+--   if not operator_gate_ok(p_gate) then
+--     return jsonb_build_object('ok', false, 'error', 'bad_gate');
+--   end if;
+--   select * into d from carousel_drafts where id = p_draft_id;
+--   if d.id is null then
+--     return jsonb_build_object('ok', false, 'error', 'not_found');
+--   end if;
+--   if d.status not in ('review', 'scheduled') then
+--     return jsonb_build_object('ok', false, 'error', 'bad_status', 'status', d.status);
+--   end if;
+--   update carousel_drafts set scheduled_at = p_scheduled_at
+--    where id = p_draft_id
+--    returning scheduled_at into v_at;
+--   if v_at is not null then
+--     update scheduled_posts set scheduled_at = v_at
+--      where clickup_task_id = p_draft_id::text
+--        and status = 'pending'
+--        and scheduled_at is distinct from v_at;
+--     get diagnostics v_queued = row_count;
+--   end if;
+--   -- Calendar 2026-10-01: the client board renders a cached queue; a date move on a row
+--   -- the client can see must rebuild it (same call operator_set_board_visible makes).
+--   if d.client_id is not null and d.board_visible is true then
+--     select net.http_post(
+--       url := 'https://n8n.ivanmanfredi.com/webhook/client-board-queue-sync?k=6098d6f092c50f5f1894fd61',
+--       body := jsonb_build_object('client_id', d.client_id),
+--       headers := '{"Content-Type":"application/json"}'::jsonb
+--     ) into v_sync;
+--   end if;
+--   return jsonb_build_object('ok', true, 'id', p_draft_id, 'scheduled_at', v_at,
+--     'requested_at', p_scheduled_at, 'queue_retimed', v_queued, 'status', d.status, 'sync_request_id', v_sync);
+-- end; $function$;

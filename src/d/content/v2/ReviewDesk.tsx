@@ -257,7 +257,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
         </div>
         <span className="cv2-grow" />
         <button type="button" className="cv2-keyhint" aria-label="Keyboard shortcuts" data-verb="desk-keys" onClick={() => setKeys(true)}>
-          {['j', 'k', 'a', 'd', 'e', 'z'].map(k => <kbd key={k}>{k}</kbd>)}<kbd>?</kbd>
+          Keys <kbd>?</kbd>
         </button>
       </div>
 
@@ -408,12 +408,13 @@ function ReviewCard({ c, i, now, focused, open, busy, read, repeat, slot, src, s
         <span className="cv2-dim">{whenOf(c, now)}</span>
         {qa && <Pill tone="warn" title={qa.title}>{qa.text}</Pill>}
         <span className="cv2-grow" />
-        <EarlyReadChip read={read} lane={c.lane} />
+        {/* Only a real read earns header space; "unavailable" and "no read yet" live in Details. */}
+        {read?.state === 'ready' && <EarlyReadChip read={read} lane={c.lane} />}
         <Pill tone={pill.tone}>{pill.text}</Pill>
         <Menu label="More for this draft" items={menu} head={tag || c.viewOnly ? head : undefined} />
       </header>
       <div className="cv2-rc-post" onClick={onOpen}>
-        <LinkedInCard lane={c.lane} body={body} images={pic ?? c.r.image_urls} type={c.r.type} open={more} onToggle={setMore} />
+        <LinkedInCard lane={c.lane} body={body} images={pic ?? c.r.image_urls} type={c.r.type} open={more} onToggle={setMore} bare />
       </div>
       <BrainDraftBadge draft={c.r} />
       <div className={`cv2-pic${editablePic ? '' : ' cv2-pic-ro'}`} data-repeat={repeat ? 'yes' : undefined}>

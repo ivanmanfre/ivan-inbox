@@ -224,6 +224,8 @@ export type Resource = {
   source?: string | null
   source_ref?: string | null
   campaign_id?: string | null
+  /** spec.target_audience: names an idea-stage row that has no topic yet. */
+  audience?: string | null
 }
 
 // READ ONLY. LM rows are never written from this app: whether an n8n watcher
@@ -250,7 +252,7 @@ export async function fetchResources(lane: ContentLane = 'ivan'): Promise<Resour
   const pageSize = 200
   for (let from = 0; ; from += pageSize) {
     let q = supabase.from('lm_drafts_v2')
-      .select('id, topic, format, status, resource_url, landing_url, cover_url, landing_slug, updated_at, source, source_ref, campaign_id')
+      .select('id, topic, format, status, resource_url, landing_url, cover_url, landing_slug, updated_at, source, source_ref, campaign_id, audience:spec->>target_audience')
     q = f.op === 'is' ? q.is(f.column, null) : q.eq(f.column, f.value)
     const { data, error } = await q.order('updated_at', { ascending: false }).order('id').range(from, from + pageSize - 1)
     if (error) throw error

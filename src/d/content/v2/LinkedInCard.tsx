@@ -11,7 +11,7 @@ import { foldText } from '../weekModel'
 // own measure, full-bleed on the phone. Presentational: no writes.
 const clampRatio = (w: number, h: number) => Math.min(1.91, Math.max(0.8, w / h))
 
-export function LinkedInCard({ lane, body, images, type, expandable = true, compact = false, open, onToggle }: {
+export function LinkedInCard({ lane, body, images, type, expandable = true, compact = false, bare = false, open, onToggle }: {
   lane: Lane
   body: string
   /** What will post (the optimistic picture while a change is being written). */
@@ -19,6 +19,8 @@ export function LinkedInCard({ lane, body, images, type, expandable = true, comp
   type: string | null
   expandable?: boolean
   compact?: boolean
+  /** No inert reaction bar (the review desk). */
+  bare?: boolean
   /** Controlled "see more" (the review desk's `o` key); uncontrolled when absent. */
   open?: boolean
   onToggle?: (open: boolean) => void
@@ -64,7 +66,7 @@ export function LinkedInCard({ lane, body, images, type, expandable = true, comp
           {all.length > 1 && <div className="cv2-li-strip">{all.slice(1, 4).map((u, i) => <img key={`${u}-${i}`} src={imgOf([u], 200) ?? u} alt="" loading="lazy" draggable={false} />)}</div>}
         </div>
       )}
-      <div className="cv2-li-r" aria-hidden="true"><span>Like</span><span>Comment</span><span>Repost</span><span>Send</span></div>
+      {!bare && <div className="cv2-li-r" aria-hidden="true"><span>Like</span><span>Comment</span><span>Repost</span><span>Send</span></div>}
     </div>
   )
 }

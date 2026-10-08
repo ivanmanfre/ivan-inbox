@@ -22,9 +22,13 @@ const MORE_STAGES: LmStage[] = ['idea', 'approved', 'scheduled', 'error', 'archi
 const OLD_DAYS = 30
 const DAY = 86_400_000
 
-export function titleOfLm(r: Pick<Resource, 'topic' | 'format'>): string {
+export function titleOfLm(r: Pick<Resource, 'topic' | 'format'> & { audience?: string | null }): string {
   const t = (r.topic ?? '').trim()
-  return t || `${r.format ? r.format[0].toUpperCase() + r.format.slice(1) : 'Untitled'} lead magnet`
+  if (t) return t
+  const kind = r.format ? r.format[0].toUpperCase() + r.format.slice(1) : 'Lead magnet'
+  // An idea-stage row has no topic yet; who it is for tells two "AI Kit" ideas apart.
+  const who = (r.audience ?? '').split(/\s+(?:who|that|and now|with)\s+|[,;(]/)[0].trim()
+  return who ? `${kind} for ${who.length > 70 ? who.slice(0, 68).replace(/\s+\S*$/, '') + '…' : who}` : `${kind} lead magnet`
 }
 
 const toneOf = (s: LmStage): Tone => s === 'review' ? 'info' : s === 'error' ? 'bad' : s === 'published' ? 'ok' : s === 'approved' || s === 'scheduled' ? 'ok' : s === 'archived' ? 'queue' : 'neutral'
@@ -51,6 +55,9 @@ export function MagnetsV2({ lane, setLane, phone, magnet, clearMagnet, counts }:
     .sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at))
   const fresh = list.filter(r => now - Date.parse(r.updated_at) <= OLD_DAYS * DAY)
   const stale = list.filter(r => now - Date.parse(r.updated_at) > OLD_DAYS * DAY)
+  // The fold hides old work only when there is enough new work to look at first: 2 fresh ideas over
+  // 12 real magnets waiting for review read as "nothing to do" (Ivan 2026-10-08).
+  const foldOld = fresh.length >= 6
   const oldest = stages.review.length ? Math.max(...stages.review.map(r => now - Date.parse(r.updated_at))) : 0
   const close = () => { setOpen(null); if (magnet) clearMagnet() }
   const queue = list.map(r => ({ id: r.id, title: r.topic ?? 'Untitled', type: r.format, updated_at: r.updated_at, status: r.status }))
@@ -98,10 +105,12 @@ export function MagnetsV2({ lane, setLane, phone, magnet, clearMagnet, counts }:
             {fresh.length > 0 && <div className="cv2-lm-grid">{fresh.map(card)}</div>}
             {stale.length > 0 && (
               <section className="cv2-sec" aria-label={`Waiting over ${OLD_DAYS} days`}>
-                <button type="button" className="cv2-foldrow" aria-expanded={old} data-verb="magnet-old" onClick={() => setOld(o => !o)}>
-                  <span className="cv2-h">Waiting over {OLD_DAYS} days · {stale.length}</span><span className="cv2-grow" /><span>{old ? 'Hide' : 'Show'}</span>
-                </button>
-                {old && <div className="cv2-lm-grid">{stale.map(card)}</div>}
+                {foldOld ? (
+                  <button type="button" className="cv2-foldrow" aria-expanded={old} data-verb="magnet-old" onClick={() => setOld(o => !o)}>
+                    <span className="cv2-h">Waiting over {OLD_DAYS} days · {stale.length}</span><span className="cv2-grow" /><span>{old ? 'Hide' : 'Show'}</span>
+                  </button>
+                ) : fresh.length > 0 && <div className="cv2-h cv2-lm-div">Waiting over {OLD_DAYS} days · {stale.length}</div>}
+                {(old || !foldOld) && <div className="cv2-lm-grid">{stale.map((r, i) => card(r, i + fresh.length))}</div>}
               </section>
             )}
           </>}

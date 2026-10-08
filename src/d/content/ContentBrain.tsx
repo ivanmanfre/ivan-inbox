@@ -323,13 +323,21 @@ export function NextIdeas({ lane }: { lane: Lane }) {
         <h3 className="cb-sub">Your best recent posts</h3>
         <ol className="cb-own">{winners.map(p => <li key={p.activity_id}>
           <span>{p.published_at ? dayLabel(p.published_at.slice(0, 10)) : 'date not recorded'}</span>
-          <b>{p.title || 'Published post'}</b>
+          <b title={p.title ?? undefined}>{cutTitle(p.title) || 'Published post'}</b>
           <em>{[p.impressions != null ? `${p.impressions.toLocaleString('en-US')} impressions` : null, p.comments != null ? `${p.comments} comments` : null].filter(Boolean).join(' · ')}</em>
           {p.post_url && <a href={p.post_url} target="_blank" rel="noreferrer">Open ↗</a>}
         </li>)}</ol>
       </>}
     </section>
   )
+}
+
+/** The stored title is the post's first ~80 characters: end it on a whole word, never mid-word. */
+function cutTitle(t: string | null | undefined): string {
+  const s = (t ?? '').trim()
+  if (s.length < 70 || /[.!?…]$/.test(s)) return s
+  const whole = s.replace(/\s+\S*$/, '')
+  return /[.!?]$/.test(whole) ? whole : `${whole}…`
 }
 
 export function RecentDecisions({ lane, verdicts }: { lane: Lane; verdicts: Map<string, SavedVerdict> }) {

@@ -108,3 +108,8 @@
 .d-desktop .cn-open .cb-card{grid-template-columns:minmax(0,1fr)}
 .d-desktop .cn-open .cb-src{order:2;padding:10px 12px;background:var(--p1)}
 .d-desktop .cn-open .cb-ideas{grid-template-columns:minmax(0,1fr)}
+/* Best posts: Open sits on the title's line, so each post reads as one row (Ivan 2026-10-08 polish). */
+.cb-own li{grid-template-columns:72px minmax(0,1fr) auto}
+.cb-own a{grid-column:3;grid-row:1;justify-self:end}
+.d-phone .cb-own li{grid-template-columns:72px minmax(0,1fr)}
+.d-phone .cb-own a{grid-column:2;grid-row:auto;justify-self:start}

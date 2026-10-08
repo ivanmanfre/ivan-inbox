@@ -1,0 +1,36 @@
+-- Re-apply db/241 (operator_set_schedule_date) and the previous client_board_set_schedule_v2:
+-- CREATE OR REPLACE FUNCTION public.client_board_set_schedule_v2(p_slug text, p_session text, p_draft_id uuid, p_scheduled_at timestamp with time zone)
+--  RETURNS jsonb
+--  LANGUAGE plpgsql
+--  SECURITY DEFINER
+--  SET search_path TO 'public', 'extensions'
+-- AS $function$
+-- declare v_hash text; v_email text; v_board public.client_boards%rowtype; v_old timestamptz; v_date text;
+-- begin
+--   if coalesce(p_session, '') = '' then return jsonb_build_object('ok', false, 'error', 'not_authenticated'); end if;
+--   v_hash := encode(digest(p_session, 'sha256'), 'hex');
+--   select email into v_email from public.client_board_sessions
+--    where slug = p_slug and token_hash = v_hash and revoked_at is null and expires_at > now();
+--   if not found then return jsonb_build_object('ok', false, 'error', 'not_authenticated'); end if;
+--   update public.client_board_sessions set last_seen_at = now() where slug = p_slug and token_hash = v_hash;
+--   select * into v_board from public.client_boards
+--    where slug = p_slug and (expires_at is null or expires_at > now());
+--   if not found then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
+--   if p_scheduled_at is not null and (p_scheduled_at < now() - interval '1 day' or p_scheduled_at > now() + interval '365 days') then
+--     return jsonb_build_object('ok', false, 'error', 'bad_date'); end if;
+--   select scheduled_at into v_old from public.carousel_drafts
+--    where id = p_draft_id and client_id = v_board.client_id and status in ('review', 'scheduled');
+--   if not found then return jsonb_build_object('ok', false, 'error', 'draft_not_schedulable'); end if;
+--   update public.carousel_drafts set scheduled_at = p_scheduled_at, updated_at = now() where id = p_draft_id;
+--   v_date := case when p_scheduled_at is null then null else to_char(p_scheduled_at at time zone 'UTC', 'YYYY-MM-DD') end;
+--   update public.client_boards set board = jsonb_set(board, '{queue}', coalesce((
+--       select jsonb_agg(case when (q->>'id') = p_draft_id::text
+--         then case when v_date is null then (q - 'publish_date') else jsonb_set(q, '{publish_date}', to_jsonb(v_date)) end
+--         else q end)
+--       from jsonb_array_elements(board->'queue') q), board->'queue'))
+--     where slug = p_slug;
+--   insert into public.client_board_actions (board_slug, client_id, action, ref, payload)
+--   values (p_slug, v_board.client_id, 'set_schedule', p_draft_id::text,
+--           jsonb_build_object('applied', true, 'before', v_old, 'after', p_scheduled_at, 'by', v_email));
+--   return jsonb_build_object('ok', true, 'scheduled_at', p_scheduled_at);
+-- end $function$

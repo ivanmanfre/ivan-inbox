@@ -27,7 +27,7 @@ const nameOf = (url: string) => decodeURIComponent(url.split('?')[0].split('/').
 function whereFrom(url: string): string {
   if (/\/client-photos\/[^/]+\/onepost\//.test(url) || /\/post-stills\/onepost\//.test(url)) return 'Uploaded for this post'
   const m = url.match(/\/(?:post-stills|client-photos)\/([^/]+)\//)
-  if (m) return `From ${m[1]}`
+  if (m) return /^selfie-pool/.test(m[1]) ? 'From your selfies' : `From ${m[1].replace(/[-_]+/g, ' ')}`
   return 'Pinned image'
 }
 
@@ -119,8 +119,8 @@ export function PictureRow({ d, lane, onShow, onDone, disabled }: {
         </span>
         <div className="cn-pic2-m">
           <small className="cn-cap">Picture</small>
-          <b title={shown ?? undefined}>{busy === 'upload' ? 'Uploading…' : shown ? nameOf(shown) : 'No picture'}</b>
-          <span>{shown ? whereFrom(shown)
+          <b title={shown ? nameOf(shown) : undefined}>{busy === 'upload' ? 'Uploading…' : shown ? whereFrom(shown) : 'No picture'}</b>
+          <span>{shown ? (d.type === 'carousel' ? 'Carousel' : 'Single image')
             : noPhoto ? 'Removed on purpose: the selfie job leaves it bare.'
             : lane === 'ivan' && d.status === 'review' && d.type === 'text' ? 'Text only. The selfie job adds one within 10 min unless you pick one or remove it.'
             : lane === 'ivan' ? 'Text only.'
