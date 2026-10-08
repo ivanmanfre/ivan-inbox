@@ -31,7 +31,8 @@ export const FOUNDATION: readonly Section[] = ['tokens', 'type', 'motion', 'shel
 // Verified sections. Each starts empty and grows only after that section's
 // acceptance passes live (BUILD_PLAN decision 1). PHONE grows only after a
 // check on Ivan's real phone.
-export const BRIEF_DESKTOP: Section[] = []
+export const BRIEF_DESKTOP: Section[] = ['tokens', 'type', 'motion', 'shell', 'home', 'dms', 'content',
+  'content.brain', 'content.calendar', 'content.ideas', 'content.review', 'content.lms', 'lanes', 'ops', 'sales', 'claude', 'settings']
 export const WEB_DESKTOP: Section[] = []
 export const PHONE: Section[] = []
 

@@ -27,9 +27,11 @@ describe('parseSkin', () => {
 })
 
 describe('resolveSkin', () => {
-  it('defaults: Brief desktop, web desktop, phone (all empty today)', () => {
-    expect(BRIEF_DESKTOP).toEqual([]); expect(WEB_DESKTOP).toEqual([]); expect(PHONE).toEqual([])
-    expect(resolveSkin({ ...base, briefNative: true }).set.size).toBe(0)
+  it('defaults enable verified Brief desktop sections; web and phone remain empty', () => {
+    expect([...BRIEF_DESKTOP].sort()).toEqual([...SECTIONS].sort()); expect(WEB_DESKTOP).toEqual([]); expect(PHONE).toEqual([])
+    expect(resolveSkin({ ...base, briefNative: true }).set.size).toBe(17)
+    expect(resolveSkin(base).set.size).toBe(0)
+    expect(resolveSkin({ ...base, briefNative: true, layout: 'phone' }).set.size).toBe(0)
     expect(resolveSkin({ ...base, layout: 'phone' }).from).toBe('default')
   })
   it('?skin=off wins over a stored list', () => {
