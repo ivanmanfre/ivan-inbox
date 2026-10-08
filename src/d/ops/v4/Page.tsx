@@ -26,6 +26,8 @@ import { QueuePane } from './Queue'
 import { animateReceipt, captureAction, finishAction, useDeferredLoading, useOpsMotion } from './motion'
 import './ops4.css'
 
+const DONE_HOLD_MS = 120_000
+
 export function OpsPageV4({ layout, route, navigate }: PlaceProps) {
   const ops = useOps()
   const c = useFrameCounts()
@@ -35,7 +37,19 @@ export function OpsPageV4({ layout, route, navigate }: PlaceProps) {
   const queue = useCommentQueue(pending, refresh)
   const rx = useReactions(true)
   const heldIds = useMemo(() => new Set(queue.held.keys()), [queue.held])
-  const board = useMemo(() => readBoard(ops.drafts, heldIds), [ops.drafts, heldIds])
+  // DONE LEAVES AT ONCE (Ivan 2026-10-08: "when i approve something it takes a while to leave"). A
+  // card that was approved / discarded / handled OK leaves the board the moment the action
+  // answers, not when the next ops read lands. If the server still lists it 2 minutes later it
+  // comes back, which is the truth.
+  const [done, setDone] = useState<ReadonlyMap<string, number>>(() => new Map())
+  const shown = useMemo(() => done.size ? ops.drafts.filter(d => { const t = done.get(d.id); return t === undefined || Date.now() - t > DONE_HOLD_MS }) : ops.drafts, [ops.drafts, done])
+  useEffect(() => {
+    if (!done.size || ops.loading) return
+    const live = new Set(ops.drafts.map(d => d.id))
+    const keep = [...done].filter(([id, t]) => live.has(id) && Date.now() - t <= DONE_HOLD_MS)
+    if (keep.length !== done.size) setDone(new Map(keep))
+  }, [ops.drafts, ops.loading, done])
+  const board = useMemo(() => readBoard(shown, heldIds), [shown, heldIds])
   useReportFailed('ops', ops.error ? 1 : 0)
   const confirmOpen = useDConfirmOpen()
   const toast = useToast()
@@ -77,9 +91,12 @@ export function OpsPageV4({ layout, route, navigate }: PlaceProps) {
     if (!d && !r) return
     acted.current.set(id, { verb, who: d ? rowLine(d).who : r?.evidence?.who ?? 'Reaction', lane: d ? laneOf(d.client_id) : r!.lane, at: Date.now(), row: captureAction(root.current, id) })
   }, [all, rx.rows])
+  const onDone = useCallback((id: string) => setDone(m => new Map(m).set(id, Date.now())), [])
   useEffect(() => {
-    if (ops.loading || ops.error || confirmOpen || rx.busy || rx.actionError) return
+    if (ops.error || confirmOpen || rx.busy || rx.actionError) return
     for (const [id, a] of acted.current) {
+      // A card already taken off the board (done) need not wait for the read in flight.
+      if (ops.loading && !done.has(id)) continue
       if (Date.now() - a.at > 120000) { acted.current.delete(id); continue }
       if (all.some(d => d.id === id) || rx.rows.some(r => r.id === id) || finishing.current.has(id)) continue
       const errorCard = [...root.current?.querySelectorAll<HTMLElement>('[data-card]') ?? []].find(e => e.dataset.card === id)?.querySelector('.op-err')
@@ -93,7 +110,7 @@ export function OpsPageV4({ layout, route, navigate }: PlaceProps) {
       requestAnimationFrame(() => animateReceipt(a.who))
       })
     }
-  }, [all, board.flat, ops.loading, ops.error, confirmOpen, rx.rows, rx.busy, rx.actionError, compact, toast, navigate, want, wantRx])
+  }, [all, board.flat, ops.loading, ops.error, confirmOpen, rx.rows, rx.busy, rx.actionError, compact, toast, navigate, want, wantRx, done])
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (blocked()) return
@@ -131,7 +148,7 @@ export function OpsPageV4({ layout, route, navigate }: PlaceProps) {
   else if (sel) {
     const p = positionOf(board, sel), pos = `card ${p.at} of ${p.of}`, wIdx = queue.positionOf(sel.id)
     detail = sel.kind === 'conversation_takeover' ? <TakeoverCard key={sel.id} d={sel} refresh={refresh} pos={pos} onActed={onActed} /> : <CardV4 key={sel.id} d={sel} refresh={refresh}
-      feed={queue.feed.get(outboundFeedId(sel) ?? '')} held={queue.held.get(sel.id)} onGateResult={queue.record} layout={layout} pos={pos} onActed={onActed}
+      feed={queue.feed.get(outboundFeedId(sel) ?? '')} held={queue.held.get(sel.id)} onGateResult={queue.record} layout={layout} pos={pos} onActed={onActed} onDone={onDone}
       waitingLine={wIdx < 0 ? null : queue.cappedToday ? 'Held: 3-a-day cap reached. Back tomorrow.' : `Queued, number ${wIdx + 1} in line. Leave the tab open.`}
       previous={selIdx > 0 ? () => pick(board.flat[selIdx - 1].id) : undefined} next={compact ? (() => { const cards = board.flat.filter(d => laneOf(d.client_id) === lane); const i = cards.findIndex(d => d.id === sel?.id); return i >= 0 && i + 1 < cards.length ? () => pick(cards[i + 1].id) : undefined })() : selIdx >= 0 && selIdx + 1 < board.flat.length ? () => pick(board.flat[selIdx + 1].id) : undefined} />
   } else detail = <EmptyState title="Nothing waiting on you." sub={`Checked ${checked}.`} />

@@ -1,4 +1,4 @@
-import { useCallback, useState, type ComponentProps } from 'react'
+import { useCallback, useState, type ComponentProps, useRef } from 'react'
 import { Avatar } from '../../../ds/Avatar'
 import { Banner } from '../../../ds/Banner'
 import { Chip } from '../../../ds/Chip'
@@ -23,16 +23,31 @@ import { renderMrkdwn } from '../../../wb/ops/slackPreview'
 // consequence under it. Comment replies put their secondary verbs behind More.
 // All state and writes: usePendingCard (shared with today's card).
 
-export function CardV4({ d, refresh, feed, held, onGateResult, layout, pos, waitingLine, onActed, previous, next }: ComponentProps<typeof OpsCard> & {
+export function CardV4({ d, refresh, feed, held, onGateResult, layout, pos, waitingLine, onActed, previous, next, onDone }: ComponentProps<typeof OpsCard> & {
   onActed?: (id: string, verb: string) => void; previous?: () => void; next?: () => void
+  /** The confirmed action SUCCEEDED (its refresh ran): the page may take the card off at once. */
+  onDone?: (id: string) => void
 }) {
   const ask = useCardConfirm()
+  // A confirmed action calls refresh() only once it has succeeded (usePendingCard); a failure
+  // sets the card's error instead. So the first refresh after a confirm is the success signal.
+  const confirmed = useRef(false)
   const confirm = useCallback(async (o: OldConfirmOpts) => {
     const ok = await ask(o)
-    if (ok) onActed?.(d.id, o.danger ? 'Discarded' : o.confirmText === 'Mark handled' ? 'Marked handled' : 'Approved')
+    if (ok) { confirmed.current = true; onActed?.(d.id, o.danger ? 'Discarded' : o.confirmText === 'Mark handled' ? 'Marked handled' : 'Approved') }
     return ok
   }, [ask, d.id, onActed])
-  const st = usePendingCard({ draft: d, refresh, feed, held, onGateResult, confirm })
+  // A warning set beside a success ("Posted fine, but the tag…") keeps the card up to be read:
+  // after the render settles, only a card with no error on it leaves at once.
+  const refreshAfter = useCallback(() => {
+    refresh()
+    if (!confirmed.current) return
+    confirmed.current = false
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (!document.querySelector(`[data-card="${CSS.escape(d.id)}"] .op-err`)) onDone?.(d.id)
+    }))
+  }, [refresh, onDone, d.id])
+  const st = usePendingCard({ draft: d, refresh: refreshAfter, feed, held, onGateResult, confirm })
   const [more, setMore] = useState(false)
   // Booking cards read as the Slack message they become (Ivan 2026-09-27: "I want
   // to see it formatted"). Tap the message to edit the text; leave the box and

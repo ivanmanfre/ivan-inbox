@@ -761,10 +761,16 @@ function unansweredSince(t: Thread): string | null {
       && (m.send_blocked_reason === DISCARD_REASON || /^(model_meta_no_reply|writer_no_reply)/.test(m.send_blocked_reason ?? '')))
     .map(eventTime).sort().at(-1) ?? null
   if (discarded !== null && discarded > lastInbound) return null
+  // APPROVED IS ANSWERED (Ivan 2026-10-08: "when i approve something it takes a while to leave
+  // needs you"). An approved reply waiting in the dispatcher queue (approved_at, no sent_at, no
+  // block) is Ivan's answer; the thread leaves Needs you at the approval, not at the send minutes
+  // later. A queued send that then fails gets send_blocked_at and the thread owes a reply again.
   const lastSent = t.messages
-    .filter(m => m.direction === 'outbound' && m.sent_at)
-    .map(m => m.sent_at!).sort().at(-1) ?? null
-  return (lastSent === null || lastSent <= lastInbound) ? lastInbound : null
+    .filter(m => m.direction === 'outbound' && (m.sent_at || (m.approved_at && !m.send_blocked_at)))
+    .map(m => m.sent_at ?? m.approved_at!)
+    // As instants: a just-approved local patch ('Z') and PostgREST ('+00:00') do not sort alike as text.
+    .reduce<string | null>((max, x) => (max === null || Date.parse(x) > Date.parse(max) ? x : max), null)
+  return (lastSent === null || Date.parse(lastSent) <= Date.parse(lastInbound)) ? lastInbound : null
 }
 
 /** solved_at settles the thread while it is not older than the last owed inbound. Compared as

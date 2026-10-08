@@ -332,6 +332,14 @@ describe('needsAnswer', () => {
   })
   // 28 of the 56 "unread" threads: Ivan answered in the LinkedIn app (the
   // mirror writes the outbound row, nothing stamps read_at). Answered is not waiting.
+  // Ivan 2026-10-08: an approved reply sitting in the send queue is his answer already.
+  it('an approved reply still in the queue answers the thread; a failed one does not', () => {
+    const now = Date.parse('2026-07-21T12:00:00Z')
+    const queued = { ...base, id: 'q', sent_at: null, approved_at: '2026-07-21T11:00:00.000Z', created_at: '2026-07-21T10:30:00Z' }
+    expect(needsAnswer(groupThreads([inbound('b', '2026-07-21T10:00:00+00:00'), queued])[0], now)).toBe(false)
+    const failed = { ...queued, send_blocked_at: '2026-07-21T11:05:00Z', send_blocked_reason: 'send_failed' }
+    expect(needsAnswer(groupThreads([inbound('b', '2026-07-21T10:00:00+00:00'), failed])[0], now)).toBe(true)
+  })
   it('unread inbound already answered by a later send is NOT waiting', () => {
     const t = groupThreads([inbound('b', '2026-07-21T10:00:00Z'), sent('c', '2026-07-22T10:00:00Z')])[0]
     expect(needsAnswer(t)).toBe(false)
