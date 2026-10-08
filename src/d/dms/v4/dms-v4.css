@@ -401,3 +401,28 @@
   :root[data-skin-on~='dms'][data-skin-on~='motion']:not(.brief-motion-off):not(.brief-motion-subtle) .dx-typing i:nth-child(2){animation-delay:.15s}
   :root[data-skin-on~='dms'][data-skin-on~='motion']:not(.brief-motion-off):not(.brief-motion-subtle) .dx-typing i:nth-child(3){animation-delay:.3s}
 }
+
+/* C2: translate the seat thumb independently of its 280ms stretch. */
+:root[data-skin-on~='dms'] .dx-seats-thumb{background:none;box-shadow:none}
+:root[data-skin-on~='dms'] .dx-seats-thumb > span{display:block;width:100%;height:100%;border-radius:inherit;background:linear-gradient(#fff,#fbfcfa);box-shadow:0 1px 3px rgba(24,57,42,.08),inset 0 1px 0 #fff,0 0 0 1px rgba(24,57,42,.08)}
+:root[data-skin-on~='dms'][data-skin-on~='motion'] .dx-thumb-jump .dx-seats-thumb > span,
+:root[data-skin-on~='dms'][data-skin-on~='motion'] .dm-folders.dx-thumb-jump::before{animation:dx-thumb-stretch var(--ds-m-mod) var(--ds-e-settle)}
+@keyframes dx-thumb-stretch{0%,100%{transform:scaleX(1)}50%{transform:scaleX(1.1)}}
+@media(prefers-reduced-motion:reduce){.dx-thumb-jump .dx-seats-thumb > span,.dm-folders.dx-thumb-jump::before{animation:none!important}}
+html.brief-motion-off .dx-thumb-jump .dx-seats-thumb > span,html.brief-motion-off .dm-folders.dx-thumb-jump::before{animation:none!important}
+
+/* C2 narrow controls; each uses the same mounted list/search and guarded callbacks. */
+:root[data-skin-on~='dms'] .dx-search-v4{position:relative;flex:none;display:flex;align-items:center;height:32px}
+:root[data-skin-on~='dms'] .dx-search-trigger,:root[data-skin-on~='dms'] .dx-list-trigger{display:none}
+:root[data-skin-on~='dms'] .dx-search-trigger{border:0;border-radius:var(--ds-r-btn);background:var(--ds-well-fill);box-shadow:var(--ds-well-shadow);color:var(--t3);align-items:center;justify-content:center}
+:root[data-skin-on~='dms'] .d-main:is([data-tier=t3],[data-tier=t4]) .dx-search-trigger{display:flex;width:32px;height:32px}
+:root[data-skin-on~='dms'] .d-main:is([data-tier=t3],[data-tier=t4]) .dx-search-pop{display:none;position:absolute;right:0;top:40px;width:240px;padding:8px;background:var(--ds-glass-pane);border-radius:var(--ds-r-pane);box-shadow:var(--ds-shadow-overlay);z-index:30}
+:root[data-skin-on~='dms'] .d-main:is([data-tier=t3],[data-tier=t4]) .dx-search-open .dx-search-pop{display:block}
+:root[data-skin-on~='dms'] .d-main:is([data-tier=t3],[data-tier=t4]) .dx-search-pop .dm-search{width:224px;min-width:0}
+:root[data-skin-on~='dms'] .d-main[data-tier=t4] .dx-list-trigger{display:block;max-width:118px;min-width:0;height:32px;padding:0 6px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:root[data-skin-on~='dms'] .d-main[data-tier=t4] .dx-seats{width:162px}
+:root[data-skin-on~='dms'] .d-main[data-tier=t4] .dx-seat{padding:0 3px;font-size:12px;gap:3px}
+:root[data-skin-on~='dms'] .d-main[data-tier=t4] .dx-nodraft{display:none}
+:root[data-skin-on~='dms'] .d-main[data-tier=t4] .dx-cols{position:relative;grid-template-columns:minmax(0,1fr)}
+:root[data-skin-on~='dms'] .d-main[data-tier=t4] .dx-list{display:none;position:absolute;left:8px;top:0;bottom:8px;width:min(320px,calc(100% - 16px));z-index:20;background:var(--ds-glass-pane);box-shadow:var(--ds-shadow-overlay)}
+:root[data-skin-on~='dms'] .d-main[data-tier=t4] .dx-list[data-list-open]{display:flex}

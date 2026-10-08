@@ -1,7 +1,7 @@
 // Brief 4 DMs motion hooks (SPEC-dms §2.9). Pointer listeners and CSS custom properties only: no
 // React state, so a hover never re-renders a row. Call them unconditionally at the top of the
 // component that owns the element, with `enabled` as an argument (09-09 hook rule).
-import { useEffect, useLayoutEffect, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react'
 
 /** el's box inside `box`, from offset* so a parent mid-transform cannot skew it. */
 function offsetIn(el: HTMLElement, box: HTMLElement): { x: number; y: number; w: number; h: number } | null {
@@ -42,6 +42,7 @@ export function useHoverPill(ref: RefObject<HTMLElement | null>, rowSel: string,
 
 /** A measured segmented thumb: writes --tx/--tw on the track for the [aria-selected=true] tab. */
 export function useThumb(ref: RefObject<HTMLElement | null>, trackSel: string, pick: string, enabled: boolean) {
+  const previous = useRef(pick)
   useLayoutEffect(() => {
     const host = ref.current
     const track = host?.matches(trackSel) ? host : host?.querySelector<HTMLElement>(trackSel)
@@ -53,6 +54,10 @@ export function useThumb(ref: RefObject<HTMLElement | null>, trackSel: string, p
       track.setAttribute('data-dx-thumb', '1')
     }
     place()
+    if (previous.current !== pick && !document.hidden && !document.documentElement.classList.contains('brief-motion-off') && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      track.classList.remove('dx-thumb-jump'); void track.offsetWidth; track.classList.add('dx-thumb-jump')
+    }
+    previous.current = pick
     if (typeof ResizeObserver === 'undefined') return
     const ro = new ResizeObserver(place)
     ro.observe(track)

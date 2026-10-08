@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { pictureEditable, type ContentDraft } from '../../../lib/content'
 import { sourceOf } from '../../../lib/brainPage'
 import { reasonLabel } from '../../../lib/verdicts'
@@ -23,6 +23,7 @@ import type { WeekRead } from '../useWeek'
 import { forgetVerdict, giveReason, markShown, retryVerdict, undoVerdict, useJudged, VERDICT_HOLD_MS, type Judged } from '../verdictStore'
 import { useWeekVerbs } from '../weekVerbs'
 import { SHOWS, type Show, type Week, type WeekCard } from '../weekModel'
+import { useReviewMotion } from './motion'
 import { LinkedInCard } from './LinkedInCard'
 import { picRepeats, type Repeat } from './picRepeat'
 import { Answer, Menu, Pill, SeatAv, Seg, useDeferred, type MenuItem, type Tone } from './ui'
@@ -114,6 +115,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   const [more, setMore] = useState<ReadonlySet<string>>(() => new Set())
   const [keys, setKeys] = useState(false)
   const grid = useRef<HTMLDivElement>(null)
+  useReviewMotion(grid)
 
   const verbs = useWeekVerbs({ ids: week.ids, onChanged, onOpen, setBusy })
   const rowVerbs = useRowVerbs(onChanged)
@@ -141,6 +143,12 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   const loading = read.source === 'none' && !read.settled
   const ghosts = useDeferred(loading)
 
+  useLayoutEffect(() => {
+    if (!focusId) return
+    if (stream.findIndex(c => c.r.id === focusId) >= FIRST) setAll(true)
+    if (folded.some(c => c.r.id === focusId)) setFixOpen(true)
+  }, [focusId, stream.map(c => c.r.id).join(','), folded.map(c => c.r.id).join(',')])
+
   // Focus lands on the first card, or on the card Content Brain sent.
   const cardIds = useMemo(() => shown.filter(c => !c.strip).map(c => c.r.id), [shown])
   useEffect(() => {
@@ -151,7 +159,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
     if (!focusId) return
     setFocus(focusId)
     requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-card-id="${focusId}"]`)?.scrollIntoView?.({ block: 'center' }))
-  }, [focusId])
+  }, [focusId, cardIds.join(','), fixOpen])
 
   const cardOf = useCallback((id: string | null) => stream.find(c => c.r.id === id) ?? null, [stream])
   const moveFocus = (dir: 1 | -1) => {

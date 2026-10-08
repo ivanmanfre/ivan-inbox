@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useCallback, useRef, useEffect, useMemo, useState } from 'react'
 import { useSkin } from '../../ds/useSkin'
 import { TodayNotes } from '../lanes/TodayNotes'
 import type { PlaceProps } from '../places'
@@ -34,6 +34,8 @@ import { Results } from './Results'
 import { ContentBrain, waitsForReview } from './ContentBrain'
 import { useContentFlags } from './v2/flags'
 import { useMainTier } from './v2/useMainTier'
+import { useSubtabMotion } from './v2/motion'
+import { reviewLanding } from './v2/reviewLanding'
 import { ReviewDesk } from './v2/ReviewDesk'
 import { BrainV2 } from './v2/BrainV2'
 import { MagnetsV2 } from './v2/MagnetsV2'
@@ -55,6 +57,8 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const q = route.query
   // Brief 4 (SPEC-content): the frame flag and one flag per sub-tab; every hook below runs either way.
   const cv2 = useContentFlags()
+  const presentation = useRef<HTMLDivElement>(null)
+  useSubtabMotion(presentation, route.sub ?? 'now', cv2.frame)
   const tier = useMainTier(cv2.frame)
   const wide = tier === 't1'
   const view = q.get('view') ?? (route.sub === 'errors' ? 'posts' : route.sub === 'magnets' ? 'magnets' : null)
@@ -169,7 +173,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const deskBody = <>
     {lanesV4 && <TodayNotes />}
     {data.failed > 0 && <div className="cv2-banner cv2-banner-bad" role="alert"><span>Could not read every client.</span><button type="button" onClick={refresh}>Retry</button></div>}
-    <ReviewDesk week={nowModel} total={allNow} read={stackRead} show={show} setShow={setShow} now={now} openId={draft} focusId={q.get('focus')}
+    <ReviewDesk week={nowModel} total={allNow} read={stackRead} show={show} setShow={setShow} now={now} openId={draft} focusId={q.get('focus') ?? (q.get('idea') ? reviewLanding(rows, qLane, q.get('idea')!) : null)}
       onOpen={openDraft} onEdit={(id, lane) => go({ ...context(), draft: id, lane, edit: '1' }, 'now')} onChanged={refresh}
       firstDay={days[0].key} seatRows={l => rows.filter(r => laneOfRow(r) === l)} rows={rows} armed={data.armed} armedFailed={data.armedFailed} />
   </>
@@ -195,7 +199,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
     body = phone && window_ ? window_ : <div className={`cn-split${window_ ? ' cn-open' : ''}${desk ? ' cv2-split' : ''}`} data-wide={desk ? (wide ? 'yes' : 'no') : undefined}><div className={`cn-left${allPosts ? ' cn-left-legacy' : ''}`}>{left}</div>{window_}</div>
   }
   const title = sub === 'brain' ? (onBrain ? 'Content Brain' : 'Patterns and benchmarks') : sub === 'ideas' ? 'Best ideas for your next post' : sub === 'results' ? 'What worked' : sub === 'strategy' ? (q.get('section') === 'direction' ? 'Strategy' : q.get('section') === 'this-week' ? 'Content brain' : 'Strategy') : sub === 'inputs' ? 'Outliers' : sub === 'magnets' ? 'Lead magnets' : sub === 'styles' ? 'Styles' : onCal ? 'Calendar' : allPosts ? 'All posts' : magnetView ? 'Lead magnets' : 'Review'
-  return <div className={`cn${cv2.frame ? ' cv2-frame' : ''}`} data-cv2-sub={cv2.frame ? sub : undefined}><AnswerRow title={title} /><SubNav on={sub} attention={needs > 0} lane={qLane} section={q.get('section')} v2={cv2.frame} counts={{ now: reading && !weekRead.settled ? null : allNow.ids.length, magnets: LANES.some(l => magnets[l] === undefined) ? null : LANES.reduce((n, l) => n + (magnets[l] ?? 0), 0) }} />{body}
+  return <div ref={presentation} className={`cn${cv2.frame ? ' cv2-frame' : ''}`} data-cv2-sub={cv2.frame ? sub : undefined}><AnswerRow title={title} /><SubNav on={sub} attention={needs > 0} lane={qLane} section={q.get('section')} v2={cv2.frame} counts={{ now: reading && !weekRead.settled ? null : allNow.ids.length, magnets: LANES.some(l => magnets[l] === undefined) ? null : LANES.reduce((n, l) => n + (magnets[l] ?? 0), 0) }} />{body}
     {dayOpen && <DayPanel lane={dayOpen.lane} keys={dayOpen.keys} items={items[dayOpen.lane]} onClose={() => setDayOpen(null)} onOpen={openFromPlan} onMove={onMove} onArm={armIt} onChanged={refresh} />}
   </div>
 }

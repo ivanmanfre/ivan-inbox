@@ -2,10 +2,12 @@
 // (folders + filter), the health line and the footer stat. Presentational: every value and closure
 // arrives already computed by Dms() (index.tsx); seat and folder picks go through the guarded
 // navigators there. Hooks sit at the top of each component, before any return.
-import { useRef, type CSSProperties, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import { SEATS, SEAT_NAME, SEAT_OWNER, type Seat, type SeatNumbers } from '../../seats'
 import type { DayOut } from '../model'
 import { SCHEDULE } from '../model'
+import { Count } from '../../ui/Count'
+import { useMotionLevel } from '../../../ds/motionLevel'
 import { useThumb } from './motion'
 
 const WHOSE: Record<Seat, string> = { ivan: 'Your seat', risedtc: "Mattan's seat", arch: "Davorin's seat" }
@@ -21,10 +23,19 @@ export function SeatSeg({ seat, pick, needs, drafts, stats, phone = false }: {
   seat: Seat; pick: (s: Seat) => void; needs: SeatNumbers; drafts: SeatNumbers
   stats: Record<Seat, { replied: number | null; today: DayOut | undefined }>; phone?: boolean
 }) {
+  const level = useMotionLevel()
+  const track = useRef<HTMLDivElement>(null)
+  const previous = useRef(seat)
+  useLayoutEffect(() => {
+    if (previous.current !== seat && level !== 'off' && track.current) {
+      track.current.classList.remove('dx-thumb-jump'); void track.current.offsetWidth; track.current.classList.add('dx-thumb-jump')
+    }
+    previous.current = seat
+  }, [seat, level])
   const i = Math.max(0, SEATS.indexOf(seat))
   return (
-    <div className={`dx-seats${phone ? ' dx-seats-phone' : ''}`} role="tablist" aria-label="Seats" style={{ '--i': i } as CSSProperties}>
-      <span className="dx-seats-thumb" aria-hidden="true" />
+    <div ref={track} className={`dx-seats${phone ? ' dx-seats-phone' : ''}`} role="tablist" aria-label="Seats" style={{ '--i': i } as CSSProperties}>
+      <span className="dx-seats-thumb" aria-hidden="true"><span /></span>
       {SEATS.map(s => {
         const n = needs[s]
         const tip = seatReadout(s, n, drafts[s], stats[s].replied, stats[s].today)
@@ -32,7 +43,7 @@ export function SeatSeg({ seat, pick, needs, drafts, stats, phone = false }: {
           <button key={s} type="button" role="tab" aria-selected={s === seat} data-pick={s} className={`dm-sq dx-seat${s === seat ? ' dm-on' : ''}`}
             title={tip} aria-label={`${SEAT_NAME[s]}: ${tip}`} onClick={() => pick(s)}>
             <b>{SEAT_NAME[s]}</b>
-            <em className={`dx-badge ${n == null ? 'dx-badge-unk' : n ? 'dx-badge-hot' : 'dx-badge-zero'}`} aria-hidden="true">{n ?? '?'}</em>
+            <em className={`dx-badge ${n == null ? 'dx-badge-unk' : n ? 'dx-badge-hot' : 'dx-badge-zero'}`} aria-hidden="true">{n == null ? '?' : <Count value={n} duration={480} />}</em>
           </button>
         )
       })}

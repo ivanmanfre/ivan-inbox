@@ -65,6 +65,11 @@ export const currentDensity = (): Density => (document.documentElement.dataset.d
 
 export function useDensity(): [Density, (d: Density) => void] {
   const [d, setD] = useState<Density>(currentDensity)
+  useEffect(() => {
+    const sync = () => setD(currentDensity())
+    window.addEventListener('brief:view', sync)
+    return () => window.removeEventListener('brief:view', sync)
+  }, [])
   const set = useCallback((next: Density) => {
     // Written explicitly (never removed): main.tsx reads an absent key as
     // "compact on desktop", so Comfortable must be stored to stick.
@@ -94,4 +99,16 @@ export function useStoredTheme(): ['light' | 'dark', () => void] {
     setT('dark')
   }, [])
   return [t, reset]
+}
+
+export type NativeMotion = 'full' | 'subtle' | 'off'
+export function useNativeMotion(): NativeMotion {
+  const read = (): NativeMotion => document.documentElement.dataset.motion === 'off' ? 'off' : document.documentElement.dataset.motion === 'subtle' ? 'subtle' : 'full'
+  const [motion, setMotion] = useState<NativeMotion>(read)
+  useEffect(() => {
+    const sync = () => setMotion(read())
+    window.addEventListener('brief:view', sync)
+    return () => window.removeEventListener('brief:view', sync)
+  }, [])
+  return motion
 }

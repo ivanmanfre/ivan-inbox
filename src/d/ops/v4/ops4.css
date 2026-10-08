@@ -197,3 +197,10 @@
 .op4-phone .op4-batch{padding:4px}
 .op4-phone .op4-batch .op-qbk{width:196px}
 html[data-skin-on~="ops"] .d-phone .d-ptools [data-op4-keys]{height:44px;min-height:44px;width:44px;min-width:44px}
+
+/* C2: let the editor use the available detail height instead of a short floating card. */
+.op4 .op4-detail > .op-card{min-height:100%}
+.op4 .op-card .op-cb{flex:1;align-items:stretch}
+.op4 .op-card .op-rep .op-tape{flex:1;display:flex;flex-direction:column}
+.op4 .op-card .op-rep .op-tape textarea{flex:1;min-height:180px}
+.op4-phone .op4-detail > .op-card{min-height:0}

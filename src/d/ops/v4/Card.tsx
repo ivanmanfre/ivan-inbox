@@ -46,7 +46,8 @@ export function CardV4({ d, refresh, feed, held, onGateResult, layout, pos, wait
   const initials = who.split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase()
   const excerptKey = st.isOutbound ? 'post_excerpt' : st.isComment ? 'comment_text' : null
   const excerpt = excerptKey ? String(d.context?.[excerptKey] ?? '') : ''
-  const context = excerptKey && excerpt && !/[.!?…]$/.test(excerpt.trim()) ? { ...d, context: { ...d.context, [excerptKey]: excerpt.trimEnd() + '…' } } : d
+  const displayDraft = /(?:volume lane|\bmode\s*\d+|contentless)/i.test(String(d.context?.target_headline ?? '')) ? { ...d, context: { ...d.context, target_headline: '' } } : d
+  const context = excerptKey && excerpt && !/[.!?…]$/.test(excerpt.trim()) ? { ...displayDraft, context: { ...displayDraft.context, [excerptKey]: excerpt.trimEnd() + '…' } } : displayDraft
   const contextLabel = st.isOutbound ? 'Their post' : st.isComment ? 'Their comment' : d.kind === 'newsjack' ? 'The story' : d.kind === 'weekly_report' ? 'The week' : d.kind === 'booking' || d.kind === 'precall_email' ? 'The call' : 'The person'
   const left = st.left
   const cap = captions(d, st)
@@ -74,7 +75,6 @@ export function CardV4({ d, refresh, feed, held, onGateResult, layout, pos, wait
         <div className={`op-ctx op4-context${whole ? ' op4-whole' : ''}`} data-op-block>
           <div className="op4-label">{contextLabel}</div>
           <CardContext d={context} liked={st.liked} needsDavor={st.needsDavor} />
-          {excerpt && d.context?.post_url && <a className="op-lk op4-afterquote" href={String(d.context.post_url)} target="_blank" rel="noreferrer">open the post ↗</a>}
           {layout === 'phone' && excerpt && <button className="d-btn" type="button" aria-expanded={whole} onClick={() => setWhole(w => !w)}>{whole ? 'Show less' : 'Show the whole post'}</button>}
           <ArchWhy st={st} />
         </div>

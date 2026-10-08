@@ -154,7 +154,7 @@ export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks:
           {expanded && <IdeaDetail it={it} onDone={done} compact />}
         </div>
         <div className="cv2-idea-acts">
-          {it.generating ? <a className="cv2-k" href={dHash('content', 'now', { lane: it.lane })}>Open in Review →</a>
+          {it.generating ? <a className="cv2-k" href={dHash('content', 'now', { lane: it.lane, idea: it.id })}>Open in Review →</a>
             : it.saved ? <button type="button" className="cv2-k" onClick={() => open(it.id)}>Open saved idea</button>
               : !(expanded && !it.outlier) && <button type="button" className="cv2-k cv2-k-p" data-verb="idea-use" disabled={!!busy || !!it.ivan && !ideaDecidable(it.ivan)} onClick={() => void run(it, true)}>{busy === it.id ? 'Working…' : it.outlier ? 'Save idea' : 'Generate draft'}</button>}
           {!it.saved && !it.generating && <Menu label="More for this idea" verb="idea-more" items={[{ key: 'skip', label: it.outlier ? 'Hide on this device' : 'Archive idea', run: () => void run(it, false) }]} />}

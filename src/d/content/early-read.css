@@ -19,3 +19,8 @@
 .cn-pattern-check>b{font:500 12px var(--m)}
 .cn-pattern-check p{margin:6px 0;color:var(--t2);overflow-wrap:anywhere}
 @media(max-width:599px){.cn-pattern-groups{grid-template-columns:minmax(0,1fr);gap:16px}}
+
+/* C2: desktop Ideas metadata uses the same 20px read chip as Review. Touch remains 44px. */
+:root[data-skin-on~='content.ideas'] .d-desktop .cv2-idea .cn-early-chip{min-height:20px;height:20px;padding:0 8px;font:500 11px/18px var(--f);border-radius:5px;white-space:nowrap}
+:root[data-skin-on~='content'] .cn.cv2-frame{position:relative}
+:root[data-skin-on~='content.review'] .cv2-grid{position:relative}

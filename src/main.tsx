@@ -27,7 +27,7 @@ if (localStorage.getItem('inbox-theme') === 'light') {
 // on the phone: the compact selector outranks the phone @media block in
 // tokens.css and would shrink the 16px phone body.
 const density = localStorage.getItem('inbox-density')
-if (density === 'compact' || (density === null && window.matchMedia('(min-width:768px)').matches)) {
+if (!(isBriefNative() && document.documentElement.dataset.density) && (density === 'compact' || (density === null && window.matchMedia('(min-width:768px)').matches))) {
   document.documentElement.dataset.density = 'compact'
 }
 

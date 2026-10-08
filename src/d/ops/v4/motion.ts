@@ -70,6 +70,7 @@ export function useOpsMotion(root: RefObject<HTMLDivElement | null>, card: strin
     const old = previous.current
     const animations: (Animation | null)[] = []
     const ghosts: HTMLElement[] = []
+    if (!old && level !== 'off') el.querySelectorAll<HTMLElement>('.d-answer,.op4-queue,.op4-detail').forEach((block, i) => animations.push(animateOps(block, [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], 380, 40 + i * 18)))
     if (old && level !== 'off') {
       if (old.card !== card && pane) {
         if (old.copy && typeof pane.animate === 'function') {

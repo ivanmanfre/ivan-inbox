@@ -8,7 +8,7 @@ import { dmNumbers, type FrameCounts } from '../counts/useFrameCounts'
 import type { Layout } from '../places'
 import { SEATS, SEAT_NAME, seatOf, type Seat } from '../seats'
 import { usePull } from './usePull'
-import { useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Empty, Failed, Skeleton } from '../ui/states'
 import { Bar, BulkBar, Folders, Headline, Health, noDraftLine } from './Chrome'
 import { ColumnBody, type Mode } from './Column'
@@ -23,6 +23,7 @@ import type { RowCtx } from './threadRows'
 import type { DmsData } from './useDmsData'
 import type { DmVerbs } from './verbs'
 import type { WarmVerbs } from './warmVerbs'
+import { SearchV4 } from './v4/SearchV4'
 import { ListHead, SeatSeg } from './v4/Chrome'
 import { DesktopDmsV4, ListScroll, PhoneDmsV4 } from './v4/Layout'
 
@@ -82,16 +83,19 @@ function squareStats(m: PageModel): Record<Seat, SquareStat> {
 }
 
 export function DesktopDms({ m }: { m: PageModel }) {
+  const [listOpen, setListOpen] = useState(false)
+  useEffect(() => setListOpen(false), [m.threadId])
   const s = m.seat
   if (m.v4) {
     const bulk = m.checked.size > 0
     const sq = squareStats(m)
-    return <DesktopDmsV4 seat={s} replied={sq[s].replied} today={sq[s].today}
+    return <DesktopDmsV4 seat={s} listOpen={listOpen} closeList={() => setListOpen(false)} replied={sq[s].replied} today={sq[s].today}
       headline={<Headline mode={m.mode} views={m.views} counts={m.counts} noSub tools={<>
+        <button type="button" className="d-btn dx-list-trigger" aria-label="Conversations" title="Conversations" aria-haspopup="dialog" aria-expanded={listOpen} onClick={() => setListOpen(v => !v)}>Conversations ▾</button>
         <SeatSeg seat={s} pick={m.setSeat} needs={dmNumbers(m.counts, 'needs')} drafts={dmNumbers(m.counts, 'drafts')} stats={sq} />
         <span className="dx-grow" />
         {noDraftLine(m.views) && <span className="dx-nodraft">{noDraftLine(m.views)}</span>}
-        <SearchField ref={m.searchRef} q={m.q} setQ={m.setQ} reach={m.data.threads.length || null} />
+        <SearchV4 ref={m.searchRef} q={m.q} setQ={m.setQ} reach={m.data.threads.length || null} />
       </>} />}
       head={bulk
         ? <BulkBar checked={m.checked} byId={m.byId} clear={() => m.setChecked(new Set())} onDiscard={ts => { void m.verbs.bulkDiscard(ts, 'The selected drafts.').then(() => m.setChecked(new Set())) }} />

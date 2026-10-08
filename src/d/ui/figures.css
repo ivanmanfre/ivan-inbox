@@ -8,8 +8,8 @@
 .ols-skeleton{display:inline-block;width:2.2em;height:.7em;min-width:24px;vertical-align:baseline;border-radius:4px;background:var(--line2);position:relative;overflow:hidden}
 .ols-skeleton::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,var(--p1),transparent);animation:ols-shimmer 1.6s ease-in-out infinite}
 .ols-count{font-variant-numeric:tabular-nums}.ols-digit{position:relative;display:inline-block;overflow:hidden;vertical-align:bottom}
-.ols-digit-in{display:inline-block;animation:ols-digit-in 380ms var(--ds-e-panel)}
-.ols-digit-out{position:absolute;inset:0;animation:ols-digit-out 380ms var(--ds-e-panel) forwards}
+.ols-digit-in{display:inline-block;animation:ols-digit-in var(--count-duration,380ms) var(--count-ease,var(--ds-e-panel))}
+.ols-digit-out{position:absolute;inset:0;animation:ols-digit-out var(--count-duration,380ms) var(--count-ease,var(--ds-e-panel)) forwards}
 .ols-count-down{--ols-dir:-1}.ols-reveal[data-motion=off] *{animation:none!important}.ols-reveal[data-motion=subtle] .ols-skeleton::after{animation:none}
 @keyframes ols-digit-in{from{transform:translateY(calc(var(--ols-dir,1)*.6em));opacity:0}}
 @keyframes ols-digit-out{to{transform:translateY(calc(var(--ols-dir,1)*-.6em));opacity:0}}

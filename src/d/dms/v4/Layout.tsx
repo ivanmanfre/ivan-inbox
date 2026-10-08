@@ -2,7 +2,7 @@
 // list 320 (header, health, body, footer) and the thread. Phone: the same list in one column; the
 // thread keeps the full-page takeover. The list body and the pane arrive as nodes built by the legacy
 // layout functions (Layouts.tsx), so every handler is the one the legacy layout uses.
-import { useRef, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { SEAT_NAME, type Seat, type SeatNumbers } from '../../seats'
 import type { DayOut } from '../model'
 import { FooterStat } from './Chrome'
@@ -15,15 +15,21 @@ export function ListScroll({ children }: { children: ReactNode }) {
   return <div className="dm-colscroll dx-scroll" ref={ref}>{children}</div>
 }
 
-export function DesktopDmsV4({ seat, headline, head, health, list, pane, replied, today }: {
+export function DesktopDmsV4({ seat, headline, head, health, list, pane, replied, today, listOpen, closeList }: {
   seat: Seat; headline: ReactNode; head: ReactNode; health: ReactNode; list: ReactNode; pane: ReactNode
-  replied: number | null; today: DayOut | undefined
+  replied: number | null; today: DayOut | undefined; listOpen: boolean; closeList: () => void
 }) {
+  useEffect(() => {
+    if (!listOpen) return
+    const outside = (e: PointerEvent) => { if (!(e.target as Element)?.closest('.dx-list,.dx-list-trigger')) closeList() }
+    document.addEventListener('pointerdown', outside)
+    return () => document.removeEventListener('pointerdown', outside)
+  }, [listOpen, closeList])
   return (
     <div className="dm-page dm-desk dx-desk" data-v4-guard="">
       {headline}
       <div className="dm-grid4 dx-cols">
-        <section className="dm-col dm-list dx-list" aria-label={`${SEAT_NAME[seat]}'s conversations`} data-seat={seat}>
+        <section className="dm-col dm-list dx-list" data-list-open={listOpen || undefined} aria-label={`${SEAT_NAME[seat]}'s conversations`} data-seat={seat}>
           {head}
           {health}
           {list}

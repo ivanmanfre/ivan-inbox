@@ -9,7 +9,7 @@ import { outboundFeedId, pendingOps, type OpsDraft } from '../../../lib/ops'
 import { useFrameCounts } from '../../counts/useFrameCounts'
 import type { PlaceProps } from '../../places'
 import { dHash } from '../../route'
-import { SEATS } from '../../seats'
+import { SEATS, seatOf } from '../../seats'
 import { useReportFailed } from '../../shell/health'
 import { AnswerRow, N } from '../../ui/AnswerRow'
 import { useDConfirmOpen } from '../../ui/confirm'
@@ -115,7 +115,7 @@ export function OpsPageV4({ layout, route, navigate }: PlaceProps) {
   useOpsMotion(root, sel?.id ?? reaction?.id ?? '', lane)
   const w = board.waiting, otherN = board.other.reduce((a, o) => a + o.waiting, 0)
   const nj = board.flat.find(d => d.kind === 'newsjack' && timeLeft(d.context?.expires_at) !== 'expired')
-  const sub = nj ? `A ${positionOf(board, nj).lane} newsjack has ${timeLeft(nj.context?.expires_at)}.` : ''
+  const sub = nj ? `${seatOf(nj.client_id) === 'risedtc' ? "Mattan’s" : seatOf(nj.client_id) === 'arch' ? "Davorin’s" : "Your"} newsjack has ${timeLeft(nj.context?.expires_at)}.` : ''
   const answer = <AnswerRow title={<>Waiting on you: <N v={w.ivan} /> yours, <N v={w.risedtc} /> Rise, <N v={w.arch} /> Arch{otherN > 0 && <>, <N v={otherN} /> in other lanes</>}.</>}
     sub={firstRead ? 'Reading the queue…' : sub} tools={<button type="button" className="d-ib" data-op4-keys aria-label="Ops keys (?)" onClick={() => setKeySheet(true)}>?</button>} />
   const checked = ops.loadedAt ? warsawHm(ops.loadedAt) : '…'

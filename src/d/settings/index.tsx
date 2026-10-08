@@ -15,7 +15,7 @@ import { Key } from '../ui/Key'
 import { Failed, Skeleton } from '../ui/states'
 import { useRead, useRetryRead } from '../lanes/useRead'
 import { warsawDm } from '../ui/time'
-import { useDensity, usePush, useSound, useStoredTheme } from './prefs'
+import { useDensity, useNativeMotion, usePush, useSound, useStoredTheme } from './prefs'
 import { isBriefNative } from '../../ds/skin'
 import { fetchBoards, fetchDevices, fetchMoneyPlate } from './reads'
 import { MoneyCells, Pair } from './parts'
@@ -38,6 +38,7 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
   const push = usePush()
   const [sound, setSound] = useSound()
   const [density, setDensity] = useDensity()
+  const nativeMotion = useNativeMotion()
   const [theme, resetTheme] = useStoredTheme()
   const brief = isBriefNative()
   const confirm = useDConfirm()
@@ -122,7 +123,7 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
     </Plate>
   )
   if (v4) {
-    const native = typeof window !== 'undefined' ? (window as unknown as { __brief?: { setView?: (v: { density: string }) => void } }).__brief : undefined
+    const native = typeof window !== 'undefined' ? (window as unknown as { __brief?: { setView?: (v: { density?: string; motion?: string }) => void } }).__brief : undefined
     const pickDensity = (d: typeof density) => { setDensity(d); native?.setView?.({ density: d }) }
     return <SettingsV4 head={<AnswerRow title={title} sub={sub} />} build={<>Build {typeof __BUILD__ === 'undefined' ? 'unknown' : __BUILD__}</>} groups={<>
       <Group label="Notifications" id="notifications">
@@ -141,6 +142,9 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
         <Row4 title="Density">
           <Pair name="Density" value={density} options={[{ id: 'comfortable', label: 'Comfortable', verb: 'density-comfortable' }, { id: 'compact', label: 'Compact', verb: 'density-compact' }]} onPick={pickDensity} />
         </Row4>
+        {brief && native?.setView && <Row4 title="Motion">
+          <Pair name="Motion" value={nativeMotion} options={[{ id: 'full', label: 'Full', verb: 'motion-full' }, { id: 'subtle', label: 'Subtle', verb: 'motion-subtle' }, { id: 'off', label: 'Off', verb: 'motion-off' }]} onPick={motion => native.setView?.({ motion })} />
+        </Row4>}
         <Row4 title="Brief 4 layouts" sub="Off keeps today's look on this device. The page reloads.">
           <Pair name="Brief 4 layouts" value={skinOnHere() ? 'on' : 'off'} options={[{ id: 'on', label: 'On', verb: 'skin-on' }, { id: 'off', label: 'Off', verb: 'skin-off' }]} onPick={v => setSkinHere(v === 'on')} />
         </Row4>
