@@ -1,16 +1,18 @@
 // A seat column (desktop) or the one seat list (phone). Sections in the mock's order.
+import { useMemo } from 'react'
 import { eventTime, internalHoldSummary, isReplyRetryExhausted, threadBucket, type Thread } from '../../lib/inbox'
 import { cameBackLine, firstComment, sentLine, type CameBackCard } from '../../wb/dms/cameBackData'
 import { agentCardsWithoutWarmCards, type ConversationAgentCard } from '../../wb/dms/conversationAgentData'
 import { WARM_GROUPS, dm1Deliverable, evidenceLine, inviteLine, isWaiting, primaryAction, warmGroup, type WarmCard } from '../../wb/dms/warmSignalsData'
 import { type Seat } from '../seats'
-import { ago, needsCount, type SeatView } from './model'
+import { ago, needsCount, seatThreads, type SeatView } from './model'
 import { laterItems } from './later'
 import { Btn } from '../ui/Key'
 import { Quiet, Row, Sec } from './Row'
 import { Section, useFolds, type Folds } from './Section'
 import { AnyRow, DraftRow, LaterRow, NoDraftRow, SpamRow, ThrownRow, dayMonth, type RowCtx } from './threadRows'
 import { AllConvos } from './AllConvos'
+import { SendLog } from './SendLog'
 import { signalItems } from './signals'
 import type { AgentSide, Side } from './useDmsData'
 import { noteOf, type WarmVerbs } from './warmVerbs'
@@ -47,6 +49,8 @@ const OWNER: Record<Seat, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Dav
 
 export function ColumnBody(p: ColumnProps) {
   const { seat, view: v, mode, c } = p
+  // The send log covers every thread of the seat, outbound-only ones too (All conversations does not).
+  const seatSent = useMemo(() => seatThreads([...p.byId.values()], seat), [p.byId, seat])
   const f = useFolds()
   // One remembered fold per seat and section, so folding Mattan's Discarded leaves yours alone.
   const folds: Folds = { isOpen: (id, def) => f.isOpen(`${seat}:${id}`, def), toggle: (id, def) => f.toggle(`${seat}:${id}`, def) }
@@ -138,6 +142,7 @@ export function ColumnBody(p: ColumnProps) {
       {v.thrown.length > 0 && <Section id="thrown" foldable defaultOpen={false} label="Discarded, 3 days" n={v.thrown.length} folds={folds}
         rows={v.thrown.map(t => <ThrownRow key={t.prospect_id} t={t} c={c} />)} />}
       <AllConvos threads={v.all} c={c} folds={folds} dated={datedBy} />
+      <SendLog threads={seatSent} c={c} folds={folds} v4 />
     </>
   }
   return <>
@@ -180,6 +185,7 @@ export function ColumnBody(p: ColumnProps) {
       rows={v.thrown.map(t => <ThrownRow key={t.prospect_id} t={t} c={c} />)} />}
 
     <AllConvos threads={v.all} c={c} folds={folds} dated={datedBy} />
+    <SendLog threads={seatSent} c={c} folds={folds} />
   </>
 }
 

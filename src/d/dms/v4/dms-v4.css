@@ -441,3 +441,8 @@ html.brief-motion-off .dx-thumb-jump .dx-seats-thumb > span,html.brief-motion-of
 :root[data-skin-on~='dms'] .dx-pane.dm-pane-phone .dx-keys .dm-keys-s{flex-wrap:nowrap;justify-content:space-between;gap:2px}
 :root[data-skin-on~='dms'] .dx-pane.dm-pane-phone .dx-keys .dm-keys-s>*{white-space:nowrap}
 :root[data-skin-on~='dms'] .dx-pane.dm-pane-phone .dx-keys>:last-child:not(.dm-keys-s){width:100%;flex:none}
+/* All sends: tag filter chips above the log. */
+.dm-sends-tags{display:flex;flex-wrap:wrap;gap:4px;padding:4px 8px 8px}
+.dm-sends-tags button{font:500 12px/22px var(--f);padding:0 8px;border-radius:999px;background:var(--ds-well-fill,rgba(0,0,0,.04));color:var(--t2);border:0;cursor:pointer}
+.dm-sends-tags button[aria-pressed=true]{background:var(--ds-fill-tab,#fff);color:var(--t1);box-shadow:var(--ds-hi,0 0 0 1px rgba(0,0,0,.08))}
+.dm-sends-tags b{font-weight:600;margin-left:2px;color:var(--t3)}
