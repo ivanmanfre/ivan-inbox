@@ -9,7 +9,7 @@ import { draftExplanationFreshness, normalizeDraftExplanation } from '../../lib/
 export function Explain({ messageId, messageText, editedText = messageText, evidence, unavailable, onRetry, by, inset, v4 = false }: {
   messageId: string; messageText: string; editedText?: string; evidence?: unknown; unavailable?: boolean
   onRetry?: () => void; by?: string; inset?: boolean
-  /** Brief 4: the rationale folds behind "Why this draft"; Limits, Still unclear and freshness stay visible. */
+  /** Brief 4: the rationale folds behind "Why this draft"; Limits, Still unclear and an edited-text warning stay visible. */
   v4?: boolean
 }) {
   // Above every return (09-09 rule): the v4 disclosure (a port of Brief 3.0's injected toggle).
@@ -31,7 +31,7 @@ export function Explain({ messageId, messageText, editedText = messageText, evid
     const rationale = Boolean(x.theyMean || x.move)
     const facts = x.facts.length > 0 || x.sources.length > 0
     const freshLine = !brief ? null : fresh === 'edited' ? <p className="dm-meta" role="status">The text has changed. This explanation describes the generated version.</p>
-      : fresh === 'unknown' ? <p className="dm-meta">Original text was not saved, so later edits cannot be checked.</p> : null
+      : fresh === 'unknown' && open ? <p className="dm-meta">Original text was not saved, so later edits cannot be checked.</p> : null
     // "No explanation was saved" collapses to nothing (3.0's brief-empty-explanation); the node stays.
     if (!brief && !facts) return <section className={`dm-exp dx-exp${inset ? ' dm-exp-in' : ''}`} data-draft-explanation={messageId} aria-label={title} hidden><p>No explanation was saved for this draft.</p></section>
     return (
