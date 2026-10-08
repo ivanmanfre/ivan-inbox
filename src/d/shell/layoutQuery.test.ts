@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest'
 import { __resetSkinForTests } from '../../ds/skin'
-import { DESK_MQ, DESK_MQ_SHELL, deskQuery } from './layoutQuery'
+import { DESK_MQ, DESK_MQ_SHELL, deskQuery, initialSkinLayout } from './layoutQuery'
 
 // A tiny evaluator for the two predicates, so the matrix is checked as numbers.
 function matches(q: string, w: number, pointer: 'fine' | 'coarse'): boolean {
@@ -28,4 +28,12 @@ describe('the desktop predicate', () => {
     expect(matches(DESK_MQ_SHELL, 390, 'fine')).toBe(false)
     expect(matches(DESK_MQ_SHELL, 390, 'coarse')).toBe(false)
   })
+})
+
+it('cold native fine-pointer canvases start desktop; real touch phones stay phone', () => {
+  for (const w of [764, 808, 936, 964]) {
+    expect(initialSkinLayout(matches(DESK_MQ, w, 'fine'), matches('(min-width: 720px) and (pointer: fine)', w, 'fine'))).toBe('desktop')
+    expect(initialSkinLayout(matches(DESK_MQ, w, 'coarse'), matches('(min-width: 720px) and (pointer: fine)', w, 'coarse'))).toBe('phone')
+  }
+  expect(initialSkinLayout(false, false)).toBe('phone')
 })

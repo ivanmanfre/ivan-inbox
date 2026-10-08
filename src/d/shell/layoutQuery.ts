@@ -15,3 +15,9 @@ export function isDeskNow(): boolean {
   if (typeof window === 'undefined' || !window.matchMedia) return true
   return window.matchMedia(deskQuery()).matches
 }
+
+/** Native fine-pointer canvases use desktop defaults before the shell flag is resolved.
+ * Touch phones still start on PHONE, even when their user agent identifies Brief. */
+export function initialSkinLayout(legacyDesktop: boolean, nativeFineDesktop: boolean): 'desktop' | 'phone' {
+  return legacyDesktop || nativeFineDesktop ? 'desktop' : 'phone'
+}

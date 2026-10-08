@@ -11,8 +11,8 @@ import App from './App.tsx'
 // and the whole design system into the entry chunk ahead of React's mount.
 import { adoptPrefetchedInbox, adoptPrefetchedThread } from './lib/handoff'
 import { armUpdateReload } from './lib/updateReload'
-import { applySkin, skinHas } from './ds/skin'
-import { DESK_MQ, DESK_MQ_SHELL } from './d/shell/layoutQuery'
+import { applySkin, skinHas, isBriefNative } from './ds/skin'
+import { DESK_MQ, DESK_MQ_SHELL, initialSkinLayout } from './d/shell/layoutQuery'
 
 if (localStorage.getItem('inbox-theme') === 'light') {
   document.documentElement.dataset.theme = 'light'
@@ -57,12 +57,12 @@ document.documentElement.dataset.frame =
   frame === 'a' || frame === 'b' || frame === 'c' ? frame : 'b'
 
 // Brief 4 design flag (src/ds/skin.ts): resolved here, before React mounts, so
-// a flagged section never flashes its old look. Defaults are empty, so with no
-// ?skin= / stored value nothing is written but html[data-layout]. The `shell`
+// a flagged section never flashes its old look. Brief desktop defaults are enabled;
+// web and phone defaults stay empty. The `shell`
 // section also widens the desktop frame to any fine-pointer window >= 720px
 // (SPEC-shell-spacing G7), so the layout is resolved twice when it is on.
 {
-  const desk = window.matchMedia(DESK_MQ).matches ? 'desktop' : 'phone'
+  const desk = initialSkinLayout(window.matchMedia(DESK_MQ).matches, isBriefNative() && window.matchMedia('(min-width: 720px) and (pointer: fine)').matches)
   applySkin(desk)
   if (desk === 'phone' && skinHas('shell') && window.matchMedia(DESK_MQ_SHELL).matches) applySkin('desktop')
 }
