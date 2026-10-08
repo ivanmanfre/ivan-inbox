@@ -27,10 +27,10 @@ describe('parseSkin', () => {
 })
 
 describe('resolveSkin', () => {
-  it('defaults enable verified Brief desktop and phone sections; plain web desktop stays empty', () => {
-    expect([...BRIEF_DESKTOP].sort()).toEqual([...SECTIONS].sort()); expect(WEB_DESKTOP).toEqual([]); expect([...PHONE].sort()).toEqual([...SECTIONS].sort())
+  it('defaults enable every verified section on Brief, web desktop and phone', () => {
+    expect([...BRIEF_DESKTOP].sort()).toEqual([...SECTIONS].sort()); expect([...WEB_DESKTOP].sort()).toEqual([...SECTIONS].sort()); expect([...PHONE].sort()).toEqual([...SECTIONS].sort())
     expect(resolveSkin({ ...base, briefNative: true }).set.size).toBe(17)
-    expect(resolveSkin(base).set.size).toBe(0)
+    expect(resolveSkin(base).set.size).toBe(17)
     expect(resolveSkin({ ...base, briefNative: true, layout: 'phone' }).set.size).toBe(17)
     expect(resolveSkin({ ...base, layout: 'phone' }).set.size).toBe(17)
     expect(resolveSkin({ ...base, layout: 'phone' }).from).toBe('default')
@@ -64,10 +64,10 @@ describe('applySkin (the live store)', () => {
   })
   afterEach(() => { __resetSkinForTests(); history.replaceState(null, '', '/') })
 
-  it('no flag writes no skin attribute, only the layout', () => {
+  it('no flag on web desktop writes the verified default (every section) and the layout', () => {
     applySkin('desktop')
-    expect(document.documentElement.dataset.skin).toBeUndefined()
-    expect(document.documentElement.dataset.skinOn).toBeUndefined()
+    expect(document.documentElement.dataset.skin).toBe('brief')
+    expect(document.documentElement.dataset.skinOn?.split(' ').sort()).toEqual([...WEB_DESKTOP].sort())
     expect(document.documentElement.dataset.layout).toBe('desktop')
   })
   it('a URL override is copied to the session, leaves the address, and survives hash navigation', () => {

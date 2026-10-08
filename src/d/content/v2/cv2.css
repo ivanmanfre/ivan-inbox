@@ -536,3 +536,9 @@
 /* a cell that also carries "+N more" / "Sat/Sun": a shorter picture, so the chips never sit on the card */
 :root[data-skin-on~='content.calendar'] .cv2-cell:has(.cv2-cellk) .cv2-cc-pic{height:36px}
 :root[data-skin-on~='content.calendar'] .cv2-cell:has(.cv2-cellk) .cv2-cc-text .cv2-cc-t{-webkit-line-clamp:3;max-height:60px}
+
+/* Calendar key (10-08): what the dots mean, next to the week line. */
+:root[data-skin-on~='content.calendar'] .cv2-key{display:inline-flex;gap:12px;align-items:center;margin-right:16px;font-size:12px;color:var(--ds-text-3)}
+:root[data-skin-on~='content.calendar'] .cv2-key>span{display:inline-flex;gap:5px;align-items:center;white-space:nowrap}
+:root[data-skin-on~='content.calendar'] .cv2-key b{font-weight:600;color:var(--ds-accent-line)}
+:root[data-skin-on~='content.calendar'] .d-main:is([data-tier=t3],[data-tier=t4]) .cv2-key{display:none}

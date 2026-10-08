@@ -10,7 +10,7 @@ import { warsawDm, warsawDow, warsawHm } from '../ui/time'
 import { BellButton } from './Bell'
 import { useFrame } from './frame'
 import { useNavModel } from './navModel'
-import { Brand, MeFooter, NavCount, NavLineView, SeatHead, WorkflowsKey } from './Side'
+import { Brand, MeFooter, NavCount, NavLineView, SeatHead } from './Side'
 
 // The phone frame (D pshell.js): top bar (panel key, place + Warsaw time,
 // bell), the dock (five places + the lime Claude key), and the left panel as a
@@ -98,7 +98,6 @@ export function PhonePanel({ onClose }: { onClose: () => void }) {
         </nav>
         <nav className="d-nav d-low">
           <button type="button" onClick={() => { onClose(); f.setBellOpen(true) }}><DIcon name="bell" /><span>Alerts</span></button>
-          <WorkflowsKey onOpen={onClose} />
           <div className="d-navi">
             <a href={dHash('settings')} onClick={go} className={f.route.place === 'settings' ? 'd-on' : undefined}>
               <DIcon name="settings" /><span>Settings</span>

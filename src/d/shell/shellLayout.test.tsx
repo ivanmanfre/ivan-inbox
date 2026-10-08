@@ -50,6 +50,7 @@ describe('Brief sidebar contract: the selectors bridge.js scrapes stay rendered 
     for (const place of ['home', 'dms', 'content', 'lanes', 'ops', 'sales', 'claude']) {
       expect(container.querySelector(`.d-nav a[href="#exp/d/${place}"]`), place).toBeTruthy()
     }
-    expect(container.querySelector('[data-verb="workflows"]')).toBeTruthy()
+    // Hidden from view (Ivan 10-08) but still in the DOM for Brief's bridge.
+    expect(container.querySelector('[data-verb="workflows"]')?.hasAttribute('hidden')).toBe(true)
   })
 })

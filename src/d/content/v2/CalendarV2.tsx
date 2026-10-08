@@ -103,7 +103,7 @@ export function CalCard({ e, a, wide = false }: { e: Entry; a: CardActs; wide?: 
         ) : e.dot === 'posted' && wide ? <span className="cv2-cc-pic cv2-cc-nopic"><Pill tone="posted">{dotText(e)}</Pill></span> : null}
         <span className="cv2-cc-t">{hook}</span>
         <span className="cv2-cc-m">
-          {!(!e.thumb && e.dot === 'posted' && !wide) && <span>{timeLine(it.postedAt ?? it.at, e.lane).replace(' ', ' · ')}</span>}
+          {!(!e.thumb && e.dot === 'posted' && !wide) && <span title={timeLine(it.postedAt ?? it.at, e.lane).replace(' ', ' · ')}>{warsawHm(it.postedAt ?? it.at)}</span>}
           {e.lm && <em>LM</em>}{e.brain && <em>Brain</em>}
           {!e.thumb && e.dot === 'posted' && !wide ? <Pill tone="posted">{dotText(e)}</Pill> : <i className={`cv2-dot cv2-dot-${e.dot}`} title={dotText(e)} aria-hidden="true" />}
         </span>
@@ -123,17 +123,19 @@ export function CoverageBar({ cov, lanes, loaded, phone = false }: { cov: Covera
         const s = cov.seats[l]
         const ok = s.set >= s.target
         // A seat still reading has no coverage yet: never "0/3 · 3 gaps" off an empty list.
-        if (!loaded(l)) return <span key={l} className="cv2-cov-s"><SeatAv lane={l} /><span className="cv2-pill cv2-pill-neutral cv2-cov-p">…</span></span>
+        if (!loaded(l)) return <span key={l} className="cv2-cov-s"><span className="cv2-pill cv2-pill-neutral cv2-cov-p"><span>{LANE_NAME[l]} …</span></span></span>
         return (
           <span key={l} className="cv2-cov-s" title={`${LANE_NAME[l]}: ${s.set} set to go out Mon-Fri next week (target ${s.target})`}>
-            <SeatAv lane={l} />
             <span key={`${ok}`} className={`cv2-pill cv2-pill-${ok ? 'ok' : 'warn'} cv2-cov-p`}>
-              <b className="cv2-roll" key={s.set}>{s.set}</b>/{s.target}{ok ? ' ✓' : ` · ${s.short} gap${s.short === 1 ? '' : 's'}`}
+              <span>{LANE_NAME[l]} <b className="cv2-roll" key={s.set}>{s.set}</b> of {s.target}{ok ? ' ✓' : ` · ${s.short} to fill`}</span>
             </span>
           </span>
         )
       })}
-      {!phone && <><span className="cv2-grow" /><span className="cv2-dim">This week: {cov.thisWeek.set} set, {cov.thisWeek.posted} posted</span></>}
+      {!phone && <><span className="cv2-grow" /><span className="cv2-key" aria-label="Key">
+        <span><i className="cv2-dot cv2-dot-set" />Scheduled</span><span><i className="cv2-dot cv2-dot-review" />In review</span>
+        <span><i className="cv2-dot cv2-dot-planned" />Not scheduled</span><span><b>✓</b> Posted</span></span>
+        {lanes.every(loaded) && <span className="cv2-dim">This week: {cov.thisWeek.posted} posted, {cov.thisWeek.set} to go</span>}</>}
     </div>
   )
 }
@@ -167,7 +169,7 @@ export function WallV2({ data, items, days, entryOf, cov, lanes, now, today, a, 
             <div className="cv2-plate">
               <SeatAv lane={lane} size={28} />
               <b>{LANE_NAME[lane]}</b>
-              <small>{s.error ? 'could not read' : !s.loadedAt ? '…' : `${scheduledIn(s.rows, lane, days)} / ${ten ? '2 wk' : 'wk'}`}</small>
+              <small>{s.error ? 'could not read' : !s.loadedAt ? '…' : `${scheduledIn(s.rows, lane, days)} ${ten ? 'in 2 weeks' : 'this week'}`}</small>
             </div>
             {days.map((d, i) => {
               const on = entryOf(lane, d.key)

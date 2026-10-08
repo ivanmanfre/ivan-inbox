@@ -33,7 +33,8 @@ export const FOUNDATION: readonly Section[] = ['tokens', 'type', 'motion', 'shel
 // Ivan handed the phone check over (WebKit 390px, every section, old vs new).
 export const BRIEF_DESKTOP: Section[] = ['tokens', 'type', 'motion', 'shell', 'home', 'dms', 'content',
   'content.brain', 'content.calendar', 'content.ideas', 'content.review', 'content.lms', 'lanes', 'ops', 'sales', 'claude', 'settings']
-export const WEB_DESKTOP: Section[] = []
+// Web desktop: on 2026-10-08 (Ivan, looking at Brief: "I could adapt the web version to this").
+export const WEB_DESKTOP: Section[] = [...BRIEF_DESKTOP]
 export const PHONE: Section[] = [...BRIEF_DESKTOP]
 
 export const SKIN_KEY = 'ds-skin'

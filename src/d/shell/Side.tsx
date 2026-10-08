@@ -73,13 +73,15 @@ export function MeFooter() {
   )
 }
 
-/** The Workflows key: opens automation health (not the bell), with today's corroborated number. */
-export function WorkflowsKey({ onOpen }: { onOpen?: () => void }) {
+/** The Workflows key: opens automation health (not the bell), with today's corroborated number.
+ *  Hidden on screen since 2026-10-08 (Ivan: "I don't need to see workflows"); the node stays in the
+ *  desktop DOM because Brief's native View menu and badge read it through bridge.js. */
+export function WorkflowsKey({ onOpen, hidden }: { onOpen?: () => void; hidden?: boolean }) {
   const c = useFrameCounts()
   const badge = workflowsBadge(c)
   const note = c.health.value ? healthNote(c.health.value) : ''
   return (
-    <button type="button" data-verb="workflows" title={note || undefined} onClick={() => { onOpen?.(); openWorkflows() }}>
+    <button type="button" data-verb="workflows" hidden={hidden} style={hidden ? { display: "none" } : undefined} title={note || undefined} onClick={() => { onOpen?.(); openWorkflows() }}>
       <DIcon name="workflows" /><span>Workflows</span>{badge && <em className="d-wfn">{badge}</em>}
     </button>
   )
@@ -151,7 +153,7 @@ export function Side({ min = false, setMin }: { min?: boolean; setMin?: (m: bool
         ))}
       </nav>
       <nav className="d-nav d-low">
-        <WorkflowsKey />
+        <WorkflowsKey hidden />
         {low.map(i => (
           <div key={i.id} className="d-navi">
             <a href={dHash(i.id)} className={f.route.place === i.id ? 'd-on' : undefined} aria-current={f.route.place === i.id ? 'page' : undefined} title={min ? i.label : undefined}>
