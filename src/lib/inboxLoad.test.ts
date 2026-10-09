@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { InboxMessage, Thread } from './inbox'
 
-const h = vi.hoisted(() => ({ probes: 0, order: [] as string[], slowEarly: false }))
+const h = vi.hoisted(() => ({ probes: 0, order: [] as string[], slowEarly: false, priorityRows: null as InboxMessage[] | null }))
 vi.mock('./inbox', async () => {
   const real = await vi.importActual<typeof import('./inbox')>('./inbox')
   const row = (id: string, pid: string): InboxMessage => ({ id, prospect_id: pid, direction: 'inbound', message_text: id, created_at: `2026-10-0${id.length}T00:00:00+00:00`, sent_at: null, prospect_name: pid } as InboxMessage)
@@ -19,15 +19,25 @@ vi.mock('./inbox', async () => {
       const early = onNewest?.([row('n', 'N')])
       if (!h.slowEarly && early) await early
       h.order.push('rest')
-      return [row('o', 'O'), row('n', 'N')]
+      return [...(h.priorityRows ?? []), row('o', 'O'), row('n', 'N')]
     },
   }
 })
-vi.mock('./supabase', () => ({ supabase: { rpc: async () => ({ data: null, error: { code: 'PGRST202' } }) } }))
+vi.mock('./supabase', () => ({ supabase: { rpc: async () => h.priorityRows ? { data: h.priorityRows, error: null } : { data: null, error: { code: 'PGRST202' } } } }))
 import { loadInbox } from './inboxLoad'
 
 describe('loadInbox early paint', () => {
-  beforeEach(() => { h.probes = 0; h.order = []; h.slowEarly = false })
+  beforeEach(() => { h.probes = 0; h.order = []; h.slowEarly = false; h.priorityRows = null })
+
+  it('flags priority rows first and still returns the complete history', async () => {
+    h.priorityRows = [{ id: 'p', prospect_id: 'P', direction: 'inbound', message_text: 'priority', created_at: '2026-10-09T00:00:00+00:00', sent_at: null, prospect_name: 'P' } as InboxMessage]
+    const seen: { ids: string[]; priority?: boolean }[] = []
+    const res = await loadInbox(0, (threads, priority) => seen.push({ ids: threads.map(t => t.prospect_id), priority }))
+    expect(seen).toEqual([{ ids: ['P'], priority: true }])
+    expect(res.threads.map(t => t.prospect_id).sort()).toEqual(['N', 'O', 'P'])
+    expect(h.order).toContain('page0')
+    expect(h.order).toContain('rest')
+  })
 
   it('delivers the newest page grouped, before the full list, with probes started up front', async () => {
     const seen: Thread[][] = []

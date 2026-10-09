@@ -80,6 +80,8 @@
 
 /* ---- tab bar (§1.3) ---- */
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .po-fade{height:calc(var(--po-chrome-bottom) + 8px);background:linear-gradient(rgba(250,249,247,0),rgba(250,249,247,.86) 55%);z-index:8}
+/* The safe-area floor masks and intercepts scrolled content below the floating dock. */
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .po-fade::after{content:'';position:absolute;left:0;right:0;bottom:0;height:var(--sab);background:var(--ds-canvas);pointer-events:auto}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .po-tabbar{
   position:fixed;left:12px;right:12px;bottom:var(--po-tab-bottom);height:var(--po-tab-h);z-index:9;display:flex;gap:8px;align-items:stretch;
   transition:transform var(--po-d-enter) var(--po-ease),opacity var(--po-d-enter) var(--po-ease);

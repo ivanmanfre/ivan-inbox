@@ -4,6 +4,7 @@ import {
   type InboxMessage, type Thread,
 } from '../../lib/inbox'
 import { seatFilter, seatOf, type Seat } from '../seats'
+import { currentUserId } from '../../lib/swr'
 import { fetchSolvedAt, owedIds, withSolved } from './solved'
 
 // ---------------------------------------------------------------------------
@@ -17,9 +18,11 @@ import { fetchSolvedAt, owedIds, withSolved } from './solved'
 // counted discarded drafts, drafts on threads he already answered, and every
 // draft older than the 14-day clock.
 //
-// WHAT THIS DOES. It reads only the prospects that COULD be owed today, then
-// runs TODAY'S rule on their complete threads, so the rule itself is not
-// re-written here and cannot drift from the list:
+// WHAT THIS DOES. The live path reads the parity-proven first-rows RPC, which
+// contains complete histories for every candidate across all seats. If that
+// additive RPC is absent, the original path finds prospects that COULD be
+// owed today and reads their complete threads. Both run TODAY'S rule, so the
+// rule itself is not re-written here and cannot drift from the list:
 //   1. candidates, per seat (client_id scoped), three small reads:
 //      · an unsent, unapproved outbound row created in the last 15 days
 //        (the 'approve' bucket only counts drafts inside 14 days),
@@ -43,6 +46,33 @@ const DAY = 86_400_000
 const WINDOW_DAYS = 15
 const PAGE = 1000
 const ID_CHUNK = 60
+
+// The parity-proven first-rows RPC contains complete histories for every
+// Needs-you candidate across seats. Share only concurrent reads; each later
+// refresh asks again, and a different signed-in user never joins this flight.
+const firstRowsInFlight = new Map<string, Promise<InboxMessage[] | null>>()
+
+async function firstRows(): Promise<InboxMessage[] | null> {
+  const user = currentUserId()
+  if (user) {
+    const running = firstRowsInFlight.get(user)
+    if (running) return running
+  }
+  const read = Promise.resolve(supabase.rpc('inbox_phone_first_rows_r2')).then(({ data, error }) => {
+    if (error?.code === 'PGRST202') return null
+    if (error) throw error
+    if (!Array.isArray(data)) throw new Error('Could not read DM count threads')
+    return data as InboxMessage[]
+  })
+  if (user) {
+    firstRowsInFlight.set(user, read)
+    void read.then(
+      () => { if (firstRowsInFlight.get(user) === read) firstRowsInFlight.delete(user) },
+      () => { if (firstRowsInFlight.get(user) === read) firstRowsInFlight.delete(user) },
+    )
+  }
+  return read
+}
 
 /** Pure: the per-seat numbers from a set of complete threads. */
 export function countDmSeat(threads: Thread[], seat: Seat, now: number = Date.now()): DmSeatCount {
@@ -113,14 +143,18 @@ async function threadRows(ids: string[]): Promise<InboxMessage[]> {
 }
 
 /** One seat's DM numbers, read live. Throws on a failed read; never guesses. */
-export async function fetchDmSeatCount(seat: Seat, now: number = Date.now()): Promise<DmSeatCount> {
-  const ids = await candidateIds(seat, now)
-  if (ids.length === 0) return { drafts: 0, needs: 0 }
-  const [rows, manualReplyIds] = await Promise.all([threadRows(ids), fetchManualReplyIds()])
+export async function fetchDmSeatCount(seat: Seat, now?: number): Promise<DmSeatCount> {
+  const at = now ?? Date.now()
+  // Explicit historical-time reads keep the original date-window path. The
+  // quick RPC is a live snapshot and must not classify a past instant.
+  const quick = now === undefined ? await firstRows() : null
+  const ids = quick === null ? await candidateIds(seat, at) : []
+  if ((quick === null && ids.length === 0) || (quick !== null && quick.length === 0)) return { drafts: 0, needs: 0 }
+  const [rows, manualReplyIds] = await Promise.all([quick ?? threadRows(ids), fetchManualReplyIds()])
   // "Mark as solved" (outreach_prospects.solved_at) is not in the view: one small read for the
   // owed threads only, then TODAY'S rule (unansweredSince honours solvedAt). A failed read throws
   // like any other: the count says it could not be read, never a guess.
-  const threads = groupThreads(dedupeMessages(rows), manualReplyIds, now)
+  const threads = groupThreads(dedupeMessages(rows), manualReplyIds, at)
   const solved = await fetchSolvedAt(owedIds(threads.filter(t => seatOf(t.client_id) === seat)))
-  return countDmSeat(withSolved(threads, solved), seat, now)
+  return countDmSeat(withSolved(threads, solved), seat, at)
 }

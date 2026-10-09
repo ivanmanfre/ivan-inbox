@@ -167,15 +167,19 @@ export function useLanesData(only?: readonly Key[]): { data: LanesData; loading:
       setData(prev => ({ ...prev, [k]: slot(prev[k] as Slot<unknown>) }) as LanesData)
     }
     const failed: Key[] = []
-    const quick = keys.some(k => QUICK.has(k)) ? withTimeout(fetchQuick(keys), 4000) : null
-    // On Lanes, the compact summary wins the first network slot; the twelve
-    // subordinate reads start after it, without holding the first visible rows.
-    const secondary = quick && !only ? quick.then(() => {}, () => {}) : Promise.resolve()
+    const primaryKeys = keys.filter(k => k === 'cc' || k === 'gov')
+    const otherQuickKeys = keys.filter(k => QUICK.has(k) && k !== 'cc' && k !== 'gov')
+    const primary = primaryKeys.length ? withTimeout(fetchQuick(primaryKeys), 4000) : null
+    // The visible monitor lands before the aggregate campaign/history reads.
+    // Every other slot still follows; it cannot delay the first monitor rows.
+    const secondary = primary && !only ? primary.then(() => {}, () => {}) : Promise.resolve()
+    const quick = otherQuickKeys.length ? secondary.then(() => withTimeout(fetchQuick(otherQuickKeys), 4000)) : null
     void Promise.allSettled(keys.map(k => {
       const direct = (): Promise<unknown> => READS[k]() as Promise<unknown>
-      const read: Promise<unknown> = quick && QUICK.has(k)
-        ? quick.then(slots => quickValue(k, slots)).catch(direct)
-        : quick && !only ? secondary.then(direct) : direct()
+      const summary = k === 'cc' || k === 'gov' ? primary : QUICK.has(k) ? quick : null
+      const read: Promise<unknown> = summary
+        ? summary.then(slots => quickValue(k, slots)).catch(direct)
+        : primary && !only ? secondary.then(direct) : direct()
       return withTimeout<unknown>(read).then(
       v => { remember(memoKey(k), v); put(k, () => ({ value: v, failed: null })) },
       e => {
