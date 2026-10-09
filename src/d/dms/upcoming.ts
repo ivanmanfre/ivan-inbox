@@ -9,7 +9,7 @@ export type FollowupProjection = { prospect_id: string; seat: Seat; at: string; 
 const ts = (s: string | null | undefined) => Date.parse(s ?? '') || 0
 const followupModel = /stall_bump|followup_dated|manual_followup|cameback_followup/
 
-export function projectFollowups(sources: FollowupSource[], now = Date.now()): FollowupProjection[] {
+export function projectFollowups(sources: FollowupSource[], now = Date.now(), morningBatch = true): FollowupProjection[] {
  const projected: FollowupProjection[] = []
  for (const s of sources) {
   if (!['ivan','risedtc','arch'].includes(s.seat)) continue
@@ -19,7 +19,7 @@ export function projectFollowups(sources: FollowupSource[], now = Date.now()): F
   const review = p.enrichment_data?.followup_review as { latest_inbound_id?: string; latest_outbound_id?: string; verdict?: { follow_up?: boolean; angle?: string } } | undefined
   if (review?.latest_inbound_id === lastIn?.id && review?.latest_outbound_id === lastOut?.id && review?.verdict?.follow_up === false) continue
   const messages = s.rows.filter(r => r.message_type !== 'connection_note' && (r.direction === 'inbound' || r.sent_at) && (seat !== 'arch' || r.channel !== 'email')).map(r => ({ id: r.unipile_message_id || r.id, is_sender: r.direction === 'outbound', text: r.message_text, timestamp: r.sent_at ?? r.created_at, is_reaction: r.is_reaction, channel: r.channel }))
-  const result = evaluate({ seat, prospect: dated ? { ...p, skip_reason: null, next_touch_after: null } : p, rows: s.rows, messages, complete: true, now, allowEmail: dated })
+  const result = evaluate({ seat, prospect: dated ? { ...p, skip_reason: null, next_touch_after: null } : p, rows: s.rows, messages, complete: true, now, allowEmail: dated, morningBatch })
   if (!result.due_at) continue
   const at = dated ? p.next_touch_after : result.due_at
   if (!at || ts(at) > now + 72 * 3_600_000) continue

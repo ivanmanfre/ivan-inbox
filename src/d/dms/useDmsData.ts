@@ -41,8 +41,15 @@ async function readDatedFollowUps(): Promise<DatedFollowUp[]> {
 
 // Today's agent read (conversation_agent_cards): 'unavailable' is a reason to show, not a failure.
 async function readAgent(): Promise<ConversationAgentFeed[]> { return [await fetchConversationAgentCards()] }
+// Morning batch (2026-10-09): follow-ups are due at 05:00 Warsaw of their due day, the same rule the
+// n8n drafter uses. Kill switch shared with it: integration_config followup_due_morning_batch = off (absent = on).
+let followupMorningBatch = true
+async function readMorningBatch(): Promise<void> {
+  const { data, error } = await supabase.from('integration_config').select('value').eq('key', 'followup_due_morning_batch').maybeSingle()
+  if (!error) followupMorningBatch = !/^(off|false|0|no)$/i.test(String(data?.value ?? '').trim())
+}
 async function fetchFollowupSources(): Promise<FollowupSource[]> {
-  const { data, error } = await supabase.rpc('inbox_followup_sources')
+  const [{ data, error }] = await Promise.all([supabase.rpc('inbox_followup_sources'), readMorningBatch().catch(() => {})])
   if (error) throw error
   if (!Array.isArray(data)) throw new Error('Could not read the follow-up schedule')
   return data as FollowupSource[]
@@ -108,7 +115,7 @@ export function useDmsData() {
   const [warm, reloadWarm, editWarm] = useSide<WarmCard>(fetchWarmCards)
   const [dated, readDates] = useSide(readDatedFollowUps)
   const [followupRaw, reloadFollowups] = useSide(readFollowupSources, FOLLOWUP_FRESH.mount, rememberedFollowups)
-  const upcoming = useMemo(() => ({ ...followupRaw, rows: projectFollowups(followupRaw.rows) }), [followupRaw])
+  const upcoming = useMemo(() => ({ ...followupRaw, rows: projectFollowups(followupRaw.rows, Date.now(), followupMorningBatch) }), [followupRaw])
   // An explicit reload (a verb's `dated`, Retry, pull) always reads; the background asks say how fresh is enough.
   const reloadDated = useCallback((fresh: number = FOLLOWUP_FRESH.force) => { readDates(); reloadFollowups(fresh) }, [readDates, reloadFollowups])
   useEffect(() => {

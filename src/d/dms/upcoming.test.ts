@@ -9,9 +9,19 @@ const source = (seat = 'arch'): FollowupSource => ({ seat, prospect: { id: 'p', 
 describe('upcoming follow-ups', () => {
   it('projects a quiet replied conversation before drafting; never adds an actionable draft', () => {
     const [p] = projectFollowups([source()], now)
-    expect(p.at).toBe('2026-10-01T11:00:00.000Z')
+    // Gap ends 13:00 Warsaw on 1 Oct; the morning batch makes it due at 05:00 Warsaw that day.
+    expect(p.at).toBe('2026-10-01T03:00:00.000Z')
     expect(p.state).toBe('scheduled')
     expect(p.basis).toBe('estimate')
+  })
+  it('morning batch: due at 05:00 Warsaw of the due day, never later than the gap; the switch restores the gap time', () => {
+    expect(projectFollowups([source()], now, false)[0].at).toBe('2026-10-01T11:00:00.000Z')
+    const late = source(); late.rows[1].sent_at = '2026-09-29T21:59:00Z' // gap ends 23:59 Warsaw 1 Oct
+    expect(projectFollowups([late], now)[0].at).toBe('2026-10-01T03:00:00.000Z')
+    const night = source(); night.rows[1].sent_at = '2026-09-29T23:30:00Z' // gap ends 01:30 Warsaw 2 Oct, before 05:00
+    expect(projectFollowups([night], now)[0].at).toBe('2026-10-01T23:30:00.000Z')
+    const winter = source(); winter.rows[0].sent_at = '2026-11-01T09:00:00Z'; winter.rows[1].sent_at = '2026-11-01T15:00:00Z'
+    expect(projectFollowups([winter], Date.parse('2026-11-02T12:00:00Z'))[0].at).toBe('2026-11-03T04:00:00.000Z')
   })
   it('filters bookings, declines, holds and pending messages', () => {
     const a = source(), b = source(), c = source(), d = source()

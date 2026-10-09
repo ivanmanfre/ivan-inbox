@@ -2,7 +2,18 @@
 // Shared legacy conversational follow-up cadence. Pure; never sends or changes state.
 // Inlined into the Code node by build-workflow.cjs. Native history is authoritative
 // for LinkedIn delivery; the ledger supplies operator, email and lane ownership.
-export function evaluate({seat, prospect = {}, rows = [], messages = [], complete, now = Date.now(), firstGap, allowEmail = false}) {
+// Ivan 2026-10-09: a follow-up is due at the START of its Warsaw day (05:00), so the whole day's
+// follow-ups are drafted before his morning and cleared in one sitting. Never later than the gap
+// (a gap ending 00:00-04:59 Warsaw keeps its time). Kill switch: integration_config
+// followup_due_morning_batch = off (absent = on), passed in as morningBatch.
+function warsawMorningOf(ms) {
+  const f=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Warsaw',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
+  const wall=t=>{const p={};for(const x of f.formatToParts(new Date(t)))p[x.type]=Number(x.value);return Date.UTC(p.year,p.month-1,p.day,p.hour,p.minute,p.second);};
+  const day=new Date(wall(ms)),local=Date.UTC(day.getUTCFullYear(),day.getUTCMonth(),day.getUTCDate(),5);
+  const first=local-(wall(local)-local);
+  return local-(wall(first)-first);
+}
+export function evaluate({seat, prospect = {}, rows = [], messages = [], complete, now = Date.now(), firstGap, allowEmail = false, morningBatch = true}) {
   const DAY = 86400000, stamp = x => Date.parse(x || '') || 0;
   const no = reason => ({ok:false, reason});
   if (!complete || !Array.isArray(rows) || !Array.isArray(messages)) return no('history_incomplete');
@@ -58,7 +69,7 @@ export function evaluate({seat, prospect = {}, rows = [], messages = [], complet
   }
   if (!bursts.length) return no('no_delivered_response');
   const count=Math.max(0,bursts.length-1),gap=count===0?(firstGap || (seat==='ivan'?5:2)):[7,14,30,60,90][Math.min(count-1,4)];
-  const lastAt=bursts.at(-1).last_at,due=lastAt+gap*DAY;
+  const lastAt=bursts.at(-1).last_at,gapDue=lastAt+gap*DAY,due=morningBatch?Math.min(gapDue,warsawMorningOf(gapDue)):gapDue;
   return {ok:now>=due,reason:now>=due?'due':'not_due',followup_count:count,stage:count+1,gap_days:gap,last_inbound_at:new Date(lastIn).toISOString(),last_delivered_touch_at:new Date(lastAt).toISOString(),due_at:new Date(due).toISOString(),touches:bursts.map(b=>({at:new Date(b.last_at).toISOString(),text:b.text})),messages:real.slice().reverse(),quarterly_review:count>=5};
 }
 
