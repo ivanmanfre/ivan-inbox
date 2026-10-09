@@ -1,0 +1,9 @@
+.ops-reference{margin:12px 14px;border-top:1px solid var(--line,currentColor);font:inherit;min-width:0}
+.ops-reference summary{cursor:pointer;padding:14px 0;line-height:1.5}
+.ops-reference summary strong{font-weight:600;margin-right:10px}
+.ops-reference summary span{font-size:12px;opacity:.65}
+.ops-reference-content{padding:0 0 14px;max-width:68ch;overflow-wrap:anywhere}
+.ops-reference-content section+section{margin-top:18px}
+.ops-reference-content h3{font-size:13px;margin:0 0 6px;font-weight:600}
+.ops-reference-content p{font-size:13px;line-height:1.65;margin:0;white-space:pre-line}
+.ops-reference-content small{display:block;margin-top:16px;font-size:11px;opacity:.65}
