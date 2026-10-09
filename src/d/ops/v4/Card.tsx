@@ -40,11 +40,13 @@ export function CardV4({ d, refresh, feed, held, onGateResult, layout, pos, wait
   // A warning set beside a success ("Posted fine, but the tag…") keeps the card up to be read:
   // after the render settles, only a card with no error on it leaves at once.
   const refreshAfter = useCallback(() => {
+    const doc = document
     refresh()
     if (!confirmed.current) return
     confirmed.current = false
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      if (!document.querySelector(`[data-card="${CSS.escape(d.id)}"] .op-err`)) onDone?.(d.id)
+      const card = Array.from(doc.querySelectorAll<HTMLElement>('[data-card]')).find(el => el.dataset.card === d.id)
+      if (!card?.querySelector('.op-err')) onDone?.(d.id)
     }))
   }, [refresh, onDone, d.id])
   const st = usePendingCard({ draft: d, refresh: refreshAfter, feed, held, onGateResult, confirm })

@@ -7,7 +7,7 @@ import { parseDHash } from '../route'
 import OpsPage from './index'
 import { __resetSkinForTests } from '../../ds/skin'
 import type { OpsDraft } from '../../lib/ops'
-vi.mock('../../hooks/useOps', () => ({ useOps: () => ({ drafts, loading: false, error: '', loadedAt: Date.now(), refresh: vi.fn() }) }))
+vi.mock('../../hooks/useOps', () => ({ useOps: () => ({ drafts, loading: false, error: '', loadedAt: Date.now(), refresh: vi.fn(), markDone: vi.fn() }) }))
 vi.mock('../../hooks/useCommentQueue', () => ({ useCommentQueue: () => ({ held: new Map(), feed: new Map(), waiting: [], cappedToday: false, positionOf: () => -1, record: vi.fn() }) }))
 vi.mock('../../hooks/useReactions', () => ({ useReactions: () => ({ rows: [], bodies: {}, loading: false, error: '', refresh: vi.fn() }) }))
 vi.mock('../../lib/ops', async orig => ({ ...await orig<typeof import('../../lib/ops')>(), approveOpsDraft: vi.fn(async () => {}), discardOpsDraft: vi.fn(async () => {}) }))
