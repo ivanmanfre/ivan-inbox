@@ -236,12 +236,17 @@ export function isAudnKind(kind: OpsKind): boolean {
   return kind === AUDN_KIND
 }
 
+// Internal project notes are read in their collapsed section, without an action badge.
+export function isOpsReference(d: OpsDraft): boolean {
+  return d.kind === 'task' && d.context?.presentation === 'reference'
+}
+
 // Pending = nothing has happened to it yet — the only rows the operator acts on.
 // Comment cards also age out: past the window they are noise, not a to-do.
 export function pendingOps(rows: OpsDraft[], now = Date.now()): OpsDraft[] {
   return rows.filter(d =>
     !d.approved_at && !d.sent_at && !d.send_blocked_reason
-    && !isAudnKind(d.kind) && !isStaleComment(d, now) && !isExpiredNewsjack(d, now))
+    && !isOpsReference(d) && !isAudnKind(d.kind) && !isStaleComment(d, now) && !isExpiredNewsjack(d, now))
 }
 
 // THE OPS NUMBER (rebuild, blueprint v3 decision 11). Approvals waiting and

@@ -4,6 +4,7 @@ import { OpsSkeleton } from '../components/Skeleton'
 import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useOps } from '../hooks/useOps'
+import { OpsReferences } from '../components/OpsReferences'
 import {
   approveOpsDraft, approveWeeklyReport, blockedOps, canGenerateDraft, canTagCommenter, isCloseOnlyComment, claimingOps, discardOpsDraft, DRAFT_CONTINUE_MAX, engineLabel, expiresIn, generateCommentDraft, likeComment, markCommentHandled, outboundApproveUrl, outboundSkipUrl, pendingOps, postCommentReply, seatLabel, sentOps, weeklyReportDispatches, weeklySendAfter,
   dispatchCommentGate, cardStateOf, personHeadline,
@@ -964,6 +965,7 @@ export function OpsScreen() {
             <button className="stalebtn" onClick={refresh}>Try again</button>
           </div>
         )}
+        <OpsReferences drafts={drafts} />
         <TaskList drafts={drafts} refresh={refresh} />
         {pending.length === 0 && !error ? (
           <div className="empty">

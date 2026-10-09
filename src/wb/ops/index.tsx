@@ -34,6 +34,7 @@ import { PendingCard } from './PendingCard'
 import { QuickBatch } from './QuickBatch'
 import { ReactionDesk } from './ReactionDesk'
 import { TaskList } from './TaskList'
+import { OpsReferences } from '../../components/OpsReferences'
 import { answerLine, groupOpsByLane, kindsLine } from './lanes'
 import './ops.css'
 
@@ -205,6 +206,7 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
       <Body innerRef={rowsRef}>
         <PullLine pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         {staleBanner}
+        <OpsReferences drafts={drafts} />
         <div className="a-ops-canvas" data-wide={sideLive ? '' : undefined}>
           {answer && <p className="a-ops-answer">{answer}</p>}
           <QuickBatch cards={todayCards} refresh={refresh} />

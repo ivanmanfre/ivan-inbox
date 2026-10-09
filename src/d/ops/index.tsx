@@ -22,6 +22,7 @@ import { kindTitle, positionOf, readBoard, timeLeft } from './model'
 import { Reactions } from './Reactions'
 import { TakeoverCard } from './Takeover'
 import { Tasks } from './Tasks'
+import { OpsReferences } from '../../components/OpsReferences'
 import './ops.css'
 
 // D · OPS. Desktop: the three lane columns across the top, the open card under
@@ -142,6 +143,7 @@ export function OpsPage({ layout, route, navigate }: PlaceProps) {
 
   const side = (
     <>
+      <OpsReferences drafts={ops.drafts} />
       <Tasks drafts={ops.drafts} refresh={refresh} />
       <Reactions rx={rx} />
     </>
