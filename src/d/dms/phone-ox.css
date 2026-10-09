@@ -116,7 +116,7 @@
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dx-phone .dx-row .dm-qv{min-height:44px;min-width:44px;height:44px;padding:0 14px;border-radius:22px;box-shadow:none;background:var(--b1-wash);font:600 14px/44px var(--ds-font);color:var(--ds-text)}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dx-phone .dx-row .dm-qv-q{background:transparent;color:var(--ds-text-2)}
 /* timeline rows (Coming up / Later): the day or time column no longer collides with the name */
-:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dx-phone .dm-list .dm-q.dx-row.dx-row-t{grid-template-columns:56px minmax(0,1fr) auto;column-gap:10px;min-height:56px;padding:12px var(--po-gutter);row-gap:2px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dx-phone .dm-list .dm-q.dx-row.dx-row-t{grid-template-columns:76px minmax(0,1fr) auto;column-gap:10px;min-height:56px;padding:12px var(--po-gutter);row-gap:2px}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dx-phone .dm-list .dm-q.dx-row.dx-row-t::after{left:var(--po-gutter)}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dx-phone .dx-row-t .dx-pre{grid-column:1;grid-row:1;font:500 13px/18px var(--ds-font);color:var(--ds-text-3);font-variant-numeric:tabular-nums;white-space:nowrap}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dx-phone .dx-row-t .dm-n{grid-column:2;grid-row:1;font:600 16px/22px var(--ds-font)}
@@ -153,7 +153,7 @@
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-chip-seat i{width:16px;height:16px;border-radius:5px;font:700 12px/16px var(--ds-font);background:var(--ds-text);color:#fff}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-meta > .dm-lad{height:28px;font:400 13px/28px var(--ds-font);color:var(--ds-text-2);padding-left:4px}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-lad b{font:600 13px/28px var(--ds-font);margin-left:8px}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-pane .dx-meta > .dm-filing,:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-meta > .dm-filing{position:sticky;right:calc(var(--po-gutter) * -1);margin:0 calc(var(--po-gutter) * -1) 0 auto;padding:0 var(--po-gutter) 0 12px;background:linear-gradient(90deg,rgba(250,249,247,0),rgba(250,249,247,.96) 14px)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-pane .dx-meta > .dm-filing,:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-meta > .dm-filing{position:static;margin:0 0 0 2px;padding:0;background:none}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dm-filing .dm-del{min-height:44px;min-width:44px;height:44px;padding:0 10px;border-radius:22px;font:600 14px/20px var(--ds-font);color:var(--ds-sev-urgent-ui)}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dm-filing .dm-del:active{background:var(--ds-sev-urgent-soft)}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-head .dm-route{padding:0 var(--po-gutter) 8px;font:400 13px/18px var(--ds-font);color:var(--ds-text-2)}
@@ -220,14 +220,14 @@
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dm-dock.dx-dock{flex:none;position:relative;z-index:4;order:10;padding:8px 16px calc(var(--sab) + 8px);gap:8px;border-top:.5px solid var(--b1-hair);overflow:visible;
   background:rgba(250,249,247,.92);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6)}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-dock .dm-meta{font:400 13px/18px var(--ds-font)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-keys{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-keys{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:8px}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-keys .dm-keys-s{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;min-width:0}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-keys .dm-k{min-height:44px;height:44px;min-width:44px;padding:0 12px;border-radius:22px;background:var(--b1-wash);color:var(--ds-text);font:550 14px/20px var(--ds-font);flex:1 1 auto;white-space:nowrap;box-shadow:none}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-keys .dm-k:active:not(:disabled){background:var(--b1-wash-2);transform:scale(.97)}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-keys .dm-k-more{flex:none;width:44px;padding:0;font-size:18px;letter-spacing:0}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-keys .dm-k-warn{color:var(--ds-sev-urgent-ui)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-pane .dx-keys > :last-child:not(.dm-keys-s),:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-keys > .d-key{width:100%;min-width:0;height:50px;border-radius:14px;padding:0;flex:none}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-pane :is(.dx-keys,.dm-comp) .d-key .d-face{border-radius:14px;padding:0 18px;font:600 17px/22px var(--ds-font);width:100%}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-pane .dx-keys > :last-child:not(.dm-keys-s),:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-keys > .d-key{width:auto;min-width:104px;height:44px;border-radius:22px;padding:0;flex:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-pane :is(.dx-keys,.dm-comp) .d-key .d-face{border-radius:22px;padding:0 20px;font:600 16px/22px var(--ds-font);width:100%;min-height:44px}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-pane :is(.dx-keys,.dm-comp) .d-key.d-key-p .d-face{background:var(--ds-text);color:#fff;box-shadow:0 6px 16px -6px rgba(19,18,16,.45),inset 0 1px 0 rgba(255,255,255,.14)}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-pane :is(.dx-keys,.dm-comp) .d-key:not(.d-key-p) .d-face{background:var(--b1-wash);box-shadow:none}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-pane :is(.dx-keys,.dm-comp) .d-key:not(:disabled):active .d-face{transform:scale(.985)}

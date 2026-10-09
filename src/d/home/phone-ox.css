@@ -44,7 +44,7 @@
   font:600 13px/18px var(--ds-font);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
 :root[data-skin-on~='shell'][data-layout='phone'] .hm4-matrix .hm4-limit a:active{transform:scale(.97);transition:transform var(--po-d-press) var(--po-ease)}
 :root[data-skin-on~='shell'][data-layout='phone'] .hm4-matrix .hm4-limit a small{font:inherit;display:inline}
-:root[data-skin-on~='shell'][data-layout='phone'] .hm4-matrix .hm4-limit .hm4-pill-warn .hm4-w,
+:root[data-skin-on~='shell'][data-layout='phone'] .hm4-matrix .hm4-limit .hm4-pill-warn:has(small) .hm4-w,
 :root[data-skin-on~='shell'][data-layout='phone'] .hm4-matrix .hm4-limit .hm4-pill-warn .hm4-sep{display:none}
 :root[data-skin-on~='shell'][data-layout='phone'] .hm4-matrix .hm4-limit .hm4-pill-clear .hm4-sep{display:inline;white-space:pre}
 :root[data-skin-on~='shell'][data-layout='phone'] .hm4-matrix .hm4-limit .hm4-pill-neutral{color:var(--ds-text-2)}
