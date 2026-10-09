@@ -263,3 +263,11 @@
   :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dx-phone :is(.dx-row,.dm-sq,.dm-fd){transition:none}
   :root[data-skin-on~='shell'][data-layout='phone'] .d-app .dx-phone .dx-seats-thumb{transition:none}
 }
+
+/* A disabled Send reads as a key at rest (ink on wash) instead of white on light grey (1.4:1). */
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-pane :is(.dx-keys,.dm-comp) .d-key:disabled{opacity:1}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-phone-thread .dx-pane :is(.dx-keys,.dm-comp) .d-key:disabled .d-face{background:var(--b1-wash,rgba(19,18,16,.06));color:var(--ds-text-3);box-shadow:none;border-color:transparent}
+/* Draft sources header count and the All-conversations filter field: phone floors (13px meta, 44px field, 16px input text so iOS does not zoom). */
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-src-h{min-height:44px;align-items:center}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-src-h span:last-child{font:500 13px/18px var(--ds-font);color:var(--ds-text-3)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dm-all-f input{height:44px;border-radius:12px;font:400 16px/22px var(--ds-font)}

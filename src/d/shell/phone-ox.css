@@ -16,8 +16,8 @@
   --po-tab-h:64px;
   --po-tab-bottom:max(10px,calc(var(--sab) - 22px));
   --po-chrome-bottom:calc(var(--po-tab-h) + var(--po-tab-bottom) + 20px);
-  --po-glass:rgba(252,251,249,.74);
-  --po-glass-strong:rgba(252,251,249,.94);
+  --po-glass:rgba(252,251,249,.88);
+  --po-glass-strong:rgba(252,251,249,.985);
   --po-glass-border:rgba(255,255,255,.62);
   --po-glass-shadow:0 10px 30px -10px rgba(19,18,16,.22),0 2px 6px rgba(19,18,16,.06);
   --dock-h:var(--po-tab-h);
@@ -180,7 +180,7 @@
 :root[data-skin-on~='shell'][data-layout='phone'] .d-pn .d-per{padding:0 12px 8px 48px}
 
 /* ---- bell: a bottom sheet over the page ---- */
-:root[data-skin-on~='shell'][data-layout='phone'] .d-scrim-bell{top:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-scrim-bell{top:0;z-index:51;background:rgba(19,18,16,.28);animation:po-fade var(--po-d-enter) var(--po-ease) both}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-bellp-phone{
   top:calc(var(--sat) + 12px);bottom:0;left:0;right:0;border:0;border-radius:24px 24px 0 0;background:var(--po-glass-strong);
   -webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);
@@ -236,3 +236,7 @@
 /* A sheet rendered inside the page must rise above the nav bar and the tab bar: the view's entry animation
    leaves no transform behind (fill backwards), and while a sheet is open the view stacks over the chrome. */
 :root[data-skin-on~='shell'][data-layout='phone'] .po-view:has(.d-scrim,.d-sheet){position:relative;z-index:60}
+
+/* C3 fix pass. A segmented thumb is positioned by its own item (inset 0); the shared layout glide measured it while
+   content above was still loading and left it ~40px off its track (04-JUDGE fix 3), so on the phone it snaps. */
+:root[data-skin-on~='shell'][data-layout='phone'] .ds-seg-marker{transform:none!important}
