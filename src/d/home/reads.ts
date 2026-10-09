@@ -1,39 +1,27 @@
 /* ==========================================================================
-   src/d/home/reads.ts — Home's reads, all borrowed:
+   src/d/home/reads.ts — Home's reads:
      · Lanes' own reader (useLanesData), narrowed to the five keys Home draws;
-     · the Content place's read x3 (useContent) for next week's posts;
+     · one guarded, slim read for next week's posts across the three seats;
      · the frame's DM draft counts (useFrameCounts), already polled for the panel.
    Nothing new is queried. SELECT only.
    ========================================================================== */
 import { useEffect, useState } from 'react'
-import { useContent } from '../../hooks/useContent'
 import { dmNumbers, useFrameCounts } from '../counts/useFrameCounts'
-import { contentWeek, nextWeekDays, type ContentWeek } from '../lanes/glance/model'
 import { useLanesData, type LanesKey } from '../lanes/useLanesData'
 import type { Seat } from '../seats'
-import { useStalled } from '../ui/timeout'
 import type { Read } from './model'
+import { useHomeContentWeek } from './contentWeek'
 
 const KEYS: readonly LanesKey[] = ['cc', 'gov', 'pauses', 'attempts', 'ready']
 
 export function useHome() {
   const lanes = useLanesData(KEYS)
+  const [weekNow] = useState(() => Date.now())
   // A remembered copy (useLanesData's seed) is judged as of its own read, never as a silent monitor.
   const [now, setNow] = useState(() => lanes.at ?? Date.now())
   useEffect(() => { setNow(lanes.at ?? Date.now()) }, [lanes.at])
-  const ivan = useContent('ivan')
-  const rise = useContent('risedtc')
-  const arch = useContent('arch')
+  const week = useHomeContentWeek(weekNow)
   const counts = useFrameCounts()
-  // Today's content hook has no timeout of its own: 12 s without an answer reads as failed, and it re-reads quietly.
-  const stalled = {
-    ivan: useStalled(!ivan.error && (!ivan.loadedAt || ivan.fromMemo), ivan.refresh),
-    risedtc: useStalled(!rise.error && (!rise.loadedAt || rise.fromMemo), rise.refresh),
-    arch: useStalled(!arch.error && (!arch.loadedAt || arch.fromMemo), arch.refresh),
-  }
-  const days = nextWeekDays(now)
-  const wk = (r: ReturnType<typeof useContent>, s: Seat): Read<ContentWeek> =>
-    r.error ? { fail: r.error } : stalled[s] ? { fail: 'no answer after 12 s' } : !r.loadedAt ? { wait: true } : { v: contentWeek(r.drafts, s, days) }
   const dn = dmNumbers(counts, 'drafts')
   const dr = (s: Seat): Read<number> => {
     const v = dn[s]
@@ -42,10 +30,10 @@ export function useHome() {
   return {
     now,
     lanes: lanes.data,
-    content: { ivan: wk(ivan, 'ivan'), risedtc: wk(rise, 'risedtc'), arch: wk(arch, 'arch') } as Record<Seat, Read<ContentWeek>>,
+    content: week.content,
     drafts: { ivan: dr('ivan'), risedtc: dr('risedtc'), arch: dr('arch') } as Record<Seat, Read<number>>,
     retry: {
-      content: () => { ivan.refresh(); rise.refresh(); arch.refresh() },
+      content: week.refresh,
       drafts: () => counts.refresh('dms'),
       lanes: lanes.refresh,
     },

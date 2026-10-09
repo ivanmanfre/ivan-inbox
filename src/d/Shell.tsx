@@ -233,7 +233,7 @@ function PhoneFrame({ setToolsSlot, panelOpen, setPanelOpen }: {
   const onPull = useCallback(() => { refresh(); inboxRefresh(); setRev(r => r + 1) }, [refresh, inboxRefresh, onDms]) // eslint-disable-line react-hooks/exhaustive-deps
   const ptr = usePull(body, onPull)
   // Oxygen phone frame (02-SPEC §1) under the `shell` skin section; off = today's top bar and dock.
-  const ox = useSkin('shell')
+  const ox = useSkin('shell') && !document.documentElement.hasAttribute('data-phone-oxygen-off')
   return (
     <>
       {ox ? <PhoneBar onPanel={() => setPanelOpen(true)} setToolsSlot={setToolsSlot} /> : <PhoneTop onPanel={() => setPanelOpen(true)} setToolsSlot={setToolsSlot} />}

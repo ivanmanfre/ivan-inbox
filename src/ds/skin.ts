@@ -126,8 +126,14 @@ export function applySkin(layout: SkinLayout): Set<Section> {
     } catch { /* not a navigable document */ }
   }
   const root = document.documentElement
-  const attr = skinAttr(r.set)
-  if (r.set.size) root.dataset.skin = 'brief'
+  // Phone Off keeps the pre-Oxygen Brief 4 light foundation. Its own marker
+  // suppresses only the R1 phone CSS/frame, so rollback does not expose the old dark skin.
+  const phoneOxygenOff = layout === 'phone' && r.set.size === 0
+  const set = phoneOxygenOff ? withFoundation(new Set(PHONE)) : r.set
+  if (phoneOxygenOff) root.dataset.phoneOxygenOff = ''
+  else delete root.dataset.phoneOxygenOff
+  const attr = skinAttr(set)
+  if (set.size) root.dataset.skin = 'brief'
   else delete root.dataset.skin
   if (attr) root.dataset.skinOn = attr
   else delete root.dataset.skinOn
@@ -136,10 +142,10 @@ export function applySkin(layout: SkinLayout): Set<Section> {
   const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
   if (meta) {
     if (!meta.dataset.base) meta.dataset.base = meta.content
-    meta.content = r.set.has('tokens') ? '#FAF9F7' : meta.dataset.base
+    meta.content = set.has('tokens') ? '#FAF9F7' : meta.dataset.base
   }
   const changed = skinAttr(current) !== attr
-  current = r.set
+  current = set
   if (changed) subs.forEach(f => f())
   return current
 }

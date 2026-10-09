@@ -1,3 +1,5 @@
+import { withTimeout } from '../d/ui/timeout'
+import { supabase } from './supabase'
 import { fetchDraftContextGaps, fetchDraftEmailStamps, fetchEmailRecipients, fetchDraftEvidence, fetchManualReplyIds, fetchMessages, groupThreads, type DraftContextGap, type DraftEmailStamp, type InboxMessage, type Thread } from './inbox'
 
 /**
@@ -6,16 +8,23 @@ import { fetchDraftContextGaps, fetchDraftEmailStamps, fetchEmailRecipients, fet
  * service worker's push-time prefetch (src/sw.ts) builds the SAME rows the
  * open app does; a second assembly would drift and the saved copy would lie.
  */
-export async function loadInbox(knownRows: number, onNewest?: (threads: Thread[]) => void): Promise<{ viewRows: InboxMessage[]; rows: InboxMessage[]; threads: Thread[] }> {
-  // PERF-COLD (2026-10-08): `onNewest` gets the newest page assembled the same way (same probes,
-  // same grouping) while older history is still being read. Its probes start WITH the message
-  // read, not after it, so the early paint does not wait two more round trips. It can never land
-  // after the full result: `settled` is set before this returns. The full result below still
-  // runs its own probes, after the whole read, exactly as before.
+export async function loadInbox(knownRows: number, onNewest?: (threads: Thread[], priority?: boolean) => void): Promise<{ viewRows: InboxMessage[]; rows: InboxMessage[]; threads: Thread[] }> {
   let settled = false
+  let priorityPainted = false
   const early = onNewest ? sideProbes() : null
-  const viewRows = await fetchMessages(knownRows, early && onNewest ? rows =>
-    assembleInbox(rows, early).then(r => { if (!settled) onNewest(r.threads) }, () => {}) : undefined)
+  // Complete histories for every Needs-you and Coming-up candidate go first.
+  // Classification remains the existing client rule; the full archive follows.
+  if (early && onNewest) {
+    try {
+      const { data, error } = await withTimeout(supabase.rpc('inbox_phone_first_rows_r2'), 4000)
+      if (error) throw error
+      if (!Array.isArray(data)) throw new Error('Could not read priority conversations')
+      const first = await assembleInbox(data as InboxMessage[], early)
+      if (first.threads.length) { priorityPainted = true; onNewest(first.threads, true) }
+    } catch { /* The complete read below owns failure and the existing fallback. */ }
+  }
+  const viewRows = await fetchMessages(knownRows, !priorityPainted && early && onNewest ? rows =>
+    assembleInbox(rows, early).then(r => { if (!settled) onNewest(r.threads, false) }, () => {}) : undefined)
   const full = await assembleInbox(viewRows)
   settled = true
   return { viewRows, ...full }

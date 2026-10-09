@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type TouchEvent } from 'react'
 import { useFeedData } from '../../exp/brain/b/useFeedData'
 import { ALERT_LOOK, kindOf } from '../../wb/ask/alertLook'
 import { getTurn, routableHash, type Notification, type NotificationGroup } from '../../lib/turns'
@@ -98,6 +98,16 @@ export function BellFeed() {
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [scrolled, setScrolled] = useState(false)
   const scroller = useRef<HTMLDivElement>(null)
+  const close = () => f.setBellOpen(false)
+  const swipeStart = useRef<{ x: number; y: number } | null>(null)
+  const onSwipeStart = (e: TouchEvent) => { swipeStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY } }
+  const onSwipeEnd = (e: TouchEvent) => {
+    const start = swipeStart.current
+    swipeStart.current = null
+    if (!start || f.layout !== 'phone') return
+    const dy = e.changedTouches[0].clientY - start.y
+    if (dy > 72 && dy > Math.abs(e.changedTouches[0].clientX - start.x) * 1.4) close()
+  }
   const routine = useMemo(() => feed.groups.filter(isRoutine), [feed.groups])
   const days = useMemo(() => feedDays(feed.groups.filter(g => !isRoutine(g))), [feed.groups])
   const fresh = useArrivals(feed.groups.map(g => g.key))
@@ -112,7 +122,6 @@ export function BellFeed() {
   // The newest unread row that needs him takes the lime "Pick this up" (today's primary).
   const primaryKey = useMemo(() => feed.groups.find(g => g.unread > 0 && kindOf(g.family, g.latest.severity, g.latest.title) === 'needs_you')?.key ?? null, [feed.groups])
 
-  const close = () => f.setBellOpen(false)
   const go = (hash: string) => { close(); f.navigate(hash) }
 
   const openRow = (n: Notification) => {
@@ -221,7 +230,7 @@ export function BellFeed() {
 
   return (
     <div className={`d-bellp d-bellp-${f.layout}`} role="dialog" aria-label="Alerts" data-bell-feed>
-      <div className="d-bellp-h">
+      <div className="d-bellp-h" onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd}>
         <div className="d-bellp-t"><b>Alerts</b><small>{sub}</small></div>
         {(feed.groups.length > 0 || (groups?.length ?? 0) > 0) && <Btn verb="clear-all" onClick={clearAll} disabled={clearing}>Clear all</Btn>}
         <button type="button" className="d-ib" aria-label="Close alerts" onClick={close}><DIcon name="x" /></button>

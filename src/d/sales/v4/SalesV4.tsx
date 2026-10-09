@@ -47,7 +47,7 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
   const open = wanted ?? (layout === 'desktop' && !missing ? queue[0] ?? null : null)
   const [tokens, setTokens] = useSalesTokens()
   const shownF = useMemo(() => filterFortnight(f, tokens), [f, tokens])
-  const packsIn = data.state.packs === 'ok' ? packsInWindow(data.events, idx.slugs, idx.meta) : null
+  const packsIn = data.state.packs === 'ok' || data.packs.length > 0 ? packsInWindow(data.events, idx.slugs, idx.meta) : null
   const at = open ? queue.findIndex(c => c.id === open.id) + 1 : 0
   const go = useCallback((s: CallSegment, call?: string | null) => navigate(dHash('sales', null, call ? { seg: s, call } : { seg: s })), [navigate])
   const step = useCallback((d: 1 | -1) => {
@@ -63,27 +63,29 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
   )
   const n = nextCall(f)
   const through = throughLabel(data.week.to)
-  const title = data.state.events === 'failed' ? <>Could not read the calendar.</>
+  const title = data.state.events === 'failed' && !data.events.length ? <>Could not read the calendar.</>
     : data.state.events === 'loading' ? <>Reading the calendar…</>
       : n ? (n.phase === 'running'
         ? <>On now: <mark>{n.name}</mark>, until {n.endWarsaw} Warsaw.</>
         : <>Next call: {n.name}, <b className="d-n">{n.day.split(' ')[0]} {n.warsaw}</b>.</>)
         : <>No calls booked through {through}.</>
   // One headline; the open promises are the "Action items" tab's count.
-  const answer = <AnswerRow title={title} tools={orbit} />
+  const savedLine = Object.entries(data.saved).filter(([, saved]) => saved).map(([key]) => key).join(', ')
+  const answer = <AnswerRow title={title} sub={savedLine ? `Showing saved ${savedLine}.` : undefined} tools={orbit} />
 
   if (route.sub === 'orbit') return <OrbitHost navigate={navigate} layout={layout} />
 
   const soft = [
-    data.state.packs === 'failed' ? 'The packs did not load, so a call reading "no pack yet" may have one.' : '',
+    data.state.events === 'failed' && data.events.length > 0 ? `The calendar refresh failed (${data.eventsError}); showing the last read.` : '',
+    data.state.packs === 'failed' ? data.packs.length > 0 ? 'The packs refresh failed; showing the last read.' : 'The packs did not load, so a call reading "no pack yet" may have one.' : '',
     data.state.calls === 'failed' && data.events.length > 0 ? 'The call reports did not load, so past calls show no report yet.' : '',
   ].filter(Boolean).join(' ')
-  const cal = data.state.events === 'failed'
+  const cal = data.state.events === 'failed' && !data.events.length
     ? <Failed what="the calendar" detail={`${data.eventsError} This is not an empty week, it is an unread one.`} onRetry={data.retry} />
     : data.state.events === 'loading' ? <Skeleton lines={5} label="Reading the calendar" />
       : <>
         {soft && <div className="sl-warn">{soft}<button type="button" data-verb="retry" onClick={data.retry}>Read again</button></div>}
-        <Schedule f={f} shown={shownF} now={data.now} next={n} idx={idx} packs={packsIn} tools={<SalesFilter tokens={tokens} setTokens={setTokens} />} filtered={tokenLine(tokens)} clear={() => setTokens([])} report={id => go('all', id)} packsFailed={data.state.packs === 'failed'} />
+        <Schedule f={f} shown={shownF} now={data.now} next={n} idx={idx} packs={packsIn} tools={<SalesFilter tokens={tokens} setTokens={setTokens} />} filtered={tokenLine(tokens)} clear={() => setTokens([])} report={id => go('all', id)} packsFailed={data.state.packs === 'failed' && data.packs.length === 0} />
       </>
 
   const calls = (limit?: number) => (

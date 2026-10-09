@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { dHash } from '../route'
 import { useFrame } from '../shell/frame'
 import { Sheet } from '../ui/Sheet'
@@ -57,12 +57,18 @@ export function SubNav({ on, attention = false, lane = 'ivan', section, v2 = fal
   const tabs = useRef<HTMLElement>(null)
   // Phone: the tab row scrolls sideways; the open tab is brought into view only when it is off-screen, and then
   // whole (left edge on the row's 20px gutter), so the row never opens on a half-cut tab (never the page: scrollLeft only).
-  useEffect(() => {
+  useLayoutEffect(() => {
     const row = tabs.current, cur = row?.querySelector<HTMLElement>('a.cn-on')
     if (!row || !cur || f.layout !== 'phone') return
-    const l = cur.offsetLeft - row.scrollLeft, r = l + cur.offsetWidth
-    if (l >= 0 && r <= row.clientWidth) return
-    row.scrollTo({ left: Math.max(0, cur.offsetLeft - 20), behavior: 'auto' })
+    const rowBox = row.getBoundingClientRect()
+    const curBox = cur.getBoundingClientRect()
+    const more = row.querySelector<HTMLElement>('.cn-more-key')
+    const visibleRight = more ? more.getBoundingClientRect().left : rowBox.right
+    if (curBox.left >= rowBox.left + 12 && curBox.right <= visibleRight - 8) return
+    const previous = cur.previousElementSibling as HTMLElement | null
+    const anchor = previous?.matches('a') ? previous : cur
+    const left = row.scrollLeft + anchor.getBoundingClientRect().left - rowBox.left - (anchor === cur ? 20 : 0)
+    row.scrollTo({ left: Math.max(0, left), behavior: 'instant' })
   }, [on, f.layout])
   const sheet = <Sheet open={more} onClose={() => setMore(false)} title="More in Content"><div className="cn-more">
     {MORE.map(g => <div key={g.group} className="cn-more-g"><span className="cn-more-h">{g.group}</span>

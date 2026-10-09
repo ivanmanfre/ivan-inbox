@@ -14,6 +14,7 @@ import { useStalled } from '../ui/timeout'
 import { Answer, Menu, Pill, SeatAv, Seg, type Tone } from './v2/ui'
 import { useToast } from '../ui/toast'
 import { dHash } from '../route'
+import { warsawHm } from '../ui/time'
 import { LANES, LANE_NAME, type Lane } from './model'
 import type { IdeaItem } from './ideaModel'
 import { IdeaDetail } from './IdeaDetail'
@@ -30,7 +31,10 @@ export type IdeaBanks = Record<Lane, IdeaBank>
 const NO_SCORES: IdeaScoreRead = { ok: false, byRef: new Map(), validated: false }
 const NO_CHIP: BanditChipRead = { ok: false, weekStart: null, byRef: new Map(), slots: [] }
 function useBank(lane: Lane, enabled: boolean): IdeaBank {
-  const [items, setItems] = useState<IdeaItem[]>([])
+  const [items, setItems] = useState<IdeaItem[]>(() => {
+    const saved = readSwr<IdeaItem[]>(`content-ranked-ideas:${lane}`)
+    return saved && Date.now() - Date.parse(saved.savedAt) < 30 * 60_000 && Array.isArray(saved.payload) ? saved.payload : []
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [version, setVersion] = useState(0)
@@ -40,7 +44,7 @@ function useBank(lane: Lane, enabled: boolean): IdeaBank {
     let live = true
     const controller = new AbortController()
     setLoading(true)
-    void fetchRankedIdeas(lane, controller.signal).then(rows => { if (live) { setItems(rows); setError(null) } })
+    void fetchRankedIdeas(lane, controller.signal, version > 0).then(rows => { if (live) { setItems(rows); setError(null); writeSwr(`content-ranked-ideas:${lane}`, rows) } })
       .catch(e => { if (live) setError(e instanceof Error ? e.message : 'Could not read ideas.') })
       .finally(() => { if (live) setLoading(false) })
     return () => { live = false; controller.abort() }
@@ -83,6 +87,8 @@ export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks:
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState('')
   const b = banks[seat]
+  const rankedAt = b.items[0]?.rankedAt
+  const rankedTime = rankedAt && Number.isFinite(Date.parse(rankedAt)) ? warsawHm(rankedAt) : null
   const rows = visibleIdeas(b.items, saved[seat], skipped[seat])
   const selected = rows.filter(it => it.saved)
   const fresh = rows.filter(it => !it.saved)
@@ -169,7 +175,7 @@ export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks:
         <button type="button" className="cv2-k cv2-k-q" aria-expanded={insights} data-verb="idea-insights" onClick={() => setInsights(v => !v)}>Insights & evidence {insights ? '▾' : '▸'}</button>
       </div>
       <Answer>{b.loading && !fresh.length ? `Reading ${who}’s ideas…` : b.error && !fresh.length ? `${who}’s ideas could not be read.` : !fresh.length ? `No fresh ideas wait for ${who}.`
-        : <>Best {Math.min(5, fresh.length)} for {who}<span className="cv2-ans-x"> · proof × freshness</span>.{fresh.length > 5 && ` ${fresh.length - 5} more on the bench.`}</>}</Answer>
+        : <>Best {Math.min(5, fresh.length)} for {who}<span className="cv2-ans-x"> · proof × freshness</span>.{fresh.length > 5 && ` ${fresh.length - 5} more on the bench.`}</>}{rankedTime && <span className="cv2-ans-x"> · Ranked {rankedTime} Warsaw</span>}</Answer>
       {insights && <section className="cv2-panel" aria-label="Insights and evidence"><Suspense fallback={<Skeleton lines={3} label="Reading insights" />}><Insights lane={seat} phone={phone} /></Suspense></section>}
       {error && <div className="cv2-banner cv2-banner-bad" role="alert"><span>{error}</span></div>}
       {b.error ? <div className="cv2-banner cv2-banner-bad" role="alert"><span>{fresh.length ? 'Ideas could not be refreshed. These are from the last read.' : 'The ideas read did not come back.'}</span><button type="button" onClick={b.refresh}>Retry</button></div>
@@ -194,7 +200,7 @@ export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks:
     {b.error && <Failed what="Ideas" detail={b.error} onRetry={b.refresh} />}
     {selected.length > 0 && <section aria-label="Selected ideas" className="cn-selected-ideas"><p className="cn-best-caption">Selected <span>· saved ideas and requested drafts</span></p><div className="cn-best-list">{selected.map(card)}</div></section>}
     <section aria-label={bench ? 'On the bench' : 'Best 5'}>
-      <p className="cn-best-caption">{bench ? 'On the bench' : 'Best 5'} <span>· proof × freshness</span></p>
+      <p className="cn-best-caption">{bench ? 'On the bench' : 'Best 5'} <span>· proof × freshness{rankedTime && ` · Ranked ${rankedTime} Warsaw`}</span></p>
       {b.loading && !fresh.length ? <Skeleton lines={5} title={false} label="Reading ideas" />
         : !fresh.length ? !b.error && <p className="cn-say">No fresh ideas waiting.</p>
         : <div className="cn-best-list">{shown.map(card)}</div>}

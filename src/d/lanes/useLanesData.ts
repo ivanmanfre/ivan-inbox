@@ -7,7 +7,7 @@
    Control section (a stale tab must not impersonate a dead monitor).
    ========================================================================== */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { fetchPayload, type CcPayload } from '../../lib/campaignControl'
+import { fetchPayload, isContractError, parsePayload, type CcPayload } from '../../lib/campaignControl'
 import { fetchCampaignPerf, type CampaignPerf } from '../../lib/campaignPerf'
 import {
   fetchGovernor, fetchOutcomes, fetchPipeline, fetchReplacement, fetchScanOpens, fetchViewedBack,
@@ -24,6 +24,7 @@ import { fetchLastAttempts } from './glance/reads'
 import { fetchReady, type ReadyRead } from './glance/ready'
 import { RETRY_MS, withTimeout } from '../ui/timeout'
 import { recall, remember } from '../../lib/pageMemo'
+import { supabase } from '../../lib/supabase'
 
 export type Slot<T> = { value: T | null; failed: string | null }
 export type LanesData = {
@@ -80,6 +81,39 @@ const READS: { [K in Key]: () => Promise<NonNullable<LanesData[K]['value']>> } =
   ready: () => fetchReady(),
 }
 const KEYS = Object.keys(READS) as Key[]
+const QUICK = new Set<Key>(['cc', 'gov', 'outcomes', 'health', 'perf', 'pipeline', 'replacement'])
+type QuickSlot = { value?: unknown; error?: string | null }
+
+async function fetchQuick(keys: Key[]): Promise<Record<string, QuickSlot>> {
+  const { data, error } = await supabase.rpc('inbox_phone_lanes_pick_r2', { p_keys: keys.filter(k => QUICK.has(k)) })
+  if (error) throw error
+  if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Lanes summary returned no slots')
+  return data as Record<string, QuickSlot>
+}
+
+function quickValue(k: Key, slots: Record<string, QuickSlot>): unknown {
+  const slot = slots[k]
+  if (!slot || typeof slot !== 'object' || slot.error || slot.value == null) throw new Error(slot?.error || `Lanes summary missing ${k}`)
+  if (k === 'cc') {
+    const parsed = parsePayload(slot.value)
+    if (isContractError(parsed)) throw new Error(parsed.contract_error)
+    return parsed
+  }
+  if (k === 'health') {
+    if (typeof slot.value !== 'object' || Array.isArray(slot.value)) throw new Error('no seat health summary')
+    return slot.value
+  }
+  if (!Array.isArray(slot.value)) throw new Error(`Lanes summary ${k} is not a list`)
+  if (k === 'perf') return slot.value.map(r => {
+    const row = r as Record<string, unknown>
+    return { ...row,
+      invites_7d: Number(row.invites_7d), dms_7d: Number(row.dms_7d), replied_7d: Number(row.replied_7d),
+      positive_7d: Number(row.positive_7d), calls_7d: Number(row.calls_7d), calls_30d: Number(row.calls_30d),
+      accept_judged: Number(row.accept_judged), accept_72h: Number(row.accept_72h),
+    }
+  })
+  return slot.value
+}
 /** Heavier reads that move slowly: re-read every 5 minutes, not on every 60s tick. */
 const SLOW = new Set<Key>(['ready', 'campSends', 'scans', 'inboundDaily'])
 const SLOW_MS = 5 * 60_000
@@ -133,14 +167,23 @@ export function useLanesData(only?: readonly Key[]): { data: LanesData; loading:
       setData(prev => ({ ...prev, [k]: slot(prev[k] as Slot<unknown>) }) as LanesData)
     }
     const failed: Key[] = []
-    void Promise.allSettled(keys.map(k => withTimeout<unknown>(READS[k]()).then(
+    const quick = keys.some(k => QUICK.has(k)) ? withTimeout(fetchQuick(keys), 4000) : null
+    // On Lanes, the compact summary wins the first network slot; the twelve
+    // subordinate reads start after it, without holding the first visible rows.
+    const secondary = quick && !only ? quick.then(() => {}, () => {}) : Promise.resolve()
+    void Promise.allSettled(keys.map(k => {
+      const direct = (): Promise<unknown> => READS[k]() as Promise<unknown>
+      const read: Promise<unknown> = quick && QUICK.has(k)
+        ? quick.then(slots => quickValue(k, slots)).catch(direct)
+        : quick && !only ? secondary.then(direct) : direct()
+      return withTimeout<unknown>(read).then(
       v => { remember(memoKey(k), v); put(k, () => ({ value: v, failed: null })) },
       e => {
         failed.push(k)
         put(k, prev => ({ value: prev.value, failed: e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e ?? 'read failed') }))
         throw e
       },
-    ))).then(() => {
+    ) })).then(() => {
       done()
       if (!live.current || failed.length === 0 || retryT.current != null) return
       retryT.current = window.setTimeout(() => {
@@ -148,7 +191,7 @@ export function useLanesData(only?: readonly Key[]): { data: LanesData; loading:
         if (live.current && !pending.current) { pending.current = true; readKeys(failed, () => { pending.current = false }) }
       }, RETRY_MS)
     })
-  }, [])
+  }, [only])
 
   const poll = useCallback((force = false) => {
     if (pending.current || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return

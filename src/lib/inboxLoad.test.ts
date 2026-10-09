@@ -23,7 +23,7 @@ vi.mock('./inbox', async () => {
     },
   }
 })
-vi.mock('./supabase', () => ({ supabase: {} }))
+vi.mock('./supabase', () => ({ supabase: { rpc: async () => ({ data: null, error: { code: 'PGRST202' } }) } }))
 import { loadInbox } from './inboxLoad'
 
 describe('loadInbox early paint', () => {

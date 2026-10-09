@@ -90,7 +90,7 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
       </Row>
       {/* Only on a device where the Brief 4 switch stored Off: the way back on. */}
       {storedSkinOff() && (
-        <Row title="Brief 4 layouts" sub="Off on this device.">
+        <Row title="Brief 4 layouts" sub="Off restores the earlier layout on this device.">
           <Key size="small" verb="skin-on" onClick={() => setSkinHere(true)}>Turn back on</Key>
         </Row>
       )}
@@ -146,7 +146,7 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
         {brief && native?.setView && <Row4 title="Motion">
           <Pair name="Motion" value={nativeMotion} options={[{ id: 'full', label: 'Full', verb: 'motion-full' }, { id: 'subtle', label: 'Subtle', verb: 'motion-subtle' }, { id: 'off', label: 'Off', verb: 'motion-off' }]} onPick={motion => native.setView?.({ motion })} />
         </Row4>}
-        <Row4 title="Brief 4 layouts" sub="Off keeps today's look on this device. The page reloads.">
+        <Row4 title="Brief 4 layouts" sub="Off restores the earlier layout on this device. The page reloads.">
           <Pair name="Brief 4 layouts" value={skinOnHere() ? 'on' : 'off'} options={[{ id: 'on', label: 'On', verb: 'skin-on' }, { id: 'off', label: 'Off', verb: 'skin-off' }]} onPick={v => setSkinHere(v === 'on')} />
         </Row4>
         {theme === 'light' && !brief && (

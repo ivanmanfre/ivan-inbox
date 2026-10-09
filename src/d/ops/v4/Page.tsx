@@ -32,7 +32,7 @@ export function OpsPageV4({ layout, route, navigate }: PlaceProps) {
   const ops = useOps()
   const c = useFrameCounts()
   const pending = useMemo(() => pendingOps(ops.drafts), [ops.drafts])
-  const { refresh: refreshOps } = ops, { refresh: refreshCounts } = c
+  const { refresh: refreshOps, markDone } = ops, { refresh: refreshCounts } = c
   const refresh = useCallback(() => { refreshOps(); refreshCounts('ops') }, [refreshOps, refreshCounts])
   const queue = useCommentQueue(pending, refresh)
   const rx = useReactions(true)
@@ -91,7 +91,10 @@ export function OpsPageV4({ layout, route, navigate }: PlaceProps) {
     if (!d && !r) return
     acted.current.set(id, { verb, who: d ? rowLine(d).who : r?.evidence?.who ?? 'Reaction', lane: d ? laneOf(d.client_id) : r!.lane, at: Date.now(), row: captureAction(root.current, id) })
   }, [all, rx.rows])
-  const onDone = useCallback((id: string) => setDone(m => new Map(m).set(id, Date.now())), [])
+  const onDone = useCallback((id: string) => {
+    markDone(id)
+    setDone(m => new Map(m).set(id, Date.now()))
+  }, [markDone])
   useEffect(() => {
     if (ops.error || confirmOpen || rx.busy || rx.actionError) return
     for (const [id, a] of acted.current) {
@@ -134,7 +137,7 @@ export function OpsPageV4({ layout, route, navigate }: PlaceProps) {
   const nj = board.flat.find(d => d.kind === 'newsjack' && timeLeft(d.context?.expires_at) !== 'expired')
   const sub = nj ? `${seatOf(nj.client_id) === 'risedtc' ? "Mattan’s" : seatOf(nj.client_id) === 'arch' ? "Davorin’s" : "Your"} newsjack has ${timeLeft(nj.context?.expires_at)}.` : ''
   const answer = <AnswerRow title={<>Waiting on you: <N v={w.ivan} /> yours, <N v={w.risedtc} /> Rise, <N v={w.arch} /> Arch{otherN > 0 && <>, <N v={otherN} /> in other lanes</>}.</>}
-    sub={firstRead ? 'Reading the queue…' : sub} tools={<button type="button" className="d-ib" data-op4-keys aria-label="Ops keys (?)" onClick={() => setKeySheet(true)}>?</button>} />
+    sub={firstRead ? 'Reading the queue…' : ops.saved ? `Showing saved queue from ${ops.loadedAt ? warsawHm(ops.loadedAt) : 'earlier'}. ${sub}` : sub} tools={<button type="button" className="d-ib" data-op4-keys aria-label="Ops keys (?)" onClick={() => setKeySheet(true)}>?</button>} />
   const checked = ops.loadedAt ? warsawHm(ops.loadedAt) : '…'
   const stale = ops.error && ops.drafts.length > 0 ? <Banner tone="attention" action={<Btn verb="retry" onClick={refresh}>Retry</Btn>}>Could not refresh{ops.loadedAt ? ` (showing ${checked})` : ''}.</Banner> : null
   const gone = (want && !all.some(d => d.id === want) && !acted.current.has(want)) || (wantRx && !reaction && !acted.current.has(wantRx))

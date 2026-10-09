@@ -21,7 +21,7 @@ const SHOWN = 6
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const tomorrow = (now = Date.now()) => localDay(now + 864e5)
 
-function Row({ d, refresh, v4 = false }: { d: OpsDraft; refresh: () => void; v4?: boolean }) {
+function Row({ d, refresh, onDone, v4 = false }: { d: OpsDraft; refresh: () => void; onDone?: (id: string) => void; v4?: boolean }) {
   const confirm = useDConfirm()
   const [busy, setBusy] = useState(false)
   const [ticked, setTicked] = useState(false)
@@ -35,14 +35,14 @@ function Row({ d, refresh, v4 = false }: { d: OpsDraft; refresh: () => void; v4?
   async function tick() {
     if (busy || ticked) return
     setBusy(true); setErr(''); setTicked(true)
-    try { await completeTask(d); setTimeout(refresh, 420) }
+    try { await completeTask(d); onDone?.(d.id); setTimeout(refresh, 420) }
     catch (e) { setTicked(false); setErr(errText(e)) }
     finally { setBusy(false) }
   }
   async function remove() {
     if (!(await confirm({ title: 'Remove this task?', message: 'It comes off the board for good. Nothing else happens.', confirmText: 'Remove', danger: true }))) return
     setBusy(true); setErr('')
-    try { await discardOpsDraft(d.id, d.kind); refresh() }
+    try { await discardOpsDraft(d.id, d.kind); onDone?.(d.id); refresh() }
     catch (e) { setErr(errText(e)) }
     finally { setBusy(false) }
   }
@@ -51,7 +51,7 @@ function Row({ d, refresh, v4 = false }: { d: OpsDraft; refresh: () => void; v4?
       <Btn verb="tick" disabled={busy || ticked} onClick={() => void tick()} aria-label={`Done: ${title}`}>{v4 ? <span aria-hidden="true">{ticked ? '✓' : '○'}</span> : ticked ? 'Done ✓' : 'Done'}</Btn>
       <span className="gt-t">{detail
         ? <button type="button" className="gt-tx" data-verb="expand" aria-expanded={open} onClick={() => setOpen(o => !o)}>{title}</button>
-        : title}{open && detail && <small className="gt-td">{detail}</small>}{err && <small className="gt-err">{err}</small>}<BookedKey d={d} onDone={() => setTimeout(refresh, 420)} /></span>
+        : title}{open && detail && <small className="gt-td">{detail}</small>}{err && <small className="gt-err">{err}</small>}<BookedKey d={d} onDone={() => { onDone?.(d.id); setTimeout(refresh, 420) }} /></span>
       <span className="gt-m">
         {dl && <b className={`gt-${dl.tone}`}>{dl.tone === 'over' ? 'overdue' : dl.text}</b>}
         {seat && seat !== 'ivan' && <span>{SEAT_NAME[seat]}</span>}
@@ -107,7 +107,7 @@ export function HomeTasks({ v4 = false }: { v4?: boolean } = {}) {
       {reading ? <p className="gt-q" aria-label="Reading your tasks">{v4 ? <span className="ols-skeleton" /> : '…'}</p>
         : failed ? <p className="gt-q" title={ops.error ?? 'no answer after 12 s'}><span className="hm-q">?</span> <button type="button" className="gt-rm" data-verb="retry" onClick={ops.refresh}>Retry</button></p>
         : tasks.length === 0 ? <p className="gt-q">Nothing open.</p>
-        : <ul className="gt-list">{shown.map(d => <Row key={d.id} v4={v4} d={d} refresh={ops.refresh} />)}</ul>}
+        : <ul className="gt-list">{shown.map(d => <Row key={d.id} v4={v4} d={d} refresh={ops.refresh} onDone={ops.markDone} />)}</ul>}
       {!v4 && tasks.length > SHOWN && <button type="button" className="gt-rm gt-more" aria-expanded={all} onClick={() => setAll(a => !a)}>{all ? 'Fewer' : `${tasks.length - SHOWN} more`}</button>}
       <Add refresh={ops.refresh} v4={v4} />
     </section>

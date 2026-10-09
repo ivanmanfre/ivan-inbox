@@ -23,3 +23,9 @@ it('keeps a stored eligible pattern read attached to the ranked idea without cha
  expect(rows[0].rank).toBe(2)
  expect(rows[0].proof).toBe('Stored proof')
 })
+
+it('carries the server ranking time so a cached list can say when it was ranked', () => {
+ const rows = parseRankedIdeas({ ok: true, client: 'ivan', ranked_at: '2026-10-09T17:00:00Z', from_cache: true,
+  rows: [{ kind: 'bank', id: 'a', rank: 1, bank: { id: 'a', normalized_topic: 'A', source: 'calls' } }] }, 'ivan')
+ expect(rows[0].rankedAt).toBe('2026-10-09T17:00:00Z')
+})

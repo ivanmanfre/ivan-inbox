@@ -97,6 +97,18 @@ export default function ClaudeDrawer({ layout, route, onClose, variant = 'drawer
 
   const page = v4 && variant === 'page'
   const edge = useRef<{ x: number; y: number } | null>(null)
+  const dismissStart = useRef<{ x: number; y: number } | null>(null)
+  const dismissTouch = layout === 'phone' && !page ? {
+    onTouchStart: (e: React.TouchEvent) => {
+      const t = e.touches[0]
+      dismissStart.current = { x: t.clientX, y: t.clientY }
+    },
+    onTouchEnd: (e: React.TouchEvent) => {
+      const start = dismissStart.current, t = e.changedTouches[0]
+      dismissStart.current = null
+      if (start && t.clientY - start.y > 72 && t.clientY - start.y > Math.abs(t.clientX - start.x)) onClose()
+    },
+  } : {}
   const touch = layout === 'phone' ? {
     onTouchStart: (e: React.TouchEvent) => { const t = e.touches[0]; edge.current = t.clientX < 24 ? { x: t.clientX, y: t.clientY } : null },
     onTouchEnd: (e: React.TouchEvent) => {
@@ -108,8 +120,8 @@ export default function ClaudeDrawer({ layout, route, onClose, variant = 'drawer
 
   return (
     <div className={`dcl dcl-${layout}${v4 ? ' dcl-v4' : ''}${page ? ' dcl-ws' : ''}`} data-claude-drawer {...touch}>
-      {layout === 'phone' && <div className="dcl-grab" aria-hidden="true" />}
-      <div className="dcl-head">
+      {layout === 'phone' && <div className="dcl-grab" aria-hidden="true" {...dismissTouch} />}
+      <div className="dcl-head" {...dismissTouch}>
         {!page && <button type="button" className={`dcl-ib${view === 'chats' ? ' dcl-on' : ''}`} data-verb="chats" aria-pressed={view === 'chats'}
           aria-label={view === 'chats' ? 'Back to the chat' : chat.botUnread ? "Chats, Claude's thread has something new" : 'Chats'} title="Chats" onClick={() => setView(v => (v === 'chats' ? 'chat' : 'chats'))}>
           <CIcon name="chats" />{chat.botUnread && <i className="dcl-dot" aria-hidden="true" />}

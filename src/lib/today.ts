@@ -445,8 +445,9 @@ export function todayPlate(b: Brief | null, scope: Scope, now = new Date()): Tod
 
 export class BriefAuthError extends Error {}
 
-async function callBrief(mode: 'counts' | 'full', token: string): Promise<unknown> {
-  const res = await fetch(mode === 'counts' ? `${FN_URL}?mode=counts` : FN_URL, {
+async function callBrief(mode: 'counts' | 'full', token: string, force = false): Promise<unknown> {
+  const url = `${FN_URL}?mode=${mode}${force ? '&refresh=1' : ''}`
+  const res = await fetch(url, {
     headers: { apikey: ANON, Authorization: `Bearer ${token}` },
   })
   if (res.status === 401 || res.status === 403) throw new BriefAuthError(`brief ${res.status}`)
@@ -458,18 +459,18 @@ async function callBrief(mode: 'counts' | 'full', token: string): Promise<unknow
 // backgrounded is the common case. A second failure is a real auth failure and
 // the caller falls back to cached data with a visible stale marker rather than
 // blanking the screen.
-export async function fetchBrief(mode: 'counts' | 'full'): Promise<unknown> {
+export async function fetchBrief(mode: 'counts' | 'full', force = false): Promise<unknown> {
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
   if (!token) throw new BriefAuthError('no session')
   try {
-    return await callBrief(mode, token)
+    return await callBrief(mode, token, force)
   } catch (e) {
     if (!(e instanceof BriefAuthError)) throw e
     const { data: refreshed, error } = await supabase.auth.refreshSession()
     const fresh = refreshed.session?.access_token
     if (error || !fresh) throw e
-    return callBrief(mode, fresh)
+    return callBrief(mode, fresh, force)
   }
 }
 
@@ -578,12 +579,12 @@ export function cacheSafe(json: string): boolean {
   return !/approve_url|skip_url|action_url|[?&]k=/.test(json)
 }
 
-export function writeCache(b: Brief): void {
+export function writeCache(b: Brief, fetchedAt = new Date().toISOString()): void {
   const key = todayCacheKey(currentUserId())
   if (!key) return
   let json: string
   try {
-    json = JSON.stringify({ fetched_at: new Date().toISOString(), brief: projectBrief(b) })
+    json = JSON.stringify({ fetched_at: fetchedAt, brief: projectBrief(b) })
   } catch {
     return
   }

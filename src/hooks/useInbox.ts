@@ -52,6 +52,8 @@ export function useInbox(enabled = true, seedCache = enabled) {
   // When the last SUCCESSFUL load landed. An empty list with a fresh stamp is
   // "genuinely empty"; an empty list with no stamp at all is "never loaded".
   const [loadedAt, setLoadedAt] = useState<string | null>(null)
+  // Complete priority conversations are live, while the older archive still follows.
+  const [priorityAt, setPriorityAt] = useState<string | null>(null)
   // Newest inbound timestamp we've already seen — a refresh that surfaces an
   // inbound row newer than this plays the chime. Null until first load so the
   // initial fetch never dings.
@@ -139,10 +141,11 @@ export function useInbox(enabled = true, seedCache = enabled) {
           // ?thread= link that is not in it yet waits instead of saying "not in the list"), and a
           // failed read takes it back off the screen (below), the pre-2026-10-08 cold failure.
           const run = ++fullRun.current
-          const res = await loadInbox(knownRows.current, knownRows.current === 0 ? early => {
+          const res = await loadInbox(knownRows.current, knownRows.current === 0 ? (early, priority) => {
             if (fullRun.current !== run || knownRows.current !== 0 || early.length === 0) return
             provisional.current = true
             setThreads(early)
+            if (priority) setPriorityAt(new Date().toISOString())
           } : undefined)
           const mark = await markRead
           // An empty read over a known-non-empty inbox is a failure (land says so): stop, never loop on it.
@@ -181,7 +184,7 @@ export function useInbox(enabled = true, seedCache = enabled) {
       }
     } catch (e: unknown) {
       // A newest-page paint is not a read that landed: never leave it on screen as the last good list.
-      if (provisional.current) { provisional.current = false; setThreads([]) }
+      if (provisional.current) { provisional.current = false; setThreads([]); setPriorityAt(null) }
       setError(e instanceof Error ? e.message : 'inbox unavailable')
       setLoading(false)
     } finally {
@@ -278,5 +281,5 @@ export function useInbox(enabled = true, seedCache = enabled) {
       document.removeEventListener('visibilitychange', onReturn)
     }
   }, [refresh, pump, topic, enabled])
-  return { threads, loading, error, loadedAt, fromCache, cachedAt, refresh }
+  return { threads, loading, error, loadedAt, priorityAt, fromCache, cachedAt, refresh }
 }

@@ -29,7 +29,12 @@ export function Headline({ mode, views, counts, tools, noSub = false }: { mode: 
   }
   // One headline; the sub line only when a thread still has no draft (work Ivan must start).
   const sub = noSub ? undefined : noDraftLine(views)
-  return <AnswerRow title={<>Needs you: <N v={needs.ivan} /> yours, <N v={needs.risedtc} /> Mattan's, <N v={needs.arch} /> Davorin's.</>} sub={sub} tools={tools} />
+  return <AnswerRow title={<><span className="dm-needs-prose">Needs you: <N v={needs.ivan} /> yours, <N v={needs.risedtc} /> Mattan's, <N v={needs.arch} /> Davorin's.</span><span className="dm-needs-counts" aria-label={`Needs you: ${needs.ivan ?? 'unknown'} yours, ${needs.risedtc ?? 'unknown'} Mattan's, ${needs.arch ?? 'unknown'} Davorin's`}>
+    <span className="dm-needs-label">Needs you</span>
+    <span className="dm-needs-seat"><i>I</i><N v={needs.ivan} /><small>yours</small></span>
+    <span className="dm-needs-seat"><i>M</i><N v={needs.risedtc} /><small>Mattan</small></span>
+    <span className="dm-needs-seat"><i>D</i><N v={needs.arch} /><small>Davorin</small></span>
+  </span></>} sub={sub} tools={tools} />
 }
 
 export function Health({ data }: { data: DmsData }) {
@@ -37,6 +42,7 @@ export function Health({ data }: { data: DmsData }) {
   if (data.error) return <span className="dm-live dm-live-bad">Could not refresh{data.loadedAt ? ` · last read ${warsawHm(data.loadedAt)}` : data.cachedAt ? ` · saved copy ${warsawHm(data.cachedAt)}` : ''} <Btn verb="retry" onClick={data.refreshAll}>Retry</Btn></span>
   // Live and fresh says nothing (the time stays in the tooltip); only a saved copy, a read or a failure speaks.
   if (data.loadedAt) return <span className="dm-live" title={`Live · read ${warsawHm(data.loadedAt)}`} />
+  if (data.priorityAt) return <span className="dm-live" title="Needs you and Coming up are live; older history is still loading">Needs-you read {warsawHm(data.priorityAt)} · older history follows</span>
   if (data.fromCache) return <span className="dm-live">Saved copy{data.cachedAt ? ` from ${warsawHm(data.cachedAt)}` : ''} · reading…</span>
   return <span className="dm-live">Reading…</span>
 }

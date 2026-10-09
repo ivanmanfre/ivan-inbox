@@ -101,7 +101,8 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   // other two seats' ranked reads (from 1.5 s) and the three 1,000-row seat reads behind the sub-tab
   // counts (from 0 s), and finished last. Now the shown seat's ideas go first; the other seats' counts
   // and the full seat reads start the moment it answers (or fails), or after IDEAS_FIRST_MS at most.
-  const ideasSettled = !banks[isLane(q.get('lane')) ? q.get('lane') as Lane : 'ivan'].loading
+  const shownBank = banks[isLane(q.get('lane')) ? q.get('lane') as Lane : 'ivan']
+  const ideasSettled = !shownBank.loading || shownBank.items.length > 0
   useEffect(() => {
     if (!onIdeas || ((bankCounts || !cv2.ideas) && fullOn)) return
     const go = () => { if (cv2.ideas) setBankCounts(true); setFullOn(true) }

@@ -12,6 +12,7 @@ export type IdeaItem = {
   evidenceQuote?: string | null
   proof?: string
   rank?: number
+  rankedAt?: string | null
   patternRead?: PatternRead
   outlier?: OutlierRow
   saved?: boolean

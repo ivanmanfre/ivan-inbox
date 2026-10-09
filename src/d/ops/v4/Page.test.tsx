@@ -7,7 +7,7 @@ import { parseDHash } from '../../route'
 import { __resetSkinForTests } from '../../../ds/skin'
 import OpsPage from '../index'
 import type { OpsDraft } from '../../../lib/ops'
-vi.mock('../../../hooks/useOps', () => ({ useOps: () => ({ drafts, loading, error, loadedAt: 1791410000000, refresh }) }))
+vi.mock('../../../hooks/useOps', () => ({ useOps: () => ({ drafts, loading, error, loadedAt: 1791410000000, saved: false, refresh, markDone: vi.fn() }) }))
 vi.mock('../../../hooks/useCommentQueue', () => ({ useCommentQueue: () => ({ held: new Map(), feed: new Map(), waiting: [], cappedToday: false, positionOf: () => -1, record: vi.fn() }) }))
 vi.mock('../../../hooks/useReactions', () => ({ useReactions: () => ({ ...useReactionFixture() }) }))
 vi.mock('../../../lib/ops', async orig => ({ ...await orig<typeof import('../../../lib/ops')>(), approveOpsDraft: vi.fn(async () => {}), discardOpsDraft: vi.fn(async () => {}) }))
@@ -27,7 +27,7 @@ function Page({ phone = false }: { phone?: boolean }) {
   const [, redraw] = useState(0)
   return <><button data-reload onClick={() => redraw(x => x + 1)}>Read</button><OpsPage layout={phone ? 'phone' : 'desktop'} route={parseDHash(hash)} navigate={setHash} /></>
 }
-beforeEach(() => { drafts = [a, b, rise]; error = ''; loading = false; reactions = []; vi.clearAllMocks(); __resetSkinForTests(new Set(['ops'])) })
+beforeEach(() => { Object.defineProperty(globalThis, 'CSS', { configurable: true, value: { escape: (s: string) => s } }); drafts = [a, b, rise]; error = ''; loading = false; reactions = []; vi.clearAllMocks(); __resetSkinForTests(new Set(['ops'])) })
 afterEach(() => { cleanup(); __resetSkinForTests() })
 describe('Ops v4 page', () => {
   it('uses one seat list, keeps proper case and navigates across seats and the unknown lane', () => {

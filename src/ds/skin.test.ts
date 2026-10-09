@@ -91,12 +91,16 @@ describe('applySkin (the live store)', () => {
     expect(n).toBe(1)
     off()
   })
-  it('theme-color follows the tokens section and restores', () => {
+  it('phone Off keeps the pre-Oxygen light theme and marks the rollback', () => {
     const meta = document.createElement('meta'); meta.name = 'theme-color'; meta.content = '#000000'
     document.head.appendChild(meta)
     sessionStorage.setItem(SKIN_KEY, 'brief:tokens'); applySkin('phone')
     expect(meta.content).toBe('#FAF9F7')
     sessionStorage.setItem(SKIN_KEY, 'off'); applySkin('phone')
+    expect(meta.content).toBe('#FAF9F7')
+    expect(document.documentElement.hasAttribute('data-phone-oxygen-off')).toBe(true)
+    applySkin('desktop')
+    expect(document.documentElement.hasAttribute('data-phone-oxygen-off')).toBe(false)
     expect(meta.content).toBe('#000000')
     meta.remove()
   })

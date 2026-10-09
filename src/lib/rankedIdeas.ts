@@ -7,8 +7,9 @@ import { fromCandidate, fromClient, type IdeaItem } from '../d/content/ideaModel
 import { age, type Lane } from '../d/content/model'
 
 export function parseRankedIdeas(data: unknown, lane: Lane): IdeaItem[] {
-  const d = data as { ok?: boolean; client?: string; rows?: unknown[] } | null
+  const d = data as { ok?: boolean; client?: string; rows?: unknown[]; ranked_at?: unknown } | null
   if (!d || d.ok !== true || d.client !== lane || !Array.isArray(d.rows)) throw new Error('Ideas returned no usable list.')
+  const rankedAt = typeof d.ranked_at === 'string' && Number.isFinite(Date.parse(d.ranked_at)) ? d.ranked_at : null
   return d.rows.map(raw => {
     const r = raw as { kind: string; id: string; bank?: IdeaCandidate | ClientIdea; outlier?: OutlierRow; proof?: string; rank?: number; pattern_read?: unknown }
     if (!r.id || !Number.isFinite(Number(r.rank))) throw new Error('An idea returned no ranking.')
@@ -21,13 +22,18 @@ export function parseRankedIdeas(data: unknown, lane: Lane): IdeaItem[] {
       item = { id: r.id, lane, title: title || `Post from ${r.outlier.author}`, src: r.outlier.platform === 'x' ? 'X' : 'LinkedIn',
         age: age(r.outlier.published_at), score: null, parts: [], why: body, angle: null, format: null, outlier: r.outlier }
     } else throw new Error('An idea returned no source row.')
-    return { ...item, proof: typeof r.proof === 'string' && r.proof.trim() ? r.proof : item.src, rank: Number(r.rank), patternRead: parsePatternRead(r.pattern_read, lane) }
+    return { ...item, proof: typeof r.proof === 'string' && r.proof.trim() ? r.proof : item.src, rank: Number(r.rank), rankedAt, patternRead: parsePatternRead(r.pattern_read, lane) }
   })
 }
 
-export async function fetchRankedIdeas(lane: Lane, signal?: AbortSignal): Promise<IdeaItem[]> {
-  const query = supabase.rpc('operator_ranked_ideas', { p_gate: CLIENT_OPS_GATE, p_client: lane })
-  const { data, error } = await (signal ? query.abortSignal(signal) : query)
+export async function fetchRankedIdeas(lane: Lane, signal?: AbortSignal, fresh = false): Promise<IdeaItem[]> {
+  const query = supabase.rpc('inbox_phone_ranked_ideas_r2', { p_gate: CLIENT_OPS_GATE, p_client: lane, p_fresh: fresh })
+  let { data, error } = await (signal ? query.abortSignal(signal) : query)
+  // The original function is the compatibility path while the additive cache RPC propagates.
+  if (error?.code === 'PGRST202') {
+    const original = supabase.rpc('operator_ranked_ideas', { p_gate: CLIENT_OPS_GATE, p_client: lane })
+    ;({ data, error } = await (signal ? original.abortSignal(signal) : original))
+  }
   if (error) throw new Error(error.message || 'Ideas could not load.')
   return parseRankedIdeas(data, lane)
 }

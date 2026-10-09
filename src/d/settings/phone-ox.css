@@ -3,83 +3,83 @@
    iOS inset grouped list: white glass cells, radius 14, 52px rows, 16px labels, values and toggles at the right.
    Scoped to the phone skin: desktop and Brief 4 layouts Off match nothing here.
    ========================================================================== */
-:root[data-skin-on~='shell'][data-layout='phone']{--stx-card:rgba(255,255,255,.84);--stx-hair:rgba(19,18,16,.08);--stx-card-shadow:0 0 0 .5px rgba(19,18,16,.07),0 1px 3px rgba(19,18,16,.05);--stx-pill:rgba(19,18,16,.07)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]){--stx-card:rgba(255,255,255,.84);--stx-hair:rgba(19,18,16,.08);--stx-card-shadow:0 0 0 .5px rgba(19,18,16,.07),0 1px 3px rgba(19,18,16,.05);--stx-pill:rgba(19,18,16,.07)}
 
 /* "Settings" / "Money" heading only repeats the place name (the frame's large title) */
-:root[data-skin-on~='shell'][data-layout='phone'] .ds4 > .d-pans,:root[data-skin-on~='shell'][data-layout='phone'] .ds2-moneyplace > .d-pans{padding:0 var(--po-gutter) 8px}
-:root[data-skin-on~='shell'][data-layout='phone'] .ds4 > .d-pans .d-at h1,:root[data-skin-on~='shell'][data-layout='phone'] .ds2-moneyplace > .d-pans .d-at h1{display:none}
-:root[data-skin-on~='shell'][data-layout='phone'] .ds4 > .d-pans:not(:has(.d-at p)),:root[data-skin-on~='shell'][data-layout='phone'] .ds2-moneyplace > .d-pans:not(:has(.d-at p)){display:none}
-:root[data-skin-on~='shell'][data-layout='phone'] .ds4 > .d-pans .d-at p{margin:0;font:400 15px/21px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .ds4 > .d-pans,:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .ds2-moneyplace > .d-pans{padding:0 var(--po-gutter) 8px}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .ds4 > .d-pans .d-at h1,:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .ds2-moneyplace > .d-pans .d-at h1{display:none}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .ds4 > .d-pans:not(:has(.d-at p)),:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .ds2-moneyplace > .d-pans:not(:has(.d-at p)){display:none}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .ds4 > .d-pans .d-at p{margin:0;font:400 15px/21px var(--f);color:var(--t2)}
 
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4-col{padding:0 16px 28px;gap:28px;max-width:none}
-:root[data-skin-on~='shell'][data-layout='phone'] .ds4-group{min-width:0}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4-label{margin:0 0 8px 16px;font:600 13px/18px var(--f);letter-spacing:0;text-transform:none;color:var(--t2)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4-list{border-radius:14px;background:var(--stx-card);box-shadow:var(--stx-card-shadow);overflow:hidden}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4-list > * + *{box-shadow:none;position:relative}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4-list > * + *::before{content:'';position:absolute;top:0;left:16px;right:0;height:.5px;background:var(--stx-hair);pointer-events:none}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4-row{min-height:52px;padding:8px 16px;gap:12px;flex-wrap:nowrap}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4-t b{font:400 16px/22px var(--f);letter-spacing:-.005em;color:var(--t1)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4-t small{font:400 13px/18px var(--f);color:var(--t2);margin-top:1px}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4-c{gap:10px}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4-sub{padding:12px 16px}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4-link{min-height:52px;cursor:default}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4-link:active{background:var(--ds-wash-strong)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4-chev{font:300 24px/1 var(--f);color:var(--t3);display:block;margin-right:2px}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4-link .ds4-t b{font:400 16px/22px var(--f)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4-build{padding:0 16px;font:400 13px/18px var(--f);color:var(--t3)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4-col{padding:0 16px 28px;gap:28px;max-width:none}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .ds4-group{min-width:0}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4-label{margin:0 0 8px 16px;font:600 13px/18px var(--f);letter-spacing:0;text-transform:none;color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4-list{border-radius:14px;background:var(--stx-card);box-shadow:var(--stx-card-shadow);overflow:hidden}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4-list > * + *{box-shadow:none;position:relative}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4-list > * + *::before{content:'';position:absolute;top:0;left:16px;right:0;height:.5px;background:var(--stx-hair);pointer-events:none}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4-row{min-height:52px;padding:8px 16px;gap:12px;flex-wrap:nowrap}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4-t b{font:400 16px/22px var(--f);letter-spacing:-.005em;color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4-t small{font:400 13px/18px var(--f);color:var(--t2);margin-top:1px}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4-c{gap:10px}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4-sub{padding:12px 16px}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4-link{min-height:52px;cursor:default}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4-link:active{background:var(--ds-wash-strong)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4-chev{font:300 24px/1 var(--f);color:var(--t3);display:block;margin-right:2px}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4-link .ds4-t b{font:400 16px/22px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4-build{padding:0 16px;font:400 13px/18px var(--f);color:var(--t3)}
 
 /* On/Off, Comfortable/Compact: segmented pair, 44 hit on every segment */
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds2-pair{padding:2px;border-radius:10px;background:rgba(118,118,128,.14);box-shadow:none;gap:0}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds2-pair .d-key{min-width:56px;height:44px;min-height:44px;border-radius:8px}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds2-pair .d-key .d-face{padding:0 14px;border-radius:8px;font:500 15px/20px var(--f);justify-content:center;color:var(--t2)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds2-pair .d-key.ds2-pressed .d-face{background:#fff;color:var(--t1);font-weight:600;box-shadow:0 1px 3px rgba(19,18,16,.14),0 0 0 .5px rgba(19,18,16,.05)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds2-pair .d-key:active{transform:none}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds2-pair .d-key:not(.ds2-pressed):active .d-face{background:rgba(19,18,16,.06)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds2-pair{padding:2px;border-radius:10px;background:rgba(118,118,128,.14);box-shadow:none;gap:0}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds2-pair .d-key{min-width:56px;height:44px;min-height:44px;border-radius:8px}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds2-pair .d-key .d-face{padding:0 14px;border-radius:8px;font:500 15px/20px var(--f);justify-content:center;color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds2-pair .d-key.ds2-pressed .d-face{background:#fff;color:var(--t1);font-weight:600;box-shadow:0 1px 3px rgba(19,18,16,.14),0 0 0 .5px rgba(19,18,16,.05)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds2-pair .d-key:active{transform:none}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds2-pair .d-key:not(.ds2-pressed):active .d-face{background:rgba(19,18,16,.06)}
 /* quiet right-hand chips: Open, Reset, Sign out */
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds4-c > .d-key,:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds2-open{min-height:44px;height:44px;min-width:44px;padding:0;border:0;background:transparent;box-shadow:none;transform:none}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds4-c > .d-key .d-face{min-height:44px;height:44px;padding:0 6px;background:transparent;box-shadow:none;font:500 16px/22px var(--f);color:var(--t2);display:flex;align-items:center;justify-content:flex-end}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds4-c > .d-key.ds2-warn .d-face{color:var(--ds-sev-urgent-ui);font-weight:500}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds2-open{display:inline-flex;align-items:center;padding:0 6px;font:500 16px/22px var(--f);color:var(--t2)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds2-open.ds2-off{opacity:.4}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds2-open:active,:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds4-c > .d-key:active{opacity:.55}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds4-c > .d-key,:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds2-open{min-height:44px;height:44px;min-width:44px;padding:0;border:0;background:transparent;box-shadow:none;transform:none}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds4-c > .d-key .d-face{min-height:44px;height:44px;padding:0 6px;background:transparent;box-shadow:none;font:500 16px/22px var(--f);color:var(--t2);display:flex;align-items:center;justify-content:flex-end}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds4-c > .d-key.ds2-warn .d-face{color:var(--ds-sev-urgent-ui);font-weight:500}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds2-open{display:inline-flex;align-items:center;padding:0 6px;font:500 16px/22px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds2-open.ds2-off{opacity:.4}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds2-open:active,:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds4-c > .d-key:active{opacity:.55}
 
 /* devices: sub-cells of the Notifications group */
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds4-devs{margin:0;padding:0}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds4-devs li{position:relative;display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:10px;align-items:center;min-height:44px;padding:6px 16px;border:0;font:400 15px/20px var(--f);color:var(--t1)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds4-devs li::before{content:'';position:absolute;top:0;left:16px;right:0;height:.5px;background:var(--stx-hair)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds4-devs i,:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds4-devs em{font:400 13px/18px var(--f);color:var(--t3)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds4-devs small{font:400 14px/20px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds4-devs{margin:0;padding:0}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds4-devs li{position:relative;display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:10px;align-items:center;min-height:44px;padding:6px 16px;border:0;font:400 15px/20px var(--f);color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds4-devs li::before{content:'';position:absolute;top:0;left:16px;right:0;height:.5px;background:var(--stx-hair)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds4-devs i,:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds4-devs em{font:400 13px/18px var(--f);color:var(--t3)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds4-devs small{font:400 14px/20px var(--f);color:var(--t2)}
 
 /* Money: strip of figure cells, numbers >= 13 */
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds2-money{grid-template-columns:minmax(0,1fr);gap:0}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds2-money > div{padding:12px 0;border-radius:0;background:transparent;border-top:.5px solid var(--stx-hair)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds2-money > div:first-child{border-top:0}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds2-money small{font:600 13px/18px var(--f);letter-spacing:0;text-transform:none;color:var(--t2)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds2-money em{font:650 24px/30px var(--f);letter-spacing:-.02em;color:var(--t1)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds2-money em.ds2-z{font:400 16px/22px var(--f);color:var(--t2)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .ds2-money u{font:400 13px/18px var(--f);color:var(--t3)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .d-failed{margin:8px 0;padding:14px 16px;gap:12px;border:0;border-radius:14px;background:var(--ds-sev-attention-soft)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .d-failed p{font:600 15px/21px var(--f);color:var(--t1)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .d-failed small{font:400 13px/18px var(--f)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .d-failed .d-btn{min-height:44px;min-width:76px;padding:0 18px;border-radius:999px;border:0;background:rgba(255,255,255,.9);box-shadow:0 0 0 .5px rgba(19,18,16,.1);font:600 15px/20px var(--f);justify-content:center}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds2-money{grid-template-columns:minmax(0,1fr);gap:0}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds2-money > div{padding:12px 0;border-radius:0;background:transparent;border-top:.5px solid var(--stx-hair)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds2-money > div:first-child{border-top:0}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds2-money small{font:600 13px/18px var(--f);letter-spacing:0;text-transform:none;color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds2-money em{font:650 24px/30px var(--f);letter-spacing:-.02em;color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds2-money em.ds2-z{font:400 16px/22px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .ds2-money u{font:400 13px/18px var(--f);color:var(--t3)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .d-failed{margin:8px 0;padding:14px 16px;gap:12px;border:0;border-radius:14px;background:var(--ds-sev-attention-soft)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .d-failed p{font:600 15px/21px var(--f);color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .d-failed small{font:400 13px/18px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .d-failed .d-btn{min-height:44px;min-width:76px;padding:0 18px;border-radius:999px;border:0;background:rgba(255,255,255,.9);box-shadow:0 0 0 .5px rgba(19,18,16,.1);font:600 15px/20px var(--f);justify-content:center}
 
 /* ---- Money (inside Settings): its own scroll box, table scrolls inside its container only ---- */
-:root[data-skin-on~='shell'][data-layout='phone'] .d-app:has(.ds2-moneyplace) .po-bar .d-ptools .d-key{min-height:44px;height:44px;padding:0;border:0;background:transparent;box-shadow:none}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-app:has(.ds2-moneyplace) .po-bar .d-ptools .d-key .d-lip{display:none}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-app:has(.ds2-moneyplace) .po-bar .d-ptools .d-key .d-face{min-height:44px;height:44px;padding:0 12px;background:transparent;border:0;box-shadow:none;font:500 16px/22px var(--f);color:var(--t2);display:flex;align-items:center}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds2-moneyview{--ds-tt-eyebrow:none;--ds-tr-eyebrow:0;padding:0 16px 28px}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds2-moneyview .a-head{padding:0 4px 8px;min-height:0}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds2-moneyview .a-eyebrow{font:600 13px/18px var(--f);letter-spacing:0;text-transform:none;color:var(--t2)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds2-moneyview .a-body{max-height:none;overflow:visible}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds2-moneyview :is(table,.a-table){font-size:13px}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds2-moneyview :is(.a-table-wrap,.a-scroll,.a-tw){overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds2-moneyview :is(th,td,small,.a-sub){font-size:13px}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds2-moneyview :is(button,a,.a-chip,select,input){min-height:44px}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .d-skel{padding:12px 16px}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app:has(.ds2-moneyplace) .po-bar .d-ptools .d-key{min-height:44px;height:44px;padding:0;border:0;background:transparent;box-shadow:none}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app:has(.ds2-moneyplace) .po-bar .d-ptools .d-key .d-lip{display:none}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app:has(.ds2-moneyplace) .po-bar .d-ptools .d-key .d-face{min-height:44px;height:44px;padding:0 12px;background:transparent;border:0;box-shadow:none;font:500 16px/22px var(--f);color:var(--t2);display:flex;align-items:center}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds2-moneyview{--ds-tt-eyebrow:none;--ds-tr-eyebrow:0;padding:0 16px 28px}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds2-moneyview .a-head{padding:0 4px 8px;min-height:0}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds2-moneyview .a-eyebrow{font:600 13px/18px var(--f);letter-spacing:0;text-transform:none;color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds2-moneyview .a-body{max-height:none;overflow:visible}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds2-moneyview :is(table,.a-table){font-size:13px}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds2-moneyview :is(.a-table-wrap,.a-scroll,.a-tw){overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds2-moneyview :is(th,td,small,.a-sub){font-size:13px}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds2-moneyview :is(button,a,.a-chip,select,input){min-height:44px}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ds4 .d-skel{padding:12px 16px}
 
 /* Money: a fresh, verified figure's provenance line repeats the same caption on every row ("from the vendor
    spend log · observed today", 79x). On the phone it is cut; a stale or unverified figure keeps its line. */
-:root[data-skin-on~='shell'][data-layout='phone'] .a-money-cell:not([data-stale]):not([data-unv]) > .a-money-cp{display:none}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .a-money-cell:not([data-stale]):not([data-unv]) > .a-money-cp{display:none}
 
 /* Money > Open money decisions: the footer sentence explains where ticking happens (helper, cut on the phone). */
-:root[data-skin-on~='shell'][data-layout='phone'] .ds2-moneyview .a-group-foot > .a-meta:only-child{display:none}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .ds2-moneyview .a-group-foot > .a-meta:only-child{display:none}

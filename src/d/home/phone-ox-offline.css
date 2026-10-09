@@ -1,10 +1,10 @@
 /* The offline line at the Oxygen phone standard (B2): a calm glass banner under the nav bar.
    The read time stays in the first line; the second line is the consequence. */
-:root[data-skin-on~='shell'][data-layout='phone'] .d-offline{margin:2px var(--po-gutter,20px) 8px;padding:12px 14px;gap:12px;align-items:flex-start;border:1px solid var(--po-glass-border,rgba(255,255,255,.62));border-radius:16px;
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-offline{margin:2px var(--po-gutter,20px) 8px;padding:12px 14px;gap:12px;align-items:flex-start;border:1px solid var(--po-glass-border,rgba(255,255,255,.62));border-radius:16px;
   background:var(--po-glass,rgba(252,251,249,.74));-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 8px 24px -12px rgba(19,18,16,.18),0 0 0 1px rgba(19,18,16,.05);color:var(--ds-text,#131210);animation:po-rise var(--po-d-content,380ms) var(--po-ease,ease) both}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-offline .d-ico{width:22px;height:22px;flex:none;margin-top:1px;stroke-width:1.8;color:var(--ds-sev-attention-ui,#865d19)}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-offline .d-off-a{display:block;font:550 15px/20px var(--ds-font);letter-spacing:-.005em;font-variant-numeric:tabular-nums}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-offline .d-off-b{display:block;font:400 13px/18px var(--ds-font);color:var(--ds-text-2,#4a463e);margin-top:2px}
-@media (prefers-reduced-transparency:reduce){:root[data-skin-on~='shell'][data-layout='phone'] .d-offline{background:#FCFBF9;-webkit-backdrop-filter:none;backdrop-filter:none}}
-@media (prefers-reduced-motion:reduce){:root[data-skin-on~='shell'][data-layout='phone'] .d-offline{animation:none}}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-offline .d-ico{width:22px;height:22px;flex:none;margin-top:1px;stroke-width:1.8;color:var(--ds-sev-attention-ui,#865d19)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-offline .d-off-a{display:block;font:550 15px/20px var(--ds-font);letter-spacing:-.005em;font-variant-numeric:tabular-nums}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-offline .d-off-b{display:block;font:400 13px/18px var(--ds-font);color:var(--ds-text-2,#4a463e);margin-top:2px}
+@media (prefers-reduced-transparency:reduce){:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-offline{background:#FCFBF9;-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media (prefers-reduced-motion:reduce){:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-offline{animation:none}}

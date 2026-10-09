@@ -7,12 +7,13 @@ import { renderInFrame } from '../test-utils'
 import type { OpsDraft } from '../../lib/ops'
 
 const insert = vi.fn(async (_row: unknown) => ({ error: null }))
+const markDone = vi.fn()
 vi.mock('../../lib/supabase', () => ({ supabase: { from: () => ({ insert }) } }))
 const rows: OpsDraft[] = []
-vi.mock('../../hooks/useOps', () => ({ useOps: () => ({ drafts: rows, loading: false, error: null, loadedAt: '2026-09-27T12:00:00Z', refresh: vi.fn() }) }))
+vi.mock('../../hooks/useOps', () => ({ useOps: () => ({ drafts: rows, loading: false, error: null, loadedAt: '2026-09-27T12:00:00Z', refresh: vi.fn(), markDone }) }))
 vi.mock('../../lib/ops', async orig => {
   const real = await orig<typeof import('../../lib/ops')>()
-  return { ...real, completeTask: vi.fn(async () => {}), discardOpsDraft: vi.fn(async () => {}) }
+  return { ...real, completeTask: vi.fn(async () => {}), discardOpsDraft: vi.fn(async () => {}), markTaskBooked: vi.fn(async () => ({ action: 'booked', prospect: null })) }
 })
 import * as lib from '../../lib/ops'
 import { HomeTasks } from './Tasks'
@@ -33,6 +34,7 @@ describe('home tasks', () => {
     expect(titles).toEqual(['Send Liton the follow-up email', 'Undated one'])
     fireEvent.click(key('tick'))
     await waitFor(() => expect(lib.completeTask).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' })))
+    await waitFor(() => expect(markDone).toHaveBeenCalledWith('b'))
   })
   it('Remove asks with the danger confirm first, then discards', async () => {
     renderInFrame(<HomeTasks />, { hash: '#exp/d/home' })
@@ -41,6 +43,21 @@ describe('home tasks', () => {
     expect(lib.discardOpsDraft).not.toHaveBeenCalled()
     fireEvent.click(key('confirm'))
     await waitFor(() => expect(lib.discardOpsDraft).toHaveBeenCalledWith('a', 'task'))
+    await waitFor(() => expect(markDone).toHaveBeenCalledWith('a'))
+  })
+  it('does not remove a failed task, but removes a booked task after a successful save', async () => {
+    vi.mocked(lib.completeTask).mockRejectedValueOnce(new Error('failed'))
+    rows.splice(0, rows.length, task('book', 'Book their call'))
+    rows[0].context = { action: 'book_link', prospect_name: 'Ada' }
+    renderInFrame(<HomeTasks />, { hash: '#exp/d/home' })
+    fireEvent.click(key('tick'))
+    await waitFor(() => expect(document.querySelector('.gt-err')?.textContent).toBe('failed'))
+    expect(markDone).not.toHaveBeenCalled()
+    fireEvent.click(key('booked'))
+    fireEvent.change(document.querySelector('input[type="datetime-local"]')!, { target: { value: '2026-10-12T10:00' } })
+    fireEvent.click(key('booked-save'))
+    await waitFor(() => expect(lib.markTaskBooked).toHaveBeenCalled())
+    await waitFor(() => expect(markDone).toHaveBeenCalledWith('book'))
   })
   it('Add with Tomorrow inserts the one task row shape', async () => {
     renderInFrame(<HomeTasks />, { hash: '#exp/d/home' })

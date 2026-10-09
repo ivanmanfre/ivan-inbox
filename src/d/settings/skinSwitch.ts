@@ -4,7 +4,7 @@
 // because the skin is resolved once before React mounts.
 import { SKIN_KEY, skinSet } from '../../ds/skin'
 
-export const skinOnHere = (): boolean => skinSet().size > 0
+export const skinOnHere = (): boolean => skinSet().size > 0 && (typeof document === 'undefined' || !document.documentElement.hasAttribute('data-phone-oxygen-off'))
 export function storedSkinOff(): boolean {
   try { return localStorage.getItem(SKIN_KEY) === 'off' } catch { return false }
 }

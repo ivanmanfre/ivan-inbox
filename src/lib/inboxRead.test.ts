@@ -13,12 +13,20 @@ const h = vi.hoisted(() => ({
   inflight: 0,
   maxInflight: 0,
   onRead: null as null | ((offset: number) => void),
+  rpcMode: 'missing' as 'missing' | 'ok' | 'error',
+  rpcReads: [] as number[],
 }))
 
 vi.mock('./supabase', () => {
   const desc = (a: Row, b: Row) => (a.created_at !== b.created_at ? (a.created_at < b.created_at ? 1 : -1) : a.id < b.id ? 1 : a.id > b.id ? -1 : 0)
   return {
     supabase: {
+      rpc: async (_name: string, args: { p_offset: number; p_limit: number }) => {
+        h.rpcReads.push(args.p_offset)
+        if (h.rpcMode === 'error') return { data: null, error: { code: '42501', message: 'permission denied' } }
+        if (h.rpcMode === 'missing') return { data: null, error: { code: 'PGRST202', message: 'not installed' } }
+        return { data: [...h.view].sort(desc).slice(args.p_offset, args.p_offset + args.p_limit), error: null }
+      },
       from: () => ({
         select: (_cols: string, opts?: { head?: boolean; count?: string }) => {
           if (opts?.head) {
@@ -54,7 +62,25 @@ const mk = (n: number, at = 0): Row[] => Array.from({ length: n }, (_, i) => ({
 const ascIds = (rows: Row[]) => [...rows].sort((a, b) => (a.created_at !== b.created_at ? (a.created_at < b.created_at ? -1 : 1) : a.id < b.id ? -1 : 1)).map(r => r.id)
 
 describe('fetchMessages: newest page first, same result', () => {
-  beforeEach(() => { h.view = []; h.count = null; h.reads = []; h.failAt = -1; h.inflight = 0; h.maxInflight = 0; h.onRead = null })
+  beforeEach(() => { h.view = []; h.count = null; h.reads = []; h.failAt = -1; h.inflight = 0; h.maxInflight = 0; h.onRead = null; h.rpcMode = 'missing'; h.rpcReads = [] })
+
+  it('uses every RPC page and preserves the complete ascending ID order', async () => {
+    h.view = mk(2503)
+    h.view[10].created_at = h.view[11].created_at
+    h.rpcMode = 'ok'
+    const got = await fetchMessages()
+    expect(got.map(m => m.id)).toEqual(ascIds(h.view))
+    expect([...h.rpcReads].sort((a, b) => a - b)).toEqual([0, 1000, 2000])
+    expect(h.reads).toEqual([])
+  })
+
+  it('propagates a real RPC error without falling back to the old view', async () => {
+    h.view = mk(1)
+    h.rpcMode = 'error'
+    await expect(fetchMessages()).rejects.toMatchObject({ code: '42501', message: 'permission denied' })
+    expect(h.rpcReads).toEqual([0])
+    expect(h.reads).toEqual([])
+  })
 
   it('returns the old created_at-asc order and asks for exactly the pages that exist', async () => {
     h.view = mk(2503)

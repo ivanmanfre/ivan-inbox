@@ -37,7 +37,8 @@ export function NextWeek({ seat, h }: P) {
   return (
     <Tile id="week" seat={seat} href={dHash('content', null, { lane: seat })} label="Next week" r={r} retry={h.retry.content}
       tone={'v' in r && r.v.below ? 'hm-warn' : undefined}
-      big={w => <span className="hm-row">{num(w.n, w.below ? ' hm-w' : '')}{w.below && <b className="hm-flag">Below 3</b>}</span>}>
+      big={w => <span className="hm-row">{num(w.n, w.below ? ' hm-w' : '')}{w.below && <b className="hm-flag">Below 3</b>}</span>}
+      after={'stale' in r && r.stale ? <button type="button" className="hm-retry" data-verb="retry" title={r.stale} onClick={h.retry.content}>Stale · Retry</button> : null}>
       {'v' in r && (
         <span className="hm-strip" aria-label={r.v.days.map(d => `${d.dow} ${d.posts}`).join(', ')}>
           {r.v.days.map(d => (

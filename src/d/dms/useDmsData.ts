@@ -180,7 +180,7 @@ export function useDmsData() {
   }, [inbox, reloadCame, reloadWarm, reloadDated, reloadAgent])
 
   return {
-    threads, loading: inbox.loading, error: inbox.error, loadedAt: inbox.loadedAt, fromCache: inbox.fromCache, cachedAt: inbox.cachedAt,
+    threads, loading: inbox.loading, error: inbox.error, loadedAt: inbox.loadedAt, priorityAt: inbox.priorityAt, fromCache: inbox.fromCache, cachedAt: inbox.cachedAt,
     refreshList: inbox.refresh, refreshAll, patch, solved: inbox.solved,
     cameBack: { ...cameRaw, rows: cameBack }, dropCameBack: (pid: string) => editCame(r => r.filter(c => c.prospect_id !== pid)), reloadCame,
     scanDays, interestRanks, warm, dropWarm: (pid: string) => editWarm(r => r.filter(c => c.prospect_id !== pid)), reloadWarm,

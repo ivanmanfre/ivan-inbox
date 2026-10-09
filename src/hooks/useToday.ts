@@ -61,13 +61,13 @@ export function useToday(): TodayState {
     return () => { alive.current = false }
   }, [])
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback((force = true) => {
     lastRun.current = Date.now()
     setRefreshing(true)
     setError(null)
 
     // (2) counts mode — fast scalars for the top strip.
-    const countsRun = fetchBrief('counts')
+    const countsRun = fetchBrief('counts', force)
       .then(json => {
         const c = asCounts(json)
         if (c && alive.current) setCounts(c)
@@ -75,7 +75,7 @@ export function useToday(): TodayState {
       .catch(() => { /* the full call below reports the real failure */ })
 
     // (3) full payload — hydrates the zones and refreshes the cache.
-    const fullRun = fetchBrief('full')
+    const fullRun = fetchBrief('full', force)
       .then(json => {
         if (!alive.current) return
         if (isCountsShape(json)) {
@@ -89,11 +89,13 @@ export function useToday(): TodayState {
         const b = asBrief(json)
         if (!b) throw new Error('Unexpected brief shape')
         setBrief(b)
-        setFromCache(false)
+        const cache = (json as { _cache?: { generated_at?: string; from_cache?: boolean } })._cache
+        const generatedAt = cache?.generated_at && Number.isFinite(Date.parse(cache.generated_at)) ? cache.generated_at : new Date().toISOString()
+        setFromCache(cache?.from_cache === true)
         setDegraded(false)
         setAuthError(false)
-        setCachedAt(new Date().toISOString())
-        writeCache(b)
+        setCachedAt(generatedAt)
+        writeCache(b, generatedAt)
       })
       .catch((e: unknown) => {
         if (!alive.current) return
@@ -118,9 +120,9 @@ export function useToday(): TodayState {
   }, [])
 
   useEffect(() => {
-    refresh()
+    refresh(false)
     const onFocus = () => {
-      if (Date.now() - lastRun.current > FOCUS_THROTTLE_MS) refresh()
+      if (Date.now() - lastRun.current > FOCUS_THROTTLE_MS) refresh(false)
     }
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
