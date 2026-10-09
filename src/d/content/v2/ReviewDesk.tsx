@@ -461,7 +461,7 @@ function ReasonPicker({ lane, onPick, onCancel }: { lane: Lane; onPick: (slug: s
           <button type="submit" className="cv2-k cv2-k-p" data-verb="desk-reason-note" disabled={!note.trim()}>Drop</button>
         </form>
       )}
-      <p className="cv2-fine">{lane === 'ivan' ? 'Drop deletes the draft.' : `Drop deletes the draft from ${OWNER[lane]}’s queue.`} The reason is kept and the next weekly pick reads it. Undo for 5 seconds.</p>
+      <p className="cv2-fine">{lane === 'ivan' ? 'Drop deletes the draft.' : `Drop deletes the draft from ${OWNER[lane]}’s queue.`} <span className="cv2-fine-x">The reason is kept and the next weekly pick reads it. </span>Undo for 5 seconds.</p>
     </div>
   )
 }

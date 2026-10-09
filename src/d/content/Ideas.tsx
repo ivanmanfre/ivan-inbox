@@ -169,7 +169,7 @@ export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks:
         <button type="button" className="cv2-k cv2-k-q" aria-expanded={insights} data-verb="idea-insights" onClick={() => setInsights(v => !v)}>Insights & evidence {insights ? '▾' : '▸'}</button>
       </div>
       <Answer>{b.loading && !fresh.length ? `Reading ${who}’s ideas…` : b.error && !fresh.length ? `${who}’s ideas could not be read.` : !fresh.length ? `No fresh ideas wait for ${who}.`
-        : <>Best {Math.min(5, fresh.length)} for {who} · proof × freshness.{fresh.length > 5 && ` ${fresh.length - 5} more on the bench.`}</>}</Answer>
+        : <>Best {Math.min(5, fresh.length)} for {who}<span className="cv2-ans-x"> · proof × freshness</span>.{fresh.length > 5 && ` ${fresh.length - 5} more on the bench.`}</>}</Answer>
       {insights && <section className="cv2-panel" aria-label="Insights and evidence"><Suspense fallback={<Skeleton lines={3} label="Reading insights" />}><Insights lane={seat} phone={phone} /></Suspense></section>}
       {error && <div className="cv2-banner cv2-banner-bad" role="alert"><span>{error}</span></div>}
       {b.error ? <div className="cv2-banner cv2-banner-bad" role="alert"><span>{fresh.length ? 'Ideas could not be refreshed. These are from the last read.' : 'The ideas read did not come back.'}</span><button type="button" onClick={b.refresh}>Retry</button></div>

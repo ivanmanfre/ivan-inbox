@@ -108,7 +108,7 @@ export function NoDraftBanner({ t, now }: { t: Thread; now: number }) {
   return (
     <div className="dm-ban dm-ban-hl">
       <b><DIcon name="alert" />{firstOf(t)} is owed a reply: {days === 0 ? 'today' : `${days} day${days === 1 ? '' : 's'}`}, no draft.</b>
-      <p>{days > 14 ? 'Past two weeks the drafter stops. ' : ''}Write it yourself, ask Claude for a draft, or press Later to follow up on a date.</p>
+      <p>{days > 14 && <span>Past two weeks the drafter stops. </span>}<span className="dm-hint">Write it yourself, ask Claude for a draft, or press Later to follow up on a date.</span></p>
     </div>
   )
 }
@@ -119,7 +119,7 @@ export function WaitingBanner({ t }: { t: Thread }) {
   return (
     <div className="dm-ban">
       <b><DIcon name="time" />Waiting on {firstOf(t)}{lo ? ` since ${warsawDow(eventTime(lo))} ${warsawDm(eventTime(lo))}` : ''}.</b>
-      <p>Nothing is owed. Write again, or {dated ? 'press Later and a follow-up is drafted on that date' : 'leave it; the ladder sends the next step'}.</p>
+      <p className="dm-hint">Nothing is owed. Write again, or {dated ? 'press Later and a follow-up is drafted on that date' : 'leave it; the ladder sends the next step'}.</p>
     </div>
   )
 }
@@ -149,7 +149,7 @@ export function GapBanner({ t, verbs }: { t: Thread; verbs: DmVerbs }) {
       <div className="dm-ban-row">
         {owner && <Btn verb="ask-owner" disabled={busy || Boolean(note)} onClick={async () => { setBusy(true); setNote(await verbs.askOwner(t)); setBusy(false) }}>{note ? 'Asked' : busy ? 'Queueing…' : `Ask ${owner.owner}`}</Btn>}
         {gap.chat_url && <a className="d-link" href={gap.chat_url} target="_blank" rel="noreferrer" data-verb="gap-chat">open the conversation</a>}
-        <span className="dm-meta">Optional. You can send this draft as it is.</span>
+        <span className="dm-meta dm-hint">Optional. You can send this draft as it is.</span>
       </div>
       {note && <p className="dm-meta">{note}</p>}
     </div>

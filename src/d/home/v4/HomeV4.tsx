@@ -14,6 +14,7 @@ import { HomeTasks } from '../Tasks'
 import { when, type Read } from '../model'
 import { invites, pill } from './model'
 import './home4.css'
+import '../phone-ox.css'
 
 function Retry<T>({ r, retry }: { r: Read<T>; retry: () => void }) {
   const why = 'fail' in r ? r.fail : 'v' in r ? r.stale : null
@@ -62,7 +63,7 @@ function Limit({ seat, h }: { seat: Seat; h: HomeData }) {
   const r = pill(h,seat), v = 'v' in r ? r.v : null
   const time = v?.time ? v.word === 'At cap' ? `resets ${v.time}` : v.word === 'Limited' ? `resumes ${when(v.time,h.now)}` : when(v.time,h.now) : null
   return <div className="hm4-limit"><a className={`hm4-pill hm4-pill-${v?.tone ?? 'neutral'}`} href={dHash('lanes',null,{sheet:'control',for:seat})} title={v?.why ?? 'Rate limit'} aria-label={`${SEAT_NAME[seat]} rate limit: ${v?.word ?? 'unverified'}${time ? ` · ${time}` : ''}`}>
-    {'wait' in r ? <span className="ols-skeleton" aria-label="Reading rate limit" /> : v ? <>{v.word}{time && <small> · {time}</small>}</> : 'Rate limit ?'}
+    {'wait' in r ? <span className="ols-skeleton" aria-label="Reading rate limit" /> : v ? <><span className="hm4-w">{v.word}</span>{time && <small><span className="hm4-sep"> · </span>{time}</small>}</> : 'Rate limit ?'}
   </a><Retry r={r} retry={h.retry.lanes} /></div>
 }
 export function SeatCard({ seat, h }: { seat: Seat; h: HomeData }) {

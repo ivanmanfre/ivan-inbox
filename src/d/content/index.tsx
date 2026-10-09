@@ -15,7 +15,7 @@ import { Ideas, useIdeaBanks } from './Ideas'
 import { Skeleton } from '../ui/states'
 import { Legacy } from './Legacy'
 import { MovePanel } from './MovePanel'
-import { SubNav, contentRedirect, subOf } from './SubNav'
+import { SubNav, SUB_LABEL, contentRedirect, subOf } from './SubNav'
 import { Calendar } from './Calendar'
 import { isPick, savedPick, type Pick } from './calModel'
 import { DayPanel } from './DayPanel'
@@ -45,6 +45,7 @@ import './content.css'
 import './content2.css'
 import './content3.css'
 import './now.css'
+import './phone-ox.css'
 
 const BrainArea = lazy(() => import('./BrainArea').then(m => ({ default: m.BrainArea })))
 const InputsPage = lazy(() => import('./inputs/Inputs').then(m => ({ default: m.InputsPage })))
@@ -214,7 +215,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
     body = phone && window_ ? window_ : <div className={`cn-split${window_ ? ' cn-open' : ''}${desk ? ' cv2-split' : ''}`} data-wide={desk ? (wide ? 'yes' : 'no') : undefined}><div className={`cn-left${allPosts ? ' cn-left-legacy' : ''}`}>{left}</div>{window_}</div>
   }
   const title = sub === 'brain' ? (onBrain ? 'Content Brain' : 'Patterns and benchmarks') : sub === 'ideas' ? 'Best ideas for your next post' : sub === 'results' ? 'What worked' : sub === 'strategy' ? (q.get('section') === 'direction' ? 'Strategy' : q.get('section') === 'this-week' ? 'Content brain' : 'Strategy') : sub === 'inputs' ? 'Outliers' : sub === 'magnets' ? 'Lead magnets' : sub === 'styles' ? 'Styles' : onCal ? 'Calendar' : allPosts ? 'All posts' : magnetView ? 'Lead magnets' : 'Review'
-  return <div ref={presentation} className={`cn${cv2.frame ? ' cv2-frame' : ''}`} data-cv2-sub={cv2.frame ? sub : undefined}><AnswerRow title={title} /><SubNav on={sub} attention={needs > 0} lane={qLane} section={q.get('section')} v2={cv2.frame} counts={{ now: reading && !weekRead.settled ? null : allNow.ids.length, magnets: LANES.some(l => magnets[l] === undefined) ? null : LANES.reduce((n, l) => n + (magnets[l] ?? 0), 0) }} />{body}
+  return <div ref={presentation} className={`cn${cv2.frame ? ' cv2-frame' : ''}`} data-cv2-sub={cv2.frame ? sub : undefined}>{!(phone && title === SUB_LABEL[sub]) && <AnswerRow title={title} />}<SubNav on={sub} attention={needs > 0} lane={qLane} section={q.get('section')} v2={cv2.frame} counts={{ now: reading && !weekRead.settled ? null : allNow.ids.length, magnets: LANES.some(l => magnets[l] === undefined) ? null : LANES.reduce((n, l) => n + (magnets[l] ?? 0), 0) }} />{body}
     {dayOpen && <DayPanel lane={dayOpen.lane} keys={dayOpen.keys} items={items[dayOpen.lane]} onClose={() => setDayOpen(null)} onOpen={openFromPlan} onMove={onMove} onArm={armIt} onChanged={refresh} />}
   </div>
 }

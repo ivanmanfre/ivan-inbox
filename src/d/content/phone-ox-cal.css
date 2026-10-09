@@ -1,0 +1,121 @@
+/* ==========================================================================
+   Content > Calendar at the Oxygen phone standard (goal run
+   inbox-phone-oxygen-2026-10-09, B2). Month = an iOS-style day grid (day numbers,
+   one dot per post); the selected day's posts are the readable agenda under it.
+   Scoped to the phone skin; desktop and "Brief 4 layouts: Off" never match.
+   Gestures: hold-to-drag works from the agenda rows (data-cal-id); the dots are
+   not drag handles (pointer-events:none), the day cells stay the drop targets
+   (data-cal-day); the swipe still pages the month.
+   ========================================================================== */
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone{--c-ivan:var(--ds-accent,#18392a);--c-risedtc:var(--ds-info-ui,#1f477a);--c-arch:#8a6f45;margin:0 0 4px;gap:14px}
+
+/* ---- filters: two iOS segmented controls, 44px, one row each ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar{display:flex;flex-direction:column;align-items:stretch;flex-wrap:nowrap;gap:12px;padding:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-grow{display:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg{display:flex;width:100%;height:44px;box-sizing:border-box;padding:3px;gap:0;border-radius:12px;background:rgba(19,18,16,.06);box-shadow:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg::before{top:3px;bottom:3px;border-radius:9px;background:#fff;box-shadow:0 1px 2px rgba(19,18,16,.12),0 0 0 .5px rgba(19,18,16,.06)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button{flex:1 1 0;min-width:0;height:38px;padding:0 6px;justify-content:center;gap:6px;border-radius:9px;font:550 15px/1 var(--ds-font);letter-spacing:-.005em;color:var(--ds-text-2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button[aria-selected='true']{color:var(--ds-text);font-weight:650}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button:active{transform:scale(.97)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg .cv2-av{display:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button[data-verb='cal-pick-ivan']::before,
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button[data-verb='cal-pick-risedtc']::before,
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button[data-verb='cal-pick-arch']::before{content:'';width:8px;height:8px;border-radius:50%;flex:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button[data-verb='cal-pick-ivan']::before{background:var(--c-ivan)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button[data-verb='cal-pick-risedtc']::before{background:var(--c-risedtc)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button[data-verb='cal-pick-arch']::before{background:var(--c-arch)}
+/* month nav: ‹ October 2026 › Today in one 44px row */
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-calnav{order:3;display:flex;align-items:center;width:100%;height:44px;gap:0;justify-content:flex-start}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-calnav>b{flex:1;min-width:0;font:650 17px/22px var(--ds-font);letter-spacing:-.01em;text-align:center;color:var(--ds-text)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-calnav button{width:44px;height:44px;min-width:44px;border-radius:12px;font:500 24px/1 var(--ds-font);color:var(--ds-text);background:transparent;box-shadow:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-calnav button:not(:disabled):active{background:var(--ds-wash-strong)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-calnav .cv2-today{width:auto;min-width:44px;box-sizing:border-box;padding:0 8px;border:4px solid transparent;background-clip:padding-box;background-color:rgba(19,18,16,.06);border-radius:16px;box-shadow:none;font:600 15px/1 var(--ds-font);color:var(--ds-text);margin-right:-4px}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-calnav .cv2-today:disabled{opacity:.4}
+
+/* ---- next-week coverage: operational numbers, readable ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cov{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;overflow:visible;white-space:normal;padding:0;min-height:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cov-l{flex:0 0 100%;font:600 13px/18px var(--ds-font);letter-spacing:0;text-transform:none;color:var(--ds-text-2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cov-s{display:inline-flex}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cov .cv2-pill{height:32px;padding:0 12px;border-radius:16px;font:600 14px/1 var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cov .cv2-pill b{font-weight:700}
+
+/* ---- the month: day numbers + dots ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-stage{border-radius:18px;margin:0;background:var(--po-glass-strong,#FCFBF9);box-shadow:0 0 0 1px rgba(19,18,16,.07),0 1px 2px rgba(19,18,16,.04),0 8px 24px -12px rgba(19,18,16,.12);padding:4px 6px 8px}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-stage:has(.cn-rib){padding:6px 0 8px}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cal-grid{gap:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cal-wh{font:600 13px/18px var(--ds-font);letter-spacing:0;text-transform:none;color:var(--ds-text-3);text-align:center;padding:10px 0 4px;border:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cal-day{min-height:56px;box-sizing:border-box;padding:2px 1px 4px;border:0;box-shadow:none;border-radius:14px;
+  display:flex;flex-direction:row;flex-wrap:wrap;justify-content:center;align-content:flex-start;column-gap:3px;row-gap:3px;background:transparent;position:relative;-webkit-tap-highlight-color:transparent}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cal-day+.cal-day{box-shadow:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cal-day.out{background:transparent}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cal-day.sel{background:transparent;box-shadow:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cal-dn{flex:0 0 34px;width:34px;height:34px;margin:0 calc((100% - 34px) / 2);padding:0;box-sizing:border-box;display:grid;place-items:center;align-self:auto;border-radius:50%;
+  font:500 17px/1 var(--ds-font);font-variant-numeric:tabular-nums;color:var(--ds-text);transition:background-color var(--po-d-sel,220ms) var(--po-ease,ease),color var(--po-d-sel,220ms) var(--po-ease,ease),transform var(--po-d-press,160ms) var(--po-ease,ease)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cal-day.out .cal-dn{color:var(--ds-text-3);opacity:.5}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cal-day.past:not(.today) .cal-dn{color:var(--ds-text-2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cal-day.today .cal-dn{background:transparent;color:var(--ds-signal);font-weight:700}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cal-day.sel .cal-dn{background:var(--ds-text);color:#fff;font-weight:650}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cal-day.today.sel .cal-dn{background:var(--ds-signal);color:#fff}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cal-day:active .cal-dn{transform:scale(.92)}
+/* a post = a dot: filled = set or posted, hollow = not set yet, ringed red = did not go out */
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cal-chip{display:block;position:static;flex:none;width:7px;height:7px;min-height:0;padding:0;margin:0;border:0;border-radius:50%;overflow:hidden;background:var(--lc,var(--ds-text-3));pointer-events:none;grid-template-columns:none;cursor:default}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cal-chip>*{display:none!important}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cal-chip.dot-posted{opacity:.45}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cal-chip:is(.dot-planned,.dot-review,.dot-queue){background:transparent;box-shadow:inset 0 0 0 1.5px var(--lc,var(--ds-text-3))}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cal-chip.dot-stuck{box-shadow:0 0 0 2px var(--ds-sev-urgent-ui)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cal-more{font:600 12px/7px var(--ds-font);color:var(--ds-text-3);padding:0;display:block;align-self:center}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-gapday{box-shadow:inset 0 0 0 1.5px rgba(19,18,16,.25)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cal-day.cal-hot{background:var(--ds-accent-soft);box-shadow:inset 0 0 0 2px var(--ds-text)}
+
+/* ---- the selected day: a readable agenda, rows 15px ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-side{gap:14px;padding:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day{padding:6px 0 0;gap:0;background:transparent;box-shadow:none;border-radius:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day h3{font:650 20px/26px var(--ds-font);letter-spacing:-.015em;text-transform:none;color:var(--ds-text);margin:0 0 6px}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day p{font:400 15px/21px var(--ds-font);color:var(--ds-text-2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-cc-wide{padding:12px 0 12px 0;border-radius:0;background:transparent;box-shadow:none;align-items:flex-start;min-height:64px;gap:4px;position:relative}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-cc-wide + .cv2-cc-wide::before{content:'';position:absolute;left:0;right:0;top:0;height:1px;background:rgba(19,18,16,.08)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-cc-wide .cv2-cc-main{flex:1;min-width:0;min-height:44px;column-gap:12px;row-gap:3px;grid-template-columns:60px minmax(0,1fr);border-radius:12px}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-cc-wide .cv2-cc-main:active{background:var(--ds-wash-strong);transform:scale(.985);transition:transform var(--po-d-press,160ms) var(--po-ease,ease)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-cc-wide .cv2-cc-pic{height:60px;border-radius:10px;grid-row:1/3}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-cc-wide .cv2-cc-t{font:500 15px/21px var(--ds-font);letter-spacing:-.005em;-webkit-line-clamp:3;color:var(--ds-text)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-cc-wide.cv2-cc-text .cv2-cc-main{display:flex;flex-direction:column;gap:3px}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-cc-wide.cv2-cc-text .cv2-cc-t{order:1;-webkit-line-clamp:3}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-cc-wide .cv2-cc-nopic{order:2;display:block;width:auto;height:auto;background:none;box-shadow:none;border-radius:0;overflow:visible;grid-row:auto}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-cc-wide .cv2-cc-nopic .cv2-pill{position:static;box-shadow:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-cc-wide .cv2-cc-m{order:3;font:400 13px/18px var(--ds-font);gap:8px;overflow:visible}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-cc-text:has(.cv2-cc-nopic) .cv2-cc-m>span:not(.cv2-pill),
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-cc-text:has(.cv2-cc-nopic) .cv2-cc-m>.cv2-dot{display:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-cc-wide .cv2-cc-m em{font-size:12px;line-height:16px;padding:0 5px}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-cc-wide .cv2-pill{height:22px;padding:0 8px;border-radius:11px;font:600 12px/1 var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-cc-wide .cv2-cc-pic .cv2-pill{height:20px;padding:0 6px;left:3px;bottom:3px}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-dot{width:8px;height:8px}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-cc-more{margin:-4px -8px -4px 0}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-cc-more .cv2-more{width:44px;height:44px;border-radius:12px;color:var(--ds-text-2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-cc-more .cv2-more .d-ico{width:20px;height:20px}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-day .cv2-cc-more .cv2-more:active{background:var(--ds-wash-strong)}
+
+/* ---- no date yet / lead magnets buffer: in the page flow, never over the tab bar ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-buf{position:static;margin:0;padding:8px 14px 14px;border-radius:18px;gap:2px;background:var(--po-glass-strong,#FCFBF9);box-shadow:0 0 0 1px rgba(19,18,16,.07),0 1px 2px rgba(19,18,16,.04),0 8px 24px -12px rgba(19,18,16,.12);-webkit-backdrop-filter:none;backdrop-filter:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-buf-h{min-height:44px;gap:4px;overflow:visible}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-buf-h>button:not(.cv2-buf-t){min-height:44px;height:44px;padding:0 4px;border-radius:12px;font:600 13px/18px var(--ds-font);letter-spacing:0;text-transform:none;color:var(--ds-text-3);background:transparent;box-shadow:none;display:inline-flex;align-items:center;gap:6px;margin-right:8px}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-buf-h>button.on{color:var(--ds-text);background:transparent;box-shadow:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-buf-h .cv2-n{font:600 13px/18px var(--ds-font);font-variant-numeric:tabular-nums;padding:1px 8px;border-radius:999px;background:var(--ds-wash-strong);color:var(--ds-text-2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-buf-t{width:44px;height:44px;min-width:44px;font-size:16px}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-buf-strip{gap:10px;padding:2px 2px 6px;scroll-snap-type:x proximity;scrollbar-width:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-tile{width:264px;height:auto;scroll-snap-align:start;padding:10px;gap:6px;border-radius:14px;box-shadow:0 0 0 1px rgba(19,18,16,.08);position:relative}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-tile-main,:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone a.cv2-tile{grid-template-columns:56px minmax(0,1fr);gap:10px;min-height:56px;height:auto}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone :is(.cv2-tile-main,a.cv2-tile) img,:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-tile-nopic{width:56px;height:56px;border-radius:10px;font-size:12px}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-tile-t{font:500 14px/19px var(--ds-font);-webkit-line-clamp:3;max-height:none;padding-bottom:0!important}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-tile:not(.cv2-tile-lm) .cv2-tile-t{-webkit-line-clamp:3;max-height:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-tile-main{height:auto}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-tile-give{position:static;align-self:stretch;height:44px;min-height:44px;margin:0;padding:0 12px;border-radius:12px;background:rgba(19,18,16,.055);font:600 14px/1 var(--ds-font);color:var(--ds-text);text-align:center}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-tile-give:active{transform:scale(.97)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-tile .cv2-seatdot{margin-right:6px}
+
+/* ---- By client (two-week ribbon + bands) ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cn-key2{font-size:12px}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cn-key2 span{font-size:12px}
+
+@media (prefers-reduced-motion:reduce){
+  :root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone :is(.cal-dn,.cv2-tile-give,.cv2-cc-main,.cv2-seg button){transition:none!important;transform:none!important}
+}

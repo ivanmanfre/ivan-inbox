@@ -11,9 +11,9 @@ import { Skeleton } from '../../ui/states'
 function Line({ label, bars }: { label: string; bars: Bar[] }) {
   const known = bars.filter(b => b.v != null), max = Math.max(1, ...known.map(b => b.v!))
   const today = bars.find(b => b.today)?.v
-  return <div className="dl4-history-line"><b>{label}</b><div className="dl4-history-bars">{bars.map(b => <button key={b.day} type="button" title={`${b.day}: ${b.v ?? 'no reading'}`} aria-label={`${label}, ${b.day}: ${b.v ?? 'no reading'}`} className={b.today ? 'dl4-now' : undefined}>
+  return <div className="dl4-history-line"><b>{label}</b><div className="dl4-history-bars">{bars.map(b => <span key={b.day} role="img" title={`${b.day}: ${b.v ?? 'no reading'}`} aria-label={`${label}, ${b.day}: ${b.v ?? 'no reading'}`} className={b.today ? 'dl4-now' : undefined}>
     <i className={b.v == null ? 'dl4-nil' : undefined} style={{ height: `${b.v == null ? 2 : b.v > 0 ? Math.max(3,b.v / max * 100) : 0}%` }} />
-  </button>)}</div><small>today {today ?? '?'} · 14d {known.length ? known.reduce((a, b) => a + b.v!, 0) : '?'}</small></div>
+  </span>)}</div><small>today {today ?? '?'} · 14d {known.length ? known.reduce((a, b) => a + b.v!, 0) : '?'}</small></div>
 }
 export function History({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
   const ledger = useRead(fetchDayLedger, 'ledger')

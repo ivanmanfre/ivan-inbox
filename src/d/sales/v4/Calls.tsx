@@ -30,7 +30,7 @@ export function CallsOnRecord({ calls, state, seg, setSeg, openId, onOpen, onRet
   const counts: Record<CallSegment, number> = { open: st.withActions, recent: st.week, all: st.total }
   return (
     <section className="sl4-rec" aria-label="Calls on record" ref={box}>
-      <div className="sl4-record-head"><h2 className="sl4-eyebrow">Calls on record</h2>{weeks && <div className="sl4-spark" aria-label="Calls in the last 8 weeks">{weeks.map(w => <button key={w.day} type="button" title={`Week of ${w.day}: ${w.n} calls${w.avg != null ? ` · ${w.avg}m avg` : ''}`} aria-label={`Week of ${w.day}: ${w.n} calls`}><i data-current={w.current} style={{ height: `${Math.max(2,w.n / max * 100)}%` }} /></button>)}</div>}</div>
+      <div className="sl4-record-head"><h2 className="sl4-eyebrow">Calls on record</h2>{weeks && <div className="sl4-spark" aria-label="Calls in the last 8 weeks">{weeks.map(w => <span key={w.day} role="img" title={`Week of ${w.day}: ${w.n} calls${w.avg != null ? ` · ${w.avg}m avg` : ''}`} aria-label={`Week of ${w.day}: ${w.n} calls`}><i data-current={w.current} style={{ height: `${Math.max(2,w.n / max * 100)}%` }} /></span>)}</div>}</div>
       {state === 'failed' && (
         <div className="sl-warn">{calls.length ? 'The last read failed. These are the calls that loaded before it.' : 'The call archive did not load. This is not an empty archive, it is an unread one.'}
           <button type="button" data-verb="retry" onClick={onRetry}>Read again</button></div>

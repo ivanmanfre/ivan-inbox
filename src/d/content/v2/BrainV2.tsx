@@ -89,7 +89,7 @@ export function BrainV2({ lane, setLane, read, verdicts, judged, total, items, i
       <Answer>
         {!live ? 'Reading…' : <>{drafts} draft{drafts === 1 ? '' : 's'} to decide. </>}
         {!reading && <>Next week {Math.min(seat.set, seat.target)} of {seat.target} scheduled{seat.short ? `, ${seat.short} short` : ''}. </>}
-        {best && <>Best last 7 days: “{(best.title ?? 'a post').slice(0, 48)}” {best.impressions?.toLocaleString('en-US')} impressions.</>}
+        {best && <span className="cv2-ans-best">Best last 7 days: “{(best.title ?? 'a post').slice(0, 48)}” {best.impressions?.toLocaleString('en-US')} impressions.</span>}
       </Answer>
       <nav className="cv2-pipe" aria-label={`${LANE_NAME[lane]} pipeline`}>
         {tile('ideas', 'Ideas', bank.n ?? '…', 'waiting', dHash('content', 'ideas', lane === 'ivan' ? {} : { lane }), 0)}

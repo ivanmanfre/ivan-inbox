@@ -38,6 +38,7 @@ import './dms-calm.css'
 import './dms-bubbles.css'
 import './dms-seats.css'
 import './v4/dms-v4.css'
+import './phone-ox.css'
 
 export default function DmsPage(props: PlaceProps) {
   return <DmAsks><Dms {...props} /></DmAsks>

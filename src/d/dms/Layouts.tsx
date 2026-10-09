@@ -23,6 +23,7 @@ import type { RowCtx } from './threadRows'
 import type { DmsData } from './useDmsData'
 import type { DmVerbs } from './verbs'
 import type { WarmVerbs } from './warmVerbs'
+import { useEdgeSwipeBack } from './useEdgeSwipeBack'
 import { SearchV4 } from './v4/SearchV4'
 import { ListHead, SeatSeg } from './v4/Chrome'
 import { DesktopDmsV4, ListScroll, PhoneDmsV4 } from './v4/Layout'
@@ -121,7 +122,10 @@ export function DesktopDms({ m }: { m: PageModel }) {
 }
 
 export function PhoneDms({ m }: { m: PageModel }) {
-  if (m.threadId) return <div className={`dm-page dm-phone dm-phone-thread${m.v4 ? ' dx-phone' : ''}`} data-v4-guard={m.v4 ? '' : undefined}><Pane m={m} phone /></div>
+  // Hooks first: the edge swipe-back sits above the thread/list early return.
+  const threadRef = useRef<HTMLDivElement>(null)
+  useEdgeSwipeBack(threadRef, Boolean(m.threadId), m.closeThread)
+  if (m.threadId) return <div ref={threadRef} className={`dm-page dm-phone dm-phone-thread${m.v4 ? ' dx-phone' : ''}`} data-v4-guard={m.v4 ? '' : undefined}><Pane m={m} phone /></div>
   const s = m.seat
   const st = m.stats[s]
   const today = st.days.at(-1)
@@ -130,7 +134,7 @@ export function PhoneDms({ m }: { m: PageModel }) {
     return <PhoneDmsV4 seat={s}
       headline={<Headline mode={m.mode} views={m.views} counts={m.counts} />}
       seats={<SeatSeg phone seat={s} pick={m.setSeat} needs={dmNumbers(m.counts, 'needs')} drafts={dmNumbers(m.counts, 'drafts')} stats={sq} />}
-      stat={<div className="dm-pstat">replied 7d <b>{st.replied}</b> · today <b>{today?.msg ?? 0}</b> msgs <b>{today?.inv ?? 0}</b> inv · <Health data={m.data} /></div>}
+      stat={<div className="dm-pstat"><span className="dm-pstat-t">replied 7d <b>{st.replied}</b> · today <b>{today?.msg ?? 0}</b> msgs <b>{today?.inv ?? 0}</b> inv · </span><Health data={m.data} /></div>}
       search={<div className="dm-psearch"><SearchField ref={m.searchRef} q={m.q} setQ={m.setQ} reach={m.data.threads.length || null} phone /><TokenBar tokens={m.tokens} setTokens={m.setTokens} /></div>}
       folders={<Folders v4 folder={m.folder} setFolder={m.setFolder} views={m.views} phone />}
       bulk={<BulkBar checked={m.checked} byId={m.byId} clear={() => m.setChecked(new Set())} onDiscard={ts => { void m.verbs.bulkDiscard(ts, 'The selected drafts.').then(() => m.setChecked(new Set())) }} />}
@@ -140,7 +144,7 @@ export function PhoneDms({ m }: { m: PageModel }) {
     <div className="dm-page dm-phone">
       <Headline mode={m.mode} views={m.views} counts={m.counts} />
       <SeatSquares phone seat={s} pick={m.setSeat} needs={dmNumbers(m.counts, 'needs')} drafts={dmNumbers(m.counts, 'drafts')} stats={squareStats(m)} />
-      <div className="dm-pstat">replied 7d <b>{st.replied}</b> · today <b>{today?.msg ?? 0}</b> msgs <b>{today?.inv ?? 0}</b> inv · <Health data={m.data} /></div>
+      <div className="dm-pstat"><span className="dm-pstat-t">replied 7d <b>{st.replied}</b> · today <b>{today?.msg ?? 0}</b> msgs <b>{today?.inv ?? 0}</b> inv · </span><Health data={m.data} /></div>
       <div className="dm-psearch"><SearchField ref={m.searchRef} q={m.q} setQ={m.setQ} reach={m.data.threads.length || null} phone /><TokenBar tokens={m.tokens} setTokens={m.setTokens} /></div>
       <Folders folder={m.folder} setFolder={m.setFolder} views={m.views} phone />
       <BulkBar checked={m.checked} byId={m.byId} clear={() => m.setChecked(new Set())} onDiscard={ts => { void m.verbs.bulkDiscard(ts, 'The selected drafts.').then(() => m.setChecked(new Set())) }} />

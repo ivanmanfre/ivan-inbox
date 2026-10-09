@@ -1,0 +1,155 @@
+/* ==========================================================================
+   Ops on the iPhone at the Oxygen standard (goal run inbox-phone-oxygen-2026-10-09, B4).
+   Scoped to the phone skin: desktop and Brief 4 layouts Off match nothing here.
+   ========================================================================== */
+:root[data-skin-on~='shell'][data-layout='phone']{--ox-card:rgba(255,255,255,.84);--ox-hair:rgba(19,18,16,.08);--ox-card-shadow:0 0 0 .5px rgba(19,18,16,.07),0 1px 3px rgba(19,18,16,.05);--ox-pill:rgba(19,18,16,.07)}
+
+/* ---- the answer line is Title 1; the open card has its own head ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .op4 > .d-pans{padding:0 var(--po-gutter) 14px}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4 > .d-pans .d-at h1{font:650 22px/28px var(--f);letter-spacing:-.02em;color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4 > .d-pans .d-at h1 .d-n{font:650 22px/28px var(--f);letter-spacing:-.02em}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4 > .d-pans .d-at p{margin:4px 0 0;font:400 15px/21px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-open > .d-pans{display:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app:has(.op4-open) .po-lt{display:none}
+
+/* ---- the ? keys tool: a 44 key in the nav bar ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .d-ptools [data-op4-keys]{position:relative;isolation:isolate;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;border:0;border-radius:12px;background:transparent;box-shadow:none;display:grid;place-items:center;font:600 17px/1 var(--f);color:var(--ds-text)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-ptools [data-op4-keys]::before{content:'';position:absolute;inset:7px;border-radius:50%;background:var(--ox-pill);z-index:-1}
+
+/* ---- queue ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-queue{padding:0 var(--po-gutter) 28px;background:transparent}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-seats{display:flex;flex-wrap:nowrap;gap:0;padding:2px;margin:0;min-height:0;border-radius:12px;background:rgba(118,118,128,.14);box-shadow:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-seats .ds-seg-item{flex:1;min-width:0;min-height:44px;height:44px;padding:0 4px;border-radius:10px;font:500 15px/20px var(--f);color:var(--t2);gap:5px}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-seats .ds-seg-item[data-active=true]{color:var(--t1);font-weight:600}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-seats .ds-seg-item>span:not(.ds-seg-marker){gap:6px}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-seats .ds-seg-marker{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(19,18,16,.14),0 0 0 .5px rgba(19,18,16,.05)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-seats .ds-avatar{width:20px;height:20px;border-radius:6px;font-size:12px}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-seats .ds-badge{min-width:20px;height:20px;padding:0 6px;border-radius:10px;font:650 12px/20px var(--f);font-variant-numeric:tabular-nums;background:rgba(19,18,16,.08);color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-seats [data-active=true] .ds-badge{background:var(--t1);color:#fff}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-laneline{margin:12px 4px 8px;min-height:0;font:400 13px/18px var(--f);color:var(--t2);align-items:center}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-laneline .ds-badge{border-radius:999px;padding:2px 10px;font:600 12px/18px var(--f)}
+
+/* batch card: one label row, two 44 pills */
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-batch{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin:0 0 8px;padding:6px 16px 16px;border:0;border-radius:18px;background:var(--ox-card);box-shadow:var(--ox-card-shadow)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-batch .op-qbl{min-height:44px}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-batch .op-qbl small{font:500 15px/20px var(--f);color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-batch .op-qbk{width:auto;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-batch .op-qbk .d-btn{min-height:44px;padding:0 12px;border-radius:999px;border:0;background:var(--ox-pill);box-shadow:none;font:600 15px/20px var(--f);color:var(--t1);justify-content:center}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-batch .op-qbk [data-verb=batch-approve]{background:var(--ds-text);color:#fff}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-batch .op-qbk .d-btn:disabled{opacity:.45}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-batch .op-qbi-r{flex-direction:column;align-items:stretch;gap:8px;padding:8px 0;border-top:.5px solid var(--ox-hair);font:400 15px/21px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-batch .op-qbi-r>span:first-child{font:400 15px/21px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-batch .op-qbi-k{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-batch .op-qbi-k .d-btn{min-height:44px;border-radius:999px;border:0;background:var(--ox-pill);box-shadow:none;font:600 15px/20px var(--f);justify-content:center}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-batch :is(.op-note,.op-err){font:400 13px/18px var(--f)}
+
+/* rows: avatar 40, name 17/600, one-line excerpt 14, one state pill */
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-rows{margin:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-row{position:relative;min-height:72px;padding:14px 0;gap:12px;border-radius:0;align-items:center;background:transparent;box-shadow:none;transition:background-color var(--po-d-sel) var(--po-ease)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-row::after{content:'';position:absolute;left:52px;right:0;bottom:0;height:.5px;background:var(--ox-hair)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-row:active{background:var(--ds-wash-strong)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-row .ds-avatar{width:40px;height:40px;border-radius:12px;font:600 14px/1 var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-rowmain{gap:2px}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-rowtop{gap:10px;align-items:baseline}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-rowtop b{font:600 17px/22px var(--f);letter-spacing:-.01em;color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-rowtop time{font:400 13px/18px var(--f);color:var(--t3);font-variant-numeric:tabular-nums}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-rowtop time.op-hot{color:var(--hot);font-weight:600}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-rowbottom{flex-wrap:nowrap;gap:6px;min-width:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-rowbottom .op-qs{flex:1;min-width:0;font:400 14px/20px var(--f);color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-rowbottom .ds-badge{order:-1;flex:none;width:auto;max-width:none;border-radius:999px;padding:1px 8px;font:600 12px/18px var(--f);white-space:nowrap}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-kind-comment{display:none}
+
+/* folds + project record: inset grouped single rows */
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone :is(.op-fold,.ops-reference summary){display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:0 16px;font:500 16px/22px var(--f);color:var(--t1);border:0;border-radius:14px;cursor:pointer}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-fold{margin-top:12px;background:var(--ox-card);box-shadow:var(--ox-card-shadow)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-fold::before{display:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-fold::after{content:'';flex:none;width:8px;height:8px;margin:0 2px 0 4px;border:solid var(--t3);border-width:0 2px 2px 0;transform:rotate(-45deg);transition:transform var(--po-d-sel) var(--po-ease)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-fold[aria-expanded=true]::after{transform:rotate(45deg)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-fold b{margin-left:auto;font:500 15px/20px var(--f);color:var(--t2);font-variant-numeric:tabular-nums}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .ops-reference{margin:12px 0 0;border:0;border-radius:14px;background:var(--ox-card);box-shadow:var(--ox-card-shadow);overflow:hidden}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .ops-reference summary{border-radius:0;list-style:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .ops-reference summary::-webkit-details-marker{display:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .ops-reference summary strong{font:500 16px/22px var(--f);margin:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .ops-reference summary span{margin-left:auto;font:400 13px/18px var(--f);opacity:1;color:var(--t3)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .ops-reference-content{padding:4px 16px 16px;max-width:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .ops-reference-content :is(h3,p){font-size:14px;line-height:20px}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .ops-reference-content small{font-size:12px}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-later{opacity:1}
+
+/* sections: Your list, Reactions = 13/600 sentence labels */
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-sec{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:20px 4px 4px;font:600 13px/18px var(--f);letter-spacing:0;text-transform:none;color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-sec b{font:600 13px/18px var(--f);color:var(--t2);margin-left:4px;font-variant-numeric:tabular-nums}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-sec .d-btn{min-height:44px;padding:0 16px;border-radius:999px;border:0;background:var(--ox-pill);box-shadow:none;font:600 15px/20px var(--f);color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-quiet{padding:12px 4px;font:400 14px/20px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-list>.op-tk,:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-list .op-tk{display:flex;align-items:center;gap:12px;margin-top:8px;padding:12px 16px;border:0;border-radius:14px;background:var(--ox-card);box-shadow:var(--ox-card-shadow)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-tt{flex:1;min-width:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-tt>b{display:block;font:600 16px/22px var(--f);color:var(--t1);white-space:normal;overflow-wrap:anywhere}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-tt small{display:block;font:400 14px/20px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-tm2{display:flex;flex-wrap:wrap;align-items:center;gap:0 12px;font:400 13px/18px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-tm2 b{font-weight:600}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-rm{min-height:44px;min-width:44px;padding:0 4px;font:500 13px/18px var(--f);color:var(--t2);text-decoration:underline;text-underline-offset:3px}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-tk>.d-btn{min-height:44px;min-width:76px;padding:0 16px;border-radius:999px;border:0;background:var(--ox-pill);box-shadow:none;font:600 15px/20px var(--f);color:var(--t1);justify-content:center}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-tk-dn{opacity:.7}
+
+/* ---- the card view: back, head, body 15/21, Approve 50 full width, pills 44 ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-back{min-height:52px;padding:0 var(--po-gutter) 0 8px;gap:2px}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-back .d-ib{width:44px;min-width:44px;height:44px;min-height:44px;border:0;background:transparent;box-shadow:none;border-radius:12px;font:400 32px/1 var(--f);color:var(--t1);display:grid;place-items:center;padding:0 0 4px}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-back>span{font:600 17px/22px var(--f);letter-spacing:-.01em;color:var(--t1);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-head{padding:4px var(--po-gutter) 14px;min-height:0;border:0;background:transparent;gap:12px;flex-wrap:wrap;align-items:center}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-head>.ds-avatar{width:44px;height:44px;border-radius:13px;font:600 15px/1 var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-identity>b{font:600 20px/26px var(--f);letter-spacing:-.015em}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-eb{font:400 14px/20px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-lane{font:400 14px/20px var(--f);color:var(--t3)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-headmeta{order:3;flex:1 0 100%;flex-direction:row;flex-wrap:wrap;gap:0 10px;font:400 13px/18px var(--f);color:var(--t3);text-align:left}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-nav{gap:2px}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-nav .d-ib{width:44px;min-width:44px;height:44px;min-height:44px;border-radius:50%;border:0;background:var(--ox-pill);box-shadow:none;font:400 26px/1 var(--f);color:var(--t1);display:grid;place-items:center;padding:0 0 3px}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-nav .d-ib:disabled{opacity:.35}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-cb{padding:0 var(--po-gutter) 28px;gap:20px}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-label,:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-tm{font:600 13px/18px var(--f);letter-spacing:0;text-transform:none;color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-quote{font:400 15px/21px var(--f);color:var(--t1);padding:2px 0 2px 14px;border-left:2px solid var(--ox-hair)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-mono{font:400 14px/20px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-context .op-who small{font:400 14px/20px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-lk{display:inline-flex;align-items:center;min-height:44px;font:500 14px/20px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-context>.d-btn{min-height:44px;padding:0 18px;border-radius:999px;border:0;background:var(--ox-pill);box-shadow:none;font:600 15px/20px var(--f);color:var(--t1);align-self:flex-start}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-tape{padding:14px 16px;border-radius:18px;background:var(--ox-card);box-shadow:var(--ox-card-shadow)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-tape textarea{font:400 16px/24px var(--f);min-height:132px;color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-tape:focus-within{outline:0;box-shadow:0 0 0 2px var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-slack{font:400 15px/21px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-preview{font:400 14px/20px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-tagline{min-height:44px;padding:0 16px;border-radius:999px;font:600 15px/20px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone :is(.op-ban,.op-err,.op-note,.ds-banner,.ds-banner .ds-t-body){font:400 14px/20px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone :is(.op-ban,.ds-banner){padding:12px 16px;border-radius:14px}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-keys{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-k{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:stretch}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-k .d-key{min-height:44px;height:44px;padding:0 10px;border:0;border-radius:999px;background:var(--ox-pill);box-shadow:none;color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-k .d-key .d-face{font:600 15px/20px var(--f);white-space:nowrap}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-k .d-key:disabled{opacity:.4}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-k [data-verb=discard]{color:var(--ds-sev-urgent-ui)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-k.op-kp{order:-1;flex:1 1 100%}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-k.op-kp .d-key{min-height:50px;height:50px;border-radius:14px;background:var(--ds-text);color:#fff}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-k.op-kp .d-key .d-face{font:600 17px/22px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-k.op-kp small,:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-k small{display:block;margin-top:8px;font:400 13px/18px var(--f);color:var(--t2);text-align:center}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-k:not(.op-kp) small{display:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op4-busy .d-face>span{-webkit-text-fill-color:currentColor;background:none}
+
+/* More sheet + keys sheet: 52 rows, 16px labels */
+:root[data-skin-on~='shell'][data-layout='phone'] .op-moresheet .op-mi{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;width:100%;min-height:56px;padding:8px var(--po-gutter);text-align:left}
+:root[data-skin-on~='shell'][data-layout='phone'] .op-moresheet .op-mi b{font:500 16px/22px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op-moresheet .op-mi small{font:400 13px/18px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op-moresheet .op-emo{display:flex;gap:4px;overflow-x:auto;padding:4px var(--po-gutter) 8px;scrollbar-width:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .op-moresheet .op-emo button{flex:none;min-width:44px;min-height:44px;font-size:24px;border-radius:12px}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-keysheet{padding:4px var(--po-gutter) 12px;gap:0;font:400 16px/22px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-keysheet>div{min-height:52px;border-top:.5px solid var(--ox-hair)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-keysheet>div:first-child{border-top:0}
+
+/* ---- failed reads: readable, Retry 44 ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .op4 .d-failed{margin:0 0 12px;padding:14px 16px;gap:12px;border:0;border-radius:18px;background:var(--ds-sev-attention-soft)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4 .d-failed>.d-ico{width:22px;height:22px;color:var(--ds-sev-attention-ui)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4 .d-failed p{font:600 15px/21px var(--f);color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4 .d-failed small{font:400 13px/18px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4 .d-failed .d-btn,:root[data-skin-on~='shell'][data-layout='phone'] .op4 .ds-banner .d-btn{min-height:44px;min-width:76px;padding:0 18px;border-radius:999px;border:0;background:rgba(255,255,255,.9);box-shadow:0 0 0 .5px rgba(19,18,16,.1);font:600 15px/20px var(--f);color:var(--t1);justify-content:center}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .ds-banner{margin:0 0 12px}
+
+/* ---- motion: press washes, reduced motion ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone :is(.op-fold,.op-tk>.d-btn,.op-k .d-key):active{background-color:var(--ds-wash-strong)}
+:root[data-skin-on~='shell'][data-layout='phone'] .op4-phone .op-k.op-kp .d-key:active{background:#000}

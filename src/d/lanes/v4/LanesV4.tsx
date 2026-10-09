@@ -99,7 +99,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
         
         {p?.coverage.degraded && <p className="dl-notice">Coverage degraded{p.coverage.degraded_reasons.length ? `: ${p.coverage.degraded_reasons.join(' · ')}` : '.'}</p>}
         
-        <Strip seats={cols} seat={seat} pick={pick} d={data} now={now} />
+        <Strip seats={cols} seat={seat} pick={pick} d={data} now={now} phone={layout === 'phone'} />
         <SeatView4 key={seat} seat={seat} ctx={ctx} range={range} setRange={setRange} retry={refresh} onCustom={() => go({ sheet: 'range', c: null })} />
         <a className="dl-outreach-link" href={dHash('lanes', null, { ...Object.fromEntries(q), sheet: 'outreach', for: seat })} data-verb="open-outreach">DM outreach results: sends to replies by step →</a>
       </div>

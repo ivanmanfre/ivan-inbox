@@ -1,0 +1,146 @@
+/* ==========================================================================
+   Sales on the iPhone at the Oxygen standard (goal run inbox-phone-oxygen-2026-10-09, B4).
+   Scoped to the phone skin: desktop and Brief 4 layouts Off match nothing here.
+   ========================================================================== */
+:root[data-skin-on~='shell'][data-layout='phone']{--sx-card:rgba(255,255,255,.84);--sx-hair:rgba(19,18,16,.08);--sx-card-shadow:0 0 0 .5px rgba(19,18,16,.07),0 1px 3px rgba(19,18,16,.05);--sx-pill:rgba(19,18,16,.07)}
+
+/* ---- answer = Title 1; Orbit = a 44 key in the nav bar ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-phone{padding:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-phone > .d-pans{padding:0 var(--po-gutter) 14px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-phone > .d-pans .d-at h1{font:650 22px/28px var(--f);letter-spacing:-.02em;color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-phone > .d-pans .d-at h1 .d-n{font:650 22px/28px var(--f);letter-spacing:-.02em}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-phone > .d-pans .d-at h1 mark{background:transparent;color:inherit}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-phone > .d-pans .d-at p{margin:4px 0 0;font:400 15px/21px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-open > .d-pans{display:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app:has(.sl4-open) .po-lt{display:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl-orbit{width:44px;height:44px;min-width:44px;padding:0;border:0;border-radius:12px;background:transparent;box-shadow:none;display:grid;place-items:center;color:var(--ds-text)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl-orbit .d-ico{width:22px;height:22px;stroke-width:1.7}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-phone .sl-orbit{width:44px;height:44px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl-orbit:active{background:var(--ds-wash-strong)}
+
+/* page rhythm: 20 gutters, 28 between the big blocks */
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-phone .sl4-schedule,:root[data-skin-on~='shell'][data-layout='phone'] .sl4-phone .sl4-rec{padding:0 var(--po-gutter);margin-bottom:28px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-phone .sl4-schedule{margin-bottom:20px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-phone .sl4-eyebrow,:root[data-skin-on~='shell'][data-layout='phone'] .sl4-phone h3.sl4-eyebrow,:root[data-skin-on~='shell'][data-layout='phone'] .sl4-phone .sl4-record-head h2{font:600 13px/18px var(--f);letter-spacing:0;text-transform:none;color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-phone .sl4-eyebrow small{font:400 13px/18px var(--f);color:var(--t2)}
+
+/* ---- 14-day strip ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-strip{padding:14px 12px 10px;border:0;border-radius:18px;background:var(--sx-card);box-shadow:var(--sx-card-shadow);margin-bottom:12px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-strip>.sl4-eyebrow{padding:0 4px;margin-bottom:2px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-weekdays{margin:6px 0 2px;font:500 12px/16px var(--f);color:var(--t3)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-days{gap:2px 4px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-days button{height:48px;min-height:44px;padding:4px 0;border:0;border-radius:12px;gap:3px;justify-content:center}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-days b{font:500 16px/20px var(--f);font-variant-numeric:tabular-nums}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-days button[data-today=true]{background:var(--ds-text);box-shadow:none;color:#fff}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-days button[data-today=true] i{background:#fff}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-days button:active{background:var(--ds-wash-strong)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-days i{width:5px;height:5px}
+
+/* ---- next-call plate ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-next{padding:18px 16px 16px;border:0;border-radius:18px;background:var(--sx-card);box-shadow:var(--sx-card-shadow);margin-bottom:20px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-next>.sl4-eyebrow{gap:4px 10px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-next h2{font:650 22px/28px var(--f);letter-spacing:-.02em;margin:6px 0 0;color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-next p{font:400 15px/21px var(--f);color:var(--t2);margin:2px 0}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-clocks{gap:28px;margin:14px 0 10px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-clocks b{font:500 34px/38px var(--m);letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-clocks>div+div b{font-size:26px;line-height:38px;color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-clocks small{font:400 13px/18px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-next .sl4-facts{font:400 14px/20px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-docs{gap:8px;margin-top:12px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-docs>*{min-height:44px;padding:0 16px;border:0;border-radius:999px;background:var(--sx-pill);box-shadow:none;font:500 15px/20px var(--f);color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-docs [data-doc-missing]{background:transparent;box-shadow:inset 0 0 0 1px var(--sx-hair);color:var(--t3);border:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-docs a:active{background:var(--ds-wash-strong)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-next .sl-join{height:50px;min-height:50px;margin-top:16px;border:0;border-radius:14px;background:var(--sx-pill);box-shadow:none;color:var(--t1);flex-direction:column;gap:0;padding:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-next .sl-join b{font:600 17px/22px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-next .sl-join small{font:400 13px/16px var(--f);opacity:.75}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-next .sl-join.sl-on{background:var(--lime);color:var(--ink,#131210)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-next .sl-join:not(.sl-on) small{display:block}
+
+/* ---- the schedule list: rows 64+ ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-list-head{margin:4px 0 4px;min-height:44px;font:400 13px/18px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-list-head>small{font:400 13px/18px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-list-head .d-btn{min-height:44px;padding:0 18px;border-radius:999px;border:0;background:var(--sx-pill);box-shadow:none;font:600 15px/20px var(--f);color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-schedule h3{margin:20px 0 4px;align-items:baseline}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-note{font:400 14px/20px var(--f);color:var(--t2);margin:6px 0}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-note button{min-height:44px;padding:0 6px;font:600 14px/20px var(--f);text-decoration:underline;text-underline-offset:3px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-cal-row{grid-template-columns:64px minmax(0,1fr) auto;gap:2px 12px;padding:12px 0;min-height:64px;border-bottom:.5px solid var(--sx-hair);align-items:center}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-time b{font:600 17px/22px var(--f);font-variant-numeric:tabular-nums;color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-time small{font:400 13px/18px var(--f);color:var(--t3);font-variant-numeric:tabular-nums}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-who b{font:600 17px/22px var(--f);letter-spacing:-.01em;color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-who small{font:400 14px/20px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-cal-row .sl-jn{align-self:center;display:inline-flex;align-items:center;justify-content:center;min-width:64px;min-height:44px;padding:0 18px;border:0;border-radius:999px;background:var(--sx-pill);box-shadow:none;font:600 15px/20px var(--f);color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-cal-row .sl-jn.sl-on{background:var(--lime);color:var(--ink,#131210)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-cal-row .sl-jn b{font:inherit}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-row-docs{gap:0 4px;margin-top:2px;font:500 14px/20px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-row-docs .sl-pk{font:500 14px/20px var(--f);gap:0 2px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-row-docs .sl-pk i{display:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-row-docs :is(.sl-pl,a[data-doc],button[data-verb=open-report]){display:inline-flex;align-items:center;min-height:44px;min-width:44px;padding:0 10px;margin:0 0 0 -10px;font:500 14px/20px var(--f);color:var(--t1);text-decoration:none;border-radius:10px;justify-content:center}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-row-docs .sl-pl-off{color:var(--t3);opacity:.6}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-row-docs .sl-np{display:inline-flex;align-items:center;min-height:32px;font:400 13px/18px var(--f);color:var(--t3)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-archive{margin:20px 0 0;border:0;border-radius:14px;background:var(--sx-card);box-shadow:var(--sx-card-shadow);overflow:hidden;font:400 14px/20px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-archive summary{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 16px;font:500 16px/22px var(--f);color:var(--t1);list-style:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-archive summary::-webkit-details-marker{display:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-archive summary::after{content:'';margin-left:auto;width:8px;height:8px;border:solid var(--t3);border-width:0 2px 2px 0;transform:rotate(-45deg);transition:transform var(--po-d-sel) var(--po-ease)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-archive[open] summary::after{transform:rotate(45deg)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-archive>*:not(summary){padding:4px 16px 14px}
+
+/* ---- calls on record ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-record-head{min-height:44px;margin-bottom:4px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-spark{grid-template-columns:repeat(8,6px);gap:3px;height:22px;align-items:end}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-spark i{width:6px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-segments{display:flex;width:100%;margin:4px 0 8px;padding:2px;gap:0;border-radius:12px;background:rgba(118,118,128,.14);box-shadow:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-segments .ds-seg-item{flex:1;min-width:0;height:44px;min-height:44px;padding:0 4px;border-radius:10px;font:500 14px/20px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-segments .ds-seg-item[data-active=true]{color:var(--t1);font-weight:600}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-segments .ds-seg-item>span{white-space:nowrap}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-segments b{font:600 13px/18px var(--f);color:var(--t2);margin-left:2px;font-variant-numeric:tabular-nums}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-segments .ds-seg-marker{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(19,18,16,.14),0 0 0 .5px rgba(19,18,16,.05)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-cr{position:relative;min-height:72px;padding:14px 0;gap:2px;border-top:0;border-radius:0;background:transparent}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-cr::after{content:'';position:absolute;left:0;right:0;bottom:0;height:.5px;background:var(--sx-hair)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-cr:active{background:var(--ds-wash-strong)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-crt{gap:10px;align-items:baseline}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-crt>b{font:600 17px/22px var(--f);letter-spacing:-.01em;color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-crt>.sl4-crm{font:400 13px/18px var(--f);color:var(--t3)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-crb{gap:8px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-crl{font:400 14px/20px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-crl i{color:var(--t3)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-crn{font:600 12px/18px var(--f);padding:1px 8px;border-radius:999px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl-fold{display:flex;align-items:center;gap:10px;min-height:52px;margin-top:8px;padding:0 16px;border-radius:14px;background:var(--sx-card);box-shadow:var(--sx-card-shadow);font:500 16px/22px var(--f);color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl-fold::before{display:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl-fold small{font:400 14px/20px var(--f);color:var(--t3)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl-warn{margin:0 0 12px;padding:12px 16px;border:0;border-radius:14px;background:var(--ds-sev-attention-soft);font:400 14px/20px var(--f);color:var(--t1);gap:8px 12px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl-warn button{min-height:44px;padding:0 18px;border-radius:999px;background:rgba(255,255,255,.9);box-shadow:0 0 0 .5px rgba(19,18,16,.1);font:600 15px/20px var(--f);text-decoration:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl-quiet{padding:12px 4px;font:400 14px/20px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4 .d-failed{margin:0 0 12px;padding:14px 16px;gap:12px;border:0;border-radius:18px;background:var(--ds-sev-attention-soft)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4 .d-failed>.d-ico{width:22px;height:22px;color:var(--ds-sev-attention-ui)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4 .d-failed p{font:600 15px/21px var(--f);color:var(--t1)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4 .d-failed small{font:400 13px/18px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4 .d-failed .d-btn{min-height:44px;min-width:76px;padding:0 18px;border-radius:999px;border:0;background:rgba(255,255,255,.9);box-shadow:0 0 0 .5px rgba(19,18,16,.1);font:600 15px/20px var(--f);color:var(--t1);justify-content:center}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4 .d-skel{padding:8px 0}
+
+/* ---- an open call ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-open{padding:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-open .sl-back{padding:0 var(--po-gutter) 4px 8px;gap:2px;min-height:52px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-open .sl-back .d-ib{width:44px;min-width:44px;height:44px;min-height:44px;border:0;background:transparent;box-shadow:none;border-radius:12px;display:grid;place-items:center}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-open .sl-back small{font:400 13px/18px var(--f);letter-spacing:0;text-transform:none;color:var(--t3)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-open .sl-back b{font:600 17px/22px var(--f);letter-spacing:-.01em}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-phone .sl4-window-head{padding:4px var(--po-gutter) 14px;border:0;min-height:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-window-head h2{font:650 24px/30px var(--f);letter-spacing:-.02em}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-window-head>small{font:400 14px/20px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-window-head>.sl4-eyebrow{padding-right:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-phone .sl4-window-head nav{position:static;margin-top:6px;gap:8px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-window-head nav button{width:44px;height:44px;border-radius:50%;border:0;background:var(--sx-pill);box-shadow:none;font:400 26px/1 var(--f);color:var(--t1);padding:0 0 3px;display:grid;place-items:center}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-window-head nav button:disabled{opacity:.35}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-window-head nav small{font:500 13px/18px var(--f);color:var(--t2);order:-1;margin-right:auto}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-phone .sl4-window-body{padding:0 var(--po-gutter) 28px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-window .sl-cbh,:root[data-skin-on~='shell'][data-layout='phone'] .sl4-follow-head h3{font:600 13px/18px var(--f);letter-spacing:0;text-transform:none;color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-window .sl-cb p{font:400 15px/21px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-window .sl-cb li{font:400 15px/21px var(--f);padding:3px 0}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-follow>p{font:400 15px/21px var(--f);padding:14px 16px;border-radius:14px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-follow-head button{min-height:44px;padding:0 18px;border-radius:999px;border:0;background:var(--sx-pill);box-shadow:none;font:600 15px/20px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-pill{font:600 12px/18px var(--f);padding:1px 8px;border-radius:999px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-topics span{font:400 14px/20px var(--f);padding:6px 12px;border-radius:999px}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4-empty{font:400 15px/21px var(--f);padding:24px var(--po-gutter)}
+:root[data-skin-on~='shell'][data-layout='phone'] .sl-fold[aria-expanded]{min-height:52px}
+
+:root[data-skin-on~='shell'][data-layout='phone'] .sl4 :is(.sl4-cal-row .sl-jn,.sl4-docs a,.sl4-next .sl-join):active{transform:scale(.97)}
+@media (prefers-reduced-motion:reduce){:root[data-skin-on~='shell'][data-layout='phone'] .sl4 :is(.sl-jn,.sl4-docs a,.sl-join):active{transform:none}}

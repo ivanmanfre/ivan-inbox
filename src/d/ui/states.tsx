@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { DIcon } from './icons'
 import { Btn } from './Key'
+import '../home/phone-ox-offline.css'
 
 // Honest states. Every page draws all four; none of them is a blank.
 
@@ -44,7 +45,7 @@ export function Offline({ since }: { since?: string | null }) {
   return (
     <div className="d-offline" role="status">
       <DIcon name="offline" />
-      <span>Offline. {since ? `What you see was read at ${since}.` : 'What you see may be out of date.'} Nothing new loads and nothing sends until you are back.</span>
+      <span><span className="d-off-a">Offline. {since ? `What you see was read at ${since}.` : 'What you see may be out of date.'}</span> <span className="d-off-b">Nothing new loads and nothing sends until you are back.</span></span>
     </div>
   )
 }

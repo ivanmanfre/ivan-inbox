@@ -24,6 +24,7 @@ import { setSkinHere, skinOnHere, storedSkinOff } from './skinSwitch'
 import { Group, Row4, SettingsV4 } from './v4/SettingsV4'
 import './v4/settings-v4.css'
 import './settings.css'
+import './phone-ox.css'
 
 const MoneyView = lazy(() => import('../../wb/money').then(m => ({ default: m.MoneyView })))
 

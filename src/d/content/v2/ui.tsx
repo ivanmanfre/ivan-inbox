@@ -91,7 +91,9 @@ export function Menu({ label, items, head, verb = 'card-more', className }: { la
   const toggle = () => {
     const r = btn.current?.getBoundingClientRect()
     if (r) {
-      const w = 228, h = 44 + items.length * 36
+      // The phone's menu rows are 52 tall (phone-ox.css), the desktop's 36.
+      const ph = document.documentElement.dataset.layout === 'phone'
+      const w = ph ? Math.min(280, window.innerWidth - 16) : 228, h = (head ? 44 : 8) + items.length * (ph ? 52 : 36)
       const left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8))
       const top = r.bottom + 4 + h > window.innerHeight - 8 ? Math.max(8, r.top - 4 - h) : r.bottom + 4
       setPos({ top, left })

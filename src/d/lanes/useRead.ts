@@ -35,7 +35,7 @@ export function useRetryRead<T>(fn: (() => Promise<T>) | null, key: string): [Lo
     opened.current = { key, tick }
     withTimeout(fn()).then(
       data => { if (live) { remember(memoKey(key), data); set({ kind: 'ready', data }) } },
-      e => { if (live) set({ kind: 'failed', message: e instanceof Error ? e.message : String(e) }) },
+      e => { if (live) set({ kind: 'failed', message: e instanceof Error ? e.message : e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : String(e) }) },
     )
     return () => { live = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` names the read
