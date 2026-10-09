@@ -85,6 +85,7 @@
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .op4-phone .op-tt{flex:1;min-width:0}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .op4-phone .op-tt>b{display:block;font:600 16px/22px var(--f);color:var(--t1);white-space:normal;overflow-wrap:anywhere}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .op4-phone .op-tt small{display:block;font:400 14px/20px var(--f);color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .op4-phone .op-tt small.op-td{min-height:44px;box-sizing:border-box;padding-top:12px;padding-bottom:12px}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .op4-phone .op-tm2{display:flex;flex-wrap:wrap;align-items:center;gap:0 12px;font:400 13px/18px var(--f);color:var(--t2)}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .op4-phone .op-tm2 b{font-weight:600}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .op4-phone .op-rm{min-height:44px;min-width:44px;padding:0 4px;font:500 13px/18px var(--f);color:var(--t2);text-decoration:underline;text-underline-offset:3px}
