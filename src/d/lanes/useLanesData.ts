@@ -26,7 +26,7 @@ import { RETRY_MS, withTimeout } from '../ui/timeout'
 import { recall, remember } from '../../lib/pageMemo'
 import { supabase } from '../../lib/supabase'
 
-export type Slot<T> = { value: T | null; failed: string | null }
+export type Slot<T> = { value: T | null; failed: string | null; generatedAt?: number }
 export type LanesData = {
   cc: Slot<CcPayload>
   perf: Slot<CampaignPerf[]>
@@ -82,10 +82,11 @@ const READS: { [K in Key]: () => Promise<NonNullable<LanesData[K]['value']>> } =
 }
 const KEYS = Object.keys(READS) as Key[]
 const QUICK = new Set<Key>(['cc', 'gov', 'outcomes', 'health', 'perf', 'pipeline', 'replacement'])
-type QuickSlot = { value?: unknown; error?: string | null }
+const SAVED = new Set<Key>(['perf', 'outcomes', 'pipeline', 'replacement'])
+type QuickSlot = { value?: unknown; error?: string | null; generated_at?: string; from_cache?: boolean }
 
-async function fetchQuick(keys: Key[]): Promise<Record<string, QuickSlot>> {
-  const { data, error } = await supabase.rpc('inbox_phone_lanes_pick_r2', { p_keys: keys.filter(k => QUICK.has(k)) }, { get: true })
+async function fetchQuick(keys: Key[], fresh: boolean): Promise<Record<string, QuickSlot>> {
+  const { data, error } = await supabase.rpc('inbox_phone_lanes_cached_r3', { p_keys: keys.filter(k => QUICK.has(k)), p_fresh: fresh }, { get: true })
   if (error) throw error
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Lanes summary returned no slots')
   return data as Record<string, QuickSlot>
@@ -139,7 +140,7 @@ export function seedLanes(keys: readonly Key[], now: number = Date.now()): { dat
   for (const k of keys) {
     const hit = recall<unknown>(memoKey(k), now)
     if (!hit) { all = false; continue }
-    ;(data as Record<Key, Slot<unknown>>)[k] = { value: hit.value, failed: null }
+    ;(data as Record<Key, Slot<unknown>>)[k] = { value: hit.value, failed: null, ...(SAVED.has(k) ? { generatedAt: hit.at } : {}) }
     oldest = oldest == null ? hit.at : Math.min(oldest, hit.at)
   }
   return { data, at: all ? oldest : null }
@@ -156,7 +157,7 @@ export function useLanesData(only?: readonly Key[]): { data: LanesData; loading:
   const slowAt = useRef(0)
 
   const retryT = useRef<number | null>(null)
-  const readKeys = useCallback((keys: Key[], done: () => void) => {
+  const readKeys = useCallback((keys: Key[], done: () => void, fresh = false) => {
     // Each read lands on its own: a slow read (the ready counts) never holds the
     // monitor or the campaigns back. A failed re-read keeps the last good value
     // on screen and says it failed. No read waits past READ_TIMEOUT_MS: it
@@ -167,24 +168,31 @@ export function useLanesData(only?: readonly Key[]): { data: LanesData; loading:
       setData(prev => ({ ...prev, [k]: slot(prev[k] as Slot<unknown>) }) as LanesData)
     }
     const failed: Key[] = []
-    const primaryKeys = keys.filter(k => k === 'cc' || k === 'gov')
-    const otherQuickKeys = keys.filter(k => QUICK.has(k) && k !== 'cc' && k !== 'gov')
-    const primary = primaryKeys.length ? withTimeout(fetchQuick(primaryKeys), 4000) : null
-    // The visible monitor lands before the aggregate campaign/history reads.
-    // Every other slot still follows; it cannot delay the first monitor rows.
-    const secondary = primary && !only ? primary.then(() => {}, () => {}) : Promise.resolve()
-    const quick = otherQuickKeys.length ? withTimeout(fetchQuick(otherQuickKeys), 4000) : null
+    const primaryKeys = keys.filter(k => k === 'cc')
+    const otherQuickKeys = keys.filter(k => QUICK.has(k) && k !== 'cc')
+    const primary = primaryKeys.length ? withTimeout(fetchQuick(primaryKeys, fresh), 4000) : null
+    // The monitor has its own request. Governor and history cannot hold Home
+    // or the seat state behind their aggregates; stock reads also start at once.
+    const quick = otherQuickKeys.length ? withTimeout(fetchQuick(otherQuickKeys, fresh), 4000) : null
     void Promise.allSettled(keys.map(k => {
       const direct = (): Promise<unknown> => READS[k]() as Promise<unknown>
-      const summary = k === 'cc' || k === 'gov' ? primary : QUICK.has(k) ? quick : null
+      const summary = k === 'cc' ? primary : QUICK.has(k) ? quick : null
+      let generatedAt: number | undefined
       const read: Promise<unknown> = summary
-        ? summary.then(slots => quickValue(k, slots)).catch(direct)
-        : primary && !only ? secondary.then(direct) : direct()
+        ? summary.then(slots => {
+          const value = quickValue(k, slots)
+          if (slots[k]?.from_cache) {
+            generatedAt = Date.parse(slots[k].generated_at ?? '')
+            if (!Number.isFinite(generatedAt)) throw new Error('Saved summary has no generation time')
+          }
+          return value
+        }).catch(() => { generatedAt = undefined; return direct() })
+        : direct()
       return withTimeout<unknown>(read).then(
-      v => { remember(memoKey(k), v); put(k, () => ({ value: v, failed: null })) },
+      v => { remember(memoKey(k), v, { at: generatedAt }); put(k, () => ({ value: v, failed: null, ...(generatedAt != null ? { generatedAt } : {}) })) },
       e => {
         failed.push(k)
-        put(k, prev => ({ value: prev.value, failed: e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e ?? 'read failed') }))
+        put(k, prev => ({ ...prev, failed: e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e ?? 'read failed') }))
         throw e
       },
     ) })).then(() => {
@@ -207,7 +215,7 @@ export function useLanesData(only?: readonly Key[]): { data: LanesData; loading:
       if (!live.current) return
       setAt(Date.now())
       setLoading(false)
-    })
+    }, force)
   }, [readKeys, only])
 
   const refresh = useCallback(() => poll(true), [poll])

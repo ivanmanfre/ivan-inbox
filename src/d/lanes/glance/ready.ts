@@ -200,7 +200,13 @@ export async function fetchReady(now = Date.now()): Promise<ReadyRead> {
   const candidates = async (): Promise<{ rows: Cand[]; capped: boolean }> => {
     const rows: Cand[] = []
     for (let i = 0; i < MAX_PAGES; i++) {
-      const { data, error } = await page(i * PAGE)
+      // R3 projects the enrichment keys once per candidate. Keep the same
+      // ordered pages and direct source fallback, including the capped state.
+      const projected = await supabase.rpc('inbox_phone_ready_page_r3', {
+        p_campaign_ids: ids, p_now: iso(now), p_offset: i * PAGE, p_limit: PAGE,
+      }, { get: true })
+      const { data, error } = !projected.error && Array.isArray(projected.data)
+        ? projected : await page(i * PAGE)
       if (error) throw new Error(error.message)
       const got = (data ?? []) as unknown as Cand[]
       rows.push(...got)

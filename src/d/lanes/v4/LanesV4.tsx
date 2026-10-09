@@ -82,6 +82,8 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
 
   // Every read that failed or timed out (12 s) besides the monitor, said once, with Retry.
   const otherFailed = failedCount(data) - (data.cc.failed && !data.cc.value ? 1 : 0)
+  const summaryTimes = [data.perf, data.outcomes, data.pipeline, data.replacement].flatMap(s => s.generatedAt != null ? [s.generatedAt] : [])
+  const summaryAt = summaryTimes.length ? Math.min(...summaryTimes) : null
   const p = data.cc.value
   const staleMin = p && monitorLiveness(p, now) === 'stale' && p.monitor.last_tick_at ? Math.max(1, Math.round((now - Date.parse(p.monitor.last_tick_at)) / 6e4)) : null
   const tools = (
@@ -97,6 +99,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
         {data.cc.failed && !data.cc.value && <Failed what="the send monitor" detail={data.cc.failed} onRetry={refresh} />}
         {otherFailed > 0 && <Failed what={otherFailed === 1 ? 'one of the reads on this page' : `${otherFailed} of the reads on this page`} onRetry={refresh} />}
         
+        {summaryAt != null && <p className="dl-notice">Results and supply saved at {hm(summaryAt)}. Refresh reads them again.</p>}
         {p?.coverage.degraded && <p className="dl-notice">Coverage degraded{p.coverage.degraded_reasons.length ? `: ${p.coverage.degraded_reasons.join(' · ')}` : '.'}</p>}
         
         <Strip seats={cols} seat={seat} pick={pick} d={data} now={now} phone={layout === 'phone'} />
