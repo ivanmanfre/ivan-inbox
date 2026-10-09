@@ -295,13 +295,16 @@ export default function DShell() {
 
   useKeepScroll(route.place, layout, location.hash)
 
-  // Every place's chunk loads on idle after the first paint, so a tab switch never waits on the network.
+  // Every place's chunk loads on idle once the first screen's reads are done, one chunk at a time, so a
+  // tab switch never waits on the network and the prefetch never competes with the cold open.
   useEffect(() => {
     if (layout !== 'phone') return
-    const go = () => { for (const load of PLACE_CHUNKS) void load().catch(() => {}) }
+    let stop = false, t = 0
     const ric = (window as Window & { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number }).requestIdleCallback
-    const t = window.setTimeout(() => (ric ? ric(go, { timeout: 4000 }) : go()), 2500)
-    return () => window.clearTimeout(t)
+    const idle = (f: () => void) => (ric ? ric(f, { timeout: 3000 }) : window.setTimeout(f, 50))
+    const next = (i: number) => { if (stop || i >= PLACE_CHUNKS.length) return; idle(() => { if (!stop) void PLACE_CHUNKS[i]().catch(() => {}).finally(() => next(i + 1)) }) }
+    t = window.setTimeout(() => next(0), 8000)
+    return () => { stop = true; window.clearTimeout(t) }
   }, [layout])
 
   // Moving to another place closes the transient layers.
