@@ -9,9 +9,9 @@
 
 :root[data-skin-on~='shell'][data-layout='phone']{--b5-wash:rgba(19,18,16,.06);--b5-wash-2:rgba(19,18,16,.1);--b5-hair:rgba(19,18,16,.12)}
 
-/* ---- the sheet: above the nav bar (it ran under it) and down to the home indicator; the tab bar hides
-   under it (02-SPEC 1.4) and the sheet's own close key returns to the place ---- */
-:root[data-skin-on~='shell'][data-layout='phone'] .d-app .d-psheet{z-index:45;top:calc(var(--sat) + 6px);bottom:0;padding-bottom:var(--sab);background:#FCFBF9;-webkit-backdrop-filter:none;backdrop-filter:none}
+/* ---- the sheet: from just under the nav bar (ON key and bell stay tappable, 04-SKEPTIC-BROKEN F1) down to the
+   home indicator; the tab bar hides under it (02-SPEC 1.4) and the sheet's own close key returns to the place ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app .d-psheet{z-index:45;top:calc(var(--sat) + 56px);bottom:0;padding-bottom:var(--sab);background:#FCFBF9;-webkit-backdrop-filter:none;backdrop-filter:none}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-phone{margin-bottom:0;padding-bottom:6px}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-grab{width:36px;height:5px;border-radius:3px;background:rgba(19,18,16,.18);margin:8px auto 0}
 

@@ -10,8 +10,8 @@
 
 /* ---- bell: sheet head ---- */
 /* Opaque on purpose: these are reading surfaces, and a blurred pane lets the page's numerals show through. */
-:root[data-skin-on~='shell'][data-layout='phone'] .d-app .d-bellp-phone{top:calc(var(--sat) + 6px);background:#FCFBF9;-webkit-backdrop-filter:none;backdrop-filter:none}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-bellp-phone::before{content:'';flex:none;width:36px;height:5px;border-radius:3px;background:rgba(19,18,16,.18);margin:8px auto 0}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app .d-bellp-phone{top:calc(var(--sat) + 56px);background:#FCFBF9;-webkit-backdrop-filter:none;backdrop-filter:none}
+/* No grab bar: the sheet has no drag-to-dismiss; the nav-bar band above it (scrim) and the close key close it. */
 :root[data-skin-on~='shell'][data-layout='phone'] .d-bellp-phone .d-bellp-h{padding:2px 8px 6px var(--po-gutter);min-height:60px;gap:8px;border-bottom:0;align-items:center}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-bellp-phone .d-bellp-t small{font:500 13px/18px var(--ds-font);color:var(--ds-text-3);font-variant-numeric:tabular-nums}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-bellp-phone .d-bellp-h .d-btn,:root[data-skin-on~='shell'][data-layout='phone'] .d-bellp-phone .d-bellp-h .d-btn:hover{height:44px;min-width:44px;padding:0 16px;border:0;border-radius:22px;background:var(--b5-wash);box-shadow:none;font:600 15px/20px var(--ds-font);color:var(--ds-text)}

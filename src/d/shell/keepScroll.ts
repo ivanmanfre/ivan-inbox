@@ -20,6 +20,9 @@ function scroller(layout: Layout): { get: () => number; set: (y: number) => void
 export function useKeepScroll(place: PlaceId, layout: Layout, hash: string) {
   // One key per place and sub (Content's Magnets is not Content's Planner); one-shot keys do not count.
   const key = `${layout}:${place}:${hash.split('?')[0]}`
+  // Phone: a pushed DMs thread shares the list's key; while it is open the list's scroll is not overwritten,
+  // and Back (thread param gone) puts the list's scroll back.
+  const pushed = layout === 'phone' && /[?&]thread=/.test(hash)
   const cur = useRef(key)
   // Recorded as he scrolls (capture: the desktop body's scroll does not bubble), so the value
   // is the one he left, not one clamped by the next page's shorter height.
@@ -28,14 +31,14 @@ export function useKeepScroll(place: PlaceId, layout: Layout, hash: string) {
     let raf = 0
     const on = () => {
       if (raf) return
-      raf = requestAnimationFrame(() => { raf = 0; if (cur.current === key) saved.set(key, scroller(layout).get()) })
+      raf = requestAnimationFrame(() => { raf = 0; if (cur.current === key && !pushed) saved.set(key, scroller(layout).get()) })
     }
     document.addEventListener('scroll', on, true)
     return () => { document.removeEventListener('scroll', on, true); cancelAnimationFrame(raf) }
-  }, [key, layout])
+  }, [key, layout, pushed])
   useEffect(() => {
     const y = saved.get(key)
-    if (!y) return
+    if (!y || pushed) return
     const s = scroller(layout)
     let tries = 0
     let raf = 0
@@ -45,5 +48,5 @@ export function useKeepScroll(place: PlaceId, layout: Layout, hash: string) {
     }
     raf = requestAnimationFrame(put)
     return () => cancelAnimationFrame(raf)
-  }, [key, layout])
+  }, [key, layout, pushed])
 }

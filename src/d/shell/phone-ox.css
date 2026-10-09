@@ -145,7 +145,7 @@
   border:0;border-radius:24px 24px 0 0;background:var(--po-glass-strong);
   -webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);
   box-shadow:0 -10px 40px -12px rgba(19,18,16,.25),inset 0 1px 0 rgba(255,255,255,.9);
-  padding-bottom:calc(var(--sab) + 8px);max-height:calc(100dvh - var(--sat) - 12px);
+  padding-bottom:calc(var(--sab) + 8px);max-height:calc(100dvh - var(--sat) - 56px);
   animation:po-sheet-in var(--po-d-content) var(--po-ease) both;
 }
 :root[data-skin-on~='shell'][data-layout='phone'] .d-sheet-bottom .d-grab{width:36px;height:5px;border-radius:3px;background:rgba(19,18,16,.18);margin:8px auto 0}
@@ -240,3 +240,7 @@
 /* C3 fix pass. A segmented thumb is positioned by its own item (inset 0); the shared layout glide measured it while
    content above was still loading and left it ~40px off its track (04-JUDGE fix 3), so on the phone it snaps. */
 :root[data-skin-on~='shell'][data-layout='phone'] .ds-seg-marker{transform:none!important}
+
+/* The panel opens above an open Claude sheet (sheet z 45), never under it. */
+:root[data-skin-on~='shell'][data-layout='phone'] .d-scrim-panel{z-index:47}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-pn{z-index:48}
