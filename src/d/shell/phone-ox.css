@@ -68,8 +68,8 @@
 :root[data-skin-on~='shell'][data-layout='phone'] .po-bar .d-bell .d-ico{width:23px;height:23px;stroke-width:1.7}
 :root[data-skin-on~='shell'][data-layout='phone'] .po-bar .d-bell.d-on{background:var(--ds-wash-strong)}
 :root[data-skin-on~='shell'][data-layout='phone'] .po-bar .d-bell-n{
-  position:absolute;top:4px;right:3px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;border:2px solid var(--ds-canvas);box-sizing:content-box;
-  background:var(--ds-text);color:#fff;font:650 12px/18px var(--ds-font);font-variant-numeric:tabular-nums;text-align:center
+  position:absolute;top:5px;left:23px;right:auto;min-width:18px;height:18px;padding:0 5px;border-radius:9px;border:0;box-sizing:border-box;
+  background:var(--ds-text);color:#fff;font:650 12px/18px var(--ds-font);font-variant-numeric:tabular-nums;text-align:center;box-shadow:0 0 0 2px var(--ds-canvas)
 }
 :root[data-skin-on~='shell'][data-layout='phone'] .po-bar .d-bell.d-crit .d-bell-n{background:var(--ds-signal)}
 
@@ -130,6 +130,10 @@
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app:has(.d-psheet) .po-tabbar{transform:none;opacity:1;pointer-events:auto}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app:has(.d-psheet) .po-dock{opacity:0;pointer-events:none}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app.d-phone:has(.dm-phone-thread){padding-bottom:0}
+
+/* A pushed thread owns the top: its head (back, name) replaces the nav bar and the large title. */
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app:has(.dm-phone-thread) :is(.po-bar,.po-lt){display:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .dm-phone-thread{padding-top:var(--sat)}
 
 /* ---- toasts sit over the tab bar ---- */
 :root[data-skin-on~='shell'][data-layout='phone'] .d-phone .d-toasts{left:12px;right:12px;bottom:calc(var(--po-chrome-bottom) + 4px)}
