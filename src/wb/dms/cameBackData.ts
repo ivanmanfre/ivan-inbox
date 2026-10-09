@@ -63,13 +63,13 @@ export function tenantLabel(c: Pick<CameBackCard, 'tenant'>, filter: Filter): st
 }
 
 /** The one line that says what the person did and when. */
-export function cameBackLine(c: Pick<CameBackCard, 'n_views' | 'n_engagements' | 'last_signal_at' | 'signals'>): string {
+export function cameBackLine(c: Pick<CameBackCard, 'n_views' | 'n_engagements' | 'last_signal_at' | 'signals'> & Partial<Pick<CameBackCard, 'last_out_at'>>): string {
   const parts: string[] = []
   // db/097: they opened the scan we sent. Rides in `signals`, so the RPC's return type never changed.
   const scans = scanOpenDays(c)
   // db/211: a scan_open signal is now a REOPEN (the first open never reaches this list), so say so.
   if (scans > 0) parts.push(scans === 1 ? 'opened the scan again' : `opened the scan again on ${scans} days`)
-  if (c.n_views > 0) parts.push(hasProfileReturn(c) ? 'viewed the profile again' : c.n_views === 1 ? 'viewed the profile' : `viewed the profile on ${c.n_views} days`)
+  if (c.n_views > 0) parts.push(hasProfileReturn(c) ? 'viewed the profile again' : c.n_views === 1 ? viewedAfterLine(c) : `viewed the profile on ${c.n_views} days`)
   if (c.n_engagements > 0) {
     const commented = (c.signals ?? []).some(s => s.kind === 'comment')
     const word = commented ? 'commented on' : 'reacted to'
@@ -79,6 +79,13 @@ export function cameBackLine(c: Pick<CameBackCard, 'n_views' | 'n_engagements' |
   }
   const when = dayOf(c.last_signal_at)
   return `${parts.join(' and ') || 'came back'}${when ? ` · ${when}` : ''}`
+}
+
+/** db/246: a lone view only reaches Signals 3+ days after our message, so the lag is the strength. Say it. */
+function viewedAfterLine(c: Pick<CameBackCard, 'signals'> & Partial<Pick<CameBackCard, 'last_out_at'>>): string {
+  const view = (c.signals ?? []).find(s => s.kind === 'view')
+  const days = view && c.last_out_at ? Math.floor((Date.parse(view.at) - Date.parse(c.last_out_at)) / 86_400_000) : NaN
+  return days >= 3 ? `viewed the profile ${days} days after the message` : 'viewed the profile'
 }
 
 export function scanOpenDays(c: Pick<CameBackCard, 'signals'>): number {

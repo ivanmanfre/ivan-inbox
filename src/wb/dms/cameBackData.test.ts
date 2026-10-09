@@ -47,6 +47,10 @@ describe('tenantLabel', () => {
 
 describe('cameBackLine', () => {
   it('reads a single view', () => expect(cameBackLine(card({}))).toMatch(/^viewed the profile · /))
+  it('says how many days after the message a lone view landed (db/246)', () =>
+    expect(cameBackLine(card({ signals: [{ kind: 'view', at: '2026-10-08T10:00:00Z', detail: null, profile_return: false }] }))).toMatch(/^viewed the profile 22 days after the message · /))
+  it('keeps the plain words when the lag is under 3 days', () =>
+    expect(cameBackLine(card({ signals: [{ kind: 'view', at: '2026-09-17T12:00:00Z', detail: null, profile_return: false }] }))).toMatch(/^viewed the profile · /))
   it('names an opened scan, which rides in signals (db/097)', () => expect(cameBackLine(card({ n_views: 0, signals: [{ kind: 'scan_open', at: '2026-09-16T10:00:00Z', detail: null }] }))).toMatch(/^opened the scan again · /))
   it('counts scan-open days', () => expect(cameBackLine(card({ n_views: 0, signals: [{ kind: 'scan_open', at: '2026-09-16T10:00:00Z', detail: null }, { kind: 'scan_open', at: '2026-09-15T10:00:00Z', detail: null }] }))).toMatch(/^opened the scan again on 2 days/))
   it('counts view days, not raw captures', () => expect(cameBackLine(card({ n_views: 3 }))).toMatch(/^viewed the profile on 3 days/))
