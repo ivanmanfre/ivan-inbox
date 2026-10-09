@@ -39,3 +39,21 @@ describe('MovePanel (2026-10-09: opens as a sheet, time first, any month, Undo)'
     await waitFor(() => expect(lib.setScheduleDateAt).toHaveBeenCalledWith('p1', '2026-12-10T15:00:00.000Z'))
   })
 })
+
+describe('WhenEditor details', () => {
+  beforeEach(() => { cleanup(); lib.setScheduleDateAt.mockReset() })
+  it('typed "3pm" then ↓ is 14:45; Enter anywhere saves the day picked', async () => {
+    lib.setScheduleDateAt.mockImplementation(async (_id: string, at: string) => at)
+    const ivan = { ...r, client_id: null, scheduled_at: '2026-12-02T09:00:00Z' } as unknown as ContentDraft
+    renderInFrame(<MovePanel r={ivan} lane="ivan" seatRows={[ivan]} onClose={vi.fn()} onDone={vi.fn()} />)
+    const t = document.querySelector<HTMLInputElement>('[data-verb="pick-time"]')!
+    fireEvent.change(t, { target: { value: '3pm' } })
+    fireEvent.keyDown(t, { key: 'ArrowDown' })
+    expect(t.value).toBe('14:45')
+    fireEvent.click(document.querySelector('[data-day="2026-12-12"]')!)
+    expect(screen.getByText('A weekend day')).toBeTruthy()
+    fireEvent.keyDown(document.querySelector('[data-day="2026-12-12"]')!, { key: 'Enter' })
+    // 14:45 Warsaw on 12 Dec = 13:45 UTC; a weekend stays where it was picked.
+    await waitFor(() => expect(lib.setScheduleDateAt).toHaveBeenCalledWith('p1', '2026-12-12T13:45:00.000Z'))
+  })
+})

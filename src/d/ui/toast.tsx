@@ -12,7 +12,8 @@ import { Btn } from './Key'
 // right while the bell is open, where the mock draws the Clear all receipt);
 // phone: above the dock.
 export type ToastAction = { label: string; verb?: string; run: () => void }
-export type ToastInput = { id?: string; message: ReactNode; sub?: ReactNode; action?: ToastAction; ms?: number; tone?: 'plain' | 'failed' }
+/** `also`: a second key before the action (the calendar's "Change time" beside Undo). */
+export type ToastInput = { id?: string; message: ReactNode; sub?: ReactNode; action?: ToastAction; also?: ToastAction; ms?: number; tone?: 'plain' | 'failed' }
 type Item = ToastInput & { id: string }
 
 type Api = { show: (t: ToastInput) => string; dismiss: (id: string) => void }
@@ -47,6 +48,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {items.map(t => (
           <div key={t.id} className={`d-toast${t.tone === 'failed' ? ' d-toast-failed' : ''}`} role="status">
             <div><span>{t.message}</span>{t.sub != null && <small>{t.sub}</small>}</div>
+            {t.also && <Btn verb={t.also.verb} onClick={() => { dismiss(t.id); t.also!.run() }}>{t.also.label}</Btn>}
             {t.action && (
               <Btn verb={t.action.verb} onClick={() => { dismiss(t.id); t.action!.run() }}>{t.action.label}</Btn>
             )}

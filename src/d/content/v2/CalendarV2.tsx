@@ -33,6 +33,8 @@ const hookOf = (e: Entry) => splitTitleTag(e.hook).text
 export type CardActs = {
   onOpen: (id: string, lane: Lane) => void
   onMove: (id: string, lane: Lane) => void
+  /** The card's time was clicked: edit date and time beside it. */
+  onTime?: (id: string, lane: Lane) => void
   onArm: (id: string) => void
   onChanged: () => void
 }
@@ -41,7 +43,7 @@ function menuOf(e: Entry, a: CardActs): MenuItem[] {
   const it = e.it
   const items: MenuItem[] = []
   if (e.r) items.push({ key: 'open', label: 'Open', run: () => a.onOpen(it.id, e.lane) })
-  if (!e.refuse && e.r) items.push({ key: 'move', label: 'Move to…', run: () => a.onMove(it.id, e.lane) })
+  if (!e.refuse && e.r) items.push({ key: 'move', label: 'Change date or time', run: () => a.onMove(it.id, e.lane) })
   if (it.armable) items.push({ key: 'arm', label: 'Arm it', run: () => a.onArm(it.id) })
   if (it.postedUrl) items.push({ key: 'post', label: 'Open post ↗', href: it.postedUrl, external: true })
   if (it.unpublishId) {
@@ -64,12 +66,12 @@ function useHoverPreview(enabled: boolean) {
     onPointerEnter: (ev: React.PointerEvent<HTMLElement>) => {
       if (ev.pointerType !== 'mouse' || !fine()) return
       const el = ev.currentTarget
-      clear(); t.current = setTimeout(() => { if (!document.documentElement.classList.contains('cal-dragging')) setAt(el.getBoundingClientRect()) }, 400)
+      clear(); t.current = setTimeout(() => { if (!document.documentElement.classList.contains('cal-dragging') && !document.documentElement.classList.contains('cal-dropped') && !document.querySelector('.wh-pop')) setAt(el.getBoundingClientRect()) }, 400)
     },
     onPointerMove: (ev: React.PointerEvent<HTMLElement>) => {
       if (at || ev.pointerType !== 'mouse') return
       const el = ev.currentTarget
-      clear(); t.current = setTimeout(() => { if (!document.documentElement.classList.contains('cal-dragging')) setAt(el.getBoundingClientRect()) }, 400)
+      clear(); t.current = setTimeout(() => { if (!document.documentElement.classList.contains('cal-dragging') && !document.documentElement.classList.contains('cal-dropped') && !document.querySelector('.wh-pop')) setAt(el.getBoundingClientRect()) }, 400)
     },
     onPointerLeave: () => { clear(); t.current = setTimeout(() => setAt(null), 120) },
     onPointerDown: () => { clear(); setAt(null) },
@@ -97,13 +99,18 @@ export function CalCard({ e, a, wide = false }: { e: Entry; a: CardActs; wide?: 
   return (
     <div className={`cv2-cc${wide ? ' cv2-cc-wide' : ''}${e.thumb ? '' : ' cv2-cc-text'} dot-${e.dot}`} data-cal-id={it.id} data-cal-lane={e.lane} data-cal-refuse={e.refuse ?? undefined} {...bind}>
       <button type="button" className="cv2-cc-main" data-verb="open" disabled={!e.r} aria-label={`${LANE_NAME[e.lane]} · ${dotText(e)} · ${hook}`}
-        onClick={() => e.r && a.onOpen(it.id, e.lane)}>
+        onClick={ev => {
+          if (!e.r) return
+          // The time on the card edits the date and time in place; the rest of the card opens the post.
+          if (a.onTime && !e.refuse && (ev.target as HTMLElement).closest('[data-cal-time]')) { ev.stopPropagation(); a.onTime(it.id, e.lane); return }
+          a.onOpen(it.id, e.lane)
+        }}>
         {e.thumb ? (
           <span className="cv2-cc-pic"><img src={e.thumb} alt="" loading="lazy" draggable={false} />{e.dot === 'posted' && <Pill tone="posted">{dotText(e)}</Pill>}</span>
         ) : e.dot === 'posted' && wide ? <span className="cv2-cc-pic cv2-cc-nopic"><Pill tone="posted">{dotText(e)}</Pill></span> : null}
         <span className="cv2-cc-t">{hook}</span>
         <span className="cv2-cc-m">
-          {!(!e.thumb && e.dot === 'posted' && !wide) && <span title={timeLine(it.postedAt ?? it.at, e.lane).replace(' ', ' · ')}>{warsawHm(it.postedAt ?? it.at)}</span>}
+          {!(!e.thumb && e.dot === 'posted' && !wide) && <span className={a.onTime && !e.refuse && e.dot !== 'posted' ? 'cv2-cc-time' : undefined} data-cal-time={a.onTime && !e.refuse && e.dot !== 'posted' ? '' : undefined} title={a.onTime && !e.refuse && e.dot !== 'posted' ? 'Change date or time' : timeLine(it.postedAt ?? it.at, e.lane).replace(' ', ' · ')}>{warsawHm(it.postedAt ?? it.at)}</span>}
           {e.lm && <em>LM</em>}{e.brain && <em>Brain</em>}
           {!e.thumb && e.dot === 'posted' && !wide ? <Pill tone="posted">{dotText(e)}</Pill> : <i className={`cv2-dot cv2-dot-${e.dot}`} title={dotText(e)} aria-hidden="true" />}
         </span>

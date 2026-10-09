@@ -1,0 +1,82 @@
+/* WHEN (WhenEditor / WhenPopover): date and time, edited beside the card. */
+/* The popover lives on <body>, outside .d-app's button reset. */
+.wh-pop :where(button),.wh :where(button){font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;-webkit-appearance:none;appearance:none}
+.wh-pop :where(button:disabled),.wh :where(button:disabled){cursor:default}
+.wh{--wh-ink:var(--ds-text,#131210);--wh-2:var(--ds-text-2,#4a463e);--wh-3:var(--ds-text-3,#8a857c);--wh-line:var(--ds-line,rgba(19,18,16,.1));--wh-face:var(--ds-surface-2,#f4f2ee);--wh-acc:var(--ds-accent,#18392a);--wh-acc-soft:var(--ds-accent-soft,#e1eadb);
+  display:flex;flex-direction:column;gap:12px;font-family:var(--ds-font,inherit);color:var(--wh-ink)}
+.d-sheet .wh{padding:6px 18px 20px}
+.wh-pop{position:fixed;z-index:85;width:356px;padding:12px 14px 14px;border-radius:14px;background:var(--ds-surface-1,#fff);box-shadow:var(--ds-shadow-float,0 18px 48px rgba(19,18,16,.18)),0 0 0 1px var(--ds-line-strong,rgba(19,18,16,.14));opacity:0;transform:translateY(4px) scale(.98);transition:opacity .14s cubic-bezier(.2,.8,.2,1),transform .18s cubic-bezier(.2,.8,.2,1)}
+.wh-pop[data-on]{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.wh-pop{transition:none}}
+.wh-pop-h{display:flex;align-items:center;gap:7px;margin-bottom:8px;font:400 12px/16px var(--ds-font,inherit);color:var(--ds-text-3,#8a857c)}
+.wh-pop-h span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wh-pop-h button{width:24px;height:24px;border-radius:6px;font-size:16px;line-height:1;color:var(--ds-text-3,#8a857c)}
+.wh-pop-h button:hover{background:var(--ds-fill-hover,rgba(19,18,16,.05));color:var(--ds-text,#131210)}
+
+.wh-when{display:flex;flex-direction:column;gap:1px}
+.wh-when b{font:600 19px/24px var(--ds-font,inherit);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.wh-when small{font:400 12px/16px var(--ds-font,inherit);color:var(--wh-3)}
+.wh-when small.wh-warn{color:var(--ds-sev-attention-ui,#865d19)}
+
+.wh-time{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.wh-tf{position:relative;display:flex;align-items:center;gap:6px;height:38px;padding:0 4px 0 10px;border-radius:9px;background:var(--wh-face);box-shadow:inset 0 0 0 1px var(--wh-line);transition:box-shadow .12s}
+.wh-tf:focus-within{box-shadow:inset 0 0 0 1.5px var(--wh-acc),0 0 0 3px var(--wh-acc-soft)}
+.wh-tf.bad{box-shadow:inset 0 0 0 1.5px var(--ds-sev-urgent-ui,#b42318)}
+.wh-tf input{width:62px;border:0;outline:0;background:transparent;font:600 17px/1 var(--ds-font,inherit);font-variant-numeric:tabular-nums;color:var(--wh-ink)}
+.wh-tf>span{font:400 12px var(--ds-font,inherit);color:var(--wh-3);white-space:nowrap}
+.wh-steps{display:flex;flex-direction:column}
+.wh-steps button{width:22px;height:15px;border-radius:4px;font-size:10px;line-height:1;color:var(--wh-3)}
+.wh-steps button:hover{background:var(--ds-fill-hover,rgba(19,18,16,.06));color:var(--wh-ink)}
+.wh-list{position:absolute;left:0;top:42px;z-index:3;width:150px;max-height:208px;overflow:auto;padding:4px;border-radius:10px;background:var(--ds-surface-1,#fff);box-shadow:0 12px 32px rgba(19,18,16,.16),0 0 0 1px var(--wh-line);scrollbar-width:thin}
+.wh-list button{display:flex;align-items:center;justify-content:space-between;width:100%;height:28px;padding:0 8px;border-radius:6px;font:500 13px var(--ds-font,inherit);font-variant-numeric:tabular-nums;color:var(--wh-ink)}
+.wh-list button:hover{background:var(--ds-fill-hover,rgba(19,18,16,.05))}
+.wh-list button[aria-selected="true"]{background:var(--wh-ink);color:#fff}
+.wh-list small{font:400 10.5px var(--ds-font,inherit);opacity:.7}
+
+.wh-quick{display:flex;gap:6px;flex-wrap:wrap}
+.wh-chip{display:inline-flex;align-items:baseline;gap:5px;height:28px;padding:0 10px;border-radius:999px;background:var(--wh-face);box-shadow:inset 0 0 0 1px var(--wh-line);font:500 12.5px/28px var(--ds-font,inherit);color:var(--wh-ink);white-space:nowrap;transition:background .12s,box-shadow .12s}
+.wh-chip small{font:400 11px var(--ds-font,inherit);color:var(--wh-3)}
+.wh-chip:hover:not(:disabled){background:var(--wh-acc-soft)}
+.wh-chip.on{background:var(--wh-ink);color:#fff;box-shadow:none}
+.wh-chip.on small{color:rgba(255,255,255,.75)}
+
+.wh-mh{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.wh-mh b{font:600 13px var(--ds-font,inherit)}
+.wh-mh button{width:28px;height:28px;border-radius:7px;font-size:17px;color:var(--wh-2)}
+.wh-mh button:hover{background:var(--ds-fill-hover,rgba(19,18,16,.05))}
+.wh-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px}
+.wh-grid>i{font:500 10.5px var(--ds-font,inherit);font-style:normal;color:var(--wh-3);text-align:center;padding:2px 0 4px}
+.wh-grid button{position:relative;height:34px;border-radius:8px;font:500 13px var(--ds-font,inherit);font-variant-numeric:tabular-nums;color:var(--wh-ink);transition:background .1s,color .1s,box-shadow .1s}
+.wh-grid button:hover:not(:disabled){background:var(--ds-fill-hover,rgba(19,18,16,.06))}
+.wh-grid button:focus-visible{outline:2px solid var(--wh-acc);outline-offset:1px}
+.wh-grid button.out{color:var(--wh-3)}
+.wh-grid button.we:not(.pick){color:var(--wh-3)}
+.wh-grid button.past{opacity:.32;cursor:default}
+.wh-grid button.tod{box-shadow:inset 0 0 0 1.5px var(--wh-ink)}
+.wh-grid button.from:not(.pick){box-shadow:inset 0 0 0 1.5px var(--wh-3);border-radius:8px;background:repeating-linear-gradient(135deg,transparent 0 4px,rgba(19,18,16,.05) 4px 5px)}
+.wh-grid button.gap:not(.pick)::after{content:'';position:absolute;inset:4px;border-radius:6px;border:1px dashed rgba(19,18,16,.28)}
+.wh-grid button.pick{background:var(--wh-ink);color:#fff;font-weight:650}
+.wh-grid button.land{background:var(--wh-acc-soft);box-shadow:inset 0 0 0 1.5px var(--wh-acc)}
+.wh-grid button em{position:absolute;left:50%;bottom:4px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:currentColor;opacity:.45}
+
+.wh-say{font:400 12px/16px var(--ds-font,inherit);color:var(--wh-2)}
+.wh-bad{color:var(--ds-sev-urgent-ui,#b42318)}
+.wh-foot{display:flex;align-items:center;gap:8px;padding-top:2px}
+.wh-grow{flex:1}
+.wh-link{white-space:nowrap;font:500 12.5px var(--ds-font,inherit);color:var(--wh-3);padding:4px 2px}
+.wh-link:hover{color:var(--ds-sev-urgent-ui,#b42318)}
+.wh-cancel{white-space:nowrap;height:34px;padding:0 12px;border-radius:9px;font:500 13px var(--ds-font,inherit);color:var(--wh-2)}
+.wh-cancel:hover{background:var(--ds-fill-hover,rgba(19,18,16,.05))}
+.wh-go{white-space:nowrap;display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px 0 14px;border-radius:9px;background:var(--wh-ink);color:#fff;font:600 13px var(--ds-font,inherit);transition:opacity .12s,transform .12s}
+.wh-go:active:not(:disabled){transform:scale(.97)}
+.wh-go:disabled{opacity:.35}
+.wh-go kbd{font:500 11px var(--ds-font,inherit);opacity:.6}
+
+/* On the calendar: the cell the editor or a held post points at, with where and when it lands. */
+.cal-preview{background:var(--ds-accent-soft,rgba(225,234,219,.7)) !important;box-shadow:inset 0 0 0 1.5px var(--ds-accent,#18392a) !important}
+:is(.cal-preview,.cal-hot)[data-cal-drop]::after{content:attr(data-cal-drop);position:absolute;left:6px;right:6px;bottom:6px;z-index:4;padding:4px 7px;border-radius:6px;background:var(--ds-text,#131210);color:#fff;font:600 11.5px/14px var(--ds-font,inherit);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;box-shadow:0 4px 12px rgba(19,18,16,.2)}
+.cal-day:is(.cal-preview,.cal-hot){position:relative}
+/* The card's time edits it in place. */
+.cv2-cc-time{border-radius:4px;padding:0 3px;margin:0 -3px;cursor:pointer;transition:background .1s}
+.cv2-cc-time:hover{background:var(--ds-accent-soft,#e1eadb);color:var(--ds-text,#131210);text-decoration:underline;text-underline-offset:2px}
+@media (pointer:coarse){.wh-go kbd{display:none}}

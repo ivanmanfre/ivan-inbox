@@ -4,6 +4,7 @@ import { monthLabel, monthWeeks } from '../../lib/calendarItems'
 import { clearScheduleDate, setScheduleDateAt } from '../../lib/content'
 import { supabase } from '../../lib/supabase'
 import { moveConfirmCopy, movePublishesForClient } from '../../wb/content/moveConfirm'
+import { WhenPopover } from './WhenEditor'
 import { dHash } from '../route'
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
@@ -87,6 +88,10 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
   const [sel, setSel] = useState<string | null>(null)
   const [moved, setMoved] = useState<Map<string, string>>(() => new Map())
   const [magnets, setMagnets] = useState<Magnet[] | null>(null)
+  const movedRef = useRef(moved)
+  movedRef.current = moved
+  // Brief 4 desktop: date and time edited beside the card (WhenPopover), never off-screen.
+  const [when, setWhen] = useState<{ id: string; lane: Lane; anchor: DOMRect; day?: string; focus: 'time' | 'day' } | null>(null)
   const reduced = useMemo(() => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches, [])
   const rows = useMemo(() => ({ ivan: data.seats.ivan.rows, risedtc: data.seats.risedtc.rows, arch: data.seats.arch.rows }), [data.seats])
 
@@ -164,6 +169,9 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
     const tz = LANE_TZ[lane]
     const when = zonedToUtc(to, prev ? hmIn(prev, tz) : LANE_DEFAULT_HM[lane], tz)
     if (movePublishesForClient(r)) {
+      // Brief 4 desktop: the confirm is the date-and-time card at the cell, the time editable, Enter schedules.
+      const cell = v2 && !phone ? root.current?.querySelector<HTMLElement>(`[data-cal-day="${to}"][data-cal-lane="${lane}"], .cal-day[data-cal-day="${to}"]`) : null
+      if (cell) { setWhen({ id, lane, anchor: cell.getBoundingClientRect(), day: to, focus: 'time' }); return }
       const copy = moveConfirmCopy(r, dayLabel(to), laneTimeWord(when, lane))
       if (!await confirm({ title: copy.title, message: copy.message, confirmText: copy.confirmText, verb: 'confirm' })) return
     }
@@ -175,15 +183,16 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
       if (landed !== to) setMoved(m => new Map(m).set(id, landed))
       toast.show({
         message: `Moved to ${dayLabel(landed)} · ${laneTimeWord(stored, lane)}.`,
-        sub: landed !== to ? `${dayLabel(to)} was taken or a weekend, so it landed on ${dayLabel(landed)}.` : LANE_NAME[lane],
+        sub: landed !== to ? `The database stored ${dayLabel(landed)}.` : LANE_NAME[lane],
         action: { label: 'Undo', verb: 'undo', run: () => { void undo(id, lane, prev) } },
+        ...(v2 && !phone ? { also: { label: 'Change time', verb: 'change-time', run: () => openWhen(id, lane, 'time', landed) } } : {}),
       })
       onChanged()
     } catch (e) {
       setMoved(m => { const n = new Map(m); n.delete(id); return n })
       toast.show({ message: e instanceof Error ? e.message : 'Could not move it.', tone: 'failed' })
     }
-  }, [rows, confirm, toast, onChanged]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [rows, confirm, toast, onChanged, v2, phone]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const undo = async (id: string, lane: Lane, prev: string | null) => {
     setMoved(m => new Map(m).set(id, prev ? warsawDay(prev) : ''))
@@ -197,7 +206,35 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
     onChanged()
   }
 
+  /** Open the date-and-time card beside a post on screen (or the sheet on a phone / when it is not on screen). */
+  const openWhen = (id: string, lane: Lane, focus: 'time' | 'day' = 'day', day?: string) => {
+    const el = root.current?.querySelector<HTMLElement>(`[data-cal-id="${id}"]:not(.cal-lifted)`) ?? document.querySelector<HTMLElement>(`[data-cal-id="${id}"]`)
+    if (phone || !v2 || !el) { onMove(id, lane); return }
+    // A post just moved keeps its new day until the re-read lands (the row still says the old one).
+    const held = day ?? movedRef.current.get(id)
+    setWhen({ id, lane, anchor: el.getBoundingClientRect(), focus, ...(held ? { day: held } : {}) })
+  }
+  /** Light the cell the editor points at, with the day and time it will land on. */
+  const preview = useCallback((lane: Lane, day: string | null, label: string | null) => {
+    root.current?.querySelectorAll('.cal-preview').forEach(n => { n.classList.remove('cal-preview'); n.removeAttribute('data-cal-drop') })
+    if (!day) return
+    root.current?.querySelectorAll<HTMLElement>(`[data-cal-day="${day}"]`).forEach(n => {
+      if (n.classList.contains('cv2-wh') || (n.dataset.calLane && n.dataset.calLane !== lane)) return
+      n.classList.add('cal-preview'); if (label) n.setAttribute('data-cal-drop', label)
+    })
+  }, [])
+  /** While dragging: the day and time it lands on (its own time kept). */
+  const labelFor = (id: string, laneS: string, day: string): string | null => {
+    const lane = laneS as Lane
+    const r = rows[lane]?.find(x => x.id === id)
+    if (!r) return null
+    const tz = LANE_TZ[lane]
+    const at = zonedToUtc(day, r.scheduled_at ? hmIn(r.scheduled_at, tz) : LANE_DEFAULT_HM[lane], tz)
+    return `${dayLabel(day)} · ${laneTimeWord(at, lane)}`
+  }
+
   useCalGestures(root, {
+    labelFor,
     reducedMotion: reduced,
     onDrop: (id, lane, to) => { void drop(id, lane, to) },
     onRefuse: why => toast.show({ id: 'cal-refuse', message: why }),
@@ -246,7 +283,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
   const laneBound = pick === 'all' ? undefined : pick
 
   if (v2) {
-    const acts: CardActs = { onOpen, onMove, onArm, onChanged }
+    const acts: CardActs = { onOpen, onMove: (id, lane) => openWhen(id, lane), onTime: (id, lane) => openWhen(id, lane, 'time'), onArm, onChanged }
     const lanes = lanesOf(pick)
     const nextWeek = new Set(lanes.flatMap(l => (data.seats[l].loadedAt ? cov.seats[l].gaps : [])))
     const riseLine = (pick === 'all' || pick === 'risedtc') ? warsawDay(now + 14 * DAY_MS) : null
@@ -295,6 +332,14 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
           )}
         </div>
         {(view === 'lines' || phone) && <BufferDock loose={loose} lms={lms} a={acts} />}
+        {when && (() => {
+          const r = rows[when.lane].find(x => x.id === when.id)
+          if (!r) return null
+          const gap = cov.seats[when.lane].gaps.find(g => g >= todayKey) ?? null
+          return <WhenPopover key={`${when.id}:${when.day ?? ''}`} anchor={when.anchor} r={r} lane={when.lane} seatRows={rows[when.lane]} initialDay={when.day} focus={when.focus} gap={gap}
+            onClose={() => setWhen(null)} onDone={onChanged} onPreview={(d, l) => preview(when.lane, d, l)}
+            onMoved={(id, d) => setMoved(m => new Map(m).set(id, d ?? ''))} />
+        })()}
       </section>
     )
   }

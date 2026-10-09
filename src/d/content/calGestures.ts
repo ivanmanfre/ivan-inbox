@@ -33,6 +33,8 @@ export type CalGestureOpts = {
   onSwipeEnd: (dir: -1 | 0 | 1, dx: number) => void
   /** Page while a lifted post rests at the screen edge. */
   onEdgePage: (dir: -1 | 1) => void
+  /** What the hot cell says while a post hovers it ("Thu 15 Oct · 16:00 Warsaw"). */
+  labelFor?: (id: string, lane: string, day: string) => string | null
   reducedMotion: boolean
 }
 
@@ -68,8 +70,12 @@ export function useCalGestures(root: React.RefObject<HTMLElement | null>, opts: 
     const setHot = (d: HTMLElement | null) => {
       if (d === hot) return
       hot?.classList.remove('cal-hot')
+      hot?.removeAttribute('data-cal-drop')
       hot = d
       hot?.classList.add('cal-hot')
+      const id = item?.dataset.calId, lane = item?.dataset.calLane, day = d?.dataset.calDay
+      const label = d && id && lane && day ? o.current.labelFor?.(id, lane, day) : null
+      if (d && label) d.setAttribute('data-cal-drop', label)
     }
     const dayAt = (x: number, y: number): HTMLElement | null => {
       const t = document.elementFromPoint(x, y) as HTMLElement | null
@@ -167,6 +173,8 @@ export function useCalGestures(root: React.RefObject<HTMLElement | null>, opts: 
         const d = drop ? dayAt(px, py) : null
         setHot(null)
         document.documentElement.classList.remove('cal-dragging')
+        // The card's hover preview stays shut a moment after a drop (the pointer rests on the card).
+        document.documentElement.classList.add('cal-dropped'); window.setTimeout(() => document.documentElement.classList.remove('cal-dropped'), 1500)
         swallowClick()
         const id = item?.dataset.calId, lane = item?.dataset.calLane
         land(d ? d.getBoundingClientRect() : null)
