@@ -123,7 +123,7 @@
 :root[data-skin-on~='shell'][data-layout='phone'] .po-ck.d-on{background:var(--ds-text);color:#fff;border-color:var(--ds-text);box-shadow:var(--po-glass-shadow)}
 :root[data-skin-on~='shell'][data-layout='phone'] .po-ck .dcl-kdot{position:absolute;top:10px;right:10px}
 /* Hidden in a pushed thread, under the Claude sheet, and while a field has the keyboard. */
-:root[data-skin-on~='shell'][data-layout='phone'] .d-app:is(:has(.dm-phone-thread),:has(.d-psheet)) .po-tabbar,
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app:is(:has(.dm-phone-thread),:has(.d-psheet),:has(.d-sheet-bottom),:has(.d-confirm-phone)) .po-tabbar,
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app:has(:is(input:not([type=checkbox]):not([type=radio]),textarea,[contenteditable=true]):focus) .po-tabbar{transform:translateY(calc(100% + var(--po-tab-bottom) + 12px));opacity:0;pointer-events:none}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app:has(.dm-phone-thread) .po-fade{display:none}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app:has(.d-psheet) .po-tabbar{transform:none;opacity:1;pointer-events:auto}
@@ -210,9 +210,9 @@
 @keyframes po-sheet-in{from{transform:translateY(100%)}}
 @keyframes po-drawer-in{from{transform:translateX(-100%)}}
 @keyframes po-push-in{from{transform:translateX(100%);box-shadow:-20px 0 40px -20px rgba(19,18,16,0)}}
-:root[data-skin-on~='shell'][data-layout='phone'] .po-view{animation:po-view-in var(--po-d-enter) var(--po-ease) both}
+:root[data-skin-on~='shell'][data-layout='phone'] .po-view{animation:po-view-in var(--po-d-enter) var(--po-ease) backwards}
 :root[data-skin-on~='shell'][data-layout='phone'] .po-lt{animation:po-fade var(--po-d-enter) var(--po-ease) both}
-:root[data-skin-on~='shell'][data-layout='phone'] .po-view > * > :nth-child(-n+8){animation:po-block-in var(--po-d-content) var(--po-ease-content) both}
+:root[data-skin-on~='shell'][data-layout='phone'] .po-view > * > :nth-child(-n+8){animation:po-block-in var(--po-d-content) var(--po-ease-content) backwards}
 :root[data-skin-on~='shell'][data-layout='phone'] .po-view > * > :nth-child(2){animation-delay:18ms}
 :root[data-skin-on~='shell'][data-layout='phone'] .po-view > * > :nth-child(3){animation-delay:36ms}
 :root[data-skin-on~='shell'][data-layout='phone'] .po-view > * > :nth-child(4){animation-delay:54ms}
@@ -234,3 +234,7 @@
   :root[data-skin-on~='shell'][data-layout='phone'] :is(.po-dock,.po-ck,.d-sheet-bottom,.d-confirm-phone,.d-pn,.d-bellp-phone,.d-psheet,.d-toast){background:#FCFBF9;-webkit-backdrop-filter:none;backdrop-filter:none}
   :root[data-skin-on~='shell'][data-layout='phone'][data-po-scrolled] .po-bar{background:var(--ds-canvas);-webkit-backdrop-filter:none;backdrop-filter:none}
 }
+
+/* A sheet rendered inside the page must rise above the nav bar and the tab bar: the view's entry animation
+   leaves no transform behind (fill backwards), and while a sheet is open the view stacks over the chrome. */
+:root[data-skin-on~='shell'][data-layout='phone'] .po-view:has(.d-scrim,.d-sheet){position:relative;z-index:60}

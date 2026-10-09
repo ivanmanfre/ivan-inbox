@@ -62,7 +62,8 @@
 :root[data-skin-on~='shell'][data-layout='phone'] .dl4-first,:root[data-skin-on~='shell'][data-layout='phone'] .dl4-below{gap:12px;margin-bottom:12px}
 :root[data-skin-on~='shell'][data-layout='phone'] .dl4-first>.dl4-panel{min-height:0}
 :root[data-skin-on~='shell'][data-layout='phone'] .dl4-supply-numbers{gap:8px 22px;flex-wrap:wrap;align-items:flex-end}
-:root[data-skin-on~='shell'][data-layout='phone'] .dl4-supply-numbers small{font:550 13px/18px var(--f);letter-spacing:0;text-transform:none;color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dl4-supply-numbers>div>small{font:550 13px/18px var(--f);letter-spacing:0;text-transform:none;color:var(--t2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dl4-supply-numbers .ols-figure small{display:inline;font:500 15px/20px var(--f);letter-spacing:0;text-transform:none;color:var(--t2);margin-left:3px}
 :root[data-skin-on~='shell'][data-layout='phone'] .dl4-supply-numbers .ols-figure-l{font-size:36px;line-height:42px;font-weight:600}
 :root[data-skin-on~='shell'][data-layout='phone'] .dl4-supply-numbers .ols-figure-m{font-size:26px;line-height:34px;font-weight:600}
 :root[data-skin-on~='shell'][data-layout='phone'] .dl4-no-pace{font:400 13px/20px var(--f)}
@@ -92,7 +93,7 @@
 :root[data-skin-on~='shell'][data-layout='phone'] .dl4-history-line{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"l s" "b b";gap:6px 12px;margin:14px 0 0;align-items:baseline}
 :root[data-skin-on~='shell'][data-layout='phone'] .dl4-history-line>b{grid-area:l;font:550 15px/20px var(--f);color:var(--t1)}
 :root[data-skin-on~='shell'][data-layout='phone'] .dl4-history-line>small{grid-area:s;grid-column:auto;font:400 13px/18px var(--f);color:var(--t2);font-variant-numeric:tabular-nums}
-:root[data-skin-on~='shell'][data-layout='phone'] .dl4-history-bars{grid-area:b;height:40px;gap:4px}
+:root[data-skin-on~='shell'][data-layout='phone'] .dl4-history-bars{grid-area:b;height:44px;gap:4px}
 :root[data-skin-on~='shell'][data-layout='phone'] .dl4-history-bars i{width:100%;max-width:14px}
 :root[data-skin-on~='shell'][data-layout='phone'] .dl4-history-bars>*{min-height:0}
 :root[data-skin-on~='shell'][data-layout='phone'] .dl4-now{box-shadow:none}
@@ -154,7 +155,7 @@
 :root[data-skin-on~='shell'][data-layout='phone'] .dl4 .d-offline{margin:0 0 12px;border-radius:14px;border:0;padding:12px 16px;font:400 14px/20px var(--f)}
 :root[data-skin-on~='shell'][data-layout='phone'] .dl4 .dl-notice{margin:0 0 12px;padding:12px 16px;border:0;border-radius:14px;background:var(--ds-sev-attention-soft);font:400 13px/18px var(--f);color:var(--t1)}
 :root[data-skin-on~='shell'][data-layout='phone'] .dl4-incident{border-radius:18px;padding:16px;gap:12px;font:400 14px/20px var(--f);margin-bottom:16px}
-:root[data-skin-on~='shell'][data-layout='phone'] .dl4-incident b{font:600 15px/21px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dl4-incident b{font:550 15px/21px var(--f)}
 :root[data-skin-on~='shell'][data-layout='phone'] .dl4-incident p{font:400 14px/20px var(--f)}
 
 /* Figures that failed: the Retry is a 44 hit box that does not grow the card. */

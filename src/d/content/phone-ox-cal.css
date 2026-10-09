@@ -12,9 +12,9 @@
 /* ---- filters: two iOS segmented controls, 44px, one row each ---- */
 :root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar{display:flex;flex-direction:column;align-items:stretch;flex-wrap:nowrap;gap:12px;padding:0}
 :root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-grow{display:none}
-:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg{display:flex;width:100%;height:44px;box-sizing:border-box;padding:3px;gap:0;border-radius:12px;background:rgba(19,18,16,.06);box-shadow:none}
-:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg::before{top:3px;bottom:3px;border-radius:9px;background:#fff;box-shadow:0 1px 2px rgba(19,18,16,.12),0 0 0 .5px rgba(19,18,16,.06)}
-:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button{flex:1 1 0;min-width:0;height:38px;padding:0 6px;justify-content:center;gap:6px;border-radius:9px;font:550 15px/1 var(--ds-font);letter-spacing:-.005em;color:var(--ds-text-2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg{display:flex;width:100%;height:48px;box-sizing:border-box;padding:2px;gap:0;border-radius:12px;background:rgba(19,18,16,.06);box-shadow:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg::before{top:2px;bottom:2px;border-radius:9px;background:#fff;box-shadow:0 1px 2px rgba(19,18,16,.12),0 0 0 .5px rgba(19,18,16,.06)}
+:root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button{flex:1 1 0;min-width:0;height:44px;padding:0 6px;justify-content:center;gap:6px;border-radius:9px;font:550 15px/1 var(--ds-font);letter-spacing:-.005em;color:var(--ds-text-2)}
 :root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button[aria-selected='true']{color:var(--ds-text);font-weight:650}
 :root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button:active{transform:scale(.97)}
 :root[data-skin-on~='shell'][data-layout='phone'] .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg .cv2-av{display:none}

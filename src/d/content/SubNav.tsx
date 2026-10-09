@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { dHash } from '../route'
 import { useFrame } from '../shell/frame'
 import { Sheet } from '../ui/Sheet'
@@ -54,6 +54,14 @@ export function SubNav({ on, attention = false, lane = 'ivan', section, v2 = fal
   const f = useFrame()
   const context = { lane }
   const [more, setMore] = useState(false)
+  const tabs = useRef<HTMLElement>(null)
+  // Phone: the tab row scrolls sideways; the open tab is brought into view (never the page: scrollLeft only).
+  useEffect(() => {
+    const row = tabs.current, cur = row?.querySelector<HTMLElement>('a.cn-on')
+    if (!row || !cur || f.layout !== 'phone') return
+    const want = cur.offsetLeft - (row.clientWidth - cur.offsetWidth) / 2
+    row.scrollTo({ left: Math.max(0, want), behavior: 'auto' })
+  }, [on, f.layout])
   const sheet = <Sheet open={more} onClose={() => setMore(false)} title="More in Content"><div className="cn-more">
     {MORE.map(g => <div key={g.group} className="cn-more-g"><span className="cn-more-h">{g.group}</span>
       {g.items.map(i => <a key={i.label} href={dHash('content', i.sub, { ...context, ...(i.q ?? {}) })} onClick={() => setMore(false)}><b>{i.label}</b>{i.small && <small>{i.small}</small>}</a>)}
@@ -61,7 +69,7 @@ export function SubNav({ on, attention = false, lane = 'ivan', section, v2 = fal
     <a href="#search" onClick={e => { e.preventDefault(); setMore(false); f.openPalette() }}><b>Search every post</b></a>
   </div></Sheet>
   if (v2) return <>
-    <nav className={`cn-now-tabs cv2-tabs ${f.layout === 'phone' ? 'cn-ptabs' : 'cn-sub'}`} aria-label="Content places">
+    <nav ref={tabs} className={`cn-now-tabs cv2-tabs ${f.layout === 'phone' ? 'cn-ptabs' : 'cn-sub'}`} aria-label="Content places">
       {SUBS.map(s => {
         const n = counts?.[s]
         return <a key={s} href={dHash('content', s, context)} className={s === on ? 'cn-on' : ''} aria-current={s === on ? 'page' : undefined} data-sub={s}>
