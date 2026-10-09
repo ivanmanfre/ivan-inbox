@@ -83,3 +83,10 @@ export function quickDays({ from, today, gap }: { from: string | null; today: st
   if (gap && gap >= today && gap !== from) out.push({ key: 'gap', label: 'Next gap', day: gap })
   return out
 }
+
+/** Ivan's lane holds one post a day (the database's weekday guard): a taken day moves to the next free day, weekends included for a date set by hand. */
+export function nextFree(day: string, taken: ReadonlySet<string>): string {
+  let k = day
+  for (let i = 0; i < 120 && taken.has(k); i++) k = addDays(k, 1)
+  return k
+}

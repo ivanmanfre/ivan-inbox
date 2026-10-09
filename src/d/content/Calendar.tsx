@@ -5,16 +5,18 @@ import { clearScheduleDate, setScheduleDateAt } from '../../lib/content'
 import { supabase } from '../../lib/supabase'
 import { moveConfirmCopy, movePublishesForClient } from '../../wb/content/moveConfirm'
 import { WhenPopover } from './WhenEditor'
+import { nextFree } from './when'
+import { isScheduled } from './model'
 import { dHash } from '../route'
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
-import { warsawDay, warsawDayTime } from '../ui/time'
+import { warsawDay, warsawDayTime, warsawDm, warsawDow } from '../ui/time'
 import { useCalGestures } from './calGestures'
 import {
   DOT_WORD, PICKS, PICK_KEY, calendarDays, coverOf, lanesOf, looseOf, magnetLane, monthOf, openDay,
   type Entry, type Loose, type Magnet, type Pick,
 } from './calModel'
-import { DAY_MS, LANE_NAME, dayLabel, timeLine, wallDays, type Lane } from './model'
+import { DAY_MS, LANE_NAME, dayLabel, timeLine, wallDays, type Lane, type WallDay } from './model'
 import type { PlanItem } from './planModel'
 import { PhoneWall } from './PhoneWall'
 import { Unpublish } from './Unpublish'
@@ -36,6 +38,15 @@ import { SeatAv, Seg } from './v2/ui'
 // Undo on every move. A post that must not move says why when lifted.
 
 type View = 'month' | 'lines'
+/** The wall's weekdays with their weekends: whole Monday-to-Sunday weeks. */
+function withWeekends(ws: WallDay[]): WallDay[] {
+  if (!ws.length) return ws
+  const t0 = Date.parse(`${ws[0].key}T10:00:00Z`)
+  return Array.from({ length: Math.ceil(ws.length / 5) * 7 }, (_, i) => {
+    const t = t0 + i * DAY_MS
+    return { key: warsawDay(t), dow: warsawDow(t), dm: warsawDm(t), n: Number(warsawDm(t).split(' ')[0]) }
+  })
+}
 const viewKey = (p: Pick) => `d-cal-view-${p}`
 const store = { get: (k: string) => { try { return localStorage.getItem(k) } catch { return null } }, set: (k: string, v: string) => { try { localStorage.setItem(k, v) } catch { /* private mode */ } } }
 const PICK_NAME: Record<Pick, string> = { all: 'All', ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch' }
@@ -132,7 +143,11 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
   const inMonth = useMemo(() => new Set(keys.filter(k => Number(k.slice(5, 7)) - 1 === ym.month)), [keys, ym.month])
   // Brief 4 narrow (Claude open, a small window): one week of five days, paged by the week.
   const week5 = v2 && !wide && !phone
-  const lineDays = useMemo(() => (week5 ? wallDays(now + off * 7 * DAY_MS).slice(0, 5) : wallDays(now + off * 14 * DAY_MS)), [now, off, week5])
+  const lineDays = useMemo(() => {
+    const ws = week5 ? wallDays(now + off * 7 * DAY_MS).slice(0, 5) : wallDays(now + off * 14 * DAY_MS)
+    // Brief 4 desktop wall: Saturday and Sunday are columns too, so a post can be dragged onto a weekend (2026-10-09).
+    return v2 && !phone ? withWeekends(ws) : ws
+  }, [now, off, week5, v2, phone])
   const cov = useMemo(() => coverageOf(items, now), [items, now])
   const label = view === 'month' ? monthLabel(ym.year, ym.month) : `${dayLabel(lineDays[0].key)} – ${dayLabel(lineDays[lineDays.length - 1].key)}`
   const day = sel ?? (view === 'month' ? openDay(keys, inMonth, days, todayKey) : (lineDays.some(d => d.key === todayKey) ? todayKey : lineDays[0].key))
@@ -223,14 +238,16 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
       n.classList.add('cal-preview'); if (label) n.setAttribute('data-cal-drop', label)
     })
   }, [])
-  /** While dragging: the day and time it lands on (its own time kept). */
+  /** While dragging: the day and time it lands on (its own time kept; Ivan's lane one a day). */
   const labelFor = (id: string, laneS: string, day: string): string | null => {
     const lane = laneS as Lane
     const r = rows[lane]?.find(x => x.id === id)
     if (!r) return null
     const tz = LANE_TZ[lane]
-    const at = zonedToUtc(day, r.scheduled_at ? hmIn(r.scheduled_at, tz) : LANE_DEFAULT_HM[lane], tz)
-    return `${dayLabel(day)} · ${laneTimeWord(at, lane)}`
+    // Ivan's lane: one post a day; a taken day lands on the next free one (weekends allowed by hand).
+    const land = lane === 'ivan' ? nextFree(day, new Set(rows.ivan.filter(x => x.id !== id && x.scheduled_at && isScheduled(x, 'ivan')).map(x => warsawDay(x.scheduled_at!)))) : day
+    const at = zonedToUtc(land, r.scheduled_at ? hmIn(r.scheduled_at, tz) : LANE_DEFAULT_HM[lane], tz)
+    return `${land !== day ? '→ ' : ''}${dayLabel(land)} · ${laneTimeWord(at, lane)}`
   }
 
   useCalGestures(root, {

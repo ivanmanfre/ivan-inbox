@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, hm12, isoDow, monthGrid, parseHm, quickDays, slots, stepHm } from './when'
+import { addDays, hm12, isoDow, monthGrid, nextFree, parseHm, quickDays, slots, stepHm } from './when'
 
 describe('when: typed times', () => {
   it.each([
@@ -38,4 +38,9 @@ describe('when: days', () => {
     expect(quickDays({ from: '2026-10-01', today: '2026-10-09', gap: null }).map(q => q.day)).toEqual(['2026-10-10', '2026-10-16'])
     expect(quickDays({ from: null, today: '2026-10-09', gap: null }).map(q => [q.label, q.day])).toEqual([['Tomorrow', '2026-10-10'], ['Next week', '2026-10-12']])
   })
+})
+
+it('next free day walks over taken days, weekends included', () => {
+  expect(nextFree('2026-10-16', new Set(['2026-10-16', '2026-10-17']))).toBe('2026-10-18')
+  expect(nextFree('2026-10-16', new Set())).toBe('2026-10-16')
 })

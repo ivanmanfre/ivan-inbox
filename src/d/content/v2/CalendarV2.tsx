@@ -160,14 +160,19 @@ export function WallV2({ data, items, days, entryOf, cov, lanes, now, today, a, 
   a: CardActs
   onDay: (lane: Lane, keys: string[]) => void
 }) {
-  const ten = days.length > 5
-  const style = { gridTemplateColumns: ten ? '96px repeat(5,minmax(0,1fr)) 6px repeat(5,minmax(0,1fr))' : '96px repeat(5,minmax(0,1fr))' } as CSSProperties
-  const gap = (i: number) => (ten && i === 5 ? <div className="cv2-wall-gap" aria-hidden="true" /> : null)
+  const ten = days.length > 7 || (days.length > 5 && !days.some(d => d.dow === 'Sat'))
+  // Weekends are days you can post on (2026-10-09): a slimmer Sat/Sun column, a 6px gap between weeks.
+  const weekends = days.some(d => d.dow === 'Sat' || d.dow === 'Sun')
+  const isWe = (d: WallDay) => d.dow === 'Sat' || d.dow === 'Sun'
+  const newWeek = (i: number) => i > 0 && days[i].dow === 'Mon'
+  const style = { gridTemplateColumns: ['96px', ...days.flatMap((d, i) => [...(newWeek(i) ? ['6px'] : []), isWe(d) ? 'minmax(0,.62fr)' : 'minmax(0,1fr)'])].join(' ') } as CSSProperties
+  const gap = (i: number) => (newWeek(i) ? <div className="cv2-wall-gap" aria-hidden="true" /> : null)
+  void ten
   void now
   return (
     <div className="cv2-wall" style={style} role="group" aria-label="Posts by seat and day">
       <div className="cv2-wh" />
-      {days.map((d, i) => <Fragment key={d.key}>{gap(i)}<div className={`cv2-wh${d.key === today ? ' cv2-tod' : ''}`} data-cal-day={d.key}>{d.key === today ? <><em>Today</em> {d.n}</> : <><b>{d.dow}</b> {d.n}</>}</div></Fragment>)}
+      {days.map((d, i) => <Fragment key={d.key}>{gap(i)}<div className={`cv2-wh${d.key === today ? ' cv2-tod' : ''}${isWe(d) ? ' cv2-we' : ''}`} data-cal-day={d.key}>{d.key === today ? <><em>Today</em> {d.n}</> : <><b>{d.dow}</b> {d.n}</>}</div></Fragment>)}
       {lanes.map(lane => {
         const s = data.seats[lane]
         const gaps = new Set(s.loadedAt ? cov.seats[lane].gaps : [])
@@ -180,9 +185,9 @@ export function WallV2({ data, items, days, entryOf, cov, lanes, now, today, a, 
             </div>
             {days.map((d, i) => {
               const on = entryOf(lane, d.key)
-              const we = d.dow === 'Fri' ? weekendAfter(d.key) : null
+              const we = d.dow === 'Fri' && !weekends ? weekendAfter(d.key) : null
               const weN = we ? we.reduce((n, k) => n + (items[lane].get(k)?.length ?? 0), 0) : 0
-              const cls = ['cv2-cell', d.key === today ? 'cv2-tod' : '', !on.length && gaps.has(d.key) ? 'cv2-gapcell' : '', d.key < today ? 'cv2-past' : ''].filter(Boolean).join(' ')
+              const cls = ['cv2-cell', isWe(d) ? 'cv2-we' : '', d.key === today ? 'cv2-tod' : '', !on.length && gaps.has(d.key) ? 'cv2-gapcell' : '', d.key < today ? 'cv2-past' : ''].filter(Boolean).join(' ')
               return (
                 <Fragment key={d.key}>
                   {gap(i)}

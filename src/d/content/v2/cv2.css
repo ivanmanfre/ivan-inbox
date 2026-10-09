@@ -584,3 +584,6 @@
 /* the sample size sits in the chip's sheet and label; a clipped "n=40" for 401 misread */
 :root[data-skin-on~='content.review'] .cv2-rc-meta .cn-early-wrap{flex:none;min-width:auto}
 :root[data-skin-on~='content.review'] .cv2-rc-meta .cn-early-n{display:none}
+/* Weekend columns on the wall (2026-10-09): slimmer, a touch of tint, the same drop target as any day. */
+:root[data-skin-on~='content.calendar'] .cv2-cell.cv2-we:not(.cv2-tod){background:rgba(19,18,16,.022)}
+:root[data-skin-on~='content.calendar'] .cv2-wh.cv2-we{color:var(--ds-text-3);opacity:.85}

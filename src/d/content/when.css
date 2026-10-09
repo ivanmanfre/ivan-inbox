@@ -74,7 +74,7 @@
 
 /* On the calendar: the cell the editor or a held post points at, with where and when it lands. */
 .cal-preview{background:var(--ds-accent-soft,rgba(225,234,219,.7)) !important;box-shadow:inset 0 0 0 1.5px var(--ds-accent,#18392a) !important}
-:is(.cal-preview,.cal-hot)[data-cal-drop]::after{content:attr(data-cal-drop);position:absolute;left:6px;right:6px;bottom:6px;z-index:4;padding:4px 7px;border-radius:6px;background:var(--ds-text,#131210);color:#fff;font:600 11.5px/14px var(--ds-font,inherit);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;box-shadow:0 4px 12px rgba(19,18,16,.2)}
+:is(.cal-preview,.cal-hot)[data-cal-drop]::after{content:attr(data-cal-drop);position:absolute;left:50%;transform:translateX(-50%);width:max-content;max-width:220px;bottom:6px;z-index:4;padding:4px 7px;border-radius:6px;background:var(--ds-text,#131210);color:#fff;font:600 11.5px/14px var(--ds-font,inherit);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;box-shadow:0 4px 12px rgba(19,18,16,.2)}
 .cal-day:is(.cal-preview,.cal-hot){position:relative}
 /* The card's time edits it in place. */
 .cv2-cc-time{border-radius:4px;padding:0 3px;margin:0 -3px;cursor:pointer;transition:background .1s}

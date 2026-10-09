@@ -42,7 +42,7 @@ describe('MovePanel (2026-10-09: opens as a sheet, time first, any month, Undo)'
 
 describe('WhenEditor details', () => {
   beforeEach(() => { cleanup(); lib.setScheduleDateAt.mockReset() })
-  it('typed "3pm" then ↓ is 14:45; Enter anywhere saves the day picked', async () => {
+  it('typed "3pm" then ↓ is 14:45; Enter saves; a Saturday stays a Saturday', async () => {
     lib.setScheduleDateAt.mockImplementation(async (_id: string, at: string) => at)
     const ivan = { ...r, client_id: null, scheduled_at: '2026-12-02T09:00:00Z' } as unknown as ContentDraft
     renderInFrame(<MovePanel r={ivan} lane="ivan" seatRows={[ivan]} onClose={vi.fn()} onDone={vi.fn()} />)
@@ -51,9 +51,18 @@ describe('WhenEditor details', () => {
     fireEvent.keyDown(t, { key: 'ArrowDown' })
     expect(t.value).toBe('14:45')
     fireEvent.click(document.querySelector('[data-day="2026-12-12"]')!)
-    expect(screen.getByText('A weekend day')).toBeTruthy()
     fireEvent.keyDown(document.querySelector('[data-day="2026-12-12"]')!, { key: 'Enter' })
-    // 14:45 Warsaw on 12 Dec = 13:45 UTC; a weekend stays where it was picked.
+    // 14:45 Warsaw on Saturday 12 Dec = 13:45 UTC; a weekend is a day like any other.
     await waitFor(() => expect(lib.setScheduleDateAt).toHaveBeenCalledWith('p1', '2026-12-12T13:45:00.000Z'))
   })
+})
+
+it('on Ivan\'s lane a day that already has a post says it lands on the next free day', () => {
+  cleanup()
+  const ivan = { ...r, id: 'a', client_id: null, status: 'scheduled', scheduled_at: '2026-12-02T09:00:00Z' } as unknown as ContentDraft
+  const other = { ...r, id: 'b', client_id: null, status: 'scheduled', title: 'Other', scheduled_at: '2026-12-05T09:00:00Z' } as unknown as ContentDraft
+  renderInFrame(<MovePanel r={ivan} lane="ivan" seatRows={[ivan, other]} onClose={vi.fn()} onDone={vi.fn()} />)
+  fireEvent.click(document.querySelector('[data-day="2026-12-05"]')!)
+  expect(screen.getByText(/already has a post \(one a day\)/)).toBeTruthy()
+  expect(document.querySelector('.wh-when b')!.textContent).toContain('Sun 6 Dec')
 })
