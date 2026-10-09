@@ -251,9 +251,9 @@
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dm-phone-thread .dx-dock .dm-comp-big{padding:4px 8px 8px 16px;align-items:stretch;flex-direction:column}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dm-phone-thread .dx-dock .dm-comp-big textarea{min-height:88px}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dm-phone-thread .dx-dock .dm-comp .dm-ib{width:44px;height:44px;border-radius:22px;flex:none;display:grid;place-items:center}
-:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dm-phone-thread .dm-comp [data-verb="compose-send"]{width:44px;min-width:44px;height:44px;min-height:44px;padding:0;border-radius:50%}
-:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dm-phone-thread .dm-comp [data-verb="compose-send"] .d-face{width:44px;min-width:44px;height:44px;min-height:44px;padding:0;border-radius:50%;font-size:0}
-:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dm-phone-thread .dm-comp [data-verb="compose-send"] .d-face::after{content:'↑';font:600 25px/1 var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dm-phone-thread .dx-pane :is(.dx-keys,.dm-comp) [data-verb="compose-send"]{width:44px;min-width:44px;height:44px;min-height:44px;padding:0;border-radius:50%}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dm-phone-thread .dx-pane :is(.dx-keys,.dm-comp) [data-verb="compose-send"] .d-face{width:44px;min-width:44px;height:44px;min-height:44px;padding:0;border-radius:50%;font-size:0}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dm-phone-thread .dx-pane :is(.dx-keys,.dm-comp) [data-verb="compose-send"] .d-face::after{content:'↑';font:600 25px/1 var(--ds-font)}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dm-phone-thread .dx-dock .dm-comp-hint{display:none}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dm-phone-thread .dx-dock .dm-comp-r em{font:400 13px/18px var(--ds-font)}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dm-phone-thread .dx-dock .dm-comp-off{min-height:44px;font:400 14px/20px var(--ds-font);padding:10px 14px;border-radius:14px;background:var(--b1-wash)}
