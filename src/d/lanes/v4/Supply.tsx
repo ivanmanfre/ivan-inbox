@@ -16,11 +16,11 @@ function Mirror({ s, now }: { s: SupplyData; now: number }) {
   const m = mirror(s.days, now)
   return <div className="dl4-mirror" aria-label="People qualified in and invited out, last 14 days">
     <div className="dl4-mirror-label"><span>In <b>{m.days?.reduce((a, d) => a + d.inn, 0)}</b></span><small>Last 14 days</small></div>
-    <div className="dl4-mirror-cols">{m.days?.map((d, i) => <span role="img" key={d.day} className={`dl4-mirror-day${i === m.today ? ' dl4-now' : ''}`} title={`${dm(d.day + 'T12:00:00Z')}: ${d.inn} in · ${d.out} out`} aria-label={`${d.day}: ${d.inn} in · ${d.out} out`}>
+    <div className="dl4-mirror-cols">{m.days?.map((d, i) => <button type="button" key={d.day} className={`dl4-mirror-day${i === m.today ? ' dl4-now' : ''}`} title={`${dm(d.day + 'T12:00:00Z')}: ${d.inn} in · ${d.out} out`} aria-label={`${d.day}: ${d.inn} in · ${d.out} out`}>
       <span className="dl4-mirror-top"><i style={{ height: `${barPct(d.inn,m.max)}%` }} /></span>
       <span className="dl4-mirror-bottom"><i style={{ height: `${barPct(d.out,m.max)}%` }} /></span>
       <small>{new Date(d.day + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'narrow', timeZone: 'UTC' })}</small>
-    </span>)}</div>
+    </button>)}</div>
     <div className="dl4-mirror-label"><span>Out <b>{m.days?.reduce((a, d) => a + d.out, 0)}</b></span></div>
   </div>
 }
