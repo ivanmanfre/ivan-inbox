@@ -15,6 +15,7 @@ import { useFrame } from './frame'
 import { feedDays } from './feedShape'
 import { FeedGroup, inChatTurnId } from './FeedRows'
 import { SystemBox } from './SystemAlerts'
+import './phone-ox-feed.css'
 
 // ---------------------------------------------------------------------------
 // THE BELL. The button (desktop: right end of the answer row; phone: top bar)

@@ -1,0 +1,218 @@
+/* ==========================================================================
+   Claude on the iPhone at the Oxygen standard (goal run inbox-phone-oxygen-2026-10-09, builder B5,
+   02-SPEC §1.4 §2 §4): the sheet, the conversation, the composer, the chats list on the Claude place,
+   the island. Every rule is scoped to
+     P = :root[data-skin-on~='shell'][data-layout='phone']
+   so Settings > Brief 4 layouts > Off and every desktop width match nothing here.
+   Cuts are CSS-only (display:none); every control, data-verb and aria-label stays in the DOM.
+   ========================================================================== */
+
+:root[data-skin-on~='shell'][data-layout='phone']{--b5-wash:rgba(19,18,16,.06);--b5-wash-2:rgba(19,18,16,.1);--b5-hair:rgba(19,18,16,.12)}
+
+/* ---- the sheet: above the nav bar (it ran under it), stopping above the tab bar so the tabs and the
+   Claude key stay reachable; with a field focused the tab bar steps away and the sheet takes the screen ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app .d-psheet{z-index:45;top:calc(var(--sat) + 6px);bottom:0;padding-bottom:calc(var(--po-chrome-bottom) - 12px);background:#FCFBF9;-webkit-backdrop-filter:none;backdrop-filter:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app.d-app:has(.d-psheet :is(input,textarea):focus) .d-psheet{padding-bottom:var(--sab)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app.d-app.d-app:has(.d-psheet):not(:has(.d-psheet :is(input,textarea):focus)) .po-tabbar{opacity:1;transform:none;pointer-events:auto;z-index:46}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app.d-app.d-app:has(.d-psheet):not(:has(.d-psheet :is(input,textarea):focus)) .po-dock{opacity:1;pointer-events:auto}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-phone{margin-bottom:0;padding-bottom:6px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-grab{width:36px;height:5px;border-radius:3px;background:rgba(19,18,16,.18);margin:8px auto 0}
+
+/* ---- head: 44 keys, "Claude" 17/600, the chat's name under it, the runner as a chip on its own row ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-head{flex-wrap:wrap;align-items:center;gap:0 2px;padding:2px 8px 4px;min-height:56px;border-bottom:.5px solid var(--b5-hair)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-head .dcl-ib{width:44px;height:44px;border:0;border-radius:50%;background:transparent;color:var(--ds-text);position:relative;isolation:isolate}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-head .dcl-ib:hover:not(:disabled){background:transparent}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-head .dcl-ib .dcl-ico{width:22px;height:22px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-head > .dcl-ib:last-child::before{content:'';position:absolute;inset:7px;border-radius:50%;background:var(--b5-wash);z-index:-1}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-head > .dcl-ib:last-child .dcl-ico{width:16px;height:16px;stroke-width:2.2}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-head .dcl-ib.dcl-on{background:var(--b5-wash);box-shadow:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-dot{top:9px;right:9px;width:9px;height:9px;background:var(--ds-signal);box-shadow:0 0 0 2px rgba(252,251,249,.98)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-title{flex:1 1 150px;min-width:150px;padding-left:6px;gap:0 8px;flex-wrap:wrap;align-items:center}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-title b{font:600 17px/22px var(--ds-font);letter-spacing:-.01em}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-title small{font:400 13px/18px var(--ds-font);color:var(--ds-text-3)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-tname{flex-basis:100%;order:3;font:400 13px/18px var(--ds-font);color:var(--ds-text-3)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-pill{height:28px;padding:0 11px 0 9px;gap:6px;border-radius:14px;font:600 13px/18px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-pill span{font:500 13px/18px var(--ds-font);font-variant-numeric:tabular-nums}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-runpill{order:10;position:relative;height:32px;margin:0 0 6px 52px;padding:0 12px;gap:7px;font:600 13px/18px var(--ds-font);background:var(--b5-wash);box-shadow:none;color:var(--ds-text)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-runpill::after{content:'';position:absolute;inset:-6px 0}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-runpop{top:160px;left:12px;right:12px;max-height:55%;border-radius:18px;background:#fff;box-shadow:0 18px 50px -12px rgba(19,18,16,.35),0 0 0 .5px rgba(19,18,16,.08);padding:4px 4px 8px}
+
+/* ---- conversation: 16/24 prose, ink bubble, quiet meta ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-conv{padding:12px var(--po-gutter) 16px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-day,:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-session{font:500 13px/18px var(--ds-font);letter-spacing:0;text-transform:none;color:var(--ds-text-3);text-align:center;margin:10px 0 12px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-me{margin:0 0 6px 44px;padding:10px 16px;background:var(--ds-text);color:#fff;border:0;border-radius:20px 20px 6px 20px;font:400 16px/22px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-me small{display:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-ans{margin:14px 0 26px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-focus{box-shadow:none;background:var(--ds-accent-soft);border-radius:14px;padding:10px 12px;margin-left:-12px;margin-right:-12px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-meta{gap:10px;margin-bottom:8px;font:500 13px/18px var(--ds-font);color:var(--ds-text-3);font-variant-numeric:tabular-nums}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-meta b{font-weight:650}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-md{font:400 16px/24px var(--ds-font);color:var(--ds-text)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-md p+p,:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-md p+ul,:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-md ul+p,:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-md p+ol,:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-md ol+p,:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-md pre{margin-top:12px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-md ul,:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-md ol{padding-left:22px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-md li+li{margin-top:6px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-md code{font:400 14px/20px var(--m);border:0;background:var(--b5-wash);border-radius:6px;padding:1px 5px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-md pre{border:0;border-radius:12px;background:var(--b5-wash);padding:12px 14px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-md pre code{font-size:13px;line-height:19px;padding:0;background:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-md a{text-decoration-color:var(--b5-wash-2);text-underline-offset:3px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-cite{font:600 12px/1 var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-recall{display:inline}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-table{border:0;border-radius:12px;background:var(--b5-wash)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-table table{font-size:14px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-table th{background:transparent}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-table th,:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-table td{padding:8px 12px;border-bottom:.5px solid var(--b5-hair)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-steps{border:0;border-radius:14px;background:var(--b5-wash);margin-bottom:12px;font:400 13px/18px var(--ds-font);color:var(--ds-text-2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-steps-h{padding:10px 14px;background:transparent;font:600 13px/18px var(--ds-font);color:var(--ds-text)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-steps-h span:last-child{font:500 13px/18px var(--ds-font);color:var(--ds-text-3)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-steps-more{display:flex;align-items:center;min-height:44px;padding:0 14px;border-top:.5px solid var(--b5-hair);font:500 13px/18px var(--ds-font);color:var(--ds-text-2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-step{min-height:44px;padding:8px 14px;align-items:center;border-top:.5px solid var(--b5-hair);font:400 13px/18px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-step-m{font:500 12px/16px var(--ds-font);font-variant-numeric:tabular-nums}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-step-in{font:400 12px/17px var(--m);padding:8px 14px;border-top:.5px solid var(--b5-hair);background:transparent}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-run .dcl-step-t::before{border-color:var(--b5-wash-2);border-top-color:var(--ds-text)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-src{margin-top:4px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-src > button{display:flex;align-items:center;min-height:44px;padding:0;font:400 13px/18px var(--ds-font);color:var(--ds-text-3)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-src ol{font:400 13px/20px var(--ds-font);margin-top:0;padding-bottom:6px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-foot-k{gap:0;margin:-2px 0 0 -12px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-link{min-height:44px;min-width:44px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;font:500 15px/20px var(--ds-font);color:var(--ds-text-2);text-decoration:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-note,:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-dim{font:400 13px/18px var(--ds-font);color:var(--ds-text-3)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-help{display:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-fail{margin-top:10px;padding:12px 14px;gap:12px;border:0;border-radius:14px;background:var(--ds-sev-attention-soft);color:var(--ds-sev-attention-ui);font:500 15px/21px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-banner{margin:8px 12px 0}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-acts{gap:8px;margin-top:12px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-act-done{font:500 13px/18px var(--ds-font);color:var(--ds-text-2);padding:10px 0}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .d-btn,:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .d-btn:hover{height:44px;min-width:44px;padding:0 18px;border:0;border-radius:22px;background:var(--b5-wash);box-shadow:none;font:600 15px/20px var(--ds-font);color:var(--ds-text)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .d-btn:disabled{opacity:.45}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-bundle > button{min-height:44px;padding:0 16px;border:0;border-radius:22px;background:var(--b5-wash);font:600 14px/20px var(--ds-font);color:var(--ds-text)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-bundle-rows{border:0;border-radius:14px;background:var(--b5-wash)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-bundle-rows > *{min-height:48px;align-items:center;padding:0 14px;font:400 15px/21px var(--ds-font);border-top:.5px solid var(--b5-hair)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-bundle-rows time{font:500 13px/18px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-empty{padding:20px 0;font:400 16px/23px var(--ds-font);color:var(--ds-text-2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-quick{gap:8px;margin:14px 0}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-quick .dcl-seg{height:44px;padding:0 16px;border:0;border-radius:22px;background:var(--b5-wash);font:500 15px/20px var(--ds-font);color:var(--ds-text)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-link-card{min-height:56px;border:0;border-radius:14px;background:var(--b5-wash);padding:8px 12px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-link-card small{font:400 12px/16px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-link-card b{font:600 14px/20px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-link-card em{font:400 13px/18px var(--ds-font)}
+
+/* ---- composer: one rounded well, 16px field, 44 keys, ink send ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-foot{border-top:0;padding:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-cmp{padding:6px 12px 4px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-box{border:0;border-radius:24px;background:var(--b5-wash);box-shadow:none;padding:6px 8px 4px 16px;transition:box-shadow var(--po-d-sel) var(--po-ease)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-box:focus-within{background:var(--b5-wash);box-shadow:0 0 0 1.5px rgba(19,18,16,.2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-box textarea{font:400 16px/22px var(--ds-font);min-height:44px;padding:10px 0 2px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-row{margin-top:0;gap:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-row .dcl-ib{width:44px;height:44px;border:0;border-radius:50%;background:transparent;color:var(--ds-text-2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-row > .dcl-ib:first-child{margin-left:-12px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-row .dcl-ib .dcl-ico{width:22px;height:22px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-row .dcl-ib.dcl-on,:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-row .dcl-ib.dcl-rec-on{background:var(--b5-wash-2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-hint{flex:1}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-hint span{display:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-go{width:44px;height:44px;margin:0;background:var(--ds-text);color:#fff;box-shadow:none;border:0;transition:transform var(--po-d-sel) var(--po-ease),background-color var(--po-d-sel) var(--po-ease)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-go .dcl-ico{width:20px;height:20px;stroke-width:2.2}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-go:disabled{background:var(--b5-wash-2);color:var(--ds-text-3);border:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-go.dcl-stop{background:#fff;color:var(--ds-text);box-shadow:0 0 0 1px var(--b5-wash-2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-go:not(:disabled):active{transform:scale(.94)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-off,:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-rec{font:500 13px/18px var(--ds-font);margin:0 4px 8px;color:var(--ds-text-2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-off{color:var(--ds-sev-attention-ui)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-heard{border:0;background:var(--b5-wash);border-radius:14px;font:400 14px/20px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-heard-t b{font:600 12px/18px var(--ds-font);letter-spacing:0;text-transform:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-atts{gap:6px;margin:0 0 8px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-att{height:36px;border:0;border-radius:18px;background:var(--b5-wash);padding:0 0 0 12px;font:500 13px/18px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-att em{font:600 12px/16px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-att small{font:400 12px/16px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-att button{width:44px;height:44px;margin:-4px 0}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-att .dcl-ico{width:14px;height:14px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-vnote small{font:400 12px/16px var(--ds-font)}
+
+/* context chips inside the well */
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-box .dcl-ctxw{margin:0 0 2px;gap:4px;min-height:44px;align-items:center}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-ctx{min-height:44px;align-items:center;gap:6px;padding:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-chip{height:32px;padding:0 0 0 12px;gap:0;border:0;border-radius:16px;background:#fff;color:var(--ds-text);font:550 13px/18px var(--ds-font);box-shadow:0 0 0 .5px rgba(19,18,16,.08)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-chip button{width:44px;height:44px;margin:-6px 0 -6px -2px;border-radius:50%}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-chip .dcl-ico{width:14px;height:14px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-seg{height:32px;border:0;border-radius:16px;background:#fff;color:var(--ds-text);font:550 13px/18px var(--ds-font);box-shadow:0 0 0 .5px rgba(19,18,16,.08)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-ctx-k{padding:0;gap:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-ctx-k .dcl-link{font:500 13px/18px var(--ds-font);padding:0 10px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-peek{left:12px;right:12px;border:0;border-radius:18px;background:#fff;box-shadow:0 18px 50px -12px rgba(19,18,16,.35),0 0 0 .5px rgba(19,18,16,.08);padding:12px 14px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-peek pre{font:400 13px/19px var(--m)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-peek-k{gap:0}
+
+/* the / list and the More menu: full-width cards above the field */
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-slash{left:12px;right:12px;border:0;border-radius:18px;background:#fff;box-shadow:0 18px 50px -12px rgba(19,18,16,.35),0 0 0 .5px rgba(19,18,16,.08);padding:6px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-cmd{min-height:48px;padding:0 12px;border-radius:12px;align-items:center;font:400 15px/20px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-cmd b{font:600 14px/20px var(--m)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-cmd span{font:400 13px/18px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-slash-f{display:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-menuw{position:static}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-menu{left:12px;right:12px;width:auto;bottom:calc(100% + 6px);max-height:min(50dvh,400px);border:0;border-radius:18px;background:#fff;box-shadow:0 18px 50px -12px rgba(19,18,16,.35),0 0 0 .5px rgba(19,18,16,.08);padding:6px;gap:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-menu button{min-height:48px;padding:0 14px;border-radius:12px;align-items:center;font:500 16px/22px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-menu button[role=menuitemradio]{min-height:56px;justify-content:center;align-items:flex-start;padding:6px 14px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-menu small{font:400 13px/18px var(--ds-font);color:var(--ds-text-3)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-menu-h{font:600 13px/18px var(--ds-font);letter-spacing:0;text-transform:none;color:var(--ds-text-2);padding:14px 14px 4px;border-top:.5px solid var(--b5-hair);margin-top:6px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-menu .dcl-dim{padding:4px 14px;font-size:13px}
+
+/* runner jobs (inside the runner popover) */
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-jobs{border-top:0;padding:0 12px;max-height:none}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-jobs-h{min-height:44px;align-items:center;padding:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-jobs-h b{font:600 13px/18px var(--ds-font);letter-spacing:0;text-transform:none;color:var(--ds-text-2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-jobs-h span{font:400 13px/18px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-jobs-h em{font:500 13px/18px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-job{padding:10px 0;border-top:.5px solid var(--b5-hair);font:500 15px/21px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-job-h span,:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-job-l,:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-job-m{font:400 13px/18px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-job-running .dcl-job-h span{color:var(--ds-text)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-log{font:400 13px/19px var(--m)}
+
+/* ---- chats: the Claude place's list and the sheet's Chats view (iOS inset groups) ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats{--b5-card:#fff;padding:0 var(--po-gutter) 12px}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-psheet .dcl-chats{--b5-card:rgba(19,18,16,.045)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-search{margin:8px 0 12px;height:44px;border:0;border-radius:12px;background:var(--b5-wash);padding:0 12px;gap:8px;color:var(--ds-text-3)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-search input{height:44px;min-height:44px;font:400 16px/22px var(--ds-font);color:var(--ds-text)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-bot{gap:12px;padding:0 16px;margin:0 0 4px;min-height:64px;border:0;border-radius:18px;background:var(--b5-card);box-shadow:0 0 0 .5px rgba(19,18,16,.07)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-bot-m{padding:10px 0;min-height:64px;display:flex;flex-direction:column;justify-content:center}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-bot-m b{font:600 16px/22px var(--ds-font);color:var(--ds-text)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-bot-m small{font:400 13px/18px var(--ds-font);color:var(--ds-text-3);font-variant-numeric:tabular-nums}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-new{font:650 12px/16px var(--ds-font);padding:1px 8px;border-radius:999px;background:var(--ds-signal);color:#fff;margin-left:8px}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-bot-l{font:500 13px/18px var(--ds-font);color:var(--ds-text-3)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-tg{width:51px;height:31px;border:0;border-radius:16px;background:rgba(120,120,128,.24);transition:background-color var(--po-d-sel) var(--po-ease)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-tg::before{content:'';position:absolute;inset:-7px -2px}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-tg::after{left:2px;top:2px;width:27px;height:27px;background:#fff;box-shadow:0 2px 4px rgba(19,18,16,.22),0 0 0 .5px rgba(19,18,16,.05);transition:left var(--po-d-sel) var(--po-ease)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-tg.dcl-on{background:var(--ds-accent,#315c35);border:0}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-tg.dcl-on::after{left:22px;background:#fff}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-dd{padding:24px 4px 8px;font:600 13px/18px var(--ds-font);letter-spacing:0;text-transform:none;color:var(--ds-text-2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-chat{position:relative;flex-direction:column;align-items:stretch;gap:2px;min-height:60px;padding:10px 16px;background:var(--b5-card);border:0;border-radius:0;font:inherit;transition:background-color var(--po-d-sel) var(--po-ease)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-chat:active{background:var(--b5-wash)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-dd + .dcl-chat{border-radius:18px 18px 0 0}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-chat:last-child{border-radius:0 0 18px 18px}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-dd + .dcl-chat:last-child{border-radius:18px}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-chat + .dcl-chat::before{content:'';position:absolute;top:0;left:16px;right:0;height:.5px;background:var(--b5-hair)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-chat b{font:500 16px/22px var(--ds-font);color:var(--ds-text)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-chat span{font:400 13px/18px var(--ds-font);color:var(--ds-text-3);font-variant-numeric:tabular-nums}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-chat.dcl-cur{padding-left:16px;box-shadow:none;background:var(--ds-accent-soft)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-chat.dcl-cur b{font-weight:650}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-chat.dcl-err span{color:var(--ds-sev-attention-ui)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .dcl-dim.dcl-pad{padding:20px 4px;font:400 15px/21px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] :is(.dcl-chats,.dcl-conv) .d-skel i{height:16px;border-radius:8px;background:linear-gradient(90deg,var(--b5-wash) 30%,rgba(19,18,16,.11) 50%,var(--b5-wash) 70%) 0 0/240% 100%;animation:b5-shimmer 1.6s linear infinite}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .d-failed{margin:12px 0;padding:14px 16px;gap:12px;border:0;border-radius:18px;background:var(--ds-sev-attention-soft)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .d-failed p{font:600 15px/21px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .d-failed small{font:400 13px/18px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-chats .d-failed .d-btn{height:44px;min-width:44px;padding:0 16px;border:0;border-radius:22px;background:var(--ds-text);color:#fff;box-shadow:none;font:600 15px/20px var(--ds-font)}
+@keyframes b5-shimmer{from{background-position:120% 0}to{background-position:-120% 0}}
+@media (prefers-reduced-motion:reduce){:root[data-skin-on~='shell'][data-layout='phone'] :is(.dcl-chats,.dcl-conv) .d-skel i{animation:none}}
+
+/* the Claude place: the answer line as Title 1, its helper sentence cut (index.tsx drops it on the phone) */
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-page-phone .d-pans{padding:0 var(--po-gutter) 8px}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-page-phone .d-pans .d-at h1{font:650 22px/28px var(--ds-font);letter-spacing:-.02em;color:var(--ds-text)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-page-phone .d-pans .d-at h1 .d-n{font:650 22px/28px var(--ds-font);font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--ds-text)}
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-page-phone .d-pans .d-at p{margin:4px 0 0;font:500 13px/18px var(--ds-font);color:var(--ds-text-2)}
+
+/* the nav bar's tool on the Claude place */
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app[data-place='claude'] .po-bar .d-ptools .d-btn,:root[data-skin-on~='shell'][data-layout='phone'] .d-app[data-place='claude'] .po-bar .d-ptools .d-btn:hover{position:relative;height:36px;min-width:44px;padding:0 16px;border:0;border-radius:18px;background:var(--b5-wash);box-shadow:none;font:600 15px/20px var(--ds-font);color:var(--ds-text)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app[data-place='claude'] .po-bar .d-ptools .d-btn::after{content:'';position:absolute;inset:-4px -2px}
+
+/* ---- island (the status chip and the "Claude answered" card, shown while the sheet is closed) ---- */
+:root[data-skin-on~='shell'][data-layout='phone'] .dcl-island{bottom:calc(var(--po-chrome-bottom) + 4px)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dcl-island-pill{height:44px;padding:0 18px 0 14px;border:0;border-radius:22px;background:var(--po-glass-strong);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);box-shadow:var(--po-glass-shadow);font:600 15px/20px var(--ds-font);color:var(--ds-text)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dcl-island-pill span{font:500 13px/18px var(--ds-font);color:var(--ds-text-2);font-variant-numeric:tabular-nums}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dcl-island-card{border:0;border-radius:18px;padding:14px 14px 10px 16px;background:var(--po-glass-strong);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);box-shadow:var(--po-glass-shadow)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dcl-island-b b{font:600 16px/22px var(--ds-font)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dcl-island-b span{font:400 14px/20px var(--ds-font);color:var(--ds-text-2)}
+:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dcl-island-k .d-btn,:root[data-skin-on~='shell'][data-layout='phone'] .d-app .dcl-island-k .d-btn:hover{height:44px;min-width:44px;padding:0 18px;border:0;border-radius:22px;background:var(--b5-wash);box-shadow:none;font:600 15px/20px var(--ds-font);color:var(--ds-text)}

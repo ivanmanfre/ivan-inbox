@@ -18,6 +18,7 @@ import { runnerCount } from './Runner'
 import { useSkin } from '../../ds/useSkin'
 import './claude.css'
 import './v4/claude-v4.css'
+import './phone-ox.css'
 
 export type ClaudeDrawerProps = {
   layout: Layout

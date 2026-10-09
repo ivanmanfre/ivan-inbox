@@ -77,7 +77,7 @@ export function More({ chat, runner, text, onSent, onCommands, onPaste, phone }:
               <span>{chat.wanted === m.id ? '✓ ' : ''}{m.label}</span><small>{m.note}</small>
             </button>
           ))}
-          <div className="dcl-dim">The pick applies to the next turn only.</div>
+          <div className="dcl-dim dcl-help">The pick applies to the next turn only.</div>
           <div className="dcl-menu-h">Runner</div>
           <button type="button" role="menuitem" data-verb="run-job" disabled={!text.trim() || runner.busy} onClick={() => go('prompt', text)}>
             Run what is typed on the runner
@@ -90,7 +90,7 @@ export function More({ chat, runner, text, onSent, onCommands, onPaste, phone }:
               <span>{s.name || s.path.split('/').pop()}</span>{s.mtime ? <small>{s.mtime.slice(0, 10)}</small> : null}
             </button>
           ))}
-          <div className="dcl-dim">A job runs on the runner, not in this tab. Its finish lands in the bell.</div>
+          <div className="dcl-dim dcl-help">A job runs on the runner, not in this tab. Its finish lands in the bell.</div>
         </div>
       )}
     </span>

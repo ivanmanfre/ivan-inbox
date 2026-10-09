@@ -105,6 +105,17 @@ export function ClaudeProvider({ children }: { children: ReactNode }) {
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [qs, setClaudeOpen])
 
+  // Phone: the tab bar stays reachable while the sheet is open (phone-ox.css, claude/phone-ox.css), so
+  // a tap on another place closes the sheet instead of leaving it over the new page.
+  const placeNow = route.place
+  const placeWas = useRef(placeNow)
+  const layoutNow = f.layout
+  useEffect(() => {
+    const was = placeWas.current
+    placeWas.current = placeNow
+    if (was !== placeNow && layoutNow === 'phone' && placeNow !== 'claude') setClaudeOpen(false)
+  }, [placeNow, layoutNow, setClaudeOpen])
+
   // A "Draft it" hand-off from DMs starts the field with today's quick-ask words.
   // A plain ask leaves the field alone (the placeholder names the person).
   const handoffAt = handoff?.at ?? null

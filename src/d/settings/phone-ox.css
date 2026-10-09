@@ -76,3 +76,7 @@
 :root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds2-moneyview :is(th,td,small,.a-sub){font-size:13px}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds2-moneyview :is(button,a,.a-chip,select,input){min-height:44px}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-phone .ds4 .d-skel{padding:12px 16px}
+
+/* Money: a fresh, verified figure's provenance line repeats the same caption on every row ("from the vendor
+   spend log · observed today", 79x). On the phone it is cut; a stale or unverified figure keeps its line. */
+:root[data-skin-on~='shell'][data-layout='phone'] .a-money-cell:not([data-stale]):not([data-unv]) > .a-money-cp{display:none}

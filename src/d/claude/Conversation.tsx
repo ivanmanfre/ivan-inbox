@@ -59,7 +59,7 @@ function Empty({ first, send, setText, offline }: { first: string | null; send: 
             onClick={() => (q.send ? send(q.send) : setText(q.insert ?? ''))}>{q.label}</button>
         ))}
       </div>
-      <p className="dcl-dim">Your earlier chats are under Chats.</p>
+      <p className="dcl-dim dcl-help">Your earlier chats are under Chats.</p>
     </div>
   )
 }
