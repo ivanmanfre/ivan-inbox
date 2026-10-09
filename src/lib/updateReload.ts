@@ -64,10 +64,20 @@ export function armUpdateReload({
 
   const onActivity = () => { last = now() }
   const onInput = (e: Event) => { last = now(); if (isTextField(e.target as Element)) typed.add(e.target as Field) }
+  // iOS freezes a backgrounded app, timers included, so the hidden timer never fires there
+  // (2026-10-09: the phone app sat on an old build for days). Coming back after hiddenMs counts too.
+  let hiddenAt: number | null = null
   const onVis = () => {
     if (hiddenTimer !== null) { win.clearTimeout(hiddenTimer); hiddenTimer = null }
     away = false
-    if (pending && doc.visibilityState === 'hidden') hiddenTimer = win.setTimeout(() => { hiddenTimer = null; away = true; check() }, hiddenMs)
+    if (doc.visibilityState === 'hidden') {
+      hiddenAt = now()
+      if (pending) hiddenTimer = win.setTimeout(() => { hiddenTimer = null; away = true; check() }, hiddenMs)
+      return
+    }
+    const wasAway = hiddenAt !== null && now() - hiddenAt >= hiddenMs
+    hiddenAt = null
+    if (pending && wasAway && quiet()) fire()
   }
   // Only a change of place (#exp/d/dms -> #exp/d/lanes), never opening a conversation (?thread=).
   const onNav = (e: Event) => {

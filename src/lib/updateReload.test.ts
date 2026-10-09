@@ -60,6 +60,14 @@ describe('a new build reloads only at a quiet moment (Ivan 09-28)', () => {
     expect(reload).toHaveBeenCalledTimes(1)
   })
 
+  it('iPhone: timers freeze in the background, so coming back after a while reloads', () => {
+    const { u, reload } = setup()
+    u.request(); hide(true)
+    clock = 5_000 // iOS suspended the app: no timer ran while it was away
+    hide(false)
+    expect(reload).toHaveBeenCalledTimes(1)
+  })
+
   it('a quick look away and back does not reload', () => {
     const { u, reload } = setup()
     u.request(); hide(true); vi.advanceTimersByTime(40); hide(false); vi.advanceTimersByTime(40)
