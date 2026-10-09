@@ -230,7 +230,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
       {laterKey}
       {canMarkSolved(t) && solvedKey}
     </>
-    if (!composeOff) primary = <Key primary verb="compose-send" className="dm-send" disabled={busy || emailBlocked || !reply.trim()} onClick={() => void compose()}>{composeLabel}</Key>
+    if (!composeOff) primary = <Key primary verb="compose-send" aria-label={composeLabel} className="dm-send" disabled={busy || emailBlocked || !reply.trim()} onClick={() => void compose()}>{composeLabel}</Key>
   }
 
   if (v4) {

@@ -54,7 +54,7 @@ export function Composer({ to, from, big, disabled, note, value, setValue, onSen
         {dict.can && <button type="button" className={`dm-ib${dict.on ? ' dm-on' : ''}`} aria-label={dict.on ? 'Stop dictating' : 'Dictate'} onClick={dict.toggle}><Mic /></button>}
         {grown && <em className={note ? undefined : 'dm-comp-hint'}>{note ?? `Sends from ${from === 'you' ? 'your' : `${from}'s`} LinkedIn · ⌘↩ or Send, it asks first`}</em>}
         {value.trim() && !noSend && (
-          <Key primary verb="compose-send" disabled={busy} onClick={onSend}>{sendLabel}</Key>
+          <Key primary verb="compose-send" aria-label={sendLabel} disabled={busy} onClick={onSend}>{sendLabel}</Key>
         )}
       </div>
     </div>
