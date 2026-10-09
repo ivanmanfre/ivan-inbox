@@ -55,12 +55,14 @@ export function SubNav({ on, attention = false, lane = 'ivan', section, v2 = fal
   const context = { lane }
   const [more, setMore] = useState(false)
   const tabs = useRef<HTMLElement>(null)
-  // Phone: the tab row scrolls sideways; the open tab is brought into view (never the page: scrollLeft only).
+  // Phone: the tab row scrolls sideways; the open tab is brought into view only when it is off-screen, and then
+  // whole (left edge on the row's 20px gutter), so the row never opens on a half-cut tab (never the page: scrollLeft only).
   useEffect(() => {
     const row = tabs.current, cur = row?.querySelector<HTMLElement>('a.cn-on')
     if (!row || !cur || f.layout !== 'phone') return
-    const want = cur.offsetLeft - (row.clientWidth - cur.offsetWidth) / 2
-    row.scrollTo({ left: Math.max(0, want), behavior: 'auto' })
+    const l = cur.offsetLeft - row.scrollLeft, r = l + cur.offsetWidth
+    if (l >= 0 && r <= row.clientWidth) return
+    row.scrollTo({ left: Math.max(0, cur.offsetLeft - 20), behavior: 'auto' })
   }, [on, f.layout])
   const sheet = <Sheet open={more} onClose={() => setMore(false)} title="More in Content"><div className="cn-more">
     {MORE.map(g => <div key={g.group} className="cn-more-g"><span className="cn-more-h">{g.group}</span>

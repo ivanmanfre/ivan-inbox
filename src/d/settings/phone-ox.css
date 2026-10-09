@@ -80,3 +80,6 @@
 /* Money: a fresh, verified figure's provenance line repeats the same caption on every row ("from the vendor
    spend log · observed today", 79x). On the phone it is cut; a stale or unverified figure keeps its line. */
 :root[data-skin-on~='shell'][data-layout='phone'] .a-money-cell:not([data-stale]):not([data-unv]) > .a-money-cp{display:none}
+
+/* Money > Open money decisions: the footer sentence explains where ticking happens (helper, cut on the phone). */
+:root[data-skin-on~='shell'][data-layout='phone'] .ds2-moneyview .a-group-foot > .a-meta:only-child{display:none}

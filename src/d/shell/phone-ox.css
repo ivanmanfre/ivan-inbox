@@ -126,8 +126,6 @@
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app:is(:has(.dm-phone-thread),:has(.d-psheet),:has(.d-sheet-bottom),:has(.d-confirm-phone)) .po-tabbar,
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app:has(:is(input:not([type=checkbox]):not([type=radio]),textarea,[contenteditable=true]):focus) .po-tabbar{transform:translateY(calc(100% + var(--po-tab-bottom) + 12px));opacity:0;pointer-events:none}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app:has(.dm-phone-thread) .po-fade{display:none}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-app:has(.d-psheet) .po-tabbar{transform:none;opacity:1;pointer-events:auto}
-:root[data-skin-on~='shell'][data-layout='phone'] .d-app:has(.d-psheet) .po-dock{opacity:0;pointer-events:none}
 :root[data-skin-on~='shell'][data-layout='phone'] .d-app.d-phone:has(.dm-phone-thread){padding-bottom:0}
 
 /* A pushed thread owns the top: its head (back, name) replaces the nav bar and the large title. */

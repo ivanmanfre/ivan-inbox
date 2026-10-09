@@ -124,13 +124,23 @@ function deviceInWarsaw(): boolean {
   try { return Intl.DateTimeFormat().resolvedOptions().timeZone === WARSAW } catch { return true }
 }
 
+// The large title names where you are: a Content sub-page by its own name (the tab bar already says Content),
+// Settings > Money as Money. Kept local so the shell chunk does not pull in Content's SubNav.
+const SUB_TITLE: Partial<Record<string, Record<string, string>>> = {
+  content: { brain: 'Content Brain', calendar: 'Calendar', ideas: 'Ideas', now: 'Review', review: 'Review', magnets: 'Lead magnets', results: 'Results', strategy: 'Strategy', styles: 'Styles', inputs: 'Outliers', markets: 'Outliers' },
+  settings: { money: 'Money' },
+}
+function placeTitle(r: { place: keyof typeof PLACES; sub: string | null }): string {
+  return (r.sub && SUB_TITLE[r.place]?.[r.sub]) || PLACES[r.place].label
+}
+
 /** The nav bar: ON key (panel), the title that appears once the large title scrolls under, tools, bell. */
 export function PhoneBar({ onPanel, setToolsSlot }: { onPanel: () => void; setToolsSlot: (el: HTMLElement | null) => void }) {
   const f = useFrame()
   return (
     <header className="d-ptop po-bar">
       <button type="button" className="po-key po-on" aria-label="Open the panel" onClick={onPanel}><span className="d-mark d-mark-on d-mark-btn">ON</span></button>
-      <div className="po-bar-t" aria-hidden="true">{PLACES[f.route.place].label}</div>
+      <div className="po-bar-t" aria-hidden="true">{placeTitle(f.route)}</div>
       <div className="d-ptools" ref={setToolsSlot} />
       <BellButton />
     </header>
@@ -157,7 +167,7 @@ export function LargeTitle() {
   }, [f.route.place])
   return (
     <div className="po-lt" ref={ref}>
-      <h1>{PLACES[f.route.place].label}</h1>
+      <h1>{placeTitle(f.route)}</h1>
       {failed > 0 && <em className="po-lt-fail">{failed} failed</em>}
       {away && <span className="po-lt-tz">Warsaw {warsawHm(now)}</span>}
     </div>
