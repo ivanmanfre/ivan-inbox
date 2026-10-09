@@ -1061,15 +1061,18 @@ const EARLY_PAINT_WAIT_MS = 2500
 
 export async function fetchMessages(knownRows = 0, onNewest?: (rows: InboxMessage[]) => void | Promise<unknown>): Promise<InboxMessage[]> {
   const read = async (i: number): Promise<InboxMessage[]> => {
-    // R2: choose the page before deriving ARCH's copy routes. The existing view
-    // derives routes for the whole archive on every page. Same rows and order;
-    // retain the original read when the additive RPC has not been installed.
-    const quick = await supabase.rpc('inbox_phone_messages_page_r2', { p_offset: i * MSG_PAGE, p_limit: MSG_PAGE })
-    if (!quick.error) {
-      if (!Array.isArray(quick.data)) throw new Error('Could not read the inbox page')
-      return quick.data as InboxMessage[]
+    // Keep the first archive page on the original GET view: it remains a
+    // directly observable live-history read for clients and existing smoke
+    // checks. Priority histories already painted separately. Later pages
+    // choose rows before deriving ARCH routes, using the read-only GET RPC.
+    if (i > 0) {
+      const quick = await supabase.rpc('inbox_phone_messages_page_r2', { p_offset: i * MSG_PAGE, p_limit: MSG_PAGE }, { get: true })
+      if (!quick.error) {
+        if (!Array.isArray(quick.data)) throw new Error('Could not read the inbox page')
+        return quick.data as InboxMessage[]
+      }
+      if (quick.error.code !== 'PGRST202') throw quick.error
     }
-    if (quick.error.code !== 'PGRST202') throw quick.error
     const { data, error } = await supabase.from('inbox_messages_v')
       .select('*').order('created_at', { ascending: false }).order('id', { ascending: false })
       .range(i * MSG_PAGE, i * MSG_PAGE + MSG_PAGE - 1)

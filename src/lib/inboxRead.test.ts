@@ -64,22 +64,22 @@ const ascIds = (rows: Row[]) => [...rows].sort((a, b) => (a.created_at !== b.cre
 describe('fetchMessages: newest page first, same result', () => {
   beforeEach(() => { h.view = []; h.count = null; h.reads = []; h.failAt = -1; h.inflight = 0; h.maxInflight = 0; h.onRead = null; h.rpcMode = 'missing'; h.rpcReads = [] })
 
-  it('uses every RPC page and preserves the complete ascending ID order', async () => {
+  it('reads the first archive page through the original view, then RPC pages without losing any ascending ID', async () => {
     h.view = mk(2503)
     h.view[10].created_at = h.view[11].created_at
     h.rpcMode = 'ok'
     const got = await fetchMessages()
     expect(got.map(m => m.id)).toEqual(ascIds(h.view))
-    expect([...h.rpcReads].sort((a, b) => a - b)).toEqual([0, 1000, 2000])
-    expect(h.reads).toEqual([])
+    expect([...h.rpcReads].sort((a, b) => a - b)).toEqual([1000, 2000])
+    expect(h.reads).toEqual([0])
   })
 
   it('propagates a real RPC error without falling back to the old view', async () => {
-    h.view = mk(1)
+    h.view = mk(1001)
     h.rpcMode = 'error'
     await expect(fetchMessages()).rejects.toMatchObject({ code: '42501', message: 'permission denied' })
-    expect(h.rpcReads).toEqual([0])
-    expect(h.reads).toEqual([])
+    expect(h.rpcReads).toEqual([1000])
+    expect(h.reads).toEqual([0])
   })
 
   it('returns the old created_at-asc order and asks for exactly the pages that exist', async () => {

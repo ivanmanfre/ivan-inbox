@@ -85,7 +85,7 @@ const QUICK = new Set<Key>(['cc', 'gov', 'outcomes', 'health', 'perf', 'pipeline
 type QuickSlot = { value?: unknown; error?: string | null }
 
 async function fetchQuick(keys: Key[]): Promise<Record<string, QuickSlot>> {
-  const { data, error } = await supabase.rpc('inbox_phone_lanes_pick_r2', { p_keys: keys.filter(k => QUICK.has(k)) })
+  const { data, error } = await supabase.rpc('inbox_phone_lanes_pick_r2', { p_keys: keys.filter(k => QUICK.has(k)) }, { get: true })
   if (error) throw error
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Lanes summary returned no slots')
   return data as Record<string, QuickSlot>

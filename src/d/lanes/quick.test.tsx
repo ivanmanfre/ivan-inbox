@@ -22,7 +22,7 @@ it('uses the verified quick slot without fetching the bulky direct source', asyn
   sdk.rpc.mockResolvedValue({ data: { gov: { value: rows, error: null } }, error: null })
   const view = renderHook(() => useLanesData(GOV))
   await waitFor(() => expect(view.result.current.data.gov.value).toEqual(rows))
-  expect(sdk.rpc).toHaveBeenCalledWith('inbox_phone_lanes_pick_r2', { p_keys: ['gov'] })
+  expect(sdk.rpc).toHaveBeenCalledWith('inbox_phone_lanes_pick_r2', { p_keys: ['gov'] }, { get: true })
   expect(fetchGovernor).not.toHaveBeenCalled()
 })
 

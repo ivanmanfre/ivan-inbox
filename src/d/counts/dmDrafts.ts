@@ -58,7 +58,7 @@ async function firstRows(): Promise<InboxMessage[] | null> {
     const running = firstRowsInFlight.get(user)
     if (running) return running
   }
-  const read = Promise.resolve(supabase.rpc('inbox_phone_first_rows_r2')).then(({ data, error }) => {
+  const read = Promise.resolve(supabase.rpc('inbox_phone_first_rows_r2', {}, { get: true })).then(({ data, error }) => {
     if (error?.code === 'PGRST202') return null
     if (error) throw error
     if (!Array.isArray(data)) throw new Error('Could not read DM count threads')

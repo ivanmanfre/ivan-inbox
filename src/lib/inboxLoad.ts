@@ -16,7 +16,7 @@ export async function loadInbox(knownRows: number, onNewest?: (threads: Thread[]
   // Classification remains the existing client rule; the full archive follows.
   if (early && onNewest) {
     try {
-      const { data, error } = await withTimeout(supabase.rpc('inbox_phone_first_rows_r2'), 4000)
+      const { data, error } = await withTimeout(supabase.rpc('inbox_phone_first_rows_r2', {}, { get: true }), 4000)
       if (error) throw error
       if (!Array.isArray(data)) throw new Error('Could not read priority conversations')
       const first = await assembleInbox(data as InboxMessage[], early)

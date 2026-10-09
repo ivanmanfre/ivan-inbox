@@ -58,7 +58,7 @@ it('shares one in-flight complete-history RPC across seats and applies the exist
   h.rpc.mockImplementation(() => new Promise(resolve => { release = resolve }))
   const all = Promise.all([fetchDmSeatCount('ivan'), fetchDmSeatCount('risedtc'), fetchDmSeatCount('arch')])
   expect(h.rpc).toHaveBeenCalledTimes(1)
-  expect(h.rpc).toHaveBeenCalledWith('inbox_phone_first_rows_r2')
+  expect(h.rpc).toHaveBeenCalledWith('inbox_phone_first_rows_r2', {}, { get: true })
   release({ data: rows, error: null })
   const got = await all
   expect(got).toEqual(['ivan', 'risedtc', 'arch'].map(seat => countDmSeatFromRows(rows, seat as 'ivan' | 'risedtc' | 'arch', NOW)))
