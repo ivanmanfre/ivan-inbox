@@ -17,7 +17,7 @@
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .dm-phone .d-pans .d-at h1 .d-n-unk{color:var(--ds-sev-attention-ui)}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .dm-phone .d-pans .d-at p{font:500 13px/18px var(--ds-font);color:var(--ds-text-2);margin-top:4px}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .dm-needs-prose{display:none}
-.dm-needs-counts{display:none}
+:root[data-layout='phone'][data-phone-oxygen-off] .dm-needs-counts,:root[data-layout='phone']:not([data-skin-on~='shell']) .dm-needs-counts{display:none}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .dm-needs-counts{display:flex;width:100%;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .dm-needs-label{width:100%;flex:none;font:650 20px/28px var(--ds-font)}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .dm-needs-seat{display:inline-flex;align-items:center;gap:3px;min-height:30px;padding:3px 8px 3px 4px;border-radius:16px;background:rgba(19,18,16,.055);font:600 14px/20px var(--ds-font);white-space:nowrap}

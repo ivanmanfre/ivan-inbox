@@ -18,7 +18,7 @@ export function noDraftLine(views: Record<Seat, SeatView>): string | undefined {
   return nd.some(Boolean) ? `No draft yet: ${SEATS.flatMap((s, i) => (nd[i] ? [`${SEAT_NAME[s]} ${nd[i]}`] : [])).join(', ')}.` : undefined
 }
 
-export function Headline({ mode, views, counts, tools, noSub = false }: { mode: Mode; views: Record<Seat, SeatView>; counts: FrameCounts; tools?: React.ReactNode
+export function Headline({ mode, views, counts, tools, noSub = false, phone = false }: { phone?: boolean; mode: Mode; views: Record<Seat, SeatView>; counts: FrameCounts; tools?: React.ReactNode
   /** Brief 4: the sub line is drawn by the page's band tools instead. */ noSub?: boolean }) {
   const needs = dmNumbers(counts, 'needs')
   if (mode === 'spam') {
@@ -29,12 +29,12 @@ export function Headline({ mode, views, counts, tools, noSub = false }: { mode: 
   }
   // One headline; the sub line only when a thread still has no draft (work Ivan must start).
   const sub = noSub ? undefined : noDraftLine(views)
-  return <AnswerRow title={<><span className="dm-needs-prose">Needs you: <N v={needs.ivan} /> yours, <N v={needs.risedtc} /> Mattan's, <N v={needs.arch} /> Davorin's.</span><span className="dm-needs-counts" aria-label={`Needs you: ${needs.ivan ?? 'unknown'} yours, ${needs.risedtc ?? 'unknown'} Mattan's, ${needs.arch ?? 'unknown'} Davorin's`}>
+  return <AnswerRow title={<><span className="dm-needs-prose">Needs you: <N v={needs.ivan} /> yours, <N v={needs.risedtc} /> Mattan's, <N v={needs.arch} /> Davorin's.</span>{phone && <span className="dm-needs-counts" aria-label={`Needs you: ${needs.ivan ?? 'unknown'} yours, ${needs.risedtc ?? 'unknown'} Mattan's, ${needs.arch ?? 'unknown'} Davorin's`}>
     <span className="dm-needs-label">Needs you</span>
     <span className="dm-needs-seat"><i>I</i><N v={needs.ivan} /><small>yours</small></span>
     <span className="dm-needs-seat"><i>M</i><N v={needs.risedtc} /><small>Mattan</small></span>
     <span className="dm-needs-seat"><i>D</i><N v={needs.arch} /><small>Davorin</small></span>
-  </span></>} sub={sub} tools={tools} />
+  </span>}</>} sub={sub} tools={tools} />
 }
 
 export function Health({ data }: { data: DmsData }) {

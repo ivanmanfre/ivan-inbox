@@ -173,7 +173,7 @@ export function useLanesData(only?: readonly Key[]): { data: LanesData; loading:
     // The visible monitor lands before the aggregate campaign/history reads.
     // Every other slot still follows; it cannot delay the first monitor rows.
     const secondary = primary && !only ? primary.then(() => {}, () => {}) : Promise.resolve()
-    const quick = otherQuickKeys.length ? secondary.then(() => withTimeout(fetchQuick(otherQuickKeys), 4000)) : null
+    const quick = otherQuickKeys.length ? withTimeout(fetchQuick(otherQuickKeys), 4000) : null
     void Promise.allSettled(keys.map(k => {
       const direct = (): Promise<unknown> => READS[k]() as Promise<unknown>
       const summary = k === 'cc' || k === 'gov' ? primary : QUICK.has(k) ? quick : null
