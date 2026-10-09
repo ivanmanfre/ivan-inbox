@@ -26,6 +26,9 @@ function Row({ d, refresh, onLeaving }: { d: OpsDraft; refresh: () => void; onLe
   const [busy, setBusy] = useState(false)
   const [ticked, setTicked] = useState(false)
   const [err, setErr] = useState('')
+  // A long task (the ARCH biweekly read is ~10k chars) is unreadable as one
+  // ellipsed line: a tap on the title or the detail opens the whole body.
+  const [open, setOpen] = useState(false)
   const title = taskTitle(d.body)
   const detail = taskDetails(d.body)
   const due = taskDue(d)
@@ -51,8 +54,17 @@ function Row({ d, refresh, onLeaving }: { d: OpsDraft; refresh: () => void; onLe
   return (
     <div className={`op-tk${ticked ? ' op-tk-done' : ''}`} data-task={d.id}>
       <div className="op-tt">
-        <b title={[src === 'WA' ? 'WhatsApp' : src, ago(d.created_at)].filter(Boolean).join(' · ') || undefined}>{title}</b>
-        {detail && <small>{detail}</small>}
+        <b title={[src === 'WA' ? 'WhatsApp' : src, ago(d.created_at)].filter(Boolean).join(' · ') || undefined}>
+          {detail
+            ? <button type="button" className="op-tx" data-verb="expand" aria-expanded={open} onClick={() => setOpen(o => !o)}>{title}</button>
+            : title}
+        </b>
+        {/* Open, the detail is prose to read and copy from (the Davorin draft),
+            so a tap on it no longer closes it: the title closes it. */}
+        {detail && (open
+          ? <small className="op-td" data-open="">{detail}</small>
+          : <small className="op-td" role="button" tabIndex={0} aria-expanded={false} data-verb="expand-detail"
+              onClick={() => setOpen(true)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(true) } }}>{detail}</small>)}
         <div className="op-tm2">
           {dl && <b className={dl.tone === 'over' || dl.tone === 'now' ? 'op-hot' : ''}>{dl.tone === 'over' ? 'overdue' : dl.text}</b>}
           {seat && seat !== 'ivan' && <span>{SEAT_NAME[seat]}</span>}

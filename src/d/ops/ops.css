@@ -111,6 +111,10 @@
 .op-tt{flex:1;min-width:0}
 .op-tt>b{font-weight:500;font-size:13.5px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .op-tt small{display:block;color:var(--t3);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.op-tt small.op-td{cursor:pointer}
+.op-tt small.op-td[data-open]{white-space:pre-wrap;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;color:var(--t2);font-size:13px;line-height:1.45;margin-top:6px;user-select:text;cursor:text}
+.op-tx{font:inherit;color:inherit;text-align:start;padding:0;background:none;border:0;cursor:pointer}
+.op-tk:has(.op-td[data-open]) .op-tt>b{-webkit-line-clamp:unset;display:block}
 .op-tm2{font:400 11.5px var(--m);color:var(--t3);margin-top:3px;display:flex;flex-wrap:wrap;gap:0 4px}
 .op-tm2>*+*::before{content:'· ';color:var(--t3)}
 .op-tm2 b{font-weight:500;color:var(--t2)}.op-tm2 b.op-hot{color:var(--hot)}

@@ -10,7 +10,7 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { useOps } from '../../hooks/useOps'
 import { useStalled } from '../ui/timeout'
-import { completeTask, createInboxTask, discardOpsDraft, dueLabel, localDay, pendingTasks, taskDue, taskTitle, type OpsDraft } from '../../lib/ops'
+import { completeTask, createInboxTask, discardOpsDraft, dueLabel, localDay, pendingTasks, taskDetails, taskDue, taskTitle, type OpsDraft } from '../../lib/ops'
 import { dHash } from '../route'
 import { SEAT_NAME, seatOf } from '../seats'
 import { useDConfirm } from '../ui/confirm'
@@ -26,7 +26,9 @@ function Row({ d, refresh, v4 = false }: { d: OpsDraft; refresh: () => void; v4?
   const [busy, setBusy] = useState(false)
   const [ticked, setTicked] = useState(false)
   const [err, setErr] = useState('')
+  const [open, setOpen] = useState(false)
   const title = taskTitle(d.body)
+  const detail = taskDetails(d.body)
   const due = taskDue(d)
   const dl = due ? dueLabel(due) : null
   const seat = seatOf(d.client_id)
@@ -47,7 +49,9 @@ function Row({ d, refresh, v4 = false }: { d: OpsDraft; refresh: () => void; v4?
   return (
     <li className={`gt-row${ticked ? ' gt-done' : ''}`} data-task={d.id}>
       <Btn verb="tick" disabled={busy || ticked} onClick={() => void tick()} aria-label={`Done: ${title}`}>{v4 ? <span aria-hidden="true">{ticked ? '✓' : '○'}</span> : ticked ? 'Done ✓' : 'Done'}</Btn>
-      <span className="gt-t">{title}{err && <small className="gt-err">{err}</small>}<BookedKey d={d} onDone={() => setTimeout(refresh, 420)} /></span>
+      <span className="gt-t">{detail
+        ? <button type="button" className="gt-tx" data-verb="expand" aria-expanded={open} onClick={() => setOpen(o => !o)}>{title}</button>
+        : title}{open && detail && <small className="gt-td">{detail}</small>}{err && <small className="gt-err">{err}</small>}<BookedKey d={d} onDone={() => setTimeout(refresh, 420)} /></span>
       <span className="gt-m">
         {dl && <b className={`gt-${dl.tone}`}>{dl.tone === 'over' ? 'overdue' : dl.text}</b>}
         {seat && seat !== 'ivan' && <span>{SEAT_NAME[seat]}</span>}

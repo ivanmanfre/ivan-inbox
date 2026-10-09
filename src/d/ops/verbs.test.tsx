@@ -86,4 +86,17 @@ describe('Your list', () => {
     fireEvent.click(key('clear-all')); await yes()
     await waitFor(() => expect(lib.discardPendingTasks).toHaveBeenCalledWith(expect.arrayContaining(['t2'])))
   })
+  it('a long task opens to its whole body on tap and stays open while read', () => {
+    const long = { ...row('task', 'arch', 'ARCH biweekly read\nline one\nCopy this draft'), id: 't3' }
+    renderInFrame(<Tasks drafts={[long]} refresh={refresh} />, { hash: '#exp/d/ops' })
+    const closed = document.querySelector('[data-verb="expand-detail"]') as HTMLElement
+    expect(closed).toBeTruthy()
+    fireEvent.click(closed)
+    const open = document.querySelector('.op-td[data-open]') as HTMLElement
+    expect(open.textContent).toBe('line one\nCopy this draft')
+    fireEvent.click(open)
+    expect(document.querySelector('.op-td[data-open]')).toBeTruthy()
+    fireEvent.click(key('expand'))
+    expect(document.querySelector('.op-td[data-open]')).toBeNull()
+  })
 })
