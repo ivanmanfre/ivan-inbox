@@ -19,7 +19,7 @@ import { deskQuery, isDeskNow, DESK_MQ, DESK_MQ_SHELL } from './shell/layoutQuer
 import { useShellGeometry } from './shell/useShellGeometry'
 import { WorkflowsHost } from './shell/Workflows'
 import { DPalette } from './shell/Palette'
-import { Dock, PhonePanel, PhoneTop } from './shell/Phone'
+import { Dock, LargeTitle, PhoneBar, PhonePanel, PhoneTabs, PhoneTop } from './shell/Phone'
 import { SeatHealthBanner } from './shell/SeatHealth'
 import { Side } from './shell/Side'
 import { DConfirmProvider } from './ui/confirm'
@@ -31,6 +31,7 @@ import './d.css'
 import './shell/frame2.css'
 import './shell/skin-shell.css'
 import './shell/frame-glass.css'
+import './shell/phone-ox.css'
 
 // ---------------------------------------------------------------------------
 // D, the frame. Desktop (>= 1000px): left panel, answer row (page title + the
@@ -47,6 +48,9 @@ import './shell/frame-glass.css'
 // ---------------------------------------------------------------------------
 
 const ClaudeDrawer = lazy(() => import('./claude/Drawer'))
+// The same specifiers places.ts lazy-loads: Vite maps each to one chunk, so these only warm the cache.
+const PLACE_CHUNKS = [() => import('./home'), () => import('./lanes'), () => import('./dms'), () => import('./content'),
+  () => import('./ops'), () => import('./sales'), () => import('./claude'), () => import('./settings'), () => import('./claude/Drawer')]
 
 // The predicate is src/d/shell/layoutQuery.ts: 1000px today, and any
 // fine-pointer window from 720px under the `shell` skin section (G7).
@@ -228,16 +232,19 @@ function PhoneFrame({ setToolsSlot, panelOpen, setPanelOpen }: {
   const inboxRefresh = inbox.refresh
   const onPull = useCallback(() => { refresh(); inboxRefresh(); setRev(r => r + 1) }, [refresh, inboxRefresh, onDms]) // eslint-disable-line react-hooks/exhaustive-deps
   const ptr = usePull(body, onPull)
+  // Oxygen phone frame (02-SPEC §1) under the `shell` skin section; off = today's top bar and dock.
+  const ox = useSkin('shell')
   return (
     <>
-      <PhoneTop onPanel={() => setPanelOpen(true)} setToolsSlot={setToolsSlot} />
+      {ox ? <PhoneBar onPanel={() => setPanelOpen(true)} setToolsSlot={setToolsSlot} /> : <PhoneTop onPanel={() => setPanelOpen(true)} setToolsSlot={setToolsSlot} />}
       <SeatHealthBanner />
       <OfflineLine />
       <div className="d-pbody" ref={onDms ? undefined : body}>
         {ptr.pull > 0 && <div className="d-ptr" style={{ height: ptr.pull }} aria-live="polite">{ptr.refreshing ? 'Reading…' : ptr.pull >= ptr.trigger ? 'Release to refresh' : 'Pull to refresh'}</div>}
-        <Page rev={rev} />
+        {ox && <LargeTitle />}
+        {ox ? <div className="po-view" key={f.route.place}><Page rev={rev} /></div> : <Page rev={rev} />}
       </div>
-      <Dock />
+      {ox ? <PhoneTabs /> : <Dock />}
       <Island />
       {panelOpen && <PhonePanel onClose={closePanel} />}
       {f.bellOpen && (
@@ -287,6 +294,15 @@ export default function DShell() {
   useEffect(() => { writeFlag(SIDE_MIN_KEY, sideMin) }, [sideMin])
 
   useKeepScroll(route.place, layout, location.hash)
+
+  // Every place's chunk loads on idle after the first paint, so a tab switch never waits on the network.
+  useEffect(() => {
+    if (layout !== 'phone') return
+    const go = () => { for (const load of PLACE_CHUNKS) void load().catch(() => {}) }
+    const ric = (window as Window & { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number }).requestIdleCallback
+    const t = window.setTimeout(() => (ric ? ric(go, { timeout: 4000 }) : go()), 2500)
+    return () => window.clearTimeout(t)
+  }, [layout])
 
   // Moving to another place closes the transient layers.
   useEffect(() => { setBellOpen(false); setPanelOpen(false) }, [route.place])
