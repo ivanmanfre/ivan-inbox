@@ -75,6 +75,8 @@
 /* ---- large title (§1.2) ---- */
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .po-lt{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;padding:2px var(--po-gutter) 12px}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .po-lt h1{font:700 34px/40px var(--ds-font);letter-spacing:-.025em;color:var(--ds-text);margin:0}
+/* The compact bar owns the title once the large heading scrolls beneath it. */
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off])[data-po-scrolled] .po-lt h1{visibility:hidden}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .po-lt-fail{font:600 13px/18px var(--ds-font);font-style:normal;color:var(--ds-sev-attention-ui);background:var(--ds-sev-attention-soft);padding:3px 9px;border-radius:999px}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .po-lt-tz{font:500 13px/18px var(--ds-font);color:var(--ds-text-3);font-variant-numeric:tabular-nums}
 
