@@ -10,6 +10,7 @@ import { Linkified } from '../ui/Linkified'
 import { warsawDay, warsawDayWord, warsawHm } from '../ui/time'
 import { seatOf } from '../seats'
 import { isReaction } from './model'
+import { engagementSignals, type CameBackSignal } from '../../wb/dms/cameBackData'
 
 export function kindPill(m: InboxMessage): string | null {
   if (m.ai_model === 'lm_gate_v1') return 'Lead magnet'
@@ -63,14 +64,40 @@ export function oursLabel(t: Pick<Thread, 'client_id'>): string {
  *  theirs on the left in grey with their first name on the first bubble of a run, ours on the right
  *  tinted with "You" (or Mattan / Davorin), a day line between days, and each bubble's channel,
  *  status and time underneath. The All conversations log reuses it as is. */
-export function History({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail }: { t: Thread; cap?: number; now?: number; onReplyEmail?: () => void; onForwardEmail?: (m: InboxMessage) => void }) {
+/** One engagement in the timeline (Ivan 10-10: "it only says reacted to something, I need to know to what"):
+ *  who did what to which post, linked, at its date. Never a profile view or a scan reopen. */
+function EngagementLine({ s, owner }: { s: CameBackSignal; owner: string }) {
+  const verb = s.kind === 'comment' ? 'Commented on' : s.kind === 'reaction' ? 'Reacted to' : 'Engaged with'
+  // The tracker stores the first 80 characters, often mid-word: end a cut title on a whole word.
+  const raw = s.post_title?.trim()
+  const title = raw && raw.length >= 78 ? `${raw.replace(/\s+\S*$/, '').replace(/[\s.,;:!?-]+$/, '')}…` : raw
+  const href = s.post_url && /^https:\/\//i.test(s.post_url) ? s.post_url : null
+  const label = title ? `“${title}”` : 'the post (title not recorded)'
+  return (
+    <div className="dm-ev" data-signal={s.kind} data-at={s.at}>
+      <span>{verb} {owner} post: {href ? <a href={href} target="_blank" rel="noreferrer" data-verb="open-engaged-post">{label}</a> : label}</span>
+      {s.kind === 'comment' && s.detail?.trim() && <q>{s.detail.trim()}</q>}
+      <time dateTime={s.at}>{warsawHm(s.at)}</time>
+    </div>
+  )
+}
+
+export function History({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail, engagements }: { t: Thread; cap?: number; now?: number; onReplyEmail?: () => void; onForwardEmail?: (m: InboxMessage) => void; engagements?: readonly CameBackSignal[] | null }) {
   const [all, setAll] = useState(false)
   const rows = historyRows(t)
   const lastEmail = rows.filter(m => m.direction === 'inbound' && messageChannel(m) === 'email').at(-1)?.id
   const shown = all ? rows : rows.slice(-cap)
   const first = t.prospect_name.split(' ')[0] || t.prospect_name
   const ours = oursLabel(t)
-  if (!rows.length) {
+  const owner = seatOf(t.client_id) === 'risedtc' || seatOf(t.client_id) === 'arch' ? `${ours}'s` : 'your'
+  // Engagements ride the same clock as the messages; with older messages folded away, the ones before
+  // the first shown message fold with them.
+  const edge = rows.length > shown.length ? Date.parse(eventTime(shown[0])) : -Infinity
+  const evs = engagementSignals(engagements).filter(e => Date.parse(e.at) >= edge)
+  const items: Array<{ at: string; m?: InboxMessage; e?: CameBackSignal }> = [
+    ...shown.map(m => ({ at: eventTime(m), m })), ...evs.map(e => ({ at: e.at, e })),
+  ].sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
+  if (!rows.length && !evs.length) {
     return <div className="dm-hist"><p className="dm-hist-empty">No messages yet. {t.draft ? 'The draft below is the first one.' : 'Nothing has been sent or received on this thread yet.'}</p></div>
   }
   let day = ''
@@ -80,7 +107,19 @@ export function History({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardE
       {rows.length > shown.length && (
         <button type="button" className="dm-h-more" data-verb="history-earlier" onClick={() => setAll(true)}>{rows.length - shown.length} earlier message{rows.length - shown.length > 1 ? 's' : ''}</button>
       )}
-      {shown.map(m => {
+      {items.map(({ at: itemAt, m, e }) => {
+        if (!m) {
+          const d = warsawDay(itemAt)
+          const newDay = d !== day
+          day = d
+          prevSide = null
+          return (
+            <Fragment key={`ev:${e!.kind}:${e!.at}:${e!.post_url ?? ''}`}>
+              {newDay && <div className="dm-day" role="separator"><span>{warsawDayWord(itemAt, now)}</span></div>}
+              <EngagementLine s={e!} owner={owner} />
+            </Fragment>
+          )
+        }
         const inb = m.direction === 'inbound'
         const side = inb ? 'in' : 'out'
         const pill = kindPill(m)

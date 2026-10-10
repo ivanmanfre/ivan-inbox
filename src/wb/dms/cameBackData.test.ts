@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/supabase', () => ({ supabase: { rpc: vi.fn() } }))
 
-import { cameBackLine, cardsFor, firstComment, scanReopenOnlyIvan, sentLine, tenantLabel, type CameBackCard } from './cameBackData'
+import { cameBackLine, cameBackRowLine, cardsFor, firstComment, scanReopenOnlyIvan, sentLine, tenantLabel, type CameBackCard } from './cameBackData'
 
 const card = (over: Partial<CameBackCard>): CameBackCard => ({
   prospect_id: 'p1', tenant: 'ivan', name: 'Dave', headline: null, company: 'n8n', title: null, country: null,
@@ -72,5 +72,21 @@ describe('sentLine / firstComment', () => {
   it('returns the comment text when there is one', () => {
     expect(firstComment(card({ signals: [{ kind: 'view', at: '', detail: null }, { kind: 'comment', at: '', detail: 'love this' }] }))).toBe('love this')
     expect(firstComment(card({ signals: [{ kind: 'reaction', at: '', detail: null }] }))).toBeNull()
+  })
+})
+
+describe('cameBackRowLine', () => {
+  const sig = (at: string, title: string, kind = 'reaction') => ({ kind, at, detail: null, post_title: title, post_url: 'https://www.linkedin.com/posts/x' })
+  it('leads with the newest post title and counts the earlier ones', () => {
+    const c = card({ n_views: 0, n_engagements: 3, last_signal_at: '2026-10-07T13:31:09Z', signals: [sig('2026-10-07T13:31:09Z', 'Newest post'), sig('2026-10-01T13:31:09Z', 'Middle'), sig('2026-09-27T13:31:09Z', 'Oldest')] })
+    expect(cameBackRowLine(c)).toBe('reacted to “Newest post” +2 earlier · Oct 7')
+  })
+  it('says commented when any engagement is a comment, and never counts a view as one', () => {
+    const c = card({ n_views: 1, n_engagements: 1, signals: [sig('2026-09-16T18:00:00Z', 'Hello', 'comment'), { kind: 'view', at: '2026-09-16T19:00:00Z', detail: null, profile_return: false }] })
+    expect(cameBackRowLine(c)).toContain('commented on “Hello”')
+  })
+  it('falls back to the plain line with no engagement', () => {
+    const c = card({ n_views: 1, n_engagements: 0, signals: [] })
+    expect(cameBackRowLine(c)).toBe(cameBackLine(c))
   })
 })

@@ -21,6 +21,7 @@ import { canMarkSolved } from './solved'
 import { DraftWhy } from './DraftWhy'
 import { ReferralCard } from './ReferralCard'
 import { History } from './History'
+import type { CameBackSignal } from '../../wb/dms/cameBackData'
 import { Composer } from './Keys'
 import { ThreadMenu, type MenuAct } from './Menu'
 import { AgentSheet, ContextSheet } from './Sheets'
@@ -48,13 +49,15 @@ export async function copyText(s: string): Promise<boolean> {
   try { await navigator.clipboard.writeText(s); return true } catch { window.prompt('Copy this link', s); return false }
 }
 
-export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, onAsk, onDraftStart, onMenu, staleN, pre, reload, signal }: {
+export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, onAsk, onDraftStart, onMenu, staleN, pre, reload, signal, engagements }: {
   t: T; auto?: boolean; all: readonly T[]; phone: boolean; verbs: DmVerbs; now: number
   onBack: () => void; onAsk: () => void
   onDraftStart?: () => void
   onMenu: (a: MenuAct) => void; staleN: number; pre: PreReadHandle; reload: () => void
   /** The came-back tag beside the name, with its Dismiss (cameBack.ts). */
   signal?: ReactNode
+  /** The posts they reacted to or commented on, shown in the timeline at their dates. */
+  engagements?: readonly CameBackSignal[] | null
 }) {
   const [edits, setEdits] = useState<Edits>(() => seed(t))
   const [reply, setReply] = useState('')
@@ -219,7 +222,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         onSpam={!t.spam && seat !== 'ivan' ? () => void run(() => verbs.spam(t)) : undefined} signal={signal} />
       {ps.s !== 'none' && <div className="dm-sum" role="status">{ps.s === 'done' ? ps.line : ps.s === 'running' ? 'Reading it…' : ps.why}</div>}
       <div className="dm-scroll" ref={scroll}>
-        <History t={t} cap={phone ? 6 : 12} now={now} onReplyEmail={canComposeEmail(t) && !t.spam && (!t.ownerConfirmation || manualReply) && !busy ? openEmailReply : undefined}
+        <History t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} onReplyEmail={canComposeEmail(t) && !t.spam && (!t.ownerConfirmation || manualReply) && !busy ? openEmailReply : undefined}
           onForwardEmail={['arch', 'risedtc'].includes(t.client_id) && !busy ? setForwardEmail : undefined} />
         <Banners t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} />
         <ReferralCard key={t.prospect_id} t={t} />

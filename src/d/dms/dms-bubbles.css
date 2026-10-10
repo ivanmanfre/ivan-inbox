@@ -83,3 +83,10 @@
 .dm-email-title{display:block;font:600 14px var(--f);color:var(--t1);margin-bottom:5px}
 
 .dm-email-envelope{font:400 14px var(--f);color:var(--t1);overflow-wrap:anywhere;margin:5px 0}
+/* An engagement in the timeline: which post they reacted to or commented on, linked, at its time. */
+.dm-ev{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;gap:2px 8px;margin:6px 0;padding:0 8px;font:400 12.5px var(--s,inherit);color:var(--t2);text-align:center}
+.dm-ev a{color:var(--t1);text-decoration:underline;text-decoration-color:var(--line2);text-underline-offset:2px}
+.dm-ev a:hover{text-decoration-color:currentColor}
+.dm-ev q{flex-basis:100%;color:var(--t1);quotes:none}
+.dm-ev time{font:400 12px var(--m);color:var(--t3)}
+.dm-phone .dm-ev,.dm-pane-phone .dm-ev{font-size:13.5px}
