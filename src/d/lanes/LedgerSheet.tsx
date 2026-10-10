@@ -16,6 +16,8 @@ import { Sheet } from './LSheet'
 import { LoadLine, Shs } from './CampaignSheet'
 import { dm, type Range } from './model'
 import { useRead } from './useRead'
+import { RateComparisonRead, RatePeriodNote } from './DateRates'
+import { validRateDates, warsawDate } from '../../lib/rateComparison'
 
 const dayWord = (day: string, today: string) => day === today ? 'Today'
   : new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`))
@@ -62,20 +64,20 @@ export function LedgerSheet({ p, range, onClose, seats = SEATS }: { p: CcPayload
   )
 }
 
-const iso = (t: number) => new Date(t).toISOString().slice(0, 10)
+const iso = (t: number) => warsawDate(t)
 
 export function RangeSheet({ from, to, setRange, onClose }: { from: string | null; to: string | null; setRange: (from: string, to: string) => void; onClose: () => void }) {
   const [f, setF] = useState(from ?? iso(Date.now() - 13 * 864e5))
   const [t, setT] = useState(to ?? iso(Date.now()))
-  const ok = Boolean(from && to && from <= to)
+  const ok = Boolean(from && to && validRateDates({ from, to }, warsawDate(Date.now())))
   const rows = useRead<RangeKpiRow[]>(ok ? () => fetchRangeKpis(from!, to!) : null, `rk:${from}:${to}`)
   return (
     <Sheet open onClose={onClose} className="dl-sheet" title="Custom range"
       sub="Any two days. Counted from the raw tables for exactly those days, no era cutoff; accepts are counted on the invites sent inside the range.">
-      <form className="dl-rng" onSubmit={e => { e.preventDefault(); if (f && t && f <= t) setRange(f, t) }}>
+      <form className="dl-rng" onSubmit={e => { e.preventDefault(); if (validRateDates({ from: f, to: t }, iso(Date.now()))) setRange(f, t) }}>
         <label>From <input type="date" value={f} max={t || undefined} onChange={e => setF(e.target.value)} /></label>
         <label>To <input type="date" value={t} min={f || undefined} max={iso(Date.now())} onChange={e => setT(e.target.value)} /></label>
-        <Btn type="submit" verb="range-apply" disabled={!f || !t || f > t}>Show</Btn>
+        <Btn type="submit" verb="range-apply" disabled={!validRateDates({ from: f, to: t }, iso(Date.now()))}>Show</Btn>
       </form>
       {!ok ? <p className="dl-sl">Pick two days and press Show.</p> : <LoadLine l={rows} what="the range">{rs => <>
         <Shs>{dm(`${from}T12:00:00Z`)} to {dm(`${to}T12:00:00Z`)}</Shs>
@@ -89,6 +91,13 @@ export function RangeSheet({ from, to, setRange, onClose }: { from: string | nul
         </tbody></table>
         <p className="dl-sl">Seats are never added together.</p>
       </>}</LoadLine>}
+      {ok && <section className="dl-date-rates" aria-label="Custom reply and acceptance rates">
+        <RatePeriodNote dates={{ from: from!, to: to! }} />
+        {SEATS.map(seat => <div key={seat}><Shs>{SEAT_NAME[seat]}</Shs>
+          <RateComparisonRead key={`${seat}:${from}:${to}`} seat={seat} dates={{ from: from!, to: to! }} />
+        </div>)}
+        <p className="dl-date-note">Acceptance and reply comparisons use confirmed first touches with a full 72-hour observation window. Pending sends stay separate. The acceptance total above includes later accepts.</p>
+      </section>}
     </Sheet>
   )
 }

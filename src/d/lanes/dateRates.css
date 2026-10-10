@@ -1,0 +1,27 @@
+.dl-date-rates{min-width:0;margin-top:14px;color:var(--t1)}
+.dl-date-rates h2{font-size:18px;margin:0 0 12px}
+.dl-date-presets{display:flex;flex-wrap:wrap;gap:8px;border:0;padding:0;margin:0 0 12px}
+.dl-date-presets legend{font-size:13px;margin-bottom:8px}
+.dl-date-rates button{font:inherit;color:var(--t1);background:var(--p2);border:1px solid var(--line2);border-radius:8px;padding:8px 12px;min-height:44px;min-width:44px}
+.dl-date-presets button[aria-pressed=true]{border-color:var(--t1);background:var(--p3)}
+.dl-date-rates button:disabled{opacity:.5}
+.dl-date-form{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.dl-date-form label{display:flex;flex-direction:column;gap:5px;font-size:13px;min-width:0}
+.dl-date-form input{font:inherit;color:var(--t1);background:var(--bg);border:1px solid var(--line2);border-radius:8px;padding:8px;min-width:0;max-width:100%;color-scheme:dark;min-height:44px}
+.dl-date-period,.dl-date-note{font-size:13px;line-height:1.5;color:var(--t2);margin:12px 0}
+.dl-date-tables{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;min-width:0}
+.dl-date-tables table{border-collapse:collapse;width:100%;table-layout:fixed;color:var(--t1);font-size:13px}
+.dl-date-tables caption{text-align:left;font-weight:600;margin:8px 0 12px}
+.dl-date-tables th,.dl-date-tables td{padding:10px 6px;border-bottom:1px solid var(--line);text-align:right;overflow-wrap:anywhere;vertical-align:top}
+.dl-date-tables th:first-child{text-align:left;width:31%}
+.dl-date-tables thead th{font-weight:400;color:var(--t2)}
+.dl-date-tables td small{display:block;margin-top:4px;color:var(--t2);font-size:12px}
+.dl-date-tables td b{font-variant-numeric:tabular-nums}
+@media(max-width:1100px){.dl-date-tables{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:480px){.dl-date-form label{flex:1 1 120px}.dl-date-form input{width:100%;box-sizing:border-box}.dl-date-rates button{min-height:44px}.dl-date-form button{flex:1 1 100%}.dl-date-tables th,.dl-date-tables td{padding:10px 4px}.dl-date-tables th:first-child{width:28%}}
+
+.dl-date-rates input:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+.dl-date-rates button:disabled{cursor:not-allowed}
+
+.dl-monitor-rates summary{min-height:44px;padding:12px 0;font-size:13px;color:var(--t2);cursor:pointer}
+.dl-monitor-rates summary:focus-visible{outline:2px solid var(--lime);outline-offset:2px}

@@ -6,6 +6,7 @@ import { accSeries } from '../Trend'
 import { useRead } from '../useRead'
 import { RateBars } from '../RateBars'
 import { acceptByLane, replyByLane, FORMULA, RANGE_DAYS } from '../rates'
+import { DateRates } from '../DateRates'
 import { Skeleton } from '../../ui/states'
 
 function Line({ label, bars }: { label: string; bars: Bar[] }) {
@@ -30,8 +31,9 @@ export function History({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
 }
 export function Rates({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
   const p = ctx.d.cc.value, days = RANGE_DAYS[ctx.range]
-  return <div className="dl4-rates" data-bx-block>
+  return <><DateRates seat={seat} range={ctx.range} now={ctx.now} />
+    <details className="dl-monitor-rates"><summary>{days}-day send monitor rates</summary><div className="dl4-rates" data-bx-block>
     <RateBars title={`Acceptance per lane, ${days} days`} unit="people invited" formula={FORMULA.accept(ctx.range)} rates={p ? acceptByLane(p, seat, ctx.range) : null} failed={ctx.d.cc.failed} empty={`No invite went out on this seat in the last ${days} days.`} />
     <RateBars title={`Reply rate per lane, ${days} days`} unit="people first messaged" formula={FORMULA.reply(ctx.range)} rates={p ? replyByLane(p, seat, ctx.range) : null} failed={ctx.d.cc.failed} empty={`No first DM went out on this seat in the last ${days} days.`} />
-  </div>
+  </div></details></>
 }
