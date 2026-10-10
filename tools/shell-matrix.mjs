@@ -25,7 +25,7 @@ const places = (process.env.SHELL_PLACES || 'home,dms,content/calendar,content/n
 const skin = process.env.SHELL_SKIN ?? 'brief:shell'
 const shots = process.env.SHELL_SHOTS !== '0'
 const authKey = 'sb-bjbvqvzbzczjbatgmccb-auth-token'
-const readRpcs = new Set(['inbox_changed_since', 'inbox_interest_cards', 'inbox_followup_sources', 'warm_signal_cards', 'conversation_agent_cards', 'inbox_reply_source', 'outreach_reply_sources'])
+const readRpcs = new Set(['inbox_changed_since', 'inbox_interest_cards', 'inbox_followup_sources', 'warm_signal_cards', 'conversation_agent_cards', 'inbox_reply_source', 'outreach_reply_sources', 'x_review_list'])
 let session = readFileSync(process.env.SHELL_SESSION_PATH, 'utf8')
 const reportPath = join(outDir, 'report.json')
 if (existsSync(reportPath)) { console.error('report.json exists; use a new outDir'); process.exit(2) }

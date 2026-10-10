@@ -25,6 +25,9 @@ import { KeySheet } from './KeySheet'
 import { QueuePane } from './Queue'
 import { animateReceipt, captureAction, finishAction, useDeferredLoading, useOpsMotion } from './motion'
 import './ops4.css'
+import { XFlag } from '../x/XFlag'
+import { useXReview } from '../x/useXReview'
+import { xWaitingCount } from '../../../lib/xReview'
 
 const DONE_HOLD_MS = 120_000
 
@@ -36,6 +39,8 @@ export function OpsPageV4({ layout, route, navigate }: PlaceProps) {
   const refresh = useCallback(() => { refreshOps(); refreshCounts('ops') }, [refreshOps, refreshCounts])
   const queue = useCommentQueue(pending, refresh)
   const rx = useReactions(true)
+  const xr = useXReview()
+  const xn = xWaitingCount(xr.list)
   const heldIds = useMemo(() => new Set(queue.held.keys()), [queue.held])
   // DONE LEAVES AT ONCE (Ivan 2026-10-08: "when i approve something it takes a while to leave"). A
   // card that was approved / discarded / handled OK leaves the board the moment the action
@@ -136,7 +141,7 @@ export function OpsPageV4({ layout, route, navigate }: PlaceProps) {
   const w = board.waiting, otherN = board.other.reduce((a, o) => a + o.waiting, 0)
   const nj = board.flat.find(d => d.kind === 'newsjack' && timeLeft(d.context?.expires_at) !== 'expired')
   const sub = nj ? `${seatOf(nj.client_id) === 'risedtc' ? "Mattan’s" : seatOf(nj.client_id) === 'arch' ? "Davorin’s" : "Your"} newsjack has ${timeLeft(nj.context?.expires_at)}.` : ''
-  const answer = <AnswerRow title={<>Waiting on you: <N v={w.ivan} /> yours, <N v={w.risedtc} /> Rise, <N v={w.arch} /> Arch{otherN > 0 && <>, <N v={otherN} /> in other lanes</>}.</>}
+  const answer = <AnswerRow title={<>Waiting on you: <N v={w.ivan} /> yours, <N v={w.risedtc} /> Rise, <N v={w.arch} /> Arch{otherN > 0 && <>, <N v={otherN} /> in other lanes</>}{xn > 0 && <>, <N v={xn} /> on X</>}.</>}
     sub={firstRead ? 'Reading the queue…' : ops.saved ? `Showing saved queue from ${ops.loadedAt ? warsawHm(ops.loadedAt) : 'earlier'}. ${sub}` : sub} tools={<button type="button" className="d-ib" data-op4-keys aria-label="Ops keys (?)" onClick={() => setKeySheet(true)}>?</button>} />
   const checked = ops.loadedAt ? warsawHm(ops.loadedAt) : '…'
   const stale = ops.error && ops.drafts.length > 0 ? <Banner tone="attention" action={<Btn verb="retry" onClick={refresh}>Retry</Btn>}>Could not refresh{ops.loadedAt ? ` (showing ${checked})` : ''}.</Banner> : null
@@ -159,6 +164,7 @@ export function OpsPageV4({ layout, route, navigate }: PlaceProps) {
     {answer}
     <div className="op4-desk">
       <aside className="op4-queue" data-d-scroll>
+        <XFlag />
         {stale}
         {!confirmOpen && (firstRead || deferred) ? deferred ? <><div className="op4-seat-skeleton"><Skeleton shape="title" /></div><SkeletonRows rows={5} label="Reading the ops queue" /></> : null : ops.error && !ops.drafts.length ? <Failed what="the ops queue" detail={ops.error} onRetry={refresh} /> : <QueuePane {...{ board, lane, refresh, queue, rx, onActed }} drafts={ops.drafts} selected={sel?.id ?? null} selectedRx={reaction?.id ?? null} onSeat={chooseSeat} onPick={pick} onReaction={pickReaction} />}
       </aside>

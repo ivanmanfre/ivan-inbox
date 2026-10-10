@@ -6,7 +6,7 @@ const [base, out] = process.argv.slice(2)
 if (!base || !out) throw new Error('usage: ols-smoke.mjs base outDir')
 mkdirSync(out, { recursive:true })
 const auth = readFileSync(process.env.SHELL_SESSION_PATH, 'utf8')
-const rpc = new Set(['inbox_changed_since','inbox_interest_cards','inbox_followup_sources','warm_signal_cards','conversation_agent_cards','inbox_reply_source','outreach_reply_sources','inbox_viewed_back','inbox_range_kpis','inbox_governor','inbox_rise_ready','operator_lanes'])
+const rpc = new Set(['inbox_changed_since','inbox_interest_cards','inbox_followup_sources','warm_signal_cards','conversation_agent_cards','inbox_reply_source','outreach_reply_sources','inbox_viewed_back','inbox_range_kpis','inbox_governor','inbox_rise_ready','operator_lanes','x_review_list'])
 const result=[]
 for (const [engine, driver] of Object.entries({chromium,webkit})) {
  const browser=await driver.launch()

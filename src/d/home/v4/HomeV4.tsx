@@ -14,6 +14,7 @@ import { HomeTasks } from '../Tasks'
 import { when, type Read } from '../model'
 import { invites, pill } from './model'
 import './home4.css'
+import { XFlag } from '../../ops/x/XFlag'
 import '../phone-ox.css'
 
 function Retry<T>({ r, retry }: { r: Read<T>; retry: () => void }) {
@@ -89,6 +90,7 @@ export default function HomeV4({ layout }: PlaceProps) {
   const h = useHome(), online = useOnline()
   return <div data-motion={motion} className={`hm4 hm4-${layout}`} data-d-scroll={layout==='desktop'?'':undefined} data-layout-v4="home">
     {layout==='desktop' && <AnswerRow title="Home" />}{!online && <Offline since={null} />}
+    <XFlag />
     {layout==='phone' ? <><Matrix h={h}/><HomeTasks v4 /></> : <div className="hm4-grid"><div className="hm4-seats">{SEATS.map(s=><SeatCard key={s} seat={s} h={h}/>)}</div><HomeTasks v4 /></div>}
   </div>
 }

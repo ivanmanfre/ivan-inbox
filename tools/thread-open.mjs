@@ -53,7 +53,9 @@ const readRpcs = new Set(['inbox_changed_since', 'inbox_interest_cards', 'inbox_
   // Reply-source reads (db/20261007_reply_sources.sql): STABLE security-definer functions, no writes.
   'inbox_reply_source', 'outreach_reply_sources', 'client_board_reply_source', 'client_board_reply_sources',
   // The side panel Glance's ready read (glance/ready.ts): STABLE security-definer, no writes.
-  'inbox_rise_ready'])
+  'inbox_rise_ready',
+  // The X review flag's list (src/lib/xReview.ts fetchXReview): a read of articles and quote posts, no writes.
+  'x_review_list'])
 const replySourceRpcs = new Set(['inbox_reply_source', 'outreach_reply_sources', 'client_board_reply_source', 'client_board_reply_sources'])
 function missingReplySource(url, method, status, payload) {
   const u = new URL(url)

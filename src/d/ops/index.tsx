@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSkin } from '../../ds/useSkin'
 import { OpsPageV4 } from './v4/Page'
 import './phone-ox.css'
@@ -25,6 +25,10 @@ import { TakeoverCard } from './Takeover'
 import { Tasks } from './Tasks'
 import { OpsReferences } from '../../components/OpsReferences'
 import './ops.css'
+import { XFlag } from './x/XFlag'
+
+// X review (`#exp/d/ops/x?id=…`): its own chunk, loaded only when opened.
+const XReviewPage = lazy(() => import('./x/XReview'))
 
 // D · OPS. Desktop: the three lane columns across the top, the open card under
 // them, the side column (your list, then the reaction desk). Phone: the answer,
@@ -157,6 +161,7 @@ export function OpsPage({ layout, route, navigate }: PlaceProps) {
         {fresh}
         {stale}
         {want && !sel && <div className="op-ban">That card is not waiting any more: it was handled or it aged out.</div>}
+        <XFlag />
         <PhoneLanes board={board} seat={phoneSeat} setSeat={setSeat} onPick={pick} refresh={refresh} queueLine={queueLine} sel={null} />
         {side}
       </div>
@@ -168,6 +173,7 @@ export function OpsPage({ layout, route, navigate }: PlaceProps) {
       {answer}
       <div className="op-desk">
         <div className="op-left">
+          <XFlag />
           {fresh}
           {stale}
           <DeskLanes board={board} sel={sel?.id ?? null} onPick={pick} refresh={refresh} queueLine={queueLine} />
@@ -183,5 +189,6 @@ export function OpsPage({ layout, route, navigate }: PlaceProps) {
 
 export default function OpsPlace(props: PlaceProps) {
   const on = useSkin('ops')
+  if (props.route.sub === 'x') return <Suspense fallback={<Skeleton lines={8} label="Loading the X review" />}><XReviewPage {...props} /></Suspense>
   return on ? <OpsPageV4 {...props} /> : <OpsPage {...props} />
 }
