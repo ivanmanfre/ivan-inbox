@@ -6,13 +6,14 @@ import { ReplySourceContent, ReplySourceLine, knownSource } from './ReplySourceS
 // the way LinkedIn delivered it, "To <email>" on a sent email, "Not accepted yet" on a pending
 // invite note. Older messages sit behind one "N earlier" tap.
 // Drafts, internal questions and discarded rows are not history (they live in the pane below).
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { eventTime, isDraft, isEngineRetired, isHiddenRetired, isInternalConfirmation, retiredLabel, sendFailed, messageChannel, type InboxMessage, type Thread } from '../../lib/inbox'
 import { label } from '../../lib/labels'
 import { Linkified } from '../ui/Linkified'
 import { warsawDay, warsawDayWord, warsawHm } from '../ui/time'
 import { seatOf } from '../seats'
 import { isReaction } from './model'
+import { engagementSignals, type CameBackSignal } from '../../wb/dms/cameBackData'
 
 export function kindPill(m: InboxMessage): string | null {
   if (m.ai_model === 'lm_gate_v1') return 'Lead magnet'
@@ -66,7 +67,7 @@ export function oursLabel(t: Pick<Thread, 'client_id'>): string {
  *  theirs on the left in grey with their first name on the first bubble of a run, ours on the right
  *  tinted with "You" (or Mattan / Davorin), a day line between days, and each bubble's channel,
  *  status and time underneath. The All conversations log reuses it as is. */
-type HistoryProps = { t: Thread; cap?: number; now?: number; onReplyEmail?: () => void; onForwardEmail?: (m: InboxMessage) => void
+type HistoryProps = { t: Thread; cap?: number; engagements?: readonly CameBackSignal[] | null; now?: number; onReplyEmail?: () => void; onForwardEmail?: (m: InboxMessage) => void
   /** Brief 4: meta once per run (status, reaction, email and a channel change always), arrivals grow from their tail. */
   v4?: boolean }
 
@@ -75,7 +76,25 @@ export function History(props: HistoryProps) {
   return <HistoryRead key={`${props.t.prospect_id}:${retry}`} {...props} retry={() => setRetry(n => n + 1)} />
 }
 
-function HistoryRead({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail, retry, v4 = false }: HistoryProps & { retry: () => void }) {
+/** One engagement in the timeline (Ivan 10-10: "it only says reacted to something, I need to know to what"):
+ *  which post they reacted to or commented on, linked, at its time. Never a profile view or a scan reopen. */
+function EngagementLine({ s, owner }: { s: CameBackSignal; owner: string }) {
+  const verb = s.kind === 'comment' ? 'Commented on' : s.kind === 'reaction' ? 'Reacted to' : 'Engaged with'
+  // The tracker stores the first 80 characters, often mid-word: end a cut title on a whole word.
+  const raw = s.post_title?.trim()
+  const title = raw && raw.length >= 78 ? `${raw.replace(/\s+\S*$/, '').replace(/[\s.,;:!?-]+$/, '')}…` : raw
+  const href = s.post_url && /^https:\/\//i.test(s.post_url) ? s.post_url : null
+  const label = title ? `“${title}”` : 'the post (title not recorded)'
+  return (
+    <div className="dm-ev" data-signal={s.kind} data-at={s.at}>
+      <span>{verb} {owner} post: {href ? <a href={href} target="_blank" rel="noreferrer" data-verb="open-engaged-post">{label}</a> : label}</span>
+      {s.kind === 'comment' && s.detail?.trim() && <q>{s.detail.trim()}</q>}
+      <time dateTime={s.at}>{warsawHm(s.at)}</time>
+    </div>
+  )
+}
+
+function HistoryRead({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail, retry, v4 = false, engagements }: HistoryProps & { retry: () => void }) {
   const source = useReplySource({ kind: 'operator', clientId: t.client_id ?? 'ivan' }, t.prospect_id, true)
   const [all, setAll] = useState(false)
   // Above the empty return (09-09 rule). Which bubbles were already on screen for this thread, and
@@ -92,7 +111,12 @@ function HistoryRead({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmai
   const shown = all ? rows : rows.slice(-cap)
   const first = t.prospect_name.split(' ')[0] || t.prospect_name
   const ours = oursLabel(t)
-  if (!rows.length) {
+  const owner = seatOf(t.client_id) === 'risedtc' || seatOf(t.client_id) === 'arch' ? `${ours}'s` : 'your'
+  // Engagements ride the same clock as the messages; with older messages folded away, the ones before
+  // the first shown message fold with them.
+  const edge = rows.length > shown.length ? Date.parse(eventTime(shown[0])) : -Infinity
+  const evs = engagementSignals(engagements).filter(e => Date.parse(e.at) >= edge).reverse()
+  if (!rows.length && !evs.length) {
     return <div className="dm-hist">{v4 ? <ReplySourceLine state={source} retry={retry} /> : <ReplySourceContent state={source} retry={retry} />}<p className="dm-hist-empty">No messages yet. {t.draft ? 'The draft below is the first one.' : 'Nothing has been sent or received on this thread yet.'}</p></div>
   }
   let day = ''
@@ -105,6 +129,22 @@ function HistoryRead({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmai
     return !b || a.direction !== b.direction || warsawDay(eventTime(a)) !== warsawDay(eventTime(b))
   }
   let prevPill: string | null = null
+  let nextEv = 0
+  const evLines = (before: number) => {
+    const out: ReactNode[] = []
+    while (nextEv < evs.length && Date.parse(evs[nextEv].at) < before) {
+      const e = evs[nextEv++]
+      const d = warsawDay(e.at)
+      const newDay = d !== day
+      day = d
+      prevSide = null
+      out.push(<Fragment key={`ev:${e.kind}:${e.at}:${e.post_url ?? ''}`}>
+        {newDay && <div className="dm-day" role="separator"><span>{warsawDayWord(e.at, now)}</span></div>}
+        <EngagementLine s={e} owner={owner} />
+      </Fragment>)
+    }
+    return out
+  }
   let runShown: string | null = null
   return (
     <div className="dm-hist">
@@ -121,6 +161,7 @@ function HistoryRead({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmai
         const email = messageChannel(m) === 'email'
         const parts = blank ? [] : inb ? [(m.message_text ?? '').trim()].filter(Boolean) : bubbles(m.message_text ?? '')
         const at = eventTime(m)
+        const before = evLines(Date.parse(at))
         const addr = email ? emailAddrLine(m) : null
         const d = warsawDay(at)
         const newDay = d !== day
@@ -147,6 +188,7 @@ function HistoryRead({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmai
         const arrive = v4 && s0.arrived.has(m.id)
         return (
           <Fragment key={m.id}>
+            {before}
             {newDay && <div className="dm-day" role="separator"><span>{warsawDayWord(at, now)}</span></div>}
             <div className={`dm-b dm-b-${side} dm-h-whole${inb ? ' dm-h-in' : ''}${st?.fail ? ' dm-h-fail' : ''}${email ? ' dm-h-email' : ''}${firstOfRun ? ' dm-b-first' : ''}${v4 && last ? ' dx-b-last' : ''}${arrive ? ' dx-arrive' : ''}`}
               data-msg={m.id} data-channel={email ? 'email' : undefined} data-side={side}
@@ -173,6 +215,7 @@ function HistoryRead({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmai
           </Fragment>
         )
       })}
+      {evLines(Infinity)}
     </div>
   )
 }

@@ -113,13 +113,19 @@ export function NoDraftBanner({ t, now }: { t: Thread; now: number }) {
   )
 }
 
+/** A sent came-back follow-up permanently stops the scripted ladder (DM Sequence _cbHold). */
+export function hasSentCamebackFollowup(t: Pick<Thread, 'messages'>): boolean {
+  return t.messages.some(m => m.direction === 'outbound' && Boolean(m.sent_at) && /cameback_followup/i.test(m.ai_model ?? ''))
+}
+
 export function WaitingBanner({ t }: { t: Thread }) {
   const lo = t.messages.filter(m => m.direction === 'outbound' && m.sent_at).at(-1)
   const dated = seatOf(t.client_id) !== 'ivan'
+  const cbDone = !dated && hasSentCamebackFollowup(t)
   return (
     <div className="dm-ban">
       <b><DIcon name="time" />Waiting on {firstOf(t)}{lo ? ` since ${warsawDow(eventTime(lo))} ${warsawDm(eventTime(lo))}` : ''}.</b>
-      <p className="dm-hint">Nothing is owed. Write again, or {dated ? 'press Later and a follow-up is drafted on that date' : 'leave it; the ladder sends the next step'}.</p>
+      <p className="dm-hint">Nothing is owed. {cbDone ? 'No more scripted messages after the follow-up. A new reaction gets a draft here.' : <>Write again, or {dated ? 'press Later and a follow-up is drafted on that date' : 'leave it; the ladder sends the next step'}.</>}</p>
     </div>
   )
 }

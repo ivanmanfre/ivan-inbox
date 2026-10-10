@@ -67,7 +67,9 @@ function Pane({ m, phone }: { m: PageModel; phone: boolean }) {
     return <section className="dm-pane dm-pane-none"><Empty title="Pick a conversation." /></section>
   }
   const tag = m.came.get(t.prospect_id)
+  const engagements = m.data.cameBack.rows.find(c => c.prospect_id === t.prospect_id)?.signals
   return <ThreadPane t={t} auto={m.auto} all={m.threads} phone={phone} verbs={m.verbs} now={m.now} onBack={m.closeThread} v4={m.v4} registerGuard={m.v4 ? m.registerGuard : undefined}
+    engagements={engagements}
     signal={tag ? <CameSignal tag={tag} onDismiss={() => m.dismissCame(t.prospect_id, t.prospect_name)} /> : null}
     onAsk={() => m.ask(t, 'ask')} onDraftStart={() => m.openThread(t)} onMenu={a => m.onMenu(t, a)} staleN={m.staleBy[seatOf(t.client_id) ?? 'ivan'].length} pre={m.pre} reload={m.data.refreshAll} />
 }

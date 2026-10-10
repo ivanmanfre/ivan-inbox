@@ -88,6 +88,28 @@ function viewedAfterLine(c: Pick<CameBackCard, 'signals'> & Partial<Pick<CameBac
   return days >= 3 ? `viewed the profile ${days} days after the message` : 'viewed the profile'
 }
 
+/** The list-row version of cameBackLine: the NEWEST engaged post by title first (a row is one
+    truncated line, so a three-title sentence never reached the second title), the rest as a count. */
+export function cameBackRowLine(c: Pick<CameBackCard, 'n_views' | 'n_engagements' | 'last_signal_at' | 'signals'> & Partial<Pick<CameBackCard, 'last_out_at'>>): string {
+  if (c.n_engagements < 1) return cameBackLine(c)
+  const sigs = engagementSignals(c.signals)
+  const newest = sigs[0]
+  if (!newest) return cameBackLine(c)
+  const word = sigs.some(s => s.kind === 'comment') ? 'commented on' : 'reacted to'
+  const title = newest.post_title?.trim()
+  const short = title ? (title.length > 48 ? `${title.slice(0, 48).trimEnd().replace(/\s+\S*$/, '')}…` : title) : null
+  const more = Math.max(c.n_engagements, sigs.length) - 1
+  const eng = `${word} ${short ? `“${short}”` : 'a post'}${more > 0 ? ` +${more} earlier` : ''}`
+  const rest = cameBackLine({ ...c, n_engagements: 0 }).replace(/ · [^·]*$/, '')
+  const when = dayOf(c.last_signal_at)
+  return `${rest === 'came back' ? eng : `${rest} and ${eng}`}${when ? ` · ${when}` : ''}`
+}
+
+/** Post engagements only (never a profile view or a scan reopen), newest first. */
+export function engagementSignals(signals: readonly CameBackSignal[] | null | undefined): CameBackSignal[] {
+  return (signals ?? []).filter(s => s.kind !== 'view' && s.kind !== 'scan_open').sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+}
+
 export function scanOpenDays(c: Pick<CameBackCard, 'signals'>): number {
   return (c.signals ?? []).filter(s => s.kind === 'scan_open').length
 }

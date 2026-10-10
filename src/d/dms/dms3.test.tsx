@@ -102,6 +102,41 @@ describe('email-only people', () => {
   })
 })
 
+describe('engagements in the timeline (10-10)', () => {
+  const ev = (at: string, title: string, over = {}) => ({ kind: 'reaction', at, detail: null, post_title: title, post_url: `https://www.linkedin.com/posts/${title}`, ...over })
+  const t0 = () => threads([msg({ prospect_id: 'a', prospect_name: 'Auke de Geus', direction: 'outbound', sent_at: iso(30 * 3_600_000), created_at: iso(30 * 3_600_000), message_text: 'Hey Auke, still happy to send it' })])[0]
+  it('shows each reaction as a visible, linked line between the messages, never a view', () => {
+    render(<History t={t0()} cap={10} engagements={[ev(iso(2 * 3_600_000), 'Newer post'), ev(iso(10 * 3_600_000), 'Older post'), { kind: 'view', at: iso(5 * 3_600_000), detail: null }, { kind: 'scan_open', at: iso(4 * 3_600_000), detail: null }]} />)
+    const lines = [...document.querySelectorAll('.dm-ev')]
+    expect(lines).toHaveLength(2)
+    expect(lines.map(l => l.textContent)).toEqual([expect.stringContaining('Reacted to your post: “Older post”'), expect.stringContaining('Reacted to your post: “Newer post”')])
+    expect((lines[0].querySelector('a') as HTMLAnchorElement).href).toContain('Older%20post')
+    // the message (30h ago) comes first, then the two reactions in date order
+    const order = [...document.querySelectorAll('.dm-b, .dm-ev')].map(n => n.className.includes('dm-ev') ? 'ev' : 'msg')
+    expect(order).toEqual(['msg', 'ev', 'ev'])
+  })
+  it('shows a comment with its text', () => {
+    render(<History t={t0()} cap={10} engagements={[ev(iso(2 * 3_600_000), 'P', { kind: 'comment', detail: 'Great point' })]} />)
+    expect(document.querySelector('.dm-ev')?.textContent).toContain('Commented on your post')
+    expect(document.querySelector('.dm-ev q')?.textContent).toBe('Great point')
+  })
+})
+
+describe('waiting footer after a sent came-back follow-up (10-10)', () => {
+  it('does not claim the ladder sends the next step', async () => {
+    const { WaitingBanner, hasSentCamebackFollowup } = await import('./Banners')
+    const sent = threads([msg({ prospect_id: 'a', direction: 'outbound', sent_at: iso(3_600_000), created_at: iso(3_600_000), ai_model: 'ivan_cameback_followup_v1' })])[0]
+    expect(hasSentCamebackFollowup(sent)).toBe(true)
+    render(<WaitingBanner t={sent} />)
+    expect(document.body.textContent).toContain('No more scripted messages after the follow-up. A new reaction gets a draft here.')
+    expect(document.body.textContent).not.toContain('the ladder sends')
+    cleanup()
+    const plain = threads([msg({ prospect_id: 'b', direction: 'outbound', sent_at: iso(3_600_000), created_at: iso(3_600_000) })])[0]
+    render(<WaitingBanner t={plain} />)
+    expect(document.body.textContent).toContain('the ladder sends the next step')
+  })
+})
+
 describe('folder dots', () => {
   const mailThread = (read: boolean) => groupThreads([
     msg({ prospect_id: 'm', channel: 'email', message_type: 'email_reply', direction: 'inbound', read_at: read ? iso(1000) : null, sent_at: iso(3_600_000), created_at: iso(3_600_000) }),

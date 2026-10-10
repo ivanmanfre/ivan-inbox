@@ -1,7 +1,7 @@
 // A seat column (desktop) or the one seat list (phone). Sections in the mock's order.
 import { useMemo } from 'react'
 import { eventTime, internalHoldSummary, isReplyRetryExhausted, threadBucket, type Thread } from '../../lib/inbox'
-import { cameBackLine, firstComment, sentLine, type CameBackCard } from '../../wb/dms/cameBackData'
+import { cameBackRowLine, firstComment, sentLine, type CameBackCard } from '../../wb/dms/cameBackData'
 import { agentCardsWithoutWarmCards, type ConversationAgentCard } from '../../wb/dms/conversationAgentData'
 import { WARM_GROUPS, dm1Deliverable, evidenceLine, inviteLine, isWaiting, primaryAction, warmGroup, type WarmCard } from '../../wb/dms/warmSignalsData'
 import { type Seat } from '../seats'
@@ -234,7 +234,7 @@ function SignalsSection({ p, folds, came }: { p: ColumnProps; folds: Folds; came
     const comment = firstComment(x)
     return <Row key={`c${x.prospect_id}`} v4={c.v4} id={x.prospect_id} name={x.name} company={x.company} conversation={Boolean(t)}
       tags={[{ kind: 'lane', text: it.label }]}
-      line={`${cameBackLine(x)}. ${sentLine(x)}${comment ? ` “${comment}”` : ''}${x.icp_score !== null ? ` · ICP ${x.icp_score}` : ''}`}
+      line={<span className="dm-sigline">{`${cameBackRowLine(x)}. ${sentLine(x)}${comment ? ` “${comment}”` : ''}${x.icp_score !== null ? ` · ICP ${x.icp_score}` : ''}`}</span>}
       selected={c.selected === x.prospect_id} onOpen={t ? () => c.open(t) : undefined}
       verbs={[{ label: 'Dismiss', verb: 'dismiss', busy: c.busy === `cb:${x.prospect_id}`, run: () => { c.setBusy(`cb:${x.prospect_id}`); void c.verbs.cameBackDismiss(x.prospect_id, x.name, () => p.dropCameBack(x.prospect_id)).finally(() => c.setBusy(null)) } }]} />
   })
