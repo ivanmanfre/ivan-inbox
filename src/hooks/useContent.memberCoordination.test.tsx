@@ -93,3 +93,61 @@ it('reconnect discovers B released during disconnect through a full safe refresh
  expect(result.current.drafts.map(r => r.id)).toEqual([a,b,ordinary])
  expect(result.current.matched).toBe(3)
 })
+
+
+it('routine rechecks keep the lane count steady while waiting and leave unchanged rows alone', async () => {
+ lib.fetchContentDrafts.mockResolvedValue(page(row(a),row(ordinary,false)))
+ sdk.read.mockResolvedValue({ data: [row(a)], error: null })
+ const { result } = renderHook(() => useContent('ivan'))
+ await act(async () => {})
+ await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+ const checked = result.current.drafts
+ let done!: (p: unknown) => void
+ sdk.read.mockReturnValueOnce(new Promise(resolve => { done = resolve }))
+ await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+ expect(result.current.drafts).toBe(checked)
+ expect(result.current.drafts).toHaveLength(2)
+ expect(result.current.memberReadState).toBe('partial')
+ await act(async () => done({ data: [row(a)], error: null }))
+ expect(result.current.drafts).toBe(checked)
+})
+
+it('a full read landing during a routine check keeps newly discovered members', async () => {
+ lib.fetchContentDrafts.mockResolvedValueOnce(page(row(a),row(ordinary,false))).mockResolvedValueOnce(page(row(a),row(b),row(ordinary,false)))
+ let done!: (p: unknown) => void
+ sdk.read.mockReturnValueOnce(new Promise(resolve => { done = resolve }))
+ const { result } = renderHook(() => useContent('ivan'))
+ await act(async () => {})
+ await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+ await act(async () => result.current.refresh())
+ await act(async () => done({ data: [row(a)], error: null }))
+ expect(result.current.drafts.map(r => r.id)).toEqual([a,b,ordinary])
+ expect(result.current.matched).toBe(3)
+})
+
+
+it('an unchanged safe answer still replaces a differing full-read body', async () => {
+ lib.fetchContentDrafts.mockResolvedValueOnce(page(row(a))).mockResolvedValueOnce(page({ ...row(a), post_body: 'different full-read body' }))
+ sdk.read.mockResolvedValue({ data: [row(a)], error: null })
+ const { result } = renderHook(() => useContent('ivan'))
+ await act(async () => {})
+ await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+ await act(async () => result.current.refresh())
+ expect(result.current.drafts[0].post_body).toBe('different full-read body')
+ await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+ expect(result.current.drafts[0].post_body).toBe('fresh '+a)
+})
+
+
+it('a failed old routine check cannot hide members verified by a newer full read', async () => {
+ lib.fetchContentDrafts.mockResolvedValueOnce(page(row(a),row(ordinary,false))).mockResolvedValueOnce(page(row(a),row(b),row(ordinary,false)))
+ let fail!: (e: Error) => void
+ sdk.read.mockReturnValueOnce(new Promise((_resolve, reject) => { fail = reject }))
+ const { result } = renderHook(() => useContent('ivan'))
+ await act(async () => {})
+ await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+ await act(async () => result.current.refresh())
+ await act(async () => fail(new Error('old check failed')))
+ expect(result.current.drafts.map(r => r.id)).toEqual([a,b,ordinary])
+ expect(result.current.matched).toBe(3)
+})

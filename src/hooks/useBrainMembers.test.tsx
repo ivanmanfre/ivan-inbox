@@ -15,11 +15,11 @@ const row = (id = a, client: string | null = null, member = true): ContentDraftD
 function useRows(initial: ContentDraftDetail[]) { const [rows, setRows] = useState(initial); useBrainMembers(rows, () => setRows(p => p.filter(r => !r.cb34_p2_member)), fresh => setRows(p => [...p.filter(r => !r.cb34_p2_member), ...fresh]), 'fixture'); return rows }
 beforeEach(() => { vi.useFakeTimers(); sdk.read.mockReset(); sdk.queries = []; sdk.events = []; sdk.status = null; sdk.subscribeFail = false; sdk.remove.mockClear(); sdk.unsubscribe.mockClear(); Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' }) })
 afterEach(() => { cleanup(); vi.useRealTimers() })
-it('missed-event fallback hides members before a bounded ID-only read and never polls ordinary rows', async () => {
+it('missed-event fallback keeps verified members during a bounded read and removes revoked rows on completion', async () => {
  let done!: (x: unknown) => void; sdk.read.mockReturnValue(new Promise(resolve => { done = resolve }))
  const ordinary = row(b, null, false), { result } = renderHook(() => useRows([row(), ordinary]))
  await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
- expect(result.current.map(r => r.id)).toEqual([b]); expect(sdk.queries).toEqual([{ ids: [a], client: null }])
+ expect(result.current.map(r => r.id)).toEqual([a,b]); expect(sdk.queries).toEqual([{ ids: [a], client: null }])
  await act(async () => { done({ data: [], error: null }) })
  await act(async () => { await vi.advanceTimersByTimeAsync(10000) })
  expect(sdk.read).toHaveBeenCalledTimes(1); expect(result.current).toEqual([ordinary])
@@ -99,10 +99,43 @@ it('timer-started pending IDs survive an event and old completion, then retry fr
  sdk.read.mockReturnValueOnce(new Promise(resolve => { older = resolve })).mockResolvedValueOnce({ data: [{ ...row(), post_body: 'new verified body' }], error: null })
  const { result } = renderHook(() => useRows([row()]))
  await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
- expect(result.current).toEqual([])
+ expect(result.current.map(r => r.id)).toEqual([a])
  act(() => window.dispatchEvent(new Event('wb-rows-changed')))
+ expect(result.current).toEqual([])
  expect(sdk.read).toHaveBeenCalledTimes(1)
  await act(async () => older({ data: [row()], error: null }))
  expect(sdk.read).toHaveBeenCalledTimes(2)
  expect(result.current[0].post_body).toBe('new verified body')
+})
+
+
+it('unchanged fallback results keep the same visible rows across repeated checks', async () => {
+ sdk.read.mockResolvedValue({ data: [row()], error: null })
+ const { result } = renderHook(() => useRows([row(),row(b,null,false)]))
+ await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+ const checked = result.current
+ await act(async () => { await vi.advanceTimersByTimeAsync(15000) })
+ expect(result.current).toBe(checked)
+ expect(result.current.map(r => r.id)).toEqual([b,a])
+})
+
+it('a changed body with unchanged membership replaces the visible draft after verification', async () => {
+ sdk.read.mockResolvedValueOnce({ data: [row()], error: null })
+ const { result } = renderHook(() => useRows([row()]))
+ await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+ let done!: (x: unknown) => void
+ sdk.read.mockReturnValueOnce(new Promise(resolve => { done = resolve }))
+ await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+ expect(result.current[0].post_body).toBe('current body')
+ await act(async () => done({ data: [{ ...row(), post_body: 'edited verified body' }], error: null }))
+ expect(result.current[0].post_body).toBe('edited verified body')
+})
+
+
+it('background verification commits without an intermediate missing-draft render', async () => {
+ sdk.read.mockResolvedValue({ data: [row()], error: null })
+ const counts: number[] = []
+ renderHook(() => { const rows = useRows([row(),row(b,null,false)]); counts.push(rows.length); return rows })
+ await act(async () => { await vi.advanceTimersByTimeAsync(20000) })
+ expect(counts.every(n => n === 2)).toBe(true)
 })

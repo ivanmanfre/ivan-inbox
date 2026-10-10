@@ -5,7 +5,7 @@ import { operatorDeleted, type ContentDraftDetail } from '../lib/content'
 export type BrainMember = { id: string; client_id: string | null; cb34_p2_member?: boolean }
 export type BrainInvalidation = { client: 'ivan' | 'risedtc' | 'arch'; draftId: string }
 export const BRAIN_INVALIDATED = 'brain-members-invalidated'
-type Watch = { rows: () => BrainMember[]; clear: () => void; fresh: (rows: ContentDraftDetail[], checkedIds: string[]) => boolean | void; revision: number; pending: BrainMember[]; failed: () => void; blocked: () => boolean }
+type Watch = { rows: () => BrainMember[]; clear: () => void; fresh: (rows: ContentDraftDetail[], checkedIds: string[]) => boolean | void; revision: number; checked: string | null; hidden: boolean; pending: BrainMember[]; failed: () => void; blocked: () => boolean }
 const watches = new Set<Watch>()
 let busy = false
 let activeRequest: AbortController | null = null
@@ -23,12 +23,13 @@ export function validMemberRows(rows: unknown, requested: BrainMember[]): Conten
 
 async function revalidate() {
   if (busy || String(document.visibilityState) === 'hidden') return
-  const pending = [...watches].filter(w => !w.blocked() || w.rows().some(r => r.cb34_p2_member === true)).map(w => ({ w, rows: [...new Map([...w.pending, ...w.rows().filter(r => r.cb34_p2_member === true)].map(r => [r.id, r])).values()], token: ++w.revision })).filter(x => x.rows.length)
+  const pending = [...watches].filter(w => !w.blocked() || w.rows().some(r => r.cb34_p2_member === true)).map(w => ({ w, rows: [...new Map([...w.pending, ...w.rows().filter(r => r.cb34_p2_member === true)].map(r => [r.id, r])).values()], background: !w.hidden, shown: w.rows().filter(r => r.cb34_p2_member === true), token: ++w.revision })).filter(x => x.rows.length)
   if (!pending.length) return
   busy = true
   const run = ++revision
-  // Hide before making a request; ordinary rows and actions remain available.
-  pending.forEach(({ w, rows }) => { w.pending = rows; w.clear() })
+  // Routine checks keep the last verified cards visible while the request runs.
+  // Explicit visibility/auth invalidations still clear immediately.
+  pending.forEach(({ w, rows, background }) => { w.pending = rows; if (!background) w.clear() })
   try {
     const unique = [...new Map(pending.flatMap(p => p.rows).map(r => [r.id, r])).values()]
     const fresh: ContentDraftDetail[] = []
@@ -51,20 +52,44 @@ async function revalidate() {
       }
     }
     if (run !== revision || String(document.visibilityState) === 'hidden') return
-    pending.forEach(({ w, rows, token }) => {
+    pending.forEach(({ w, rows, shown, background, token }) => {
       if (!watches.has(w) || token !== w.revision) return
+      // A full read that landed meanwhile owns the newer rows.
+      const current = w.rows().filter(r => r.cb34_p2_member === true)
+      if (background && (current.length !== shown.length || current.some((r, i) => r !== shown[i]))) { w.pending = []; return }
       const ids = new Set(rows.map(r => r.id))
-      const accepted = w.fresh(fresh.filter(r => ids.has(r.id) && !operatorDeleted(r.taxonomy)), [...ids])
+      const mine = fresh.filter(r => ids.has(r.id) && !operatorDeleted(r.taxonomy))
+      const checked = JSON.stringify([...mine].sort((a, b) => a.id.localeCompare(b.id)))
+      const byId = new Map(mine.map(r => [r.id, r]))
+      const sameShown = current.length === mine.length && current.every(r => {
+        const freshRow = byId.get(r.id) as Record<string, unknown> | undefined
+        return freshRow && Object.entries(r).every(([key, value]) => !(key in freshRow) || JSON.stringify(value) === JSON.stringify(freshRow[key]))
+      })
+      if (background && w.checked === checked && sameShown) { w.pending = []; return }
+      // Clear and restore in the same React batch, only when the answer changed.
+      if (background) w.clear()
+      const accepted = w.fresh(mine, [...ids])
+      w.checked = accepted === false ? null : checked
+      w.hidden = accepted === false
       w.pending = accepted === false ? rows : []
     })
-  } catch { pending.forEach(({ w, rows, token }) => { if (watches.has(w) && token === w.revision) w.pending = rows; if (watches.has(w) && token === w.revision) w.failed() }) /* Hidden known IDs retry serially; never restore stale bodies. */ }
+  } catch {
+    pending.forEach(({ w, rows, shown, background, token }) => {
+      if (!watches.has(w) || token !== w.revision) return
+      const current = w.rows().filter(r => r.cb34_p2_member === true)
+      if (background && (current.length !== shown.length || current.some((r, i) => r !== shown[i]))) { w.pending = []; w.checked = null; return }
+      w.pending = rows; w.checked = null; w.hidden = true
+      if (background) w.clear()
+      w.failed()
+    }) // Hidden known IDs retry serially; never restore stale bodies.
+  }
   finally { busy = false; if (run !== revision && [...watches].some(w => w.pending.length)) void revalidate() }
 }
 
 function invalidate() {
   ++revision
   activeRequest?.abort()
-  watches.forEach(w => { ++w.revision; const shown = w.rows().filter(r => r.cb34_p2_member === true); if (shown.length) w.pending = shown; if (w.pending.length) w.clear() })
+  watches.forEach(w => { ++w.revision; w.checked = null; w.hidden = true; const shown = w.rows().filter(r => r.cb34_p2_member === true); if (shown.length) w.pending = shown; if (w.pending.length) w.clear() })
 }
 
 function bridge() {
@@ -118,7 +143,7 @@ export function useBrainMembers(rows: BrainMember[], clear: () => void, fresh: (
   useEffect(() => {
     if (!enabled) return
     const matches = () => current.current.scope === scope && current.current.enabled
-    const watch: Watch = { rows: () => matches() ? current.current.rows : [], clear: () => { if (matches()) current.current.clear() }, fresh: (r, ids) => matches() ? current.current.fresh(r, ids) : undefined, revision: 0, pending: [], failed: () => { if (matches()) current.current.failed() }, blocked: () => matches() && current.current.blocked() }
+    const watch: Watch = { rows: () => matches() ? current.current.rows : [], clear: () => { if (matches()) current.current.clear() }, fresh: (r, ids) => matches() ? current.current.fresh(r, ids) : undefined, revision: 0, checked: null, hidden: false, pending: [], failed: () => { if (matches()) current.current.failed() }, blocked: () => matches() && current.current.blocked() }
     watches.add(watch)
     if (!stopBridge) stopBridge = bridge()
     return () => { ++watch.revision; watches.delete(watch); if (!watches.size) { stopBridge?.(); stopBridge = null } }
