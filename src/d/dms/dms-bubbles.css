@@ -57,7 +57,7 @@
 .dm-preset-sug{border-color:var(--hotB)}
 .dm-later-note{margin-top:8px}
 /* Phone threads fill the available viewport; only the history scrolls. */
-.d-app.d-phone:has(.dm-phone-thread){height:100dvh;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding-bottom:calc(var(--dock-h) + 28px + env(safe-area-inset-bottom))}
+.d-app.d-phone:has(.dm-phone-thread){height:100dvh;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding-bottom:calc(var(--dock-h) + var(--dock-bottom) + 8px)}
 .d-phone:has(.dm-phone-thread)>.d-ptop,.d-phone:has(.dm-phone-thread)>.d-health,.d-phone:has(.dm-phone-thread)>.d-offline{flex:none}
 .d-phone:has(.dm-phone-thread)>.d-pbody{flex:1;min-height:0;overflow:hidden}
 .d-phone:has(.dm-phone-thread)>.d-fade{display:none}
@@ -92,3 +92,6 @@
 .dm-phone .dm-ev,.dm-pane-phone .dm-ev{font-size:13.5px}
 /* A Signals row says WHICH post: let its line wrap (three lines) instead of cutting at "reacted to “…". */
 .dm-s:has(> .dm-sigline),:root[data-skin-on~='dms'] .dx-row .dm-s:has(> .dm-sigline){display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;white-space:normal;overflow:hidden;text-overflow:clip}
+
+.dm-rejected-actions{display:flex;justify-content:flex-end;margin-top:8px}
+:root .d-app .dm-pane :is(.dm-rejected-actions,.dm-ban-row) .dm-send-anyways{min-height:44px;padding:8px 14px}

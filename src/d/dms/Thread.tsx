@@ -77,6 +77,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   const dock = useRef<HTMLDivElement>(null)
   const [draftJob, setDraftJob] = useState<{ pid: string; running: boolean; error: string | null } | null>(null)
   const drafting = useRef(false)
+  const overrideBusy = useRef(false)
   const [busy, setBusy] = useState(false)
   const [menu, setMenu] = useState<'top' | 'keys' | null>(null)
   const [sheet, setSheet] = useState<'context' | 'agent' | null>(null)
@@ -184,6 +185,12 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   useStickToEnd(scroll, v4)
   const copy = async () => { const l = chatLink(t.chat_provider_id, t.linkedin_url); if (l && await copyText(l.href)) { setCopied(true); window.setTimeout(() => setCopied(false), 1600) } }
   // A verb that writes the draft itself carries the text on screen; a pending autosave is dropped.
+  const sendAnyways = async (m: InboxMessage) => {
+    if (overrideBusy.current) return
+    overrideBusy.current = true
+    try { await run(async () => { if (t.draft?.id === m.id) await saver.flush(); else saver.cancel(); await verbs.sendAnyways(t, m) }) }
+    finally { overrideBusy.current = false }
+  }
   const send = () => run(async () => { if (scheduledPending) return; saver.cancel(); await verbs.send(t, edits) })
   const openSchedule = () => run(async () => {
     saver.cancel(); setScheduleFailure('')
@@ -251,10 +258,10 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         onSpam={!t.spam && seat !== 'ivan' ? () => void run(() => verbs.spam(t)) : undefined} signal={signal} />}
       sum={ps.s !== 'none' && <div className="dm-sum" role="status"><span className={ps.s === 'running' ? 'dx-busy' : undefined}>{ps.s === 'done' ? ps.line : ps.s === 'running' ? 'Reading it…' : ps.why}</span></div>}
       conv={<>
-        <History v4 t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} onReplyEmail={canComposeEmail(t) && !t.spam && (!t.ownerConfirmation || manualReply) && !busy ? openEmailReply : undefined}
+        <History v4 onSendAnyways={m => void sendAnyways(m)} sending={busy} t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} onReplyEmail={canComposeEmail(t) && !t.spam && (!t.ownerConfirmation || manualReply) && !busy ? openEmailReply : undefined}
           onForwardEmail={['arch', 'risedtc'].includes(t.client_id) && !busy ? setForwardEmail : undefined} />
         {draftRunning && <div className="dm-b dm-b-in dx-typing" aria-hidden="true"><div className="dm-b-body"><i /><i /><i /></div></div>}
-        <Banners v4 t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} />
+        <Banners v4 t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
         <ReferralCard key={t.prospect_id} t={t} />
         <Draft v4 t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload}
           strips={<DraftStrips t={t} verbs={verbs} />}
@@ -288,9 +295,9 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         onSpam={!t.spam && seat !== 'ivan' ? () => void run(() => verbs.spam(t)) : undefined} signal={signal} />
       {ps.s !== 'none' && <div className="dm-sum" role="status">{ps.s === 'done' ? ps.line : ps.s === 'running' ? 'Reading it…' : ps.why}</div>}
       <div className="dm-scroll" ref={scroll}>
-        <History t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} onReplyEmail={canComposeEmail(t) && !t.spam && (!t.ownerConfirmation || manualReply) && !busy ? openEmailReply : undefined}
+        <History onSendAnyways={m => void sendAnyways(m)} sending={busy} t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} onReplyEmail={canComposeEmail(t) && !t.spam && (!t.ownerConfirmation || manualReply) && !busy ? openEmailReply : undefined}
           onForwardEmail={['arch', 'risedtc'].includes(t.client_id) && !busy ? setForwardEmail : undefined} />
-        <Banners t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} />
+        <Banners t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
         <ReferralCard key={t.prospect_id} t={t} />
         <Draft t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
         {t.draft && <DraftWhy t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}

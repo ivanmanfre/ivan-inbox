@@ -18,6 +18,8 @@ vi.mock('../../lib/inbox', async orig => {
 })
 vi.mock('../../lib/followUp', async orig => ({ ...(await orig<typeof import('../../lib/followUp')>()), fetchFollowUp: vi.fn(async () => null), setFollowUp: vi.fn(async () => {}) }))
 
+vi.mock('../../lib/rejectedDm', async orig => ({ ...(await orig<typeof import('../../lib/rejectedDm')>()), sendRejectedDm: vi.fn(async () => {}) }))
+import { sendRejectedDm } from '../../lib/rejectedDm'
 import * as lib from '../../lib/inbox'
 import { DmAsks } from './asks'
 import { NOW, drafted, msg, threads } from './fixtures'
@@ -226,5 +228,25 @@ describe('DM verbs', () => {
     expect(key('draft-it')).toBeTruthy()
     expect(key('discard')).toBeNull()
     expect(document.querySelector('[data-d-thread-who]')?.textContent).toBe('Nod')
+  })
+})
+
+
+describe('send rejected draft anyways', () => {
+  it('shows the rejection, confirms the exact copy, and queues only that original row', async () => {
+    const m = msg({ prospect_id: 'blocked', client_id: 'arch', message_text: 'Coffee in Tel Aviv?', ai_model: 'arch_telaviv_trip_v1', send_blocked_at: '2026-09-26T11:00:00Z', send_blocked_reason: 'arch_market_claim_unratified:Israel' })
+    const [t] = threads([m]); mount(t)
+    fireEvent.click(screen.getByRole('button', { name: 'Send anyways' }))
+    expect(sendRejectedDm).not.toHaveBeenCalled()
+    expect(screen.getAllByText('Coffee in Tel Aviv?').length).toBeGreaterThan(1)
+    fireEvent.click(key('confirm-send-anyways'))
+    await waitFor(() => expect(sendRejectedDm).toHaveBeenCalledWith(m, null))
+    expect(lib.composeReply).not.toHaveBeenCalled()
+    expect(ctx.refresh).toHaveBeenCalled()
+  })
+  it('offers the same override for a lint rejection still in the editor', () => {
+    const [t] = threads([msg({ prospect_id: 'lint', send_blocked_at: '2026-09-26T11:00:00Z', send_blocked_reason: 'lint_unbacked_commitment' })])
+    mount(t)
+    expect(screen.getByRole('button', { name: 'Send anyways' })).toBeTruthy()
   })
 })

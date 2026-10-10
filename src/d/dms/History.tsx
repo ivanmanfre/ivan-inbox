@@ -6,6 +6,7 @@ import { ReplySourceContent, ReplySourceLine, knownSource } from './ReplySourceS
 // the way LinkedIn delivered it, "To <email>" on a sent email, "Not accepted yet" on a pending
 // invite note. Older messages sit behind one "N earlier" tap.
 // Drafts, internal questions and discarded rows are not history (they live in the pane below).
+import { canSendRejectedDm } from '../../lib/rejectedDm'
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { eventTime, isDraft, isEngineRetired, isHiddenRetired, isInternalConfirmation, retiredLabel, sendFailed, messageChannel, type InboxMessage, type Thread } from '../../lib/inbox'
 import { label } from '../../lib/labels'
@@ -67,7 +68,7 @@ export function oursLabel(t: Pick<Thread, 'client_id'>): string {
  *  theirs on the left in grey with their first name on the first bubble of a run, ours on the right
  *  tinted with "You" (or Mattan / Davorin), a day line between days, and each bubble's channel,
  *  status and time underneath. The All conversations log reuses it as is. */
-type HistoryProps = { t: Thread; cap?: number; engagements?: readonly CameBackSignal[] | null; now?: number; onReplyEmail?: () => void; onForwardEmail?: (m: InboxMessage) => void
+type HistoryProps = { onSendAnyways?: (m: InboxMessage) => void; sending?: boolean; t: Thread; cap?: number; engagements?: readonly CameBackSignal[] | null; now?: number; onReplyEmail?: () => void; onForwardEmail?: (m: InboxMessage) => void
   /** Brief 4: meta once per run (status, reaction, email and a channel change always), arrivals grow from their tail. */
   v4?: boolean }
 
@@ -94,7 +95,7 @@ function EngagementLine({ s, owner }: { s: CameBackSignal; owner: string }) {
   )
 }
 
-function HistoryRead({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail, retry, v4 = false, engagements }: HistoryProps & { retry: () => void }) {
+function HistoryRead({ onSendAnyways, sending, t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail, retry, v4 = false, engagements }: HistoryProps & { retry: () => void }) {
   const source = useReplySource({ kind: 'operator', clientId: t.client_id ?? 'ivan' }, t.prospect_id, true)
   const [all, setAll] = useState(false)
   // Above the empty return (09-09 rule). Which bubbles were already on screen for this thread, and
@@ -207,6 +208,7 @@ function HistoryRead({ t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmai
                 {latestObs && <i>Latest observed reply · {touchLabel(source.data.latest_reply!.touch)}</i>}
                 <time dateTime={at}>{warsawHm(at)}</time>
               </div> : <time className="dx-sr" dateTime={at}>{warsawHm(at)}</time>}
+              {onSendAnyways && !t.spam && canSendRejectedDm(m) && <div className="dm-rejected-actions"><button type="button" className="dm-email-reply dm-send-anyways" data-verb="send-anyways" disabled={sending} onClick={() => onSendAnyways?.(m)}>Send anyways</button></div>}
               {inb && email && (onReplyEmail || onForwardEmail) && <div className="dm-email-actions">
                 {m.id === lastEmail && onReplyEmail && <button type="button" className="dm-email-reply" data-verb="reply-email" onClick={onReplyEmail}>Reply by email</button>}
                 {onForwardEmail && <button type="button" className="dm-email-reply" data-verb="forward-email" onClick={() => onForwardEmail(m)}>Forward to email</button>}

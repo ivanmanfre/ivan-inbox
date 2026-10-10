@@ -1,8 +1,9 @@
+import { sendRejectedDm } from '../../lib/rejectedDm'
 import { parseEmailCc } from '../../lib/emailCc'
 // Every DM write, wired to TODAY'S lib calls with today's payloads, guards and order
 // (src/wb/thread/Conversation.tsx, RestoreStrip, FollowUpStrip, CameBack). Nothing here
 // invents a write path: each verb names the lib function it calls.
-import { useMemo } from 'react'
+import { createElement, useMemo } from 'react'
 import {
   approveDraft, composeReply, deleteThread, discardLegs, dismissConfirmation, draftLegs, escalateDraftToClient,
   isFollowUp, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft,
@@ -104,6 +105,19 @@ export function useDmVerbs(ctx: VerbCtx) {
       if (!half) toast.show({ message: `Sent to ${t.prospect_name}.`, sub: 'The sender picks it up within about 2 minutes.' })
       ctx.refresh()
       return half
+    }
+
+    async function sendAnyways(t: Thread, m: InboxMessage): Promise<void> {
+      const ok = await confirm({ title: `Send anyways to ${t.prospect_name}?`,
+        message: createElement('div', null, createElement('p', null, `Rejected: ${m.send_blocked_reason?.replaceAll('_', ' ')}.`), createElement('p', null, m.message_text), createElement('p', null, 'Your approval overrides the copy rejection. Delivery and account checks still apply.')),
+        confirmText: 'Send anyways', verb: 'confirm-send-anyways' })
+      if (!ok) return
+      try {
+        await sendRejectedDm(m, threadChatId(t))
+        ctx.patch([m.id], { approved_at: new Date().toISOString(), send_blocked_at: null, send_blocked_reason: null })
+        toast.show({ message: `Queued to ${t.prospect_name}.`, sub: 'The sender picks it up within about 2 minutes.' })
+      } catch (e) { fail(`Not queued: ${errText(e)}`) }
+      ctx.refresh()
     }
 
     async function discard(t: Thread): Promise<string | null> {
@@ -410,7 +424,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       await bulkDiscard(stale, '', { title: `Discard ${stale.length} stale draft${stale.length === 1 ? '' : 's'}?`, message: 'These threads already have your own reply after the last inbound message. Nothing is sent.', confirmText: 'Discard stale' })
     }
 
-    return { rowDiscard, discardStale, send, discard, solved, later, bringBackNow, saveEdit, autosave, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, holdRelease, askOwner, bulkDiscard, isFollowUp }
+    return { rowDiscard, discardStale, send, sendAnyways, discard, solved, later, bringBackNow, saveEdit, autosave, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, holdRelease, askOwner, bulkDiscard, isFollowUp }
   }, [ctx, confirm, toast, askDiscard, askDate])
 }
 
