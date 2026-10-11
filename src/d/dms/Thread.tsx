@@ -191,7 +191,12 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     try { await run(async () => { if (t.draft?.id === m.id) await saver.flush(); else saver.cancel(); await verbs.sendAnyways(t, m) }) }
     finally { overrideBusy.current = false }
   }
-  const send = () => run(async () => { if (scheduledPending) return; saver.cancel(); await verbs.send(t, edits) })
+  const emailDelivery = (enabled: boolean) => { if (busy) return; void run(async () => {
+    await saver.flush()
+    if (saver.isPending()) return
+    if (await verbs.emailDelivery(t, enabled)) setEdits(e => ({ ...e, cc: enabled ? '' : undefined }))
+  }) }
+  const send = () => { if (busy) return; return run(async () => { if (scheduledPending) return; saver.cancel(); await verbs.send(t, edits) }) }
   const openSchedule = () => run(async () => {
     saver.cancel(); setScheduleFailure('')
     if (reply.trim()) { setSchedule({ ids: [], texts: [reply.trim()], manual: true }); return }
@@ -267,7 +272,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
           if (t.ownerConfirmation) void verbs.holdRelease(t)
           dock.current?.querySelector('textarea')?.focus()
         }} />
-        <Draft v4 t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload}
+        <Draft v4 onEmailDelivery={emailDelivery} deliveryBusy={busy} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload}
           strips={<DraftStrips t={t} verbs={verbs} />}
           foot={t.draft && <DraftWhy v4 t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
           onSend={canSendDraft ? () => { if (!busy && !scheduledPending) void send() } : undefined} />
@@ -307,7 +312,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
           if (t.ownerConfirmation) void verbs.holdRelease(t)
           dock.current?.querySelector('textarea')?.focus()
         }} />
-        <Draft t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
+        <Draft onEmailDelivery={emailDelivery} deliveryBusy={busy} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
         {t.draft && <DraftWhy t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
         <RestoreStrip t={t} verbs={verbs} />
         {scheduledPending && <ScheduledSends t={t} reload={reload} onEdit={setSchedule} />}

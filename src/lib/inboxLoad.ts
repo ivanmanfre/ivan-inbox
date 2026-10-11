@@ -66,7 +66,7 @@ export async function assembleInbox(viewRows: readonly InboxMessage[], probes?: 
   const pendingIds = new Set(draftIds)
   for (const m of rows) {
     const em = emailStamps?.get(m.id)
-    if (em) { m.recipient_email = em.recipient_email; m.email_mirror_text = em.email_mirror_text; m.email_cc = em.email_cc ?? [] }
+    if (em) { m.recipient_email = em.recipient_email; m.email_mirror_text = em.email_mirror_text; m.email_cc = em.email_cc ?? []; m.email_delivery_recipient = em.email_delivery_recipient }
     else { const sent = emailTo.get(m.id); if (sent) { m.recipient_email = sent.recipient_email; m.email_cc = sent.email_cc } }
     m.email_stamp_unavailable = emailStamps === null && pendingIds.has(m.id)
     const cg = contextGaps.get(m.id)

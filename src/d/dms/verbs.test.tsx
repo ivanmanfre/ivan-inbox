@@ -9,7 +9,7 @@ vi.mock('../../lib/inbox', async orig => {
   const real = await orig<typeof import('../../lib/inbox')>()
   return {
     ...real,
-    approveDraft: vi.fn(async () => {}), saveDraftText: vi.fn(async () => {}), saveDraftEmail: vi.fn(async () => {}), saveDraftEmailCc: vi.fn(async () => []),
+    approveDraft: vi.fn(async () => {}), saveDraftText: vi.fn(async () => {}), saveDraftEmail: vi.fn(async () => {}), saveDraftEmailCc: vi.fn(async () => []), setDraftEmailDelivery: vi.fn(async () => ({ recipient_email: null, email_delivery_recipient: 'anthony@example.com', email_cc: [], draft_evidence: { email_cc: [], email_delivery_recipient: 'anthony@example.com' } })),
     snoozeDraft: vi.fn(async () => {}), unsnoozeDraft: vi.fn(async () => {}), restoreDraft: vi.fn(async () => true),
     discardLegs: vi.fn(async () => []), composeReply: vi.fn(async () => []), markThreadRead: vi.fn(async () => {}),
     emailReplyTarget: vi.fn(async () => ({ recipient_email: 'ofir.b@doktorabc.com', message_text_prefix: 'Subject: Re: Meeting\n\n' })),
@@ -121,6 +121,24 @@ describe('direct email reply', () => {
 })
 
 describe('DM verbs', () => {
+  it('saves attached email opt-out without approving any message', async () => {
+    const [t] = threads(drafted('anthony', { client_id: 'risedtc', recipient_email: 'anthony@example.com', email_mirror_text: 'Subject: Call' }))
+    mount(t)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Send email too' }))
+    await waitFor(() => expect(lib.setDraftEmailDelivery).toHaveBeenCalledWith(t.draft!.id, false))
+    expect(ctx.patch).toHaveBeenCalledWith([t.draft!.id], expect.objectContaining({ recipient_email: null, email_cc: [] }))
+    expect(lib.approveDraft).not.toHaveBeenCalled()
+  })
+  it('approves a DM-only draft without adding CC back to the inactive email', async () => {
+    const [t] = threads(drafted('anthony', { client_id: 'risedtc', recipient_email: null, email_delivery_recipient: 'anthony@example.com', email_mirror_text: 'Subject: Call', email_cc: [] }))
+    mount(t)
+    fireEvent.click(key('send'))
+    await screen.findByText(/Only the LinkedIn DM will be sent. The sender/)
+    fireEvent.click(await screen.findByText('Approve & send'))
+    await waitFor(() => expect(lib.approveDraft).toHaveBeenCalledTimes(1))
+    expect(lib.saveDraftEmailCc).not.toHaveBeenCalled()
+  })
+
   it('shows saved CC beside the mirror and saves edited CC before approval', async () => {
     const [t] = threads(drafted('thomas', { prospect_name: 'Thomas', client_id: 'risedtc', recipient_email: 'thomas@vmisports.com', email_mirror_text: 'Subject: VMI scan\n\nHey Thomas and Michael,', email_cc: ['michael@vmisports.com'] }))
     mount(t)

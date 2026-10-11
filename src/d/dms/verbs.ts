@@ -7,7 +7,7 @@ import { createElement, useMemo } from 'react'
 import {
   approveDraft, composeReply, deleteThread, discardLegs, dismissConfirmation, draftLegs, escalateDraftToClient,
   isFollowUp, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft,
-  saveDraftEmail, saveDraftEmailCc, saveDraftText, snoozeDraft, threadChatId, unsnoozeDraft, REPLY_MYSELF,
+  saveDraftEmail, saveDraftEmailCc, setDraftEmailDelivery, saveDraftText, snoozeDraft, threadChatId, unsnoozeDraft, REPLY_MYSELF,
   type InboxMessage, type Thread,
 } from '../../lib/inbox'
 import { clearFollowUp, fetchFollowUp, followUpSuggestion, setFollowUp, type FollowUp } from '../../lib/followUp'
@@ -58,15 +58,25 @@ export function useDmVerbs(ctx: VerbCtx) {
     async function saveCcs(t: Thread, ed: Edits) {
       const legs = [[t.draft, ed.cc], [t.companionDraft, ed.companionCc]] as const
       // Validate every leg before approving any leg.
-      for (const [row, value] of legs) if (row && value !== undefined) parseEmailCc(value)
+      for (const [row, value] of legs) if (row?.recipient_email && value !== undefined) parseEmailCc(value)
       for (const [row, value] of legs) {
-        if (!row || value === undefined) continue
+        if (!row?.recipient_email || value === undefined) continue
         if (row.email_stamp_unavailable) throw new Error('Refresh to check the email recipients before approving.')
         const cc = parseEmailCc(value)
         // Re-check persisted evidence even when the visible recipients are unchanged.
         await saveDraftEmailCc(row.id, value)
         ctx.patch([row.id], { email_cc: cc })
       }
+    }
+
+    async function emailDelivery(t: Thread, enabled: boolean): Promise<boolean> {
+      if (!t.draft || t.draft.email_stamp_unavailable) { fail('Refresh to check the email recipients.'); return false }
+      try {
+        const saved = await setDraftEmailDelivery(t.draft.id, enabled)
+        ctx.patch([t.draft.id], saved)
+        ctx.refresh()
+        return true
+      } catch (e) { fail(`Email choice not saved: ${errText(e)}`); return false }
     }
 
     /** Approve & send (both legs on a pair). Always asks first, as today's thread does. */
@@ -78,7 +88,8 @@ export function useDmVerbs(ctx: VerbCtx) {
         const ok = await confirm({
           title: `Send to ${t.prospect_name}?`,
           message: comp ? `Both legs go out: the ${legName(draft)} and the ${legName(comp)}. The sender picks them up within about 2 minutes.`
-            : 'The sender picks it up within about 2 minutes.',
+            : draft.email_delivery_recipient && !draft.recipient_email ? 'Only the LinkedIn DM will be sent. The sender picks it up within about 2 minutes.'
+              : 'The sender picks it up within about 2 minutes.',
           confirmText: comp ? 'Approve & send both' : 'Approve & send',
           verb: 'confirm-send',
         })
@@ -424,7 +435,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       await bulkDiscard(stale, '', { title: `Discard ${stale.length} stale draft${stale.length === 1 ? '' : 's'}?`, message: 'These threads already have your own reply after the last inbound message. Nothing is sent.', confirmText: 'Discard stale' })
     }
 
-    return { rowDiscard, discardStale, send, sendAnyways, discard, solved, later, bringBackNow, saveEdit, autosave, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, holdRelease, askOwner, bulkDiscard, isFollowUp }
+    return { emailDelivery, rowDiscard, discardStale, send, sendAnyways, discard, solved, later, bringBackNow, saveEdit, autosave, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, holdRelease, askOwner, bulkDiscard, isFollowUp }
   }, [ctx, confirm, toast, askDiscard, askDate])
 }
 

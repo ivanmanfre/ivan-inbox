@@ -57,6 +57,7 @@ export type InboxMessage = {
   // dispatcher ALSO email the scan to this address (rise_dm2_scan_delivery_v1 rows).
   recipient_email?: string | null;
   email_cc?: string[] | null;
+  email_delivery_recipient?: string | null;
   // The exact email body the dispatcher will send (composed + stored by the
   // drafter). Shown verbatim under the badge so approval sees the real send.
   email_mirror_text?: string | null;
@@ -1139,7 +1140,7 @@ export async function fetchManualReplyIds(): Promise<Set<string>> {
 // The view doesn't expose recipient_email, so this reads the base table directly
 // (authed role already reads outreach_prospects the same way). Tiny by
 // construction: only unsent, unapproved, unblocked drafts with a stamp.
-export type DraftEmailStamp = { recipient_email: string; email_mirror_text: string | null; email_cc?: string[] | null }
+export type DraftEmailStamp = { recipient_email: string | null; email_delivery_recipient?: string | null; email_mirror_text: string | null; email_cc?: string[] | null }
 
 // Answerability gate: the drafter answered something rise-company-facts does not cover.
 // Same probe shape as the email stamps below (the view doesn't expose context_gap either),
@@ -1159,6 +1160,7 @@ export type DraftEvidenceFact = { id: string; fact: string; topic: string; at: s
 export type DraftEvidenceExemplar = { they: string | null; reply: string | null; at: string | null; prospect: string | null }
 export type DraftEvidence = {
   email_cc?: string[] | null
+  email_delivery_recipient?: string | null
   // Stall Bump (2026-09-24): the prospect opened the scan on this many distinct days and has not
   // replied since. 2+ floats the thread to the top of the list while the draft waits (groupThreads).
   scan_open_days?: number | null
@@ -1253,20 +1255,20 @@ export async function escalateDraftToClient(messageId: string): Promise<string> 
 
 export async function fetchDraftEmailStamps(): Promise<Map<string, DraftEmailStamp>> {
   const { data, error } = await supabase.from('outreach_messages')
-    .select('id,recipient_email,email_mirror_text,email_cc:draft_evidence->email_cc')
+    .select('id,recipient_email,email_mirror_text,email_cc:draft_evidence->email_cc,email_delivery_recipient:draft_evidence->>email_delivery_recipient')
     .eq('direction', 'outbound')
     .is('sent_at', null).is('approved_at', null)
     // A race- or lint-held row is a pending draft again (isDraft), and approving
     // it still mails the mirror. Skipping held rows here dropped its email line
     // and editor while the email still went out (check3-drafts E1.5).
     .or('send_blocked_at.is.null,send_blocked_reason.like.post_approval_race*,send_blocked_reason.like.lint*')
-    .not('recipient_email', 'is', null)
+    .or('recipient_email.not.is.null,draft_evidence->>email_delivery_recipient.not.is.null')
     .order('created_at', { ascending: false })
     .limit(500)
   if (error) throw error
   const m = new Map<string, DraftEmailStamp>()
-  for (const r of (data ?? []) as { id: string; recipient_email: string | null; email_mirror_text: string | null; email_cc?: string[] | null }[]) {
-    if (r.recipient_email) m.set(r.id, { recipient_email: r.recipient_email, email_mirror_text: r.email_mirror_text, email_cc: r.email_cc ?? [] })
+  for (const r of (data ?? []) as { id: string; recipient_email: string | null; email_mirror_text: string | null; email_cc?: string[] | null; email_delivery_recipient?: string | null }[]) {
+    if (r.recipient_email || r.email_delivery_recipient) m.set(r.id, { recipient_email: r.recipient_email, email_mirror_text: r.email_mirror_text, email_cc: r.email_cc ?? [], email_delivery_recipient: r.email_delivery_recipient })
   }
   return m
 }
@@ -1380,6 +1382,21 @@ export async function saveDraftEmail(id: string, text: string): Promise<void> {
     .eq('id', id).is('sent_at', null).is('approved_at', null)
     .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*`)
   if (error) throw error
+}
+
+/** A saved delivery choice never approves a message or changes its copy. */
+export async function setDraftEmailDelivery(id: string, enabled: boolean): Promise<Pick<InboxMessage, 'recipient_email' | 'email_delivery_recipient' | 'draft_evidence' | 'email_cc'>> {
+  const { data: row, error: readError } = await supabase.from('outreach_messages')
+    .select('recipient_email,draft_evidence').eq('id', id).single()
+  if (readError) throw readError
+  if (!row) throw new Error('The draft changed. Refresh before approving.')
+  const { data, error } = await supabase.rpc('set_inbox_draft_email_delivery', {
+    p_message_id: id, p_enabled: enabled,
+    p_expected_evidence: row.draft_evidence ?? null, p_expected_recipient: row.recipient_email ?? null,
+  })
+  if (error) throw error
+  if (!data) throw new Error('The email choice was not saved. Refresh and try again.')
+  return data
 }
 
 /** Preserve evidence and fail closed if the draft or its evidence changed while editing. */
