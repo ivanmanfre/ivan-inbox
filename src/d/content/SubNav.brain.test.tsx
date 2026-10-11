@@ -6,10 +6,10 @@ import { SubNav, contentRedirect, subOf } from './SubNav'
 
 afterEach(cleanup)
 // Run 51: Content Brain is the first of five phone tabs; the places that left the daily row stay under More.
-it('puts Content Brain first in five phone tabs while More reaches sources and history', () => {
+it('puts Content Brain first in six phone tabs while More reaches sources and history', () => {
   renderInFrame(<SubNav on="results" lane="risedtc" />, { layout: 'phone' })
   const tabs = within(screen.getByRole('navigation', { name: 'Content places' })).getAllByRole('link')
-  expect(tabs).toHaveLength(5)
+  expect(tabs).toHaveLength(6)
   expect(tabs[0].textContent).toBe('Content Brain')
   expect(tabs[0].getAttribute('href')).toBe('#exp/d/content/brain?lane=risedtc')
   expect(tabs.some(a => a.textContent === 'Results')).toBe(false)

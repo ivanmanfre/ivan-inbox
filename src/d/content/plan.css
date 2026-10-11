@@ -1,0 +1,34 @@
+.cn-plan{padding:12px 16px 32px;min-width:0}
+.cn-plan-state{margin:0 0 12px;font-size:16px;font-weight:600;line-height:1.4}
+.cn-plan-state small{display:block;margin-top:4px;font-size:12px;font-weight:400;color:var(--t2)}
+.cn-plan-warn{list-style:none;margin:0 0 16px;padding:0;display:grid;gap:6px}
+.cn-plan-warn li{padding:10px 12px;border:1px solid var(--warn);border-radius:12px;color:var(--t1);font-size:13px;line-height:1.45}
+.cn-plan-week{margin:0 0 20px}
+.cn-plan-week h2{display:flex;justify-content:space-between;gap:8px;margin:0 0 8px;color:var(--t2);font:500 12px var(--m)}
+.cn-plan-week ul,.cn-plan-fold ul{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.cn-plan-card{display:flex;gap:12px;justify-content:space-between;border-bottom:1px solid var(--line);min-width:0}
+.cn-plan-card > a,.cn-plan-card > div:first-child{display:flex;flex-direction:column;gap:4px;padding:12px 0;min-width:0;flex:1;color:inherit;text-decoration:none;min-height:44px}
+.cn-plan-day{font:500 12px var(--m);color:var(--t2)}
+.cn-plan-topic{font-size:15px;font-weight:600;line-height:1.35;overflow-wrap:anywhere}
+.cn-plan-why{margin:0;font-size:13px;line-height:1.45;color:var(--t1)}
+.cn-plan-why small{display:block;color:var(--t2);font-size:12px}
+.cn-plan-ev{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;color:var(--t2);line-height:1.45}
+.cn-plan-ev li{overflow-wrap:anywhere}
+.cn-plan-ev q{display:block;font-style:italic}
+.cn-plan-ev-none{font-style:italic}
+.cn-plan-meta{font-size:12px;color:var(--t2)}
+.cn-plan-meta em{font-style:normal;color:var(--t1)}
+.cn-plan-proposal{box-shadow:inset 3px 0 var(--lime);padding-left:10px}
+.cn-plan-open .cn-plan-topic{color:var(--t2);font-weight:500}
+.cn-plan-acts{display:flex;flex-direction:column;justify-content:center;gap:8px;padding:12px 0}
+.cn-plan-acts a,.cn-plan-acts button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:transparent;color:inherit;font:inherit;font-size:13px;white-space:nowrap;text-decoration:none}
+.cn-plan-acts button{background:var(--lime);color:var(--ink);border-color:transparent}
+.cn-plan-acts button:disabled{opacity:.45}
+.cn-plan-fold{margin:0 0 12px}
+.cn-plan-fold > summary{min-height:44px;display:flex;align-items:center;font-size:14px;cursor:pointer}
+.cn-plan-pool li{display:flex;flex-direction:column;gap:2px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+.cn-plan-pool small{color:var(--t2);font-size:12px}
+.cn-plan-timely b{color:var(--t2)}
+.cn-plan-link{display:inline-flex;align-items:center;min-height:44px;font-size:13px;color:var(--t1)}
+.cn-plan-note{margin:8px 0;font-size:12px;color:var(--t2);line-height:1.45}
+@media(max-width:767px){.cn-plan-card{flex-direction:column;gap:0}.cn-plan-acts{flex-direction:row;padding:0 0 12px}}

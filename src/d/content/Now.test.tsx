@@ -34,7 +34,7 @@ describe('Content navigation', () => {
   it.each(['desktop', 'phone'] as const)('shows the generation flow and visible planning tools on %s', layout => {
     renderInFrame(<SubNav on="now" attention lane="arch" />, { layout })
     const nav = screen.getByRole('navigation', { name: 'Content places' })
-    expect([...nav.querySelectorAll('a')].map(a => a.textContent)).toEqual(['Content Brain', 'Calendar', 'Ideas', 'Review', 'Lead magnets'])
+    expect([...nav.querySelectorAll('a')].map(a => a.textContent)).toEqual(['Content Brain', 'Plan', 'Calendar', 'Ideas', 'Review', 'Lead magnets'])
     expect(screen.getAllByLabelText('Needs a tap').length).toBeGreaterThan(0)
     // Run 51: the planning row keeps only More; Strategy, the saved week and Outliers live there now.
     const tools = screen.getByRole('navigation', { name: 'Content planning' })

@@ -4,11 +4,11 @@ import { useFrame } from '../shell/frame'
 import { Sheet } from '../ui/Sheet'
 import type { Lane } from './model'
 
-export type Sub = 'calendar' | 'now' | 'ideas' | 'results' | 'strategy' | 'styles' | 'planner' | 'review' | 'inputs' | 'magnets' | 'errors' | 'queue' | 'markets' | 'brain'
+export type Sub = 'plan' | 'calendar' | 'now' | 'ideas' | 'results' | 'strategy' | 'styles' | 'planner' | 'review' | 'inputs' | 'magnets' | 'errors' | 'queue' | 'markets' | 'brain'
 // Run 51: Content Brain is the daily entry (drafts waiting, source beside each). Results, Strategy, the old
 // Content brain week and Outliers left the daily row; they stay one tap away under More and on the page.
-export const SUBS: readonly Sub[] = ['brain', 'calendar', 'ideas', 'now', 'magnets']
-export const SUB_LABEL: Record<Sub, string> = { calendar: 'Calendar', now: 'Review', ideas: 'Ideas', results: 'Results', strategy: 'Strategy', styles: 'Styles', planner: 'Planner', review: 'Review', inputs: 'Outliers', magnets: 'Lead magnets', errors: 'Errors', queue: 'Publish queue', markets: 'Outliers & Markets', brain: 'Content Brain' }
+export const SUBS: readonly Sub[] = ['brain', 'plan', 'calendar', 'ideas', 'now', 'magnets']
+export const SUB_LABEL: Record<Sub, string> = { plan: 'Plan', calendar: 'Calendar', now: 'Review', ideas: 'Ideas', results: 'Results', strategy: 'Strategy', styles: 'Styles', planner: 'Planner', review: 'Review', inputs: 'Outliers', magnets: 'Lead magnets', errors: 'Errors', queue: 'Publish queue', markets: 'Outliers & Markets', brain: 'Content Brain' }
 export const PLANNING: readonly { sub: Sub; section: string | null; label: string }[] = []
 /** The More sheet: every place that left the daily row, under the job it does. */
 const MORE: readonly { group: string; items: readonly { label: string; sub: Sub; q?: Record<string, string>; small?: string }[] }[] = [
@@ -32,13 +32,13 @@ export function subOf(s: string | null, query = new URLSearchParams()): Sub {
   if (!s) return query.has('magnet') ? 'magnets' : query.has('draft') || query.has('view') ? 'now' : 'calendar'
   if (s === 'markets') return 'inputs'
   if (s === 'planner' || s === 'queue') return 'calendar'
-  return s === 'brain' || s === 'calendar' || s === 'ideas' || s === 'results' || s === 'strategy' || s === 'styles' || s === 'inputs' || s === 'magnets' ? s : 'now'
+  return s === 'brain' || s === 'plan' || s === 'calendar' || s === 'ideas' || s === 'results' || s === 'strategy' || s === 'styles' || s === 'inputs' || s === 'magnets' ? s : 'now'
 }
 /** Old bookmarks keep their row/client identities and reach the corresponding review view. */
 export function contentRedirect(sub: string | null, query: URLSearchParams): string | null {
   // The old planner (a tab, then a "Planner →" link inside Review) is the Calendar now.
   if (sub === 'now' && query.get('view') === 'planner') { const q = new URLSearchParams(query); q.delete('view'); q.delete('from'); return dHash('content', 'calendar', q) }
-  if (sub === 'brain' || sub === 'calendar' || sub === 'now' || sub === 'ideas' || sub === 'results' || sub === 'strategy' || sub === 'styles' || sub === 'inputs' || sub === 'magnets') return null
+  if (sub === 'brain' || sub === 'plan' || sub === 'calendar' || sub === 'now' || sub === 'ideas' || sub === 'results' || sub === 'strategy' || sub === 'styles' || sub === 'inputs' || sub === 'magnets') return null
   const q = new URLSearchParams(query)
   if (sub === 'errors') q.set('view', 'posts')
   return dHash('content', subOf(sub, q), q)
