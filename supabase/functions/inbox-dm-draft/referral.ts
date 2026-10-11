@@ -10,13 +10,16 @@ export type ReferralDraft = {
   draft: string | null
   reason: string | null
   sources: ReferralSource[]
+  acknowledgement?: string | null
+  revision?: number
+  candidate?: { name: string; linkedin_url: string; summary: string | null; draft: string; sources: ReferralSource[] }
 }
 
 /** A cheap trigger only. The researcher must confirm a named human handoff. */
 export function referralCandidate(text: string): boolean {
   // The object must be someone other than the two people in the thread: "happy to check out",
   // "happy to connect" and "talk to you soon" are acceptances, never handoffs.
-  const handoffs = text.matchAll(/\b(?:(?:speak|talk|reach out|connect|check)\s+(?:to|with)|contact)\s+((?!(?:me|us|you|him|her|them)\b)\S+)/gi)
+  const handoffs = text.matchAll(/\b(?:(?:speak(?:ing)?|talk(?:ing)?|reach(?:ing)? out|connect(?:ing)?|check(?:ing)?)\s+(?:to|with)|contact(?:ing)?)\s+((?!(?:me|us|you|him|her|them)\b)\S+)/gi)
   for (const handoff of handoffs) {
     // An email address is handled by the reply's email leg and supplies no named person to research.
     if (!/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(handoff[1])) return true

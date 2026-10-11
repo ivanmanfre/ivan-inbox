@@ -60,9 +60,9 @@ Deno.serve(async req => {
       const inbound = conversation.filter(m => m.direction === 'inbound').at(-1)
       if (!inbound || !referralCandidate(inbound.message_text)) return respond({ referral: null })
       const cached = prospect.enrichment_data?.inbox_referral
-      if (!retryReferral && cached?.input_message_id === inbound.id) return respond({ referral: cached })
+      if (!retryReferral && cached?.input_message_id === inbound.id && cached?.revision === 2) return respond({ referral: cached })
       const context = conversation.map(m => ({ speaker: m.direction === 'inbound' ? rows[0].prospect_name : canon.author, text: m.message_text }))
-      const referral = await researchReferral(key, { id: inbound.id, text: inbound.message_text, company: rows[0].prospect_company }, canon.author, prompts, context)
+      const referral = await researchReferral(key, { id: inbound.id, text: inbound.message_text, company: rows[0].prospect_company, referrer: rows[0].prospect_name }, canon.author, prompts, context)
       const { data: fresh, error: freshError } = await sb.from('inbox_messages_v').select('id,message_text,sent_at,created_at,prospect_stage,prospect_blacklisted')
         .eq('prospect_id', id).eq('direction', 'inbound').order('created_at', { ascending: false }).limit(1)
       if (freshError) throw freshError

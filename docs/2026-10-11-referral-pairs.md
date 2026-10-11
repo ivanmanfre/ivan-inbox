@@ -1,0 +1,13 @@
+# Referral acknowledgements and researched DM drafts
+
+The inbox recognizes progressive handoff wording, including Ismail’s “Would you mind reaching out to Alicia Yang”. Opening the conversation researches the named contact. The card shows an acknowledgement to the original contact and a separate DM to the researched person. Use acknowledgement loads the existing composer and releases the internal question through the existing guarded operation. Sending still requires the operator’s Send action. The referred DM is reviewed/copied on LinkedIn; it does not create a prospect, approve a message, or enroll anyone.
+
+When a cited profile establishes the company but carries a different surname, the result stays unresolved. A same-first-name candidate may carry a proposed DM, with the mismatch visible and the profile linked for operator identity review. Uncited, wrong-company, or different-first-name profiles never become candidates. The acknowledgement survives an unresolved profile or a search failure. Current client rules govern the new DM; a UGC remit does not establish ARCH’s UGC production capability.
+
+For Ismail’s conversation, LinkedIn company-filtered search returned Alicia Yingru WANG, UGC Manager at MWM. Direct LinkedIn profile retrieval corroborated that headline, and https://fr.linkedin.com/in/wang-alicia-yingru corroborates MWM. Ismail wrote Alicia Yang. Both drafts were saved in enrichment with the name mismatch explicitly unresolved. Before/after reads verified every message ID, approval and sent timestamp was unchanged, and other enrichment keys were preserved by an atomic JSON merge.
+
+Validation: 80 focused tests passed in the release checkout, Deno type checking passed, and the production build passed. The actual card was exercised at 1280px and 375px. Drafts fit their textareas, there was no horizontal overflow, and primary actions were 44px tall.
+
+The full source-checkout suite passed 340 files and failed 10. Five database suites passed on rerun with two workers: inboxNotificationLifecycle.pglite.test.ts, inboxOnDemandApproval.test.ts, dmSchedule.test.ts, inboxPipelineApproval.test.ts and outreachPerf.pglite.test.ts (56 tests). Existing editorial failures remained: editorialImport.pglite.test.ts, editorialNativeBridge.pglite.test.ts and editorialSelection.test.ts lacked fixtures; editorialGenerationRoutes.test.ts lacked generation artifacts; editorialRefresh.pglite.test.ts failed its existing transaction case. These files were unchanged.
+
+The release checkout starts from the latest remote main, preserving newer v4 thread layout and on-demand-drafting changes. Fable’s advisory attempt failed with repeated API errors; the send path and approval boundaries were checked directly.

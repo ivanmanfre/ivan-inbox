@@ -12,6 +12,18 @@ const thread = () => threads([msg({ id: 'handoff', prospect_id: 'mallory', prosp
 
 beforeEach(() => { cleanup(); vi.clearAllMocks(); vi.stubGlobal('fetch', fetch); window.fetch = fetch })
 describe('referral card', () => {
+  it('shows Ismail’s acknowledgement even while Alicia’s profile is unresolved', async () => {
+    const t = thread(); t.prospect_name = 'Ismail Görkem Yeni'; t.client_id = 'arch'
+    t.messages[0].message_text = 'Would you mind reaching out to Alicia Yang, she is running the UGC marketing on our side.'
+    const acknowledgement = "Thanks Ismail, I'll reach out to Alicia."
+    fetch.mockResolvedValue({ ok: true, json: async () => ({ referral: { ...referral, status: 'unresolved', name: 'Alicia Yang', draft: null, linkedin_url: null, acknowledgement, reason: 'Profile could not be verified.' } }) })
+    const useAcknowledgement = vi.fn()
+    render(<ReferralCard t={t} onUseAcknowledgement={useAcknowledgement} />)
+    expect(await screen.findByRole('textbox', { name: 'Acknowledgement draft for Ismail Görkem Yeni' })).toHaveValue(acknowledgement)
+    fireEvent.click(screen.getByRole('button', { name: 'Use acknowledgement' }))
+    expect(useAcknowledgement).toHaveBeenCalledWith(acknowledgement)
+    expect(screen.queryByRole('link', { name: 'Open LinkedIn profile' })).not.toBeInTheDocument()
+  })
   it('automatically researches a named handoff and keeps its DM addressed to Ben', async () => {
     fetch.mockResolvedValue({ ok: true, json: async () => ({ referral }) })
     render(<ReferralCard t={thread()} />)
@@ -28,6 +40,14 @@ describe('referral card', () => {
     expect(await screen.findByText('Several Ben Pattons match.')).toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Open LinkedIn profile' })).not.toBeInTheDocument()
+  })
+  it('shows a researched candidate as tentative with a draft for review', async () => {
+    fetch.mockResolvedValue({ ok: true, json: async () => ({ referral: { ...referral, status: 'unresolved', draft: null, linkedin_url: null, reason: 'The surname differs. Check the contact.', candidate: { name: 'Alicia Yingru WANG', linkedin_url: 'https://www.linkedin.com/in/wang-alicia-yingru', summary: 'UGC Manager at MWM.', draft: 'Hey Alicia, Ismail said you handle UGC marketing at MWM. Would you be open to discussing your creator campaigns?', sources: [] } } }) })
+    render(<ReferralCard t={thread()} />)
+    expect((await screen.findByRole('textbox', { name: 'DM draft for Alicia Yingru WANG' }) as HTMLTextAreaElement).value).toContain('Hey Alicia')
+    expect(screen.getByText('Possible match: Alicia Yingru WANG')).toBeInTheDocument()
+    expect(screen.getByText('The surname differs. Check the contact.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^send/i })).not.toBeInTheDocument()
   })
   it('offers a retry when search fails', async () => {
     fetch.mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'Research timed out.' }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ referral }) })

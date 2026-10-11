@@ -262,7 +262,11 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
           onForwardEmail={['arch', 'risedtc'].includes(t.client_id) && !busy ? setForwardEmail : undefined} />
         {draftRunning && <div className="dm-b dm-b-in dx-typing" aria-hidden="true"><div className="dm-b-body"><i /><i /><i /></div></div>}
         <Banners v4 t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
-        <ReferralCard key={t.prospect_id} t={t} />
+        <ReferralCard key={t.prospect_id} t={t} onUseAcknowledgement={text => {
+          setReply(text)
+          if (t.ownerConfirmation) void verbs.holdRelease(t)
+          dock.current?.querySelector('textarea')?.focus()
+        }} />
         <Draft v4 t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload}
           strips={<DraftStrips t={t} verbs={verbs} />}
           foot={t.draft && <DraftWhy v4 t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
@@ -298,7 +302,11 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         <History onSendAnyways={m => void sendAnyways(m)} sending={busy} t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} onReplyEmail={canComposeEmail(t) && !t.spam && (!t.ownerConfirmation || manualReply) && !busy ? openEmailReply : undefined}
           onForwardEmail={['arch', 'risedtc'].includes(t.client_id) && !busy ? setForwardEmail : undefined} />
         <Banners t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
-        <ReferralCard key={t.prospect_id} t={t} />
+        <ReferralCard key={t.prospect_id} t={t} onUseAcknowledgement={text => {
+          setReply(text)
+          if (t.ownerConfirmation) void verbs.holdRelease(t)
+          dock.current?.querySelector('textarea')?.focus()
+        }} />
         <Draft t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
         {t.draft && <DraftWhy t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
         <RestoreStrip t={t} verbs={verbs} />
