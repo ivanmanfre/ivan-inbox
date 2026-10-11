@@ -1,0 +1,13 @@
+# ARCH referral records and inbox handoff, 2026-10-12
+
+A named referral with a linked lead shows the acknowledgement and a link in the referrer’s conversation. The referred person’s connection note, InMail, email, research and conditional follow-up appear in that person’s own conversation. An explicitly created referral lead remains reachable after an outbound-only first touch. Actual sent introductions lose their repeat-copy action.
+
+Alicia’s lead: 5913d09d-5112-403f-b8c5-dcae3ff8caf0, ARCH campaign 1a2701a0-931b-4949-95fb-9bbf2de16f09. Researched profile name Alicia Yingru WANG; Ismail originally named Alicia Yang. The operator selected the researched profile by attempting an InMail through the inbox. Recipient email remains unknown.
+
+The InMail transiently carried approved/sent timestamps, then the sender reverted it to arch_qualification_review. No confirmed delivery remains in the database at verification. Its history is preserved, and no resend was attempted. New draft inserts explicitly leave sent_at and approved_at null. The initial database default stamped unsent drafts as sent; these timestamps and the derived last_dm_sent_at were corrected before final verification.
+
+A lead-specific pg_cron check runs every 15 minutes. It watches the first actual outbound send, then releases one short follow-up for operator review after three days. A reply on any channel or a closed lead cancels pending touches. Connection acceptance changes the follow-up from InMail to DM. The job does not grant approval or call a sender. It unschedules itself after cancellation or release. Current state waits for the first confirmed send. Source and branch checks: workspace out/arch-mwm-referral-2026-10-12/conditional-followup.sql and /tmp/arch-alicia-followup-tests.sql.
+
+Lucy’s greeting draft was replaced by one US/EU creator-campaign question, preserving the old text and brief as operator revision evidence. The older greeting-only instruction now explicitly defers to the newer friendly-first-reply rule. An independent audit passed the scoped amendment with no new capability, budget or market claims. No messages sent by this task.
+
+Validation: failing regression tests reproduced duplicate referrer copy, repeated acknowledgement after a real reply, and referral lead disappearing after first outbound. Focused inbox/referral tests pass. Build and changed-file lint pass. Live SQL temporary-table branch checks pass for no initial send, three-day timing, reply cancellation, unapproved/idempotent review release and connected DM routing. Component inspected at desktop and 375px: no horizontal overflow, 16px mobile draft text, 44px copy targets.

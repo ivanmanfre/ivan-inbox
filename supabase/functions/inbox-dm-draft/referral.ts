@@ -12,6 +12,7 @@ export type ReferralDraft = {
   sources: ReferralSource[]
   acknowledgement?: string | null
   revision?: number
+  lead_prospect_id?: string
   candidate?: { name: string; linkedin_url: string; summary: string | null; draft: string; sources: ReferralSource[] }
 }
 
