@@ -5,7 +5,9 @@ import { cameBackRowLine, firstComment, sentLine, type CameBackCard } from '../.
 import { agentCardsWithoutWarmCards, type ConversationAgentCard } from '../../wb/dms/conversationAgentData'
 import { WARM_GROUPS, dm1Deliverable, evidenceLine, inviteLine, isWaiting, primaryAction, warmGroup, type WarmCard } from '../../wb/dms/warmSignalsData'
 import { type Seat } from '../seats'
-import { ago, needsCount, seatThreads, type SeatView } from './model'
+import { ago, firstLine, needsCount, seatThreads, type SeatView } from './model'
+import { scheduleHeld, SCHEDULE_REVIEW } from '../../lib/dmSchedule'
+import { sendTimeLabel } from '../../lib/dmScheduleTime'
 import { laterItems } from './later'
 import { Btn } from '../ui/Key'
 import { Quiet, Row, Sec } from './Row'
@@ -99,6 +101,16 @@ export function ColumnBody(p: ColumnProps) {
     ...v.nodraft.map(t => <NoDraftRow key={t.prospect_id} t={t} c={c} />),
   ]
   const emailOwed = v.emailOwed.length
+  const scheduled = seatSent.flatMap(t => {
+    const m = t.messages.find(m => scheduleHeld(m.send_blocked_reason) && !m.sent_at && !m.approved_at)
+    return m ? [{ t, m, plan: m.draft_evidence?.scheduled_send }] : []
+  }).sort((a, b) => (a.plan?.at ?? '').localeCompare(b.plan?.at ?? ''))
+  const scheduledSection = scheduled.length > 0 && <div data-d-scheduled>
+    <Section id="scheduled" label="Scheduled" n={scheduled.length} folds={folds}
+      rows={scheduled.map(({ t, m, plan }) => <Row key={t.prospect_id} v4={c.v4} id={t.prospect_id} name={t.prospect_name} company={t.prospect_company}
+        line={firstLine(m.message_text)} note={m.send_blocked_reason === SCHEDULE_REVIEW ? 'Paused: conversation changed. Open to review.' : plan ? sendTimeLabel(plan.at, plan.timezone) : 'Send time unavailable. Open to refresh.'}
+        selected={c.selected === t.prospect_id} onOpen={() => c.open(t)} />)} />
+  </div>
   const staleKey = p.stale.length > 0 ? (
     <Btn danger verb="discard-stale" disabled={c.busy === `stale:${seat}`} onClick={() => { c.setBusy(`stale:${seat}`); void c.verbs.discardStale(p.stale).finally(() => c.setBusy(null)) }}>{c.busy === `stale:${seat}` ? 'Discarding…' : 'Discard stale'}</Btn>
   ) : null
@@ -118,6 +130,7 @@ export function ColumnBody(p: ColumnProps) {
       ...v.nodraft.map(t => <NoDraftRow key={t.prospect_id} t={t} c={c} />),
     ]
     return <>
+      {scheduledSection}
       <Section id="needs" label="Needs you" n={needsCount(v)} folds={folds} rows={needsV4}
         before={staleKey && (
           <div className="dm-stale dx-strip" role="note">
@@ -146,6 +159,7 @@ export function ColumnBody(p: ColumnProps) {
     </>
   }
   return <>
+    {scheduledSection}
     {p.stale.length > 0 && (
       <div className="dm-stale" role="note">
         <span>{p.stale.length} draft{p.stale.length === 1 ? '' : 's'} where you already replied</span>

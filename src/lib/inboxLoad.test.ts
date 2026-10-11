@@ -24,7 +24,17 @@ vi.mock('./inbox', async () => {
   }
 })
 vi.mock('./supabase', () => ({ supabase: { rpc: async () => h.priorityRows ? { data: h.priorityRows, error: null } : { data: null, error: { code: 'PGRST202' } } } }))
-import { loadInbox } from './inboxLoad'
+import { assembleInbox, loadInbox } from './inboxLoad'
+import { msg } from '../d/dms/fixtures'
+
+it('loads the scheduled time for a held message even though it is not a draft', async () => {
+  const evidence = { scheduled_send: { at: '2026-10-12T07:00:00Z', timezone: 'Europe/Warsaw', state: 'scheduled' } }
+  const spy = vi.spyOn(await import('./inbox'), 'fetchDraftEvidence').mockImplementation(async ids =>
+    new Map(ids.includes('scheduled') ? [['scheduled', evidence]] : []))
+  const result = await assembleInbox([msg({ id: 'scheduled', prospect_id: 'jonathan', send_blocked_at: '2026-10-11T21:26:00Z', send_blocked_reason: 'scheduled_in_inbox' })])
+  expect(result.threads[0].messages[0].draft_evidence).toEqual(evidence)
+  spy.mockRestore()
+})
 
 describe('loadInbox early paint', () => {
   beforeEach(() => { h.probes = 0; h.order = []; h.slowEarly = false; h.priorityRows = null })

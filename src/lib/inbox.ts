@@ -1159,6 +1159,7 @@ export type DraftContextGap = { question: string | null; why: string | null; cha
 export type DraftEvidenceFact = { id: string; fact: string; topic: string; at: string; from: string | null }
 export type DraftEvidenceExemplar = { they: string | null; reply: string | null; at: string | null; prospect: string | null }
 export type DraftEvidence = {
+  scheduled_send?: { at: string; timezone: string; state?: string }
   email_cc?: string[] | null
   email_delivery_recipient?: string | null
   // Stall Bump (2026-09-24): the prospect opened the scan on this many distinct days and has not

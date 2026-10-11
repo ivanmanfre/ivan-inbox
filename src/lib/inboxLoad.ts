@@ -1,5 +1,6 @@
 import { withTimeout } from '../d/ui/timeout'
 import { supabase } from './supabase'
+import { scheduleHeld } from './dmSchedule'
 import { fetchDraftContextGaps, fetchDraftEmailStamps, fetchEmailRecipients, fetchDraftEvidence, fetchManualReplyIds, fetchMessages, groupThreads, type DraftContextGap, type DraftEmailStamp, type InboxMessage, type Thread } from './inbox'
 
 /**
@@ -59,8 +60,10 @@ export async function assembleInbox(viewRows: readonly InboxMessage[], probes?: 
   const [manualReplyIds, emailStamps, emailTo] = await (probes ?? sideProbes())
   const draftIds = groupThreads(rows, manualReplyIds).flatMap(t =>
     [t.draft, t.companionDraft, t.ownerConfirmation].flatMap(m => m ? [m.id] : []))
+  // Scheduled messages are held, not drafts, but their exact send time belongs in the list.
+  const scheduledIds = rows.filter(m => scheduleHeld(m.send_blocked_reason) && !m.sent_at && !m.approved_at).map(m => m.id)
   const [evidence, contextGaps] = await Promise.all([
-    fetchDraftEvidence(draftIds).catch(() => null),
+    fetchDraftEvidence([...draftIds, ...scheduledIds]).catch(() => null),
     fetchDraftContextGaps(draftIds).catch(() => new Map<string, DraftContextGap>()),
   ])
   const pendingIds = new Set(draftIds)
