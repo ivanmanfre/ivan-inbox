@@ -22,6 +22,7 @@ import { PhoneWall } from './PhoneWall'
 import { Unpublish } from './Unpublish'
 import { Wall } from './Wall'
 import type { ContentData } from './useContentData'
+import { useXDays, XMarks } from './xDays'
 import './calendar.css'
 import './phone-ox-cal.css'
 import { coverageOf } from './v2/coverage'
@@ -88,6 +89,7 @@ function spring(from: number, to: number, set: (v: number) => void, done: () => 
 }
 
 export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMove, onArm, onDay, onChanged, v2 = false, wide = true }: CalendarProps) {
+  const xDays = useXDays()
   const confirm = useDConfirm()
   const toast = useToast()
   // Desktop "All" opens on the lines wall; a single client, and every phone, opens on the month.
@@ -330,7 +332,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
                     const cls = ['cal-day', inMonth.has(k) ? '' : 'out', k === todayKey ? 'today' : '', k === day ? 'sel' : '', k < todayKey ? 'past' : '', !on.length && nextWeek.has(k) ? 'cv2-gapday' : '', k === riseLine ? 'cv2-riseline' : ''].filter(Boolean).join(' ')
                     return (
                       <div key={k} className={cls} data-cal-day={k} data-cal-lane={laneBound} onClick={() => setSel(k)} title={k === riseLine ? `${dayLabel(k)} · Mattan’s two-week line` : dayLabel(k)}>
-                        <span className="cal-dn">{Number(k.slice(8))}</span>
+                        <span className="cal-dn">{Number(k.slice(8))}<XMarks items={xDays.get(k)} time={!phone} /></span>
                         {on.slice(0, 3).map(e => <Chip key={e.it.id} e={e} phone={phone} onOpen={onOpen} />)}
                         {on.length > 3 && <span className="cal-more">+{on.length - 3}</span>}
                       </div>
@@ -338,8 +340,8 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
                   })}
                 </div>
               ) : phone
-                ? <PhoneWall data={data} items={items} days={lineDays} stuck={null} onOpen={onOpen} onMove={onMove} onArm={onArm} now={now} lanes={lanes} />
-                : <WallV2 data={data} items={items} days={lineDays} entryOf={(l, k) => (days.get(k) ?? []).filter(e => e.lane === l)} cov={cov} lanes={lanes} now={now} today={todayKey} a={acts} onDay={onDay} />}
+                ? <PhoneWall xDays={xDays} data={data} items={items} days={lineDays} stuck={null} onOpen={onOpen} onMove={onMove} onArm={onArm} now={now} lanes={lanes} />
+                : <WallV2 xDays={xDays} data={data} items={items} days={lineDays} entryOf={(l, k) => (days.get(k) ?? []).filter(e => e.lane === l)} cov={cov} lanes={lanes} now={now} today={todayKey} a={acts} onDay={onDay} />}
             </div>
           </div>
           {(view === 'month' || phone) && (
@@ -392,7 +394,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
                   const cls = ['cal-day', inMonth.has(k) ? '' : 'out', k === todayKey ? 'today' : '', k === day ? 'sel' : '', k < todayKey ? 'past' : ''].filter(Boolean).join(' ')
                   return (
                     <div key={k} className={cls} data-cal-day={k} data-cal-lane={laneBound} onClick={() => setSel(k)} title={dayLabel(k)}>
-                      <span className="cal-dn">{Number(k.slice(8))}</span>
+                      <span className="cal-dn">{Number(k.slice(8))}<XMarks items={xDays.get(k)} time={!phone} /></span>
                       {on.slice(0, vis).map(e => <Chip key={e.it.id} e={e} phone={phone} onOpen={onOpen} />)}
                       {on.length > vis && <span className="cal-more">+{on.length - vis}</span>}
                     </div>
@@ -400,7 +402,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
                 })}
               </div>
             ) : phone
-              ? <PhoneWall data={data} items={items} days={lineDays} stuck={null} onOpen={onOpen} onMove={onMove} onArm={onArm} now={now} lanes={lanesOf(pick)} />
+              ? <PhoneWall xDays={xDays} data={data} items={items} days={lineDays} stuck={null} onOpen={onOpen} onMove={onMove} onArm={onArm} now={now} lanes={lanesOf(pick)} />
               : <Wall data={data} items={items} days={lineDays} stuck={null} onOpen={onOpen} onMove={onMove} onArm={onArm} onDay={onDay} now={now} lanes={lanesOf(pick)} />}
           </div>
         </div>

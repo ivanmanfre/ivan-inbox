@@ -137,3 +137,12 @@ export function xWaitingCount(l: XReviewList | null): number {
   if (!l) return 0
   return l.articles.filter(a => a.status === 'review').length + l.quotes.filter(q => q.status === 'draft').length
 }
+
+/** An X article with a day on the content calendar: scheduled, going out, out, or failed. */
+export type XCalendarItem = { id: string; title: string | null; status: XArticleStatus; x_url: string | null; at: string }
+
+export async function fetchXCalendar(from: Date, to: Date): Promise<XCalendarItem[]> {
+  const { data, error } = await supabase.rpc('x_calendar', { p_from: from.toISOString(), p_to: to.toISOString() })
+  if (error) fail(error)
+  return (data as XCalendarItem[] | null) ?? []
+}

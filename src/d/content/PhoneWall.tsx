@@ -1,5 +1,6 @@
 import { Unpublish } from './Unpublish'
 import { Fragment } from 'react'
+import { XMarks, type XDays } from './xDays'
 import { warsawDm, warsawDow } from '../ui/time'
 import { FEED, LANES, LANE_NAME, nextScheduled, publishedCount, scheduledIn, type Lane, type WallDay } from './model'
 import { cellOrder, weekendAfter, type PlanItem } from './planModel'
@@ -10,7 +11,8 @@ import type { ContentData } from './useContentData'
 // strip of every dated card in the two weeks (weekends and a second post on a
 // day included; published and queue-only posts drawn as on the wall). Tap =
 // open; Move and Arm it sit under each card, never hover.
-export function PhoneWall({ data, items, days, stuck, onOpen, onMove, onArm, now, lanes = LANES }: {
+export function PhoneWall({ data, items, days, stuck, onOpen, onMove, onArm, now, lanes = LANES, xDays }: {
+  xDays?: XDays
   data: ContentData; items: Record<Lane, Map<string, PlanItem[]>>; days: WallDay[]; stuck: string | null
   onOpen: WallProps['onOpen']; onMove: WallProps['onMove']; onArm: WallProps['onArm']; now?: number; lanes?: readonly Lane[]
 }) {
@@ -20,7 +22,7 @@ export function PhoneWall({ data, items, days, stuck, onOpen, onMove, onArm, now
     <>
       <div className="cn-rib" aria-label="Two weeks by seat">
         <span />
-        {days.map((d, i) => <Fragment key={d.key}>{gap(i)}<div className="cn-h"><b>{d.dow[0]}</b>{d.n}</div></Fragment>)}
+        {days.map((d, i) => <Fragment key={d.key}>{gap(i)}<div className="cn-h"><b>{d.dow[0]}</b>{d.n}<XMarks items={xDays?.get(d.key)} time={false} /></div></Fragment>)}
         {lanes.map(l => (
           <Fragment key={l}>
             <div className="cn-f">{LANE_NAME[l]}</div>

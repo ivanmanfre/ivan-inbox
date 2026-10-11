@@ -6,6 +6,7 @@ import type { Entry, Loose, Magnet } from '../calModel'
 import { LANES, LANE_NAME, dayLabel, scheduledIn, splitTitleTag, timeLine, type Lane, type WallDay } from '../model'
 import { weekendAfter, type PlanItem } from '../planModel'
 import { Unpublish } from '../Unpublish'
+import { XMarks, type XDays } from '../xDays'
 import type { ContentData } from '../useContentData'
 import type { Coverage } from './coverage'
 import { LinkedInCard } from './LinkedInCard'
@@ -148,7 +149,8 @@ export function CoverageBar({ cov, lanes, loaded, phone = false }: { cov: Covera
 }
 
 /** The Lines wall: seats down the side, a week (narrow) or two (wide) across; the day engine is today's. */
-export function WallV2({ data, items, days, entryOf, cov, lanes, now, today, a, onDay }: {
+export function WallV2({ data, items, days, entryOf, cov, lanes, now, today, a, onDay, xDays }: {
+  xDays?: XDays
   data: ContentData
   items: Record<Lane, Map<string, PlanItem[]>>
   days: WallDay[]
@@ -172,7 +174,7 @@ export function WallV2({ data, items, days, entryOf, cov, lanes, now, today, a, 
   return (
     <div className="cv2-wall" style={style} role="group" aria-label="Posts by seat and day">
       <div className="cv2-wh" />
-      {days.map((d, i) => <Fragment key={d.key}>{gap(i)}<div className={`cv2-wh${d.key === today ? ' cv2-tod' : ''}${isWe(d) ? ' cv2-we' : ''}`} data-cal-day={d.key}>{d.key === today ? <><em>Today</em> {d.n}</> : <><b>{d.dow}</b> {d.n}</>}</div></Fragment>)}
+      {days.map((d, i) => <Fragment key={d.key}>{gap(i)}<div className={`cv2-wh${d.key === today ? ' cv2-tod' : ''}${isWe(d) ? ' cv2-we' : ''}`} data-cal-day={d.key}>{d.key === today ? <><em>Today</em> {d.n}</> : <><b>{d.dow}</b> {d.n}</>}<XMarks items={xDays?.get(d.key)} time={false} /></div></Fragment>)}
       {lanes.map(lane => {
         const s = data.seats[lane]
         const gaps = new Set(s.loadedAt ? cov.seats[lane].gaps : [])
