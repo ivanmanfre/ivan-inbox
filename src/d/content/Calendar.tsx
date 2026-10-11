@@ -311,7 +311,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
       <section ref={root} className={`cal cv2 cv2-cal${phone ? ' cal-phone' : ''} cal-${view}${week5 ? ' cv2-week5' : ''}`} aria-label="Content calendar" data-cv2="calendar">
         <header className="cv2-bar cv2-cal-bar">
           <Seg label="Client" verb="cal-pick" value={pick} onChange={id => choose(id as Pick)} options={PICKS.map(p => ({ id: p, label: p === 'all' ? 'All' : <><SeatAv lane={p} />{PICK_NAME[p]}</> }))} />
-          <Seg label="View" verb="cal-view" size="sm" value={view} onChange={id => setView(id as View)} options={[{ id: 'month', label: 'Month', title: 'M' }, { id: 'lines', label: 'By client', title: 'L' }]} />
+          <Seg label="View" verb="cal-view" size="sm" value={view} onChange={id => setView(id as View)} options={[{ id: 'month', label: 'Month', title: 'M' }, { id: 'lines', label: '2 weeks', title: 'L' }]} />
           <span className="cv2-grow" />
           <div className="cv2-calnav">
             <button type="button" data-cal-page="-1" data-verb="cal-prev" aria-label={view === 'month' ? 'Previous month' : week5 ? 'Previous week' : 'Previous two weeks'} onClick={() => page(-1)}>‹</button>
@@ -372,7 +372,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
         </div>
         <div className="cal-seg cal-views" role="tablist" aria-label="View">
           <button type="button" role="tab" aria-selected={view === 'month'} className={view === 'month' ? 'on' : ''} onClick={() => setView('month')}>Month</button>
-          <button type="button" role="tab" aria-selected={view === 'lines'} className={view === 'lines' ? 'on' : ''} onClick={() => setView('lines')}>By client</button>
+          <button type="button" role="tab" aria-selected={view === 'lines'} className={view === 'lines' ? 'on' : ''} onClick={() => setView('lines')}>2 weeks</button>
         </div>
         <div className="cal-nav">
           <button type="button" data-cal-page="-1" data-verb="cal-prev" aria-label={view === 'month' ? 'Previous month' : 'Previous two weeks'} onClick={() => page(-1)}>‹</button>

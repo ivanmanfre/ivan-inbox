@@ -10,15 +10,17 @@ import { LANES, imgOf, titleOf, type Lane } from './model'
 import { cellOrder, type PlanItem } from './planModel'
 
 export type Pick = 'all' | Lane
-export const PICKS: readonly Pick[] = ['all', ...LANES]
-export const isPick = (s: string | null | undefined): s is Pick => s === 'all' || s === 'ivan' || s === 'risedtc' || s === 'arch'
+// No "All" in the switch (Ivan 2026-10-11: "a calendar view with all clients together makes no
+// sense"). One client at a time; a remembered or linked 'all' opens on Ivan.
+export const PICKS: readonly Pick[] = [...LANES]
+export const isPick = (s: string | null | undefined): s is Pick => s === 'ivan' || s === 'risedtc' || s === 'arch'
 export const lanesOf = (p: Pick): Lane[] => (p === 'all' ? [...LANES] : [p])
 /** The calendar's client switch, remembered on this device. */
 export const PICK_KEY = 'd-cal-pick'
 export function savedPick(): Pick {
   let v: string | null = null
   try { v = localStorage.getItem(PICK_KEY) } catch { /* private mode */ }
-  return isPick(v) ? v : 'all'
+  return isPick(v) ? v : 'ivan'
 }
 
 export type Dot = 'posted' | 'set' | 'planned' | 'review' | 'stuck' | 'queue'
