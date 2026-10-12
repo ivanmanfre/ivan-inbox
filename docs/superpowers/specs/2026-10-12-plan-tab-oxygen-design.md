@@ -1,7 +1,8 @@
 # Content > Plan tab: Oxygen redesign with content brain data
 
-Date: 2026-10-12. Status: design, waiting for Ivan's approval. Mockup (real data, interactive):
-`/Users/ivanmanfredi/Desktop/Ivan - Content System/research/plan-section-2026-10-11/plan-oxygen-mockup-2026-10-12.html`
+Date: 2026-10-12. Status: revision 2 after a full content brain audit and an adversarial review; waiting for Ivan's approval.
+Mockup v2 (real data, interactive): `/Users/ivanmanfredi/Desktop/Ivan - Content System/research/plan-section-2026-10-11/plan-oxygen-mockup-v2-2026-10-12.html`
+Audit outputs: `~/.local/state/offfix/brain-audit/` (q01-q19), review notes: `~/.local/state/offfix/review/plan-oxygen-review-2026-10-12.md`.
 
 ## 1. What Ivan asked for
 
@@ -120,3 +121,53 @@ Reuse: `Seg`, `SeatAv`, `Pill`, `Menu`, `.cv2-k` keys, `Sheet`, `useToast`, `Ske
 2. Plan UI rebuild (Weeks, List, hover, panel, Move day) behind the existing tab.
 3. New-plan alert.
 Each phase ships alone, verified on the live app before the next.
+
+
+## Revision 2 (12 Oct, after the brain audit and the adversarial review). Supersedes sections 3-6 where they differ.
+
+### R2.1 Plan level
+- Answer line counts from today, this week included: "8 posts wait for your OK", then one line "2 this week · 6 later · 4 scheduled · 1 failed". No duplicate figure.
+- Brain strip, four tiles, per account:
+  1. Rules the writer follows: live `brain_rules` with effect and post count (Ivan: no link -13%, fewer posts a week -9%, weekdays -6%, 50-word floor; Rise: no hashtags -25%; Arch: none proven yet).
+  2. Being tested, not applied yet: shadow rules with effect (images +54% Rise, weekends -19% Rise, carousels +51% Ivan).
+  3. Early reads: "9 of 9 checked on recent posts" (Ivan: "0 of 8, not confirmed yet").
+  4. Last 90 days: typical views (Rise 253, Ivan 166, Arch 665) and breakouts (Rise 10 of 63).
+  Test rows (`zz-selftest-*`) are filtered out.
+- Warnings in plain words with a fix link: "No ideas left for posts that sell (3 in 8 weeks) · Add ideas"; "No lead magnet in the week of 26 Oct. Peer Scan is ready and waits for your launch".
+- Week header: name, range, fill meter, n of target, and the week's mix ("3 from calls · 1 founder story · 1 lead magnet · 2 adapted from niche winners"). This is the week-level "why this week".
+- Weekend columns appear only when a post sits there. "Open slot" only for real open slots; Arch's non-posting days stay blank.
+- Planner run time shows only when the planner is late (no run in 26 hours).
+
+### R2.2 Card face
+Status word, time with zone ("07:00 PT", "10:45 Warsaw"), photo thumbnail when the post has one, title, the one-line reason when there is no thumbnail, and flags only for exceptions: lead magnet, boosted, founder story, carousel, failed (red), under the quality bar (amber, a post that went to Review below the pass line). "Check passed", audience and topic chips are removed from the face. History ("failed once, then passed") lives in the panel only.
+
+### R2.3 Hover (desktop)
+Why this post, the English call quote, why it should work (the niche trait the brain matched), the brain read in one sentence with its reliability, the quality check result, and for published posts the result vs the typical post.
+
+### R2.4 Detail panel: the seven questions
+1. Why this post: the pick reason (slot `why_now`, the brain pick reason with the source author's name and ratio, the series or lead magnet reason), the source, the English call quote.
+2. Why this week: the slot reason when it differs from 1, else the week mix.
+3. Why this day: real date and time with zone plus the weekday rule and its effect ("Weekdays only: weekend posts do 19% worse for Rise creators, still being tested"); a planned slot says "No day yet. It takes the first free weekday of its week when you approve it."
+4. Why this angle: structure and opener in plain words with the structure reason ("A side-by-side comparison that opens with a number. His path vs the typical path, on hours, dollars, loans."), the matched niche trait, the borrowed shape.
+5. Is it good: the full check story from `agent_log` ("First draft 60 of 80. Rewritten once: 63 of 80, passed (pass line 59)" or "55 of 80 after one rewrite, under the pass line. It went to Review anyway and was approved by hand"), claim check ("8 of 8 claims traced back to the call"), and the eight scores as small bars with the weakest one marked.
+6. Will it work: "Posts proved with a result in numbers break out 1.2x less often than usual in Rise's niche (3.8% vs 4.5%, 902 posts)" on a scale from half as often to 2x as often with usual in the middle; reliability ("Checked on recent posts", "small sample", "Not confirmed on recent posts yet"); reads within 10% of usual say "about usual" with no scale; then "Helps it / Holds it back" (top recipe contributions, validated accounts only). "No early read yet" when missing.
+7. How it did (published): views vs the typical post, reactions, comments, breakout flag.
+Then the first lines, and keys: Read and approve (waiting), Open draft, Move day, or Open on LinkedIn (published).
+
+### R2.5 Words
+Every brain label is translated before display (topic, proof, angle, stakes, structure, opener, QA dimensions, recipe drivers). Buyer fit replaces ICP; "for new followers" replaces reach; "posts that sell" replaces demand. Call quotes show only in English; db/259 stores an English version of non-English quotes (one proxy call per idea, cached on `client_ideas`). The planner's own notes are never shown as quotes.
+
+### R2.6 Data to add (db/259) and to start recording
+Add to `content_plan_week` per item: the check story (first score, rewrite score, pass line, outcome, the eight scores), claim check counts, structure, opener and structure reason, the matched niche trait, the read (rate, usual, posts, reliability, small sample), recipe drivers (validated only), the brain pick reason with author name and ratio, thumbnail URL, time zone, English quote, published result vs median and breakout flag. Plan level: live and shadow rules, read reliability counts, median views, breakout count.
+Start recording what is stored nowhere today:
+- Planner: the full candidate list with ranks and the reason per skipped candidate (`content_plan_runs.outcome.candidates[]` and `skipped[]`), instead of a 200-character note.
+- Ranker snapshot on the slot at pick time (rank, proof, pattern read).
+- Ivan photo assigner reason (the model returns it, `ivan_photo_assign_v1` drops it).
+- Ivan writer lane: the eight check scores, the structure and opener used, and an early read on every Review draft (Ivan's 3 waiting drafts have none today).
+- Time choice and moves: who moved a post and why.
+Rise photos are assigned in rotation with no reasoning, so the panel says "Mattan's photo, picked in rotation" until a reasoned assigner exists. The industry forecast stays hidden (no likelihood on any row).
+
+### R2.7 Findings from the audit that need Ivan to know
+- Rise posts going out under the quality bar: "Elemental Air" (Tue 13 Oct) and "What does storage cost you per order?" (Wed 14 Oct, 57 of 80 after a rewrite) went to Review below the pass line and are scheduled. "If a channel can't grow..." (Fri 23 Oct, 55 of 80) waits for approval below the bar.
+- The planner picked Rise ideas the brain's recipe rates negative; the plan gives no warning about it today.
+- A brain self-test rule (`zz-selftest-20261012T122939Z`) is still in `brain_rules` as shadow; it is filtered from the UI and left in place (content-system data is not deleted without Ivan).
