@@ -261,7 +261,7 @@
    Phone: the tiles are one horizontal scroll row, 44 px keys, text 12 px or more.
    ========================================================================== */
 :root[data-skin-on~='content.plan'] .pl2-stripw{container-type:inline-size;display:flex;flex-direction:column;gap:8px;min-width:0}
-:root[data-skin-on~='content.plan'] .pl2-strip{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:start;outline:none}
+:root[data-skin-on~='content.plan'] .pl2-strip{position:relative;display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:start;outline:none}
 :root[data-skin-on~='content.plan'] .pl2-strip:focus-visible{outline:2px solid var(--ds-focus);outline-offset:3px;border-radius:var(--ds-r-pane)}
 @container (min-width:560px){:root[data-skin-on~='content.plan'] .pl2-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @container (min-width:1000px){:root[data-skin-on~='content.plan'] .pl2-strip{grid-template-columns:minmax(0,1.7fr) repeat(3,minmax(0,1fr))}}
