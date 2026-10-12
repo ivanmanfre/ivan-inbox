@@ -219,3 +219,44 @@ Client messages still go out only on Ivan's "send"; panels stay status pages.
 
 ### R3.8 Charts rejected (data too thin or misleading today)
 Topic mix vs performance, format vs performance, weekday performance (Ivan's Saturday median is three Poland posts), quality score spread (no single pass line), source mix.
+
+
+## Revision 4 (12 Oct): plain words. Supersedes every label and sentence above.
+Ivan reads English as a second language, between other work. Every line must be readable in one pass.
+Rules: short sentences, one idea each; everyday words; numbers only with a plain comparison next to them; no model, study or pipeline terms; each term explained once ("viral = 3x a normal post").
+Mockup v3: `/Users/ivanmanfredi/Desktop/Ivan - Content System/research/plan-section-2026-10-11/plan-oxygen-mockup-v3b-2026-10-12.html`.
+
+| Before | After |
+|---|---|
+| Posts proved with a named example break out 1.5x as often as usual in Rise's niche (6.8% vs 4.5%, 398 posts). Checked on recent posts. | **Good sign.** Posts with a named example go viral 1.5x more often in Rise's niche. (small line: 6.8% of these posts went viral, vs 4.5% of all posts. Based on 398 posts. Proven on recent posts.) |
+| ... break out 1.2x less often ... | **Bad sign.** ... go viral a bit less often / about half as often ... |
+| within 10% of usual | **Neutral.** ... do about average (no scale). Threshold 15%. |
+| Checked on recent posts / small sample / Not confirmed on recent posts yet | Proven on recent posts / Proven on recent posts, but few examples / Not proven yet |
+| Early reads | Brain guesses |
+| First draft 60 of 80. Rewritten once: 63 of 80, passed (pass line 59). | Passed: 63/80 (needs 59). It was rewritten once. |
+| 57 of 80 after one rewrite, under the pass line. It went to Review anyway and was approved by hand. | Low score: 57/80, even after a rewrite. Approved anyway. |
+| Under the quality bar | Low score |
+| 8 of 8 claims traced back to the source | All 8 facts match the call. / 2 of 8 facts not found in the call. |
+| Structure + opener + model reason ("Pillar is teardown; ... pulled apart mechanically. Fallback:rotation.") | Written as a teardown. Opens with proof. (model reasons are never shown) |
+| pattern_interrupt / claim / data_led / specific_receipt / story_opener | Opens with a surprise / Opens with a bold claim / Opens with a number / Opens with proof / Starts in the middle of a story |
+| QA dimensions VOICE, SUBSTANCE, SPECIFICITY, ECONOMY, VERIFIED, AI_TELLS | Voice, Depth, Details, Short, Facts, Sounds human |
+| Rules the writer follows / Being tested (not applied yet) | Rules we follow / Testing, not used yet |
+| R06-link-ivan, -13% | No links in the post · 13% more views (effects are said as the gain from following the rule) |
+| Rule whose range crosses zero | "your rule, not clear in the data" |
+| A question mark in the post adds about 8% comments | A question gets more comments · 8% more comments |
+| Last 90 days: 253 views, typical post, 10 of 63 broke out | Last 90 days: 253 views on a normal post · viral = 3x that |
+| 27 views, 0.2x the typical post | 27 views. A normal post gets 166. |
+| No open ideas for demand (3 posted in 8 weeks) | Out of ideas for sales posts (3 used in 8 weeks) · Add ideas |
+| No open ideas for reach | Out of ideas for posts that bring new followers |
+| adapted from niche winners | based on top posts |
+| A ready Review draft adapted from a niche outlier at 4.5x its author's usual | A written draft based on a post that got 4.5x its author's normal views |
+| grycz-monika, aidan-collins-8a146530a | the person's real name (resolved from the creator tables; never the URL slug) |
+| suggested day, set when scheduled | No day yet. It gets the first free weekday of its week when you approve it. |
+| Weekdays only: weekend posts do 19% worse for Rise creators | A weekday: weekend posts get 19% fewer views for Rise creators (still testing). |
+| Why this angle / Will it work | How it is written / Will it do well |
+| Failed the check twice. The planner is picking a replacement within 6 hours. | Failed twice. The planner is picking a new topic for this slot. |
+
+Content changes that come with the words:
+- "Will it do well" shows one answer only: the brain guess. The second model's "helps / hurts" list is dropped from the panel because it can disagree with the guess (example: the guess says numbers posts do worse while the list says numbers help). It returns only when both agree or one is retired.
+- The planner's `why_now` prompt gets the same rules: at most 20 words, everyday words, banned terms: outlier, usual, primer, pillar, cadence, Review draft, niche winner, pattern. The Monday card, alert and feed use this table too.
+- "Why this week" never repeats "Why this post"; it shows the week mix when the slot has no separate reason.
