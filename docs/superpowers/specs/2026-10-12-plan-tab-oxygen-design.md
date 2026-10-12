@@ -171,3 +171,51 @@ Rise photos are assigned in rotation with no reasoning, so the panel says "Matta
 - Rise posts going out under the quality bar: "Elemental Air" (Tue 13 Oct) and "What does storage cost you per order?" (Wed 14 Oct, 57 of 80 after a rewrite) went to Review below the pass line and are scheduled. "If a channel can't grow..." (Fri 23 Oct, 55 of 80) waits for approval below the bar.
 - The planner picked Rise ideas the brain's recipe rates negative; the plan gives no warning about it today.
 - A brain self-test rule (`zz-selftest-20261012T122939Z`) is still in `brain_rules` as shadow; it is filtered from the UI and left in place (content-system data is not deleted without Ivan).
+
+
+## Revision 3 (12 Oct, final review: brain changes 5-12 Oct, charts, data to send). Supersedes R2 where they differ.
+Notes: `~/.local/state/offfix/final-review/` (brain-window notes, viz/ prototypes and screenshots).
+
+### R3.1 Brain strip, final
+1. **What moves views** (chart, replaces the two rule tiles): every live and tested rule for the account as a dot with its range on one axis (filled = in force, hollow = being tested), with who enforces it (writer, scheduler, photo picker). Ivan shows all six live rules, including "open from the author" and "photo only when one fits" (no measured effect, labelled "your rule"). Rules whose range crosses zero or that failed the latest test say so: "Weekdays only: your rule; the data isn't clear" and "Over 50 words: did not hold on the newest posts, kept because you set it". Arch shows its 4 tested rules. Test rows (`zz-`) hidden.
+2. **Next brain check**: "Mon 2 Nov. Under watch: weekdays only, the 50-word floor." Held proposals appear here with Accept / Dismiss; applied changes carry Undo (db/256 objects: `brain_rule_tests`, `brain_rule_proposals`, `brain_retest_runs`).
+3. **Early reads for the next 2 weeks** (chart): one dot per planned post with its range on the half-as-often to 2x scale; grey when not confirmed; label "small sample" where it applies (all Arch). Below: "Predictions start at 20 measured posts: Ivan 17 of 20, Arch 8 of 20. Rise has 24; its model has not passed its check yet."
+4. **Views per post, 12 weeks** (chart): dot per post on a log scale, typical-post line, 3x line for breakouts, hollow dots under 7 days old. Breakout = views at 3x the typical post (Rise 6 of 55); `is_winner` is not used (comment based, empty for Ivan and Arch). Ivan's typical post comes from `client_post_metrics` (159).
+The source line under the strip uses the real collection size: 10,629 posts from 140 creators.
+
+### R3.2 Rule breaks become warnings
+- "Week of 12 Oct has 5 posts; your rule is 2 to 4 (each extra post costs 9%)." (Ivan has been over for three weeks: 6, 5, 5.)
+- Card flag "Weekend" on a post set on Sat/Sun against a weekdays rule, with the reason in the panel ("set by hand").
+- Rise: "Tested: fewer posts (-24%) and images (+54%). Rise posts 5 a week, mostly text." shown as a plan note under the strip, until Ivan decides.
+
+### R3.3 Is it good, corrected sources
+- Rise fact check against the call comes from `rise_call_fact_checks` (enforced since 12 Oct; 3 Review drafts fail today): red card flag "Not backed by the call"; panel "Fact check against the call: failed. It will be held at publish until fixed." `cb45_claim_checks` (record-only, 64% false fails) is never shown.
+- There is no single pass line across lanes; the panel states the pass line the lane used on that draft (from the regen log). The amber "under the quality bar" flag is off for Arch (its check passed 0 of 33 in 8 weeks, so it would mark every post).
+
+### R3.4 Why this angle, added
+Opener line with its source and caveat: "Opens with something Ivan did. Writer rule since 10 Oct: +12% across 3 niches, not yet seen on Ivan's own posts." First-line checks computed from the body: length (45 characters or less does 9% better), no question in line 1 (-12%), body over 100 words (-12% under). Ivan's own writing preferences shown as "your preference".
+
+### R3.5 Other additions
+- Replaced slots: "Replaced: 'Friends and family' failed the quality check on 12 Oct; the planner picked this one." (`content_plan_replans`, slot `status_note`).
+- Link on a boosted lead magnet: hover line "Link allowed: boosted lead magnet."
+- X: small "X" mark on the day header when an X article or quote post goes out that day (`x_calendar()`).
+- Rise "How it did" adds who engaged: "3 of 12 people who engaged run a brand (Rise usual 9%)" (`client_post_engager_stats_v`). Arch warning: "No posts for teams not yet using creators."
+- "No ideas left" warning chips open the idea-stock chart: ideas in stock vs used in 8 weeks per topic (Rise: teardown 30 in stock / 7 used, posts that sell 0 / 3, new followers 0 / 4; Arch: trust 21, posts that sell 0). Ivan keeps the text warning (his ideas carry no topic).
+
+### R3.6 Data to send
+| Surface | Carries | Example |
+|---|---|---|
+| New-plan alert (push, Ivan only) | waiting, being written, under the bar, failed, empty topic area; no scores | "Rise · week of 26 Oct is ready. 5 written, 4 wait for your OK. 1 is under the quality bar. No ideas left for posts that sell." |
+| Monday card (feed) | plan lines, rule changes in plain words, read reliability, rule breaks | "Brain: no rule changed this month. Being tested: images, +54% for Rise creators. Ivan: 5 posts this week, your rule is 2 to 4." |
+| Inbox feed | failed draft, rule moved to in force (with Undo) | "Images now followed for Rise (+54%, 46 creators). Undo" |
+| Client panels | next 2 weeks: day and title only; no scores, reads or "waiting for Ivan" | "Coming up · Tue 20 Oct: Customers were missing free shipping by a few dollars" |
+| 3-weekly client note, client Slack | nothing from the plan or the brain | |
+Client messages still go out only on Ivan's "send"; panels stay status pages.
+
+### R3.7 Fixes found outside the Plan tab (same build, small)
+- `brain_monday_line` prints raw rule codes ("R06-link-ivan: ... set to ...") into the feed: switch to plain words.
+- Rise client panel shows internal text from `week_plan` ("Story bank: 2 eligible / 0 in cooldown / 0 pending consent"): remove.
+- Client panel calendar blocks and `engine_updates` are stale (Arch empty since 17 Aug; Rise shows July items, updates last 17 Jul): feed them from the plan or hide them.
+
+### R3.8 Charts rejected (data too thin or misleading today)
+Topic mix vs performance, format vs performance, weekday performance (Ivan's Saturday median is three Poland posts), quality score spread (no single pass line), source mix.
