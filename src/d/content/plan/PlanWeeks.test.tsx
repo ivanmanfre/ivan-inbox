@@ -23,17 +23,19 @@ const emptyRead = (): PlanRead => ({
 })
 
 let hoverable = true
+const realMatchMedia = window.matchMedia
 beforeEach(() => {
   hoverable = true
   window.matchMedia = ((q: string) => ({ matches: q.includes('hover: hover') ? hoverable : false, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, onchange: null, dispatchEvent: () => false })) as unknown as typeof window.matchMedia
 })
-afterEach(() => { cleanup(); vi.useRealTimers() })
+afterEach(() => { cleanup(); vi.useRealTimers(); window.matchMedia = realMatchMedia })
 
 function show(read: PlanRead, onOpen: (it: PlanItem) => void = () => {}, layout: 'desktop' | 'phone' = 'desktop') {
   const items = itemsOf(read)
   renderInFrame(<PlanWeeks read={read} items={items} today={read.today} onOpen={onOpen} />, { layout })
   return items
 }
+const STORE = 'https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1'
 const weeks = () => [...document.querySelectorAll<HTMLElement>('.pl2-wk')]
 const col = (day: string) => document.querySelector<HTMLElement>(`.pl2-dcol[data-day='${day}']`)!
 const card = (title: RegExp) => screen.getAllByText(title)[0].closest<HTMLButtonElement>('.pl2-card')!
@@ -126,11 +128,13 @@ describe('PlanWeeks', () => {
     const r = rise()
     r.x_days = ['2026-10-14']
     show(r)
-    expect(col('2026-10-14').querySelector('.pl2-x')).not.toBeNull()
+    const x = col('2026-10-14').querySelector('.pl2-x')!
+    expect(x.getAttribute('role')).toBe('img')
+    expect(x.getAttribute('aria-label')).toBe('An X post goes out this day')
     expect(col('2026-10-15').querySelector('.pl2-x')).toBeNull()
   })
 
-  it('a post still waiting from before its week sits at the top of today, marked Waiting since', () => {
+  it('a post still waiting from before its week sits at the top of today, marked Waiting since; the meters follow', () => {
     const r = rise()
     r.weeks[1].planned[0].day = '2026-10-09'
     show(r)
@@ -138,6 +142,28 @@ describe('PlanWeeks', () => {
     expect(top.classList.contains('pl2-card-late')).toBe(true)
     expect(top.textContent).toContain('Waiting since Fri 9 Oct')
     expect(top.textContent).toContain("If a channel can't grow")
+    expect(top.textContent).not.toContain('No day yet')
+    expect(screen.getAllByText(/If a channel can't grow/).length).toBe(1)
+    // The meter and n count what each row draws: the moved post counts in this week, not in next week.
+    const [a, b] = weeks()
+    expect(a.querySelector('.pl2-wk-n')!.textContent).toBe('6 of 5')
+    expect(a.querySelectorAll('.pl2-meter i.pl2-on').length).toBe(6)
+    expect(b.querySelector('.pl2-wk-n')!.textContent).toBe('4 of 5')
+    expect(b.querySelectorAll('.pl2-dcol .pl2-card').length).toBe(4)
+  })
+
+  it('a post waiting since an earlier day of this week leaves its past column and sits at the top of today', () => {
+    const r = rise()
+    r.today = '2026-10-14'
+    r.weeks[0].posts[0].status = 'review' // Mon 12 Oct
+    show(r)
+    expect(col('2026-10-12').querySelector('.pl2-card')).toBeNull()
+    const top = col('2026-10-14').querySelector('.pl2-cards')!.firstElementChild!
+    expect(top.classList.contains('pl2-card-late')).toBe(true)
+    expect(top.textContent).toContain('Waiting since Mon 12 Oct')
+    expect(top.textContent).toContain('I wish we got a piece of that')
+    expect(screen.getAllByText(/I wish we got a piece of that/).length).toBe(1)
+    expect(weeks()[0].querySelector('.pl2-wk-n')!.textContent).toBe('5 of 5')
   })
 
   it('a slot with no day at all is still shown, under No day yet in its week', () => {
@@ -203,6 +229,55 @@ describe('PlanWeeks', () => {
     fireEvent.focus(card(/Elemental Air/))
     act(() => { vi.advanceTimersByTime(1000) })
     expect(screen.queryByRole('tooltip')).toBeNull()
+  })
+
+  it('thumbnails ask storage for a resized copy; on error the original once, then the reason line', () => {
+    const r = rise()
+    const p = r.weeks[0].posts[1] // Elemental Air
+    p.brain!.thumb = `${STORE}/object/public/client-photos/risedtc-com/x.png`
+    const items = show(r)
+    const c = card(/Elemental Air/)
+    const img = () => c.querySelector<HTMLImageElement>('img.pl2-thumb')
+    expect(img()!.getAttribute('src')).toBe(`${STORE}/render/image/public/client-photos/risedtc-com/x.png?width=360&height=144&resize=cover`)
+    fireEvent.error(img()!)
+    expect(img()!.getAttribute('src')).toBe(`${STORE}/object/public/client-photos/risedtc-com/x.png`)
+    expect(c.querySelector('.pl2-why1')).toBeNull()
+    fireEvent.error(img()!)
+    expect(img()).toBeNull()
+    const it = items.find(i => /Elemental Air/.test(i.title))!
+    const reason = reasonFor(it, 'risedtc')
+    if (reason) expect(c.querySelector('.pl2-why1')!.textContent).toBe(reason)
+  })
+
+  it('Escape closes a hover card opened by the mouse, wherever focus is', () => {
+    vi.useFakeTimers()
+    show(rise())
+    fireEvent.pointerOver(card(/Elemental Air/))
+    act(() => { vi.advanceTimersByTime(500) })
+    expect(screen.getByRole('tooltip')).toBeTruthy()
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(screen.queryByRole('tooltip')).toBeNull()
+  })
+
+  it('no hover card while the panel is open, and none on the focus that returns after, until the pointer moves', () => {
+    vi.useFakeTimers()
+    const r = rise()
+    const items = itemsOf(r)
+    const ui = (hover: boolean) => <PlanWeeks read={r} items={items} today={r.today} onOpen={() => {}} hover={hover} />
+    const v = renderInFrame(ui(false))
+    fireEvent.pointerOver(card(/Elemental Air/))
+    act(() => { vi.advanceTimersByTime(1000) })
+    expect(screen.queryByRole('tooltip')).toBeNull()
+    v.rerender(ui(true))
+    v.rerender(ui(false))
+    v.rerender(ui(true))
+    fireEvent.focus(card(/Elemental Air/))
+    act(() => { vi.advanceTimersByTime(1000) })
+    expect(screen.queryByRole('tooltip')).toBeNull()
+    fireEvent.pointerMove(window)
+    fireEvent.pointerOver(card(/What does storage cost/))
+    act(() => { vi.advanceTimersByTime(500) })
+    expect(screen.getByRole('tooltip').textContent).toContain('What does storage cost')
   })
 
   it('a card click opens the panel item', () => {

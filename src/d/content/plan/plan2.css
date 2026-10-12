@@ -135,7 +135,7 @@
 :root[data-skin-on~='content.plan'] .pl2-wk-nd .pl2-card{width:220px}
 
 /* hover card: beside the card, grows from the edge facing it; never takes the pointer */
-:root[data-skin-on~='content.plan'] .pl2-hc{position:fixed;z-index:50;box-sizing:border-box;padding:14px 16px;background:var(--ds-surface-1);border:1px solid var(--ds-line-strong);border-radius:var(--ds-r-pane);box-shadow:var(--ds-shadow-float);pointer-events:none;font:400 13px/19px var(--ds-font);color:var(--ds-text-2);transform-origin:var(--pl2-hc-ox,0%) var(--pl2-hc-oy,0px)}
+:root[data-skin-on~='content.plan'] .pl2-hc{position:fixed;z-index:50;box-sizing:border-box;max-height:calc(100vh - 16px);overflow:hidden;padding:14px 16px;background:var(--ds-surface-1);border:1px solid var(--ds-line-strong);border-radius:var(--ds-r-pane);box-shadow:var(--ds-shadow-float);pointer-events:none;font:400 13px/19px var(--ds-font);color:var(--ds-text-2);transform-origin:var(--pl2-hc-ox,0%) var(--pl2-hc-oy,0px)}
 :root[data-skin-on~='content.plan'][data-skin-on~='motion'] .pl2-hc:not([data-motion='off']){animation:pl2-hc-in var(--ds-d-ui) var(--ds-e-content) both}
 @keyframes pl2-hc-in{from{opacity:0;transform:translateX(var(--pl2-hc-tx,-4px)) scale(.96)}to{opacity:1;transform:none}}
 :root[data-skin-on~='content.plan'] .pl2-hc-st{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px}

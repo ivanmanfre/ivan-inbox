@@ -1,17 +1,19 @@
-import { useCallback, useId, useMemo, useSyncExternalStore, type CSSProperties } from 'react'
+import { useCallback, useId, useMemo, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { planDay, type BrainStrip, type PlanRead, type PlanWeek } from '../../../lib/contentPlan'
 import { useMotionLevel } from '../../../ds/motionLevel'
 import { useFrameMaybe } from '../../shell/frame'
 import { FlagChip, useEntered, usePulsed } from './PlanList'
 import { PlanHoverCard } from './PlanHoverCard'
 import { ST_WORD, flagsFor, mixLine, reasonFor, timeLabel, tzOf, weekDays, type Acct, type PlanItem, type Tz } from './planBrain'
+import { thumbUrl } from './thumbs'
 import { useHoverIntent } from './useHoverIntent'
 
 // PLAN > WEEKS (spec 2026-10-12 §3a, R2.1, R2.2, R3.5; mock v3 `weeks()`). Three week rows, Mon to Fri plus a
 // weekend day only when a post sits there. The header carries the name, the range, the fill meter, n of target
 // and the week's mix. Today has an ink ring and a red "Today"; past days lose their background; "Free" wells only
 // for the week's real open days, on future weekdays. Desktop only: the phone always shows the List.
-// A post still waiting from before this week is never dropped: it sits at the top of today's column.
+// A post still waiting for OK from a day before today is never dropped: it leaves its own past column and sits at
+// the top of today's column, headed "Waiting since <day>". The meter and the mix count what each row draws.
 
 const STAGGER_MS = 30
 const STAGGER_CAP_MS = 400
@@ -37,10 +39,15 @@ type CardProps = {
 }
 
 function Card({ it, acct, tz, strip, late, describedBy, bind, onOpen }: CardProps) {
-  const thumb = it.brain?.thumb || null
+  // 0: the resized copy, 1: the original after the resized one failed, 2: no picture (the reason line shows).
+  const [miss, setMiss] = useState(0)
+  const orig = it.brain?.thumb || null
+  const small = thumbUrl(orig)
+  const thumb = !orig || miss >= 2 ? null : miss === 1 ? orig : small
   const reason = thumb ? null : reasonFor(it, acct)
   const flags = flagsFor(it, strip, acct)
-  const time = it.suggested ? 'No day yet' : timeLabel(it, tz)
+  // A waiting card moved to today already says its day in its header; "No day yet" would contradict it.
+  const time = it.suggested ? (late ? '' : 'No day yet') : timeLabel(it, tz)
   return <button type="button" className={`pl2-card pl2-s-${it.st}${it.suggested ? ' pl2-sugg' : ''}${late ? ' pl2-card-late' : ''}`}
     data-plan-key={it.key} data-verb="plan-card" aria-describedby={describedBy} onClick={() => onOpen(it)} {...bind}>
     {late && <span className="pl2-late-l">{late}</span>}
@@ -48,20 +55,21 @@ function Card({ it, acct, tz, strip, late, describedBy, bind, onOpen }: CardProp
       <span className="pl2-st"><i className="pl2-dot" aria-hidden="true" />{ST_WORD[it.st]}</span>
       {time && <span className="pl2-time">{time}</span>}
     </span>
-    {thumb && <img className="pl2-thumb" src={thumb} alt="" loading="lazy" decoding="async" />}
+    {thumb && <img className="pl2-thumb" src={thumb} alt="" loading="lazy" decoding="async" onError={() => setMiss(m => (m === 0 && small !== orig ? 1 : 2))} />}
     <span className="pl2-ct">{it.title || 'Untitled post'}</span>
     {reason && <span className="pl2-why1">{reason}</span>}
     {flags.length > 0 && <span className="pl2-flags">{flags.map(f => <FlagChip key={f.key} f={f} compact />)}</span>}
   </button>
 }
 
-export function PlanWeeks({ read, items, today, onOpen }: { read: PlanRead; items: PlanItem[]; today: string; onOpen: (it: PlanItem) => void }) {
+/** `hover` false (the panel is open) keeps the hover card shut; it stays shut on the card focus returns to after. */
+export function PlanWeeks({ read, items, today, onOpen, hover = true }: { read: PlanRead; items: PlanItem[]; today: string; onOpen: (it: PlanItem) => void; hover?: boolean }) {
   const f = useFrameMaybe()
   const hoverable = useSyncExternalStore(subscribeHover, readHover, () => false)
   const level = useMotionLevel()
   const entered = useEntered()
   const pulsed = usePulsed()
-  const hc = useHoverIntent(f?.layout !== 'phone' && hoverable)
+  const hc = useHoverIntent(hover && f?.layout !== 'phone' && hoverable)
   const hcId = useId()
   const close = hc.close
   const open = useCallback((it: PlanItem) => { close(); onOpen(it) }, [close, onOpen])
@@ -71,9 +79,12 @@ export function PlanWeeks({ read, items, today, onOpen }: { read: PlanRead; item
   const strip = read.brain_strip ?? null
   const xDays = useMemo(() => new Set(Array.isArray(read.x_days) ? read.x_days : []), [read.x_days])
   const weeks = useMemo(() => (Array.isArray(read.weeks) ? read.weeks : []), [read.weeks])
-  const first = weeks[0]?.start ?? today
-  // Waiting posts dated before the first week: they go to the top of today's column (or this week's first day).
-  const overdue = useMemo(() => items.filter(i => i.day != null && i.day < first && i.st === 'review'), [items, first])
+  // Waiting for OK from a day before today: drawn once, at the top of today's column (the week holding today, else
+  // the first week's first column), never in their own past column.
+  const overdue = useMemo(() => items.filter(i => i.day != null && i.day < today && i.st === 'review'), [items, today])
+  const lateKeys = useMemo(() => new Set(overdue.map(i => i.key)), [overdue])
+  const idxOf = (start: string) => Math.round((Date.parse(`${today}T12:00:00Z`) - Date.parse(`${start}T12:00:00Z`)) / 86400000)
+  const todayWeek = Math.max(0, weeks.findIndex(w => { const k = idxOf(w.start); return k >= 0 && k <= 6 }))
   const hoverItem = hc.open ? items.find(i => i.key === hc.open) ?? null : null
 
   let n = 0
@@ -81,21 +92,22 @@ export function PlanWeeks({ read, items, today, onOpen }: { read: PlanRead; item
   const card = (it: PlanItem, late?: string) => <Card key={it.key} it={it} acct={acct} tz={tz} strip={strip} late={late}
     describedBy={hc.open === it.key && hoverItem ? hcId : undefined} bind={hc.bind(it.key)} onOpen={open} />
 
-  return <div className="pl2-wks" data-entered={entered || undefined} data-pulsed={pulsed || undefined}
-    onKeyDown={e => { if (e.key === 'Escape' && hc.open) close() }}>
+  return <div className="pl2-wks" data-entered={entered || undefined} data-pulsed={pulsed || undefined}>
     {weeks.map((w, wi) => {
       const end = addDays(w.start, 6)
-      const inWeek = items.filter(i => i.day != null && i.day >= w.start && i.day <= end)
-      const own = items.filter(i => i.week === w.start)
-      const undated = own.filter(i => i.day == null)
+      const inWeek = items.filter(i => i.day != null && i.day >= w.start && i.day <= end && !lateKeys.has(i.key))
+      const undated = items.filter(i => i.week === w.start && i.day == null)
       const days = weekDays(w, inWeek)
-      const late = wi === 0 ? overdue : []
-      const todayIdx = Math.round((Date.parse(`${today}T12:00:00Z`) - Date.parse(`${w.start}T12:00:00Z`)) / 86400000)
+      const late = wi === todayWeek ? overdue : []
+      const todayIdx = idxOf(w.start)
       if (late.length && todayIdx >= 0 && todayIdx <= 6 && !days.includes(todayIdx)) { days.push(todayIdx); days.sort((a, b) => a - b) }
       const lateDay = late.length ? (todayIdx >= 0 && todayIdx <= 6 ? addDays(w.start, todayIdx) : addDays(w.start, days[0])) : null
-      const count = own.length
+      // What this row draws: its dated cards, the waiting ones moved to today, its undated ones.
+      const drawn = [...late, ...inWeek, ...undated]
+      const count = drawn.length
       const target = Number.isFinite(w.target) ? w.target : 0
-      const mix = mixLine(own)
+      const mix = mixLine(drawn)
+      const seg0 = wi * 5
       let free = Number.isFinite(w.open) ? Math.max(0, w.open) : 0
       return <section key={w.start} className="pl2-wk" aria-label={NAME[w.which] ?? 'Week'}>
         <div className="pl2-wk-h">
@@ -103,7 +115,7 @@ export function PlanWeeks({ read, items, today, onOpen }: { read: PlanRead; item
           <span className="pl2-wk-range">{dm(w.start)} to {dm(addDays(w.start, days[days.length - 1]))}</span>
           <span className="pl2-meter" aria-hidden="true">
             {Array.from({ length: Math.max(target, count) }, (_, k) => <i key={k} className={k < count ? 'pl2-on' : undefined}
-              style={{ '--pl2-d': `${level === 'off' ? 0 : Math.min(k * 60 + wi * 120, STAGGER_CAP_MS)}ms` } as CSSProperties} />)}
+              style={{ '--pl2-d': `${level === 'off' ? 0 : Math.min((seg0 + k) * STAGGER_MS, STAGGER_CAP_MS)}ms` } as CSSProperties} />)}
           </span>
           <span className="pl2-wk-n">{count} of {target}</span>
           {mix && <span className="pl2-wk-mix">{mix}</span>}
@@ -121,7 +133,7 @@ export function PlanWeeks({ read, items, today, onOpen }: { read: PlanRead; item
               style={{ '--pl2-d': `${delay()}ms` } as CSSProperties}>
               <div className="pl2-dh">
                 <span>{dayName(day)}{isToday && <> · <em>Today</em></>}</span>
-                {xDays.has(day) && <span className="pl2-x" title="An X post goes out this day" aria-label="X post this day">X</span>}
+                {xDays.has(day) && <span className="pl2-x" role="img" title="An X post goes out this day" aria-label="An X post goes out this day">X</span>}
                 <b>{dayNum(day)}</b>
               </div>
               {(cards.length > 0 || lateHere.length > 0) && <div className="pl2-cards">

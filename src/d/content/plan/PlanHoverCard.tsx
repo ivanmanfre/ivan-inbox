@@ -35,12 +35,15 @@ export function PlanHoverCard({ id, item, anchor, read, onClose }: { id?: string
     const h = ref.current?.offsetHeight ?? 0
     setPos(place(anchor, h))
   }, [anchor, item.key])
-  // Fixed to where the card was: a scroll or a resize moves the card, so the hover card goes.
+  // Fixed to where the card was: a scroll or a resize moves the card, so the hover card goes. Escape closes it
+  // wherever focus is (a mouse-opened card has no focus on it).
   useEffect(() => {
     const off = () => onClose()
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('scroll', off, { capture: true, passive: true })
     window.addEventListener('resize', off)
-    return () => { window.removeEventListener('scroll', off, { capture: true }); window.removeEventListener('resize', off) }
+    window.addEventListener('keydown', key)
+    return () => { window.removeEventListener('scroll', off, { capture: true }); window.removeEventListener('resize', off); window.removeEventListener('keydown', key) }
   }, [onClose])
 
   const acct = read.account as Acct

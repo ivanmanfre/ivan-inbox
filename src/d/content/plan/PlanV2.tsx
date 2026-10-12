@@ -104,7 +104,7 @@ export function PlanV2({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => vo
 
   // Weeks gets every item of the three weeks (past days of this week keep their posts); List starts from today.
   const body = !r ? null
-    : view === 'weeks' && !phone ? <PlanWeeks key={`weeks:${r.account}`} read={r} items={all} today={r.today} onOpen={setOpen} />
+    : view === 'weeks' && !phone ? <PlanWeeks key={`weeks:${r.account}`} read={r} items={all} today={r.today} onOpen={setOpen} hover={!open} />
       : <PlanList key={`list:${r.account}`} read={r} items={items} phone={phone} onOpen={setOpen} />
 
   return <div className={`cv2 pl2${phone ? ' pl2-phone' : ''}`} data-motion={level} data-open={open?.key}>

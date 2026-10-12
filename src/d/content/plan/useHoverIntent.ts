@@ -23,6 +23,8 @@ export function useHoverIntent(enabled = true): { bind: (key: string) => Bind; o
   const openKey = useRef<string | null>(null)
   const lastClosed = useRef(Number.NEGATIVE_INFINITY)
   const on = useRef(enabled)
+  const quiet = useRef(false)
+  const was = useRef(enabled)
   useLayoutEffect(() => { on.current = enabled }, [enabled])
 
   const clear = useCallback(() => {
@@ -57,14 +59,23 @@ export function useHoverIntent(enabled = true): { bind: (key: string) => Bind; o
   }, [shut])
 
   const bind = useCallback((key: string): Bind => ({
-    onPointerEnter: e => { if (e.pointerType !== 'touch') enter(key, e.currentTarget) },
+    onPointerEnter: e => { if (e.pointerType !== 'touch') { quiet.current = false; enter(key, e.currentTarget) } },
     onPointerLeave: e => { if (e.pointerType !== 'touch') leave() },
-    onFocus: e => enter(key, e.currentTarget),
+    onFocus: e => { if (!quiet.current) enter(key, e.currentTarget) },
     onBlur: () => leave(),
   }), [enter, leave])
 
-  // Turned off (layout or pointer changed) or unmounted: nothing stays open, no timer fires later.
-  useEffect(() => { if (!enabled) close() }, [enabled, close])
+  // Turned off (the panel opened, layout or pointer changed): nothing stays open, no timer fires later. After it
+  // turns back on it stays quiet: the focus that returns to the card does not reopen it, until the pointer moves.
+  useEffect(() => {
+    const before = was.current
+    was.current = enabled
+    if (!enabled) { close(); if (before) quiet.current = true; return }
+    if (!quiet.current) return
+    const wake = () => { quiet.current = false }
+    window.addEventListener('pointermove', wake, { once: true })
+    return () => window.removeEventListener('pointermove', wake)
+  }, [enabled, close])
   useEffect(() => clear, [clear])
 
   return { bind, open: state?.key ?? null, anchor: state?.anchor ?? null, close }
