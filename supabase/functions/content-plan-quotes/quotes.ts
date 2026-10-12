@@ -26,14 +26,18 @@ const REFUSAL = /^(i can'?t|i cannot|i'm sorry|sorry,|i am unable)/i
 // A capped proxy answers 200 with its limit notice as the "reply" (same guard as inbox-fast).
 const LIMIT_NOTICE = /\b(usage|session|rate) limit\b|limit reached|try again later/i
 
-export function readAnswer(json: { content?: { type: string; text?: string; [k: string]: unknown }[] }): string | null {
-  const text = (json.content ?? [])
+// `src` is the source quote sent. An answer identical to it (an English quote returned as is)
+// is always kept, even when it reads like a refusal or a limit notice ("Sorry, we ...").
+export function readAnswer(json: { content?: { type: string; text?: string; [k: string]: unknown }[] }, src: string): string | null {
+  const raw = (json.content ?? [])
     .filter((b) => b.type === 'text')
     .map((b) => (typeof b.text === 'string' ? b.text : ''))
     .join('')
     .trim()
-    .replace(/^["“]|["”]$/g, '')
-    .trim()
+  const source = (src ?? '').trim()
+  if (raw && raw === source) return source
+  const text = raw.replace(/^["“]|["”]$/g, '').trim()
+  if (text && text === source) return source
   if (!text || REFUSAL.test(text) || LIMIT_NOTICE.test(text) || text.length > 1200) return null
   return text
 }

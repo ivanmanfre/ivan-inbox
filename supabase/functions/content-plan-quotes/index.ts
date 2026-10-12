@@ -14,7 +14,7 @@ import { buildBody, readAnswer } from './quotes.ts'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 const CALL_TIMEOUT_MS = 60_000
-const BUDGET_MS = 110_000 // stop starting new calls after this; the rest stay due for the next run
+const BUDGET_MS = 80_000 // stop starting new calls after this; the rest stay due for the next run
 const CONCURRENCY = 3
 
 function err(status: number, code: string) {
@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
         signal: ctl.signal,
       })
       if (!res.ok) { await res.body?.cancel(); return skip('http_' + res.status) }
-      answer = readAnswer(await res.json())
+      answer = readAnswer(await res.json(), row.src)
     } catch {
       return skip('fetch_failed')
     } finally {
