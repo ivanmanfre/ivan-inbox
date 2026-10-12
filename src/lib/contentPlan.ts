@@ -4,9 +4,36 @@ import type { Lane } from '../d/content/model'
 // Content plan read model (db/252 content_plan_week): the next two weeks per account, each slot with its
 // reason and evidence, topics already done, written drafts waiting, and warnings. Read only.
 export type PlanEvidence = { type: string; label: string; ref?: string; at?: string; quote?: string | null }
+// db/259: the content brain data per item, the plan-level brain strip. Optional: older reads carry none of it.
+export type PlanFlags = { lm: boolean; boosted: boolean; founder: boolean; carousel: boolean; weekend: boolean; failed: boolean; low_score: boolean; fact_fail: boolean }
+export type PlanQa = { outcome: 'passed' | 'recovered' | 'low' | 'failed' | 'hand' | null; first: number | null; final: number | null; max: number; pass_line: number | null; rewrites: number; approved_anyway: boolean; dims: Record<string, number> | null; weakest: string | null }
+export type PlanBrainRead = { dim: string; val: string; rate: number; base: number; n: number; lo: number | null; hi: number | null; proven: boolean; small: boolean }
+export type PlanBrain = {
+  draft_id: string | null; words: number | null; edited: boolean; thumb: string | null; body_head: string | null; first_line: string | null; has_link: boolean
+  flags: PlanFlags; qa: PlanQa | null; facts: { pass: boolean; failed: number | null; total: number | null } | null
+  angle: { structure: string | null; opener: string | null } | null; trait: string | null; read: PlanBrainRead | null
+  brief: { author: string | null; ratio: number | null; url: string | null; why: string | null } | null
+  quote: string | null; quote_pending: boolean
+  photo: { has: boolean; reason: string | null; rotation: boolean } | null
+  replaced: { title: string; on: string } | null
+  result: { views: number | null; reactions: number | null; comments: number | null; viral: boolean; young: boolean; url: string | null; engaged: { brand: number; total: number; usual_pct: number } | null } | null
+  time_set_by: 'hand' | 'planner' | null
+}
+export type StripRule = { rule_id: string; name: string; metric: 'views' | 'comments'; gain: number | null; lo: number | null; hi: number | null; status: 'live' | 'shadow'; unclear: boolean; held_latest: boolean | null; your_rule: boolean; enforcer: string | null; creators: number | null }
+export type BrainStrip = {
+  rules: StripRule[]
+  next_check: { date: string | null; watch: string[]; proposals: { id: number; rule_id: string; name: string; to_status: string; reason: string | null }[]; recent: { rule_id: string; name: string; to_status: string; at: string; undo_token: string | null }[] }
+  reads: { items: { title: string; x: number; lo: number | null; hi: number | null; proven: boolean; small: boolean }[]; total: number }
+  predictions: { measured: number; need: number; validated: boolean }
+  views: { median: number | null; breakouts: number; measured: number; posts: { d: string; v: number; young: boolean }[] }
+  idea_stock: { topic: string; stock: number; used: number }[]
+  collection: { posts: number; creators: number } | null
+  note: string | null
+}
 export type PlanPost = {
   kind: 'post'; draft_id?: string; queue_id?: string; title: string; day: string; at: string; status: string
   format: string | null; picture: string; lead_magnet: boolean; founder: boolean; evidence: PlanEvidence[]
+  brain?: PlanBrain
 }
 export type PlanSlot = {
   kind: 'planned'; slot_id: string; topic: string; why_now: string; evidence: PlanEvidence[]; format: string | null
@@ -14,14 +41,18 @@ export type PlanSlot = {
   proposal: boolean; status: string; status_label: string; draft_id: string | null
   /** The day this slot is meant for: the first free weekday of its week (db/255). Null = no free weekday left. */
   day?: string | null
+  brain?: PlanBrain
 }
 export type PlanWeek = { start: string; which: 'this' | 'next' | 'after'; target: number; filled: number; open: number; posts: PlanPost[]; planned: PlanSlot[]; dated?: number; no_day?: number }
 export type PlanWarning = { code: string; text: string }
 export type PlanRead = {
   account: Lane; today: string; target: number; target_week: string | null; open: number
   state: 'two_weeks_planned' | 'planning'; proposals_only: boolean; auto_generate?: boolean; founder_story_max: number; cadence_source: string
-  weeks: PlanWeek[]; done: { title: string; day: string; format: string | null; pillar: string | null }[]
+  weeks: PlanWeek[]
+  done: { title: string; day: string; format: string | null; pillar: string | null; draft_id?: string; impressions?: number | null; reactions?: number | null; comments?: number | null }[]
   warnings: PlanWarning[]; last_run: { ran_at: string; target_week: string | null; open_before: number; picked: number } | null
+  done_median?: number | null; tz?: { name: string; label: string }; x_days?: string[]; brain_strip?: BrainStrip
+  supply?: { draft_id: string; title: string; format: string | null; created_at: string; brain: boolean | PlanBrain; brain_draft?: boolean; evidence: PlanEvidence[] }[]
 }
 
 export function parsePlan(data: unknown, lane: Lane): PlanRead {
