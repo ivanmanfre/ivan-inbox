@@ -71,6 +71,11 @@ const addDays = (iso: string, n: number) => { const d = new Date(`${iso.slice(0,
 const weekday = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`).getUTCDay()
 const isWeekend = (iso: string | null) => iso != null && (weekday(iso) === 0 || weekday(iso) === 6)
 const realRules = (strip: BrainStrip | null | undefined): StripRule[] => (Array.isArray(strip?.rules) ? strip!.rules : []).filter(r => r && !String(r.rule_id ?? '').startsWith('zz-'))
+/** One test for "does this rule have a clear measured effect": a known gain whose range does not cross zero. */
+export function ruleClear(r: Pick<StripRule, 'gain' | 'lo' | 'hi' | 'unclear'>): boolean {
+  if (r.unclear || !fin(r.gain)) return false
+  return !(fin(r.lo) && fin(r.hi) && r.lo < 0 && r.hi > 0)
+}
 const weekendRule = (strip: BrainStrip | null | undefined) => realRules(strip).find(r => /weekend/i.test(String(r.rule_id ?? '')))
 const evOf = (it: PlanItem) => (Array.isArray(it.evidence) ? it.evidence : [])
 
@@ -136,9 +141,9 @@ export function itemsOf(read: PlanRead): PlanItem[] {
   }).map(x => x.it)
 }
 
-/** Items from today on, plus slots that have no day yet. */
+/** Items from today on, slots that have no day yet, and posts still waiting for approval from earlier days. */
 export function upcoming(items: PlanItem[], today: string): PlanItem[] {
-  return items.filter(i => i.day == null || i.day >= today)
+  return items.filter(i => i.day == null || i.day >= today || i.st === 'review')
 }
 
 /** "07:00 PT" / "10:45 Warsaw", or '' when the item has no real time. */
@@ -323,13 +328,14 @@ export function firstLineChecks(it: PlanItem): string[] {
 // ---- why this day / this week ----
 /** Why this day: the real date and time with zone, and the weekday rule with its effect. */
 export function dayWhy(it: PlanItem, acct: Acct, strip: BrainStrip | null | undefined, tz: Tz): string {
-  if (!it.day) return it.suggested ? NO_DAY_LINE : ''
-  if (it.suggested) return `${planDay(it.day)} is a suggestion: the first free weekday of its week. The day is set when you approve it.`
+  if (it.suggested) return NO_DAY_LINE
+  if (!it.day) return ''
   const t = timeLabel(it, tz)
   let s = `${planDay(it.day)}${t ? `, ${t}` : ''}.`
   const r = weekendRule(strip)
   if (r) {
-    const known = fin(r.gain) && !r.unclear
+    // A weekdays rule with a positive gain means weekend posts get that much fewer views. Otherwise no effect is claimed.
+    const known = ruleClear(r) && (r.gain as number) > 0
     const effect = known ? `weekend posts get ${Math.round(Math.abs(r.gain as number))}% fewer views${acct === 'ivan' ? '' : ` for ${ACCT_NAME[acct]} creators`}${r.status === 'shadow' ? ' (still testing)' : ''}` : ''
     if (isWeekend(it.day)) s += acct === 'ivan' || !known ? ` A weekend day, against ${acct === 'ivan' ? 'your' : 'the'} weekdays-only rule.` : ` A weekend day: ${effect}.`
     else s += known ? ` A weekday: ${effect}.` : ` A weekday, as ${acct === 'ivan' ? 'your' : 'the'} rule says.`
@@ -391,9 +397,11 @@ export function weekDays(week: PlanWeek, items: PlanItem[]): number[] {
 // ---- plan level ----
 /** The answer line: how many posts wait for Ivan, then one line of parts. Counts from today on. */
 export function answerOf(read: PlanRead): { need: number; title: string; parts: string[] } {
-  const up = upcoming(itemsOf(read), read?.today ?? '')
+  const today = read?.today ?? ''
+  const up = upcoming(itemsOf(read), today)
   const need = up.filter(i => i.st === 'review')
-  const wk = need.filter(i => i.which === 'this').length
+  // A post still waiting from an earlier day counts as this week's work.
+  const wk = need.filter(i => i.which === 'this' || (i.day != null && i.day < today)).length
   const later = need.length - wk
   const sch = up.filter(i => i.st === 'scheduled').length
   const wr = up.filter(i => i.st === 'writing').length
@@ -427,11 +435,14 @@ export function warningOf(w: PlanWarning): { text: string; link: { label: string
 /** A brain rule as a row: its name and the gain from following it. */
 export function ruleRow(r: StripRule): { name: string; effect: string; tone: 'pos' | 'neg' | 'tag' } {
   const name = scrub(String(r.name ?? ''))
-  const crosses = fin(r.lo) && fin(r.hi) && r.lo < 0 && r.hi > 0
-  if (r.unclear || crosses) return { name, effect: 'your rule, not clear in the data', tone: 'tag' }
-  if (!fin(r.gain)) return { name, effect: r.your_rule ? 'your rule' : 'not measured yet', tone: 'tag' }
-  const up = r.gain >= 0
-  return { name, effect: `${Math.round(Math.abs(r.gain))}% ${up ? 'more' : 'fewer'} ${r.metric === 'comments' ? 'comments' : 'views'}`, tone: up ? 'pos' : 'neg' }
+  if (!ruleClear(r)) {
+    const crosses = fin(r.lo) && fin(r.hi) && r.lo < 0 && r.hi > 0
+    if (!fin(r.gain) && !r.unclear && !crosses) return { name, effect: r.your_rule ? 'your rule' : 'not measured yet', tone: 'tag' }
+    return { name, effect: 'your rule, not clear in the data', tone: 'tag' }
+  }
+  const gain = r.gain as number
+  const up = gain >= 0
+  return { name, effect: `${Math.round(Math.abs(gain))}% ${up ? 'more' : 'fewer'} ${r.metric === 'comments' ? 'comments' : 'views'}`, tone: up ? 'pos' : 'neg' }
 }
 
 /** The live and tested rules, test rows left out. */
@@ -453,7 +464,7 @@ export function readsSummary(strip: BrainStrip | null | undefined, acct: Acct): 
   const p = strip.predictions
   if (p && fin(p.need) && p.need > 0 && fin(p.measured)) {
     if (p.validated) out.push(`Predictions are on, from ${p.measured} measured posts.`)
-    else if (p.measured >= p.need) out.push(`${ACCT_NAME[acct]} has ${p.measured}; its model has not passed its check yet.`)
+    else if (p.measured >= p.need) out.push(`${ACCT_NAME[acct]} has ${p.measured} measured posts, but its guesses have not passed their test yet.`)
     else out.push(`Predictions start at ${p.need} measured posts: ${ACCT_NAME[acct]} ${p.measured} of ${p.need}.`)
   }
   return out.join(' ')

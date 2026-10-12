@@ -100,7 +100,17 @@ describe('dayWhy / timeLabel', () => {
   it('suggested slot', () => expect(dayWhy(base({ kind: 'planned', suggested: true, day: null }), 'risedtc', strip, { name: 'America/Los_Angeles', label: 'PT' })).toBe('No day yet. It gets the first free weekday of its week when you approve it.'))
   it('weekday with the testing rule', () => expect(dayWhy(base({ day: '2026-10-14', at: '2026-10-14T14:00:00Z' }), 'risedtc', strip, { name: 'America/Los_Angeles', label: 'PT' })).toBe('Wed 14 Oct, 07:00 PT. A weekday: weekend posts get 19% fewer views for Rise creators (still testing).'))
   it('no strip: just the day', () => expect(dayWhy(base({ day: '2026-10-14', at: '2026-10-14T08:45:00Z' }), 'ivan', null, { name: 'Europe/Warsaw', label: 'Warsaw' })).toBe('Wed 14 Oct, 10:45 Warsaw.'))
-  it('suggested slot with a day', () => expect(dayWhy(base({ kind: 'planned', suggested: true, day: '2026-10-26', at: null }), 'ivan', null, { name: 'Europe/Warsaw', label: 'Warsaw' })).toBe('Mon 26 Oct is a suggestion: the first free weekday of its week. The day is set when you approve it.'))
+  it('suggested slot with a day uses the same line', () => expect(dayWhy(base({ kind: 'planned', suggested: true, day: '2026-10-26', at: null }), 'ivan', null, { name: 'Europe/Warsaw', label: 'Warsaw' })).toBe('No day yet. It gets the first free weekday of its week when you approve it.'))
+  it('weekend post for a client with a clear rule says the effect', () => expect(dayWhy(base({ day: '2026-10-17', at: '2026-10-17T14:00:00Z' }), 'risedtc', strip, { name: 'America/Los_Angeles', label: 'PT' })).toBe('Sat 17 Oct, 07:00 PT. A weekend day: weekend posts get 19% fewer views for Rise creators (still testing).'))
+  it('no effect claimed when the gain is not positive or the range crosses zero', () => {
+    const tz = { name: 'America/Los_Angeles', label: 'PT' }
+    const neg = { rules: [{ rule_id: 'R11-weekend-risedtc', name: 'No weekend posts', metric: 'views', gain: -4, lo: -9, hi: -1, status: 'shadow', unclear: false, held_latest: null, your_rule: false, enforcer: 'scheduler', creators: 46 }] } as never
+    const cross = { rules: [{ rule_id: 'R11-weekend-risedtc', name: 'No weekend posts', metric: 'views', gain: 6, lo: -3, hi: 14, status: 'shadow', unclear: false, held_latest: null, your_rule: false, enforcer: 'scheduler', creators: 46 }] } as never
+    expect(dayWhy(base({ day: '2026-10-14' }), 'risedtc', neg, tz)).toBe('Wed 14 Oct, 07:00 PT. A weekday, as the rule says.')
+    expect(dayWhy(base({ day: '2026-10-17', at: '2026-10-17T14:00:00Z' }), 'risedtc', cross, tz)).toBe('Sat 17 Oct, 07:00 PT. A weekend day, against the weekdays-only rule.')
+    expect(PB.ruleClear({ gain: 6, lo: -3, hi: 14, unclear: false })).toBe(false)
+    expect(PB.ruleClear({ gain: 19, lo: 10.1, hi: 27, unclear: false })).toBe(true)
+  })
   it('weekend post against an unclear rule, set by hand', () => {
     const s = { rules: [{ rule_id: 'R11-weekend-ivan', name: 'Weekdays only', metric: 'views', gain: 5.7, lo: -4.1, hi: 14.6, status: 'live', unclear: true, held_latest: false, your_rule: true, enforcer: 'scheduler', creators: 69 }] } as never
     expect(dayWhy(base({ day: '2026-10-17', at: '2026-10-17T08:45:00Z', brain: brain({ time_set_by: 'hand' }) }), 'ivan', s, { name: 'Europe/Warsaw', label: 'Warsaw' })).toBe('Sat 17 Oct, 10:45 Warsaw. A weekend day, against your weekdays-only rule. Set by hand.')
@@ -161,6 +171,19 @@ describe('warningOf', () => {
 describe('quoteFor', () => {
   it('pending non-English shows nothing', () => expect(quoteFor(base({ brain: brain({ quote: null, quote_pending: true }) }))).toBeNull())
   it('cuts long quotes on a word with an ellipsis', () => { const q = quoteFor(base({ brain: brain({ quote: 'word '.repeat(60) }) }))!; expect(q.length).toBeLessThanOrEqual(201); expect(q.endsWith('…')).toBe(true) })
+  it('the cut never splits a word, whatever the word lengths', () => {
+    for (const w of ['abcdefg', 'ab', 'abcdefghijklm', 'abc,']) {
+      const src = Array.from({ length: 80 }, (_, i) => `${w}${i}`).join(' ')
+      const q = quoteFor(base({ brain: brain({ quote: src }) }))!
+      expect(q.endsWith('…')).toBe(true)
+      const kept = q.slice(0, -1)
+      expect(kept.length).toBeLessThanOrEqual(200)
+      expect(src.startsWith(kept)).toBe(true)
+      const rest = src.slice(kept.length)
+      // what follows the kept text is a word break (maybe after stripped punctuation), never the rest of a word
+      expect(/^[,;:.]*\s/.test(rest)).toBe(true)
+    }
+  })
   it('a Croatian quote or a planner note is never shown', () => {
     expect(quoteFor(base({ brain: brain({ quote: 'Mislim da je to dobro, ali nije' }) }))).toBeNull()
     expect(quoteFor(base({ brain: brain({ quote: 'Extracts the pricing angle from the call' }) }))).toBeNull()
@@ -194,6 +217,15 @@ describe('answerOf / plainWhy / mixLine / weekWhy / resultLine', () => {
     expect(resultLine(base(), null)).toBeNull()
   })
   it('weekWhy never repeats the post reason and uses the mix', () => expect(weekWhy([base({ evidence: [{ type: 'call', label: 'From the call on 3 Oct' }] }), base({ key: 'b', brain: brain({ flags: { lm: true, boosted: false, founder: false, carousel: false, weekend: false, failed: false, low_score: false, fact_fail: false } }) })], '2026-10-12')).toBe('This week: 1 from calls · 1 lead magnet.'))
+  it('weekWhy differs from reasonFor on the same item', () => {
+    const one = base({ evidence: [{ type: 'call', label: 'From the call on 3 Oct' }] })
+    expect(weekWhy([one], one.week)).not.toBe(reasonFor(one, 'risedtc'))
+    for (const fx of [ivanFx, riseFx, archFx]) {
+      const read = fx as unknown as PlanRead
+      const its = itemsOf(read)
+      for (const it of its) expect(weekWhy(its, it.week)).not.toBe(reasonFor(it, read.account as Acct))
+    }
+  })
   it('mixLine counts founder stories and top posts', () => expect(mixLine([
     base({ brain: brain({ flags: { ...noFlags, founder: true } }) }), base({ brain: brain({ flags: { ...noFlags, founder: true } }) }),
     base({ evidence: [{ type: 'outlier', label: 'x' }] }),
@@ -205,7 +237,10 @@ describe('answerOf / plainWhy / mixLine / weekWhy / resultLine', () => {
       { start: '2026-10-19', which: 'next', target: 4, filled: 2, open: 2, posts: [post('2026-10-20', 'error')], planned: [{ kind: 'planned', slot_id: 's1', topic: 'S', why_now: '', evidence: [], format: null, picture: null, idea_source: 'client_ideas', idea_ref: 'i', proposal: false, status: 'waiting_review', status_label: '', draft_id: 'd2', day: '2026-10-21' }] },
       { start: '2026-10-26', which: 'after', target: 4, filled: 0, open: 4, posts: [], planned: [] },
     ], done: [], warnings: [] } as unknown as PlanRead
-    expect(answerOf(read)).toEqual({ need: 3, title: '3 posts wait for your OK', parts: ['2 this week', '1 later', '1 scheduled', '1 failed'] })
+    // The 9 Oct post still waits for approval: it counts, as this week's work.
+    expect(answerOf(read)).toEqual({ need: 4, title: '4 posts wait for your OK', parts: ['3 this week', '1 later', '1 scheduled', '1 failed'] })
+    const noPast = { ...read, weeks: read.weeks.map(w => ({ ...w, posts: w.posts.filter(p => p.day !== '2026-10-09') })) }
+    expect(answerOf(noPast)).toEqual({ need: 3, title: '3 posts wait for your OK', parts: ['2 this week', '1 later', '1 scheduled', '1 failed'] })
     const none = { ...read, weeks: read.weeks.map(w => ({ ...w, posts: w.posts.filter(p => p.status !== 'review'), planned: [] })) }
     expect(answerOf(none).title).toBe('Nothing waits for you')
     expect(answerOf(none).need).toBe(0)
@@ -218,6 +253,15 @@ describe('itemsOf / upcoming / lateRun', () => {
     const its = itemsOf(rise)
     const days = its.map(i => i.day ?? '9999')
     expect([...days].sort()).toEqual(days)
+    for (let k = 1; k < its.length; k++) if (its[k].day && its[k].day === its[k - 1].day && its[k].at && its[k - 1].at) expect(its[k - 1].at! <= its[k].at!).toBe(true)
+    const shuffled = { ...rise, weeks: rise.weeks.map(w => ({ ...w, posts: [...w.posts].reverse().concat(w.posts.slice(0, 1).map(p => ({ ...p, draft_id: 'early', at: `${p.day}T01:00:00Z` }))) })) } as PlanRead
+    const sh = itemsOf(shuffled)
+    for (let k = 1; k < sh.length; k++) {
+      expect((sh[k - 1].day ?? '9999') <= (sh[k].day ?? '9999')).toBe(true)
+      if (sh[k].day === sh[k - 1].day && sh[k].at && sh[k - 1].at) expect(sh[k - 1].at! <= sh[k].at!).toBe(true)
+    }
+    const first = sh.filter(i => i.day === rise.weeks[0].posts[0].day)
+    expect(first[0].draftId).toBe('early')
     const slot = its.find(i => i.kind === 'planned')!
     expect(slot.suggested).toBe(true); expect(slot.st).toBe('review'); expect(slot.slotId).toBeTruthy(); expect(slot.whyNow).toBeTruthy()
     const pub = its.find(i => i.post?.status === 'published')!
@@ -240,7 +284,10 @@ describe('itemsOf / upcoming / lateRun', () => {
     expect(itemsOf(r).slice(-s.length).every(i => i.kind === 'planned')).toBe(true)
     expect(upcoming(itemsOf(r), '2026-10-12').filter(i => i.day === null).length).toBe(s.length)
   })
-  it('upcoming drops past days', () => expect(upcoming([base({ day: '2026-10-09' }), base({ day: '2026-10-12' })], '2026-10-12').map(i => i.day)).toEqual(['2026-10-12']))
+  it('upcoming drops past days but keeps posts still waiting', () => {
+    expect(upcoming([base({ day: '2026-10-09', st: 'scheduled' }), base({ day: '2026-10-12' })], '2026-10-12').map(i => i.day)).toEqual(['2026-10-12'])
+    expect(upcoming([base({ day: '2026-10-09', st: 'review' }), base({ day: '2026-10-08', st: 'published' })], '2026-10-12').map(i => i.day)).toEqual(['2026-10-09'])
+  })
   it('lateRun after 26 hours', () => {
     const r = { last_run: { ran_at: '2026-10-12T05:20:00Z', target_week: null, open_before: 0, picked: 0 } } as PlanRead
     expect(lateRun(r, new Date('2026-10-13T07:00:00Z'))).toBe(false)
@@ -258,7 +305,8 @@ describe('strip lines', () => {
   it('readsSummary', () => {
     const r = (items: { proven: boolean; small: boolean }[], measured: number, validated = false) => ({ reads: { items: items.map(x => ({ title: 't', x: 1, lo: null, hi: null, ...x })), total: items.length }, predictions: { measured, need: 20, validated } }) as unknown as BrainStrip
     expect(readsSummary(r([{ proven: false, small: false }, { proven: false, small: false }], 17), 'ivan')).toBe('Not proven yet. The brain needs more of your recent posts. Predictions start at 20 measured posts: Ivan 17 of 20.')
-    expect(readsSummary(r([{ proven: true, small: false }, { proven: false, small: false }], 24), 'risedtc')).toBe('1 of 2 proven on recent posts. Rise has 24; its model has not passed its check yet.')
+    expect(readsSummary(r([{ proven: true, small: false }, { proven: false, small: false }], 24), 'risedtc')).toBe('1 of 2 proven on recent posts. Rise has 24 measured posts, but its guesses have not passed their test yet.')
+    expect(readsSummary(r([{ proven: true, small: true }], 21), 'arch')).toBe('1 of 1 proven on recent posts, but few examples. Arch has 21 measured posts, but its guesses have not passed their test yet.')
     expect(readsSummary(r([{ proven: true, small: true }], 8), 'arch')).toBe('1 of 1 proven on recent posts, but few examples. Predictions start at 20 measured posts: Arch 8 of 20.')
     expect(readsSummary(r([{ proven: false, small: false }], 3), 'arch')).toBe("Not proven yet. The brain needs more of Arch's recent posts. Predictions start at 20 measured posts: Arch 3 of 20.")
     expect(readsSummary(null, 'ivan')).toBe('')
@@ -282,7 +330,7 @@ describe('reasonFor', () => {
 })
 
 // Every string the module can output, over the three real reads, with and without brain data.
-const BANNED = /—|\bundefined\b|\bNaN\b|\bnull\b|\boutliers?\b|\busual\b|\bprimer\b|\bpillars?\b|\bcadence\b|\breview draft\b|\bniche winners?\b|\bpatterns?\b|\bbreakouts?\b|\bICP\b|\bQA\b|\bholdout\b|\brecipe\b/i
+const BANNED = /—|\bslots?\b|\bundefined\b|\bNaN\b|\bnull\b|\boutliers?\b|\busual\b|\bprimer\b|\bpillars?\b|\bcadence\b|\breview draft\b|\bniche winners?\b|\bpatterns?\b|\bbreakouts?\b|\bICP\b|\bQA\b|\bholdout\b|\brecipe\b/i
 function allStrings(read: PlanRead, now: Date): string[] {
   const acct = read.account as Acct
   const strip = read.brain_strip ?? null
@@ -318,10 +366,10 @@ describe('real reads: no machine words, no em dash, no undefined/NaN/null', () =
       expect(read.account).toBe(name)
       const s = allStrings(read, new Date('2026-10-12T12:00:00Z'))
       expect(s.length).toBeGreaterThan(50)
-      const bad = s.filter(x => BANNED.test(x))
+      const bad = s.filter(x => x !== PB.FAILED_LINE && BANNED.test(x))
       expect(bad).toEqual([])
       const bare = allStrings(stripBrain(read), new Date('2026-10-12T12:00:00Z'))
-      expect(bare.filter(x => BANNED.test(x))).toEqual([])
+      expect(bare.filter(x => x !== PB.FAILED_LINE && BANNED.test(x))).toEqual([])
     })
   }
   it('fixtures stay small', () => {
@@ -361,7 +409,7 @@ describe('exported constants', () => {
     Object.values(PB).filter(v => typeof v !== 'function').forEach(walk)
     expect(strings.length).toBeGreaterThan(20)
     expect(strings.filter(s => s.includes('—'))).toEqual([])
-    expect(strings.filter(s => BANNED.test(s))).toEqual([])
+    expect(strings.filter(s => s !== PB.FAILED_LINE && BANNED.test(s))).toEqual([])
   })
   it('names', () => {
     expect(PB.ACCT_NAME).toEqual({ ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch' })
