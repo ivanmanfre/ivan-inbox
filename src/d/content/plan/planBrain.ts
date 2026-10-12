@@ -420,7 +420,7 @@ const WARN_LINK: Record<string, { label: string; sub: string }> = {
   lm_due: { label: 'Lead magnets', sub: 'magnets' },
   empty_topic_area: { label: 'Add ideas', sub: 'ideas' },
   no_fresh_proof: { label: 'Add ideas', sub: 'ideas' },
-  draft_failed: { label: 'Open Review', sub: 'now' },
+  draft_failed: { label: 'Open the draft', sub: 'now' },
 }
 /** A warning in plain words with its fix link (null when there is nothing to open). */
 export function warningOf(w: PlanWarning): { text: string; link: { label: string; sub: string } | null } {
@@ -451,7 +451,7 @@ export function rulesOf(strip: BrainStrip | null | undefined): { live: StripRule
   return { live: all.filter(r => r.status === 'live'), testing: all.filter(r => r.status === 'shadow') }
 }
 
-/** "9 of 9 proven on recent posts. Rise has 24; its model has not passed its check yet." */
+/** "1 of 2 proven on recent posts. Rise has 24 measured posts. Its guesses have not passed their test yet." */
 export function readsSummary(strip: BrainStrip | null | undefined, acct: Acct): string {
   if (!strip) return ''
   const items = Array.isArray(strip.reads?.items) ? strip.reads.items : []
@@ -464,7 +464,7 @@ export function readsSummary(strip: BrainStrip | null | undefined, acct: Acct): 
   const p = strip.predictions
   if (p && fin(p.need) && p.need > 0 && fin(p.measured)) {
     if (p.validated) out.push(`Predictions are on, from ${p.measured} measured posts.`)
-    else if (p.measured >= p.need) out.push(`${ACCT_NAME[acct]} has ${p.measured} measured posts, but its guesses have not passed their test yet.`)
+    else if (p.measured >= p.need) out.push(`${ACCT_NAME[acct]} has ${p.measured} measured posts. Its guesses have not passed their test yet.`)
     else out.push(`Predictions start at ${p.need} measured posts: ${ACCT_NAME[acct]} ${p.measured} of ${p.need}.`)
   }
   return out.join(' ')

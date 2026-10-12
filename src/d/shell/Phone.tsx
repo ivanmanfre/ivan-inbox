@@ -127,7 +127,7 @@ function deviceInWarsaw(): boolean {
 // The large title names where you are: a Content sub-page by its own name (the tab bar already says Content),
 // Settings > Money as Money. Kept local so the shell chunk does not pull in Content's SubNav.
 const SUB_TITLE: Partial<Record<string, Record<string, string>>> = {
-  content: { brain: 'Content Brain', calendar: 'Calendar', ideas: 'Ideas', now: 'Review', review: 'Review', magnets: 'Lead magnets', results: 'Results', strategy: 'Strategy', styles: 'Styles', inputs: 'Outliers', markets: 'Outliers' },
+  content: { brain: 'Content Brain', plan: 'Plan', calendar: 'Calendar', ideas: 'Ideas', now: 'Review', review: 'Review', magnets: 'Lead magnets', results: 'Results', strategy: 'Strategy', styles: 'Styles', inputs: 'Outliers', markets: 'Outliers' },
   settings: { money: 'Money' },
   ops: { x: 'X review' },
 }

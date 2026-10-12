@@ -305,8 +305,8 @@ describe('strip lines', () => {
   it('readsSummary', () => {
     const r = (items: { proven: boolean; small: boolean }[], measured: number, validated = false) => ({ reads: { items: items.map(x => ({ title: 't', x: 1, lo: null, hi: null, ...x })), total: items.length }, predictions: { measured, need: 20, validated } }) as unknown as BrainStrip
     expect(readsSummary(r([{ proven: false, small: false }, { proven: false, small: false }], 17), 'ivan')).toBe('Not proven yet. The brain needs more of your recent posts. Predictions start at 20 measured posts: Ivan 17 of 20.')
-    expect(readsSummary(r([{ proven: true, small: false }, { proven: false, small: false }], 24), 'risedtc')).toBe('1 of 2 proven on recent posts. Rise has 24 measured posts, but its guesses have not passed their test yet.')
-    expect(readsSummary(r([{ proven: true, small: true }], 21), 'arch')).toBe('1 of 1 proven on recent posts, but few examples. Arch has 21 measured posts, but its guesses have not passed their test yet.')
+    expect(readsSummary(r([{ proven: true, small: false }, { proven: false, small: false }], 24), 'risedtc')).toBe('1 of 2 proven on recent posts. Rise has 24 measured posts. Its guesses have not passed their test yet.')
+    expect(readsSummary(r([{ proven: true, small: true }], 21), 'arch')).toBe('1 of 1 proven on recent posts, but few examples. Arch has 21 measured posts. Its guesses have not passed their test yet.')
     expect(readsSummary(r([{ proven: true, small: true }], 8), 'arch')).toBe('1 of 1 proven on recent posts, but few examples. Predictions start at 20 measured posts: Arch 8 of 20.')
     expect(readsSummary(r([{ proven: false, small: false }], 3), 'arch')).toBe("Not proven yet. The brain needs more of Arch's recent posts. Predictions start at 20 measured posts: Arch 3 of 20.")
     expect(readsSummary(null, 'ivan')).toBe('')

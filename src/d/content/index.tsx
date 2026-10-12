@@ -33,6 +33,7 @@ import { SHOWS, buildNow, laneOfRow, windowDays, dayWord, dayDate, type Show } f
 import { useMagnetCounts } from './useMagnetCounts'
 import { Results } from './Results'
 import { Plan } from './Plan'
+import { PlanV2 } from './plan/PlanV2'
 import { ContentBrain, waitsForReview } from './ContentBrain'
 import { useContentFlags } from './v2/flags'
 import { useMainTier } from './v2/useMainTier'
@@ -198,7 +199,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   let body: React.ReactNode
   // Brief 4 sub-tabs sit in the page's one scrolling column (the 24 edge), like Review and Calendar.
   const column = (n: React.ReactNode) => <div className="cn-split"><div className="cn-left" data-d-scroll>{n}</div></div>
-  if (sub === 'plan') body = column(<Plan lane={qLane} setLane={lane => go({ lane }, 'plan')} />)
+  if (sub === 'plan') body = column(cv2.plan ? <PlanV2 lane={qLane} setLane={lane => go({ lane }, 'plan')} /> : <Plan lane={qLane} setLane={lane => go({ lane }, 'plan')} />)
   else if (sub === 'ideas') body = cv2.ideas ? column(<Ideas banks={banks} phone={phone} lane={qLane} onLaneChange={lane => go({ lane }, 'ideas')} v2 />) : <Ideas banks={banks} phone={phone} lane={qLane} onLaneChange={lane => go({ lane }, 'ideas')} />
   else if (sub === 'brain' && !onBrain) body = <Suspense fallback={<Skeleton lines={5} label="Reading the brain area" />}><div className="cn-now-tools"><a href={dHash('content', 'brain', qLane === 'ivan' ? {} : { lane: qLane })}>← Content Brain</a></div><BrainArea lane={qLane} setLane={setLane} phone={phone} query={q} /></Suspense>
   else if (onBrain) {

@@ -21,18 +21,18 @@
    ========================================================================== */
 
 export type Section = 'tokens' | 'type' | 'motion' | 'shell' | 'home' | 'dms' | 'content' | 'lanes' | 'ops' | 'sales' | 'claude' | 'settings'
-  | 'content.brain' | 'content.calendar' | 'content.ideas' | 'content.review' | 'content.lms'
+  | 'content.brain' | 'content.calendar' | 'content.ideas' | 'content.review' | 'content.lms' | 'content.plan'
 export type SkinLayout = 'desktop' | 'phone'
 
 export const SECTIONS: readonly Section[] = ['tokens', 'type', 'motion', 'shell', 'home', 'dms', 'content', 'lanes', 'ops', 'sales', 'claude', 'settings',
-  'content.brain', 'content.calendar', 'content.ideas', 'content.review', 'content.lms']
+  'content.brain', 'content.calendar', 'content.ideas', 'content.review', 'content.lms', 'content.plan']
 export const FOUNDATION: readonly Section[] = ['tokens', 'type', 'motion', 'shell']
 
 // Verified sections. Each starts empty and grows only after that section's
 // acceptance passes live (BUILD_PLAN decision 1). PHONE: on 2026-10-08 after
 // Ivan handed the phone check over (WebKit 390px, every section, old vs new).
 export const BRIEF_DESKTOP: Section[] = ['tokens', 'type', 'motion', 'shell', 'home', 'dms', 'content',
-  'content.brain', 'content.calendar', 'content.ideas', 'content.review', 'content.lms', 'lanes', 'ops', 'sales', 'claude', 'settings']
+  'content.brain', 'content.calendar', 'content.ideas', 'content.review', 'content.lms', 'content.plan', 'lanes', 'ops', 'sales', 'claude', 'settings']
 // Web desktop: on 2026-10-08 (Ivan, looking at Brief: "I could adapt the web version to this").
 export const WEB_DESKTOP: Section[] = [...BRIEF_DESKTOP]
 export const PHONE: Section[] = [...BRIEF_DESKTOP]

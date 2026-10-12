@@ -5,7 +5,7 @@ import { useSkin } from '../../../ds/useSkin'
 // sub-tab. Off = today's tree, mounted unchanged. The keys live in src/ds/skin.ts
 // (`?skin=brief:content.review`, sessionStorage / localStorage 'ds-skin');
 // a sub-tab key implies `content`. Every hook here runs unconditionally.
-export type ContentFlags = { frame: boolean; brain: boolean; calendar: boolean; ideas: boolean; review: boolean; lms: boolean }
+export type ContentFlags = { frame: boolean; brain: boolean; calendar: boolean; ideas: boolean; review: boolean; lms: boolean; plan: boolean }
 
 export function useContentFlags(): ContentFlags {
   const frame = useSkin('content')
@@ -14,5 +14,6 @@ export function useContentFlags(): ContentFlags {
   const ideas = useSkin('content.ideas')
   const review = useSkin('content.review')
   const lms = useSkin('content.lms')
-  return { frame, brain, calendar, ideas, review, lms }
+  const plan = useSkin('content.plan')
+  return { frame, brain, calendar, ideas, review, lms, plan }
 }

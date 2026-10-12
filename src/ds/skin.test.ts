@@ -17,6 +17,7 @@ describe('parseSkin', () => {
   })
   it('a layout section implies the foundation; a content sub-tab implies content', () => {
     expect(names(parseSkin('brief:content.calendar')!)).toEqual(['content', 'content.calendar', 'motion', 'shell', 'tokens', 'type'])
+    expect(names(parseSkin('brief:content.plan')!)).toEqual(['content', 'content.plan', 'motion', 'shell', 'tokens', 'type'])
     expect(names(parseSkin('tokens')!)).toEqual(['motion', 'shell', 'tokens', 'type'])
   })
   it('ignores junk', () => {
@@ -29,10 +30,10 @@ describe('parseSkin', () => {
 describe('resolveSkin', () => {
   it('defaults enable every verified section on Brief, web desktop and phone', () => {
     expect([...BRIEF_DESKTOP].sort()).toEqual([...SECTIONS].sort()); expect([...WEB_DESKTOP].sort()).toEqual([...SECTIONS].sort()); expect([...PHONE].sort()).toEqual([...SECTIONS].sort())
-    expect(resolveSkin({ ...base, briefNative: true }).set.size).toBe(17)
-    expect(resolveSkin(base).set.size).toBe(17)
-    expect(resolveSkin({ ...base, briefNative: true, layout: 'phone' }).set.size).toBe(17)
-    expect(resolveSkin({ ...base, layout: 'phone' }).set.size).toBe(17)
+    expect(resolveSkin({ ...base, briefNative: true }).set.size).toBe(18)
+    expect(resolveSkin(base).set.size).toBe(18)
+    expect(resolveSkin({ ...base, briefNative: true, layout: 'phone' }).set.size).toBe(18)
+    expect(resolveSkin({ ...base, layout: 'phone' }).set.size).toBe(18)
     expect(resolveSkin({ ...base, layout: 'phone' }).from).toBe('default')
   })
   it('?skin=off wins over a stored list', () => {

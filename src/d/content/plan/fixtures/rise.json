@@ -1,0 +1,984 @@
+{
+ "ok": true,
+ "tz": {
+  "name": "America/Los_Angeles",
+  "label": "PT"
+ },
+ "done": [
+  {
+   "day": "2026-10-12",
+   "title": "I wish we got a piece of that",
+   "format": "text",
+   "pillar": "personal",
+   "comments": null,
+   "draft_id": "c53f1759-0cd2-4033-94d0-e34ae5f7e98e",
+   "reactions": null,
+   "impressions": null
+  },
+  {
+   "day": "2026-10-11",
+   "title": "When Meta goes off, Amazon sales drop",
+   "format": "text",
+   "pillar": "teardown",
+   "comments": 0,
+   "draft_id": "118f7de7-f591-4daa-b632-c73d043cf689",
+   "reactions": 1,
+   "impressions": 237
+  }
+ ],
+ "open": 0,
+ "state": "two_weeks_planned",
+ "today": "2026-10-12",
+ "weeks": [
+  {
+   "open": 0,
+   "dated": 5,
+   "posts": [
+    {
+     "at": "2026-10-12T14:01:17.829+00:00",
+     "day": "2026-10-12",
+     "kind": "post",
+     "brain": {
+      "qa": {
+       "max": 80,
+       "dims": null,
+       "final": null,
+       "first": null,
+       "outcome": "hand",
+       "weakest": null,
+       "rewrites": 0,
+       "pass_line": null,
+       "approved_anyway": false
+      },
+      "read": {
+       "n": 398,
+       "hi": 0.0916,
+       "lo": 0.0499,
+       "dim": "proof_type",
+       "val": "named_example",
+       "base": 0.0453,
+       "rate": 0.0678,
+       "small": false,
+       "proven": true
+      },
+      "angle": {
+       "opener": null,
+       "structure": "STORY"
+      },
+      "brief": null,
+      "facts": null,
+      "flags": {
+       "lm": false,
+       "failed": false,
+       "boosted": false,
+       "founder": true,
+       "weekend": false,
+       "carousel": false,
+       "fact_fail": false,
+       "low_score": false
+      },
+      "photo": {
+       "has": false,
+       "reason": null,
+       "rotation": false
+      },
+      "quote": null,
+      "thumb": null,
+      "trait": null,
+      "words": 156,
+      "edited": true,
+      "result": {
+       "url": null,
+       "views": null,
+       "viral": false,
+       "young": true,
+       "engaged": null,
+       "comments": null,
+       "reactions": null
+      },
+      "draft_id": "c53f1759-0cd2-4033-94d0-e34ae5f7e98e",
+      "has_link": false,
+      "replaced": null,
+      "body_head": "We work with a husband and wife who were shipping baby swaddles out of their garage.\n\nNow they do about $150K a month.\n\nAnd I'm like... man, I wish we got a piece of that 💰\n\nThey're still a client, they're paying us, and we're very happy 🙂 We're not greedy.\n\nT",
+      "first_line": "We work with a husband and wife who were shipping baby swaddles out of their garage.",
+      "time_set_by": null,
+      "quote_pending": true
+     },
+     "title": "I wish we got a piece of that",
+     "format": "text",
+     "status": "published",
+     "founder": true,
+     "picture": "no picture",
+     "draft_id": "c53f1759-0cd2-4033-94d0-e34ae5f7e98e",
+     "evidence": [
+      {
+       "at": "2026-09-16T00:00:00+00:00",
+       "ref": "fc-ea76af43",
+       "type": "call",
+       "label": "From the call \"Intro Call w/ RISE DTC - Constance & Mattan\" on 16 Sep"
+      },
+      {
+       "type": "founder",
+       "label": "Founder story (max 2 a week)"
+      }
+     ],
+     "lead_magnet": false,
+     "board_visible": true
+    }
+   ],
+   "start": "2026-10-12",
+   "which": "this",
+   "filled": 5,
+   "no_day": 0,
+   "target": 5,
+   "founder": 1,
+   "planned": [],
+   "lead_magnets": 0
+  },
+  {
+   "open": 0,
+   "dated": 4,
+   "posts": [],
+   "start": "2026-10-19",
+   "which": "next",
+   "filled": 5,
+   "no_day": 0,
+   "target": 5,
+   "founder": 1,
+   "planned": [
+    {
+     "day": "2026-10-23",
+     "kind": "planned",
+     "brain": {
+      "qa": {
+       "max": 80,
+       "dims": {
+        "HOOK": 6,
+        "VOICE": 6,
+        "ECONOMY": 7,
+        "OPINION": 7,
+        "AI_TELLS": 4,
+        "VERIFIED": 7,
+        "SUBSTANCE": 7,
+        "SPECIFICITY": 8
+       },
+       "final": 55,
+       "first": 52,
+       "outcome": "low",
+       "weakest": "AI_TELLS",
+       "rewrites": 1,
+       "pass_line": null,
+       "approved_anyway": false
+      },
+      "read": {
+       "n": 902,
+       "hi": 0.0496,
+       "lo": 0.0286,
+       "dim": "proof_type",
+       "val": "numbers_result",
+       "base": 0.0453,
+       "rate": 0.0377,
+       "small": false,
+       "proven": true
+      },
+      "angle": {
+       "opener": "claim",
+       "structure": null
+      },
+      "brief": null,
+      "facts": {
+       "pass": false,
+       "total": null,
+       "failed": 3
+      },
+      "flags": {
+       "lm": false,
+       "failed": false,
+       "boosted": false,
+       "founder": false,
+       "weekend": false,
+       "carousel": false,
+       "fact_fail": true,
+       "low_score": true
+      },
+      "photo": {
+       "has": false,
+       "reason": null,
+       "rotation": false
+      },
+      "quote": null,
+      "thumb": null,
+      "trait": null,
+      "words": 185,
+      "edited": false,
+      "result": null,
+      "draft_id": "994bc449-2212-0b86-cdc0-fc26bb59b33e",
+      "has_link": false,
+      "replaced": null,
+      "body_head": "A hundred bucks a day on Meta. Running clean for weeks. Nobody panicking.\n\nThe owner still paused the whole channel.\n\nHis rule: if he can't see that spend realistically climbing toward $500 or $1,000 a day, he stops it. He doesn't sit there swapping hooks for ",
+      "first_line": "A hundred bucks a day on Meta. Running clean for weeks. Nobody panicking.",
+      "time_set_by": null,
+      "quote_pending": false
+     },
+     "topic": "If a channel can't grow from a hundred dollars a day toward five hundred or a thousand a day, something is broken. Kill it.",
+     "format": "text",
+     "status": "waiting_review",
+     "picture": "Mattan's photo if one fits",
+     "slot_id": "0c1f8c9e-9831-4783-991a-ddda8de28e68",
+     "why_now": "A ready draft from the call with Drew at My Mully, giving founders a clear rule for when to kill a channel.",
+     "draft_id": "994bc449-2212-0b86-cdc0-fc26bb59b33e",
+     "evidence": [
+      {
+       "type": "idea",
+       "label": "Call with Drew - My Mully, 14 Sep 2026"
+      }
+     ],
+     "idea_ref": "994bc449-2212-0b86-cdc0-fc26bb59b33e",
+     "proposal": false,
+     "idea_source": "carousel_drafts",
+     "status_label": "Draft waiting in Review"
+    }
+   ],
+   "lead_magnets": 0
+  },
+  {
+   "open": 0,
+   "dated": 0,
+   "posts": [],
+   "start": "2026-10-26",
+   "which": "after",
+   "filled": 5,
+   "no_day": 0,
+   "target": 5,
+   "founder": 0,
+   "planned": [
+    {
+     "day": "2026-10-26",
+     "kind": "planned",
+     "brain": {
+      "qa": {
+       "max": 80,
+       "dims": {
+        "HOOK": 6,
+        "VOICE": 7,
+        "ECONOMY": 6,
+        "OPINION": 6,
+        "AI_TELLS": 8,
+        "VERIFIED": 8,
+        "SUBSTANCE": 7,
+        "SPECIFICITY": 8
+       },
+       "final": 65,
+       "first": 56,
+       "outcome": "recovered",
+       "weakest": "OPINION",
+       "rewrites": 1,
+       "pass_line": 59,
+       "approved_anyway": false
+      },
+      "read": null,
+      "angle": {
+       "opener": "specific_receipt",
+       "structure": "TEARDOWN"
+      },
+      "brief": null,
+      "facts": {
+       "pass": false,
+       "total": null,
+       "failed": 1
+      },
+      "flags": {
+       "lm": false,
+       "failed": false,
+       "boosted": false,
+       "founder": false,
+       "weekend": false,
+       "carousel": false,
+       "fact_fail": true,
+       "low_score": false
+      },
+      "photo": {
+       "has": false,
+       "reason": null,
+       "rotation": false
+      },
+      "quote": null,
+      "thumb": null,
+      "trait": "a hook that opens with a number",
+      "words": 114,
+      "edited": false,
+      "result": null,
+      "draft_id": "1bb7ac77-9113-4b53-9c8b-0c8311df340b",
+      "has_link": false,
+      "replaced": null,
+      "body_head": "Google Shopping matches searches to your product feed. There are no keywords to pick.\n\nOn an audit call, a bike brand's team told us their product page says 11 lbs. Then my team pulled up their Shopping listing. \"Award-winning\" ate the front of the title. The ",
+      "first_line": "Google Shopping matches searches to your product feed. There are no keywords to pick.",
+      "time_set_by": null,
+      "quote_pending": true
+     },
+     "topic": "Your Google Shopping feed is quietly lying about your product",
+     "format": "text",
+     "status": "waiting_review",
+     "picture": "Mattan's photo if one fits",
+     "slot_id": "3461e8cb-2db8-4ad7-bbbc-c647c54733be",
+     "why_now": "Raised on sales calls, it adds a Google Shopping feed teardown to a week already holding a site fix and a founder story.",
+     "draft_id": "1bb7ac77-9113-4b53-9c8b-0c8311df340b",
+     "evidence": [
+      {
+       "at": "2026-09-30T22:43:04+00:00",
+       "ref": "fc-2bf814be",
+       "type": "call",
+       "label": "From the call \"Paid Media Audit Review - Biky & RISE DTC\" on 1 Oct",
+       "quote": null
+      },
+      {
+       "type": "brain_rule",
+       "label": "Shares traits with top niche posts: a hook that opens with a number"
+      }
+     ],
+     "idea_ref": "d35c407a-9f7c-4582-98d5-c098cb2c581a",
+     "proposal": false,
+     "idea_source": "client_ideas",
+     "status_label": "Draft waiting in Review"
+    },
+    {
+     "day": "2026-10-27",
+     "kind": "planned",
+     "brain": {
+      "qa": {
+       "max": 80,
+       "dims": {
+        "HOOK": 8,
+        "VOICE": 8,
+        "ECONOMY": 8,
+        "OPINION": 7,
+        "AI_TELLS": 8,
+        "VERIFIED": 8,
+        "SUBSTANCE": 7,
+        "SPECIFICITY": 8
+       },
+       "final": 62,
+       "first": 57,
+       "outcome": "recovered",
+       "weakest": "SUBSTANCE",
+       "rewrites": 1,
+       "pass_line": null,
+       "approved_anyway": false
+      },
+      "read": null,
+      "angle": {
+       "opener": "story_opener",
+       "structure": "CONFESSIONAL"
+      },
+      "brief": null,
+      "facts": {
+       "pass": false,
+       "total": null,
+       "failed": 1
+      },
+      "flags": {
+       "lm": false,
+       "failed": false,
+       "boosted": false,
+       "founder": false,
+       "weekend": false,
+       "carousel": false,
+       "fact_fail": true,
+       "low_score": false
+      },
+      "photo": {
+       "has": false,
+       "reason": null,
+       "rotation": false
+      },
+      "quote": null,
+      "thumb": null,
+      "trait": "reputation status at stake",
+      "words": 109,
+      "edited": false,
+      "result": null,
+      "draft_id": "859503ca-c7df-4b83-a1ae-ce163d476b55",
+      "has_link": false,
+      "replaced": null,
+      "body_head": "At 8:30 a.m. on launch morning, an operator logged on to check the site their agency had just pushed live.\n\nDifferent color schemes had popped up, and links weren't working.\n\nThey'd paid for that rebuild separately, on top of SEO and paid ads.\n\nThey told me th",
+      "first_line": "At 8:30 a.m. on launch morning, an operator logged on to check the site their agency had just pushed live.",
+      "time_set_by": null,
+      "quote_pending": true
+     },
+     "topic": "They Launched A Site With Broken Links And Called It Done",
+     "format": "text",
+     "status": "waiting_review",
+     "picture": "Mattan's photo if one fits",
+     "slot_id": "da8bc39c-66a8-487c-81db-80bd0df29c9d",
+     "why_now": "From your sales calls and fits a winning reputation pattern; no recent post has covered a site launch teardown.",
+     "draft_id": "859503ca-c7df-4b83-a1ae-ce163d476b55",
+     "evidence": [
+      {
+       "at": "2026-10-05T22:10:41+00:00",
+       "ref": "fc-ec02370a",
+       "type": "call",
+       "label": "From the call \"ZOOM Meeting - RISE DTC // James & Mattan\" on 6 Oct",
+       "quote": null
+      },
+      {
+       "type": "brain_rule",
+       "label": "Shares traits with top niche posts: reputation status at stake"
+      }
+     ],
+     "idea_ref": "1c727cef-cfa5-4d64-956a-d57d7df24eb4",
+     "proposal": false,
+     "idea_source": "client_ideas",
+     "status_label": "Draft waiting in Review"
+    }
+   ],
+   "lead_magnets": 0
+  }
+ ],
+ "supply": [],
+ "target": 5,
+ "x_days": [],
+ "account": "risedtc",
+ "last_run": {
+  "picked": 1,
+  "ran_at": "2026-10-12T13:02:25.799431+00:00",
+  "outcome": {
+   "by": "n8n",
+   "reason": "ok",
+   "skipped": [],
+   "candidates": 19,
+   "model_note": "Skipped C1 (already planned), C5/C7/C8 (timely news), C9/C15/C17/C18/C19 (too close to the starter kit, Costco, more-spend, storage and payback posts), and the founder and Reddit ideas because sales-c..."
+  },
+  "open_before": 1,
+  "target_week": "2026-10-26"
+ },
+ "warnings": [
+  {
+   "code": "empty_topic_area",
+   "text": "Out of ideas for sales posts (3 used in 8 weeks)",
+   "topic": "demand"
+  },
+  {
+   "code": "empty_topic_area",
+   "text": "Out of ideas for posts that bring new followers (4 used in 8 weeks)",
+   "topic": "reach"
+  }
+ ],
+ "brain_strip": {
+  "note": "Tested, not used yet: no weekend posts (19% more views), fewer posts a week (24% more views) and a picture (54% more views). Rise posts 5 a week.",
+  "reads": {
+   "items": [
+    {
+     "x": 1.5,
+     "hi": 2.02,
+     "lo": 1.1,
+     "small": false,
+     "title": "I wish we got a piece of that",
+     "proven": true
+    },
+    {
+     "x": 0.48,
+     "hi": 0.87,
+     "lo": 0.26,
+     "small": false,
+     "title": "What does storage cost you per order?",
+     "proven": true
+    },
+    {
+     "x": 1.52,
+     "hi": 2.03,
+     "lo": 1.13,
+     "small": false,
+     "title": "Best-value starter kit hid who comes back",
+     "proven": true
+    },
+    {
+     "x": 1.52,
+     "hi": 2.03,
+     "lo": 1.13,
+     "small": false,
+     "title": "Before restarting Meta and Google, check what actually ran",
+     "proven": true
+    },
+    {
+     "x": 1.52,
+     "hi": 2.03,
+     "lo": 1.13,
+     "small": false,
+     "title": "We bid on \"invasive species\" to sell a luxury handbag (CVR +104%)",
+     "proven": true
+    },
+    {
+     "x": 1.52,
+     "hi": 2.03,
+     "lo": 1.13,
+     "small": false,
+     "title": "Customers Were Missing Free Shipping by Just a Few Dollars",
+     "proven": true
+    },
+    {
+     "x": 1.76,
+     "hi": 2.35,
+     "lo": 1.31,
+     "small": false,
+     "title": "The pilot license cost me $35K",
+     "proven": true
+    },
+    {
+     "x": 1.06,
+     "hi": 1.42,
+     "lo": 0.78,
+     "small": false,
+     "title": "Stockout months can't grade your ads",
+     "proven": true
+    },
+    {
+     "x": 0.83,
+     "hi": 1.09,
+     "lo": 0.63,
+     "small": false,
+     "title": "If a channel can't grow from a hundred dollars a day toward five hundred or a thousand a day, something is broken. Kill it.",
+     "proven": true
+    }
+   ],
+   "total": 15
+  },
+  "rules": [
+   {
+    "hi": 41.7,
+    "lo": 3.3,
+    "gain": 24.9,
+    "name": "No hashtags",
+    "metric": "views",
+    "status": "live",
+    "rule_id": "R10-hashtag-risedtc",
+    "unclear": false,
+    "creators": 46,
+    "enforcer": "writer",
+    "your_rule": false,
+    "held_latest": true
+   },
+   {
+    "hi": 80.7,
+    "lo": 31.5,
+    "gain": 54.1,
+    "name": "Add a picture",
+    "metric": "views",
+    "status": "shadow",
+    "rule_id": "R01-image-risedtc",
+    "unclear": false,
+    "creators": 46,
+    "enforcer": "photo picker",
+    "your_rule": false,
+    "held_latest": true
+   },
+   {
+    "hi": 32.3,
+    "lo": 14.4,
+    "gain": 23.9,
+    "name": "Fewer posts a week",
+    "metric": "views",
+    "status": "shadow",
+    "rule_id": "R08-frequency-risedtc",
+    "unclear": false,
+    "creators": 46,
+    "enforcer": "scheduler",
+    "your_rule": false,
+    "held_latest": true
+   },
+   {
+    "hi": 27.0,
+    "lo": 10.1,
+    "gain": 19.0,
+    "name": "No weekend posts",
+    "metric": "views",
+    "status": "shadow",
+    "rule_id": "R11-weekend-risedtc",
+    "unclear": false,
+    "creators": 46,
+    "enforcer": "scheduler",
+    "your_rule": false,
+    "held_latest": true
+   },
+   {
+    "hi": 13.4,
+    "lo": 2.8,
+    "gain": 7.9,
+    "name": "A question gets more comments",
+    "metric": "comments",
+    "status": "shadow",
+    "rule_id": "R07-question-comments",
+    "unclear": false,
+    "creators": 140,
+    "enforcer": "writer",
+    "your_rule": false,
+    "held_latest": true
+   }
+  ],
+  "views": {
+   "posts": [
+    {
+     "d": "2026-07-21",
+     "v": 210,
+     "young": false
+    },
+    {
+     "d": "2026-07-22",
+     "v": 190,
+     "young": false
+    },
+    {
+     "d": "2026-07-23",
+     "v": 227,
+     "young": false
+    },
+    {
+     "d": "2026-07-24",
+     "v": 184,
+     "young": false
+    },
+    {
+     "d": "2026-07-27",
+     "v": 1677,
+     "young": false
+    },
+    {
+     "d": "2026-07-28",
+     "v": 311,
+     "young": false
+    },
+    {
+     "d": "2026-07-29",
+     "v": 170,
+     "young": false
+    },
+    {
+     "d": "2026-07-30",
+     "v": 269,
+     "young": false
+    },
+    {
+     "d": "2026-07-30",
+     "v": 176,
+     "young": false
+    },
+    {
+     "d": "2026-07-31",
+     "v": 910,
+     "young": false
+    },
+    {
+     "d": "2026-08-03",
+     "v": 220,
+     "young": false
+    },
+    {
+     "d": "2026-08-04",
+     "v": 222,
+     "young": false
+    },
+    {
+     "d": "2026-08-05",
+     "v": 141,
+     "young": false
+    },
+    {
+     "d": "2026-08-06",
+     "v": 385,
+     "young": false
+    },
+    {
+     "d": "2026-08-09",
+     "v": 273,
+     "young": false
+    },
+    {
+     "d": "2026-08-10",
+     "v": 300,
+     "young": false
+    },
+    {
+     "d": "2026-08-11",
+     "v": 296,
+     "young": false
+    },
+    {
+     "d": "2026-08-12",
+     "v": 237,
+     "young": false
+    },
+    {
+     "d": "2026-08-13",
+     "v": 300,
+     "young": false
+    },
+    {
+     "d": "2026-08-16",
+     "v": 198,
+     "young": false
+    },
+    {
+     "d": "2026-08-17",
+     "v": 358,
+     "young": false
+    },
+    {
+     "d": "2026-08-18",
+     "v": 798,
+     "young": false
+    },
+    {
+     "d": "2026-08-19",
+     "v": 1185,
+     "young": false
+    },
+    {
+     "d": "2026-08-20",
+     "v": 229,
+     "young": false
+    },
+    {
+     "d": "2026-08-21",
+     "v": 149,
+     "young": false
+    },
+    {
+     "d": "2026-08-24",
+     "v": 421,
+     "young": false
+    },
+    {
+     "d": "2026-08-25",
+     "v": 203,
+     "young": false
+    },
+    {
+     "d": "2026-08-26",
+     "v": 140,
+     "young": false
+    },
+    {
+     "d": "2026-08-27",
+     "v": 1642,
+     "young": false
+    },
+    {
+     "d": "2026-08-28",
+     "v": 320,
+     "young": false
+    },
+    {
+     "d": "2026-08-31",
+     "v": 263,
+     "young": false
+    },
+    {
+     "d": "2026-09-01",
+     "v": 270,
+     "young": false
+    },
+    {
+     "d": "2026-09-02",
+     "v": 28935,
+     "young": false
+    },
+    {
+     "d": "2026-09-03",
+     "v": 364,
+     "young": false
+    },
+    {
+     "d": "2026-09-04",
+     "v": 418,
+     "young": false
+    },
+    {
+     "d": "2026-09-07",
+     "v": 413,
+     "young": false
+    },
+    {
+     "d": "2026-09-08",
+     "v": 121,
+     "young": false
+    },
+    {
+     "d": "2026-09-09",
+     "v": 253,
+     "young": false
+    },
+    {
+     "d": "2026-09-10",
+     "v": 137,
+     "young": false
+    },
+    {
+     "d": "2026-09-11",
+     "v": 155,
+     "young": false
+    },
+    {
+     "d": "2026-09-14",
+     "v": 226,
+     "young": false
+    },
+    {
+     "d": "2026-09-15",
+     "v": 309,
+     "young": false
+    },
+    {
+     "d": "2026-09-16",
+     "v": 212,
+     "young": false
+    },
+    {
+     "d": "2026-09-17",
+     "v": 279,
+     "young": false
+    },
+    {
+     "d": "2026-09-18",
+     "v": 96,
+     "young": false
+    },
+    {
+     "d": "2026-09-21",
+     "v": 333,
+     "young": false
+    },
+    {
+     "d": "2026-09-22",
+     "v": 310,
+     "young": false
+    },
+    {
+     "d": "2026-09-23",
+     "v": 110,
+     "young": false
+    },
+    {
+     "d": "2026-09-25",
+     "v": 112,
+     "young": false
+    },
+    {
+     "d": "2026-09-28",
+     "v": 330,
+     "young": false
+    },
+    {
+     "d": "2026-09-29",
+     "v": 113,
+     "young": false
+    },
+    {
+     "d": "2026-09-30",
+     "v": 130,
+     "young": false
+    },
+    {
+     "d": "2026-10-01",
+     "v": 133,
+     "young": false
+    },
+    {
+     "d": "2026-10-02",
+     "v": 102,
+     "young": false
+    },
+    {
+     "d": "2026-10-05",
+     "v": 306,
+     "young": false
+    },
+    {
+     "d": "2026-10-06",
+     "v": 102,
+     "young": true
+    },
+    {
+     "d": "2026-10-06",
+     "v": 492,
+     "young": true
+    },
+    {
+     "d": "2026-10-08",
+     "v": 187,
+     "young": true
+    },
+    {
+     "d": "2026-10-09",
+     "v": 1295,
+     "young": true
+    },
+    {
+     "d": "2026-10-10",
+     "v": 66,
+     "young": true
+    },
+    {
+     "d": "2026-10-11",
+     "v": 237,
+     "young": true
+    }
+   ],
+   "median": 253,
+   "measured": 55,
+   "breakouts": 6
+  },
+  "collection": {
+   "posts": 10996,
+   "creators": 141
+  },
+  "idea_stock": [
+   {
+    "used": 10,
+    "stock": 13,
+    "topic": "authority"
+   },
+   {
+    "used": 7,
+    "stock": 30,
+    "topic": "teardown"
+   },
+   {
+    "used": 4,
+    "stock": 2,
+    "topic": "personal"
+   },
+   {
+    "used": 4,
+    "stock": 0,
+    "topic": "reach"
+   },
+   {
+    "used": 3,
+    "stock": 0,
+    "topic": "demand"
+   },
+   {
+    "used": 1,
+    "stock": 7,
+    "topic": "proof"
+   }
+  ],
+  "next_check": {
+   "date": "2026-11-02",
+   "watch": [],
+   "recent": [],
+   "proposals": []
+  },
+  "predictions": {
+   "need": 20,
+   "measured": 24,
+   "validated": false
+  }
+ },
+ "done_median": 253,
+ "lm_per_week": 0,
+ "target_week": null,
+ "auto_generate": true,
+ "cadence_source": "5 content posts a week, as agreed for RISE; lead magnets are off",
+ "proposals_only": false,
+ "founder_story_max": 2
+}
