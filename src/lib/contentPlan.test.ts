@@ -21,6 +21,12 @@ describe('parsePlan', () => {
   it('still refuses a partial read with brain data on it', () => {
     expect(() => parsePlan({ ok: true, account: 'risedtc', weeks: [week('2026-10-12', 'this'), week('2026-10-19', 'next'), week('2026-10-26', 'after')], warnings: [], brain_strip: {} }, 'risedtc')).toThrow()
   })
+  it('reads a plan whose brain data failed: no strip, the error kept', () => {
+    const r = parsePlan({ ok: true, account: 'arch', weeks: [week('2026-10-12', 'this'), week('2026-10-19', 'next'), week('2026-10-26', 'after')], done: [], warnings: [], brain_strip: null, brain_error: 'canceling statement due to statement timeout' }, 'arch')
+    expect(r.weeks).toHaveLength(3)
+    expect(r.brain_strip).toBeNull()
+    expect(r.brain_error).toMatch(/timeout/)
+  })
   it('names the day', () => expect(planDay('2026-10-19')).toBe('Mon 19 Oct'))
 })
 

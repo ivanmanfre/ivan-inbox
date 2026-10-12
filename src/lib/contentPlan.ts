@@ -51,7 +51,9 @@ export type PlanRead = {
   weeks: PlanWeek[]
   done: { title: string; day: string; format: string | null; pillar: string | null; draft_id?: string; impressions?: number | null; reactions?: number | null; comments?: number | null }[]
   warnings: PlanWarning[]; last_run: { ran_at: string; target_week: string | null; open_before: number; picked: number } | null
-  done_median?: number | null; tz?: { name: string; label: string }; x_days?: string[]; brain_strip?: BrainStrip
+  done_median?: number | null; tz?: { name: string; label: string }; x_days?: string[]
+  /** Null when the brain data failed to load; the plan itself still reads. brain_error then says why. */
+  brain_strip?: BrainStrip | null; brain_error?: string
   supply?: { draft_id: string; title: string; format: string | null; created_at: string; brain: boolean | PlanBrain; brain_draft?: boolean; evidence: PlanEvidence[] }[]
 }
 
