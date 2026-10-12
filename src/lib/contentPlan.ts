@@ -12,12 +12,14 @@ export type PlanSlot = {
   kind: 'planned'; slot_id: string; topic: string; why_now: string; evidence: PlanEvidence[]; format: string | null
   picture: string | null; idea_source: 'lm_idea_candidates' | 'client_ideas' | 'carousel_drafts'; idea_ref: string
   proposal: boolean; status: string; status_label: string; draft_id: string | null
+  /** The day this slot is meant for: the first free weekday of its week (db/255). Null = no free weekday left. */
+  day?: string | null
 }
-export type PlanWeek = { start: string; which: 'this' | 'next' | 'after'; target: number; filled: number; open: number; posts: PlanPost[]; planned: PlanSlot[] }
+export type PlanWeek = { start: string; which: 'this' | 'next' | 'after'; target: number; filled: number; open: number; posts: PlanPost[]; planned: PlanSlot[]; dated?: number; no_day?: number }
 export type PlanWarning = { code: string; text: string }
 export type PlanRead = {
   account: Lane; today: string; target: number; target_week: string | null; open: number
-  state: 'two_weeks_planned' | 'planning'; proposals_only: boolean; founder_story_max: number; cadence_source: string
+  state: 'two_weeks_planned' | 'planning'; proposals_only: boolean; auto_generate?: boolean; founder_story_max: number; cadence_source: string
   weeks: PlanWeek[]; done: { title: string; day: string; format: string | null; pillar: string | null }[]
   warnings: PlanWarning[]; last_run: { ran_at: string; target_week: string | null; open_before: number; picked: number } | null
 }
@@ -47,7 +49,39 @@ export function weekLabel(w: Pick<PlanWeek, 'start' | 'which'>): string {
   const name = w.which === 'this' ? 'This week' : w.which === 'next' ? 'Next week' : 'Week after'
   return `${name} · from ${planDay(w.start).replace(/^\w+ /, '')}`
 }
-const FORMAT: Record<string, string> = { text: 'Text', single_image: 'Image', image: 'Image', carousel: 'Carousel', pdf: 'Carousel', video: 'Video' }
+const FORMAT: Record<string, string> = { text: 'Text', post: 'Text', single_image: 'Image', image: 'Image', carousel: 'Carousel', pdf: 'Carousel', video: 'Video' }
 export const formatWord = (f: string | null | undefined) => (f ? FORMAT[f] ?? f.replace(/_/g, ' ') : 'Format open')
 const STATUS: Record<string, string> = { published: 'Published', scheduled: 'Scheduled', approved: 'Approved', review: 'Waiting for approval', pending: 'In the publish queue', posted: 'Published' }
 export const postStatus = (lane: Lane, s: string) => (lane === 'arch' && s === 'review' ? 'Waiting for Davorin' : STATUS[s] ?? s)
+
+/** What the picture line says. The planner stores a few machine phrases; the card shows plain ones. */
+export function pictureWord(p: string | null | undefined): string {
+  if (!p) return 'Picture chosen when written'
+  if (/^decided when drafted$/i.test(p)) return 'Picture chosen when written'
+  if (/^photo if one fits/i.test(p)) return 'Photo if one fits'
+  return p.charAt(0).toUpperCase() + p.slice(1)
+}
+
+// Display only: some drafts were written in Title Case, others in sentence case. A title whose long words all start
+// with a capital is shown in sentence case. Acronyms, words with digits or inner capitals, "I" and known names stay.
+// Nothing stored changes.
+const NAMES = new Set(['Meta', 'Google', 'Shopify', 'Amazon', 'Facebook', 'Instagram', 'LinkedIn', 'TikTok', 'YouTube', 'Klaviyo', 'Pinterest',
+  'Apple', 'Walmart', 'Costco', 'Stripe', 'PayPal', 'Slack', 'Reddit', 'Snapchat', 'Gemini', 'Claude', 'ChatGPT', 'OpenAI', 'Mattan', 'Davorin',
+  'Ivan', 'Black', 'Friday', 'Cyber', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Saturday', 'Sunday', 'January', 'February', 'March',
+  'April', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'American', 'European', 'US', 'UK', 'EU'])
+const bare = (w: string) => w.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, '')
+export function displayTitle(title: string | null | undefined): string {
+  const t = (title ?? '').trim()
+  if (!t) return ''
+  const words = t.split(/\s+/)
+  const long = words.map(bare).filter(w => w.length >= 4 && /[a-z]/.test(w))
+  if (long.length < 5 || !long.every(w => /^[A-Z]/.test(w))) return t
+  return words.map((w, i) => {
+    const b = bare(w)
+    if (!b) return w
+    const first = i === 0 || /[:.?!]$/.test(words[i - 1] ?? '')
+    if (/^[A-Z]{2,}$/.test(b) || /[0-9]/.test(b) || /[a-z][A-Z]/.test(b) || /^I(['’][a-z]+)?$/.test(b) || NAMES.has(b)) return w
+    const lower = w.replace(b, b.toLowerCase())
+    return first ? lower.replace(/[a-z]/, c => c.toUpperCase()) : lower
+  }).join(' ')
+}

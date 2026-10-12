@@ -15,3 +15,24 @@ describe('parsePlan', () => {
   })
   it('names the day', () => expect(planDay('2026-10-19')).toBe('Mon 19 Oct'))
 })
+
+import { displayTitle, formatWord, pictureWord } from './contentPlan'
+describe('display words', () => {
+  it('shows a Title Case title in sentence case and keeps names, acronyms and numbers', () => {
+    expect(displayTitle('They Launched A Site With Broken Links And Called It Done')).toBe('They launched a site with broken links and called it done')
+    expect(displayTitle('Customers Were Missing Free Shipping by Just a Few Dollars')).toBe('Customers were missing free shipping by just a few dollars')
+    expect(displayTitle('Why Meta And Google Report Different ROAS Numbers In 2026')).toBe('Why Meta and Google report different ROAS numbers in 2026')
+  })
+  it('leaves sentence case, short titles and mixed titles alone', () => {
+    expect(displayTitle("Don Pablo: getting the coffee buyer beyond Costco")).toBe("Don Pablo: getting the coffee buyer beyond Costco")
+    expect(displayTitle('Case Study: Boys Dance Too')).toBe('Case Study: Boys Dance Too')
+    expect(displayTitle('The pilot license cost me $35K')).toBe('The pilot license cost me $35K')
+    expect(displayTitle(null)).toBe('')
+  })
+  it('turns machine format and picture strings into words', () => {
+    expect(formatWord('post')).toBe('Text')
+    expect(pictureWord('decided when drafted')).toBe('Picture chosen when written')
+    expect(pictureWord('photo if one fits, else none (photo assigner)')).toBe('Photo if one fits')
+    expect(pictureWord('carousel deck')).toBe('Carousel deck')
+  })
+})
