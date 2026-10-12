@@ -86,7 +86,7 @@ export function useInbox(enabled = true, seedCache = enabled) {
   const lastIncremental = useRef(0)
   const nudgeRef = useRef<((urgent?: boolean) => void) | null>(null)
   // What the next run owes: a whole read, these conversations, or a changed-since sweep.
-  // `urgent`: a new inbound message is owed, which runs at the coalesce even inside the gap (the chime).
+  // `urgent`: an inbound message or a return/reconnect check is owed, which runs at the coalesce even inside the gap.
   const owed = useRef<{ full: boolean; pids: Set<string>; sweep: boolean; urgent: boolean }>({ full: false, pids: new Set(), sweep: false, urgent: false })
   const land = useCallback((rows: InboxMessage[], grouped: Thread[]) => {
     // 2026-09-10 (Ivan: strangers filed under Likely spam get "no notifications or sound"):
@@ -215,7 +215,7 @@ export function useInbox(enabled = true, seedCache = enabled) {
     if (!enabled) return
     refresh()
     // Trailing-edge coalesce: while a run is already scheduled, further events
-    // only add to what it owes. `urgent` (a whole read owed, a new inbound message)
+    // only add to what it owes. `urgent` (a whole read, an inbound message, or a return check)
     // waits only for the coalesce; everything else also waits out MIN_GAP_MS since
     // the last background re-read.
     // 2026-09-28 (Ivan: "When I'm writing something it refreshes"): while a field is focused the
@@ -254,14 +254,14 @@ export function useInbox(enabled = true, seedCache = enabled) {
     const onReturn = () => {
       if (!visible()) return
       if (Date.now() - lastFull.current >= FULL_EVERY_MS) { owed.current.full = true; nudge(true) }
-      else { owed.current.sweep = true; nudge() }
+      else { owed.current.sweep = true; owed.current.urgent = true; nudge(true) }
     }
     let subscribed = false
     const ch = supabase.channel(topic)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'outreach_messages' }, onEvent)
       .subscribe(status => {
         // A re-subscribe after a drop missed whatever happened in between.
-        if (status === 'SUBSCRIBED') { if (subscribed) { owed.current.sweep = true; nudge() } subscribed = true }
+        if (status === 'SUBSCRIBED') { if (subscribed) { owed.current.sweep = true; owed.current.urgent = true; nudge(true) } subscribed = true }
       })
     // Hidden: no sweeps and no whole reads (back-off); visible: a sweep every SWEEP_EVERY_MS,
     // and the whole view once it is FULL_EVERY_MS old.

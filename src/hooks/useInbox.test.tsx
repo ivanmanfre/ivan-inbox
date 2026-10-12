@@ -10,11 +10,11 @@ const row = (id: string, pid: string, created_at: string): InboxMessage => ({
   prospect_stage: 'replied', prospect_email: null, profile_photo_url: null,
 } as InboxMessage)
 
-const h = vi.hoisted(() => ({ handler: null as null | ((p: unknown) => void), full: 0, convReads: [] as string[][], sweeps: [] as (string | null)[], delay: 0, chimes: 0, empty: false }))
+const h = vi.hoisted(() => ({ handler: null as null | ((p: unknown) => void), status: null as null | ((s: string) => void), full: 0, convReads: [] as string[][], sweeps: [] as (string | null)[], sweepIds: ['B'], delay: 0, chimes: 0, empty: false }))
 vi.mock('../lib/supabase', () => ({
   supabase: {
     channel: () => {
-      const ch = { on: (_e: string, _f: unknown, fn: (p: unknown) => void) => { h.handler = fn; return ch }, subscribe: () => ch }
+      const ch = { on: (_e: string, _f: unknown, fn: (p: unknown) => void) => { h.handler = fn; return ch }, subscribe: (fn: (s: string) => void) => { h.status = fn; return ch } }
       return ch
     },
     removeChannel: () => {},
@@ -34,7 +34,7 @@ vi.mock('../lib/inboxDelta', async () => {
   const real = await vi.importActual<typeof import('../lib/inboxDelta')>('../lib/inboxDelta')
   return {
     ...real,
-    changedSince: async (since: string | null) => { h.sweeps.push(since); return { now: '2026-09-28T10:05:00.000Z', ids: since === null ? [] : ['B'] } },
+    changedSince: async (since: string | null) => { h.sweeps.push(since); return { now: '2026-09-28T10:05:00.000Z', ids: since === null ? [] : h.sweepIds } },
     fetchConversations: async (ids: string[]) => { h.convReads.push([...ids].sort()); if (h.delay) await new Promise(r => setTimeout(r, h.delay)); if (h.empty) return []; return ids.includes('A') ? [row('a1', 'A', '2026-09-28T10:00:00+00:00'), row('a2', 'A', '2026-09-28T10:04:00+00:00')] : [row('b1', 'B', '2026-09-28T10:01:00+00:00')] },
   }
 })
@@ -43,7 +43,7 @@ import { useInbox } from './useInbox'
 const flush = async () => { await act(async () => { await vi.advanceTimersByTimeAsync(2000) }) }
 
 describe('useInbox reads incrementally after the first load', () => {
-  beforeEach(() => { vi.useFakeTimers(); h.full = 0; h.convReads = []; h.sweeps = []; h.handler = null; h.delay = 0; h.chimes = 0; h.empty = false })
+  beforeEach(() => { vi.useFakeTimers(); h.full = 0; h.convReads = []; h.sweeps = []; h.sweepIds = ['B']; h.handler = null; h.status = null; h.delay = 0; h.chimes = 0; h.empty = false })
   afterEach(() => { cleanup(); vi.useRealTimers() })
 
   it('mount = one whole read; a realtime insert = one conversation read, no second whole read', async () => {
@@ -83,6 +83,47 @@ describe('useInbox reads incrementally after the first load', () => {
     expect(h.full).toBe(1)
     expect(h.sweeps.filter(s => s !== null).length).toBe(1)
     expect(h.convReads).toEqual([['B']])
+  })
+
+  it('a return after a recent read surfaces a missed inbound message promptly', async () => {
+    const { result } = renderHook(() => useInbox())
+    await flush()
+    act(() => { h.handler!({ eventType: 'UPDATE', new: { id: 'b1', prospect_id: 'B' }, old: { id: 'b1' } }) })
+    await flush()
+    expect(h.convReads).toEqual([['B']])
+    // The phone can miss realtime events while suspended. Returning must not wait
+    // out the two-minute background-read gap to discover them.
+    h.sweepIds = ['A']
+    act(() => { window.dispatchEvent(new Event('focus')) })
+    await flush()
+    expect(h.sweeps.filter(s => s !== null)).toHaveLength(1)
+    expect(h.convReads).toEqual([['B'], ['A']])
+    expect(result.current.threads.find(t => t.prospect_id === 'A')!.messages.map(m => m.id)).toEqual(['a1', 'a2'])
+    expect(h.chimes).toBe(1)
+  })
+
+  it('reconnecting after a missed event checks changes promptly', async () => {
+    renderHook(() => useInbox())
+    await flush()
+    act(() => { h.status!('SUBSCRIBED') })
+    act(() => { h.handler!({ eventType: 'UPDATE', new: { id: 'b1', prospect_id: 'B' }, old: { id: 'b1' } }) })
+    await flush()
+    act(() => { h.status!('CHANNEL_ERROR'); h.status!('SUBSCRIBED') })
+    await flush()
+    expect(h.sweeps.filter(s => s !== null)).toHaveLength(1)
+    expect(h.convReads).toEqual([['B'], ['B']])
+  })
+
+  it('a return during a slow read checks missed changes after that read', async () => {
+    renderHook(() => useInbox())
+    await flush()
+    h.delay = 3000
+    act(() => { h.handler!({ eventType: 'UPDATE', new: { id: 'b1', prospect_id: 'B' }, old: { id: 'b1' } }) })
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000) })
+    act(() => { window.dispatchEvent(new Event('focus')) })
+    await act(async () => { await vi.advanceTimersByTimeAsync(8000) })
+    expect(h.sweeps.filter(s => s !== null)).toHaveLength(1)
+    expect(h.convReads).toEqual([['B'], ['B']])
   })
 
   it('refresh() is always a whole read', async () => {
