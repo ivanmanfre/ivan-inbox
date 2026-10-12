@@ -45,7 +45,7 @@ export type PlanSlot = {
   brain?: PlanBrain
 }
 export type PlanWeek = { start: string; which: 'this' | 'next' | 'after'; target: number; filled: number; open: number; posts: PlanPost[]; planned: PlanSlot[]; dated?: number; no_day?: number }
-export type PlanWarning = { code: string; text: string }
+export type PlanWarning = { code: string; text: string; topic?: string }
 export type PlanRead = {
   account: Lane; today: string; target: number; target_week: string | null; open: number
   state: 'two_weeks_planned' | 'planning'; proposals_only: boolean; auto_generate?: boolean; founder_story_max: number; cadence_source: string
@@ -91,6 +91,35 @@ export async function moveSlotWeek(slotId: string, week: string): Promise<{ from
   const r = (data ?? {}) as { ok?: boolean; error?: string; from_week?: string; to_week?: string }
   if (r.ok !== true) throw new PlanMoveError(typeof r.error === 'string' ? r.error : 'unknown')
   return { from_week: String(r.from_week ?? ''), to_week: String(r.to_week ?? week) }
+}
+
+/** A refused brain action: the server's own code (bad_gate, bad_args, not_open) or `failed` when the call itself raised. */
+export class BrainActionError extends Error {
+  readonly code: string
+  constructor(code: string) { super(`The brain refused the change: ${code}.`); this.name = 'BrainActionError'; this.code = code }
+}
+
+/**
+ * Accept or dismiss one change the brain held back (db/264 operator_brain_proposal_decide, which calls
+ * brain_proposal_accept / brain_proposal_dismiss as 'ivan'). The server passes the rule change through; a proposal that
+ * is no longer open makes accept raise and dismiss answer {dismissed:false}: both come back as a BrainActionError.
+ */
+export async function decideProposal(id: number, accept: boolean): Promise<void> {
+  const { data, error } = await supabase.rpc('operator_brain_proposal_decide', { p_gate: CLIENT_OPS_GATE, p_id: id, p_accept: accept })
+  if (error) throw new BrainActionError(/not an open proposal/i.test(error.message ?? '') ? 'not_open' : 'failed')
+  const r = (data ?? {}) as { ok?: boolean; error?: string; dismissed?: boolean; skipped?: string }
+  if (r.ok === false) throw new BrainActionError(typeof r.error === 'string' ? r.error : 'failed')
+  if (!accept && r.dismissed !== true) throw new BrainActionError('not_open')
+  // The rule change itself can be skipped by the brain's own guards (a rule you locked, a rule already in that state).
+  if (accept && typeof r.skipped === 'string') throw new BrainActionError(`skipped_${r.skipped}`)
+}
+
+/** Put a rule change back (db/264 operator_brain_rule_undo -> brain_rule_undo). The token comes from `next_check.recent`. */
+export async function undoRuleChange(token: string): Promise<void> {
+  const { data, error } = await supabase.rpc('operator_brain_rule_undo', { p_gate: CLIENT_OPS_GATE, p_token: token })
+  if (error) throw new BrainActionError('failed')
+  const r = (data ?? {}) as { ok?: boolean; error?: string }
+  if (r.ok === false || typeof r.error === 'string') throw new BrainActionError(typeof r.error === 'string' ? r.error : 'failed')
 }
 
 /** "Mon 19 Oct" from an ISO date (date-only, read as a calendar day). */

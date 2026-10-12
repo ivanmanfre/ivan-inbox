@@ -171,7 +171,7 @@ describe('PlanV2', () => {
     renderInFrame(<Harness start="risedtc" />, { layout: 'phone' })
     await screen.findByRole('heading', { level: 2 })
     expect(screen.queryByRole('tablist', { name: 'View' })).toBeNull()
-    const row = screen.getAllByText(/If a channel can't grow/)[0].closest('.pl2-row')!
+    const row = screen.getAllByText(/If a channel can't grow/).map(e => e.closest<HTMLElement>('.pl2-row')).find(Boolean)!
     expect(row.querySelector('.pl2-st')!.textContent).toBe('Waiting for your OK')
     // R2.2 order: the status line comes before the title, so the title gets the full width on the phone.
     expect(row.querySelector('.pl2-row-b')!.firstElementChild!.className).toBe('pl2-meta')
@@ -246,7 +246,7 @@ describe('PlanV2', () => {
     api.fetchPlan.mockResolvedValue(rise())
     renderInFrame(<Harness start="risedtc" />)
     await screen.findByRole('heading', { level: 2 })
-    const row = screen.getAllByText(/If a channel can't grow/)[0].closest<HTMLElement>('.pl2-row')!
+    const row = screen.getAllByText(/If a channel can't grow/).map(e => e.closest<HTMLElement>('.pl2-row')).find(Boolean)!
     fireEvent.click(row.querySelector('.pl2-row-b')!)
     fireEvent.click([...row.querySelectorAll('button')].find(b => b.textContent === 'Why, in full')!)
     expect(screen.getByRole('dialog')).toBeTruthy()
@@ -262,7 +262,7 @@ describe('PlanV2', () => {
     api.moveSlotWeek.mockResolvedValue({ from_week: '2026-10-26', to_week: '2026-10-19' })
     renderInFrame(<Harness start="arch" />)
     await screen.findByRole('heading', { level: 2 })
-    fireEvent.click(screen.getAllByText(/Judge creators like AppLovin/)[0].closest<HTMLElement>('.pl2-card')!)
+    fireEvent.click(screen.getAllByText(/Judge creators like AppLovin/).map(e => e.closest<HTMLElement>('.pl2-card')).find(Boolean)!)
     fireEvent.click(screen.getByRole('button', { name: 'Move day' }))
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Next week/ })) })
     expect(api.moveSlotWeek).toHaveBeenCalledWith('48dcd764-c830-452f-92cf-f6557177658a', '2026-10-19')
@@ -270,5 +270,49 @@ describe('PlanV2', () => {
     await waitFor(() => expect(screen.getByRole('dialog').textContent).toContain('A fresh reason after the move.'))
     fireEvent.click(screen.getByRole('tab', { name: 'Ivan' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+
+  it('shows the brain strip under the warnings; a plan whose brain data failed still reads, with no strip', async () => {
+    api.fetchPlan.mockResolvedValue(FX.risedtc())
+    renderInFrame(<Harness start="risedtc" />)
+    await screen.findByRole('heading', { level: 2 })
+    expect(document.querySelector('.pl2-warnw + .pl2-stripw')).toBeTruthy()
+    expect(screen.getByText('What moves views')).toBeTruthy()
+    cleanup()
+    const broke = FX.arch(); broke.brain_strip = null; broke.brain_error = 'canceling statement due to statement timeout'
+    api.fetchPlan.mockResolvedValue(broke)
+    renderInFrame(<Harness start="arch" />)
+    await screen.findByRole('heading', { level: 2 })
+    expect(document.querySelector('.pl2-strip')).toBeNull()
+    expect(document.body.textContent).not.toMatch(/NaN|undefined/)
+  })
+
+  it('a client seat\'s Out of ideas chip opens the idea stock; Escape closes it and gives focus back; a seat switch closes it', async () => {
+    api.fetchPlan.mockImplementation((l: Lane) => Promise.resolve(FX[l]()))
+    renderInFrame(<Harness start="risedtc" />)
+    await screen.findByRole('heading', { level: 2 })
+    const chip = screen.getByRole('button', { name: /Out of ideas for sales posts/ })
+    expect(screen.queryByRole('dialog', { name: 'Ideas in stock' })).toBeNull()
+    fireEvent.click(chip)
+    const dlg = screen.getByRole('dialog', { name: 'Ideas in stock' })
+    expect(dlg.querySelectorAll('.pl2-ch-tick').length).toBe(6)
+    expect(chip.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: 'Ideas in stock' })).toBeNull()
+    expect(document.activeElement).toBe(chip)
+    fireEvent.click(chip)
+    expect(screen.getByRole('dialog', { name: 'Ideas in stock' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('tab', { name: 'Ivan' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Ideas in stock' })).toBeNull())
+  })
+
+  it('Ivan keeps the text warning: no chip button for ideas', async () => {
+    const r = ivan()
+    r.warnings = [{ code: 'empty_topic_area', text: 'Out of ideas for sales posts (3 used in 8 weeks)' }]
+    api.fetchPlan.mockResolvedValue(r)
+    renderInFrame(<Harness start="ivan" />)
+    await screen.findByRole('heading', { level: 2 })
+    expect(screen.getByText(/Out of ideas for sales posts/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Out of ideas/ })).toBeNull()
   })
 })

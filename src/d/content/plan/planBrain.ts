@@ -477,6 +477,91 @@ export function viewsLine(strip: BrainStrip | null | undefined): string {
 }
 
 /** How a published post did, next to the normal post. */
+/** Rule names inside a sentence: first letter down ("More than 50 words" becomes "more than 50 words"). */
+const lower1 = (s: string) => s.charAt(0).toLowerCase() + s.slice(1)
+const andList = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`)
+
+/** "Mon 2 Nov. Under watch: more than 50 words and weekdays only." The day of the next brain check and what it watches. */
+export function nextCheckLine(strip: BrainStrip | null | undefined): string {
+  const n = strip?.next_check
+  if (!n) return ''
+  const date = typeof n.date === 'string' && n.date ? planDay(n.date) : ''
+  const watch = (Array.isArray(n.watch) ? n.watch : []).map(w => scrub(String(w ?? '')).trim()).filter(Boolean).map(lower1)
+  if (!date) return 'No check day is set yet.'
+  return `${date}. ${watch.length ? `Under watch: ${andList(watch)}.` : 'No rule is under watch.'}`
+}
+
+/** "From 10,629 posts by 140 creators." */
+export function sourceNote(strip: BrainStrip | null | undefined): string {
+  const c = strip?.collection
+  return c && fin(c.posts) && fin(c.creators) ? `From ${num(c.posts)} posts by ${num(c.creators)} creators.` : ''
+}
+
+/** The plan note under the strip (Rise and Arch: what is being tested). Already plain in the read; scrubbed again here. */
+export function stripNote(strip: BrainStrip | null | undefined): string {
+  return typeof strip?.note === 'string' ? scrub(strip.note).trim() : ''
+}
+
+/** A change the brain holds back for Ivan's say: "Start following: add a picture". */
+export function proposalLine<T extends { name: string; to_status: string }>(p: T): string {
+  const name = lower1(scrub(String(p?.name ?? '')))
+  const verb = p?.to_status === 'live' ? 'Start following' : p?.to_status === 'shadow' ? 'Go back to testing' : p?.to_status === 'candidate' ? 'Start testing' : 'Stop using'
+  return `${verb}: ${name}`
+}
+
+/** A change that already happened: "Add a picture: now followed, Mon 12 Oct". Test rows give nothing. */
+export function changeLine<T extends { rule_id: string; name: string; to_status: string; at: string }>(c: T): string {
+  if (String(c?.rule_id ?? '').startsWith('zz-')) return ''
+  const how = c.to_status === 'live' ? 'now followed' : c.to_status === 'shadow' ? 'back to testing' : c.to_status === 'candidate' ? 'now testing' : 'stopped'
+  const day = typeof c.at === 'string' && c.at ? planDay(c.at) : ''
+  return `${scrub(String(c.name ?? ''))}: ${how}${day ? `, ${day}` : ''}`
+}
+
+/** The receipt after Accept or Dismiss: "Now following: add a picture." / "Dismissed. The rule stays as it is." */
+export function decisionLine<T extends { name: string; to_status: string }>(p: T, accepted: boolean): string {
+  if (!accepted) return 'Dismissed. The rule stays as it is.'
+  const name = lower1(scrub(String(p?.name ?? '')))
+  const lead = p?.to_status === 'live' ? 'Now following' : p?.to_status === 'shadow' ? 'Back to testing' : p?.to_status === 'candidate' ? 'Now testing' : 'Stopped using'
+  return `${lead}: ${name}.`
+}
+
+/** The receipt after Undo: "Put back: add a picture." */
+export function undoLine(c: { name: string }): string {
+  return `Put back: ${lower1(scrub(String(c?.name ?? '')))}.`
+}
+
+/** A second line under a rule row when it did not hold on the newest posts. */
+export function ruleNote(r: Pick<StripRule, 'held_latest' | 'your_rule'>): string | null {
+  if (r.held_latest !== false) return null
+  return r.your_rule ? 'Did not hold on the newest posts, kept because you set it.' : 'Did not hold on the newest posts.'
+}
+
+/** "7 of 29 went viral" (viral = 3x a normal post). */
+export function viralLine(strip: BrainStrip | null | undefined): string {
+  const v = strip?.views
+  return v && fin(v.breakouts) && fin(v.measured) && v.measured > 0 ? `${v.breakouts} of ${v.measured} went viral` : ''
+}
+
+/** The tooltip of one brain-guess dot: the post, what the guess says, how far to trust it. */
+export function readDotTip<T extends { title: string; x: number; proven: boolean; small: boolean }>(i: T): string {
+  const x = i.x
+  const says = !fin(x) ? 'has no guess yet'
+    : Math.abs(x - 1) < 0.15 ? 'does about average'
+      : x >= 1 ? `goes viral ${(Math.round(x * 10) / 10).toFixed(1)}x more often`
+        : x >= 0.6 ? 'goes viral a bit less often' : 'goes viral about half as often'
+  const rel = i.proven ? `Proven on recent posts${i.small ? ', but few examples' : ''}` : 'Not proven yet'
+  return `${displayTitle(i.title)}: ${says}. ${rel}.`
+}
+
+/** One idea-stock row in plain words. */
+export function stockRow(s: { topic: string; stock: number; used: number }): { name: string; stock: number; used: number; empty: boolean; tip: string } {
+  const name = cap1(topicWord(s.topic))
+  const stock = fin(s.stock) ? s.stock : 0
+  const used = fin(s.used) ? s.used : 0
+  const empty = stock <= 0
+  return { name, stock, used, empty, tip: empty ? `${name}: out of ideas, ${used} used in 8 weeks.` : `${name}: ${stock} ideas in stock, ${used} used in 8 weeks.` }
+}
+
 export function resultLine(it: PlanItem, strip: BrainStrip | null | undefined): string | null {
   const r = it.brain?.result
   if (!r) return null

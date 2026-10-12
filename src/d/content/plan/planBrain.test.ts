@@ -417,3 +417,72 @@ describe('exported constants', () => {
     expect(PB.ST_WORD).toEqual({ published: 'Published', scheduled: 'Scheduled', review: 'Waiting for your OK', writing: 'Being written', failed: 'Failed' })
   })
 })
+
+describe('brain strip words (Task 9)', () => {
+  const strips = { ivan: (ivanFx as unknown as PlanRead).brain_strip as BrainStrip, risedtc: (riseFx as unknown as PlanRead).brain_strip as BrainStrip, arch: (archFx as unknown as PlanRead).brain_strip as BrainStrip }
+  it('nextCheckLine', () => {
+    expect(PB.nextCheckLine(strips.ivan)).toBe('Mon 2 Nov. Under watch: more than 50 words and weekdays only.')
+    expect(PB.nextCheckLine(strips.risedtc)).toBe('Mon 2 Nov. No rule is under watch.')
+    expect(PB.nextCheckLine({ next_check: { date: '2026-11-02', watch: ['A', 'B', 'C'] } } as unknown as BrainStrip)).toBe('Mon 2 Nov. Under watch: a, b and c.')
+    expect(PB.nextCheckLine({ next_check: { date: null, watch: [] } } as unknown as BrainStrip)).toBe('No check day is set yet.')
+    expect(PB.nextCheckLine(null)).toBe('')
+    expect(PB.nextCheckLine({} as BrainStrip)).toBe('')
+  })
+  it('sourceNote', () => {
+    expect(PB.sourceNote({ collection: { posts: 10629, creators: 140 } } as BrainStrip)).toBe('From 10,629 posts by 140 creators.')
+    expect(PB.sourceNote({ collection: null } as unknown as BrainStrip)).toBe('')
+    expect(PB.sourceNote(null)).toBe('')
+  })
+  it('proposalLine and changeLine', () => {
+    expect(PB.proposalLine({ id: 1, rule_id: 'R01', name: 'Add a picture', to_status: 'live', reason: 'raw machine text' })).toBe('Start following: add a picture')
+    expect(PB.proposalLine({ id: 2, rule_id: 'R01', name: 'Add a picture', to_status: 'shadow', reason: null })).toBe('Go back to testing: add a picture')
+    expect(PB.proposalLine({ id: 3, rule_id: 'R01', name: 'Add a picture', to_status: 'retired', reason: null })).toBe('Stop using: add a picture')
+    expect(PB.changeLine({ rule_id: 'R01', name: 'Add a picture', to_status: 'live', at: '2026-10-12T12:00:00Z', undo_token: 'x' })).toBe('Add a picture: now followed, Mon 12 Oct')
+    expect(PB.changeLine({ rule_id: 'R01', name: 'Add a picture', to_status: 'shadow', at: '2026-10-12T12:00:00Z', undo_token: null })).toBe('Add a picture: back to testing, Mon 12 Oct')
+    expect(PB.changeLine({ rule_id: 'zz-selftest-1', name: 'Self test', to_status: 'live', at: '2026-10-12T12:00:00Z', undo_token: 'x' })).toBe('')
+  })
+  it('decisionLine and undoLine', () => {
+    expect(PB.decisionLine({ name: 'Add a picture', to_status: 'live' }, true)).toBe('Now following: add a picture.')
+    expect(PB.decisionLine({ name: 'Add a picture', to_status: 'shadow' }, true)).toBe('Back to testing: add a picture.')
+    expect(PB.decisionLine({ name: 'Add a picture', to_status: 'retired' }, true)).toBe('Stopped using: add a picture.')
+    expect(PB.decisionLine({ name: 'Add a picture', to_status: 'live' }, false)).toBe('Dismissed. The rule stays as it is.')
+    expect(PB.undoLine({ name: 'Add a picture' })).toBe('Put back: add a picture.')
+  })
+  it('ruleNote', () => {
+    const r = (o: object) => ({ rule_id: 'R', name: 'N', metric: 'views', gain: null, lo: null, hi: null, status: 'live', unclear: false, held_latest: null, your_rule: false, enforcer: 'writer', creators: null, ...o }) as never
+    expect(PB.ruleNote(r({ held_latest: false, your_rule: true }))).toBe('Did not hold on the newest posts, kept because you set it.')
+    expect(PB.ruleNote(r({ held_latest: false }))).toBe('Did not hold on the newest posts.')
+    expect(PB.ruleNote(r({ held_latest: true, your_rule: true }))).toBeNull()
+    expect(PB.ruleNote(r({}))).toBeNull()
+  })
+  it('viralLine', () => {
+    expect(PB.viralLine({ views: { median: 166, measured: 29, breakouts: 7, posts: [] } } as unknown as BrainStrip)).toBe('7 of 29 went viral')
+    expect(PB.viralLine({ views: { median: null, measured: 0, breakouts: 0, posts: [] } } as unknown as BrainStrip)).toBe('')
+    expect(PB.viralLine(null)).toBe('')
+  })
+  it('readDotTip', () => {
+    expect(PB.readDotTip({ title: 'Post A', x: 1.5, lo: 1.1, hi: 2, proven: true, small: false })).toBe('Post A: goes viral 1.5x more often. Proven on recent posts.')
+    expect(PB.readDotTip({ title: 'Post B', x: 0.48, lo: 0.2, hi: 0.9, proven: false, small: false })).toBe('Post B: goes viral about half as often. Not proven yet.')
+    expect(PB.readDotTip({ title: 'Post C', x: 0.8, lo: 0.5, hi: 1.1, proven: true, small: true })).toBe('Post C: goes viral a bit less often. Proven on recent posts, but few examples.')
+    expect(PB.readDotTip({ title: 'Post D', x: 1.04, lo: 0.9, hi: 1.2, proven: true, small: false })).toBe('Post D: does about average. Proven on recent posts.')
+  })
+  it('stockRow', () => {
+    expect(PB.stockRow({ topic: 'teardown', stock: 30, used: 7 })).toEqual({ name: 'Teardowns', stock: 30, used: 7, empty: false, tip: 'Teardowns: 30 ideas in stock, 7 used in 8 weeks.' })
+    expect(PB.stockRow({ topic: 'demand', stock: 0, used: 3 })).toEqual({ name: 'Sales posts', stock: 0, used: 3, empty: true, tip: 'Sales posts: out of ideas, 3 used in 8 weeks.' })
+  })
+  it('stripNote', () => {
+    expect(PB.stripNote(strips.risedtc)).toBe('Tested, not used yet: no weekend posts (19% more views), fewer posts a week (24% more views) and a picture (54% more views). Rise posts 5 a week.')
+    expect(PB.stripNote(strips.ivan)).toBe('')
+    expect(PB.stripNote(null)).toBe('')
+  })
+  for (const a of ['ivan', 'risedtc', 'arch'] as const) {
+    it(`real strip words are plain: ${a}`, () => {
+      const s = strips[a]
+      const out: string[] = [PB.nextCheckLine(s), PB.sourceNote(s), PB.stripNote(s), PB.viralLine(s)]
+      for (const r of PB.rulesOf(s).live.concat(PB.rulesOf(s).testing)) out.push(PB.ruleRow(r).name, PB.ruleRow(r).effect, PB.ruleNote(r) ?? '')
+      for (const i of s.reads.items) out.push(PB.readDotTip({ ...i, title: 'T' }))
+      for (const k of s.idea_stock) out.push(PB.stockRow(k).name, PB.stockRow(k).tip)
+      expect(out.filter(x => BANNED.test(x))).toEqual([])
+    })
+  }
+})
