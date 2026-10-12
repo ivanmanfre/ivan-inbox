@@ -6,7 +6,7 @@ import type { Lane } from '../d/content/model'
 export type PlanEvidence = { type: string; label: string; ref?: string; at?: string; quote?: string | null }
 // db/259: the content brain data per item, the plan-level brain strip. Optional: older reads carry none of it.
 export type PlanFlags = { lm: boolean; boosted: boolean; founder: boolean; carousel: boolean; weekend: boolean; failed: boolean; low_score: boolean; fact_fail: boolean }
-export type PlanQa = { outcome: 'passed' | 'recovered' | 'low' | 'failed' | 'hand' | null; first: number | null; final: number | null; max: number; pass_line: number | null; rewrites: number; approved_anyway: boolean; dims: Record<string, number> | null; weakest: string | null }
+export type PlanQa = { outcome: 'passed' | 'recovered' | 'low' | 'failed' | 'hand' | null; first: number | null; final: number | null; max: number | null; pass_line: number | null; rewrites: number; approved_anyway: boolean; dims: Record<string, number> | null; weakest: string | null }
 export type PlanBrainRead = { dim: string; val: string; rate: number; base: number; n: number; lo: number | null; hi: number | null; proven: boolean; small: boolean }
 export type PlanBrain = {
   draft_id: string | null; words: number | null; edited: boolean; thumb: string | null; body_head: string | null; first_line: string | null; has_link: boolean
