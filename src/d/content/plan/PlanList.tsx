@@ -1,4 +1,4 @@
-import { useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { planDay, type BrainStrip, type PlanRead } from '../../../lib/contentPlan'
 import { useMotionLevel } from '../../../ds/motionLevel'
 import { dHash } from '../../route'
@@ -15,6 +15,21 @@ import {
 
 const STAGGER_MS = 30
 const STAGGER_CAP_MS = 400
+/** The longest entry: the stagger cap plus the slow duration (480 ms) with room to spare. */
+const ENTRY_MS = 1000
+
+/**
+ * True once the entry fades have played. The fades key off its absence, so they run on the first mount only,
+ * never again when the motion level flips back (a hidden page reads as motion off, then full on return).
+ */
+export function useEntered(): boolean {
+  const [entered, setEntered] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setEntered(true), ENTRY_MS)
+    return () => clearTimeout(t)
+  }, [])
+  return entered
+}
 
 const ICON: Record<'lm' | 'boost' | 'me' | 'deck' | 'warn', ReactNode> = {
   lm: <path d="M4 2v6a4 4 0 008 0V2M4 5h3M9 5h3" />,
@@ -58,10 +73,12 @@ function Row({ it, acct, tz, strip, open, delay, onToggle, onOpen }: RowProps) {
   const approve = it.st === 'review' && it.draftId ? dHash('content', 'now', { draft: it.draftId, lane: acct }) : null
   return <li className={`pl2-row pl2-s-${it.st}${it.suggested ? ' pl2-sugg' : ''}${open ? ' pl2-open' : ''}`} style={{ '--pl2-d': `${delay}ms` } as CSSProperties} data-plan-key={it.key}>
     <button type="button" className="pl2-row-b" aria-expanded={open} aria-controls={id} data-verb="plan-row" onClick={onToggle}>
-      <span className="pl2-t">{it.title || 'Untitled post'}</span>
-      <span className="pl2-st"><i className="pl2-dot" aria-hidden="true" />{ST_WORD[it.st]}</span>
-      {(time || flags.length > 0 || reason) && <span className="pl2-sub">
+      <span className="pl2-meta">
+        <span className="pl2-st"><i className="pl2-dot" aria-hidden="true" />{ST_WORD[it.st]}</span>
         {time && <span className="pl2-time">{time}</span>}
+      </span>
+      <span className="pl2-t">{it.title || 'Untitled post'}</span>
+      {(flags.length > 0 || reason) && <span className="pl2-sub">
         {flags.map(f => <FlagChip key={f.key} f={f} />)}
         {reason && <span className="pl2-why1">{reason}</span>}
       </span>}
@@ -85,6 +102,7 @@ type Group = { day: string | null; items: PlanItem[] }
 export function PlanList({ read, items, phone, onOpen }: { read: PlanRead; items: PlanItem[]; phone: boolean; onOpen: (it: PlanItem) => void }) {
   const [openKey, setOpenKey] = useState<string | null>(null)
   const level = useMotionLevel()
+  const entered = useEntered()
   const groups = useMemo(() => {
     const out: Group[] = []
     for (const it of items) {
@@ -94,13 +112,13 @@ export function PlanList({ read, items, phone, onOpen }: { read: PlanRead; items
     }
     return out
   }, [items])
-  if (!items.length) return <Empty title="Nothing planned for the next two weeks." reason="The planner fills the next week every morning." />
+  if (!items.length) return <Empty title="Nothing planned for the next two weeks." reason="The planner plans the next two weeks every morning." />
   const acct = read.account as Acct
   const tz = tzOf(read)
   const strip = read.brain_strip ?? null
   const today = read.today
   let n = 0
-  return <div className={`pl2-list${phone ? ' pl2-list-phone' : ''}`}>
+  return <div className={`pl2-list${phone ? ' pl2-list-phone' : ''}`} data-entered={entered || undefined}>
     {groups.map(g => {
       const late = g.day != null && g.day < today
       const isToday = g.day === today

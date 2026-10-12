@@ -33,7 +33,12 @@ function Harness({ start }: { start: Lane }) {
   return <PlanV2 lane={lane} setLane={setLane} />
 }
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); localStorage.clear() })
+const consoleErr = vi.spyOn(console, 'error')
+afterEach(() => {
+  const keyWarnings = consoleErr.mock.calls.filter(c => String(c[0]).includes('same key'))
+  cleanup(); vi.clearAllMocks(); localStorage.clear()
+  expect(keyWarnings).toEqual([])
+})
 
 describe('PlanV2', () => {
   it('opens on the answer line and its parts', async () => {
@@ -128,6 +133,8 @@ describe('PlanV2', () => {
     expect(screen.queryByRole('tablist', { name: 'View' })).toBeNull()
     const row = screen.getAllByText(/If a channel can't grow/)[0].closest('.pl2-row')!
     expect(row.querySelector('.pl2-st')!.textContent).toBe('Waiting for your OK')
+    // R2.2 order: the status line comes before the title, so the title gets the full width on the phone.
+    expect(row.querySelector('.pl2-row-b')!.firstElementChild!.className).toBe('pl2-meta')
     const b = row.querySelector<HTMLButtonElement>('.pl2-row-b')!
     expect(b.getAttribute('aria-expanded')).toBe('false')
     fireEvent.click(b)
@@ -136,6 +143,22 @@ describe('PlanV2', () => {
     const ok = [...row.querySelectorAll('a')].find(a => a.textContent === 'Read and approve')!
     expect(ok.getAttribute('href')).toBe('#exp/d/content/now?draft=994bc449-2212-0b86-cdc0-fc26bb59b33e&lane=risedtc')
     expect([...row.querySelectorAll('button')].some(x => x.textContent === 'Why, in full')).toBe(true)
+  })
+
+  it('entry fades are marked done after the first mount, so they never replay when motion comes back', async () => {
+    api.fetchPlan.mockResolvedValue(rise())
+    renderInFrame(<Harness start="risedtc" />)
+    await screen.findByRole('heading', { level: 2 })
+    expect(document.querySelector('.pl2-list')!.hasAttribute('data-entered')).toBe(false)
+    await waitFor(() => expect(document.querySelector('.pl2-list')!.hasAttribute('data-entered')).toBe(true), { timeout: 2500 })
+    expect(document.querySelector('.pl2-warns')!.hasAttribute('data-entered')).toBe(true)
+  })
+
+  it('an empty plan says when the planner fills it', async () => {
+    api.fetchPlan.mockResolvedValue(emptyRead())
+    renderInFrame(<Harness start="arch" />)
+    expect(await screen.findByText('Nothing planned for the next two weeks.')).toBeTruthy()
+    expect(screen.getByText('The planner plans the next two weeks every morning.')).toBeTruthy()
   })
 
   it('a row with no brain data says so in plain words', async () => {

@@ -7,7 +7,7 @@
    ========================================================================== */
 
 /* ---- head: seat switch, Weeks | List, the late planner line ---- */
-:root[data-skin-on~='content.plan'] .pl2{gap:14px}
+:root[data-skin-on~='content.plan'] .pl2{gap:14px;--pl2-r-card:10px} /* spec §7 card radius; tokens.css has no 10 px radius role */
 :root[data-skin-on~='content.plan'] .pl2-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0}
 :root[data-skin-on~='content.plan'] .pl2-late{margin-left:auto;font:500 12px/16px var(--ds-font);font-variant-numeric:tabular-nums;color:var(--ds-text-3)}
 
@@ -20,7 +20,7 @@
 :root[data-skin-on~='content.plan'] .pl2-warns{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
 :root[data-skin-on~='content.plan'] .pl2-warn{display:inline-flex;align-items:center;gap:10px;min-height:32px;padding:6px 10px 6px 12px;border-radius:var(--ds-r-btn);background:var(--ds-sev-attention-soft);color:var(--ds-sev-attention-ui);font:500 13px/18px var(--ds-font)}
 :root[data-skin-on~='content.plan'] .pl2-warn a{flex:none;color:var(--ds-sev-attention-ui);font-weight:600;text-decoration:underline;text-underline-offset:2px}
-:root[data-skin-on~='content.plan'][data-skin-on~='motion'] .pl2:not([data-motion='off']) .pl2-warn{animation:pl2-in var(--ds-d-slow) var(--ds-e-content) both;animation-delay:var(--pl2-d,0ms)}
+:root[data-skin-on~='content.plan'][data-skin-on~='motion'] .pl2:not([data-motion='off']) .pl2-warns:not([data-entered]) .pl2-warn{animation:pl2-in var(--ds-d-slow) var(--ds-e-content) both;animation-delay:var(--pl2-d,0ms)}
 @keyframes pl2-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
 /* ---- status: dot + word on the severity pairs ---- */
@@ -31,7 +31,7 @@
 :root[data-skin-on~='content.plan'] .pl2-s-failed{--pl2-c:var(--ds-sev-urgent-ui)}
 :root[data-skin-on~='content.plan'] .pl2-st{display:inline-flex;align-items:center;gap:6px;font:500 12px/16px var(--ds-font);color:var(--pl2-c);white-space:nowrap}
 :root[data-skin-on~='content.plan'] .pl2-dot{width:7px;height:7px;border-radius:50%;flex:none;background:var(--pl2-c)}
-:root[data-skin-on~='content.plan'][data-skin-on~='motion'] .pl2:not([data-motion='off']) .pl2-s-writing .pl2-dot{animation:pl2-pulse 1.6s var(--ds-e-ui) 2}
+:root[data-skin-on~='content.plan'][data-skin-on~='motion'] .pl2[data-motion='full'] .pl2-list:not([data-entered]) .pl2-s-writing .pl2-dot{animation:pl2-pulse 1.6s var(--ds-e-ui) 2}
 @keyframes pl2-pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ds-info-ui) 35%,transparent)}50%{box-shadow:0 0 0 5px transparent}}
 
 /* ---- flags ---- */
@@ -51,17 +51,18 @@
 :root[data-skin-on~='content.plan'] .pl2-day-late{margin:6px 0 4px;padding:8px 12px;border-radius:var(--ds-r-btn);background:var(--ds-sev-attention-soft);color:var(--ds-sev-attention-ui)}
 :root[data-skin-on~='content.plan'] .pl2-day-late span{color:var(--ds-sev-attention-ui)}
 
-:root[data-skin-on~='content.plan'] .pl2-row{background:var(--ds-surface-1);border:1px solid var(--ds-line);border-radius:var(--ds-r-pane);overflow:hidden;transition:box-shadow var(--ds-d-ui) var(--ds-e-content),border-color var(--ds-d-fast) var(--ds-e-ui)}
+:root[data-skin-on~='content.plan'] .pl2-row{background:var(--ds-surface-1);border:1px solid var(--ds-line);border-radius:var(--pl2-r-card);overflow:hidden;transition:box-shadow var(--ds-d-ui) var(--ds-e-content),border-color var(--ds-d-fast) var(--ds-e-ui)}
 :root[data-skin-on~='content.plan'] .pl2-row:hover{border-color:var(--ds-line-strong);box-shadow:var(--ds-shadow-soft)}
 :root[data-skin-on~='content.plan'] .pl2-row.pl2-sugg{border-style:dashed;border-color:var(--ds-line-3);background:transparent}
 :root[data-skin-on~='content.plan'] .pl2-row.pl2-s-published{opacity:.62}
 :root[data-skin-on~='content.plan'] .pl2-row.pl2-s-published:hover,:root[data-skin-on~='content.plan'] .pl2-row.pl2-s-published.pl2-open{opacity:1}
-:root[data-skin-on~='content.plan'][data-skin-on~='motion'] .pl2:not([data-motion='off']) .pl2-row{animation:pl2-in var(--ds-d-slow) var(--ds-e-content) both;animation-delay:var(--pl2-d,0ms)}
-:root[data-skin-on~='content.plan'] .pl2-row-b{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:6px 12px;width:100%;min-height:52px;padding:12px 14px;margin:0;border:0;background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;border-radius:inherit}
+:root[data-skin-on~='content.plan'][data-skin-on~='motion'] .pl2:not([data-motion='off']) .pl2-list:not([data-entered]) .pl2-row{animation:pl2-in var(--ds-d-slow) var(--ds-e-content) both;animation-delay:var(--pl2-d,0ms)}
+:root[data-skin-on~='content.plan'] .pl2-row-b{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'t m' 's s';align-items:start;gap:6px 12px;width:100%;min-height:52px;padding:12px 14px;margin:0;border:0;background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;border-radius:inherit}
 :root[data-skin-on~='content.plan'] .pl2-row-b:focus-visible{outline:2px solid var(--ds-focus);outline-offset:-2px}
 :root[data-skin-on~='content.plan'] .pl2-t{font:600 15px/20px var(--ds-font);color:var(--ds-text);text-wrap:pretty}
-:root[data-skin-on~='content.plan'] .pl2-row-b .pl2-st{padding-top:2px}
-:root[data-skin-on~='content.plan'] .pl2-sub{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
+:root[data-skin-on~='content.plan'] .pl2-t{grid-area:t;min-width:0}
+:root[data-skin-on~='content.plan'] .pl2-meta{grid-area:m;display:inline-flex;align-items:center;gap:10px;padding-top:2px;white-space:nowrap}
+:root[data-skin-on~='content.plan'] .pl2-sub{grid-area:s;display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
 :root[data-skin-on~='content.plan'] .pl2-time{font:500 12px/16px var(--ds-font-mono);font-variant-numeric:tabular-nums;color:var(--ds-text-3)}
 :root[data-skin-on~='content.plan'] .pl2-why1{flex:1 1 100%;min-width:0;font:400 13px/18px var(--ds-font);color:var(--ds-text-2);display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
 :root[data-skin-on~='content.plan'] .pl2-open .pl2-why1{-webkit-line-clamp:unset;display:block}
@@ -74,11 +75,11 @@
 :root[data-skin-on~='content.plan'] .pl2-in p{margin:0}
 :root[data-skin-on~='content.plan'] .pl2-q{display:block;padding-left:10px;border-left:2px solid var(--ds-line-3);color:var(--ds-text-2);quotes:'“' '”'}
 :root[data-skin-on~='content.plan'] .pl2-no{color:var(--ds-text-3)}
-:root[data-skin-on~='content.plan'] .pl2-read{display:grid;gap:6px;padding:10px 12px;border-radius:10px;background:var(--ds-surface-2)}
+:root[data-skin-on~='content.plan'] .pl2-read{display:grid;gap:6px;padding:10px 12px;border-radius:var(--pl2-r-card);background:var(--ds-surface-2)}
 :root[data-skin-on~='content.plan'] .pl2-read b{font-weight:600;color:var(--ds-text)}
 :root[data-skin-on~='content.plan'] .pl2-scale{position:relative;height:6px;margin:4px 0 0;border-radius:3px;background:linear-gradient(90deg,var(--ds-sev-urgent-soft),var(--ds-surface-3) 45%,var(--ds-surface-3) 55%,var(--ds-sev-clear-soft))}
 :root[data-skin-on~='content.plan'] .pl2-scale u{position:absolute;left:50%;top:-3px;bottom:-3px;width:1.5px;background:var(--ds-text-3)}
-:root[data-skin-on~='content.plan'] .pl2-scale i{position:absolute;top:-4px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:var(--ds-accent);border:2px solid var(--ds-surface-1);box-shadow:0 1px 3px rgba(19,18,16,.25);box-sizing:border-box}
+:root[data-skin-on~='content.plan'] .pl2-scale i{position:absolute;top:-4px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:var(--ds-accent);border:2px solid var(--ds-surface-1);box-shadow:var(--ds-shadow-soft),0 0 0 1px var(--ds-line);box-sizing:border-box}
 :root[data-skin-on~='content.plan'] .pl2-scale-l{display:flex;justify-content:space-between;font:400 12px/16px var(--ds-font);color:var(--ds-text-3)}
 :root[data-skin-on~='content.plan'] .pl2-rel{font:400 12px/17px var(--ds-font);color:var(--ds-text-3)}
 :root[data-skin-on~='content.plan'] .pl2-keys{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
@@ -99,7 +100,8 @@
 :root[data-skin-on~='content.plan'] .d-phone .pl2-group ul{gap:8px}
 :root[data-skin-on~='content.plan'] .d-phone .pl2-row{border-radius:18px;background:var(--ds-surface-1)}
 :root[data-skin-on~='content.plan'] .d-phone .pl2-row.pl2-sugg{background:transparent}
-:root[data-skin-on~='content.plan'] .d-phone .pl2-row-b{min-height:56px;padding:14px 16px}
+:root[data-skin-on~='content.plan'] .d-phone .pl2-row-b{grid-template-columns:minmax(0,1fr);grid-template-areas:'m' 't' 's';gap:6px;min-height:56px;padding:14px 16px}
+:root[data-skin-on~='content.plan'] .d-phone .pl2-meta{padding-top:0;white-space:normal;flex-wrap:wrap}
 :root[data-skin-on~='content.plan'] .d-phone .pl2-t{font-size:17px;line-height:22px}
 :root[data-skin-on~='content.plan'] .d-phone .pl2-st{font-size:13px;line-height:18px}
 :root[data-skin-on~='content.plan'] .d-phone .pl2-chip{height:26px;padding:0 9px;font-size:13px}
@@ -111,8 +113,8 @@
 :root[data-skin-on~='content.plan'] .d-phone .pl2-keys > .cv2-k-p{flex:1.4 1 0}
 
 /* iOS segmented control on the phone: 44 track, 44 keys (phone-ox.css, same look as Ideas and Review) */
-:root[data-skin-on~='content.plan'] .d-phone .pl2 .cv2-seg{display:flex;width:100%;height:44px;box-sizing:border-box;padding:0;gap:0;border-radius:12px;background:rgba(19,18,16,.06);box-shadow:inset 0 0 0 .5px rgba(19,18,16,.05)}
-:root[data-skin-on~='content.plan'] .d-phone .pl2 .cv2-seg::before{top:3px;bottom:3px;left:3px;width:max(0px,calc(var(--thumb-w,0px) - 6px));border-radius:9px;background:var(--ds-surface-1);box-shadow:0 3px 8px rgba(19,18,16,.12),0 1px 1px rgba(19,18,16,.06),0 0 0 .5px rgba(19,18,16,.04)}
+:root[data-skin-on~='content.plan'] .d-phone .pl2 .cv2-seg{display:flex;width:100%;height:44px;box-sizing:border-box;padding:0;gap:0;border-radius:12px;background:var(--ds-wash-strong);box-shadow:inset 0 0 0 .5px var(--ds-line)}
+:root[data-skin-on~='content.plan'] .d-phone .pl2 .cv2-seg::before{top:3px;bottom:3px;left:3px;width:max(0px,calc(var(--thumb-w,0px) - 6px));border-radius:9px;background:var(--ds-surface-1);box-shadow:var(--ds-shadow-soft),0 0 0 .5px var(--ds-line)}
 :root[data-skin-on~='content.plan'] .d-phone .pl2 .cv2-seg button{flex:1 1 0;justify-content:center;height:44px;min-height:44px;padding:0 8px;border-radius:9px;font:550 15px/20px var(--ds-font);color:var(--ds-text-2)}
 :root[data-skin-on~='content.plan'] .d-phone .pl2 .cv2-seg button[aria-selected='true']{color:var(--ds-text);font-weight:650}
 :root[data-skin-on~='content.plan'] .d-phone .pl2 .cv2-av{width:22px;height:22px;font-size:12px}

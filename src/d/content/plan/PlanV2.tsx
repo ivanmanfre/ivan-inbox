@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { fetchPlan, type PlanRead } from '../../../lib/contentPlan'
+import { fetchPlan, type PlanRead, type PlanWarning } from '../../../lib/contentPlan'
 import { useMotionLevel } from '../../../ds/motionLevel'
 import { dHash } from '../../route'
 import { useFrameMaybe } from '../../shell/frame'
@@ -7,7 +7,7 @@ import { Count } from '../../ui/Count'
 import { Failed, Skeleton } from '../../ui/states'
 import { LANES, LANE_NAME, type Lane } from '../model'
 import { Seg, SeatAv } from '../v2/ui'
-import { PlanList } from './PlanList'
+import { PlanList, useEntered } from './PlanList'
 import { answerOf, itemsOf, lateRun, tzOf, upcoming, warningOf, type PlanItem } from './planBrain'
 import './plan2.css'
 
@@ -48,6 +48,20 @@ function fixHref(sub: string, lane: Lane, items: PlanItem[]): string {
   return dHash('content', sub, { lane })
 }
 
+type WarnRow = { w: PlanWarning; x: ReturnType<typeof warningOf> }
+
+/** The warnings with their fix links. Keyed by account, so the entry fade plays once per seat. */
+function Warnings({ rows, lane, items, still }: { rows: WarnRow[]; lane: Lane; items: PlanItem[]; still: boolean }) {
+  const entered = useEntered()
+  return <ul className="pl2-warns" aria-label="Warnings" data-entered={entered || undefined}>
+    {rows.map(({ w, x }, i) => <li key={`${w.code}:${i}`} className="pl2-warn" data-code={w.code}
+      style={{ '--pl2-d': `${still ? 0 : Math.min(i * STAGGER_MS, STAGGER_CAP_MS)}ms` } as CSSProperties}>
+      <span>{x.text}</span>
+      {x.link && <a href={fixHref(x.link.sub, lane, items)} data-verb={`plan-fix-${w.code}`}>{x.link.label}</a>}
+    </li>)}
+  </ul>
+}
+
 export function PlanV2({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => void }) {
   const f = useFrameMaybe()
   const phone = f?.layout === 'phone'
@@ -86,7 +100,7 @@ export function PlanV2({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => vo
     options={LANES.map(l => ({ id: l, label: <><SeatAv lane={l} />{LANE_NAME[l]}</> }))} />
   const late = r && lateRun(r, now) ? (ranAt(r) ? `The planner has not run since ${ranAt(r)}.` : 'The planner has not run yet.') : null
 
-  const list = r ? <PlanList key={r.account} read={r} items={items} phone={phone} onOpen={setOpen} /> : null
+  const list = r ? <PlanList key={`list:${r.account}`} read={r} items={items} phone={phone} onOpen={setOpen} /> : null
   // Slot (Task 7): `view === 'weeks' && !phone ? <WeeksView .../> : list`. Until it lands the desktop shows the List.
   const body = list
 
@@ -107,13 +121,7 @@ export function PlanV2({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => vo
             </h2>
             {answer.parts.length > 0 && <p className="pl2-parts">{answer.parts.join(' · ')}</p>}
           </div>
-          {warnings.length > 0 && <ul className="pl2-warns" aria-label="Warnings">
-            {warnings.map(({ w, x }, i) => <li key={`${w.code}:${i}`} className="pl2-warn" data-code={w.code}
-              style={{ '--pl2-d': `${level === 'off' ? 0 : Math.min(i * STAGGER_MS, STAGGER_CAP_MS)}ms` } as CSSProperties}>
-              <span>{x.text}</span>
-              {x.link && <a href={fixHref(x.link.sub, lane, all)} data-verb={`plan-fix-${w.code}`}>{x.link.label}</a>}
-            </li>)}
-          </ul>}
+          {warnings.length > 0 && <Warnings key={`warn:${r.account}`} rows={warnings} lane={lane} items={all} still={level === 'off'} />}
           {/* Slot (Task 9): <BrainStrip strip={r.brain_strip} acct={lane} /> */}
           {body}
           {/* Slot (Task 8): {open && <PlanPanel it={open} read={r} onClose={() => setOpen(null)} />} */}
