@@ -66,15 +66,19 @@ export function useHoverIntent(enabled = true): { bind: (key: string) => Bind; o
   }), [enter, leave])
 
   // Turned off (the panel opened, layout or pointer changed): nothing stays open, no timer fires later. After it
-  // turns back on it stays quiet: the focus that returns to the card does not reopen it, until the pointer moves.
+  // turns back on it stays quiet: the focus that returns to the card does not reopen it, until the pointer moves
+  // or a keyboard user moves on (Tab or an arrow key: the keydown comes before the focus it moves).
   useEffect(() => {
     const before = was.current
     was.current = enabled
     if (!enabled) { close(); if (before) quiet.current = true; return }
     if (!quiet.current) return
-    const wake = () => { quiet.current = false }
-    window.addEventListener('pointermove', wake, { once: true })
-    return () => window.removeEventListener('pointermove', wake)
+    const off = () => { window.removeEventListener('pointermove', wake); window.removeEventListener('keydown', key, true) }
+    const wake = () => { quiet.current = false; off() }
+    const key = (e: KeyboardEvent) => { if (e.key === 'Tab' || e.key.startsWith('Arrow')) wake() }
+    window.addEventListener('pointermove', wake)
+    window.addEventListener('keydown', key, true)
+    return off
   }, [enabled, close])
   useEffect(() => clear, [clear])
 

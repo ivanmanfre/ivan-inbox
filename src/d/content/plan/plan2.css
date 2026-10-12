@@ -148,6 +148,77 @@
 :root[data-skin-on~='content.plan'] .pl2-hc .pl2-rel{font-size:12px}
 :root[data-skin-on~='content.plan'] .pl2-hc p.pl2-hc-link{margin-top:10px;font-weight:500;color:var(--ds-text)}
 
+/* ---- detail panel (Sheet): the seven questions, keys pinned in the sheet foot (spec §3c, R2.4; mock v3 panelHtml) ---- */
+:root[data-skin-on~='content.plan'] .d-sheet.pl2-pn{background:var(--ds-surface-1);border-color:var(--ds-line-strong);box-shadow:var(--ds-shadow-float)}
+:root[data-skin-on~='content.plan'] .d-sheet-right.pl2-pn{width:min(560px,92vw);border-radius:var(--ds-r-pane) 0 0 var(--ds-r-pane)}
+:root[data-skin-on~='content.plan'] .pl2-pn .d-sheet-h{border-bottom:0;padding:14px 16px 0 24px}
+:root[data-skin-on~='content.plan'] .pl2-pn .d-sheet-t b{font:500 13px/18px var(--ds-font)}
+:root[data-skin-on~='content.plan'] .pl2-pn-body{padding:6px 24px 20px;font:400 14px/21px var(--ds-font);color:var(--ds-text-2)}
+:root[data-skin-on~='content.plan'] .pl2-pn-t{margin:0;font:650 22px/1.2 var(--ds-font);letter-spacing:-.015em;color:var(--ds-text);text-wrap:pretty}
+:root[data-skin-on~='content.plan'] .pl2-pn-meta{margin:6px 0 0;font:400 13px/18px var(--ds-font);font-variant-numeric:tabular-nums;color:var(--ds-text-3)}
+:root[data-skin-on~='content.plan'] .pl2-pn-flags{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+:root[data-skin-on~='content.plan'] .pl2-pn-qs{margin:16px 0 0;padding:0;list-style:none;border-top:1px solid var(--ds-line)}
+:root[data-skin-on~='content.plan'] .pl2-pn-q{display:grid;grid-template-columns:22px minmax(0,1fr);gap:12px;padding:14px 0;border-bottom:1px solid var(--ds-line)}
+:root[data-skin-on~='content.plan'] .pl2-pn-n{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--ds-surface-3);font:600 12px/1 var(--ds-font);font-variant-numeric:tabular-nums;color:var(--ds-text-3)}
+:root[data-skin-on~='content.plan'] .pl2-pn-q > div{display:flex;flex-direction:column;gap:6px;min-width:0}
+:root[data-skin-on~='content.plan'] .pl2-pn h5{margin:0 0 2px;font:600 15px/20px var(--ds-font);color:var(--ds-text)}
+:root[data-skin-on~='content.plan'] .pl2-pn-q p{margin:0}
+:root[data-skin-on~='content.plan'] .pl2-pn-quote{margin:2px 0}
+:root[data-skin-on~='content.plan'] .pl2-bars{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 14px;margin-top:6px}
+:root[data-skin-on~='content.plan'] .pl2-bar{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:4px 6px;font:400 13px/17px var(--ds-font);color:var(--ds-text-2)}
+:root[data-skin-on~='content.plan'] .pl2-bar b{font-weight:600;font-variant-numeric:tabular-nums;color:var(--ds-text)}
+:root[data-skin-on~='content.plan'] .pl2-bar i{grid-column:1 / -1;display:block;height:4px;border-radius:2px;background:var(--ds-surface-3);overflow:hidden}
+:root[data-skin-on~='content.plan'] .pl2-bar u{display:block;height:100%;border-radius:inherit;background:var(--ds-accent)}
+:root[data-skin-on~='content.plan'] .pl2-bar[data-low] b,:root[data-skin-on~='content.plan'] .pl2-bar[data-low] span{color:var(--ds-sev-attention-ui)}
+:root[data-skin-on~='content.plan'] .pl2-bar[data-low] u{background:var(--ds-sev-attention)}
+:root[data-skin-on~='content.plan'] .pl2-res{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+:root[data-skin-on~='content.plan'] .pl2-res > div{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:var(--pl2-r-card,10px);background:var(--ds-surface-2)}
+:root[data-skin-on~='content.plan'] .pl2-res b{font:650 20px/24px var(--ds-font);font-variant-numeric:tabular-nums;color:var(--ds-text)}
+:root[data-skin-on~='content.plan'] .pl2-res span{font:400 12px/16px var(--ds-font);color:var(--ds-text-3)}
+:root[data-skin-on~='content.plan'] .pl2-pn-fl{margin-top:16px}
+:root[data-skin-on~='content.plan'] .pl2-pn-fl h5{font:600 13px/18px var(--ds-font);color:var(--ds-text-3)}
+:root[data-skin-on~='content.plan'] .pl2-pn-first{margin-top:6px;padding:12px 14px;border:1px solid var(--ds-line);border-radius:var(--pl2-r-card,10px);background:var(--ds-surface-1);font:400 14px/21px var(--ds-font);color:var(--ds-text);white-space:pre-line;overflow-wrap:anywhere}
+:root[data-skin-on~='content.plan'] .pl2-pn .d-sheet-f{padding:12px 24px 16px;border-top:1px solid var(--ds-line);background:var(--ds-surface-1)}
+:root[data-skin-on~='content.plan'] .pl2-pn-keys{display:flex;flex-wrap:wrap;gap:8px}
+:root[data-skin-on~='content.plan'] .pl2-pn-keys a.cv2-k{text-decoration:none}
+
+/* Move day: two weeks of weekdays (a dated post) or the plan's three weeks (a planned slot) */
+:root[data-skin-on~='content.plan'] .pl2-mv{display:flex;flex-direction:column;gap:8px;width:100%}
+:root[data-skin-on~='content.plan'] .pl2-mv-h{margin:0;font:500 13px/18px var(--ds-font);color:var(--ds-text-2)}
+:root[data-skin-on~='content.plan'] .pl2-mv-row{display:grid;gap:6px}
+:root[data-skin-on~='content.plan'] .pl2-mv-d,:root[data-skin-on~='content.plan'] .pl2-mv-wk{all:unset;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:44px;padding:4px 2px;border-radius:var(--ds-r-btn);background:var(--ds-chip-face);box-shadow:var(--ds-chip-shadow);font-family:var(--ds-font);color:var(--ds-text);cursor:pointer;text-align:center;transition:background-color var(--ds-d-fast) var(--ds-e-ui),box-shadow var(--ds-d-fast) var(--ds-e-ui)}
+:root[data-skin-on~='content.plan'] .pl2-mv-d span{font:500 12px/14px var(--ds-font);color:var(--ds-text-3)}
+:root[data-skin-on~='content.plan'] .pl2-mv-d b{font:600 15px/18px var(--ds-font);font-variant-numeric:tabular-nums}
+:root[data-skin-on~='content.plan'] :is(.pl2-mv-d,.pl2-mv-wk):hover:not(:disabled){box-shadow:var(--ds-chip-shadow),0 0 0 1px var(--ds-line-strong)}
+:root[data-skin-on~='content.plan'] :is(.pl2-mv-d,.pl2-mv-wk):focus-visible{outline:2px solid var(--ds-focus);outline-offset:1px}
+:root[data-skin-on~='content.plan'] :is(.pl2-mv-d,.pl2-mv-wk):disabled{background:transparent;box-shadow:none;color:var(--ds-text-4);cursor:default}
+:root[data-skin-on~='content.plan'] :is(.pl2-mv-d,.pl2-mv-wk)[aria-current]{box-shadow:inset 0 0 0 1.5px var(--ds-accent);color:var(--ds-text)}
+:root[data-skin-on~='content.plan'] .pl2-mv-wks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+:root[data-skin-on~='content.plan'] .pl2-mv-wk{align-items:flex-start;padding:8px 10px;text-align:left}
+:root[data-skin-on~='content.plan'] .pl2-mv-wk b{font:600 13px/18px var(--ds-font)}
+:root[data-skin-on~='content.plan'] .pl2-mv-wk span{font:400 12px/16px var(--ds-font);color:var(--ds-text-2)}
+:root[data-skin-on~='content.plan'] .pl2-mv-wk small{font:400 12px/16px var(--ds-font);color:var(--ds-text-3)}
+:root[data-skin-on~='content.plan'] .pl2-mv-f{display:flex;justify-content:flex-end}
+:root[data-skin-on~='content.plan'] .pl2[data-motion='off'] :is(.pl2-mv-d,.pl2-mv-wk){transition:none}
+
+/* phone sheet: 18 radius, 44 px keys pinned at the bottom, nothing under 12 px */
+:root[data-skin-on~='content.plan'] .d-phone .d-sheet-bottom.pl2-pn{border-radius:18px 18px 0 0}
+:root[data-skin-on~='content.plan'] .d-phone .pl2-pn .d-sheet-h{padding:4px 8px 0 20px}
+:root[data-skin-on~='content.plan'] .d-phone .pl2-pn .d-sheet-t b{font-size:14px;line-height:19px}
+:root[data-skin-on~='content.plan'] .d-phone .pl2-pn-body{padding:4px 20px 20px;font-size:15px;line-height:22px}
+:root[data-skin-on~='content.plan'] .d-phone .pl2-pn-t{font-size:21px}
+:root[data-skin-on~='content.plan'] .d-phone .pl2-bars{grid-template-columns:repeat(2,minmax(0,1fr))}
+:root[data-skin-on~='content.plan'] .d-phone .pl2-bar{font-size:14px}
+:root[data-skin-on~='content.plan'] .d-phone .pl2-res span{font-size:13px}
+:root[data-skin-on~='content.plan'] .d-phone .pl2-pn .d-sheet-f{padding:10px 20px calc(10px + env(safe-area-inset-bottom))}
+:root[data-skin-on~='content.plan'] .d-phone .pl2-pn-keys{flex-wrap:nowrap}
+:root[data-skin-on~='content.plan'] .d-phone .pl2-pn-keys > *{flex:1 1 auto;padding:0 10px}
+/* A long read: an opaque surface instead of the shared phone sheet glass. */
+:root[data-skin-on~='content.plan'][data-layout='phone'] .d-sheet.d-sheet-bottom.pl2-pn{background:var(--ds-surface-1)}
+:root[data-skin-on~='content.plan'] .d-phone .pl2-mv-wks{grid-template-columns:minmax(0,1fr)}
+:root[data-skin-on~='content.plan'] .d-phone .pl2-mv-h,:root[data-skin-on~='content.plan'] .d-phone .pl2-mv-wk b{font-size:14px}
+:root[data-skin-on~='content.plan'] .d-phone .pl2-mv-d span,:root[data-skin-on~='content.plan'] .d-phone .pl2-mv-wk :is(span,small){font-size:13px}
+
 /* ---- phone: 18 radius cards, the frame's 20 gutter only, 12 px text and 44 px taps at least ---- */
 :root[data-skin-on~='content.plan'] .d-phone .pl2-head{gap:8px}
 :root[data-skin-on~='content.plan'] .d-phone .pl2-late{margin-left:0;flex:1 1 100%}

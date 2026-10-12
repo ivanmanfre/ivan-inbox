@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import type { Lane } from '../d/content/model'
+import { CLIENT_OPS_GATE } from './content'
 
 // Content plan read model (db/252 content_plan_week): the next two weeks per account, each slot with its
 // reason and evidence, topics already done, written drafts waiting, and warnings. Read only.
@@ -71,6 +72,25 @@ export async function fetchPlan(lane: Lane, signal?: AbortSignal): Promise<PlanR
   const { data, error } = await (signal ? q.abortSignal(signal) : q)
   if (error) throw new Error(error.message || 'The plan could not load.')
   return parsePlan(data, lane)
+}
+
+/** A refused move: the server's own code (bad_gate, not_found, bad_status, bad_week, same_week, out_of_horizon, no_room). */
+export class PlanMoveError extends Error {
+  readonly code: string
+  constructor(code: string) { super(`The plan refused the move: ${code}.`); this.name = 'PlanMoveError'; this.code = code }
+}
+
+/**
+ * Move a planned slot (no draft date yet) to another week of the 3-week plan (db/263 content_plan_move_slot).
+ * The server moves it only to a week with room and writes the slot's week and nothing else: no draft is dated,
+ * scheduled or published. Same operator gate as the other operator_* writes.
+ */
+export async function moveSlotWeek(slotId: string, week: string): Promise<{ from_week: string; to_week: string }> {
+  const { data, error } = await supabase.rpc('content_plan_move_slot', { p_gate: CLIENT_OPS_GATE, p_slot: slotId, p_week: week })
+  if (error) throw new Error(error.message || 'The move could not reach the plan.')
+  const r = (data ?? {}) as { ok?: boolean; error?: string; from_week?: string; to_week?: string }
+  if (r.ok !== true) throw new PlanMoveError(typeof r.error === 'string' ? r.error : 'unknown')
+  return { from_week: String(r.from_week ?? ''), to_week: String(r.to_week ?? week) }
 }
 
 /** "Mon 19 Oct" from an ISO date (date-only, read as a calendar day). */

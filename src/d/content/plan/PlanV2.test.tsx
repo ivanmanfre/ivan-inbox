@@ -10,8 +10,8 @@ import riseFull from './fixtures/risedtc.json'
 import ivanFx from './fixtures/ivan.json'
 import archFx from './fixtures/arch.json'
 
-const api = vi.hoisted(() => ({ fetchPlan: vi.fn() }))
-vi.mock('../../../lib/contentPlan', async o => ({ ...await o<typeof import('../../../lib/contentPlan')>(), fetchPlan: api.fetchPlan }))
+const api = vi.hoisted(() => ({ fetchPlan: vi.fn(), moveSlotWeek: vi.fn() }))
+vi.mock('../../../lib/contentPlan', async o => ({ ...await o<typeof import('../../../lib/contentPlan')>(), fetchPlan: api.fetchPlan, moveSlotWeek: api.moveSlotWeek }))
 import { PlanV2 } from './PlanV2'
 
 const rise = () => structuredClone(riseFx) as unknown as PlanRead
@@ -211,5 +211,64 @@ describe('PlanV2', () => {
     renderInFrame(<Harness start="risedtc" />)
     await screen.findByRole('heading', { level: 2 })
     expect(screen.getAllByText('No brain guess yet for this draft.').length).toBeGreaterThan(0)
+  })
+  it('a card opens the panel with the seven questions; closing it puts focus back on the card without its hover card; Tab wakes it', async () => {
+    const real = window.matchMedia
+    window.matchMedia = ((q: string) => ({ matches: q.includes('hover: hover'), media: q, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
+    try {
+      api.fetchPlan.mockResolvedValue(rise())
+      renderInFrame(<Harness start="risedtc" />)
+      await screen.findByRole('heading', { level: 2 })
+      const card = screen.getAllByText(/Your Google Shopping feed/)[0].closest<HTMLElement>('.pl2-card')!
+      fireEvent.click(card)
+      const dialog = screen.getByRole('dialog')
+      expect(dialog.textContent).toContain('Why this post')
+      expect(dialog.textContent).toContain('Will it do well')
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(document.activeElement).toBe(card)
+      fireEvent.focus(card)
+      await new Promise(res => setTimeout(res, 650))
+      expect(screen.queryByRole('tooltip')).toBeNull()
+      // A keyboard user moves on: Tab wakes the hover card for the next card focus.
+      const next = screen.getAllByText(/broken links/i)[0].closest<HTMLElement>('.pl2-card')!
+      fireEvent.keyDown(window, { key: 'Tab' })
+      next.focus()
+      fireEvent.focus(next)
+      expect(await screen.findByRole('tooltip', {}, { timeout: 1500 })).toBeTruthy()
+    } finally {
+      window.matchMedia = real
+    }
+  })
+
+  it('Escape closes the panel and focus returns to the List row that opened it', async () => {
+    localStorage.setItem('pl2-view', 'list')
+    api.fetchPlan.mockResolvedValue(rise())
+    renderInFrame(<Harness start="risedtc" />)
+    await screen.findByRole('heading', { level: 2 })
+    const row = screen.getAllByText(/If a channel can't grow/)[0].closest<HTMLElement>('.pl2-row')!
+    fireEvent.click(row.querySelector('.pl2-row-b')!)
+    fireEvent.click([...row.querySelectorAll('button')].find(b => b.textContent === 'Why, in full')!)
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(document.activeElement).toBe(row.querySelector('.pl2-row-b'))
+  })
+
+  it('a move re-reads the plan and keeps the panel open on the fresh data; a seat switch closes it', async () => {
+    const first = FX.arch(); first.weeks[1].filled = 2
+    const second = FX.arch(); second.weeks[2].planned[0].why_now = 'A fresh reason after the move.'
+    api.fetchPlan.mockResolvedValueOnce(first).mockResolvedValueOnce(second).mockResolvedValue(ivan())
+    api.moveSlotWeek.mockResolvedValue({ from_week: '2026-10-26', to_week: '2026-10-19' })
+    renderInFrame(<Harness start="arch" />)
+    await screen.findByRole('heading', { level: 2 })
+    fireEvent.click(screen.getAllByText(/Judge creators like AppLovin/)[0].closest<HTMLElement>('.pl2-card')!)
+    fireEvent.click(screen.getByRole('button', { name: 'Move day' }))
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Next week/ })) })
+    expect(api.moveSlotWeek).toHaveBeenCalledWith('48dcd764-c830-452f-92cf-f6557177658a', '2026-10-19')
+    await waitFor(() => expect(api.fetchPlan).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(screen.getByRole('dialog').textContent).toContain('A fresh reason after the move.'))
+    fireEvent.click(screen.getByRole('tab', { name: 'Ivan' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 })

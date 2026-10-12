@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { fetchPlan, type PlanRead, type PlanWarning } from '../../../lib/contentPlan'
 import { useMotionLevel } from '../../../ds/motionLevel'
 import { dHash } from '../../route'
@@ -8,6 +8,7 @@ import { Failed, Skeleton } from '../../ui/states'
 import { LANES, LANE_NAME, type Lane } from '../model'
 import { Seg, SeatAv } from '../v2/ui'
 import { PlanList, useEntered } from './PlanList'
+import { PlanPanel } from './PlanPanel'
 import { PlanWeeks } from './PlanWeeks'
 import { answerOf, itemsOf, lateRun, tzOf, upcoming, warningOf, type PlanItem } from './planBrain'
 import './plan2.css'
@@ -16,8 +17,9 @@ import './plan2.css'
 // Weeks | List on the desktop, the planner line only when it is late), one answer line, the warnings with their
 // fix links, then the plan. Read only: nothing here dates, moves or publishes a post.
 // Weeks is the desktop default (PlanWeeks, with the hover card); List is the desktop option and the phone's only
-// view. Slots for the later parts: PlanPanel (Task 8) opens on `open`, BrainStrip (Task 9) sits between the
-// warnings and the view.
+// view. A card or "Why, in full" opens PlanPanel (the seven questions; its Move day is the tab's one write, and a
+// move re-reads the plan with the panel kept open). Closing it puts focus back on the card that opened it.
+// Slot for the later part: BrainStrip (Task 9) sits between the warnings and the view.
 
 type View = 'weeks' | 'list'
 const VIEW_KEY = 'pl2-view'
@@ -74,17 +76,31 @@ export function PlanV2({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => vo
   const [view, setViewState] = useState<View>(savedView)
   const [open, setOpen] = useState<PlanItem | null>(null)
   const [now] = useState(() => new Date())
+  const opener = useRef<string | null>(null)
   const retry = useCallback(() => setTick(t => t + 1), [])
+  const openItem = useCallback((it: PlanItem) => { opener.current = it.key; setOpen(it) }, [])
+  const closePanel = useCallback(() => setOpen(null), [])
   const setView = useCallback((v: string) => {
     const next: View = v === 'list' ? 'list' : 'weeks'
     setViewState(next)
     try { localStorage.setItem(VIEW_KEY, next) } catch { /* private mode */ }
   }, [])
+  // A seat switch closes the panel; a re-read (Retry, a move) keeps it open on the fresh data.
+  useEffect(() => { setOpen(null); opener.current = null }, [lane])
+  // The panel closed: focus goes back to the card (or row) that opened it. Its hover card stays shut (the hover
+  // hook is quiet until the pointer moves or a Tab / arrow key moves on).
+  useEffect(() => {
+    if (open || !opener.current) return
+    const k = opener.current
+    opener.current = null
+    const el = [...document.querySelectorAll<HTMLElement>('[data-plan-key]')].find(e => e.getAttribute('data-plan-key') === k)
+    const target = el && (el.matches('button') ? el : el.querySelector<HTMLElement>('button'))
+    target?.focus()
+  }, [open])
   useEffect(() => {
     let live = true
     const c = new AbortController()
     setError(null)
-    setOpen(null)
     setRead(r => (r?.account === lane ? r : null))
     void fetchPlan(lane, c.signal)
       .then(r => { if (live && r.account === lane) setRead(r) })
@@ -96,6 +112,8 @@ export function PlanV2({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => vo
   const all = useMemo(() => (r ? itemsOf(r) : []), [r])
   const items = useMemo(() => (r ? upcoming(all, r.today) : []), [r, all])
   const answer = useMemo(() => (r ? answerOf(r) : null), [r])
+  // The open item as the latest read has it (a move re-reads the plan); the clicked copy if it left the plan.
+  const shown = useMemo(() => (open ? all.find(i => i.key === open.key) ?? open : null), [open, all])
   const warnings = useMemo(() => (r ? (Array.isArray(r.warnings) ? r.warnings : []).map(w => ({ w, x: warningOf(w) })).filter(v => v.x.text) : []), [r])
 
   const seats = <Seg label="Account" value={lane} onChange={id => setLane(id as Lane)} verb="plan-seat"
@@ -104,8 +122,8 @@ export function PlanV2({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => vo
 
   // Weeks gets every item of the three weeks (past days of this week keep their posts); List starts from today.
   const body = !r ? null
-    : view === 'weeks' && !phone ? <PlanWeeks key={`weeks:${r.account}`} read={r} items={all} today={r.today} onOpen={setOpen} hover={!open} />
-      : <PlanList key={`list:${r.account}`} read={r} items={items} phone={phone} onOpen={setOpen} />
+    : view === 'weeks' && !phone ? <PlanWeeks key={`weeks:${r.account}`} read={r} items={all} today={r.today} onOpen={openItem} hover={!open} />
+      : <PlanList key={`list:${r.account}`} read={r} items={items} phone={phone} onOpen={openItem} />
 
   return <div className={`cv2 pl2${phone ? ' pl2-phone' : ''}`} data-motion={level} data-open={open?.key}>
     <div className="pl2-head">
@@ -127,7 +145,7 @@ export function PlanV2({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => vo
           {warnings.length > 0 && <Warnings key={`warn:${r.account}`} rows={warnings} lane={lane} items={all} still={level === 'off'} />}
           {/* Slot (Task 9): <BrainStrip strip={r.brain_strip} acct={lane} /> */}
           {body}
-          {/* Slot (Task 8): {open && <PlanPanel it={open} read={r} onClose={() => setOpen(null)} />} */}
+          {shown && <PlanPanel key={shown.key} item={shown} read={r} lane={lane} onClose={closePanel} onChanged={retry} />}
         </>}
   </div>
 }

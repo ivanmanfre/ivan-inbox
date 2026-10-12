@@ -500,3 +500,86 @@ export function lateRun(read: Pick<PlanRead, 'last_run'>, now: Date): boolean {
   if (Number.isNaN(t)) return true
   return now.getTime() - t > 26 * 3600_000
 }
+
+// ---- the detail panel (spec 2026-10-12 §3c, R2.4, R3.3 to R3.5) ----
+export const FIRST_LINES_MAX = 260
+const PHOTO_REASON: Record<string, string> = { no_fitting_photo: 'none of your photos fits this post' }
+const shortDate = (iso: string) => planDay(iso).replace(/^\w+ /, '')
+
+/** "Fri 23 Oct · 07:00 PT · 185 words · edited by hand"; a planned slot starts with "No day yet". */
+export function metaLine(it: PlanItem, tz: Tz): string {
+  const p: string[] = []
+  if (it.suggested || !it.day) p.push('No day yet')
+  else { p.push(planDay(it.day)); const t = timeLabel(it, tz); if (t) p.push(t) }
+  const w = it.brain?.words
+  if (fin(w) && w > 0) p.push(`${num(w)} words`)
+  if (it.brain?.edited) p.push('edited by hand')
+  return p.join(' · ')
+}
+
+/** Where it comes from, when it says more than the reason: the first evidence line in plain words. */
+export function sourceLine(it: PlanItem, reason: string | null): string | null {
+  const brief = !!it.brain?.brief
+  const e = evOf(it).find(x => x.label && !(brief && (x.type === 'outlier' || x.type === 'brain')))
+  if (!e) return null
+  const s = plainWhy(e.label)
+  return s && s !== reason ? s : null
+}
+
+/** "A written draft based on a post by Monika Grycz that got 4.6x their normal views." (never the ranker's own text) */
+export function briefLine(it: PlanItem): string | null {
+  const br = it.brain?.brief
+  if (!br) return null
+  const who = br.author && !slugLike(br.author) ? br.author.trim() : null
+  const r = fin(br.ratio) && br.ratio > 0 ? br.ratio.toFixed(1) : null
+  if (who) return r ? `A written draft based on a post by ${who} that got ${r}x their normal views.` : `A written draft based on a top post by ${who}.`
+  return r ? `A written draft based on a post that got ${r}x its author's normal views.` : null
+}
+
+/** "Copies the shape of a post by Monika Grycz." */
+export function shapeLine(it: PlanItem): string | null {
+  const br = it.brain?.brief
+  const who = br?.author && !slugLike(br.author) ? br.author.trim() : null
+  return who ? `Copies the shape of a post by ${who}.` : null
+}
+
+/** "Replaced: 'Friends and family' failed the quality check on 12 Oct; the planner picked this one." */
+export function replacedLine(it: PlanItem): string | null {
+  const r = it.brain?.replaced
+  if (!r || !r.title) return null
+  const on = r.on && /^\d{4}-\d{2}-\d{2}/.test(r.on) ? ` on ${shortDate(r.on)}` : ''
+  return `Replaced: '${displayTitle(r.title)}' failed the quality check${on}; the planner picked this one.`
+}
+
+/** The picture: Rise photos come in rotation; Ivan's assigner says why there is none. */
+export function photoLine(it: PlanItem, acct: Acct): string | null {
+  const ph = it.brain?.photo
+  if (!ph) return null
+  const whose = acct === 'ivan' ? 'Your' : `${OWNER[acct]}'s`
+  if (ph.has && ph.rotation) return `${whose} photo, picked in rotation.`
+  const why = ph.reason ? (PHOTO_REASON[ph.reason] ?? scrub(words(ph.reason)).trim().replace(/\.$/, '')) : ''
+  if (ph.has) return why ? `${whose} photo: ${why}.` : null
+  return why ? `No photo: ${why}.` : null
+}
+
+/** The writer's opener rule (H01), when the account has it in force or in test. */
+export function writerRuleLine(acct: Acct, strip: BrainStrip | null | undefined): string | null {
+  const r = realRules(strip).find(x => /^H01-/i.test(String(x.rule_id ?? '')))
+  return r ? `Writer rule: open with something ${OWNER[acct]} did or saw.` : null
+}
+
+/** "3 of 12 people who engaged run a brand (Rise normal: 9%)." */
+export function engagedLine(it: PlanItem, acct: Acct): string | null {
+  const e = it.brain?.result?.engaged
+  if (!e || !fin(e.brand) || !fin(e.total) || e.total <= 0) return null
+  const usual = fin(e.usual_pct) ? ` (${ACCT_NAME[acct]} normal: ${Math.round(e.usual_pct)}%)` : ''
+  return `${num(e.brand)} of ${num(e.total)} people who engaged run a brand${usual}.`
+}
+
+/** The first lines of the post, cut at a word at most 260 characters in, with an ellipsis. */
+export function firstLines(it: PlanItem): string | null {
+  const b = String(it.brain?.body_head ?? '').trim()
+  if (!b) return null
+  const cut = b.length > FIRST_LINES_MAX - 1 ? b.slice(0, FIRST_LINES_MAX - 1).replace(/\s+\S*$/, '').trimEnd() : b
+  return `${cut}…`
+}
