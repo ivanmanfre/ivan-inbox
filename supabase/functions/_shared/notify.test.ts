@@ -76,6 +76,42 @@ describe('notify transient workflow claim', () => {
     expect(() => validateNotify({ family: 'system_infra_alarm', title: 'Failed', incident_key: 'workflow-only' })).toThrow()
   })
 
+  it('rings for the plan_ready alert (family content_plan) and still obeys a muted family', () => {
+    expect(pushDefault('content_plan', 'info')).toBe(true)
+    expect(pushDefault('content_plan', 'attention')).toBe(true)
+    // The default stays off for the families Ivan muted on 10-07.
+    expect(pushDefault('outreach_engine_ops', 'info')).toBe(false)
+    expect(pushDefault('system_watchdog_digest', 'info')).toBe(false)
+  })
+
+  it('a plan_ready row is stored and rings (push true, url kept); a repeat inside the window folds without ringing', async () => {
+    const id = '33333333-3333-4333-8333-333333333333'
+    let existing: unknown = null
+    const inserted: unknown[] = []
+    const q: Record<string, unknown> = {}
+    for (const m of ['select', 'eq', 'neq', 'not', 'gt', 'is', 'order', 'limit']) q[m] = () => q
+    q.maybeSingle = async () => ({ data: existing, error: null })
+    const client = { from: () => ({ ...q,
+      insert: (row: unknown) => { inserted.push(row); existing = { id, count: 1, read_at: null, group_key: null }
+        return { select: () => ({ single: async () => ({ data: { id }, error: null }) }) } },
+      update: () => ({ eq: async () => ({ error: null }) }),
+    }) }
+    const alert = {
+      family: 'content_plan', source: 'content-plan', severity: 'info',
+      dedupe_key: 'plan-ready:risedtc:2026-10-26', title: 'Rise · week of 26 Oct is ready',
+      body: '5 posts written and checked. They wait for your OK.', url: './#exp/d/content/plan?lane=risedtc',
+      media: { kind: 'plan_ready', account: 'risedtc', week: '2026-10-26' }, push: true,
+    }
+    const first = await notify(client as never, alert)
+    expect(first).toMatchObject({ id, pushed: true, deduped: false })
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).toMatchObject({ url: './#exp/d/content/plan?lane=risedtc', family: 'content_plan' })
+    const again = await notify(client as never, alert)
+    expect(again).toMatchObject({ id, pushed: false, deduped: true })
+    expect(sent).toHaveLength(1)
+    expect(inserted).toHaveLength(1)
+  })
+
   it('ignores run/count changes but keeps distinct failure conditions and HTTP codes', async () => {
     const base = { family: 'system_infra_alarm', source: 'workflow-a', tenant: 'rise', severity: 'error' }
     const one = await fallbackIncidentKey({ ...base, title: '3 sends failed', body: 'Node: Dispatch, exec 100 at 2026-09-28' })

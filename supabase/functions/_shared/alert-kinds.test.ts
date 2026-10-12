@@ -77,6 +77,11 @@ describe('kindFor: every census family resolves to a real kind', () => {
     expect(kindFor('reply_draft_pending', 'info', 'ARCH reply drafted for Tetiana Klimonova')).toBe('needs_you')
     expect(presentPush({ family: 'reply_draft_pending', severity: 'info', title: 'DM1 wins auto-queued for Jamie Woodbridge:' }).title).toMatch(/Update/)
   })
+  it('a plan that is ready reads as a thing waiting on Ivan, not a digest', () => {
+    expect(kindFor('content_plan', 'info', 'Rise · week of 26 Oct is ready')).toBe('needs_you')
+    expect(presentPush({ family: 'content_plan', severity: 'info', title: 'Rise · week of 26 Oct is ready',
+      body: '5 posts written and checked. They wait for your OK.' }).title).toMatch(/Needs you/)
+  })
   it('lane supply attention needs an operator while an error is a failure', () => {
     expect(kindFor('lane_supply_alarm', 'attention', 'Lane below floor')).toBe('needs_you')
     expect(kindFor('lane_supply_alarm', 'error', 'Lane halted')).toBe('failed')

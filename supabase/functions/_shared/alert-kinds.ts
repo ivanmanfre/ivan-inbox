@@ -84,6 +84,7 @@ const BASE_KIND: Record<string, Kind> = {
   // needs_you: a draft, a decision, or a review is waiting on Ivan
   reply_draft_pending: 'needs_you',
   bot: 'needs_you',
+  content_plan: 'needs_you', // plan_ready: a week of written drafts waits for his OK (db/265)
   scan_quality_alert: 'needs_you',
 
   // reply: a person outside the system said something back

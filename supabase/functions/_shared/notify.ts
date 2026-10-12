@@ -53,6 +53,7 @@ export const PUSH_DEFAULT: Record<string, boolean> = {
   reminder: true,             // reminders he set himself
   night_brief: true,          // the night brief
   thursday_brief: true,       // the Thursday brief
+  content_plan: true,         // plan_ready only: one alert per account-week (db/265); the Monday plan line is written by SQL and never pushes
 
   // Generic infrastructure failures stay recorded for diagnostics. Failed
   // prospect sends still interrupt because an actual message did not go out.
