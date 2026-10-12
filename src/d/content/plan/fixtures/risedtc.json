@@ -1,0 +1,1925 @@
+{
+"ok": true,
+"tz": {
+"name": "America/Los_Angeles",
+"label": "PT"
+},
+"done": [
+{
+"day": "2026-10-12",
+"title": "I wish we got a piece of that",
+"format": "text",
+"pillar": "personal",
+"comments": null,
+"draft_id": "c53f1759-0cd2-4033-94d0-e34ae5f7e98e",
+"reactions": null,
+"impressions": null
+},
+{
+"day": "2026-10-11",
+"title": "When Meta goes off, Amazon sales drop",
+"format": "text",
+"pillar": "teardown",
+"comments": 0,
+"draft_id": "118f7de7-f591-4daa-b632-c73d043cf689",
+"reactions": 1,
+"impressions": 237
+},
+{
+"day": "2026-10-10",
+"title": "RISE DTC: Dots ad-editing setup guide",
+"format": "video",
+"pillar": null,
+"comments": 0,
+"draft_id": "e119e39e-cf0a-4ca6-9d08-31d491f8f36d",
+"reactions": 1,
+"impressions": 66
+},
+{
+"day": "2026-10-09",
+"title": "Discounts brought in the wrong customers",
+"format": "text",
+"pillar": "authority",
+"comments": 2,
+"draft_id": "b1dde8eb-30e6-4a9c-b3d3-933708416925",
+"reactions": 4,
+"impressions": 1295
+},
+{
+"day": "2026-10-08",
+"title": "POV: getting married today but",
+"format": "carousel",
+"pillar": "reach",
+"comments": 2,
+"draft_id": "8403dbc5-3ed1-429e-832b-218ff54899e3",
+"reactions": 2,
+"impressions": 187
+}
+],
+"open": 0,
+"state": "two_weeks_planned",
+"today": "2026-10-12",
+"weeks": [
+{
+"open": 0,
+"dated": 5,
+"posts": [
+{
+"at": "2026-10-12T14:01:17.829+00:00",
+"day": "2026-10-12",
+"kind": "post",
+"brain": {
+"qa": {
+"max": 80,
+"dims": null,
+"final": null,
+"first": null,
+"outcome": "hand",
+"weakest": null,
+"rewrites": 0,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": {
+"n": 398,
+"hi": 0.0916,
+"lo": 0.0499,
+"dim": "proof_type",
+"val": "named_example",
+"base": 0.0453,
+"rate": 0.0678,
+"small": false,
+"proven": true
+},
+"angle": {
+"opener": null,
+"structure": "STORY"
+},
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": true,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": null,
+"rotation": false
+},
+"quote": "The reason we started doing this isn't just to like get more clients. We did it because we had brands that we did exceptional with, like a husband-wife duo that were shipping products out of their garage, and now they're doing like 150K a month. They sell baby, you know, garments for babies, baby swaddles. And I'm like, man, I wish we got a piece of that, right? And they're paying us, and they're still a client, and we're very happy.",
+"thumb": null,
+"trait": null,
+"words": 156,
+"edited": true,
+"result": {
+"url": null,
+"views": null,
+"viral": false,
+"young": true,
+"engaged": null,
+"comments": null,
+"reactions": null
+},
+"draft_id": "c53f1759-0cd2-4033-94d0-e34ae5f7e98e",
+"has_link": false,
+"replaced": null,
+"body_head": "We work with a husband and wife who were shipping baby swaddles out of their garage.\n\nNow they do about $150K a month.\n\nAnd I'm like... man, I wish we got a piece of that 💰\n\nThey're still a client, they're paying us, and we're very happy 🙂 We're not greedy.\n\nT",
+"first_line": "We work with a husband and wife who were shipping baby swaddles out of their garage.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "I wish we got a piece of that",
+"format": "text",
+"status": "published",
+"founder": true,
+"picture": "no picture",
+"draft_id": "c53f1759-0cd2-4033-94d0-e34ae5f7e98e",
+"evidence": [
+{
+"at": "2026-09-16T00:00:00+00:00",
+"ref": "fc-ea76af43",
+"type": "call",
+"label": "From the call \"Intro Call w/ RISE DTC - Constance & Mattan\" on 16 Sep"
+},
+{
+"type": "founder",
+"label": "Founder story (max 2 a week)"
+}
+],
+"lead_magnet": false,
+"board_visible": true
+},
+{
+"at": "2026-10-13T14:00:00+00:00",
+"day": "2026-10-13",
+"kind": "post",
+"brain": {
+"qa": {
+"max": 90,
+"dims": {
+"HOOK": 8,
+"VOICE": 8,
+"ECONOMY": 8,
+"OPINION": 7,
+"AI_TELLS": 7,
+"VERIFIED": 7,
+"SUBSTANCE": 8,
+"SPECIFICITY": 9
+},
+"final": 73,
+"first": 59,
+"outcome": "recovered",
+"weakest": "OPINION",
+"rewrites": 1,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": null,
+"angle": {
+"opener": "pattern_interrupt",
+"structure": "FRAMEWORK WALKTHROUGH"
+},
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": true,
+"reason": null,
+"rotation": false
+},
+"quote": null,
+"thumb": "https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/ig-slides/risedtc/portfolio-redo-2026-09-25/air-purifier-smoke-room/image.png",
+"trait": null,
+"words": 94,
+"edited": false,
+"result": null,
+"draft_id": "5c66e97e-123c-4ca4-b2fb-9727c8124896",
+"has_link": false,
+"replaced": null,
+"body_head": "How do you sell a $1,000+ air purifier against much cheaper brands? 🤔\n\nOne of our clients makes a premium purifier. The competition was CHEAPER and better known.\n\nSo we put their test in front of buyers: 20 other air purifiers brought into a glass room filled ",
+"first_line": "How do you sell a $1,000+ air purifier against much cheaper brands? 🤔",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "Elemental Air: show the reason for a $1,000 price",
+"format": "single_image",
+"status": "scheduled",
+"founder": false,
+"picture": "picture",
+"draft_id": "5c66e97e-123c-4ca4-b2fb-9727c8124896",
+"evidence": [
+{
+"type": "idea",
+"label": "From RISE DTC's portfolio"
+}
+],
+"lead_magnet": false,
+"board_visible": true
+},
+{
+"at": "2026-10-14T14:00:00+00:00",
+"day": "2026-10-14",
+"kind": "post",
+"brain": {
+"qa": {
+"max": 80,
+"dims": {
+"HOOK": 8,
+"VOICE": 7,
+"ECONOMY": 5,
+"OPINION": 7,
+"AI_TELLS": 5,
+"VERIFIED": 8,
+"SUBSTANCE": 8,
+"SPECIFICITY": 9
+},
+"final": 57,
+"first": 57,
+"outcome": "low",
+"weakest": "ECONOMY",
+"rewrites": 1,
+"pass_line": null,
+"approved_anyway": true
+},
+"read": {
+"n": 322,
+"hi": 0.0396,
+"lo": 0.0118,
+"dim": "topic_class",
+"val": "product_ecommerce_ops",
+"base": 0.0453,
+"rate": 0.0217,
+"small": false,
+"proven": true
+},
+"angle": {
+"opener": "claim",
+"structure": null
+},
+"brief": null,
+"facts": {
+"pass": true,
+"total": null,
+"failed": 0
+},
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": true
+},
+"photo": {
+"has": false,
+"reason": null,
+"rotation": false
+},
+"quote": null,
+"thumb": null,
+"trait": null,
+"words": 158,
+"edited": false,
+"result": null,
+"draft_id": "ad6073de-80f1-39f9-5123-6e114730d4df",
+"has_link": false,
+"replaced": null,
+"body_head": "A brand's worksheet put inventory storage at close to $10 per order.\n\nTheir AOV? Somewhere in the $20s. Yikes 😢\n\nThe numbers came from their own worksheet: $18,000 a year in storage against about 1,800 orders.\n\nI asked which costs they'd expect to change as vo",
+"first_line": "A brand's worksheet put inventory storage at close to $10 per order.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "What does storage cost you per order?",
+"format": "text",
+"status": "scheduled",
+"founder": null,
+"picture": "no picture",
+"draft_id": "ad6073de-80f1-39f9-5123-6e114730d4df",
+"evidence": [
+{
+"type": "idea",
+"label": "Call with Jacky, 17 Sep 2026"
+}
+],
+"lead_magnet": false,
+"board_visible": true
+},
+{
+"at": "2026-10-15T14:00:00+00:00",
+"day": "2026-10-15",
+"kind": "post",
+"brain": {
+"qa": {
+"max": 80,
+"dims": null,
+"final": 63,
+"first": 63,
+"outcome": "passed",
+"weakest": null,
+"rewrites": 0,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": {
+"n": 422,
+"hi": 0.0918,
+"lo": 0.0511,
+"dim": "proof_type",
+"val": "named_example",
+"base": 0.0453,
+"rate": 0.0687,
+"small": false,
+"proven": true
+},
+"angle": {
+"opener": "data_led",
+"structure": "DATA-LED"
+},
+"brief": null,
+"facts": {
+"pass": true,
+"total": null,
+"failed": 0
+},
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": null,
+"rotation": false
+},
+"quote": "And so we're like, we don't have a fast enough understanding of, like, who wants to come back.",
+"thumb": null,
+"trait": null,
+"words": 163,
+"edited": false,
+"result": null,
+"draft_id": "c2098060-29f4-4728-904a-f8edf1fe080d",
+"has_link": false,
+"replaced": null,
+"body_head": "A pantry brand pushed shoppers into its best-value starter kit to lift AOV. Each kit had 81 servings of dressing.\n\nHow soon could they learn who wanted more? On our intro call, the co-founder told me they didn't have a fast enough understanding of who wanted t",
+"first_line": "A pantry brand pushed shoppers into its best-value starter kit to lift AOV. Each kit had 81 servings of dressing.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "Best-value starter kit hid who comes back",
+"format": "text",
+"status": "scheduled",
+"founder": false,
+"picture": "no picture",
+"draft_id": "c2098060-29f4-4728-904a-f8edf1fe080d",
+"evidence": [
+{
+"at": "2026-09-16T18:06:53+00:00",
+"ref": "fc-909f4961",
+"type": "call",
+"label": "From the call \"Intro Call w/ RISE DTC - Kelly & Mattan\" on 16 Sep"
+}
+],
+"lead_magnet": false,
+"board_visible": true
+},
+{
+"at": "2026-10-16T14:00:00+00:00",
+"day": "2026-10-16",
+"kind": "post",
+"brain": {
+"qa": {
+"max": 80,
+"dims": null,
+"final": 64,
+"first": 64,
+"outcome": "passed",
+"weakest": null,
+"rewrites": 0,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": {
+"n": 422,
+"hi": 0.0918,
+"lo": 0.0511,
+"dim": "proof_type",
+"val": "named_example",
+"base": 0.0453,
+"rate": 0.0687,
+"small": false,
+"proven": true
+},
+"angle": {
+"opener": "specific_receipt",
+"structure": "TEARDOWN"
+},
+"brief": null,
+"facts": {
+"pass": true,
+"total": null,
+"failed": 0
+},
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": true,
+"reason": null,
+"rotation": true
+},
+"quote": "So I think we never really got out of like a testing phase with them.",
+"thumb": "https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/client-photos/risedtc-com/1784593243461-16-img_6478.jpg",
+"trait": "a hook that opens with a number",
+"words": 182,
+"edited": false,
+"result": null,
+"draft_id": "2370ae6a-f9ea-4535-a6c2-738bd5e150a5",
+"has_link": false,
+"replaced": null,
+"body_head": "A supplement brand capped Meta and Google spend at about $7,500 a month. The co-founder told me they never really got out of testing.\n\nWhy the cap? On our intro call, they said most resources went to retail. About 80% of the business is wholesale.\n\nThat spend ",
+"first_line": "A supplement brand capped Meta and Google spend at about $7,500 a month. The co-founder told me they never really got out of testing.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "Before restarting Meta and Google, check what actually ran",
+"format": "text",
+"status": "scheduled",
+"founder": false,
+"picture": "picture",
+"draft_id": "2370ae6a-f9ea-4535-a6c2-738bd5e150a5",
+"evidence": [
+{
+"at": "2026-09-22T19:40:03+00:00",
+"ref": "fc-d090a91a",
+"type": "call",
+"label": "From the call \"Intro Call w/ RISE DTC - Bobby & Mattan\" on 22 Sep"
+}
+],
+"lead_magnet": false,
+"board_visible": true
+}
+],
+"start": "2026-10-12",
+"which": "this",
+"filled": 5,
+"no_day": 0,
+"target": 5,
+"founder": 1,
+"planned": [],
+"lead_magnets": 0
+},
+{
+"open": 0,
+"dated": 4,
+"posts": [
+{
+"at": "2026-10-19T14:00:00+00:00",
+"day": "2026-10-19",
+"kind": "post",
+"brain": {
+"qa": null,
+"read": {
+"n": 422,
+"hi": 0.0918,
+"lo": 0.0511,
+"dim": "proof_type",
+"val": "named_example",
+"base": 0.0453,
+"rate": 0.0687,
+"small": false,
+"proven": true
+},
+"angle": {
+"opener": null,
+"structure": "MIRROR"
+},
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": true,
+"reason": null,
+"rotation": true
+},
+"quote": null,
+"thumb": "https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/client-photos/risedtc-com/2026-09-22-v2-handbag.jpg",
+"trait": null,
+"words": 146,
+"edited": false,
+"result": null,
+"draft_id": "f0435946-44d0-48e6-88b0-92e2b3b142b7",
+"has_link": false,
+"replaced": null,
+"body_head": "We bid on \"invasive species\" to sell a luxury handbag. 🤓\n\nA handbag brand we worked with makes its bags from pirarucu leather. It comes from a Brazilian fish that would otherwise be discarded.\n\nPricey bag, brutal category. So what gave us something specific to",
+"first_line": "We bid on \"invasive species\" to sell a luxury handbag. 🤓",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "We bid on \"invasive species\" to sell a luxury handbag (CVR +104%)",
+"format": "text",
+"status": "scheduled",
+"founder": false,
+"picture": "picture",
+"draft_id": "f0435946-44d0-48e6-88b0-92e2b3b142b7",
+"evidence": [
+{
+"type": "past_winner",
+"label": "Mirror of a proven winner"
+}
+],
+"lead_magnet": false,
+"board_visible": true
+},
+{
+"at": "2026-10-20T14:00:00+00:00",
+"day": "2026-10-20",
+"kind": "post",
+"brain": {
+"qa": {
+"max": 80,
+"dims": null,
+"final": 62,
+"first": 62,
+"outcome": "passed",
+"weakest": null,
+"rewrites": 0,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": {
+"n": 422,
+"hi": 0.0918,
+"lo": 0.0511,
+"dim": "proof_type",
+"val": "named_example",
+"base": 0.0453,
+"rate": 0.0687,
+"small": false,
+"proven": true
+},
+"angle": {
+"opener": "data_led",
+"structure": "MECHANISM COMPARISON"
+},
+"brief": null,
+"facts": {
+"pass": true,
+"total": null,
+"failed": 0
+},
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": true,
+"reason": null,
+"rotation": true
+},
+"quote": "A good amount, it's $4.99 for shipping, and sometimes they just miss it by like $2.99.",
+"thumb": "https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/client-photos/risedtc-com/1784593253040-18-img_8741.jpg",
+"trait": null,
+"words": 133,
+"edited": false,
+"result": null,
+"draft_id": "a3710f97-4c7d-4018-80b9-f037068a6844",
+"has_link": false,
+"replaced": null,
+"body_head": "Shoppers at a wellness brand I spoke with paid $4.99 to ship when $2.99 more in the cart would have made it free 💸\n\nTheir line is $30. I asked for their AOV and heard somewhere in the $20s.\n\nWhat would you pick as the shopper, pay $4.99 to ship or add $2.99 an",
+"first_line": "Shoppers at a wellness brand I spoke with paid $4.99 to ship when $2.99 more in the cart would have made it free 💸",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "Customers Were Missing Free Shipping by Just a Few Dollars",
+"format": "text",
+"status": "scheduled",
+"founder": false,
+"picture": "picture",
+"draft_id": "a3710f97-4c7d-4018-80b9-f037068a6844",
+"evidence": [
+{
+"at": "2026-09-17T18:13:22+00:00",
+"ref": "fc-512c7a35",
+"type": "call",
+"label": "From the call \"ZOOM Meeting - RISE DTC // Jacky & Mattan\" on 17 Sep"
+}
+],
+"lead_magnet": false,
+"board_visible": true
+},
+{
+"at": "2026-10-21T14:00:00+00:00",
+"day": "2026-10-21",
+"kind": "post",
+"brain": {
+"qa": {
+"max": 80,
+"dims": null,
+"final": null,
+"first": null,
+"outcome": "hand",
+"weakest": null,
+"rewrites": 0,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": {
+"n": 363,
+"hi": 0.1065,
+"lo": 0.0595,
+"dim": "topic_class",
+"val": "founder_life_career",
+"base": 0.0453,
+"rate": 0.0799,
+"small": false,
+"proven": true
+},
+"angle": {
+"opener": null,
+"structure": "MECHANISM COMPARISON"
+},
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": true,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": true,
+"reason": null,
+"rotation": true
+},
+"quote": "Cost me like 35 grand. Yeah. I spent a shitload of I mean, most people get it done in like, I don't know, 18 to 25,000.",
+"thumb": "https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/client-photos/risedtc-com/ig-2020-08-04-pilot-training-day-1-main.jpg",
+"trait": null,
+"words": 102,
+"edited": true,
+"result": null,
+"draft_id": "f55286c5-eeed-41fb-a202-45a32f8f6e99",
+"has_link": false,
+"replaced": null,
+"body_head": "My pilot license cost me like 35 grand 💸 The usual is more like 18 to 25K.\n\nMy school's average was 80 to 90 hours in the air. I took 118 to 120, starting from ZERO. If I wasn't 100% on a topic or a maneuver, I didn't want to cut corners on something like that",
+"first_line": "My pilot license cost me like 35 grand 💸 The usual is more like 18 to 25K.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "The pilot license cost me $35K",
+"format": "text",
+"status": "scheduled",
+"founder": true,
+"picture": "picture",
+"draft_id": "f55286c5-eeed-41fb-a202-45a32f8f6e99",
+"evidence": [
+{
+"at": "2026-08-27T00:00:00+00:00",
+"ref": "fc-305fd1b4",
+"type": "call",
+"label": "From the call \"RISE DTC & Adam-\" on 27 Aug"
+},
+{
+"type": "founder",
+"label": "Founder story (max 2 a week)"
+}
+],
+"lead_magnet": false,
+"board_visible": true
+},
+{
+"at": "2026-10-22T14:00:00+00:00",
+"day": "2026-10-22",
+"kind": "post",
+"brain": {
+"qa": {
+"max": 80,
+"dims": null,
+"final": 61,
+"first": 61,
+"outcome": "passed",
+"weakest": null,
+"rewrites": 0,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": {
+"n": 606,
+"hi": 0.0642,
+"lo": 0.0355,
+"dim": "angle",
+"val": "story",
+"base": 0.0453,
+"rate": 0.0479,
+"small": false,
+"proven": true
+},
+"angle": {
+"opener": "pattern_interrupt",
+"structure": "HOT TAKE"
+},
+"brief": null,
+"facts": {
+"pass": true,
+"total": null,
+"failed": 0
+},
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": true,
+"reason": null,
+"rotation": true
+},
+"quote": "And even without some colors, so the sales dropped and conversion dropped.",
+"thumb": "https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/client-photos/risedtc-com/1784593226697-12-68424818805__b2ab3b85-f07b-4220-bd52-24c1d4781b5e.jpg",
+"trait": null,
+"words": 139,
+"edited": false,
+"result": null,
+"draft_id": "b0b0c754-d65d-4f64-ac80-ddff53f0a9f5",
+"has_link": false,
+"replaced": null,
+"body_head": "Three of the five bike models at a brand I spoke with sold out this summer, and their website conversion rate fell from 1% to 0.3%.\n\nBack in May, with EVERY bike in stock, they did $80,000 in revenue.\n\nWhy did they run out? \"Bad planning,\" the CEO told me 😅\n\nT",
+"first_line": "Three of the five bike models at a brand I spoke with sold out this summer, and their website conversion rate fell from 1% to 0.3%.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "Stockout months can't grade your ads",
+"format": "text",
+"status": "scheduled",
+"founder": false,
+"picture": "picture",
+"draft_id": "b0b0c754-d65d-4f64-ac80-ddff53f0a9f5",
+"evidence": [
+{
+"at": "2026-09-23T21:52:29+00:00",
+"ref": "fc-1b5483cf",
+"type": "call",
+"label": "From the call \"Intro Call w/ RISE DTC - Danil & Mattan\" on 23 Sep"
+}
+],
+"lead_magnet": false,
+"board_visible": true
+}
+],
+"start": "2026-10-19",
+"which": "next",
+"filled": 5,
+"no_day": 0,
+"target": 5,
+"founder": 1,
+"planned": [
+{
+"day": "2026-10-23",
+"kind": "planned",
+"brain": {
+"qa": {
+"max": 80,
+"dims": {
+"HOOK": 6,
+"VOICE": 6,
+"ECONOMY": 7,
+"OPINION": 7,
+"AI_TELLS": 4,
+"VERIFIED": 7,
+"SUBSTANCE": 7,
+"SPECIFICITY": 8
+},
+"final": 55,
+"first": 52,
+"outcome": "low",
+"weakest": "AI_TELLS",
+"rewrites": 1,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": {
+"n": 902,
+"hi": 0.0496,
+"lo": 0.0286,
+"dim": "proof_type",
+"val": "numbers_result",
+"base": 0.0453,
+"rate": 0.0377,
+"small": false,
+"proven": true
+},
+"angle": {
+"opener": "claim",
+"structure": null
+},
+"brief": null,
+"facts": {
+"pass": false,
+"total": null,
+"failed": 3
+},
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": true,
+"low_score": true
+},
+"photo": {
+"has": false,
+"reason": null,
+"rotation": false
+},
+"quote": null,
+"thumb": null,
+"trait": null,
+"words": 185,
+"edited": false,
+"result": null,
+"draft_id": "994bc449-2212-0b86-cdc0-fc26bb59b33e",
+"has_link": false,
+"replaced": null,
+"body_head": "A hundred bucks a day on Meta. Running clean for weeks. Nobody panicking.\n\nThe owner still paused the whole channel.\n\nHis rule: if he can't see that spend realistically climbing toward $500 or $1,000 a day, he stops it. He doesn't sit there swapping hooks for ",
+"first_line": "A hundred bucks a day on Meta. Running clean for weeks. Nobody panicking.",
+"time_set_by": null,
+"quote_pending": false
+},
+"topic": "If a channel can't grow from a hundred dollars a day toward five hundred or a thousand a day, something is broken. Kill it.",
+"format": "text",
+"status": "waiting_review",
+"picture": "Mattan's photo if one fits",
+"slot_id": "0c1f8c9e-9831-4783-991a-ddda8de28e68",
+"why_now": "A ready draft from the call with Drew at My Mully, giving founders a clear rule for when to kill a channel.",
+"draft_id": "994bc449-2212-0b86-cdc0-fc26bb59b33e",
+"evidence": [
+{
+"type": "idea",
+"label": "Call with Drew - My Mully, 14 Sep 2026"
+}
+],
+"idea_ref": "994bc449-2212-0b86-cdc0-fc26bb59b33e",
+"proposal": false,
+"idea_source": "carousel_drafts",
+"status_label": "Draft waiting in Review"
+}
+],
+"lead_magnets": 0
+},
+{
+"open": 0,
+"dated": 0,
+"posts": [],
+"start": "2026-10-26",
+"which": "after",
+"filled": 5,
+"no_day": 0,
+"target": 5,
+"founder": 0,
+"planned": [
+{
+"day": "2026-10-26",
+"kind": "planned",
+"brain": {
+"qa": {
+"max": 80,
+"dims": {
+"HOOK": 6,
+"VOICE": 7,
+"ECONOMY": 6,
+"OPINION": 6,
+"AI_TELLS": 8,
+"VERIFIED": 8,
+"SUBSTANCE": 7,
+"SPECIFICITY": 8
+},
+"final": 65,
+"first": 56,
+"outcome": "recovered",
+"weakest": "OPINION",
+"rewrites": 1,
+"pass_line": 59,
+"approved_anyway": false
+},
+"read": null,
+"angle": {
+"opener": "specific_receipt",
+"structure": "TEARDOWN"
+},
+"brief": null,
+"facts": {
+"pass": false,
+"total": null,
+"failed": 1
+},
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": true,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": null,
+"rotation": false
+},
+"quote": "Yeah, so on the website, we write 11 pounds, but our box with the bike is 15 pounds, and the algorithm was thinking, oh, it's 15 pounds, they write 11, the expert on another platform, another website is saying it's 10.5, so for the algorithms, it's unclear, and they just, I think, devaluate us.",
+"thumb": null,
+"trait": "a hook that opens with a number",
+"words": 114,
+"edited": false,
+"result": null,
+"draft_id": "1bb7ac77-9113-4b53-9c8b-0c8311df340b",
+"has_link": false,
+"replaced": null,
+"body_head": "Google Shopping matches searches to your product feed. There are no keywords to pick.\n\nOn an audit call, a bike brand's team told us their product page says 11 lbs. Then my team pulled up their Shopping listing. \"Award-winning\" ate the front of the title. The ",
+"first_line": "Google Shopping matches searches to your product feed. There are no keywords to pick.",
+"time_set_by": null,
+"quote_pending": false
+},
+"topic": "Your Google Shopping feed is quietly lying about your product",
+"format": "text",
+"status": "waiting_review",
+"picture": "Mattan's photo if one fits",
+"slot_id": "3461e8cb-2db8-4ad7-bbbc-c647c54733be",
+"why_now": "Raised on sales calls, it adds a Google Shopping feed teardown to a week already holding a site fix and a founder story.",
+"draft_id": "1bb7ac77-9113-4b53-9c8b-0c8311df340b",
+"evidence": [
+{
+"at": "2026-09-30T22:43:04+00:00",
+"ref": "fc-2bf814be",
+"type": "call",
+"label": "From the call \"Paid Media Audit Review - Biky & RISE DTC\" on 1 Oct",
+"quote": null
+},
+{
+"type": "brain_rule",
+"label": "Shares traits with top niche posts: a hook that opens with a number"
+}
+],
+"idea_ref": "d35c407a-9f7c-4582-98d5-c098cb2c581a",
+"proposal": false,
+"idea_source": "client_ideas",
+"status_label": "Draft waiting in Review"
+},
+{
+"day": "2026-10-27",
+"kind": "planned",
+"brain": {
+"qa": {
+"max": 80,
+"dims": {
+"HOOK": 8,
+"VOICE": 8,
+"ECONOMY": 8,
+"OPINION": 7,
+"AI_TELLS": 8,
+"VERIFIED": 8,
+"SUBSTANCE": 7,
+"SPECIFICITY": 8
+},
+"final": 62,
+"first": 57,
+"outcome": "recovered",
+"weakest": "SUBSTANCE",
+"rewrites": 1,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": null,
+"angle": {
+"opener": "story_opener",
+"structure": "CONFESSIONAL"
+},
+"brief": null,
+"facts": {
+"pass": false,
+"total": null,
+"failed": 1
+},
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": true,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": null,
+"rotation": false
+},
+"quote": "Like different color schemes had popped up, links not working, like very obvious things that just scream, this is not the partner that we can trust with like the brand.",
+"thumb": null,
+"trait": "reputation status at stake",
+"words": 109,
+"edited": false,
+"result": null,
+"draft_id": "859503ca-c7df-4b83-a1ae-ce163d476b55",
+"has_link": false,
+"replaced": null,
+"body_head": "At 8:30 a.m. on launch morning, an operator logged on to check the site their agency had just pushed live.\n\nDifferent color schemes had popped up, and links weren't working.\n\nThey'd paid for that rebuild separately, on top of SEO and paid ads.\n\nThey told me th",
+"first_line": "At 8:30 a.m. on launch morning, an operator logged on to check the site their agency had just pushed live.",
+"time_set_by": null,
+"quote_pending": false
+},
+"topic": "They Launched A Site With Broken Links And Called It Done",
+"format": "text",
+"status": "waiting_review",
+"picture": "Mattan's photo if one fits",
+"slot_id": "da8bc39c-66a8-487c-81db-80bd0df29c9d",
+"why_now": "From your sales calls and fits a winning reputation pattern; no recent post has covered a site launch teardown.",
+"draft_id": "859503ca-c7df-4b83-a1ae-ce163d476b55",
+"evidence": [
+{
+"at": "2026-10-05T22:10:41+00:00",
+"ref": "fc-ec02370a",
+"type": "call",
+"label": "From the call \"ZOOM Meeting - RISE DTC // James & Mattan\" on 6 Oct",
+"quote": null
+},
+{
+"type": "brain_rule",
+"label": "Shares traits with top niche posts: reputation status at stake"
+}
+],
+"idea_ref": "1c727cef-cfa5-4d64-956a-d57d7df24eb4",
+"proposal": false,
+"idea_source": "client_ideas",
+"status_label": "Draft waiting in Review"
+},
+{
+"day": "2026-10-28",
+"kind": "planned",
+"brain": {
+"qa": {
+"max": 80,
+"dims": {
+"HOOK": 8,
+"VOICE": 8,
+"ECONOMY": 8,
+"OPINION": 8,
+"AI_TELLS": 8,
+"VERIFIED": 8,
+"SUBSTANCE": 8,
+"SPECIFICITY": 8
+},
+"final": 64,
+"first": 54,
+"outcome": "recovered",
+"weakest": "VOICE",
+"rewrites": 1,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": null,
+"angle": {
+"opener": "story_opener",
+"structure": "SHORT TAKE"
+},
+"brief": null,
+"facts": {
+"pass": true,
+"total": null,
+"failed": 0
+},
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": null,
+"rotation": false
+},
+"quote": "So basically, we have the heritage, we have the contemporary pharmacist expertise, and then everything is made around craftsmanship.",
+"thumb": null,
+"trait": null,
+"words": 112,
+"edited": false,
+"result": null,
+"draft_id": "1fe60c62-f210-4804-9384-70b540d57277",
+"has_link": false,
+"replaced": null,
+"body_head": "Hand someone a stunning candle from a brand they've never heard of and it could be $10 or $100 to them, no way to tell.\n\nMy wife and I give candles as gifts all the time, usually from the big brands, because a pretty jar from a name nobody knows, priced on loo",
+"first_line": "Hand someone a stunning candle from a brand they've never heard of and it could be $10 or $100 to them, no way to tell.",
+"time_set_by": null,
+"quote_pending": false
+},
+"topic": "The three things she leans on to justify a $95-200 candle",
+"format": "text",
+"status": "waiting_review",
+"picture": "Mattan's photo if one fits",
+"slot_id": "67d928a3-84dd-455e-b82b-1127753fc0f0",
+"why_now": "A named example from your sales calls about justifying a $95-200 candle, a pricing angle the recent schedule has not covered.",
+"draft_id": "1fe60c62-f210-4804-9384-70b540d57277",
+"evidence": [
+{
+"at": "2026-09-16T19:41:53+00:00",
+"ref": "fc-3bd00f22",
+"type": "call",
+"label": "From the call \"Intro Call w/ RISE DTC - Constance & Mattan\" on 16 Sep",
+"quote": null
+}
+],
+"idea_ref": "6b6d2a64-b1b3-4f1b-a28c-e3f9127e1867",
+"proposal": false,
+"idea_source": "client_ideas",
+"status_label": "Draft waiting in Review"
+},
+{
+"day": "2026-10-29",
+"kind": "planned",
+"brain": {
+"qa": {
+"max": 80,
+"dims": {
+"HOOK": 8,
+"VOICE": 8,
+"ECONOMY": 8,
+"OPINION": 7,
+"AI_TELLS": 8,
+"VERIFIED": 8,
+"SUBSTANCE": 7,
+"SPECIFICITY": 8
+},
+"final": 62,
+"first": 54,
+"outcome": "recovered",
+"weakest": "SUBSTANCE",
+"rewrites": 1,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": null,
+"angle": {
+"opener": "data_led",
+"structure": "DATA-LED"
+},
+"brief": null,
+"facts": {
+"pass": true,
+"total": null,
+"failed": 0
+},
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": true,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": null,
+"rotation": false
+},
+"quote": "No, I mean, at this point, I have to admit, like, I think I missed the boat on selling.",
+"thumb": null,
+"trait": "personal angle, a founder life and career topic, career at stake, a hook that opens with a number",
+"words": 115,
+"edited": false,
+"result": null,
+"draft_id": "82f176cf-b535-40d6-84d1-97e577dbf0bf",
+"has_link": false,
+"replaced": null,
+"body_head": "I think I missed the boat on selling.\n\nA year and a half, maybe two years ago, M&A folks put agencies at three or four times EBITDA.\n\nIf my partner and I handed over the keys TODAY?\n\n20 cents on the dollar, plus an earn-out.\n\nSEO went from thousands, to hundre",
+"first_line": "I think I missed the boat on selling.",
+"time_set_by": null,
+"quote_pending": false
+},
+"topic": "I missed the window to sell my agency",
+"format": "text",
+"status": "waiting_review",
+"picture": "Mattan's photo if one fits",
+"slot_id": "44c7c62c-0df6-4bc9-b248-57296e425652",
+"why_now": "From your sales calls and fits the winning personal pattern; the week has no founder story yet.",
+"draft_id": "82f176cf-b535-40d6-84d1-97e577dbf0bf",
+"evidence": [
+{
+"at": "2026-10-05T18:59:55+00:00",
+"ref": "fc-96c86558",
+"type": "call",
+"label": "From the call \"ZOOM Meeting - RISE DTC // Kristen & Mattan\" on 5 Oct",
+"quote": null
+},
+{
+"type": "brain_rule",
+"label": "Shares traits with top niche posts: personal angle, a founder life and career topic, career at stake, a hook that opens with a number"
+}
+],
+"idea_ref": "77e02c5a-dd1d-4459-960b-937a72748881",
+"proposal": false,
+"idea_source": "client_ideas",
+"status_label": "Draft waiting in Review"
+},
+{
+"day": "2026-10-30",
+"kind": "planned",
+"brain": {
+"qa": {
+"max": 80,
+"dims": {
+"HOOK": 6,
+"VOICE": 8,
+"ECONOMY": 7,
+"OPINION": 8,
+"AI_TELLS": 8,
+"VERIFIED": 8,
+"SUBSTANCE": 7,
+"SPECIFICITY": 8
+},
+"final": 63,
+"first": 60,
+"outcome": "recovered",
+"weakest": "HOOK",
+"rewrites": 1,
+"pass_line": 59,
+"approved_anyway": false
+},
+"read": null,
+"angle": {
+"opener": "story_opener",
+"structure": "STORY"
+},
+"brief": null,
+"facts": {
+"pass": true,
+"total": null,
+"failed": 0
+},
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": null,
+"rotation": false
+},
+"quote": "I always thought Google was a little more true than Meta, but maybe.",
+"thumb": null,
+"trait": null,
+"words": 106,
+"edited": false,
+"result": null,
+"draft_id": "4ddd2ef0-be82-45f9-9165-a9bb549589e6",
+"has_link": false,
+"replaced": null,
+"body_head": "Google Ads was crediting roughly 2 to 4 times the purchases Google Analytics showed, by my read.\n\nI walked a brand through it on a proposal review.\n\n\"Really?\"\n\nGoogle was the platform they'd trusted MORE.\n\n\"I always thought Google was a little more true than M",
+"first_line": "Google Ads was crediting roughly 2 to 4 times the purchases Google Analytics showed, by my read.",
+"time_set_by": null,
+"quote_pending": false
+},
+"topic": "Platform ROAS says one thing, the store says another",
+"format": "text",
+"status": "waiting_review",
+"picture": "Mattan's photo if one fits",
+"slot_id": "142fc140-6a2a-47a9-a295-48a5fb85b1b2",
+"why_now": "From your sales calls; a platform ROAS versus store gap adds a fresh measurement teardown to the week.",
+"draft_id": "4ddd2ef0-be82-45f9-9165-a9bb549589e6",
+"evidence": [
+{
+"at": "2026-10-09T20:13:26+00:00",
+"ref": "fc-ec97bc2d",
+"type": "call",
+"label": "From the call \"RISE DTC - Proposal Review & Next Steps\" on 9 Oct",
+"quote": null
+}
+],
+"idea_ref": "a5acc5bf-8d7b-4a3b-94b7-abe83d305a07",
+"proposal": false,
+"idea_source": "client_ideas",
+"status_label": "Draft waiting in Review"
+}
+],
+"lead_magnets": 0
+}
+],
+"supply": [
+{
+"brain": {
+"qa": {
+"max": 80,
+"dims": {
+"HOOK": 7,
+"VOICE": 8,
+"ECONOMY": 8,
+"OPINION": 7,
+"AI_TELLS": 8,
+"VERIFIED": 8,
+"SUBSTANCE": 8,
+"SPECIFICITY": 8
+},
+"final": 62,
+"first": 62,
+"outcome": "passed",
+"weakest": "OPINION",
+"rewrites": 0,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": null,
+"angle": {
+"opener": "universal_aspirational",
+"structure": "BORROWED WINNER FORMAT"
+},
+"brief": {
+"url": "https://www.linkedin.com/feed/update/urn:li:activity:7505645565611839488/",
+"why": "A paste-ready prompt post. Mattan's creative process (voice-of-customer mining, competitor gaps, 3-5 psychological angles) gives him his own prompt to share, and it needs no client story or number.",
+"ratio": 3.11,
+"author": "Sarah Levinger"
+},
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": null,
+"rotation": false
+},
+"quote": null,
+"thumb": null,
+"trait": null,
+"words": 197,
+"edited": false,
+"result": null,
+"draft_id": "254d701b-8517-4f06-9f66-3947610293fc",
+"has_link": false,
+"replaced": null,
+"body_head": "Your customers are already writing your next ad.\n\nIt's in your reviews widget and Gorgias inbox. Under your Meta ads, too.\n\nNobody EVER reads it as copy.\n\nWhere does our creative start? The math. Customer's own words come next, then 3-5 angles 👇\n\nPROMPT:\n\nYou'",
+"first_line": "Your customers are already writing your next ad.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "Your customers are already writing your next ad: the creative prompt, pasted in full",
+"format": "text",
+"draft_id": "254d701b-8517-4f06-9f66-3947610293fc",
+"evidence": [
+{
+"type": "idea",
+"label": "Content brain"
+},
+{
+"ref": "outlier:linkedin:7505645565611839488",
+"type": "outlier",
+"label": "Niche outlier the Content Brain adapted, 3.1x its author's usual"
+}
+],
+"created_at": "2026-10-12T15:44:33.77824+00:00",
+"brain_draft": false
+},
+{
+"brain": {
+"qa": {
+"max": 80,
+"dims": {
+"HOOK": 7,
+"VOICE": 8,
+"ECONOMY": 8,
+"OPINION": 8,
+"AI_TELLS": 8,
+"VERIFIED": 9,
+"SUBSTANCE": 8,
+"SPECIFICITY": 9
+},
+"final": 65,
+"first": 63,
+"outcome": "recovered",
+"weakest": "HOOK",
+"rewrites": 1,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": null,
+"angle": {
+"opener": "pattern_interrupt",
+"structure": "BORROWED WINNER FORMAT"
+},
+"brief": {
+"url": "https://www.linkedin.com/feed/update/urn:li:activity:7512141933910188032/",
+"why": "Highest-ratio kept post (10.92x). Northbeam's cost data can be cited as third-party evidence, and Mattan's own records hold the 'Meta got expensive, so set a max CAC' stance plus his structure and creative practices for the fix list.",
+"ratio": 10.92,
+"author": "Curtis Howland"
+},
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": null,
+"rotation": false
+},
+"quote": null,
+"thumb": null,
+"trait": null,
+"words": 179,
+"edited": false,
+"result": null,
+"draft_id": "57863002-b9c6-45ae-880e-8ff905f247eb",
+"has_link": false,
+"replaced": null,
+"body_head": "It's NOT you.\n\nMeta got more expensive for EVERYONE 💸\n\nCurtis Howland shared Northbeam numbers showing CPMs up 10-20% since January. Cost per purchase can climb on a PDP you never touched, and TBH, I'd hold off on rewriting it.\n\nCPMs are Meta's call. Yours is ",
+"first_line": "It's NOT you.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "It's not you: Meta got more expensive, so set the most you'll pay for a customer before touching budget",
+"format": "text",
+"draft_id": "57863002-b9c6-45ae-880e-8ff905f247eb",
+"evidence": [
+{
+"type": "idea",
+"label": "Content brain"
+},
+{
+"ref": "outlier:linkedin:7512141933910188032",
+"type": "outlier",
+"label": "Niche outlier the Content Brain adapted, 10.9x its author's usual"
+}
+],
+"created_at": "2026-10-12T15:44:32.950959+00:00",
+"brain_draft": true
+},
+{
+"brain": {
+"qa": {
+"max": 80,
+"dims": {
+"HOOK": 6,
+"VOICE": 8,
+"ECONOMY": 7,
+"OPINION": 8,
+"AI_TELLS": 8,
+"VERIFIED": 8,
+"SUBSTANCE": 7,
+"SPECIFICITY": 8
+},
+"final": 63,
+"first": 60,
+"outcome": "recovered",
+"weakest": "HOOK",
+"rewrites": 1,
+"pass_line": 59,
+"approved_anyway": false
+},
+"read": null,
+"angle": {
+"opener": "story_opener",
+"structure": "STORY"
+},
+"brief": null,
+"facts": {
+"pass": true,
+"total": null,
+"failed": 0
+},
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": null,
+"rotation": false
+},
+"quote": "I always thought Google was a little more true than Meta, but maybe.",
+"thumb": null,
+"trait": null,
+"words": 106,
+"edited": false,
+"result": null,
+"draft_id": "4ddd2ef0-be82-45f9-9165-a9bb549589e6",
+"has_link": false,
+"replaced": null,
+"body_head": "Google Ads was crediting roughly 2 to 4 times the purchases Google Analytics showed, by my read.\n\nI walked a brand through it on a proposal review.\n\n\"Really?\"\n\nGoogle was the platform they'd trusted MORE.\n\n\"I always thought Google was a little more true than M",
+"first_line": "Google Ads was crediting roughly 2 to 4 times the purchases Google Analytics showed, by my read.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "Platform ROAS says one thing, the store says another",
+"format": "text",
+"draft_id": "4ddd2ef0-be82-45f9-9165-a9bb549589e6",
+"evidence": [
+{
+"at": "2026-10-09T20:13:26+00:00",
+"ref": "fc-ec97bc2d",
+"type": "call",
+"label": "From the call \"RISE DTC - Proposal Review & Next Steps\" on 9 Oct"
+}
+],
+"created_at": "2026-10-12T12:35:39.085208+00:00",
+"brain_draft": false
+}
+],
+"target": 5,
+"x_days": [],
+"account": "risedtc",
+"last_run": {
+"picked": 1,
+"ran_at": "2026-10-12T13:02:25.799431+00:00",
+"outcome": {
+"reason": "ok"
+},
+"open_before": 1,
+"target_week": "2026-10-26"
+},
+"warnings": [
+{
+"code": "empty_topic_area",
+"text": "Out of ideas for sales posts (3 used in 8 weeks)",
+"topic": "demand"
+},
+{
+"code": "empty_topic_area",
+"text": "Out of ideas for posts that bring new followers (4 used in 8 weeks)",
+"topic": "reach"
+}
+],
+"brain_strip": {
+"note": "Tested, not used yet: no weekend posts (19% more views), fewer posts a week (24% more views) and a picture (54% more views). Rise posts 5 a week.",
+"reads": {
+"items": [
+{
+"x": 1.5,
+"hi": 2.02,
+"lo": 1.1,
+"small": false,
+"title": "I wish we got a piece of that",
+"proven": true
+},
+{
+"x": 0.48,
+"hi": 0.87,
+"lo": 0.26,
+"small": false,
+"title": "What does storage cost you per order?",
+"proven": true
+},
+{
+"x": 1.52,
+"hi": 2.03,
+"lo": 1.13,
+"small": false,
+"title": "Best-value starter kit hid who comes back",
+"proven": true
+},
+{
+"x": 1.52,
+"hi": 2.03,
+"lo": 1.13,
+"small": false,
+"title": "Before restarting Meta and Google, check what actually ran",
+"proven": true
+},
+{
+"x": 1.52,
+"hi": 2.03,
+"lo": 1.13,
+"small": false,
+"title": "We bid on \"invasive species\" to sell a luxury handbag (CVR +104%)",
+"proven": true
+},
+{
+"x": 1.52,
+"hi": 2.03,
+"lo": 1.13,
+"small": false,
+"title": "Customers Were Missing Free Shipping by Just a Few Dollars",
+"proven": true
+},
+{
+"x": 1.76,
+"hi": 2.35,
+"lo": 1.31,
+"small": false,
+"title": "The pilot license cost me $35K",
+"proven": true
+},
+{
+"x": 1.06,
+"hi": 1.42,
+"lo": 0.78,
+"small": false,
+"title": "Stockout months can't grade your ads",
+"proven": true
+},
+{
+"x": 0.83,
+"hi": 1.09,
+"lo": 0.63,
+"small": false,
+"title": "If a channel can't grow from a hundred dollars a day toward five hundred or a thousand a day, something is broken. Kill it.",
+"proven": true
+}
+],
+"total": 15
+},
+"rules": [
+{
+"hi": 41.7,
+"lo": 3.3,
+"gain": 24.9,
+"name": "No hashtags",
+"metric": "views",
+"status": "live",
+"rule_id": "R10-hashtag-risedtc",
+"unclear": false,
+"creators": 46,
+"enforcer": "writer",
+"your_rule": false,
+"held_latest": true
+},
+{
+"hi": 80.7,
+"lo": 31.5,
+"gain": 54.1,
+"name": "Add a picture",
+"metric": "views",
+"status": "shadow",
+"rule_id": "R01-image-risedtc",
+"unclear": false,
+"creators": 46,
+"enforcer": "photo picker",
+"your_rule": false,
+"held_latest": true
+},
+{
+"hi": 32.3,
+"lo": 14.4,
+"gain": 23.9,
+"name": "Fewer posts a week",
+"metric": "views",
+"status": "shadow",
+"rule_id": "R08-frequency-risedtc",
+"unclear": false,
+"creators": 46,
+"enforcer": "scheduler",
+"your_rule": false,
+"held_latest": true
+},
+{
+"hi": 27.0,
+"lo": 10.1,
+"gain": 19.0,
+"name": "No weekend posts",
+"metric": "views",
+"status": "shadow",
+"rule_id": "R11-weekend-risedtc",
+"unclear": false,
+"creators": 46,
+"enforcer": "scheduler",
+"your_rule": false,
+"held_latest": true
+},
+{
+"hi": 13.4,
+"lo": 2.8,
+"gain": 7.9,
+"name": "A question gets more comments",
+"metric": "comments",
+"status": "shadow",
+"rule_id": "R07-question-comments",
+"unclear": false,
+"creators": 140,
+"enforcer": "writer",
+"your_rule": false,
+"held_latest": true
+}
+],
+"views": {
+"posts": [
+{
+"d": "2026-09-22",
+"v": 310,
+"young": false
+},
+{
+"d": "2026-09-23",
+"v": 110,
+"young": false
+},
+{
+"d": "2026-09-25",
+"v": 112,
+"young": false
+},
+{
+"d": "2026-09-28",
+"v": 330,
+"young": false
+},
+{
+"d": "2026-09-29",
+"v": 113,
+"young": false
+},
+{
+"d": "2026-09-30",
+"v": 130,
+"young": false
+},
+{
+"d": "2026-10-01",
+"v": 133,
+"young": false
+},
+{
+"d": "2026-10-02",
+"v": 102,
+"young": false
+},
+{
+"d": "2026-10-05",
+"v": 306,
+"young": false
+},
+{
+"d": "2026-10-06",
+"v": 102,
+"young": true
+},
+{
+"d": "2026-10-06",
+"v": 492,
+"young": true
+},
+{
+"d": "2026-10-08",
+"v": 187,
+"young": true
+},
+{
+"d": "2026-10-09",
+"v": 1295,
+"young": true
+},
+{
+"d": "2026-10-10",
+"v": 66,
+"young": true
+},
+{
+"d": "2026-10-11",
+"v": 237,
+"young": true
+}
+],
+"median": 253,
+"measured": 55,
+"breakouts": 6
+},
+"collection": {
+"posts": 10996,
+"creators": 141
+},
+"idea_stock": [
+{
+"used": 10,
+"stock": 13,
+"topic": "authority"
+},
+{
+"used": 7,
+"stock": 30,
+"topic": "teardown"
+},
+{
+"used": 4,
+"stock": 2,
+"topic": "personal"
+},
+{
+"used": 4,
+"stock": 0,
+"topic": "reach"
+},
+{
+"used": 3,
+"stock": 0,
+"topic": "demand"
+},
+{
+"used": 1,
+"stock": 7,
+"topic": "proof"
+}
+],
+"next_check": {
+"date": "2026-11-02",
+"watch": [],
+"recent": [],
+"proposals": []
+},
+"predictions": {
+"need": 20,
+"measured": 24,
+"validated": false
+}
+},
+"done_median": 253,
+"lm_per_week": 0,
+"target_week": null,
+"auto_generate": true,
+"cadence_source": "5 content posts a week, as agreed for RISE; lead magnets are off",
+"proposals_only": false,
+"founder_story_max": 2
+}

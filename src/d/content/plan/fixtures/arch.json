@@ -1,0 +1,1240 @@
+{
+"ok": true,
+"tz": {
+"name": "Europe/Warsaw",
+"label": "Warsaw"
+},
+"done": [
+{
+"day": "2026-10-12",
+"title": "When a campaign drops, the first thing I do is watch the ads",
+"format": "text",
+"pillar": null,
+"comments": null,
+"draft_id": "2ce1315a-76df-4a93-acbc-5ae229099f55",
+"reactions": null,
+"impressions": null
+},
+{
+"day": "2026-10-09",
+"title": "30 days between two videos from the same influencer",
+"format": "text",
+"pillar": null,
+"comments": 0,
+"draft_id": "f1446c26-b7e7-4195-9e83-1fca8108f82a",
+"reactions": 9,
+"impressions": 432
+},
+{
+"day": "2026-10-07",
+"title": "I don't like relying on a platform to find similar creators",
+"format": "text",
+"pillar": null,
+"comments": 0,
+"draft_id": "9e46a7af-5bd4-4e52-835e-7a7ba1517ecf",
+"reactions": 4,
+"impressions": 591
+},
+{
+"day": "2026-09-23",
+"title": "What a repeat creator booking can tell you",
+"format": "text",
+"pillar": null,
+"comments": 0,
+"draft_id": "6636767b-32f3-498e-a09f-aaaf0fb971c9",
+"reactions": 6,
+"impressions": 495
+},
+{
+"day": "2026-09-21",
+"title": "Booking a successful creator at twice the fee",
+"format": "single_image",
+"pillar": null,
+"comments": 0,
+"draft_id": "4fd90486-1ebd-4635-b676-f1e951112af6",
+"reactions": 7,
+"impressions": 698
+}
+],
+"open": 1,
+"state": "planning",
+"today": "2026-10-12",
+"weeks": [
+{
+"open": 0,
+"dated": 3,
+"posts": [
+{
+"at": "2026-10-12T09:02:05.955+00:00",
+"day": "2026-10-12",
+"kind": "post",
+"brain": {
+"qa": {
+"max": 80,
+"dims": {
+"HOOK": 7,
+"VOICE": 8,
+"ECONOMY": 8,
+"OPINION": 7,
+"AI_TELLS": 6,
+"VERIFIED": 10,
+"SUBSTANCE": 8,
+"SPECIFICITY": 8
+},
+"final": 61,
+"first": 62,
+"outcome": "low",
+"weakest": "AI_TELLS",
+"rewrites": 1,
+"pass_line": null,
+"approved_anyway": true
+},
+"read": {
+"n": 171,
+"hi": 0.0954,
+"lo": 0.0353,
+"dim": "proof_type",
+"val": "personal_experience",
+"base": 0.0568,
+"rate": 0.0585,
+"small": true,
+"proven": true
+},
+"angle": null,
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": null,
+"rotation": false
+},
+"quote": "Okay, content managers, okay, starting tomorrow, for every integration that goes out, the QR code must not be shown in the first 15 seconds of the integration, because it's obviously an ad.",
+"thumb": null,
+"trait": null,
+"words": 192,
+"edited": true,
+"result": {
+"url": null,
+"views": null,
+"viral": false,
+"young": true,
+"engaged": null,
+"comments": null,
+"reactions": null
+},
+"draft_id": "2ce1315a-76df-4a93-acbc-5ae229099f55",
+"has_link": false,
+"replaced": null,
+"body_head": "I've worked with over 5,000 creators in 5 years, and when a campaign drops, the first thing I do is watch the ads.\n\nOnly the ad part. The 10 best and 10 worst videos in each market, two or three minutes per video.\n\nA lot of what's wrong you can see with the na",
+"first_line": "I've worked with over 5,000 creators in 5 years, and when a campaign drops, the first thing I do is watch the ads.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "When a campaign drops, the first thing I do is watch the ads",
+"format": "text",
+"status": "published",
+"founder": null,
+"picture": "no picture",
+"draft_id": "2ce1315a-76df-4a93-acbc-5ae229099f55",
+"evidence": [
+{
+"at": "2026-09-18T07:30:00+00:00",
+"ref": "ffc-5e92f61d",
+"type": "call",
+"label": "From the call \"Freecash Long Term influencers check-in\" on 18 Sep"
+}
+],
+"lead_magnet": null,
+"board_visible": true
+},
+{
+"at": "2026-10-14T09:00:00+00:00",
+"day": "2026-10-14",
+"kind": "post",
+"brain": {
+"qa": {
+"max": 80,
+"dims": {
+"HOOK": 7,
+"VOICE": 7,
+"ECONOMY": 6,
+"OPINION": 7,
+"AI_TELLS": 7,
+"VERIFIED": 10,
+"SUBSTANCE": 7,
+"SPECIFICITY": 8
+},
+"final": 64,
+"first": 59,
+"outcome": "low",
+"weakest": "ECONOMY",
+"rewrites": 1,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": {
+"n": 183,
+"hi": 0.1089,
+"lo": 0.0457,
+"dim": "proof_type",
+"val": "personal_experience",
+"base": 0.0611,
+"rate": 0.071,
+"small": true,
+"proven": true
+},
+"angle": null,
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": null,
+"rotation": false
+},
+"quote": "I think there are some who will just, like, present crap and it'll perform well. But yes, as a general view, the integration should be hidden as much as possible, at least at the start of the integration. That means the logo doesn't come in during the first 15-20 seconds of the integration. And yes, everyone should have that same pattern of a smooth transition, like what we constantly, constantly insist on for every client.",
+"thumb": null,
+"trait": null,
+"words": 151,
+"edited": true,
+"result": null,
+"draft_id": "7272e27a-cd41-48cf-b85b-deddb27ef302",
+"has_link": false,
+"replaced": null,
+"body_head": "A brand logo in the first 15 seconds of an influencer ad is not ideal.\n\nI still see it every week, and some of those ads perform fine. There are always exceptions.\n\nBut people see ads all day. The moment a logo pops up in the corner of a video they're enjoying",
+"first_line": "A brand logo in the first 15 seconds of an influencer ad is not ideal.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "A logo in the first 15 seconds is not ideal",
+"format": "text",
+"status": "review",
+"founder": null,
+"picture": "no picture",
+"draft_id": "7272e27a-cd41-48cf-b85b-deddb27ef302",
+"evidence": [
+{
+"at": "2026-09-22T09:45:00+00:00",
+"ref": "ffc-23bf1dd4",
+"type": "call",
+"label": "From the call \"CLs weekly Meet\" on 22 Sep"
+}
+],
+"lead_magnet": null,
+"board_visible": true
+},
+{
+"at": "2026-10-16T09:00:00+00:00",
+"day": "2026-10-16",
+"kind": "post",
+"brain": {
+"qa": {
+"max": 80,
+"dims": null,
+"final": null,
+"first": null,
+"outcome": "hand",
+"weakest": null,
+"rewrites": 0,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": {
+"n": 127,
+"hi": 0.1084,
+"lo": 0.0359,
+"dim": "proof_type",
+"val": "named_example",
+"base": 0.0568,
+"rate": 0.063,
+"small": true,
+"proven": true
+},
+"angle": null,
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": true,
+"reason": null,
+"rotation": false
+},
+"quote": null,
+"thumb": "https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/ig-slides/arch/buffer-pass-2026-09-28/veed-sabba-ugc-tweet-full.png",
+"trait": null,
+"words": 122,
+"edited": true,
+"result": null,
+"draft_id": "162d7243-ade7-5e1d-b211-e50c58facb3c",
+"has_link": false,
+"replaced": null,
+"body_head": "I'm not a fan of judging influencers by CPM.\n\nCPM is what you pay for every 1,000 views. Teams compare it first because it's the easiest number to get.\n\nVEED, the online video editor, shared results from six months of working with UGC creators. Those videos co",
+"first_line": "I'm not a fan of judging influencers by CPM.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "Cheaper UGC and the value of trusted creators",
+"format": "text",
+"status": "review",
+"founder": null,
+"picture": "picture",
+"draft_id": "162d7243-ade7-5e1d-b211-e50c58facb3c",
+"evidence": [
+{
+"type": "idea",
+"label": "Sabba Keynejad, VEED · X · 6 Sep 2026"
+}
+],
+"lead_magnet": false,
+"board_visible": true
+}
+],
+"start": "2026-10-12",
+"which": "this",
+"filled": 3,
+"no_day": 0,
+"target": 3,
+"founder": 0,
+"planned": [],
+"lead_magnets": 0
+},
+{
+"open": 0,
+"dated": 3,
+"posts": [
+{
+"at": "2026-10-19T08:00:00+00:00",
+"day": "2026-10-19",
+"kind": "post",
+"brain": {
+"qa": {
+"max": 80,
+"dims": null,
+"final": null,
+"first": null,
+"outcome": "hand",
+"weakest": null,
+"rewrites": 0,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": {
+"n": 197,
+"hi": 0.0892,
+"lo": 0.0345,
+"dim": "proof_type",
+"val": "numbers_result",
+"base": 0.0568,
+"rate": 0.0558,
+"small": true,
+"proven": true
+},
+"angle": null,
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": null,
+"rotation": false
+},
+"quote": null,
+"thumb": null,
+"trait": null,
+"words": 143,
+"edited": true,
+"result": null,
+"draft_id": "fba34e48-3c1d-5dcc-8c66-c4afa8dc2a8b",
+"has_link": false,
+"replaced": null,
+"body_head": "I don't like spending a whole first influencer budget on the obvious gaming channels.\n\nSay a mobile game gives us €20,000 for its first creator campaign.\n\n€15,000 goes to two or three creators whose audience already plays games like this one. That's the safe p",
+"first_line": "I don't like spending a whole first influencer budget on the obvious gaming channels.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "What I would test with a first creator budget",
+"format": "text",
+"status": "review",
+"founder": null,
+"picture": "no picture",
+"draft_id": "fba34e48-3c1d-5dcc-8c66-c4afa8dc2a8b",
+"evidence": [
+{
+"type": "idea",
+"label": "Format test (copied shape)"
+}
+],
+"lead_magnet": false,
+"board_visible": true
+},
+{
+"at": "2026-10-21T08:00:00+00:00",
+"day": "2026-10-21",
+"kind": "post",
+"brain": {
+"qa": {
+"max": 80,
+"dims": {
+"HOOK": 7,
+"VOICE": 7,
+"ECONOMY": 8,
+"OPINION": 7,
+"AI_TELLS": 6,
+"VERIFIED": 10,
+"SUBSTANCE": 6,
+"SPECIFICITY": 7
+},
+"final": 57,
+"first": 58,
+"outcome": "low",
+"weakest": "SUBSTANCE",
+"rewrites": 1,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": {
+"n": 197,
+"hi": 0.0892,
+"lo": 0.0345,
+"dim": "proof_type",
+"val": "numbers_result",
+"base": 0.0568,
+"rate": 0.0558,
+"small": true,
+"proven": true
+},
+"angle": null,
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": true,
+"reason": null,
+"rotation": false
+},
+"quote": null,
+"thumb": "https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/ig-slides/arch/buffer-pass-2026-09-28/delta-force-crop-4x5.png",
+"trait": null,
+"words": 125,
+"edited": true,
+"result": null,
+"draft_id": "63dc11e7-a813-448f-8ae1-b6f8d4e4320e",
+"has_link": false,
+"replaced": null,
+"body_head": "I don't like judging a campaign by its best day.\n\nDelta Force, the mobile shooter, just had a record spending day. About $10.1m in player spending on September 5, according to AppMagic estimates reported by PocketGamer.biz. The next day it was $5.8m.\n\nAnd it's",
+"first_line": "I don't like judging a campaign by its best day.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "Delta Force: a record day and the growth forecast",
+"format": "text",
+"status": "review",
+"founder": null,
+"picture": "picture",
+"draft_id": "63dc11e7-a813-448f-8ae1-b6f8d4e4320e",
+"evidence": [
+{
+"type": "idea",
+"label": "PocketGamer.biz / AppMagic estimates · 7 Sep 2026"
+}
+],
+"lead_magnet": null,
+"board_visible": true
+},
+{
+"at": "2026-10-22T08:00:00+00:00",
+"day": "2026-10-22",
+"kind": "post",
+"brain": {
+"qa": {
+"max": 80,
+"dims": null,
+"final": null,
+"first": null,
+"outcome": "hand",
+"weakest": null,
+"rewrites": 0,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": {
+"n": 171,
+"hi": 0.0954,
+"lo": 0.0353,
+"dim": "proof_type",
+"val": "personal_experience",
+"base": 0.0568,
+"rate": 0.0585,
+"small": true,
+"proven": true
+},
+"angle": null,
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": null,
+"rotation": false
+},
+"quote": "You know, I'm also trying, I'm trying as much as possible to even blow off these kinds of combination deals that later complicate things for the content team. You know, CPM, this, that, like, the only one.",
+"thumb": null,
+"trait": null,
+"words": 158,
+"edited": true,
+"result": null,
+"draft_id": "afc9ae79-3607-4c09-bbfa-8d6f32cd141f",
+"has_link": false,
+"replaced": null,
+"body_head": "I like the idea of paying a creator more when a campaign works.\n\nI like it less when we need a meeting to figure out how much.\n\nTake a deal with an upfront fee and a bonus if the campaign performs.\n\nBefore we agree to it, I want everyone to understand exactly ",
+"first_line": "I like the idea of paying a creator more when a campaign works.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "We say no to most combination deals",
+"format": "text",
+"status": "review",
+"founder": false,
+"picture": "no picture",
+"draft_id": "afc9ae79-3607-4c09-bbfa-8d6f32cd141f",
+"evidence": [
+{
+"at": "2026-09-01T09:45:00+00:00",
+"ref": "ffc-203b3199",
+"type": "call",
+"label": "From the call \"CLs weekly Meet\" on 1 Sep"
+}
+],
+"lead_magnet": false,
+"board_visible": true
+}
+],
+"start": "2026-10-19",
+"which": "next",
+"filled": 3,
+"no_day": 0,
+"target": 3,
+"founder": 0,
+"planned": [],
+"lead_magnets": 0
+},
+{
+"open": 1,
+"dated": 1,
+"posts": [
+{
+"at": "2026-10-27T10:00:00+00:00",
+"day": "2026-10-27",
+"kind": "post",
+"brain": {
+"qa": {
+"max": 80,
+"dims": null,
+"final": null,
+"first": null,
+"outcome": "hand",
+"weakest": null,
+"rewrites": 0,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": {
+"n": 226,
+"hi": 0.078,
+"lo": 0.03,
+"dim": "proof_type",
+"val": "numbers_result",
+"base": 0.0611,
+"rate": 0.0487,
+"small": true,
+"proven": true
+},
+"angle": null,
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": true,
+"reason": null,
+"rotation": false
+},
+"quote": null,
+"thumb": "https://madebyarch.com/creator-radar/assets/cover-creator-radar.png",
+"trait": null,
+"words": 171,
+"edited": false,
+"result": null,
+"draft_id": "838fed22-c512-5fa6-8f5c-f61e49f7780d",
+"has_link": false,
+"replaced": null,
+"body_head": "We built the definitive CREATOR RADAR for finding the best influencer rosters for games & apps.\n\nAfter working with over 5,000 creators, a lot of our creator research starts with the same core audit:\n\n- Going through hundreds of videos in the client’s category",
+"first_line": "We built the definitive CREATOR RADAR for finding the best influencer rosters for games & apps.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "Creator Radar: which creators fit your game?",
+"format": "single_image",
+"status": "review",
+"founder": null,
+"picture": "picture",
+"draft_id": "838fed22-c512-5fa6-8f5c-f61e49f7780d",
+"evidence": [
+{
+"type": "idea",
+"label": "Original ARCH resource · lead magnet"
+}
+],
+"lead_magnet": false,
+"board_visible": true
+}
+],
+"start": "2026-10-26",
+"which": "after",
+"filled": 2,
+"no_day": 0,
+"target": 3,
+"founder": 0,
+"planned": [
+{
+"day": "2026-10-26",
+"kind": "planned",
+"brain": {
+"qa": null,
+"read": {
+"n": 183,
+"hi": 0.1089,
+"lo": 0.0457,
+"dim": "proof_type",
+"val": "personal_experience",
+"base": 0.0611,
+"rate": 0.071,
+"small": true,
+"proven": true
+},
+"angle": null,
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": null,
+"rotation": false
+},
+"quote": "To Meta, to whatever, it's, it's, it's easy to say, okay, influencers are, are not profitable, profitable for us because the raw data doesn't, doesn't show it.",
+"thumb": null,
+"trait": null,
+"words": 64,
+"edited": false,
+"result": null,
+"draft_id": "472494ab-63da-4730-a07e-ff83a399457e",
+"has_link": false,
+"replaced": null,
+"body_head": "If you look at influencers as an equivalent channel to AppLovin, Google or Meta, it's easy to say they're not profitable for you.\n\nBecause the raw data doesn't show it.\n\nThe trickiest part is attribution. A lot of the installs from influencer videos go to orga",
+"first_line": "If you look at influencers as an equivalent channel to AppLovin, Google or Meta, it's easy to say they're not profitable for you.",
+"time_set_by": null,
+"quote_pending": false
+},
+"topic": "Judge creators like AppLovin and they'll look unprofitable",
+"format": "text",
+"status": "waiting_review",
+"picture": "no picture",
+"slot_id": "48dcd764-c830-452f-92cf-f6557177658a",
+"why_now": "A client call surfaced this measurement trap, and it adds a fresh angle on judging creators after recent posts on pre-payment numbers.",
+"draft_id": "472494ab-63da-4730-a07e-ff83a399457e",
+"evidence": [
+{
+"at": "2026-09-28T14:15:00+00:00",
+"ref": "ffc-36a2ceb6",
+"type": "call",
+"label": "From the call \"Gustav Pastucha and Davorin Smit\" on 28 Sep"
+}
+],
+"idea_ref": "472494ab-63da-4730-a07e-ff83a399457e",
+"proposal": false,
+"idea_source": "carousel_drafts",
+"status_label": "Draft waiting in Review"
+}
+],
+"lead_magnets": 0
+}
+],
+"supply": [
+{
+"brain": {
+"qa": {
+"max": 80,
+"dims": {
+"HOOK": 6,
+"VOICE": 6,
+"ECONOMY": 6,
+"OPINION": 7,
+"AI_TELLS": 6,
+"VERIFIED": 7,
+"SUBSTANCE": 7,
+"SPECIFICITY": 7
+},
+"final": 65,
+"first": 52,
+"outcome": "recovered",
+"weakest": "VOICE",
+"rewrites": 1,
+"pass_line": 59,
+"approved_anyway": false
+},
+"read": null,
+"angle": {
+"opener": "specific_receipt",
+"structure": "BORROWED WINNER FORMAT"
+},
+"brief": {
+"url": "https://www.linkedin.com/feed/update/urn:li:activity:7503749747397177344/",
+"why": "4.69x. A scale-proof hook followed by a reframe and a learn loop, with no numbered list. His own records hold both a hypothesis and a failed-test learning to fill the loop.",
+"ratio": 4.69,
+"author": "Mor Sofer"
+},
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": null,
+"rotation": false
+},
+"quote": null,
+"thumb": null,
+"trait": null,
+"words": 172,
+"edited": false,
+"result": null,
+"draft_id": "c0be59af-6928-44ff-9e6f-3a53c98f4bbe",
+"has_link": false,
+"replaced": null,
+"body_head": "A lot of influencer bookings get called a \"test\".\n\nFor me it only counts as one if someone wrote down what it's supposed to find out, before the money goes out.\n\nIf a round changes the creator, the market and the format at the same time and one creator convert",
+"first_line": "A lot of influencer bookings get called a \"test\".",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "Most teams don't test creators. They book more creators.",
+"format": "text",
+"draft_id": "c0be59af-6928-44ff-9e6f-3a53c98f4bbe",
+"evidence": [
+{
+"type": "idea",
+"label": "Content brain"
+},
+{
+"ref": "outlier:linkedin:7503749747397177344",
+"type": "outlier",
+"label": "Niche outlier the Content Brain adapted, 4.7x its author's usual"
+}
+],
+"created_at": "2026-10-12T15:44:35.4504+00:00",
+"brain_draft": true
+},
+{
+"brain": {
+"qa": {
+"max": 80,
+"dims": {
+"HOOK": 7,
+"VOICE": 6,
+"ECONOMY": 6,
+"OPINION": 7,
+"AI_TELLS": 6,
+"VERIFIED": 8,
+"SUBSTANCE": 7,
+"SPECIFICITY": 8
+},
+"final": 66,
+"first": 55,
+"outcome": "recovered",
+"weakest": "VOICE",
+"rewrites": 1,
+"pass_line": 59,
+"approved_anyway": false
+},
+"read": null,
+"angle": {
+"opener": "universal_aspirational",
+"structure": "BORROWED WINNER FORMAT"
+},
+"brief": {
+"url": "https://www.linkedin.com/feed/update/urn:li:activity:7499930593061810176/",
+"why": "Highest-ratio kept post (8.31x) on measurement, his strongest buyer subject. Its beats (claim about wasted signal, mechanism, payoff) differ from RECENT 1-6, and it works as his opinion without a result claim about himself.",
+"ratio": 8.31,
+"author": "Eric Seufert"
+},
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": null,
+"rotation": false
+},
+"quote": null,
+"thumb": null,
+"trait": null,
+"words": 151,
+"edited": false,
+"result": null,
+"draft_id": "1c8ecd0b-1744-4d58-a75e-b4145e1892b8",
+"has_link": false,
+"replaced": null,
+"body_head": "The recap shows one blended CPI, it lands on target, and the creator channel gets renewed.\n\nYou can't tell which market did the work, so the next brief gets written as a copy of the last one.\n\nSay the campaign ran in two markets. One of them could be doing all",
+"first_line": "The recap shows one blended CPI, it lands on target, and the creator channel gets renewed.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "The blended CPI is the smallest thing your creator campaign can tell you",
+"format": "text",
+"draft_id": "1c8ecd0b-1744-4d58-a75e-b4145e1892b8",
+"evidence": [
+{
+"type": "idea",
+"label": "Content brain"
+},
+{
+"ref": "outlier:linkedin:7499930593061810176",
+"type": "outlier",
+"label": "Niche outlier the Content Brain adapted, 8.3x its author's usual"
+}
+],
+"created_at": "2026-10-12T15:44:34.678429+00:00",
+"brain_draft": true
+},
+{
+"brain": {
+"qa": null,
+"read": {
+"n": 183,
+"hi": 0.1089,
+"lo": 0.0457,
+"dim": "proof_type",
+"val": "personal_experience",
+"base": 0.0611,
+"rate": 0.071,
+"small": true,
+"proven": true
+},
+"angle": null,
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": null,
+"rotation": false
+},
+"quote": "To Meta, to whatever, it's, it's, it's easy to say, okay, influencers are, are not profitable, profitable for us because the raw data doesn't, doesn't show it.",
+"thumb": null,
+"trait": null,
+"words": 64,
+"edited": false,
+"result": null,
+"draft_id": "472494ab-63da-4730-a07e-ff83a399457e",
+"has_link": false,
+"replaced": null,
+"body_head": "If you look at influencers as an equivalent channel to AppLovin, Google or Meta, it's easy to say they're not profitable for you.\n\nBecause the raw data doesn't show it.\n\nThe trickiest part is attribution. A lot of the installs from influencer videos go to orga",
+"first_line": "If you look at influencers as an equivalent channel to AppLovin, Google or Meta, it's easy to say they're not profitable for you.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "Judge creators like AppLovin and they'll look unprofitable",
+"format": "text",
+"draft_id": "472494ab-63da-4730-a07e-ff83a399457e",
+"evidence": [
+{
+"at": "2026-09-28T14:15:00+00:00",
+"ref": "ffc-36a2ceb6",
+"type": "call",
+"label": "From the call \"Gustav Pastucha and Davorin Smit\" on 28 Sep"
+}
+],
+"created_at": "2026-10-07T22:56:58.041758+00:00",
+"brain_draft": false
+}
+],
+"target": 3,
+"x_days": [],
+"account": "arch",
+"last_run": {
+"picked": 0,
+"ran_at": "2026-10-12T12:33:32.263867+00:00",
+"outcome": {
+"reason": "two_weeks_planned"
+},
+"open_before": 0,
+"target_week": null
+},
+"warnings": [
+{
+"code": "empty_topic_area",
+"text": "Out of ideas for sales posts (2 used in 8 weeks)",
+"topic": "demand"
+}
+],
+"brain_strip": {
+"note": "Tested, not used yet: fewer posts a week (13% more views), carousels (43% more views) and a picture (36% more views). Arch posts 3 a week, mostly text.",
+"reads": {
+"items": [
+{
+"x": 1.03,
+"hi": 1.68,
+"lo": 0.62,
+"small": true,
+"title": "When a campaign drops, the first thing I do is watch the ads",
+"proven": true
+},
+{
+"x": 1.16,
+"hi": 1.78,
+"lo": 0.75,
+"small": true,
+"title": "A logo in the first 15 seconds is not ideal",
+"proven": true
+},
+{
+"x": 1.11,
+"hi": 1.91,
+"lo": 0.63,
+"small": true,
+"title": "Cheaper UGC and the value of trusted creators",
+"proven": true
+},
+{
+"x": 0.98,
+"hi": 1.57,
+"lo": 0.61,
+"small": true,
+"title": "What I would test with a first creator budget",
+"proven": true
+},
+{
+"x": 0.98,
+"hi": 1.57,
+"lo": 0.61,
+"small": true,
+"title": "Delta Force: a record day and the growth forecast",
+"proven": true
+},
+{
+"x": 1.03,
+"hi": 1.68,
+"lo": 0.62,
+"small": true,
+"title": "We say no to most combination deals",
+"proven": true
+},
+{
+"x": 0.8,
+"hi": 1.28,
+"lo": 0.49,
+"small": true,
+"title": "Creator Radar: which creators fit your game?",
+"proven": true
+},
+{
+"x": 1.16,
+"hi": 1.78,
+"lo": 0.75,
+"small": true,
+"title": "Judge creators like AppLovin and they'll look unprofitable",
+"proven": true
+}
+],
+"total": 8
+},
+"rules": [
+{
+"hi": 86.5,
+"lo": 10.4,
+"gain": 43.5,
+"name": "Carousels",
+"metric": "views",
+"status": "shadow",
+"rule_id": "R02-doc-arch",
+"unclear": false,
+"creators": 25,
+"enforcer": "writer",
+"your_rule": false,
+"held_latest": true
+},
+{
+"hi": 56.2,
+"lo": 18.5,
+"gain": 36.1,
+"name": "Add a picture",
+"metric": "views",
+"status": "shadow",
+"rule_id": "R01-image-arch",
+"unclear": false,
+"creators": 25,
+"enforcer": "photo picker",
+"your_rule": false,
+"held_latest": true
+},
+{
+"hi": 22.0,
+"lo": 2.0,
+"gain": 12.6,
+"name": "Fewer posts a week",
+"metric": "views",
+"status": "shadow",
+"rule_id": "R08-frequency-arch",
+"unclear": false,
+"creators": 25,
+"enforcer": "scheduler",
+"your_rule": false,
+"held_latest": true
+},
+{
+"hi": 13.4,
+"lo": 2.8,
+"gain": 7.9,
+"name": "A question gets more comments",
+"metric": "comments",
+"status": "shadow",
+"rule_id": "R07-question-comments",
+"unclear": false,
+"creators": 140,
+"enforcer": "writer",
+"your_rule": false,
+"held_latest": true
+},
+{
+"hi": null,
+"lo": null,
+"gain": null,
+"name": "Open with something you did or saw",
+"metric": "views",
+"status": "shadow",
+"rule_id": "H01-author-voice-arch",
+"unclear": false,
+"creators": null,
+"enforcer": "writer",
+"your_rule": false,
+"held_latest": null
+}
+],
+"views": {
+"posts": [
+{
+"d": "2026-08-10",
+"v": 1023,
+"young": false
+},
+{
+"d": "2026-08-21",
+"v": 2200,
+"young": false
+},
+{
+"d": "2026-08-28",
+"v": 2031,
+"young": false
+},
+{
+"d": "2026-09-01",
+"v": 512,
+"young": false
+},
+{
+"d": "2026-09-02",
+"v": 1226,
+"young": false
+},
+{
+"d": "2026-09-04",
+"v": 638,
+"young": false
+},
+{
+"d": "2026-09-08",
+"v": 665,
+"young": false
+},
+{
+"d": "2026-09-09",
+"v": 1689,
+"young": false
+},
+{
+"d": "2026-09-10",
+"v": 313,
+"young": false
+},
+{
+"d": "2026-09-16",
+"v": 3357,
+"young": false
+},
+{
+"d": "2026-09-18",
+"v": 407,
+"young": false
+},
+{
+"d": "2026-09-21",
+"v": 698,
+"young": false
+},
+{
+"d": "2026-09-23",
+"v": 495,
+"young": false
+},
+{
+"d": "2026-10-07",
+"v": 591,
+"young": true
+},
+{
+"d": "2026-10-09",
+"v": 432,
+"young": true
+}
+],
+"median": 665,
+"measured": 13,
+"breakouts": 3
+},
+"collection": {
+"posts": 10996,
+"creators": 141
+},
+"idea_stock": [
+{
+"used": 4,
+"stock": 21,
+"topic": "authority"
+},
+{
+"used": 2,
+"stock": 0,
+"topic": "demand"
+},
+{
+"used": 1,
+"stock": 11,
+"topic": "teardown"
+}
+],
+"next_check": {
+"date": "2026-11-02",
+"watch": [],
+"recent": [],
+"proposals": []
+},
+"predictions": {
+"need": 20,
+"measured": 8,
+"validated": false
+}
+},
+"done_median": 665,
+"lm_per_week": 0,
+"target_week": "2026-10-26",
+"auto_generate": true,
+"cadence_source": "the rhythm on Davorin's board; he mentioned 5 in August but it never ran",
+"proposals_only": false,
+"founder_story_max": 2
+}

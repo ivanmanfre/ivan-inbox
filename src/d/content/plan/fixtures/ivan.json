@@ -1,0 +1,1543 @@
+{
+"ok": true,
+"tz": {
+"name": "Europe/Warsaw",
+"label": "Warsaw"
+},
+"done": [
+{
+"day": "2026-10-12",
+"title": "Posting often gives you something to compare",
+"format": "single_image",
+"pillar": null,
+"comments": 0,
+"draft_id": "8887c794-4fc1-5b12-b0fc-763fa8256a9e",
+"reactions": 0,
+"impressions": 28
+},
+{
+"day": "2026-10-11",
+"title": "Content brain guide (LM, keyword BRAIN)",
+"format": "image",
+"pillar": null,
+"comments": 0,
+"draft_id": "1fae5356-c979-46db-9173-d1f1d31ac8ac",
+"reactions": 1,
+"impressions": 88
+},
+{
+"day": "2026-10-09",
+"title": "Cold vs warm: 0 calls from cold lists",
+"format": "text",
+"pillar": null,
+"comments": 0,
+"draft_id": "aea39dbf-679e-4fec-84fa-793de5ba13aa",
+"reactions": 1,
+"impressions": 204
+},
+{
+"day": "2026-10-08",
+"title": "You can move to Warsaw",
+"format": "text",
+"pillar": null,
+"comments": 0,
+"draft_id": "1aa967c9-fa94-5e43-83a2-cda0b9facb9f",
+"reactions": 0,
+"impressions": 0
+},
+{
+"day": "2026-10-07",
+"title": "Two posts about email could be seen by a totally different audience",
+"format": "carousel",
+"pillar": null,
+"comments": 0,
+"draft_id": "d234c6d9-29a5-4fcf-87e7-b762bb93ed02",
+"reactions": 0,
+"impressions": 0
+}
+],
+"open": 0,
+"state": "two_weeks_planned",
+"today": "2026-10-12",
+"weeks": [
+{
+"open": 0,
+"dated": 5,
+"posts": [
+{
+"at": "2026-10-12T08:46:10.688+00:00",
+"day": "2026-10-12",
+"kind": "post",
+"brain": {
+"qa": null,
+"read": {
+"n": 571,
+"hi": 0.0701,
+"lo": 0.0392,
+"dim": "stakes",
+"val": "time_effort",
+"base": 0.0532,
+"rate": 0.0525,
+"small": false,
+"proven": false
+},
+"angle": null,
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": true,
+"reason": null,
+"rotation": false
+},
+"quote": null,
+"thumb": "https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/post-stills/ivan/posting-often-2026-10-08.png",
+"trait": null,
+"words": 270,
+"edited": false,
+"result": {
+"url": "https://www.linkedin.com/posts/iv%C3%A1n-manfredi-120841202_posting-once-tells-you-very-little-about-activity-7515331968360755200-Lpyt",
+"views": 28,
+"viral": false,
+"young": true,
+"engaged": null,
+"comments": 0,
+"reactions": 0
+},
+"draft_id": "8887c794-4fc1-5b12-b0fc-763fa8256a9e",
+"has_link": false,
+"replaced": null,
+"body_head": "Posting once tells you very little about what you should post next.\n\nYou need a few more attempts before you have something useful to compare.\n\nAs you go, pay attention to what people respond to and which parts of your work you can explain well. Each post give",
+"first_line": "Posting once tells you very little about what you should post next.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "Posting often gives you something to compare",
+"format": "single_image",
+"status": "published",
+"founder": null,
+"picture": "picture",
+"draft_id": "8887c794-4fc1-5b12-b0fc-763fa8256a9e",
+"evidence": [
+{
+"type": "approved",
+"label": "Written by hand and approved by you"
+}
+],
+"lead_magnet": false,
+"board_visible": true
+},
+{
+"at": "2026-10-14T08:45:00+00:00",
+"day": "2026-10-14",
+"kind": "post",
+"brain": {
+"qa": null,
+"read": {
+"n": 535,
+"hi": 0.0769,
+"lo": 0.0434,
+"dim": "proof_type",
+"val": "none",
+"base": 0.0508,
+"rate": 0.0579,
+"small": false,
+"proven": false
+},
+"angle": null,
+"brief": null,
+"facts": null,
+"flags": {
+"lm": true,
+"failed": false,
+"boosted": true,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": true,
+"reason": null,
+"rotation": false
+},
+"quote": null,
+"thumb": "https://resources.ivanmanfredi.com/target-companies/cover-v4-website.png",
+"trait": null,
+"words": 113,
+"edited": false,
+"result": null,
+"draft_id": "c154638b-5df4-413a-b958-1826455537e9",
+"has_link": true,
+"replaced": null,
+"body_head": "I built a system that finds target companies matching your ICP, with a pain point your agency can help solve. Get your shortlist here, free\nhttps://resources.ivanmanfredi.com/target-companies/?utm_source=linkedin&utm_medium=organic&utm_campaign=target_companie",
+"first_line": "I built a system that finds target companies matching your ICP, with a pain point your agency can help solve. Get your shortlist here, free",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "Target companies matching your ICP: free research shortlist",
+"format": "single_image",
+"status": "scheduled",
+"founder": null,
+"picture": "picture",
+"draft_id": "c154638b-5df4-413a-b958-1826455537e9",
+"evidence": [
+{
+"type": "lead_magnet",
+"label": "Lead magnet launch, boosted with paid ads"
+}
+],
+"lead_magnet": true,
+"board_visible": false
+},
+{
+"at": "2026-10-15T08:45:00+00:00",
+"day": "2026-10-15",
+"kind": "post",
+"brain": {
+"qa": {
+"max": 120,
+"dims": null,
+"final": 63,
+"first": 71,
+"outcome": "recovered",
+"weakest": null,
+"rewrites": 3,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": {
+"n": 161,
+"hi": 0.1306,
+"lo": 0.0569,
+"dim": "stakes",
+"val": "career",
+"base": 0.0532,
+"rate": 0.087,
+"small": false,
+"proven": false
+},
+"angle": {
+"opener": "claim",
+"structure": null
+},
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": true,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": true,
+"reason": null,
+"rotation": false
+},
+"quote": null,
+"thumb": "https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/ig-slides-poc/e9966e70-994c-41ec-8eb3-bb6c9443282f/patch-20261006-002632/slide-1.png",
+"trait": null,
+"words": 107,
+"edited": false,
+"result": null,
+"draft_id": "e9966e70-994c-41ec-8eb3-bb6c9443282f",
+"has_link": false,
+"replaced": null,
+"body_head": "I build the attention first and the outreach second.\n\nTwo messages can be word for word the same. One gets deleted because the person has never heard of the sender. The other gets answered because the reader has already been reading their posts for a few weeks",
+"first_line": "I build the attention first and the outreach second.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "Why your LinkedIn messages get ignored",
+"format": "carousel",
+"status": "scheduled",
+"founder": null,
+"picture": "carousel deck",
+"draft_id": "e9966e70-994c-41ec-8eb3-bb6c9443282f",
+"evidence": [
+{
+"type": "own_source",
+"label": "Your own words from the service-film script"
+}
+],
+"lead_magnet": false,
+"board_visible": false
+},
+{
+"at": "2026-10-16T08:45:00+00:00",
+"day": "2026-10-16",
+"kind": "post",
+"brain": {
+"qa": {
+"max": 80,
+"dims": null,
+"final": null,
+"first": null,
+"outcome": "hand",
+"weakest": null,
+"rewrites": 0,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": null,
+"angle": {
+"opener": null,
+"structure": "TEARDOWN"
+},
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": true,
+"reason": null,
+"rotation": false
+},
+"quote": null,
+"thumb": "https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/post-stills/ivan/linkedin-impressions-2026-10-09/cb5766ce6b7e6c9f.png",
+"trait": null,
+"words": 252,
+"edited": true,
+"result": null,
+"draft_id": "6f52a27e-8f54-52d8-91f6-4b7dd15e8c93",
+"has_link": false,
+"replaced": null,
+"body_head": "\"I scaled this person's LinkedIn to 800,000 impressions in record time: 6 months.\"\n\nRight. I'll take the bait:\n\nSo I scroll through the profile (eager to see wicked strategy). And what do you know?\n\n90% of it is TOFU memes, or content with NOTHING to do with t",
+"first_line": "\"I scaled this person's LinkedIn to 800,000 impressions in record time: 6 months.\"",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "LinkedIn impressions: how many clients?",
+"format": "single_image",
+"status": "scheduled",
+"founder": null,
+"picture": "picture",
+"draft_id": "6f52a27e-8f54-52d8-91f6-4b7dd15e8c93",
+"evidence": [
+{
+"type": "approved",
+"label": "Written by hand and approved by you"
+}
+],
+"lead_magnet": false,
+"board_visible": false
+},
+{
+"at": "2026-10-17T08:45:00+00:00",
+"day": "2026-10-17",
+"kind": "post",
+"brain": {
+"qa": null,
+"read": null,
+"angle": null,
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": true,
+"carousel": true,
+"fact_fail": false,
+"low_score": false
+},
+"photo": null,
+"quote": null,
+"thumb": null,
+"trait": null,
+"words": null,
+"edited": false,
+"result": null,
+"draft_id": null,
+"has_link": false,
+"replaced": null,
+"body_head": null,
+"first_line": null,
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "I looked into 100k posts across 10 LinkedIn niches and found out what the winner",
+"format": "carousel",
+"status": "pending",
+"founder": false,
+"picture": "carousel deck",
+"evidence": [
+{
+"type": "queue",
+"label": "In the publish queue"
+}
+],
+"queue_id": "624b7362-bed7-48a9-a022-fec2c8fa5ac8",
+"lead_magnet": false
+}
+],
+"start": "2026-10-12",
+"which": "this",
+"filled": 5,
+"no_day": 0,
+"target": 4,
+"founder": 0,
+"planned": [],
+"lead_magnets": 1
+},
+{
+"open": 0,
+"dated": 4,
+"posts": [
+{
+"at": "2026-10-19T08:45:00+00:00",
+"day": "2026-10-19",
+"kind": "post",
+"brain": {
+"qa": {
+"max": 120,
+"dims": null,
+"final": null,
+"first": 66,
+"outcome": "recovered",
+"weakest": null,
+"rewrites": 1,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": {
+"n": 538,
+"hi": 0.0786,
+"lo": 0.0448,
+"dim": "proof_type",
+"val": "none",
+"base": 0.0532,
+"rate": 0.0595,
+"small": false,
+"proven": false
+},
+"angle": {
+"opener": "offer",
+"structure": null
+},
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": true,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": true,
+"reason": null,
+"rotation": false
+},
+"quote": null,
+"thumb": "https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/ig-slides-poc/3bed996b-3b16-44ad-adc2-02addfb23241/patch-20261006-002632/slide-1.png",
+"trait": null,
+"words": 109,
+"edited": false,
+"result": null,
+"draft_id": "3bed996b-3b16-44ad-adc2-02addfb23241",
+"has_link": false,
+"replaced": null,
+"body_head": "Warm leads are already engaging with you: liking and commenting on your posts, checking your profile, or engaging with the bigger names in your space. They're the easiest conversations to miss when you're busy delivering.\n\nCold leads fit the profile but don't ",
+"first_line": "Warm leads are already engaging with you: liking and commenting on your posts, checking your profile, or engaging with the bigger names in your space. They're the easiest conversations to miss when you're busy delivering.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "What counts as a warm lead?",
+"format": "carousel",
+"status": "scheduled",
+"founder": null,
+"picture": "carousel deck",
+"draft_id": "3bed996b-3b16-44ad-adc2-02addfb23241",
+"evidence": [
+{
+"type": "own_source",
+"label": "Your own words from the service-film script"
+}
+],
+"lead_magnet": false,
+"board_visible": false
+},
+{
+"at": "2026-10-20T08:45:00+00:00",
+"day": "2026-10-20",
+"kind": "post",
+"brain": {
+"qa": null,
+"read": {
+"n": 571,
+"hi": 0.0701,
+"lo": 0.0392,
+"dim": "stakes",
+"val": "time_effort",
+"base": 0.0532,
+"rate": 0.0525,
+"small": false,
+"proven": false
+},
+"angle": null,
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": true,
+"reason": null,
+"rotation": false
+},
+"quote": null,
+"thumb": "https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/post-stills/ivan/linkedin-service-map-2026-10-07/cf6af8eaa4bde9b3.png",
+"trait": null,
+"words": 315,
+"edited": false,
+"result": null,
+"draft_id": "e92f4398-5233-5ab6-bb55-6430fed4ba26",
+"has_link": false,
+"replaced": null,
+"body_head": "I find a ton of content ideas coming from client comms on Slack...\n\nA client asks a question, you explain it in a message, and you've got something you could write about. Other people looking for the same help might need that answer too.\n\n[1] Save the useful c",
+"first_line": "I find a ton of content ideas coming from client comms on Slack...",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "Content ideas from client comms on Slack",
+"format": "video",
+"status": "scheduled",
+"founder": null,
+"picture": "video",
+"draft_id": "e92f4398-5233-5ab6-bb55-6430fed4ba26",
+"evidence": [
+{
+"type": "series",
+"label": "Series you approved, part 1"
+}
+],
+"lead_magnet": false,
+"board_visible": false
+},
+{
+"at": "2026-10-21T08:45:00+00:00",
+"day": "2026-10-21",
+"kind": "post",
+"brain": {
+"qa": null,
+"read": {
+"n": 559,
+"hi": 0.0675,
+"lo": 0.037,
+"dim": "stakes",
+"val": "time_effort",
+"base": 0.0508,
+"rate": 0.0501,
+"small": false,
+"proven": false
+},
+"angle": null,
+"brief": null,
+"facts": null,
+"flags": {
+"lm": true,
+"failed": false,
+"boosted": true,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": true,
+"reason": null,
+"rotation": false
+},
+"quote": null,
+"thumb": "https://resources.ivanmanfredi.com/linkedin-network-buyer-finder/assets/cover.jpg",
+"trait": null,
+"words": 149,
+"edited": false,
+"result": null,
+"draft_id": "8291186d-71be-4648-99a1-ddbdcd030eb7",
+"has_link": true,
+"replaced": null,
+"body_head": "I built a free Buyer Finder that checks who in your LinkedIn network matches the work your agency sells.\n\nPaste your LinkedIn URL. It reads your profile and gives you a buyer description to confirm. If your offer needs more context, add one sentence.\n\nThen it ",
+"first_line": "I built a free Buyer Finder that checks who in your LinkedIn network matches the work your agency sells.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "LinkedIn Network Buyer Finder: URL-first buyer review",
+"format": "single_image",
+"status": "scheduled",
+"founder": null,
+"picture": "picture",
+"draft_id": "8291186d-71be-4648-99a1-ddbdcd030eb7",
+"evidence": [
+{
+"type": "lead_magnet",
+"label": "Lead magnet launch, boosted with paid ads"
+}
+],
+"lead_magnet": true,
+"board_visible": false
+},
+{
+"at": "2026-10-22T07:45:00+00:00",
+"day": "2026-10-22",
+"kind": "post",
+"brain": {
+"qa": null,
+"read": {
+"n": 571,
+"hi": 0.0701,
+"lo": 0.0392,
+"dim": "stakes",
+"val": "time_effort",
+"base": 0.0532,
+"rate": 0.0525,
+"small": false,
+"proven": false
+},
+"angle": null,
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": true,
+"reason": null,
+"rotation": false
+},
+"quote": null,
+"thumb": "https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/post-stills/ivan/linkedin-service-map-2026-10-07/cf6af8eaa4bde9b3.png",
+"trait": null,
+"words": 310,
+"edited": false,
+"result": null,
+"draft_id": "c6b3b8c5-2170-5093-9952-27df9247b1f5",
+"has_link": false,
+"replaced": null,
+"body_head": "Have a look at the people replying to your LinkedIn posts.\n\nCould any of them buy from your agency?\n\nI'd check that before planning another week of content. Their profiles can tell you whether you're reaching the people you want to work with, and their questio",
+"first_line": "Have a look at the people replying to your LinkedIn posts.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "Who could buy from your LinkedIn posts",
+"format": "video",
+"status": "scheduled",
+"founder": null,
+"picture": "video",
+"draft_id": "c6b3b8c5-2170-5093-9952-27df9247b1f5",
+"evidence": [
+{
+"type": "series",
+"label": "Series you approved, part 2"
+}
+],
+"lead_magnet": false,
+"board_visible": false
+}
+],
+"start": "2026-10-19",
+"which": "next",
+"filled": 4,
+"no_day": 0,
+"target": 4,
+"founder": 0,
+"planned": [],
+"lead_magnets": 1
+},
+{
+"open": 0,
+"dated": 1,
+"posts": [
+{
+"at": "2026-10-30T08:45:00+00:00",
+"day": "2026-10-30",
+"kind": "post",
+"brain": {
+"qa": null,
+"read": {
+"n": 538,
+"hi": 0.0786,
+"lo": 0.0448,
+"dim": "proof_type",
+"val": "none",
+"base": 0.0532,
+"rate": 0.0595,
+"small": false,
+"proven": false
+},
+"angle": null,
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": true,
+"reason": null,
+"rotation": false
+},
+"quote": null,
+"thumb": "https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/post-stills/ivan/linkedin-service-map-2026-10-07/cf6af8eaa4bde9b3.png",
+"trait": null,
+"words": 312,
+"edited": false,
+"result": null,
+"draft_id": "3b827648-d302-52f4-bc9a-6df422622680",
+"has_link": false,
+"replaced": null,
+"body_head": "In a busy week with clients, writing a post can wait until tomorrow. So can answering a DM. Then tomorrow gets busy too.\n\nI'd plan who handles each part before the week starts, including what happens after a post goes out.\n\n[1] Keep the ideas in one place\n\nSav",
+"first_line": "In a busy week with clients, writing a post can wait until tomorrow. So can answering a DM. Then tomorrow gets busy too.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "Keeping LinkedIn going during client delivery",
+"format": "video",
+"status": "scheduled",
+"founder": null,
+"picture": "video",
+"draft_id": "3b827648-d302-52f4-bc9a-6df422622680",
+"evidence": [
+{
+"type": "series",
+"label": "Series you approved, part 3"
+}
+],
+"lead_magnet": false,
+"board_visible": false
+}
+],
+"start": "2026-10-26",
+"which": "after",
+"filled": 4,
+"no_day": 0,
+"target": 4,
+"founder": 0,
+"planned": [
+{
+"day": "2026-10-26",
+"kind": "planned",
+"brain": {
+"qa": {
+"max": 80,
+"dims": null,
+"final": null,
+"first": null,
+"outcome": "passed",
+"weakest": null,
+"rewrites": 0,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": null,
+"angle": {
+"opener": "list",
+"structure": null
+},
+"brief": {
+"url": "https://www.linkedin.com/feed/update/urn:li:activity:7509225208122249216/",
+"why": "Highest-ratio kept post that Ivan's own stances can fill rule by rule. It compiles takes that are scattered across single posts into a new rules-list format, unlike his recent resource launches and food joke.",
+"ratio": 4.58,
+"author": "Monika Grycz"
+},
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": "no_fitting_photo",
+"rotation": false
+},
+"quote": null,
+"thumb": null,
+"trait": null,
+"words": 173,
+"edited": false,
+"result": null,
+"draft_id": "28978825-a547-47cb-9cec-9793130234c1",
+"has_link": false,
+"replaced": null,
+"body_head": "I scale founders' LinkedIn for a living. These are the rules I'd start any founder on:\n\n→ Max 5 posts a week. Doubling up in a day lowers your impressions. LinkedIn limits you when you post a lot.\n\n→ Lean on Wednesday. It's usually the best day, there are just",
+"first_line": "I scale founders' LinkedIn for a living. These are the rules I'd start any founder on:",
+"time_set_by": null,
+"quote_pending": false
+},
+"topic": "60-second LinkedIn inbound masterclass: the 5 rules I'd start any founder on",
+"format": "text",
+"status": "waiting_review",
+"picture": "photo if one fits, else none (photo assigner)",
+"slot_id": "3354599a-e1de-4daa-896b-557256e727c8",
+"why_now": "A ready Review draft adapted from a niche outlier at 4.5x its author's usual, giving the week a beginner-friendly inbound primer.",
+"draft_id": "28978825-a547-47cb-9cec-9793130234c1",
+"evidence": [
+{
+"ref": "outlier:linkedin:7509225208122249216",
+"type": "outlier",
+"label": "Niche outlier the Content Brain adapted, 4.5x its author's usual"
+}
+],
+"idea_ref": "28978825-a547-47cb-9cec-9793130234c1",
+"proposal": false,
+"idea_source": "carousel_drafts",
+"status_label": "Draft waiting in Review"
+},
+{
+"day": "2026-10-27",
+"kind": "planned",
+"brain": {
+"qa": {
+"max": 80,
+"dims": null,
+"final": null,
+"first": null,
+"outcome": "passed",
+"weakest": null,
+"rewrites": 0,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": null,
+"angle": {
+"opener": "teardown",
+"structure": null
+},
+"brief": {
+"url": "https://www.linkedin.com/feed/update/urn:li:activity:7508060988328341504/",
+"why": "Highest-ratio kept post (4.63x). Its line-by-line breakdown of a volume lead-gen offer works as Ivan's stance with no claim about other people's results, and none of his last 3 posts is a teardown.",
+"ratio": 4.63,
+"author": "Ben Hemingway"
+},
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": "no_fitting_photo",
+"rotation": false
+},
+"quote": null,
+"thumb": null,
+"trait": null,
+"words": 310,
+"edited": false,
+"result": null,
+"draft_id": "4468f9e7-df95-4fae-81c2-83dd37b72890",
+"has_link": false,
+"replaced": null,
+"body_head": "I run outreach from the founder's own profile. The person accepting the request is connecting with the actual founder.\n\nMaybe you've been pitched this one already:\n\n→ a few extra LinkedIn accounts spun up for you\n→ a tool firing messages all month long\n→ a set",
+"first_line": "I run outreach from the founder's own profile. The person accepting the request is connecting with the actual founder.",
+"time_set_by": null,
+"quote_pending": false
+},
+"topic": "The lead-gen offer that looks impressive is the problem (teardown)",
+"format": "text",
+"status": "waiting_review",
+"picture": "photo if one fits, else none (photo assigner)",
+"slot_id": "e018130f-ad63-4184-8250-40a8cbb92177",
+"why_now": "A finished teardown draft waiting in Review, adapted from a niche outlier at 4.6x its author's usual, and no recent post covers offer design.",
+"draft_id": "4468f9e7-df95-4fae-81c2-83dd37b72890",
+"evidence": [
+{
+"ref": "outlier:linkedin:7508060988328341504",
+"type": "outlier",
+"label": "Niche outlier the Content Brain adapted, 4.6x its author's usual"
+}
+],
+"idea_ref": "4468f9e7-df95-4fae-81c2-83dd37b72890",
+"proposal": false,
+"idea_source": "carousel_drafts",
+"status_label": "Draft waiting in Review"
+},
+{
+"day": "2026-10-28",
+"kind": "planned",
+"brain": {
+"qa": {
+"max": 80,
+"dims": null,
+"final": null,
+"first": null,
+"outcome": "passed",
+"weakest": null,
+"rewrites": 0,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": null,
+"angle": {
+"opener": "story",
+"structure": null
+},
+"brief": {
+"url": "https://www.linkedin.com/feed/update/urn:li:activity:7510355343533842433/",
+"why": "3.61x and a new outreach-timing claim that fits his free-scan practice, which company facts say to offer when relevant. Built as a rule-first argument, not the scene-contrast opener of his latest post.",
+"ratio": 3.61,
+"author": "Aidan Collins"
+},
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": "no_fitting_photo",
+"rotation": false
+},
+"quote": null,
+"thumb": null,
+"trait": null,
+"words": 259,
+"edited": false,
+"result": null,
+"draft_id": "68e8af37-932f-457b-a9e9-6be4f69faa3b",
+"has_link": false,
+"replaced": null,
+"body_head": "With every new client, the first thing I decide is which resource we send in outreach to give some value.\n\nWhat I send is a super personalized scan. I build it from the prospect's own LinkedIn and positioning, so they can see how we can help them. When it's a ",
+"first_line": "With every new client, the first thing I decide is which resource we send in outreach to give some value.",
+"time_set_by": null,
+"quote_pending": false
+},
+"topic": "Don't open outreach with your heaviest asset: text first, the personalized scan once they're interested",
+"format": "text",
+"status": "waiting_review",
+"picture": "photo if one fits, else none (photo assigner)",
+"slot_id": "998213a2-52de-4a86-a806-1682c2269a86",
+"why_now": "A ready Review draft on outreach sequencing, adapted from a niche outlier at 3.6x its author's usual, adding a practical outreach angle to the week.",
+"draft_id": "68e8af37-932f-457b-a9e9-6be4f69faa3b",
+"evidence": [
+{
+"ref": "outlier:linkedin:7510355343533842433",
+"type": "outlier",
+"label": "Niche outlier the Content Brain adapted, 3.6x its author's usual"
+}
+],
+"idea_ref": "68e8af37-932f-457b-a9e9-6be4f69faa3b",
+"proposal": false,
+"idea_source": "carousel_drafts",
+"status_label": "Draft waiting in Review"
+}
+],
+"lead_magnets": 0
+}
+],
+"supply": [
+{
+"brain": {
+"qa": {
+"max": 80,
+"dims": null,
+"final": null,
+"first": null,
+"outcome": "recovered",
+"weakest": null,
+"rewrites": 1,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": null,
+"angle": {
+"opener": "claim",
+"structure": null
+},
+"brief": {
+"url": "https://www.linkedin.com/feed/update/urn:li:activity:7510681708631875584/",
+"why": "The only kept post whose shape (argument/opinion) differs from his last three list and launch posts and that his own stances can carry without claims about clients. The other kept posts are blocked by a list shape or by missing numbers, so this week has one qualifying pick, not three.",
+"ratio": 3.54,
+"author": "Dave Gerhardt"
+},
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": "no_fitting_photo",
+"rotation": false
+},
+"quote": null,
+"thumb": null,
+"trait": null,
+"words": 311,
+"edited": false,
+"result": null,
+"draft_id": "c3debf3b-6238-49ad-b39c-b26ab0f8e376",
+"has_link": false,
+"replaced": null,
+"body_head": "Here's how to get clients from LinkedIn, whatever you sell.\n\nThere is no playbook.\n\nDave Gerhardt wrote that this is the number one lesson from his conversations with B2B marketers. And honestly, for LinkedIn I agree for sure.\n\nbtw, I scale founders' LinkedIn ",
+"first_line": "Here's how to get clients from LinkedIn, whatever you sell.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "There is no LinkedIn playbook: check whether your buyers are there before you copy anyone's rules",
+"format": "text",
+"draft_id": "c3debf3b-6238-49ad-b39c-b26ab0f8e376",
+"evidence": [
+{
+"ref": "outlier:linkedin:7510681708631875584",
+"type": "outlier",
+"label": "Niche outlier the Content Brain adapted, 3.5x its author's usual"
+}
+],
+"created_at": "2026-10-12T15:44:31.832268+00:00",
+"brain_draft": true
+},
+{
+"brain": {
+"qa": null,
+"read": null,
+"angle": {
+"opener": "claim",
+"structure": null
+},
+"brief": null,
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": "no_fitting_photo",
+"rotation": false
+},
+"quote": null,
+"thumb": null,
+"trait": null,
+"words": 159,
+"edited": false,
+"result": null,
+"draft_id": "15199ede-6f63-4772-b135-8f8937a636fe",
+"has_link": false,
+"replaced": null,
+"body_head": "One thing about Poland 🇵🇱 nobody tells you, everything foreigner- and bureaucracy-related takes x6 the time you expect\n\nPeople in Warsaw wait 1,5-2 years to get their residence permits, and during this time they can't leave Poland or their whole case resets to",
+"first_line": "One thing about Poland 🇵🇱 nobody tells you, everything foreigner- and bureaucracy-related takes x6 the time you expect",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "[X outlier @denisyurchak] One thing about Poland 🇵🇱 nobody tells you",
+"format": "text",
+"draft_id": "15199ede-6f63-4772-b135-8f8937a636fe",
+"evidence": [
+{
+"type": "idea",
+"label": "X outlier by @denisyurchak (tracked account; 216 likes vs own median 20), light adaptation, straight to Review per Ivan 2026-09-27"
+}
+],
+"created_at": "2026-10-11T10:05:44.110831+00:00",
+"brain_draft": false
+},
+{
+"brain": {
+"qa": {
+"max": 80,
+"dims": null,
+"final": null,
+"first": null,
+"outcome": "passed",
+"weakest": null,
+"rewrites": 0,
+"pass_line": null,
+"approved_anyway": false
+},
+"read": null,
+"angle": {
+"opener": "teardown",
+"structure": null
+},
+"brief": {
+"url": "https://www.linkedin.com/feed/update/urn:li:activity:7508060988328341504/",
+"why": "Highest-ratio kept post (4.63x). Its line-by-line breakdown of a volume lead-gen offer works as Ivan's stance with no claim about other people's results, and none of his last 3 posts is a teardown.",
+"ratio": 4.63,
+"author": "Ben Hemingway"
+},
+"facts": null,
+"flags": {
+"lm": false,
+"failed": false,
+"boosted": false,
+"founder": false,
+"weekend": false,
+"carousel": false,
+"fact_fail": false,
+"low_score": false
+},
+"photo": {
+"has": false,
+"reason": "no_fitting_photo",
+"rotation": false
+},
+"quote": null,
+"thumb": null,
+"trait": null,
+"words": 310,
+"edited": false,
+"result": null,
+"draft_id": "4468f9e7-df95-4fae-81c2-83dd37b72890",
+"has_link": false,
+"replaced": null,
+"body_head": "I run outreach from the founder's own profile. The person accepting the request is connecting with the actual founder.\n\nMaybe you've been pitched this one already:\n\n→ a few extra LinkedIn accounts spun up for you\n→ a tool firing messages all month long\n→ a set",
+"first_line": "I run outreach from the founder's own profile. The person accepting the request is connecting with the actual founder.",
+"time_set_by": null,
+"quote_pending": false
+},
+"title": "The lead-gen offer that looks impressive is the problem (teardown)",
+"format": "text",
+"draft_id": "4468f9e7-df95-4fae-81c2-83dd37b72890",
+"evidence": [
+{
+"ref": "outlier:linkedin:7508060988328341504",
+"type": "outlier",
+"label": "Niche outlier the Content Brain adapted, 4.6x its author's usual"
+}
+],
+"created_at": "2026-10-09T22:58:08.479775+00:00",
+"brain_draft": true
+}
+],
+"target": 4,
+"x_days": [],
+"account": "ivan",
+"last_run": {
+"picked": 3,
+"ran_at": "2026-10-12T05:20:24.910857+00:00",
+"outcome": {
+"reason": "ok"
+},
+"open_before": 3,
+"target_week": "2026-10-26"
+},
+"warnings": [
+{
+"code": "lm_due",
+"text": "No lead magnet in the week of 26 Oct"
+},
+{
+"code": "over_rule",
+"text": "Week of 12 Oct has 5 posts. Your rule is 2 to 4. Each extra post costs 9% of views."
+},
+{
+"code": "weekend_post",
+"text": "Sat 17 Oct: a post on a weekend. Your rule is weekdays only."
+}
+],
+"brain_strip": {
+"note": null,
+"reads": {
+"items": [
+{
+"x": 0.99,
+"hi": 1.32,
+"lo": 0.74,
+"small": false,
+"title": "Posting often gives you something to compare",
+"proven": false
+},
+{
+"x": 1.14,
+"hi": 1.51,
+"lo": 0.85,
+"small": false,
+"title": "Target companies matching your ICP: free research shortlist",
+"proven": false
+},
+{
+"x": 1.64,
+"hi": 2.45,
+"lo": 1.07,
+"small": false,
+"title": "Why your LinkedIn messages get ignored",
+"proven": false
+},
+{
+"x": 1.12,
+"hi": 1.48,
+"lo": 0.84,
+"small": false,
+"title": "What counts as a warm lead?",
+"proven": false
+},
+{
+"x": 0.99,
+"hi": 1.32,
+"lo": 0.74,
+"small": false,
+"title": "Content ideas from client comms on Slack",
+"proven": false
+},
+{
+"x": 0.99,
+"hi": 1.33,
+"lo": 0.73,
+"small": false,
+"title": "LinkedIn Network Buyer Finder: URL-first buyer review",
+"proven": false
+},
+{
+"x": 0.99,
+"hi": 1.32,
+"lo": 0.74,
+"small": false,
+"title": "Who could buy from your LinkedIn posts",
+"proven": false
+},
+{
+"x": 1.12,
+"hi": 1.48,
+"lo": 0.84,
+"small": false,
+"title": "Keeping LinkedIn going during client delivery",
+"proven": false
+}
+],
+"total": 13
+},
+"rules": [
+{
+"hi": 21.7,
+"lo": 3.3,
+"gain": 13.0,
+"name": "No links in the post",
+"metric": "views",
+"status": "live",
+"rule_id": "R06-link-ivan",
+"unclear": false,
+"creators": 69,
+"enforcer": "writer",
+"your_rule": false,
+"held_latest": true
+},
+{
+"hi": 15.9,
+"lo": 1.9,
+"gain": 9.2,
+"name": "2 to 4 posts a week",
+"metric": "views",
+"status": "live",
+"rule_id": "R08-frequency-ivan",
+"unclear": false,
+"creators": 69,
+"enforcer": "scheduler",
+"your_rule": false,
+"held_latest": true
+},
+{
+"hi": 14.6,
+"lo": -4.1,
+"gain": 5.7,
+"name": "Weekdays only",
+"metric": "views",
+"status": "live",
+"rule_id": "R11-weekend-ivan",
+"unclear": true,
+"creators": 69,
+"enforcer": "scheduler",
+"your_rule": true,
+"held_latest": false
+},
+{
+"hi": null,
+"lo": null,
+"gain": null,
+"name": "Open with something you did or saw",
+"metric": "views",
+"status": "live",
+"rule_id": "H01-author-voice-ivan",
+"unclear": false,
+"creators": null,
+"enforcer": "writer",
+"your_rule": true,
+"held_latest": null
+},
+{
+"hi": null,
+"lo": null,
+"gain": null,
+"name": "More than 50 words",
+"metric": "views",
+"status": "live",
+"rule_id": "R04-short50-ivan",
+"unclear": false,
+"creators": null,
+"enforcer": "writer",
+"your_rule": true,
+"held_latest": false
+},
+{
+"hi": null,
+"lo": null,
+"gain": null,
+"name": "A photo only if it fits",
+"metric": "views",
+"status": "live",
+"rule_id": "R16-image-fitting-photo-ivan",
+"unclear": false,
+"creators": null,
+"enforcer": "photo picker",
+"your_rule": true,
+"held_latest": null
+},
+{
+"hi": 76.7,
+"lo": 29.5,
+"gain": 51.3,
+"name": "Carousels",
+"metric": "views",
+"status": "shadow",
+"rule_id": "R02-doc-ivan",
+"unclear": false,
+"creators": 69,
+"enforcer": "writer",
+"your_rule": false,
+"held_latest": true
+},
+{
+"hi": 49.3,
+"lo": 13.2,
+"gain": 30.0,
+"name": "Add a picture",
+"metric": "views",
+"status": "shadow",
+"rule_id": "R01-image-ivan",
+"unclear": false,
+"creators": 69,
+"enforcer": "photo picker",
+"your_rule": false,
+"held_latest": true
+},
+{
+"hi": 13.4,
+"lo": 2.8,
+"gain": 7.9,
+"name": "A question gets more comments",
+"metric": "comments",
+"status": "shadow",
+"rule_id": "R07-question-comments",
+"unclear": false,
+"creators": 140,
+"enforcer": "writer",
+"your_rule": false,
+"held_latest": true
+},
+{
+"hi": null,
+"lo": null,
+"gain": null,
+"name": "Tell a story",
+"metric": "views",
+"status": "shadow",
+"rule_id": "H02-story-ivan",
+"unclear": false,
+"creators": null,
+"enforcer": "writer",
+"your_rule": false,
+"held_latest": null
+},
+{
+"hi": null,
+"lo": null,
+"gain": null,
+"name": "At least 24 hours between Ivan posts",
+"metric": "views",
+"status": "shadow",
+"rule_id": "R17-min-gap-24h-ivan",
+"unclear": false,
+"creators": null,
+"enforcer": null,
+"your_rule": false,
+"held_latest": null
+}
+],
+"views": {
+"posts": [
+{
+"d": "2026-09-22",
+"v": 28,
+"young": false
+},
+{
+"d": "2026-09-23",
+"v": 1713,
+"young": false
+},
+{
+"d": "2026-09-26",
+"v": 871,
+"young": false
+},
+{
+"d": "2026-09-28",
+"v": 287,
+"young": false
+},
+{
+"d": "2026-09-29",
+"v": 139,
+"young": false
+},
+{
+"d": "2026-09-30",
+"v": 81,
+"young": false
+},
+{
+"d": "2026-09-30",
+"v": 80,
+"young": false
+},
+{
+"d": "2026-10-01",
+"v": 55,
+"young": false
+},
+{
+"d": "2026-10-03",
+"v": 58,
+"young": false
+},
+{
+"d": "2026-10-05",
+"v": 79,
+"young": false
+},
+{
+"d": "2026-10-06",
+"v": 378,
+"young": true
+},
+{
+"d": "2026-10-08",
+"v": 17799,
+"young": true
+},
+{
+"d": "2026-10-09",
+"v": 204,
+"young": true
+},
+{
+"d": "2026-10-11",
+"v": 88,
+"young": true
+},
+{
+"d": "2026-10-12",
+"v": 28,
+"young": true
+}
+],
+"median": 166,
+"measured": 29,
+"breakouts": 7
+},
+"collection": {
+"posts": 10996,
+"creators": 141
+},
+"idea_stock": [],
+"next_check": {
+"date": "2026-11-02",
+"watch": [
+"More than 50 words",
+"Weekdays only"
+],
+"recent": [],
+"proposals": []
+},
+"predictions": {
+"need": 20,
+"measured": 17,
+"validated": false
+}
+},
+"done_median": 166,
+"lm_per_week": 1,
+"target_week": null,
+"auto_generate": true,
+"cadence_source": "your format policy, at most 4 a week",
+"proposals_only": false,
+"founder_story_max": 2
+}
