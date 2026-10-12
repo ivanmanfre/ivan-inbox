@@ -8,14 +8,16 @@ import { Failed, Skeleton } from '../../ui/states'
 import { LANES, LANE_NAME, type Lane } from '../model'
 import { Seg, SeatAv } from '../v2/ui'
 import { PlanList, useEntered } from './PlanList'
+import { PlanWeeks } from './PlanWeeks'
 import { answerOf, itemsOf, lateRun, tzOf, upcoming, warningOf, type PlanItem } from './planBrain'
 import './plan2.css'
 
 // CONTENT > PLAN, Oxygen (spec 2026-10-12 §3, R2.1, R4; skin section `content.plan`). The head (seat switch,
 // Weeks | List on the desktop, the planner line only when it is late), one answer line, the warnings with their
 // fix links, then the plan. Read only: nothing here dates, moves or publishes a post.
-// Slots for the later parts: WeeksView (Task 7) takes the desktop "Weeks" view, PlanPanel (Task 8) opens on
-// `open`, BrainStrip (Task 9) sits between the warnings and the view. Until they land the desktop shows List.
+// Weeks is the desktop default (PlanWeeks, with the hover card); List is the desktop option and the phone's only
+// view. Slots for the later parts: PlanPanel (Task 8) opens on `open`, BrainStrip (Task 9) sits between the
+// warnings and the view.
 
 type View = 'weeks' | 'list'
 const VIEW_KEY = 'pl2-view'
@@ -100,9 +102,10 @@ export function PlanV2({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => vo
     options={LANES.map(l => ({ id: l, label: <><SeatAv lane={l} />{LANE_NAME[l]}</> }))} />
   const late = r && lateRun(r, now) ? (ranAt(r) ? `The planner has not run since ${ranAt(r)}.` : 'The planner has not run yet.') : null
 
-  const list = r ? <PlanList key={`list:${r.account}`} read={r} items={items} phone={phone} onOpen={setOpen} /> : null
-  // Slot (Task 7): `view === 'weeks' && !phone ? <WeeksView .../> : list`. Until it lands the desktop shows the List.
-  const body = list
+  // Weeks gets every item of the three weeks (past days of this week keep their posts); List starts from today.
+  const body = !r ? null
+    : view === 'weeks' && !phone ? <PlanWeeks key={`weeks:${r.account}`} read={r} items={all} today={r.today} onOpen={setOpen} />
+      : <PlanList key={`list:${r.account}`} read={r} items={items} phone={phone} onOpen={setOpen} />
 
   return <div className={`cv2 pl2${phone ? ' pl2-phone' : ''}`} data-motion={level} data-open={open?.key}>
     <div className="pl2-head">

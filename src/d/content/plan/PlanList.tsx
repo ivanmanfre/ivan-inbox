@@ -17,19 +17,24 @@ const STAGGER_MS = 30
 const STAGGER_CAP_MS = 400
 /** The longest entry: the stagger cap plus the slow duration (480 ms) with room to spare. */
 const ENTRY_MS = 1000
+/** The "being written" pulse: two 1.6 s cycles, with room to spare. Its own gate, so the entry gate never cuts it. */
+const PULSE_MS = 3400
 
 /**
  * True once the entry fades have played. The fades key off its absence, so they run on the first mount only,
  * never again when the motion level flips back (a hidden page reads as motion off, then full on return).
  */
-export function useEntered(): boolean {
+export function useEntered(ms: number = ENTRY_MS): boolean {
   const [entered, setEntered] = useState(false)
   useEffect(() => {
-    const t = setTimeout(() => setEntered(true), ENTRY_MS)
+    const t = setTimeout(() => setEntered(true), ms)
     return () => clearTimeout(t)
-  }, [])
+  }, [ms])
   return entered
 }
+
+/** True once the "being written" pulse has played its two cycles (same once-only rule as the entry fades). */
+export const usePulsed = (): boolean => useEntered(PULSE_MS)
 
 const ICON: Record<'lm' | 'boost' | 'me' | 'deck' | 'warn', ReactNode> = {
   lm: <path d="M4 2v6a4 4 0 008 0V2M4 5h3M9 5h3" />,
@@ -40,9 +45,10 @@ const ICON: Record<'lm' | 'boost' | 'me' | 'deck' | 'warn', ReactNode> = {
 }
 const FLAG_ICON: Record<Flag['key'], keyof typeof ICON> = { lm: 'lm', boosted: 'boost', founder: 'me', carousel: 'deck', weekend: 'warn', failed: 'warn', low: 'warn', fact: 'warn' }
 
-export function FlagChip({ f }: { f: Flag }) {
-  return <span className={`pl2-chip pl2-chip-${f.tone}`} data-flag={f.key}>
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">{ICON[FLAG_ICON[f.key]]}</svg>{f.label}
+/** A flag chip. `compact` (the Weeks card) shows the icon only; the label stays for screen readers and as a tooltip. */
+export function FlagChip({ f, compact }: { f: Flag; compact?: boolean }) {
+  return <span className={`pl2-chip pl2-chip-${f.tone}${compact ? ' pl2-chip-i' : ''}`} data-flag={f.key} title={compact ? f.label : undefined}>
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">{ICON[FLAG_ICON[f.key]]}</svg>{compact ? <span className="pl2-vh">{f.label}</span> : f.label}
   </span>
 }
 
@@ -103,6 +109,7 @@ export function PlanList({ read, items, phone, onOpen }: { read: PlanRead; items
   const [openKey, setOpenKey] = useState<string | null>(null)
   const level = useMotionLevel()
   const entered = useEntered()
+  const pulsed = usePulsed()
   const groups = useMemo(() => {
     const out: Group[] = []
     for (const it of items) {
@@ -118,7 +125,7 @@ export function PlanList({ read, items, phone, onOpen }: { read: PlanRead; items
   const strip = read.brain_strip ?? null
   const today = read.today
   let n = 0
-  return <div className={`pl2-list${phone ? ' pl2-list-phone' : ''}`} data-entered={entered || undefined}>
+  return <div className={`pl2-list${phone ? ' pl2-list-phone' : ''}`} data-entered={entered || undefined} data-pulsed={pulsed || undefined}>
     {groups.map(g => {
       const late = g.day != null && g.day < today
       const isToday = g.day === today

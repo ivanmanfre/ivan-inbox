@@ -101,19 +101,55 @@ describe('PlanV2', () => {
     expect(df.getAttribute('href')).toBe('#exp/d/content/now?draft=d-failed&lane=ivan')
   })
 
-  it('no rendered text has an em dash, on any seat, rows open', async () => {
-    for (const lane of ['ivan', 'risedtc', 'arch'] as Lane[]) {
-      api.fetchPlan.mockResolvedValue(FX[lane]())
-      renderInFrame(<Harness start={lane} />)
-      await screen.findByRole('heading', { level: 2 })
-      document.querySelectorAll<HTMLButtonElement>('.pl2-row-b').forEach(b => fireEvent.click(b))
-      expect(document.body.textContent).not.toContain('—')
-      expect(document.body.textContent).not.toMatch(/NaN|undefined/)
-      cleanup()
+  it('no rendered text has an em dash, on any seat, in Weeks and in List with rows open', async () => {
+    for (const view of ['weeks', 'list']) {
+      for (const lane of ['ivan', 'risedtc', 'arch'] as Lane[]) {
+        localStorage.setItem('pl2-view', view)
+        api.fetchPlan.mockResolvedValue(FX[lane]())
+        renderInFrame(<Harness start={lane} />)
+        await screen.findByRole('heading', { level: 2 })
+        expect(document.querySelector(view === 'weeks' ? '.pl2-wks' : '.pl2-list')).not.toBeNull()
+        document.querySelectorAll<HTMLButtonElement>('.pl2-row-b').forEach(b => fireEvent.click(b))
+        expect(document.body.textContent).not.toContain('—')
+        expect(document.body.textContent).not.toMatch(/NaN|undefined/)
+        cleanup()
+      }
     }
+  }, 20000) // six full renders: room for a loaded machine
+
+  it('the desktop opens on Weeks; List is kept once picked; the phone is always List', async () => {
+    api.fetchPlan.mockResolvedValue(rise())
+    renderInFrame(<Harness start="risedtc" />)
+    await screen.findByRole('heading', { level: 2 })
+    expect(document.querySelector('.pl2-wks')).not.toBeNull()
+    expect(document.querySelector('.pl2-list')).toBeNull()
+    fireEvent.click(screen.getByRole('tab', { name: 'List' }))
+    expect(document.querySelector('.pl2-list')).not.toBeNull()
+    expect(localStorage.getItem('pl2-view')).toBe('list')
+    cleanup()
+    localStorage.setItem('pl2-view', 'weeks')
+    renderInFrame(<Harness start="risedtc" />, { layout: 'phone' })
+    await screen.findByRole('heading', { level: 2 })
+    expect(document.querySelector('.pl2-wks')).toBeNull()
+    expect(document.querySelector('.pl2-list')).not.toBeNull()
+  })
+
+  it('the hover card closes when the panel opens', async () => {
+    window.matchMedia = ((q: string) => ({ matches: q.includes('hover: hover'), media: q, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
+    api.fetchPlan.mockResolvedValue(rise())
+    renderInFrame(<Harness start="risedtc" />)
+    await screen.findByRole('heading', { level: 2 })
+    const card = screen.getAllByText(/Your Google Shopping feed/)[0].closest<HTMLElement>('.pl2-card')!
+    fireEvent.pointerOver(card)
+    expect(await screen.findByRole('tooltip', {}, { timeout: 1500 })).toBeTruthy()
+    fireEvent.click(card)
+    expect(screen.queryByRole('tooltip')).toBeNull()
+    expect(document.querySelector('.pl2')!.getAttribute('data-open')).toBe(card.getAttribute('data-plan-key'))
+    delete (window as { matchMedia?: unknown }).matchMedia
   })
 
   it('a post still waiting from an earlier day comes first, under its own waiting header; today reads Today', async () => {
+    localStorage.setItem('pl2-view', 'list')
     const r = rise()
     r.weeks[1].planned[0].day = '2026-10-09'
     api.fetchPlan.mockResolvedValue(r)
@@ -146,6 +182,7 @@ describe('PlanV2', () => {
   })
 
   it('entry fades are marked done after the first mount, so they never replay when motion comes back', async () => {
+    localStorage.setItem('pl2-view', 'list')
     api.fetchPlan.mockResolvedValue(rise())
     renderInFrame(<Harness start="risedtc" />)
     await screen.findByRole('heading', { level: 2 })
@@ -155,6 +192,7 @@ describe('PlanV2', () => {
   })
 
   it('an empty plan says when the planner fills it', async () => {
+    localStorage.setItem('pl2-view', 'list')
     api.fetchPlan.mockResolvedValue(emptyRead())
     renderInFrame(<Harness start="arch" />)
     expect(await screen.findByText('Nothing planned for the next two weeks.')).toBeTruthy()
@@ -162,6 +200,7 @@ describe('PlanV2', () => {
   })
 
   it('a row with no brain data says so in plain words', async () => {
+    localStorage.setItem('pl2-view', 'list')
     const r = rise()
     r.weeks[2].planned[0].brain = undefined
     api.fetchPlan.mockResolvedValue({ ...r, brain_strip: null })
