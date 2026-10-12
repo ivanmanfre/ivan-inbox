@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { effectDomain, effectX, logX, ratioX, timeX } from './charts'
+import { effectDomain, effectX, logX, ratioX, readLanes, timeX } from './charts'
 
 describe('ratioX: log2 from half as often to 2x as often', () => {
   it('the ends and the middle', () => {
@@ -70,5 +70,26 @@ describe('timeX', () => {
     expect(timeX('2027-01-01', '2026-07-20', '2026-10-12', 300)).toBe(300)
     expect(timeX('2026-08-31', '2026-07-20', '2026-10-12', 300)).toBeCloseTo(150, -1)
     expect(timeX('nope', '2026-07-20', '2026-10-12', 300)).toBe(0)
+  })
+})
+
+describe('readLanes: dots that would touch go to another row', () => {
+  it('dots far apart share the first row', () => {
+    expect(readLanes([10, 30, 60], 9, 6)).toEqual([0, 0, 0])
+  })
+  it('dots closer than the gap stack', () => {
+    expect(readLanes([100, 100, 103, 150], 9, 6)).toEqual([0, 1, 2, 0])
+  })
+  it('a row is free again once the gap is wide enough', () => {
+    expect(readLanes([10, 12, 25, 27], 9, 6)).toEqual([0, 1, 0, 1])
+  })
+  it('never more rows than allowed: the rest go to the row with the most room', () => {
+    const lanes = readLanes([5, 5, 5, 5, 5, 5, 5, 5], 9, 3)
+    expect(Math.max(...lanes)).toBe(2)
+    expect(lanes).toHaveLength(8)
+  })
+  it('empty input, bad numbers', () => {
+    expect(readLanes([], 9, 6)).toEqual([])
+    expect(readLanes([NaN, 4], 9, 6)).toEqual([0, 1])
   })
 })

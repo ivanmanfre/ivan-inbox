@@ -431,9 +431,9 @@ describe('exported constants', () => {
 describe('brain strip words (Task 9)', () => {
   const strips = { ivan: (ivanFx as unknown as PlanRead).brain_strip as BrainStrip, risedtc: (riseFx as unknown as PlanRead).brain_strip as BrainStrip, arch: (archFx as unknown as PlanRead).brain_strip as BrainStrip }
   it('nextCheckLine', () => {
-    expect(PB.nextCheckLine(strips.ivan)).toBe('Mon 2 Nov. Under watch: more than 50 words and weekdays only.')
-    expect(PB.nextCheckLine(strips.risedtc)).toBe('Mon 2 Nov. No rule is under watch.')
-    expect(PB.nextCheckLine({ next_check: { date: '2026-11-02', watch: ['A', 'B', 'C'] } } as unknown as BrainStrip)).toBe('Mon 2 Nov. Under watch: a, b and c.')
+    expect(PB.nextCheckLine(strips.ivan)).toBe('Mon 2 Nov. Being checked: more than 50 words and weekdays only.')
+    expect(PB.nextCheckLine(strips.risedtc)).toBe('Mon 2 Nov. No rule is being checked.')
+    expect(PB.nextCheckLine({ next_check: { date: '2026-11-02', watch: ['A', 'B', 'C'] } } as unknown as BrainStrip)).toBe('Mon 2 Nov. Being checked: a, b and c.')
     expect(PB.nextCheckLine({ next_check: { date: null, watch: [] } } as unknown as BrainStrip)).toBe('No check day is set yet.')
     expect(PB.nextCheckLine(null)).toBe('')
     expect(PB.nextCheckLine({} as BrainStrip)).toBe('')
@@ -456,7 +456,7 @@ describe('brain strip words (Task 9)', () => {
     expect(PB.decisionLine({ name: 'Add a picture', to_status: 'shadow' }, true)).toBe('Back to testing: add a picture.')
     expect(PB.decisionLine({ name: 'Add a picture', to_status: 'retired' }, true)).toBe('Stopped using: add a picture.')
     expect(PB.decisionLine({ name: 'Add a picture', to_status: 'live' }, false)).toBe('Dismissed. The rule stays as it is.')
-    expect(PB.undoLine({ name: 'Add a picture' })).toBe('Put back: add a picture.')
+    expect(PB.undoLine({ name: 'Add a picture' })).toBe('Put back: add a picture. The brain will not try it again.')
   })
   it('ruleNote', () => {
     const r = (o: object) => ({ rule_id: 'R', name: 'N', metric: 'views', gain: null, lo: null, hi: null, status: 'live', unclear: false, held_latest: null, your_rule: false, enforcer: 'writer', creators: null, ...o }) as never

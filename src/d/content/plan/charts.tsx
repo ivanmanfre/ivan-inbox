@@ -47,6 +47,23 @@ export function timeX(day: string, start: string, end: string, w: number): numbe
   return clamp01((d - a) / (b - a)) * w
 }
 
+/**
+ * Rows for dots on one scale so they do not touch (a beeswarm by rows). Dots arrive left to right; each takes the first
+ * row whose last dot is at least `gap` away, else a new row (up to `maxLanes`), else the row with the most room.
+ */
+export function readLanes(xs: number[], gap: number, maxLanes: number): number[] {
+  const last: number[] = []
+  return xs.map(x0 => {
+    const x = fin(x0) ? x0 : 0
+    for (let i = 0; i < last.length; i++) if (x - last[i] >= gap) { last[i] = x; return i }
+    if (last.length < maxLanes) { last.push(x); return last.length - 1 }
+    let best = 0
+    for (let i = 1; i < last.length; i++) if (x - last[i] > x - last[best]) best = i
+    last[best] = x
+    return best
+  })
+}
+
 /** The width of an element, followed as it resizes. Falls back to `init` where there is no ResizeObserver (tests). */
 export function useWidth<T extends HTMLElement>(init: number): [RefObject<T | null>, number] {
   const ref = useRef<T | null>(null)
@@ -100,13 +117,17 @@ export function RuleAxis({ dom, w }: { dom: { lo: number; hi: number }; w: numbe
 // ---- tile 3: the brain's guess for each planned post ----
 
 type ReadItem = BrainStrip['reads']['items'][number]
-const ROW = 7
+const LANE_H = 9, MAX_LANES = 8
 export function ReadsChart({ items, w }: { items: ReadItem[]; w: number }) {
   const list = (Array.isArray(items) ? items : []).filter(i => i && fin(i.x)).sort((a, b) => a.x - b.x)
-  const n = list.length
-  const bandH = Math.max(30, Math.min(54, 14 + n * ROW))
-  const y = (i: number) => (n < 2 ? bandH / 2 : 7 + (i * (bandH - 14)) / (n - 1))
+  // Real position on the half-as-often to 2x scale; dots that would touch move to another row.
+  const lanes = readLanes(list.map(i => ratioX(i.x, w)), LANE_H, MAX_LANES)
+  const rows = lanes.length ? Math.max(...lanes) + 1 : 1
+  const bandH = Math.max(30, rows * LANE_H + 14)
+  const y = (ix: number) => 8 + lanes[ix] * LANE_H + (rows === 1 ? (bandH - 16) / 2 : 0)
   const mid = ratioX(1, w), a = ratioX(0.85, w), b = ratioX(1.15, w)
+  // "average" needs room between the two end labels; on a narrow tile the line in the middle says it.
+  const roomy = w >= 190
   return <>
     <svg className="pl2-ch pl2-ch-reads" width={w} height={bandH + 22} viewBox={`0 0 ${w} ${bandH + 22}`} aria-hidden="true" focusable="false">
       <rect className="pl2-ch-band" x={0} y={0} width={w} height={bandH} rx={5} />
@@ -119,7 +140,7 @@ export function ReadsChart({ items, w }: { items: ReadItem[]; w: number }) {
           cx={ratioX(i.x, w)} cy={y(ix)} r={3.5} strokeWidth={1.5} />
       </g>)}
       <text className="pl2-ch-t" fontSize={12} x={0} y={bandH + 16} textAnchor="start">half as often</text>
-      <text className="pl2-ch-t" fontSize={12} x={mid} y={bandH + 16} textAnchor="middle">average</text>
+      {roomy && <text className="pl2-ch-t" fontSize={12} x={mid} y={bandH + 16} textAnchor="middle">average</text>}
       <text className="pl2-ch-t" fontSize={12} x={w} y={bandH + 16} textAnchor="end">2x as often</text>
     </svg>
     <ul className="pl2-sr" aria-label="Brain guess for each planned post">{list.map((i, ix) => <li key={`${ix}:${i.title}`}>{readDotTip(i)}</li>)}</ul>

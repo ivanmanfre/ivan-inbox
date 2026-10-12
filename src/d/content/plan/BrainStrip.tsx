@@ -20,15 +20,25 @@ const STAGGER_MS = 30
 const STAGGER_CAP_MS = 400
 const RULE_CHART_W = 116
 
+const BY_HAND = 'This change has to be made by hand. Dismiss it or leave it.'
 const REFUSED: Record<string, string> = {
   not_open: 'That change is no longer waiting. Nothing changed.',
   unknown_token: 'This change can no longer be undone. Nothing changed.',
   bad_gate: 'The app could not confirm it is you. Nothing changed.',
+  by_hand: BY_HAND,
 }
-const refusal = (e: unknown) => {
-  const code = (e as { code?: unknown } | null)?.code
-  return typeof code === 'string' && REFUSED[code] ? REFUSED[code] : 'Could not do that. Nothing changed.'
+const codeOf = (e: unknown): string => { const c = (e as { code?: unknown } | null)?.code; return typeof c === 'string' ? c : '' }
+/** What went wrong, in plain words. Undo of a change that was already put back says so. */
+const refusal = (e: unknown, undo: boolean) => {
+  const code = codeOf(e)
+  if (code.startsWith('skipped_')) return 'The rule is already like that.'
+  if (undo && code === 'not_open') return 'This change was already put back. Nothing changed.'
+  return REFUSED[code] ?? 'Could not do that. Nothing changed.'
 }
+/** The change moved on without us (closed, already applied, already put back): the page should read the plan again. */
+const stale = (e: unknown) => { const c = codeOf(e); return c === 'not_open' || c.startsWith('skipped_') }
+/** Proposals the brain never applies from a button: a direction change is edited by hand. */
+const HAND_KINDS = new Set(['flip', 'locked_disagrees'])
 
 function Tile({ cls, title, n, i, still, children }: { cls: string; title: string; n?: string; i: number; still: boolean; children: ReactNode }) {
   return <section className={`pl2-tile ${cls}`} style={{ '--pl2-d': `${still ? 0 : Math.min(i * STAGGER_MS, STAGGER_CAP_MS)}ms` } as CSSProperties}>
@@ -74,8 +84,8 @@ function RulesTile({ strip, i, still }: { strip: Strip; i: number; still: boolea
 type Proposal = Strip['next_check']['proposals'][number]
 type Change = Strip['next_check']['recent'][number]
 
-function NextTile({ strip, i, still, busy, onDecide, onUndo, onIdeaStock }: {
-  strip: Strip; i: number; still: boolean; busy: boolean
+function NextTile({ strip, i, still, busy, byHand, onDecide, onUndo, onIdeaStock }: {
+  strip: Strip; i: number; still: boolean; busy: boolean; byHand: (p: Proposal) => boolean
   onDecide: (p: Proposal, accept: boolean) => void; onUndo: (c: Change) => void; onIdeaStock?: () => void
 }) {
   const proposals = (Array.isArray(strip.next_check?.proposals) ? strip.next_check.proposals : []).filter(p => p && !String(p.rule_id ?? '').startsWith('zz-'))
@@ -83,17 +93,17 @@ function NextTile({ strip, i, still, busy, onDecide, onUndo, onIdeaStock }: {
   return <Tile cls="pl2-t-next" title="Next brain check" i={i} still={still}>
     <p className="pl2-big">{nextCheckLine(strip) || 'No check day is set yet.'}</p>
     {proposals.length > 0 && <div className="pl2-nx-g">
-      <p className="pl2-rr-cap">Waiting for your say</p>
+      <p className="pl2-rr-cap">Waiting for your OK</p>
       <ul className="pl2-nx">{proposals.map(p => <li key={p.id}>
-        <span>{proposalLine(p)}</span>
+        <span>{proposalLine(p)}{byHand(p) && <span className="pl2-rr-n">{BY_HAND}</span>}</span>
         <span className="pl2-nx-k">
-          <button type="button" className="cv2-k cv2-k-p" data-verb="brain-accept" disabled={busy} onClick={() => onDecide(p, true)}>Accept</button>
+          {!byHand(p) && <button type="button" className="cv2-k cv2-k-p" data-verb="brain-accept" disabled={busy} onClick={() => onDecide(p, true)}>Accept</button>}
           <button type="button" className="cv2-k" data-verb="brain-dismiss" disabled={busy} onClick={() => onDecide(p, false)}>Dismiss</button>
         </span>
       </li>)}</ul>
     </div>}
     {recent.length > 0 && <div className="pl2-nx-g">
-      <p className="pl2-rr-cap">Changed lately</p>
+      <p className="pl2-rr-cap">Changed in the last 14 days</p>
       <ul className="pl2-nx">{recent.map(c => <li key={`${c.rule_id}:${c.at}`}>
         <span>{changeLine(c)}</span>
         {c.undo_token && <button type="button" className="cv2-k" data-verb="brain-undo" disabled={busy} onClick={() => onUndo(c)}>Undo</button>}
@@ -110,10 +120,15 @@ function ReadsTile({ strip, acct, i, still }: { strip: Strip; acct: Acct; i: num
   const items = Array.isArray(strip.reads?.items) ? strip.reads.items : []
   const total = Number.isFinite(strip.reads?.total) ? strip.reads.total : items.length
   const summary = readsSummary(strip, acct)
-  return <Tile cls="pl2-t-reads" title="Brain guesses, next 2 weeks" n={items.length ? `${items.length} of ${Math.max(total, items.length)} read` : undefined} i={i} still={still}>
+  return <Tile cls="pl2-t-reads" title="Brain guesses, next 2 weeks" n={items.length ? `${items.length} of ${Math.max(total, items.length)} have a guess` : undefined} i={i} still={still}>
     <div ref={ref} className="pl2-chw">
       {items.length ? <ReadsChart items={items} w={w} /> : <p className="pl2-none">No brain guesses yet</p>}
     </div>
+    {items.length > 0 && <p className="pl2-leg">
+      {items.some(x => x.proven && !x.small) && <span><i className="pl2-key pl2-key-live" aria-hidden="true" />Proven on recent posts</span>}
+      {items.some(x => x.proven && x.small) && <span><i className="pl2-key pl2-key-few" aria-hidden="true" />Proven, but few examples</span>}
+      {items.some(x => !x.proven) && <span><i className="pl2-key pl2-key-grey" aria-hidden="true" />Not proven yet</span>}
+    </p>}
     {summary && <p className="pl2-foot">{summary}</p>}
   </Tile>
 }
@@ -150,6 +165,8 @@ export function BrainStrip({ strip, acct, today, onIdeaStock, onChanged }: Props
   const level = useMotionLevel()
   const entered = useEntered()
   const [busy, setBusy] = useState(false)
+  const [hand, setHand] = useState<number[]>([])
+  const flying = useRef(false)
   if (!strip) return null
   const still = level === 'off'
 
@@ -158,24 +175,34 @@ export function BrainStrip({ strip, acct, today, onIdeaStock, onChanged }: Props
   const note = stripNote(strip)
   const src = sourceNote(strip)
 
-  const act = async (f: () => Promise<string>) => {
+  // One action at a time: a fast second tap while the first call is out does nothing (the ref answers before React re-renders).
+  const act = async (f: () => Promise<string>, undo: boolean, onRefused?: (e: unknown) => void) => {
+    if (flying.current) return
+    flying.current = true
     setBusy(true)
     try {
       toast.show({ message: await f() })
       onChanged?.()
     } catch (e) {
-      toast.show({ message: refusal(e), tone: 'failed' })
+      onRefused?.(e)
+      toast.show({ message: refusal(e, undo), tone: 'failed' })
+      if (stale(e)) onChanged?.()
     } finally {
+      flying.current = false
       setBusy(false)
     }
   }
-  const onDecide = (p: Proposal, accept: boolean) => { void act(async () => { await decideProposal(p.id, accept); return decisionLine(p, accept) }) }
-  const onUndo = (c: Change) => { if (c.undo_token) void act(async () => { await undoRuleChange(c.undo_token!); return undoLine(c) }) }
+  const byHand = (p: Proposal) => HAND_KINDS.has(String(p.kind ?? '')) || hand.includes(p.id)
+  const onDecide = (p: Proposal, accept: boolean) => {
+    void act(async () => { await decideProposal(p.id, accept); return decisionLine(p, accept) }, false,
+      e => { if (codeOf(e) === 'by_hand') setHand(h => (h.includes(p.id) ? h : [...h, p.id])) })
+  }
+  const onUndo = (c: Change) => { if (c.undo_token) void act(async () => { await undoRuleChange(c.undo_token!); return undoLine(c) }, true) }
 
   return <div className="pl2-stripw">
     <div className="pl2-strip" role="region" aria-label="What the brain has learned" tabIndex={0} data-motion={level} data-entered={entered || undefined}>
       <RulesTile strip={strip} i={0} still={still} />
-      <NextTile strip={strip} i={1} still={still} busy={busy} onDecide={onDecide} onUndo={onUndo} onIdeaStock={offerStock ? onIdeaStock : undefined} />
+      <NextTile strip={strip} i={1} still={still} busy={busy} byHand={byHand} onDecide={onDecide} onUndo={onUndo} onIdeaStock={offerStock ? onIdeaStock : undefined} />
       <ReadsTile strip={strip} acct={acct} i={2} still={still} />
       <ViewsTile strip={strip} today={today} i={3} still={still} />
     </div>

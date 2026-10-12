@@ -481,14 +481,14 @@ export function viewsLine(strip: BrainStrip | null | undefined): string {
 const lower1 = (s: string) => s.charAt(0).toLowerCase() + s.slice(1)
 const andList = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`)
 
-/** "Mon 2 Nov. Under watch: more than 50 words and weekdays only." The day of the next brain check and what it watches. */
+/** "Mon 2 Nov. Being checked: more than 50 words and weekdays only." The day of the next brain check and what it looks at. */
 export function nextCheckLine(strip: BrainStrip | null | undefined): string {
   const n = strip?.next_check
   if (!n) return ''
   const date = typeof n.date === 'string' && n.date ? planDay(n.date) : ''
   const watch = (Array.isArray(n.watch) ? n.watch : []).map(w => scrub(String(w ?? '')).trim()).filter(Boolean).map(lower1)
   if (!date) return 'No check day is set yet.'
-  return `${date}. ${watch.length ? `Under watch: ${andList(watch)}.` : 'No rule is under watch.'}`
+  return `${date}. ${watch.length ? `Being checked: ${andList(watch)}.` : 'No rule is being checked.'}`
 }
 
 /** "From 10,629 posts by 140 creators." */
@@ -525,9 +525,9 @@ export function decisionLine<T extends { name: string; to_status: string }>(p: T
   return `${lead}: ${name}.`
 }
 
-/** The receipt after Undo: "Put back: add a picture." */
+/** The receipt after Undo. Undo also tells the brain not to try that rule again (brain_rule_undo vetoes it). */
 export function undoLine(c: { name: string }): string {
-  return `Put back: ${lower1(scrub(String(c?.name ?? '')))}.`
+  return `Put back: ${lower1(scrub(String(c?.name ?? '')))}. The brain will not try it again.`
 }
 
 /** A second line under a rule row when it did not hold on the newest posts. */

@@ -23,7 +23,7 @@ export type PlanBrain = {
 export type StripRule = { rule_id: string; name: string; metric: 'views' | 'comments'; gain: number | null; lo: number | null; hi: number | null; status: 'live' | 'shadow'; unclear: boolean; held_latest: boolean | null; your_rule: boolean; enforcer: string | null; creators: number | null }
 export type BrainStrip = {
   rules: StripRule[]
-  next_check: { date: string | null; watch: string[]; proposals: { id: number; rule_id: string; name: string; to_status: string; reason: string | null }[]; recent: { rule_id: string; name: string; to_status: string; at: string; undo_token: string | null }[] }
+  next_check: { date: string | null; watch: string[]; proposals: { id: number; rule_id: string; name: string; to_status: string; reason: string | null; kind?: string }[]; recent: { rule_id: string; name: string; to_status: string; at: string; undo_token: string | null }[] }
   reads: { items: { title: string; x: number; lo: number | null; hi: number | null; proven: boolean; small: boolean }[]; total: number }
   predictions: { measured: number; need: number; validated: boolean }
   views: { median: number | null; breakouts: number; measured: number; posts: { d: string; v: number; young: boolean }[] }
@@ -106,7 +106,10 @@ export class BrainActionError extends Error {
  */
 export async function decideProposal(id: number, accept: boolean): Promise<void> {
   const { data, error } = await supabase.rpc('operator_brain_proposal_decide', { p_gate: CLIENT_OPS_GATE, p_id: id, p_accept: accept })
-  if (error) throw new BrainActionError(/not an open proposal/i.test(error.message ?? '') ? 'not_open' : 'failed')
+  if (error) {
+    const m = error.message ?? ''
+    throw new BrainActionError(/not an open proposal/i.test(m) ? 'not_open' : /direction change/i.test(m) ? 'by_hand' : 'failed')
+  }
   const r = (data ?? {}) as { ok?: boolean; error?: string; dismissed?: boolean; skipped?: string }
   if (r.ok === false) throw new BrainActionError(typeof r.error === 'string' ? r.error : 'failed')
   if (!accept && r.dismissed !== true) throw new BrainActionError('not_open')
@@ -114,12 +117,14 @@ export async function decideProposal(id: number, accept: boolean): Promise<void>
   if (accept && typeof r.skipped === 'string') throw new BrainActionError(`skipped_${r.skipped}`)
 }
 
-/** Put a rule change back (db/264 operator_brain_rule_undo -> brain_rule_undo). The token comes from `next_check.recent`. */
+/** Put a rule change back (db/264 operator_brain_rule_undo -> brain_rule_undo, which also vetoes the rule so the brain does not retry it). The token comes from `next_check.recent`. */
 export async function undoRuleChange(token: string): Promise<void> {
   const { data, error } = await supabase.rpc('operator_brain_rule_undo', { p_gate: CLIENT_OPS_GATE, p_token: token })
   if (error) throw new BrainActionError('failed')
-  const r = (data ?? {}) as { ok?: boolean; error?: string }
+  const r = (data ?? {}) as { ok?: boolean; error?: string; already_rolled_back?: boolean }
   if (r.ok === false || typeof r.error === 'string') throw new BrainActionError(typeof r.error === 'string' ? r.error : 'failed')
+  // A change that was already put back is not a second success: nothing happened this time.
+  if (r.already_rolled_back === true) throw new BrainActionError('not_open')
 }
 
 /** "Mon 19 Oct" from an ISO date (date-only, read as a calendar day). */

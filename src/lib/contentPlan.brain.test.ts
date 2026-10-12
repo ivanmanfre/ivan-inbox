@@ -29,6 +29,10 @@ describe('decideProposal', () => {
     rpc.mockResolvedValue({ data: { skipped: 'locked', lock_reason: 'x' }, error: null })
     await expect(decideProposal(12, true)).rejects.toMatchObject({ code: 'skipped_locked' })
   })
+  it('a direction change is made by hand: its own code', async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: 'brain_proposal_accept: a direction change is edited by hand in an owner session (claimed_sign, statement), never executed from a proposal' } })
+    await expect(decideProposal(12, true)).rejects.toMatchObject({ code: 'by_hand' })
+  })
 })
 
 describe('undoRuleChange', () => {
@@ -37,12 +41,12 @@ describe('undoRuleChange', () => {
     await expect(undoRuleChange('11111111-2222-3333-4444-555555555555')).resolves.toBeUndefined()
     expect(rpc).toHaveBeenCalledWith('operator_brain_rule_undo', { p_gate: 'clientops', p_token: '11111111-2222-3333-4444-555555555555' })
   })
-  it('an unknown token and a bad gate are refusals; an already put back change is fine', async () => {
+  it('an unknown token, a bad gate and an already put back change are refusals', async () => {
     rpc.mockResolvedValue({ data: { error: 'unknown_token' }, error: null })
     await expect(undoRuleChange('x')).rejects.toMatchObject({ code: 'unknown_token' })
     rpc.mockResolvedValue({ data: { ok: false, error: 'bad_gate' }, error: null })
     await expect(undoRuleChange('x')).rejects.toMatchObject({ code: 'bad_gate' })
     rpc.mockResolvedValue({ data: { already_rolled_back: true, rollback_event_id: 70, event_id: 69 }, error: null })
-    await expect(undoRuleChange('x')).resolves.toBeUndefined()
+    await expect(undoRuleChange('x')).rejects.toMatchObject({ code: 'not_open' })
   })
 })

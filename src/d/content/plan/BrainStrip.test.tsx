@@ -71,7 +71,7 @@ describe('BrainStrip tiles', () => {
 describe('Next brain check', () => {
   it('says the day and what is under watch', () => {
     renderInFrame(<BrainStrip strip={ivan()} acct="ivan" />)
-    expect(screen.getByText('Mon 2 Nov. Under watch: more than 50 words and weekdays only.')).toBeTruthy()
+    expect(screen.getByText('Mon 2 Nov. Being checked: more than 50 words and weekdays only.')).toBeTruthy()
   })
 
   it('a held change shows Accept and Dismiss, which call the gated RPC and say what happened', async () => {
@@ -98,7 +98,7 @@ describe('Next brain check', () => {
     expect(await screen.findByText('Dismissed. The rule stays as it is.')).toBeTruthy()
   })
 
-  it('a refused change says nothing changed and does not re-read', async () => {
+  it('a change that is no longer waiting says so, and the page reads the plan again', async () => {
     const s = rise()
     s.next_check.proposals.push({ id: 43, rule_id: 'R01-image-risedtc', name: 'Add a picture', to_status: 'live', reason: null })
     api.decideProposal.mockRejectedValue(Object.assign(new Error('x'), { code: 'not_open' }))
@@ -106,7 +106,7 @@ describe('Next brain check', () => {
     renderInFrame(<BrainStrip strip={s} acct="risedtc" onChanged={changed} />)
     fireEvent.click(screen.getByRole('button', { name: 'Accept' }))
     expect(await screen.findByText('That change is no longer waiting. Nothing changed.')).toBeTruthy()
-    expect(changed).not.toHaveBeenCalled()
+    await waitFor(() => expect(changed).toHaveBeenCalledTimes(1))
     expect((screen.getByRole('button', { name: 'Accept' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
@@ -122,7 +122,80 @@ describe('Next brain check', () => {
     expect(undo.length).toBe(1)
     fireEvent.click(undo[0])
     await waitFor(() => expect(api.undoRuleChange).toHaveBeenCalledWith('11111111-2222-3333-4444-555555555555'))
-    expect(await screen.findByText('Put back: add a picture.')).toBeTruthy()
+    expect(await screen.findByText('Put back: add a picture. The brain will not try it again.')).toBeTruthy()
+  })
+  it('a rule that is already like that says so and re-reads', async () => {
+    const s = rise()
+    s.next_check.proposals.push({ id: 44, rule_id: 'R01-image-risedtc', name: 'Add a picture', to_status: 'live', reason: null })
+    api.decideProposal.mockRejectedValue(Object.assign(new Error('x'), { code: 'skipped_same_status' }))
+    const changed = vi.fn()
+    renderInFrame(<BrainStrip strip={s} acct="risedtc" onChanged={changed} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }))
+    expect(await screen.findByText('The rule is already like that.')).toBeTruthy()
+    await waitFor(() => expect(changed).toHaveBeenCalledTimes(1))
+  })
+
+  it('a direction change cannot be accepted: the server says so, then only Dismiss is left', async () => {
+    const s = rise()
+    s.next_check.proposals.push({ id: 45, rule_id: 'R09-x-risedtc', name: 'Weekend posts', to_status: 'live', reason: null })
+    api.decideProposal.mockRejectedValue(Object.assign(new Error('x'), { code: 'by_hand' }))
+    const changed = vi.fn()
+    renderInFrame(<BrainStrip strip={s} acct="risedtc" onChanged={changed} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }))
+    await waitFor(() => expect(screen.getAllByText('This change has to be made by hand. Dismiss it or leave it.').length).toBeGreaterThan(0))
+    expect(screen.queryByRole('button', { name: 'Accept' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Dismiss' })).toBeTruthy()
+    expect(changed).not.toHaveBeenCalled()
+  })
+
+  it('a flip or a locked disagreement shows Dismiss only, with the reason, when the read says its kind', () => {
+    const s = rise()
+    s.next_check.proposals.push({ id: 46, rule_id: 'R09-x-risedtc', name: 'Weekend posts', to_status: 'live', reason: null, kind: 'flip' })
+    s.next_check.proposals.push({ id: 47, rule_id: 'R10-y-risedtc', name: 'No hashtags', to_status: 'live', reason: null, kind: 'locked_disagrees' })
+    s.next_check.proposals.push({ id: 48, rule_id: 'R11-z-risedtc', name: 'Add a picture', to_status: 'live', reason: null, kind: 'status' })
+    renderInFrame(<BrainStrip strip={s} acct="risedtc" />)
+    expect(screen.getAllByRole('button', { name: 'Accept' }).length).toBe(1)
+    expect(screen.getAllByRole('button', { name: 'Dismiss' }).length).toBe(3)
+    expect(screen.getAllByText('This change has to be made by hand. Dismiss it or leave it.').length).toBe(2)
+  })
+
+  it('a fast double tap fires once', async () => {
+    const s = rise()
+    s.next_check.proposals.push({ id: 49, rule_id: 'R01-image-risedtc', name: 'Add a picture', to_status: 'live', reason: null })
+    let finish!: () => void
+    api.decideProposal.mockReturnValue(new Promise<void>(r => { finish = r }))
+    renderInFrame(<BrainStrip strip={s} acct="risedtc" />)
+    const accept = screen.getByRole('button', { name: 'Accept' })
+    fireEvent.click(accept)
+    fireEvent.click(accept)
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }))
+    expect(api.decideProposal).toHaveBeenCalledTimes(1)
+    await act(async () => { finish() })
+    expect(await screen.findByText('Now following: add a picture.')).toBeTruthy()
+  })
+
+  it('Undo twice fires once, and a change that was already put back says so', async () => {
+    const s = rise()
+    s.next_check.recent.push({ rule_id: 'R01-image-risedtc', name: 'Add a picture', to_status: 'live', at: '2026-10-12T12:00:00Z', undo_token: 'tok-1' })
+    api.undoRuleChange.mockRejectedValue(Object.assign(new Error('x'), { code: 'not_open' }))
+    const changed = vi.fn()
+    renderInFrame(<BrainStrip strip={s} acct="risedtc" onChanged={changed} />)
+    const undo = screen.getByRole('button', { name: 'Undo' })
+    fireEvent.click(undo)
+    fireEvent.click(undo)
+    expect(api.undoRuleChange).toHaveBeenCalledTimes(1)
+    expect(await screen.findByText('This change was already put back. Nothing changed.')).toBeTruthy()
+    await waitFor(() => expect(changed).toHaveBeenCalledTimes(1))
+  })
+
+  it('the copy: Waiting for your OK, Changed in the last 14 days', () => {
+    const s = rise()
+    s.next_check.proposals.push({ id: 50, rule_id: 'R01-image-risedtc', name: 'Add a picture', to_status: 'live', reason: null })
+    s.next_check.recent.push({ rule_id: 'R10-hashtag-risedtc', name: 'No hashtags', to_status: 'live', at: '2026-10-10T12:00:00Z', undo_token: 'tok-2' })
+    renderInFrame(<BrainStrip strip={s} acct="risedtc" />)
+    expect(screen.getByText('Waiting for your OK')).toBeTruthy()
+    expect(screen.getByText('Changed in the last 14 days')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/Waiting for your say|Changed lately|Under watch/)
   })
 })
 
@@ -133,12 +206,36 @@ describe('Brain guesses and views', () => {
     expect(tile.querySelectorAll('circle[data-proven="false"]').length).toBe(8)
     expect(tile.querySelectorAll('.pl2-ch-grey').length).toBe(8)
     expect(within(tile).getByText(/Not proven yet\. The brain needs more of your recent posts\./)).toBeTruthy()
-    expect(within(tile).getByText('8 of 13 read')).toBeTruthy()
+    expect(within(tile).getByText('8 of 13 have a guess')).toBeTruthy()
     cleanup()
     renderInFrame(<BrainStrip strip={arch()} acct="arch" />)
     const a = document.querySelector('.pl2-t-reads') as HTMLElement
     expect(a.querySelectorAll('circle[data-small="true"]').length).toBe(8)
     expect(within(a).getByText(/8 of 8 proven on recent posts, but few examples\./)).toBeTruthy()
+  })
+
+  it('a one line legend says what the dots mean, only for the kinds on show', () => {
+    renderInFrame(<BrainStrip strip={ivan()} acct="ivan" />)
+    const iv = document.querySelector('.pl2-t-reads .pl2-leg') as HTMLElement
+    expect(iv.textContent).toBe('Not proven yet')
+    cleanup()
+    renderInFrame(<BrainStrip strip={arch()} acct="arch" />)
+    expect((document.querySelector('.pl2-t-reads .pl2-leg') as HTMLElement).textContent).toBe('Proven, but few examples')
+    cleanup()
+    renderInFrame(<BrainStrip strip={rise()} acct="risedtc" />)
+    expect((document.querySelector('.pl2-t-reads .pl2-leg') as HTMLElement).textContent).toBe('Proven on recent posts')
+  })
+
+  it('dots that would touch sit on different rows (a pile of eight does not clump)', () => {
+    const s = ivan()
+    s.reads.items = Array.from({ length: 8 }, (_, i) => ({ title: `P${i}`, x: 1.0 + (i % 3) * 0.004, lo: 0.8, hi: 1.3, proven: false, small: false }))
+    renderInFrame(<BrainStrip strip={s} acct="ivan" />)
+    const dots = [...document.querySelectorAll('.pl2-t-reads circle')].map(c => ({ x: Number(c.getAttribute('cx')), y: Number(c.getAttribute('cy')) }))
+    expect(dots.length).toBe(8)
+    for (let i = 0; i < dots.length; i++) for (let j = i + 1; j < dots.length; j++) {
+      const d = Math.hypot(dots[i].x - dots[j].x, dots[i].y - dots[j].y)
+      expect(d).toBeGreaterThanOrEqual(7)
+    }
   })
 
   it('the predictions line is under the guesses', () => {
@@ -193,8 +290,13 @@ describe('charts: size and words', () => {
     for (const [s, a] of [[ivan(), 'ivan'], [rise(), 'risedtc'], [arch(), 'arch']] as const) {
       const { container } = renderInFrame(<BrainStrip strip={s} acct={a} today="2026-10-12" />)
       // Post titles are the writers' own words; only the strip's own sentences are checked.
-      const own = [...container.querySelectorAll('.pl2-tile h3, .pl2-tile p, .pl2-rr li, .pl2-strip-src, .pl2-strip-note')].map(e => e.textContent ?? '').join('\n')
+      const own = [...container.querySelectorAll('.pl2-tile h3, .pl2-tile p, .pl2-rr li, .pl2-strip-src, .pl2-strip-note, .pl2-tile button')].map(e => e.textContent ?? '').join('\n')
       expect(own.match(BAD)).toBeNull()
+      // Buttons, aria-labels and title attributes too (the SVG hover titles of the reads carry the writers' own post titles, so those are skipped).
+      const attrs = [...container.querySelectorAll('[aria-label], [title], .pl2-tile button')].flatMap(e => [e.getAttribute('aria-label') ?? '', e.getAttribute('title') ?? '', e.tagName === 'BUTTON' ? e.textContent ?? '' : ''])
+      const svgTitles = [...container.querySelectorAll('.pl2-ch-rule title, .pl2-ch-views title')].map(e => e.textContent ?? '')
+      expect([...attrs, ...svgTitles].filter(x => BAD.test(x))).toEqual([])
+      expect(attrs.filter(Boolean).length).toBeGreaterThan(0)
       expect(container.innerHTML).not.toMatch(/NaN|undefined/)
       cleanup()
     }
