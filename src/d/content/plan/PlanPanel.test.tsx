@@ -58,7 +58,7 @@ describe('PlanPanel: the seven questions', () => {
     const week = section('Why this week').querySelector('p')!.textContent!
     expect(week).not.toBe(post)
     expect(week).toBe(weekWhy(itemsOf(r), it.week))
-    expect(week.startsWith('This week: ')).toBe(true)
+    expect(week).toMatch(/^(This week|Next week|The week after): /)
   })
 
   it('the meta line: day, time with zone, words, edited by hand', () => {
@@ -108,7 +108,7 @@ describe('PlanPanel: the seven questions', () => {
     const low = bars.filter(b => b.dataset.low === 'true')
     expect(low.map(b => b.querySelector('span')!.textContent)).toEqual(['Sounds human'])
     expect(section('Is it good').textContent).toContain('Low score: 55/80, even after a rewrite.')
-    expect(section('Is it good').textContent).toContain('Fact check against the call: failed. It will be held at publish until fixed.')
+    expect(section('Is it good').textContent).toContain('Some facts are not found in the call. It will not go out until fixed.')
   })
 
   it('a fact check with no claim count never prints a number for it', () => {

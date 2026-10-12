@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import * as PB from './planBrain'
-import { readLine, qaLine, factsLine, angleLine, dayWhy, flagsFor, ruleRow, warningOf, quoteFor, weekDays, answerOf, plainWhy, resultLine, mixLine, weekWhy, itemsOf, upcoming, lateRun, readsSummary, viewsLine, topicWord, traitLine, firstLineChecks, dimsOf, timeLabel, tzOf, reasonFor, type PlanItem, type Acct } from './planBrain'
+import { readLine, qaLine, factsLine, angleLine, dayWhy, flagsFor, ruleRow, warningOf, quoteFor, weekDays, answerOf, plainWhy, resultLine, mixLine, weekWhy, firstLines, itemsOf, upcoming, lateRun, readsSummary, viewsLine, topicWord, traitLine, firstLineChecks, dimsOf, timeLabel, tzOf, reasonFor, type PlanItem, type Acct } from './planBrain'
 import type { BrainStrip, PlanRead } from '../../../lib/contentPlan'
 import ivanFx from './fixtures/ivan.json'
 import riseFx from './fixtures/risedtc.json'
@@ -57,11 +57,11 @@ describe('qaLine / factsLine', () => {
   it('no qa', () => expect(qaLine(base())).toBeNull())
   it('facts all match / some missing', () => {
     expect(factsLine(base({ brain: brain({ facts: { pass: true, failed: 0, total: 8 } }) }))).toBe('All 8 facts match the call.')
-    expect(factsLine(base({ brain: brain({ facts: { pass: false, failed: 2, total: 8 } }) }))).toBe('2 of 8 facts not found in the call. It will be held at publish until fixed.')
+    expect(factsLine(base({ brain: brain({ facts: { pass: false, failed: 2, total: 8 } }) }))).toBe('2 of 8 facts not found in the call. It will not go out until fixed.')
   })
   it('facts with no total (today)', () => {
     expect(factsLine(base({ brain: brain({ facts: { pass: true, failed: 0, total: null } }) }))).toBe('Facts match the call.')
-    expect(factsLine(base({ brain: brain({ facts: { pass: false, failed: 3, total: null } }) }))).toBe('Fact check against the call: failed. It will be held at publish until fixed.')
+    expect(factsLine(base({ brain: brain({ facts: { pass: false, failed: 3, total: null } }) }))).toBe('Some facts are not found in the call. It will not go out until fixed.')
     expect(factsLine(base())).toBeNull()
   })
 })
@@ -217,6 +217,16 @@ describe('answerOf / plainWhy / mixLine / weekWhy / resultLine', () => {
     expect(resultLine(base(), null)).toBeNull()
   })
   it('weekWhy never repeats the post reason and uses the mix', () => expect(weekWhy([base({ evidence: [{ type: 'call', label: 'From the call on 3 Oct' }] }), base({ key: 'b', brain: brain({ flags: { lm: true, boosted: false, founder: false, carousel: false, weekend: false, failed: false, low_score: false, fact_fail: false } }) })], '2026-10-12')).toBe('This week: 1 from calls · 1 lead magnet.'))
+  it('weekWhy names the week the post sits in', () => {
+    expect(weekWhy([base({ which: 'next', week: '2026-10-19' })], '2026-10-19')).toMatch(/^Next week: /)
+    expect(weekWhy([base({ which: 'after', week: '2026-10-26' })], '2026-10-26')).toMatch(/^The week after: /)
+  })
+  it('firstLines adds the ellipsis only when the text was cut', () => {
+    expect(firstLines(base({ brain: brain({ body_head: 'A short post.' }) }))).toBe('A short post.')
+    const long = firstLines(base({ brain: brain({ body_head: 'word '.repeat(80) }) }))!
+    expect(long.endsWith('…')).toBe(true)
+    expect(long.length).toBeLessThanOrEqual(261)
+  })
   it('weekWhy differs from reasonFor on the same item', () => {
     const one = base({ evidence: [{ type: 'call', label: 'From the call on 3 Oct' }] })
     expect(weekWhy([one], one.week)).not.toBe(reasonFor(one, 'risedtc'))

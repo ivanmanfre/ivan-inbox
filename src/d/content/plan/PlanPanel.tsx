@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { setScheduleDateAt } from '../../../lib/content'
 import { moveSlotWeek, planDay, type PlanRead } from '../../../lib/contentPlan'
 import { dHash } from '../../route'
@@ -56,6 +56,15 @@ export function PlanPanel({ item, read, lane, onClose, onChanged }: Props) {
   const [moving, setMoving] = useState(false)
   const [busy, setBusy] = useState(false)
   const all = useMemo(() => itemsOf(read), [read])
+  // Keyboard focus follows the keys row: into the picker when it opens, back to "Move day" when it closes.
+  const footRef = useRef<HTMLDivElement>(null)
+  const wasMoving = useRef(false)
+  useEffect(() => {
+    const root = footRef.current
+    if (moving) root?.querySelector<HTMLElement>('button:not(:disabled)')?.focus()
+    else if (wasMoving.current) root?.querySelector<HTMLElement>('[data-verb="plan-move"]')?.focus()
+    wasMoving.current = moving
+  }, [moving])
 
   const acct = read.account as Acct
   const tz = tzOf(read)
@@ -154,8 +163,8 @@ export function PlanPanel({ item, read, lane, onClose, onChanged }: Props) {
   </div>
   const hasKeys = !!(approve || linkedin || openDraft || canMove)
   const foot = moving
-    ? <MoveDay item={item} read={read} busy={busy} onCancel={() => setMoving(false)} onPick={to => { void (item.kind === 'planned' ? moveSlot(to) : movePost(to)) }} />
-    : hasKeys ? keys : undefined
+    ? <div ref={footRef}><MoveDay item={item} read={read} busy={busy} onCancel={() => setMoving(false)} onPick={to => { void (item.kind === 'planned' ? moveSlot(to) : movePost(to)) }} /></div>
+    : hasKeys ? <div ref={footRef}>{keys}</div> : undefined
 
   return <Sheet open onClose={onClose} className="pl2-pn" label={item.title || 'Post'}
     title={<span className={`pl2-st pl2-s-${item.st}`}><i className="pl2-dot" aria-hidden="true" />{ST_WORD[item.st]}</span>}

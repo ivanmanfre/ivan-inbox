@@ -211,11 +211,12 @@
 :root[data-skin-on~='content.plan'] .d-phone .pl2-bar{font-size:14px}
 :root[data-skin-on~='content.plan'] .d-phone .pl2-res span{font-size:13px}
 :root[data-skin-on~='content.plan'] .d-phone .pl2-pn .d-sheet-f{padding:10px 20px calc(10px + env(safe-area-inset-bottom))}
-:root[data-skin-on~='content.plan'] .d-phone .pl2-pn-keys{flex-wrap:nowrap}
-:root[data-skin-on~='content.plan'] .d-phone .pl2-pn-keys > *{flex:1 1 auto;padding:0 10px}
+:root[data-skin-on~='content.plan'] .d-phone .pl2-pn-keys{flex-wrap:wrap}
+:root[data-skin-on~='content.plan'] .d-phone .pl2-pn-keys > *{flex:1 1 auto;min-width:0;padding:0 12px}
 /* A long read: an opaque surface instead of the shared phone sheet glass. */
 :root[data-skin-on~='content.plan'][data-layout='phone'] .d-sheet.d-sheet-bottom.pl2-pn{background:var(--ds-surface-1)}
-:root[data-skin-on~='content.plan'] .d-phone .pl2-mv-wks{grid-template-columns:minmax(0,1fr)}
+:root[data-skin-on~='content.plan'] .d-phone .pl2-mv-wks{grid-template-columns:repeat(3,minmax(0,1fr))}
+:root[data-skin-on~='content.plan'] .d-phone .pl2-mv-wk{padding:8px 6px}
 :root[data-skin-on~='content.plan'] .d-phone .pl2-mv-h,:root[data-skin-on~='content.plan'] .d-phone .pl2-mv-wk b{font-size:14px}
 :root[data-skin-on~='content.plan'] .d-phone .pl2-mv-d span,:root[data-skin-on~='content.plan'] .d-phone .pl2-mv-wk :is(span,small){font-size:13px}
 

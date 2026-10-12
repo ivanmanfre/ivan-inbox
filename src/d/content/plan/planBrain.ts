@@ -284,9 +284,9 @@ export function factsLine(it: PlanItem): string | null {
   if (!f) return null
   const total = fin(f.total) && f.total > 0 ? f.total : null
   if (f.pass) return total ? `All ${total} facts match the call.` : 'Facts match the call.'
-  const held = ' It will be held at publish until fixed.'
+  const held = ' It will not go out until fixed.'
   if (total && fin(f.failed)) return `${f.failed} of ${total} facts not found in the call.${held}`
-  return `Fact check against the call: failed.${held}`
+  return `Some facts are not found in the call.${held}`
 }
 
 /** The eight check scores in plain words, the weakest marked. */
@@ -366,7 +366,8 @@ export function weekWhy(items: PlanItem[], week: string): string {
   const its = items.filter(i => i.week === week)
   if (!its.length) return ''
   const mix = mixLine(its)
-  return mix ? `This week: ${mix}.` : `This week: ${its.length} post${its.length > 1 ? 's' : ''}.`
+  const lead = its[0].which === 'next' ? 'Next week' : its[0].which === 'after' ? 'The week after' : 'This week'
+  return mix ? `${lead}: ${mix}.` : `${lead}: ${its.length} post${its.length > 1 ? 's' : ''}.`
 }
 
 // ---- card face ----
@@ -476,7 +477,6 @@ export function viewsLine(strip: BrainStrip | null | undefined): string {
   return fin(m) ? `Last 90 days: ${num(m)} views on a normal post · viral = 3x that` : ''
 }
 
-/** How a published post did, next to the normal post. */
 /** Rule names inside a sentence: first letter down ("More than 50 words" becomes "more than 50 words"). */
 const lower1 = (s: string) => s.charAt(0).toLowerCase() + s.slice(1)
 const andList = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`)
@@ -562,6 +562,7 @@ export function stockRow(s: { topic: string; stock: number; used: number }): { n
   return { name, stock, used, empty, tip: empty ? `${name}: out of ideas, ${used} used in 8 weeks.` : `${name}: ${stock} ideas in stock, ${used} used in 8 weeks.` }
 }
 
+/** How a published post did, next to the normal post. */
 export function resultLine(it: PlanItem, strip: BrainStrip | null | undefined): string | null {
   const r = it.brain?.result
   if (!r) return null
@@ -665,6 +666,6 @@ export function engagedLine(it: PlanItem, acct: Acct): string | null {
 export function firstLines(it: PlanItem): string | null {
   const b = String(it.brain?.body_head ?? '').trim()
   if (!b) return null
-  const cut = b.length > FIRST_LINES_MAX - 1 ? b.slice(0, FIRST_LINES_MAX - 1).replace(/\s+\S*$/, '').trimEnd() : b
-  return `${cut}…`
+  if (b.length < FIRST_LINES_MAX - 1) return b
+  return `${b.slice(0, FIRST_LINES_MAX - 1).replace(/\s+\S*$/, '').trimEnd()}…`
 }
