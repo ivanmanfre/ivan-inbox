@@ -27,6 +27,7 @@ import {
 const MOVE_ERR: Record<string, string> = {
   past_date: 'That time has already passed. Nothing changed.',
   no_room: 'That week is full. Nothing changed.',
+  no_free_day: 'That week has no free weekday left. Nothing changed.',
   same_week: 'It is already in that week. Nothing changed.',
   out_of_horizon: 'That week is not in the plan. Nothing changed.',
   bad_week: 'That week is not in the plan. Nothing changed.',

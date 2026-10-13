@@ -74,7 +74,7 @@ export async function fetchPlan(lane: Lane, signal?: AbortSignal): Promise<PlanR
   return parsePlan(data, lane)
 }
 
-/** A refused move: the server's own code (bad_gate, not_found, bad_status, bad_week, same_week, out_of_horizon, no_room). */
+/** A refused move: the server's own code (bad_gate, not_found, bad_status, bad_week, same_week, out_of_horizon, no_room, no_free_day). */
 export class PlanMoveError extends Error {
   readonly code: string
   constructor(code: string) { super(`The plan refused the move: ${code}.`); this.name = 'PlanMoveError'; this.code = code }
