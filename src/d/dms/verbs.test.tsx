@@ -142,7 +142,8 @@ describe('DM verbs', () => {
   it('shows saved CC beside the mirror and saves edited CC before approval', async () => {
     const [t] = threads(drafted('thomas', { prospect_name: 'Thomas', client_id: 'risedtc', recipient_email: 'thomas@vmisports.com', email_mirror_text: 'Subject: VMI scan\n\nHey Thomas and Michael,', email_cc: ['michael@vmisports.com'] }))
     mount(t)
-    expect((screen.getByRole('textbox', { name: 'The email that goes with it' }) as HTMLTextAreaElement).value).toBe(t.draft!.email_mirror_text)
+    expect((screen.getByRole('textbox', { name: 'Email subject' }) as HTMLInputElement).value).toBe('VMI scan')
+    expect((screen.getByRole('textbox', { name: 'The email that goes with it' }) as HTMLTextAreaElement).value).toBe('Hey Thomas and Michael,')
     expect(screen.getByText('Email draft')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Show email' })).toBeNull()
     const cc = screen.getByRole('textbox', { name: 'CC recipients' })
@@ -152,6 +153,23 @@ describe('DM verbs', () => {
     fireEvent.click(await screen.findByText('Approve & send'))
     await waitFor(() => expect(lib.saveDraftEmailCc).toHaveBeenCalledWith(t.draft!.id, 'michael@vmisports.com, other@vmisports.com'))
     expect(vi.mocked(lib.saveDraftEmailCc).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(lib.approveDraft).mock.invocationCallOrder[0])
+  })
+
+  it('autosaves an edited email subject without approval and carries it before Send approval', async () => {
+    const [t] = threads(drafted('mathew', { prospect_name: 'Mathew', client_id: 'risedtc', recipient_email: 'mathew@fraseskin.com.au', email_mirror_text: 'Subject: Old subject\n\nHi Mathew, exact words.' }))
+    mount(t)
+    const subject = screen.getByRole('textbox', { name: 'Email subject' })
+    fireEvent.change(subject, { target: { value: 'RISE introduction for Frase Skin' } })
+    fireEvent.blur(subject)
+    await waitFor(() => expect(lib.saveDraftEmail).toHaveBeenCalledWith(t.draft!.id, 'Subject: RISE introduction for Frase Skin\n\nHi Mathew, exact words.'))
+    expect(lib.approveDraft).not.toHaveBeenCalled()
+    fireEvent.change(subject, { target: { value: 'Edited immediately before approval' } })
+    fireEvent.click(key('send'))
+    expect(lib.approveDraft).not.toHaveBeenCalled()
+    fireEvent.click(await screen.findByText('Approve & send'))
+    await waitFor(() => expect(lib.approveDraft).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(lib.saveDraftEmail).mock.calls.at(-1)).toEqual([t.draft!.id, 'Subject: Edited immediately before approval\n\nHi Mathew, exact words.'])
+    expect(vi.mocked(lib.saveDraftEmail).mock.invocationCallOrder.at(-1)).toBeLessThan(vi.mocked(lib.approveDraft).mock.invocationCallOrder[0])
   })
   it('keeps the whole draft unapproved when CC cannot be saved', async () => {
     const [t] = threads(drafted('thomas', { prospect_name: 'Thomas', client_id: 'risedtc', recipient_email: 'thomas@vmisports.com', email_mirror_text: 'Subject: VMI scan\n\nScan', email_cc: [] }))
