@@ -49,3 +49,16 @@ it('edits the subject on a paired email leg without changing its LinkedIn compan
   fireEvent.change(screen.getByRole('textbox', { name: 'Email leg subject' }), { target: { value: 'RISE introduction for Frase Skin' } })
   expect(pane.value()).toMatchObject({ main: 'LinkedIn words', companion: edited })
 })
+
+it('preserves spaces while typing a subject one character at a time', () => {
+  const t = threads([msg({ prospect_id: 'typing', channel: 'email', message_type: 'email', message_text: 'Exact body.\n' })])[0]
+  const pane = editor(t, { main: 'Exact body.\n', email: null, companion: null, cc: '' })
+  const input = screen.getByRole('textbox', { name: 'Email subject' }) as HTMLInputElement
+  const subject = 'RISE introduction for Frase Skin'
+  for (const char of subject) {
+    const next = input.value + char
+    fireEvent.change(input, { target: { value: next } })
+    expect(input.value).toBe(next)
+  }
+  expect(pane.value().main).toBe(`Subject: ${subject}\n\nExact body.\n`)
+})

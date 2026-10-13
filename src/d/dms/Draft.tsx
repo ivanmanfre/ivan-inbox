@@ -41,12 +41,12 @@ function Cc({ value, onChange, onBlur, label = 'CC recipients' }: { value: strin
 }
 
 function EmailEdit({ value, onChange, label, subjectLabel = 'Email subject', onBlur, max = 360, onKeyDown }: {
-  value: string; onChange: (text: string) => void; label: string; subjectLabel?: string; onBlur: () => void; max?: number; onKeyDown?: (e: KeyboardEvent<HTMLTextAreaElement>) => void
+  value: string; onChange: (text: string) => void; label: string; subjectLabel?: string; onBlur: () => void; max?: number; onKeyDown?: (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void
 }) {
   const { subject, body } = splitEmailDraft(value)
   return <>
     <div className="dm-email-cc dm-email-subject"><label>Subject <input aria-label={subjectLabel} type="text" autoComplete="off" data-autosave value={subject} placeholder="Add an email subject"
-      onChange={e => onChange(emailDraftText(e.target.value, body))} onBlur={onBlur} /></label></div>
+      onChange={e => onChange(emailDraftText(e.target.value, body))} onBlur={onBlur} onKeyDown={onKeyDown} /></label></div>
     <Grow value={body} onChange={text => onChange(emailDraftText(subject, text))} onBlur={onBlur} label={label} max={max} onKeyDown={onKeyDown} />
   </>
 }
@@ -78,7 +78,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
     onChange={e => onEmailDelivery?.(e.target.checked)} />Send email too{deliveryBusy && <span role="status">Saving…</span>}</label>
   const hold = holdReason(draft)
   if (v4) {
-    const sendKey = onSend ? (e: KeyboardEvent<HTMLTextAreaElement>) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onSend() } } : undefined
+    const sendKey = onSend ? (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onSend() } } : undefined
     const caveats = t.draftStale || hold || draft.email_stamp_unavailable || strips
     return (
       <div className={`dx-card${t.draftStale ? ' dx-card-stale' : ''}`}>
