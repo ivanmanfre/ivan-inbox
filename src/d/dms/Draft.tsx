@@ -1,4 +1,5 @@
 import { parseEmailCc } from '../../lib/emailCc'
+import { emailDraftText, splitEmailDraft } from '../../lib/emailSubject'
 // The draft on the tape (mock `.tape`), its email leg (`.df-leg`, Send both), the mirror email
 // rider, and the warnings today's card carries (held, email check failed, you already replied).
 // The tape IS the editor: typing saves (useAutosave); Send sends what is in it.
@@ -39,6 +40,17 @@ function Cc({ value, onChange, onBlur, label = 'CC recipients' }: { value: strin
   return <div className="dm-email-cc"><label>CC <input aria-label={label} aria-invalid={!!error} type="text" inputMode="email" autoComplete="off" value={value} placeholder="Add CC email addresses" onChange={e => onChange(e.target.value)} onBlur={onBlur} /></label>{error && <p role="alert">{error}</p>}</div>
 }
 
+function EmailEdit({ value, onChange, label, subjectLabel = 'Email subject', onBlur, max = 360, onKeyDown }: {
+  value: string; onChange: (text: string) => void; label: string; subjectLabel?: string; onBlur: () => void; max?: number; onKeyDown?: (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void
+}) {
+  const { subject, body } = splitEmailDraft(value)
+  return <>
+    <div className="dm-email-cc dm-email-subject"><label>Subject <input aria-label={subjectLabel} type="text" autoComplete="off" data-autosave value={subject} placeholder="Add an email subject"
+      onChange={e => onChange(emailDraftText(e.target.value, body))} onBlur={onBlur} onKeyDown={onKeyDown} /></label></div>
+    <Grow value={body} onChange={text => onChange(emailDraftText(subject, text))} onBlur={onBlur} label={label} max={max} onKeyDown={onKeyDown} />
+  </>
+}
+
 const SAVE_WORD: Record<SaveState, string> = { idle: '', saving: 'Saving…', saved: 'Saved', failed: 'Not saved' }
 
 /** The draft is the last bubble of the conversation, on our side, and it IS the editor (Ivan 09-27:
@@ -66,7 +78,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
     onChange={e => onEmailDelivery?.(e.target.checked)} />Send email too{deliveryBusy && <span role="status">Saving…</span>}</label>
   const hold = holdReason(draft)
   if (v4) {
-    const sendKey = onSend ? (e: KeyboardEvent<HTMLTextAreaElement>) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onSend() } } : undefined
+    const sendKey = onSend ? (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onSend() } } : undefined
     const caveats = t.draftStale || hold || draft.email_stamp_unavailable || strips
     return (
       <div className={`dx-card${t.draftStale ? ' dx-card-stale' : ''}`}>
@@ -87,7 +99,8 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
           onClick={e => { if (!(e.target as HTMLElement).closest('textarea,input,button,a')) e.currentTarget.querySelector<HTMLTextAreaElement>('textarea.dm-edit')?.focus() }}>
           {email && draft.recipient_email && <p className="dm-meta">Email to {draft.recipient_email} (from {emailRowSender(t.client_id)})</p>}
           {email && draft.recipient_email && <Cc value={edits.cc ?? ''} onChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} />}
-          <Grow value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" onKeyDown={sendKey} />
+          {email ? <EmailEdit value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" onKeyDown={sendKey} />
+            : <Grow value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" onKeyDown={sendKey} />}
         </div>
         {comp && (
           <div className="dm-leg dx-leg">
@@ -96,7 +109,8 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
               <span>{messageChannel(comp) === 'email' ? `from ${emailRowSender(t.client_id)}` : 'rides with the draft'}</span>
             </div>
             {messageChannel(comp) === 'email' && comp.recipient_email && <Cc value={edits.companionCc ?? ''} onChange={companionCc => setEdits({ ...edits, companionCc })} onBlur={onBlur} label="Email leg CC recipients" />}
-            <Grow value={edits.companion ?? ''} onChange={companion => setEdits({ ...edits, companion })} onBlur={onBlur} label="The other leg" max={360} onKeyDown={sendKey} />
+            {messageChannel(comp) === 'email' ? <EmailEdit value={edits.companion ?? ''} onChange={companion => setEdits({ ...edits, companion })} onBlur={onBlur} label="The other leg" subjectLabel="Email leg subject" onKeyDown={sendKey} />
+              : <Grow value={edits.companion ?? ''} onChange={companion => setEdits({ ...edits, companion })} onBlur={onBlur} label="The other leg" max={360} onKeyDown={sendKey} />}
             <Explain inset v4 messageId={comp.id} messageText={comp.message_text} editedText={edits.companion ?? comp.message_text}
               evidence={comp.draft_evidence} unavailable={comp.draft_evidence_unavailable} onRetry={onRetry} />
           </div>
@@ -116,7 +130,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
             </div>
             <Cc value={edits.cc ?? ''} onChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} />
             {draft.email_mirror_text && <>
-              <Grow value={edits.email ?? ''} onChange={e => setEdits({ ...edits, email: e })} onBlur={onBlur} label="The email that goes with it" max={360} onKeyDown={sendKey} />
+              <EmailEdit value={edits.email ?? ''} onChange={e => setEdits({ ...edits, email: e })} onBlur={onBlur} label="The email that goes with it" onKeyDown={sendKey} />
               <Explain inset v4 messageId={`${draft.id}:email`} messageText={draft.email_mirror_text} editedText={edits.email ?? draft.email_mirror_text}
                 evidence={draft.draft_evidence?.email} unavailable={draft.draft_evidence_unavailable} onRetry={onRetry} />
             </>}
@@ -141,7 +155,8 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
         </div>
         {email && draft.recipient_email && <p className="dm-meta">Email to {draft.recipient_email} (from {emailRowSender(t.client_id)})</p>}
         {email && draft.recipient_email && <Cc value={edits.cc ?? ''} onChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} />}
-        <Grow value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" />
+        {email ? <EmailEdit value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" />
+          : <Grow value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" />}
       </div>
       {comp && (
         <div className="dm-leg">
@@ -150,7 +165,8 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
             <span>{messageChannel(comp) === 'email' ? `from ${emailRowSender(t.client_id)}` : 'rides with the draft'}</span>
           </div>
           {messageChannel(comp) === 'email' && comp.recipient_email && <Cc value={edits.companionCc ?? ''} onChange={companionCc => setEdits({ ...edits, companionCc })} onBlur={onBlur} label="Email leg CC recipients" />}
-          <Grow value={edits.companion ?? ''} onChange={companion => setEdits({ ...edits, companion })} onBlur={onBlur} label="The other leg" max={360} />
+          {messageChannel(comp) === 'email' ? <EmailEdit value={edits.companion ?? ''} onChange={companion => setEdits({ ...edits, companion })} onBlur={onBlur} label="The other leg" subjectLabel="Email leg subject" />
+            : <Grow value={edits.companion ?? ''} onChange={companion => setEdits({ ...edits, companion })} onBlur={onBlur} label="The other leg" max={360} />}
           <Explain inset messageId={comp.id} messageText={comp.message_text} editedText={edits.companion ?? comp.message_text}
             evidence={comp.draft_evidence} unavailable={comp.draft_evidence_unavailable} onRetry={onRetry} />
         </div>
@@ -170,7 +186,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
           </div>
           <Cc value={edits.cc ?? ''} onChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} />
           {draft.email_mirror_text && <>
-            <Grow value={edits.email ?? ''} onChange={e => setEdits({ ...edits, email: e })} onBlur={onBlur} label="The email that goes with it" max={360} />
+            <EmailEdit value={edits.email ?? ''} onChange={e => setEdits({ ...edits, email: e })} onBlur={onBlur} label="The email that goes with it" />
             <Explain inset messageId={`${draft.id}:email`} messageText={draft.email_mirror_text} editedText={edits.email ?? draft.email_mirror_text}
               evidence={draft.draft_evidence?.email} unavailable={draft.draft_evidence_unavailable} onRetry={onRetry} />
           </>}
