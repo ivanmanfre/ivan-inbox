@@ -5,7 +5,8 @@
 // Deployed with --no-verify-jwt for that reason.
 //
 // One proxy call per due idea (content_plan_quotes_due: plan-horizon ideas whose
-// cached English is missing or stale). A refused, empty or failed answer writes
+// cached English is missing or stale), then per due client draft
+// (content_plan_draft_quotes_due, db/269: client panels show source_detail.quote_en). A refused, empty or failed answer writes
 // nothing; content_plan_quote_save only writes while the source quote is unchanged.
 // Quote text and keys are never logged.
 // No supabase-js: on 2026-10-12 the server-side bundler answered "internal error" for
@@ -54,7 +55,15 @@ Deno.serve(async (req) => {
 
   const { data: due, ok: dueOk } = await rest('rpc/content_plan_quotes_due', { p_limit: 20 })
   if (!dueOk) return err(500, 'due_read_failed')
-  const rows = (due ?? []) as { idea_id: string; src: string }[]
+  const { data: dueDrafts, ok: draftsOk } = await rest('rpc/content_plan_draft_quotes_due', { p_limit: 20 })
+  if (!draftsOk) return err(500, 'due_read_failed')
+  type Row = { save: string; args: Record<string, string>; src: string }
+  const rows: Row[] = [
+    ...((due ?? []) as { idea_id: string; src: string }[])
+      .map((r) => ({ save: 'content_plan_quote_save', args: { p_idea: r.idea_id }, src: r.src })),
+    ...((dueDrafts ?? []) as { draft_id: string; src: string }[])
+      .map((r) => ({ save: 'content_plan_draft_quote_save', args: { p_draft: r.draft_id }, src: r.src })),
+  ]
 
   const started = Date.now()
   let saved = 0
@@ -62,7 +71,7 @@ Deno.serve(async (req) => {
   const reasons: Record<string, number> = {}
   const skip = (why: string) => { skipped++; reasons[why] = (reasons[why] ?? 0) + 1 }
 
-  async function one(row: { idea_id: string; src: string }) {
+  async function one(row: Row) {
     if (Date.now() - started > BUDGET_MS) return skip('budget')
     const ctl = new AbortController()
     const timer = setTimeout(() => ctl.abort(), CALL_TIMEOUT_MS)
@@ -82,7 +91,7 @@ Deno.serve(async (req) => {
       clearTimeout(timer)
     }
     if (!answer) return skip('refused_or_empty')
-    const { data: wrote, ok } = await rest('rpc/content_plan_quote_save', { p_idea: row.idea_id, p_src: row.src, p_en: answer })
+    const { data: wrote, ok } = await rest(`rpc/${row.save}`, { ...row.args, p_src: row.src, p_en: answer })
     if (!ok) return skip('save_failed')
     if (wrote === true) saved++
     else skip('source_changed')
