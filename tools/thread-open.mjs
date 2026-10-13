@@ -80,9 +80,14 @@ try {
       const messages = new Map(), pendingReads = new Set(), failedReads = []
       let successfulReads = 0
       let clickedId = null, readStamps = 0
+      // Where the DMs page reads messages: the inbox_messages_v GET view (the newest page), and the read-only GET RPCs
+      // inbox_phone_first_rows_r2 (the priority rows, src/lib/inboxLoad.ts) and inbox_phone_messages_page_r2 (the older
+      // pages, src/lib/inbox.ts fetchMessages). All three return full inbox_messages_v rows, so one parser covers them;
+      // a conversation's history can sit in any of them.
+      const messageReads = ['/rest/v1/inbox_messages_v', '/rest/v1/outreach_messages', '/rest/v1/rpc/inbox_phone_first_rows_r2', '/rest/v1/rpc/inbox_phone_messages_page_r2']
       const isMessageGet = req => {
         const url = new URL(req.url())
-        return req.method() === 'GET' && url.hostname === 'bjbvqvzbzczjbatgmccb.supabase.co' && ['/rest/v1/inbox_messages_v', '/rest/v1/outreach_messages'].includes(url.pathname)
+        return req.method() === 'GET' && url.hostname === 'bjbvqvzbzczjbatgmccb.supabase.co' && messageReads.includes(url.pathname)
       }
       // Installed before navigation: includes the cold-load preload, not just
       // requests caused by opening the pane. Bodies stay in this context's memory.
