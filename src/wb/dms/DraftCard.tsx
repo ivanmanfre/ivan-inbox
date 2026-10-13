@@ -102,7 +102,7 @@ export function DraftCard({ thread, onOpenThread, refresh }: {
     setBusy(true)
     setError(null)
     try {
-      await approveDraft(draft.id, draft.message_text, threadChatId(thread))
+      await approveDraft(draft.id, draft.message_text, threadChatId(thread), draft)
       refresh()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not approve draft')

@@ -1160,6 +1160,7 @@ export type DraftEvidenceFact = { id: string; fact: string; topic: string; at: s
 export type DraftEvidenceExemplar = { they: string | null; reply: string | null; at: string | null; prospect: string | null }
 export type DraftEvidence = {
   scheduled_send?: { at: string; timezone: string; state?: string }
+  email_subject?: string | null
   email_cc?: string[] | null
   email_delivery_recipient?: string | null
   // Stall Bump (2026-09-24): the prospect opened the scan on this many distinct days and has not
@@ -1314,7 +1315,12 @@ export function threadChatId(t: Thread): string | null {
 // moved after approval, and re-approving after reading the thread is the whole
 // recovery path. Approving clears the block so the row leaves the ops failed
 // list and a later bounce starts clean.
-export async function approveDraft(id: string, editedText: string, chatId?: string | null): Promise<void> {
+export function reviewedEmailMirror(draft: Pick<InboxMessage, 'email_mirror_text'>, editedEmail: string): string | null {
+  return draft.email_mirror_text == null ? null : editedEmail
+}
+
+export async function approveDraft(id: string, editedText: string, chatId?: string | null,
+  snapshot?: Pick<InboxMessage, 'email_mirror_text' | 'recipient_email' | 'email_cc' | 'draft_evidence'>): Promise<void> {
   const { data: draft, error: readError } = await supabase.from('outreach_messages')
     .select('ai_model,draft_evidence').eq('id', id).single()
   if (readError) throw readError
@@ -1330,6 +1336,10 @@ export async function approveDraft(id: string, editedText: string, chatId?: stri
   const { error } = await supabase.rpc('approve_inbox_pipeline_draft', {
     p_message_id: id, p_text: editedText,
     p_expected_evidence: draft?.draft_evidence ?? null, p_chat_id: chatId ?? null,
+    p_expected_email_mirror_text: snapshot?.email_mirror_text ?? null,
+    p_expected_recipient_email: snapshot?.recipient_email ?? null,
+    p_expected_email_subject: snapshot?.draft_evidence?.email_subject ?? null,
+    p_expected_email_cc: snapshot?.email_cc ?? snapshot?.draft_evidence?.email_cc ?? null,
   })
   if (error) throw error
 }

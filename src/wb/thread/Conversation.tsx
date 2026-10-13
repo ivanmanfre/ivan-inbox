@@ -30,7 +30,7 @@ import { useConfirm } from '../chrome/ConfirmSheet'
 import { formatReturn, returnsIn, usePushLater } from '../../lib/pushLater'
 import {
   approveDraft, channelFamilies, canComposeEmail, composeReply, discardLegs, draftLegs, legFailureText, holdReason, isEngineRetired, isHiddenRetired, retiredLabel, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
-  saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
+  reviewedEmailMirror, saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId, emailRowSender, ladderSteps, sendFailed,
   offersReplyMyself, REPLY_MYSELF, type DiscardMode,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../../lib/inbox'
@@ -290,7 +290,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
       if (draft.email_mirror_text != null && editedEmail !== draft.email_mirror_text) {
         await saveDraftEmail(draft.id, editedEmail)
       }
-      await approveDraft(draft.id, edited, threadChatId(thread))
+      await approveDraft(draft.id, edited, threadChatId(thread), { ...draft, email_mirror_text: reviewedEmailMirror(draft, editedEmail) })
       // The other leg is a SEPARATE row, so it is a separate approve — and the
       // first one has already gone. A failure here is reported as the half-send it
       // is, naming the leg that is still sitting there, rather than as "approve
@@ -299,7 +299,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
         try {
           await approveDraft(
             companion.id, editedCompanion,
-            messageChannel(companion) === 'email' ? null : threadChatId(thread),
+            messageChannel(companion) === 'email' ? null : threadChatId(thread), companion,
           )
         } catch (e2) {
           setDraftErr(`The ${legName(draft)} is queued, but the ${legName(companion)} `

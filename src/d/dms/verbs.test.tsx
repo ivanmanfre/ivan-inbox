@@ -153,6 +153,9 @@ describe('DM verbs', () => {
     fireEvent.click(await screen.findByText('Approve & send'))
     await waitFor(() => expect(lib.saveDraftEmailCc).toHaveBeenCalledWith(t.draft!.id, 'michael@vmisports.com, other@vmisports.com'))
     expect(vi.mocked(lib.saveDraftEmailCc).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(lib.approveDraft).mock.invocationCallOrder[0])
+    expect(vi.mocked(lib.approveDraft).mock.calls[0][3]).toMatchObject({
+      recipient_email: 'thomas@vmisports.com', email_cc: ['michael@vmisports.com', 'other@vmisports.com'],
+    })
   })
 
   it('autosaves an edited email subject without approval and carries it before Send approval', async () => {
@@ -170,6 +173,7 @@ describe('DM verbs', () => {
     await waitFor(() => expect(lib.approveDraft).toHaveBeenCalledTimes(1))
     expect(vi.mocked(lib.saveDraftEmail).mock.calls.at(-1)).toEqual([t.draft!.id, 'Subject: Edited immediately before approval\n\nHi Mathew, exact words.'])
     expect(vi.mocked(lib.saveDraftEmail).mock.invocationCallOrder.at(-1)).toBeLessThan(vi.mocked(lib.approveDraft).mock.invocationCallOrder[0])
+    expect(vi.mocked(lib.approveDraft).mock.calls[0][3]?.email_mirror_text).toBe('Subject: Edited immediately before approval\n\nHi Mathew, exact words.')
   })
   it('keeps the whole draft unapproved when CC cannot be saved', async () => {
     const [t] = threads(drafted('thomas', { prospect_name: 'Thomas', client_id: 'risedtc', recipient_email: 'thomas@vmisports.com', email_mirror_text: 'Subject: VMI scan\n\nScan', email_cc: [] }))
@@ -186,7 +190,7 @@ describe('DM verbs', () => {
     mount(t)
     fireEvent.click(key('send'))
     fireEvent.click(await screen.findByText('Approve & send'))
-    await waitFor(() => expect(lib.approveDraft).toHaveBeenCalledWith(t.draft!.id, t.draft!.message_text, 'chat1'))
+    await waitFor(() => expect(lib.approveDraft).toHaveBeenCalledWith(t.draft!.id, t.draft!.message_text, 'chat1', expect.objectContaining({ id: t.draft!.id })))
   })
 
   it('Send both approves both legs; the email leg without a chat id', async () => {
@@ -199,7 +203,8 @@ describe('DM verbs', () => {
     fireEvent.click(key('send'))
     fireEvent.click(await screen.findByText('Approve & send both'))
     await waitFor(() => expect(lib.approveDraft).toHaveBeenCalledTimes(2))
-    expect(vi.mocked(lib.approveDraft).mock.calls[1]).toEqual([t.companionDraft!.id, 'Email leg', null])
+    expect(vi.mocked(lib.approveDraft).mock.calls[1]).toEqual([t.companionDraft!.id, 'Email leg', null,
+      expect.objectContaining({ id: t.companionDraft!.id, recipient_email: 's@x.com' })])
   })
 
   it('Holding Send never skips the confirm (today always asks)', async () => {

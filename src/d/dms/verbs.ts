@@ -100,13 +100,18 @@ export function useDmVerbs(ctx: VerbCtx) {
         await saveCcs(t, ed)
         // Email first: approveDraft stamps approved_at and the email save guards on it being null.
         if (draft.email_mirror_text != null && ed.email != null && ed.email !== draft.email_mirror_text) await saveDraftEmail(draft.id, ed.email)
-        await approveDraft(draft.id, ed.main, threadChatId(t))
+        await approveDraft(draft.id, ed.main, threadChatId(t), {
+          ...draft, email_mirror_text: ed.email ?? draft.email_mirror_text,
+          email_cc: ed.cc === undefined ? draft.email_cc : parseEmailCc(ed.cc),
+        })
       } catch (e) { const m = errText(e); fail(`Not sent: ${m}`); return m }
       ctx.patch([draft.id], { approved_at: new Date().toISOString() })
       let half: string | null = null
       if (comp) {
         try {
-          await approveDraft(comp.id, ed.companion ?? comp.message_text, messageChannel(comp) === 'email' ? null : threadChatId(t))
+          await approveDraft(comp.id, ed.companion ?? comp.message_text, messageChannel(comp) === 'email' ? null : threadChatId(t), {
+            ...comp, email_cc: ed.companionCc === undefined ? comp.email_cc : parseEmailCc(ed.companionCc),
+          })
           ctx.patch([comp.id], { approved_at: new Date().toISOString() })
         } catch (e) {
           half = `The ${legName(draft)} is queued, but the ${legName(comp)} did not go through: ${errText(e)} It is still waiting here.`

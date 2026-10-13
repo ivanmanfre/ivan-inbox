@@ -13,7 +13,7 @@ beforeEach(async () => {
       id uuid primary key, direction text, message_type text, ai_model text,
       message_text text, sent_at timestamptz, approved_at timestamptz,
       unipile_message_id text, unipile_chat_id text, send_blocked_reason text,
-      send_blocked_at timestamptz, draft_evidence jsonb
+      send_blocked_at timestamptz, draft_evidence jsonb, email_mirror_text text, recipient_email text
     );
     grant usage on schema public to authenticated, anon;
     grant select, update on outreach_messages to authenticated;
@@ -24,10 +24,15 @@ beforeEach(async () => {
     values ($1,'outbound','dm','arch_reply_draft_v2','Original','existing-chat',$2::jsonb)`, [id, JSON.stringify(evidence)])
   const path = 'db/20261002_inbox_pipeline_approval.sql'
   if (existsSync(path)) await db.exec(readFileSync(path, 'utf8'))
+  const emailReceipt = 'db/20261013_inbox_email_approval_receipt.sql'
+  if (existsSync(emailReceipt)) await db.exec(readFileSync(emailReceipt, 'utf8'))
 })
 afterEach(async () => { await db.close() })
 const approve = (expected: unknown = evidence, chat: string | null = null) => db.query(
   'select approve_inbox_pipeline_draft($1,$2,$3::jsonb,$4)', [id, 'Reviewed PC games reply', expected == null ? null : JSON.stringify(expected), chat])
+const approveEmail = (expected: unknown, mirror: string, recipient: string, subject: string, cc: string[]) => db.query(
+  'select approve_inbox_pipeline_draft($1,$2,$3::jsonb,$4,$5,$6,$7,$8::jsonb)',
+  [id, 'Reviewed PC games reply', JSON.stringify(expected), null, mirror, recipient, subject, JSON.stringify(cc)])
 const row = async () => (await db.query<Record<string, any>>('select * from outreach_messages')).rows[0]
 
 it('approves large evidence atomically under the existing authenticated RLS policy', async () => {
@@ -75,4 +80,37 @@ it('does not bypass row-level security', async () => {
 it('does not allow anonymous approval', async () => {
   await db.exec('set role anon')
   await expect(approve()).rejects.toThrow(/permission denied/i)
+})
+
+it('binds reviewed email body, recipient, subject and CC to the atomic approval', async () => {
+  await db.query(`update outreach_messages set email_mirror_text=$1,recipient_email=$2,
+    draft_evidence=draft_evidence || $3::jsonb`, ['Hi Mathew,\n\nHere is our introduction.', 'mathew@example.com',
+    JSON.stringify({ email_subject: 'RISE DTC x Frase Skin', email_cc: ['colleague@example.com'] })])
+  const before = await row()
+  await approveEmail(before.draft_evidence, before.email_mirror_text, 'mathew@example.com', 'RISE DTC x Frase Skin', ['colleague@example.com'])
+  const approved = await row()
+  expect(approved.draft_evidence.operator_copy_approval).toMatchObject({
+    source: 'inbox', text: 'Reviewed PC games reply', email_mirror_text: 'Hi Mathew,\n\nHere is our introduction.',
+    recipient_email: 'mathew@example.com', email_subject: 'RISE DTC x Frase Skin', email_cc: ['colleague@example.com']
+  })
+  await db.query(`update outreach_messages set email_mirror_text='Changed after approval',recipient_email='other@example.com'`)
+  expect((await row()).draft_evidence.operator_copy_approval).toEqual(approved.draft_evidence.operator_copy_approval)
+})
+it.each([
+  ['mirror', "email_mirror_text='Changed while confirmation was open'"],
+  ['recipient', "recipient_email='other@example.com'"],
+  ['subject', "draft_evidence=jsonb_set(draft_evidence,'{email_subject}','\"Changed\"'::jsonb)"],
+  ['CC', "draft_evidence=jsonb_set(draft_evidence,'{email_cc}','[\"other@example.com\"]'::jsonb)"],
+])('refuses a stale displayed email %s', async (_field, change) => {
+  await db.query(`update outreach_messages set email_mirror_text='Reviewed email',recipient_email='mathew@example.com',
+    draft_evidence=draft_evidence || '{"email_subject":"Reviewed subject","email_cc":["colleague@example.com"]}'::jsonb`)
+  const displayed = await row()
+  await db.exec(`update outreach_messages set ${change}`)
+  await expect(approveEmail((await row()).draft_evidence, displayed.email_mirror_text, displayed.recipient_email,
+    displayed.draft_evidence.email_subject, displayed.draft_evidence.email_cc)).rejects.toThrow(/changed|refresh/i)
+  expect((await row()).approved_at).toBeNull()
+})
+it('refuses the legacy four-argument approval for a row with an email leg', async () => {
+  await db.exec("update outreach_messages set email_mirror_text='Email',recipient_email='mathew@example.com'")
+  await expect(approve()).rejects.toThrow(/changed|refresh/i)
 })

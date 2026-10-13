@@ -4,11 +4,15 @@ vi.mock('./supabase', () => ({ supabase: {
   rpc: db.rpc,
   from: () => ({ select: () => ({ eq: () => ({ single: db.read }) }), update: db.update }),
 } }))
-import { approveDraft } from './inbox'
+import { approveDraft, reviewedEmailMirror } from './inbox'
 beforeEach(() => {
   vi.clearAllMocks()
   db.read.mockResolvedValue({ data: { ai_model: 'inbox_on_demand_reply' }, error: null })
   db.rpc.mockResolvedValue({ error: null })
+})
+it('keeps the absent email mirror null while building a thread approval snapshot', () => {
+  expect(reviewedEmailMirror({ email_mirror_text: null }, '')).toBeNull()
+  expect(reviewedEmailMirror({ email_mirror_text: 'Stored email' }, 'Edited email')).toBe('Edited email')
 })
 it('sends on-demand approval through the atomic ownership RPC', async () => {
   await approveDraft('draft-id', 'Reviewed text', 'existing-chat')
@@ -34,14 +38,28 @@ it('routes pipeline approval through the guarded RPC with its current evidence',
   await approveDraft('pipeline-draft', 'Reviewed pipeline reply', 'chat')
   expect(db.rpc).toHaveBeenCalledWith('approve_inbox_pipeline_draft', {
     p_message_id: 'pipeline-draft', p_text: 'Reviewed pipeline reply', p_expected_evidence: evidence, p_chat_id: 'chat',
+    p_expected_email_mirror_text: null, p_expected_recipient_email: null, p_expected_email_subject: null, p_expected_email_cc: null,
   })
   expect(db.update).not.toHaveBeenCalled()
+})
+it('passes the email snapshot shown at confirmation in the RPC body', async () => {
+  const evidence = { email_subject: 'Reviewed subject', email_cc: ['copy@example.com'] }
+  db.read.mockResolvedValue({ data: { ai_model: 'arch_reply_draft_v2', draft_evidence: evidence }, error: null })
+  await approveDraft('email-draft', 'Reviewed DM', null, {
+    email_mirror_text: 'Reviewed email', recipient_email: 'to@example.com',
+    draft_evidence: evidence, email_cc: ['copy@example.com'],
+  })
+  expect(db.rpc).toHaveBeenCalledWith('approve_inbox_pipeline_draft', expect.objectContaining({
+    p_expected_email_mirror_text: 'Reviewed email', p_expected_recipient_email: 'to@example.com',
+    p_expected_email_subject: 'Reviewed subject', p_expected_email_cc: ['copy@example.com'],
+  }))
 })
 it('passes absent evidence and chat as SQL null', async () => {
   db.read.mockResolvedValue({ data: { ai_model: 'arch_reply_draft_v2', draft_evidence: null }, error: null })
   await approveDraft('draft', 'Reviewed reply')
   expect(db.rpc).toHaveBeenCalledWith('approve_inbox_pipeline_draft', {
     p_message_id: 'draft', p_text: 'Reviewed reply', p_expected_evidence: null, p_chat_id: null,
+    p_expected_email_mirror_text: null, p_expected_recipient_email: null, p_expected_email_subject: null, p_expected_email_cc: null,
   })
 })
 it('surfaces a concurrent metadata change without falling back to an unguarded approval', async () => {
