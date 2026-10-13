@@ -85,7 +85,8 @@ describe('inline draft edit', () => {
     fireEvent.change(document.querySelector('.dm-edit')!, { target: { value: 'Final words' } })
     fireEvent.click(key('send'))
     fireEvent.click(await screen.findByText('Approve & send'))
-    await waitFor(() => expect(lib.approveDraft).toHaveBeenCalledWith(t.draft!.id, 'Final words', 'ch'))
+    await waitFor(() => expect(lib.approveDraft).toHaveBeenCalledWith(t.draft!.id, 'Final words', 'ch',
+      expect.objectContaining({ email_mirror_text: undefined })))
     await vi.advanceTimersByTimeAsync(AUTOSAVE_MS + 50)
     expect(lib.saveDraftText).not.toHaveBeenCalled()
   })
