@@ -47,7 +47,7 @@ function Card({ it, acct, tz, strip, late, describedBy, bind, onOpen }: CardProp
   const reason = thumb ? null : reasonFor(it, acct)
   const flags = flagsFor(it, strip, acct)
   // A waiting card moved to today already says its day in its header; "No day yet" would contradict it.
-  const time = it.suggested ? (late ? '' : 'No day yet') : timeLabel(it, tz)
+  const time = it.suggested ? (late ? '' : 'Suggested day') : timeLabel(it, tz)
   return <button type="button" className={`pl2-card pl2-s-${it.st}${it.suggested ? ' pl2-sugg' : ''}${late ? ' pl2-card-late' : ''}`}
     data-plan-key={it.key} data-verb="plan-card" aria-describedby={describedBy} onClick={() => onOpen(it)} {...bind}>
     {late && <span className="pl2-late-l">{late}</span>}
@@ -117,7 +117,7 @@ export function PlanWeeks({ read, items, today, onOpen, hover = true }: { read: 
             {Array.from({ length: Math.max(target, count) }, (_, k) => <i key={k} className={k < count ? 'pl2-on' : undefined}
               style={{ '--pl2-d': `${level === 'off' ? 0 : Math.min((seg0 + k) * STAGGER_MS, STAGGER_CAP_MS)}ms` } as CSSProperties} />)}
           </span>
-          <span className="pl2-wk-n">{count} of {target}</span>
+          <span className="pl2-wk-n">{count > target ? `${count} posts, plan says ${target}` : `${count} of ${target}`}</span>
           {mix && <span className="pl2-wk-mix">{mix}</span>}
         </div>
         <div className="pl2-grid" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}>

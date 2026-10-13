@@ -46,7 +46,7 @@ describe('BrainStrip tiles', () => {
   it('says when the data is not clear, and when a rule did not hold on the newest posts', () => {
     renderInFrame(<BrainStrip strip={ivan()} acct="ivan" />)
     expect(screen.getByText('your rule, not clear in the data')).toBeTruthy()
-    expect(screen.getAllByText(/did not hold on the newest posts, kept because you set it/i).length).toBe(2)
+    expect(screen.getAllByText(/Newest posts do not show this\. Kept because it is your rule/i).length).toBe(2)
   })
 
   it('never renders a zz- test rule', () => {
@@ -205,13 +205,13 @@ describe('Brain guesses and views', () => {
     const tile = document.querySelector('.pl2-t-reads') as HTMLElement
     expect(tile.querySelectorAll('circle[data-proven="false"]').length).toBe(8)
     expect(tile.querySelectorAll('.pl2-ch-grey').length).toBe(8)
-    expect(within(tile).getByText(/Not proven yet\. The brain needs more of your recent posts\./)).toBeTruthy()
+    expect(within(tile).getByText(/No guess uses a proven rule yet\. The brain needs more of your recent posts\./)).toBeTruthy()
     expect(within(tile).getByText('8 of 13 have a guess')).toBeTruthy()
     cleanup()
     renderInFrame(<BrainStrip strip={arch()} acct="arch" />)
     const a = document.querySelector('.pl2-t-reads') as HTMLElement
     expect(a.querySelectorAll('circle[data-small="true"]').length).toBe(8)
-    expect(within(a).getByText(/8 of 8 proven on recent posts, but few examples\./)).toBeTruthy()
+    expect(within(a).getByText(/8 of 8 guesses use rules that held on recent posts, but few examples\./)).toBeTruthy()
   })
 
   it('a one line legend says what the dots mean, only for the kinds on show', () => {
@@ -240,7 +240,7 @@ describe('Brain guesses and views', () => {
 
   it('the predictions line is under the guesses', () => {
     renderInFrame(<BrainStrip strip={ivan()} acct="ivan" />)
-    expect(screen.getByText(/Predictions start at 20 measured posts: Ivan 17 of 20\./)).toBeTruthy()
+    expect(screen.getByText(/View guesses start at 20 posts with results\. Ivan has 17\./)).toBeTruthy()
   })
 
   it('views: a normal-post line, a 3x line, hollow young dots, the footer', () => {

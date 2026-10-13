@@ -95,12 +95,12 @@ describe('PlanWeeks', () => {
     expect(w[2].querySelectorAll('.pl2-free').length).toBe(1)
   })
 
-  it('a planned slot card is dashed and says No day yet', () => {
+  it('a planned slot card is dashed and says Suggested day', () => {
     show(rise())
     const c = card(/If a channel can't grow/)
     expect(c.classList.contains('pl2-sugg')).toBe(true)
     expect(c.querySelector('.pl2-st')!.textContent).toBe('Waiting for your OK')
-    expect(c.querySelector('.pl2-time')!.textContent).toBe('No day yet')
+    expect(c.querySelector('.pl2-time')!.textContent).toBe('Suggested day')
     expect(c.closest<HTMLElement>('.pl2-dcol')!.dataset.day).toBe('2026-10-23')
     const dated = card(/Elemental Air/)
     expect(dated.classList.contains('pl2-sugg')).toBe(false)
@@ -142,11 +142,11 @@ describe('PlanWeeks', () => {
     expect(top.classList.contains('pl2-card-late')).toBe(true)
     expect(top.textContent).toContain('Waiting since Fri 9 Oct')
     expect(top.textContent).toContain("If a channel can't grow")
-    expect(top.textContent).not.toContain('No day yet')
+    expect(top.textContent).not.toContain('Suggested day')
     expect(screen.getAllByText(/If a channel can't grow/).length).toBe(1)
     // The meter and n count what each row draws: the moved post counts in this week, not in next week.
     const [a, b] = weeks()
-    expect(a.querySelector('.pl2-wk-n')!.textContent).toBe('6 of 5')
+    expect(a.querySelector('.pl2-wk-n')!.textContent).toBe('6 posts, plan says 5')
     expect(a.querySelectorAll('.pl2-meter i.pl2-on').length).toBe(6)
     expect(b.querySelector('.pl2-wk-n')!.textContent).toBe('4 of 5')
     expect(b.querySelectorAll('.pl2-dcol .pl2-card').length).toBe(4)

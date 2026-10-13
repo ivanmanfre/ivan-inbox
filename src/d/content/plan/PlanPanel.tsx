@@ -9,7 +9,7 @@ import type { Lane } from '../model'
 import { FlagChip, GuessBlock } from './PlanList'
 import { MoveDay } from './MoveDay'
 import {
-  ACCT_NAME, NO_DAY_LINE, ST_WORD, angleLine, briefLine, dayWhy, dimsOf, engagedLine, factsLine, firstLineChecks, firstLines, flagsFor,
+  ACCT_NAME, NO_DAY_LINE, ST_WORD, angleLine, briefLine, dayWhy, dimsNote, dimsOf, engagedLine, factsLine, firstLineChecks, firstLines, flagsFor,
   itemsOf, metaLine, photoLine, qaLine, quoteFor, reasonFor, replacedLine, shapeLine, sourceLine, traitLine, tzOf, weekWhy, writerRuleLine,
   type Acct, type PlanItem,
 } from './planBrain'
@@ -88,6 +88,7 @@ export function PlanPanel({ item, read, lane, onClose, onChanged }: Props) {
   const qa = qaLine(item)
   const facts = factsLine(item)
   const dims = dimsOf(item)
+  const dimsWhy = dims.length > 0 ? dimsNote(item) : null
   // 7. How it did
   const res = b?.result ?? null
   const median = strip?.views?.median
@@ -181,13 +182,14 @@ export function PlanPanel({ item, read, lane, onClose, onChanged }: Props) {
           {quote && <blockquote className="pl2-q pl2-pn-quote">{quote}</blockquote>}
           <P s={brief} />
         </Q>
-        <Q n={2} title="Why this week"><P s={week ?? 'One of the posts of this week.'} /></Q>
+        <Q n={2} title="Why this week"><P s={week ?? 'Planned for this week.'} /></Q>
         <Q n={3} title="Why this day"><P s={day} /></Q>
         <Q n={4} title="How it is written">
           {written.length ? written.map(s => <p key={s}>{s}</p>) : <P s="Not saved for this draft yet." muted />}
         </Q>
         <Q n={5} title="Is it good">
           {qa || facts ? <>{qa && <p>{qa}</p>}{facts && <p>{facts}</p>}</> : <P s="No score saved for this draft." muted />}
+          <P s={dimsWhy} muted />
           {dims.length > 0 && <div className="pl2-bars">
             {dims.map(d => <div key={d.key} className="pl2-bar" data-low={d.low ? 'true' : undefined}>
               <span>{d.label}</span><b>{d.v}</b>

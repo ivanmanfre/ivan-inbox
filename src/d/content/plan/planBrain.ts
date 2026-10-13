@@ -175,7 +175,7 @@ export function plainWhy(s: string): string {
     .replace(/X outlier by (@\w+)\s*(\([^)]*\)?)?/gi, 'A top X post by $1')
     .replace(/Mirror of a proven winner/i, 'Copy of a past winner')
     .replace('Format test (copied shape)', 'Copies the shape of a top post')
-    .replace(/fits (?:a|the) winning ([\w-]+) pattern/gi, 'is like top $1 posts')
+    .replace(/(f)its (?:a|the) winning ([\w-]+) pattern/gi, (_m, f: string, k: string) => `${f === 'F' ? 'M' : 'm'}atches top ${k} posts`)
     .replace(/;\s*([a-z])/g, (_m, c: string) => `. ${c.toUpperCase()}`)
     .replace(/;/g, '.')
     .replace(/\s+\./g, '.')
@@ -287,6 +287,12 @@ export function factsLine(it: PlanItem): string | null {
   const held = ' It will not go out until fixed.'
   if (total && fin(f.failed)) return `${f.failed} of ${total} facts not found in the call.${held}`
   return `Some facts are not found in the call.${held}`
+}
+
+/** The check keeps the eight scores of the first version only; after a rewrite they no longer add up to the score shown. */
+export function dimsNote(it: PlanItem): string | null {
+  const q = it.brain?.qa
+  return q && fin(q.first) && fin(q.final) && q.first !== q.final ? 'Scores of the first version, before the rewrite.' : null
 }
 
 /** The eight check scores in plain words, the weakest marked. */
@@ -452,21 +458,21 @@ export function rulesOf(strip: BrainStrip | null | undefined): { live: StripRule
   return { live: all.filter(r => r.status === 'live'), testing: all.filter(r => r.status === 'shadow') }
 }
 
-/** "1 of 2 proven on recent posts. Rise has 24 measured posts. Its guesses have not passed their test yet." */
+/** "1 of 2 guesses use rules that held on recent posts. View guesses are still being checked against real results (24 posts so far)." */
 export function readsSummary(strip: BrainStrip | null | undefined, acct: Acct): string {
   if (!strip) return ''
   const items = Array.isArray(strip.reads?.items) ? strip.reads.items : []
   const out: string[] = []
   if (items.length) {
     const proven = items.filter(i => i.proven)
-    if (!proven.length) out.push(`Not proven yet. The brain needs more of ${POSS[acct]} recent posts.`)
-    else out.push(`${proven.length} of ${items.length} proven on recent posts${proven.every(i => i.small) ? ', but few examples' : ''}.`)
+    if (!proven.length) out.push(`No guess uses a proven rule yet. The brain needs more of ${POSS[acct]} recent posts.`)
+    else out.push(`${proven.length} of ${items.length} guesses use rules that held on recent posts${proven.every(i => i.small) ? ', but few examples' : ''}.`)
   }
   const p = strip.predictions
   if (p && fin(p.need) && p.need > 0 && fin(p.measured)) {
     if (p.validated) out.push(`Predictions are on, from ${p.measured} measured posts.`)
-    else if (p.measured >= p.need) out.push(`${ACCT_NAME[acct]} has ${p.measured} measured posts. Its guesses have not passed their test yet.`)
-    else out.push(`Predictions start at ${p.need} measured posts: ${ACCT_NAME[acct]} ${p.measured} of ${p.need}.`)
+    else if (p.measured >= p.need) out.push(`View guesses are still being checked against real results (${p.measured} posts so far).`)
+    else out.push(`View guesses start at ${p.need} posts with results. ${ACCT_NAME[acct]} has ${p.measured}.`)
   }
   return out.join(' ')
 }
@@ -533,7 +539,7 @@ export function undoLine(c: { name: string }): string {
 /** A second line under a rule row when it did not hold on the newest posts. */
 export function ruleNote(r: Pick<StripRule, 'held_latest' | 'your_rule'>): string | null {
   if (r.held_latest !== false) return null
-  return r.your_rule ? 'Did not hold on the newest posts, kept because you set it.' : 'Did not hold on the newest posts.'
+  return r.your_rule ? 'Newest posts do not show this. Kept because it is your rule.' : 'Newest posts do not show this.'
 }
 
 /** "7 of 29 went viral" (viral = 3x a normal post). */

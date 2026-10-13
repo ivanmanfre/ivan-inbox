@@ -204,7 +204,7 @@ describe('weekDays', () => {
 describe('answerOf / plainWhy / mixLine / weekWhy / resultLine', () => {
   it('plainWhy rewrites machine phrases', () => expect(plainWhy("A ready Review draft adapted from a niche outlier at 4.5x its author's usual")).toBe("A written draft based on a post that got 4.5x its author's normal views"))
   it('plainWhy scrubs pattern and primer words', () => {
-    expect(plainWhy('From your sales calls and fits a winning reputation pattern; no recent post has covered a site launch teardown.')).toBe('From your sales calls and is like top reputation posts. No recent post has covered a site launch teardown.')
+    expect(plainWhy('From your sales calls and fits a winning reputation pattern; no recent post has covered a site launch teardown.')).toBe('From your sales calls and matches top reputation posts. No recent post has covered a site launch teardown.')
     expect(plainWhy("A ready Review draft adapted from a niche outlier at 4.5x its author's usual, giving the week a beginner-friendly inbound primer.")).toBe("A written draft based on a post that got 4.5x its author's normal views, giving the week a beginner-friendly inbound guide.")
     expect(plainWhy("Niche outlier the Content Brain adapted, 3.6x its author's usual")).toBe("Based on a post that got 3.6x its author's normal views")
     expect(plainWhy('Mirror of a proven winner')).toBe('Copy of a past winner')
@@ -314,13 +314,13 @@ describe('strip lines', () => {
   })
   it('readsSummary', () => {
     const r = (items: { proven: boolean; small: boolean }[], measured: number, validated = false) => ({ reads: { items: items.map(x => ({ title: 't', x: 1, lo: null, hi: null, ...x })), total: items.length }, predictions: { measured, need: 20, validated } }) as unknown as BrainStrip
-    expect(readsSummary(r([{ proven: false, small: false }, { proven: false, small: false }], 17), 'ivan')).toBe('Not proven yet. The brain needs more of your recent posts. Predictions start at 20 measured posts: Ivan 17 of 20.')
-    expect(readsSummary(r([{ proven: true, small: false }, { proven: false, small: false }], 24), 'risedtc')).toBe('1 of 2 proven on recent posts. Rise has 24 measured posts. Its guesses have not passed their test yet.')
-    expect(readsSummary(r([{ proven: true, small: true }], 21), 'arch')).toBe('1 of 1 proven on recent posts, but few examples. Arch has 21 measured posts. Its guesses have not passed their test yet.')
-    expect(readsSummary(r([{ proven: true, small: true }], 8), 'arch')).toBe('1 of 1 proven on recent posts, but few examples. Predictions start at 20 measured posts: Arch 8 of 20.')
-    expect(readsSummary(r([{ proven: false, small: false }], 3), 'arch')).toBe("Not proven yet. The brain needs more of Arch's recent posts. Predictions start at 20 measured posts: Arch 3 of 20.")
+    expect(readsSummary(r([{ proven: false, small: false }, { proven: false, small: false }], 17), 'ivan')).toBe('No guess uses a proven rule yet. The brain needs more of your recent posts. View guesses start at 20 posts with results. Ivan has 17.')
+    expect(readsSummary(r([{ proven: true, small: false }, { proven: false, small: false }], 24), 'risedtc')).toBe('1 of 2 guesses use rules that held on recent posts. View guesses are still being checked against real results (24 posts so far).')
+    expect(readsSummary(r([{ proven: true, small: true }], 21), 'arch')).toBe('1 of 1 guesses use rules that held on recent posts, but few examples. View guesses are still being checked against real results (21 posts so far).')
+    expect(readsSummary(r([{ proven: true, small: true }], 8), 'arch')).toBe('1 of 1 guesses use rules that held on recent posts, but few examples. View guesses start at 20 posts with results. Arch has 8.')
+    expect(readsSummary(r([{ proven: false, small: false }], 3), 'arch')).toBe("No guess uses a proven rule yet. The brain needs more of Arch's recent posts. View guesses start at 20 posts with results. Arch has 3.")
     expect(readsSummary(null, 'ivan')).toBe('')
-    expect(readsSummary(strip, 'risedtc')).toContain('Rise has')
+    expect(readsSummary(strip, 'risedtc')).toContain('24 posts so far')
   })
   it('topic words', () => {
     expect(topicWord('demand')).toBe('sales posts'); expect(topicWord('reach')).toBe('posts that bring new followers'); expect(topicWord('personal')).toBe('founder stories')
@@ -460,8 +460,8 @@ describe('brain strip words (Task 9)', () => {
   })
   it('ruleNote', () => {
     const r = (o: object) => ({ rule_id: 'R', name: 'N', metric: 'views', gain: null, lo: null, hi: null, status: 'live', unclear: false, held_latest: null, your_rule: false, enforcer: 'writer', creators: null, ...o }) as never
-    expect(PB.ruleNote(r({ held_latest: false, your_rule: true }))).toBe('Did not hold on the newest posts, kept because you set it.')
-    expect(PB.ruleNote(r({ held_latest: false }))).toBe('Did not hold on the newest posts.')
+    expect(PB.ruleNote(r({ held_latest: false, your_rule: true }))).toBe('Newest posts do not show this. Kept because it is your rule.')
+    expect(PB.ruleNote(r({ held_latest: false }))).toBe('Newest posts do not show this.')
     expect(PB.ruleNote(r({ held_latest: true, your_rule: true }))).toBeNull()
     expect(PB.ruleNote(r({}))).toBeNull()
   })
