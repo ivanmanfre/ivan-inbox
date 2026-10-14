@@ -29,7 +29,7 @@ import { useWeekRead } from './useWeek'
 import { useVerdicts } from './useVerdicts'
 import { useJudged } from './verdictStore'
 import { WeekStack } from './WeekStack'
-import { SHOWS, buildNow, laneOfRow, windowDays, dayWord, dayDate, type Show } from './weekModel'
+import { SHOWS, buildNow, laneOfRow, reviewCounts, windowDays, dayWord, dayDate, type Show } from './weekModel'
 import { useMagnetCounts } from './useMagnetCounts'
 import { Results } from './Results'
 import { Plan } from './Plan'
@@ -146,6 +146,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const verdicts = useMemo(() => new Map([...saved.map].map(([id, v]) => [id, v.verdict])), [saved.map])
   const nowModel = useMemo(() => buildNow(rows, { now, show, pending, blocks: data.blocks, verdicts, judged }), [rows, now, show, pending, data.blocks, verdicts, judged])
   const allNow = useMemo(() => buildNow(rows, { now, pending, blocks: data.blocks, verdicts, judged }), [rows, now, pending, data.blocks, verdicts, judged])
+  const review = reviewCounts(allNow)
   const reading = LANES.some(l => !data.seats[l].loadedAt && !data.seats[l].error) || LANES.some(l => magnets[l] === undefined)
   const magnetLanes = LANES.filter(l => (magnets[l] ?? 0) > 0)
   const needs = allNow.ids.length + magnetLanes.reduce((n, l) => n + (magnets[l] ?? 0), 0)
@@ -219,7 +220,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
     body = phone && window_ ? window_ : <div className={`cn-split${window_ ? ' cn-open' : ''}${desk ? ' cv2-split' : ''}`} data-wide={desk ? (wide ? 'yes' : 'no') : undefined}><div className={`cn-left${allPosts ? ' cn-left-legacy' : ''}`}>{left}</div>{window_}</div>
   }
   const title = sub === 'plan' ? 'Plan' : sub === 'brain' ? (onBrain ? 'Content Brain' : 'Patterns and benchmarks') : sub === 'ideas' ? 'Best ideas for your next post' : sub === 'results' ? 'What worked' : sub === 'strategy' ? (q.get('section') === 'direction' ? 'Strategy' : q.get('section') === 'this-week' ? 'Content brain' : 'Strategy') : sub === 'inputs' ? 'Outliers' : sub === 'magnets' ? 'Lead magnets' : sub === 'styles' ? 'Styles' : onCal ? 'Calendar' : allPosts ? 'All posts' : magnetView ? 'Lead magnets' : 'Review'
-  return <div ref={presentation} className={`cn${cv2.frame ? ' cv2-frame' : ''}`} data-cv2-sub={cv2.frame ? sub : undefined}>{!(phone && (title === SUB_LABEL[sub] || (cv2.frame && sub === 'ideas'))) && <AnswerRow title={title} />}<SubNav on={sub} attention={needs > 0} lane={qLane} section={q.get('section')} v2={cv2.frame} counts={{ now: reading && !weekRead.settled ? null : allNow.ids.length, magnets: LANES.some(l => magnets[l] === undefined) ? null : LANES.reduce((n, l) => n + (magnets[l] ?? 0), 0) }} />{body}
+  return <div ref={presentation} className={`cn${cv2.frame ? ' cv2-frame' : ''}`} data-cv2-sub={cv2.frame ? sub : undefined}>{!(phone && (title === SUB_LABEL[sub] || (cv2.frame && sub === 'ideas'))) && <AnswerRow title={title} />}<SubNav on={sub} attention={needs > 0} lane={qLane} section={q.get('section')} v2={cv2.frame} counts={{ now: reading && !weekRead.settled ? null : review.all, magnets: LANES.some(l => magnets[l] === undefined) ? null : LANES.reduce((n, l) => n + (magnets[l] ?? 0), 0) }} />{body}
     {dayOpen && <DayPanel lane={dayOpen.lane} keys={dayOpen.keys} items={items[dayOpen.lane]} onClose={() => setDayOpen(null)} onOpen={openFromPlan} onMove={onMove} onArm={armIt} onChanged={refresh} />}
   </div>
 }

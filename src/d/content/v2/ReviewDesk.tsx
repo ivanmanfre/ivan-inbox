@@ -22,7 +22,7 @@ import { useEarlyReads } from '../useEarlyReads'
 import type { WeekRead } from '../useWeek'
 import { forgetVerdict, giveReason, markShown, retryVerdict, undoVerdict, useJudged, VERDICT_HOLD_MS, type Judged } from '../verdictStore'
 import { useWeekVerbs } from '../weekVerbs'
-import { SHOWS, type Show, type Week, type WeekCard } from '../weekModel'
+import { awaitsReview, reviewCounts, SHOWS, type Show, type Week, type WeekCard } from '../weekModel'
 import { useReviewMotion } from './motion'
 import { clientHoldOf } from '../../../lib/clientBoardState'
 import { LinkedInCard } from './LinkedInCard'
@@ -131,7 +131,9 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   const qf = (c: WeekCard) => quick === 'decide' ? c.judge || c.primary !== 'open' : quick === 'noimg' ? c.flags.some(f => f.key === 'noimg') : true
   const stream = [...pinned, ...drafts].filter(c => c.strip || qf(c))
   const shown = all ? stream : stream.slice(0, FIRST)
-  const qn = { decide: [...pinned, ...drafts].filter(c => !c.strip && (c.judge || c.primary !== 'open')).length, noimg: [...pinned, ...drafts].filter(c => !c.strip && c.flags.some(f => f.key === 'noimg')).length }
+  const work = week.groups.flatMap(g => g.cards).filter(awaitsReview)
+  const summaryWork = quick === 'noimg' ? stream.filter(awaitsReview) : work
+  const qn = { decide: work.length, noimg: work.filter(c => c.flags.some(f => f.key === 'noimg')).length }
   const inList = new Set([...fixGroup, ...drafts].map(c => c.r.id))
   const orphans = [...judged.values()].filter(e => !e.collapsed && !inList.has(e.id) && (show === 'all' || show === e.lane)).sort((a, b) => a.at - b.at)
 
@@ -139,8 +141,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   const srcIds = useMemo(() => stream.slice(0, 60).map(c => c.r.id), [stream.map(c => c.r.id).join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
   const sources = useSources(srcIds)
   const repeats = useMemo(() => picRepeats(rows), [rows])
-  const work = stream.filter(c => !c.strip)
-  const created = work.map(c => Date.parse(c.r.created_at)).filter(Number.isFinite)
+  const created = summaryWork.map(c => Date.parse(c.r.created_at)).filter(Number.isFinite)
   const loading = read.source === 'none' && !read.settled
   const ghosts = useDeferred(loading)
 
@@ -220,9 +221,10 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
     return () => window.removeEventListener('keydown', onKey)
   })
 
-  const seatCount = (s: Show) => s === 'all' ? total.ids.length : total.perLane[s]
+  const counts = reviewCounts(total)
+  const seatCount = (s: Show) => counts[s]
   const who = show === 'all' ? '' : show === 'ivan' ? 'Ivan’s ' : `${OWNER[show]}’s `
-  const n = work.length + (quick ? 0 : folded.length)
+  const n = summaryWork.length
   const fixBy = (['risedtc', 'arch', 'ivan'] as Lane[]).map(l => [l, folded.filter(c => c.lane === l).length] as const).filter(([, k]) => k > 0)
   const oldestFix = folded.length ? Math.max(...folded.map(c => now - Date.parse(c.r.created_at))) : 0
   const sync = read.memberReadState && read.memberReadState !== 'idle'

@@ -14,7 +14,7 @@
 // post and the Planner keep every Arch control they had before.
 import { canMoveDate } from '../../lib/calendarItems'
 import { clientScheduleArmed, isStuckGenerating, normalizeImageUrls, singlePhoto, stageOfLane, type ContentDraft } from '../../lib/content'
-import { clientHoldOf } from '../../lib/clientBoardState'
+import { boardStateOf, clientHoldOf } from '../../lib/clientBoardState'
 import { isBrainPost } from '../../lib/brainDraft'
 import type { StoredVerdict, Verdict } from '../../lib/verdicts'
 import { warsawDay, warsawDm, warsawDow, warsawHm } from '../ui/time'
@@ -69,6 +69,24 @@ export type Week = {
   /** Brain drafts still to judge (Approve or Drop), before the seat filter; per seat in toJudgeByLane. */
   toJudge: number
   toJudgeByLane: Record<Lane, number>
+}
+
+/** A number shown as "to review" counts a human verdict still owed, even when its card has a planned date. */
+export function awaitsReview(c: WeekCard): boolean {
+  const r = c.r
+  if (c.kept || (c.strip && !c.judge) || r.published_at || (r.status !== 'review' && !c.judge)) return false
+  if (c.lane !== 'ivan' && (r.board_visible === true || boardStateOf(r.id)?.approval === 'approve')) return false
+  return c.judge || !c.flags.some(f => f.key === 'blocked' || f.key === 'stuck' || f.key === 'stalled' || f.key === 'error')
+}
+
+export function reviewCounts(w: Week): Record<Show, number> {
+  const counts: Record<Show, number> = { all: 0, ivan: 0, risedtc: 0, arch: 0, swishdm: 0 }
+  for (const c of w.groups.flatMap(g => g.cards)) {
+    if (!awaitsReview(c)) continue
+    counts.all++
+    counts[c.lane]++
+  }
+  return counts
 }
 
 /** The part of a session verdict (verdictStore.Judged) the model needs. */
