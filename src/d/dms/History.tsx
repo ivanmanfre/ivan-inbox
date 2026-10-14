@@ -53,7 +53,7 @@ export function emailAddrLine(m: InboxMessage): string | null {
 }
 
 export function historyRows(t: Thread): InboxMessage[] {
-  return t.messages.filter(m => !isDraft(m) && !isInternalConfirmation(m) && !isHiddenRetired(m) && m.send_blocked_reason !== 'discarded_in_inbox'
+  return t.messages.filter(m => !isDraft(m) && !isInternalConfirmation(m) && !isHiddenRetired(m) && !isEngineRetired(m) && m.send_blocked_reason !== 'discarded_in_inbox'
     && (m.direction === 'inbound' || m.sent_at || m.approved_at || sendFailed(m) || isEngineRetired(m)))
 }
 
@@ -197,7 +197,7 @@ function HistoryRead({ onSendAnyways, sending, t, cap = 6, now = Date.now(), onR
               {firstOfRun && <b className="dm-b-who">{inb ? first : ours}</b>}
               <div className="dm-b-body">
                 {addr && <small className="dm-h-addr">{addr}</small>}
-                {blank ? <em className="dm-b-blank">Invite sent with no note, by design</em> : parts.length === 0 ? <em className="dm-b-blank">(no text: an image or a file)</em>
+                {blank ? <em className="dm-b-blank">Invite sent with no note, by design</em> : parts.length === 0 ? <em className="dm-b-blank">Message text unavailable</em>
                   : parts.map((p, i) => <span key={i} className="dm-bub">{i > 0 && <br />}<Linkified text={p} /></span>)}
               </div>
               {showMeta ? <div className="dm-b-meta">
