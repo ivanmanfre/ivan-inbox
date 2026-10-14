@@ -86,7 +86,7 @@ function Dms({ layout, route, navigate }: PlaceProps) {
   const views = useMemo(() => Object.fromEntries(SEATS.map(s => [s, seatView(threads, s, now, data.scanDays, data.interestRanks)])) as Record<Seat, ReturnType<typeof seatView>>, [threads, now, data.scanDays, data.interestRanks])
   const stats = useMemo(() => Object.fromEntries(SEATS.map(s => [s, { days: outByDay(threads, s, now), replied: replied7d(threads, s, now) }])) as PageModel['stats'], [threads, now])
   const matches = useMemo(() => {
-    if (mode !== 'search') return { ivan: [], risedtc: [], arch: [] } as Record<Seat, Thread[]>
+    if (mode !== 'search') return { ivan: [], risedtc: [], arch: [] , swishdm: []} as Record<Seat, Thread[]>
     const hits = applyThreadTokens(searchThreads(threads, q.trim()), tokens, now).sort((a, b) => eventTime(b.last).localeCompare(eventTime(a.last)))
     return Object.fromEntries(SEATS.map(s => [s, hits.filter(t => seatOf(t.client_id) === s)])) as Record<Seat, Thread[]>
   }, [mode, threads, q, tokens, now])

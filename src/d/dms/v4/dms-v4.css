@@ -27,8 +27,8 @@
 :root[data-skin-on~='dms'] .d-tools-page .dm-search kbd{border:0;background:transparent;font:400 12px var(--f);color:var(--t3);padding:0}
 
 /* ---- seat control: 3 equal segments, a thumb positioned by --i (no measuring) ---- */
-:root[data-skin-on~='dms'] .dx-seats{position:relative;isolation:isolate;flex:none;width:var(--dx-list-w,320px);height:32px;padding:2px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border-radius:9px;background:rgba(19,18,16,.05);box-shadow:var(--ds-well-shadow)}
-:root[data-skin-on~='dms'] .dx-seats-thumb{position:absolute;top:2px;bottom:2px;left:2px;width:calc((100% - 4px) / 3);border-radius:7px;z-index:-1;pointer-events:none;
+:root[data-skin-on~='dms'] .dx-seats{position:relative;isolation:isolate;flex:none;width:var(--dx-list-w,320px);height:32px;padding:2px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-radius:9px;background:rgba(19,18,16,.05);box-shadow:var(--ds-well-shadow)}
+:root[data-skin-on~='dms'] .dx-seats-thumb{position:absolute;top:2px;bottom:2px;left:2px;width:calc((100% - 4px) / 4);border-radius:7px;z-index:-1;pointer-events:none;
   background:linear-gradient(#fff,#fbfcfa);box-shadow:0 1px 3px rgba(19,18,16,.08),inset 0 1px 0 #fff,0 0 0 1px rgba(19,18,16,.08);
   transform:translateX(calc(var(--i,0) * 100%));transition:transform var(--ds-m-slow) var(--ds-e-settle)}
 :root[data-skin-on~='dms'] .dx-seats .dm-sq{all:unset;box-sizing:border-box;min-width:0;height:28px;padding:0 10px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:7px;cursor:pointer;

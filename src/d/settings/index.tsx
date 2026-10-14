@@ -99,7 +99,7 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
   const link = (id: string) => { const b = board(id); return b ? `https://ivanmanfredi.com/client/${b.slug}?k=${encodeURIComponent(b.token)}` : undefined }
   const boardsPlate = (
     <Plate title="Client boards">
-      {([['risedtc', 'Rise', "Mattan's board: queue, drafts, schedule"], ['arch', 'Arch', "Davorin's board: queue, drafts, schedule"]] as const).map(([id, name, sub]) => (
+      {([['risedtc', 'Rise', "Mattan's board: queue, drafts, schedule"], ['arch', 'Arch', "Davorin's board: queue, drafts, schedule"], ['swishdm', 'SwishDM', "Jonathan's board: queue, drafts, schedule"]] as const).map(([id, name, sub]) => (
         <Row key={id} title={<span title={sub}>{name}</span>} sub={boards.kind === 'failed' ? 'could not be read' : boards.kind === 'ready' && !board(id) ? 'board not found' : undefined}>
           <a className={`ds2-open${link(id) ? '' : ' ds2-off'}`} href={link(id)} target="_blank" rel="noreferrer" aria-disabled={!link(id)} title={board(id) ? `ivanmanfredi.com/client/${board(id)!.slug}` : undefined}>Open ↗</a>
         </Row>
@@ -156,7 +156,7 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
         )}
       </Group>
       <Group label="Client boards" id="boards">
-        {([['risedtc', 'Rise', "Mattan's board: queue, drafts, schedule"], ['arch', 'Arch', "Davorin's board: queue, drafts, schedule"]] as const).map(([id, name, what]) => (
+        {([['risedtc', 'Rise', "Mattan's board: queue, drafts, schedule"], ['arch', 'Arch', "Davorin's board: queue, drafts, schedule"], ['swishdm', 'SwishDM', "Jonathan's board: queue, drafts, schedule"]] as const).map(([id, name, what]) => (
           <Row4 key={id} title={name} sub={boards.kind === 'failed' ? 'could not be read' : boards.kind === 'ready' && !board(id) ? 'board not found' : layout === 'phone' ? undefined : what}>
             <a className={`ds2-open${link(id) ? '' : ' ds2-off'}`} href={link(id)} target="_blank" rel="noreferrer" aria-disabled={!link(id)} title={board(id) ? `ivanmanfredi.com/client/${board(id)!.slug}` : undefined}>Open ↗</a>
           </Row4>

@@ -21,7 +21,7 @@ import { warsawDay, warsawDm, warsawDow, warsawHm } from '../ui/time'
 import { DAY_MS, OWNER, WAIT_DAYS, imgOf, splitTitleTag, titleOf, type Lane } from './model'
 
 export type Show = 'all' | Lane
-export const SHOWS: readonly Show[] = ['all', 'ivan', 'risedtc', 'arch']
+export const SHOWS: readonly Show[] = ['all', 'ivan', 'risedtc', 'arch', 'swishdm']
 
 /** The one key a card carries. */
 export type Primary = 'approve' | 'schedule' | 'board' | 'open'
@@ -81,13 +81,13 @@ export const WINDOW_DAYS = 7
 export const OVERDUE_DAYS = 7
 
 const KEEP = new Set(['review', 'approved', 'scheduled', 'published', 'error'])
-const LANE_ORDER: Record<Lane, number> = { ivan: 0, risedtc: 1, arch: 2 }
+const LANE_ORDER: Record<Lane, number> = { ivan: 0, risedtc: 1, arch: 2 , swishdm: 2}
 
 /** Which seat a raw carousel_drafts row belongs to (null / 'ivan' = Ivan), or null for any other tenant. */
 export function laneOfRow(r: Pick<ContentDraft, 'client_id'>): Lane | null {
   const c = r.client_id
   if (c == null || c === 'ivan') return 'ivan'
-  return c === 'risedtc' || c === 'arch' ? c : null
+  return c === 'risedtc' || c === 'arch' || c === 'swishdm' ? c : null
 }
 
 /** The next `n` Warsaw day keys from `now` (today first). */
@@ -240,8 +240,8 @@ export function buildWeek(rows: readonly ContentDraft[], o: {
   const dayCards = new Map<string, WeekCard[]>()
   const review: WeekCard[] = []
   const older: WeekCard[] = []
-  const perLane: Record<Lane, number> = { ivan: 0, risedtc: 0, arch: 0 }
-  const toDecide: Record<Lane, number> = { ivan: 0, risedtc: 0, arch: 0 }
+  const perLane: Record<Lane, number> = { ivan: 0, risedtc: 0, arch: 0, swishdm: 0 }
+  const toDecide: Record<Lane, number> = { ivan: 0, risedtc: 0, arch: 0, swishdm: 0 }
   const seen = new Set<string>()
 
   for (const raw of rows) {
@@ -287,7 +287,7 @@ export function buildWeek(rows: readonly ContentDraft[], o: {
   const lanes = new Map<string, Lane>()
   for (const g of groups) for (const c of g.cards) lanes.set(c.r.id, c.lane)
   for (const c of older) lanes.set(c.r.id, c.lane)
-  return { groups, older, ids, lanes, perLane, toDecide, toJudge: 0, toJudgeByLane: { ivan: 0, risedtc: 0, arch: 0 } }
+  return { groups, older, ids, lanes, perLane, toDecide, toJudge: 0, toJudgeByLane: { ivan: 0, risedtc: 0, arch: 0, swishdm: 0 } }
 }
 
 /**
@@ -307,9 +307,9 @@ export function buildNow(rows: readonly ContentDraft[], o: {
   const { now, show = 'all', pending, blocks, verdicts, judged } = o
   const needsFix: WeekCard[] = [], drafts: WeekCard[] = []
   const quiet = new Set<string>()
-  const perLane: Record<Lane, number> = { ivan: 0, risedtc: 0, arch: 0 }
-  const toDecide: Record<Lane, number> = { ivan: 0, risedtc: 0, arch: 0 }
-  const toJudgeByLane: Record<Lane, number> = { ivan: 0, risedtc: 0, arch: 0 }
+  const perLane: Record<Lane, number> = { ivan: 0, risedtc: 0, arch: 0, swishdm: 0 }
+  const toDecide: Record<Lane, number> = { ivan: 0, risedtc: 0, arch: 0, swishdm: 0 }
+  const toJudgeByLane: Record<Lane, number> = { ivan: 0, risedtc: 0, arch: 0, swishdm: 0 }
   const seen = new Set<string>()
   for (const r of rows) {
     const lane = laneOfRow(r)
@@ -360,6 +360,6 @@ export function buildNow(rows: readonly ContentDraft[], o: {
   const cards = [...needsFix, ...drafts].filter(c => !quiet.has(c.r.id))
   return {
     groups, older: [], ids: cards.map(c => c.r.id), lanes: new Map(cards.map(c => [c.r.id, c.lane])), perLane, toDecide,
-    toJudge: toJudgeByLane.ivan + toJudgeByLane.risedtc + toJudgeByLane.arch, toJudgeByLane,
+    toJudge: toJudgeByLane.ivan + toJudgeByLane.risedtc + toJudgeByLane.arch + toJudgeByLane.swishdm, toJudgeByLane,
   }
 }

@@ -498,8 +498,8 @@ describe('lane labels', () => {
     expect(LANE_POSSESSIVE.risedtc).toBe('Mattan’s')
     expect(LANE_POSSESSIVE.arch).toBe('Davorin’s')
   })
-  it('keeps exactly three lanes', () => {
-    expect(CONTENT_LANES).toEqual(['ivan', 'risedtc', 'arch'])
+  it('keeps all registered content lanes', () => {
+    expect(CONTENT_LANES).toEqual(['ivan', 'risedtc', 'arch', 'swishdm'])
   })
 })
 

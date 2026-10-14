@@ -17,7 +17,7 @@ vi.mock('../../lib/clientIdeas', async importOriginal => ({ ...await importOrigi
 const cand = (n: number, o: Partial<IdeaCandidate> = {}) => ({ id: `i${n}`, normalized_topic: `Idea ${n}`, composite_score: 100-n, source: n%2 ? 'manual' : 'ivan_call', content_type: 'post', ...o } as IdeaCandidate)
 const empty = { items: [], n: 0, loading: false, error: null, refresh: vi.fn(), scores: { ok: false, byRef: new Map(), validated: false }, facets: [], chip: { ok: false, weekStart: null, byRef: new Map(), slots: [] } }
 const IdeasWrapper=({banks}:{banks:IdeaBanks})=><ToastProvider><DConfirmProvider><Ideas banks={banks} phone={false}/></DConfirmProvider></ToastProvider>
-const banksOf = (items: ReturnType<typeof fromCandidate>[]) => ({ ivan: { ...empty, items, n: items.length }, risedtc: empty, arch: empty }) as IdeaBanks
+const banksOf = (items: ReturnType<typeof fromCandidate>[]) => ({ ivan: { ...empty, items, n: items.length }, risedtc: empty, arch: empty , swishdm: empty}) as IdeaBanks
 afterEach(() => { cleanup(); localStorage.clear(); vi.clearAllMocks() })
 describe('best five Ideas', () => {
   it('shows five, hides scores, and puts every remaining idea on the bench', () => {
@@ -123,7 +123,7 @@ describe('idea consequences and recovery', () => {
   })
   it('restores only device-hidden source ids while keeping archived bank ids hidden', () => {
     localStorage.setItem('sb-test-auth-token', JSON.stringify({user:{id:'ideas-user'}}))
-    writeSwr('content-idea-skips-v1',{ivan:['x:555','i2'],risedtc:[],arch:[]})
+    writeSwr('content-idea-skips-v1',{ivan:['x:555','i2'],risedtc:[],arch:[], swishdm: []})
     const source={...fromCandidate(cand(1)),id:'x:555',ivan:undefined,outlier:{platform:'x',post_id:'555'} as never}
     renderInFrame(<Ideas banks={banksOf([source,fromCandidate(cand(2))])} phone={false}/> )
     fireEvent.click(screen.getByRole('button',{name:'Restore hidden ideas (1)'}))
@@ -148,7 +148,7 @@ describe('idea consequences and recovery', () => {
     fireEvent.click(screen.getByRole('button',{name:'Archive idea'}))
     await waitFor(()=>expect(screen.getByText('Idea archived.')).toBeTruthy())
     expect(document.querySelector('.d-toast')?.textContent).not.toMatch(/draft/i)
-    expect(decideClientIdea).toHaveBeenCalledWith('c1','rejected')
+    expect(decideClientIdea).toHaveBeenCalledWith('c1','rejected','arch')
   })
   it('preserves the client in the Review destination for a requested draft', () => {
     const idea={...fromCandidate(cand(1)),lane:'arch' as const,generating:true}

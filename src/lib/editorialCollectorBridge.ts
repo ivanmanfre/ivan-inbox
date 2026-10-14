@@ -106,7 +106,7 @@ export async function normalizeCollectorRow(clientId: EditorialClientId, collect
     const collectorRowId = val(row.id)
     id = collectorRowId; kind = 'own_post'; url = val(row.post_url) || null
     pointer = url ? null : `client_post_metrics.id=${id}`
-    owner = clientId === 'risedtc' ? 'Mattan Danino / RISE DTC' : 'Davorin Smit / ARCH'
+    owner = clientId === 'risedtc' ? 'Mattan Danino / RISE DTC' : clientId === 'swishdm' ? 'Jonathan Kiekbusch / SwishDM' : 'Davorin Smit / ARCH'
     published = date(row.published_at); captured = date(row.captured_at)
     body = val(row.full_text ?? meta.text) || null; permission = 'granted'
     context = `Observed own post; impressions=${val(row.impressions) || 'unknown'}, reactions=${val(row.reactions) || 'unknown'}, comments=${val(row.comments) || 'unknown'}.`

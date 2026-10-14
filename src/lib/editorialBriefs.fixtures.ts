@@ -211,5 +211,5 @@ export function briefStore(): BriefStore {
 }
 
 export function lanes(): EditorialClientId[] {
-  return ['ivan', 'risedtc', 'arch']
+  return ['ivan', 'risedtc', 'arch', 'swishdm']
 }

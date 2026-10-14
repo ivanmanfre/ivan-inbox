@@ -18,7 +18,7 @@ describe('Ideas v2', () => {
   it('a read with no answer in 12 s says so with Retry, never an endless skeleton', () => {
     vi.useFakeTimers()
     const refresh = vi.fn()
-    const banks = { ivan: { ...empty, loading: true, n: null, refresh }, risedtc: empty, arch: empty } as unknown as IdeaBanks
+    const banks = { ivan: { ...empty, loading: true, n: null, refresh }, risedtc: empty, arch: empty , swishdm: empty} as unknown as IdeaBanks
     renderInFrame(<Ideas banks={banks} phone={false} v2 />)
     expect(screen.queryByText('Ideas did not answer in 12 s.')).toBeNull()
     act(() => { vi.advanceTimersByTime(12_100) })
@@ -28,7 +28,7 @@ describe('Ideas v2', () => {
   })
   it('ranks the best 5 and Generate draft calls today\'s decideIdea approve (no keyboard letter)', async () => {
     const items = Array.from({ length: 7 }, (_, i) => fromCandidate(cand(i)))
-    const banks = { ivan: { ...empty, items, n: 7 }, risedtc: empty, arch: empty } as unknown as IdeaBanks
+    const banks = { ivan: { ...empty, items, n: 7 }, risedtc: empty, arch: empty , swishdm: empty} as unknown as IdeaBanks
     renderInFrame(<Ideas banks={banks} phone={false} v2 />)
     expect(document.querySelectorAll('.cv2-idea')).toHaveLength(5)
     expect(document.querySelector('.cv2-rank')!.textContent).toBe('1')

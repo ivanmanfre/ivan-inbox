@@ -11,7 +11,7 @@ import { supplyOf } from './supply'
 
 export type CellCtx = { d: LanesData; now: number; openControl?: (seat: Seat) => void }
 
-export const PERSON: Record<Seat, string> = { ivan: 'Iván Manfredi', risedtc: 'Mattan Danino', arch: 'Davorin Smit' }
+export const PERSON: Record<Seat, string> = { ivan: 'Iván Manfredi', risedtc: 'Mattan Danino', arch: 'Davorin Smit', swishdm: 'Jonathan Kiekbusch' }
 const Sep = () => <span className="dl-sep">·</span>
 /** A number or "unknown", never a made-up 0. */
 export const num = (v: number | null | undefined): ReactNode =>

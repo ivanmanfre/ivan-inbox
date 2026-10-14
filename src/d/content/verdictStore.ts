@@ -18,7 +18,7 @@ export type Phase = 'held' | 'saving' | 'saved' | 'failed'
 export type Judged = {
   id: string
   verdict: Verdict
-  lane: 'ivan' | 'risedtc' | 'arch'
+  lane: 'ivan' | 'risedtc' | 'arch' | 'swishdm'
   title: string
   phase: Phase
   reasons: string[]

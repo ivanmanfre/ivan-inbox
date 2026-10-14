@@ -34,7 +34,7 @@ function OutliersInner({ lane, humanLabels = false }: { lane: string; humanLabel
   const [tick, setTick] = useState(0)
   const [uses, setUses] = useState<Record<string, UseEntry>>({})
   const [visible, setVisible] = useState<OutlierLabelSource[] | null>(null)
-  const validLane = lane === 'ivan' || lane === 'risedtc' || lane === 'arch'
+  const validLane = lane === 'ivan' || lane === 'risedtc' || lane === 'arch' || lane === 'swishdm'
   const labels = useOutlierLabels(lane as Lane, humanLabels && validLane && read?.kind === 'ready' && read.data.client === lane ? visible : null)
 
   useEffect(() => {

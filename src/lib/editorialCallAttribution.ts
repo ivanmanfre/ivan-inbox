@@ -30,7 +30,7 @@ const authorNames: Record<EditorialClientId, string[]> = {
   ivan: ['Ivan Manfredi'],
   risedtc: ['Mattan Danino'],
   arch: ['Davorin Smit'],
-}
+ swishdm: ['Jonathan Kiekbusch']}
 
 const normalized = (value: unknown) => String(value ?? '').trim().replace(/\s+/g, ' ')
 const ambiguousSpeaker = /^(?:unattributed|unknown|speaker(?:\s+\d+)?|speaker\s*[a-z]|n\/a)?$/i
@@ -174,7 +174,7 @@ export async function projectSourceForSynthesis<T extends Record<string, unknown
 
 export function callOwnerLabel(clientId: EditorialClientId, attributions: Array<Record<string, unknown>>) {
   const speakers = [...new Set(attributions.map(item => normalized(item.speaker_name)).filter(Boolean))]
-  const lane = clientId === 'risedtc' ? 'RISE DTC' : clientId === 'arch' ? 'ARCH' : 'Ivan'
+  const lane = clientId === 'risedtc' ? 'RISE DTC' : clientId === 'arch' ? 'ARCH' : clientId === 'swishdm' ? 'SwishDM' : 'Ivan'
   return speakers.length === 1 ? `${speakers[0]}, on a private ${lane} call`
     : `Multiple attributed speakers on a private ${lane} call`
 }

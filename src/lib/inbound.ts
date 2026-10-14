@@ -111,7 +111,7 @@ function maxIso(a: string | null, b: string | null): string | null {
 export function buildInboundLanes(
   rows: InboundRow[],
   daily: InboundDailyRow[],
-  client: 'all' | 'ivan' | 'risedtc' | 'arch',
+  client: 'all' | 'ivan' | 'risedtc' | 'arch' | 'swishdm',
   nowIso: string = new Date().toISOString(),
 ): InboundLane[] {
   const inClient = (id: string) => client === 'all' || id === client
@@ -169,7 +169,7 @@ export async function fetchInboundDaily(): Promise<InboundDailyRow[]> {
 // can is who the machine ended a conversation with.
 export async function fetchInboundDecisions(
   lane: InboundLaneKey,
-  client: 'all' | 'ivan' | 'risedtc' | 'arch',
+  client: 'all' | 'ivan' | 'risedtc' | 'arch' | 'swishdm',
   limit = 60,
 ): Promise<InboundDecision[]> {
   let q = supabase.from('inbox_inbound_decisions_v')

@@ -268,7 +268,7 @@ export function ladderSteps(thread: Pick<Thread, 'stage' | 'messages'>): LadderV
   }
 }
 
-export type Filter = 'all' | 'ivan' | 'risedtc' | 'arch' | 'email' | 'spam'
+export type Filter = 'all' | 'ivan' | 'risedtc' | 'arch' | 'swishdm' | 'email' | 'spam'
 
 // The marker the RISE reply detector writes on a vendor verdict (skip_reason). The inbox's
 // own Spam button writes the same value, so the engine, the push trigger and this app all
@@ -313,7 +313,7 @@ export function isRecoverableHold(reason: string | null): boolean {
 }
 
 export function confirmationOwner(clientId: string): string {
-  return clientId === 'arch' ? 'Davorin' : clientId === 'risedtc' ? 'Mattan' : 'owner'
+  return clientId === 'swishdm' ? 'Jonathan' : clientId === 'arch' ? 'Davorin' : clientId === 'risedtc' ? 'Mattan' : 'owner'
 }
 
 export function isInternalConfirmation(m: InboxMessage): boolean {
@@ -1241,6 +1241,7 @@ export async function fetchDraftContextGaps(draftIds: string[]): Promise<Map<str
     and "RISE notes", including Davorin's. */
 export function clientOwner(clientId: string): { owner: string; notes: string } | null {
   if (clientId === 'risedtc') return { owner: 'Mattan', notes: 'RISE' }
+  if (clientId === 'swishdm') return { owner: 'Jonathan', notes: 'SwishDM' }
   if (clientId === 'arch') return { owner: 'Davorin', notes: 'ARCH' }
   return null
 }

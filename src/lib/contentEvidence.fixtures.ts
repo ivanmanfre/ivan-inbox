@@ -24,6 +24,7 @@ const LANE_FLAVOR: Record<ContentLane, { authors: number; posts: number }> = {
   ivan: { authors: 29, posts: 2163 },
   risedtc: { authors: 46, posts: 4273 },
   arch: { authors: 1, posts: 439 },
+  swishdm: { authors: 0, posts: 0 },
 }
 
 function candidate(i: number, over: Partial<ContentEvidenceCandidate> = {}): ContentEvidenceCandidate {

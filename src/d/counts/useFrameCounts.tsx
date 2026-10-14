@@ -109,8 +109,8 @@ const LIVE: Readers = {
 export function FrameCountsProvider({ children, readers = LIVE }: { children: ReactNode; readers?: Readers }) {
   const live = readers === LIVE
   const [saved] = useState<Saved>(() => (live ? readSaved() : {}))
-  const [dms, setDms] = useState(() => ({ ivan: seed<DmSeatCount>(saved, 'dms:ivan'), risedtc: seed<DmSeatCount>(saved, 'dms:risedtc'), arch: seed<DmSeatCount>(saved, 'dms:arch') }))
-  const [content, setContent] = useState(() => ({ ivan: seed<number>(saved, 'content:ivan'), risedtc: seed<number>(saved, 'content:risedtc'), arch: seed<number>(saved, 'content:arch') }))
+  const [dms, setDms] = useState(() => ({ ivan: seed<DmSeatCount>(saved, 'dms:ivan'), risedtc: seed<DmSeatCount>(saved, 'dms:risedtc'), arch: seed<DmSeatCount>(saved, 'dms:arch') , swishdm: seed<DmSeatCount>(saved, 'dms:swishdm')}))
+  const [content, setContent] = useState(() => ({ ivan: seed<number>(saved, 'content:ivan'), risedtc: seed<number>(saved, 'content:risedtc'), arch: seed<number>(saved, 'content:arch') , swishdm: seed<number>(saved, 'content:swishdm')}))
   const [ops, setOps] = useState(() => seed<Record<Seat, number>>(saved, 'ops'))
   const [nextCall, setNextCall] = useState(() => seed<NextCall>(saved, 'nextCall'))
   const [bell, setBell] = useState(() => seed<BellCounts>(saved, 'bell'))
@@ -241,7 +241,7 @@ export function FrameCountsProvider({ children, readers = LIVE }: { children: Re
     if (!inboxThreads || inboxThreads.length === 0 || inboxAt == null) return null
     const now = Date.now()
     const one = (s: Seat): Slice<DmSeatCount> => ({ value: countDmSeat(inboxThreads, s, now), failed: false, at: inboxAt })
-    return { ivan: one('ivan'), risedtc: one('risedtc'), arch: one('arch') }
+    return { ivan: one('ivan'), risedtc: one('risedtc'), arch: one('arch') , swishdm: one('swishdm')}
   }, [inboxThreads, inboxAt])
   useEffect(() => { inboxCovers.current = dmsLive != null }, [dmsLive])
 
@@ -261,19 +261,19 @@ export function useFrameCounts(): FrameCounts {
 
 /** DMs per seat, as plain numbers (null = unknown). `which`: 'drafts' (panel) or 'needs' (DMs headline). */
 export function dmNumbers(c: FrameCounts, which: keyof DmSeatCount = 'drafts'): SeatNumbers {
-  return { ivan: c.dms.ivan.value?.[which] ?? null, risedtc: c.dms.risedtc.value?.[which] ?? null, arch: c.dms.arch.value?.[which] ?? null }
+  return { ivan: c.dms.ivan.value?.[which] ?? null, risedtc: c.dms.risedtc.value?.[which] ?? null, arch: c.dms.arch.value?.[which] ?? null , swishdm: c.dms.swishdm.value?.[which] ?? null}
 }
 
 export function contentNumbers(c: FrameCounts): SeatNumbers {
-  return { ivan: c.content.ivan.value, risedtc: c.content.risedtc.value, arch: c.content.arch.value }
+  return { ivan: c.content.ivan.value, risedtc: c.content.risedtc.value, arch: c.content.arch.value , swishdm: c.content.swishdm.value}
 }
 
 export function opsNumbers(c: FrameCounts): SeatNumbers {
   const v = c.ops.value
-  return v ? { ...v } : { ivan: null, risedtc: null, arch: null }
+  return v ? { ...v } : { ivan: null, risedtc: null, arch: null, swishdm: null }
 }
 
 /** True when any seat's read of this kind failed (the UI says so, never shows a guess). */
 export function seatFailed(s: Record<Seat, Slice<unknown>>): Record<Seat, boolean> {
-  return { ivan: s.ivan.failed, risedtc: s.risedtc.failed, arch: s.arch.failed }
+  return { ivan: s.ivan.failed, risedtc: s.risedtc.failed, arch: s.arch.failed , swishdm: s.swishdm.failed}
 }

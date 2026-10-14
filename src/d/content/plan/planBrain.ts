@@ -3,18 +3,18 @@
 // short sentences, everyday words, a number only next to a plain comparison, no model or pipeline terms, no em dash.
 import { displayTitle, planDay, type BrainStrip, type PlanBrain, type PlanEvidence, type PlanPost, type PlanRead, type PlanSlot, type PlanWarning, type PlanWeek, type StripRule } from '../../../lib/contentPlan'
 
-export type Acct = 'ivan' | 'risedtc' | 'arch'
-export const ACCT_NAME: Record<Acct, string> = { ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch' }
-export const OWNER: Record<Acct, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin' }
+export type Acct = 'ivan' | 'risedtc' | 'arch' | 'swishdm'
+export const ACCT_NAME: Record<Acct, string> = { ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch', swishdm: 'SwishDM' }
+export const OWNER: Record<Acct, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan' }
 /** Whose niche, inside a sentence: "your niche", "Rise's niche". */
-const POSS: Record<Acct, string> = { ivan: 'your', risedtc: "Rise's", arch: "Arch's" }
-const acctOf = (a: string): Acct => (a === 'risedtc' || a === 'arch' ? a : 'ivan')
+const POSS: Record<Acct, string> = { ivan: 'your', risedtc: "Rise's", arch: "Arch's" , swishdm: "SwishDM's"}
+const acctOf = (a: string): Acct => (a === 'risedtc' || a === 'arch' || a === 'swishdm' ? a : 'ivan')
 
 export type St = 'published' | 'scheduled' | 'review' | 'writing' | 'failed'
 export const ST_WORD: Record<St, string> = { published: 'Published', scheduled: 'Scheduled', review: 'Waiting for your OK', writing: 'Being written', failed: 'Failed' }
 
 export type Tz = { name: string; label: string }
-const TZ_DEFAULT: Record<Acct, Tz> = { ivan: { name: 'Europe/Warsaw', label: 'Warsaw' }, risedtc: { name: 'America/Los_Angeles', label: 'PT' }, arch: { name: 'Europe/Warsaw', label: 'Warsaw' } }
+const TZ_DEFAULT: Record<Acct, Tz> = { ivan: { name: 'Europe/Warsaw', label: 'Warsaw' }, risedtc: { name: 'America/Los_Angeles', label: 'PT' }, arch: { name: 'Europe/Warsaw', label: 'Warsaw' } , swishdm: { name: 'Europe/London', label: 'UK' }}
 /** The read's own time zone when it ships one, else the account's default. */
 export function tzOf(read: Pick<PlanRead, 'account' | 'tz'>): Tz {
   const t = read.tz

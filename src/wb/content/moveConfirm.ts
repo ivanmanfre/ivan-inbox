@@ -21,6 +21,7 @@ type MoveRow = Pick<ContentDraft, 'client_id' | 'board_visible' | 'status' | 'pu
 export function movePublishesForClient(r: MoveRow | null | undefined): boolean {
   return !!r
     && !!r.client_id
+    && r.client_id !== 'swishdm'
     && r.board_visible === true
     && !r.published_at
     && (r.status === 'review' || r.status === 'scheduled')

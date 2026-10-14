@@ -8,7 +8,7 @@ import type { Lane } from '../model'
 // --ds-* role tokens (tokens.css §10) and the cv2.css sheet: one seat switch,
 // one status pill vocabulary, one ⋯ menu. Nothing in this file writes.
 
-export const SEAT_INITIALS: Record<Lane, string> = { ivan: 'IM', risedtc: 'MD', arch: 'DS' }
+export const SEAT_INITIALS: Record<Lane, string> = { ivan: 'IM', risedtc: 'MD', arch: 'DS' , swishdm: 'JK'}
 
 /** The seat's identity: the initials chip in the seat colour. */
 export function SeatAv({ lane, size = 20 }: { lane: Lane; size?: 20 | 28 }) {

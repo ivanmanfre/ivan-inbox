@@ -39,7 +39,7 @@ export type QueueItem = {
   kind: QueueKind
   title: string
   sub: string | null
-  lane: string // 'ivan' | 'risedtc' | 'arch'
+  lane: string // 'ivan' | 'risedtc' | 'arch' | 'swishdm'
   waitingSince: string
   ageDays: number
   n?: number // set on the aggregate pile cards (tiers 4-5): how many rows this one card stands for
@@ -150,7 +150,7 @@ export async function fetchStagedIdeaPile(): Promise<LanePile[]> {
   return pileByLane('client_ideas', 'staged')
 }
 
-const LANE_NAME: Record<string, string> = { ivan: 'Your', risedtc: "Mattan's", arch: "Davorin's" }
+const LANE_NAME: Record<string, string> = { ivan: 'Your', risedtc: "Mattan's", arch: "Davorin's" , swishdm: "Jonathan's"}
 
 export function pileItems(piles: LanePile[], kind: 'contentReview' | 'contentError' | 'ideas', now: number): QueueItem[] {
   const noun = kind === 'contentReview' ? 'drafts in review'

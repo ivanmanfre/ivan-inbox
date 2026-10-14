@@ -25,7 +25,7 @@ export function outlierLine(row: IdeaScoreRow | undefined, unvalidated: boolean)
   return `Outlier ${row.score.toFixed(2)}${unvalidated ? ' (unvalidated)' : ''}${row.recommended_format ? ` · ${label(row.recommended_format)}` : ''}${c ? ` · ${c}` : ''}`
 }
 
-const BANK: Record<Lane, string> = { ivan: 'Your idea bank', risedtc: 'Mattan’s ideas', arch: 'Davorin’s ideas' }
+const BANK: Record<Lane, string> = { ivan: 'Your idea bank', risedtc: 'Mattan’s ideas', arch: 'Davorin’s ideas', swishdm: 'Jonathan’s ideas' }
 
 export function IdeaDetail({ it, onDone, compact, scores }: { it: IdeaItem; onDone: (id: string) => void; compact?: boolean; scores?: IdeaScoreRead }) {
   const confirm = useDConfirm()
@@ -44,7 +44,7 @@ export function IdeaDetail({ it, onDone, compact, scores }: { it: IdeaItem; onDo
         if (kind === 'delete') await deleteIdea(it.id)
         else await decideIdea(it.ivan, kind, note)
       } else {
-        await decideClientIdea(it.id, kind === 'approve' ? 'approved' : 'rejected')
+        await decideClientIdea(it.id, kind === 'approve' ? 'approved' : 'rejected', it.lane)
       }
       toast.show({
         message: kind === 'approve' ? 'Draft requested. It will appear in Review.' : kind === 'reject' ? 'Idea archived.' : 'Deleted.',
@@ -73,7 +73,7 @@ export function IdeaDetail({ it, onDone, compact, scores }: { it: IdeaItem; onDo
       {!it.outlier && !it.generating && <div className="cn-acts">
         {it.lane === 'ivan' && <Key verb="idea-delete" onClick={() => run('delete')} disabled={busy}>Delete</Key>}
         <Key verb="idea-reject" onClick={() => run('reject')} disabled={busy || !ours}>Archive idea</Key>
-        <Key primary verb="idea-approve" onClick={() => run('approve')} disabled={busy || !ours}>Generate draft</Key>
+        <Key primary verb="idea-approve" onClick={() => run('approve')} disabled={busy || !ours || it.lane === 'swishdm'}>{it.lane === 'swishdm' ? 'Setup pending' : 'Generate draft'}</Key>
       </div>}
       {it.generating && <p className="cn-say">Draft requested. It will appear in Review. <a href={dHash('content', 'now', { lane: it.lane })}>Open Review</a></p>}
       {it.outlier?.url && <a href={it.outlier.url} target="_blank" rel="noreferrer" data-verb="source">Open source post ↗</a>}

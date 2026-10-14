@@ -13,7 +13,7 @@ import type { ContentLane } from '../../../lib/content'
 declare global { interface Window { __editorialPreviewCalls?: { name: string; params: Record<string, unknown>; response: unknown }[]; __editorialPreviewRefreshFailure?: boolean; __editorialPreviewRefreshRunningOnce?: boolean } }
 
 type Data = { briefs: Record<ContentLane, EditorialBrief[]> }
-const lanes: ContentLane[] = ['ivan','risedtc','arch']
+const lanes: ContentLane[] = ['ivan','risedtc','arch','swishdm']
 export function makeLocalPreviewClient(data: Data): EditorialClient {
   const receipts = new Map<string, Record<string, unknown>>()
   const write = (name: string, params: Record<string, unknown>, response: unknown) => { window.__editorialPreviewCalls ??= []; window.__editorialPreviewCalls.push({ name, params, response }) }

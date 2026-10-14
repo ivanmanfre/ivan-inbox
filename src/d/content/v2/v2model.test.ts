@@ -13,7 +13,7 @@ const pi = (o: Partial<PlanItem> & { day: string; lane: Lane }): PlanItem => ({
   stage: 'scheduled', arming: 'armed', movable: true, ...o,
 } as unknown as PlanItem)
 const items = (list: PlanItem[]) => {
-  const out = { ivan: new Map(), risedtc: new Map(), arch: new Map() } as Record<Lane, Map<string, PlanItem[]>>
+  const out = { ivan: new Map(), risedtc: new Map(), arch: new Map() , swishdm: new Map()} as Record<Lane, Map<string, PlanItem[]>>
   for (const x of list) { const m = out[x.lane]; m.set(x.day, [...(m.get(x.day) ?? []), x]) }
   return out
 }

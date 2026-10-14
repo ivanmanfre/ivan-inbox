@@ -7,6 +7,7 @@ type Db = { from(table: string): any; rpc(name: string, args: Record<string, unk
 const LIMIT = 10000
 const PAGE = 500
 const collections: Record<EditorialClientId, Array<{ table: string; order: string; scoped: boolean }>> = {
+  swishdm: [], // Onboarding sources are supplied explicitly; collector access awaits client permission.
   ivan: [
     { table: 'own_posts', order: 'id', scoped: false },
     { table: 'lm_idea_candidates', order: 'id', scoped: false },

@@ -717,7 +717,7 @@ describe('Run 2 authenticated boundaries', () => {
 
 describe('the client registry is the only source of scope', () => {
   it('accepts exactly the three registered lanes', () => {
-    for (const lane of ['ivan', 'risedtc', 'arch']) {
+    for (const lane of ['ivan', 'risedtc', 'arch', 'swishdm']) {
       expect(assertRegisteredClient(lane)).toBe(lane)
     }
     for (const bad of ['IVAN', 'ivan ', 'Ivan', null, undefined, 1, {}, 'zz-selftest']) {

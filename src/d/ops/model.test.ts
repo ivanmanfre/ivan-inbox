@@ -16,7 +16,7 @@ describe('readBoard', () => {
     expect(b.lanes.risedtc.map(x => x.kind)).toEqual(['escalation', 'booking'])
     expect(b.lanes.arch).toHaveLength(1)
     expect(b.lanes.ivan).toHaveLength(1)
-    expect(b.waiting).toEqual({ ivan: 1, risedtc: 2, arch: 1 })
+    expect(b.waiting).toEqual({ ivan: 1, risedtc: 2, arch: 1 , swishdm: 0})
   })
 
   it('folds comment ideas past the 3 a day into later, and keeps them out of the Ops number', () => {
@@ -30,8 +30,8 @@ describe('readBoard', () => {
   it('counts tasks in the seat number but never draws them as lane cards', () => {
     const b = readBoard([d('task', 'ivan'), d('task', 'arch'), d('escalation', 'arch')], new Set(), NOW)
     expect(b.lanes.arch).toHaveLength(1)
-    expect(b.waiting).toEqual({ ivan: 1, risedtc: 0, arch: 2 })
-    expect(b.tasks).toEqual({ ivan: 1, risedtc: 0, arch: 1 })
+    expect(b.waiting).toEqual({ ivan: 1, risedtc: 0, arch: 2 , swishdm: 0})
+    expect(b.tasks).toEqual({ ivan: 1, risedtc: 0, arch: 1 , swishdm: 0})
   })
 
   it('keeps a held card on the board after its stamp', () => {
@@ -81,7 +81,7 @@ describe('parity 09-27: seats keep their own 3 a day; unknown clients keep a lan
     expect(b.laterBy.risedtc).toHaveLength(2)
     expect(b.lanes.arch).toHaveLength(2)
     expect(b.laterBy.arch).toHaveLength(1)
-    expect(b.waiting).toEqual({ ivan: 3, risedtc: 3, arch: 2 })
+    expect(b.waiting).toEqual({ ivan: 3, risedtc: 3, arch: 2 , swishdm: 0})
   })
   it('draws a client with no seat as its own lane and counts it', () => {
     const b = readBoard([d('escalation', 'acme'), d('update', 'acme'), d('booking', 'ivan')], new Set(), NOW)
@@ -89,6 +89,6 @@ describe('parity 09-27: seats keep their own 3 a day; unknown clients keep a lan
     expect(b.other[0]).toMatchObject({ key: 'acme', waiting: 2 })
     expect(b.flat.map(x => x.client_id)).toEqual(['ivan', 'acme', 'acme'])
     expect(positionOf(b, b.other[0].cards[1])).toMatchObject({ seat: null, lane: 'acme', at: 2, of: 2 })
-    expect(opsWaitingBySeat([d('escalation', 'acme'), d('booking', 'arch')], NOW)).toEqual({ ivan: 0, risedtc: 0, arch: 1, other: 1 })
+    expect(opsWaitingBySeat([d('escalation', 'acme'), d('booking', 'arch')], NOW)).toEqual({ ivan: 0, risedtc: 0, arch: 1, other: 1 , swishdm: 0})
   })
 })

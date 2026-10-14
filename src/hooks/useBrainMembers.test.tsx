@@ -27,7 +27,7 @@ it('missed-event fallback keeps verified members during a bounded read and remov
 it('membership-only feed invalidates immediately, returns fresh body, and ignores malformed metadata', async () => {
  sdk.read.mockResolvedValue({ data: [row()], error: null }); const { result } = renderHook(() => useRows([row()]))
  await act(async () => {})
- expect(sdk.events.map(e => e.filter)).toEqual(['client_id=eq.ivan','client_id=eq.risedtc','client_id=eq.arch'])
+ expect(sdk.events.map(e => e.filter)).toEqual(['client_id=eq.ivan','client_id=eq.risedtc','client_id=eq.arch','client_id=eq.swishdm'])
  act(() => sdk.events[0].callback({ new: { event_id: 1, client_id: 'arch', draft_id: a } }))
  expect(sdk.read).not.toHaveBeenCalled()
  let done!: (x: unknown) => void; sdk.read.mockReturnValueOnce(new Promise(resolve => { done = resolve }))

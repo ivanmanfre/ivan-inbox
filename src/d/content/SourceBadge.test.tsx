@@ -105,7 +105,7 @@ describe('SourceBadge inside the real Ideas list row + IdeaDetail pane (fixture 
     const ffcItem = fromCandidate(cand(3, { source_ref: 'ffc-123' }))
     const nullRefItem = fromCandidate(cand(4, { source_ref: null }))
     const items = [outlierItem, callsItem, ffcItem, nullRefItem]
-    const banks = { ivan: { ...empty, items, n: items.length }, risedtc: empty, arch: empty } as unknown as IdeaBanks
+    const banks = { ivan: { ...empty, items, n: items.length }, risedtc: empty, arch: empty , swishdm: empty} as unknown as IdeaBanks
     renderInFrame(<Ideas banks={banks} phone={false} />)
 
     // List row: only the outlier idea's row carries the cn-cbrow badge wrapper.
@@ -132,7 +132,7 @@ describe('SourceBadge inside the real Ideas list row + IdeaDetail pane (fixture 
       clientIdea(1, { source_ref: 'outlier:x:555000111', score_breakdown: { source_author: 'Mattan K.', lift: 2.1 } }),
       'risedtc',
     )
-    const banks = { ivan: empty, risedtc: { ...empty, items: [outlierClientItem], n: 1 }, arch: empty } as unknown as IdeaBanks
+    const banks = { ivan: empty, risedtc: { ...empty, items: [outlierClientItem], n: 1 }, arch: empty , swishdm: empty} as unknown as IdeaBanks
     renderInFrame(<Ideas banks={banks} phone={false} />)
     fireEvent.click(document.querySelector('[data-verb="lane"][data-lane="risedtc"]')!)
     const row = document.querySelector('.cn-cbrow[data-idea-id="c1"]')

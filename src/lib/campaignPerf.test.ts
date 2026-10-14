@@ -13,7 +13,7 @@ describe('campaignPerf', () => {
       c({ client_id: 'ivan', replied_7d: 24, invites_7d: 179 }), c({ client_id: 'ivan', replied_7d: 1 }),
       c({ client_id: 'risedtc', replied_7d: 25, calls_7d: 1 }), c({ client_id: 'arch', replied_7d: 19, calls_7d: 1 }),
     ]
-    expect(answerLine(rows)).toBe('69 replied this week: Ivan 25, Rise 25, Arch 19. 2 calls booked.')
+    expect(answerLine(rows)).toBe('69 replied this week: Ivan 25, Rise 25, Arch 19, SwishDM 0. 2 calls booked.')
     expect(answerLine(rows, ['ivan'])).toBe('25 replied this week. No calls booked yet.')
   })
   it('folds idle campaigns: quiet when active, paused otherwise, paused hidden on Ivan', () => {

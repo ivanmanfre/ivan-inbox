@@ -17,7 +17,7 @@ export function Pair<T extends string>({ value, options, onPick, disabled, name 
 }
 
 
-const CLIENT_NAME: Record<string, string> = { risedtc: 'Rise', arch: 'Arch' }
+const CLIENT_NAME: Record<string, string> = { risedtc: 'Rise', arch: 'Arch', swishdm: 'SwishDM' }
 
 export function MoneyCells({ m }: { m: MoneyPlate }) {
   // Every client the ledger carries an MRR row for (Rise and Arch first), never a typed-in pair.

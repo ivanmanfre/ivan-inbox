@@ -399,7 +399,7 @@ function ClientIdeaCard({ i, lane, onDecided, scoreRow, unvalidated }: {
     setDeciding(decision)
     setErr('')
     try {
-      await decideClientIdea(i.id, decision)
+      await decideClientIdea(i.id, decision, lane)
       onDecided(i.id)
     } catch (e) {
       setErr(e instanceof Error ? e.message : `Could not ${decision === 'approved' ? 'approve' : 'reject'}`)

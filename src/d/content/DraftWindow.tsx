@@ -194,7 +194,7 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
   return (
     <section className="cn-dw" aria-label="Draft">
       <div className="cn-dwh">
-        <div className="cn-av">{lane === 'ivan' ? 'IM' : lane === 'arch' ? 'DS' : 'MD'}</div>
+        <div className="cn-av">{lane === 'ivan' ? 'IM' : lane === 'arch' ? 'DS' : lane === 'swishdm' ? 'JK' : 'MD'}</div>
         <div className="cn-who"><b title={titleOf(d)}>{titleOf(d)}</b><small>{LANE_NAME[lane]} · {kindOf(d.type)} · created {age(d.created_at)} ago</small></div>
         <span className="cn-jk">
           <button type="button" aria-label="Previous (k)" disabled={at <= 0} onClick={() => at > 0 && onPick(queue[at - 1])}>k</button>

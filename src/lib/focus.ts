@@ -46,7 +46,7 @@ export type FocusSummary = {
 // import it (not exported, and workQueue.ts is out of this item's owned
 // files), so this is the same copy kept in a second place on purpose rather
 // than invented anew.
-const LANE_NAME: Record<string, string> = { ivan: 'Your', risedtc: "Mattan's", arch: "Davorin's" }
+const LANE_NAME: Record<string, string> = { ivan: 'Your', risedtc: "Mattan's", arch: "Davorin's" , swishdm: "Jonathan's"}
 export function laneName(client: string): string {
   return `${LANE_NAME[client] ?? client} lane`
 }

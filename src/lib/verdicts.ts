@@ -42,7 +42,7 @@ export type DraftAction = 'pending' | 'approved' | 'none' | 'deleted' | 'archive
 export type SavedVerdict = {
   verdict_id: string
   draft_id: string
-  client_id: 'ivan' | 'risedtc' | 'arch'
+  client_id: 'ivan' | 'risedtc' | 'arch' | 'swishdm'
   verdict: StoredVerdict
   reasons: string[]
   note: string | null
@@ -109,7 +109,7 @@ export async function readVerdicts(sinceIso: string | null = null): Promise<Save
   return ((data ?? []) as SavedVerdict[]).map(v => ({ ...v, reasons: v.reasons ?? [] }))
 }
 
-export type ToJudge = { total: number; by_lane: Partial<Record<'ivan' | 'risedtc' | 'arch', number>>; newest_release: string | null }
+export type ToJudge = { total: number; by_lane: Partial<Record<'ivan' | 'risedtc' | 'arch' | 'swishdm', number>>; newest_release: string | null }
 export async function readToJudge(): Promise<ToJudge> {
   const { data, error } = await supabase.rpc('cb39_to_judge', { p_client: null })
   if (error) throw new Error(friendly(error.message))

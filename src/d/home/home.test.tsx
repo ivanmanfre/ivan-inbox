@@ -16,8 +16,8 @@ const lanes = (o: Partial<LanesData> = {}) => new Proxy(o, { get: (t, k) => (t a
 const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((dow, i) => ({ key: `2026-09-${28 + i}`, dow, dm: '', n: 28 + i, posts: [1, 2, 0, 0, 0][i], stub: null, planned: false }))
 const home = (o: Partial<HomeData> = {}): HomeData => ({
   now: NOW, lanes: lanes(),
-  content: { ivan: { v: { n: 3, days, below: false } }, risedtc: { wait: true }, arch: { fail: 'boom' } },
-  drafts: { ivan: { v: 2 }, risedtc: { wait: true }, arch: { fail: 'x' } },
+  content: { ivan: { v: { n: 3, days, below: false } }, risedtc: { wait: true }, arch: { fail: 'boom' } , swishdm: { fail: 'boom' }},
+  drafts: { ivan: { v: 2 }, risedtc: { wait: true }, arch: { fail: 'x' } , swishdm: { fail: 'x' }},
   retry: { content: vi.fn(), drafts: vi.fn(), lanes: vi.fn() }, ...o,
 })
 
@@ -37,7 +37,7 @@ describe('home tiles', () => {
     expect(document.querySelector('.hm-n.hm-on')!.textContent).toBe('2')
   })
   it('next week: filled cells for posts, a count only above one, Below 3 under the floor', () => {
-    renderInFrame(<NextWeek seat="ivan" h={home({ content: { ivan: { v: { n: 2, days, below: true } }, risedtc: { wait: true }, arch: { wait: true } } })} />, { hash: '#exp/d/home' })
+    renderInFrame(<NextWeek seat="ivan" h={home({ content: { ivan: { v: { n: 2, days, below: true } }, risedtc: { wait: true }, arch: { wait: true } , swishdm: { wait: true }} })} />, { hash: '#exp/d/home' })
     const cells = [...document.querySelectorAll('.hm-strip i')]
     expect(cells.map(c => c.textContent)).toEqual(['M', '2', 'W', 'T', 'F'])
     expect(cells.map(c => c.classList.contains('hm-on'))).toEqual([true, true, false, false, false])
@@ -69,7 +69,7 @@ describe('home tiles', () => {
     const d = lanes({
       cc: { value: { clients: [] } as never, failed: null },
       pauses: { value: { ivan: '2026-09-27T15:41:00Z' }, failed: null },
-      attempts: { value: { ivan: { at: '2026-09-27T13:41:00Z', ok: false, error: 'X422' }, risedtc: null, arch: null }, failed: null },
+      attempts: { value: { ivan: { at: '2026-09-27T13:41:00Z', ok: false, error: 'X422' }, risedtc: null, arch: null , swishdm: null}, failed: null },
     })
     renderInFrame(<Limit seat="ivan" h={home({ lanes: d })} />, { hash: '#exp/d/home' })
     expect(document.querySelector('.hm-word')!.textContent).toBe('Limited · resumes 17:41')

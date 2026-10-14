@@ -55,7 +55,8 @@ export function useIdeaBanks(enabled = true, activeLane?: Lane): IdeaBanks {
   const ivan = useBank('ivan', enabled && (!activeLane || activeLane === 'ivan'))
   const risedtc = useBank('risedtc', enabled && (!activeLane || activeLane === 'risedtc'))
   const arch = useBank('arch', enabled && (!activeLane || activeLane === 'arch'))
-  return { ivan, risedtc, arch }
+  const swishdm = useBank('swishdm', enabled && (!activeLane || activeLane === 'swishdm'))
+  return { ivan, risedtc, arch , swishdm: swishdm}
 }
 // Kept for callers of the previous facet helper; the best-five surface needs no filters.
 export function filtered(items: IdeaItem[], lane: Lane, f: FilterState): IdeaItem[] {
@@ -72,7 +73,7 @@ function readPicks(): Record<Lane, IdeaItem[]> {
 }
 function readSkips(): Record<Lane, string[]> {
   try { const d = readSwr<Record<Lane, string[]>>('content-idea-skips-v1')?.payload || {} as Record<Lane, string[]>; return Object.fromEntries(LANES.map(l => [l, Array.isArray(d[l]) ? d[l].filter((id: unknown) => typeof id === 'string') : []])) as Record<Lane, string[]> }
-  catch { return { ivan: [], risedtc: [], arch: [] } }
+  catch { return { ivan: [], risedtc: [], arch: [] , swishdm: []} }
 }
 export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks: IdeaBanks; phone: boolean; lane?: Lane; onLaneChange?: (lane: Lane) => void; v2?: boolean }) {
   const toast = useToast()
@@ -112,7 +113,7 @@ export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks:
           picked = { ...it, id: r.id, saved: true }
         }
       } else if (it.ivan) await decideIdea(it.ivan, use ? 'approve' : 'reject', '')
-      else await decideClientIdea(it.id, use ? 'approved' : 'rejected')
+      else await decideClientIdea(it.id, use ? 'approved' : 'rejected', it.lane)
       if (use) {
         picked = { ...picked, saved: true, generating: !it.outlier }
         setSaved(s => { const list = [picked, ...s[it.lane].filter(i => i.id !== picked.id)]; writeSwr(`content-idea-picks:${it.lane}`, list); return { ...s, [it.lane]: list } })
@@ -135,7 +136,7 @@ export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks:
     {!(current?.id === it.id && !it.outlier && !it.generating) && <div className="cn-best-acts">{it.generating
       ? <a className="cn-best-use" href={dHash('content', 'now', { lane: it.lane })}>Open Review</a>
       : it.saved ? <button type="button" className="cn-best-use" onClick={() => open(it.id)}>Open saved idea</button> : <>
-        <button type="button" className="cn-best-use" data-verb="idea-use" disabled={!!busy || !!it.ivan && !ideaDecidable(it.ivan)} onClick={() => void run(it, true)}>{busy === it.id ? 'Working…' : it.outlier ? 'Save idea' : 'Generate draft'}</button>
+        <button type="button" className="cn-best-use" data-verb="idea-use" disabled={!!busy || it.lane === 'swishdm' || !!it.ivan && !ideaDecidable(it.ivan)} onClick={() => void run(it, true)}>{busy === it.id ? 'Working…' : it.outlier ? 'Save idea' : it.lane === 'swishdm' ? 'Setup pending' : 'Generate draft'}</button>
         <button type="button" data-verb="idea-skip" disabled={!!busy} onClick={() => void run(it, false)}>{it.outlier ? 'Hide' : 'Archive idea'}</button>
       </>}</div>}
     {current?.id === it.id && <IdeaDetail it={it} onDone={done} compact/>}
@@ -162,7 +163,7 @@ export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks:
         <div className="cv2-idea-acts">
           {it.generating ? <a className="cv2-k" href={dHash('content', 'now', { lane: it.lane, idea: it.id })}>Open in Review →</a>
             : it.saved ? <button type="button" className="cv2-k" onClick={() => open(it.id)}>Open saved idea</button>
-              : !(expanded && !it.outlier) && <button type="button" className="cv2-k cv2-k-p" data-verb="idea-use" disabled={!!busy || !!it.ivan && !ideaDecidable(it.ivan)} onClick={() => void run(it, true)}>{busy === it.id ? 'Working…' : it.outlier ? 'Save idea' : 'Generate draft'}</button>}
+              : !(expanded && !it.outlier) && <button type="button" className="cv2-k cv2-k-p" data-verb="idea-use" disabled={!!busy || it.lane === 'swishdm' || !!it.ivan && !ideaDecidable(it.ivan)} onClick={() => void run(it, true)}>{busy === it.id ? 'Working…' : it.outlier ? 'Save idea' : it.lane === 'swishdm' ? 'Setup pending' : 'Generate draft'}</button>}
           {!it.saved && !it.generating && <Menu label="More for this idea" verb="idea-more" items={[{ key: 'skip', label: it.outlier ? 'Hide on this device' : 'Archive idea', run: () => void run(it, false) }]} />}
         </div>
       </article>

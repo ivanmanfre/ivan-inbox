@@ -52,7 +52,7 @@ import './phone-ox.css'
 const BrainArea = lazy(() => import('./BrainArea').then(m => ({ default: m.BrainArea })))
 const InputsPage = lazy(() => import('./inputs/Inputs').then(m => ({ default: m.InputsPage })))
 
-const isLane = (s: string | null): s is Lane => s === 'ivan' || s === 'risedtc' || s === 'arch'
+const isLane = (s: string | null): s is Lane => s === 'ivan' || s === 'risedtc' || s === 'arch' || s === 'swishdm'
 const SHOW_KEY = 'd-content-review-show'
 /** The longest the Ideas tab holds the other seats' reads back for the shown seat's ideas. */
 const IDEAS_FIRST_MS = 12_000

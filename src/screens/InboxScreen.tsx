@@ -63,6 +63,7 @@ const CHIPS: { key: Filter; label: string }[] = [
   { key: 'ivan', label: 'Ivan' },
   { key: 'risedtc', label: 'Rise' },
   { key: 'arch', label: 'Arch' },
+  { key: 'swishdm', label: 'SwishDM' },
   { key: 'email', label: 'Email' },
 ]
 
@@ -75,7 +76,7 @@ const EMPTY: Record<Filter, string> = {
   arch: 'No Arch conversations — the reply detector for Davorin’s seat is not armed yet',
   email: 'No email conversations — sends live in Sends',
   spam: 'Nothing filed as likely spam',
-}
+ swishdm: 'No SwishDM conversations — the reply detector for Jonathan’s seat is not armed yet'}
 
 // The honest-empty register. "No threads yet" and "the fetch failed" rendered the
 // identical sentence on the screen Ivan opens first every morning (U2/U3), and the

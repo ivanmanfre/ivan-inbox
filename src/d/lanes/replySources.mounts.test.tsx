@@ -56,10 +56,10 @@ it('mounts Strategy metrics for its seat beside the legacy fixed-window block', 
 it.each(['workbench', 'stock'] as const)('keeps separate labelled denominators for all seats in the %s overview', async shell => {
  const View = shell === 'workbench' ? WorkbenchOverview : StockOverview
  render(<View client="all" timeframe="30d" />)
- await waitFor(() => expect(screen.getAllByText('First observed text replies')).toHaveLength(3))
+ await waitFor(() => expect(screen.getAllByText('First observed text replies')).toHaveLength(4))
  const ids = aggregate().map(([, p]) => p.p_client_id).sort()
- expect(ids).toEqual(['arch', 'ivan', 'risedtc'])
- for (const name of ['Ivan', 'Rise', 'Arch']) expect(screen.getByRole('region', { name: `Reply sources for ${name}` })).toBeTruthy()
+ expect(ids).toEqual(['arch', 'ivan', 'risedtc', 'swishdm'])
+ for (const name of ['Ivan', 'Rise', 'Arch', 'SwishDM']) expect(screen.getByRole('region', { name: `Reply sources for ${name}` })).toBeTruthy()
 })
 it('mounts the selected seat instead of an all-client denominator in both overview shells', async () => {
  const view = render(<StockOverview client="arch" timeframe="custom" range={{ from: '2026-09-01', to: '2026-09-15' }} />)

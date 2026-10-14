@@ -44,7 +44,7 @@ import type { CcPayload } from '../../lib/campaignControl'
 import { AnswerLine, CampaignBoard, useCampaignPerf } from './CampaignBoard'
 import './sends.css'
 
-type Client = 'all' | 'ivan' | 'risedtc' | 'arch'
+type Client = 'all' | 'ivan' | 'risedtc' | 'arch' | 'swishdm'
 type Timeframe = '7d' | '30d' | '90d' | 'custom'
 type DateRange = { from: string; to: string }
 
@@ -802,7 +802,7 @@ function GovGauge({ g }: { g: GovernorRow }) {
 }
 
 function Governor({ rows, client }: { rows: GovernorRow[]; client: Client }) {
-  const targets: string[] = client === 'all' ? ['ivan', 'risedtc', 'arch'] : [client]
+  const targets: string[] = client === 'all' ? ['ivan', 'risedtc', 'arch', 'swishdm'] : [client]
   const cards = targets
     .map(t => rows.find(r => r.client_id === t))
     .filter((g): g is GovernorRow => Boolean(g))

@@ -32,9 +32,9 @@
 .dm-bulk{flex:none;display:flex;gap:10px;align-items:center;padding:6px 20px;border-bottom:1px solid var(--line);font-size:13px;color:var(--t2);background:var(--p1)}
 .dm-bulk b{color:var(--t1);font-family:var(--m)}
 /* desk grid */
-.dm-grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 500px}
-@media (max-width:1380px){.dm-grid{grid-template-columns:repeat(3,minmax(0,1fr)) 440px}}
-.d-with-claude .dm-grid{grid-template-columns:repeat(3,minmax(0,1fr)) 400px}
+.dm-grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) 500px}
+@media (max-width:1380px){.dm-grid{grid-template-columns:repeat(4,minmax(0,1fr)) 440px}}
+.d-with-claude .dm-grid{grid-template-columns:repeat(4,minmax(0,1fr)) 400px}
 .dm-grid.dm-grid-cf{grid-template-columns:300px minmax(0,1fr)}
 @media (max-width:1380px){.dm-grid.dm-grid-cf{grid-template-columns:262px minmax(0,1fr)}}
 .dm-cf-h{display:flex;align-items:baseline;gap:6px;padding:10px 14px 5px;border-top:1px solid var(--line)}
@@ -106,7 +106,7 @@
 .dm-pickl input{height:36px;border:1px solid var(--line2);border-radius:8px;background:var(--p2);color:var(--t1);padding:0 10px;font:400 14px var(--m);color-scheme:dark}
 /* phone list */
 .dm-phone{padding-bottom:12px}
-.dm-tiles{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.dm-tiles{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .dm-tile{display:flex;flex-direction:column;align-items:flex-start;padding:12px 12px 10px;border-right:1px solid var(--line);text-align:left;min-width:0;border-bottom:2px solid transparent}
 .dm-tile:last-child{border-right:0}
 .dm-tile.dm-on{background:var(--p2);border-bottom-color:var(--t1)}

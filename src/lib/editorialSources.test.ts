@@ -435,7 +435,7 @@ describe('applyPublishedSince', () => {
 
 describe('assertRegisteredClient', () => {
   it('accepts every registered lane and refuses everything else', () => {
-    for (const lane of ['ivan', 'risedtc', 'arch']) {
+    for (const lane of ['ivan', 'risedtc', 'arch', 'swishdm']) {
       expect(assertRegisteredClient(lane)).toBe(lane)
     }
     for (const bad of ['zz-selftest', '', null, undefined, 42, 'IVAN']) {

@@ -46,8 +46,8 @@ describe('Ideas reads only the visible client', () => {
     const view = renderHook(({ enabled }) => useIdeaBanks(enabled), { initialProps: { enabled: false } })
     expect(read).not.toHaveBeenCalled()
     view.rerender({ enabled: true })
-    await waitFor(() => expect(read).toHaveBeenCalledTimes(3))
-    expect(read.mock.calls.map(([l]) => l)).toEqual(['ivan', 'risedtc', 'arch'])
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(4))
+    expect(read.mock.calls.map(([l]) => l)).toEqual(['ivan', 'risedtc', 'arch', 'swishdm'])
   })
 
   it('keeps a failed selected read visible instead of converting it to a successful empty bank', async () => {

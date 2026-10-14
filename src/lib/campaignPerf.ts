@@ -18,9 +18,9 @@ export type CampaignPerf = {
   last_send: string | null
 }
 
-export type Seat = 'ivan' | 'risedtc' | 'arch'
-export const SEATS: Seat[] = ['ivan', 'risedtc', 'arch']
-export const SEAT_NAME: Record<Seat, string> = { ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch' }
+export type Seat = 'ivan' | 'risedtc' | 'arch' | 'swishdm'
+export const SEATS: Seat[] = ['ivan', 'risedtc', 'arch', 'swishdm']
+export const SEAT_NAME: Record<Seat, string> = { ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch', swishdm: 'SwishDM' }
 
 export async function fetchCampaignPerf(): Promise<CampaignPerf[]> {
   const { data, error } = await supabase.from('inbox_campaign_perf_v').select('*')

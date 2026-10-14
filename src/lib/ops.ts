@@ -163,7 +163,7 @@ export type OpsContext = {
 // engine and leaves the draft in that board's review buffer. Same table, different
 // destination. (The queue-jump it used to do is now opt-in, off by default:
 // integration_config.newsjack_auto_jump.)
-export const ENGINE_LABEL: Record<string, string> = { ivan: 'your feed', risedtc: 'Rise', arch: 'Arch' }
+export const ENGINE_LABEL: Record<string, string> = { ivan: 'your feed', risedtc: 'Rise', arch: 'Arch', swishdm: 'SwishDM' }
 export function engineLabel(clientId: string): string {
   return ENGINE_LABEL[clientId] ?? clientId
 }
@@ -175,8 +175,8 @@ export function engineLabel(clientId: string): string {
 // client_id — never hardcoded, because both lanes render this card.
 // Rebuild decision 8 (26 Sep): the label reads Ivan / Rise / Arch, as every
 // chip in the app has since 20 Sep; a SENTENCE names the person (seatPerson).
-export const SEAT_LABEL: Record<string, string> = { ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch' }
-const SEAT_PERSON: Record<string, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin' }
+export const SEAT_LABEL: Record<string, string> = { ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch', swishdm: 'SwishDM' }
+const SEAT_PERSON: Record<string, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan' }
 /** Who posts from this seat, for a sentence: "you", "Mattan", "Davorin". */
 export function seatPerson(clientId: string): string {
   return SEAT_PERSON[clientId] ?? seatLabel(clientId)
@@ -187,7 +187,7 @@ export function seatLabel(clientId: string): string {
 // The person a reply posts AS, in full, as today's confirm names them ("Post
 // this reply as Mattan Danino?", main SEAT_LABEL). Parity fix 09-27: the
 // rebuild's Rise/Arch lane label had leaked into that sentence.
-const SEAT_FULL_NAME: Record<string, string> = { ivan: 'Ivan', risedtc: 'Mattan Danino', rise: 'Mattan Danino', arch: 'Davorin Smit' }
+const SEAT_FULL_NAME: Record<string, string> = { ivan: 'Ivan', risedtc: 'Mattan Danino', rise: 'Mattan Danino', arch: 'Davorin Smit', swishdm: 'Jonathan Kiekbusch' }
 export function seatFullName(clientId: string | null | undefined): string {
   return SEAT_FULL_NAME[(clientId ?? '').trim().toLowerCase() || 'ivan'] ?? seatLabel(clientId ?? '')
 }

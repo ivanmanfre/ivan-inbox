@@ -50,13 +50,15 @@ export async function fetchEngagers7d(): Promise<Record<Seat, number>> {
   const ivan = ids(r => !r.client_id && /engage/i.test(r.name))
   const rise = ids(r => r.client_id === 'risedtc' && /engager/i.test(r.name))
   const arch = ids(r => r.client_id === 'arch')
+  const swish = ids(r => r.client_id === 'swishdm' && /engager/i.test(r.name))
   const t = since(7)
-  const [a, b, c] = await Promise.all([
+  const [a, b, c, d] = await Promise.all([
     ivan.length ? headCount(q => q.in('campaign_id', ivan).gt('created_at', t)) : 0,
     rise.length ? headCount(q => q.in('campaign_id', rise).gt('created_at', t)) : 0,
+    swish.length ? headCount(q => q.in('campaign_id', swish).gt('created_at', t)) : 0,
     arch.length ? headCount(q => q.in('campaign_id', arch).gt('created_at', t).eq('enrichment_data->>lane', 'engager_warm')) : 0,
   ])
-  return { ivan: a, risedtc: b, arch: c }
+  return { ivan: a, risedtc: b, arch: d, swishdm: c}
 }
 
 export const STAGES = ['enriched', 'ballot_hold', 'expansion_hold', 'queued', 'connection_sent', 'connected', 'dm_sent', 'replied', 'positive_reply', 'skipped', 'archived', 'disqualified', 'inmail_failed'] as const
@@ -143,7 +145,7 @@ export function laneMixOnce(campaignId: string): Promise<LaneMix> {
 
 /** The senders' own pause keys: one per seat (a 422 streak arms it for 2h) and the
     global manual kill switch `conn_send_pause_until` (stops every seat's invites). */
-export const PAUSE_KEY: Record<Seat, string> = { ivan: 'ivan_conn_422_pause_until', risedtc: 'risedtc_conn_422_pause_until', arch: 'arch_conn_send_pause_until' }
+export const PAUSE_KEY: Record<Seat, string> = { ivan: 'ivan_conn_422_pause_until', risedtc: 'risedtc_conn_422_pause_until', arch: 'arch_conn_send_pause_until' , swishdm: 'swishdm_conn_send_pause_until'}
 export const KILL_SWITCH_KEY = 'conn_send_pause_until'
 export type Pauses = Partial<Record<Seat | 'all', string>>
 export async function fetchPauses(): Promise<Pauses> {

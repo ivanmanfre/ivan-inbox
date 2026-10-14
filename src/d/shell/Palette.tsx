@@ -64,7 +64,7 @@ const GO_SUBS: { id: string; title: string; icon: IconName; hash: string }[] = [
 export function laneOnScreen(hash: string): ContentLane {
   const q = new URLSearchParams(hash.split('?')[1] ?? '')
   const v = q.get('lane') ?? q.get('seat') ?? ''
-  return v === 'risedtc' || v === 'rise' ? 'risedtc' : v === 'arch' ? 'arch' : 'ivan'
+  return v === 'risedtc' || v === 'rise' ? 'risedtc' : v === 'arch' ? 'arch' : v === 'swishdm' ? 'swishdm' : 'ivan'
 }
 
 export function DPalette({ onClose, navigate, toggleClaude, openBell, lane: startLane = laneOnScreen(location.hash), desktop = true }: Props) {

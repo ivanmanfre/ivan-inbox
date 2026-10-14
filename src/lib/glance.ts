@@ -26,7 +26,7 @@ export type LaneSplit = {
 // (content.ts:103). The fold is `draftLane()`, the same one every other screen
 // in the app uses, so a NULL row lands on `ivan` and never on `other`.
 export function splitReviewByLane(rows: readonly LaneRow[]): LaneSplit {
-  const byLane: Record<ContentLane, number> = { ivan: 0, risedtc: 0, arch: 0 }
+  const byLane: Record<ContentLane, number> = { ivan: 0, risedtc: 0, arch: 0, swishdm: 0 }
   let other = 0
   for (const r of rows) {
     const l = draftLane(r)

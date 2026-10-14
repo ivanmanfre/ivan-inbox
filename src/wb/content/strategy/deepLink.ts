@@ -37,7 +37,7 @@ export function isStrategyView(x: string | null | undefined): x is StrategyViewI
 // that module's first line is `import { supabase } from './supabase'`, and
 // this file is reached from the pure router too (`route.ts` already keeps
 // its own local UUID regex for the identical reason — see the comment there).
-const CONTENT_LANES: ContentLane[] = ['ivan', 'risedtc', 'arch']
+const CONTENT_LANES: ContentLane[] = ['ivan', 'risedtc', 'arch', 'swishdm']
 
 export function isContentLane(x: string | null | undefined): x is ContentLane {
   return !!x && (CONTENT_LANES as string[]).includes(x)

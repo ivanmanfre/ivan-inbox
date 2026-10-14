@@ -47,7 +47,7 @@ const MONEY_LEDGER_COLS =
 
 export type LaneDayRow = {
   day: string
-  lane: 'ivan' | 'risedtc' | 'arch' | 'unattributed'
+  lane: 'ivan' | 'risedtc' | 'arch' | 'swishdm' | 'unattributed'
   vendor: string
   runs: number
   // Both nullable: `sum(...)` over a group whose rows are all NULL (an
@@ -810,7 +810,7 @@ export { taskTitle }
 // ---------------------------------------------------------------------------
 
 export type CostPerLead = {
-  lane: 'ivan' | 'risedtc' | 'arch'
+  lane: 'ivan' | 'risedtc' | 'arch' | 'swishdm'
   usdSettled: number
   ready: number
   perLead: number | null
@@ -818,7 +818,7 @@ export type CostPerLead = {
   settlingDays: number
 }
 
-const COST_LANES: CostPerLead['lane'][] = ['ivan', 'risedtc', 'arch']
+const COST_LANES: CostPerLead['lane'][] = ['ivan', 'risedtc', 'arch', 'swishdm']
 
 // The last `windowDays` complete UTC days, ending YESTERDAY. Today is never
 // complete: settlement lags 24-48h behind the run, so today's apify rows

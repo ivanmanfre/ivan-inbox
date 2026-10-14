@@ -15,6 +15,7 @@ export function pill(h: HomeData, seat: Seat): Read<{ word: string; time: string
   if (!('v' in r)) return r
   const t = todayOf(h.lanes.cc.value, seat, h.now)
   const c = clientOf(h.lanes.cc.value, seat)
+  if (!c) return { v: { word:'Unverified', time:null, tone:'neutral', why:'No connected account monitor is available.' } }
   const atCap = t?.cap != null && t.cap > 0 && t.capUsed != null && t.capUsed >= t.cap
   const why = c ? controlOf(c, h.now).incident?.lead ?? null : null
   return { v: r.v.limited ? { word:'Limited', time:r.v.resumes, tone:'warn', why:why ?? 'Paused after LinkedIn refused invites' }

@@ -60,6 +60,7 @@ type RecSpec = {
 // Census: distinct_people ivan 90 · risedtc 191 · arch 48;
 // events 112 / 275 / 92; confirmed_return 4 / 18 / 15.
 const SPEC: Record<ContentLane, LaneSpec> = {
+  swishdm: { people: 0, operators: 0, labels: { positive: 0, borderline: 0, negative: 0 }, confirmed: 0, observed: 0, topics: [], ranks: [], monthly: [], recs: [] },
   ivan: {
     people: 90, operators: 0,
     labels: { positive: 5, borderline: 21, negative: 48 },

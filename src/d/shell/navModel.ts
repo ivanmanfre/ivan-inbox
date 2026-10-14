@@ -13,7 +13,7 @@ export type NavItem = {
   id: PlaceId; label: string; line: NavLine | null; failed: number
 }
 
-const allFailed = (b: boolean): Record<Seat, boolean> => ({ ivan: b, risedtc: b, arch: b })
+const allFailed = (b: boolean): Record<Seat, boolean> => ({ ivan: b, risedtc: b, arch: b , swishdm: b})
 const nFailed = (r: Record<Seat, boolean>) => Object.values(r).filter(Boolean).length
 
 export function navLines(c: FrameCounts): Partial<Record<PlaceId, { line: NavLine; failed: number }>> {

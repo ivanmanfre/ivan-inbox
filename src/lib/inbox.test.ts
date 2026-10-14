@@ -1175,7 +1175,7 @@ describe('drafts with email and follow-ups, 2026-09-26 live fixes', () => {
     expect(isOwedInbound({ ...rows[1], reply_intent: 'negative' })).toBe(false)
   })
   // Lis Anderson, 2026-09-29: captured and flagged, but the sign-off regex hid her reply.
-  it.each(['ivan', 'risedtc', 'arch'] as const)('keeps a flagged thank-you visible on %s while the writer decides', client_id => {
+  it.each(['ivan', 'risedtc', 'arch', 'swishdm'] as const)('keeps a flagged thank-you visible on %s while the writer decides', client_id => {
     const rows: InboxMessage[] = [
       { ...base, id: 'offer', client_id, message_text: 'May I send you your complete plan?', sent_at: '2026-07-22T09:00:00Z', created_at: '2026-07-22T09:00:00Z' },
       { ...base, id: 'thanks', client_id, direction: 'inbound', message_text: 'Thanks Iván', reply_intent: 'neutral', sent_at: '2026-07-22T10:00:00Z', created_at: '2026-07-22T10:00:00Z' },

@@ -75,13 +75,14 @@ function timeAgo(iso: string): string {
   return `${d}d`
 }
 
-type Seg = 'all' | 'ivan' | 'risedtc' | 'arch'
+type Seg = 'all' | 'ivan' | 'risedtc' | 'arch' | 'swishdm'
 
 const SEGS: { key: Seg; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'ivan', label: 'Ivan' },
   { key: 'risedtc', label: 'Rise' },
   { key: 'arch', label: 'Arch' },
+  { key: 'swishdm', label: 'SwishDM' },
 ]
 
 const SEG_EMPTY: Record<Seg, string> = {
@@ -89,7 +90,7 @@ const SEG_EMPTY: Record<Seg, string> = {
   ivan: 'Nothing waiting on you in Ivan',
   risedtc: 'Nothing waiting on you in Rise',
   arch: 'Nothing waiting on you in Arch',
-}
+ swishdm: 'Nothing waiting on you in SwishDM'}
 
 function clientTitle(id: string): string {
   if (id === 'risedtc') return 'Rise'
@@ -354,7 +355,7 @@ export function DraftsScreen({ threads, onOpenThread, refresh, onOpenOps, verifi
     ivan: draftThreads.filter(t => t.client_id === 'ivan').length + opsIn('ivan').length,
     risedtc: draftThreads.filter(t => t.client_id === 'risedtc').length + opsIn('risedtc').length,
     arch: draftThreads.filter(t => t.client_id === 'arch').length + opsIn('arch').length,
-  }
+   swishdm: draftThreads.filter(t => t.client_id === 'swishdm').length + opsIn('swishdm').length}
   const segThreads = seg === 'all' ? draftThreads : draftThreads.filter(t => t.client_id === seg)
   // Fresh drafts first; stale ones (Ivan already replied) sink to the bottom.
   const shown = [...segThreads.filter(t => !t.draftStale), ...segThreads.filter(t => t.draftStale)]

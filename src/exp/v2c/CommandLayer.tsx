@@ -143,7 +143,7 @@ function snoozeControl(): HTMLElement | null {
 // filterless query.
 function readLane(): ContentLane {
   const v = document.querySelector('.wb-work')?.getAttribute('data-wblane')
-  return v === 'risedtc' || v === 'arch' ? v : 'ivan'
+  return v === 'risedtc' || v === 'arch' || v === 'swishdm' ? v : 'ivan'
 }
 
 const EMPTY_FIND: CrossResults = {

@@ -16,7 +16,7 @@ import { PlanV2 } from './PlanV2'
 
 const rise = () => structuredClone(riseFx) as unknown as PlanRead
 const ivan = () => structuredClone(ivanFx) as unknown as PlanRead
-const FX: Record<Lane, () => PlanRead> = { ivan, risedtc: () => structuredClone(riseFull) as unknown as PlanRead, arch: () => structuredClone(archFx) as unknown as PlanRead }
+const FX: Record<Lane, () => PlanRead> = { ivan, risedtc: () => structuredClone(riseFull) as unknown as PlanRead, arch: () => structuredClone(archFx) as unknown as PlanRead , swishdm: () => structuredClone(archFx) as unknown as PlanRead}
 const deferred = <T,>() => { let resolve!: (v: T) => void; let reject!: (e: unknown) => void; const promise = new Promise<T>((a, b) => { resolve = a; reject = b }); return { promise, resolve, reject } }
 const emptyRead = (): PlanRead => ({
   account: 'arch', today: '2026-10-12', target: 3, target_week: null, open: 0, state: 'planning', proposals_only: false, founder_story_max: 1, cadence_source: '',

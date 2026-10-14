@@ -71,7 +71,7 @@ describe('seatItems (PERF-SMOOTH rewrite)', () => {
     let linked = 0
     for (let seed = 1; seed <= 200; seed++) {
       const { rows, queue } = world(seed)
-      for (const lane of ['ivan', 'risedtc', 'arch'] as Lane[]) {
+      for (const lane of ['ivan', 'risedtc', 'arch', 'swishdm'] as Lane[]) {
         const got = seatItems(rows, lane, queue, NOW)
         linked += got.filter(i => i.source === 'draft' && i.unpublishId).length
         expect(got).toEqual(seatItemsReference(rows, lane, queue, NOW))

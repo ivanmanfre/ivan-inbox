@@ -23,7 +23,7 @@ export async function fetchDevices(): Promise<Device[]> {
 
 export type Board = { slug: string; client_id: string; token: string }
 export async function fetchBoards(): Promise<Board[]> {
-  const { data, error } = await supabase.from('client_boards').select('slug, client_id, token').in('client_id', ['risedtc', 'arch'])
+  const { data, error } = await supabase.from('client_boards').select('slug, client_id, token').in('client_id', ['risedtc', 'arch', 'swishdm'])
   if (error) throw error
   return (data ?? []) as Board[]
 }

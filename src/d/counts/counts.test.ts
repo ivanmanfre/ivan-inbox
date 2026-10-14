@@ -21,7 +21,7 @@ describe('opsWaitingBySeat (the Ops number, split by seat)', () => {
       op({ client_id: 'arch', approved_at: '2026-09-27T08:30:00Z' }),
       op({ client_id: 'ivan', send_blocked_reason: 'discarded_by_operator' }),
     ]
-    expect(opsWaitingBySeat(rows, NOW)).toEqual({ ivan: 2, risedtc: 2, arch: 1 })
+    expect(opsWaitingBySeat(rows, NOW)).toEqual({ ivan: 2, risedtc: 2, arch: 1 , swishdm: 0})
   })
   it('comment ideas past the 3 a day fold out, as on the Ops page', () => {
     const ideas = Array.from({ length: 5 }, () => op({ kind: 'comment_outbound', context: { posted_at: '2026-09-26T20:00:00Z' } as OpsDraft['context'] }))

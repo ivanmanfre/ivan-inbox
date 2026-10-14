@@ -27,7 +27,7 @@
 
 /* ---- seats: iOS segmented control, 44 tall, glass track ---- */
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dx-phone .dx-seats{width:auto;height:44px;margin:0 var(--po-gutter) 12px;padding:0;border-radius:12px;background:var(--b1-wash);box-shadow:inset 0 0 0 .5px rgba(19,18,16,.05)}
-:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dx-phone .dx-seats-thumb{left:3px;top:3px;bottom:3px;width:calc(100% / 3 - 6px);border-radius:9px;transform:translateX(calc(var(--i,0) * (100% + 6px)));transition:transform var(--po-d-content) var(--po-ease)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dx-phone .dx-seats-thumb{left:3px;top:3px;bottom:3px;width:calc(100% / 4 - 6px);border-radius:9px;transform:translateX(calc(var(--i,0) * (100% + 6px)));transition:transform var(--po-d-content) var(--po-ease)}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dx-phone .dx-seats-thumb > span{border-radius:9px;background:#fff;box-shadow:0 3px 8px rgba(19,18,16,.12),0 1px 1px rgba(19,18,16,.06),0 0 0 .5px rgba(19,18,16,.04)}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dx-phone .dx-seats .dm-sq{height:44px;min-height:44px;gap:7px;border-radius:9px;font:550 15px/20px var(--ds-font);color:var(--ds-text-2);transition:color var(--po-d-sel) var(--po-ease),transform var(--po-d-press) var(--po-ease)}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dx-phone .dx-seats .dm-sq.dm-on{color:var(--ds-text);font-weight:650}

@@ -40,7 +40,7 @@ export function Dock() {
   const f = useFrame()
   const c = useFrameCounts()
   // Today's bar carried DMs, Content, Ops and Sales numbers; D keeps one per seat (never a total).
-  const opsF = { ivan: c.ops.failed, risedtc: c.ops.failed, arch: c.ops.failed }
+  const opsF = { ivan: c.ops.failed, risedtc: c.ops.failed, arch: c.ops.failed , swishdm: c.ops.failed}
   const trio: Partial<Record<string, { n: ReturnType<typeof dmNumbers>; failed: ReturnType<typeof seatFailed> }>> = {
     dms: { n: dmNumbers(c, 'needs'), failed: seatFailed(c.dms) },
     ops: { n: opsNumbers(c), failed: opsF },

@@ -90,7 +90,7 @@ describe('setDraftImage refuses a carousel (the deck wipe)', () => {
 describe('pictureEditable mirrors db/230', () => {
   const d = (status: string, type: string | null, published_at: string | null = null) => ({ status, type, published_at })
   it('never on a carousel or video, either lane', () => {
-    for (const lane of ['ivan', 'risedtc', 'arch'] as const) {
+    for (const lane of ['ivan', 'risedtc', 'arch', 'swishdm'] as const) {
       expect(pictureEditable(d('review', 'carousel'), lane)).toBe(false)
       expect(pictureEditable(d('review', 'video'), lane)).toBe(false)
     }

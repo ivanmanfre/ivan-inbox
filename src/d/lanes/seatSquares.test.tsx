@@ -25,9 +25,9 @@ describe('Lanes 3 seat squares', () => {
 
   it('three squares, the chosen one pressed; clicking another chooses it; unknown numbers are "?" never 0', () => {
     const pick = vi.fn()
-    renderInFrame(<SeatSquares seats={['ivan', 'risedtc', 'arch']} seat="ivan" pick={pick} d={data()} now={Date.now()} />)
+    renderInFrame(<SeatSquares seats={['ivan', 'risedtc', 'arch', 'swishdm']} seat="ivan" pick={pick} d={data()} now={Date.now()} />)
     const tabs = [...document.querySelectorAll('[data-pick]')]
-    expect(tabs.map(t => t.getAttribute('aria-selected'))).toEqual(['true', 'false', 'false'])
+    expect(tabs.map(t => t.getAttribute('aria-selected'))).toEqual(['true', 'false', 'false', 'false'])
     expect(document.querySelector('[data-seat="arch"] .dl-sqr')!.textContent).toBe('?invites todayinvites?DMs todayDMs?InMail todayInMail')
     fireEvent.click(document.querySelector('[data-pick="arch"]')!)
     expect(pick).toHaveBeenCalledWith('arch')

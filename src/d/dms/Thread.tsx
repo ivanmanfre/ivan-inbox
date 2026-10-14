@@ -32,7 +32,7 @@ import { HeadV4 } from './v4/HeadV4'
 import { ThreadV4 } from './v4/ThreadV4'
 import { useStickToEnd } from './v4/motion'
 
-const FROM: Record<string, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin' }
+const FROM: Record<string, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan' }
 
 function seed(t: T): Edits {
   return { main: t.draft?.message_text ?? '', email: t.draft?.email_mirror_text ?? null, companion: t.companionDraft?.message_text ?? null, cc: t.draft?.recipient_email ? (t.draft.email_cc ?? t.draft.draft_evidence?.email_cc ?? []).join(', ') : undefined, companionCc: t.companionDraft?.recipient_email ? (t.companionDraft.email_cc ?? t.companionDraft.draft_evidence?.email_cc ?? []).join(', ') : undefined }

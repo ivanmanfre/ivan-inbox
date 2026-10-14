@@ -51,7 +51,7 @@ export function ReferralCard({ t, onUseAcknowledgement }: { t: Thread; onUseAckn
     {contact && <>
       {r?.candidate && <h4>Possible match: {contact.name}</h4>}
       <p>{contact.summary}</p>
-      <p className="dm-meta">Draft from {t.client_id === 'risedtc' ? 'Mattan' : t.client_id === 'arch' ? 'Davorin' : 'Ivan'}. Review it on LinkedIn. Connection status has not been checked.</p>
+      <p className="dm-meta">Draft from {t.client_id === 'swishdm' ? 'Jonathan' : t.client_id === 'risedtc' ? 'Mattan' : t.client_id === 'arch' ? 'Davorin' : 'Ivan'}. Review it on LinkedIn. Connection status has not been checked.</p>
       <textarea aria-label={`DM draft for ${contact.name}`} readOnly value={contact.draft ?? ''} rows={5} />
       <div className="dm-referral-actions">
         <button type="button" className="dm-k" onClick={() => void copy('dm')}>{copied === 'dm' ? 'Copied' : 'Copy DM'}</button>

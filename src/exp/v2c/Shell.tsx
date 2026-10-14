@@ -251,7 +251,7 @@ function ShellBody({ brain }: { brain?: BrainId } = {}) {
   // head that switched between buckets was removed on 2026-08-04.
   const [status] = useState<Status>('needs')
   // Lanes is home now (rebuild): it opens on every seat, and a chip narrows it.
-  const [sendsClient, setSendsClient] = useState<'all' | 'ivan' | 'risedtc' | 'arch'>('all')
+  const [sendsClient, setSendsClient] = useState<'all' | 'ivan' | 'risedtc' | 'arch' | 'swishdm'>('all')
   const [lane, setLane] = useState<ContentLane>('ivan')
   // The reading window (usability-voice ask 2). A draft or a lead magnet opened
   // from Content/Magnets is a TAKEOVER over the canvas, not a 420px peer — the

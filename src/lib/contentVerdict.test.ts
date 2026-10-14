@@ -62,6 +62,7 @@ describe('buildVerdict: the publishers’ own rules', () => {
       'Nothing of yours is scheduled.',
       'Rise has nothing scheduled on the board.',
       'Arch has nothing scheduled on the board.',
+      'SwishDM has nothing scheduled on the board.',
     ])
   })
 
