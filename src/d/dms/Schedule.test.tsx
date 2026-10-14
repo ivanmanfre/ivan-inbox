@@ -23,7 +23,7 @@ it('suggests profile timezone, allows override, and schedules only on explicit s
  fireEvent.change(screen.getByLabelText('Recipient local send time'),{target:{value:'09:00'}})
  fireEvent.click(screen.getByRole('button',{name:'Schedule send'}))
  await waitFor(()=>expect(saved).toHaveBeenCalledOnce())
- expect(schedule.scheduleDm).toHaveBeenCalledWith(t,['draft-1'],['Exact words :)'],'2026-10-02T13:00:00.000Z','America/New_York')
+ expect(schedule.scheduleDm).toHaveBeenCalledWith(t,['draft-1'],['Exact words :)'],'2026-10-02T13:00:00.000Z','America/New_York',undefined)
  expect(closed).toHaveBeenCalledOnce()
 })
 it('requires a timezone when the profile is missing and refuses a past time',async()=>{

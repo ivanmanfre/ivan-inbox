@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { fetchProspectContext } from '../../lib/context'
-import { cancelScheduledDm, fetchScheduledDms, scheduleDm, scheduleError, type ScheduledDm } from '../../lib/dmSchedule'
+import { cancelScheduledDm, fetchScheduledDms, scheduleDm, scheduleError, type ScheduledDm, type DeliverySnapshot } from '../../lib/dmSchedule'
 import { localSendDate, localSendInstant, sendTimeLabel, suggestTimezone } from '../../lib/dmScheduleTime'
 import { type Thread } from '../../lib/inbox'
 import { Key, Btn } from '../ui/Key'
 import { Sheet } from '../ui/Sheet'
 import { useToast } from '../ui/toast'
 import './schedule.css'
-export type ScheduleTarget = { ids: string[]; texts: string[]; at?: string; timezone?: string; manual?: boolean }
+export type ScheduleTarget = { ids: string[]; texts: string[]; at?: string; timezone?: string; manual?: boolean; expectedDelivery?: DeliverySnapshot[] }
 const zones = [...new Set(['America/Los_Angeles', 'America/New_York', 'Europe/Warsaw', 'UTC', ...Intl.supportedValuesOf('timeZone')])].sort()
 
 export function ScheduleSheet({ t, target, onClose, onSaved }: { t: Thread; target: ScheduleTarget; onClose: () => void; onSaved: () => void }) {
@@ -37,9 +37,9 @@ export function ScheduleSheet({ t, target, onClose, onSaved }: { t: Thread; targ
   const save = async () => {
     if (!at || invalid || busy) { form.current?.querySelector<HTMLInputElement>('input:invalid,select:invalid')?.focus(); return }
     setBusy(true); setError('')
-    try { await scheduleDm(t, target.ids, target.texts, at, zone); onSaved(); onClose() } catch (e) { setError(scheduleError(e)) } finally { setBusy(false) }
+    try { await scheduleDm(t, target.ids, target.texts, at, zone, target.expectedDelivery); onSaved(); onClose() } catch (e) { setError(scheduleError(e)) } finally { setBusy(false) }
   }
-  return <Sheet open onClose={() => { if (!busy) onClose() }} title={target.at ? 'Edit scheduled send' : `Schedule DM to ${t.prospect_name}`} label="Schedule DM"
+  return <Sheet open onClose={() => { if (!busy) onClose() }} title={target.at ? 'Edit scheduled send' : `Schedule ${target.expectedDelivery?.[0]?.send_via === 'email' ? 'email' : 'send'} to ${t.prospect_name}`} label="Schedule DM"
     sub="This applies to this message only." foot={<Key primary disabled={loading || busy || !at || Boolean(invalid)} verb="confirm-schedule" onClick={() => void save()}>{busy ? 'Saving…' : target.at ? 'Save schedule' : 'Schedule send'}</Key>}>
     <form ref={form} className="dm-schedule-form" onSubmit={e => { e.preventDefault(); void save() }}>
       <p className="dm-meta" role="status">{location}</p>
@@ -76,6 +76,6 @@ export function ScheduledSends({ t, reload, onEdit }: { t: Thread; reload: () =>
   if (!rows.length) return null
   return <div className="dm-rest dm-scheduled" role="status"><b>{rows[0].state === 'review' ? 'Scheduled send paused' : `Scheduled: ${sendTimeLabel(rows[0].at, rows[0].timezone)}`}</b><p>{rows[0].state === 'review' ? 'The conversation changed. Review the message and choose a new send time, or cancel it.' : 'Waiting to send. A new reply or changed conversation pauses it for review.'}</p>
     {rows.map(m => <p className="dm-quote" key={m.id}>{m.channel === 'email' && <b>Email: </b>}{m.message_text}</p>)}
-    <div><Btn className="dm-k" disabled={busy} onClick={() => onEdit({ ids: rows.map(r => r.id), texts: rows.map(r => r.message_text), at: rows[0].at, timezone: rows[0].timezone })}>Edit schedule</Btn><Btn className="dm-k" disabled={busy} onClick={() => void cancel()}>Cancel scheduled send</Btn></div>
+    <div><Btn className="dm-k" disabled={busy} onClick={() => onEdit({ ids: rows.map(r => r.id), texts: rows.map(r => r.message_text), at: rows[0].at, timezone: rows[0].timezone, expectedDelivery: rows.flatMap(r => r.delivery ? [r.delivery] : []) })}>Edit schedule</Btn><Btn className="dm-k" disabled={busy} onClick={() => void cancel()}>Cancel scheduled send</Btn></div>
   </div>
 }

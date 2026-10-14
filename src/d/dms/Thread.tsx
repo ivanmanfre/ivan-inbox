@@ -1,10 +1,11 @@
+import { parseEmailCc } from '../../lib/emailCc'
 // The open conversation (desktop right pane / phone full page).
 // Hooks first, always: no hook sits after an early return (09-09).
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { requestDmDraft } from '../../lib/dmDraft'
 import { useDCommands } from '../shell/commands'
 import type { WbCommand } from '../../exp/v2c/commandSource'
-import { canComposeEmail, emailReplyTarget, emailRowSender, isReplyRetryExhausted, markThreadRead, messageChannel, threadBucket, unansweredWaitSince, type InboxMessage, type Thread as T } from '../../lib/inbox'
+import { draftSendVia, type DraftSendVia, canComposeEmail, emailReplyTarget, emailRowSender, isReplyRetryExhausted, markThreadRead, messageChannel, threadBucket, unansweredWaitSince, type InboxMessage, type Thread as T } from '../../lib/inbox'
 import type { PreReadHandle } from '../../exp/v2c/chat/usePreRead'
 import { chatLink } from '../../components/CopyChatLink'
 import { seatOf } from '../seats'
@@ -15,7 +16,7 @@ import { Banners, DraftStrips } from './ThreadBanners'
 import { Draft } from './Draft'
 import { ScheduleSheet, ScheduledSends, type ScheduleTarget } from './Schedule'
 import { ForwardEmailSheet } from './ForwardEmail'
-import { scheduleHeld } from '../../lib/dmSchedule'
+import { deliverySnapshot, scheduleHeld } from '../../lib/dmSchedule'
 
 import { canMarkSolved } from './solved'
 import { DraftWhy } from './DraftWhy'
@@ -196,10 +197,10 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     try { await run(async () => { if (t.draft?.id === m.id) await saver.flush(); else saver.cancel(); await verbs.sendAnyways(t, m) }) }
     finally { overrideBusy.current = false }
   }
-  const emailDelivery = (enabled: boolean) => { if (busy) return; void run(async () => {
+  const sendVia = (mode: DraftSendVia) => { if (busy) return; void run(async () => {
     await saver.flush()
     if (saver.isPending()) return
-    if (await verbs.emailDelivery(t, enabled)) setEdits(e => ({ ...e, cc: enabled ? '' : undefined }))
+    if (await verbs.sendVia(t, mode)) setEdits(e => ({ ...e, cc: mode === 'dm' ? undefined : e.cc ?? '' }))
   }) }
   const send = () => { if (busy) return; return run(async () => { if (scheduledPending) return; saver.cancel(); await verbs.send(t, edits) }) }
   const openSchedule = () => run(async () => {
@@ -210,7 +211,8 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     const failure = await verbs.autosave(t, edits)
     if (failure) { setScheduleFailure(failure); return }
     const legs = t.companionDraft ? [t.draft, t.companionDraft] : [t.draft]
-    setSchedule({ ids: legs.map(m => m.id), texts: legs.map((m, i) => i === 0 ? edits.main : edits.companion ?? m.message_text) })
+    setSchedule({ ids: legs.map(m => m.id), texts: legs.map((m, i) => i === 0 ? draftSendVia(m) === 'email' && messageChannel(m) !== 'email' ? edits.email ?? m.email_mirror_text ?? '' : edits.main : edits.companion ?? m.message_text),
+      expectedDelivery: legs.map((m, i) => deliverySnapshot({ ...m, email_mirror_text: i === 0 ? edits.email ?? m.email_mirror_text : m.email_mirror_text, email_cc: i === 0 && edits.cc !== undefined ? parseEmailCc(edits.cc) : i === 1 && edits.companionCc !== undefined ? parseEmailCc(edits.companionCc) : m.email_cc })) })
   })
   const later = () => run(async () => { saver.cancel(); await verbs.later(t, edits); setFuTick(x => x + 1) })
   const compose = () => run(async () => { if (!composeOff && !emailBlocked && await verbs.compose(replyThread, reply)) setReply('') })
@@ -229,6 +231,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   const more = <Btn verb="more" className="dm-k dm-k-more" aria-label="More for this conversation" aria-expanded={menu === 'keys'} onClick={() => setMenu(m => (m ? null : 'keys'))}>⋯</Btn>
   const solvedKey = <Btn verb="solved" className="dm-k" disabled={busy} onClick={() => run(async () => { saver.cancel(); await verbs.solved(t) })}>{phone ? 'Solved' : 'Mark as solved'}</Btn>
   const laterKey = lp && <Btn verb="later" className="dm-k" disabled={busy} title={lp === 'followup' ? 'A follow-up is drafted on the day you pick' : 'Out of your queue until the day you pick'} onClick={() => void later()}>Later</Btn>
+  const sendLabel = t.companionDraft ? 'Send both' : t.draft && (t.draft.email_delivery_recipient || t.draft.email_mirror_text && t.draft.recipient_email || messageChannel(t.draft) === 'email') ? draftSendVia(t.draft) === 'email' ? 'Send email' : draftSendVia(t.draft) === 'both' ? 'Send both' : 'Send DM' : 'Send'
   let small, primary
   if (t.spam) {
     small = <>
@@ -241,7 +244,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
       {laterKey}
       {solvedKey}
     </>
-    primary = <Key primary verb="send" className="dm-send" disabled={busy || scheduledPending} onClick={() => void send()}>{t.companionDraft ? 'Send both' : 'Send'}</Key>
+    primary = <Key primary verb="send" className="dm-send" disabled={busy || scheduledPending} onClick={() => void send()}>{sendLabel}</Key>
   } else {
     small = <>
       {t.ownerConfirmation && !manualReply
@@ -269,7 +272,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     // a stale draft, or a draft with his own words in the composer, draws Send outlined.
     const canSendDraft = hasDraft && !t.ownerConfirmation && !t.spam
     const sendV4 = canSendDraft
-      ? <Key primary={!t.draftStale && !reply.trim()} verb="send" className="dm-send" disabled={busy || scheduledPending} onClick={() => void send()}>{t.companionDraft ? 'Send both' : 'Send'}</Key>
+      ? <Key primary={!t.draftStale && !reply.trim()} verb="send" className="dm-send" disabled={busy || scheduledPending} onClick={() => void send()}>{sendLabel}</Key>
       : primary
     const scheduleKey = !t.spam && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim())
       ? <Btn verb="schedule-send" className="dm-k dm-schedule-key" disabled={busy} onClick={() => void openSchedule()}>{reply.trim() ? 'Schedule reply' : 'Schedule send'}</Btn> : null
@@ -284,7 +287,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         {draftRunning && <div className="dm-b dm-b-in dx-typing" aria-hidden="true"><div className="dm-b-body"><i /><i /><i /></div></div>}
         <Banners v4 t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
         {!referredLead && referral}
-        <Draft v4 onEmailDelivery={emailDelivery} deliveryBusy={busy} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload}
+        <Draft v4 onSendVia={sendVia} deliveryBusy={busy} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload}
           strips={<DraftStrips t={t} verbs={verbs} />}
           foot={t.draft && <DraftWhy v4 t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
           onSend={canSendDraft ? () => { if (!busy && !scheduledPending) void send() } : undefined} />
@@ -320,7 +323,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         {historyView}
         <Banners t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
         {!referredLead && referral}
-        <Draft onEmailDelivery={emailDelivery} deliveryBusy={busy} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
+        <Draft onSendVia={sendVia} deliveryBusy={busy} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
         {t.draft && <DraftWhy t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
         <RestoreStrip t={t} verbs={verbs} />
         {scheduledPending && <ScheduledSends t={t} reload={reload} onEdit={setSchedule} />}
