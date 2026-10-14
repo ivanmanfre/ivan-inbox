@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { ContentDraft } from '../../lib/content'
 import { seatItems } from './planModel'
-import { buildNow, buildWeek, foldText, laneOfRow, openingOf, primaryOf, windowDays } from './weekModel'
+import { buildNow, buildWeek, foldText, laneOfRow, openingOf, primaryOf, reviewCounts, windowDays } from './weekModel'
+import { clearBoardState, setBoardState } from '../../lib/clientBoardState'
 
 // Tue 29 Sep 2026, 12:00 Warsaw.
 const NOW = Date.parse('2026-09-29T10:00:00Z')
@@ -189,6 +190,40 @@ describe('Review list: Approve / Drop on brain drafts (run 39)', () => {
   const brain = (o: Partial<ContentDraft>) => row({ cb34_p2_member: true, ...o })
   const now = (rows: ContentDraft[], extra: Partial<Parameters<typeof buildNow>[1]> = {}) => buildNow(rows, { now: NOW, ...extra })
   const card = (w: ReturnType<typeof buildNow>, id: string) => w.groups.flatMap(g => g.cards).find(c => c.r.id === id)
+
+  it('counts only drafts still awaiting a review verdict across all seats, without hiding other cards', () => {
+    setBoardState('arch', [{ id: 'davorin-ok', approval: 'approve', approval_at: at(-H), veto: null, veto_at: null, note: null, note_by: null, note_at: null }])
+    try {
+      const rows = [
+        row({ id: 'ivan-open' }), row({ id: 'ivan-planned', scheduled_at: at(H) }),
+        row({ id: 'ivan-approved', status: 'approved' }), row({ id: 'ivan-scheduled', status: 'scheduled', scheduled_at: at(H) }),
+        row({ id: 'ivan-published', status: 'published', published_at: at(-H) }),
+        brain({ id: 'brain-error', status: 'error' }), row({ id: 'repair-error', status: 'error' }),
+        brain({ id: 'saved-keep', client_id: 'risedtc' }), brain({ id: 'saved-edited', client_id: 'arch' }),
+        row({ id: 'rise-open', client_id: 'risedtc' }), row({ id: 'rise-board', client_id: 'risedtc', board_visible: true, scheduled_at: at(H) }),
+        row({ id: 'arch-open', client_id: 'arch', scheduled_at: at(H) }),
+        row({ id: 'davorin-ok', client_id: 'arch', board_visible: false }),
+        row({ id: 'swish-open', client_id: 'swishdm' }),
+      ]
+      const w = now(rows, { verdicts: new Map([['saved-keep', 'keep'], ['saved-edited', 'edited']]) })
+      expect(reviewCounts(w)).toEqual({ all: 6, ivan: 3, risedtc: 1, arch: 1, swishdm: 1 })
+      expect(card(w, 'ivan-approved')).toBeDefined()
+      expect(card(w, 'repair-error')).toBeDefined()
+      expect(card(w, 'saved-keep')).toBeDefined()
+      expect(card(w, 'davorin-ok')).toBeDefined()
+      expect(reviewCounts(now(rows, { show: 'arch', verdicts: new Map([['saved-keep', 'keep'], ['saved-edited', 'edited']]) }))).toEqual({ all: 1, ivan: 0, risedtc: 0, arch: 1, swishdm: 0 })
+    } finally { clearBoardState('arch') }
+  })
+
+  it('a failed verdict remains pending; a held or saved verdict and an optimistic approve stop counting', () => {
+    const rows = [brain({ id: 'failed' }), brain({ id: 'held' }), brain({ id: 'saved' }), row({ id: 'optimistic' })]
+    const w = now(rows, { judged: new Map([
+      ['failed', { verdict: 'drop' as const, phase: 'failed' as const, collapsed: false }],
+      ['held', { verdict: 'keep' as const, phase: 'held' as const, collapsed: false }],
+      ['saved', { verdict: 'keep' as const, phase: 'saved' as const, collapsed: true }],
+    ]), pending: new Map([['optimistic', 'approve' as const]]) })
+    expect(reviewCounts(w)).toEqual({ all: 1, ivan: 1, risedtc: 0, arch: 0, swishdm: 0 })
+  })
 
   it('the judge flag is only on brain cards in review or error that have no verdict', () => {
     const w = now([

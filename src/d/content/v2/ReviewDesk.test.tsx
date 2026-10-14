@@ -168,6 +168,25 @@ describe('the seat next step comes only after the verdict is saved', () => {
 })
 
 describe('the card', () => {
+  it('shows pending review numbers while keeping decided and repair cards visible', () => {
+    const rows = [
+      row({ id: 'open', type: 'single_image' }), row({ id: 'approved', status: 'approved', type: 'single_image' }),
+      row({ id: 'error', status: 'error' }), brain({ id: 'brain-error', status: 'error', image_urls: ['https://s.test/brain.jpg'] }), row({ id: 'planned', scheduled_at: at(H), image_urls: ['https://s.test/planned.jpg'] }),
+      row({ id: 'rise', client_id: 'risedtc', image_urls: ['https://s.test/rise.jpg'] }), row({ id: 'arch', client_id: 'arch', image_urls: ['https://s.test/arch.jpg'] }),
+    ]
+    renderInFrame(<Harness rows={rows} />)
+    expect(document.querySelector('[data-verb="show-all"] .cv2-n')?.textContent).toBe('5')
+    expect(document.querySelector('[data-verb="show-ivan"] .cv2-n')?.textContent).toBe('3')
+    expect(document.querySelector('[data-verb="show-risedtc"] .cv2-n')?.textContent).toBe('1')
+    expect(document.querySelector('[data-verb="quick-decide"] .cv2-n')?.textContent).toBe('5')
+    expect(document.querySelector('[data-verb="quick-noimg"] .cv2-n')?.textContent).toBe('1')
+    expect(screen.getByText(/5 drafts to decide/)).toBeTruthy()
+    expect(card('approved')).toBeTruthy()
+    expect(card('error')).toBeNull()
+    expect(verb(document, 'fix-fold')?.textContent).toContain('2 need a fix')
+    fireEvent.click(verb(document, 'fix-fold')!)
+    expect(card('error')).toBeTruthy()
+  })
   it('shows the hook without its internal tag; the tag lives in the ⋯ header', () => {
     renderInFrame(<Harness />)
     expect(card('b1')!.getAttribute('aria-label')).toBe('Ivan draft: Brain one')
