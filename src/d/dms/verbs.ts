@@ -5,10 +5,10 @@ import { parseEmailCc } from '../../lib/emailCc'
 // invents a write path: each verb names the lib function it calls.
 import { createElement, useMemo } from 'react'
 import {
-  approveDraft, composeReply, deleteThread, discardLegs, dismissConfirmation, draftLegs, escalateDraftToClient,
-  isFollowUp, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft,
-  saveDraftEmail, saveDraftEmailCc, setDraftEmailDelivery, saveDraftText, snoozeDraft, threadChatId, unsnoozeDraft, REPLY_MYSELF,
-  type InboxMessage, type Thread,
+  draftSendVia, approveDraft, composeReply, deleteThread, discardLegs, dismissConfirmation, draftLegs, escalateDraftToClient,
+  emailSenderLabel, isFollowUp, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft,
+  saveDraftEmail, saveDraftEmailCc, setDraftSendVia, saveDraftText, snoozeDraft, threadChatId, unsnoozeDraft, REPLY_MYSELF,
+  type DraftSendVia, type InboxMessage, type Thread,
 } from '../../lib/inbox'
 import { clearFollowUp, fetchFollowUp, followUpSuggestion, setFollowUp, type FollowUp } from '../../lib/followUp'
 import { laterPath } from './later'
@@ -69,14 +69,14 @@ export function useDmVerbs(ctx: VerbCtx) {
       }
     }
 
-    async function emailDelivery(t: Thread, enabled: boolean): Promise<boolean> {
+    async function sendVia(t: Thread, mode: DraftSendVia): Promise<boolean> {
       if (!t.draft || t.draft.email_stamp_unavailable) { fail('Refresh to check the email recipients.'); return false }
       try {
-        const saved = await setDraftEmailDelivery(t.draft.id, enabled)
+        const saved = await setDraftSendVia(t.draft.id, mode)
         ctx.patch([t.draft.id], saved)
         ctx.refresh()
         return true
-      } catch (e) { fail(`Email choice not saved: ${errText(e)}`); return false }
+      } catch (e) { fail(`Channel choice not saved: ${errText(e)}`); return false }
     }
 
     /** Approve & send (both legs on a pair). Always asks first, as today's thread does. */
@@ -84,13 +84,15 @@ export function useDmVerbs(ctx: VerbCtx) {
       const draft = t.draft
       if (!draft) return null
       const comp = t.companionDraft
+      const mode = draftSendVia(draft)
+      const channelChoice = !!(draft.email_delivery_recipient || draft.email_mirror_text && draft.recipient_email)
       {
         const ok = await confirm({
           title: `Send to ${t.prospect_name}?`,
           message: comp ? `Both legs go out: the ${legName(draft)} and the ${legName(comp)}. The sender picks them up within about 2 minutes.`
-            : draft.email_delivery_recipient && !draft.recipient_email ? 'Only the LinkedIn DM will be sent. The sender picks it up within about 2 minutes.'
+            : channelChoice ? `${mode === 'email' ? `Only the email to ${draft.recipient_email}${emailSenderLabel(t.client_id)}` : mode === 'both' ? `The LinkedIn DM and email to ${draft.recipient_email}${emailSenderLabel(t.client_id)}` : 'Only the LinkedIn DM'} will be sent. The sender picks it up within about 2 minutes.`
               : 'The sender picks it up within about 2 minutes.',
-          confirmText: comp ? 'Approve & send both' : 'Approve & send',
+          confirmText: comp ? 'Approve & send both' : channelChoice ? mode === 'email' ? 'Send email' : mode === 'both' ? 'Send both' : 'Send DM' : 'Approve & send',
           verb: 'confirm-send',
         })
         if (!ok) return null
@@ -440,7 +442,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       await bulkDiscard(stale, '', { title: `Discard ${stale.length} stale draft${stale.length === 1 ? '' : 's'}?`, message: 'These threads already have your own reply after the last inbound message. Nothing is sent.', confirmText: 'Discard stale' })
     }
 
-    return { emailDelivery, rowDiscard, discardStale, send, sendAnyways, discard, solved, later, bringBackNow, saveEdit, autosave, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, holdRelease, askOwner, bulkDiscard, isFollowUp }
+    return { sendVia, rowDiscard, discardStale, send, sendAnyways, discard, solved, later, bringBackNow, saveEdit, autosave, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, holdRelease, askOwner, bulkDiscard, isFollowUp }
   }, [ctx, confirm, toast, askDiscard, askDate])
 }
 

@@ -59,6 +59,7 @@ export type InboxMessage = {
   recipient_email?: string | null;
   email_cc?: string[] | null;
   email_delivery_recipient?: string | null;
+  send_via?: DraftSendVia | null;
   // The exact email body the dispatcher will send (composed + stored by the
   // drafter). Shown verbatim under the badge so approval sees the real send.
   email_mirror_text?: string | null;
@@ -1155,7 +1156,14 @@ export async function fetchManualReplyIds(): Promise<Set<string>> {
 // The view doesn't expose recipient_email, so this reads the base table directly
 // (authed role already reads outreach_prospects the same way). Tiny by
 // construction: only unsent, unapproved, unblocked drafts with a stamp.
-export type DraftEmailStamp = { recipient_email: string | null; email_delivery_recipient?: string | null; email_mirror_text: string | null; email_cc?: string[] | null }
+export type DraftSendVia = 'dm' | 'email' | 'both'
+
+export function draftSendVia(m: Pick<InboxMessage, 'channel' | 'recipient_email' | 'email_mirror_text' | 'ai_model' | 'draft_evidence' | 'send_via'>): DraftSendVia {
+  if (m.channel === 'email') return 'email'
+  return m.send_via ?? m.draft_evidence?.send_via ?? (m.recipient_email && (m.email_mirror_text || m.ai_model === 'rise_dm2_scan_delivery_v1') ? 'both' : 'dm')
+}
+
+export type DraftEmailStamp = { send_via?: DraftSendVia | null; recipient_email: string | null; email_delivery_recipient?: string | null; email_mirror_text: string | null; email_cc?: string[] | null }
 
 // Answerability gate: the drafter answered something rise-company-facts does not cover.
 // Same probe shape as the email stamps below (the view doesn't expose context_gap either),
@@ -1178,6 +1186,7 @@ export type DraftEvidence = {
   email_subject?: string | null
   email_cc?: string[] | null
   email_delivery_recipient?: string | null
+  send_via?: DraftSendVia | null
   // Stall Bump (2026-09-24): the prospect opened the scan on this many distinct days and has not
   // replied since. 2+ floats the thread to the top of the list while the draft waits (groupThreads).
   scan_open_days?: number | null
@@ -1273,7 +1282,7 @@ export async function escalateDraftToClient(messageId: string): Promise<string> 
 
 export async function fetchDraftEmailStamps(): Promise<Map<string, DraftEmailStamp>> {
   const { data, error } = await supabase.from('outreach_messages')
-    .select('id,recipient_email,email_mirror_text,email_cc:draft_evidence->email_cc,email_delivery_recipient:draft_evidence->>email_delivery_recipient')
+    .select('id,recipient_email,email_mirror_text,email_cc:draft_evidence->email_cc,email_delivery_recipient:draft_evidence->>email_delivery_recipient,send_via:draft_evidence->>send_via')
     .eq('direction', 'outbound')
     .is('sent_at', null).is('approved_at', null)
     // A race- or lint-held row is a pending draft again (isDraft), and approving
@@ -1285,8 +1294,8 @@ export async function fetchDraftEmailStamps(): Promise<Map<string, DraftEmailSta
     .limit(500)
   if (error) throw error
   const m = new Map<string, DraftEmailStamp>()
-  for (const r of (data ?? []) as { id: string; recipient_email: string | null; email_mirror_text: string | null; email_cc?: string[] | null; email_delivery_recipient?: string | null }[]) {
-    if (r.recipient_email || r.email_delivery_recipient) m.set(r.id, { recipient_email: r.recipient_email, email_mirror_text: r.email_mirror_text, email_cc: r.email_cc ?? [], email_delivery_recipient: r.email_delivery_recipient })
+  for (const r of (data ?? []) as { id: string; recipient_email: string | null; email_mirror_text: string | null; email_cc?: string[] | null; email_delivery_recipient?: string | null; send_via?: DraftSendVia | null }[]) {
+    if (r.recipient_email || r.email_delivery_recipient) m.set(r.id, { recipient_email: r.recipient_email, email_mirror_text: r.email_mirror_text, email_cc: r.email_cc ?? [], email_delivery_recipient: r.email_delivery_recipient, send_via: r.send_via })
   }
   return m
 }
@@ -1336,7 +1345,7 @@ export function reviewedEmailMirror(draft: Pick<InboxMessage, 'email_mirror_text
 }
 
 export async function approveDraft(id: string, editedText: string, chatId?: string | null,
-  snapshot?: Pick<InboxMessage, 'email_mirror_text' | 'recipient_email' | 'email_cc' | 'draft_evidence'>): Promise<void> {
+  snapshot?: Pick<InboxMessage, 'email_mirror_text' | 'recipient_email' | 'email_cc' | 'draft_evidence' | 'send_via'>): Promise<void> {
   const { data: draft, error: readError } = await supabase.from('outreach_messages')
     .select('ai_model,draft_evidence').eq('id', id).single()
   if (readError) throw readError
@@ -1347,6 +1356,9 @@ export async function approveDraft(id: string, editedText: string, chatId?: stri
     if (error) throw error
     return
   }
+  if (snapshot && (draft?.draft_evidence?.send_via ?? null) !== (snapshot.send_via ?? snapshot.draft_evidence?.send_via ?? null)) {
+    throw new Error('The send channel changed. Refresh before sending.')
+  }
   // Research evidence can exceed the proxy's URL limit. The RPC compares it
   // atomically in the request body and records the reviewed copy server-side.
   const { error } = await supabase.rpc('approve_inbox_pipeline_draft', {
@@ -1356,6 +1368,7 @@ export async function approveDraft(id: string, editedText: string, chatId?: stri
     p_expected_recipient_email: snapshot?.recipient_email ?? null,
     p_expected_email_subject: snapshot?.draft_evidence?.email_subject ?? null,
     p_expected_email_cc: snapshot?.email_cc ?? snapshot?.draft_evidence?.email_cc ?? null,
+    p_expected_send_via: snapshot?.send_via ?? snapshot?.draft_evidence?.send_via ?? null,
   })
   if (error) throw error
 }
@@ -1409,6 +1422,21 @@ export async function saveDraftEmail(id: string, text: string): Promise<void> {
     .eq('id', id).is('sent_at', null).is('approved_at', null)
     .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*`)
   if (error) throw error
+}
+
+/** Persist the selected channels while both draft texts remain editable. */
+export async function setDraftSendVia(id: string, mode: DraftSendVia): Promise<Pick<InboxMessage, 'recipient_email' | 'email_delivery_recipient' | 'send_via' | 'draft_evidence' | 'email_cc'>> {
+  const { data: row, error: readError } = await supabase.from('outreach_messages')
+    .select('recipient_email,draft_evidence').eq('id', id).single()
+  if (readError) throw readError
+  if (!row) throw new Error('The draft changed. Refresh before approving.')
+  const { data, error } = await supabase.rpc('set_inbox_draft_send_via', {
+    p_message_id: id, p_send_via: mode,
+    p_expected_evidence: row.draft_evidence ?? null, p_expected_recipient: row.recipient_email ?? null,
+  })
+  if (error) throw error
+  if (!data) throw new Error('The channel choice was not saved. Refresh and try again.')
+  return data
 }
 
 /** A saved delivery choice never approves a message or changes its copy. */

@@ -7,10 +7,11 @@ const id = 'ff108ab7-ce03-40e8-ae48-fdc1cccc770b'
 beforeEach(async () => {
  db = new PGlite()
  await db.exec(`
- create role authenticated; create role service_role;
+ create schema auth; create function auth.uid() returns uuid language sql as $$select null::uuid$$;
+ create role authenticated; create role service_role; create role anon;
  create table outreach_prospects(id uuid primary key,stage text,blacklisted boolean,skip_reason text,skip_state text,linkedin_profile_id text,linkedin_url text);
  create table outreach_agent_threads(id uuid,prospect_id uuid,person_key text,account_id text,revision bigint,owner text,state text,pause_reason text);
- create table outreach_messages(id uuid primary key default gen_random_uuid(),prospect_id uuid,direction text,message_type text,ai_model text,message_text text,sent_at timestamptz,approved_at timestamptz,unipile_message_id text,unipile_chat_id text,send_blocked_reason text,send_blocked_at timestamptz,draft_evidence jsonb,channel text,created_at timestamptz default now());
+ create table outreach_messages(id uuid primary key default gen_random_uuid(),prospect_id uuid,direction text,message_type text,ai_model text,message_text text,sent_at timestamptz,approved_at timestamptz,unipile_message_id text,unipile_chat_id text,send_blocked_reason text,send_blocked_at timestamptz,draft_evidence jsonb,channel text,recipient_email text,email_mirror_text text,created_at timestamptz default now());
  create function conversation_agent_is_service() returns boolean language sql as $$select false$$;
  create function conversation_agent_is_operator(text) returns boolean language sql as $$select true$$;
  create function conversation_agent_before_manual_send(uuid) returns jsonb language sql as $$select '{"ok":true,"allow_send":true,"in_flight":false}'::jsonb$$;
@@ -18,6 +19,8 @@ beforeEach(async () => {
  insert into outreach_messages(id,prospect_id,direction,message_type,ai_model,message_text) values('${id}','${pid}','outbound','dm','rise_reply_draft_v1','Draft');
  `)
  await db.exec(readFileSync('db/20261001_dm_scheduling.sql','utf8').split('-- CRON INSTALL')[0])
+ await db.exec(readFileSync('db/20261014_inbox_draft_send_via.sql','utf8'))
+ await db.exec(readFileSync('db/20261014_inbox_schedule_send_via.sql','utf8'))
 })
 afterEach(async () => { await db.close() })
 const schedule = () => db.query(`select schedule_inbox_dm($1,ARRAY[$2::uuid],ARRAY['Exact draft'],now()+interval '1 day','America/Los_Angeles','chat-1')`,[pid,id])
@@ -28,6 +31,29 @@ it('holds until due, then releases exactly once to the existing sender',async()=
  await db.query('select release_scheduled_inbox_dms()'); expect((await row()).approved_at).toBeNull()
  await due(); await db.query('select release_scheduled_inbox_dms()'); const approved=(await row()).approved_at; expect(approved).toBeTruthy(); expect((await row()).send_blocked_reason).toBeNull()
  await db.query('select release_scheduled_inbox_dms()'); expect((await row()).approved_at).toEqual(approved)
+})
+it('schedules and releases only the email selected on an attached-email draft',async()=>{
+ await db.exec(`update outreach_messages set recipient_email='casey@example.com',email_mirror_text=E'Subject: Follow-up\n\nDid you see the examples?',
+   draft_evidence='{"send_via":"email","email_cc":["copy@example.com"]}'::jsonb`)
+ const m=await row()
+ await db.query(`select schedule_inbox_dm($1,ARRAY[$2::uuid],ARRAY['Exact draft'],now()+interval '1 day','America/Los_Angeles','chat-1',$3::jsonb)`,[pid,id,JSON.stringify([{id,send_via:'email',recipient_email:'casey@example.com',email_mirror_text:m.email_mirror_text,email_cc:['copy@example.com']}])])
+ expect(await row()).toMatchObject({channel:'email',message_text:'Subject: Follow-up\n\nDid you see the examples?',email_mirror_text:null,approved_at:null})
+ await due(); await db.query('select release_scheduled_inbox_dms()')
+ const released=await row()
+ expect(released.approved_at).toBeTruthy()
+ expect(released.draft_evidence).toMatchObject({unsent_dm_text:'Draft',operator_copy_approval:{text:'Subject: Follow-up\n\nDid you see the examples?',recipient_email:'casey@example.com',email_cc:['copy@example.com']}})
+})
+it('refuses legacy or stale scheduling when the selected channel or email changed',async()=>{
+ await db.exec(`update outreach_messages set recipient_email='casey@example.com',email_mirror_text='Exact email',draft_evidence='{"send_via":"email"}'::jsonb`)
+ await expect(schedule()).rejects.toThrow(/channel or email changed/)
+ const displayed={id,send_via:'email',recipient_email:'casey@example.com',email_mirror_text:'Exact email',email_cc:[]}
+ await db.exec(`update outreach_messages set draft_evidence='{"send_via":"both"}'::jsonb`)
+ const request=()=>db.query(`select schedule_inbox_dm($1,ARRAY[$2::uuid],ARRAY['Exact draft'],now()+interval '1 day','America/Los_Angeles',null,$3::jsonb)`,[pid,id,JSON.stringify([displayed])])
+ await expect(request()).rejects.toThrow(/channel or email changed/)
+ await db.exec(`update outreach_messages set draft_evidence='{"send_via":"email"}'::jsonb,email_mirror_text='Changed email'`)
+ await expect(request()).rejects.toThrow(/channel or email changed/)
+ expect((await row()).approved_at).toBeNull()
+ expect((await row()).send_blocked_reason).toBeNull()
 })
 it('holds a changed conversation for review',async()=>{
  await schedule(); await due(); await db.exec(`insert into outreach_messages(prospect_id,direction,message_text,sent_at) values('${pid}','inbound','Actually, Friday?',now())`)

@@ -1,8 +1,8 @@
-import { isEngineRetired, isInternalConfirmation, type InboxMessage } from './inbox'
+import { draftSendVia, isEngineRetired, isInternalConfirmation, type InboxMessage } from './inbox'
 import { supabase } from './supabase'
 
 export function canSendRejectedDm(m: InboxMessage & { unipile_message_id?: string | null }): boolean {
-  return m.direction === 'outbound' && !m.sent_at && !m.unipile_message_id && !!m.message_text?.trim()
+  return !(draftSendVia(m) === 'email' && m.channel !== 'email') && m.direction === 'outbound' && !m.sent_at && !m.unipile_message_id && !!m.message_text?.trim()
     && !!m.send_blocked_at && !!m.send_blocked_reason && !isEngineRetired(m) && !isInternalConfirmation(m)
     && !/^(discarded|superseded|scheduled)(?:_|$)/.test(m.send_blocked_reason)
     && !/^native_email_send_failed:/.test(m.send_blocked_reason)

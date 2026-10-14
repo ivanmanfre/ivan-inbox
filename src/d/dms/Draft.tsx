@@ -4,7 +4,7 @@ import { emailDraftText, splitEmailDraft } from '../../lib/emailSubject'
 // rider, and the warnings today's card carries (held, email check failed, you already replied).
 // The tape IS the editor: typing saves (useAutosave); Send sends what is in it.
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
-import { emailRowSender, emailSenderLabel, eventTime, holdReason, isFollowUp, messageChannel, type Thread } from '../../lib/inbox'
+import { draftSendVia, type DraftSendVia, emailRowSender, emailSenderLabel, eventTime, holdReason, isFollowUp, messageChannel, type Thread } from '../../lib/inbox'
 import { DIcon } from '../ui/icons'
 import { Explain } from './Explain'
 import { ago } from './model'
@@ -56,12 +56,12 @@ const SAVE_WORD: Record<SaveState, string> = { idle: '', saving: 'Saving…', sa
 /** The draft is the last bubble of the conversation, on our side, and it IS the editor (Ivan 09-27:
  *  "I want the direct editing capabilities"): type in it, it saves itself (useAutosave). Its email
  *  leg and the mirror email edit the same way. */
-export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRetry, v4 = false, strips, foot, onSend, onEmailDelivery, deliveryBusy = false }: {
+export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRetry, v4 = false, strips, foot, onSend, onSendVia, deliveryBusy = false }: {
   t: Thread; edits: Edits; setEdits: (e: Edits) => void; save: SaveState; onBlur: () => void; onRetrySave: () => void; now: number; onRetry: () => void
   /** Brief 4: one card, the editor (SPEC-dms §2.4.5): caveats attached as strips, Why in the foot. */
   v4?: boolean; strips?: ReactNode; foot?: ReactNode
   /** Brief 4: ⌘↩ in the draft runs the SAME send (its confirm always opens first). */
-  onEmailDelivery?: (enabled: boolean) => void; deliveryBusy?: boolean
+  onSendVia?: (mode: DraftSendVia) => void; deliveryBusy?: boolean
   onSend?: () => void
 }) {
   const draft = t.draft
@@ -73,10 +73,15 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
   const email = messageChannel(draft) === 'email'
   const inmail = messageChannel(draft) === 'inmail'
   const rider = (draft.recipient_email || draft.email_delivery_recipient) && !email && (draft.email_mirror_text || draft.ai_model === SCAN_DELIVERY_MODEL)
-  const emailEnabled = !!draft.recipient_email
-  const emailChoice = <label className="dm-email-choice"><input type="checkbox" aria-label="Send email too" checked={emailEnabled}
-    disabled={deliveryBusy || draft.email_stamp_unavailable || !onEmailDelivery}
-    onChange={e => onEmailDelivery?.(e.target.checked)} />Send email too{deliveryBusy && <span role="status">Saving…</span>}</label>
+  const mode = draftSendVia(draft)
+  const emailEnabled = mode !== 'dm' && !!draft.recipient_email
+  const emailChoice = <label className="dm-email-choice">Send via <select aria-label="Send via" value={mode}
+    disabled={deliveryBusy || draft.email_stamp_unavailable || !onSendVia}
+    onChange={e => onSendVia?.(e.target.value as DraftSendVia)}>
+    <option value="dm">DM only</option>
+    <option value="email" disabled={!draft.email_mirror_text?.trim() || !['ivan','arch','risedtc'].includes(t.client_id)}>Email only</option>
+    <option value="both">DM + email</option>
+  </select>{deliveryBusy && <span role="status">Saving…</span>}</label>
   const hold = holdReason(draft)
   if (v4) {
     const sendKey = onSend ? (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onSend() } } : undefined
@@ -96,14 +101,15 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
           {draft.email_stamp_unavailable && <div className="dm-ban dm-ban-warn"><b><DIcon name="alert" />Could not check whether this draft also sends an email.</b><p>Refresh before you approve.</p></div>}
           {strips}
         </div>}
-        <div className="dm-b-draft dm-tape dx-card-b" data-draft={draft.id}
+        {rider && <div className="dx-card-b dm-send-via">{emailChoice}</div>}
+        {mode !== 'email' || email ? <div className="dm-b-draft dm-tape dx-card-b" data-draft={draft.id}
           onClick={e => { if (!(e.target as HTMLElement).closest('textarea,input,button,a')) e.currentTarget.querySelector<HTMLTextAreaElement>('textarea.dm-edit')?.focus() }}>
           {inmail && <p className="dm-meta">InMail to {t.prospect_name}</p>}
         {email && draft.recipient_email && <p className="dm-meta">Email to {draft.recipient_email} (from {emailRowSender(t.client_id)})</p>}
           {email && draft.recipient_email && <Cc value={edits.cc ?? ''} onChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} />}
           {email || inmail ? <EmailEdit subjectLabel={inmail ? 'InMail subject' : 'Email subject'} value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" onKeyDown={sendKey} />
             : <Grow value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" onKeyDown={sendKey} />}
-        </div>
+        </div> : null}
         {comp && (
           <div className="dm-leg dx-leg">
             <div className="dm-tm">
@@ -120,14 +126,13 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
         {rider && (
           <div className="dm-leg dm-leg-rider dx-leg">
             <b className="dm-email-title">Email draft</b>
-            {emailChoice}
             {!emailEnabled && <p className="dm-email-envelope">Only the LinkedIn DM will be sent.</p>}
             {emailEnabled && <>
             <p className="dm-email-envelope">To: {draft.recipient_email} · From: {emailRowSender(t.client_id)}</p>
             <div className="dm-tm">
-              <span>{draft.email_mirror_text && !emailSenderLabel(t.client_id)
+              <span>{draft.email_mirror_text && mode !== 'email' && !emailSenderLabel(t.client_id)
                 ? `This email does not send from your seat, only the DM goes. Copy it into Gmail to ${draft.recipient_email} if you want it sent.`
-                : draft.email_mirror_text ? `Approving also sends this email to ${draft.recipient_email}${emailSenderLabel(t.client_id)}`
+                : draft.email_mirror_text ? `${mode === 'email' ? 'Approving sends' : 'Approving also sends'} this email to ${draft.recipient_email}${mode === 'email' ? ` (from ${emailRowSender(t.client_id)})` : emailSenderLabel(t.client_id)}`
                   : `Approving also emails the scan link to ${draft.recipient_email}${emailSenderLabel(t.client_id)}. The sender writes that email itself.`}</span>
             </div>
             <Cc value={edits.cc ?? ''} onChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} />
@@ -148,7 +153,8 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
       {t.draftStale && <div className="dm-ban dm-ban-warn"><b><DIcon name="alert" />You already replied after their last message.</b><p>This draft is probably not needed.</p></div>}
       {hold && <div className="dm-ban dm-ban-warn"><b><DIcon name="alert" />{hold}</b></div>}
       {draft.email_stamp_unavailable && <div className="dm-ban dm-ban-warn"><b><DIcon name="alert" />Could not check whether this draft also sends an email.</b><p>Refresh before you approve.</p></div>}
-      <div className="dm-b dm-b-out dm-b-draft dm-tape" data-draft={draft.id}>
+      {rider && emailChoice}
+      {mode !== 'email' || email ? <div className="dm-b dm-b-out dm-b-draft dm-tape" data-draft={draft.id}>
         <div className="dm-tm">
           <span><b className="dm-b-dl">Draft</b> {title}{legPipe(t)} · {ago(eventTime(draft), now)} ago</span>
           <span className={`dm-save dm-save-${save}`} role="status" aria-live="polite">
@@ -160,7 +166,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
         {email && draft.recipient_email && <Cc value={edits.cc ?? ''} onChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} />}
         {email || inmail ? <EmailEdit subjectLabel={inmail ? 'InMail subject' : 'Email subject'} value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" />
           : <Grow value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" />}
-      </div>
+      </div> : null}
       {comp && (
         <div className="dm-leg">
           <div className="dm-tm">
@@ -177,14 +183,13 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
       {rider && (
         <div className="dm-leg dm-leg-rider">
           <b className="dm-email-title">Email draft</b>
-            {emailChoice}
             {!emailEnabled && <p className="dm-email-envelope">Only the LinkedIn DM will be sent.</p>}
             {emailEnabled && <>
           <p className="dm-email-envelope">To: {draft.recipient_email} · From: {emailRowSender(t.client_id)}</p>
           <div className="dm-tm">
-            <span>{draft.email_mirror_text && !emailSenderLabel(t.client_id)
+            <span>{draft.email_mirror_text && mode !== 'email' && !emailSenderLabel(t.client_id)
               ? `This email does not send from your seat, only the DM goes. Copy it into Gmail to ${draft.recipient_email} if you want it sent.`
-              : draft.email_mirror_text ? `Approving also sends this email to ${draft.recipient_email}${emailSenderLabel(t.client_id)}`
+              : draft.email_mirror_text ? `${mode === 'email' ? 'Approving sends' : 'Approving also sends'} this email to ${draft.recipient_email}${mode === 'email' ? ` (from ${emailRowSender(t.client_id)})` : emailSenderLabel(t.client_id)}`
                 : `Approving also emails the scan link to ${draft.recipient_email}${emailSenderLabel(t.client_id)}. The sender writes that email itself.`}</span>
           </div>
           <Cc value={edits.cc ?? ''} onChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} />

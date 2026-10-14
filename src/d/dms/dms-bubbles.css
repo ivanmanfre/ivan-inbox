@@ -97,3 +97,7 @@
 :root .d-app .dm-pane :is(.dm-rejected-actions,.dm-ban-row) .dm-send-anyways{min-height:44px;padding:8px 14px}
 
 .dm-email-choice{display:flex;align-items:center;gap:8px;min-height:44px;font:400 14px var(--f);color:var(--t1);cursor:pointer}.dm-email-choice input{width:18px;height:18px;accent-color:var(--t1)}.dm-email-choice input:focus-visible{outline:2px solid var(--t2);outline-offset:3px}.dm-email-choice span{font:400 12px var(--f);color:var(--t2)}
+
+.dm-email-choice select{min-height:44px;max-width:100%;padding:8px 30px 8px 10px;border:1px solid var(--line2);border-radius:6px;background:var(--p2);color:var(--t1);font:inherit}.dm-email-choice select:focus-visible{outline:2px solid var(--t2);outline-offset:2px}
+
+.dm-send-via{padding:8px 16px}
