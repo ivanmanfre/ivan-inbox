@@ -168,6 +168,28 @@ describe('the seat next step comes only after the verdict is saved', () => {
 })
 
 describe('the card', () => {
+  it('No image narrows the summary count and ages to pending matching drafts without changing its card filter', () => {
+    const rows = [
+      row({ id: 'with-image', created_at: at(-10 * H), image_urls: ['https://s.test/image.jpg'] }),
+      row({ id: 'without-image-new', created_at: at(-2 * H) }),
+      row({ id: 'without-image-old', created_at: at(-5 * H) }),
+      row({ id: 'approved-no-image', status: 'approved', created_at: at(-H) }),
+    ]
+    renderInFrame(<Harness rows={rows} />)
+    const answer = () => document.querySelector('.cv2-answer')!.textContent!
+    expect(answer()).toContain('3 drafts to decide. Newest 2h, oldest 10h.')
+    expect(document.querySelector('[data-verb="show-all"] .cv2-n')?.textContent).toBe('3')
+    expect(document.querySelector('[data-verb="quick-noimg"] .cv2-n')?.textContent).toBe('2')
+    fireEvent.click(verb(document, 'quick-noimg')!)
+    expect(answer()).toContain('2 drafts to decide. Newest 2h, oldest 5h.')
+    expect(document.querySelector('[data-verb="show-all"] .cv2-n')?.textContent).toBe('3')
+    expect(document.querySelector('[data-verb="quick-noimg"] .cv2-n')?.textContent).toBe('2')
+    expect(card('with-image')).toBeNull()
+    expect(card('without-image-new')).toBeTruthy()
+    expect(card('approved-no-image')).toBeTruthy()
+    fireEvent.click(verb(document, 'quick-noimg')!)
+    expect(answer()).toContain('3 drafts to decide. Newest 2h, oldest 10h.')
+  })
   it('shows pending review numbers while keeping decided and repair cards visible', () => {
     const rows = [
       row({ id: 'open', type: 'single_image' }), row({ id: 'approved', status: 'approved', type: 'single_image' }),
