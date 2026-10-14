@@ -50,6 +50,30 @@ beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); vi.setSystemTi
 afterEach(() => { cleanup(); vi.useRealTimers() })
 
 describe('inline draft edit', () => {
+  it('labels an InMail follow-up and separates its subject from the short message', () => {
+    const [t] = threads(drafted('inmail', { prospect_name: 'Alicia', client_id: 'arch', channel: 'linkedin_inmail', message_type: 'inmail' }))
+    t.draft!.message_text = 'Subject: Re: Ismail suggested we connect\n\nDid you see the examples?'
+    mount(t)
+    expect(screen.getByText('InMail to Alicia')).toBeTruthy()
+    expect((screen.getByLabelText('InMail subject') as HTMLInputElement).value).toBe('Re: Ismail suggested we connect')
+    expect((screen.getByLabelText('The draft') as HTMLTextAreaElement).value).toBe('Did you see the examples?')
+  })
+
+  it('starts an unanswered referred lead with context and folds the sent history', () => {
+    const [t] = threads([
+      msg({ prospect_id: 'referral', client_id: 'arch', ai_model: 'arch_referral_package_v1', sent_at: iso(H), message_text: 'Sent introduction' }),
+      msg({ prospect_id: 'referral', client_id: 'arch', ai_model: 'arch_referral_followup_v1', message_text: 'Did you see the examples?' }),
+    ])
+    mount(t)
+    const context = screen.getByRole('region', { name: 'Referral outreach package' })
+    const sent = document.querySelector('.dm-referral-history') as HTMLDetailsElement
+    expect(sent.open).toBe(false)
+    expect(context.compareDocumentPosition(sent) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect((screen.getByLabelText('The draft') as HTMLTextAreaElement).value).toBe('Did you see the examples?')
+    fireEvent.click(sent.querySelector('summary')!)
+    expect(screen.getByText('Sent introduction')).toBeTruthy()
+  })
+
   it('loads email copy that arrives after the same DM draft, without autosaving it', async () => {
     const [t] = threads(drafted('late-email', { client_id: 'arch', recipient_email: 'doug@outplay.com' }))
     const mirror = 'Subject: Re: ARCH. x Outplay\n\nDid the details cover what you wanted to know?'

@@ -8,7 +8,7 @@ import { ReplySourceContent, ReplySourceLine, knownSource } from './ReplySourceS
 // Drafts, internal questions and discarded rows are not history (they live in the pane below).
 import { canSendRejectedDm } from '../../lib/rejectedDm'
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
-import { eventTime, isDraft, isEngineRetired, isHiddenRetired, isInternalConfirmation, retiredLabel, sendFailed, messageChannel, type InboxMessage, type Thread } from '../../lib/inbox'
+import { dedupeMessages, eventTime, isDraft, isEngineRetired, isHiddenRetired, isInternalConfirmation, retiredLabel, sendFailed, messageChannel, type InboxMessage, type Thread } from '../../lib/inbox'
 import { label } from '../../lib/labels'
 import { Linkified } from '../ui/Linkified'
 import { warsawDay, warsawDayWord, warsawHm } from '../ui/time'
@@ -53,7 +53,7 @@ export function emailAddrLine(m: InboxMessage): string | null {
 }
 
 export function historyRows(t: Thread): InboxMessage[] {
-  return t.messages.filter(m => !isDraft(m) && !isInternalConfirmation(m) && !isHiddenRetired(m) && !isEngineRetired(m) && m.send_blocked_reason !== 'discarded_in_inbox'
+  return dedupeMessages(t.messages).filter(m => !isDraft(m) && !isInternalConfirmation(m) && !isHiddenRetired(m) && !isEngineRetired(m) && m.send_blocked_reason !== 'discarded_in_inbox'
     && (m.direction === 'inbound' || m.sent_at || m.approved_at || sendFailed(m) || isEngineRetired(m)))
 }
 

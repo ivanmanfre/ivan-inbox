@@ -71,6 +71,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
     : t.draftStale ? 'AI draft · you already replied'
       : isFollowUp(draft) ? 'AI follow-up' : 'AI draft'
   const email = messageChannel(draft) === 'email'
+  const inmail = messageChannel(draft) === 'inmail'
   const rider = (draft.recipient_email || draft.email_delivery_recipient) && !email && (draft.email_mirror_text || draft.ai_model === SCAN_DELIVERY_MODEL)
   const emailEnabled = !!draft.recipient_email
   const emailChoice = <label className="dm-email-choice"><input type="checkbox" aria-label="Send email too" checked={emailEnabled}
@@ -97,9 +98,10 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
         </div>}
         <div className="dm-b-draft dm-tape dx-card-b" data-draft={draft.id}
           onClick={e => { if (!(e.target as HTMLElement).closest('textarea,input,button,a')) e.currentTarget.querySelector<HTMLTextAreaElement>('textarea.dm-edit')?.focus() }}>
-          {email && draft.recipient_email && <p className="dm-meta">Email to {draft.recipient_email} (from {emailRowSender(t.client_id)})</p>}
+          {inmail && <p className="dm-meta">InMail to {t.prospect_name}</p>}
+        {email && draft.recipient_email && <p className="dm-meta">Email to {draft.recipient_email} (from {emailRowSender(t.client_id)})</p>}
           {email && draft.recipient_email && <Cc value={edits.cc ?? ''} onChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} />}
-          {email ? <EmailEdit value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" onKeyDown={sendKey} />
+          {email || inmail ? <EmailEdit subjectLabel={inmail ? 'InMail subject' : 'Email subject'} value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" onKeyDown={sendKey} />
             : <Grow value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" onKeyDown={sendKey} />}
         </div>
         {comp && (
@@ -153,9 +155,10 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
             {SAVE_WORD[save]}{save === 'failed' && <> · <button type="button" className="dm-linkbtn" data-verb="autosave-retry" onClick={onRetrySave}>Retry</button></>}
           </span>
         </div>
-        {email && draft.recipient_email && <p className="dm-meta">Email to {draft.recipient_email} (from {emailRowSender(t.client_id)})</p>}
+        {inmail && <p className="dm-meta">InMail to {t.prospect_name}</p>}
+          {email && draft.recipient_email && <p className="dm-meta">Email to {draft.recipient_email} (from {emailRowSender(t.client_id)})</p>}
         {email && draft.recipient_email && <Cc value={edits.cc ?? ''} onChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} />}
-        {email ? <EmailEdit value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" />
+        {email || inmail ? <EmailEdit subjectLabel={inmail ? 'InMail subject' : 'Email subject'} value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" />
           : <Grow value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" />}
       </div>
       {comp && (

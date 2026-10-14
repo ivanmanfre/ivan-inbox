@@ -20,13 +20,25 @@ describe('referral card', () => {
     const ordinary = threads([msg({ prospect_id: 'ordinary', direction: 'outbound', ai_model: 'campaign', message_text: 'Sent cold DM', sent_at: '2026-10-12T01:00:00Z', created_at: '2026-10-12T01:00:00Z' })])[0]
     expect(isConversation(ordinary)).toBe(false)
   })
-  it('shows the actual sent InMail and no repeat-copy action for that introduction', async () => {
+  it('summarizes sent outreach without repeating its full copy', async () => {
     const t = threads([msg({ prospect_id: 'alicia', direction: 'outbound', ai_model: 'arch_referral_package_v1', message_type: 'inmail', message_text: 'The introduction actually sent.', sent_at: '2026-10-12T01:00:00Z', created_at: '2026-10-12T01:00:00Z' })])[0]
     readLead.mockResolvedValue({ data: { email: null, enrichment_data: { channel_drafts: { inmail: { subject: 'Intro', body: 'Older draft.' } }, referral_followup: { status: 'waiting_due', due_at: '2026-10-15T01:00:00Z' } } }, error: null })
     render(<ReferralCard t={t} />)
-    expect(await screen.findByRole('textbox', { name: 'InMail sent message' })).toHaveValue('The introduction actually sent.')
+    expect((await screen.findByText('Sent:')).parentElement).toHaveTextContent('InMail')
+    expect(screen.queryByRole('textbox', { name: 'InMail sent message' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Copy InMail' })).not.toBeInTheDocument()
-    expect(screen.getByText(/Due/)).toHaveTextContent('15/10/2026')
+    expect(screen.getByText(/Follow-up due/)).toHaveTextContent('15/10/2026')
+  })
+  it('keeps the current follow-up in the normal editor only', async () => {
+    const t = threads([
+      msg({ prospect_id: 'alicia', direction: 'outbound', ai_model: 'arch_referral_package_v1', message_type: 'inmail', message_text: 'Sent introduction', sent_at: '2026-10-12T01:00:00Z' }),
+      msg({ prospect_id: 'alicia', direction: 'outbound', ai_model: 'arch_referral_followup_v1', message_type: 'inmail', message_text: 'Did you see the examples?', created_at: '2026-10-14T01:00:00Z' }),
+    ])[0]
+    readLead.mockResolvedValue({ data: { email: 'alicia@mwm.io', enrichment_data: { referral: { referrer_name: 'Ismail' }, channel_drafts: { inmail: { body: 'Introduction' } }, referral_followup: { status: 'awaiting_followup_review' } } }, error: null })
+    render(<ReferralCard t={t} />)
+    expect(await screen.findByText('Follow-up ready for review below.')).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Follow-up draft' })).not.toBeInTheDocument()
+    expect(screen.getByText('No reply recorded yet.')).toBeInTheDocument()
   })
   it('shows the full channel package in the referred person’s own thread without an inbound or send action', async () => {
     const t = threads([msg({ prospect_id: 'alicia', prospect_name: 'Alicia Yingru WANG', client_id: 'arch', direction: 'outbound', ai_model: 'arch_referral_package_v1', message_text: 'Invite draft', sent_at: null })])[0]

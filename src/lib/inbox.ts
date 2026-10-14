@@ -9,6 +9,7 @@ export type InboxMessage = {
   sent_at: string | null; approved_at: string | null; read_at: string | null;
   created_at: string; send_blocked_at: string | null; send_blocked_reason: string | null;
   unipile_chat_id: string | null;
+  unipile_message_id?: string | null;
   // 'manual_mirror' = typed by hand in the LinkedIn app and mirrored in by the
   // sync; anything else outbound was dispatched by the system.
   ai_model: string | null;
@@ -392,11 +393,25 @@ export function snoozeActive(m: InboxMessage, lastInbound: string | null, now: n
 // this never eats a real message.
 export function dedupeMessages(rows: InboxMessage[]): InboxMessage[] {
   const seen = new Set<string>()
+  const native = new Map<string, number>()
   const out: InboxMessage[] = []
   for (const m of rows) {
+    // One provider message can arrive as both the sent InMail and a body-only sync mirror.
+    const nativeKey = m.sent_at && m.unipile_message_id ? `${m.prospect_id}|${m.direction}|${m.unipile_chat_id}|${m.unipile_message_id}` : null
+    // The view omits provider IDs; its InMail sync mirror still has the exact timestamp and body.
+    const mirrorBody = String(m.message_text ?? '').replace(/^Subject:[^\n]*\r?\n(?:\r?\n)?/i, '').trim()
+    const mirrorKey = m.sent_at && mirrorBody && (m.message_type === 'inmail' || m.ai_model === 'manual_mirror')
+      ? `inmail:${m.prospect_id}|${m.direction}|${m.sent_at}|${mirrorBody}` : null
+    const index = (nativeKey ? native.get(nativeKey) : undefined) ?? (mirrorKey ? native.get(mirrorKey) : undefined)
+    if (index !== undefined) {
+      if (out[index].ai_model === 'manual_mirror' && m.ai_model !== 'manual_mirror') out[index] = m
+      continue
+    }
     const key = `${m.prospect_id}|${m.direction}|${m.sent_at ?? m.created_at}|${m.message_text}`
     if (seen.has(key)) continue
     seen.add(key)
+    if (nativeKey) native.set(nativeKey, out.length)
+    if (mirrorKey) native.set(mirrorKey, out.length)
     out.push(m)
   }
   return out

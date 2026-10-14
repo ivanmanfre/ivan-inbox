@@ -253,6 +253,17 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     if (!composeOff) primary = <Key primary verb="compose-send" aria-label={composeLabel} className="dm-send" disabled={busy || emailBlocked || !reply.trim()} onClick={() => void compose()}>{composeLabel}</Key>
   }
 
+  const referredLead = t.messages.some(m => m.ai_model === 'arch_referral_package_v1')
+  const referral = <ReferralCard key={t.prospect_id} t={t} onUseAcknowledgement={text => {
+    setReply(text)
+    if (t.ownerConfirmation) void verbs.holdRelease(t)
+    dock.current?.querySelector('textarea')?.focus()
+  }} />
+  const history = <History v4={v4} onSendAnyways={m => void sendAnyways(m)} sending={busy} t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} onReplyEmail={canComposeEmail(t) && !t.spam && (!t.ownerConfirmation || manualReply) && !busy ? openEmailReply : undefined}
+    onForwardEmail={['arch', 'risedtc'].includes(t.client_id) && !busy ? setForwardEmail : undefined} />
+  const historyView = referredLead && !t.messages.some(m => m.direction === 'inbound')
+    ? <details className="dm-referral-history"><summary>Sent messages</summary>{history}</details> : history
+
   if (v4) {
     // Same closures, same keys; only the arrangement and the one-primary rule differ (SPEC-dms §2.5):
     // a stale draft, or a draft with his own words in the composer, draws Send outlined.
@@ -268,15 +279,11 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         onSpam={!t.spam && seat !== 'ivan' ? () => void run(() => verbs.spam(t)) : undefined} signal={signal} />}
       sum={ps.s !== 'none' && <div className="dm-sum" role="status"><span className={ps.s === 'running' ? 'dx-busy' : undefined}>{ps.s === 'done' ? ps.line : ps.s === 'running' ? 'Reading it…' : ps.why}</span></div>}
       conv={<>
-        <History v4 onSendAnyways={m => void sendAnyways(m)} sending={busy} t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} onReplyEmail={canComposeEmail(t) && !t.spam && (!t.ownerConfirmation || manualReply) && !busy ? openEmailReply : undefined}
-          onForwardEmail={['arch', 'risedtc'].includes(t.client_id) && !busy ? setForwardEmail : undefined} />
+        {referredLead && referral}
+        {historyView}
         {draftRunning && <div className="dm-b dm-b-in dx-typing" aria-hidden="true"><div className="dm-b-body"><i /><i /><i /></div></div>}
         <Banners v4 t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
-        <ReferralCard key={t.prospect_id} t={t} onUseAcknowledgement={text => {
-          setReply(text)
-          if (t.ownerConfirmation) void verbs.holdRelease(t)
-          dock.current?.querySelector('textarea')?.focus()
-        }} />
+        {!referredLead && referral}
         <Draft v4 onEmailDelivery={emailDelivery} deliveryBusy={busy} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload}
           strips={<DraftStrips t={t} verbs={verbs} />}
           foot={t.draft && <DraftWhy v4 t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
@@ -309,14 +316,10 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         onSpam={!t.spam && seat !== 'ivan' ? () => void run(() => verbs.spam(t)) : undefined} signal={signal} />
       {ps.s !== 'none' && <div className="dm-sum" role="status">{ps.s === 'done' ? ps.line : ps.s === 'running' ? 'Reading it…' : ps.why}</div>}
       <div className="dm-scroll" ref={scroll}>
-        <History onSendAnyways={m => void sendAnyways(m)} sending={busy} t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} onReplyEmail={canComposeEmail(t) && !t.spam && (!t.ownerConfirmation || manualReply) && !busy ? openEmailReply : undefined}
-          onForwardEmail={['arch', 'risedtc'].includes(t.client_id) && !busy ? setForwardEmail : undefined} />
+        {referredLead && referral}
+        {historyView}
         <Banners t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
-        <ReferralCard key={t.prospect_id} t={t} onUseAcknowledgement={text => {
-          setReply(text)
-          if (t.ownerConfirmation) void verbs.holdRelease(t)
-          dock.current?.querySelector('textarea')?.focus()
-        }} />
+        {!referredLead && referral}
         <Draft onEmailDelivery={emailDelivery} deliveryBusy={busy} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
         {t.draft && <DraftWhy t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
         <RestoreStrip t={t} verbs={verbs} />
