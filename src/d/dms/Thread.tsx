@@ -83,19 +83,24 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   const [sheet, setSheet] = useState<'context' | 'agent' | null>(null)
   const [copied, setCopied] = useState(false)
   const [fuTick, setFuTick] = useState(0)
-  const seeded = useRef({ id: '', text: '', cc: undefined as string | undefined, companionCc: undefined as string | undefined })
+  const seeded = useRef({ id: '', text: '', email: null as string | null, companionId: '', companion: null as string | null, cc: undefined as string | undefined, companionCc: undefined as string | undefined })
   const scroll = useRef<HTMLDivElement>(null)
   const draftId = t.draft?.id ?? ''
   const draftText = t.draft?.message_text ?? ''
+  const draftEmail = t.draft?.email_mirror_text ?? null
+  const companionId = t.companionDraft?.id ?? ''
+  const companionText = t.companionDraft?.message_text ?? null
   const recipients = seed(t)
 
-  // Re-seed on a new draft row, or when the same row's text changed under an untouched editor.
+  // Refresh each untouched leg when its saved copy arrives or changes.
   useEffect(() => {
     const was = seeded.current
     if (draftId !== was.id) setEdits(seed(t))
-    else setEdits(e => ({ ...e, main: e.main === was.text ? draftText : e.main, cc: e.cc === was.cc ? recipients.cc : e.cc, companionCc: e.companionCc === was.companionCc ? recipients.companionCc : e.companionCc }))
-    seeded.current = { id: draftId, text: draftText, cc: recipients.cc, companionCc: recipients.companionCc }
-  }, [draftId, draftText, recipients.cc, recipients.companionCc]) // eslint-disable-line react-hooks/exhaustive-deps
+    else setEdits(e => ({ ...e, main: e.main === was.text ? draftText : e.main, email: e.email === was.email ? draftEmail : e.email,
+      companion: companionId !== was.companionId || e.companion === was.companion ? companionText : e.companion,
+      cc: e.cc === was.cc ? recipients.cc : e.cc, companionCc: e.companionCc === was.companionCc ? recipients.companionCc : e.companionCc }))
+    seeded.current = { id: draftId, text: draftText, email: draftEmail, companionId, companion: companionText, cc: recipients.cc, companionCc: recipients.companionCc }
+  }, [draftId, draftText, draftEmail, companionId, companionText, recipients.cc, recipients.companionCc]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setReply(''); setEmailReplyFor(null); setMenu(null); setSheet(null); setSchedule(null); setForwardEmail(null); setScheduleFailure('') }, [t.prospect_id])
   useLayoutEffect(() => {
     if (emailReplyFor === t.prospect_id) dock.current?.querySelector('textarea')?.focus()

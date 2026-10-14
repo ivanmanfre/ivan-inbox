@@ -2,7 +2,8 @@
 // DMs 4: inline autosave, ONE Later key with two write paths, the Signals grouping, the came-back
 // tag and the All conversations status words. The lib writes are mocked; the rules are not.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { useState } from 'react'
 import { renderInFrame } from '../test-utils'
 
 vi.mock('../../lib/inbox', async orig => {
@@ -49,6 +50,30 @@ beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); vi.setSystemTi
 afterEach(() => { cleanup(); vi.useRealTimers() })
 
 describe('inline draft edit', () => {
+  it('loads email copy that arrives after the same DM draft, without autosaving it', async () => {
+    const [t] = threads(drafted('late-email', { client_id: 'arch', recipient_email: 'doug@outplay.com' }))
+    const mirror = 'Subject: Re: ARCH. x Outplay\n\nDid the details cover what you wanted to know?'
+    let refresh!: (next: Thread) => void
+    function Live() { const [current, setCurrent] = useState(t); refresh = setCurrent; return <DmAsks><Pane t={current} /></DmAsks> }
+    renderInFrame(<Live />, { hash: '#exp/d/dms' })
+    act(() => refresh({ ...t, draft: { ...t.draft!, email_mirror_text: mirror } }))
+    expect((screen.getByLabelText('The email that goes with it') as HTMLTextAreaElement).value).toBe('Did the details cover what you wanted to know?')
+    expect((screen.getByLabelText('Email subject') as HTMLInputElement).value).toBe('Re: ARCH. x Outplay')
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_MS + 50)
+    expect(lib.saveDraftEmail).not.toHaveBeenCalled()
+    expect(lib.saveDraftText).not.toHaveBeenCalled()
+  })
+
+  it('preserves an operator email edit when the server refreshes the same draft', () => {
+    const [t] = threads(drafted('edited-email', { client_id: 'arch', recipient_email: 'doug@outplay.com', email_mirror_text: 'Subject: Follow-up\n\nOriginal copy' }))
+    let refresh!: (next: Thread) => void
+    function Live() { const [current, setCurrent] = useState(t); refresh = setCurrent; return <DmAsks><Pane t={current} /></DmAsks> }
+    renderInFrame(<Live />, { hash: '#exp/d/dms' })
+    fireEvent.change(screen.getByLabelText('The email that goes with it'), { target: { value: 'My edited copy' } })
+    act(() => refresh({ ...t, draft: { ...t.draft!, email_mirror_text: 'Subject: Follow-up\n\nRefreshed server copy' } }))
+    expect((screen.getByLabelText('The email that goes with it') as HTMLTextAreaElement).value).toBe('My edited copy')
+  })
+
   it('the draft is a textarea with no Edit key; typing saves once after the pause, via the guarded save, and says Saved', async () => {
     const [t] = threads(drafted('a', { prospect_name: 'Ada' }))
     mount(t)
