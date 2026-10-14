@@ -150,7 +150,7 @@ describe('T8 · contract selectors with v4 on (desktop + phone)', () => {
     expect(row.getAttribute('aria-current')).toBe('true')
     const nameText = Array.from(row.querySelector('.dm-n')!.childNodes).filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim()
     expect(nameText).toBe('Ada Lovelace')
-    expect(document.querySelectorAll('.dm-sq[data-pick]')).toHaveLength(3)
+    expect(document.querySelectorAll('.dm-sq[data-pick]')).toHaveLength(4)
     expect(document.querySelectorAll('.dm-fd[role="tab"]')).toHaveLength(3)
     expect(document.querySelectorAll('section.dm-pane [data-verb="close"]')).toHaveLength(1)
     expect(document.querySelector('[data-d-thread-who]')?.textContent).toBe('Ada Lovelace')

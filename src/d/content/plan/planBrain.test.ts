@@ -422,14 +422,14 @@ describe('exported constants', () => {
     expect(strings.filter(s => s !== PB.FAILED_LINE && BANNED.test(s))).toEqual([])
   })
   it('names', () => {
-    expect(PB.ACCT_NAME).toEqual({ ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch' })
-    expect(PB.OWNER).toEqual({ ivan: 'you', risedtc: 'Mattan', arch: 'Davorin' })
+    expect(PB.ACCT_NAME).toEqual({ ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch' , swishdm: 'SwishDM'})
+    expect(PB.OWNER).toEqual({ ivan: 'you', risedtc: 'Mattan', arch: 'Davorin' , swishdm: 'Jonathan'})
     expect(PB.ST_WORD).toEqual({ published: 'Published', scheduled: 'Scheduled', review: 'Waiting for your OK', writing: 'Being written', failed: 'Failed' })
   })
 })
 
 describe('brain strip words (Task 9)', () => {
-  const strips = { ivan: (ivanFx as unknown as PlanRead).brain_strip as BrainStrip, risedtc: (riseFx as unknown as PlanRead).brain_strip as BrainStrip, arch: (archFx as unknown as PlanRead).brain_strip as BrainStrip }
+  const strips = { ivan: (ivanFx as unknown as PlanRead).brain_strip as BrainStrip, risedtc: (riseFx as unknown as PlanRead).brain_strip as BrainStrip, arch: (archFx as unknown as PlanRead).brain_strip as BrainStrip , swishdm: (archFx as unknown as PlanRead).brain_strip as BrainStrip}
   it('nextCheckLine', () => {
     expect(PB.nextCheckLine(strips.ivan)).toBe('Mon 2 Nov. Being checked: more than 50 words and weekdays only.')
     expect(PB.nextCheckLine(strips.risedtc)).toBe('Mon 2 Nov. No rule is being checked.')
@@ -485,7 +485,7 @@ describe('brain strip words (Task 9)', () => {
     expect(PB.stripNote(strips.ivan)).toBe('')
     expect(PB.stripNote(null)).toBe('')
   })
-  for (const a of ['ivan', 'risedtc', 'arch'] as const) {
+  for (const a of ['ivan', 'risedtc', 'arch', 'swishdm'] as const) {
     it(`real strip words are plain: ${a}`, () => {
       const s = strips[a]
       const out: string[] = [PB.nextCheckLine(s), PB.sourceNote(s), PB.stripNote(s), PB.viralLine(s)]

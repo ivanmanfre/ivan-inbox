@@ -23,7 +23,7 @@ const KIND_ICON: Record<string, DIconName> = {
   needs_you: 'person', failed: 'alert', reply: 'dms', booking: 'time', reminder: 'time', done: 'check', seen: 'eye', digest: 'sum',
 }
 const KIND_TONE: Record<string, string> = { needs_you: 'd-k-hl', failed: 'd-k-bad', booking: 'd-k-hl' }
-const TENANT: Record<string, string> = { arch: 'Arch', rise: 'Rise', risedtc: 'Rise', ivan: 'Ivan' }
+const TENANT: Record<string, string> = { arch: 'Arch', rise: 'Rise', risedtc: 'Rise', ivan: 'Ivan' , swishdm: 'SwishDM'}
 
 /** A row Claude folded into a turn: `bot:<turn id>` (today's inChatTurnId). */
 export function inChatTurnId(n: { group_key: string | null }): string | null {

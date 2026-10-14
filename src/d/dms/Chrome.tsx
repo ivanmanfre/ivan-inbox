@@ -22,18 +22,19 @@ export function Headline({ mode, views, counts, tools, noSub = false, phone = fa
   /** Brief 4: the sub line is drawn by the page's band tools instead. */ noSub?: boolean }) {
   const needs = dmNumbers(counts, 'needs')
   if (mode === 'spam') {
-    return <AnswerRow title={<>Likely spam: <N v={views.risedtc.spam.length} /> Mattan's, <N v={views.arch.spam.length} /> Davorin's.</>} tools={tools} />
+    return <AnswerRow title={<>Likely spam: <N v={views.risedtc.spam.length} /> Mattan's, <N v={views.arch.spam.length} /> Davorin's, <N v={views.swishdm.spam.length} /> Jonathan's.</>} tools={tools} />
   }
   if (mode === 'email') {
-    return <AnswerRow title={<>Email waiting on you: <N v={views.ivan.emailWaiting.length} /> yours, <N v={views.risedtc.emailWaiting.length} /> Mattan's, <N v={views.arch.emailWaiting.length} /> Davorin's.</>} tools={tools} />
+    return <AnswerRow title={<>Email waiting on you: <N v={views.ivan.emailWaiting.length} /> yours, <N v={views.risedtc.emailWaiting.length} /> Mattan's, <N v={views.arch.emailWaiting.length} /> Davorin's, <N v={views.swishdm.emailWaiting.length} /> Jonathan's.</>} tools={tools} />
   }
   // One headline; the sub line only when a thread still has no draft (work Ivan must start).
   const sub = noSub ? undefined : noDraftLine(views)
-  return <AnswerRow title={<><span className="dm-needs-prose">Needs you: <N v={needs.ivan} /> yours, <N v={needs.risedtc} /> Mattan's, <N v={needs.arch} /> Davorin's.</span>{phone && <span className="dm-needs-counts" aria-label={`Needs you: ${needs.ivan ?? 'unknown'} yours, ${needs.risedtc ?? 'unknown'} Mattan's, ${needs.arch ?? 'unknown'} Davorin's`}>
+  return <AnswerRow title={<><span className="dm-needs-prose">Needs you: <N v={needs.ivan} /> yours, <N v={needs.risedtc} /> Mattan's, <N v={needs.arch} /> Davorin's, <N v={needs.swishdm} /> Jonathan's.</span>{phone && <span className="dm-needs-counts" aria-label={`Needs you: ${needs.ivan ?? 'unknown'} yours, ${needs.risedtc ?? 'unknown'} Mattan's, ${needs.arch ?? 'unknown'} Davorin's, ${needs.swishdm ?? 'unknown'} Jonathan's`}>
     <span className="dm-needs-label">Needs you</span>
     <span className="dm-needs-seat"><i>I</i><N v={needs.ivan} /><small>yours</small></span>
     <span className="dm-needs-seat"><i>M</i><N v={needs.risedtc} /><small>Mattan</small></span>
     <span className="dm-needs-seat"><i>D</i><N v={needs.arch} /><small>Davorin</small></span>
+    <span className="dm-needs-seat"><i>J</i><N v={needs.swishdm} /><small>Jonathan</small></span>
   </span>}</>} sub={sub} tools={tools} />
 }
 
@@ -58,10 +59,10 @@ export function Folders({ folder, setFolder, views, phone, v4 }: { folder: strin
   /** Brief 4: counts move to the tooltip and the label; "Likely " can drop at narrow widths. */ v4?: boolean }) {
   // Waiting only (emailFolder.ts): an old archived reply nobody stamped read never lights it.
   const emailDot = SEATS.some(s => anyUnread(views[s].emailWaiting))
-  const spamDot = anyUnread(views.risedtc.spam) || anyUnread(views.arch.spam)
+  const spamDot = anyUnread(views.risedtc.spam) || anyUnread(views.arch.spam) || anyUnread(views.swishdm.spam)
   if (v4) {
     const emailN = SEATS.map(s => `${SEAT_NAME[s]} ${views[s].emailWaiting.length}`).join(', ')
-    const spamN = `Rise ${views.risedtc.spam.length}, Arch ${views.arch.spam.length}`
+    const spamN = `Rise ${views.risedtc.spam.length}, Arch ${views.arch.spam.length}, SwishDM ${views.swishdm.spam.length}`
     return (
       <span className={`dm-folders dx-folders${phone ? ' dm-folders-phone' : ''}`} role="tablist" aria-label="Folders">
         <button type="button" role="tab" aria-selected={!folder} className={`dm-fd${!folder ? ' dm-on' : ''}`} onClick={() => setFolder(null)}>Conversations</button>

@@ -13,7 +13,7 @@ export type Pick = 'all' | Lane
 // No "All" in the switch (Ivan 2026-10-11: "a calendar view with all clients together makes no
 // sense"). One client at a time; a remembered or linked 'all' opens on Ivan.
 export const PICKS: readonly Pick[] = [...LANES]
-export const isPick = (s: string | null | undefined): s is Pick => s === 'ivan' || s === 'risedtc' || s === 'arch'
+export const isPick = (s: string | null | undefined): s is Pick => s === 'ivan' || s === 'risedtc' || s === 'arch' || s === 'swishdm'
 export const lanesOf = (p: Pick): Lane[] => (p === 'all' ? [...LANES] : [p])
 /** The calendar's client switch, remembered on this device. */
 export const PICK_KEY = 'd-cal-pick'
@@ -117,7 +117,7 @@ export function looseOf(rows: Record<Lane, ContentDraft[]>, pick: Pick, moved: M
 export type Magnet = { id: string; lane: Lane; title: string; cover: string | null; status: string }
 export function magnetLane(clientId: string | null): Lane | null {
   const k = clientId == null ? 'ivan' : clientId === 'rise' ? 'risedtc' : clientId
-  return k === 'ivan' || k === 'risedtc' || k === 'arch' ? k : null
+  return k === 'ivan' || k === 'risedtc' || k === 'arch' || k === 'swishdm' ? k : null
 }
 export function coverOf(cover: string | null, covers: unknown): string | null {
   if (cover) return cover

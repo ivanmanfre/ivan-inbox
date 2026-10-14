@@ -7,7 +7,7 @@ import {
   type CrossHit,
 } from './crossSearch'
 
-const LANES: ContentLane[] = ['ivan', 'risedtc', 'arch']
+const LANES: ContentLane[] = ['ivan', 'risedtc', 'arch', 'swishdm']
 
 describe('tenancy — the whole point of this feature', () => {
   it('content scopes Ivan by NULL and DMs scope him by the literal, because the tables disagree', () => {

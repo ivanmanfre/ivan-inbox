@@ -10,7 +10,7 @@ import { Count } from '../../ui/Count'
 import { useMotionLevel } from '../../../ds/motionLevel'
 import { useThumb } from './motion'
 
-const WHOSE: Record<Seat, string> = { ivan: 'Your seat', risedtc: "Mattan's seat", arch: "Davorin's seat" }
+const WHOSE: Record<Seat, string> = { ivan: 'Your seat', risedtc: "Mattan's seat", arch: "Davorin's seat" , swishdm: "Jonathan's seat"}
 
 /** The whole seat readout, said once: tooltip and aria-label (the activity 3.0 hid in sr-only text). */
 export function seatReadout(s: Seat, needs: number | null | undefined, drafts: number | null | undefined, replied: number | null, today: DayOut | undefined): string {

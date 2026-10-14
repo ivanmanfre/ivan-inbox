@@ -11,7 +11,7 @@ import { isContentLane, isStrategyView, type StrategyViewId } from '../strategy/
 import { makeLocalPreviewClient } from './LocalPreviewClient'
 
 type Data = { briefs: Record<ContentLane, EditorialBrief[]>; resources: Resource[] }
-const lanes: ContentLane[] = ['ivan', 'risedtc', 'arch']
+const lanes: ContentLane[] = ['ivan', 'risedtc', 'arch', 'swishdm']
 async function read(name: string) { const r = await fetch(`/__editorial_preview/${name}`); if (!r.ok) throw new Error(`${name}: HTTP ${r.status}`); return r.json() }
 
 // content-brain-05 Task 6 proof: this harness has no `#exp/` hash (App.tsx
@@ -41,7 +41,7 @@ export function LocalPreviewHarness() {
   const [selected, setSelected] = useState<SourceSnapshot | null>(null)
   const [kind, setKind] = useState('all')
   const [query, setQuery] = useState('')
-  const load = () => { setError(null); void Promise.all([read('ivan'), read('risedtc'), read('arch'), read('resources')]).then(([a,b,c,r]) => setData({ briefs: { ivan:a.briefs, risedtc:b.briefs, arch:c.briefs }, resources:r.rows })).catch(e => setError(e instanceof Error ? e.message : 'Local files could not be read.')) }
+  const load = () => { setError(null); void Promise.all([read('ivan'), read('risedtc'), read('arch'), read('resources')]).then(([a,b,c,r]) => setData({ briefs: { ivan:a.briefs, risedtc:b.briefs, arch:c.briefs , swishdm: []}, resources:r.rows })).catch(e => setError(e instanceof Error ? e.message : 'Local files could not be read.')) }
   useEffect(load, [])
   const briefs = data?.briefs[lane] ?? []
   const localClient = useMemo(() => data ? makeLocalPreviewClient(data) : null, [data])

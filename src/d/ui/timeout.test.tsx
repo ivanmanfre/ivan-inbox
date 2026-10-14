@@ -93,7 +93,7 @@ describe('FrameCountsProvider (rail sub-counts, bell count, glance drafts)', () 
     const readers: Readers = {
       dm: () => Promise.resolve({ needs: 0, drafts: 0 } as never),
       content: () => Promise.resolve(0),
-      ops: ok({ ivan: 0, risedtc: 0, arch: 0 }),
+      ops: ok({ ivan: 0, risedtc: 0, arch: 0 , swishdm: 0}),
       nextCall: ok({ label: 'none booked', title: null, start: null } as never),
       bell: () => (++calls === 1 ? never() : Promise.resolve({ unreadGroups: 4, open: 9 })),
       alerts: ok({ rows: [], groups: [], critical: 0 }),

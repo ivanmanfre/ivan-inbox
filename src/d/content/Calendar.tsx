@@ -51,7 +51,7 @@ function withWeekends(ws: WallDay[]): WallDay[] {
 }
 const viewKey = (p: Pick) => `d-cal-view-${p}`
 const store = { get: (k: string) => { try { return localStorage.getItem(k) } catch { return null } }, set: (k: string, v: string) => { try { localStorage.setItem(k, v) } catch { /* private mode */ } } }
-const PICK_NAME: Record<Pick, string> = { all: 'All', ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch' }
+const PICK_NAME: Record<Pick, string> = { all: 'All', ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch', swishdm: 'SwishDM' }
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 export type CalendarProps = {
@@ -107,14 +107,14 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
   // Brief 4 desktop: date and time edited beside the card (WhenPopover), never off-screen.
   const [when, setWhen] = useState<{ id: string; lane: Lane; anchor: DOMRect; day?: string; focus: 'time' | 'day' } | null>(null)
   const reduced = useMemo(() => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches, [])
-  const rows = useMemo(() => ({ ivan: data.seats.ivan.rows, risedtc: data.seats.risedtc.rows, arch: data.seats.arch.rows }), [data.seats])
+  const rows = useMemo(() => ({ ivan: data.seats.ivan.rows, risedtc: data.seats.risedtc.rows, arch: data.seats.arch.rows , swishdm: data.seats.swishdm.rows}), [data.seats])
 
   // An optimistic day holds only until the re-read agrees (or the row is gone).
   useEffect(() => {
     if (!moved.size) return
     const next = new Map(moved)
     for (const [id, day] of moved) {
-      const r = rows.ivan.find(x => x.id === id) ?? rows.risedtc.find(x => x.id === id) ?? rows.arch.find(x => x.id === id)
+      const r = rows.ivan.find(x => x.id === id) ?? rows.risedtc.find(x => x.id === id) ?? rows.arch.find(x => x.id === id) ?? rows.swishdm.find(x => x.id === id)
       const has = r?.scheduled_at ? warsawDay(r.scheduled_at) : ''
       if (!r || has === day) next.delete(id)
     }

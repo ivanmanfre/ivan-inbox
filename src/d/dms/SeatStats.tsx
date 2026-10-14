@@ -4,7 +4,7 @@
 import { SEAT_NAME, type Seat } from '../seats'
 import { SCHEDULE, type DayOut } from './model'
 
-const OWNER_LINE: Record<Seat, string> = { ivan: 'your seat', risedtc: "Mattan's seat", arch: "Davorin's seat" }
+const OWNER_LINE: Record<Seat, string> = { ivan: 'your seat', risedtc: "Mattan's seat", arch: "Davorin's seat" , swishdm: "Jonathan's seat"}
 
 export function Plate({ seat }: { seat: Seat }) {
   return <div className="dm-plate"><b title={OWNER_LINE[seat]}>{SEAT_NAME[seat]}</b></div>

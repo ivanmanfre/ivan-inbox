@@ -24,8 +24,8 @@ export function kindTitle(d: OpsDraft): string {
 }
 
 /** Whose lane, as the plate prints it. */
-export const LANE_OWNER: Record<Seat, string> = { ivan: 'your lane', risedtc: "Mattan's lane", arch: "Davorin's lane" }
-export const SEAT_PERSON: Record<Seat, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin' }
+export const LANE_OWNER: Record<Seat, string> = { ivan: 'your lane', risedtc: "Mattan's lane", arch: "Davorin's lane" , swishdm: "Jonathan's lane"}
+export const SEAT_PERSON: Record<Seat, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan' }
 
 /** A client this app has no seat for: drawn as its own lane, never dropped (today's lanes.ts). */
 export type OtherLane = { key: string; name: string; cards: OpsDraft[]; later: OpsDraft[]; waiting: number }
@@ -47,7 +47,7 @@ export type OpsBoard = {
   flat: OpsDraft[]
 }
 
-const bySeat = <T,>(f: () => T): Record<Seat, T> => ({ ivan: f(), risedtc: f(), arch: f() })
+const bySeat = <T,>(f: () => T): Record<Seat, T> => ({ ivan: f(), risedtc: f(), arch: f() , swishdm: f()})
 
 /** The lane a row sits in: one of the three seats, else its own client id. */
 export function laneOf(clientId: string | null | undefined): string {

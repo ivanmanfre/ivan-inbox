@@ -6,9 +6,9 @@ import type { Lane } from './model'
 // post at 7:00 AM PT stays at 7:00 AM PT across the weeks the EU and US clocks change on different
 // Sundays, and a new date starts at the lane's usual posting time (RISE 7:00 AM PT = 14:00 UTC, its
 // standing slot; ARCH 11:00; Ivan 09:00), never at midnight Pacific.
-export const LANE_TZ: Record<Lane, string> = { ivan: 'Europe/Warsaw', risedtc: 'America/Los_Angeles', arch: 'Europe/Warsaw' }
-export const LANE_DEFAULT_HM: Record<Lane, string> = { ivan: '09:00', risedtc: '07:00', arch: '11:00' }
-export const LANE_TZ_WORD: Record<Lane, string> = { ivan: 'Warsaw', risedtc: 'PT', arch: 'Warsaw' }
+export const LANE_TZ: Record<Lane, string> = { ivan: 'Europe/Warsaw', risedtc: 'America/Los_Angeles', arch: 'Europe/Warsaw' , swishdm: 'Europe/London'}
+export const LANE_DEFAULT_HM: Record<Lane, string> = { ivan: '09:00', risedtc: '07:00', arch: '11:00' , swishdm: '11:00'}
+export const LANE_TZ_WORD: Record<Lane, string> = { ivan: 'Warsaw', risedtc: 'PT', arch: 'Warsaw' , swishdm: 'UK'}
 
 const parts = (t: number, tz: string) => {
   const p = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(t)

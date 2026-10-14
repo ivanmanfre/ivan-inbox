@@ -7,7 +7,7 @@
 
 /* ---- the seat matrix: one inset card, rows of three big figures ---- */
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .hm4-matrix{padding:2px 14px;border-radius:18px;border:0;background:#fff;box-shadow:0 0 0 .5px rgba(19,18,16,.08)}
-:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .hm4-matrix-row{grid-template-columns:78px repeat(3,minmax(0,1fr));gap:4px;min-height:64px;border-bottom:0;position:relative}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .hm4-matrix-row{grid-template-columns:78px repeat(4,minmax(0,1fr));gap:4px;min-height:64px;border-bottom:0;position:relative}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .hm4-matrix-row:not(.hm4-matrix-head){min-height:64px}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .hm4-matrix-row + .hm4-matrix-row::before{content:'';position:absolute;left:0;right:0;top:0;height:1px;background:rgba(19,18,16,.08)}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .hm4-matrix-head{min-height:44px}
@@ -36,7 +36,7 @@
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .hm4-matrix .hm4-expanded .hm4-ready-band{padding-bottom:6px}
 
 /* Rate limit: its own row, label above three one-line pills */
-:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .hm4-matrix-row:last-child{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:0;padding-bottom:6px;min-height:82px;align-content:center}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .hm4-matrix-row:last-child{grid-template-columns:repeat(4,minmax(0,1fr));row-gap:0;padding-bottom:6px;min-height:82px;align-content:center}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .hm4-matrix-row:last-child>b{grid-column:1/-1;font:600 13px/18px var(--ds-font);color:var(--ds-text-2);padding-top:10px}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .hm4-matrix .hm4-limit{margin:0;width:100%}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .hm4-matrix .hm4-limit a{box-sizing:border-box;width:100%;min-height:44px;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:0;

@@ -46,8 +46,8 @@ export type ColumnProps = {
   toEmail: () => void
 }
 
-const WHO: Record<Seat, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin' }
-const OWNER: Record<Seat, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin' }
+const WHO: Record<Seat, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan' }
+const OWNER: Record<Seat, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan' }
 
 export function ColumnBody(p: ColumnProps) {
   const { seat, view: v, mode, c } = p

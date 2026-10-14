@@ -14,7 +14,7 @@ import {
   type ContentEvidencePack,
 } from './contentEvidence'
 
-const LANES: ContentLane[] = ['ivan', 'risedtc', 'arch']
+const LANES: ContentLane[] = ['ivan', 'risedtc', 'arch', 'swishdm']
 
 // A bare-bones pack builder for the edge cases the shipped fixtures do not
 // need to carry (unrecognized enum values, the exact empty/non-empty inputs

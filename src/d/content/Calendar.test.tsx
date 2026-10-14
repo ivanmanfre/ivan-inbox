@@ -31,16 +31,16 @@ const row = (id: string, extra: Partial<ContentDraft> = {}) => ({ id, client_id:
 const seat = (rows: ContentDraft[]): SeatRead => ({ rows, loading: false, error: null, loadedAt: '2026-09-30T10:00:00Z', refresh: vi.fn() })
 const queue = { id: 'queue', clickup_task_id: 'legacy', status: 'posted', post_text: 'Our own post', scheduled_at: '2026-09-30T09:00:00Z', posted_at: '2026-09-30T09:01:00Z', unipile_share_url: 'https://linkedin.com/posts/ours' } as ScheduledQueueRow
 function setup(rows: Record<Lane, ContentDraft[]>, q: ScheduledQueueRow[] = []) {
-  const data = { seats: { ivan: seat(rows.ivan), risedtc: seat(rows.risedtc), arch: seat(rows.arch) }, armed: null, armedFailed: false, verdict: null, blocks: null, queueRows: q, refreshAll: vi.fn(), failed: 0 } as unknown as ContentData
-  const items = { ivan: byDay(seatItems(rows.ivan, 'ivan', q, NOW)), risedtc: byDay(seatItems(rows.risedtc, 'risedtc', null, NOW)), arch: byDay(seatItems(rows.arch, 'arch', null, NOW)) }
+  const data = { seats: { ivan: seat(rows.ivan), risedtc: seat(rows.risedtc), arch: seat(rows.arch) , swishdm: seat(rows.swishdm)}, armed: null, armedFailed: false, verdict: null, blocks: null, queueRows: q, refreshAll: vi.fn(), failed: 0 } as unknown as ContentData
+  const items = { ivan: byDay(seatItems(rows.ivan, 'ivan', q, NOW)), risedtc: byDay(seatItems(rows.risedtc, 'risedtc', null, NOW)), arch: byDay(seatItems(rows.arch, 'arch', null, NOW)) , swishdm: byDay(seatItems(rows.swishdm, 'swishdm', null, NOW))}
   return { data, items }
 }
 
 describe('calendar model', () => {
   const rise = row('rise', { client_id: 'risedtc', status: 'scheduled', scheduled_at: '2026-10-07T14:00:00Z', board_visible: true, taxonomy: { source: 'lead-magnet', lead_magnet_id: 'x' }, image_urls: ['https://x/cover.png'] })
   const ivan = row('ivan', { status: 'scheduled', scheduled_at: '2026-10-06T08:45:00Z' })
-  const { data, items } = setup({ ivan: [ivan, row('loose')], risedtc: [rise], arch: [] })
-  const rows = { ivan: data.seats.ivan.rows, risedtc: data.seats.risedtc.rows, arch: [] }
+  const { data, items } = setup({ ivan: [ivan, row('loose')], risedtc: [rise], arch: [] , swishdm: []})
+  const rows = { ivan: data.seats.ivan.rows, risedtc: data.seats.risedtc.rows, arch: [] , swishdm: []}
   it('"All" merges every seat on its Warsaw day with a real preview and the lead-magnet mark', () => {
     const days = calendarDays(items, rows, 'all', new Map())
     expect(days.get('2026-10-06')!.map(e => e.lane)).toEqual(['ivan'])
@@ -73,7 +73,7 @@ describe('Calendar', () => {
   const props = { now: NOW, setPick: vi.fn(), onOpen: vi.fn(), onMove: vi.fn(), onArm: vi.fn(), onDay: vi.fn(), onChanged: vi.fn() }
   const dragSetup = () => {
     const r = row('Matt was my employee for 12 years', { client_id: 'risedtc', status: 'scheduled', scheduled_at: '2026-09-28T14:00:00Z', board_visible: true })
-    const { data, items } = setup({ ivan: [], risedtc: [r], arch: [] })
+    const { data, items } = setup({ ivan: [], risedtc: [r], arch: [] , swishdm: []})
     renderInFrame(<Calendar {...props} data={data} items={items} phone={false} pick="all" />)
     const card = screen.getByRole('button', { name: 'Open Matt was my employee for 12 years' })
     const start = card.closest('[data-cal-day]')!
@@ -105,7 +105,7 @@ describe('Calendar', () => {
     expect(writes.setScheduleDateAt).not.toHaveBeenCalled()
   })
   it('opens on today with the posted post, Open post and Unpublish on its card', async () => {
-    const { data, items } = setup({ ivan: [], risedtc: [], arch: [] }, [queue])
+    const { data, items } = setup({ ivan: [], risedtc: [], arch: [] , swishdm: []}, [queue])
     renderInFrame(<Calendar {...props} data={data} items={items} phone={false} pick="ivan" />)
     expect(screen.getByRole('group', { name: /Ivan, September 2026/ })).toBeTruthy()
     const agenda = screen.getByRole('region', { name: /Posts on/ })
@@ -117,7 +117,7 @@ describe('Calendar', () => {
     expect(document.querySelector('[data-cal-id="queue"]')!.getAttribute('data-cal-refuse')).toMatch(/Already posted/)
   })
   it('pages months ahead and back, and Today returns', () => {
-    const { data, items } = setup({ ivan: [], risedtc: [], arch: [] })
+    const { data, items } = setup({ ivan: [], risedtc: [], arch: [] , swishdm: []})
     renderInFrame(<Calendar {...props} data={data} items={items} phone={false} pick="risedtc" />)
     for (const m of ['October', 'November', 'December']) { fireEvent.click(screen.getByRole('button', { name: 'Next month' })); expect(screen.getByRole('group', { name: new RegExp(`${m} 2026`) })).toBeTruthy() }
     fireEvent.click(screen.getByRole('button', { name: 'Today' }))
@@ -127,14 +127,14 @@ describe('Calendar', () => {
   })
   it('on a phone a tap on a day shows that day’s posts big underneath, never opening a post', () => {
     const r = row('later', { status: 'scheduled', scheduled_at: '2026-09-15T08:45:00Z', image_urls: ['https://x/a.png'] })
-    const { data, items } = setup({ ivan: [r], risedtc: [], arch: [] })
+    const { data, items } = setup({ ivan: [r], risedtc: [], arch: [] , swishdm: []})
     renderInFrame(<Calendar {...props} data={data} items={items} phone pick="ivan" />, { layout: 'phone' })
     fireEvent.click(document.querySelector('[data-cal-day="2026-09-15"] [data-cal-id="later"]')!)
     expect(props.onOpen).not.toHaveBeenCalled()
     expect(screen.getByRole('region', { name: /Posts on Tue 15 Sep/ }).textContent).toContain('later hook line')
   })
   it('"All" defaults to the lines wall and remembers the view per client', () => {
-    const { data, items } = setup({ ivan: [], risedtc: [], arch: [] })
+    const { data, items } = setup({ ivan: [], risedtc: [], arch: [] , swishdm: []})
     renderInFrame(<Calendar {...props} data={data} items={items} phone={false} pick="all" />)
     expect(screen.getByRole('group', { name: 'Posts by seat and day' })).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: 'Month' }))
@@ -147,7 +147,7 @@ describe('Calendar', () => {
 
 it('renders the Brain mark on an undated review draft on phone and desktop with Open intact', () => {
  const brain = row('brain', { taxonomy: { source: 'content-brain' } })
- const { data, items } = setup({ ivan: [brain], risedtc: [], arch: [] })
+ const { data, items } = setup({ ivan: [brain], risedtc: [], arch: [] , swishdm: []})
  const open = vi.fn()
  for (const phone of [true, false]) {
   const view = renderInFrame(<Calendar data={data} items={items} now={NOW} phone={phone} pick="all" setPick={() => {}} onOpen={open} onMove={() => {}} onArm={() => {}} onDay={() => {}} onChanged={() => {}} />)

@@ -37,7 +37,7 @@ export function dmsToAnswer(threads: readonly Thread[], now: number): GlanceDm[]
 }
 
 /** The lane each seat's warm engagers sit in (glance/ready.ts lane keys). */
-export const WARM_LANE: Record<Seat, string> = { ivan: 'engage', risedtc: 'engager', arch: 'engager_warm' }
+export const WARM_LANE: Record<Seat, string> = { ivan: 'engage', risedtc: 'engager', arch: 'engager_warm' , swishdm: 'engager_warm'}
 
 /** A seat whose warm lane has nothing ready. A lane switched off for the day (Saturday, off) is not an alert. */
 export function stockAlerts(ready: ReadyRead | null): GlanceAlert[] {

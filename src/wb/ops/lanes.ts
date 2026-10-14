@@ -10,14 +10,14 @@
 import type { OpsDraft, OpsKind } from '../../lib/ops'
 
 export type OpsLane = {
-  /** 'ivan' | 'risedtc' | 'arch' | any other client id. */
+  /** 'ivan' | 'risedtc' | 'arch' | 'swishdm' | any other client id. */
   key: string
   label: string
   cards: OpsDraft[]
 }
 
-const ORDER = ['ivan', 'risedtc', 'arch'] as const
-const LABEL: Record<string, string> = { ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch' }
+const ORDER = ['ivan', 'risedtc', 'arch', 'swishdm'] as const
+const LABEL: Record<string, string> = { ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch', swishdm: 'SwishDM' }
 
 /** Ivan's rows carry 'ivan', and older ones carry nothing at all. */
 export function laneKeyOf(clientId: string | null | undefined): string {

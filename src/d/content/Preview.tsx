@@ -13,7 +13,7 @@ export const AUTHOR: Record<Lane, [string, string, string]> = {
   ivan: ['Iván Manfredi', 'AI content systems for agencies', 'IM'],
   risedtc: ['Mattan Danino', 'Rise DTC', 'MD'],
   arch: ['Davorin Smit', 'Arch', 'DS'],
-}
+ swishdm: ['Jonathan Kiekbusch', 'SwishDM', 'JK']}
 
 export function Preview({ d, lane, body, editing, text, setText, busy = false, onStartEdit, onCancel, onSave }: {
   d: ContentDraftDetail; lane: Lane; body: string; editing: boolean; text: string; setText: (s: string) => void

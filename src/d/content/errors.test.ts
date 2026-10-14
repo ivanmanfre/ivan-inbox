@@ -30,7 +30,7 @@ describe('Errors parity', () => {
     expect(g.stalled).toBeGreaterThanOrEqual(1)
   })
   it('magnets review badge per seat (rise = Rise, NULL = Ivan)', () => {
-    expect(magnetTrio([{ client_id: null }, { client_id: 'rise' }, { client_id: 'risedtc' }, { client_id: 'arch' }])).toEqual({ ivan: 1, risedtc: 2, arch: 1 })
+    expect(magnetTrio([{ client_id: null }, { client_id: 'rise' }, { client_id: 'risedtc' }, { client_id: 'arch' }])).toEqual({ ivan: 1, risedtc: 2, arch: 1 , swishdm: 0})
   })
   it('Strategy reads its tab and exact brief from a D address; sources means Research', () => {
     expect(readStrategyDeepLink('#exp/d/content/results')).toEqual({ section: 'results' })

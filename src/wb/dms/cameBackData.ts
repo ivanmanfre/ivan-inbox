@@ -53,7 +53,7 @@ export type CameBackCard = {
     client's lane, everybody on All. Email and Spam have no LinkedIn seat. */
 export function cardsFor(cards: CameBackCard[], filter: Filter): CameBackCard[] {
   if (filter === 'all') return cards
-  if (filter === 'ivan' || filter === 'risedtc' || filter === 'arch') return cards.filter(c => c.tenant === filter)
+  if (filter === 'ivan' || filter === 'risedtc' || filter === 'arch' || filter === 'swishdm') return cards.filter(c => c.tenant === filter)
   return []
 }
 

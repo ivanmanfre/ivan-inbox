@@ -2,7 +2,7 @@
    THE LANE LIST, FROM THE REGISTRY.
 
    Until now the tenants a Strategy surface could show were typed into
-   `src/lib/content.ts:14` as `['ivan', 'risedtc', 'arch']`, so a fourth client
+   `src/lib/content.ts:14` as `['ivan', 'risedtc', 'arch', 'swishdm']`, so a fourth client
    with a full roster could not appear anywhere without a deploy. The database
    already held the answer: `client_registry`, filtered by `lane_allowed()`.
    That function is granted to service_role only, on purpose, so the browser
@@ -25,7 +25,7 @@ import { fetchLanes, type Lane } from '../lib/markets'
 export type LanesState = 'loading' | 'registry' | 'fallback'
 export type Lanes = { lanes: Lane[]; state: LanesState; message: string | null }
 
-const CACHE_KEY = 'a-lanes-v1'
+const CACHE_KEY = 'a-lanes-v2'
 
 /** The lanes the code has always known, used only until the registry answers. */
 export const FALLBACK_LANES: Lane[] = CONTENT_LANES.map(id => ({ client_id: id, display_name: LANE_LABEL[id] }))

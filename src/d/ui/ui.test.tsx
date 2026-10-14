@@ -11,14 +11,14 @@ afterEach(() => { cleanup(); document.body.innerHTML = '' })
 
 describe('SeatCounts / SeatTrio', () => {
   it('one number per seat, never a total; unread, unknown and failed say so', () => {
-    renderInFrame(<SeatCounts label="Drafts for you" numbers={{ ivan: 2, risedtc: null, arch: null }} failed={{ arch: true }} />)
+    renderInFrame(<SeatCounts label="Drafts for you" numbers={{ ivan: 2, risedtc: null, arch: null , swishdm: null}} failed={{ arch: true }} />)
     const line = document.querySelector('.d-per')!
-    expect(line.textContent).toBe('Drafts for youIvan 2Rise …Arch ?')
-    expect(line.getAttribute('aria-label')).toBe('Drafts for you: Ivan 2, Rise reading, Arch could not read')
+    expect(line.textContent).toBe('Drafts for youIvan 2Rise …Arch ?SwishDM …')
+    expect(line.getAttribute('aria-label')).toBe('Drafts for you: Ivan 2, Rise reading, Arch could not read, SwishDM reading')
   })
   it('the dock trio lights live numbers only', () => {
-    renderInFrame(<SeatTrio numbers={{ ivan: 7, risedtc: 0, arch: 22 }} />)
-    expect(document.querySelector('.d-trio')!.textContent).toBe('7·0·22')
+    renderInFrame(<SeatTrio numbers={{ ivan: 7, risedtc: 0, arch: 22 , swishdm: 0}} />)
+    expect(document.querySelector('.d-trio')!.textContent).toBe('7·0·22·0')
     expect([...document.querySelectorAll('.d-trio i.d-hot')].map(x => x.textContent)).toEqual(['7', '22'])
   })
 })

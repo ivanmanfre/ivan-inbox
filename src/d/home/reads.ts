@@ -31,7 +31,7 @@ export function useHome() {
     now,
     lanes: lanes.data,
     content: week.content,
-    drafts: { ivan: dr('ivan'), risedtc: dr('risedtc'), arch: dr('arch') } as Record<Seat, Read<number>>,
+    drafts: { ivan: dr('ivan'), risedtc: dr('risedtc'), arch: dr('arch') , swishdm: dr('swishdm')} as Record<Seat, Read<number>>,
     retry: {
       content: week.refresh,
       drafts: () => counts.refresh('dms'),

@@ -12,7 +12,7 @@ const sha = async (s: string) => [...new Uint8Array(await crypto.subtle.digest('
 /** Exact user confirmation, with field-specific limits. The confirmation is
  * original evidence of broad themes, not the unavailable detailed story. */
 export async function normalizeAuthorNote(input: AuthorNoteInput): Promise<NormalizedSnapshot> {
-  if (!['ivan', 'risedtc', 'arch'].includes(input.clientId) || !input.author.trim() ||
+  if (!['ivan', 'risedtc', 'arch', 'swishdm'].includes(input.clientId) || !input.author.trim() ||
       !input.noteId.trim() || !input.originPointer.trim() || !input.originalUserStatement.trim() ||
       !Number.isFinite(Date.parse(input.observedAt)) || !input.confirmedFields.length ||
       !input.unknownFields.length || [...input.confirmedFields, ...input.unknownFields].some(x => !x.trim())) {

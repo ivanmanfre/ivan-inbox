@@ -15,7 +15,7 @@ describe('splitReviewByLane', () => {
       { client_id: null }, { client_id: null },
       { client_id: 'risedtc' }, { client_id: 'arch' },
     ])
-    expect(s.byLane).toEqual({ ivan: 2, risedtc: 1, arch: 1 })
+    expect(s.byLane).toEqual({ ivan: 2, risedtc: 1, arch: 1 , swishdm: 0})
     expect(s.other).toBe(0)
   })
 
@@ -26,7 +26,7 @@ describe('splitReviewByLane', () => {
       ...Array.from({ length: 39 }, () => ({ client_id: 'arch' })),
     ]
     const s = splitReviewByLane(rows)
-    expect(s.byLane).toEqual({ ivan: 2, risedtc: 54, arch: 39 })
+    expect(s.byLane).toEqual({ ivan: 2, risedtc: 54, arch: 39 , swishdm: 0})
     // The headline is every lane, not Ivan's. A lane-scoped read of the same
     // rows would have said 2, which was the defect.
     const total = s.byLane.ivan + s.byLane.risedtc + s.byLane.arch + s.other
@@ -39,7 +39,7 @@ describe('splitReviewByLane', () => {
     // client must show up in the total on the day it is created.
     const s = splitReviewByLane([{ client_id: 'newclient' }, { client_id: null }])
     expect(s.other).toBe(1)
-    expect(s.byLane).toEqual({ ivan: 1, risedtc: 0, arch: 0 })
+    expect(s.byLane).toEqual({ ivan: 1, risedtc: 0, arch: 0 , swishdm: 0})
   })
 
   it('the literal string ivan lands on the ivan lane too, not on other', () => {
@@ -52,7 +52,7 @@ describe('splitReviewByLane', () => {
 
   it('no rows is three zeros, not an empty map', () => {
     expect(splitReviewByLane([])).toEqual({
-      byLane: { ivan: 0, risedtc: 0, arch: 0 }, other: 0,
+      byLane: { ivan: 0, risedtc: 0, arch: 0 , swishdm: 0}, other: 0,
     })
   })
 })

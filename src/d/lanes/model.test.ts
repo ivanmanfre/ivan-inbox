@@ -14,8 +14,8 @@ const NOW = Date.parse(p.as_of)
 
 describe('lanes model', () => {
   it('reads invites today per seat from the daily series and never sums seats', () => {
-    const a = answerOf(p, ['ivan', 'risedtc', 'arch'], NOW)
-    expect(a.inv.map(x => x.seat)).toEqual(['ivan', 'risedtc', 'arch'])
+    const a = answerOf(p, ['ivan', 'risedtc', 'arch', 'swishdm'], NOW)
+    expect(a.inv.map(x => x.seat)).toEqual(['ivan', 'risedtc', 'arch', 'swishdm'])
     expect(a.inv.find(x => x.seat === 'risedtc')!.v).toBe(0)
     expect(a.sub).toMatch(/^LinkedIn is refusing Ivan and Arch/)
   })

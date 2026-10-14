@@ -133,8 +133,9 @@ export type ClientIdeaDecision = 'approved' | 'rejected'
 // reversible at the row, and the one act nothing undoes (delete) is not offered
 // here at all.
 export async function decideClientIdea(
-  id: string, decision: ClientIdeaDecision,
+  id: string, decision: ClientIdeaDecision, lane?: ContentLane,
 ): Promise<void> {
+  if (lane === 'swishdm' && decision === 'approved') throw new Error('SwishDM generation is not connected yet. Finish the content setup at onboarding first.')
   const { data, error } = await supabase.rpc('operator_approve_idea', {
     p_gate: CLIENT_OPS_GATE, p_idea_id: id, p_decision: decision,
   })

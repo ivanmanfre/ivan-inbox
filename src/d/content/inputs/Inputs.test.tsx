@@ -32,7 +32,7 @@ describe('Outliers reads and choices', () => {
   })
   it('discloses buyer provenance on a phone and describes an empty eligible list truthfully', () => {
     const data=payload({ buyers: [{ name: 'A buyer', headline: 'VP at Buyer Co', icp: 8, why: 'Owns the budget', url: 'https://linkedin.test/buyer', posts: 2, commented: true, last_seen: '2026-09-29T12:00:00Z', post_title: 'A source post' }] })
-    renderInFrame(<Inputs lane="arch" setLane={()=>{}} layout="list" reads={{ivan:null,risedtc:null,arch:{kind:'ready',data}}} refresh={()=>{}} phone/> )
+    renderInFrame(<Inputs lane="arch" setLane={()=>{}} layout="list" reads={{ivan:null,risedtc:null,arch:{kind:'ready',data}, swishdm: {kind:'ready',data}}} refresh={()=>{}} phone/> )
     expect(screen.getByText('VP at Buyer Co')).toBeTruthy()
     expect(screen.getByText(/last recorded/)).toBeTruthy()
     expect(screen.getByText(/Owns the budget/)).toBeTruthy()
@@ -43,7 +43,7 @@ describe('Outliers reads and choices', () => {
   })
   it('saves a source to the correct client and names the destination as Ideas', async () => {
     const source={rank:1,platform:'x' as const,post_id:'123',author:'Author',url:'https://x.test/123',text:'Source post',published_at:null,lift:4,likes:40,reason:'Fits this client',state:null,idea:null} as InputsPayload['top'][number]
-    renderInFrame(<Inputs lane="arch" setLane={()=>{}} layout="list" reads={{ivan:null,risedtc:null,arch:{kind:'ready',data:payload({top:[source]})}}} refresh={()=>{}} phone/> )
+    renderInFrame(<Inputs lane="arch" setLane={()=>{}} layout="list" reads={{ivan:null,risedtc:null,arch:{kind:'ready',data:payload({top:[source]})}, swishdm: {kind:'ready',data:payload({top:[source]})}}} refresh={()=>{}} phone/> )
     fireEvent.click(screen.getByRole('button',{name:'Save idea'}))
     await waitFor(()=>expect(screen.getByRole('link',{name:'Open in Ideas'})).toBeTruthy())
     expect(putOutlierOnBoard).toHaveBeenCalledWith('arch','x','123')

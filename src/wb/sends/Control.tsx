@@ -31,7 +31,7 @@ import { SkeletonRows } from '../../ds'
 import { Section, BarGauge, TableOrRecords } from './parts'
 import './sends.css'
 
-type Client = 'all' | 'ivan' | 'risedtc' | 'arch'
+type Client = 'all' | 'ivan' | 'risedtc' | 'arch' | 'swishdm'
 export type CcTimeframe = '7d' | '30d' | '90d' | 'custom'
 type DateRange = { from: string; to: string }
 

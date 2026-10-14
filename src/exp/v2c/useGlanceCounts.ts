@@ -106,7 +106,7 @@ export type GlanceCounts = {
 
 const EMPTY: GlanceCounts = {
   contentReview: 0,
-  contentReviewByLane: { ivan: 0, risedtc: 0, arch: 0 },
+  contentReviewByLane: { ivan: 0, risedtc: 0, arch: 0, swishdm: 0 },
   contentReviewOther: 0,
   magnetsReview: 0,
   alerts: [],

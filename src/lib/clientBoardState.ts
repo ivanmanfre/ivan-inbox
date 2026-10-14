@@ -18,7 +18,7 @@ export type BoardState = {
   note_at: string | null
 }
 
-export const BOARD_CLIENTS = ['arch', 'risedtc'] as const
+export const BOARD_CLIENTS = ['arch', 'risedtc', 'swishdm'] as const
 const GATE = 'clientops'
 const EVERY_MS = 120_000
 
@@ -78,6 +78,7 @@ export function clientHoldOf(r: {
   if (!r.client_id || r.client_id === 'ivan' || r.published_at) return null
   const s = boardStateOf(r.id)
   if (s && (s.veto === 'post_removed' || s.veto === 'angle_swap')) return { kind: 'removed', text: `Removed by ${owner}`, detail: `${owner} took this post off the board, so it will not publish.` }
+  if (r.client_id === 'swishdm') return { kind: 'unarmed', text: 'Publishing not connected', detail: 'Finish onboarding and connect Jonathan’s account before scheduling.' }
   const dated = !!r.scheduled_at && r.board_visible === true && (r.status === 'review' || r.status === 'scheduled')
   if (dated && r.client_id === 'risedtc' && r.status !== 'scheduled') return { kind: 'unarmed', text: 'Dated, not scheduled', detail: 'Only a scheduled post publishes. Set its day again to schedule it.' }
   if (dated && r.client_id === 'arch' && boardStateLoaded('arch') && s?.approval !== 'approve') {

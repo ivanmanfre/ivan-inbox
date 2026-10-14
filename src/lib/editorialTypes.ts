@@ -44,7 +44,7 @@
     and from `client_registry` server-side — never from a path substring, a cwd
     or a session id. A caller-supplied id outside this set is rejected BEFORE
     any query is issued (contract-tests T02). */
-export const EDITORIAL_CLIENTS = ['ivan', 'risedtc', 'arch'] as const
+export const EDITORIAL_CLIENTS = ['ivan', 'risedtc', 'arch', 'swishdm'] as const
 export type EditorialClientId = (typeof EDITORIAL_CLIENTS)[number]
 
 export function isEditorialClientId(v: unknown): v is EditorialClientId {

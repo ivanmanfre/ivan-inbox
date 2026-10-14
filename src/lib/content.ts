@@ -11,14 +11,15 @@ import { clientWillPublish } from './clientBoardState'
 // called "Mattan Danino" / "Davorin Smit" everywhere a human reads them (IA §0).
 // LANE_LABEL is the only place that mapping lives, so a rename can never
 // half-land again.
-export type ContentLane = 'ivan' | 'risedtc' | 'arch'
+export type ContentLane = 'ivan' | 'risedtc' | 'arch' | 'swishdm'
 
-export const CONTENT_LANES = ['ivan', 'risedtc', 'arch'] as const
+export const CONTENT_LANES = ['ivan', 'risedtc', 'arch', 'swishdm'] as const
 
 export const LANE_LABEL: Record<ContentLane, string> = {
   ivan: 'Ivan',
   risedtc: 'Mattan Danino',
   arch: 'Davorin Smit',
+  swishdm: 'Jonathan Kiekbusch',
 }
 
 // The chip name, sentence case (rebuild ruling 2026-09-26: "Ivan / Rise /
@@ -28,6 +29,7 @@ export const LANE_SHORT: Record<ContentLane, string> = {
   ivan: 'Ivan',
   risedtc: 'Rise',
   arch: 'Arch',
+  swishdm: 'SwishDM',
 }
 
 // The client's own first name, for a sentence about him ("Davorin sees it").
@@ -36,6 +38,7 @@ export const LANE_OWNER: Record<ContentLane, string> = {
   ivan: '',
   risedtc: 'Mattan',
   arch: 'Davorin',
+  swishdm: 'Jonathan',
 }
 
 // Possessive form, for "on Mattan's board" / "Ivan's drafts".
@@ -43,6 +46,7 @@ export const LANE_POSSESSIVE: Record<ContentLane, string> = {
   ivan: 'Ivan’s',
   risedtc: 'Mattan’s',
   arch: 'Davorin’s',
+  swishdm: 'Jonathan’s',
 }
 
 // Only the fields a queue/preview surface actually renders. Column names
@@ -1869,6 +1873,7 @@ export function clientScheduleArmed(r: ContentDraft): boolean {
 export function stageOfLane(
   r: ContentDraft, lane: ContentLane, now: number = Date.now(),
 ): ContentStage {
+  if (lane === 'swishdm' && !r.published_at && r.status === 'scheduled') return 'review'
   if (lane === 'ivan' || !clientScheduleArmed(r)) return stageOf(r, now)
   const t = Date.parse(r.scheduled_at as string)
   // A FUTURE date on an armed board row is a schedule, full stop: that is the
@@ -2996,6 +3001,7 @@ export function pictureEditable(
 export const BOARD_SLUG: Record<Exclude<ContentLane, 'ivan'>, string> = {
   risedtc: 'risedtc-com',
   arch: 'arch-agency',
+  swishdm: 'swishdm-live',
 }
 
 // db/230's refusal codes in words. `bad_status` is looked up here FIRST: the

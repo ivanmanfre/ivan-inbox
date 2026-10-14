@@ -48,7 +48,7 @@ it('Home asks the guarded view for one slim dated page and keeps all three seat 
   expect(sdk.calls[0].to).toBe('2026-10-18T00:00:00.000Z')
   const weeks = homeWeeks(rows, NOW)
   const days = nextWeekDays(NOW)
-  for (const seat of ['ivan', 'risedtc', 'arch'] as const) {
+  for (const seat of ['ivan', 'risedtc', 'arch', 'swishdm'] as const) {
     expect(weeks[seat]).toEqual(contentWeek(rows.filter(r => r.client_id === seat || seat === 'ivan' && r.client_id == null), seat, days))
   }
   expect(weeks.ivan.n).toBe(1)

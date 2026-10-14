@@ -12,12 +12,12 @@ import {
 import { warsawDay, warsawDm, warsawDow, warsawHm } from '../ui/time'
 
 export type Lane = ContentLane
-export const LANES: readonly Lane[] = ['ivan', 'risedtc', 'arch']
-export const LANE_NAME: Record<Lane, string> = { ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch' }
-export const OWNER: Record<Lane, string> = { ivan: '', risedtc: 'Mattan', arch: 'Davorin' }
-export const POSS: Record<Lane, string> = { ivan: 'Your', risedtc: 'Mattan’s', arch: 'Davorin’s' }
-export const FEED: Record<Lane, string> = { ivan: 'your feed', risedtc: 'Mattan’s board', arch: 'Davorin’s board' }
-export const IDEA_OWNER: Record<Lane, string> = { ivan: 'yours', risedtc: 'Mattan’s', arch: 'Davorin’s' }
+export const LANES: readonly Lane[] = ['ivan', 'risedtc', 'arch', 'swishdm']
+export const LANE_NAME: Record<Lane, string> = { ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch', swishdm: 'SwishDM' }
+export const OWNER: Record<Lane, string> = { ivan: '', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan' }
+export const POSS: Record<Lane, string> = { ivan: 'Your', risedtc: 'Mattan’s', arch: 'Davorin’s', swishdm: 'Jonathan’s' }
+export const FEED: Record<Lane, string> = { ivan: 'your feed', risedtc: 'Mattan’s board', arch: 'Davorin’s board', swishdm: 'Jonathan’s board' }
+export const IDEA_OWNER: Record<Lane, string> = { ivan: 'yours', risedtc: 'Mattan’s', arch: 'Davorin’s', swishdm: 'Jonathan’s' }
 
 export const DAY_MS = 86_400_000
 export const WAIT_DAYS = 14

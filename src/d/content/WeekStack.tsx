@@ -42,7 +42,7 @@ const QUICK: [Quick, string, (c: WeekCard) => boolean][] = [
   ['noimg', 'No image', c => c.flags.some(f => f.key === 'noimg')],
 ]
 
-const SHOW_LABEL: Record<Show, string> = { all: 'All', ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch' }
+const SHOW_LABEL: Record<Show, string> = { all: 'All', ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch', swishdm: 'SwishDM' }
 
 export function WeekStack({ week, read, show, setShow, now, openId, onOpen, onChanged, firstDay, seatRows, nowView = false }: {
   nowView?: boolean

@@ -39,7 +39,7 @@ import { Answer, Menu, Pill, SeatAv, Seg, useDeferred, type MenuItem, type Tone 
 // useRowVerbs (Skip held 8 s), PictureRow.write (Undo), MovePanel (stored-day
 // receipt). Arch edits like the other lanes since its publisher waits for Davorin's approval (2026-10-08).
 
-const SEAT_WORD: Record<Show, string> = { all: 'All', ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch' }
+const SEAT_WORD: Record<Show, string> = { all: 'All', ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch', swishdm: 'SwishDM' }
 const FIRST = 6
 
 /** The drop reasons, in the order he drops for (SPEC §2.2): every slug is one cb39_verdict_set already takes. */

@@ -55,7 +55,12 @@ const AUTHOR: Record<ContentLane, { name: string; headline: string; initials: st
     initials: 'DS',
     photo: null,
   },
-}
+ swishdm: {
+    name: 'Jonathan Kiekbusch',
+    headline: 'Founder, SwishDM. Influencer Agency',
+    initials: 'JK',
+    photo: null,
+  }}
 
 function Avatar({ lane }: { lane: ContentLane }) {
   const a = AUTHOR[lane]

@@ -44,7 +44,7 @@ import { OverviewView } from './Overview'
 import { hasMock } from '../../exp/v2c/mock'
 import './sends.css'
 
-type Client = 'all' | 'ivan' | 'risedtc' | 'arch'
+type Client = 'all' | 'ivan' | 'risedtc' | 'arch' | 'swishdm'
 type Timeframe = '7d' | '30d' | '90d' | 'custom'
 
 const TIMEFRAMES: { key: Timeframe; label: string }[] = [
@@ -61,6 +61,7 @@ const CHIPS: { key: Client; label: string }[] = [
   { key: 'ivan', label: 'Ivan' },
   { key: 'risedtc', label: 'Rise' },
   { key: 'arch', label: 'Arch' },
+  { key: 'swishdm', label: 'SwishDM' },
 ]
 
 // A lane that stopped sending is a LIVE signal, so it keeps the severity trio.

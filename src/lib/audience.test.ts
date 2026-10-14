@@ -675,8 +675,8 @@ describe('the dev fixture renders the census, not an invention', () => {
   })
 
   it('lands on `normal` so the layout under the fixture flag is the real one', () => {
-    for (const lane of ['ivan', 'risedtc', 'arch'] as const) {
-      expect(fixtureSummary(lane).state).toBe('normal')
+    for (const lane of ['ivan', 'risedtc', 'arch', 'swishdm'] as const) {
+      expect(fixtureSummary(lane).state).toBe(lane === 'swishdm' ? 'empty' : 'normal')
     }
   })
 

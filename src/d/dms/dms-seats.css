@@ -1,6 +1,6 @@
 /* D · DMs 4: three seat squares on top (Lanes 3's look, .dl-sq), one list for the chosen seat, the
    conversation on the right. Same tokens as dms.css. */
-.dm-sqs{flex:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:12px 20px 10px}
+.dm-sqs{flex:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:12px 20px 10px}
 .dm-sq{position:relative;min-width:0;border:1px solid var(--line2);border-radius:14px;background:var(--p1);padding:10px 14px 10px;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:14px;row-gap:2px;text-align:left;transition:border-color .12s,background .12s}
 .dm-sq:not(.dm-on):hover{border-color:var(--strong)}
 .dm-sq.dm-on{border-color:var(--lime);background:var(--sel);box-shadow:inset 0 0 0 1px var(--lime)}
@@ -57,3 +57,5 @@ button.dm-sig:hover{border-color:var(--lime)}
 .dm-sqs-phone .dm-sq{grid-template-columns:1fr;row-gap:0}
 .dm-sqs-phone .dm-sq-n{flex-direction:row;align-items:baseline;gap:6px}
 .dm-sqs-phone .dm-sq-l{justify-content:flex-start}
+
+.d-phone .dm-sqs{grid-template-columns:repeat(2,minmax(0,1fr))}

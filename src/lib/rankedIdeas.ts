@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 import { parsePatternRead } from './earlyReads'
 import { CLIENT_OPS_GATE, type IdeaCandidate } from './content'
-import type { ClientIdea } from './clientIdeas'
+import { fetchClientIdeas, type ClientIdea } from './clientIdeas'
 import { splitText, type OutlierRow } from './outliers'
 import { fromCandidate, fromClient, type IdeaItem } from '../d/content/ideaModel'
 import { age, type Lane } from '../d/content/model'
@@ -27,6 +27,8 @@ export function parseRankedIdeas(data: unknown, lane: Lane): IdeaItem[] {
 }
 
 export async function fetchRankedIdeas(lane: Lane, signal?: AbortSignal, fresh = false): Promise<IdeaItem[]> {
+  // The onboarding bank has no calibrated ranking or collector recipes yet.
+  if (lane === 'swishdm') return (await fetchClientIdeas(lane)).map(i => fromClient(i, lane))
   const query = supabase.rpc('inbox_phone_ranked_ideas_r2', { p_gate: CLIENT_OPS_GATE, p_client: lane, p_fresh: fresh })
   let { data, error } = await (signal ? query.abortSignal(signal) : query)
   // The original function is the compatibility path while the additive cache RPC propagates.

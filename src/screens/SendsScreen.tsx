@@ -14,7 +14,7 @@ import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { OverviewView } from './kpi/OverviewView'
 
-type Client = 'all' | 'ivan' | 'risedtc' | 'arch'
+type Client = 'all' | 'ivan' | 'risedtc' | 'arch' | 'swishdm'
 type Timeframe = '7d' | '30d' | 'custom'
 
 const TIMEFRAMES: { key: Timeframe; label: string }[] = [
@@ -27,6 +27,7 @@ const CHIPS: { key: Client; label: string }[] = [
   { key: 'ivan', label: 'Ivan' },
   { key: 'risedtc', label: 'Rise' },
   { key: 'arch', label: 'Arch' },
+  { key: 'swishdm', label: 'SwishDM' },
 ]
 
 const DOT: Record<Lane['status'], string> = {

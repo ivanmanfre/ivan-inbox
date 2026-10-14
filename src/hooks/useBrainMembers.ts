@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { operatorDeleted, type ContentDraftDetail } from '../lib/content'
 
 export type BrainMember = { id: string; client_id: string | null; cb34_p2_member?: boolean }
-export type BrainInvalidation = { client: 'ivan' | 'risedtc' | 'arch'; draftId: string }
+export type BrainInvalidation = { client: 'ivan' | 'risedtc' | 'arch' | 'swishdm'; draftId: string }
 export const BRAIN_INVALIDATED = 'brain-members-invalidated'
 type Watch = { rows: () => BrainMember[]; clear: () => void; fresh: (rows: ContentDraftDetail[], checkedIds: string[]) => boolean | void; revision: number; checked: string | null; hidden: boolean; pending: BrainMember[]; failed: () => void; blocked: () => boolean }
 const watches = new Set<Watch>()
@@ -34,7 +34,7 @@ async function revalidate() {
     const unique = [...new Map(pending.flatMap(p => p.rows).map(r => [r.id, r])).values()]
     const fresh: ContentDraftDetail[] = []
     // Serial bounded SDK reads, never a full ordinary list or a private member table.
-    for (const client of [null, 'ivan', 'risedtc', 'arch']) {
+    for (const client of [null, 'ivan', 'risedtc', 'arch', 'swishdm']) {
       const mine = unique.filter(r => r.client_id === client)
       for (let i = 0; i < mine.length; i += 50) {
         const subset = mine.slice(i, i + 50)
@@ -112,7 +112,7 @@ function bridge() {
     authenticatedUser = userId
     if (channel) void supabase.removeChannel(channel)
     channel = supabase.channel(`cb34-members:${userId}`)
-    for (const client of ['ivan', 'risedtc', 'arch'] as const) {
+    for (const client of ['ivan', 'risedtc', 'arch', 'swishdm'] as const) {
       channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'cb34_p2_visibility_events', filter: `client_id=eq.${client}` }, payload => {
         if (!live || authenticatedUser !== userId) return
         const row = payload.new as Record<string, unknown>

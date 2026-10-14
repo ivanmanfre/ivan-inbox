@@ -91,8 +91,8 @@ describe('this week: grouping and order', () => {
     const rows = [row({}), row({ client_id: 'risedtc' }), row({ client_id: 'arch' }), row({ client_id: 'ivan' })]
     const w = buildWeek(rows, { now: NOW, show: 'risedtc' })
     expect(w.ids).toHaveLength(1)
-    expect(w.perLane).toEqual({ ivan: 2, risedtc: 1, arch: 1 })
-    expect(w.toDecide).toEqual({ ivan: 2, risedtc: 1, arch: 1 })
+    expect(w.perLane).toEqual({ ivan: 2, risedtc: 1, arch: 1 , swishdm: 0})
+    expect(w.toDecide).toEqual({ ivan: 2, risedtc: 1, arch: 1 , swishdm: 0})
   })
 
   it('a held decision shows at once: Skip leaves, Approve on a dated draft turns its key into Schedule', () => {
@@ -200,7 +200,7 @@ describe('Review list: Approve / Drop on brain drafts (run 39)', () => {
     expect(judge('b-appr')).toBe(false)
     expect(judge('plain')).toBe(false)
     expect(w.toJudge).toBe(5)
-    expect(w.toJudgeByLane).toEqual({ ivan: 3, risedtc: 1, arch: 1 })
+    expect(w.toJudgeByLane).toEqual({ ivan: 3, risedtc: 1, arch: 1 , swishdm: 0})
   })
 
   it('the count is taken before the seat filter, so the line says the same on every chip', () => {
@@ -231,7 +231,7 @@ describe('Review list: Approve / Drop on brain drafts (run 39)', () => {
     expect(card(w, 'ik')!.primary).toBe('open')
     expect(card(w, 'ik')!.kept).toBe(true)
     expect(w.toJudge).toBe(0)
-    expect(w.perLane).toEqual({ ivan: 1, risedtc: 1, arch: 0 })
+    expect(w.perLane).toEqual({ ivan: 1, risedtc: 1, arch: 0 , swishdm: 0})
   })
 
   it('an open strip keeps its card slot but is not counted, not in ids and not in lanes', () => {

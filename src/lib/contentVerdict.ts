@@ -50,7 +50,7 @@ function cover(lane: ContentLane, dates: string[]): LaneCover {
 
 export function buildVerdict(
   drafts: VerdictDraft[], queue: VerdictQueue[],
-  clients: ContentLane[] = ['risedtc', 'arch'], now: number = Date.now(),
+  clients: ContentLane[] = ['risedtc', 'arch', 'swishdm'], now: number = Date.now(),
 ): Verdict {
   const future = (t: string | null): t is string => !!t && Date.parse(t) >= now
   const ivanDates = [
@@ -60,7 +60,7 @@ export function buildVerdict(
       .map(q => q.scheduled_at as string),
   ]
   const clientCovers = clients.map(c => cover(c, drafts
-    .filter(d => d.client_id === c && d.board_visible === true && !d.published_at
+    .filter(d => d.client_id === c && c !== 'swishdm' && d.board_visible === true && !d.published_at
       && (d.status === 'review' || d.status === 'scheduled') && future(d.scheduled_at))
     .map(d => d.scheduled_at as string)))
   const stopped = queue.filter(q => QUEUE_STOPPED.has(q.status) && !q.posted_at)

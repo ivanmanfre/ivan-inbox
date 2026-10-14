@@ -37,7 +37,7 @@ function SlotCard({ s, lane, onChanged }: { s: PlanSlot; lane: Lane; onChanged: 
     if (busy) return
     setBusy(true)
     try {
-      await decideClientIdea(s.idea_ref, 'approved')
+      await decideClientIdea(s.idea_ref, 'approved', lane)
       toast.show({ message: 'Draft requested. It will appear in Review.', sub: 'Nothing is scheduled or sent.' })
       onChanged()
     } catch (e) { toast.show({ message: e instanceof Error ? e.message : 'The draft was not requested.', tone: 'failed' }) }
@@ -55,7 +55,7 @@ function SlotCard({ s, lane, onChanged }: { s: PlanSlot; lane: Lane; onChanged: 
     <div className="cn-plan-acts">
       {draftHref && <a href={draftHref}>Open draft</a>}
       {s.proposal && s.idea_source === 'client_ideas' && s.status === 'proposal' &&
-        <button type="button" data-verb="plan-generate" disabled={busy} onClick={() => void generate()}>{busy ? 'Working…' : 'Generate draft'}</button>}
+        <button type="button" data-verb="plan-generate" disabled={busy || lane === 'swishdm'} onClick={() => void generate()}>{busy ? 'Working…' : lane === 'swishdm' ? 'Setup pending' : 'Generate draft'}</button>}
     </div>
   </li>
 }

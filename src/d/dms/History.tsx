@@ -57,7 +57,7 @@ export function historyRows(t: Thread): InboxMessage[] {
     && (m.direction === 'inbound' || m.sent_at || m.approved_at || sendFailed(m) || isEngineRetired(m)))
 }
 
-const OURS: Record<string, string> = { ivan: 'You', risedtc: 'Mattan', arch: 'Davorin' }
+const OURS: Record<string, string> = { ivan: 'You', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan' }
 
 /** Who wrote our side of this thread: "You" on Ivan's seat, the seat owner's name on Rise and Arch. */
 export function oursLabel(t: Pick<Thread, 'client_id'>): string {

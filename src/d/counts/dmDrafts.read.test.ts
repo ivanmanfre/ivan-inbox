@@ -56,14 +56,14 @@ it('shares one in-flight complete-history RPC across seats and applies the exist
   const rows = [...thread('i', null), ...thread('r', 'risedtc'), ...thread('a', 'arch')]
   let release!: (x: { data: InboxMessage[]; error: null }) => void
   h.rpc.mockImplementation(() => new Promise(resolve => { release = resolve }))
-  const all = Promise.all([fetchDmSeatCount('ivan'), fetchDmSeatCount('risedtc'), fetchDmSeatCount('arch')])
+  const all = Promise.all([fetchDmSeatCount('ivan'), fetchDmSeatCount('risedtc'), fetchDmSeatCount('arch'), fetchDmSeatCount('swishdm')])
   expect(h.rpc).toHaveBeenCalledTimes(1)
   expect(h.rpc).toHaveBeenCalledWith('inbox_phone_first_rows_r2', {}, { get: true })
   release({ data: rows, error: null })
   const got = await all
-  expect(got).toEqual(['ivan', 'risedtc', 'arch'].map(seat => countDmSeatFromRows(rows, seat as 'ivan' | 'risedtc' | 'arch', NOW)))
-  expect(fetchManualReplyIds).toHaveBeenCalledTimes(3)
-  expect(fetchSolvedAt).toHaveBeenCalledTimes(3)
+  expect(got).toEqual(['ivan', 'risedtc', 'arch', 'swishdm'].map(seat => countDmSeatFromRows(rows, seat as 'ivan' | 'risedtc' | 'arch', NOW)))
+  expect(fetchManualReplyIds).toHaveBeenCalledTimes(4)
+  expect(fetchSolvedAt).toHaveBeenCalledTimes(4)
   expect(h.from).not.toHaveBeenCalled()
   h.rpc.mockResolvedValue({ data: rows, error: null })
   await fetchDmSeatCount('ivan')

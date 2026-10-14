@@ -29,7 +29,7 @@ export async function fetchHomeWeekRows(now: number): Promise<ContentDraft[]> {
   const ordinary = rows.filter(r => r.cb34_p2_member !== true)
   const members = rows.filter(r => r.cb34_p2_member === true)
   const checked: ContentDraft[] = []
-  for (const client of [null, 'ivan', 'risedtc', 'arch']) {
+  for (const client of [null, 'ivan', 'risedtc', 'arch', 'swishdm']) {
     const mine = members.filter(r => r.client_id === client)
     for (let i = 0; i < mine.length; i += 50) {
       const subset = mine.slice(i, i + 50)
@@ -49,7 +49,7 @@ export function homeWeeks(rows: ContentDraft[], now: number): Weeks {
 }
 
 export function useHomeContentWeek(now: number): { content: Record<Seat, Read<ContentWeek>>; refresh: () => void } {
-  const key = `home-next-week:${nextWeekDays(now)[0].key}`
+  const key = `home-next-week-v2:${nextWeekDays(now)[0].key}`
   const [seed] = useState(() => readSwr<Weeks>(key))
   const [weeks, setWeeks] = useState<Weeks | null>(() => seed && Date.now() - Date.parse(seed.savedAt) < 30 * 60_000 ? seed.payload : null)
   const lastWeeks = useRef(weeks)

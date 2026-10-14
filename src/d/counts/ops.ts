@@ -14,7 +14,7 @@ export type OpsWaiting = Record<Seat, number> & {
 
 export function opsWaitingBySeat(rows: OpsDraft[], now: number = Date.now()): OpsWaiting {
   const later = new Set(splitCommentIdeas(rows, now).later.map(d => d.id))
-  const out: OpsWaiting = { ivan: 0, risedtc: 0, arch: 0 }
+  const out: OpsWaiting = { ivan: 0, risedtc: 0, arch: 0, swishdm: 0 }
   for (const d of pendingOps(rows, now)) {
     if (later.has(d.id)) continue
     const s = seatOf(d.client_id)
