@@ -12,7 +12,7 @@ describe('sourceTag', () => {
     [r({ source_kind: 'call', source_label: 'ARCH team call: Content team sync · 30 Sep' }), 'call', 'Call'],
     [r({ taxonomy: { source: 'Kyle call' } }), 'call', 'Call'],
     [r({ source_label: 'From your sales calls', taxonomy: { source: 'client-risedtc' } }), 'call', 'Call'],
-    [r({ taxonomy: { source: 'x_tracked_outlier' }, source_label: 'X outlier by @denisyurchak (tracked account)' }), 'outlier', 'X outlier'],
+    [r({ taxonomy: { source: 'x_tracked_outlier' }, source_label: 'X outlier by @denisyurchak (tracked account)' }), 'outlier', 'Outlier · @denisyurchak'],
     [r({ taxonomy: { source: 'Competitor' } }), 'industry', 'Industry post'],
     [r({ source_kind: 'competitor_adaptation', source_label: 'Barry Hott · Proven winner' }), 'industry', 'Industry post'],
     [r({ source_label: 'Original ARCH resource · lead magnet' }), 'lm', 'Lead magnet'],
@@ -37,4 +37,20 @@ describe('sourceTag', () => {
   it('the full recorded label rides in the title', () => {
     expect(sourceTag(r({ source_label: 'Call with Marianna Grollo (almedia.co) · 3 Oct' })).title).toBe('Call with Marianna Grollo (almedia.co) · 3 Oct')
   })
+})
+
+it('shows a winner draft’s recorded outlier author before its planning slot', () => {
+  const row = r({ cb34_p2_member: true, source_ref: 'outlier:linkedin:7510681708631875584', source_label: 'Content brain', taxonomy: JSON.stringify({ source: 'content-brain', brain_brief: { slot: 'winner', author: 'Ivan', source_author: 'davegerhardt', source_url: 'https://www.linkedin.com/posts/davegerhardt_heres-how-to-do-great-marketing-for-any-activity-7510681708631875584-sM-Y' } }) })
+  expect(sourceTag(row)).toMatchObject({ key: 'outlier', label: 'Outlier · Dave Gerhardt' })
+  expect(sourceTag(row).title).toContain('Dave Gerhardt')
+})
+it('keeps pattern and own winner drafts distinct from outside outliers', () => {
+  expect(sourceTag(r({ taxonomy: { source: 'content-brain', brain_brief: { slot: 'pattern', source_ref: 'pattern:hook:receipt', source_author: 'Example author' } } })).label).toBe('Brain · Pattern')
+  expect(sourceTag(r({ taxonomy: { source: 'content-brain', brain_brief: { slot: 'winner', source_url: 'https://www.linkedin.com/posts/ivan_original', author: 'Ivan' } } })).key).toBe('brain')
+})
+it('states that the author is unknown rather than naming the target writer', () => {
+  expect(sourceTag(r({ taxonomy: { source: 'content-brain', brain_brief: { slot: 'winner', source_ref: 'outlier:linkedin:123', author: 'Ivan' } } }))).toMatchObject({ key: 'outlier', label: 'Outlier · Author unknown' })
+})
+it('uses the recorded tracked author name when source detail is available', () => {
+  expect(sourceTag(r({ source_detail: { kind: 'x_tracked_outlier', author_name: 'Kevin Jon', handle: 'thekevinjon' } })).label).toBe('Outlier · Kevin Jon')
 })

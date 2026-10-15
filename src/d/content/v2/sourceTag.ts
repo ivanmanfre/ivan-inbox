@@ -1,4 +1,5 @@
 import type { ContentDraft } from '../../../lib/content'
+import { brainDraftSource } from '../../../lib/brainDraft'
 
 // WHERE A DRAFT CAME FROM, as one short tag (Ivan 2026-10-15: "I need the source visible as a tag on each
 // topic. That should be the first thing I see."). Pure and synchronous: read off the row's own fields
@@ -31,11 +32,15 @@ export function sourceTag(r: Row, owner = ''): SourceTagView {
   const l = label.toLowerCase()
 
   if (kind === 'parity_scratch' || /voice (comparison|regression|verification)|parity-harness/.test(l)) return tag('test', 'Test')
+  const source = brainDraftSource(r)
+  if (source.isOutlier) {
+    const author = source.sourceAuthor ?? 'Author unknown'
+    return { key: 'outlier', label: `Outlier · ${author}`, title: `Repurposed outlier · ${source.sourceAuthor ? `From ${source.sourceAuthor}` : 'Author not recorded'}${source.sourceUrl ? ` · ${source.sourceUrl}` : ''}` }
+  }
   if (r.cb34_p2_member === true || src === 'content-brain' || l === 'content brain' || slot) return tag('brain', SLOT[slot] ?? 'Brain')
   if (kind === 'lm_launch' || detail.lm_ref || /lead magnet/.test(l)) return tag('lm', 'Lead magnet')
   if (src === 'newsjack' || kind === 'newsjack' || /newsjack/.test(l)) return tag('news', 'Newsjack')
   if (kind === 'call' || /\bcalls?\b/.test(src) || /\bcalls?\b/.test(l) || ref.startsWith('ffc-') || ref.startsWith('transcripts/')) return tag('call', 'Call')
-  if (src === 'x_tracked_outlier' || kind === 'x_tracked_outlier' || ref.startsWith('outlier:')) return tag('outlier', ref.startsWith('outlier:linkedin') ? 'LinkedIn outlier' : 'X outlier')
   if (src === 'competitor' || src === 'proven-winner-mirror' || ['competitor_adaptation', 'source_review', 'source_commentary'].includes(kind) || /adapted from a post|proven winner|winner replica/.test(l)) return tag('industry', 'Industry post')
   // SwishDM's carousels copy the style of an account we watch ("SwishDM carousel style sample: WATCH-ACCOUNTS '…'"):
   // the recorded label is a planner key, so the title says it in words too.

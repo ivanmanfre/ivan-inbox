@@ -280,7 +280,7 @@ describe('the source tag is the first thing on every row', () => {
     expect(first('s-brain').textContent).toBe('Brain · Outlier')
     expect(first('s-call').textContent).toBe('Call')
     expect(first('s-call').title).toBe('Source: Call with Drew - My Mully, 14 Sep 2026')
-    expect(first('s-x').textContent).toBe('X outlier')
+    expect(first('s-x').textContent).toBe('Outlier · @thekevinjon')
     expect(first('s-news').textContent).toBe('Newsjack')
   })
 })

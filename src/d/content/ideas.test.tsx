@@ -19,16 +19,43 @@ const empty = { items: [], n: 0, loading: false, error: null, refresh: vi.fn(), 
 const IdeasWrapper=({banks}:{banks:IdeaBanks})=><ToastProvider><DConfirmProvider><Ideas banks={banks} phone={false}/></DConfirmProvider></ToastProvider>
 const banksOf = (items: ReturnType<typeof fromCandidate>[]) => ({ ivan: { ...empty, items, n: items.length }, risedtc: empty, arch: empty , swishdm: empty}) as IdeaBanks
 afterEach(() => { cleanup(); localStorage.clear(); vi.clearAllMocks() })
-describe('best five Ideas', () => {
-  it('shows five, hides scores, and puts every remaining idea on the bench', () => {
+describe('Ideas browser', () => {
+  it('shows the full ranked list beyond forty ideas without a separate reveal', () => {
     renderInFrame(<Ideas banks={banksOf(Array.from({length:95},(_,i)=>fromCandidate(cand(i))))} phone={false}/> )
-    expect(document.querySelectorAll('.cn-best-card')).toHaveLength(5)
-    expect(document.querySelector('.cn-pill')).toBeNull()
-    expect(screen.queryByText('TOP 95')).toBeNull()
-    fireEvent.click(screen.getByText('See the bench'))
     expect(document.querySelectorAll('.cn-best-card')).toHaveLength(95)
-    fireEvent.click(screen.getByText('Back to best 5'))
-    expect(document.querySelectorAll('.cn-best-card')).toHaveLength(5)
+    expect(screen.getByText('Idea 94')).toBeTruthy()
+    expect(screen.queryByRole('button',{name:/bench/i})).toBeNull()
+  })
+  it('searches title, source, proof and angle and filters sources from actual rows', () => {
+    const items=[fromCandidate(cand(1)),{...fromCandidate(cand(2)),proof:'Verified retention evidence'}, {...fromCandidate(cand(3)),angle:'Pricing objection'}]
+    renderInFrame(<Ideas banks={banksOf(items)} phone={false}/> )
+    const search=screen.getByRole('searchbox',{name:'Search fresh ideas'})
+    for (const [query,title] of [['Idea 1','Idea 1'],['retention','Idea 2'],['pricing','Idea 3'],['calls','Idea 2']]) {
+      fireEvent.change(search,{target:{value:query}})
+      expect(document.querySelectorAll('.cn-best-card')).toHaveLength(1)
+      expect(screen.getByText(title)).toBeTruthy()
+    }
+    fireEvent.change(search,{target:{value:''}})
+    const source=screen.getByRole('combobox',{name:'Source'})
+    expect(within(source).getAllByRole('option').map(o=>o.textContent)).toEqual(['All sources','Manual','Your calls'])
+    fireEvent.change(source,{target:{value:'Your calls'}})
+    expect(screen.getByText('Idea 2')).toBeTruthy()
+    expect(screen.queryByText('Idea 1')).toBeNull()
+    expect(screen.getByText('Showing 1 of 3 fresh ideas')).toBeTruthy()
+    fireEvent.change(search,{target:{value:'No match'}})
+    expect(screen.getByText('No ideas match your search or source.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button',{name:'Clear filters'}))
+    expect(document.querySelectorAll('.cn-best-card')).toHaveLength(3)
+  })
+  it('sorts by source date and can restore the original ranking', () => {
+    const items=[fromCandidate(cand(1,{ingested_at:'2026-10-01'})),fromCandidate(cand(2,{ingested_at:'2026-10-15'})),fromCandidate(cand(3))]
+    renderInFrame(<Ideas banks={banksOf(items)} phone={false}/> )
+    const order=()=>Array.from(document.querySelectorAll('.cn-best-card')).map(e=>e.getAttribute('data-idea-id'))
+    expect(order()).toEqual(['i1','i2','i3'])
+    fireEvent.change(screen.getByRole('combobox',{name:'Sort ideas'}),{target:{value:'newest'}})
+    expect(order()).toEqual(['i2','i1','i3'])
+    fireEvent.change(screen.getByRole('combobox',{name:'Sort ideas'}),{target:{value:'best'}})
+    expect(order()).toEqual(['i1','i2','i3'])
   })
   it('preserves source and Slack links behind one tap', () => {
     renderInFrame(<Ideas banks={banksOf([fromCandidate(cand(1,{source_ref:'https://x.test/a',slack_permalink:'https://slack.test/p'}))])} phone={false}/> )
@@ -68,9 +95,15 @@ describe('best five Ideas', () => {
     const Wrapped=({lane}:{lane:'ivan'|'risedtc'})=><ToastProvider><DConfirmProvider><Ideas banks={banks} phone={false} lane={lane} onLaneChange={change}/></DConfirmProvider></ToastProvider>
     const view=render(<Wrapped lane="risedtc"/>)
     expect(screen.getByText('RISE idea')).toBeTruthy();expect(screen.queryByText('Idea 1')).toBeNull()
+    fireEvent.change(screen.getByRole('searchbox'),{target:{value:'does not exist'}})
+    fireEvent.change(screen.getByRole('combobox',{name:'Source'}),{target:{value:'Your calls'}})
+    fireEvent.change(screen.getByRole('combobox',{name:'Sort ideas'}),{target:{value:'newest'}})
     fireEvent.click(document.querySelector('[data-lane="ivan"]')!)
     expect(change).toHaveBeenCalledWith('ivan')
     view.rerender(<Wrapped lane="ivan"/>)
+    expect((screen.getByRole('searchbox') as HTMLInputElement).value).toBe('')
+    expect((screen.getByRole('combobox',{name:'Source'}) as HTMLSelectElement).value).toBe('')
+    expect((screen.getByRole('combobox',{name:'Sort ideas'}) as HTMLSelectElement).value).toBe('best')
     expect(screen.getByText('Idea 1')).toBeTruthy();expect(screen.queryByText('RISE idea')).toBeNull()
   })
   it('does not claim an empty bank when its reader failed',()=>{
@@ -131,16 +164,16 @@ describe('idea consequences and recovery', () => {
     expect(screen.queryByText('Idea 2')).toBeNull()
     expect(decideIdea).not.toHaveBeenCalled()
   })
-  it('keeps five fresh choices beside five selected ideas', () => {
+  it('keeps every fresh choice beside saved ideas', () => {
     localStorage.setItem('sb-test-auth-token', JSON.stringify({user:{id:'ideas-user'}}))
     writeSwr('content-idea-picks:ivan',Array.from({length:5},(_,i)=>({...fromCandidate(cand(i)),saved:true})))
     renderInFrame(<Ideas banks={banksOf(Array.from({length:12},(_,i)=>fromCandidate(cand(i))))} phone={false}/> )
     const selected=screen.getByRole('region',{name:'Selected ideas'})
-    const fresh=screen.getByRole('region',{name:'Best 5'})
+    const fresh=screen.getByRole('region',{name:'Fresh ideas'})
     expect(selected.querySelectorAll('[data-idea-id]')).toHaveLength(5)
-    expect(fresh.querySelectorAll('.cn-best-card')).toHaveLength(5)
+    expect(fresh.querySelectorAll('.cn-best-card')).toHaveLength(7)
     expect(within(fresh).getByText('Idea 5')).toBeTruthy()
-    expect(screen.queryByText('Idea 10')).toBeNull()
+    expect(screen.getByText('Idea 10')).toBeTruthy()
   })
   it('does not promise a draft in the receipt for archiving a client idea', async () => {
     const idea={...fromCandidate(cand(1)),ivan:undefined,client:{id:'c1'} as never,lane:'arch' as const,id:'c1'}
