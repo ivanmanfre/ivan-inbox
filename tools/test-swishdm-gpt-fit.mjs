@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { MODEL, validateAnswer, validateRequest } from './swishdm-gpt-fit.mjs';
+assert.equal(MODEL,'gpt-6.1-sol');
+const row={client:'swishdm',platform:'linkedin',post_id:'123',prompt:'Exact untouched fixture prompt',prompt_sha256:createHash('sha256').update('Exact untouched fixture prompt').digest('hex')};
+assert.equal(validateRequest(row),row);
+for(const changed of [{client:'ivan'},{prompt:'edited prompt'},{post_id:'not-a-post'},{platform:'instagram'}]) assert.throws(()=>validateRequest({...row,...changed}));
+assert.deepEqual(validateAnswer('fit',{fit:8,purpose:'reach',lane:'client',reason:'Exact fit reason'}),{fit:8,purpose:'reach',lane:'client',reason:'Exact fit reason'});
+for(const changed of [{fit:'8'},{fit:11},{purpose:'sell'},{lane:'other'},{reason:''}])assert.throws(()=>validateAnswer('fit',{fit:8,purpose:'reach',lane:'client',reason:'Reason',...changed}));
+assert.equal(validateAnswer('check',{engagement:'announcement',topic:'stretch',audience:'other',reason:'Fails honestly'}).engagement,'announcement');
+for(const changed of [{engagement:'pass'},{topic:'adjacent'},{audience:'buyer'},{reason:null}])assert.throws(()=>validateAnswer('check',{engagement:'idea',topic:'direct',audience:'reader',reason:'Reason',...changed}));
+console.log('PASS: exact model identity, SwishDM-only scope, unchanged prompt SHA, strict fit/check schemas, genuine negative check preserved.');

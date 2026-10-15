@@ -1,0 +1,38 @@
+{
+  "result": "PASS",
+  "model": "gpt-6.1-sol",
+  "actual_model_calls": 6,
+  "release": "released",
+  "eligible": true,
+  "fails": [],
+  "idea_slot_week_resolved": true,
+  "planner_status": "waiting_review",
+  "required_check_negative_rejected": true,
+  "original_draft_and_candidate_unchanged": true,
+  "production_functions_unchanged": true,
+  "fixture_rows_after_rollback": 0,
+  "scheduled_or_published": false,
+  "normalization": {
+    "path": "checks.invention.model",
+    "from": "claude-opus-5-5",
+    "to": "gpt-6.1-sol",
+    "all_other_validation_fields_unchanged": true
+  },
+  "body_sha256": "7fd380cfa3a16a3655a54bbe123ff2dd0d095b50b2a77f797f180092d0d54cb9",
+  "source_replay_sha256": "2eb1a349ccb0cab13067122a1b657c15772649d4c827dfdcdec2087a7dde907c",
+  "receipt_sha256": [
+    "be9760d333493f4d5f363e4985c9f97395a311be768e87112f7015577c28b2f5",
+    "f188f7aee9277524ebfc11637d9f31015e967226932f7d440e807061bf04c086",
+    "3594e99573366ab9a8eb0149d6c0ff90a24289b4b3d895780e2c8bd2faf9e549",
+    "359d50652fdfa9e28f315918cf43f37f014480e1ba4a14822c904827b2399f41",
+    "d980b318c08ccc2fcd3370edf899b1c4ff232acdb8801cb89743126d5004b340",
+    "a083236ea7cc9d89c191bd31580091cfac84f4fb41039267cda15a2b03da0cb4"
+  ],
+  "date": "2026-10-15",
+  "scope": "Transactional proof only; no production rules altered",
+  "replay_command": "PLANNER_JUDGE_MODEL=gpt-6.1-sol node tools/282-planner-idea-replay.mjs positive",
+  "verify_command": "python3 tools/286_planner_gpt_verify.py",
+  "private_evidence_directory": "/Users/ivanmanfredi/.local/state/planner-ideas-1015",
+  "negative_case": "Synthetic API guard assertion sets required invention.pass=false; it is explicitly not represented as a real model vote.",
+  "source": "Six actual GPT-6.1-SOL subscription CLI receipts: three invention votes and three narrow reader votes; original normal writer QA/body."
+}
