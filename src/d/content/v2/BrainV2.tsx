@@ -35,10 +35,12 @@ export function seatQueue(total: Week, lane: Lane, now: number) {
 }
 
 /** Pure: the one headline sentence. It never repeats a tile's number. */
-export function brainHeadline(o: { live: boolean; reading: boolean; short: number | null; decide: number; lane: Lane }): string {
+export function brainHeadline(o: { live: boolean; reading: boolean; short: number | null; decide: number; lane: Lane; cadencePending?: boolean }): string {
   if (!o.live) return 'Reading…'
   const drafts = o.decide > 0 ? 'Start with the drafts waiting for you.' : `Nothing waits for a decision on ${LANE_NAME[o.lane]}.`
-  if (o.reading || o.short == null) return drafts
+  if (o.reading) return drafts
+  if (o.cadencePending) return `Weekly cadence awaits confirmation. ${drafts}`
+  if (o.short == null) return drafts
   if (o.short > 0) return `Next week still needs ${o.short === 1 ? 'one more post' : `${o.short} more posts`} set to go out. ${drafts}`
   return `Next week is set. ${drafts}`
 }
@@ -60,7 +62,9 @@ export function BrainV2({ lane, setLane, read, verdicts, judged, total, items, i
   // One read each: the direction feeds its line and the dated target; the own posts feed the tile and Best posts.
   const dir = useDirection(lane)
   const own = usePostAudience(lane)
-  const weekly = useMemo(() => directionWords(policyOf(dir)).weekly, [dir])
+  const policy = policyOf(dir)
+  const cadencePending = lane === 'swishdm' && policy?.status !== 'adopted'
+  const weekly = cadencePending ? null : directionWords(policy).weekly
   const dirSettled = dir.d != null || dir.err != null
 
   const cov = useMemo(() => coverageOf(items, now, { [lane]: weekly }), [items, now, lane, weekly])
@@ -110,11 +114,11 @@ export function BrainV2({ lane, setLane, read, verdicts, judged, total, items, i
           options={LANES.map(l => ({ id: l, label: LANE_NAME[l] }))} />
       </div>
       <div className="cv2-dir"><DirectionView lane={lane} st={dir} /></div>
-      <Answer>{brainHeadline({ live, reading: reading || !dirSettled, short, decide, lane })}</Answer>
+      <Answer>{brainHeadline({ live, reading: reading || !dirSettled, short, decide, lane, cadencePending })}</Answer>
       <nav className="cv2-pipe" aria-label={`${LANE_NAME[lane]} pipeline`}>
         {tile('ideas', 'Ideas waiting', bank.n ?? '…', 'in Ideas', dHash('content', 'ideas', seatQ), 0)}
         {tile('drafts', 'Drafts to decide', live ? decide : '…', 'in Review', dHash('content', 'now', { lane }), 1)}
-        {tile('dated', 'Dated, next 14 days', reading ? '…' : dated, reading ? 'reading' : weekly != null ? `of ${weekly * 2} for two weeks` : 'set or planned', dHash('content', 'calendar'), 2)}
+        {tile('dated', 'Dated, next 14 days', reading ? '…' : dated, reading ? 'reading' : cadencePending ? 'no weekly target confirmed' : weekly != null ? `of ${weekly * 2} for two weeks` : 'set or planned', dHash('content', 'calendar'), 2)}
         {tile('posted', 'Posted, last 7 days', reading ? '…' : posted, 'went out', dHash('content', 'results', seatQ), 3)}
         {tile('best', 'Best post, last 7 days', best?.impressions != null ? best.impressions.toLocaleString('en-US') : own == null ? '…' : '–',
           best ? <>impressions, {bestTitle}</>
