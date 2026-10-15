@@ -10,27 +10,27 @@ const row = (kind: OpsDraft['kind'], extra: Partial<OpsDraft> = {}): OpsDraft =>
 })
 
 describe('opsBadge', () => {
-  it('counts approvals and tasks, and comment ideas only up to 3 a day', () => {
+  it('counts approvals and tasks; comments and newsjacks never count (Ivan 2026-10-15)', () => {
     const rows = [
-      row('newsjack'), row('comment_reply'), row('task'),
+      row('newsjack'), row('comment_reply'), row('task'), row('escalation'),
       ...Array.from({ length: 25 }, () => row('comment_outbound')),
     ]
-    expect(opsBadge(rows, NOW)).toEqual({ n: 6, ideasFolded: 22 })
+    expect(opsBadge(rows, NOW)).toEqual({ n: 2, ideasFolded: 22 })
   })
-  it('ideas already posted today use up the day', () => {
+  it('ideas already posted today use up the day (the fold)', () => {
     const rows = [
       row('comment_outbound', { approved_at: '2026-09-26T07:00:00Z', sent_at: '2026-09-26T07:05:00Z' }),
       row('comment_outbound', { approved_at: '2026-09-26T08:00:00Z', sent_at: '2026-09-26T08:05:00Z' }),
       row('comment_outbound'), row('comment_outbound'),
     ]
-    expect(opsBadge(rows, NOW)).toEqual({ n: 1, ideasFolded: 1 })
+    expect(opsBadge(rows, NOW)).toEqual({ n: 0, ideasFolded: 1 })
   })
-  it('yesterday\'s posts do not count against today', () => {
+  it('yesterday\'s posts do not use up today\'s room', () => {
     const rows = [
       ...Array.from({ length: 3 }, () => row('comment_outbound', { approved_at: '2026-09-25T09:00:00Z', sent_at: '2026-09-25T09:00:00Z' })),
       row('comment_outbound'),
     ]
-    expect(opsBadge(rows, NOW).n).toBe(1)
+    expect(opsBadge(rows, NOW).ideasFolded).toBe(0)
   })
   it('an expired newsjack is not counted', () => {
     expect(opsBadge([row('newsjack', { context: { expires_at: '2026-09-26T09:00:00Z' } as OpsDraft['context'] })], NOW).n).toBe(0)
