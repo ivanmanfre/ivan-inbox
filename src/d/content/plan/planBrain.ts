@@ -420,7 +420,8 @@ export function answerOf(read: PlanRead): { need: number; title: string; parts: 
   if (wr) parts.push(`${wr} being written`)
   if (fail) parts.push(`${fail} failed`)
   const n = need.length
-  return { need: n, title: n ? `${n} post${n > 1 ? 's' : ''} ${n > 1 ? 'wait' : 'waits'} for your OK` : NOTHING_WAITS, parts }
+  // "planned": this counts the plan's next weeks only, never every draft in Review, so it says so.
+  return { need: n, title: n ? `${n} planned post${n > 1 ? 's' : ''} ${n > 1 ? 'wait' : 'waits'} for your OK` : NOTHING_WAITS, parts }
 }
 
 const WARN_LINK: Record<string, { label: string; sub: string }> = {

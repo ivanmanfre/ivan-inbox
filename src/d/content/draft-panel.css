@@ -16,6 +16,10 @@
 .cn-dw .cn-jk button{min-width:24px;height:24px;padding:0 6px;border-radius:6px;font:500 12px var(--f);color:var(--t2)}
 .cn-dw .cn-jk button:hover:not(:disabled){color:var(--t1);background:var(--ds-fill-hover,rgba(127,127,127,.08))}
 .cn-dw .cn-jk button:disabled{opacity:.4}
+/* k / j are the keyboard hint on the desktop; the phone has no keys, so it gets arrows */
+.cn-dw .cn-jk-arr{display:none}
+.d-phone .cn-dw .cn-jk-key{display:none}
+.d-phone .cn-dw .cn-jk-arr{display:inline;font-size:20px;line-height:1}
 .cn-dw .cn-pos{margin:0 4px;font-variant-numeric:tabular-nums;color:var(--t1);font-weight:500}
 
 /* the status line: the stage, the source, the facts that decide; the quiet ones after */
@@ -78,4 +82,7 @@
 
 /* the phone: the header wraps, the facts stay readable */
 .d-phone .cn-dw .cn-who b{font-size:18px;line-height:24px}
+/* thumb-sized taps: the early read chip at 32, "…see more" at 40+ without moving the text around it */
+.d-phone .cn-dw .cn-chips .cn-early-chip{height:32px;min-height:32px}
+.d-phone .cn-dw .cn-lisee{display:inline-block;padding:11px 6px;margin:-11px -6px}
 .d-phone .cn-dw .cn-kv{grid-template-columns:104px minmax(0,1fr)}

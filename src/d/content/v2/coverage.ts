@@ -11,7 +11,9 @@ import type { PlanItem } from '../planModel'
 export const TARGET = 3
 
 export type SeatCoverage = { lane: Lane; set: number; target: number; short: number; gaps: string[] }
-export type Coverage = { days: string[]; seats: Record<Lane, SeatCoverage>; thisWeek: { set: number; posted: number } }
+export type WeekCount = { set: number; posted: number }
+/** `thisWeek` sums every seat; `thisWeekBy` keeps each seat's own count (thisWeekFor reads the picked ones). */
+export type Coverage = { days: string[]; seats: Record<Lane, SeatCoverage>; thisWeek: WeekCount; thisWeekBy: Record<Lane, WeekCount> }
 
 /** The five Warsaw weekday keys from `from` (inclusive) on. */
 function weekdaysFrom(t: number, n = 5): string[] {
@@ -54,11 +56,25 @@ export function coverageOf(items: Record<Lane, Map<string, PlanItem[]>>, now: nu
     const short = Math.max(0, TARGET - set)
     seats[lane] = { lane, set, target: TARGET, short, gaps: short > 0 ? gaps : [] }
   }
-  let tSet = 0, tPosted = 0
-  for (const lane of LANES) for (const k of thisWeekDays(now)) for (const it of items[lane].get(k) ?? []) {
-    const d = dotOf(it)
-    if (d === 'set') tSet++
-    else if (d === 'posted') tPosted++
+  const thisWeekBy = {} as Record<Lane, WeekCount>
+  for (const lane of LANES) {
+    const w: WeekCount = { set: 0, posted: 0 }
+    for (const k of thisWeekDays(now)) for (const it of items[lane].get(k) ?? []) {
+      const d = dotOf(it)
+      if (d === 'set') w.set++
+      else if (d === 'posted') w.posted++
+    }
+    thisWeekBy[lane] = w
   }
-  return { days, seats, thisWeek: { set: tSet, posted: tPosted } }
+  return { days, seats, thisWeek: thisWeekFor({ thisWeekBy }, LANES), thisWeekBy }
+}
+
+/**
+ * This week over the seats on screen only (audit 2026-10-15: Ivan picked read "9 posted, 2 to go",
+ * every seat summed, when his own week was 3 posted, 1 to go).
+ */
+export function thisWeekFor(cov: Pick<Coverage, 'thisWeekBy'>, lanes: readonly Lane[]): WeekCount {
+  let set = 0, posted = 0
+  for (const l of lanes) { set += cov.thisWeekBy[l]?.set ?? 0; posted += cov.thisWeekBy[l]?.posted ?? 0 }
+  return { set, posted }
 }

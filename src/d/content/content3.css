@@ -248,7 +248,9 @@
 .cn-card>b{font:600 13px/1.3 var(--f)}
 .cn-card>small{font:400 11.5px var(--m);color:var(--t2)}
 .cn-na{font:600 10px var(--m);padding:1px 5px;border-radius:4px;left:5px;top:5px}
-.cn-na.cn-nd{background:rgba(10,10,9,.82);color:var(--t2);border:1px solid var(--line2)}
+.cn-na.cn-nd{background:rgba(20,19,17,.8);color:#f2eee6;border:1px solid transparent}
+/* The badge sat on the first line of a text card's preview, dark grey on near-black (audit 10-15): the text starts under it. */
+.cn-im.cn-txt:has(> .cn-na){padding-top:26px}
 .cn-past .cn-im{filter:saturate(.5) brightness(.78)}
 .cn-past>b{color:var(--t2);font-weight:500}
 .cn-cellk{top:50px}

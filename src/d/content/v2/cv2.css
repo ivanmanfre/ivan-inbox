@@ -593,3 +593,9 @@
 
 /* Client panel link (panelLink.ts): a key that leaves the app. */
 a.cv2-panel{text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap;flex:none}
+/* Phone Review: the panel link shares the "No image" row at the right end instead of taking a row of its own
+   (it pushed the first draft down to ~395). The filter sizes to its button, the link to its words. */
+:root[data-skin-on~='content.review'][data-layout='phone'] .d-app .cn .cv2-review > .cv2-bar > .cv2-quick{flex:0 1 auto}
+:root[data-skin-on~='content.review'][data-layout='phone'] .d-app .cn .cv2-review > .cv2-bar > a.cv2-panel{flex:none;height:44px;margin-left:auto;padding:0 14px}
+/* Narrow window (the draft is a sheet over the desk): the sheet starts under the seat bar, so the seat tabs stay readable. */
+:root[data-skin-on~='content.review'] .d-desktop .cv2-split[data-wide='no'] > .cn-dw{top:60px}

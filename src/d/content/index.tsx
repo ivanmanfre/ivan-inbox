@@ -191,7 +191,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const clearMagnet = () => { const p = new URLSearchParams(q); p.delete('magnet'); navigate(dHash('content', sub, p)) }
   const legacy = (s: 'errors' | 'magnets' | 'queue' | 'strategy' | 'styles' | 'results') => <Legacy sub={s} lane={legacyLane} setLane={l => go({ ...context(), lane: l })} openDraft={openFromList} openId={draft} magnet={q.get('magnet')} clearMagnet={clearMagnet} phone={phone} land={view === 'posts' && !q.get('tab') ? (qLane === 'ivan' ? 'all' : 'internal_review') : errorsLanding(data.seats[qLane].rows, qLane, now, data.blocks, q.get('tab') === 'generating' ? 'generating' : 'errors')} />
   const calendarBody = <>
-    <Calendar data={data} items={items} now={now} phone={phone} pick={pick} setPick={setPick} onOpen={openFromPlan} onMove={onMove} onArm={armIt} onDay={wallProps.onDay} onChanged={refresh} v2={cv2.calendar} wide={wide} magnetCount={magnetLanes.reduce((n, l) => n + (magnets[l] ?? 0), 0)} />
+    <Calendar data={data} items={items} now={now} phone={phone} pick={pick} setPick={setPick} onOpen={openFromPlan} onMove={onMove} onArm={armIt} onDay={wallProps.onDay} onChanged={refresh} v2={cv2.calendar} magnetCount={magnetLanes.reduce((n, l) => n + (magnets[l] ?? 0), 0)} />
     {move}
   </>
   const stackRead = LANES.every(l => !!data.seats[l].loadedAt) ? { ...weekRead, source: 'live' as const, rows, settled: true, error: null } : weekRead

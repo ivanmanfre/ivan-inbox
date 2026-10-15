@@ -152,6 +152,9 @@ html.cal-dragging,html.cal-dragging *{cursor:grabbing!important;user-select:none
 .xmark[data-status='failed']{ background:#c0392b; color:#fff }
 .xmark:focus-visible{ outline:2px solid #1d9bf0; outline-offset:1px }
 .cn-h .xmark{ display:flex; width:15px; padding:0; margin:2px auto 0; justify-content:center }
+/* Phone: the flag stays small, its tap area is 32 x 32 (audit 2026-10-15: 19 x 15 was too small to hit). */
+.cal-phone .xmark{ position:relative }
+.cal-phone .xmark::after{ content:''; position:absolute; left:50%; top:50%; width:max(100%, 32px); height:32px; transform:translate(-50%,-50%) }
 
 /* ==========================================================================
    CALENDAR, 2026-10-15 (Ivan: bigger cards, tags, On board, quick acts, a grid that fills the
@@ -167,9 +170,9 @@ html.cal-dragging,html.cal-dragging *{cursor:grabbing!important;user-select:none
 :root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit[data-cal-size='mid'] .cv2-buf-v{padding-inline:8px}
 :root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit[data-cal-size='narrow'] .cv2-cal-body.cv2-cal-month{grid-template-columns:minmax(0,1fr)}
 :root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-stage{height:var(--cal-fit,auto);overflow:hidden}
-:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit[data-cal-size='narrow'] .cv2-stage{height:calc(var(--cal-fit,700px) - 156px)}
+:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit[data-cal-size='narrow'] .cv2-stage{height:var(--cal-stage,calc(var(--cal-fit,700px) - 156px))}
 :root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cal-track{height:100%}
-:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-month{height:100%;grid-template-columns:minmax(0,.62fr) repeat(5,minmax(0,1fr)) minmax(0,.62fr);grid-template-rows:auto repeat(var(--cal-weeks,6),minmax(0,1fr))}
+:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-month{height:100%;grid-template-columns:minmax(0,.85fr) repeat(5,minmax(0,1fr)) minmax(0,.85fr);grid-template-rows:auto repeat(var(--cal-weeks,6),minmax(0,1fr))}
 :root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-month .cal-day{min-height:0;overflow:hidden;padding:4px 5px 5px;gap:4px;container-type:size}
 :root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-month .cal-wh.cv2-we,:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-month .cal-day.cv2-we:not(.today):not(.sel){background:rgba(19,18,16,.018)}
 :root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit:not([data-cal-size='narrow']) .cv2-side{height:var(--cal-fit,auto);min-height:0}
@@ -179,6 +182,9 @@ html.cal-dragging,html.cal-dragging *{cursor:grabbing!important;user-select:none
 :root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-buf-v{flex:1 1 0;min-height:150px;overflow:hidden}
 :root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-buf-v.cv2-buf-closed{flex:none;min-height:0}
 :root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-buf-v .cv2-buf-strip{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding:2px 2px 6px;margin:0 -4px;padding-inline:4px}
+
+/* Weekends are slimmer, never a sliver: .85 of a weekday, equal when a weekend in view holds a post (audit 2026-10-15: Sun cards read "I…" at 1024). */
+:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-month.cv2-we-busy{grid-template-columns:repeat(7,minmax(0,1fr))}
 
 /* -- the month card -- */
 :root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc{position:relative;flex:none;min-width:0;display:flex;border-radius:8px;background:var(--ds-surface-1);box-shadow:0 0 0 1px var(--ds-line);cursor:grab;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;transition:transform var(--ds-d-fast,.12s) var(--ds-e-content,ease),box-shadow var(--ds-d-fast,.12s) var(--ds-e-content,ease)}
@@ -195,7 +201,9 @@ html.cal-dragging,html.cal-dragging *{cursor:grabbing!important;user-select:none
   :root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc-pic .cv2-mc-main{grid-template-columns:30px minmax(0,1fr);column-gap:6px}
   :root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc-img{display:block}
 }
-:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc-t{--mc-lines:3;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--mc-lines);overflow:hidden;font:var(--ds-fw-em,550) 12px/14px var(--ds-font);color:var(--ds-text);overflow-wrap:anywhere;padding-right:9px}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc-t{--mc-lines:3;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--mc-lines);overflow:hidden;font:var(--ds-fw-em,550) 12px/14px var(--ds-font);color:var(--ds-text);overflow-wrap:normal;word-break:normal;padding-right:9px}
+/* One line of hook: cut at the edge with an ellipsis, never a word broken over lines ("thousand s") or a lone "I…" (2026-10-15). */
+:root[data-skin-on~='content.calendar'] .cv2-cal .cal-day:is(.cv2-n2,.cv2-n3) .cv2-mc-t{display:block;white-space:nowrap;text-overflow:ellipsis}
 :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day:is(.cv2-n2,.cv2-n3) .cv2-mc-t{--mc-lines:1}
 /* Every post of a day stays on screen: two or three on a day trade their tag lines for room, the
    day list (click the day) shows them in full. The hook gets as many lines as the row allows
@@ -211,7 +219,7 @@ html.cal-dragging,html.cal-dragging *{cursor:grabbing!important;user-select:none
 }
 @container (min-height:150px){
   :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n2 .cv2-mc-time{display:inline}
-  :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n2 .cv2-mc-t{--mc-lines:2}
+  :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n2 .cv2-mc-t{--mc-lines:2;display:-webkit-box;white-space:normal}
 }
 @container (min-height:160px){
   :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n1 .cv2-mc-t{--mc-lines:6}
@@ -225,7 +233,7 @@ html.cal-dragging,html.cal-dragging *{cursor:grabbing!important;user-select:none
   :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n1 .cv2-mc-t{--mc-lines:2}
 }
 @container (max-height:92px){
-  :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n1 .cv2-mc-t{--mc-lines:1}
+  :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n1 .cv2-mc-t{--mc-lines:1;display:block;white-space:nowrap;text-overflow:ellipsis}
   :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day .cv2-tags-c :is(.cv2-tag-aim,.cv2-tag-pillar){display:none}
 }
 :root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc .cv2-tags{grid-column:1/-1}
@@ -315,3 +323,6 @@ html.cal-dragging .cv2-mc-acts{opacity:0!important}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone .cv2-tile .cv2-tile-foot{flex-direction:column;align-items:stretch;gap:8px;margin-top:auto}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone .cv2-tile .cv2-tags{flex-wrap:wrap;overflow:visible}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone .cv2-tag{height:20px;font-size:12px;padding:0 6px}
+
+/* phone: a tapped day's list scrolls up clear of the top bar, its cards above the bottom nav (Calendar tapDay, 2026-10-15) */
+.cal-phone :is(.cv2-day,.cal-agenda){scroll-margin-top:calc(72px + env(safe-area-inset-top,0px));scroll-margin-bottom:calc(var(--dock-h,64px) + 24px + env(safe-area-inset-bottom,0px))}

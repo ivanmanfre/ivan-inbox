@@ -75,7 +75,7 @@ export function Evidence({ d, initial = 'qa', noteable = false, onNote }: { d: C
                   </div>
                 ))}
               </div>
-            ) : <p className="cn-dim">QA scored {qa.score ?? 'nothing'} and left no per-rule scores on this row.</p>}
+            ) : <p className="cn-dim">{qa.score != null ? `QA score ${qa.score}.` : 'No QA score yet.'}</p>}
             {issues[0] && <p className="cn-iss"><small>First issue, of {issues.length}</small>{issues[0]}</p>}
             <div className="cn-reg app wb ds-shell"><QaRegister qa={qa} /></div>
           </>

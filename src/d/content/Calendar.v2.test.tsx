@@ -22,6 +22,9 @@ vi.mock('../../lib/supabase', () => {
   chain.then = (f: (v: unknown) => unknown) => Promise.resolve({ data: [], error: null }).then(f)
   return { supabase: chain }
 })
+const xcal = vi.hoisted(() => ({ fetchXCalendar: vi.fn(async () => [] as unknown[]) }))
+vi.mock('../../lib/xReview', async orig => ({ ...(await orig<typeof import('../../lib/xReview')>()), ...xcal }))
+vi.mock('../settings/reads', async orig => ({ ...(await orig<typeof import('../settings/reads')>()), fetchBoards: async () => [{ client_id: 'risedtc', slug: 'risedtc-com', token: 'tok' }] }))
 beforeEach(() => { window.matchMedia = ((q: string) => ({ matches: q.includes('reduce'), media: q, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia })
 afterEach(() => { cleanup(); vi.clearAllMocks(); vi.restoreAllMocks(); localStorage.clear(); clearBoardState('risedtc') })
 
@@ -40,7 +43,7 @@ function setup(rows: Partial<Record<Lane, ContentDraft[]>>) {
   const items = { ivan: byDay(seatItems(r.ivan, 'ivan', [], NOW)), risedtc: byDay(seatItems(r.risedtc, 'risedtc', null, NOW)), arch: byDay(seatItems(r.arch, 'arch', null, NOW)), swishdm: byDay(seatItems(r.swishdm, 'swishdm', null, NOW)) }
   return { data, items }
 }
-const props = { now: NOW, setPick: vi.fn(), onOpen: vi.fn(), onMove: vi.fn(), onArm: vi.fn(), onDay: vi.fn(), onChanged: vi.fn(), v2: true, wide: true }
+const props = { now: NOW, setPick: vi.fn(), onOpen: vi.fn(), onMove: vi.fn(), onArm: vi.fn(), onDay: vi.fn(), onChanged: vi.fn(), v2: true }
 
 describe('drop refusals say why', () => {
   const mine = row('mine', { status: 'scheduled', scheduled_at: '2026-10-20T07:00:00Z' })
@@ -125,5 +128,53 @@ describe('plainWhy', () => {
     expect(plainWhy(new Error('This post needs Mattan’s OK before it can get a date: its idea is flagged for him. Nothing changed.'))).toMatch(/needs Mattan’s OK/)
     expect(plainWhy(new Error('JWT expired'))).toMatch(/sign-in ran out/)
     expect(plainWhy(new Error('some_raw_code'))).toBe('The database refused it (some_raw_code), so nothing changed.')
+  })
+})
+
+// Live audit 2026-10-15.
+describe('the calendar shows what it says', () => {
+  const posted = (id: string, at: string, client: string | null = null) => row(id, { client_id: client, status: 'published', scheduled_at: at, published_at: at })
+  const set = (id: string, at: string, client: string | null = null) => row(id, { client_id: client, status: 'scheduled', scheduled_at: at })
+  it('"This week" counts the picked seat only, never every seat summed', () => {
+    const { data, items } = setup({
+      ivan: [posted('i1', '2026-10-12T07:00:00Z'), posted('i2', '2026-10-13T07:00:00Z'), set('i3', '2026-10-16T07:00:00Z')],
+      risedtc: [posted('r1', '2026-10-13T16:00:00Z', 'risedtc'), posted('r2', '2026-10-14T16:00:00Z', 'risedtc'), posted('r3', '2026-10-14T18:00:00Z', 'risedtc')],
+    })
+    const one = renderInFrame(<Calendar {...props} data={data} items={items} phone={false} pick="ivan" />)
+    const ivanLine = document.querySelector('.cv2-cov .cv2-dim')!.textContent
+    one.unmount()
+    renderInFrame(<Calendar {...props} data={data} items={items} phone={false} pick="all" />)
+    const allLine = document.querySelector('.cv2-cov .cv2-dim')!.textContent
+    expect(ivanLine).toMatch(/This week: 2 posted, \d+ to go/)
+    expect(allLine).toMatch(/This week: 5 posted, \d+ to go/)
+  })
+  it('"2 weeks" shows two Sunday-first weeks whatever the window width', () => {
+    localStorage.setItem('d-cal-view-ivan', 'lines')
+    const { data, items } = setup({})
+    renderInFrame(<Calendar {...props} data={data} items={items} phone={false} pick="ivan" />)
+    const keys = [...document.querySelectorAll<HTMLElement>('.cv2-two .cal-day')].map(d => d.dataset.calDay)
+    expect(keys).toHaveLength(14)
+    expect(keys[0]).toBe('2026-10-11')
+    expect(keys[13]).toBe('2026-10-24')
+    expect(screen.getByText('Sun 11 Oct – Sat 24 Oct')).toBeTruthy()
+  })
+  it('Ivan’s X articles mark his calendar and All, never a client’s', async () => {
+    xcal.fetchXCalendar.mockResolvedValue([{ id: 'x1', title: 'An article', status: 'approved', x_url: null, at: '2026-10-20T09:00:00Z' }])
+    const { data, items } = setup({})
+    for (const [pick, n] of [['ivan', 1], ['all', 1], ['risedtc', 0], ['arch', 0]] as const) {
+      localStorage.setItem(`d-cal-view-${pick}`, 'month')
+      const r = renderInFrame(<Calendar {...props} data={data} items={items} phone={false} pick={pick} />)
+      // The read answers at once; a client calendar is checked after it has had time to draw a mark.
+      if (n) await vi.waitFor(() => expect(document.querySelectorAll('.xmark').length).toBe(n))
+      else await new Promise(res => setTimeout(res, 60))
+      expect([pick, document.querySelectorAll('.xmark').length]).toEqual([pick, n])
+      r.unmount()
+    }
+  })
+  it('the client panel link opens the panel on its calendar', async () => {
+    const { data, items } = setup({})
+    renderInFrame(<Calendar {...props} data={data} items={items} phone={false} pick="risedtc" />)
+    const a = await screen.findByRole('link', { name: /Rise panel/ })
+    expect(a.getAttribute('href')).toBe('https://ivanmanfredi.com/client/risedtc-com?k=tok#calendar')
   })
 })

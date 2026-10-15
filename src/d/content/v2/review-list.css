@@ -87,7 +87,9 @@
   :root[data-skin-on~='content.review'] .cv2-row-main > .cv2-srctag{align-self:start;margin-top:2px}
   :root[data-skin-on~='content.review'] .cv2-row-sub{display:none}
   :root[data-skin-on~='content.review'] .cv2-row-meta{justify-content:flex-start;overflow:hidden}
-  :root[data-skin-on~='content.review'] .cv2-row-age{order:-1;text-align:left;min-width:0;margin-right:2px}
+  /* the age never loses its unit ("9" for "9d"); short of room, the early read is the one that gives way, with an ellipsis */
+  :root[data-skin-on~='content.review'] .cv2-row-age{order:-1;text-align:left;min-width:0;margin-right:2px;flex:none}
+  :root[data-skin-on~='content.review'] .cv2-row-meta .cn-early-chip{display:block;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
   :root[data-skin-on~='content.review'] .cv2-row-keys .cv2-wide-only{display:none}
   :root[data-skin-on~='content.review'] .cv2-row-keys .cv2-narrow-only{display:inline}
   :root[data-skin-on~='content.review'] .cv2-row > .cv2-ask,:root[data-skin-on~='content.review'] .cv2-row-why{margin-left:0;padding-left:142px}
@@ -100,12 +102,16 @@
 @container rdesk (min-width:440px) and (max-width:639px){
   :root[data-skin-on~='content.review'] .cv2-row-main{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:'src meta keys' 'text text text';row-gap:6px;column-gap:10px;padding:10px 10px 10px 14px}
   :root[data-skin-on~='content.review'] .cv2-row-main > .cv2-srctag{align-self:center;margin:0;max-width:180px}
-  :root[data-skin-on~='content.review'] .cv2-row-meta{justify-content:flex-start}
+  /* a row with many tags wraps them to a second line: "6.5% early read" stays whole, never "6.5% e…" */
+  :root[data-skin-on~='content.review'] .cv2-row-meta{justify-content:flex-start;flex-wrap:wrap;row-gap:4px}
   :root[data-skin-on~='content.review'] .cv2-row-t{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
   :root[data-skin-on~='content.review'] .cv2-row > .cv2-ask,:root[data-skin-on~='content.review'] .cv2-row-why{margin-left:0;padding-left:14px}
   :root[data-skin-on~='content.review'] .cv2-row > .cv2-ask{margin:0 14px 10px 14px;padding-left:10px}
-  /* the bar has no room for the Keys hint here; the ? key still opens the sheet */
+  /* the bar has no room for the Keys hint here; the ? key still opens the sheet. The seat initials go too, so
+     the seats, the filter and the panel link fit one line (the link ran past the pane), and it wraps before it clips */
   :root[data-skin-on~='content.review'] .cv2-review > .cv2-bar .cv2-keyhint{display:none}
+  :root[data-skin-on~='content.review'] .cv2-review > .cv2-bar{flex-wrap:wrap;row-gap:8px}
+  :root[data-skin-on~='content.review'] .cv2-review > .cv2-bar .cv2-seg .cv2-av{display:none}
 }
 
 /* below 440 (the phone, a very narrow window): stacked, the keys a full-width row at 44 */

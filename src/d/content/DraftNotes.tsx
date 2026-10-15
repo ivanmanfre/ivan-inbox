@@ -11,6 +11,22 @@ import { POSS, type Lane } from './model'
 // recovered"), the client "No image yet" note, and why a client row has no
 // board or edit key. Nothing here writes.
 
+// A draft id inside the topic ("rise-618d6858a6", a uuid): the writer cites its sources by id, Ivan reads words.
+const ID = String.raw`(?:[a-z][a-z0-9]*-(?=[0-9a-f]*\d)[0-9a-f]{8,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`
+const ID_LIST = new RegExp(String.raw`\s*\(\s*${ID}(?:\s*[,;]\s*${ID})*\s*\)`, 'gi')
+const ID_BARE = new RegExp(String.raw`\s*\b${ID}\b`, 'gi')
+/** The writer stores the topic cut at 300 characters, mid-word. */
+const TOPIC_CAP = 300
+
+/** The topic as Ivan reads it: no id lists, and a stored cut ends on a whole word with an ellipsis. */
+export function topicLine(raw: string): string {
+  let s = raw.trim()
+  if (s.length >= TOPIC_CAP - 1 && !/[.!?…]["'”’)]?$/.test(s)) {
+    s = s.replace(/\s+\S*$/, '').replace(/\s*\([^)]*$/, '').replace(/[\s,;:(–-]+$/, '') + '…'
+  }
+  return s.replace(ID_LIST, '').replace(ID_BARE, '').replace(/\s+([,.;:!?…])/g, '$1').replace(/\s{2,}/g, ' ').trim()
+}
+
 /** "Posts 10:45 Thu · in 2d" (or "Post time …" once the slot has passed), any lane with a date. */
 export function postsChip(d: Pick<ContentDraftDetail, 'scheduled_at'>, now: number = Date.now()): string | null {
   if (!d.scheduled_at) return null
@@ -35,18 +51,13 @@ export function AboveThePost({ d, stage, lane }: { d: ContentDraftDetail; stage:
       {holds.length > 0 && (
         <ul className="cn-holds" aria-label="Holds">{holds.map((h, i) => <li key={i}>{h}</li>)}</ul>
       )}
-      {d.title && d.topic && d.title !== d.topic && <p className="cn-topic">{d.topic}</p>}
+      {d.title && d.topic && d.title !== d.topic && <p className="cn-topic">{topicLine(d.topic)}</p>}
       {errMsg && (bad ? (
         <p className="cn-banner" role="alert">{errMsg}{errAt && <small> · flipped {absTime(errAt)}</small>}</p>
       ) : (
         <p className="cn-dim">Errored once{errAt ? ` on ${absTime(errAt)}` : ''} and recovered: {errMsg}</p>
       ))}
-      {noImage && (
-        <p className="cn-dim">
-          No image yet. It can still go on the board, but the schedule refuses a draft with no picture. A
-          regeneration clears the pinned image, so pin the photo again before you set a date.
-        </p>
-      )}
+      {noImage && <p className="cn-dim">No image yet.</p>}
     </div>
   )
 }

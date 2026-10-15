@@ -36,7 +36,10 @@ export function sourceTag(r: Row, owner = ''): SourceTagView {
   if (src === 'newsjack' || kind === 'newsjack' || /newsjack/.test(l)) return tag('news', 'Newsjack')
   if (kind === 'call' || /\bcalls?\b/.test(src) || /\bcalls?\b/.test(l) || ref.startsWith('ffc-') || ref.startsWith('transcripts/')) return tag('call', 'Call')
   if (src === 'x_tracked_outlier' || kind === 'x_tracked_outlier' || ref.startsWith('outlier:')) return tag('outlier', ref.startsWith('outlier:linkedin') ? 'LinkedIn outlier' : 'X outlier')
-  if (src === 'competitor' || src === 'proven-winner-mirror' || ['competitor_adaptation', 'source_review', 'source_commentary'].includes(kind) || /adapted from a post|proven winner/.test(l)) return tag('industry', 'Industry post')
+  if (src === 'competitor' || src === 'proven-winner-mirror' || ['competitor_adaptation', 'source_review', 'source_commentary'].includes(kind) || /adapted from a post|proven winner|winner replica/.test(l)) return tag('industry', 'Industry post')
+  // SwishDM's carousels copy the style of an account we watch ("SwishDM carousel style sample: WATCH-ACCOUNTS '…'"):
+  // the recorded label is a planner key, so the title says it in words too.
+  if (/style sample/.test(l)) return { key: 'industry', label: 'Style sample', title: 'Written in the style of an account we watch' }
   // A client's own words on record (written feedback, a call note): the client's name is the source.
   if (owner && l.includes(owner.toLowerCase())) return tag('client', `From ${owner}`)
   if (kind === 'case_study' || kind === 'ballot_b2_regen' || /portfolio/.test(l)) return tag('portfolio', 'Portfolio')

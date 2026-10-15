@@ -16,7 +16,9 @@ it('does not fabricate missing evidence or link unsafe URLs or show unsupported 
  expect(brainDraftSource(row)).toMatchObject({ sourceUrl: null, pattern: null })
  render(<BrainDraftBadge draft={row} />)
  expect(screen.queryByRole('link')).toBeNull()
- expect(screen.getByText('Pattern evidence not recorded.')).toBeTruthy()
+ // nothing recorded, nothing said
+ expect(screen.queryByText(/n=24/)).toBeNull()
+ expect(screen.getByLabelText('Content brain source').querySelectorAll('p')).toHaveLength(1)
 })
 it('leaves ordinary draft source treatment intact', () => {
  render(<BrainDraftBadge draft={{ taxonomy: { source: 'call' }, source_ref: null }} />)

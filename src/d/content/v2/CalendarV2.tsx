@@ -8,7 +8,7 @@ import { weekendAfter, type PlanItem } from '../planModel'
 import { Unpublish } from '../Unpublish'
 import { XMarks, type XDays } from '../xDays'
 import type { ContentData } from '../useContentData'
-import type { Coverage } from './coverage'
+import { thisWeekFor, type Coverage } from './coverage'
 import { LinkedInCard } from './LinkedInCard'
 import { Menu, Pill, SeatAv, type MenuItem, type Tone } from './ui'
 import { postTagsOf, tagsLine } from '../calTags'
@@ -196,6 +196,8 @@ export function MonthCard({ e, a }: { e: Entry; a: CardActs }) {
 
 /** Next week per seat against the target of 3; gaps read as drop targets on the wall. */
 export function CoverageBar({ cov, lanes, loaded, phone = false }: { cov: Coverage; lanes: readonly Lane[]; loaded: (l: Lane) => boolean; phone?: boolean }) {
+  // This week counts the picked seats only, like the pills beside it (2026-10-15).
+  const week = thisWeekFor(cov, lanes)
   return (
     <div className="cv2-cov" role="group" aria-label="Next week, posts set to go out per seat" data-cal-noswipe={phone || undefined}>
       <span className="cv2-cov-l">Next week</span>
@@ -215,7 +217,7 @@ export function CoverageBar({ cov, lanes, loaded, phone = false }: { cov: Covera
       {!phone && <><span className="cv2-grow" /><span className="cv2-key" aria-label="Key">
         <span><i className="cv2-dot cv2-dot-set" />Scheduled</span><span><i className="cv2-dot cv2-dot-review" />In review</span>
         <span><i className="cv2-dot cv2-dot-planned" />Not scheduled</span><span><b>✓</b> Posted</span></span>
-        {lanes.every(loaded) && <span className="cv2-dim">This week: {cov.thisWeek.posted} posted, {cov.thisWeek.set} to go</span>}</>}
+        {lanes.every(loaded) && <span className="cv2-dim">This week: {week.posted} posted, {week.set} to go</span>}</>}
     </div>
   )
 }
@@ -287,8 +289,9 @@ export function WallV2({ data, items, days, entryOf, cov, lanes, now, today, a, 
 const BUFFER_KEY = 'd-cal-buffer'
 
 /** Posts with no date (and lead magnets waiting), always on screen under the wall: drag a tile onto a gap. */
-export function BufferDock({ loose, lms, a, vertical = false }: { loose: Loose[]; lms: Magnet[]; a: CardActs; vertical?: boolean }) {
-  const [open, setOpenState] = useState(() => { try { return localStorage.getItem(BUFFER_KEY) !== '0' } catch { return true } })
+export function BufferDock({ loose, lms, a, vertical = false, startOpen = true }: { loose: Loose[]; lms: Magnet[]; a: CardActs; vertical?: boolean; startOpen?: boolean }) {
+  // `startOpen` only until Ivan folds or opens it himself (a short window starts it folded, 2026-10-15).
+  const [open, setOpenState] = useState(() => { try { const v = localStorage.getItem(BUFFER_KEY); return v == null ? startOpen : v !== '0' } catch { return startOpen } })
   const setOpen = (v: boolean) => { setOpenState(v); try { localStorage.setItem(BUFFER_KEY, v ? '1' : '0') } catch { /* private mode */ } }
   const [tab, setTab] = useState<'loose' | 'lms'>('loose')
   useEffect(() => {

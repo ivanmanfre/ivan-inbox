@@ -25,7 +25,7 @@ import { PhoneWall } from './PhoneWall'
 import { Unpublish } from './Unpublish'
 import { Wall } from './Wall'
 import type { ContentData } from './useContentData'
-import { useXDays, XMarks } from './xDays'
+import { useXDays, XMarks, type XDays } from './xDays'
 import './calendar.css'
 import './phone-ox-cal.css'
 import { coverageOf } from './v2/coverage'
@@ -57,6 +57,11 @@ const viewKey = (p: Pick) => `d-cal-view-${p}`
 const store = { get: (k: string) => { try { return localStorage.getItem(k) } catch { return null } }, set: (k: string, v: string) => { try { localStorage.setItem(k, v) } catch { /* private mode */ } } }
 const PICK_NAME: Record<Pick, string> = { all: 'All', ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch', swishdm: 'SwishDM' }
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const NO_X: XDays = new Map()
+/** The client panel opened on its calendar section (the panel reads #calendar), Ivan 2026-10-15. */
+const panelCal = (u: string) => (u.includes('#') ? u : `${u}#calendar`)
+/** A short window (1024 x 768): the docked No date yet strip starts folded so the month's last week shows (audit 2026-10-15). */
+const shortWindow = () => typeof matchMedia === 'function' && matchMedia('(max-height: 859px)').matches
 
 export type CalendarProps = {
   data: ContentData
@@ -72,8 +77,6 @@ export type CalendarProps = {
   onChanged: () => void
   /** Brief 4 (`content.calendar`): coverage, clean cards, the buffer dock. Every hook and write below is the same either way. */
   v2?: boolean
-  /** The main column is wide (tier 1, >= 1000): Lines shows two weeks; narrower shows one. */
-  wide?: boolean
   magnetCount?: number
 }
 
@@ -92,8 +95,10 @@ function spring(from: number, to: number, set: (v: number) => void, done: () => 
   return () => cancelAnimationFrame(raf)
 }
 
-export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMove, onArm, onDay, onChanged, v2 = false, wide = true }: CalendarProps) {
-  const xDays = useXDays()
+export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMove, onArm, onDay, onChanged, v2 = false }: CalendarProps) {
+  const allX = useXDays()
+  // Ivan's X articles (x_calendar reads only his) mark only a calendar that shows his seat: never Rise's or Arch's (audit 2026-10-15).
+  const xDays = lanesOf(pick).includes('ivan') ? allX : NO_X
   const confirm = useDConfirm()
   const toast = useToast()
   // Desktop "All" opens on the lines wall; a single client, and every phone, opens on the month.
@@ -151,16 +156,15 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
   const weeks = useMemo(() => monthWeeks(ym.year, ym.month), [ym.year, ym.month])
   const keys = useMemo(() => weeks.flat(), [weeks])
   const inMonth = useMemo(() => new Set(keys.filter(k => Number(k.slice(5, 7)) - 1 === ym.month)), [keys, ym.month])
-  // Brief 4 narrow (Claude open, a small window): one week of five days, paged by the week.
-  const week5 = v2 && !wide && !phone
   const lineDays = useMemo(() => {
-    const ws = week5 ? wallDays(now + off * 7 * DAY_MS).slice(0, 5) : wallDays(now + off * 14 * DAY_MS)
+    const ws = wallDays(now + off * 14 * DAY_MS)
     // Brief 4 desktop wall: Saturday and Sunday are columns too, so a post can be dragged onto a weekend (2026-10-09).
     return v2 && !phone ? withWeekends(ws) : ws
-  }, [now, off, week5, v2, phone])
+  }, [now, off, v2, phone])
   // Desktop 2 weeks (Ivan 2026-10-15: one client at a time, cards big enough to read): the same
-  // grid as the month, two Sunday-first week rows, filling the window. Narrow brief keeps its 5-day wall.
-  const grid2 = v2 && !phone && view === 'lines' && !week5
+  // grid as the month, two Sunday-first week rows, filling the window. At every desktop width: a
+  // small window used to get one Monday-first week under a "2 weeks" button (audit 2026-10-15).
+  const grid2 = v2 && !phone && view === 'lines'
   const grid2Keys = useMemo(() => {
     if (!grid2) return [] as string[]
     const first = new Date(`${lineDays[0].key}T12:00:00Z`)
@@ -338,6 +342,45 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
   // Desktop month: the grid and the side rail fill the window; the rail scrolls inside itself (useCalFit).
   // Above every return (a hook after an early return blanked a whole screen once).
   const size = useCalFit(root, bodyEl, v2 && !phone && (view === 'month' || grid2), [view, pick, phone, grid2])
+  // A narrow calendar docks No date yet to the bottom of the window. The grid stops above the dock
+  // (audit 2026-10-15, 1024 x 768: the dock covered the whole last week, a Fri 30 post with it): the
+  // stage gets the room from its top to the dock's pinned top, written as --cal-stage.
+  const docked = v2 && !phone && (view === 'month' || grid2) && size === 'narrow'
+  useLayoutEffect(() => {
+    const el = root.current
+    if (!el || !docked) { el?.style.removeProperty('--cal-stage'); return }
+    let sc: HTMLElement | null = el.parentElement
+    while (sc && !/auto|scroll|overlay/.test(getComputedStyle(sc).overflowY)) sc = sc.parentElement
+    let raf = 0
+    const measure = () => {
+      raf = 0
+      const st = stage.current
+      if (!st) return
+      const dock = el.querySelector<HTMLElement>(':scope > .cv2-buf')
+      // Where the sticky dock's bottom pins: the scroller's bottom inside its padding.
+      const pin = sc ? sc.getBoundingClientRect().bottom - parseFloat(getComputedStyle(sc).paddingBottom || '0') : window.innerHeight
+      const top = st.getBoundingClientRect().top + (sc ? sc.scrollTop : window.scrollY)
+      const h = Math.max(260, Math.round(pin - (dock ? dock.offsetHeight + 10 : 0) - top))
+      if (el.style.getPropertyValue('--cal-stage') !== `${h}px`) el.style.setProperty('--cal-stage', `${h}px`)
+    }
+    const later = () => { if (!raf) raf = requestAnimationFrame(measure) }
+    measure()
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(later)
+    ro?.observe(el)
+    if (sc) ro?.observe(sc)
+    window.addEventListener('resize', later)
+    return () => { ro?.disconnect(); window.removeEventListener('resize', later); if (raf) cancelAnimationFrame(raf) }
+  }, [docked, view, pick])
+
+  // Phone: a tapped day's posts sit under the grid, below the fold behind the bottom nav (audit
+  // 2026-10-15, tapping 19 Oct showed only the heading). After a tap, the day list scrolls up into view.
+  const dayTapped = useRef(false)
+  const tapDay = (k: string) => { setSel(k); if (phone) dayTapped.current = true }
+  useEffect(() => {
+    if (!dayTapped.current) return
+    dayTapped.current = false
+    root.current?.querySelector<HTMLElement>('.cv2-day, .cal-agenda')?.scrollIntoView?.({ block: 'start', behavior: reduced ? 'auto' : 'smooth' })
+  }) // every render: a tap on the day already picked scrolls too
 
   const agenda = days.get(day) ?? []
   const laneBound = pick === 'all' ? undefined : pick
@@ -350,20 +393,22 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
     const gridIn = view === 'month' ? inMonth : new Set(grid2Keys)
     // A narrow calendar (a small window, or the draft window open beside it): the buffer docks to the bottom, always on screen.
     const dockBottom = (view === 'lines' && !grid2) || phone || size === 'narrow'
+    // Month weekends are slimmer columns; a weekend with a post in view gets an equal one (audit 2026-10-15: Sun read "I…").
+    const weBusy = asGrid && gridKeys.some((k, i) => (i % 7 === 0 || i % 7 === 6) && !!days.get(k)?.length)
     const lanes = lanesOf(pick)
     const nextWeek = new Set(lanes.flatMap(l => (data.seats[l].loadedAt ? cov.seats[l].gaps : [])))
     const riseLine = (pick === 'all' || pick === 'risedtc') ? warsawDay(now + 14 * DAY_MS) : null
     return (
-      <section ref={root} className={`cal cv2 cv2-cal${phone ? ' cal-phone' : ''} cal-${view}${week5 ? ' cv2-week5' : ''}${fit ? ' cv2-fit' : ''}`} data-cal-size={phone ? undefined : size} data-motion={motion} aria-label="Content calendar" data-cv2="calendar">
+      <section ref={root} className={`cal cv2 cv2-cal${phone ? ' cal-phone' : ''} cal-${view}${fit ? ' cv2-fit' : ''}`} data-cal-size={phone ? undefined : size} data-motion={motion} aria-label="Content calendar" data-cv2="calendar">
         <header className="cv2-bar cv2-cal-bar">
           <Seg label="Client" verb="cal-pick" value={pick} onChange={id => choose(id as Pick)} options={PICKS.map(p => ({ id: p, label: p === 'all' ? 'All' : <><SeatAv lane={p} />{PICK_NAME[p]}</> }))} />
           <Seg label="View" verb="cal-view" size="sm" value={view} onChange={id => setView(id as View)} options={[{ id: 'month', label: 'Month', title: 'M' }, { id: 'lines', label: '2 weeks', title: 'L' }]} />
           <span className="cv2-grow" />
-          {pick !== 'all' && panel(pick) && <a className="cv2-k cv2-panel" href={panel(pick)} target="_blank" rel="noreferrer" data-verb="open-panel" title={`Open ${PICK_NAME[pick]}'s panel`}>{PICK_NAME[pick]} panel ↗</a>}
+          {pick !== 'all' && panel(pick) && <a className="cv2-k cv2-panel" href={panelCal(panel(pick)!)} target="_blank" rel="noreferrer" data-verb="open-panel" title={`Open ${PICK_NAME[pick]}'s panel`}>{PICK_NAME[pick]} panel ↗</a>}
           <div className="cv2-calnav">
-            <button type="button" data-cal-page="-1" data-verb="cal-prev" aria-label={view === 'month' ? 'Previous month' : week5 ? 'Previous week' : 'Previous two weeks'} onClick={() => page(-1)}>‹</button>
+            <button type="button" data-cal-page="-1" data-verb="cal-prev" aria-label={view === 'month' ? 'Previous month' : 'Previous two weeks'} onClick={() => page(-1)}>‹</button>
             <b aria-live="polite">{label}</b>
-            <button type="button" data-cal-page="1" data-verb="cal-next" aria-label={view === 'month' ? 'Next month' : week5 ? 'Next week' : 'Next two weeks'} onClick={() => page(1)}>›</button>
+            <button type="button" data-cal-page="1" data-verb="cal-next" aria-label={view === 'month' ? 'Next month' : 'Next two weeks'} onClick={() => page(1)}>›</button>
             <button type="button" className="cv2-today" data-verb="cal-today" disabled={off === 0} onClick={today}>Today</button>
           </div>
         </header>
@@ -372,14 +417,14 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
           <div ref={stage} className="cal-stage cv2-stage">
             <div ref={track} className="cal-track">
               {asGrid ? (
-                <div className={`cal-grid cv2-month${grid2 ? ' cv2-two' : ''}`} role="group" aria-label={`${PICK_NAME[pick]}, ${label}`} style={{ '--cal-weeks': grid2 ? 2 : weeks.length } as CSSProperties}>
+                <div className={`cal-grid cv2-month${grid2 ? ' cv2-two' : ''}${weBusy ? ' cv2-we-busy' : ''}`} role="group" aria-label={`${PICK_NAME[pick]}, ${label}`} style={{ '--cal-weeks': grid2 ? 2 : weeks.length } as CSSProperties}>
                   {DOW.map((d, i) => <div key={d} className={`cal-wh${i === 0 || i === 6 ? ' cv2-we' : ''}`}>{phone ? d[0] : d}</div>)}
                   {gridKeys.map((k, i) => {
                     const on = days.get(k) ?? []
                     const shown = Math.min(on.length, 3)
                     const cls = ['cal-day', gridIn.has(k) ? '' : 'out', k === todayKey ? 'today' : '', k === day ? 'sel' : '', k < todayKey ? 'past' : '', !on.length && nextWeek.has(k) ? 'cv2-gapday' : '', k === riseLine ? 'cv2-riseline' : '', i % 7 === 0 || i % 7 === 6 ? 'cv2-we' : '', `cv2-n${shown}`].filter(Boolean).join(' ')
                     return (
-                      <div key={k} className={cls} data-cal-day={k} data-cal-lane={laneBound} onClick={() => setSel(k)} title={k === riseLine ? `${dayLabel(k)} · Mattan’s two-week line` : dayLabel(k)}>
+                      <div key={k} className={cls} data-cal-day={k} data-cal-lane={laneBound} onClick={() => tapDay(k)} title={k === riseLine ? `${dayLabel(k)} · Mattan’s two-week line` : dayLabel(k)}>
                         <span className="cal-dn">{Number(k.slice(8))}<XMarks items={xDays.get(k)} time={!phone} /></span>
                         {on.slice(0, 3).map(e => (phone ? <Chip key={e.it.id} e={e} phone={phone} onOpen={onOpen} /> : <MonthCard key={e.it.id} e={e} a={acts} />))}
                         {on.length > 3 && (phone ? <span className="cal-more">+{on.length - 3}</span>
@@ -400,7 +445,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
             </aside>
           )}
         </div>
-        {dockBottom && <BufferDock loose={loose} lms={lms} a={acts} />}
+        {dockBottom && <BufferDock loose={loose} lms={lms} a={acts} startOpen={phone || !shortWindow()} />}
         {when && (() => {
           const r = rows[when.lane].find(x => x.id === when.id)
           if (!r) return null
@@ -442,7 +487,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
                   const vis = 3
                   const cls = ['cal-day', inMonth.has(k) ? '' : 'out', k === todayKey ? 'today' : '', k === day ? 'sel' : '', k < todayKey ? 'past' : ''].filter(Boolean).join(' ')
                   return (
-                    <div key={k} className={cls} data-cal-day={k} data-cal-lane={laneBound} onClick={() => setSel(k)} title={dayLabel(k)}>
+                    <div key={k} className={cls} data-cal-day={k} data-cal-lane={laneBound} onClick={() => tapDay(k)} title={dayLabel(k)}>
                       <span className="cal-dn">{Number(k.slice(8))}<XMarks items={xDays.get(k)} time={!phone} /></span>
                       {on.slice(0, vis).map(e => <Chip key={e.it.id} e={e} phone={phone} onOpen={onOpen} />)}
                       {on.length > vis && <span className="cal-more">+{on.length - vis}</span>}

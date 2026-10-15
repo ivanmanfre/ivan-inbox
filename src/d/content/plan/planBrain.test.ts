@@ -248,9 +248,9 @@ describe('answerOf / plainWhy / mixLine / weekWhy / resultLine', () => {
       { start: '2026-10-26', which: 'after', target: 4, filled: 0, open: 4, posts: [], planned: [] },
     ], done: [], warnings: [] } as unknown as PlanRead
     // The 9 Oct post still waits for approval: it counts, as this week's work.
-    expect(answerOf(read)).toEqual({ need: 4, title: '4 posts wait for your OK', parts: ['3 this week', '1 later', '1 scheduled', '1 failed'] })
+    expect(answerOf(read)).toEqual({ need: 4, title: '4 planned posts wait for your OK', parts: ['3 this week', '1 later', '1 scheduled', '1 failed'] })
     const noPast = { ...read, weeks: read.weeks.map(w => ({ ...w, posts: w.posts.filter(p => p.day !== '2026-10-09') })) }
-    expect(answerOf(noPast)).toEqual({ need: 3, title: '3 posts wait for your OK', parts: ['2 this week', '1 later', '1 scheduled', '1 failed'] })
+    expect(answerOf(noPast)).toEqual({ need: 3, title: '3 planned posts wait for your OK', parts: ['2 this week', '1 later', '1 scheduled', '1 failed'] })
     const none = { ...read, weeks: read.weeks.map(w => ({ ...w, posts: w.posts.filter(p => p.status !== 'review'), planned: [] })) }
     expect(answerOf(none).title).toBe('Nothing waits for you')
     expect(answerOf(none).need).toBe(0)

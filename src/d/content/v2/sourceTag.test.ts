@@ -22,12 +22,17 @@ describe('sourceTag', () => {
     [r({ source_kind: 'idea', source_label: 'Google Play, acquisition and retention' }), 'idea', 'Idea'],
     [r({ source_kind: 'parity_scratch', source_label: 'parity-harness definitive-client-layer-2' }), 'test', 'Test'],
     [r({ taxonomy: { source: 'manual' } }), 'manual', 'Manual'],
+    [r({ source_label: 'Winner replica of @lawrenceaiseo reel (animated radial branch map)' }), 'industry', 'Industry post'],
+    [r({ source_label: "SwishDM carousel style sample: WATCH-ACCOUNTS 'Ecommerce SEO is six jobs'" }), 'industry', 'Style sample'],
     [r({}), 'other', 'No source'],
   ])('%# → %s', (row, key, label) => {
     const owner = (row.source_label ?? '').includes('Davorin') ? 'Davorin' : ''
     const t = sourceTag(row, owner)
     expect(t.key).toBe(key)
     expect(t.label).toBe(label)
+  })
+  it('a style sample gets a plain title, not the planner key', () => {
+    expect(sourceTag(r({ source_label: "SwishDM carousel style sample: WATCH-ACCOUNTS 'Getting cited is the easy part'" })).title).toBe('Written in the style of an account we watch')
   })
   it('the full recorded label rides in the title', () => {
     expect(sourceTag(r({ source_label: 'Call with Marianna Grollo (almedia.co) · 3 Oct' })).title).toBe('Call with Marianna Grollo (almedia.co) · 3 Oct')

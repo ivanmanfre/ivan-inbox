@@ -209,8 +209,8 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
         <div className="cn-av">{lane === 'ivan' ? 'IM' : lane === 'arch' ? 'DS' : lane === 'swishdm' ? 'JK' : 'MD'}</div>
         <div className="cn-who"><b title={titleOf(d)}>{splitTitleTag(titleOf(d)).text || titleOf(d)}</b><small>{LANE_NAME[lane]} · {kindOf(d.type)} · created {age(d.created_at)} ago</small></div>
         <span className="cn-jk">
-          <button type="button" aria-label="Previous (k)" disabled={at <= 0} onClick={() => at > 0 && onPick(queue[at - 1])}>k</button>
-          <button type="button" aria-label="Next (j)" disabled={at < 0 || at + 1 >= queue.length} onClick={() => at >= 0 && at + 1 < queue.length && onPick(queue[at + 1])}>j</button>
+          <button type="button" aria-label="Previous (k)" disabled={at <= 0} onClick={() => at > 0 && onPick(queue[at - 1])}><span className="cn-jk-key">k</span><span className="cn-jk-arr" aria-hidden="true">‹</span></button>
+          <button type="button" aria-label="Next (j)" disabled={at < 0 || at + 1 >= queue.length} onClick={() => at >= 0 && at + 1 < queue.length && onPick(queue[at + 1])}><span className="cn-jk-key">j</span><span className="cn-jk-arr" aria-hidden="true">›</span></button>
           <span className="cn-pos">{at >= 0 ? `${at + 1} of ${queue.length}` : 'not in this queue'}</span>
           {queue.length > 1 && <button type="button" data-verb="rail" aria-expanded={rail} onClick={() => setRail(!rail)} title="Show the queue">{rail ? 'hide list' : 'list'}</button>}
         </span>

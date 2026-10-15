@@ -9,6 +9,9 @@
 .op4 .op4-seats .ds-seg-item>span:not(.ds-seg-marker){display:flex;align-items:center;gap:4px;min-width:0}
 .op4 .op4-seats .ds-seg-item>span>span:not(.ds-avatar){overflow:hidden;text-overflow:ellipsis}
 .op4 .op4-seats .ds-avatar{width:16px;height:16px;border-radius:5px;font-size:12px;flex:none}
+/* Four seats in a 320px rail: the avatar letter left each name one letter wide ("I Iv… R R…", audit 10-15). Names and counts only. */
+.op4 .op4-seats .ds-avatar{display:none}
+.op4 .op4-seats .ds-seg-item{flex:1 1 auto;padding:0 6px}
 .op4 .ds-seg-marker{box-shadow:var(--ds-shadow-sel);background:var(--ds-fill-tab)}
 .op4 .ds-badge{min-width:0;min-height:18px;height:auto;flex:none;max-width:100%;font:500 12px/16px var(--f);border-radius:5px;padding:0 4px;background:var(--ds-linen);color:var(--t2);letter-spacing:0}
 .op4 .ds-badge[data-tone=accent]{background:var(--ds-accent-soft);color:var(--lime)}

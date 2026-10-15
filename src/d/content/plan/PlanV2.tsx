@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { fetchPlan, type PlanRead, type PlanWarning } from '../../../lib/contentPlan'
+import { fetchPlan, planDay, type PlanRead, type PlanWarning } from '../../../lib/contentPlan'
 import { useMotionLevel } from '../../../ds/motionLevel'
 import { dHash } from '../../route'
 import { useFrameMaybe } from '../../shell/frame'
@@ -52,6 +52,24 @@ function fixHref(sub: string, lane: Lane, items: PlanItem[]): string {
     return failed ? dHash('content', 'now', { draft: failed.draftId!, lane }) : dHash('content', 'now', { lane })
   }
   return dHash('content', sub, { lane })
+}
+
+const WAIT_SHOWN = 5
+/** A dated post says its day; a planned slot has no day yet (it takes the first free weekday of its week on approval), so it says its week. */
+const whenWord = (it: PlanItem) => !it.suggested && it.day ? planDay(it.day) : `Week of ${planDay(it.week).replace(/^\w+ /, '')}`
+
+/** The posts the headline counts, right under it (Ivan 2026-10-15: they sat at the very bottom of the page). A tap opens the panel. */
+function Waiting({ items, onOpen }: { items: PlanItem[]; onOpen: (it: PlanItem) => void }) {
+  if (!items.length) return null
+  const rest = items.length - WAIT_SHOWN
+  return <ul className="pl2-waitl" aria-label="Waiting for your OK">
+    {items.slice(0, WAIT_SHOWN).map(it => <li key={it.key}>
+      <button type="button" data-verb="plan-wait-open" onClick={() => onOpen(it)}>
+        <span>{whenWord(it)}</span><b>{it.title || 'Untitled draft'}</b>
+      </button>
+    </li>)}
+    {rest > 0 && <li className="pl2-waitl-more">{rest} more in the plan below</li>}
+  </ul>
 }
 
 type WarnRow = { w: PlanWarning; x: ReturnType<typeof warningOf> }
@@ -124,6 +142,8 @@ export function PlanV2({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => vo
   const all = useMemo(() => (r ? itemsOf(r) : []), [r])
   const items = useMemo(() => (r ? upcoming(all, r.today) : []), [r, all])
   const answer = useMemo(() => (r ? answerOf(r) : null), [r])
+  // The same posts answerOf counts, soonest first (no day yet last).
+  const waiting = useMemo(() => items.filter(i => i.st === 'review').sort((a, b) => (a.day ?? '~').localeCompare(b.day ?? '~')), [items])
   // The open item as the latest read has it (a move re-reads the plan); the clicked copy if it left the plan.
   const shown = useMemo(() => (open ? all.find(i => i.key === open.key) ?? open : null), [open, all])
   const hasStock = !!(r && Array.isArray(r.brain_strip?.idea_stock) && r.brain_strip!.idea_stock.length)
@@ -150,11 +170,12 @@ export function PlanV2({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => vo
           <div className="pl2-ans">
             <h2 aria-label={answer.title}>
               {answer.need > 0
-                ? <><span className="pl2-need"><Count value={answer.need} /></span> {answer.need > 1 ? 'posts wait' : 'post waits'} for your OK</>
+                ? <><span className="pl2-need"><Count value={answer.need} /></span> {answer.need > 1 ? 'planned posts wait' : 'planned post waits'} for your OK</>
                 : answer.title}
             </h2>
             {answer.parts.length > 0 && <p className="pl2-parts">{answer.parts.join(' · ')}</p>}
           </div>
+          <Waiting key={`wait:${r.account}`} items={waiting} onOpen={openItem} />
           {(warnings.length > 0 || stockOpen) && <div className="pl2-warnw">
             {warnings.length > 0 && <Warnings key={`warn:${r.account}`} rows={warnings} lane={lane} items={all} still={level === 'off'}
               stock={lane !== 'ivan' && hasStock} stockOpen={stockOpen} onStock={toggleStock} />}

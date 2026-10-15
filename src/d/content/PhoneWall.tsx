@@ -18,11 +18,13 @@ export function PhoneWall({ data, items, days, stuck, onOpen, onMove, onArm, now
 }) {
   const gap = (i: number) => (i === 5 ? <span aria-hidden="true" /> : null)
   const keys = days.flatMap(d => (d.dow === 'Fri' ? [d.key, ...weekendAfter(d.key)] : [d.key]))
+  // Ivan's X articles mark only a wall that shows his seat (audit 2026-10-15: they showed on Rise and Arch).
+  const xs = lanes.includes('ivan') ? xDays : undefined
   return (
     <>
       <div className="cn-rib" aria-label="Two weeks by seat">
         <span />
-        {days.map((d, i) => <Fragment key={d.key}>{gap(i)}<div className="cn-h"><b>{d.dow[0]}</b>{d.n}<XMarks items={xDays?.get(d.key)} time={false} /></div></Fragment>)}
+        {days.map((d, i) => <Fragment key={d.key}>{gap(i)}<div className="cn-h"><b>{d.dow[0]}</b>{d.n}<XMarks items={xs?.get(d.key)} time={false} /></div></Fragment>)}
         {lanes.map(l => (
           <Fragment key={l}>
             <div className="cn-f">{LANE_NAME[l]}</div>

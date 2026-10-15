@@ -11,7 +11,7 @@ export function EarlyReadChip({ read, lane, unsaved = false }: { read?: PatternR
   const pattern = shown.state === 'ready' ? parsePattern(shown.pattern, lane) : null
   const small = lane === 'arch' || shown.smallSample
   const text = pattern ? `${rateText(pattern.rate)} early read · n=${pattern.n}`
-    : shown.state === 'loading' ? 'Reading early read…' : shown.state === 'failed' ? 'Early read unavailable'
+    : shown.state === 'loading' ? 'Checking early read…' : shown.state === 'failed' ? 'Early read unavailable'
       : shown.state === 'unsaved' ? 'Early read · unsaved' : 'No read yet'
   const close = () => { setOpen(false); trigger.current?.focus({ preventScroll: true }) }
   useEffect(() => {

@@ -40,13 +40,28 @@ afterEach(() => {
   expect(keyWarnings).toEqual([])
 })
 
+/** The Weeks card (the waiting list under the headline carries the same title). */
+const cardOf = (re: RegExp) => screen.getAllByText(re).map(e => e.closest<HTMLElement>('.pl2-card')).find(Boolean)!
+
 describe('PlanV2', () => {
   it('opens on the answer line and its parts', async () => {
     api.fetchPlan.mockResolvedValue(rise())
     renderInFrame(<Harness start="risedtc" />)
-    expect(await screen.findByRole('heading', { name: '3 posts wait for your OK' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: '3 planned posts wait for your OK' })).toBeTruthy()
     expect(document.querySelector('.pl2-parts')!.textContent).toBe('3 later')
     expect(api.fetchPlan).toHaveBeenCalledWith('risedtc', expect.any(AbortSignal))
+  })
+
+  it('the posts the headline counts sit right under it, and a tap opens the panel', async () => {
+    api.fetchPlan.mockResolvedValue(rise())
+    renderInFrame(<Harness start="risedtc" />)
+    await screen.findByRole('heading', { name: '3 planned posts wait for your OK' })
+    const list = screen.getByRole('list', { name: 'Waiting for your OK' })
+    expect(list.previousElementSibling!.classList.contains('pl2-ans')).toBe(true)
+    const rows = list.querySelectorAll('[data-verb="plan-wait-open"]')
+    expect(rows).toHaveLength(3)
+    fireEvent.click(rows[0])
+    expect(screen.getByRole('dialog')).toBeTruthy()
   })
 
   it('a slow first seat never paints under the seat switched to', async () => {
@@ -56,7 +71,7 @@ describe('PlanV2', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Rise' }))
     await act(async () => { second.resolve(rise()) })
     await act(async () => { first.resolve(ivan()) })
-    expect(screen.getByRole('heading', { name: '3 posts wait for your OK' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: '3 planned posts wait for your OK' })).toBeTruthy()
     expect(screen.getAllByText(/If a channel can't grow/).length).toBeGreaterThan(0)
     const ivanTitle = (ivanFx as unknown as PlanRead).weeks[1].posts[0].title
     expect(document.body.textContent).not.toContain(ivanTitle)
@@ -67,7 +82,7 @@ describe('PlanV2', () => {
     renderInFrame(<Harness start="risedtc" />)
     expect(await screen.findByText('Could not read the plan.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
-    expect(await screen.findByRole('heading', { name: '3 posts wait for your OK' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: '3 planned posts wait for your OK' })).toBeTruthy()
     expect(api.fetchPlan).toHaveBeenCalledTimes(2)
   })
 
@@ -137,13 +152,13 @@ describe('PlanV2', () => {
       api.fetchPlan.mockResolvedValue(rise())
       renderInFrame(<Harness start="risedtc" />)
       await screen.findByRole('heading', { level: 2 })
-      const card = screen.getAllByText(/Your Google Shopping feed/)[0].closest<HTMLElement>('.pl2-card')!
+      const card = cardOf(/Your Google Shopping feed/)
       fireEvent.pointerOver(card)
       expect(await screen.findByRole('tooltip', {}, { timeout: 1500 })).toBeTruthy()
       fireEvent.click(card)
       expect(screen.queryByRole('tooltip')).toBeNull()
       expect(document.querySelector('.pl2')!.getAttribute('data-open')).toBe(card.getAttribute('data-plan-key'))
-      const other = screen.getAllByText(/broken links/i)[0].closest<HTMLElement>('.pl2-card')!
+      const other = cardOf(/broken links/i)
       fireEvent.pointerOver(other)
       await new Promise(res => setTimeout(res, 700))
       expect(screen.queryByRole('tooltip')).toBeNull()
@@ -219,7 +234,7 @@ describe('PlanV2', () => {
       api.fetchPlan.mockResolvedValue(rise())
       renderInFrame(<Harness start="risedtc" />)
       await screen.findByRole('heading', { level: 2 })
-      const card = screen.getAllByText(/Your Google Shopping feed/)[0].closest<HTMLElement>('.pl2-card')!
+      const card = cardOf(/Your Google Shopping feed/)
       fireEvent.click(card)
       const dialog = screen.getByRole('dialog')
       expect(dialog.textContent).toContain('Why this post')
@@ -231,7 +246,7 @@ describe('PlanV2', () => {
       await new Promise(res => setTimeout(res, 650))
       expect(screen.queryByRole('tooltip')).toBeNull()
       // A keyboard user moves on: Tab wakes the hover card for the next card focus.
-      const next = screen.getAllByText(/broken links/i)[0].closest<HTMLElement>('.pl2-card')!
+      const next = cardOf(/broken links/i)
       fireEvent.keyDown(window, { key: 'Tab' })
       next.focus()
       fireEvent.focus(next)
