@@ -1,0 +1,79 @@
+/* ==========================================================================
+   The open post's panel, with a real type hierarchy (Ivan 2026-10-15: "it's all the same font, all the
+   same grey colour"). Same fonts and tokens as the app; the change is order and contrast:
+     title 17/600 ink · subline 13 secondary · status pill + source tag + key facts 12.5 ink on a chip,
+     quiet facts secondary · tabs 13/600 · section labels 11 caps tracked tertiary, values 13.5 ink ·
+     monospace only for ids.
+   Every rule is prefixed with .cn-dw so it outranks content2/content3/picture.css whatever the bundle order.
+   ========================================================================== */
+
+/* header: what it is, then where it sits in the list */
+.cn-dw .cn-dwh{gap:12px;padding:12px 14px 10px 16px;align-items:flex-start}
+.cn-dw .cn-av{margin-top:2px;border-radius:10px}
+.cn-dw .cn-who b{font:600 17px/23px var(--f);letter-spacing:-.01em;color:var(--t1);white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:pretty}
+.cn-dw .cn-who small{margin-top:3px;font:400 13px/18px var(--f);color:var(--t2)}
+.cn-dw .cn-jk{gap:4px;margin-top:2px;font:400 12.5px var(--f);color:var(--t2)}
+.cn-dw .cn-jk button{min-width:24px;height:24px;padding:0 6px;border-radius:6px;font:500 12px var(--f);color:var(--t2)}
+.cn-dw .cn-jk button:hover:not(:disabled){color:var(--t1);background:var(--ds-fill-hover,rgba(127,127,127,.08))}
+.cn-dw .cn-jk button:disabled{opacity:.4}
+.cn-dw .cn-pos{margin:0 4px;font-variant-numeric:tabular-nums;color:var(--t1);font-weight:500}
+
+/* the status line: the stage, the source, the facts that decide; the quiet ones after */
+.cn-dw .cn-chips{gap:6px;padding:8px 16px 10px;font:400 12.5px/1 var(--f);color:var(--t2)}
+.cn-dw .cn-chips .cn-st{height:24px;display:inline-flex;align-items:center;padding:0 10px;border-radius:7px;font:600 12px/1 var(--f);color:var(--ds-info-ui,var(--t1));background:var(--ds-info-soft,var(--p3))}
+.cn-dw .cn-chips .cn-st-bad{color:var(--ds-sev-urgent-ui,var(--crit));background:var(--ds-sev-urgent-soft,#fee6e3)}
+.cn-dw .cn-fact{display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:7px;background:var(--ds-surface-2,var(--p3));color:var(--t1);font:500 12.5px/1 var(--f);white-space:nowrap}
+.cn-dw .cn-fact-q{background:transparent;padding:0 4px;color:var(--t3);font-weight:400}
+.cn-dw .cn-chips .cn-early-chip{height:24px;padding:0 9px;border-radius:7px}
+
+/* the source tag (the same words as the Review list) */
+.cn-dw .cn-srctag{--src:var(--t3);display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px 0 8px;border-radius:7px;background:var(--ds-surface-2,var(--p3));color:var(--t1);font:600 12px/1 var(--f);white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis}
+.cn-dw .cn-srctag::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:var(--src)}
+.cn-dw .cn-srctag-brain{--src:var(--ds-accent,var(--lime));background:var(--ds-accent-soft,var(--p3))}
+.cn-dw .cn-srctag-call{--src:var(--ds-info-ui,#3b82f6);background:var(--ds-info-soft,var(--p3))}
+.cn-dw .cn-srctag-client{--src:var(--ds-sev-clear-ui,#16a34a);background:var(--ds-sev-clear-soft,var(--p3))}
+.cn-dw .cn-srctag-lm{--src:var(--ds-sev-attention-ui,#d97706);background:var(--ds-sev-attention-soft,var(--p3))}
+.cn-dw .cn-srctag-news{--src:var(--ds-sev-urgent-ui,#dc2626);background:var(--ds-sev-urgent-soft,var(--p3))}
+.cn-dw :is(.cn-srctag-outlier,.cn-srctag-industry){--src:#8a6f45;background:var(--ds-linen,var(--p3))}
+.cn-dw .cn-srctag-test{background:transparent;color:var(--t3);box-shadow:inset 0 0 0 1px var(--line2)}
+
+/* above the post: the topic line and the notes read as prose, not as a log */
+.cn-dw .cn-above .cn-topic{font:400 13.5px/1.45 var(--f);color:var(--t2)}
+.cn-dw .cn-above .cn-dim{font:400 13px/1.5 var(--f);color:var(--t2)}
+
+/* the evidence tabs */
+.cn-dw .cn-evh{gap:18px}
+.cn-dw .cn-evh button{padding:12px 0 10px;font:600 13px var(--f);color:var(--t3)}
+.cn-dw .cn-evh button:hover{color:var(--t2)}
+.cn-dw .cn-evh button.cn-on{color:var(--t1);border-color:var(--ds-accent,var(--t1))}
+.cn-dw .cn-evh em{font:400 12px var(--f);color:var(--t3)}
+.cn-dw .cn-evb{padding:14px 0 4px;font:400 13.5px/1.55 var(--f);color:var(--t1)}
+.cn-dw .cn-evb .cn-dim{color:var(--t2)}
+
+/* section labels are labels; values are the text */
+.cn-dw .cn-cap{display:block;margin:18px 0 8px;font:600 11px/14px var(--f);letter-spacing:.08em;text-transform:uppercase;color:var(--t3)}
+.cn-dw .cn-fgroup:first-child .cn-cap,.cn-dw .cn-src > .cn-kv:first-child{margin-top:0}
+.cn-dw .cn-kv{grid-template-columns:120px minmax(0,1fr);gap:8px 14px;margin:0}
+.cn-dw .cn-kv dt{font:500 12.5px/20px var(--f);color:var(--t3)}
+.cn-dw .cn-kv dd{font:400 13.5px/20px var(--f);color:var(--t1)}
+.cn-dw .cn-fsub{display:block;margin-top:2px;font:400 12.5px/18px var(--f);color:var(--t2)}
+.cn-dw .cn-mono{font:400 12px/20px var(--ds-font-mono,'Geist Mono',ui-monospace,'SF Mono',Menlo,monospace);color:var(--t2);word-break:break-all}
+.cn-dw .cn-fields{display:flex;flex-direction:column}
+.cn-dw .cn-fgroup{margin:0}
+.cn-dw .cn-fgroup + .cn-fgroup{margin-top:4px}
+.cn-dw .cn-fall{align-self:flex-start;margin:16px 0 4px;height:30px;padding:0 12px;border-radius:8px;font:500 13px var(--f);color:var(--ds-accent,var(--t1));background:var(--ds-surface-2,var(--p3))}
+.cn-dw .cn-fall:hover{color:var(--t1)}
+.cn-dw .cn-fields > .cn-reg{margin-top:12px}
+
+/* QA: the rule names are labels, the numbers are the values */
+.cn-dw .cn-qa small{font:500 11.5px var(--f);letter-spacing:.04em;color:var(--t2)}
+.cn-dw .cn-qa b{font:600 13px var(--f);font-variant-numeric:tabular-nums;color:var(--t1)}
+.cn-dw .cn-iss{color:var(--t1)}
+.cn-dw .cn-iss small{margin-bottom:4px;font:600 11px/14px var(--f);letter-spacing:.08em;color:var(--t3)}
+
+/* the action bar's note under the keys */
+.cn-dw .cn-foot{font:400 12.5px/1.45 var(--f);color:var(--t2)}
+
+/* the phone: the header wraps, the facts stay readable */
+.d-phone .cn-dw .cn-who b{font-size:18px;line-height:24px}
+.d-phone .cn-dw .cn-kv{grid-template-columns:104px minmax(0,1fr)}

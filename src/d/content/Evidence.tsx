@@ -1,11 +1,12 @@
 import {
-  groupLogByAgent, normalizeAgentLog, normalizeQa, normalizeSourceDetail, selfContainedHtml,
+  groupLogByAgent, normalizeAgentLog, normalizeQa, selfContainedHtml,
   type ContentDraftDetail,
 } from '../../lib/content'
 import { useSectionState } from '../../hooks/useSectionState'
 import { HtmlPreview } from '../../wb/takeover'
 import { AgentRegister, QaRegister } from '../../wb/draft/register'
 import { FieldsTab, NoteBox, SourceTab } from './EvidenceTabs'
+import { sourceTag } from './v2/sourceTag'
 
 // The evidence under the post, one tab at a time: QA (the rubric's bars, the
 // first issue, then today's full register), Artifact (the self-contained
@@ -36,7 +37,6 @@ type Tab = 'qa' | 'art' | 'src' | 'log' | 'meta'
 export function Evidence({ d, initial = 'qa', noteable = false, onNote }: { d: ContentDraftDetail; initial?: Tab; noteable?: boolean; onNote?: () => void }) {
   const [sect, setSect] = useSectionState('content.draftwindow')
   const qa = normalizeQa(d.qa)
-  const src = normalizeSourceDetail(d.source_detail)
   const log = normalizeAgentLog(d.agent_log)
   const agents = groupLogByAgent(log).length
   const scores = qaScores(qa?.feedback ?? null)
@@ -46,7 +46,7 @@ export function Evidence({ d, initial = 'qa', noteable = false, onNote }: { d: C
   const tabs: [Tab, string, string][] = [
     ['qa', 'QA', qa?.score != null ? `${verdictWord(qa.verdict)} ${qa.score}` : 'none'],
     ...(art ? [['art', 'Artifact', ''] as [Tab, string, string]] : []),
-    ['src', 'Source', src?.kind ?? d.source_label ?? ''],
+    ['src', 'Source', sourceTag(d).label],
     ['log', 'Log', log.length ? `${agents} agent${agents === 1 ? '' : 's'}` : 'note only'],
     ['meta', 'Fields', ''],
   ]

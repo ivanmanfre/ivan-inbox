@@ -43,8 +43,8 @@ export function AboveThePost({ d, stage, lane }: { d: ContentDraftDetail; stage:
       ))}
       {noImage && (
         <p className="cn-dim">
-          No image yet. This does not stop it going on the board — it stops the SCHEDULE later, which refuses a draft
-          with no media. A regeneration clears the pinned image, so the photo has to be re-pinned before a date will take.
+          No image yet. It can still go on the board, but the schedule refuses a draft with no picture. A
+          regeneration clears the pinned image, so pin the photo again before you set a date.
         </p>
       )}
     </div>

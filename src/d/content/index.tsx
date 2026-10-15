@@ -29,7 +29,7 @@ import { useWeekRead } from './useWeek'
 import { useVerdicts } from './useVerdicts'
 import { useJudged } from './verdictStore'
 import { WeekStack } from './WeekStack'
-import { SHOWS, buildNow, laneOfRow, reviewCounts, windowDays, dayWord, dayDate, type Show } from './weekModel'
+import { buildNow, laneOfRow, reviewCounts, windowDays, dayWord, dayDate, type Show } from './weekModel'
 import { useMagnetCounts } from './useMagnetCounts'
 import { Results } from './Results'
 import { Plan } from './Plan'
@@ -39,7 +39,8 @@ import { useContentFlags } from './v2/flags'
 import { useMainTier } from './v2/useMainTier'
 import { useSubtabMotion } from './v2/motion'
 import { reviewLanding } from './v2/reviewLanding'
-import { ReviewDesk } from './v2/ReviewDesk'
+import { ReviewDesk, deskModel, deskSeatOf } from './v2/ReviewDesk'
+import { useSteadyRows } from './v2/steadyRows'
 import { BrainV2 } from './v2/BrainV2'
 import { MagnetsV2 } from './v2/MagnetsV2'
 import './v2/cv2.css'
@@ -116,12 +117,15 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const registry = useLanes()
   const qLane: Lane = isLane(q.get('lane')) ? q.get('lane') as Lane : 'ivan'
   const legacyLane = q.get('lane') && registry.lanes.some(l => l.client_id === q.get('lane')) ? q.get('lane') as ContentLane : qLane
-  const [show, setShowState] = useState<Show>(() => { try { const s = localStorage.getItem(SHOW_KEY) as Show; return SHOWS.includes(s) ? s : 'all' } catch { return 'all' } })
+  // Review shows one seat at a time (Ivan 2026-10-15: no "All"): the last-picked seat, else Ivan. A saved or
+  // linked 'all' falls back to Ivan.
+  const [show, setShowState] = useState<Show>(() => { try { return deskSeatOf(localStorage.getItem(SHOW_KEY)) } catch { return 'ivan' } })
   const setShow = (s: Show) => { setShowState(s); try { localStorage.setItem(SHOW_KEY, s) } catch { /* private mode */ } }
+  const deskOn = cv2.review && onNow && !magnetView && !allPosts
+  const seat: Lane = show === 'all' ? 'ivan' : show
   // The calendar's client switch is its own (remembered) state, never ?lane=: opening a Rise post from "All" must not flip the calendar to Rise.
   const [pick, setPick] = useState<Pick>(() => (isPick(q.get('who')) ? q.get('who') as Pick : savedPick()))
   const focusAsk = cv2.review && onNow ? q.get('focus') : null
-  useEffect(() => { if (focusAsk && show !== 'all') setShowState('all') }, [focusAsk]) // eslint-disable-line react-hooks/exhaustive-deps
   const [listIds, setListIds] = useState<string[]>([])
   const [dayOpen, setDayOpen] = useState<{ lane: Lane; keys: string[] } | null>(null)
   const phone = layout === 'phone'
@@ -144,8 +148,20 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const saved = useVerdicts()
   const judged = useJudged()
   const verdicts = useMemo(() => new Map([...saved.map].map(([id, v]) => [id, v.verdict])), [saved.map])
-  const nowModel = useMemo(() => buildNow(rows, { now, show, pending, blocks: data.blocks, verdicts, judged }), [rows, now, show, pending, data.blocks, verdicts, judged])
-  const allNow = useMemo(() => buildNow(rows, { now, pending, blocks: data.blocks, verdicts, judged }), [rows, now, pending, data.blocks, verdicts, judged])
+  // Review's model reads the steady rows: brain drafts stay in place while a refresh re-reads them (steadyRows.ts),
+  // so the seat counts, the heading and the open post's "N of M" do not jump on every focus or write.
+  const steady = useSteadyRows(rows)
+  const modelShow: Show = cv2.review ? seat : show
+  const nowModel = useMemo(() => buildNow(steady.rows, { now, show: modelShow, pending, blocks: data.blocks, verdicts, judged }), [steady.rows, now, modelShow, pending, data.blocks, verdicts, judged])
+  const allNow = useMemo(() => buildNow(steady.rows, { now, pending, blocks: data.blocks, verdicts, judged }), [steady.rows, now, pending, data.blocks, verdicts, judged])
+  const deskQueue = useMemo(() => (deskOn ? deskModel(nowModel, now).queue : null), [deskOn, nowModel, now])
+  // A link into Review that names a seat (?lane=, an idea's or the plan's "Open Review") opens on it; a
+  // Content Brain "Up next" (?focus=) opens on its draft's seat. Anything else keeps the remembered seat.
+  const laneParam = q.get('lane')
+  const focusLane = focusAsk ? laneOfRow(steady.rows.find(r => r.id === focusAsk) ?? { client_id: 'none' }) : null
+  useEffect(() => { if (deskOn && isLane(laneParam) && laneParam !== show) setShow(laneParam) }, [laneParam, deskOn]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (deskOn && focusLane && focusLane !== show) setShow(focusLane) }, [focusAsk, focusLane, deskOn]) // eslint-disable-line react-hooks/exhaustive-deps
+  const pickSeat = (l: Lane) => { setShow(l); go({ lane: l }, 'now') }
   const review = reviewCounts(allNow)
   const reading = LANES.some(l => !data.seats[l].loadedAt && !data.seats[l].error) || LANES.some(l => magnets[l] === undefined)
   const magnetLanes = LANES.filter(l => (magnets[l] ?? 0) > 0)
@@ -167,7 +183,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const onMove = (id: string, lane: Lane, day?: string) => go({ move: id, lane, ...(day ? { day } : {}), ...(draft && lane === qLane ? { draft } : {}) }, 'calendar')
   const wallProps = { data, items, stuck: null, onOpen: openFromPlan, onMove, onArm: armIt, onDay: (lane: Lane, keys: string[]) => setDayOpen({ lane, keys }), now }
   const brainIds = onBrain ? rows.filter(r => waitsForReview(r) && laneOfRow(r) === qLane && !verdicts.has(r.id)).sort((a, b) => b.created_at.localeCompare(a.created_at)).map(r => r.id) : []
-  const queueIds = onBrain ? brainIds : allPosts ? listIds : onCal ? [...items[qLane].values()].flat().filter(i => i.source === 'draft').sort((a, b) => a.at.localeCompare(b.at)).map(i => i.id) : nowModel.ids
+  const queueIds = onBrain ? brainIds : allPosts ? listIds : onCal ? [...items[qLane].values()].flat().filter(i => i.source === 'draft').sort((a, b) => a.at.localeCompare(b.at)).map(i => i.id) : deskQueue ?? nowModel.ids
   const titles = Object.fromEntries(rows.filter(r => queueIds.includes(r.id)).map(r => [r.id, titleOf(r)]))
   const window_ = draft ? <DraftWindow id={draft} lane={qLane} queue={queueIds} onPick={id => onCal ? openFromPlan(id, qLane) : onBrain ? openFromBrain(id, qLane) : openDraft(id, nowModel.lanes.get(id) ?? qLane)} onClose={close} refresh={refresh} days={days} armed={data.armed} armedFailed={data.armedFailed} titles={titles} startInEdit={cv2.review && q.get('edit') === '1'} /> : null
   const moveRow = moveId ? data.seats[qLane].rows.find(r => r.id === moveId) : null
@@ -193,9 +209,9 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const deskBody = <>
     {lanesV4 && <TodayNotes />}
     {data.failed > 0 && <div className="cv2-banner cv2-banner-bad" role="alert"><span>Could not read every client.</span><button type="button" onClick={refresh}>Retry</button></div>}
-    <ReviewDesk week={nowModel} total={allNow} read={stackRead} show={show} setShow={setShow} now={now} openId={draft} focusId={q.get('focus') ?? (q.get('idea') ? reviewLanding(rows, qLane, q.get('idea')!) : null)}
+    <ReviewDesk week={nowModel} total={allNow} read={stackRead} show={seat} setShow={pickSeat} now={now} openId={draft} focusId={q.get('focus') ?? (q.get('idea') ? reviewLanding(steady.rows, qLane, q.get('idea')!) : null)}
       onOpen={openDraft} onEdit={(id, lane) => go({ ...context(), draft: id, lane, edit: '1' }, 'now')} onChanged={refresh}
-      firstDay={days[0].key} seatRows={l => rows.filter(r => laneOfRow(r) === l)} rows={rows} armed={data.armed} armedFailed={data.armedFailed} />
+      firstDay={days[0].key} seatRows={l => rows.filter(r => laneOfRow(r) === l)} rows={steady.rows} armed={data.armed} armedFailed={data.armedFailed} held={steady.held} />
   </>
   let body: React.ReactNode
   // Brief 4 sub-tabs sit in the page's one scrolling column (the 24 edge), like Review and Calendar.

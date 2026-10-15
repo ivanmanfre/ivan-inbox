@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { pictureEditable, type ContentDraft } from '../../../lib/content'
 import { sourceOf } from '../../../lib/brainPage'
 import { reasonLabel } from '../../../lib/verdicts'
@@ -15,32 +15,42 @@ import { SourceCol, useSources } from '../ContentBrain'
 import { undoDecision, usePendingDecisions } from '../decisions'
 import { EarlyReadChip } from '../EarlyReadChip'
 import { MovePanel } from '../MovePanel'
-import { LANE_NAME, OWNER, POSS, age, dayLabel, nextFreeWeekday, ptOf, splitTitleTag, titleOf, type Lane, type Slot } from '../model'
+import { LANES, OWNER, POSS, age, dayLabel, nextFreeWeekday, ptOf, splitTitleTag, type Lane, type Slot } from '../model'
 import { PictureRow } from '../PictureRow'
 import { useRowVerbs } from '../rowVerbs'
 import { useEarlyReads } from '../useEarlyReads'
 import type { WeekRead } from '../useWeek'
 import { forgetVerdict, giveReason, markShown, retryVerdict, undoVerdict, useJudged, VERDICT_HOLD_MS, type Judged } from '../verdictStore'
 import { useWeekVerbs } from '../weekVerbs'
-import { awaitsReview, reviewCounts, SHOWS, type Show, type Week, type WeekCard } from '../weekModel'
+import { awaitsReview, reviewCounts, type Week, type WeekCard } from '../weekModel'
 import { useReviewMotion } from './motion'
 import { clientHoldOf } from '../../../lib/clientBoardState'
 import { LinkedInCard } from './LinkedInCard'
 import { picRepeats, type Repeat } from './picRepeat'
+import { sourceTag, type SourceTagView } from './sourceTag'
 import { Answer, Menu, Pill, SeatAv, Seg, useDeferred, type MenuItem, type Tone } from './ui'
+import { DIcon } from '../../ui/icons'
+import './review-list.css'
 
-// CONTENT > REVIEW, THE ONE DESK (Brief 4, SPEC-content §2.2; upgrades #1, #3, #5).
-// Every draft decision happens here: a 2-up grid of the posts as LinkedIn will
-// show them (hook and picture together), the top 6 then a fold, two-tap Drop
-// with the reason as the commit, the picture fixable on the card with a repeat
-// warning, the seat's next step once a verdict is saved, and keys for all of it.
-// Writes are today's functions, unchanged: useWeekVerbs (Approve held 8 s, board
-// and schedule confirmed), verdictStore.judge + giveReason (held 5 s),
-// useRowVerbs (Skip held 8 s), PictureRow.write (Undo), MovePanel (stored-day
-// receipt). Arch edits like the other lanes since its publisher waits for Davorin's approval (2026-10-08).
+// CONTENT > REVIEW, THE ONE DESK. One seat at a time (Ivan 2026-10-15: "I will see it per client always"),
+// every draft to decide as ONE ROW: where it came from first (the source tag), the hook, its tags, age and
+// status, the keys at the row's end. The detail panel stays for the open one; `o` or the chevron opens the
+// LinkedIn preview and the picture controls in place.
+//
+// THE COUNTS ARE ONE SET. The seat tab, the heading and the open post's "N of M" are the same list:
+// deskModel(week).decide, the drafts awaitsReview() counts (reviewCounts), in the order they are drawn.
+// Decided cards still waiting for a date and the drafts that need a fix sit under the list, each with its
+// own count, never inside the to-decide number.
+//
+// Writes are today's functions, unchanged: useWeekVerbs (Approve held 8 s, board and schedule confirmed),
+// verdictStore.judge + giveReason (held 5 s), useRowVerbs (Skip held 8 s), PictureRow.write (Undo),
+// MovePanel (stored-day receipt).
 
-const SEAT_WORD: Record<Show, string> = { all: 'All', ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch', swishdm: 'SwishDM' }
-const FIRST = 6
+/** The desk's seats, in tab order. There is no "All" seat. */
+export const DESK_SEATS: readonly Lane[] = LANES
+const SEAT_WORD: Record<Lane, string> = { ivan: 'Ivan', risedtc: 'Rise', arch: 'Arch', swishdm: 'SwishDM' }
+/** A remembered or linked seat; anything else ('all', a retired value, nothing) opens on Ivan. */
+export const deskSeatOf = (v: unknown): Lane => (DESK_SEATS as readonly unknown[]).includes(v) ? v as Lane : 'ivan'
 
 /** The drop reasons, in the order he drops for (SPEC §2.2): every slug is one cb39_verdict_set already takes. */
 export const DESK_REASONS: readonly (readonly [string, string, string])[] = [
@@ -52,8 +62,6 @@ export const DESK_REASONS: readonly (readonly [string, string, string])[] = [
   ['wrong_topic', 'Wrong topic', '6'],
   ['other', 'Other', '0'],
 ]
-
-type Quick = 'decide' | 'noimg'
 
 /** The card's one status pill (SPEC §2.3 table). */
 export function pillOf(c: WeekCard): { tone: Tone; text: string } {
@@ -78,19 +86,53 @@ export function nextOf(c: WeekCard): Next | null {
   return c.kept ? 'date' : null
 }
 
+const createdMs = (c: WeekCard) => Date.parse(c.r.created_at) || 0
+// Dated drafts first (soonest first), then the newest. One order for the list, its keys and the open post's j/k.
+const deskOrder = (a: WeekCard, b: WeekCard) => {
+  const x = a.r.scheduled_at, y = b.r.scheduled_at
+  if (x && !y) return -1
+  if (!x && y) return 1
+  if (x && y && x !== y) return x < y ? -1 : 1
+  return createdMs(b) - createdMs(a) || (a.r.id < b.r.id ? -1 : a.r.id > b.r.id ? 1 : 0)
+}
+
+export type DeskModel = {
+  /** Every row of the to-decide list in drawn order: the counted drafts plus any open verdict strip in its place. */
+  decide: WeekCard[]
+  /** Decided, the seat's next step still open (a date, the board). Not counted as to decide. */
+  waiting: WeekCard[]
+  /** Errors and posts that did not go out; `pinned` are the misses of the last 48 h, shown open. */
+  fix: WeekCard[]
+  pinned: WeekCard[]
+  /** The ids the seat tab counts, in drawn order: the open post walks exactly these. */
+  queue: string[]
+}
+
+/** Pure: the desk's sections from a seat's week (buildNow with `show` set). */
+export function deskModel(week: Week, now: number): DeskModel {
+  const fixGroup = week.groups.find(g => g.key === 'fix')?.cards ?? []
+  const drafts = week.groups.find(g => g.key === 'drafts')?.cards ?? []
+  const all = [...fixGroup, ...drafts]
+  const decide = all.filter(c => c.strip || awaitsReview(c)).sort(deskOrder)
+  const waiting = drafts.filter(c => !c.strip && !awaitsReview(c)).sort(deskOrder)
+  const fix = fixGroup.filter(c => !c.strip && !awaitsReview(c))
+  const pinned = fix.filter(c => c.flags.some(f => f.key === 'stuck') && !!c.r.scheduled_at && now - Date.parse(c.r.scheduled_at) < 2 * 86_400_000)
+  return { decide, waiting, fix, pinned, queue: decide.filter(c => awaitsReview(c)).map(c => c.r.id) }
+}
+
 const slotWord = (s: Slot) => `${warsawDow(s.at)} ${warsawDm(s.at).split(' ')[0]} · ${warsawHm(s.at)}`
 
-export function ReviewDesk({ week, total, read, show, setShow, now, openId, focusId, onOpen, onEdit, onChanged, firstDay, seatRows, rows, armed, armedFailed }: {
-  /** The desk's cards (buildNow, this seat filter). */
+export function ReviewDesk({ week, total, read, show, setShow, now, openId, focusId, onOpen, onEdit, onChanged, firstDay, seatRows, rows, armed, armedFailed, held }: {
+  /** The desk's cards (buildNow for this seat). */
   week: Week
-  /** Every seat's work (buildNow without the filter): the seat counts and the tab number. */
+  /** Every seat's work (buildNow without the filter): the seat counts. */
   total: Week
   read: WeekRead
-  show: Show
-  setShow: (s: Show) => void
+  show: Lane
+  setShow: (s: Lane) => void
   now: number
   openId: string | null
-  /** A card to land on (Content Brain's "Up next"). */
+  /** A card to land on (Content Brain's "Up next", an idea's draft). */
   focusId: string | null
   onOpen: (id: string, lane: Lane) => void
   /** Details with the editor open. */
@@ -102,77 +144,79 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   rows: ContentDraft[]
   armed: Set<string> | null
   armedFailed: boolean
+  /** Brain drafts held in place while a refresh re-reads them (steadyRows). */
+  held?: ReadonlySet<string>
 }) {
   const toast = useToast()
   const judged = useJudged()
   const pending = usePendingDecisions()
   const [busy, setBusy] = useState<string | null>(null)
   const [moving, setMoving] = useState<WeekCard | null>(null)
-  const [all, setAll] = useState(false)
   const [fixOpen, setFixOpen] = useState(false)
-  const [quick, setQuick] = useState<Quick | null>(null)
+  const [waitOpen, setWaitOpen] = useState(false)
+  const [noimg, setNoimg] = useState(false)
   const [picking, setPicking] = useState<string | null>(null)
   const [focus, setFocus] = useState<string | null>(focusId)
   const [more, setMore] = useState<ReadonlySet<string>>(() => new Set())
   const [keys, setKeys] = useState(false)
-  const grid = useRef<HTMLDivElement>(null)
-  useReviewMotion(grid)
+  const list = useRef<HTMLDivElement>(null)
+  useReviewMotion(list)
 
   const verbs = useWeekVerbs({ ids: week.ids, onChanged, onOpen, setBusy })
   const rowVerbs = useRowVerbs(onChanged)
   const slot = useMemo(() => (armed ? nextFreeWeekday(armed, now) : armedFailed ? nextFreeWeekday(new Set(), now) : null), [armed, armedFailed, now])
 
-  const fixGroup = week.groups.find(g => g.key === 'fix')?.cards ?? []
-  const drafts = week.groups.find(g => g.key === 'drafts')?.cards ?? []
-  // A post dated today or earlier that did not go out stays pinned on top; the rest of "Needs a fix" folds into its banner.
-  // Only a recent miss (dated in the last 48 h) is pinned: a 12-day-old miss is history, it folds with the rest.
-  const pinned = fixGroup.filter(c => c.flags.some(f => f.key === 'stuck') && !!c.r.scheduled_at && now - Date.parse(c.r.scheduled_at) < 2 * 86_400_000)
-  const folded = fixGroup.filter(c => !pinned.includes(c))
-  const qf = (c: WeekCard) => quick === 'decide' ? c.judge || c.primary !== 'open' : quick === 'noimg' ? c.flags.some(f => f.key === 'noimg') : true
-  const stream = [...pinned, ...drafts].filter(c => c.strip || qf(c))
-  const shown = all ? stream : stream.slice(0, FIRST)
-  const work = week.groups.flatMap(g => g.cards).filter(awaitsReview)
-  const summaryWork = quick === 'noimg' ? stream.filter(awaitsReview) : work
-  const qn = { decide: work.length, noimg: work.filter(c => c.flags.some(f => f.key === 'noimg')).length }
-  const inList = new Set([...fixGroup, ...drafts].map(c => c.r.id))
-  const orphans = [...judged.values()].filter(e => !e.collapsed && !inList.has(e.id) && (show === 'all' || show === e.lane)).sort((a, b) => a.at - b.at)
+  const desk = useMemo(() => deskModel(week, now), [week, now])
+  const hasNoImg = (c: WeekCard) => c.flags.some(f => f.key === 'noimg')
+  const work = desk.decide.filter(c => awaitsReview(c))
+  const stream = noimg ? desk.decide.filter(c => c.strip || hasNoImg(c)) : desk.decide
+  const noimgN = work.filter(hasNoImg).length
+  const inList = new Set([...desk.decide, ...desk.waiting, ...desk.fix].map(c => c.r.id))
+  const orphans = [...judged.values()].filter(e => !e.collapsed && !inList.has(e.id) && show === e.lane).sort((a, b) => a.at - b.at)
+  const folded = desk.fix.filter(c => !desk.pinned.includes(c))
 
-  const earlyReads = useEarlyReads([...shown, ...(fixOpen ? folded : [])].map(c => c.r))
-  const srcIds = useMemo(() => stream.slice(0, 60).map(c => c.r.id), [stream.map(c => c.r.id).join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
+  const shownCards = [...stream, ...desk.pinned, ...(waitOpen ? desk.waiting : []), ...(fixOpen ? folded : [])]
+  const earlyReads = useEarlyReads(shownCards.map(c => c.r))
+  const srcKey = stream.slice(0, 60).map(c => c.r.id).join(',')
+  const srcIds = useMemo(() => (srcKey ? srcKey.split(',') : []), [srcKey])
   const sources = useSources(srcIds)
   const repeats = useMemo(() => picRepeats(rows), [rows])
-  const created = summaryWork.map(c => Date.parse(c.r.created_at)).filter(Number.isFinite)
+  const summary = noimg ? work.filter(hasNoImg) : work
+  const created = summary.map(createdMs).filter(t => t > 0)
   const loading = read.source === 'none' && !read.settled
   const ghosts = useDeferred(loading)
 
+  const waitIds = desk.waiting.map(c => c.r.id).join(',')
+  const foldIds = folded.map(c => c.r.id).join(',')
   useLayoutEffect(() => {
     if (!focusId) return
-    if (stream.findIndex(c => c.r.id === focusId) >= FIRST) setAll(true)
     if (folded.some(c => c.r.id === focusId)) setFixOpen(true)
-  }, [focusId, stream.map(c => c.r.id).join(','), folded.map(c => c.r.id).join(',')])
+    if (desk.waiting.some(c => c.r.id === focusId)) setWaitOpen(true)
+  }, [focusId, waitIds, foldIds]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Focus lands on the first card, or on the card Content Brain sent.
-  const cardIds = useMemo(() => [...shown, ...(fixOpen ? folded : [])].filter(c => !c.strip).map(c => c.r.id), [shown, fixOpen, folded])
+  // Focus lands on the first row, or on the row Content Brain sent.
+  const rowIds = useMemo(() => shownCards.filter(c => !c.strip).map(c => c.r.id), [shownCards.map(c => `${c.r.id}:${c.strip}`).join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (focus && (cardIds.includes(focus) || !cardIds.length)) return
-    setFocus(cardIds[0] ?? null)
-  }, [cardIds, focus])
+    if (focus && (rowIds.includes(focus) || !rowIds.length)) return
+    setFocus(rowIds[0] ?? null)
+  }, [rowIds, focus])
   useEffect(() => {
     if (!focusId) return
     setFocus(focusId)
     requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-card-id="${focusId}"]`)?.scrollIntoView?.({ block: 'center' }))
-  }, [focusId, cardIds.join(','), fixOpen])
+  }, [focusId, rowIds.join(','), fixOpen, waitOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const cardOf = useCallback((id: string | null) => stream.find(c => c.r.id === id) ?? null, [stream])
+  const cardOf = (id: string | null) => shownCards.find(c => c.r.id === id) ?? null
   const moveFocus = (dir: 1 | -1) => {
-    const list = Array.from(grid.current?.querySelectorAll<HTMLElement>('article[data-card-id]') ?? [])
-    if (!list.length) return
-    const i = list.findIndex(el => el.dataset.cardId === focus)
-    const next = list[Math.min(list.length - 1, Math.max(0, i < 0 ? 0 : i + dir))]
+    const els = Array.from(document.querySelectorAll<HTMLElement>('.cv2-review article[data-card-id]'))
+    if (!els.length) return
+    const i = els.findIndex(el => el.dataset.cardId === focus)
+    const next = els[Math.min(els.length - 1, Math.max(0, i < 0 ? 0 : i + dir))]
     setFocus(next.dataset.cardId ?? null)
     next.focus({ preventScroll: true })
     next.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
   }
+  const toggleMore = (id: string, v?: boolean) => setMore(m => { const n = new Set(m); if (v ?? !n.has(id)) n.add(id); else n.delete(id); return n })
 
   const approveCard = (c: WeekCard) => {
     if (c.judge) void verbs.judgeIt(c, 'keep')
@@ -205,40 +249,39 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
       else if (e.key === 'k') { e.preventDefault(); moveFocus(-1) }
       else if (e.key === '?') { e.preventDefault(); setKeys(true) }
       else if (e.key === 'z') {
-        const held = [...judged.values()].filter(x => x.phase === 'held').sort((a, b) => b.at - a.at)[0]
-        if (held) { e.preventDefault(); undoVerdict(held.id); return }
+        const heldV = [...judged.values()].filter(x => x.phase === 'held').sort((a, b) => b.at - a.at)[0]
+        if (heldV) { e.preventDefault(); undoVerdict(heldV.id); return }
         const last = [...pending.keys()].pop()
         if (last && undoDecision(last)) { e.preventDefault(); toast.show({ id: `decide-${last}`, message: 'Undone. Nothing was written.' }) }
       }
       else if (!c) return
       else if (e.key === 'a') { e.preventDefault(); approveCard(c) }
       else if (e.key === 'd' && c.judge) { e.preventDefault(); setPicking(c.r.id) }
-      else if (e.key === 'e' && c.lane !== 'arch') { e.preventDefault(); onEdit(c.r.id, c.lane) }
+      else if (e.key === 'e') { e.preventDefault(); onEdit(c.r.id, c.lane) }
       else if (e.key === 'Enter' && !(el && /^(BUTTON|A|SUMMARY)$/.test(el.tagName))) { e.preventDefault(); onOpen(c.r.id, c.lane) }
-      else if (e.key === 'o') { e.preventDefault(); setMore(m => { const n = new Set(m); if (n.has(c.r.id)) n.delete(c.r.id); else n.add(c.r.id); return n }) }
+      else if (e.key === 'o') { e.preventDefault(); toggleMore(c.r.id) }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   })
 
   const counts = reviewCounts(total)
-  const seatCount = (s: Show) => counts[s]
-  const who = show === 'all' ? '' : show === 'ivan' ? 'Ivan’s ' : `${OWNER[show]}’s `
-  const n = summaryWork.length
-  const fixBy = (['risedtc', 'arch', 'ivan'] as Lane[]).map(l => [l, folded.filter(c => c.lane === l).length] as const).filter(([, k]) => k > 0)
-  const oldestFix = folded.length ? Math.max(...folded.map(c => now - Date.parse(c.r.created_at))) : 0
-  const sync = read.memberReadState && read.memberReadState !== 'idle'
-    ? (read.memberReadState === 'pending' ? 'Checking brain draft visibility.' : read.memberReadState === 'failed' ? 'Brain drafts are hidden until visibility can be verified.' : 'Brain draft visibility checked.')
+  const who = show === 'ivan' ? 'Ivan’s ' : `${OWNER[show]}’s `
+  const n = summary.length
+  const oldestFix = folded.length ? Math.max(...folded.map(c => now - createdMs(c))) : 0
+  // Routine member rechecks run every few seconds; saying so each time made the heading flicker too. Only a
+  // failed check (brain drafts hidden) and a saved copy on screen are worth a word.
+  const sync = read.memberReadState === 'failed' ? 'Brain drafts are hidden until visibility can be verified.'
     : read.source === 'cache' && !read.error ? `saved copy ${read.at ? warsawHm(read.at) : ''}, refreshing` : null
 
-  const renderCard = (c: WeekCard, i: number) => {
+  const renderRow = (c: WeekCard, i: number) => {
     const e = c.strip ? judged.get(c.r.id) : undefined
     if (e) return <DeskStrip key={c.r.id} e={e} c={c} i={i} slot={slot} busy={busy === c.r.id} verbs={verbs} onDate={() => setMoving(c)} />
     return (
-      <ReviewCard key={c.r.id} c={c} i={i} now={now} focused={c.r.id === focus} open={c.r.id === openId} busy={busy === c.r.id}
+      <ReviewRow key={c.r.id} c={c} i={i} now={now} focused={c.r.id === focus} open={c.r.id === openId} busy={busy === c.r.id} held={!!held?.has(c.r.id)}
         read={earlyReads.get(c.r.id)} repeat={repeats.get(c.r.id)} slot={slot}
         src={sourceOf(c.r, sources.map.get(c.r.id))} srcLoading={!sources.map.has(c.r.id) && sources.pending}
-        more={more.has(c.r.id)} setMore={v => setMore(m => { const nx = new Set(m); if (v) nx.add(c.r.id); else nx.delete(c.r.id); return nx })}
+        more={more.has(c.r.id)} setMore={v => toggleMore(c.r.id, v)}
         picking={picking === c.r.id} setPicking={v => setPicking(v ? c.r.id : null)}
         onFocus={() => setFocus(c.r.id)}
         onOpen={() => onOpen(c.r.id, c.lane)} onEdit={() => onEdit(c.r.id, c.lane)}
@@ -248,16 +291,28 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
         onChanged={onChanged} />
     )
   }
+  const fixRow = (c: WeekCard) => {
+    const tag = sourceTag(c.r, OWNER[c.lane])
+    return (
+      <article key={c.r.id} className="cv2-fixrow" data-card-id={c.r.id} data-lane={c.lane} tabIndex={c.r.id === focus ? 0 : -1} aria-current={c.r.id === focus ? 'true' : undefined} onFocus={() => setFocus(c.r.id)}>
+        <SourceChip tag={tag} />
+        <span className="cv2-fixt"><b>{splitTitleTag(c.title).text}</b><small>{[...c.flags.filter(f => f.tone === 'warn').map(f => f.text), `created ${age(c.r.created_at, now)} ago`].join(' · ')}</small></span>
+        {c.lane !== 'arch' && <ConfirmProvider><RetryDraft d={c.r} lane={c.lane} onDone={onChanged} label="Fix" /></ConfirmProvider>}
+        <button type="button" className="cv2-k" data-verb="card-open" onClick={() => onOpen(c.r.id, c.lane)}>Open</button>
+      </article>
+    )
+  }
 
   return (
     <section className="cv2 cv2-review" aria-label="Review" data-cv2="review">
       <div className="cv2-bar">
-        <Seg label="Seat" verb="show" value={show} onChange={id => setShow(id as Show)}
-          options={SHOWS.map(s => ({ id: s, label: s === 'all' ? 'All' : <><SeatAv lane={s} />{SEAT_WORD[s]}</>, count: loading ? '…' : seatCount(s) }))} />
-        <div className="cv2-quick" role="group" aria-label="Filter the desk">
-          <button type="button" aria-pressed={quick === 'decide'} data-verb="quick-decide" onClick={() => setQuick(q => q === 'decide' ? null : 'decide')}>To decide<b className="cv2-n">{qn.decide}</b></button>
-          {qn.noimg > 0 && <button type="button" aria-pressed={quick === 'noimg'} data-verb="quick-noimg" onClick={() => setQuick(q => q === 'noimg' ? null : 'noimg')}>No image<b className="cv2-n">{qn.noimg}</b></button>}
-        </div>
+        <Seg label="Seat" verb="show" value={show} onChange={id => setShow(id as Lane)}
+          options={DESK_SEATS.map(s => ({ id: s, label: <><SeatAv lane={s} />{SEAT_WORD[s]}</>, count: loading ? '…' : counts[s] }))} />
+        {(noimgN > 0 || noimg) && (
+          <div className="cv2-quick" role="group" aria-label="Filter the list">
+            <button type="button" aria-pressed={noimg} data-verb="quick-noimg" onClick={() => setNoimg(v => !v)}>No image<b className="cv2-n">{noimgN}</b></button>
+          </div>
+        )}
         <span className="cv2-grow" />
         <button type="button" className="cv2-keyhint" aria-label="Keyboard shortcuts" data-verb="desk-keys" onClick={() => setKeys(true)}>
           Keys <kbd>?</kbd>
@@ -265,50 +320,49 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
       </div>
 
       <Answer tail={sync ? ` · ${sync}` : null}>
-        {loading ? 'Reading the drafts…' : n === 0 ? `Nothing of ${who || 'yours '}waits for review.`
-          : <>{n} {who}draft{n === 1 ? '' : 's'} to decide.{created.length > 0 && <> Newest {age(new Date(Math.max(...created)).toISOString(), now)}, oldest {ageWords(now - Math.min(...created))}.</>}</>}
+        {loading ? 'Reading the drafts…' : n === 0 ? (noimg ? 'No draft to decide is missing an image.' : `Nothing of ${who}waits for review.`)
+          : <>{n} {noimg ? `of ${work.length} ` : ''}{who}draft{n === 1 && !noimg ? '' : 's'} to decide{noimg ? ' have no image' : ''}.{created.length > 0 && <> Newest {age(new Date(Math.max(...created)).toISOString(), now)}, oldest {ageWords(now - Math.min(...created))}.</>}</>}
       </Answer>
       {read.source !== 'none' && read.error && (
         <div className="cv2-banner cv2-banner-bad" role="alert"><span>Could not refresh: {read.error}</span><button type="button" onClick={read.refresh}>Retry</button></div>
       )}
       {read.capped != null && <p className="cv2-note" role="status">Showing the newest 1,000 of {read.capped.toLocaleString('en-US')} rows.</p>}
 
-      {folded.length > 0 && !quick && (
-        <section className="cv2-fix" aria-label="Needs a fix">
-          <button type="button" className="cv2-banner cv2-banner-warn" aria-expanded={fixOpen} data-verb="fix-fold" onClick={() => setFixOpen(o => !o)}>
-            <span className="cv2-ico" aria-hidden="true">!</span>
-            <span><b>{folded.length} need{folded.length === 1 ? 's' : ''} a fix</b> · {fixBy.map(([l, k]) => `${LANE_NAME[l]} ${k}`).join(', ')} · oldest {ageWords(oldestFix)}</span>
-            <span className="cv2-grow" /><span className="cv2-fold-word">{fixOpen ? 'Hide' : 'Show'}</span>
-          </button>
-          {fixOpen && <div className="cv2-fixlist">{folded.map(c => (
-            <article key={c.r.id} className="cv2-fixrow" data-card-id={c.r.id} data-lane={c.lane} aria-current={c.r.id === focus ? 'true' : undefined}>
-              <SeatAv lane={c.lane} />
-              <span className="cv2-fixt"><b>{splitTitleTag(c.title).text}</b><small>{c.flags.filter(f => f.tone === 'warn').map(f => f.text).join(' · ')} · created {age(c.r.created_at, now)} ago</small></span>
-              {c.lane !== 'arch' && <ConfirmProvider><RetryDraft d={c.r} lane={c.lane} onDone={onChanged} label="Fix" /></ConfirmProvider>}
-              <button type="button" className="cv2-k" data-verb="card-open" onClick={() => onOpen(c.r.id, c.lane)}>Open</button>
-            </article>
-          ))}</div>}
-        </section>
-      )}
+      {desk.pinned.length > 0 && <div className="cv2-fixlist cv2-fixlist-pinned" aria-label="Did not go out">{desk.pinned.map(fixRow)}</div>}
 
       {ghosts && loading ? (
-        <div className="cv2-grid" aria-busy="true" aria-label="Reading the drafts">{[0, 1].map(i => <div key={i} className="cv2-ghost" />)}</div>
+        <div className="cv2-list" aria-busy="true" aria-label="Reading the drafts">{[0, 1, 2, 3, 4].map(i => <div key={i} className="cv2-row-ghost" />)}</div>
       ) : read.source === 'none' && read.error ? <Failed what="the drafts" detail={read.error} onRetry={read.refresh} />
         : !loading && stream.length === 0 && orphans.length === 0 ? (
           <div className="cv2-empty">
-            <b>{quick ? 'Nothing matches this filter.' : `Nothing of ${who || 'yours '}waits for review.`}</b>
-            <span><a href={dHash('content', 'ideas', show !== 'all' ? { lane: show } : {})}>Ideas →</a><a href={dHash('content', 'calendar')}>Calendar →</a></span>
+            <b>{noimg ? 'Nothing matches this filter.' : `Nothing of ${who}waits for review.`}</b>
+            <span><a href={dHash('content', 'ideas', { lane: show })}>Ideas →</a><a href={dHash('content', 'calendar')}>Calendar →</a></span>
           </div>
         ) : (
-          <div ref={grid} className="cv2-grid" role="list" aria-label="Drafts to decide">
+          <div ref={list} className="cv2-list" role="list" aria-label="Drafts to decide">
             {orphans.map((e, i) => <DeskStrip key={e.id} e={e} i={i} slot={slot} busy={false} verbs={verbs} />)}
-            {shown.map((c, i) => renderCard(c, i + orphans.length))}
+            {stream.map((c, i) => renderRow(c, i + orphans.length))}
           </div>
         )}
-      {stream.length > FIRST && (
-        <button type="button" className="cv2-showmore" data-verb="desk-show-more" aria-expanded={all} onClick={() => setAll(a => !a)}>
-          {all ? `Show the top ${FIRST}` : `Show ${stream.length - FIRST} more`}
-        </button>
+
+      {desk.waiting.length > 0 && !noimg && (
+        <section className="cv2-fold" aria-label="Approved, next step waiting">
+          <button type="button" className="cv2-fold-h" aria-expanded={waitOpen} data-verb="wait-fold" onClick={() => setWaitOpen(o => !o)}>
+            <i aria-hidden="true">{waitOpen ? '▾' : '▸'}</i><b>{desk.waiting.length} approved</b><span>{show === 'ivan' ? 'waiting for a date' : 'waiting for the next step'}</span>
+          </button>
+          {waitOpen && <div className="cv2-list" role="list" aria-label="Approved, next step waiting">{desk.waiting.map((c, i) => renderRow(c, i))}</div>}
+        </section>
+      )}
+
+      {folded.length > 0 && !noimg && (
+        <section className="cv2-fix" aria-label="Needs a fix">
+          <button type="button" className="cv2-banner cv2-banner-warn" aria-expanded={fixOpen} data-verb="fix-fold" onClick={() => setFixOpen(o => !o)}>
+            <span className="cv2-ico" aria-hidden="true">!</span>
+            <span><b>{folded.length} need{folded.length === 1 ? 's' : ''} a fix</b> · not counted above · oldest {ageWords(oldestFix)}</span>
+            <span className="cv2-grow" /><span className="cv2-fold-word">{fixOpen ? 'Hide' : 'Show'}</span>
+          </button>
+          {fixOpen && <div className="cv2-fixlist">{folded.map(fixRow)}</div>}
+        </section>
       )}
 
       {moving && (
@@ -317,8 +371,8 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
       )}
       <Sheet open={keys} onClose={() => setKeys(false)} title="Review keys" className="cv2-keys-sheet">
         <dl className="cv2-keys">
-          {[['j / k', 'Next / previous card'], ['a', 'Approve the focused card'], ['d', 'Drop: pick the reason'], ['1-6, 0', 'The reason (it commits the drop) / Other'],
-            ['e', 'Open the post with the editor'], ['Enter', 'Open the post'], ['o', 'See more / less'], ['z', 'Undo the newest held verdict'], ['Esc', 'Close the reasons or the post'], ['?', 'This sheet']]
+          {[['j / k', 'Next / previous draft'], ['a', 'Approve the focused draft'], ['d', 'Drop: pick the reason'], ['1-6, 0', 'The reason (it commits the drop) / Other'],
+            ['e', 'Open the post with the editor'], ['Enter', 'Open the post'], ['o', 'Preview in place'], ['z', 'Undo the newest held verdict'], ['Esc', 'Close the reasons or the post'], ['?', 'This sheet']]
             .map(([k, d]) => <div key={k}><dt><kbd>{k}</kbd></dt><dd>{d}</dd></div>)}
         </dl>
       </Sheet>
@@ -340,8 +394,30 @@ function whenOf(c: WeekCard, now: number): string {
   return `${dayLabel(warsawDay(at)).replace(/ \w+$/, '')}, ${hm}`
 }
 
-function ReviewCard({ c, i, now, focused, open, busy, read, repeat, slot, src, srcLoading, more, setMore, picking, setPicking, onFocus, onOpen, onEdit, onApprove, onDrop, onSkip, onBoard, onSchedule, onDate, onChanged }: {
-  c: WeekCard; i: number; now: number; focused: boolean; open: boolean; busy: boolean
+/** The source tag: the first thing on every row. */
+export function SourceChip({ tag }: { tag: SourceTagView }) {
+  return <span className={`cv2-srctag cv2-srctag-${tag.key}`} title={`Source: ${tag.title}`} data-source={tag.key}>{tag.label}</span>
+}
+
+const QA_WORD: Record<string, string> = { QA_FAILED_HAND_REVIEW: 'Hand review', FAIL: 'QA fail', REVIEW: 'QA review' }
+/** "Hand review · QA 64", not the flag's raw "QA qa failed hand review 64". */
+function qaWord(r: ContentDraft): string {
+  const v = (r.qa_verdict ?? '').trim()
+  const n = r.qa_score ? Math.round(Number(r.qa_score)) || r.qa_score : ''
+  const word = QA_WORD[v.toUpperCase()] ?? (v ? v.toLowerCase().replace(/_/g, ' ').replace(/^qa /, '') : 'QA')
+  return n !== '' ? `${word[0].toUpperCase()}${word.slice(1)} · QA ${n}` : word
+}
+
+const norm = (x: string) => x.replace(/[^\p{L}\p{N}]+/gu, ' ').trim().toLowerCase()
+/** The first body line under the hook that is not the hook again, for the row's second line. */
+export function snippetOf(c: Pick<WeekCard, 'body' | 'title'>): string {
+  const t = norm(c.title)
+  const line = c.body.split('\n').map(l => l.trim()).find(l => l && !(t && norm(l).startsWith(t))) ?? ''
+  return line.length > 220 ? `${line.slice(0, 218)}…` : line
+}
+
+function ReviewRow({ c, i, now, focused, open, busy, held, read, repeat, slot, src, srcLoading, more, setMore, picking, setPicking, onFocus, onOpen, onEdit, onApprove, onDrop, onSkip, onBoard, onSchedule, onDate, onChanged }: {
+  c: WeekCard; i: number; now: number; focused: boolean; open: boolean; busy: boolean; held: boolean
   read?: PatternRead; repeat?: Repeat; slot: Slot | null
   src: ReturnType<typeof sourceOf>; srcLoading: boolean
   more: boolean; setMore: (v: boolean) => void
@@ -352,10 +428,9 @@ function ReviewCard({ c, i, now, focused, open, busy, read, repeat, slot, src, s
 }) {
   const ref = useRef<HTMLElement>(null)
   const [pic, setPic] = useState<string[] | undefined>(undefined)
-  const [srcOpen, setSrcOpen] = useState(false)
   const id = c.r.id
   const judgeable = c.judge
-  // Time to verdict starts when a card to judge is first half on screen (once per draft), as on today's stack.
+  // Time to verdict starts when a draft to judge is first on screen (once per draft), as on the stack.
   useEffect(() => {
     if (!judgeable) return
     const el = ref.current
@@ -370,73 +445,87 @@ function ReviewCard({ c, i, now, focused, open, busy, read, repeat, slot, src, s
   const hold = c.lane === 'ivan' ? null : clientHoldOf(c.r, OWNER[c.lane])
   const pill = hold ? { tone: (hold.kind === 'removed' ? 'bad' : 'warn') as Tone, text: hold.text } : pillOf(c)
   const qa = c.flags.find(f => f.key === 'qa' && f.tone === 'warn')
-  const tag = splitTitleTag(titleOf(c.r)).tag
+  const kindFlag = c.flags.find(f => f.key === 'kind')
+  const noImg = c.flags.find(f => f.key === 'noimg')
+  const title = c.title
+  const tag = sourceTag(c.r, OWNER[c.lane])
   const next = nextOf(c)
-  const editable = true
-  const menu: MenuItem[] = [
-    { key: 'open', label: 'Open post', run: onOpen },
-    ...(c.canDate ? [{ key: 'date', label: c.r.scheduled_at ? 'Move date' : 'Add a date', run: onDate }] : []),
-    ...(editable ? [{ key: 'edit', label: 'Edit', run: onEdit }] : []),
-  ]
-  const head = <>{tag && <span>Source tag: {tag}</span>}</>
   const body = (c.r.post_body ?? '').trim() || c.title
   const editablePic = pictureEditable(c.r, c.lane)
-  const kind = c.r.type === 'carousel' ? `Carousel · ${(Array.isArray(c.r.image_urls) ? c.r.image_urls.length : 0) || '?'} slides` : c.r.type === 'video' ? 'Video' : null
+  const snippet = snippetOf(c)
+  const boardWord = `Put on ${POSS[c.lane]} board`
 
-  let keys: React.ReactNode
-  if (picking) keys = <ReasonPicker lane={c.lane} onPick={onDrop} onCancel={() => setPicking(false)} />
-  else {
-    const primary = c.judge ? <button type="button" className="cv2-k cv2-k-p" data-key-safe data-verb="card-keep" disabled={busy} onClick={onApprove}>Approve</button>
-      : c.primary === 'approve' ? <button type="button" className="cv2-k cv2-k-p" data-key-safe data-verb="card-approve" disabled={busy} onClick={onApprove}>Approve</button>
-        : c.primary === 'board' || next === 'board' ? <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-board" disabled={busy} onClick={onBoard}>{busy ? 'Working…' : `Put on ${POSS[c.lane]} board`}</button>
-          : next === 'schedule' && (c.r.scheduled_at || slot) ? <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-schedule" disabled={busy} onClick={() => onSchedule(c.r.scheduled_at ? undefined : slot!.at)}>
-            {busy ? 'Working…' : c.r.scheduled_at ? `Schedule ${whenOf(c, now)}` : `Schedule ${slotWord(slot!)}`}</button>
-            : next === 'date' ? <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-date-it" disabled={busy} onClick={onDate}>Date it</button>
-              : null
-    keys = <>
-      {c.judge && <button type="button" className="cv2-k" data-verb="card-drop" disabled={busy} onClick={() => setPicking(true)}>Drop</button>}
-      {!c.judge && c.primary === 'approve' && <button type="button" className="cv2-k" data-verb="card-skip" disabled={busy} onClick={onSkip}>Skip</button>}
-      {editable && <button type="button" className="cv2-k" data-verb="card-edit" disabled={busy} onClick={onEdit}>Edit</button>}
-      {next === 'schedule' && !c.r.scheduled_at && <button type="button" className="cv2-k" data-verb="card-pick-day" disabled={busy} onClick={onDate}>Pick a day</button>}
-      <button type="button" className="cv2-k cv2-k-q" data-verb="card-open" onClick={onOpen}>Details</button>
-      <span className="cv2-grow" />
-      {primary}
-    </>
+  const menu: MenuItem[] = [
+    { key: 'open', label: 'Open post', run: onOpen },
+    { key: 'preview', label: more ? 'Hide preview' : 'Preview here', run: () => setMore(!more) },
+    { key: 'edit', label: 'Edit', run: onEdit },
+    ...(c.judge ? [{ key: 'drop', label: 'Drop…', run: () => setPicking(true), danger: true }] : []),
+    ...(!c.judge && c.primary === 'approve' ? [{ key: 'skip', label: 'Skip', run: onSkip }] : []),
+    ...(c.canDate ? [{ key: 'date', label: c.r.scheduled_at ? 'Move date' : 'Add a date', run: onDate }] : []),
+  ]
+
+  let primary: React.ReactNode = null
+  if (c.judge || c.primary === 'approve') primary = <button type="button" className="cv2-k cv2-k-p" data-key-safe data-verb={c.judge ? 'card-keep' : 'card-approve'} disabled={busy} onClick={onApprove}>Approve</button>
+  else if (c.primary === 'board' || next === 'board') primary = <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-board" disabled={busy} title={boardWord} onClick={onBoard}>{busy ? 'Working…' : <><span className="cv2-wide-only">{boardWord}</span><span className="cv2-narrow-only">Put on board</span></>}</button>
+  else if (next === 'schedule' && (c.r.scheduled_at || slot)) primary = <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-schedule" disabled={busy} onClick={() => onSchedule(c.r.scheduled_at ? undefined : slot!.at)}>
+    {busy ? 'Working…' : c.r.scheduled_at ? `Schedule ${whenOf(c, now)}` : `Schedule ${slotWord(slot!)}`}</button>
+  else if (next === 'date') primary = <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-date-it" disabled={busy} onClick={onDate}>Date it</button>
+
+  // A tap on the row opens the post; a tap on any control inside it does only that control.
+  const onRowClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button,a,input,textarea,select,label,[role="menu"],.cv2-row-more,.cv2-why')) return
+    onOpen()
   }
 
   return (
-    <article ref={ref} className={`cv2-rc${open ? ' cv2-rc-open' : ''}`} role="listitem" data-card-id={id} data-lane={c.lane} style={{ '--i': Math.min(i, 8) } as React.CSSProperties}
-      tabIndex={focused ? 0 : -1} aria-current={focused ? 'true' : undefined} aria-label={`${LANE_NAME[c.lane]} draft: ${splitTitleTag(c.title).text}`} onFocus={onFocus}>
-      <header className="cv2-rc-meta">
-        <SeatAv lane={c.lane} /><b>{LANE_NAME[c.lane]}</b>
-        <span className="cv2-dim">{whenOf(c, now)}</span>
-        {qa && <Pill tone="warn" title={qa.title}>{qa.text}</Pill>}
-        <span className="cv2-grow" />
-        {/* Only a real read earns header space; "unavailable" and "no read yet" live in Details. */}
-        {read?.state === 'ready' && <EarlyReadChip read={read} lane={c.lane} />}
-        <Pill tone={pill.tone} title={hold?.kind === 'changes' ? undefined : hold?.detail}>{pill.text}</Pill>
-        <Menu label="More for this draft" items={menu} head={tag || c.viewOnly ? head : undefined} />
-      </header>
-      <div className="cv2-rc-post" onClick={onOpen}>
-        <LinkedInCard lane={c.lane} body={body} images={pic ?? c.r.image_urls} type={c.r.type} open={more} onToggle={setMore} bare />
+    <article ref={ref} className={`cv2-row${open ? ' cv2-row-open' : ''}${more ? ' cv2-row-x' : ''}`} role="listitem" data-card-id={id} data-lane={c.lane} data-held={held || undefined}
+      style={{ '--i': Math.min(i, 10) } as React.CSSProperties}
+      tabIndex={focused ? 0 : -1} aria-current={focused ? 'true' : undefined} aria-label={`${tag.label}: ${title}`} onFocus={onFocus} onClick={onRowClick}>
+      <div className="cv2-row-main">
+        <SourceChip tag={tag} />
+        <div className="cv2-row-text">
+          <b className="cv2-row-t">{title}</b>
+          {snippet && <span className="cv2-row-sub">{snippet}</span>}
+        </div>
+        <div className="cv2-row-meta">
+          {kindFlag && <span className="cv2-tag">{kindFlag.text}</span>}
+          {/* Ivan's text-first drafts often have no picture yet (the selfie assigner adds one): only a client's missing picture is a tag. */}
+          {noImg?.tone === 'warn' && <span className="cv2-tag cv2-tag-warn">No image</span>}
+          {repeat && <span className="cv2-tag cv2-tag-warn" title="The same picture sits on another post of this seat within two weeks">Same picture</span>}
+          {qa && <Pill tone="warn" title={qa.title}>{qaWord(c.r)}</Pill>}
+          {read?.state === 'ready' && <EarlyReadChip read={read} lane={c.lane} />}
+          <span className="cv2-row-age" title={`Created ${age(c.r.created_at, now)} ago`}>{whenOf(c, now)}</span>
+          {/* Every row of the list needs review: only a different status earns a pill. */}
+          {pill.text !== 'Needs review' && <Pill tone={pill.tone} title={hold?.kind === 'changes' ? undefined : hold?.detail}>{pill.text}</Pill>}
+        </div>
+        <div className="cv2-row-keys">
+          {c.judge && <button type="button" className="cv2-k cv2-k-q" data-verb="card-drop" disabled={busy} onClick={() => setPicking(true)}>Drop</button>}
+          {!c.judge && c.primary === 'approve' && <button type="button" className="cv2-k cv2-k-q" data-verb="card-skip" disabled={busy} onClick={onSkip}>Skip</button>}
+          <button type="button" className="cv2-k cv2-k-q cv2-wide-only" data-verb="card-edit" disabled={busy} onClick={onEdit}>Edit</button>
+          {next === 'schedule' && !c.r.scheduled_at && <button type="button" className="cv2-k cv2-k-q cv2-wide-only" data-verb="card-pick-day" disabled={busy} onClick={onDate}>Pick a day</button>}
+          {primary}
+          <button type="button" className="cv2-chev" aria-expanded={more} aria-label={more ? 'Hide the preview' : 'Preview the post here'} data-verb="row-preview" onClick={() => setMore(!more)}>
+            <DIcon name="chevDown" />
+          </button>
+          <Menu label="More for this draft" items={menu} />
+        </div>
       </div>
-      <BrainDraftBadge draft={c.r} />
       {hold?.kind === 'changes' && hold.detail && <p className="cv2-ask" data-ask><b>{OWNER[c.lane]} on the panel:</b> “{hold.detail}”</p>}
       {hold && hold.kind !== 'changes' && hold.detail && <p className="cv2-ask cv2-ask-hold">{hold.detail}</p>}
-      <div className={`cv2-pic${editablePic ? '' : ' cv2-pic-ro'}`} data-repeat={repeat ? 'yes' : undefined}>
-        {editablePic ? <PictureRow d={c.r} lane={c.lane} onShow={setPic} onDone={onChanged} disabled={busy} />
-          : <span className="cv2-pic-line">{kind ?? (c.r.image_urls && Array.isArray(c.r.image_urls) && c.r.image_urls.length ? 'Picture' : 'Text only')}{kind === null && c.r.published_at ? ' · posted' : ''}</span>}
-        {repeat && <span className="cv2-rep" title="The same picture sits on another post of this seat within two weeks">Same picture {repeat.label}</span>}
-      </div>
-      {(src.author || src.result || src.kind) && (
-        <div className="cv2-src">
-          <button type="button" className="cv2-src-line" aria-expanded={srcOpen} data-verb="card-source" onClick={() => setSrcOpen(o => !o)}>
-            <span>{src.author ? `From ${src.author}` : src.kind}{src.result ? ` · ${src.result}` : ''}</span><i aria-hidden="true">{srcOpen ? '▾' : '▸'}</i>
-          </button>
-          {srcOpen && <SourceCol src={src} loading={srcLoading} />}
+      {picking && <div className="cv2-row-why"><ReasonPicker lane={c.lane} onPick={onDrop} onCancel={() => setPicking(false)} /></div>}
+      {more && (
+        <div className="cv2-row-more">
+          <div className="cv2-row-post">
+            <LinkedInCard lane={c.lane} body={body} images={pic ?? c.r.image_urls} type={c.r.type} bare open />
+          </div>
+          <div className="cv2-row-side">
+            {editablePic && <div className="cv2-pic" data-repeat={repeat ? 'yes' : undefined}><PictureRow d={c.r} lane={c.lane} onShow={setPic} onDone={onChanged} disabled={busy} /></div>}
+            <BrainDraftBadge draft={c.r} />
+            {(src.author || src.result || src.kind) && <div className="cv2-src"><SourceCol src={src} loading={srcLoading} /></div>}
+            <button type="button" className="cv2-k" data-verb="card-open" onClick={onOpen}>Open the post</button>
+          </div>
         </div>
       )}
-      <div className={`cv2-rc-keys${picking ? ' cv2-rc-why' : ''}`}>{keys}</div>
     </article>
   )
 }
@@ -468,7 +557,7 @@ function ReasonPicker({ lane, onPick, onCancel }: { lane: Lane; onPick: (slug: s
   )
 }
 
-/** The decided card: what was decided, the reason, Undo draining for 5 s, then the seat's next step once SAVED. */
+/** The decided row: what was decided, the reason, Undo draining for 5 s, then the seat's next step once SAVED. */
 function DeskStrip({ e, c, i, slot, busy, verbs, onDate }: {
   e: Judged; c?: WeekCard; i: number; slot: Slot | null; busy: boolean
   verbs: ReturnType<typeof useWeekVerbs>; onDate?: () => void
@@ -481,7 +570,7 @@ function DeskStrip({ e, c, i, slot, busy, verbs, onDate }: {
   // The seat's next step: never while the verdict is held or saving (a schedule must not race cb39_verdict_set).
   const saved = e.phase === 'saved' && keep && !!c
   return (
-    <article className={`cv2-strip cv2-strip-${e.verdict}${failed ? ' cv2-strip-bad' : ''}`} role="listitem" data-strip-id={e.id} data-phase={e.phase} style={{ '--i': Math.min(i, 8) } as React.CSSProperties}>
+    <article className={`cv2-strip cv2-strip-${e.verdict}${failed ? ' cv2-strip-bad' : ''}`} role="listitem" data-strip-id={e.id} data-phase={e.phase} style={{ '--i': Math.min(i, 10) } as React.CSSProperties}>
       <div className="cv2-strip-row" aria-live="polite">
         <span className="cv2-glyph" aria-hidden="true">{failed ? '!' : keep ? '✓' : '✕'}</span>
         <b>{word}</b>

@@ -57,6 +57,8 @@ export type ContentDraft = {
   id: string
   /** Membership comes from the guarded view, independent of mutable taxonomy. */
   cb34_p2_member?: boolean
+  /** source_detail.kind, projected on list reads (Review's source tag). */
+  source_kind?: string | null
   client_id: string | null
   status: string
   type: string | null
@@ -141,7 +143,7 @@ const COLS =
   'id, cb34_p2_member, client_id, status, type, title, topic, post_body, scheduled_at, published_at, ' +
   'source_post_id, image_urls, taxonomy, updated_at, created_at, board_visible, ' +
   'funnel_stage, qa_verdict:qa->>verdict, qa_score:qa->>score, ' +
-  'qa_regen:qa->>qa_regen_attempts, qa_backfilled:qa->>backfilled, source_label, source_ref, ' +
+  'qa_regen:qa->>qa_regen_attempts, qa_backfilled:qa->>backfilled, source_label, source_ref, source_kind:source_detail->>kind, ' +
   'log_agent:agent_log->-1->>agent, log_body:agent_log->-1->>body, log_ts:agent_log->-1->>ts'
 
 // ---------- lane scoping ----------
@@ -405,14 +407,16 @@ export async function fetchContentDrafts(lane: ContentLane): Promise<ContentPage
 // lane reads above pull up to 1,000 rows each, bodies included, before the
 // Review page can draw a card. This is the same columns and the same
 // operator-deleted rule over only the rows the week can show: everything in
-// review (any age, any seat) plus everything dated inside [from, to). Rows of
+// review (any age, any seat), every approved or errored draft (Review's "needs a fix" and
+// "approved, waiting" rows: without them its counts grew when the seat reads landed, 15 Oct),
+// plus everything dated inside [from, to). Rows of
 // any other tenant come back too and are dropped by the caller (laneOfRow),
 // because a second `or` filter for client_id is not something this read
 // should lean on. `count` is exact, so a capped page says so.
 export async function fetchWeekDrafts(fromIso: string, toIso: string): Promise<ContentPage> {
   const { data, error, count } = await supabase.from('cb34_p2_safe_drafts')
     .select(COLS, { count: 'exact' })
-    .or(`status.eq.review,and(scheduled_at.gte."${fromIso}",scheduled_at.lt."${toIso}")`)
+    .or(`status.in.(review,approved,error),and(scheduled_at.gte."${fromIso}",scheduled_at.lt."${toIso}")`)
     .order('created_at', { ascending: false })
     .limit(1000)
   if (error) throw error

@@ -13,7 +13,7 @@ import { Key } from '../ui/Key'
 import { Empty, Failed, Skeleton } from '../ui/states'
 import { Evidence, verdictWord } from './Evidence'
 import { ClientFixRow, FixRow } from './FixMenu'
-import { LANE_NAME, OWNER, POSS, age, canSchedule, kindOf, nextFreeWeekday, scheduleOpenByDefault, titleOf, type Lane, type WallDay } from './model'
+import { LANE_NAME, OWNER, POSS, age, canSchedule, kindOf, nextFreeWeekday, scheduleOpenByDefault, splitTitleTag, titleOf, type Lane, type WallDay } from './model'
 import { Conflict, Preview } from './Preview'
 import { PictureRow } from './PictureRow'
 import { AboveThePost, clientWhyNot, internalOnly, postsChip } from './DraftNotes'
@@ -24,6 +24,8 @@ import { useEarlyReads } from './useEarlyReads'
 import { useJudged, retryVerdict, markShown } from './verdictStore'
 import { useVerdicts } from './useVerdicts'
 import { brainNeedsVerdict } from '../../lib/brainVerdictGate'
+import { sourceTag } from './v2/sourceTag'
+import './draft-panel.css'
 
 // THE DRAFT WINDOW. Desktop: docked right of the wall. Phone: the page itself
 // (takeover), keys at the foot of the content. j/k walk the queue, Esc closes.
@@ -124,13 +126,18 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
   const qa = normalizeQa(d.qa)
   const stateChip = lane === 'ivan' ? (d.status === 'review' ? 'Needs review' : STAGE_LABEL[stage])
     : clientStageLabel(stage, boardGroupOf({ board_visible: v.visible }))
-  const line = [
+  // The status line, key facts first (Ivan 2026-10-15: "all the same font, all the same grey"): the stage,
+  // where it came from, when it posts, the board, QA; then the quiet ones.
+  const src = sourceTag(d, OWNER[lane])
+  const facts = [
     postsChip(d),
     lane !== 'ivan' ? (v.visible ? `On ${POSS[lane]} board` : `Not on ${POSS[lane]} board`) : null,
-    qa?.score != null ? `QA: ${verdictWord(qa.verdict).toLowerCase()}, ${qa.score}` : null,
-    `edited ${age(d.updated_at)} ago`,
+    qa?.score != null ? `QA ${verdictWord(qa.verdict).toLowerCase()} ${qa.score}` : null,
+  ].filter((x): x is string => !!x)
+  const quiet = [
     d.funnel_stage ? `Aim: ${d.funnel_stage[0].toUpperCase()}${d.funnel_stage.slice(1)}` : null,
-  ].filter(Boolean).join(' · ')
+    `Edited ${age(d.updated_at)} ago`,
+  ].filter((x): x is string => !!x)
   const actionable = reviewActionable(d.status, lane)
   // RUN 39: a brain draft in review or error is judged, never approved, skipped
   // or deleted. `entry` is this session's tap on it (held, saving, saved or failed).
@@ -195,11 +202,11 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
     <section className="cn-dw" aria-label="Draft">
       <div className="cn-dwh">
         <div className="cn-av">{lane === 'ivan' ? 'IM' : lane === 'arch' ? 'DS' : lane === 'swishdm' ? 'JK' : 'MD'}</div>
-        <div className="cn-who"><b title={titleOf(d)}>{titleOf(d)}</b><small>{LANE_NAME[lane]} · {kindOf(d.type)} · created {age(d.created_at)} ago</small></div>
+        <div className="cn-who"><b title={titleOf(d)}>{splitTitleTag(titleOf(d)).text || titleOf(d)}</b><small>{LANE_NAME[lane]} · {kindOf(d.type)} · created {age(d.created_at)} ago</small></div>
         <span className="cn-jk">
           <button type="button" aria-label="Previous (k)" disabled={at <= 0} onClick={() => at > 0 && onPick(queue[at - 1])}>k</button>
           <button type="button" aria-label="Next (j)" disabled={at < 0 || at + 1 >= queue.length} onClick={() => at >= 0 && at + 1 < queue.length && onPick(queue[at + 1])}>j</button>
-          {at >= 0 ? `${at + 1} of ${queue.length}` : 'not in this queue'}
+          <span className="cn-pos">{at >= 0 ? `${at + 1} of ${queue.length}` : 'not in this queue'}</span>
           {queue.length > 1 && <button type="button" data-verb="rail" aria-expanded={rail} onClick={() => setRail(!rail)} title="Show the queue">{rail ? 'hide list' : 'list'}</button>}
         </span>
         <button type="button" className="cn-x" aria-label="Close" data-verb="close" onClick={onClose}><DIcon name="x" /></button>
@@ -213,7 +220,10 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
           ))}
         </ol>
       )}
-      <div className="cn-chips"><span className={`cn-st${stage === 'error' || stage === 'stuck' ? ' cn-st-bad' : ''}`}>{stateChip}</span><span>{line}</span>
+      <div className="cn-chips"><span className={`cn-st${stage === 'error' || stage === 'stuck' ? ' cn-st-bad' : ''}`}>{stateChip}</span>
+        <span className={`cn-srctag cn-srctag-${src.key}`} title={`Source: ${src.title}`} data-source={src.key}>{src.label}</span>
+        {facts.map(f => <span key={f} className="cn-fact">{f}</span>)}
+        {quiet.map(f => <span key={f} className="cn-fact cn-fact-q">{f}</span>)}
         {internalOnly(d, stage) && <span className="cn-st cn-st-bad">Internal copy only · not approved for publication</span>}
         {v.editing && <span className="cn-st">Editing</span>}
         <EarlyReadChip read={earlyReads.get(d.id)} lane={lane} unsaved={dirty} /></div>

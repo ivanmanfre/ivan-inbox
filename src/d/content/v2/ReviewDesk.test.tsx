@@ -14,7 +14,8 @@ vi.mock('../../../lib/content', async orig => ({ ...(await orig<typeof import('.
 vi.mock('../../../lib/brainPage', async orig => ({ ...(await orig<typeof import('../../../lib/brainPage')>()), fetchDraftSources: vi.fn(() => Promise.resolve(new Map())) }))
 vi.mock('../useEarlyReads', () => ({ useEarlyReads: () => new Map() }))
 
-import { ReviewDesk, nextOf, pillOf } from './ReviewDesk'
+import { DESK_SEATS, ReviewDesk, deskModel, deskSeatOf, nextOf, pillOf } from './ReviewDesk'
+import type { Lane } from '../model'
 import { buildNow } from '../weekModel'
 import { flushVerdicts, resetVerdictsForTest, useJudged } from '../verdictStore'
 import { resetDecisionsForTest } from '../decisions'
@@ -37,10 +38,11 @@ const ROWS = [
 ]
 const read = (rows: ContentDraft[]): WeekRead => ({ rows, source: 'live', at: at(0), loading: false, error: null, capped: null, settled: true, refresh: vi.fn() })
 
-function Harness({ rows = ROWS, onOpen = vi.fn(), onEdit = vi.fn(), focusId = null }: { rows?: ContentDraft[]; onOpen?: () => void; onEdit?: () => void; focusId?: string | null }) {
+function Harness({ rows = ROWS, onOpen = vi.fn(), onEdit = vi.fn(), focusId = null, show = 'ivan' }: { rows?: ContentDraft[]; onOpen?: () => void; onEdit?: () => void; focusId?: string | null; show?: Lane }) {
   const judged = useJudged()
-  const week = buildNow(rows, { now: NOW, judged })
-  return <ReviewDesk week={week} total={week} read={read(rows)} show="all" setShow={vi.fn()} now={NOW} openId={null} focusId={focusId}
+  const week = buildNow(rows, { now: NOW, judged, show })
+  const total = buildNow(rows, { now: NOW, judged })
+  return <ReviewDesk week={week} total={total} read={read(rows)} show={show} setShow={vi.fn()} now={NOW} openId={null} focusId={focusId}
     onOpen={onOpen} onEdit={onEdit} onChanged={vi.fn()} firstDay="2026-09-28" seatRows={() => rows} rows={rows}
     armed={new Set()} armedFailed={false} />
 }
@@ -146,7 +148,7 @@ describe('the seat next step comes only after the verdict is saved', () => {
 
   it('Rise: Put on Mattan\'s board after saved, behind today\'s board confirm', async () => {
     lib.setVerdict.mockImplementation(saveOk)
-    renderInFrame(<Harness />)
+    renderInFrame(<Harness show="risedtc" />)
     fireEvent.click(verb(card('br'), 'card-keep')!)
     expect(verb(strip('br'), 'next-board')).toBeNull()
     await act(() => flushVerdicts())
@@ -167,8 +169,8 @@ describe('the seat next step comes only after the verdict is saved', () => {
   })
 })
 
-describe('the card', () => {
-  it('No image narrows the summary count and ages to pending matching drafts without changing its card filter', () => {
+describe('the row', () => {
+  it('No image narrows the heading and the list; the seat count never moves', () => {
     const rows = [
       row({ id: 'with-image', created_at: at(-10 * H), image_urls: ['https://s.test/image.jpg'] }),
       row({ id: 'without-image-new', created_at: at(-2 * H) }),
@@ -177,41 +179,43 @@ describe('the card', () => {
     ]
     renderInFrame(<Harness rows={rows} />)
     const answer = () => document.querySelector('.cv2-answer')!.textContent!
-    expect(answer()).toContain('3 drafts to decide. Newest 2h, oldest 10h.')
-    expect(document.querySelector('[data-verb="show-all"] .cv2-n')?.textContent).toBe('3')
+    expect(answer()).toContain('3 Ivan’s drafts to decide. Newest 2h, oldest 10h.')
+    expect(document.querySelector('[data-verb="show-ivan"] .cv2-n')?.textContent).toBe('3')
     expect(document.querySelector('[data-verb="quick-noimg"] .cv2-n')?.textContent).toBe('2')
     fireEvent.click(verb(document, 'quick-noimg')!)
-    expect(answer()).toContain('2 drafts to decide. Newest 2h, oldest 5h.')
-    expect(document.querySelector('[data-verb="show-all"] .cv2-n')?.textContent).toBe('3')
-    expect(document.querySelector('[data-verb="quick-noimg"] .cv2-n')?.textContent).toBe('2')
+    expect(answer()).toContain('2 of 3 Ivan’s drafts to decide have no image. Newest 2h, oldest 5h.')
+    expect(document.querySelector('[data-verb="show-ivan"] .cv2-n')?.textContent).toBe('3')
     expect(card('with-image')).toBeNull()
     expect(card('without-image-new')).toBeTruthy()
-    expect(card('approved-no-image')).toBeTruthy()
     fireEvent.click(verb(document, 'quick-noimg')!)
-    expect(answer()).toContain('3 drafts to decide. Newest 2h, oldest 10h.')
+    expect(answer()).toContain('3 Ivan’s drafts to decide. Newest 2h, oldest 10h.')
   })
-  it('shows pending review numbers while keeping decided and repair cards visible', () => {
+  it('counts only drafts to decide; approved and needs-a-fix sit in their own folds with their own counts', () => {
     const rows = [
       row({ id: 'open', type: 'single_image' }), row({ id: 'approved', status: 'approved', type: 'single_image' }),
       row({ id: 'error', status: 'error' }), brain({ id: 'brain-error', status: 'error', image_urls: ['https://s.test/brain.jpg'] }), row({ id: 'planned', scheduled_at: at(H), image_urls: ['https://s.test/planned.jpg'] }),
       row({ id: 'rise', client_id: 'risedtc', image_urls: ['https://s.test/rise.jpg'] }), row({ id: 'arch', client_id: 'arch', image_urls: ['https://s.test/arch.jpg'] }),
     ]
     renderInFrame(<Harness rows={rows} />)
-    expect(document.querySelector('[data-verb="show-all"] .cv2-n')?.textContent).toBe('5')
     expect(document.querySelector('[data-verb="show-ivan"] .cv2-n')?.textContent).toBe('3')
     expect(document.querySelector('[data-verb="show-risedtc"] .cv2-n')?.textContent).toBe('1')
-    expect(document.querySelector('[data-verb="quick-decide"] .cv2-n')?.textContent).toBe('5')
-    expect(document.querySelector('[data-verb="quick-noimg"] .cv2-n')?.textContent).toBe('1')
-    expect(screen.getByText(/5 drafts to decide/)).toBeTruthy()
+    expect(document.querySelector('[data-verb="show-arch"] .cv2-n')?.textContent).toBe('1')
+    expect(screen.getByText(/3 Ivan’s drafts to decide/)).toBeTruthy()
+    // The list holds exactly the counted three: the judgeable brain error is one of them.
+    expect([...document.querySelectorAll('.cv2-list[aria-label="Drafts to decide"] > [data-card-id]')].map(e => e.getAttribute('data-card-id')).sort()).toEqual(['brain-error', 'open', 'planned'])
+    expect(card('approved')).toBeNull()
+    expect(verb(document, 'wait-fold')?.textContent).toContain('1 approved')
+    fireEvent.click(verb(document, 'wait-fold')!)
     expect(card('approved')).toBeTruthy()
     expect(card('error')).toBeNull()
-    expect(verb(document, 'fix-fold')?.textContent).toContain('2 need a fix')
+    expect(verb(document, 'fix-fold')?.textContent).toContain('1 needs a fix')
     fireEvent.click(verb(document, 'fix-fold')!)
     expect(card('error')).toBeTruthy()
   })
-  it('shows the hook without its internal tag; the tag lives in the ⋯ header', () => {
+  it('the hook shows without its internal tag; the row is named by its source and hook', () => {
     renderInFrame(<Harness />)
-    expect(card('b1')!.getAttribute('aria-label')).toBe('Ivan draft: Brain one')
+    expect(card('b1')!.getAttribute('aria-label')).toBe('Brain: Brain one')
+    expect(card('b1')!.querySelector('.cv2-row-t')!.textContent).toBe('Brain one')
     expect(card('b1')!.textContent).not.toContain('[X outlier')
   })
   it('one status pill per card from today\'s flags', () => {
@@ -220,26 +224,115 @@ describe('the card', () => {
     expect(pillOf(cards.find(c => c.r.id === 'p')!)).toEqual({ tone: 'bad', text: 'Error' })
     expect(pillOf(cards.find(c => c.r.id === 'q')!)).toEqual({ tone: 'info', text: 'Needs review' })
   })
-  it('Arch cards edit like the other lanes (2026-10-08): Edit and Details, no view-only note', () => {
-    renderInFrame(<Harness rows={[row({ id: 'a1', client_id: 'arch', status: 'review' })]} />)
+  it('Arch rows edit like the other lanes: Edit, the board key and the ⋯ menu on the row', () => {
+    renderInFrame(<Harness show="arch" rows={[row({ id: 'a1', client_id: 'arch', status: 'review' })]} />)
     const a = card('a1')!
     expect(verb(a, 'card-edit')).toBeTruthy()
-    expect(verb(a, 'card-open')).toBeTruthy()
+    expect(verb(a, 'card-board')).toBeTruthy()
+    expect(verb(a, 'card-more')).toBeTruthy()
+  })
+  it('a tap on the row opens the post; a tap on a key does only that key', () => {
+    const onOpen = vi.fn(), onEdit = vi.fn()
+    renderInFrame(<Harness onOpen={onOpen} onEdit={onEdit} />)
+    fireEvent.click(card('n1')!.querySelector('.cv2-row-t')!)
+    expect(onOpen).toHaveBeenCalledWith('n1', 'ivan')
+    onOpen.mockClear()
+    fireEvent.click(verb(card('n1'), 'card-edit')!)
+    expect(onEdit).toHaveBeenCalledWith('n1', 'ivan')
+    expect(onOpen).not.toHaveBeenCalled()
   })
 })
 
-describe('Arch picture', () => {
-  it('an Arch card offers the same picture writes as Ivan\'s', () => {
-    renderInFrame(<Harness rows={[row({ id: 'a1', client_id: 'arch', type: 'single_image' }), row({ id: 'i1', type: 'single_image' })]} />)
+describe('no All seat', () => {
+  it('the seat switch is Ivan, Rise, Arch, SwishDM and nothing else', () => {
+    renderInFrame(<Harness />)
+    const tabs = [...document.querySelectorAll('[role="tablist"][aria-label="Seat"] [role="tab"]')]
+    expect(tabs.map(t => t.getAttribute('data-verb'))).toEqual(['show-ivan', 'show-risedtc', 'show-arch', 'show-swishdm'])
+    expect(verb(document, 'show-all')).toBeNull()
+    expect(DESK_SEATS).toEqual(['ivan', 'risedtc', 'arch', 'swishdm'])
+  })
+  it('a remembered or linked "all" (or anything unknown) falls back to Ivan; a real seat is kept', () => {
+    expect(deskSeatOf('all')).toBe('ivan')
+    expect(deskSeatOf(null)).toBe('ivan')
+    expect(deskSeatOf('rise')).toBe('ivan')
+    expect(deskSeatOf('arch')).toBe('arch')
+    expect(deskSeatOf('risedtc')).toBe('risedtc')
+  })
+  it('a seat shows only its own drafts', () => {
+    renderInFrame(<Harness show="risedtc" />)
+    expect(card('br')).toBeTruthy()
+    expect(card('b1')).toBeNull()
+    expect(screen.getByText(/1 Mattan’s draft to decide/)).toBeTruthy()
+  })
+})
+
+describe('the source tag is the first thing on every row', () => {
+  it('first child of every row, in the source\'s own words', () => {
+    const rows = [
+      brain({ id: 's-brain', taxonomy: { source: 'content-brain', brain_brief: { slot: 'outlier' } } }),
+      row({ id: 's-call', source_label: 'Call with Drew - My Mully, 14 Sep 2026', source_kind: 'call' } as Partial<ContentDraft>),
+      row({ id: 's-x', taxonomy: { source: 'x_tracked_outlier' }, source_label: 'X outlier by @thekevinjon' }),
+      row({ id: 's-news', source_label: 'Newsjack' }),
+    ]
+    renderInFrame(<Harness rows={rows} />)
+    const first = (id: string) => card(id)!.querySelector('.cv2-row-main')!.firstElementChild as HTMLElement
+    expect(first('s-brain').className).toContain('cv2-srctag')
+    expect(first('s-brain').textContent).toBe('Brain · Outlier')
+    expect(first('s-call').textContent).toBe('Call')
+    expect(first('s-call').title).toBe('Source: Call with Drew - My Mully, 14 Sep 2026')
+    expect(first('s-x').textContent).toBe('X outlier')
+    expect(first('s-news').textContent).toBe('Newsjack')
+  })
+})
+
+describe('one number everywhere', () => {
+  it('the seat tab, the heading and the open post\'s queue are the same set, in the drawn order', () => {
+    const rows = [
+      ...ROWS,
+      row({ id: 'fix1', status: 'error' }), row({ id: 'appr', status: 'approved' }),
+      row({ id: 'dated', scheduled_at: at(30 * H) }),
+    ]
+    renderInFrame(<Harness rows={rows} />)
+    const tab = Number(document.querySelector('[data-verb="show-ivan"] .cv2-n')!.textContent)
+    const heading = Number(/^(\d+) /.exec(document.querySelector('.cv2-answer')!.textContent!)![1])
+    const desk = deskModel(buildNow(rows, { now: NOW, show: 'ivan' }), NOW)
+    const drawn = [...document.querySelectorAll('.cv2-list[aria-label="Drafts to decide"] > [data-card-id]')].map(e => e.getAttribute('data-card-id'))
+    expect(tab).toBe(4)
+    expect(heading).toBe(tab)
+    expect(desk.queue.length).toBe(tab)
+    expect(drawn).toEqual(desk.queue)
+    // Dated first, then the newest.
+    expect(desk.queue[0]).toBe('dated')
+  })
+  it('an approve takes the draft out of all three at once, and Undo puts it back in all three', () => {
+    renderInFrame(<Harness />)
+    const tab = () => document.querySelector('[data-verb="show-ivan"] .cv2-n')!.textContent
+    expect(tab()).toBe('3')
+    key('a')
+    expect(tab()).toBe('2')
+    expect(screen.getByText(/2 Ivan’s drafts to decide/)).toBeTruthy()
+    key('z')
+    expect(tab()).toBe('3')
+  })
+})
+
+describe('the preview opens in place', () => {
+  it('the chevron shows the post and its picture controls without opening the panel', () => {
+    const onOpen = vi.fn()
+    renderInFrame(<Harness onOpen={onOpen} rows={[row({ id: 'a1', client_id: 'arch', type: 'single_image' })]} show="arch" />)
+    expect(verb(card('a1'), 'picture-change')).toBeNull()
+    fireEvent.click(verb(card('a1'), 'row-preview')!)
     expect(verb(card('a1'), 'picture-change')).toBeTruthy()
     expect(verb(card('a1'), 'picture-upload')).toBeTruthy()
-    expect(verb(card('i1'), 'picture-change')).toBeTruthy()
+    expect(onOpen).not.toHaveBeenCalled()
+    key('o')
+    expect(verb(card('a1'), 'picture-change')).toBeNull()
   })
 })
 
 
 describe('Ideas landing reveals and selects the exact draft', () => {
-  it('reveals a draft beyond the first six and keeps it selected', async () => {
+  it('selects a draft far down the list', async () => {
     const rows = Array.from({ length: 8 }, (_, i) => brain({ id: `landing-${i}`, created_at: at(-(i+1)*H) }))
     renderInFrame(<Harness rows={rows} focusId="landing-7" />)
     await waitFor(() => expect(card('landing-7')?.getAttribute('aria-current')).toBe('true'))

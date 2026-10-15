@@ -69,7 +69,7 @@ export function weekRange(now: number): { from: string; to: string } {
 
 export function memberFitsWeek(r: ContentDraft, now: number): boolean {
   const { from, to } = weekRange(now)
-  return laneOfRow(r) !== null && (r.status === 'review' || r.scheduled_at != null && r.scheduled_at >= from && r.scheduled_at < to)
+  return laneOfRow(r) !== null && (r.status === 'review' || r.status === 'approved' || r.status === 'error' || r.scheduled_at != null && r.scheduled_at >= from && r.scheduled_at < to)
 }
 
 export function useWeekRead(enabled: boolean, now: number): WeekRead {

@@ -1,0 +1,136 @@
+/* ==========================================================================
+   Content > Review as a LIST (Ivan 2026-10-15: "each topic should be more on a list", "the source visible
+   as a tag on each topic, the first thing I see"). One row per draft inside one pane: the source tag, the
+   hook with its first body line, the tags, the age and the status, the keys at the row's end. The look is
+   the desk's own (tokens, pills, keys from cv2.css); only the shape changes.
+   Layout keys off the desk's own width (container `rdesk`), so it holds with the post open beside it:
+   wide >= 1080 one line, 640-1079 the tags under the hook, 440-639 (list beside an open draft) source + keys on top and the hook under, below 440 (phone) stacked with 44px keys.
+   ========================================================================== */
+
+:root[data-skin-on~='content.review'] .cv2-review{container:rdesk / inline-size}
+
+/* the pane */
+:root[data-skin-on~='content.review'] .cv2-list{position:relative;display:flex;flex-direction:column;min-width:0;border-radius:14px;background:var(--ds-glass-pane);box-shadow:0 0 0 1px var(--ds-line);overflow:clip}
+:root[data-skin-on~='content.review'] .cv2-list > * + *{border-top:1px solid var(--ds-line)}
+:root[data-skin-on~='content.review'] .cv2-row-ghost{height:58px;background:linear-gradient(90deg,transparent,var(--ds-surface-2) 40%,transparent);opacity:.7}
+
+/* the row */
+:root[data-skin-on~='content.review'] .cv2-row{position:relative;display:flex;flex-direction:column;min-width:0;outline:none;cursor:pointer;transition:background-color var(--ds-d-fast) var(--ds-e-content)}
+:root[data-skin-on~='content.review'] .cv2-row:hover{background:var(--ds-fill-hover)}
+:root[data-skin-on~='content.review'] .cv2-row[aria-current='true']{background:var(--ds-surface-1);box-shadow:inset 3px 0 0 var(--ds-accent)}
+:root[data-skin-on~='content.review'] .cv2-row-open{background:var(--ds-accent-soft)}
+:root[data-skin-on~='content.review'] .cv2-row-open[aria-current='true']{background:var(--ds-accent-soft)}
+:root[data-skin-on~='content.review'] .cv2-row:focus-visible{outline:2px solid var(--ds-focus);outline-offset:-2px}
+:root[data-skin-on~='content.review'][data-skin-on~='motion'] .cv2-list > .cv2-row{animation:cv2-rise var(--ds-d-content) var(--ds-e-content) both;animation-delay:calc(var(--i,0) * 14ms + 30ms)}
+
+:root[data-skin-on~='content.review'] .cv2-row-main{display:grid;grid-template-columns:128px minmax(0,1fr) auto auto;grid-template-areas:'src text meta keys';align-items:center;column-gap:14px;row-gap:4px;min-height:58px;padding:9px 10px 9px 14px}
+:root[data-skin-on~='content.review'] .cv2-row-main > .cv2-srctag{grid-area:src;justify-self:start}
+:root[data-skin-on~='content.review'] .cv2-row-text{grid-area:text;display:flex;flex-direction:column;gap:2px;min-width:0}
+:root[data-skin-on~='content.review'] .cv2-row-t{font:var(--ds-fw-em) 14px/20px var(--ds-font);letter-spacing:-.005em;color:var(--ds-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:root[data-skin-on~='content.review'] .cv2-row-sub{font:400 13px/18px var(--ds-font);color:var(--ds-text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:root[data-skin-on~='content.review'] .cv2-row-meta{grid-area:meta;display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:0;white-space:nowrap}
+:root[data-skin-on~='content.review'] .cv2-row-age{font:400 12.5px/20px var(--ds-font);font-variant-numeric:tabular-nums;color:var(--ds-text-3);min-width:28px;text-align:right}
+:root[data-skin-on~='content.review'] .cv2-row-keys{grid-area:keys;display:flex;align-items:center;justify-content:flex-end;gap:4px}
+:root[data-skin-on~='content.review'] .cv2-row-keys .cv2-k{height:30px;padding:0 10px;font-size:13px}
+:root[data-skin-on~='content.review'] .cv2-narrow-only{display:none}
+:root[data-skin-on~='content.review'] .cv2-chev{width:28px;height:28px;border-radius:var(--ds-r-btn);display:grid;place-items:center;color:var(--ds-text-3);transition:background-color var(--ds-d-fast) var(--ds-e-content),color var(--ds-d-fast) var(--ds-e-content)}
+:root[data-skin-on~='content.review'] .cv2-chev .d-ico{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transform:rotate(-90deg);transition:transform var(--ds-d-fast) var(--ds-e-content)}
+:root[data-skin-on~='content.review'] .cv2-chev[aria-expanded='true'] .d-ico{transform:none}
+:root[data-skin-on~='content.review'] .cv2-chev:hover,:root[data-skin-on~='content.review'] .cv2-chev[aria-expanded='true']{background:var(--ds-fill-hover);color:var(--ds-text)}
+:root[data-skin-on~='content.review'] .cv2-row-meta :is(.cn-er,.cn-early,.er-chip,[class*='early']):not(.cv2-pill){height:20px;min-height:0;padding:0 7px;border-radius:5px;font-size:12px;line-height:20px;box-shadow:none;border:0;background:var(--ds-surface-2);color:var(--ds-text-2);white-space:nowrap}
+:root[data-skin-on~='content.review'] .cv2-row-meta .cn-early-n{display:none}
+
+/* small tags: format, no image, a repeated picture */
+:root[data-skin-on~='content.review'] .cv2-tag{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:5px;font:var(--ds-fw-em) 11px/1 var(--ds-font);color:var(--ds-text-2);background:var(--ds-surface-2);white-space:nowrap}
+:root[data-skin-on~='content.review'] .cv2-tag-warn{background:var(--ds-sev-attention-soft);color:var(--ds-sev-attention-ui)}
+
+/* THE SOURCE TAG: a dot in the source's colour and its name, the row's first column */
+:root[data-skin-on~='content.review'] .cv2-srctag{--src:var(--ds-text-3);--src-bg:var(--ds-surface-2);display:inline-flex;align-items:center;gap:6px;max-width:100%;height:22px;padding:0 8px 0 7px;border-radius:6px;background:var(--src-bg);color:var(--ds-text);font:var(--ds-fw-em) 11.5px/1 var(--ds-font);letter-spacing:.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none}
+:root[data-skin-on~='content.review'] .cv2-srctag::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:var(--src)}
+:root[data-skin-on~='content.review'] .cv2-srctag-brain{--src:var(--ds-accent);--src-bg:var(--ds-accent-soft)}
+:root[data-skin-on~='content.review'] .cv2-srctag-call{--src:var(--ds-info-ui);--src-bg:var(--ds-info-soft)}
+:root[data-skin-on~='content.review'] .cv2-srctag-client{--src:var(--ds-sev-clear-ui);--src-bg:var(--ds-sev-clear-soft)}
+:root[data-skin-on~='content.review'] .cv2-srctag-lm{--src:var(--ds-sev-attention-ui);--src-bg:var(--ds-sev-attention-soft)}
+:root[data-skin-on~='content.review'] .cv2-srctag-news{--src:var(--ds-sev-urgent-ui);--src-bg:var(--ds-sev-urgent-soft)}
+:root[data-skin-on~='content.review'] :is(.cv2-srctag-outlier,.cv2-srctag-industry){--src:#8a6f45;--src-bg:var(--ds-linen)}
+:root[data-skin-on~='content.review'] :is(.cv2-srctag-idea,.cv2-srctag-editorial,.cv2-srctag-portfolio){--src:var(--ds-text-2);--src-bg:var(--ds-surface-2)}
+:root[data-skin-on~='content.review'] :is(.cv2-srctag-manual,.cv2-srctag-other){--src:var(--ds-text-4,var(--ds-text-3));--src-bg:var(--ds-surface-2);color:var(--ds-text-2)}
+:root[data-skin-on~='content.review'] .cv2-srctag-test{--src:var(--ds-text-3);--src-bg:transparent;color:var(--ds-text-3);box-shadow:inset 0 0 0 1px var(--ds-line-strong)}
+
+/* what opens inside a row: the client's ask, the drop reasons, the preview */
+:root[data-skin-on~='content.review'] .cv2-row > .cv2-ask{margin:0 14px 10px 156px}
+:root[data-skin-on~='content.review'] .cv2-row-why{padding:2px 14px 12px 156px;cursor:default}
+:root[data-skin-on~='content.review'] .cv2-row-more{display:grid;grid-template-columns:minmax(0,520px) minmax(220px,1fr);gap:16px;align-items:start;padding:4px 14px 16px 156px;cursor:default}
+:root[data-skin-on~='content.review'] .cv2-row-post{display:flex;justify-content:flex-start;min-width:0}
+:root[data-skin-on~='content.review'] .cv2-row-post .cv2-li{max-width:520px}
+:root[data-skin-on~='content.review'] .cv2-row-post .cv2-li-m{max-height:280px}
+:root[data-skin-on~='content.review'] .cv2-row-post .cv2-li-m img{object-fit:contain}
+:root[data-skin-on~='content.review'] .cv2-row-side{display:flex;flex-direction:column;gap:12px;min-width:0}
+:root[data-skin-on~='content.review'] .cv2-row-side > .cv2-k{align-self:flex-start}
+:root[data-skin-on~='content.review'] .cv2-row-side .cb-src{padding:12px;border-radius:10px;background:var(--ds-surface-2);font-size:13px}
+
+/* a decided row (verdict strip) sits in the list like any row */
+:root[data-skin-on~='content.review'] .cv2-list > .cv2-strip{border-radius:0;box-shadow:none;background:var(--ds-surface-1);padding:10px 10px 10px 14px;min-height:58px;justify-content:center}
+
+/* the folds under the list: approved and waiting, needs a fix */
+:root[data-skin-on~='content.review'] .cv2-fold{display:flex;flex-direction:column;gap:8px}
+:root[data-skin-on~='content.review'] .cv2-fold-h{display:flex;align-items:center;gap:8px;height:40px;padding:0 12px;border-radius:10px;font:400 13px var(--ds-font);color:var(--ds-text-2);text-align:left}
+:root[data-skin-on~='content.review'] .cv2-fold-h:hover{background:var(--ds-fill-hover);color:var(--ds-text)}
+:root[data-skin-on~='content.review'] .cv2-fold-h i{font-style:normal;font-size:11px;color:var(--ds-text-3);width:12px}
+:root[data-skin-on~='content.review'] .cv2-fold-h b{font-weight:var(--ds-fw-em);color:var(--ds-text)}
+:root[data-skin-on~='content.review'] .cv2-fixrow .cv2-srctag{max-width:128px}
+:root[data-skin-on~='content.review'] .cv2-fixlist-pinned{box-shadow:0 0 0 1px var(--ds-sev-urgent-soft)}
+
+/* 560-1079: the tags go under the hook; Edit and Pick a day move into the ⋯ (Drop / Skip and the main key stay) */
+@container rdesk (max-width:1079px){
+  :root[data-skin-on~='content.review'] .cv2-row-main{grid-template-columns:116px minmax(0,1fr) auto;grid-template-areas:'src text keys' 'src meta keys';column-gap:12px}
+  :root[data-skin-on~='content.review'] .cv2-row-main > .cv2-srctag{align-self:start;margin-top:2px}
+  :root[data-skin-on~='content.review'] .cv2-row-sub{display:none}
+  :root[data-skin-on~='content.review'] .cv2-row-meta{justify-content:flex-start;overflow:hidden}
+  :root[data-skin-on~='content.review'] .cv2-row-age{order:-1;text-align:left;min-width:0;margin-right:2px}
+  :root[data-skin-on~='content.review'] .cv2-row-keys .cv2-wide-only{display:none}
+  :root[data-skin-on~='content.review'] .cv2-row-keys .cv2-narrow-only{display:inline}
+  :root[data-skin-on~='content.review'] .cv2-row > .cv2-ask,:root[data-skin-on~='content.review'] .cv2-row-why{margin-left:0;padding-left:142px}
+  :root[data-skin-on~='content.review'] .cv2-row > .cv2-ask{margin:0 14px 10px 142px;padding-left:10px}
+  :root[data-skin-on~='content.review'] .cv2-row-more{grid-template-columns:minmax(0,1fr);padding-left:14px}
+}
+
+/* 440-639 (the desktop list beside an open draft): source, age and compact keys on one line,
+   the hook under them at full width on up to 2 lines. Keys stay 30px: this is a mouse layout. */
+@container rdesk (min-width:440px) and (max-width:639px){
+  :root[data-skin-on~='content.review'] .cv2-row-main{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:'src meta keys' 'text text text';row-gap:6px;column-gap:10px;padding:10px 10px 10px 14px}
+  :root[data-skin-on~='content.review'] .cv2-row-main > .cv2-srctag{align-self:center;margin:0;max-width:180px}
+  :root[data-skin-on~='content.review'] .cv2-row-meta{justify-content:flex-start}
+  :root[data-skin-on~='content.review'] .cv2-row-t{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  :root[data-skin-on~='content.review'] .cv2-row > .cv2-ask,:root[data-skin-on~='content.review'] .cv2-row-why{margin-left:0;padding-left:14px}
+  :root[data-skin-on~='content.review'] .cv2-row > .cv2-ask{margin:0 14px 10px 14px;padding-left:10px}
+}
+
+/* below 440 (the phone, a very narrow window): stacked, the keys a full-width row at 44 */
+@container rdesk (max-width:439px){
+  :root[data-skin-on~='content.review'] .cv2-row-main{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'src meta' 'text text' 'keys keys';row-gap:8px;padding:12px}
+  :root[data-skin-on~='content.review'] .cv2-row-main > .cv2-srctag{margin:0;max-width:60vw}
+  :root[data-skin-on~='content.review'] .cv2-row-meta{justify-content:flex-end}
+  :root[data-skin-on~='content.review'] .cv2-row-age{order:0}
+  :root[data-skin-on~='content.review'] .cv2-row-meta .cv2-tag,:root[data-skin-on~='content.review'] .cv2-row-meta :is(.cn-er,.cn-early,.er-chip,[class*='early']){display:none}
+  :root[data-skin-on~='content.review'] .cv2-row-t{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:15px;line-height:21px}
+  :root[data-skin-on~='content.review'] .cv2-row-keys{justify-content:stretch}
+  :root[data-skin-on~='content.review'] .cv2-row-keys .cv2-k{flex:1 1 0;height:44px;font-size:15px}
+  :root[data-skin-on~='content.review'] .cv2-row-keys .cv2-k-p{flex:1.4 1 0}
+  :root[data-skin-on~='content.review'] .cv2-row-keys .cv2-k.cv2-wide-only{display:inline-flex}
+  :root[data-skin-on~='content.review'] .cv2-row-keys [data-verb='card-pick-day']{display:none}
+  :root[data-skin-on~='content.review'] .cv2-row-keys :is(.cv2-chev,.cv2-more){width:44px;height:44px;flex:none}
+  :root[data-skin-on~='content.review'] .cv2-row > .cv2-ask{margin:0 12px 10px;padding-left:10px}
+  :root[data-skin-on~='content.review'] .cv2-row-why{padding:0 12px 12px}
+  :root[data-skin-on~='content.review'] .cv2-row-more{padding:0 12px 14px}
+  :root[data-skin-on~='content.review'] .cv2-list > .cv2-strip{padding:10px 12px}
+  /* four seats fit a 390 phone: the initials chips go, the switch scrolls if it still has to */
+  :root[data-skin-on~='content.review'] .cv2-review > .cv2-bar .cv2-seg{max-width:100%;overflow-x:auto;scrollbar-width:none}
+  :root[data-skin-on~='content.review'] .cv2-review > .cv2-bar .cv2-seg .cv2-av{display:none}
+}
+
+@media (prefers-reduced-motion:reduce){
+  :root[data-skin-on~='content.review'] .cv2-list > .cv2-row{animation:none !important}
+  :root[data-skin-on~='content.review'] :is(.cv2-row,.cv2-chev,.cv2-chev .d-ico){transition:none}
+}
+:root.brief-motion-off[data-skin-on~='content.review'] .cv2-list > .cv2-row{animation:none !important}
