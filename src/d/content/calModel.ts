@@ -4,6 +4,7 @@
 // not) and, for a post that must not move, the reason it says when lifted.
 // Built on planModel (today's calendar builder), so the calendar shows every
 // kind of post the planner did.
+import { buildCalendarItems } from '../../lib/calendarItems'
 import { taxonomyValue, type ContentDraft } from '../../lib/content'
 import { isBrainPost } from '../../lib/brainDraft'
 import { LANES, imgOf, titleOf, type Lane } from './model'
@@ -91,6 +92,19 @@ export function calendarDays(
         const a = out.get(day)
         if (a) a.push(e); else out.set(day, [e])
       }
+    }
+  }
+  // A post just given a date from the No date yet rail has no calendar item until the re-read
+  // lands: draw it on its new day at once, from its row (Ivan 2026-10-15).
+  for (const lane of lanesOf(pick)) {
+    for (const r of rows[lane]) {
+      const day = moved.get(r.id)
+      if (!day || r.scheduled_at || [...out.values()].some(l => l.some(e => e.it.id === r.id))) continue
+      const [it] = buildCalendarItems([{ ...r, scheduled_at: `${day}T12:00:00Z` }])
+      if (!it) continue
+      const e = entryOf({ ...it, lane, day }, rows[lane])
+      const a = out.get(day)
+      if (a) a.push(e); else out.set(day, [e])
     }
   }
   for (const [k, list] of out) {

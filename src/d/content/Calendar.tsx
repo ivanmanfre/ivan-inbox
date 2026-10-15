@@ -156,8 +156,19 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
     // Brief 4 desktop wall: Saturday and Sunday are columns too, so a post can be dragged onto a weekend (2026-10-09).
     return v2 && !phone ? withWeekends(ws) : ws
   }, [now, off, week5, v2, phone])
+  // Desktop 2 weeks (Ivan 2026-10-15: one client at a time, cards big enough to read): the same
+  // grid as the month, two Sunday-first week rows, filling the window. Narrow brief keeps its 5-day wall.
+  const grid2 = v2 && !phone && view === 'lines' && !week5
+  const grid2Keys = useMemo(() => {
+    if (!grid2) return [] as string[]
+    const first = new Date(`${lineDays[0].key}T12:00:00Z`)
+    const start = first.getTime() - first.getUTCDay() * DAY_MS
+    return Array.from({ length: 14 }, (_, i) => new Date(start + i * DAY_MS).toISOString().slice(0, 10))
+  }, [grid2, lineDays])
   const cov = useMemo(() => coverageOf(items, now), [items, now])
-  const label = view === 'month' ? monthLabel(ym.year, ym.month) : `${dayLabel(lineDays[0].key)} – ${dayLabel(lineDays[lineDays.length - 1].key)}`
+  const label = view === 'month' ? monthLabel(ym.year, ym.month)
+    : grid2 ? `${dayLabel(grid2Keys[0])} – ${dayLabel(grid2Keys[13])}`
+    : `${dayLabel(lineDays[0].key)} – ${dayLabel(lineDays[lineDays.length - 1].key)}`
   const day = sel ?? (view === 'month' ? openDay(keys, inMonth, days, todayKey) : (lineDays.some(d => d.key === todayKey) ? todayKey : lineDays[0].key))
 
   // ---- motion: the track follows the finger, then springs ------------------
@@ -324,16 +335,19 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
 
   // Desktop month: the grid and the side rail fill the window; the rail scrolls inside itself (useCalFit).
   // Above every return (a hook after an early return blanked a whole screen once).
-  const size = useCalFit(root, bodyEl, v2 && !phone && view === 'month', [view, pick, phone])
+  const size = useCalFit(root, bodyEl, v2 && !phone && (view === 'month' || grid2), [view, pick, phone, grid2])
 
   const agenda = days.get(day) ?? []
   const laneBound = pick === 'all' ? undefined : pick
 
   if (v2) {
     const acts: CardActs = { onOpen, onMove: (id, lane) => openWhen(id, lane), onTime: (id, lane) => openWhen(id, lane, 'time'), onClear: (id, lane) => { void removeDate(id, lane) }, onArm, onChanged }
-    const fit = !phone && view === 'month'
+    const fit = !phone && (view === 'month' || grid2)
+    const asGrid = view === 'month' || grid2
+    const gridKeys = view === 'month' ? keys : grid2Keys
+    const gridIn = view === 'month' ? inMonth : new Set(grid2Keys)
     // A narrow calendar (a small window, or the draft window open beside it): the buffer docks to the bottom, always on screen.
-    const dockBottom = view === 'lines' || phone || size === 'narrow'
+    const dockBottom = (view === 'lines' && !grid2) || phone || size === 'narrow'
     const lanes = lanesOf(pick)
     const nextWeek = new Set(lanes.flatMap(l => (data.seats[l].loadedAt ? cov.seats[l].gaps : [])))
     const riseLine = (pick === 'all' || pick === 'risedtc') ? warsawDay(now + 14 * DAY_MS) : null
@@ -351,16 +365,16 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
           </div>
         </header>
         <CoverageBar cov={cov} lanes={lanes} phone={phone} loaded={l => !!data.seats[l].loadedAt} />
-        <div ref={bodyEl} className={`cv2-cal-body cv2-cal-${view}`}>
+        <div ref={bodyEl} className={`cv2-cal-body cv2-cal-${asGrid ? 'month' : view}`}>
           <div ref={stage} className="cal-stage cv2-stage">
             <div ref={track} className="cal-track">
-              {view === 'month' ? (
-                <div className="cal-grid cv2-month" role="group" aria-label={`${PICK_NAME[pick]}, ${label}`} style={{ '--cal-weeks': weeks.length } as CSSProperties}>
+              {asGrid ? (
+                <div className={`cal-grid cv2-month${grid2 ? ' cv2-two' : ''}`} role="group" aria-label={`${PICK_NAME[pick]}, ${label}`} style={{ '--cal-weeks': grid2 ? 2 : weeks.length } as CSSProperties}>
                   {DOW.map((d, i) => <div key={d} className={`cal-wh${i === 0 || i === 6 ? ' cv2-we' : ''}`}>{phone ? d[0] : d}</div>)}
-                  {keys.map((k, i) => {
+                  {gridKeys.map((k, i) => {
                     const on = days.get(k) ?? []
                     const shown = Math.min(on.length, 3)
-                    const cls = ['cal-day', inMonth.has(k) ? '' : 'out', k === todayKey ? 'today' : '', k === day ? 'sel' : '', k < todayKey ? 'past' : '', !on.length && nextWeek.has(k) ? 'cv2-gapday' : '', k === riseLine ? 'cv2-riseline' : '', i % 7 === 0 || i % 7 === 6 ? 'cv2-we' : '', `cv2-n${shown}`].filter(Boolean).join(' ')
+                    const cls = ['cal-day', gridIn.has(k) ? '' : 'out', k === todayKey ? 'today' : '', k === day ? 'sel' : '', k < todayKey ? 'past' : '', !on.length && nextWeek.has(k) ? 'cv2-gapday' : '', k === riseLine ? 'cv2-riseline' : '', i % 7 === 0 || i % 7 === 6 ? 'cv2-we' : '', `cv2-n${shown}`].filter(Boolean).join(' ')
                     return (
                       <div key={k} className={cls} data-cal-day={k} data-cal-lane={laneBound} onClick={() => setSel(k)} title={k === riseLine ? `${dayLabel(k)} · Mattan’s two-week line` : dayLabel(k)}>
                         <span className="cal-dn">{Number(k.slice(8))}<XMarks items={xDays.get(k)} time={!phone} /></span>
@@ -376,7 +390,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
                 : <WallV2 xDays={xDays} data={data} items={items} days={lineDays} entryOf={(l, k) => (days.get(k) ?? []).filter(e => e.lane === l)} cov={cov} lanes={lanes} now={now} today={todayKey} a={acts} onDay={onDay} />}
             </div>
           </div>
-          {(view === 'month' || phone) && (
+          {(asGrid || phone) && (
             <aside className="cv2-side">
               <DayList day={day} isToday={day === todayKey} entries={agenda} reading={!lanes.every(l => data.seats[l].loadedAt)} a={acts} />
               {!dockBottom && <BufferDock loose={loose} lms={lms} a={acts} vertical />}

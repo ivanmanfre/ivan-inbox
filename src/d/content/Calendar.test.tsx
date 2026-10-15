@@ -53,6 +53,11 @@ describe('calendar model', () => {
     expect(days.get('2026-10-06')).toBeUndefined()
     expect(days.get('2026-10-09')![0].it.id).toBe('ivan')
   })
+  it('a post dated from the No date yet rail shows on its new day before the re-read', () => {
+    const days = calendarDays(items, rows, 'ivan', new Map([['loose', '2026-10-16']]))
+    expect(days.get('2026-10-16')!.map(e => e.it.id)).toEqual(['loose'])
+    expect(looseOf(rows, 'ivan', new Map([['loose', '2026-10-16']])).map(l => l.id)).not.toContain('loose')
+  })
   it('posted and publish-queue-only posts refuse to move, and say why', () => {
     const posted = seatItems([], 'ivan', [queue], NOW)[0]
     expect(refuseOf(posted, null)).toMatch(/Already posted/)
