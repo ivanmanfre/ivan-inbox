@@ -8,6 +8,8 @@ import type { PlanItem } from '../planModel'
 // over the planner items the Calendar already holds (Warsaw day keys, so
 // Rise's Pacific time never shifts a day). Only `set` counts: posted,
 // dated-but-not-armed, review and queue-only rows are not coverage.
+// The target is a parameter (2026-10-15: Content Brain read "3 of 3 scheduled" while Ivan's direction says
+// 4 a week, Rise 5, Arch 3): a seat with no target passed keeps the old floor of 3.
 export const TARGET = 3
 
 export type SeatCoverage = { lane: Lane; set: number; target: number; short: number; gaps: string[] }
@@ -42,10 +44,12 @@ export function thisWeekDays(now: number): string[] {
   return weekdaysFrom(t)
 }
 
-export function coverageOf(items: Record<Lane, Map<string, PlanItem[]>>, now: number): Coverage {
+export function coverageOf(items: Record<Lane, Map<string, PlanItem[]>>, now: number, targets: Partial<Record<Lane, number | null>> = {}): Coverage {
   const days = nextWeekDays(now)
   const seats = {} as Record<Lane, SeatCoverage>
   for (const lane of LANES) {
+    const t = targets[lane]
+    const target = typeof t === 'number' && Number.isFinite(t) && t > 0 ? t : TARGET
     let set = 0
     const gaps: string[] = []
     for (const k of days) {
@@ -53,8 +57,8 @@ export function coverageOf(items: Record<Lane, Map<string, PlanItem[]>>, now: nu
       set += n
       if (n === 0) gaps.push(k)
     }
-    const short = Math.max(0, TARGET - set)
-    seats[lane] = { lane, set, target: TARGET, short, gaps: short > 0 ? gaps : [] }
+    const short = Math.max(0, target - set)
+    seats[lane] = { lane, set, target, short, gaps: short > 0 ? gaps : [] }
   }
   const thisWeekBy = {} as Record<Lane, WeekCount>
   for (const lane of LANES) {

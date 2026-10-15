@@ -1,25 +1,47 @@
-import { useEffect, useMemo, useState } from 'react'
-import { fetchPostAudience, type ReachRead } from '../../../lib/reach'
+import { useMemo } from 'react'
 import type { SavedVerdict } from '../../../lib/verdicts'
 import { dHash } from '../../route'
-import { DirectionLine, NextIdeas, RecentDecisions } from '../ContentBrain'
+import { BestPosts, DirectionView, NicheIdeas, RecentDecisions, policyOf, useDirection, directionWords, usePostAudience } from '../ContentBrain'
 import type { IdeaBanks } from '../Ideas'
-import { DAY_MS, LANES, LANE_NAME, age, splitTitleTag, type Lane } from '../model'
+import { DAY_MS, LANES, LANE_NAME, OWNER, age, splitTitleTag, type Lane } from '../model'
 import { dotOf } from '../calModel'
 import type { PlanItem } from '../planModel'
 import type { WeekRead } from '../useWeek'
 import type { Judged } from '../verdictStore'
-import type { Week } from '../weekModel'
+import { awaitsReview, type Week } from '../weekModel'
 import { warsawDay } from '../../ui/time'
 import { coverageOf } from './coverage'
-import { Answer, SeatAv, Seg } from './ui'
+import { SourceChip, deskModel } from './ReviewDesk'
+import { sourceTag } from './sourceTag'
+import { Answer, Seg } from './ui'
 
-// CONTENT BRAIN, BRIEF 4 (SPEC-content §2.4): the performance end of the loop,
-// no longer a second review queue. One answer line, a five-tile pipeline
-// (ideas → drafts → dated → posted → best post) that links to the tab doing
-// that job, three "up next" rows that open Review on the card, then today's
-// next post ideas and recent decisions (their writes unchanged). Every draft
-// decision happens in Review.
+// CONTENT BRAIN, BRIEF 4 (SPEC-content §2.4): the performance end of the loop, no longer a second review
+// queue. Rebuilt 2026-10-15 on Ivan's read of it: the seat tabs "repeat" ("just IVAN RISE ARCH SWISHDM is
+// fine"), "Direction i cant even read it", "up next idk what is that", the ideas were famous X accounts
+// with no purpose, and "open all sources" jumped to "a weird separated section". Ivan 10-05: "The whole
+// thing should be interconnected: the outliers, my own posts, everything".
+//   · seat tabs: names only;
+//   · direction: the weekly count in plain words, the aim under it, both wrap;
+//   · one sentence on what to do next, then five tiles. EACH NUMBER IS ON THE PAGE ONCE: the drafts to
+//     decide sit in their tile only (no count on the tab, the heading or the Review link);
+//   · "Drafts waiting for you": the first three of Review's own list for this seat, source tag first;
+//   · "What's working in your niche": the Outliers page's fit-checked list, platform balanced, every post
+//     folded under it; then the seat's best posts and recent decisions.
+// Every draft decision still happens in Review.
+
+/** The seat's to-decide drafts in Review's order: the same list (and count) as Review's seat tab and heading. */
+export function seatQueue(total: Week, lane: Lane, now: number) {
+  return deskModel(total, now).decide.filter(c => c.lane === lane && awaitsReview(c))
+}
+
+/** Pure: the one headline sentence. It never repeats a tile's number. */
+export function brainHeadline(o: { live: boolean; reading: boolean; short: number | null; decide: number; lane: Lane }): string {
+  if (!o.live) return 'Reading…'
+  const drafts = o.decide > 0 ? 'Start with the drafts waiting for you.' : `Nothing waits for a decision on ${LANE_NAME[o.lane]}.`
+  if (o.reading || o.short == null) return drafts
+  if (o.short > 0) return `Next week still needs ${o.short === 1 ? 'one more post' : `${o.short} more posts`} set to go out. ${drafts}`
+  return `Next week is set. ${drafts}`
+}
 
 export function BrainV2({ lane, setLane, read, verdicts, judged, total, items, ideas, now, reading }: {
   lane: Lane
@@ -35,19 +57,16 @@ export function BrainV2({ lane, setLane, read, verdicts, judged, total, items, i
   /** The seat reads have not all answered yet. */
   reading: boolean
 }) {
-  const [own, setOwn] = useState<ReachRead | null>(null)
-  useEffect(() => {
-    let live = true
-    setOwn(null)
-    void fetchPostAudience(lane).then(r => { if (live) setOwn(r) }).catch(e => { if (live) setOwn({ kind: 'failed', message: e instanceof Error ? e.message : 'read failed' }) })
-    return () => { live = false }
-  }, [lane])
+  // One read each: the direction feeds its line and the dated target; the own posts feed the tile and Best posts.
+  const dir = useDirection(lane)
+  const own = usePostAudience(lane)
+  const weekly = useMemo(() => directionWords(policyOf(dir)).weekly, [dir])
+  const dirSettled = dir.d != null || dir.err != null
 
-  const cov = useMemo(() => coverageOf(items, now), [items, now])
-  const drafts = total.perLane[lane]
-  const upNext = useMemo(() => [...total.groups.flatMap(g => g.cards)]
-    .filter(c => c.lane === lane && !c.strip && (c.judge || c.primary !== 'open'))
-    .slice(0, 3), [total, lane])
+  const cov = useMemo(() => coverageOf(items, now, { [lane]: weekly }), [items, now, lane, weekly])
+  const queue = useMemo(() => seatQueue(total, lane, now), [total, lane, now])
+  const decide = queue.length
+  const next3 = queue.slice(0, 3)
   const dated = useMemo(() => {
     let n = 0
     const end = warsawDay(now + 14 * DAY_MS), start = warsawDay(now)
@@ -67,8 +86,8 @@ export function BrainV2({ lane, setLane, read, verdicts, judged, total, items, i
       .sort((a, b) => (b.impressions ?? 0) - (a.impressions ?? 0))[0] ?? null
   }, [own, now])
   const bank = ideas[lane]
-  const seat = cov.seats[lane]
   const live = read.source !== 'none'
+  const short = dirSettled && weekly != null ? cov.seats[lane].short : null
   void verdicts; void judged
 
   const tile = (key: string, label: string, n: React.ReactNode, sub: React.ReactNode, href: string, i: number, wide = false) => (
@@ -78,44 +97,51 @@ export function BrainV2({ lane, setLane, read, verdicts, judged, total, items, i
       <span className="cv2-tile2-s">{sub}</span>
     </a>
   )
+  const seatQ: Record<string, string> = lane === 'ivan' ? {} : { lane }
+  const bestRaw = (best?.title ?? 'Published post').trim()
+  const bestCut = bestRaw.length > 44 ? `${bestRaw.slice(0, 42).trimEnd()}…` : bestRaw
+  // A hook that opens on its own quote mark is not wrapped in a second pair.
+  const bestTitle = /^["“]/.test(bestCut) ? bestCut : `“${bestCut}”`
 
   return (
     <div className="cv2 cv2-brain" data-cv2="brain" data-lane={lane}>
       <div className="cv2-bar">
         <Seg label="Account" verb="brain-lane" value={lane} onChange={id => setLane(id as Lane)}
-          options={LANES.map(l => ({ id: l, label: <><SeatAv lane={l} />{LANE_NAME[l]}</>, count: live ? total.perLane[l] : '…' }))} />
-        <div className="cv2-dir"><DirectionLine lane={lane} /></div>
+          options={LANES.map(l => ({ id: l, label: LANE_NAME[l] }))} />
       </div>
-      <Answer>
-        {!live ? 'Reading…' : <>{drafts} draft{drafts === 1 ? '' : 's'} to decide. </>}
-        {!reading && <>Next week {Math.min(seat.set, seat.target)} of {seat.target} scheduled{seat.short ? `, ${seat.short} short` : ''}. </>}
-        {best && <span className="cv2-ans-best">Best last 7 days: “{(best.title ?? 'a post').slice(0, 48)}” {best.impressions?.toLocaleString('en-US')} impressions.</span>}
-      </Answer>
+      <div className="cv2-dir"><DirectionView lane={lane} st={dir} /></div>
+      <Answer>{brainHeadline({ live, reading: reading || !dirSettled, short, decide, lane })}</Answer>
       <nav className="cv2-pipe" aria-label={`${LANE_NAME[lane]} pipeline`}>
-        {tile('ideas', 'Ideas', bank.n ?? '…', 'waiting', dHash('content', 'ideas', lane === 'ivan' ? {} : { lane }), 0)}
-        {tile('drafts', 'Drafts', live ? drafts : '…', 'to decide', dHash('content', 'now'), 1)}
-        {tile('dated', 'Dated 14d', reading ? '…' : dated, reading ? 'reading' : seat.short ? `${seat.short} gap${seat.short === 1 ? '' : 's'} next week` : 'next week covered', dHash('content', 'calendar'), 2)}
-        {tile('posted', 'Posted 7d', reading ? '…' : posted, 'went out', dHash('content', 'results', lane === 'ivan' ? {} : { lane }), 3)}
-        {tile('best', 'Best post 7d', best?.impressions != null ? best.impressions.toLocaleString('en-US') : own == null ? '…' : '–',
-          best ? <>“{(best.title ?? 'Published post').slice(0, 40)}” impressions</> : own?.kind === 'ready' ? 'nothing measured this week' : own ? 'could not read' : 'reading', dHash('content', 'results', lane === 'ivan' ? {} : { lane }), 4, true)}
+        {tile('ideas', 'Ideas waiting', bank.n ?? '…', 'in Ideas', dHash('content', 'ideas', seatQ), 0)}
+        {tile('drafts', 'Drafts to decide', live ? decide : '…', 'in Review', dHash('content', 'now', { lane }), 1)}
+        {tile('dated', 'Dated, next 14 days', reading ? '…' : dated, reading ? 'reading' : weekly != null ? `of ${weekly * 2} for two weeks` : 'set or planned', dHash('content', 'calendar'), 2)}
+        {tile('posted', 'Posted, last 7 days', reading ? '…' : posted, 'went out', dHash('content', 'results', seatQ), 3)}
+        {tile('best', 'Best post, last 7 days', best?.impressions != null ? best.impressions.toLocaleString('en-US') : own == null ? '…' : '–',
+          best ? <>impressions, {bestTitle}</>
+            : own?.kind === 'ready' ? 'nothing measured this week' : own ? (lane === 'swishdm' ? 'not tracked yet' : 'could not read') : 'reading',
+          dHash('content', 'results', seatQ), 4, true)}
       </nav>
-      <section className="cv2-sec" aria-label="Up next">
-        <h2 className="cv2-h">Up next<a href={dHash('content', 'now')}>Review all {drafts} →</a></h2>
-        {!live ? <p className="cv2-dim">Reading…</p> : upNext.length === 0 ? <p className="cv2-dim">Nothing of {LANE_NAME[lane]}’s waits for a decision.</p> : (
-          <ol className="cv2-next">{upNext.map(c => (
-            <li key={c.r.id}>
-              <a href={dHash('content', 'now', { focus: c.r.id })} data-verb="brain-up-next">
-                <SeatAv lane={c.lane} />
-                <b>{splitTitleTag(c.title).text}</b>
-                <span className="cv2-dim">{splitTitleTag(c.title).tag ?? (c.judge ? 'Brain draft' : 'Draft')} · {age(c.r.created_at, now)}</span>
-                <span className="cv2-grow" /><span className="cv2-open">Open ›</span>
-              </a>
-            </li>
-          ))}</ol>
+      <section className="cv2-sec" aria-label="Drafts waiting for you">
+        <h2 className="cv2-h">Drafts waiting for you<a href={dHash('content', 'now', { lane })} data-verb="brain-open-review">Open Review →</a></h2>
+        {!live ? <p className="cv2-dim">Reading…</p> : next3.length === 0 ? <p className="cv2-dim">Nothing of {LANE_NAME[lane]}’s waits for a decision.</p> : (
+          <ol className="cv2-next">{next3.map(c => {
+            const t = splitTitleTag(c.title)
+            return (
+              <li key={c.r.id}>
+                <a href={dHash('content', 'now', { focus: c.r.id })} data-verb="brain-draft-waiting">
+                  <SourceChip tag={sourceTag(c.r, OWNER[c.lane])} />
+                  <b>{t.text}</b>
+                  <span className="cv2-dim">{age(c.r.created_at, now)} ago</span>
+                  <span className="cv2-grow" /><span className="cv2-open">Open ›</span>
+                </a>
+              </li>
+            )
+          })}</ol>
         )}
       </section>
       <div className="cv2-brain-old">
-        <NextIdeas lane={lane} />
+        <NicheIdeas lane={lane} now={now} />
+        <BestPosts lane={lane} own={own} now={now} />
         <RecentDecisions lane={lane} verdicts={verdicts} />
       </div>
     </div>

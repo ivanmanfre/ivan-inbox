@@ -30,3 +30,13 @@ describe('this week on the coverage bar', () => {
     expect(cov.thisWeek).toEqual({ posted: 6, set: 2 })
   })
 })
+
+// 2026-10-15: the Brain read "Next week 3 of 3 scheduled" for Ivan while his direction says 4 a week.
+describe('the coverage target is the seat’s own', () => {
+  const cov = coverageOf(items({ ivan: { '2026-10-19': [set('i1')], '2026-10-20': [set('i2')], '2026-10-21': [set('i3')] }, arch: { '2026-10-19': [set('a1')] } }), NOW, { ivan: 4, arch: null })
+  it('reads the passed target, and keeps 3 where none is passed', () => {
+    expect(cov.seats.ivan).toMatchObject({ set: 3, target: 4, short: 1 })
+    expect(cov.seats.arch).toMatchObject({ set: 1, target: 3, short: 2 })
+    expect(cov.seats.risedtc.target).toBe(3)
+  })
+})
