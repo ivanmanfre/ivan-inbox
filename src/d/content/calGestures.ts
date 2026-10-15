@@ -12,6 +12,10 @@ import { useEffect, useRef } from 'react'
 //    the draft panel), or over the ‹ › keys, pages too, so a post can travel to
 //    any later week or month. The edges light up while you drag (2026-10-09: the
 //    old trigger was the SCREEN edge, which the draft panel covered).
+//  · Holding it near the top or bottom of the scrolling page scrolls the page, so
+//    a day that is off screen can still be reached (2026-10-15: a post far down
+//    the No date yet list could not reach Friday, the grid had scrolled away).
+//  · Letting go anywhere that is not a day says so (onMiss): never a silent no-op.
 //
 // Contract with the markup (plain data attributes, so any view can join):
 //   [data-cal-id][data-cal-lane]   a post that can be lifted
@@ -27,6 +31,8 @@ import { useEffect, useRef } from 'react'
 export type CalGestureOpts = {
   onDrop: (id: string, lane: string, day: string) => void
   onRefuse: (why: string) => void
+  /** A lifted post was let go where no day takes it (it flies back; say why). */
+  onMiss?: () => void
   /** Live horizontal offset while a swipe is under the finger. */
   onSwipeMove: (dx: number) => void
   /** Swipe released: -1 = earlier, 1 = later, 0 = spring back. */
@@ -43,6 +49,17 @@ const SLOP = 8
 const EDGE = 44
 const EDGE_MS = 480
 const EDGE_REPEAT_MS = 1200
+const SCROLL_EDGE = 56
+const SCROLL_MAX = 18
+
+/** The nearest ancestor that scrolls vertically (the page's main column), else the document. */
+function scrollerOf(el: HTMLElement): HTMLElement {
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const oy = getComputedStyle(p).overflowY
+    if ((oy === 'auto' || oy === 'scroll' || oy === 'overlay') && p.scrollHeight > p.clientHeight + 1) return p
+  }
+  return (document.scrollingElement as HTMLElement | null) ?? document.documentElement
+}
 
 type Mode = 'idle' | 'press' | 'pending' | 'swipe' | 'drag'
 
@@ -61,6 +78,7 @@ export function useCalGestures(root: React.RefObject<HTMLElement | null>, opts: 
     let hot: HTMLElement | null = null
     let hold = 0, edgeT = 0, edgeDir: -1 | 0 | 1 = 0
     let raf = 0, px = 0, py = 0
+    let scrollRaf = 0, scroller: HTMLElement | null = null
     let noswipe = false
     let seenStage = false
     let layer: HTMLElement | null = null
@@ -102,11 +120,32 @@ export function useCalGestures(root: React.RefObject<HTMLElement | null>, opts: 
       window.addEventListener('click', stop, { capture: true, once: true })
       window.setTimeout(() => window.removeEventListener('click', stop, { capture: true }), 400)
     }
+    /** Page-scroll speed for the pointer's height: 0 away from the edges, up to SCROLL_MAX px a frame at them. */
+    const scrollSpeed = (): number => {
+      const s = scroller
+      if (!s || s.scrollHeight <= s.clientHeight + 1) return 0
+      const doc = s === document.scrollingElement || s === document.documentElement
+      const top = doc ? 0 : s.getBoundingClientRect().top
+      const bottom = doc ? window.innerHeight : s.getBoundingClientRect().bottom
+      if (py < top + SCROLL_EDGE && s.scrollTop > 0) return -Math.ceil(SCROLL_MAX * (1 - Math.max(0, py - top) / SCROLL_EDGE))
+      if (py > bottom - SCROLL_EDGE && s.scrollTop + s.clientHeight < s.scrollHeight - 1) return Math.ceil(SCROLL_MAX * (1 - Math.max(0, bottom - py) / SCROLL_EDGE))
+      return 0
+    }
+    const scrollTick = () => {
+      scrollRaf = 0
+      if (mode !== 'drag' || !scroller) return
+      const v = scrollSpeed()
+      if (!v) return
+      scroller.scrollTop += v
+      setHot(dayAt(px, py))
+      scrollRaf = requestAnimationFrame(scrollTick)
+    }
     const paint = () => {
       raf = 0
       if (!ghost) return
       ghost.style.transform = `translate3d(${px - gx}px,${py - gy}px,0) scale(1.04)`
       setHot(dayAt(px, py))
+      if (!scrollRaf && scrollSpeed()) scrollRaf = requestAnimationFrame(scrollTick)
       const dir = edgeDirAt(px, py)
       if (dir !== edgeDir) {
         clearEdge()
@@ -147,6 +186,7 @@ export function useCalGestures(root: React.RefObject<HTMLElement | null>, opts: 
       navigator.vibrate?.(8)
       mode = 'drag'
       seenStage = false
+      scroller = scrollerOf(el)
       px = sx; py = sy
       if (!raf) raf = requestAnimationFrame(paint)
     }
@@ -169,6 +209,7 @@ export function useCalGestures(root: React.RefObject<HTMLElement | null>, opts: 
     const end = (drop: boolean) => {
       clearHold(); clearEdge()
       if (raf) { cancelAnimationFrame(raf); raf = 0 }
+      if (scrollRaf) { cancelAnimationFrame(scrollRaf); scrollRaf = 0 }
       if (mode === 'drag') {
         const d = drop ? dayAt(px, py) : null
         setHot(null)
@@ -179,6 +220,8 @@ export function useCalGestures(root: React.RefObject<HTMLElement | null>, opts: 
         const id = item?.dataset.calId, lane = item?.dataset.calLane
         land(d ? d.getBoundingClientRect() : null)
         if (d && id && lane && d.dataset.calDay) o.current.onDrop(id, lane, d.dataset.calDay)
+        // A jittery click that lifted the post by a few pixels is not a drop attempt: say nothing.
+        else if (drop && Math.hypot(px - sx, py - sy) > 24) o.current.onMiss?.()
       } else if (mode === 'swipe') {
         const w = el.clientWidth || 1
         const dx = lx - sx

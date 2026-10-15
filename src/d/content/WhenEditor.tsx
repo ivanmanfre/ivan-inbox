@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as RKey } from 'react'
 import { createPortal } from 'react-dom'
-import { ClientRpcError, clearScheduleDate, setScheduleDateAt, type ContentDraft } from '../../lib/content'
+import { clearScheduleDate, setScheduleDateAt, type ContentDraft } from '../../lib/content'
+import { plainWhy } from './calWhy'
 import { monthLabel } from '../../lib/calendarItems'
 import { moveConfirmCopy, movePublishesForClient } from '../../wb/content/moveConfirm'
 import { useToast } from '../ui/toast'
@@ -110,7 +111,7 @@ export function WhenEditor({ r, lane, seatRows, initialDay, focus = 'day', gap =
       else await clearScheduleDate(r.id)
       toast.show({ id: `when-${r.id}`, message: prev ? `Put back on ${dayLabel(dayIn(prev, tz))} · ${laneTimeWord(prev, lane)}.` : 'Put back with no date.', sub: LANE_NAME[lane] })
     } catch (e) {
-      toast.show({ message: e instanceof Error ? e.message : 'Could not put it back.', tone: 'failed' })
+      toast.show({ message: 'Could not put it back.', sub: plainWhy(e), tone: 'failed' })
     }
     onDone()
   }
@@ -133,7 +134,7 @@ export function WhenEditor({ r, lane, seatRows, initialDay, focus = 'day', gap =
       })
       onDone(); onClose()
     } catch (e) {
-      setErr(e instanceof ClientRpcError || e instanceof Error ? e.message : 'Could not move it.')
+      setErr(`Not saved: ${plainWhy(e)}`)
     } finally { setBusy(false) }
   }
 
@@ -147,7 +148,7 @@ export function WhenEditor({ r, lane, seatRows, initialDay, focus = 'day', gap =
       toast.show({ id: `when-${r.id}`, message: 'Date removed.', sub: 'It waits under No date yet.', action: { label: 'Undo', verb: 'undo', run: () => { void undo(prev) } } })
       onDone(); onClose()
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Could not remove the date.')
+      setErr(`The date was not removed: ${plainWhy(e)}`)
     } finally { setBusy(false) }
   }
 

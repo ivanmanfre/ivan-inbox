@@ -152,3 +152,166 @@ html.cal-dragging,html.cal-dragging *{cursor:grabbing!important;user-select:none
 .xmark[data-status='failed']{ background:#c0392b; color:#fff }
 .xmark:focus-visible{ outline:2px solid #1d9bf0; outline-offset:1px }
 .cn-h .xmark{ display:flex; width:15px; padding:0; margin:2px auto 0; justify-content:center }
+
+/* ==========================================================================
+   CALENDAR, 2026-10-15 (Ivan: bigger cards, tags, On board, quick acts, a grid that fills the
+   window, smoother). Brief 4 skin only. Every rule carries .cv2-cal on top of cv2.css's selector,
+   so it wins whatever order the two sheets load in. Motion is transform/opacity only and stops
+   under Reduce Motion or Daily Brief's Motion Off (data-motion, from motionLevel).
+   ========================================================================== */
+
+/* -- the fill: grid and side rail take the window's height (--cal-fit, useCalFit) -- */
+:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-cal-body.cv2-cal-month{grid-template-columns:minmax(0,1fr) 300px;align-items:start}
+:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit[data-cal-size='mid'] .cv2-cal-body.cv2-cal-month{grid-template-columns:minmax(0,1fr) 248px}
+:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit[data-cal-size='mid'] .cv2-buf-v .cv2-buf-h > button:not(.cv2-buf-t){padding:0 7px;letter-spacing:.06em}
+:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit[data-cal-size='mid'] .cv2-buf-v{padding-inline:8px}
+:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit[data-cal-size='narrow'] .cv2-cal-body.cv2-cal-month{grid-template-columns:minmax(0,1fr)}
+:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-stage{height:var(--cal-fit,auto);overflow:hidden}
+:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit[data-cal-size='narrow'] .cv2-stage{height:calc(var(--cal-fit,700px) - 156px)}
+:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cal-track{height:100%}
+:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-month{height:100%;grid-template-columns:minmax(0,.62fr) repeat(5,minmax(0,1fr)) minmax(0,.62fr);grid-template-rows:auto repeat(var(--cal-weeks,6),minmax(0,1fr))}
+:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-month .cal-day{min-height:0;overflow:hidden;padding:4px 5px 5px;gap:4px;container-type:size}
+:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-month .cal-wh.cv2-we,:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-month .cal-day.cv2-we:not(.today):not(.sel){background:rgba(19,18,16,.018)}
+:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit:not([data-cal-size='narrow']) .cv2-side{height:var(--cal-fit,auto);min-height:0}
+:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-side .cv2-day{flex:0 1 auto;min-height:0;max-height:46%;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-side:has(.cv2-buf-closed) .cv2-day,:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-side:not(:has(.cv2-buf)) .cv2-day{max-height:none}
+/* The No date yet rail scrolls inside itself: a post at the bottom of the list and Friday are on screen together. */
+:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-buf-v{flex:1 1 0;min-height:150px;overflow:hidden}
+:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-buf-v.cv2-buf-closed{flex:none;min-height:0}
+:root[data-skin-on~='content.calendar'] .cv2-cal.cv2-fit .cv2-buf-v .cv2-buf-strip{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding:2px 2px 6px;margin:0 -4px;padding-inline:4px}
+
+/* -- the month card -- */
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc{position:relative;flex:none;min-width:0;display:flex;border-radius:8px;background:var(--ds-surface-1);box-shadow:0 0 0 1px var(--ds-line);cursor:grab;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;transition:transform var(--ds-d-fast,.12s) var(--ds-e-content,ease),box-shadow var(--ds-d-fast,.12s) var(--ds-e-content,ease)}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc[data-cal-refuse]{cursor:pointer}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc:hover{box-shadow:0 0 0 1px var(--ds-line-strong),0 3px 10px rgba(19,18,16,.08)}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc.dot-posted{background:var(--ds-surface-2)}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc.cal-lifted{opacity:.3}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc-main{display:grid;grid-template-columns:minmax(0,1fr);align-content:start;gap:3px;width:100%;min-width:0;min-height:0;padding:4px 5px 5px 6px;text-align:left;border-radius:inherit;color:inherit;overflow:hidden}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc-main:disabled{cursor:default;color:inherit}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc-main:focus-visible{outline:2px solid var(--ds-text);outline-offset:1px}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc-img{display:none;width:30px;height:30px;border-radius:5px;object-fit:cover;pointer-events:none}
+/* The picture only where a cell is wide enough that it does not eat the hook (the hover preview shows it big). */
+@container (min-width:150px){
+  :root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc-pic .cv2-mc-main{grid-template-columns:30px minmax(0,1fr);column-gap:6px}
+  :root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc-img{display:block}
+}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc-t{--mc-lines:3;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--mc-lines);overflow:hidden;font:var(--ds-fw-em,550) 12px/14px var(--ds-font);color:var(--ds-text);overflow-wrap:anywhere;padding-right:9px}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cal-day:is(.cv2-n2,.cv2-n3) .cv2-mc-t{--mc-lines:1}
+/* Every post of a day stays on screen: two or three on a day trade their tag lines for room, the
+   day list (click the day) shows them in full. The hook gets as many lines as the row allows
+   (the cell is a size container in the fitted grid). */
+:root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n2 .cv2-tags-c .cv2-tag:not(.cv2-tag-board):not(.cv2-tag-removed){display:none}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n3 .cv2-tags-c{display:none}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n2 .cv2-mc-time{display:none}
+@container (min-height:126px){
+  :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n1 .cv2-mc-t{--mc-lines:4}
+}
+@container (min-height:146px){
+  :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n1 .cv2-mc-t{--mc-lines:5}
+}
+@container (min-height:150px){
+  :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n2 .cv2-mc-time{display:inline}
+  :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n2 .cv2-mc-t{--mc-lines:2}
+}
+@container (min-height:160px){
+  :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n1 .cv2-mc-t{--mc-lines:6}
+}
+@container (min-height:190px){
+  :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n2 .cv2-tags-c .cv2-tag:is(.cv2-tag-fmt,.cv2-tag-aim){display:inline-flex}
+  :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n3 .cv2-tags-c{display:flex}
+  :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n3 .cv2-tags-c .cv2-tag:not(.cv2-tag-board):not(.cv2-tag-removed){display:none}
+}
+@container (max-height:106px){
+  :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n1 .cv2-mc-t{--mc-lines:2}
+}
+@container (max-height:92px){
+  :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n1 .cv2-mc-t{--mc-lines:1}
+  :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day .cv2-tags-c :is(.cv2-tag-aim,.cv2-tag-pillar){display:none}
+}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc .cv2-tags{grid-column:1/-1}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc-dot{position:absolute;top:8px;right:6px;margin:0;pointer-events:none}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc-time{font:500 10px/14px var(--ds-font);font-variant-numeric:tabular-nums;color:var(--ds-text-3);white-space:nowrap}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc-acts{position:absolute;top:3px;right:3px;z-index:2;display:flex;gap:2px;opacity:0;transform:translateY(-2px);pointer-events:none;transition:opacity var(--ds-d-fast,.12s) var(--ds-e-content,ease),transform var(--ds-d-fast,.12s) var(--ds-e-content,ease)}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc:hover .cv2-mc-acts,:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-mc:focus-within .cv2-mc-acts{opacity:1;transform:none;pointer-events:auto}
+html.cal-dragging .cv2-mc-acts{opacity:0!important}
+:root[data-skin-on~='content.calendar'] .cv2-cal :is(.cv2-mc-acts,.cv2-cc-more) :is(.cv2-more,.cv2-qa-b){width:24px;height:24px;border-radius:6px;display:grid;place-items:center;color:var(--ds-text-2);background:rgba(255,255,255,.9);box-shadow:0 1px 3px rgba(19,18,16,.16),0 0 0 1px var(--ds-line);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+:root[data-skin-on~='content.calendar'] .cv2-cal :is(.cv2-mc-acts,.cv2-cc-more) :is(.cv2-more,.cv2-qa-b):hover{color:var(--ds-text);background:#fff}
+:root[data-skin-on~='content.calendar'] .cv2-cal :is(.cv2-mc-acts,.cv2-cc-more) :is(.cv2-more,.cv2-qa-b) .d-ico{width:14px;height:14px}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-qa{display:inline-flex;gap:2px}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-cc-more{display:flex;gap:2px;align-items:center}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cal-more.cv2-more-day{align-self:flex-start;height:18px;padding:0 6px;border-radius:5px;font:var(--ds-fw-em,550) 11px/1 var(--ds-font);color:var(--ds-text-2);background:var(--ds-surface-2)}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cal-more.cv2-more-day:hover{color:var(--ds-text);background:var(--ds-accent-soft)}
+/* the drop target: the lit cell, the label says where and when it lands */
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-month .cal-day.cal-hot{background:var(--ds-accent-soft);box-shadow:inset 0 0 0 1.5px var(--ds-text)}
+
+/* -- tags: On board, format, aim, pillar (calTags) -- */
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tags{display:flex;flex-wrap:wrap;align-items:center;gap:3px;min-width:0}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tag{display:inline-flex;align-items:center;height:16px;padding:0 5px;border-radius:4px;font:500 10.5px/1 var(--ds-font);white-space:nowrap;flex:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;background:var(--ds-surface-2);color:var(--ds-text-2)}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tag-aim{background:transparent;box-shadow:inset 0 0 0 1px var(--ds-line-strong)}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tag-pillar{background:transparent;color:var(--ds-text-3);padding:0 2px}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tag-board{background:var(--ds-sev-clear-soft);color:var(--ds-sev-clear-ui);font-weight:600}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tag-board::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;margin-right:4px;flex:none}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tags-c .cv2-tag{height:14px;padding:0 4px;font-size:10px}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tags-c{gap:2px 3px}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tags-c .cv2-tag-board::before{display:none}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tags-c .cv2-tag-pillar{padding:0 1px}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n2 .cv2-mc-main,:root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n3 .cv2-mc-main{padding:4px 6px}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tag-removed{background:var(--ds-sev-urgent-soft);color:var(--ds-sev-urgent-ui);font-weight:600}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tag-lm{background:var(--ds-accent-soft);color:var(--ds-text);font-weight:600;letter-spacing:.04em}
+/* Narrow cells drop the quieter tags first: pillar, then aim; three posts on a day keep time + board. */
+@container (max-width:124px){
+  :root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tags-c .cv2-tag-pillar{display:none}
+}
+/* A small window (narrow and short cells): the time gives way first; it is in the day list, the hover and the quick act. */
+@container (max-width:100px) and (max-height:106px){
+  :root[data-skin-on~='content.calendar'] .cv2-cal .cal-day.cv2-n1 .cv2-mc-time{display:none}
+}
+/* the Lines card: one tag line, it never pushes the cell */
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-cc:not(.cv2-cc-wide) .cv2-tags{flex-wrap:nowrap;overflow:hidden}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-cc:not(.cv2-cc-wide) .cv2-tag-pillar{display:none}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-cell{container-type:inline-size}
+@container (max-width:118px){
+  :root[data-skin-on~='content.calendar'] .cv2-cal .cv2-cell .cv2-tags-c :is(.cv2-tag-fmt,.cv2-tag-aim){display:none}
+}
+/* the day list's wide card: picture beside three rows (hook, time, tags), quick acts on hover */
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-cc-wide .cv2-cc-main{grid-template-rows:auto auto auto}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-cc-wide .cv2-cc-pic{grid-row:1/4}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-cc-wide .cv2-cc-t{-webkit-line-clamp:3}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-cc-wide .cv2-cc-more{flex-direction:column}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-cc-wide .cv2-cc-more .cv2-more{background:transparent;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-cc-wide .cv2-qa{flex-direction:column;order:2;opacity:0;transition:opacity var(--ds-d-fast,.12s) var(--ds-e-content,ease)}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-cc-wide .cv2-qa .cv2-qa-b{background:transparent;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-cc-wide .cv2-qa .cv2-qa-b:hover{background:var(--ds-fill-hover)}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-cc-wide:is(:hover,:focus-within) .cv2-qa{opacity:1}
+@media (hover:none){:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-qa{display:none}}
+
+/* -- the buffer tiles: whole hook (3 lines in the rail), tags, Give it a date -- */
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tile{height:auto;gap:6px;cursor:grab;transition:box-shadow var(--ds-d-fast,.12s) var(--ds-e-content,ease),transform var(--ds-d-fast,.12s) var(--ds-e-content,ease)}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tile.cal-lifted{opacity:.3}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tile-main{height:auto}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tile-text .cv2-tile-main{grid-template-columns:minmax(0,1fr)}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tile:not(.cv2-tile-lm) .cv2-tile-t{-webkit-line-clamp:2;max-height:32px;padding-bottom:0}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-buf-v .cv2-tile:not(.cv2-tile-lm) .cv2-tile-t{-webkit-line-clamp:3;max-height:48px}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tile-foot{display:flex;align-items:center;gap:6px;min-width:0}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tile-foot .cv2-tags{flex:1 1 auto;min-width:0}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-buf:not(.cv2-buf-v) .cv2-tile{width:236px}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-buf:not(.cv2-buf-v) .cv2-tile-foot .cv2-tags{flex-wrap:nowrap;overflow:hidden}
+:root[data-skin-on~='content.calendar'] .cv2-cal .cv2-tile-give{position:static;margin:0 0 0 auto;flex:none;height:22px}
+
+/* -- motion (cheap: transform / opacity) -- */
+:root[data-skin-on~='content.calendar'] .cv2-cal[data-motion='full'] .cv2-mc:hover{transform:translateY(-1px)}
+:root[data-skin-on~='content.calendar'] .cv2-cal[data-motion='full'] .cv2-tile:hover{transform:translateY(-1px)}
+:root[data-skin-on~='content.calendar'] .cv2-cal:is([data-motion='full'],[data-motion='subtle']) .cv2-buf-strip{animation:cv2-cal-in var(--ds-d-ui,.2s) var(--ds-e-content,ease) both}
+:root[data-skin-on~='content.calendar'] .cv2-cal[data-motion='subtle'] .cv2-buf-strip{animation-duration:.14s}
+:root[data-skin-on~='content.calendar'] .cv2-cal:is([data-motion='full'],[data-motion='subtle']) .cal-day.cal-hot [data-cal-id]{transform:scale(.985);transition:transform .12s ease}
+:root[data-skin-on~='content.calendar'] .cv2-cal:is([data-motion='full'],[data-motion='subtle']) .cal-day:is(.cal-hot,.cal-preview)[data-cal-drop]::after{animation:cv2-cal-tip .16s var(--ds-e-content,ease) both}
+@keyframes cv2-cal-in{from{opacity:0;transform:translateY(4px)}}
+@keyframes cv2-cal-tip{from{opacity:0;transform:translate(-50%,3px)}}
+:root[data-skin-on~='content.calendar'] .cv2-cal[data-motion='off'] *,:root[data-skin-on~='content.calendar'] .cv2-cal[data-motion='off'] *::after{transition:none!important;animation:none!important}
+@media (prefers-reduced-motion:reduce){:root[data-skin-on~='content.calendar'] .cv2-cal *{transition:none!important;animation:none!important}}
+
+/* phone (phone-ox-cal.css draws the tile): a text post has no picture column; tags over a full-width Give it a date */
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone .cv2-tile.cv2-tile-text .cv2-tile-main{grid-template-columns:minmax(0,1fr);min-height:0}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone .cv2-tile .cv2-tile-foot{flex-direction:column;align-items:stretch;gap:8px;margin-top:auto}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone .cv2-tile .cv2-tags{flex-wrap:wrap;overflow:visible}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone .cv2-tag{height:20px;font-size:12px;padding:0 6px}

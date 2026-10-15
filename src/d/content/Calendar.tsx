@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { LANE_DEFAULT_HM, LANE_TZ, hmIn, laneTimeWord, zonedToUtc } from './laneTime'
 import { monthLabel, monthWeeks } from '../../lib/calendarItems'
 import { clearScheduleDate, setScheduleDateAt } from '../../lib/content'
@@ -12,6 +12,9 @@ import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
 import { warsawDay, warsawDayTime, warsawDm, warsawDow } from '../ui/time'
 import { useCalGestures } from './calGestures'
+import { MISSED_DROP, plainWhy } from './calWhy'
+import { useCalFit } from './useCalFit'
+import { useMotionLevel } from '../../ds/motionLevel'
 import {
   DOT_WORD, PICKS, PICK_KEY, calendarDays, coverOf, lanesOf, looseOf, magnetLane, monthOf, openDay,
   type Entry, type Loose, type Magnet, type Pick,
@@ -26,7 +29,7 @@ import { useXDays, XMarks } from './xDays'
 import './calendar.css'
 import './phone-ox-cal.css'
 import { coverageOf } from './v2/coverage'
-import { BufferDock, CoverageBar, DayList, WallV2, type CardActs } from './v2/CalendarV2'
+import { BufferDock, CoverageBar, DayList, MonthCard, WallV2, type CardActs } from './v2/CalendarV2'
 import { SeatAv, Seg } from './v2/ui'
 
 // D · CONTENT > CALENDAR. The first tab (Ivan, 30 Sep: "The calendar is the
@@ -106,7 +109,9 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
   movedRef.current = moved
   // Brief 4 desktop: date and time edited beside the card (WhenPopover), never off-screen.
   const [when, setWhen] = useState<{ id: string; lane: Lane; anchor: DOMRect; day?: string; focus: 'time' | 'day' } | null>(null)
-  const reduced = useMemo(() => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches, [])
+  // Reduce Motion, or Daily Brief's View options > Motion Off: no spring, no landing flight (motionLevel).
+  const motion = useMotionLevel()
+  const reduced = motion === 'off'
   const rows = useMemo(() => ({ ivan: data.seats.ivan.rows, risedtc: data.seats.risedtc.rows, arch: data.seats.arch.rows , swishdm: data.seats.swishdm.rows}), [data.seats])
 
   // An optimistic day holds only until the re-read agrees (or the row is gone).
@@ -159,6 +164,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
   const track = useRef<HTMLDivElement>(null)
   const stage = useRef<HTMLDivElement>(null)
   const root = useRef<HTMLElement>(null)
+  const bodyEl = useRef<HTMLDivElement>(null)
   const anim = useRef<() => void>(() => {})
   const enter = useRef<number | null>(null)
   const setX = (x: number) => { if (track.current) track.current.style.transform = x ? `translate3d(${x}px,0,0)` : '' }
@@ -180,7 +186,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
   const drop = useCallback(async (id: string, laneS: string, to: string) => {
     const lane = laneS as Lane
     const r = rows[lane].find(x => x.id === id)
-    if (!r) return
+    if (!r) { toast.show({ id: 'cal-drop', message: 'Not moved: this post is no longer in the list (it changed meanwhile). Refresh and try again.', tone: 'failed' }); return }
     const prev = r.scheduled_at
     if ((prev ? warsawDay(prev) : null) === to) return
     // The time of day is kept in the lane's own clock (RISE in PT), so a clock change never shifts it.
@@ -208,7 +214,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
       onChanged()
     } catch (e) {
       setMoved(m => { const n = new Map(m); n.delete(id); return n })
-      toast.show({ message: e instanceof Error ? e.message : 'Could not move it.', tone: 'failed' })
+      toast.show({ id: 'cal-drop', message: `Not moved to ${dayLabel(to)}.`, sub: plainWhy(e), tone: 'failed' })
     }
   }, [rows, confirm, toast, onChanged, v2, phone]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -219,9 +225,25 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
       else await clearScheduleDate(id)
       toast.show({ message: prev ? `Put back on ${warsawDayTime(prev)}.` : 'Put back with no date.', sub: LANE_NAME[lane] })
     } catch (e) {
-      toast.show({ message: e instanceof Error ? e.message : 'Could not put it back.', tone: 'failed' })
+      toast.show({ message: 'Could not put it back.', sub: plainWhy(e), tone: 'failed' })
     }
     onChanged()
+  }
+
+  /** Remove date (a card's quick act): back to No date yet, Undo on the receipt. Same write as the editor's. */
+  const removeDate = async (id: string, lane: Lane) => {
+    const r = rows[lane].find(x => x.id === id)
+    if (!r?.scheduled_at || r.published_at) return
+    const prev = r.scheduled_at
+    setMoved(m => new Map(m).set(id, ''))
+    try {
+      await clearScheduleDate(id)
+      toast.show({ id: `when-${id}`, message: 'Date removed.', sub: `${LANE_NAME[lane]} · it waits under No date yet`, action: { label: 'Undo', verb: 'undo', run: () => { void undo(id, lane, prev) } } })
+      onChanged()
+    } catch (e) {
+      setMoved(m => { const n = new Map(m); n.delete(id); return n })
+      toast.show({ id: `when-${id}`, message: 'The date was not removed.', sub: plainWhy(e), tone: 'failed' })
+    }
   }
 
   /** Open the date-and-time card beside a post on screen (or the sheet on a phone / when it is not on screen). */
@@ -258,6 +280,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
     reducedMotion: reduced,
     onDrop: (id, lane, to) => { void drop(id, lane, to) },
     onRefuse: why => toast.show({ id: 'cal-refuse', message: why }),
+    onMiss: () => toast.show({ id: 'cal-refuse', message: MISSED_DROP }),
     onSwipeMove: dx => { anim.current(); setX(dx) },
     onSwipeEnd: (dir, dx) => { if (dir) page(dir, dx); else { anim.current(); anim.current = spring(dx, 0, setX, () => {}) } },
     onEdgePage: dir => page(dir),
@@ -299,16 +322,23 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
     return () => window.removeEventListener('keydown', key)
   })
 
+  // Desktop month: the grid and the side rail fill the window; the rail scrolls inside itself (useCalFit).
+  // Above every return (a hook after an early return blanked a whole screen once).
+  const size = useCalFit(root, bodyEl, v2 && !phone && view === 'month', [view, pick, phone])
+
   const agenda = days.get(day) ?? []
   const laneBound = pick === 'all' ? undefined : pick
 
   if (v2) {
-    const acts: CardActs = { onOpen, onMove: (id, lane) => openWhen(id, lane), onTime: (id, lane) => openWhen(id, lane, 'time'), onArm, onChanged }
+    const acts: CardActs = { onOpen, onMove: (id, lane) => openWhen(id, lane), onTime: (id, lane) => openWhen(id, lane, 'time'), onClear: (id, lane) => { void removeDate(id, lane) }, onArm, onChanged }
+    const fit = !phone && view === 'month'
+    // A narrow calendar (a small window, or the draft window open beside it): the buffer docks to the bottom, always on screen.
+    const dockBottom = view === 'lines' || phone || size === 'narrow'
     const lanes = lanesOf(pick)
     const nextWeek = new Set(lanes.flatMap(l => (data.seats[l].loadedAt ? cov.seats[l].gaps : [])))
     const riseLine = (pick === 'all' || pick === 'risedtc') ? warsawDay(now + 14 * DAY_MS) : null
     return (
-      <section ref={root} className={`cal cv2 cv2-cal${phone ? ' cal-phone' : ''} cal-${view}${week5 ? ' cv2-week5' : ''}`} aria-label="Content calendar" data-cv2="calendar">
+      <section ref={root} className={`cal cv2 cv2-cal${phone ? ' cal-phone' : ''} cal-${view}${week5 ? ' cv2-week5' : ''}${fit ? ' cv2-fit' : ''}`} data-cal-size={phone ? undefined : size} data-motion={motion} aria-label="Content calendar" data-cv2="calendar">
         <header className="cv2-bar cv2-cal-bar">
           <Seg label="Client" verb="cal-pick" value={pick} onChange={id => choose(id as Pick)} options={PICKS.map(p => ({ id: p, label: p === 'all' ? 'All' : <><SeatAv lane={p} />{PICK_NAME[p]}</> }))} />
           <Seg label="View" verb="cal-view" size="sm" value={view} onChange={id => setView(id as View)} options={[{ id: 'month', label: 'Month', title: 'M' }, { id: 'lines', label: '2 weeks', title: 'L' }]} />
@@ -321,20 +351,22 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
           </div>
         </header>
         <CoverageBar cov={cov} lanes={lanes} phone={phone} loaded={l => !!data.seats[l].loadedAt} />
-        <div className={`cv2-cal-body cv2-cal-${view}`}>
+        <div ref={bodyEl} className={`cv2-cal-body cv2-cal-${view}`}>
           <div ref={stage} className="cal-stage cv2-stage">
             <div ref={track} className="cal-track">
               {view === 'month' ? (
-                <div className="cal-grid cv2-month" role="group" aria-label={`${PICK_NAME[pick]}, ${label}`}>
-                  {DOW.map(d => <div key={d} className="cal-wh">{phone ? d[0] : d}</div>)}
-                  {keys.map(k => {
+                <div className="cal-grid cv2-month" role="group" aria-label={`${PICK_NAME[pick]}, ${label}`} style={{ '--cal-weeks': weeks.length } as CSSProperties}>
+                  {DOW.map((d, i) => <div key={d} className={`cal-wh${i === 0 || i === 6 ? ' cv2-we' : ''}`}>{phone ? d[0] : d}</div>)}
+                  {keys.map((k, i) => {
                     const on = days.get(k) ?? []
-                    const cls = ['cal-day', inMonth.has(k) ? '' : 'out', k === todayKey ? 'today' : '', k === day ? 'sel' : '', k < todayKey ? 'past' : '', !on.length && nextWeek.has(k) ? 'cv2-gapday' : '', k === riseLine ? 'cv2-riseline' : ''].filter(Boolean).join(' ')
+                    const shown = Math.min(on.length, 3)
+                    const cls = ['cal-day', inMonth.has(k) ? '' : 'out', k === todayKey ? 'today' : '', k === day ? 'sel' : '', k < todayKey ? 'past' : '', !on.length && nextWeek.has(k) ? 'cv2-gapday' : '', k === riseLine ? 'cv2-riseline' : '', i % 7 === 0 || i % 7 === 6 ? 'cv2-we' : '', `cv2-n${shown}`].filter(Boolean).join(' ')
                     return (
                       <div key={k} className={cls} data-cal-day={k} data-cal-lane={laneBound} onClick={() => setSel(k)} title={k === riseLine ? `${dayLabel(k)} · Mattan’s two-week line` : dayLabel(k)}>
                         <span className="cal-dn">{Number(k.slice(8))}<XMarks items={xDays.get(k)} time={!phone} /></span>
-                        {on.slice(0, 3).map(e => <Chip key={e.it.id} e={e} phone={phone} onOpen={onOpen} />)}
-                        {on.length > 3 && <span className="cal-more">+{on.length - 3}</span>}
+                        {on.slice(0, 3).map(e => (phone ? <Chip key={e.it.id} e={e} phone={phone} onOpen={onOpen} /> : <MonthCard key={e.it.id} e={e} a={acts} />))}
+                        {on.length > 3 && (phone ? <span className="cal-more">+{on.length - 3}</span>
+                          : <button type="button" className="cal-more cv2-more-day" data-verb="day-more" onClick={ev => { ev.stopPropagation(); setSel(k) }}>+{on.length - 3} more</button>)}
                       </div>
                     )
                   })}
@@ -346,12 +378,12 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
           </div>
           {(view === 'month' || phone) && (
             <aside className="cv2-side">
-              <DayList day={day} isToday={day === todayKey} entries={agenda} reading={!data.seats.ivan.loadedAt} a={acts} />
-              {!phone && <BufferDock loose={loose} lms={lms} a={acts} vertical />}
+              <DayList day={day} isToday={day === todayKey} entries={agenda} reading={!lanes.every(l => data.seats[l].loadedAt)} a={acts} />
+              {!dockBottom && <BufferDock loose={loose} lms={lms} a={acts} vertical />}
             </aside>
           )}
         </div>
-        {(view === 'lines' || phone) && <BufferDock loose={loose} lms={lms} a={acts} />}
+        {dockBottom && <BufferDock loose={loose} lms={lms} a={acts} />}
         {when && (() => {
           const r = rows[when.lane].find(x => x.id === when.id)
           if (!r) return null

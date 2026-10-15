@@ -101,13 +101,13 @@ export function calendarDays(
 }
 
 /** Undated drafts that can take a date, newest first, across the picked seats. */
-export type Loose = { id: string; lane: Lane; hook: string; thumb: string | null; lm: boolean; brain: boolean; createdAt: string }
+export type Loose = { id: string; lane: Lane; hook: string; thumb: string | null; lm: boolean; brain: boolean; createdAt: string; r: ContentDraft }
 export function looseOf(rows: Record<Lane, ContentDraft[]>, pick: Pick, moved: Map<string, string>): Loose[] {
   const out: Loose[] = []
   for (const lane of lanesOf(pick)) {
     for (const r of rows[lane]) {
       if (r.scheduled_at || moved.has(r.id) || (r.status !== 'review' && r.status !== 'scheduled')) continue
-      out.push({ id: r.id, lane, hook: hookOf(r, titleOf(r)), thumb: imgOf(r.image_urls, 400), lm: isMagnetPost(r), brain: isBrainPost(r), createdAt: r.created_at })
+      out.push({ id: r.id, lane, hook: hookOf(r, titleOf(r)), thumb: imgOf(r.image_urls, 400), lm: isMagnetPost(r), brain: isBrainPost(r), createdAt: r.created_at, r })
     }
   }
   return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt))

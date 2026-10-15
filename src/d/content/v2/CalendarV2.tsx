@@ -11,6 +11,9 @@ import type { ContentData } from '../useContentData'
 import type { Coverage } from './coverage'
 import { LinkedInCard } from './LinkedInCard'
 import { Menu, Pill, SeatAv, type MenuItem, type Tone } from './ui'
+import { postTagsOf, tagsLine } from '../calTags'
+import { CalTags } from '../CalTagRow'
+import { DIcon } from '../../ui/icons'
 
 // CONTENT > CALENDAR, BRIEF 4 (SPEC-content §2.3; upgrades #2 and #4). The
 // parts the Calendar draws when `content.calendar` is on. Calendar.tsx keeps
@@ -36,6 +39,8 @@ export type CardActs = {
   onMove: (id: string, lane: Lane) => void
   /** The card's time was clicked: edit date and time beside it. */
   onTime?: (id: string, lane: Lane) => void
+  /** Remove date: back to No date yet (Undo on the receipt). */
+  onClear?: (id: string, lane: Lane) => void
   onArm: (id: string) => void
   onChanged: () => void
 }
@@ -45,6 +50,7 @@ function menuOf(e: Entry, a: CardActs): MenuItem[] {
   const items: MenuItem[] = []
   if (e.r) items.push({ key: 'open', label: 'Open', run: () => a.onOpen(it.id, e.lane) })
   if (!e.refuse && e.r) items.push({ key: 'move', label: 'Change date or time', run: () => a.onMove(it.id, e.lane) })
+  if (!e.refuse && e.r?.scheduled_at && !e.r.published_at && a.onClear) items.push({ key: 'clear', label: 'Remove date', run: () => a.onClear!(it.id, e.lane) })
   if (it.armable) items.push({ key: 'arm', label: 'Arm it', run: () => a.onArm(it.id) })
   if (it.postedUrl) items.push({ key: 'post', label: 'Open post ↗', href: it.postedUrl, external: true })
   if (it.unpublishId) {
@@ -97,6 +103,7 @@ export function CalCard({ e, a, wide = false }: { e: Entry; a: CardActs; wide?: 
   const { at, bind } = useHoverPreview(!!e.r)
   const it = e.it
   const hook = hookOf(e)
+  const tags = postTagsOf(e.r, e.lane, e.lm)
   return (
     <div className={`cv2-cc${wide ? ' cv2-cc-wide' : ''}${e.thumb ? '' : ' cv2-cc-text'} dot-${e.dot}`} data-cal-id={it.id} data-cal-lane={e.lane} data-cal-refuse={e.refuse ?? undefined} {...bind}>
       <button type="button" className="cv2-cc-main" data-verb="open" disabled={!e.r} aria-label={`${LANE_NAME[e.lane]} · ${dotText(e)} · ${hook}`}
@@ -112,11 +119,76 @@ export function CalCard({ e, a, wide = false }: { e: Entry; a: CardActs; wide?: 
         <span className="cv2-cc-t">{hook}</span>
         <span className="cv2-cc-m">
           {!(!e.thumb && e.dot === 'posted' && !wide) && <span className={a.onTime && !e.refuse && e.dot !== 'posted' ? 'cv2-cc-time' : undefined} data-cal-time={a.onTime && !e.refuse && e.dot !== 'posted' ? '' : undefined} title={a.onTime && !e.refuse && e.dot !== 'posted' ? 'Change date or time' : timeLine(it.postedAt ?? it.at, e.lane).replace(' ', ' · ')}>{warsawHm(it.postedAt ?? it.at)}</span>}
-          {e.lm && <em>LM</em>}{e.brain && <em>Brain</em>}
+          {e.brain && <em>Brain</em>}
           {!e.thumb && e.dot === 'posted' && !wide ? <Pill tone="posted">{dotText(e)}</Pill> : <i className={`cv2-dot cv2-dot-${e.dot}`} title={dotText(e)} aria-hidden="true" />}
         </span>
+        <CalTags t={tags} compact={!wide} />
       </button>
-      <span className="cv2-cc-more" data-cal-nogesture><Menu label={`More for ${hook.slice(0, 40)}`} items={menuOf(e, a)} head={<span>{LANE_NAME[e.lane]} · {dotText(e)}</span>} /></span>
+      <span className="cv2-cc-more" data-cal-nogesture onClick={ev => ev.stopPropagation()}>
+        <QuickActs e={e} a={a} wide={wide} />
+        <Menu label={`More for ${hook.slice(0, 40)}`} items={menuOf(e, a)} head={<span>{LANE_NAME[e.lane]} · {dotText(e)}</span>} />
+      </span>
+      {at && <HoverPreview e={e} at={at} />}
+    </div>
+  )
+}
+
+/**
+ * A card's quick acts, shown on hover or keyboard focus (desktop) next to its ⋯ (Ivan 2026-10-15:
+ * "different actions to edit the post easily"). The same acts as the ⋯ menu, which keeps them for
+ * touch: Change date or time (the editor beside the card), and on the day list's wide card Remove
+ * date and Open. Nothing new is written: the calendar's own handlers run.
+ */
+function QuickActs({ e, a, wide = false }: { e: Entry; a: CardActs; wide?: boolean }) {
+  const it = e.it
+  if (!e.r || e.refuse) return null
+  const date = a.onTime ?? a.onMove
+  return (
+    <span className="cv2-qa" role="group" aria-label="Quick actions">
+      <button type="button" className="cv2-qa-b" data-verb="quick-date" title="Change date or time" aria-label="Change date or time" onClick={ev => { ev.stopPropagation(); date(it.id, e.lane) }}><DIcon name="time" /></button>
+      {wide && e.r.scheduled_at && !e.r.published_at && a.onClear && (
+        <button type="button" className="cv2-qa-b" data-verb="quick-clear" title="Remove date (back to No date yet)" aria-label="Remove date" onClick={ev => { ev.stopPropagation(); a.onClear!(it.id, e.lane) }}><DIcon name="x" /></button>
+      )}
+    </span>
+  )
+}
+
+/**
+ * The month cell's card (Ivan 2026-10-15: "I feel like it could be bigger so I can see more of the
+ * title, the topic, the tags"). The hook over up to three lines (two when the day holds two posts,
+ * one when it holds three), then the time and the tags: On board, format, aim, pillar (CalTags).
+ * A small picture sits beside the hook when the post has one. Hover or focus shows Change date and
+ * the ⋯ with every other act; 400 ms of still hover shows the post as LinkedIn will.
+ */
+export function MonthCard({ e, a }: { e: Entry; a: CardActs }) {
+  const { at, bind } = useHoverPreview(!!e.r)
+  const it = e.it
+  const hook = hookOf(e)
+  const tags = postTagsOf(e.r, e.lane, e.lm)
+  const editTime = !!a.onTime && !e.refuse && e.dot !== 'posted' && !!e.r
+  const time = e.dot === 'posted' ? `✓ ${warsawHm(it.postedAt ?? it.at)}` : warsawHm(it.postedAt ?? it.at)
+  return (
+    <div className={`cv2-mc dot-${e.dot}${e.thumb ? ' cv2-mc-pic' : ''}`} data-cal-id={it.id} data-cal-lane={e.lane} data-cal-refuse={e.refuse ?? undefined} {...bind}>
+      <button type="button" className="cv2-mc-main" data-verb="open" disabled={!e.r}
+        aria-label={`${LANE_NAME[e.lane]} · ${dotText(e)} · ${hook}${tags ? ` · ${tagsLine(tags)}` : ''}`}
+        onClick={ev => {
+          ev.stopPropagation()
+          if (!e.r) return
+          if (editTime && (ev.target as HTMLElement).closest('[data-cal-time]')) { a.onTime!(it.id, e.lane); return }
+          a.onOpen(it.id, e.lane)
+        }}>
+        {e.thumb && <img className="cv2-mc-img" src={e.thumb} alt="" loading="lazy" draggable={false} />}
+        <span className="cv2-mc-t">{hook}</span>
+        <CalTags t={tags} compact lead={<>
+          <span className={`cv2-mc-time${editTime ? ' cv2-cc-time' : ''}`} data-cal-time={editTime ? '' : undefined} title={editTime ? 'Change date or time' : timeLine(it.postedAt ?? it.at, e.lane)}>{time}</span>
+          {e.brain && <span className="cv2-tag cv2-tag-lm">Brain</span>}
+        </>} />
+      </button>
+      <i className={`cv2-dot cv2-dot-${e.dot} cv2-mc-dot`} title={dotText(e)} aria-hidden="true" />
+      <span className="cv2-mc-acts" data-cal-nogesture onClick={ev => ev.stopPropagation()}>
+        <QuickActs e={e} a={a} />
+        <Menu label={`More for ${hook.slice(0, 40)}`} items={menuOf(e, a)} head={<span>{LANE_NAME[e.lane]} · {dotText(e)}</span>} />
+      </span>
       {at && <HoverPreview e={e} at={at} />}
     </div>
   )
@@ -240,16 +312,24 @@ export function BufferDock({ loose, lms, a, vertical = false }: { loose: Loose[]
         <button type="button" className="cv2-buf-t" aria-expanded={open} aria-label={open ? 'Fold the buffer (B)' : 'Open the buffer (B)'} data-verb="buffer-toggle" onClick={() => setOpen(!open)}>{open ? '▾' : '▸'}</button>
       </div>
       {open && (
-        <div className="cv2-buf-strip" data-cal-noswipe>
-          {list === 'loose' ? loose.map(l => (
-            <div key={l.id} className="cv2-tile" data-cal-id={l.id} data-cal-lane={l.lane}>
-              <button type="button" className="cv2-tile-main" data-verb="open" onClick={() => a.onOpen(l.id, l.lane)}>
-                {l.thumb ? <img src={l.thumb} alt="" loading="lazy" draggable={false} /> : <span className="cv2-tile-nopic" aria-hidden="true" />}
-                <span className="cv2-tile-t"><i className={`cv2-seatdot cv2-seatdot-${l.lane}`} aria-hidden="true" />{splitTitleTag(l.hook).text}</span>
-              </button>
-              <button type="button" className="cv2-tile-give" data-verb="give-date" onClick={() => a.onMove(l.id, l.lane)}>Give it a date</button>
-            </div>
-          )) : lms.map(m => (
+        // Keyed by the list shown, so switching No date yet / Lead magnets (or opening it) plays the short enter.
+        <div key={list} className="cv2-buf-strip" data-cal-noswipe>
+          {list === 'loose' ? loose.map(l => {
+            const tags = postTagsOf(l.r, l.lane, l.lm)
+            const hook = splitTitleTag(l.hook).text
+            return (
+              <div key={l.id} className={`cv2-tile${l.thumb ? '' : ' cv2-tile-text'}`} data-cal-id={l.id} data-cal-lane={l.lane}>
+                <button type="button" className="cv2-tile-main" data-verb="open" aria-label={`${hook}${tags ? ` · ${tagsLine(tags)}` : ''}`} onClick={() => a.onOpen(l.id, l.lane)}>
+                  {l.thumb && <img src={l.thumb} alt="" loading="lazy" draggable={false} />}
+                  <span className="cv2-tile-t"><i className={`cv2-seatdot cv2-seatdot-${l.lane}`} aria-hidden="true" />{hook}</span>
+                </button>
+                <span className="cv2-tile-foot">
+                  <CalTags t={tags} compact={!vertical} lead={l.brain ? <span className="cv2-tag cv2-tag-lm">Brain</span> : undefined} />
+                  <button type="button" className="cv2-tile-give" data-verb="give-date" onClick={() => a.onMove(l.id, l.lane)}>Give it a date</button>
+                </span>
+              </div>
+            )
+          }) : lms.map(m => (
             <a key={m.id} className="cv2-tile cv2-tile-lm" href={dHash('content', 'magnets', { lane: m.lane, magnet: m.id })}>
               {m.cover ? <img src={m.cover} alt="" loading="lazy" draggable={false} /> : <span className="cv2-tile-nopic" aria-hidden="true">LM</span>}
               <span className="cv2-tile-t"><i className={`cv2-seatdot cv2-seatdot-${m.lane}`} aria-hidden="true" />{m.title}</span>
