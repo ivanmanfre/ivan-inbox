@@ -1,0 +1,58 @@
+--- a/cb22-outlier-promotion.workflow.ts
++++ b/cb22-outlier-promotion.workflow.ts
+@@ -148,7 +148,7 @@
+ const SB = 'https://bjbvqvzbzczjbatgmccb.supabase.co';
+ const GATE = 'clientops';                       // the public operator gate constant (also in the inbox bundle)
+ const MODEL = 'claude-opus-5-5';
+-const CLIENTS = ['ivan', 'risedtc', 'arch'];
++let CLIENTS = ['ivan', 'risedtc', 'arch', 'swishdm'];
+ const CALL_TIMEOUT_MS = 60000, JUDGE_BUDGET_MS = 420000, IN_FLIGHT = 3, MAX_JUDGE = 150;
+ const T0 = Date.now();
+ const helpers = this.helpers;
+@@ -229,6 +229,10 @@
+   try { prod = $execution.mode === 'production'; } catch (e) { prod = false; }
+   S.trigger = viaWebhook ? 'webhook' : (viaSchedule && prod ? (viaCatchUp ? 'catchup' : 'schedule') : 'editor');
+   S.mode = viaWebhook ? (body.mode === 'apply' ? 'apply' : 'dry') : (viaSchedule && prod ? 'apply' : 'dry');
++  if (viaWebhook && Object.prototype.hasOwnProperty.call(body, 'clients')) {
++    if (!Array.isArray(body.clients) || !body.clients.length || body.clients.some((c) => !CLIENTS.includes(c))) throw new Bail('unknown_client_scope', '');
++    CLIENTS = [...new Set(body.clients)];
++  }
+   const noJudge = viaWebhook && (body.judge === false || String(body.judge).toLowerCase() === 'false');
+   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\\..*$/, '');
+   S.run_key = 'cb22-' + S.mode + '-' + (viaWebhook ? 'wh' : (viaCatchUp ? 'catchup' : 'sched')) + '-' + stamp;
+@@ -374,7 +378,7 @@
+     };
+     S.checks_asked = 0; S.checks_stored = 0; S.checks_failed = 0; S.check_stop = '';
+     try {
+-      for (const c of ['risedtc', 'arch', 'ivan']) {   // CB-30c: Ivan's lane gets the check too (engagement + topic applied)
++      for (const c of ['risedtc', 'arch', 'ivan', 'swishdm'].filter((c) => CLIENTS.includes(c))) {   // CB-30c: Ivan's lane gets the check too (engagement + topic applied)
+         if (S.check_stop) break;
+         const cp = await rpc('checks_pool', { clients: [c] });
+         const asks = (cp.pool && Array.isArray(cp.pool[c])) ? cp.pool[c] : [];
+@@ -420,7 +424,7 @@
+       const AT = SEC.apify_api_token;
+       if (!AT) throw new Bail('secrets_unavailable', 'apify_api_token');
+       const asks = [];
+-      for (const c of ['risedtc', 'arch']) {
++      for (const c of ['risedtc', 'arch'].filter((c) => CLIENTS.includes(c))) {
+         const bp = await rpc('baselines_pool', { clients: [c] });
+         for (const a of ((bp.pool && Array.isArray(bp.pool[c])) ? bp.pool[c] : [])) if (a && a.author_url) asks.push(a);
+       }
+@@ -452,7 +456,7 @@
+           const mid = L.length % 2 ? L[(L.length - 1) / 2] : (L[L.length / 2 - 1] + L[L.length / 2]) / 2;
+           rows.push({ client: a.client, author_key: a.author_key, author_url: a.author_url, n_posts: L.length, median_likes: mid, max_likes: L[L.length - 1] });
+         }
+-        for (const c of ['risedtc', 'arch']) {   // one client per call (8 s statement timeout, see step 3)
++        for (const c of ['risedtc', 'arch'].filter((c) => CLIENTS.includes(c))) {   // one client per call (8 s statement timeout, see step 3)
+           const mine = rows.filter((x) => x.client === c);
+           for (let i = 0; i < mine.length; i += 25) {
+             const r = await rpc('baselines', { rows: mine.slice(i, i + 25) });
+@@ -470,7 +474,7 @@
+   if (!noJudge) {
+     const SELLER_DEADLINE = T0 + JUDGE_BUDGET_MS + 135000;   // CB-30: after the why-it-took-off checks (display tag only, cached 90 d)
+     try {
+-    for (const c of ['risedtc', 'arch']) {
++    for (const c of ['risedtc', 'arch'].filter((c) => CLIENTS.includes(c))) {
+       if (S.seller_stop) break;
+       const sp = await rpc('sellers_pool', { clients: [c] });
+       const asks = (sp.pool && Array.isArray(sp.pool[c])) ? sp.pool[c] : [];
