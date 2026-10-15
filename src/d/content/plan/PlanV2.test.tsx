@@ -44,6 +44,21 @@ afterEach(() => {
 const cardOf = (re: RegExp) => screen.getAllByText(re).map(e => e.closest<HTMLElement>('.pl2-card')).find(Boolean)!
 
 describe('PlanV2', () => {
+  it('shows held SwishDM drafts without a cadence or planner actions', async () => {
+    const read = emptyRead()
+    read.account = 'swishdm'
+    read.state = 'awaiting_cadence'
+    read.target = 0
+    read.held_drafts = [{ id: 'held-1', title: 'Getting cited' }]
+    api.fetchPlan.mockResolvedValue(read)
+    renderInFrame(<Harness start="swishdm" />)
+    expect(await screen.findByRole('heading', { name: 'Planning cadence awaits confirmation' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: /Getting cited/ }).getAttribute('href')).toBe('#exp/d/content/now?draft=held-1&lane=swishdm')
+    expect(document.body.textContent).toContain('No posts are scheduled or queued for publication.')
+    expect(document.body.textContent).not.toContain('The planner has not run yet.')
+    expect(document.querySelector('[data-verb="plan-generate"]')).toBeNull()
+  })
+
   it('opens on the answer line and its parts', async () => {
     api.fetchPlan.mockResolvedValue(rise())
     renderInFrame(<Harness start="risedtc" />)

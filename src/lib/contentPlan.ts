@@ -48,7 +48,7 @@ export type PlanWeek = { start: string; which: 'this' | 'next' | 'after'; target
 export type PlanWarning = { code: string; text: string; topic?: string }
 export type PlanRead = {
   account: Lane; today: string; target: number; target_week: string | null; open: number
-  state: 'two_weeks_planned' | 'planning'; proposals_only: boolean; auto_generate?: boolean; founder_story_max: number; cadence_source: string
+  state: 'two_weeks_planned' | 'planning' | 'awaiting_cadence'; proposals_only: boolean; auto_generate?: boolean; founder_story_max: number; cadence_source: string
   weeks: PlanWeek[]
   done: { title: string; day: string; format: string | null; pillar: string | null; draft_id?: string; impressions?: number | null; reactions?: number | null; comments?: number | null }[]
   warnings: PlanWarning[]; last_run: { ran_at: string; target_week: string | null; open_before: number; picked: number } | null
@@ -56,6 +56,7 @@ export type PlanRead = {
   /** Null when the brain data failed to load; the plan itself still reads. brain_error then says why. */
   brain_strip?: BrainStrip | null; brain_error?: string
   supply?: { draft_id: string; title: string; format: string | null; created_at: string; brain: boolean | PlanBrain; brain_draft?: boolean; evidence: PlanEvidence[] }[]
+  held_drafts?: { id: string; title: string }[]
 }
 
 export function parsePlan(data: unknown, lane: Lane): PlanRead {
@@ -68,7 +69,7 @@ export function parsePlan(data: unknown, lane: Lane): PlanRead {
 }
 
 export async function fetchPlan(lane: Lane, signal?: AbortSignal): Promise<PlanRead> {
-  const q = supabase.rpc('content_plan_week', { p_account: lane })
+  const q = supabase.rpc(lane === 'swishdm' ? 'content_plan_week_onboarding' : 'content_plan_week', { p_account: lane })
   const { data, error } = await (signal ? q.abortSignal(signal) : q)
   if (error) throw new Error(error.message || 'The plan could not load.')
   return parsePlan(data, lane)

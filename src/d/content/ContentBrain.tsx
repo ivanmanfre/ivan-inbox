@@ -569,12 +569,20 @@ export function RecentDecisions({ lane, verdicts }: { lane: Lane; verdicts: Map<
     return () => { live = false }
   }, [lane, n])
   const rulings = h?.rulings ?? []
+  const linked = lane === 'swishdm' ? [...(h?.links.values() ?? [])].filter(v => v.verdict && v.decided_at).sort((a, b) => b.decided_at!.localeCompare(a.decided_at!)).slice(0, 10) : []
   return (
     <section className="cb-sec" aria-label="Your recent decisions">
       <h2 className="cb-h"><b>Your recent decisions</b><span>what you kept or dropped, why, and what happened next</span></h2>
-      {/* the history read does not know SwishDM yet ("unknown client"): no history, not a failure */}
-      {err && lane !== 'swishdm' && <p className="cb-note cb-bad" role="alert">Could not read the earlier decisions. {err}</p>}
-      {mine.length === 0 ? <p className="cb-empty">No decisions saved for {LANE_NAME[lane]} yet. Approve or Drop a draft in Review and it shows here.</p>
+      {err && <p className="cb-note cb-bad" role="alert">Could not read the earlier decisions. {err}</p>}
+      {lane === 'swishdm' && linked.length > 0 ? <ol className="cb-dec">{linked.map(v => {
+        const why = [...(v.reasons ?? []).map(reasonLabel), v.note].filter(Boolean).join(' · ')
+        const after = v.published_at ? `published ${dayLabel(v.published_at.slice(0, 10))}` : v.status ?? 'outcome not recorded'
+        return <li key={v.draft_id} data-verdict-id={v.draft_id}>
+          <span>{dayLabel(v.decided_at!.slice(0, 10))}</span>
+          <b>{v.title || 'Draft'}</b>
+          <em><i className={`cb-v cb-v-${v.verdict}`}>{VERDICT_WORD[v.verdict!] ?? v.verdict}</i>{why ? ` · ${why}` : ''} → {after}</em>
+        </li>
+      })}</ol> : (lane === 'swishdm' ? mine.length === 0 && rulings.length === 0 && !!h : mine.length === 0) ? <p className="cb-empty">No decisions saved for {LANE_NAME[lane]} yet. Approve or Drop a draft in Review and it shows here.</p>
         : <ol className="cb-dec">{mine.map(v => {
           const link = h?.links.get(v.draft_id)
           const body = (v as SavedVerdict & { body_snapshot?: string | null }).body_snapshot ?? v.body_after ?? ''

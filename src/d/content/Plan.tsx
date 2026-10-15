@@ -73,7 +73,7 @@ export function Plan({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => void
     setRead(r => (r?.account === lane ? r : null))
     void fetchPlan(lane, c.signal).then(r => { if (live) setRead(r) }).catch(e => { if (live) setError(e instanceof Error ? e.message : 'The plan could not load.') })
     setPool(null)
-    void fetchRankedIdeas(lane, c.signal).then(rows => { if (live) setPool(rows.filter(r => !r.outlier)) }).catch(() => { if (live) setPool([]) })
+    if (lane !== 'swishdm') void fetchRankedIdeas(lane, c.signal).then(rows => { if (live) setPool(rows.filter(r => !r.outlier)) }).catch(() => { if (live) setPool([]) })
     return () => { live = false; c.abort() }
   }, [lane, tick])
   const r = read?.account === lane ? read : null
@@ -85,7 +85,14 @@ export function Plan({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => void
     <div className="cn-client-switch" role="tablist" aria-label="Client">
       {LANES.map(l => <button key={l} type="button" role="tab" aria-selected={lane === l} className={lane === l ? 'cn-on' : ''} data-verb="lane" onClick={() => setLane(l)}>{LANE_NAME[l]}</button>)}
     </div>
-    {error ? <Failed what="the plan" detail={error} onRetry={refresh} /> : !r ? <Skeleton lines={6} label="Reading the plan" /> : <>
+    {error ? <Failed what="the plan" detail={error} onRetry={refresh} /> : !r ? <Skeleton lines={6} label="Reading the plan" /> : r.state === 'awaiting_cadence' ? <>
+      <p className="cn-plan-state">Planning cadence awaits confirmation. No posts are scheduled or queued for publication.</p>
+      <section className="cn-plan-week" aria-label="Held drafts">
+        <h2>Held in Review <span>{r.held_drafts?.length ?? 0}</span></h2>
+        <ul>{(r.held_drafts ?? []).map(d => <li key={d.id} className="cn-plan-card" data-kind="held"><a href={dHash('content', 'now', { draft: d.id, lane })}><b className="cn-plan-topic">{displayTitle(d.title)}</b><span className="cn-plan-meta">Open in Review</span></a></li>)}</ul>
+        {(r.held_drafts?.length ?? 0) === 0 && <p className="cn-plan-note">There are no held drafts yet.</p>}
+      </section>
+    </> : <>
       <p className="cn-plan-state">{r.state === 'two_weeks_planned'
         ? 'Next 2 weeks planned.'
         : `Planning the week from ${planDay(r.target_week!).replace(/^\w+ /, '')}: ${r.open} open of ${r.target}.`}
