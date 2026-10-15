@@ -25,6 +25,7 @@ import { useJudged, retryVerdict, markShown } from './verdictStore'
 import { useVerdicts } from './useVerdicts'
 import { brainNeedsVerdict } from '../../lib/brainVerdictGate'
 import { sourceTag } from './v2/sourceTag'
+import { usePanelLink } from './panelLink'
 import './draft-panel.css'
 
 // THE DRAFT WINDOW. Desktop: docked right of the wall. Phone: the page itself
@@ -68,6 +69,7 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
     if (next) pick(next); else close()
   }, [at, close, pick, queue])
   const v = useDraftVerbs(d, lane, advance, refresh)
+  const panel = usePanelLink()
   // Once per opened draft: the desk's Edit lands in the editor (the same rule as Enter here).
   const editOnce = useRef(startInEdit)
   useEffect(() => {
@@ -129,9 +131,12 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
   // The status line, key facts first (Ivan 2026-10-15: "all the same font, all the same grey"): the stage,
   // where it came from, when it posts, the board, QA; then the quiet ones.
   const src = sourceTag(d, OWNER[lane])
+  const boardFact = lane !== 'ivan' ? (v.visible ? `On ${POSS[lane]} board` : `Not on ${POSS[lane]} board`) : null
+  // On the board: the fact opens this post on the client's panel (panelLink.ts).
+  const boardHref = v.visible ? panel(lane, d.id) : undefined
   const facts = [
     postsChip(d),
-    lane !== 'ivan' ? (v.visible ? `On ${POSS[lane]} board` : `Not on ${POSS[lane]} board`) : null,
+    boardFact,
     qa?.score != null ? `QA ${verdictWord(qa.verdict).toLowerCase()} ${qa.score}` : null,
   ].filter((x): x is string => !!x)
   const quiet = [
@@ -222,7 +227,9 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
       )}
       <div className="cn-chips"><span className={`cn-st${stage === 'error' || stage === 'stuck' ? ' cn-st-bad' : ''}`}>{stateChip}</span>
         <span className={`cn-srctag cn-srctag-${src.key}`} title={`Source: ${src.title}`} data-source={src.key}>{src.label}</span>
-        {facts.map(f => <span key={f} className="cn-fact">{f}</span>)}
+        {facts.map(f => f === boardFact && boardHref
+          ? <a key={f} className="cn-fact cn-fact-link" href={boardHref} target="_blank" rel="noreferrer" data-verb="open-panel-post" title={`Open this post on ${POSS[lane]} panel`}>{f} ↗</a>
+          : <span key={f} className="cn-fact">{f}</span>)}
         {quiet.map(f => <span key={f} className="cn-fact cn-fact-q">{f}</span>)}
         {internalOnly(d, stage) && <span className="cn-st cn-st-bad">Internal copy only · not approved for publication</span>}
         {v.editing && <span className="cn-st">Editing</span>}

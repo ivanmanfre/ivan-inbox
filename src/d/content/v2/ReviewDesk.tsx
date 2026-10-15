@@ -15,6 +15,7 @@ import { SourceCol, useSources } from '../ContentBrain'
 import { undoDecision, usePendingDecisions } from '../decisions'
 import { EarlyReadChip } from '../EarlyReadChip'
 import { MovePanel } from '../MovePanel'
+import { usePanelLink } from '../panelLink'
 import { LANES, OWNER, POSS, age, dayLabel, nextFreeWeekday, ptOf, splitTitleTag, type Lane, type Slot } from '../model'
 import { PictureRow } from '../PictureRow'
 import { useRowVerbs } from '../rowVerbs'
@@ -148,6 +149,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   held?: ReadonlySet<string>
 }) {
   const toast = useToast()
+  const panelHref = usePanelLink()(show)
   const judged = useJudged()
   const pending = usePendingDecisions()
   const [busy, setBusy] = useState<string | null>(null)
@@ -314,6 +316,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
           </div>
         )}
         <span className="cv2-grow" />
+        {panelHref && <a className="cv2-k cv2-panel" href={panelHref} target="_blank" rel="noreferrer" data-verb="open-panel" title={`Open ${POSS[show]} panel`}>{SEAT_WORD[show]} panel ↗</a>}
         <button type="button" className="cv2-keyhint" aria-label="Keyboard shortcuts" data-verb="desk-keys" onClick={() => setKeys(true)}>
           Keys <kbd>?</kbd>
         </button>

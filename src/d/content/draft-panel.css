@@ -23,6 +23,8 @@
 .cn-dw .cn-chips .cn-st{height:24px;display:inline-flex;align-items:center;padding:0 10px;border-radius:7px;font:600 12px/1 var(--f);color:var(--ds-info-ui,var(--t1));background:var(--ds-info-soft,var(--p3))}
 .cn-dw .cn-chips .cn-st-bad{color:var(--ds-sev-urgent-ui,var(--crit));background:var(--ds-sev-urgent-soft,#fee6e3)}
 .cn-dw .cn-fact{display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:7px;background:var(--ds-surface-2,var(--p3));color:var(--t1);font:500 12.5px/1 var(--f);white-space:nowrap}
+.cn-dw a.cn-fact-link{text-decoration:none;cursor:pointer;transition:background .15s ease}
+.cn-dw a.cn-fact-link:hover,.cn-dw a.cn-fact-link:focus-visible{background:var(--ds-surface-3,var(--p4,var(--p3)));color:var(--t0,var(--t1))}
 .cn-dw .cn-fact-q{background:transparent;padding:0 4px;color:var(--t3);font-weight:400}
 .cn-dw .cn-chips .cn-early-chip{height:24px;padding:0 9px;border-radius:7px}
 

@@ -587,3 +587,6 @@
 /* Weekend columns on the wall (2026-10-09): slimmer, a touch of tint, the same drop target as any day. */
 :root[data-skin-on~='content.calendar'] .cv2-cell.cv2-we:not(.cv2-tod){background:rgba(19,18,16,.022)}
 :root[data-skin-on~='content.calendar'] .cv2-wh.cv2-we{color:var(--ds-text-3);opacity:.85}
+
+/* Client panel link (panelLink.ts): a key that leaves the app. */
+a.cv2-panel{text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap;flex:none}

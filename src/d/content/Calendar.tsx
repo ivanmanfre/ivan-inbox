@@ -31,6 +31,7 @@ import './phone-ox-cal.css'
 import { coverageOf } from './v2/coverage'
 import { BufferDock, CoverageBar, DayList, MonthCard, WallV2, type CardActs } from './v2/CalendarV2'
 import { SeatAv, Seg } from './v2/ui'
+import { usePanelLink } from './panelLink'
 
 // D · CONTENT > CALENDAR. The first tab (Ivan, 30 Sep: "The calendar is the
 // calendar... the most important thing"). One client or all of them; this
@@ -97,6 +98,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
   const toast = useToast()
   // Desktop "All" opens on the lines wall; a single client, and every phone, opens on the month.
   const firstView = (p: Pick): View => (store.get(viewKey(p)) as View | null) ?? (p === 'all' && !phone ? 'lines' : 'month')
+  const panel = usePanelLink()
   const [view, setViewState] = useState<View>(() => firstView(pick))
   useEffect(() => { setViewState(firstView(pick)) }, [pick]) // eslint-disable-line react-hooks/exhaustive-deps
   const setView = (v: View) => { store.set(viewKey(pick), v); setViewState(v); setOff(0); setSel(null) }
@@ -357,6 +359,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
           <Seg label="Client" verb="cal-pick" value={pick} onChange={id => choose(id as Pick)} options={PICKS.map(p => ({ id: p, label: p === 'all' ? 'All' : <><SeatAv lane={p} />{PICK_NAME[p]}</> }))} />
           <Seg label="View" verb="cal-view" size="sm" value={view} onChange={id => setView(id as View)} options={[{ id: 'month', label: 'Month', title: 'M' }, { id: 'lines', label: '2 weeks', title: 'L' }]} />
           <span className="cv2-grow" />
+          {pick !== 'all' && panel(pick) && <a className="cv2-k cv2-panel" href={panel(pick)} target="_blank" rel="noreferrer" data-verb="open-panel" title={`Open ${PICK_NAME[pick]}'s panel`}>{PICK_NAME[pick]} panel ↗</a>}
           <div className="cv2-calnav">
             <button type="button" data-cal-page="-1" data-verb="cal-prev" aria-label={view === 'month' ? 'Previous month' : week5 ? 'Previous week' : 'Previous two weeks'} onClick={() => page(-1)}>‹</button>
             <b aria-live="polite">{label}</b>
