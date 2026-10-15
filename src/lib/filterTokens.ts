@@ -153,12 +153,13 @@ export function applyTokens<T>(
    2 · DMs — the fields the Thread type proves
    -------------------------------------------------------------------------- */
 
-/** The three tenants the `Filter` union already names, with the labels the six
+/** The four tenants the `Filter` union already names, with the labels the six
  *  lane chips have always worn. One source, so a chip and a token cannot drift. */
 export const LANE_VALUES: FieldValue[] = [
   { value: 'ivan', label: 'Ivan' },
   { value: 'risedtc', label: 'Rise' },
   { value: 'arch', label: 'Arch' },
+  { value: 'swishdm', label: 'SwishDM' },
 ]
 
 export const CHANNEL_VALUES: FieldValue[] = [

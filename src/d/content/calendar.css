@@ -1,9 +1,9 @@
 /* D · Content > Calendar. The planner's look (panels, mono labels, lime only on
    live state), bigger previews, and the drag/swipe states. */
-.cal{--c-ivan:var(--lime);--c-risedtc:#7CB7FF;--c-arch:#C49BFF;border:1px solid var(--strong);background:var(--p1);display:flex;flex-direction:column;min-width:0;border-radius:var(--r1);overflow:hidden}
-.cal-l-ivan{--lc:var(--c-ivan)}.cal-l-risedtc{--lc:var(--c-risedtc)}.cal-l-arch{--lc:var(--c-arch)}
+.cal{--c-ivan:var(--lime);--c-risedtc:#7CB7FF;--c-arch:#C49BFF;--c-swishdm:#FC5B06;border:1px solid var(--strong);background:var(--p1);display:flex;flex-direction:column;min-width:0;border-radius:var(--r1);overflow:hidden}
+.cal-l-ivan{--lc:var(--c-ivan)}.cal-l-risedtc{--lc:var(--c-risedtc)}.cal-l-arch{--lc:var(--c-arch)}.cal-l-swishdm{--lc:var(--c-swishdm)}
 .cal-c{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px;flex:none}
-.cal-c-ivan{background:var(--c-ivan)}.cal-c-risedtc{background:var(--c-risedtc)}.cal-c-arch{background:var(--c-arch)}
+.cal-c-ivan{background:var(--c-ivan)}.cal-c-risedtc{background:var(--c-risedtc)}.cal-c-arch{background:var(--c-arch)}.cal-c-swishdm{background:var(--c-swishdm)}
 
 .cal-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--strong)}
 .cal-seg{display:inline-flex;background:var(--seg);border-radius:999px;padding:3px;gap:2px}

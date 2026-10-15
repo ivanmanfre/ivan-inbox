@@ -7,7 +7,7 @@
    not drag handles (pointer-events:none), the day cells stay the drop targets
    (data-cal-day); the swipe still pages the month.
    ========================================================================== */
-:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone{--c-ivan:var(--ds-accent,#18392a);--c-risedtc:var(--ds-info-ui,#1f477a);--c-arch:#8a6f45;margin:0 0 4px;gap:14px}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone{--c-ivan:var(--ds-accent,#18392a);--c-risedtc:var(--ds-info-ui,#1f477a);--c-arch:#8a6f45;--c-swishdm:#FC5B06;margin:0 0 4px;gap:14px}
 
 /* ---- filters: two iOS segmented controls, 44px, one row each ---- */
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone .cv2-cal-bar{display:flex;flex-direction:column;align-items:stretch;flex-wrap:nowrap;gap:12px;padding:0}
@@ -20,10 +20,12 @@
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg .cv2-av{display:none}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button[data-verb='cal-pick-ivan']::before,
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button[data-verb='cal-pick-risedtc']::before,
-:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button[data-verb='cal-pick-arch']::before{content:'';width:8px;height:8px;border-radius:50%;flex:none}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button[data-verb='cal-pick-arch']::before,
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button[data-verb='cal-pick-swishdm']::before{content:'';width:8px;height:8px;border-radius:50%;flex:none}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button[data-verb='cal-pick-ivan']::before{background:var(--c-ivan)}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button[data-verb='cal-pick-risedtc']::before{background:var(--c-risedtc)}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button[data-verb='cal-pick-arch']::before{background:var(--c-arch)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-seg button[data-verb='cal-pick-swishdm']::before{background:var(--c-swishdm)}
 /* month nav: ‹ October 2026 › Today in one 44px row */
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone .cv2-cal-bar .cv2-calnav{order:3;display:flex;align-items:center;width:100%;height:44px;gap:0;justify-content:flex-start}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .cal.cv2-cal.cal-phone .cv2-calnav>b{flex:1;min-width:0;font:650 17px/22px var(--ds-font);letter-spacing:-.01em;text-align:center;color:var(--ds-text)}

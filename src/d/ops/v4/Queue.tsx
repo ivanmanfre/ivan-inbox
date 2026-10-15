@@ -25,7 +25,7 @@ export function QueuePane({ board, drafts, lane, selected, selectedRx, onSeat, o
   useEffect(() => { ref.current?.querySelectorAll('.ds-seg-item>.ds-badge').forEach(n => n.setAttribute('data-roll', '')) })
   const [laterOpen, setLaterOpen] = useState(false)
   const [highlight, setHighlight] = useState<string[]>([])
-  const options = [...SEATS.map((s, i) => ({ id: s, label: <><Avatar name={SEAT_NAME[s]} initials={['I', 'R', 'A'][i]} size="sm" tint={(i + 1) as 1 | 2 | 3} /><span>{SEAT_NAME[s]}</span></>, count: board.waiting[s] })),
+  const options = [...SEATS.map((s, i) => ({ id: s, label: <><Avatar name={SEAT_NAME[s]} initials={['I', 'R', 'A', 'S'][i]} size="sm" tint={(i + 1) as 1 | 2 | 3 | 4} /><span>{SEAT_NAME[s]}</span></>, count: board.waiting[s] })),
     ...board.other.map(o => ({ id: o.key, label: <span>{o.name}</span>, count: o.waiting }))]
   const known = SEATS.find(s => s === lane)
   const other = board.other.find(o => o.key === lane)

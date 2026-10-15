@@ -13,9 +13,12 @@
 :root[data-skin-on~='content'] .cv2-av[data-size='28']{width:28px;height:28px;border-radius:8px;font-size:12px}
 :root[data-skin-on~='content'] .cv2-av-risedtc{--av-bg:var(--ds-info-soft);--av-fg:var(--ds-info-ui)}
 :root[data-skin-on~='content'] .cv2-av-arch{--av-bg:var(--ds-linen);--av-fg:#5c4b2f;box-shadow:inset 0 0 0 1px rgba(92,75,47,.14)}
+/* SwishDM orange #FC5B06; the initials take a darker cut of it so 9px letters stay readable. */
+:root[data-skin-on~='content'] .cv2-av-swishdm{--av-bg:rgba(252,91,6,.13);--av-fg:color-mix(in srgb,#FC5B06 72%,#000);box-shadow:inset 0 0 0 1px rgba(252,91,6,.22)}
 :root[data-skin-on~='content'] .cv2-seatdot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;flex:none;vertical-align:1px;background:var(--ds-accent)}
 :root[data-skin-on~='content'] .cv2-seatdot-risedtc{background:var(--ds-info-ui)}
 :root[data-skin-on~='content'] .cv2-seatdot-arch{background:#8a6f45}
+:root[data-skin-on~='content'] .cv2-seatdot-swishdm{background:#FC5B06}
 
 /* ---- the frame: one tab row with counts, the ⋯ at its end, no second row ---- */
 :root[data-skin-on~='content'] .cn.cv2-frame{background:transparent}
