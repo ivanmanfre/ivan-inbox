@@ -19,7 +19,7 @@ import { Failed, Skeleton } from '../ui/states'
 import { warsawHm } from '../ui/time'
 import { OpsCard } from './Card'
 import { DeskLanes, PhoneLanes, type QueueLine } from './Lanes'
-import { kindTitle, positionOf, readBoard, timeLeft } from './model'
+import { kindTitle, positionOf, readBoard } from './model'
 import { Reactions } from './Reactions'
 import { TakeoverCard } from './Takeover'
 import { Tasks } from './Tasks'
@@ -91,11 +91,8 @@ export function OpsPage({ layout, route, navigate }: PlaceProps) {
   const w = board.waiting
   const otherN = board.other.reduce((a, o) => a + o.waiting, 0)
   const title = <>Waiting on you: <N v={w.ivan} /> yours, <N v={w.risedtc} /> Rise, <N v={w.arch} /> Arch{otherN > 0 && <>, <N v={otherN} /> in other lanes</>}.</>
-  const nj = board.flat.find(d => d.kind === 'newsjack' && timeLeft(d.context?.expires_at) !== 'expired')
-  // One sentence, the most urgent one: a newsjack's clock, else the ideas
-  // waiting for later, else how much of the number sits on the list.
-  // Only a clock that runs out earns the second line.
-  const sub = nj ? `A ${positionOf(board, nj).lane} newsjack has ${timeLeft(nj.context?.expires_at)}.` : ''
+  // Ivan 2026-10-15: the newsjack clock in the header was noise. The card keeps its own clock.
+  const sub = ''
   const answer = <AnswerRow title={title} sub={ops.loading && ops.drafts.length === 0 ? 'Reading the queue…' : sub} />
 
   if (!confirmOpen && ops.error && ops.drafts.length === 0) {

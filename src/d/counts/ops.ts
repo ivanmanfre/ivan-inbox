@@ -1,11 +1,11 @@
-import { fetchOpsDrafts, pendingOps, splitCommentIdeas, type OpsDraft } from '../../lib/ops'
+import { countsAsWaiting, fetchOpsDrafts, pendingOps, type OpsDraft } from '../../lib/ops'
 import { fetchXReview, xWaitingCount } from '../../lib/xReview'
 import { seatOf, type Seat } from '../seats'
 
 // Ops "Waiting on you", per seat: THE Ops number (lib/ops.ts opsBadge), split
-// by seat instead of summed. Every pending card and task counts, except the
-// comment ideas past what the poster can still take today (they sit in the
-// page's "for later" fold). ops_drafts' legacy client 'rise' is Rise.
+// by seat instead of summed. Every pending card and task counts, except comment
+// ideas and newsjacks (countsAsWaiting: they show on the board, never in the
+// number). ops_drafts' legacy client 'rise' is Rise.
 // Per seat; with `other` (clients with no seat) they add up to today's single Ops badge.
 export type OpsWaiting = Record<Seat, number> & {
   /** Pending cards for a client with no seat in this app (drawn as their own lane on Ops, never dropped). */
@@ -13,10 +13,9 @@ export type OpsWaiting = Record<Seat, number> & {
 }
 
 export function opsWaitingBySeat(rows: OpsDraft[], now: number = Date.now()): OpsWaiting {
-  const later = new Set(splitCommentIdeas(rows, now).later.map(d => d.id))
   const out: OpsWaiting = { ivan: 0, risedtc: 0, arch: 0, swishdm: 0 }
   for (const d of pendingOps(rows, now)) {
-    if (later.has(d.id)) continue
+    if (!countsAsWaiting(d)) continue
     const s = seatOf(d.client_id)
     if (s) out[s] += 1
     else out.other = (out.other ?? 0) + 1

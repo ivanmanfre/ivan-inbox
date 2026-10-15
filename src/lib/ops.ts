@@ -297,9 +297,8 @@ export function splitCommentIdeas(rows: OpsDraft[], now = Date.now()): { today: 
 }
 
 export function opsBadge(rows: OpsDraft[], now = Date.now()): { n: number; ideasFolded: number } {
-  const pend = pendingOps(rows, now)
   const { later } = splitCommentIdeas(rows, now)
-  return { n: pend.length - later.length, ideasFolded: later.length }
+  return { n: pendingOps(rows, now).filter(countsAsWaiting).length, ideasFolded: later.length }
 }
 
 // A newsjack past its `expires_at` is a story that has moved on: the card's own
@@ -699,14 +698,23 @@ export function weeklySendAfter(d: OpsDraft): number | null {
   return Number.isFinite(t) ? t : null
 }
 // A comment older than this is dead: the post has left the feed and a reply lands
-// on nobody (Ivan, 2026-07-30). Same number the card writer uses.
-export const MAX_COMMENT_AGE_DAYS = 4
+// on nobody (Ivan, 2026-07-30). Ivan 2026-10-15: "delete the ones that are above 2
+// days old", so the cut is 2 Warsaw calendar days: a comment on a post from the day
+// before yesterday is gone today, the same day its row starts reading "2d ago".
+export const MAX_COMMENT_AGE_DAYS = 2
 
 export function isStaleComment(d: OpsDraft, now = Date.now()): boolean {
   if (d.kind !== 'comment_reply' && d.kind !== 'comment_outbound') return false
   const t = new Date(d.context?.posted_at ?? 0).getTime()
   if (!Number.isFinite(t) || t === 0) return false   // unknown age is not staleness
-  return now - t > MAX_COMMENT_AGE_DAYS * 86400_000
+  const days = (Date.parse(warsawDay(now)) - Date.parse(warsawDay(t))) / 86400_000
+  return days >= MAX_COMMENT_AGE_DAYS
+}
+
+// Ivan 2026-10-15: comment ideas and newsjacks stay on the Ops board but "don't need to
+// count at all" in the Ops number. Everything else that is pending still counts.
+export function countsAsWaiting(d: OpsDraft): boolean {
+  return d.kind !== 'comment_reply' && d.kind !== 'comment_outbound' && d.kind !== 'newsjack'
 }
 
 // comment_outbound, ivan lane: approving opens the n8n gate webhook in a new tab -

@@ -16,15 +16,16 @@ describe('readBoard', () => {
     expect(b.lanes.risedtc.map(x => x.kind)).toEqual(['escalation', 'booking'])
     expect(b.lanes.arch).toHaveLength(1)
     expect(b.lanes.ivan).toHaveLength(1)
-    expect(b.waiting).toEqual({ ivan: 1, risedtc: 2, arch: 1 , swishdm: 0})
+    // the newsjack is drawn but never counted (Ivan 2026-10-15)
+    expect(b.waiting).toEqual({ ivan: 0, risedtc: 2, arch: 1 , swishdm: 0})
   })
 
-  it('folds comment ideas past the 3 a day into later, and keeps them out of the Ops number', () => {
+  it('folds comment ideas past the 3 a day into later; comments never count in the Ops number', () => {
     const ideas = Array.from({ length: 5 }, () => d('comment_outbound', 'ivan', {}, { approve_url: 'https://x/approve' }))
     const b = readBoard(ideas, new Set(), NOW)
     expect(b.lanes.ivan).toHaveLength(3)
     expect(b.later).toHaveLength(2)
-    expect(b.waiting.ivan).toBe(3)
+    expect(b.waiting.ivan).toBe(0)
   })
 
   it('counts tasks in the seat number but never draws them as lane cards', () => {
@@ -81,7 +82,7 @@ describe('parity 09-27: seats keep their own 3 a day; unknown clients keep a lan
     expect(b.laterBy.risedtc).toHaveLength(2)
     expect(b.lanes.arch).toHaveLength(2)
     expect(b.laterBy.arch).toHaveLength(1)
-    expect(b.waiting).toEqual({ ivan: 3, risedtc: 3, arch: 2 , swishdm: 0})
+    expect(b.waiting).toEqual({ ivan: 0, risedtc: 0, arch: 0 , swishdm: 0})
   })
   it('draws a client with no seat as its own lane and counts it', () => {
     const b = readBoard([d('escalation', 'acme'), d('update', 'acme'), d('booking', 'ivan')], new Set(), NOW)

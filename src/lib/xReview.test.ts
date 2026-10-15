@@ -27,11 +27,33 @@ describe('x review flag', () => {
     expect(xWaitingCount(list)).toBe(2)
     expect(xWaitingCount(null)).toBe(0)
   })
-  it('lists waiting first, then moving, failed, live; old live/failed drop off', () => {
+  it('lists waiting first, then moving, then failed; posted items never show', () => {
     const items = xFlagItems(list, NOW)
-    expect(items.map(i => `${i.id}:${i.state}`)).toEqual(['q1:waiting', 'a1:waiting', 'a4:moving', 'a5:failed', 'a2:live'])
-    expect(items.find(i => i.id === 'a2')?.url).toBe('https://x.com/i/a2')
+    expect(items.map(i => `${i.id}:${i.state}`)).toEqual(['q1:waiting', 'a1:waiting', 'a4:failed', 'a5:failed'])
     expect(items.find(i => i.id === 'a5')?.error).toBe('zernio 500')
+    expect(items.find(i => i.id === 'a4')?.error).toMatch(/^Not out on X yet, \d+h after it was due$/)
     expect(items.find(i => i.id === 'q1')?.title).toBe('Q q1')
+  })
+})
+
+describe('x flag: scheduled and publishing articles (Ivan 2026-10-15)', () => {
+  const at = (iso: string) => Date.parse(iso)
+  const scheduled = art('s1', 'approved', '2026-10-11T19:15:00Z', { publish_after: '2026-10-15T15:00:00Z' })
+  it('an approved article waiting for its slot is not "Publishing on X…"', () => {
+    expect(xFlagItems({ articles: [scheduled], quotes: [] }, at('2026-10-15T11:00:00Z'))).toEqual([])
+  })
+  it('it reads as moving once its slot comes, and as stuck 2h after', () => {
+    expect(xFlagItems({ articles: [scheduled], quotes: [] }, at('2026-10-15T15:01:00Z')).map(i => i.state)).toEqual(['moving'])
+    const stuck = xFlagItems({ articles: [scheduled], quotes: [] }, at('2026-10-15T18:00:00Z'))
+    expect(stuck.map(i => i.state)).toEqual(['failed'])
+    expect(stuck[0].error).toBe('Not out on X yet, 3h after it was due')
+  })
+  it('a just-approved article without a slot is moving', () => {
+    const a = art('n1', 'approved', '2026-10-15T10:59:00Z')
+    expect(xFlagItems({ articles: [a], quotes: [] }, at('2026-10-15T11:00:00Z')).map(i => i.state)).toEqual(['moving'])
+  })
+  it('a posted quote leaves the flag at once', () => {
+    const q = quo('p1', 'posted', '2026-10-15T01:00:00Z', { posted_url: 'https://x.com/s/1' })
+    expect(xFlagItems({ articles: [], quotes: [q] }, at('2026-10-15T11:00:00Z'))).toEqual([])
   })
 })

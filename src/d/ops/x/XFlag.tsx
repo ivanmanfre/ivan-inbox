@@ -7,8 +7,9 @@ import './x.css'
 
 // THE X FLAG (Ivan 2026-10-11: "I don't want it to be just a task. It should be like a flag").
 // A dark plate at the top of Home and Ops whenever an X article or quote post waits on him,
-// one row per item with its title, and the count. Publishing / live / failed items show
-// below it as quiet status lines for a while (live a day, failed three days).
+// one row per item with its title, and the count. Publishing-now and failed items show
+// below it as quiet status lines (failed three days). Scheduled and posted items never
+// show here (Ivan 2026-10-15): the calendar carries them.
 // Renders nothing when there is nothing to say. Every hook runs before that return.
 
 const xReviewHref = (id: string) => dHash('ops', 'x', { id })

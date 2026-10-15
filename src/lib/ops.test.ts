@@ -130,8 +130,11 @@ describe('comment cards age out', () => {
   })
   const now = Date.parse('2026-07-30T12:00:00Z')
 
-  it('keeps a comment from inside the 4 day window', () => {
-    expect(pendingOps([mkC('2026-07-28T12:00:00Z')], now)).toHaveLength(1)
+  it('keeps a comment from yesterday (Warsaw day)', () => {
+    expect(pendingOps([mkC('2026-07-29T08:00:00Z')], now)).toHaveLength(1)
+  })
+  it('drops a comment from 2 Warsaw days back, even under 48h (Ivan 2026-10-15)', () => {
+    expect(pendingOps([mkC('2026-07-28T20:00:00Z')], now)).toHaveLength(0)
   })
   it('drops a comment older than 4 days', () => {
     expect(pendingOps([mkC('2026-07-25T11:00:00Z')], now)).toHaveLength(0)

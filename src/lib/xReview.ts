@@ -30,6 +30,8 @@ export type XArticle = {
   account: string | null
   created_at: string
   updated_at: string | null
+  /** The slot an approved article waits for (null = goes on the next pass). */
+  publish_after?: string | null
 }
 
 export type XQuote = {
@@ -96,11 +98,10 @@ export type XFlagItem = {
   at: number
 }
 
-const LIVE_SHOWN_MS = 24 * 3600_000
 const FAILED_SHOWN_MS = 72 * 3600_000
+// An approved item still not out this long after its slot is stuck, and says so.
+const STUCK_MS = 2 * 3600_000
 
-const articleState = (s: XArticleStatus): XFlagItem['state'] =>
-  s === 'review' ? 'waiting' : s === 'approved' || s === 'publishing' ? 'moving' : s === 'published' ? 'live' : 'failed'
 const quoteState = (s: XQuoteStatus): XFlagItem['state'] =>
   s === 'draft' ? 'waiting' : s === 'approved' || s === 'posting' ? 'moving' : s === 'posted' ? 'live' : 'failed'
 
@@ -110,15 +111,30 @@ const stamp = (...v: (string | null | undefined)[]) => {
 }
 
 /**
- * Everything the flag shows, waiting first. Live items stay a day, failed ones three days
- * (quotes carry only created_at, so their age counts from creation).
+ * Everything the flag shows, waiting first (Ivan 2026-10-15: "Once you post something I don't
+ * need to see this here"). Live items never show: the calendar and X itself carry them. An
+ * approved article waiting for its slot is scheduled, also calendar-only: it used to read
+ * "Publishing on X…" for days. Moving = publishing now; an approved article still not out
+ * 2h past its slot shows as stuck. Failed ones stay three days (quotes carry only
+ * created_at, so their age counts from creation).
  */
 export function xFlagItems(l: XReviewList | null, now: number = Date.now()): XFlagItem[] {
   if (!l) return []
   const out: XFlagItem[] = []
   for (const a of l.articles) {
-    const state = articleState(a.status)
-    out.push({ id: a.id, kind: 'article', state, title: a.title?.trim() || 'Untitled article', url: a.x_url, error: a.error, at: stamp(a.updated_at, a.created_at) })
+    const slot = stamp(a.publish_after)
+    let state: XFlagItem['state']
+    let error = a.error
+    if (a.status === 'review') state = 'waiting'
+    else if (a.status === 'published') state = 'live'
+    else if (a.status === 'failed') state = 'failed'
+    else if (a.status === 'approved' && slot > now) continue // scheduled: on the calendar
+    else if (now - (slot || stamp(a.updated_at, a.created_at)) > STUCK_MS) {
+      state = 'failed'
+      error = error || `Not out on X yet, ${Math.floor((now - (slot || stamp(a.updated_at, a.created_at))) / 3600_000)}h after it was due`
+    } else state = 'moving'
+    const at = state === 'failed' && !a.error ? now : stamp(a.updated_at, a.created_at)
+    out.push({ id: a.id, kind: 'article', state, title: a.title?.trim() || 'Untitled article', url: a.x_url, error, at })
   }
   for (const q of l.quotes) {
     const state = quoteState(q.status)
@@ -127,7 +143,6 @@ export function xFlagItems(l: XReviewList | null, now: number = Date.now()): XFl
   const rank = { waiting: 0, moving: 1, failed: 2, live: 3 } as const
   return out
     .filter(i => i.state === 'waiting' || i.state === 'moving'
-      || (i.state === 'live' && now - i.at < LIVE_SHOWN_MS)
       || (i.state === 'failed' && now - i.at < FAILED_SHOWN_MS))
     .sort((a, b) => rank[a.state] - rank[b.state] || b.at - a.at)
 }

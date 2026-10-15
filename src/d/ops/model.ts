@@ -4,7 +4,7 @@
 // kinds line is today's (kindsLine), the Ops number is today's (pendingOps
 // minus the comment ideas past what the poster can still post today).
 import { isBatchable, isStillPending } from '../../lib/focus'
-import { ideaSeatKey, isTaskKind, pendingOps, pendingTasks, splitCommentIdeas, type OpsDraft, type OpsKind } from '../../lib/ops'
+import { countsAsWaiting, ideaSeatKey, isTaskKind, pendingOps, pendingTasks, splitCommentIdeas, type OpsDraft, type OpsKind } from '../../lib/ops'
 import { orderLane } from '../../wb/ops/lanes'
 import { SEATS, SEAT_NAME, seatOf, type Seat } from '../seats'
 
@@ -80,7 +80,7 @@ export function readBoard(rows: OpsDraft[], held: ReadonlySet<string> = new Set(
     else { const o = otherOf(laneOf(d.client_id)); (later ? o.later : o.cards).push(d) }
   }
   for (const d of pending) {
-    if (laterIds.has(d.id)) continue
+    if (laterIds.has(d.id) || !countsAsWaiting(d)) continue
     const s = seatOf(d.client_id)
     if (s) waiting[s] += 1
     else otherOf(laneOf(d.client_id)).waiting += 1
