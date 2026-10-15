@@ -45,11 +45,12 @@ export async function fetchDraftSources(ids: string[]): Promise<Map<string, Draf
 }
 
 export type BriefRuling = { action: string; reason: string; at: string; target_kind: string; target_id: string }
-export type DecisionLink = { draft_id: string; status: string | null; published_at: string | null; post_url: string | null; impressions: number | null; likes: number | null; comments: number | null }
+export type DecisionLink = { draft_id: string; status: string | null; published_at: string | null; post_url: string | null; impressions: number | null; likes: number | null; comments: number | null;
+  verdict?: 'keep' | 'edited' | 'drop'; reasons?: string[]; note?: string | null; decided_at?: string; title?: string | null }
 export type DecisionHistory = { rulings: BriefRuling[]; links: Map<string, DecisionLink> }
 
 export async function fetchDecisionHistory(lane: string): Promise<DecisionHistory> {
-  const { data, error } = await supabase.rpc('cb51_decision_history', { p_client: lane })
+  const { data, error } = await supabase.rpc(lane === 'swishdm' ? 'cb51_decision_history_onboarding' : 'cb51_decision_history', { p_client: lane })
   if (error) throw new Error(error.message || 'Could not read your decisions.')
   const d = (data ?? {}) as { rulings?: BriefRuling[]; links?: DecisionLink[] }
   return {

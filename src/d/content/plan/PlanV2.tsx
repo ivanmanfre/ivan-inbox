@@ -151,7 +151,7 @@ export function PlanV2({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => vo
 
   const seats = <Seg label="Account" value={lane} onChange={id => setLane(id as Lane)} verb="plan-seat"
     options={LANES.map(l => ({ id: l, label: <><SeatAv lane={l} />{LANE_NAME[l]}</> }))} />
-  const late = r && lateRun(r, now) ? (ranAt(r) ? `The planner has not run since ${ranAt(r)}.` : 'The planner has not run yet.') : null
+  const late = r && r.state !== 'awaiting_cadence' && lateRun(r, now) ? (ranAt(r) ? `The planner has not run since ${ranAt(r)}.` : 'The planner has not run yet.') : null
 
   // Weeks gets every item of the three weeks (past days of this week keep their posts); List starts from today.
   const body = !r ? null
@@ -166,6 +166,14 @@ export function PlanV2({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => vo
     </div>
     {error ? <Failed what="the plan" detail={error} onRetry={retry} />
       : !r || !answer ? <Skeleton lines={6} label="Reading the plan" />
+        : r.state === 'awaiting_cadence' ? <section className="pl2-ans" aria-label="SwishDM plan setup">
+          <h2>Planning cadence awaits confirmation</h2>
+          <p className="pl2-parts">No posts are scheduled or queued for publication.</p>
+          <h3>Held in Review · {r.held_drafts?.length ?? 0}</h3>
+          {(r.held_drafts?.length ?? 0) === 0 ? <p>No held drafts yet.</p> : <ul className="pl2-waitl" aria-label="Held drafts">
+            {(r.held_drafts ?? []).map(d => <li key={d.id}><a href={dHash('content', 'now', { draft: d.id, lane })}><b>{d.title}</b><span>Open in Review</span></a></li>)}
+          </ul>}
+        </section>
         : <>
           <div className="pl2-ans">
             <h2 aria-label={answer.title}>
