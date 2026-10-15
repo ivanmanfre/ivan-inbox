@@ -16,8 +16,8 @@ const iso = (ms: number) => new Date(NOW + ms).toISOString()
 
 const lib = vi.hoisted(() => ({ top: [] as unknown[], pool: [] as unknown[], posts: [] as unknown[] }))
 vi.mock('../../../lib/editorialDirection', () => ({
-  readEditorialDirection: vi.fn(() => Promise.resolve({ status: 'active', updated_at: '2026-09-28T11:00:00Z', direction: { weekly_policy: {
-    status: 'adopted', weekly_total: 4, objective: 'Grow relevant reach', allocation: { unit: 'count', values: { buyer: 1, reach: 2, consideration: 1 } } } } })),
+  readEditorialDirection: vi.fn((_client, lane) => Promise.resolve({ status: 'active', updated_at: '2026-09-28T11:00:00Z', direction: { weekly_policy: {
+    status: lane === 'swishdm' ? 'planning_draft' : 'adopted', weekly_total: lane === 'swishdm' ? 5 : 4, objective: 'Grow relevant reach', allocation: { unit: 'count', values: { buyer: 1, reach: 2, consideration: 1 } } } } })),
 }))
 vi.mock('../../../lib/reach', async orig => ({ ...(await orig<typeof import('../../../lib/reach')>()),
   fetchPostAudience: vi.fn(() => Promise.resolve({ kind: 'ready', rows: lib.posts, followers: null, readAt: iso(0) })) }))
@@ -158,8 +158,13 @@ describe('the Content Brain page', () => {
   })
 
   it('says plainly when SwishDM has no niche posts tracked', async () => {
-    renderInFrame(<BrainV2 lane="swishdm" setLane={vi.fn()} read={read} verdicts={new Map()} judged={new Map()} total={buildNow([], { now: NOW })} items={items} ideas={ideas} now={NOW} reading={false} />)
+    const { container } = renderInFrame(<BrainV2 lane="swishdm" setLane={vi.fn()} read={read} verdicts={new Map()} judged={new Map()} total={buildNow([], { now: NOW })} items={items} ideas={ideas} now={NOW} reading={false} />)
     expect(screen.getByText('No niche posts tracked for SwishDM yet.')).toBeTruthy()
+    expect(await screen.findByText(/Weekly cadence awaits confirmation/)).toBeTruthy()
+    const dated = container.querySelector('[data-verb="brain-tile-dated"]')
+    expect(dated?.textContent).toContain('no weekly target confirmed')
+    expect(dated?.textContent).not.toContain('of 10 for two weeks')
+    expect(document.body.textContent).not.toContain('Next week still needs 5 more posts')
   })
 })
 
