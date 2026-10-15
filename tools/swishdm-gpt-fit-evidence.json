@@ -1,0 +1,206 @@
+{
+  "verified_at_utc": "2026-10-15T21:15:48.926826+00:00",
+  "run_key": "swishdm-gpt61-20261015T210924569",
+  "transport": "codex-cli-chatgpt-subscription",
+  "requested_and_stored_model": "gpt-6.1-sol",
+  "production_n8n_model_routing_changed": false,
+  "exact_original_prompt_receipts": {
+    "fit": 115,
+    "check": 71,
+    "all_186_stored_shas_match_unchanged_server_prompts": true
+  },
+  "actual_results": {
+    "fit": 115,
+    "checks": 71,
+    "inputs": {
+      "buyers": 0,
+      "judged": 75,
+      "search": 0,
+      "seller": 0,
+      "steady": 24,
+      "window": 106,
+      "outliers": 525,
+      "in_review": 0,
+      "on_strategy": 31,
+      "recommended": 0
+    },
+    "policy": "planning_draft",
+    "visible": 5,
+    "fit_models": {
+      "gpt-6.1-sol": 115
+    },
+    "check_models": {
+      "gpt-6.1-sol": 71
+    },
+    "passing_checks": 31,
+    "writer_enabled": false
+  },
+  "dry_scoring": {
+    "ok": true,
+    "mode": "dry",
+    "run_key": "swishdm-gpt61-20261015T210924569",
+    "summary": {
+      "swishdm": {
+        "hold": 146
+      }
+    },
+    "week_start": "2026-10-12"
+  },
+  "all_71_postcheck_outcomes": [
+    {
+      "count": 1,
+      "topic": "direct",
+      "audience": "adjacent",
+      "engagement": "bait"
+    },
+    {
+      "count": 30,
+      "topic": "direct",
+      "audience": "adjacent",
+      "engagement": "idea"
+    },
+    {
+      "count": 37,
+      "topic": "direct",
+      "audience": "other",
+      "engagement": "idea"
+    },
+    {
+      "count": 1,
+      "topic": "direct",
+      "audience": "reader",
+      "engagement": "idea"
+    },
+    {
+      "count": 1,
+      "topic": "direct",
+      "audience": "other",
+      "engagement": "paid_promo"
+    },
+    {
+      "count": 1,
+      "topic": "direct",
+      "audience": "other",
+      "engagement": "repost"
+    }
+  ],
+  "fit_score_distribution": [
+    {
+      "fit": 0,
+      "count": 2
+    },
+    {
+      "fit": 1,
+      "count": 10
+    },
+    {
+      "fit": 2,
+      "count": 8
+    },
+    {
+      "fit": 3,
+      "count": 9
+    },
+    {
+      "fit": 4,
+      "count": 11
+    },
+    {
+      "fit": 5,
+      "count": 4
+    },
+    {
+      "fit": 6,
+      "count": 12
+    },
+    {
+      "fit": 7,
+      "count": 21
+    },
+    {
+      "fit": 8,
+      "count": 21
+    },
+    {
+      "fit": 9,
+      "count": 16
+    },
+    {
+      "fit": 10,
+      "count": 1
+    }
+  ],
+  "scope_writes": [
+    {
+      "kind": "fit",
+      "count": 115,
+      "client_id": "swishdm",
+      "served_model": "gpt-6.1-sol"
+    },
+    {
+      "kind": "check",
+      "count": 71,
+      "client_id": "swishdm",
+      "served_model": "gpt-6.1-sol"
+    }
+  ],
+  "visible_card_receipts": [
+    {
+      "fit": 10,
+      "lift": 11.9,
+      "post_id": "7511173344013004801",
+      "platform": "linkedin"
+    },
+    {
+      "fit": 9,
+      "lift": 14.1,
+      "post_id": "7516091938106691584",
+      "platform": "linkedin"
+    },
+    {
+      "fit": 9,
+      "lift": 13.2,
+      "post_id": "7515795411434053632",
+      "platform": "linkedin"
+    },
+    {
+      "fit": 9,
+      "lift": 5.8,
+      "post_id": "7511040160994754560",
+      "platform": "linkedin"
+    },
+    {
+      "fit": 9,
+      "lift": 5.3,
+      "post_id": "7509578766642429953",
+      "platform": "linkedin"
+    }
+  ],
+  "controls": {
+    "policy": "planning_draft",
+    "writer": false,
+    "autopilot": "off",
+    "dispatches": 0,
+    "approval_hold": true,
+    "writer_cycles": 0,
+    "new_promotions": 0
+  },
+  "provider_guard_source_comparison": {
+    "entire_function_equals_expected_single_checks_guard_change": true,
+    "seller_block_byte_identical": true,
+    "new_provider_identity": "gpt-6.1-sol",
+    "new_provider_client_only": "swishdm"
+  },
+  "provider_guard_verification": [
+    {
+      "result": "285 exact GPT model accepted for SwishDM only; unsupported alias refused; seller guard retained; synthetic answers rolled back"
+    }
+  ],
+  "all_batches": {
+    "count": 24,
+    "fit_inserted": 115,
+    "checks_inserted": 71,
+    "db_refused": 0
+  },
+  "old_claude_evidence": "Preserved separately in tools/swishdm-outlier-fit-evidence.json; prior quota-capped run is not represented as completed GPT work."
+}
