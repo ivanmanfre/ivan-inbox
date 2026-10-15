@@ -1,0 +1,72 @@
+{
+  "migration": "282_planner_idea_verifier",
+  "date": "2026-10-15",
+  "deployed": true,
+  "source_hashes_sha256": {
+    "content_autopilot_candidates": "215b582ba6a3ee92fdf8864f1781775a44c3f469f3100d727ad37c0cdbb90bde",
+    "content_plan_register_ivan_idea": "d87bf821b2fcc29e3942a01eeb8d3e7392de4df5aafb85496a81fb771d89d187",
+    "content_plan_register_ivan_idea_tg": "b4ac4c1cb0a243b02355c6a9504a3598ed969ca0e377593bdc2705c41c3ab51e",
+    "content_plan_week": "f6e4146a9eb132333e3e4a63767195e55ea33f16a8a96b7b964fd3313c910627"
+  },
+  "live_state": {
+    "registration_triggers": 2,
+    "registered_plan_members": 0,
+    "ivan_autopilot_mode": "shadow",
+    "schedule_or_publish_test_writes": 0
+  },
+  "passed": [
+    "live transaction-rollback integration suite before and after deploy",
+    "rollback restores previous planner and candidate functions byte for byte",
+    "live function bodies match migration exactly",
+    "ordinary promoter draft insert registers an unvalidated held member",
+    "candidate promotion registration is idempotent",
+    "normal CB35 pending includes original idea and normal generator retry payload",
+    "unchecked original remains ineligible",
+    "original idea slot/week resolves through autopilot candidates",
+    "another week cannot steal the planned draft",
+    "in-flight verifier retains planner slot; final hold returns slot",
+    "authenticated draft insert and candidate promotion update remain unaffected",
+    "human_edited,deleted,internal_test,client,no_slot,dated row exclusions",
+    "borrowed-winner source is final-held for a genuine winner brief",
+    "real live content-lint v35 accepts the original writer artifact",
+    "negative-length no-write replay requests retry; zero judge, generation, schedule or publish calls",
+    "video ideas final-held for an asset verifier; never routed into text-copy retry or false copy-only approval"
+  ],
+  "positive_replay": {
+    "draft_id": "fa1cd21a-a8ef-42e6-9624-78245b076f90",
+    "candidate_id": "3cb2acd9-e582-4a97-8abf-3def441a01af",
+    "writer": "ivan-writer",
+    "qa": "actual stored PASS, not fabricated",
+    "body_sha256": "7fd380cfa3a16a3655a54bbe123ff2dd0d095b50b2a77f797f180092d0d54cb9",
+    "deterministic_checks": "QA, real lint, sameness, length passed",
+    "actual_judge_calls": 3,
+    "result": "wait; all actual judge calls returned upstream weekly limit refusal; no release requested",
+    "release_proven": false
+  },
+  "negative_replay": {
+    "model_calls": 0,
+    "verifier_request": "cb35_brain_requeue_if_unchanged_v4",
+    "reason": "failed lint, length (664 words, target 130-260)",
+    "length_check": {
+      "pass": false,
+      "words": 664,
+      "fail_below": 40,
+      "fail_above": 420,
+      "target": "130-260"
+    }
+  },
+  "retry": {
+    "workflow_id": "jMvDWNufLSHJ2Myp",
+    "active": true,
+    "schedule": "every 10 minutes",
+    "behavior": "Refused/capped/unparseable judge responses leave member held without final hold or state write; unchanged pending member is selected again next tick.",
+    "upstream_reset": "01:00 UTC, per provider refusal"
+  },
+  "commands": {
+    "db_test": "~/.local/state/inbox-ux-1015-tools/q.sh \"$(cat db/282_planner_idea_verifier_test.sql)\"",
+    "positive_no_write": "node tools/282-planner-idea-replay.mjs positive",
+    "negative_length_no_write": "node tools/282-planner-idea-replay.mjs negative-length"
+  },
+  "private_artifacts": "/Users/ivanmanfredi/.local/state/planner-ideas-1015",
+  "rollback": "db/282_planner_idea_verifier_rollback.sql"
+}
