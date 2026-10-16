@@ -7,7 +7,7 @@
 // client_ideas) — that outlierSource()/SourceBadge render correctly, both in
 // isolation and inside the real Ideas list row + IdeaDetail pane, and that
 // every other source_ref renders no badge at all.
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { renderInFrame } from '../test-utils'
 import type { IdeaBanks } from './Ideas'
@@ -16,11 +16,14 @@ import type { IdeaCandidate } from '../../lib/content'
 import type { ClientIdea } from '../../lib/clientIdeas'
 import { outlierSource } from '../../lib/cb22'
 import { SourceBadge } from './SourceBadge'
+import { writeSwr } from '../../lib/swr'
 
 vi.mock('../../hooks/useContent', () => ({ useIdeaCandidates: vi.fn(), useClientIdeas: vi.fn() }))
 import { Ideas } from './Ideas'
 
-afterEach(cleanup)
+vi.mock('./ideaOrganization', async original => ({ ...await original<typeof import('./ideaOrganization')>(), fetchIdeaOrganization: async () => ({}) }))
+beforeEach(() => { localStorage.setItem('sb-test-auth-token',JSON.stringify({user:{id:'source-user'}})); for(const lane of ['ivan','risedtc']) writeSwr(`content-idea-view:${lane}`,'all') })
+afterEach(() => { cleanup(); localStorage.clear() })
 
 const cand = (n: number, o: Partial<IdeaCandidate> = {}) => ({
   id: `i${n}`, normalized_topic: `Idea ${n}`, raw_topic: null, composite_score: 100 - n, source: 'manual',
@@ -96,7 +99,7 @@ describe('SourceBadge (CB-22), direct render from outlierSource()', () => {
 })
 
 describe('SourceBadge inside the real Ideas list row + IdeaDetail pane (fixture ideas)', () => {
-  it('an outlier idea gets the badge in its list row and its open detail pane; a plain idea in the same bank gets neither', () => {
+  it('shows the outlier author in the list and its source link in the detail; plain ideas carry neither', () => {
     const outlierItem = fromCandidate(cand(1, {
       source_ref: 'outlier:linkedin:111222333',
       evidence: [{ author: 'Jane Doe', lift: 3.4, url: 'https://www.linkedin.com/feed/update/urn:li:activity:111222333/' }],
@@ -108,15 +111,11 @@ describe('SourceBadge inside the real Ideas list row + IdeaDetail pane (fixture 
     const banks = { ivan: { ...empty, items, n: items.length }, risedtc: empty, arch: empty , swishdm: empty} as unknown as IdeaBanks
     renderInFrame(<Ideas banks={banks} phone={false} />)
 
-    // List row: only the outlier idea's row carries the cn-cbrow badge wrapper.
-    const outlierRow = document.querySelector('.cn-cbrow[data-idea-id="i1"]')
-    expect(outlierRow).toBeTruthy()
-    expect(outlierRow!.querySelector('a[data-source-badge="cb-outlier"]')).toBeTruthy()
-    expect(document.querySelector('.cn-cbrow[data-idea-id="i2"]')).toBeNull()
-    expect(document.querySelector('.cn-cbrow[data-idea-id="i3"]')).toBeNull()
-    expect(document.querySelector('.cn-cbrow[data-idea-id="i4"]')).toBeNull()
+    const outlierRow = document.querySelector('[data-idea-id="i1"]')!
+    expect(outlierRow.textContent).toContain('Outlier · Jane Doe')
+    for (const id of ['i2','i3','i4']) expect(document.querySelector(`[data-idea-id="${id}"]`)!.textContent).not.toContain('Outlier ·')
 
-    // Detail opens in one tap from the new best-five row.
+    // The full source link remains in the expanded detail.
     fireEvent.click(screen.getByText('Idea 1'))
     const detail1 = document.querySelector('[data-idea-detail="i1"]')!
     expect(detail1.querySelector('a[data-source-badge="cb-outlier"]')).toBeTruthy()
@@ -135,9 +134,10 @@ describe('SourceBadge inside the real Ideas list row + IdeaDetail pane (fixture 
     const banks = { ivan: empty, risedtc: { ...empty, items: [outlierClientItem], n: 1 }, arch: empty , swishdm: empty} as unknown as IdeaBanks
     renderInFrame(<Ideas banks={banks} phone={false} />)
     fireEvent.click(document.querySelector('[data-verb="lane"][data-lane="risedtc"]')!)
-    const row = document.querySelector('.cn-cbrow[data-idea-id="c1"]')
-    expect(row).toBeTruthy()
-    const a = row!.querySelector('a[data-source-badge="cb-outlier"]')!
+    const row = document.querySelector('[data-idea-id="c1"]')!
+    expect(row.textContent).toContain('Outlier · Mattan K.')
+    fireEvent.click(screen.getByText('Client idea 1'))
+    const a = document.querySelector('[data-idea-detail="c1"] a[data-source-badge="cb-outlier"]')!
     expect(a.getAttribute('data-badge-platform')).toBe('x')
     expect(a.getAttribute('data-badge-author')).toBe('Mattan K.')
     expect(Number(a.getAttribute('data-badge-lift'))).toBeCloseTo(2.1)

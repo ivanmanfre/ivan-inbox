@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { renderInFrame } from '../test-utils'
 import type { IdeaBanks } from './Ideas'
@@ -15,6 +15,8 @@ vi.mock('../../lib/outliers', async importOriginal => ({ ...await importOriginal
 vi.mock('../../lib/content', async importOriginal => ({ ...await importOriginal<typeof import('../../lib/content')>(), decideIdea: vi.fn().mockResolvedValue({}) }))
 vi.mock('../../lib/clientIdeas', async importOriginal => ({ ...await importOriginal<typeof import('../../lib/clientIdeas')>(), decideClientIdea: vi.fn().mockResolvedValue(undefined) }))
 const cand = (n: number, o: Partial<IdeaCandidate> = {}) => ({ id: `i${n}`, normalized_topic: `Idea ${n}`, composite_score: 100-n, source: n%2 ? 'manual' : 'ivan_call', content_type: 'post', ...o } as IdeaCandidate)
+vi.mock('./ideaOrganization', async original => ({ ...await original<typeof import('./ideaOrganization')>(), fetchIdeaOrganization: async () => ({}), saveIdeaOrganization: async (_lane: string, id: string, patch: object) => ({id,shortlisted:false,topic:null,...patch}) }))
+beforeEach(() => { localStorage.setItem('sb-test-auth-token',JSON.stringify({user:{id:'ideas-user'}})); for (const lane of ['ivan','risedtc','arch','swishdm']) writeSwr(`content-idea-view:${lane}`,'all') })
 const empty = { items: [], n: 0, loading: false, error: null, refresh: vi.fn(), scores: { ok: false, byRef: new Map(), validated: false }, facets: [], chip: { ok: false, weekStart: null, byRef: new Map(), slots: [] } }
 const IdeasWrapper=({banks}:{banks:IdeaBanks})=><ToastProvider><DConfirmProvider><Ideas banks={banks} phone={false}/></DConfirmProvider></ToastProvider>
 const banksOf = (items: ReturnType<typeof fromCandidate>[]) => ({ ivan: { ...empty, items, n: items.length }, risedtc: empty, arch: empty , swishdm: empty}) as IdeaBanks
@@ -29,7 +31,7 @@ describe('Ideas browser', () => {
   it('searches title, source, proof and angle and filters sources from actual rows', () => {
     const items=[fromCandidate(cand(1)),{...fromCandidate(cand(2)),proof:'Verified retention evidence'}, {...fromCandidate(cand(3)),angle:'Pricing objection'}]
     renderInFrame(<Ideas banks={banksOf(items)} phone={false}/> )
-    const search=screen.getByRole('searchbox',{name:'Search fresh ideas'})
+    const search=screen.getByRole('searchbox',{name:'Search ideas'})
     for (const [query,title] of [['Idea 1','Idea 1'],['retention','Idea 2'],['pricing','Idea 3'],['calls','Idea 2']]) {
       fireEvent.change(search,{target:{value:query}})
       expect(document.querySelectorAll('.cn-best-card')).toHaveLength(1)
@@ -37,13 +39,13 @@ describe('Ideas browser', () => {
     }
     fireEvent.change(search,{target:{value:''}})
     const source=screen.getByRole('combobox',{name:'Source'})
-    expect(within(source).getAllByRole('option').map(o=>o.textContent)).toEqual(['All sources','Manual','Your calls'])
+    expect(within(source).getAllByRole('option').map(o=>o.textContent)).toEqual(['All sources','Your calls','Your idea'])
     fireEvent.change(source,{target:{value:'Your calls'}})
     expect(screen.getByText('Idea 2')).toBeTruthy()
     expect(screen.queryByText('Idea 1')).toBeNull()
-    expect(screen.getByText('Showing 1 of 3 fresh ideas')).toBeTruthy()
+    expect(screen.getByText('Showing 1 of 3 ideas')).toBeTruthy()
     fireEvent.change(search,{target:{value:'No match'}})
-    expect(screen.getByText('No ideas match your search or source.')).toBeTruthy()
+    expect(screen.getByText('No ideas match these filters.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button',{name:'Clear filters'}))
     expect(document.querySelectorAll('.cn-best-card')).toHaveLength(3)
   })
@@ -109,7 +111,7 @@ describe('Ideas browser', () => {
   it('does not claim an empty bank when its reader failed',()=>{
     const banks=banksOf([]);banks.ivan.error='Read failed'
     renderInFrame(<Ideas banks={banks} phone={false}/>)
-    expect(screen.getByText('Read failed')).toBeTruthy();expect(screen.queryByText('No fresh ideas waiting.')).toBeNull()
+    expect(screen.getByText('Read failed')).toBeTruthy();expect(screen.queryByText('No ideas waiting.')).toBeNull()
   })
   it('retains the existing source-filter helper',()=>expect(filtered([fromCandidate(cand(1)),fromCandidate(cand(2))],'ivan',{source:'manual'}).map(i=>i.id)).toEqual(['i1']))
 })
@@ -169,7 +171,7 @@ describe('idea consequences and recovery', () => {
     writeSwr('content-idea-picks:ivan',Array.from({length:5},(_,i)=>({...fromCandidate(cand(i)),saved:true})))
     renderInFrame(<Ideas banks={banksOf(Array.from({length:12},(_,i)=>fromCandidate(cand(i))))} phone={false}/> )
     const selected=screen.getByRole('region',{name:'Selected ideas'})
-    const fresh=screen.getByRole('region',{name:'Fresh ideas'})
+    const fresh=screen.getByRole('region',{name:'Browse ideas'})
     expect(selected.querySelectorAll('[data-idea-id]')).toHaveLength(5)
     expect(fresh.querySelectorAll('.cn-best-card')).toHaveLength(7)
     expect(within(fresh).getByText('Idea 5')).toBeTruthy()

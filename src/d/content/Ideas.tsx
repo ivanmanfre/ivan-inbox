@@ -1,5 +1,7 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
-import { readSwr, writeSwr } from '../../lib/swr'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { Star } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
+import { currentUserId, readSwr, writeSwr } from '../../lib/swr'
 import { fetchRankedIdeas, visibleIdeas } from '../../lib/rankedIdeas'
 import { decideIdea, ideaDecidable } from '../../lib/content'
 import { decideClientIdea } from '../../lib/clientIdeas'
@@ -19,6 +21,7 @@ import { LANES, LANE_NAME, type Lane } from './model'
 import type { IdeaItem } from './ideaModel'
 import { IdeaDetail } from './IdeaDetail'
 import { EarlyReadChip } from './EarlyReadChip'
+import { IDEA_TOPICS, ideaTopic, ideaOrigin, ideaAddedAt, isNewArrival, fetchIdeaOrganization, saveIdeaOrganization, type IdeaOrganizationMap, type IdeaOrganization, type IdeaView } from './ideaOrganization'
 import './ideas.css'
 
 export type IdeaBank = {
@@ -82,36 +85,107 @@ export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks:
   const [query, setQuery] = useState('')
   const [source, setSource] = useState('')
   const [sort, setSort] = useState('best')
+  const [topic, setTopic] = useState('')
+  const [view, setView] = useState<IdeaView>('new')
+  const [organizationUser, setOrganizationUser] = useState(currentUserId)
+  const userRef = useRef(organizationUser)
+  const loadedScope = useRef('')
+  const mutationRevision = useRef<Partial<Record<Lane,number>>>({})
+  const activeSeat = useRef(seat)
+  activeSeat.current = seat
+  const [organization, setOrganization] = useState<Partial<Record<Lane, IdeaOrganizationMap>>>({})
+  const [organizationReady, setOrganizationReady] = useState(false)
+  const [organizationError, setOrganizationError] = useState('')
+  const [organizationVersion, setOrganizationVersion] = useState(0)
+  const [curating, setCurating] = useState<string | null>(null)
+  useEffect(() => {
+    const update = (next: string | null) => {
+      if (userRef.current === next) return
+      userRef.current = next; mutationRevision.current = {}
+      loadedScope.current = ''; setOrganizationUser(next); setOrganization({}); setOrganizationReady(false); setOrganizationError(''); setCurating(null)
+    }
+    const { data } = supabase.auth.onAuthStateChange((event,session) => { if (event !== 'INITIAL_SESSION') update(session?.user.id || null) })
+    const check = () => update(currentUserId())
+    const focus = () => { check(); setOrganizationVersion(v => v+1) }
+    window.addEventListener('storage',check); window.addEventListener('focus',focus)
+    return () => { data.subscription.unsubscribe(); window.removeEventListener('storage',check); window.removeEventListener('focus',focus) }
+  }, [])
+  useEffect(() => {
+    let live = true
+    const actor = organizationUser, revision = mutationRevision.current[seat] || 0
+    if (!actor) return
+    const storedView = readSwr<IdeaView>(`content-idea-view:${seat}`,actor)?.payload
+    setView(storedView && ['new','shortlisted','all'].includes(storedView) ? storedView : 'new')
+    const scope = `${actor}:${seat}`
+    if (loadedScope.current !== scope) { loadedScope.current = scope; setOrganizationReady(false) }
+    setOrganizationError('')
+    const cached = readSwr<IdeaOrganizationMap>(`content-idea-organization:${seat}`,actor)?.payload
+    if (cached) setOrganization(s => ({ ...s, [seat]: cached }))
+    void fetchIdeaOrganization(seat).then(data => {
+      if (!live || userRef.current !== actor) return
+      setOrganizationReady(true)
+      if ((mutationRevision.current[seat] || 0) !== revision) return
+      setOrganization(s => ({ ...s, [seat]: data }))
+      writeSwr(`content-idea-organization:${seat}`, data,actor)
+    }).catch(e => { if (live && userRef.current === actor) setOrganizationError(e instanceof Error ? e.message : 'Your shortlist could not sync.') })
+    return () => { live = false }
+  }, [seat, organizationVersion, organizationUser])
+  const changeView = (next: IdeaView) => { setView(next); setSel(null); writeSwr(`content-idea-view:${seat}`,next,organizationUser) }
+  const curate = async (it: IdeaItem, patch: Partial<Pick<IdeaOrganization,'shortlisted' | 'topic'>>) => {
+    if (curating || !organizationReady) return
+    const actor = organizationUser
+    if (!actor) return
+    mutationRevision.current[it.lane] = (mutationRevision.current[it.lane] || 0) + 1
+    setCurating(it.id); setOrganizationError('')
+    try {
+      const row = await saveIdeaOrganization(it.lane,it.id,patch)
+      if (userRef.current !== actor) return
+      mutationRevision.current[it.lane] = (mutationRevision.current[it.lane] || 0) + 1
+      setOrganization(s => { const next = { ...s[it.lane], [it.id]: row }; writeSwr(`content-idea-organization:${it.lane}`,next,actor); return { ...s, [it.lane]: next } })
+    } catch (e) { if (userRef.current === actor && activeSeat.current === it.lane) setOrganizationError(e instanceof Error ? e.message : 'Your shortlist change was not saved.') }
+    finally { if (userRef.current === actor) setCurating(null) }
+  }
   const [saved, setSaved] = useState<Record<Lane, IdeaItem[]>>(readPicks)
   const [skipped, setSkipped] = useState(readSkips)
   const [insights, setInsights] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState('')
-  useEffect(() => { setQuery(''); setSource(''); setSort('best'); setSel(null); setError('') }, [seat])
+  useEffect(() => { setQuery(''); setSource(''); setTopic(''); setSort('best'); setSel(null); setError('') }, [seat])
   const b = banks[seat]
   const rankedAt = b.items[0]?.rankedAt
   const rankedTime = rankedAt && Number.isFinite(Date.parse(rankedAt)) ? warsawHm(rankedAt) : null
   const rows = visibleIdeas(b.items, saved[seat], skipped[seat])
   const selected = rows.filter(it => it.saved)
   const fresh = rows.filter(it => !it.saved)
-  const sources = [...new Set(fresh.map(it => it.src || 'Idea bank'))].sort((a, b) => a.localeCompare(b))
+  const settings = organization[seat] || {}
+  const topicOf = (it: IdeaItem) => ideaTopic(it,settings[it.id]?.topic)
+  const newItems = fresh.filter(it => isNewArrival(it))
+  const shortlisted = fresh.filter(it => settings[it.id]?.shortlisted)
+  const viewItems = view === 'new' ? newItems : view === 'shortlisted' ? shortlisted : fresh
+  const sources = [...new Set(fresh.map(ideaOrigin))].sort((a, b) => a.localeCompare(b))
+  const topics = [...new Set(fresh.map(topicOf))].sort((a, b) => a.localeCompare(b))
   const search = query.trim().toLocaleLowerCase()
-  const shown = fresh.filter(it => (!source || (it.src || 'Idea bank') === source) && (!search || [it.title, it.src, it.proof, it.angle, it.why, it.evidenceQuote, it.outlier?.author].some(value => value?.toLocaleLowerCase().includes(search))))
-  if (sort === 'newest') {
-    const date = (it: IdeaItem) => { const value = Date.parse(it.ivan?.ingested_at || it.client?.created_at || it.outlier?.published_at || ''); return Number.isFinite(value) ? value : -Infinity }
-    shown.sort((a, b) => date(b) - date(a))
-  }
+  const shown = viewItems.filter(it => (!source || ideaOrigin(it) === source) && (!topic || topicOf(it) === topic) && (!search || [it.title, ideaOrigin(it), topicOf(it), it.proof, it.angle, it.why, it.evidenceQuote].some(value => value?.toLocaleLowerCase().includes(search))))
+  if (sort === 'newest') shown.sort((a,b) => (ideaAddedAt(b) || -Infinity) - (ideaAddedAt(a) || -Infinity))
   const sourcePosts = rows.filter(it => !!it.outlier).length
   const bankIdeas = rows.length - sourcePosts
   const counts = `${rows.length} ${rows.length === 1 ? 'idea' : 'ideas'} · ${bankIdeas} bank ${bankIdeas === 1 ? 'idea' : 'ideas'} · ${sourcePosts} source ${sourcePosts === 1 ? 'post' : 'posts'}`
   const browsing = <div className="cn-idea-browser">
-    <div className="cn-idea-controls">
-      <input type="search" aria-label="Search fresh ideas" placeholder="Search ideas, sources, evidence…" value={query} onChange={e => setQuery(e.target.value)} />
-      <select aria-label="Source" value={source} onChange={e => setSource(e.target.value)}><option value="">All sources</option>{sources.map(src => <option key={src} value={src}>{src}</option>)}</select>
-      <select aria-label="Sort ideas" value={sort} onChange={e => setSort(e.target.value)}><option value="best">Best ranked</option><option value="newest">Newest first</option></select>
+    <div className="cn-idea-views" role="tablist" aria-label="Idea views">
+      {([{key:'new',label:'New arrivals',count:newItems.length},{key:'shortlisted',label:'Shortlisted',count:organizationReady || organization[seat] ? shortlisted.length : '…'},{key:'all',label:'All ideas',count:fresh.length}] as const).map(v => <button key={v.key} type="button" role="tab" aria-selected={view === v.key} onClick={() => changeView(v.key)}>{v.label} <span>{v.count}</span></button>)}
     </div>
-    <div className="cn-idea-results"><span role="status">Showing {shown.length} of {fresh.length} fresh ideas</span>{(query || source) && <button type="button" onClick={() => { setQuery(''); setSource('') }}>Clear filters</button>}</div>
+    <p className="cn-idea-view-note">{view === 'new' ? 'Ideas added or source posts published in the last 14 days.' : view === 'shortlisted' ? 'Ideas you want to use. Your shortlist syncs across devices.' : 'The full library, including older ideas.'}</p>
+    {organizationError && <div className="cn-idea-sync-error" role="alert">{organizationError} <button type="button" onClick={() => setOrganizationVersion(v => v+1)}>Retry shortlist sync</button></div>}
+    <div className="cn-idea-controls">
+      <input type="search" aria-label="Search ideas" placeholder="Search ideas, sources, evidence…" value={query} onChange={e => setQuery(e.target.value)} />
+      <select aria-label="Topic" value={topic} onChange={e => setTopic(e.target.value)}><option value="">All topics</option>{topics.map(t => <option key={t} value={t}>{t}</option>)}</select>
+      <select aria-label="Source" value={source} onChange={e => setSource(e.target.value)}><option value="">All sources</option>{sources.map(src => <option key={src} value={src}>{src}</option>)}</select>
+    </div>
+    <div className="cn-idea-results"><span role="status">Showing {shown.length} of {viewItems.length} {view === 'new' ? 'new arrivals' : view === 'shortlisted' ? 'shortlisted ideas' : 'ideas'}</span>{(query || source || topic) && <button type="button" onClick={() => { setQuery(''); setSource(''); setTopic('') }}>Clear filters</button>}<select aria-label="Sort ideas" value={sort} onChange={e => setSort(e.target.value)}><option value="best">Best ranked</option><option value="newest">Newest first</option></select></div>
   </div>
+  const emptyView = <div className="cn-idea-empty"><p>{query || source || topic ? 'No ideas match these filters.' : view === 'shortlisted' ? 'Your shortlist is empty.' : view === 'new' ? 'No arrivals in the last 14 days.' : 'No ideas waiting.'}</p>{view !== 'all' && <button type="button" onClick={() => changeView('all')}>Browse all ideas</button>}</div>
+  const shortlistButton = (it: IdeaItem) => !it.saved && !it.generating && <button type="button" className="cn-idea-shortlist" aria-label={settings[it.id]?.shortlisted ? `Remove ${it.title} from shortlist` : `Shortlist ${it.title}`} title={settings[it.id]?.shortlisted ? 'Remove from shortlist' : 'Shortlist'} aria-pressed={!!settings[it.id]?.shortlisted} disabled={!organizationReady || !!curating} onClick={() => void curate(it,{shortlisted:!settings[it.id]?.shortlisted})}><Star size={17} aria-hidden="true" fill={settings[it.id]?.shortlisted ? 'currentColor' : 'none'} /></button>
+  const tags = (it: IdeaItem) => <><span className="cn-idea-topic" title={settings[it.id]?.topic ? 'Topic you selected' : 'Suggested topic'}>{topicOf(it)}</span><span>{ideaOrigin(it)}</span>{it.age ? <time title={Number.isFinite(ideaAddedAt(it)) ? new Date(ideaAddedAt(it)).toLocaleDateString() : undefined}>{it.age}</time> : <span>Age unknown</span>}</>
   const hidden = skipped[seat].filter(id => /^(x|linkedin):/.test(id))
   const restore = (lane: Lane, ids: string[]) => setSkipped(s => { const next = { ...s, [lane]: s[lane].filter(id => !ids.includes(id)) }; writeSwr('content-idea-skips-v1', next); return next })
   const current = rows.find(i => i.id === sel)
@@ -145,6 +219,7 @@ export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks:
     finally { setBusy(null) }
   }
   const detail = (it: IdeaItem) => <div className="cn-idea-expanded">
+    <label className="cn-idea-topic-edit">Topic <select aria-label={`Topic for ${it.title}`} value={settings[it.id]?.topic || ''} disabled={!organizationReady || !!curating} onChange={e => void curate(it,{topic:e.target.value as IdeaOrganization['topic'] || null})}><option value="">Suggested: {ideaTopic(it)}</option>{IDEA_TOPICS.map(t => <option key={t}>{t}</option>)}</select></label>
     {it.proof && it.proof !== it.src && <p className="cn-idea-proof">{it.proof}</p>}
     <EarlyReadChip read={it.patternRead} lane={it.lane} />
     <IdeaDetail it={it} onDone={done} compact/>
@@ -152,9 +227,9 @@ export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks:
   const card = (it: IdeaItem) => <article key={it.id} className={`cn-best-card${it.saved ? ' cn-best-added' : ''}`} data-idea-id={it.id}>
     <button type="button" className="cn-best-open" data-verb="open" onClick={() => setSel(sel === it.id ? null : it.id)} aria-expanded={sel === it.id}>
       <span className="cn-best-title">{it.title}</span>
-      <span className="cn-best-meta"><span>{it.src || 'Idea bank'}</span>{it.age && <time>{it.age}</time>}</span>
+      <span className="cn-best-meta">{tags(it)}</span>
     </button>
-    {!(current?.id === it.id && !it.outlier && !it.generating) && <div className="cn-best-acts">{it.generating
+    {!(current?.id === it.id && !it.outlier && !it.generating) && <div className="cn-best-acts">{shortlistButton(it)}{it.generating
       ? <a className="cn-best-use" href={dHash('content', 'now', { lane: it.lane })}>Open Review</a>
       : it.saved ? <button type="button" className="cn-best-use" onClick={() => open(it.id)}>Open saved idea</button> : <>
         <button type="button" className="cn-best-use" data-verb="idea-use" disabled={!!busy || it.lane === 'swishdm' || !!it.ivan && !ideaDecidable(it.ivan)} onClick={() => void run(it, true)}>{busy === it.id ? 'Working…' : it.outlier ? 'Save idea' : it.lane === 'swishdm' ? 'Setup pending' : 'Generate draft'}</button>
@@ -171,12 +246,12 @@ export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks:
         <div className="cv2-idea-main">
           <button type="button" className="cv2-idea-open" data-verb="open" aria-expanded={expanded} onClick={() => setSel(expanded ? null : it.id)}>
             <span className="cv2-idea-t">{it.title}</span>
-            <span className="cv2-idea-meta"><span>{it.src || 'Idea bank'}</span>{it.age && <time>{it.age}</time>}</span>
+            <span className="cv2-idea-meta">{tags(it)}</span>
           </button>
           {it.generating && <p className="cv2-shimmer" role="status">Drafting… it appears in Review</p>}
         </div>
         <div className="cv2-idea-acts">
-          {it.generating ? <a className="cv2-k" href={dHash('content', 'now', { lane: it.lane, idea: it.id })}>Open in Review →</a>
+          {shortlistButton(it)}{it.generating ? <a className="cv2-k" href={dHash('content', 'now', { lane: it.lane, idea: it.id })}>Open in Review →</a>
             : it.saved ? <button type="button" className="cv2-k" onClick={() => open(it.id)}>Open saved idea</button>
               : !(expanded && !it.outlier) && <button type="button" className="cv2-k cv2-k-p" data-verb="idea-use" disabled={!!busy || it.lane === 'swishdm' || !!it.ivan && !ideaDecidable(it.ivan)} onClick={() => void run(it, true)}>{busy === it.id ? 'Working…' : it.outlier ? 'Save idea' : it.lane === 'swishdm' ? 'Setup pending' : 'Generate draft'}</button>}
           {!it.saved && !it.generating && <Menu label="More for this idea" verb="idea-more" items={[{ key: 'skip', label: it.outlier ? 'Hide on this device' : 'Archive idea', run: () => void run(it, false) }]} />}
@@ -189,7 +264,7 @@ export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks:
         <Seg label="Client" verb="lane" value={seat} onChange={id => { setSeat(id as Lane); setSel(null); setError('') }}
           options={LANES.map(l => ({ id: l, label: <><SeatAv lane={l} />{LANE_NAME[l]}</>, count: banks[l].n == null && !saved[l].length ? '…' : visibleIdeas(banks[l].items, saved[l], skipped[l]).length }))} />
         <span className="cv2-grow" />
-        <button type="button" className="cv2-k cv2-k-q" aria-expanded={insights} data-verb="idea-insights" onClick={() => setInsights(v => !v)}>Insights & evidence {insights ? '▾' : '▸'}</button>
+        <button type="button" className="cv2-k cv2-k-q" aria-label="Insights and evidence" aria-expanded={insights} data-verb="idea-insights" onClick={() => setInsights(v => !v)}>{phone ? 'Insights' : 'Insights & evidence'} {insights ? '▾' : '▸'}</button>
       </div>
       <Answer>{b.loading && !fresh.length ? `Reading ${who}’s ideas…` : b.error && !fresh.length ? `${who}’s ideas could not be read.`
         : <>{counts} for {who}</>}{rankedTime && <span className="cv2-ans-x"> · Ranked {rankedTime} Warsaw</span>}</Answer>
@@ -198,11 +273,11 @@ export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks:
       {b.error ? <div className="cv2-banner cv2-banner-bad" role="alert"><span>{fresh.length ? 'Ideas could not be refreshed. These are from the last read.' : 'The ideas read did not come back.'}</span><button type="button" onClick={b.refresh}>Retry</button></div>
         : stalled && <div className="cv2-banner cv2-banner-warn" role="alert"><span>Ideas did not answer in 12 s.</span><button type="button" data-verb="ideas-retry" onClick={b.refresh}>Retry</button></div>}
       {selected.length > 0 && <section aria-label="Selected ideas" className="cv2-sec"><h2 className="cv2-h">Selected <span>drafts you requested and saved ideas</span></h2><div className="cv2-ideas-list">{selected.map(it => v2card(it, null))}</div></section>}
-      <section aria-label="Fresh ideas" className="cv2-sec">
+      <section aria-label="Browse ideas" className="cv2-sec">
         {browsing}
-        {selected.length > 0 && <h2 className="cv2-h">Fresh ideas</h2>}
+        {selected.length > 0 && <h2 className="cv2-h">Ideas</h2>}
         {b.loading && !fresh.length && !stalled ? <div className="cv2-ideas-list" aria-busy="true">{[0, 1, 2].map(i => <div key={i} className="cv2-ghost cv2-ghost-idea" />)}</div>
-          : shown.length > 0 ? <div className="cv2-ideas-list">{shown.map(it => v2card(it, fresh.indexOf(it) + 1))}</div> : !b.loading && !b.error && <p className="cn-say">{fresh.length ? 'No ideas match your search or source.' : 'No fresh ideas waiting.'}</p>}
+          : shown.length > 0 ? <div className="cv2-ideas-list">{shown.map(it => v2card(it, fresh.indexOf(it) + 1))}</div> : !b.loading && !b.error && emptyView}
       </section>
       <div className="cv2-foot">
         {hidden.length > 0 && <button type="button" className="cv2-link" onClick={() => restore(seat, hidden)}>Restore hidden ideas ({hidden.length})</button>}
@@ -216,12 +291,11 @@ export function Ideas({ banks, phone, lane, onLaneChange, v2 = false }: { banks:
     {error && <p className="cn-say cn-bad" role="alert">{error}</p>}
     {b.error && <Failed what="Ideas" detail={b.error} onRetry={b.refresh} />}
     {selected.length > 0 && <section aria-label="Selected ideas" className="cn-selected-ideas"><p className="cn-best-caption">Selected <span>· saved ideas and requested drafts</span></p><div className="cn-best-list">{selected.map(card)}</div></section>}
-    <section aria-label="Fresh ideas">
+    <section aria-label="Browse ideas">
       <p className="cn-best-caption">{counts}<span>{rankedTime && ` · Ranked ${rankedTime} Warsaw`}</span></p>
       {browsing}
       {b.loading && !fresh.length ? <Skeleton lines={5} title={false} label="Reading ideas" />
-        : !fresh.length ? !b.error && <p className="cn-say">No fresh ideas waiting.</p>
-        : shown.length ? <div className="cn-best-list">{shown.map(card)}</div> : <p className="cn-say">No ideas match your search or source.</p>}
+        : shown.length ? <div className="cn-best-list">{shown.map(card)}</div> : !b.error && emptyView}
     </section>
     {hidden.length > 0 && <button type="button" className="cn-restore-link" onClick={() => restore(seat, hidden)}>Restore hidden ideas ({hidden.length})</button>}
     <details className="cn-idea-insights" onToggle={e => setInsights(e.currentTarget.open)}><summary>Insights & evidence</summary>{insights && <Suspense fallback={<Skeleton lines={3} label="Reading insights"/>}><Insights lane={seat} phone={phone}/></Suspense>}</details>

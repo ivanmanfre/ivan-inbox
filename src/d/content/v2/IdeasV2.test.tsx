@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderInFrame } from '../../test-utils'
 import type { IdeaBanks } from '../Ideas'
@@ -11,6 +11,8 @@ const lib = vi.hoisted(() => ({ decideIdea: vi.fn().mockResolvedValue({}) }))
 vi.mock('../../../lib/content', async o => ({ ...await o<typeof import('../../../lib/content')>(), decideIdea: lib.decideIdea }))
 import { Ideas } from '../Ideas'
 
+vi.mock('../ideaOrganization', async original => ({ ...await original<typeof import('../ideaOrganization')>(), fetchIdeaOrganization: async () => ({}), saveIdeaOrganization: async (_lane: string, id: string, patch: object) => ({id,shortlisted:false,topic:null,...patch}) }))
+beforeEach(() => { localStorage.setItem('sb-test-auth-token',JSON.stringify({user:{id:'ideas-user'}})); writeSwr('content-idea-view:ivan','all') })
 const empty = { items: [], n: 0, loading: false, error: null, refresh: vi.fn(), scores: { ok: false, byRef: new Map(), validated: false }, facets: [], chip: { ok: false, weekStart: null, byRef: new Map(), slots: [] } }
 const cand = (n: number) => ({ id: `i${n}`, normalized_topic: `Idea ${n}`, composite_score: 100 - n, source: 'manual', content_type: 'post' } as IdeaCandidate)
 afterEach(() => { cleanup(); localStorage.clear(); vi.useRealTimers(); vi.clearAllMocks() })
@@ -50,12 +52,12 @@ describe('Ideas v2', () => {
     fireEvent.click(screen.getByText('Hide on this device'))
     await waitFor(()=>expect(screen.queryByText('Idea 1')).toBeNull())
     expect(tab().textContent).toContain('1')
-    expect(screen.getByText('Showing 1 of 1 fresh ideas')).toBeTruthy()
+    expect(screen.getByText('Showing 1 of 1 ideas')).toBeTruthy()
     fireEvent.click(screen.getByRole('button',{name:'Restore hidden ideas (1)'}))
     expect(tab().textContent).toContain('2')
-    expect(screen.getByText('Showing 2 of 2 fresh ideas')).toBeTruthy()
+    expect(screen.getByText('Showing 2 of 2 ideas')).toBeTruthy()
   })
-  it('keeps requested drafts actionable across reload while browsing fresh ideas', async () => {
+  it('keeps requested drafts actionable across reload while browsing ideas', async () => {
     localStorage.setItem('sb-test-auth-token',JSON.stringify({user:{id:'ideas-user'}}))
     const items=[fromCandidate(cand(0)),{...fromCandidate(cand(1)),proof:'Stored proof',angle:'A distinct angle'}]
     writeSwr('content-idea-picks:ivan',[{...items[0],saved:true,generating:true}])
@@ -63,7 +65,7 @@ describe('Ideas v2', () => {
     const view=renderInFrame(<Ideas banks={banks} phone={false} v2 />)
     fireEvent.change(screen.getByRole('searchbox'),{target:{value:'distinct angle'}})
     expect(screen.getByRole('link',{name:'Open in Review →'}).getAttribute('href')).toContain('lane=ivan')
-    expect(within(screen.getByRole('region',{name:'Fresh ideas'})).getByText('Idea 1')).toBeTruthy()
+    expect(within(screen.getByRole('region',{name:'Browse ideas'})).getByText('Idea 1')).toBeTruthy()
     expect(screen.queryByText('Stored proof')).toBeNull()
     expect(screen.queryByRole('button',{name:'No read yet'})).toBeNull()
     fireEvent.click(screen.getByText('Idea 1'))
@@ -72,7 +74,7 @@ describe('Ideas v2', () => {
     view.unmount()
     renderInFrame(<Ideas banks={banks} phone={false} v2 />)
     expect(screen.getByRole('link',{name:'Open in Review →'})).toBeTruthy()
-    expect(screen.getByText('Showing 1 of 1 fresh ideas')).toBeTruthy()
+    expect(screen.getByText('Showing 1 of 1 ideas')).toBeTruthy()
   })
 
 })
