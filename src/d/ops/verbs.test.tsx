@@ -11,7 +11,7 @@ vi.mock('../../lib/ops', async orig => {
     ...real,
     approveOpsDraft: vi.fn(async () => {}), approveWeeklyReport: vi.fn(async () => {}), discardOpsDraft: vi.fn(async () => {}),
     discardPendingTasks: vi.fn(async () => 2), completeTask: vi.fn(async () => {}), markNeedsDavor: vi.fn(async () => {}), markCommentHandled: vi.fn(async () => {}),
-    likeComment: vi.fn(async () => {}), postCommentReply: vi.fn(async () => ({ posted: true })),
+    likeComment: vi.fn(async () => {}), postCommentReply: vi.fn(async () => ({ posted: true })), retryFailedCommentReply: vi.fn(async () => {}),
     generateCommentDraft: vi.fn(async () => ({ drafted: true, draft: 'Drafted.' })),
   }
 })
@@ -72,6 +72,30 @@ describe.each([OpsCard, CardV4])('Ops card verbs (%s)', Card => {
     fireEvent.click(key('tag'))
     fireEvent.click(key('approve')); await yes()
     await waitFor(() => expect(lib.postCommentReply).toHaveBeenCalledWith('id-comment_reply-risedtc', 'Thanks', false, false))
+  })
+  it('keeps a failed reply and its error visible, then resets it only after approval', async () => {
+    const d = { ...row('comment_reply', 'risedtc', 'Thanks', { comment_id: 'c2', author_name: 'BroadDigix' }), send_blocked_reason: 'post_failed: Error: unipile 422' }
+    card(d)
+    expect(document.querySelector('[role=alert]')?.textContent).toContain('unipile 422')
+    expect(lib.retryFailedCommentReply).not.toHaveBeenCalled()
+    fireEvent.click(key('approve')); await yes()
+    await waitFor(() => expect(lib.retryFailedCommentReply).toHaveBeenCalledWith(d))
+    await waitFor(() => expect(lib.postCommentReply).toHaveBeenCalled())
+    expect(vi.mocked(lib.retryFailedCommentReply).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(lib.postCommentReply).mock.invocationCallOrder[0])
+  })
+  it('does not post if the failed card changed before retry', async () => {
+    vi.mocked(lib.retryFailedCommentReply).mockRejectedValueOnce(new Error('Reply changed; refresh.'))
+    card({ ...row('comment_reply', 'risedtc', 'Thanks', { comment_id: 'c2' }), send_blocked_reason: 'post_failed: unipile 422' })
+    fireEvent.click(key('approve')); await yes()
+    await waitFor(() => expect(document.querySelector('[role=alert]')?.textContent).toContain('Reply changed'))
+    expect(lib.postCommentReply).not.toHaveBeenCalled()
+  })
+  it('refreshes a failed send so a second approval can recover its stored failure', async () => {
+    vi.mocked(lib.postCommentReply).mockRejectedValueOnce(new Error('post_failed: unipile 422'))
+    card(row('comment_reply', 'risedtc', 'Thanks', { comment_id: 'c2' }))
+    fireEvent.click(key('approve')); await yes()
+    await waitFor(() => expect(document.querySelector('[role=alert]')?.textContent).toContain('unipile 422'))
+    expect(refresh).toHaveBeenCalled()
   })
 })
 

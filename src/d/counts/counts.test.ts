@@ -23,10 +23,10 @@ describe('opsWaitingBySeat (the Ops number, split by seat)', () => {
     ]
     expect(opsWaitingBySeat(rows, NOW)).toEqual({ ivan: 2, risedtc: 2, arch: 1 , swishdm: 0})
   })
-  it('comments and newsjacks never count (Ivan 2026-10-15)', () => {
+  it('counts replies but excludes comment ideas and newsjacks', () => {
     const ideas = Array.from({ length: 5 }, () => op({ kind: 'comment_outbound', context: { posted_at: '2026-09-26T20:00:00Z' } as OpsDraft['context'] }))
     const rows = [...ideas, op({ kind: 'comment_reply', context: { posted_at: '2026-09-26T20:00:00Z' } as OpsDraft['context'] }), op({ kind: 'newsjack' }), op({ kind: 'task' })]
-    expect(opsWaitingBySeat(rows, NOW).ivan).toBe(1)
+    expect(opsWaitingBySeat(rows, NOW).ivan).toBe(2)
   })
 })
 

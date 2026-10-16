@@ -13,7 +13,7 @@ import {
   discardOpsDraft, DRAFT_CONTINUE_MAX, engineLabel, expiresIn, generateCommentDraft, likeComment,
   markCommentHandled, outboundApproveUrl, outboundSkipUrl, postCommentReply, isHandWritten, seatFullName, seatLabel, seatPerson,
   dispatchCommentGate, cardStateOf, weeklyReportDispatches, weeklySendAfter,
-  archOutcome, archSources, markNeedsDavor, DRAFTER_BUSY,
+  archOutcome, archSources, markNeedsDavor, DRAFTER_BUSY, isFailedCommentReply, retryFailedCommentReply,
   type OpsDraft, type GateVerdict, type FeedState,
 } from '../../lib/ops'
 
@@ -45,7 +45,7 @@ export function usePendingCard({ draft, refresh, feed, held, onGateResult, confi
   const [davorNow, setDavorNow] = useState(false)
   const [busyNote, setBusyNote] = useState('')
   const [refusal, setRefusal] = useState<string[]>([])
-  const [error, setError] = useState('')
+  const [error, setError] = useState(() => isFailedCommentReply(draft) ? `Reply was not posted. ${draft.send_blocked_reason} You can edit it and approve again.` : '')
   const [gate, setGate] = useState<GateVerdict | null>(null)
   const postState = cardStateOf(feed)
   const heldVerdict = held ?? (gate?.held ? gate : null)
@@ -201,7 +201,8 @@ export function usePendingCard({ draft, refresh, feed, held, onGateResult, confi
         if (commentCloseOnly) {
           await markCommentHandled(draft.id)
         } else {
-          const out = await postCommentReply(draft.id, body, tag, isHandWritten(draft, body))
+          await retryFailedCommentReply(draft)
+          const out = await postCommentReply(draft.id, body, tag, isHandWritten(draft, body)).catch(e => { refresh(); throw e })
           if (!out.posted) setError(`${draft.client_id === 'arch' ? 'Davorin' : 'Mattan'} already replied to this one, so nothing was posted. Card cleared.`)
           else if (out.tagged && out.tagVerified === false) {
             setError('Posted fine, but the tag rendered as plain text: LinkedIn would not resolve this profile for a mention (usually an out-of-network commenter with a hidden surname).')
