@@ -7,7 +7,7 @@ const now = Date.parse('2026-10-16T15:00:00Z')
 
 describe('hot now', () => {
   it('drops cards past their deadline', async () => {
-    rpc.mockResolvedValueOnce({ data: [{ draft_id: 'a', post_by: '2026-10-16T14:59:00Z' }, { draft_id: 'b', post_by: '2026-10-16T18:00:00Z' }], error: null })
+    rpc.mockResolvedValueOnce({ data: [{ draft_id: 'a', post_by: '2026-10-16T14:59:00Z' }, { draft_id: 'b', post_by: '2026-10-16T18:00:00Z', validation: {status:'validated',policy_version:'market-v1',validated_at:'2026-10-16T14:50:00Z'} }], error: null })
     expect((await fetchHotNow(now)).map(c => c.draft_id)).toEqual(['b'])
   })
   it('skips with the reviewed timestamp and surfaces a refusal', async () => {
@@ -22,3 +22,5 @@ describe('hot now', () => {
     expect(brokeAgo(null, now)).toBeNull()
   })
 })
+
+it('hides held rows without current market validation',async()=>{rpc.mockResolvedValueOnce({data:[{draft_id:'vendor',post_by:'2026-10-16T18:00:00Z'}],error:null});expect(await fetchHotNow(now)).toEqual([])})

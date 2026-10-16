@@ -1,0 +1,18 @@
+// @vitest-environment jsdom
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+const mock=vi.hoisted(()=>({fetch:vi.fn(),evidence:vi.fn(),recheck:vi.fn(),save:vi.fn(),send:vi.fn(),skip:vi.fn(),confirm:vi.fn(),toast:vi.fn()}))
+vi.mock('../../lib/hotNow',async original=>({...await original<typeof import('../../lib/hotNow')>(),fetchHotNow:mock.fetch,fetchHotNowEvidence:mock.evidence,recheckHotNow:mock.recheck,skipHotNow:mock.skip}))
+vi.mock('../../lib/content',()=>({saveClientDraftBody:mock.save,setBoardVisible:mock.send}))
+vi.mock('../ui/confirm',()=>({useDConfirm:()=>mock.confirm}))
+vi.mock('../ui/toast',()=>({useToast:()=>({show:mock.toast})}))
+vi.mock('../../lib/supabase',()=>({supabase:{rpc:vi.fn()}}))
+import { HotNow } from './HotNow'
+const card={lane:'swishdm',event_id:'event',draft_id:'draft',draft_updated_at:'t',headline:'Shopping attribution changes',summary:'Store owners should check attribution.',post_by:new Date(Date.now()+4*3600000).toISOString(),post_body:'THE FULL POST TEXT',qa_ready:true,validation:{status:'validated',policy_version:'market-v1',validated_at:new Date().toISOString(),independent_people:3,traction_route:'growing_people',traction:{}}}
+beforeEach(()=>{vi.clearAllMocks();mock.fetch.mockResolvedValue([card]);mock.evidence.mockResolvedValue({validation:card.validation,pack:{receipts:[]}});mock.confirm.mockResolvedValue(true);mock.recheck.mockResolvedValue(undefined)})
+afterEach(cleanup)
+it('shows a compact summary without mounting the full post',async()=>{render(<HotNow/>);await screen.findByText(card.headline);expect(screen.queryByText(card.post_body)).toBeNull();expect(screen.getByRole('button',{name:'Review post'})).toBeTruthy();expect(screen.queryByText(/Post by/)).toBeNull()})
+it('opens review and rechecks before sending to Jonathan',async()=>{render(<HotNow/>);fireEvent.click(await screen.findByRole('button',{name:'Review post'}));await screen.findByText(card.post_body);fireEvent.click(screen.getByRole('button',{name:'Send to Jonathan'}));await waitFor(()=>expect(mock.send).toHaveBeenCalled());expect(mock.recheck).toHaveBeenCalledWith(expect.objectContaining({draft_id:'draft'}));expect(mock.send).toHaveBeenCalledWith('draft',true,{client_id:'swishdm',updated_at:'t'})})
+it('keeps edited text when a save fails',async()=>{mock.save.mockRejectedValue(new Error('stale draft'));render(<HotNow/>);fireEvent.click(await screen.findByRole('button',{name:'Review post'}));await screen.findByText(card.post_body);fireEvent.click(screen.getByRole('button',{name:'Edit'}));fireEvent.change(screen.getByRole('textbox'),{target:{value:'My preserved edit'}});fireEvent.click(screen.getByRole('button',{name:'Save'}));await waitFor(()=>expect(mock.toast).toHaveBeenCalled());expect((screen.getByRole('textbox') as HTMLTextAreaElement).value).toBe('My preserved edit')})
+it('shows a useful failure and refuses send when evidence cannot load',async()=>{mock.evidence.mockRejectedValue(new Error('Source unavailable'));render(<HotNow/>);fireEvent.click(await screen.findByRole('button',{name:'Review post'}));await screen.findByText('Source unavailable');expect((screen.getByRole('button',{name:'Send to Jonathan'}) as HTMLButtonElement).disabled).toBe(true)})
+it('renders no permanent panel when there are no qualified stories',async()=>{mock.fetch.mockResolvedValue([]);const {container}=render(<HotNow/>);await waitFor(()=>expect(mock.fetch).toHaveBeenCalled());expect(container.textContent).toBe('')})
