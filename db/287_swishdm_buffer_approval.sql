@@ -45,7 +45,7 @@ BEGIN
     IF d.type NOT IN ('text','single_image','image','carousel','video') OR d.type IS NULL THEN
       RETURN jsonb_build_object('ok',false,'error','unsupported_format');
     END IF;
-    IF (d.type='video' AND coalesce(d.video_url,'') !~ '^https://')
+    IF (d.type='video' AND coalesce(d.video_url,'') !~ '^https://[^/[:space:]]+(/[^[:space:]]*)?$')
        OR (d.type IN ('single_image','image','carousel') AND (
          coalesce(cardinality(d.image_urls),0)=0 OR EXISTS (
            SELECT 1 FROM unnest(d.image_urls) u WHERE u IS NULL OR u !~ '^https://[^/[:space:]]+(/[^[:space:]]*)?$'))) THEN

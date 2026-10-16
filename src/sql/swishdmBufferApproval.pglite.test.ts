@@ -88,6 +88,14 @@ describe('Swish operator approval is an atomic buffer handoff', () => {
     s = await state()
     expect(s.board.queue[1]).toMatchObject({type:'carousel',image_urls:['https://example.com/slide.png'],pdf_url:'https://example.com/deck.pdf'})
   })
+  it('refuses video URL prefixes or whitespace instead of exposing unfinished media', async () => {
+    await migrate()
+    for (const url of ['https://','https://example.com/broken video.mp4']) {
+      await db.query(`update carousel_drafts set type='video',video_url=$1`,[url])
+      expect(await call()).toMatchObject({ok:false,error:'awaiting_media'})
+      expect((await state()).board.queue).toHaveLength(1)
+    }
+  })
   it('refuses incomplete carousel image arrays even when a later slide has a valid URL', async () => {
     await migrate()
     for (const urls of [[], ['', 'https://example.com/slide.png'], ['/private/slide.png', 'https://example.com/slide.png'], [null, 'https://example.com/slide.png']]) {
