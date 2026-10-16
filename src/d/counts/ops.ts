@@ -3,7 +3,7 @@ import { fetchXReview, xWaitingCount } from '../../lib/xReview'
 import { seatOf, type Seat } from '../seats'
 
 // Ops "Waiting on you", per seat: THE Ops number (lib/ops.ts opsBadge), split
-// by seat instead of summed. Every pending card and task counts, except comment
+// by seat instead of summed. Every pending reply, card and task counts, except comment
 // ideas and newsjacks (countsAsWaiting: they show on the board, never in the
 // number). ops_drafts' legacy client 'rise' is Rise.
 // Per seat; with `other` (clients with no seat) they add up to today's single Ops badge.

@@ -10,12 +10,12 @@ const row = (kind: OpsDraft['kind'], extra: Partial<OpsDraft> = {}): OpsDraft =>
 })
 
 describe('opsBadge', () => {
-  it('counts approvals and tasks; comments and newsjacks never count (Ivan 2026-10-15)', () => {
+  it('counts replies, approvals and tasks; comment ideas and newsjacks never count', () => {
     const rows = [
       row('newsjack'), row('comment_reply'), row('task'), row('escalation'),
       ...Array.from({ length: 25 }, () => row('comment_outbound')),
     ]
-    expect(opsBadge(rows, NOW)).toEqual({ n: 2, ideasFolded: 22 })
+    expect(opsBadge(rows, NOW)).toEqual({ n: 3, ideasFolded: 22 })
   })
   it('ideas already posted today use up the day (the fold)', () => {
     const rows = [

@@ -243,9 +243,14 @@ export function isOpsReference(d: OpsDraft): boolean {
 
 // Pending = nothing has happened to it yet — the only rows the operator acts on.
 // Comment cards also age out: past the window they are noise, not a to-do.
+export function isFailedCommentReply(d: OpsDraft): boolean {
+  return d.kind === 'comment_reply' && !d.approved_at && !d.sent_at
+    && Boolean(d.send_blocked_reason?.startsWith('post_failed:'))
+}
+
 export function pendingOps(rows: OpsDraft[], now = Date.now()): OpsDraft[] {
   return rows.filter(d =>
-    !d.approved_at && !d.sent_at && !d.send_blocked_reason
+    !d.approved_at && !d.sent_at && (!d.send_blocked_reason || isFailedCommentReply(d))
     && !isOpsReference(d) && !isAudnKind(d.kind) && !isStaleComment(d, now) && !isExpiredNewsjack(d, now))
 }
 
@@ -714,7 +719,7 @@ export function isStaleComment(d: OpsDraft, now = Date.now()): boolean {
 // Ivan 2026-10-15: comment ideas and newsjacks stay on the Ops board but "don't need to
 // count at all" in the Ops number. Everything else that is pending still counts.
 export function countsAsWaiting(d: OpsDraft): boolean {
-  return d.kind !== 'comment_reply' && d.kind !== 'comment_outbound' && d.kind !== 'newsjack'
+  return d.kind !== 'comment_outbound' && d.kind !== 'newsjack'
 }
 
 // comment_outbound, ivan lane: approving opens the n8n gate webhook in a new tab -
@@ -792,6 +797,19 @@ export async function postCommentReply(
     // (out-of-network profiles resolve to nothing); null/undefined = unverified.
     tagVerified: typeof out.tag_verified === 'boolean' ? out.tag_verified : null,
   }
+}
+
+// Only an explicit operator retry clears a failed send. Preserve permanent
+// blocks, and refuse if another device handled or changed the card meanwhile.
+export async function retryFailedCommentReply(d: OpsDraft): Promise<void> {
+  if (!isFailedCommentReply(d)) return
+  const { data, error } = await supabase.from('ops_drafts')
+    .update({ send_blocked_reason: null })
+    .eq('id', d.id).eq('kind', 'comment_reply')
+    .eq('send_blocked_reason', d.send_blocked_reason!)
+    .is('approved_at', null).is('sent_at', null).select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('This reply changed on another device. Refresh before retrying.')
 }
 
 // Likes THEIR comment from the client seat. Works on a card in any state -
