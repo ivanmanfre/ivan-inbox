@@ -85,7 +85,7 @@ function QueueRow({ r, i, lane, open, onOpen, verbs, now }: {
   return (
     <div role="listitem" className={`cn-row cn-qrow${open ? ' cn-sel' : ''}`}
       aria-current={open ? 'true' : undefined} onClick={() => onOpen(r.id)}>
-      <span className="cn-m cn-mark"><RowSelect id={r.id} kind="draft" label={full} caps={rowCaps(r, lane)} taxonomy={r.taxonomy} lane={lane} />{i + 1}</span>
+      <span className="cn-m cn-mark"><RowSelect id={r.id} kind="draft" label={full} caps={rowCaps(r, lane)} taxonomy={r.taxonomy} lane={lane} updatedAt={r.updated_at} />{i + 1}</span>
       <span className="cn-qthumb" aria-hidden>
         {thumb && !broken ? <img src={thumb} alt="" loading="lazy" onError={() => setBroken(true)} /> : <i>{r.type === 'carousel' ? 'Carousel' : 'Text'}</i>}
       </span>

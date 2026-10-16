@@ -174,3 +174,15 @@ describe('brain draft in the open post: Approve or Drop', () => {
     await waitFor(() => expect(verb('dw-verdict-done')?.textContent).toBe('Dropped'))
   })
 })
+
+it('Swish finished brain Approve hands it to Jonathan’s buffer, never to the three-lane verdict RPC', async () => {
+  current = { ...base,client_id:'swishdm',board_visible:false }
+  lib.setBoardVisible.mockResolvedValue(undefined)
+  renderInFrame(<DraftWindow {...props({lane:'swishdm'})} />)
+  expect(verb('dw-drop')).toBeNull()
+  fireEvent.click(verb('dw-keep')!)
+  fireEvent.click(await screen.findByRole('button',{name:'Put it on his board'}))
+  await waitFor(()=>expect(lib.setBoardVisible).toHaveBeenCalledWith('d1',true,current))
+  expect(verdicts.setVerdict).not.toHaveBeenCalled()
+  expect(await screen.findByText('On Jonathan’s board.')).toBeTruthy()
+})

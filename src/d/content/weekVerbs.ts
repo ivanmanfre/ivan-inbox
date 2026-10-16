@@ -57,17 +57,17 @@ export function useWeekVerbs({ ids, onChanged, onOpen, setBusy }: {
     const lane = c.lane
     const ok = await confirm({
       title: `Put this on ${POSS[lane]} board?`,
-      message: `${OWNER[lane]} sees it. This reaches a client: it fires his board’s own sync, so it lands within moments. `
+      message: lane === 'swishdm' ? 'Jonathan sees this finished draft in his buffer for review. Nothing is scheduled or published.' : `${OWNER[lane]} sees it. This reaches a client: it fires his board’s own sync, so it lands within moments. `
         + 'From there the decisions are his: approve, edit, veto, schedule. Nothing publishes, this writes board visibility only.',
       confirmText: 'Put it on his board', verb: 'confirm',
     })
     if (!ok) return
     setBusy(c.r.id)
     try {
-      await setBoardVisible(c.r.id, true)
+      await setBoardVisible(c.r.id, true, ...(c.r.client_id === 'swishdm' ? [c.r] as const : []))
       toast.show({
         message: `On ${POSS[lane]} board.`, sub: `${OWNER[lane]} decides from there.`,
-        action: { label: 'Undo', verb: 'undo-board', run: () => {
+        action: lane === 'swishdm' ? undefined : { label: 'Undo', verb: 'undo-board', run: () => {
           setBoardVisible(c.r.id, false).then(() => { toast.show({ message: `Off ${POSS[lane]} board.`, sub: 'Nothing was deleted.' }); onChanged() })
             .catch(e => toast.show({ tone: 'failed', message: e instanceof Error ? e.message : 'Could not take it off.' }))
         } },
@@ -97,6 +97,8 @@ export function useWeekVerbs({ ids, onChanged, onOpen, setBusy }: {
   // Approve / Drop: one tap, held for the Undo window (verdictStore). The one question is the QA override:
   // Approve on Ivan's seat approves, and a draft QA refused must say so first.
   const judgeIt = useCallback(async (c: WeekCard, verdict: 'keep' | 'drop') => {
+    if (c.lane === 'swishdm' && verdict === 'drop') return
+    if (c.lane === 'swishdm' && verdict === 'keep') { await board(c); return }
     if (verdict === 'keep' && c.lane === 'ivan' && c.r.status === 'error') {
       const ok = await confirm({
         title: 'Approve this draft anyway?',
@@ -107,7 +109,7 @@ export function useWeekVerbs({ ids, onChanged, onOpen, setBusy }: {
     }
     judge(c.r.id, verdict, { lane: c.lane, title: c.title, onCommitted: onChanged })
     advance(c.r.id)
-  }, [advance, confirm, onChanged])
+  }, [advance, board, confirm, onChanged])
 
   const act = (c: WeekCard) => {
     if (c.primary === 'approve') approve(c)

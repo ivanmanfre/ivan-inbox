@@ -241,7 +241,7 @@ function Card({ c, when, open, busy, onOpen, onKey, onDate, onJudge, nowView, on
         {nowView && (c.judge ? wide : decision) && <button type="button" className="cn-wc-date" data-verb="card-open" onClick={onOpen}>Open</button>}
         {c.judge ? (
           <>
-            <button type="button" className="cn-wc-key cn-judge-key" data-verb="card-drop" disabled={busy} onClick={() => onJudge('drop')}>Drop</button>
+            {c.lane !== 'swishdm' && <button type="button" className="cn-wc-key cn-judge-key" data-verb="card-drop" disabled={busy} onClick={() => onJudge('drop')}>Drop</button>}
             <button type="button" className="cn-wc-key cn-wc-key-d cn-judge-key cn-judge-keep" data-verb="card-keep" disabled={busy} onClick={() => onJudge('keep')}>Approve</button>
           </>
         ) : (

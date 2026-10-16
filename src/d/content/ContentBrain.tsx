@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchDecisionHistory, fetchDraftSources, learnedFrom, sourceOf, type DecisionHistory, type DraftSourceRead, type SourceView } from '../../lib/brainPage'
-import type { ContentDraft } from '../../lib/content'
+import { setBoardVisible, type ContentDraft } from '../../lib/content'
+import { useDConfirm } from '../ui/confirm'
 import { readEditorialDirection, type EditorialDirectionRead } from '../../lib/editorialDirection'
 import type { EditorialClient } from '../../lib/editorialTypes'
 import { fetchInputs, type InputsOutlier, type InputsPayload, type InputsState } from '../../lib/cb22'
@@ -153,6 +154,9 @@ function DraftCard({ r, lane, src, srcLoading, open, onOpen, onChanged }: {
   const [note, setNote] = useState('')
   const ref = useRef<HTMLElement>(null)
   const title = titleOf(r)
+  const confirm = useDConfirm()
+  const toast = useToast()
+  const [approving, setApproving] = useState(false)
   const body = (r.post_body ?? '').trim()
   const learning = learnedFrom(r, lane)
   const fold = foldText(body, wide ? 9 : 6, wide ? 64 : 40)
@@ -165,7 +169,17 @@ function DraftCard({ r, lane, src, srcLoading, open, onOpen, onChanged }: {
     io.observe(el)
     return () => io.disconnect()
   }, [id])
-  const use = () => judge(id, 'keep', { lane, title, onCommitted: onChanged })
+  const use = async () => {
+    if (lane !== 'swishdm') { judge(id, 'keep', { lane, title, onCommitted: onChanged }); return }
+    if (approving || !await confirm({ title: 'Put this on Jonathan’s board?', message: 'Jonathan sees this finished draft in his buffer for review. Nothing is scheduled or published.', confirmText: 'Put it on his board' })) return
+    setApproving(true)
+    try {
+      await setBoardVisible(id, true, r)
+      toast.show({ message: 'On Jonathan’s board.', sub: 'Jonathan decides from there. Nothing publishes.' })
+      onChanged(); window.dispatchEvent(new Event('wb-rows-changed'))
+    } catch (e) { toast.show({ message: e instanceof Error ? e.message : 'The draft could not go to the buffer.', tone: 'failed' }) }
+    finally { setApproving(false) }
+  }
   const canDrop = !!chip || note.trim().length > 0
   const drop = () => {
     if (!canDrop) return
@@ -183,9 +197,9 @@ function DraftCard({ r, lane, src, srcLoading, open, onOpen, onChanged }: {
         {learning && <p className="cb-meta" data-learned-from>Learned from: {learning}</p>}
         {!why ? (
           <div className="cb-acts">
-            <button type="button" className="cb-key cb-use" data-verb="brain-use" onClick={use}>Use</button>
+            <button type="button" className="cb-key cb-use" data-verb="brain-use" disabled={approving} onClick={() => void use()}>{lane === 'swishdm' ? 'Approve → buffer' : 'Use'}</button>
             <button type="button" className="cb-key" data-verb="brain-edit" onClick={onOpen}>Edit</button>
-            <button type="button" className="cb-key cb-drop" data-verb="brain-drop" onClick={() => setWhy(true)}>Drop</button>
+            {lane !== 'swishdm' && <button type="button" className="cb-key cb-drop" data-verb="brain-drop" onClick={() => setWhy(true)}>Drop</button>}
           </div>
         ) : (
           <form className="cb-why" aria-label="Why drop it" onSubmit={e => { e.preventDefault(); drop() }}>

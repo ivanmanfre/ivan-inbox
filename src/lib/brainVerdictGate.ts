@@ -5,6 +5,6 @@ import type { ContentDraft } from './content'
 // nothing else: Approve, Skip and Delete must not reach it from any surface (the
 // one verdict call does the approve / delete itself). Pure, so the row, the
 // bulk layer and the open post all read the same rule.
-export function brainNeedsVerdict(d: Pick<ContentDraft, 'taxonomy' | 'cb34_p2_member' | 'status'> | null | undefined): boolean {
-  return !!d && isBrainPost(d) && (d.status === 'review' || d.status === 'error')
+export function brainNeedsVerdict(d: Pick<ContentDraft, 'taxonomy' | 'cb34_p2_member' | 'status'> & Partial<Pick<ContentDraft, 'client_id' | 'board_visible'>> | null | undefined): boolean {
+  return !!d && !(d.client_id === 'swishdm' && d.board_visible === true) && isBrainPost(d) && (d.status === 'review' || d.status === 'error')
 }
