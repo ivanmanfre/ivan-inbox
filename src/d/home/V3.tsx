@@ -14,6 +14,7 @@ import { Offline } from '../ui/states'
 import { useOnline } from '../ui/useOnline'
 import { useHome, type HomeData } from './reads'
 import { HomeTasks } from './Tasks'
+import { HotNow } from './HotNow'
 import { Drafts, Invites, Limit, NextWeek, Ready } from './Tiles'
 import './home.css'
 
@@ -41,6 +42,7 @@ export default function HomePage({ layout }: PlaceProps) {
     <div className={`hm hm-${layout}`} data-d-scroll={layout === 'desktop' ? '' : undefined}>
       {layout === 'desktop' && <AnswerRow title="Home" />}
       {!online && <Offline since={null} />}
+      <HotNow />
       {layout === 'desktop' ? (
         <div className="hm-grid">
           {SEATS.map(s => <h2 key={s} className="hm-sn">{SEAT_NAME[s]}</h2>)}
