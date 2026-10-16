@@ -16,7 +16,7 @@ import { supabase } from './supabase'
 // reach a channel, and it is not an Ops card either — it is decided in Strategy,
 // under the audience block, where the evidence it cites is on the same screen.
 // See `isAudnKind` below for the one place that exclusion is written.
-export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report' | 'comment_reply' | 'comment_outbound' | 'booking' | 'precall_email' | 'manual_invite' | 'task' | 'leads_ballot' | 'audn_recommendation' | 'conversation_takeover'
+export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report' | 'comment_reply' | 'comment_outbound' | 'booking' | 'precall_email' | 'manual_invite' | 'task' | 'leads_ballot' | 'audn_recommendation' | 'conversation_takeover' | 'sales_call_brief' | 'sales_followup_email'
 
 // One thing the ARCH drafter read before it answered. `public` is load-bearing:
 // a public source may be quoted back at a commenter, a private one (a call note,
@@ -251,7 +251,9 @@ export function isFailedCommentReply(d: OpsDraft): boolean {
 export function pendingOps(rows: OpsDraft[], now = Date.now()): OpsDraft[] {
   return rows.filter(d =>
     !d.approved_at && !d.sent_at && (!d.send_blocked_reason || isFailedCommentReply(d))
-    && !isOpsReference(d) && !isAudnKind(d.kind) && !isStaleComment(d, now) && !isExpiredNewsjack(d, now))
+    && !isOpsReference(d) && !isAudnKind(d.kind) && !isStaleComment(d, now) && !isExpiredNewsjack(d, now)
+    // SwishDM sales copilot replays past calls as dry runs: a preview, never work.
+    && d.context?.dry_run !== true)
 }
 
 // THE OPS NUMBER (rebuild, blueprint v3 decision 11). Approvals waiting and

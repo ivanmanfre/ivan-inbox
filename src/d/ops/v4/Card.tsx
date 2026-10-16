@@ -65,7 +65,7 @@ export function CardV4({ d, refresh, feed, held, onGateResult, layout, pos, wait
   const excerpt = excerptKey ? String(d.context?.[excerptKey] ?? '') : ''
   const displayDraft = String(d.context?.target_headline ?? '') && !personHeadline(d.context?.target_headline) ? { ...d, context: { ...d.context, target_headline: '' } } : d
   const context = excerptKey && excerpt && !/[.!?…]$/.test(excerpt.trim()) ? { ...displayDraft, context: { ...displayDraft.context, [excerptKey]: excerpt.trimEnd() + '…' } } : displayDraft
-  const contextLabel = st.isOutbound ? 'Their post' : st.isComment ? 'Their comment' : d.kind === 'newsjack' ? 'The story' : d.kind === 'weekly_report' ? 'The week' : d.kind === 'booking' || d.kind === 'precall_email' ? 'The call' : 'The person'
+  const contextLabel = st.isOutbound ? 'Their post' : st.isComment ? 'Their comment' : d.kind === 'newsjack' ? 'The story' : d.kind === 'weekly_report' ? 'The week' : d.kind === 'booking' || d.kind === 'precall_email' || d.kind === 'sales_call_brief' || d.kind === 'sales_followup_email' ? 'The call' : 'The person'
   const left = st.left
   const cap = captions(d, st)
   const name = String(d.context?.author_name ?? '')

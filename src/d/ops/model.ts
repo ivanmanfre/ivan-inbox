@@ -14,6 +14,7 @@ export const KIND_TITLE: Record<OpsKind, string> = {
   update: 'Update for the client', newsjack: 'Newsjack', weekly_report: 'Weekly report', booking: 'Call booked',
   precall_email: 'Pre-call email', manual_invite: 'Hand-sent invite', leads_ballot: 'Leads ballot',
   conversation_takeover: 'Conversation takeover', task: 'Task', audn_recommendation: 'Audience proposal',
+  sales_call_brief: 'Call brief', sales_followup_email: 'Sales follow-up',
 }
 
 /** The eyebrow for this card: a reply sits under the SEAT's post, so only Ivan's reads "your post". */

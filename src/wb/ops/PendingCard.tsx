@@ -28,7 +28,7 @@ import { renderMrkdwn } from './slackPreview'
 // reads these as comments, so they say Comments; `comment_reply` becomes REPLY
 // in the same pass so the two comment kinds cannot be told apart by an S.
 // ELEVATION (2026-09-20): the same thirteen words, in the app's sentence case.
-export const KIND_LABEL: Record<OpsKind, string> = { escalation: 'Esc', update: 'Update', newsjack: 'Newsjack', weekly_report: 'Weekly', comment_reply: 'Reply', comment_outbound: 'Comments', booking: 'Booked', precall_email: 'Pre-call', manual_invite: 'Invite', task: 'Task', leads_ballot: 'Leads', audn_recommendation: 'Audience', conversation_takeover: 'Takeover' }
+export const KIND_LABEL: Record<OpsKind, string> = { escalation: 'Esc', update: 'Update', newsjack: 'Newsjack', weekly_report: 'Weekly', comment_reply: 'Reply', comment_outbound: 'Comments', booking: 'Booked', precall_email: 'Pre-call', manual_invite: 'Invite', task: 'Task', leads_ballot: 'Leads', audn_recommendation: 'Audience', conversation_takeover: 'Takeover', sales_call_brief: 'Call brief', sales_followup_email: 'Follow-up' }
 
 // Slack channel ids are unreadable on a card. escalation/update/booking all print a
 // destination, so name the ones we own. An id we cannot name returns null and the
@@ -113,6 +113,21 @@ function ContextBlock({ draft }: { draft: OpsDraft }) {
     if (parts.length > 0) rows.push(['Batch', parts.join(' · ')])
     if (ctx.page_url) rows.push(['Page', <Link href={ctx.page_url}>open his page</Link>])
     return rows.length > 0 ? <KV rows={rows} /> : null
+  }
+  // SwishDM sales copilot: who the call is with, when, the step, and what still blocks approval.
+  if (draft.kind === 'sales_call_brief' || draft.kind === 'sales_followup_email') {
+    const when = ctx.call_time ? new Date(ctx.call_time).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : null
+    const step = Number(ctx.step ?? 0)
+    const rows: Array<[React.ReactNode, React.ReactNode]> = [
+      ['Who', [ctx.company, ctx.invitee_name, ctx.to_email].filter(Boolean).join(' · ')],
+    ]
+    if (when) rows.push(['call', when])
+    if (draft.kind === 'sales_followup_email') rows.push(['step', step > 0 ? `Reminder ${step} (no reply for 4 days)` : 'Follow-up after the call'])
+    if (draft.kind === 'sales_followup_email' && Array.isArray(ctx.placeholders) && ctx.placeholders.length) rows.push(['fill first', ctx.placeholders.map(String).join('; ')])
+    if (draft.kind === 'sales_followup_email' && ctx.slack_hold) rows.push(['held', String(ctx.slack_hold)])
+    if (draft.kind === 'sales_followup_email' && ctx.jonathan_feedback) rows.push(['Jonathan', String(ctx.jonathan_feedback)])
+    if (ctx.close_lead_url) rows.push(['Close', <Link href={String(ctx.close_lead_url)}>open the lead</Link>])
+    return <KV rows={rows} />
   }
   // A pre-call reminder is read the same way: who it emails and when the call is.
   if (draft.kind === 'precall_email') {

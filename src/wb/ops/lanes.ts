@@ -91,6 +91,8 @@ const KIND_WORDS: Record<OpsKind, [string, string]> = {
   leads_ballot: ['leads ballot', 'leads ballots'],
   audn_recommendation: ['audience proposal', 'audience proposals'],
   conversation_takeover: ['takeover', 'takeovers'],
+  sales_call_brief: ['call brief', 'call briefs'],
+  sales_followup_email: ['sales follow-up', 'sales follow-ups'],
 }
 
 /** At most this many kinds are spelled out; the rest are counted. */

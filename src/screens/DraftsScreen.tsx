@@ -22,6 +22,7 @@ const OPS_LABEL: Record<OpsKind, string> = {
   weekly_report: 'WEEKLY', comment_reply: 'COMMENT', comment_outbound: 'OUTBOUND',
   booking: 'BOOKED', precall_email: 'PRE-CALL', manual_invite: 'INVITE',
   task: 'TASK', leads_ballot: 'LEADS', audn_recommendation: 'AUDIENCE', conversation_takeover: 'TAKEOVER',
+  sales_call_brief: 'BRIEF', sales_followup_email: 'FOLLOW-UP',
 }
 
 // One tappable line each: enough to know what is waiting, not a second Ops tab.
