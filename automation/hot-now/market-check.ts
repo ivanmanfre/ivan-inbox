@@ -30,8 +30,9 @@ export async function verifyCandidate(ev:Candidate,ctx:Context) {
    }
   }catch{checks.push({source:'x',status:'error',checked_at:stamp})}
  }
- const suffix=' -filter:retweets lang:en since_time:'+Math.floor((ctx.now-6*3600000)/1000)
- for(const query of queries)await collect(query.replace(/min_faves:\d+/g,'')+suffix)
+ // This actor forbids timestamp/ID operators; receipt timestamps enforce freshness in code.
+ const suffix=' -filter:retweets lang:en'
+ for(const query of queries)await collect(query.replace(/\b(?:min_faves|since_time|until_time|since_id|max_id|within_time):\S+/g,'')+suffix)
  const first=raw.find(r=>!r.is_reply)
  if(first)await collect('conversation_id:'+first.thread_id+' -from:'+first.author_id+suffix)
  const unique=[...new Map(raw.map(r=>[r.id,r])).values()].slice(0,60)
