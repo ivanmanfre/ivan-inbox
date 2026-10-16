@@ -23,7 +23,7 @@ s=s.replace('const SINCE_MS = NOW - 14 * HOUR;', 'if (!RECHECK_ONLY) {\nconst SI
 s=s.replace('// 1d. Hand drops', '} // broad discovery only on the hourly tick\n\n// 1d. Hand drops')
 // All X reads now use a collector whose public documentation does not permit mock empty results.
 s=s.replace('acts/CJdippxWmn9uRfooo/run-sync-get-dataset-items?timeout=120','acts/apidojo~tweet-scraper/run-sync-get-dataset-items?timeout=45')
-s=s.replace("body: { twitterContent: XQ[qi], maxItems: 30, queryType: 'Top' }", "body: { searchTerms: [XQ[qi]], maxItems: 30, sort: 'Latest' }")
+s=s.replace("body: { twitterContent: XQ[qi], maxItems: 30, queryType: 'Top' }", "body: { searchTerms: [XQ[qi].replace(/\\b(?:since_time|until_time|since_id|max_id|within_time):\\S+/g,'')], maxItems: 30, sort: 'Latest' }")
 s=s.replace('timeout: 150000','timeout: 55000')
 s=s.replace('decision=eq.watch&status=eq.candidate','decision=neq.manual&manual_by=is.null&status=in.(candidate,shadow,held)')
 s=s.replace('select=id,headline,item_urls,detected_at,source_published_at&order=', 'select=*&order=')

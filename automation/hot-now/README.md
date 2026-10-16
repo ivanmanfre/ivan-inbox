@@ -20,3 +20,7 @@ Broad scans stay hourly at minute 07; watch/evidence rechecks run at minute 37. 
 On 17 October 2026 only 16 historical event rows existed, below the planned 30-event sample. Their original full social receipts were not retained. They cannot establish retrospective market heat. Keep their private export as context and collect new timestamped evidence prospectively. Do not backfill historical positive labels using current engagement. Continue until at least 30 independently adjudicated events exist; reserve ten before tuning. Seven days and ten qualifying positives are minimum observation criteria, not a guarantee that the rubric is ready.
 
 Track source failures separately from empty searches, direct permalink failures, late detection, watch-to-qualified transitions and duplicate events. Review provider usage from Apify run records, rather than estimating charges from a code comment. No automated transition to live mode is included.
+
+## Runtime correction
+
+The first shadow run (`tr-mvbkr87s`) finished without drafts but the new X actor silently rejected `since_time` and returned no posts. Its empty X results cannot establish source health or missed-topic coverage. The collector now strips the actor’s forbidden timestamp/ID operators, uses Latest, and enforces the six-hour evidence window from retained post timestamps in code. Exclude that first run’s X empties from calibration. Regression checks cover generated and model-suggested queries.

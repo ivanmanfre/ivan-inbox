@@ -16,7 +16,7 @@ async function scenario(kind:'vendor'|'positive'|'duplicate') {
  const writes:{url:string;body?:unknown}[]=[]
  const http=async(o:{url:string;method:string;body?:unknown})=>{
   if(o.url.includes('/v1/messages')){const prompt=JSON.stringify(o.body);const j=prompt.includes('two short specific')?{queries:['Google cart update']}:prompt.includes('Classify these')?{items:tweets.map((_,idx)=>({idx,relevant:true,substantive:true,quote,role:'practitioner',role_quote:'SEO specialist',ownership:'independent',copy_of_idx:null})),buyer_idx:[0],buyer_reason:'Store owners should check checkout routing.',event_kind:'announcement'}:prompt.includes('duplicate checker')?{same_story:true,of_index:0,materially_new:false}:{supports:true,quote};return{content:[{type:'text',text:JSON.stringify(j)}]}}
-  if(o.method==='POST'&&o.url.includes('/acts/'))return kind==='vendor'?[]:tweets
+  if(o.method==='POST'&&o.url.includes('/acts/')){expect(JSON.stringify(o.body)).not.toMatch(/(?:since_time|until_time|since_id|max_id|within_time):/);return kind==='vendor'?[]:tweets}
   if(o.url.includes('publish.twitter.com'))return{html:'<p>'+quote+'</p>'}
   if(o.url==='https://blog.google/cart')return '<meta property="article:published_time" content="2026-10-17T12:00:00Z"><p>'+quote.repeat(12)+'</p>'
   if(o.method==='GET'&&o.url.includes('integration_config'))return[{key:'swishdm_trend_mode',value:'shadow'}]
