@@ -91,7 +91,7 @@ const OPS_KIND_LABEL: Record<string, string> = {
   escalation: 'Escalation', newsjack: 'Newsjack', comment_outbound: 'Comment',
   comment_reply: 'Comment reply', weekly_report: 'Weekly report', booking: 'Booking',
   update: 'Update', precall_email: 'Pre-call email', manual_invite: 'Manual invite',
-  leads_ballot: 'Leads batch',
+  leads_ballot: 'Leads batch', sales_call_brief: 'Call brief', sales_followup_email: 'Sales follow-up',
 }
 
 export function buildOpsItems(drafts: OpsDraft[], now: number): QueueItem[] {

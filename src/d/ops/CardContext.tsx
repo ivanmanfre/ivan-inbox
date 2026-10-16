@@ -109,6 +109,27 @@ export function CardContext({ d, liked, needsDavor }: { d: OpsDraft; liked: bool
         <Mono parts={[s(c.when_str) && `call ${s(c.when_str)}`, s(c.matched_via) && `${s(c.matched_via).replace(/_/g, ' ')} ${s(c.matched_value)}`]} />
         <Mono parts={[s(c.meeting_title) && `“${s(c.meeting_title)}”`]} />
       </>
+    case 'sales_call_brief': {
+      const a = (c.attribution && typeof c.attribution === 'object' ? c.attribution : {}) as Record<string, unknown>
+      return <>
+        <Who name={s(c.company)} sub={s(c.call_title)} />
+        <Mono parts={[s(c.company), s(c.call_time) && `call ${warsawDayTime(s(c.call_time))} Warsaw`, s(c.close_lead_url) && <Out href={s(c.close_lead_url)}>open in Close</Out>]} />
+        <Mono parts={[s(a.prospect_name) && `from our outreach: ${s(a.prospect_name)}`, s(a.matched_by) && `matched by ${s(a.matched_by).replace(/_/g, ' ')}`]} />
+      </>
+    }
+    case 'sales_followup_email': {
+      const step = Number(s(c.step) || c.step || 0)
+      const holes = Array.isArray(c.placeholders) ? (c.placeholders as unknown[]).map(String).filter(Boolean) : []
+      const toName = s(c.to_name) || s(c.invitee_name) || s(c.prospect_name)
+      return <>
+        <Who name={toName || s(c.to_email)} sub={toName ? s(c.to_email) : undefined} />
+        <Mono parts={[s(c.subject) && `subject “${s(c.subject)}”`, s(c.call_time) && `call ${warsawDayTime(s(c.call_time))} Warsaw`]} />
+        <Mono parts={[step > 0 ? `Reminder ${step} (no reply for 4 days)` : 'Follow-up after the call', s(c.close_lead_url) && <Out href={s(c.close_lead_url)}>open in Close</Out>]} />
+        {holes.length > 0 && <div className="op-ban op-ban-warn">Fill before approving: {holes.join('; ')}</div>}
+        {s(c.slack_hold) && <div className="op-ban op-ban-warn">Held: {s(c.slack_hold)}</div>}
+        {s(c.jonathan_feedback) && <div className="op-ban op-ban-warn">Jonathan asked: {s(c.jonathan_feedback)}</div>}
+      </>
+    }
     case 'leads_ballot':
       return <>
         <Who name="Leads for Davorin" />
@@ -132,6 +153,8 @@ export function tapeLabel(d: OpsDraft): string {
     case 'precall_email': return 'Reminder email'
     case 'manual_invite': return 'What to do'
     case 'leads_ballot': return 'Message for Davorin'
+    case 'sales_call_brief': return 'Brief for Jonathan'
+    case 'sales_followup_email': return 'Email from Jonathan'
     case 'update': return `Update for ${person}`
     default: return `Message for ${person}`
   }

@@ -115,6 +115,14 @@ export function usePendingCard({ draft, refresh, feed, held, onGateResult, confi
           message: 'Sends by email from im@ivanmanfredi.com within about 5 minutes. Edits you made above go out as written.',
           confirmText: 'Approve & send',
         }
+        : draft.kind === 'sales_call_brief'
+          ? { title: 'Mark brief as read?', message: 'Nothing is sent.', confirmText: 'Mark read' }
+        : draft.kind === 'sales_followup_email'
+          ? {
+            title: 'Send this to Jonathan in Slack for his OK?',
+            message: 'After he approves, it sends from john@swishdm.com through Close.',
+            confirmText: 'Send to Jonathan',
+          }
         : draft.kind === 'manual_invite'
           ? {
             title: 'Mark this attribution handled?',
@@ -308,7 +316,7 @@ export function usePendingCard({ draft, refresh, feed, held, onGateResult, confi
 
   const approveLabel = busy
     ? (isNewsjack ? 'Writing…' : commentCloseOnly ? 'Closing…' : isComment ? 'Posting…' : isOutbound ? (approveUrl ? 'Opening…' : 'Copying…') : isWeekly ? (weeklyDispatches ? 'Sending…' : 'Copying…') : 'Sending…')
-    : (isNewsjack ? 'Approve & draft' : commentCloseOnly ? 'Mark handled' : isComment ? 'Approve & post' : isOutbound ? (approveUrl ? 'Approve & queue' : 'Approve & copy') : isWeekly ? (weeklyDispatches ? 'Approve & send' : 'Approve & copy') : 'Approve & send')
+    : (draft.kind === 'sales_call_brief' ? 'Mark read' : draft.kind === 'sales_followup_email' ? 'Send to Jonathan' : isNewsjack ? 'Approve & draft' : commentCloseOnly ? 'Mark handled' : isComment ? 'Approve & post' : isOutbound ? (approveUrl ? 'Approve & queue' : 'Approve & copy') : isWeekly ? (weeklyDispatches ? 'Approve & send' : 'Approve & copy') : 'Approve & send')
 
   return {
     body, setBody, busy, drafting, tag, setTag, liking, liked, needsDavor, busyNote, refusal, error, gate,

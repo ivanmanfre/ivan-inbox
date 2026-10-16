@@ -41,6 +41,8 @@ export function captions(d: OpsDraft, st: PendingCardState) {
     case 'precall_email': return { discard: 'No reminder goes out.', approve: 'Emails them from im@ within 5 minutes.' }
     case 'manual_invite': return { discard: 'Dropped. Nothing is stamped.', approve: 'You stamped the attribution by hand.' }
     case 'leads_ballot': return { discard: `Not posted to ${slack}.`, approve: 'One message, from your account.' }
+    case 'sales_call_brief': return { discard: 'The brief is dropped.', approve: 'Marked read. Nothing is sent.' }
+    case 'sales_followup_email': return { discard: 'No follow-up goes out.', approve: 'Goes to Jonathan in Slack for his OK first.' }
     default: return { discard: `Not posted to ${slack}.`, approve: `Posts to ${slack} about 2 minutes later.` }
   }
 }
