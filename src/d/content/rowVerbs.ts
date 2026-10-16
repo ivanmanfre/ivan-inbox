@@ -70,7 +70,7 @@ export function useRowVerbs(onDone: () => void) {
     if (!ok) return
     setBusy(d.id)
     try {
-      if (v === 'board') await setBoardVisible(d.id, true)
+      if (v === 'board') await setBoardVisible(d.id, true, ...(d.client_id === 'swishdm' ? [d] as const : []))
       else await (lane !== 'ivan' ? deleteClientDraft(d.id, d.taxonomy) : deleteDraft(d.id, d.taxonomy))
       toast.show({ message: v === 'board' ? `On ${LANE_POSSESSIVE[lane]} board.` : 'Deleted.' })
       onDone(); window.dispatchEvent(new Event('wb-rows-changed'))

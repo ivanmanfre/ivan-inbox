@@ -223,7 +223,7 @@ export function useBulkRun(): {
         // No batched variant exists and none is written here: the RPC fires the
         // client board's sync webhook inline, so N calls are N syncs, which is
         // the behaviour the board already depends on.
-        else if (cap === 'promote') await setBoardVisible(r.id, true)
+        else if (cap === 'promote') await setBoardVisible(r.id, true, ...(r.lane === 'swishdm' ? [{client_id:r.lane,updated_at:r.updatedAt ?? ''}] as const : []))
         else if (cap === 'discard') {
           const stopped = await discardDraft(r.id)
           if (!stopped) errors.push(`${r.label}: already approved or sent, nothing to discard`)

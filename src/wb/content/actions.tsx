@@ -258,7 +258,7 @@ export function PromoteRow({ d, lane, onDone }: { d: ContentDraft; lane: Content
     if (!ok) return
     setBusy(true); setErr('')
     try {
-      await setBoardVisible(d.id, true)
+      await setBoardVisible(d.id, true, ...(d.client_id === 'swishdm' ? [d] as const : []))
       onDone()
     } catch (er) {
       // ClientRpcError carries the database's own refusal code, so the row says

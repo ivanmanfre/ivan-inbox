@@ -120,7 +120,7 @@ export function Card({ d, lane, refresh, onOpen, active, queue, glance, blocked 
               selects. */}
           <RowSelect
             id={d.id} kind="draft" label={title} caps={caps}
-            taxonomy={d.taxonomy} lane={lane}
+            taxonomy={d.taxonomy} lane={lane} updatedAt={d.updated_at}
           />
           {thumb && !thumbBroken
             ? <img className="a-ct-thumb" src={thumb} alt="" onError={() => setThumbBroken(true)} />

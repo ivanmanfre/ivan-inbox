@@ -1319,6 +1319,11 @@ export class ClientRpcError extends Error {
 // rather than being smoothed into a generic sentence — an unknown refusal is
 // still a fact and hiding its name makes it unsearchable.
 export const CLIENT_RPC_MESSAGES: Record<string, string> = {
+  stale_draft: 'This draft changed. Open it again and review the latest copy before approving.',
+  qa_blocked: 'QA is holding this draft. Resolve the recorded issues before putting it on Jonathan’s board.',
+  unsupported_format: 'This format cannot go to the buffer from here.',
+  board_not_found: 'The SwishDM board is unavailable. Nothing changed.',
+  invalid_board: 'The SwishDM board queue could not be read. Nothing changed.',
   bad_gate: 'The operator gate refused this. Nothing changed — the draft is exactly as it was.',
   draft_not_found:
     'The database has no client draft with this id. Nothing changed.',
@@ -1489,7 +1494,15 @@ export async function clearScheduleDate(id: string): Promise<void> {
   rpcOk(data, error)
 }
 
-export async function setBoardVisible(id: string, visible: boolean): Promise<void> {
+export async function setBoardVisible(id: string, visible: boolean, reviewed?: Pick<ContentDraft, 'client_id' | 'updated_at'>): Promise<void> {
+  // Swish uses the exact timestamp Ivan reviewed; other lanes retain their existing write.
+  if (reviewed?.client_id === 'swishdm') {
+    const { data, error } = await supabase.rpc('swishdm_set_buffer_visibility', {
+      p_draft_id: id, p_expected_updated_at: reviewed.updated_at, p_visible: visible,
+    })
+    rpcOk(data, error)
+    return
+  }
   const { data, error } = await supabase.rpc('operator_set_board_visible', {
     p_gate: CLIENT_OPS_GATE, p_draft_id: id, p_visible: visible,
   })

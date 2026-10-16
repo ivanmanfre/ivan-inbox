@@ -227,6 +227,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   // judgeIt never waits on a Drop (only Approve on an errored Ivan draft asks first), so the held verdict exists
   // when it returns: the reason rides along with it in ONE write, exactly ContentBrain's judge + giveReason.
   const dropWith = (c: WeekCard, slug: string, note: string | null) => {
+    if (c.lane === 'swishdm') return
     setPicking(null)
     void verbs.judgeIt(c, 'drop')
     giveReason(c.r.id, slug, note)
@@ -258,7 +259,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
       }
       else if (!c) return
       else if (e.key === 'a') { e.preventDefault(); approveCard(c) }
-      else if (e.key === 'd' && c.judge) { e.preventDefault(); setPicking(c.r.id) }
+      else if (e.key === 'd' && c.judge && c.lane !== 'swishdm') { e.preventDefault(); setPicking(c.r.id) }
       else if (e.key === 'e') { e.preventDefault(); onEdit(c.r.id, c.lane) }
       else if (e.key === 'Enter' && !(el && /^(BUTTON|A|SUMMARY)$/.test(el.tagName))) { e.preventDefault(); onOpen(c.r.id, c.lane) }
       else if (e.key === 'o') { e.preventDefault(); toggleMore(c.r.id) }
@@ -502,7 +503,7 @@ function ReviewRow({ c, i, now, focused, open, busy, held, read, repeat, slot, s
           {pill.text !== 'Needs review' && <Pill tone={pill.tone} title={hold?.kind === 'changes' ? undefined : hold?.detail}>{pill.text}</Pill>}
         </div>
         <div className="cv2-row-keys">
-          {c.judge && <button type="button" className="cv2-k cv2-k-q" data-verb="card-drop" disabled={busy} onClick={() => setPicking(true)}>Drop</button>}
+          {c.judge && c.lane !== 'swishdm' && <button type="button" className="cv2-k cv2-k-q" data-verb="card-drop" disabled={busy} onClick={() => setPicking(true)}>Drop</button>}
           {!c.judge && c.primary === 'approve' && <button type="button" className="cv2-k cv2-k-q" data-verb="card-skip" disabled={busy} onClick={onSkip}>Skip</button>}
           <button type="button" className="cv2-k cv2-k-q cv2-wide-only" data-verb="card-edit" disabled={busy} onClick={onEdit}>Edit</button>
           {next === 'schedule' && !c.r.scheduled_at && <button type="button" className="cv2-k cv2-k-q cv2-wide-only" data-verb="card-pick-day" disabled={busy} onClick={onDate}>Pick a day</button>}

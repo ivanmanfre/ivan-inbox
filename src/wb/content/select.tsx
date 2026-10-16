@@ -26,7 +26,7 @@ export function useRowState(id: string): { selected: boolean; focused: boolean }
   return { selected: (state & 1) !== 0, focused: (state & 2) !== 0 }
 }
 
-export function RowSelect({ id, kind, label, caps, taxonomy, lane }: {
+export function RowSelect({ id, kind, label, caps, taxonomy, lane, updatedAt }: {
   id: string
   kind: RowKind
   label: string
@@ -36,6 +36,7 @@ export function RowSelect({ id, kind, label, caps, taxonomy, lane }: {
   caps: RowCap[]
   taxonomy?: unknown
   lane?: string
+  updatedAt?: string
 }) {
   const ref = useRef<HTMLButtonElement>(null)
   const state = useSyncExternalStore(subscribe, () => rowState(id))
@@ -44,7 +45,7 @@ export function RowSelect({ id, kind, label, caps, taxonomy, lane }: {
   const on = (state & 1) !== 0
   const focused = (state & 2) !== 0
 
-  const row: SelectedRow = { id, kind, label, caps, taxonomy, lane }
+  const row: SelectedRow = { id, kind, label, caps, taxonomy, lane, updatedAt }
   const rowRef = useRef(row)
   rowRef.current = row
 
@@ -55,7 +56,7 @@ export function RowSelect({ id, kind, label, caps, taxonomy, lane }: {
   useEffect(() => {
     if (!layer) return
     return registerRow(rowRef.current)
-  }, [id, kind, label, capKey, lane, layer])
+  }, [id, kind, label, capKey, lane, updatedAt, layer])
 
   useEffect(() => {
     if (!layer) return

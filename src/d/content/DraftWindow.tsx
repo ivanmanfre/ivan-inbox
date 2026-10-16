@@ -154,7 +154,7 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
   // A verdict saved earlier (another tab, a reload) counts as judged too.
   const saved = useVerdicts(judgeable).map.get(d.id)
   const fresh = judgeable && !entry && !saved
-  const dropKey = fresh ? <Key verb="dw-drop" onClick={() => void v.verdict('drop')} disabled={v.busy}>Drop</Key> : null
+  const dropKey = fresh && lane !== 'swishdm' ? <Key verb="dw-drop" onClick={() => void v.verdict('drop')} disabled={v.busy}>Drop</Key> : null
   const keepKey = fresh ? <Key primary verb="dw-keep" onClick={() => void v.verdict('keep')} disabled={v.busy} sub={lane === 'ivan' ? 'no date yet' : undefined}>Approve</Key> : null
   const verdictNote = !judgeable || (!entry && !saved) ? null : entry?.phase === 'failed'
     ? <Key primary verb="dw-verdict-retry" onClick={() => retryVerdict(d.id)}>Try again</Key>
@@ -195,10 +195,10 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
       {judgeable ? <>{dropKey}{keepKey}{verdictNote}</>
         : clientDeletable(lane, v.visible) && <Key verb="delete" onClick={v.removeClient} disabled={v.busy}>Delete</Key>}
       {clientEditable(d.status, lane) && <Key verb="edit" onClick={v.startEdit} disabled={v.busy}>Edit</Key>}
-      {promotable && <Key primary verb="board-on" onClick={() => v.board(true)} disabled={v.busy} sub={`${OWNER[lane]} sees it`}>Put on {POSS[lane]} board</Key>}
+      {promotable && !(judgeable && lane === 'swishdm') && <Key primary verb="board-on" onClick={() => v.board(true)} disabled={v.busy} sub={`${OWNER[lane]} sees it`}>Put on {POSS[lane]} board</Key>}
       {canUnpromote(lane, v.visible) && <Key verb="board-off" onClick={() => v.board(false)} disabled={v.busy}>Take off {POSS[lane]} board</Key>}
     </>
-    foot = <>{judgeable && `Approve records your verdict only, ${OWNER[lane]} sees nothing. Drop deletes the draft. `}{v.visible ? `On his board: ${OWNER[lane]} decides from there. Take it off to delete it.`
+    foot = <>{judgeable && (lane === 'swishdm' ? 'Approve sends this finished draft to Jonathan’s buffer for his review. Nothing publishes. ' : `Approve records your verdict only, ${OWNER[lane]} sees nothing. Drop deletes the draft. `)}{v.visible ? `On his board: ${OWNER[lane]} decides from there. Take it off to delete it.`
       : promotable ? `The only act here that reaches a client. Nothing publishes: ${OWNER[lane]} approves, edits or schedules it on his board.` : null}
       {why.map(w => <span key={w} className="cn-why2">{w}</span>)}</>
   }

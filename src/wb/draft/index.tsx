@@ -345,7 +345,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
     setPromoting(true); setPromoteErr('')
     setVisible(next)
     try {
-      await setBoardVisible(d.id, next)
+      await setBoardVisible(d.id, next, ...(d.client_id === 'swishdm' ? [d] as const : []))
       refresh()
       // Promoting clears the row out of the section it was opened from, so the
       // reader walks on the way approve does. Taking one back is a correction —

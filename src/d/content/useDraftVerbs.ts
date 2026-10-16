@@ -97,32 +97,6 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
     advance()
   }, [advance, busy, confirm, d.id, d.status, editing, refresh, toast])
 
-  // APPROVE / DROP on a brain draft (run 39). One tap, held for the Undo window and
-  // then written by verdictStore (one database call: the verdict, then today's
-  // approve or delete). Ivan-lane Approve on an errored draft asks the same QA
-  // override first. The window walks on at once, like decide().
-  const verdict = useCallback(async (kind: Verdict) => {
-    if (editing || busy) return
-    if (kind === 'keep' && lane === 'ivan' && d.status === 'error') {
-      const ok = await confirm({
-        title: 'Approve this draft anyway?',
-        message: 'QA refused this one. Approving overrides that verdict. Nothing publishes, scheduling is the separate act below.',
-        confirmText: 'Approve', verb: 'confirm',
-      })
-      if (!ok) return
-    }
-    setErr('')
-    const id = d.id
-    judge(id, kind, { lane, title: titleOf(d), onCommitted: refresh })
-    toast.show({
-      id: `verdict-${id}`, ms: VERDICT_HOLD_MS,
-      message: kind === 'keep' ? 'Approved.' : 'Dropped.',
-      sub: kind === 'drop' ? 'Add a reason on its card in Review, or move on.' : undefined,
-      action: { label: 'Undo', verb: 'undo-verdict', run: () => { if (!undoVerdict(id)) toast.show({ message: 'Too late to undo: it was already written.' }) } },
-    })
-    advance()
-  }, [advance, busy, confirm, d, editing, lane, refresh, toast])
-
   const schedule = useCallback(async (at: Date) => {
     if (editing || busy) return
     if (Number.isNaN(at.getTime())) { setErr('That is not a time.'); return }
@@ -151,7 +125,7 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
     if (next || lane === 'arch') {
       const ok = await confirm(next ? {
         title: `Put this on ${POSS[lane]} board?`,
-        message: `${OWNER[lane]} sees it. This is the one action here that reaches a client, it fires his board’s `
+        message: lane === 'swishdm' ? 'Jonathan sees this finished draft in his buffer for review. Nothing is scheduled or published.' : `${OWNER[lane]} sees it. This is the one action here that reaches a client, it fires his board’s `
           + 'own sync, so it lands on his board within moments, not at some later batch. From there '
           + 'the decisions are his: approve, edit, veto, schedule. '
           + 'Nothing publishes, this writes board visibility and never touches the publisher.',
@@ -170,14 +144,42 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
       .then(() => { toast.show({ message: to ? `Back on ${POSS[lane]} board.` : `Off ${POSS[lane]} board again.` }); refresh() })
       .catch(e => toast.show({ tone: 'failed', message: e instanceof Error ? e.message : 'Could not change the board.' }))
     try {
-      await setBoardVisible(id, next)
+      await setBoardVisible(id, next, ...(d.client_id === 'swishdm' ? [d] as const : []))
       toast.show({
         message: next ? `On ${POSS[lane]} board.` : `Off ${POSS[lane]} board.`, sub: next ? `${OWNER[lane]} decides from there.` : 'Nothing was deleted.',
-        action: { label: 'Undo', verb: 'undo-board', run: () => { void flip(!next) } },
+        action: lane === 'swishdm' ? undefined : { label: 'Undo', verb: 'undo-board', run: () => { void flip(!next) } },
       })
       refresh(); if (next) advance()
     } catch (e) { setVisible(!next); fail(e, 'change the board') } finally { setBusy(false) }
-  }, [advance, busy, confirm, d.id, lane, refresh, toast])
+  }, [advance, busy, confirm, d, lane, refresh, toast])
+
+  // APPROVE / DROP on a brain draft (run 39). One tap, held for the Undo window and
+  // then written by verdictStore (one database call: the verdict, then today's
+  // approve or delete). Ivan-lane Approve on an errored draft asks the same QA
+  // override first. The window walks on at once, like decide().
+  const verdict = useCallback(async (kind: Verdict) => {
+    if (editing || busy) return
+    if (lane === 'swishdm' && kind === 'drop') return
+    if (lane === 'swishdm' && kind === 'keep') { await board(true); return }
+    if (kind === 'keep' && lane === 'ivan' && d.status === 'error') {
+      const ok = await confirm({
+        title: 'Approve this draft anyway?',
+        message: 'QA refused this one. Approving overrides that verdict. Nothing publishes, scheduling is the separate act below.',
+        confirmText: 'Approve', verb: 'confirm',
+      })
+      if (!ok) return
+    }
+    setErr('')
+    const id = d.id
+    judge(id, kind, { lane, title: titleOf(d), onCommitted: refresh })
+    toast.show({
+      id: `verdict-${id}`, ms: VERDICT_HOLD_MS,
+      message: kind === 'keep' ? 'Approved.' : 'Dropped.',
+      sub: kind === 'drop' ? 'Add a reason on its card in Review, or move on.' : undefined,
+      action: { label: 'Undo', verb: 'undo-verdict', run: () => { if (!undoVerdict(id)) toast.show({ message: 'Too late to undo: it was already written.' }) } },
+    })
+    advance()
+  }, [advance, board, busy, confirm, d, editing, lane, refresh, toast])
 
   const removeClient = useCallback(async () => {
     if (busy) return

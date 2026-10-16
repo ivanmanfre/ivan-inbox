@@ -5,7 +5,8 @@ import { useState } from 'react'
 import { renderInFrame } from '../test-utils'
 import type { ContentDraft } from '../../lib/content'
 
-const lib = vi.hoisted(() => ({ setVerdict: vi.fn() }))
+const lib = vi.hoisted(() => ({ setVerdict: vi.fn(), setBoardVisible: vi.fn() }))
+vi.mock('../../lib/content', async orig => ({ ...(await orig<typeof import('../../lib/content')>()),setBoardVisible:lib.setBoardVisible }))
 vi.mock('../../lib/verdicts', async orig => ({ ...(await orig<typeof import('../../lib/verdicts')>()), ...lib }))
 vi.mock('./writes', () => ({ scheduleGuarded: vi.fn() }))
 
@@ -51,7 +52,7 @@ const slots = () => [...document.querySelectorAll<HTMLElement>('[data-card-id],[
 const saveOk = (id: string, v: string, o: { reasons?: string[] }) => Promise.resolve({ draft_id: id, verdict: v, reasons: o.reasons ?? [] })
 
 beforeEach(() => {
-  lib.setVerdict.mockReset(); resetVerdictsForTest()
+  lib.setVerdict.mockReset(); lib.setBoardVisible.mockReset(); resetVerdictsForTest()
   vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
 })
 afterEach(() => { resetVerdictsForTest(); cleanup(); vi.unstubAllGlobals() })
@@ -302,3 +303,13 @@ describe('Review list: Approve / Drop', () => {
     expect(card('b2')).toBeNull()
   })
 })
+
+ it('Swish review card Approve exposes the reviewed draft without a cb39 verdict', async () => {
+  const r = brain({id:'swish',client_id:'swishdm',board_visible:false,title:'Swish reviewed copy',updated_at:at(0)})
+  lib.setBoardVisible.mockResolvedValue(undefined)
+  renderInFrame(<Harness rows={[r]} />)
+  fireEvent.click(document.querySelector('[data-card-id="swish"] [data-verb="card-keep"]')!)
+  fireEvent.click(await screen.findByRole('button',{name:'Put it on his board'}))
+  await waitFor(()=>expect(lib.setBoardVisible).toHaveBeenCalledWith('swish',true,r))
+  expect(lib.setVerdict).not.toHaveBeenCalled()
+ })
