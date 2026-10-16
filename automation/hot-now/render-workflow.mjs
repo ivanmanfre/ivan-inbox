@@ -25,7 +25,7 @@ s=s.replace('// 1d. Hand drops', '} // broad discovery only on the hourly tick\n
 s=s.replace('acts/CJdippxWmn9uRfooo/run-sync-get-dataset-items?timeout=120','acts/apidojo~tweet-scraper/run-sync-get-dataset-items?timeout=45')
 s=s.replace("body: { twitterContent: XQ[qi], maxItems: 30, queryType: 'Top' }", "body: { searchTerms: [XQ[qi]], maxItems: 30, sort: 'Latest' }")
 s=s.replace('timeout: 150000','timeout: 55000')
-s=s.replace('decision=eq.watch&status=eq.candidate','status=in.(candidate,shadow,held)')
+s=s.replace('decision=eq.watch&status=eq.candidate','decision=neq.manual&manual_by=is.null&status=in.(candidate,shadow,held)')
 s=s.replace('select=id,headline,item_urls,detected_at,source_published_at&order=', 'select=*&order=')
 s=s.replace("let gate = { events: [] }; let gateStatus = 'no_new_items';", "let gate = { events: [] }; let gateStatus = 'no_new_items';")
 s=s.replace('if (batch.length || openWatch.length) {','if (!RECHECK_ONLY && batch.length) {')
@@ -36,7 +36,7 @@ const verifyMarket = async (event, previousId) => {
  return verifyCandidate(event, {now:Date.now(),history:prior.map(r=>r.pack),
   ask:async prompt=>{const j=parseJson(await ask(prompt,5000));if(!j)throw new Error('invalid_classification_json');return JSON.stringify(j);},
   search:async query=>marketHttp({method:'POST',json:true,timeout:55000,url:'https://api.apify.com/v2/acts/apidojo~tweet-scraper/run-sync-get-dataset-items?timeout=45&token='+S.apify_api_token,headers:{'Content-Type':'application/json'},body:{searchTerms:[query],maxItems:20,sort:'Latest'}}),
-  primary:async url=>clean(await marketHttp({method:'GET',url,timeout:12000,headers:{'User-Agent':UA}})).slice(0,30000),
+  primary:async url=>parsePrimary(String(await marketHttp({method:'GET',url,timeout:12000,disableFollowRedirect:true,headers:{'User-Agent':'swishdm-market-check/1.0'}}))),
   verifyPost:async url=>{const r=await marketHttp({method:'GET',url:'https://publish.twitter.com/oembed?omit_script=true&url='+encodeURIComponent(url),json:true,timeout:7000});return clean(r.html||'');}
  });
 };`)
@@ -60,7 +60,7 @@ s=s.replace(anchor,`  let market=null;
   decision = !dupOf && market && market.validation.status==='validated' ? 'hot' : 'watch';
   if(market)reason=market.validation.status==='validated'?market.validation.buyer_reason:market.validation.failure_reasons.join(', ');
   if (decision === 'hot' && !dupOf) {`)
-s=s.replace("    if (postBy <= NOW + 2 * HOUR)","    if(previous && previous.draft_id && previous.status==='held'){status='held';}\n    else if (postBy <= NOW + 2 * HOUR)")
+s=s.replace("    if (postBy <= NOW + 2 * HOUR)","    if(previous && previous.draft_id){status='held';}\n    else if (postBy <= NOW + 2 * HOUR)")
 s=s.replace("source_published_at: new Date(storyMs).toISOString()", "source_published_at: Number.isFinite(storyMs)?new Date(storyMs).toISOString():null")
 s=s.replace("post_by: decision === 'hot' ? new Date(postBy).toISOString() : null", "post_by: Number.isFinite(postBy)?new Date(postBy).toISOString():null")
 s=s.replace("    recorded.push({ id: saved.id", `    if(market){
@@ -69,8 +69,18 @@ s=s.replace("    recorded.push({ id: saved.id", `    if(market){
      await sbPatch('swishdm_trend_events?id=eq.'+saved.id,{market_evidence_id:proof.id,market_validation:market.validation});
     }
     recorded.push({ id: saved.id`)
+// Duplicate protection must run on the final promotion, including watch upgrades.
+const duplicateStart=s.indexOf("  if (decision === 'hot') {",s.indexOf('let dupOf = null;'));
+const duplicateEnd=s.indexOf('  let market=null;',duplicateStart);
+if(duplicateStart<0||duplicateEnd<0)throw Error('Duplicate block anchor changed');
+let duplicateBlock=s.slice(duplicateStart,duplicateEnd);
+s=s.slice(0,duplicateStart)+s.slice(duplicateEnd);
+duplicateBlock=duplicateBlock.replace("} catch (x) {} }", "} catch (x) {decision='watch';reason='duplicate_check_unavailable: '+String(x.message||x).slice(0,120);} }");
+const promotion="  if (decision === 'hot' && !dupOf) {";
+s=s.replace(promotion,duplicateBlock+"  if(previous && previous.draft_id){status='held';if(!dupOf)decision='hot';}\n"+promotion);
+s=s.replace("source_published_at: Number.isFinite(storyMs)?new Date(storyMs).toISOString():null, post_by: Number.isFinite(postBy)?new Date(postBy).toISOString():null", "source_published_at: market ? (market.pack.event_at||null) : (previous&&previous.source_published_at)||null, post_by: market ? market.pack.post_by||null : (previous&&previous.post_by)||null");
 const reviewEdits=fs.readFileSync(new URL('./review-edits.js',import.meta.url),'utf8');
-s=s.replace('return [{ json: { run: RUN, mode: MODE, caps:',reviewEdits+'\nreturn [{ json: { run: RUN, mode: MODE, caps:');
+s=s.replace('return [{ json: { run: RUN, mode: MODE, caps:',reviewEdits+"\nawait sbPost('swishdm_trend_runs?on_conflict=run_id',[{run_id:RUN,mode:MODE,started_at:new Date(NOW).toISOString(),sources:srcStats,events:recorded,collected:items.length}],'resolution=ignore-duplicates');\nreturn [{ json: { run: RUN, mode: MODE, caps:");
 scan.parameters.jsCode=s
 workflow.nodes.find(n=>n.type==='n8n-nodes-base.scheduleTrigger').parameters.rule.interval[0].expression='7,37 7-21 * * *'
 const draft=workflow.nodes.find(n=>n.name==='Draft and Hold')

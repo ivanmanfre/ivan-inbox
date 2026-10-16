@@ -28,8 +28,8 @@ export function evaluateMarketEvidence(pack: EvidencePack, now: number): MarketV
  const receipts = (pack.receipts || []).filter(r=>r.client_id==='swishdm' && cited(r) && recent(r.fetched_at,H))
  const eligible = receipts.filter(r=>['x','linkedin','reddit'].includes(r.platform) && r.relevant===true && r.substantive===true && r.ownership==='independent' && !!r.person_key && !!r.author_id && !!r.thread_id && !!r.origin_key && !!r.native_id && recent(r.published_at,6*H))
  // Syndicated copies have one origin; a person's cross-posts count once.
- const groups = new Set<string>(), people = new Map<string,Receipt>()
- for (const r of eligible) if (!groups.has(r.origin_key) && !people.has(r.person_key)) { groups.add(r.origin_key); people.set(r.person_key,r) }
+ const groups = new Set<string>(), copiedText=new Set<string>(), people = new Map<string,Receipt>()
+ for (const r of eligible) {const signature=r.text.toLowerCase().replace(/https?:\/\/\S+/g,'').replace(/\s+/g,' ').trim(); if(!groups.has(r.origin_key)&&!people.has(r.person_key)&&!copiedText.has(signature)){groups.add(r.origin_key);copiedText.add(signature);people.set(r.person_key,r)}}
  const voices = [...people.values()]
  const qualified = voices.filter(r=>['buyer','practitioner'].includes(r.role) && !!r.role_quote?.trim() && r.author_bio?.includes(r.role_quote))
  const threads = new Set(voices.map(r=>r.platform+':'+r.thread_id))
@@ -37,7 +37,7 @@ export function evaluateMarketEvidence(pack: EvidencePack, now: number): MarketV
  const healthy = checks.some(c=>c.status==='ok' && ['x','linkedin','reddit'].includes(c.source))
  if (pack.client_id!=='swishdm') failures.push('wrong_client')
  if (!pack.buyer_reason?.trim() || !(pack.buyer_evidence_ids||[]).some(id=>voices.some(r=>r.id===id))) failures.push('buyer_relevance_missing')
- const fact = receipts.filter(r=>(pack.factual_evidence_ids||[]).includes(r.id))
+ const fact = receipts.filter(r=>(pack.factual_evidence_ids||[]).includes(r.id) && (r.proof_kind==='primary' || voices.some(v=>v.id===r.id)))
  if (!fact.some(r=>r.proof_kind==='primary') && new Set(fact.filter(r=>r.proof_kind==='observation' && r.ownership==='independent').map(r=>r.person_key)).size<2) failures.push('factual_support_missing')
  if (voices.length<3) failures.push('independent_people_below_3')
  if (threads.size<2) failures.push('original_threads_below_2')
@@ -50,12 +50,13 @@ export function evaluateMarketEvidence(pack: EvidencePack, now: number): MarketV
  for (const b of snapshots) for (const a of snapshots) {
   const mins=(time(b.at)-time(a.at))/60000
   if (mins<30 || mins>90) continue
-  const before=new Set(voices.filter(r=>a.receipt_ids.includes(r.id)).map(r=>r.person_key))
+  const seenIds=new Set(snapshots.filter(s=>time(s.at)<=time(a.at)).flatMap(s=>s.receipt_ids))
+  const before=new Set(voices.filter(r=>seenIds.has(r.id)).map(r=>r.person_key))
   const added=voices.filter(r=>b.receipt_ids.includes(r.id) && !before.has(r.person_key) && r.source_kind==='live')
   if (added.length>=2 && now-time(b.at)<=H) { route='growing_people';traction={before:before.size,after:before.size+added.length,minutes:mins,from:a.at,to:b.at};break }
  }
- if (!route) for (const t of new Set(eligible.map(r=>r.platform+':'+r.thread_id))) {
-  const replies=new Set(eligible.filter(r=>r.platform+':'+r.thread_id===t && r.is_reply && r.source_kind==='live').map(r=>r.person_key))
+ if (!route) for (const t of new Set(voices.map(r=>r.platform+':'+r.thread_id))) {
+  const replies=new Set(voices.filter(r=>r.platform+':'+r.thread_id===t && r.is_reply && r.source_kind==='live').map(r=>r.person_key))
   if (replies.size>=5) {route='substantive_replies';traction={thread:t,replies:replies.size};break}
  }
  if (!route) for (const base of pack.baselines||[]) {

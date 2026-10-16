@@ -12,9 +12,13 @@ CREATE TABLE IF NOT EXISTS public.swishdm_trend_evidence (
  pack jsonb NOT NULL, validation jsonb NOT NULL,
  UNIQUE(event_id,run_id)
 );
+CREATE TABLE IF NOT EXISTS public.swishdm_trend_runs (run_id text PRIMARY KEY,mode text NOT NULL,started_at timestamptz NOT NULL,sources jsonb NOT NULL,events jsonb NOT NULL,collected integer NOT NULL);
+ALTER TABLE public.swishdm_trend_runs ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.swishdm_trend_runs FROM PUBLIC,anon,authenticated,service_role;
+GRANT SELECT,INSERT ON public.swishdm_trend_runs TO service_role;
 CREATE INDEX IF NOT EXISTS swishdm_trend_evidence_event_time ON public.swishdm_trend_evidence(event_id,checked_at DESC);
 ALTER TABLE public.swishdm_trend_evidence ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.swishdm_trend_evidence FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON public.swishdm_trend_evidence FROM PUBLIC,anon,authenticated,service_role;
 GRANT SELECT,INSERT ON public.swishdm_trend_evidence TO service_role;
 CREATE OR REPLACE FUNCTION public.hot_now_market_valid(p_event uuid) RETURNS boolean
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public','pg_temp' AS $f$
@@ -29,7 +33,7 @@ BEGIN
    AND (v->>'independent_people')::int>=3 AND (v->>'qualified_people')::int>=2
    AND (v->>'original_threads')::int>=2
    AND v->>'traction_route' IN ('growing_people','substantive_replies','above_baseline')
-   AND v->'failure_reasons'='[]'::jsonb AND e.post_by>now(),false);
+   AND v->'failure_reasons'='[]'::jsonb AND e.post_by>now() AND e.decision='hot' AND e.status='held' AND e.duplicate_of IS NULL,false);
 EXCEPTION WHEN invalid_datetime_format OR datetime_field_overflow OR invalid_text_representation THEN RETURN false;
 END $f$;
 REVOKE ALL ON FUNCTION public.hot_now_market_valid(uuid) FROM PUBLIC,anon,authenticated;
@@ -48,7 +52,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp' AS $f$
 DECLARE e public.swishdm_trend_events%ROWTYPE;
 BEGIN
  IF NEW.client_id='swishdm' AND NEW.board_visible IS TRUE AND OLD.board_visible IS NOT TRUE THEN
-  SELECT * INTO e FROM public.swishdm_trend_events WHERE draft_id=NEW.id AND decision='hot' AND status='held' LIMIT 1;
+  SELECT * INTO e FROM public.swishdm_trend_events WHERE draft_id=NEW.id AND decision IS DISTINCT FROM 'manual' LIMIT 1;
   IF FOUND THEN
    IF NOT public.hot_now_market_valid(e.id) THEN RAISE EXCEPTION 'Refresh market evidence before sending this trend for review'; END IF;
    IF e.market_reviewed_body IS DISTINCT FROM NEW.post_body THEN RAISE EXCEPTION 'The edited post needs a fresh quality review'; END IF;

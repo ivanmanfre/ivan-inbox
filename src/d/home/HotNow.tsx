@@ -13,12 +13,13 @@ export function useHotNow() {
 }
 export function HotNow() {
  const {cards,now,reload}=useHotNow(),[selected,setSelected]=useState<{card:HotNowCard;evidence:boolean}|null>(null),[all,setAll]=useState(false),[busy,setBusy]=useState<string|null>(null)
+ const closeReview=useCallback(()=>setSelected(null),[])
  const confirm=useDConfirm(),toast=useToast()
- async function skip(c:HotNowCard){if(!await confirm({title:'Skip this hot post?',message:'The draft is archived and the story will not appear again.',confirmText:'Skip',verb:'confirm',danger:true}))return;setBusy(c.draft_id);try{await skipHotNow(c);reload();window.dispatchEvent(new Event('wb-rows-changed'))}catch(e){toast.show({message:e instanceof Error?e.message:'Skip failed.',tone:'failed'})}finally{setBusy(null)}}
+ async function skip(c:HotNowCard){if(!await confirm({title:'Skip this hot post?',message:'The draft is archived and the story will not appear again.',confirmText:'Skip',verb:'confirm',danger:true}))return;setBusy(c.draft_id);try{await skipHotNow(c);reload();window.dispatchEvent(new Event('wb-rows-changed'))}catch(e){toast.show({message:e instanceof Error?e.message:'Skip failed.',tone:'failed'});reload()}finally{setBusy(null)}}
  return <>{cards.length>0&&<section aria-label="Hot now" className="hn-list">{(all?cards:cards.slice(0,2)).map(c=><article className="hn" key={c.event_id} data-hot-now data-lane={c.lane} aria-busy={busy===c.draft_id}>
- <div className="hn-top"><strong>Hot now</strong><span>SwishDM <span className="hn-person">for Jonathan</span></span><time dateTime={c.post_by}>Review by {warsawHm(c.post_by)} Warsaw</time></div>
+ <div className="hn-top"><strong>Hot now</strong><span>SwishDM <span className="hn-person">for Jonathan</span></span><time dateTime={c.post_by} title={`Review by ${warsawHm(c.post_by)} Warsaw`} aria-label={`Review by ${warsawHm(c.post_by)} Warsaw`}>By {warsawHm(c.post_by)}</time></div>
  <h2>{c.headline}</h2><p className="hn-why">{c.validation.buyer_reason}</p>
  <div className="hn-bottom"><span className="hn-proof">{hotNowProof(c.validation)}</span><div className="hn-acts"><button className="d-btn hn-quiet" onClick={()=>setSelected({card:c,evidence:true})}>View evidence</button><button className="d-btn hn-quiet" disabled={busy===c.draft_id} onClick={()=>skip(c)}>Skip</button><button className="d-btn d-btn-p" onClick={()=>setSelected({card:c,evidence:false})}>Review post</button></div></div>
  </article>)}{cards.length>2&&<button className="d-btn hn-quiet" onClick={()=>setAll(!all)}>{all?'Show fewer':`View all ${cards.length} stories`}</button>}</section>}
- {selected&&<HotNowReview card={selected.card} evidenceFirst={selected.evidence} now={now} onClose={()=>setSelected(null)} onChanged={reload}/>}</>
+ {selected&&<HotNowReview card={selected.card} evidenceFirst={selected.evidence} now={now} onClose={closeReview} onChanged={reload}/>}</>
 }
