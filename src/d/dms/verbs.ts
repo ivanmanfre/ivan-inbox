@@ -6,7 +6,7 @@ import { parseEmailCc } from '../../lib/emailCc'
 import { createElement, useMemo } from 'react'
 import {
   draftSendVia, approveDraft, composeReply, deleteThread, discardLegs, dismissConfirmation, draftLegs, escalateDraftToClient,
-  emailSenderLabel, isFollowUp, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft,
+  emailSenderLabel, isFollowUp, isSwishdmReply, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft, swishdmPageUrl,
   saveDraftEmail, saveDraftEmailCc, setDraftSendVia, saveDraftText, snoozeDraft, threadChatId, unsnoozeDraft, REPLY_MYSELF,
   type DraftSendVia, type InboxMessage, type Thread,
 } from '../../lib/inbox'
@@ -86,7 +86,20 @@ export function useDmVerbs(ctx: VerbCtx) {
       const comp = t.companionDraft
       const mode = draftSendVia(draft)
       const channelChoice = !!(draft.email_delivery_recipient || draft.email_mirror_text && draft.recipient_email)
-      {
+      const swish = isSwishdmReply(draft)
+      if (swish) {
+        // Jonathan's seat has its own sender (not the two-minute dispatcher): approval releases this one row to it.
+        const page = swishdmPageUrl(draft)
+        const ok = await confirm({
+          title: `Approve the reply to ${t.prospect_name}?`,
+          message: page
+            ? `Approving puts the comparison page live at ${page} (public, not indexed) and releases this reply to Jonathan\u2019s sender. It goes out only once the page opens, when the SwishDM sender is switched on, in working hours.`
+            : 'Approving releases this reply to Jonathan\u2019s sender. It goes out when the SwishDM sender is switched on, in working hours. Nothing else is sent.',
+          confirmText: 'Approve reply',
+          verb: 'confirm-send',
+        })
+        if (!ok) return null
+      } else {
         const ok = await confirm({
           title: `Send to ${t.prospect_name}?`,
           message: comp ? `Both legs go out: the ${legName(draft)} and the ${legName(comp)}. The sender picks them up within about 2 minutes.`
@@ -120,7 +133,9 @@ export function useDmVerbs(ctx: VerbCtx) {
           fail(half)
         }
       }
-      if (!half) toast.show({ message: `Sent to ${t.prospect_name}.`, sub: 'The sender picks it up within about 2 minutes.' })
+      if (!half) toast.show(swish
+        ? { message: `Approved the reply to ${t.prospect_name}.`, sub: 'Jonathan\u2019s sender sends it when it is switched on.' }
+        : { message: `Sent to ${t.prospect_name}.`, sub: 'The sender picks it up within about 2 minutes.' })
       ctx.refresh()
       return half
     }
