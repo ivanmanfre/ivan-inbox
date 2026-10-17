@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest'
-import { ideaWhy, quoteLabel, sourceHues, type ClientIdea } from './clientIdeas'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { supabase } from './supabase'
+import { decideClientIdea, ideaWhy, quoteLabel, riseIdeaFormat, sourceHues, type ClientIdea } from './clientIdeas'
+
+vi.mock('./supabase', () => ({ supabase: { rpc: vi.fn() } }))
+beforeEach(() => vi.clearAllMocks())
 
 const base: ClientIdea = {
   id: 'i1', title: 'Sell The Pain Point, Not The Product',
@@ -100,5 +104,31 @@ describe('reuse fields', () => {
     const r = idea({ reuse_of: '9f1c', eligible_at: '2026-10-25T00:00:00Z', source_label: 'Winner repurpose' })
     expect(r.reuse_of).toBe('9f1c')
     expect(r.eligible_at).toBe('2026-10-25T00:00:00Z')
+  })
+})
+
+describe('RISE format at approval', () => {
+  it('maps the selected format only for RISE approval', async () => {
+    vi.mocked(supabase.rpc).mockResolvedValue({ data: { ok: true }, error: null } as never)
+    await decideClientIdea('i1', 'approved', 'risedtc', 'carousel')
+    expect(supabase.rpc).toHaveBeenCalledWith('operator_approve_rise_idea_format', expect.objectContaining({
+      p_idea_id: 'i1', p_decision: 'approved', p_format: 'carousel',
+    }))
+    await decideClientIdea('i2', 'rejected', 'risedtc')
+    await decideClientIdea('i3', 'approved', 'arch')
+    expect(vi.mocked(supabase.rpc).mock.calls.slice(1).map(c => c[0])).toEqual(['operator_approve_idea', 'operator_approve_idea'])
+  })
+
+  it('does not write a RISE approval without a valid format', async () => {
+    await expect(decideClientIdea('i1', 'approved', 'risedtc')).rejects.toThrow('format')
+    await expect(decideClientIdea('i1', 'approved', 'risedtc', 'video' as never)).rejects.toThrow('format')
+    expect(supabase.rpc).not.toHaveBeenCalled()
+  })
+
+  it('uses planned format first and treats legacy post as text', () => {
+    expect(riseIdeaFormat({ format: 'post', planned_format: 'carousel' })).toBe('carousel')
+    expect(riseIdeaFormat({ format: 'pdf' })).toBe('carousel')
+    expect(riseIdeaFormat({ format: 'post' })).toBe('text')
+    expect(riseIdeaFormat({ format: null })).toBe('text')
   })
 })

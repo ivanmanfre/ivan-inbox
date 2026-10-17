@@ -37,6 +37,7 @@ export type ClientIdea = {
   source_ref: string | null
   pillar: string | null
   format: string | null
+  planned_format?: string | null
   status: string | null
   created_at: string | null
   icp_score: number | null
@@ -79,6 +80,7 @@ function toIdea(raw: unknown): ClientIdea | null {
     source_ref: str(r.source_ref),
     pillar: str(r.pillar),
     format: str(r.format),
+    planned_format: str(r.planned_format),
     status: str(r.status),
     created_at: str(r.created_at),
     icp_score: num(r.icp_score),
@@ -112,6 +114,11 @@ export async function fetchClientIdeas(lane: ContentLane): Promise<ClientIdea[]>
 }
 
 export type ClientIdeaDecision = 'approved' | 'rejected'
+export type RiseIdeaFormat = 'text' | 'carousel'
+
+export function riseIdeaFormat(idea: { format?: string | null; planned_format?: string | null }): RiseIdeaFormat {
+  return ['carousel', 'pdf'].includes(idea.planned_format ?? idea.format ?? '') ? 'carousel' : 'text'
+}
 
 // APPROVE / REJECT, through the dashboard's own write path.
 //
@@ -133,11 +140,13 @@ export type ClientIdeaDecision = 'approved' | 'rejected'
 // reversible at the row, and the one act nothing undoes (delete) is not offered
 // here at all.
 export async function decideClientIdea(
-  id: string, decision: ClientIdeaDecision, lane?: ContentLane,
+  id: string, decision: ClientIdeaDecision, lane?: ContentLane, format?: RiseIdeaFormat,
 ): Promise<void> {
   if (lane === 'swishdm' && decision === 'approved') throw new Error('SwishDM generation is not connected yet. Finish the content setup at onboarding first.')
-  const { data, error } = await supabase.rpc('operator_approve_idea', {
+  if (lane === 'risedtc' && decision === 'approved' && format !== 'text' && format !== 'carousel') throw new Error('Choose a text or carousel format before generating the draft.')
+  const { data, error } = await supabase.rpc(lane === 'risedtc' && decision === 'approved' ? 'operator_approve_rise_idea_format' : 'operator_approve_idea', {
     p_gate: CLIENT_OPS_GATE, p_idea_id: id, p_decision: decision,
+    ...(lane === 'risedtc' && decision === 'approved' ? { p_format: format } : {}),
   })
   if (error) throw new Error(error.message)
   const r = (data ?? {}) as Record<string, unknown>

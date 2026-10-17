@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ClientRpcError, decideIdea, deleteIdea, ideaDecidable, IDEA_NOT_OURS } from '../../lib/content'
-import { decideClientIdea, quoteLabel } from '../../lib/clientIdeas'
+import { decideClientIdea, quoteLabel, riseIdeaFormat, type RiseIdeaFormat } from '../../lib/clientIdeas'
 import { contributionsLine, type IdeaScoreRead, type IdeaScoreRow } from '../../lib/ideaScores'
 import { label } from '../../lib/labels'
 import { absTime } from '../../exp/v2c/fmt'
@@ -33,6 +33,10 @@ export function IdeaDetail({ it, onDone, compact, scores }: { it: IdeaItem; onDo
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const storedFormat = it.client?.format
+  const plannedFormat = it.client?.planned_format
+  const [format, setFormat] = useState<RiseIdeaFormat>(() => riseIdeaFormat(it.client ?? {}))
+  useEffect(() => { setFormat(riseIdeaFormat({ format: storedFormat, planned_format: plannedFormat })) }, [it.id, storedFormat, plannedFormat])
   const ours = !it.ivan || ideaDecidable(it.ivan)
 
   const run = async (kind: 'approve' | 'reject' | 'delete') => {
@@ -44,7 +48,8 @@ export function IdeaDetail({ it, onDone, compact, scores }: { it: IdeaItem; onDo
         if (kind === 'delete') await deleteIdea(it.id)
         else await decideIdea(it.ivan, kind, note)
       } else {
-        await decideClientIdea(it.id, kind === 'approve' ? 'approved' : 'rejected', it.lane)
+        if (it.lane === 'risedtc' && kind === 'approve') await decideClientIdea(it.id, 'approved', it.lane, format)
+        else await decideClientIdea(it.id, kind === 'approve' ? 'approved' : 'rejected', it.lane)
       }
       toast.show({
         message: kind === 'approve' ? 'Draft requested. It will appear in Review.' : kind === 'reject' ? 'Idea archived.' : 'Deleted.',
@@ -70,6 +75,7 @@ export function IdeaDetail({ it, onDone, compact, scores }: { it: IdeaItem; onDo
       )}
       {!ours && <p className="cn-say cn-bad">{IDEA_NOT_OURS}</p>}
       {err && <p className="cn-say cn-bad" role="alert">{err}</p>}
+      {!it.outlier && !it.generating && it.lane === 'risedtc' && <label>Draft format <select aria-label="Draft format" value={format} disabled={busy} onChange={e => setFormat(e.target.value as RiseIdeaFormat)}><option value="text">Text</option><option value="carousel">Carousel</option></select></label>}
       {!it.outlier && !it.generating && <div className="cn-acts">
         {it.lane === 'ivan' && <Key verb="idea-delete" onClick={() => run('delete')} disabled={busy}>Delete</Key>}
         <Key verb="idea-reject" onClick={() => run('reject')} disabled={busy || !ours}>Archive idea</Key>

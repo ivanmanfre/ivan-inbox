@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { displayTitle, fetchPlan, formatWord, pictureWord, planDay, postStatus, weekLabel, type PlanEvidence, type PlanPost, type PlanRead, type PlanSlot } from '../../lib/contentPlan'
 import { fetchRankedIdeas } from '../../lib/rankedIdeas'
-import { decideClientIdea } from '../../lib/clientIdeas'
+import { decideClientIdea, riseIdeaFormat, type RiseIdeaFormat } from '../../lib/clientIdeas'
 import { Failed, Skeleton } from '../ui/states'
 import { useToast } from '../ui/toast'
 import { dHash } from '../route'
@@ -30,14 +30,17 @@ function PostCard({ p, lane }: { p: PlanPost; lane: Lane }) {
   return <li className="cn-plan-card" data-kind="post">{href ? <a href={href}>{body}</a> : <div>{body}</div>}</li>
 }
 
-function SlotCard({ s, lane, onChanged }: { s: PlanSlot; lane: Lane; onChanged: () => void }) {
+function SlotCard({ s, lane, onChanged, ideaFormat }: { s: PlanSlot; lane: Lane; onChanged: () => void; ideaFormat?: RiseIdeaFormat }) {
   const toast = useToast()
   const [busy, setBusy] = useState(false)
+  const [format, setFormat] = useState<RiseIdeaFormat>(ideaFormat ?? riseIdeaFormat({ format: s.format }))
+  useEffect(() => { if (ideaFormat) setFormat(ideaFormat) }, [ideaFormat])
   const generate = async () => {
     if (busy) return
     setBusy(true)
     try {
-      await decideClientIdea(s.idea_ref, 'approved', lane)
+      if (lane === 'risedtc') await decideClientIdea(s.idea_ref, 'approved', lane, format)
+      else await decideClientIdea(s.idea_ref, 'approved', lane)
       toast.show({ message: 'Draft requested. It will appear in Review.', sub: 'Nothing is scheduled or sent.' })
       onChanged()
     } catch (e) { toast.show({ message: e instanceof Error ? e.message : 'The draft was not requested.', tone: 'failed' }) }
@@ -54,6 +57,7 @@ function SlotCard({ s, lane, onChanged }: { s: PlanSlot; lane: Lane; onChanged: 
     </div>
     <div className="cn-plan-acts">
       {draftHref && <a href={draftHref}>Open draft</a>}
+      {lane === 'risedtc' && s.proposal && s.idea_source === 'client_ideas' && s.status === 'proposal' && <label>Draft format <select aria-label={`Draft format for ${displayTitle(s.topic)}`} value={format} disabled={busy} onChange={e => setFormat(e.target.value as RiseIdeaFormat)}><option value="text">Text</option><option value="carousel">Carousel</option></select></label>}
       {s.proposal && s.idea_source === 'client_ideas' && s.status === 'proposal' &&
         <button type="button" data-verb="plan-generate" disabled={busy || lane === 'swishdm'} onClick={() => void generate()}>{busy ? 'Working…' : lane === 'swishdm' ? 'Setup pending' : 'Generate draft'}</button>}
     </div>
@@ -101,7 +105,10 @@ export function Plan({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => void
       {upcoming.map(w => <section key={w.start} className="cn-plan-week" aria-label={weekLabel(w)}>
         <h2>{weekLabel(w)} <span>{w.filled} of {w.target}{w.planned.length > 0 ? ` · ${w.dated ?? w.posts.length} dated` : ''}</span></h2>
         <ul>{w.posts.map((p, i) => <PostCard key={p.draft_id ?? p.queue_id ?? i} p={p} lane={lane} />)}
-          {w.planned.map(s => <SlotCard key={s.slot_id} s={s} lane={lane} onChanged={refresh} />)}
+          {w.planned.map(s => {
+            const idea = pool?.find(i => i.id === s.idea_ref)?.client
+            return <SlotCard key={s.slot_id} s={s} lane={lane} onChanged={refresh} ideaFormat={idea ? riseIdeaFormat(idea) : undefined} />
+          })}
           {w.open > 0 && Array.from({ length: w.open }, (_, i) => <li key={`open${i}`} className="cn-plan-card cn-plan-open"><div><span className="cn-plan-day">Open slot</span><b className="cn-plan-topic">Not planned yet</b></div></li>)}
         </ul>
         {w.planned.length > 0 && <p className="cn-plan-note">Planned posts show the first free weekday of their week. The real date is set when the post is scheduled.</p>}

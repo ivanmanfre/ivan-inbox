@@ -185,6 +185,15 @@ describe('idea consequences and recovery', () => {
     expect(document.querySelector('.d-toast')?.textContent).not.toMatch(/draft/i)
     expect(decideClientIdea).toHaveBeenCalledWith('c1','rejected','arch')
   })
+  it('sends the selected RISE format with approval', async () => {
+    const idea={...fromCandidate(cand(1)),ivan:undefined,client:{id:'c1',format:'post',planned_format:'carousel'} as never,lane:'risedtc' as const,id:'c1'}
+    renderInFrame(<IdeaDetail it={idea} onDone={()=>{}} compact/> )
+    const picker = screen.getByRole('combobox', { name: 'Draft format' }) as HTMLSelectElement
+    expect(picker.value).toBe('carousel')
+    fireEvent.change(picker, { target: { value: 'text' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Generate draft' }))
+    await waitFor(() => expect(decideClientIdea).toHaveBeenCalledWith('c1', 'approved', 'risedtc', 'text'))
+  })
   it('preserves the client in the Review destination for a requested draft', () => {
     const idea={...fromCandidate(cand(1)),lane:'arch' as const,generating:true}
     renderInFrame(<IdeaDetail it={idea} onDone={()=>{}} compact/> )
