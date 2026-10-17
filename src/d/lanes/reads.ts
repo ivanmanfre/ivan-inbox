@@ -165,7 +165,7 @@ export type Blocked = { id: string; prospect_name: string; client_id: string; se
 export async function fetchBlocked(limit = 8): Promise<Blocked[]> {
   const { data, error } = await supabase.from('inbox_messages_v').select('id, prospect_name, client_id, send_blocked_at, send_blocked_reason')
     .eq('direction', 'outbound').not('send_blocked_at', 'is', null)
-    .or('send_blocked_reason.is.null,send_blocked_reason.not.in.(discarded_in_inbox,owner_confirmation,owner_confirmation_superseded,reply_retry_pending)')
+    .or('send_blocked_reason.is.null,send_blocked_reason.not.in.(discarded_in_inbox,owner_confirmation,owner_confirmation_superseded,reply_retry_pending,awaiting_client_review)')
     .order('send_blocked_at', { ascending: false }).limit(limit)
   if (error) throw error
   return (data ?? []) as Blocked[]

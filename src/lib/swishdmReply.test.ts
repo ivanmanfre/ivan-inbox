@@ -20,6 +20,7 @@ vi.mock('./supabase', () => ({
   },
 }))
 
+import { canSendRejectedDm } from './rejectedDm'
 import { approveDraft, groupThreads, holdReason, isDraft, isSwishdmReply, isSwishdmReplyHold, restoreDraft, saveDraftText, sendFailed, swishdmPageUrl, type InboxMessage } from './inbox'
 
 const token = 'abcdefghijklmnopqrst'
@@ -65,6 +66,13 @@ describe('a held SwishDM reply is a pending draft', () => {
     expect(holdReason(reply)).toBeNull()
     expect(swishdmPageUrl({ ...withPage, client_id: 'arch' })).toBeNull()
     expect(swishdmPageUrl({ ...reply, draft_evidence: { page_url: 'https://evil.example/compare/abcdefghijklmnopqrst/' } as never })).toBeNull()
+  })
+})
+
+describe('no override path around the review hold', () => {
+  it('a held SwishDM reply never offers Send anyways', () => {
+    expect(canSendRejectedDm(reply)).toBe(false)
+    expect(canSendRejectedDm({ ...reply, send_blocked_reason: 'send_failed_400: check LinkedIn' })).toBe(true)
   })
 })
 
