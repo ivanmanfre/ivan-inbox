@@ -393,10 +393,36 @@ export function snoozeActive(m: InboxMessage, lastInbound: string | null, now: n
 // distinct sends never share prospect+text+timestamp to the millisecond, so
 // this never eats a real message.
 export function dedupeMessages(rows: InboxMessage[]): InboxMessage[] {
+  // Dispatch stores a multi-bubble send as one row; sync sees each LinkedIn bubble.
+  // Match whole bubbles in the same chat near the send, independent of fetch order.
+  const splitSends = new Map<string, number[]>()
+  const bubbleKey = (m: InboxMessage, text: string) => JSON.stringify([m.prospect_id, m.unipile_chat_id, text.replace(/\s+/g, ' ').trim()])
+  for (const m of rows) {
+    if (m.direction !== 'outbound' || m.ai_model === 'manual_mirror' || m.channel !== 'linkedin' || !m.sent_at || !m.unipile_chat_id || !['dm', 'manual_reply'].includes(m.message_type ?? '')) continue
+    const parts = m.message_text.split(/^[ \t]*-{3,}[ \t\r]*$/m).map(p => p.trim()).filter(Boolean)
+    if (parts.length < 2) continue
+    for (const part of parts) {
+      const key = bubbleKey(m, part)
+      splitSends.set(key, [...(splitSends.get(key) ?? []), Date.parse(m.sent_at)])
+    }
+  }
+  const mirrorTimes = new Map<string, number[]>()
+  for (const m of rows) {
+    if (m.direction !== 'outbound' || m.ai_model !== 'manual_mirror' || m.channel !== 'linkedin' || !m.sent_at || !m.unipile_chat_id) continue
+    const key = bubbleKey(m, m.message_text)
+    mirrorTimes.set(key, [...(mirrorTimes.get(key) ?? []), Date.parse(m.sent_at)])
+  }
   const seen = new Set<string>()
   const native = new Map<string, number>()
   const out: InboxMessage[] = []
   for (const m of rows) {
+    if (m.direction === 'outbound' && m.ai_model === 'manual_mirror' && m.channel === 'linkedin' && m.sent_at && m.unipile_chat_id
+      && splitSends.get(bubbleKey(m, m.message_text))?.some(at => {
+        const time = Date.parse(m.sent_at!)
+        // Keep earlier messages and ambiguous repeated manual replies visible.
+        return time >= at && time - at <= 120_000
+          && mirrorTimes.get(bubbleKey(m, m.message_text))?.filter(t => t >= at && t - at <= 120_000).length === 1
+      })) continue
     // One provider message can arrive as both the sent InMail and a body-only sync mirror.
     const nativeKey = m.sent_at && m.unipile_message_id ? `${m.prospect_id}|${m.direction}|${m.unipile_chat_id}|${m.unipile_message_id}` : null
     // The view omits provider IDs; its InMail sync mirror still has the exact timestamp and body.
