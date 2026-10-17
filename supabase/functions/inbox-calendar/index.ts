@@ -43,6 +43,11 @@ Deno.serve(async req => {
       return data === true
     },
     async save(id, status, receipt) {
+      if (status === 'confirmed' && receipt) {
+        const { error } = await sb.rpc('inbox_calendar_confirm', { p_request: id, p_event: receipt.calendar_event_id })
+        if (error) throw Error('The calendar receipt and Ops handoff could not be saved.')
+        return
+      }
       const { data, error } = await sb.from('inbox_calendar_bookings').update({ status, ...(receipt ? { calendar_event_id: receipt.calendar_event_id } : {}), updated_at: new Date().toISOString() }).eq('request_id', id).eq('status', 'pending').select('request_id')
       if (error || !data?.length) throw Error('The booking receipt could not be saved.')
     },

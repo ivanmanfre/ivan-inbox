@@ -14,6 +14,7 @@ create table if not exists public.inbox_calendar_bookings (
   meeting_id text,
   booked_at timestamptz,
   handoff_at timestamptz,
+  pending_ops_id uuid,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (end_at = start_at + interval '30 minutes'),
@@ -46,6 +47,26 @@ end $$;
 revoke all on function public.inbox_calendar_claim(uuid,text,uuid,timestamptz,text,text) from public,anon,authenticated;
 grant execute on function public.inbox_calendar_claim(uuid,text,uuid,timestamptz,text,text) to service_role;
 
+-- Save the provider receipt and a private task together. This task has no Slack
+-- destination and remains useful even while the CRM search index catches up.
+create or replace function public.inbox_calendar_confirm(p_request uuid,p_event text)
+returns void language plpgsql set search_path=public as $$
+declare b public.inbox_calendar_bookings; p public.outreach_prospects; task_id uuid;
+begin
+  select * into b from inbox_calendar_bookings where request_id=p_request for update;
+  if not found or b.status <> 'pending' or nullif(btrim(p_event),'') is null then raise exception 'A pending booking and calendar receipt are required'; end if;
+  select * into p from outreach_prospects where id=b.prospect_id;
+  task_id := gen_random_uuid();
+  insert into ops_drafts(id,client_id,kind,slack_channel,body,context,approved_at,sent_at)
+  values(task_id,case when b.client_id='risedtc' then 'rise' else b.client_id end,'task',null,
+    'Calendar invite confirmed with '||p.name||' for '||to_char(b.start_at at time zone 'UTC','YYYY-MM-DD HH24:MI')||' UTC. Prepare the pre-call brief. CRM booking details are pending; open Calendar in the conversation and refresh to finish the handoff.',
+    jsonb_build_object('prospect_id',p.id,'prospect_name',p.name,'company',p.company,'when_iso',b.start_at,
+      'calendar_event_id',p_event,'request_id',p_request,'source','inbox_calendar_pending_crm'),null,null);
+  update inbox_calendar_bookings set status='confirmed',calendar_event_id=p_event,pending_ops_id=task_id,updated_at=now() where request_id=p_request;
+end $$;
+revoke all on function public.inbox_calendar_confirm(uuid,text) from public,anon,authenticated;
+grant execute on function public.inbox_calendar_confirm(uuid,text) to service_role;
+
 -- The scheduler returns a calendar event, but only CRM hs_createdate is a valid
 -- call_booked_at stamp. Using now() would make the existing tracker infer a second booking.
 create or replace function public.inbox_calendar_finish(p_request uuid,p_meeting text,p_booked timestamptz)
@@ -62,12 +83,20 @@ begin
   if b.handoff_at is null then
     ops_client := case when b.client_id='risedtc' then 'rise' else b.client_id end;
     body_text := 'Call booked with '||p.name||coalesce(' ('||nullif(p.company,'')||')','')||' for '||to_char(b.start_at at time zone 'UTC','YYYY-MM-DD HH24:MI')||' UTC. Calendar invite confirmed. Prepare the pre-call brief.';
+    if b.client_id='arch' and b.pending_ops_id is not null then
+      update ops_drafts set body=body_text, context=context||jsonb_build_object('meeting_id',p_meeting,'source','inbox_calendar')
+        where id=b.pending_ops_id and approved_at is null and sent_at is null and send_blocked_reason is null;
+    else
     insert into ops_drafts(client_id,kind,slack_channel,body,context,approved_at,sent_at)
     values(ops_client,case when b.client_id='risedtc' then 'booking' else 'task' end,
       case when b.client_id='risedtc' then 'C0BJ72F58BY' else null end,body_text,
       jsonb_build_object('meeting_id',p_meeting,'prospect_id',p.id,'prospect_name',p.name,'company',p.company,
         'when_iso',b.start_at,'calendar_event_id',b.calendar_event_id,'source','inbox_calendar','matched_prospect',true,'stamped',true),null,null)
     on conflict do nothing;
+    -- Complete only our own private placeholder after the real booking card exists.
+    update ops_drafts set approved_at=now(),sent_at=now(),context=context||jsonb_build_object('meeting_id',p_meeting,'source','inbox_calendar_reconciled')
+      where id=b.pending_ops_id and kind='task' and approved_at is null and sent_at is null and send_blocked_reason is null;
+    end if;
   end if;
   update inbox_calendar_bookings set meeting_id=p_meeting,booked_at=p_booked,handoff_at=coalesce(handoff_at,now()),updated_at=now() where request_id=p_request;
 end $$;

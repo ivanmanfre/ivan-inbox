@@ -56,13 +56,13 @@ export async function book(owner: Owner, secret: string, slot: Slot, identity: {
 }
 
 // CRM search can lag the scheduler. A missing CRM result never causes a second booking POST.
-export async function meetingRecord(owner: Owner, secret: string, receipt: Receipt, fetch: Fetch = globalThis.fetch) {
+export async function meetingRecord(_owner: Owner, secret: string, receipt: Receipt, fetch: Fetch = globalThis.fetch) {
   const r = await json('https://api.hubapi.com/crm/v3/objects/meetings/search', secret, fetch, { method: 'POST', body: JSON.stringify({
     filterGroups: [{ filters: [{ propertyName: 'hs_i_cal_uid', operator: 'EQ', value: `${receipt.calendar_event_id}@google.com` }] }, { filters: [{ propertyName: 'hs_i_cal_uid', operator: 'EQ', value: receipt.calendar_event_id }] }],
-    properties: ['hs_createdate', 'hs_meeting_start_time', 'hs_meeting_end_time', 'hubspot_owner_id'], limit: 2,
+    properties: ['hs_createdate', 'hs_meeting_start_time', 'hs_meeting_end_time', 'hs_i_cal_uid'], limit: 2,
   }) })
   if (r.results?.length !== 1) return null
   const m = r.results[0], p = m.properties
-  if (!/^\d+$/.test(String(m.id)) || !Number.isFinite(Date.parse(p?.hs_createdate)) || String(p.hubspot_owner_id) !== owner.user_id || Date.parse(p.hs_meeting_start_time) !== Date.parse(receipt.start) || Date.parse(p.hs_meeting_end_time) !== Date.parse(receipt.end)) return null
+  if (!/^\d+$/.test(String(m.id)) || !Number.isFinite(Date.parse(p?.hs_createdate)) || ![receipt.calendar_event_id, `${receipt.calendar_event_id}@google.com`].includes(p.hs_i_cal_uid) || Date.parse(p.hs_meeting_start_time) !== Date.parse(receipt.start) || Date.parse(p.hs_meeting_end_time) !== Date.parse(receipt.end)) return null
   return { meeting_id: String(m.id), booked_at: new Date(p.hs_createdate).toISOString() }
 }

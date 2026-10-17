@@ -8,7 +8,7 @@ beforeEach(async () => {
   await db.exec(`create role anon; create role authenticated; create role service_role;
     create table outreach_campaigns(id uuid primary key,client_id text);
     create table outreach_prospects(id uuid primary key,campaign_id uuid,name text,email text,company text,call_booked_at timestamptz,stage text,blacklisted boolean,skip_reason text);
-    create table ops_drafts(id uuid default gen_random_uuid(),client_id text,kind text,slack_channel text,body text,context jsonb,approved_at timestamptz,sent_at timestamptz);
+    create table ops_drafts(id uuid default gen_random_uuid(),client_id text,kind text,slack_channel text,body text,context jsonb,approved_at timestamptz,sent_at timestamptz,send_blocked_reason text);
     create unique index ops_drafts_booking_meeting_idx on ops_drafts(client_id,(context->>'meeting_id')) where kind='booking';
     insert into outreach_campaigns values('11111111-1111-4111-8111-111111111111','risedtc');
     insert into outreach_prospects(id,campaign_id,name,email,company,stage,blacklisted) values('${pid}','11111111-1111-4111-8111-111111111111','Ada Lovelace','ada@example.com','Company','replied',false);`)
@@ -45,4 +45,13 @@ it('preserves an existing published stamp and never exposes the private ledger t
   await finish(); expect((await db.query<{ call_booked_at: Date }>('select call_booked_at from outreach_prospects')).rows[0].call_booked_at.toISOString()).toBe('2026-09-01T12:00:00.000Z')
   await db.exec('set role authenticated'); await expect(db.query('select * from inbox_calendar_bookings')).rejects.toThrow(/permission denied/)
   await expect(claim()).rejects.toThrow(/permission denied/)
+})
+
+it('queues a private Ops handoff atomically with the confirmed receipt before CRM indexing', async () => {
+  await claim(); await db.query(`select inbox_calendar_confirm($1,'event-1')`,[key])
+  const ops = (await db.query('select * from ops_drafts')).rows
+  expect(ops).toHaveLength(1); expect(ops[0]).toMatchObject({kind:'task',approved_at:null,sent_at:null,slack_channel:null,context:{calendar_event_id:'event-1',source:'inbox_calendar_pending_crm'}})
+  await finish()
+  const active = (await db.query('select * from ops_drafts where approved_at is null and sent_at is null')).rows
+  expect(active).toHaveLength(1); expect(active[0]).toMatchObject({kind:'booking',context:{meeting_id:'123'}})
 })

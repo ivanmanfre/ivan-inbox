@@ -57,3 +57,12 @@ describe('owner calendar providers', () => {
     expect(r.slots).toEqual([{ start, end }]); expect(r.can_book).toBe(false)
   })
 })
+
+import { meetingRecord } from './calendar'
+it('joins CRM by the exact receipt UID and times, without confusing CRM owner IDs with scheduler user IDs', async () => {
+  const fetch = jsonFetch({ results: [{ id: '118761181534', properties: { hs_createdate: '2026-10-17T00:09:50.192Z', hs_meeting_start_time: start, hs_meeting_end_time: end, hubspot_owner_id: 'different-crm-owner-id', hs_i_cal_uid: 'event-1@google.com' } }] })
+  expect(await meetingRecord(ownerFor('risedtc')!, 'secret', { start, end, calendar_event_id: 'event-1' }, fetch)).toEqual({ meeting_id: '118761181534', booked_at: '2026-10-17T00:09:50.192Z' })
+  const query = JSON.parse(fetch.mock.calls[0][1].body)
+  expect(query.filterGroups[0].filters[0]).toEqual({ propertyName: 'hs_i_cal_uid', operator: 'EQ', value: 'event-1@google.com' })
+  expect(await meetingRecord(ownerFor('risedtc')!, 'secret', { start: end, end, calendar_event_id: 'event-1' }, fetch)).toBeNull()
+})
