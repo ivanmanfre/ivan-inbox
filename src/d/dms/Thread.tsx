@@ -21,6 +21,7 @@ import { deliverySnapshot, scheduleHeld } from '../../lib/dmSchedule'
 import { canMarkSolved } from './solved'
 import { DraftWhy } from './DraftWhy'
 import { ReferralCard } from './ReferralCard'
+import { CalendarPanel } from './Calendar'
 import { History } from './History'
 import type { CameBackSignal } from '../../wb/dms/cameBackData'
 import { Composer } from './Keys'
@@ -256,6 +257,8 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     if (!composeOff) primary = <Key primary verb="compose-send" aria-label={composeLabel} className="dm-send" disabled={busy || emailBlocked || !reply.trim()} onClick={() => void compose()}>{composeLabel}</Key>
   }
 
+  const calendar = !t.spam && <CalendarPanel key={t.prospect_id} prospectId={t.prospect_id} clientId={t.client_id} onInsert={text => { setReply(value => value.trim() ? `${value.trim()}\n\n${text}` : text); dock.current?.querySelector('textarea')?.focus() }} />
+
   const referredLead = t.messages.some(m => m.ai_model === 'arch_referral_package_v1')
   const referral = <ReferralCard key={t.prospect_id} t={t} onUseAcknowledgement={text => {
     setReply(text)
@@ -295,6 +298,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         {scheduledPending && <ScheduledSends t={t} reload={reload} onEdit={setSchedule} />}
       </>}
       status={<>
+        {calendar}
         {draftRunning && <p className="dm-meta dx-status" role="status"><span className="dx-busy">Reading the conversation and writing a draft. It will appear here for review.</span></p>}
         {scheduleFailure && <p className="dm-meta" role="alert">{scheduleFailure}</p>}
         {draftError && <p className="dm-meta" role="alert">{draftError}</p>}
@@ -329,6 +333,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         {scheduledPending && <ScheduledSends t={t} reload={reload} onEdit={setSchedule} />}
       </div>
       <div className="dm-dock" ref={dock}>
+        {calendar}
         {draftRunning && <p className="dm-meta" role="status">Reading the conversation and writing a draft. It will appear here for review.</p>}
         {scheduleFailure && <p className="dm-meta" role="alert">{scheduleFailure}</p>}
         {draftError && <p className="dm-meta" role="alert">{draftError}</p>}

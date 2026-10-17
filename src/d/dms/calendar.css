@@ -1,0 +1,18 @@
+.dm-calendar{border-top:1px solid var(--line,#ddd);font-size:13px;color:var(--t1,inherit)}
+.dm-calendar summary{display:flex;align-items:center;gap:8px;cursor:pointer;min-height:44px;list-style:none;font-weight:600}
+.dm-calendar summary::-webkit-details-marker{display:none}
+.dm-calendar-body{display:grid;gap:10px;padding:2px 0 14px;max-height:48vh;overflow:auto;overscroll-behavior:contain}
+.dm-calendar-head,.dm-calendar-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.dm-calendar a{color:inherit;text-decoration:underline;text-underline-offset:3px}
+.dm-calendar p{margin:0;line-height:1.5}
+.dm-calendar-note{color:var(--t3,#656565);font-size:12px}
+.dm-calendar-zone{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dm-calendar select,.dm-calendar input[type=email]{min-height:44px;max-width:100%;border:1px solid var(--line,#bbb);border-radius:6px;padding:8px;background:var(--p1,#fff);color:inherit;font:inherit}
+.dm-calendar-slots{max-height:172px;overflow:auto;border-block:1px solid var(--line,#ddd)}
+.dm-calendar-slots label,.dm-calendar-book>label{display:flex;align-items:center;gap:8px;min-height:44px;line-height:1.4}
+.dm-calendar input[type=checkbox]{width:18px;height:18px;flex:none;accent-color:var(--t1,#222)}
+.dm-calendar-actions{justify-content:flex-start}
+.dm-calendar .dm-k{min-height:44px;white-space:normal}
+.dm-calendar-book{display:grid;gap:8px;border:1px solid var(--line,#ddd);border-radius:8px;padding:10px}
+.dm-calendar :focus-visible{outline:2px solid currentColor;outline-offset:3px}
+.dm-calendar small{overflow-wrap:anywhere}
