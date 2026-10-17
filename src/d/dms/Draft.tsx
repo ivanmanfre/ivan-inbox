@@ -4,7 +4,7 @@ import { emailDraftText, splitEmailDraft } from '../../lib/emailSubject'
 // rider, and the warnings today's card carries (held, email check failed, you already replied).
 // The tape IS the editor: typing saves (useAutosave); Send sends what is in it.
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
-import { draftSendVia, type DraftSendVia, emailRowSender, emailSenderLabel, eventTime, holdReason, isFollowUp, messageChannel, type Thread } from '../../lib/inbox'
+import { draftSendVia, type DraftSendVia, emailRowSender, emailSenderLabel, eventTime, holdReason, isFollowUp, isSwishdmReply, messageChannel, type Thread } from '../../lib/inbox'
 import { DIcon } from '../ui/icons'
 import { Explain } from './Explain'
 import { ago } from './model'
@@ -69,7 +69,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
   const comp = t.companionDraft
   const title = t.draftSnoozedUntil ? `Later: back ${dayMonth(t.draftSnoozedUntil)}`
     : t.draftStale ? 'AI draft · you already replied'
-      : isFollowUp(draft) ? 'AI follow-up' : 'AI draft'
+      : isSwishdmReply(draft) ? 'SwishDM reply for Jonathan\u2019s seat' : isFollowUp(draft) ? 'AI follow-up' : 'AI draft'
   const email = messageChannel(draft) === 'email'
   const inmail = messageChannel(draft) === 'inmail'
   const rider = (draft.recipient_email || draft.email_delivery_recipient) && !email && (draft.email_mirror_text || draft.ai_model === SCAN_DELIVERY_MODEL)

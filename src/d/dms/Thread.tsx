@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode }
 import { requestDmDraft } from '../../lib/dmDraft'
 import { useDCommands } from '../shell/commands'
 import type { WbCommand } from '../../exp/v2c/commandSource'
-import { draftSendVia, type DraftSendVia, canComposeEmail, emailReplyTarget, emailRowSender, isReplyRetryExhausted, markThreadRead, messageChannel, threadBucket, unansweredWaitSince, type InboxMessage, type Thread as T } from '../../lib/inbox'
+import { draftSendVia, type DraftSendVia, canComposeEmail, emailReplyTarget, emailRowSender, isReplyRetryExhausted, isSwishdmReply, markThreadRead, messageChannel, threadBucket, unansweredWaitSince, type InboxMessage, type Thread as T } from '../../lib/inbox'
 import type { PreReadHandle } from '../../exp/v2c/chat/usePreRead'
 import { chatLink } from '../../components/CopyChatLink'
 import { seatOf } from '../seats'
@@ -156,7 +156,8 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   const scheduledPending = t.messages.some(m => scheduleHeld(m.send_blocked_reason) && !m.sent_at && !m.approved_at)
   const composeOff = scheduledPending ? 'A DM is scheduled. Cancel the scheduled send to write another reply.' : t.ownerConfirmation && !manualReply ? 'Reply paused while an internal fact is confirmed. Add the answer as a note, or discard the question.'
     : replyingByEmail && !canComposeEmail(t) ? 'Email compose is on for Arch threads only. Approving email drafts works here.'
-      : !replyingByEmail && t.stage === 'engaged' ? 'Not connected yet. A reply here would go out as a connection invite, so compose is off for this thread.' : null
+      : !replyingByEmail && t.stage === 'engaged' ? 'Not connected yet. A reply here would go out as a connection invite, so compose is off for this thread.'
+        : t.client_id === 'swishdm' ? 'Jonathan\u2019s seat sends through its own sender, so a reply typed here would never go out. Edit and approve the draft above, or answer on LinkedIn.' : null
   const openEmailReply = () => {
     setEmailReplyFor(t.prospect_id)
     dock.current?.querySelector('textarea')?.focus()
@@ -232,7 +233,9 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   const more = <Btn verb="more" className="dm-k dm-k-more" aria-label="More for this conversation" aria-expanded={menu === 'keys'} onClick={() => setMenu(m => (m ? null : 'keys'))}>⋯</Btn>
   const solvedKey = <Btn verb="solved" className="dm-k" disabled={busy} onClick={() => run(async () => { saver.cancel(); await verbs.solved(t) })}>{phone ? 'Solved' : 'Mark as solved'}</Btn>
   const laterKey = lp && <Btn verb="later" className="dm-k" disabled={busy} title={lp === 'followup' ? 'A follow-up is drafted on the day you pick' : 'Out of your queue until the day you pick'} onClick={() => void later()}>Later</Btn>
-  const sendLabel = t.companionDraft ? 'Send both' : t.draft && (t.draft.email_delivery_recipient || t.draft.email_mirror_text && t.draft.recipient_email || messageChannel(t.draft) === 'email') ? draftSendVia(t.draft) === 'email' ? 'Send email' : draftSendVia(t.draft) === 'both' ? 'Send both' : 'Send DM' : 'Send'
+  // Jonathan's seat: the verb releases one held reply to his own sender, so it is "Approve", never "Send".
+  const swishReply = !!t.draft && isSwishdmReply(t.draft)
+  const sendLabel = swishReply ? 'Approve' : t.companionDraft ? 'Send both' : t.draft && (t.draft.email_delivery_recipient || t.draft.email_mirror_text && t.draft.recipient_email || messageChannel(t.draft) === 'email') ? draftSendVia(t.draft) === 'email' ? 'Send email' : draftSendVia(t.draft) === 'both' ? 'Send both' : 'Send DM' : 'Send'
   let small, primary
   if (t.spam) {
     small = <>
@@ -277,7 +280,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     const sendV4 = canSendDraft
       ? <Key primary={!t.draftStale && !reply.trim()} verb="send" className="dm-send" disabled={busy || scheduledPending} onClick={() => void send()}>{sendLabel}</Key>
       : primary
-    const scheduleKey = !t.spam && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim())
+    const scheduleKey = !t.spam && !swishReply && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim())
       ? <Btn verb="schedule-send" className="dm-k dm-schedule-key" disabled={busy} onClick={() => void openSchedule()}>{reply.trim() ? 'Schedule reply' : 'Schedule send'}</Btn> : null
     return <ThreadV4 name={t.prospect_name} phone={phone} pid={t.prospect_id} scrollRef={scroll} dockRef={dock}
       head={<HeadV4 t={t} phone={phone} onBack={onBack} onCopy={() => void copy()} copied={copied} onAsk={onAsk} onMore={() => setMenu(m => (m ? null : 'top'))} moreOpen={menu === 'top'}
@@ -340,7 +343,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         {replyingByEmail && resolvedEmail?.error && <div className="dm-meta" role="alert"><span>{resolvedEmail.error}</span> <Btn className="dm-k" onClick={() => setEmailRetry(n => n + 1)}>Retry email details</Btn></div>}
         {!hasDraft && !t.spam && <Composer to={first} from={from} big={emailReplyFor === t.prospect_id} noSend note={composeNote} sendLabel={composeLabel} disabled={composeOff} value={reply} setValue={setReply} busy={busy || emailBlocked} onSend={() => void compose()} />}
         <div className="dm-keys">
-          <div className="dm-keys-s">{!t.spam && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim()) && <Btn verb="schedule-send" className="dm-k dm-schedule-key" disabled={busy} onClick={() => void openSchedule()}>{reply.trim() ? 'Schedule reply' : 'Schedule send'}</Btn>}{small}{more}</div>
+          <div className="dm-keys-s">{!t.spam && !swishReply && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim()) && <Btn verb="schedule-send" className="dm-k dm-schedule-key" disabled={busy} onClick={() => void openSchedule()}>{reply.trim() ? 'Schedule reply' : 'Schedule send'}</Btn>}{small}{more}</div>
           {primary}
         </div>
         {hasDraft && !t.spam && <Composer to={first} from={from} big={emailReplyFor === t.prospect_id} note={composeNote} sendLabel={composeLabel} disabled={composeOff} value={reply} setValue={setReply} busy={busy || emailBlocked} onSend={() => void compose()} />}

@@ -178,6 +178,8 @@ export function sendFailed(m: InboxMessage): boolean {
   if (m.send_blocked_at === null) return false
   if (m.send_blocked_reason === DISCARD_REASON || ['scheduled_in_inbox','scheduled_send_cancelled'].includes(m.send_blocked_reason ?? '')) return false
   if (isRecoverableHold(m.send_blocked_reason)) return false
+  // SwishDM review hold (first-list notes, DM1 rows and reply drafts): waiting for a person, nothing was attempted.
+  if (m.send_blocked_reason === SWISHDM_REPLY_HOLD) return false
   if (isInternalConfirmation(m)) return false
   if (isEngineRetired(m)) return false
   return true
@@ -217,6 +219,10 @@ export function retiredLabel(m: InboxMessage): string {
 // only in a WhatsApp alert; the draft itself looked like any other draft.
 export function holdReason(m: InboxMessage): string | null {
   const r = m.send_blocked_reason
+  if (isSwishdmReplyHold(m) && isDraft(m)) {
+    const url = swishdmPageUrl(m)
+    return url ? `Approving this also puts the comparison page live at ${url}. The page is public, not indexed, and the reply waits until it opens.` : null
+  }
   if (!isDraft(m) || !isRecoverableHold(r)) return null
   if (isRaceHold(r)) return r === `${RACE_HOLD_PREFIX}outbound`
     ? 'Came back: a message went out on this thread while it was queued. Re-read the thread, then approve again.'
@@ -314,6 +320,31 @@ export function isRecoverableHold(reason: string | null): boolean {
   return isRaceHold(reason) || (reason !== null && reason.startsWith(LINT_HOLD_PREFIX))
 }
 
+// SwishDM (Jonathan's seat) holds EVERY draft until a person approves it. The lane-2 reply writer, the
+// reaction reply and the comparison-page reply are inserted with this reason and send_blocked_at set, so no
+// drafter, reminder or dispatcher that filters on `send_blocked_at IS NULL` ever touches them. The inbox
+// shows such a reply as a pending draft and approving it (approve_swishdm_reply_draft) clears the hold on
+// that one row. The first-list connection notes and DM1 rows carry the same reason but are reviewed on the
+// first-list page, so they are NOT matched here: the match needs the reply writer's ai_model.
+export const SWISHDM_REPLY_HOLD = 'awaiting_client_review'
+export const SWISHDM_REPLY_MODEL = /^swishdm_reply_/
+
+export function isSwishdmReplyHold(m: Pick<InboxMessage, 'client_id' | 'send_blocked_reason' | 'ai_model'>): boolean {
+  return m.client_id === 'swishdm' && m.send_blocked_reason === SWISHDM_REPLY_HOLD && SWISHDM_REPLY_MODEL.test(m.ai_model ?? '')
+}
+
+/** The comparison page a SwishDM reply links to, when this reply carries one (from the draft evidence). */
+export function swishdmPageUrl(m: Pick<InboxMessage, 'client_id' | 'ai_model' | 'draft_evidence'>): string | null {
+  if (!isSwishdmReply(m)) return null
+  const u = (m.draft_evidence as { page_url?: unknown } | null | undefined)?.page_url
+  return typeof u === 'string' && /^https:\/\/madebyswishdm\.com\/compare\/[a-z0-9]{20}\/$/.test(u) ? u : null
+}
+
+/** A SwishDM reply that is waiting for Ivan, in either state: held, or brought back after a discard. */
+export function isSwishdmReply(m: Pick<InboxMessage, 'client_id' | 'ai_model'>): boolean {
+  return m.client_id === 'swishdm' && SWISHDM_REPLY_MODEL.test(m.ai_model ?? '')
+}
+
 export function confirmationOwner(clientId: string): string {
   return clientId === 'swishdm' ? 'Jonathan' : clientId === 'arch' ? 'Davorin' : clientId === 'risedtc' ? 'Mattan' : 'owner'
 }
@@ -345,7 +376,7 @@ export function internalHoldSummary(m: InboxMessage): string {
 
 export function isDraft(m: InboxMessage): boolean {
   return m.direction === 'outbound' && !m.sent_at && !m.approved_at && m.send_blocked_reason !== 'post_approval_race:scheduled_thread_changed' && !isInternalConfirmation(m) &&
-    (!m.send_blocked_at || isRecoverableHold(m.send_blocked_reason))
+    (!m.send_blocked_at || isRecoverableHold(m.send_blocked_reason) || isSwishdmReplyHold(m))
 }
 
 // A NUDGE, not a reply: written because the person went quiet, by the bump
@@ -1382,6 +1413,16 @@ export async function approveDraft(id: string, editedText: string, chatId?: stri
     if (error) throw error
     return
   }
+  // SwishDM reply drafts carry a review hold the shared RPC refuses. This RPC checks the lane, the hold,
+  // that the draft still answers their newest message and that a page link was kept, then approves and
+  // clears the hold on this ONE row. Publishing the page and sending are separate steps with their own switches.
+  if (SWISHDM_REPLY_MODEL.test(draft?.ai_model ?? '')) {
+    const { error } = await supabase.rpc('approve_swishdm_reply_draft', {
+      p_message_id: id, p_text: editedText, p_expected_evidence: draft?.draft_evidence ?? null,
+    })
+    if (error) throw error
+    return
+  }
   if (snapshot && (draft?.draft_evidence?.send_via ?? null) !== (snapshot.send_via ?? snapshot.draft_evidence?.send_via ?? null)) {
     throw new Error('The send channel changed. Refresh before sending.')
   }
@@ -1433,7 +1474,7 @@ export async function saveDraftText(id: string, text: string): Promise<void> {
   const { error } = await supabase.from('outreach_messages')
     .update({ message_text: text })
     .eq('id', id).is('sent_at', null).is('approved_at', null)
-    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*`)
+    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*,and(send_blocked_reason.eq.${SWISHDM_REPLY_HOLD},ai_model.like.swishdm_reply_*)`)
   if (error) throw error
 }
 
@@ -1677,9 +1718,15 @@ export async function restoreConfirmation(id: string, reason: 'owner_confirmatio
 // explicit approve. Full trace:
 // goal-runs/workbench-2026-plan-2026-08-21/phase4a-restore.md
 export async function restoreDraft(id: string): Promise<boolean> {
+  // A SwishDM reply keeps its review hold when it comes back (the shared drafters and the WhatsApp reminder
+  // key on send_blocked_at IS NULL). Only the reply writer's rows; every other draft is restored as before.
+  const { data: kind } = await supabase.from('outreach_messages').select('ai_model').eq('id', id).maybeSingle()
+  const swish = SWISHDM_REPLY_MODEL.test((kind as { ai_model?: string | null } | null)?.ai_model ?? '')
   const { data, error } = await applyDraftGuard(
     supabase.from('outreach_messages')
-      .update({ send_blocked_reason: null, send_blocked_at: null, discard_mode: null }),
+      .update(swish
+        ? { send_blocked_reason: SWISHDM_REPLY_HOLD, send_blocked_at: new Date().toISOString(), discard_mode: null }
+        : { send_blocked_reason: null, send_blocked_at: null, discard_mode: null }),
     id, RESTORE_GUARD,
   ).select('id')
   if (error) throw error
