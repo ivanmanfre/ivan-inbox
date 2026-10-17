@@ -9,6 +9,8 @@ export type HotNowLane = 'swishdm'
 export type HotNowCard = {
   validation: MarketValidation
   qa_ready: boolean
+  /** The checked line on Jonathan's Slack card (db/292); null = no line passed, the card shows the headline only. */
+  card_line?: string | null
   lane: HotNowLane
   event_id: string
   draft_id: string
