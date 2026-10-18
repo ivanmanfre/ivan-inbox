@@ -34,7 +34,7 @@ export const verdictWord = (v: string | null | undefined) => (v ? VERDICT[v] ?? 
 type Tab = 'qa' | 'art' | 'src' | 'log' | 'meta'
 
 /** Every evidence tab today's window carries (QA with the full register, Artifact, Source, Log with the note composer, Fields); the picked tab is remembered like today's (content.draftwindow). */
-export function Evidence({ d, initial = 'qa', noteable = false, onNote }: { d: ContentDraftDetail; initial?: Tab; noteable?: boolean; onNote?: () => void }) {
+export function Evidence({ d, qaLabel, initial = 'qa', noteable = false, onNote }: { d: ContentDraftDetail; qaLabel?: string; initial?: Tab; noteable?: boolean; onNote?: () => void }) {
   const [sect, setSect] = useSectionState('content.draftwindow')
   const qa = normalizeQa(d.qa)
   const log = normalizeAgentLog(d.agent_log)
@@ -44,7 +44,7 @@ export function Evidence({ d, initial = 'qa', noteable = false, onNote }: { d: C
   const authored = (d.authored_html ?? '').trim()
   const art = selfContainedHtml(authored)
   const tabs: [Tab, string, string][] = [
-    ['qa', 'QA', qa?.score != null ? `${verdictWord(qa.verdict)} ${qa.score}` : 'none'],
+    ['qa', 'QA', qaLabel ?? (qa?.score != null ? `Recorded ${qa.score}` : 'none')],
     ...(art ? [['art', 'Artifact', ''] as [Tab, string, string]] : []),
     ['src', 'Source', sourceTag(d).label],
     ['log', 'Log', log.length ? `${agents} agent${agents === 1 ? '' : 's'}` : 'note only'],
@@ -65,6 +65,7 @@ export function Evidence({ d, initial = 'qa', noteable = false, onNote }: { d: C
       <div className="cn-evb" role="tabpanel">
         {tab === 'qa' && (qa ? (
           <>
+            <p className="cn-dim">Stored QA history follows. Current copy checks are shown above the post.</p>
             {scores.length > 0 ? (
               <div className="cn-qa">
                 {scores.map(([k, v]) => (

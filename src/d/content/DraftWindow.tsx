@@ -5,13 +5,15 @@ import { useUnsavedNavigation } from '../../hooks/useUnsavedNavigation'
 import { useDConfirm } from '../ui/confirm'
 import {
   STAGE_LABEL, boardGroupOf, canPromote, canUnpromote, clientDeletable, clientEditable, clientStageLabel,
-  normalizeQa, pictureEditable, reviewActionable, stageOf, type ContentDraftDetail,
+  pictureEditable, reviewActionable, stageOf, type ContentDraftDetail,
 } from '../../lib/content'
 import { DIcon } from '../ui/icons'
 import { warsawDm, warsawDow } from '../ui/time'
 import { Key } from '../ui/Key'
 import { Empty, Failed, Skeleton } from '../ui/states'
-import { Evidence, verdictWord } from './Evidence'
+import { Evidence } from './Evidence'
+import { CopyReadiness } from './CopyReadiness'
+import { useDraftReadiness } from './useDraftReadiness'
 import { ClientFixRow, FixRow } from './FixMenu'
 import { LANE_NAME, OWNER, POSS, age, canSchedule, kindOf, nextFreeWeekday, scheduleOpenByDefault, splitTitleTag, titleOf, type Lane, type WallDay } from './model'
 import { Conflict, Preview } from './Preview'
@@ -125,7 +127,7 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
   }, [at, d.status, lane, onClose, onPick, queue, v])
 
   const stage = stageOf(d)
-  const qa = normalizeQa(d.qa)
+  const readiness = useDraftReadiness({ ...d, post_body: v.shown })
   const stateChip = lane === 'ivan' ? (d.status === 'review' ? 'Needs review' : STAGE_LABEL[stage])
     : clientStageLabel(stage, boardGroupOf({ board_visible: v.visible }))
   // The status line, key facts first (Ivan 2026-10-15: "all the same font, all the same grey"): the stage,
@@ -137,7 +139,7 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
   const facts = [
     postsChip(d),
     boardFact,
-    qa?.score != null ? `QA ${verdictWord(qa.verdict).toLowerCase()} ${qa.score}` : null,
+    dirty ? 'QA needs recheck' : readiness.qa.state !== 'none' ? readiness.qa.label : null,
   ].filter((x): x is string => !!x)
   const quiet = [
     d.funnel_stage ? `Aim: ${d.funnel_stage[0].toUpperCase()}${d.funnel_stage.slice(1)}` : null,
@@ -235,7 +237,7 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
         {v.editing && <span className="cn-st">Editing</span>}
         <EarlyReadChip read={earlyReads.get(d.id)} lane={lane} unsaved={dirty} /></div>
       <div className="cn-dwb">
-        <AboveThePost d={d} stage={stage} lane={lane} />
+        <CopyReadiness {...readiness} dirty={dirty} /><AboveThePost d={d} stage={stage} lane={lane} />
         <BrainDraftBadge draft={d} />
         {lane !== 'ivan' && !v.visible && (stage === 'error' || stage === 'stuck') && <ClientFixRow d={d} lane={lane} onDone={refresh} disabled={v.editing || v.busy} />}
         <Preview d={pic ? { ...d, image_urls: pic } : d} lane={lane} body={v.shown} editing={v.editing} busy={v.busy} text={v.text} setText={v.setText}
@@ -248,7 +250,7 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
         {pictureEditable(d, lane) && !v.editing && (
           <PictureRow d={d} lane={lane} onShow={setPic} onDone={refresh} disabled={v.busy} />
         )}
-        {!v.editing && <Evidence d={d} initial={lane === 'ivan' ? 'qa' : 'src'} noteable={lane === 'ivan'} onNote={refresh} />}
+        {!v.editing && <Evidence d={d} qaLabel={readiness.qa.label} initial={lane === 'ivan' ? 'qa' : 'src'} noteable={lane === 'ivan'} onNote={refresh} />}
         {lane === 'ivan' && !v.editing && <FixRow d={d} onDone={refresh} onDeleted={() => { refresh(); advance() }} disabled={v.busy} />}
       </div>
       <div className="cn-dwbar">
