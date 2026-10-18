@@ -6,6 +6,7 @@ import { Failed, Skeleton } from '../ui/states'
 import { dayLabel, LANES, LANE_NAME, type Lane } from './model'
 import { BrainScoreboard } from './BrainScoreboard'
 import { WhatWorksNow } from './WhatWorksNow'
+import { ComparableResults } from './ComparableResults'
 
 export function Results({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => void }) {
   const [own, setOwn] = useState<ReachRead | null>(null)
@@ -26,6 +27,7 @@ export function Results({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => v
     <a className="cn-quiet-link" href={dHash('content', 'brain', { lane, view: 'patterns' })}>Patterns and benchmarks →</a>
     <BrainScoreboard key={`scoreboard:${lane}`} lane={lane} />
     <WhatWorksNow key={lane} lane={lane} />
+    <ComparableResults key={`comparable:${lane}`} lane={lane} />
     <ResultsBody key={lane} own={own} evidence={evidence} evidenceError={evidenceError} now={Date.now()} onRetry={retry} />
   </div>
 }

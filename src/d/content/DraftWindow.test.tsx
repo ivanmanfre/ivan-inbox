@@ -69,6 +69,14 @@ describe('draft window', () => {
     expect(lib.approveDraft).not.toHaveBeenCalled()
   })
 
+  it('hides saved-copy checks while unsaved words are displayed', () => {
+    renderInFrame(<DraftWindow {...props()} />)
+    fireEvent.click(document.querySelector('[data-verb="edit"]')!)
+    fireEvent.change(screen.getByRole('textbox', { name: 'Post text' }), { target: { value: 'Changed words' } })
+    expect(screen.getByText('Unsaved copy needs recheck.')).toBeTruthy()
+    expect(document.querySelector('[aria-label="Current copy checks"]')!.textContent).not.toContain('QA checked')
+  })
+
   it('j/k walk the queue and wait while editing', () => {
     const p = props()
     renderInFrame(<DraftWindow {...p} />)
