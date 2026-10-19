@@ -283,9 +283,3 @@
 .a-ops-card .a-slack-preview strong{ font-weight:700 }
 .a-ops-card .a-slack-preview .a-slack-line + .a-slack-line{ margin-top:12px }
 .a-ops-card .a-ops-edit > summary{ cursor:pointer; margin-bottom:var(--ds-s2) }
-
-/* The booked-meeting song: a quiet bar, and a 16:9 player only after a tap. No fill, no accent. */
-.a-booking-song{ display:flex; flex-direction:column; gap:var(--ds-s2) }
-.a-booking-song-bar{ display:flex; align-items:center; gap:var(--ds-s3) }
-.a-booking-song-frame{ position:relative; width:100%; aspect-ratio:16/9; border-radius:var(--ds-r2); overflow:hidden; background:var(--ds-surface-2) }
-.a-booking-song-frame iframe{ position:absolute; inset:0; width:100%; height:100%; border:0 }

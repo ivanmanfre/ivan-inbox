@@ -33,7 +33,6 @@ import {
 import { Chip } from '../../ds'
 import { Mark, TenantChip, clock, isRunningWord, laneLabel, useSwipe } from './parts'
 import { lookOf } from './alertLook'
-import { BookingSong } from '../ops/BookingSong'
 import './ask.css'
 
 /**
@@ -150,7 +149,6 @@ export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = 
           <span className="a-figure-t">{time}</span>
         </span>
         {detail && <span className="a-body-t">{detail}</span>}
-        {n.family === 'booking_notice' && <BookingSong />}
       </div>
     )
   } else if (form === 'strip') {

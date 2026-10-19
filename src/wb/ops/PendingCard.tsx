@@ -23,7 +23,6 @@ import './ops.css'
 import { ConversationTakeoverCard } from './ConversationTakeoverCard'
 import { formatBookingForSlack } from './slackFormat.js'
 import { renderMrkdwn } from './slackPreview'
-import { BookingSong } from './BookingSong'
 
 // 'OUTBOUND' said what the ENGINE calls the lane, not what the card is. Ivan
 // reads these as comments, so they say Comments; `comment_reply` becomes REPLY
@@ -386,9 +385,6 @@ function StandardPendingCard({ draft, refresh, feed, held, onGateResult }: {
                 way the channel will, through the same formatter the Slack
                 sender runs; the raw text stays one tap away. */}
             <div className="a-slack-preview">{renderMrkdwn(formatBookingForSlack(body, draft.context))}</div>
-            {/* Ivan 2026-10-19: the song is for his eyes only. It sits outside the
-                preview and the draft, so it is never part of what the channel gets. */}
-            <BookingSong />
             <details className="a-ops-edit">
               <summary className="a-meta">Edit the text</summary>
               <Textarea
