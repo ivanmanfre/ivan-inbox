@@ -22,6 +22,7 @@
    ========================================================================== */
 import { supabase } from '../../../lib/supabase'
 import type { GovernorRow } from '../../../lib/kpis'
+import type { CcPayload } from '../../../lib/campaignControl'
 import type { Seat } from '../../seats'
 
 export type ReadyLane = { seat: Seat; lane: string; label: string; n: number; capped: boolean; campaignId: string | null; off: string | null; candidate?: boolean }
@@ -230,4 +231,18 @@ export function readyOf(r: ReadyRead, seat: Seat, gov?: GovernorRow | null): Rea
     seat === 'ivan' && l.lane === 'cold' && !l.off && gov && gov.mode !== 'normal' ? { ...l, off: gov.mode === 'warm_only' ? 'warm only this week' : 'cold paused' } : l)
     .sort((a, b) => Number(Boolean(a.off)) - Number(Boolean(b.off)) || b.n - a.n)
   return { total: lanes.filter(l => !l.off && !l.candidate).reduce((a, l) => a + l.n, 0), lanes }
+}
+
+/* SwishDM's ready stock (2026-10-19). Its sender (n8n liq2eF9e3mSC1am7, invite.js) picks approved,
+   unsent connection-note drafts, not a prospect stage, so glance/ready.ts (a prospect-stage mirror of
+   the Ivan/Rise/Arch pickers) has no SwishDM lane and read 0 whatever the queue held. The send monitor
+   replays that picker row by row (stock.py swishdm_eligible / swishdm_reconnect_due): its noted
+   invites are the ready count; blank reconnects after an InMail show, excluded from fresh stock like
+   the other seats' reconnects. Null while the monitor is unread or did not count the queue. */
+export function swishdmReady(p: CcPayload | null): ReadySeat | null {
+  const pools = p?.clients.find(c => c.client_id === 'swishdm')?.invitation.eligible_stock_by_pool as Record<string, unknown> | null | undefined
+  const noted = pools?.noted_invites, blank = pools?.reconnect_blank_due
+  if (typeof noted !== 'number' || typeof blank !== 'number') return null
+  const lane = (l: string, label: string, n: number, off: string | null): ReadyLane => ({ seat: 'swishdm', lane: l, label, n, capped: false, campaignId: null, off })
+  return { total: noted, lanes: [lane('noted', 'Approved invites', noted, null), lane('reconnect', 'InMail reconnect', blank, 'Previously contacted; excluded from fresh stock')] }
 }

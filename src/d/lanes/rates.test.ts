@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { CcPayload } from '../../lib/campaignControl'
 import type { CampaignPerf } from '../../lib/campaignPerf'
 import { parseOpen, DEFAULT_OPEN } from './prefs'
-import { acceptByCampaign, acceptByLane, acceptOf, rate, replyByLane, seatAccept } from './rates'
+import { acceptByCampaign, acceptByLane, acceptOf, rate, replyByLane, seatAccept, windowThroughToday } from './rates'
 
 const row = (client_id: string, channel: string, source_lane: string, interval: string, sent: number, ac: object | null, rc: object | null = null) =>
   ({ client_id, channel, source_lane, interval, sent, acceptance_cohort: ac, reply_cohort: rc })
@@ -64,5 +64,28 @@ describe('Lanes remembered sections', () => {
     expect(parseOpen('{"log":true,"perf":true}')).toMatchObject({ log: true, problems: false })
     expect(parseOpen('{"log":true,"perf":true}')).not.toHaveProperty('perf')
     expect(parseOpen('not json')).toEqual(DEFAULT_OPEN)
+  })
+})
+
+describe('window through today (SwishDM 2026-10-19: 24 invites today, 0 in the completed 7 days)', () => {
+  // The live operator snapshot 56391389 (17:00Z), SwishDM's __all__ rows, trimmed.
+  const sw = { ranges: { rows: [
+    { ...row('swishdm', 'invitation', '__all__', '7d', 0, { invited: 0, accepted_within_72h: 0, matured_denominator: 0, rate_pct: null }), failed: 0 },
+    { ...row('swishdm', 'invitation', '__all__', 'today', 24, { invited: 24, accepted_within_72h: 1, matured_denominator: 0, rate_pct: null }), failed: 0 },
+    row('swishdm', 'dm', '__all__', '7d', 0, null, { first_messaged: 0, replied_within_72h: 0, matured_denominator: null }),
+    row('swishdm', 'dm', '__all__', 'today', 1, null, { first_messaged: 1, replied_within_72h: 0, matured_denominator: null }),
+  ] } } as unknown as CcPayload
+
+  it('adds the disjoint today row to the completed window', () => {
+    expect(windowThroughToday(sw, 'swishdm', '7d')).toEqual({
+      inv: 24, invFailed: 0,
+      accept: { hit: 1, base: 24, young: 24, pct: 4.2 },
+      reply: { hit: 0, base: 1, pct: 0 },
+    })
+  })
+
+  it('a missing today row is unknown, never a half sum', () => {
+    expect(windowThroughToday(p, 'ivan', '7d')).toBeNull()
+    expect(windowThroughToday(null, 'swishdm', '7d')).toBeNull()
   })
 })

@@ -19,7 +19,7 @@ import { ackId, useAck } from '../ack'
 import { Btn } from '../../ui/Key'
 import { LogSheet } from '../LogSheet'
 import { Inline } from '../LSheet'
-import { clientOf, controlOf, type Range } from '../model'
+import { clientOf, controlOf, incidentLine, type Range } from '../model'
 import { PerfDetail } from '../Performance'
 import { useOpenSections } from '../prefs'
 import { ProblemsSheet } from '../ProblemsSheet'
@@ -28,6 +28,7 @@ import { ControlCell, TodayCell } from '../seatCells'
 import { supplyOf } from '../supply'
 
 const noop = () => {}
+
 
 export function SeatView4({ seat, ctx, range, setRange, onCustom, retry }: { seat: Seat; ctx: BandCtx; range: Range; setRange: (r: Range) => void; onCustom: () => void; retry: () => void }) {
   const [open, toggle] = useOpenSections()
@@ -46,7 +47,7 @@ export function SeatView4({ seat, ctx, range, setRange, onCustom, retry }: { sea
   )
   return (
     <div className="dl4-seat" data-seat={seat}>
-      {v?.incident && <div className="dl4-incident" data-bx-block><div><b>{v.incident.lead}</b><p>{v.incident.observed_failures ?? '?'} refusals, {v.incident.observed_distinct_prospects ?? '?'} people. Paused until {v.incident.pausedUntil ?? 'not set'}.{acked && ' Acknowledged, not recovered.'}</p></div><Btn verb="acknowledge" disabled={acked} onClick={ack}>{acked ? 'Acknowledged' : 'Acknowledge'}</Btn></div>}
+      {v?.incident && <div className="dl4-incident" data-bx-block><div><b>{v.incident.lead}</b><p>{incidentLine(v.incident)}{acked && ' Acknowledged, not recovered.'}</p></div><Btn verb="acknowledge" disabled={acked} onClick={ack}>{acked ? 'Acknowledged' : 'Acknowledge'}</Btn></div>}
       <div className="dl4-filter"><b>{SEAT_NAME[seat]}</b><Segmented markerId="dl4-range" label="Window for the totals" value={range} options={['7d','30d','90d','custom'].map(r => ({ id:r, label:r === 'custom' ? 'Custom' : r }))} onChange={r => r === 'custom' ? onCustom() : setRange(r as Range)} /></div>
       <Numbers seat={seat} ctx={ctx} retry={retry} />
       <div className="dl4-first"><Supply seat={seat} d={ctx.d} s={s} now={ctx.now} retry={retry} /><Sending seat={seat} now={ctx.now} /></div>

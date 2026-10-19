@@ -12,7 +12,7 @@ import { readyOf } from '../../lanes/glance/ready'
 import { useHome, type HomeData } from '../reads'
 import { HomeTasks } from '../Tasks'
 import { HotNow } from '../HotNow'
-import { when, type Read } from '../model'
+import { readyRead, when, type Read } from '../model'
 import { invites, pill } from './model'
 import './home4.css'
 import { XFlag } from '../../ops/x/XFlag'
@@ -52,7 +52,7 @@ function Invites({ seat, h }: { seat: Seat; h: HomeData }) {
   </Band>
 }
 function Ready({ seat, h }: { seat: Seat; h: HomeData }) {
-  const r = slotRead(h.lanes.ready, v => readyOf(v,seat,h.lanes.gov.value?.find(g => g.client_id === seat)))
+  const r = seat === 'swishdm' ? readyRead(h.lanes, seat) : slotRead(h.lanes.ready, v => readyOf(v,seat,h.lanes.gov.value?.find(g => g.client_id === seat)))
   const lanes = 'v' in r ? r.v.lanes.filter(l => l.n > 0) : []
   const max = Math.max(1,...lanes.map(l => l.n))
   return <div className="hm4-ready-band"><Band id="ready" label="Ready" seat={seat} href={dHash('lanes',null,{seat})} r={r} retry={h.retry.lanes}>

@@ -66,6 +66,37 @@ export function seatAccept(p: CcPayload | null, seat: Seat, interval: string) {
   return acceptOf(r?.acceptance_cohort)
 }
 
+/* The headline tiles read the window's completed days PLUS today so far (2026-10-19: SwishDM's first
+   24 invites all went out today, so "Invites, 7 days" read 0 under "Invites sent today 24"). The
+   monitor's `7d` row ends at Warsaw midnight and its `today` row starts there, and both cohorts count
+   a person only in the window of their FIRST confirmed send, so the two rows are disjoint and add.
+   Null (shown "?") when either row is missing: a half sum is never shown. */
+const seatRow = (p: CcPayload, seat: Seat, ch: string, iv: string) =>
+  p.ranges.rows.find(x => x.client_id === seat && x.channel === ch && x.interval === iv && x.source_lane === '__all__')
+
+export type WindowNow = {
+  inv: number; invFailed: number | null
+  accept: { hit: number; base: number; young: number; pct: number | null }
+  reply: { hit: number; base: number; pct: number | null }
+}
+export function windowThroughToday(p: CcPayload | null, seat: Seat, range: Range): WindowNow | null {
+  if (!p) return null
+  const w = seatRow(p, seat, 'invitation', range), t = seatRow(p, seat, 'invitation', 'today')
+  const wd = seatRow(p, seat, 'dm', range), td = seatRow(p, seat, 'dm', 'today')
+  if (!w || !t || !wd || !td) return null
+  const aw = acceptOf(w.acceptance_cohort), at = acceptOf(t.acceptance_cohort)
+  if (!aw || !at) return null
+  const ahit = aw.hit + at.hit, abase = aw.base + at.base
+  const rhit = (wd.reply_cohort?.replied_within_72h ?? 0) + (td.reply_cohort?.replied_within_72h ?? 0)
+  const rbase = (wd.reply_cohort?.first_messaged ?? 0) + (td.reply_cohort?.first_messaged ?? 0)
+  return {
+    inv: w.sent + t.sent,
+    invFailed: w.failed != null && t.failed != null ? w.failed + t.failed : null,
+    accept: { hit: ahit, base: abase, young: aw.young + at.young, pct: rate(ahit, abase) },
+    reply: { hit: rhit, base: rbase, pct: rate(rhit, rbase) },
+  }
+}
+
 export function acceptByLane(p: CcPayload | null, seat: Seat, range: Range): Rates {
   const one = (r: CcRangeRow): RateRow => {
     const a = acceptOf(r.acceptance_cohort) ?? { hit: 0, base: 0, young: 0, pct: null }

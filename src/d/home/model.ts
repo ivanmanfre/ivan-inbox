@@ -13,7 +13,7 @@ import type { Seat } from '../seats'
 import { clientOf, controlOf, dm, hm, todayOf } from '../lanes/model'
 import type { LanesData } from '../lanes/useLanesData'
 import { limitOf } from '../lanes/glance/model'
-import { readyOf, type ReadySeat } from '../lanes/glance/ready'
+import { readyOf, swishdmReady, type ReadySeat } from '../lanes/glance/ready'
 
 export type Read<T> = { v: T; stale?: string } | { wait: true } | { fail: string }
 
@@ -27,6 +27,12 @@ export function invitesOf(d: LanesData, seat: Seat, now: number): Read<number | 
 
 export function readyRead(d: LanesData, seat: Seat): Read<ReadySeat> {
   const gov = d.gov.value?.find(x => x.client_id === seat) ?? null
+  if (seat === 'swishdm') {
+    // SwishDM's picker reads approved drafts, not a prospect stage: the monitor's replay is the count.
+    if (d.cc.value == null) return d.cc.failed ? { fail: d.cc.failed } : { wait: true }
+    const s = swishdmReady(d.cc.value)
+    return s ? { v: s } : { fail: 'The send monitor did not count the SwishDM queue' }
+  }
   return slot(d.ready, r => readyOf(r, seat, gov))
 }
 

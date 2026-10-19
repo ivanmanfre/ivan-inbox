@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { supplyOf } from './supply'
+import { swishdmReady } from './glance/ready'
+import type { CcPayload } from '../../lib/campaignControl'
 import type { LanesData } from './useLanesData'
 
 const NOW = Date.parse('2026-09-28T12:00:00Z')
@@ -41,5 +43,18 @@ describe('lead supply of one seat', () => {
   it('a pool that grows has no empty date', () => {
     const s = supplyOf(base({ ready, replacement: rows, pipeline }), 'ivan', NOW)
     expect(s.refill).toBe(500); expect(s.emptyIn).toBeNull()
+  })
+})
+
+describe('SwishDM ready = the monitor replay of its own picker', () => {
+  const cc = (pools: Record<string, unknown> | null) => ({ clients: [{ client_id: 'swishdm', invitation: { eligible_stock_by_pool: pools } }] }) as unknown as CcPayload
+  it('noted invites are ready; blank reconnects show, excluded from fresh stock', () => {
+    const r = swishdmReady(cc({ eligible: 2, noted_invites: 2, reconnect_blank_due: 1, approved_drafts_unsent: 5 }))!
+    expect(r.total).toBe(2)
+    expect(r.lanes.map(l => [l.lane, l.n, Boolean(l.off)])).toEqual([['noted', 2, false], ['reconnect', 1, true]])
+  })
+  it('an uncounted queue is unknown, never 0', () => {
+    expect(swishdmReady(cc({ reason: 'swishdm_queue_unavailable' }))).toBeNull()
+    expect(swishdmReady(null)).toBeNull()
   })
 })

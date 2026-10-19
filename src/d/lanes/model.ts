@@ -224,3 +224,19 @@ export function answerOf(p: CcPayload | null, seats: Seat[], now: number, replie
   const rep = replies ? ` Replied this week: ${seats.map(s => `${SEAT_NAME[s]} ${replies[s]?.replied ?? 0}`).join(', ')}; calls booked this week: ${seats.map(s => `${SEAT_NAME[s]} ${replies[s]?.calls ?? 0}`).join(', ')}.` : ''
   return { inv, sub: (parts.length ? parts.join('; ') + '.' : 'Every seat is sending inside its window.') + rep, alert: parts.length ? parts.join('; ') + '.' : null }
 }
+
+/* The line under an incident's lead. Refusal counts and a pause belong to a refusal incident; an
+   empty-queue incident (SwishDM 10-19: "no_eligible_prospects") carries neither, and printing them
+   read "? refusals, ? people. Paused until not set." Each fact shows only when the incident has it;
+   otherwise the monitor's next action is the line. */
+export function incidentLine(i: Pick<CcIncident, 'observed_failures' | 'observed_distinct_prospects' | 'next_action'> & { pausedUntil: string | null }): string {
+  const parts: string[] = []
+  if (i.observed_failures != null) parts.push(`${i.observed_failures} refusals${i.observed_distinct_prospects != null ? `, ${i.observed_distinct_prospects} people` : ''}.`)
+  if (i.pausedUntil) parts.push(`Paused until ${i.pausedUntil}.`)
+  else if (i.observed_failures != null) parts.push('Paused until not set.')
+  if (!parts.length) {
+    const a = i.next_action?.action
+    if (a) parts.push(`Next: ${a}.`)
+  }
+  return parts.join(' ')
+}

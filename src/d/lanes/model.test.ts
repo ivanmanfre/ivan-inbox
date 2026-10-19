@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import fixture from '../../lib/cc-fixtures/rate_limited.json'
 import { isContractError, parsePayload, type CcPayload } from '../../lib/campaignControl'
-import { answerOf, clientOf, controlOf, seatWord, seriesOf, todayOf, windowOf } from './model'
+import { answerOf, clientOf, controlOf, incidentLine, seatWord, seriesOf, todayOf, windowOf } from './model'
 import { armOf } from './reads'
 import { armsLine } from './SheetNotes'
 import { ACK_KEY, ackId, readAcks, writeAck } from './ack'
@@ -96,5 +96,16 @@ describe('lanes model formatters (PERF-SMOOTH cache)', () => {
     expect(dayKey(t, 'Asia/Tokyo')).toBe('2026-10-09')
     expect(() => dayKey(t, 'Not/AZone')).toThrow()
     expect(() => dayKey(t, 'Not/AZone')).toThrow()
+  })
+})
+
+describe('incident line (SwishDM 10-19 read "? refusals, ? people. Paused until not set.")', () => {
+  it('an empty-queue incident shows the next action, no refusal or pause words', () => {
+    expect(incidentLine({ observed_failures: null, observed_distinct_prospects: null, pausedUntil: null, next_action: { action: 'refill the lane (harvest/admission), then re-check stock' } }))
+      .toBe('Next: refill the lane (harvest/admission), then re-check stock.')
+  })
+  it('a refusal incident keeps its counts and pause', () => {
+    expect(incidentLine({ observed_failures: 3, observed_distinct_prospects: 2, pausedUntil: '17:41', next_action: null })).toBe('3 refusals, 2 people. Paused until 17:41.')
+    expect(incidentLine({ observed_failures: 3, observed_distinct_prospects: null, pausedUntil: null })).toBe('3 refusals. Paused until not set.')
   })
 })
