@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { clientOwner, type InboxMessage, type Thread } from '../../lib/inbox'
 import { normalizeDraftExplanation } from '../../lib/draftExplanation'
 import { Explain } from './Explain'
+import { DraftSignals } from './DraftSignals'
 import { SEAT_NAME, seatOf } from '../seats'
 import { warsawDm } from '../ui/time'
 
@@ -29,6 +30,7 @@ export function DraftWhy({ t, draft, edited, onRetry, v4 = false }: { t: Thread;
     <>
       <Explain messageId={draft.id} messageText={draft.message_text} editedText={edited} evidence={draft.draft_evidence}
         unavailable={draft.draft_evidence_unavailable} onRetry={onRetry} by={origin(draft)} v4={v4} />
+      <DraftSignals t={t} draft={draft} />
       {n > 0 && (
         <div className="dm-src">
           <button type="button" className="dm-src-h" aria-expanded={srcOpen} onClick={() => setSrcOpen(o => !o)}>

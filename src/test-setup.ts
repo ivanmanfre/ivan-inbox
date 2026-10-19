@@ -6,3 +6,7 @@
 if (typeof globalThis.WebSocket === 'undefined') {
   globalThis.WebSocket = class {} as unknown as typeof WebSocket
 }
+
+// Draft cards fetch a read-only history RPC on mount (src/lib/replyHistory.ts); unit tests never hit the network.
+import { vi } from 'vitest'
+vi.mock('./lib/replyHistory', async orig => ({ ...(await orig<typeof import('./lib/replyHistory')>()), fetchReplyHistory: vi.fn(async () => null) }))

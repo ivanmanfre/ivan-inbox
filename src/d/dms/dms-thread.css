@@ -56,6 +56,8 @@
 .dm-src-g small{display:block;font:400 10.5px var(--m);letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin:4px 0 1px}
 .dm-src-r{display:flex;justify-content:space-between;gap:10px;padding:1px 0}.dm-src-r>*:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .dm-src-r span:last-child{font:400 11px var(--m);color:var(--t3);white-space:nowrap}
+.dm-test .dm-src-g{border-top:0}.dm-test-r{padding:1px 0;color:var(--t2)}.dm-test-r b{font-weight:500;color:var(--t1)}
+.dm-test-t{padding:2px 0;color:var(--t2);text-decoration:underline;text-underline-offset:2px}.dm-test-q{margin:4px 0;padding:6px 8px;border-left:2px solid var(--line);white-space:pre-wrap;color:var(--t1)}.dm-test-w{margin:2px 0;color:var(--t3)}
 .dm-referral{padding:12px;color:var(--t1)}
 .dm-referral h3{font-size:15px;margin:0 0 8px}
 .dm-referral p{margin:8px 0;line-height:1.5}
