@@ -5,6 +5,8 @@ import { dHash } from '../../route'
 import { useFrameMaybe } from '../../shell/frame'
 import { Count } from '../../ui/Count'
 import { Failed, Skeleton } from '../../ui/states'
+import type { SavedVerdict } from '../../../lib/verdicts'
+import { BestPosts, DirectionView, NicheIdeas, RecentDecisions, useDirection, usePostAudience } from '../ContentBrain'
 import { LANES, LANE_NAME, type Lane } from '../model'
 import { Seg, SeatAv } from '../v2/ui'
 import { BrainStrip, IdeaStockPopover } from './BrainStrip'
@@ -20,8 +22,8 @@ import './plan2.css'
 // Weeks is the desktop default (PlanWeeks, with the hover card); List is the desktop option and the phone's only
 // view. A card or "Why, in full" opens PlanPanel (the seven questions; its Move day is the tab's one write, and a
 // move re-reads the plan with the panel kept open). Closing it puts focus back on the card that opened it.
-// BrainStrip (Task 9) sits between the warnings and the view. A client seat's "Out of ideas" chip opens the idea stock
-// popover under the warnings (Ivan keeps the text only: his ideas carry no topic).
+// The plan leads; the full brain strip and performance sections sit in a named disclosure after it.
+// A client seat's "Out of ideas" chip opens the idea stock popover under the warnings.
 
 type View = 'weeks' | 'list'
 const VIEW_KEY = 'pl2-view'
@@ -88,7 +90,24 @@ function Warnings({ rows, lane, items, still, stock, stockOpen, onStock }: { row
   </ul>
 }
 
-export function PlanV2({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => void }) {
+function PlanDirection({ lane, weeklyTarget }: { lane: Lane; weeklyTarget?: number | null }) {
+  return <div className="pl2-direction"><DirectionView lane={lane} st={useDirection(lane)} weeklyTarget={weeklyTarget} /></div>
+}
+
+function PlanInsights({ lane, read, failed, verdicts, onIdeaStock, onChanged }: { lane: Lane; read: PlanRead | null; failed: boolean; verdicts: Map<string, SavedVerdict>; onIdeaStock: () => void; onChanged: () => void }) {
+  const own = usePostAudience(lane)
+  return <div className="pl2-insights-body">
+    {read ? <BrainStrip key={`strip:${read.account}`} strip={read.brain_strip} acct={lane} today={read.today} onIdeaStock={onIdeaStock} onChanged={onChanged} />
+      : <p className="pl2-insights-unavailable">{failed ? <>Plan rules, forecasts and results could not load. <button type="button" onClick={onChanged}>Retry plan insights</button></> : 'Reading plan rules, forecasts and results…'}</p>}
+    <div className="cv2-brain-old">
+      <NicheIdeas lane={lane} />
+      <BestPosts lane={lane} own={own} />
+      <RecentDecisions lane={lane} verdicts={verdicts} />
+    </div>
+  </div>
+}
+
+export function PlanV2({ lane, setLane, verdicts, showInsights = false }: { lane: Lane; setLane: (l: Lane) => void; verdicts?: Map<string, SavedVerdict>; showInsights?: boolean }) {
   const f = useFrameMaybe()
   const phone = f?.layout === 'phone'
   const level = useMotionLevel()
@@ -100,6 +119,7 @@ export function PlanV2({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => vo
   const [now] = useState(() => new Date())
   const opener = useRef<string | null>(null)
   const [stockOpen, setStockOpen] = useState(false)
+  const [insightsOpen, setInsightsOpen] = useState(showInsights)
   const stockTrigger = useRef<HTMLElement | null>(null)
   const retry = useCallback(() => setTick(t => t + 1), [])
   const openItem = useCallback((it: PlanItem) => { opener.current = it.key; setOpen(it) }, [])
@@ -117,6 +137,7 @@ export function PlanV2({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => vo
   }, [])
   // A seat switch closes the panel; a re-read (Retry, a move) keeps it open on the fresh data.
   useEffect(() => { setOpen(null); opener.current = null; setStockOpen(false); stockTrigger.current = null }, [lane])
+  useEffect(() => { if (showInsights) setInsightsOpen(true) }, [showInsights])
   // The panel closed: focus goes back to the card (or row) that opened it. Its hover card stays shut (the hover
   // hook is quiet until the pointer moves or a Tab / arrow key moves on).
   useEffect(() => {
@@ -164,6 +185,7 @@ export function PlanV2({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => vo
       {!phone && <Seg label="View" size="sm" value={view} onChange={setView} verb="plan-view" options={[{ id: 'weeks', label: 'Weeks' }, { id: 'list', label: 'List' }]} />}
       {late && <span className="pl2-late">{late}</span>}
     </div>
+    {r && <PlanDirection lane={lane} weeklyTarget={r.state === 'awaiting_cadence' ? null : r.target} />}
     {error ? <Failed what="the plan" detail={error} onRetry={retry} />
       : !r || !answer ? <Skeleton lines={6} label="Reading the plan" />
         : r.state === 'awaiting_cadence' ? <section className="pl2-ans" aria-label="SwishDM plan setup">
@@ -176,22 +198,26 @@ export function PlanV2({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => vo
         </section>
         : <>
           <div className="pl2-ans">
-            <h2 aria-label={answer.title}>
+            <h2 aria-label={answer.need > 0 ? answer.title : 'No planned posts need approval'}>
               {answer.need > 0
                 ? <><span className="pl2-need"><Count value={answer.need} /></span> {answer.need > 1 ? 'planned posts wait' : 'planned post waits'} for your OK</>
-                : answer.title}
+                : 'No planned posts need approval'}
             </h2>
             {answer.parts.length > 0 && <p className="pl2-parts">{answer.parts.join(' · ')}</p>}
           </div>
           <Waiting key={`wait:${r.account}`} items={waiting} onOpen={openItem} />
+          <a className="pl2-review-link" href={dHash('content', 'now', { lane })}>Open Review for all drafts →</a>
           {(warnings.length > 0 || stockOpen) && <div className="pl2-warnw">
             {warnings.length > 0 && <Warnings key={`warn:${r.account}`} rows={warnings} lane={lane} items={all} still={level === 'off'}
               stock={lane !== 'ivan' && hasStock} stockOpen={stockOpen} onStock={toggleStock} />}
             {stockOpen && <IdeaStockPopover strip={r.brain_strip} onClose={closeStock} />}
           </div>}
-          <BrainStrip key={`strip:${r.account}`} strip={r.brain_strip} acct={lane} today={r.today} onIdeaStock={() => toggleStock(null)} onChanged={retry} />
           {body}
           {shown && <PlanPanel key={shown.key} item={shown} read={r} lane={lane} onClose={closePanel} onChanged={retry} />}
         </>}
+    <section className="pl2-insights" aria-label="Content Brain insights">
+      <button type="button" className="pl2-insights-toggle" aria-expanded={insightsOpen} aria-controls="pl2-insights-body" onClick={() => setInsightsOpen(x => !x)}>Content Brain insights <span aria-hidden="true">{insightsOpen ? '⌃' : '⌄'}</span></button>
+      {insightsOpen && <div id="pl2-insights-body"><PlanInsights key={lane} lane={lane} read={r} failed={!!error} verdicts={verdicts ?? new Map()} onIdeaStock={() => toggleStock(null)} onChanged={retry} /></div>}
+    </section>
   </div>
 }

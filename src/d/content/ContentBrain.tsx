@@ -256,9 +256,10 @@ const AIM_ORDER = ['reach', 'trust', 'buyers']
 export type DirectionWords = { main: string; aim: string | null; weekly: number | null }
 
 /** Pure: the direction's weekly policy in plain words. `weekly` = weekly_total (the Brain's dated target reads it). */
-export function directionWords(policy: Record<string, unknown> | null | undefined): DirectionWords {
+export function directionWords(policy: Record<string, unknown> | null | undefined, weeklyTarget?: number | null): DirectionWords {
   const p = policy ?? null
-  const weekly = typeof p?.weekly_total === 'number' && p.weekly_total > 0 ? p.weekly_total : null
+  const adopted = typeof p?.weekly_total === 'number' && p.weekly_total > 0 ? p.weekly_total : null
+  const weekly = weeklyTarget === undefined ? adopted : typeof weeklyTarget === 'number' && Number.isFinite(weeklyTarget) && weeklyTarget > 0 ? weeklyTarget : null
   const values = p && typeof p.allocation === 'object' && p.allocation ? (p.allocation as { values?: Record<string, unknown> }).values ?? null : null
   const parts: [string, number][] = []
   for (const [k, v] of Object.entries(values ?? {})) {
@@ -268,7 +269,9 @@ export function directionWords(policy: Record<string, unknown> | null | undefine
     if (at >= 0) parts[at][1] += v; else parts.push([w, v])
   }
   parts.sort((a, b) => (AIM_ORDER.indexOf(a[0]) + 1 || 9) - (AIM_ORDER.indexOf(b[0]) + 1 || 9))
-  const mix = parts.map(([w, v]) => `${v} for ${w}`).join(', ')
+  // The planner's current target may supersede an older direction. Keep that old mix as history;
+  // changing the total never invents a purpose for the additional slot.
+  const mix = weeklyTarget !== undefined && weekly !== adopted ? '' : parts.map(([w, v]) => `${v} for ${w}`).join(', ')
   const main = weekly != null ? `${weekly} post${weekly === 1 ? '' : 's'} a week${mix ? `: ${mix}` : ''}` : mix ? `Each week: ${mix}` : 'No weekly count set.'
   const objective = typeof p?.objective === 'string' && p.objective.trim() ? p.objective.trim().replace(/\s*[—–]\s*/g, ', ') : null
   // SwishDM's mix is a planning draft (weekly_policy.status), not adopted yet: say so on the quiet line.
@@ -305,10 +308,10 @@ export function DirectionLine({ lane }: { lane: Lane }) {
   return <DirectionView lane={lane} st={useDirection(lane)} />
 }
 
-export function DirectionView({ lane, st }: { lane: Lane; st: DirectionState }) {
+export function DirectionView({ lane, st, weeklyTarget }: { lane: Lane; st: DirectionState; weeklyTarget?: number | null }) {
   const [edit, setEdit] = useState(false)
   const { d, err } = st
-  const words = d?.status === 'active' ? directionWords(policyOf(st)) : null
+  const words = d?.status === 'active' ? directionWords(policyOf(st), weeklyTarget) : null
   const main = !d ? (err ? 'Direction could not be read.' : 'Reading direction…') : words ? words.main : 'No direction set yet.'
   return (
     <div className="cb-dir" data-direction>
@@ -328,14 +331,8 @@ export function DirectionView({ lane, st }: { lane: Lane; st: DirectionState }) 
 // WHAT'S WORKING IN YOUR NICHE (Ivan 2026-10-15 on the old "Next post ideas": "are these outliers? ...
 // separated by purpose? for ivan i dont see any poland topics ... it shows more of the famous ppl so idk if
 // its fair to say they are outliers", and "when i open all sources it opens top outliers which is a weird
-// separated section"). One list with the Outliers page: the fit-checked picks of cb22_inputs come first, in
-// its order (saved, recommended, the fit judge, then lift; failed post checks already dropped), each with its
-// purpose and one line of why it fits. The rest of the last 21 days fill in after them, ranked by lift WITHIN
-// their platform (a 300x X post from a famous account and a 6x LinkedIn post are both the top of their own
-// list), one post per author, X never more than half the list, so famous X accounts cannot fill it. Those
-// rows say plainly that their fit is not confirmed (cb22 returns at most 5 picks and does not say which of
-// the others were judged). Every post sits in the fold under it, the same reader the Outliers page folds;
-// nothing jumps to another page.
+// separated section"). Recommendations come only from current cb22 picks with the established fit bar,
+// purpose and a post-specific reason. The complete Outliers catalogue remains in the fold as research.
 const NICHE_DAYS = 21
 const NICHE_FIRST = 4
 const NICHE_MAX = 12
@@ -350,8 +347,6 @@ export type NicheRow = {
   picked: boolean
   fit: number | null; purpose: string | null; why: string | null; state: InputsState
 }
-
-const cleanText = (t: string) => t.replace(/(https?:\/\/\S+|@\w+|#\w+)/g, '').replace(/\s+/g, ' ').trim()
 
 /** The fit judge's reason, cut to its first clause: one plain line, never a paragraph. */
 export function shortReason(reason: string | null | undefined, max = 120): string | null {
@@ -370,58 +365,19 @@ export function firstLine(text: string, max = 160): string {
   return h.length > max ? `${h.slice(0, max).replace(/\s+\S*$/, '')}…` : h
 }
 
-/** Lift ranked within each platform: the top of each platform's own list scores 1, its bottom near 0. */
-export function platformRanked<T extends { platform: string; lift: number | null }>(rows: readonly T[]): T[] {
-  const by = new Map<string, T[]>()
-  for (const r of rows) by.set(r.platform, [...(by.get(r.platform) ?? []), r])
-  const scored: { r: T; pct: number; lift: number }[] = []
-  for (const list of by.values()) {
-    const sorted = [...list].sort((a, b) => (Number(b.lift) || 0) - (Number(a.lift) || 0))
-    sorted.forEach((r, i) => scored.push({ r, pct: (sorted.length - i) / sorted.length, lift: Number(r.lift) || 0 }))
-  }
-  const plat = (p: string) => (p === 'linkedin' ? 0 : 1)
-  return scored.sort((a, b) => b.pct - a.pct || plat(a.r.platform) - plat(b.r.platform) || b.lift - a.lift).map(x => x.r)
-}
-
-/**
- * The fit-checked picks first (never dropped), then the ranked fill, X never more than half of any prefix
- * of the list (ceil): famous X accounts cannot crowd it. X still fills once no LinkedIn post is left.
- */
-export function capX<T extends { platform: string }>(picks: readonly T[], ranked: readonly T[], max: number): T[] {
-  const out = picks.slice(0, max)
-  let x = out.filter(r => r.platform === 'x').length
-  const rest = [...ranked]
-  while (out.length < max && rest.length) {
-    const room = x + 1 <= Math.ceil((out.length + 1) / 2)
-    let i = rest.findIndex(r => r.platform !== 'x' || room)
-    if (i < 0) i = 0
-    const [r] = rest.splice(i, 1)
-    out.push(r)
-    if (r.platform === 'x') x++
-  }
-  return out
-}
-
-/** Pure: the niche list (cb22 picks + the platform-balanced fill), at most `max` rows. */
-export function nicheList(top: readonly InputsOutlier[], pool: readonly OutlierRow[], now: number, max = NICHE_MAX): NicheRow[] {
-  const picks: NicheRow[] = top.map(o => ({
+/** Pure: recommend only current, fit-checked cb22 picks. The raw pool remains available separately. */
+export function nicheList(top: readonly InputsOutlier[], now: number, max = NICHE_MAX): NicheRow[] {
+  const since = now - NICHE_DAYS * DAY_MS
+  return top.filter(o => {
+    const at = o.published_at ? Date.parse(o.published_at) : NaN
+    if (o.fit === null || !Number.isFinite(o.fit) || o.fit < 7 || !o.purpose || !Object.hasOwn(PURPOSE_WORD, o.purpose) || !shortReason(o.reason)
+      || o.state === 'decided' || !Number.isFinite(at) || at < since || at > now) return false
+    return true
+  }).slice(0, max).map(o => ({
     key: `${o.platform}:${o.post_id}`, platform: o.platform, post_id: o.post_id, author: o.author, url: o.url, text: o.text,
     published_at: o.published_at, lift: o.lift, likes: o.likes ?? o.likes_line ?? null, picked: true,
-    fit: o.fit, purpose: o.purpose && o.purpose !== 'none' ? o.purpose : null, why: shortReason(o.reason), state: o.state,
+    fit: o.fit, purpose: o.purpose, why: shortReason(o.reason), state: o.state,
   }))
-  const seen = new Set(picks.map(r => r.key))
-  const since = now - NICHE_DAYS * DAY_MS
-  const fill: NicheRow[] = pool
-    .filter(r => !r.idea && !seen.has(`${r.platform}:${r.post_id}`) && Date.parse(r.published_at) >= since && cleanText(r.text ?? '').length >= 60)
-    .map(r => ({
-      key: `${r.platform}:${r.post_id}`, platform: r.platform, post_id: r.post_id, author: r.author, url: r.url, text: r.text ?? '',
-      published_at: r.published_at, lift: Number.isFinite(Number(r.lift)) ? Number(r.lift) : null, likes: r.likes, picked: false,
-      fit: null, purpose: null, why: null, state: null,
-    }))
-  // One post per author in the fill (2026-10-15: two of the four were the same famous X account).
-  const authors = new Set(picks.map(r => r.author.toLowerCase()))
-  const ranked = platformRanked(fill).filter(r => { const k = r.author.toLowerCase(); if (authors.has(k)) return false; authors.add(k); return true })
-  return capX(picks, ranked, max)
 }
 
 const liftWords = (r: Pick<NicheRow, 'lift' | 'likes'>) => r.lift != null && Number.isFinite(r.lift) ? `${Number(r.lift.toFixed(1))}x their usual`
@@ -453,24 +409,25 @@ export function NicheIdeas({ lane, now = Date.now() }: { lane: Lane; now?: numbe
   const [poolErr, setPoolErr] = useState<string | null>(null)
   const [more, setMore] = useState(false)
   const [fold, setFold] = useState(false)
+  const [retry, setRetry] = useState<{ lane: Lane; n: number } | null>(null)
   const [used, setUsed] = useState<Record<string, string>>({})
   const { box, near } = useNear<HTMLElement>()
   useEffect(() => {
     setMore(false); setFold(false)
     if (!near || !tracked) return
     let live = true
-    setTop(seedTop?.payload?.top ?? null); setPool(seedPool?.payload?.rows ?? null); setTopErr(null); setPoolErr(null)
+    setTop(retry?.lane === lane ? null : seedTop?.payload?.top ?? null); setPool(seedPool?.payload?.rows ?? null); setTopErr(null); setPoolErr(null)
     void fetchInputs(lane).then(r => {
       if (!live) return
-      if (r.kind === 'ready') { setTop(r.data.top); writeSwr(`cb22-inputs:${lane}`, r.data) } else setTopErr(r.message)
-    }).catch(e => { if (live) setTopErr(e instanceof Error ? e.message : 'read failed') })
+      if (r.kind === 'ready') { setTop(r.data.top); writeSwr(`cb22-inputs:${lane}`, r.data) } else { setTop(null); setTopErr(r.message) }
+    }).catch(e => { if (live) { setTop(null); setTopErr(e instanceof Error ? e.message : 'read failed') } })
     void fetchOutliers(lane).then(r => {
       if (!live) return
       if (r.kind === 'ready') { setPool(r.data.rows); writeSwr(`outliers:${lane}`, r.data) } else setPoolErr(r.message)
     }).catch(e => { if (live) setPoolErr(e instanceof Error ? e.message : 'read failed') })
     return () => { live = false }
-  }, [lane, seedTop, seedPool, near, tracked])
-  const list = useMemo(() => nicheList(top ?? [], pool ?? [], now), [top, pool, now])
+  }, [lane, seedTop, seedPool, near, tracked, retry])
+  const list = useMemo(() => nicheList(top ?? [], now), [top, now])
   const shown = more ? list : list.slice(0, NICHE_FIRST)
   const save = useCallback(async (r: NicheRow) => {
     setUsed(u => ({ ...u, [r.key]: 'busy' }))
@@ -478,18 +435,16 @@ export function NicheIdeas({ lane, now = Date.now() }: { lane: Lane; now?: numbe
     if (res.ok) { setUsed(u => ({ ...u, [r.key]: 'done' })); toast.show({ message: lane === 'ivan' ? 'Saved to Ideas.' : `Saved to ${OWNER[lane]}’s Ideas.`, sub: 'Nothing is scheduled or sent.' }) }
     else setUsed(u => ({ ...u, [r.key]: res.message }))
   }, [lane, toast])
-  const reading = tracked && (top === null && !topErr) && (pool === null && !poolErr)
-  const failed = tracked && !reading && top === null && pool === null
+  const reading = tracked && top === null && !topErr
   const ideasHref = dHash('content', 'ideas', lane === 'ivan' ? {} : { lane })
   return (
     <section ref={box} className="cb-sec" aria-label="What’s working in your niche" data-niche>
-      <h2 className="cb-h"><b>What’s working in your niche</b><span>posts that beat their author’s usual, best fit first</span></h2>
+      <h2 className="cb-h"><b>What’s working in your niche</b><span>recent posts with confirmed fit for this account</span></h2>
       {!tracked ? <p className="cb-empty">No niche posts tracked for {LANE_NAME[lane]} yet.</p>
         : reading ? <Skeleton lines={3} title={false} label="Reading niche posts" />
-          : failed ? <Failed what="the niche posts" detail={topErr ?? poolErr ?? 'read failed'} />
-            : list.length === 0 ? <p className="cb-empty">No niche posts this week.</p>
+          : topErr ? <Failed what="the fit picks" detail={topErr} onRetry={() => setRetry(r => ({ lane, n: r?.lane === lane ? r.n + 1 : 1 }))} />
+            : list.length === 0 ? <p className="cb-empty">No verified niche picks in the last 21 days. Browse tracked sources below for research.</p>
               : <>
-                {topErr && <p className="cb-note" role="status">Could not read the fit picks, so every post below is unconfirmed.</p>}
                 <ol className="cb-ideas">{shown.map(r => {
                   const st = used[r.key]
                   const purpose = r.purpose ? PURPOSE_WORD[r.purpose] ?? null : null
@@ -498,8 +453,7 @@ export function NicheIdeas({ lane, now = Date.now() }: { lane: Lane; now?: numbe
                     <div className="cb-lbl">{PLAT_WORD[r.platform]}<span>{r.author}{r.published_at ? ` · ${dayLabel(r.published_at.slice(0, 10))}` : ''}</span>{purpose && <i className="cb-ptag">{purpose}</i>}</div>
                     {lift && <p className="cb-res">{lift}</p>}
                     <p className="cb-idea-t">{firstLine(r.text)}</p>
-                    {r.why ? <p className="cb-fitwhy">{r.why}</p>
-                      : <p className="cb-fitq">{r.picked ? 'Not checked for fit yet' : 'Fit not confirmed'}</p>}
+                    <p className="cb-fitwhy">{r.why}</p>
                     <div className="cb-acts">
                       {r.url && <a className="cb-link" href={r.url} target="_blank" rel="noreferrer">Open ↗</a>}
                       {r.state === 'in_review' || st === 'done' ? <a className="cb-link" href={ideasHref} data-verb="brain-open-idea">In Ideas →</a>
@@ -513,12 +467,14 @@ export function NicheIdeas({ lane, now = Date.now() }: { lane: Lane; now?: numbe
               </>}
       {tracked && pool && pool.length > 0 && (
         <details className="cb-fold" data-niche-fold open={fold} onToggle={e => setFold((e.currentTarget as HTMLDetailsElement).open)}>
-          <summary data-verb="brain-every-post">Every niche post ({pool.length.toLocaleString('en-US')})</summary>
+          <summary data-verb="brain-every-post">Tracked sources ({pool.length.toLocaleString('en-US')})</summary>
           {fold && <div className="cn-legacy app wb ds-shell wb-work" data-wblane={lane}>
+            <p className="cb-note">Research sources. Lift alone does not confirm fit for this account.</p>
             <ConfirmProvider><Suspense fallback={<Skeleton lines={5} label="Reading every niche post" />}><OutliersView key={lane} lane={lane} humanLabels /></Suspense></ConfirmProvider>
           </div>}
         </details>
       )}
+      {tracked && poolErr && !pool && <Failed what="the tracked sources" detail={poolErr} onRetry={() => setRetry(r => ({ lane, n: r?.lane === lane ? r.n + 1 : 1 }))} />}
     </section>
   )
 }

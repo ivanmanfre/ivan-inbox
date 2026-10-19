@@ -28,9 +28,9 @@ const emptyRead = (): PlanRead => ({
   done: [], warnings: [], last_run: null, brain_strip: { rules: [] } as unknown as PlanRead['brain_strip'],
 })
 
-function Harness({ start }: { start: Lane }) {
+function Harness({ start, showInsights = false }: { start: Lane; showInsights?: boolean }) {
   const [lane, setLane] = useState<Lane>(start)
-  return <PlanV2 lane={lane} setLane={setLane} />
+  return <PlanV2 lane={lane} setLane={setLane} showInsights={showInsights} />
 }
 
 const consoleErr = vi.spyOn(console, 'error')
@@ -92,6 +92,20 @@ describe('PlanV2', () => {
     expect(document.body.textContent).not.toContain(ivanTitle)
   })
 
+  it('resets account-local insight state when switching seats before the next plan arrives', async () => {
+    const next = deferred<PlanRead>()
+    api.fetchPlan.mockImplementation((lane: Lane) => lane === 'ivan' ? Promise.resolve(ivan()) : next.promise)
+    renderInFrame(<Harness start="ivan" showInsights />)
+    await waitFor(() => expect(document.querySelector('.pl2-ans')).toBeTruthy())
+    const first = document.querySelector('[data-niche]')!
+    expect(first).toBeTruthy()
+    fireEvent.click(screen.getByRole('tab', { name: 'Rise' }))
+    const second = document.querySelector('[data-niche]')!
+    expect(second).toBeTruthy()
+    expect(second).not.toBe(first)
+    await act(async () => { next.resolve(rise()) })
+  })
+
   it('a failed read says so with Retry', async () => {
     api.fetchPlan.mockRejectedValueOnce(new Error('timeout')).mockResolvedValue(rise())
     renderInFrame(<Harness start="risedtc" />)
@@ -101,10 +115,26 @@ describe('PlanV2', () => {
     expect(api.fetchPlan).toHaveBeenCalledTimes(2)
   })
 
-  it('an empty read says nothing waits and never shows NaN or undefined', async () => {
+  it('keeps independent Brain insights available when the plan read fails, then restores the strip on Retry', async () => {
+    api.fetchPlan.mockRejectedValueOnce(new Error('timeout')).mockResolvedValue(rise())
+    renderInFrame(<Harness start="risedtc" showInsights />)
+    expect(await screen.findByText('Could not read the plan.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Content Brain insights/ }).getAttribute('aria-expanded')).toBe('true')
+    expect(document.querySelector('.pl2-insights [data-niche]')).toBeTruthy()
+    expect(document.querySelector('.pl2-insights [data-best-posts]')).toBeTruthy()
+    expect(document.querySelector('.pl2-insights [aria-label="Your recent decisions"]')).toBeTruthy()
+    expect(document.querySelector('.pl2-strip')).toBeNull()
+    expect(screen.getByText(/Plan rules, forecasts and results could not load/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry plan insights' }))
+    expect(await screen.findByRole('heading', { name: '3 planned posts wait for your OK' })).toBeTruthy()
+    expect(document.querySelector('.pl2-insights .pl2-strip')).toBeTruthy()
+  })
+
+  it('an empty read scopes the zero-review headline to planned posts', async () => {
     api.fetchPlan.mockResolvedValue(emptyRead())
     renderInFrame(<Harness start="arch" />)
-    expect(await screen.findByRole('heading', { name: 'Nothing waits for you' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'No planned posts need approval' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: /Open Review/ }).getAttribute('href')).toBe('#exp/d/content/now?lane=arch')
     expect(document.body.textContent).not.toMatch(/NaN|undefined|null/)
   })
 
@@ -302,19 +332,36 @@ describe('PlanV2', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
-  it('shows the brain strip under the warnings; a plan whose brain data failed still reads, with no strip', async () => {
+  it('keeps the full brain strip after the plan; a failed brain read leaves the plan readable', async () => {
     api.fetchPlan.mockResolvedValue(FX.risedtc())
     renderInFrame(<Harness start="risedtc" />)
     await screen.findByRole('heading', { level: 2 })
-    expect(document.querySelector('.pl2-warnw + .pl2-stripw')).toBeTruthy()
+    expect(document.querySelector('.pl2-wks + .pl2-insights')).toBeTruthy()
+    fireEvent.click(screen.getByText('Content Brain insights'))
+    expect(document.querySelector('.pl2-insights .pl2-stripw')).toBeTruthy()
+    expect(document.querySelector('.pl2-insights [data-niche]')).toBeTruthy()
+    expect(document.querySelector('.pl2-insights [data-best-posts]')).toBeTruthy()
+    expect(document.querySelector('.pl2-insights [aria-label="Your recent decisions"]')).toBeTruthy()
     expect(screen.getByText('What moves views')).toBeTruthy()
     cleanup()
     const broke = FX.arch(); broke.brain_strip = null; broke.brain_error = 'canceling statement due to statement timeout'
     api.fetchPlan.mockResolvedValue(broke)
     renderInFrame(<Harness start="arch" />)
     await screen.findByRole('heading', { level: 2 })
+    fireEvent.click(screen.getByText('Content Brain insights'))
     expect(document.querySelector('.pl2-strip')).toBeNull()
     expect(document.body.textContent).not.toMatch(/NaN|undefined/)
+  })
+
+  it('opens insights for an old daily Brain link and keeps the stock action working', async () => {
+    api.fetchPlan.mockResolvedValue(FX.risedtc())
+    renderInFrame(<Harness start="risedtc" showInsights />)
+    await screen.findByRole('heading', { name: '6 planned posts wait for your OK' })
+    expect(screen.getByRole('button', { name: /Content Brain insights/ }).getAttribute('aria-expanded')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Ideas in stock' }))
+    expect(screen.getByRole('dialog', { name: 'Ideas in stock' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Content Brain insights/ }))
+    expect(document.querySelector('.pl2-insights [data-niche]')).toBeNull()
   })
 
   it('a client seat\'s Out of ideas chip opens the idea stock; Escape closes it and gives focus back; a seat switch closes it', async () => {

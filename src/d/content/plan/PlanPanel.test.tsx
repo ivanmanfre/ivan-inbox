@@ -7,7 +7,8 @@ import riseFull from './fixtures/risedtc.json'
 import ivanFx from './fixtures/ivan.json'
 import archFx from './fixtures/arch.json'
 
-const api = vi.hoisted(() => ({ setScheduleDateAt: vi.fn(), moveSlotWeek: vi.fn() }))
+const api = vi.hoisted(() => ({ setScheduleDateAt: vi.fn(), moveSlotWeek: vi.fn(), fetchDraftSources: vi.fn() }))
+vi.mock('../../../lib/brainPage', async o => ({ ...await o<typeof import('../../../lib/brainPage')>(), fetchDraftSources: api.fetchDraftSources }))
 vi.mock('../../../lib/content', async o => ({ ...await o<typeof import('../../../lib/content')>(), setScheduleDateAt: api.setScheduleDateAt }))
 vi.mock('../../../lib/contentPlan', async o => ({ ...await o<typeof import('../../../lib/contentPlan')>(), moveSlotWeek: api.moveSlotWeek }))
 import { itemsOf, weekWhy, type PlanItem } from './planBrain'
@@ -36,10 +37,44 @@ beforeEach(() => {
   vi.setSystemTime(new Date('2026-10-12T10:00:00Z'))
   api.setScheduleDateAt.mockImplementation(async (_id: string, at: string) => at)
   api.moveSlotWeek.mockImplementation(async (_id: string, week: string) => ({ from_week: '2026-10-26', to_week: week }))
+  api.fetchDraftSources.mockResolvedValue(new Map())
 })
 afterEach(() => { cleanup(); vi.clearAllMocks(); vi.useRealTimers() })
 
 describe('PlanPanel: the seven questions', () => {
+  it('opens the saved original source beside the plan explanation without inventing a selection reason', async () => {
+    const r = ivan()
+    const item = byTitle(r, /60-second LinkedIn inbound/)
+    item.brain!.brief = null
+    item.evidence = []
+    item.whyNow = null
+    api.fetchDraftSources.mockResolvedValue(new Map([[item.draftId, {
+      draft_id: item.draftId, source_ref: null, slot: null, source_text: null,
+      detail: { kind: 'x_tracked_outlier', author_name: 'Kevin Jon', original_text: 'The original source passage, preserved in full.', url: 'https://x.com/thekevinjon/status/123', likes: 63, author_median: { n: 40, likes: 4.5 } },
+      x: null, linkedin: null,
+    }]]))
+    show(r, item)
+    expect(api.fetchDraftSources).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('Original source'))
+    await waitFor(() => expect(screen.getByText('The original source passage, preserved in full.')).toBeTruthy())
+    expect(api.fetchDraftSources).toHaveBeenCalledWith([item.draftId])
+    expect(screen.getByText('Kevin Jon')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Open the original ↗' }).getAttribute('href')).toBe('https://x.com/thekevinjon/status/123')
+    expect(section('Why this post').textContent).toContain('No reason saved for this post.')
+  })
+
+  it('keeps the source error actionable and retries the bounded read', async () => {
+    const r = ivan()
+    const item = byTitle(r, /60-second LinkedIn inbound/)
+    api.fetchDraftSources.mockRejectedValueOnce(new Error('Source read failed')).mockResolvedValueOnce(new Map())
+    show(r, item)
+    fireEvent.click(screen.getByText('Original source'))
+    await waitFor(() => expect(screen.getByText(/Source read failed/)).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await waitFor(() => expect(screen.getByText('Source text not stored for this draft.')).toBeTruthy())
+    expect(api.fetchDraftSources).toHaveBeenCalledTimes(2)
+  })
+
   it('a waiting post asks six questions in order; How it did is only for published posts', () => {
     const r = rise()
     show(r, byTitle(r, /If a channel can't grow/))

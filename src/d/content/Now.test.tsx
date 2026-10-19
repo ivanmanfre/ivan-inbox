@@ -34,12 +34,12 @@ describe('Content navigation', () => {
   it.each(['desktop', 'phone'] as const)('shows the generation flow and visible planning tools on %s', layout => {
     renderInFrame(<SubNav on="now" attention lane="arch" />, { layout })
     const nav = screen.getByRole('navigation', { name: 'Content places' })
-    expect([...nav.querySelectorAll('a')].map(a => a.textContent)).toEqual(['Content Brain', 'Plan', 'Calendar', 'Ideas', 'Review', 'Lead magnets'])
+    expect([...nav.querySelectorAll('a')].map(a => a.textContent)).toEqual(['Plan', 'Calendar', 'Ideas', 'Review', 'Lead magnets'])
     expect(screen.getAllByLabelText('Needs a tap').length).toBeGreaterThan(0)
     // Run 51: the planning row keeps only More; Strategy, the saved week and Outliers live there now.
     const tools = screen.getByRole('navigation', { name: 'Content planning' })
     expect([...tools.querySelectorAll('a')]).toHaveLength(0)
-    expect(nav.querySelector('a')?.getAttribute('href')).toBe('#exp/d/content/brain?lane=arch')
+    expect(nav.querySelector('a')?.getAttribute('href')).toBe('#exp/d/content/plan?lane=arch')
     fireEvent.click(screen.getByRole('button', { name: 'More in Content' }))
     expect(screen.getByRole('link', { name: /Styles/ })).toBeTruthy()
   })
@@ -51,10 +51,10 @@ describe('Content navigation', () => {
     expect(contentRedirect(old, new URLSearchParams('lane=arch&draft=x'))).toBe(want)
   })
   it('maps old tabs to primary selection and leaves canonical URLs alone', () => {
-    expect(subOf('inputs')).toBe('inputs'); expect(subOf('errors')).toBe('now'); expect(subOf(null)).toBe('calendar'); expect(subOf('planner')).toBe('calendar')
+    expect(subOf('inputs')).toBe('inputs'); expect(subOf('errors')).toBe('now'); expect(subOf(null)).toBe('plan'); expect(subOf('planner')).toBe('calendar')
     expect(contentRedirect('inputs', new URLSearchParams('lane=arch'))).toBeNull()
     expect(contentRedirect('magnets', new URLSearchParams('magnet=x'))).toBeNull()
-    expect(contentRedirect(null, new URLSearchParams('lane=arch'))).toBe('#exp/d/content/calendar?lane=arch')
+    expect(contentRedirect(null, new URLSearchParams('lane=arch'))).toBe('#exp/d/content/plan?lane=arch')
     expect(contentRedirect('now', new URLSearchParams('view=planner&draft=x&from=plan'))).toBe('#exp/d/content/calendar?draft=x')
     expect(contentRedirect('calendar', new URLSearchParams('lane=arch'))).toBeNull()
     expect(contentRedirect(null, new URLSearchParams('draft=x'))).toBe('#exp/d/content/now?draft=x')

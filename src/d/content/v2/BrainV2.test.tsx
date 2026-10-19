@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderInFrame } from '../../test-utils'
 import type { ContentDraft } from '../../../lib/content'
 import type { InputsOutlier } from '../../../lib/cb22'
@@ -14,7 +14,7 @@ const H = 3_600_000
 const DAY = 24 * H
 const iso = (ms: number) => new Date(NOW + ms).toISOString()
 
-const lib = vi.hoisted(() => ({ top: [] as unknown[], pool: [] as unknown[], posts: [] as unknown[] }))
+const lib = vi.hoisted(() => ({ top: [] as unknown[], pool: [] as unknown[], posts: [] as unknown[], inputsFailed: false }))
 vi.mock('../../../lib/editorialDirection', () => ({
   readEditorialDirection: vi.fn((_client, lane) => Promise.resolve({ status: 'active', updated_at: '2026-09-28T11:00:00Z', direction: { weekly_policy: {
     status: lane === 'swishdm' ? 'planning_draft' : 'adopted', weekly_total: lane === 'swishdm' ? 5 : 4, objective: 'Grow relevant reach', allocation: { unit: 'count', values: { buyer: 1, reach: 2, consideration: 1 } } } } })),
@@ -22,14 +22,14 @@ vi.mock('../../../lib/editorialDirection', () => ({
 vi.mock('../../../lib/reach', async orig => ({ ...(await orig<typeof import('../../../lib/reach')>()),
   fetchPostAudience: vi.fn(() => Promise.resolve({ kind: 'ready', rows: lib.posts, followers: null, readAt: iso(0) })) }))
 vi.mock('../../../lib/cb22', async orig => ({ ...(await orig<typeof import('../../../lib/cb22')>()),
-  fetchInputs: vi.fn(() => Promise.resolve({ kind: 'ready', data: { client: 'ivan', week_start: '2026-10-12', top: lib.top, buyers: [], counts: { window: 9, recommended: 1, in_review: 0, judged: 1, outliers: 9, buyers: 0 }, last_run: null, rule: '' } })) }))
+  fetchInputs: vi.fn(() => Promise.resolve(lib.inputsFailed ? { kind: 'failed', message: 'fit read failed' } : { kind: 'ready', data: { client: 'ivan', week_start: '2026-10-12', top: lib.top, buyers: [], counts: { window: 9, recommended: 1, in_review: 0, judged: 1, outliers: 9, buyers: 0 }, last_run: null, rule: '' } })) }))
 vi.mock('../../../lib/outliers', async orig => ({ ...(await orig<typeof import('../../../lib/outliers')>()),
   fetchOutliers: vi.fn(() => Promise.resolve({ kind: 'ready', data: { client: 'ivan', studies: { linkedin: null, x: null }, weeks: [], rows: lib.pool } })) }))
 vi.mock('../../../lib/brainPage', async orig => ({ ...(await orig<typeof import('../../../lib/brainPage')>()),
   fetchDecisionHistory: vi.fn(() => Promise.resolve({ rulings: [], links: new Map() })), fetchDraftSources: vi.fn(() => Promise.resolve(new Map())) }))
 
 import { BrainV2, brainHeadline } from './BrainV2'
-import { bestPosts, capX, directionWords, nicheList, platformRanked, shortReason } from '../ContentBrain'
+import { bestPosts, directionWords, nicheList, NicheIdeas, shortReason } from '../ContentBrain'
 import { buildNow, reviewCounts } from '../weekModel'
 import type { IdeaBanks } from '../Ideas'
 import type { Lane } from '../model'
@@ -47,38 +47,28 @@ const pick = (o: Partial<InputsOutlier> & { post_id: string }): InputsOutlier =>
   reason: 'Fits agency founders who sell with content; reframe so the engine does the work.', state: 'recommended', idea: null, ...o,
 })
 
-afterEach(() => { cleanup(); localStorage.clear() })
+afterEach(() => { cleanup(); localStorage.clear(); lib.top = []; lib.pool = []; lib.posts = []; lib.inputsFailed = false })
 
-describe('platform balance', () => {
-  // 19 of the top 20 by raw lift were X, 18 of them famous X accounts (audit 2026-10-15).
-  const xs = [335, 193, 97, 66, 48].map((l, i) => out({ post_id: `x${i}`, platform: 'x', lift: l }))
-  const lis = [14, 8, 5].map((l, i) => out({ post_id: `l${i}`, platform: 'linkedin', lift: l }))
-  it('ranks lift within each platform, so each platform’s best leads its share', () => {
-    const r = platformRanked([...xs, ...lis])
-    expect(r.slice(0, 2).map(x => x.post_id).sort()).toEqual(['l0', 'x0'])
-    expect(r[0].post_id).toBe('l0')
-  })
-  it('never lets X take more than half of any prefix while a LinkedIn post is left', () => {
-    const list = capX([], platformRanked([...xs, ...lis]), 12)
-    for (let k = 1; k <= 6; k++) expect(list.slice(0, k).filter(x => x.platform === 'x').length).toBeLessThanOrEqual(Math.ceil(k / 2))
-    expect(list.slice(0, 4).filter(x => x.platform === 'x')).toHaveLength(2)
-    // once LinkedIn runs out X still fills the list
-    expect(list).toHaveLength(8)
-  })
-  it('puts the fit-checked picks first, then the fill: one post per author, no saved idea, nothing older than 21 days', () => {
-    const pool = [
-      out({ post_id: 'p1', platform: 'linkedin', lift: 9 }),   // same post as the pick: shown once
-      out({ post_id: 'old', platform: 'linkedin', lift: 40, published_at: iso(-30 * DAY) }),
-      out({ post_id: 'idea', platform: 'linkedin', lift: 30, idea: { id: 'i' } }),
-      out({ post_id: 'thin', platform: 'x', lift: 99, text: 'gm @someone https://t.co/x' }),
-      out({ post_id: 'a1', platform: 'x', lift: 50, author: 'Famous' }),
-      out({ post_id: 'a2', platform: 'x', lift: 40, author: 'Famous' }),
-      out({ post_id: 'l9', platform: 'linkedin', lift: 4 }),
+describe('niche recommendations', () => {
+  it('recommends only current posts with fit 7+, a recognized purpose and a reason, including picks in review', () => {
+    const top = [
+      pick({ post_id: 'p1' }),
+      pick({ post_id: 'null', fit: null }),
+      pick({ post_id: 'low', fit: 6 }),
+      pick({ post_id: 'none', purpose: 'none' }),
+      pick({ post_id: 'unknown', purpose: 'other' }),
+      pick({ post_id: 'reasonless', reason: '  ' }),
+      pick({ post_id: 'old', published_at: iso(-22 * DAY) }),
+      pick({ post_id: 'future', published_at: iso(2 * DAY) }),
+      pick({ post_id: 'decided', state: 'decided' }),
+      pick({ post_id: 'review', state: 'in_review', idea: { id: 'idea-1' } }),
+      pick({ post_id: 'p2', author: 'Maya', fit: 8, purpose: 'buyer', reason: 'Reaches service buyers.' }),
     ]
-    const list = nicheList([pick({ post_id: 'p1' })], pool, NOW)
-    expect(list.map(r => r.post_id)).toEqual(['p1', 'l9', 'a1'])
+    const list = nicheList(top, NOW)
+    expect(list.map(r => r.post_id)).toEqual(['p1', 'review', 'p2'])
     expect(list[0]).toMatchObject({ picked: true, purpose: 'consideration', why: 'Fits agency founders who sell with content' })
-    expect(list[1]).toMatchObject({ picked: false, why: null })
+    expect(list[1]).toMatchObject({ picked: true, state: 'in_review', why: 'Fits agency founders who sell with content' })
+    expect(list[2]).toMatchObject({ picked: true, purpose: 'buyer', why: 'Reaches service buyers' })
   })
   it('cuts a fit reason to one plain line', () => {
     expect(shortReason('Passes the gate for agency founders; reframe so the engine — not the founder — does it.')).toBe('Passes the gate for agency founders')
@@ -132,7 +122,7 @@ describe('the Content Brain page', () => {
     expect(total.perLane.ivan).toBe(4)
     const { container } = renderInFrame(<BrainV2 lane="ivan" setLane={vi.fn()} read={read} verdicts={new Map()} judged={new Map()} total={total} items={items} ideas={ideas} now={NOW} reading={false} />)
     await waitFor(() => expect(screen.getByText('4 posts a week: 2 for reach, 1 for trust, 1 for buyers')).toBeTruthy())
-    await waitFor(() => expect(container.querySelectorAll('[data-niche-row]').length).toBe(3))
+    await waitFor(() => expect(container.querySelectorAll('[data-niche-row]').length).toBe(1))
     // seat tabs: names only
     expect(screen.getAllByRole('tab').map(t => t.textContent)).toEqual(['Ivan', 'Rise', 'Arch', 'SwishDM'])
     const drafts = container.querySelector('[data-verb="brain-tile-drafts"]') as HTMLElement
@@ -152,9 +142,37 @@ describe('the Content Brain page', () => {
     // the niche list is in place, with its fold; nothing jumps to the Outliers page
     expect(screen.getByText('For trust')).toBeTruthy()
     expect(screen.getByText('Fits agency founders who sell with content')).toBeTruthy()
-    expect(screen.getAllByText('Fit not confirmed')).toHaveLength(2)
-    expect(container.querySelector('[data-niche-fold] summary')?.textContent).toBe('Every niche post (2)')
+    expect(screen.queryByText('Fit not confirmed')).toBeNull()
+    expect(container.querySelector('[data-niche-fold] summary')?.textContent).toBe('Tracked sources (2)')
     expect([...container.querySelectorAll('a')].some(a => (a.getAttribute('href') ?? '').includes('content/inputs'))).toBe(false)
+  })
+
+  it('shows no recommendation when the fit read fails, keeps tracked sources available, and retries', async () => {
+    lib.top = [pick({ post_id: 'p1' })]
+    lib.pool = [out({ post_id: 'raw', platform: 'x', lift: 193 })]
+    localStorage.setItem('sb-test-auth-token', JSON.stringify({ user: { id: 'tester' } }))
+    localStorage.setItem('swr1:tester:cb22-inputs:ivan', JSON.stringify({ savedAt: iso(0), user: 'tester', payload: { top: lib.top } }))
+    lib.inputsFailed = true
+    const { container } = renderInFrame(<NicheIdeas lane="ivan" now={NOW} />)
+    await waitFor(() => expect(screen.getByText('Could not read the fit picks.')).toBeTruthy())
+    expect(container.querySelectorAll('[data-niche-row]')).toHaveLength(0)
+    expect(screen.getByText('Tracked sources (1)')).toBeTruthy()
+    lib.inputsFailed = false
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await waitFor(() => expect(container.querySelectorAll('[data-niche-row]')).toHaveLength(1))
+  })
+
+  it('keeps unrelated raw sources in research without presenting them as niche picks', async () => {
+    lib.top = [pick({ post_id: 'unjudged', fit: null, purpose: null, reason: null })]
+    lib.pool = [
+      out({ post_id: 'game', platform: 'x', lift: 193, author: 'Nick Saraev', text: 'A long post about game development and what worked for a new game release.' }),
+      out({ post_id: 'baseball', platform: 'linkedin', lift: 8, text: 'A personal baseball outing with friends and a long story about the day.' }),
+      out({ post_id: 'appointment', platform: 'linkedin', lift: 6, text: 'A new job appointment and a long account of joining the team.' }),
+    ]
+    const { container } = renderInFrame(<NicheIdeas lane="ivan" now={NOW} />)
+    await waitFor(() => expect(screen.getByText('No verified niche picks in the last 21 days. Browse tracked sources below for research.')).toBeTruthy())
+    expect(container.querySelectorAll('[data-niche-row]')).toHaveLength(0)
+    expect(screen.getByText('Tracked sources (3)')).toBeTruthy()
   })
 
   it('says plainly when SwishDM has no niche posts tracked', async () => {
