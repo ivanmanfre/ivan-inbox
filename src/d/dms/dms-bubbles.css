@@ -26,6 +26,9 @@
 .dm-b-meta i{font-style:normal;color:var(--t3);border:1px solid var(--line2);border-radius:4px;padding:0 4px;font-size:10.5px}
 .dm-b-meta i.dm-i-fail{color:var(--warn);border-color:var(--warn)}
 .dm-b.dm-h-fail .dm-b-body{border-color:rgba(232,160,143,.5)}
+/* Approved and not sent yet (waiting for an accept, queued): after every sent item, dashed and dimmed, no clock. */
+.dm-b.dm-h-pending .dm-b-body{background:transparent;border:1px dashed rgba(198,244,50,.34);opacity:.74}
+.dm-b.dm-h-pending .dm-b-meta i:first-child{font-style:italic}
 .dm-b.dm-h-email{border-left:0;padding-left:0}
 .dm-b.dm-h-email .dm-b-body{border-style:solid}
 /* the draft: our side, dashed (not sent yet), and it IS the editor */

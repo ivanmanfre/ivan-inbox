@@ -8,7 +8,7 @@ import { Linkified } from '../components/Linkified'
 import { useConfirm } from '../components/ConfirmSheet'
 import { formatReturn, returnsIn, usePushLater } from '../components/PushLaterSheet'
 import {
-  approveDraft, channelFamilies, canComposeEmail, composeReply, discardDraft, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
+  approveDraft, channelFamilies, canComposeEmail, composeReply, discardDraft, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isPendingSend, pendingSendLabel, sentThenPending, isFollowUp, isMixedChannel,
   reviewedEmailMirror, saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId, emailRowSender,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../lib/inbox'
@@ -54,6 +54,7 @@ function outLabel(m: InboxMessage, stage: string): { text: string; failed: boole
   if (m.send_blocked_at && m.send_blocked_reason !== 'discarded_in_inbox') {
     return { text: `Send failed: ${label(m.send_blocked_reason)}`, failed: true }
   }
+  if (isPendingSend(m)) return { text: pendingSendLabel(m), failed: false }
   if (m.approved_at && !m.sent_at) return { text: 'Queued', failed: false }
   // manual_mirror = the human typed it in the LinkedIn app; the sync mirrored it in.
   const manual = m.ai_model === 'manual_mirror' ? ' · typed on LinkedIn' : ''
@@ -299,9 +300,9 @@ export function ThreadScreen({ thread, onBack, refresh }: {
   }
 
   // Bubbles: everything except discarded rows and unapproved drafts (drafts live in the card).
-  const bubbles = thread.messages.filter(
+  const bubbles = sentThenPending(thread.messages.filter(
     m => m.send_blocked_reason !== 'discarded_in_inbox' && !isDraft(m) && !isInternalConfirmation(m),
-  )
+  ))
   // Judged on what is actually ON SCREEN — a pending email draft sitting in the
   // card below has not happened yet and must not relabel the conversation.
   const mixed = isMixedChannel(bubbles)
@@ -345,9 +346,10 @@ export function ThreadScreen({ thread, onBack, refresh }: {
           // Label the day the message was SENT. created_at is when we stored it, so a
           // reply backfilled the next morning was filed under TODAY despite being written
           // the day before (Ronnie Teja, 2026-07-30).
+          const pend = isPendingSend(m)
           const label = dayLabel(eventTime(m))
-          const showDay = label !== lastDay
-          lastDay = label
+          const showDay = !pend && label !== lastDay
+          if (!pend) lastDay = label
           const chan = messageChannel(m)
           if (m.direction === 'inbound') {
             return (
@@ -389,7 +391,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
                   the literal '\n---\n' left the extra newline on the next bubble
                   and rendered a phantom blank line above it (Sharon, 2026-08-17). */}
               {(m.message_text ?? '').split(/^[ \t]*-{3,}[ \t\r]*$/m).map(p => p.trim()).filter(Boolean).map((part, i) => (
-                <div key={i} className={`b out chan-b-${chan}${m.ai_model === 'manual_mirror' ? ' manual' : ''}`}>
+                <div key={i} className={`b out chan-b-${chan}${m.ai_model === 'manual_mirror' ? ' manual' : ''}${pend ? ' pending' : ''}`}>
                   {/* An email carries its recipient on its face. The DM above it went to
                       a LinkedIn chat, this one went to an address, and that is the whole
                       difference the operator is trying to see. */}

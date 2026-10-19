@@ -537,6 +537,52 @@ export function dedupeMessages(rows: InboxMessage[]): InboxMessage[] {
 // yet picked up by the sender is timed at the approval, never at the hour its draft was written.
 export const eventTime = (m: InboxMessage): string => m.sent_at ?? (m.direction === 'outbound' && m.approved_at ? m.approved_at : null) ?? m.created_at
 
+/* ==========================================================================
+   PENDING SENDS IN THE TIMELINE (Ivan 2026-10-19, SwishDM / George at BUFFS:
+   "this looks weird wtf").
+
+   A SwishDM DM1 is approved with the invite (approved_at 16:07) but only goes
+   out after the invite is accepted. eventTime() timed it at the approval, so it
+   sat ABOVE the invite (sent 16:15), wore a sent bubble and a time that was never
+   a send time. Its sent_at was a true null, not the now() column default.
+
+   THE RULE: a sent item sits in true send order; anything approved and not sent
+   (waiting for an accept, queued for the sender) renders AFTER every sent item,
+   dimmed, and carries no clock unless a real scheduled time exists. The signal is
+   the row's own fields (outbound, sent_at null, approved_at set, no block, not an
+   intentional stop), never a stage guess. Unapproved drafts are not history.
+   ========================================================================== */
+export function isPendingSend(m: Pick<InboxMessage, 'direction' | 'sent_at' | 'approved_at' | 'send_blocked_at' | 'send_blocked_reason' | 'draft_evidence'>): boolean {
+  return m.direction === 'outbound' && !m.sent_at && Boolean(m.approved_at) && !m.send_blocked_at && !isIntentionalStop(m)
+}
+
+/** The only honest clock on a pending send: the time it was scheduled for, when the row carries one. */
+export function pendingSendTime(m: Pick<InboxMessage, 'draft_evidence'>): string | null {
+  const at: unknown = m.draft_evidence?.scheduled_send?.at
+  return typeof at === 'string' && Number.isFinite(Date.parse(at)) ? at : null
+}
+
+/** The clock a timeline bubble shows: its send time; null for a pending send with no scheduled time. */
+export function shownTime(m: InboxMessage): string | null {
+  return isPendingSend(m) ? pendingSendTime(m) : eventTime(m)
+}
+
+/** Sent items in their given (send) order, then every pending send, oldest approval first. */
+export function sentThenPending<T extends InboxMessage>(rows: readonly T[]): T[] {
+  const sent = rows.filter(m => !isPendingSend(m))
+  const pending = rows.filter(isPendingSend).sort((a, b) => (a.approved_at ?? a.created_at).localeCompare(b.approved_at ?? b.created_at))
+  return [...sent, ...pending]
+}
+
+/** The line under a pending bubble: what it is waiting for. */
+export function pendingSendLabel(m: InboxMessage): string {
+  const wait = swishdmDm1Wait(m)
+  if (wait === 'Waiting for accept') return 'Sends after they accept'
+  if (wait === 'Waiting for invite') return 'Sends after the invite is accepted'
+  if (pendingSendTime(m)) return 'Scheduled, not sent yet'
+  return 'Queued, not sent yet'
+}
+
 // Ivan 2026-09-24: "'Viewed the scan' can trigger the next touch". A pending (not pushed) stall-bump
 // draft for someone who opened their scan on 2+ distinct days goes to the top; everything else keeps
 // the newest-first order, and the lift ends the moment the draft is sent, discarded or pushed.

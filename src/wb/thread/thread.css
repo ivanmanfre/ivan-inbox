@@ -134,6 +134,8 @@
   background:var(--ds-accent-soft);
   border-color:var(--ds-line);
 }
+/* Approved and not sent yet: after every sent item, dashed and dimmed. */
+[data-pending] .a-thread-box{ background:transparent; border-style:dashed; opacity:.74 }
 
 /* --------------------------------------------------------------------------
    The strip, the card and the composer: three flex-none blocks under the

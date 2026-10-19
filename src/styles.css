@@ -124,6 +124,7 @@ body{
 .b{max-width:78%;padding:10px 14px;font-size:15.5px;line-height:1.4;border-radius:20px;white-space:pre-wrap;word-break:break-word}
 .b.in{align-self:flex-start;background:var(--surface2);border-bottom-left-radius:6px}
 .b.out{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:6px}
+.b.out.pending{background:transparent;color:var(--text);border:1px dashed var(--accent);opacity:.74}
 /* The right/left modifiers are `blbl-r`/`blbl-l`, NOT `r`/`l`: the workbench
    styles `.r` as the conversation-row GRID (faithful.css §7.1), so a label
    carrying a bare `r` was laid out in that grid's 28px anchor column — which is

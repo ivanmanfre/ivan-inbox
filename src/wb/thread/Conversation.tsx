@@ -29,7 +29,7 @@ import { Linkified } from '../chrome/Linkified'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import { formatReturn, returnsIn, usePushLater } from '../../lib/pushLater'
 import {
-  approveDraft, channelFamilies, canComposeEmail, composeReply, discardLegs, draftLegs, legFailureText, holdReason, isEngineRetired, isHiddenRetired, isIntentionalStop, retiredLabel, stopLabel, swishdmDm1Wait, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
+  approveDraft, channelFamilies, canComposeEmail, composeReply, discardLegs, draftLegs, legFailureText, holdReason, isEngineRetired, isHiddenRetired, isIntentionalStop, retiredLabel, stopLabel, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isPendingSend, pendingSendLabel, sentThenPending, shownTime, isFollowUp, isMixedChannel,
   reviewedEmailMirror, saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId, emailRowSender, ladderSteps, sendFailed,
   offersReplyMyself, REPLY_MYSELF, type DiscardMode,
@@ -101,9 +101,8 @@ function outLabel(m: InboxMessage, stage: string): { text: string; failed: boole
     return { text: `Send failed: ${label(m.send_blocked_reason)}`, failed: true }
   }
   if (isIntentionalStop(m)) return { text: stopLabel(m), failed: false }
-  const wait = swishdmDm1Wait(m)
-  if (wait) return { text: wait, failed: false }
-  if (m.approved_at && !m.sent_at) return { text: 'Queued', failed: false }
+  // Approved and not sent (a SwishDM DM1 waits for the accept, anything else is queued): never worded as a send.
+  if (isPendingSend(m)) return { text: pendingSendLabel(m), failed: false }
   // manual_mirror = the human typed it in the LinkedIn app; the sync mirrored it in.
   const manual = m.ai_model === 'manual_mirror' ? ' · typed on LinkedIn' : ''
   if (m.message_type === 'connection_note') {
@@ -466,9 +465,10 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
 
   // Messages: everything except discarded rows and unapproved drafts (drafts
   // live in the card).
-  const bubbles = thread.messages.filter(
+  // Sent items in true send order, then every pending send after them.
+  const bubbles = sentThenPending(thread.messages.filter(
     m => m.send_blocked_reason !== 'discarded_in_inbox' && !isDraft(m) && !isInternalConfirmation(m) && !isHiddenRetired(m),
-  )
+  ))
   const onScreen = bubbles.filter(m => !isEngineRetired(m))
   // Judged on what is actually ON SCREEN — a pending email draft sitting in the
   // card below has not happened yet and must not relabel the conversation.
@@ -590,11 +590,14 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
           // Label the day the message was SENT. created_at is when we stored it,
           // so a reply backfilled the next morning was filed under TODAY despite
           // being written the day before.
+          // A pending send is not on the day line and carries no clock (its approval time was never a send time).
+          const pend = isPendingSend(m)
           const day = dayLabel(eventTime(m))
-          const showDay = day !== lastDay
-          lastDay = day
+          const showDay = !pend && day !== lastDay
+          if (!pend) lastDay = day
           const chan = messageChannel(m)
-          const at = clockTime(eventTime(m))
+          const shown = shownTime(m)
+          const at = shown ? clockTime(shown) : ''
           if (m.direction === 'inbound') {
             return (
               <div key={m.id} className="a-thread-turn" data-side="in">
@@ -631,12 +634,12 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
           }
           const lbl = outLabel(m, thread.stage)
           return (
-            <div key={m.id} className="a-thread-turn" data-side="out">
+            <div key={m.id} className="a-thread-turn" data-side="out" data-pending={pend ? '' : undefined}>
               {showDay && <DayHeader label={day} />}
               <div className="a-thread-lbl" data-right="">
                 <ChanChip chan={chan} />
                 <span className={lbl.failed ? 'a-sev-urgent' : undefined}>{lbl.text}</span>
-                <span className="a-mono">{at}</span>
+                {at && <span className="a-mono">{at}</span>}
               </div>
               {/* A reply Ivan or Mattan typed in the LinkedIn app carries a
                   different weight from one the engine sent, so it is MARKED and

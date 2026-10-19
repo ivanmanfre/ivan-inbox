@@ -8,7 +8,7 @@ import { ReplySourceContent, ReplySourceLine, knownSource } from './ReplySourceS
 // Drafts, internal questions and discarded rows are not history (they live in the pane below).
 import { canSendRejectedDm } from '../../lib/rejectedDm'
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
-import { dedupeMessages, eventTime, isDraft, isEngineRetired, isHiddenRetired, isIntentionalStop, isInternalConfirmation, retiredLabel, sendFailed, messageChannel, stopLabel, swishdmDm1Wait, type InboxMessage, type Thread } from '../../lib/inbox'
+import { dedupeMessages, eventTime, isDraft, isEngineRetired, isHiddenRetired, isIntentionalStop, isInternalConfirmation, isPendingSend, pendingSendLabel, retiredLabel, sendFailed, sentThenPending, shownTime, messageChannel, stopLabel, type InboxMessage, type Thread } from '../../lib/inbox'
 import { label } from '../../lib/labels'
 import { Linkified } from '../ui/Linkified'
 import { warsawDay, warsawDayWord, warsawHm } from '../ui/time'
@@ -32,10 +32,9 @@ export function statusPill(m: InboxMessage, stage: string): { text: string; fail
   if (isEngineRetired(m)) return { text: retiredLabel(m), fail: false }
   // Not sent on purpose (an invite went instead, they replied, excluded...): muted, never a failure.
   if (isIntentionalStop(m)) return { text: stopLabel(m), fail: false }
-  // A SwishDM DM1 waits for the invite to go out and be accepted; "Queued" only once its sender queued it.
-  const wait = swishdmDm1Wait(m)
-  if (wait) return { text: wait, fail: false }
-  if (m.approved_at && !m.sent_at) return { text: 'Queued', fail: false }
+  // Approved and not sent: a SwishDM DM1 waits for the invite to go out and be accepted, anything else is
+  // queued for its sender. Never worded like a send (2026-10-19, George at BUFFS).
+  if (isPendingSend(m)) return { text: pendingSendLabel(m), fail: false }
   // Today's outLabel: an invite note on a person still at connection_sent was not accepted yet.
   if (m.message_type === 'connection_note' && stage === 'connection_sent') return { text: 'Not accepted yet', fail: false }
   return null
@@ -58,8 +57,9 @@ export function emailAddrLine(m: InboxMessage): string | null {
 }
 
 export function historyRows(t: Thread): InboxMessage[] {
-  return dedupeMessages(t.messages).filter(m => !isDraft(m) && !isInternalConfirmation(m) && !isHiddenRetired(m) && !isEngineRetired(m) && m.send_blocked_reason !== 'discarded_in_inbox'
-    && (m.direction === 'inbound' || m.sent_at || m.approved_at || sendFailed(m) || isEngineRetired(m) || isIntentionalStop(m)))
+  // Sent items in true send order, then every pending send (waiting for an accept, queued) after them.
+  return sentThenPending(dedupeMessages(t.messages).filter(m => !isDraft(m) && !isInternalConfirmation(m) && !isHiddenRetired(m) && !isEngineRetired(m) && m.send_blocked_reason !== 'discarded_in_inbox'
+    && (m.direction === 'inbound' || m.sent_at || m.approved_at || sendFailed(m) || isEngineRetired(m) || isIntentionalStop(m))))
 }
 
 const OURS: Record<string, string> = { ivan: 'You', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan' }
@@ -132,9 +132,10 @@ function HistoryRead({ onSendAnyways, sending, t, cap = 6, now = Date.now(), onR
   const fresh = v4 && s0.pid === t.prospect_id && Date.now() - s0.at > 400
   const lastOfRun = (i: number) => {
     const a = shown[i], b = shown[i + 1]
-    return !b || a.direction !== b.direction || warsawDay(eventTime(a)) !== warsawDay(eventTime(b))
+    return !b || a.direction !== b.direction || isPendingSend(a) !== isPendingSend(b) || (!isPendingSend(a) && warsawDay(eventTime(a)) !== warsawDay(eventTime(b)))
   }
   let prevPill: string | null = null
+  let prevPend = false
   let nextEv = 0
   const evLines = (before: number) => {
     const out: ReactNode[] = []
@@ -166,14 +167,18 @@ function HistoryRead({ onSendAnyways, sending, t, cap = 6, now = Date.now(), onR
         const blank = pill === 'Invite, blank'
         const email = messageChannel(m) === 'email'
         const parts = blank ? [] : inb ? [(m.message_text ?? '').trim()].filter(Boolean) : bubbles(m.message_text ?? '')
-        const at = eventTime(m)
-        const before = evLines(Date.parse(at))
+        // A pending send (waiting for an accept, queued) is not on the day line: it comes after every sent
+        // item, carries no clock (its draft/approval time was never a send time) unless it is scheduled.
+        const pend = isPendingSend(m)
+        const at = shownTime(m)
+        const before = evLines(pend ? Infinity : Date.parse(eventTime(m)))
         const addr = email ? emailAddrLine(m) : null
-        const d = warsawDay(at)
+        const d = pend ? day : warsawDay(eventTime(m))
         const newDay = d !== day
         day = d
-        const firstOfRun = newDay || prevSide !== side
+        const firstOfRun = newDay || prevSide !== side || pend !== prevPend
         prevSide = side
+        prevPend = pend
         const kind = pill ?? 'LinkedIn'
         const channelChanged = !firstOfRun && prevPill !== null && prevPill !== kind
         prevPill = kind
@@ -195,10 +200,10 @@ function HistoryRead({ onSendAnyways, sending, t, cap = 6, now = Date.now(), onR
         return (
           <Fragment key={m.id}>
             {before}
-            {newDay && <div className="dm-day" role="separator"><span>{warsawDayWord(at, now)}</span></div>}
-            <div className={`dm-b dm-b-${side} dm-h-whole${inb ? ' dm-h-in' : ''}${st?.fail ? ' dm-h-fail' : ''}${email ? ' dm-h-email' : ''}${firstOfRun ? ' dm-b-first' : ''}${v4 && last ? ' dx-b-last' : ''}${arrive ? ' dx-arrive' : ''}`}
-              data-msg={m.id} data-channel={email ? 'email' : undefined} data-side={side}
-              title={v4 ? [kind, st?.text, reaction ? 'reaction' : null, warsawHm(at)].filter(Boolean).join(' · ') : undefined}>
+            {newDay && <div className="dm-day" role="separator"><span>{warsawDayWord(eventTime(m), now)}</span></div>}
+            <div className={`dm-b dm-b-${side} dm-h-whole${pend ? ' dm-h-pending' : ''}${inb ? ' dm-h-in' : ''}${st?.fail ? ' dm-h-fail' : ''}${email ? ' dm-h-email' : ''}${firstOfRun ? ' dm-b-first' : ''}${v4 && last ? ' dx-b-last' : ''}${arrive ? ' dx-arrive' : ''}`}
+              data-msg={m.id} data-channel={email ? 'email' : undefined} data-side={side} data-pending={pend ? '' : undefined}
+              title={v4 ? [kind, st?.text, reaction ? 'reaction' : null, at ? warsawHm(at) : null].filter(Boolean).join(' · ') : undefined}>
               {firstOfRun && <b className="dm-b-who">{inb ? first : ours}</b>}
               <div className="dm-b-body">
                 {addr && <small className="dm-h-addr">{addr}</small>}
@@ -211,8 +216,8 @@ function HistoryRead({ onSendAnyways, sending, t, cap = 6, now = Date.now(), onR
                 {reaction && <i>reaction</i>}
                 {firstObs && <i>{v4 ? `Replied after ${touchLabel(source.data.first_reply!.touch)}` : `First observed reply · ${touchLabel(source.data.first_reply!.touch)}`}</i>}
                 {latestObs && <i>Latest observed reply · {touchLabel(source.data.latest_reply!.touch)}</i>}
-                <time dateTime={at}>{warsawHm(at)}</time>
-              </div> : <time className="dx-sr" dateTime={at}>{warsawHm(at)}</time>}
+                {at && <time dateTime={at}>{warsawHm(at)}</time>}
+              </div> : at ? <time className="dx-sr" dateTime={at}>{warsawHm(at)}</time> : null}
               {onSendAnyways && !t.spam && canSendRejectedDm(m) && <div className="dm-rejected-actions"><button type="button" className="dm-email-reply dm-send-anyways" data-verb="send-anyways" disabled={sending} onClick={() => onSendAnyways?.(m)}>Send anyways</button></div>}
               {inb && email && (onReplyEmail || onForwardEmail) && <div className="dm-email-actions">
                 {m.id === lastEmail && onReplyEmail && <button type="button" className="dm-email-reply" data-verb="reply-email" onClick={onReplyEmail}>Reply by email</button>}
