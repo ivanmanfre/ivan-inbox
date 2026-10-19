@@ -76,7 +76,7 @@ export function awaitsReview(c: WeekCard): boolean {
   const r = c.r
   if (c.kept || (c.strip && !c.judge) || r.published_at || (r.status !== 'review' && !c.judge)) return false
   if (c.lane !== 'ivan' && (r.board_visible === true || boardStateOf(r.id)?.approval === 'approve')) return false
-  return c.judge || !c.flags.some(f => f.key === 'blocked' || f.key === 'stuck' || f.key === 'stalled' || f.key === 'error')
+  return c.judge || !c.flags.some(f => f.key === 'blocked' || f.key === 'stuck' || f.key === 'stalled' || f.key === 'error' || f.key === 'qa_held')
 }
 
 export function reviewCounts(w: Week): Record<Show, number> {
@@ -319,11 +319,13 @@ export function buildWeek(rows: readonly ContentDraft[], o: {
  */
 export function buildNow(rows: readonly ContentDraft[], o: {
   now: number; show?: Show; pending?: Pending; blocks?: Map<string, string> | null
+  /** Review also keeps the client's already-promoted posts available for scheduling. */
+  includeBoard?: boolean
   verdicts?: ReadonlyMap<string, StoredVerdict>
   judged?: ReadonlyMap<string, JudgedLite>
 }): Week {
   const { now, show = 'all', pending, blocks, verdicts, judged } = o
-  const needsFix: WeekCard[] = [], drafts: WeekCard[] = []
+  const needsFix: WeekCard[] = [], drafts: WeekCard[] = [], onBoard: WeekCard[] = []
   const quiet = new Set<string>()
   const perLane: Record<Lane, number> = { ivan: 0, risedtc: 0, arch: 0, swishdm: 0 }
   const toDecide: Record<Lane, number> = { ivan: 0, risedtc: 0, arch: 0, swishdm: 0 }
@@ -339,13 +341,17 @@ export function buildNow(rows: readonly ContentDraft[], o: {
     if (verdict === 'drop' && !strip) continue
     const stage = stageOfLane(r, lane, now)
     const stalled = stage === 'generating' && isStuckGenerating(r, now)
-    const bad = r.status === 'error' || stage === 'stuck' || stalled || !!blocks?.has(r.id)
+    const qaHeld = /^QA_(HELD|BLOCKED)$/i.test(r.qa_verdict?.trim() ?? '')
+    const boardPost = !!o.includeBoard && lane !== 'ivan' && r.board_visible === true && (r.status === 'review' || r.status === 'scheduled')
+    const bad = r.status === 'error' || (!boardPost && stage === 'stuck') || stalled || !!blocks?.has(r.id) || qaHeld
     const needsDraft = lane === 'ivan' ? r.status === 'review' || r.status === 'approved' : r.status === 'review' && r.board_visible !== true
-    if (!bad && !needsDraft) continue
+    if (!bad && !needsDraft && !boardPost) continue
     const c = cardOf(r, lane, now, stage === 'stuck', blocks)
     if (stalled) c.flags.unshift({ key: 'stalled', text: 'Generation stalled', tone: 'warn' })
+    if (qaHeld) c.flags.unshift({ key: 'qa_held', text: 'Writing QA held', tone: 'warn' })
     if (bad) { c.primary = 'open'; c.canDate = false }
-    c.judge = isBrainPost(r) && (r.status === 'review' || r.status === 'error') && !verdict
+    if (boardPost && (lane === 'swishdm' || clientHoldOf(r, OWNER[lane])?.kind === 'removed')) c.canDate = false
+    c.judge = !boardPost && !qaHeld && isBrainPost(r) && (r.status === 'review' || r.status === 'error') && !verdict
     c.strip = strip
     // An Arch brain draft to judge is not view only any more: Approve / Drop are on the card.
     if (c.judge) c.flags = c.flags.filter(f => f.key !== 'view')
@@ -364,18 +370,19 @@ export function buildNow(rows: readonly ContentDraft[], o: {
       if (c.judge) toJudgeByLane[lane]++
     }
     if (show !== 'all' && show !== lane) continue
-    ;(bad ? needsFix : drafts).push(c)
+    ;(boardPost ? onBoard : bad ? needsFix : drafts).push(c)
   }
   const order = (a: WeekCard, b: WeekCard) => {
     if (a.r.scheduled_at && !b.r.scheduled_at) return -1
     if (!a.r.scheduled_at && b.r.scheduled_at) return 1
     return a.r.scheduled_at && b.r.scheduled_at ? byAt(a, b) : byNewest(a, b) || LANE_ORDER[a.lane] - LANE_ORDER[b.lane]
   }
-  needsFix.sort(order); drafts.sort(order)
+  needsFix.sort(order); drafts.sort(order); onBoard.sort(order)
   const groups: WeekGroup[] = []
   if (needsFix.length) groups.push({ key: 'fix', kind: 'review', label: 'Needs a fix', date: null, cards: needsFix })
   if (drafts.length) groups.push({ key: 'drafts', kind: 'review', label: 'Drafts', date: null, cards: drafts })
-  const cards = [...needsFix, ...drafts].filter(c => !quiet.has(c.r.id))
+  if (onBoard.length) groups.push({ key: 'board', kind: 'review', label: 'On board', date: null, cards: onBoard })
+  const cards = [...needsFix, ...drafts, ...onBoard].filter(c => !quiet.has(c.r.id))
   return {
     groups, older: [], ids: cards.map(c => c.r.id), lanes: new Map(cards.map(c => [c.r.id, c.lane])), perLane, toDecide,
     toJudge: toJudgeByLane.ivan + toJudgeByLane.risedtc + toJudgeByLane.arch + toJudgeByLane.swishdm, toJudgeByLane,

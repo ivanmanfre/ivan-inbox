@@ -78,6 +78,9 @@
 :root[data-skin-on~='content.review'] .cv2-fold-h:hover{background:var(--ds-fill-hover);color:var(--ds-text)}
 :root[data-skin-on~='content.review'] .cv2-fold-h i{font-style:normal;font-size:11px;color:var(--ds-text-3);width:12px}
 :root[data-skin-on~='content.review'] .cv2-fold-h b{font-weight:var(--ds-fw-em);color:var(--ds-text)}
+:root[data-skin-on~='content.review'] .cv2-board h2{margin:0;padding:0;min-height:24px}
+:root[data-skin-on~='content.review'] .cv2-board > .cv2-note{margin:0 0 8px}
+:root[data-skin-on~='content.review'] .d-phone .cv2-board .d-failed button{min-width:44px;min-height:44px}
 :root[data-skin-on~='content.review'] .cv2-fixrow .cv2-srctag{max-width:128px}
 :root[data-skin-on~='content.review'] .cv2-fixlist-pinned{box-shadow:0 0 0 1px var(--ds-sev-urgent-soft)}
 

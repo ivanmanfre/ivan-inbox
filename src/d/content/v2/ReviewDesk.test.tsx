@@ -3,14 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderInFrame } from '../../test-utils'
 import type { ContentDraft } from '../../../lib/content'
+import { clearBoardState, setBoardState } from '../../../lib/clientBoardState'
 
 // Write parity for the Brief 4 review desk (SPEC-content §5): the same verdict
 // store, the same schedule / board writes, the reason as the drop's commit, and
 // the seat's next step only once a verdict is SAVED. Every write is mocked.
-const lib = vi.hoisted(() => ({ setVerdict: vi.fn(), scheduleGuarded: vi.fn(), setBoardVisible: vi.fn() }))
+const lib = vi.hoisted(() => ({ setVerdict: vi.fn(), scheduleGuarded: vi.fn(), setBoardVisible: vi.fn(), setScheduleDateAt: vi.fn() }))
 vi.mock('../../../lib/verdicts', async orig => ({ ...(await orig<typeof import('../../../lib/verdicts')>()), setVerdict: lib.setVerdict }))
 vi.mock('../writes', () => ({ scheduleGuarded: lib.scheduleGuarded }))
-vi.mock('../../../lib/content', async orig => ({ ...(await orig<typeof import('../../../lib/content')>()), setBoardVisible: lib.setBoardVisible }))
+vi.mock('../../../lib/content', async orig => ({ ...(await orig<typeof import('../../../lib/content')>()), setBoardVisible: lib.setBoardVisible, setScheduleDateAt: lib.setScheduleDateAt }))
 vi.mock('../../../lib/brainPage', async orig => ({ ...(await orig<typeof import('../../../lib/brainPage')>()), fetchDraftSources: vi.fn(() => Promise.resolve(new Map())) }))
 vi.mock('../useEarlyReads', () => ({ useEarlyReads: () => new Map() }))
 
@@ -38,13 +39,13 @@ const ROWS = [
 ]
 const read = (rows: ContentDraft[]): WeekRead => ({ rows, source: 'live', at: at(0), loading: false, error: null, capped: null, settled: true, refresh: vi.fn() })
 
-function Harness({ rows = ROWS, onOpen = vi.fn(), onEdit = vi.fn(), focusId = null, show = 'ivan' }: { rows?: ContentDraft[]; onOpen?: () => void; onEdit?: () => void; focusId?: string | null; show?: Lane }) {
+function Harness({ rows = ROWS, onOpen = vi.fn(), onEdit = vi.fn(), focusId = null, show = 'ivan', verdicts, boardRead }: { rows?: ContentDraft[]; onOpen?: () => void; onEdit?: () => void; focusId?: string | null; show?: Lane; verdicts?: ReadonlyMap<string, 'keep'>; boardRead?: { loading: boolean; error: string | null; loadedAt: string | null; refresh: () => void } }) {
   const judged = useJudged()
-  const week = buildNow(rows, { now: NOW, judged, show })
-  const total = buildNow(rows, { now: NOW, judged })
+  const week = buildNow(rows, { now: NOW, judged, show, verdicts, includeBoard: true })
+  const total = buildNow(rows, { now: NOW, judged, verdicts, includeBoard: true })
   return <ReviewDesk week={week} total={total} read={read(rows)} show={show} setShow={vi.fn()} now={NOW} openId={null} focusId={focusId}
     onOpen={onOpen} onEdit={onEdit} onChanged={vi.fn()} firstDay="2026-09-28" seatRows={() => rows} rows={rows}
-    armed={new Set()} armedFailed={false} />
+    armed={new Set()} armedFailed={false} boardRead={boardRead} />
 }
 const key = (k: string) => act(() => { fireEvent.keyDown(window, { key: k }) })
 const card = (id: string) => document.querySelector(`[data-card-id="${id}"]`) as HTMLElement | null
@@ -54,10 +55,111 @@ const saveOk = (id: string, v: string, o: { reasons?: string[] }) => Promise.res
 
 beforeEach(() => {
   lib.setVerdict.mockReset(); lib.scheduleGuarded.mockReset(); lib.setBoardVisible.mockReset()
+  lib.setScheduleDateAt.mockReset()
   resetVerdictsForTest(); resetDecisionsForTest()
+  for (const client of ['risedtc', 'arch', 'swishdm']) clearBoardState(client)
   vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
 })
 afterEach(() => { resetVerdictsForTest(); resetDecisionsForTest(); cleanup(); vi.unstubAllGlobals() })
+
+describe('client posts stay accessible after promotion', () => {
+  it('puts only this seat’s unpublished board posts below drafts, outside the review count', () => {
+    const rows = [
+      row({ id: 'draft', client_id: 'risedtc', title: 'Ready draft' }),
+      row({ id: 'board', client_id: 'risedtc', title: 'Undated board post', board_visible: true }),
+      row({ id: 'scheduled', client_id: 'risedtc', title: 'Dated board post', board_visible: true, status: 'scheduled', scheduled_at: '2030-10-22T14:00:00Z' }),
+      row({ id: 'published', client_id: 'risedtc', board_visible: true, status: 'published', published_at: at(-H) }),
+      row({ id: 'arch-board', client_id: 'arch', board_visible: true }),
+    ]
+    renderInFrame(<Harness show="risedtc" rows={rows} />)
+    expect(screen.getByText(/1 Mattan’s draft to decide/)).toBeTruthy()
+    const section = screen.getByRole('region', { name: 'On board' })
+    expect([...section.querySelectorAll('[data-card-id]')].map(x => x.getAttribute('data-card-id'))).toEqual(['scheduled', 'board'])
+    expect(document.querySelector('[aria-label="Drafts to decide"]')!.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(verb(card('board'), 'card-board')).toBeNull()
+    expect(verb(card('board'), 'card-board-date')?.textContent).toBe('Schedule')
+    expect(verb(card('scheduled'), 'card-board-date')?.textContent).toBe('Change date')
+    expect(card('published')).toBeNull()
+    expect(card('arch-board')).toBeNull()
+    expect(lib.setBoardVisible).not.toHaveBeenCalled()
+    expect(lib.setScheduleDateAt).not.toHaveBeenCalled()
+  })
+
+  it('uses the synchronized date writer only after the operator picks and confirms a board date', async () => {
+    lib.setScheduleDateAt.mockResolvedValue('2030-10-23T14:00:00.000Z')
+    renderInFrame(<Harness show="risedtc" rows={[row({ id: 'board', client_id: 'risedtc', board_visible: true, status: 'scheduled', scheduled_at: '2030-10-22T14:00:00Z' })]} />)
+    fireEvent.click(verb(card('board'), 'card-board-date')!)
+    fireEvent.click(document.querySelector('[data-day="2030-10-23"]')!)
+    expect(lib.setScheduleDateAt).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: /^Schedule to post/ }))
+    await waitFor(() => expect(lib.setScheduleDateAt).toHaveBeenCalledWith('board', '2030-10-23T14:00:00.000Z'))
+    expect(lib.scheduleGuarded).not.toHaveBeenCalled()
+    expect(lib.setBoardVisible).not.toHaveBeenCalled()
+  })
+
+  it('lets an overdue board post change date without putting it back in the draft queue', () => {
+    renderInFrame(<Harness show="risedtc" rows={[row({ id: 'overdue', client_id: 'risedtc', board_visible: true, status: 'scheduled', scheduled_at: at(-24 * H) })]} />)
+    const section = screen.getByRole('region', { name: 'On board' })
+    expect(section.querySelector('[data-card-id="overdue"]')).toBeTruthy()
+    expect(verb(card('overdue'), 'card-board-date')?.textContent).toBe('Change date')
+    expect(lib.setScheduleDateAt).not.toHaveBeenCalled()
+  })
+
+  it.each(['arch', 'swishdm'] as const)('does not offer a date through a primary button or menu for held %s board posts', lane => {
+    setBoardState(lane, [{ id: 'held-board', approval: null, approval_at: null, veto: 'post_removed', veto_at: at(0), note: null, note_by: null, note_at: null }])
+    renderInFrame(<Harness show={lane} verdicts={new Map([['held-board', 'keep']])} rows={[brain({ id: 'held-board', client_id: lane, board_visible: true })]} />)
+    expect(card('held-board')).toBeTruthy()
+    expect(verb(card('held-board'), 'card-board-date')).toBeNull()
+    expect(verb(card('held-board'), 'card-date-it')).toBeNull()
+    fireEvent.click(card('held-board')!.querySelector('[aria-label="More for this draft"]')!)
+    expect(screen.queryByRole('menuitem', { name: /Add a date|Move date/ })).toBeNull()
+  })
+
+  it('leaves a failed schedule open for correction and preserves the current date', async () => {
+    lib.setScheduleDateAt.mockRejectedValue(new Error('The client removed this post.'))
+    renderInFrame(<Harness show="risedtc" rows={[row({ id: 'board', client_id: 'risedtc', board_visible: true, status: 'scheduled', scheduled_at: '2030-10-22T14:00:00Z' })]} />)
+    fireEvent.click(verb(card('board'), 'card-board-date')!)
+    fireEvent.click(document.querySelector('[data-day="2030-10-23"]')!)
+    fireEvent.click(screen.getByRole('button', { name: /^Schedule to post/ }))
+    await waitFor(() => expect(screen.getByText('Not saved: The client removed this post.')).toBeTruthy())
+    expect(screen.getByRole('button', { name: /^Schedule to post/ })).toBeTruthy()
+    expect(card('board')!.textContent).toContain('Change date')
+    expect(lib.setBoardVisible).not.toHaveBeenCalled()
+  })
+
+  it('shows a board read failure and retries instead of claiming the board is empty', () => {
+    const refresh = vi.fn()
+    renderInFrame(<Harness show="risedtc" rows={[]} boardRead={{ loading: false, error: 'Connection unavailable', loadedAt: null, refresh }} />)
+    expect(screen.queryByText('No posts on the board yet.')).toBeNull()
+    const section = screen.getByRole('region', { name: 'On board' })
+    fireEvent.click(section.querySelector('button')!)
+    expect(refresh).toHaveBeenCalledOnce()
+    expect(lib.setScheduleDateAt).not.toHaveBeenCalled()
+  })
+
+  it('keeps the board section visible while reading and then explains an empty board', () => {
+    renderInFrame(<Harness show="risedtc" rows={[]} boardRead={{ loading: true, error: null, loadedAt: null, refresh: vi.fn() }} />)
+    expect(screen.getByRole('region', { name: 'On board' }).textContent).toContain('Reading')
+    expect(screen.queryByText('No posts on the board yet.')).toBeNull()
+    cleanup()
+    renderInFrame(<Harness show="risedtc" rows={[]} boardRead={{ loading: false, error: null, loadedAt: at(0), refresh: vi.fn() }} />)
+    expect(screen.getByText('No posts on the board yet.')).toBeTruthy()
+  })
+
+  it('keeps explicitly QA-held drafts out of the ready decision list and off the promotion controls', () => {
+    renderInFrame(<Harness show="risedtc" rows={[
+      row({ id: 'ready', client_id: 'risedtc', qa_verdict: 'LOCAL_REPLAY_PASS' }),
+      row({ id: 'held', client_id: 'risedtc', qa_verdict: 'QA_HELD' }),
+    ]} />)
+    expect(screen.getByText(/1 Mattan’s draft to decide/)).toBeTruthy()
+    expect(card('ready')).toBeTruthy()
+    expect(card('held')).toBeNull()
+    expect(screen.getByRole('region', { name: 'Needs a fix' }).compareDocumentPosition(screen.getByRole('region', { name: 'On board' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(verb(document, 'fix-fold')!)
+    expect(card('held')).toBeTruthy()
+    expect(verb(card('held'), 'card-board')).toBeNull()
+  })
+})
 
 describe('the review desk: two-tap Drop, the reason is the commit', () => {
   it('d then 1 drops the focused card with "Invented a fact"; nothing is written before the reason', async () => {
