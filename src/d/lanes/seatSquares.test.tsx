@@ -23,6 +23,12 @@ describe('Lanes 3 seat squares', () => {
     expect(seatWarnings(d, 'ivan')).toEqual([])
   })
 
+  it('a Premium-only seat (no Sales Nav, NO_SN) gets no Sales Nav warning; a broken Sales Nav still does', () => {
+    const health = (sn: string) => slot({ updated_at: '', seats: [{ id: 'x', name: 'Jonathan Kiekbusch', account: 'OK', sn, degraded: false, link: null }] })
+    expect(seatWarnings(data({ health: health('NO_SN') }), 'swishdm')).toEqual([])
+    expect(seatWarnings(data({ health: health('SN_DISCONNECTED') }), 'swishdm')).toEqual(['Sales Nav not working'])
+  })
+
   it('three squares, the chosen one pressed; clicking another chooses it; unknown numbers are "?" never 0', () => {
     const pick = vi.fn()
     renderInFrame(<SeatSquares seats={['ivan', 'risedtc', 'arch', 'swishdm']} seat="ivan" pick={pick} d={data()} now={Date.now()} />)
