@@ -65,7 +65,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   // Brief 4 (SPEC-content): the frame flag and one flag per sub-tab; every hook below runs either way.
   const cv2 = useContentFlags()
   // The client panels' approvals, removals and change requests (db/243), refreshed on focus.
-  useClientBoardState()
+  const boardVersion = useClientBoardState()
   const presentation = useRef<HTMLDivElement>(null)
   useSubtabMotion(presentation, route.sub ?? 'now', cv2.frame)
   const tier = useMainTier(cv2.frame)
@@ -152,9 +152,13 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   // so the seat counts, the heading and the open post's "N of M" do not jump on every focus or write.
   const steady = useSteadyRows(rows)
   const modelShow: Show = cv2.review ? seat : show
-  const nowModel = useMemo(() => buildNow(steady.rows, { now, show: modelShow, pending, blocks: data.blocks, verdicts, judged }), [steady.rows, now, modelShow, pending, data.blocks, verdicts, judged])
-  const allNow = useMemo(() => buildNow(steady.rows, { now, pending, blocks: data.blocks, verdicts, judged }), [steady.rows, now, pending, data.blocks, verdicts, judged])
-  const deskQueue = useMemo(() => (deskOn ? deskModel(nowModel, now).queue : null), [deskOn, nowModel, now])
+  const nowModel = useMemo(() => buildNow(steady.rows, { now, show: modelShow, pending, blocks: data.blocks, verdicts, judged, includeBoard: deskOn }), [steady.rows, now, modelShow, pending, data.blocks, verdicts, judged, deskOn, boardVersion])
+  const allNow = useMemo(() => buildNow(steady.rows, { now, pending, blocks: data.blocks, verdicts, judged, includeBoard: deskOn }), [steady.rows, now, pending, data.blocks, verdicts, judged, deskOn, boardVersion])
+  const deskQueue = useMemo(() => {
+    if (!deskOn) return null
+    const desk = deskModel(nowModel, now)
+    return desk.board.some(c => c.r.id === draft) ? desk.board.map(c => c.r.id) : desk.queue
+  }, [deskOn, nowModel, now, draft])
   // A link into Review that names a seat (?lane=, an idea's or the plan's "Open Review") opens on it; a
   // Content Brain "Up next" (?focus=) opens on its draft's seat. Anything else keeps the remembered seat.
   const laneParam = q.get('lane')
@@ -209,7 +213,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const deskBody = <>
     {lanesV4 && <TodayNotes />}
     {data.failed > 0 && <div className="cv2-banner cv2-banner-bad" role="alert"><span>Could not read every client.</span><button type="button" onClick={refresh}>Retry</button></div>}
-    <ReviewDesk week={nowModel} total={allNow} read={stackRead} show={seat} setShow={pickSeat} now={now} openId={draft} focusId={q.get('focus') ?? (q.get('idea') ? reviewLanding(steady.rows, qLane, q.get('idea')!) : null)}
+    <ReviewDesk week={nowModel} total={allNow} read={stackRead} boardRead={data.seats[seat]} show={seat} setShow={pickSeat} now={now} openId={draft} focusId={q.get('focus') ?? (q.get('idea') ? reviewLanding(steady.rows, qLane, q.get('idea')!) : null)}
       onOpen={openDraft} onEdit={(id, lane) => go({ ...context(), draft: id, lane, edit: '1' }, 'now')} onChanged={refresh}
       firstDay={days[0].key} seatRows={l => rows.filter(r => laneOfRow(r) === l)} rows={steady.rows} armed={data.armed} armedFailed={data.armedFailed} held={steady.held} />
   </>

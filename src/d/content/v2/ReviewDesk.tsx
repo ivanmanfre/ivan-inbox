@@ -102,6 +102,7 @@ export type DeskModel = {
   decide: WeekCard[]
   /** Decided, the seat's next step still open (a date, the board). Not counted as to decide. */
   waiting: WeekCard[]
+  board: WeekCard[]
   /** Errors and posts that did not go out; `pinned` are the misses of the last 48 h, shown open. */
   fix: WeekCard[]
   pinned: WeekCard[]
@@ -113,17 +114,18 @@ export type DeskModel = {
 export function deskModel(week: Week, now: number): DeskModel {
   const fixGroup = week.groups.find(g => g.key === 'fix')?.cards ?? []
   const drafts = week.groups.find(g => g.key === 'drafts')?.cards ?? []
+  const board = (week.groups.find(g => g.key === 'board')?.cards ?? []).slice().sort(deskOrder)
   const all = [...fixGroup, ...drafts]
   const decide = all.filter(c => c.strip || awaitsReview(c)).sort(deskOrder)
   const waiting = drafts.filter(c => !c.strip && !awaitsReview(c)).sort(deskOrder)
   const fix = fixGroup.filter(c => !c.strip && !awaitsReview(c))
   const pinned = fix.filter(c => c.flags.some(f => f.key === 'stuck') && !!c.r.scheduled_at && now - Date.parse(c.r.scheduled_at) < 2 * 86_400_000)
-  return { decide, waiting, fix, pinned, queue: decide.filter(c => awaitsReview(c)).map(c => c.r.id) }
+  return { decide, waiting, board, fix, pinned, queue: decide.filter(c => awaitsReview(c)).map(c => c.r.id) }
 }
 
 const slotWord = (s: Slot) => `${warsawDow(s.at)} ${warsawDm(s.at).split(' ')[0]} · ${warsawHm(s.at)}`
 
-export function ReviewDesk({ week, total, read, show, setShow, now, openId, focusId, onOpen, onEdit, onChanged, firstDay, seatRows, rows, armed, armedFailed, held }: {
+export function ReviewDesk({ week, total, read, show, setShow, now, openId, focusId, onOpen, onEdit, onChanged, firstDay, seatRows, rows, armed, armedFailed, held, boardRead }: {
   /** The desk's cards (buildNow for this seat). */
   week: Week
   /** Every seat's work (buildNow without the filter): the seat counts. */
@@ -147,6 +149,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   armedFailed: boolean
   /** Brain drafts held in place while a refresh re-reads them (steadyRows). */
   held?: ReadonlySet<string>
+  boardRead?: { loading: boolean; error: string | null; loadedAt: string | null; refresh: () => void }
 }) {
   const toast = useToast()
   const panelHref = usePanelLink()(show)
@@ -173,11 +176,11 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   const work = desk.decide.filter(c => awaitsReview(c))
   const stream = noimg ? desk.decide.filter(c => c.strip || hasNoImg(c)) : desk.decide
   const noimgN = work.filter(hasNoImg).length
-  const inList = new Set([...desk.decide, ...desk.waiting, ...desk.fix].map(c => c.r.id))
+  const inList = new Set([...desk.decide, ...desk.waiting, ...desk.board, ...desk.fix].map(c => c.r.id))
   const orphans = [...judged.values()].filter(e => !e.collapsed && !inList.has(e.id) && show === e.lane).sort((a, b) => a.at - b.at)
   const folded = desk.fix.filter(c => !desk.pinned.includes(c))
 
-  const shownCards = [...stream, ...desk.pinned, ...(waitOpen ? desk.waiting : []), ...(fixOpen ? folded : [])]
+  const shownCards = [...desk.pinned, ...stream, ...(waitOpen ? desk.waiting : []), ...(fixOpen ? folded : []), ...desk.board]
   const earlyReads = useEarlyReads(shownCards.map(c => c.r))
   const srcKey = stream.slice(0, 60).map(c => c.r.id).join(',')
   const srcIds = useMemo(() => (srcKey ? srcKey.split(',') : []), [srcKey])
@@ -369,8 +372,19 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
         </section>
       )}
 
+      {show !== 'ivan' && (
+        <section className="cv2-fold cv2-board" aria-label="On board">
+          <h2 className="cv2-fold-h"><b>On board</b><span>{boardRead?.error && !boardRead.loadedAt ? 'Unavailable' : boardRead?.loading && !boardRead.loadedAt ? 'Reading…' : `${desk.board.length} post${desk.board.length === 1 ? '' : 's'}`}</span></h2>
+          <p className="cv2-note">Schedule here. {OWNER[show]}’s board updates automatically.</p>
+          {boardRead?.error && <Failed what="the board posts" detail={boardRead.error} onRetry={boardRead.refresh} />}
+          {desk.board.length > 0
+            ? <div className="cv2-list" role="list" aria-label="Posts on board">{desk.board.map((c, i) => renderRow(c, i))}</div>
+            : !(boardRead?.loading && !boardRead.loadedAt) && !boardRead?.error && !loading && <p className="cv2-note">No posts on the board yet.</p>}
+        </section>
+      )}
+
       {moving && (
-        <MovePanel key={moving.r.id} r={moving.r} lane={moving.lane} first={firstDay} seatRows={seatRows(moving.lane)} phone quickCommit
+        <MovePanel key={moving.r.id} r={moving.r} lane={moving.lane} first={firstDay} seatRows={seatRows(moving.lane)} phone quickCommit={moving.r.board_visible !== true}
           onClose={() => setMoving(null)} onDone={onChanged} />
       )}
       <Sheet open={keys} onClose={() => setKeys(false)} title="Review keys" className="cv2-keys-sheet">
@@ -458,6 +472,8 @@ function ReviewRow({ c, i, now, focused, open, busy, held, read, repeat, slot, s
   const editablePic = pictureEditable(c.r, c.lane)
   const snippet = snippetOf(c)
   const boardWord = `Put on ${POSS[c.lane]} board`
+  const canDate = c.canDate && (c.r.board_visible !== true || (c.lane !== 'swishdm' && hold?.kind !== 'removed'))
+  const boardDate = c.lane !== 'ivan' && c.r.board_visible === true && canDate
 
   const menu: MenuItem[] = [
     { key: 'open', label: 'Open post', run: onOpen },
@@ -465,15 +481,16 @@ function ReviewRow({ c, i, now, focused, open, busy, held, read, repeat, slot, s
     { key: 'edit', label: 'Edit', run: onEdit },
     ...(c.judge ? [{ key: 'drop', label: 'Drop…', run: () => setPicking(true), danger: true }] : []),
     ...(!c.judge && c.primary === 'approve' ? [{ key: 'skip', label: 'Skip', run: onSkip }] : []),
-    ...(c.canDate ? [{ key: 'date', label: c.r.scheduled_at ? 'Move date' : 'Add a date', run: onDate }] : []),
+    ...(canDate ? [{ key: 'date', label: c.r.scheduled_at ? 'Move date' : 'Add a date', run: onDate }] : []),
   ]
 
   let primary: React.ReactNode = null
-  if (c.judge || c.primary === 'approve') primary = <button type="button" className="cv2-k cv2-k-p" data-key-safe data-verb={c.judge ? 'card-keep' : 'card-approve'} disabled={busy} onClick={onApprove}>Approve</button>
+  if (boardDate) primary = <button type="button" className={`cv2-k${c.r.scheduled_at ? ' cv2-k-q' : ' cv2-k-p'}`} data-key-main data-verb="card-board-date" disabled={busy} onClick={onDate}>{c.r.scheduled_at ? 'Change date' : 'Schedule'}</button>
+  else if (c.judge || c.primary === 'approve') primary = <button type="button" className="cv2-k cv2-k-p" data-key-safe data-verb={c.judge ? 'card-keep' : 'card-approve'} disabled={busy} onClick={onApprove}>Approve</button>
   else if (c.primary === 'board' || next === 'board') primary = <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-board" disabled={busy} title={boardWord} onClick={onBoard}>{busy ? 'Working…' : <><span className="cv2-wide-only">{boardWord}</span><span className="cv2-narrow-only">Put on board</span></>}</button>
   else if (next === 'schedule' && (c.r.scheduled_at || slot)) primary = <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-schedule" disabled={busy} onClick={() => onSchedule(c.r.scheduled_at ? undefined : slot!.at)}>
     {busy ? 'Working…' : c.r.scheduled_at ? `Schedule ${whenOf(c, now)}` : `Schedule ${slotWord(slot!)}`}</button>
-  else if (next === 'date') primary = <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-date-it" disabled={busy} onClick={onDate}>Date it</button>
+  else if (next === 'date' && canDate) primary = <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-date-it" disabled={busy} onClick={onDate}>Date it</button>
 
   // A tap on the row opens the post; a tap on any control inside it does only that control.
   const onRowClick = (e: React.MouseEvent) => {
@@ -499,7 +516,7 @@ function ReviewRow({ c, i, now, focused, open, busy, held, read, repeat, slot, s
           {repeat && <span className="cv2-tag cv2-tag-warn" title="The same picture sits on another post of this seat within two weeks">Same picture</span>}
           {qa && <Pill tone="warn" title={qa.title}>{qaWord(c.r)}</Pill>}
           {read?.state === 'ready' && <EarlyReadChip read={read} lane={c.lane} />}
-          <span className="cv2-row-age" title={`Created ${age(c.r.created_at, now)} ago`}>{whenOf(c, now)}</span>
+          <span className="cv2-row-age" title={`Created ${age(c.r.created_at, now)} ago`}>{c.r.board_visible === true && !c.r.scheduled_at ? 'No date yet' : whenOf(c, now)}</span>
           {/* Every row of the list needs review: only a different status earns a pill. */}
           {pill.text !== 'Needs review' && <Pill tone={pill.tone} title={hold?.kind === 'changes' ? undefined : hold?.detail}>{pill.text}</Pill>}
         </div>
@@ -593,7 +610,7 @@ function DeskStrip({ e, c, i, slot, busy, verbs, onDate }: {
             Schedule {c.r.scheduled_at ? `${dayLabel(warsawDay(c.r.scheduled_at)).replace(/ \w+$/, '')} · ${warsawHm(c.r.scheduled_at)}` : slotWord(slot)}</button>}
           {saved && c.lane === 'ivan' && onDate && <button type="button" className="cv2-k" data-verb="next-pick-day" onClick={onDate}>Pick a day</button>}
           {saved && c.lane === 'risedtc' && c.r.board_visible !== true && <button type="button" className="cv2-k cv2-k-p" data-verb="next-board" disabled={busy} onClick={() => void verbs.board(c)}>Put on {POSS[c.lane]} board</button>}
-          {saved && c.lane === 'arch' && onDate && <button type="button" className="cv2-k cv2-k-p" data-verb="next-date" onClick={onDate}>Date it</button>}
+          {saved && c.lane === 'arch' && c.canDate && onDate && <button type="button" className="cv2-k cv2-k-p" data-verb="next-date" onClick={onDate}>Date it</button>}
           <button type="button" className="cv2-x" data-verb="verdict-close" aria-label="Close" onClick={() => forgetVerdict(e.id)}>×</button>
         </>}
       </div>
