@@ -225,7 +225,11 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         <History t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} onReplyEmail={canComposeEmail(t) && !t.spam && (!t.ownerConfirmation || manualReply) && !busy ? openEmailReply : undefined}
           onForwardEmail={['arch', 'risedtc'].includes(t.client_id) && !busy ? setForwardEmail : undefined} />
         <Banners t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} />
-        <ReferralCard key={t.prospect_id} t={t} />
+        <ReferralCard key={t.prospect_id} t={t} onUseAcknowledgement={text => {
+          setReply(text)
+          if (t.ownerConfirmation) void verbs.holdRelease(t)
+          dock.current?.querySelector('textarea')?.focus()
+        }} />
         <Draft t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
         {t.draft && <DraftWhy t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
         <RestoreStrip t={t} verbs={verbs} />
