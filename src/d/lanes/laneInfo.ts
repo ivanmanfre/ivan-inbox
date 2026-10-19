@@ -68,7 +68,7 @@ const SOURCE: Record<string, string> = {
   unclassified: 'Sends with no lane recorded.',
 }
 
-const BY_SEAT: Record<Seat, Record<string, string>> = { arch: ARCH, ivan: IVAN, risedtc: RISE , swishdm: { harvest: 'Recent relevant account engagers checked against the ecommerce ICP and dated exclusions. Sends remain disabled during setup.', warm: 'Jonathan’s eligible engagers and profile activity, after account connection and source checks.' }}
+const BY_SEAT: Record<Seat, Record<string, string>> = { arch: ARCH, ivan: IVAN, risedtc: RISE , swishdm: { harvest: 'Recent relevant account engagers checked against the ecommerce ICP and dated exclusions. Invites go out 9am to 5pm UK time, Sunday to Friday.', warm: 'Jonathan’s eligible engagers and profile activity, after account connection and source checks.' }}
 
 const norm = (s: string) => shortName(s).toLowerCase()
 

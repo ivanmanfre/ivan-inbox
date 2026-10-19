@@ -145,7 +145,7 @@ export function laneMixOnce(campaignId: string): Promise<LaneMix> {
 
 /** The senders' own pause keys: one per seat (a 422 streak arms it for 2h) and the
     global manual kill switch `conn_send_pause_until` (stops every seat's invites). */
-export const PAUSE_KEY: Record<Seat, string> = { ivan: 'ivan_conn_422_pause_until', risedtc: 'risedtc_conn_422_pause_until', arch: 'arch_conn_send_pause_until' , swishdm: 'swishdm_conn_send_pause_until'}
+export const PAUSE_KEY: Record<Seat, string> = { ivan: 'ivan_conn_422_pause_until', risedtc: 'risedtc_conn_422_pause_until', arch: 'arch_conn_send_pause_until' , swishdm: 'swishdm_invite_pause_until' }
 export const KILL_SWITCH_KEY = 'conn_send_pause_until'
 export type Pauses = Partial<Record<Seat | 'all', string>>
 export async function fetchPauses(): Promise<Pauses> {
