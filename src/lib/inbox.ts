@@ -180,10 +180,62 @@ export function sendFailed(m: InboxMessage): boolean {
   if (isRecoverableHold(m.send_blocked_reason)) return false
   // SwishDM review hold (first-list notes, DM1 rows and reply drafts): waiting for a person, nothing was attempted.
   if (m.send_blocked_reason === SWISHDM_REPLY_HOLD) return false
+  // A sender that deliberately did not send (invite instead, they replied, excluded...) did not fail.
+  if (isIntentionalStop(m)) return false
   if (isInternalConfirmation(m)) return false
   if (isEngineRetired(m)) return false
   return true
 }
+
+// A send the SENDER chose not to make, on purpose, after the row was approved: the person got an
+// invite instead (routed_to_invite), they replied or reacted first, someone messaged them by hand,
+// the invite was withdrawn, or an exclusion list matched. Nothing failed and nobody has to act, so
+// it never wears "Send failed" and never offers "Send anyways" (SwishDM, 2026-10-19: 18 routed
+// InMails drew a red bubble in every thread). Real failures keep their own reasons (send_failed_*,
+// inmail_failed_*, stale_send_claim:, bad_text:) and stay failures.
+const INTENTIONAL_STOP = /^(routed_to_invite|(?:[a-z]+_)*(?:replied|reply|reaction|reacted)_stop|manual_touch|invite_withdrawn|(?:[a-z]+_)*exclu(?:sion|ded)(?:_[a-z]+)*)(?=$|[:\s])/
+
+export function isIntentionalStopReason(reason: string | null | undefined): boolean {
+  return INTENTIONAL_STOP.test(reason ?? '')
+}
+
+export function isIntentionalStop(m: Pick<InboxMessage, 'direction' | 'sent_at' | 'send_blocked_reason' | 'draft_evidence'>): boolean {
+  if (m.direction !== 'outbound' || m.sent_at) return false
+  const stopped = m.draft_evidence?.stopped
+  return isIntentionalStopReason(m.send_blocked_reason) || (stopped !== undefined && stopped !== null && stopped !== false)
+}
+
+/** The muted line an intentional stop shows where a failed send would say "Send failed". */
+export function stopLabel(m: Pick<InboxMessage, 'send_blocked_reason'>): string {
+  const r = m.send_blocked_reason ?? ''
+  if (r.startsWith('routed_to_invite')) return 'Not sent: sent an invite instead'
+  if (/(?:replied|reply)_stop/.test(r)) return 'Not sent: they replied'
+  if (/(?:reaction|reacted)_stop/.test(r)) return 'Not sent: they reacted'
+  if (r.startsWith('manual_touch')) return 'Not sent: you messaged them yourself'
+  if (r.startsWith('invite_withdrawn')) return 'Not sent: invite withdrawn'
+  if (/exclu(?:sion|ded)/.test(r)) return 'Not sent: excluded'
+  return 'Not sent: stopped on purpose'
+}
+
+/** A row on Jonathan's SwishDM seat. Only the SwishDM n8n senders send these; the inbox never does. */
+export function isSwishdmRow(m: Pick<InboxMessage, 'client_id' | 'draft_evidence' | 'lane'>): boolean {
+  return m.client_id === 'swishdm' || m.draft_evidence?.client === 'swishdm'
+    || /^swishdm_/.test(m.draft_evidence?.lane ?? '') || /^swishdm_/.test(m.lane ?? '')
+}
+
+/** A SwishDM first-list DM1 waits for the invite to go out and be accepted before its sender queues it.
+ *  Null for every other row. Reads the prospect stage the thread already carries (no extra read). */
+export function swishdmDm1Wait(m: InboxMessage): string | null {
+  if (m.client_id !== 'swishdm' || m.direction !== 'outbound' || m.sent_at || !m.approved_at || m.send_blocked_at) return null
+  if (messageChannel(m) !== 'dm') return null
+  if (m.draft_evidence?.dm_queue?.state === 'queued') return null
+  const ev = m.draft_evidence?.lane
+  if (ev && ev !== 'swishdm_first_list') return null
+  if (m.prospect_stage === 'connection_sent') return 'Waiting for accept'
+  if (SWISHDM_PRE_INVITE.has(m.prospect_stage)) return 'Waiting for invite'
+  return null
+}
+const SWISHDM_PRE_INVITE = new Set(['swishdm_staged_hold', 'enriched', 'queued', 'ballot_hold', 'expansion_hold'])
 
 // A pending draft the ENGINE itself took off the table because something newer
 // replaced it: a redraft, a fresher inbound, a closed conversation, the 3-day expiry, or a writer that
@@ -1241,6 +1293,12 @@ export type DraftEvidenceFact = { id: string; fact: string; topic: string; at: s
 export type DraftEvidenceExemplar = { they: string | null; reply: string | null; at: string | null; prospect: string | null }
 export type DraftEvidence = {
   scheduled_send?: { at: string; timezone: string; state?: string }
+  // SwishDM senders (n8n): which seat/lane wrote the row, the DM1 queue state after an accept,
+  // and the stop marker a sender leaves when it deliberately did not send.
+  client?: string | null
+  lane?: string | null
+  dm_queue?: { state?: string | null } | null
+  stopped?: unknown
   email_subject?: string | null
   email_cc?: string[] | null
   email_delivery_recipient?: string | null

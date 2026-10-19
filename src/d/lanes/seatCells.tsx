@@ -6,6 +6,7 @@ import type { Seat } from '../seats'
 import { Key } from '../ui/Key'
 import { ackId, useAck } from './ack'
 import { clientOf, controlOf, dm, hm, todayOf } from './model'
+import { CHANNEL_PAUSE_KEYS } from './reads'
 import type { LanesData } from './useLanesData'
 import { supplyOf } from './supply'
 
@@ -79,6 +80,11 @@ export function ControlCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
   // A pause with no incident still stops the seat: say so (seat key, or the manual stop for every seat).
   const bare = !inc && pause && Date.parse(pause) > ctx.now ? `Paused until ${dm(pause)} ${hm(pause)} (this seat's pause after refused invites).` : null
   const stop = kill && Date.parse(kill) > ctx.now ? `Manual stop on every seat until ${dm(kill)} ${hm(kill)}.` : null
+  // SwishDM's DM and InMail senders each have their own pause key: a live one is said here too.
+  const channel = (CHANNEL_PAUSE_KEYS[seat] ?? []).flatMap(k => {
+    const v = ctx.d.pauses.value?.byKey?.[k.key]
+    return v && Date.parse(v) > ctx.now ? [`${k.label} until ${dm(v)} ${hm(v)}.`] : []
+  }).join(' ') || null
   if (!v) return <div className="dl-ct"><p className="dl-unk">{ctx.d.cc.failed ? `The send monitor could not be read: ${ctx.d.cc.failed}` : 'Reading the send monitor…'}</p></div>
   return (
     <div className="dl-ct">
@@ -97,7 +103,7 @@ export function ControlCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
       ) : null}
       {/* With an incident open, the monitor's own reading of it is the same fact: said once (tooltip keeps it). */}
       {!inc && <p className="dl-lead dl-clamp" title={v.lead}>{v.lead}</p>}
-      {(bare || stop) && <p className="dl-kv dl-al">{[stop, bare].filter(Boolean).join(' ')}</p>}
+      {(bare || stop || channel) && <p className="dl-kv dl-al">{[stop, bare, channel].filter(Boolean).join(' ')}</p>}
       {v.blockers.length > 0 && <p className="dl-kv dl-al">Cannot send right now: {v.blockers.join('; ')}.</p>}
       <div className="dl-kv"><span className="dl-k">Window</span> {v.window}<Sep />
         {v.closed ? <>opens <b>{v.opens ?? 'not scheduled'}</b></> : <>{v.pct ?? '?'}% gone<Sep />{v.pace}{v.planned != null ? ` (${v.sent} of ${v.planned})` : ''}</>}

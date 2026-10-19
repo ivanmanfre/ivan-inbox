@@ -29,7 +29,7 @@ import { Linkified } from '../chrome/Linkified'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import { formatReturn, returnsIn, usePushLater } from '../../lib/pushLater'
 import {
-  approveDraft, channelFamilies, canComposeEmail, composeReply, discardLegs, draftLegs, legFailureText, holdReason, isEngineRetired, isHiddenRetired, retiredLabel, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
+  approveDraft, channelFamilies, canComposeEmail, composeReply, discardLegs, draftLegs, legFailureText, holdReason, isEngineRetired, isHiddenRetired, isIntentionalStop, retiredLabel, stopLabel, swishdmDm1Wait, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
   reviewedEmailMirror, saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId, emailRowSender, ladderSteps, sendFailed,
   offersReplyMyself, REPLY_MYSELF, type DiscardMode,
@@ -100,6 +100,9 @@ function outLabel(m: InboxMessage, stage: string): { text: string; failed: boole
   if (sendFailed(m)) {
     return { text: `Send failed: ${label(m.send_blocked_reason)}`, failed: true }
   }
+  if (isIntentionalStop(m)) return { text: stopLabel(m), failed: false }
+  const wait = swishdmDm1Wait(m)
+  if (wait) return { text: wait, failed: false }
   if (m.approved_at && !m.sent_at) return { text: 'Queued', failed: false }
   // manual_mirror = the human typed it in the LinkedIn app; the sync mirrored it in.
   const manual = m.ai_model === 'manual_mirror' ? ' · typed on LinkedIn' : ''

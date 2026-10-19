@@ -8,7 +8,7 @@ import { ReplySourceContent, ReplySourceLine, knownSource } from './ReplySourceS
 // Drafts, internal questions and discarded rows are not history (they live in the pane below).
 import { canSendRejectedDm } from '../../lib/rejectedDm'
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
-import { dedupeMessages, eventTime, isDraft, isEngineRetired, isHiddenRetired, isInternalConfirmation, retiredLabel, sendFailed, messageChannel, type InboxMessage, type Thread } from '../../lib/inbox'
+import { dedupeMessages, eventTime, isDraft, isEngineRetired, isHiddenRetired, isIntentionalStop, isInternalConfirmation, retiredLabel, sendFailed, messageChannel, stopLabel, swishdmDm1Wait, type InboxMessage, type Thread } from '../../lib/inbox'
 import { label } from '../../lib/labels'
 import { Linkified } from '../ui/Linkified'
 import { warsawDay, warsawDayWord, warsawHm } from '../ui/time'
@@ -30,6 +30,11 @@ export function statusPill(m: InboxMessage, stage: string): { text: string; fail
   if (m.direction !== 'outbound') return null
   if (sendFailed(m)) return { text: `Send failed: ${label(m.send_blocked_reason)}`, fail: true }
   if (isEngineRetired(m)) return { text: retiredLabel(m), fail: false }
+  // Not sent on purpose (an invite went instead, they replied, excluded...): muted, never a failure.
+  if (isIntentionalStop(m)) return { text: stopLabel(m), fail: false }
+  // A SwishDM DM1 waits for the invite to go out and be accepted; "Queued" only once its sender queued it.
+  const wait = swishdmDm1Wait(m)
+  if (wait) return { text: wait, fail: false }
   if (m.approved_at && !m.sent_at) return { text: 'Queued', fail: false }
   // Today's outLabel: an invite note on a person still at connection_sent was not accepted yet.
   if (m.message_type === 'connection_note' && stage === 'connection_sent') return { text: 'Not accepted yet', fail: false }
@@ -54,7 +59,7 @@ export function emailAddrLine(m: InboxMessage): string | null {
 
 export function historyRows(t: Thread): InboxMessage[] {
   return dedupeMessages(t.messages).filter(m => !isDraft(m) && !isInternalConfirmation(m) && !isHiddenRetired(m) && !isEngineRetired(m) && m.send_blocked_reason !== 'discarded_in_inbox'
-    && (m.direction === 'inbound' || m.sent_at || m.approved_at || sendFailed(m) || isEngineRetired(m)))
+    && (m.direction === 'inbound' || m.sent_at || m.approved_at || sendFailed(m) || isEngineRetired(m) || isIntentionalStop(m)))
 }
 
 const OURS: Record<string, string> = { ivan: 'You', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan' }

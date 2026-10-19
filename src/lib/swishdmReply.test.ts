@@ -72,7 +72,9 @@ describe('a held SwishDM reply is a pending draft', () => {
 describe('no override path around the review hold', () => {
   it('a held SwishDM reply never offers Send anyways', () => {
     expect(canSendRejectedDm(reply)).toBe(false)
-    expect(canSendRejectedDm({ ...reply, send_blocked_reason: 'send_failed_400: check LinkedIn' })).toBe(true)
+    // 2026-10-19: a SwishDM row is never sent from the inbox, not even a real failure. The SwishDM senders own
+    // every send on Jonathan's seat, and a failed one needs a person to check LinkedIn first.
+    expect(canSendRejectedDm({ ...reply, send_blocked_reason: 'send_failed_400: check LinkedIn' })).toBe(false)
   })
 })
 

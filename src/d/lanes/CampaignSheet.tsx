@@ -27,7 +27,7 @@ export function LoadLine<T>({ l, what, children }: { l: Load<T>; what: string; c
 
 export function CampaignSheet({ c, onClose, now }: { c: CampaignPerf; onClose: () => void; now: number }) {
   const seat = seatOf(c.client_id) ?? 'ivan'
-  const stages = useRead(() => fetchStageCounts(c.campaign_id), `st:${c.campaign_id}`)
+  const stages = useRead(() => fetchStageCounts(c.campaign_id, c.client_id), `st:${c.campaign_id}`)
   const mix = useRead<LaneMix>(() => laneMixOnce(c.campaign_id), `mx:${c.campaign_id}`)
   const perf = useRead<PerfState>(() => loadPerf(seat), `pf:${seat}`)
   const replies = useRead<Reply[]>(() => fetchCampaignReplies(c.campaign_name), `rp:${c.campaign_id}`)

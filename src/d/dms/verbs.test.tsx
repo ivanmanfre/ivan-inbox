@@ -323,3 +323,30 @@ describe('send rejected draft anyways', () => {
     expect(screen.getByRole('button', { name: 'Send anyways' })).toBeTruthy()
   })
 })
+
+// SwishDM review fixes (2026-10-19).
+describe('SwishDM threads', () => {
+  it('a no-draft owed SwishDM thread offers no Draft it (its triage stages reply drafts itself)', () => {
+    const [t] = threads(drafted('sw', { prospect_name: 'Sam', client_id: 'swishdm' }).slice(0, 2))
+    mount(t)
+    expect(key('draft-it')).toBeNull()
+    expect(screen.getByText(/reply drafts are staged here automatically/)).toBeTruthy()
+  })
+
+  it('approving a held SwishDM reply names the live send window, never "switched on"', async () => {
+    const rows = drafted('swr', { prospect_name: 'Sam', client_id: 'swishdm' })
+    rows[2] = { ...rows[2], ai_model: 'swishdm_reply_writer_v1', send_blocked_at: '2026-09-27T08:00:00Z', send_blocked_reason: 'awaiting_client_review' }
+    const [t] = threads(rows)
+    mount(t)
+    fireEvent.click(key('send'))
+    expect(await screen.findByText(/from Jonathan’s LinkedIn in the next send window \(Sun-Fri 9am-5pm UK\)/)).toBeTruthy()
+    expect(screen.queryByText(/switched on/)).toBeNull()
+  })
+
+  it('a failed SwishDM send offers no Send anyways and never promises a two-minute send', () => {
+    const m = msg({ prospect_id: 'swf', client_id: 'swishdm', message_text: 'DM copy', approved_at: '2026-09-26T10:00:00Z', send_blocked_at: '2026-09-26T11:00:00Z', send_blocked_reason: 'send_failed_429: check LinkedIn before retrying' })
+    const [t] = threads([m]); mount(t)
+    expect(screen.queryByRole('button', { name: 'Send anyways' })).toBeNull()
+    expect(screen.queryByText(/about 2 minutes/)).toBeNull()
+  })
+})
