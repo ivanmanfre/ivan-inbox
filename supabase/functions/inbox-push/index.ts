@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
   // the name/tenant that used to be the whole title becomes the subject after
   // it, and the message text is the body, unchanged apart from the same
   // markdown/URL/em-dash cleanup every other family gets.
-  const nameSubject = `${m.prospect_name} · ${m.client_id === 'risedtc' ? 'Rise' : m.client_id === 'arch' ? 'ARCH' : 'Ivan'}`
+  const nameSubject = `${m.prospect_name} · ${m.client_id === 'risedtc' ? 'Rise' : m.client_id === 'arch' ? 'ARCH' : m.client_id === 'swishdm' ? 'SwishDM' : 'Ivan'}`
   const presented = presentPush({
     family: 'inbound_reply_notice',
     severity: 'info',
