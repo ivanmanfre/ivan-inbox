@@ -34,7 +34,8 @@ export function seatWarnings(d: LanesData, seat: Seat): string[] {
   const out: string[] = []
   const h = d.health.value?.seats.find(x => x.name === PERSON[seat]) as Health | undefined
   if (h && h.account !== 'OK') out.push('LinkedIn disconnected')
-  if (h && h.sn != null && h.sn !== 'OK') out.push('Sales Nav not working')
+  // NO_SN = a seat that never had Sales Nav (Jonathan is Premium only), not a broken one.
+  if (h && h.sn != null && h.sn !== 'OK' && h.sn !== 'NO_SN') out.push('Sales Nav not working')
   if (d.pipeline.value && d.gov.value) {
     const alarm = supplyAlarmLane(d.pipeline.value.filter(r => r.client_id === seat), d.gov.value.filter(g => g.client_id === seat))
     if (alarm === seat) out.push('Out of leads: under a day of supply left')
