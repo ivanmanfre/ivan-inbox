@@ -6,7 +6,7 @@ import { parseEmailCc } from '../../lib/emailCc'
 import { createElement, useMemo } from 'react'
 import {
   draftSendVia, approveDraft, composeReply, deleteThread, discardLegs, dismissConfirmation, draftLegs, escalateDraftToClient,
-  emailSenderLabel, isFollowUp, isSwishdmReply, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft, swishdmPageUrl,
+  emailSenderLabel, isFollowUp, isSwishdmReply, isSwishdmRow, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft, swishdmPageUrl,
   saveDraftEmail, saveDraftEmailCc, setDraftSendVia, saveDraftText, snoozeDraft, threadChatId, unsnoozeDraft, REPLY_MYSELF,
   type DraftSendVia, type InboxMessage, type Thread,
 } from '../../lib/inbox'
@@ -93,8 +93,8 @@ export function useDmVerbs(ctx: VerbCtx) {
         const ok = await confirm({
           title: `Approve the reply to ${t.prospect_name}?`,
           message: page
-            ? `Approving puts the comparison page live at ${page} (public, not indexed) and releases this reply to Jonathan\u2019s sender. It goes out only once the page opens, when the SwishDM sender is switched on, in working hours.`
-            : 'Approving releases this reply to Jonathan\u2019s sender. It goes out when the SwishDM sender is switched on, in working hours. Nothing else is sent.',
+            ? `Approving puts the comparison page live at ${page} (public, not indexed) and releases this reply to Jonathan\u2019s sender. It goes out from Jonathan\u2019s LinkedIn once the page opens, in the next send window (Sun-Fri 9am-5pm UK).`
+            : 'Approving releases this reply to Jonathan\u2019s sender. It goes out from Jonathan\u2019s LinkedIn in the next send window (Sun-Fri 9am-5pm UK). Nothing else is sent.',
           confirmText: 'Approve reply',
           verb: 'confirm-send',
         })
@@ -134,13 +134,15 @@ export function useDmVerbs(ctx: VerbCtx) {
         }
       }
       if (!half) toast.show(swish
-        ? { message: `Approved the reply to ${t.prospect_name}.`, sub: 'Jonathan\u2019s sender sends it when it is switched on.' }
+        ? { message: `Approved the reply to ${t.prospect_name}.`, sub: 'It goes out from Jonathan\u2019s LinkedIn in the next send window (Sun-Fri 9am-5pm UK).' }
         : { message: `Queued to ${t.prospect_name}.`, sub: 'The sender picks it up within about 2 minutes.' })
       ctx.refresh()
       return half
     }
 
     async function sendAnyways(t: Thread, m: InboxMessage): Promise<void> {
+      // Jonathan's seat is sent only by the SwishDM senders: no override, no "about 2 minutes" promise.
+      if (isSwishdmRow(m) || t.client_id === 'swishdm') { fail('SwishDM messages are sent only by the SwishDM senders. Nothing was sent.'); return }
       const ok = await confirm({ title: `Send anyways to ${t.prospect_name}?`,
         message: createElement('div', null, createElement('p', null, `Rejected: ${m.send_blocked_reason?.replaceAll('_', ' ')}.`), createElement('p', null, m.message_text), createElement('p', null, 'Your approval overrides the copy rejection. Delivery and account checks still apply.')),
         confirmText: 'Send anyways', verb: 'confirm-send-anyways' })

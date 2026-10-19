@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { isIntentionalStopReason } from './inbox'
 
 export type SendRow = {
   client_id: string
@@ -142,7 +143,9 @@ export function buildSendLog(sent: LogRow[], failed: LogRow[]): SendLogItem[] {
   }
   for (const m of failed) {
     if (!m.send_blocked_at || m.send_blocked_reason === 'discarded_in_inbox'
-      || m.send_blocked_reason === 'owner_confirmation' || m.send_blocked_reason === 'owner_confirmation_superseded' || m.send_blocked_reason === 'reply_retry_pending' || m.send_blocked_reason === 'awaiting_client_review') continue
+      || m.send_blocked_reason === 'owner_confirmation' || m.send_blocked_reason === 'owner_confirmation_superseded' || m.send_blocked_reason === 'reply_retry_pending' || m.send_blocked_reason === 'awaiting_client_review'
+      // Not sent on purpose (invite instead, they replied, excluded...): not a failure either.
+      || isIntentionalStopReason(m.send_blocked_reason)) continue
     items.push({
       id: m.id, prospect_id: m.prospect_id, prospect_name: m.prospect_name,
       client_id: m.client_id, message_type: m.message_type ?? 'dm', ai_model: m.ai_model ?? null,

@@ -63,10 +63,25 @@ export async function fetchEngagers7d(): Promise<Record<Seat, number>> {
 
 export const STAGES = ['enriched', 'ballot_hold', 'expansion_hold', 'queued', 'connection_sent', 'connected', 'dm_sent', 'replied', 'positive_reply', 'skipped', 'archived', 'disqualified', 'inmail_failed'] as const
 
+/** SwishDM's senders write their own stage names; each is counted in the shared bucket it means.
+    A withdrawn invite is out of the live ladder, so it lands in Archived. */
+export const SWISHDM_STAGE_BUCKET: Record<string, (typeof STAGES)[number]> = {
+  swishdm_staged_hold: 'queued', swishdm_connected: 'connected', swishdm_dm_sent: 'dm_sent', swishdm_replied: 'replied',
+  swishdm_inmail_sent: 'dm_sent', swishdm_invite_withdrawn: 'archived',
+}
+
+/** Fold raw per-stage counts into the shared buckets, in STAGES order (SwishDM stages mapped). */
+export function foldStageCounts(raw: ReadonlyArray<{ stage: string; n: number }>): Array<{ stage: string; n: number }> {
+  const by = new Map<string, number>()
+  for (const r of raw) { const b = SWISHDM_STAGE_BUCKET[r.stage] ?? r.stage; by.set(b, (by.get(b) ?? 0) + r.n) }
+  return STAGES.map(stage => ({ stage: stage as string, n: by.get(stage) ?? 0 })).filter(s => s.n > 0)
+}
+
 /** Where everyone in one campaign stands: one HEAD count per stage (no row leaves the DB). */
-export async function fetchStageCounts(campaignId: string): Promise<Array<{ stage: string; n: number }>> {
-  const out = await Promise.all(STAGES.map(async stage => ({ stage, n: await headCount(q => q.eq('campaign_id', campaignId).eq('stage', stage)) })))
-  return out.filter(s => s.n > 0)
+export async function fetchStageCounts(campaignId: string, clientId?: string | null): Promise<Array<{ stage: string; n: number }>> {
+  const stages: string[] = [...STAGES, ...(clientId === 'swishdm' ? Object.keys(SWISHDM_STAGE_BUCKET) : [])]
+  const out = await Promise.all(stages.map(async stage => ({ stage, n: await headCount(q => q.eq('campaign_id', campaignId).eq('stage', stage)) })))
+  return foldStageCounts(out)
 }
 
 export type LaneMix = { lanes: Array<{ lane: string; n: number }>; capped: boolean }
@@ -147,15 +162,24 @@ export function laneMixOnce(campaignId: string): Promise<LaneMix> {
     global manual kill switch `conn_send_pause_until` (stops every seat's invites). */
 export const PAUSE_KEY: Record<Seat, string> = { ivan: 'ivan_conn_422_pause_until', risedtc: 'risedtc_conn_422_pause_until', arch: 'arch_conn_send_pause_until' , swishdm: 'swishdm_invite_pause_until' }
 export const KILL_SWITCH_KEY = 'conn_send_pause_until'
-export type Pauses = Partial<Record<Seat | 'all', string>>
+/** A seat's other senders' own pause keys (SwishDM's DM and InMail senders each read one). */
+export const CHANNEL_PAUSE_KEYS: Partial<Record<Seat, ReadonlyArray<{ key: string; label: string }>>> = {
+  swishdm: [{ key: 'swishdm_dm_pause_until', label: 'DM pause' }, { key: 'swishdm_inmail_pause_until', label: 'InMail pause' }],
+}
+export type Pauses = Partial<Record<Seat | 'all', string>> & { byKey?: Record<string, string> }
 export async function fetchPauses(): Promise<Pauses> {
-  const { data, error } = await supabase.from('integration_config').select('key, value').in('key', [...Object.values(PAUSE_KEY), KILL_SWITCH_KEY])
+  const channelKeys = Object.values(CHANNEL_PAUSE_KEYS).flatMap(l => (l ?? []).map(k => k.key))
+  const { data, error } = await supabase.from('integration_config').select('key, value').in('key', [...Object.values(PAUSE_KEY), KILL_SWITCH_KEY, ...channelKeys])
   if (error) throw error
   const rows = (data ?? []) as Array<{ key: string; value: string | null }>
   const out: Pauses = {}
   for (const [seat, key] of [...Object.entries(PAUSE_KEY), ['all', KILL_SWITCH_KEY]] as Array<[Seat | 'all', string]>) {
     const v = rows.find(r => r.key === key)?.value
     if (v && Number.isFinite(Date.parse(v))) out[seat] = v
+  }
+  for (const key of channelKeys) {
+    const v = rows.find(r => r.key === key)?.value
+    if (v && Number.isFinite(Date.parse(v))) (out.byKey ??= {})[key] = v
   }
   return out
 }

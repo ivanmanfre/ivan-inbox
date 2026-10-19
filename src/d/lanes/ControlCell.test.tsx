@@ -6,6 +6,7 @@ import { isContractError, parsePayload, type CcPayload } from '../../lib/campaig
 import { renderInFrame } from '../test-utils'
 import { ACK_KEY } from './ack'
 import { ControlCell, TodayCell } from './seatCells'
+import { ControlSheet } from './ControlSheet'
 import type { LanesData } from './useLanesData'
 
 afterEach(() => { cleanup(); localStorage.clear() })
@@ -59,5 +60,33 @@ describe('Today cell', () => {
     expect(screen.getAllByText('?')).toHaveLength(3)
     expect(screen.getByText('cap unknown')).toBeTruthy()
     expect(screen.getByText(/Governor could not be read/)).toBeTruthy()
+  })
+})
+
+// SwishDM review fixes (2026-10-19): the DM and InMail senders' own pause keys were never shown.
+describe('SwishDM channel pauses', () => {
+  const swishP: CcPayload = { ...p, clients: [...p.clients, { ...p.clients.find(c => c.client_id === 'ivan')!, client_id: 'swishdm' }] }
+  const future = new Date(NOW + 3 * 3_600_000).toISOString()
+  const past = new Date(NOW - 3_600_000).toISOString()
+  const pauses = { swishdm: past, byKey: { swishdm_dm_pause_until: future, swishdm_inmail_pause_until: past } }
+
+  it('the cell says a live DM pause, and not an ended InMail one', () => {
+    renderInFrame(<ControlCell seat="swishdm" ctx={{ d: data({ cc: slot(swishP), pauses: slot(pauses) }), now: NOW }} />)
+    expect(screen.getByText(/DM pause until/)).toBeTruthy()
+    expect(screen.queryByText(/InMail pause until/)).toBeNull()
+  })
+
+  it('the detail sheet lists invite, DM and InMail pause keys', () => {
+    renderInFrame(<ControlSheet seat="swishdm" p={swishP} gov={null} pauses={pauses} pausesFailed={null} now={NOW} onClose={() => {}} />)
+    for (const k of ['swishdm_invite_pause_until', 'swishdm_dm_pause_until', 'swishdm_inmail_pause_until', 'conn_send_pause_until']) expect(screen.getByText(k)).toBeTruthy()
+    expect(screen.getByText('DM pause')).toBeTruthy()
+    expect(screen.getByText('InMail pause')).toBeTruthy()
+    expect(screen.getByText('Invite pause')).toBeTruthy()
+  })
+
+  it('other seats keep their single seat pause row', () => {
+    renderInFrame(<ControlSheet seat="ivan" p={p} gov={null} pauses={{}} pausesFailed={null} now={NOW} onClose={() => {}} />)
+    expect(screen.getByText('Seat pause')).toBeTruthy()
+    expect(screen.queryByText('DM pause')).toBeNull()
   })
 })

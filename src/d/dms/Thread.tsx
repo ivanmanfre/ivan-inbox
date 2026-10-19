@@ -157,7 +157,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   const composeOff = scheduledPending ? 'A DM is scheduled. Cancel the scheduled send to write another reply.' : t.ownerConfirmation && !manualReply ? 'Reply paused while an internal fact is confirmed. Add the answer as a note, or discard the question.'
     : replyingByEmail && !canComposeEmail(t) ? 'Email compose is on for Arch threads only. Approving email drafts works here.'
       : !replyingByEmail && t.stage === 'engaged' ? 'Not connected yet. A reply here would go out as a connection invite, so compose is off for this thread.'
-        : t.client_id === 'swishdm' ? 'Jonathan\u2019s seat sends through its own sender, so a reply typed here would never go out. Edit and approve the draft above, or answer on LinkedIn.' : null
+        : t.client_id === 'swishdm' ? 'Jonathan\u2019s seat sends through its own sender, so a reply typed here would never go out. Its reply drafts are staged here automatically: edit and approve one, or answer on LinkedIn.' : null
   const openEmailReply = () => {
     setEmailReplyFor(t.prospect_id)
     dock.current?.querySelector('textarea')?.focus()
@@ -253,7 +253,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     small = <>
       {t.ownerConfirmation && !manualReply
         ? <Btn verb="ask-owner-link" className="dm-k" onClick={() => void copy()} title="copies the chat link">{seat === 'ivan' ? 'Copy chat link' : `Ask ${from}`}</Btn>
-        : owed && <Btn verb="draft-it" className="dm-k" disabled={Boolean(draftJob?.running)} onClick={() => void draftIt()} title="Create a reply draft">{draftRunning ? 'Drafting…' : 'Draft it'}</Btn>}
+        : owed && t.client_id !== 'swishdm' && <Btn verb="draft-it" className="dm-k" disabled={Boolean(draftJob?.running)} onClick={() => void draftIt()} title="Create a reply draft">{draftRunning ? 'Drafting…' : 'Draft it'}</Btn>}
       {laterKey}
       {canMarkSolved(t) && solvedKey}
     </>

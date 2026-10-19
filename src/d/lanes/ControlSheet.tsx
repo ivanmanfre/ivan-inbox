@@ -13,7 +13,7 @@ import { Sheet } from '../ui/Sheet'
 import { Shs } from './CampaignSheet'
 import { EvidenceFolds, GovernorDetail, IncidentDetail } from './controlParts'
 import { ago, clientOf, controlOf, dm, hm, reasonWord, seatEligible, until } from './model'
-import { KILL_SWITCH_KEY, PAUSE_KEY, type Pauses } from './reads'
+import { CHANNEL_PAUSE_KEYS, KILL_SWITCH_KEY, PAUSE_KEY, type Pauses } from './reads'
 
 const PACE: Record<string, string> = { no_target: 'no target set for this seat', on_track: 'on track against the target', behind: 'behind the target', not_yet: 'too early in the session to judge' }
 const at = (t: string | null | undefined, now: number) => (!t ? 'not set' : `${dm(t) === dm(now) ? 'today' : dm(t)} ${hm(t)}`)
@@ -40,9 +40,9 @@ export function ControlSheet({ seat, p, pFailed = null, gov, pauses, pausesFaile
   const stale = p && monitorLiveness(p, now) === 'stale' && p.monitor.last_tick_at ? Math.max(1, Math.round((now - Date.parse(p.monitor.last_tick_at)) / 6e4)) : null
   const fr = c?.freshness
   const incidents = c?.incidents ?? []
-  const pause = (key: string, v2: string | undefined) => {
+  const pause = (key: string, v2: string | undefined, name?: string) => {
     const live = v2 && Date.parse(v2) > now
-    return <div className="dl-kv" key={key}><span className="dl-k">{key === KILL_SWITCH_KEY ? 'Manual stop, all seats' : 'Seat pause'}</span>{' '}
+    return <div className="dl-kv" key={key}><span className="dl-k">{name ?? (key === KILL_SWITCH_KEY ? 'Manual stop, all seats' : 'Seat pause')}</span>{' '}
       {v2 ? <><b className={live ? 'dl-al' : ''}>{live ? `until ${at(v2, now)}` : `ended ${at(v2, now)}`}</b>{live ? ` (${until(v2, now)})` : ''}</> : 'not set'} <span className="dl-dimt">{key}</span></div>
   }
   return (
@@ -64,7 +64,7 @@ export function ControlSheet({ seat, p, pFailed = null, gov, pauses, pausesFaile
         {v.blockers.length > 0 && <p className="dl-sl dl-bad">Cannot send right now: {v.blockers.join('; ')}.</p>}
         <Shs>Pauses</Shs>
         {pausesFailed && !pauses ? <p className="dl-sl dl-bad">The pause keys could not be read: {pausesFailed}</p>
-          : <>{pause(PAUSE_KEY[seat], pauses?.[seat])}{pause(KILL_SWITCH_KEY, pauses?.all)}</>}
+          : <>{pause(PAUSE_KEY[seat], pauses?.[seat], CHANNEL_PAUSE_KEYS[seat] ? 'Invite pause' : undefined)}{(CHANNEL_PAUSE_KEYS[seat] ?? []).map(k => pause(k.key, pauses?.byKey?.[k.key], k.label))}{pause(KILL_SWITCH_KEY, pauses?.all)}</>}
         <Shs tail={inv.eligible_stock_scope ? `scope ${inv.eligible_stock_scope}` : undefined}>Eligible supply</Shs>
         <div className="dl-kv"><b>{seatEligible(inv) ?? 'unknown'}</b> eligible{v.pools.length ? ` · ${v.pools.map(([k, x]) => `${k} ${x}`).join(', ')}` : ''}</div>
         {typeof (inv.eligible_stock_by_pool as Record<string, unknown> | null)?.note === 'string' && <p className="dl-sl">{String((inv.eligible_stock_by_pool as Record<string, unknown>).note)}</p>}

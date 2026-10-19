@@ -1,0 +1,56 @@
+-- 295 · A post archived on the client board is not "in review" in the inbox (2026-10-19).
+-- cb34_p2_safe_drafts (read only by the inbox and content_copy_readiness) now hides drafts with
+-- carousel_drafts.board_archived_at set. Same columns, same security_invoker. The board's own
+-- Archive section reads carousel_drafts through its RPCs, and restoring a post on the board clears
+-- board_archived_at, which brings it back here. Backup: ~/.local/state/swishdm-review/backups/review-fixes-20261019T1200Z/
+CREATE OR REPLACE VIEW public.cb34_p2_safe_drafts WITH (security_invoker=true) AS  SELECT d.id,
+    d.title,
+    d.type,
+    d.topic,
+    d.key_points,
+    d.style_id,
+    d.slides,
+    d.authored_html,
+    d.image_urls,
+    d.post_body,
+    d.ig_caption,
+    d.taxonomy,
+    d.qa,
+    d.status,
+    d.render_cost,
+    d.scheduled_at,
+    d.published_at,
+    d.source_ref,
+    d.created_at,
+    d.updated_at,
+    d.agent_log,
+    d.topic_strength,
+    d.render_engine,
+    d.source_post_id,
+    d.description,
+    d.video_url,
+    d.video_spec,
+    d.pdf_url,
+    d.slide_metadata,
+    d.ig_slide_urls,
+    d.regen_slides,
+    d.video_status,
+    d.video_feedback,
+    d.video_style,
+    d.client_id,
+    d.board_visible,
+    d.source_label,
+    d.client_idea_id,
+    d.source_detail,
+    d.funnel_stage,
+    d.ig_published_at,
+    d.ig_post_url,
+    d.ig_error,
+    d.ig_attempts,
+    d.funnel_source,
+    d.editorial_brief_artifact_id,
+    ((g.guard ->> 'member'::text))::boolean AS cb34_p2_member
+   FROM (carousel_drafts d
+     CROSS JOIN LATERAL ( SELECT cb34_p2_read_guard(d.id) AS guard) g)
+  WHERE ((g.guard ->> 'visible'::text))::boolean
+    AND d.board_archived_at IS NULL;
