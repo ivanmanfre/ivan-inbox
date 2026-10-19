@@ -227,6 +227,7 @@ export function holdReason(m: InboxMessage): string | null {
   if (isRaceHold(r)) return r === `${RACE_HOLD_PREFIX}outbound`
     ? 'Came back: a message went out on this thread while it was queued. Re-read the thread, then approve again.'
     : 'Came back: they wrote while it was queued. Re-read their message, then approve again.'
+  if (r?.startsWith('lint_calendar_')) return 'Not sent: the calendar check held this draft. Review the proposed time or edit the invitation before sending again.'
   if (r === 'lint_email_cc_invalid') return 'Email held: check the CC addresses before approving.'
   if (r === 'lint_scan_quality_hold') return 'Scan held: the latest review found no supported recommendation. Review the scan before approving; the sender will keep it held.'
   if (r === 'lint_unbacked_commitment') return 'Came back: the DM promises an email that is not attached. Fix the line or add the email, then approve again.'

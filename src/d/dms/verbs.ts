@@ -135,7 +135,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       }
       if (!half) toast.show(swish
         ? { message: `Approved the reply to ${t.prospect_name}.`, sub: 'Jonathan\u2019s sender sends it when it is switched on.' }
-        : { message: `Sent to ${t.prospect_name}.`, sub: 'The sender picks it up within about 2 minutes.' })
+        : { message: `Queued to ${t.prospect_name}.`, sub: 'The sender picks it up within about 2 minutes.' })
       ctx.refresh()
       return half
     }
