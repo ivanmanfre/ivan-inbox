@@ -3,7 +3,7 @@
    opens), LinkedIn + Sales Nav credits, today's invites, DMs and InMail as big
    numbers (never added together), and the seat's own warning (out of leads,
    disconnected). Clicking a square chooses the seat the page below shows. */
-import { monitorLiveness } from '../../lib/campaignControl'
+import { monitorLiveness, QUEUE_EMPTY_WORD } from '../../lib/campaignControl'
 import { supplyAlarmLane } from '../../lib/focus'
 import { SEAT_NAME, type Seat } from '../seats'
 import { clientOf, controlOf, hm, seatWord, todayOf } from './model'
@@ -29,8 +29,12 @@ export function stateTime(d: LanesData, seat: Seat, now: number): string | null 
   return null
 }
 
-/** The seat's own warnings, worst first. Same rule and rows as the old all-seats line. */
-export function seatWarnings(d: LanesData, seat: Seat): string[] {
+export const OUT_OF_LEADS = 'Out of leads: under a day of supply left'
+
+/** The seat's own warnings, worst first. Same rule and rows as the old all-seats line, except the
+    supply line is dropped when the state word already says the queue is empty ("Queue empty" +
+    "Out of leads" read as the same news twice). */
+export function seatWarnings(d: LanesData, seat: Seat, now: number = Date.now()): string[] {
   const out: string[] = []
   const h = d.health.value?.seats.find(x => x.name === PERSON[seat]) as Health | undefined
   if (h && h.account !== 'OK') out.push('LinkedIn disconnected')
@@ -38,7 +42,9 @@ export function seatWarnings(d: LanesData, seat: Seat): string[] {
   if (h && h.sn != null && h.sn !== 'OK' && h.sn !== 'NO_SN') out.push('Sales Nav not working')
   if (d.pipeline.value && d.gov.value) {
     const alarm = supplyAlarmLane(d.pipeline.value.filter(r => r.client_id === seat), d.gov.value.filter(g => g.client_id === seat))
-    if (alarm === seat) out.push('Out of leads: under a day of supply left')
+    const p = d.cc.value
+    const said = p ? seatWord(clientOf(p, seat), monitorLiveness(p, now)).word === QUEUE_EMPTY_WORD : false
+    if (alarm === seat && !said) out.push(OUT_OF_LEADS)
   }
   return out
 }
@@ -53,9 +59,10 @@ function Square({ seat, d, now, on, pick }: { seat: Seat; d: LanesData; now: num
   const t = todayOf(p, seat, now)
   const time = stateTime(d, seat, now)
   const h = d.health.value?.seats.find(x => x.name === PERSON[seat]) as Health | undefined
-  const warns = seatWarnings(d, seat)
+  const warns = seatWarnings(d, seat, now)
+  const real = warns.some(x => x !== OUT_OF_LEADS)
   return (
-    <div className={`dl-sq${on ? ' dl-on' : ''}${warns.length ? ' dl-sqw' : ''}`} data-seat={seat}>
+    <div className={`dl-sq${on ? ' dl-on' : ''}${real ? ' dl-sqw' : ''}`} data-seat={seat}>
       <button type="button" className="dl-sqhit" role="tab" aria-selected={on} data-pick={seat} aria-label={`Show ${SEAT_NAME[seat]}`} onClick={() => pick(seat)} />
       <div className="dl-sqh">
         <b>{SEAT_NAME[seat]}</b>
@@ -70,7 +77,7 @@ function Square({ seat, d, now, on, pick }: { seat: Seat; d: LanesData; now: num
         <Big label="DMs today" short="DMs" v={t?.dm} />
         <Big label="InMail today" short="InMail" v={t?.inmail} />
       </div>
-      {warns.length > 0 && <div className="dl-sqx">{warns.map(x => <p key={x} data-seat-warning>{x}</p>)}</div>}
+      {warns.length > 0 && <div className="dl-sqx">{warns.map(x => <p key={x} className={x === OUT_OF_LEADS ? 'dl-sqq' : undefined} data-seat-warning>{x}</p>)}</div>}
       {h?.degraded && h.link && <a className="dl-reconnect dl-sqa" data-verb="reconnect" href={h.link} target="_blank" rel="noreferrer">Reconnect</a>}
     </div>
   )

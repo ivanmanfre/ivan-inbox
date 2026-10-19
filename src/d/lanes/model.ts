@@ -57,7 +57,8 @@ export function seatWord(c: CcClient | undefined, liveness: CcLiveness): { word:
   if (!c) return { word: 'Unknown, unverified', tone: 'warn' }
   if (liveness === 'stale') return { word: 'Unknown, unverified', tone: 'warn' }
   if (rateLimitIncident(c)) return { word: 'Rate limited', tone: 'warn' }
-  if (isQueueEmptyClient(c)) return { word: 'Queue empty', tone: 'warn' }
+  // A normal empty queue is status, not an alarm (Ivan 10-12: panels are status).
+  if (isQueueEmptyClient(c)) return { word: 'Queue empty', tone: 'dim' }
   const w = { healthy: 'Healthy', capacity_reached: 'Capacity reached', outside_window: 'Outside window', incident: 'Incident', unknown: 'Unknown, unverified' }[c.status]
   return { word: w, tone: c.status === 'healthy' ? 'live' : c.status === 'outside_window' ? 'dim' : 'warn' }
 }

@@ -27,6 +27,7 @@
 .dl-sqn em{display:block;font:500 36px/1 var(--m);font-style:normal;letter-spacing:-1.2px;font-variant-numeric:tabular-nums}
 .dl-sqn small{display:block;margin-top:5px;font:400 12px/1.25 var(--m);color:var(--t3)}
 .dl-sqx p{margin:0;font:600 13.5px/1.35 var(--f);color:var(--critT)}
+.dl-sqx p.dl-sqq{font:400 12.5px/1.35 var(--m);color:var(--t3)}
 .dl-sqa{position:relative;z-index:2;align-self:flex-start;font:500 12px var(--m);padding:3px 9px}
 
 /* sections */

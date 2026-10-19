@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { QUEUE_EMPTY_FAMILY, type CcClient, type CcPayload } from '../../lib/campaignControl'
+import rateLimited from '../../lib/cc-fixtures/rate_limited.json'
 import { renderInFrame } from '../test-utils'
-import { SeatSquares, seatWarnings } from './SeatSquares'
+import { SeatSquares, seatWarnings, OUT_OF_LEADS } from './SeatSquares'
+import { Strip, todayLine } from './v4/Strip'
 import type { LanesData } from './useLanesData'
 
 afterEach(() => { cleanup() })
@@ -37,5 +40,64 @@ describe('Lanes 3 seat squares', () => {
     expect(document.querySelector('[data-seat="arch"] .dl-sqr')!.textContent).toBe('?invites todayinvites?DMs todayDMs?InMail todayInMail')
     fireEvent.click(document.querySelector('[data-pick="arch"]')!)
     expect(pick).toHaveBeenCalledWith('arch')
+  })
+})
+
+/* Ivan 10-19: "still this shitty alert instead of the stats". SwishDM read "Queue empty" over
+   "Out of leads: under a day of supply left" and no numbers: the v4 strip showed the warning INSTEAD of
+   today's counts, and the warning repeated the state word. */
+describe('a seat square always shows its numbers; a warning never repeats the state word', () => {
+  const fx = rateLimited as unknown as CcPayload
+  const arch = fx.clients.find(c => c.client_id === 'arch')!
+  const NOW = Date.parse(fx.monitor.last_tick_at!) + 60_000
+  const swish = (family: string, status: CcClient['status'] = 'incident'): CcClient =>
+    ({ ...arch, client_id: 'swishdm', status, incidents: [{ ...arch.incidents![0], failure_family: family, state: 'updated', cause: undefined }] })
+  const today = (ch: string, sent: number) => ({ sent, failed: 0, blocked: 0, channel: ch, phantom: 0, interval: 'today', attempted: sent, client_id: 'swishdm', source_lane: '__all__' })
+  const cc = (client: CcClient, withRows: boolean): CcPayload => ({
+    ...fx, clients: [client],
+    ranges: { ...fx.ranges, daily: [], rows: withRows ? [today('invitation', 24), today('dm', 2), today('inmail', 3)] as never : [] },
+  })
+  const supply = { pipeline: slot([pipe('swishdm', 0, 7)]), gov: slot([gov('swishdm', 3)]) }
+
+  it('drops "Out of leads" when the state word already says Queue empty', () => {
+    const d = data({ cc: slot(cc(swish(QUEUE_EMPTY_FAMILY), true)), ...supply })
+    expect(seatWarnings(d, 'swishdm', NOW)).toEqual([])
+  })
+
+  it('keeps it when the state word does not say so, and keeps real problems either way', () => {
+    const health = slot({ updated_at: '', seats: [{ id: 'x', name: 'Jonathan Kiekbusch', account: 'DISCONNECTED', sn: 'NO_SN', degraded: true, link: 'https://x' }] })
+    const healthy = data({ cc: slot(cc(swish(QUEUE_EMPTY_FAMILY, 'healthy'), true)), ...supply })
+    expect(seatWarnings(healthy, 'swishdm', NOW)).toEqual([OUT_OF_LEADS])
+    const broken = data({ cc: slot(cc(swish(QUEUE_EMPTY_FAMILY), true)), ...supply, health })
+    expect(seatWarnings(broken, 'swishdm', NOW)).toEqual(['LinkedIn disconnected'])
+  })
+
+  it('the strip tab shows 24 invites, 2 DMs, 3 InMail for an empty-queue seat, with no repeated warning', () => {
+    const d = data({ cc: slot(cc(swish(QUEUE_EMPTY_FAMILY), true)), ...supply })
+    renderInFrame(<Strip seats={['swishdm']} seat="swishdm" pick={() => {}} d={d} now={NOW} />)
+    const tab = document.querySelector('[data-seat="swishdm"]')!
+    expect(tab.textContent).toContain('Queue empty')
+    expect(tab.querySelector('.dl4-tab-line')!.textContent).toBe('24 invites · 2 DMs · 3 InMail today')
+    expect(document.querySelector('[data-seat-warning]')).toBeNull()
+    expect(document.body.textContent).not.toContain('Out of leads')
+    expect(document.querySelector('.dl4-pill.dl4-warn')).toBeNull()
+  })
+
+  it('a remaining warning sits in its own quiet line under the numbers, never in their place', () => {
+    const d = data({ cc: slot(cc(swish(QUEUE_EMPTY_FAMILY, 'healthy'), true)), ...supply })
+    renderInFrame(<Strip seats={['swishdm']} seat="swishdm" pick={() => {}} d={d} now={NOW} />)
+    const tab = document.querySelector('[data-seat="swishdm"]')!
+    expect(tab.querySelector('.dl4-tab-line')!.textContent).toBe('24 invites · 2 DMs · 3 InMail today')
+    const note = tab.querySelector('.dl4-tab-note')!
+    expect(note.textContent).toBe(OUT_OF_LEADS)
+    expect(note.classList.contains('dl4-warn')).toBe(false)
+  })
+
+  it('a missing number is "?", and the row is never hidden', () => {
+    expect(todayLine(null)).toBe('? invites · ? DMs · ? InMail today')
+    expect(todayLine({ inv: 24, dm: null, inmail: 3 }, 120)).toBe('24 invites · ? DMs · 3 InMail today · 120 credits')
+    const d = data({ cc: slot(cc(swish(QUEUE_EMPTY_FAMILY), false)), ...supply })
+    renderInFrame(<SeatSquares seats={['swishdm']} seat="swishdm" pick={() => {}} d={d} now={NOW} />)
+    expect(document.querySelector('[data-seat="swishdm"] .dl-sqr')!.textContent).toBe('?invites todayinvites?DMs todayDMs?InMail todayInMail')
   })
 })
