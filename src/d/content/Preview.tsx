@@ -4,6 +4,7 @@ import { Btn } from '../ui/Key'
 import { warsawDayTime } from '../ui/time'
 import { imgOf, type Lane } from './model'
 import { foldText } from './weekModel'
+import { MediaViewer } from './MediaViewer'
 
 // The LinkedIn-faithful preview: the platform's own light card at its own
 // measure, because widening it would make the preview lie. While editing, the
@@ -23,6 +24,7 @@ export function Preview({ d, lane, body, editing, text, setText, busy = false, o
   const [name, line, ini] = AUTHOR[lane]
   // LinkedIn's fold (29 Sep, "honest preview"): the feed shows about three lines, then "…see more".
   const [more, setMore] = useState(false)
+  const [viewing, setViewing] = useState<number | null>(null)
   const fold = foldText(body, 3, 52)
   const shown = more || !fold.folded ? body : fold.head
   const img = d.type !== 'carousel' ? imgOf(d.image_urls) : null
@@ -50,12 +52,13 @@ export function Preview({ d, lane, body, editing, text, setText, busy = false, o
           )) : <span style={{ color: '#666' }}>No post text yet.</span>}
         </div>
       )}
-      {img && !editing && <img className="cn-liimg" src={img} alt="" loading="lazy" />}
+      {img && !editing && <button type="button" className="cn-li-open cn-li-open-main" aria-label="Open image" onClick={() => setViewing(0)}><img className="cn-liimg" src={img} alt="" loading="lazy" /></button>}
       {slides.length > 0 && !editing && (
         <div className="cn-slides" aria-label={d.type === 'carousel' ? `Carousel, ${slides.length} slides` : 'More images'}>
-          {slides.map((u, i) => <img key={`${u}-${i}`} src={imgOf([u], 400) ?? u} alt="" loading="lazy" />)}
+          {slides.map((u, i) => <button key={`${u}-${i}`} type="button" className="cn-li-open" aria-label={`Open slide ${d.type === 'carousel' ? i + 1 : i + 2} of ${all.length}`} onClick={() => setViewing(d.type === 'carousel' ? i : i + 1)}><img src={imgOf([u], 400) ?? u} alt="" loading="lazy" /></button>)}
         </div>
       )}
+      {viewing !== null && <MediaViewer images={all} initial={viewing} onClose={() => setViewing(null)} />}
     </div>
   )
 }

@@ -145,3 +145,8 @@
   :root[data-skin-on~='content.review'] :is(.cv2-row,.cv2-chev,.cv2-chev .d-ico){transition:none}
 }
 :root.brief-motion-off[data-skin-on~='content.review'] .cv2-list > .cv2-row{animation:none !important}
+
+:root[data-skin-on~='content.review'] .d-phone .cv2-fixrow .cv2-k{min-width:44px;min-height:44px}
+
+:root[data-skin-on~='content.review'] .d-phone .cv2-fixrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+:root[data-skin-on~='content.review'] .d-phone .cv2-fixrow .cv2-fixt{grid-column:2 / -1}
