@@ -267,6 +267,16 @@ describe('no All seat', () => {
 })
 
 describe('the source tag is the first thing on every row', () => {
+  it('shows Personal beside the call source for personal stories only', () => {
+    renderInFrame(<Harness show="risedtc" rows={[
+      row({ id: 'med-spa', client_id: 'risedtc', source_label: 'Call', taxonomy: { pillar: 'personal', register: 'personal' } }),
+      row({ id: 'roas', client_id: 'risedtc', source_label: 'Call', taxonomy: { pillar: 'authority' } }),
+    ]} />)
+    expect(card('med-spa')!.querySelector('[data-source="call"]')!.textContent).toBe('Call')
+    expect(card('med-spa')!.querySelector('[data-pillar="personal"]')?.textContent).toBe('Personal')
+    expect(card('roas')!.querySelector('[data-pillar="personal"]')).toBeNull()
+  })
+
   it('first child of every row, in the source\'s own words', () => {
     const rows = [
       brain({ id: 's-brain', taxonomy: { source: 'content-brain', brain_brief: { slot: 'outlier' } } }),

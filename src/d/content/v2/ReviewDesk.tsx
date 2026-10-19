@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { pictureEditable, type ContentDraft } from '../../../lib/content'
+import { pictureEditable, taxonomyValue, type ContentDraft } from '../../../lib/content'
 import { sourceOf } from '../../../lib/brainPage'
 import { reasonLabel } from '../../../lib/verdicts'
 import type { PatternRead } from '../../../lib/earlyReads'
@@ -492,6 +492,7 @@ function ReviewRow({ c, i, now, focused, open, busy, held, read, repeat, slot, s
           {snippet && <span className="cv2-row-sub">{snippet}</span>}
         </div>
         <div className="cv2-row-meta">
+          {(taxonomyValue(c.r.taxonomy, 'pillar') === 'personal' || taxonomyValue(c.r.taxonomy, 'register') === 'personal') && <span className="cv2-tag" data-pillar="personal">Personal</span>}
           {kindFlag && <span className="cv2-tag">{kindFlag.text}</span>}
           {/* Ivan's text-first drafts often have no picture yet (the selfie assigner adds one): only a client's missing picture is a tag. */}
           {noImg?.tone === 'warn' && <span className="cv2-tag cv2-tag-warn">No image</span>}
