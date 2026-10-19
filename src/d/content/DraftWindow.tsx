@@ -114,7 +114,7 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
       if (e.metaKey || e.ctrlKey || e.altKey || v.editing) return
       const el = e.target as HTMLElement | null
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
-      if (document.querySelector('.d-confirm, .d-sheet')) return
+      if (document.querySelector('.d-confirm, .d-sheet, .cn-media-viewer[open]')) return
       // The window owns j/k/Enter/Esc while it is open: the list's command layer under it must not also walk.
       const own = () => { e.preventDefault(); e.stopImmediatePropagation() }
       if (e.key === 'j') { own(); if (at >= 0 && at + 1 < queue.length) onPick(queue[at + 1]) }

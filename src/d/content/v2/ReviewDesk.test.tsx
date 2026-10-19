@@ -8,10 +8,10 @@ import { clearBoardState, setBoardState } from '../../../lib/clientBoardState'
 // Write parity for the Brief 4 review desk (SPEC-content §5): the same verdict
 // store, the same schedule / board writes, the reason as the drop's commit, and
 // the seat's next step only once a verdict is SAVED. Every write is mocked.
-const lib = vi.hoisted(() => ({ setVerdict: vi.fn(), scheduleGuarded: vi.fn(), setBoardVisible: vi.fn(), setScheduleDateAt: vi.fn() }))
+const lib = vi.hoisted(() => ({ setVerdict: vi.fn(), scheduleGuarded: vi.fn(), setBoardVisible: vi.fn(), setScheduleDateAt: vi.fn(), deleteDraft: vi.fn(), deleteClientDraft: vi.fn() }))
 vi.mock('../../../lib/verdicts', async orig => ({ ...(await orig<typeof import('../../../lib/verdicts')>()), setVerdict: lib.setVerdict }))
 vi.mock('../writes', () => ({ scheduleGuarded: lib.scheduleGuarded }))
-vi.mock('../../../lib/content', async orig => ({ ...(await orig<typeof import('../../../lib/content')>()), setBoardVisible: lib.setBoardVisible, setScheduleDateAt: lib.setScheduleDateAt }))
+vi.mock('../../../lib/content', async orig => ({ ...(await orig<typeof import('../../../lib/content')>()), setBoardVisible: lib.setBoardVisible, setScheduleDateAt: lib.setScheduleDateAt, deleteDraft: lib.deleteDraft, deleteClientDraft: lib.deleteClientDraft }))
 vi.mock('../../../lib/brainPage', async orig => ({ ...(await orig<typeof import('../../../lib/brainPage')>()), fetchDraftSources: vi.fn(() => Promise.resolve(new Map())) }))
 vi.mock('../useEarlyReads', () => ({ useEarlyReads: () => new Map() }))
 
@@ -55,7 +55,7 @@ const saveOk = (id: string, v: string, o: { reasons?: string[] }) => Promise.res
 
 beforeEach(() => {
   lib.setVerdict.mockReset(); lib.scheduleGuarded.mockReset(); lib.setBoardVisible.mockReset()
-  lib.setScheduleDateAt.mockReset()
+  lib.setScheduleDateAt.mockReset(); lib.deleteDraft.mockReset(); lib.deleteClientDraft.mockReset()
   resetVerdictsForTest(); resetDecisionsForTest()
   for (const client of ['risedtc', 'arch', 'swishdm']) clearBoardState(client)
   vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
@@ -144,6 +144,20 @@ describe('client posts stay accessible after promotion', () => {
     cleanup()
     renderInFrame(<Harness show="risedtc" rows={[]} boardRead={{ loading: false, error: null, loadedAt: at(0), refresh: vi.fn() }} />)
     expect(screen.getByText('No posts on the board yet.')).toBeTruthy()
+  })
+
+  it('offers Delete directly on a held row, cancels safely, then deletes only the confirmed draft', async () => {
+    lib.deleteDraft.mockResolvedValue('deleted')
+    renderInFrame(<Harness rows={[brain({ id: 'held-ivan', qa_verdict: 'QA_BLOCKED' })]} />)
+    fireEvent.click(verb(document, 'fix-fold')!)
+    fireEvent.click(verb(card('held-ivan'), 'card-delete')!)
+    expect(lib.deleteDraft).not.toHaveBeenCalled()
+    fireEvent.click(document.querySelector('[data-verb="cancel"]')!)
+    expect(lib.deleteDraft).not.toHaveBeenCalled()
+    fireEvent.click(verb(card('held-ivan'), 'card-delete')!)
+    fireEvent.click(document.querySelector('[data-verb="confirm"]')!)
+    await waitFor(() => expect(lib.deleteDraft).toHaveBeenCalledWith('held-ivan', null))
+    expect(lib.deleteClientDraft).not.toHaveBeenCalled()
   })
 
   it('keeps explicitly QA-held drafts out of the ready decision list and off the promotion controls', () => {

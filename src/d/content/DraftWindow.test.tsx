@@ -77,6 +77,23 @@ describe('draft window', () => {
     expect(document.querySelector('[aria-label="Current copy checks"]')!.textContent).not.toContain('QA checked')
   })
 
+  it('keeps the draft open when Escape or post-navigation keys are pressed inside the image viewer', () => {
+    HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', '') }
+    HTMLDialogElement.prototype.close = function () { this.removeAttribute('open') }
+    current = { ...detail, type: 'carousel', image_urls: ['https://example.test/one.png', 'https://example.test/two.png'] }
+    const p = props()
+    renderInFrame(<DraftWindow {...p} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open slide 1 of 2' }))
+    const viewer = screen.getByRole('dialog', { name: 'Image viewer' })
+    fireEvent.keyDown(viewer, { key: 'j' })
+    fireEvent.keyDown(viewer, { key: 'k' })
+    expect(p.onPick).not.toHaveBeenCalled()
+    fireEvent.keyDown(viewer, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: 'Image viewer' })).toBeNull()
+    expect(p.onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('region', { name: 'Draft' })).toBeTruthy()
+  })
+
   it('j/k walk the queue and wait while editing', () => {
     const p = props()
     renderInFrame(<DraftWindow {...p} />)

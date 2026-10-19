@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { pictureEditable, taxonomyValue, type ContentDraft } from '../../../lib/content'
+import { clientDeletable, pictureEditable, taxonomyValue, type ContentDraft } from '../../../lib/content'
 import { sourceOf } from '../../../lib/brainPage'
 import { reasonLabel } from '../../../lib/verdicts'
 import type { PatternRead } from '../../../lib/earlyReads'
@@ -243,7 +243,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
       if (e.metaKey || e.ctrlKey || e.altKey) return
       const el = e.target as HTMLElement | null
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return
-      if (document.querySelector('.d-confirm, .d-sheet, .cv2-menu:not([hidden])')) return
+      if (document.querySelector('.d-confirm, .d-sheet, .cn-media-viewer[open], .cv2-menu:not([hidden])')) return
       if (openId) return
       const c = cardOf(focus)
       if (picking && c && c.r.id === picking) {
@@ -304,6 +304,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
         <SourceChip tag={tag} />
         <span className="cv2-fixt"><b>{splitTitleTag(c.title).text}</b><small>{[...c.flags.filter(f => f.tone === 'warn').map(f => f.text), `created ${age(c.r.created_at, now)} ago`].join(' · ')}</small></span>
         {c.lane !== 'arch' && <ConfirmProvider><RetryDraft d={c.r} lane={c.lane} onDone={onChanged} label="Fix" /></ConfirmProvider>}
+        {(c.lane === 'ivan' || clientDeletable(c.lane, c.r.board_visible)) && <button type="button" className="cv2-k cv2-k-q" data-verb="card-delete" disabled={rowVerbs.busy === c.r.id} onClick={() => void rowVerbs.run(c.r, c.lane, 'delete')}>Delete</button>}
         <button type="button" className="cv2-k" data-verb="card-open" onClick={() => onOpen(c.r.id, c.lane)}>Open</button>
       </article>
     )

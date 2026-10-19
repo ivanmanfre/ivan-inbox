@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { normalizeImageUrls } from '../../../lib/content'
+import { MediaViewer } from '../MediaViewer'
 import { AUTHOR } from '../Preview'
 import { imgOf, type Lane } from '../model'
 import { foldText } from '../weekModel'
@@ -27,6 +28,7 @@ export function LinkedInCard({ lane, body, images, type, expandable = true, comp
 }) {
   const [name, line, ini] = AUTHOR[lane]
   const [own, setOwn] = useState(false)
+  const [viewing, setViewing] = useState<number | null>(null)
   const more = open ?? own
   const setMore = (v: boolean) => { if (onToggle) onToggle(v); else setOwn(v) }
   const [ratio, setRatio] = useState<number | null>(null)
@@ -59,13 +61,14 @@ export function LinkedInCard({ lane, body, images, type, expandable = true, comp
       )}
       {carousel && (
         <div className="cv2-li-car" aria-label={`Carousel, ${all.length} slides`}>
-          <div className="cv2-li-m" style={{ aspectRatio: '0.8' }}>
+          <button type="button" className="cv2-li-m" style={{ aspectRatio: '0.8' }} aria-label={`Open slide 1 of ${all.length}`} onClick={e => { e.stopPropagation(); setViewing(0) }}>
             <img src={imgOf([all[0]], 800) ?? all[0]} alt="" loading="lazy" draggable={false} />
             <span className="cv2-li-count">1 / {all.length}</span>
-          </div>
-          {all.length > 1 && <div className="cv2-li-strip">{all.slice(1, 4).map((u, i) => <img key={`${u}-${i}`} src={imgOf([u], 200) ?? u} alt="" loading="lazy" draggable={false} />)}</div>}
+          </button>
+          {all.length > 1 && <div className="cv2-li-strip">{all.slice(1, 4).map((u, i) => <button key={`${u}-${i}`} type="button" aria-label={`Open slide ${i + 2} of ${all.length}`} onClick={e => { e.stopPropagation(); setViewing(i + 1) }}><img src={imgOf([u], 200) ?? u} alt="" loading="lazy" draggable={false} /></button>)}</div>}
         </div>
       )}
+      {viewing !== null && <MediaViewer images={all} initial={viewing} onClose={() => setViewing(null)} />}
       {!bare && <div className="cv2-li-r" aria-hidden="true"><span>Like</span><span>Comment</span><span>Repost</span><span>Send</span></div>}
     </div>
   )
