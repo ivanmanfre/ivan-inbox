@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { setScheduleDateAt } from '../../../lib/content'
 import { moveSlotWeek, planDay, type PlanRead } from '../../../lib/contentPlan'
 import { dHash } from '../../route'
+import { sourceOf } from '../../../lib/brainPage'
+import { SourceCol, useSources } from '../ContentBrain'
 import { Sheet } from '../../ui/Sheet'
 import { useToast } from '../../ui/toast'
 import { dayIn, hmIn, zonedToUtc } from '../laneTime'
@@ -50,12 +52,24 @@ function Q({ n, title, children }: { n: number; title: string; children: ReactNo
 const P = ({ s, muted }: { s: string | null | undefined; muted?: boolean }) => (s ? <p className={muted ? 'pl2-no' : undefined}>{s}</p> : null)
 const n0 = (v: number | null | undefined) => (typeof v === 'number' && Number.isFinite(v) ? v.toLocaleString('en-GB') : '–')
 
+function OriginalSource({ draftId }: { draftId: string }) {
+  const ids = useMemo(() => [draftId], [draftId])
+  const sources = useSources(ids)
+  const read = sources.map.get(draftId)
+  const src = sourceOf({ taxonomy: null, source_ref: read?.source_ref ?? null, cb34_p2_member: false, source_label: null }, read)
+  return <div>
+    {sources.error ? <p role="alert">Could not read the source: {sources.error} <button type="button" className="pl2-link" onClick={sources.retry}>Retry</button></p>
+      : <SourceCol src={src} loading={sources.pending} />}
+  </div>
+}
+
 type Props = { item: PlanItem; read: PlanRead; lane: Lane; onClose: () => void; onChanged: () => void }
 
 export function PlanPanel({ item, read, lane, onClose, onChanged }: Props) {
   const toast = useToast()
   const [moving, setMoving] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [sourceOpen, setSourceOpen] = useState(false)
   const all = useMemo(() => itemsOf(read), [read])
   // Keyboard focus follows the keys row: into the picker when it opens, back to "Move day" when it closes.
   const footRef = useRef<HTMLDivElement>(null)
@@ -182,6 +196,10 @@ export function PlanPanel({ item, read, lane, onClose, onChanged }: Props) {
           <P s={source} muted />
           {quote && <blockquote className="pl2-q pl2-pn-quote">{quote}</blockquote>}
           <P s={brief} />
+          {item.draftId && <details open={sourceOpen} onToggle={e => setSourceOpen(e.currentTarget.open)}>
+            <summary className="pl2-link">Original source</summary>
+            {sourceOpen && <OriginalSource key={item.draftId} draftId={item.draftId} />}
+          </details>}
         </Q>
         <Q n={2} title="Why this week"><P s={week ?? 'Planned for this week.'} /></Q>
         <Q n={3} title="Why this day"><P s={day} /></Q>

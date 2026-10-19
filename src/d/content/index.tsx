@@ -32,16 +32,14 @@ import { WeekStack } from './WeekStack'
 import { buildNow, laneOfRow, reviewCounts, windowDays, dayWord, dayDate, type Show } from './weekModel'
 import { useMagnetCounts } from './useMagnetCounts'
 import { Results } from './Results'
-import { Plan } from './Plan'
 import { PlanV2 } from './plan/PlanV2'
-import { ContentBrain, waitsForReview } from './ContentBrain'
+import { waitsForReview } from './ContentBrain'
 import { useContentFlags } from './v2/flags'
 import { useMainTier } from './v2/useMainTier'
 import { useSubtabMotion } from './v2/motion'
 import { reviewLanding } from './v2/reviewLanding'
 import { ReviewDesk, deskModel, deskSeatOf } from './v2/ReviewDesk'
 import { useSteadyRows } from './v2/steadyRows'
-import { BrainV2 } from './v2/BrainV2'
 import { MagnetsV2 } from './v2/MagnetsV2'
 import './v2/cv2.css'
 import './content.css'
@@ -72,25 +70,19 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const wide = tier === 't1'
   const view = q.get('view') ?? (route.sub === 'errors' ? 'posts' : route.sub === 'magnets' ? 'magnets' : null)
   const onNow = sub === 'now'
-  // Run 51: Content Brain reads the same fast week (every draft in review) Review paints from.
-  const onBrain = sub === 'brain' && view !== 'patterns'
   const onCal = sub === 'calendar'
   const allPosts = onNow && view === 'posts'
   const magnetView = onNow && (view === 'magnets' || !!q.get('magnet'))
   const [now] = useState(() => Date.now())
-  const weekRead = useWeekRead(onNow || onBrain, now)
+  const weekRead = useWeekRead(onNow || (sub === 'plan' && !!q.get('draft')), now)
   const onIdeas = sub === 'ideas'
-  const [fullOn, setFullOn] = useState(!onNow && !onBrain && !onIdeas)
-  // Content Brain needs only the fast week until a draft is opened (the open post's date controls read the full
-  // seats): the three 1,000-row lane reads are the heaviest thing this page could ask of a small database.
-  // Brief 4 Brain shows dated / posted counts, which need the seat reads.
-  const lean = onBrain && !q.get('draft') && !cv2.brain
+  const [fullOn, setFullOn] = useState(!onNow && !onIdeas)
   useEffect(() => {
-    if (fullOn || lean || onIdeas) return
-    if ((!onNow && !onBrain) || weekRead.settled) { setFullOn(true); return }
+    if (fullOn || onIdeas) return
+    if (!onNow || weekRead.settled) { setFullOn(true); return }
     const t = setTimeout(() => setFullOn(true), 2500)
     return () => clearTimeout(t)
-  }, [fullOn, lean, onNow, onBrain, onIdeas, weekRead.settled])
+  }, [fullOn, onNow, onIdeas, weekRead.settled])
   useEffect(() => {
     const target = contentRedirect(route.sub, route.query)
     if (target) navigate(target)
@@ -98,7 +90,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const data = useContentData(fullOn)
   const pending = usePendingDecisions()
   const [bankCounts, setBankCounts] = useState(false)
-  const banks = useIdeaBanks(sub === 'ideas' || (cv2.brain && onBrain), bankCounts ? undefined : isLane(q.get('lane')) ? q.get('lane') as Lane : 'ivan')
+  const banks = useIdeaBanks(sub === 'ideas', bankCounts ? undefined : isLane(q.get('lane')) ? q.get('lane') as Lane : 'ivan')
   // PERF-COLD (2026-10-08): Ideas is one heavy read (operator_ranked_ideas: ~4.4 s of database time
   // for Ivan's seat on an idle database, 11 s on a cold open). It used to share the database with the
   // other two seats' ranked reads (from 1.5 s) and the three 1,000-row seat reads behind the sub-tab
@@ -132,11 +124,11 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const draft = q.get('draft')
   const moveId = q.get('move')
   const go = useCallback((params: Record<string, string>, target = sub) => navigate(dHash('content', target, params)), [navigate, sub])
-  const context = () => ({ ...(view ? { view } : {}), ...(q.get('section') ? { section: q.get('section')! } : {}), ...(qLane !== 'ivan' ? { lane: qLane } : {}) })
+  const context = () => ({ ...(view ? { view } : {}), ...(q.get('section') ? { section: q.get('section')! } : {}), ...(q.get('insights') === '1' ? { insights: '1' } : {}), ...(qLane !== 'ivan' ? { lane: qLane } : {}) })
   const close = () => go(context())
   const setLane = (lane: Lane) => go({ ...context(), lane, ...(draft ? { draft } : {}) })
   const openDraft = (id: string, lane: Lane) => go({ ...context(), draft: id, lane }, 'now')
-  const openFromBrain = (id: string, lane: Lane) => go({ draft: id, lane }, 'brain')
+  const openFromDailyPlan = (id: string, lane: Lane) => go({ draft: id, lane, ...(q.get('insights') === '1' ? { insights: '1' } : {}) }, 'plan')
   const openFromPlan = (id: string, lane: Lane) => go({ draft: id, lane }, 'calendar')
   const openFromList = (id: string, lane: ContentLane, ids: string[]) => { setListIds(ids); go({ draft: id, lane, view: 'posts' }, 'now') }
   const days = useMemo(() => wallDays(now), [now])
@@ -186,10 +178,10 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   // The open draft stays open behind the move sheet when it is on the same seat (2026-10-09).
   const onMove = (id: string, lane: Lane, day?: string) => go({ move: id, lane, ...(day ? { day } : {}), ...(draft && lane === qLane ? { draft } : {}) }, 'calendar')
   const wallProps = { data, items, stuck: null, onOpen: openFromPlan, onMove, onArm: armIt, onDay: (lane: Lane, keys: string[]) => setDayOpen({ lane, keys }), now }
-  const brainIds = onBrain ? rows.filter(r => waitsForReview(r) && laneOfRow(r) === qLane && !verdicts.has(r.id)).sort((a, b) => b.created_at.localeCompare(a.created_at)).map(r => r.id) : []
-  const queueIds = onBrain ? brainIds : allPosts ? listIds : onCal ? [...items[qLane].values()].flat().filter(i => i.source === 'draft').sort((a, b) => a.at.localeCompare(b.at)).map(i => i.id) : deskQueue ?? nowModel.ids
+  const planIds = sub === 'plan' && draft ? rows.filter(r => waitsForReview(r) && laneOfRow(r) === qLane && !verdicts.has(r.id)).sort((a, b) => b.created_at.localeCompare(a.created_at)).map(r => r.id) : []
+  const queueIds = sub === 'plan' && draft ? planIds : allPosts ? listIds : onCal ? [...items[qLane].values()].flat().filter(i => i.source === 'draft').sort((a, b) => a.at.localeCompare(b.at)).map(i => i.id) : deskQueue ?? nowModel.ids
   const titles = Object.fromEntries(rows.filter(r => queueIds.includes(r.id)).map(r => [r.id, titleOf(r)]))
-  const window_ = draft ? <DraftWindow id={draft} lane={qLane} queue={queueIds} onPick={id => onCal ? openFromPlan(id, qLane) : onBrain ? openFromBrain(id, qLane) : openDraft(id, nowModel.lanes.get(id) ?? qLane)} onClose={close} refresh={refresh} days={days} armed={data.armed} armedFailed={data.armedFailed} titles={titles} startInEdit={cv2.review && q.get('edit') === '1'} /> : null
+  const window_ = draft ? <DraftWindow id={draft} lane={qLane} queue={queueIds} onPick={id => onCal ? openFromPlan(id, qLane) : sub === 'plan' ? openFromDailyPlan(id, qLane) : openDraft(id, nowModel.lanes.get(id) ?? qLane)} onClose={close} refresh={refresh} days={days} armed={data.armed} armedFailed={data.armedFailed} titles={titles} startInEdit={cv2.review && q.get('edit') === '1'} /> : null
   const moveRow = moveId ? data.seats[qLane].rows.find(r => r.id === moveId) : null
   const move = moveRow ? <MovePanel key={`${moveId}:${q.get('day') ?? ''}`} r={moveRow} lane={qLane} first={days[0].key} seatRows={data.seats[qLane].rows} phone={phone} quickCommit initialPick={q.get('day')} onClose={() => go({ ...context(), ...(q.get('lane') ? { lane: q.get('lane')! } : {}), ...(draft ? { draft } : {}) })} onDone={refresh} /> : null
   const clearMagnet = () => { const p = new URLSearchParams(q); p.delete('magnet'); navigate(dHash('content', sub, p)) }
@@ -220,15 +212,12 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   let body: React.ReactNode
   // Brief 4 sub-tabs sit in the page's one scrolling column (the 24 edge), like Review and Calendar.
   const column = (n: React.ReactNode) => <div className="cn-split"><div className="cn-left" data-d-scroll>{n}</div></div>
-  if (sub === 'plan') body = column(cv2.plan ? <PlanV2 lane={qLane} setLane={lane => go({ lane }, 'plan')} /> : <Plan lane={qLane} setLane={lane => go({ lane }, 'plan')} />)
-  else if (sub === 'ideas') body = cv2.ideas ? column(<Ideas banks={banks} phone={phone} lane={qLane} onLaneChange={lane => go({ lane }, 'ideas')} v2 />) : <Ideas banks={banks} phone={phone} lane={qLane} onLaneChange={lane => go({ lane }, 'ideas')} />
-  else if (sub === 'brain' && !onBrain) body = <Suspense fallback={<Skeleton lines={5} label="Reading the brain area" />}><div className="cn-now-tools"><a href={dHash('content', 'brain', qLane === 'ivan' ? {} : { lane: qLane })}>← Content Brain</a></div><BrainArea lane={qLane} setLane={setLane} phone={phone} query={q} /></Suspense>
-  else if (onBrain) {
-    const brainBody = cv2.brain
-      ? <BrainV2 lane={qLane} setLane={l => go({ lane: l }, 'brain')} read={stackRead} verdicts={saved.map} judged={judged} total={allNow} items={items} ideas={banks} now={now} reading={reading} />
-      : <ContentBrain lane={qLane} setLane={l => go({ lane: l }, 'brain')} read={stackRead} verdicts={saved.map} openId={draft} onOpen={openFromBrain} onChanged={refresh} />
-    body = phone && window_ ? window_ : <div className={`cn-split${window_ ? ' cn-open' : ''}`}><div className="cn-left">{brainBody}</div>{window_}</div>
+  if (sub === 'plan') {
+    const plan = <PlanV2 lane={qLane} setLane={lane => go({ lane }, 'plan')} verdicts={saved.map} showInsights={q.get('insights') === '1'} />
+    body = window_ ? phone ? window_ : <div className="cn-split cn-open"><div className="cn-left" data-d-scroll>{plan}</div>{window_}</div> : column(plan)
   }
+  else if (sub === 'ideas') body = cv2.ideas ? column(<Ideas banks={banks} phone={phone} lane={qLane} onLaneChange={lane => go({ lane }, 'ideas')} v2 />) : <Ideas banks={banks} phone={phone} lane={qLane} onLaneChange={lane => go({ lane }, 'ideas')} />
+  else if (sub === 'brain') body = <Suspense fallback={<Skeleton lines={5} label="Reading the brain area" />}><div className="cn-now-tools"><a href={dHash('content', 'plan', qLane === 'ivan' ? { insights: '1' } : { lane: qLane, insights: '1' })}>← Plan insights</a></div><BrainArea lane={qLane} setLane={setLane} phone={phone} query={q} /></Suspense>
   else if (sub === 'results') body = view === 'analytics' ? legacy('results') : <Results lane={qLane} setLane={setLane} />
   else if (sub === 'inputs') body = <Suspense fallback={<Skeleton lines={5} label="Reading outliers" />}><InputsPage lane={qLane} setLane={setLane} phone={phone} query={q} /></Suspense>
   else if (sub === 'magnets') body = cv2.lms ? column(<MagnetsV2 lane={qLane} setLane={l => go({ lane: l }, 'magnets')} phone={phone} magnet={q.get('magnet')} clearMagnet={clearMagnet} counts={magnets} />) : legacy('magnets')
@@ -239,7 +228,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
     const left = magnetView ? <><div className="cn-now-tools"><a href={dHash('content', 'now')}>← Review</a></div>{legacy('magnets')}</> : allPosts ? <><div className="cn-now-tools"><a href={dHash('content', 'now')}>← Review</a></div>{legacy('errors')}</> : desk ? deskBody : nowBody
     body = phone && window_ ? window_ : <div className={`cn-split${window_ ? ' cn-open' : ''}${desk ? ' cv2-split' : ''}`} data-wide={desk ? (wide ? 'yes' : 'no') : undefined}><div className={`cn-left${allPosts ? ' cn-left-legacy' : ''}`}>{left}</div>{window_}</div>
   }
-  const title = sub === 'plan' ? 'Plan' : sub === 'brain' ? (onBrain ? 'Content Brain' : 'Patterns and benchmarks') : sub === 'ideas' ? 'Best ideas for your next post' : sub === 'results' ? 'What worked' : sub === 'strategy' ? (q.get('section') === 'direction' ? 'Strategy' : q.get('section') === 'this-week' ? 'Content brain' : 'Strategy') : sub === 'inputs' ? 'Outliers' : sub === 'magnets' ? 'Lead magnets' : sub === 'styles' ? 'Styles' : onCal ? 'Calendar' : allPosts ? 'All posts' : magnetView ? 'Lead magnets' : 'Review'
+  const title = sub === 'plan' ? 'Plan' : sub === 'brain' ? 'Patterns and benchmarks' : sub === 'ideas' ? 'Best ideas for your next post' : sub === 'results' ? 'What worked' : sub === 'strategy' ? (q.get('section') === 'direction' ? 'Strategy' : q.get('section') === 'this-week' ? 'Content brain' : 'Strategy') : sub === 'inputs' ? 'Outliers' : sub === 'magnets' ? 'Lead magnets' : sub === 'styles' ? 'Styles' : onCal ? 'Calendar' : allPosts ? 'All posts' : magnetView ? 'Lead magnets' : 'Review'
   return <div ref={presentation} className={`cn${cv2.frame ? ' cv2-frame' : ''}`} data-cv2-sub={cv2.frame ? sub : undefined}>{!(phone && (title === SUB_LABEL[sub] || (cv2.frame && sub === 'ideas'))) && <AnswerRow title={title} />}<SubNav on={sub} attention={needs > 0} lane={qLane} section={q.get('section')} v2={cv2.frame} counts={{ now: reading && !weekRead.settled ? null : review.all, magnets: LANES.some(l => magnets[l] === undefined) ? null : LANES.reduce((n, l) => n + (magnets[l] ?? 0), 0) }} />{body}
     {dayOpen && <DayPanel lane={dayOpen.lane} keys={dayOpen.keys} items={items[dayOpen.lane]} onClose={() => setDayOpen(null)} onOpen={openFromPlan} onMove={onMove} onArm={armIt} onChanged={refresh} />}
   </div>
