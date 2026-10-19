@@ -1156,6 +1156,8 @@ describe('drafts with email and follow-ups, 2026-09-26 live fixes', () => {
     expect(holdReason(race)).toMatch(/they wrote while it was queued/)
     expect(holdReason({ ...race, send_blocked_reason: 'lint_unbacked_commitment' })).toMatch(/promises an email/)
     expect(holdReason(base)).toBeNull()
+    expect(holdReason({ ...race, send_blocked_reason: 'lint_calendar_proposal_edited' })).toMatch(/not sent.*calendar/i)
+    expect(isDraft({ ...race, send_blocked_reason: 'lint_calendar_proposal_edited' })).toBe(true)
   })
   it('draftLegs returns both legs of a pair and only the main otherwise', () => {
     const a = { ...base, id: 'a' }, b = { ...base, id: 'b', channel: 'email' as const }

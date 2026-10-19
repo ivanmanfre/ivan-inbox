@@ -50,6 +50,15 @@ beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); vi.setSystemTi
 afterEach(() => { cleanup(); vi.useRealTimers() })
 
 describe('inline draft edit', () => {
+  it('reports approval as queued until the provider confirms delivery', async () => {
+    const [t] = threads(drafted('queued', { prospect_name: 'Ada' }))
+    mount(t)
+    fireEvent.click(key('send'))
+    fireEvent.click(key('confirm-send'))
+    await waitFor(() => expect(screen.getByText('Queued to Ada.')).toBeTruthy())
+    expect(screen.queryByText('Sent to Ada.')).toBeNull()
+  })
+
   it('labels an InMail follow-up and separates its subject from the short message', () => {
     const [t] = threads(drafted('inmail', { prospect_name: 'Alicia', client_id: 'arch', channel: 'linkedin_inmail', message_type: 'inmail' }))
     t.draft!.message_text = 'Subject: Re: Ismail suggested we connect\n\nDid you see the examples?'
