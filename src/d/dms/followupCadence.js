@@ -2,7 +2,7 @@
 // Shared legacy conversational follow-up cadence. Pure; never sends or changes state.
 // Inlined into the Code node by build-workflow.cjs. Native history is authoritative
 // for LinkedIn delivery; the ledger supplies operator, email and lane ownership.
-// Ivan 2026-10-09: a follow-up is due at the START of its Warsaw day (05:00), so the whole day's
+// The first follow-up keeps its full 48-hour gap. Later follow-ups use the START of their Warsaw day (05:00), so the day's
 // follow-ups are drafted before his morning and cleared in one sitting. Never later than the gap
 // (a gap ending 00:00-04:59 Warsaw keeps its time). Kill switch: integration_config
 // followup_due_morning_batch = off (absent = on), passed in as morningBatch.
@@ -68,8 +68,8 @@ export function evaluate({seat, prospect = {}, rows = [], messages = [], complet
     if(b && m.at-b.last_at<=30*60000){b.last_at=m.at;b.text+='\n'+m.text;} else bursts.push({first_at:m.at,last_at:m.at,text:m.text});
   }
   if (!bursts.length) return no('no_delivered_response');
-  const count=Math.max(0,bursts.length-1),gap=count===0?(firstGap || (seat==='ivan'?5:2)):[7,14,30,60,90][Math.min(count-1,4)];
-  const lastAt=bursts.at(-1).last_at,gapDue=lastAt+gap*DAY,due=morningBatch?Math.min(gapDue,warsawMorningOf(gapDue)):gapDue;
+  const count=Math.max(0,bursts.length-1),gap=count===0?Math.max(2,Number(firstGap)||2):[7,14,30,60,90][Math.min(count-1,4)];
+  const lastAt=bursts.at(-1).last_at,gapDue=lastAt+gap*DAY,due=count===0&&gap===2?gapDue:morningBatch?Math.min(gapDue,warsawMorningOf(gapDue)):gapDue;
   return {ok:now>=due,reason:now>=due?'due':'not_due',followup_count:count,stage:count+1,gap_days:gap,last_inbound_at:new Date(lastIn).toISOString(),last_delivered_touch_at:new Date(lastAt).toISOString(),due_at:new Date(due).toISOString(),touches:bursts.map(b=>({at:new Date(b.last_at).toISOString(),text:b.text})),messages:real.slice().reverse(),quarterly_review:count>=5};
 }
 
