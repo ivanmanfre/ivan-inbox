@@ -9,19 +9,38 @@ const source = (seat = 'arch'): FollowupSource => ({ seat, prospect: { id: 'p', 
 describe('upcoming follow-ups', () => {
   it('projects a quiet replied conversation before drafting; never adds an actionable draft', () => {
     const [p] = projectFollowups([source()], now)
-    // Gap ends 13:00 Warsaw on 1 Oct; the morning batch makes it due at 05:00 Warsaw that day.
-    expect(p.at).toBe('2026-10-01T03:00:00.000Z')
+    // The first follow-up keeps the full 48-hour gap, including its delivery time.
+    expect(p.at).toBe('2026-10-01T11:00:00.000Z')
     expect(p.state).toBe('scheduled')
     expect(p.basis).toBe('estimate')
   })
-  it('morning batch: due at 05:00 Warsaw of the due day, never later than the gap; the switch restores the gap time', () => {
-    expect(projectFollowups([source()], now, false)[0].at).toBe('2026-10-01T11:00:00.000Z')
-    const late = source(); late.rows[1].sent_at = '2026-09-29T21:59:00Z' // gap ends 23:59 Warsaw 1 Oct
-    expect(projectFollowups([late], now)[0].at).toBe('2026-10-01T03:00:00.000Z')
-    const night = source(); night.rows[1].sent_at = '2026-09-29T23:30:00Z' // gap ends 01:30 Warsaw 2 Oct, before 05:00
-    expect(projectFollowups([night], now)[0].at).toBe('2026-10-01T23:30:00.000Z')
-    const winter = source(); winter.rows[0].sent_at = '2026-11-01T09:00:00Z'; winter.rows[1].sent_at = '2026-11-01T15:00:00Z'
-    expect(projectFollowups([winter], Date.parse('2026-11-02T12:00:00Z'))[0].at).toBe('2026-11-03T04:00:00.000Z')
+  it.each([
+    ['2026-10-19T17:40:21.423Z', '2026-10-21T17:40:21.423Z'],
+    ['2026-10-19T17:54:20.676Z', '2026-10-21T17:54:20.676Z'],
+    ['2026-10-18T12:12:32.544Z', '2026-10-20T12:12:32.544Z'],
+    ['2026-10-23T14:00:00Z', '2026-10-25T14:00:00.000Z'],
+    ['2026-03-27T14:00:00Z', '2026-03-29T14:00:00.000Z'],
+  ])('keeps the first 48 hours from %s across weekends and DST', (sent, due) => {
+    const a = source('risedtc'), sentAt = Date.parse(sent)
+    a.rows[0].sent_at = new Date(sentAt - 3600000).toISOString()
+    a.rows[1].sent_at = sent
+    for (const morningBatch of [true, false]) {
+      expect(projectFollowups([a], sentAt + 86400000, morningBatch)[0].at).toBe(due)
+    }
+  })
+  it.each([
+    ['2026-09-29T11:00:00Z', '2026-10-06T03:00:00.000Z'],
+    ['2026-09-29T21:59:00Z', '2026-10-06T03:00:00.000Z'],
+    ['2026-09-29T23:30:00Z', '2026-10-06T23:30:00.000Z'],
+    ['2026-10-20T15:00:00Z', '2026-10-27T04:00:00.000Z'],
+    ['2026-03-24T15:00:00Z', '2026-03-31T03:00:00.000Z'],
+  ])('batches later follow-ups from %s at 05:00 Warsaw, unless the gap ends earlier', (sent, due) => {
+    const a = source('risedtc'), sentAt = Date.parse(sent)
+    a.rows[0].sent_at = new Date(sentAt - 8 * 86400000).toISOString()
+    a.rows[1].sent_at = new Date(sentAt - 7 * 86400000).toISOString()
+    a.rows.push({ ...a.rows[1], id: 'followup', sent_at: sent })
+    expect(projectFollowups([a], sentAt + 6 * 86400000)[0].at).toBe(due)
+    expect(projectFollowups([a], sentAt + 6 * 86400000, false)[0].at).toBe(new Date(sentAt + 7 * 86400000).toISOString())
   })
   it('filters bookings, declines, holds and pending messages', () => {
     const a = source(), b = source(), c = source(), d = source()
@@ -31,8 +50,10 @@ describe('upcoming follow-ups', () => {
     d.rows.push({ id: 'pending', direction: 'outbound', message_type: 'manual_reply' })
     expect(projectFollowups([a,b,c,d], now)).toHaveLength(0)
   })
-  it('applies Ivan’s five-day clock and the 72-hour horizon, including overdue candidates', () => {
-    expect(projectFollowups([source('ivan')], now)).toHaveLength(0)
+  it('uses the live 48-hour first gap for every supported seat and includes overdue candidates', () => {
+    for (const seat of ['ivan', 'risedtc', 'arch']) {
+      expect(projectFollowups([source(seat)], now)[0].at).toBe('2026-10-01T11:00:00.000Z')
+    }
     const a = source('ivan'); a.rows[1].sent_at = '2026-09-25T11:00:00Z'; a.rows[0].sent_at = '2026-09-25T10:00:00Z'
     expect(projectFollowups([a], now)[0].state).toBe('due')
   })
