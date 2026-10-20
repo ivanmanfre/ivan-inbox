@@ -805,7 +805,7 @@ export function isLeadMagnet(t: Thread): boolean {
 // rules filterThreads applies BEFORE any token narrows, or a chip shortcut
 // stops selecting the rows its chip did.
 export function isConversation(t: Thread): boolean {
-  return Boolean(t.ownerConfirmation) || t.draft !== null || t.messages.some(m => m.direction === 'inbound' || m.ai_model === 'arch_referral_package_v1') || isLeadMagnet(t)
+  return Boolean(t.ownerConfirmation) || t.draft !== null || t.messages.some(m => m.direction === 'inbound' || m.ai_model === 'arch_referral_package_v1' || m.ai_model?.startsWith('swishdm_referral_v1')) || isLeadMagnet(t)
 }
 
 // Nobody has answered their last message: unread inbound exists and no real
