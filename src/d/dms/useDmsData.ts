@@ -16,6 +16,7 @@ import { fetchWarmCards, type WarmCard } from '../../wb/dms/warmSignalsData'
 import { fetchConversationAgentCards, type ConversationAgentCard, type ConversationAgentFeed } from '../../wb/dms/conversationAgentData'
 import { projectFollowups, type FollowupSource } from './upcoming'
 import { forget, recall, remember } from '../../lib/pageMemo'
+import { fetchOwnerEngagers, type OwnerEngagerCard } from './ownerEngagers'
 
 export type Side<T> = { rows: T[]; failed: boolean; loaded: boolean }
 export type DatedFollowUp = { prospect_id: string; at: string }
@@ -112,6 +113,7 @@ type Patch = { at: number; p: Partial<InboxMessage> }
 export function useDmsData() {
   const inbox = useDInbox()
   const [cameRaw, reloadCame, editCame] = useSide(readCameBackRaw)
+  const [ownerEngagers, reloadOwners, editOwners] = useSide<OwnerEngagerCard>(fetchOwnerEngagers)
   const [warm, reloadWarm, editWarm] = useSide<WarmCard>(fetchWarmCards)
   const [dated, readDates] = useSide(readDatedFollowUps)
   const [followupRaw, reloadFollowups] = useSide(readFollowupSources, FOLLOWUP_FRESH.mount, rememberedFollowups)
@@ -176,13 +178,14 @@ export function useDmsData() {
   const interestRanks = useMemo(() => new Map(cameRaw.rows.map(c => [c.prospect_id, interestPriority(c)])), [cameRaw.rows])
 
   const refreshAll = useCallback(() => {
-    inbox.refresh(); reloadCame(); reloadWarm(); reloadDated(); reloadAgent()
-  }, [inbox, reloadCame, reloadWarm, reloadDated, reloadAgent])
+    inbox.refresh(); reloadCame(); reloadOwners(); reloadWarm(); reloadDated(); reloadAgent()
+  }, [inbox, reloadCame, reloadOwners, reloadWarm, reloadDated, reloadAgent])
 
   return {
     threads, loading: inbox.loading, error: inbox.error, loadedAt: inbox.loadedAt, priorityAt: inbox.priorityAt, fromCache: inbox.fromCache, cachedAt: inbox.cachedAt,
     refreshList: inbox.refresh, refreshAll, patch, solved: inbox.solved,
     cameBack: { ...cameRaw, rows: cameBack }, dropCameBack: (pid: string) => editCame(r => r.filter(c => c.prospect_id !== pid)), reloadCame,
+    ownerEngagers, dropOwnerEngager: (card: OwnerEngagerCard) => editOwners(r => r.filter(c => c.tenant !== card.tenant || c.profile_id !== card.profile_id)),
     scanDays, interestRanks, warm, dropWarm: (pid: string) => editWarm(r => r.filter(c => c.prospect_id !== pid)), reloadWarm,
     dated, reloadDated, upcoming,
     agent, reloadAgent,

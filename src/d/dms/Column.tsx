@@ -21,6 +21,7 @@ import { noteOf, type WarmVerbs } from './warmVerbs'
 import { blockedFollowup, upcomingItems, type FollowupProjection } from './upcoming'
 import { warsawHm } from '../ui/time'
 import { ComingUp } from './v4/ComingUp'
+import { dismissOwnerEngager, type OwnerEngagerCard } from './ownerEngagers'
 
 export type Mode = 'conversations' | 'email' | 'spam' | 'search'
 
@@ -33,6 +34,8 @@ export type ColumnProps = {
   byId: ReadonlyMap<string, Thread>
   cameBack: Side<CameBackCard>
   dropCameBack: (pid: string) => void
+  ownerEngagers?: Side<OwnerEngagerCard>
+  dropOwnerEngager?: (card: OwnerEngagerCard) => void
   warm: Side<WarmCard>
   agent: AgentSide
   warmVerbs: WarmVerbs
@@ -216,6 +219,7 @@ function SignalsSection({ p, folds, came }: { p: ColumnProps; folds: Folds; came
   shown.sort((a, b) => order.indexOf(warmGroup(a)) - order.indexOf(warmGroup(b)))
   const agentOnly: ConversationAgentCard[] = seat === 'ivan' ? agentCardsWithoutWarmCards(p.agent.cards, new Set(p.warm.rows.map(w => w.prospect_id))) : []
   const items = signalItems(seat, shown, agentOnly, came, p.byId)
+  const owners = (p.ownerEngagers?.rows ?? []).filter(x => x.tenant === seat)
   const rows = items.map(it => {
     if (it.kind === 'warm') {
       const w = it.w
@@ -252,17 +256,29 @@ function SignalsSection({ p, folds, came }: { p: ColumnProps; folds: Folds; came
       selected={c.selected === x.prospect_id} onOpen={t ? () => c.open(t) : undefined}
       verbs={[{ label: 'Dismiss', verb: 'dismiss', busy: c.busy === `cb:${x.prospect_id}`, run: () => { c.setBusy(`cb:${x.prospect_id}`); void c.verbs.cameBackDismiss(x.prospect_id, x.name, () => p.dropCameBack(x.prospect_id)).finally(() => c.setBusy(null)) } }]} />
   })
-  const failed = (seat === 'ivan' && p.warm.failed) || p.cameBack.failed
-  const loaded = p.cameBack.loaded && (seat !== 'ivan' || p.warm.loaded)
-  const empty = loaded && !failed && items.length === 0
+  const ownerRows = owners.map(x => <Row key={`o:${x.tenant}:${x.profile_id}`} v4={c.v4} id={`owner:${x.profile_id}`} name={x.name} conversation={false}
+    tags={[{ kind: 'lane', text: 'Post engager' }]}
+    line={<span className="dm-sigline">{`${cameBackRowLine({ ...x, n_views: 0 })} · ICP ${x.icp_score}`}</span>}
+    note={<><a href={x.linkedin_url} target="_blank" rel="noopener noreferrer">Open profile</a>{x.headline ? ` · ${x.headline}` : x.why ? ` · ${x.why}` : ''}</>}
+    verbs={[{ label: 'Dismiss', verb: 'dismiss-owner', busy: c.busy === `owner:${x.tenant}:${x.profile_id}`, run: () => {
+      c.setBusy(`owner:${x.tenant}:${x.profile_id}`)
+      void dismissOwnerEngager(x).then(ok => {
+        if (!ok) throw new Error('Dismiss was not saved.')
+        p.dropOwnerEngager?.(x)
+      }).catch(() => c.fail('Could not dismiss this post engager. Try again.')).finally(() => c.setBusy(null))
+    } }]} />)
+  const failed = (seat === 'ivan' && p.warm.failed) || p.cameBack.failed || p.ownerEngagers?.failed
+  const loaded = p.cameBack.loaded && (seat !== 'ivan' || p.warm.loaded) && (p.ownerEngagers?.loaded ?? true)
+  const empty = loaded && !failed && items.length + owners.length === 0
   return <>
     <span id="dm-warm" aria-hidden="true" />
-    <Section key={empty ? 'sig-empty' : 'sig'} id={empty ? 'signals-empty' : 'signals'} foldable defaultOpen={!empty} label="Signals" n={failed ? '?' : items.length} folds={folds} rows={rows}
+    <Section key={empty ? 'sig-empty' : 'sig'} id={empty ? 'signals-empty' : 'signals'} foldable defaultOpen={!empty} label="Signals" n={failed ? '?' : items.length + owners.length} folds={folds} rows={[...rows, ...ownerRows]}
       before={<>
         {seat === 'ivan' && p.agent.failed && <Quiet>Agent status could not be verified. Agent approvals are blocked; warm review still works.</Quiet>}
         {seat === 'ivan' && p.agent.note && !p.agent.failed && <Quiet>{p.agent.note}</Quiet>}
         {seat === 'ivan' && p.warm.failed && <Quiet>Could not read the warm signals.</Quiet>}
         {p.cameBack.failed && <Quiet>Could not read who came back.</Quiet>}
+        {p.ownerEngagers?.failed && <Quiet>Could not read new post engagers.</Quiet>}
         {empty && <Quiet>No signals now. Profile views, post engagers and people who came back without replying land here.</Quiet>}
       </>}
       after={waiting > 0 ? <Quiet>{waiting === 1 ? '1 invite out, waiting on their accept.' : `${waiting} invites out, waiting on their accept.`}</Quiet> : null} />
