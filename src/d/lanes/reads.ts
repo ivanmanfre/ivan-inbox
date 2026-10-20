@@ -30,7 +30,6 @@ export async function fetchWarmCount(): Promise<number> {
   return Array.isArray(data) ? data.length : 0
 }
 
-type CampaignRow = { id: string; name: string; client_id: string | null }
 const since = (days: number, now = Date.now()) => new Date(now - days * 864e5).toISOString()
 
 async function headCount(build: (q: ReturnType<typeof base>) => ReturnType<typeof base>): Promise<number> {
@@ -40,25 +39,16 @@ async function headCount(build: (q: ReturnType<typeof base>) => ReturnType<typeo
 }
 const base = () => supabase.from('outreach_prospects').select('id', { count: 'exact', head: true })
 
-/** New people found in 7 days, by the rule the mock used: Ivan's engage campaigns,
-    Rise's engager campaigns, Arch's engager lane. */
+/** New people with classified person-level interest, by seat and source provenance. */
 export async function fetchEngagers7d(): Promise<Record<Seat, number>> {
-  const { data, error } = await supabase.from('outreach_campaigns').select('id, name, client_id')
-  if (error) throw error
-  const rows = (data ?? []) as CampaignRow[]
-  const ids = (f: (r: CampaignRow) => boolean) => rows.filter(f).map(r => r.id)
-  const ivan = ids(r => !r.client_id && /engage/i.test(r.name))
-  const rise = ids(r => r.client_id === 'risedtc' && /engager/i.test(r.name))
-  const arch = ids(r => r.client_id === 'arch')
-  const swish = ids(r => r.client_id === 'swishdm' && /engager/i.test(r.name))
-  const t = since(7)
-  const [a, b, c, d] = await Promise.all([
-    ivan.length ? headCount(q => q.in('campaign_id', ivan).gt('created_at', t)) : 0,
-    rise.length ? headCount(q => q.in('campaign_id', rise).gt('created_at', t)) : 0,
-    swish.length ? headCount(q => q.in('campaign_id', swish).gt('created_at', t)) : 0,
-    arch.length ? headCount(q => q.in('campaign_id', arch).gt('created_at', t).eq('enrichment_data->>lane', 'engager_warm')) : 0,
-  ])
-  return { ivan: a, risedtc: b, arch: d, swishdm: c}
+  const seats: Seat[] = ['ivan', 'risedtc', 'arch', 'swishdm']
+  const counts = await Promise.all(seats.map(async seat => {
+    const { count, error } = await supabase.from('inbox_interest_prospects_v')
+      .select('id', { count: 'exact', head: true }).eq('client_id', seat).gte('created_at', since(7))
+    if (error) throw error
+    return count ?? 0
+  }))
+  return Object.fromEntries(seats.map((seat, i) => [seat, counts[i]])) as Record<Seat, number>
 }
 
 export const STAGES = ['enriched', 'ballot_hold', 'expansion_hold', 'queued', 'connection_sent', 'connected', 'dm_sent', 'replied', 'positive_reply', 'skipped', 'archived', 'disqualified', 'inmail_failed'] as const

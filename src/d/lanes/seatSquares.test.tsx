@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { QUEUE_EMPTY_FAMILY, type CcClient, type CcPayload } from '../../lib/campaignControl'
 import rateLimited from '../../lib/cc-fixtures/rate_limited.json'
 import { renderInFrame } from '../test-utils'
-import { SeatSquares, seatWarnings, OUT_OF_LEADS } from './SeatSquares'
+import { SeatSquares, seatWarnings } from './SeatSquares'
 import { Strip, todayLine } from './v4/Strip'
 import type { LanesData } from './useLanesData'
 
@@ -20,10 +20,18 @@ const gov = (client_id: string, daily_used: number) => ({ client_id, daily_used 
 const pipe = (client_id: string, sendable: number, sent_7d: number) => ({ client_id, lane: 'x', sendable, sent_7d, sent_30d: 0 })
 
 describe('Lanes 3 seat squares', () => {
-  it('the out-of-leads warning sits on that seat only (same rule and rows as the old all-seats line)', () => {
-    const d = data({ pipeline: slot([pipe('risedtc', 0, 14), pipe('ivan', 300, 70)]), gov: slot([gov('risedtc', 40), gov('ivan', 10)]) })
-    expect(seatWarnings(d, 'risedtc')).toEqual(['Out of leads: under a day of supply left'])
-    expect(seatWarnings(d, 'ivan')).toEqual([])
+  it('the out-of-leads warning uses scoped interest stock and flow, not the old campaign pipeline', () => {
+    const now = Date.parse('2026-09-28T12:00:00Z')
+    const d = data({ pipeline: slot([pipe('risedtc', 300, 14), pipe('ivan', 0, 70)]),
+      ready: slot({ saturdayNy: false, lanes: [
+        { seat: 'risedtc', lane: 'competitor_engager', label: 'Competitor engagers', n: 0, capped: false, campaignId: null, off: null },
+        { seat: 'ivan', lane: 'own_post_engager', label: 'Warm engagers', n: 300, capped: false, campaignId: null, off: null },
+      ] }),
+      replacement: slot([{ client_id: 'risedtc', lane: 'competitor_engager', day: '2026-09-27', qualified_in: 0, sent_out: 14 },
+        { client_id: 'ivan', lane: 'own_post_engager', day: '2026-09-27', qualified_in: 0, sent_out: 70 }]),
+    })
+    expect(seatWarnings(d, 'risedtc', now)).toEqual(['Out of leads: under a day of supply left'])
+    expect(seatWarnings(d, 'ivan', now)).toEqual([])
   })
 
   it('a Premium-only seat (no Sales Nav, NO_SN) gets no Sales Nav warning; a broken Sales Nav still does', () => {
@@ -64,10 +72,10 @@ describe('a seat square always shows its numbers; a warning never repeats the st
     expect(seatWarnings(d, 'swishdm', NOW)).toEqual([])
   })
 
-  it('keeps it when the state word does not say so, and keeps real problems either way', () => {
+  it('does not infer source supply from the mixed SwishDM monitor, and keeps real problems', () => {
     const health = slot({ updated_at: '', seats: [{ id: 'x', name: 'Jonathan Kiekbusch', account: 'DISCONNECTED', sn: 'NO_SN', degraded: true, link: 'https://x' }] })
     const healthy = data({ cc: slot(cc(swish(QUEUE_EMPTY_FAMILY, 'healthy'), true)), ...supply })
-    expect(seatWarnings(healthy, 'swishdm', NOW)).toEqual([OUT_OF_LEADS])
+    expect(seatWarnings(healthy, 'swishdm', NOW)).toEqual([])
     const broken = data({ cc: slot(cc(swish(QUEUE_EMPTY_FAMILY), true)), ...supply, health })
     expect(seatWarnings(broken, 'swishdm', NOW)).toEqual(['LinkedIn disconnected'])
   })
@@ -83,14 +91,12 @@ describe('a seat square always shows its numbers; a warning never repeats the st
     expect(document.querySelector('.dl4-pill.dl4-warn')).toBeNull()
   })
 
-  it('a remaining warning sits in its own quiet line under the numbers, never in their place', () => {
+  it('the strip leaves no supply warning when SwishDM source stock is unknown', () => {
     const d = data({ cc: slot(cc(swish(QUEUE_EMPTY_FAMILY, 'healthy'), true)), ...supply })
     renderInFrame(<Strip seats={['swishdm']} seat="swishdm" pick={() => {}} d={d} now={NOW} />)
     const tab = document.querySelector('[data-seat="swishdm"]')!
     expect(tab.querySelector('.dl4-tab-line')!.textContent).toBe('24 invites · 2 DMs · 3 InMail today')
-    const note = tab.querySelector('.dl4-tab-note')!
-    expect(note.textContent).toBe(OUT_OF_LEADS)
-    expect(note.classList.contains('dl4-warn')).toBe(false)
+    expect(tab.querySelector('.dl4-tab-note')).toBeNull()
   })
 
   it('a missing number is "?", and the row is never hidden', () => {

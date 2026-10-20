@@ -44,19 +44,19 @@ describe('home tiles', () => {
     expect(document.querySelector('.hm-flag')!.textContent).toBe('Below 3')
     expect(document.querySelector('a.hm-hit')!.getAttribute('href')).toBe('#exp/d/content?lane=ivan')
   })
-  it('ready: total big, lanes with a number, each opening its campaign', () => {
+  it('ready: signal total big, lanes with a number, each opening the scoped Lanes seat', () => {
     const ready: ReadyRead = { saturdayNy: false, lanes: [
-      { seat: 'ivan', lane: 'engage', label: 'Warm engagers', n: 12, capped: false, campaignId: 'c1', off: null },
+      { seat: 'ivan', lane: 'own_post_engager', label: 'Warm engagers', n: 12, capped: false, campaignId: 'c1', off: null },
       { seat: 'ivan', lane: 'cold', label: 'Cold', n: 0, capped: false, campaignId: null, off: null },
     ] }
     renderInFrame(<Ready seat="ivan" h={home({ lanes: lanes({ ready: { value: ready, failed: null } }) })} />, { hash: '#exp/d/home' })
     expect(document.querySelector('.hm-n')!.textContent).toBe('12')
     const li = [...document.querySelectorAll('.hm-lanes a')]
     expect(li.map(a => a.textContent)).toEqual(['Warm engagers12'])
-    expect(li[0].getAttribute('href')).toBe('#exp/d/lanes?sheet=campaign&c=c1')
+    expect(li[0].getAttribute('href')).toBe('#exp/d/lanes?seat=ivan')
   })
   it('keeps the last Ready count visibly stale and offers a retry after a failed refresh', () => {
-    const ready: ReadyRead = { saturdayNy: false, lanes: [{ seat: 'ivan', lane: 'engage', label: 'Warm engagers', n: 12, capped: false, campaignId: 'c1', off: null }] }
+    const ready: ReadyRead = { saturdayNy: false, lanes: [{ seat: 'ivan', lane: 'own_post_engager', label: 'Warm engagers', n: 12, capped: false, campaignId: 'c1', off: null }] }
     const h = home({ lanes: lanes({ ready: { value: ready, failed: 'timeout' } }) })
     renderInFrame(<Ready seat="ivan" h={h} />, { hash: '#exp/d/home' })
     expect(document.querySelector('.hm-n')!.textContent).toBe('12')

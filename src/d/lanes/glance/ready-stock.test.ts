@@ -12,25 +12,39 @@ describe('fresh qualified stock', () => {
     expect(laneOf(c({ campaign_id: rise, id: 'held' }), x)).toBeNull()
     expect(laneOf(c({ campaign_id: rise }), x)).toEqual({ seat: 'risedtc', lane: 'engager' })
   })
-  it('keeps retries visible without adding them to fresh stock', () => {
+  it('excludes retry pools from the interest stock list', () => {
     const r = buildReady([c()], x, false)
     r.lanes.push({ seat: 'ivan', lane: 'retry', label: 'Warm invite retry', n: 25, capped: false, campaignId: null, off: null })
     expect(readyOf(r, 'ivan').total).toBe(1)
-    expect(readyOf(r, 'ivan').lanes.find(l => l.lane === 'retry')?.n).toBe(25)
+    expect(readyOf(r, 'ivan').lanes.find(l => l.lane === 'retry')).toBeUndefined()
   })
   it('preserves the canonical unique-person count and leaves unverified RISE pools separate', () => {
-    const r = buildReady([c({ campaign_id: rise }), c({ campaign_id: rise, id: 'duplicate' })], { ...x, riseReadyIds: new Set(['allowed','duplicate']), riseReadyCount: 1 }, false)
+    const signal = { source: 'rise_warm_engager', engagement_kind: 'reaction', post_id: 'post', anchor: 'creator' }
+    const r = buildReady([c({ campaign_id: rise, ...signal }), c({ campaign_id: rise, id: 'duplicate', ...signal })], { ...x, riseReadyIds: new Set(['allowed','duplicate']), riseReadyCount: 1 }, false)
     r.lanes.push({ seat: 'risedtc', lane: 'partner', label: 'CMO partners', n: 18, capped: false, campaignId: null, off: null })
     expect(readyOf(r, 'risedtc').total).toBe(1)
-    expect(readyOf(r, 'risedtc').lanes.find(l => l.lane === 'partner')).toMatchObject({ label: 'CMO partners', n: 18, candidate: true, off: null })
+    expect(readyOf(r, 'risedtc').lanes.find(l => l.lane === 'partner')).toBeUndefined()
   })
   it('keeps a candidate lane’s real pause reason separate from count verification', () => {
     const r = buildReady([], { ...x, riseReadyCount: 0 }, false)
     r.lanes.push({ seat: 'risedtc', lane: 'expansion', label: 'Colleagues of our leads', n: 12, capped: true, campaignId: null, off: 'expansion off' })
     expect(readyOf(r, 'risedtc').total).toBe(0)
-    expect(readyOf(r, 'risedtc').lanes.find(l => l.lane === 'expansion')).toMatchObject({ n: 12, candidate: true, off: 'expansion off' })
+    expect(readyOf(r, 'risedtc').lanes.find(l => l.lane === 'expansion')).toBeUndefined()
   })
   it('requires a score even for ARCH waiver sources', () => {
     expect(laneOf(c({ campaign_id: 'arch', stage: 'queued', ed_lane: 'engager_warm', icp_score: null, waived: 'true' }), x)).toBeNull()
+  })
+  it('shows only signal sources in fresh stock, including ARCH engagers in its mixed campaign', () => {
+    const rows = [
+      c({ id: 'arch-warm', campaign_id: 'arch', stage: 'queued', ed_lane: 'engager_warm', src: 'competitor_post_engager' }),
+      c({ id: 'arch-hiring', campaign_id: 'arch', stage: 'queued', ed_lane: 'hiring_signal', src: 'hiring_signal' }),
+      c({ id: 'ivan-own', ed_lane: 'own_post_engager', sig_note: 'post' }),
+      c({ id: 'ivan-hiring', trigger_type: 'hiring' }),
+    ]
+    const r = buildReady(rows, x, false)
+    expect(readyOf(r, 'arch').lanes.map(l => [l.lane, l.n])).toEqual([['competitor_engager', 1]])
+    expect(readyOf(r, 'arch').total).toBe(1)
+    expect(readyOf(r, 'ivan').lanes.some(l => l.lane === 'hiring')).toBe(false)
+    expect(readyOf(r, 'ivan').lanes.find(l => l.lane === 'own_post_engager')?.n).toBe(1)
   })
 })

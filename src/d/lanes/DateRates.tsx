@@ -5,6 +5,7 @@ import type { Range } from './model'
 import { RANGE_DAYS } from './rates'
 import { useRetryRead } from './useRead'
 import './dateRates.css'
+import { INTEREST_LABEL } from './interest'
 
 const pct = (n: number) => `${Number(n).toFixed(1)}%`
 function Value({ r }: { r?: RateComparisonRow }) {
@@ -23,7 +24,7 @@ export function RateComparisonTables({ rows, seat }: { rows: RateComparisonRow[]
         const cur = mine.find(r => r.channel === ch && r.lane === lane && r.period === 'current')
         const prev = mine.find(r => r.channel === ch && r.lane === lane && r.period === 'previous')
         const delta = cur?.rate_pct != null && prev?.rate_pct != null ? Number(cur.rate_pct) - Number(prev.rate_pct) : null
-        return <tr key={lane}><th scope="row">{lane === '__all__' ? 'All lanes' : lane}</th>
+        return <tr key={lane}><th scope="row">{lane === '__all__' ? 'All interest signals' : INTEREST_LABEL[lane as keyof typeof INTEREST_LABEL] ?? lane}</th>
           <td><Value r={cur} /></td><td><Value r={prev} /></td>
           <td>{delta == null ? <span>No comparison</span> : <b>{delta > 0 ? '+' : ''}{delta.toFixed(1)} pp</b>}</td></tr>
       })}</tbody>
@@ -31,7 +32,7 @@ export function RateComparisonTables({ rows, seat }: { rows: RateComparisonRow[]
   })}</div>
 }
 export function RateComparisonRead({ dates, seat }: { dates: RateDates; seat: Seat }) {
-  const [read, retry] = useRetryRead(() => fetchRateComparison(dates), `rate-comparison:${dates.from}:${dates.to}`)
+  const [read, retry] = useRetryRead(() => fetchRateComparison(dates), `interest-rate-comparison:${dates.from}:${dates.to}`)
   // A new selection cannot render counts cached by the previous selection.
   return <div key={`${dates.from}:${dates.to}`} aria-live="polite">
     {read.kind === 'ready' ? <RateComparisonTables rows={read.data} seat={seat} />
@@ -66,6 +67,6 @@ export function DateRates({ seat, range, now }: { seat: Seat; range: Range; now:
     {!validRateDates(draft, today) && <p role="status" className="dl-date-note">Pick a valid date range ending today or earlier.</p>}
     <RatePeriodNote dates={dates} />
     <RateComparisonRead key={`${dates.from}:${dates.to}`} dates={dates} seat={seat} />
-    <p className="dl-date-note">Outcomes within 72 hours of the first confirmed invite or DM. Rates use people who have had the full 72 hours. Pending sends stay separate. Changes are percentage points. Lanes follow current campaign membership. Counts below 20 are a small sample.</p>
+    <p className="dl-date-note">Only person-level interest sources. Outcomes within 72 hours of the first confirmed invite or DM. Rates use people who have had the full 72 hours. Pending sends stay separate. Changes are percentage points. Sources follow current prospect provenance. Counts below 20 are a small sample.</p>
   </section>
 }

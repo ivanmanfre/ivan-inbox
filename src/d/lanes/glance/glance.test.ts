@@ -58,22 +58,23 @@ describe('glance: ready', () => {
     saturdayNy: false,
     lanes: [
       { seat: 'ivan', lane: 'cold', label: 'Cold', n: 108, capped: false, campaignId: 'c', off: null },
-      { seat: 'ivan', lane: 'engage', label: 'Warm engagers', n: 114, capped: false, campaignId: 'e', off: null },
-      { seat: 'ivan', lane: 'view', label: 'Profile views', n: 3, capped: false, campaignId: 'v', off: 'switched off' },
+      { seat: 'ivan', lane: 'competitor_engager', label: 'Competitor / anchor engagers', n: 114, capped: false, campaignId: 'e', off: null },
+      { seat: 'ivan', lane: 'profile_view', label: 'Profile views', n: 3, capped: false, campaignId: 'v', off: 'switched off' },
       { seat: 'arch', lane: 'company_expansion', label: 'Colleagues of our leads', n: 143, capped: false, campaignId: 'a', off: null },
+      { seat: 'arch', lane: 'competitor_engager', label: 'Competitor / anchor engagers', n: 18, capped: false, campaignId: 'a', off: null },
     ],
   }
   it('never adds seats; the total leaves out lanes the sender skips; busiest first', () => {
     const v = readyOf(r, 'ivan')
-    expect(v.total).toBe(222)
-    expect(v.lanes.map(l => l.lane)).toEqual(['engage', 'cold', 'view'])
-    expect(readyOf(r, 'arch').total).toBe(143)
+    expect(v.total).toBe(114)
+    expect(v.lanes.map(l => l.lane)).toEqual(['competitor_engager', 'profile_view'])
+    expect(readyOf(r, 'arch').total).toBe(18)
     expect(readyOf(r, 'risedtc')).toEqual({ total: 0, lanes: [] })
   })
-  it('governor warm-only drops Ivan’s cold from the total and says why', () => {
+  it('governor changes cannot resurrect excluded cold stock', () => {
     const v = readyOf(r, 'ivan', { mode: 'warm_only' } as never)
     expect(v.total).toBe(114)
-    expect(v.lanes.find(l => l.lane === 'cold')?.off).toBe('warm only this week')
+    expect(v.lanes.find(l => l.lane === 'cold')).toBeUndefined()
   })
   it('Saturday in New York, company domains normalised', () => {
     expect(isSaturdayNy(Date.parse('2026-09-26T15:00:00Z'))).toBe(true)
@@ -110,7 +111,7 @@ describe('glance: the picker filter, classified in code', () => {
     expect(laneOf(a({ ed_lane: 'company_expansion' }), x)).toEqual({ seat: 'arch', lane: 'company_expansion' })
     expect(laneOf(a({ ed_lane: 'company_expansion', icp_score: 5 }), x)).toBeNull()
     expect(laneOf(a({ ed_lane: 'company_expansion', icp_score: 5, waived: 'true' }), x)).not.toBeNull()
-    const r = buildReady([a({ ed_lane: 'company_expansion' }), a({ ed_lane: 'engager_warm' })], x, false)
-    expect(r.lanes.filter(l => l.seat === 'arch').map(l => [l.lane, l.n])).toEqual([['company_expansion', 1], ['engager_warm', 1]])
+    const r = buildReady([a({ ed_lane: 'company_expansion', src: 'company_expansion' }), a({ ed_lane: 'engager_warm', src: 'competitor_post_engager' })], x, false)
+    expect(r.lanes.filter(l => l.seat === 'arch').map(l => [l.lane, l.n])).toEqual([['competitor_engager', 1]])
   })
 })

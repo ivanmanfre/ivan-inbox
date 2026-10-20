@@ -10,7 +10,7 @@ import { useMotionLevel } from '../../../ds/motionLevel'
    Address: #exp/d/lanes[?seat=][&range=30d][&sheet=campaign&c=<id>|control&for=|range|decisions&for=]
    (the old sheet addresses — log, ledger, delivery, problems, channels — still open their sheet)
    ========================================================================== */
-import { Suspense, lazy, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLanes } from '../../../hooks/useLanes'
 import { monitorLiveness } from '../../../lib/campaignControl'
 import type { PlaceProps } from '../../places'
@@ -19,11 +19,9 @@ import { SEATS, type Seat } from '../../seats'
 import { useReportFailed } from '../../shell/health'
 import { AnswerRow } from '../../ui/AnswerRow'
 import { DIcon } from '../../ui/icons'
-import { Sheet } from '../../ui/Sheet'
 import { Failed, Offline } from '../../ui/states'
 import { useOnline } from '../../ui/useOnline'
 import type { BandCtx } from '../bandCells'
-import { CampaignSheet } from '../CampaignSheet'
 import { ChannelsSheet } from '../ChannelsSheet'
 import { ControlSheet } from '../ControlSheet'
 import { monitorLine } from '../foot'
@@ -37,9 +35,6 @@ import { failedCount, useLanesData } from '../useLanesData'
 import '../lanes.css'
 import '../lanes3.css'
 import './lanes4.css'
-
-// Run 51: the DM outreach report (sends -> replies per lane and step) moved here from Content > Strategy.
-const OutreachBlock = lazy(() => import('../../../wb/content/OutreachBlock').then(m => ({ default: m.OutreachBlock })))
 
 const SHEETS: SheetKind[] = ['decisions', 'log', 'ledger', 'delivery', 'problems']
 const isSeat = (v: string | null): v is Seat => (SEATS as readonly string[]).includes(v ?? '')
@@ -77,7 +72,6 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
   const close = () => go({ sheet: null, c: null, for: null })
 
   const ans = answerOf(data.cc.value, cols, now, null)
-  const camp = sheet === 'campaign' ? data.perf.value?.find(c => c.campaign_id === q.get('c')) ?? null : null
   const forSeat = isSeat(q.get('for')) ? (q.get('for') as Seat) : null
 
   // Every read that failed or timed out (12 s) besides the monitor, said once, with Retry.
@@ -104,21 +98,11 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
         
         <Strip seats={cols} seat={seat} pick={pick} d={data} now={now} phone={layout === 'phone'} />
         <SeatView4 key={seat} seat={seat} ctx={ctx} range={range} setRange={setRange} retry={refresh} onCustom={() => go({ sheet: 'range', c: null })} />
-        <a className="dl-outreach-link" href={dHash('lanes', null, { ...Object.fromEntries(q), sheet: 'outreach', for: seat })} data-verb="open-outreach">DM outreach results: sends to replies by step →</a>
       </div>
-      {camp && <CampaignSheet c={camp} now={now} onClose={close} />}
-      {sheet === 'campaign' && !camp && data.perf.value && (
-        <Sheet open onClose={close} title="Campaign not found" sub="This campaign is archived or no longer in the list." className="dl-sheet"><p className="dl-sl">Nothing to show.</p></Sheet>
-      )}
       {sheet === 'range' && <RangeSheet from={q.get('from')} to={q.get('to')} setRange={(from, to) => go({ from, to })} onClose={() => go({ sheet: null, from: null, to: null })} />}
       {sheet === 'channels' && <ChannelsSheet seat={forSeat ?? seat} setSeat={s => go({ for: s })} now={now} onClose={close} />}
       {sheet === 'control' && <ControlSheet seat={forSeat ?? seat} p={data.cc.value} pFailed={data.cc.failed} gov={data.gov.value?.find(x => x.client_id === (forSeat ?? seat)) ?? null}
         pauses={data.pauses.value} pausesFailed={data.pauses.failed} now={now} onClose={close} />}
-      {sheet === 'outreach' && (
-        <Sheet open onClose={close} title="DM outreach results" sub="Matured sends and replies per lane and step, against the prior period" className="dl-sheet">
-          <div className="cn-legacy app wb ds-shell wb-work"><Suspense fallback={<p className="dl-sl">Reading…</p>}><OutreachBlock lane={forSeat ?? seat} /></Suspense></div>
-        </Sheet>
-      )}
       {sheet && (SHEETS as string[]).includes(sheet) &&<LanesSheet kind={sheet as SheetKind} seat={forSeat} p={data.cc.value} pFailed={data.cc.failed} range={range} now={now} setSeat={s => go({ for: s })} onClose={close} />}
     </div>
   )

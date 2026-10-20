@@ -8,7 +8,6 @@ import { ackId, useAck } from './ack'
 import { clientOf, controlOf, dm, hm, todayOf } from './model'
 import { CHANNEL_PAUSE_KEYS } from './reads'
 import type { LanesData } from './useLanesData'
-import { supplyOf } from './supply'
 
 export type CellCtx = { d: LanesData; now: number; openControl?: (seat: Seat) => void }
 
@@ -60,15 +59,6 @@ export function TodayCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
   )
 }
 
-function Supply({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
-  // Runway = what the sender would pick now (the glance's ready count, the picker's own filter)
-  // over the invite pace; the old pipeline view's "sendable" is only the fallback (supply.ts).
-  const s = supplyOf(ctx.d, seat, ctx.now)
-  const runway = s.ready == null ? null : s.runwayDays != null ? `${s.runwayDays}d` : s.ready > 0 ? 'open-ended, nothing sent in 7 days' : null
-  const short = s.runwayDays != null && s.runwayDays < 3
-  return <>{runway != null && <><Sep /><span className={short ? 'dl-al' : ''}>runway {runway}</span></>}{s.refill != null && <><Sep />refill {s.refill.toFixed(2)}x{s.emptyIn != null ? `, empty in ${s.emptyIn}d` : ''}</>}</>
-}
-
 export function ControlCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
   const c = clientOf(ctx.d.cc.value, seat)
   const v = c ? controlOf(c, ctx.now) : null
@@ -108,7 +98,6 @@ export function ControlCell({ seat, ctx }: { seat: Seat; ctx: CellCtx }) {
       <div className="dl-kv"><span className="dl-k">Window</span> {v.window}<Sep />
         {v.closed ? <>opens <b>{v.opens ?? 'not scheduled'}</b></> : <>{v.pct ?? '?'}% gone<Sep />{v.pace}{v.planned != null ? ` (${v.sent} of ${v.planned})` : ''}</>}
       </div>
-      <div className="dl-kv"><span className="dl-k">Waiting</span> {v.pools.length ? v.pools.map(([k, n], i) => <span key={k}>{i ? ', ' : ''}{k} <b>{n}</b></span>) : 'unknown'}<Supply seat={seat} ctx={ctx} /></div>
       {v.next && <div className="dl-kv dl-clamp1" title={v.next}><span className="dl-k">Next</span> {v.next}</div>}
       {ctx.openControl && <button type="button" className="dl-more" data-open="control" title="Session, pauses, lanes, governor, incidents" onClick={() => ctx.openControl!(seat)}>Detail ›</button>}
     </div>

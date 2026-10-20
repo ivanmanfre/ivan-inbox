@@ -6,9 +6,8 @@
    Folded (remembered): Caps & control · Inbound · Numbers in detail ·
    Channels · Send log · Recurring problems. A folded section does not mount,
    so it reads nothing. An open incident shows its Control cell open. */
-import { isWorking } from '../../../lib/campaignPerf'
 import { SEAT_NAME, type Seat } from '../../seats'
-import { CampaignsCell, InboundCell, type BandCtx } from '../bandCells'
+import { InboundCell, type BandCtx } from '../bandCells'
 import { ChannelsSheet } from '../ChannelsSheet'
 import { Segmented } from '../../../ds/Segmented'
 import { Numbers } from './Numbers'
@@ -20,12 +19,12 @@ import { Btn } from '../../ui/Key'
 import { LogSheet } from '../LogSheet'
 import { Inline } from '../LSheet'
 import { clientOf, controlOf, incidentLine, type Range } from '../model'
-import { PerfDetail } from '../Performance'
 import { useOpenSections } from '../prefs'
 import { ProblemsSheet } from '../ProblemsSheet'
 import { Section } from '../Section'
 import { ControlCell, TodayCell } from '../seatCells'
 import { supplyOf } from '../supply'
+import { InterestPerformance } from './InterestPerformance'
 
 const noop = () => {}
 
@@ -36,7 +35,6 @@ export function SeatView4({ seat, ctx, range, setRange, onCustom, retry }: { sea
   const v = c ? controlOf(c, ctx.now) : null
   const s = supplyOf(ctx.d, seat, ctx.now)
   const [acked, ack] = useAck(v?.incident ? ackId(v.incident) : null, Boolean(v?.incident?.acknowledged))
-  const working = ctx.d.perf.value ? ctx.d.perf.value.filter(x => x.client_id === seat && isWorking(x)).length : null
   const probs = (ctx.d.cc.value?.recurrence?.items ?? []).filter(i => i.rank?.daily_pick).slice(0, 3).length
   const inbound = ctx.d.inbound.value?.filter(r => r.client_id === seat).reduce((a, r) => a + r.d7, 0) ?? null
   const control = (
@@ -51,7 +49,7 @@ export function SeatView4({ seat, ctx, range, setRange, onCustom, retry }: { sea
       <div className="dl4-filter"><b>{SEAT_NAME[seat]}</b><Segmented markerId="dl4-range" label="Window for the totals" value={range} options={['7d','30d','90d','custom'].map(r => ({ id:r, label:r === 'custom' ? 'Custom' : r }))} onChange={r => r === 'custom' ? onCustom() : setRange(r as Range)} /></div>
       <Numbers seat={seat} ctx={ctx} retry={retry} />
       <div className="dl4-first"><Supply seat={seat} d={ctx.d} s={s} now={ctx.now} retry={retry} /><Sending seat={seat} now={ctx.now} /></div>
-      <div className="dl4-below"><History seat={seat} ctx={ctx} /><section className="dl4-panel dl4-campaigns" data-band="campaigns" data-seat={seat} data-bx-block><h2>Campaigns <small>{working != null ? `${working} sending` : ''}</small></h2><CampaignsCell seat={seat} ctx={ctx} /></section></div>
+      <div className="dl4-below"><History seat={seat} ctx={ctx} /><InterestPerformance seat={seat} /></div>
       <Rates seat={seat} ctx={ctx} />
       <h2 className="dl4-more-head">More</h2>
       <div className="dl-folds">
@@ -62,9 +60,6 @@ export function SeatView4({ seat, ctx, range, setRange, onCustom, retry }: { sea
         <Section id="inbound" title="Inbound" open={open.inbound} onToggle={toggle}
           summary={inbound != null ? `${inbound} decision${inbound === 1 ? '' : 's'} in 7 days` : null}>
           <InboundCell seat={seat} ctx={ctx} />
-        </Section>
-        <Section id="detail" title="Numbers in detail" open={open.detail} onToggle={toggle} summary="per campaign, delivery by lane, daily ledger">
-          <PerfDetail seat={seat} ctx={ctx} />
         </Section>
         <Inline>
           <Section id="channels" title="Channels" open={open.channels} onToggle={toggle} summary="invites, DMs and InMail, each on its own">
