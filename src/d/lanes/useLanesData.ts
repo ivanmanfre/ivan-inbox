@@ -10,7 +10,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchPayload, isContractError, parsePayload, type CcPayload } from '../../lib/campaignControl'
 import { fetchCampaignPerf, type CampaignPerf } from '../../lib/campaignPerf'
 import {
-  fetchGovernor, fetchOutcomes, fetchPipeline, fetchReplacement, fetchScanOpens, fetchViewedBack,
+  fetchGovernor, fetchOutcomes, fetchPipeline, fetchScanOpens, fetchViewedBack,
   type GovernorRow, type ScanOpenRow, type OutcomeRow, type PipelineRow, type ReplacementRow, type ViewedBackRow,
 } from '../../lib/kpis'
 import { fetchCampaignSends, type CampaignSend } from '../../lib/sends'
@@ -25,6 +25,7 @@ import { fetchReady, type ReadyRead } from './glance/ready'
 import { RETRY_MS, withTimeout } from '../ui/timeout'
 import { recall, remember } from '../../lib/pageMemo'
 import { supabase } from '../../lib/supabase'
+import { fetchInterestReplacement } from './interestReads'
 
 export type Slot<T> = { value: T | null; failed: string | null; generatedAt?: number }
 export type LanesData = {
@@ -61,7 +62,7 @@ const READS: { [K in Key]: () => Promise<NonNullable<LanesData[K]['value']>> } =
   gov: fetchGovernor,
   outcomes: fetchOutcomes,
   pipeline: fetchPipeline,
-  replacement: fetchReplacement,
+  replacement: fetchInterestReplacement,
   viewed: fetchViewedBack,
   counters: () => fetchCounters(),
   inbound: fetchInbound,
@@ -81,8 +82,8 @@ const READS: { [K in Key]: () => Promise<NonNullable<LanesData[K]['value']>> } =
   ready: () => fetchReady(),
 }
 const KEYS = Object.keys(READS) as Key[]
-const QUICK = new Set<Key>(['cc', 'gov', 'outcomes', 'health', 'perf', 'pipeline', 'replacement'])
-const SAVED = new Set<Key>(['perf', 'outcomes', 'pipeline', 'replacement'])
+const QUICK = new Set<Key>(['cc', 'gov', 'outcomes', 'health', 'perf', 'pipeline'])
+const SAVED = new Set<Key>(['perf', 'outcomes', 'pipeline'])
 type QuickSlot = { value?: unknown; error?: string | null; generated_at?: string; from_cache?: boolean }
 
 async function fetchQuick(keys: Key[], fresh: boolean): Promise<Record<string, QuickSlot>> {
@@ -125,7 +126,7 @@ export function failedCount(d: LanesData): number {
   return KEYS.filter(k => d[k].failed && d[k].value == null).length
 }
 
-const memoKey = (k: Key) => `lanes:${k}`
+const memoKey = (k: Key) => `lanes:${k === 'replacement' ? 'interest:replacement' : k}`
 
 /**
  * PERF-SMOOTH (2026-10-08): the last good value of each read (lib/pageMemo: this session, this user,

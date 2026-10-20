@@ -76,7 +76,7 @@ export function Ready({ seat, h }: P) {
         <ul className="hm-lanes">
           {lanes.map(l => (
             <li key={l.lane} className={l.off ? 'hm-off' : undefined} title={l.off ?? undefined}>
-              <a href={l.campaignId ? dHash('lanes', null, { sheet: 'campaign', c: l.campaignId }) : dHash('lanes', null, { seat })}>
+              <a href={dHash('lanes', null, { seat })}>
                 <span>{l.label}</span><b>{l.capped ? '≥' : ''}{l.n}</b>
               </a>
             </li>

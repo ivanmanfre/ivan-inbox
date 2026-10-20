@@ -4,7 +4,7 @@
    numbers (never added together), and the seat's own warning (out of leads,
    disconnected). Clicking a square chooses the seat the page below shows. */
 import { monitorLiveness, QUEUE_EMPTY_WORD } from '../../lib/campaignControl'
-import { supplyAlarmLane } from '../../lib/focus'
+import { supplyOf } from './supply'
 import { SEAT_NAME, type Seat } from '../seats'
 import { clientOf, controlOf, hm, seatWord, todayOf } from './model'
 import { PERSON } from './seatCells'
@@ -40,11 +40,11 @@ export function seatWarnings(d: LanesData, seat: Seat, now: number = Date.now())
   if (h && h.account !== 'OK') out.push('LinkedIn disconnected')
   // NO_SN = a seat that never had Sales Nav (Jonathan is Premium only), not a broken one.
   if (h && h.sn != null && h.sn !== 'OK' && h.sn !== 'NO_SN') out.push('Sales Nav not working')
-  if (d.pipeline.value && d.gov.value) {
-    const alarm = supplyAlarmLane(d.pipeline.value.filter(r => r.client_id === seat), d.gov.value.filter(g => g.client_id === seat))
+  if (d.ready.value && d.replacement.value) {
+    const supply = supplyOf(d, seat, now)
     const p = d.cc.value
     const said = p ? seatWord(clientOf(p, seat), monitorLiveness(p, now)).word === QUEUE_EMPTY_WORD : false
-    if (alarm === seat && !said) out.push(OUT_OF_LEADS)
+    if (!said && supply.ready != null && (supply.ready === 0 || supply.runwayDays === 0)) out.push(OUT_OF_LEADS)
   }
   return out
 }

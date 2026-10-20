@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, expect, it, vi } from 'vitest'
 import { DateRates, RateComparisonTables } from './DateRates'
 import type { RateComparisonRow } from '../../lib/rateComparison'
+import { supabase } from '../../lib/supabase'
 
 vi.mock('../../lib/supabase', () => ({ supabase: { rpc: vi.fn(async (_name: string, args: { p_from: string; p_to: string }) => ({
   data: rows.map(r => ({ ...r, period_from: r.period === 'current' ? args.p_from : '2026-09-26', period_to: r.period === 'current' ? args.p_to : '2026-10-02' })), error: null,
@@ -35,6 +36,7 @@ it('applies custom dates to both rate tables and exposes the equal-length previo
   await waitFor(() => expect(screen.getByText(/2026-09-01 to 2026-09-10/)).toBeTruthy())
   expect(screen.getByText(/2026-08-22 to 2026-08-31/)).toBeTruthy()
   expect(screen.getAllByRole('table')).toHaveLength(2)
+  expect(supabase.rpc).toHaveBeenCalledWith('inbox_interest_rate_comparison', expect.anything())
 })
 it('does not display another client\'s results when the selected seat changes', () => {
   render(<RateComparisonTables rows={rows} seat="arch" />)

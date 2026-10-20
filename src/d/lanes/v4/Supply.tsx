@@ -28,7 +28,7 @@ export function Supply({ seat, d, s, now, retry }: { seat: Seat; d: LanesData; s
   const [explain, setExplain] = useState<string | null>(null)
   const v = supplyVerdict(s, d.replacement.value != null)
   const runway = d.ready.value != null ? slotRead(d.replacement, () => s.runwayDays) : slotRead(d.ready, () => s.runwayDays)
-  const noPace = d.ready.value != null && d.replacement.value != null && s.runwayDays == null
+  const noPace = s.ready != null && d.replacement.value != null && s.runwayDays == null
   const noRefill = d.replacement.value != null && s.refill == null
   const max = Math.max(1, ...s.lanes.filter(l => !l.off).map(l => l.n))
   return <section className="dl4-panel dl4-supply" data-band="refill" data-seat={seat} data-bx-block>
@@ -50,6 +50,6 @@ export function Supply({ seat, d, s, now, retry }: { seat: Seat; d: LanesData; s
       </div>
       {s.days ? <Mirror s={s} now={now} /> : <div className="dl4-read"><Figure r={slotRead(d.replacement, () => null)} retry={retry} /><p>The refill {d.replacement.failed ? 'could not be read.' : 'is being read.'}</p></div>}
     </div>
-    <p className="dl4-supply-foot">New people found this week <Figure size="m" r={slotRead(d.engagers, x => x[seat] ?? 0)} retry={retry} /></p>
+    <p className="dl4-supply-foot">Interest sources qualified in 7 days <Figure size="m" r={slotRead(d.replacement, () => s.in7)} retry={retry} /></p>
   </section>
 }

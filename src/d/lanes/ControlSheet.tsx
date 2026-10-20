@@ -12,7 +12,7 @@ import { SEAT_NAME, type Seat } from '../seats'
 import { Sheet } from '../ui/Sheet'
 import { Shs } from './CampaignSheet'
 import { EvidenceFolds, GovernorDetail, IncidentDetail } from './controlParts'
-import { ago, clientOf, controlOf, dm, hm, reasonWord, seatEligible, until } from './model'
+import { ago, clientOf, controlOf, dm, hm, until } from './model'
 import { CHANNEL_PAUSE_KEYS, KILL_SWITCH_KEY, PAUSE_KEY, type Pauses } from './reads'
 
 const PACE: Record<string, string> = { no_target: 'no target set for this seat', on_track: 'on track against the target', behind: 'behind the target', not_yet: 'too early in the session to judge' }
@@ -65,17 +65,6 @@ export function ControlSheet({ seat, p, pFailed = null, gov, pauses, pausesFaile
         <Shs>Pauses</Shs>
         {pausesFailed && !pauses ? <p className="dl-sl dl-bad">The pause keys could not be read: {pausesFailed}</p>
           : <>{pause(PAUSE_KEY[seat], pauses?.[seat], CHANNEL_PAUSE_KEYS[seat] ? 'Invite pause' : undefined)}{(CHANNEL_PAUSE_KEYS[seat] ?? []).map(k => pause(k.key, pauses?.byKey?.[k.key], k.label))}{pause(KILL_SWITCH_KEY, pauses?.all)}</>}
-        <Shs tail={inv.eligible_stock_scope ? `scope ${inv.eligible_stock_scope}` : undefined}>Eligible supply</Shs>
-        <div className="dl-kv"><b>{seatEligible(inv) ?? 'unknown'}</b> eligible{v.pools.length ? ` · ${v.pools.map(([k, x]) => `${k} ${x}`).join(', ')}` : ''}</div>
-        {typeof (inv.eligible_stock_by_pool as Record<string, unknown> | null)?.note === 'string' && <p className="dl-sl">{String((inv.eligible_stock_by_pool as Record<string, unknown>).note)}</p>}
-        {(inv.by_lane ?? []).length > 0 && (
-          <table className="dl-steps"><thead><tr><th>Source lane</th><th>Today</th><th>Eligible</th><th>Can send now</th></tr></thead><tbody>
-            {(inv.by_lane ?? []).map(l => (
-              <tr key={l.source_lane}><td>{l.source_lane.replace(/_/g, ' ')}</td><td className="dl-m">{l.confirmed_sent}</td><td className="dl-m">{l.eligible_stock ?? '?'}</td>
-                <td className={l.executable_now ? 'dl-m' : 'dl-al'}>{l.executable_now ? 'yes' : `no: ${(l.executable_reasons ?? []).map(reasonWord).join('; ') || 'no reason given'}`}</td></tr>
-            ))}
-          </tbody></table>
-        )}
         <a className="dl-more" href={dHash('content', 'strategy')}>What we filter on ›</a>
         <Shs>Governor</Shs>
         {gov ? <GovernorDetail g={gov} /> : <p className="dl-sl dl-unk">No governor reading for this seat.</p>}

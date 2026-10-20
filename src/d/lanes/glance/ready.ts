@@ -24,13 +24,14 @@ import { supabase } from '../../../lib/supabase'
 import type { GovernorRow } from '../../../lib/kpis'
 import type { CcPayload } from '../../../lib/campaignControl'
 import type { Seat } from '../../seats'
+import { interestSource, INTEREST_LABEL, type InterestSource } from '../interest'
 
 export type ReadyLane = { seat: Seat; lane: string; label: string; n: number; capped: boolean; campaignId: string | null; off: string | null; candidate?: boolean }
 export type ReadyRead = { lanes: ReadyLane[]; saturdayNy: boolean }
 export type ReadySeat = { total: number; lanes: ReadyLane[] }
 
 const PAGE = 1000
-const MAX_PAGES = 3
+const MAX_PAGES = 10
 const DAY = 864e5
 const iso = (t: number) => new Date(t).toISOString()
 export const domainOf = (d: string | null | undefined) => (d ?? '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '')
@@ -44,10 +45,11 @@ export type Cand = {
   ed_lane: string | null; sig_ok: string | null; sig_note: string | null; rise_note: string | null; anchor: string | null; gate: string | null
   next_touch_after?: string | null; call_booked_at?: string | null; needs_manual_reply?: boolean | null; recycled_at?: string | null; last_reply_at?: string | null; dm_count?: number | null
   partner: string | null; colleague: string | null; refused: string | null; src: string | null; waived: string | null; lang_hold: string | null; copy_hold: string | null
+  source?: string | null; engagement_kind?: string | null; post_id?: string | null; company_first?: boolean | null; interest_lane?: InterestSource | null
 }
 const COLS = 'id, campaign_id, stage, icp_score, trigger_type, trigger_confidence, scorer_version, country, preferred_channel, connection_sent_at, connected_at, last_dm_sent_at, liveness_checked_at, created_at, skip_state, skip_reason, reply_count, note_variant, hypertarget_reserved, company_domain, next_touch_after, call_booked_at, needs_manual_reply, recycled_at, last_reply_at, dm_count, '
   + 'ed_lane:enrichment_data->>lane, sig_ok:enrichment_data->>signal_approved_at, sig_note:enrichment_data->>signal_note_final, rise_note:enrichment_data->>rise_note_final, anchor:enrichment_data->>anchor_client, gate:enrichment_data->name_gate->>status, '
-  + 'partner:enrichment_data->>partner_lane, colleague:enrichment_data->expansion->>colleague_first, refused:enrichment_data->invite_refused->>last_at, src:enrichment_data->>source_kind, waived:enrichment_data->>icp_floor_waived, lang_hold:enrichment_data->>lang_hold, copy_hold:enrichment_data->>copy_hold'
+  + 'partner:enrichment_data->>partner_lane, colleague:enrichment_data->expansion->>colleague_first, refused:enrichment_data->invite_refused->>last_at, src:enrichment_data->>source_kind, waived:enrichment_data->>icp_floor_waived, lang_hold:enrichment_data->>lang_hold, copy_hold:enrichment_data->>copy_hold, source:enrichment_data->>source, engagement_kind:enrichment_data->>engagement_kind, post_id:enrichment_data->>post_id, company_first:enrichment_data->company_first, interest_lane:source_lane'
 
 type Camp = { id: string; client_id: string | null; is_active: boolean | null; archived: boolean | null }
 export type Cfg = Record<string, string>
@@ -60,13 +62,6 @@ const RISE = {
   cold: '9a9ee3a5-c3a6-452d-8442-52285248d70c', expansion: 'b9c55e21-ed67-42e1-94ab-b9e948a4bed9', partner: '92c745f2-bd37-4887-96c3-ef930d542e24',
 }
 const ARCH_IDS = ['15de1a7c-86f4-40b7-bdbd-3c1fce94b6b9', '1a2701a0-931b-4949-95fb-9bbf2de16f09', '12c53034-7176-4950-be20-1c1bf5ba11a7', 'f17e4dac-d6b7-4c66-8d5c-8f1b2ace0685']
-const LABEL: Record<string, string> = {
-  view: 'Profile views', signal: 'Content signal', engage: 'Warm engagers', hiring: 'Hiring signal', cold: 'Cold', retry: 'Warm invite retry',
-  orbit: 'Client orbit', engager: 'Competitor engagers', expansion: 'Colleagues of our leads', partner: 'CMO partners', reconnect: 'InMail reconnect',
-  engager_warm: 'Warm engagers', company_expansion: 'Colleagues of our leads', hiring_signal: 'Hiring signal', funding_signal: 'Funding', new_in_role: 'New in role',
-  cold_games: 'Cold (games)', cold_apps: 'Cold (apps)', profile_view: 'Profile views', sponsor_mined: 'Sponsors', sponsor_team: 'Sponsor team',
-}
-
 export type Ctx = { now: number; cfg: Cfg; scorer: number; ivanIds: Set<string>; riseLive: Set<string>; archLive: Set<string>; stop: Set<string>; touch: Set<string>; satNy: boolean; riseReadyIds?: Set<string>; riseReadyCount?: number }
 
 /** PURE: which lane (if any) the seat's sender would pick this row from, by its own filter. */
@@ -127,21 +122,26 @@ export function laneOf(r: Cand, x: Ctx): { seat: Seat; lane: string } | null {
 /** PURE: rows to lanes, with the lanes each sender reads even when empty, and the reason a lane is skipped today. */
 export function buildReady(rows: Cand[], x: Ctx, capped: boolean): ReadyRead {
   const by = new Map<string, Cand[]>()
-  for (const r of rows) { const l = laneOf(r, x); if (l) { const k = `${l.seat}|${l.lane}`; by.set(k, [...(by.get(k) ?? []), r]) } }
+  for (const r of rows) {
+    const l = laneOf(r, x)
+    if (!l) continue
+    if (l.lane === 'retry' || l.lane === 'reconnect') continue
+    const source = r.interest_lane ?? interestSource(l.seat, { trigger_type: r.trigger_type, source: r.source, source_kind: r.src, lane: r.ed_lane,
+      engagement_kind: r.engagement_kind, post_id: r.post_id, anchor: r.anchor, company_first: Boolean(r.company_first) })
+    if (!source) continue
+    const k = `${l.seat}|${source}`
+    by.set(k, [...(by.get(k) ?? []), r])
+  }
   const top = (xs: Cand[]) => { const m = new Map<string, number>(); for (const r of xs) m.set(r.campaign_id, (m.get(r.campaign_id) ?? 0) + 1); return [...m].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null }
   const sat = (lane: string) => (x.satNy && lane !== 'view' ? 'Saturday: profile views only' : null)
-  const fixed: Array<[Seat, string, string | null]> = [
-    ['ivan', 'engage', sat('engage')], ['ivan', 'cold', sat('cold')], ['ivan', 'view', x.cfg.profile_view_send_enabled === 'true' ? null : 'switched off'],
-    ['ivan', 'signal', sat('signal')], ['ivan', 'hiring', sat('hiring')], ['ivan', 'retry', x.cfg.ivan_invite_retry_enabled === 'true' ? sat('retry') : 'switched off'],
-    ...([['partner', 'partner'], ['engager', 'engager'], ['expansion', 'expansion'], ['view', 'view'], ['orbit', 'orbit'], ['cold', 'cold']] as const)
-      .filter(([k]) => x.riseLive.has(RISE[k]))
-      .map(([k]): [Seat, string, string | null] => ['risedtc', k, k === 'view' ? (x.cfg.profile_view_send_enabled === 'true' ? null : 'switched off') : k === 'expansion' && x.cfg.rise_company_expansion !== 'on' ? 'switched off' : sat(k)]),
-    ...(x.riseLive.size ? [['risedtc', 'reconnect', sat('reconnect')] as [Seat, string, string | null]] : []),
-  ]
-  const lanes: ReadyLane[] = fixed.map(([seat, lane, off]) => { const xs = by.get(`${seat}|${lane}`) ?? []; return { seat, lane, label: LABEL[lane] ?? lane, n: xs.length, capped, campaignId: top(xs) ?? (seat === 'risedtc' ? RISE[lane as keyof typeof RISE] ?? null : null), off } })
-  for (const [k, xs] of by) if (k.startsWith('arch|')) { const lane = k.slice(5); lanes.push({ seat: 'arch', lane, label: LABEL[lane] ?? lane.replace(/_/g, ' '), n: xs.length, capped, campaignId: top(xs), off: null }) }
-  const warm = lanes.find(l => l.seat === 'risedtc' && l.lane === 'engager')
-  if (warm && x.riseReadyCount != null) { warm.n = x.riseReadyCount; warm.capped = false }
+  const lanes: ReadyLane[] = [...by].map(([k, xs]) => {
+    const [seat, lane] = k.split('|') as [Seat, keyof typeof INTEREST_LABEL]
+    const off = x.satNy && lane !== 'profile_view' ? sat(lane) : lane === 'profile_view' && x.cfg.profile_view_send_enabled !== 'true' ? 'switched off' : null
+    return { seat, lane, label: INTEREST_LABEL[lane], n: xs.length, capped, campaignId: top(xs), off,
+      candidate: seat === 'risedtc' && lane !== 'competitor_engager' }
+  })
+  const warm = lanes.find(l => l.seat === 'risedtc' && l.lane === 'competitor_engager')
+  if (warm && x.riseReadyCount != null) { warm.n = Math.min(warm.n, x.riseReadyCount); warm.capped = false }
   return { lanes, saturdayNy: x.satNy }
 }
 
@@ -190,45 +190,43 @@ export async function fetchReady(now = Date.now()): Promise<ReadyRead> {
   const ivanIds = new Set(camps.filter(c => live(c) && c.client_id == null).map(c => c.id))
   const riseLive = new Set(Object.values(RISE).filter(id => camps.some(c => c.id === id && live(c))))
   const archLive = new Set(ARCH_IDS.filter(id => camps.some(c => c.id === id && live(c))))
+  const swishLive = camps.filter(c => c.client_id === 'swishdm' && live(c)).map(c => c.id)
   const ids = [...ivanIds, ...riseLive, ...archLive]
   const riseAll = camps.filter(c => c.client_id === 'risedtc').map(c => c.id)
-  // The retry branch is narrowed in the query to what the retry lane can take (its campaigns, 42 days since
-  // the withdrawn invite), and the select pages, so a big pool never truncates into a silent undercount.
-  const retry = `and(skip_reason.eq.invite_withdrawn_stale,icp_score.gte.7,reply_count.eq.0,connection_sent_at.lte.${iso(now - 42 * DAY)},campaign_id.in.(${IVAN_RETRY.join(',')}))`
-  const page = (from: number) => supabase.from('outreach_prospects').select(COLS).in('campaign_id', ids).eq('blacklisted', false).is('connected_at', null)
-    .or(`and(connection_sent_at.is.null,stage.in.(enriched,identified,queued,dm_sent,inmail_ready)),${retry}`)
+  const page = (from: number) => supabase.from('inbox_interest_prospects_v').select(COLS).in('campaign_id', ids).eq('blacklisted', false).is('connected_at', null)
+    .is('connection_sent_at', null).in('stage', ['enriched','identified','queued','dm_sent','inmail_ready'])
     .order('id').range(from, from + PAGE - 1)
   const candidates = async (): Promise<{ rows: Cand[]; capped: boolean }> => {
     const rows: Cand[] = []
     for (let i = 0; i < MAX_PAGES; i++) {
-      // R3 projects the enrichment keys once per candidate. Keep the same
-      // ordered pages and direct source fallback, including the capped state.
-      const projected = await supabase.rpc('inbox_phone_ready_page_r3', {
-        p_campaign_ids: ids, p_now: iso(now), p_offset: i * PAGE, p_limit: PAGE,
-      }, { get: true })
-      const { data, error } = !projected.error && Array.isArray(projected.data)
-        ? projected : await page(i * PAGE)
+      const { data, error } = await page(i * PAGE)
       if (error) throw new Error(error.message)
       const got = (data ?? []) as unknown as Cand[]
       rows.push(...got)
       if (got.length < PAGE) return { rows, capped: false }
     }
-    return { rows, capped: true }
+    throw new Error('Interest-source stock exceeds the read limit; ready count is unavailable')
   }
-  const [cand, dom] = await Promise.all([
+  const [cand, dom, swishCandidates] = await Promise.all([
     ids.length ? candidates() : Promise.resolve({ rows: [] as Cand[], capped: false }),
     cfg.rise_company_expansion === 'on' && riseAll.length ? riseDomains(riseAll, now) : Promise.resolve({ stop: new Set<string>(), touch: new Set<string>() }),
+    swishLive.length ? supabase.from('inbox_interest_prospects_v').select('id', { count: 'exact', head: true })
+      .in('campaign_id', swishLive).eq('client_id', 'swishdm').eq('blacklisted', false)
+      .is('skip_state', null).is('connection_sent_at', null).is('connected_at', null)
+      .in('stage', ['identified','enriched','queued','swishdm_staged_hold']) : Promise.resolve({ count: 0, error: null }),
   ])
+  if (swishCandidates.error) throw new Error(swishCandidates.error.message)
   const rows = cand.rows
-  return buildReady(rows, { now, cfg, scorer, ivanIds, riseLive, archLive, stop: dom.stop, touch: dom.touch, satNy: isSaturdayNy(now), riseReadyIds: new Set(supply.data.ready_ids), riseReadyCount: supply.data.ready_count }, cand.capped)
+  const ready = buildReady(rows, { now, cfg, scorer, ivanIds, riseLive, archLive, stop: dom.stop, touch: dom.touch, satNy: isSaturdayNy(now), riseReadyIds: new Set(supply.data.ready_ids), riseReadyCount: supply.data.ready_count }, cand.capped)
+  ready.lanes.push({ seat: 'swishdm', lane: 'competitor_engager', label: INTEREST_LABEL.competitor_engager,
+    n: swishCandidates.count ?? 0, capped: false, campaignId: swishLive[0] ?? null, off: null, candidate: true })
+  return ready
 }
 
 /** One seat's lanes, busiest first; the total counts only lanes the sender would pick today. Governor warm-only drops Ivan's cold. */
-export function readyOf(r: ReadyRead, seat: Seat, gov?: GovernorRow | null): ReadySeat {
-  const lanes = r.lanes.filter(l => l.seat === seat).map(l =>
-    ['retry', 'reconnect'].includes(l.lane) ? { ...l, off: l.off ?? 'Previously contacted; excluded from fresh stock' } :
-    seat === 'risedtc' && l.lane !== 'engager' ? { ...l, candidate: true } :
-    seat === 'ivan' && l.lane === 'cold' && !l.off && gov && gov.mode !== 'normal' ? { ...l, off: gov.mode === 'warm_only' ? 'warm only this week' : 'cold paused' } : l)
+export function readyOf(r: ReadyRead, seat: Seat, _gov?: GovernorRow | null): ReadySeat {
+  const lanes = r.lanes.filter(l => l.seat === seat && l.lane in INTEREST_LABEL).map(l =>
+    seat === 'risedtc' && l.lane !== 'competitor_engager' ? { ...l, candidate: true } : l)
     .sort((a, b) => Number(Boolean(a.off)) - Number(Boolean(b.off)) || b.n - a.n)
   return { total: lanes.filter(l => !l.off && !l.candidate).reduce((a, l) => a + l.n, 0), lanes }
 }

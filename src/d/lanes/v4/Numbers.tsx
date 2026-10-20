@@ -23,5 +23,5 @@ export function Numbers({ seat, ctx, retry }: { seat: Seat; ctx: BandCtx; retry:
   return <div className="dl4-kpis" data-band="kpis" data-seat={seat} data-bx-block>{tiles.map(t => <div className="dl4-kpi" key={t.label}>
     <small>{t.label}</small><Figure r={t.read} retry={retry} unit={t.unit} />
     <div className="dl4-kpi-sub">{t.sub}{t.delta != null && <span className={`dl4-pill dl4-${t.delta < 0 ? 'warn' : 'live'}`}>{t.delta < 0 ? '▼' : '▲'}{Math.abs(t.delta)}pp</span>}</div>
-  </div>)}</div>
+  </div>)}<p className="dl-date-note">Account-wide send and conversation history</p></div>
 }

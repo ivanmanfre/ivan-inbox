@@ -26,7 +26,7 @@ export function validRateDates(d: RateDates, today: string): boolean {
   return valid(d.from) && valid(d.to) && d.from <= d.to && d.to <= today
 }
 export async function fetchRateComparison(d: RateDates): Promise<RateComparisonRow[]> {
-  const { data, error } = await supabase.rpc('inbox_rate_comparison', { p_from: d.from, p_to: d.to })
+  const { data, error } = await supabase.rpc('inbox_interest_rate_comparison', { p_from: d.from, p_to: d.to })
   if (error) throw error
   return (data ?? []) as RateComparisonRow[]
 }
