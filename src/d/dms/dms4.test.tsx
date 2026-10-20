@@ -65,7 +65,22 @@ describe('inline draft edit', () => {
     mount(t)
     expect(screen.getByText('InMail to Alicia')).toBeTruthy()
     expect((screen.getByLabelText('InMail subject') as HTMLInputElement).value).toBe('Re: Ismail suggested we connect')
+    expect((screen.getByLabelText('InMail subject') as HTMLInputElement).placeholder).toBe('Add an InMail subject')
     expect((screen.getByLabelText('The draft') as HTMLTextAreaElement).value).toBe('Did you see the examples?')
+  })
+
+  it('shows the fixed Open Profile subject without adding it to the body', async () => {
+    const [t] = threads(drafted('open-profile', { prospect_name: 'Paul', client_id: 'ivan', channel: 'linkedin_inmail', message_type: 'dm', ai_model: 'template/ivan_openprofile_v3' }))
+    mount(t)
+    const subject = screen.getByLabelText('InMail subject') as HTMLInputElement
+    expect(subject.value).toBe('your LinkedIn')
+    expect(subject.readOnly).toBe(true)
+    const body = screen.getByLabelText('The draft') as HTMLTextAreaElement
+    expect(body.value).toBe(t.draft!.message_text)
+    fireEvent.change(body, { target: { value: 'Updated InMail body' } })
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_MS + 50)
+    await waitFor(() => expect(lib.saveDraftText).toHaveBeenCalledWith(t.draft!.id, 'Updated InMail body'))
+    expect(screen.queryByPlaceholderText('Add an email subject')).toBeNull()
   })
 
   it('starts an unanswered referred lead with context and folds the sent history', () => {
