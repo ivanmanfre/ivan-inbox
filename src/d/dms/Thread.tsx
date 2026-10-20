@@ -21,6 +21,7 @@ import { deliverySnapshot, scheduleHeld } from '../../lib/dmSchedule'
 import { canMarkSolved } from './solved'
 import { DraftWhy } from './DraftWhy'
 import { ReferralCard } from './ReferralCard'
+import { SwishReferral } from './SwishReferral'
 import { CalendarPanel } from './Calendar'
 import { History } from './History'
 import type { CameBackSignal } from '../../wb/dms/cameBackData'
@@ -293,6 +294,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         {draftRunning && <div className="dm-b dm-b-in dx-typing" aria-hidden="true"><div className="dm-b-body"><i /><i /><i /></div></div>}
         <Banners v4 t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
         {!referredLead && referral}
+        {t.client_id === 'swishdm' && <SwishReferral key={t.prospect_id} t={t} />}
         <Draft v4 onSendVia={sendVia} deliveryBusy={busy} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload}
           strips={<DraftStrips t={t} verbs={verbs} />}
           foot={t.draft && <DraftWhy v4 t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
@@ -330,6 +332,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         {historyView}
         <Banners t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
         {!referredLead && referral}
+        {t.client_id === 'swishdm' && <SwishReferral key={t.prospect_id} t={t} />}
         <Draft onSendVia={sendVia} deliveryBusy={busy} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
         {t.draft && <DraftWhy t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
         <RestoreStrip t={t} verbs={verbs} />
