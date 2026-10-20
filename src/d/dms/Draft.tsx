@@ -40,12 +40,12 @@ function Cc({ value, onChange, onBlur, label = 'CC recipients' }: { value: strin
   return <div className="dm-email-cc"><label>CC <input aria-label={label} aria-invalid={!!error} type="text" inputMode="email" autoComplete="off" value={value} placeholder="Add CC email addresses" onChange={e => onChange(e.target.value)} onBlur={onBlur} /></label>{error && <p role="alert">{error}</p>}</div>
 }
 
-function EmailEdit({ value, onChange, label, subjectLabel = 'Email subject', onBlur, max = 360, onKeyDown }: {
-  value: string; onChange: (text: string) => void; label: string; subjectLabel?: string; onBlur: () => void; max?: number; onKeyDown?: (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void
+function EmailEdit({ value, onChange, label, subjectLabel = 'Email subject', fixedSubject, onBlur, max = 360, onKeyDown }: {
+  value: string; onChange: (text: string) => void; label: string; subjectLabel?: string; fixedSubject?: string; onBlur: () => void; max?: number; onKeyDown?: (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void
 }) {
   const { subject, body } = splitEmailDraft(value)
   return <>
-    <div className="dm-email-cc dm-email-subject"><label>Subject <input aria-label={subjectLabel} type="text" autoComplete="off" data-autosave value={subject} placeholder="Add an email subject"
+    <div className="dm-email-cc dm-email-subject"><label>Subject <input aria-label={subjectLabel} type="text" autoComplete="off" data-autosave value={fixedSubject ?? subject} readOnly={fixedSubject !== undefined} placeholder={subjectLabel === 'InMail subject' ? 'Add an InMail subject' : 'Add an email subject'}
       onChange={e => onChange(emailDraftText(e.target.value, body))} onBlur={onBlur} onKeyDown={onKeyDown} /></label></div>
     <Grow value={body} onChange={text => onChange(emailDraftText(subject, text))} onBlur={onBlur} label={label} max={max} onKeyDown={onKeyDown} />
   </>
@@ -72,6 +72,8 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
       : isSwishdmReply(draft) ? 'SwishDM reply for Jonathan\u2019s seat' : isFollowUp(draft) ? 'AI follow-up' : 'AI draft'
   const email = messageChannel(draft) === 'email'
   const inmail = messageChannel(draft) === 'inmail'
+  // The Open Profile sender supplies this fixed subject outside the stored body.
+  const fixedSubject = inmail && t.client_id === 'ivan' && ['template/ivan_openprofile_v3', 'template/ivan_openprofile_reviewed_v2'].includes(draft.ai_model ?? '') ? 'your LinkedIn' : undefined
   const rider = (draft.recipient_email || draft.email_delivery_recipient) && !email && (draft.email_mirror_text || draft.ai_model === SCAN_DELIVERY_MODEL)
   const mode = draftSendVia(draft)
   const emailEnabled = mode !== 'dm' && !!draft.recipient_email
@@ -107,7 +109,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
           {inmail && <p className="dm-meta">InMail to {t.prospect_name}</p>}
         {email && draft.recipient_email && <p className="dm-meta">Email to {draft.recipient_email} (from {emailRowSender(t.client_id)})</p>}
           {email && draft.recipient_email && <Cc value={edits.cc ?? ''} onChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} />}
-          {email || inmail ? <EmailEdit subjectLabel={inmail ? 'InMail subject' : 'Email subject'} value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" onKeyDown={sendKey} />
+          {email || inmail ? <EmailEdit subjectLabel={inmail ? 'InMail subject' : 'Email subject'} fixedSubject={fixedSubject} value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" onKeyDown={sendKey} />
             : <Grow value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" onKeyDown={sendKey} />}
         </div> : null}
         {comp && (
@@ -164,7 +166,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
         {inmail && <p className="dm-meta">InMail to {t.prospect_name}</p>}
           {email && draft.recipient_email && <p className="dm-meta">Email to {draft.recipient_email} (from {emailRowSender(t.client_id)})</p>}
         {email && draft.recipient_email && <Cc value={edits.cc ?? ''} onChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} />}
-        {email || inmail ? <EmailEdit subjectLabel={inmail ? 'InMail subject' : 'Email subject'} value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" />
+        {email || inmail ? <EmailEdit subjectLabel={inmail ? 'InMail subject' : 'Email subject'} fixedSubject={fixedSubject} value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" />
           : <Grow value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" />}
       </div> : null}
       {comp && (
