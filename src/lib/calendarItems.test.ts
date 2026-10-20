@@ -520,6 +520,44 @@ describe('the draft link — dedupe and drift key on the id, not on a guess', ()
   const linked = (over: Partial<ScheduledQueueRow> = {}) =>
     q({ clickup_task_id: ID, ...over })
 
+  it('keeps the surviving October 28 post on its linked date after an identical draft is deleted', () => {
+    const draft = d({ id: ID, client_id: null, post_body: 'Identical offer copy', scheduled_at: '2026-10-28T09:45:00Z' })
+    const items = buildCalendarItems([draft], [
+      q({ id: 'blocked-duplicate', clickup_task_id: '7b8c449f-c8d6-45ac-a6bd-61bc0159701b', post_text: 'Identical offer copy', status: 'blocked', scheduled_at: '2026-11-09T17:30:00Z', error_message: 'duplicate_of:live-post' }),
+      linked({ post_text: 'Identical offer copy', scheduled_at: '2026-10-28T09:45:00Z' }),
+    ], Date.parse('2026-10-20T18:00:00Z'))
+    expect(items).toHaveLength(1)
+    expect(items[0]).toMatchObject({ id: ID, at: '2026-10-28T09:45:00Z', plannedAt: null })
+  })
+
+  it('keeps equivalent linked timestamps free of a drift warning', () => {
+    const items = buildCalendarItems([
+      d({ id: ID, scheduled_at: '2026-10-28T09:45:00Z' }),
+    ], [linked({ scheduled_at: '2026-10-28T09:45:00+00:00' })], NOW)
+    expect(items[0]).toMatchObject({ at: '2026-10-28T09:45:00Z', plannedAt: null })
+  })
+
+  it('keeps identical drafts on their own queue dates before either is deleted', () => {
+    const other = '7b8c449f-c8d6-45ac-a6bd-61bc0159701b'
+    const items = buildCalendarItems([
+      d({ id: ID, post_body: 'Identical offer copy', scheduled_at: '2026-10-28T09:45:00Z' }),
+      d({ id: other, post_body: 'Identical offer copy', scheduled_at: '2026-11-09T17:30:00Z' }),
+    ], [
+      linked({ post_text: 'Identical offer copy', scheduled_at: '2026-10-28T09:45:00Z' }),
+      q({ id: 'other-queue', clickup_task_id: other, post_text: 'Identical offer copy', status: 'blocked', scheduled_at: '2026-11-09T17:30:00Z' }),
+    ], Date.parse('2026-10-20T18:00:00Z'))
+    expect(items.map(it => [it.id, it.at])).toEqual([
+      [ID, '2026-10-28T09:45:00Z'], [other, '2026-11-09T17:30:00Z'],
+    ])
+  })
+
+  it('does not borrow a date from a queue row explicitly linked to another draft', () => {
+    const items = buildCalendarItems([
+      d({ id: ID, post_body: 'Identical offer copy', scheduled_at: '2026-10-28T09:45:00Z' }),
+    ], [q({ clickup_task_id: '7b8c449f-c8d6-45ac-a6bd-61bc0159701b', post_text: 'Identical offer copy', scheduled_at: '2026-11-09T17:30:00Z' })], NOW)
+    expect(items[0]).toMatchObject({ id: ID, at: '2026-10-28T09:45:00Z', plannedAt: null })
+  })
+
   it('a queue row linked to a DRAWN draft is one post, however far the copy drifted', () => {
     // The live 2026-08-18 pair: same slot, same draft id, different opener,
     // because the draft was rewritten after it was bridged.

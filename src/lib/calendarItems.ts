@@ -406,8 +406,8 @@ export function queueDriftByDraftId(
     if (!id) continue
     const mine = planned.get(id)
     if (!mine) continue
-    if (Date.parse(mine) === Date.parse(r.scheduled_at)) continue
-    out.set(id, r.scheduled_at)
+    // Agreement still establishes the link and must outrank a body match.
+    out.set(id, Date.parse(mine) === Date.parse(r.scheduled_at) ? mine : r.scheduled_at)
   }
   return out
 }
@@ -454,6 +454,8 @@ export function queueDriftByBody(
   if (planned.size === 0) return out
   for (const r of queue) {
     if (r.status === 'cancelled' || r.posted_at || !r.scheduled_at) continue
+    // A known draft link owns this date, even when another draft has the same copy.
+    if (queueDraftId(r)) continue
     const b = bodyKey(r.post_text)
     if (!b) continue
     const mine = planned.get(b)
