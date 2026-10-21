@@ -155,7 +155,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     return () => { current = false }
   }, [replyingByEmail, t.prospect_id, t.client_id, emailKey, emailRetry]) // eslint-disable-line react-hooks/exhaustive-deps
   const scheduledPending = t.messages.some(m => scheduleHeld(m.send_blocked_reason) && !m.sent_at && !m.approved_at)
-  const composeOff = scheduledPending ? 'A DM is scheduled. Cancel the scheduled send to write another reply.' : t.ownerConfirmation && !manualReply ? 'Reply paused while an internal fact is confirmed. Add the answer as a note, or discard the question.'
+  const composeOff = scheduledPending ? 'A DM is scheduled. Cancel the scheduled send to write another reply.'
     : replyingByEmail && !canComposeEmail(t) ? 'Email compose is on for Arch threads only. Approving email drafts works here.'
       : !replyingByEmail && t.stage === 'engaged' ? 'Not connected yet. A reply here would go out as a connection invite, so compose is off for this thread.'
         : t.client_id === 'swishdm' ? 'Jonathan\u2019s seat sends through its own sender, so a reply typed here would never go out. Its reply drafts are staged here automatically: edit and approve one, or answer on LinkedIn.' : null
@@ -269,7 +269,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     if (t.ownerConfirmation) void verbs.holdRelease(t)
     dock.current?.querySelector('textarea')?.focus()
   }} />
-  const history = <History v4={v4} onSendAnyways={m => void sendAnyways(m)} sending={busy} t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} onReplyEmail={canComposeEmail(t) && !t.spam && (!t.ownerConfirmation || manualReply) && !busy ? openEmailReply : undefined}
+  const history = <History v4={v4} onSendAnyways={m => void sendAnyways(m)} sending={busy} t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} onReplyEmail={canComposeEmail(t) && !t.spam && !busy ? openEmailReply : undefined}
     onForwardEmail={['arch', 'risedtc'].includes(t.client_id) && !busy ? setForwardEmail : undefined} />
   const historyView = referredLead && !t.messages.some(m => m.direction === 'inbound')
     ? <details className="dm-referral-history"><summary>Sent messages</summary>{history}</details> : history

@@ -330,6 +330,10 @@ export function useDmVerbs(ctx: VerbCtx) {
       }
       try {
         const failed = await composeReply(t, body)
+        // Ivan 10-21 (Barak): an internal question never stops his own hand reply. Once his words
+        // are queued, the question is answered by them, so it is retired and the drafter stays quiet.
+        const hold = t.ownerConfirmation
+        if (hold) await dismissConfirmation(hold.id, hold.send_blocked_reason === 'reply_retry_pending' ? 'reply_retry_pending' : 'owner_confirmation').catch(e => fail(`Your reply is queued, but the internal question stayed open: ${errText(e)}`))
         if (failed.length) fail(`Your reply is queued. ${failed.map(legFailureText).join(' ')}`)
         else toast.show({ message: `Queued your reply to ${t.prospect_name}.`, sub: 'The sender picks it up within about 2 minutes.' })
       } catch (e) { fail(errText(e)); return false }
