@@ -12,6 +12,14 @@ it('offers an override for copy and follow-up rejections, including recoverable 
 it.each(['discarded_in_inbox','superseded_by_followup_repair','owner_confirmation','reply_retry_pending','scheduled_in_inbox','scheduled_send_cancelled','native_email_send_failed: timeout'])('does not offer sending for %s', reason => {
   expect(canSendRejectedDm({ ...rejected(), send_blocked_reason: reason })).toBe(false)
 })
+// Send audit 10-21: LinkedIn's 422 invalid_recipient will not deliver however often it is pressed.
+it('does not offer Send anyway to a person LinkedIn says cannot receive messages', () => {
+  expect(canSendRejectedDm({ ...rejected(), send_blocked_reason: 'provider_invalid_recipient: 422' })).toBe(false)
+  expect(canSendRejectedDm({ ...rejected(), send_blocked_reason: 'send_failed_verified: hard error: 422 {"type":"errors/invalid_recipient"}' })).toBe(false)
+  expect(canEditHeldDm({ ...rejected(), send_blocked_reason: 'provider_invalid_recipient: 422' })).toBe(false)
+  expect(canSendRejectedDm({ ...rejected(), send_blocked_reason: 'send_failed_verified: hard error: Request failed with status code 422' })).toBe(true)
+  expect(canSendRejectedDm({ ...rejected(), send_blocked_reason: 'dispatch_error:riseReferralInmail is not defined' })).toBe(true)
+})
 it('does not offer already delivered, inbound or empty messages', () => {
   for (const change of [{ sent_at: '2026-10-01T10:25:00Z' }, { unipile_message_id: 'native-id' }, { direction: 'inbound' as const }, { message_text: '' }]) expect(canSendRejectedDm({ ...rejected(), ...change })).toBe(false)
 })

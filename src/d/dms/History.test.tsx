@@ -151,6 +151,38 @@ it('shows a gate-held row in its timeline place as "Held, not sent" with the rea
   expect(screen.getByRole('button', { name: 'Discard' })).toBeTruthy()
 })
 
+// Ivan 10-21 (Leighton Penrose): his Send anyway was held again at 15:20 and the bubble jumped back to the
+// row's creation day (Mon 12 Oct 13:48), the same card as the old held message. It sits at the hold now.
+it('a Send anyway held again sits at the hold, says when he sent it and when it was held', () => {
+  const pid = 'leighton'
+  const sent = msg({ prospect_id: pid, sent_at: '2026-09-20T09:46:19Z', created_at: '2026-09-20T09:46:19Z', message_text: 'Hey Leighton, you still want to get this going for October?' })
+  const inbound = msg({ prospect_id: pid, direction: 'inbound', sent_at: '2026-10-14T08:00:00Z', created_at: '2026-10-14T08:00:00Z', message_text: 'Busy week, will look' })
+  const held = msg({ prospect_id: pid, message_type: 'manual_reply', ai_model: 'inbox_scheduled_manual_v1', created_at: '2026-10-12T11:48:46Z', message_text: 'Hey man, how you been?',
+    send_blocked_at: '2026-10-21T15:20:07.559Z', send_blocked_reason: 'duplicate_in_thread',
+    draft_evidence: { scheduled_send: { at: '2026-10-12T12:47:00+00:00', timezone: 'Europe/Warsaw' }, operator_send_anyways: { approved_at: '2026-10-21T15:19:43.895293+00:00' } } as never })
+  const [t] = threads([sent, held, inbound])
+  expect(historyRows(t).map(m => m.id)).toEqual([sent.id, inbound.id, held.id])
+  const { container } = render(<History t={t} onSendAnyways={() => {}} now={Date.parse('2026-10-21T16:00:00Z')} />)
+  const bubble = container.querySelector(`[data-msg="${held.id}"]`)!
+  expect(bubble.querySelector('time')?.textContent).toBe('17:20')
+  expect(bubble.querySelector('.dm-held-why')?.textContent).toBe('You sent this at 17:19 · held at 17:20: It repeats a message already in the thread.')
+  // Its day line is the hold's day, after the 14 Oct reply, never Mon 12 Oct.
+  const days = [...container.querySelectorAll('.dm-day')].map(d => d.textContent)
+  expect(days.at(-1)).not.toMatch(/12/)
+  expect(container.innerHTML.indexOf('Busy week, will look')).toBeLessThan(container.innerHTML.indexOf('Hey man, how you been?'))
+})
+
+it('a scheduled send held on another day names both days; a hold he never sent shows only the reason', () => {
+  const pid = 'sched'
+  const held = msg({ prospect_id: pid, created_at: '2026-10-12T11:48:46Z', message_text: 'Scheduled words', send_blocked_at: '2026-10-13T07:00:00Z', send_blocked_reason: 'duplicate_in_thread',
+    draft_evidence: { scheduled_send: { at: '2026-10-12T12:47:00Z', timezone: 'Europe/Warsaw' } } })
+  const gate = msg({ prospect_id: 'gate', created_at: '2026-10-20T15:06:50Z', message_text: 'Coffee?', send_blocked_at: '2026-10-20T15:06:51Z', send_blocked_reason: 'arch_market_claim_unratified:Israel' })
+  const { container } = render(<><History t={threads([held])[0]} /><History t={threads([gate])[0]} /></>)
+  const lines = [...container.querySelectorAll('.dm-held-why')].map(p => p.textContent)
+  expect(lines[0]).toMatch(/^Scheduled for .*12.*14:47 · held at .*13.*09:00: It repeats a message already in the thread\.$/)
+  expect(lines[1]).toBe('It mentions Israel, which is not a confirmed ARCH market.')
+})
+
 it('leaves the lint-held draft in the pane, not twice in the timeline', () => {
   const pid = 'pane'
   const inbound = msg({ prospect_id: pid, direction: 'inbound', sent_at: '2026-10-21T10:00:00Z', message_text: 'When?' })

@@ -1,5 +1,6 @@
 import { parseEmailCc } from './emailCc'
 import { supabase } from './supabase'
+import { bounded } from './noAnswer'
 import { STAGE_LADDER, stageIsOff, stageStep } from '../exp/v2c/stage'
 
 export type InboxMessage = {
@@ -308,15 +309,28 @@ export function canScheduleHeld(m: InboxMessage): boolean {
   return isHeldSend(m) && !m.approved_at && isRecoverableHold(r) && !r!.startsWith(`${RACE_HOLD_PREFIX}scheduled`)
 }
 
+/** LinkedIn's 422 invalid_recipient (provider_invalid_recipient, or the provider type kept in the reason):
+ *  the person cannot receive messages, so Send anyway only burns a daily slot (send audit 10-21). */
+export function isInvalidRecipient(reason: string | null | undefined): boolean {
+  const r = reason ?? ''
+  return r.startsWith('provider_invalid_recipient') || /(^|[^a-z_])invalid_recipient\b/.test(r)
+}
+
 /** Why a row is held, in plain words. An unknown code shows as written. */
 export function heldReasonText(reason: string | null | undefined): string {
   const r = (reason ?? '').trim()
   const tail = r.includes(':') ? r.slice(r.indexOf(':') + 1).trim() : ''
   if (r.startsWith('lint_calendar_') || /^calendar_(context_or_)?wording_unverified/.test(r)) return 'The calendar check could not verify the proposed time or wording.'
   if (r.startsWith('arch_market_claim_unratified')) return `It mentions ${tail || 'a market'}, which is not a confirmed ARCH market.`
-  if (r.startsWith('send_failed_verified')) return `LinkedIn refused the send${/\b422\b/.test(r) ? ' (error 422)' : ''}. Check LinkedIn before sending again.`
+  // Ivan 10-21 send audit: the sender will write dispatch_error:<why> for a failure on our side (a guard,
+  // a code error, a reservation) and keep the approval; send_failed_verified said "LinkedIn refused" for
+  // those too. A 422 invalid_recipient is a person LinkedIn will not deliver to: no retry helps.
+  if (r.startsWith('dispatch_error')) return 'Our system failed before reaching LinkedIn. It will retry.'
+  if (isInvalidRecipient(r)) return 'LinkedIn says this person can\u2019t receive messages.'
+  if (r.startsWith('send_failed_verified')) return /status code \d{3}|\b[45]\d\d\b/.test(r)
+    ? `LinkedIn refused the send${/\b422\b/.test(r) ? ' (error 422)' : ''}. Check LinkedIn before sending again.`
+    : `Our system stopped it before it reached LinkedIn${tail ? ` (${tail.replace(/^(hard error|chat create failed):\s*/, '')})` : ''}.`
   if (r.startsWith('inmail_failed_422')) return /limit_exceeded|usage limit/i.test(r) ? 'The InMail limit for this period was reached.' : 'LinkedIn refused the InMail (error 422).'
-  if (r.startsWith('provider_invalid_recipient')) return 'LinkedIn says this person cannot be reached.'
   if (r.startsWith('provider_success_unconfirmed')) return 'The sender could not confirm it arrived. Check LinkedIn before sending again.'
   if (r.startsWith('accuracy_hold')) return 'The accuracy check found a claim that needs correcting.'
   if (r === 'duplicate_in_thread') return 'It repeats a message already in the thread.'
@@ -604,6 +618,54 @@ export function dedupeMessages(rows: InboxMessage[]): InboxMessage[] {
 // 2026-09-28 (Ivan: "I respond at midnight and it shows I replied at 4 pm"): a reply approved but not
 // yet picked up by the sender is timed at the approval, never at the hour its draft was written.
 export const eventTime = (m: InboxMessage): string => m.sent_at ?? (m.direction === 'outbound' && m.approved_at ? m.approved_at : null) ?? m.created_at
+
+/* ==========================================================================
+   A HELD ROW SITS AT ITS HOLD (Ivan 2026-10-21, Leighton Penrose: "it deleted
+   it and put the old one in draft"). He pressed Send anyway at 15:19, the sender
+   held it again at 15:20 and cleared the approval, and the bubble jumped back to
+   the row's creation time (Mon 12 Oct 13:48), pixel for pixel the old held card.
+
+   THE RULE: in the conversation a held row is placed and timed at send_blocked_at,
+   the moment it was stopped, and says when he sent it (heldAgainLine). Only the
+   timeline moves: eventTime keeps ordering threads, drafts and staleness.
+   ========================================================================== */
+export function timelineTime(m: InboxMessage): string {
+  return isHeldSend(m) && m.send_blocked_at ? m.send_blocked_at : eventTime(m)
+}
+
+type OperatorEvidence = {
+  operator_send_anyways?: { approved_at?: string | null; previous_approval?: { approved_at?: string | null } | null } | null
+  operator_copy_approval?: { text?: string | null; approved_at?: string | null } | null
+  operator_edits?: unknown[] | null
+}
+const evidenceOf = (m: Pick<InboxMessage, 'draft_evidence'>) => (m.draft_evidence ?? null) as (DraftEvidence & OperatorEvidence) | null
+const validAt = (at: unknown): at is string => typeof at === 'string' && Number.isFinite(Date.parse(at))
+
+/** When he last pressed Send (approve, Send anyway, a hand reply, a schedule) on this row, if that came
+ *  before the hold: the row was stopped after he sent it. */
+export function operatorSentAt(m: InboxMessage): { at: string; scheduled: boolean } | null {
+  if (!m.send_blocked_at) return null
+  const held = Date.parse(m.send_blocked_at)
+  const ev = evidenceOf(m)
+  const sched = ev?.scheduled_send?.at
+  const pressed = [
+    ...[ev?.operator_send_anyways?.approved_at, ev?.operator_send_anyways?.previous_approval?.approved_at, ev?.operator_copy_approval?.approved_at,
+      m.message_type === 'manual_reply' && !validAt(sched) ? m.created_at : null].filter(validAt).map(at => ({ at, scheduled: false })),
+    ...(validAt(sched) ? [{ at: sched, scheduled: true }] : []),
+  ].filter(p => Date.parse(p.at) <= held)
+  return pressed.sort((a, b) => Date.parse(a.at) - Date.parse(b.at)).at(-1) ?? null
+}
+
+/** The words on screen are his: a hand reply, or text he edited and approved (not the drafter's text as
+ *  written). 'approved': the drafter's words, approved by him as they were. Null: never approved. */
+export function operatorWords(m: InboxMessage): 'own' | 'approved' | null {
+  if (m.message_type === 'manual_reply' || /^inbox_scheduled_manual/.test(m.ai_model ?? '')) return 'own'
+  const ev = evidenceOf(m)
+  if (ev?.operator_edits?.length) return 'own'
+  const ca = ev?.operator_copy_approval
+  if (!ca || (ca.text ?? null) !== m.message_text) return null
+  return typeof ev?.generated_text === 'string' && ev.generated_text === m.message_text ? 'approved' : 'own'
+}
 
 /* ==========================================================================
    PENDING SENDS IN THE TIMELINE (Ivan 2026-10-19, SwishDM / George at BUFFS:
@@ -2047,6 +2109,40 @@ export async function composeReply(t: Thread, text: string): Promise<LegFailure[
   // (check3-drafts E1.1). His reply is already queued, so a leg that would not
   // stop is returned for the thread to report, never thrown as if the reply failed.
   return discardLegs(draftLegs(t))
+}
+
+/* ==========================================================================
+   AFTER NO ANSWER (Ivan 2026-10-21, Diane O'Brien). A write that timed out may
+   still have landed. Before the thread offers the key again it reads the rows:
+   a send that landed is shown as queued and never sent twice.
+   ========================================================================== */
+export type SendState = Pick<InboxMessage, 'id' | 'direction' | 'message_text' | 'message_type' | 'channel' | 'sent_at' | 'approved_at'
+  | 'send_blocked_reason' | 'send_blocked_at' | 'unipile_message_id' | 'created_at' | 'draft_evidence'>
+const SEND_STATE = 'id,direction,message_text,message_type,channel,sent_at,approved_at,send_blocked_reason,send_blocked_at,unipile_message_id,created_at,stopped:draft_evidence->stopped'
+/** Its own short clock: a check after silence must not wait out the read backstop. */
+export const CHECK_MS = 10_000
+
+/** The send fields of these rows, as the database has them now. */
+export async function readSendState(ids: string[], ms = CHECK_MS): Promise<SendState[]> {
+  if (!ids.length) return []
+  const { data, error } = await bounded(signal => supabase.from('outreach_messages').select(SEND_STATE).in('id', ids).abortSignal(signal), ms)
+  if (error) throw error
+  return ((data ?? []) as unknown as (Omit<SendState, 'draft_evidence'> & { stopped?: unknown })[])
+    .map(({ stopped, ...r }) => ({ ...r, draft_evidence: stopped === undefined || stopped === null ? null : { stopped } }))
+}
+
+/** A hand reply with these words that already landed on the thread in the last `withinMs` (a compose whose
+ *  insert got no answer). Matches the stored text, with or without an email Subject prefix. */
+export async function findLandedReply(prospectId: string, text: string, withinMs = 15 * 60_000, ms = CHECK_MS): Promise<SendState | null> {
+  const body = text.trim()
+  if (!body) return null
+  const since = new Date(Date.now() - withinMs).toISOString()
+  const { data, error } = await bounded(signal => supabase.from('outreach_messages').select(SEND_STATE)
+    .eq('prospect_id', prospectId).eq('direction', 'outbound').eq('message_type', 'manual_reply').gte('created_at', since)
+    .order('created_at', { ascending: false }).limit(10).abortSignal(signal), ms)
+  if (error) throw error
+  const rows = (data ?? []) as unknown as SendState[]
+  return rows.find(r => r.send_blocked_reason !== 'discarded_in_inbox' && ((r.message_text ?? '').trim() === body || (r.message_text ?? '').endsWith(`\n\n${body}`))) ?? null
 }
 
 export async function markThreadRead(prospect_id: string): Promise<void> {

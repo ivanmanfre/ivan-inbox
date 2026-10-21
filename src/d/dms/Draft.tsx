@@ -4,8 +4,9 @@ import { emailDraftText, splitEmailDraft } from '../../lib/emailSubject'
 // rider, and the warnings today's card carries (held, email check failed, you already replied).
 // The tape IS the editor: typing saves (useAutosave); Send sends what is in it.
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
-import { draftSendVia, type DraftSendVia, emailRowSender, emailSenderLabel, eventTime, holdReason, isFollowUp, isSwishdmReply, messageChannel, type Thread } from '../../lib/inbox'
+import { draftSendVia, type DraftSendVia, emailRowSender, emailSenderLabel, eventTime, holdReason, isFollowUp, isSwishdmReply, messageChannel, operatorWords, type Thread } from '../../lib/inbox'
 import { DIcon } from '../ui/icons'
+import { warsawHm } from '../ui/time'
 import { Explain } from './Explain'
 import { ago } from './model'
 import { dayMonth } from './threadRows'
@@ -69,7 +70,12 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
   const draft = t.draft
   if (!draft) return null
   const comp = t.companionDraft
+  // Ivan 10-21 (Barak Zuman): a send check that holds his own edited reply returns it here. It is his
+  // text, not an "AI draft": say so, and when it was held.
+  const words = draft.send_blocked_at ? operatorWords(draft) : null
+  const heldAt = draft.send_blocked_at ? ` · held ${warsawHm(draft.send_blocked_at)}` : ''
   const title = t.draftSnoozedUntil ? `Later: back ${dayMonth(t.draftSnoozedUntil)}`
+    : words === 'own' ? `Your message${heldAt}` : words === 'approved' ? `AI draft you approved${heldAt}`
     : t.draftStale ? 'AI draft · you already replied'
       : isSwishdmReply(draft) ? 'SwishDM reply for Jonathan\u2019s seat' : isFollowUp(draft) ? 'AI follow-up' : 'AI draft'
   const email = messageChannel(draft) === 'email'

@@ -9,10 +9,10 @@ import { ReplySourceContent, ReplySourceLine, knownSource } from './ReplySourceS
 // message is: "Held, not sent", why, and Send anyway / Edit / Discard, in its place on the timeline.
 import { canEditHeldDm, canSendRejectedDm } from '../../lib/rejectedDm'
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
-import { canScheduleHeld, dedupeMessages, eventTime, heldReasonText, heldSend, isDraft, isEngineRetired, isHeldSend, isHiddenRetired, isIntentionalStop, isInternalConfirmation, isPendingSend, pendingSendLabel, retiredLabel, sendFailed, sentThenPending, shownTime, messageChannel, stopLabel, type InboxMessage, type Thread } from '../../lib/inbox'
+import { canScheduleHeld, dedupeMessages, heldReasonText, heldSend, operatorSentAt, timelineTime, isDraft, isEngineRetired, isHeldSend, isHiddenRetired, isIntentionalStop, isInternalConfirmation, isPendingSend, pendingSendLabel, retiredLabel, sendFailed, sentThenPending, shownTime, messageChannel, stopLabel, type InboxMessage, type Thread } from '../../lib/inbox'
 import { label } from '../../lib/labels'
 import { Linkified } from '../ui/Linkified'
-import { warsawDay, warsawDayWord, warsawHm } from '../ui/time'
+import { warsawDay, warsawDayTime, warsawDayWord, warsawHm } from '../ui/time'
 import { seatOf } from '../seats'
 import { isReaction } from './model'
 import { Grow } from './Draft'
@@ -65,8 +65,20 @@ export function historyRows(t: Thread): InboxMessage[] {
   // a lint-held reply pushed out of the pane by a newer hold or draft used to vanish from both).
   const pane = new Set([t.draft?.id, t.companionDraft?.id])
   // Sent items in true send order, then every pending send (waiting for an accept, queued) after them.
-  return sentThenPending(dedupeMessages(t.messages).filter(m => isHeldSend(m) ? !pane.has(m.id) : !isDraft(m) && !isInternalConfirmation(m) && !isHiddenRetired(m) && !isEngineRetired(m) && m.send_blocked_reason !== 'discarded_in_inbox'
+  // A held row sits at its hold, not its creation (timelineTime, Ivan 10-21 Leighton Penrose).
+  return sentThenPending([...dedupeMessages(t.messages)].sort((a, b) => Date.parse(timelineTime(a)) - Date.parse(timelineTime(b))).filter(m => isHeldSend(m) ? !pane.has(m.id) : !isDraft(m) && !isInternalConfirmation(m) && !isHiddenRetired(m) && !isEngineRetired(m) && m.send_blocked_reason !== 'discarded_in_inbox'
     && (m.direction === 'inbound' || m.sent_at || m.approved_at || sendFailed(m) || isEngineRetired(m) || isIntentionalStop(m))))
+}
+
+/** Under a held bubble: why, and when he sent it if the hold came after (Ivan 10-21, Leighton Penrose:
+ *  a Send anyway held again looked exactly like the old held message). */
+export function heldWhy(m: InboxMessage): string {
+  const reason = heldReasonText(m.send_blocked_reason)
+  const sent = operatorSentAt(m)
+  if (!sent || !m.send_blocked_at) return reason
+  const sameDay = warsawDay(sent.at) === warsawDay(m.send_blocked_at)
+  const at = (iso: string) => sameDay ? warsawHm(iso) : warsawDayTime(iso)
+  return `${sent.scheduled ? 'Scheduled for' : 'You sent this at'} ${at(sent.at)} · held at ${at(m.send_blocked_at)}: ${reason}`
 }
 
 const OURS: Record<string, string> = { ivan: 'You', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan' }
@@ -144,7 +156,7 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
   const owner = seatOf(t.client_id) === 'risedtc' || seatOf(t.client_id) === 'arch' ? `${ours}'s` : 'your'
   // Engagements ride the same clock as the messages; with older messages folded away, the ones before
   // the first shown message fold with them.
-  const edge = rows.length > shown.length ? Date.parse(eventTime(shown[0])) : -Infinity
+  const edge = rows.length > shown.length ? Date.parse(timelineTime(shown[0])) : -Infinity
   const evs = engagementSignals(engagements).filter(e => Date.parse(e.at) >= edge).reverse()
   if (!rows.length && !evs.length) {
     return <div className="dm-hist">{v4 ? <ReplySourceLine state={source} retry={retry} /> : <ReplySourceContent state={source} retry={retry} />}<p className="dm-hist-empty">No messages yet. {t.draft ? 'The draft below is the first one.' : 'Nothing has been sent or received on this thread yet.'}</p></div>
@@ -156,7 +168,7 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
   const fresh = v4 && s0.pid === t.prospect_id && Date.now() - s0.at > 400
   const lastOfRun = (i: number) => {
     const a = shown[i], b = shown[i + 1]
-    return !b || a.direction !== b.direction || isPendingSend(a) !== isPendingSend(b) || (!isPendingSend(a) && warsawDay(eventTime(a)) !== warsawDay(eventTime(b)))
+    return !b || a.direction !== b.direction || isPendingSend(a) !== isPendingSend(b) || (!isPendingSend(a) && warsawDay(timelineTime(a)) !== warsawDay(timelineTime(b)))
   }
   let prevPill: string | null = null
   let prevPend = false
@@ -194,10 +206,10 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
         // A pending send (waiting for an accept, queued) is not on the day line: it comes after every sent
         // item, carries no clock (its draft/approval time was never a send time) unless it is scheduled.
         const pend = isPendingSend(m)
-        const at = shownTime(m)
-        const before = evLines(pend ? Infinity : Date.parse(eventTime(m)))
+        const at = pend ? shownTime(m) : timelineTime(m)
+        const before = evLines(pend ? Infinity : Date.parse(timelineTime(m)))
         const addr = email ? emailAddrLine(m) : null
-        const d = pend ? day : warsawDay(eventTime(m))
+        const d = pend ? day : warsawDay(timelineTime(m))
         const newDay = d !== day
         day = d
         const firstOfRun = newDay || prevSide !== side || pend !== prevPend
@@ -228,7 +240,7 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
         return (
           <Fragment key={m.id}>
             {before}
-            {newDay && <div className="dm-day" role="separator"><span>{warsawDayWord(eventTime(m), now)}</span></div>}
+            {newDay && <div className="dm-day" role="separator"><span>{warsawDayWord(timelineTime(m), now)}</span></div>}
             <div className={`dm-b dm-b-${side} dm-h-whole${pend ? ' dm-h-pending' : ''}${inb ? ' dm-h-in' : ''}${st?.fail ? ' dm-h-fail' : ''}${held ? ' dm-h-held' : ''}${edit ? ' dm-h-editing' : ''}${email ? ' dm-h-email' : ''}${firstOfRun ? ' dm-b-first' : ''}${v4 && last ? ' dx-b-last' : ''}${arrive ? ' dx-arrive' : ''}`}
               data-msg={m.id} data-channel={email ? 'email' : undefined} data-side={side} data-pending={pend ? '' : undefined} data-held={held ? '' : undefined}
               title={v4 ? [kind, st?.text, reaction ? 'reaction' : null, at ? warsawHm(at) : null].filter(Boolean).join(' · ') : undefined}>
@@ -249,7 +261,7 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
                 {latestObs && <i>Latest observed reply · {touchLabel(source.data.latest_reply!.touch)}</i>}
                 {at && <time dateTime={at}>{warsawHm(at)}</time>}
               </div> : at ? <time className="dx-sr" dateTime={at}>{warsawHm(at)}</time> : null}
-              {held && <p className="dm-held-why" role="note">{heldReasonText(m.send_blocked_reason)}</p>}
+              {held && <p className="dm-held-why" role="note">{heldWhy(m)}</p>}
               {edit ? <div className="dm-rejected-actions">
                 <button type="button" className="dm-email-reply dm-held-key" data-verb="held-edit-cancel" disabled={editBusy} onClick={() => setEditing(null)}>Cancel</button>
                 <button type="button" className="dm-email-reply dm-held-key" data-verb="held-edit-save" disabled={editOff || !edit.text.trim()} onClick={() => void finishEdit(m, 'save')}>Save</button>

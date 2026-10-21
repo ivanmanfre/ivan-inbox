@@ -1,7 +1,7 @@
 import { withTimeout } from '../d/ui/timeout'
 import { supabase } from './supabase'
 import { scheduleHeld } from './dmSchedule'
-import { fetchDraftContextGaps, fetchDraftEmailStamps, fetchEmailRecipients, fetchDraftEvidence, fetchManualReplyIds, fetchMessages, groupThreads, type DraftContextGap, type DraftEmailStamp, type InboxMessage, type Thread } from './inbox'
+import { fetchDraftContextGaps, fetchDraftEmailStamps, fetchEmailRecipients, fetchDraftEvidence, fetchManualReplyIds, fetchMessages, groupThreads, isHeldSend, type DraftContextGap, type DraftEmailStamp, type InboxMessage, type Thread } from './inbox'
 
 /**
  * The DMs list exactly as the screen assembles it: the message read, the four
@@ -62,8 +62,10 @@ export async function assembleInbox(viewRows: readonly InboxMessage[], probes?: 
     [t.draft, t.companionDraft, t.ownerConfirmation].flatMap(m => m ? [m.id] : []))
   // Scheduled messages are held, not drafts, but their exact send time belongs in the list.
   const scheduledIds = rows.filter(m => scheduleHeld(m.send_blocked_reason) && !m.sent_at && !m.approved_at).map(m => m.id)
+  // A held row says when he sent it before the hold (History heldWhy): that time lives in its evidence.
+  const heldIds = rows.filter(isHeldSend).map(m => m.id)
   const [evidence, contextGaps] = await Promise.all([
-    fetchDraftEvidence([...draftIds, ...scheduledIds]).catch(() => null),
+    fetchDraftEvidence([...draftIds, ...scheduledIds, ...heldIds]).catch(() => null),
     fetchDraftContextGaps(draftIds).catch(() => new Map<string, DraftContextGap>()),
   ])
   const pendingIds = new Set(draftIds)

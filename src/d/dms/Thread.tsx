@@ -34,6 +34,8 @@ import type { DmVerbs, Edits } from './verbs'
 import { HeadV4 } from './v4/HeadV4'
 import { ThreadV4 } from './v4/ThreadV4'
 import { useStickToEnd } from './v4/motion'
+import { useToast } from '../ui/toast'
+import { draftJobOf, holdPane, paneBusy, setDraftJob, useDraftJob, usePaneBusy } from './paneBusy'
 
 const FROM: Record<string, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan' }
 
@@ -78,10 +80,11 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   const [emailTarget, setEmailTarget] = useState<{ key: string; address?: string; error?: string } | null>(null)
   const [emailRetry, setEmailRetry] = useState(0)
   const dock = useRef<HTMLDivElement>(null)
-  const [draftJob, setDraftJob] = useState<{ pid: string; running: boolean; error: string | null } | null>(null)
-  const drafting = useRef(false)
+  // Per prospect, not per pane (paneBusy.ts): a write still running on another thread never greys this one.
+  const draftJob = useDraftJob(t.prospect_id)
   const overrideBusy = useRef(false)
-  const [busy, setBusy] = useState(false)
+  const busy = usePaneBusy(t.prospect_id)
+  const toast = useToast()
   const [menu, setMenu] = useState<'top' | 'keys' | null>(null)
   const [sheet, setSheet] = useState<'context' | 'agent' | null>(null)
   const [copied, setCopied] = useState(false)
@@ -165,23 +168,36 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   }
 
   const draftIt = async () => {
-    if (drafting.current) return
-    drafting.current = true
     const pid = t.prospect_id
+    if (draftJobOf(pid)?.running) return
     onDraftStart?.()
-    setDraftJob({ pid, running: true, error: null })
+    setDraftJob(pid, { running: true, error: null })
     try {
       await requestDmDraft(t)
-      setDraftJob({ pid, running: false, error: null })
+      setDraftJob(pid, { running: false, error: null })
       reload()
     } catch (e) {
-      setDraftJob({ pid, running: false, error: e instanceof Error ? e.message : 'Drafting failed. Try again.' })
-    } finally { drafting.current = false }
+      setDraftJob(pid, { running: false, error: e instanceof Error ? e.message : 'Drafting failed. Try again.' })
+    }
   }
-  const draftRunning = draftJob?.pid === t.prospect_id && draftJob.running
-  const draftError = draftJob?.pid === t.prospect_id ? draftJob.error : null
+  const draftRunning = Boolean(draftJob?.running)
+  const draftError = draftJob?.error ?? null
 
-  const run = async (fn: () => Promise<unknown>) => { setBusy(true); try { await fn() } finally { setBusy(false) } }
+  // Ivan 10-21 (Diane O'Brien): the keys always come back. Every database call settles (noAnswer.ts), a
+  // verb that throws is reported instead of swallowed, and the hold is released whatever happens.
+  const run = async (fn: () => Promise<unknown>) => {
+    const release = holdPane(t.prospect_id)
+    try { await fn() } catch (e) {
+      const m = e instanceof Error ? e.message : e && typeof e === 'object' && typeof (e as { message?: unknown }).message === 'string' ? (e as { message: string }).message : ''
+      toast.show({ message: `That did not finish${m ? `: ${m.replace(/^(AbortError|TimeoutError): /, '')}` : '.'}`, sub: 'Look at the thread before you try again.', tone: 'failed' })
+    } finally { release() }
+  }
+  // A press that cannot start says so (it used to do nothing at all while a send was stuck).
+  const stillBusy = () => {
+    if (!overrideBusy.current && !paneBusy(t.prospect_id)) return false
+    toast.show({ message: `Still working on the last action for ${t.prospect_name}.`, sub: 'Nothing new was sent. Try again in a moment.' })
+    return true
+  }
   // ⌘K "Push this conversation to later" (today's CommandLayer), while a pushable draft is open.
   const canPush = hasDraftNow(t) && !t.spam && !t.ownerConfirmation && t.draftSnoozedUntil === null
   const editsRef = useRef(edits); editsRef.current = edits
@@ -195,7 +211,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   const copy = async () => { const l = chatLink(t.chat_provider_id, t.linkedin_url); if (l && await copyText(l.href)) { setCopied(true); window.setTimeout(() => setCopied(false), 1600) } }
   // A verb that writes the draft itself carries the text on screen; a pending autosave is dropped.
   const sendAnyways = async (m: InboxMessage) => {
-    if (overrideBusy.current) return
+    if (stillBusy()) return
     overrideBusy.current = true
     try { await run(async () => { if (t.draft?.id === m.id) await saver.flush(); else saver.cancel(); await verbs.sendAnyways(t, m) }) }
     finally { overrideBusy.current = false }
@@ -203,7 +219,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   // Ivan 10-21 (Leighton Penrose): save the edited held message (it stays held), then send it now through
   // the same Send anyway, or schedule it through the existing scheduler when that takes the row.
   const editHeld = async (m: InboxMessage, text: string, then: HeldEditThen): Promise<boolean> => {
-    if (overrideBusy.current) return false
+    if (stillBusy()) return false
     overrideBusy.current = true
     let saved = false
     try {
