@@ -310,12 +310,23 @@ describe('manual reply after drafting fails', () => {
     await waitFor(() => expect(lib.restoreConfirmation).toHaveBeenCalledWith(hold.id, 'owner_confirmation', at, hold.send_blocked_at))
   })
 
-  it.each(['The company notes do not establish this.', null])('keeps real or unreadable owner questions blocked: %s', why => {
-    mount(held(why))
-    expect(screen.queryByRole('textbox', { name: 'Write to Tetiana yourself' })).toBeNull()
-    expect(screen.getByText('Confirm with Davorin')).toBeTruthy()
-    expect(key('hold-note')).not.toBeNull()
-    expect(key('compose-send')).toBeNull()
+  // Ivan 10-21 (Barak Zuman): an open internal question locked the reply box, and a retry hold
+  // showed no button at all. His own hand reply is never blocked; sending it retires the question.
+  it.each([
+    ['owner_confirmation', 'The company notes do not establish this.'],
+    ['owner_confirmation', null],
+    ['reply_retry_pending', 'Proposes a fixed slot from the online calendar.'],
+  ] as const)('lets him reply by hand over a %s hold (%s), and the send retires it', async (reason, why) => {
+    const t = held(why)
+    const hold = { ...t.ownerConfirmation!, send_blocked_reason: reason }
+    const th = { ...t, ownerConfirmation: hold, messages: t.messages.map(m => m.id === hold.id ? hold : m) }
+    mount(th)
+    expect(screen.queryByText(/Reply paused while an internal fact is confirmed/)).toBeNull()
+    fireEvent.change(screen.getByRole('textbox', { name: 'Write to Tetiana yourself' }), { target: { value: 'All good, send me the day.' } })
+    fireEvent.click(key('compose-send'))
+    fireEvent.click(await screen.findByText('Send it'))
+    await waitFor(() => expect(lib.composeReply).toHaveBeenCalledWith(th, 'All good, send me the day.'))
+    await waitFor(() => expect(lib.dismissConfirmation).toHaveBeenCalledWith(hold.id, reason))
   })
 })
 
