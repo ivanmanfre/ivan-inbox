@@ -22,8 +22,21 @@ const Ctx = createContext<((o: ConfirmOpts) => Promise<boolean>) | null>(null)
 
 export function DConfirmProvider({ children }: { children: ReactNode }) {
   const [p, setP] = useState<Pending | null>(null)
-  const ask = useCallback((o: ConfirmOpts) => new Promise<boolean>(resolve => setP({ ...o, resolve })), [])
-  const done = useCallback((ok: boolean) => { setP(cur => { cur?.resolve(ok); return null }) }, [])
+  // A second question replaces the first, which answers "no" (Ivan 10-21: an orphaned confirm never
+  // settled, and the verb waiting on it kept every key grey).
+  const open = useRef<Pending | null>(null)
+  const ask = useCallback((o: ConfirmOpts) => new Promise<boolean>(resolve => {
+    const prev = open.current
+    open.current = { ...o, resolve }
+    setP(open.current)
+    prev?.resolve(false)
+  }), [])
+  const done = useCallback((ok: boolean) => {
+    const cur = open.current
+    open.current = null
+    setP(null)
+    cur?.resolve(ok)
+  }, [])
   return (
     <OpenCtx.Provider value={p !== null}><Ctx.Provider value={ask}>
       {children}

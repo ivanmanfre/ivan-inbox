@@ -70,3 +70,18 @@ describe('useDConfirm danger rule', () => {
     expect(r.get()).toBe(false)
   })
 })
+
+// Ivan 10-21 (Diane O'Brien): a second question replaced the first without answering it, and the verb
+// waiting on the first never settled (its keys stayed grey). A replaced question answers "no".
+it('a replaced question answers no; the open one still answers with the press', async () => {
+  renderInFrame(<Grab />)
+  let first: Promise<boolean> | undefined, second: Promise<boolean> | undefined
+  act(() => { first = ask!({ title: 'First?', confirmText: 'Yes', verb: 'one' }) })
+  act(() => { second = ask!({ title: 'Second?', confirmText: 'Yes', verb: 'two' }) })
+  await expect(first).resolves.toBe(false)
+  expect(document.body.textContent).toContain('Second?')
+  expect(document.body.textContent).not.toContain('First?')
+  act(() => { fireEvent.click(document.querySelector('[data-verb="two"]')!) })
+  await expect(second).resolves.toBe(true)
+  expect(document.body.textContent).not.toContain('Second?')
+})

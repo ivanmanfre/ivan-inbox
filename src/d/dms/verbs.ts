@@ -8,8 +8,9 @@ import {
   draftSendVia, approveDraft, composeReply, deleteThread, discardLegs, dismissConfirmation, draftLegs, escalateDraftToClient,
   emailSenderLabel, heldReasonText, isFollowUp, isHeldSend, isSwishdmReply, isSwishdmRow, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft, swishdmPageUrl,
   saveDraftEmail, saveDraftEmailCc, setDraftSendVia, saveDraftText, snoozeDraft, threadChatId, unsnoozeDraft, REPLY_MYSELF,
-  type DraftSendVia, type InboxMessage, type Thread,
+  findLandedReply, readSendState, type DraftSendVia, type InboxMessage, type SendState, type Thread,
 } from '../../lib/inbox'
+import { isNoAnswer } from '../../lib/noAnswer'
 import { clearFollowUp, fetchFollowUp, followUpSuggestion, setFollowUp, type FollowUp } from '../../lib/followUp'
 import { laterPath } from './later'
 import { formatReturn } from '../../lib/pushLater'
@@ -18,6 +19,7 @@ import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
 import { useAsks } from './asks'
 import { canMarkSolved, writeSolved } from './solved'
+import { watchSend } from './sendWatch'
 
 export type Edits = { main: string; email: string | null; companion: string | null; cc?: string; companionCc?: string }
 
@@ -35,7 +37,23 @@ export type VerbCtx = {
 // supabase-js hands back a plain PostgrestError object ({message, code}), not an Error: read its
 // message, or a failed write would say "[object Object]".
 const errText = (e: unknown) => (e instanceof Error ? e.message
-  : e && typeof e === 'object' && typeof (e as { message?: unknown }).message === 'string' ? (e as { message: string }).message : String(e))
+  : e && typeof e === 'object' && typeof (e as { message?: unknown }).message === 'string' ? (e as { message: string }).message : String(e)).replace(/^(AbortError|TimeoutError): /, '')
+
+// Ivan 10-21 (Diane O'Brien): a write that got no answer (src/lib/noAnswer.ts) may still have landed.
+// The rows are read before anything is said, and before the key is offered again.
+export const NO_ANSWER_NOT_SENT = 'No answer from the server. It is not queued and nothing was sent: try again.'
+export const NO_ANSWER_UNCHECKED = 'No answer from the server, and the check did not answer either. Look at the thread before you try again.'
+/** Queued for the sender (approved, no hold) or already sent. */
+const queued = (r: SendState) => Boolean(r.sent_at || (r.approved_at && !r.send_blocked_reason))
+/** After a no-answer: true = every row landed, false = at least one did not, null = the check failed too. */
+async function landed(ids: string[], ok: (r: SendState) => boolean = queued): Promise<boolean | null> {
+  try {
+    const rows = await readSendState(ids)
+    return ids.every(id => rows.some(r => r.id === id && ok(r)))
+  } catch { return null }
+}
+/** A hand reply whose insert got no answer: the next press of Send checks the thread first. */
+const composeUnsure = new Map<string, string>()
 const first = (t: Thread) => t.prospect_name.split(' ')[0] || t.prospect_name
 
 export function legName(m: InboxMessage): string {
@@ -54,6 +72,14 @@ export function useDmVerbs(ctx: VerbCtx) {
   const { askDiscard, askDate } = useAsks()
   return useMemo(() => {
     const fail = (message: string) => { toast.show({ message, tone: 'failed' }) }
+    // Ivan 10-21 (Leighton Penrose): after Send, watch the row; a hold that comes back says so.
+    const watch = (t: Thread, ids: string[]) => watchSend(ids, r => {
+      const later = /^dispatch_error/.test(r.send_blocked_reason ?? '')
+      toast.show({ tone: 'failed', ms: 15_000,
+        message: `Not sent${later ? ' yet' : ''} to ${t.prospect_name}: ${heldReasonText(r.send_blocked_reason)}`,
+        sub: later ? 'Your approval is kept.' : 'It was held after you pressed Send. Your text is kept: open the thread to edit it or send anyway.' })
+      ctx.refresh()
+    })
 
     async function saveCcs(t: Thread, ed: Edits) {
       const legs = [[t.draft, ed.cc], [t.companionDraft, ed.companionCc]] as const
@@ -119,7 +145,11 @@ export function useDmVerbs(ctx: VerbCtx) {
           ...draft, email_mirror_text: ed.email ?? draft.email_mirror_text,
           email_cc: ed.cc === undefined ? draft.email_cc : parseEmailCc(ed.cc),
         })
-      } catch (e) { const m = errText(e); fail(`Not sent: ${m}`); return m }
+      } catch (e) {
+        if (!isNoAnswer(e)) { const m = errText(e); fail(`Not sent: ${m}`); return m }
+        const ok = await landed([draft.id])
+        if (!ok) { const m = ok === false ? NO_ANSWER_NOT_SENT : NO_ANSWER_UNCHECKED; fail(m); ctx.refresh(); return m }
+      }
       ctx.patch([draft.id], { approved_at: new Date().toISOString() })
       let half: string | null = null
       if (comp) {
@@ -129,13 +159,20 @@ export function useDmVerbs(ctx: VerbCtx) {
           })
           ctx.patch([comp.id], { approved_at: new Date().toISOString() })
         } catch (e) {
-          half = `The ${legName(draft)} is queued, but the ${legName(comp)} did not go through: ${errText(e)} It is still waiting here.`
-          fail(half)
+          const ok = isNoAnswer(e) ? await landed([comp.id]) : false
+          if (ok) ctx.patch([comp.id], { approved_at: new Date().toISOString() })
+          else {
+            half = isNoAnswer(e) && ok === null
+              ? `The ${legName(draft)} is queued. The ${legName(comp)} got no answer from the server and could not be checked: look at the thread before you send it.`
+              : `The ${legName(draft)} is queued, but the ${legName(comp)} did not go through: ${isNoAnswer(e) ? 'no answer from the server.' : errText(e)} It is still waiting here.`
+            fail(half)
+          }
         }
       }
       if (!half) toast.show(swish
         ? { message: `Approved the reply to ${t.prospect_name}.`, sub: 'It goes out from Jonathan\u2019s LinkedIn in the next send window (Sun-Fri 9am-5pm UK).' }
         : { message: `Queued to ${t.prospect_name}.`, sub: 'The sender picks it up within about 2 minutes.' })
+      if (!swish) watch(t, half ? [draft.id] : [draft.id, ...(comp ? [comp.id] : [])])
       ctx.refresh()
       return half
     }
@@ -147,11 +184,17 @@ export function useDmVerbs(ctx: VerbCtx) {
         message: createElement('div', null, createElement('p', null, isHeldSend(m) ? `Held: ${heldReasonText(m.send_blocked_reason)}` : `Rejected: ${m.send_blocked_reason?.replaceAll('_', ' ')}.`), createElement('p', null, m.message_text), createElement('p', null, 'Your approval overrides the copy rejection. Delivery and account checks still apply.')),
         confirmText: 'Send anyway', verb: 'confirm-send-anyways' })
       if (!ok) return
-      try {
-        await sendRejectedDm(m, threadChatId(t))
+      let went: boolean | null = true
+      try { await sendRejectedDm(m, threadChatId(t)) } catch (e) {
+        if (!isNoAnswer(e)) { fail(`Not queued: ${errText(e)}`); ctx.refresh(); return }
+        went = await landed([m.id])
+        if (!went) fail(went === false ? NO_ANSWER_NOT_SENT : NO_ANSWER_UNCHECKED)
+      }
+      if (went) {
         ctx.patch([m.id], { approved_at: new Date().toISOString(), send_blocked_at: null, send_blocked_reason: null })
         toast.show({ message: `Queued to ${t.prospect_name}.`, sub: 'The sender picks it up within about 2 minutes.' })
-      } catch (e) { fail(`Not queued: ${errText(e)}`) }
+        watch(t, [m.id])
+      }
       ctx.refresh()
     }
 
@@ -161,7 +204,11 @@ export function useDmVerbs(ctx: VerbCtx) {
       if (isSwishdmRow(m) || t.client_id === 'swishdm') { fail('SwishDM messages are sent only by the SwishDM senders. Nothing was sent.'); return null }
       if (!text.trim()) { fail('The message is empty. Nothing was saved.'); return null }
       if (text === m.message_text) return m
-      try { await editHeldDm(m, text) } catch (e) { fail(`Not saved: ${errText(e)}`); ctx.refresh(); return null }
+      try { await editHeldDm(m, text) } catch (e) {
+        if (!isNoAnswer(e)) { fail(`Not saved: ${errText(e)}`); ctx.refresh(); return null }
+        const ok = await landed([m.id], r => r.message_text === text)
+        if (!ok) { fail(ok === false ? 'No answer from the server. The edit was not saved and nothing was sent: try again.' : NO_ANSWER_UNCHECKED); ctx.refresh(); return null }
+      }
       ctx.patch([m.id], { message_text: text, approved_at: null })
       if (!opts.quiet) toast.show({ message: `Saved the held message to ${t.prospect_name}.`, sub: 'Still held. Nothing was sent.' })
       ctx.refresh()
@@ -356,15 +403,35 @@ export function useDmVerbs(ctx: VerbCtx) {
         const ok = await confirm({ title: `Send this to ${t.prospect_name}?`, message: 'Your own words, not a reviewed draft. The sender picks it up within about 2 minutes.', confirmText: 'Send it', verb: 'confirm-compose' })
         if (!ok) return false
       }
-      try {
-        const failed = await composeReply(t, body)
-        // Ivan 10-21 (Barak): an internal question never stops his own hand reply. Once his words
-        // are queued, the question is answered by them, so it is retired and the drafter stays quiet.
-        const hold = t.ownerConfirmation
-        if (hold) await dismissConfirmation(hold.id, hold.send_blocked_reason === 'reply_retry_pending' ? 'reply_retry_pending' : 'owner_confirmation').catch(e => fail(`Your reply is queued, but the internal question stayed open: ${errText(e)}`))
-        if (failed.length) fail(`Your reply is queued. ${failed.map(legFailureText).join(' ')}`)
-        else toast.show({ message: `Queued your reply to ${t.prospect_name}.`, sub: 'The sender picks it up within about 2 minutes.' })
-      } catch (e) { fail(errText(e)); return false }
+      const pid = t.prospect_id
+      // A hand reply is a plain insert: after a no-answer, never insert the same words twice.
+      const already = async (): Promise<boolean | null> => { try { return Boolean(await findLandedReply(pid, body)) } catch { return null } }
+      let failed: Awaited<ReturnType<typeof composeReply>> | null = null
+      if (composeUnsure.get(pid) === body) {
+        const hit = await already()
+        if (hit === null) { fail(`${NO_ANSWER_UNCHECKED} Your text is kept.`); return false }
+        if (hit) failed = await discardLegs(draftLegs(t)).catch(() => [])
+      }
+      if (!failed) {
+        try { failed = await composeReply(t, body) } catch (e) {
+          if (!isNoAnswer(e)) { fail(errText(e)); return false }
+          composeUnsure.set(pid, body)
+          const hit = await already()
+          if (!hit) {
+            fail(hit === false ? 'No answer from the server, and your reply is not on the thread: nothing was sent. Press Send again: it checks first, so it never goes twice.'
+              : `${NO_ANSWER_UNCHECKED} Your text is kept.`)
+            ctx.refresh(); return false
+          }
+          failed = await discardLegs(draftLegs(t)).catch(() => [])
+        }
+      }
+      composeUnsure.delete(pid)
+      // Ivan 10-21 (Barak): an internal question never stops his own hand reply. Once his words
+      // are queued, the question is answered by them, so it is retired and the drafter stays quiet.
+      const hold = t.ownerConfirmation
+      if (hold) await dismissConfirmation(hold.id, hold.send_blocked_reason === 'reply_retry_pending' ? 'reply_retry_pending' : 'owner_confirmation').catch(e => fail(`Your reply is queued, but the internal question stayed open: ${errText(e)}`))
+      if (failed.length) fail(`Your reply is queued. ${failed.map(legFailureText).join(' ')}`)
+      else toast.show({ message: `Queued your reply to ${t.prospect_name}.`, sub: 'The sender picks it up within about 2 minutes.' })
       ctx.refresh()
       return true
     }

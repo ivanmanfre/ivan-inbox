@@ -14,6 +14,7 @@ vi.mock('../../lib/inbox', async orig => {
     discardLegs: vi.fn(async () => []), composeReply: vi.fn(async () => []), markThreadRead: vi.fn(async () => {}),
     emailReplyTarget: vi.fn(async () => ({ recipient_email: 'ofir.b@doktorabc.com', message_text_prefix: 'Subject: Re: Meeting\n\n' })),
     markSpam: vi.fn(async () => {}), markNotSpam: vi.fn(async () => {}),
+    readSendState: vi.fn(async () => []), findLandedReply: vi.fn(async () => null),
   }
 })
 vi.mock('../../lib/followUp', async orig => ({ ...(await orig<typeof import('../../lib/followUp')>()), fetchFollowUp: vi.fn(async () => null), setFollowUp: vi.fn(async () => {}) }))
@@ -26,7 +27,10 @@ import * as lib from '../../lib/inbox'
 import { DmAsks } from './asks'
 import { NOW, drafted, msg, threads } from './fixtures'
 import { ThreadPane } from './Thread'
-import { useDmVerbs } from './verbs'
+import { NO_ANSWER_NOT_SENT, NO_ANSWER_UNCHECKED, useDmVerbs } from './verbs'
+import { NoAnswerError } from '../../lib/noAnswer'
+import { stopWatching, watchedIds, WATCH_EVERY_MS } from './sendWatch'
+import { resetDraftJobs, resetPaneBusy } from './paneBusy'
 import { forwardInboxEmail } from '../../lib/emailForward'
 import { scheduleDm } from '../../lib/dmSchedule'
 import type { Thread } from '../../lib/inbox'
@@ -44,8 +48,8 @@ const key = (v: string) => document.querySelector(`[data-verb="${v}"]`) as HTMLE
 
 vi.mock('../../lib/emailForward', async orig => ({ ...(await orig<typeof import('../../lib/emailForward')>()), forwardInboxEmail: vi.fn(async () => 'forwarded-id') }))
 
-beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); vi.setSystemTime(NOW); vi.clearAllMocks(); vi.mocked(lib.saveDraftEmailCc).mockReset().mockResolvedValue([]) })
-afterEach(() => { cleanup(); vi.useRealTimers() })
+beforeEach(() => { stopWatching(); resetPaneBusy(); resetDraftJobs(); vi.useFakeTimers({ shouldAdvanceTime: true }); vi.setSystemTime(NOW); vi.clearAllMocks(); vi.mocked(lib.saveDraftEmailCc).mockReset().mockResolvedValue([]) })
+afterEach(() => { cleanup(); stopWatching(); vi.useRealTimers() })
 
 describe('direct email reply', () => {
   const emailThread = (client = 'arch') => threads([
@@ -462,5 +466,195 @@ describe('SwishDM threads', () => {
     const [t] = threads([m]); mount(t)
     expect(screen.queryByRole('button', { name: 'Send anyway' })).toBeNull()
     expect(screen.queryByText(/about 2 minutes/)).toBeNull()
+  })
+})
+
+// Ivan 10-21 (Diane O'Brien): one request never answered, `busy` never cleared, and Send stayed grey in
+// every thread until a relaunch. Every database call now ends (noAnswer.ts); after a no-answer the rows
+// are read before anything is said, and the key is offered again only when the send did not land.
+describe('a request that got no answer', () => {
+  const timedOut = { message: 'AbortError: No answer from the server in 20s.', details: '', hint: 'Request was aborted (timeout or manual cancellation)', code: '' }
+  const sendKey = () => key('send') as HTMLButtonElement
+  const state = (id: string, p: Partial<lib.SendState> = {}): lib.SendState => ({ id, direction: 'outbound', message_text: 'x', message_type: 'dm', channel: 'linkedin', sent_at: null, approved_at: null,
+    send_blocked_reason: null, send_blocked_at: null, unipile_message_id: null, created_at: '2026-09-27T09:00:00Z', draft_evidence: null, ...p })
+  const press = async () => { fireEvent.click(sendKey()); fireEvent.click(await screen.findByText('Approve & send')) }
+
+  it('a send that did not land says so, patches nothing, and offers Send again', async () => {
+    const [t] = threads(drafted('d1', { prospect_name: 'Diane', unipile_chat_id: 'chat1' }))
+    vi.mocked(lib.approveDraft).mockRejectedValueOnce(timedOut)
+    vi.mocked(lib.readSendState).mockResolvedValueOnce([state(t.draft!.id)])
+    mount(t)
+    await press()
+    await screen.findByText(NO_ANSWER_NOT_SENT)
+    expect(lib.readSendState).toHaveBeenCalledWith([t.draft!.id])
+    expect(ctx.patch).not.toHaveBeenCalled()
+    expect(sendKey().disabled).toBe(false)
+    expect(watchedIds()).toEqual([])
+  })
+
+  it('a send that landed during the silence shows as queued and is never approved twice', async () => {
+    const [t] = threads(drafted('d2', { prospect_name: 'Diane', unipile_chat_id: 'chat1' }))
+    vi.mocked(lib.approveDraft).mockRejectedValueOnce(new NoAnswerError(20_000))
+    vi.mocked(lib.readSendState).mockResolvedValueOnce([state(t.draft!.id, { approved_at: '2026-09-27T09:15:10Z' })])
+    mount(t)
+    await press()
+    await screen.findByText('Queued to Diane.')
+    expect(lib.approveDraft).toHaveBeenCalledTimes(1)
+    expect(ctx.patch).toHaveBeenCalledWith([t.draft!.id], expect.objectContaining({ approved_at: expect.any(String) }))
+    expect(watchedIds()).toEqual([t.draft!.id])
+  })
+
+  it('when the check gets no answer either, it never claims nothing was sent', async () => {
+    const [t] = threads(drafted('d3', { prospect_name: 'Diane', unipile_chat_id: 'chat1' }))
+    vi.mocked(lib.approveDraft).mockRejectedValueOnce(timedOut)
+    vi.mocked(lib.readSendState).mockRejectedValueOnce(timedOut)
+    mount(t)
+    await press()
+    await screen.findByText(NO_ANSWER_UNCHECKED)
+    expect(screen.queryByText(NO_ANSWER_NOT_SENT)).toBeNull()
+    expect(sendKey().disabled).toBe(false)
+  })
+
+  it('a send still running on one thread never greys another; coming back to it still shows it busy', async () => {
+    const [a] = threads(drafted('da', { prospect_name: 'Diane', unipile_chat_id: 'chat1' }))
+    const [b] = threads(drafted('db', { prospect_name: 'Brad', unipile_chat_id: 'chat2' }))
+    vi.mocked(lib.approveDraft).mockImplementationOnce(() => new Promise(() => {}))
+    const view = mount(a)
+    await press()
+    await waitFor(() => expect(sendKey().disabled).toBe(true))
+    view.unmount()
+    const other = mount(b)
+    expect(sendKey().disabled).toBe(false)
+    other.unmount()
+    mount(a)
+    expect(sendKey().disabled).toBe(true)
+  })
+
+  it('a hand reply that landed is not inserted again; one that did not is checked before the next insert', async () => {
+    const [t] = threads(drafted('dc', { prospect_name: 'Cam' }))
+    vi.mocked(lib.composeReply).mockRejectedValueOnce(timedOut)
+    vi.mocked(lib.findLandedReply).mockResolvedValueOnce(null).mockResolvedValueOnce(state('new1', { message_type: 'manual_reply', message_text: 'My own words', approved_at: '2026-09-27T09:15:05Z' }))
+    mount(t)
+    const box = () => document.querySelector('.dm-comp textarea') as HTMLTextAreaElement
+    fireEvent.change(box(), { target: { value: 'My own words' } })
+    fireEvent.click(document.querySelector('.dm-comp [data-verb="compose-send"]')!)
+    fireEvent.click(await screen.findByText('Send it'))
+    await screen.findByText(/your reply is not on the thread: nothing was sent/)
+    expect(box().value).toBe('My own words')
+    expect(lib.composeReply).toHaveBeenCalledTimes(1)
+    // Pressed again: the thread is read first, and the reply that landed meanwhile is not inserted twice.
+    fireEvent.click(document.querySelector('.dm-comp [data-verb="compose-send"]')!)
+    fireEvent.click(await screen.findByText('Send it'))
+    await screen.findByText('Queued your reply to Cam.')
+    expect(lib.composeReply).toHaveBeenCalledTimes(1)
+    expect(lib.findLandedReply).toHaveBeenLastCalledWith('dc', 'My own words')
+    expect(lib.discardLegs).toHaveBeenCalledWith([t.draft])
+    await waitFor(() => expect(box().value).toBe(''))
+  })
+
+  it('a hand reply whose insert landed during the silence is queued once', async () => {
+    const [t] = threads(drafted('dd', { prospect_name: 'Cam' }))
+    vi.mocked(lib.composeReply).mockRejectedValueOnce(new NoAnswerError(20_000))
+    vi.mocked(lib.findLandedReply).mockResolvedValueOnce(state('new2', { message_type: 'manual_reply', message_text: 'Words' }))
+    mount(t)
+    fireEvent.change(document.querySelector('.dm-comp textarea')!, { target: { value: 'Words' } })
+    fireEvent.click(document.querySelector('.dm-comp [data-verb="compose-send"]')!)
+    fireEvent.click(await screen.findByText('Send it'))
+    await screen.findByText('Queued your reply to Cam.')
+    expect(lib.composeReply).toHaveBeenCalledTimes(1)
+  })
+
+  it('Send anyway that got no answer reads the row: landed is queued and watched, not landed says so', async () => {
+    const m = msg({ prospect_id: 'sa', prospect_name: 'Leighton Penrose', client_id: 'arch', message_text: 'Hey man', send_blocked_at: '2026-09-26T11:00:00Z', send_blocked_reason: 'duplicate_in_thread' })
+    const [t] = threads([m]); mount(t)
+    vi.mocked(sendRejectedDm).mockRejectedValueOnce(timedOut).mockRejectedValueOnce(timedOut)
+    vi.mocked(lib.readSendState).mockResolvedValueOnce([state(m.id, { send_blocked_reason: 'duplicate_in_thread' })]).mockResolvedValueOnce([state(m.id, { approved_at: '2026-09-27T09:15:10Z' })])
+    fireEvent.click(screen.getByRole('button', { name: 'Send anyway' }))
+    fireEvent.click(await waitFor(() => key('confirm-send-anyways')))
+    await screen.findByText(NO_ANSWER_NOT_SENT)
+    expect(watchedIds()).toEqual([])
+    fireEvent.click(await waitFor(() => screen.getByRole('button', { name: 'Send anyway' })))
+    fireEvent.click(await waitFor(() => key('confirm-send-anyways')))
+    await screen.findByText('Queued to Leighton Penrose.')
+    expect(watchedIds()).toEqual([m.id])
+  })
+})
+
+// Ivan 10-21 (Leighton Penrose): the sender held his Send anyway again 3 s after taking it, cleared the
+// approval, and nothing on screen said so. The row is watched after Send; a hold that comes back says why.
+describe('after Send, a hold that comes back says so', () => {
+  const held = (id: string, reason: string, p: Partial<lib.SendState> = {}): lib.SendState => ({ id, direction: 'outbound', message_text: 'Hey man', message_type: 'dm', channel: 'linkedin', sent_at: null, approved_at: null,
+    send_blocked_reason: reason, send_blocked_at: '2026-09-27T09:16:07Z', unipile_message_id: null, created_at: '2026-09-26T10:00:00Z', draft_evidence: null, ...p })
+
+  it('Send anyway held again raises a failure toast naming the reason, once', async () => {
+    const m = msg({ prospect_id: 'w1', prospect_name: 'Leighton Penrose', client_id: 'arch', message_text: 'Hey man', send_blocked_at: '2026-09-26T11:00:00Z', send_blocked_reason: 'duplicate_in_thread' })
+    const [t] = threads([m]); mount(t)
+    fireEvent.click(screen.getByRole('button', { name: 'Send anyway' }))
+    fireEvent.click(await waitFor(() => key('confirm-send-anyways')))
+    await screen.findByText('Queued to Leighton Penrose.')
+    vi.mocked(lib.readSendState).mockResolvedValueOnce([{ ...held(m.id, ''), send_blocked_reason: null, approved_at: '2026-09-27T09:15:10Z' }]).mockResolvedValue([held(m.id, 'duplicate_in_thread')])
+    await vi.advanceTimersByTimeAsync(WATCH_EVERY_MS)
+    expect(screen.queryByText(/^Not sent to/)).toBeNull()
+    await vi.advanceTimersByTimeAsync(WATCH_EVERY_MS)
+    await screen.findByText('Not sent to Leighton Penrose: It repeats a message already in the thread.')
+    expect(ctx.refresh).toHaveBeenCalled()
+    expect(watchedIds()).toEqual([])
+    await vi.advanceTimersByTimeAsync(WATCH_EVERY_MS * 2)
+    expect(screen.getAllByText(/^Not sent to Leighton Penrose/)).toHaveLength(1)
+  })
+
+  it('a sent row stamped and then reverted is still caught; a row seen sent twice is done', async () => {
+    const [t] = threads(drafted('w2', { prospect_name: 'Diane', unipile_chat_id: 'chat1' }))
+    mount(t)
+    fireEvent.click(key('send')); fireEvent.click(await screen.findByText('Approve & send'))
+    await screen.findByText('Queued to Diane.')
+    const id = t.draft!.id
+    vi.mocked(lib.readSendState).mockResolvedValueOnce([held(id, '', { send_blocked_reason: null, sent_at: '2026-09-27T09:16:04Z' })])
+      .mockResolvedValueOnce([held(id, 'dispatch_error:riseReferralInmail is not defined', { approved_at: '2026-09-27T09:15:10Z' })])
+    await vi.advanceTimersByTimeAsync(WATCH_EVERY_MS * 2)
+    await screen.findByText('Not sent yet to Diane: Our system failed before reaching LinkedIn. It will retry.')
+
+    cleanup(); stopWatching()
+    const [u] = threads(drafted('w3', { prospect_name: 'Nina', unipile_chat_id: 'chat3' }))
+    mount(u)
+    fireEvent.click(key('send')); fireEvent.click(await screen.findByText('Approve & send'))
+    await screen.findByText('Queued to Nina.')
+    vi.mocked(lib.readSendState).mockResolvedValue([held(u.draft!.id, '', { send_blocked_reason: null, sent_at: '2026-09-27T09:16:04Z', unipile_message_id: 'u1' })])
+    await vi.advanceTimersByTimeAsync(WATCH_EVERY_MS * 2)
+    expect(watchedIds()).toEqual([])
+    expect(screen.queryByText(/^Not sent/)).toBeNull()
+  })
+
+  it('stops watching after about 3 minutes', async () => {
+    const [t] = threads(drafted('w4', { prospect_name: 'Pia', unipile_chat_id: 'chat4' }))
+    mount(t)
+    fireEvent.click(key('send')); fireEvent.click(await screen.findByText('Approve & send'))
+    await screen.findByText('Queued to Pia.')
+    vi.mocked(lib.readSendState).mockResolvedValue([held(t.draft!.id, '', { send_blocked_reason: null, approved_at: '2026-09-27T09:15:10Z' })])
+    await vi.advanceTimersByTimeAsync(185_000)
+    expect(watchedIds()).toEqual([])
+    const reads = vi.mocked(lib.readSendState).mock.calls.length
+    await vi.advanceTimersByTimeAsync(WATCH_EVERY_MS * 3)
+    expect(vi.mocked(lib.readSendState).mock.calls.length).toBe(reads)
+  })
+})
+
+// Ivan 10-21 (Barak Zuman): a lint hold put his own edited reply back in the draft box titled "AI draft".
+describe('his own words in the draft box', () => {
+  it('a held reply he edited and approved is titled as his message, with the hold time', () => {
+    const pid = 'barakz'
+    const rows = drafted(pid, { prospect_name: 'Barak Zuman', client_id: 'arch' })
+    rows[2] = { ...rows[2], ai_model: 'arch_reply_draft_v2', message_text: 'Tuesday works, which day are you in Tel Aviv?', send_blocked_at: '2026-09-27T07:30:00Z', send_blocked_reason: 'lint_calendar_proposal_edited',
+      draft_evidence: { generated_text: 'Drafted words', operator_copy_approval: { text: 'Tuesday works, which day are you in Tel Aviv?', approved_at: '2026-09-27T07:29:00Z' } } as never }
+    const [t] = threads(rows)
+    expect(t.draft?.id).toBe(rows[2].id)
+    mount(t)
+    expect(screen.getByText(/Your message · held 09:30/)).toBeTruthy()
+    expect(screen.queryByText(/AI draft/)).toBeNull()
+  })
+  it('a plain drafter draft is still an AI draft', () => {
+    const [t] = threads(drafted('plain', { prospect_name: 'Cam' }))
+    mount(t)
+    expect(screen.getByText(/AI draft/)).toBeTruthy()
   })
 })

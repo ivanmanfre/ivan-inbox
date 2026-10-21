@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { offersReplyMyself, isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, browseOrder, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISMISS_HOLD_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, isHeldSend, heldSend, heldReasonText, canScheduleHeld, missingManualGuardMeansPreMigration, isEngineRetired, isHiddenRetired, retiredLabel, holdReason, isSenderMirrorEmail, draftLegs, isOwedInbound, threadOrder, DELETED_REASON, type InboxMessage, type Status, type DraftGuard } from './inbox'
+import { offersReplyMyself, isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, browseOrder, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISMISS_HOLD_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, isHeldSend, heldSend, heldReasonText, canScheduleHeld, isInvalidRecipient, timelineTime, operatorSentAt, operatorWords, missingManualGuardMeansPreMigration, isEngineRetired, isHiddenRetired, retiredLabel, holdReason, isSenderMirrorEmail, draftLegs, isOwedInbound, threadOrder, DELETED_REASON, type InboxMessage, type Status, type DraftGuard } from './inbox'
 
 // inbox.ts:191 gates needsAnswer on a 14-day wall-clock staleness window
 // (STALE_DAYS), measured against Date.now() by default -- and most callers
@@ -1305,6 +1305,54 @@ describe('held sends', () => {
     expect(heldReasonText('send_failed_verified: hard error: Request failed with status code 422')).toBe('LinkedIn refused the send (error 422). Check LinkedIn before sending again.')
     expect(heldReasonText('inmail_failed_422: {"type":"errors/limit_exceeded"}')).toBe('The InMail limit for this period was reached.')
     expect(heldReasonText('wins_operator_review_required')).toBe('wins_operator_review_required')
+  })
+  // Send audit 10-21: send_failed_verified said "LinkedIn refused" for failures that never reached LinkedIn.
+  it('names our own failure, a dead recipient and a real LinkedIn refusal apart', () => {
+    expect(heldReasonText('dispatch_error:riseReferralInmail is not defined')).toBe('Our system failed before reaching LinkedIn. It will retry.')
+    expect(heldReasonText('dispatch_error: prior_reservation_requires_reconciliation')).toBe('Our system failed before reaching LinkedIn. It will retry.')
+    expect(heldReasonText('provider_invalid_recipient: 422')).toBe('LinkedIn says this person can\u2019t receive messages.')
+    expect(heldReasonText('send_failed_verified: hard error: 422 {"type":"errors/invalid_recipient"}')).toBe('LinkedIn says this person can\u2019t receive messages.')
+    expect(heldReasonText('send_failed_verified: chat create failed: Request failed with status code 422')).toBe('LinkedIn refused the send (error 422). Check LinkedIn before sending again.')
+    expect(heldReasonText('send_failed_verified: hard error: Request failed with status code 404')).toBe('LinkedIn refused the send. Check LinkedIn before sending again.')
+    expect(heldReasonText('send_failed_verified: hard error: conversation_agent_owned_or_unresolved')).toBe('Our system stopped it before it reached LinkedIn (conversation_agent_owned_or_unresolved).')
+    expect(isInvalidRecipient('provider_invalid_recipient')).toBe(true)
+    expect(isInvalidRecipient('inmail_failed_422: {"type":"errors/invalid_recipient"}')).toBe(true)
+    for (const r of ['send_failed_verified: hard error: Request failed with status code 422', 'dispatch_error:x', null]) expect(isInvalidRecipient(r), String(r)).toBe(false)
+  })
+  // Ivan 10-21 (Leighton Penrose): a Send anyway held again jumped back to the row's creation day.
+  it('a held row sits at its hold in the timeline; every other row keeps its event time', () => {
+    const h = held('duplicate_in_thread', { created_at: '2026-10-12T11:48:46Z', send_blocked_at: '2026-10-21T15:20:07Z' })
+    expect(timelineTime(h)).toBe('2026-10-21T15:20:07Z')
+    expect(eventTime(h)).toBe('2026-10-12T11:48:46Z')
+    const sent = { ...base, id: 's', sent_at: '2026-10-21T15:00:00Z', created_at: '2026-10-20T15:00:00Z' }
+    expect(timelineTime(sent)).toBe(eventTime(sent))
+    const discarded = held('discarded_in_inbox', { created_at: '2026-10-12T11:48:46Z', send_blocked_at: '2026-10-21T15:20:07Z' })
+    expect(timelineTime(discarded)).toBe('2026-10-12T11:48:46Z')
+  })
+  it('knows when he pressed Send before the hold: the latest press, a schedule, or a hand reply', () => {
+    // Leighton's row as stored after the 15:20 re-hold (draft_evidence shapes from outreach_messages).
+    const leighton = held('duplicate_in_thread', { message_type: 'manual_reply', ai_model: 'inbox_scheduled_manual_v1', created_at: '2026-10-12T11:48:46Z', send_blocked_at: '2026-10-21T15:20:07.559Z',
+      draft_evidence: { scheduled_send: { at: '2026-10-12T12:47:00+00:00', timezone: 'Europe/Warsaw', state: 'released' },
+        operator_send_anyways: { approved_at: '2026-10-21T15:19:43.895293+00:00' } } as InboxMessage['draft_evidence'] })
+    expect(operatorSentAt(leighton)).toEqual({ at: '2026-10-21T15:19:43.895293+00:00', scheduled: false })
+    const firstHold = { ...leighton, send_blocked_at: '2026-10-12T12:48:04.077Z', draft_evidence: { scheduled_send: { at: '2026-10-12T12:47:00+00:00', timezone: 'Europe/Warsaw' } } }
+    expect(operatorSentAt(firstHold)).toEqual({ at: '2026-10-12T12:47:00+00:00', scheduled: true })
+    const hand = held('lint_calendar_proposal_edited', { message_type: 'manual_reply', created_at: '2026-10-21T09:00:00Z', send_blocked_at: '2026-10-21T09:02:00Z' })
+    expect(operatorSentAt(hand)).toEqual({ at: '2026-10-21T09:00:00Z', scheduled: false })
+    // An approval after the hold is not "sent before it was held"; a row never approved has no press.
+    expect(operatorSentAt({ ...hand, message_type: 'dm', draft_evidence: { operator_copy_approval: { approved_at: '2026-10-21T10:00:00Z' } } as InboxMessage['draft_evidence'] })).toBeNull()
+    expect(operatorSentAt(held('duplicate_in_thread'))).toBeNull()
+  })
+  // Ivan 10-21 (Barak Zuman): his own edited reply, back in the draft box after a lint hold, said "AI draft".
+  it('tells his own words from the drafter\'s', () => {
+    const ev = (e: object) => e as InboxMessage['draft_evidence']
+    const row = held('lint_calendar_proposal_edited', { message_text: 'All good! Which day are you in Tel Aviv?' })
+    expect(operatorWords({ ...row, draft_evidence: ev({ generated_text: 'Drafted words', operator_copy_approval: { text: row.message_text, approved_at: '2026-10-21T09:00:00Z' } }) })).toBe('own')
+    expect(operatorWords({ ...row, draft_evidence: ev({ generated_text: row.message_text, operator_copy_approval: { text: row.message_text } }) })).toBe('approved')
+    expect(operatorWords({ ...row, draft_evidence: ev({ generated_text: 'Drafted words', operator_copy_approval: { text: 'an older approved text' } }) })).toBeNull()
+    expect(operatorWords({ ...row, draft_evidence: ev({ generated_text: 'Drafted words' }) })).toBeNull()
+    expect(operatorWords({ ...row, message_type: 'manual_reply' })).toBe('own')
+    expect(operatorWords({ ...row, draft_evidence: ev({ operator_edits: [{ new_text: row.message_text }] }) })).toBe('own')
   })
   // Ivan 10-21 (Leighton Penrose): "edit and send later". Only a hold the existing scheduler takes may be scheduled.
   it('only a lint or race hold can go to the existing scheduler; a gate hold, a paused schedule or an approved row cannot', () => {

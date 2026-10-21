@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { SESSION_KEY, deleteHandoff, readHandoff, writeHandoff } from './handoff'
 import { makePageStorage } from './sessionStorage'
+import { timedFetch } from './noAnswer'
 
 // Page context only (see src/lib/sessionStorage.ts). The worker has no
 // localStorage and gets supabase-js's default memory storage instead.
@@ -32,6 +33,9 @@ export const supabase = createClient(
       flowType: 'implicit',
       storage: pageStorage,
     },
+    // Every database read and write settles (src/lib/noAnswer.ts): a hung request used to grey Send
+    // in every thread until a relaunch (Ivan 10-21, Diane O'Brien).
+    global: { fetch: (input, init) => timedFetch(input, init) },
   },
 )
 

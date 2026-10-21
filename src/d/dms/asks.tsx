@@ -37,12 +37,16 @@ export function useAsks(): Api {
 export function DmAsks({ children }: { children: ReactNode }) {
   const [dq, setDq] = useState<DiscardQ | null>(null)
   const [tq, setTq] = useState<DateQ | null>(null)
+  // A new question replaces an open one of its kind, which answers "no" (confirm.tsx, Ivan 10-21): an
+  // orphaned question never settled and kept the thread's keys grey.
+  const openD = useRef<DiscardQ | null>(null)
+  const openT = useRef<DateQ | null>(null)
   const askDiscard = useCallback((o: { title: string; message: string; myself: boolean }) =>
-    new Promise<DiscardAnswer>(resolve => setDq({ ...o, resolve })), [])
+    new Promise<DiscardAnswer>(resolve => { const prev = openD.current; openD.current = { ...o, resolve }; setDq(openD.current); prev?.resolve(null) }), [])
   const askDate = useCallback((name: string, variant: PushVariant, opts: DateOpts = {}) =>
-    new Promise<DateAnswer | null>(resolve => setTq({ name, variant, opts, resolve })), [])
-  const endD = useCallback((a: DiscardAnswer) => setDq(q => { q?.resolve(a); return null }), [])
-  const endT = useCallback((a: DateAnswer | null) => setTq(q => { q?.resolve(a); return null }), [])
+    new Promise<DateAnswer | null>(resolve => { const prev = openT.current; openT.current = { name, variant, opts, resolve }; setTq(openT.current); prev?.resolve(null) }), [])
+  const endD = useCallback((a: DiscardAnswer) => { const q = openD.current; openD.current = null; setDq(null); q?.resolve(a) }, [])
+  const endT = useCallback((a: DateAnswer | null) => { const q = openT.current; openT.current = null; setTq(null); q?.resolve(a) }, [])
   return (
     <Ctx.Provider value={{ askDiscard, askDate }}>
       {children}
