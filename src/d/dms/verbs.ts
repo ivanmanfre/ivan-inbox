@@ -73,7 +73,13 @@ export function useDmVerbs(ctx: VerbCtx) {
   return useMemo(() => {
     const fail = (message: string) => { toast.show({ message, tone: 'failed' }) }
     // Ivan 10-21 (Leighton Penrose): after Send, watch the row; a hold that comes back says so.
-    const watch = (t: Thread, ids: string[]) => watchSend(ids, r => {
+    const watch = (t: Thread, ids: string[]) => watchSend(ids, (r, kind) => {
+      // LinkedIn will not deliver to this person: one neutral line, never a failure (Ivan 10-21).
+      if (kind === 'unreachable') {
+        toast.show({ message: `Not delivered: ${t.prospect_name} ${(r.send_blocked_reason ?? '').includes('blocked_recipient') ? 'blocked messages' : 'can\u2019t receive messages'} on LinkedIn` })
+        ctx.refresh()
+        return
+      }
       const later = /^dispatch_error/.test(r.send_blocked_reason ?? '')
       toast.show({ tone: 'failed', ms: 15_000,
         message: `Not sent${later ? ' yet' : ''} to ${t.prospect_name}: ${heldReasonText(r.send_blocked_reason)}`,

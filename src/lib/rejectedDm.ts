@@ -1,4 +1,4 @@
-import { draftSendVia, isEngineRetired, isHeldSend, isIntentionalStop, isInternalConfirmation, isInvalidRecipient, isSwishdmRow, SWISHDM_REPLY_HOLD, type InboxMessage } from './inbox'
+import { draftSendVia, isEngineRetired, isHeldSend, isIntentionalStop, isInternalConfirmation, isUnreachableRecipient, isSwishdmRow, SWISHDM_REPLY_HOLD, type InboxMessage } from './inbox'
 import { supabase } from './supabase'
 
 export function canSendRejectedDm(m: InboxMessage & { unipile_message_id?: string | null }): boolean {
@@ -9,7 +9,7 @@ export function canSendRejectedDm(m: InboxMessage & { unipile_message_id?: strin
     && !isIntentionalStop(m)   // an invite-instead / replied / excluded stop is not a rejection to override
     && !/^(discarded|superseded|scheduled)(?:_|$)/.test(m.send_blocked_reason)
     && !/^native_email_send_failed:/.test(m.send_blocked_reason)
-    && !isInvalidRecipient(m.send_blocked_reason)   // LinkedIn will not deliver to this person: Send anyway only burns a slot (send audit 10-21)
+    && !isUnreachableRecipient(m.send_blocked_reason)   // LinkedIn will not deliver to this person: Send anyway only burns a slot (send audit 10-21)
 }
 
 /** Requeue the original row. The database compares the visible rejection before recording the override. */

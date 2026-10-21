@@ -7,9 +7,11 @@ import { ReplySourceContent, ReplySourceLine, knownSource } from './ReplySourceS
 // invite note. Older messages sit behind one "N earlier" tap.
 // Drafts, internal questions and discarded rows are not history (they live in the pane below). A held
 // message is: "Held, not sent", why, and Send anyway / Edit / Discard, in its place on the timeline.
+// A message LinkedIn would not deliver (they blocked us, or cannot receive) is one quiet "Not delivered"
+// line in its place, no keys, its words folded under it (Ivan 10-21: "I don't want to see it").
 import { canEditHeldDm, canSendRejectedDm } from '../../lib/rejectedDm'
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
-import { canScheduleHeld, dedupeMessages, heldReasonText, heldSend, operatorSentAt, timelineTime, isDraft, isEngineRetired, isHeldSend, isHiddenRetired, isIntentionalStop, isInternalConfirmation, isPendingSend, pendingSendLabel, retiredLabel, sendFailed, sentThenPending, shownTime, messageChannel, stopLabel, type InboxMessage, type Thread } from '../../lib/inbox'
+import { canScheduleHeld, dedupeMessages, heldReasonText, heldSend, operatorSentAt, timelineTime, isDraft, isEngineRetired, isHeldSend, isHiddenRetired, isIntentionalStop, isInternalConfirmation, isPendingSend, isUnreachableSend, pendingSendLabel, retiredLabel, sendFailed, sentThenPending, shownTime, messageChannel, stopLabel, unreachableLabel, type InboxMessage, type Thread } from '../../lib/inbox'
 import { label } from '../../lib/labels'
 import { Linkified } from '../ui/Linkified'
 import { warsawDay, warsawDayTime, warsawDayWord, warsawHm } from '../ui/time'
@@ -30,6 +32,8 @@ export function kindPill(m: InboxMessage): string | null {
 
 export function statusPill(m: InboxMessage, stage: string): { text: string; fail: boolean } | null {
   if (m.direction !== 'outbound') return null
+  // LinkedIn will not deliver to this person: muted, never a failure and never held.
+  if (isUnreachableSend(m)) return { text: unreachableLabel(m), fail: false }
   // A gate held it (Ivan 10-21, Barak): it was never sent and is waiting on him, never "Send failed".
   if (isHeldSend(m)) return { text: 'Held, not sent', fail: true }
   if (sendFailed(m)) return { text: `Send failed: ${label(m.send_blocked_reason)}`, fail: true }
@@ -67,7 +71,7 @@ export function historyRows(t: Thread): InboxMessage[] {
   // Sent items in true send order, then every pending send (waiting for an accept, queued) after them.
   // A held row sits at its hold, not its creation (timelineTime, Ivan 10-21 Leighton Penrose).
   return sentThenPending([...dedupeMessages(t.messages)].sort((a, b) => Date.parse(timelineTime(a)) - Date.parse(timelineTime(b))).filter(m => isHeldSend(m) ? !pane.has(m.id) : !isDraft(m) && !isInternalConfirmation(m) && !isHiddenRetired(m) && !isEngineRetired(m) && m.send_blocked_reason !== 'discarded_in_inbox'
-    && (m.direction === 'inbound' || m.sent_at || m.approved_at || sendFailed(m) || isEngineRetired(m) || isIntentionalStop(m))))
+    && (m.direction === 'inbound' || m.sent_at || m.approved_at || sendFailed(m) || isEngineRetired(m) || isIntentionalStop(m) || isUnreachableSend(m))))
 }
 
 /** Under a held bubble: why, and when he sent it if the hold came after (Ivan 10-21, Leighton Penrose:
@@ -233,6 +237,16 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
         if (showMeta && showKind) runShown = kind
         if (fresh && !s0.ids.has(m.id)) s0.arrived.add(m.id)
         const arrive = v4 && s0.arrived.has(m.id)
+        if (isUnreachableSend(m)) return (
+          <Fragment key={m.id}>
+            {before}
+            {newDay && <div className="dm-day" role="separator"><span>{warsawDayWord(timelineTime(m), now)}</span></div>}
+            <details className="dm-h-undelivered" data-msg={m.id} data-undelivered="">
+              <summary>{unreachableLabel(m)}{at && <> · <time dateTime={at}>{warsawHm(at)}</time></>}</summary>
+              <p>{m.message_text}</p>
+            </details>
+          </Fragment>
+        )
         const held = isHeldSend(m)
         const canEdit = held && !t.spam && !!onEditHeld && canEditHeldDm(m)
         const edit = canEdit && editing?.id === m.id ? editing : null

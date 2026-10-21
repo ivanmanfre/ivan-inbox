@@ -625,6 +625,21 @@ describe('after Send, a hold that comes back says so', () => {
     expect(screen.queryByText(/^Not sent/)).toBeNull()
   })
 
+  // Ivan 10-21 (Ben Chehebar): a person who blocked us is not an error. One neutral line, no red toast.
+  it('a send LinkedIn will not deliver ends the watch with one neutral line, never a failure toast', async () => {
+    const [t] = threads(drafted('w5', { prospect_name: 'Ben Chehebar', unipile_chat_id: 'chat5' }))
+    mount(t)
+    fireEvent.click(key('send')); fireEvent.click(await screen.findByText('Approve & send'))
+    await screen.findByText('Queued to Ben Chehebar.')
+    vi.mocked(lib.readSendState).mockResolvedValue([held(t.draft!.id, 'send_failed_verified: hard error: Request failed with status code 422 [errors/blocked_recipient]')])
+    await vi.advanceTimersByTimeAsync(WATCH_EVERY_MS)
+    const note = await screen.findByText('Not delivered: Ben Chehebar blocked messages on LinkedIn')
+    expect(note.closest('.d-toast')!.classList.contains('d-toast-failed')).toBe(false)
+    expect(screen.queryByText(/^Not sent/)).toBeNull()
+    expect(watchedIds()).toEqual([])
+    expect(ctx.refresh).toHaveBeenCalled()
+  })
+
   it('stops watching after about 3 minutes', async () => {
     const [t] = threads(drafted('w4', { prospect_name: 'Pia', unipile_chat_id: 'chat4' }))
     mount(t)

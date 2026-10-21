@@ -41,11 +41,19 @@ describe('intentional stops are never failed sends (any seat)', () => {
   })
 
   it.each(['send_failed_429: check LinkedIn before retrying', 'inmail_failed_422: check LinkedIn before retrying (no credits)',
-    'stale_send_claim: claimed 2026-10-18T09:00Z, never recorded', 'bad_text: empty body', 'send_failed_verified', 'provider_invalid_recipient'])('keeps %s a real failure', reason => {
+    'stale_send_claim: claimed 2026-10-18T09:00Z, never recorded', 'bad_text: empty body', 'send_failed_verified'])('keeps %s a real failure', reason => {
     const m = blocked(reason, { client_id: 'swishdm' })
     expect(isIntentionalStopReason(reason)).toBe(false)
     expect(sendFailed(m)).toBe(true)
     expect(statusPill(m, 'swishdm_connected')?.fail).toBe(true)
+  })
+
+  // Ivan 10-21: a person LinkedIn will not deliver to is a quiet "Not delivered" line, not a failure.
+  it('shows provider_invalid_recipient as a muted "Not delivered" line, never a failure', () => {
+    const m = blocked('provider_invalid_recipient', { client_id: 'swishdm' })
+    expect(isIntentionalStopReason('provider_invalid_recipient')).toBe(false)
+    expect(sendFailed(m)).toBe(false)
+    expect(statusPill(m, 'swishdm_connected')).toEqual({ text: 'Not delivered \u00b7 can\u2019t receive messages on LinkedIn', fail: false })
   })
 
   it('does not swallow engine reasons that only look alike', () => {

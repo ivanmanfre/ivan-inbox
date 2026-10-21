@@ -6,18 +6,22 @@
 // within about 2 minutes and holds it within seconds). If it comes back held, one failure toast names the
 // reason. A row seen sent on two reads in a row is done (the sender can stamp sent_at for ~3 s before it
 // reverts a hold, so one read is not proof). A failed read is skipped, never reported.
-import { isHeldSend, readSendState, type InboxMessage, type SendState } from '../../lib/inbox'
+// A row LinkedIn will not deliver (blocked us, cannot receive) is not a hold (Ivan 10-21: "I don't want to
+// see it"): it ends the watch with kind 'unreachable', and the caller says so in one neutral line.
+import { isHeldSend, isUnreachableSend, readSendState, type InboxMessage, type SendState } from '../../lib/inbox'
 
 export const WATCH_MS = 180_000
 export const WATCH_EVERY_MS = 15_000
 
-type Watch = { until: number; sentSeen: number; onHeld: (row: SendState) => void }
+export type WatchEnd = 'held' | 'unreachable'
+type OnEnd = (row: SendState, kind: WatchEnd) => void
+type Watch = { until: number; sentSeen: number; onHeld: OnEnd }
 const watching = new Map<string, Watch>()
 let timer: ReturnType<typeof setTimeout> | null = null
 let reading = false
 
 /** Watch these rows for a hold. Watching a row again restarts its window with the new callback. */
-export function watchSend(ids: string[], onHeld: (row: SendState) => void, now = Date.now()): void {
+export function watchSend(ids: string[], onHeld: OnEnd, now = Date.now()): void {
   for (const id of ids) watching.set(id, { until: now + WATCH_MS, sentSeen: 0, onHeld })
   if (ids.length && timer === null) timer = setTimeout(tick, WATCH_EVERY_MS)
 }
@@ -47,7 +51,8 @@ async function tick(): Promise<void> {
         continue
       }
       w.sentSeen = 0
-      if (isHeldSend(r as InboxMessage)) { watching.delete(r.id); w.onHeld(r) }
+      if (isUnreachableSend(r)) { watching.delete(r.id); w.onHeld(r, 'unreachable') }
+      else if (isHeldSend(r as InboxMessage)) { watching.delete(r.id); w.onHeld(r, 'held') }
     }
   } catch { /* a failed read is skipped; the window still ends on time */ } finally { reading = false }
   const now = Date.now()

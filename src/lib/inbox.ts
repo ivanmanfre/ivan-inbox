@@ -179,6 +179,8 @@ export function sendFailed(m: InboxMessage): boolean {
   if (m.send_blocked_at === null) return false
   if (m.send_blocked_reason === DISCARD_REASON || ['scheduled_in_inbox','scheduled_send_cancelled'].includes(m.send_blocked_reason ?? '')) return false
   if (isRecoverableHold(m.send_blocked_reason)) return false
+  // LinkedIn will not deliver to this person (blocked, or cannot receive): a quiet "Not delivered" line, never a failure.
+  if (isUnreachableSend(m)) return false
   // SwishDM review hold (first-list notes, DM1 rows and reply drafts): waiting for a person, nothing was attempted.
   if (m.send_blocked_reason === SWISHDM_REPLY_HOLD) return false
   // A sender that deliberately did not send (invite instead, they replied, excluded...) did not fail.
@@ -290,6 +292,8 @@ export function isHeldSend(m: InboxMessage): boolean {
   const r = m.send_blocked_reason
   if (!r || !m.send_blocked_at || !(m.message_text ?? '').trim()) return false
   if (NOT_A_HOLD.test(r) || r === SWISHDM_REPLY_HOLD) return false
+  // Unreachable on LinkedIn (Ivan 10-21: "if he's blocked, he shouldn't even appear as an error"): nothing to act on.
+  if (isUnreachableRecipient(r)) return false
   return !isInternalConfirmation(m) && !isEngineRetired(m) && !isIntentionalStop(m)
 }
 
@@ -309,11 +313,27 @@ export function canScheduleHeld(m: InboxMessage): boolean {
   return isHeldSend(m) && !m.approved_at && isRecoverableHold(r) && !r!.startsWith(`${RACE_HOLD_PREFIX}scheduled`)
 }
 
-/** LinkedIn's 422 invalid_recipient (provider_invalid_recipient, or the provider type kept in the reason):
- *  the person cannot receive messages, so Send anyway only burns a daily slot (send audit 10-21). */
-export function isInvalidRecipient(reason: string | null | undefined): boolean {
+/** LinkedIn's 422 invalid_recipient / blocked_recipient (provider_invalid_recipient, or the provider type kept in
+ *  the reason, e.g. 'send_failed_verified: ... [errors/blocked_recipient]'): the person cannot receive messages
+ *  or blocked us, so Send anyway only burns a daily slot (send audit 10-21). Not 'no_connection_with_recipient':
+ *  that one is fixable with an invite and stays a held send. */
+export function isUnreachableRecipient(reason: string | null | undefined): boolean {
   const r = reason ?? ''
-  return r.startsWith('provider_invalid_recipient') || /(^|[^a-z_])invalid_recipient\b/.test(r)
+  return r.startsWith('provider_invalid_recipient') || r.includes('invalid_recipient') || r.includes('blocked_recipient')
+}
+
+/** An unsent outbound row LinkedIn would not deliver (Ivan 10-21, Ben Chehebar / Toby Hart: "if he's blocked,
+ *  he shouldn't even appear as an error ... I don't want to see it"). Not held, not failed, not a draft: the
+ *  thread shows one quiet "Not delivered" line in its place and nothing else lists it. */
+export function isUnreachableSend(m: Pick<InboxMessage, 'direction' | 'sent_at' | 'send_blocked_at' | 'send_blocked_reason'> & { unipile_message_id?: string | null }): boolean {
+  return m.direction === 'outbound' && !m.sent_at && !m.unipile_message_id && !!m.send_blocked_at && isUnreachableRecipient(m.send_blocked_reason)
+}
+
+/** The quiet line an unreachable row shows in the thread, in place of its bubble. */
+export function unreachableLabel(m: Pick<InboxMessage, 'send_blocked_reason'>): string {
+  return (m.send_blocked_reason ?? '').includes('blocked_recipient')
+    ? 'Not delivered \u00b7 blocked you on LinkedIn'
+    : 'Not delivered \u00b7 can\u2019t receive messages on LinkedIn'
 }
 
 /** Why a row is held, in plain words. An unknown code shows as written. */
@@ -326,7 +346,9 @@ export function heldReasonText(reason: string | null | undefined): string {
   // a code error, a reservation) and keep the approval; send_failed_verified said "LinkedIn refused" for
   // those too. A 422 invalid_recipient is a person LinkedIn will not deliver to: no retry helps.
   if (r.startsWith('dispatch_error')) return 'Our system failed before reaching LinkedIn. It will retry.'
-  if (isInvalidRecipient(r)) return 'LinkedIn says this person can\u2019t receive messages.'
+  if (isUnreachableRecipient(r)) return r.includes('blocked_recipient') ? 'This person blocked messages on LinkedIn.' : 'LinkedIn says this person can\u2019t receive messages.'
+  // Not connected yet: fixable, so it stays a held send (Ivan 10-21).
+  if (r.includes('no_connection_with_recipient')) return 'Not connected on LinkedIn: send an invite first.'
   if (r.startsWith('send_failed_verified')) return /status code \d{3}|\b[45]\d\d\b/.test(r)
     ? `LinkedIn refused the send${/\b422\b/.test(r) ? ' (error 422)' : ''}. Check LinkedIn before sending again.`
     : `Our system stopped it before it reached LinkedIn${tail ? ` (${tail.replace(/^(hard error|chat create failed):\s*/, '')})` : ''}.`
@@ -630,7 +652,7 @@ export const eventTime = (m: InboxMessage): string => m.sent_at ?? (m.direction 
    timeline moves: eventTime keeps ordering threads, drafts and staleness.
    ========================================================================== */
 export function timelineTime(m: InboxMessage): string {
-  return isHeldSend(m) && m.send_blocked_at ? m.send_blocked_at : eventTime(m)
+  return (isHeldSend(m) || isUnreachableSend(m)) && m.send_blocked_at ? m.send_blocked_at : eventTime(m)
 }
 
 type OperatorEvidence = {

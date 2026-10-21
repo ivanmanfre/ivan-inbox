@@ -144,4 +144,22 @@ describe('held sends in the list', () => {
     const [plain] = threads(waiting('plain', {}))
     expect(rowTags(plain).some(x => x.kind === 'held')).toBe(false)
   })
+  // Ivan 10-21 (Ben Chehebar, Toby Hart): "if he's blocked, he shouldn't even appear as an error ... I don't want to see it".
+  it('a recipient LinkedIn will not deliver to is not held: not listed, no Held tag, not Needs you, status from the rest of the thread', () => {
+    const reasons = ['provider_invalid_recipient: LinkedIn 422 errors/blocked_recipient (relabeled 2026-10-21, repeated 422 on Send anyway)',
+      'send_failed_verified: hard error: Request failed with status code 422 [errors/blocked_recipient]',
+      'provider_invalid_recipient: LinkedIn 422 on every send incl. Send anyway 2026-10-21; treated as unreachable']
+    const ts = threads(reasons.flatMap((r, i) => held(`u${i}`, 3, { send_blocked_reason: r })))
+    expect(heldItems(ts, new Set(), NOW)).toEqual({ recent: [], older: [] })
+    const v = seatView(ts, 'arch', NOW)
+    expect(needsCount(v)).toBe(0)
+    for (const t of ts) {
+      expect(rowTags(t).some(x => x.kind === 'held'), t.prospect_id).toBe(false)
+      expect(statusOf(t, NOW).kind, t.prospect_id).toBe('waiting')
+    }
+  })
+  it('not connected is still a held send (fixable with an invite)', () => {
+    const ts = threads(held('nc', 3, { send_blocked_reason: 'no_connection_with_recipient' }))
+    expect(heldItems(ts, new Set(), NOW).recent.map(i => i.t.prospect_id)).toEqual(['nc'])
+  })
 })

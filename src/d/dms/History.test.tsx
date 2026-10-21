@@ -315,3 +315,40 @@ it('offers no Edit on SwishDM, a DM + email pair, a spam thread, or the read-onl
   const log = render(<History t={t} />)
   expect(log.container.querySelector('[data-verb="edit-held"]')).toBeNull()
 })
+
+// Ivan 10-21 (Ben Chehebar, Toby Hart): "if he's blocked, he shouldn't even appear as an error ... I don't want to see it".
+it('a message LinkedIn would not deliver is one quiet "Not delivered" line: no keys, no warning, words folded under it', () => {
+  const pid = 'ben'
+  const sent = msg({ prospect_id: pid, client_id: 'risedtc', sent_at: '2026-09-23T15:32:43Z', message_text: 'Hey Ben, took the liberty of pulling one of our scans.' })
+  const blocked = msg({ prospect_id: pid, client_id: 'risedtc', created_at: '2026-09-28T23:32:51Z', message_text: 'Hey Ben, still happy to pull that growth scan?',
+    send_blocked_at: '2026-10-21T17:45:03Z', send_blocked_reason: 'provider_invalid_recipient: LinkedIn 422 errors/blocked_recipient (relabeled 2026-10-21, repeated 422 on Send anyway)' })
+  const [t] = threads([sent, blocked])
+  expect(historyRows(t).map(m => m.id)).toEqual([sent.id, blocked.id])
+  const { container } = render(<History t={t} onSendAnyways={() => {}} onDiscardHeld={() => {}} onEditHeld={async () => true} heldLater />)
+  const line = container.querySelector(`[data-msg="${blocked.id}"]`)!
+  expect(line.hasAttribute('data-undelivered')).toBe(true)
+  expect(line.hasAttribute('data-held')).toBe(false)
+  expect(line.querySelector('summary')!.textContent).toMatch(/^Not delivered · blocked you on LinkedIn/)
+  expect(line.textContent).toContain('Hey Ben, still happy to pull that growth scan?')
+  expect(line.querySelector('.dm-bub, .dm-i-fail, .dm-held-why')).toBeNull()
+  expect(container.textContent).not.toMatch(/Held, not sent|Send failed/)
+  for (const v of ['send-anyways', 'edit-held', 'discard-held']) expect(container.querySelector(`[data-verb="${v}"]`), v).toBeNull()
+})
+
+it('any other unreachable recipient says it cannot receive messages', () => {
+  const toby = msg({ prospect_id: 'toby', created_at: '2026-10-08T17:05:11Z', message_text: 'Hey Toby, are you against me sending the plan over?',
+    send_blocked_at: '2026-10-21T16:28:11Z', send_blocked_reason: 'provider_invalid_recipient: LinkedIn 422 on every send incl. Send anyway 2026-10-21; treated as unreachable' })
+  const [t] = threads([toby])
+  const { container } = render(<History t={t} onSendAnyways={() => {}} onDiscardHeld={() => {}} />)
+  expect(container.querySelector(`[data-msg="${toby.id}"] summary`)!.textContent).toMatch(/^Not delivered · can’t receive messages on LinkedIn/)
+  expect(container.querySelector('button[data-verb]')).toBeNull()
+})
+
+it('not connected stays a held send with the invite hint', () => {
+  const m = msg({ prospect_id: 'nc', message_text: 'Hey there', send_blocked_at: '2026-10-21T10:00:00Z', send_blocked_reason: 'no_connection_with_recipient' })
+  const [t] = threads([m])
+  const { container } = render(<History t={t} onSendAnyways={() => {}} onDiscardHeld={() => {}} />)
+  const bubble = container.querySelector(`[data-msg="${m.id}"]`)!
+  expect(bubble.hasAttribute('data-held')).toBe(true)
+  expect(bubble.textContent).toContain('Not connected on LinkedIn: send an invite first.')
+})
