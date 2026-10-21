@@ -292,11 +292,12 @@ export function isHeldSend(m: InboxMessage): boolean {
   return !isInternalConfirmation(m) && !isEngineRetired(m) && !isIntentionalStop(m)
 }
 
-/** The newest held row on a thread, while nothing has been sent after it was held. */
+/** The newest held row on a thread, while we have sent nothing since it was written. Any later send
+ *  means the thread was seen and followed up (Ivan 10-21: show only the holds nobody acted on). */
 export function heldSend(t: Pick<Thread, 'messages'>): InboxMessage | null {
   const held = t.messages.filter(isHeldSend).sort((a, b) => Date.parse(a.send_blocked_at!) - Date.parse(b.send_blocked_at!)).at(-1)
   if (!held) return null
-  const at = Date.parse(held.send_blocked_at!)
+  const at = Math.min(Date.parse(held.created_at), Date.parse(held.send_blocked_at!))
   return t.messages.some(m => m.direction === 'outbound' && m.sent_at && Date.parse(m.sent_at) > at) ? null : held
 }
 

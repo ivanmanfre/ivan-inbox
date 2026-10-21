@@ -1293,6 +1293,12 @@ describe('held sends', () => {
     expect(heldSend({ messages: [older, newer, { ...base, id: 's', sent_at: '2026-07-22T11:00:00Z' }] })).toBeNull()
     expect(heldSend({ messages: [older, newer, { ...base, id: 'i', direction: 'inbound', sent_at: '2026-07-22T11:00:00Z' }] })?.id).toBe('h2')
   })
+  it('a send after the held row was written means we followed up, even if the hold landed later (Ivan 10-21)', () => {
+    const h = held('provider_success_unconfirmed: first bubble absent', { id: 'h', created_at: '2026-10-18T14:34:00Z', send_blocked_at: '2026-10-19T09:00:00Z' })
+    expect(heldSend({ messages: [h] })?.id).toBe('h')
+    expect(heldSend({ messages: [h, { ...base, id: 's', sent_at: '2026-10-18T20:00:00Z' }] })).toBeNull()
+    expect(heldSend({ messages: [h, { ...base, id: 's0', sent_at: '2026-10-18T10:00:00Z' }] })?.id).toBe('h')
+  })
   it('says why in plain words; an unknown code shows as written', () => {
     expect(heldReasonText('arch_market_claim_unratified:Israel')).toBe('It mentions Israel, which is not a confirmed ARCH market.')
     expect(heldReasonText('lint_calendar_proposal_edited')).toMatch(/calendar check/)
