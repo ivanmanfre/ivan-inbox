@@ -11,7 +11,7 @@ import { ReplySourceContent, ReplySourceLine, knownSource } from './ReplySourceS
 // line in its place, no keys, its words folded under it (Ivan 10-21: "I don't want to see it").
 import { canEditHeldDm, canSendRejectedDm } from '../../lib/rejectedDm'
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
-import { canScheduleHeld, dedupeMessages, heldReasonText, heldSend, operatorSentAt, timelineTime, isDraft, isEngineRetired, isHeldSend, isHiddenRetired, isIntentionalStop, isInternalConfirmation, isPendingSend, isUnreachableSend, pendingSendLabel, retiredLabel, sendFailed, sentThenPending, shownTime, messageChannel, stopLabel, unreachableLabel, type InboxMessage, type Thread } from '../../lib/inbox'
+import { canScheduleHeld, dedupeMessages, heldReasonText, heldSend, operatorSentAt, timelineTime, isDraft, isEngineRetired, isHeldSend, isHiddenRetired, isIntentionalStop, isInternalConfirmation, isPendingSend, isStoppedOnPurpose, isUnreachableSend, pendingSendLabel, retiredLabel, sendFailed, sentThenPending, shownTime, messageChannel, stopLabel, unreachableLabel, type InboxMessage, type Thread } from '../../lib/inbox'
 import { label } from '../../lib/labels'
 import { Linkified } from '../ui/Linkified'
 import { warsawDay, warsawDayTime, warsawDayWord, warsawHm } from '../ui/time'
@@ -248,6 +248,8 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
           </Fragment>
         )
         const held = isHeldSend(m)
+        // Stopped on purpose (send audit 2): the quiet line keeps only Discard, never Send anyway.
+        const discardable = (held || isStoppedOnPurpose(m)) && !m.approved_at
         const canEdit = held && !t.spam && !!onEditHeld && canEditHeldDm(m)
         const edit = canEdit && editing?.id === m.id ? editing : null
         const editOff = sending || editBusy
@@ -281,8 +283,8 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
                 <button type="button" className="dm-email-reply dm-held-key" data-verb="held-edit-save" disabled={editOff || !edit.text.trim()} onClick={() => void finishEdit(m, 'save')}>Save</button>
                 {heldLater && canScheduleHeld(m) && <button type="button" className="dm-email-reply dm-held-key" data-verb="held-edit-later" disabled={editOff || !edit.text.trim()} onClick={() => void finishEdit(m, 'later')}>Send later</button>}
                 {onSendAnyways && <button type="button" className="dm-email-reply dm-held-key" data-verb="held-edit-send" disabled={editOff || !edit.text.trim()} onClick={() => void finishEdit(m, 'send')}>Send now</button>}
-              </div> : !t.spam && ((onSendAnyways && canSendRejectedDm(m)) || (held && onDiscardHeld && !m.approved_at) || canEdit) && <div className="dm-rejected-actions">
-                {onDiscardHeld && held && !m.approved_at && <button type="button" className="dm-email-reply dm-discard-held" data-verb="discard-held" disabled={sending} onClick={() => onDiscardHeld(m)}>Discard</button>}
+              </div> : !t.spam && ((onSendAnyways && canSendRejectedDm(m)) || (discardable && onDiscardHeld) || canEdit) && <div className="dm-rejected-actions">
+                {onDiscardHeld && discardable && <button type="button" className="dm-email-reply dm-discard-held" data-verb="discard-held" disabled={sending} onClick={() => onDiscardHeld(m)}>Discard</button>}
                 {canEdit && <button type="button" className="dm-email-reply dm-held-key" data-verb="edit-held" disabled={sending} onClick={() => setEditing({ id: m.id, text: m.message_text ?? '' })}>Edit</button>}
                 {onSendAnyways && canSendRejectedDm(m) && <button type="button" className="dm-email-reply dm-send-anyways" data-verb="send-anyways" disabled={sending} onClick={() => onSendAnyways(m)}>Send anyway</button>}
               </div>}

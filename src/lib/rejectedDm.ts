@@ -10,6 +10,7 @@ export function canSendRejectedDm(m: InboxMessage & { unipile_message_id?: strin
     && !/^(discarded|superseded|scheduled)(?:_|$)/.test(m.send_blocked_reason)
     && !/^native_email_send_failed:/.test(m.send_blocked_reason)
     && !isUnreachableRecipient(m.send_blocked_reason)   // LinkedIn will not deliver to this person: Send anyway only burns a slot (send audit 10-21)
+    && !m.send_blocked_reason.includes('no_connection_with_recipient')   // not connected: the same 422 comes back until an invite is accepted
 }
 
 /** Requeue the original row. The database compares the visible rejection before recording the override. */

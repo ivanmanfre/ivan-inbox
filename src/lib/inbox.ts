@@ -1,4 +1,5 @@
 import { parseEmailCc } from './emailCc'
+import { label } from './labels'
 import { supabase } from './supabase'
 import { bounded } from './noAnswer'
 import { STAGE_LADDER, stageIsOff, stageStep } from '../exp/v2c/stage'
@@ -198,8 +199,46 @@ export function sendFailed(m: InboxMessage): boolean {
 // inmail_failed_*, stale_send_claim:, bad_text:) and stay failures.
 const INTENTIONAL_STOP = /^(routed_to_invite|(?:[a-z]+_)*(?:replied|reply|reaction|reacted)_stop|manual_touch|invite_withdrawn|(?:[a-z]+_)*exclu(?:sion|ded)(?:_[a-z]+)*)(?=$|[:\s])/
 
+// A message we or Ivan stopped ON PURPOSE (disqualified, rejected, a killed revival, a dead thread, "do not send"...).
+// KEEP IN SYNC with public.send_rejected_inbox_draft (live 2026-10-21, send audit 2): that function raises
+// "This message was stopped on purpose" for exactly these prefixes (`~ '^(...)'`) or a reason matching
+// `~* 'do not send'` (it also refuses a blacklisted prospect, which the inbox rows do not carry). The inbox
+// shows these as a quiet "Stopped: ..." line with Discard only: never Held, never a failure, never Send anyway.
+export const STOPPED_ON_PURPOSE_PREFIXES = ['ivan_disqualify', 'ivan_rejected', 'revival_cancelled', 'revival_lane_killed', 'vetting_',
+  'duplicate_already_delivered', 'superseded_war_room', 'stale_convo_closed', 'stale_draft_voided', 'phishing_link', 'cross_tenant_leak',
+  'drafter_echoed', 'model_meta_no_reply', 'wrong_branch', 'replied_stop', 'auto_reply_ooo'] as const
+/** The DB's own pattern, character for character: `send_blocked_reason ~ STOPPED_ON_PURPOSE_SQL`. */
+export const STOPPED_ON_PURPOSE_SQL = `^(${STOPPED_ON_PURPOSE_PREFIXES.join('|')})`
+const STOPPED_ON_PURPOSE = new RegExp(STOPPED_ON_PURPOSE_SQL)
+/** The DB's case-insensitive `~* 'do not send'`. */
+export const DO_NOT_SEND_SQL = 'do not send'
+const DO_NOT_SEND = new RegExp(DO_NOT_SEND_SQL, 'i')
+
+export function isStoppedOnPurposeReason(reason: string | null | undefined): boolean {
+  const r = reason ?? ''
+  return STOPPED_ON_PURPOSE.test(r) || DO_NOT_SEND.test(r)
+}
+
+/** An unsent outbound row stopped on purpose (see STOPPED_ON_PURPOSE_PREFIXES). */
+export function isStoppedOnPurpose(m: Pick<InboxMessage, 'direction' | 'sent_at' | 'send_blocked_reason'>): boolean {
+  return m.direction === 'outbound' && !m.sent_at && isStoppedOnPurposeReason(m.send_blocked_reason)
+}
+
+const STOPPED_WORDS: Record<(typeof STOPPED_ON_PURPOSE_PREFIXES)[number], string> = {
+  ivan_disqualify: 'you disqualified this person', ivan_rejected: 'you rejected this lead', revival_cancelled: 'the revival was cancelled',
+  revival_lane_killed: 'the revival lane was turned off', vetting_: 'the thread was vetted as dead', duplicate_already_delivered: 'it was already delivered',
+  superseded_war_room: 'replaced by another message', stale_convo_closed: 'the conversation was closed', stale_draft_voided: 'the draft was voided',
+  phishing_link: 'a phishing link was found in the thread', cross_tenant_leak: 'it was drafted on the wrong seat', drafter_echoed: 'the draft echoed a LinkedIn notice',
+  model_meta_no_reply: 'no reply was needed', wrong_branch: 'it was drafted for the wrong situation', replied_stop: 'they replied',
+  auto_reply_ooo: 'their message was an out-of-office auto-reply',
+}
+
+// A superseded row in any spelling (superseded_by_*, superseded_awaiting_*, 'superseded: ... rerouted to invite'):
+// something replaced it, nothing failed (send audit 2, Krishna Solanki drew a red "Send failed").
+const SUPERSEDED = /^superseded(?=$|[_:\s])/
+
 export function isIntentionalStopReason(reason: string | null | undefined): boolean {
-  return INTENTIONAL_STOP.test(reason ?? '')
+  return INTENTIONAL_STOP.test(reason ?? '') || SUPERSEDED.test(reason ?? '') || isStoppedOnPurposeReason(reason)
 }
 
 export function isIntentionalStop(m: Pick<InboxMessage, 'direction' | 'sent_at' | 'send_blocked_reason' | 'draft_evidence'>): boolean {
@@ -217,6 +256,10 @@ export function stopLabel(m: Pick<InboxMessage, 'send_blocked_reason'>): string 
   if (r.startsWith('manual_touch')) return 'Not sent: you messaged them yourself'
   if (r.startsWith('invite_withdrawn')) return 'Not sent: invite withdrawn'
   if (/exclu(?:sion|ded)/.test(r)) return 'Not sent: excluded'
+  const kill = STOPPED_ON_PURPOSE_PREFIXES.find(p => r.startsWith(p))
+  if (kill) return `Stopped: ${STOPPED_WORDS[kill]}`
+  if (SUPERSEDED.test(r)) return /invite/i.test(r) ? 'Not sent: sent an invite instead' : 'Not sent: replaced by another message'
+  if (DO_NOT_SEND.test(r)) return 'Stopped: marked do not send'
   return 'Not sent: stopped on purpose'
 }
 
@@ -261,6 +304,16 @@ export function isHiddenRetired(m: InboxMessage): boolean {
   return isEngineRetired(m) && m.send_blocked_reason === 'replied_before_qualifier'
 }
 
+/** Reasons that are never a failed send, judged on the reason alone: replaced, expired, scheduled, an invite
+ *  instead, they replied, excluded, or stopped on purpose. A POSIX regex both Postgres (`~`, the Lanes and send
+ *  log counts in lib/sends) and JS read the same way, so the count and the rows cannot disagree (send audit 2). */
+export const NOT_A_FAILURE_SQL = `^(discarded|superseded|scheduled_in_inbox|scheduled_send_cancelled|stale_draft_expired|stale_convo_closed|model_meta_no_reply|writer_no_reply|replied_before_qualifier|routed_to_invite|manual_touch|invite_withdrawn|([a-z]+_)*(replied|reply|reaction|reacted)_stop|([a-z]+_)*exclu(sion|ded)|${STOPPED_ON_PURPOSE_PREFIXES.join('|')})`
+const NOT_A_FAILURE = new RegExp(NOT_A_FAILURE_SQL)
+export function isNotAFailureReason(reason: string | null | undefined): boolean {
+  const r = reason ?? ''
+  return NOT_A_FAILURE.test(r) || DO_NOT_SEND.test(r)
+}
+
 /** The quiet line an engine-retired draft shows in place of a bubble. */
 export function retiredLabel(m: InboxMessage): string {
   const r = m.send_blocked_reason ?? ''
@@ -302,9 +355,20 @@ export function isHeldSend(m: InboxMessage): boolean {
 export function heldSend(t: Pick<Thread, 'messages'>): InboxMessage | null {
   const held = t.messages.filter(isHeldSend).sort((a, b) => Date.parse(a.send_blocked_at!) - Date.parse(b.send_blocked_at!)).at(-1)
   if (!held) return null
-  const at = Math.min(Date.parse(held.created_at), Date.parse(held.send_blocked_at!))
-  return t.messages.some(m => m.direction === 'outbound' && m.sent_at && Date.parse(m.sent_at) > at) ? null : held
+  // Send audit 2: (a) the same words already went out (a sent row or a manual_mirror of it, e.g. Aurimas Gackas /
+  // Nicole Sumner: delivered, mirrored seconds after the reservation, then held as unconfirmed). (b) Otherwise judge
+  // "sent since" from the last moment it was chosen to go out (written, approved, or a Send anyway / schedule
+  // press), never later than the hold: a send before Ivan approved it is not a follow-up to it (Alicia Yingru WANG
+  // 06aaab91: written 10-11, three sends 10-11/12, approved 10-15, held 10-15 and hidden since).
+  const words = sameWords(held.message_text)
+  const blocked = Date.parse(held.send_blocked_at!)
+  const chosen = [held.created_at, held.approved_at, operatorSentAt(held)?.at].filter(validAt).map(Date.parse)
+  const at = Math.min(blocked, Math.max(...chosen))
+  return t.messages.some(m => m.id !== held.id && m.direction === 'outbound' && m.sent_at
+    && (Date.parse(m.sent_at) > at || (!!words && sameWords(m.message_text) === words && Date.parse(m.sent_at) >= Date.parse(held.created_at) - SAME_WORDS_NEAR_MS))) ? null : held
 }
+const SAME_WORDS_NEAR_MS = 10 * 60_000
+const sameWords = (text: string | null | undefined) => (text ?? '').replace(/\s+/g, ' ').trim().toLowerCase()
 
 /** A held row the existing scheduler (schedule_inbox_dm) takes as it is: only a lint or race hold. A gate
  *  hold (duplicate_in_thread, send_failed_verified...) is refused there, and a paused schedule has its own card. */
@@ -345,16 +409,23 @@ export function heldReasonText(reason: string | null | undefined): string {
   const tail = r.includes(':') ? r.slice(r.indexOf(':') + 1).trim() : ''
   if (r.startsWith('lint_calendar_') || /^calendar_(context_or_)?wording_unverified/.test(r)) return 'The calendar check could not verify the proposed time or wording.'
   if (r.startsWith('arch_market_claim_unratified')) return `It mentions ${tail || 'a market'}, which is not a confirmed ARCH market.`
-  // Ivan 10-21 send audit: the sender will write dispatch_error:<why> for a failure on our side (a guard,
-  // a code error, a reservation) and keep the approval; send_failed_verified said "LinkedIn refused" for
-  // those too. A 422 invalid_recipient is a person LinkedIn will not deliver to: no retry helps.
-  if (r.startsWith('dispatch_error')) return 'Our system failed before reaching LinkedIn. It will retry.'
+  // Send audit 2 (10-21): the sender retries a failure on our side (a guard, a code error, a reservation) twice
+  // without writing a reason; only the 3rd failure writes dispatch_error:<why>, clears the approval and stops.
+  // Nothing retries after that, so the words say so. dispatch_hold:<why> is the same stop before any attempt,
+  // and dm_dispatch:<why> is the send-slot reservation refusing it (the row keeps its approval but is not retried).
+  if (r.startsWith('dispatch_error')) return 'Couldn\u2019t reach LinkedIn after 3 tries. Nothing was sent. Send anyway to try again.'
+  if (r.startsWith('dispatch_hold')) return 'Our system stopped it before it reached LinkedIn. Nothing was sent. Send anyway to try again.'
+  if (r.startsWith('dm_dispatch')) return r.includes('claim_changed')
+    ? 'The send slot changed while it was going out. Nothing was sent. Send anyway to try again.'
+    : 'The send slot was not available. Nothing was sent. Send anyway to try again.'
+  // A deliberate stop (send_rejected_inbox_draft refuses Send anyway on these): plain words, never the code.
+  if (isStoppedOnPurposeReason(r)) return stopLabel({ send_blocked_reason: r })
   if (isUnreachableRecipient(r)) return r.includes('blocked_recipient') ? 'This person blocked messages on LinkedIn.' : 'LinkedIn says this person can\u2019t receive messages.'
   // Not connected yet: fixable, so it stays a held send (Ivan 10-21).
   if (r.includes('no_connection_with_recipient')) return 'Not connected on LinkedIn: send an invite first.'
   if (r.startsWith('send_failed_verified')) return /status code \d{3}|\b[45]\d\d\b/.test(r)
     ? `LinkedIn refused the send${/\b422\b/.test(r) ? ' (error 422)' : ''}. Check LinkedIn before sending again.`
-    : `Our system stopped it before it reached LinkedIn${tail ? ` (${tail.replace(/^(hard error|chat create failed):\s*/, '')})` : ''}.`
+    : `Our system stopped it before it reached LinkedIn${tail ? ` (${tail.replace(/^(hard error|chat create failed):\s*/, '').replace(/_/g, ' ')})` : ''}.`
   if (r.startsWith('inmail_failed_422')) return /limit_exceeded|usage limit/i.test(r) ? 'The InMail limit for this period was reached.' : 'LinkedIn refused the InMail (error 422).'
   if (r.startsWith('provider_success_unconfirmed')) return 'The sender could not confirm it arrived. Check LinkedIn before sending again.'
   if (r.startsWith('accuracy_hold')) return 'The accuracy check found a claim that needs correcting.'
@@ -371,7 +442,19 @@ export function heldReasonText(reason: string | null | undefined): string {
   if (r === 'lint_scan_quality_hold') return 'The scan review found no supported recommendation.'
   if (r.startsWith(LINT_HOLD_PREFIX)) return 'The send check flagged a line.'
   if (r.startsWith(RACE_HOLD_PREFIX)) return 'The thread changed while it was queued.'
-  return r
+  // Send audit 2: codes that reached Ivan raw under a held bubble.
+  if (r === 'wins_operator_review_required') return 'Needs your review before it sends.'
+  if (r.startsWith('not_icp')) return 'Marked as not a fit (outside the ICP).'
+  if (r === 'wins_release_review_withdrawn') return 'The wins review withdrew its release. Review it before sending.'
+  if (r === 'ballot') return 'Held for a decision on this lane or its copy.'
+  if (r === 'audit_request_repair') return 'The audit request needs a fix before it sends.'
+  if (r === 'arch_owner_quote_review') return 'Davorin needs to review the quote first.'
+  if (r === 'followup_structured_hold') return 'The follow-up check held it for review.'
+  // The copy lint's own codes, one or several joined by commas: em_dash, buzzword, opener_*, hedge_*, closer_*.
+  if (/^(em_dash|buzzword|(opener|hedge|closer)_[a-z_]+)(,(em_dash|buzzword|(opener|hedge|closer)_[a-z_]+))*$/.test(r)) return 'The language check flagged a line.'
+  // An unknown code never reaches the screen bare: the code in words (without a trailing date), then its note.
+  const code = (r.includes(':') ? r.slice(0, r.indexOf(':')) : r).replace(/_?\d{4}-\d{2}-\d{2}$/, '')
+  return code ? `${label(code)}${tail ? `: ${tail}` : ''}` : r
 }
 
 // Why a recoverable hold came back to the inbox. The sender used to say this

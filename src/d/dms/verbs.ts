@@ -6,7 +6,7 @@ import { parseEmailCc } from '../../lib/emailCc'
 import { createElement, useMemo } from 'react'
 import {
   draftSendVia, approveDraft, composeReply, deleteThread, discardLegs, dismissConfirmation, draftLegs, escalateDraftToClient,
-  emailSenderLabel, heldReasonText, isFollowUp, isHeldSend, isSwishdmReply, isSwishdmRow, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft, swishdmPageUrl,
+  emailSenderLabel, heldReasonText, isFollowUp, isHeldSend, isStoppedOnPurpose, isSwishdmReply, isSwishdmRow, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft, swishdmPageUrl,
   saveDraftEmail, saveDraftEmailCc, setDraftSendVia, saveDraftText, snoozeDraft, threadChatId, unsnoozeDraft, REPLY_MYSELF,
   findLandedReply, readSendState, type DraftSendVia, type InboxMessage, type SendState, type Thread,
 } from '../../lib/inbox'
@@ -80,10 +80,10 @@ export function useDmVerbs(ctx: VerbCtx) {
         ctx.refresh()
         return
       }
-      const later = /^dispatch_error/.test(r.send_blocked_reason ?? '')
+      // Every hold that reaches here is final: nothing retries it (dispatch_error is written on the 3rd and last try).
       toast.show({ tone: 'failed', ms: 15_000,
-        message: `Not sent${later ? ' yet' : ''} to ${t.prospect_name}: ${heldReasonText(r.send_blocked_reason)}`,
-        sub: later ? 'Your approval is kept.' : 'It was held after you pressed Send. Your text is kept: open the thread to edit it or send anyway.' })
+        message: `Not sent to ${t.prospect_name}: ${heldReasonText(r.send_blocked_reason)}`,
+        sub: 'It was held after you pressed Send. Your text is kept: open the thread to edit it or send anyway.' })
       ctx.refresh()
     })
 
@@ -187,7 +187,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       // Jonathan's seat is sent only by the SwishDM senders: no override, no "about 2 minutes" promise.
       if (isSwishdmRow(m) || t.client_id === 'swishdm') { fail('SwishDM messages are sent only by the SwishDM senders. Nothing was sent.'); return }
       const ok = await confirm({ title: `Send anyway to ${t.prospect_name}?`,
-        message: createElement('div', null, createElement('p', null, isHeldSend(m) ? `Held: ${heldReasonText(m.send_blocked_reason)}` : `Rejected: ${m.send_blocked_reason?.replaceAll('_', ' ')}.`), createElement('p', null, m.message_text), createElement('p', null, 'Your approval overrides the copy rejection. Delivery and account checks still apply.')),
+        message: createElement('div', null, createElement('p', null, `${isHeldSend(m) ? 'Held' : 'Rejected'}: ${heldReasonText(m.send_blocked_reason)}`), createElement('p', null, m.message_text), createElement('p', null, 'Your approval overrides the copy rejection. Delivery and account checks still apply.')),
         confirmText: 'Send anyway', verb: 'confirm-send-anyways' })
       if (!ok) return
       let went: boolean | null = true
@@ -224,7 +224,8 @@ export function useDmVerbs(ctx: VerbCtx) {
     /** Discard one held message from the timeline (the same guarded discard as a draft: unsent and
      *  unapproved only). Undo brings it back as a draft. */
     async function discardHeld(t: Thread, m: InboxMessage): Promise<void> {
-      const ok = await confirm({ title: `Discard the held message to ${t.prospect_name}?`,
+      const stopped = isStoppedOnPurpose(m)
+      const ok = await confirm({ title: `Discard the ${stopped ? 'stopped' : 'held'} message to ${t.prospect_name}?`,
         message: 'It will not be sent. It stays under Discarded for 3 days.', confirmText: 'Discard', verb: 'confirm-discard-held' })
       if (!ok) return
       let failed
@@ -232,8 +233,9 @@ export function useDmVerbs(ctx: VerbCtx) {
       if (failed.length) { fail(failed.map(legFailureText).join(' ')); ctx.refresh(); return }
       ctx.patch([m.id], { send_blocked_reason: 'discarded_in_inbox', send_blocked_at: new Date().toISOString(), discard_mode: null })
       ctx.refresh()
-      toast.show({ message: `Discarded the held message to ${t.prospect_name}.`, sub: 'It stays under Discarded for 3 days.',
-        action: { label: 'Undo', verb: 'undo', run: () => { void undoDiscard([m]) } } })
+      // A message stopped on purpose is never brought back as a sendable draft by Undo.
+      toast.show({ message: `Discarded the ${stopped ? 'stopped' : 'held'} message to ${t.prospect_name}.`, sub: 'It stays under Discarded for 3 days.',
+        action: stopped ? undefined : { label: 'Undo', verb: 'undo', run: () => { void undoDiscard([m]) } } })
     }
 
     async function discard(t: Thread): Promise<string | null> {

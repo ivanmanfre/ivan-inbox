@@ -610,9 +610,11 @@ describe('after Send, a hold that comes back says so', () => {
     await screen.findByText('Queued to Diane.')
     const id = t.draft!.id
     vi.mocked(lib.readSendState).mockResolvedValueOnce([held(id, '', { send_blocked_reason: null, sent_at: '2026-09-27T09:16:04Z' })])
-      .mockResolvedValueOnce([held(id, 'dispatch_error:riseReferralInmail is not defined', { approved_at: '2026-09-27T09:15:10Z' })])
+      // The sender writes dispatch_error only on its 3rd and last try, and clears the approval there.
+      .mockResolvedValueOnce([held(id, 'dispatch_error:riseReferralInmail is not defined', { approved_at: null })])
     await vi.advanceTimersByTimeAsync(WATCH_EVERY_MS * 2)
-    await screen.findByText('Not sent yet to Diane: Our system failed before reaching LinkedIn. It will retry.')
+    await screen.findByText('Not sent to Diane: Couldn\u2019t reach LinkedIn after 3 tries. Nothing was sent. Send anyway to try again.')
+    expect(screen.queryByText(/approval is kept/i)).toBeNull()
 
     cleanup(); stopWatching()
     const [u] = threads(drafted('w3', { prospect_name: 'Nina', unipile_chat_id: 'chat3' }))

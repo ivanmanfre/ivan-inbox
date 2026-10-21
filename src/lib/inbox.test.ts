@@ -1304,17 +1304,37 @@ describe('held sends', () => {
     expect(heldReasonText('lint_calendar_proposal_edited')).toMatch(/calendar check/)
     expect(heldReasonText('send_failed_verified: hard error: Request failed with status code 422')).toBe('LinkedIn refused the send (error 422). Check LinkedIn before sending again.')
     expect(heldReasonText('inmail_failed_422: {"type":"errors/limit_exceeded"}')).toBe('The InMail limit for this period was reached.')
-    expect(heldReasonText('wins_operator_review_required')).toBe('wins_operator_review_required')
+    expect(heldReasonText('wins_operator_review_required')).toBe('Needs your review before it sends.')
+  })
+  // Send audit 2: no raw code reaches Ivan under a held bubble.
+  it('gives every live held code plain words, and humanises an unknown one', () => {
+    const plain: Array<[string, RegExp]> = [
+      ['wins_release_review_withdrawn', /wins review withdrew/], ['ballot', /decision/], ['audit_request_repair', /audit request/],
+      ['arch_owner_quote_review', /Davorin/], ['followup_structured_hold', /follow-up check/],
+      ['em_dash', /language check/], ['buzzword', /language check/], ['opener_quick_context', /language check/],
+      ['em_dash,opener_been_following,hedge_resonate', /language check/], ['em_dash,closer_would_love', /language check/],
+      ['dispatch_hold: reservation_unavailable', /Nothing was sent\. Send anyway to try again\./],
+      ['dm_dispatch:claim_changed', /^The send slot changed while it was going out\. Nothing was sent\./],
+      ['dm_dispatch:daily_cap_reached', /^The send slot was not available\. Nothing was sent\./],
+    ]
+    for (const [r, words] of plain) {
+      expect(heldReasonText(r), r).toMatch(words)
+      expect(heldReasonText(r), r).not.toContain('_')
+    }
+    expect(heldReasonText('some_new_gate_code')).toBe('Some new gate code')
+    expect(heldReasonText('price_led_test_2026-10-21: needs a re-test on its home ground')).toBe('Price led test: needs a re-test on its home ground')
   })
   // Send audit 10-21: send_failed_verified said "LinkedIn refused" for failures that never reached LinkedIn.
   it('names our own failure, a dead recipient and a real LinkedIn refusal apart', () => {
-    expect(heldReasonText('dispatch_error:riseReferralInmail is not defined')).toBe('Our system failed before reaching LinkedIn. It will retry.')
-    expect(heldReasonText('dispatch_error: prior_reservation_requires_reconciliation')).toBe('Our system failed before reaching LinkedIn. It will retry.')
+    // dispatch_error is written only on the 3rd and final failure, with the approval cleared: nothing retries it.
+    expect(heldReasonText('dispatch_error:riseReferralInmail is not defined')).toBe('Couldn\u2019t reach LinkedIn after 3 tries. Nothing was sent. Send anyway to try again.')
+    expect(heldReasonText('dispatch_error: prior_reservation_requires_reconciliation')).toBe('Couldn\u2019t reach LinkedIn after 3 tries. Nothing was sent. Send anyway to try again.')
+    expect(heldReasonText('dispatch_error:x')).not.toMatch(/will retry|approval/i)
     expect(heldReasonText('provider_invalid_recipient: 422')).toBe('LinkedIn says this person can\u2019t receive messages.')
     expect(heldReasonText('send_failed_verified: hard error: 422 {"type":"errors/invalid_recipient"}')).toBe('LinkedIn says this person can\u2019t receive messages.')
     expect(heldReasonText('send_failed_verified: chat create failed: Request failed with status code 422')).toBe('LinkedIn refused the send (error 422). Check LinkedIn before sending again.')
     expect(heldReasonText('send_failed_verified: hard error: Request failed with status code 404')).toBe('LinkedIn refused the send. Check LinkedIn before sending again.')
-    expect(heldReasonText('send_failed_verified: hard error: conversation_agent_owned_or_unresolved')).toBe('Our system stopped it before it reached LinkedIn (conversation_agent_owned_or_unresolved).')
+    expect(heldReasonText('send_failed_verified: hard error: conversation_agent_owned_or_unresolved')).toBe('Our system stopped it before it reached LinkedIn (conversation agent owned or unresolved).')
     expect(isUnreachableRecipient('provider_invalid_recipient')).toBe(true)
     expect(isUnreachableRecipient('inmail_failed_422: {"type":"errors/invalid_recipient"}')).toBe(true)
     for (const r of ['send_failed_verified: hard error: Request failed with status code 422', 'dispatch_error:x', null]) expect(isUnreachableRecipient(r), String(r)).toBe(false)
