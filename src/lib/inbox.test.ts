@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { offersReplyMyself, isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, browseOrder, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISMISS_HOLD_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, missingManualGuardMeansPreMigration, isEngineRetired, isHiddenRetired, retiredLabel, holdReason, isSenderMirrorEmail, draftLegs, isOwedInbound, threadOrder, DELETED_REASON, type InboxMessage, type Status, type DraftGuard } from './inbox'
+import { offersReplyMyself, isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, browseOrder, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISMISS_HOLD_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, isHeldSend, heldSend, heldReasonText, missingManualGuardMeansPreMigration, isEngineRetired, isHiddenRetired, retiredLabel, holdReason, isSenderMirrorEmail, draftLegs, isOwedInbound, threadOrder, DELETED_REASON, type InboxMessage, type Status, type DraftGuard } from './inbox'
 
 // inbox.ts:191 gates needsAnswer on a 14-day wall-clock staleness window
 // (STALE_DAYS), measured against Date.now() by default -- and most callers
@@ -1262,5 +1262,42 @@ describe("decision 12: Discard, I'll reply myself", () => {
   it('is offered on a reply draft to an owed message, not on a follow-up', () => {
     const t = groupThreads([m('a', 'inbound', '2026-09-25T10:00:00Z'), m('d', 'outbound', '2026-09-25T11:00:00Z', { sent_at: null })], new Set(), now)[0]
     expect(offersReplyMyself(t)).toBe(true)
+  })
+})
+
+// Ivan 2026-10-21 (Barak Zuman): a message a gate held is never invisible.
+describe('held sends', () => {
+  const held = (reason: string, extra: Partial<InboxMessage> = {}): InboxMessage => ({ ...base, message_text: 'Coffee?', send_blocked_at: '2026-07-22T11:00:00Z', send_blocked_reason: reason, ...extra })
+  it('a gate reason on an unsent row with words is a hold', () => {
+    for (const r of ['arch_market_claim_unratified:Israel', 'lint_calendar_proposal_edited', 'send_failed_verified: hard error: 422', 'inmail_failed_422: {}', 'calendar_context_or_wording_unverified',
+      'accuracy_hold_2026-10-19: x', 'duplicate_in_thread', 'rise_followup_repeated_or_unwarranted', 'arch_qualification_review', 'followup_prospect_held', 'arch_conversation_owner_only',
+      'provider_invalid_recipient: x', 'geo_gate_v2:blocked:pakistan', 'provider_success_unconfirmed: x', 'post_approval_race:inbound', 'some_new_gate_code']) {
+      expect(isHeldSend(held(r)), r).toBe(true)
+    }
+  })
+  it('discards, supersedes, schedules, invites instead, internal holds, retirements, stops, review holds and empty rows are not holds', () => {
+    for (const r of ['discarded_in_inbox', 'discarded_repeat_ask_bump', 'routed_to_invite: x', 'owner_confirmation_superseded', 'superseded', 'superseded_by_redraft', 'superseded:scan',
+      'scheduled_in_inbox', 'owner_confirmation', 'reply_retry_pending', 'stale_draft_expired_3d', 'replied_stop', 'manual_touch']) {
+      expect(isHeldSend(held(r)), r).toBe(false)
+    }
+    expect(isHeldSend(held('awaiting_client_review', { client_id: 'swishdm', ai_model: 'swishdm_reply_writer_v1' }))).toBe(false)
+    expect(isHeldSend(held('duplicate_in_thread', { message_text: '  ' }))).toBe(false)
+    expect(isHeldSend(held('duplicate_in_thread', { sent_at: '2026-07-22T12:00:00Z' }))).toBe(false)
+    expect(isHeldSend(held('duplicate_in_thread', { direction: 'inbound' }))).toBe(false)
+    expect(isHeldSend(held('duplicate_in_thread', { send_blocked_at: null }))).toBe(false)
+  })
+  it('the thread hold is the newest held row, until something is sent after it', () => {
+    const older = held('duplicate_in_thread', { id: 'h1', send_blocked_at: '2026-07-21T10:00:00Z' })
+    const newer = held('arch_market_claim_unratified:Israel', { id: 'h2', send_blocked_at: '2026-07-22T10:00:00Z' })
+    expect(heldSend({ messages: [older, newer] })?.id).toBe('h2')
+    expect(heldSend({ messages: [older, newer, { ...base, id: 's', sent_at: '2026-07-22T11:00:00Z' }] })).toBeNull()
+    expect(heldSend({ messages: [older, newer, { ...base, id: 'i', direction: 'inbound', sent_at: '2026-07-22T11:00:00Z' }] })?.id).toBe('h2')
+  })
+  it('says why in plain words; an unknown code shows as written', () => {
+    expect(heldReasonText('arch_market_claim_unratified:Israel')).toBe('It mentions Israel, which is not a confirmed ARCH market.')
+    expect(heldReasonText('lint_calendar_proposal_edited')).toMatch(/calendar check/)
+    expect(heldReasonText('send_failed_verified: hard error: Request failed with status code 422')).toBe('LinkedIn refused the send (error 422). Check LinkedIn before sending again.')
+    expect(heldReasonText('inmail_failed_422: {"type":"errors/limit_exceeded"}')).toBe('The InMail limit for this period was reached.')
+    expect(heldReasonText('wins_operator_review_required')).toBe('wins_operator_review_required')
   })
 })

@@ -309,7 +309,7 @@ describe('send rejected draft anyways', () => {
   it('shows the rejection, confirms the exact copy, and queues only that original row', async () => {
     const m = msg({ prospect_id: 'blocked', client_id: 'arch', message_text: 'Coffee in Tel Aviv?', ai_model: 'arch_telaviv_trip_v1', send_blocked_at: '2026-09-26T11:00:00Z', send_blocked_reason: 'arch_market_claim_unratified:Israel' })
     const [t] = threads([m]); mount(t)
-    fireEvent.click(screen.getByRole('button', { name: 'Send anyways' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send anyway' }))
     expect(sendRejectedDm).not.toHaveBeenCalled()
     expect(screen.getAllByText('Coffee in Tel Aviv?').length).toBeGreaterThan(1)
     fireEvent.click(key('confirm-send-anyways'))
@@ -317,10 +317,41 @@ describe('send rejected draft anyways', () => {
     expect(lib.composeReply).not.toHaveBeenCalled()
     expect(ctx.refresh).toHaveBeenCalled()
   })
+  // Ivan 10-21 (Barak Zuman): his own approved reply was held, a newer retry hold pushed it out of the
+  // draft pane, and it vanished. It now sits in the timeline as held, with Send anyway and Discard.
+  it('a held reply pushed out of the pane by a newer retry hold is a held bubble with both actions', async () => {
+    const pid = 'barak'
+    const held = msg({ prospect_id: pid, client_id: 'arch', ai_model: 'arch_reply_draft_v2', created_at: '2026-09-26T11:17:52Z', message_text: "All good! Just let me know which day you're in Tel Aviv",
+      send_blocked_at: '2026-09-26T11:28:42Z', send_blocked_reason: 'lint_calendar_proposal_edited' })
+    const retry = msg({ prospect_id: pid, client_id: 'arch', message_text: '', created_at: '2026-09-26T12:07:43Z', send_blocked_at: '2026-09-26T12:07:43Z', send_blocked_reason: 'reply_retry_pending' })
+    const [t] = threads([msg({ prospect_id: pid, client_id: 'arch', direction: 'inbound', sent_at: '2026-09-26T10:24:08Z', message_text: "No I won't be there :/" }), held, retry])
+    expect(t.draft).toBeNull()
+    mount(t)
+    const bubble = document.querySelector(`[data-msg="${held.id}"]`)!
+    expect(bubble.hasAttribute('data-held')).toBe(true)
+    expect(bubble.textContent).toContain('Held, not sent')
+    expect(bubble.textContent).toContain('The calendar check could not verify the proposed time or wording.')
+    fireEvent.click(bubble.querySelector('[data-verb="discard-held"]')!)
+    expect(lib.discardLegs).not.toHaveBeenCalled()
+    fireEvent.click(await waitFor(() => key('confirm-discard-held')))
+    await waitFor(() => expect(lib.discardLegs).toHaveBeenCalledWith([held]))
+    expect(ctx.patch).toHaveBeenCalledWith([held.id], expect.objectContaining({ send_blocked_reason: 'discarded_in_inbox' }))
+    fireEvent.click(bubble.querySelector('[data-verb="send-anyways"]')!)
+    fireEvent.click(await waitFor(() => key('confirm-send-anyways')))
+    await waitFor(() => expect(sendRejectedDm).toHaveBeenCalledWith(held, null))
+    expect(lib.approveDraft).not.toHaveBeenCalled()
+  })
+  it('an approved held row offers no Discard (the guarded discard refuses approved rows)', () => {
+    const m = msg({ prospect_id: 'geo', client_id: 'arch', message_text: 'Hi Adnan', approved_at: '2026-09-26T10:00:00Z', send_blocked_at: '2026-09-26T11:00:00Z', send_blocked_reason: 'geo_gate_v2:blocked:pakistan' })
+    const [t] = threads([m]); mount(t)
+    expect(screen.getByText('Held, not sent')).toBeTruthy()
+    expect(key('discard-held')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Send anyway' })).toBeTruthy()
+  })
   it('offers the same override for a lint rejection still in the editor', () => {
     const [t] = threads([msg({ prospect_id: 'lint', send_blocked_at: '2026-09-26T11:00:00Z', send_blocked_reason: 'lint_unbacked_commitment' })])
     mount(t)
-    expect(screen.getByRole('button', { name: 'Send anyways' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Send anyway' })).toBeTruthy()
   })
 })
 
@@ -346,7 +377,7 @@ describe('SwishDM threads', () => {
   it('a failed SwishDM send offers no Send anyways and never promises a two-minute send', () => {
     const m = msg({ prospect_id: 'swf', client_id: 'swishdm', message_text: 'DM copy', approved_at: '2026-09-26T10:00:00Z', send_blocked_at: '2026-09-26T11:00:00Z', send_blocked_reason: 'send_failed_429: check LinkedIn before retrying' })
     const [t] = threads([m]); mount(t)
-    expect(screen.queryByRole('button', { name: 'Send anyways' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Send anyway' })).toBeNull()
     expect(screen.queryByText(/about 2 minutes/)).toBeNull()
   })
 })

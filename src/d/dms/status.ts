@@ -1,15 +1,16 @@
 // All conversations (Ivan 09-27: "below everything... I want to see the full logs, each DM
 // conversation, collapsed, but I want to be able to open it"). Every conversation on the seat,
 // newest activity first, with ONE short status word from today's rules (never re-judged here).
-import { eventTime, isAutoReplyThread, isOlderOwed, isSettledBySolve, threadBucket, type Thread } from '../../lib/inbox'
+import { eventTime, heldSend, isAutoReplyThread, isOlderOwed, isSettledBySolve, threadBucket, type Thread } from '../../lib/inbox'
 import { lastDiscard, owedSince } from './model'
 import { dayMonth } from './threadRows'
 
-export type StatusKind = 'needs' | 'later' | 'older' | 'solved' | 'discarded' | 'auto' | 'replied' | 'waiting'
+export type StatusKind = 'needs' | 'held' | 'later' | 'older' | 'solved' | 'discarded' | 'auto' | 'replied' | 'waiting'
 export type Status = { kind: StatusKind; word: string }
 
 export function statusOf(t: Thread, now: number = Date.now(), datedAt: string | null = null): Status {
   if (threadBucket(t, now) !== 'waiting') return { kind: 'needs', word: 'needs you' }
+  if (heldSend(t)) return { kind: 'held', word: 'held, not sent' }
   const back = t.draftSnoozedUntil ?? datedAt
   if (back) return { kind: 'later', word: `later · ${dayMonth(back)}` }
   if (isOlderOwed(t, now)) return { kind: 'older', word: 'older' }

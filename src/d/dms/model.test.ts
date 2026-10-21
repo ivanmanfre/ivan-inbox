@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { DISCARD_REASON } from '../../lib/inbox'
 import { NOW, drafted, iso, msg, owedNoDraft, threads, waiting } from './fixtures'
-import { firstLine, laneChip, needsCount, outByDay, replied7d, rowTags, seatView } from './model'
+import { firstLine, heldItems, laneChip, needsCount, outByDay, replied7d, rowTags, seatView } from './model'
+import { statusOf } from './status'
 import { companyStopLine, inviteArmLine, routeLine } from './nextLine'
 
 const H = 3_600_000
@@ -115,4 +116,32 @@ describe('coordinator lines', () => {
 
 it('firstLine takes the first bubble', () => {
   expect(firstLine('Hey Max\n---\nsecond')).toBe('Hey Max')
+})
+
+// Ivan 2026-10-21: ~25 leads sat on a held message nobody could see. The list says Held.
+describe('held sends in the list', () => {
+  const held = (pid: string, hoursAgo: number, extra = {}) => [
+    msg({ prospect_id: pid, client_id: 'arch', sent_at: iso((hoursAgo + 48) * H), created_at: iso((hoursAgo + 48) * H), message_text: 'Hey, first touch' }),
+    msg({ prospect_id: pid, client_id: 'arch', prospect_stage: 'dm_sent', created_at: iso(hoursAgo * H), message_text: 'Coffee in Tel Aviv?',
+      send_blocked_at: iso(hoursAgo * H), send_blocked_reason: 'arch_market_claim_unratified:Israel', ...extra }),
+  ]
+  it('lists every seat thread whose newest outbound is held, newest hold first, older than 30 days folded apart', () => {
+    const ts = threads([...held('a', 5), ...held('b', 2), ...held('old', 40 * 24)])
+    const { recent, older } = heldItems(ts, new Set(), NOW)
+    expect(recent.map(i => i.t.prospect_id)).toEqual(['b', 'a'])
+    expect(older.map(i => i.t.prospect_id)).toEqual(['old'])
+  })
+  it('skips spam, closed people, rows already listed elsewhere, and a hold followed by a real send', () => {
+    const sentAfter = [...held('sent', 10), msg({ prospect_id: 'sent', client_id: 'arch', sent_at: iso(1 * H), created_at: iso(1 * H), message_text: 'Went out' })]
+    const ts = threads([...held('closed', 3).map(m => ({ ...m, prospect_stage: 'archived' })), ...held('skip', 3), ...sentAfter,
+      ...held('spam', 3).map(m => ({ ...m, prospect_skip_reason: 'inbound_vendor_pitch' })), ...held('keep', 3)])
+    expect(heldItems(ts, new Set(['skip']), NOW).recent.map(i => i.t.prospect_id)).toEqual(['keep'])
+  })
+  it('tags the row Held and says "held, not sent" in All conversations', () => {
+    const [t] = threads(held('tag', 3))
+    expect(rowTags(t)[0]).toEqual({ text: 'Held', kind: 'held' })
+    expect(statusOf(t, NOW).word).toBe('held, not sent')
+    const [plain] = threads(waiting('plain', {}))
+    expect(rowTags(plain).some(x => x.kind === 'held')).toBe(false)
+  })
 })

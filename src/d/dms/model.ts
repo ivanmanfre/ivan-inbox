@@ -2,7 +2,7 @@
 // (threadBucket, isOlderOwed, isAutoReplyThread, threadOrder, isDiscarded,
 // isOwedInbound, isConversation), applied per seat. Nothing is re-judged here.
 import {
-  channelFamilies, eventTime, isAutoReplyThread, isConversation, isDiscarded, isOlderOwed, isOwedInbound,
+  CLOSED_STAGES, channelFamilies, eventTime, heldSend, isAutoReplyThread, isConversation, isDiscarded, isOlderOwed, isOwedInbound,
   isLeadMagnet, messageChannel, threadBucket, threadKind, threadOrder,
   type InboxMessage, type Thread,
 } from '../../lib/inbox'
@@ -103,6 +103,24 @@ export function needsCount(v: SeatView): number {
   return v.owner.length + v.drafted.length + v.nodraft.length + v.emailOwed.length
 }
 
+export type HeldItem = { t: Thread; m: InboxMessage }
+
+/** The Held list (Ivan 10-21: ~25 leads parked on a held message nobody could see): every thread on
+ *  the seat whose newest outbound a gate held, newest hold first, conversation or not. Held in the
+ *  last 30 days is `recent`; older holds are `older` (listed folded, never dropped). Not listed: spam,
+ *  a closed person, and the ids in `skip` (rows another list already shows with the Held tag). */
+export function heldItems(threads: readonly Thread[], skip: ReadonlySet<string> = new Set(), now: number = Date.now()): { recent: HeldItem[]; older: HeldItem[] } {
+  const all: HeldItem[] = []
+  for (const t of threads) {
+    if (t.spam || skip.has(t.prospect_id) || CLOSED_STAGES.has(t.stage)) continue
+    const m = heldSend(t)
+    if (m) all.push({ t, m })
+  }
+  all.sort((a, b) => Date.parse(b.m.send_blocked_at!) - Date.parse(a.m.send_blocked_at!))
+  const recent = all.filter(i => now - Date.parse(i.m.send_blocked_at!) <= 30 * DAY)
+  return { recent, older: all.slice(recent.length) }
+}
+
 /** When the wait began on an owed thread (the newest owed inbound), for the lime age. */
 export function owedSince(t: Thread): string | null {
   const m = t.messages.filter(x => x.direction === 'inbound' && isOwedInbound(x, t.needsManualReply)).at(-1)
@@ -164,11 +182,13 @@ export function laneChip(t: Pick<Thread, 'lane' | 'client_id' | 'campaignLane' |
   return fallback ? { label: fallback, closed: false } : null
 }
 
-export type RowTag = { text: string; kind: 'lane' | 'off' | 'route' | 'ch' | 're' | 'nd' }
+export type RowTag = { text: string; kind: 'lane' | 'off' | 'route' | 'ch' | 're' | 'nd' | 'held' }
 
 /** The mono tags on a list row, in the mock's order. */
 export function rowTags(t: Thread, opts: { nodraft?: boolean } = {}): RowTag[] {
   const out: RowTag[] = []
+  // The newest outbound was held by a gate and never sent (Ivan 10-21): say so on every row of the thread.
+  if (heldSend(t)) out.push({ text: 'Held', kind: 'held' })
   if (opts.nodraft) out.push({ text: 'No draft', kind: 'nd' })
   const lane = laneChip(t)
   if (lane?.label) out.push({ text: lane.closed ? `${lane.label} · closed` : lane.label, kind: lane.closed ? 'off' : 'lane' })

@@ -5,10 +5,11 @@ import { ReplySourceContent, ReplySourceLine, knownSource } from './ReplySourceS
 // Every message is shown whole with its links live (today's Linkified), a multi-bubble reply split
 // the way LinkedIn delivered it, "To <email>" on a sent email, "Not accepted yet" on a pending
 // invite note. Older messages sit behind one "N earlier" tap.
-// Drafts, internal questions and discarded rows are not history (they live in the pane below).
+// Drafts, internal questions and discarded rows are not history (they live in the pane below). A held
+// message is: "Held, not sent", why, and Send anyway / Discard, in its place on the timeline.
 import { canSendRejectedDm } from '../../lib/rejectedDm'
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
-import { dedupeMessages, eventTime, isDraft, isEngineRetired, isHiddenRetired, isIntentionalStop, isInternalConfirmation, isPendingSend, pendingSendLabel, retiredLabel, sendFailed, sentThenPending, shownTime, messageChannel, stopLabel, type InboxMessage, type Thread } from '../../lib/inbox'
+import { dedupeMessages, eventTime, heldReasonText, heldSend, isDraft, isEngineRetired, isHeldSend, isHiddenRetired, isIntentionalStop, isInternalConfirmation, isPendingSend, pendingSendLabel, retiredLabel, sendFailed, sentThenPending, shownTime, messageChannel, stopLabel, type InboxMessage, type Thread } from '../../lib/inbox'
 import { label } from '../../lib/labels'
 import { Linkified } from '../ui/Linkified'
 import { warsawDay, warsawDayWord, warsawHm } from '../ui/time'
@@ -28,6 +29,8 @@ export function kindPill(m: InboxMessage): string | null {
 
 export function statusPill(m: InboxMessage, stage: string): { text: string; fail: boolean } | null {
   if (m.direction !== 'outbound') return null
+  // A gate held it (Ivan 10-21, Barak): it was never sent and is waiting on him, never "Send failed".
+  if (isHeldSend(m)) return { text: 'Held, not sent', fail: true }
   if (sendFailed(m)) return { text: `Send failed: ${label(m.send_blocked_reason)}`, fail: true }
   if (isEngineRetired(m)) return { text: retiredLabel(m), fail: false }
   // Not sent on purpose (an invite went instead, they replied, excluded...): muted, never a failure.
@@ -57,8 +60,11 @@ export function emailAddrLine(m: InboxMessage): string | null {
 }
 
 export function historyRows(t: Thread): InboxMessage[] {
+  // A held row sits in its timeline place, unless it is the draft open in the pane below (Ivan 10-21:
+  // a lint-held reply pushed out of the pane by a newer hold or draft used to vanish from both).
+  const pane = new Set([t.draft?.id, t.companionDraft?.id])
   // Sent items in true send order, then every pending send (waiting for an accept, queued) after them.
-  return sentThenPending(dedupeMessages(t.messages).filter(m => !isDraft(m) && !isInternalConfirmation(m) && !isHiddenRetired(m) && !isEngineRetired(m) && m.send_blocked_reason !== 'discarded_in_inbox'
+  return sentThenPending(dedupeMessages(t.messages).filter(m => isHeldSend(m) ? !pane.has(m.id) : !isDraft(m) && !isInternalConfirmation(m) && !isHiddenRetired(m) && !isEngineRetired(m) && m.send_blocked_reason !== 'discarded_in_inbox'
     && (m.direction === 'inbound' || m.sent_at || m.approved_at || sendFailed(m) || isEngineRetired(m) || isIntentionalStop(m))))
 }
 
@@ -73,7 +79,7 @@ export function oursLabel(t: Pick<Thread, 'client_id'>): string {
  *  theirs on the left in grey with their first name on the first bubble of a run, ours on the right
  *  tinted with "You" (or Mattan / Davorin), a day line between days, and each bubble's channel,
  *  status and time underneath. The All conversations log reuses it as is. */
-type HistoryProps = { onSendAnyways?: (m: InboxMessage) => void; sending?: boolean; t: Thread; cap?: number; engagements?: readonly CameBackSignal[] | null; now?: number; onReplyEmail?: () => void; onForwardEmail?: (m: InboxMessage) => void
+type HistoryProps = { onSendAnyways?: (m: InboxMessage) => void; onDiscardHeld?: (m: InboxMessage) => void; sending?: boolean; t: Thread; cap?: number; engagements?: readonly CameBackSignal[] | null; now?: number; onReplyEmail?: () => void; onForwardEmail?: (m: InboxMessage) => void
   /** Brief 4: meta once per run (status, reaction, email and a channel change always), arrivals grow from their tail. */
   v4?: boolean }
 
@@ -100,7 +106,7 @@ function EngagementLine({ s, owner }: { s: CameBackSignal; owner: string }) {
   )
 }
 
-function HistoryRead({ onSendAnyways, sending, t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail, retry, v4 = false, engagements }: HistoryProps & { retry: () => void }) {
+function HistoryRead({ onSendAnyways, onDiscardHeld, sending, t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail, retry, v4 = false, engagements }: HistoryProps & { retry: () => void }) {
   const source = useReplySource({ kind: 'operator', clientId: t.client_id ?? 'ivan' }, t.prospect_id, true)
   const [all, setAll] = useState(false)
   // Above the empty return (09-09 rule). Which bubbles were already on screen for this thread, and
@@ -114,7 +120,11 @@ function HistoryRead({ onSendAnyways, sending, t, cap = 6, now = Date.now(), onR
     for (const id of idsKey.split(',')) s.ids.add(id)
   }, [t.prospect_id, idsKey])
   const lastEmail = rows.filter(m => m.direction === 'inbound' && messageChannel(m) === 'email').at(-1)?.id
-  const shown = all ? rows : rows.slice(-cap)
+  // The fold never hides the thread's open hold: the window starts at it when it is older.
+  const openHeld = heldSend(t)
+  const heldAt = openHeld ? rows.findIndex(m => m.id === openHeld.id) : -1
+  const start = Math.max(0, rows.length - cap)
+  const shown = all ? rows : rows.slice(heldAt >= 0 && heldAt < start ? heldAt : start)
   const first = t.prospect_name.split(' ')[0] || t.prospect_name
   const ours = oursLabel(t)
   const owner = seatOf(t.client_id) === 'risedtc' || seatOf(t.client_id) === 'arch' ? `${ours}'s` : 'your'
@@ -197,12 +207,13 @@ function HistoryRead({ onSendAnyways, sending, t, cap = 6, now = Date.now(), onR
         if (showMeta && showKind) runShown = kind
         if (fresh && !s0.ids.has(m.id)) s0.arrived.add(m.id)
         const arrive = v4 && s0.arrived.has(m.id)
+        const held = isHeldSend(m)
         return (
           <Fragment key={m.id}>
             {before}
             {newDay && <div className="dm-day" role="separator"><span>{warsawDayWord(eventTime(m), now)}</span></div>}
-            <div className={`dm-b dm-b-${side} dm-h-whole${pend ? ' dm-h-pending' : ''}${inb ? ' dm-h-in' : ''}${st?.fail ? ' dm-h-fail' : ''}${email ? ' dm-h-email' : ''}${firstOfRun ? ' dm-b-first' : ''}${v4 && last ? ' dx-b-last' : ''}${arrive ? ' dx-arrive' : ''}`}
-              data-msg={m.id} data-channel={email ? 'email' : undefined} data-side={side} data-pending={pend ? '' : undefined}
+            <div className={`dm-b dm-b-${side} dm-h-whole${pend ? ' dm-h-pending' : ''}${inb ? ' dm-h-in' : ''}${st?.fail ? ' dm-h-fail' : ''}${held ? ' dm-h-held' : ''}${email ? ' dm-h-email' : ''}${firstOfRun ? ' dm-b-first' : ''}${v4 && last ? ' dx-b-last' : ''}${arrive ? ' dx-arrive' : ''}`}
+              data-msg={m.id} data-channel={email ? 'email' : undefined} data-side={side} data-pending={pend ? '' : undefined} data-held={held ? '' : undefined}
               title={v4 ? [kind, st?.text, reaction ? 'reaction' : null, at ? warsawHm(at) : null].filter(Boolean).join(' · ') : undefined}>
               {firstOfRun && <b className="dm-b-who">{inb ? first : ours}</b>}
               <div className="dm-b-body">
@@ -218,7 +229,11 @@ function HistoryRead({ onSendAnyways, sending, t, cap = 6, now = Date.now(), onR
                 {latestObs && <i>Latest observed reply · {touchLabel(source.data.latest_reply!.touch)}</i>}
                 {at && <time dateTime={at}>{warsawHm(at)}</time>}
               </div> : at ? <time className="dx-sr" dateTime={at}>{warsawHm(at)}</time> : null}
-              {onSendAnyways && !t.spam && canSendRejectedDm(m) && <div className="dm-rejected-actions"><button type="button" className="dm-email-reply dm-send-anyways" data-verb="send-anyways" disabled={sending} onClick={() => onSendAnyways?.(m)}>Send anyways</button></div>}
+              {held && <p className="dm-held-why" role="note">{heldReasonText(m.send_blocked_reason)}</p>}
+              {!t.spam && ((onSendAnyways && canSendRejectedDm(m)) || (held && onDiscardHeld && !m.approved_at)) && <div className="dm-rejected-actions">
+                {onDiscardHeld && held && !m.approved_at && <button type="button" className="dm-email-reply dm-discard-held" data-verb="discard-held" disabled={sending} onClick={() => onDiscardHeld(m)}>Discard</button>}
+                {onSendAnyways && canSendRejectedDm(m) && <button type="button" className="dm-email-reply dm-send-anyways" data-verb="send-anyways" disabled={sending} onClick={() => onSendAnyways(m)}>Send anyway</button>}
+              </div>}
               {inb && email && (onReplyEmail || onForwardEmail) && <div className="dm-email-actions">
                 {m.id === lastEmail && onReplyEmail && <button type="button" className="dm-email-reply" data-verb="reply-email" onClick={onReplyEmail}>Reply by email</button>}
                 {onForwardEmail && <button type="button" className="dm-email-reply" data-verb="forward-email" onClick={() => onForwardEmail(m)}>Forward to email</button>}

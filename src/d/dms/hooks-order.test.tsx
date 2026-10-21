@@ -249,3 +249,23 @@ describe('new keys and the one-primary rule', () => {
     expect(document.querySelectorAll('.dm-comp [data-verb="compose-send"].d-key-p')).toHaveLength(1)
   })
 })
+
+// Ivan 2026-10-21: an outbound-only thread whose newest message a gate held (Liron Smadja) sat in no
+// list. The seat column now lists it under "Held, not sent", v4 and legacy alike.
+describe('Held, not sent in the seat column', () => {
+  function seedHeld() {
+    data.threads = threads([
+      msg({ prospect_id: 'liron', prospect_name: 'Liron Smadja', client_id: 'arch', prospect_stage: 'dm_sent', sent_at: iso(200 * 3_600_000), created_at: iso(200 * 3_600_000), message_text: 'Hey Liron' }),
+      msg({ prospect_id: 'liron', prospect_name: 'Liron Smadja', client_id: 'arch', prospect_stage: 'dm_sent', created_at: iso(20 * 3_600_000), message_text: 'Coffee next week?',
+        send_blocked_at: iso(20 * 3_600_000), send_blocked_reason: 'arch_market_claim_unratified:Israel' }),
+    ])
+  }
+  for (const v4 of [true, false]) it(`${v4 ? 'v4' : 'legacy'}: the held thread is listed with its reason`, async () => {
+    skin(v4 ? ['dms', 'tokens', 'type', 'motion', 'shell'] : []); seedHeld()
+    page('desktop', '#exp/d/dms?seat=arch')
+    await waitFor(() => expect(document.querySelector('[data-sec="held"] [data-d-row="liron"]')).not.toBeNull())
+    const row = document.querySelector('[data-sec="held"] [data-d-row="liron"]')!
+    expect(row.textContent).toContain('Held')
+    expect(row.textContent).toContain('It mentions Israel, which is not a confirmed ARCH market.')
+  })
+})

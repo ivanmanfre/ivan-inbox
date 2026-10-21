@@ -5,14 +5,14 @@ import { cameBackRowLine, firstComment, sentLine, type CameBackCard } from '../.
 import { agentCardsWithoutWarmCards, type ConversationAgentCard } from '../../wb/dms/conversationAgentData'
 import { WARM_GROUPS, dm1Deliverable, evidenceLine, inviteLine, isWaiting, primaryAction, warmGroup, type WarmCard } from '../../wb/dms/warmSignalsData'
 import { type Seat } from '../seats'
-import { ago, firstLine, needsCount, seatThreads, type SeatView } from './model'
+import { ago, firstLine, heldItems, needsCount, seatThreads, type SeatView } from './model'
 import { scheduleHeld, SCHEDULE_REVIEW } from '../../lib/dmSchedule'
 import { sendTimeLabel } from '../../lib/dmScheduleTime'
 import { laterItems } from './later'
 import { Btn } from '../ui/Key'
 import { Quiet, Row, Sec } from './Row'
 import { Section, useFolds, type Folds } from './Section'
-import { AnyRow, DraftRow, LaterRow, NoDraftRow, SpamRow, ThrownRow, dayMonth, type RowCtx } from './threadRows'
+import { AnyRow, DraftRow, HeldRow, LaterRow, NoDraftRow, SpamRow, ThrownRow, dayMonth, type RowCtx } from './threadRows'
 import { AllConvos } from './AllConvos'
 import { SendLog } from './SendLog'
 import { signalItems } from './signals'
@@ -92,6 +92,16 @@ export function ColumnBody(p: ColumnProps) {
   const later = allLater.filter(i => !comingIds.has(i.t.prospect_id))
   const blocked = v.all.map(t => ({ t, hold: blockedFollowup(t) })).filter(i => i.hold !== null)
   const datedBy = new Map(p.dated.map(d => [d.prospect_id, d.at] as const))
+  // Held, not sent (Ivan 10-21): every thread whose newest outbound a gate held. Rows Needs you or
+  // Blocked follow-ups already list carry the Held tag there instead of a second row here.
+  const held = heldItems(seatSent, new Set([...v.owner, ...v.drafted, ...v.nodraft, ...v.emailOwed, ...blocked.map(i => i.t)].map(t => t.prospect_id)), c.now)
+  const heldSection = <>
+    {held.recent.length > 0 && <Section id="held" label="Held, not sent" n={held.recent.length} folds={folds}
+      before={<Quiet>A check held these after approval. Open one to send it anyway or discard it.</Quiet>}
+      rows={held.recent.map(({ t, m }) => <HeldRow key={t.prospect_id} t={t} m={m} c={c} />)} />}
+    {held.older.length > 0 && <Section id="held-older" foldable defaultOpen={false} label="Held, older than 30 days" n={held.older.length} folds={folds}
+      rows={held.older.map(({ t, m }) => <HeldRow key={t.prospect_id} t={t} m={m} c={c} />)} />}
+  </>
   const needs = [
     ...v.owner.map(t => (
       <button key={t.prospect_id} type="button" className={`dm-hold${c.selected === t.prospect_id ? ' dm-sel' : ''}`} data-d-row={t.prospect_id} onClick={() => c.open(t)}>
@@ -147,6 +157,8 @@ export function ColumnBody(p: ColumnProps) {
           {needsCount(v) === 0 && <Quiet>{blocked.length ? 'No drafts ready. Check the blocked follow-ups below.' : `Nothing waiting on ${WHO[seat]}.`}</Quiet>}
         </>} />
 
+      {heldSection}
+
       {blocked.length > 0 && <Section id="followup-blocked" label="Blocked follow-ups" n={blocked.length} folds={folds}
         rows={blocked.map(({ t, hold }) => <Row key={t.prospect_id} v4 id={t.prospect_id} name={t.prospect_name} company={t.prospect_company}
           pill={{ text: 'Review', tone: 'bad' }} line={hold!.reason} selected={c.selected === t.prospect_id} onOpen={() => c.open(t)} />)} />}
@@ -175,6 +187,8 @@ export function ColumnBody(p: ColumnProps) {
           {emailOwed === 1 ? '1 email thread needs you too, in the Email folder' : `${emailOwed} email threads need you too, in the Email folder`}</button>}
         {needsCount(v) === 0 && <Quiet>{blocked.length ? 'No drafts ready. Check the blocked follow-ups below.' : `Nothing waiting on ${WHO[seat]}.`}</Quiet>}
       </>} />
+
+    {heldSection}
 
     {blocked.length > 0 && <Section id="followup-blocked" label="Blocked follow-ups" n={blocked.length} folds={folds}
       rows={blocked.map(({t,hold}) => <Row key={t.prospect_id} id={t.prospect_id} name={t.prospect_name} company={t.prospect_company}

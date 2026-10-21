@@ -6,7 +6,7 @@ import { parseEmailCc } from '../../lib/emailCc'
 import { createElement, useMemo } from 'react'
 import {
   draftSendVia, approveDraft, composeReply, deleteThread, discardLegs, dismissConfirmation, draftLegs, escalateDraftToClient,
-  emailSenderLabel, isFollowUp, isSwishdmReply, isSwishdmRow, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft, swishdmPageUrl,
+  emailSenderLabel, heldReasonText, isFollowUp, isHeldSend, isSwishdmReply, isSwishdmRow, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft, swishdmPageUrl,
   saveDraftEmail, saveDraftEmailCc, setDraftSendVia, saveDraftText, snoozeDraft, threadChatId, unsnoozeDraft, REPLY_MYSELF,
   type DraftSendVia, type InboxMessage, type Thread,
 } from '../../lib/inbox'
@@ -143,9 +143,9 @@ export function useDmVerbs(ctx: VerbCtx) {
     async function sendAnyways(t: Thread, m: InboxMessage): Promise<void> {
       // Jonathan's seat is sent only by the SwishDM senders: no override, no "about 2 minutes" promise.
       if (isSwishdmRow(m) || t.client_id === 'swishdm') { fail('SwishDM messages are sent only by the SwishDM senders. Nothing was sent.'); return }
-      const ok = await confirm({ title: `Send anyways to ${t.prospect_name}?`,
-        message: createElement('div', null, createElement('p', null, `Rejected: ${m.send_blocked_reason?.replaceAll('_', ' ')}.`), createElement('p', null, m.message_text), createElement('p', null, 'Your approval overrides the copy rejection. Delivery and account checks still apply.')),
-        confirmText: 'Send anyways', verb: 'confirm-send-anyways' })
+      const ok = await confirm({ title: `Send anyway to ${t.prospect_name}?`,
+        message: createElement('div', null, createElement('p', null, isHeldSend(m) ? `Held: ${heldReasonText(m.send_blocked_reason)}` : `Rejected: ${m.send_blocked_reason?.replaceAll('_', ' ')}.`), createElement('p', null, m.message_text), createElement('p', null, 'Your approval overrides the copy rejection. Delivery and account checks still apply.')),
+        confirmText: 'Send anyway', verb: 'confirm-send-anyways' })
       if (!ok) return
       try {
         await sendRejectedDm(m, threadChatId(t))
@@ -153,6 +153,21 @@ export function useDmVerbs(ctx: VerbCtx) {
         toast.show({ message: `Queued to ${t.prospect_name}.`, sub: 'The sender picks it up within about 2 minutes.' })
       } catch (e) { fail(`Not queued: ${errText(e)}`) }
       ctx.refresh()
+    }
+
+    /** Discard one held message from the timeline (the same guarded discard as a draft: unsent and
+     *  unapproved only). Undo brings it back as a draft. */
+    async function discardHeld(t: Thread, m: InboxMessage): Promise<void> {
+      const ok = await confirm({ title: `Discard the held message to ${t.prospect_name}?`,
+        message: 'It will not be sent. It stays under Discarded for 3 days.', confirmText: 'Discard', verb: 'confirm-discard-held' })
+      if (!ok) return
+      let failed
+      try { failed = await discardLegs([m]) } catch (e) { fail(`Not discarded: ${errText(e)}`); ctx.refresh(); return }
+      if (failed.length) { fail(failed.map(legFailureText).join(' ')); ctx.refresh(); return }
+      ctx.patch([m.id], { send_blocked_reason: 'discarded_in_inbox', send_blocked_at: new Date().toISOString(), discard_mode: null })
+      ctx.refresh()
+      toast.show({ message: `Discarded the held message to ${t.prospect_name}.`, sub: 'It stays under Discarded for 3 days.',
+        action: { label: 'Undo', verb: 'undo', run: () => { void undoDiscard([m]) } } })
     }
 
     async function discard(t: Thread): Promise<string | null> {
@@ -463,7 +478,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       await bulkDiscard(stale, '', { title: `Discard ${stale.length} stale draft${stale.length === 1 ? '' : 's'}?`, message: 'These threads already have your own reply after the last inbound message. Nothing is sent.', confirmText: 'Discard stale' })
     }
 
-    return { sendVia, rowDiscard, discardStale, send, sendAnyways, discard, solved, later, bringBackNow, saveEdit, autosave, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, holdRelease, askOwner, bulkDiscard, isFollowUp }
+    return { sendVia, rowDiscard, discardStale, send, sendAnyways, discardHeld, discard, solved, later, bringBackNow, saveEdit, autosave, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, holdRelease, askOwner, bulkDiscard, isFollowUp }
   }, [ctx, confirm, toast, askDiscard, askDate])
 }
 
