@@ -301,6 +301,13 @@ export function heldSend(t: Pick<Thread, 'messages'>): InboxMessage | null {
   return t.messages.some(m => m.direction === 'outbound' && m.sent_at && Date.parse(m.sent_at) > at) ? null : held
 }
 
+/** A held row the existing scheduler (schedule_inbox_dm) takes as it is: only a lint or race hold. A gate
+ *  hold (duplicate_in_thread, send_failed_verified...) is refused there, and a paused schedule has its own card. */
+export function canScheduleHeld(m: InboxMessage): boolean {
+  const r = m.send_blocked_reason
+  return isHeldSend(m) && !m.approved_at && isRecoverableHold(r) && !r!.startsWith(`${RACE_HOLD_PREFIX}scheduled`)
+}
+
 /** Why a row is held, in plain words. An unknown code shows as written. */
 export function heldReasonText(reason: string | null | undefined): string {
   const r = (reason ?? '').trim()

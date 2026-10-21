@@ -1,4 +1,4 @@
-import { sendRejectedDm } from '../../lib/rejectedDm'
+import { editHeldDm, sendRejectedDm } from '../../lib/rejectedDm'
 import { parseEmailCc } from '../../lib/emailCc'
 // Every DM write, wired to TODAY'S lib calls with today's payloads, guards and order
 // (src/wb/thread/Conversation.tsx, RestoreStrip, FollowUpStrip, CameBack). Nothing here
@@ -153,6 +153,19 @@ export function useDmVerbs(ctx: VerbCtx) {
         toast.show({ message: `Queued to ${t.prospect_name}.`, sub: 'The sender picks it up within about 2 minutes.' })
       } catch (e) { fail(`Not queued: ${errText(e)}`) }
       ctx.refresh()
+    }
+
+    /** Ivan 10-21 (Leighton Penrose): save an edit to a held message. It stays held, nothing is sent; Send
+     *  anyway (or a schedule) then goes out with the new words. Returns the row as it now is, or null. */
+    async function editHeld(t: Thread, m: InboxMessage, text: string, opts: { quiet?: boolean } = {}): Promise<InboxMessage | null> {
+      if (isSwishdmRow(m) || t.client_id === 'swishdm') { fail('SwishDM messages are sent only by the SwishDM senders. Nothing was sent.'); return null }
+      if (!text.trim()) { fail('The message is empty. Nothing was saved.'); return null }
+      if (text === m.message_text) return m
+      try { await editHeldDm(m, text) } catch (e) { fail(`Not saved: ${errText(e)}`); ctx.refresh(); return null }
+      ctx.patch([m.id], { message_text: text, approved_at: null })
+      if (!opts.quiet) toast.show({ message: `Saved the held message to ${t.prospect_name}.`, sub: 'Still held. Nothing was sent.' })
+      ctx.refresh()
+      return { ...m, message_text: text, approved_at: null }
     }
 
     /** Discard one held message from the timeline (the same guarded discard as a draft: unsent and
@@ -478,7 +491,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       await bulkDiscard(stale, '', { title: `Discard ${stale.length} stale draft${stale.length === 1 ? '' : 's'}?`, message: 'These threads already have your own reply after the last inbound message. Nothing is sent.', confirmText: 'Discard stale' })
     }
 
-    return { sendVia, rowDiscard, discardStale, send, sendAnyways, discardHeld, discard, solved, later, bringBackNow, saveEdit, autosave, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, holdRelease, askOwner, bulkDiscard, isFollowUp }
+    return { sendVia, rowDiscard, discardStale, send, sendAnyways, editHeld, discardHeld, discard, solved, later, bringBackNow, saveEdit, autosave, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, holdRelease, askOwner, bulkDiscard, isFollowUp }
   }, [ctx, confirm, toast, askDiscard, askDate])
 }
 

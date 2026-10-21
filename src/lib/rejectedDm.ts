@@ -1,4 +1,4 @@
-import { draftSendVia, isEngineRetired, isIntentionalStop, isInternalConfirmation, isSwishdmRow, SWISHDM_REPLY_HOLD, type InboxMessage } from './inbox'
+import { draftSendVia, isEngineRetired, isHeldSend, isIntentionalStop, isInternalConfirmation, isSwishdmRow, SWISHDM_REPLY_HOLD, type InboxMessage } from './inbox'
 import { supabase } from './supabase'
 
 export function canSendRejectedDm(m: InboxMessage & { unipile_message_id?: string | null }): boolean {
@@ -21,6 +21,28 @@ export async function sendRejectedDm(m: InboxMessage, chatId?: string | null): P
     p_message_id: m.id, p_text: m.message_text, p_expected_reason: m.send_blocked_reason,
     p_expected_blocked_at: m.send_blocked_at, p_expected_approved_at: m.approved_at,
     p_expected_evidence: data?.draft_evidence ?? null, p_chat_id: chatId ?? null,
+  })
+  if (error) throw error
+}
+
+/** A held message can be edited where it can be sent anyway, except a DM + email pair: the box edits
+ *  one text, and the email leg would still go out with the old words. */
+export function canEditHeldDm(m: InboxMessage & { unipile_message_id?: string | null }): boolean {
+  return isHeldSend(m) && canSendRejectedDm(m) && draftSendVia(m) !== 'both'
+}
+
+/** Ivan 10-21 (Leighton Penrose): edit a held message and keep it held. The database compares the text,
+ *  hold, approval and evidence on screen, records the edit in draft_evidence.operator_edits and clears the
+ *  approval (the new words were never approved). Sending stays on sendRejectedDm. */
+export async function editHeldDm(m: InboxMessage, text: string): Promise<void> {
+  if (isSwishdmRow(m)) throw new Error('SwishDM messages are sent only by the SwishDM senders. Nothing was sent.')
+  if (!canEditHeldDm(m)) throw new Error('This message is no longer held. Refresh before editing.')
+  if (!text.trim()) throw new Error('The message is empty.')
+  const { data, error: readError } = await supabase.from('outreach_messages').select('draft_evidence').eq('id', m.id).single()
+  if (readError) throw readError
+  const { error } = await supabase.rpc('edit_held_inbox_draft', {
+    p_message_id: m.id, p_text: text, p_expected_text: m.message_text, p_expected_reason: m.send_blocked_reason,
+    p_expected_blocked_at: m.send_blocked_at, p_expected_approved_at: m.approved_at, p_expected_evidence: data?.draft_evidence ?? null,
   })
   if (error) throw error
 }

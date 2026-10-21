@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { offersReplyMyself, isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, browseOrder, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISMISS_HOLD_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, isHeldSend, heldSend, heldReasonText, missingManualGuardMeansPreMigration, isEngineRetired, isHiddenRetired, retiredLabel, holdReason, isSenderMirrorEmail, draftLegs, isOwedInbound, threadOrder, DELETED_REASON, type InboxMessage, type Status, type DraftGuard } from './inbox'
+import { offersReplyMyself, isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, browseOrder, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISMISS_HOLD_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, isHeldSend, heldSend, heldReasonText, canScheduleHeld, missingManualGuardMeansPreMigration, isEngineRetired, isHiddenRetired, retiredLabel, holdReason, isSenderMirrorEmail, draftLegs, isOwedInbound, threadOrder, DELETED_REASON, type InboxMessage, type Status, type DraftGuard } from './inbox'
 
 // inbox.ts:191 gates needsAnswer on a 14-day wall-clock staleness window
 // (STALE_DAYS), measured against Date.now() by default -- and most callers
@@ -1305,5 +1305,15 @@ describe('held sends', () => {
     expect(heldReasonText('send_failed_verified: hard error: Request failed with status code 422')).toBe('LinkedIn refused the send (error 422). Check LinkedIn before sending again.')
     expect(heldReasonText('inmail_failed_422: {"type":"errors/limit_exceeded"}')).toBe('The InMail limit for this period was reached.')
     expect(heldReasonText('wins_operator_review_required')).toBe('wins_operator_review_required')
+  })
+  // Ivan 10-21 (Leighton Penrose): "edit and send later". Only a hold the existing scheduler takes may be scheduled.
+  it('only a lint or race hold can go to the existing scheduler; a gate hold, a paused schedule or an approved row cannot', () => {
+    expect(canScheduleHeld(held('lint_calendar_proposal_edited'))).toBe(true)
+    expect(canScheduleHeld(held('post_approval_race:inbound'))).toBe(true)
+    for (const r of ['duplicate_in_thread', 'send_failed_verified: hard error', 'arch_market_claim_unratified:Israel', 'post_approval_race:scheduled_thread_changed', 'discarded_in_inbox']) {
+      expect(canScheduleHeld(held(r)), r).toBe(false)
+    }
+    expect(canScheduleHeld(held('lint_calendar_proposal_edited', { approved_at: '2026-07-22T10:00:00Z' }))).toBe(false)
+    expect(canScheduleHeld(held('lint_calendar_proposal_edited', { message_text: ' ' }))).toBe(false)
   })
 })
