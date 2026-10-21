@@ -31,7 +31,7 @@ import { formatReturn, returnsIn, usePushLater } from '../../lib/pushLater'
 import {
   approveDraft, channelFamilies, canComposeEmail, composeReply, discardLegs, draftLegs, legFailureText, holdReason, isEngineRetired, isHiddenRetired, isIntentionalStop, retiredLabel, stopLabel, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isPendingSend, pendingSendLabel, sentThenPending, shownTime, isFollowUp, isMixedChannel,
   reviewedEmailMirror, saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
-  markThreadRead, messageChannel, threadChatId, emailRowSender, ladderSteps, sendFailed,
+  markThreadRead, messageChannel, threadChatId, emailRowSender, ladderSteps, sendFailed, isUnreachableSend, unreachableLabel,
   offersReplyMyself, REPLY_MYSELF, type DiscardMode,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../../lib/inbox'
 import { copyRouteTag, label, threadLaneLabel } from '../../lib/labels'
@@ -97,6 +97,8 @@ function outLabel(m: InboxMessage, stage: string): { text: string; failed: boole
   // failed. It was `send_blocked_at && reason !== 'discarded_in_inbox'` here,
   // which also caught a race hold and a lint hold — both recoverable, both one
   // tap from being sent, and neither a failure.
+  // LinkedIn will not deliver to this person (Ivan 10-21): muted, never "Send failed".
+  if (isUnreachableSend(m)) return { text: unreachableLabel(m), failed: false }
   if (sendFailed(m)) {
     return { text: `Send failed: ${label(m.send_blocked_reason)}`, failed: true }
   }

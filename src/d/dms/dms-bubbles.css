@@ -28,6 +28,10 @@
 .dm-b.dm-h-fail .dm-b-body{border-color:rgba(232,160,143,.5)}
 /* Held by a gate, never sent (Ivan 10-21): dashed in the warning tone, the reason under it, Send anyway / Discard. */
 .dm-b.dm-h-held .dm-b-body{border:1px dashed var(--warn)}
+.dm-h-undelivered{align-self:center;max-width:90%;margin:6px 0;font:400 12px/1.45 var(--f);color:var(--t3);text-align:center}
+.dm-h-undelivered>summary{cursor:pointer;list-style:none}
+.dm-h-undelivered>summary::-webkit-details-marker{display:none}
+.dm-h-undelivered>p{margin:4px 0 0;white-space:pre-wrap;text-align:left;color:var(--t3)}
 .dm-held-why{margin:4px 4px 0;font:400 12.5px/1.45 var(--f);color:var(--warn);text-align:right}
 /* Approved and not sent yet (waiting for an accept, queued): after every sent item, dashed and dimmed, no clock. */
 .dm-b.dm-h-pending .dm-b-body{background:transparent;border:1px dashed rgba(198,244,50,.34);opacity:.74}

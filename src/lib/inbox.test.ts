@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { offersReplyMyself, isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, browseOrder, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISMISS_HOLD_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, isHeldSend, heldSend, heldReasonText, canScheduleHeld, isInvalidRecipient, timelineTime, operatorSentAt, operatorWords, missingManualGuardMeansPreMigration, isEngineRetired, isHiddenRetired, retiredLabel, holdReason, isSenderMirrorEmail, draftLegs, isOwedInbound, threadOrder, DELETED_REASON, type InboxMessage, type Status, type DraftGuard } from './inbox'
+import { offersReplyMyself, isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, browseOrder, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISMISS_HOLD_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, isHeldSend, heldSend, heldReasonText, canScheduleHeld, isUnreachableRecipient, isUnreachableSend, unreachableLabel, timelineTime, operatorSentAt, operatorWords, missingManualGuardMeansPreMigration, isEngineRetired, isHiddenRetired, retiredLabel, holdReason, isSenderMirrorEmail, draftLegs, isOwedInbound, threadOrder, DELETED_REASON, type InboxMessage, type Status, type DraftGuard } from './inbox'
 
 // inbox.ts:191 gates needsAnswer on a 14-day wall-clock staleness window
 // (STALE_DAYS), measured against Date.now() by default -- and most callers
@@ -1271,7 +1271,7 @@ describe('held sends', () => {
   it('a gate reason on an unsent row with words is a hold', () => {
     for (const r of ['arch_market_claim_unratified:Israel', 'lint_calendar_proposal_edited', 'send_failed_verified: hard error: 422', 'inmail_failed_422: {}', 'calendar_context_or_wording_unverified',
       'accuracy_hold_2026-10-19: x', 'duplicate_in_thread', 'rise_followup_repeated_or_unwarranted', 'arch_qualification_review', 'followup_prospect_held', 'arch_conversation_owner_only',
-      'provider_invalid_recipient: x', 'geo_gate_v2:blocked:pakistan', 'provider_success_unconfirmed: x', 'post_approval_race:inbound', 'some_new_gate_code']) {
+      'no_connection_with_recipient', 'geo_gate_v2:blocked:pakistan', 'provider_success_unconfirmed: x', 'post_approval_race:inbound', 'some_new_gate_code']) {
       expect(isHeldSend(held(r)), r).toBe(true)
     }
   })
@@ -1315,9 +1315,45 @@ describe('held sends', () => {
     expect(heldReasonText('send_failed_verified: chat create failed: Request failed with status code 422')).toBe('LinkedIn refused the send (error 422). Check LinkedIn before sending again.')
     expect(heldReasonText('send_failed_verified: hard error: Request failed with status code 404')).toBe('LinkedIn refused the send. Check LinkedIn before sending again.')
     expect(heldReasonText('send_failed_verified: hard error: conversation_agent_owned_or_unresolved')).toBe('Our system stopped it before it reached LinkedIn (conversation_agent_owned_or_unresolved).')
-    expect(isInvalidRecipient('provider_invalid_recipient')).toBe(true)
-    expect(isInvalidRecipient('inmail_failed_422: {"type":"errors/invalid_recipient"}')).toBe(true)
-    for (const r of ['send_failed_verified: hard error: Request failed with status code 422', 'dispatch_error:x', null]) expect(isInvalidRecipient(r), String(r)).toBe(false)
+    expect(isUnreachableRecipient('provider_invalid_recipient')).toBe(true)
+    expect(isUnreachableRecipient('inmail_failed_422: {"type":"errors/invalid_recipient"}')).toBe(true)
+    for (const r of ['send_failed_verified: hard error: Request failed with status code 422', 'dispatch_error:x', null]) expect(isUnreachableRecipient(r), String(r)).toBe(false)
+  })
+  // Ivan 10-21 (Ben Chehebar, Toby Hart): "if he's blocked, he shouldn't even appear as an error ... I don't want to see it".
+  it('a recipient LinkedIn will not deliver to is not a hold, not a failure and not a draft', () => {
+    const reasons = ['provider_invalid_recipient: LinkedIn 422 errors/blocked_recipient (relabeled 2026-10-21, repeated 422 on Send anyway)',
+      'provider_invalid_recipient: LinkedIn 422 on every send incl. Send anyway 2026-10-21; treated as unreachable',
+      'send_failed_verified: hard error: Request failed with status code 422 [errors/blocked_recipient]',
+      'inmail_failed_422: {"type":"errors/invalid_recipient"}', 'send_failed_verified: hard error: 422 {"type":"errors/invalid_recipient"}']
+    for (const r of reasons) {
+      const m = held(r)
+      expect(isUnreachableRecipient(r), r).toBe(true)
+      expect(isUnreachableSend(m), r).toBe(true)
+      expect(isHeldSend(m), r).toBe(false)
+      expect(sendFailed(m), r).toBe(false)
+      expect(isDraft(m), r).toBe(false)
+      expect(heldSend({ messages: [m] }), r).toBeNull()
+    }
+    expect(isUnreachableSend(held(reasons[0], { sent_at: '2026-07-22T12:00:00Z' }))).toBe(false)
+    expect(isUnreachableSend(held('duplicate_in_thread'))).toBe(false)
+    expect(unreachableLabel(held(reasons[0]))).toBe('Not delivered \u00b7 blocked you on LinkedIn')
+    expect(unreachableLabel(held(reasons[2]))).toBe('Not delivered \u00b7 blocked you on LinkedIn')
+    expect(unreachableLabel(held(reasons[1]))).toBe('Not delivered \u00b7 can\u2019t receive messages on LinkedIn')
+  })
+  it('the thread ladder does not turn red for an unreachable recipient, and the thread is not Needs you', () => {
+    const sent = { ...base, id: 's', message_type: 'dm', sent_at: '2026-07-20T10:00:00Z' }
+    const m = held('provider_invalid_recipient: LinkedIn 422 errors/blocked_recipient', { id: 'u', prospect_stage: 'dm_sent' })
+    const [t] = groupThreads([sent, m])
+    expect(t.draft).toBeNull()
+    expect(threadBucket(t)).toBe('waiting')
+    const view = ladderSteps({ stage: 'dm_sent', messages: [sent, m] })
+    expect(view.kind === 'steps' && view.steps.some(s => s.state === 'failed')).toBe(false)
+  })
+  it('not connected stays a held send, with the invite hint', () => {
+    expect(isHeldSend(held('no_connection_with_recipient'))).toBe(true)
+    expect(isUnreachableRecipient('no_connection_with_recipient')).toBe(false)
+    expect(heldReasonText('no_connection_with_recipient')).toBe('Not connected on LinkedIn: send an invite first.')
+    expect(heldReasonText('send_failed_verified: hard error: 422 {"type":"errors/no_connection_with_recipient"}')).toBe('Not connected on LinkedIn: send an invite first.')
   })
   // Ivan 10-21 (Leighton Penrose): a Send anyway held again jumped back to the row's creation day.
   it('a held row sits at its hold in the timeline; every other row keeps its event time', () => {

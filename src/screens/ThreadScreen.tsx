@@ -8,7 +8,7 @@ import { Linkified } from '../components/Linkified'
 import { useConfirm } from '../components/ConfirmSheet'
 import { formatReturn, returnsIn, usePushLater } from '../components/PushLaterSheet'
 import {
-  approveDraft, channelFamilies, canComposeEmail, composeReply, discardDraft, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isPendingSend, pendingSendLabel, sentThenPending, isFollowUp, isMixedChannel,
+  approveDraft, channelFamilies, canComposeEmail, composeReply, discardDraft, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isPendingSend, isUnreachableSend, unreachableLabel, pendingSendLabel, sentThenPending, isFollowUp, isMixedChannel,
   reviewedEmailMirror, saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId, emailRowSender,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../lib/inbox'
@@ -51,6 +51,8 @@ function dayLabel(iso: string): string {
 // Micro-label shown above an outbound bubble. Truthful about queue/send state.
 // The channel it rode is carried by the chip beside it, not by this text.
 function outLabel(m: InboxMessage, stage: string): { text: string; failed: boolean } {
+  // LinkedIn will not deliver to this person (Ivan 10-21): muted, never "Send failed".
+  if (isUnreachableSend(m)) return { text: unreachableLabel(m), failed: false }
   if (m.send_blocked_at && m.send_blocked_reason !== 'discarded_in_inbox') {
     return { text: `Send failed: ${label(m.send_blocked_reason)}`, failed: true }
   }
