@@ -884,7 +884,7 @@ export const DRAFTER_BUSY = 'drafter busy, nothing written, try again'
 // `arch` answers only with what Davorin has said in public. Routing on the row's
 // own client_id is what stops an ARCH card being handed to a function that
 // refuses every client but risedtc.
-export const COMMENT_DRAFT_FN: Record<string, string> = { arch: 'arch-comment-draft' }
+export const COMMENT_DRAFT_FN: Record<string, string> = { arch: 'arch-comment-draft', swishdm: 'swishdm-comment-draft' }
 
 export function commentDraftFn(clientId?: string): string {
   return (clientId && COMMENT_DRAFT_FN[clientId]) ?? 'rise-comment-draft'
