@@ -20,8 +20,8 @@ vi.mock('../../lib/followUp', async orig => ({ ...(await orig<typeof import('../
 vi.mock('../../lib/context', async orig => ({ ...(await orig<typeof import('../../lib/context')>()), fetchProspectContext: vi.fn(async () => ({ location: 'London, United Kingdom' })) }))
 vi.mock('../../lib/dmSchedule', async orig => ({ ...(await orig<typeof import('../../lib/dmSchedule')>()), scheduleDm: vi.fn(async () => {}) }))
 
-vi.mock('../../lib/rejectedDm', async orig => ({ ...(await orig<typeof import('../../lib/rejectedDm')>()), sendRejectedDm: vi.fn(async () => {}) }))
-import { sendRejectedDm } from '../../lib/rejectedDm'
+vi.mock('../../lib/rejectedDm', async orig => ({ ...(await orig<typeof import('../../lib/rejectedDm')>()), sendRejectedDm: vi.fn(async () => {}), editHeldDm: vi.fn(async () => {}) }))
+import { editHeldDm, sendRejectedDm } from '../../lib/rejectedDm'
 import * as lib from '../../lib/inbox'
 import { DmAsks } from './asks'
 import { NOW, drafted, msg, threads } from './fixtures'
@@ -356,6 +356,89 @@ describe('send rejected draft anyways', () => {
 })
 
 // SwishDM review fixes (2026-10-19).
+// Ivan 10-21 (Leighton Penrose): "i want to edit this dm... it only allows me to mark send anyway but i want
+// to edit and send later". Edit opens the held words in the draft editor: Save keeps it held, Send now goes
+// through the same Send anyway, Send later through the existing scheduler when it takes the row.
+describe('edit a held message', () => {
+  const leighton = () => {
+    const pid = 'leighton'
+    const held = msg({ prospect_id: pid, prospect_name: 'Leighton Penrose', ai_model: 'inbox_scheduled_manual_v1', created_at: '2026-09-26T11:48:46Z', send_blocked_at: '2026-09-26T12:48:04Z', send_blocked_reason: 'duplicate_in_thread',
+      message_text: 'Hey man, me again haha\n\nCan you give this a quick look today? https://inboundonsteroids.com/shared/leading-social/' })
+    const [t] = threads([msg({ prospect_id: pid, prospect_name: 'Leighton Penrose', sent_at: '2026-09-20T09:46:19Z', message_text: 'Hey Leighton, you still want to get this going for October?' }), held])
+    return { held, t }
+  }
+  const editTo = (held: lib.InboxMessage, text: string) => {
+    const bubble = document.querySelector(`[data-msg="${held.id}"]`)!
+    fireEvent.click(bubble.querySelector('[data-verb="edit-held"]')!)
+    fireEvent.change(screen.getByRole('textbox', { name: 'Edit the held message to Leighton' }), { target: { value: text } })
+    return bubble
+  }
+
+  it('Save stores the edit and keeps it held: nothing is approved, sent or scheduled', async () => {
+    const { held, t } = leighton(); mount(t)
+    const bubble = editTo(held, 'Hey Leighton, quick one')
+    fireEvent.click(bubble.querySelector('[data-verb="held-edit-save"]')!)
+    await waitFor(() => expect(editHeldDm).toHaveBeenCalledWith(held, 'Hey Leighton, quick one'))
+    expect(ctx.patch).toHaveBeenCalledWith([held.id], { message_text: 'Hey Leighton, quick one', approved_at: null })
+    await screen.findByText('Saved the held message to Leighton Penrose.')
+    expect(sendRejectedDm).not.toHaveBeenCalled()
+    expect(scheduleDm).not.toHaveBeenCalled()
+    expect(lib.approveDraft).not.toHaveBeenCalled()
+    expect(lib.saveDraftText).not.toHaveBeenCalled()
+    expect(ctx.refresh).toHaveBeenCalled()
+  })
+
+  it('Send now saves the edit, then confirms and sends the NEW words through Send anyway', async () => {
+    const { held, t } = leighton(); mount(t, true)
+    const bubble = editTo(held, 'Hey Leighton, quick one')
+    fireEvent.click(bubble.querySelector('[data-verb="held-edit-send"]')!)
+    await waitFor(() => expect(editHeldDm).toHaveBeenCalledWith(held, 'Hey Leighton, quick one'))
+    expect(sendRejectedDm).not.toHaveBeenCalled()
+    expect(screen.getAllByText('Hey Leighton, quick one').length).toBeGreaterThan(0)
+    fireEvent.click(await waitFor(() => key('confirm-send-anyways')))
+    await waitFor(() => expect(sendRejectedDm).toHaveBeenCalledWith({ ...held, message_text: 'Hey Leighton, quick one', approved_at: null }, null))
+    expect(vi.mocked(editHeldDm).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(sendRejectedDm).mock.invocationCallOrder[0])
+    expect(lib.approveDraft).not.toHaveBeenCalled()
+  })
+
+  it('a failed save sends nothing and keeps the editor open', async () => {
+    vi.mocked(editHeldDm).mockRejectedValueOnce(new Error('The held message changed. Refresh before editing.'))
+    const { held, t } = leighton(); mount(t)
+    const bubble = editTo(held, 'Hey Leighton, quick one')
+    fireEvent.click(bubble.querySelector('[data-verb="held-edit-send"]')!)
+    await screen.findByText('Not saved: The held message changed. Refresh before editing.')
+    expect(sendRejectedDm).not.toHaveBeenCalled()
+    expect((screen.getByRole('textbox', { name: 'Edit the held message to Leighton' }) as HTMLTextAreaElement).value).toBe('Hey Leighton, quick one')
+  })
+
+  it('a gate hold the scheduler refuses offers no Send later', () => {
+    const { held, t } = leighton(); mount(t)
+    const bubble = editTo(held, 'x')
+    expect(bubble.querySelector('[data-verb="held-edit-later"]')).toBeNull()
+  })
+
+  it('Send later on a lint hold saves the edit and schedules that same row with the new words', async () => {
+    const pid = 'barak'
+    const held = msg({ prospect_id: pid, prospect_name: 'Leighton Penrose', client_id: 'arch', ai_model: 'arch_reply_draft_v2', created_at: '2026-09-26T11:17:52Z', message_text: 'Monday 1:45pm?',
+      send_blocked_at: '2026-09-26T11:28:42Z', send_blocked_reason: 'lint_calendar_proposal_edited' })
+    const retry = msg({ prospect_id: pid, prospect_name: 'Leighton Penrose', client_id: 'arch', message_text: '', created_at: '2026-09-26T12:07:43Z', send_blocked_at: '2026-09-26T12:07:43Z', send_blocked_reason: 'reply_retry_pending' })
+    const [t] = threads([msg({ prospect_id: pid, prospect_name: 'Leighton Penrose', client_id: 'arch', direction: 'inbound', sent_at: '2026-09-26T10:24:08Z', message_text: 'When?' }), held, retry])
+    mount(t)
+    const bubble = editTo(held, 'Tuesday 10:00 your time?')
+    fireEvent.click(bubble.querySelector('[data-verb="held-edit-later"]')!)
+    await waitFor(() => expect(editHeldDm).toHaveBeenCalledWith(held, 'Tuesday 10:00 your time?'))
+    await screen.findByLabelText('Send date')
+    await waitFor(() => expect((screen.getByLabelText('Recipient timezone') as HTMLSelectElement).value).toBe('Europe/London'))
+    fireEvent.change(screen.getByLabelText('Send date'), { target: { value: '2026-09-29' } })
+    fireEvent.click(key('confirm-schedule'))
+    await waitFor(() => expect(scheduleDm).toHaveBeenCalledTimes(1))
+    const [, ids, texts] = vi.mocked(scheduleDm).mock.calls[0]
+    expect(ids).toEqual([held.id])
+    expect(texts).toEqual(['Tuesday 10:00 your time?'])
+    expect(sendRejectedDm).not.toHaveBeenCalled()
+  })
+})
+
 describe('SwishDM threads', () => {
   it('a no-draft owed SwishDM thread offers no Draft it (its triage stages reply drafts itself)', () => {
     const [t] = threads(drafted('sw', { prospect_name: 'Sam', client_id: 'swishdm' }).slice(0, 2))

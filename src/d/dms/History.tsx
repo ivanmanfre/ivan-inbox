@@ -6,15 +6,16 @@ import { ReplySourceContent, ReplySourceLine, knownSource } from './ReplySourceS
 // the way LinkedIn delivered it, "To <email>" on a sent email, "Not accepted yet" on a pending
 // invite note. Older messages sit behind one "N earlier" tap.
 // Drafts, internal questions and discarded rows are not history (they live in the pane below). A held
-// message is: "Held, not sent", why, and Send anyway / Discard, in its place on the timeline.
-import { canSendRejectedDm } from '../../lib/rejectedDm'
+// message is: "Held, not sent", why, and Send anyway / Edit / Discard, in its place on the timeline.
+import { canEditHeldDm, canSendRejectedDm } from '../../lib/rejectedDm'
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
-import { dedupeMessages, eventTime, heldReasonText, heldSend, isDraft, isEngineRetired, isHeldSend, isHiddenRetired, isIntentionalStop, isInternalConfirmation, isPendingSend, pendingSendLabel, retiredLabel, sendFailed, sentThenPending, shownTime, messageChannel, stopLabel, type InboxMessage, type Thread } from '../../lib/inbox'
+import { canScheduleHeld, dedupeMessages, eventTime, heldReasonText, heldSend, isDraft, isEngineRetired, isHeldSend, isHiddenRetired, isIntentionalStop, isInternalConfirmation, isPendingSend, pendingSendLabel, retiredLabel, sendFailed, sentThenPending, shownTime, messageChannel, stopLabel, type InboxMessage, type Thread } from '../../lib/inbox'
 import { label } from '../../lib/labels'
 import { Linkified } from '../ui/Linkified'
 import { warsawDay, warsawDayWord, warsawHm } from '../ui/time'
 import { seatOf } from '../seats'
 import { isReaction } from './model'
+import { Grow } from './Draft'
 import { engagementSignals, type CameBackSignal } from '../../wb/dms/cameBackData'
 
 export function kindPill(m: InboxMessage): string | null {
@@ -79,7 +80,12 @@ export function oursLabel(t: Pick<Thread, 'client_id'>): string {
  *  theirs on the left in grey with their first name on the first bubble of a run, ours on the right
  *  tinted with "You" (or Mattan / Davorin), a day line between days, and each bubble's channel,
  *  status and time underneath. The All conversations log reuses it as is. */
-type HistoryProps = { onSendAnyways?: (m: InboxMessage) => void; onDiscardHeld?: (m: InboxMessage) => void; sending?: boolean; t: Thread; cap?: number; engagements?: readonly CameBackSignal[] | null; now?: number; onReplyEmail?: () => void; onForwardEmail?: (m: InboxMessage) => void
+export type HeldEditThen = 'save' | 'send' | 'later'
+
+type HistoryProps = { onSendAnyways?: (m: InboxMessage) => void; onDiscardHeld?: (m: InboxMessage) => void
+  /** Ivan 10-21 (Leighton Penrose): save an edit to a held message, then keep it held, send it, or schedule
+   *  it. Resolves true once the edit is saved (the editor closes). `heldLater`: the thread can schedule. */
+  onEditHeld?: (m: InboxMessage, text: string, then: HeldEditThen) => Promise<boolean>; heldLater?: boolean; sending?: boolean; t: Thread; cap?: number; engagements?: readonly CameBackSignal[] | null; now?: number; onReplyEmail?: () => void; onForwardEmail?: (m: InboxMessage) => void
   /** Brief 4: meta once per run (status, reaction, email and a channel change always), arrivals grow from their tail. */
   v4?: boolean }
 
@@ -106,9 +112,17 @@ function EngagementLine({ s, owner }: { s: CameBackSignal; owner: string }) {
   )
 }
 
-function HistoryRead({ onSendAnyways, onDiscardHeld, sending, t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail, retry, v4 = false, engagements }: HistoryProps & { retry: () => void }) {
+function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = false, sending, t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail, retry, v4 = false, engagements }: HistoryProps & { retry: () => void }) {
   const source = useReplySource({ kind: 'operator', clientId: t.client_id ?? 'ivan' }, t.prospect_id, true)
   const [all, setAll] = useState(false)
+  // The held message open in the editor (one at a time) and its words; nothing is saved until Save.
+  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
+  const [editBusy, setEditBusy] = useState(false)
+  const finishEdit = async (m: InboxMessage, then: HeldEditThen) => {
+    if (!onEditHeld || !editing || editing.id !== m.id || editBusy || !editing.text.trim()) return
+    setEditBusy(true)
+    try { if (await onEditHeld(m, editing.text, then)) setEditing(null) } finally { setEditBusy(false) }
+  }
   // Above the empty return (09-09 rule). Which bubbles were already on screen for this thread, and
   // which arrived while it was open (>400 ms after it opened): those keep the arrival class.
   const seen = useRef<{ pid: string; at: number; ids: Set<string>; arrived: Set<string> }>({ pid: '', at: 0, ids: new Set(), arrived: new Set() })
@@ -208,19 +222,25 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, sending, t, cap = 6, now = 
         if (fresh && !s0.ids.has(m.id)) s0.arrived.add(m.id)
         const arrive = v4 && s0.arrived.has(m.id)
         const held = isHeldSend(m)
+        const canEdit = held && !t.spam && !!onEditHeld && canEditHeldDm(m)
+        const edit = canEdit && editing?.id === m.id ? editing : null
+        const editOff = sending || editBusy
         return (
           <Fragment key={m.id}>
             {before}
             {newDay && <div className="dm-day" role="separator"><span>{warsawDayWord(eventTime(m), now)}</span></div>}
-            <div className={`dm-b dm-b-${side} dm-h-whole${pend ? ' dm-h-pending' : ''}${inb ? ' dm-h-in' : ''}${st?.fail ? ' dm-h-fail' : ''}${held ? ' dm-h-held' : ''}${email ? ' dm-h-email' : ''}${firstOfRun ? ' dm-b-first' : ''}${v4 && last ? ' dx-b-last' : ''}${arrive ? ' dx-arrive' : ''}`}
+            <div className={`dm-b dm-b-${side} dm-h-whole${pend ? ' dm-h-pending' : ''}${inb ? ' dm-h-in' : ''}${st?.fail ? ' dm-h-fail' : ''}${held ? ' dm-h-held' : ''}${edit ? ' dm-h-editing' : ''}${email ? ' dm-h-email' : ''}${firstOfRun ? ' dm-b-first' : ''}${v4 && last ? ' dx-b-last' : ''}${arrive ? ' dx-arrive' : ''}`}
               data-msg={m.id} data-channel={email ? 'email' : undefined} data-side={side} data-pending={pend ? '' : undefined} data-held={held ? '' : undefined}
               title={v4 ? [kind, st?.text, reaction ? 'reaction' : null, at ? warsawHm(at) : null].filter(Boolean).join(' · ') : undefined}>
               {firstOfRun && <b className="dm-b-who">{inb ? first : ours}</b>}
-              <div className="dm-b-body">
+              {edit ? <div className="dm-b-body dm-b-draft dm-held-edit" data-held-edit={m.id}>
+                <Grow autosave={false} value={edit.text} max={360} label={`Edit the held message to ${first}`} onChange={text => setEditing({ id: m.id, text })}
+                  onKeyDown={e => { if (e.key === 'Escape' && !editBusy) { e.preventDefault(); setEditing(null) } }} />
+              </div> : <div className="dm-b-body">
                 {addr && <small className="dm-h-addr">{addr}</small>}
                 {blank ? <em className="dm-b-blank">Invite sent with no note, by design</em> : parts.length === 0 ? <em className="dm-b-blank">Message text unavailable</em>
                   : parts.map((p, i) => <span key={i} className="dm-bub">{i > 0 && <br />}<Linkified text={p} /></span>)}
-              </div>
+              </div>}
               {showMeta ? <div className="dm-b-meta">
                 {showKind && <i>{kind}</i>}
                 {st && <i className={st.fail ? 'dm-i-fail' : undefined}>{st.text}</i>}
@@ -230,8 +250,14 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, sending, t, cap = 6, now = 
                 {at && <time dateTime={at}>{warsawHm(at)}</time>}
               </div> : at ? <time className="dx-sr" dateTime={at}>{warsawHm(at)}</time> : null}
               {held && <p className="dm-held-why" role="note">{heldReasonText(m.send_blocked_reason)}</p>}
-              {!t.spam && ((onSendAnyways && canSendRejectedDm(m)) || (held && onDiscardHeld && !m.approved_at)) && <div className="dm-rejected-actions">
+              {edit ? <div className="dm-rejected-actions">
+                <button type="button" className="dm-email-reply dm-held-key" data-verb="held-edit-cancel" disabled={editBusy} onClick={() => setEditing(null)}>Cancel</button>
+                <button type="button" className="dm-email-reply dm-held-key" data-verb="held-edit-save" disabled={editOff || !edit.text.trim()} onClick={() => void finishEdit(m, 'save')}>Save</button>
+                {heldLater && canScheduleHeld(m) && <button type="button" className="dm-email-reply dm-held-key" data-verb="held-edit-later" disabled={editOff || !edit.text.trim()} onClick={() => void finishEdit(m, 'later')}>Send later</button>}
+                {onSendAnyways && <button type="button" className="dm-email-reply dm-held-key" data-verb="held-edit-send" disabled={editOff || !edit.text.trim()} onClick={() => void finishEdit(m, 'send')}>Send now</button>}
+              </div> : !t.spam && ((onSendAnyways && canSendRejectedDm(m)) || (held && onDiscardHeld && !m.approved_at) || canEdit) && <div className="dm-rejected-actions">
                 {onDiscardHeld && held && !m.approved_at && <button type="button" className="dm-email-reply dm-discard-held" data-verb="discard-held" disabled={sending} onClick={() => onDiscardHeld(m)}>Discard</button>}
+                {canEdit && <button type="button" className="dm-email-reply dm-held-key" data-verb="edit-held" disabled={sending} onClick={() => setEditing({ id: m.id, text: m.message_text ?? '' })}>Edit</button>}
                 {onSendAnyways && canSendRejectedDm(m) && <button type="button" className="dm-email-reply dm-send-anyways" data-verb="send-anyways" disabled={sending} onClick={() => onSendAnyways(m)}>Send anyway</button>}
               </div>}
               {inb && email && (onReplyEmail || onForwardEmail) && <div className="dm-email-actions">

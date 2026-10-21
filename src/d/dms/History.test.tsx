@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { afterEach, expect, it } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { afterEach, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { History, historyRows } from './History'
 import { msg, threads } from './fixtures'
 
@@ -192,4 +192,94 @@ it('does not mark discards, supersedes, invites-instead, empty rows or internal 
   const { container } = render(<History t={t} onSendAnyways={() => {}} onDiscardHeld={() => {}} />)
   expect(container.querySelector('[data-held]')).toBeNull()
   expect(screen.queryByText('Held, not sent')).toBeNull()
+})
+
+// Ivan 2026-10-21 (Leighton Penrose): "i want to edit this dm... edit and send later".
+const leighton = () => {
+  const pid = 'leighton'
+  const sent = msg({ prospect_id: pid, sent_at: '2026-10-02T09:46:19Z', message_text: 'Hey Leighton, you still want to get this going for October?' })
+  const held = msg({ prospect_id: pid, ai_model: 'inbox_scheduled_manual_v1', created_at: '2026-10-12T11:48:46Z', send_blocked_at: '2026-10-12T12:48:04Z', send_blocked_reason: 'duplicate_in_thread',
+    message_text: 'Hey man, me again haha\n\nCan you give this a quick look today? https://inboundonsteroids.com/shared/leading-social/' })
+  return { held, t: threads([sent, held])[0] }
+}
+
+it('a held bubble offers Edit, which opens its words in the draft editor; Save hands back the new words', async () => {
+  const { held, t } = leighton()
+  const onEditHeld = vi.fn(async () => true)
+  const { container } = render(<History t={t} onSendAnyways={() => {}} onDiscardHeld={() => {}} onEditHeld={onEditHeld} heldLater />)
+  const bubble = container.querySelector(`[data-msg="${held.id}"]`)!
+  expect(bubble.querySelector('[data-verb="edit-held"]')).toBeTruthy()
+  fireEvent.click(bubble.querySelector('[data-verb="edit-held"]')!)
+  const box = screen.getByRole('textbox', { name: 'Edit the held message to Person' }) as HTMLTextAreaElement
+  expect(box.value).toBe(held.message_text)
+  expect(box.classList.contains('dm-edit')).toBe(true)
+  expect(box.hasAttribute('data-autosave')).toBe(false)
+  // A gate hold is refused by the scheduler: no Send later.
+  expect(bubble.querySelector('[data-verb="held-edit-later"]')).toBeNull()
+  expect(bubble.querySelector('[data-verb="send-anyways"]')).toBeNull()
+  fireEvent.change(box, { target: { value: 'Hey Leighton, quick one' } })
+  fireEvent.click(bubble.querySelector('[data-verb="held-edit-save"]')!)
+  await waitFor(() => expect(onEditHeld).toHaveBeenCalledWith(held, 'Hey Leighton, quick one', 'save'))
+  await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Edit the held message to Person' })).toBeNull())
+})
+
+it('Send now hands the edit back to send; Cancel closes without saving; an empty box saves nothing', async () => {
+  const { held, t } = leighton()
+  const onEditHeld = vi.fn(async () => true)
+  const { container } = render(<History t={t} onSendAnyways={() => {}} onEditHeld={onEditHeld} />)
+  const bubble = container.querySelector(`[data-msg="${held.id}"]`)!
+  fireEvent.click(bubble.querySelector('[data-verb="edit-held"]')!)
+  fireEvent.click(bubble.querySelector('[data-verb="held-edit-cancel"]')!)
+  expect(screen.queryByRole('textbox')).toBeNull()
+  expect(onEditHeld).not.toHaveBeenCalled()
+  fireEvent.click(bubble.querySelector('[data-verb="edit-held"]')!)
+  fireEvent.change(screen.getByRole('textbox'), { target: { value: '   ' } })
+  expect((bubble.querySelector('[data-verb="held-edit-save"]') as HTMLButtonElement).disabled).toBe(true)
+  expect((bubble.querySelector('[data-verb="held-edit-send"]') as HTMLButtonElement).disabled).toBe(true)
+  fireEvent.change(screen.getByRole('textbox'), { target: { value: 'New words' } })
+  fireEvent.click(bubble.querySelector('[data-verb="held-edit-send"]')!)
+  await waitFor(() => expect(onEditHeld).toHaveBeenCalledWith(held, 'New words', 'send'))
+})
+
+it('keeps the editor open when the save fails', async () => {
+  const { held, t } = leighton()
+  const { container } = render(<History t={t} onSendAnyways={() => {}} onEditHeld={async () => false} />)
+  fireEvent.click(container.querySelector('[data-verb="edit-held"]')!)
+  fireEvent.change(screen.getByRole('textbox'), { target: { value: 'New words' } })
+  fireEvent.click(container.querySelector('[data-verb="held-edit-save"]')!)
+  await waitFor(() => expect((container.querySelector('[data-verb="held-edit-save"]') as HTMLButtonElement).disabled).toBe(false))
+  expect((screen.getByRole('textbox') as HTMLTextAreaElement).value).toBe('New words')
+  expect(container.querySelector(`[data-msg="${held.id}"] .dm-held-edit`)).toBeTruthy()
+})
+
+it('offers Send later for a lint hold the scheduler takes, only when the thread can schedule', () => {
+  const pid = 'lint'
+  const held = msg({ prospect_id: pid, created_at: '2026-10-21T10:05:00Z', message_text: 'My edited reply', send_blocked_at: '2026-10-21T10:06:00Z', send_blocked_reason: 'lint_calendar_proposal_edited' })
+  const newer = msg({ prospect_id: pid, created_at: '2026-10-21T11:00:00Z', message_text: 'A fresh drafter reply' })
+  const [t] = threads([msg({ prospect_id: pid, direction: 'inbound', sent_at: '2026-10-21T10:00:00Z', message_text: 'When?' }), held, newer])
+  const { container, unmount } = render(<History t={t} onSendAnyways={() => {}} onEditHeld={async () => true} heldLater />)
+  fireEvent.click(container.querySelector('[data-verb="edit-held"]')!)
+  expect(container.querySelector('[data-verb="held-edit-later"]')).toBeTruthy()
+  unmount()
+  const again = render(<History t={t} onSendAnyways={() => {}} onEditHeld={async () => true} heldLater={false} />)
+  fireEvent.click(again.container.querySelector('[data-verb="edit-held"]')!)
+  expect(again.container.querySelector('[data-verb="held-edit-later"]')).toBeNull()
+})
+
+it('offers no Edit on SwishDM, a DM + email pair, a spam thread, or the read-only log', () => {
+  const swish = msg({ prospect_id: 'sw', client_id: 'swishdm', message_text: 'DM copy', send_blocked_at: '2026-10-18T09:05:00Z', send_blocked_reason: 'duplicate_in_thread' })
+  const pair = msg({ prospect_id: 'pair', message_text: 'DM copy', recipient_email: 'a@b.co', email_mirror_text: 'Email copy', send_blocked_at: '2026-10-18T09:05:00Z', send_blocked_reason: 'duplicate_in_thread' })
+  for (const m of [swish, pair]) {
+    const [t] = threads([m])
+    const { container, unmount } = render(<History t={t} onSendAnyways={() => {}} onEditHeld={async () => true} />)
+    expect(container.querySelector('[data-held]'), m.prospect_id).toBeTruthy()
+    expect(container.querySelector('[data-verb="edit-held"]'), m.prospect_id).toBeNull()
+    unmount()
+  }
+  const { t } = leighton()
+  const spam = render(<History t={{ ...t, spam: true }} onSendAnyways={() => {}} onEditHeld={async () => true} />)
+  expect(spam.container.querySelector('[data-verb="edit-held"]')).toBeNull()
+  spam.unmount()
+  const log = render(<History t={t} />)
+  expect(log.container.querySelector('[data-verb="edit-held"]')).toBeNull()
 })

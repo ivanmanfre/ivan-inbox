@@ -23,7 +23,7 @@ import { DraftWhy } from './DraftWhy'
 import { ReferralCard } from './ReferralCard'
 import { SwishReferral } from './SwishReferral'
 import { CalendarPanel } from './Calendar'
-import { History } from './History'
+import { History, type HeldEditThen } from './History'
 import type { CameBackSignal } from '../../wb/dms/cameBackData'
 import { Composer } from './Keys'
 import { ThreadMenu, type MenuAct } from './Menu'
@@ -200,6 +200,23 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     try { await run(async () => { if (t.draft?.id === m.id) await saver.flush(); else saver.cancel(); await verbs.sendAnyways(t, m) }) }
     finally { overrideBusy.current = false }
   }
+  // Ivan 10-21 (Leighton Penrose): save the edited held message (it stays held), then send it now through
+  // the same Send anyway, or schedule it through the existing scheduler when that takes the row.
+  const editHeld = async (m: InboxMessage, text: string, then: HeldEditThen): Promise<boolean> => {
+    if (overrideBusy.current) return false
+    overrideBusy.current = true
+    let saved = false
+    try {
+      await run(async () => {
+        const next = await verbs.editHeld(t, m, text, { quiet: then === 'send' })
+        if (!next) return
+        saved = true
+        if (then === 'send') await verbs.sendAnyways(t, next)
+        else if (then === 'later') { setScheduleFailure(''); setSchedule({ ids: [next.id], texts: [next.message_text], expectedDelivery: [deliverySnapshot(next)] }) }
+      })
+    } finally { overrideBusy.current = false }
+    return saved
+  }
   const sendVia = (mode: DraftSendVia) => { if (busy) return; void run(async () => {
     await saver.flush()
     if (saver.isPending()) return
@@ -269,7 +286,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     if (t.ownerConfirmation) void verbs.holdRelease(t)
     dock.current?.querySelector('textarea')?.focus()
   }} />
-  const history = <History v4={v4} onSendAnyways={m => void sendAnyways(m)} onDiscardHeld={m => { if (!busy) void run(() => verbs.discardHeld(t, m)) }} sending={busy} t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} onReplyEmail={canComposeEmail(t) && !t.spam && !busy ? openEmailReply : undefined}
+  const history = <History v4={v4} onSendAnyways={m => void sendAnyways(m)} onDiscardHeld={m => { if (!busy) void run(() => verbs.discardHeld(t, m)) }} onEditHeld={editHeld} heldLater={!scheduledPending} sending={busy} t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} onReplyEmail={canComposeEmail(t) && !t.spam && !busy ? openEmailReply : undefined}
     onForwardEmail={['arch', 'risedtc'].includes(t.client_id) && !busy ? setForwardEmail : undefined} />
   const historyView = referredLead && !t.messages.some(m => m.direction === 'inbound')
     ? <details className="dm-referral-history"><summary>Sent messages</summary>{history}</details> : history

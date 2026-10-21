@@ -23,7 +23,9 @@ function legPipe(t: Thread): string {
   return c === 'email' ? ' + email' : c === 'inmail' ? ' + InMail' : c ? ' + DM' : ''
 }
 
-function Grow({ value, onChange, label, onBlur, max = 240, onKeyDown }: { value: string; onChange: (s: string) => void; label: string; onBlur?: () => void; max?: number; onKeyDown?: (e: KeyboardEvent<HTMLTextAreaElement>) => void }) {
+/** The draft editor box. `autosave={false}` for a box that saves only on a key (the held-message edit):
+ *  an update reload then treats it as typed-in, unsaved work. */
+export function Grow({ value, onChange, label, onBlur, max = 240, onKeyDown, autosave = true }: { value: string; onChange: (s: string) => void; label: string; onBlur?: () => void; max?: number; onKeyDown?: (e: KeyboardEvent<HTMLTextAreaElement>) => void; autosave?: boolean }) {
   const ref = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
     const el = ref.current
@@ -31,7 +33,7 @@ function Grow({ value, onChange, label, onBlur, max = 240, onKeyDown }: { value:
     el.style.height = 'auto'
     el.style.height = `${Math.min(el.scrollHeight + 2, max)}px`
   }, [value, max])
-  return <textarea ref={ref} className="dm-edit" data-autosave aria-label={label} value={value} rows={2} spellCheck onBlur={onBlur} onChange={e => onChange(e.target.value)} onKeyDown={onKeyDown} />
+  return <textarea ref={ref} className="dm-edit" data-autosave={autosave || undefined} aria-label={label} value={value} rows={2} spellCheck onBlur={onBlur} onChange={e => onChange(e.target.value)} onKeyDown={onKeyDown} />
 }
 
 function Cc({ value, onChange, onBlur, label = 'CC recipients' }: { value: string; onChange: (value: string) => void; onBlur: () => void; label?: string }) {
