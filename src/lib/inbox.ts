@@ -267,6 +267,66 @@ export function retiredLabel(m: InboxMessage): string {
   return 'Draft not sent, no reply was needed'
 }
 
+/* ==========================================================================
+   HELD SENDS (Ivan 2026-10-21, Barak Zuman: he pressed Send on his own edited
+   reply, the sender held it, and it vanished: he thought it was deleted).
+
+   A gate that holds a message clears the approval and writes a reason. A lint
+   hold became a "draft" again, and a newer internal retry hold or a newer
+   draft pushed it out of both the draft pane and the history. Other gate holds
+   drew as "Send failed" on a thread nobody opened (~25 leads since 10-07).
+
+   THE RULE: an unsent outbound row with words and a gate reason is HELD, and a
+   held row is never invisible. Not a hold: a discard, a supersede, a schedule,
+   an invite sent instead, the internal question / retry hold (PR #42 keeps its
+   own card), an engine retirement, an intentional stop, and the SwishDM review
+   hold (a draft waiting for approval, nothing was attempted).
+   ========================================================================== */
+const NOT_A_HOLD = /^(discarded|superseded|scheduled|routed_to_invite|owner_confirmation_superseded)(?=$|[_:\s])/
+
+export function isHeldSend(m: InboxMessage): boolean {
+  if (m.direction !== 'outbound' || m.sent_at || m.unipile_message_id) return false
+  const r = m.send_blocked_reason
+  if (!r || !m.send_blocked_at || !(m.message_text ?? '').trim()) return false
+  if (NOT_A_HOLD.test(r) || r === SWISHDM_REPLY_HOLD) return false
+  return !isInternalConfirmation(m) && !isEngineRetired(m) && !isIntentionalStop(m)
+}
+
+/** The newest held row on a thread, while nothing has been sent after it was held. */
+export function heldSend(t: Pick<Thread, 'messages'>): InboxMessage | null {
+  const held = t.messages.filter(isHeldSend).sort((a, b) => Date.parse(a.send_blocked_at!) - Date.parse(b.send_blocked_at!)).at(-1)
+  if (!held) return null
+  const at = Date.parse(held.send_blocked_at!)
+  return t.messages.some(m => m.direction === 'outbound' && m.sent_at && Date.parse(m.sent_at) > at) ? null : held
+}
+
+/** Why a row is held, in plain words. An unknown code shows as written. */
+export function heldReasonText(reason: string | null | undefined): string {
+  const r = (reason ?? '').trim()
+  const tail = r.includes(':') ? r.slice(r.indexOf(':') + 1).trim() : ''
+  if (r.startsWith('lint_calendar_') || /^calendar_(context_or_)?wording_unverified/.test(r)) return 'The calendar check could not verify the proposed time or wording.'
+  if (r.startsWith('arch_market_claim_unratified')) return `It mentions ${tail || 'a market'}, which is not a confirmed ARCH market.`
+  if (r.startsWith('send_failed_verified')) return `LinkedIn refused the send${/\b422\b/.test(r) ? ' (error 422)' : ''}. Check LinkedIn before sending again.`
+  if (r.startsWith('inmail_failed_422')) return /limit_exceeded|usage limit/i.test(r) ? 'The InMail limit for this period was reached.' : 'LinkedIn refused the InMail (error 422).'
+  if (r.startsWith('provider_invalid_recipient')) return 'LinkedIn says this person cannot be reached.'
+  if (r.startsWith('provider_success_unconfirmed')) return 'The sender could not confirm it arrived. Check LinkedIn before sending again.'
+  if (r.startsWith('accuracy_hold')) return 'The accuracy check found a claim that needs correcting.'
+  if (r === 'duplicate_in_thread') return 'It repeats a message already in the thread.'
+  if (r === 'rise_followup_repeated_or_unwarranted') return 'The follow-up check found it repeats an earlier ask or is not needed.'
+  if (r === 'arch_qualification_review') return 'This lead’s ARCH qualification needs a review first.'
+  if (r === 'followup_prospect_held') return 'Follow-ups are paused for this person.'
+  if (r === 'followup_future_date') return 'They asked to hear back on a later date.'
+  if (r === 'arch_conversation_owner_only') return 'Only Davorin writes in this conversation.'
+  if (r.startsWith('geo_gate_v2')) return 'The location check blocked it.'
+  if (r === 'asset_promise_without_link') return 'It promises something without the link.'
+  if (r === 'lint_unbacked_commitment') return 'It promises an email that is not attached.'
+  if (r === 'lint_email_cc_invalid') return 'The CC addresses need checking.'
+  if (r === 'lint_scan_quality_hold') return 'The scan review found no supported recommendation.'
+  if (r.startsWith(LINT_HOLD_PREFIX)) return 'The send check flagged a line.'
+  if (r.startsWith(RACE_HOLD_PREFIX)) return 'The thread changed while it was queued.'
+  return r
+}
+
 // Why a recoverable hold came back to the inbox. The sender used to say this
 // only in a WhatsApp alert; the draft itself looked like any other draft.
 export function holdReason(m: InboxMessage): string | null {
@@ -866,7 +926,7 @@ const STALE_DAYS = 14
 
 // Closed by Ivan's own hand. He archived or skipped these; re-offering them as
 // work is the app arguing with him.
-const CLOSED_STAGES = new Set(['archived', 'skipped', 'disqualified', 'unsubscribed', 'blacklisted'])
+export const CLOSED_STAGES = new Set(['archived', 'skipped', 'disqualified', 'unsubscribed', 'blacklisted'])
 
 function isRealReply(m: InboxMessage): boolean {
   const text = (m.message_text ?? '').trim()

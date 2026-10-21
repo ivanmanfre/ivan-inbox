@@ -78,6 +78,7 @@
 .dm-tick{color:var(--lime);font-family:var(--m);margin-right:6px}
 .dm-tag{display:inline-block;font:400 10.5px var(--m);color:var(--t2);border:1px solid var(--line2);border-radius:4px;padding:0 4px;margin-right:3px}
 .dm-tag-nd{color:var(--t1);background:var(--p3);border-color:var(--strong)}
+.dm-tag-held{color:var(--warn);border-color:var(--warn)}
 .dm-tag-re{color:var(--t1);border-style:dashed}
 .dm-tag-ch{background:rgba(255,255,255,.05)}
 .dm-tag-off{color:var(--t3);text-decoration:line-through}

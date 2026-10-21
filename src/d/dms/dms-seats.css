@@ -46,6 +46,7 @@ button.dm-sig:hover{border-color:var(--lime)}
 .dm-st{display:inline-block;font:400 10.5px var(--m);border-radius:4px;padding:0 5px;margin-right:5px;border:1px solid var(--line2);color:var(--t2);white-space:nowrap}
 .dm-st-needs{color:var(--ink);background:var(--lime);border-color:var(--lime)}
 .dm-st-later{color:var(--hot);border-color:var(--hotB)}
+.dm-st-held{color:var(--warn);border-color:var(--warn)}
 .dm-st-replied{color:var(--t1)}
 .dm-st-solved,.dm-st-discarded,.dm-st-older,.dm-st-auto{color:var(--t3)}
 .dm-q.dm-x{background:var(--p2)}

@@ -13,19 +13,19 @@ export function Banners({ t, verbs, now, owed, hasDraft, onNote, reload, fuTick,
 }) {
   if (t.spam) return null
   const blocked = blockedFollowup(t)
-  const override = t.draft && canSendRejectedDm(t.draft) && onSendAnyways && <div className="dm-ban-row"><button type="button" className="dm-email-reply dm-send-anyways" disabled={sending} onClick={onSendAnyways}>Send anyways</button></div>
+  const override = t.draft && canSendRejectedDm(t.draft) && onSendAnyways && <div className="dm-ban-row"><button type="button" className="dm-email-reply dm-send-anyways" disabled={sending} onClick={onSendAnyways}>Send anyway</button></div>
   if (v4) return <>
     {override}
     <OwnerHoldBanner t={t} verbs={verbs} onNote={onNote} onRetry={reload} />
     <FollowUpBanner t={t} verbs={verbs} tick={fuTick} />
-    {blocked && <div className="dm-ban dm-ban-hl dx-ban-bad" role="note"><b>Follow-up blocked</b><p>{blocked.reason}. The message was not sent.</p><p>Read the thread, send the rejected draft anyways, or write a replacement below.</p></div>}
+    {blocked && <div className="dm-ban dm-ban-hl dx-ban-bad" role="note"><b>Follow-up blocked</b><p>{blocked.reason}. The message was not sent.</p><p>Read the thread, send the rejected draft anyway, or write a replacement below.</p></div>}
     {!hasDraft && !t.ownerConfirmation && !blocked && (owed ? <NoDraftBanner t={t} now={now} /> : <div className="dx-sys"><WaitingBanner t={t} /></div>)}
   </>
   return <>
     {override}
     <OwnerHoldBanner t={t} verbs={verbs} onNote={onNote} onRetry={reload} />
     <FollowUpBanner t={t} verbs={verbs} tick={fuTick} />
-    {blocked && <div className="dm-ban dm-ban-hl" role="note"><b>Follow-up blocked</b><p>{blocked.reason}. The message was not sent.</p><p>Read the thread, send the rejected draft anyways, or write a replacement below.</p></div>}
+    {blocked && <div className="dm-ban dm-ban-hl" role="note"><b>Follow-up blocked</b><p>{blocked.reason}. The message was not sent.</p><p>Read the thread, send the rejected draft anyway, or write a replacement below.</p></div>}
     {!hasDraft && !t.ownerConfirmation && !blocked && (owed ? <NoDraftBanner t={t} now={now} /> : <WaitingBanner t={t} />)}
     {hasDraft && <PushedBanner t={t} verbs={verbs} />}
     {hasDraft && <GapBanner t={t} verbs={verbs} />}

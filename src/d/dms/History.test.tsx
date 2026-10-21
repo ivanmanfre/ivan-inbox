@@ -39,17 +39,19 @@ it('shows a SwishDM InMail routed to an invite as a muted "Not sent" line, never
   const { container } = render(<History t={t} onSendAnyways={() => {}} />)
   expect(screen.getByText('Not sent: sent an invite instead')).toBeTruthy()
   expect(screen.queryByText(/Send failed/)).toBeNull()
-  expect(screen.queryByRole('button', { name: 'Send anyways' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Send anyway' })).toBeNull()
   expect(container.querySelector('.dm-h-fail')).toBeNull()
 })
 
-it('keeps a real SwishDM failure red but offers no Send anyways on Jonathan’s seat', () => {
+it('keeps a real SwishDM failure marked but offers no Send anyway on Jonathan’s seat', () => {
   const failed = msg({ prospect_id: 'sw2', client_id: 'swishdm', prospect_stage: 'swishdm_connected', message_text: 'DM copy',
     approved_at: '2026-10-18T09:00:00Z', send_blocked_at: '2026-10-18T09:05:00Z', send_blocked_reason: 'send_failed_429: check LinkedIn before retrying' })
   const [t] = threads([failed])
-  render(<History t={t} onSendAnyways={() => {}} />)
-  expect(screen.getByText(/^Send failed/)).toBeTruthy()
-  expect(screen.queryByRole('button', { name: 'Send anyways' })).toBeNull()
+  const { container } = render(<History t={t} onSendAnyways={() => {}} onDiscardHeld={() => {}} />)
+  expect(screen.getByText('Held, not sent')).toBeTruthy()
+  expect(container.querySelector('.dm-h-fail')).toBeTruthy()
+  expect(container.querySelector('[data-verb="discard-held"]')).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Send anyway' })).toBeNull()
 })
 
 it('says a SwishDM DM1 waits for the invite, then the accept, before it is queued', () => {
@@ -129,4 +131,65 @@ it('leaves sent items, failures and intentional stops in their chronological pla
   const sent2 = msg({ prospect_id: 'chrono', sent_at: '2026-10-19T11:00:00Z', message_text: 'third' })
   const [t] = threads([sent2, failed, sent1])
   expect(historyRows(t).map(m => m.message_text)).toEqual(['first', 'second', 'third'])
+})
+
+// Ivan 2026-10-21 (Barak Zuman, Liron Smadja): a held message is never invisible.
+it('shows a gate-held row in its timeline place as "Held, not sent" with the reason in plain words', () => {
+  const pid = 'liron'
+  const sent = msg({ prospect_id: pid, client_id: 'arch', sent_at: '2026-10-11T11:26:40Z', message_text: 'Hey Liron, I will be in Tel Aviv.' })
+  const held = msg({ prospect_id: pid, client_id: 'arch', ai_model: 'arch_telaviv_trip_followup_v2', created_at: '2026-10-20T15:06:50Z', message_text: 'Are you around for a coffee next week?',
+    send_blocked_at: '2026-10-20T15:06:51Z', send_blocked_reason: 'arch_market_claim_unratified:Israel' })
+  const [t] = threads([sent, held])
+  expect(historyRows(t).map(m => m.id)).toEqual([sent.id, held.id])
+  const { container } = render(<History t={t} onSendAnyways={() => {}} onDiscardHeld={() => {}} />)
+  const bubble = container.querySelector(`[data-msg="${held.id}"]`)!
+  expect(bubble.hasAttribute('data-held')).toBe(true)
+  expect(bubble.textContent).toContain('Held, not sent')
+  expect(bubble.textContent).toContain('It mentions Israel, which is not a confirmed ARCH market.')
+  expect(bubble.textContent).not.toContain('Send failed')
+  expect(screen.getByRole('button', { name: 'Send anyway' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Discard' })).toBeTruthy()
+})
+
+it('leaves the lint-held draft in the pane, not twice in the timeline', () => {
+  const pid = 'pane'
+  const inbound = msg({ prospect_id: pid, direction: 'inbound', sent_at: '2026-10-21T10:00:00Z', message_text: 'When?' })
+  const held = msg({ prospect_id: pid, created_at: '2026-10-21T10:05:00Z', message_text: 'Monday 1:45pm?', send_blocked_at: '2026-10-21T10:06:00Z', send_blocked_reason: 'lint_calendar_proposal_edited' })
+  const [t] = threads([inbound, held])
+  expect(t.draft?.id).toBe(held.id)
+  expect(historyRows(t).map(m => m.id)).toEqual([inbound.id])
+})
+
+it('shows an older held draft once a newer draft took the pane', () => {
+  const pid = 'two'
+  const held = msg({ prospect_id: pid, created_at: '2026-10-21T10:05:00Z', message_text: 'My edited reply', send_blocked_at: '2026-10-21T10:06:00Z', send_blocked_reason: 'lint_calendar_proposal_edited' })
+  const newer = msg({ prospect_id: pid, created_at: '2026-10-21T11:00:00Z', message_text: 'A fresh drafter reply' })
+  const [t] = threads([msg({ prospect_id: pid, direction: 'inbound', sent_at: '2026-10-21T10:00:00Z', message_text: 'When?' }), held, newer])
+  expect(t.draft?.id).toBe(newer.id)
+  expect(historyRows(t).map(m => m.id)).toContain(held.id)
+  expect(historyRows(t).map(m => m.id)).not.toContain(newer.id)
+})
+
+it('never folds the open hold behind "earlier messages"', () => {
+  const pid = 'fold'
+  const held = msg({ prospect_id: pid, created_at: '2026-10-01T09:00:00Z', message_text: 'Held words', send_blocked_at: '2026-10-01T09:01:00Z', send_blocked_reason: 'duplicate_in_thread' })
+  const later = Array.from({ length: 8 }, (_, i) => msg({ prospect_id: pid, direction: 'inbound', sent_at: `2026-10-0${2 + Math.floor(i / 4)}T1${i % 4}:00:00Z`, message_text: `inbound ${i}` }))
+  const [t] = threads([held, ...later])
+  const { container } = render(<History t={t} cap={6} />)
+  expect(container.querySelector(`[data-msg="${held.id}"][data-held]`)).toBeTruthy()
+})
+
+it('does not mark discards, supersedes, invites-instead, empty rows or internal holds as held', () => {
+  const pid = 'not'
+  const rows = [
+    msg({ prospect_id: pid, message_text: 'binned', send_blocked_at: '2026-10-20T10:00:00Z', send_blocked_reason: 'discarded_in_inbox' }),
+    msg({ prospect_id: pid, message_text: 'old', send_blocked_at: '2026-10-20T10:00:00Z', send_blocked_reason: 'superseded_by_redraft' }),
+    msg({ prospect_id: pid, message_text: 'routed', approved_at: '2026-10-20T09:00:00Z', send_blocked_at: '2026-10-20T10:00:00Z', send_blocked_reason: 'routed_to_invite: invite sent instead' }),
+    msg({ prospect_id: pid, message_text: '  ', send_blocked_at: '2026-10-20T10:00:00Z', send_blocked_reason: 'send_failed_verified: hard error' }),
+    msg({ prospect_id: pid, message_text: '', send_blocked_at: '2026-10-20T10:00:00Z', send_blocked_reason: 'reply_retry_pending' }),
+  ]
+  const [t] = threads(rows)
+  const { container } = render(<History t={t} onSendAnyways={() => {}} onDiscardHeld={() => {}} />)
+  expect(container.querySelector('[data-held]')).toBeNull()
+  expect(screen.queryByText('Held, not sent')).toBeNull()
 })

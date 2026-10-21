@@ -1,6 +1,6 @@
 // A thread as a row, one renderer per list kind (the mock's row(t, kind)).
 import type { ReactNode } from 'react'
-import { canRestore, eventTime, type Thread } from '../../lib/inbox'
+import { canRestore, eventTime, heldReasonText, type InboxMessage, type Thread } from '../../lib/inbox'
 import type { PreReadHandle } from '../../exp/v2c/chat/usePreRead'
 import { warsawDay, warsawDm, warsawDow, warsawHm } from '../ui/time'
 import { ago, firstLine, flat, lastDiscard, owedSince, rowTags } from './model'
@@ -43,6 +43,14 @@ export function NoDraftRow({ t, c }: { t: Thread; c: RowCtx }) {
   return <Row {...extras(t, c)} id={t.prospect_id} name={t.prospect_name} company={t.prospect_company} tags={rowTags(t, { nodraft: !t.ownerConfirmation })}
     line={flat(lastIn?.message_text)} right={since ? ago(since, c.now) : ''} rightKind="needs"
     selected={c.selected === t.prospect_id} checked={c.checked.has(t.prospect_id)} onOpen={() => c.open(t)} />
+}
+
+/** A thread whose newest outbound a gate held: the Held badge, why in plain words, then the held text. */
+export function HeldRow({ t, m, c }: { t: Thread; m: InboxMessage; c: RowCtx }) {
+  return <Row {...extras(t, c)} id={t.prospect_id} name={t.prospect_name} company={t.prospect_company}
+    pill={{ text: 'Held', tone: 'bad', title: 'Held, not sent' }} tags={c.v4 ? undefined : [{ text: 'Held', kind: 'held' }]}
+    line={`${heldReasonText(m.send_blocked_reason)} ${firstLine(m.message_text)}`} right={ago(m.send_blocked_at, c.now)} rightKind="needs"
+    selected={c.selected === t.prospect_id} onOpen={() => c.open(t)} />
 }
 
 export function LaterRow({ t, c }: { t: Thread; c: RowCtx }) {

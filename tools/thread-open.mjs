@@ -55,7 +55,9 @@ const readRpcs = new Set(['inbox_changed_since', 'inbox_interest_cards', 'inbox_
   // The side panel Glance's ready read (glance/ready.ts): STABLE security-definer, no writes.
   'inbox_rise_ready',
   // The X review flag's list (src/lib/xReview.ts fetchXReview): a read of articles and quote posts, no writes.
-  'x_review_list'])
+  'x_review_list',
+  // The Signals post-engager read (src/d/dms/ownerEngagers.ts): STABLE security-definer, no writes.
+  'owner_engager_cards'])
 const replySourceRpcs = new Set(['inbox_reply_source', 'outreach_reply_sources', 'client_board_reply_source', 'client_board_reply_sources'])
 function missingReplySource(url, method, status, payload) {
   const u = new URL(url)
