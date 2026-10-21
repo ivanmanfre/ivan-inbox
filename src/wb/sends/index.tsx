@@ -33,6 +33,7 @@ import {
   buildInboundLanes, fetchInbound, fetchInboundDaily, fetchInboundDecisions,
   type InboundDecision, type InboundLane, type InboundLaneKey, type InboundStatus,
 } from '../../lib/inbound'
+import { unreachableLabel } from '../../lib/inbox'
 import { clientLabel } from '../../lib/money'
 import { SendsSkeleton } from '../chrome/Skeleton'
 import { Linkified } from '../chrome/Linkified'
@@ -168,8 +169,10 @@ function LogRow({ m, tags, open, onToggle }: {
   onToggle: () => void
 }) {
   const failed = m.kind === 'failed'
+  // Blocked us / cannot receive LinkedIn messages: muted "Not delivered", never Failed (Ivan 10-21).
+  const quiet = m.kind === 'undelivered'
   const chips = open ? tagChips(tags) : []
-  const text = failed ? (m.reason ?? 'send failed') : m.message_text
+  const text = failed ? (m.reason ?? 'send failed') : quiet ? unreachableLabel({ send_blocked_reason: m.reason }) : m.message_text
   return (
     <div className="a-log-r" data-open={open ? '' : undefined} data-sev={failed ? 'urgent' : undefined}>
       <button
@@ -186,6 +189,7 @@ function LogRow({ m, tags, open, onToggle }: {
         <span className="a-log-kind">
           {failed
             ? <Chip tone="urgent">Failed</Chip>
+            : quiet ? <Chip tone="quiet">Not delivered</Chip>
             : <Chip tone="quiet">{TYPE_LABEL[sendKind(m)] ?? sendKind(m)}</Chip>}
         </span>
         <span className="a-log-tm a-mono">{logTime(m.event_at)}</span>
@@ -201,7 +205,7 @@ function LogRow({ m, tags, open, onToggle }: {
               {chips.map(c => <Chip key={c} tone="quiet">{c}</Chip>)}
             </div>
           )}
-          <div className="a-log-full a-pre a-body-t">{text || '(no text stored)'}</div>
+          <div className="a-log-full a-pre a-body-t">{(quiet ? `${text}\n\n${m.message_text || ''}`.trim() : text) || '(no text stored)'}</div>
         </div>
       )}
     </div>
@@ -255,7 +259,7 @@ function LogView({ client }: { client: Client }) {
     )
   }
 
-  const sentShown = items.filter(m => m.kind !== 'failed').length
+  const sentShown = items.filter(m => m.kind === 'sent').length
   const failedShown = items.filter(m => m.kind === 'failed').length
 
   // The log is a window, and the head says so on both counts.

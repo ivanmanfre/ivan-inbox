@@ -37,6 +37,8 @@ it('sentIn keeps only sent outbound messages in the window, newest first', () =>
     m({ id: 'c', direction: 'inbound', sent_at: '2026-10-08T09:00:00Z' }),
     m({ id: 'd', direction: 'outbound', sent_at: '2026-10-08T08:00:00Z' }),
     m({ id: 'e', direction: 'outbound', sent_at: '2026-08-01T08:00:00Z' }),
+    // Blocked us / cannot receive (Ivan 10-21): never listed as a send, so never a failed one either.
+    m({ id: 'f', direction: 'outbound', sent_at: null, send_blocked_at: '2026-10-08T10:00:00Z', send_blocked_reason: 'provider_invalid_recipient: LinkedIn 422 errors/blocked_recipient' }),
   ] } as unknown as Thread
   expect(sentIn([t], now).map(r => r.m.id)).toEqual(['d', 'a'])
 })

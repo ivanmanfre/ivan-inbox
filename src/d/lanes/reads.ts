@@ -4,6 +4,7 @@
    seat or to one campaign. Nothing here writes.
    ========================================================================== */
 import { supabase } from '../../lib/supabase'
+import { FAILED_SEND_FILTER } from '../../lib/sends'
 import type { CameBackCard } from '../../wb/dms/cameBackData'
 import type { Seat } from '../seats'
 
@@ -175,11 +176,11 @@ export async function fetchPauses(): Promise<Pauses> {
 }
 
 export type Blocked = { id: string; prospect_name: string; client_id: string; send_blocked_at: string; send_blocked_reason: string | null }
-/** Newest blocked sends across seats, same exclusions as the send log (discards and owner holds are not failures). */
+/** Newest blocked sends across seats, same exclusions as the send log totals (discards, owner holds and unreachable recipients are not failures). */
 export async function fetchBlocked(limit = 8): Promise<Blocked[]> {
   const { data, error } = await supabase.from('inbox_messages_v').select('id, prospect_name, client_id, send_blocked_at, send_blocked_reason')
     .eq('direction', 'outbound').not('send_blocked_at', 'is', null)
-    .or('send_blocked_reason.is.null,send_blocked_reason.not.in.(discarded_in_inbox,owner_confirmation,owner_confirmation_superseded,reply_retry_pending,awaiting_client_review)')
+    .or(FAILED_SEND_FILTER)
     .order('send_blocked_at', { ascending: false }).limit(limit)
   if (error) throw error
   return (data ?? []) as Blocked[]

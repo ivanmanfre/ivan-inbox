@@ -319,8 +319,11 @@ export function canScheduleHeld(m: InboxMessage): boolean {
  *  that one is fixable with an invite and stays a held send. */
 export function isUnreachableRecipient(reason: string | null | undefined): boolean {
   const r = reason ?? ''
-  return r.startsWith('provider_invalid_recipient') || r.includes('invalid_recipient') || r.includes('blocked_recipient')
+  return UNREACHABLE_MARKS.some(k => r.includes(k))
 }
+/** The words that mark a reason as unreachable ('provider_invalid_recipient' carries the first). One list, so the
+ *  server-side filters that keep these rows out of failure counts (lib/sends) match this helper exactly. */
+export const UNREACHABLE_MARKS = ['invalid_recipient', 'blocked_recipient'] as const
 
 /** An unsent outbound row LinkedIn would not deliver (Ivan 10-21, Ben Chehebar / Toby Hart: "if he's blocked,
  *  he shouldn't even appear as an error ... I don't want to see it"). Not held, not failed, not a draft: the

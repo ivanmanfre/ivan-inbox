@@ -4,8 +4,12 @@
    denominators from HEAD counts, a seat filter (URL `for=`), each row a kind
    in words (Invite, Invite without note, Invite sent bare, Open profile, DM,
    InMail, Email, Reply), whose seat, relative age. Tap a row: the full text
-   and the lead's tags (fetchLeadTags) as one line of words. Read-only. */
+   and the lead's tags (fetchLeadTags) as one line of words. A recipient
+   LinkedIn will not deliver to (blocked us, cannot receive messages) is a
+   muted "Not delivered" row, never Failed and never in the blocked count.
+   Read-only. */
 import { useEffect, useState } from 'react'
+import { unreachableLabel } from '../../lib/inbox'
 import { fetchLeadTags, fetchSendLog, fetchSendLogTotals, sendKind, type LeadTags, type SendLogItem } from '../../lib/sends'
 import { SEATS, SEAT_NAME, seatOf, type Seat } from '../seats'
 import { Sheet, useInline } from './LSheet'
@@ -36,9 +40,11 @@ export function tagLine(t: LeadTags | undefined): string {
 function Row({ m, tags, now }: { m: SendLogItem; tags: LeadTags | undefined; now: number }) {
   const [open, setOpen] = useState(false)
   const failed = m.kind === 'failed'
-  const text = failed ? (m.reason ?? 'send failed').replace(/_/g, ' ') : (m.message_text || '(no text stored)')
+  // Blocked us / cannot receive LinkedIn messages: kept for the record, muted, never "Failed" (Ivan 10-21).
+  const quiet = m.kind === 'undelivered'
+  const text = failed ? (m.reason ?? 'send failed').replace(/_/g, ' ') : quiet ? unreachableLabel({ send_blocked_reason: m.reason }) : (m.message_text || '(no text stored)')
   return (
-    <div className={`dl-lgr${failed ? ' dl-f' : ''}`}>
+    <div className={`dl-lgr${failed ? ' dl-f' : ''}${quiet ? ' dl-nd' : ''}`} data-undelivered={quiet ? '' : undefined}>
       <button type="button" className="dl-lg" aria-expanded={open} onClick={() => setOpen(o => !o)}>
         <time>{hm(m.event_at)}</time><span className="dl-k">{failed ? 'Failed' : KIND[sendKind(m)] ?? sendKind(m)}</span>
         <p><span className="dl-nm">{m.prospect_name}</span> · {text.replace(/\s+/g, ' ')}</p>
@@ -46,7 +52,7 @@ function Row({ m, tags, now }: { m: SendLogItem; tags: LeadTags | undefined; now
       </button>
       {open && <div className="dl-lgx">
         {tagLine(tags) && <p className="dl-m dl-dimt">{tagLine(tags)}</p>}
-        <p className="dl-pre">{failed ? `${text}\n\n${m.message_text || ''}`.trim() : text}</p>
+        <p className="dl-pre">{failed || quiet ? `${text}\n\n${m.message_text || ''}`.trim() : text}</p>
       </div>}
     </div>
   )

@@ -152,6 +152,45 @@ describe('buildSendLog', () => {
   })
 })
 
+describe('unreachable recipients in the send log (Ivan 10-21, every seat)', () => {
+  const lr = (over: Record<string, unknown>) => ({
+    id: 'x', prospect_id: 'p1', prospect_name: 'A', client_id: 'ivan',
+    message_type: 'dm', message_text: 'hey', sent_at: null, send_blocked_at: '2026-10-21T17:45:03Z', send_blocked_reason: null,
+    ...over,
+  })
+  it('logs a blocked / cannot-receive row as undelivered, never failed, on every seat', async () => {
+    const { buildSendLog } = await import('./sends')
+    const failed = [
+      lr({ id: 'ben', client_id: 'risedtc', send_blocked_reason: 'provider_invalid_recipient: LinkedIn 422 errors/blocked_recipient (relabeled 2026-10-21)' }),
+      lr({ id: 'toby', client_id: 'ivan', send_blocked_reason: 'provider_invalid_recipient: LinkedIn 422 on every send incl. Send anyway 2026-10-21; treated as unreachable' }),
+      lr({ id: 'arch', client_id: 'arch', send_blocked_reason: 'send_failed_verified: hard error: Request failed with status code 422 [errors/blocked_recipient]' }),
+      lr({ id: 'swish', client_id: 'swishdm', send_blocked_reason: 'inmail_failed_422: {"type":"errors/invalid_recipient"}' }),
+      // Fixable or a quota: these stay failures.
+      lr({ id: 'conn', send_blocked_reason: 'send_failed_verified: chat create failed: Request failed with status code 422 [errors/no_connection_with_recipient]' }),
+      lr({ id: 'quota', message_type: 'inmail', send_blocked_reason: 'inmail_failed_422: {"type":"errors/limit_exceeded"}' }),
+    ]
+    const log = buildSendLog([], failed as never)
+    const kind = Object.fromEntries(log.map(i => [i.id, i.kind]))
+    expect(kind).toEqual({ ben: 'undelivered', toby: 'undelivered', arch: 'undelivered', swish: 'undelivered', conn: 'failed', quota: 'failed' })
+  })
+  it('a delivered row is never undelivered, whatever its reason says', async () => {
+    const { buildSendLog } = await import('./sends')
+    const log = buildSendLog([], [lr({ id: 'sent', sent_at: '2026-10-21T17:00:00Z', send_blocked_reason: 'provider_invalid_recipient' })] as never)
+    expect(log[0].kind).toBe('failed')
+  })
+  it('the failure filter drops exactly the words the inbox helper matches', async () => {
+    const { FAILED_SEND_FILTER, LOGGED_BLOCK_FILTER } = await import('./sends')
+    const { UNREACHABLE_MARKS, isUnreachableRecipient } = await import('./inbox')
+    for (const k of UNREACHABLE_MARKS) {
+      expect(FAILED_SEND_FILTER).toContain(`send_blocked_reason.not.like.*${k}*`)
+      expect(isUnreachableRecipient(`x ${k} y`)).toBe(true)
+    }
+    expect(FAILED_SEND_FILTER.startsWith('send_blocked_reason.is.null,')).toBe(true)
+    expect(FAILED_SEND_FILTER).not.toContain('no_connection')
+    expect(LOGGED_BLOCK_FILTER).not.toContain('recipient')
+  })
+})
+
 describe('sendKind', () => {
   it('keeps a real note-bearing connection as connection_note', () => {
     expect(sendKind({ message_type: 'connection_note', ai_model: null, message_text: 'Hey Rayson, loved your post on...' }))

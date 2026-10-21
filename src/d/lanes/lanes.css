@@ -160,6 +160,7 @@ em.dl-z,b.dl-z{color:var(--t3)}em.dl-on{color:var(--lime)}em.dl-q{color:var(--t3
 .dl-lgr .dl-lg{all:unset;box-sizing:border-box;width:100%;display:grid;grid-template-columns:44px 96px minmax(0,1fr) auto;gap:10px;padding:7px 0;font-size:13px;align-items:baseline;cursor:pointer;border:0}
 .dl-lgr .dl-lg:hover p{color:var(--t1)}.dl-lgr .dl-lg:focus-visible{outline:2px solid var(--lime);outline-offset:-2px}
 .dl-lgr.dl-f .dl-k{color:var(--warn)}
+.dl-lgr.dl-nd .dl-lg,.dl-lgr.dl-nd .dl-lg p,.dl-lgr.dl-nd .dl-k{color:var(--t3)}
 .dl-lgx{padding:0 0 9px 54px}.dl-lgx p{margin:3px 0 0;font-size:13px;color:var(--t2)}
 .dl-pre{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--t1)!important}
 .dl-t1{color:var(--t1);font-size:12.5px}
