@@ -9,7 +9,7 @@
    muted "Not delivered" row, never Failed and never in the blocked count.
    Read-only. */
 import { useEffect, useState } from 'react'
-import { unreachableLabel } from '../../lib/inbox'
+import { heldReasonText, unreachableLabel } from '../../lib/inbox'
 import { fetchLeadTags, fetchSendLog, fetchSendLogTotals, sendKind, type LeadTags, type SendLogItem } from '../../lib/sends'
 import { SEATS, SEAT_NAME, seatOf, type Seat } from '../seats'
 import { Sheet, useInline } from './LSheet'
@@ -42,7 +42,7 @@ function Row({ m, tags, now }: { m: SendLogItem; tags: LeadTags | undefined; now
   const failed = m.kind === 'failed'
   // Blocked us / cannot receive LinkedIn messages: kept for the record, muted, never "Failed" (Ivan 10-21).
   const quiet = m.kind === 'undelivered'
-  const text = failed ? (m.reason ?? 'send failed').replace(/_/g, ' ') : quiet ? unreachableLabel({ send_blocked_reason: m.reason }) : (m.message_text || '(no text stored)')
+  const text = failed ? (m.reason ? heldReasonText(m.reason) : 'send failed') : quiet ? unreachableLabel({ send_blocked_reason: m.reason }) : (m.message_text || '(no text stored)')
   return (
     <div className={`dl-lgr${failed ? ' dl-f' : ''}${quiet ? ' dl-nd' : ''}`} data-undelivered={quiet ? '' : undefined}>
       <button type="button" className="dl-lg" aria-expanded={open} onClick={() => setOpen(o => !o)}>

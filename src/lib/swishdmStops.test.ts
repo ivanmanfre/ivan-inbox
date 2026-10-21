@@ -57,7 +57,25 @@ describe('intentional stops are never failed sends (any seat)', () => {
   })
 
   it('does not swallow engine reasons that only look alike', () => {
-    for (const r of ['replied_before_qualifier', 'superseded_by_newer_inbound', 'arch_market_claim_unratified:Israel']) expect(isIntentionalStopReason(r)).toBe(false)
+    for (const r of ['replied_before_qualifier', 'arch_market_claim_unratified:Israel', 'supersededish_code']) expect(isIntentionalStopReason(r)).toBe(false)
+  })
+
+  // Send audit 2 (Krishna Solanki 6c22c6f3): an APPROVED row the sender superseded is not a failure in any spelling.
+  it('a superseded row in any spelling is a quiet stop, never a failure or a Send anyway', () => {
+    const cases: Array<[string, string]> = [
+      ['superseded: not an open profile on Sales Navigator, rerouted to invite (invite sent)', 'Not sent: sent an invite instead'],
+      ['superseded_awaiting_real_scan_2026-08-03', 'Not sent: replaced by another message'],
+      ['superseded_by_newer_inbound', 'Not sent: replaced by another message'],
+      ['superseded', 'Not sent: replaced by another message'],
+    ]
+    for (const [reason, label] of cases) {
+      const m = blocked(reason, { client_id: 'ivan' })
+      expect(isIntentionalStop(m), reason).toBe(true)
+      expect(sendFailed(m), reason).toBe(false)
+      expect(canSendRejectedDm(m), reason).toBe(false)
+      expect(stopLabel(m), reason).toBe(label)
+      expect(statusPill(m, 'dm_sent'), reason).toEqual({ text: label, fail: false })
+    }
   })
 
   it('keeps a delivered row history, whatever its reason', () => {
