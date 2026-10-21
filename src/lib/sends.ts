@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { isIntentionalStopReason } from './inbox'
+import { isIntentionalStopReason, isUnreachableSend, UNREACHABLE_MARKS } from './inbox'
 
 export type SendRow = {
   client_id: string
@@ -114,9 +114,19 @@ export type SendLogItem = {
   ai_model: string | null
   message_text: string
   event_at: string
-  kind: 'sent' | 'failed'
+  /** 'undelivered': LinkedIn will not deliver to this person (blocked us, or cannot receive messages). Kept for the
+   *  record as a muted "Not delivered" entry, never a failure (Ivan 10-21). */
+  kind: 'sent' | 'failed' | 'undelivered'
   reason: string | null
 }
+
+/** PostgREST filter for blocked rows that count as failed sends: discards, owner holds and a recipient LinkedIn
+ *  will not deliver to (UNREACHABLE_MARKS, the same words isUnreachableRecipient matches) are not failures.
+ *  NULL-reason rows stay in: a bare not.in would silently drop them. */
+const NOT_A_FAILURE = 'discarded_in_inbox,owner_confirmation,owner_confirmation_superseded,reply_retry_pending,awaiting_client_review'
+export const FAILED_SEND_FILTER = `send_blocked_reason.is.null,and(send_blocked_reason.not.in.(${NOT_A_FAILURE}),${UNREACHABLE_MARKS.map(k => `send_blocked_reason.not.like.*${k}*`).join(',')})`
+/** The same, keeping the unreachable rows: the log shows them, muted. */
+export const LOGGED_BLOCK_FILTER = `send_blocked_reason.is.null,send_blocked_reason.not.in.(${NOT_A_FAILURE})`
 
 type LogRow = {
   id: string; prospect_id: string; prospect_name: string; client_id: string;
@@ -149,7 +159,8 @@ export function buildSendLog(sent: LogRow[], failed: LogRow[]): SendLogItem[] {
     items.push({
       id: m.id, prospect_id: m.prospect_id, prospect_name: m.prospect_name,
       client_id: m.client_id, message_type: m.message_type ?? 'dm', ai_model: m.ai_model ?? null,
-      message_text: m.message_text, event_at: m.send_blocked_at, kind: 'failed',
+      message_text: m.message_text, event_at: m.send_blocked_at,
+      kind: isUnreachableSend({ ...m, direction: 'outbound' }) ? 'undelivered' : 'failed',
       reason: m.send_blocked_reason,
     })
   }
@@ -166,7 +177,7 @@ export async function fetchSendLog(
     .order('sent_at', { ascending: false }).limit(limit * 3) // wide for dedupe headroom
   let failQ = supabase.from('inbox_messages_v').select(cols)
     .eq('direction', 'outbound').not('send_blocked_at', 'is', null)
-    .or('send_blocked_reason.is.null,send_blocked_reason.not.in.(discarded_in_inbox,owner_confirmation,owner_confirmation_superseded,reply_retry_pending,awaiting_client_review)')
+    .or(LOGGED_BLOCK_FILTER)
     .order('send_blocked_at', { ascending: false }).limit(60)
   if (client !== 'all') { sentQ = sentQ.eq('client_id', client); failQ = failQ.eq('client_id', client) }
   const [sent, fail] = await Promise.all([sentQ, failQ])
@@ -199,10 +210,8 @@ export async function fetchSendLogTotals(
   }
   const [sent, blocked] = await Promise.all([
     base().not('sent_at', 'is', null),
-    // Internal confirmation decisions and discards are not send failures.
-    // Keep NULL-reason failures: a bare not.in would silently exclude them.
-    base().not('send_blocked_at', 'is', null)
-      .or('send_blocked_reason.is.null,send_blocked_reason.not.in.(discarded_in_inbox,owner_confirmation,owner_confirmation_superseded,reply_retry_pending,awaiting_client_review)'),
+    // Internal confirmation decisions, discards and unreachable recipients are not send failures.
+    base().not('send_blocked_at', 'is', null).or(FAILED_SEND_FILTER),
   ])
   if (sent.error) throw sent.error
   if (blocked.error) throw blocked.error

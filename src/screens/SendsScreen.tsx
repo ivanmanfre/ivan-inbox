@@ -8,6 +8,7 @@ import {
   buildInboundLanes, fetchInbound, fetchInboundDaily, fetchInboundDecisions,
   type InboundDecision, type InboundLane, type InboundLaneKey, type InboundStatus,
 } from '../lib/inbound'
+import { unreachableLabel } from '../lib/inbox'
 import { SendsSkeleton } from '../components/Skeleton'
 import { Linkified } from '../components/Linkified'
 import { PullIndicator } from '../components/PullIndicator'
@@ -161,7 +162,7 @@ function LogView({ client }: { client: Client }) {
           probes; the two shown counts are of this render. */}
       <div className="log-denom">
         <span className="log-denom-l">Newest</span>
-        <b>{items.filter(m => m.kind !== 'failed').length}</b>
+        <b>{items.filter(m => m.kind === 'sent').length}</b>
         <span className="log-denom-l">of {totals ? totals.sent.toLocaleString() : '—'} sent</span>
         <span className="log-denom-s">·</span>
         <b>{items.filter(m => m.kind === 'failed').length}</b>
@@ -190,9 +191,10 @@ function LogView({ client }: { client: Client }) {
                 data-failed={m.kind === 'failed' ? '' : undefined}
                 style={m.kind === 'failed'
                   ? { background: 'rgba(255,69,58,.16)', color: '#FF453A' }
+                  : m.kind === 'undelivered' ? { background: 'rgba(142,142,147,.14)', color: '#8E8E93' }
                   : { background: `${TYPE_COLOR[sendKind(m)] ?? '#10A37F'}22`, color: TYPE_COLOR[sendKind(m)] ?? '#10A37F' }}
               >
-                {m.kind === 'failed' ? 'FAILED' : (TYPE_LABEL[sendKind(m)] ?? sendKind(m).toUpperCase())}
+                {m.kind === 'failed' ? 'FAILED' : m.kind === 'undelivered' ? 'NOT DELIVERED' : (TYPE_LABEL[sendKind(m)] ?? sendKind(m).toUpperCase())}
               </span>
               <div className="log-mid">
                 <div className="log-top">
@@ -209,12 +211,12 @@ function LogView({ client }: { client: Client }) {
                       </div>
                     )}
                     <div className="log-full">
-                      {m.kind === 'failed' ? (m.reason ?? 'send failed') : (m.message_text || '(no text stored)')}
+                      {m.kind === 'failed' ? (m.reason ?? 'send failed') : m.kind === 'undelivered' ? `${unreachableLabel({ send_blocked_reason: m.reason })}\n\n${m.message_text || ''}`.trim() : (m.message_text || '(no text stored)')}
                     </div>
                   </>
                 ) : (
                   <div className="log-snip">
-                    {m.kind === 'failed' ? (m.reason ?? 'send failed') : m.message_text}
+                    {m.kind === 'failed' ? (m.reason ?? 'send failed') : m.kind === 'undelivered' ? unreachableLabel({ send_blocked_reason: m.reason }) : m.message_text}
                   </div>
                 )}
               </div>

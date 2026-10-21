@@ -104,3 +104,82 @@ describe('inbox notification lifecycle migration', () => {
     await db.close()
   })
 })
+
+// Ivan 10-21 (Ben Chehebar on RISE, Toby Hart on Ivan): a recipient LinkedIn will not deliver to (blocked us, cannot
+// receive messages) never rings and never counts as blocked, on every seat.
+describe('unreachable recipients are not failures (db/20261021_unreachable_not_failed.sql)', () => {
+  const unreachable = readFileSync('db/20261021_unreachable_not_failed.sql', 'utf8')
+  const unreachableRollback = readFileSync('db/20261021_unreachable_not_failed_rollback.sql', 'utf8')
+  const outreach = `
+    create table public.outreach_campaigns (id uuid primary key default gen_random_uuid(), client_id text);
+    create table public.outreach_prospects (id uuid primary key default gen_random_uuid(), name text, campaign_id uuid);
+    create table public.outreach_messages (id uuid primary key default gen_random_uuid(), prospect_id uuid, direction text,
+      message_type text, channel text, message_text text, sent_at timestamptz, send_blocked_at timestamptz, send_blocked_reason text);
+    create table public.outreach_message_revisions (id bigserial primary key, message_id uuid, old_send_blocked_reason text);
+    insert into outreach_campaigns(id, client_id) values ('00000000-0000-0000-0000-0000000000c1', 'risedtc'), ('00000000-0000-0000-0000-0000000000c2', 'ivan');
+    insert into outreach_prospects(id, name, campaign_id) values
+      ('00000000-0000-0000-0000-0000000000b1', 'Ben Chehebar', '00000000-0000-0000-0000-0000000000c1'),
+      ('00000000-0000-0000-0000-0000000000b2', 'Toby Hart', '00000000-0000-0000-0000-0000000000c2'),
+      ('00000000-0000-0000-0000-0000000000b3', 'Nora Connect', '00000000-0000-0000-0000-0000000000c2');`
+  const sendAlert = (name: string, reason = 'hard error: Request failed with status code 422') => {
+    const title = `Send FAILED (verified not delivered) to ${name}. Row reset + blocked. Reason: ${reason}`
+    return JSON.stringify({ family: 'send_failed_alert', source: 'wa-relay:kFYlfnWd98YaiErH', severity: 'error',
+      incident_key: `unknown:kFYlfnWd98YaiErH:send_failed_alert:error:${(name + reason).replace(/[^a-zA-Z0-9]/g, '')}`, title, body: title })
+  }
+  async function ready() {
+    const db = await setup(); await db.exec(outreach); await db.exec(migration); await db.exec(unreachable); return db
+  }
+  const block = (db: PGlite, prospect: string, reason: string, at = "now()") => db.exec(`insert into outreach_messages
+    (prospect_id, direction, message_type, message_text, send_blocked_at, send_blocked_reason)
+    values ('${prospect}', 'outbound', 'dm', 'hi', ${at}, '${reason}')`)
+
+  it('records a 422 alert for a known-unreachable recipient dismissed and unrung, on every seat', async () => {
+    const db = await ready()
+    // Ben: the dispatcher reset his relabelled row and re-blocked it with the bare 422; the revision kept the label.
+    await block(db, '00000000-0000-0000-0000-0000000000b1', 'send_failed_verified: hard error: Request failed with status code 422')
+    await db.exec(`insert into outreach_message_revisions(message_id, old_send_blocked_reason)
+      select id, 'provider_invalid_recipient: LinkedIn 422 errors/blocked_recipient' from outreach_messages`)
+    // Toby: the row itself carries the provider type.
+    await block(db, '00000000-0000-0000-0000-0000000000b2', 'send_failed_verified: hard error: Request failed with status code 422 [errors/invalid_recipient]')
+    for (const name of ['Ben Chehebar', 'Toby Hart']) {
+      const r = (await claim(db, sendAlert(name))).rows[0]
+      expect(r.created, name).toBe(false)
+      const row = (await db.query<{ dismissed: boolean; read: boolean }>('select dismissed_at is not null as dismissed, read_at is not null as read from inbox_notifications where id=$1', [r.id])).rows[0]
+      expect(row, name).toEqual({ dismissed: true, read: true })
+    }
+    // The provider type in the alert itself is enough, whoever it names.
+    expect((await claim(db, sendAlert('Someone Else', 'errors/blocked_recipient'))).rows[0].created).toBe(false)
+    await db.close()
+  })
+
+  it('still rings a fixable 422, an old unreachable row, and other failures', async () => {
+    const db = await ready()
+    await block(db, '00000000-0000-0000-0000-0000000000b3', 'send_failed_verified: chat create failed: Request failed with status code 422 [errors/no_connection_with_recipient]')
+    expect((await claim(db, sendAlert('Nora Connect'))).rows[0].created).toBe(true)
+    // An unreachable label from a day ago does not explain a new 422 for a row blocked now.
+    await block(db, '00000000-0000-0000-0000-0000000000b2', 'provider_invalid_recipient', "now() - interval '1 day'")
+    expect((await claim(db, sendAlert('Toby Hart'))).rows[0].created).toBe(true)
+    expect((await claim(db, sendAlert('Ben Chehebar', 'inmail_failed_422: limit_exceeded'))).rows[0].created).toBe(true)
+    const open = await db.query<{ n: number }>('select count(*)::int as n from inbox_notifications where dismissed_at is null')
+    expect(open.rows[0].n).toBe(3)
+    await db.close()
+  })
+
+  it('leaves unreachable recipients out of the blocked count, and dismisses the open alerts they raised', async () => {
+    const db = await setup(); await db.exec(outreach); await db.exec(migration)
+    await block(db, '00000000-0000-0000-0000-0000000000b1', 'provider_invalid_recipient: LinkedIn 422 errors/blocked_recipient')
+    await block(db, '00000000-0000-0000-0000-0000000000b3', 'send_failed_verified: chat create failed: Request failed with status code 422 [errors/no_connection_with_recipient]')
+    const before = (await claim(db, sendAlert('Ben Chehebar'))).rows[0]
+    expect(before.created).toBe(true)
+    const nora = (await claim(db, sendAlert('Nora Connect'))).rows[0]
+    await db.exec(unreachable)
+    const blocked = await db.query<{ client_id: string; blocked: number }>('select client_id, blocked::int from inbox_sends_v order by client_id')
+    expect(blocked.rows).toEqual([{ client_id: 'ivan', blocked: 1 }, { client_id: 'risedtc', blocked: 0 }])
+    const open = await db.query<{ id: string }>('select id from inbox_notifications where dismissed_at is null')
+    expect(open.rows.map(r => r.id)).toEqual([nora.id])
+    await db.exec(unreachableRollback)
+    expect((await db.query<{ blocked: number }>(`select blocked::int from inbox_sends_v where client_id='risedtc'`)).rows[0].blocked).toBe(1)
+    expect((await claim(db, sendAlert('Someone Else', 'errors/blocked_recipient'))).rows[0].created).toBe(true)
+    await db.close()
+  })
+})

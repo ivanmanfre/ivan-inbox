@@ -19,6 +19,9 @@ import { OutreachBlock } from '../../wb/content/OutreachBlock'
 import { OverviewView as WorkbenchOverview } from '../../wb/sends/Overview'
 import { OverviewView as StockOverview } from '../../screens/kpi/OverviewView'
 import { History } from '../dms/History'
+import { LogSheet } from './LogSheet'
+import { Inline } from './LSheet'
+import { FAILED_SEND_FILTER } from '../../lib/sends'
 import { DmHistory } from '../../wb/dms/DmHistory'
 import { msg, threads } from '../dms/fixtures'
 import { renderInFrame } from '../test-utils'
@@ -146,4 +149,31 @@ it('keeps a new reply without a badge until a later source snapshot contains its
  rpc.mockResolvedValue({ data: next, error: null })
  await act(async () => { await vi.advanceTimersByTimeAsync(60000) })
  expect(screen.getByText(/Latest observed reply ·/)).toBeTruthy(); expect(screen.getByText('New reply text')).toBeTruthy()
+})
+
+// Ivan 10-21 (Ben Chehebar on RISE, Toby Hart on Ivan): a person who blocked us or cannot receive LinkedIn
+// messages is a muted "Not delivered" row in the Lanes send log, never "Failed", never in the blocked count.
+it('shows an unreachable recipient as a muted Not delivered row in the Lanes send log, never Failed', async () => {
+ const base = { prospect_id: 'p', client_id: 'risedtc', message_type: 'dm', ai_model: null, message_text: 'Quick nudge', sent_at: null, send_blocked_at: '2026-10-07T11:45:03Z' }
+ const rows = [
+  { ...base, id: 'ben', prospect_id: 'p-ben', prospect_name: 'Ben Chehebar', send_blocked_reason: 'provider_invalid_recipient: LinkedIn 422 errors/blocked_recipient' },
+  { ...base, id: 'real', prospect_id: 'p-real', prospect_name: 'Real Failure', send_blocked_at: '2026-10-07T11:40:00Z', send_blocked_reason: 'send_failed_500: check LinkedIn before retrying' },
+ ]
+ const ors: string[] = []
+ from.mockImplementation(() => {
+  const result = Promise.resolve({ data: rows, error: null, count: 1 })
+  const chain: any = new Proxy({}, { get: (_, key) => key === 'then' ? result.then.bind(result) : key === 'or' ? (f: string) => { ors.push(f); return chain } : () => chain })
+  return chain
+ })
+ renderInFrame(<Inline><LogSheet seat="risedtc" setSeat={() => {}} now={Date.now()} onClose={() => {}} /></Inline>)
+ const ben = (await screen.findByText(/blocked you on LinkedIn/)).closest('.dl-lgr') as HTMLElement
+ expect(ben.hasAttribute('data-undelivered')).toBe(true)
+ expect(ben.className).not.toContain('dl-f')
+ expect(within(ben).queryByText('Failed')).toBeNull()
+ expect(within(ben).getByText(/Not delivered · blocked you on LinkedIn/)).toBeTruthy()
+ const real = screen.getByText('Real Failure').closest('.dl-lgr') as HTMLElement
+ expect(within(real).getByText('Failed')).toBeTruthy()
+ expect(screen.getByText(/1 of 1 blocked/)).toBeTruthy()
+ // The blocked total is the count=exact probe, and it leaves unreachable recipients out.
+ expect(ors).toContain(FAILED_SEND_FILTER)
 })
