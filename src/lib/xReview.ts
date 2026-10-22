@@ -98,7 +98,6 @@ export type XFlagItem = {
   at: number
 }
 
-const FAILED_SHOWN_MS = 72 * 3600_000
 // An approved item still not out this long after its slot is stuck, and says so.
 const STUCK_MS = 2 * 3600_000
 
@@ -115,8 +114,8 @@ const stamp = (...v: (string | null | undefined)[]) => {
  * need to see this here"). Live items never show: the calendar and X itself carry them. An
  * approved article waiting for its slot is scheduled, also calendar-only: it used to read
  * "Publishing on X…" for days. Moving = publishing now; an approved article still not out
- * 2h past its slot shows as stuck. Failed ones stay three days (quotes carry only
- * created_at, so their age counts from creation).
+ * 2h past its slot counts as stuck. Failed and stuck items never show either (Ivan
+ * 2026-10-22: "no need to see all these errors here"): the calendar rings a missed post red.
  */
 export function xFlagItems(l: XReviewList | null, now: number = Date.now()): XFlagItem[] {
   if (!l) return []
@@ -142,8 +141,7 @@ export function xFlagItems(l: XReviewList | null, now: number = Date.now()): XFl
   }
   const rank = { waiting: 0, moving: 1, failed: 2, live: 3 } as const
   return out
-    .filter(i => i.state === 'waiting' || i.state === 'moving'
-      || (i.state === 'failed' && now - i.at < FAILED_SHOWN_MS))
+    .filter(i => i.state === 'waiting' || i.state === 'moving')
     .sort((a, b) => rank[a.state] - rank[b.state] || b.at - a.at)
 }
 
