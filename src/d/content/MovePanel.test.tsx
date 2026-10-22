@@ -57,12 +57,12 @@ describe('WhenEditor details', () => {
   })
 })
 
-it('on Ivan\'s lane a day that already has a post says it lands on the next free day', () => {
+it('on Ivan\'s lane a day that already has a post stays that day, with the other post named (Ivan 22 Oct)', () => {
   cleanup()
   const ivan = { ...r, id: 'a', client_id: null, status: 'scheduled', scheduled_at: '2026-12-02T09:00:00Z' } as unknown as ContentDraft
   const other = { ...r, id: 'b', client_id: null, status: 'scheduled', title: 'Other', scheduled_at: '2026-12-05T09:00:00Z' } as unknown as ContentDraft
   renderInFrame(<MovePanel r={ivan} lane="ivan" seatRows={[ivan, other]} onClose={vi.fn()} onDone={vi.fn()} />)
   fireEvent.click(document.querySelector('[data-day="2026-12-05"]')!)
-  expect(screen.getByText(/already has a post \(one a day\)/)).toBeTruthy()
-  expect(document.querySelector('.wh-when b')!.textContent).toContain('Sun 6 Dec')
+  expect(screen.getByText(/Also on this day: Other/)).toBeTruthy()
+  expect(document.querySelector('.wh-when b')!.textContent).toContain('Sat 5 Dec')
 })

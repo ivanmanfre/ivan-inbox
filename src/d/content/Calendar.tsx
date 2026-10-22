@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { LANE_DEFAULT_HM, LANE_TZ, hmIn, laneTimeWord, zonedToUtc } from './laneTime'
+import { LANE_DEFAULT_HM, LANE_TZ, hmIn, laneTimeWord, notPastToday, zonedToUtc } from './laneTime'
 import { monthLabel, monthWeeks } from '../../lib/calendarItems'
 import { clearScheduleDate, setScheduleDateAt } from '../../lib/content'
 import { supabase } from '../../lib/supabase'
 import { moveConfirmCopy, movePublishesForClient } from '../../wb/content/moveConfirm'
 import { WhenPopover } from './WhenEditor'
-import { nextFree } from './when'
-import { isScheduled } from './model'
 import { dHash } from '../route'
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
@@ -208,7 +206,8 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
     if ((prev ? warsawDay(prev) : null) === to) return
     // The time of day is kept in the lane's own clock (RISE in PT), so a clock change never shifts it.
     const tz = LANE_TZ[lane]
-    const when = zonedToUtc(to, prev ? hmIn(prev, tz) : LANE_DEFAULT_HM[lane], tz)
+    const kept = zonedToUtc(to, prev ? hmIn(prev, tz) : LANE_DEFAULT_HM[lane], tz)
+    const when = notPastToday(kept, tz)
     if (movePublishesForClient(r)) {
       // Brief 4 desktop: the confirm is the date-and-time card at the cell, the time editable, Enter schedules.
       const cell = v2 && !phone ? root.current?.querySelector<HTMLElement>(`[data-cal-day="${to}"][data-cal-lane="${lane}"], .cal-day[data-cal-day="${to}"]`) : null
@@ -224,7 +223,8 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
       if (landed !== to) setMoved(m => new Map(m).set(id, landed))
       toast.show({
         message: `Moved to ${dayLabel(landed)} · ${laneTimeWord(stored, lane)}.`,
-        sub: landed !== to ? `The database stored ${dayLabel(landed)}.` : LANE_NAME[lane],
+        sub: landed !== to ? `The database stored ${dayLabel(landed)}.`
+          : when !== kept ? `${hmIn(kept, tz)} already went by today, so it posts in an hour.` : LANE_NAME[lane],
         action: { label: 'Undo', verb: 'undo', run: () => { void undo(id, lane, prev) } },
         ...(v2 && !phone ? { also: { label: 'Change time', verb: 'change-time', run: () => openWhen(id, lane, 'time', landed) } } : {}),
       })
@@ -280,16 +280,15 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
       n.classList.add('cal-preview'); if (label) n.setAttribute('data-cal-drop', label)
     })
   }, [])
-  /** While dragging: the day and time it lands on (its own time kept; Ivan's lane one a day). */
+  /** While dragging: the day and time it lands on (its own time kept; a time gone by today = in an hour). */
   const labelFor = (id: string, laneS: string, day: string): string | null => {
     const lane = laneS as Lane
     const r = rows[lane]?.find(x => x.id === id)
     if (!r) return null
     const tz = LANE_TZ[lane]
-    // Ivan's lane: one post a day; a taken day lands on the next free one (weekends allowed by hand).
-    const land = lane === 'ivan' ? nextFree(day, new Set(rows.ivan.filter(x => x.id !== id && x.scheduled_at && isScheduled(x, 'ivan')).map(x => warsawDay(x.scheduled_at!)))) : day
-    const at = zonedToUtc(land, r.scheduled_at ? hmIn(r.scheduled_at, tz) : LANE_DEFAULT_HM[lane], tz)
-    return `${land !== day ? '→ ' : ''}${dayLabel(land)} · ${laneTimeWord(at, lane)}`
+    // A day picked by hand holds two posts if Ivan wants (db/20261022_hand_dated_same_day.sql).
+    const at = notPastToday(zonedToUtc(day, r.scheduled_at ? hmIn(r.scheduled_at, tz) : LANE_DEFAULT_HM[lane], tz), tz)
+    return `${dayLabel(day)} · ${laneTimeWord(at, lane)}`
   }
 
   useCalGestures(root, {

@@ -7,9 +7,9 @@ import { moveConfirmCopy, movePublishesForClient } from '../../wb/content/moveCo
 import { useToast } from '../ui/toast'
 import { warsawDay, warsawHm } from '../ui/time'
 import { LANE_NAME, dayLabel, isScheduled, splitTitleTag, titleOf, type Lane } from './model'
-import { LANE_DEFAULT_HM, LANE_TZ, LANE_TZ_WORD, dayIn, hmIn, laneTimeWord, zonedToUtc } from './laneTime'
+import { LANE_DEFAULT_HM, LANE_TZ, LANE_TZ_WORD, dayIn, hmIn, laneTimeWord, notPastToday, zonedToUtc } from './laneTime'
 import './when.css'
-import { addDays, hm12, isoDow, monthGrid, nextFree, parseHm, quickDays, slots, stepHm } from './when'
+import { addDays, hm12, isoDow, monthGrid, parseHm, quickDays, slots, stepHm } from './when'
 
 // WHEN: change a post's date and time in one place (Ivan 2026-10-09: "way way more and better
 // experience"). Opens beside the card (WhenPopover) or in a sheet (MovePanel, phone). The time is a
@@ -19,8 +19,9 @@ import { addDays, hm12, isoDow, monthGrid, nextFree, parseHm, quickDays, slots, 
 // (`onPreview`) and nothing is written until Enter or the key; the receipt carries Undo. Same write
 // as the drag: operator_set_schedule_date (setScheduleDateAt) / clearScheduleDate. On a client's
 // board a date schedules the post: the editor says so in moveConfirmCopy's words and its key reads
-// "Schedule to post"; it IS the confirm. Any day can be picked, weekends included; on Ivan's lane a
-// day that already has a post lands on the next free day (one a day), said before saving.
+// "Schedule to post"; it IS the confirm. Any day can be picked, weekends included, and the day picked
+// is the day saved even when it already has a post (db/20261022_hand_dated_same_day.sql). Today with a
+// time that already went by posts in an hour (notPastToday), said before saving.
 export type WhenProps = {
   r: ContentDraft
   lane: Lane
@@ -67,12 +68,9 @@ export function WhenEditor({ r, lane, seatRows, initialDay, focus = 'day', gap =
     for (const x of seatRows) if (x.id !== r.id && x.scheduled_at && isScheduled(x, lane)) m.set(dayIn(x.scheduled_at, tz), splitTitleTag(titleOf(x)).text)
     return m
   }, [lane, r.id, seatRows, tz])
-  // Clients: the day picked is the day saved. Ivan's lane: one post a day (the database's weekday guard
-  // moves a taken day forward), weekends allowed for a date set by hand (db/20261009).
-  const takenKeys = useMemo(() => new Set(taken.keys()), [taken])
-  const landOf = (d: string | null) => (d && lane === 'ivan' ? nextFree(d, takenKeys) : d)
-  const land = landOf(day)
-  const at = (d: string) => zonedToUtc(d, hm, tz)
+  const land = day
+  const at = (d: string) => notPastToday(zonedToUtc(d, hm, tz), tz)
+  const late = !!land && at(land) !== zonedToUtc(land, hm, tz)
   const whenWord = land ? `${dayLabel(land)} · ${laneTimeWord(at(land), lane)}` : null
   const unchanged = !!r.scheduled_at && !!land && Date.parse(at(land)) === Date.parse(r.scheduled_at)
   const client = movePublishesForClient(r)
@@ -117,9 +115,9 @@ export function WhenEditor({ r, lane, seatRows, initialDay, focus = 'day', gap =
   }
 
   const save = async (d: string | null = day, time: string | null = hm) => {
-    const to = landOf(d)
+    const to = d
     if (!to || !time || busy) return
-    const when = zonedToUtc(to, time, tz)
+    const when = notPastToday(zonedToUtc(to, time, tz), tz)
     if (r.scheduled_at && Date.parse(when) === Date.parse(r.scheduled_at)) { onClose(); return }
     const prev = r.scheduled_at
     setBusy(true); setErr('')
@@ -187,7 +185,7 @@ export function WhenEditor({ r, lane, seatRows, initialDay, focus = 'day', gap =
     }}>
       <div className="wh-when" aria-live="polite">
         <b>{whenWord ?? 'Pick a day'}</b>
-        {land && day && land !== day && <small className="wh-warn">{dayLabel(day)} already has a post (one a day), so it lands here</small>}
+        {late && <small className="wh-warn">{hm} already went by today, so it posts in an hour</small>}
         {land && land === day && taken.has(land) && <small className="wh-warn">Also on this day: {taken.get(land)}</small>}
         {!land && r.scheduled_at && <small>Now {dayLabel(from!)} · {laneTimeWord(r.scheduled_at, lane)}</small>}
         {land && land === day && lane === 'risedtc' && <small>{warsawHm(at(land))} Warsaw</small>}

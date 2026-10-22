@@ -39,6 +39,15 @@ export function zonedToUtc(day: string, hm: string, tz: string): string {
   return new Date(t).toISOString()
 }
 
+/** A time that already went by today posts in an hour instead, rounded up to 5 minutes (Ivan
+ *  2026-10-22: a Saturday 10:50 post dropped on Thursday at 11:40 was refused as past). Any other
+ *  instant is kept; a past day is the database's to refuse. */
+export function notPastToday(iso: string, tz: string, now: number = Date.now()): string {
+  if (Date.parse(iso) >= now || dayIn(iso, tz) !== dayIn(new Date(now).toISOString(), tz)) return iso
+  const step = 5 * 60_000
+  return new Date(Math.ceil((now + 60 * 60_000) / step) * step).toISOString()
+}
+
 /** "7:00 AM PT" / "16:00 Warsaw": how the lane's owner reads the time. */
 export function laneTimeWord(iso: string, lane: Lane): string {
   const hm = hmIn(iso, LANE_TZ[lane])
