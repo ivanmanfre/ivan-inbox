@@ -13,6 +13,7 @@ import { Batch } from '../Batch'
 import type { OpsBoard } from '../model'
 import { ago } from '../model'
 import { Tasks } from '../Tasks'
+import { Notes } from '../Notes'
 import { OpsReferences } from '../../../components/OpsReferences'
 import { QueueRow } from './QueueRow'
 type Props = {
@@ -42,6 +43,7 @@ export function QueuePane({ board, drafts, lane, selected, selectedRx, onSeat, o
     <div className="op4-rows" data-queue-lane={lane}>{cards.length ? cards.map(row) : <div className="op-quiet">Nothing waiting in {name}’s lane.</div>}</div>
     {later.length > 0 && <><button type="button" className="op-fold" aria-expanded={laterOpen} title="Past the 3 a day the poster takes. They wait here, nothing is dropped." onClick={() => setLaterOpen(o => !o)}>Ideas for later <b>{later.length}</b></button>{laterOpen && <div className="op4-later">{later.map(row)}</div>}</>}
     <OpsReferences drafts={drafts} />
+    <Notes />
     <Tasks drafts={drafts} refresh={refresh} />
     <section className="op-rxs" aria-label="Reactions"><div className="op-sec"><span>Reactions <b>{rx.loading && !rx.rows.length ? '…' : rx.rows.length}</b></span></div>
       {rx.error && <Failed what="the reaction desk" detail={rx.error} onRetry={rx.refresh} />}

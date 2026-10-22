@@ -23,6 +23,7 @@ import { kindTitle, positionOf, readBoard } from './model'
 import { Reactions } from './Reactions'
 import { TakeoverCard } from './Takeover'
 import { Tasks } from './Tasks'
+import { Notes } from './Notes'
 import { OpsReferences } from '../../components/OpsReferences'
 import './ops.css'
 import { XFlag } from './x/XFlag'
@@ -146,6 +147,7 @@ export function OpsPage({ layout, route, navigate }: PlaceProps) {
   const side = (
     <>
       <OpsReferences drafts={ops.drafts} />
+      <Notes />
       <Tasks drafts={ops.drafts} refresh={refresh} />
       <Reactions rx={rx} />
     </>

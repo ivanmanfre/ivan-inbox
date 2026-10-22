@@ -174,3 +174,22 @@ details.op-why:not([open])>summary::after{content:' ›'}
 .op-bk input{height:28px;font:inherit;font-size:12.5px;padding:0 8px;border:1px solid var(--line);border-radius:6px;background:transparent;color:inherit}
 .op-bk small{flex-basis:100%;color:var(--t3);font-size:12px}
 .op-tt>.d-btn[data-verb=booked],.gt-t>.d-btn[data-verb=booked]{margin-top:6px;height:28px;font-size:12.5px;padding:0 10px}
+
+/* Notes (Notes.tsx): a row per note; the open one is an editor in place. */
+.op-nr{display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;padding:9px 14px;border-top:1px solid var(--line);min-width:0}
+.op-nr:hover{background:rgba(255,255,255,.03)}
+.op-nrt{display:flex;justify-content:space-between;align-items:baseline;gap:10px;min-width:0}
+.op-nrt b{font-weight:500;font-size:13.5px;line-height:1.35;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.op-nrt time{font:400 11.5px var(--m);color:var(--t3);white-space:nowrap;flex:none}
+.op-nr small{display:block;color:var(--t3);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.op-ne{margin:6px 10px 8px;padding:10px 12px 8px;border:1px solid var(--line2);border-radius:12px;background:var(--p2)}
+.op-ne textarea{display:block;width:100%;min-height:88px;max-height:60vh;field-sizing:content;resize:none;background:transparent;border:0;outline:0;color:var(--t1);font:400 14px/1.5 var(--f);padding:0}
+.op-ne textarea::placeholder{color:var(--t3)}
+.op-nf{display:flex;align-items:center;gap:10px;margin-top:6px;font:400 11.5px var(--m);color:var(--t3)}
+.op-nf>span{flex:1;min-width:0}
+.op-nf .d-btn{height:26px;font-size:12.5px;padding:0 10px}
+.op4 .op-nr{padding:12px 8px;border-radius:8px;border-top:0}
+.op4 .op-nrt b,.op4 .op-nr small{font-size:13px}
+.op4 .op-ne{margin:4px 0 8px}
+.op4 .op-nf{font-size:12px}
+.op4-phone .op-ne textarea{font-size:16px}

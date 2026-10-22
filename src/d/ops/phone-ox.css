@@ -154,3 +154,9 @@
 /* ---- motion: press washes, reduced motion ---- */
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .op4-phone :is(.op-fold,.op-tk>.d-btn,.op-k .d-key):active{background-color:var(--ds-wash-strong)}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .op4-phone .op-k.op-kp .d-key:active{background:#000}
+/* Notes (Notes.tsx): the same cards as Your list. */
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .op4-phone .op-notes :is(.op-nr,.op-ne){margin:8px 0 0;padding:14px 16px;border:0;border-radius:14px;background:var(--ox-card);box-shadow:var(--ox-card-shadow)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .op4-phone .op-notes .op-nrt b{font:600 16px/22px var(--f)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .op4-phone .op-notes .op-nr small{font-size:14px;margin-top:2px}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .op4-phone .op-notes .op-nf .d-btn{min-height:44px;min-width:76px;padding:0 16px;border-radius:999px;border:0;background:var(--ox-pill);box-shadow:none;font:600 15px/20px var(--f);color:var(--t1);justify-content:center}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .op4-phone .op-notes .op-nf{font-size:13px}
