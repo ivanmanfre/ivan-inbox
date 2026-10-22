@@ -145,6 +145,8 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
   }, [])
 
   const days = useMemo(() => calendarDays(items, rows, pick, moved), [items, rows, pick, moved])
+  // A queue row opens the draft it names (entryOf found it); every other id opens as it is.
+  const openPost = (id: string, lane: Lane) => { const e = [...days.values()].flat().find(x => x.it.id === id); onOpen(e?.r && e.it.source === 'queue' ? e.r.id : id, lane) }
   const loose = useMemo(() => looseOf(rows, pick, moved), [rows, pick, moved])
   const lms = useMemo(() => (magnets ?? []).filter(m => lanesOf(pick).includes(m.lane)), [magnets, pick])
   const todayKey = warsawDay(now)
@@ -385,7 +387,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
   const laneBound = pick === 'all' ? undefined : pick
 
   if (v2) {
-    const acts: CardActs = { onOpen, onMove: (id, lane) => openWhen(id, lane), onTime: (id, lane) => openWhen(id, lane, 'time'), onClear: (id, lane) => { void removeDate(id, lane) }, onArm, onChanged }
+    const acts: CardActs = { onOpen: openPost, onMove: (id, lane) => openWhen(id, lane), onTime: (id, lane) => openWhen(id, lane, 'time'), onClear: (id, lane) => { void removeDate(id, lane) }, onArm, onChanged }
     const fit = !phone && (view === 'month' || grid2)
     const asGrid = view === 'month' || grid2
     const gridKeys = view === 'month' ? keys : grid2Keys
@@ -425,7 +427,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
                     return (
                       <div key={k} className={cls} data-cal-day={k} data-cal-lane={laneBound} onClick={() => tapDay(k)} title={k === riseLine ? `${dayLabel(k)} · Mattan’s two-week line` : dayLabel(k)}>
                         <span className="cal-dn">{Number(k.slice(8))}<XMarks items={xDays.get(k)} time={!phone} /></span>
-                        {on.slice(0, 3).map(e => (phone ? <Chip key={e.it.id} e={e} phone={phone} onOpen={onOpen} /> : <MonthCard key={e.it.id} e={e} a={acts} />))}
+                        {on.slice(0, 3).map(e => (phone ? <Chip key={e.it.id} e={e} phone={phone} onOpen={openPost} /> : <MonthCard key={e.it.id} e={e} a={acts} />))}
                         {on.length > 3 && (phone ? <span className="cal-more">+{on.length - 3}</span>
                           : <button type="button" className="cal-more cv2-more-day" data-verb="day-more" onClick={ev => { ev.stopPropagation(); setSel(k) }}>+{on.length - 3} more</button>)}
                       </div>
@@ -488,7 +490,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
                   return (
                     <div key={k} className={cls} data-cal-day={k} data-cal-lane={laneBound} onClick={() => tapDay(k)} title={dayLabel(k)}>
                       <span className="cal-dn">{Number(k.slice(8))}<XMarks items={xDays.get(k)} time={!phone} /></span>
-                      {on.slice(0, vis).map(e => <Chip key={e.it.id} e={e} phone={phone} onOpen={onOpen} />)}
+                      {on.slice(0, vis).map(e => <Chip key={e.it.id} e={e} phone={phone} onOpen={openPost} />)}
                       {on.length > vis && <span className="cal-more">+{on.length - vis}</span>}
                     </div>
                   )
@@ -505,7 +507,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
             <section className="cal-agenda" aria-label={`Posts on ${dayLabel(day)}`}>
               <h3>{day === todayKey ? 'Today' : dayLabel(day)}</h3>
               {agenda.length === 0 && <p className="cal-dim">{data.seats.ivan.loadedAt ? 'Nothing on this day. Drag a post here.' : 'Reading…'}</p>}
-              {agenda.map(e => <Card key={e.it.id} e={e} onOpen={onOpen} onMove={onMove} onArm={onArm} onChanged={onChanged} />)}
+              {agenda.map(e => <Card key={e.it.id} e={e} onOpen={openPost} onMove={onMove} onArm={onArm} onChanged={onChanged} />)}
             </section>
           )}
           {loose.length > 0 && (

@@ -106,7 +106,7 @@ export function describe(it: PlanItem): string {
   } else if (it.stage === 'stuck') parts.push('Did not go out at its time')
   else if (it.arming === 'planned') parts.push('Dated, but nothing is set to publish it yet')
   else if (it.arming === 'armed') parts.push(`Set to publish at ${warsawHm(it.at)} Warsaw`)
-  if (it.source === 'queue') parts.push('from the publish queue with no draft behind it, so it cannot be opened or moved here')
+  if (it.source === 'queue') parts.push(it.draftId ? 'the publish queue holds this time, but its draft has no date on the calendar' : 'from the publish queue with no draft behind it, so it cannot be opened or moved here')
   if (it.plannedAt) parts.push(`the publish queue fires this at ${warsawHm(it.at)}; the draft still says ${warsawHm(it.plannedAt)}`)
   return parts.join(' · ')
 }

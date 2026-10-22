@@ -72,7 +72,9 @@ export function refuseOf(it: PlanItem, r: ContentDraft | null): string | null {
 }
 
 export function entryOf(it: PlanItem, rows: ContentDraft[]): Entry {
-  const r = it.source === 'draft' ? rows.find(x => x.id === it.id) ?? null : null
+  // A queue row that names its draft opens that draft (Ivan 22 Oct: "cant open the 29th post").
+  const id = it.source === 'draft' ? it.id : it.draftId
+  const r = id ? rows.find(x => x.id === id) ?? null : null
   return { it, lane: it.lane, r, thumb: r ? imgOf(r.image_urls, 400) : null, hook: hookOf(r, it.title), lm: isMagnetPost(r), brain: isBrainPost(r), dot: dotOf(it), refuse: refuseOf(it, r) }
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ContentDraft, ScheduledQueueRow } from '../../lib/content'
 import { badgeOf, byDay, monthCounts, seatItems, undated, weekendAfter } from './planModel'
+import { entryOf } from './calModel'
 
 const NOW = Date.parse('2026-09-27T12:00:00Z')
 const row = (o: Partial<ContentDraft>): ContentDraft => ({
@@ -29,6 +30,16 @@ describe('planner: every kind of post', () => {
     expect(ivan[0].source).toBe('queue')
     expect(badgeOf(ivan[0])!.text).toBe('QUEUE ONLY')
     expect(seatItems([], 'risedtc', q, NOW).length).toBe(0)
+  })
+  it('a queue row that names an undated draft still opens that draft (Ivan 22 Oct, the 29th post)', () => {
+    const d = row({ id: '68e8af37-932f-457b-a9e9-6be4f69faa3b', status: 'review', scheduled_at: null })
+    const q = [{ id: 'q2', clickup_task_id: d.id, post_text: 'The most useful outreach asset', scheduled_at: '2026-10-29T09:45:00Z', posted_at: null, status: 'pending', platform: 'linkedin', is_repost: false, error_message: null, created_at: '2026-10-18T00:00:00Z', post_kind: null, unipile_share_url: null } as unknown as ScheduledQueueRow]
+    const [it] = seatItems([d], 'ivan', q, NOW)
+    expect(it.source).toBe('queue')
+    expect(it.draftId).toBe(d.id)
+    const e = entryOf(it, [d])
+    expect(e.r?.id).toBe(d.id)
+    expect(e.refuse).toBeTruthy()
   })
   it('a client row dated but not on his board is Planned; month counts say set / posted / not set', () => {
     const items = seatItems([row({ id: 'p', client_id: 'risedtc', status: 'review', board_visible: false, scheduled_at: '2026-10-01T14:00:00Z' })], 'risedtc', null, NOW)

@@ -77,6 +77,8 @@ export type CalendarItem = {
   arming: CalendarArming
   /** Whether THIS surface holds a write that can arm it. See canArm. */
   armable: boolean
+  /** A queue row's own draft, when it names one (that draft has no date on the calendar), so the post still opens. */
+  draftId?: string | null
 }
 
 /**
@@ -536,6 +538,7 @@ export function queueOnlyItems(
       // take.
       arming: armingOf(stage, 'queue'),
       armable: false,
+      draftId: linked,
     })
   }
   return out
