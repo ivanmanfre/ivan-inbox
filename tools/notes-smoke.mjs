@@ -16,6 +16,7 @@ try {
     await ctx.addInitScript(([k, v]) => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem(k, v); sessionStorage.setItem('seeded', '1') } }, [authKey, session])
     const page = await ctx.newPage()
     const calls = [], blocked = []
+    try {
     await page.route('**/*', route => {
       const r = route.request(), u = new URL(r.url())
       if (u.hostname.endsWith('supabase.co') && r.method() !== 'GET' && r.method() !== 'HEAD' && r.method() !== 'OPTIONS') {
@@ -55,12 +56,18 @@ try {
     await page.waitForFunction(() => !document.querySelector('.op-notes')?.textContent?.includes('Reading your notes'), null, { timeout: 15000 })
     await page.waitForTimeout(1500)
     const gone = !(await page.locator('.op-notes').textContent()).includes(`Probe note ${width}`)
-    session = await page.evaluate(k => localStorage.getItem(k), authKey) || session
     report.push({ width, focused, gone, calls, blocked: [...new Set(blocked)] })
-    await ctx.close()
+    } finally {
+      // The page rotates the refresh token: keep the newest one even when a step fails.
+      session = await page.evaluate(k => localStorage.getItem(k), authKey).catch(() => null) || session
+      await ctx.close()
+    }
   }
 } finally {
   await browser.close()
-  if (process.env.NOTES_SESSION_OUT) writeFileSync(process.env.NOTES_SESSION_OUT, session, { flag: 'wx', mode: 0o600 })
   console.log(JSON.stringify(report, null, 1))
+  if (process.env.NOTES_SESSION_OUT) {
+    try { writeFileSync(process.env.NOTES_SESSION_OUT, session, { flag: 'wx', mode: 0o600 }) }
+    catch (e) { console.error(`session not written: ${e.message}`) }
+  }
 }
