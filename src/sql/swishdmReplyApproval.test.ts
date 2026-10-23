@@ -29,7 +29,7 @@ beforeEach(async () => {
     create table outreach_messages (
       id uuid primary key, prospect_id uuid, direction text, message_type text, channel text, ai_model text,
       message_text text, sent_at timestamptz, approved_at timestamptz, unipile_message_id text,
-      send_blocked_reason text, send_blocked_at timestamptz, draft_evidence jsonb, created_at timestamptz default now()
+      recipient_email text, email_mirror_text text, send_blocked_reason text, send_blocked_at timestamptz, draft_evidence jsonb, created_at timestamptz default now()
     );
     create table swishdm_comparison_pages (token text primary key, prospect_id uuid, url text, status text);
     insert into outreach_campaigns values ('d1111111-1111-4111-8111-111111111111','swishdm'), ('d2222222-2222-4222-8222-222222222222','arch');
@@ -41,6 +41,7 @@ beforeEach(async () => {
     insert into swishdm_comparison_pages values ('${token}','${prospect}','${url}','held');
   `)
   await db.exec(readFileSync('db/20261017_swishdm_reply_approval.sql', 'utf8'))
+  await db.exec(readFileSync('db/20261023_swishdm_email_leg_approval.sql', 'utf8'))
 })
 afterEach(async () => { await db.close() })
 
@@ -124,4 +125,14 @@ describe('approve_swishdm_reply_draft', () => {
       await expect(approve(`Here: ${url}`)).rejects.toThrow(/page for this reply is missing/i)
     })
   })
+})
+
+it('requires the exact reviewed email snapshot and records it with approval', async () => {
+  await db.query('update outreach_messages set recipient_email=$1,email_mirror_text=$2 where id=$3', ['sue@biatchtequila.com','Reviewed email',msg])
+  for (const snapshot of [undefined,{recipient_email:'other@brand.com',email_mirror_text:'Reviewed email'},{recipient_email:'sue@biatchtequila.com',email_mirror_text:'Stale email'}]) {
+    await expect(approve('Draft text',{...plain,...(snapshot?{_reviewed_email:snapshot}:{})})).rejects.toThrow(/changed/i)
+    expect((await row()).approved_at).toBeNull()
+  }
+  await approve('Draft text',{...plain,_reviewed_email:{recipient_email:'sue@biatchtequila.com',email_mirror_text:'Reviewed email'}})
+  expect((await row()).draft_evidence).toMatchObject({operator_copy_approval:{recipient_email:'sue@biatchtequila.com',email_mirror_text:'Reviewed email'}})
 })
