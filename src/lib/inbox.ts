@@ -1761,7 +1761,10 @@ export async function approveDraft(id: string, editedText: string, chatId?: stri
   // clears the hold on this ONE row. Publishing the page and sending are separate steps with their own switches.
   if (SWISHDM_REPLY_MODEL.test(draft?.ai_model ?? '')) {
     const { error } = await supabase.rpc('approve_swishdm_reply_draft', {
-      p_message_id: id, p_text: editedText, p_expected_evidence: draft?.draft_evidence ?? null,
+      p_message_id: id, p_text: editedText, p_expected_evidence: {
+        ...draft?.draft_evidence,
+        _reviewed_email: { recipient_email: snapshot?.recipient_email ?? null, email_mirror_text: snapshot?.email_mirror_text ?? null },
+      },
     })
     if (error) throw error
     return
@@ -2271,6 +2274,7 @@ export function emailSenderLabel(clientId: string | null | undefined): string {
   const senders: Record<string, string> = {
     risedtc: 'itsmattan@risedtc.com',
     arch: 'davorin@madebyarch.com',
+    swishdm: 'john@madebyswishdm.com',
   }
   const from = senders[String(clientId ?? '')]
   return from ? ` (from ${from})` : ''
@@ -2290,6 +2294,7 @@ export function emailRowSender(clientId: string | null | undefined): string {
   const senders: Record<string, string> = {
     risedtc: 'itsmattan@risedtc.com',
     arch: 'davorin@madebyarch.com',
+    swishdm: 'john@madebyswishdm.com',
   }
   return senders[String(clientId ?? '')] ?? NATIVE_EMAIL_SENDER
 }

@@ -83,7 +83,7 @@ describe('approve, edit, skip', () => {
     readRow = { ai_model: 'swishdm_reply_writer_v1', draft_evidence: { lane: 'swishdm_reply' } }
     await approveDraft('r1', 'Edited text')
     expect(rpc).toHaveBeenCalledTimes(1)
-    expect(rpc).toHaveBeenCalledWith('approve_swishdm_reply_draft', { p_message_id: 'r1', p_text: 'Edited text', p_expected_evidence: { lane: 'swishdm_reply' } })
+    expect(rpc).toHaveBeenCalledWith('approve_swishdm_reply_draft', { p_message_id: 'r1', p_text: 'Edited text', p_expected_evidence: { lane: 'swishdm_reply', _reviewed_email: { recipient_email: null, email_mirror_text: null } } })
   })
   it('every other draft still uses the shared RPC', async () => {
     readRow = { ai_model: 'rise_reply_draft_v1', draft_evidence: { a: 1 } }

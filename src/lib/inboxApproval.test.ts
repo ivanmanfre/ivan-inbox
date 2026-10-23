@@ -107,3 +107,12 @@ it('approves a research-heavy draft without putting its evidence in the request 
   expect(requests[0].url.length).toBeLessThan(8192)
   expect(JSON.parse(requests[0].body)).toMatchObject({ p_message_id: 'draft', p_text: 'Reviewed PC games reply', p_expected_evidence: evidence })
 })
+
+it('binds SwishDM approval to the email recipient and copy shown at confirmation', async () => {
+  db.read.mockResolvedValue({ data: { ai_model: 'swishdm_reply_page_v1', draft_evidence: { lane: 'swishdm_reply' } }, error: null })
+  await approveDraft('swish-draft', 'Reviewed DM', null, { recipient_email: 'sue@biatchtequila.com', email_mirror_text: 'Reviewed email' })
+  expect(db.rpc).toHaveBeenCalledWith('approve_swishdm_reply_draft', {
+    p_message_id: 'swish-draft', p_text: 'Reviewed DM',
+    p_expected_evidence: { lane: 'swishdm_reply', _reviewed_email: { recipient_email: 'sue@biatchtequila.com', email_mirror_text: 'Reviewed email' } },
+  })
+})
