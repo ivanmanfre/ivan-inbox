@@ -77,7 +77,7 @@ describe('approve_swishdm_reply_draft', () => {
     await expect(approve()).rejects.toThrow(/changed/i)
   })
   it.each([
-    ["sent_at=now()"], ["approved_at=now()"], ["unipile_message_id='x'"], ["send_blocked_reason='discarded_in_inbox'", "draft_evidence=draft_evidence||'{\"stopped\":true}'::jsonb"],
+    ["sent_at=now()"], ["approved_at=now()"], ["unipile_message_id='x'"], ["send_blocked_reason='discarded_in_inbox'"],
     ["send_blocked_reason=null"], ["ai_model='swishdm_first_list_v1'"], ["ai_model='arch_reply_draft_v2'"], ["message_type='connection_note'"],
     ["draft_evidence=draft_evidence||'{\"stopped\":{\"reason\":\"replied_stop\"}}'::jsonb"],
   ])('refuses a row that is not a held SwishDM reply: %s', async change => {
