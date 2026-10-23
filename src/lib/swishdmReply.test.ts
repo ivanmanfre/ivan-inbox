@@ -58,11 +58,10 @@ describe('a held SwishDM reply is a pending draft', () => {
     expect(sendFailed(firstList)).toBe(false)
     expect(sendFailed({ ...reply, send_blocked_reason: 'send_failed_400: check LinkedIn' })).toBe(true)
   })
-  it('a page-link reply tells Ivan that approving puts the page live; a plain one has no warning', () => {
+  it('page publication is independent of message approval and has no approval warning', () => {
     const withPage = { ...reply, draft_evidence: { page_token: token, page_url: url } as never }
     expect(swishdmPageUrl(withPage)).toBe(url)
-    expect(holdReason(withPage)).toContain(url)
-    expect(holdReason(withPage)).toMatch(/public, not indexed/)
+    expect(holdReason(withPage)).toBeNull()
     expect(holdReason(reply)).toBeNull()
     expect(swishdmPageUrl({ ...withPage, client_id: 'arch' })).toBeNull()
     expect(swishdmPageUrl({ ...reply, draft_evidence: { page_url: 'https://evil.example/compare/abcdefghijklmnopqrst/' } as never })).toBeNull()

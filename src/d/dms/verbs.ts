@@ -124,9 +124,9 @@ export function useDmVerbs(ctx: VerbCtx) {
         const page = swishdmPageUrl(draft)
         const ok = await confirm({
           title: `Approve the reply to ${t.prospect_name}?`,
-          message: page
-            ? `Approving puts the comparison page live at ${page} (public, not indexed) and releases this reply to Jonathan\u2019s sender. It goes out from Jonathan\u2019s LinkedIn once the page opens, in the next send window (Sun-Fri 9am-5pm UK).`
-            : 'Approving releases this reply to Jonathan\u2019s sender. It goes out from Jonathan\u2019s LinkedIn in the next send window (Sun-Fri 9am-5pm UK). Nothing else is sent.',
+          message: (page ? 'The scan page is already live. ' : '') + (draft.recipient_email && draft.email_mirror_text
+            ? `Approving releases the email to ${draft.recipient_email}${emailSenderLabel(t.client_id)} and Jonathan’s LinkedIn acknowledgement.`
+            : 'Approving releases this reply to Jonathan’s LinkedIn sender.'),
           confirmText: 'Approve reply',
           verb: 'confirm-send',
         })
