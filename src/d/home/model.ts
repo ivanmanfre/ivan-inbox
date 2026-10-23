@@ -27,13 +27,6 @@ export function invitesOf(d: LanesData, seat: Seat, now: number): Read<number | 
 
 export function readyRead(d: LanesData, seat: Seat): Read<ReadySeat> {
   const gov = d.gov.value?.find(x => x.client_id === seat) ?? null
-  if (seat === 'swishdm') {
-    // The monitor's approved-draft count mixes anchor and generic free-pool
-    // sources. The source-scoped candidate pool is visible on Lanes, but its
-    // exact sendable subset is not yet verified.
-    return d.ready.value ? { fail: 'Interest-source ready count is unverified' }
-      : d.ready.failed ? { fail: d.ready.failed } : { wait: true }
-  }
   return slot(d.ready, r => readyOf(r, seat, gov))
 }
 

@@ -32,9 +32,7 @@ const DAY = 864e5
 export function supplyOf(d: LanesData, seat: Seat, now: number): Supply {
   const g = d.gov.value?.find(x => x.client_id === seat)
   const rs = d.ready.value ? readyOf(d.ready.value, seat, g) : null
-  // SwishDM's monitor stock is not split by acquisition source. Its visible
-  // anchor pool is a candidate count until a source-scoped sender replay exists.
-  const ready = seat === 'swishdm' ? null : rs?.total ?? null
+  const ready = rs?.total ?? null
   const rows = d.replacement.value ? d.replacement.value.filter(r => r.client_id === seat && r.lane in INTEREST_LABEL) : null
   const cut = new Date(now - 7 * DAY).toISOString().slice(0, 10)
   const wk = (rows ?? []).filter(r => r.day >= cut)
