@@ -60,10 +60,11 @@ describe('SwishDM ready = the monitor replay of its own picker', () => {
   })
 })
 
-it('does not call an account-wide SwishDM queue count interest-ready', () => {
+it('SwishDM Ready is the sender-ready invite count, never the account-wide monitor queue (Ivan 2026-10-23)', () => {
   const ready = { saturdayNy: false, lanes: [{ seat: 'swishdm', lane: 'competitor_engager', label: 'Competitor / anchor engagers',
-    n: 42, capped: false, campaignId: null, off: null, candidate: true }] }
+    n: 27, capped: false, campaignId: null, off: null }] }
   const s = supplyOf(base({ ready, cc: { clients: [{ client_id: 'swishdm', invitation: { eligible_stock_by_pool: { noted_invites: 308, reconnect_blank_due: 0 } } }] } }), 'swishdm', NOW)
-  expect(s.ready).toBeNull()
-  expect(s.lanes).toMatchObject([{ lane: 'competitor_engager', n: 42, candidate: true }])
+  expect(s.ready).toBe(27)
+  expect(s.lanes).toMatchObject([{ lane: 'competitor_engager', n: 27 }])
+  expect(s.lanes[0].candidate).toBeFalsy()
 })

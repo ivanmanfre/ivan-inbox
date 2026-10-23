@@ -207,19 +207,20 @@ export async function fetchReady(now = Date.now()): Promise<ReadyRead> {
     }
     throw new Error('Interest-source stock exceeds the read limit; ready count is unavailable')
   }
-  const [cand, dom, swishCandidates] = await Promise.all([
+  const [cand, dom, swishSupply] = await Promise.all([
     ids.length ? candidates() : Promise.resolve({ rows: [] as Cand[], capped: false }),
     cfg.rise_company_expansion === 'on' && riseAll.length ? riseDomains(riseAll, now) : Promise.resolve({ stop: new Set<string>(), touch: new Set<string>() }),
-    swishLive.length ? supabase.from('inbox_interest_prospects_v').select('id', { count: 'exact', head: true })
-      .in('campaign_id', swishLive).eq('client_id', 'swishdm').eq('blacklisted', false)
-      .is('skip_state', null).is('connection_sent_at', null).is('connected_at', null)
-      .in('stage', ['identified','enriched','queued','swishdm_staged_hold']) : Promise.resolve({ count: 0, error: null }),
+    swishLive.length ? supabase.rpc('inbox_swishdm_ready') : Promise.resolve({ data: { ready_count: 0 }, error: null }),
   ])
-  if (swishCandidates.error) throw new Error(swishCandidates.error.message)
+  if (swishSupply.error) throw new Error(swishSupply.error.message)
+  const swishReady = swishSupply.data?.ready_count
+  if (!Number.isInteger(swishReady) || swishReady < 0) throw new Error('SwishDM ready stock could not be verified')
   const rows = cand.rows
   const ready = buildReady(rows, { now, cfg, scorer, ivanIds, riseLive, archLive, stop: dom.stop, touch: dom.touch, satNy: isSaturdayNy(now), riseReadyIds: new Set(supply.data.ready_ids), riseReadyCount: supply.data.ready_count }, cand.capped)
+  // SwishDM (2026-10-23, Ivan: "the numbers should be the ones that are ready to be sent"): the approved, unsent noted
+  // invites its sender would pick now (swishdm_supply_snapshot.sendable_invites), not the unfiltered engager pool.
   ready.lanes.push({ seat: 'swishdm', lane: 'competitor_engager', label: INTEREST_LABEL.competitor_engager,
-    n: swishCandidates.count ?? 0, capped: false, campaignId: swishLive[0] ?? null, off: null, candidate: true })
+    n: swishReady, capped: false, campaignId: swishLive[0] ?? null, off: null })
   return ready
 }
 
