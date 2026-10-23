@@ -26,8 +26,8 @@ export function QueuePane({ board, drafts, lane, selected, selectedRx, onSeat, o
   useEffect(() => { ref.current?.querySelectorAll('.ds-seg-item>.ds-badge').forEach(n => n.setAttribute('data-roll', '')) })
   const [laterOpen, setLaterOpen] = useState(false)
   const [highlight, setHighlight] = useState<string[]>([])
-  const options = [...SEATS.map((s, i) => ({ id: s, label: <><Avatar name={SEAT_NAME[s]} initials={['I', 'R', 'A', 'S'][i]} size="sm" tint={(i + 1) as 1 | 2 | 3 | 4} /><span>{SEAT_NAME[s]}</span></>, count: board.waiting[s] })),
-    ...board.other.map(o => ({ id: o.key, label: <span>{o.name}</span>, count: o.waiting }))]
+  const options = [...SEATS.map((s, i) => ({ id: s, label: <><Avatar name={SEAT_NAME[s]} initials={['I', 'R', 'A', 'S'][i]} size="sm" tint={(i + 1) as 1 | 2 | 3 | 4} /><span>{SEAT_NAME[s]}</span></>, count: board.lanes[s].length })),
+    ...board.other.map(o => ({ id: o.key, label: <span>{o.name}</span>, count: o.cards.length }))]
   const known = SEATS.find(s => s === lane)
   const other = board.other.find(o => o.key === lane)
   const cards = known ? board.lanes[known] : other?.cards ?? []
@@ -37,14 +37,13 @@ export function QueuePane({ board, drafts, lane, selected, selectedRx, onSeat, o
   const row = (d: typeof cards[number]) => <QueueRow key={d.id} d={d} selected={selected === d.id} onPick={onPick}
     held={queue.held.has(d.id)} feed={queue.feed.get(outboundFeedId(d) ?? '')} position={queue.positionOf(d.id)} highlight={highlight.includes(d.id)} />
   return <div ref={ref} className="op4-queue-content">
+    <div className="op4-queue-title"><h2>Review queue</h2><span>{board.flat.length} {board.flat.length === 1 ? 'item' : 'items'}</span></div>
     <Segmented options={options} value={lane} label="Seats" markerId="op4-seat" block className="op4-seats" onChange={onSeat} />
     <div className="op4-laneline"><span>{kindsLine(cards, true)}</span>{n > 0 && <Badge tone={queue.cappedToday ? 'attention' : 'neutral'} label={queue.cappedToday ? `${n} held: 3-a-day cap reached. Back tomorrow.` : `${n} queued. Leave the tab open.`}>{!queue.cappedToday && <LiveDot label="In the comment line" />}{n} {queue.cappedToday ? 'held: cap reached' : 'queued'}</Badge>}</div>
-    <Batch lane={lane} cards={cards} refresh={refresh} look="v4" onActed={onActed} onHighlight={setHighlight} />
     <div className="op4-rows" data-queue-lane={lane}>{cards.length ? cards.map(row) : <div className="op-quiet">Nothing waiting in {name}’s lane.</div>}</div>
     {later.length > 0 && <><button type="button" className="op-fold" aria-expanded={laterOpen} title="Past the 3 a day the poster takes. They wait here, nothing is dropped." onClick={() => setLaterOpen(o => !o)}>Ideas for later <b>{later.length}</b></button>{laterOpen && <div className="op4-later">{later.map(row)}</div>}</>}
-    <OpsReferences drafts={drafts} />
-    <Notes />
-    <Tasks drafts={drafts} refresh={refresh} />
+    <details className="op4-batch-tools"><summary>Bulk actions</summary><Batch lane={lane} cards={cards} refresh={refresh} look="v4" onActed={onActed} onHighlight={setHighlight} /></details>
+    <div className="op4-support"><Tasks drafts={drafts} refresh={refresh} /><Notes /><details className="op4-support-fold"><summary>References</summary><OpsReferences drafts={drafts} /></details></div>
     <section className="op-rxs" aria-label="Reactions"><div className="op-sec"><span>Reactions <b>{rx.loading && !rx.rows.length ? '…' : rx.rows.length}</b></span></div>
       {rx.error && <Failed what="the reaction desk" detail={rx.error} onRetry={rx.refresh} />}
       {!rx.error && !rx.loading && !rx.rows.length && <div className="op-quiet">No reaction waiting.</div>}

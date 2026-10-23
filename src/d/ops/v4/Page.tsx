@@ -11,7 +11,7 @@ import type { PlaceProps } from '../../places'
 import { dHash } from '../../route'
 import { SEATS } from '../../seats'
 import { useReportFailed } from '../../shell/health'
-import { AnswerRow, N } from '../../ui/AnswerRow'
+import { AnswerRow } from '../../ui/AnswerRow'
 import { useDConfirmOpen } from '../../ui/confirm'
 import { Btn } from '../../ui/Key'
 import { Failed } from '../../ui/states'
@@ -25,6 +25,7 @@ import { KeySheet } from './KeySheet'
 import { QueuePane } from './Queue'
 import { animateReceipt, captureAction, finishAction, useDeferredLoading, useOpsMotion } from './motion'
 import './ops4.css'
+import './review.css'
 import { XFlag } from '../x/XFlag'
 import { useXReview } from '../x/useXReview'
 import { xWaitingCount } from '../../../lib/xReview'
@@ -137,10 +138,10 @@ export function OpsPageV4({ layout, route, navigate }: PlaceProps) {
   const firstRead = ops.loading && !ops.drafts.length
   const deferred = useDeferredLoading(firstRead)
   useOpsMotion(root, sel?.id ?? reaction?.id ?? '', lane)
-  const w = board.waiting, otherN = board.other.reduce((a, o) => a + o.waiting, 0)
+  const commentCount = board.flat.filter(d => d.kind === 'comment_outbound').length
   // Ivan 2026-10-15: the newsjack clock in the header was noise. The card keeps its own "11h left".
-  const sub = ''
-  const answer = <AnswerRow title={<>Waiting on you: <N v={w.ivan} /> yours, <N v={w.risedtc} /> Rise, <N v={w.arch} /> Arch{otherN > 0 && <>, <N v={otherN} /> in other lanes</>}{xn > 0 && <>, <N v={xn} /> on X</>}.</>}
+  const sub = `${board.flat.length} ${board.flat.length === 1 ? 'item' : 'items'} to review${commentCount ? ` · ${commentCount} fresh ${commentCount === 1 ? 'comment' : 'comments'}` : ''}${xn ? ` · ${xn} on X` : ''}`
+  const answer = <AnswerRow title="Operations"
     sub={firstRead ? 'Reading the queue…' : ops.saved ? `Showing saved queue from ${ops.loadedAt ? warsawHm(ops.loadedAt) : 'earlier'}. ${sub}` : sub} tools={<button type="button" className="d-ib" data-op4-keys aria-label="Ops keys (?)" onClick={() => setKeySheet(true)}>?</button>} />
   const checked = ops.loadedAt ? warsawHm(ops.loadedAt) : '…'
   const stale = ops.error && ops.drafts.length > 0 ? <Banner tone="attention" action={<Btn verb="retry" onClick={refresh}>Retry</Btn>}>Could not refresh{ops.loadedAt ? ` (showing ${checked})` : ''}.</Banner> : null

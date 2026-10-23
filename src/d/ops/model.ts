@@ -137,13 +137,13 @@ export function rowLine(d: OpsDraft, now = Date.now()): { who: string; text: str
 export type SeatBatch = { key: string; kind: 'comment_outbound' | 'manual_invite'; lane: string; cards: OpsDraft[]; label: string }
 
 /** Today's quick batch, per lane: two or more batchable, still-pending cards of one kind. */
-export function seatBatches(lane: string, cards: OpsDraft[]): SeatBatch[] {
+export function seatBatches(lane: string, cards: OpsDraft[], minimum = 2): SeatBatch[] {
   const out: SeatBatch[] = []
   for (const kind of ['comment_outbound', 'manual_invite'] as const) {
     // Still pending only (today's pendingIdsOf): a gate-held comment is already
     // approved and parked; a batch discard would cancel it at the poster.
     const list = cards.filter(d => d.kind === kind && isBatchable(d) && isStillPending(d))
-    if (list.length < 2) continue
+    if (list.length < minimum) continue
     out.push({ key: `${kind}:${lane}`, kind, lane, cards: list, label: `${list.length} ${kind === 'manual_invite' ? 'invites' : 'comments'}` })
   }
   return out

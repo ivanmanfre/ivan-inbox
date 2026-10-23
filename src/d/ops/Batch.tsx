@@ -28,7 +28,9 @@ export function Batch({ lane, cards, refresh, look = 'v3', onActed, onHighlight 
   const [note, setNote] = useState<Record<string, string>>({})
   const [one, setOne] = useState<Record<string, Note>>({})
   const [running, setRunning] = useState<{ ids: string[]; verb: 'approve' | 'discard'; batch: SeatBatch } | null>(null)
-  const current = seatBatches(lane, cards.filter(d => !done.has(d.id) && isStillPending(d)))
+  // A failed singleton retains its reason and retry controls after its siblings leave.
+  const current = seatBatches(lane, cards.filter(d => !done.has(d.id) && isStillPending(d)), 1)
+    .filter(b => b.cards.length > 1 || b.cards.some(d => one[d.id]))
   const batches = running ? [running.batch, ...current.filter(b => b.key !== running.batch.key)] : current
   // A batch that just emptied itself still says what happened (the result line outlives the row).
   const gone = Object.keys(note).filter(k => !batches.some(b => b.key === k))
@@ -39,6 +41,7 @@ export function Batch({ lane, cards, refresh, look = 'v3', onActed, onHighlight 
   })
   const markDone = (id: string) => setDone(s => (s.has(id) ? s : new Set(s).add(id)))
   const clearOne = (id: string) => setOne(s => { if (!(id in s)) return s; const { [id]: _drop, ...rest } = s; return rest })
+  const clearReceipt = (d: OpsDraft) => setNote(s => { const { [`${d.kind}:${lane}`]: _drop, ...rest } = s; return rest })
   const approveAsk = (b: SeatBatch, n: number) => b.kind === 'comment_outbound' ? gateConfirm(seatLabel(b.lane), n) : inviteConfirm(n)
 
   async function approveOne(d: OpsDraft) {
@@ -49,7 +52,7 @@ export function Batch({ lane, cards, refresh, look = 'v3', onActed, onHighlight 
     try {
       onActed?.(d.id, 'Approved')
       const r = await dispatchApprove(d)
-      if (r.ok) { markDone(d.id); refresh() } else setOne(s => ({ ...s, [d.id]: { message: r.message, outcome: r.outcome } }))
+      if (r.ok) { markDone(d.id); clearReceipt(d); refresh() } else setOne(s => ({ ...s, [d.id]: { message: r.message, outcome: r.outcome } }))
     } catch (e) { setOne(s => ({ ...s, [d.id]: { message: errText(e), outcome: 'error' } })) }
     finally { mark([d.id], false) }
   }
@@ -58,7 +61,7 @@ export function Batch({ lane, cards, refresh, look = 'v3', onActed, onHighlight 
     if (busy.has(d.id) || done.has(d.id)) return
     if (!(await confirm(discardConfirm(1)))) return
     mark([d.id], true)
-    try { onActed?.(d.id, 'Discarded'); await dispatchDiscard(d); markDone(d.id); refresh() }
+    try { onActed?.(d.id, 'Discarded'); await dispatchDiscard(d); markDone(d.id); clearReceipt(d); refresh() }
     catch (e) { setOne(s => ({ ...s, [d.id]: { message: errText(e), outcome: 'error' } })) }
     finally { mark([d.id], false) }
   }
@@ -81,6 +84,11 @@ export function Batch({ lane, cards, refresh, look = 'v3', onActed, onHighlight 
       if (res.ok) { markDone(id); return }
       setOne(s => ({ ...s, [id]: { message: res.message, outcome: res.outcome } }))
       throw new Error(res.message)
+    })
+    setOne(s => {
+      const next = { ...s }
+      for (const f of r.failed) if (!next[f.id]) next[f.id] = { message: f.error, outcome: 'error' }
+      return next
     })
     if (look === 'v4') setRunning(null)
     mark(ids, false)
