@@ -1688,7 +1688,7 @@ export async function fetchDraftEmailStamps(): Promise<Map<string, DraftEmailSta
     // A race- or lint-held row is a pending draft again (isDraft), and approving
     // it still mails the mirror. Skipping held rows here dropped its email line
     // and editor while the email still went out (check3-drafts E1.5).
-    .or('send_blocked_at.is.null,send_blocked_reason.like.post_approval_race*,send_blocked_reason.like.lint*')
+    .or('send_blocked_at.is.null,send_blocked_reason.like.post_approval_race*,send_blocked_reason.like.lint*,and(send_blocked_reason.eq.awaiting_client_review,ai_model.like.swishdm_reply_*)')
     .or('recipient_email.not.is.null,draft_evidence->>email_delivery_recipient.not.is.null')
     .order('created_at', { ascending: false })
     .limit(500)
@@ -1833,7 +1833,7 @@ export async function saveDraftEmail(id: string, text: string): Promise<void> {
   const { error } = await supabase.from('outreach_messages')
     .update({ email_mirror_text: text })
     .eq('id', id).is('sent_at', null).is('approved_at', null)
-    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*`)
+    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*,and(send_blocked_reason.eq.${SWISHDM_REPLY_HOLD},ai_model.like.swishdm_reply_*)`)
   if (error) throw error
 }
 
