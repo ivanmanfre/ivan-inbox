@@ -39,7 +39,7 @@ describe.each([OpsCard, CardV4])('outbound author tag (%s)', Card => {
     vi.mocked(lib.dispatchCommentGate).mockClear()
     renderInFrame(<Card d={draft(gate)} refresh={() => {}} layout="desktop" pos="card 1 of 1" />)
     fireEvent.click(tagBtn()!)
-    expect(tagBtn()?.textContent).toContain('No tag')
+    expect(tagBtn()?.textContent).toContain(Card === OpsCard ? 'No tag' : 'Author tag off')
     fireEvent.click(document.querySelector('[data-verb="approve"]') as HTMLElement)
     fireEvent.click(await waitFor(() => { const b = [...document.querySelectorAll('button')].find(x => x.textContent === 'Approve & queue' && !x.closest('.op-keys')); if (!b) throw new Error('no confirm'); return b }))
     await waitFor(() => expect(lib.dispatchCommentGate).toHaveBeenCalledWith(`${gate.approve_url}&notag=1`))

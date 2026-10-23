@@ -6,7 +6,7 @@ import { Preview } from './Preview'
 import { CardMore } from './More'
 import { captions, OpsCard, useCardConfirm } from '../Card'
 import type { ConfirmOpts as OldConfirmOpts } from '../../../lib/confirm'
-import { GATE_HELD_LABEL, personHeadline } from '../../../lib/ops'
+import { GATE_HELD_LABEL, personHeadline, seatFullName } from '../../../lib/ops'
 import { usePendingCard } from '../../../wb/ops/usePendingCard'
 import { seatOf, SEAT_NAME } from '../../seats'
 import { Key } from '../../ui/Key'
@@ -68,6 +68,8 @@ export function CardV4({ d, refresh, feed, held, onGateResult, layout, pos, wait
   const contextLabel = st.isOutbound ? 'Their post' : st.isComment ? 'Their comment' : d.kind === 'newsjack' ? 'The story' : d.kind === 'weekly_report' ? 'The week' : d.kind === 'booking' || d.kind === 'precall_email' || d.kind === 'sales_call_brief' || d.kind === 'sales_followup_email' ? 'The call' : 'The person'
   const left = st.left
   const cap = captions(d, st)
+  const buyerRelevance = typeof d.context?.buyer_relevance === 'string' ? d.context.buyer_relevance.trim() : ''
+  const contribution = typeof d.context?.why_this_post === 'string' ? d.context.why_this_post.trim() : ''
   const name = String(d.context?.author_name ?? '')
   const hasComment = Boolean(d.context?.comment_id)
   // Arch comments always get More: Needs Davor and Mark handled need no comment_id (today's card).
@@ -81,7 +83,7 @@ export function CardV4({ d, refresh, feed, held, onGateResult, layout, pos, wait
         <div className="op4-identity"><b>{who}</b><div><span className="op-eb">{kindTitle(d)}</span><span className="op4-lane"> · {laneName}</span></div></div>
         <div className="op4-headmeta" title={`Drafted ${warsawDayTime(d.created_at)}`}>
           {d.context?.posted_at && <time>posted {rowLine(d).time}</time>}
-          <span>{laneName} · {pos.replace('card ', '')}{left && <> · <b className="op-hot">{left}</b></>}</span>
+          <span>{pos.replace('card ', '')}{left && <> · <b className="op-hot">{left}</b></>}</span>
         </div>
         <div className="op4-nav">
           <button type="button" className="d-ib" aria-label="Previous card (k)" disabled={!previous} onClick={previous}>‹</button>
@@ -90,14 +92,22 @@ export function CardV4({ d, refresh, feed, held, onGateResult, layout, pos, wait
       </header>
       <div className="op-cb">
         <div className={`op-ctx op4-context${whole ? ' op4-whole' : ''}`} data-op-block>
-          <div className="op4-label">{contextLabel}</div>
-          <CardContext d={context} liked={st.liked} needsDavor={st.needsDavor} />
-          {layout === 'phone' && excerpt && <button className="d-btn" type="button" aria-expanded={whole} onClick={() => setWhole(w => !w)}>{whole ? 'Show less' : 'Show the whole post'}</button>}
+          <div className="op4-label">{st.isOutbound ? 'Post excerpt' : contextLabel}</div>
+          {st.isOutbound ? <>
+            {personHeadline(d.context?.target_headline) && <p className="op4-author-role">{personHeadline(d.context?.target_headline)}</p>}
+            {excerpt ? <blockquote className={`op-quote op4-source${whole ? ' op4-source-open' : ''}`}>{excerpt}</blockquote> : <p className="op4-author-role">No post excerpt was saved.{d.context?.post_url ? ' Open the full post to review it.' : ''}</p>}
+            <div className="op4-source-actions">
+              {excerpt && <button className="d-btn" type="button" data-expand-excerpt aria-expanded={whole} onClick={() => setWhole(w => !w)}>{whole ? 'Show less' : 'Read more'}</button>}
+              {typeof d.context?.post_url === 'string' && <a className="op-lk" href={d.context.post_url} target="_blank" rel="noreferrer">Open full post ↗</a>}
+            </div>
+            {buyerRelevance && <details className="op4-relevance" data-buyer-context><summary>Why this person</summary><p>{buyerRelevance}</p>{contribution && <p>{contribution}</p>}</details>}
+          </> : <CardContext d={context} liked={st.liked} needsDavor={st.needsDavor} />}
+          {!st.isOutbound && layout === 'phone' && excerpt && <button className="d-btn" type="button" data-expand-excerpt aria-expanded={whole} onClick={() => setWhole(w => !w)}>{whole ? 'Show less' : 'Read more'}</button>}
           <ArchWhy st={st} />
         </div>
         <div className="op-rep" data-op-block>
           <label className={`op-tape${st.drafting ? " op4-drafting" : ""}`}>
-            <span className="op-tm"><span>{tapeLabel(d)}</span></span>
+            <span className="op-tm"><span>{st.isOutbound ? 'Your comment' : tapeLabel(d)}</span></span>
             {formatted ? (
               <div
                 className="op-slack" role="button" tabIndex={0} title="Tap to edit the text"
@@ -106,7 +116,7 @@ export function CardV4({ d, refresh, feed, held, onGateResult, layout, pos, wait
               >{renderMrkdwn(formatBookingForSlack(st.body, d.context))}</div>
             ) : (
             <textarea
-              value={st.body} rows={Math.min(12, Math.max(3, st.body.split('\n').reduce((n, line) => n + Math.max(1, Math.ceil(line.length / (layout === 'phone' ? 36 : 48))), 0)))} disabled={off} aria-label={tapeLabel(d)}
+              value={st.body} rows={Math.min(12, Math.max(3, st.body.split('\n').reduce((n, line) => n + Math.max(1, Math.ceil(line.length / (layout === 'phone' ? 36 : 48))), 0)))} disabled={off} aria-label={st.isOutbound ? 'Your comment' : tapeLabel(d)}
               autoFocus={d.kind === 'booking'}
               onBlur={d.kind === 'booking' ? () => setEditing(false) : undefined}
               onKeyDown={e => {
@@ -120,14 +130,14 @@ export function CardV4({ d, refresh, feed, held, onGateResult, layout, pos, wait
             )}
           </label>
           {st.canTag && !st.isCloseOnly && st.tag && st.tagMayFail && <div className="op-note op-warn" data-tag-warn>@ tags {st.commenterName}: may not stick, hidden surname.</div>}
-          <Preview d={d} st={st} />
           {st.canTagAuthor && <div data-verb="tag" className="op4-tag" aria-disabled={off} onClick={e => { if (e.target === e.currentTarget && !off) st.setTag(t => !t) }}>
-            <Chip className="op-tagline" selected={st.tag} tone={st.tag ? 'accent' : 'neutral'} onClick={() => { if (!off) st.setTag(t => !t) }}>
-              {st.tag ? `● Tag ${st.authorName}` : '○ No tag'}
+            <Chip className="op-tagline" icon={st.tag ? 'check' : undefined} selected={st.tag} tone="neutral" onClick={() => { if (!off) st.setTag(t => !t) }}>
+              {st.tag ? `Tag ${st.authorName}: on` : 'Author tag off'}
             </Chip>
             {st.tag && st.authorTagMayFail && <small>may not stick, hidden surname</small>}
           </div>}
-          {st.editorNote && <Banner className="op4-editornote" tone={st.onDemand || st.isCloseOnly ? 'attention' : 'neutral'}>{st.editorNote}</Banner>}
+          {st.isOutbound || st.isComment ? <details className="op4-send-preview" data-send-preview><summary>LinkedIn preview</summary><Preview d={d} st={st} /></details> : <Preview d={d} st={st} />}
+          {st.editorNote && !st.isOutbound && <Banner className="op4-editornote" tone={st.onDemand || st.isCloseOnly ? 'attention' : 'neutral'}>{st.editorNote}</Banner>}
           {st.heldVerdict && <div className="op-ban op-ban-warn"><b>{GATE_HELD_LABEL}</b> {st.heldVerdict.message}</div>}
           {st.postState === 'queued' && !st.heldVerdict && <div className="op-ban">Queued: the poster has it. It posts after its jitter window unless you discard.</div>}
           {st.postState === 'posted' && <div className="op-ban">Posted to LinkedIn.</div>}
@@ -140,7 +150,7 @@ export function CardV4({ d, refresh, feed, held, onGateResult, layout, pos, wait
           {!st.heldVerdict && (
             <div className={`op-keys${off ? " op4-busy" : ""}`} data-op-block>
               <div className="op-k">
-                <Key verb="discard" disabled={off} onClick={() => void st.onDiscard()} title={st.discardConfirm.message}>Discard</Key><small>{cap.discard}</small>
+                <Key verb="discard" disabled={off} onClick={() => void st.onDiscard()} title={st.discardConfirm.message}>Discard</Key><small>{st.isOutbound ? 'Removes this suggestion.' : cap.discard}</small>
               </div>
               {st.canDraft && (
                 <div className="op-k">
@@ -154,7 +164,7 @@ export function CardV4({ d, refresh, feed, held, onGateResult, layout, pos, wait
                 </div>
               )}
               <div className="op-k op-kp">
-                <Key primary verb={st.commentCloseOnly ? 'mark-handled' : 'approve'} disabled={primaryOff || st.busy} onClick={() => void st.onApprove()} title={cap.approve}>{st.approveLabel}</Key><small>{cap.approve}</small>
+                <Key primary verb={st.commentCloseOnly ? 'mark-handled' : 'approve'} disabled={primaryOff || st.busy} onClick={() => void st.onApprove()} title={cap.approve}>{st.approveLabel}</Key><small>{st.isOutbound && st.approveUrl ? `Queues for ${seatFullName(d.client_id)}’s LinkedIn account. Up to 3 a day.` : cap.approve}</small>
               </div>
             </div>
           )}

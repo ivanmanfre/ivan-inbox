@@ -10,17 +10,36 @@ const row = (kind: OpsDraft['kind'], context: Record<string, unknown> = {}): Ops
 const render = (d: OpsDraft, held?: Parameters<typeof CardV4>[0]['held']) => renderInFrame(<div className="op4"><CardV4 d={d} refresh={() => {}} layout="desktop" pos="card 1 of 1" held={held} /></div>)
 afterEach(cleanup)
 describe('Ops v4 details', () => {
+  it('shows buyer relevance and keeps the duplicate LinkedIn preview collapsed', () => {
+    render(row('comment_outbound', { target_name: 'Ada Smith', approve_url: 'https://gate.example/approve', post_excerpt: 'A real post excerpt.', buyer_relevance: 'Founder of a web agency.', why_this_post: 'A specific question about her review process.' }))
+    expect(document.querySelector('[data-buyer-context]')?.textContent).toContain('Founder of a web agency.')
+    expect(document.querySelector('[data-send-preview]')?.hasAttribute('open')).toBe(false)
+    expect(document.querySelector('[data-send-preview] [data-preview]')?.textContent).toContain('My words')
+    expect(document.body.textContent).not.toContain('jitter')
+  })
+  it('describes the stored excerpt accurately on phone', () => {
+    renderInFrame(<div className="op4"><CardV4 d={row('comment_outbound', { post_excerpt: 'A long excerpt '.repeat(30) })} refresh={() => {}} layout="phone" pos="card 1 of 1" /></div>, { layout: 'phone' })
+    expect(document.body.textContent).not.toContain('Show the whole post')
+    fireEvent.click(document.querySelector('[data-expand-excerpt]')!)
+    expect(document.querySelector('[data-expand-excerpt]')?.getAttribute('aria-expanded')).toBe('true')
+  })
+  it('can expand short multiline excerpts and labels the copy editor accurately', () => {
+    renderInFrame(<div className="op4"><CardV4 d={row('comment_outbound', { post_excerpt: 'One\nTwo\nThree\nFour\nFive\nSix' })} refresh={() => {}} layout="phone" pos="card 1 of 1" /></div>, { layout: 'phone' })
+    expect(document.querySelector('[data-expand-excerpt]')).toBeTruthy()
+    fireEvent.click(document.querySelector('[data-expand-excerpt]')!)
+    expect(document.querySelector('.op4-source-open')).toBeTruthy()
+    expect(document.querySelector('textarea')?.getAttribute('aria-label')).toBe('Your comment')
+  })
   it('outbound preview includes the tag; toggling changes the preview and confirmation', () => {
     render(row('comment_outbound', { target_name: 'Ada Smith', approve_url: 'https://gate.example/approve' }))
     expect(document.querySelector('[data-preview]')?.textContent).toContain('@Ada Smith')
-    expect(document.querySelector('.op4-editornote')?.textContent).toContain('Approve queues it here')
-    expect(document.querySelector('.op-kp small')?.textContent).toBe('The poster takes 3 a day, one at a time.')
+    expect(document.querySelector('.op-kp small')?.textContent).toContain('LinkedIn')
     fireEvent.click(document.querySelector('.op-tagline')!)
-    expect(document.querySelector('[data-preview]')?.textContent).toContain('Posts untagged:')
+    expect(document.querySelector('[data-preview]')?.textContent).toContain('Posts untagged from Ivan:')
   })
   it('copy path shows the copy sentence and no tag control', () => {
     render(row('comment_outbound'))
-    expect(document.querySelector('[data-preview]')?.textContent).toBe('Copied for you to paste from Mattan’s seat.')
+    expect(document.querySelector('[data-preview]')?.textContent).toBe('Copied for you to paste from Ivan’s account.')
     expect(document.querySelector('.op-tagline')).toBeNull()
   })
   it('reply preview names the seat and author, and request-only safety note has attention tone', () => {
