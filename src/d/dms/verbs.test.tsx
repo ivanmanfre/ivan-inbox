@@ -457,7 +457,7 @@ describe('SwishDM threads', () => {
     const [t] = threads(rows)
     mount(t)
     fireEvent.click(key('send'))
-    expect(await screen.findByText(/from Jonathan’s LinkedIn in the next send window \(Sun-Fri 9am-5pm UK\)/)).toBeTruthy()
+    expect(await screen.findByText(/Approving releases this reply to Jonathan’s LinkedIn sender/)).toBeTruthy()
     expect(screen.queryByText(/switched on/)).toBeNull()
   })
 

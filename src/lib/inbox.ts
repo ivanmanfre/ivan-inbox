@@ -461,10 +461,7 @@ export function heldReasonText(reason: string | null | undefined): string {
 // only in a WhatsApp alert; the draft itself looked like any other draft.
 export function holdReason(m: InboxMessage): string | null {
   const r = m.send_blocked_reason
-  if (isSwishdmReplyHold(m) && isDraft(m)) {
-    const url = swishdmPageUrl(m)
-    return url ? `Approving this also puts the comparison page live at ${url}. The page is public, not indexed, and the reply waits until it opens.` : null
-  }
+  if (isSwishdmReplyHold(m) && isDraft(m)) return null
   if (!isDraft(m) || !isRecoverableHold(r)) return null
   if (isRaceHold(r)) return r === `${RACE_HOLD_PREFIX}outbound`
     ? 'Came back: a message went out on this thread while it was queued. Re-read the thread, then approve again.'
