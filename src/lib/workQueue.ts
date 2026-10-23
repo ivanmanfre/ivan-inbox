@@ -27,8 +27,8 @@ import { rowClient } from './today'
 //   3  any other rotting ops draft (comment, weekly report, booking)
 //   4  the content review/error pile, one card per lane
 //   5  the staged client-idea pile, one card per lane
-// Ties within a tier break oldest-first: the item that has waited longest
-// inside its own severity band is the one that has waited longest, full stop.
+// Ties within a tier break oldest-first. Outbound comment slots carry the
+// freshest original posts first, preserving the positions of all other kinds.
 
 export type QueueTier = 0 | 1 | 2 | 3 | 4 | 5
 export type QueueKind = 'reply' | 'ops' | 'contentReview' | 'contentError' | 'ideas'
@@ -42,6 +42,7 @@ export type QueueItem = {
   lane: string // 'ivan' | 'risedtc' | 'arch' | 'swishdm'
   waitingSince: string
   ageDays: number
+  outboundPostedAt?: string // original post time survives the cross-lane rank
   n?: number // set on the aggregate pile cards (tiers 4-5): how many rows this one card stands for
   // What the row's click hands to the navigation callback: a prospect_id for a
   // reply (opens that exact thread), or null when the item opens a whole
@@ -109,6 +110,7 @@ export function buildOpsItems(drafts: OpsDraft[], now: number): QueueItem[] {
       lane: d.client_id,
       waitingSince: d.created_at,
       ageDays: ageDaysOf(d.created_at, now),
+      outboundPostedAt: d.kind === 'comment_outbound' ? d.context?.posted_at : undefined,
       // Ops has no per-row focus mechanism from outside the job (OpsBoard is
       // owned by another item in this run), so the item opens the Ops job at
       // the job level rather than a specific row, still the exact surface the
@@ -178,9 +180,13 @@ export function pileItems(piles: LanePile[], kind: 'contentReview' | 'contentErr
 
 // One list, ranked. Tier first (a person always outranks a draft, and a
 // silent reply always outranks one that was at least opened), oldest-first
-// inside a tier.
+// inside a tier, then newest original posts across the outbound comment slots.
 export function rankQueue(items: QueueItem[]): QueueItem[] {
-  return [...items].sort((a, b) => a.tier - b.tier || b.ageDays - a.ageDays)
+  const ranked = [...items].sort((a, b) => a.tier - b.tier || b.ageDays - a.ageDays)
+  const outbound = ranked.filter(i => i.outboundPostedAt !== undefined)
+    .sort((a, b) => Date.parse(b.outboundPostedAt!) - Date.parse(a.outboundPostedAt!))
+  let next = 0
+  return ranked.map(i => i.outboundPostedAt !== undefined ? outbound[next++] : i)
 }
 
 // Oldest-first is the rule inside the queue, and taken alone it turned Today

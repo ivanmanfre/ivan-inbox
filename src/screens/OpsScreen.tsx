@@ -6,7 +6,7 @@ import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useOps } from '../hooks/useOps'
 import { OpsReferences } from '../components/OpsReferences'
 import {
-  approveOpsDraft, approveWeeklyReport, blockedOps, canGenerateDraft, canTagCommenter, isCloseOnlyComment, claimingOps, discardOpsDraft, DRAFT_CONTINUE_MAX, engineLabel, expiresIn, generateCommentDraft, likeComment, markCommentHandled, outboundApproveUrl, outboundSkipUrl, pendingOps, postCommentReply, seatLabel, sentOps, weeklyReportDispatches, weeklySendAfter,
+  approveOpsDraft, approveWeeklyReport, isStaleComment, OUTBOUND_EXPIRED, blockedOps, canGenerateDraft, canTagCommenter, isCloseOnlyComment, claimingOps, discardOpsDraft, DRAFT_CONTINUE_MAX, engineLabel, expiresIn, generateCommentDraft, likeComment, markCommentHandled, outboundApproveUrl, outboundSkipUrl, pendingOps, postCommentReply, seatLabel, sentOps, weeklyReportDispatches, weeklySendAfter,
   dispatchCommentGate, cardStateOf, personHeadline,
   completeTask, doneTodayTasks, dueLabel, isTaskKind, pendingTasks, taskDetails, taskDue, taskSource, taskTitle,
   type OpsDraft, type OpsKind, type GateVerdict, type FeedState,
@@ -497,6 +497,7 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
         confirmText: approveUrl ? 'Approve & queue' : 'Approve & copy',
       })
       if (!ok) return
+      if (isStaleComment(draft)) { setError(OUTBOUND_EXPIRED); refresh(); return }
       setBusy(true); setError('')
       try {
         if (approveUrl) {
@@ -504,6 +505,7 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
           // `already` counts as an accept for stamping: the row has left
           // `pending`, so a replay is the idempotent case, not a new send.
           if (v.outcome === 'accepted' || v.outcome === 'already') {
+            if (isStaleComment(draft)) throw new Error(OUTBOUND_EXPIRED)
             await approveWeeklyReport(draft.id, body)
             setGate(v)
             onGateResult?.(draft.id, v)
@@ -519,6 +521,7 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
         } else {
           // Copy first: a blocked clipboard leaves the card recoverable.
           await navigator.clipboard.writeText(body)
+          if (isStaleComment(draft)) throw new Error(OUTBOUND_EXPIRED)
           await approveWeeklyReport(draft.id, body)
           refresh()
         }

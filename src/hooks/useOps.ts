@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { emptyReadOverRows, fetchOpsDrafts, type OpsDraft } from '../lib/ops'
+import { emptyReadOverRows, fetchOpsDrafts, isStaleComment, OUTBOUND_MAX_AGE_MS, type OpsDraft } from '../lib/ops'
 import { forget, recall, remember } from '../lib/pageMemo'
 import { currentUserId } from '../lib/swr'
 
@@ -47,6 +47,8 @@ export function useOps(enabled = true) {
   // The rows on screen, read inside `refresh` without making it re-create.
   const shown = useRef<OpsDraft[]>(visibleRows(seed?.value ?? []))
   const refresh = useCallback(() => {
+    // Invalidate time-derived consumers even if the network read fails.
+    setDrafts(cur => [...cur])
     fetchOpsDrafts().then(rows => {
       // Ivan's rule: an EMPTY result over a board that had rows is a failure,
       // never a cleared queue. Keep the last good rows and their stamp.
@@ -84,14 +86,28 @@ export function useOps(enabled = true) {
     // Keep the last validated read intact; the tombstone filters it on revisit.
   }, [])
   useEffect(() => {
+    const now = Date.now()
+    const deadlines = drafts.filter(d => d.kind === 'comment_outbound' && !isStaleComment(d, now))
+      .map(d => Date.parse(d.context!.posted_at!) + OUTBOUND_MAX_AGE_MS + 1)
+    if (deadlines.length === 0) return
+    const timer = window.setTimeout(() => setDrafts(cur => [...cur]), Math.max(1, Math.min(...deadlines) - now))
+    return () => window.clearTimeout(timer)
+  }, [drafts])
+  useEffect(() => {
     if (!enabled) { setLoading(false); return }
     refresh()
     const ch = supabase.channel(topic)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ops_drafts' }, refresh)
       .subscribe()
     const onFocus = () => refresh()
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh() }
     window.addEventListener('focus', onFocus)
-    return () => { supabase.removeChannel(ch); window.removeEventListener('focus', onFocus) }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      supabase.removeChannel(ch)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [refresh, topic, enabled])
   return { drafts, loading, error, loadedAt, saved, refresh, markDone }
 }

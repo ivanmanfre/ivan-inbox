@@ -26,7 +26,7 @@ describe('pendingDmLaneOps', () => {
     const rows: OpsDraft[] = [
       { ...base, id: 'esc' },
       { ...base, id: 'cr', kind: 'comment_reply', context: { posted_at: '2026-07-24T09:00:00Z' } },
-      { ...base, id: 'co', kind: 'comment_outbound' },
+      { ...base, id: 'co', kind: 'comment_outbound', context: { posted_at: '2026-07-24T09:00:00Z' } },
       { ...base, id: 'nj', kind: 'newsjack' },
       { ...base, id: 'sent', sent_at: '2026-07-24T11:00:00Z' },
     ]
@@ -146,10 +146,10 @@ describe('comment cards age out', () => {
     const old = { ...mkC('2026-07-01T00:00:00Z'), kind: 'escalation' as const }
     expect(pendingOps([old], now)).toHaveLength(1)
   })
-  it('ages out outbound comment cards on the same window', () => {
+  it('ages out outbound originals past 24 hours', () => {
     const old = { ...mkC('2026-07-25T11:00:00Z'), kind: 'comment_outbound' as const }
     expect(pendingOps([old], now)).toHaveLength(0)
-    const fresh = { ...mkC('2026-07-29T11:00:00Z'), kind: 'comment_outbound' as const }
+    const fresh = { ...mkC('2026-07-29T12:00:00Z'), kind: 'comment_outbound' as const }
     expect(pendingOps([fresh], now)).toHaveLength(1)
   })
 })

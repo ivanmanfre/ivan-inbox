@@ -3,7 +3,7 @@ import { pileMemberRows, clearPileMembers, restorePileMembers } from '../../lib/
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useToday } from '../../hooks/useToday'
 import { focusSummary, laneName } from '../../lib/focus'
-import { fetchOpsDrafts, type OpsDraft } from '../../lib/ops'
+import { fetchOpsDrafts, isStaleComment, OUTBOUND_MAX_AGE_MS, type OpsDraft } from '../../lib/ops'
 import { ago, todayLoad, todayPlate, countsFromBrief } from '../../lib/today'
 import {
   buildOpsItems, buildReplyItems, fetchContentErrorPile, fetchContentReviewPile, fetchStagedIdeaPile,
@@ -47,6 +47,22 @@ function useQueueReads() {
   const visibilityEpoch = useRef(0)
   const fullAccepted = useRef(false)
   const fullPendingEpoch = useRef<number | null>(null)
+  useEffect(() => {
+    const now = Date.now()
+    const deadlines = (ops ?? []).filter(d => d.kind === 'comment_outbound' && !isStaleComment(d, now))
+      .map(d => Date.parse(d.context!.posted_at!) + OUTBOUND_MAX_AGE_MS + 1)
+    if (deadlines.length === 0) return
+    // This snapshot has its own clock, independent of useOps and network reads.
+    const timer = window.setTimeout(() => setOps(rows => rows && [...rows]), Math.max(1, Math.min(...deadlines) - now))
+    return () => window.clearTimeout(timer)
+  }, [ops])
+  useEffect(() => {
+    const resume = () => { setOps(rows => rows && [...rows]); setTick(t => t + 1) }
+    const visible = () => { if (document.visibilityState === 'visible') resume() }
+    window.addEventListener('focus', resume)
+    document.addEventListener('visibilitychange', visible)
+    return () => { window.removeEventListener('focus', resume); document.removeEventListener('visibilitychange', visible) }
+  }, [])
   useEffect(() => { const changed = () => { ++generation.current; setPiles(p => p && ({ ...p, review: clearPileMembers(p.review), errors: clearPileMembers(p.errors) })); setTick(t => t + 1) }; window.addEventListener('wb-rows-changed', changed); return () => window.removeEventListener('wb-rows-changed', changed) }, [])
   useEffect(() => {
     let alive = true

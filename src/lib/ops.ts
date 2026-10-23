@@ -249,11 +249,11 @@ export function isFailedCommentReply(d: OpsDraft): boolean {
 }
 
 export function pendingOps(rows: OpsDraft[], now = Date.now()): OpsDraft[] {
-  return rows.filter(d =>
+  return freshestOutboundFirst(rows.filter(d =>
     !d.approved_at && !d.sent_at && (!d.send_blocked_reason || isFailedCommentReply(d))
     && !isOpsReference(d) && !isAudnKind(d.kind) && !isStaleComment(d, now) && !isExpiredNewsjack(d, now)
     // SwishDM sales copilot replays past calls as dry runs: a preview, never work.
-    && d.context?.dry_run !== true)
+    && d.context?.dry_run !== true))
 }
 
 // THE OPS NUMBER (rebuild, blueprint v3 decision 11). Approvals waiting and
@@ -498,9 +498,10 @@ export async function markTaskBooked(d: OpsDraft, startIso: string): Promise<{ a
 // while it generates and QA-gates (it clears once the draft is in the buffer), which
 // can run to an hour — without this group the card would just vanish on approve and
 // look like nothing happened.
-export function claimingOps(rows: OpsDraft[]): OpsDraft[] {
+export function claimingOps(rows: OpsDraft[], now = Date.now()): OpsDraft[] {
   return rows
-    .filter(d => d.approved_at && !d.sent_at && !d.send_blocked_reason)
+    .filter(d => d.approved_at && !d.sent_at && !d.send_blocked_reason
+      && !(d.kind === 'comment_outbound' && isStaleComment(d, now)))
     .sort((a, b) => b.approved_at!.localeCompare(a.approved_at!))
 }
 
@@ -704,18 +705,30 @@ export function weeklySendAfter(d: OpsDraft): number | null {
   const t = Date.parse(s)
   return Number.isFinite(t) ? t : null
 }
-// A comment older than this is dead: the post has left the feed and a reply lands
-// on nobody (Ivan, 2026-07-30). Ivan 2026-10-15: "delete the ones that are above 2
-// days old", so the cut is 2 Warsaw calendar days: a comment on a post from the day
-// before yesterday is gone today, the same day its row starts reading "2d ago".
+// Incoming replies keep their two-day calendar window. Outbound opportunities use
+// the original post's timestamp, with an inclusive rolling 24-hour limit.
 export const MAX_COMMENT_AGE_DAYS = 2
+export const OUTBOUND_MAX_AGE_MS = 24 * 60 * 60_000
+export const OUTBOUND_EXPIRED = 'This original post is outside the 24-hour window or has no valid timestamp.'
 
 export function isStaleComment(d: OpsDraft, now = Date.now()): boolean {
-  if (d.kind !== 'comment_reply' && d.kind !== 'comment_outbound') return false
-  const t = new Date(d.context?.posted_at ?? 0).getTime()
-  if (!Number.isFinite(t) || t === 0) return false   // unknown age is not staleness
+  if (!isCommentKind(d.kind)) return false
+  const raw = d.context?.posted_at
+  const t = typeof raw === 'string' ? Date.parse(raw) : NaN
+  if (d.kind === 'comment_outbound') {
+    return !Number.isFinite(t) || t > now || now - t > OUTBOUND_MAX_AGE_MS
+  }
+  if (!Number.isFinite(t) || t === 0) return false
   const days = (Date.parse(warsawDay(now)) - Date.parse(warsawDay(t))) / 86400_000
   return days >= MAX_COMMENT_AGE_DAYS
+}
+
+// Sort only outbound slots so unrelated cards keep their order.
+export function freshestOutboundFirst(rows: OpsDraft[]): OpsDraft[] {
+  const outbound = rows.filter(d => d.kind === 'comment_outbound')
+    .sort((a, b) => (Date.parse(b.context?.posted_at ?? '') || 0) - (Date.parse(a.context?.posted_at ?? '') || 0))
+  let i = 0
+  return rows.map(d => d.kind === 'comment_outbound' ? outbound[i++] : d)
 }
 
 // Ivan 2026-10-15: comment ideas and newsjacks stay on the Ops board but "don't need to

@@ -23,7 +23,7 @@ const msg = (over: Partial<InboxMessage> = {}): InboxMessage => ({
 
 const opsDraft = (over: Partial<OpsDraft> = {}): OpsDraft => ({
   id: 'o1', client_id: 'ivan', kind: 'comment_outbound', slack_channel: '#x',
-  body: 'a comment', context: null, created_at: '2026-08-01T10:00:00Z',
+  body: 'a comment', context: { posted_at: '2026-08-22T11:00:00Z' }, created_at: '2026-08-01T10:00:00Z',
   approved_at: null, sent_at: null, send_blocked_reason: null, ...over,
 })
 
@@ -103,6 +103,25 @@ describe('pileItems', () => {
 })
 
 describe('rankQueue', () => {
+  it('keeps outbound originals newest-first through ranking while other kinds retain their slots', () => {
+    const rows = [
+      opsDraft({ id: 'old-original', created_at: '2026-08-22T08:00:00Z', context: { posted_at: '2026-08-22T07:00:00Z' } }),
+      opsDraft({ id: 'update', kind: 'update', created_at: '2026-08-22T09:30:00Z' }),
+      opsDraft({ id: 'middle-original', created_at: '2026-08-22T11:00:00Z', context: { posted_at: '2026-08-22T09:00:00Z' } }),
+      opsDraft({ id: 'incoming', kind: 'comment_reply', created_at: '2026-08-22T10:30:00Z', context: { posted_at: '2026-08-21T12:00:00Z' } }),
+      opsDraft({ id: 'new-original', created_at: '2026-08-22T10:00:00Z', context: { posted_at: '2026-08-22T10:00:00Z' } }),
+      opsDraft({ id: 'escalation', kind: 'escalation', created_at: '2026-08-22T11:30:00Z' }),
+    ]
+    const items = [
+      ...buildOpsItems(rows, NOW),
+      ...buildReplyItems(groupThreads([msg()], new Set(), NOW), NOW),
+      ...pileItems([{ lane: 'ivan', n: 2, oldestCreatedAt: '2026-08-01T00:00:00Z', oldestTitle: 'Review' }], 'contentReview', NOW),
+    ]
+    expect(rankQueue(items).map(i => i.id)).toEqual([
+      'reply:p1', 'ops:escalation', 'ops:new-original', 'ops:update',
+      'ops:middle-original', 'ops:incoming', 'ops:old-original', 'contentReview:ivan',
+    ])
+  })
   it('sorts by tier first, then oldest-first within a tier', () => {
     const older: QueueItem = {
       id: 'a', tier: 1, kind: 'reply', title: 'Older', sub: null, lane: 'ivan',

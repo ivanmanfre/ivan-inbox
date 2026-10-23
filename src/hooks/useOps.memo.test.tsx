@@ -5,7 +5,8 @@ import { forget, recall } from '../lib/pageMemo'
 import { fetchOpsDrafts, type OpsDraft } from '../lib/ops'
 import { useOps } from './useOps'
 
-vi.mock('../lib/ops', () => ({
+vi.mock('../lib/ops', async orig => ({
+  ...(await orig<typeof import('../lib/ops')>()),
   fetchOpsDrafts: vi.fn(),
   emptyReadOverRows: (a: unknown[], b: unknown[]) => a.length > 0 && b.length === 0,
 }))

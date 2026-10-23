@@ -8,7 +8,7 @@
    the confirm the manual-invite approve never had.
    ========================================================================== */
 import {
-  approveWeeklyReport, discardOpsDraft, dispatchCommentGate, outboundApproveUrl,
+  approveWeeklyReport, discardOpsDraft, isStaleComment, OUTBOUND_EXPIRED, dispatchCommentGate, outboundApproveUrl,
   outboundSkipUrl, type GateOutcome, type OpsDraft,
 } from '../../lib/ops'
 
@@ -58,16 +58,19 @@ export async function dispatchApprove(d: OpsDraft): Promise<ApproveResult> {
     return { ok: true }
   }
   if (d.kind === 'comment_outbound') {
+    if (isStaleComment(d)) return { ok: false, message: OUTBOUND_EXPIRED, outcome: 'refused' }
     const approveUrl = outboundApproveUrl(d)
     if (approveUrl) {
       const v = await dispatchCommentGate(approveUrl)
       if (v.outcome === 'accepted' || v.outcome === 'already') {
+        if (isStaleComment(d)) return { ok: false, message: OUTBOUND_EXPIRED, outcome: 'refused' }
         await approveWeeklyReport(d.id, d.body)
         return { ok: true }
       }
       return { ok: false, message: v.message, outcome: v.outcome }
     }
     await navigator.clipboard.writeText(d.body)
+    if (isStaleComment(d)) return { ok: false, message: OUTBOUND_EXPIRED, outcome: 'refused' }
     await approveWeeklyReport(d.id, d.body)
     return { ok: true }
   }

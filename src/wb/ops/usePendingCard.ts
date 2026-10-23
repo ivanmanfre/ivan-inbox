@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react'
 import type { ConfirmOpts } from '../../lib/confirm'
 import {
-  approveOpsDraft, approveWeeklyReport, canGenerateDraft, canTagCommenter, isCloseOnlyComment,
+  approveOpsDraft, approveWeeklyReport, isStaleComment, OUTBOUND_EXPIRED, canGenerateDraft, canTagCommenter, isCloseOnlyComment,
   discardOpsDraft, DRAFT_CONTINUE_MAX, engineLabel, expiresIn, generateCommentDraft, likeComment,
   markCommentHandled, outboundApproveUrl, outboundSkipUrl, postCommentReply, isHandWritten, seatFullName, seatLabel, seatPerson,
   dispatchCommentGate, cardStateOf, weeklyReportDispatches, weeklySendAfter,
@@ -182,11 +182,13 @@ export function usePendingCard({ draft, refresh, feed, held, onGateResult, confi
 
   async function onApprove() {
     if (!(await confirm(approveConfirm))) return
+    if (isOutbound && isStaleComment(draft)) { setError(OUTBOUND_EXPIRED); refresh(); return }
     if (isOutbound) {
       await run(async () => {
         if (approveUrl) {
           const v = await dispatchCommentGate(canTagAuthor && !tag ? `${approveUrl}&notag=1` : approveUrl)
           if (v.outcome === 'accepted' || v.outcome === 'already') {
+            if (isStaleComment(draft)) throw new Error(OUTBOUND_EXPIRED)
             await approveWeeklyReport(draft.id, body)
             setGate(v)
             onGateResult?.(draft.id, v)
@@ -198,6 +200,7 @@ export function usePendingCard({ draft, refresh, feed, held, onGateResult, confi
           }
         } else {
           await navigator.clipboard.writeText(body)
+          if (isStaleComment(draft)) throw new Error(OUTBOUND_EXPIRED)
           await approveWeeklyReport(draft.id, body)
           refresh()
         }

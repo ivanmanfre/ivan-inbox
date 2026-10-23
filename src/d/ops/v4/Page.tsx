@@ -5,7 +5,7 @@ import { Skeleton, SkeletonRows } from '../../../ds/Skeleton'
 import { useCommentQueue } from '../../../hooks/useCommentQueue'
 import { useOps } from '../../../hooks/useOps'
 import { useReactions } from '../../../hooks/useReactions'
-import { outboundFeedId, pendingOps, type OpsDraft } from '../../../lib/ops'
+import { outboundFeedId, type OpsDraft } from '../../../lib/ops'
 import { useFrameCounts } from '../../counts/useFrameCounts'
 import type { PlaceProps } from '../../places'
 import { dHash } from '../../route'
@@ -34,10 +34,9 @@ const DONE_HOLD_MS = 120_000
 export function OpsPageV4({ layout, route, navigate }: PlaceProps) {
   const ops = useOps()
   const c = useFrameCounts()
-  const pending = useMemo(() => pendingOps(ops.drafts), [ops.drafts])
   const { refresh: refreshOps, markDone } = ops, { refresh: refreshCounts } = c
   const refresh = useCallback(() => { refreshOps(); refreshCounts('ops') }, [refreshOps, refreshCounts])
-  const queue = useCommentQueue(pending, refresh)
+  const queue = useCommentQueue(ops.drafts, refresh)
   const rx = useReactions(true)
   const xr = useXReview()
   const xn = xWaitingCount(xr.list)
