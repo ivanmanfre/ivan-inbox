@@ -42,6 +42,7 @@ beforeEach(async () => {
   `)
   await db.exec(readFileSync('db/20261017_swishdm_reply_approval.sql', 'utf8'))
   await db.exec(readFileSync('db/20261023_swishdm_email_leg_approval.sql', 'utf8'))
+  await db.exec(readFileSync('db/20261023_swishdm_email_save_fix.sql', 'utf8'))
 })
 afterEach(async () => { await db.close() })
 
@@ -76,7 +77,7 @@ describe('approve_swishdm_reply_draft', () => {
     await expect(approve()).rejects.toThrow(/changed/i)
   })
   it.each([
-    ["sent_at=now()"], ["approved_at=now()"], ["unipile_message_id='x'"], ["send_blocked_reason='discarded_in_inbox'"],
+    ["sent_at=now()"], ["approved_at=now()"], ["unipile_message_id='x'"], ["send_blocked_reason='discarded_in_inbox'", "draft_evidence=draft_evidence||'{\"stopped\":true}'::jsonb"],
     ["send_blocked_reason=null"], ["ai_model='swishdm_first_list_v1'"], ["ai_model='arch_reply_draft_v2'"], ["message_type='connection_note'"],
     ["draft_evidence=draft_evidence||'{\"stopped\":{\"reason\":\"replied_stop\"}}'::jsonb"],
   ])('refuses a row that is not a held SwishDM reply: %s', async change => {
@@ -135,4 +136,32 @@ it('requires the exact reviewed email snapshot and records it with approval', as
   }
   await approve('Draft text',{...plain,_reviewed_email:{recipient_email:'sue@biatchtequila.com',email_mirror_text:'Reviewed email'}})
   expect((await row()).draft_evidence).toMatchObject({operator_copy_approval:{recipient_email:'sue@biatchtequila.com',email_mirror_text:'Reviewed email'}})
+})
+
+it('saves CCs on a held SwishDM reply before autosave and approval', async () => {
+  await db.query('select save_inbox_draft_email_cc($1,$2::jsonb,$3::jsonb)', [msg,'[]',JSON.stringify(await ev())])
+  expect((await row()).draft_evidence).toMatchObject({email_cc: []})
+  expect((await row()).approved_at).toBeNull()
+})
+it.each(["ai_model='arch_reply_draft_v2'", "approved_at=now()", "sent_at=now()", "send_blocked_reason='discarded_in_inbox'", "draft_evidence=draft_evidence||'{\"stopped\":true}'::jsonb"])(
+  'does not broaden CC editing to unrelated holds or sent rows: %s', async change => {
+    await db.exec(`update outreach_messages set ${change} where id='${msg}'`)
+    await expect(db.query('select save_inbox_draft_email_cc($1,$2::jsonb,$3::jsonb)', [msg,'[]',JSON.stringify(await ev())])).rejects.toThrow(/changed/i)
+  })
+it('allows a short acknowledgement when the exact reviewed email carries the report URL', async () => {
+  await seed(paged)
+  const email = `Subject: Report\n\nHere it is: ${url}`
+  await db.query('update outreach_messages set recipient_email=$1,email_mirror_text=$2 where id=$3', ['sue@biatchtequila.com',email,msg])
+  await approve('Just sent it over :)', {...paged,_reviewed_email:{recipient_email:'sue@biatchtequila.com',email_mirror_text:email}})
+  expect((await row()).approved_at).toBeTruthy()
+})
+it('does not accept a report URL in an email without a recipient', async () => {
+  await seed(paged)
+  const email = `Subject: Report\n\n${url}`
+  await db.query('update outreach_messages set email_mirror_text=$1 where id=$2', [email,msg])
+  await expect(approve('Just sent it over :)', {...paged,_reviewed_email:{recipient_email:null,email_mirror_text:email}})).rejects.toThrow(/page link/i)
+})
+
+it('does not save nonempty CCs for the SwishDM sender that supports only the requested recipient', async () => {
+  await expect(db.query('select save_inbox_draft_email_cc($1,$2::jsonb,$3::jsonb)', [msg,'["other@brand.com"]',JSON.stringify(await ev())])).rejects.toThrow(/changed/i)
 })
