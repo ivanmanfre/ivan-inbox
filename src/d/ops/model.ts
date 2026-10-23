@@ -4,7 +4,7 @@
 // kinds line is today's (kindsLine), the Ops number is today's (pendingOps
 // minus the comment ideas past what the poster can still post today).
 import { isBatchable, isStillPending } from '../../lib/focus'
-import { countsAsWaiting, ideaSeatKey, isTaskKind, pendingOps, pendingTasks, splitCommentIdeas, type OpsDraft, type OpsKind } from '../../lib/ops'
+import { freshestOutboundFirst, isStaleComment, countsAsWaiting, ideaSeatKey, isTaskKind, pendingOps, pendingTasks, splitCommentIdeas, type OpsDraft, type OpsKind } from '../../lib/ops'
 import { orderLane } from '../../wb/ops/lanes'
 import { SEATS, SEAT_NAME, seatOf, type Seat } from '../seats'
 
@@ -63,7 +63,8 @@ export function readBoard(rows: OpsDraft[], held: ReadonlySet<string> = new Set(
   const pending = pendingOps(rows, now)
   const laterIds = new Set(splitCommentIdeas(rows, now).later.map(d => d.id))
   const pendIds = new Set(pending.map(d => d.id))
-  const cards = rows.filter(d => !isTaskKind(d.kind) && (pendIds.has(d.id) || held.has(d.id)))
+  const cards = freshestOutboundFirst(rows.filter(d => !isTaskKind(d.kind)
+    && (pendIds.has(d.id) || (held.has(d.id) && !isStaleComment(d, now)))))
   const lanes = bySeat<OpsDraft[]>(() => [])
   const laterBy = bySeat<OpsDraft[]>(() => [])
   const waiting = bySeat(() => 0)

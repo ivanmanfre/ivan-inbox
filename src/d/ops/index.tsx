@@ -5,7 +5,7 @@ import './phone-ox.css'
 import { useCommentQueue } from '../../hooks/useCommentQueue'
 import { useOps } from '../../hooks/useOps'
 import { useReactions } from '../../hooks/useReactions'
-import { outboundFeedId, pendingOps } from '../../lib/ops'
+import { outboundFeedId } from '../../lib/ops'
 import { useFrameCounts } from '../counts/useFrameCounts'
 import type { PlaceProps } from '../places'
 import { dHash } from '../route'
@@ -40,11 +40,10 @@ const XReviewPage = lazy(() => import('./x/XReview'))
 export function OpsPage({ layout, route, navigate }: PlaceProps) {
   const ops = useOps()
   const c = useFrameCounts()
-  const pending = useMemo(() => pendingOps(ops.drafts), [ops.drafts])
   const { refresh: refreshOps } = ops
   const { refresh: refreshCounts } = c
   const refresh = useCallback(() => { refreshOps(); refreshCounts('ops') }, [refreshOps, refreshCounts])
-  const queue = useCommentQueue(pending, refresh)
+  const queue = useCommentQueue(ops.drafts, refresh)
   const rx = useReactions(true)
   const heldIds = useMemo(() => new Set(queue.held.keys()), [queue.held])
   const board = useMemo(() => readBoard(ops.drafts, heldIds), [ops.drafts, heldIds])

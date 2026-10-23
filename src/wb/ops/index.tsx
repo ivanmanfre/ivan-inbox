@@ -21,7 +21,7 @@
        no second column to draw, and the single one keeps its measure and centres.
    ========================================================================== */
 import { useRef, useState, type ReactNode } from 'react'
-import { doneTodayTasks, isTaskKind, outboundFeedId, pendingOps, pendingTasks, splitCommentIdeas, COMMENT_IDEAS_PER_DAY, type OpsDraft } from '../../lib/ops'
+import { freshestOutboundFirst, isStaleComment, doneTodayTasks, isTaskKind, outboundFeedId, pendingOps, pendingTasks, splitCommentIdeas, COMMENT_IDEAS_PER_DAY, type OpsDraft } from '../../lib/ops'
 import { useCommentQueue } from '../../hooks/useCommentQueue'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { useReactions } from '../../hooks/useReactions'
@@ -103,7 +103,7 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
   const pending = pendingOps(drafts)
   // The comment lane's queue lives here, not on the card: one line, one retry
   // timer, one read of comment_feed for every outbound card on screen.
-  const queue = useCommentQueue(pending, refresh)
+  const queue = useCommentQueue(drafts, refresh)
   // Tasks are a LIST, not cards (2026-08-30, Ivan: "make it a more crm thing
   // with thick"). They come out of the card column and render above it through
   // the one component that owns what a task is.
@@ -113,7 +113,7 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
   const pendingIds = new Set(pendingCards.map(d => d.id))
   const cards = queue.held.size === 0
     ? pendingCards
-    : drafts.filter(d => pendingIds.has(d.id) || queue.held.has(d.id))
+    : freshestOutboundFirst(drafts.filter(d => pendingIds.has(d.id) || (queue.held.has(d.id) && !isStaleComment(d))))
   // Comment ideas past the 3 the poster can still post today wait in their
   // own closed row (blueprint v3 decision 11): the lane rows and the first
   // line count only today's, the same reading as the Ops icon (opsBadge).

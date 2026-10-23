@@ -5,7 +5,7 @@ const NOW = Date.parse('2026-09-26T10:00:00Z')
 let i = 0
 const row = (kind: OpsDraft['kind'], extra: Partial<OpsDraft> = {}): OpsDraft => ({
   id: String(i++), client_id: 'ivan', kind, slack_channel: '', body: 'x',
-  context: null, created_at: '2026-09-26T08:00:00Z', approved_at: null, sent_at: null,
+  context: kind === 'comment_outbound' ? { posted_at: '2026-09-26T08:00:00Z' } : null, created_at: '2026-09-26T08:00:00Z', approved_at: null, sent_at: null,
   send_blocked_reason: null, ...extra,
 })
 

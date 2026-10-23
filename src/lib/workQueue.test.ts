@@ -23,7 +23,7 @@ const msg = (over: Partial<InboxMessage> = {}): InboxMessage => ({
 
 const opsDraft = (over: Partial<OpsDraft> = {}): OpsDraft => ({
   id: 'o1', client_id: 'ivan', kind: 'comment_outbound', slack_channel: '#x',
-  body: 'a comment', context: null, created_at: '2026-08-01T10:00:00Z',
+  body: 'a comment', context: { posted_at: '2026-08-22T11:00:00Z' }, created_at: '2026-08-01T10:00:00Z',
   approved_at: null, sent_at: null, send_blocked_reason: null, ...over,
 })
 

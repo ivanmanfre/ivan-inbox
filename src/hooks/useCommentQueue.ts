@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  cardStateOf, dispatchCommentGate, fetchCommentFeedStates, outboundApproveUrl, outboundFeedId,
+  cardStateOf, dispatchCommentGate, isStaleComment, fetchCommentFeedStates, outboundApproveUrl, outboundFeedId,
   type FeedState, type GateVerdict, type OpsDraft,
 } from '../lib/ops'
 
@@ -51,9 +51,13 @@ export function useCommentQueue(drafts: OpsDraft[], refresh: () => void) {
   // map so the hold stays visible. In-memory: a reload drops it.
   const [held, setHeld] = useState<Map<string, GateVerdict>>(new Map())
   const firing = useRef(false)
+  const latestDrafts = useRef(drafts)
+  latestDrafts.current = drafts
 
   // Durable state: what the poster says about every outbound card on screen.
-  const ids = drafts.map(outboundFeedId).filter((x): x is string => !!x)
+  const ids = drafts.filter(d => !isStaleComment(d)
+    && ((!d.approved_at && !d.sent_at && !d.send_blocked_reason) || held.has(d.id)))
+    .map(outboundFeedId).filter((x): x is string => !!x)
   const key = ids.join(',')
   const loadFeed = useCallback(() => {
     if (ids.length === 0) { setFeed(new Map()); return }
@@ -76,15 +80,25 @@ export function useCommentQueue(drafts: OpsDraft[], refresh: () => void) {
     setWaiting(cur => {
       const next = cur.filter(e => {
         const d = drafts.find(x => x.id === e.id)
-        const f = d ? feed.get(outboundFeedId(d) ?? '') : undefined
+        if (!d || d.approved_at || d.sent_at || d.send_blocked_reason || isStaleComment(d)) return false
+        const f = feed.get(outboundFeedId(d) ?? '')
         return cardStateOf(f) === null
       })
       return next.length === cur.length ? cur : next
+    })
+    setHeld(cur => {
+      const next = new Map([...cur].filter(([id]) => {
+        const d = drafts.find(x => x.id === id)
+        return !d || !isStaleComment(d)
+      }))
+      return next.size === cur.size ? cur : next
     })
   }, [feed, drafts])
 
   const record = useCallback((id: string, v: GateVerdict) => {
     if (CAP_RE.test(v.message)) setCappedToday(true)
+    const draft = drafts.find(x => x.id === id)
+    if (!draft || isStaleComment(draft)) return
     if (v.held) setHeld(cur => new Map(cur).set(id, v))
     setWaiting(cur => {
       const rest = cur.filter(e => e.id !== id)
@@ -107,6 +121,11 @@ export function useCommentQueue(drafts: OpsDraft[], refresh: () => void) {
       if (firing.current) return
       const head = waiting[0]
       if (!head) return
+      const draft = latestDrafts.current.find(d => d.id === head.id)
+      if (!draft || draft.approved_at || draft.sent_at || draft.send_blocked_reason || isStaleComment(draft)) {
+        setWaiting(cur => cur.filter(e => e.id !== head.id))
+        return
+      }
       firing.current = true
       try {
         const v = await dispatchCommentGate(head.url)
