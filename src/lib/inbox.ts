@@ -258,6 +258,7 @@ export function stopLabel(m: Pick<InboxMessage, 'send_blocked_reason'>): string 
   if (/exclu(?:sion|ded)/.test(r)) return 'Not sent: excluded'
   const kill = STOPPED_ON_PURPOSE_PREFIXES.find(p => r.startsWith(p))
   if (kill) return `Stopped: ${STOPPED_WORDS[kill]}`
+  if (r.startsWith('superseded_scan_owed')) return 'Not sent: blocked, the reply with the scan replaces it'
   if (SUPERSEDED.test(r)) return /invite/i.test(r) ? 'Not sent: sent an invite instead' : 'Not sent: replaced by another message'
   if (DO_NOT_SEND.test(r)) return 'Stopped: marked do not send'
   return 'Not sent: stopped on purpose'
