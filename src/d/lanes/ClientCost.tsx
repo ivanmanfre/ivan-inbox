@@ -10,6 +10,7 @@ const usd = (n: number | null) => n === null ? 'Unknown' : n > 0 && n < 0.005 ? 
 const credits = (n: number | null) => n === null ? 'Unknown' : `${n.toLocaleString('en-US')} credits`
 const label = (value: string) => value.replaceAll('_', ' ')
 const age = (value: string | null) => value ? relAge(value) : 'unknown'
+const utcStamp = (value: string | null) => value ? new Date(value).toISOString().replace('.000Z', 'Z').replace('T', ' ').replace('Z', ' UTC') : 'unknown'
 
 function EvidenceLine({ evidence }: { evidence: Evidence[] }) {
   if (evidence.length === 0) return null
@@ -50,7 +51,14 @@ function AccountRow({ account }: { account: ProviderAccount }) {
     <b>{providerName[account.provider]}</b>
     <span>{account.coverage} coverage · {account.freshness} feed · last success {age(account.last_success_at)}</span>
     {account.provider === 'apify' && <p>Covered run history {usd(account.history_usd)} · exact allocation {usd(account.allocated_exact_usd)} · inferred allocation {usd(account.allocated_inferred_usd)} · unassigned {usd(account.unassigned_usd)}. This is usage, not an invoice.</p>}
-    {account.provider === 'harvestapi' && <p>Current booked usage {usd(account.booked_usd)}. Dated supplier receipt {usd(account.supplier_usd)} · source observed {age(account.source_observed_at)} · stale for current charges. These bases are not comparable.</p>}
+    {account.provider === 'harvestapi' && <>
+      <p>Current booked usage {usd(account.booked_usd)}. Dated supplier receipt {usd(account.supplier_usd)} · source observed {age(account.source_observed_at)} · stale for current charges. These bases are not comparable.</p>
+      <details className="dl-cost-detail"><summary>Receipt coverage and cutoff</summary>
+        <p>Source observed <time dateTime={account.source_observed_at ?? undefined}>{utcStamp(account.source_observed_at)}</time>.</p>
+        {account.days.length === 0 ? <p>No dated receipt days in this window.</p> :
+          <ul>{account.days.map(day => <li key={day.day}>{day.day} UTC · {day.complete_day ? 'complete day' : 'partial day'} · dated supplier charge {usd(day.supplier_usd)} · covered {utcStamp(day.coverage_start)} to {utcStamp(day.coverage_end)}{day.complete_day ? '' : ` · cutoff ${utcStamp(day.coverage_end)}`}</li>)}</ul>}
+      </details>
+    </>}
     {account.provider === 'scrapecreators' && <>
       <p>Supplier history {credits(account.history_credits)} · supplier daily {credits(account.supplier_credits)} · exact allocation {credits(account.allocated_exact_credits)} · unassigned {credits(account.unassigned_credits)}.</p>
       <p>Producer observations {credits(account.producer_observed_credits)} overlap supplier usage. Comparison: {label(account.comparison)}.</p>
@@ -77,7 +85,7 @@ export function ClientCost({ seat }: { seat: Seat }) {
       const controller = new AbortController()
       current = controller
       const mine = ++sequence
-      setState(previous => ({ feed: previous.period === period ? previous.feed : null, period, loadedAt: previous.period === period ? previous.loadedAt : null, error: null, reading: true }))
+      setState(previous => ({ feed: previous.period === period ? previous.feed : null, period, loadedAt: previous.period === period ? previous.loadedAt : null, error: previous.period === period ? previous.error : null, reading: true }))
       fetchClientProviderCosts(period, Date.now(), controller.signal).then(feed => {
         if (live && mine === sequence) setState({ feed, period, loadedAt: Date.now(), error: null, reading: false })
       }).catch(error => {

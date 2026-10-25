@@ -28,6 +28,10 @@
 .dl-cost-account-row b{display:block;color:var(--t1);font-size:13px}
 .dl-cost-account-row span{display:block;font:400 11px/1.5 var(--m);overflow-wrap:anywhere}
 .dl-cost-account-row p{margin:8px 0;overflow-wrap:anywhere}
+.dl-cost-detail summary{display:list-item;min-height:44px;padding:10px 2px;cursor:pointer;color:var(--t1);font-weight:600}
+.dl-cost-detail summary:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+.dl-cost-detail ul{padding-left:18px;margin:6px 0}
+.dl-cost-detail li{margin:6px 0;overflow-wrap:anywhere}
 .dl-cost-empty{margin:4px 0}
 .dl-cost-error{font:400 12px/1.5 var(--f);color:var(--critT)}
 .dl-cost-read{font-family:var(--m);font-size:11px}

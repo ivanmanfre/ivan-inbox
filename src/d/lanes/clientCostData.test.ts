@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest'
-import { costWindow, fetchClientProviderCosts, summarizeClientCost } from './clientCostData'
+import { costWindow, fetchClientProviderCosts, parseClientProviderCosts, summarizeClientCost } from './clientCostData'
 
 const scopes = ['ivan', 'risedtc', 'arch', 'swishdm', 'unassigned_shared'] as const
 const providers = ['apify', 'harvestapi', 'scrapecreators'] as const
@@ -9,6 +9,7 @@ const account = (provider: string) => ({ provider, account_label: 'Shared accoun
 function feed() {
   return { schema_version: 1, generated_at: '2026-10-25T12:00:00Z', window: { start: '2026-10-19', end: '2026-10-26', timezone: 'UTC' }, rows: scopes.flatMap(scope => providers.map(provider => row(scope, provider))), accounts: providers.map(account), legacy_rows: [], credit_value_rate: { usd_per_credit: 0.00188, as_of: '2026-10-25', basis: 'dated_replacement_value_forecast' } }
 }
+const accountDay = (patch: Record<string, unknown> = {}) => ({ day: '2026-10-24', supplier_usd: null, supplier_credits: 49, supplier_requests: 49, history_usd: null, history_credits: 48, history_requests: 48, allocated_exact_usd: null, allocated_inferred_usd: null, allocated_exact_credits: null, unassigned_usd: null, unassigned_credits: 49, producer_observed_credits: 27, booked_usd: null, credit_discrepancy: 1, request_discrepancy: 1, comparison: 'mismatch', complete_day: false, coverage_start: '2026-10-24T00:00:00Z', coverage_end: '2026-10-24T14:39:00Z', source_observed_at: '2026-10-24T14:39:00Z', flags: ['daily_mismatch', 'partial_window'], ...patch })
 let reply: { data: unknown; error: { message: string } | null } = { data: null, error: null }
 const calls: Array<{ name: string; args: unknown; signal?: AbortSignal }> = []
 vi.mock('../../lib/supabase', () => ({ supabase: { rpc: (name: string, args: unknown) => {
@@ -45,8 +46,7 @@ it('keeps unknown rows unknown and producer credits separate from supplier credi
 
 it('retains signed mismatch and a stale Harvest receipt separately from fresh bookings', async () => {
   const input = feed()
-  const day = { day: '2026-10-24', supplier_usd: null, supplier_credits: 49, supplier_requests: 49, history_usd: null, history_credits: 48, history_requests: 48, allocated_exact_usd: null, allocated_inferred_usd: null, allocated_exact_credits: null, unassigned_usd: null, unassigned_credits: 49, producer_observed_credits: 27, booked_usd: null, credit_discrepancy: 1, request_discrepancy: 1, comparison: 'mismatch', complete_day: false, coverage_start: null, coverage_end: '2026-10-24T14:39:00Z', source_observed_at: '2026-10-24T14:39:00Z', flags: ['daily_mismatch', 'partial_window'] }
-  Object.assign(input.accounts[2], { comparison: 'mismatch', coverage: 'partial', days: [day] })
+  Object.assign(input.accounts[2], { comparison: 'mismatch', coverage: 'partial', days: [accountDay()] })
   Object.assign(input.accounts[1], { supplier_usd: 1.5, source_observed_at: '2026-10-23T14:39:00Z', freshness: 'stale', flags: ['supplier_receipt_stale'] })
   Object.assign(input.rows.find(r => r.scope === 'ivan' && r.provider === 'harvestapi')!, { measures: { ...measures(), harvest_booked_usd: 0.004 }, freshness: 'fresh', coverage: 'partial' })
   reply = { data: input, error: null }
@@ -70,4 +70,43 @@ it('rejects version, missing keys, duplicate rows and malformed measures', async
   }
   reply = { data: null, error: { message: 'permission denied' } }
   await expect(fetchClientProviderCosts(7)).rejects.toThrow('permission denied')
+})
+
+it('rejects a missing provider row with a numeric zero or evidence while accepting observed zero', () => {
+  const withZero = feed()
+  Object.assign(withZero.rows[0].measures, { apify_settled_usd: 0 })
+  expect(() => parseClientProviderCosts(withZero)).toThrow(/Cost feed/)
+  const withEvidence = feed()
+  withEvidence.rows[0].evidence.push({ basis: 'apify_usage_settled', ownership: 'inferred', confidence: 'inferred', method: 'structural', source: 'vendor_spend', observed_at: '2026-10-25T08:00:00Z', coverage: 'partial', freshness: 'fresh' } as never)
+  expect(() => parseClientProviderCosts(withEvidence)).toThrow(/Cost feed/)
+  const observed = feed()
+  Object.assign(observed.rows[0], { coverage: 'partial', freshness: 'fresh', measures: { ...measures(), apify_settled_usd: 0 } })
+  expect(parseClientProviderCosts(observed).rows[0].measures.apify_settled_usd).toBe(0)
+})
+
+it('rejects a complete account day ending at 14:39 while retaining valid partial subtotals', () => {
+  const malformed = feed()
+  Object.assign(malformed.accounts[2], { days: [accountDay({ complete_day: true })] })
+  expect(() => parseClientProviderCosts(malformed)).toThrow(/Cost feed/)
+  const partial = feed()
+  Object.assign(partial.accounts[2], { days: [accountDay()] })
+  const result = parseClientProviderCosts(partial)
+  expect(result.accounts[2].days[0]).toMatchObject({ supplier_credits: 49, credit_discrepancy: 1, complete_day: false })
+  const full = feed()
+  Object.assign(full.accounts[2], { days: [accountDay({ complete_day: true, coverage_end: '2026-10-25T00:00:00Z' })] })
+  expect(parseClientProviderCosts(full).accounts[2].days[0].complete_day).toBe(true)
+})
+
+it('rejects unreal calendar dates, reversed bounds and account days outside the requested window', () => {
+  for (const mutate of [
+    (f: ReturnType<typeof feed>) => { f.window.start = '2026-02-30' },
+    (f: ReturnType<typeof feed>) => { f.credit_value_rate.as_of = '2026-13-01' },
+    (f: ReturnType<typeof feed>) => { Object.assign(f.rows[0], { coverage_start: '2026-10-25T15:00:00Z', coverage_end: '2026-10-25T14:00:00Z' }) },
+    (f: ReturnType<typeof feed>) => { Object.assign(f.accounts[2], { days: [accountDay({ coverage_start: '2026-10-24T15:00:00Z', coverage_end: '2026-10-24T14:39:00Z' })] }) },
+    (f: ReturnType<typeof feed>) => { Object.assign(f.accounts[2], { days: [accountDay({ day: '2026-10-18' })] }) },
+    (f: ReturnType<typeof feed>) => { Object.assign(f.accounts[2], { days: [accountDay({ day: '2026-10-26' })] }) },
+  ]) {
+    const input = feed(); mutate(input)
+    expect(() => parseClientProviderCosts(input)).toThrow(/Cost feed/)
+  }
 })

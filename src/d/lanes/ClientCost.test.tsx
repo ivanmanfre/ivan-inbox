@@ -7,7 +7,10 @@ import { Section } from './Section'
 
 const readCost = vi.fn<(_days: 7 | 30, _now: number, _signal?: AbortSignal) => Promise<unknown>>()
 vi.mock('../../lib/supabase', () => ({ supabase: {} }))
-vi.mock('./clientCostData', async original => ({ ...(await original<typeof import('./clientCostData')>()), fetchClientProviderCosts: (...args: Parameters<typeof readCost>) => readCost(...args) }))
+vi.mock('./clientCostData', async original => {
+  const data = await original<typeof import('./clientCostData')>()
+  return { ...data, fetchClientProviderCosts: (...args: Parameters<typeof readCost>) => readCost(...args).then(data.parseClientProviderCosts) }
+})
 const scopes = ['ivan', 'risedtc', 'arch', 'swishdm', 'unassigned_shared']
 const providers = ['apify', 'harvestapi', 'scrapecreators']
 const measures = () => ({ apify_settled_usd: null, apify_presettle_usd: null, harvest_booked_usd: null, supplier_credits: null, producer_credits: null, supplier_credit_value_usd: null, producer_credit_value_usd: null, cash_paid_usd: null, requests: null, producer_attempts: null, cache_hits: null, unsettled_runs: null })
@@ -83,4 +86,48 @@ it('aborts obsolete reads on period change and never renders an older response',
   const stale = feed(); Object.assign(stale.rows[0], { measures: { ...measures(), apify_settled_usd: 99 } })
   resolveOld(stale)
   await waitFor(() => expect(screen.queryByText('$99.00')).toBeNull())
+})
+
+it('shows malformed-feed errors instead of a missing zero or an incomplete day marked complete, retaining last good data', async () => {
+  const badZero = feed()
+  Object.assign(badZero.rows[0].measures, { apify_settled_usd: 0 })
+  const good = populated()
+  const badDay = populated()
+  Object.assign(badDay.accounts[2], { days: [{ day: '2026-10-24', supplier_usd: null, supplier_credits: 49, supplier_requests: 49, history_usd: null, history_credits: 48, history_requests: 48, allocated_exact_usd: null, allocated_inferred_usd: null, allocated_exact_credits: null, unassigned_usd: null, unassigned_credits: 49, producer_observed_credits: 27, booked_usd: null, credit_discrepancy: 1, request_discrepancy: 1, comparison: 'mismatch', complete_day: true, coverage_start: '2026-10-24T00:00:00Z', coverage_end: '2026-10-24T14:39:00Z', source_observed_at: '2026-10-24T14:39:00Z', flags: ['daily_mismatch', 'partial_window'] }] })
+  readCost.mockResolvedValueOnce(badZero).mockResolvedValueOnce(good).mockResolvedValueOnce(badDay)
+  render(<ClientCost seat="ivan" />)
+  await screen.findByRole('alert')
+  expect(screen.queryByText('$0.00')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+  await screen.findByText('$1.25')
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+  await screen.findByRole('alert')
+  expect(screen.getByText('$1.25')).toBeTruthy()
+  expect(screen.queryByText(/2026-10-24 UTC · complete day/)).toBeNull()
+})
+
+it('keeps the last-good failure qualifier through a pending retry until a valid feed replaces it', async () => {
+  let resolvePending: (value: unknown) => void = () => {}
+  readCost.mockResolvedValueOnce(populated()).mockRejectedValueOnce(new Error('denied')).mockImplementationOnce(() => new Promise(resolve => { resolvePending = resolve }))
+  render(<ClientCost seat="ivan" />)
+  await screen.findByText('$1.25')
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+  await screen.findByRole('alert')
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+  expect(screen.getByRole('alert').textContent).toContain('Last good read')
+  expect(screen.getByText('$1.25')).toBeTruthy()
+  resolvePending(populated())
+  await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
+})
+
+it('discloses absolute UTC Harvest receipt time, covered days and partial cutoff', async () => {
+  const input = populated()
+  Object.assign(input.accounts[1], { days: [{ day: '2026-10-23', supplier_usd: 0.5, supplier_credits: null, supplier_requests: null, history_usd: null, history_credits: null, history_requests: null, allocated_exact_usd: null, allocated_inferred_usd: null, allocated_exact_credits: null, unassigned_usd: null, unassigned_credits: null, producer_observed_credits: null, booked_usd: null, credit_discrepancy: null, request_discrepancy: null, comparison: 'not_comparable', complete_day: false, coverage_start: '2026-10-23T00:00:00Z', coverage_end: '2026-10-23T14:39:00Z', source_observed_at: '2026-10-23T14:39:00Z', flags: ['partial_window'] }] })
+  readCost.mockResolvedValue(input)
+  render(<ClientCost seat="ivan" />)
+  await screen.findByText('$1.25')
+  const details = screen.getByText('Receipt coverage and cutoff')
+  fireEvent.click(details)
+  expect(screen.getAllByText(/2026-10-23 14:39:00 UTC/).length).toBeGreaterThan(0)
+  expect(screen.getByText(/2026-10-23 UTC · partial day/)).toBeTruthy()
 })

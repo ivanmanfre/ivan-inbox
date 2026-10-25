@@ -52,12 +52,16 @@ function enumeration<T extends string>(value: unknown, allowed: readonly T[], fi
 function string(value: unknown, field: string): string { return typeof value === 'string' && value.length > 0 ? value : invalid(field) }
 function date(value: unknown, field: string): string {
   const v = string(value, field)
-  return /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`)) ? v : invalid(field)
+  const parsed = Date.parse(`${v}T00:00:00Z`)
+  return /^\d{4}-\d{2}-\d{2}$/.test(v) && Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 10) === v ? v : invalid(field)
 }
 function stamp(value: unknown, field: string): string | null {
   if (value === null) return null
   const v = string(value, field)
-  return /(?:Z|[+-]\d{2}:\d{2})$/.test(v) && !Number.isNaN(Date.parse(v)) ? v : invalid(field)
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(v) && !Number.isNaN(Date.parse(v)) && date(v.slice(0, 10), field) ? v : invalid(field)
+}
+function orderedBounds(start: string | null, end: string | null, field: string) {
+  if (start !== null && end !== null && Date.parse(start) >= Date.parse(end)) invalid(field)
 }
 function amount(value: unknown, field: string): number | null {
   if (value === null) return null
@@ -81,11 +85,20 @@ function evidence(value: unknown): Evidence {
 }
 function row(value: unknown): ProviderCostRow {
   const r = record(value, 'row')
-  return { scope: enumeration(r.scope, SCOPES, 'scope'), provider: enumeration(r.provider, PROVIDERS, 'provider'), measures: numbers(record(r.measures, 'measures'), MEASURE_KEYS) as Measures, evidence: list(r.evidence, 'evidence', evidence), coverage: coverage(r.coverage), coverage_start: stamp(r.coverage_start, 'coverage_start'), coverage_end: stamp(r.coverage_end, 'coverage_end'), freshness: freshness(r.freshness), last_success_at: stamp(r.last_success_at, 'last_success_at'), last_event_at: stamp(r.last_event_at, 'last_event_at'), flags: flags(r.flags) }
+  const parsed: ProviderCostRow = { scope: enumeration(r.scope, SCOPES, 'scope'), provider: enumeration(r.provider, PROVIDERS, 'provider'), measures: numbers(record(r.measures, 'measures'), MEASURE_KEYS) as Measures, evidence: list(r.evidence, 'evidence', evidence), coverage: coverage(r.coverage), coverage_start: stamp(r.coverage_start, 'coverage_start'), coverage_end: stamp(r.coverage_end, 'coverage_end'), freshness: freshness(r.freshness), last_success_at: stamp(r.last_success_at, 'last_success_at'), last_event_at: stamp(r.last_event_at, 'last_event_at'), flags: flags(r.flags) }
+  orderedBounds(parsed.coverage_start, parsed.coverage_end, 'row coverage')
+  if (parsed.coverage === 'missing' && (parsed.evidence.length > 0 || MEASURE_KEYS.some(key => parsed.measures[key] !== null))) invalid('missing row')
+  return parsed
 }
 function accountDay(value: unknown): AccountDay {
   const r = record(value, 'account day')
-  return { day: date(r.day, 'day'), ...numbers(r, DAY_NUMBERS), comparison: comparison(r.comparison), complete_day: typeof r.complete_day === 'boolean' ? r.complete_day : invalid('complete_day'), coverage_start: stamp(r.coverage_start, 'coverage_start'), coverage_end: stamp(r.coverage_end, 'coverage_end'), source_observed_at: stamp(r.source_observed_at, 'source_observed_at'), flags: flags(r.flags) }
+  const parsed: AccountDay = { day: date(r.day, 'day'), ...numbers(r, DAY_NUMBERS), comparison: comparison(r.comparison), complete_day: typeof r.complete_day === 'boolean' ? r.complete_day : invalid('complete_day'), coverage_start: stamp(r.coverage_start, 'coverage_start'), coverage_end: stamp(r.coverage_end, 'coverage_end'), source_observed_at: stamp(r.source_observed_at, 'source_observed_at'), flags: flags(r.flags) }
+  orderedBounds(parsed.coverage_start, parsed.coverage_end, 'account day coverage')
+  if (parsed.complete_day) {
+    const start = Date.parse(`${parsed.day}T00:00:00Z`)
+    if (parsed.coverage_start === null || parsed.coverage_end === null || Date.parse(parsed.coverage_start) !== start || Date.parse(parsed.coverage_end) !== start + 86400000) invalid('complete_day coverage')
+  }
+  return parsed
 }
 function account(value: unknown): ProviderAccount {
   const r = record(value, 'account')
@@ -100,12 +113,16 @@ export function parseClientProviderCosts(value: unknown): ClientProviderCosts {
   if (r.schema_version !== 1) throw new Error('Cost feed version is unsupported')
   const window = record(r.window, 'window')
   const rate = record(r.credit_value_rate, 'credit_value_rate')
+  const start = date(window.start, 'window.start')
+  const end = date(window.end, 'window.end')
+  if (start >= end) invalid('window')
   const rows = list(r.rows, 'rows', row)
   const accounts = list(r.accounts, 'accounts', account)
   const keys = new Set(rows.map(x => `${x.scope}:${x.provider}`))
   if (rows.length !== 15 || keys.size !== 15 || SCOPES.some(s => PROVIDERS.some(p => !keys.has(`${s}:${p}`)))) invalid('rows')
   if (accounts.length !== 3 || new Set(accounts.map(x => x.provider)).size !== 3) invalid('accounts')
-  return { schema_version: 1, generated_at: stamp(r.generated_at, 'generated_at') ?? invalid('generated_at'), window: { start: date(window.start, 'window.start'), end: date(window.end, 'window.end'), timezone: enumeration(window.timezone, ['UTC'], 'timezone') }, rows, accounts, legacy_rows: list(r.legacy_rows, 'legacy_rows', legacyRow), credit_value_rate: { usd_per_credit: amount(rate.usd_per_credit, 'usd_per_credit') ?? invalid('usd_per_credit'), as_of: date(rate.as_of, 'as_of'), basis: enumeration(rate.basis, ['dated_replacement_value_forecast'], 'basis') } }
+  if (accounts.some(account => account.days.some(day => day.day < start || day.day >= end))) invalid('account day window')
+  return { schema_version: 1, generated_at: stamp(r.generated_at, 'generated_at') ?? invalid('generated_at'), window: { start, end, timezone: enumeration(window.timezone, ['UTC'], 'timezone') }, rows, accounts, legacy_rows: list(r.legacy_rows, 'legacy_rows', legacyRow), credit_value_rate: { usd_per_credit: amount(rate.usd_per_credit, 'usd_per_credit') ?? invalid('usd_per_credit'), as_of: date(rate.as_of, 'as_of'), basis: enumeration(rate.basis, ['dated_replacement_value_forecast'], 'basis') } }
 }
 
 /** Operator-only aggregate. The browser never reads raw ledgers or account receipts. */
