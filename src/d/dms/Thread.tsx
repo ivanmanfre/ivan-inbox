@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode }
 import { requestDmDraft } from '../../lib/dmDraft'
 import { useDCommands } from '../shell/commands'
 import type { WbCommand } from '../../exp/v2c/commandSource'
-import { draftSendVia, type DraftSendVia, canComposeEmail, emailReplyTarget, emailRowSender, isReplyRetryExhausted, isSwishdmReply, markThreadRead, messageChannel, threadBucket, unansweredWaitSince, type InboxMessage, type Thread as T } from '../../lib/inbox'
+import { draftSendVia, type DraftSendVia, canComposeEmail, canDraftAgain, emailReplyTarget, emailRowSender, isReplyRetryExhausted, isSwishdmReply, markThreadRead, messageChannel, threadBucket, unansweredWaitSince, type InboxMessage, type Thread as T } from '../../lib/inbox'
 import type { PreReadHandle } from '../../exp/v2c/chat/usePreRead'
 import { chatLink } from '../../components/CopyChatLink'
 import { seatOf } from '../seats'
@@ -29,6 +29,7 @@ import { Composer } from './Keys'
 import { ThreadMenu, type MenuAct } from './Menu'
 import { AgentSheet, ContextSheet } from './Sheets'
 import { RestoreStrip } from './Restore'
+import { RedraftAsk, RedraftStatus } from './Redraft'
 import { ThreadHead } from './ThreadHead'
 import type { DmVerbs, Edits } from './verbs'
 import { HeadV4 } from './v4/HeadV4'
@@ -88,6 +89,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   const [menu, setMenu] = useState<'top' | 'keys' | null>(null)
   const [sheet, setSheet] = useState<'context' | 'agent' | null>(null)
   const [copied, setCopied] = useState(false)
+  const [redraftFor, setRedraftFor] = useState<string | null>(null)
   const [fuTick, setFuTick] = useState(0)
   const seeded = useRef({ id: '', text: '', email: null as string | null, companionId: '', companion: null as string | null, cc: undefined as string | undefined, companionCc: undefined as string | undefined })
   const scroll = useRef<HTMLDivElement>(null)
@@ -278,6 +280,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     </>
   } else if (hasDraft && !t.ownerConfirmation) {
     small = <>
+      {canDraftAgain(t) && <Btn verb="draft-again" className="dm-k" disabled={busy} aria-expanded={redraftFor === t.prospect_id} title="Write a different follow-up" onClick={() => setRedraftFor(p => (p === t.prospect_id ? null : t.prospect_id))}>Draft again</Btn>}
       <Btn verb="discard" className="dm-k" disabled={busy} onClick={() => run(async () => { saver.cancel(); await verbs.discard(t) })}>Discard</Btn>
       {laterKey}
       {solvedKey}
@@ -333,6 +336,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
           foot={t.draft && <DraftWhy v4 t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
           onSend={canSendDraft ? () => { if (!busy && !scheduledPending) void send() } : undefined} />
         <RestoreStrip t={t} verbs={verbs} />
+        <RedraftStatus t={t} now={now} reload={reload} />
         {scheduledPending && <ScheduledSends t={t} reload={reload} onEdit={setSchedule} />}
       </>}
       status={<>
@@ -340,6 +344,8 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         {draftRunning && <p className="dm-meta dx-status" role="status"><span className="dx-busy">Reading the conversation and writing a draft. It will appear here for review.</span></p>}
         {scheduleFailure && <p className="dm-meta" role="alert">{scheduleFailure}</p>}
         {draftError && <p className="dm-meta" role="alert">{draftError}</p>}
+        {redraftFor === t.prospect_id && hasDraft && canDraftAgain(t) && <RedraftAsk busy={busy} onCancel={() => setRedraftFor(null)}
+          onSend={note => void run(async () => { saver.cancel(); if (!(await verbs.redraft(t, note, edits))) setRedraftFor(null) })} />}
         {replyingByEmail && resolvedEmail?.error && <div className="dm-meta" role="alert"><span>{resolvedEmail.error}</span> <Btn className="dm-k" onClick={() => setEmailRetry(n => n + 1)}>Retry email details</Btn></div>}
       </>}
       keys={<>{scheduleKey}{small}{more}</>}
@@ -369,6 +375,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         <Draft onSendVia={sendVia} deliveryBusy={busy} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
         {t.draft && <DraftWhy t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
         <RestoreStrip t={t} verbs={verbs} />
+        <RedraftStatus t={t} now={now} reload={reload} />
         {scheduledPending && <ScheduledSends t={t} reload={reload} onEdit={setSchedule} />}
       </div>
       <div className="dm-dock" ref={dock}>
@@ -376,6 +383,8 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         {draftRunning && <p className="dm-meta" role="status">Reading the conversation and writing a draft. It will appear here for review.</p>}
         {scheduleFailure && <p className="dm-meta" role="alert">{scheduleFailure}</p>}
         {draftError && <p className="dm-meta" role="alert">{draftError}</p>}
+        {redraftFor === t.prospect_id && hasDraft && canDraftAgain(t) && <RedraftAsk busy={busy} onCancel={() => setRedraftFor(null)}
+          onSend={note => void run(async () => { saver.cancel(); if (!(await verbs.redraft(t, note, edits))) setRedraftFor(null) })} />}
         {replyingByEmail && resolvedEmail?.error && <div className="dm-meta" role="alert"><span>{resolvedEmail.error}</span> <Btn className="dm-k" onClick={() => setEmailRetry(n => n + 1)}>Retry email details</Btn></div>}
         {!hasDraft && !t.spam && <Composer to={first} from={from} big={emailReplyFor === t.prospect_id} noSend note={composeNote} sendLabel={composeLabel} disabled={composeOff} value={reply} setValue={setReply} busy={busy || emailBlocked} onSend={() => void compose()} />}
         <div className="dm-keys">
