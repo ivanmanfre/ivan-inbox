@@ -2,12 +2,19 @@ import { describe, it, expect } from 'vitest'
 import { outboundApproveUrl, outboundSkipUrl, pendingOps, pendingDmLaneOps, sentOps, blockedOps, canGenerateDraft, isCloseOnlyComment, claimingOps, engineLabel, expiresIn, DISCARDED_REASON, classifyGateReply, cardStateOf, outboundFeedId, taskTitle, taskDetails, taskDue, taskSource, dueLabel, pendingTasks, doneTodayTasks, isTaskKind, TASK_TITLE_MAX, weeklyReportDispatches, weeklySendAfter, isExpiredNewsjack, emptyReadOverRows, type OpsDraft } from './ops'
 
 const base: OpsDraft = {
-  id: '1', client_id: 'risedtc', kind: 'escalation', slack_channel: '#rise-ops',
+  id: '1', client_id: 'risedtc', kind: 'update', slack_channel: '#rise-ops',
   body: 'hey', context: null, created_at: '2026-07-24T10:00:00Z',
   approved_at: null, sent_at: null, send_blocked_reason: null,
 }
 
 describe('pendingOps', () => {
+  it('keeps client escalation questions out of Operations in every state', () => {
+    const pending = { ...base, kind: 'escalation' as const }
+    expect(pendingOps([pending])).toEqual([])
+    expect(sentOps([{ ...pending, sent_at: '2026-10-25T16:00:00Z' }])).toEqual([])
+    expect(claimingOps([{ ...pending, approved_at: '2026-10-25T16:00:00Z' }])).toEqual([])
+    expect(blockedOps([{ ...pending, send_blocked_reason: 'failed' }])).toEqual([])
+  })
   it('keeps only rows with no approve/send/block stamp', () => {
     const rows: OpsDraft[] = [
       { ...base, id: 'a' },
@@ -143,7 +150,7 @@ describe('comment cards age out', () => {
     expect(pendingOps([mkC(null)], now)).toHaveLength(1)
   })
   it('never ages out other kinds', () => {
-    const old = { ...mkC('2026-07-01T00:00:00Z'), kind: 'escalation' as const }
+    const old = { ...mkC('2026-07-01T00:00:00Z'), kind: 'update' as const }
     expect(pendingOps([old], now)).toHaveLength(1)
   })
   it('ages out outbound originals past 24 hours', () => {

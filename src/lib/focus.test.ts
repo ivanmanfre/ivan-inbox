@@ -54,14 +54,14 @@ describe('focusSummary', () => {
 
   it('mixed kinds', () => {
     const t = groupThreads([msg({ read_at: null })], new Set(), NOW)[0]
-    const escalation = opsDraft({ kind: 'escalation' })
+    const update = opsDraft({ kind: 'update' })
     const invite = opsDraft({ kind: 'manual_invite' })
-    const s = focusSummary({ threads: [t], opsDrafts: [escalation, invite], now: NOW })
+    const s = focusSummary({ threads: [t], opsDrafts: [update, invite], now: NOW })
     expect(s.count).toBe(3)
     expect(s.replyCount).toBe(1)
     expect(s.opsCount).toBe(2)
     expect(s.batches).toEqual([])
-    expect(s.singles.map(d => d.id).sort()).toEqual([escalation.id, invite.id].sort())
+    expect(s.singles.map(d => d.id).sort()).toEqual([update.id, invite.id].sort())
     expect(s.line).toBe('3 things need you. Everything else is running.')
   })
 
@@ -80,7 +80,7 @@ describe('focusSummary', () => {
     const invites = Array.from({ length: 6 }, (_, i) =>
       opsDraft({ kind: 'manual_invite', client_id: 'risedtc', id: `inv${i}` }))
     const singles = [
-      opsDraft({ kind: 'escalation', id: 's1' }),
+      opsDraft({ kind: 'update', id: 's1' }),
       opsDraft({ kind: 'weekly_report', id: 's2' }),
       opsDraft({ kind: 'booking', id: 's3' }),
     ]
@@ -119,7 +119,7 @@ describe('focusSummary', () => {
     const invites = Array.from({ length: 6 }, (_, i) =>
       opsDraft({ kind: 'manual_invite', client_id: 'risedtc', id: `inv${i}` }))
     const singles = [
-      opsDraft({ kind: 'escalation', id: 's1' }),
+      opsDraft({ kind: 'update', id: 's1' }),
       opsDraft({ kind: 'weekly_report', id: 's2' }),
       opsDraft({ kind: 'booking', id: 's3' }),
     ]

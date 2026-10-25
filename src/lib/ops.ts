@@ -250,7 +250,7 @@ export function isFailedCommentReply(d: OpsDraft): boolean {
 
 export function pendingOps(rows: OpsDraft[], now = Date.now()): OpsDraft[] {
   return freshestOutboundFirst(rows.filter(d =>
-    !d.approved_at && !d.sent_at && (!d.send_blocked_reason || isFailedCommentReply(d))
+    d.kind !== 'escalation' && !d.approved_at && !d.sent_at && (!d.send_blocked_reason || isFailedCommentReply(d))
     && !isOpsReference(d) && !isAudnKind(d.kind) && !isStaleComment(d, now) && !isExpiredNewsjack(d, now)
     // SwishDM sales copilot replays past calls as dry runs: a preview, never work.
     && d.context?.dry_run !== true))
@@ -500,7 +500,7 @@ export async function markTaskBooked(d: OpsDraft, startIso: string): Promise<{ a
 // look like nothing happened.
 export function claimingOps(rows: OpsDraft[], now = Date.now()): OpsDraft[] {
   return rows
-    .filter(d => d.approved_at && !d.sent_at && !d.send_blocked_reason
+    .filter(d => d.kind !== 'escalation' && d.approved_at && !d.sent_at && !d.send_blocked_reason
       && !(d.kind === 'comment_outbound' && isStaleComment(d, now)))
     .sort((a, b) => b.approved_at!.localeCompare(a.approved_at!))
 }
@@ -508,7 +508,7 @@ export function claimingOps(rows: OpsDraft[], now = Date.now()): OpsDraft[] {
 // Sent = already dispatched to Slack. Read-only, most-recent-first, capped.
 export function sentOps(rows: OpsDraft[], limit = 10): OpsDraft[] {
   return rows
-    .filter(d => d.sent_at !== null)
+    .filter(d => d.kind !== 'escalation' && d.sent_at !== null)
     .sort((a, b) => b.sent_at!.localeCompare(a.sent_at!))
     .slice(0, limit)
 }
@@ -517,7 +517,7 @@ export function sentOps(rows: OpsDraft[], limit = 10): OpsDraft[] {
 // operator discards, which stay hidden.
 export function blockedOps(rows: OpsDraft[]): OpsDraft[] {
   return rows
-    .filter(d => d.send_blocked_reason && d.send_blocked_reason !== DISCARDED_REASON)
+    .filter(d => d.kind !== 'escalation' && d.send_blocked_reason && d.send_blocked_reason !== DISCARDED_REASON)
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
 }
 
@@ -526,6 +526,32 @@ export function blockedOps(rows: OpsDraft[]): OpsDraft[] {
 // is what stops the request from being schema-fragile (a future wide column
 // added to the table would otherwise ride along on every load unasked).
 const OPS_DRAFT_COLUMNS = 'id,client_id,kind,slack_channel,body,context,created_at,approved_at,sent_at,send_blocked_reason'
+
+// Client questions are optional actions on their DM, outside the Operations queue.
+export async function fetchThreadEscalations(prospectId: string, clientId: string): Promise<OpsDraft[]> {
+  const clients = clientId === 'risedtc' ? ['rise', 'risedtc'] : clientId === 'arch' ? ['arch'] : []
+  if (!prospectId || clients.length === 0) return []
+  const { data, error } = await supabase.from('ops_drafts').select(OPS_DRAFT_COLUMNS)
+    .eq('kind', 'escalation').eq('context->>prospect_id', prospectId).in('client_id', clients)
+    .order('created_at', { ascending: false }).limit(1)
+  if (error) throw error
+  return data as OpsDraft[]
+}
+
+export async function approveThreadEscalation(question: OpsDraft, body: string): Promise<void> {
+  if (question.kind !== 'escalation' || question.sent_at || !body.trim()
+    || question.send_blocked_reason === DISCARDED_REASON
+    || question.approved_at && !question.send_blocked_reason) throw new Error('This question is already queued or closed. Refresh it.')
+  let query = supabase.from('ops_drafts')
+    .update({ body, approved_at: new Date().toISOString(), send_blocked_reason: null })
+    .eq('id', question.id).eq('kind', 'escalation').eq('client_id', question.client_id)
+    .eq('body', question.body).is('sent_at', null)
+  query = question.approved_at ? query.eq('approved_at', question.approved_at) : query.is('approved_at', null)
+  query = question.send_blocked_reason ? query.eq('send_blocked_reason', question.send_blocked_reason) : query.is('send_blocked_reason', null)
+  const { data, error } = await query.select('id')
+  if (error) throw error
+  if (data?.length !== 1) throw new Error('The question changed in another window. Refresh it before sending.')
+}
 
 export async function fetchOpsDrafts(): Promise<OpsDraft[]> {
   const { data, error } = await supabase.from('ops_drafts')
@@ -537,6 +563,7 @@ export async function fetchOpsDrafts(): Promise<OpsDraft[]> {
     // publish RPC stamps both), so without this filter it would surface in the
     // Ops screen's Sent list, labelled as something it is not.
     .neq('kind', AUDN_KIND)
+    .neq('kind', 'escalation')
     .order('created_at', { ascending: false })
     .limit(300)
   if (error) throw error

@@ -1,0 +1,2 @@
+.dm-client-question .dm-ban{display:block;margin:8px 0 0}
+.dm-client-question textarea{display:block;box-sizing:border-box;width:100%;margin:6px 0;padding:10px;border:1px solid var(--line2);border-radius:8px;background:var(--p1);color:var(--t1);font:inherit;line-height:1.5;resize:vertical}
