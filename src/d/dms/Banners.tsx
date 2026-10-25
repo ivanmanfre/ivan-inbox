@@ -147,10 +147,8 @@ export function PushedBanner({ t, verbs }: { t: Thread; verbs: DmVerbs }) {
   )
 }
 
-export function GapBanner({ t, verbs }: { t: Thread; verbs: DmVerbs }) {
+export function GapBanner({ t }: { t: Thread; verbs: DmVerbs }) {
   const gap = t.draft?.context_gap
-  const [note, setNote] = useState('')
-  const [busy, setBusy] = useState(false)
   if (!gap) return null
   const owner = clientOwner(t.client_id)
   return (
@@ -159,11 +157,9 @@ export function GapBanner({ t, verbs }: { t: Thread; verbs: DmVerbs }) {
       {gap.why && <p>{gap.why}</p>}
       {gap.question && <p>{owner ? `For ${owner.owner}: ` : ''}<q>{gap.question}</q></p>}
       <div className="dm-ban-row">
-        {owner && <Btn verb="ask-owner" disabled={busy || Boolean(note)} onClick={async () => { setBusy(true); setNote(await verbs.askOwner(t)); setBusy(false) }}>{note ? 'Asked' : busy ? 'Queueing…' : `Ask ${owner.owner}`}</Btn>}
         {gap.chat_url && <a className="d-link" href={gap.chat_url} target="_blank" rel="noreferrer" data-verb="gap-chat">open the conversation</a>}
         <span className="dm-meta dm-hint">Optional. You can send this draft as it is.</span>
       </div>
-      {note && <p className="dm-meta">{note}</p>}
     </div>
   )
 }

@@ -1700,8 +1700,6 @@ export async function fetchDraftContextGaps(draftIds: string[]): Promise<Map<str
   return m
 }
 
-/** Optional: queue the "what do I tell them" question for Mattan in the Ops inbox, carrying the
- *  conversation link. Never sends anything itself, and never blocks approving the draft. */
 /** Who answers a question the notes do not cover, per client seat. Null on Ivan's own seat: there
     is nobody to ask, so the "Ask" control is not drawn. The route itself is decided in SQL by the
     prospect's tenant (db/098); this only words the button. 2026-09-18: every thread said "Mattan"
@@ -1720,7 +1718,7 @@ export async function escalateDraftToClient(messageId: string): Promise<string> 
   if (error) throw error
   const r = (data ?? {}) as { ok?: boolean; note?: string; error?: string }
   if (!r.ok) throw new Error(r.error || 'could not queue that')
-  return r.note || 'Queued in the Ops inbox.'
+  return 'Question prepared. Review it in this conversation before sending.'
 }
 
 export async function fetchDraftEmailStamps(): Promise<Map<string, DraftEmailStamp>> {

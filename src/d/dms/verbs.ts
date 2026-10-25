@@ -557,7 +557,7 @@ export function useDmVerbs(ctx: VerbCtx) {
 
     async function askOwner(t: Thread): Promise<string> {
       if (!t.draft) return ''
-      try { return await escalateDraftToClient(t.draft.id) } catch (e) { const m = errText(e) || 'Could not queue that.'; fail(m); return m }
+      try { return await escalateDraftToClient(t.draft.id) } catch (e) { const m = errText(e) || 'Could not prepare that question.'; fail(m); throw new Error(m) }
     }
 
     async function bulkDiscard(ts: Thread[], what: string, o: { title?: string; confirmText?: string; message?: string } = {}): Promise<void> {

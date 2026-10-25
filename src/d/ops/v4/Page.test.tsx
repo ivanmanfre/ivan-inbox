@@ -17,7 +17,7 @@ function useReactionFixture() {
 }
 let reactions: import('../../../lib/reactions').ReactionRow[] = []
 const refresh = vi.fn()
-const a: OpsDraft = { id: 'a', kind: 'escalation', client_id: 'ivan', body: 'First', context: { prospect_name: 'Ada' }, slack_channel: '', created_at: new Date().toISOString(), approved_at: null, sent_at: null, send_blocked_reason: null }
+const a: OpsDraft = { id: 'a', kind: 'update', client_id: 'ivan', body: 'First', context: { prospect_name: 'Ada' }, slack_channel: '', created_at: new Date().toISOString(), approved_at: null, sent_at: null, send_blocked_reason: null }
 const b = { ...a, id: 'b', context: { prospect_name: 'Ben' } }
 const rise = { ...a, id: 'rise', client_id: 'risedtc', kind: 'comment_reply' as const, context: { author_name: 'Randall Nguyen', comment_id: 'c' } }
 let drafts = [a, b, rise]

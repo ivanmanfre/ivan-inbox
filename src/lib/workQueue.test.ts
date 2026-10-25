@@ -68,12 +68,12 @@ describe('buildReplyItems', () => {
 })
 
 describe('buildOpsItems', () => {
-  it('an escalation is tier 2, a plain comment is tier 3', () => {
+  it('excludes client escalations while keeping comment work', () => {
     const escalation = opsDraft({ id: 'e1', kind: 'escalation' })
     const comment = opsDraft({ id: 'c1', kind: 'comment_outbound' })
     const items = buildOpsItems([escalation, comment], NOW)
     const byId = Object.fromEntries(items.map(i => [i.id, i]))
-    expect(byId['ops:e1'].tier).toBe(2)
+    expect(byId['ops:e1']).toBeUndefined()
     expect(byId['ops:c1'].tier).toBe(3)
   })
   it('an already-approved draft never appears (pendingOps excludes it)', () => {
@@ -118,7 +118,7 @@ describe('rankQueue', () => {
       ...pileItems([{ lane: 'ivan', n: 2, oldestCreatedAt: '2026-08-01T00:00:00Z', oldestTitle: 'Review' }], 'contentReview', NOW),
     ]
     expect(rankQueue(items).map(i => i.id)).toEqual([
-      'reply:p1', 'ops:escalation', 'ops:new-original', 'ops:update',
+      'reply:p1', 'ops:new-original', 'ops:update',
       'ops:middle-original', 'ops:incoming', 'ops:old-original', 'contentReview:ivan',
     ])
   })

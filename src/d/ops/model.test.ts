@@ -12,8 +12,8 @@ const d = (kind: OpsDraft['kind'], client_id: string, extra: Partial<OpsDraft> =
 
 describe('readBoard', () => {
   it("puts the legacy client 'rise' in Rise's lane and never makes a fourth lane", () => {
-    const b = readBoard([d('escalation', 'rise'), d('booking', 'risedtc'), d('update', 'arch'), d('newsjack', '')], new Set(), NOW)
-    expect(b.lanes.risedtc.map(x => x.kind)).toEqual(['escalation', 'booking'])
+    const b = readBoard([d('update', 'rise'), d('booking', 'risedtc'), d('update', 'arch'), d('newsjack', '')], new Set(), NOW)
+    expect(b.lanes.risedtc.map(x => x.kind)).toEqual(['update', 'booking'])
     expect(b.lanes.arch).toHaveLength(1)
     expect(b.lanes.ivan).toHaveLength(1)
     // the newsjack is drawn but never counted (Ivan 2026-10-15)
@@ -29,7 +29,7 @@ describe('readBoard', () => {
   })
 
   it('counts tasks in the seat number but never draws them as lane cards', () => {
-    const b = readBoard([d('task', 'ivan'), d('task', 'arch'), d('escalation', 'arch')], new Set(), NOW)
+    const b = readBoard([d('task', 'ivan'), d('task', 'arch'), d('update', 'arch')], new Set(), NOW)
     expect(b.lanes.arch).toHaveLength(1)
     expect(b.waiting).toEqual({ ivan: 1, risedtc: 0, arch: 2 , swishdm: 0})
     expect(b.tasks).toEqual({ ivan: 1, risedtc: 0, arch: 1 , swishdm: 0})
@@ -42,7 +42,7 @@ describe('readBoard', () => {
   })
 
   it('walks j / k in lane order: Ivan, Rise, Arch', () => {
-    const b = readBoard([d('update', 'arch'), d('escalation', 'rise'), d('precall_email', 'ivan')], new Set(), NOW)
+    const b = readBoard([d('update', 'arch'), d('update', 'rise'), d('precall_email', 'ivan')], new Set(), NOW)
     expect(b.flat.map(x => x.client_id)).toEqual(['ivan', 'rise', 'arch'])
   })
 })
@@ -85,11 +85,11 @@ describe('parity 09-27: seats keep their own 3 a day; unknown clients keep a lan
     expect(b.waiting).toEqual({ ivan: 0, risedtc: 0, arch: 0 , swishdm: 0})
   })
   it('draws a client with no seat as its own lane and counts it', () => {
-    const b = readBoard([d('escalation', 'acme'), d('update', 'acme'), d('booking', 'ivan')], new Set(), NOW)
+    const b = readBoard([d('update', 'acme'), d('update', 'acme'), d('booking', 'ivan')], new Set(), NOW)
     expect(b.other).toHaveLength(1)
     expect(b.other[0]).toMatchObject({ key: 'acme', waiting: 2 })
     expect(b.flat.map(x => x.client_id)).toEqual(['ivan', 'acme', 'acme'])
     expect(positionOf(b, b.other[0].cards[1])).toMatchObject({ seat: null, lane: 'acme', at: 2, of: 2 })
-    expect(opsWaitingBySeat([d('escalation', 'acme'), d('booking', 'arch')], NOW)).toEqual({ ivan: 0, risedtc: 0, arch: 1, other: 1 , swishdm: 0})
+    expect(opsWaitingBySeat([d('update', 'acme'), d('booking', 'arch')], NOW)).toEqual({ ivan: 0, risedtc: 0, arch: 1, other: 1 , swishdm: 0})
   })
 })
