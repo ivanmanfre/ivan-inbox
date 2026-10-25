@@ -178,7 +178,7 @@ export type Thread = {
 export function sendFailed(m: InboxMessage): boolean {
   if (m.direction !== 'outbound') return false
   if (m.send_blocked_at === null) return false
-  if (m.send_blocked_reason === DISCARD_REASON || ['scheduled_in_inbox','scheduled_send_cancelled'].includes(m.send_blocked_reason ?? '')) return false
+  if (m.send_blocked_reason === DISCARD_REASON || m.send_blocked_reason === REDRAFT_REASON || ['scheduled_in_inbox','scheduled_send_cancelled'].includes(m.send_blocked_reason ?? '')) return false
   if (isRecoverableHold(m.send_blocked_reason)) return false
   // LinkedIn will not deliver to this person (blocked, or cannot receive): a quiet "Not delivered" line, never a failure.
   if (isUnreachableSend(m)) return false
@@ -307,7 +307,7 @@ export function isHiddenRetired(m: InboxMessage): boolean {
 /** Reasons that are never a failed send, judged on the reason alone: replaced, expired, scheduled, an invite
  *  instead, they replied, excluded, or stopped on purpose. A POSIX regex both Postgres (`~`, the Lanes and send
  *  log counts in lib/sends) and JS read the same way, so the count and the rows cannot disagree (send audit 2). */
-export const NOT_A_FAILURE_SQL = `^(discarded|superseded|scheduled_in_inbox|scheduled_send_cancelled|stale_draft_expired|stale_convo_closed|model_meta_no_reply|writer_no_reply|replied_before_qualifier|routed_to_invite|manual_touch|invite_withdrawn|([a-z]+_)*(replied|reply|reaction|reacted)_stop|([a-z]+_)*exclu(sion|ded)|${STOPPED_ON_PURPOSE_PREFIXES.join('|')})`
+export const NOT_A_FAILURE_SQL = `^(discarded|superseded|redraft_requested|scheduled_in_inbox|scheduled_send_cancelled|stale_draft_expired|stale_convo_closed|model_meta_no_reply|writer_no_reply|replied_before_qualifier|routed_to_invite|manual_touch|invite_withdrawn|([a-z]+_)*(replied|reply|reaction|reacted)_stop|([a-z]+_)*exclu(sion|ded)|${STOPPED_ON_PURPOSE_PREFIXES.join('|')})`
 const NOT_A_FAILURE = new RegExp(NOT_A_FAILURE_SQL)
 export function isNotAFailureReason(reason: string | null | undefined): boolean {
   const r = reason ?? ''
@@ -338,7 +338,7 @@ export function retiredLabel(m: InboxMessage): string {
    own card), an engine retirement, an intentional stop, and the SwishDM review
    hold (a draft waiting for approval, nothing was attempted).
    ========================================================================== */
-const NOT_A_HOLD = /^(discarded|superseded|scheduled|routed_to_invite|owner_confirmation_superseded)(?=$|[_:\s])/
+const NOT_A_HOLD = /^(discarded|superseded|scheduled|routed_to_invite|owner_confirmation_superseded|redraft_requested)(?=$|[_:\s])/
 
 export function isHeldSend(m: InboxMessage): boolean {
   if (m.direction !== 'outbound' || m.sent_at || m.unipile_message_id) return false
@@ -549,6 +549,52 @@ export const LINT_HOLD_PREFIX = 'lint_'
 // `geo_gate_v2:*` rows are still queued upstream, and a `post_approval_race:*`
 // row is already a pending draft with no block to clear.
 export const DISCARD_REASON = 'discarded_in_inbox'
+
+// "Draft again" (Ivan 2026-10-25 on Dana Doron's follow-up: "should I have a button Draft again… to try a
+// different approach"). A discard tells the stall bump "never redraft this turn"; this marker tells it the
+// opposite: write a new follow-up, reading the rejected text and Ivan's note (Stalled Conversation Bump
+// qCCZhgogk549PP6v reads redraft_requested rows first and writes the outcome back into the request).
+export const REDRAFT_REASON = 'redraft_requested'
+const REDRAFT_MODEL = /stall_bump/
+
+/** Offered on stall-bump follow-ups only: that lane is the one that reads the request. */
+export function canDraftAgain(t: Thread): boolean {
+  return t.draft !== null && REDRAFT_MODEL.test(t.draft.ai_model ?? '') && ['ivan', 'arch', 'risedtc'].includes(t.client_id)
+    && !t.spam && !t.ownerConfirmation && t.draftSnoozedUntil === null
+}
+
+export type RedraftRequest = {
+  v: string; at: string; note: string | null; rejected_text: string
+  outcome?: { result: 'drafted' | 'no_follow_up' | 'held'; reason?: string; due_at?: string | null; at: string }
+}
+
+/** Retire one leg as a redraft request. False = the guard refused it (approved, sent or changed). */
+export async function requestRedraft(id: string, shown: string, note: string): Promise<boolean> {
+  const { data: row, error: readError } = await supabase.from('outreach_messages').select('draft_evidence').eq('id', id).single()
+  if (readError) throw readError
+  const evidence = (row?.draft_evidence ?? null) as DraftEvidence | null
+  const at = new Date().toISOString()
+  const request: RedraftRequest = { v: 'inbox_redraft_v1', at, note: note.trim() || null, rejected_text: shown }
+  let query = supabase.from('outreach_messages')
+    .update({ send_blocked_reason: REDRAFT_REASON, send_blocked_at: at, draft_evidence: { ...(evidence ?? {}), redraft_request: request } })
+    .eq('id', id).is('sent_at', null).is('approved_at', null)
+    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*`)
+  query = evidence == null ? query.is('draft_evidence', null) : query.eq('draft_evidence', JSON.stringify(evidence))
+  const { data, error } = await query.select('id')
+  if (error) throw error
+  return (data ?? []).length > 0
+}
+
+/** The newest Draft-again request on a thread, with what the writer did about it. */
+export async function fetchRedraftRequest(prospectId: string): Promise<{ id: string; request: RedraftRequest | null } | null> {
+  const { data, error } = await supabase.from('outreach_messages')
+    .select('id,request:draft_evidence->redraft_request')
+    .eq('prospect_id', prospectId).eq('send_blocked_reason', REDRAFT_REASON).is('sent_at', null)
+    .order('send_blocked_at', { ascending: false }).limit(1)
+  if (error) throw error
+  const r = (data ?? [])[0] as { id: string; request: RedraftRequest | null } | undefined
+  return r ?? null
+}
 
 export function isRaceHold(reason: string | null): boolean {
   return reason !== null && reason.startsWith(RACE_HOLD_PREFIX)
