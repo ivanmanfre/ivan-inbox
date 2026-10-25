@@ -9,6 +9,7 @@
 import { SEAT_NAME, type Seat } from '../../seats'
 import { InboundCell, type BandCtx } from '../bandCells'
 import { ChannelsSheet } from '../ChannelsSheet'
+import { ClientCost } from '../ClientCost'
 import { Segmented } from '../../../ds/Segmented'
 import { Numbers } from './Numbers'
 import { Supply } from './Supply'
@@ -60,6 +61,9 @@ export function SeatView4({ seat, ctx, range, setRange, onCustom, retry }: { sea
         <Section id="inbound" title="Inbound" open={open.inbound} onToggle={toggle}
           summary={inbound != null ? `${inbound} decision${inbound === 1 ? '' : 's'} in 7 days` : null}>
           <InboundCell seat={seat} ctx={ctx} />
+        </Section>
+        <Section id="cost" title="Cost" open={open.cost} onToggle={toggle} summary="recorded allocation · partial coverage">
+          <ClientCost seat={seat} />
         </Section>
         <Inline>
           <Section id="channels" title="Channels" open={open.channels} onToggle={toggle} summary="invites, DMs and InMail, each on its own">
