@@ -7,7 +7,7 @@ import { createElement, useMemo } from 'react'
 import {
   draftSendVia, approveDraft, composeReply, deleteThread, discardLegs, dismissConfirmation, draftLegs, escalateDraftToClient,
   emailSenderLabel, heldReasonText, isFollowUp, isHeldSend, isStoppedOnPurpose, isSwishdmReply, isSwishdmRow, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft, swishdmPageUrl,
-  saveDraftEmail, saveDraftEmailCc, setDraftSendVia, saveDraftText, snoozeDraft, threadChatId, unsnoozeDraft, REPLY_MYSELF,
+  saveDraftEmail, saveDraftEmailCc, setDraftSendVia, saveDraftText, snoozeDraft, threadChatId, unsnoozeDraft, REPLY_MYSELF, REDRAFT_REASON, requestRedraft,
   findLandedReply, readSendState, type DraftSendVia, type InboxMessage, type SendState, type Thread,
 } from '../../lib/inbox'
 import { isNoAnswer } from '../../lib/noAnswer'
@@ -236,6 +236,25 @@ export function useDmVerbs(ctx: VerbCtx) {
       // A message stopped on purpose is never brought back as a sendable draft by Undo.
       toast.show({ message: `Discarded the ${stopped ? 'stopped' : 'held'} message to ${t.prospect_name}.`, sub: 'It stays under Discarded for 3 days.',
         action: stopped ? undefined : { label: 'Undo', verb: 'undo', run: () => { void undoDiscard([m]) } } })
+    }
+
+    /** Draft again: retire the follow-up (both legs) as a redraft request the stall bump answers. */
+    async function redraft(t: Thread, note: string, ed: Edits): Promise<string | null> {
+      const draft = t.draft
+      if (!draft) return null
+      const legs = draftLegs(t)
+      const done: string[] = []
+      try {
+        for (const leg of legs) {
+          const shown = leg.id === draft.id ? ed.main : (ed.companion ?? leg.message_text)
+          if (!(await requestRedraft(leg.id, shown, note))) throw new Error('This draft changed (approved, sent or edited somewhere else). Refresh and try again.')
+          done.push(leg.id)
+        }
+      } catch (e) { const m = errText(e); fail(m); ctx.refresh(); return m }
+      ctx.patch(done, { send_blocked_reason: REDRAFT_REASON, send_blocked_at: new Date().toISOString() })
+      ctx.refresh()
+      toast.show({ message: `Writing a new follow-up for ${first(t)}.`, sub: 'It shows up here within about 15 minutes. Nothing is sent until you approve it.' })
+      return null
     }
 
     async function discard(t: Thread): Promise<string | null> {
@@ -566,7 +585,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       await bulkDiscard(stale, '', { title: `Discard ${stale.length} stale draft${stale.length === 1 ? '' : 's'}?`, message: 'These threads already have your own reply after the last inbound message. Nothing is sent.', confirmText: 'Discard stale' })
     }
 
-    return { sendVia, rowDiscard, discardStale, send, sendAnyways, editHeld, discardHeld, discard, solved, later, bringBackNow, saveEdit, autosave, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, holdRelease, askOwner, bulkDiscard, isFollowUp }
+    return { sendVia, rowDiscard, discardStale, send, redraft, sendAnyways, editHeld, discardHeld, discard, solved, later, bringBackNow, saveEdit, autosave, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, holdRelease, askOwner, bulkDiscard, isFollowUp }
   }, [ctx, confirm, toast, askDiscard, askDate])
 }
 
