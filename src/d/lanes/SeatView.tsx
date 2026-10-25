@@ -10,6 +10,7 @@ import { isWorking } from '../../lib/campaignPerf'
 import { SEAT_NAME, type Seat } from '../seats'
 import { CampaignsCell, InboundCell, type BandCtx } from './bandCells'
 import { ChannelsSheet } from './ChannelsSheet'
+import { ClientCost } from './ClientCost'
 import { RangeKeys } from './foot'
 import { Kpis } from './Kpis'
 import { LogSheet } from './LogSheet'
@@ -78,6 +79,9 @@ export function SeatView({ seat, ctx, range, setRange, onCustom }: { seat: Seat;
         </Section>
         <Section id="detail" title="Numbers in detail" open={open.detail} onToggle={toggle} summary="per campaign, delivery by lane, daily ledger">
           <PerfDetail seat={seat} ctx={ctx} />
+        </Section>
+        <Section id="cost" title="Cost" open={open.cost} onToggle={toggle} summary="recorded allocation · partial coverage">
+          <ClientCost seat={seat} />
         </Section>
         <Inline>
           <Section id="channels" title="Channels" open={open.channels} onToggle={toggle} summary="invites, DMs and InMail, each on its own">
