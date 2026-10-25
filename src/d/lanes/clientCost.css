@@ -1,0 +1,26 @@
+.dl-cost{padding-top:14px;min-width:0;color:var(--t1)}
+.dl-cost-controls{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.dl-cost-pick{display:flex;gap:8px;flex-wrap:wrap}
+.dl-cost-pick button{box-sizing:border-box;min-height:44px;font:500 12px var(--m);color:var(--t2);background:var(--p3);border:1px solid var(--line2);border-radius:7px;padding:7px 10px;cursor:pointer}
+.dl-cost-pick button[aria-pressed=true]{color:var(--t1);background:var(--p1);border-color:var(--strong)}
+.dl-cost-pick button:focus-visible,.dl-cost-error button:focus-visible,.dl-cost-link:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+.dl-cost-note,.dl-cost-read{font:400 12px/1.5 var(--f);color:var(--t2);margin:12px 0}
+.dl-cost-warning{font:400 13px/1.5 var(--f);color:var(--t1);background:var(--p3);border:1px solid var(--line2);border-left:3px solid var(--warn);border-radius:8px;padding:10px 12px;margin:12px 0 0}
+.dl-cost-warning b{font-weight:650}
+.dl-cost-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.dl-cost-group{min-width:0;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--bg);margin-top:12px}
+.dl-cost-groups .dl-cost-group{margin:0}
+.dl-cost-group h4{font:600 14px var(--f);margin:0 0 8px;color:var(--t1)}
+.dl-cost-list{display:flex;flex-direction:column}
+.dl-cost-row{display:flex;justify-content:space-between;gap:12px;min-width:0;padding:9px 0;border-top:1px solid var(--line)}
+.dl-cost-provider,.dl-cost-value{display:flex;flex-direction:column;gap:3px;min-width:0}
+.dl-cost-provider b{font:600 13px var(--f);overflow-wrap:anywhere}
+.dl-cost-provider span,.dl-cost-value span,.dl-cost-empty{font:400 11px/1.4 var(--m);color:var(--t2);overflow-wrap:anywhere}
+.dl-cost-value{text-align:right;align-items:flex-end}
+.dl-cost-value strong{font:600 15px var(--m);font-variant-numeric:tabular-nums}
+.dl-cost-empty{margin:4px 0}
+.dl-cost-error{font:400 12px/1.5 var(--f);color:var(--critT)}
+.dl-cost-error button{min-height:44px;font:inherit;color:inherit;text-decoration:underline;background:none;border:0;padding:0 8px;cursor:pointer}
+.dl-cost-read{font-family:var(--m);font-size:11px}
+.dl-cost-link{display:inline-flex;align-items:center;min-height:44px;font:500 12px var(--f);color:var(--t1);margin:2px 0 0;padding:0 8px;text-underline-offset:3px}
+@media(max-width:600px){.dl-cost-groups{grid-template-columns:minmax(0,1fr)}.dl-cost-row{flex-direction:column;gap:4px}.dl-cost-value{text-align:left;align-items:flex-start}}
