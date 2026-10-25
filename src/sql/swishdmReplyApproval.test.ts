@@ -25,7 +25,8 @@ beforeEach(async () => {
     create table operator_state (allowed boolean); insert into operator_state values (true);
     create function public.cb34_p2_operator_lane_allowed(c text) returns boolean language sql as $$ select c = 'ivan' and (select allowed from operator_state) $$;
     create table outreach_campaigns (id uuid primary key, client_id text);
-    create table outreach_prospects (id uuid primary key, campaign_id uuid);
+    create table outreach_prospects (id uuid primary key, campaign_id uuid, connection_sent_at timestamptz);
+    create table integration_config (key text primary key,value text);
     create table outreach_messages (
       id uuid primary key, prospect_id uuid, direction text, message_type text, channel text, ai_model text,
       message_text text, sent_at timestamptz, approved_at timestamptz, unipile_message_id text,
@@ -33,7 +34,7 @@ beforeEach(async () => {
     );
     create table swishdm_comparison_pages (token text primary key, prospect_id uuid, url text, status text);
     insert into outreach_campaigns values ('d1111111-1111-4111-8111-111111111111','swishdm'), ('d2222222-2222-4222-8222-222222222222','arch');
-    insert into outreach_prospects values ('${prospect}','d1111111-1111-4111-8111-111111111111');
+    insert into outreach_prospects(id,campaign_id) values ('${prospect}','d1111111-1111-4111-8111-111111111111');
     insert into outreach_messages (id,prospect_id,direction,message_type,channel,message_text,sent_at)
       values ('${inbound}','${prospect}','inbound','dm','linkedin','sure send them', now());
     insert into outreach_messages (id,prospect_id,direction,message_type,channel,ai_model,message_text,send_blocked_reason,send_blocked_at,draft_evidence)
@@ -43,6 +44,7 @@ beforeEach(async () => {
   await db.exec(readFileSync('db/20261017_swishdm_reply_approval.sql', 'utf8'))
   await db.exec(readFileSync('db/20261023_swishdm_email_leg_approval.sql', 'utf8'))
   await db.exec(readFileSync('db/20261023_swishdm_email_save_fix.sql', 'utf8'))
+  await db.exec(readFileSync('db/20261025_swishdm_invite_window_review_hold.sql', 'utf8'))
 })
 afterEach(async () => { await db.close() })
 
@@ -164,4 +166,38 @@ it('does not accept a report URL in an email without a recipient', async () => {
 
 it('does not save nonempty CCs for the SwishDM sender that supports only the requested recipient', async () => {
   await expect(db.query('select save_inbox_draft_email_cc($1,$2::jsonb,$3::jsonb)', [msg,'["other@brand.com"]',JSON.stringify(await ev())])).rejects.toThrow(/changed/i)
+})
+
+it('returns a withdrawn approval to review and lets the operator approve it again', async () => {
+  await approve()
+  await db.exec(`update outreach_messages set approved_at=null where id='${msg}'`)
+  expect(await row()).toMatchObject({approved_at:null,send_blocked_reason:'awaiting_client_review'})
+  await approve()
+  expect((await row()).approved_at).toBeTruthy()
+})
+it('preserves a specific hold when an approval is withdrawn', async () => {
+  await approve()
+  await db.exec(`update outreach_messages set approved_at=null,send_blocked_reason='send_failed_422',send_blocked_at=now() where id='${msg}'`)
+  expect((await row()).send_blocked_reason).toBe('send_failed_422')
+})
+
+it('counts saved sent invitations even when engagement logging failed',async()=>{
+  await db.exec(`insert into outreach_prospects(id,campaign_id) select md5('weekly-'||i)::uuid,'d1111111-1111-4111-8111-111111111111' from generate_series(1,200) i;
+    insert into outreach_messages(id,prospect_id,direction,message_type,sent_at)
+    select md5('message-'||i)::uuid,md5('weekly-'||i)::uuid,'outbound','connection_note',now()-interval '6 days' from generate_series(1,200) i;`)
+  const window = async ()=>(await db.query<{w:{sent_count:number;retry_at:string|null}}>('select swishdm_invite_weekly_window() w')).rows[0].w
+  const w=await window(); expect(w.sent_count).toBe(200); expect(Date.parse(w.retry_at!)).toBeGreaterThan(Date.now())
+  await db.exec(`update outreach_messages set sent_at=now()-interval '8 days' where id=md5('message-1')::uuid`)
+  expect(await window()).toMatchObject({sent_count:199,retry_at:null})
+  await db.exec(`update outreach_campaigns set client_id='arch'`)
+  expect(await window()).toMatchObject({sent_count:0,retry_at:null})
+})
+it('holds one seat reservation at a time and releases only the matching token',async()=>{
+  const reserve=async ()=>(await db.query<{r:{ok:boolean;token:string;reason:string}}>('select swishdm_reserve_invite() r')).rows[0].r
+  const first=await reserve(); expect(first.ok).toBe(true)
+  expect(await reserve()).toMatchObject({ok:false,reason:'seat_busy'})
+  await db.query('select swishdm_release_invite($1)',[other])
+  expect(await reserve()).toMatchObject({ok:false,reason:'seat_busy'})
+  await db.query('select swishdm_release_invite($1)',[first.token])
+  expect((await reserve()).ok).toBe(true)
 })
