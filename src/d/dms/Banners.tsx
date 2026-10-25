@@ -98,6 +98,12 @@ export function NoDraftBanner({ t, now }: { t: Thread; now: number }) {
   const since = owedSince(t)
   if (!since) return null
   const days = Math.max(0, Math.round((now - Date.parse(since)) / 86_400_000))
+  if (hold?.owed) return (
+    <div className="dm-ban">
+      <b><DIcon name="time" />{firstOf(t)} said yes to the scan. It is being built and repaired automatically.</b>
+      <p>The reply with the scan link drafts itself here once it passes the review. Nothing goes out without the scan.{hold.reason ? ` Last step: ${hold.reason}` : ''}</p>
+    </div>
+  )
   if (hold) return (
     <div className="dm-ban dm-ban-hl">
       <b><DIcon name="alert" />{firstOf(t)} said yes to the scan, but the page is held, so nothing was drafted.</b>
