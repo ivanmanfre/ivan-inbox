@@ -12,7 +12,7 @@ vi.mock('../../hooks/useCommentQueue', () => ({ useCommentQueue: () => ({ held: 
 vi.mock('../../hooks/useReactions', () => ({ useReactions: () => ({ rows: [], bodies: {}, loading: false, error: '', refresh: vi.fn() }) }))
 vi.mock('../../lib/ops', async orig => ({ ...await orig<typeof import('../../lib/ops')>(), approveOpsDraft: vi.fn(async () => {}), discardOpsDraft: vi.fn(async () => {}) }))
 import * as lib from '../../lib/ops'
-const a: OpsDraft = { id: 'a', kind: 'escalation', client_id: 'ivan', body: 'First', context: { prospect_name: 'First person' }, slack_channel: '', created_at: new Date().toISOString(), approved_at: null, sent_at: null, send_blocked_reason: null }
+const a: OpsDraft = { id: 'a', kind: 'update', client_id: 'ivan', body: 'First', context: { prospect_name: 'First person' }, slack_channel: '', created_at: new Date().toISOString(), approved_at: null, sent_at: null, send_blocked_reason: null }
 const b: OpsDraft = { ...a, id: 'b', body: 'Second', context: { prospect_name: 'Second person' } }
 let drafts = [a, b]
 const navigate = vi.fn()
@@ -37,7 +37,7 @@ describe.each([false, true])('Ops confirmation locks the displayed card (ops=%s)
     drafts = [b]; fireEvent.click(document.querySelector('[data-test-refresh]')!)
     expect(document.querySelector('[data-card]')?.getAttribute('data-card')).toBe('a')
     fireEvent.click(document.querySelector('.d-confirm [data-verb="confirm"]')!)
-    await waitFor(() => expect(verb === 'approve' ? lib.approveOpsDraft : lib.discardOpsDraft).toHaveBeenCalledWith(...(verb === 'approve' ? ['a', 'First', 'escalation'] : ['a', 'escalation'])))
+    await waitFor(() => expect(verb === 'approve' ? lib.approveOpsDraft : lib.discardOpsDraft).toHaveBeenCalledWith(...(verb === 'approve' ? ['a', 'First', 'update'] : ['a', 'update'])))
     expect(document.querySelector('[data-card]')?.getAttribute('data-card')).toBe(phone ? undefined : 'b')
   })
 })

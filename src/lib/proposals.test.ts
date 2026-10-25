@@ -255,15 +255,15 @@ describe('an audience proposal is not an ops card (CONTRACTS B2)', () => {
     approved_at: null, sent_at: null, send_blocked_reason: null,
   }
 
-  it('drops the kind from pendingOps and keeps every other pending kind', () => {
+  it('keeps audience proposals and optional client questions outside Operations', () => {
     const rows: OpsDraft[] = [
       { ...base, id: 'esc' },
       { ...base, id: 'audn', kind: 'audn_recommendation', slack_channel: '' },
       { ...base, id: 'task', kind: 'task' },
     ]
-    expect(pendingOps(rows).map(r => r.id)).toEqual(['esc', 'task'])
+    expect(pendingOps(rows).map(r => r.id)).toEqual(['task'])
     // And the DM lane preview, which is built on the same filter.
-    expect(pendingDmLaneOps(rows).map(r => r.id)).toEqual(['esc', 'task'])
+    expect(pendingDmLaneOps(rows).map(r => r.id)).toEqual(['task'])
     expect(isAudnKind('audn_recommendation')).toBe(true)
     expect(isAudnKind('escalation')).toBe(false)
   })

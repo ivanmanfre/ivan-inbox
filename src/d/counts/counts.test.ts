@@ -17,7 +17,7 @@ describe('opsWaitingBySeat (the Ops number, split by seat)', () => {
     const rows = [
       op({ client_id: 'ivan' }), op({ client_id: null as unknown as string }),
       op({ client_id: 'rise', kind: 'booking' }), op({ client_id: 'risedtc', kind: 'update' }),
-      op({ client_id: 'arch', kind: 'escalation' }),
+      op({ client_id: 'arch', kind: 'update' }),
       op({ client_id: 'arch', approved_at: '2026-09-27T08:30:00Z' }),
       op({ client_id: 'ivan', send_blocked_reason: 'discarded_by_operator' }),
     ]

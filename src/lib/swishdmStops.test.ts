@@ -67,6 +67,7 @@ describe('intentional stops are never failed sends (any seat)', () => {
       ['superseded_awaiting_real_scan_2026-08-03', 'Not sent: replaced by another message'],
       ['superseded_by_newer_inbound', 'Not sent: replaced by another message'],
       ['superseded', 'Not sent: replaced by another message'],
+      ['superseded_scan_owed', 'Not sent: blocked, the reply with the scan replaces it'],
     ]
     for (const [reason, label] of cases) {
       const m = blocked(reason, { client_id: 'ivan' })
