@@ -2105,7 +2105,16 @@ export async function restoreConfirmation(id: string, reason: 'owner_confirmatio
 // predicate needs `approved_at IS NOT NULL`. Sending still takes a separate,
 // explicit approve. Full trace:
 // goal-runs/workbench-2026-plan-2026-08-21/phase4a-restore.md
-export async function restoreDraft(id: string): Promise<boolean> {
+export async function restoreDraft(id: string, prospectId?: string): Promise<boolean> {
+  // Quick Undo can outlive another reply. Check current outbound history before reviving this row.
+  if (prospectId) {
+    const { data, error } = await supabase.from('outreach_messages').select('*')
+      .eq('prospect_id', prospectId).eq('direction', 'outbound')
+    if (error) throw error
+    const messages = (data ?? []) as InboxMessage[]
+    const row = messages.find(m => m.id === id)
+    if (!row || !canRestore({ messages }, row)) return false
+  }
   // A SwishDM reply keeps its review hold when it comes back (the shared drafters and the WhatsApp reminder
   // key on send_blocked_at IS NULL). Only the reply writer's rows; every other draft is restored as before.
   const { data: kind } = await supabase.from('outreach_messages').select('ai_model').eq('id', id).maybeSingle()
@@ -2155,7 +2164,7 @@ export function isDiscarded(m: InboxMessage): boolean {
 // by this app as an ISO Z string while sent_at comes back from PostgREST with a
 // +00:00 offset, and those two spellings only sort correctly by luck. Anything
 // unparseable holds the restore rather than allowing it.
-export function canRestore(t: Thread, m: InboxMessage): boolean {
+export function canRestore(t: Pick<Thread, 'messages'>, m: InboxMessage): boolean {
   const at = m.send_blocked_at
   if (at === null || !isDiscarded(m)) return false
   const blockedAt = Date.parse(at)

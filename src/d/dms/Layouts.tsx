@@ -69,7 +69,7 @@ function Pane({ m, phone }: { m: PageModel; phone: boolean }) {
   const tag = m.came.get(t.prospect_id)
   const engagements = m.data.cameBack.rows.find(c => c.prospect_id === t.prospect_id)?.signals
   // Keyed per conversation (Ivan 10-21, Diane O'Brien): no state of one thread's keys carries into another.
-  return <ThreadPane key={t.prospect_id} t={t} auto={m.auto} all={m.threads} phone={phone} verbs={m.verbs} now={m.now} onBack={m.closeThread} v4={m.v4} registerGuard={m.v4 ? m.registerGuard : undefined}
+  return <ThreadPane key={t.prospect_id} t={t} auto={m.auto} all={m.threads} phone={phone} verbs={m.verbs} now={m.now} onBack={m.closeThread} v4={m.v4} registerGuard={m.registerGuard}
     engagements={engagements}
     signal={tag ? <CameSignal tag={tag} onDismiss={() => m.dismissCame(t.prospect_id, t.prospect_name)} /> : null}
     onAsk={() => m.ask(t, 'ask')} onDraftStart={() => m.openThread(t)} onMenu={a => m.onMenu(t, a)} staleN={m.staleBy[seatOf(t.client_id) ?? 'ivan'].length} pre={m.pre} reload={m.data.refreshAll} />
