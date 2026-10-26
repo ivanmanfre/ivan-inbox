@@ -9,6 +9,7 @@ import {
   emailSenderLabel, heldReasonText, isFollowUp, isHeldSend, isStoppedOnPurpose, isSwishdmReply, isSwishdmRow, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft, swishdmPageUrl,
   saveDraftEmail, saveDraftEmailCc, setDraftSendVia, saveDraftText, snoozeDraft, threadChatId, unsnoozeDraft, REPLY_MYSELF, REDRAFT_REASON, requestRedraft,
   findLandedReply, readSendState, type DraftSendVia, type InboxMessage, type SendState, type Thread,
+  type EmailReplyTarget,
 } from '../../lib/inbox'
 import { isNoAnswer } from '../../lib/noAnswer'
 import { clearFollowUp, fetchFollowUp, followUpSuggestion, setFollowUp, type FollowUp } from '../../lib/followUp'
@@ -20,6 +21,8 @@ import { useToast } from '../ui/toast'
 import { useAsks } from './asks'
 import { canMarkSolved, writeSolved } from './solved'
 import { watchSend } from './sendWatch'
+import { splitEmailDraft } from '../../lib/emailSubject'
+import { emailRowSender } from '../../lib/inbox'
 
 export type Edits = { main: string; email: string | null; companion: string | null; cc?: string; companionCc?: string }
 
@@ -461,11 +464,12 @@ export function useDmVerbs(ctx: VerbCtx) {
       return null
     }
 
-    async function compose(t: Thread, text: string): Promise<boolean> {
+    async function compose(t: Thread, text: string, emailTarget?: EmailReplyTarget): Promise<boolean> {
       const body = text.trim()
       if (!body) return false
       {
-        const ok = await confirm({ title: `Send this to ${t.prospect_name}?`, message: 'Your own words, not a reviewed draft. The sender picks it up within about 2 minutes.', confirmText: 'Send it', verb: 'confirm-compose' })
+        const details = emailTarget ? `From: ${emailRowSender(t.client_id)}\nTo: ${emailTarget.recipient_email}\nSubject: ${emailTarget.subject ?? splitEmailDraft(emailTarget.message_text_prefix).subject}\n\n${body}` : 'The sender picks it up within about 2 minutes.'
+        const ok = await confirm({ title: `Send this to ${t.prospect_name}?`, message: emailTarget ? createElement('span', { style: { display: 'block', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxHeight: '50vh', overflowY: 'auto' } }, details) : details, confirmText: 'Send it', verb: 'confirm-compose' })
         if (!ok) return false
       }
       const pid = t.prospect_id
@@ -478,7 +482,7 @@ export function useDmVerbs(ctx: VerbCtx) {
         if (hit) failed = await discardLegs(draftLegs(t)).catch(() => [])
       }
       if (!failed) {
-        try { failed = await composeReply(t, body) } catch (e) {
+        try { failed = emailTarget ? await composeReply(t, body, emailTarget) : await composeReply(t, body) } catch (e) {
           if (!isNoAnswer(e)) { fail(errText(e)); return false }
           composeUnsure.set(pid, body)
           const hit = await already()

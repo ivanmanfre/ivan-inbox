@@ -3,6 +3,7 @@ import { label } from './labels'
 import { supabase } from './supabase'
 import { bounded } from './noAnswer'
 import { STAGE_LADDER, stageIsOff, stageStep } from '../exp/v2c/stage'
+import type { EmailDetails, EmailMetadata } from './emailPresentation'
 
 export type InboxMessage = {
   id: string; prospect_id: string; direction: 'inbound' | 'outbound';
@@ -60,6 +61,8 @@ export type InboxMessage = {
   // dispatcher ALSO email the scan to this address (rise_dm2_scan_delivery_v1 rows).
   recipient_email?: string | null;
   email_cc?: string[] | null;
+  email_details?: EmailDetails;
+  email_details_unavailable?: boolean;
   email_delivery_recipient?: string | null;
   send_via?: DraftSendVia | null;
   // The exact email body the dispatcher will send (composed + stored by the
@@ -1628,6 +1631,7 @@ export type DraftEvidence = {
   dm_queue?: { state?: string | null } | null
   stopped?: unknown
   email_subject?: string | null
+  email_headers?: Record<string, string> | null
   email_cc?: string[] | null
   email_delivery_recipient?: string | null
   send_via?: DraftSendVia | null
@@ -1638,7 +1642,7 @@ export type DraftEvidence = {
   retry_after?: string | null
   generated_text?: string | null
   // Mirror email's exact full body (including Subject:), never the DM snapshot.
-  email?: { generated_text?: string | null } | null
+  email?: EmailMetadata | null
   brief?: {
     they_mean?: string | null; the_move?: string | null; limits_to_name?: string | null; unresolved?: string[] | null
     // The planner's read of whether THIS inbound asked to be contacted again later
@@ -2217,41 +2221,49 @@ export function canComposeEmail(t: Thread): boolean {
   return t.client_id === 'arch'
 }
 
-type EmailReplyTarget = { recipient_email: string; message_text_prefix: string; email_headers?: Record<string, string> }
+export type EmailReplyTarget = { recipient_email: string; message_text_prefix: string; email_headers?: Record<string, string>; subject?: string; source_message_id?: string }
 
 // The reply goes to whoever last emailed us on this thread, as "Re: <their subject>", with
 // In-Reply-To/References so it lands under their message. Send Messages sends it from the
 // client identity (Davorin from ARCH <davorin@madebyarch.com>).
 export async function emailReplyTarget(prospectId: string): Promise<EmailReplyTarget> {
   const { data, error } = await supabase.from('outreach_messages')
-    .select('direction,recipient_email,draft_evidence,message_text')
+    .select('id,direction,recipient_email,draft_evidence,message_text')
     .eq('prospect_id', prospectId).eq('channel', 'email').not('recipient_email', 'is', null)
     .order('sent_at', { ascending: false, nullsFirst: false }).limit(10)
   if (error) throw error
-  const rows = (data ?? []) as { direction: string; recipient_email: string; draft_evidence: { email?: { subject?: string; message_id?: string; references?: string } } | null; message_text: string }[]
+  const rows = (data ?? []) as { id: string; direction: string; recipient_email: string; draft_evidence: { email_subject?: string; email?: { subject?: string; message_id?: string; references?: string } } | null; message_text: string }[]
   const inbound = rows.find(r => r.direction === 'inbound')
   const row = inbound ?? rows[0]
   if (!row) throw new Error('No email address on this thread, so the reply was not queued.')
   const em = inbound?.draft_evidence?.email ?? {}
   const firstLine = (row.message_text ?? '').split('\n')[0] ?? ''
-  const baseSubject = (em.subject || (/^subject:/i.test(firstLine) ? firstLine.replace(/^subject:\s*/i, '') : '') || 'Following up').trim()
+  const baseSubject = (em.subject || row.draft_evidence?.email_subject || (/^subject:/i.test(firstLine) ? firstLine.replace(/^subject:\s*/i, '') : '') || 'Following up').replace(/[\r\n]+/g, ' ').trim()
   const subject = /^re:/i.test(baseSubject) ? baseSubject : `Re: ${baseSubject}`
   const mid = (em.message_id ?? '').trim()
   return {
     recipient_email: String(row.recipient_email).split(/[,;\s]+/).filter(Boolean)[0],
+    subject, source_message_id: row.id,
     message_text_prefix: `Subject: ${subject}\n\n`,
     ...(mid ? { email_headers: { 'In-Reply-To': mid, References: `${(em.references ?? '').trim()} ${mid}`.trim() } } : {}),
   }
 }
 
-export async function composeReply(t: Thread, text: string): Promise<LegFailure[]> {
+export async function composeReply(t: Thread, text: string, expectedEmail?: EmailReplyTarget): Promise<LegFailure[]> {
   const isEmail = t.channel === 'email'
   if (isEmail && !canComposeEmail(t)) throw new Error('Email compose is only on for ARCH threads.')
   const target = isEmail ? await emailReplyTarget(t.prospect_id) : null
+  if (target && expectedEmail && (target.recipient_email !== expectedEmail.recipient_email
+    || target.message_text_prefix !== expectedEmail.message_text_prefix
+    || JSON.stringify(target.email_headers ?? {}) !== JSON.stringify(expectedEmail.email_headers ?? {})
+    || (expectedEmail.source_message_id && target.source_message_id !== expectedEmail.source_message_id))) {
+    throw new Error('The email conversation changed. Refresh email details and review the reply before sending.')
+  }
   const manualRevision = await takeOwnershipBeforeManualReply(t.prospect_id)
   const evidence = {
     ...(manualRevision === null ? {} : { conversation_agent_manual_revision: manualRevision }),
     ...(target?.email_headers ? { email_headers: target.email_headers } : {}),
+    ...(target ? { email_subject: target.subject, email_reply_to_message_id: target.source_message_id } : {}),
   }
   const { error } = await supabase.from('outreach_messages').insert({
     prospect_id: t.prospect_id, direction: 'outbound',

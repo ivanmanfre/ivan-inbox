@@ -1,0 +1,21 @@
+name: Email regressions
+on:
+  pull_request:
+    paths:
+      - 'src/d/dms/**'
+      - 'src/lib/inbox.ts'
+      - 'src/lib/email*'
+      - '.github/workflows/email-regression.yml'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  email:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - name: Check email presentation and reply transport
+        run: npm test -- src/lib/emailPresentation.test.ts src/lib/emailDetails.test.ts src/lib/emailReplyTransport.test.ts src/lib/emailSubject.test.ts src/lib/emailCc.test.ts src/lib/inboxManual.test.ts src/d/dms/EmailPresentation.test.tsx src/d/dms/EmailComposer.test.tsx src/d/dms/EmailMessage.test.tsx src/d/dms/verbs.test.tsx src/d/dms/parity.test.tsx --maxWorkers=2

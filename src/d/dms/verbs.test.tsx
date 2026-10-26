@@ -20,6 +20,7 @@ vi.mock('../../lib/inbox', async orig => {
 vi.mock('../../lib/followUp', async orig => ({ ...(await orig<typeof import('../../lib/followUp')>()), fetchFollowUp: vi.fn(async () => null), setFollowUp: vi.fn(async () => {}) }))
 vi.mock('../../lib/context', async orig => ({ ...(await orig<typeof import('../../lib/context')>()), fetchProspectContext: vi.fn(async () => ({ location: 'London, United Kingdom' })) }))
 vi.mock('../../lib/dmSchedule', async orig => ({ ...(await orig<typeof import('../../lib/dmSchedule')>()), scheduleDm: vi.fn(async () => {}) }))
+vi.mock('../../lib/emailDetails', () => ({ fetchEmailDetails: vi.fn(async () => []) }))
 
 vi.mock('../../lib/rejectedDm', async orig => ({ ...(await orig<typeof import('../../lib/rejectedDm')>()), sendRejectedDm: vi.fn(async () => {}), editHeldDm: vi.fn(async () => {}) }))
 import { editHeldDm, sendRejectedDm } from '../../lib/rejectedDm'
@@ -74,15 +75,16 @@ describe('direct email reply', () => {
     const t = emailThread()
     mount(t)
     fireEvent.click(screen.getByRole('button', { name: 'Reply by email' }))
-    const input = screen.getByRole('textbox', { name: 'Write to Ofir yourself' })
+    const input = screen.getByRole('textbox', { name: 'Email reply' })
     expect(document.activeElement).toBe(input)
     expect(lib.composeReply).not.toHaveBeenCalled()
-    await waitFor(() => expect(screen.getByText(/From davorin@madebyarch.com/).textContent).toContain('ofir.b@doktorabc.com'))
+    await waitFor(() => expect(document.querySelector('.dm-email-composer')!.textContent).toContain('ofir.b@doktorabc.com'))
+    expect(screen.getByText('Re: Meeting')).toBeTruthy()
     fireEvent.change(input, { target: { value: 'Thursday works for me.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send email' }))
     expect(lib.composeReply).not.toHaveBeenCalled()
     fireEvent.click(await screen.findByText('Send it'))
-    await waitFor(() => expect(lib.composeReply).toHaveBeenCalledWith(expect.objectContaining({ prospect_id: 'ofir', channel: 'email' }), 'Thursday works for me.'))
+    await waitFor(() => expect(lib.composeReply).toHaveBeenCalledWith(expect.objectContaining({ prospect_id: 'ofir', channel: 'email' }), 'Thursday works for me.', expect.objectContaining({ recipient_email: 'ofir.b@doktorabc.com', message_text_prefix: 'Subject: Re: Meeting\n\n' })))
   })
 
   it('keeps email reply unavailable for an unsupported sender', () => {
@@ -93,14 +95,15 @@ describe('direct email reply', () => {
   it('can reply to received email before a LinkedIn connection is accepted', () => {
     mount({ ...emailThread(), stage: 'engaged' })
     fireEvent.click(screen.getByRole('button', { name: 'Reply by email' }))
-    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Write to Ofir yourself' }))
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Email reply' }))
   })
 
   it('shows the email delivery identity even before the reply button is clicked', async () => {
     const t = { ...emailThread(), channel: 'email' as const }
     mount(t)
-    fireEvent.focus(screen.getByRole('textbox', { name: 'Write to Ofir yourself' }))
-    await waitFor(() => expect(screen.getByText(/From davorin@madebyarch.com/).textContent).toContain('ofir.b@doktorabc.com'))
+    fireEvent.focus(screen.getByRole('textbox', { name: 'Email reply' }))
+    await waitFor(() => expect(document.querySelector('.dm-email-composer')!.textContent).toContain('ofir.b@doktorabc.com'))
+    expect(document.querySelector('.dm-email-composer')!.textContent).toContain('davorin@madebyarch.com')
     expect(screen.queryByText(/Davorin's LinkedIn/)).toBeNull()
   })
 
@@ -108,14 +111,14 @@ describe('direct email reply', () => {
     vi.mocked(lib.emailReplyTarget).mockResolvedValueOnce({ recipient_email: 'colleague@doktorabc.com', message_text_prefix: 'Subject: Re: Meeting\n\n' })
     mount(emailThread())
     fireEvent.click(screen.getByRole('button', { name: 'Reply by email' }))
-    await waitFor(() => expect(screen.getByText(/From davorin@madebyarch.com/).textContent).toContain('colleague@doktorabc.com'))
+    await waitFor(() => expect(document.querySelector('.dm-email-composer')!.textContent).toContain('colleague@doktorabc.com'))
   })
 
   it('keeps the text but blocks email submission when the recipient cannot be loaded; offers retry', async () => {
     vi.mocked(lib.emailReplyTarget).mockRejectedValueOnce(new Error('Email lookup failed'))
     mount(emailThread())
     fireEvent.click(screen.getByRole('button', { name: 'Reply by email' }))
-    const input = screen.getByRole('textbox', { name: 'Write to Ofir yourself' })
+    const input = screen.getByRole('textbox', { name: 'Email reply' })
     fireEvent.change(input, { target: { value: 'Thursday works.' } })
     await screen.findByText('Email lookup failed')
     expect((screen.getByRole('button', { name: 'Send email' }) as HTMLButtonElement).disabled).toBe(true)
