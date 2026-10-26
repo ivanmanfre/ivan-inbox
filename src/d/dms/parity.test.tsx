@@ -119,7 +119,7 @@ describe('RestoreStrip', () => {
 
 import { History } from './History'
 describe('History', () => {
-  it('links are live, a sent email says To <email>, a pending invite note says Not accepted yet, bubbles split', () => {
+  it('keeps email links and recipients visible beside a pending LinkedIn invite', () => {
     const rows = [
       msg({ prospect_id: 'h', prospect_name: 'Hana', prospect_stage: 'connection_sent', message_type: 'connection_note', channel: 'linkedin', message_text: 'Hi Hana', sent_at: new Date(NOW - 9e7).toISOString(), created_at: new Date(NOW - 9e7).toISOString() }),
       msg({ prospect_id: 'h', prospect_name: 'Hana', prospect_stage: 'connection_sent', channel: 'email', recipient_email: 'hana@x.com', message_text: 'See inboundonsteroids.com/scan/hana\n---\nSecond bubble', sent_at: new Date(NOW - 8e7).toISOString(), created_at: new Date(NOW - 8e7).toISOString() }),
@@ -129,8 +129,11 @@ describe('History', () => {
     const a = document.querySelector('.dm-hist a') as HTMLAnchorElement
     expect(a.href).toBe('https://inboundonsteroids.com/scan/hana')
     const text = document.querySelector('.dm-hist')!.textContent!
-    expect(text).toContain('To hana@x.com')
+    const email = document.querySelector('.dm-email-history')!
+    expect(email.textContent).toContain('hana@x.com')
+    expect(email.querySelector('.dm-email-field-name')!.textContent).toBe('From')
     expect(text).toContain('Not accepted yet')
-    expect(document.querySelectorAll('.dm-bub').length).toBeGreaterThanOrEqual(2)
+    expect(email.querySelector('.dm-email-body')!.textContent).toBe('See inboundonsteroids.com/scan/hana\n---\nSecond bubble')
+    expect(email.classList.contains('dm-b')).toBe(false)
   })
 })

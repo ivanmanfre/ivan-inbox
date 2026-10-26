@@ -1,0 +1,58 @@
+/* Native email sheets stay scoped to email, including inside the v4 conversation. */
+.dm-email-history,.dm-email-editor,.dm-email-composer{min-width:0;font:400 14px/1.5 Arial,Helvetica,system-ui,sans-serif;color:#202124}
+.dm-hist>.dm-email-history.dm-h-email{align-self:stretch;width:100%;max-width:100%;margin:12px 0 4px;box-sizing:border-box;display:block}
+.dm-email-sheet{background:#fff;color:#202124;border:1px solid #dadce0;border-radius:10px;box-shadow:0 1px 3px #16181a0c,inset 0 1px #fff;overflow:hidden;font:400 14px/1.5 Arial,Helvetica,system-ui,sans-serif;text-align:left;min-width:0}
+.dm-email-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 20px 12px}
+.dm-email-heading h3{margin:0;font:400 20px/1.35 Arial,Helvetica,system-ui,sans-serif;color:#202124;overflow-wrap:anywhere;min-width:0}
+.dm-email-state{flex:none;font:400 11px/1.5 Arial,Helvetica,system-ui,sans-serif;color:#5f6368;background:#f1f3f4;border-radius:4px;padding:2px 6px;max-width:45%;overflow-wrap:anywhere}
+.dm-email-envelope-fields{padding:0 20px 14px;color:#5f6368;font-size:12px;border-bottom:1px solid #f1f3f4}
+.dm-email-from{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.dm-email-from>div{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px;min-width:0;flex:1;overflow-wrap:anywhere}
+.dm-email-from strong{font-weight:600;color:#202124}
+.dm-email-from time{margin-left:auto;font:400 11px/1.5 Arial,Helvetica,system-ui,sans-serif;color:#5f6368;white-space:nowrap}
+.dm-email-field{display:flex;gap:12px;align-items:baseline;min-width:0;overflow-wrap:anywhere}
+.dm-email-field-name{width:44px;flex:none;color:#5f6368;font-weight:400}
+.dm-email-field>span:last-child{min-width:0;overflow-wrap:anywhere}
+.dm-email-body{padding:20px;white-space:pre-wrap;overflow-wrap:anywhere;font:400 14px/1.65 Arial,Helvetica,system-ui,sans-serif;color:#202124}
+.dm-email-body-html{white-space:normal}
+.dm-email-body a.d-link{color:#1a73e8;text-decoration:underline;overflow-wrap:anywhere}
+.dm-email-muted{color:#5f6368}
+.dm-email-history .dm-b-meta{justify-content:flex-start;margin-top:5px}
+.dm-email-history .dm-held-why{text-align:left}
+.dm-email-history .dm-email-actions,.dm-email-history .dm-rejected-actions{display:flex;flex-wrap:wrap;gap:8px}
+.dm-email-history .dm-email-reply{font:400 13px/1.4 Arial,Helvetica,system-ui,sans-serif;background:#fff;color:#3c4043;border:1px solid #dadce0;border-radius:18px;padding:7px 16px;min-height:36px}
+.dm-email-history[data-held] .dm-email-sheet{border-color:#b06000}
+.dm-email-history[data-pending] .dm-email-state{color:#5f6368;background:#f1f3f4}
+.dm-email-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;font:400 12px/1.5 Arial,Helvetica,system-ui,sans-serif;color:var(--t2,#5f6368)}
+.dm-email-toolbar>div{display:flex;gap:6px}
+.dm-email-toolbar button,.dm-email-error button{border:1px solid #dadce0;border-radius:5px;background:#fff;color:#3c4043;padding:5px 10px;min-height:32px;font:400 12px/1.5 Arial,Helvetica,system-ui,sans-serif;cursor:pointer}
+.dm-email-edit-fields{padding:4px 18px 0}
+.dm-email-edit-fields .dm-email-field{padding:9px 0;border-bottom:1px solid #eceff1;margin:0;font:400 13px/1.5 Arial,Helvetica,system-ui,sans-serif;color:#202124}
+.dm-email-edit-fields .dm-email-field:last-child{border-bottom:0}
+.dm-email-edit-fields input{min-width:0;width:100%;flex:1;background:transparent;border:0;outline:0;padding:0;border-radius:0;color:#202124;font:400 13px/1.5 Arial,Helvetica,system-ui,sans-serif;box-shadow:none}
+.dm-email-edit-fields input::placeholder{color:#757575}
+.dm-email-editor .dm-email-sheet .dm-email-textarea,.dm-email-composer .dm-email-sheet .dm-email-textarea{display:block;box-sizing:border-box;width:100%;max-width:100%;min-height:150px;max-height:440px;resize:vertical;margin:0;padding:18px;border:0;border-top:1px solid #eceff1;border-radius:0;background:#fff;color:#202124;font:400 14px/1.65 Arial,Helvetica,system-ui,sans-serif;outline:0;white-space:pre-wrap}
+.dm-email-textarea:disabled{color:#5f6368;background:#f8f9fa}
+.dm-email-sheet:focus-within{border-color:#8ab4f8}
+.dm-email-sheet input:focus-visible,.dm-email-sheet textarea:focus-visible{outline:2px solid #1a73e8;outline-offset:-2px}
+.dm-email-error{margin:8px 0;color:#a13024;font:400 12px/1.5 Arial,Helvetica,system-ui,sans-serif}
+.dm-email-error button{margin-left:8px}
+.dm-email-composer-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:8px;color:var(--t2,#5f6368);font:400 11px/1.5 Arial,Helvetica,system-ui,sans-serif}
+.dm-email-composer .dm-email-send{font:500 13px/1.5 Arial,Helvetica,system-ui,sans-serif;border:0;border-radius:5px;background:#1a73e8;color:#fff;padding:8px 20px;min-height:44px;cursor:pointer}
+.dm-email-composer .dm-email-sheet{max-height:min(52dvh,560px);overflow-y:auto}
+.dm-email-composer button:disabled{opacity:.5;cursor:default}
+.dm-email-composer button:focus-visible,.dm-email-editor button:focus-visible,.dm-email-history button:focus-visible{outline:2px solid #1a73e8;outline-offset:2px}
+.dm-pane .dm-native-email-draft{width:auto;max-width:none;margin:12px 18px 0;padding:0;border:0;background:transparent;border-radius:0}
+.dx-card .dm-native-email-draft{margin:0;padding:12px 14px}
+.dm-pane .dm-leg.dm-email-leg{width:auto;max-width:none;margin:10px 18px 0}
+.dx-card .dm-leg.dm-email-leg{margin:0;padding:12px 14px}
+@media(max-width:600px){
+  .dm-email-toolbar button,.dm-email-error button,.dm-email-history .dm-email-reply{min-height:44px}
+  .dm-email-heading{padding:14px 14px 10px;gap:8px}.dm-email-heading h3{font-size:18px}
+  .dm-email-envelope-fields{padding:0 14px 12px}.dm-email-body{padding:16px 14px}
+  .dm-email-from time{width:100%;margin:2px 0 0 56px;white-space:normal}
+  .dm-email-edit-fields{padding:4px 14px 0}
+  .dm-email-editor .dm-email-sheet .dm-email-textarea,.dm-email-composer .dm-email-sheet .dm-email-textarea,.dm-email-edit-fields input{font-size:16px}
+  .dm-pane .dm-native-email-draft,.dm-pane .dm-leg.dm-email-leg{margin-left:12px;margin-right:12px}
+  .dx-card .dm-native-email-draft,.dx-card .dm-leg.dm-email-leg{margin:0}
+}

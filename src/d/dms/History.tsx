@@ -19,6 +19,8 @@ import { seatOf } from '../seats'
 import { isReaction } from './model'
 import { Grow } from './Draft'
 import { engagementSignals, type CameBackSignal } from '../../wb/dms/cameBackData'
+import { emailDetails } from '../../lib/emailPresentation'
+import { EmailPreview } from './EmailMessage'
 
 export function kindPill(m: InboxMessage): string | null {
   if (m.ai_model === 'lm_gate_v1') return 'Lead magnet'
@@ -212,7 +214,6 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
         const pend = isPendingSend(m)
         const at = pend ? shownTime(m) : timelineTime(m)
         const before = evLines(pend ? Infinity : Date.parse(timelineTime(m)))
-        const addr = email ? emailAddrLine(m) : null
         const d = pend ? day : warsawDay(timelineTime(m))
         const newDay = d !== day
         day = d
@@ -237,6 +238,7 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
         if (showMeta && showKind) runShown = kind
         if (fresh && !s0.ids.has(m.id)) s0.arrived.add(m.id)
         const arrive = v4 && s0.arrived.has(m.id)
+        const envelope = email ? emailDetails(m, t) : null
         if (isUnreachableSend(m)) return (
           <Fragment key={m.id}>
             {before}
@@ -257,26 +259,25 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
           <Fragment key={m.id}>
             {before}
             {newDay && <div className="dm-day" role="separator"><span>{warsawDayWord(timelineTime(m), now)}</span></div>}
-            <div className={`dm-b dm-b-${side} dm-h-whole${pend ? ' dm-h-pending' : ''}${inb ? ' dm-h-in' : ''}${st?.fail ? ' dm-h-fail' : ''}${held ? ' dm-h-held' : ''}${edit ? ' dm-h-editing' : ''}${email ? ' dm-h-email' : ''}${firstOfRun ? ' dm-b-first' : ''}${v4 && last ? ' dx-b-last' : ''}${arrive ? ' dx-arrive' : ''}`}
+            <div className={`${email ? 'dm-email-history dm-h-email' : `dm-b dm-b-${side}`} dm-h-whole${pend ? ' dm-h-pending' : ''}${inb ? ' dm-h-in' : ''}${st?.fail ? ' dm-h-fail' : ''}${held ? ' dm-h-held' : ''}${edit ? ' dm-h-editing' : ''}${firstOfRun ? ' dm-b-first' : ''}${v4 && last ? ' dx-b-last' : ''}${arrive ? ' dx-arrive' : ''}`}
               data-msg={m.id} data-channel={email ? 'email' : undefined} data-side={side} data-pending={pend ? '' : undefined} data-held={held ? '' : undefined}
               title={v4 ? [kind, st?.text, reaction ? 'reaction' : null, at ? warsawHm(at) : null].filter(Boolean).join(' · ') : undefined}>
-              {firstOfRun && <b className="dm-b-who">{inb ? first : ours}</b>}
-              {edit ? <div className="dm-b-body dm-b-draft dm-held-edit" data-held-edit={m.id}>
+              {firstOfRun && !email && <b className="dm-b-who">{inb ? first : ours}</b>}
+              {envelope && !edit ? <EmailPreview details={{ ...envelope, date: pend ? at : envelope.date ?? at }} state={st?.text ?? (inb ? 'Received' : 'Sent')} /> : edit ? <div className="dm-b-body dm-b-draft dm-held-edit" data-held-edit={m.id}>
                 <Grow autosave={false} value={edit.text} max={360} label={`Edit the held message to ${first}`} onChange={text => setEditing({ id: m.id, text })}
                   onKeyDown={e => { if (e.key === 'Escape' && !editBusy) { e.preventDefault(); setEditing(null) } }} />
               </div> : <div className="dm-b-body">
-                {addr && <small className="dm-h-addr">{addr}</small>}
                 {blank ? <em className="dm-b-blank">Invite sent with no note, by design</em> : parts.length === 0 ? <em className="dm-b-blank">Message text unavailable</em>
                   : parts.map((p, i) => <span key={i} className="dm-bub">{i > 0 && <br />}<Linkified text={p} /></span>)}
               </div>}
-              {showMeta ? <div className="dm-b-meta">
-                {showKind && <i>{kind}</i>}
-                {st && <i className={st.fail ? 'dm-i-fail' : undefined}>{st.text}</i>}
+              {showMeta && (!email || firstObs || latestObs) ? <div className="dm-b-meta">
+                {showKind && !email && <i>{kind}</i>}
+                {st && !email && <i className={st.fail ? 'dm-i-fail' : undefined}>{st.text}</i>}
                 {reaction && <i>reaction</i>}
                 {firstObs && <i>{v4 ? `Replied after ${touchLabel(source.data.first_reply!.touch)}` : `First observed reply · ${touchLabel(source.data.first_reply!.touch)}`}</i>}
                 {latestObs && <i>Latest observed reply · {touchLabel(source.data.latest_reply!.touch)}</i>}
-                {at && <time dateTime={at}>{warsawHm(at)}</time>}
-              </div> : at ? <time className="dx-sr" dateTime={at}>{warsawHm(at)}</time> : null}
+                {at && !email && <time dateTime={at}>{warsawHm(at)}</time>}
+              </div> : at && !email ? <time className="dx-sr" dateTime={at}>{warsawHm(at)}</time> : null}
               {held && <p className="dm-held-why" role="note">{heldWhy(m)}</p>}
               {edit ? <div className="dm-rejected-actions">
                 <button type="button" className="dm-email-reply dm-held-key" data-verb="held-edit-cancel" disabled={editBusy} onClick={() => setEditing(null)}>Cancel</button>

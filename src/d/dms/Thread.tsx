@@ -37,6 +37,10 @@ import { ThreadV4 } from './v4/ThreadV4'
 import { useStickToEnd } from './v4/motion'
 import { useToast } from '../ui/toast'
 import { draftJobOf, holdPane, paneBusy, setDraftJob, useDraftJob, usePaneBusy } from './paneBusy'
+import { useEmailDetails } from './useEmailDetails'
+import { EmailComposer } from './EmailComposer'
+import { splitEmailDraft } from '../../lib/emailSubject'
+import type { EmailReplyTarget } from '../../lib/inbox'
 
 const FROM: Record<string, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan' }
 
@@ -58,7 +62,7 @@ export async function copyText(s: string): Promise<boolean> {
   try { await navigator.clipboard.writeText(s); return true } catch { window.prompt('Copy this link', s); return false }
 }
 
-export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, onAsk, onDraftStart, onMenu, staleN, pre, reload, signal, engagements, v4 = false, registerGuard }: {
+export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, now, onBack, onAsk, onDraftStart, onMenu, staleN, pre, reload, signal, engagements, v4 = false, registerGuard }: {
   t: T; auto?: boolean; all: readonly T[]; phone: boolean; verbs: DmVerbs; now: number
   onBack: () => void; onAsk: () => void
   onDraftStart?: () => void
@@ -72,13 +76,14 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
   /** Brief 4: where this pane registers its unsaved check (SPEC-dms §3.4). Only given under v4. */
   registerGuard?: (f: (() => boolean) | null) => void
 }) {
+  const { thread: t, error: emailDetailsError, retry: retryEmailDetails } = useEmailDetails(sourceThread)
   const [edits, setEdits] = useState<Edits>(() => seed(t))
   const [reply, setReply] = useState('')
   const [schedule, setSchedule] = useState<ScheduleTarget | null>(null)
   const [forwardEmail, setForwardEmail] = useState<InboxMessage | null>(null)
   const [scheduleFailure, setScheduleFailure] = useState('')
   const [emailReplyFor, setEmailReplyFor] = useState<string | null>(null)
-  const [emailTarget, setEmailTarget] = useState<{ key: string; address?: string; error?: string } | null>(null)
+  const [emailTarget, setEmailTarget] = useState<{ key: string; address?: string; target?: EmailReplyTarget; error?: string } | null>(null)
   const [emailRetry, setEmailRetry] = useState(0)
   const dock = useRef<HTMLDivElement>(null)
   // Per prospect, not per pane (paneBusy.ts): a write still running on another thread never greys this one.
@@ -154,7 +159,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     let current = true
     setEmailTarget(null)
     void emailReplyTarget(t.prospect_id).then(target => {
-      if (current) setEmailTarget({ key: emailKey, address: target.recipient_email })
+      if (current) setEmailTarget({ key: emailKey, address: target.recipient_email, target })
     }).catch(e => {
       if (current) setEmailTarget({ key: emailKey, error: e instanceof Error ? e.message : 'Could not load the email recipient.' })
     })
@@ -254,7 +259,7 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
       expectedDelivery: legs.map((m, i) => deliverySnapshot({ ...m, email_mirror_text: i === 0 ? edits.email ?? m.email_mirror_text : m.email_mirror_text, email_cc: i === 0 && edits.cc !== undefined ? parseEmailCc(edits.cc) : i === 1 && edits.companionCc !== undefined ? parseEmailCc(edits.companionCc) : m.email_cc })) })
   })
   const later = () => run(async () => { saver.cancel(); await verbs.later(t, edits); setFuTick(x => x + 1) })
-  const compose = () => run(async () => { if (!composeOff && !emailBlocked && await verbs.compose(replyThread, reply)) setReply('') })
+  const compose = () => run(async () => { if (!composeOff && !emailBlocked && await verbs.compose(replyThread, reply, replyingByEmail ? resolvedEmail?.target : undefined)) setReply('') })
   const menuRun = (a: MenuAct) => {
     if (a === 'context') setSheet('context')
     else if (a === 'agent') setSheet('agent')
@@ -310,6 +315,14 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
     onForwardEmail={['arch', 'risedtc'].includes(t.client_id) && !busy ? setForwardEmail : undefined} />
   const historyView = referredLead && !t.messages.some(m => m.direction === 'inbound')
     ? <details className="dm-referral-history"><summary>Sent messages</summary>{history}</details> : history
+  const emailError = emailDetailsError && <p className="dm-meta" role="alert">{emailDetailsError} <Btn className="dm-k" onClick={retryEmailDetails}>Refresh email details</Btn></p>
+  const composer = (noSend: boolean) => replyingByEmail
+    ? <EmailComposer from={emailRowSender(t.client_id)} to={resolvedEmail?.address ?? null}
+        subject={resolvedEmail?.target?.subject ?? splitEmailDraft(resolvedEmail?.target?.message_text_prefix ?? '').subject}
+        replyToMessageId={resolvedEmail?.target?.email_headers?.['In-Reply-To']} value={reply} setValue={setReply}
+        busy={busy} disabled={composeOff} noSend={noSend} error={resolvedEmail?.error}
+        onRetry={() => setEmailRetry(n => n + 1)} onSend={() => void compose()} />
+    : <Composer to={first} from={from} big={emailReplyFor === t.prospect_id} noSend={noSend} note={composeNote} sendLabel={composeLabel} disabled={composeOff} value={reply} setValue={setReply} busy={busy || emailBlocked} onSend={() => void compose()} />
 
   if (v4) {
     // Same closures, same keys; only the arrangement and the one-primary rule differ (SPEC-dms §2.5):
@@ -341,17 +354,17 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         {scheduledPending && <ScheduledSends t={t} reload={reload} onEdit={setSchedule} />}
       </>}
       status={<>
+        {emailError}
         {calendar}
         {draftRunning && <p className="dm-meta dx-status" role="status"><span className="dx-busy">Reading the conversation and writing a draft. It will appear here for review.</span></p>}
         {scheduleFailure && <p className="dm-meta" role="alert">{scheduleFailure}</p>}
         {draftError && <p className="dm-meta" role="alert">{draftError}</p>}
         {redraftFor === t.prospect_id && hasDraft && canDraftAgain(t) && <RedraftAsk busy={busy} onCancel={() => setRedraftFor(null)}
           onSend={note => void run(async () => { saver.cancel(); if (!(await verbs.redraft(t, note, edits))) setRedraftFor(null) })} />}
-        {replyingByEmail && resolvedEmail?.error && <div className="dm-meta" role="alert"><span>{resolvedEmail.error}</span> <Btn className="dm-k" onClick={() => setEmailRetry(n => n + 1)}>Retry email details</Btn></div>}
       </>}
       keys={<>{scheduleKey}{small}{more}</>}
       primary={sendV4}
-      composer={!t.spam && <Composer to={first} from={from} big={emailReplyFor === t.prospect_id} noSend={!hasDraft} note={composeNote} sendLabel={composeLabel} disabled={composeOff} value={reply} setValue={setReply} busy={busy || emailBlocked} onSend={() => void compose()} />}
+      composer={!t.spam && composer(!hasDraft)}
       foot={t.spam && <div className="dm-foot">Filed as a vendor pitch.</div>}
       overlays={<>
         {menu && <ThreadMenu t={t} phone={phone} up={menu === 'keys'} withAsk={phone} staleN={staleN} onClose={() => setMenu(null)} run={menuRun} />}
@@ -380,19 +393,19 @@ export function ThreadPane({ t, auto = false, all, phone, verbs, now, onBack, on
         {scheduledPending && <ScheduledSends t={t} reload={reload} onEdit={setSchedule} />}
       </div>
       <div className="dm-dock" ref={dock}>
+        {emailError}
         {calendar}
         {draftRunning && <p className="dm-meta" role="status">Reading the conversation and writing a draft. It will appear here for review.</p>}
         {scheduleFailure && <p className="dm-meta" role="alert">{scheduleFailure}</p>}
         {draftError && <p className="dm-meta" role="alert">{draftError}</p>}
         {redraftFor === t.prospect_id && hasDraft && canDraftAgain(t) && <RedraftAsk busy={busy} onCancel={() => setRedraftFor(null)}
           onSend={note => void run(async () => { saver.cancel(); if (!(await verbs.redraft(t, note, edits))) setRedraftFor(null) })} />}
-        {replyingByEmail && resolvedEmail?.error && <div className="dm-meta" role="alert"><span>{resolvedEmail.error}</span> <Btn className="dm-k" onClick={() => setEmailRetry(n => n + 1)}>Retry email details</Btn></div>}
-        {!hasDraft && !t.spam && <Composer to={first} from={from} big={emailReplyFor === t.prospect_id} noSend note={composeNote} sendLabel={composeLabel} disabled={composeOff} value={reply} setValue={setReply} busy={busy || emailBlocked} onSend={() => void compose()} />}
+        {!hasDraft && !t.spam && composer(true)}
         <div className="dm-keys">
           <div className="dm-keys-s">{!t.spam && !swishReply && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim()) && <Btn verb="schedule-send" className="dm-k dm-schedule-key" disabled={busy} onClick={() => void openSchedule()}>{reply.trim() ? 'Schedule reply' : 'Schedule send'}</Btn>}{small}{more}</div>
           {primary}
         </div>
-        {hasDraft && !t.spam && <Composer to={first} from={from} big={emailReplyFor === t.prospect_id} note={composeNote} sendLabel={composeLabel} disabled={composeOff} value={reply} setValue={setReply} busy={busy || emailBlocked} onSend={() => void compose()} />}
+        {hasDraft && !t.spam && composer(false)}
         {t.spam && <div className="dm-foot">Filed as a vendor pitch.</div>}
       </div>
       {menu && <ThreadMenu t={t} phone={phone} up={menu === 'keys'} withAsk={phone} staleN={staleN} onClose={() => setMenu(null)} run={menuRun} />}
