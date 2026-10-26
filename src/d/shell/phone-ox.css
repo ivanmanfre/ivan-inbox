@@ -165,7 +165,7 @@
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-sheet-bottom .d-sheet-f{border-top:0;padding:8px var(--po-gutter) 4px}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-confirm-phone{padding:20px var(--po-gutter) calc(var(--sab) + 12px);gap:10px}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-confirm-phone h3{font:600 20px/26px var(--ds-font);letter-spacing:-.015em}
-:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-confirm-phone p{font-size:15px;line-height:21px}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-confirm-phone p,:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-confirm-phone .d-confirm-message{font-size:15px;line-height:21px}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-confirm-phone .d-confirm-k > *{flex:1;min-height:50px;border-radius:14px;font-size:16px}
 
 /* ---- panel drawer (§1.4) ---- */

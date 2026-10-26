@@ -96,7 +96,8 @@ describe('email-only people', () => {
     const mails = [...document.querySelectorAll('[data-channel="email"]')]
     expect(mails).toHaveLength(2)
     expect(mails[0].textContent).toContain('To ofir@x.com')
-    expect(mails[1].textContent).toContain('From ofir@x.com')
+    expect(mails[1].querySelector('.dm-email-from')?.textContent).toContain('From')
+    expect(mails[1].querySelector('.dm-email-from')?.textContent).toContain('ofir@x.com')
     expect(document.querySelectorAll('.dm-h-whole').length).toBe(4)
     expect(emailAddrLine(rows[0])).toBeNull()
   })

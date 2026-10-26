@@ -116,3 +116,16 @@ it('binds SwishDM approval to the email recipient and copy shown at confirmation
     p_expected_evidence: { lane: 'swishdm_reply', _reviewed_email: { recipient_email: 'sue@biatchtequila.com', email_mirror_text: 'Reviewed email' } },
   })
 })
+
+it.each(['arch_reply_draft_v2', 'swishdm_reply_page_v1', 'inbox_on_demand_reply'])('rejects a signature changed after review for %s', async ai_model => {
+  const composition = { version: 1 as const, source_text: 'Subject: Hi\n\nHello', body: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello' }] }] }, signature: null }
+  const changed = { ...composition, signature: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Unreviewed signature' }] }] } }
+  db.read.mockResolvedValue({ data: { ai_model, draft_evidence: { email_composition: changed } }, error: null })
+  await expect(approveDraft('draft', composition.source_text, null, { draft_evidence: { email_composition: composition } })).rejects.toThrow(/formatting changed|refresh/i)
+  expect(db.rpc).not.toHaveBeenCalled()
+})
+it('refuses a rich approval from a caller that never loaded its formatting', async () => {
+  db.read.mockResolvedValue({ data: { ai_model: 'arch_reply_draft_v2', draft_evidence: { email_mirror_composition: { version: 1 } } }, error: null })
+  await expect(approveDraft('draft', 'DM')).rejects.toThrow(/formatting changed|refresh/i)
+  expect(db.rpc).not.toHaveBeenCalled()
+})

@@ -41,11 +41,18 @@ import { useEmailDetails } from './useEmailDetails'
 import { EmailComposer } from './EmailComposer'
 import { splitEmailDraft } from '../../lib/emailSubject'
 import type { EmailReplyTarget } from '../../lib/inbox'
+import { sameEmailComposition } from '../../lib/emailCompositionSave'
+import { buildEmailComposition } from '../../lib/emailCompositionDraft'
+import { renderEmailComposition, renderEmailDocument, type EmailComposition } from '../../lib/emailRichText'
 
 const FROM: Record<string, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan' }
 
 function seed(t: T): Edits {
-  return { main: t.draft?.message_text ?? '', email: t.draft?.email_mirror_text ?? null, companion: t.companionDraft?.message_text ?? null, cc: t.draft?.recipient_email ? (t.draft.email_cc ?? t.draft.draft_evidence?.email_cc ?? []).join(', ') : undefined, companionCc: t.companionDraft?.recipient_email ? (t.companionDraft.email_cc ?? t.companionDraft.draft_evidence?.email_cc ?? []).join(', ') : undefined }
+  return { main: t.draft?.message_text ?? '', email: t.draft?.email_mirror_text ?? null, companion: t.companionDraft?.message_text ?? null,
+    mainComposition: t.draft?.draft_evidence?.email_composition ?? null,
+    emailComposition: t.draft?.draft_evidence?.email_mirror_composition ?? null,
+    companionComposition: t.companionDraft?.draft_evidence?.email_composition ?? null,
+    cc: t.draft?.recipient_email ? (t.draft.email_cc ?? t.draft.draft_evidence?.email_cc ?? []).join(', ') : undefined, companionCc: t.companionDraft?.recipient_email ? (t.companionDraft.email_cc ?? t.companionDraft.draft_evidence?.email_cc ?? []).join(', ') : undefined }
 }
 
 const hasDraftNow = (t: T) => t.draft !== null
@@ -76,13 +83,16 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
   /** Brief 4: where this pane registers its unsaved check (SPEC-dms §3.4). Only given under v4. */
   registerGuard?: (f: (() => boolean) | null) => void
 }) {
-  const { thread: t, error: emailDetailsError, retry: retryEmailDetails } = useEmailDetails(sourceThread)
+  const { thread: t, loading: emailLoading, error: emailDetailsError, retry: retryEmailDetails } = useEmailDetails(sourceThread)
   const [edits, setEdits] = useState<Edits>(() => seed(t))
   const [reply, setReply] = useState('')
+  const [replyComposition, setReplyComposition] = useState<EmailComposition | null>(null)
   const [schedule, setSchedule] = useState<ScheduleTarget | null>(null)
   const [forwardEmail, setForwardEmail] = useState<InboxMessage | null>(null)
   const [scheduleFailure, setScheduleFailure] = useState('')
   const [emailReplyFor, setEmailReplyFor] = useState<string | null>(null)
+  const [emailReplySource, setEmailReplySource] = useState<string | null>(null)
+  const [revealMessageId, setRevealMessageId] = useState<string | null>(null)
   const [emailTarget, setEmailTarget] = useState<{ key: string; address?: string; target?: EmailReplyTarget; error?: string } | null>(null)
   const [emailRetry, setEmailRetry] = useState(0)
   const dock = useRef<HTMLDivElement>(null)
@@ -96,7 +106,9 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
   const [copied, setCopied] = useState(false)
   const [redraftFor, setRedraftFor] = useState<string | null>(null)
   const [fuTick, setFuTick] = useState(0)
-  const seeded = useRef({ id: '', text: '', email: null as string | null, companionId: '', companion: null as string | null, cc: undefined as string | undefined, companionCc: undefined as string | undefined })
+  const seeded = useRef({ id: '', text: '', email: null as string | null, companionId: '', companion: null as string | null,
+    mainComposition: null as EmailComposition | null, emailComposition: null as EmailComposition | null, companionComposition: null as EmailComposition | null,
+    cc: undefined as string | undefined, companionCc: undefined as string | undefined })
   const scroll = useRef<HTMLDivElement>(null)
   const draftId = t.draft?.id ?? ''
   const draftText = t.draft?.message_text ?? ''
@@ -104,19 +116,42 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
   const companionId = t.companionDraft?.id ?? ''
   const companionText = t.companionDraft?.message_text ?? null
   const recipients = seed(t)
+  const sender = emailRowSender(t.client_id)
+  const badComposition = (value: string | null, composition: EmailComposition | null | undefined, transport: 'native' | 'mirror') => {
+    if (!composition) return false
+    if (value == null || composition.source_text !== value) return true
+    try { buildEmailComposition(value, sender, { transport, composition }); return false } catch { return true }
+  }
+  const draftFormattingError = badComposition(edits.main, edits.mainComposition, 'native')
+    || badComposition(edits.email, edits.emailComposition, 'mirror')
+    || badComposition(edits.companion, edits.companionComposition, 'native')
+    || badComposition(t.draft?.message_text ?? null, t.draft?.draft_evidence?.email_composition, 'native')
+    || badComposition(t.draft?.email_mirror_text ?? null, t.draft?.draft_evidence?.email_mirror_composition, 'mirror')
+    || badComposition(t.companionDraft?.message_text ?? null, t.companionDraft?.draft_evidence?.email_composition, 'native')
 
   // Refresh each untouched leg when its saved copy arrives or changes.
   useEffect(() => {
     const was = seeded.current
     if (draftId !== was.id) setEdits(seed(t))
-    else setEdits(e => ({ ...e, main: e.main === was.text ? draftText : e.main, email: e.email === was.email ? draftEmail : e.email,
-      companion: companionId !== was.companionId || e.companion === was.companion ? companionText : e.companion,
+    else setEdits(e => ({ ...e,
+      main: e.main === was.text && sameEmailComposition(e.mainComposition, was.mainComposition) ? draftText : e.main,
+      mainComposition: e.main === was.text && sameEmailComposition(e.mainComposition, was.mainComposition) ? recipients.mainComposition : e.mainComposition,
+      email: e.email === was.email && sameEmailComposition(e.emailComposition, was.emailComposition) ? draftEmail : e.email,
+      emailComposition: e.email === was.email && sameEmailComposition(e.emailComposition, was.emailComposition) ? recipients.emailComposition : e.emailComposition,
+      companion: companionId !== was.companionId || e.companion === was.companion && sameEmailComposition(e.companionComposition, was.companionComposition) ? companionText : e.companion,
+      companionComposition: companionId !== was.companionId || e.companion === was.companion && sameEmailComposition(e.companionComposition, was.companionComposition) ? recipients.companionComposition : e.companionComposition,
       cc: e.cc === was.cc ? recipients.cc : e.cc, companionCc: e.companionCc === was.companionCc ? recipients.companionCc : e.companionCc }))
-    seeded.current = { id: draftId, text: draftText, email: draftEmail, companionId, companion: companionText, cc: recipients.cc, companionCc: recipients.companionCc }
-  }, [draftId, draftText, draftEmail, companionId, companionText, recipients.cc, recipients.companionCc]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setReply(''); setEmailReplyFor(null); setMenu(null); setSheet(null); setSchedule(null); setForwardEmail(null); setScheduleFailure('') }, [t.prospect_id])
+    seeded.current = { id: draftId, text: draftText, email: draftEmail, companionId, companion: companionText,
+      mainComposition: recipients.mainComposition ?? null, emailComposition: recipients.emailComposition ?? null, companionComposition: recipients.companionComposition ?? null,
+      cc: recipients.cc, companionCc: recipients.companionCc }
+  }, [draftId, draftText, draftEmail, companionId, companionText, recipients.cc, recipients.companionCc, recipients.mainComposition, recipients.emailComposition, recipients.companionComposition]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setReply(''); setReplyComposition(null); setEmailReplyFor(null); setEmailReplySource(null); setEmailTarget(null); setRevealMessageId(null); setMenu(null); setSheet(null); setSchedule(null); setForwardEmail(null); setScheduleFailure('') }, [t.prospect_id])
   useLayoutEffect(() => {
-    if (emailReplyFor === t.prospect_id) dock.current?.querySelector('textarea')?.focus()
+    if (emailReplyFor !== t.prospect_id) return
+    const focus = () => dock.current?.querySelector<HTMLElement>('[aria-label="Email reply"], textarea')?.focus()
+    focus()
+    const timer = window.setTimeout(focus, 0)
+    return () => window.clearTimeout(timer)
   }, [emailReplyFor, t.prospect_id])
   // Open at the newest message on both layouts; the conversation owns its scroll.
   useEffect(() => { const el = scroll.current; if (el) el.scrollTop = el.scrollHeight }, [t.prospect_id, phone])
@@ -149,31 +184,51 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
   const replyThread = emailReplyFor === t.prospect_id ? { ...t, channel: 'email' as const } : t
   const replyingByEmail = replyThread.channel === 'email'
   const lastEmail = t.messages.filter(m => m.direction === 'inbound' && messageChannel(m) === 'email').at(-1)
-  const emailKey = `${t.prospect_id}:${lastEmail?.id ?? ''}`
+  const emailKey = `${t.prospect_id}:${emailReplySource ?? 'latest'}:${emailRetry}`
   const resolvedEmail = emailTarget?.key === emailKey ? emailTarget : null
-  const emailBlocked = replyingByEmail && !resolvedEmail?.address
+  const latestChanged = !!(resolvedEmail?.target && resolvedEmail.target.selection !== 'specific' && lastEmail?.id && resolvedEmail.target.source_message_id && resolvedEmail.target.source_message_id !== lastEmail.id)
+  let replyFormattingError = false
+  if (replyingByEmail && replyComposition) {
+    try { renderEmailComposition(replyComposition); replyFormattingError = renderEmailDocument(replyComposition.body).text.trim() !== reply.trim() } catch { replyFormattingError = true }
+  }
+  const emailBlocked = replyingByEmail && (!resolvedEmail?.address || latestChanged || emailLoading || !!emailDetailsError || replyFormattingError)
   const composeNote = replyingByEmail ? `From ${emailRowSender(t.client_id)} · ${resolvedEmail?.address ? `To ${resolvedEmail.address}` : resolvedEmail?.error ? 'Email address unavailable' : 'Loading email recipient…'}` : undefined
   const composeLabel = replyingByEmail ? 'Send email' : 'Send'
   useEffect(() => {
     if (!replyingByEmail || !canComposeEmail(t)) return
     let current = true
     setEmailTarget(null)
-    void emailReplyTarget(t.prospect_id).then(target => {
-      if (current) setEmailTarget({ key: emailKey, address: target.recipient_email, target })
+    void emailReplyTarget(t.prospect_id, emailReplySource ?? undefined).then(target => {
+      if (current) {
+        // The operator may have typed before the recipient/subject resolved, or changed
+        // reply source deliberately. Only this explicit target transition rebases local copy.
+        setReplyComposition(existing => {
+          if (!existing) return null
+          try {
+            const body = renderEmailDocument(existing.body).text
+            return existing.source_text.endsWith(`\n\n${body}`) ? { ...existing, source_text: target.message_text_prefix + body } : existing
+          } catch { return existing }
+        })
+        setEmailTarget({ key: emailKey, address: target.recipient_email, target })
+      }
     }).catch(e => {
       if (current) setEmailTarget({ key: emailKey, error: e instanceof Error ? e.message : 'Could not load the email recipient.' })
     })
     return () => { current = false }
-  }, [replyingByEmail, t.prospect_id, t.client_id, emailKey, emailRetry]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [replyingByEmail, t.prospect_id, t.client_id, emailKey]) // eslint-disable-line react-hooks/exhaustive-deps
   const scheduledPending = t.messages.some(m => scheduleHeld(m.send_blocked_reason) && !m.sent_at && !m.approved_at)
   const composeOff = scheduledPending ? 'A DM is scheduled. Cancel the scheduled send to write another reply.'
     : replyingByEmail && !canComposeEmail(t) ? 'Email compose is on for Arch threads only. Approving email drafts works here.'
       : !replyingByEmail && t.stage === 'engaged' ? 'Not connected yet. A reply here would go out as a connection invite, so compose is off for this thread.'
         : t.client_id === 'swishdm' ? 'Jonathan\u2019s seat sends through its own sender, so a reply typed here would never go out. Its reply drafts are staged here automatically: edit and approve one, or answer on LinkedIn.' : null
-  const openEmailReply = () => {
+  const openEmailReply = (message: InboxMessage) => {
     setEmailReplyFor(t.prospect_id)
-    dock.current?.querySelector('textarea')?.focus()
+    setEmailReplySource(message.id === lastEmail?.id ? null : message.id)
+    setEmailTarget(null)
+    setEmailRetry(n => n + 1)
+    dock.current?.querySelector<HTMLElement>('[aria-label="Email reply"], textarea')?.focus()
   }
+  const replyToLatest = () => { setEmailReplySource(null); setEmailTarget(null); setEmailRetry(n => n + 1) }
 
   const draftIt = async () => {
     const pid = t.prospect_id
@@ -246,20 +301,20 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
     if (saver.isPending()) return
     if (await verbs.sendVia(t, mode)) setEdits(e => ({ ...e, cc: mode === 'dm' ? undefined : e.cc ?? '' }))
   }) }
-  const send = () => { if (busy) return; return run(async () => { if (scheduledPending) return; saver.cancel(); await verbs.send(t, edits) }) }
+  const send = () => { if (busy || emailLoading || emailDetailsError || draftFormattingError) return; return run(async () => { if (scheduledPending) return; saver.cancel(); await verbs.send(t, edits) }) }
   const openSchedule = () => run(async () => {
     saver.cancel(); setScheduleFailure('')
     if (reply.trim()) { setSchedule({ ids: [], texts: [reply.trim()], manual: true }); return }
     if (!t.draft) return
     if (t.draft.email_stamp_unavailable || t.companionDraft?.email_stamp_unavailable) { setScheduleFailure('Refresh to check the email recipients before scheduling.'); return }
     const failure = await verbs.autosave(t, edits)
-    if (failure) { setScheduleFailure(failure); return }
+    if (typeof failure === 'string' && failure) { setScheduleFailure(failure); return }
     const legs = t.companionDraft ? [t.draft, t.companionDraft] : [t.draft]
     setSchedule({ ids: legs.map(m => m.id), texts: legs.map((m, i) => i === 0 ? draftSendVia(m) === 'email' && messageChannel(m) !== 'email' ? edits.email ?? m.email_mirror_text ?? '' : edits.main : edits.companion ?? m.message_text),
       expectedDelivery: legs.map((m, i) => deliverySnapshot({ ...m, email_mirror_text: i === 0 ? edits.email ?? m.email_mirror_text : m.email_mirror_text, email_cc: i === 0 && edits.cc !== undefined ? parseEmailCc(edits.cc) : i === 1 && edits.companionCc !== undefined ? parseEmailCc(edits.companionCc) : m.email_cc })) })
   })
   const later = () => run(async () => { saver.cancel(); await verbs.later(t, edits); setFuTick(x => x + 1) })
-  const compose = () => run(async () => { if (!composeOff && !emailBlocked && await verbs.compose(replyThread, reply, replyingByEmail ? resolvedEmail?.target : undefined)) setReply('') })
+  const compose = () => run(async () => { if (!composeOff && !emailBlocked && await verbs.compose(replyThread, reply, replyingByEmail ? resolvedEmail?.target : undefined, replyingByEmail ? replyComposition : undefined)) { setReply(''); setReplyComposition(null) } })
   const menuRun = (a: MenuAct) => {
     if (a === 'context') setSheet('context')
     else if (a === 'agent') setSheet('agent')
@@ -291,7 +346,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
       {laterKey}
       {solvedKey}
     </>
-    primary = <Key primary verb="send" className="dm-send" disabled={busy || scheduledPending} onClick={() => void send()}>{sendLabel}</Key>
+    primary = <Key primary verb="send" className="dm-send" disabled={busy || scheduledPending || emailLoading || !!emailDetailsError || draftFormattingError} onClick={() => void send()}>{sendLabel}</Key>
   } else {
     small = <>
       {t.ownerConfirmation && !manualReply
@@ -303,15 +358,17 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
     if (!composeOff) primary = <Key primary verb="compose-send" aria-label={composeLabel} className="dm-send" disabled={busy || emailBlocked || !reply.trim()} onClick={() => void compose()}>{composeLabel}</Key>
   }
 
-  const calendar = !t.spam && <CalendarPanel key={t.prospect_id} prospectId={t.prospect_id} clientId={t.client_id} onInsert={text => { setReply(value => value.trim() ? `${value.trim()}\n\n${text}` : text); dock.current?.querySelector('textarea')?.focus() }} />
+  const calendar = !t.spam && <CalendarPanel key={t.prospect_id} prospectId={t.prospect_id} clientId={t.client_id} onInsert={text => { setReply(value => value.trim() ? `${value.trim()}\n\n${text}` : text); setReplyComposition(null); dock.current?.querySelector<HTMLElement>('[aria-label="Email reply"], textarea')?.focus() }} />
 
   const referredLead = t.messages.some(m => m.ai_model === 'arch_referral_package_v1')
   const referral = <ReferralCard key={t.prospect_id} t={t} onUseAcknowledgement={text => {
     setReply(text)
+    setReplyComposition(null)
     if (t.ownerConfirmation) void verbs.holdRelease(t)
     dock.current?.querySelector('textarea')?.focus()
   }} />
   const history = <History v4={v4} onSendAnyways={m => void sendAnyways(m)} onDiscardHeld={m => { if (!busy) void run(() => verbs.discardHeld(t, m)) }} onEditHeld={editHeld} heldLater={!scheduledPending} sending={busy} t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} onReplyEmail={canComposeEmail(t) && !t.spam && !busy ? openEmailReply : undefined}
+    revealMessageId={revealMessageId} activeEmailReplyId={resolvedEmail?.target?.source_message_id ?? null}
     onForwardEmail={['arch', 'risedtc'].includes(t.client_id) && !busy ? setForwardEmail : undefined} />
   const historyView = referredLead && !t.messages.some(m => m.direction === 'inbound')
     ? <details className="dm-referral-history"><summary>Sent messages</summary>{history}</details> : history
@@ -319,8 +376,11 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
   const composer = (noSend: boolean) => replyingByEmail
     ? <EmailComposer from={emailRowSender(t.client_id)} to={resolvedEmail?.address ?? null}
         subject={resolvedEmail?.target?.subject ?? splitEmailDraft(resolvedEmail?.target?.message_text_prefix ?? '').subject}
-        replyToMessageId={resolvedEmail?.target?.email_headers?.['In-Reply-To']} value={reply} setValue={setReply}
-        busy={busy} disabled={composeOff} noSend={noSend} error={resolvedEmail?.error}
+        replyToMessageId={resolvedEmail?.target?.email_headers?.['In-Reply-To']} value={reply} setValue={value => { setReply(value); setReplyComposition(null) }}
+        composition={replyComposition} onRichChange={(value, composition) => { setReply(value); setReplyComposition(composition) }}
+        replyContext={resolvedEmail?.target?.context ? { ...resolvedEmail.target.context, isLatest: resolvedEmail.target.context.isLatest && !latestChanged } : undefined}
+        onViewOriginal={() => setRevealMessageId(resolvedEmail?.target?.source_message_id ?? null)} onReplyLatest={replyToLatest}
+        busy={busy} disabled={composeOff || latestChanged ? (latestChanged ? 'A newer email arrived. Review the latest reply target before sending.' : composeOff) : null} noSend={noSend} error={resolvedEmail?.error}
         onRetry={() => setEmailRetry(n => n + 1)} onSend={() => void compose()} />
     : <Composer to={first} from={from} big={emailReplyFor === t.prospect_id} noSend={noSend} note={composeNote} sendLabel={composeLabel} disabled={composeOff} value={reply} setValue={setReply} busy={busy || emailBlocked} onSend={() => void compose()} />
 
@@ -329,7 +389,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
     // a stale draft, or a draft with his own words in the composer, draws Send outlined.
     const canSendDraft = hasDraft && !t.ownerConfirmation && !t.spam
     const sendV4 = canSendDraft
-      ? <Key primary={!t.draftStale && !reply.trim()} verb="send" className="dm-send" disabled={busy || scheduledPending} onClick={() => void send()}>{sendLabel}</Key>
+      ? <Key primary={!t.draftStale && !reply.trim()} verb="send" className="dm-send" disabled={busy || scheduledPending || emailLoading || !!emailDetailsError || draftFormattingError} onClick={() => void send()}>{sendLabel}</Key>
       : primary
     const scheduleKey = !t.spam && !swishReply && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim())
       ? <Btn verb="schedule-send" className="dm-k dm-schedule-key" disabled={busy} onClick={() => void openSchedule()}>{reply.trim() ? 'Schedule reply' : 'Schedule send'}</Btn> : null
@@ -345,7 +405,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
         <Banners v4 questionDirty={questionDirty} t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
         {!referredLead && referral}
         {t.client_id === 'swishdm' && <SwishReferral key={t.prospect_id} t={t} />}
-        <Draft v4 onSendVia={sendVia} deliveryBusy={busy} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload}
+        <Draft v4 onSendVia={sendVia} deliveryBusy={busy} emailLoading={emailLoading} emailUnavailable={!!emailDetailsError} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload}
           strips={<DraftStrips t={t} verbs={verbs} />}
           foot={t.draft && <DraftWhy v4 t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
           onSend={canSendDraft ? () => { if (!busy && !scheduledPending) void send() } : undefined} />
@@ -386,7 +446,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
         <Banners questionDirty={questionDirty} t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
         {!referredLead && referral}
         {t.client_id === 'swishdm' && <SwishReferral key={t.prospect_id} t={t} />}
-        <Draft onSendVia={sendVia} deliveryBusy={busy} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
+        <Draft onSendVia={sendVia} deliveryBusy={busy} emailLoading={emailLoading} emailUnavailable={!!emailDetailsError} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
         {t.draft && <DraftWhy t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
         <RestoreStrip t={t} verbs={verbs} />
         <RedraftStatus t={t} now={now} reload={reload} />

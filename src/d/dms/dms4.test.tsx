@@ -18,6 +18,7 @@ vi.mock('../../lib/inbox', async orig => {
 })
 vi.mock('../../lib/followUp', async orig => ({ ...(await orig<typeof import('../../lib/followUp')>()),
   fetchFollowUp: vi.fn(async () => null), setFollowUp: vi.fn(async () => {}), clearFollowUp: vi.fn(async () => {}) }))
+vi.mock('../../lib/emailCompositionSave', async orig => ({ ...(await orig<typeof import('../../lib/emailCompositionSave')>()), saveEmailComposition: vi.fn() }))
 
 vi.mock('../../lib/dmDraft', () => ({ requestDmDraft: vi.fn() }))
 import { requestDmDraft } from '../../lib/dmDraft'
@@ -35,6 +36,7 @@ import { statusOf } from './status'
 import { ThreadPane } from './Thread'
 import { AUTOSAVE_MS } from './useAutosave'
 import { useDmVerbs } from './verbs'
+import { saveEmailComposition } from '../../lib/emailCompositionSave'
 
 const H = 3_600_000, D = 24 * H
 const pre: PreReadHandle = { get: () => ({ s: 'none' }), run: () => {}, busy: false, spent: 0, capped: false }
@@ -105,21 +107,22 @@ describe('inline draft edit', () => {
     function Live() { const [current, setCurrent] = useState(t); refresh = setCurrent; return <DmAsks><Pane t={current} /></DmAsks> }
     renderInFrame(<Live />, { hash: '#exp/d/dms' })
     act(() => refresh({ ...t, draft: { ...t.draft!, email_mirror_text: mirror } }))
-    expect((screen.getByLabelText('The email that goes with it') as HTMLTextAreaElement).value).toBe('Did the details cover what you wanted to know?')
+    expect(screen.getByLabelText('The email that goes with it').textContent).toBe('Did the details cover what you wanted to know?')
     expect((screen.getByLabelText('Email subject') as HTMLInputElement).value).toBe('Re: ARCH. x Outplay')
     await vi.advanceTimersByTimeAsync(AUTOSAVE_MS + 50)
-    expect(lib.saveDraftEmail).not.toHaveBeenCalled()
+    expect(saveEmailComposition).not.toHaveBeenCalled()
     expect(lib.saveDraftText).not.toHaveBeenCalled()
   })
 
-  it('preserves an operator email edit when the server refreshes the same draft', () => {
+  it('preserves an operator email subject edit when the server refreshes the same draft', () => {
     const [t] = threads(drafted('edited-email', { client_id: 'arch', recipient_email: 'doug@outplay.com', email_mirror_text: 'Subject: Follow-up\n\nOriginal copy' }))
     let refresh!: (next: Thread) => void
     function Live() { const [current, setCurrent] = useState(t); refresh = setCurrent; return <DmAsks><Pane t={current} /></DmAsks> }
     renderInFrame(<Live />, { hash: '#exp/d/dms' })
-    fireEvent.change(screen.getByLabelText('The email that goes with it'), { target: { value: 'My edited copy' } })
+    fireEvent.change(screen.getByLabelText('Email subject'), { target: { value: 'My edited subject' } })
     act(() => refresh({ ...t, draft: { ...t.draft!, email_mirror_text: 'Subject: Follow-up\n\nRefreshed server copy' } }))
-    expect((screen.getByLabelText('The email that goes with it') as HTMLTextAreaElement).value).toBe('My edited copy')
+    expect((screen.getByLabelText('Email subject') as HTMLInputElement).value).toBe('My edited subject')
+    expect(screen.getByLabelText('The email that goes with it').textContent).toBe('Original copy')
   })
 
   it('the draft is a textarea with no Edit key; typing saves once after the pause, via the guarded save, and says Saved', async () => {
@@ -152,16 +155,18 @@ describe('inline draft edit', () => {
     await waitFor(() => expect(lib.saveDraftText).toHaveBeenCalledTimes(2))
   })
 
-  it('Send carries the text on screen and drops the pending autosave', async () => {
+  it('Send saves the text on screen before approval and drops the pending autosave', async () => {
     const [t] = threads(drafted('c', { prospect_name: 'Cy', unipile_chat_id: 'ch' }))
     mount(t)
     fireEvent.change(document.querySelector('.dm-edit')!, { target: { value: 'Final words' } })
     fireEvent.click(key('send'))
     fireEvent.click(await screen.findByText('Approve & send'))
     await waitFor(() => expect(lib.approveDraft).toHaveBeenCalledWith(t.draft!.id, 'Final words', 'ch',
-      expect.objectContaining({ email_mirror_text: undefined })))
+      expect.objectContaining({ id: t.draft!.id })))
+    expect(lib.saveDraftText).toHaveBeenCalledWith(t.draft!.id, 'Final words')
+    expect(vi.mocked(lib.saveDraftText).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(lib.approveDraft).mock.invocationCallOrder[0])
     await vi.advanceTimersByTimeAsync(AUTOSAVE_MS + 50)
-    expect(lib.saveDraftText).not.toHaveBeenCalled()
+    expect(lib.saveDraftText).toHaveBeenCalledTimes(1)
   })
 })
 

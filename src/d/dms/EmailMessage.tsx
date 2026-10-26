@@ -21,5 +21,6 @@ export function EmailPreview({ details, state, children }: { details: EmailDetai
     {/* html is escaped send HTML from emailPreview; stored inbound HTML never enters this field. */}
     {children ?? (details.html ? <div className="dm-email-body dm-email-body-html" dangerouslySetInnerHTML={{ __html: details.html }} />
       : <div className="dm-email-body">{details.body ? <Linkified text={details.body} /> : <span className="dm-email-muted">Message text unavailable</span>}</div>)}
+    {details.formattingUnavailable && <p className="dm-email-error" role="note">Saved formatting is unavailable. The message text is shown.</p>}
   </section>
 }

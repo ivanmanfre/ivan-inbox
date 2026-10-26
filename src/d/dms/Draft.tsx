@@ -54,13 +54,14 @@ const SAVE_WORD: Record<SaveState, string> = { idle: '', saving: 'Saving…', sa
 /** The draft is the last bubble of the conversation, on our side, and it IS the editor (Ivan 09-27:
  *  "I want the direct editing capabilities"): type in it, it saves itself (useAutosave). Its email
  *  leg and the mirror email edit the same way. */
-export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRetry, v4 = false, strips, foot, onSend, onSendVia, deliveryBusy = false }: {
+export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRetry, v4 = false, strips, foot, onSend, onSendVia, deliveryBusy = false, emailLoading = false, emailUnavailable = false }: {
   t: Thread; edits: Edits; setEdits: (e: Edits) => void; save: SaveState; onBlur: () => void; onRetrySave: () => void; now: number; onRetry: () => void
   /** Brief 4: one card, the editor (SPEC-dms §2.4.5): caveats attached as strips, Why in the foot. */
   v4?: boolean; strips?: ReactNode; foot?: ReactNode
   /** Brief 4: ⌘↩ in the draft runs the SAME send (its confirm always opens first). */
   onSendVia?: (mode: DraftSendVia) => void; deliveryBusy?: boolean
   onSend?: () => void
+  emailLoading?: boolean; emailUnavailable?: boolean
 }) {
   const draft = t.draft
   if (!draft) return null
@@ -90,18 +91,24 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
   const hold = holdReason(draft)
   const sendKey = onSend ? (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onSend() } } : undefined
   const envelope = emailDetails(draft, t)
-  const mainEmail = <EmailDraftEditor value={edits.main} onChange={main => setEdits({ ...edits, main })} label="The draft" subject="Quick question"
-    from={envelope.from ?? 'Sender unavailable'} to={envelope.to.join(', ') || null} cc={edits.cc ?? ''} onCcChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} onKeyDown={sendKey} />
+  const emailDisabled = emailLoading || emailUnavailable
+  const mainEmail = <EmailDraftEditor value={edits.main} onChange={main => setEdits({ ...edits, main, mainComposition: null })} composition={edits.mainComposition}
+    onRichChange={(main, mainComposition) => setEdits({ ...edits, main, mainComposition })} label="The draft" subject="Quick question"
+    from={envelope.from ?? 'Sender unavailable'} to={envelope.to.join(', ') || null} cc={edits.cc ?? ''} onCcChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} onKeyDown={sendKey} disabled={emailDisabled} />
   const compEnvelope = comp ? emailDetails(comp, t) : null
-  const companionEmail = comp && <EmailDraftEditor value={edits.companion ?? ''} onChange={companion => setEdits({ ...edits, companion })} label="The other leg" subjectLabel="Email leg subject" subject="Quick question"
-    from={compEnvelope?.from ?? 'Sender unavailable'} to={compEnvelope?.to.join(', ') || null} cc={edits.companionCc ?? ''} ccLabel="Email leg CC recipients" onCcChange={companionCc => setEdits({ ...edits, companionCc })} onBlur={onBlur} onKeyDown={sendKey} />
-  const mirrorEmail = <EmailDraftEditor transport="mirror" value={edits.email ?? ''} onChange={email => setEdits({ ...edits, email })} label="The email that goes with it" subject={`Your ${t.prospect_company || 'your store'} growth scan`}
-    from={emailSenderLabel(t.client_id).match(/\(from (.+)\)/)?.[1] ?? 'Sender unavailable'} to={draft.recipient_email ?? null} cc={edits.cc ?? ''} onCcChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} onKeyDown={sendKey} />
+  const companionEmail = comp && <EmailDraftEditor value={edits.companion ?? ''} onChange={companion => setEdits({ ...edits, companion, companionComposition: null })} composition={edits.companionComposition}
+    onRichChange={(companion, companionComposition) => setEdits({ ...edits, companion, companionComposition })} label="The other leg" subjectLabel="Email leg subject" subject="Quick question"
+    from={compEnvelope?.from ?? 'Sender unavailable'} to={compEnvelope?.to.join(', ') || null} cc={edits.companionCc ?? ''} ccLabel="Email leg CC recipients" onCcChange={companionCc => setEdits({ ...edits, companionCc })} onBlur={onBlur} onKeyDown={sendKey} disabled={emailDisabled} />
+  const mirrorEmail = <EmailDraftEditor transport="mirror" value={edits.email ?? ''} onChange={email => setEdits({ ...edits, email, emailComposition: null })} composition={edits.emailComposition}
+    onRichChange={(email, emailComposition) => setEdits({ ...edits, email, emailComposition })} label="The email that goes with it" subject={`Your ${t.prospect_company || 'your store'} growth scan`}
+    from={emailSenderLabel(t.client_id).match(/\(from (.+)\)/)?.[1] ?? 'Sender unavailable'} to={draft.recipient_email ?? null} cc={edits.cc ?? ''} onCcChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} onKeyDown={sendKey} disabled={emailDisabled} />
   const generatedEnvelope = !draft.email_mirror_text && <div className="dm-email-sheet"><div className="dm-email-edit-fields">
     <div className="dm-email-field"><span className="dm-email-field-name">From</span><span>{emailSenderLabel(t.client_id).match(/\(from (.+)\)/)?.[1] ?? 'Sender unavailable'}</span></div>
     <div className="dm-email-field"><span className="dm-email-field-name">To</span><span>{draft.recipient_email}</span></div>
     <EmailCcField value={edits.cc ?? ''} onChange={cc => setEdits({ ...edits, cc })} onBlur={onBlur} />
   </div></div>
+  const emailReadNotice = emailLoading ? <p className="dm-email-error" role="status">Loading email details before editing.</p>
+    : emailUnavailable ? <p className="dm-email-error" role="alert">Email details are unavailable. Refresh before editing.</p> : null
   if (v4) {
     const caveats = t.draftStale || hold || draft.email_stamp_unavailable || strips
     return (
@@ -119,6 +126,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
           {draft.email_stamp_unavailable && <div className="dm-ban dm-ban-warn"><b><DIcon name="alert" />Could not check whether this draft also sends an email.</b><p>Refresh before you approve.</p></div>}
           {strips}
         </div>}
+        {emailReadNotice}
         {rider && <div className="dx-card-b dm-send-via">{emailChoice}</div>}
         {mode !== 'email' || email ? <div className={email ? 'dm-native-email-draft dx-card-b' : 'dm-b-draft dm-tape dx-card-b'} data-draft={draft.id}
           onClick={e => { if (!(e.target as HTMLElement).closest('textarea,input,button,a')) e.currentTarget.querySelector<HTMLTextAreaElement>('textarea.dm-edit')?.focus() }}>
@@ -166,6 +174,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
       {t.draftStale && <div className="dm-ban dm-ban-warn"><b><DIcon name="alert" />You already replied after their last message.</b><p>This draft is probably not needed.</p></div>}
       {hold && <div className="dm-ban dm-ban-warn"><b><DIcon name="alert" />{hold}</b></div>}
       {draft.email_stamp_unavailable && <div className="dm-ban dm-ban-warn"><b><DIcon name="alert" />Could not check whether this draft also sends an email.</b><p>Refresh before you approve.</p></div>}
+      {emailReadNotice}
       {rider && emailChoice}
       {mode !== 'email' || email ? <div className={email ? 'dm-native-email-draft' : 'dm-b dm-b-out dm-b-draft dm-tape'} data-draft={draft.id}>
         <div className="dm-tm">

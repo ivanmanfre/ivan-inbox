@@ -6,7 +6,7 @@ import { hydrateEmailDetails, type EmailDetailRow } from '../../lib/emailPresent
 export function useEmailDetails(t: Thread) {
   const [retry, setRetry] = useState(0)
   const [read, setRead] = useState<{ key: string; rows?: EmailDetailRow[]; error?: string } | null>(null)
-  const hasEmail = t.messages.some(m => m.channel === 'email')
+  const hasEmail = t.messages.some(m => m.channel === 'email' || m.email_mirror_text || m.recipient_email)
   const key = hasEmail ? `${t.prospect_id}:${t.messages.map(m => `${m.id}:${m.sent_at ?? ''}:${m.message_text.length}`).join('|')}` : ''
   useEffect(() => {
     if (!key) return
@@ -17,8 +17,8 @@ export function useEmailDetails(t: Thread) {
       if (current) setRead({ key, error: 'Email headers could not be loaded. Refresh email details to try again.' })
     })
     return () => { current = false }
-  }, [key, retry]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [key, retry, t.messages]) // eslint-disable-line react-hooks/exhaustive-deps
   const rows = read?.key === key ? read.rows : null
   const thread = useMemo(() => rows ? hydrateEmailDetails(t, rows) : t, [t, rows])
-  return { thread, error: read?.key === key ? read.error : null, retry: () => setRetry(n => n + 1) }
+  return { thread, loading: !!key && read?.key !== key, error: read?.key === key ? read.error : null, retry: () => { setRead(null); setRetry(n => n + 1) } }
 }

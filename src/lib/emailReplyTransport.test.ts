@@ -30,3 +30,27 @@ it('refuses to queue when a newer email changes the recipient or thread after th
   await expect(composeReply(t, 'Wednesday works.', preview)).rejects.toThrow(/email conversation changed/i)
   expect(db.writes).toEqual([])
 })
+
+it('replies to the specifically selected older email and identifies the newer received email', async () => {
+  const old = { ...incoming, id: 'old', sent_at: '2026-10-25T09:00:00Z', message_text: 'Earlier question', draft_evidence: { email: { subject: 'Older topic', message_id: '<older@zimad.com>' } } }
+  db.fetch.mockImplementation(async (url: string, init: RequestInit) => {
+    if (init.method === 'POST' && String(url).includes('/outreach_messages')) db.writes.push(JSON.parse(init.body as string))
+    const selected = new URL(String(url)).searchParams.get('id') === 'eq.old'
+    const data = String(url).includes('/rpc/') ? { ok: true, allow_send: true, revision: 12, in_flight: false } : init.method === 'POST' ? null : [selected ? old : incoming]
+    return new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  })
+  const target = await emailReplyTarget('liza', 'old')
+  expect(target).toMatchObject({ source_message_id: 'old', selection: 'specific', latest_source_message_id: 'inbound',
+    context: { body: 'Earlier question', isLatest: false, date: old.sent_at }, email_headers: { 'In-Reply-To': '<older@zimad.com>' } })
+  await composeReply(t, 'Answer to earlier question', target)
+  expect(db.writes[0]).toMatchObject({ message_text: 'Subject: Re: Older topic\n\nAnswer to earlier question',
+    draft_evidence: { email_reply_to_message_id: 'old', email_headers: { 'In-Reply-To': '<older@zimad.com>' } } })
+})
+
+it('queues the reviewed rich body and signature without changing the existing manual approval gates', async () => {
+  const target = await emailReplyTarget('liza')
+  const composition = { version: 1 as const, source_text: `${target.message_text_prefix}Hello`, body: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello', marks: [{ type: 'bold' }] }] }] }, signature: null }
+  await composeReply(t, 'Hello', target, composition)
+  expect(db.writes[0]).toMatchObject({ draft_evidence: { email_composition: composition, email_composition_reviewed: composition } })
+  expect((db.writes[0].draft_evidence as Record<string, unknown>).operator_copy_approval).toBeUndefined()
+})

@@ -78,7 +78,7 @@ function ConfirmBox({ p, done }: { p: Pending; done: (ok: boolean) => void }) {
       <div className="d-scrim d-scrim-confirm" onClick={() => done(false)} aria-hidden="true" />
       <div className={`d-confirm d-confirm-${f?.layout ?? 'desktop'}${danger ? ' d-confirm-danger' : ''}`} role="alertdialog" aria-modal="true">
         <h3>{p.title}</h3>
-        {p.message != null && <p>{p.message}</p>}
+        {p.message != null && <div className="d-confirm-message">{p.message}</div>}
         <div className="d-confirm-k">
           <Key ref={cancel} onClick={() => done(false)} verb="cancel">{p.cancelText ?? 'Cancel'}</Key>
           <Key primary={!danger} danger={danger} ref={ok} onClick={() => done(true)} verb={p.verb ?? 'confirm'}>{p.confirmText}</Key>
