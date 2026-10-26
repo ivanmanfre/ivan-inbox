@@ -19,3 +19,8 @@ jobs:
       - run: npm ci
       - name: Check email presentation and reply transport
         run: npm test -- src/lib/emailPresentation.test.ts src/lib/emailDetails.test.ts src/lib/emailReplyTransport.test.ts src/lib/emailSubject.test.ts src/lib/emailCc.test.ts src/lib/inboxManual.test.ts src/d/dms/EmailPresentation.test.tsx src/d/dms/EmailComposer.test.tsx src/d/dms/EmailMessage.test.tsx src/d/dms/verbs.test.tsx src/d/dms/parity.test.tsx --maxWorkers=2
+      - run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}
