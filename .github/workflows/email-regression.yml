@@ -19,6 +19,9 @@ jobs:
       - run: npm ci
       - name: Check email presentation and reply transport
         run: npm test -- src/lib/emailPresentation.test.ts src/lib/emailDetails.test.ts src/lib/emailReplyTransport.test.ts src/lib/emailSubject.test.ts src/lib/emailCc.test.ts src/lib/inboxManual.test.ts src/d/dms/EmailPresentation.test.tsx src/d/dms/EmailComposer.test.tsx src/d/dms/EmailMessage.test.tsx src/d/dms/verbs.test.tsx src/d/dms/parity.test.tsx --maxWorkers=2
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:9
+          VITE_SUPABASE_ANON_KEY: email-regression-fixture
       - run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
