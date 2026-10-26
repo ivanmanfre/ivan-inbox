@@ -25,10 +25,10 @@ export type RowCtx = { selected: string | null; checked: ReadonlySet<string>; op
   v4?: boolean }
 
 /** The row extras every conversation row carries: unread dot, ⋯ key, the Sum up line, the came-back tag. */
-export function extras(t: Thread, c: RowCtx): { unread: boolean; onMore: () => void; note: ReactNode; signal: CameTag | null; v4?: boolean } {
+export function extras(t: Thread, c: RowCtx): { unread: boolean; onMore: () => void; note: ReactNode; signal: CameTag | null; v4?: boolean; onQuickDiscard?: () => Promise<void> } {
   const st = c.pre.get(t.prospect_id)
   const note = st.s === 'done' ? st.line : st.s === 'running' ? 'Reading it…' : st.s === 'error' ? st.why : null
-  return { unread: t.unread > 0, onMore: () => c.more(t), note, signal: c.came?.get(t.prospect_id) ?? null, ...(c.v4 ? { v4: true } : {}) }
+  return { ...(t.draft && !c.checked.size ? { onQuickDiscard: () => c.verbs.quickDiscard(t) } : {}), unread: t.unread > 0, onMore: () => c.more(t), note, signal: c.came?.get(t.prospect_id) ?? null, ...(c.v4 ? { v4: true } : {}) }
 }
 
 export function DraftRow({ t, c }: { t: Thread; c: RowCtx }) {

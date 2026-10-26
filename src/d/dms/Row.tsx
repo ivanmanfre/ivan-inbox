@@ -3,6 +3,7 @@
 // contract) and opens the thread on tap / Enter.
 import type { CSSProperties, KeyboardEvent, ReactNode } from 'react'
 import type { RowTag } from './model'
+import { QuickDiscard } from './QuickDiscard'
 import { initials, type PillTone } from './v4/pill'
 
 type Props = {
@@ -20,6 +21,8 @@ type Props = {
   /** A conversation row (opens a thread). Came-back and warm rows without a thread pass false. */
   conversation?: boolean
   onOpen?: () => void
+  /** Discard the pending draft(s) immediately, with Undo on the receipt. */
+  onQuickDiscard?: () => Promise<void>
   /** Unread inbound on the thread: a lime dot before the name (today's unread dot). */
   unread?: boolean
   /** The row's ⋯ key (Sum up, Copy chat link, Ask Claude, Discard): always drawn, never hover-only. */
@@ -41,7 +44,11 @@ type Props = {
 export type RowVerb = { label: string; verb: string; run: () => void; busy?: boolean; quiet?: boolean }
 
 export function Row(p: Props) {
-  if (p.v4) return <RowV4 {...p} />
+  const row = p.v4 ? <RowV4 {...p} /> : <RowLegacy {...p} />
+  return p.onQuickDiscard ? <QuickDiscard name={p.name} run={p.onQuickDiscard}>{row}</QuickDiscard> : row
+}
+
+function RowLegacy(p: Props) {
   const { id, name, company, tags = [], line, right, rightKind = 'plain', verbs, selected, checked, dim, conversation = true, onOpen, unread, onMore, note, signal } = p
   const onKey = (e: KeyboardEvent) => { if (e.key === 'Enter' && onOpen) { e.preventDefault(); onOpen() } }
   return (

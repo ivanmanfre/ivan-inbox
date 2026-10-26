@@ -60,13 +60,14 @@ function Dms({ layout, route, navigate }: PlaceProps) {
   // The unsaved reply/draft guard, owned by React under v4 (SPEC-dms §3.4; Brief's bridge stands down
   // while [data-v4-guard] is on the page). The open ThreadPane registers its dirty check here.
   const guard = useRef<(() => boolean) | null>(null)
+  const prepareQuick = useRef<() => boolean>(() => true)
   const registerGuard = useCallback((f: (() => boolean) | null) => { guard.current = f }, [])
   useEffect(() => { const i = window.setInterval(() => setNow(Date.now()), 60_000); return () => window.clearInterval(i) }, [])
   useEffect(() => { setNow(Date.now()) }, [data.loadedAt])
 
   const setTokens = useCallback((t: FilterToken[]) => { setTokensState(t); writeTokens('dms', t) }, [])
   const refreshCounts = counts.refresh
-  const ctx = useMemo(() => ({ refresh: () => { data.refreshList(); data.reloadCame(); refreshCounts('dms') }, patch: data.patch, solved: data.solved.setLocal, dated: data.reloadDated }),
+  const ctx = useMemo(() => ({ prepareQuickDiscard: () => prepareQuick.current(), refresh: () => { data.refreshList(); data.reloadCame(); refreshCounts('dms') }, patch: data.patch, solved: data.solved.setLocal, dated: data.reloadDated }),
     [data.refreshList, data.reloadCame, data.patch, data.solved.setLocal, data.reloadDated, refreshCounts]) // eslint-disable-line react-hooks/exhaustive-deps
   const verbs = useDmVerbs(ctx)
   const toast = useToast()
@@ -102,6 +103,16 @@ function Dms({ layout, route, navigate }: PlaceProps) {
         : mode === 'email' ? sv.emailWaiting[0] ?? null
           : mode === 'search' ? matches[seat][0] ?? null : null
   const open = threadId ? byId.get(threadId) ?? null : autoOpen
+  prepareQuick.current = () => {
+    if (guard.current?.()) return false
+    // Keep the current pane mounted while this write runs, including text typed during the request.
+    if (autoOpen) {
+      const next = new URLSearchParams(route.query)
+      next.set('thread', autoOpen.prospect_id)
+      navigate(dHash('dms', null, next))
+    }
+    return true
+  }
 
   const failedN = (data.error ? 1 : 0) + (data.cameBack.failed ? 1 : 0) + (data.ownerEngagers?.failed ? 1 : 0) + (data.warm.failed ? 1 : 0) + (data.dated.failed ? 1 : 0) + (data.upcoming?.failed ? 1 : 0)
   useReportFailed('dms', failedN)

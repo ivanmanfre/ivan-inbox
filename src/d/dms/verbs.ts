@@ -3,7 +3,7 @@ import { parseEmailCc } from '../../lib/emailCc'
 // Every DM write, wired to TODAY'S lib calls with today's payloads, guards and order
 // (src/wb/thread/Conversation.tsx, RestoreStrip, FollowUpStrip, CameBack). Nothing here
 // invents a write path: each verb names the lib function it calls.
-import { createElement, useMemo } from 'react'
+import { createElement, useMemo, useRef } from 'react'
 import {
   draftSendVia, approveDraft, composeReply, deleteThread, discardLegs, dismissConfirmation, draftLegs, escalateDraftToClient,
   emailSenderLabel, heldReasonText, isFollowUp, isHeldSend, isStoppedOnPurpose, isSwishdmReply, isSwishdmRow, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft, swishdmPageUrl,
@@ -24,6 +24,8 @@ import { watchSend } from './sendWatch'
 export type Edits = { main: string; email: string | null; companion: string | null; cc?: string; companionCc?: string }
 
 export type VerbCtx = {
+  /** Preserve the open editor before a row can leave the queue. */
+  prepareQuickDiscard?: () => boolean
   /** Re-read the list (and the frame's DM counts). */
   refresh: () => void
   /** Optimistic: show these rows changed until the next read lands. */
@@ -67,6 +69,7 @@ export function legName(m: InboxMessage): string {
 const isBump = (m: InboxMessage) => /stall_bump|_bump_|bump_v/.test(m.ai_model ?? '')
 
 export function useDmVerbs(ctx: VerbCtx) {
+  const quickPending = useRef(new Set<string>())
   const confirm = useDConfirm()
   const toast = useToast()
   const { askDiscard, askDate } = useAsks()
@@ -282,6 +285,41 @@ export function useDmVerbs(ctx: VerbCtx) {
         action: { label: 'Undo', verb: 'undo', run: () => { void undoDiscard(gone) } },
       })
       return null
+    }
+
+    /** One-motion row discard. Every successful leg gets its own guarded Undo. */
+    async function quickDiscard(t: Thread): Promise<void> {
+      const legs = draftLegs(t)
+      if (!legs.length || quickPending.current.has(t.prospect_id)) return
+      if (ctx.prepareQuickDiscard && !ctx.prepareQuickDiscard()) {
+        fail('Finish or clear your unsent reply, and let draft changes save before discarding from the list.')
+        return
+      }
+      quickPending.current.add(t.prospect_id)
+      try {
+        const failed = await discardLegs(legs, null)
+        const gone = legs.filter(l => !failed.some(f => f.leg.id === l.id))
+        if (gone.length) {
+          ctx.patch(gone.map(l => l.id), { send_blocked_reason: 'discarded_in_inbox', send_blocked_at: new Date().toISOString(), discard_mode: null })
+          toast.show({
+            message: `Discarded ${gone.length > 1 ? 'both drafts' : 'the draft'} to ${t.prospect_name}.`,
+            sub: 'You can also bring it back from Discarded.', ms: 12000,
+            action: { label: 'Undo', verb: 'undo', run: () => { void undoQuickDiscard(t.prospect_id, gone) } },
+          })
+        }
+        if (failed.length) fail(failed.map(legFailureText).join(' '))
+      } catch (e) { fail(`Could not discard: ${errText(e)}`) }
+      finally { quickPending.current.delete(t.prospect_id); ctx.refresh() }
+    }
+
+    async function undoQuickDiscard(prospectId: string, legs: InboxMessage[]) {
+      for (const leg of legs) {
+        try {
+          if (!(await restoreDraft(leg.id, prospectId))) throw new Error('This draft changed. Refresh the conversation to check it.')
+          ctx.patch([leg.id], { send_blocked_reason: leg.send_blocked_reason, send_blocked_at: leg.send_blocked_at, discard_mode: leg.discard_mode ?? null })
+        } catch (e) { fail(`Could not bring it back: ${errText(e)}`) }
+      }
+      ctx.refresh()
     }
 
     /** Mark as solved: no answer needed. solved_at on the prospect; any pending legs discarded (plain)
@@ -585,7 +623,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       await bulkDiscard(stale, '', { title: `Discard ${stale.length} stale draft${stale.length === 1 ? '' : 's'}?`, message: 'These threads already have your own reply after the last inbound message. Nothing is sent.', confirmText: 'Discard stale' })
     }
 
-    return { sendVia, rowDiscard, discardStale, send, redraft, sendAnyways, editHeld, discardHeld, discard, solved, later, bringBackNow, saveEdit, autosave, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, holdRelease, askOwner, bulkDiscard, isFollowUp }
+    return { quickDiscard, sendVia, rowDiscard, discardStale, send, redraft, sendAnyways, editHeld, discardHeld, discard, solved, later, bringBackNow, saveEdit, autosave, compose, bringBack, cameBackDismiss, spam, notSpam, deleteSeat, followUp, followUpClear, holdDiscard, holdRelease, askOwner, bulkDiscard, isFollowUp }
   }, [ctx, confirm, toast, askDiscard, askDate])
 }
 

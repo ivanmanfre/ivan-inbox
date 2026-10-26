@@ -269,3 +269,29 @@ describe('Held, not sent in the seat column', () => {
     expect(row.textContent).toContain('It mentions Israel, which is not a confirmed ARCH market.')
   })
 })
+
+describe('quick discard keeps the open editor', () => {
+  it.each([true, false])('preserves an unsent reply on the auto-opened conversation (v4=%s)', async v4 => {
+    skin(v4 ? ['dms', 'tokens', 'type', 'motion', 'shell'] : []); seedPage()
+    const p = page('desktop', '#exp/d/dms?seat=risedtc')
+    await waitFor(() => expect(document.querySelector('.dm-comp textarea')).not.toBeNull())
+    fireEvent.change(document.querySelector('.dm-comp textarea')!, { target: { value: 'Keep my reply' } })
+    fireEvent.click(document.querySelector('[data-verb="quick-discard"]')!)
+    expect(lib.discardLegs).not.toHaveBeenCalled()
+    expect(p.navigate).not.toHaveBeenCalled()
+    expect((document.querySelector('.dm-comp textarea') as HTMLTextAreaElement).value).toBe('Keep my reply')
+  })
+  it('pins the auto-opened conversation before the request, preserving input typed during it', async () => {
+    skin(['dms', 'tokens', 'type', 'motion', 'shell']); seedPage()
+    let finish!: (v: []) => void
+    vi.mocked(lib.discardLegs).mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    const p = page('desktop', '#exp/d/dms?seat=risedtc')
+    await waitFor(() => expect(document.querySelector('[data-verb="quick-discard"]')).not.toBeNull())
+    fireEvent.click(document.querySelector('[data-verb="quick-discard"]')!)
+    expect(p.navigate).toHaveBeenCalledWith('#exp/d/dms?seat=risedtc&thread=a')
+    p.rerender('#exp/d/dms?seat=risedtc&thread=a')
+    fireEvent.change(document.querySelector('.dm-comp textarea')!, { target: { value: 'Typed while discarding' } })
+    await act(async () => finish([]))
+    expect((document.querySelector('.dm-comp textarea') as HTMLTextAreaElement).value).toBe('Typed while discarding')
+  })
+})
