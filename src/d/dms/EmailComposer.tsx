@@ -48,7 +48,7 @@ export function EmailComposer({ from, to, subject, value, setValue, busy, disabl
     {replyContext && <div className="dm-email-reply-context"><div className="dm-email-reply-context-top"><span>Replying to</span><strong>{replyContext.isLatest ? 'Latest received email' : 'Earlier email in this thread'}</strong></div>
       <div className="dm-email-reply-context-meta"><strong>{replyContext.fromName || replyContext.from}</strong>{replyContext.fromName && <span>{replyContext.from}</span>}{replyContext.date && <time dateTime={replyContext.date}>{warsawDayTime(replyContext.date)}</time>}</div>
       <div className="dm-email-reply-context-subject">{(replyContext.subject ?? subject) || '(no subject)'}</div>
-      <p>{expandedSource || replyContext.body.length <= 180 ? replyContext.body : `${replyContext.body.slice(0, 180).trimEnd()}…`}</p>
+      <p data-expanded={expandedSource || undefined}>{expandedSource || replyContext.body.length <= 180 ? replyContext.body : `${replyContext.body.slice(0, 180).trimEnd()}…`}</p>
       <div className="dm-email-reply-context-actions">{replyContext.body.length > 180 && <button type="button" onClick={() => setExpandedSource(!expandedSource)}>{expandedSource ? 'Show less' : 'Show more'}</button>}{onViewOriginal && <button type="button" onClick={onViewOriginal}>View original</button>}{!replyContext.isLatest && onReplyLatest && <button type="button" onClick={onReplyLatest}>Reply to latest</button>}</div>
     </div>}
     {preview && !formattingError ? <EmailPreview details={{ ...emailPreview(`Subject: ${subject}\n\n${value}`, { from, to: to ? [to] : [], replyToMessageId }), subject, ...(rendered ? { body: rendered.text, html: rendered.html } : {}) }} state="Draft" /> : <div className="dm-email-sheet">
