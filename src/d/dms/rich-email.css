@@ -41,7 +41,8 @@
 .dm-email-reply-context-meta strong{font-weight:600;color:#202124}
 .dm-email-reply-context-meta time{margin-left:auto;color:#5f6368}
 .dm-email-reply-context-subject{margin-top:3px;font-weight:600;color:#202124}
-.dm-email-reply-context p{margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;color:#5f6368}
+.dm-email-reply-context p{margin:8px 0 0;white-space:normal;overflow-wrap:anywhere;color:#5f6368}
+.dm-email-reply-context p[data-expanded]{white-space:pre-wrap}
 .dm-email-reply-context-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
 .dm-email-reply-context-actions button{border:0;background:transparent;color:#1a73e8;padding:4px 0;font:500 12px/1.5 Arial,Helvetica,sans-serif;cursor:pointer}
 .dm-email-reply-context-actions button:focus-visible{outline:2px solid #1a73e8;outline-offset:2px}
