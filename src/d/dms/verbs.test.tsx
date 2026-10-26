@@ -21,6 +21,17 @@ vi.mock('../../lib/followUp', async orig => ({ ...(await orig<typeof import('../
 vi.mock('../../lib/context', async orig => ({ ...(await orig<typeof import('../../lib/context')>()), fetchProspectContext: vi.fn(async () => ({ location: 'London, United Kingdom' })) }))
 vi.mock('../../lib/dmSchedule', async orig => ({ ...(await orig<typeof import('../../lib/dmSchedule')>()), scheduleDm: vi.fn(async () => {}) }))
 vi.mock('../../lib/emailDetails', () => ({ fetchEmailDetails: vi.fn(async () => []) }))
+const emailRows = vi.hoisted(() => new Map<string, { message_text: string; email_mirror_text: string | null; draft_evidence: Record<string, unknown> | null }>())
+vi.mock('../../lib/emailCompositionSave', async orig => ({
+  ...(await orig<typeof import('../../lib/emailCompositionSave')>()),
+  saveEmailComposition: vi.fn(async (id: string, text: string, composition: unknown, mirror: boolean) => {
+    const row = emailRows.get(id)!
+    const saved = { message_text: mirror ? row.message_text : text, email_mirror_text: mirror ? text : row.email_mirror_text,
+      draft_evidence: { ...row.draft_evidence, [mirror ? 'email_mirror_composition' : 'email_composition']: composition } }
+    emailRows.set(id, saved)
+    return saved
+  }),
+}))
 
 vi.mock('../../lib/rejectedDm', async orig => ({ ...(await orig<typeof import('../../lib/rejectedDm')>()), sendRejectedDm: vi.fn(async () => {}), editHeldDm: vi.fn(async () => {}) }))
 import { editHeldDm, sendRejectedDm } from '../../lib/rejectedDm'
@@ -36,6 +47,8 @@ import { forwardInboxEmail } from '../../lib/emailForward'
 import { scheduleDm } from '../../lib/dmSchedule'
 import type { Thread } from '../../lib/inbox'
 import type { PreReadHandle } from '../../exp/v2c/chat/usePreRead'
+import { saveEmailComposition } from '../../lib/emailCompositionSave'
+import type { EmailComposition } from '../../lib/emailRichText'
 
 const pre: PreReadHandle = { get: () => ({ s: 'none' }), run: () => {}, busy: false, spent: 0, capped: false }
 const ctx = { refresh: vi.fn(), patch: vi.fn() }
@@ -44,12 +57,19 @@ function Pane({ t, v4 = false }: { t: Thread; v4?: boolean }) {
   const verbs = useDmVerbs(ctx)
   return <ThreadPane v4={v4} t={t} all={[t]} phone={false} verbs={verbs} now={NOW} onBack={() => {}} onAsk={() => {}} onMenu={() => {}} staleN={0} pre={pre} reload={() => {}} />
 }
-const mount = (t: Thread, v4 = false) => renderInFrame(<DmAsks><Pane t={t} v4={v4} /></DmAsks>, { hash: '#exp/d/dms' })
+const mount = (t: Thread, v4 = false) => {
+  for (const row of [t.draft, t.companionDraft]) if (row) emailRows.set(row.id, { message_text: row.message_text, email_mirror_text: row.email_mirror_text ?? null, draft_evidence: row.draft_evidence ?? null })
+  return renderInFrame(<DmAsks><Pane t={t} v4={v4} /></DmAsks>, { hash: '#exp/d/dms' })
+}
 const key = (v: string) => document.querySelector(`[data-verb="${v}"]`) as HTMLElement
+const waitForEmailRead = async () => { await waitFor(() => expect(screen.queryByText('Loading email details before editing.')).toBeNull()) }
+const typeRich = (label: string, text: string) => fireEvent.paste(screen.getByRole('textbox', { name: label }), { clipboardData: { types: ['text/plain'], getData: () => text } })
 
 vi.mock('../../lib/emailForward', async orig => ({ ...(await orig<typeof import('../../lib/emailForward')>()), forwardInboxEmail: vi.fn(async () => 'forwarded-id') }))
 
-beforeEach(() => { stopWatching(); resetPaneBusy(); resetDraftJobs(); vi.useFakeTimers({ shouldAdvanceTime: true }); vi.setSystemTime(NOW); vi.clearAllMocks(); vi.mocked(lib.saveDraftEmailCc).mockReset().mockResolvedValue([]) })
+beforeEach(() => { stopWatching(); resetPaneBusy(); resetDraftJobs(); vi.useFakeTimers({ shouldAdvanceTime: true }); vi.setSystemTime(NOW); vi.clearAllMocks(); emailRows.clear(); vi.mocked(lib.saveDraftEmailCc).mockReset().mockResolvedValue([])
+  Range.prototype.getClientRects = () => ({ length: 0, item: () => null, [Symbol.iterator]: function* () {} } as DOMRectList)
+  Range.prototype.getBoundingClientRect = () => ({ x: 0, y: 0, width: 0, height: 0, top: 0, left: 0, right: 0, bottom: 0, toJSON: () => ({}) }) })
 afterEach(() => { cleanup(); stopWatching(); vi.useRealTimers() })
 
 describe('direct email reply', () => {
@@ -76,15 +96,16 @@ describe('direct email reply', () => {
     mount(t)
     fireEvent.click(screen.getByRole('button', { name: 'Reply by email' }))
     const input = screen.getByRole('textbox', { name: 'Email reply' })
-    expect(document.activeElement).toBe(input)
+    await waitFor(() => expect(document.activeElement).toBe(input))
     expect(lib.composeReply).not.toHaveBeenCalled()
     await waitFor(() => expect(document.querySelector('.dm-email-composer')!.textContent).toContain('ofir.b@doktorabc.com'))
     expect(screen.getByText('Re: Meeting')).toBeTruthy()
-    fireEvent.change(input, { target: { value: 'Thursday works for me.' } })
+    typeRich('Email reply', 'Thursday works for me.')
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Send email' }) as HTMLButtonElement).disabled).toBe(false))
     fireEvent.click(screen.getByRole('button', { name: 'Send email' }))
     expect(lib.composeReply).not.toHaveBeenCalled()
     fireEvent.click(await screen.findByText('Send it'))
-    await waitFor(() => expect(lib.composeReply).toHaveBeenCalledWith(expect.objectContaining({ prospect_id: 'ofir', channel: 'email' }), 'Thursday works for me.', expect.objectContaining({ recipient_email: 'ofir.b@doktorabc.com', message_text_prefix: 'Subject: Re: Meeting\n\n' })))
+    await waitFor(() => expect(lib.composeReply).toHaveBeenCalledWith(expect.objectContaining({ prospect_id: 'ofir', channel: 'email' }), 'Thursday works for me.', expect.objectContaining({ recipient_email: 'ofir.b@doktorabc.com', message_text_prefix: 'Subject: Re: Meeting\n\n' }), expect.objectContaining({ version: 1 })))
   })
 
   it('keeps email reply unavailable for an unsupported sender', () => {
@@ -92,10 +113,10 @@ describe('direct email reply', () => {
     expect(screen.queryByRole('button', { name: 'Reply by email' })).toBeNull()
   })
 
-  it('can reply to received email before a LinkedIn connection is accepted', () => {
+  it('can reply to received email before a LinkedIn connection is accepted', async () => {
     mount({ ...emailThread(), stage: 'engaged' })
     fireEvent.click(screen.getByRole('button', { name: 'Reply by email' }))
-    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Email reply' }))
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Email reply' })))
   })
 
   it('shows the email delivery identity even before the reply button is clicked', async () => {
@@ -119,14 +140,14 @@ describe('direct email reply', () => {
     mount(emailThread())
     fireEvent.click(screen.getByRole('button', { name: 'Reply by email' }))
     const input = screen.getByRole('textbox', { name: 'Email reply' })
-    fireEvent.change(input, { target: { value: 'Thursday works.' } })
+    typeRich('Email reply', 'Thursday works.')
     await screen.findByText('Email lookup failed')
     expect((screen.getByRole('button', { name: 'Send email' }) as HTMLButtonElement).disabled).toBe(true)
     fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true })
     expect(lib.composeReply).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Retry email details' }))
     await waitFor(() => expect((screen.getByRole('button', { name: 'Send email' }) as HTMLButtonElement).disabled).toBe(false))
-    expect((input as HTMLTextAreaElement).value).toBe('Thursday works.')
+    expect(input.textContent).toBe('Thursday works.')
   })
 })
 
@@ -147,6 +168,7 @@ describe('DM verbs', () => {
   it('confirms the email-only envelope and carries that choice into approval', async () => {
     const [t] = threads(drafted('doug', { client_id: 'arch', recipient_email: 'doug@outplay.com', email_mirror_text: 'Subject: Follow-up\n\nDid you see the examples?', send_via: 'email', draft_evidence: { send_via: 'email' } }))
     mount(t)
+    await waitForEmailRead()
     expect(key('send').textContent).toContain('Send email')
     expect(screen.queryByRole('textbox', { name: 'The draft' })).toBeNull()
     fireEvent.click(key('send'))
@@ -167,6 +189,7 @@ describe('DM verbs', () => {
   it('approves a DM-only draft without adding CC back to the inactive email', async () => {
     const [t] = threads(drafted('anthony', { client_id: 'risedtc', recipient_email: null, email_delivery_recipient: 'anthony@example.com', email_mirror_text: 'Subject: Call', email_cc: [] }))
     mount(t)
+    await waitForEmailRead()
     fireEvent.click(key('send'))
     await screen.findByText(/Only the LinkedIn DM will be sent. The sender/)
     await screen.findByRole('alertdialog')
@@ -178,8 +201,9 @@ describe('DM verbs', () => {
   it('shows saved CC beside the mirror and saves edited CC before approval', async () => {
     const [t] = threads(drafted('thomas', { prospect_name: 'Thomas', client_id: 'risedtc', recipient_email: 'thomas@vmisports.com', email_mirror_text: 'Subject: VMI scan\n\nHey Thomas and Michael,', email_cc: ['michael@vmisports.com'] }))
     mount(t)
+    await waitForEmailRead()
     expect((screen.getByRole('textbox', { name: 'Email subject' }) as HTMLInputElement).value).toBe('VMI scan')
-    expect((screen.getByRole('textbox', { name: 'The email that goes with it' }) as HTMLTextAreaElement).value).toBe('Hey Thomas and Michael,')
+    expect(screen.getByRole('textbox', { name: 'The email that goes with it' }).textContent).toBe('Hey Thomas and Michael,')
     expect(screen.getByText('Email draft')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Show email' })).toBeNull()
     const cc = screen.getByRole('textbox', { name: 'CC recipients' })
@@ -198,10 +222,11 @@ describe('DM verbs', () => {
   it('autosaves an edited email subject without approval and carries it before Send approval', async () => {
     const [t] = threads(drafted('mathew', { prospect_name: 'Mathew', client_id: 'risedtc', recipient_email: 'mathew@fraseskin.com.au', email_mirror_text: 'Subject: Old subject\n\nHi Mathew, exact words.' }))
     mount(t)
+    await waitForEmailRead()
     const subject = screen.getByRole('textbox', { name: 'Email subject' })
     fireEvent.change(subject, { target: { value: 'RISE introduction for Frase Skin' } })
     fireEvent.blur(subject)
-    await waitFor(() => expect(lib.saveDraftEmail).toHaveBeenCalledWith(t.draft!.id, 'Subject: RISE introduction for Frase Skin\n\nHi Mathew, exact words.'))
+    await waitFor(() => expect(saveEmailComposition).toHaveBeenCalledWith(t.draft!.id, 'Subject: RISE introduction for Frase Skin\n\nHi Mathew, exact words.', expect.objectContaining({ version: 1 }), true, t.draft!.email_mirror_text, null))
     expect(lib.approveDraft).not.toHaveBeenCalled()
     fireEvent.change(subject, { target: { value: 'Edited immediately before approval' } })
     fireEvent.click(key('send'))
@@ -209,14 +234,40 @@ describe('DM verbs', () => {
     await screen.findByRole('alertdialog')
     fireEvent.click(key('confirm-send'))
     await waitFor(() => expect(lib.approveDraft).toHaveBeenCalledTimes(1))
-    expect(vi.mocked(lib.saveDraftEmail).mock.calls.at(-1)).toEqual([t.draft!.id, 'Subject: Edited immediately before approval\n\nHi Mathew, exact words.'])
-    expect(vi.mocked(lib.saveDraftEmail).mock.invocationCallOrder.at(-1)).toBeLessThan(vi.mocked(lib.approveDraft).mock.invocationCallOrder[0])
+    expect(vi.mocked(saveEmailComposition).mock.calls.at(-1)?.[1]).toBe('Subject: Edited immediately before approval\n\nHi Mathew, exact words.')
+    expect(vi.mocked(saveEmailComposition).mock.invocationCallOrder.at(-1)).toBeLessThan(vi.mocked(lib.approveDraft).mock.invocationCallOrder[0])
     expect(vi.mocked(lib.approveDraft).mock.calls[0][3]?.email_mirror_text).toBe('Subject: Edited immediately before approval\n\nHi Mathew, exact words.')
+  })
+  it('autosaves a signature-only rich edit while the email source text stays the same', async () => {
+    const rows = drafted('signature-edit', { client_id: 'arch', channel: 'email', recipient_email: 'alex@example.com' })
+    rows[2].message_text = 'Subject: Hello\n\nThanks, Alex.'
+    const [t] = threads(rows)
+    mount(t)
+    await waitForEmailRead()
+    fireEvent.click([...document.querySelectorAll('.dm-email-editor button')].find(button => button.textContent === 'Remove signature')!)
+    await waitFor(() => expect(saveEmailComposition).toHaveBeenCalledWith(t.draft!.id, t.draft!.message_text,
+      expect.objectContaining({ version: 1, source_text: t.draft!.message_text, signature: null }), false, t.draft!.message_text, null))
+    expect(lib.approveDraft).not.toHaveBeenCalled()
+  })
+  it('blocks approval when stored email formatting no longer matches its source text', async () => {
+    const rows = drafted('stale-formatting', { client_id: 'arch', channel: 'email', recipient_email: 'alex@example.com' })
+    rows[2].message_text = 'Subject: Current\n\nHello'
+    const stale: EmailComposition = { version: 1, source_text: 'Subject: Earlier\n\nHello',
+      body: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello' }] }] }, signature: null }
+    rows[2].draft_evidence = { email_composition: stale }
+    const [t] = threads(rows)
+    mount(t)
+    await waitForEmailRead()
+    expect(screen.getByText('Saved email formatting changed. Refresh email details before editing or sending.')).toBeTruthy()
+    expect((key('send') as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(key('send'))
+    expect(lib.approveDraft).not.toHaveBeenCalled()
   })
   it('keeps the whole draft unapproved when CC cannot be saved', async () => {
     const [t] = threads(drafted('thomas', { prospect_name: 'Thomas', client_id: 'risedtc', recipient_email: 'thomas@vmisports.com', email_mirror_text: 'Subject: VMI scan\n\nScan', email_cc: [] }))
     vi.mocked(lib.saveDraftEmailCc).mockRejectedValueOnce(new Error('Enter a valid CC email address.'))
     mount(t)
+    await waitForEmailRead()
     fireEvent.change(screen.getByRole('textbox', { name: 'CC recipients' }), { target: { value: 'Michael' } })
     fireEvent.click(key('send'))
     await screen.findByRole('alertdialog')
@@ -238,11 +289,12 @@ describe('DM verbs', () => {
     const [t] = threads(rows)
     expect(t.companionDraft).not.toBeNull()
     mount(t)
+    await waitForEmailRead()
     expect(key('send').textContent).toContain('Send both')
     fireEvent.click(key('send'))
     fireEvent.click(await screen.findByText('Approve & send both'))
     await waitFor(() => expect(lib.approveDraft).toHaveBeenCalledTimes(2))
-    expect(vi.mocked(lib.approveDraft).mock.calls[1]).toEqual([t.companionDraft!.id, 'Email leg', null,
+    expect(vi.mocked(lib.approveDraft).mock.calls[1]).toEqual([t.companionDraft!.id, expect.stringContaining('Email leg'), null,
       expect.objectContaining({ id: t.companionDraft!.id, recipient_email: 's@x.com' })])
   })
 

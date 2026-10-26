@@ -7,7 +7,7 @@ export async function fetchEmailDetails(prospectId: string, ids: readonly string
   const unique = [...new Set(ids)]
   for (let start = 0; start < unique.length; start += 100) {
     const { data, error } = await supabase.from('outreach_messages')
-      .select('id,prospect_id,recipient_email,email_mirror_text,email_metadata:draft_evidence->email,email_subject:draft_evidence->email_subject,email_cc:draft_evidence->email_cc,email_headers:draft_evidence->email_headers')
+      .select('id,prospect_id,recipient_email,email_mirror_text,email_metadata:draft_evidence->email,email_subject:draft_evidence->email_subject,email_cc:draft_evidence->email_cc,email_headers:draft_evidence->email_headers,email_composition:draft_evidence->email_composition,email_mirror_composition:draft_evidence->email_mirror_composition')
       .eq('prospect_id', prospectId).in('id', unique.slice(start, start + 100))
       .abortSignal(AbortSignal.timeout(15_000))
     if (error) throw error

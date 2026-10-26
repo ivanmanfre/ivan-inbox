@@ -7,7 +7,7 @@ import { createElement, useMemo, useRef } from 'react'
 import {
   draftSendVia, approveDraft, composeReply, deleteThread, discardLegs, dismissConfirmation, draftLegs, escalateDraftToClient,
   emailSenderLabel, heldReasonText, isFollowUp, isHeldSend, isStoppedOnPurpose, isSwishdmReply, isSwishdmRow, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft, swishdmPageUrl,
-  saveDraftEmail, saveDraftEmailCc, setDraftSendVia, saveDraftText, snoozeDraft, threadChatId, unsnoozeDraft, REPLY_MYSELF, REDRAFT_REASON, requestRedraft,
+  saveDraftEmailCc, setDraftSendVia, saveDraftText, snoozeDraft, threadChatId, unsnoozeDraft, REPLY_MYSELF, REDRAFT_REASON, requestRedraft,
   findLandedReply, readSendState, type DraftSendVia, type InboxMessage, type SendState, type Thread,
   type EmailReplyTarget,
 } from '../../lib/inbox'
@@ -22,9 +22,15 @@ import { useAsks } from './asks'
 import { canMarkSolved, writeSolved } from './solved'
 import { watchSend } from './sendWatch'
 import { splitEmailDraft } from '../../lib/emailSubject'
+import { emailPreview } from '../../lib/emailPresentation'
 import { emailRowSender } from '../../lib/inbox'
+import { saveEmailComposition, sameEmailComposition } from '../../lib/emailCompositionSave'
+import { buildEmailComposition } from '../../lib/emailCompositionDraft'
+import { renderEmailComposition, renderEmailDocument, type EmailComposition } from '../../lib/emailRichText'
+import { EmailPreview } from './EmailMessage'
 
-export type Edits = { main: string; email: string | null; companion: string | null; cc?: string; companionCc?: string }
+export type Edits = { main: string; email: string | null; companion: string | null; cc?: string; companionCc?: string
+  mainComposition?: EmailComposition | null; emailComposition?: EmailComposition | null; companionComposition?: EmailComposition | null }
 
 export type VerbCtx = {
   /** Preserve the open editor before a row can leave the queue. */
@@ -107,6 +113,48 @@ export function useDmVerbs(ctx: VerbCtx) {
       }
     }
 
+    /** Save a displayed email with the same source and structured body in one guarded write. */
+    async function saveEmailLeg(row: InboxMessage, text: string, composition: EmailComposition | null | undefined,
+      mirror: boolean, from: string, prepareForSend = false): Promise<InboxMessage> {
+      const oldText = mirror ? row.email_mirror_text : row.message_text
+      if (oldText == null) throw new Error('The email draft is unavailable. Refresh before saving.')
+      const key = mirror ? 'email_mirror_composition' : 'email_composition'
+      const oldComposition = row.draft_evidence?.[key] ?? null
+      const desiredComposition = composition === undefined ? oldComposition : composition
+      if (!prepareForSend && text === oldText && sameEmailComposition(desiredComposition, oldComposition)) return row
+      const next = buildEmailComposition(text, from, { transport: mirror ? 'mirror' : 'native', composition: desiredComposition })
+      if (next.source_text === oldText && sameEmailComposition(next, oldComposition)) return row
+      const saved = await saveEmailComposition(row.id, next.source_text, next, mirror, oldText, oldComposition)
+      ctx.patch([row.id], saved)
+      return { ...row, ...saved }
+    }
+
+    async function saveEditedLegs(t: Thread, ed: Edits, prepareForSend = false) {
+      const draft = t.draft
+      if (!draft) throw new Error('The draft is unavailable.')
+      const from = emailRowSender(t.client_id)
+      let main = draft
+      let companion = t.companionDraft
+      if (messageChannel(main) === 'email') main = await saveEmailLeg(main, ed.main, ed.mainComposition, false, from, prepareForSend)
+      else if (ed.main !== main.message_text) {
+        await saveDraftText(main.id, ed.main)
+        ctx.patch([main.id], { message_text: ed.main })
+        main = { ...main, message_text: ed.main }
+      }
+      if (main.email_mirror_text != null && ed.email != null) {
+        main = await saveEmailLeg(main, ed.email, ed.emailComposition, true, from, prepareForSend)
+      }
+      if (companion && ed.companion != null) {
+        if (messageChannel(companion) === 'email') companion = await saveEmailLeg(companion, ed.companion, ed.companionComposition, false, from, prepareForSend)
+        else if (ed.companion !== companion.message_text) {
+          await saveDraftText(companion.id, ed.companion)
+          ctx.patch([companion.id], { message_text: ed.companion })
+          companion = { ...companion, message_text: ed.companion }
+        }
+      }
+      return { main, companion }
+    }
+
     async function sendVia(t: Thread, mode: DraftSendVia): Promise<boolean> {
       if (!t.draft || t.draft.email_stamp_unavailable) { fail('Refresh to check the email recipients.'); return false }
       try {
@@ -148,15 +196,20 @@ export function useDmVerbs(ctx: VerbCtx) {
         })
         if (!ok) return null
       }
+      let companionForApproval: InboxMessage | null = null
       try {
         if (draft.email_stamp_unavailable || comp?.email_stamp_unavailable) throw new Error('Refresh to check the email recipients before approving.')
         await saveCcs(t, ed)
-        // Email first: approveDraft stamps approved_at and the email save guards on it being null.
-        if (draft.email_mirror_text != null && ed.email != null && ed.email !== draft.email_mirror_text) await saveDraftEmail(draft.id, ed.email)
-        await approveDraft(draft.id, ed.main, threadChatId(t), {
-          ...draft, email_mirror_text: ed.email ?? draft.email_mirror_text,
+        // All rich legs are persisted before either approval; approval may queue immediately.
+        const saved = await saveEditedLegs(t, ed, true)
+        await approveDraft(draft.id, saved.main.message_text, messageChannel(draft) === 'email' ? null : threadChatId(t), {
+          ...saved.main,
           email_cc: ed.cc === undefined ? draft.email_cc : parseEmailCc(ed.cc),
         })
+        if (saved.companion) {
+          // Carry the fresh evidence into the second approval below.
+          companionForApproval = saved.companion
+        }
       } catch (e) {
         if (!isNoAnswer(e)) { const m = errText(e); fail(`Not sent: ${m}`); return m }
         const ok = await landed([draft.id])
@@ -166,8 +219,9 @@ export function useDmVerbs(ctx: VerbCtx) {
       let half: string | null = null
       if (comp) {
         try {
-          await approveDraft(comp.id, ed.companion ?? comp.message_text, messageChannel(comp) === 'email' ? null : threadChatId(t), {
-            ...comp, email_cc: ed.companionCc === undefined ? comp.email_cc : parseEmailCc(ed.companionCc),
+          const approvedCompanion = companionForApproval ?? comp
+          await approveDraft(comp.id, approvedCompanion.message_text, messageChannel(comp) === 'email' ? null : threadChatId(t), {
+            ...approvedCompanion, email_cc: ed.companionCc === undefined ? comp.email_cc : parseEmailCc(ed.companionCc),
           })
           ctx.patch([comp.id], { approved_at: new Date().toISOString() })
         } catch (e) {
@@ -407,12 +461,10 @@ export function useDmVerbs(ctx: VerbCtx) {
       const comp = t.companionDraft
       try {
         await saveCcs(t, ed)
-        // His edits travel with the push (today's order: text, email, park; then the other leg).
-        if (ed.main !== draft.message_text) await saveDraftText(draft.id, ed.main)
-        if (draft.email_mirror_text != null && ed.email != null && ed.email !== draft.email_mirror_text) await saveDraftEmail(draft.id, ed.email)
+        // His edits travel with the push before either leg is parked.
+        await saveEditedLegs(t, ed)
         await snoozeDraft(draft.id, until)
         if (comp) {
-          if (ed.companion != null && ed.companion !== comp.message_text) await saveDraftText(comp.id, ed.companion)
           await snoozeDraft(comp.id, until)
         }
       } catch (e) { const m = errText(e); fail(m); return m }
@@ -435,56 +487,68 @@ export function useDmVerbs(ctx: VerbCtx) {
     async function saveEdit(t: Thread, ed: Edits): Promise<string | null> {
       const draft = t.draft
       if (!draft) return null
+      let saved: Awaited<ReturnType<typeof saveEditedLegs>>
       try {
         await saveCcs(t, ed)
-        if (ed.main !== draft.message_text) await saveDraftText(draft.id, ed.main)
-        if (draft.email_mirror_text != null && ed.email != null && ed.email !== draft.email_mirror_text) await saveDraftEmail(draft.id, ed.email)
-        if (t.companionDraft && ed.companion != null && ed.companion !== t.companionDraft.message_text) await saveDraftText(t.companionDraft.id, ed.companion)
+        saved = await saveEditedLegs(t, ed)
       } catch (e) { const m = errText(e); fail(`Not saved: ${m}`); return m }
-      ctx.patch([draft.id], { message_text: ed.main })
+      ctx.patch([draft.id], { message_text: saved.main.message_text, email_mirror_text: saved.main.email_mirror_text })
       toast.show({ message: 'Draft saved.', sub: 'Nothing is sent until you press Send.' })
       ctx.refresh()
       return null
     }
 
-    /** Inline edit (Ivan 09-27: "I have to click on Edit to edit any drafts"): the same guarded
-     *  writes as Save, quiet (no receipt, no list re-read). Returns the failure, or null. */
-    async function autosave(t: Thread, ed: Edits): Promise<string | null> {
+    /** Inline edit writes quietly and returns its successful row baseline for queued local edits. */
+    async function autosave(t: Thread, ed: Edits): Promise<string | { thread: Thread } | null> {
       const draft = t.draft
       if (!draft) return null
       const comp = t.companionDraft
+      let saved: Awaited<ReturnType<typeof saveEditedLegs>>
       try {
         await saveCcs(t, ed)
-        if (ed.main !== draft.message_text) await saveDraftText(draft.id, ed.main)
-        if (draft.email_mirror_text != null && ed.email != null && ed.email !== draft.email_mirror_text) await saveDraftEmail(draft.id, ed.email)
-        if (comp && ed.companion != null && ed.companion !== comp.message_text) await saveDraftText(comp.id, ed.companion)
+        saved = await saveEditedLegs(t, ed)
       } catch (e) { return errText(e) }
-      ctx.patch([draft.id], draft.email_mirror_text != null && ed.email != null ? { message_text: ed.main, email_mirror_text: ed.email } : { message_text: ed.main })
-      if (comp && ed.companion != null) ctx.patch([comp.id], { message_text: ed.companion })
-      return null
+      ctx.patch([draft.id], { message_text: saved.main.message_text, email_mirror_text: saved.main.email_mirror_text })
+      if (comp && saved.companion) ctx.patch([comp.id], { message_text: saved.companion.message_text })
+      return { thread: { ...t,
+        draft: { ...saved.main, email_cc: ed.cc === undefined ? saved.main.email_cc : parseEmailCc(ed.cc) },
+        companionDraft: saved.companion ? { ...saved.companion, email_cc: ed.companionCc === undefined ? saved.companion.email_cc : parseEmailCc(ed.companionCc) } : null } }
     }
 
-    async function compose(t: Thread, text: string, emailTarget?: EmailReplyTarget): Promise<boolean> {
+    async function compose(t: Thread, text: string, emailTarget?: EmailReplyTarget, composition?: EmailComposition | null): Promise<boolean> {
       const body = text.trim()
       if (!body) return false
+      const rich = emailTarget ? buildEmailComposition(emailTarget.message_text_prefix + text, emailRowSender(t.client_id), { composition }) : null
+      const sentBody = rich ? renderEmailDocument(rich.body).text : body
+      const reviewed = rich ? { ...rich, source_text: emailTarget!.message_text_prefix + sentBody } : null
+      const identity = emailTarget ? sentBody : body
       {
-        const details = emailTarget ? `From: ${emailRowSender(t.client_id)}\nTo: ${emailTarget.recipient_email}\nSubject: ${emailTarget.subject ?? splitEmailDraft(emailTarget.message_text_prefix).subject}\n\n${body}` : 'The sender picks it up within about 2 minutes.'
-        const ok = await confirm({ title: `Send this to ${t.prospect_name}?`, message: emailTarget ? createElement('span', { style: { display: 'block', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxHeight: '50vh', overflowY: 'auto' } }, details) : details, confirmText: 'Send it', verb: 'confirm-compose' })
+        const rendered = reviewed ? renderEmailComposition(reviewed) : null
+        const details = emailTarget && rendered ? {
+          ...emailPreview(emailTarget.message_text_prefix + sentBody, { from: emailRowSender(t.client_id), to: [emailTarget.recipient_email], replyToMessageId: emailTarget.email_headers?.['In-Reply-To'] }),
+          subject: emailTarget.subject ?? splitEmailDraft(emailTarget.message_text_prefix).subject,
+          body: rendered.text, html: rendered.html,
+        } : null
+        const context = emailTarget?.context
+        const preview = details ? createElement('div', { style: { maxHeight: '50vh', overflowY: 'auto' } },
+          createElement('p', null, context ? `Replying to ${context.fromName || context.from}${context.isLatest ? ' · latest received email' : ' · earlier email in this thread'}` : `Replying to email ${emailTarget?.source_message_id ?? ''}`),
+          createElement(EmailPreview, { details, state: 'Ready to send' })) : 'The sender picks it up within about 2 minutes.'
+        const ok = await confirm({ title: `Send this to ${t.prospect_name}?`, message: preview, confirmText: 'Send it', verb: 'confirm-compose' })
         if (!ok) return false
       }
       const pid = t.prospect_id
       // A hand reply is a plain insert: after a no-answer, never insert the same words twice.
-      const already = async (): Promise<boolean | null> => { try { return Boolean(await findLandedReply(pid, body)) } catch { return null } }
+      const already = async (): Promise<boolean | null> => { try { return Boolean(await findLandedReply(pid, identity)) } catch { return null } }
       let failed: Awaited<ReturnType<typeof composeReply>> | null = null
-      if (composeUnsure.get(pid) === body) {
+      if (composeUnsure.get(pid) === identity) {
         const hit = await already()
         if (hit === null) { fail(`${NO_ANSWER_UNCHECKED} Your text is kept.`); return false }
         if (hit) failed = await discardLegs(draftLegs(t)).catch(() => [])
       }
       if (!failed) {
-        try { failed = emailTarget ? await composeReply(t, body, emailTarget) : await composeReply(t, body) } catch (e) {
+        try { failed = emailTarget ? await composeReply(t, sentBody, emailTarget, reviewed!) : await composeReply(t, body) } catch (e) {
           if (!isNoAnswer(e)) { fail(errText(e)); return false }
-          composeUnsure.set(pid, body)
+          composeUnsure.set(pid, identity)
           const hit = await already()
           if (!hit) {
             fail(hit === false ? 'No answer from the server, and your reply is not on the thread: nothing was sent. Press Send again: it checks first, so it never goes twice.'

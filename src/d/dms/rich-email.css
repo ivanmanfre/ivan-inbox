@@ -1,0 +1,48 @@
+.dm-rich-email-editor{min-width:0;background:#fff;color:#202124;font:400 14px/1.6 Arial,Helvetica,system-ui,sans-serif}
+.dm-rich-email-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:2px;padding:5px 10px;border-top:1px solid #eceff1;border-bottom:1px solid #eceff1;background:#fff}
+.dm-rich-email-toolbar button{display:inline-flex;align-items:center;justify-content:center;min-width:36px;min-height:36px;border:0;border-radius:5px;background:transparent;color:#3c4043;font:600 15px/1 Arial,Helvetica,sans-serif;cursor:pointer}
+.dm-rich-email-toolbar button[aria-pressed=true]{background:#e8f0fe;color:#174ea6}
+.dm-rich-email-toolbar button:hover:not(:disabled){background:#f1f3f4}
+.dm-rich-email-toolbar button:disabled{opacity:.45;cursor:default}
+.dm-rich-email-separator{height:22px;border-left:1px solid #dadce0;margin:0 4px}
+.dm-rich-email-content .tiptap{min-height:150px;max-height:440px;overflow-y:auto;padding:16px 18px;outline:0;overflow-wrap:anywhere;white-space:normal}
+.dm-rich-email-content .tiptap:focus-visible,.dm-rich-email-toolbar button:focus-visible,.dm-rich-email-link-dialog button:focus-visible,.dm-rich-email-link-dialog input:focus-visible{outline:2px solid #1a73e8;outline-offset:2px}
+.dm-rich-email-content .tiptap[contenteditable=false]{background:#f8f9fa;color:#5f6368}
+.dm-rich-email-content p{margin:0 0 12px}
+.dm-rich-email-content p:last-child{margin-bottom:0}
+.dm-rich-email-content ul,.dm-rich-email-content ol{margin:0 0 12px;padding-left:24px}
+.dm-rich-email-content blockquote{margin:0 0 12px;padding-left:12px;border-left:3px solid #dadce0;color:#5f6368}
+.dm-rich-email-content a{color:#1a73e8;text-decoration:underline;cursor:text}
+.dm-rich-email-compact .dm-rich-email-content .tiptap{min-height:92px;max-height:240px}
+.dm-rich-email-link-dialog{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:8px 12px;padding:12px 14px;border-bottom:1px solid #eceff1;background:#f8fafd}
+.dm-rich-email-link-dialog label{display:grid;gap:4px;min-width:0;color:#5f6368;font-size:12px}
+.dm-rich-email-link-dialog input{box-sizing:border-box;width:100%;min-height:40px;padding:8px 10px;border:1px solid #dadce0;border-radius:5px;background:#fff;color:#202124;font:400 14px/1.4 Arial,Helvetica,sans-serif}
+.dm-rich-email-link-error{grid-column:1/-1;color:#a13024;font-size:12px}
+.dm-rich-email-link-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.dm-rich-email-link-actions button{min-height:36px;padding:6px 12px;border:1px solid #dadce0;border-radius:5px;background:#fff;color:#3c4043;font:400 13px/1.4 Arial,Helvetica,sans-serif;cursor:pointer}
+.dm-rich-email-link-actions button:first-child{border-color:#1a73e8;background:#1a73e8;color:#fff}
+@media(max-width:600px){.dm-rich-email-toolbar button{min-width:44px;min-height:44px}.dm-rich-email-content .tiptap{font-size:16px;padding:14px}.dm-rich-email-link-dialog{grid-template-columns:minmax(0,1fr)}.dm-rich-email-link-dialog input{font-size:16px}.dm-rich-email-link-actions button{min-height:44px}}
+.dm-rich-email-signature{padding:14px 18px 18px;border-top:1px solid #eceff1;background:#fff}
+.dm-rich-email-signature-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;color:#5f6368;font:400 12px/1.5 Arial,Helvetica,sans-serif}
+.dm-rich-email-signature-head>div{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:5px}
+.dm-rich-email-signature-head button{border:0;background:transparent;color:#1a73e8;padding:5px 7px;border-radius:4px;font:400 12px/1.4 Arial,Helvetica,sans-serif;cursor:pointer}
+.dm-rich-email-signature-head button:focus-visible{outline:2px solid #1a73e8;outline-offset:2px}
+.dm-rich-email-signature-head button:disabled{opacity:.5;cursor:default}
+.dm-rich-email-signature-preview{padding-left:12px;border-left:2px solid #dadce0;color:#3c4043;font:400 13px/1.55 Arial,Helvetica,sans-serif;overflow-wrap:anywhere}
+.dm-rich-email-signature-preview p{margin:0}
+.dm-rich-email-signature-preview a{color:#1a73e8;text-decoration:underline}
+.dm-rich-email-signature-empty{margin:0;color:#5f6368;font:400 13px/1.5 Arial,Helvetica,sans-serif}
+.dm-rich-email-signature .dm-rich-email-editor{border:1px solid #dadce0;border-radius:6px;overflow:hidden}
+@media(max-width:600px){.dm-rich-email-signature{padding:12px 14px 16px}.dm-rich-email-signature-head{align-items:flex-start}.dm-rich-email-signature-head button{min-height:44px}}
+.dm-email-reply-context{margin:0 0 12px;padding:12px 14px;border:1px solid #dadce0;border-radius:8px;background:#f8fafd;color:#3c4043;font:400 12px/1.5 Arial,Helvetica,sans-serif}
+.dm-email-reply-context-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;color:#5f6368}
+.dm-email-reply-context-top strong{color:#174ea6;font-weight:600}
+.dm-email-reply-context-meta{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;margin-top:8px}
+.dm-email-reply-context-meta strong{font-weight:600;color:#202124}
+.dm-email-reply-context-meta time{margin-left:auto;color:#5f6368}
+.dm-email-reply-context-subject{margin-top:3px;font-weight:600;color:#202124}
+.dm-email-reply-context p{margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;color:#5f6368}
+.dm-email-reply-context-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.dm-email-reply-context-actions button{border:0;background:transparent;color:#1a73e8;padding:4px 0;font:500 12px/1.5 Arial,Helvetica,sans-serif;cursor:pointer}
+.dm-email-reply-context-actions button:focus-visible{outline:2px solid #1a73e8;outline-offset:2px}
+@media(max-width:600px){.dm-email-reply-context-actions button{min-height:44px}.dm-email-reply-context-meta time{margin-left:0}}

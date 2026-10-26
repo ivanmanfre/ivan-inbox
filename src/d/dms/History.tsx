@@ -103,7 +103,8 @@ export type HeldEditThen = 'save' | 'send' | 'later'
 type HistoryProps = { onSendAnyways?: (m: InboxMessage) => void; onDiscardHeld?: (m: InboxMessage) => void
   /** Ivan 10-21 (Leighton Penrose): save an edit to a held message, then keep it held, send it, or schedule
    *  it. Resolves true once the edit is saved (the editor closes). `heldLater`: the thread can schedule. */
-  onEditHeld?: (m: InboxMessage, text: string, then: HeldEditThen) => Promise<boolean>; heldLater?: boolean; sending?: boolean; t: Thread; cap?: number; engagements?: readonly CameBackSignal[] | null; now?: number; onReplyEmail?: () => void; onForwardEmail?: (m: InboxMessage) => void
+  onEditHeld?: (m: InboxMessage, text: string, then: HeldEditThen) => Promise<boolean>; heldLater?: boolean; sending?: boolean; t: Thread; cap?: number; engagements?: readonly CameBackSignal[] | null; now?: number; onReplyEmail?: (m: InboxMessage) => void; onForwardEmail?: (m: InboxMessage) => void
+  revealMessageId?: string | null; activeEmailReplyId?: string | null
   /** Brief 4: meta once per run (status, reaction, email and a channel change always), arrivals grow from their tail. */
   v4?: boolean }
 
@@ -130,9 +131,19 @@ function EngagementLine({ s, owner }: { s: CameBackSignal; owner: string }) {
   )
 }
 
-function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = false, sending, t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail, retry, v4 = false, engagements }: HistoryProps & { retry: () => void }) {
+function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = false, sending, t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail, retry, v4 = false, engagements, revealMessageId, activeEmailReplyId }: HistoryProps & { retry: () => void }) {
   const source = useReplySource({ kind: 'operator', clientId: t.client_id ?? 'ivan' }, t.prospect_id, true)
   const [all, setAll] = useState(false)
+  useEffect(() => {
+    if (!revealMessageId) return
+    setAll(true)
+    const frame = requestAnimationFrame(() => {
+      const row = [...document.querySelectorAll<HTMLElement>('[data-msg]')].find(m => m.dataset.msg === revealMessageId)
+      row?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+      row?.focus({ preventScroll: true })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [revealMessageId])
   // The held message open in the editor (one at a time) and its words; nothing is saved until Save.
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
   const [editBusy, setEditBusy] = useState(false)
@@ -151,7 +162,6 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
     if (s.pid !== t.prospect_id) { seen.current = { pid: t.prospect_id, at: Date.now(), ids: new Set(idsKey.split(',')), arrived: new Set() }; return }
     for (const id of idsKey.split(',')) s.ids.add(id)
   }, [t.prospect_id, idsKey])
-  const lastEmail = rows.filter(m => m.direction === 'inbound' && messageChannel(m) === 'email').at(-1)?.id
   // The fold never hides the thread's open hold: the window starts at it when it is older.
   const openHeld = heldSend(t)
   const heldAt = openHeld ? rows.findIndex(m => m.id === openHeld.id) : -1
@@ -261,6 +271,7 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
             {newDay && <div className="dm-day" role="separator"><span>{warsawDayWord(timelineTime(m), now)}</span></div>}
             <div className={`${email ? 'dm-email-history dm-h-email' : `dm-b dm-b-${side}`} dm-h-whole${pend ? ' dm-h-pending' : ''}${inb ? ' dm-h-in' : ''}${st?.fail ? ' dm-h-fail' : ''}${held ? ' dm-h-held' : ''}${edit ? ' dm-h-editing' : ''}${firstOfRun ? ' dm-b-first' : ''}${v4 && last ? ' dx-b-last' : ''}${arrive ? ' dx-arrive' : ''}`}
               data-msg={m.id} data-channel={email ? 'email' : undefined} data-side={side} data-pending={pend ? '' : undefined} data-held={held ? '' : undefined}
+              data-reply-target={activeEmailReplyId === m.id ? '' : undefined} tabIndex={email ? -1 : undefined}
               title={v4 ? [kind, st?.text, reaction ? 'reaction' : null, at ? warsawHm(at) : null].filter(Boolean).join(' · ') : undefined}>
               {firstOfRun && !email && <b className="dm-b-who">{inb ? first : ours}</b>}
               {envelope && !edit ? <EmailPreview details={{ ...envelope, date: pend ? at : envelope.date ?? at }} state={st?.text ?? (inb ? 'Received' : 'Sent')} /> : edit ? <div className="dm-b-body dm-b-draft dm-held-edit" data-held-edit={m.id}>
@@ -290,7 +301,7 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
                 {onSendAnyways && canSendRejectedDm(m) && <button type="button" className="dm-email-reply dm-send-anyways" data-verb="send-anyways" disabled={sending} onClick={() => onSendAnyways(m)}>Send anyway</button>}
               </div>}
               {inb && email && (onReplyEmail || onForwardEmail) && <div className="dm-email-actions">
-                {m.id === lastEmail && onReplyEmail && <button type="button" className="dm-email-reply" data-verb="reply-email" onClick={onReplyEmail}>Reply by email</button>}
+                {onReplyEmail && <button type="button" className="dm-email-reply" data-verb="reply-email" onClick={() => onReplyEmail(m)}>Reply by email</button>}
                 {onForwardEmail && <button type="button" className="dm-email-reply" data-verb="forward-email" onClick={() => onForwardEmail(m)}>Forward to email</button>}
               </div>}
             </div>

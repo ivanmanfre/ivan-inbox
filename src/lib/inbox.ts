@@ -4,6 +4,8 @@ import { supabase } from './supabase'
 import { bounded } from './noAnswer'
 import { STAGE_LADDER, stageIsOff, stageStep } from '../exp/v2c/stage'
 import type { EmailDetails, EmailMetadata } from './emailPresentation'
+import { renderEmailComposition, renderEmailDocument, type EmailComposition } from './emailRichText'
+import { sameEmailComposition } from './emailCompositionSave'
 
 export type InboxMessage = {
   id: string; prospect_id: string; direction: 'inbound' | 'outbound';
@@ -1623,6 +1625,9 @@ export type DraftContextGap = { question: string | null; why: string | null; cha
 export type DraftEvidenceFact = { id: string; fact: string; topic: string; at: string; from: string | null }
 export type DraftEvidenceExemplar = { they: string | null; reply: string | null; at: string | null; prospect: string | null }
 export type DraftEvidence = {
+  email_composition?: EmailComposition | null
+  email_mirror_composition?: EmailComposition | null
+  email_composition_reviewed?: EmailComposition | null
   scheduled_send?: { at: string; timezone: string; state?: string }
   // SwishDM senders (n8n): which seat/lane wrote the row, the DM1 queue state after an accept,
   // and the stop marker a sender leaves when it deliberately did not send.
@@ -1795,6 +1800,11 @@ export async function approveDraft(id: string, editedText: string, chatId?: stri
   const { data: draft, error: readError } = await supabase.from('outreach_messages')
     .select('ai_model,draft_evidence').eq('id', id).single()
   if (readError) throw readError
+  for (const key of ['email_composition', 'email_mirror_composition'] as const) {
+    if (!sameEmailComposition(draft?.draft_evidence?.[key], snapshot?.draft_evidence?.[key])) {
+      throw new Error('The email formatting changed after review. Refresh before sending.')
+    }
+  }
   if (draft?.ai_model === 'inbox_on_demand_reply') {
     const { error } = await supabase.rpc('approve_inbox_on_demand_reply', {
       p_message_id: id, p_text: editedText, p_chat_id: chatId ?? null,
@@ -2221,22 +2231,38 @@ export function canComposeEmail(t: Thread): boolean {
   return t.client_id === 'arch'
 }
 
-export type EmailReplyTarget = { recipient_email: string; message_text_prefix: string; email_headers?: Record<string, string>; subject?: string; source_message_id?: string }
+export type EmailReplyContext = { from: string; fromName: string | null; date: string | null; body: string; isLatest: boolean; selection: 'latest' | 'specific'; subject?: string; direction?: string }
+export type EmailReplyTarget = { recipient_email: string; message_text_prefix: string; email_headers?: Record<string, string>; subject?: string; source_message_id?: string
+  selection?: 'latest' | 'specific'; latest_source_message_id?: string; context?: EmailReplyContext }
 
 // The reply goes to whoever last emailed us on this thread, as "Re: <their subject>", with
 // In-Reply-To/References so it lands under their message. Send Messages sends it from the
 // client identity (Davorin from ARCH <davorin@madebyarch.com>).
-export async function emailReplyTarget(prospectId: string): Promise<EmailReplyTarget> {
+export async function emailReplyTarget(prospectId: string, sourceMessageId?: string): Promise<EmailReplyTarget> {
+  type Row = { id: string; direction: string; recipient_email: string; sent_at?: string | null; created_at?: string | null; draft_evidence: { email_subject?: string; email?: EmailMetadata } | null; message_text: string }
+  const columns = 'id,direction,recipient_email,draft_evidence,message_text,sent_at,created_at'
   const { data, error } = await supabase.from('outreach_messages')
-    .select('id,direction,recipient_email,draft_evidence,message_text')
+    .select(columns)
     .eq('prospect_id', prospectId).eq('channel', 'email').not('recipient_email', 'is', null)
-    .order('sent_at', { ascending: false, nullsFirst: false }).limit(10)
+    .eq('direction', 'inbound').order('sent_at', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false }).limit(1)
   if (error) throw error
-  const rows = (data ?? []) as { id: string; direction: string; recipient_email: string; draft_evidence: { email_subject?: string; email?: { subject?: string; message_id?: string; references?: string } } | null; message_text: string }[]
-  const inbound = rows.find(r => r.direction === 'inbound')
-  const row = inbound ?? rows[0]
+  const latest = (data ?? [])[0] as Row | undefined
+  let row = latest
+  if (sourceMessageId && row?.id !== sourceMessageId) {
+    const selected = await supabase.from('outreach_messages').select(columns).eq('prospect_id', prospectId)
+      .eq('channel', 'email').eq('direction', 'inbound').eq('id', sourceMessageId).limit(1)
+    if (selected.error) throw selected.error
+    row = (selected.data ?? [])[0] as Row | undefined
+    if (!row || row.id !== sourceMessageId) throw new Error('That email is no longer available. Refresh the conversation.')
+  } else if (!row) {
+    const sent = await supabase.from('outreach_messages').select(columns).eq('prospect_id', prospectId)
+      .eq('channel', 'email').eq('direction', 'outbound').not('recipient_email', 'is', null)
+      .not('sent_at', 'is', null).order('sent_at', { ascending: false }).limit(1)
+    if (sent.error) throw sent.error
+    row = (sent.data ?? [])[0] as Row | undefined
+  }
   if (!row) throw new Error('No email address on this thread, so the reply was not queued.')
-  const em = inbound?.draft_evidence?.email ?? {}
+  const em = row.draft_evidence?.email ?? {}
   const firstLine = (row.message_text ?? '').split('\n')[0] ?? ''
   const baseSubject = (em.subject || row.draft_evidence?.email_subject || (/^subject:/i.test(firstLine) ? firstLine.replace(/^subject:\s*/i, '') : '') || 'Following up').replace(/[\r\n]+/g, ' ').trim()
   const subject = /^re:/i.test(baseSubject) ? baseSubject : `Re: ${baseSubject}`
@@ -2244,26 +2270,37 @@ export async function emailReplyTarget(prospectId: string): Promise<EmailReplyTa
   return {
     recipient_email: String(row.recipient_email).split(/[,;\s]+/).filter(Boolean)[0],
     subject, source_message_id: row.id,
+    selection: sourceMessageId ? 'specific' : 'latest', latest_source_message_id: latest?.id ?? row.id,
+    context: { from: em.from ?? (row.direction === 'inbound' ? row.recipient_email : 'Your sent email'), fromName: em.from_name ?? null,
+      date: row.sent_at ?? row.created_at ?? null, body: row.message_text, isLatest: !latest || latest.id === row.id,
+      selection: sourceMessageId ? 'specific' : 'latest', subject: baseSubject, direction: row.direction },
     message_text_prefix: `Subject: ${subject}\n\n`,
     ...(mid ? { email_headers: { 'In-Reply-To': mid, References: `${(em.references ?? '').trim()} ${mid}`.trim() } } : {}),
   }
 }
 
-export async function composeReply(t: Thread, text: string, expectedEmail?: EmailReplyTarget): Promise<LegFailure[]> {
+export async function composeReply(t: Thread, text: string, expectedEmail?: EmailReplyTarget, composition?: EmailComposition): Promise<LegFailure[]> {
   const isEmail = t.channel === 'email'
   if (isEmail && !canComposeEmail(t)) throw new Error('Email compose is only on for ARCH threads.')
-  const target = isEmail ? await emailReplyTarget(t.prospect_id) : null
+  const target = isEmail ? await emailReplyTarget(t.prospect_id, expectedEmail?.selection === 'specific' ? expectedEmail.source_message_id : undefined) : null
   if (target && expectedEmail && (target.recipient_email !== expectedEmail.recipient_email
     || target.message_text_prefix !== expectedEmail.message_text_prefix
     || JSON.stringify(target.email_headers ?? {}) !== JSON.stringify(expectedEmail.email_headers ?? {})
     || (expectedEmail.source_message_id && target.source_message_id !== expectedEmail.source_message_id))) {
     throw new Error('The email conversation changed. Refresh email details and review the reply before sending.')
   }
+  if (composition) {
+    if (!target || composition.source_text !== target.message_text_prefix + text || renderEmailDocument(composition.body).text.trim() !== text.trim()) {
+      throw new Error('The email formatting changed. Review the email before sending.')
+    }
+    renderEmailComposition(composition)
+  }
   const manualRevision = await takeOwnershipBeforeManualReply(t.prospect_id)
   const evidence = {
     ...(manualRevision === null ? {} : { conversation_agent_manual_revision: manualRevision }),
     ...(target?.email_headers ? { email_headers: target.email_headers } : {}),
     ...(target ? { email_subject: target.subject, email_reply_to_message_id: target.source_message_id } : {}),
+    ...(composition ? { email_composition: composition, email_composition_reviewed: composition } : {}),
   }
   const { error } = await supabase.from('outreach_messages').insert({
     prospect_id: t.prospect_id, direction: 'outbound',

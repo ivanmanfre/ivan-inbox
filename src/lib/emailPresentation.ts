@@ -1,11 +1,13 @@
 import { emailRowSender, type InboxMessage, type Thread } from './inbox'
 import { splitEmailDraft } from './emailSubject'
+import { renderEmailComposition, renderEmailDocument, type EmailComposition } from './emailRichText'
 
 export type EmailDetails = {
   subject: string | null; body: string; from: string | null; fromName: string | null
   to: string[]; cc: string[]; date: string | null; messageId: string | null
   replyToMessageId: string | null; references: string | null
   html?: string | null
+  formattingUnavailable?: boolean
 }
 
 export type EmailMetadata = {
@@ -19,6 +21,7 @@ export type EmailDetailRow = {
   id: string; prospect_id: string; recipient_email?: string | null; email_mirror_text?: string | null
   email_metadata?: EmailMetadata | null; email_subject?: string | null; email_cc?: string[] | null
   email_headers?: Record<string, string> | null
+  email_composition?: EmailComposition | null; email_mirror_composition?: EmailComposition | null
 }
 
 const nonempty = (s?: string | null) => typeof s === 'string' && s.trim() ? s.trim() : null
@@ -91,6 +94,15 @@ export function emailDetails(m: InboxMessage, t?: Thread): EmailDetails {
     replyToMessageId: saved?.replyToMessageId ?? headers?.['In-Reply-To'] ?? em?.in_reply_to,
     formatForSend: false,
   })
+  const composition = incoming ? null : m.draft_evidence?.email_composition
+  if (composition) {
+    try {
+      if (composition.source_text !== m.message_text || renderEmailDocument(composition.body).text.trim() !== splitEmailForSend(m.message_text).body.trim()) throw new Error('Saved formatting changed')
+      const rendered = renderEmailComposition(composition)
+      preview.body = rendered.text
+      preview.html = rendered.html
+    } catch { preview.formattingUnavailable = true }
+  }
   return { ...preview, fromName: saved?.fromName ?? nonempty(em?.from_name) ?? senderName(em?.from)
     ?? (incoming ? nonempty(m.prospect_name) : ({ arch: 'Davorin', risedtc: 'Mattan', swishdm: 'Jonathan', ivan: 'You' }[m.client_id] ?? null)),
     date: m.sent_at ?? m.created_at, messageId: saved?.messageId ?? nonempty(em?.message_id),
@@ -107,6 +119,8 @@ export function hydrateEmailDetails(t: Thread, rows: readonly EmailDetailRow[]):
       recipient_email: r.recipient_email ?? m.recipient_email,
       email_mirror_text: m.email_mirror_text ?? r.email_mirror_text,
       draft_evidence: { ...m.draft_evidence, email: { ...m.draft_evidence?.email, ...r.email_metadata },
+        email_composition: Object.hasOwn(r, 'email_composition') ? r.email_composition : m.draft_evidence?.email_composition,
+        email_mirror_composition: Object.hasOwn(r, 'email_mirror_composition') ? r.email_mirror_composition : m.draft_evidence?.email_mirror_composition,
         email_subject: r.email_subject ?? m.draft_evidence?.email_subject,
         email_cc: r.email_cc ?? m.draft_evidence?.email_cc, email_headers: r.email_headers ?? m.draft_evidence?.email_headers } }
   })

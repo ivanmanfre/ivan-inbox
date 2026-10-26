@@ -5,6 +5,8 @@ on:
       - 'src/d/dms/**'
       - 'src/lib/inbox.ts'
       - 'src/lib/email*'
+      - 'src/sql/emailComposition.test.ts'
+      - 'db/20261026_inbox_email_composition.sql'
       - '.github/workflows/email-regression.yml'
   workflow_dispatch: {}
 permissions:
@@ -18,7 +20,7 @@ jobs:
         with: { node-version: 20, cache: npm }
       - run: npm ci
       - name: Check email presentation and reply transport
-        run: npm test -- src/lib/emailPresentation.test.ts src/lib/emailDetails.test.ts src/lib/emailReplyTransport.test.ts src/lib/emailSubject.test.ts src/lib/emailCc.test.ts src/lib/inboxManual.test.ts src/d/dms/EmailPresentation.test.tsx src/d/dms/EmailComposer.test.tsx src/d/dms/EmailMessage.test.tsx src/d/dms/verbs.test.tsx src/d/dms/parity.test.tsx --maxWorkers=2
+        run: npm test -- src/lib/email src/lib/inboxManual.test.ts src/lib/inboxApproval.test.ts src/sql/emailComposition.test.ts src/d/dms src/d/ui/confirm.test.tsx --maxWorkers=2
         env:
           VITE_SUPABASE_URL: http://127.0.0.1:9
           VITE_SUPABASE_ANON_KEY: email-regression-fixture

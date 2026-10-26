@@ -26,7 +26,7 @@ for (const v4 of [true, false]) it(`edits a mirrored email subject without chang
   const t = threads([msg({ prospect_id: 'mathew', client_id: 'risedtc', recipient_email: 'mathew@fraseskin.com.au', email_mirror_text: original, message_text: 'I’ll email those details over.' })])[0]
   const first = editor(t, { main: t.draft!.message_text, email: original, companion: null, cc: '' }, v4)
   expect((screen.getByRole('textbox', { name: 'Email subject' }) as HTMLInputElement).value).toBe('From LinkedIn - what we run')
-  expect((screen.getByRole('textbox', { name: 'The email that goes with it' }) as HTMLTextAreaElement).value).toBe('Hi Mathew,\n\nHere are the details.')
+  expect(screen.getByRole('textbox', { name: 'The email that goes with it' }).textContent).toBe('Hi Mathew,Here are the details.')
   fireEvent.change(screen.getByRole('textbox', { name: 'Email subject' }), { target: { value: 'RISE introduction for Frase Skin' } })
   expect(first.value()).toMatchObject({ main: 'I’ll email those details over.', email: edited })
   first.unmount()
@@ -34,12 +34,12 @@ for (const v4 of [true, false]) it(`edits a mirrored email subject without chang
   expect((screen.getByRole('textbox', { name: 'Email subject' }) as HTMLInputElement).value).toBe('RISE introduction for Frase Skin')
 })
 
-it('edits the subject and exact body of a standalone email in its existing message_text', () => {
+it('edits the subject and structured body of a standalone email in its existing message_text', () => {
   const t = threads([msg({ prospect_id: 'tessa', client_id: 'risedtc', channel: 'email', message_type: 'email', recipient_email: 'tessa@example.com', message_text: original })])[0]
   const pane = editor(t, { main: original, email: null, companion: null, cc: '' })
   fireEvent.change(screen.getByRole('textbox', { name: 'Email subject' }), { target: { value: 'RISE introduction for Frase Skin' } })
-  fireEvent.change(screen.getByRole('textbox', { name: 'The draft' }), { target: { value: 'Hi Mathew,\n\nExact operator words.\n' } })
-  expect(pane.value().main).toBe('Subject: RISE introduction for Frase Skin\n\nHi Mathew,\n\nExact operator words.\n')
+  fireEvent.click(screen.getByRole('button', { name: 'Bulleted list' }))
+  expect(pane.value().main).toBe('Subject: RISE introduction for Frase Skin\n\n- Hi Mathew,\n\nHere are the details.')
 })
 
 it('edits the subject on a paired email leg without changing its LinkedIn companion', () => {
@@ -55,10 +55,10 @@ it('preserves spaces while typing a subject one character at a time', () => {
   const pane = editor(t, { main: 'Exact body.\n', email: null, companion: null, cc: '' })
   const input = screen.getByRole('textbox', { name: 'Email subject' }) as HTMLInputElement
   const subject = 'RISE introduction for Frase Skin'
-  for (const char of subject) {
-    const next = input.value + char
+  for (let i = 1; i <= subject.length; i++) {
+    const next = subject.slice(0, i)
     fireEvent.change(input, { target: { value: next } })
     expect(input.value).toBe(next)
   }
-  expect(pane.value().main).toBe(`Subject: ${subject}\n\nExact body.\n`)
+  expect(pane.value().main).toBe(`Subject: ${subject}\n\nExact body.`)
 })

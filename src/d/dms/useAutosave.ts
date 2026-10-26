@@ -6,32 +6,61 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Thread } from '../../lib/inbox'
 import type { Edits } from './verbs'
+import { sameEmailComposition } from '../../lib/emailCompositionSave'
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'failed'
 
 export const AUTOSAVE_MS = 800
 
 const same = (a: Edits, b: Edits) => a.main === b.main && a.email === b.email && a.companion === b.companion && a.cc === b.cc && a.companionCc === b.companionCc
+  && sameEmailComposition(a.mainComposition, b.mainComposition) && sameEmailComposition(a.emailComposition, b.emailComposition) && sameEmailComposition(a.companionComposition, b.companionComposition)
 
-export function useAutosave(t: Thread, edits: Edits, base: Edits, save: (t: Thread, ed: Edits) => Promise<string | null>) {
+type SaveResult = string | null | { thread: Thread }
+
+export function useAutosave(t: Thread, edits: Edits, base: Edits, save: (t: Thread, ed: Edits) => Promise<SaveResult>) {
   const [state, setState] = useState<SaveState>('idle')
   const [why, setWhy] = useState<string | null>(null)
   const timer = useRef<number | null>(null)
   const pending = useRef<{ t: Thread; ed: Edits } | null>(null)
+  const inFlight = useRef<Promise<void> | null>(null)
   const saved = useRef<Edits>(base)
   const draftId = t.draft?.id ?? ''
 
   const flush = useCallback(async () => {
     if (timer.current != null) { window.clearTimeout(timer.current); timer.current = null }
-    const p = pending.current
-    if (!p) return
-    pending.current = null
-    setState('saving')
-    const err = await save(p.t, p.ed)
-    if (err) { setState('failed'); setWhy(err); pending.current = pending.current ?? p; return }
-    saved.current = p.ed
-    setWhy(null)
-    setState(pending.current ? 'saving' : 'saved')
+    if (inFlight.current) return inFlight.current
+    if (!pending.current) return
+    const work = (async () => {
+      while (pending.current) {
+        if (timer.current != null) { window.clearTimeout(timer.current); timer.current = null }
+        const p = pending.current
+        pending.current = null
+        setState('saving')
+        let result: SaveResult
+        try { result = await save(p.t, p.ed) }
+        catch (error) { result = error instanceof Error ? error.message : String(error) }
+        if (typeof result === 'string' && result) {
+          setState('failed'); setWhy(result); pending.current = pending.current ?? p
+          return
+        }
+        saved.current = p.ed
+        setWhy(null)
+        // A later local edit can use only the row this write actually returned as its CAS baseline.
+        // A thread refreshed externally during the write keeps its own row and conflict guard.
+        const queued = pending.current as { t: Thread; ed: Edits } | null
+        if (result && typeof result === 'object' && queued) {
+          const next = result.thread
+          pending.current = { ...queued, t: {
+            ...queued.t,
+            draft: queued.t.draft?.id === p.t.draft?.id && sameEmailComposition(queued.t.draft, p.t.draft) ? next.draft : queued.t.draft,
+            companionDraft: queued.t.companionDraft?.id === p.t.companionDraft?.id && sameEmailComposition(queued.t.companionDraft, p.t.companionDraft) ? next.companionDraft : queued.t.companionDraft,
+          } }
+        }
+      }
+      setState('saved')
+    })()
+    inFlight.current = work
+    try { await work } finally { if (inFlight.current === work) inFlight.current = null }
   }, [save])
 
   const cancel = useCallback(() => {

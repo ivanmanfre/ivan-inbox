@@ -7,6 +7,7 @@ import { Draft } from './Draft'
 import { EmailDraftEditor } from './EmailDraftEditor'
 import { msg, NOW, threads } from './fixtures'
 import type { Edits } from './verbs'
+import { renderEmailComposition } from '../../lib/emailRichText'
 
 vi.mock('./Explain', () => ({ Explain: () => null }))
 afterEach(cleanup)
@@ -71,16 +72,16 @@ for (const v4 of [true, false]) it(`previews the exact edited email body, subjec
   render(<Editor />)
   fireEvent.change(screen.getByRole('textbox', { name: 'Email subject' }), { target: { value: 'Re: Updated store review' } })
   fireEvent.change(screen.getByRole('textbox', { name: 'CC recipients' }), { target: { value: 'team@example.com' } })
-  const body = 'Hi Alex,\n\nReview: https://example.com/review\n\nThanks,\nIvan\n'
-  fireEvent.change(screen.getByRole('textbox', { name: 'The draft' }), { target: { value: body } })
+  fireEvent.click(screen.getByRole('button', { name: 'Bulleted list' }))
   fireEvent.click(screen.getByRole('button', { name: 'Preview' }))
   const preview = screen.getByRole('region', { name: 'Email preview' })
   expect(within(preview).getByRole('heading', { name: 'Re: Updated store review' })).toBeTruthy()
   expect(within(preview).getByText('team@example.com')).toBeTruthy()
-  expect(preview.querySelector('.dm-email-body')!.textContent).toBe(body.trim())
-  expect(current!.main).toBe(`Subject: Re: Updated store review\n\n${body}`)
+  expect(preview.querySelector('ul li')?.textContent).toBe('Hi Alex,')
+  expect(current!.mainComposition).not.toBeNull()
+  expect(current!.main).toBe(`Subject: Re: Updated store review\n\n${renderEmailComposition(current!.mainComposition!).text}`)
   fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
-  expect((screen.getByRole('textbox', { name: 'The draft' }) as HTMLTextAreaElement).value).toBe(body)
+  expect(screen.getByRole('textbox', { name: 'The draft' }).querySelector('ul li')?.textContent).toBe('Hi Alex,')
 })
 
 it('keeps CC editable when the scan sender generates the email at send time', () => {
