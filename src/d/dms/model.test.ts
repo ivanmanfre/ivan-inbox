@@ -158,6 +158,12 @@ describe('held sends in the list', () => {
       expect(statusOf(t, NOW).kind, t.prospect_id).toBe('waiting')
     }
   })
+  // Ivan 10-27: "i dont need to see in inbox these" (SwishDM invites parked by the 7-day engagement rule).
+  it('an invite parked for a stale engagement is a stop: not listed as Held, no Held tag', () => {
+    const ts = threads(held('st', 3, { message_type: 'connection_note', message_text: '(blank invite - no note by design)', send_blocked_reason: 'stale_engagement: over 7 days since the engagement (Ivan 2026-10-25)' }))
+    expect(heldItems(ts, new Set(), NOW)).toEqual({ recent: [], older: [] })
+    expect(rowTags(ts[0]).some(x => x.kind === 'held')).toBe(false)
+  })
   it('not connected is still a held send (fixable with an invite)', () => {
     const ts = threads(held('nc', 3, { send_blocked_reason: 'no_connection_with_recipient' }))
     expect(heldItems(ts, new Set(), NOW).recent.map(i => i.t.prospect_id)).toEqual(['nc'])

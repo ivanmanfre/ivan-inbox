@@ -202,7 +202,9 @@ export function sendFailed(m: InboxMessage): boolean {
 // it never wears "Send failed" and never offers "Send anyways" (SwishDM, 2026-10-19: 18 routed
 // InMails drew a red bubble in every thread). Real failures keep their own reasons (send_failed_*,
 // inmail_failed_*, stale_send_claim:, bad_text:) and stay failures.
-const INTENTIONAL_STOP = /^(routed_to_invite|(?:[a-z]+_)*(?:replied|reply|reaction|reacted)_stop|manual_touch|invite_withdrawn|(?:[a-z]+_)*exclu(?:sion|ded)(?:_[a-z]+)*)(?=$|[:\s])/
+// stale_engagement (Ivan 10-27, "i dont need to see in inbox these"): swishdm_block_stale_engagement() parks an unsent invite
+// whose engagement passed 7 days (Ivan 10-25 rule). It can never become sendable again, so it is a stop, never Held.
+const INTENTIONAL_STOP = /^(routed_to_invite|stale_engagement|(?:[a-z]+_)*(?:replied|reply|reaction|reacted)_stop|manual_touch|invite_withdrawn|(?:[a-z]+_)*exclu(?:sion|ded)(?:_[a-z]+)*)(?=$|[:\s])/
 
 // A message we or Ivan stopped ON PURPOSE (disqualified, rejected, a killed revival, a dead thread, "do not send"...).
 // KEEP IN SYNC with public.send_rejected_inbox_draft (live 2026-10-21, send audit 2): that function raises
@@ -256,6 +258,7 @@ export function isIntentionalStop(m: Pick<InboxMessage, 'direction' | 'sent_at' 
 export function stopLabel(m: Pick<InboxMessage, 'send_blocked_reason'>): string {
   const r = m.send_blocked_reason ?? ''
   if (r.startsWith('routed_to_invite')) return 'Not sent: sent an invite instead'
+  if (r.startsWith('stale_engagement')) return 'Not sent: their engagement is over 7 days old'
   if (/(?:replied|reply)_stop/.test(r)) return 'Not sent: they replied'
   if (/(?:reaction|reacted)_stop/.test(r)) return 'Not sent: they reacted'
   if (r.startsWith('manual_touch')) return 'Not sent: you messaged them yourself'
