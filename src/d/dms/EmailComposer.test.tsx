@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { useState } from 'react'
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { EmailComposer } from './EmailComposer'
 import type { EmailComposition } from '../../lib/emailRichText'
@@ -129,4 +129,17 @@ it('lets a sender without a default signature open an empty signature editor', (
   expect(screen.getByRole('textbox', { name: 'Email signature' })).toBeTruthy()
   expect(latest).toMatchObject({ signature: { type: 'doc' } })
   expect(screen.queryByRole('button', { name: 'Reset signature' })).toBeNull()
+})
+
+describe('reply-all Cc (Lou Fasulo 10-27)', () => {
+  it('locks Cc while the recipient is loading and blocks Send on an invalid address', () => {
+    const base = { from: 'davorin@madebyarch.com', subject: 'Re: x', value: 'hi', setValue: () => {}, busy: false, onSend: () => {}, onCcChange: () => {} }
+    const { rerender } = render(<EmailComposer {...base} to={null} cc="" />)
+    expect((screen.getByLabelText('Email reply CC recipients') as HTMLInputElement).disabled).toBe(true)
+    rerender(<EmailComposer {...base} to="lou@starform.co" cc="margaret@starform.co, jesse@starform.co" />)
+    expect((screen.getByLabelText('Email reply CC recipients') as HTMLInputElement).disabled).toBe(false)
+    expect((screen.getByRole('button', { name: 'Send email' }) as HTMLButtonElement).disabled).toBe(false)
+    rerender(<EmailComposer {...base} to="lou@starform.co" cc="margaret@" />)
+    expect((screen.getByRole('button', { name: 'Send email' }) as HTMLButtonElement).disabled).toBe(true)
+  })
 })

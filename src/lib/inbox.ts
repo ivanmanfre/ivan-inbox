@@ -2236,13 +2236,32 @@ export function canComposeEmail(t: Thread): boolean {
 
 export type EmailReplyContext = { from: string; fromName: string | null; date: string | null; body: string; isLatest: boolean; selection: 'latest' | 'specific'; subject?: string; direction?: string }
 export type EmailReplyTarget = { recipient_email: string; message_text_prefix: string; email_headers?: Record<string, string>; subject?: string; source_message_id?: string
+  /** Reply-all: everyone else on their To/Cc (our own domains removed). The composer shows it and can edit it. */
+  cc?: string[]
   selection?: 'latest' | 'specific'; latest_source_message_id?: string; context?: EmailReplyContext }
+
+// 2026-10-27 (Lou Fasulo put two colleagues on To; the hand reply reached Lou only): a reply
+// keeps everyone else on the thread on Cc. Our own mailboxes and Ivan's never go on it.
+const OWN_EMAIL_DOMAIN = /@(.+\.)?(madebyarch\.com|arch\.agency|ivanmanfredi\.com|inboundonsteroids\.com|risedtc\.com)$/i
+export function replyAllCc(lists: Array<string | string[] | null | undefined>, recipient: string): string[] {
+  const seen = new Set([recipient.trim().toLowerCase()])
+  const out: string[] = []
+  for (const list of lists) for (const raw of ([] as string[]).concat(list ?? [])) {
+    for (const part of String(raw).split(',')) {
+      const a = (part.match(/<([^>]+)>/)?.[1] ?? part).trim().toLowerCase()
+      if (!a || seen.has(a) || OWN_EMAIL_DOMAIN.test(a)) continue
+      try { if (!parseEmailCc(a).length) continue } catch { continue }
+      seen.add(a); out.push(a)
+    }
+  }
+  return out.slice(0, 10)
+}
 
 // The reply goes to whoever last emailed us on this thread, as "Re: <their subject>", with
 // In-Reply-To/References so it lands under their message. Send Messages sends it from the
 // client identity (Davorin from ARCH <davorin@madebyarch.com>).
 export async function emailReplyTarget(prospectId: string, sourceMessageId?: string): Promise<EmailReplyTarget> {
-  type Row = { id: string; direction: string; recipient_email: string; sent_at?: string | null; created_at?: string | null; draft_evidence: { email_subject?: string; email?: EmailMetadata } | null; message_text: string }
+  type Row = { id: string; direction: string; recipient_email: string; sent_at?: string | null; created_at?: string | null; draft_evidence: { email_subject?: string; email?: EmailMetadata; email_cc?: string[] } | null; message_text: string }
   const columns = 'id,direction,recipient_email,draft_evidence,message_text,sent_at,created_at'
   const { data, error } = await supabase.from('outreach_messages')
     .select(columns)
@@ -2270,8 +2289,10 @@ export async function emailReplyTarget(prospectId: string, sourceMessageId?: str
   const baseSubject = (em.subject || row.draft_evidence?.email_subject || (/^subject:/i.test(firstLine) ? firstLine.replace(/^subject:\s*/i, '') : '') || 'Following up').replace(/[\r\n]+/g, ' ').trim()
   const subject = /^re:/i.test(baseSubject) ? baseSubject : `Re: ${baseSubject}`
   const mid = (em.message_id ?? '').trim()
+  const recipient = String(row.recipient_email).split(/[,;\s]+/).filter(Boolean)[0]
   return {
-    recipient_email: String(row.recipient_email).split(/[,;\s]+/).filter(Boolean)[0],
+    recipient_email: recipient,
+    cc: replyAllCc(row.direction === 'inbound' ? [em.to, em.cc] : [row.draft_evidence?.email_cc], recipient),
     subject, source_message_id: row.id,
     selection: sourceMessageId ? 'specific' : 'latest', latest_source_message_id: latest?.id ?? row.id,
     context: { from: em.from ?? (row.direction === 'inbound' ? row.recipient_email : 'Your sent email'), fromName: em.from_name ?? null,
@@ -2298,11 +2319,14 @@ export async function composeReply(t: Thread, text: string, expectedEmail?: Emai
     }
     renderEmailComposition(composition)
   }
+  const replyCc = target ? parseEmailCc(expectedEmail?.cc ?? target.cc ?? []) : []
   const manualRevision = await takeOwnershipBeforeManualReply(t.prospect_id)
   const evidence = {
     ...(manualRevision === null ? {} : { conversation_agent_manual_revision: manualRevision }),
     ...(target?.email_headers ? { email_headers: target.email_headers } : {}),
     ...(target ? { email_subject: target.subject, email_reply_to_message_id: target.source_message_id } : {}),
+    // The operator's reviewed Cc (prefilled reply-all, editable); the target's default when none was passed.
+    ...(replyCc.length ? { email_cc: replyCc } : {}),
     ...(composition ? { email_composition: composition, email_composition_reviewed: composition } : {}),
   }
   const { error } = await supabase.from('outreach_messages').insert({

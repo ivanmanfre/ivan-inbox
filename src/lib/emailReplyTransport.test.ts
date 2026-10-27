@@ -54,3 +54,16 @@ it('queues the reviewed rich body and signature without changing the existing ma
   expect(db.writes[0]).toMatchObject({ draft_evidence: { email_composition: composition, email_composition_reviewed: composition } })
   expect((db.writes[0].draft_evidence as Record<string, unknown>).operator_copy_approval).toBeUndefined()
 })
+
+it('replies to all by default and queues the Cc the operator left in the composer (Lou Fasulo 10-27)', async () => {
+  const lou = { ...incoming, recipient_email: 'lou@starform.co', draft_evidence: { email: { ...incoming.draft_evidence.email, to: ['davorin@madebyarch.com', 'margaret@starform.co', 'jesse@starform.co'], cc: [] } } }
+  db.fetch.mockImplementation(async (url: string, init: RequestInit) => {
+    if (init.method === 'POST' && String(url).includes('/outreach_messages')) db.writes.push(JSON.parse(init.body as string))
+    const data = String(url).includes('/rpc/') ? { ok: true, allow_send: true, revision: 12, in_flight: false } : init.method === 'POST' ? null : [lou]
+    return new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  })
+  const target = await emailReplyTarget('liza')
+  expect(target.cc).toEqual(['margaret@starform.co', 'jesse@starform.co'])
+  await composeReply(t, 'Early next week works.', { ...target, cc: ['margaret@starform.co'] })
+  expect(db.writes[0]).toMatchObject({ recipient_email: 'lou@starform.co', draft_evidence: { email_cc: ['margaret@starform.co'] } })
+})
