@@ -95,6 +95,9 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
   const [revealMessageId, setRevealMessageId] = useState<string | null>(null)
   const [emailTarget, setEmailTarget] = useState<{ key: string; address?: string; target?: EmailReplyTarget; error?: string } | null>(null)
   const [emailRetry, setEmailRetry] = useState(0)
+  // 2026-10-27 (Lou Fasulo): with an email draft waiting, the full hand-reply sheet filled the dock and left the
+  // history a sliver. It stays folded to one line until he opens it or has typed into it.
+  const [handEmailOpen, setHandEmailOpen] = useState(false)
   const dock = useRef<HTMLDivElement>(null)
   // Per prospect, not per pane (paneBusy.ts): a write still running on another thread never greys this one.
   const draftJob = useDraftJob(t.prospect_id)
@@ -145,7 +148,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
       mainComposition: recipients.mainComposition ?? null, emailComposition: recipients.emailComposition ?? null, companionComposition: recipients.companionComposition ?? null,
       cc: recipients.cc, companionCc: recipients.companionCc }
   }, [draftId, draftText, draftEmail, companionId, companionText, recipients.cc, recipients.companionCc, recipients.mainComposition, recipients.emailComposition, recipients.companionComposition]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setReply(''); setReplyComposition(null); setEmailReplyFor(null); setEmailReplySource(null); setEmailTarget(null); setRevealMessageId(null); setMenu(null); setSheet(null); setSchedule(null); setForwardEmail(null); setScheduleFailure('') }, [t.prospect_id])
+  useEffect(() => { setReply(''); setReplyComposition(null); setEmailReplyFor(null); setEmailReplySource(null); setEmailTarget(null); setRevealMessageId(null); setMenu(null); setSheet(null); setSchedule(null); setForwardEmail(null); setScheduleFailure(''); setHandEmailOpen(false) }, [t.prospect_id])
   useLayoutEffect(() => {
     if (emailReplyFor !== t.prospect_id) return
     const focus = () => dock.current?.querySelector<HTMLElement>('[aria-label="Email reply"], textarea')?.focus()
@@ -424,7 +427,9 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
       </>}
       keys={<>{scheduleKey}{small}{more}</>}
       primary={sendV4}
-      composer={!t.spam && composer(!hasDraft)}
+      composer={!t.spam && (replyingByEmail && hasDraft && !handEmailOpen && !reply.trim()
+        ? <button type="button" className="dx-hand-email" onClick={() => setHandEmailOpen(true)}>Write your own email reply</button>
+        : composer(!hasDraft))}
       foot={t.spam && <div className="dm-foot">Filed as a vendor pitch.</div>}
       overlays={<>
         {menu && <ThreadMenu t={t} phone={phone} up={menu === 'keys'} withAsk={phone} staleN={staleN} onClose={() => setMenu(null)} run={menuRun} />}
