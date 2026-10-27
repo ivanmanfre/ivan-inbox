@@ -525,7 +525,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       {
         const rendered = reviewed ? renderEmailComposition(reviewed) : null
         const details = emailTarget && rendered ? {
-          ...emailPreview(emailTarget.message_text_prefix + sentBody, { from: emailRowSender(t.client_id), to: [emailTarget.recipient_email], replyToMessageId: emailTarget.email_headers?.['In-Reply-To'] }),
+          ...emailPreview(emailTarget.message_text_prefix + sentBody, { from: emailRowSender(t.client_id), to: [emailTarget.recipient_email], cc: emailTarget.cc ?? [], replyToMessageId: emailTarget.email_headers?.['In-Reply-To'] }),
           subject: emailTarget.subject ?? splitEmailDraft(emailTarget.message_text_prefix).subject,
           body: rendered.text, html: rendered.html,
         } : null

@@ -92,6 +92,8 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
   const [scheduleFailure, setScheduleFailure] = useState('')
   const [emailReplyFor, setEmailReplyFor] = useState<string | null>(null)
   const [emailReplySource, setEmailReplySource] = useState<string | null>(null)
+  // Reply-all Cc for a hand email reply: prefilled from the target, editable before Send.
+  const [replyCc, setReplyCc] = useState('')
   const [revealMessageId, setRevealMessageId] = useState<string | null>(null)
   const [emailTarget, setEmailTarget] = useState<{ key: string; address?: string; target?: EmailReplyTarget; error?: string } | null>(null)
   const [emailRetry, setEmailRetry] = useState(0)
@@ -194,13 +196,17 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
   if (replyingByEmail && replyComposition) {
     try { renderEmailComposition(replyComposition); replyFormattingError = renderEmailDocument(replyComposition.body).text.trim() !== reply.trim() } catch { replyFormattingError = true }
   }
-  const emailBlocked = replyingByEmail && (!resolvedEmail?.address || latestChanged || emailLoading || !!emailDetailsError || replyFormattingError)
+  let replyCcList: string[] | null = []
+  try { replyCcList = parseEmailCc(replyCc) } catch { replyCcList = null }
+  const emailBlocked = replyingByEmail && (!resolvedEmail?.address || latestChanged || emailLoading || !!emailDetailsError || replyFormattingError || !replyCcList)
   const composeNote = replyingByEmail ? `From ${emailRowSender(t.client_id)} · ${resolvedEmail?.address ? `To ${resolvedEmail.address}` : resolvedEmail?.error ? 'Email address unavailable' : 'Loading email recipient…'}` : undefined
   const composeLabel = replyingByEmail ? 'Send email' : 'Send'
   useEffect(() => {
     if (!replyingByEmail || !canComposeEmail(t)) return
     let current = true
     setEmailTarget(null)
+    // A new target owns the Cc: clear it now, refill on resolve. The field is locked until then.
+    setReplyCc('')
     void emailReplyTarget(t.prospect_id, emailReplySource ?? undefined).then(target => {
       if (current) {
         // The operator may have typed before the recipient/subject resolved, or changed
@@ -212,6 +218,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
             return existing.source_text.endsWith(`\n\n${body}`) ? { ...existing, source_text: target.message_text_prefix + body } : existing
           } catch { return existing }
         })
+        setReplyCc((target.cc ?? []).join(', '))
         setEmailTarget({ key: emailKey, address: target.recipient_email, target })
       }
     }).catch(e => {
@@ -317,7 +324,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
       expectedDelivery: legs.map((m, i) => deliverySnapshot({ ...m, email_mirror_text: i === 0 ? edits.email ?? m.email_mirror_text : m.email_mirror_text, email_cc: i === 0 && edits.cc !== undefined ? parseEmailCc(edits.cc) : i === 1 && edits.companionCc !== undefined ? parseEmailCc(edits.companionCc) : m.email_cc })) })
   })
   const later = () => run(async () => { saver.cancel(); await verbs.later(t, edits); setFuTick(x => x + 1) })
-  const compose = () => run(async () => { if (!composeOff && !emailBlocked && await verbs.compose(replyThread, reply, replyingByEmail ? resolvedEmail?.target : undefined, replyingByEmail ? replyComposition : undefined)) { setReply(''); setReplyComposition(null) } })
+  const compose = () => run(async () => { if (!composeOff && !emailBlocked && await verbs.compose(replyThread, reply, replyingByEmail && resolvedEmail?.target ? { ...resolvedEmail.target, cc: replyCcList ?? [] } : undefined, replyingByEmail ? replyComposition : undefined)) { setReply(''); setReplyComposition(null) } })
   const menuRun = (a: MenuAct) => {
     if (a === 'context') setSheet('context')
     else if (a === 'agent') setSheet('agent')
@@ -384,7 +391,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
         replyContext={resolvedEmail?.target?.context ? { ...resolvedEmail.target.context, isLatest: resolvedEmail.target.context.isLatest && !latestChanged } : undefined}
         onViewOriginal={() => setRevealMessageId(resolvedEmail?.target?.source_message_id ?? null)} onReplyLatest={replyToLatest}
         busy={busy} disabled={composeOff || latestChanged ? (latestChanged ? 'A newer email arrived. Review the latest reply target before sending.' : composeOff) : null} noSend={noSend} error={resolvedEmail?.error}
-        onRetry={() => setEmailRetry(n => n + 1)} onSend={() => void compose()} />
+        onRetry={() => setEmailRetry(n => n + 1)} onSend={() => void compose()} cc={replyCc} onCcChange={setReplyCc} />
     : <Composer to={first} from={from} big={emailReplyFor === t.prospect_id} noSend={noSend} note={composeNote} sendLabel={composeLabel} disabled={composeOff} value={reply} setValue={setReply} busy={busy || emailBlocked} onSend={() => void compose()} />
 
   if (v4) {

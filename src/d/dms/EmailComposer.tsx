@@ -4,17 +4,20 @@ import { buildEmailComposition } from '../../lib/emailCompositionDraft'
 import { renderEmailComposition, renderEmailDocument, type EmailComposition, type EmailRichNode } from '../../lib/emailRichText'
 import { warsawDayTime } from '../ui/time'
 import { EmailPreview } from './EmailMessage'
+import { parseEmailCc } from '../../lib/emailCc'
+import { EmailCcField } from './EmailDraftEditor'
 import { EmailSignature } from './EmailSignature'
 import { RichEmailEditor } from './RichEmailEditor'
 import './email.css'
 
 type ReplyContext = { from: string; fromName?: string | null; date: string | null; subject?: string | null; body: string; isLatest: boolean; selection: 'latest' | 'specific' }
 
-export function EmailComposer({ from, to, subject, value, setValue, busy, disabled, onSend, noSend = false, error, onRetry, onClose, replyToMessageId, composition, onRichChange, replyContext, onViewOriginal, onReplyLatest }: {
+export function EmailComposer({ from, to, subject, value, setValue, busy, disabled, onSend, noSend = false, error, onRetry, onClose, replyToMessageId, composition, onRichChange, replyContext, onViewOriginal, onReplyLatest, cc = '', onCcChange }: {
   from: string; to: string | null; subject: string; value: string; setValue: (value: string) => void; busy: boolean
   disabled?: string | null; onSend: () => void; noSend?: boolean; error?: string | null; onRetry?: () => void; onClose?: () => void; replyToMessageId?: string | null
   composition?: EmailComposition | null; onRichChange?: (text: string, composition: EmailComposition) => void
   replyContext?: ReplyContext; onViewOriginal?: () => void; onReplyLatest?: () => void
+  cc?: string; onCcChange?: (cc: string) => void
 }) {
   const [preview, setPreview] = useState(false)
   const [expandedSource, setExpandedSource] = useState(false)
@@ -28,7 +31,9 @@ export function EmailComposer({ from, to, subject, value, setValue, busy, disabl
       rendered = renderEmailComposition(rich)
     } catch { formattingError = true }
   }
-  const off = busy || !!disabled || !to || formattingError
+  let ccList: string[] = [], ccInvalid = false
+  try { ccList = parseEmailCc(cc) } catch { ccInvalid = true }
+  const off = busy || !!disabled || !to || formattingError || ccInvalid
   const hasBody = rich ? !!renderEmailDocument(rich.body).text.trim() : !!value.trim()
   const updateBody = (body: EmailRichNode) => {
     if (!rich || !onRichChange) return
@@ -51,10 +56,11 @@ export function EmailComposer({ from, to, subject, value, setValue, busy, disabl
       <p data-expanded={expandedSource || undefined}>{expandedSource || replyContext.body.length <= 180 ? replyContext.body : `${replyContext.body.slice(0, 180).trimEnd()}…`}</p>
       <div className="dm-email-reply-context-actions">{replyContext.body.length > 180 && <button type="button" onClick={() => setExpandedSource(!expandedSource)}>{expandedSource ? 'Show less' : 'Show more'}</button>}{onViewOriginal && <button type="button" onClick={onViewOriginal}>View original</button>}{!replyContext.isLatest && onReplyLatest && <button type="button" onClick={onReplyLatest}>Reply to latest</button>}</div>
     </div>}
-    {preview && !formattingError ? <EmailPreview details={{ ...emailPreview(`Subject: ${subject}\n\n${value}`, { from, to: to ? [to] : [], replyToMessageId }), subject, ...(rendered ? { body: rendered.text, html: rendered.html } : {}) }} state="Draft" /> : <div className="dm-email-sheet">
+    {preview && !formattingError ? <EmailPreview details={{ ...emailPreview(`Subject: ${subject}\n\n${value}`, { from, to: to ? [to] : [], cc: ccList, replyToMessageId }), subject, ...(rendered ? { body: rendered.text, html: rendered.html } : {}) }} state="Draft" /> : <div className="dm-email-sheet">
       <div className="dm-email-edit-fields">
         <div className="dm-email-field"><span className="dm-email-field-name">From</span><span>{from || 'Sender unavailable'}</span></div>
         <div className="dm-email-field"><span className="dm-email-field-name">To</span><span>{to || (error || disabled ? 'Recipient unavailable' : 'Loading recipient...')}</span></div>
+        {onCcChange && <EmailCcField value={cc} onChange={onCcChange} onBlur={() => {}} label="Email reply CC recipients" disabled={busy || !!disabled || !to} />}
         <div className="dm-email-field dm-email-subject-field"><span className="dm-email-field-name">Subject</span><span>{subject || '(no subject)'}</span></div>
       </div>
       {formattingError ? <p className="dm-email-error" role="alert">Saved email formatting changed. Refresh email details before editing or sending.</p>
