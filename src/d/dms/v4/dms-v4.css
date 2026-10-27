@@ -307,6 +307,10 @@
 
 /* ---- the dock: keys row (secondary · primary pinned right, never clipped), composer under it ---- */
 :root[data-skin-on~='dms'] .dx-pane .dm-dock.dx-dock{flex:none;gap:8px;padding:12px 20px;border-top:1px solid var(--ds-line);background:transparent}
+/* 2026-10-27: the dock never takes more than half the pane, so the history above always stays visible and scrollable */
+:root[data-skin-on~='dms'] .d-desktop .dx-pane .dm-dock.dx-dock{max-height:50%;overflow-y:auto;overscroll-behavior:contain}
+:root[data-skin-on~='dms'] .dx-dock .dx-hand-email{width:100%;min-height:36px;padding:6px 12px;font:400 13px/1.45 var(--f);color:var(--t2);border:0;border-radius:10px;background:var(--ds-well-fill);box-shadow:var(--ds-well-shadow);text-align:left;cursor:pointer}
+:root[data-skin-on~='dms'] .dx-dock .dx-hand-email:hover{background:var(--ds-accent-soft);color:var(--t1)}
 :root[data-skin-on~='dms'] .dx-dock .dm-meta{font:400 12px/1.45 var(--f);color:var(--t2)}
 :root[data-skin-on~='dms'] .dx-dock .dm-meta[role='alert']{color:var(--ds-sev-urgent-ui)}
 :root[data-skin-on~='dms'] .dx-pane .dm-keys.dx-keys{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:8px;padding:0}
