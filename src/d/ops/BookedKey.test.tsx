@@ -41,6 +41,15 @@ describe('BookedKey', () => {
     await waitFor(() => expect(done).toHaveBeenCalled())
     expect(rpc).toHaveBeenCalledWith('ops_task_mark_booked', { p_draft_id: 'card-1', p_start_at: '2026-11-02T15:30:00.000Z' })
   })
+  it('keeps the exact proposed instant in a repeated DST hour until edited', async () => {
+    const done = vi.fn()
+    const { container } = render(<BookedKey d={task({ action: 'book_link', proposed_start_at: '2026-11-01T06:30:00.000Z' })} onDone={done} />)
+    fireEvent.click(container.querySelector('[data-verb="booked"]')!)
+    expect(container.textContent).toContain('Saves as 2026-11-01 06:30 UTC')
+    fireEvent.click(container.querySelector('[data-verb="booked-save"]')!)
+    await waitFor(() => expect(done).toHaveBeenCalled())
+    expect(rpc).toHaveBeenCalledWith('ops_task_mark_booked', { p_draft_id: 'card-1', p_start_at: '2026-11-01T06:30:00.000Z' })
+  })
   it('shows the refusal and keeps the task open', async () => {
     rpc.mockResolvedValueOnce({ data: { ok: false, error: 'This task is already closed.' } as never, error: null })
     const done = vi.fn()

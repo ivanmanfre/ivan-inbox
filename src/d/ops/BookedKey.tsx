@@ -10,11 +10,15 @@ export function BookedKey({ d, onDone }: { d: OpsDraft; onDone: () => void }) {
   const [open, setOpen] = useState(false)
   // A send-invite task (ARCH drafter, 2026-10-28) carries the time the prospect accepted as proposed_start_at; it opens
   // prefilled on your clock and stays editable.
-  const [when, setWhen] = useState(() => toLocalInput(d.context?.proposed_start_at))
+  // Until the field is edited, Save sends that exact instant: a local wall time is ambiguous in the repeated DST hour.
+  const proposed = typeof d.context?.proposed_start_at === 'string' ? d.context.proposed_start_at : ''
+  const [when, setWhenRaw] = useState(() => toLocalInput(proposed))
+  const [edited, setEdited] = useState(false)
+  const setWhen = (v: string) => { setWhenRaw(v); setEdited(true) }
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   if (!isBookLinkTask(d)) return null
-  const t = when ? new Date(when) : null
+  const t = !edited && proposed && when ? new Date(proposed) : when ? new Date(when) : null
   const valid = !!t && !isNaN(t.getTime())
   const utc = valid ? t!.toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : ''
   async function save(e?: FormEvent) {
