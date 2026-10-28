@@ -8,7 +8,9 @@ import { Btn } from '../ui/Key'
 // it is exactly what gets stored.
 export function BookedKey({ d, onDone }: { d: OpsDraft; onDone: () => void }) {
   const [open, setOpen] = useState(false)
-  const [when, setWhen] = useState('')
+  // A send-invite task (ARCH drafter, 2026-10-28) carries the time the prospect accepted as proposed_start_at; it opens
+  // prefilled on your clock and stays editable.
+  const [when, setWhen] = useState(() => toLocalInput(d.context?.proposed_start_at))
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   if (!isBookLinkTask(d)) return null
@@ -33,4 +35,10 @@ export function BookedKey({ d, onDone }: { d: OpsDraft; onDone: () => void }) {
       {err && <div className="op-err">{err}</div>}
     </form>
   )
+}
+
+function toLocalInput(iso: unknown): string {
+  const t = typeof iso === 'string' ? new Date(iso) : null
+  if (!t || isNaN(t.getTime())) return ''
+  return new Date(t.getTime() - t.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 }
