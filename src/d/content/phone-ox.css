@@ -190,13 +190,6 @@
 /* ==========================================================================
    REVIEW
    ========================================================================== */
-:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-quick{flex:1 1 100%;gap:8px}
-:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-quick button{position:relative;isolation:isolate;height:44px;min-height:44px;padding:0 14px;border-radius:0;box-shadow:none;font:600 15px/20px var(--ds-font);color:var(--ds-text-2)}
-:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-quick button::before{content:'';position:absolute;inset:4px 0;border-radius:18px;background:var(--b3-wash);z-index:-1;transition:background-color var(--po-d-sel) var(--po-ease)}
-:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-quick button[aria-pressed='true']{background:transparent;color:#fff;box-shadow:none}
-:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-quick button[aria-pressed='true']::before{background:var(--ds-text)}
-:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-quick button[aria-pressed='true'] .cv2-n{color:rgba(255,255,255,.8)}
-:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-quick .cv2-n{font-size:13px;margin-left:6px}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-bar > .cv2-grow{display:none}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-fixlist{padding:0;border-radius:18px;background:var(--b3-card);box-shadow:var(--b3-ring);gap:0;overflow:hidden}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-fixrow{min-height:64px;padding:10px 12px 10px 16px;border-radius:0;gap:10px}
@@ -305,6 +298,6 @@
 
 /* ---- reduced motion: presses only fade ---- */
 @media (prefers-reduced-motion:reduce){
-  :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cn :is(.cv2-tile2,.cv2-lm,.cv2-seg button,.cv2-k,.cv2-showmore,.cn-ptabs > a::before,.cv2-quick button::before):active{transform:none!important}
+  :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cn :is(.cv2-tile2,.cv2-lm,.cv2-seg button,.cv2-k,.cv2-showmore,.cn-ptabs > a::before):active{transform:none!important}
   :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cn .cv2-seg::before{transition:none!important}
 }

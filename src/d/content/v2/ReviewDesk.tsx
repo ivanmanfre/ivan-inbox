@@ -159,7 +159,6 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   const [moving, setMoving] = useState<WeekCard | null>(null)
   const [fixOpen, setFixOpen] = useState(false)
   const [waitOpen, setWaitOpen] = useState(false)
-  const [noimg, setNoimg] = useState(false)
   const [picking, setPicking] = useState<string | null>(null)
   const [focus, setFocus] = useState<string | null>(focusId)
   const [more, setMore] = useState<ReadonlySet<string>>(() => new Set())
@@ -172,10 +171,8 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   const slot = useMemo(() => (armed ? nextFreeWeekday(armed, now) : armedFailed ? nextFreeWeekday(new Set(), now) : null), [armed, armedFailed, now])
 
   const desk = useMemo(() => deskModel(week, now), [week, now])
-  const hasNoImg = (c: WeekCard) => c.flags.some(f => f.key === 'noimg')
   const work = desk.decide.filter(c => awaitsReview(c))
-  const stream = noimg ? desk.decide.filter(c => c.strip || hasNoImg(c)) : desk.decide
-  const noimgN = work.filter(hasNoImg).length
+  const stream = desk.decide
   const inList = new Set([...desk.decide, ...desk.waiting, ...desk.board, ...desk.fix].map(c => c.r.id))
   const orphans = [...judged.values()].filter(e => !e.collapsed && !inList.has(e.id) && show === e.lane).sort((a, b) => a.at - b.at)
   const folded = desk.fix.filter(c => !desk.pinned.includes(c))
@@ -186,8 +183,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   const srcIds = useMemo(() => (srcKey ? srcKey.split(',') : []), [srcKey])
   const sources = useSources(srcIds)
   const repeats = useMemo(() => picRepeats(rows), [rows])
-  const summary = noimg ? work.filter(hasNoImg) : work
-  const created = summary.map(createdMs).filter(t => t > 0)
+  const created = work.map(createdMs).filter(t => t > 0)
   const loading = read.source === 'none' && !read.settled
   const ghosts = useDeferred(loading)
 
@@ -273,7 +269,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
 
   const counts = reviewCounts(total)
   const who = show === 'ivan' ? 'Ivan’s ' : `${OWNER[show]}’s `
-  const n = summary.length
+  const n = work.length
   const oldestFix = folded.length ? Math.max(...folded.map(c => now - createdMs(c))) : 0
   // Routine member rechecks run every few seconds; saying so each time made the heading flicker too. Only a
   // failed check (brain drafts hidden) and a saved copy on screen are worth a word.
@@ -321,11 +317,6 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
       <div className="cv2-bar">
         <Seg label="Seat" verb="show" value={show} onChange={id => setShow(id as Lane)}
           options={DESK_SEATS.map(s => ({ id: s, label: <><SeatAv lane={s} />{SEAT_WORD[s]}</>, count: loading ? '…' : counts[s] }))} />
-        {(noimgN > 0 || noimg) && (
-          <div className="cv2-quick" role="group" aria-label="Filter the list">
-            <button type="button" aria-pressed={noimg} data-verb="quick-noimg" onClick={() => setNoimg(v => !v)}>No image<b className="cv2-n">{noimgN}</b></button>
-          </div>
-        )}
         <span className="cv2-grow" />
         {panelHref && <a className="cv2-k cv2-panel" href={panelHref} target="_blank" rel="noreferrer" data-verb="open-panel" title={`Open ${POSS[show]} panel`}>{SEAT_WORD[show]} panel ↗</a>}
         <button type="button" className="cv2-keyhint" aria-label="Keyboard shortcuts" data-verb="desk-keys" onClick={() => setKeys(true)}>
@@ -334,8 +325,8 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
       </div>
 
       <Answer tail={sync ? ` · ${sync}` : null}>
-        {loading ? 'Reading the drafts…' : n === 0 ? (noimg ? 'No draft to decide is missing an image.' : `Nothing of ${who}waits for review.`)
-          : <>{n} {noimg ? `of ${work.length} ` : ''}{who}draft{n === 1 && !noimg ? '' : 's'} to decide{noimg ? ' have no image' : ''}.{created.length > 0 && <> Newest {age(new Date(Math.max(...created)).toISOString(), now)}, oldest {ageWords(now - Math.min(...created))}.</>}</>}
+        {loading ? 'Reading the drafts…' : n === 0 ? `Nothing of ${who}waits for review.`
+          : <>{n} {who}draft{n === 1 ? '' : 's'} to decide.{created.length > 0 && <> Newest {age(new Date(Math.max(...created)).toISOString(), now)}, oldest {ageWords(now - Math.min(...created))}.</>}</>}
       </Answer>
       {read.source !== 'none' && read.error && (
         <div className="cv2-banner cv2-banner-bad" role="alert"><span>Could not refresh: {read.error}</span><button type="button" onClick={read.refresh}>Retry</button></div>
@@ -349,7 +340,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
       ) : read.source === 'none' && read.error ? <Failed what="the drafts" detail={read.error} onRetry={read.refresh} />
         : !loading && stream.length === 0 && orphans.length === 0 ? (
           <div className="cv2-empty">
-            <b>{noimg ? 'Nothing matches this filter.' : `Nothing of ${who}waits for review.`}</b>
+            <b>{`Nothing of ${who}waits for review.`}</b>
             <span><a href={dHash('content', 'ideas', { lane: show })}>Ideas →</a><a href={dHash('content', 'calendar')}>Calendar →</a></span>
           </div>
         ) : (
@@ -360,7 +351,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
           </div></>
         )}
 
-      {desk.waiting.length > 0 && !noimg && (
+      {desk.waiting.length > 0 && (
         <section className="cv2-fold" aria-label="Approved, next step waiting">
           <button type="button" className="cv2-fold-h" aria-expanded={waitOpen} data-verb="wait-fold" onClick={() => setWaitOpen(o => !o)}>
             <i aria-hidden="true">{waitOpen ? '▾' : '▸'}</i><b>{desk.waiting.length} approved</b><span>{show === 'ivan' ? 'waiting for a date' : 'waiting for the next step'}</span>
@@ -369,7 +360,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
         </section>
       )}
 
-      {folded.length > 0 && !noimg && (
+      {folded.length > 0 && (
         <section className="cv2-fix" aria-label="Needs a fix">
           <button type="button" className="cv2-banner cv2-banner-warn" aria-expanded={fixOpen} data-verb="fix-fold" onClick={() => setFixOpen(o => !o)}>
             <span className="cv2-ico" aria-hidden="true">!</span>
