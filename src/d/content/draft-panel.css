@@ -109,3 +109,7 @@
 .cn-dw .cn-pic2{flex-wrap:wrap}
 .cn-dw .cn-above{max-width:600px}
 .d-phone .cn-dw .cn-pic2-acts .d-btn{height:44px}
+/* Editing keeps the card's size (Ivan 2026-10-30: "when i click to edit it goes smaller"): the card sat in a flex
+   column with auto margins, so it shrank to the textarea's own width. Full width, same type as the post, grows with it. */
+.cn-dw .cn-li{width:100%}
+.cn-dw .cn-ed{font-size:15px;line-height:1.55;padding:12px 16px;min-height:420px;field-sizing:content}
