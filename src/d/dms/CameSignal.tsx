@@ -21,7 +21,7 @@ export function CameSignal({ tag, onDismiss }: { tag: CameTag; onDismiss: () => 
       {open && (
         <span className="dm-sigpop" role="dialog" aria-label="Interest signal">
           <span><b>{tag.name.split(' ')[0]}.</b> {tag.title}</span>
-          <span><Btn verb="came-back-dismiss" disabled={busy} onClick={async () => { setBusy(true); await onDismiss(); setBusy(false); setOpen(false) }}>Dismiss</Btn></span>
+          {!tag.viewOnly && <span><Btn verb="came-back-dismiss" disabled={busy} onClick={async () => { setBusy(true); await onDismiss(); setBusy(false); setOpen(false) }}>Dismiss</Btn></span>}
         </span>
       )}
     </span>

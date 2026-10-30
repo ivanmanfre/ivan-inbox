@@ -4,7 +4,7 @@ import { eventTime, internalHoldSummary, isReplyRetryExhausted, threadBucket, ty
 import { cameBackRowLine, firstComment, sentLine, type CameBackCard } from '../../wb/dms/cameBackData'
 import { agentCardsWithoutWarmCards, type ConversationAgentCard } from '../../wb/dms/conversationAgentData'
 import { WARM_GROUPS, dm1Deliverable, evidenceLine, inviteLine, isWaiting, primaryAction, warmGroup, type WarmCard } from '../../wb/dms/warmSignalsData'
-import { seatOf, type Seat } from '../seats'
+import { type Seat } from '../seats'
 import { ago, firstLine, heldItems, needsCount, seatThreads, type SeatView } from './model'
 import { scheduleHeld, SCHEDULE_REVIEW } from '../../lib/dmSchedule'
 import { sendTimeLabel } from '../../lib/dmScheduleTime'
@@ -15,7 +15,7 @@ import { Section, useFolds, type Folds } from './Section'
 import { AnyRow, DraftRow, HeldRow, LaterRow, NoDraftRow, SpamRow, ThrownRow, dayMonth, type RowCtx } from './threadRows'
 import { AllConvos } from './AllConvos'
 import { SendLog } from './SendLog'
-import { signalItems } from './signals'
+import { signalItems, warmSeat } from './signals'
 import type { AgentSide, Side } from './useDmsData'
 import { noteOf, type WarmVerbs } from './warmVerbs'
 import { blockedFollowup, upcomingItems, type FollowupProjection } from './upcoming'
@@ -229,7 +229,7 @@ function SignalsSection({ p, folds, came }: { p: ColumnProps; folds: Folds; came
   let waiting = 0
   const shown: WarmCard[] = []
   // 2026-10-30 (db/298): warm cards on every seat, each in its own seat's list.
-  for (const w of p.warm.rows) { if ((seatOf(w.tenant ?? null) ?? 'ivan') !== seat) continue; if (isWaiting(w) && !agentBy.has(w.prospect_id)) waiting++; else shown.push(w) }
+  for (const w of p.warm.rows) { if (warmSeat(w) !== seat) continue; if (isWaiting(w) && !agentBy.has(w.prospect_id)) waiting++; else shown.push(w) }
   const order = WARM_GROUPS.map(g => g.key) as string[]
   shown.sort((a, b) => order.indexOf(warmGroup(a)) - order.indexOf(warmGroup(b)))
   const agentOnly: ConversationAgentCard[] = seat === 'ivan' ? agentCardsWithoutWarmCards(p.agent.cards, new Set(p.warm.rows.map(w => w.prospect_id))) : []

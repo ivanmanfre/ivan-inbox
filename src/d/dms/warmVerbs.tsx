@@ -81,10 +81,10 @@ export function useWarmVerbs(after: () => void) {
         // accept can be detected; a no-op for every other row.
         if (c.draft_model === 'swishdm_pv_dm1_v1') {
           const r = await decideWarm(c.prospect_id, 'approve_dm_swishdm', dm1)
-          if (!r.ok) return r.error === 'not_connected_yet' ? `Approve unlocks once ${firstOf(c)} accepts the invite.` : (r.error ?? 'could not approve')
+          if (!r.ok) return r.error === 'sequence_moved' ? 'The sequence wrote to them after this draft, so it was retired. Refresh.' : r.error === 'not_connected_yet' ? `Approve unlocks once ${firstOf(c)} accepts the invite.` : (r.error ?? 'could not approve')
         } else {
           const s = await decideWarm(c.prospect_id, 'approve_dm1_stage')
-          if (!s.ok) return s.error ?? 'could not repair the stage'
+          if (!s.ok) return s.error === 'sequence_moved' ? 'The sequence wrote to them after this draft, so it was retired. Refresh.' : (s.error ?? 'could not repair the stage')
           await approveDraft(c.draft_id, dm1, null)
         }
       } catch (e) { return errText(e) }

@@ -187,6 +187,15 @@ export async function fetchWarmCards(): Promise<WarmCard[]> {
   return (data ?? []) as WarmCard[]
 }
 
+/** A view that makes no draft by rule (invite pending, InMail out, conversation running): a tag on the thread. */
+export type ViewSeen = { prospect_id: string; seat: string; kind: string; viewed_at: string | null }
+
+export async function fetchViewSeen(): Promise<ViewSeen[]> {
+  const { data, error } = await supabase.rpc('profile_view_seen_tags')
+  if (error) throw error
+  return (data ?? []) as ViewSeen[]
+}
+
 export type DecideAction = 'save_note' | 'approve_invite' | 'approve_dm1_stage' | 'approve_dm_swishdm' | 'skip'
 export type DecideResult = { ok: boolean; error?: string; stage?: string }
 

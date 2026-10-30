@@ -24,7 +24,7 @@ import { useDmVerbs } from './verbs'
 import { AgentOnlySheet, WarmSheet } from './Warm'
 import { useWarmVerbs } from './warmVerbs'
 import { RowMenu } from './RowMenu'
-import { cameTags } from './signals'
+import { cameTags, withViewTags } from './signals'
 import { useToast } from '../ui/toast'
 import { rowsOnScreen, useDmKeys } from './useDmKeys'
 import { KeySheet } from './KeySheet'
@@ -171,7 +171,7 @@ function Dms({ layout, route, navigate }: PlaceProps) {
     { id: 'dms.keys', title: 'Keyboard shortcuts', group: 'Open', key: '?', hint: 'Every key on this page.', ready: true, run: openKeys },
   ], [selectMany, openKeys]))
 
-  const came = useMemo(() => cameTags(data.cameBack.rows, now), [data.cameBack.rows, now])
+  const came = useMemo(() => withViewTags(cameTags(data.cameBack.rows, now), data.viewSeen.rows, byId, now), [data.cameBack.rows, data.viewSeen.rows, byId, now])
   const dropCame = data.dropCameBack
   const dismissCame = useCallback((pid: string, name: string) => verbs.cameBackDismiss(pid, name, () => dropCame(pid)), [verbs, dropCame])
   const model: PageModel = {

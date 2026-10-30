@@ -31,7 +31,7 @@ import type { WarmCard } from '../../wb/dms/warmSignalsData'
 import { DmAsks } from './asks'
 import { NOW, drafted, iso, msg, owedNoDraft, threads, waiting } from './fixtures'
 import { laterItems, laterPath } from './later'
-import { cameTag, signalItems, warmWord } from './signals'
+import { cameTag, signalItems, warmWord, withViewTags } from './signals'
 import { statusOf } from './status'
 import { ThreadPane } from './Thread'
 import { AUTOSAVE_MS } from './useAutosave'
@@ -254,6 +254,14 @@ describe('came back = a tag on the name; Signals = one list', () => {
     expect(signalItems('risedtc', [riseWarm], [], [], by).map(i => `${i.pid}:${i.label}`)).toEqual(['rw:viewed the profile'])
     expect(signalItems('ivan', [riseWarm], [], [], by)).toEqual([])
     expect(warmWord({ signal_source: 'profile_view', trigger_type: null, signal_kind: 'next_touch', tenant: 'arch' })).toBe('viewed, no reply yet')
+    // Sol r1: an unknown seat's card shows nowhere (never on Ivan's list)
+    expect(signalItems('ivan', [{ ...warm[0], prospect_id: 'x', tenant: 'newclient' }], [], [], by)).toEqual([])
+    // a view with no draft by rule tags the thread; a came-back tag wins
+    const tags = withViewTags(new Map([['echo', { pid: 'echo', name: 'E', text: 'came back · 1d', title: '' }]]),
+      [{ prospect_id: 'conv', seat: 'ivan', kind: 'viewed_after_invite', viewed_at: iso(2 * D) }, { prospect_id: 'echo', seat: 'ivan', kind: 'in_conversation', viewed_at: iso(D) }], by, NOW)
+    expect(tags.get('conv')?.text).toBe('viewed · 2d')
+    expect(tags.get('conv')?.viewOnly).toBe(true)
+    expect(tags.get('echo')?.text).toBe('came back · 1d')
     expect(warmWord({ signal_source: 'reacted', trigger_type: null })).toBe('engaged two posts')
   })
 })

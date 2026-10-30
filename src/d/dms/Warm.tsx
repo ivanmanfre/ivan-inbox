@@ -7,7 +7,8 @@ import { useEffect, useState } from 'react'
 import type { Thread } from '../../lib/inbox'
 import type { ConversationAgentCard } from '../../wb/dms/conversationAgentData'
 import { dayOf, dm1Deliverable, evidenceLine, inCampaign, inviteLine, linkedinProfileHref, primaryAction, type WarmCard } from '../../wb/dms/warmSignalsData'
-import { SEAT_NAME, seatOf } from '../seats'
+import { SEAT_NAME } from '../seats'
+import { warmSeat } from './signals'
 import { Key } from '../ui/Key'
 import { Sheet } from '../ui/Sheet'
 import { AgentEnrollment, AgentPanel } from './Agent'
@@ -38,7 +39,7 @@ export function WarmSheet({ c, agent, thread, verbs, onClose, onOpenThread, onAg
   const ev = c.signal_evidence ?? {}
   const windowEnds = c.view_window_ends && invite.kind === 'pending' ? dayOf(c.view_window_ends) : null
   const href = linkedinProfileHref(c.linkedin_url)
-  const seat = seatOf(c.tenant ?? null) ?? 'ivan'
+  const seat = warmSeat(c) ?? 'ivan'
   const seq = inCampaign(c)
 
   const run = async (k: NonNullable<typeof busy>, fn: () => Promise<string | null>, closeAfter = false) => {

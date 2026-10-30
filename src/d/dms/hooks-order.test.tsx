@@ -25,7 +25,7 @@ vi.mock('./useDmsData', () => {
       threads: data.threads, loading: false, error: null, loadedAt: '2026-09-27T09:00:00Z', fromCache: false, cachedAt: null,
       refreshList: () => {}, refreshAll: () => {}, patch: () => {}, solved: { setLocal: () => {} },
       cameBack: side(), dropCameBack: () => {}, reloadCame: () => {}, scanDays: new Map(), interestRanks: new Map(),
-      warm: side(), dropWarm: () => {}, reloadWarm: () => {}, dated: side(), reloadDated: () => {}, upcoming: side(),
+      warm: side(), viewSeen: side(), dropWarm: () => {}, reloadWarm: () => {}, dated: side(), reloadDated: () => {}, upcoming: side(),
       agent: { cards: [], note: null, failed: false, loaded: true }, reloadAgent: () => {},
     }),
   }
