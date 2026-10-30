@@ -64,6 +64,10 @@ describe('warm signals helpers', () => {
     expect(evidenceLine({ signal_source: 'reacted_two_posts', trigger_type: 'engaged_post', signal_evidence: { n_posts: 2 }, created_at: '2026-09-12T00:00:00Z' })).toBe('reacted to 2 posts')
     expect(evidenceLine({ signal_source: 'profile_view', trigger_type: 'profile_view', signal_evidence: { viewed_at: '2026-09-12T09:18:00Z', distance: 'DISTANCE_1' }, created_at: '2026-09-12T11:41:41Z' })).toBe('viewed your profile Sep 12 · 1st degree')
     expect(evidenceLine({ signal_source: 'profile_view', trigger_type: 'profile_view', signal_evidence: { distance: 'DISTANCE_1' }, created_at: '2026-09-12T11:41:41Z' })).toBe('viewed your profile · date unavailable · 1st degree')
+    // db/298: another seat's viewer, and a person already in the sequence
+    expect(evidenceLine({ tenant: 'arch', signal_kind: 'next_touch', signal_source: 'profile_view', trigger_type: 'connection', signal_evidence: { viewed_at: '2026-10-29T09:18:00Z', last_out_at: '2026-10-22T10:00:00Z' }, created_at: '2026-08-01T00:00:00Z' })).toBe('viewed the profile Oct 29 · no reply since our message Oct 22')
+    expect(inviteLine({ signal_invite_state: 'in_campaign', note_variant: null, connection_sent_at: null, trigger_type: null, signal_approved_at: null }).kind).toBe('in_campaign')
+    expect(inviteLine({ signal_invite_state: 'pending', note_variant: null, connection_sent_at: null, trigger_type: 'profile_view', signal_approved_at: '2026-10-30T10:00:00Z', tenant: 'arch', qualification: 'review' }).text).toMatch(/once research clears/)
   })
 
   it('opens only saved http LinkedIn profile URLs', () => {

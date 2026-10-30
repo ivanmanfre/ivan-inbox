@@ -6,7 +6,8 @@
 import { useEffect, useState } from 'react'
 import type { Thread } from '../../lib/inbox'
 import type { ConversationAgentCard } from '../../wb/dms/conversationAgentData'
-import { dayOf, dm1Deliverable, evidenceLine, inviteLine, linkedinProfileHref, primaryAction, type WarmCard } from '../../wb/dms/warmSignalsData'
+import { dayOf, dm1Deliverable, evidenceLine, inCampaign, inviteLine, linkedinProfileHref, primaryAction, type WarmCard } from '../../wb/dms/warmSignalsData'
+import { SEAT_NAME, seatOf } from '../seats'
 import { Key } from '../ui/Key'
 import { Sheet } from '../ui/Sheet'
 import { AgentEnrollment, AgentPanel } from './Agent'
@@ -37,6 +38,8 @@ export function WarmSheet({ c, agent, thread, verbs, onClose, onOpenThread, onAg
   const ev = c.signal_evidence ?? {}
   const windowEnds = c.view_window_ends && invite.kind === 'pending' ? dayOf(c.view_window_ends) : null
   const href = linkedinProfileHref(c.linkedin_url)
+  const seat = seatOf(c.tenant ?? null) ?? 'ivan'
+  const seq = inCampaign(c)
 
   const run = async (k: NonNullable<typeof busy>, fn: () => Promise<string | null>, closeAfter = false) => {
     if (busy) return
@@ -56,11 +59,12 @@ export function WarmSheet({ c, agent, thread, verbs, onClose, onOpenThread, onAg
     <Sheet open onClose={onClose} title={c.name} sub={[c.headline ?? c.title, c.company].filter(Boolean).join(' · ')} label={`Warm signal: ${c.name}`} foot={foot}>
       <div className="dm-ctx dm-warm" data-warm-card={c.prospect_id} data-stage={c.stage}>
         <div className="dm-warm-top">
+          {seat !== 'ivan' && <span className="dm-chip">{SEAT_NAME[seat]}</span>}
           {c.icp_score !== null && <span className="dm-chip">ICP {c.icp_score}</span>}
           {c.country && <span>{c.city ? `${c.city}, ` : ''}{c.country}</span>}
           {href ? <a className="d-link" href={href} target="_blank" rel="noreferrer" data-verb="open-linkedin">Open LinkedIn</a> : <span className="dm-meta">LinkedIn profile unavailable</span>}
         </div>
-        <div><small className="dm-lbl">{viewer ? 'Viewed your profile' : 'Engaged'}</small><p>{evidenceLine(c)}</p>
+        <div><small className="dm-lbl">{viewer ? (seat === 'ivan' ? 'Viewed your profile' : 'Viewed the profile') : 'Engaged'}</small><p>{evidenceLine(c)}</p>
           {ev.comment && <blockquote className="dm-quote">{ev.comment}</blockquote>}</div>
 
         <div data-block="invite">
@@ -80,7 +84,7 @@ export function WarmSheet({ c, agent, thread, verbs, onClose, onOpenThread, onAg
 
         <div data-block="dm1">
           <div className="dm-field">
-            <span>DM after accept{c.draft_id && !c.draft_approved_at && <Counter n={dm1.length} max={400} />}</span>
+            <span>{seq ? 'Next DM' : 'DM after accept'}{c.draft_id && !c.draft_approved_at && <Counter n={dm1.length} max={400} />}</span>
             {c.draft_id ? (
               c.draft_approved_at ? <p className="dm-meta" title="The sender picks it up within about 2 minutes.">Approved {dayOf(c.draft_approved_at)}.</p>
                 : managed ? <p className="dm-meta">Managed below.</p>
@@ -100,7 +104,7 @@ export function WarmSheet({ c, agent, thread, verbs, onClose, onOpenThread, onAg
         </div>
 
         {agent && <AgentPanel card={agent} onChanged={onAgentChanged} />}
-        {viewer && !agent && <AgentEnrollment />}
+        {viewer && !agent && seat === 'ivan' && !seq && <AgentEnrollment />}
         {error && <p className="dm-warn" role="alert">{error}</p>}
       </div>
     </Sheet>

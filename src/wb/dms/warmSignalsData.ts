@@ -3,7 +3,8 @@
    signals section (goal run warm-signal-drafts-2026-09-12). The component
    lives in ./WarmSignals.tsx; everything here is testable without a browser.
 
-   Reads: rpc warm_signal_cards() (db/066), Ivan's tenant only.
+   Reads: rpc warm_signal_cards() (db/066, db/298): every outreach seat since
+   2026-10-30; each card carries its tenant and kind.
    Writes: rpc warm_signal_decide() (db/066) — stamps and stage moves, never a
    send. The DM1 row's own approval goes through lib/inbox's approveDraft.
    ========================================================================== */
@@ -42,6 +43,10 @@ export type WarmCard = {
   draft_approved_at: string | null
   draft_sent_at: string | null
   dm_sent_count: number
+  /** db/298: the seat the person belongs to, how the view was routed, and ARCH research status. */
+  tenant?: string | null
+  signal_kind?: string | null
+  qualification?: string | null
 }
 
 export type WarmEvidence = {
@@ -53,6 +58,8 @@ export type WarmEvidence = {
   viewed_at?: string | null
   distance?: string | null
   trigger_detail?: string | null
+  last_out_at?: string | null
+  last_out_model?: string | null
   touches?: { kind?: string; post?: string; at?: string; comment?: string }[] | null
 }
 
@@ -77,7 +84,12 @@ export function warmGroup(c: Pick<WarmCard, 'signal_source' | 'trigger_type'>): 
     viewer (the lane drafted straight into a DM) or an accepted invite. Poll + Send
     creates the chat at dispatch, and that call 422s for a non-connection. */
 export function dm1Deliverable(c: Pick<WarmCard, 'stage' | 'connected_at'>): boolean {
-  return c.connected_at !== null || c.stage === 'profile_view_dm' || c.stage === 'connected'
+  return c.connected_at !== null || c.stage === 'profile_view_dm' || c.stage === 'connected' || c.stage === 'swishdm_connected'
+}
+
+/** Already in a sequence when they viewed: the card carries one view draft, no invite (db/298). */
+export function inCampaign(c: Pick<WarmCard, 'signal_kind'>): boolean {
+  return c.signal_kind === 'dm1_pull' || c.signal_kind === 'next_touch'
 }
 
 export function dayOf(iso: string | null | undefined): string {
@@ -111,12 +123,15 @@ function distanceWord(d: string | null | undefined): string | null {
 }
 
 /** The one line that says why this person is here. */
-export function evidenceLine(c: Pick<WarmCard, 'signal_source' | 'trigger_type' | 'signal_evidence' | 'created_at'>): string {
+export function evidenceLine(c: Pick<WarmCard, 'signal_source' | 'trigger_type' | 'signal_evidence' | 'created_at'> & Partial<Pick<WarmCard, 'signal_kind' | 'tenant'>>): string {
   const ev = c.signal_evidence ?? {}
   const g = warmGroup(c)
   if (g === 'profile_view') {
     const viewed = dayOf(ev.viewed_at)
-    const parts = [`viewed your profile${viewed ? ` ${viewed}` : ' · date unavailable'}`]
+    const whose = !c.tenant || c.tenant === 'ivan' ? 'your' : 'the'
+    const parts = [`viewed ${whose} profile${viewed ? ` ${viewed}` : ' · date unavailable'}`]
+    if (c.signal_kind === 'next_touch') parts.push(`no reply since our message ${dayOf(ev.last_out_at) || 'earlier'}`)
+    if (c.signal_kind === 'dm1_pull') parts.push('accepted, no DM yet')
     const dw = distanceWord(ev.distance)
     if (dw) parts.push(dw)
     return parts.join(' · ')
@@ -129,10 +144,10 @@ export function evidenceLine(c: Pick<WarmCard, 'signal_source' | 'trigger_type' 
   return `reacted to ${n || 2} posts`
 }
 
-export type InviteState = { kind: 'sent' | 'first_degree' | 'pending' | 'approved'; text: string }
+export type InviteState = { kind: 'sent' | 'first_degree' | 'pending' | 'approved' | 'in_campaign'; text: string }
 
 /** The invite's state in words, for the card's invite block. */
-export function inviteLine(c: Pick<WarmCard, 'signal_invite_state' | 'note_variant' | 'connection_sent_at' | 'trigger_type' | 'signal_approved_at'>): InviteState {
+export function inviteLine(c: Pick<WarmCard, 'signal_invite_state' | 'note_variant' | 'connection_sent_at' | 'trigger_type' | 'signal_approved_at'> & Partial<Pick<WarmCard, 'tenant' | 'qualification'>>): InviteState {
   if (c.signal_invite_state.startsWith('sent:')) {
     const generic = c.note_variant === 'eh_anchor' || c.note_variant === 'lm_anchor'
     return {
@@ -141,7 +156,11 @@ export function inviteLine(c: Pick<WarmCard, 'signal_invite_state' | 'note_varia
     }
   }
   if (c.signal_invite_state === 'first_degree') return { kind: 'first_degree', text: 'Already connected (1st degree). No invite needed.' }
-  if (c.signal_approved_at) return { kind: 'approved', text: `Invite approved ${dayOf(c.signal_approved_at)}. The sender picks it up on its next hour.` }
+  if (c.signal_invite_state === 'in_campaign') return { kind: 'in_campaign', text: 'Already in the sequence. This draft takes the next step.' }
+  if (c.signal_approved_at) {
+    const wait = c.tenant === 'arch' && c.qualification !== 'eligible' ? 'It goes out once research clears.' : 'The sender picks it up on its next hour.'
+    return { kind: 'approved', text: `Invite approved ${dayOf(c.signal_approved_at)}. ${wait}` }
+  }
   return { kind: 'pending', text: '' }
 }
 
@@ -168,7 +187,7 @@ export async function fetchWarmCards(): Promise<WarmCard[]> {
   return (data ?? []) as WarmCard[]
 }
 
-export type DecideAction = 'save_note' | 'approve_invite' | 'approve_dm1_stage' | 'skip'
+export type DecideAction = 'save_note' | 'approve_invite' | 'approve_dm1_stage' | 'approve_dm_swishdm' | 'skip'
 export type DecideResult = { ok: boolean; error?: string; stage?: string }
 
 export async function decideWarm(id: string, action: DecideAction, text?: string | null): Promise<DecideResult> {

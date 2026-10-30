@@ -249,6 +249,11 @@ describe('came back = a tag on the name; Signals = one list', () => {
     expect(iv.map(i => `${i.pid}:${i.label}`)).toEqual(['w1:viewed your profile', 'w2:commented on your post', 'echo:came back', 'nothread:came back'])
     const rise = signalItems('risedtc', warm, [], came, by)
     expect(rise.map(i => i.pid)).toEqual(['rise'])
+    // db/298: a RISE profile viewer's warm card lands on RISE's list only
+    const riseWarm = { ...warm[0], prospect_id: 'rw', tenant: 'risedtc', signal_kind: 'new_invite' }
+    expect(signalItems('risedtc', [riseWarm], [], [], by).map(i => `${i.pid}:${i.label}`)).toEqual(['rw:viewed the profile'])
+    expect(signalItems('ivan', [riseWarm], [], [], by)).toEqual([])
+    expect(warmWord({ signal_source: 'profile_view', trigger_type: null, signal_kind: 'next_touch', tenant: 'arch' })).toBe('viewed, no reply yet')
     expect(warmWord({ signal_source: 'reacted', trigger_type: null })).toBe('engaged two posts')
   })
 })

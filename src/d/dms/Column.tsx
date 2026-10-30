@@ -4,7 +4,7 @@ import { eventTime, internalHoldSummary, isReplyRetryExhausted, threadBucket, ty
 import { cameBackRowLine, firstComment, sentLine, type CameBackCard } from '../../wb/dms/cameBackData'
 import { agentCardsWithoutWarmCards, type ConversationAgentCard } from '../../wb/dms/conversationAgentData'
 import { WARM_GROUPS, dm1Deliverable, evidenceLine, inviteLine, isWaiting, primaryAction, warmGroup, type WarmCard } from '../../wb/dms/warmSignalsData'
-import { type Seat } from '../seats'
+import { seatOf, type Seat } from '../seats'
 import { ago, firstLine, heldItems, needsCount, seatThreads, type SeatView } from './model'
 import { scheduleHeld, SCHEDULE_REVIEW } from '../../lib/dmSchedule'
 import { sendTimeLabel } from '../../lib/dmScheduleTime'
@@ -228,7 +228,8 @@ function SignalsSection({ p, folds, came }: { p: ColumnProps; folds: Folds; came
   const agentBy = new Map(p.agent.cards.map(a => [a.prospect_id, a] as const))
   let waiting = 0
   const shown: WarmCard[] = []
-  if (seat === 'ivan') for (const w of p.warm.rows) { if (isWaiting(w) && !agentBy.has(w.prospect_id)) waiting++; else shown.push(w) }
+  // 2026-10-30 (db/298): warm cards on every seat, each in its own seat's list.
+  for (const w of p.warm.rows) { if ((seatOf(w.tenant ?? null) ?? 'ivan') !== seat) continue; if (isWaiting(w) && !agentBy.has(w.prospect_id)) waiting++; else shown.push(w) }
   const order = WARM_GROUPS.map(g => g.key) as string[]
   shown.sort((a, b) => order.indexOf(warmGroup(a)) - order.indexOf(warmGroup(b)))
   const agentOnly: ConversationAgentCard[] = seat === 'ivan' ? agentCardsWithoutWarmCards(p.agent.cards, new Set(p.warm.rows.map(w => w.prospect_id))) : []
@@ -250,7 +251,7 @@ function SignalsSection({ p, folds, came }: { p: ColumnProps; folds: Folds; came
         line={`${evidenceLine(w)} · ${inviteLine(w).text}${ag ? ` · agent: ${ag.owner === 'agent' ? 'owns it' : 'you own it'}` : ''}`}
         selected={c.selected === w.prospect_id} onOpen={() => p.openWarm(w.prospect_id)}
         verbs={[
-          ...(act === 'invite' ? [{ label: 'Approve invite', verb: 'approve-invite', run: go(() => p.warmVerbs.approveInvite(w, noteOf(w)), k), busy: c.busy === k }] : []),
+          ...(act === 'invite' ? [{ label: w.signal_invite_state === 'first_degree_pending' ? 'Approve' : 'Approve invite', verb: 'approve-invite', run: go(() => p.warmVerbs.approveInvite(w, noteOf(w)), k), busy: c.busy === k }] : []),
           ...(act === 'dm1' && !managed && dm1Deliverable(w) && w.draft_id ? [{ label: 'Approve DM1', verb: 'approve-dm1', run: go(() => p.warmVerbs.approveDm1(w, w.draft_text ?? '', managed), k), busy: c.busy === k }] : []),
           ...(!managed ? [{ label: 'Skip', verb: 'skip', quiet: true, run: go(() => p.warmVerbs.skip(w), `ws:${w.prospect_id}`), busy: c.busy === `ws:${w.prospect_id}` }] : []),
         ]} />
@@ -281,8 +282,8 @@ function SignalsSection({ p, folds, came }: { p: ColumnProps; folds: Folds; came
         p.dropOwnerEngager?.(x)
       }).catch(() => c.fail('Could not dismiss this post engager. Try again.')).finally(() => c.setBusy(null))
     } }]} />)
-  const failed = (seat === 'ivan' && p.warm.failed) || p.cameBack.failed || p.ownerEngagers?.failed
-  const loaded = p.cameBack.loaded && (seat !== 'ivan' || p.warm.loaded) && (p.ownerEngagers?.loaded ?? true)
+  const failed = p.warm.failed || p.cameBack.failed || p.ownerEngagers?.failed
+  const loaded = p.cameBack.loaded && p.warm.loaded && (p.ownerEngagers?.loaded ?? true)
   const empty = loaded && !failed && items.length + owners.length === 0
   return <>
     <span id="dm-warm" aria-hidden="true" />
@@ -290,7 +291,7 @@ function SignalsSection({ p, folds, came }: { p: ColumnProps; folds: Folds; came
       before={<>
         {seat === 'ivan' && p.agent.failed && <Quiet>Agent status could not be verified. Agent approvals are blocked; warm review still works.</Quiet>}
         {seat === 'ivan' && p.agent.note && !p.agent.failed && <Quiet>{p.agent.note}</Quiet>}
-        {seat === 'ivan' && p.warm.failed && <Quiet>Could not read the warm signals.</Quiet>}
+        {p.warm.failed && <Quiet>Could not read the warm signals.</Quiet>}
         {p.cameBack.failed && <Quiet>Could not read who came back.</Quiet>}
         {p.ownerEngagers?.failed && <Quiet>Could not read new post engagers.</Quiet>}
         {empty && <Quiet>No signals now. Profile views, post engagers and people who came back without replying land here.</Quiet>}

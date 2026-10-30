@@ -4,13 +4,13 @@
 //     wherever a thread of theirs is listed (and in the thread head), its tooltip what they came
 //     back to (today's card line).
 //   · signalItems: ONE Signals list per seat holding every pre-reply interest signal: today's warm
-//     cards (Ivan's seat), agent-only conversations, and came-back people who have no conversation
+//     cards (every seat since 2026-10-30, db/298), agent-only conversations (Ivan's seat), and came-back people who have no conversation
 //     yet (they would be lost otherwise). Each labelled by kind in words.
 import { isConversation, type Thread } from '../../lib/inbox'
 import { cameBackLine, firstComment, interestLabel, sentLine, type CameBackCard } from '../../wb/dms/cameBackData'
 import type { ConversationAgentCard } from '../../wb/dms/conversationAgentData'
 import { warmGroup, type WarmCard } from '../../wb/dms/warmSignalsData'
-import type { Seat } from '../seats'
+import { seatOf, type Seat } from '../seats'
 
 const DAY = 86_400_000
 
@@ -34,7 +34,10 @@ const WARM_WORD: Record<string, string> = {
   profile_view: 'viewed your profile', commented_own_post: 'commented on your post', reacted_two_posts: 'engaged two posts',
 }
 
-export function warmWord(w: Pick<WarmCard, 'signal_source' | 'trigger_type'>): string {
+export function warmWord(w: Pick<WarmCard, 'signal_source' | 'trigger_type'> & Partial<Pick<WarmCard, 'signal_kind' | 'tenant'>>): string {
+  if (w.signal_kind === 'next_touch') return 'viewed, no reply yet'
+  if (w.signal_kind === 'dm1_pull') return 'viewed, accepted'
+  if (warmGroup(w) === 'profile_view' && w.tenant && w.tenant !== 'ivan') return 'viewed the profile'
   return WARM_WORD[warmGroup(w)] ?? 'engaged a post'
 }
 
@@ -43,14 +46,17 @@ export type SignalItem =
   | { kind: 'agent'; pid: string; label: string; a: ConversationAgentCard }
   | { kind: 'came'; pid: string; label: string; c: CameBackCard; t: Thread | null }
 
-/** One seat's Signals. Warm and agent cards are Ivan's seat only (today's reads are his lane);
+/** One seat's Signals. Warm cards by their tenant (no tenant = Ivan, pre-298 rows); agent cards are Ivan's seat only;
  *  a came-back person joins only while they have no conversation (a conversation carries the tag). */
 export function signalItems(seat: Seat, warm: readonly WarmCard[], agentOnly: readonly ConversationAgentCard[],
   came: readonly CameBackCard[], byId: ReadonlyMap<string, Thread>): SignalItem[] {
   const out: SignalItem[] = []
   const seen = new Set<string>()
+  for (const w of warm) {
+    if ((seatOf(w.tenant ?? null) ?? 'ivan') !== seat) continue
+    out.push({ kind: 'warm', pid: w.prospect_id, label: warmWord(w), w }); seen.add(w.prospect_id)
+  }
   if (seat === 'ivan') {
-    for (const w of warm) { out.push({ kind: 'warm', pid: w.prospect_id, label: warmWord(w), w }); seen.add(w.prospect_id) }
     for (const a of agentOnly) { out.push({ kind: 'agent', pid: a.prospect_id, label: 'agent conversation', a }); seen.add(a.prospect_id) }
   }
   for (const c of came) {
