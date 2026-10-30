@@ -8,10 +8,10 @@ import { clearBoardState, setBoardState } from '../../../lib/clientBoardState'
 // Write parity for the Brief 4 review desk (SPEC-content §5): the same verdict
 // store, the same schedule / board writes, the reason as the drop's commit, and
 // the seat's next step only once a verdict is SAVED. Every write is mocked.
-const lib = vi.hoisted(() => ({ setVerdict: vi.fn(), scheduleGuarded: vi.fn(), setBoardVisible: vi.fn(), setScheduleDateAt: vi.fn(), deleteDraft: vi.fn(), deleteClientDraft: vi.fn() }))
+const lib = vi.hoisted(() => ({ setVerdict: vi.fn(), scheduleGuarded: vi.fn(), setBoardVisible: vi.fn(), setScheduleDateAt: vi.fn(), deleteDraft: vi.fn(), deleteClientDraft: vi.fn(), saveDraftBody: vi.fn(), saveClientDraftBody: vi.fn() }))
 vi.mock('../../../lib/verdicts', async orig => ({ ...(await orig<typeof import('../../../lib/verdicts')>()), setVerdict: lib.setVerdict }))
 vi.mock('../writes', () => ({ scheduleGuarded: lib.scheduleGuarded }))
-vi.mock('../../../lib/content', async orig => ({ ...(await orig<typeof import('../../../lib/content')>()), setBoardVisible: lib.setBoardVisible, setScheduleDateAt: lib.setScheduleDateAt, deleteDraft: lib.deleteDraft, deleteClientDraft: lib.deleteClientDraft }))
+vi.mock('../../../lib/content', async orig => ({ ...(await orig<typeof import('../../../lib/content')>()), setBoardVisible: lib.setBoardVisible, setScheduleDateAt: lib.setScheduleDateAt, deleteDraft: lib.deleteDraft, deleteClientDraft: lib.deleteClientDraft, saveDraftBody: lib.saveDraftBody, saveClientDraftBody: lib.saveClientDraftBody }))
 vi.mock('../../../lib/brainPage', async orig => ({ ...(await orig<typeof import('../../../lib/brainPage')>()), fetchDraftSources: vi.fn(() => Promise.resolve(new Map())) }))
 vi.mock('../useEarlyReads', () => ({ useEarlyReads: () => new Map() }))
 
@@ -333,9 +333,47 @@ describe('the row', () => {
     fireEvent.click(card('n1')!.querySelector('.cv2-row-t')!)
     expect(onOpen).toHaveBeenCalledWith('n1', 'ivan')
     onOpen.mockClear()
+    // On the grid, Edit opens the post's text in place (Ivan 2026-10-30); it neither opens the post nor the editor.
     fireEvent.click(verb(card('n1'), 'card-edit')!)
-    expect(onEdit).toHaveBeenCalledWith('n1', 'ivan')
+    expect(card('n1')!.querySelector('textarea')).toBeTruthy()
+    expect(onEdit).not.toHaveBeenCalled()
     expect(onOpen).not.toHaveBeenCalled()
+  })
+  it('the grid card shows the whole post, an empty square without media, and the slide count of a carousel', () => {
+    const long = Array.from({ length: 12 }, (_, i) => `Line ${i + 1} of the post.`).join('\n\n')
+    renderInFrame(<Harness rows={[row({ id: 'g1', post_body: long }), row({ id: 'g2', type: 'carousel', image_urls: ['https://x/1.png', 'https://x/2.png', 'https://x/3.png'] })]} />)
+    expect(card('g1')!.querySelector('.cv2-gp')!.textContent).toContain('Line 12 of the post.')
+    expect(card('g1')!.querySelector('.cv2-li-empty')).toBeTruthy()
+    expect(card('g2')!.querySelector('.cv2-li-empty')).toBeNull()
+    expect(card('g2')!.querySelector('.cv2-li-count')!.textContent).toBe('1 / 3')
+  })
+  it('a click on the text edits in place; ⌘Enter saves with the loaded body as the compare base; Esc cancels', async () => {
+    lib.saveDraftBody.mockResolvedValue(undefined)
+    const onOpen = vi.fn()
+    renderInFrame(<Harness onOpen={onOpen} rows={[row({ id: 'e1', post_body: 'Old text.' })]} />)
+    fireEvent.click(card('e1')!.querySelector('.cv2-li-b p')!)
+    expect(onOpen).not.toHaveBeenCalled()
+    const ta = card('e1')!.querySelector('textarea')!
+    expect(ta.value).toBe('Old text.')
+    fireEvent.keyDown(ta, { key: 'Escape' })
+    expect(card('e1')!.querySelector('textarea')).toBeNull()
+    expect(lib.saveDraftBody).not.toHaveBeenCalled()
+    fireEvent.click(card('e1')!.querySelector('.cv2-li-b p')!)
+    const ta2 = card('e1')!.querySelector('textarea')!
+    fireEvent.change(ta2, { target: { value: 'New text.' } })
+    await act(async () => { fireEvent.keyDown(ta2, { key: 'Enter', metaKey: true }) })
+    expect(lib.saveDraftBody.mock.calls.at(-1)!.filter((_, i) => i !== 2 && i !== 4)).toEqual(['e1', 'New text.', 'Old text.'])
+    expect(card('e1')!.querySelector('textarea')).toBeNull()
+  })
+  it('a client draft saves through the client path', async () => {
+    lib.saveClientDraftBody.mockResolvedValue(undefined)
+    renderInFrame(<Harness show="arch" rows={[row({ id: 'c1', client_id: 'arch', status: 'review', post_body: 'Arch text.' })]} />)
+    fireEvent.click(verb(card('c1'), 'card-edit')!)
+    const ta = card('c1')!.querySelector('textarea')!
+    fireEvent.change(ta, { target: { value: 'Arch text, fixed.' } })
+    await act(async () => { fireEvent.click(verb(card('c1'), 'grid-save')!) })
+    expect(lib.saveClientDraftBody.mock.calls.at(-1)!.filter((_, i) => i !== 2 && i !== 4)).toEqual(['c1', 'Arch text, fixed.', 'Arch text.'])
+    expect(lib.saveDraftBody.mock.calls.some(x => x[0] === 'c1')).toBe(false)
   })
 })
 

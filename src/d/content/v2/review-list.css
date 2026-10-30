@@ -181,4 +181,26 @@
   :root[data-skin-on~='content.review'] .cv2-grid .cv2-row > .cv2-ask{margin:0 14px 12px;padding-left:10px}
   :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-why{padding:0 14px 12px}
   :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-more{padding:4px 14px 16px}
+  /* THE WHOLE POST IN THE CARD (Ivan 2026-10-30: "show the full post view ... so i can see and edit from here fast ...
+     letter and sizing small to keep realism ... show media if there or empty square if no media"). */
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp{margin:0 -14px;cursor:text}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp .cv2-li{font-size:12px;line-height:16.5px;color:#191919}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp .cv2-li-h{padding:0 14px;gap:6px;cursor:pointer}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp .cv2-li-h > i{width:28px;height:28px;font-size:11px}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp .cv2-li-h div{line-height:13px}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp .cv2-li-h b,:root[data-skin-on~='content.review'] .cv2-grid .cv2-gp .cv2-li-h span{font-size:11.5px}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp .cv2-li-h small{font-size:10.5px}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp .cv2-li-b{padding:6px 14px 8px;border-radius:6px}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp .cv2-li-b:hover{background:rgba(10,102,194,.05)}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp .cv2-li-b p{margin:0 0 12px}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp .cv2-li-m{margin-top:0;cursor:pointer;max-height:none}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp .cv2-li-empty{background:#f3f2ef;box-shadow:inset 0 0 0 1px #e0dfdc;cursor:default}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp .cv2-li-count{font-size:11px;line-height:15px}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp-edit{margin:0;cursor:auto;display:flex;flex-direction:column;gap:8px}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp-edit textarea{width:100%;box-sizing:border-box;min-height:160px;resize:vertical;padding:8px 10px;border:1px solid #0a66c2;border-radius:8px;background:#fff;color:#191919;font:400 12px/16.5px var(--ds-font);white-space:pre-wrap}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp-keys{display:flex;gap:6px}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-meta .cv2-tag-warn:not([title]){display:none}
+  /* Each card is its own height, so the keys sit right under its post (a long neighbour no longer leaves a gap). */
+  :root[data-skin-on~='content.review'] .cv2-list.cv2-grid > .cv2-row,:root[data-skin-on~='content.review'] .cv2-grid .cv2-row-main{height:auto}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-main{grid-template-rows:auto auto auto}
 }

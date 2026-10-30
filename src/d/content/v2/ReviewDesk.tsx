@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { clientDeletable, pictureEditable, taxonomyValue, type ContentDraft } from '../../../lib/content'
+import { DraftSaveConflict, clientDeletable, pictureEditable, saveClientDraftBody, saveDraftBody, taxonomyValue, type ContentDraft } from '../../../lib/content'
 import { sourceOf } from '../../../lib/brainPage'
 import { reasonLabel } from '../../../lib/verdicts'
 import type { PatternRead } from '../../../lib/earlyReads'
@@ -286,7 +286,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
     const e = c.strip ? judged.get(c.r.id) : undefined
     if (e) return <DeskStrip key={c.r.id} e={e} c={c} i={i} slot={slot} busy={busy === c.r.id} verbs={verbs} onDate={() => setMoving(c)} />
     return (
-      <ReviewRow key={c.r.id} c={c} i={i} now={now} focused={c.r.id === focus} open={c.r.id === openId} busy={busy === c.r.id} held={!!held?.has(c.r.id)}
+      <ReviewRow key={c.r.id} c={c} i={i} now={now} grid={!openId} focused={c.r.id === focus} open={c.r.id === openId} busy={busy === c.r.id} held={!!held?.has(c.r.id)}
         read={earlyReads.get(c.r.id)} repeat={repeats.get(c.r.id)} slot={slot}
         src={sourceOf(c.r, sources.map.get(c.r.id))} srcLoading={!sources.map.has(c.r.id) && sources.pending}
         more={more.has(c.r.id)} setMore={v => toggleMore(c.r.id, v)} hideHold={!!sharedHold && holdOf(c)?.detail === sharedHold}
@@ -432,8 +432,10 @@ export function snippetOf(c: Pick<WeekCard, 'body' | 'title'>): string {
   return line.length > 220 ? `${line.slice(0, 218)}…` : line
 }
 
-function ReviewRow({ c, i, now, focused, open, busy, held, read, repeat, slot, src, srcLoading, more, setMore, hideHold = false, picking, setPicking, onFocus, onOpen, onEdit, onApprove, onDrop, onSkip, onBoard, onSchedule, onDate, onChanged }: {
+function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, slot, src, srcLoading, more, setMore, hideHold = false, picking, setPicking, onFocus, onOpen, onEdit, onApprove, onDrop, onSkip, onBoard, onSchedule, onDate, onChanged }: {
   c: WeekCard; i: number; now: number; focused: boolean; open: boolean; busy: boolean; held: boolean
+  /** The 3-up card grid (no post open): the whole post, its media, edited in place. */
+  grid: boolean
   read?: PatternRead; repeat?: Repeat; slot: Slot | null
   src: ReturnType<typeof sourceOf>; srcLoading: boolean
   more: boolean; setMore: (v: boolean) => void
@@ -446,6 +448,7 @@ function ReviewRow({ c, i, now, focused, open, busy, held, read, repeat, slot, s
 }) {
   const ref = useRef<HTMLElement>(null)
   const [pic, setPic] = useState<string[] | undefined>(undefined)
+  const [editing, setEditing] = useState(false)
   const id = c.r.id
   const judgeable = c.judge
   // Time to verdict starts when a draft to judge is first on screen (once per draft), as on the stack.
@@ -507,8 +510,9 @@ function ReviewRow({ c, i, now, focused, open, busy, held, read, repeat, slot, s
         <div className="cv2-row-text">
           <b className="cv2-row-t">{title}</b>
           {snippet && <span className="cv2-row-sub">{snippet}</span>}
-          {/* The grid card's opening lines of the post (the list row keeps the one-line snippet). */}
-          {!more && c.body.trim() && <span className="cv2-row-body">{c.body.trim()}</span>}
+          {/* The grid card: the whole post as the feed shows it, with its media or an empty square, and the text
+              edits in place (Ivan 2026-10-30: "see and edit from here fast"). The list row keeps the one-line snippet. */}
+          {grid && !more && <GridPost c={c} editing={editing} setEditing={setEditing} onChanged={onChanged} />}
         </div>
         <div className="cv2-row-meta">
           {(taxonomyValue(c.r.taxonomy, 'pillar') === 'personal' || taxonomyValue(c.r.taxonomy, 'register') === 'personal') && <span className="cv2-tag" data-pillar="personal">Personal</span>}
@@ -525,7 +529,7 @@ function ReviewRow({ c, i, now, focused, open, busy, held, read, repeat, slot, s
         <div className="cv2-row-keys">
           {c.judge && c.lane !== 'swishdm' && <button type="button" className="cv2-k cv2-k-q" data-verb="card-drop" disabled={busy} onClick={() => setPicking(true)}>Drop</button>}
           {!c.judge && c.primary === 'approve' && <button type="button" className="cv2-k cv2-k-q" data-verb="card-skip" disabled={busy} onClick={onSkip}>Skip</button>}
-          <button type="button" className="cv2-k cv2-k-q cv2-wide-only" data-verb="card-edit" disabled={busy} onClick={onEdit}>Edit</button>
+          <button type="button" className="cv2-k cv2-k-q cv2-wide-only" data-verb="card-edit" disabled={busy || editing} onClick={grid && !more ? () => setEditing(true) : onEdit}>Edit</button>
           {next === 'schedule' && !c.r.scheduled_at && <button type="button" className="cv2-k cv2-k-q cv2-wide-only" data-verb="card-pick-day" disabled={busy} onClick={onDate}>Pick a day</button>}
           {primary}
           <button type="button" className="cv2-chev" aria-expanded={more} aria-label={more ? 'Hide the preview' : 'Preview the post here'} data-verb="row-preview" onClick={() => setMore(!more)}>
@@ -551,6 +555,55 @@ function ReviewRow({ c, i, now, focused, open, busy, held, read, repeat, slot, s
         </div>
       )}
     </article>
+  )
+}
+
+/** The grid card's post. A click on the text opens it for editing in place; ⌘/Ctrl+Enter saves, Esc cancels.
+ *  The save is the editor's own compare-and-swap (a body changed elsewhere is refused, never overwritten). */
+function GridPost({ c, editing, setEditing, onChanged }: { c: WeekCard; editing: boolean; setEditing: (v: boolean) => void; onChanged: () => void }) {
+  const toast = useToast()
+  const [text, setText] = useState('')
+  const [saving, setSaving] = useState(false)
+  const ta = useRef<HTMLTextAreaElement>(null)
+  const fit = (el: HTMLTextAreaElement) => { el.style.height = 'auto'; el.style.height = `${el.scrollHeight + 2}px` }
+  useEffect(() => {
+    if (!editing) return
+    setText(c.r.post_body ?? '')
+    requestAnimationFrame(() => ta.current?.focus())
+  }, [editing]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The box grows with the text, so the whole post stays in view while editing.
+  useLayoutEffect(() => { if (editing && ta.current) fit(ta.current) }, [editing, text])
+  const save = async () => {
+    if (text === (c.r.post_body ?? '')) { setEditing(false); return }
+    setSaving(true)
+    try {
+      await (c.lane === 'ivan' ? saveDraftBody : saveClientDraftBody)(c.r.id, text, c.r.taxonomy, c.r.post_body ?? null, c.r.updated_at ?? null)
+      setEditing(false)
+      toast.show({ id: `grid-save-${c.r.id}`, message: 'Saved.' })
+      onChanged()
+    } catch (e) {
+      toast.show({ id: `grid-save-${c.r.id}`, message: e instanceof DraftSaveConflict ? 'This post changed elsewhere. Open it to compare.' : `Not saved: ${e instanceof Error ? e.message : String(e)}` })
+    } finally { setSaving(false) }
+  }
+  if (editing) return (
+    <div className="cv2-gp cv2-gp-edit">
+      <textarea ref={ta} value={text} disabled={saving} aria-label="Post text" spellCheck
+        onChange={e => { setText(e.target.value); fit(e.target) }}
+        onKeyDown={e => {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void save() }
+          else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setEditing(false) }
+        }} />
+      <div className="cv2-gp-keys">
+        <button type="button" className="cv2-k cv2-k-p" data-verb="grid-save" disabled={saving} onClick={() => void save()}>{saving ? 'Saving…' : 'Save'}</button>
+        <button type="button" className="cv2-k cv2-k-q" data-verb="grid-cancel" disabled={saving} onClick={() => setEditing(false)}>Cancel</button>
+      </div>
+    </div>
+  )
+  return (
+    <div className="cv2-gp" data-verb="grid-edit-text" title="Click the text to edit"
+      onClick={e => { if (!(e.target as HTMLElement).closest('.cv2-li-b')) return; e.stopPropagation(); setEditing(true) }}>
+      <LinkedInCard lane={c.lane} body={(c.r.post_body ?? '').trim() || c.title} images={c.r.image_urls} type={c.r.type} bare compact open expandable={false} emptyMedia />
+    </div>
   )
 }
 

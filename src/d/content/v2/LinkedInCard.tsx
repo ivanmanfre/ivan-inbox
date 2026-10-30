@@ -12,7 +12,7 @@ import { foldText } from '../weekModel'
 // own measure, full-bleed on the phone. Presentational: no writes.
 const clampRatio = (w: number, h: number) => Math.min(1.91, Math.max(0.8, w / h))
 
-export function LinkedInCard({ lane, body, images, type, expandable = true, compact = false, bare = false, open, onToggle }: {
+export function LinkedInCard({ lane, body, images, type, expandable = true, compact = false, bare = false, emptyMedia = false, open, onToggle }: {
   lane: Lane
   body: string
   /** What will post (the optimistic picture while a change is being written). */
@@ -22,6 +22,8 @@ export function LinkedInCard({ lane, body, images, type, expandable = true, comp
   compact?: boolean
   /** No inert reaction bar (the review desk). */
   bare?: boolean
+  /** An empty square where the media goes when there is none (the review grid). */
+  emptyMedia?: boolean
   /** Controlled "see more" (the review desk's `o` key); uncontrolled when absent. */
   open?: boolean
   onToggle?: (open: boolean) => void
@@ -68,6 +70,7 @@ export function LinkedInCard({ lane, body, images, type, expandable = true, comp
           {all.length > 1 && <div className="cv2-li-strip">{all.slice(1, 4).map((u, i) => <button key={`${u}-${i}`} type="button" aria-label={`Open slide ${i + 2} of ${all.length}`} onClick={e => { e.stopPropagation(); setViewing(i + 1) }}><img src={imgOf([u], 200) ?? u} alt="" loading="lazy" draggable={false} /></button>)}</div>}
         </div>
       )}
+      {emptyMedia && !single && !carousel && <div className="cv2-li-m cv2-li-empty" style={{ aspectRatio: '1' }} aria-label="No image" />}
       {viewing !== null && <MediaViewer images={all} initial={viewing} onClose={() => setViewing(null)} />}
       {!bare && <div className="cv2-li-r" aria-hidden="true"><span>Like</span><span>Comment</span><span>Repost</span><span>Send</span></div>}
     </div>
