@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ago, clock, length, sortSources, tabOf, watchUrl, type IntelSource } from './model'
+import { ago, clock, inDropped, inFeed, length, sortSources, tabOf, watchUrl, type IntelItem, type IntelSource } from './model'
 
 describe('intel model', () => {
   it('formats clock times', () => {
@@ -34,5 +34,19 @@ describe('intel model', () => {
   it('puts trial sources first', () => {
     const s = (name: string, status: IntelSource['status']) => ({ id: name, name, url: '', topic: null, status, added_by: 'ivan', note: null, items_judged: 0, items_kept: 0, last_kept_at: null }) as IntelSource
     expect(sortSources([s('b', 'core'), s('a', 'dropped'), s('c', 'trial')]).map(x => x.name)).toEqual(['c', 'b', 'a'])
+  })
+
+  it('keeps For you recent and honours Ivan\'s taps', () => {
+    const now = Date.parse('2026-10-30T12:00:00Z')
+    const it_ = (o: Partial<IntelItem>) => ({ verdict: 'keep', ivan_verdict: null, published_at: '2026-10-25T00:00:00Z', created_at: '2026-10-29T00:00:00Z', ...o }) as IntelItem
+    expect(inFeed(it_({}), now)).toBe(true)
+    expect(inFeed(it_({ published_at: '2026-10-02T00:00:00Z' }), now)).toBe(false)
+    expect(inFeed(it_({ ivan_verdict: 'noise' }), now)).toBe(false)
+    expect(inFeed(it_({ verdict: 'drop', ivan_verdict: 'useful' }), now)).toBe(true)
+    expect(inFeed(it_({ verdict: 'drop' }), now)).toBe(false)
+    expect(inFeed(it_({ published_at: null }), now)).toBe(false)
+    expect(inDropped(it_({ verdict: 'drop' }), now)).toBe(true)
+    expect(inDropped(it_({ verdict: 'drop', ivan_verdict: 'useful' }), now)).toBe(false)
+    expect(inDropped(it_({ verdict: 'drop', created_at: '2026-10-01T00:00:00Z' }), now)).toBe(false)
   })
 })

@@ -31,6 +31,7 @@
 .it-drops b{font:500 14px var(--f)}
 .it-drops small{display:block;font:400 11.5px var(--m);color:var(--t3);margin-top:2px}
 .it-drops p{margin:4px 0 0;font-size:13px;line-height:1.45;color:var(--t2)}
+.it-drops .it-rescue{margin-top:6px}
 
 .it-srcs{gap:0;border:1px solid var(--line2);border-radius:var(--r1);background:var(--p1);overflow:hidden}
 .it-srcs li{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line)}
