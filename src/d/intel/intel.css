@@ -1,0 +1,50 @@
+/* D · Intel. Prefix it-. Tokens from d.css. Lime only on live state (the pressed Useful). */
+.it-page{flex:1;min-height:0;display:flex;flex-direction:column;min-width:0}
+.it-scroll{flex:1;min-height:0;overflow-y:auto;scrollbar-width:thin;padding:12px 16px 32px}
+.it-desktop .it-scroll>*{max-width:820px;margin-left:auto;margin-right:auto}
+
+.it-tabs{display:flex;gap:6px;margin-bottom:12px}
+.it-tabs button{display:flex;align-items:center;gap:7px;height:32px;padding:0 12px;border:1px solid var(--line2);border-radius:var(--r1);background:var(--p1);color:var(--t2);font:500 13px var(--f);cursor:pointer}
+.it-tabs button i{font:400 11.5px var(--m);font-style:normal;color:var(--t3)}
+.it-tabs button.it-on{background:var(--p3);color:var(--t1);border-color:var(--strong)}
+
+.it-feed,.it-drops,.it-srcs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+
+.it-card{border:1px solid var(--line2);border-radius:var(--r1);background:var(--p1);padding:13px 16px 12px}
+.it-card.it-useful{border-color:var(--limeD)}
+.it-meta{display:flex;flex-wrap:wrap;gap:4px 12px;font:400 11.5px var(--m);color:var(--t3)}
+.it-src{color:var(--t2)}
+.it-for{color:var(--t1);border:1px solid var(--line2);border-radius:5px;padding:0 6px}
+.it-new{color:var(--warn)}
+.it-card h3{margin:7px 0 0;font:600 16.5px/1.35 var(--f);color:var(--t1)}
+.it-card p{margin:6px 0 0;font-size:13.5px;line-height:1.5;color:var(--t2)}
+.it-card p.it-try{color:var(--t1)}
+.it-try b{font:500 11px var(--m);letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin-right:6px}
+.it-keys{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:11px}
+.it-watch{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:7px;border:1px solid var(--strong);background:var(--p3);color:var(--t1);font:600 13px var(--f);text-decoration:none}
+.it-watch .d-ico{width:13px;height:13px}
+.it-keys .d-btn.it-pressed{border-color:var(--limeD);color:var(--lime)}
+.it-keys .it-mute{margin-left:auto;color:var(--t3)}
+
+.it-drops li{border-bottom:1px solid var(--line);padding:9px 2px 10px}
+.it-drops a{color:var(--t1);text-decoration:none}
+.it-drops b{font:500 14px var(--f)}
+.it-drops small{display:block;font:400 11.5px var(--m);color:var(--t3);margin-top:2px}
+.it-drops p{margin:4px 0 0;font-size:13px;line-height:1.45;color:var(--t2)}
+
+.it-srcs{gap:0;border:1px solid var(--line2);border-radius:var(--r1);background:var(--p1);overflow:hidden}
+.it-srcs li{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.it-srcs li:last-child{border-bottom:0}
+.it-srcs li.it-off{opacity:.55}
+.it-st{flex:1;min-width:0}
+.it-st a{color:var(--t1);text-decoration:none}
+.it-st b{font:500 14px var(--f)}
+.it-st small{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font:400 11.5px var(--m);color:var(--t3);margin-top:3px}
+.it-st .it-note{display:block;font:400 12px var(--f);color:var(--t3)}
+.it-chip{border:1px solid var(--line2);border-radius:5px;padding:0 6px;color:var(--t2)}
+.it-chip.it-trial{color:var(--warn)}
+.it-sk{display:flex;gap:6px;flex:none}
+
+.it-phone .it-scroll{padding:8px 12px 96px}
+.it-phone .it-card{border-radius:14px}
+.it-phone .it-keys .it-mute{margin-left:0}

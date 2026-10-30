@@ -12,7 +12,7 @@ import type { CrossHit } from '../lib/crossSearch'
 
 export const D_PREFIX = '#exp/d'
 
-export const PLACE_IDS: readonly PlaceId[] = ['home', 'lanes', 'dms', 'content', 'ops', 'sales', 'claude', 'settings']
+export const PLACE_IDS: readonly PlaceId[] = ['home', 'lanes', 'dms', 'content', 'ops', 'sales', 'intel', 'claude', 'settings']
 
 export const HOME: PlaceId = 'home'
 

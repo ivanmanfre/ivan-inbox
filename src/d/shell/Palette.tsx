@@ -39,7 +39,7 @@ function dedupe(cmds: WbCommand[]): WbCommand[] {
 }
 
 const PLACE_ICON: Record<PlaceId, IconName> = {
-  home: 'home', lanes: 'sends', dms: 'dms', content: 'content', ops: 'ops', sales: 'sales', claude: 'ask', settings: 'settings',
+  home: 'home', lanes: 'sends', dms: 'dms', content: 'content', ops: 'ops', sales: 'sales', intel: 'video', claude: 'ask', settings: 'settings',
 }
 
 type Props = {

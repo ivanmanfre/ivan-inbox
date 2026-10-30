@@ -15,7 +15,7 @@ import type { DIconName } from './ui/icons'
 // place, blank line between, so two agents never touch the same hunk.
 // ---------------------------------------------------------------------------
 
-export type PlaceId = 'home' | 'lanes' | 'dms' | 'content' | 'ops' | 'sales' | 'claude' | 'settings'
+export type PlaceId = 'home' | 'lanes' | 'dms' | 'content' | 'ops' | 'sales' | 'intel' | 'claude' | 'settings'
 
 export type Layout = 'desktop' | 'phone'
 
@@ -55,10 +55,12 @@ export const PLACES: Record<PlaceId, PlaceDef> = {
 
   sales: { id: 'sales', label: 'Sales', icon: 'sales', nav: 'main', dock: true, today: '#exp/brain-b/sales', Page: lazy(() => import('./sales')) },
 
+  intel: { id: 'intel', label: 'Intel', icon: 'intel', nav: 'main', dock: false, today: '#exp/d/intel', Page: lazy(() => import('./intel')) },
+
   claude: { id: 'claude', label: 'Claude', icon: 'claude', nav: 'main', dock: false, today: '#exp/brain-b/ask', Page: lazy(() => import('./claude')) },
 
   settings: { id: 'settings', label: 'Settings', icon: 'settings', nav: 'low', dock: false, today: '#exp/brain-b/settings', Page: lazy(() => import('./settings')) },
 }
 
 /** Draw order: main nav, then low nav. */
-export const PLACE_ORDER: readonly PlaceId[] = ['home', 'lanes', 'dms', 'content', 'ops', 'sales', 'claude', 'settings']
+export const PLACE_ORDER: readonly PlaceId[] = ['home', 'lanes', 'dms', 'content', 'ops', 'sales', 'intel', 'claude', 'settings']

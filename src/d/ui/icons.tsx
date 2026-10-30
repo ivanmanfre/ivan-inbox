@@ -7,6 +7,7 @@ const P = {
   content: <path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" />,
   ops: <path d="M9 4h6v3H9zM6 6h12v14H6zM9 12l2 2 4-4" />,
   sales: <path d="M4 13l4-4 4 3 4-5 4 3M4 19h16" />,
+  intel: <path d="M4 6h16v12H4zM10.5 9.5v5l4-2.5z" />,
   claude: <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l3 3M15 15l3 3M18 6l-3 3M9 15l-3 3" />,
   workflows: <path d="M4 5h6v5H4zM14 14h6v5h-6zM7 10v6.5h7M17 14V7.5h-7" />,
   settings: <><circle cx="12" cy="12" r="3" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" /></>,
