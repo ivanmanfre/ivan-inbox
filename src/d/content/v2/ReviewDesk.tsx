@@ -354,7 +354,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
           </div>
         ) : (
           <>{sharedHold && <p className="cv2-ask cv2-ask-hold cv2-ask-shared">{sharedHoldWord && <b>{sharedHoldWord}. </b>}{sharedHold}</p>}
-          <div ref={list} className="cv2-list cv2-grid" role="list" aria-label="Drafts to decide">
+          <div ref={list} className={`cv2-list${openId ? '' : ' cv2-grid'}`} role="list" aria-label="Drafts to decide">
             {orphans.map((e, i) => <DeskStrip key={e.id} e={e} i={i} slot={slot} busy={false} verbs={verbs} />)}
             {stream.map((c, i) => renderRow(c, i + orphans.length))}
           </div></>
@@ -365,7 +365,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
           <button type="button" className="cv2-fold-h" aria-expanded={waitOpen} data-verb="wait-fold" onClick={() => setWaitOpen(o => !o)}>
             <i aria-hidden="true">{waitOpen ? '▾' : '▸'}</i><b>{desk.waiting.length} approved</b><span>{show === 'ivan' ? 'waiting for a date' : 'waiting for the next step'}</span>
           </button>
-          {waitOpen && <div className="cv2-list cv2-grid" role="list" aria-label="Approved, next step waiting">{desk.waiting.map((c, i) => renderRow(c, i))}</div>}
+          {waitOpen && <div className={`cv2-list${openId ? '' : ' cv2-grid'}`} role="list" aria-label="Approved, next step waiting">{desk.waiting.map((c, i) => renderRow(c, i))}</div>}
         </section>
       )}
 
@@ -383,10 +383,9 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
       {show !== 'ivan' && (
         <section className="cv2-fold cv2-board" aria-label="On board">
           <h2 className="cv2-fold-h"><b>On board</b><span>{boardRead?.error && !boardRead.loadedAt ? 'Unavailable' : boardRead?.loading && !boardRead.loadedAt ? 'Reading…' : `${desk.board.length} post${desk.board.length === 1 ? '' : 's'}`}</span></h2>
-          <p className="cv2-note">Schedule here. {OWNER[show]}’s board updates automatically.</p>
           {boardRead?.error && <Failed what="the board posts" detail={boardRead.error} onRetry={boardRead.refresh} />}
           {desk.board.length > 0
-            ? <div className="cv2-list cv2-grid" role="list" aria-label="Posts on board">{desk.board.map((c, i) => renderRow(c, i))}</div>
+            ? <div className={`cv2-list${openId ? '' : ' cv2-grid'}`} role="list" aria-label="Posts on board">{desk.board.map((c, i) => renderRow(c, i))}</div>
             : !(boardRead?.loading && !boardRead.loadedAt) && !boardRead?.error && !loading && <p className="cv2-note">No posts on the board yet.</p>}
         </section>
       )}

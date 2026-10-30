@@ -8,7 +8,7 @@ import { weekendAfter, type PlanItem } from '../planModel'
 import { Unpublish } from '../Unpublish'
 import { XMarks, type XDays } from '../xDays'
 import type { ContentData } from '../useContentData'
-import { thisWeekFor, type Coverage } from './coverage'
+import type { Coverage } from './coverage'
 import { LinkedInCard } from './LinkedInCard'
 import { Menu, Pill, SeatAv, type MenuItem, type Tone } from './ui'
 import { postTagsOf, tagsLine } from '../calTags'
@@ -196,8 +196,6 @@ export function MonthCard({ e, a }: { e: Entry; a: CardActs }) {
 
 /** Next week per seat against the target of 3; gaps read as drop targets on the wall. */
 export function CoverageBar({ cov, lanes, loaded, phone = false }: { cov: Coverage; lanes: readonly Lane[]; loaded: (l: Lane) => boolean; phone?: boolean }) {
-  // This week counts the picked seats only, like the pills beside it (2026-10-15).
-  const week = thisWeekFor(cov, lanes)
   return (
     <div className="cv2-cov" role="group" aria-label="Next week, posts set to go out per seat" data-cal-noswipe={phone || undefined}>
       <span className="cv2-cov-l">Next week</span>
@@ -217,7 +215,7 @@ export function CoverageBar({ cov, lanes, loaded, phone = false }: { cov: Covera
       {!phone && <><span className="cv2-grow" /><span className="cv2-key" aria-label="Key">
         <span><i className="cv2-dot cv2-dot-set" />Scheduled</span><span><i className="cv2-dot cv2-dot-review" />In review</span>
         <span><i className="cv2-dot cv2-dot-planned" />Not scheduled</span><span><b>✓</b> Posted</span></span>
-        {lanes.every(loaded) && <span className="cv2-dim">This week: {week.posted} posted, {week.set} to go</span>}</>}
+        </>}
     </div>
   )
 }
@@ -304,40 +302,45 @@ export function BufferDock({ loose, lms, a, vertical = false, startOpen = true }
     return () => window.removeEventListener('keydown', k)
   }, [])
   if (!loose.length && !lms.length) return null
-  const list = tab === 'lms' && lms.length ? 'lms' : 'loose'
+  // Lead magnet POSTS sit with the lead magnet pages, so the tab counts every lead magnet on screen (Ivan
+  // 2026-10-30 saw "Lead magnets 1" beside two lead magnet posts under No date yet).
+  const posts = loose.filter(l => !l.lm)
+  const lmPosts = loose.filter(l => l.lm)
+  const lmN = lmPosts.length + lms.length
+  const list = tab === 'lms' && lmN ? 'lms' : 'loose'
+  const tile = (l: Loose) => {
+    const tags = postTagsOf(l.r, l.lane, l.lm)
+    const hook = splitTitleTag(l.hook).text
+    return (
+      <div key={l.id} className={`cv2-tile${l.thumb ? '' : ' cv2-tile-text'}`} data-cal-id={l.id} data-cal-lane={l.lane}>
+        <button type="button" className="cv2-tile-main" data-verb="open" aria-label={`${hook}${tags ? ` · ${tagsLine(tags)}` : ''}`} onClick={() => a.onOpen(l.id, l.lane)}>
+          {l.thumb && <img src={l.thumb} alt="" loading="lazy" draggable={false} />}
+          <span className="cv2-tile-t"><i className={`cv2-seatdot cv2-seatdot-${l.lane}`} aria-hidden="true" />{hook}</span>
+        </button>
+        <span className="cv2-tile-foot">
+          <CalTags t={tags} compact={!vertical} lead={l.brain ? <span className="cv2-tag cv2-tag-lm">Brain</span> : undefined} />
+          <button type="button" className="cv2-tile-give" data-verb="give-date" onClick={() => a.onMove(l.id, l.lane)}>Give it a date</button>
+        </span>
+      </div>
+    )
+  }
   return (
     <section className={`cv2-buf${open ? '' : ' cv2-buf-closed'}${vertical ? ' cv2-buf-v' : ''}`} aria-label="Buffer: posts with no date yet">
       <div className="cv2-buf-h">
-        <button type="button" className={list === 'loose' ? 'on' : ''} aria-pressed={list === 'loose'} data-verb="buffer-loose" onClick={() => { setTab('loose'); setOpen(true) }}>No date yet<b className="cv2-n">{loose.length}</b></button>
-        {lms.length > 0 && <button type="button" className={list === 'lms' ? 'on' : ''} aria-pressed={list === 'lms'} data-verb="buffer-lms" onClick={() => { setTab('lms'); setOpen(true) }}>Lead magnets<b className="cv2-n">{lms.length}</b></button>}
-        {!vertical && <span className="cv2-dim">hold and drag onto a day</span>}
+        <button type="button" className={list === 'loose' ? 'on' : ''} aria-pressed={list === 'loose'} data-verb="buffer-loose" onClick={() => { setTab('loose'); setOpen(true) }}>No date yet<b className="cv2-n">{posts.length}</b></button>
+        {lmN > 0 && <button type="button" className={list === 'lms' ? 'on' : ''} aria-pressed={list === 'lms'} data-verb="buffer-lms" onClick={() => { setTab('lms'); setOpen(true) }}>Lead magnets<b className="cv2-n">{lmN}</b></button>}
         <span className="cv2-grow" />
         <button type="button" className="cv2-buf-t" aria-expanded={open} aria-label={open ? 'Fold the buffer (B)' : 'Open the buffer (B)'} data-verb="buffer-toggle" onClick={() => setOpen(!open)}>{open ? '▾' : '▸'}</button>
       </div>
       {open && (
         // Keyed by the list shown, so switching No date yet / Lead magnets (or opening it) plays the short enter.
         <div key={list} className="cv2-buf-strip" data-cal-noswipe>
-          {list === 'loose' ? loose.map(l => {
-            const tags = postTagsOf(l.r, l.lane, l.lm)
-            const hook = splitTitleTag(l.hook).text
-            return (
-              <div key={l.id} className={`cv2-tile${l.thumb ? '' : ' cv2-tile-text'}`} data-cal-id={l.id} data-cal-lane={l.lane}>
-                <button type="button" className="cv2-tile-main" data-verb="open" aria-label={`${hook}${tags ? ` · ${tagsLine(tags)}` : ''}`} onClick={() => a.onOpen(l.id, l.lane)}>
-                  {l.thumb && <img src={l.thumb} alt="" loading="lazy" draggable={false} />}
-                  <span className="cv2-tile-t"><i className={`cv2-seatdot cv2-seatdot-${l.lane}`} aria-hidden="true" />{hook}</span>
-                </button>
-                <span className="cv2-tile-foot">
-                  <CalTags t={tags} compact={!vertical} lead={l.brain ? <span className="cv2-tag cv2-tag-lm">Brain</span> : undefined} />
-                  <button type="button" className="cv2-tile-give" data-verb="give-date" onClick={() => a.onMove(l.id, l.lane)}>Give it a date</button>
-                </span>
-              </div>
-            )
-          }) : lms.map(m => (
+          {list === 'loose' ? posts.map(tile) : <>{lmPosts.map(tile)}{lms.map(m => (
             <a key={m.id} className="cv2-tile cv2-tile-lm" href={dHash('content', 'magnets', { lane: m.lane, magnet: m.id })}>
               {m.cover ? <img src={m.cover} alt="" loading="lazy" draggable={false} /> : <span className="cv2-tile-nopic" aria-hidden="true">LM</span>}
               <span className="cv2-tile-t"><i className={`cv2-seatdot cv2-seatdot-${m.lane}`} aria-hidden="true" />{m.title}</span>
             </a>
-          ))}
+          ))}</>}
         </div>
       )}
     </section>

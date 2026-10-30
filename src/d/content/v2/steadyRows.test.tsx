@@ -33,6 +33,15 @@ describe('steadyMerge', () => {
     expect(steadyMerge(first.next, [], NOW + HOLD_MS, new Set()).rows).toEqual([])
     expect(steadyMerge(first.next, [], NOW + 10, new Set(['m1'])).rows).toEqual([])
   })
+  it('holds past 30 s while the seat has no member read back, and lets go once that seat is re-read without it (2026-10-30)', () => {
+    const first = steadyMerge(new Map(), [member('m1'), member('m2'), member('a1', { client_id: 'arch' })], NOW, new Set())
+    const slow = steadyMerge(first.next, [row('n1')], NOW + 45_000, new Set())
+    expect(slow.rows.map(r => r.id).sort()).toEqual(['a1', 'm1', 'm2', 'n1'])
+    // Ivan's member read lands with m1 only: m2 is really gone; Arch has not answered, so a1 stays held.
+    const back = steadyMerge(slow.next, [row('n1'), member('m1')], NOW + 50_000, new Set())
+    expect(back.rows.map(r => r.id).sort()).toEqual(['a1', 'm1', 'n1'])
+    expect([...back.held]).toEqual(['a1'])
+  })
   it('a member back from the re-read is the fresh copy, not the held one', () => {
     const first = steadyMerge(new Map(), [member('m1', { title: 'old' })], NOW, new Set())
     const gap = steadyMerge(first.next, [], NOW + 500, new Set())

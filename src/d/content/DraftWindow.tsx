@@ -15,7 +15,7 @@ import { Evidence } from './Evidence'
 import { CopyReadiness } from './CopyReadiness'
 import { useDraftReadiness } from './useDraftReadiness'
 import { ClientFixRow, FixRow } from './FixMenu'
-import { LANE_NAME, OWNER, POSS, age, canSchedule, kindOf, nextFreeWeekday, scheduleOpenByDefault, splitTitleTag, titleOf, type Lane, type WallDay } from './model'
+import { LANE_NAME, OWNER, POSS, canSchedule, nextFreeWeekday, scheduleOpenByDefault, splitTitleTag, titleOf, type Lane, type WallDay } from './model'
 import { Conflict, Preview } from './Preview'
 import { PictureRow } from './PictureRow'
 import { AboveThePost, clientWhyNot, internalOnly, postsChip } from './DraftNotes'
@@ -60,12 +60,9 @@ export function DraftWindow(p: Props) {
   return <Loaded key={detail.id} {...p} d={detail} refresh={refresh} />
 }
 
-const RAIL_KEY = 'wb-draft-rail'
 
-function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, armed, armedFailed, titles, startInEdit = false }: Props & { d: ContentDraftDetail }) {
+function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, armed, armedFailed, startInEdit = false }: Props & { d: ContentDraftDetail }) {
   const at = queue.indexOf(d.id)
-  const [rail, setRailState] = useState(() => { try { return localStorage.getItem(RAIL_KEY) === '1' } catch { return false } })
-  const setRail = (v: boolean) => { setRailState(v); try { localStorage.setItem(RAIL_KEY, v ? '1' : '0') } catch { /* private mode */ } }
   const advance = useCallback(() => {
     const next = at >= 0 && at + 1 < queue.length ? queue[at + 1] : null
     if (next) pick(next); else close()
@@ -129,6 +126,8 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
   const stage = stageOf(d)
   const readiness = useDraftReadiness({ ...d, post_body: v.shown })
   const checksFirst = dirty || readiness.source.state === 'fail'
+  // The quiet check lines ("No automated source check", "QA recorded. The stored score is historical") said nothing to act on.
+  const checksSay = readiness.qa.state === 'stale' || readiness.qa.state === 'failed'
   const stateChip = lane === 'ivan' ? (d.status === 'review' ? 'Needs review' : STAGE_LABEL[stage])
     : clientStageLabel(stage, boardGroupOf({ board_visible: v.visible }))
   // The status line, key facts first (Ivan 2026-10-15: "all the same font, all the same grey"): the stage,
@@ -141,10 +140,6 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
     postsChip(d),
     boardFact,
     dirty ? 'QA needs recheck' : readiness.qa.state !== 'none' ? readiness.qa.label : null,
-  ].filter((x): x is string => !!x)
-  const quiet = [
-    d.funnel_stage ? `Aim: ${d.funnel_stage[0].toUpperCase()}${d.funnel_stage.slice(1)}` : null,
-    `Edited ${age(d.updated_at)} ago`,
   ].filter((x): x is string => !!x)
   const actionable = reviewActionable(d.status, lane)
   // RUN 39: a brain draft in review or error is judged, never approved, skipped
@@ -168,7 +163,7 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
   let foot: React.ReactNode
   if (v.editing) {
     keys = <><Key verb="cancel-edit" onClick={v.cancelEdit} disabled={v.busy}>Cancel</Key><Key primary verb="save" onClick={() => v.save()} disabled={v.busy}>{v.busy ? 'Saving…' : 'Save'}</Key></>
-    foot = 'Save or cancel the edit first. Approve, Skip and j/k wait until the edit ends.'
+    foot = null
   } else if (lane === 'ivan') {
     keys = <>
       {/* Skip and Approve only where they act (a draft in review); greyed keys on a scheduled post were noise. */}
@@ -187,10 +182,7 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
         </Key>
       ))}
     </>
-    foot = <>{judgeable ? 'Approve approves it and Drop deletes it. Nothing publishes until it is scheduled. '
-      : null}
-      {!schedulable && `Schedule is not offered: this draft is ${d.published_at ? 'published' : STAGE_LABEL[stage].toLowerCase()}. `}
-      {schedulable && dateOpen && d.status === 'scheduled' && <><button type="button" data-verb="schedule-hide" onClick={() => setDateOpen(false)}>Hide date</button>. </>}<span className="cn-kk-hint">Esc closes, j/k walks.</span></>
+    foot = schedulable && dateOpen && d.status === 'scheduled' ? <button type="button" data-verb="schedule-hide" onClick={() => setDateOpen(false)}>Hide date</button> : null
   } else {
     const promotable = canPromote(d.status, lane) && !v.visible
     const why = clientWhyNot(d, lane, stage, { promotable, unpromotable: canUnpromote(lane, v.visible), editable: clientEditable(d.status, lane) })
@@ -201,42 +193,26 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
       {promotable && !(judgeable && lane === 'swishdm') && <Key primary verb="board-on" onClick={() => v.board(true)} disabled={v.busy} sub={`${OWNER[lane]} sees it`}>Put on {POSS[lane]} board</Key>}
       {canUnpromote(lane, v.visible) && <Key verb="board-off" onClick={() => v.board(false)} disabled={v.busy}>Take off {POSS[lane]} board</Key>}
     </>
-    foot = <>{judgeable && (lane === 'swishdm' ? 'Approve sends this finished draft to Jonathan’s buffer for his review. Nothing publishes. ' : `Approve records your verdict only, ${OWNER[lane]} sees nothing. Drop deletes the draft. `)}{v.visible ? `On his board: ${OWNER[lane]} decides from there. Take it off to delete it.`
-      : promotable ? `The only act here that reaches a client. Nothing publishes: ${OWNER[lane]} approves, edits or schedules it on his board.` : null}
-      {why.map(w => <span key={w} className="cn-why2">{w}</span>)}</>
+    // The explanations under the keys are gone (Ivan 2026-10-30). The key labels say what they do.
+    void why
+    foot = null
   }
 
   return (
     <section className="cn-dw" aria-label="Draft">
       <div className="cn-dwh">
-        <div className="cn-av">{lane === 'ivan' ? 'IM' : lane === 'arch' ? 'DS' : lane === 'swishdm' ? 'JK' : 'MD'}</div>
-        <div className="cn-who"><b title={titleOf(d)}>{splitTitleTag(titleOf(d)).text || titleOf(d)}</b><small>{LANE_NAME[lane]} · {kindOf(d.type)} · created {age(d.created_at)} ago</small></div>
-        <span className="cn-jk">
-          <button type="button" aria-label="Previous (k)" disabled={at <= 0} onClick={() => at > 0 && onPick(queue[at - 1])}><span className="cn-jk-key">k</span><span className="cn-jk-arr" aria-hidden="true">‹</span></button>
-          <button type="button" aria-label="Next (j)" disabled={at < 0 || at + 1 >= queue.length} onClick={() => at >= 0 && at + 1 < queue.length && onPick(queue[at + 1])}><span className="cn-jk-key">j</span><span className="cn-jk-arr" aria-hidden="true">›</span></button>
-          <span className="cn-pos">{at >= 0 ? `${at + 1} of ${queue.length}` : 'not in this queue'}</span>
-          {queue.length > 1 && <button type="button" data-verb="rail" aria-expanded={rail} onClick={() => setRail(!rail)} title="Show the queue">{rail ? 'hide list' : 'list'}</button>}
-        </span>
+        {/* Title and close only (Ivan 2026-10-30: the avatar, the seat line, k/j and "26 of 27 · list" were noise). j/k still walk the queue from the keyboard. */}
+        <div className="cn-who"><b title={titleOf(d)}>{splitTitleTag(titleOf(d)).text || titleOf(d)}</b></div>
         <button type="button" className="cn-x" aria-label="Close" data-verb="close" onClick={onClose}><DIcon name="x" /></button>
       </div>
-      {rail && queue.length > 1 && (
-        <ol className="cn-qrail" aria-label="Queue">
-          {queue.map((id, i) => (
-            <li key={id}><button type="button" className={id === d.id ? 'cn-on' : ''} aria-current={id === d.id ? 'true' : undefined} onClick={() => id !== d.id && onPick(id)}>
-              <small>{i + 1}</small>{titles?.[id] ?? (id === d.id ? titleOf(d) : 'Draft')}
-            </button></li>
-          ))}
-        </ol>
-      )}
       <div className="cn-chips"><span className={`cn-st${stage === 'error' || stage === 'stuck' ? ' cn-st-bad' : ''}`}>{stateChip}</span>
         <span className={`cn-srctag cn-srctag-${src.key}`} title={`Source: ${src.title}`} data-source={src.key}>{src.label}</span>
         {facts.map(f => f === boardFact && boardHref
           ? <a key={f} className="cn-fact cn-fact-link" href={boardHref} target="_blank" rel="noreferrer" data-verb="open-panel-post" title={`Open this post on ${POSS[lane]} panel`}>{f} ↗</a>
           : <span key={f} className="cn-fact">{f}</span>)}
-        {quiet.map(f => <span key={f} className="cn-fact cn-fact-q">{f}</span>)}
         {internalOnly(d, stage) && <span className="cn-st cn-st-bad">Internal copy only · not approved for publication</span>}
         {v.editing && <span className="cn-st">Editing</span>}
-        <EarlyReadChip read={earlyReads.get(d.id)} lane={lane} unsaved={dirty} /></div>
+        {earlyReads.get(d.id)?.state === 'ready' && <EarlyReadChip read={earlyReads.get(d.id)} lane={lane} unsaved={dirty} />}</div>
       <div className="cn-dwb">
         {/* The post comes first (Ivan 2026-10-30: "cant even see the copy easily"); a failing
             source check still sits above it, the quiet check lines go under the picture. */}
@@ -253,7 +229,7 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
         {pictureEditable(d, lane) && !v.editing && (
           <PictureRow d={d} lane={lane} onShow={setPic} onDone={refresh} disabled={v.busy} />
         )}
-        {!checksFirst && <CopyReadiness {...readiness} dirty={dirty} />}
+        {!checksFirst && checksSay && <CopyReadiness {...readiness} dirty={dirty} />}
         {!v.editing && <Evidence d={d} qaLabel={readiness.qa.label} initial={lane === 'ivan' ? 'qa' : 'src'} noteable={lane === 'ivan'} onNote={refresh} />}
         {lane === 'ivan' && !v.editing && <FixRow d={d} onDone={refresh} onDeleted={() => { refresh(); advance() }} disabled={v.busy} />}
       </div>
@@ -264,7 +240,7 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
         {v.err && <p className="cn-say cn-bad" role="alert">{v.err}</p>}
         {judgeable && entry?.phase === 'failed' && entry.error && <p className="cn-say cn-bad" role="alert">{entry.error}</p>}
         <div className="cn-acts">{keys}</div>
-        <div className="cn-foot">{foot}</div>
+        {foot && <div className="cn-foot">{foot}</div>}
       </div>
     </section>
   )

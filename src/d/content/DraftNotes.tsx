@@ -46,13 +46,12 @@ export function AboveThePost({ d, stage, lane, picture = false }: { d: ContentDr
   // The picture row under the post already says so where it is shown.
   const noImage = !picture && lane !== 'ivan' && normalizeImageUrls(d.image_urls).length === 0 && d.status === 'review'
   const bad = stage === 'error' || stage === 'stuck'
-  if (!holds.length && !(d.title && d.topic && d.title !== d.topic) && !errMsg && !noImage) return null
+  if (!holds.length && !errMsg && !noImage) return null
   return (
     <div className="cn-above">
       {holds.length > 0 && (
         <ul className="cn-holds" aria-label="Holds">{holds.map((h, i) => <li key={i}>{h}</li>)}</ul>
       )}
-      {d.title && d.topic && d.title !== d.topic && <p className="cn-topic">{topicLine(d.topic)}</p>}
       {errMsg && (bad ? (
         <p className="cn-banner" role="alert">{errMsg}{errAt && <small> · flipped {absTime(errAt)}</small>}</p>
       ) : (

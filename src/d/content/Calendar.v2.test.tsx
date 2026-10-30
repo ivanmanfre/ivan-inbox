@@ -133,21 +133,6 @@ describe('plainWhy', () => {
 
 // Live audit 2026-10-15.
 describe('the calendar shows what it says', () => {
-  const posted = (id: string, at: string, client: string | null = null) => row(id, { client_id: client, status: 'published', scheduled_at: at, published_at: at })
-  const set = (id: string, at: string, client: string | null = null) => row(id, { client_id: client, status: 'scheduled', scheduled_at: at })
-  it('"This week" counts the picked seat only, never every seat summed', () => {
-    const { data, items } = setup({
-      ivan: [posted('i1', '2026-10-12T07:00:00Z'), posted('i2', '2026-10-13T07:00:00Z'), set('i3', '2026-10-16T07:00:00Z')],
-      risedtc: [posted('r1', '2026-10-13T16:00:00Z', 'risedtc'), posted('r2', '2026-10-14T16:00:00Z', 'risedtc'), posted('r3', '2026-10-14T18:00:00Z', 'risedtc')],
-    })
-    const one = renderInFrame(<Calendar {...props} data={data} items={items} phone={false} pick="ivan" />)
-    const ivanLine = document.querySelector('.cv2-cov .cv2-dim')!.textContent
-    one.unmount()
-    renderInFrame(<Calendar {...props} data={data} items={items} phone={false} pick="all" />)
-    const allLine = document.querySelector('.cv2-cov .cv2-dim')!.textContent
-    expect(ivanLine).toMatch(/This week: 2 posted, \d+ to go/)
-    expect(allLine).toMatch(/This week: 5 posted, \d+ to go/)
-  })
   it('"2 weeks" shows two Sunday-first weeks whatever the window width', () => {
     localStorage.setItem('d-cal-view-ivan', 'lines')
     const { data, items } = setup({})

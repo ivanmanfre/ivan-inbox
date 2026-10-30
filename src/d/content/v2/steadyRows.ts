@@ -17,18 +17,26 @@ import { supabase } from '../../../lib/supabase'
 // once on an explicit visibility event for it (BRAIN_INVALIDATED, cb34_p2_visibility_events) and every
 // held row drops on an auth change, so a revoked release never lingers; a row the re-read does not bring
 // back leaves when the hold runs out.
-export const HOLD_MS = 30_000
+//
+// 2026-10-30 (Ivan: "the number of posts in review are constantly changing numbers"): a 30 s hold was too
+// short. The member recheck often answers later (a full seat read in flight blocks it), so Ivan's seat read
+// 8 or 13 and Rise 11 or 13 from one refresh to the next. A held row now stays until that seat's member
+// read has answered without it (some member row of the same seat is back, so the seat was re-read), or a
+// revocation, an auth change, or the 10 minute safety limit.
+export const HOLD_MS = 600_000
 
 type Seen = { row: ContentDraft; at: number }
 
 export function steadyMerge(prev: ReadonlyMap<string, Seen>, rows: readonly ContentDraft[], t: number, revoked: ReadonlySet<string>): { rows: ContentDraft[]; held: Set<string>; next: Map<string, Seen> } {
   const next = new Map<string, Seen>()
   const present = new Set(rows.map(r => r.id))
-  for (const r of rows) if (r.cb34_p2_member === true) next.set(r.id, { row: r, at: t })
+  // The seats whose member drafts are on screen: their member read has answered.
+  const answered = new Set<string>()
+  for (const r of rows) if (r.cb34_p2_member === true) { next.set(r.id, { row: r, at: t }); answered.add(r.client_id ?? 'ivan') }
   const held = new Set<string>()
   const extra: ContentDraft[] = []
   for (const [id, s] of prev) {
-    if (present.has(id) || revoked.has(id) || t - s.at >= HOLD_MS) continue
+    if (present.has(id) || revoked.has(id) || answered.has(s.row.client_id ?? 'ivan') || t - s.at >= HOLD_MS) continue
     next.set(id, s)
     held.add(id)
     extra.push(s.row)

@@ -40,9 +40,10 @@ beforeEach(() => { current = detail; Object.values(lib).forEach(f => f.mockReset
 afterEach(cleanup)
 
 describe('draft window', () => {
-  it('shows the post, its place in the queue, QA scores and the first issue', () => {
+  it('shows the post, QA scores and the first issue; the header is the title and close only', () => {
     renderInFrame(<DraftWindow {...props()} />)
-    expect(screen.getByText('2 of 3')).toBeTruthy()
+    expect(screen.queryByText('2 of 3')).toBeNull()
+    expect(document.querySelector('.cn-av')).toBeNull()
     expect(screen.getByText('Para two.')).toBeTruthy()
     expect(screen.getByText('DISTINCT')).toBeTruthy()
     expect(screen.getByText('Opener reuses a sample.')).toBeTruthy()
@@ -171,7 +172,6 @@ describe('draft window', () => {
       renderInFrame(<DraftWindow {...props()} />)
       expect(document.querySelector('[data-verb="schedule"]')).toBeNull()
       expect(document.querySelector('[data-verb="schedule-open"]')).toBeNull()
-      expect(screen.getByText(/Schedule is not offered/)).toBeTruthy()
       cleanup()
     }
     expect(sa.scheduleDraft).not.toHaveBeenCalled()

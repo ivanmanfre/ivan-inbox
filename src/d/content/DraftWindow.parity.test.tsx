@@ -40,10 +40,10 @@ describe('draft window parity', () => {
     expect(screen.getByRole('alert').textContent).toContain('QA refused twice')
     expect(screen.getByText(/flipped/)).toBeTruthy()
     expect(screen.getByText('Internal copy only · not approved for publication')).toBeTruthy()
-    expect(screen.getByText('The topic line')).toBeTruthy()
+    expect(screen.queryByText('The topic line')).toBeNull()
   })
 
-  it('client review row with no image says so once, in the picture row; client error says why there is no board key', () => {
+  it('client review row with no image says so once, in the picture row; a client error has no board key and no footnote', () => {
     current = { ...base, client_id: 'risedtc', status: 'review' }
     renderInFrame(<DraftWindow {...props({ lane: 'risedtc' })} />)
     expect(screen.getByText('No picture')).toBeTruthy()
@@ -51,7 +51,8 @@ describe('draft window parity', () => {
     cleanup()
     current = { ...base, client_id: 'risedtc', status: 'error' }
     renderInFrame(<DraftWindow {...props({ lane: 'risedtc' })} />)
-    expect(screen.getByText(/only a draft at Needs review can go on Mattan’s board/)).toBeTruthy()
+    expect(document.querySelector('[data-verb="board-on"]')).toBeNull()
+    expect(screen.queryByText(/only a draft at Needs review/)).toBeNull()
   })
 
   it('click on the post opens the editor; Esc in the editor cancels', () => {
