@@ -150,3 +150,35 @@
 
 :root[data-skin-on~='content.review'] .d-phone .cv2-fixrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 :root[data-skin-on~='content.review'] .d-phone .cv2-fixrow .cv2-fixt{grid-column:2 / -1}
+
+/* THE GRID (Ivan 2026-10-30: "small rows with 3 posts per row so i can just expand and see"): on a wide desk every
+   draft is a card with the post's opening lines; the chevron opens it across the whole row with the full post.
+   Under 700px the list keeps its rows. */
+:root[data-skin-on~='content.review'] .cv2-row-body{display:none}
+:root[data-skin-on~='content.review'] .cv2-ask-shared{margin:0 0 10px}
+@container rdesk (min-width:700px){
+  :root[data-skin-on~='content.review'] .cv2-list.cv2-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-items:start;background:transparent;box-shadow:none;border-radius:0;overflow:visible}
+  :root[data-skin-on~='content.review'] .cv2-list.cv2-grid > * + *{border-top:0}
+  :root[data-skin-on~='content.review'] .cv2-list.cv2-grid > .cv2-row{height:100%;border-radius:14px;background:var(--ds-glass-pane);box-shadow:0 0 0 1px var(--ds-line)}
+  :root[data-skin-on~='content.review'] .cv2-list.cv2-grid > .cv2-row-x,:root[data-skin-on~='content.review'] .cv2-list.cv2-grid > .cv2-strip{grid-column:1 / -1;height:auto}
+  :root[data-skin-on~='content.review'] .cv2-list.cv2-grid > .cv2-strip{border-radius:12px;box-shadow:0 0 0 1px var(--ds-line)}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-main{height:100%;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto 1fr auto;grid-template-areas:'src meta' 'text text' 'keys keys';row-gap:10px;column-gap:8px;align-items:start;padding:12px 14px}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-main > .cv2-srctag{align-self:center;margin:0;max-width:150px}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-meta{align-self:center;justify-content:flex-end;flex-wrap:wrap;row-gap:4px;white-space:normal}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-meta :is(.cn-er,.cn-early,.er-chip,[class*='early']):not(.cv2-pill){display:none}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-text{gap:6px}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-t{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:15px;line-height:21px}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-sub{display:none}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-body{display:-webkit-box;-webkit-line-clamp:7;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line;font:400 13.5px/20px var(--ds-font);color:var(--ds-text-2)}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-x .cv2-row-main{height:auto}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-x .cv2-row-t{-webkit-line-clamp:unset}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-keys{justify-content:flex-start;flex-wrap:wrap;gap:4px;padding-top:8px;border-top:1px solid var(--ds-line)}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-keys .cv2-k.cv2-wide-only{display:inline-flex}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-keys .cv2-k > .cv2-wide-only{display:none}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-keys .cv2-k > .cv2-narrow-only{display:inline}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-keys :is(.cv2-chev,.cv2-more){margin-left:auto}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-keys .cv2-chev + *{margin-left:0}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row > .cv2-ask{margin:0 14px 12px;padding-left:10px}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-why{padding:0 14px 12px}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-more{padding:4px 14px 16px}
+}

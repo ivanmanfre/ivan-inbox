@@ -128,6 +128,7 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
 
   const stage = stageOf(d)
   const readiness = useDraftReadiness({ ...d, post_body: v.shown })
+  const checksFirst = dirty || readiness.source.state === 'fail'
   const stateChip = lane === 'ivan' ? (d.status === 'review' ? 'Needs review' : STAGE_LABEL[stage])
     : clientStageLabel(stage, boardGroupOf({ board_visible: v.visible }))
   // The status line, key facts first (Ivan 2026-10-15: "all the same font, all the same grey"): the stage,
@@ -237,10 +238,12 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
         {v.editing && <span className="cn-st">Editing</span>}
         <EarlyReadChip read={earlyReads.get(d.id)} lane={lane} unsaved={dirty} /></div>
       <div className="cn-dwb">
-        <CopyReadiness {...readiness} dirty={dirty} /><AboveThePost d={d} stage={stage} lane={lane} />
+        {/* The post comes first (Ivan 2026-10-30: "cant even see the copy easily"); a failing
+            source check still sits above it, the quiet check lines go under the picture. */}
+        {checksFirst && <CopyReadiness {...readiness} dirty={dirty} />}<AboveThePost d={d} stage={stage} lane={lane} picture={pictureEditable(d, lane)} />
         <BrainDraftBadge draft={d} />
         {lane !== 'ivan' && !v.visible && (stage === 'error' || stage === 'stuck') && <ClientFixRow d={d} lane={lane} onDone={refresh} disabled={v.editing || v.busy} />}
-        <Preview d={pic ? { ...d, image_urls: pic } : d} lane={lane} body={v.shown} editing={v.editing} busy={v.busy} text={v.text} setText={v.setText}
+        <Preview d={pic ? { ...d, image_urls: pic } : d} lane={lane} body={v.shown} editing={v.editing} busy={v.busy} text={v.text} setText={v.setText} full
           onStartEdit={lane === 'ivan' || clientEditable(d.status, lane) ? v.startEdit : null} onCancel={v.cancelEdit} onSave={() => void v.save()} />
         {v.conflict && <Conflict c={v.conflict} busy={v.busy} onTheirs={v.takeTheirs} onMine={v.keepMine} onDismiss={v.dismissConflict} />}
         {/* THE PICTURE, NEXT TO THE POST IT BELONGS TO, on every lane (29 Sep:
@@ -250,6 +253,7 @@ function Loaded({ d, lane, queue, onPick: pick, onClose: close, refresh, days, a
         {pictureEditable(d, lane) && !v.editing && (
           <PictureRow d={d} lane={lane} onShow={setPic} onDone={refresh} disabled={v.busy} />
         )}
+        {!checksFirst && <CopyReadiness {...readiness} dirty={dirty} />}
         {!v.editing && <Evidence d={d} qaLabel={readiness.qa.label} initial={lane === 'ivan' ? 'qa' : 'src'} noteable={lane === 'ivan'} onNote={refresh} />}
         {lane === 'ivan' && !v.editing && <FixRow d={d} onDone={refresh} onDeleted={() => { refresh(); advance() }} disabled={v.busy} />}
       </div>

@@ -212,12 +212,16 @@ describe('draft window', () => {
     expect(document.querySelector('[data-verb="fix"]')).toBeNull()
   })
 
-  it('the preview folds like the feed: three lines, then …see more', () => {
-    current = { ...detail, post_body: 'Line one of the hook.\nLine two.\nLine three.\nLine four is below the fold.' }
+  it('the review panel shows the whole post and marks where the feed cuts (Ivan 2026-10-30)', () => {
+    current = { ...detail, post_body: 'Line one of the hook.\nLine two.\nLine three.\nLine four is below the fold.\n\nA second paragraph.' }
     renderInFrame(<DraftWindow {...props()} />)
-    expect(screen.queryByText(/Line four/)).toBeNull()
-    fireEvent.click(document.querySelector('[data-verb="see-more"]')!)
-    expect(screen.getByText(/Line four/)).toBeTruthy()
+    const post = document.querySelector('.cn-lib')!
+    expect(post.textContent).toContain('Line four is below the fold.')
+    expect(post.textContent).toContain('A second paragraph.')
+    expect(document.querySelector('[data-verb="see-more"]')).toBeNull()
+    const mark = document.querySelector('[data-verb="fold-mark"]')!
+    expect(mark.previousSibling?.textContent).toBe('Line one of the hook.\nLine two.\nLine three.')
+    expect(post.querySelectorAll('p')).toHaveLength(2)
   })
 })
 

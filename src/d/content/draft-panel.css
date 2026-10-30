@@ -86,3 +86,26 @@
 .d-phone .cn-dw .cn-chips .cn-early-chip{height:32px;min-height:32px}
 .d-phone .cn-dw .cn-lisee{display:inline-block;padding:11px 6px;margin:-11px -6px}
 .d-phone .cn-dw .cn-kv{grid-template-columns:104px minmax(0,1fr)}
+
+/* Review panel reads the whole post (Ivan 2026-10-30: "small and hidden on see more ... huge no picture thing").
+   Bigger type at a reading measure; the feed's cut is a quiet inline mark, never a wall. */
+.cn-dw .cn-li{max-width:600px;font-size:15px;line-height:1.55}
+.cn-dw .cn-lih b{font-size:14.5px}
+.cn-dw .cn-lib{padding:4px 16px 14px}
+.cn-foldmark{display:inline-block;margin:0 4px;padding:0 7px;border:1px dashed #b9b9b9;border-radius:9px;font:500 11px/18px -apple-system,system-ui,sans-serif;color:#8a8a8a;vertical-align:1px;white-space:nowrap;cursor:help}
+/* The picture row: one quiet line under the post, the image itself is in the preview. */
+.cn-dw .cn-pic2{max-width:600px;display:flex;align-items:center;gap:10px;padding:6px 8px;border:0;background:transparent}
+.cn-dw .cn-pic2-h{flex:1;gap:8px}
+.cn-dw .cn-pic2-th{width:28px;height:28px;border-radius:6px}
+.cn-dw .cn-pic2-th>span{font-size:0}
+.cn-dw .cn-pic2-th>span::after{content:'–';font-size:13px;color:var(--t3)}
+.cn-dw .cn-pic2-m{display:flex;align-items:baseline;gap:6px;white-space:nowrap;overflow:hidden}
+.cn-dw .cn-pic2-m .cn-cap{display:none}
+.cn-dw .cn-pic2-m b{font-size:13px;flex:none}
+.cn-dw .cn-pic2-m>span{font-size:12.5px;margin:0;overflow:hidden;text-overflow:ellipsis}
+.cn-dw .cn-pic2-acts{margin:0;gap:4px;flex:none}
+.cn-dw .cn-pic2-acts .d-btn{height:30px;flex:none;padding:0 12px;border-radius:8px;font-size:13px}
+.cn-dw .cn-pic2-lib{flex-basis:100%}
+.cn-dw .cn-pic2{flex-wrap:wrap}
+.cn-dw .cn-above{max-width:600px}
+.d-phone .cn-dw .cn-pic2-acts .d-btn{height:44px}

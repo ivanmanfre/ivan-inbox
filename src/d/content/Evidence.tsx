@@ -65,7 +65,7 @@ export function Evidence({ d, qaLabel, initial = 'qa', noteable = false, onNote 
       <div className="cn-evb" role="tabpanel">
         {tab === 'qa' && (qa ? (
           <>
-            <p className="cn-dim">Stored QA history follows. Current copy checks are shown above the post.</p>
+            <p className="cn-dim">Stored QA history follows. Current copy checks are shown under the post.</p>
             {scores.length > 0 ? (
               <div className="cn-qa">
                 {scores.map(([k, v]) => (

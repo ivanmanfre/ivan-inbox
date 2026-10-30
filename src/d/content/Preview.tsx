@@ -10,14 +10,18 @@ import { MediaViewer } from './MediaViewer'
 // measure, because widening it would make the preview lie. While editing, the
 // same card becomes the editor (lime outline). A save conflict shows the
 // database's text and two named outcomes; nothing is written until one is picked.
+const FOLD_MARK = <span className="cn-foldmark" data-verb="fold-mark" title="The LinkedIn feed shows the text before this mark, then …see more">…see more</span>
+
 export const AUTHOR: Record<Lane, [string, string, string]> = {
   ivan: ['Iván Manfredi', 'AI content systems for agencies', 'IM'],
   risedtc: ['Mattan Danino', 'Rise DTC', 'MD'],
   arch: ['Davorin Smit', 'Arch', 'DS'],
  swishdm: ['Jonathan Kiekbusch', 'SwishDM', 'JK']}
 
-export function Preview({ d, lane, body, editing, text, setText, busy = false, onStartEdit, onCancel, onSave }: {
+export function Preview({ d, lane, body, editing, text, setText, busy = false, full = false, onStartEdit, onCancel, onSave }: {
   d: ContentDraftDetail; lane: Lane; body: string; editing: boolean; text: string; setText: (s: string) => void
+  /** The review panel shows the whole post, with a quiet mark where the feed cuts (Ivan 2026-10-30: "cant even see the copy"). */
+  full?: boolean
   /** Click on the post (or Enter) opens the editor, as today; null where the copy is not editable. */
   busy?: boolean; onStartEdit?: (() => void) | null; onCancel?: () => void; onSave?: () => void
 }) {
@@ -27,6 +31,13 @@ export function Preview({ d, lane, body, editing, text, setText, busy = false, o
   const [viewing, setViewing] = useState<number | null>(null)
   const fold = foldText(body, 3, 52)
   const shown = more || !fold.folded ? body : fold.head
+  // Full mode: every paragraph, with the feed's cut marked inside the paragraph it lands in.
+  const whole = body.replace(/\s+$/, '')
+  const cut = fold.folded ? fold.head.length : -1
+  const paras: [number, number][] = []
+  let from = 0
+  for (const m of whole.matchAll(/\n\s*\n/g)) { paras.push([from, m.index]); from = m.index + m[0].length }
+  paras.push([from, whole.length])
   const img = d.type !== 'carousel' ? imgOf(d.image_urls) : null
   const all = normalizeImageUrls(d.image_urls)
   const slides = d.type === 'carousel' ? all : all.slice(1)
@@ -43,6 +54,14 @@ export function Preview({ d, lane, body, editing, text, setText, busy = false, o
             }} />
           <small className="cn-edk">esc cancels · ⌘↵ saves</small>
         </>
+      ) : full && body ? (
+        <div className={`cn-lib cn-lib-full${onStartEdit ? ' cn-lib-ed' : ''}`} onClick={onStartEdit ?? undefined} title={onStartEdit ? 'Click to edit (Enter)' : undefined}>
+          {paras.map(([s, e], i) => {
+            const para = whole.slice(s, e)
+            const at = cut > s && cut <= e ? cut - s : -1
+            return <p key={i}>{at < 0 ? para : <>{para.slice(0, at)}{FOLD_MARK}{para.slice(at)}</>}</p>
+          })}
+        </div>
       ) : (
         <div className={`cn-lib${onStartEdit ? ' cn-lib-ed' : ''}`} onClick={onStartEdit ?? undefined} title={onStartEdit ? 'Click to edit (Enter)' : undefined}>
           {body ? shown.split(/\n\s*\n/).map((para, i, all) => (

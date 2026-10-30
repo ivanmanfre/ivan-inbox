@@ -43,10 +43,11 @@ describe('draft window parity', () => {
     expect(screen.getByText('The topic line')).toBeTruthy()
   })
 
-  it('client review row with no image says the schedule will refuse it; client error says why there is no board key', () => {
+  it('client review row with no image says so once, in the picture row; client error says why there is no board key', () => {
     current = { ...base, client_id: 'risedtc', status: 'review' }
     renderInFrame(<DraftWindow {...props({ lane: 'risedtc' })} />)
-    expect(screen.getByText(/No image yet/)).toBeTruthy()
+    expect(screen.getByText('No picture')).toBeTruthy()
+    expect(screen.queryByText(/No image yet/)).toBeNull()
     cleanup()
     current = { ...base, client_id: 'risedtc', status: 'error' }
     renderInFrame(<DraftWindow {...props({ lane: 'risedtc' })} />)

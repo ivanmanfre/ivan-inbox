@@ -38,12 +38,13 @@ export function internalOnly(d: ContentDraftDetail, stage: ContentStage): boolea
   return !!src?.internalOnly && stage !== 'approved' && stage !== 'scheduled' && stage !== 'published'
 }
 
-export function AboveThePost({ d, stage, lane }: { d: ContentDraftDetail; stage: ContentStage; lane: Lane }) {
+export function AboveThePost({ d, stage, lane, picture = false }: { d: ContentDraftDetail; stage: ContentStage; lane: Lane; picture?: boolean }) {
   const src = normalizeSourceDetail(d.source_detail)
   const holds = src?.holds ?? []
   const errMsg = taxonomyValue(d.taxonomy, 'error_message')
   const errAt = taxonomyValue(d.taxonomy, 'error_flipped_at')
-  const noImage = lane !== 'ivan' && normalizeImageUrls(d.image_urls).length === 0 && d.status === 'review'
+  // The picture row under the post already says so where it is shown.
+  const noImage = !picture && lane !== 'ivan' && normalizeImageUrls(d.image_urls).length === 0 && d.status === 'review'
   const bad = stage === 'error' || stage === 'stuck'
   if (!holds.length && !(d.title && d.topic && d.title !== d.topic) && !errMsg && !noImage) return null
   return (

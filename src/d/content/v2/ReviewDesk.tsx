@@ -280,6 +280,12 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   const sync = read.memberReadState === 'failed' ? 'Brain drafts are hidden until visibility can be verified.'
     : read.source === 'cache' && !read.error ? `saved copy ${read.at ? warsawHm(read.at) : ''}, refreshing` : null
 
+  // The same client hold on every card ("Finish onboarding…") is said once above the grid (Ivan 2026-10-30).
+  const holdOf = (c: WeekCard) => c.lane === 'ivan' ? null : clientHoldOf(c.r, OWNER[c.lane])
+  const holds = stream.filter(c => !c.strip).map(c => { const h = holdOf(c); return h && h.kind !== 'changes' ? h.detail ?? '' : '' })
+  const sharedHold = holds.length > 1 && holds[0] && holds.every(h => h === holds[0]) ? holds[0] : null
+  const sharedHoldWord = sharedHold ? holdOf(stream.find(c => !c.strip)!)?.text ?? null : null
+
   const renderRow = (c: WeekCard, i: number) => {
     const e = c.strip ? judged.get(c.r.id) : undefined
     if (e) return <DeskStrip key={c.r.id} e={e} c={c} i={i} slot={slot} busy={busy === c.r.id} verbs={verbs} onDate={() => setMoving(c)} />
@@ -287,7 +293,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
       <ReviewRow key={c.r.id} c={c} i={i} now={now} focused={c.r.id === focus} open={c.r.id === openId} busy={busy === c.r.id} held={!!held?.has(c.r.id)}
         read={earlyReads.get(c.r.id)} repeat={repeats.get(c.r.id)} slot={slot}
         src={sourceOf(c.r, sources.map.get(c.r.id))} srcLoading={!sources.map.has(c.r.id) && sources.pending}
-        more={more.has(c.r.id)} setMore={v => toggleMore(c.r.id, v)}
+        more={more.has(c.r.id)} setMore={v => toggleMore(c.r.id, v)} hideHold={!!sharedHold && holdOf(c)?.detail === sharedHold}
         picking={picking === c.r.id} setPicking={v => setPicking(v ? c.r.id : null)}
         onFocus={() => setFocus(c.r.id)}
         onOpen={() => onOpen(c.r.id, c.lane)} onEdit={() => onEdit(c.r.id, c.lane)}
@@ -347,10 +353,11 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
             <span><a href={dHash('content', 'ideas', { lane: show })}>Ideas →</a><a href={dHash('content', 'calendar')}>Calendar →</a></span>
           </div>
         ) : (
-          <div ref={list} className="cv2-list" role="list" aria-label="Drafts to decide">
+          <>{sharedHold && <p className="cv2-ask cv2-ask-hold cv2-ask-shared">{sharedHoldWord && <b>{sharedHoldWord}. </b>}{sharedHold}</p>}
+          <div ref={list} className="cv2-list cv2-grid" role="list" aria-label="Drafts to decide">
             {orphans.map((e, i) => <DeskStrip key={e.id} e={e} i={i} slot={slot} busy={false} verbs={verbs} />)}
             {stream.map((c, i) => renderRow(c, i + orphans.length))}
-          </div>
+          </div></>
         )}
 
       {desk.waiting.length > 0 && !noimg && (
@@ -358,7 +365,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
           <button type="button" className="cv2-fold-h" aria-expanded={waitOpen} data-verb="wait-fold" onClick={() => setWaitOpen(o => !o)}>
             <i aria-hidden="true">{waitOpen ? '▾' : '▸'}</i><b>{desk.waiting.length} approved</b><span>{show === 'ivan' ? 'waiting for a date' : 'waiting for the next step'}</span>
           </button>
-          {waitOpen && <div className="cv2-list" role="list" aria-label="Approved, next step waiting">{desk.waiting.map((c, i) => renderRow(c, i))}</div>}
+          {waitOpen && <div className="cv2-list cv2-grid" role="list" aria-label="Approved, next step waiting">{desk.waiting.map((c, i) => renderRow(c, i))}</div>}
         </section>
       )}
 
@@ -379,7 +386,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
           <p className="cv2-note">Schedule here. {OWNER[show]}’s board updates automatically.</p>
           {boardRead?.error && <Failed what="the board posts" detail={boardRead.error} onRetry={boardRead.refresh} />}
           {desk.board.length > 0
-            ? <div className="cv2-list" role="list" aria-label="Posts on board">{desk.board.map((c, i) => renderRow(c, i))}</div>
+            ? <div className="cv2-list cv2-grid" role="list" aria-label="Posts on board">{desk.board.map((c, i) => renderRow(c, i))}</div>
             : !(boardRead?.loading && !boardRead.loadedAt) && !boardRead?.error && !loading && <p className="cv2-note">No posts on the board yet.</p>}
         </section>
       )}
@@ -435,11 +442,13 @@ export function snippetOf(c: Pick<WeekCard, 'body' | 'title'>): string {
   return line.length > 220 ? `${line.slice(0, 218)}…` : line
 }
 
-function ReviewRow({ c, i, now, focused, open, busy, held, read, repeat, slot, src, srcLoading, more, setMore, picking, setPicking, onFocus, onOpen, onEdit, onApprove, onDrop, onSkip, onBoard, onSchedule, onDate, onChanged }: {
+function ReviewRow({ c, i, now, focused, open, busy, held, read, repeat, slot, src, srcLoading, more, setMore, hideHold = false, picking, setPicking, onFocus, onOpen, onEdit, onApprove, onDrop, onSkip, onBoard, onSchedule, onDate, onChanged }: {
   c: WeekCard; i: number; now: number; focused: boolean; open: boolean; busy: boolean; held: boolean
   read?: PatternRead; repeat?: Repeat; slot: Slot | null
   src: ReturnType<typeof sourceOf>; srcLoading: boolean
   more: boolean; setMore: (v: boolean) => void
+  /** The hold is said once above the list. */
+  hideHold?: boolean
   picking: boolean; setPicking: (v: boolean) => void
   onFocus: () => void; onOpen: () => void; onEdit: () => void; onApprove: () => void
   onDrop: (slug: string, note: string | null) => void; onSkip: () => void; onBoard: () => void
@@ -508,6 +517,8 @@ function ReviewRow({ c, i, now, focused, open, busy, held, read, repeat, slot, s
         <div className="cv2-row-text">
           <b className="cv2-row-t">{title}</b>
           {snippet && <span className="cv2-row-sub">{snippet}</span>}
+          {/* The grid card's opening lines of the post (the list row keeps the one-line snippet). */}
+          {!more && c.body.trim() && <span className="cv2-row-body">{c.body.trim()}</span>}
         </div>
         <div className="cv2-row-meta">
           {(taxonomyValue(c.r.taxonomy, 'pillar') === 'personal' || taxonomyValue(c.r.taxonomy, 'register') === 'personal') && <span className="cv2-tag" data-pillar="personal">Personal</span>}
@@ -519,7 +530,7 @@ function ReviewRow({ c, i, now, focused, open, busy, held, read, repeat, slot, s
           {read?.state === 'ready' && <EarlyReadChip read={read} lane={c.lane} />}
           <span className="cv2-row-age" title={`Created ${age(c.r.created_at, now)} ago`}>{c.r.board_visible === true && !c.r.scheduled_at ? 'No date yet' : whenOf(c, now)}</span>
           {/* Every row of the list needs review: only a different status earns a pill. */}
-          {pill.text !== 'Needs review' && <Pill tone={pill.tone} title={hold?.kind === 'changes' ? undefined : hold?.detail}>{pill.text}</Pill>}
+          {pill.text !== 'Needs review' && !(hideHold && hold) && <Pill tone={pill.tone} title={hold?.kind === 'changes' ? undefined : hold?.detail}>{pill.text}</Pill>}
         </div>
         <div className="cv2-row-keys">
           {c.judge && c.lane !== 'swishdm' && <button type="button" className="cv2-k cv2-k-q" data-verb="card-drop" disabled={busy} onClick={() => setPicking(true)}>Drop</button>}
@@ -534,7 +545,7 @@ function ReviewRow({ c, i, now, focused, open, busy, held, read, repeat, slot, s
         </div>
       </div>
       {hold?.kind === 'changes' && hold.detail && <p className="cv2-ask" data-ask><b>{OWNER[c.lane]} on the panel:</b> “{hold.detail}”</p>}
-      {hold && hold.kind !== 'changes' && hold.detail && <p className="cv2-ask cv2-ask-hold">{hold.detail}</p>}
+      {hold && hold.kind !== 'changes' && hold.detail && !hideHold && <p className="cv2-ask cv2-ask-hold">{hold.detail}</p>}
       {picking && <div className="cv2-row-why"><ReasonPicker lane={c.lane} onPick={onDrop} onCancel={() => setPicking(false)} /></div>}
       {more && (
         <div className="cv2-row-more">
