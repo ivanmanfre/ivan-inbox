@@ -1,14 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { PlaceProps } from '../places'
 import { dHash } from '../route'
 import { useReportFailed } from '../shell/health'
 import { AnswerRow, N } from '../ui/AnswerRow'
-import { DIcon } from '../ui/icons'
 import { Btn } from '../ui/Key'
 import { Empty, Failed, Skeleton } from '../ui/states'
 import { useToast } from '../ui/toast'
-import { DROP_WINDOW_DAYS, FEED_WINDOW_DAYS, ago, clock, inDropped, inFeed, length, sortSources, tabOf, watchUrl, type IntelItem, type IntelSource, type IntelTab } from './model'
+import { DROP_WINDOW_DAYS, FEED_WINDOW_DAYS, ago, clock, inDropped, inFeed, length, sortSources, tabOf, thumbUrl, watchUrl, type IntelItem, type IntelSource, type IntelTab } from './model'
 import './intel.css'
 
 // D · INTEL. YouTube without the mess: every new upload from the chosen
@@ -177,18 +176,19 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
     body = <Failed what="the intel feed" detail={items.message} onRetry={retry} />
   } else if (tab === 'dropped') {
     body = drops.length === 0 ? <Empty title="Nothing dropped in the last two weeks." />
-      : <ol className="it-drops">{drops.map(i => (
-        <li key={i.id}>
-          <a href={i.url} target="_blank" rel="noreferrer"><b>{i.title}</b></a>
-          <small>{i.source_name} · {ago(i.published_at)}{i.found_via === 'discovery' ? ' · search' : ''}</small>
-          <p>{i.drop_reason}</p>
-          {inFeed({ ...i, ivan_verdict: 'useful' }, now) && <Btn verb="intel-rescue" className="it-rescue" onClick={() => rate(i, 'useful')}>Useful after all</Btn>}
-        </li>
+      : <ol className="it-grid it-grid-drops">{drops.map(i => (
+        <Tile key={i.id} i={i} line={i.drop_reason} tone="drop"
+          keys={inFeed({ ...i, ivan_verdict: 'useful' }, now) ? <Btn verb="intel-rescue" onClick={() => rate(i, 'useful')}>Useful after all</Btn> : null} />
       ))}</ol>
   } else {
     body = keeps.length === 0
-      ? <Empty title="Nothing passed yet." reason="Every new video from your channels is read and judged. Most get dropped, and that is the point." action={<Btn onClick={() => go('dropped')}>See what was dropped</Btn>} />
-      : <ol className="it-feed">{keeps.map(i => <Card key={i.id} i={i} onRate={rate} onMute={i.source_id ? () => void setStatus(i.source_id!, 'muted') : undefined} />)}</ol>
+      ? <Empty title="Nothing worth watching in the last three weeks." reason="Every new video from your channels is read and judged. Most get dropped." action={<Btn onClick={() => go('dropped')}>See what was dropped</Btn>} />
+      : <ol className="it-grid">{keeps.map(i => <Tile key={i.id} i={i} line={i.headline} tone="keep" details
+          keys={<>
+            <Btn verb="intel-useful" className={i.ivan_verdict === 'useful' ? 'it-pressed' : ''} aria-pressed={i.ivan_verdict === 'useful'} onClick={() => rate(i, i.ivan_verdict === 'useful' ? null : 'useful')}>Useful</Btn>
+            <Btn verb="intel-noise" onClick={() => rate(i, 'noise')}>Noise</Btn>
+            {i.source_id && <Btn verb="intel-mute" className="it-mute" onClick={() => void setStatus(i.source_id!, 'muted')}>Mute</Btn>}
+          </>} />)}</ol>
   }
 
   return (
@@ -202,27 +202,36 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
   )
 }
 
-function Card({ i, onRate, onMute }: { i: IntelItem; onRate: (i: IntelItem, v: 'useful' | 'noise' | null) => void; onMute?: () => void }) {
+// One video, YouTube style: the thumbnail opens YouTube at the useful minute; under it the video's own
+// title, channel and age, and ONE line on why it matters. The method and the test fold behind "Why".
+function Tile({ i, line, tone, keys, details }: { i: IntelItem; line: string | null; tone: 'keep' | 'drop'; keys?: ReactNode; details?: boolean }) {
+  const [open, setOpen] = useState(false)
   const len = length(i.duration_sec)
+  const thumb = thumbUrl(i.url)
+  const href = watchUrl(i.url, tone === 'keep' ? i.watch_from_sec : null)
   return (
-    <li className={`it-card${i.ivan_verdict === 'useful' ? ' it-useful' : ''}`}>
-      <div className="it-meta">
-        <span className="it-src">{i.source_name}</span>
-        <span>{ago(i.published_at)}</span>
-        {len && <span>{len}</span>}
-        {i.found_via === 'discovery' && <span className="it-new">new channel</span>}
-        {i.applies_to && <span className="it-for">{i.applies_to}</span>}
-      </div>
-      <h3>{i.headline || i.title}</h3>
-      {i.what_new && <p>{i.what_new}</p>}
-      {i.try_this && <p className="it-try"><b>Try</b> {i.try_this}</p>}
-      <div className="it-keys">
-        <a className="it-watch" href={watchUrl(i.url, i.watch_from_sec)} target="_blank" rel="noreferrer" title={i.title}>
-          {i.watch_from_sec ? `Watch from ${clock(i.watch_from_sec)}` : 'Watch'} <DIcon name="external" />
-        </a>
-        <Btn verb="intel-useful" className={i.ivan_verdict === 'useful' ? 'it-pressed' : ''} aria-pressed={i.ivan_verdict === 'useful'} onClick={() => onRate(i, i.ivan_verdict === 'useful' ? null : 'useful')}>Useful</Btn>
-        <Btn verb="intel-noise" onClick={() => onRate(i, 'noise')}>Noise</Btn>
-        {onMute && <Btn verb="intel-mute" className="it-mute" onClick={onMute}>Mute channel</Btn>}
+    <li className={`it-tile it-${tone}${i.ivan_verdict === 'useful' ? ' it-useful' : ''}`}>
+      <a className="it-thumb" href={href} target="_blank" rel="noreferrer" title={`Open on YouTube: ${i.title}`}>
+        {thumb ? <img src={thumb} alt="" loading="lazy" /> : <span className="it-nothumb" />}
+        {len && <span className="it-len">{len}</span>}
+        {tone === 'keep' && i.watch_from_sec ? <span className="it-from">▶ from {clock(i.watch_from_sec)}</span> : null}
+      </a>
+      <div className="it-body">
+        <a className="it-title" href={href} target="_blank" rel="noreferrer">{i.title}</a>
+        <div className="it-by">{i.source_name} · {ago(i.published_at)}{i.found_via === 'discovery' ? <span className="it-new"> · new channel</span> : null}</div>
+        {line && <p className={`it-line${tone === 'drop' ? ' it-why-drop' : ''}`}>{line}</p>}
+        {details && (i.what_new || i.try_this) && (
+          <>
+            <button type="button" className="it-more" aria-expanded={open} onClick={() => setOpen(o => !o)}>
+              {i.applies_to && <span className="it-for">{i.applies_to}</span>}{open ? 'Hide' : 'Why'}
+            </button>
+            {open && <div className="it-detail">
+              {i.what_new && <p>{i.what_new}</p>}
+              {i.try_this && <p><b>Try</b> {i.try_this}</p>}
+            </div>}
+          </>
+        )}
+        {keys && <div className="it-keys">{keys}</div>}
       </div>
     </li>
   )

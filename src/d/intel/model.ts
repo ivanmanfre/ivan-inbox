@@ -72,6 +72,12 @@ export function length(sec: number | null): string | null {
   return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`
 }
 
+/** YouTube's own thumbnail for a watch URL (no API call): https://i.ytimg.com/vi/<id>/mqdefault.jpg */
+export function thumbUrl(url: string): string | null {
+  const id = url.match(/[?&]v=([\w-]{6,})/)?.[1] ?? url.match(/youtu\.be\/([\w-]{6,})/)?.[1]
+  return id ? `https://i.ytimg.com/vi/${id}/mqdefault.jpg` : null
+}
+
 /** The video link, opened at the useful part when the judge found one. */
 export function watchUrl(url: string, sec: number | null): string {
   if (!sec || sec <= 0) return url
