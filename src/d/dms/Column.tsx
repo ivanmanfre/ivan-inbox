@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import { eventTime, internalHoldSummary, isReplyRetryExhausted, threadBucket, type Thread } from '../../lib/inbox'
 import { cameBackRowLine, firstComment, sentLine, type CameBackCard } from '../../wb/dms/cameBackData'
 import { agentCardsWithoutWarmCards, type ConversationAgentCard } from '../../wb/dms/conversationAgentData'
-import { WARM_GROUPS, dm1Deliverable, evidenceLine, inviteLine, isWaiting, primaryAction, warmGroup, type WarmCard } from '../../wb/dms/warmSignalsData'
+import { WARM_GROUPS, dm1Deliverable, evidenceLine, inCampaign, inviteLine, isWaiting, primaryAction, warmGroup, type WarmCard } from '../../wb/dms/warmSignalsData'
 import { type Seat } from '../seats'
 import { ago, firstLine, heldItems, needsCount, seatThreads, type SeatView } from './model'
 import { scheduleHeld, SCHEDULE_REVIEW } from '../../lib/dmSchedule'
@@ -252,7 +252,7 @@ function SignalsSection({ p, folds, came }: { p: ColumnProps; folds: Folds; came
         selected={c.selected === w.prospect_id} onOpen={() => p.openWarm(w.prospect_id)}
         verbs={[
           ...(act === 'invite' ? [{ label: w.signal_invite_state === 'first_degree_pending' ? 'Approve' : 'Approve invite', verb: 'approve-invite', run: go(() => p.warmVerbs.approveInvite(w, noteOf(w)), k), busy: c.busy === k }] : []),
-          ...(act === 'dm1' && !managed && dm1Deliverable(w) && w.draft_id ? [{ label: 'Approve DM1', verb: 'approve-dm1', run: go(() => p.warmVerbs.approveDm1(w, w.draft_text ?? '', managed), k), busy: c.busy === k }] : []),
+          ...(act === 'dm1' && !managed && dm1Deliverable(w) && w.draft_id ? [{ label: inCampaign(w) ? 'Approve DM' : 'Approve DM1', verb: 'approve-dm1', run: go(() => p.warmVerbs.approveDm1(w, w.draft_text ?? '', managed), k), busy: c.busy === k }] : []),
           ...(!managed ? [{ label: 'Skip', verb: 'skip', quiet: true, run: go(() => p.warmVerbs.skip(w), `ws:${w.prospect_id}`), busy: c.busy === `ws:${w.prospect_id}` }] : []),
         ]} />
     }

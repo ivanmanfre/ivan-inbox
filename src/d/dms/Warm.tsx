@@ -53,7 +53,7 @@ export function WarmSheet({ c, agent, thread, verbs, onClose, onOpenThread, onAg
     {thread && <Key verb="open-thread" onClick={() => onOpenThread(thread)}>Conversation</Key>}
     {primary === 'invite' && <Key primary verb="approve-invite" disabled={busy !== null} onClick={() => void run('invite', () => verbs.approveInvite(c, note))}>{busy === 'invite' ? 'Queueing…' : 'Approve invite'}</Key>}
     {primary === 'dm1' && !managed && <Key primary={deliverable} verb="approve-dm1" disabled={busy !== null || !deliverable} title={deliverable ? undefined : `Unlocks once ${first} accepts`}
-      onClick={() => void run('dm1', () => verbs.approveDm1(c, dm1, managed))}>{busy === 'dm1' ? 'Approving…' : 'Approve DM1'}</Key>}
+      onClick={() => void run('dm1', () => verbs.approveDm1(c, dm1, managed))}>{busy === 'dm1' ? 'Approving…' : seq ? 'Approve DM' : 'Approve DM1'}</Key>}
   </> : thread ? <Key verb="open-thread" onClick={() => onOpenThread(thread)}>Conversation</Key> : undefined
 
   return (
