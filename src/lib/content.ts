@@ -484,16 +484,25 @@ export async function fetchScheduledQueue(): Promise<ScheduledQueueRow[]> {
 // ScheduleDraft): one date column, Ivan's lane only, future rows only, so the
 // read stays a few hundred bytes however long the archive gets.
 export async function fetchIvanArmedDays(): Promise<Set<string>> {
+  // 2026-10-30 ("could not arm it"): the database's spacing guard (zzy_content_plan_ivan_spacing) refuses any
+  // automatic date within 24 h of another dated draft in review, approved or scheduled, and this read only knew
+  // scheduled rows on the same day. Thu 10:45 was offered 21 h after Wed 13:00 and the write was refused.
+  // A day is now taken when the default slot (model.ts SLOT_H:SLOT_M, 10:45) on it would sit within 24 h of one.
   const { data, error } = await supabase.from('carousel_drafts')
     .select('scheduled_at')
     .is('client_id', null)
-    .eq('status', 'scheduled')
-    .gte('scheduled_at', new Date().toISOString())
+    .in('status', ['review', 'approved', 'scheduled'])
+    .gte('scheduled_at', new Date(Date.now() - 86_400_000).toISOString())
     .limit(500)
   if (error) throw error
   const days = new Set<string>()
   for (const r of (data ?? []) as { scheduled_at: string | null }[]) {
-    if (r.scheduled_at) days.add(localDay(new Date(r.scheduled_at)))
+    if (!r.scheduled_at) continue
+    const at = new Date(r.scheduled_at)
+    for (const shift of [-1, 0, 1]) {
+      const slot = new Date(at); slot.setDate(slot.getDate() + shift); slot.setHours(10, 45, 0, 0)
+      if (shift === 0 || Math.abs(slot.getTime() - at.getTime()) < 86_400_000) days.add(localDay(slot))
+    }
   }
   return days
 }

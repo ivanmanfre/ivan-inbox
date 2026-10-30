@@ -37,7 +37,9 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
   }, [d.id, d.post_body, editing])
   useEffect(() => { setVisible(d.board_visible === true) }, [d.id, d.board_visible])
 
-  const fail = (e: unknown, what: string) => setErr(e instanceof ClientRpcError || e instanceof Error ? e.message : `Could not ${what}.`)
+  // A PostgREST error is a plain object, not an Error: its message is the database's own reason (2026-10-30).
+  const fail = (e: unknown, what: string) => setErr(e instanceof ClientRpcError || e instanceof Error ? e.message
+    : typeof (e as { message?: unknown })?.message === 'string' && (e as { message: string }).message ? (e as { message: string }).message : `Could not ${what}.`)
 
   const startEdit = useCallback(() => { setText(shown); setEditing(true); setErr(''); setConflict(null) }, [shown])
   const cancelEdit = useCallback(() => { if (saving.current || busy) return; setEditing(false); setText(shown); setConflict(null); setErr('') }, [shown, busy])

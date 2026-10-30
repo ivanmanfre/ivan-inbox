@@ -173,7 +173,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
     const at = new Date(r.scheduled_at)
     if (!await confirm({ title: 'Put this post on LinkedIn?', message: `The publisher posts this on ${warsawDayTime(at)} Warsaw.`, confirmText: 'Schedule it', verb: 'confirm' })) return
     try { await scheduleGuarded(id, at.toISOString()); toast.show({ message: `Armed for ${warsawDayTime(at)} Warsaw.` }); refresh() }
-    catch (e) { toast.show({ message: e instanceof Error ? e.message : 'Could not arm it.', tone: 'failed' }) }
+    catch (e) { toast.show({ message: (e as { message?: unknown })?.message && typeof (e as { message?: unknown }).message === 'string' ? (e as { message: string }).message : 'Could not arm it.', tone: 'failed' }) }
   }
   // The open draft stays open behind the move sheet when it is on the same seat (2026-10-09).
   const onMove = (id: string, lane: Lane, day?: string) => go({ move: id, lane, ...(day ? { day } : {}), ...(draft && lane === qLane ? { draft } : {}) }, 'calendar')

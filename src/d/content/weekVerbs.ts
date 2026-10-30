@@ -90,7 +90,7 @@ export function useWeekVerbs({ ids, onChanged, onOpen, setBusy }: {
     if (!ok) return
     setBusy(c.r.id)
     try { await scheduleGuarded(c.r.id, at.toISOString()); toast.show({ message: `Armed for ${warsawDayTime(at)} Warsaw.`, sub: 'The publisher posts it then.' }); onChanged(); advance(c.r.id) }
-    catch (e) { toast.show({ tone: 'failed', message: e instanceof Error ? e.message : 'Could not arm it.' }) }
+    catch (e) { toast.show({ tone: 'failed', message: (e as { message?: unknown })?.message && typeof (e as { message?: unknown }).message === 'string' ? (e as { message: string }).message : 'Could not arm it.' }) }
     finally { setBusy(null) }
   }, [advance, confirm, onChanged, onOpen, setBusy, toast])
 
