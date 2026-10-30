@@ -1426,7 +1426,9 @@ export async function markSpam(t: Thread): Promise<void> {
 // Deletes the conversation from the seat's LinkedIn inbox (Unipile) and closes the
 // person for every lane. The edge fn only reports success once a re-read proves the chat
 // is gone; pending drafts are discarded so nothing sends into a deleted thread.
-export async function deleteThread(t: Thread): Promise<void> {
+// Resolves `keptOnLinkedIn: true` when a chat was a Sales Navigator InMail: LinkedIn has no
+// delete for those, so the person is closed here and the InMail stays in Sales Navigator.
+export async function deleteThread(t: Thread): Promise<{ keptOnLinkedIn: boolean }> {
   const { data: sess } = await supabase.auth.getSession()
   const token = sess.session?.access_token
   if (!token) throw new Error('not signed in')
@@ -1445,6 +1447,7 @@ export async function deleteThread(t: Thread): Promise<void> {
   const out = await res.json().catch(() => ({}))
   if (!res.ok || out?.ok === false) throw new Error(out?.detail ?? out?.error ?? `delete failed (${res.status})`)
   await discardLegs(draftLegs(t))
+  return { keptOnLinkedIn: out?.kept_on_linkedin === true }
 }
 
 // The way back. Reopens the thread as a reply owed, which is exactly what the detector

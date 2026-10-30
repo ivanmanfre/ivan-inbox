@@ -23,7 +23,7 @@ import { canMarkSolved, writeSolved } from './solved'
 import { watchSend } from './sendWatch'
 import { splitEmailDraft } from '../../lib/emailSubject'
 import { emailPreview } from '../../lib/emailPresentation'
-import { emailRowSender } from '../../lib/inbox'
+import { emailRowSender, threadKind } from '../../lib/inbox'
 import { saveEmailComposition, sameEmailComposition } from '../../lib/emailCompositionSave'
 import { buildEmailComposition } from '../../lib/emailCompositionDraft'
 import { renderEmailComposition, renderEmailDocument, type EmailComposition } from '../../lib/emailRichText'
@@ -599,9 +599,15 @@ export function useDmVerbs(ctx: VerbCtx) {
     }
 
     async function deleteSeat(t: Thread): Promise<boolean> {
-      const ok = await confirm({ title: 'Delete from the seat on LinkedIn?', message: `The conversation with ${t.prospect_name} is deleted from the seat's LinkedIn inbox and this person is closed for every lane. It cannot be undone, and ${t.prospect_name} still has their own copy.`, confirmText: 'Delete from seat', verb: 'confirm-delete', danger: true })
+      const inmail = threadKind(t) === 'inmail'
+      const ok = await confirm({ title: 'Delete from the seat on LinkedIn?', message: `The conversation with ${t.prospect_name} is deleted from the seat's LinkedIn inbox and this person is closed for every lane. It cannot be undone, and ${t.prospect_name} still has their own copy.` + (inmail ? ' LinkedIn has no delete for Sales Navigator InMails, so an InMail stays there.' : ''), confirmText: 'Delete from seat', verb: 'confirm-delete', danger: true })
       if (!ok) return false
-      try { await deleteThread(t); toast.show({ message: `Deleted ${t.prospect_name} from the seat.` }) } catch (e) { fail(`Not deleted: ${errText(e)}`); return false }
+      try {
+        const { keptOnLinkedIn } = await deleteThread(t)
+        toast.show(keptOnLinkedIn
+          ? { message: `Closed ${t.prospect_name} and removed the thread from the inbox.`, sub: 'LinkedIn has no delete for Sales Navigator InMails, so that conversation stays in Sales Navigator.' }
+          : { message: `Deleted ${t.prospect_name} from the seat.` })
+      } catch (e) { fail(`Not deleted: ${errText(e)}`); return false }
       ctx.refresh()
       return true
     }

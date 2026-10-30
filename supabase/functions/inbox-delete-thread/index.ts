@@ -8,6 +8,8 @@
 //   3. DELETE /api/v1/chats/{id} on each (Unipile: "Supported for WhatsApp and LinkedIn").
 //   4. REFUSES to report success unless a re-read of each chat 404s. A delete Unipile
 //      accepts but LinkedIn ignores must never read as "gone" (same rule as linkedin-unpublish).
+//      Exception: Sales Navigator InMail chats cannot be deleted at all. They come back as
+//      kept_on_linkedin: true and the person is still closed (step 5).
 //   5. Only then closes the prospect: disqualified + blacklisted + skip_reason
 //      DELETED_REASON, so no sender or drafter touches the person again and the inbox
 //      drops the thread. Our own message rows stay; only LinkedIn's copy is removed.
@@ -93,21 +95,32 @@ Deno.serve(async (req) => {
     return reply(409, { ok: false, error: 'no_linkedin_chat', detail: 'Invite only: there is no LinkedIn conversation to delete.' }, origin)
   }
 
-  const results: { chat_id: string; deleted: boolean; status?: number; detail?: string }[] = []
+  // Sales Navigator InMail chats cannot be deleted: Unipile answers DELETE with a 500 and the
+  // chat stays (Jack Tarca, 2026-10-30). Those are reported as kept on LinkedIn and the person
+  // is still closed here, so the thread leaves the inbox. Any other chat that survives is a
+  // real failure and nothing is closed.
+  const results: { chat_id: string; deleted: boolean; kept_inmail?: boolean; status?: number; detail?: string }[] = []
   for (const id of chatIds) {
     const del = await uni(`/chats/${encodeURIComponent(id)}`, 'DELETE')
     const delText = await del.text()
     // A chat that is already gone reads 404 on both calls; that counts as deleted.
     const check = await uni(`/chats/${encodeURIComponent(id)}`)
-    await check.body?.cancel()
     const gone = check.status === 404
-    results.push({ chat_id: id, deleted: gone, status: del.status, detail: gone ? undefined : delText.slice(0, 300) })
+    let inmail = false
+    if (!gone && check.ok) {
+      const chat = await check.json().catch(() => null)
+      inmail = chat?.content_type === 'inmail'
+    } else {
+      await check.body?.cancel()
+    }
+    results.push({ chat_id: id, deleted: gone, kept_inmail: inmail || undefined, status: del.status, detail: gone ? undefined : delText.slice(0, 300) })
   }
-  const failed = results.filter(r => !r.deleted)
+  const failed = results.filter(r => !r.deleted && !r.kept_inmail)
   if (failed.length > 0) {
     console.error('delete not confirmed', failed)
-    return reply(502, { ok: false, error: 'delete_not_confirmed', results }, origin)
+    return reply(502, { ok: false, error: 'delete_not_confirmed', detail: 'LinkedIn did not remove the conversation. Nothing was closed.', results }, origin)
   }
+  const keptOnLinkedIn = results.some(r => r.kept_inmail)
 
   const { error: upErr } = await db.from('outreach_prospects')
     .update({
@@ -119,5 +132,5 @@ Deno.serve(async (req) => {
     // LinkedIn side is done; say so plainly so the operator is not told it failed.
     return reply(500, { ok: false, error: 'deleted_but_not_closed', detail: upErr.message, results }, origin)
   }
-  return reply(200, { ok: true, results }, origin)
+  return reply(200, { ok: true, kept_on_linkedin: keptOnLinkedIn, results }, origin)
 })
