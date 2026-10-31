@@ -155,6 +155,11 @@
    draft is a card with the post's opening lines; the chevron opens it across the whole row with the full post.
    Under 700px the list keeps its rows. */
 :root[data-skin-on~='content.review'] .cv2-row-body{display:none}
+/* the whole-post card exists only in the grid: under 700px the list keeps its rows (and the post opens in the panel) */
+:root[data-skin-on~='content.review'] .cv2-gp{display:none}
+/* cv2.css's older card grid (auto-fill 300px) still applies below 700px and squeezed list rows into 2 columns with no
+   room for the title (a 644px desk at a ~900px window): under 700px the list is a list. The query below restores the grid. */
+:root[data-skin-on~='content.review'] .cv2-list.cv2-grid{display:flex;align-items:stretch}
 :root[data-skin-on~='content.review'] .cv2-ask-shared{margin:0 0 10px}
 @container rdesk (min-width:700px){
   :root[data-skin-on~='content.review'] .cv2-list.cv2-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-items:start;background:transparent;box-shadow:none;border-radius:0;overflow:visible}
@@ -183,7 +188,8 @@
   :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-more{padding:4px 14px 16px}
   /* THE WHOLE POST IN THE CARD (Ivan 2026-10-30: "show the full post view ... so i can see and edit from here fast ...
      letter and sizing small to keep realism ... show media if there or empty square if no media"). */
-  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp{margin:0 -14px;cursor:text}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp{display:block;margin:0 -14px;cursor:text}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp-ro,:root[data-skin-on~='content.review'] .cv2-grid .cv2-gp-ro .cv2-li-b{cursor:pointer}
   :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp .cv2-li{font-size:12px;line-height:16.5px;color:#191919}
   :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp .cv2-li-h{padding:0 14px;gap:6px;cursor:pointer}
   :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp .cv2-li-h > i{width:28px;height:28px;font-size:11px}

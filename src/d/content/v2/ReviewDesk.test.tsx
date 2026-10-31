@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderInFrame } from '../../test-utils'
+import { useState } from 'react'
 import type { ContentDraft } from '../../../lib/content'
 import { clearBoardState, setBoardState } from '../../../lib/clientBoardState'
 
@@ -374,6 +375,41 @@ describe('the row', () => {
     await act(async () => { fireEvent.click(verb(card('c1'), 'grid-save')!) })
     expect(lib.saveClientDraftBody.mock.calls.at(-1)!.filter((_, i) => i !== 2 && i !== 4)).toEqual(['c1', 'Arch text, fixed.', 'Arch text.'])
     expect(lib.saveDraftBody.mock.calls.some(x => x[0] === 'c1')).toBe(false)
+  })
+  it('the compare base is the body the edit started from, even when the row refreshes mid-edit', async () => {
+    lib.saveDraftBody.mockResolvedValue(undefined)
+    let swap: (r: ContentDraft[]) => void = () => {}
+    function Live() { const [rows, setRows] = useState([row({ id: 'm1', post_body: 'Loaded.' })]); swap = setRows; return <Harness rows={rows} /> }
+    renderInFrame(<Live />)
+    fireEvent.click(card('m1')!.querySelector('.cv2-li-b p')!)
+    fireEvent.change(card('m1')!.querySelector('textarea')!, { target: { value: 'Mine.' } })
+    // a rewrite lands elsewhere while the box is open: the typed text stays, and the save is checked against 'Loaded.'
+    act(() => swap([row({ id: 'm1', post_body: 'Rewritten elsewhere.', updated_at: '2026-10-31T09:00:00Z' })]))
+    expect(card('m1')!.querySelector('textarea')!.value).toBe('Mine.')
+    await act(async () => { fireEvent.click(verb(card('m1'), 'grid-save')!) })
+    expect(lib.saveDraftBody.mock.calls.at(-1)![3]).toBe('Loaded.')
+  })
+  it('after a save the card shows the new text at once, and the next edit starts from it', async () => {
+    lib.saveDraftBody.mockResolvedValue(undefined)
+    renderInFrame(<Harness rows={[row({ id: 's1', post_body: 'Before.' })]} />)
+    fireEvent.click(card('s1')!.querySelector('.cv2-li-b p')!)
+    fireEvent.change(card('s1')!.querySelector('textarea')!, { target: { value: 'After.' } })
+    await act(async () => { fireEvent.click(verb(card('s1'), 'grid-save')!) })
+    expect(card('s1')!.querySelector('.cv2-gp')!.textContent).toContain('After.')
+    expect(card('s1')!.querySelector('.cv2-gp')!.textContent).not.toContain('Before.')
+    fireEvent.click(card('s1')!.querySelector('.cv2-li-b p')!)
+    expect(card('s1')!.querySelector('textarea')!.value).toBe('After.')
+    fireEvent.change(card('s1')!.querySelector('textarea')!, { target: { value: 'After, again.' } })
+    await act(async () => { fireEvent.click(verb(card('s1'), 'grid-save')!) })
+    expect(lib.saveDraftBody.mock.calls.at(-1)![3]).toBe('After.')
+  })
+  it('mid-edit, a click elsewhere on the card does not open the post', () => {
+    const onOpen = vi.fn()
+    renderInFrame(<Harness onOpen={onOpen} rows={[row({ id: 'k1', post_body: 'Text.' })]} />)
+    fireEvent.click(card('k1')!.querySelector('.cv2-li-b p')!)
+    fireEvent.click(card('k1')!.querySelector('.cv2-row-t')!)
+    expect(onOpen).not.toHaveBeenCalled()
+    expect(card('k1')!.querySelector('textarea')).toBeTruthy()
   })
 })
 

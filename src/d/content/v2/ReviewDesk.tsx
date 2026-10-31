@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { DraftSaveConflict, clientDeletable, pictureEditable, saveClientDraftBody, saveDraftBody, taxonomyValue, type ContentDraft } from '../../../lib/content'
+import { DraftSaveConflict, clientDeletable, clientEditable, pictureEditable, saveClientDraftBody, saveDraftBody, taxonomyValue, type ContentDraft } from '../../../lib/content'
 import { sourceOf } from '../../../lib/brainPage'
 import { reasonLabel } from '../../../lib/verdicts'
 import type { PatternRead } from '../../../lib/earlyReads'
@@ -448,7 +448,15 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
 }) {
   const ref = useRef<HTMLElement>(null)
   const [pic, setPic] = useState<string[] | undefined>(undefined)
-  const [editing, setEditing] = useState(false)
+  // The in-place edit lives on the row, so typed text survives the post opening beside the grid or the preview toggling.
+  const [edit, setEdit] = useState<string | null>(null)
+  const editBase = useRef('') // the body the edit started from: the compare-and-swap base
+  // The body just saved, shown until the list's next read carries it (no flash of the old text).
+  const [saved, setSaved] = useState<string | null>(null)
+  useEffect(() => { setSaved(null) }, [c.r.post_body, c.r.updated_at])
+  const postNow = saved ?? (c.r.post_body ?? '')
+  const inPlace = c.lane === 'ivan' || clientEditable(c.r.status, c.lane)
+  const startEdit = () => { editBase.current = postNow; setEdit(postNow) }
   const id = c.r.id
   const judgeable = c.judge
   // Time to verdict starts when a draft to judge is first on screen (once per draft), as on the stack.
@@ -497,6 +505,8 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
 
   // A tap on the row opens the post; a tap on any control inside it does only that control.
   const onRowClick = (e: React.MouseEvent) => {
+    // mid-edit, a stray click on the card never opens the post; it puts the cursor back in the box (so Esc still cancels)
+    if (edit !== null) { if (!(e.target as HTMLElement).closest('button,a,input,select')) ref.current?.querySelector('textarea')?.focus(); return }
     if ((e.target as HTMLElement).closest('button,a,input,textarea,select,label,[role="menu"],.cv2-row-more,.cv2-why')) return
     onOpen()
   }
@@ -512,7 +522,8 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
           {snippet && <span className="cv2-row-sub">{snippet}</span>}
           {/* The grid card: the whole post as the feed shows it, with its media or an empty square, and the text
               edits in place (Ivan 2026-10-30: "see and edit from here fast"). The list row keeps the one-line snippet. */}
-          {grid && !more && <GridPost c={c} editing={editing} setEditing={setEditing} onChanged={onChanged} />}
+          {grid && !more && <GridPost c={c} body={postNow} text={edit} setText={setEdit} base={editBase.current} canEdit={inPlace}
+            onStart={startEdit} onSaved={setSaved} onChanged={onChanged} />}
         </div>
         <div className="cv2-row-meta">
           {(taxonomyValue(c.r.taxonomy, 'pillar') === 'personal' || taxonomyValue(c.r.taxonomy, 'register') === 'personal') && <span className="cv2-tag" data-pillar="personal">Personal</span>}
@@ -529,7 +540,7 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
         <div className="cv2-row-keys">
           {c.judge && c.lane !== 'swishdm' && <button type="button" className="cv2-k cv2-k-q" data-verb="card-drop" disabled={busy} onClick={() => setPicking(true)}>Drop</button>}
           {!c.judge && c.primary === 'approve' && <button type="button" className="cv2-k cv2-k-q" data-verb="card-skip" disabled={busy} onClick={onSkip}>Skip</button>}
-          <button type="button" className="cv2-k cv2-k-q cv2-wide-only" data-verb="card-edit" disabled={busy || editing} onClick={grid && !more ? () => setEditing(true) : onEdit}>Edit</button>
+          <button type="button" className="cv2-k cv2-k-q cv2-wide-only" data-verb="card-edit" disabled={busy || (grid && !more && edit !== null)} onClick={grid && !more && inPlace ? startEdit : onEdit}>Edit</button>
           {next === 'schedule' && !c.r.scheduled_at && <button type="button" className="cv2-k cv2-k-q cv2-wide-only" data-verb="card-pick-day" disabled={busy} onClick={onDate}>Pick a day</button>}
           {primary}
           <button type="button" className="cv2-chev" aria-expanded={more} aria-label={more ? 'Hide the preview' : 'Preview the post here'} data-verb="row-preview" onClick={() => setMore(!more)}>
@@ -559,31 +570,34 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
 }
 
 /** The grid card's post. A click on the text opens it for editing in place; ⌘/Ctrl+Enter saves, Esc cancels.
- *  The save is the editor's own compare-and-swap (a body changed elsewhere is refused, never overwritten). */
-function GridPost({ c, editing, setEditing, onChanged }: { c: WeekCard; editing: boolean; setEditing: (v: boolean) => void; onChanged: () => void }) {
+ *  The save is the editor's own compare-and-swap against the body the edit started from (a body changed
+ *  elsewhere meanwhile is refused, never overwritten). A client draft the DB won't edit opens the post instead. */
+function GridPost({ c, body, text, setText, base, canEdit, onStart, onSaved, onChanged }: {
+  c: WeekCard; body: string; text: string | null; setText: (v: string | null) => void; base: string; canEdit: boolean
+  onStart: () => void; onSaved: (body: string) => void; onChanged: () => void
+}) {
   const toast = useToast()
-  const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
+  const inFlight = useRef(false)
   const ta = useRef<HTMLTextAreaElement>(null)
+  const editing = text !== null
   const fit = (el: HTMLTextAreaElement) => { el.style.height = 'auto'; el.style.height = `${el.scrollHeight + 2}px` }
-  useEffect(() => {
-    if (!editing) return
-    setText(c.r.post_body ?? '')
-    requestAnimationFrame(() => ta.current?.focus())
-  }, [editing]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (editing) requestAnimationFrame(() => ta.current?.focus()) }, [editing])
   // The box grows with the text, so the whole post stays in view while editing.
   useLayoutEffect(() => { if (editing && ta.current) fit(ta.current) }, [editing, text])
   const save = async () => {
-    if (text === (c.r.post_body ?? '')) { setEditing(false); return }
-    setSaving(true)
+    if (text === null || inFlight.current) return
+    if (text === base) { setText(null); return }
+    inFlight.current = true; setSaving(true)
     try {
-      await (c.lane === 'ivan' ? saveDraftBody : saveClientDraftBody)(c.r.id, text, c.r.taxonomy, c.r.post_body ?? null, c.r.updated_at ?? null)
-      setEditing(false)
+      await (c.lane === 'ivan' ? saveDraftBody : saveClientDraftBody)(c.r.id, text, c.r.taxonomy, base, c.r.updated_at ?? null)
+      onSaved(text)
+      setText(null)
       toast.show({ id: `grid-save-${c.r.id}`, message: 'Saved.' })
       onChanged()
     } catch (e) {
       toast.show({ id: `grid-save-${c.r.id}`, message: e instanceof DraftSaveConflict ? 'This post changed elsewhere. Open it to compare.' : `Not saved: ${e instanceof Error ? e.message : String(e)}` })
-    } finally { setSaving(false) }
+    } finally { inFlight.current = false; setSaving(false) }
   }
   if (editing) return (
     <div className="cv2-gp cv2-gp-edit">
@@ -591,18 +605,18 @@ function GridPost({ c, editing, setEditing, onChanged }: { c: WeekCard; editing:
         onChange={e => { setText(e.target.value); fit(e.target) }}
         onKeyDown={e => {
           if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void save() }
-          else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setEditing(false) }
+          else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setText(null) }
         }} />
       <div className="cv2-gp-keys">
         <button type="button" className="cv2-k cv2-k-p" data-verb="grid-save" disabled={saving} onClick={() => void save()}>{saving ? 'Saving…' : 'Save'}</button>
-        <button type="button" className="cv2-k cv2-k-q" data-verb="grid-cancel" disabled={saving} onClick={() => setEditing(false)}>Cancel</button>
+        <button type="button" className="cv2-k cv2-k-q" data-verb="grid-cancel" disabled={saving} onClick={() => setText(null)}>Cancel</button>
       </div>
     </div>
   )
   return (
-    <div className="cv2-gp" data-verb="grid-edit-text" title="Click the text to edit"
-      onClick={e => { if (!(e.target as HTMLElement).closest('.cv2-li-b')) return; e.stopPropagation(); setEditing(true) }}>
-      <LinkedInCard lane={c.lane} body={(c.r.post_body ?? '').trim() || c.title} images={c.r.image_urls} type={c.r.type} bare compact open expandable={false} emptyMedia />
+    <div className={`cv2-gp${canEdit ? '' : ' cv2-gp-ro'}`} data-verb="grid-edit-text" title={canEdit ? 'Click the text to edit' : undefined}
+      onClick={e => { if (!canEdit || !(e.target as HTMLElement).closest('.cv2-li-b')) return; e.stopPropagation(); onStart() }}>
+      <LinkedInCard lane={c.lane} body={body.trim() || c.title} images={c.r.image_urls} type={c.r.type} bare compact open expandable={false} emptyMedia />
     </div>
   )
 }
