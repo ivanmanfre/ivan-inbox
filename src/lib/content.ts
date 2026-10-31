@@ -77,6 +77,8 @@ export type ContentDraft = {
   // always the same minute. Optional on the TYPE so existing fixtures compile.
   published_at?: string | null
   image_urls: string[] | null
+  // The rendered MP4 for type 'video' (poster = image_urls[0]). Optional so fixtures compile.
+  video_url?: string | null
   // Sometimes a jsonb object ({structure_used, image_style, pillar, …}),
   // sometimes a bare string. Both shapes are live today (ACCESS-MATRIX check 3).
   taxonomy: Record<string, unknown> | string | null
@@ -141,7 +143,7 @@ export type ContentDraft = {
 
 const COLS =
   'id, cb34_p2_member, client_id, status, type, title, topic, post_body, scheduled_at, published_at, ' +
-  'source_post_id, image_urls, taxonomy, updated_at, created_at, board_visible, ' +
+  'source_post_id, image_urls, video_url, taxonomy, updated_at, created_at, board_visible, ' +
   'funnel_stage, qa_verdict:qa->>verdict, qa_score:qa->>score, ' +
   'qa_regen:qa->>qa_regen_attempts, qa_backfilled:qa->>backfilled, source_label, source_ref, source_kind:source_detail->>kind, ' +
   'log_agent:agent_log->-1->>agent, log_body:agent_log->-1->>body, log_ts:agent_log->-1->>ts'

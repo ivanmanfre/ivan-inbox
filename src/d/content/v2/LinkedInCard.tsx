@@ -12,12 +12,14 @@ import { foldText } from '../weekModel'
 // own measure, full-bleed on the phone. Presentational: no writes.
 const clampRatio = (w: number, h: number) => Math.min(1.91, Math.max(0.8, w / h))
 
-export function LinkedInCard({ lane, body, images, type, expandable = true, compact = false, bare = false, emptyMedia = false, open, onToggle }: {
+export function LinkedInCard({ lane, body, images, type, videoUrl = null, expandable = true, compact = false, bare = false, emptyMedia = false, open, onToggle }: {
   lane: Lane
   body: string
   /** What will post (the optimistic picture while a change is being written). */
   images: unknown
   type: string | null
+  /** The MP4 of a video post: plays in place, poster = the first image. Absent = poster + play mark. */
+  videoUrl?: string | null
   expandable?: boolean
   compact?: boolean
   /** No inert reaction bar (the review desk). */
@@ -54,7 +56,12 @@ export function LinkedInCard({ lane, body, images, type, expandable = true, comp
           )}{i === list.length - 1 && fold.folded && !more && !expandable && <span className="cv2-li-see">…see more</span>}</p>
         )) : <p className="cv2-li-none">No post text yet.</p>}
       </div>
-      {single && (
+      {videoUrl && video ? (
+        <div className="cv2-li-m cv2-li-vid" style={{ aspectRatio: String(ratio ?? 0.8) }} onClick={e => e.stopPropagation()}>
+          <video src={videoUrl} poster={single ?? undefined} controls playsInline preload="metadata"
+            onLoadedMetadata={e => { const v = e.currentTarget; if (v.videoWidth && v.videoHeight) setRatio(clampRatio(v.videoWidth, v.videoHeight)) }} />
+        </div>
+      ) : single && (
         <div className="cv2-li-m" style={{ aspectRatio: String(ratio ?? 1.91) }}>
           <img src={single} alt="" loading="lazy" draggable={false}
             onLoad={e => { const im = e.currentTarget; if (im.naturalWidth && im.naturalHeight) setRatio(clampRatio(im.naturalWidth, im.naturalHeight)) }} />
@@ -70,7 +77,7 @@ export function LinkedInCard({ lane, body, images, type, expandable = true, comp
           {all.length > 1 && <div className="cv2-li-strip">{all.slice(1, 4).map((u, i) => <button key={`${u}-${i}`} type="button" aria-label={`Open slide ${i + 2} of ${all.length}`} onClick={e => { e.stopPropagation(); setViewing(i + 1) }}><img src={imgOf([u], 200) ?? u} alt="" loading="lazy" draggable={false} /></button>)}</div>}
         </div>
       )}
-      {emptyMedia && !single && !carousel && <div className="cv2-li-m cv2-li-empty" style={{ aspectRatio: '1' }} aria-label="No image" />}
+      {emptyMedia && !single && !carousel && !(videoUrl && video) && <div className="cv2-li-m cv2-li-empty" style={{ aspectRatio: '1' }} aria-label="No image" />}
       {viewing !== null && <MediaViewer images={all} initial={viewing} onClose={() => setViewing(null)} />}
       {!bare && <div className="cv2-li-r" aria-hidden="true"><span>Like</span><span>Comment</span><span>Repost</span><span>Send</span></div>}
     </div>

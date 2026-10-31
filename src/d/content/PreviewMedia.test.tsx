@@ -59,3 +59,21 @@ it('shows a retry after an image load failure and clears it when the image loads
   fireEvent.load(viewer.querySelector('img')!)
   expect(screen.queryByRole('status')).toBeNull()
 })
+
+it.each(['detail', 'inline'])('%s preview plays a video post in place, poster = the first image', kind => {
+  const mp4 = 'https://example.test/clip.mp4'
+  const { container } = render(kind === 'detail'
+    ? <Preview d={{ type: 'video', image_urls: [images[0]], video_url: mp4 } as ContentDraftDetail} lane="swishdm" body="Post copy." editing={false} text="" setText={vi.fn()} />
+    : <LinkedInCard lane="swishdm" body="Post copy." type="video" images={[images[0]]} videoUrl={mp4} />)
+  const v = container.querySelector('video')
+  expect(v?.getAttribute('src')).toBe(mp4)
+  expect(v?.getAttribute('poster')).toBe(images[0])
+  expect(v?.hasAttribute('controls')).toBe(true)
+  expect(screen.queryByRole('button', { name: 'Open image' })).toBeNull()
+})
+
+it('a video post without a video_url keeps the poster and play mark', () => {
+  const { container } = render(<LinkedInCard lane="swishdm" body="Post copy." type="video" images={[images[0]]} />)
+  expect(container.querySelector('video')).toBeNull()
+  expect(screen.getByLabelText('Video')).toBeTruthy()
+})

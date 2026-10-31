@@ -191,6 +191,8 @@
 :root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-none{color:#666}
 :root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-m{position:relative;width:100%;background:#f3f2ef;overflow:hidden;margin-top:4px}
 :root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-m img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.cv2-li-vid{background:#000}
+.cv2-li-vid video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;background:#000}
 :root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-count{position:absolute;right:8px;top:8px;padding:2px 8px;border-radius:999px;background:rgba(0,0,0,.6);color:#fff;font-size:13px;line-height:18px}
 :root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-play{position:absolute;inset:0;margin:auto;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.55);color:#fff;font-size:22px}
 :root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-top:2px}

@@ -555,7 +555,7 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
       {more && (
         <div className="cv2-row-more">
           <div className="cv2-row-post">
-            <LinkedInCard lane={c.lane} body={body} images={pic ?? c.r.image_urls} type={c.r.type} bare open />
+            <LinkedInCard lane={c.lane} body={body} images={pic ?? c.r.image_urls} type={c.r.type} videoUrl={c.r.video_url} bare open />
           </div>
           <div className="cv2-row-side">
             {editablePic && <div className="cv2-pic" data-repeat={repeat ? 'yes' : undefined}><PictureRow d={c.r} lane={c.lane} onShow={setPic} onDone={onChanged} disabled={busy} /></div>}

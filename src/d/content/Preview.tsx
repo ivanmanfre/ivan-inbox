@@ -71,7 +71,8 @@ export function Preview({ d, lane, body, editing, text, setText, busy = false, f
           )) : <span style={{ color: '#666' }}>No post text yet.</span>}
         </div>
       )}
-      {img && !editing && <button type="button" className="cn-li-open cn-li-open-main" aria-label="Open image" onClick={() => setViewing(0)}><img className="cn-liimg" src={img} alt="" loading="lazy" /></button>}
+      {d.type === 'video' && d.video_url && !editing ? <video className="cn-livid" src={d.video_url} poster={img ?? undefined} controls playsInline preload="metadata" />
+        : img && !editing && <button type="button" className="cn-li-open cn-li-open-main" aria-label="Open image" onClick={() => setViewing(0)}><img className="cn-liimg" src={img} alt="" loading="lazy" /></button>}
       {slides.length > 0 && !editing && (
         <div className="cn-slides" aria-label={d.type === 'carousel' ? `Carousel, ${slides.length} slides` : 'More images'}>
           {slides.map((u, i) => <button key={`${u}-${i}`} type="button" className="cn-li-open" aria-label={`Open slide ${d.type === 'carousel' ? i + 1 : i + 2} of ${all.length}`} onClick={() => setViewing(d.type === 'carousel' ? i : i + 1)}><img src={imgOf([u], 400) ?? u} alt="" loading="lazy" /></button>)}

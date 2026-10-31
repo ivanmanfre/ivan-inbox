@@ -22,6 +22,7 @@
 .cn-lib{padding:2px 12px 10px;white-space:pre-line;word-break:break-word}.cn-lib p+p{margin-top:9px}
 /* the picture at its real shape, as the feed shows it (29 Sep: the 320px crop lied about portraits) */
 .cn-liimg{display:block;width:100%;height:auto;background:#eee}
+.cn-livid{display:block;width:100%;height:auto;max-height:78vh;background:#000}
 .cn-lisee{font:inherit;color:#666;font-weight:500;padding:0;min-height:0}
 .cn-lisee:hover{color:#0a66c2;text-decoration:underline}
 .cn-ed{width:100%;min-height:320px;resize:vertical;border:2px solid var(--lime);border-radius:10px;background:#fbfdf4;color:#191919;font:400 13.5px/1.45 -apple-system,system-ui,sans-serif;padding:10px 12px}
