@@ -13,6 +13,7 @@ function multiColumn(el: HTMLElement): boolean {
 }
 
 export function masonry(el: HTMLElement): () => void {
+  if (typeof ResizeObserver === 'undefined' || typeof MutationObserver === 'undefined') return () => {}
   const kids = () => Array.from(el.children) as HTMLElement[]
   const place = (c: HTMLElement) => {
     const h = c.getBoundingClientRect().height
