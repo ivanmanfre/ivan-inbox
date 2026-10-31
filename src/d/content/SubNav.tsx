@@ -5,8 +5,8 @@ import { Sheet } from '../ui/Sheet'
 import type { Lane } from './model'
 
 export type Sub = 'plan' | 'calendar' | 'now' | 'ideas' | 'results' | 'strategy' | 'styles' | 'planner' | 'review' | 'inputs' | 'magnets' | 'errors' | 'queue' | 'markets' | 'brain'
-export const SUBS: readonly Sub[] = ['plan', 'calendar', 'ideas', 'now', 'magnets']
-export const SUB_LABEL: Record<Sub, string> = { plan: 'Plan', calendar: 'Calendar', now: 'Review', ideas: 'Ideas', results: 'Results', strategy: 'Strategy', styles: 'Styles', planner: 'Planner', review: 'Review', inputs: 'Outliers', magnets: 'Lead magnets', errors: 'Errors', queue: 'Publish queue', markets: 'Outliers & Markets', brain: 'Content Brain' }
+export const SUBS: readonly Sub[] = ['plan', 'calendar', 'ideas', 'now', 'magnets', 'results']
+export const SUB_LABEL: Record<Sub, string> = { plan: 'Plan', calendar: 'Calendar', now: 'Review', ideas: 'Ideas', results: 'Performance', strategy: 'Strategy', styles: 'Styles', planner: 'Planner', review: 'Review', inputs: 'Outliers', magnets: 'Lead magnets', errors: 'Errors', queue: 'Publish queue', markets: 'Outliers & Markets', brain: 'Content Brain' }
 export const PLANNING: readonly { sub: Sub; section: string | null; label: string }[] = []
 /** The More sheet: every place that left the daily row, under the job it does. */
 const MORE: readonly { group: string; items: readonly { label: string; sub: Sub; q?: Record<string, string>; small?: string }[] }[] = [
@@ -16,7 +16,6 @@ const MORE: readonly { group: string; items: readonly { label: string; sub: Sub;
     { label: 'Markets', sub: 'strategy', q: { section: 'markets' } },
   ] },
   { group: 'History and evidence', items: [
-    { label: 'Results', sub: 'results' },
     { label: 'Saved weekly plans', sub: 'strategy', q: { section: 'this-week' } },
     { label: 'Patterns and benchmarks', sub: 'brain', q: { view: 'patterns' } },
     { label: 'Strategy', sub: 'strategy', q: { section: 'direction' }, small: 'Client direction, lead magnets, notes' },

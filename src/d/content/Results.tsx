@@ -7,6 +7,7 @@ import { dayLabel, LANES, LANE_NAME, type Lane } from './model'
 import { BrainScoreboard } from './BrainScoreboard'
 import { WhatWorksNow } from './WhatWorksNow'
 import { ComparableResults } from './ComparableResults'
+import { PostPerformance } from './PostPerformance'
 
 export function Results({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => void }) {
   const [own, setOwn] = useState<ReachRead | null>(null)
@@ -21,14 +22,16 @@ export function Results({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => v
     void fetchContentEvidenceViews(lane).then(r => { if (live) setEvidence(r) }).catch(e => { if (live) setEvidenceError(e instanceof Error ? e.message : 'Could not read the weekly picks.') })
     return () => { live = false }
   }, [lane, tick])
+  const [now] = useState(() => Date.now())
   return <div className="cn-results">
     <div className="cn-wk2-chips" role="tablist" aria-label="Client">{LANES.map(l => <button key={l} type="button" role="tab" aria-selected={lane === l} onClick={() => setLane(l)}>{LANE_NAME[l]}</button>)}</div>
+    <PostPerformance key={`perf:${lane}`} lane={lane} read={lane === 'swishdm' ? null : own} onRetry={retry} now={now} />
     <a className="cn-quiet-link" href={dHash('content', 'results', { lane, view: 'analytics' })}>Reach, audience and all analytics →</a>
     <a className="cn-quiet-link" href={dHash('content', 'brain', { lane, view: 'patterns' })}>Patterns and benchmarks →</a>
     <BrainScoreboard key={`scoreboard:${lane}`} lane={lane} />
     <WhatWorksNow key={lane} lane={lane} />
     <ComparableResults key={`comparable:${lane}`} lane={lane} />
-    <ResultsBody key={lane} own={own} evidence={evidence} evidenceError={evidenceError} now={Date.now()} onRetry={retry} />
+    <ResultsBody key={`body:${lane}`} own={own} evidence={evidence} evidenceError={evidenceError} now={Date.now()} onRetry={retry} />
   </div>
 }
 
