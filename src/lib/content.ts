@@ -2453,6 +2453,24 @@ export type SourceDetail = {
 
 const SOURCE_NAMED = new Set(['kind', 'label', 'quote', 'call_title'])
 
+// Some holds are machine codes (snake_case slugs) from the editorial release. Shown raw they read as a bug
+// (Ivan 2026-10-31 pasted "internal_copy_draft_only_no_publication_approval"), so known codes get a sentence
+// and any other code reads as plain words. Hold sentences pass through untouched.
+const HOLD_TEXT: Record<string, string> = {
+  internal_copy_draft_only_no_publication_approval: 'Internal copy only. Nobody has cleared this call for public use yet.',
+  second_person_pattern_only_unresolved_call_permission: 'Written as a general pattern only, because the call has no public-use permission yet.',
+  hook_rejected_for_source_reuse_opening_must_be_original: 'The opening reused the source post\'s hook. It needs its own.',
+  self_damage_floor_constrained_regeneration: 'Rewritten so it never makes the account look bad.',
+  image_asset_pending: 'The image is still to come.',
+}
+export function holdText(h: string): string {
+  const t = h.trim()
+  if (!/^[a-z0-9]+(_[a-z0-9]+)+$/.test(t)) return t
+  if (HOLD_TEXT[t]) return HOLD_TEXT[t]
+  const words = t.replace(/_/g, ' ')
+  return `${words[0].toUpperCase()}${words.slice(1)}.`
+}
+
 export function normalizeSourceDetail(v: unknown): SourceDetail | null {
   const parsed = parseMaybeJson(v)
   if (parsed === null || parsed === undefined) return null
@@ -2491,7 +2509,7 @@ export function normalizeSourceDetail(v: unknown): SourceDetail | null {
     rows,
     text: null,
     internalOnly: o.internal_only === true,
-    holds: Array.isArray(o.holds) ? o.holds.filter((h): h is string => typeof h === 'string' && h.trim().length > 0) : [],
+    holds: Array.isArray(o.holds) ? o.holds.filter((h): h is string => typeof h === 'string' && h.trim().length > 0).map(holdText) : [],
   }
 }
 

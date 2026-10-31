@@ -678,6 +678,10 @@ describe('normalizeQa — the full register (IA §5.2)', () => {
 })
 
 describe('normalizeSourceDetail (AMENDMENTS §A4.2 — a live crash class)', () => {
+  it('a hold that is a machine code reads as a sentence; a hold sentence passes through', () => {
+    const s = normalizeSourceDetail({ holds: ['internal_copy_draft_only_no_publication_approval', 'image_asset_pending', 'some_new_code', 'Held under S1.'] })
+    expect(s!.holds).toEqual(['Internal copy only. Nobody has cleared this call for public use yet.', 'The image is still to come.', 'Some new code.', 'Held under S1.'])
+  })
   // source_detail is an OBJECT on 71 of 282 rows, 63 of them Mattan's. The
   // shipped pane pushed it into a JSX child, which throws and blanks the pane.
   it('reads the call-quote shape the client board shows as its source chip', () => {
@@ -715,9 +719,9 @@ describe('normalizeSourceDetail (AMENDMENTS §A4.2 — a live crash class)', () 
     expect(normalizeSourceDetail({ kind: 'call' })!.internalOnly).toBe(false)
     expect(normalizeSourceDetail('Hand-picked')!.internalOnly).toBe(false)
   })
-  it('reads the holds the editorial release stamped on the row, verbatim, strings only (Run6 C04 F1)', () => {
+  it('reads the holds the editorial release stamped on the row, strings only, codes in words (Run6 C04 F1)', () => {
     const s = normalizeSourceDetail({ internal_only: true, holds: ['image_asset_pending', '  ', 7, 'cover image showing a raw-screenshot-style artifact that Ivan owns the rights to'] })!
-    expect(s.holds).toEqual(['image_asset_pending', 'cover image showing a raw-screenshot-style artifact that Ivan owns the rights to'])
+    expect(s.holds).toEqual(['The image is still to come.', 'cover image showing a raw-screenshot-style artifact that Ivan owns the rights to'])
     expect(normalizeSourceDetail({ holds: 'not-a-list' })!.holds).toEqual([])
     expect(normalizeSourceDetail({ kind: 'call' })!.holds).toEqual([])
   })
