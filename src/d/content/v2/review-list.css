@@ -164,6 +164,9 @@
 @container rdesk (min-width:700px){
   :root[data-skin-on~='content.review'] .cv2-list.cv2-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-items:start;background:transparent;box-shadow:none;border-radius:0;overflow:visible}
   :root[data-skin-on~='content.review'] .cv2-list.cv2-grid > * + *{border-top:0}
+  /* masonry.ts: 1px rows, each card spans its own height + 12px, so no holes under short cards */
+  :root[data-skin-on~='content.review'] .cv2-list.cv2-grid.cv2-mason{grid-auto-rows:1px;row-gap:0}
+  :root[data-skin-on~='content.review'] .cv2-list.cv2-grid.cv2-mason > *{height:auto;align-self:start}
   :root[data-skin-on~='content.review'] .cv2-list.cv2-grid > .cv2-row{height:100%;border-radius:14px;background:var(--ds-glass-pane);box-shadow:0 0 0 1px var(--ds-line)}
   :root[data-skin-on~='content.review'] .cv2-list.cv2-grid > .cv2-row-x,:root[data-skin-on~='content.review'] .cv2-list.cv2-grid > .cv2-strip{grid-column:1 / -1;height:auto}
   :root[data-skin-on~='content.review'] .cv2-list.cv2-grid > .cv2-strip{border-radius:12px;box-shadow:0 0 0 1px var(--ds-line)}
