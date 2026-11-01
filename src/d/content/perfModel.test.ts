@@ -73,6 +73,16 @@ describe('perfRead', () => {
     expect(perfRead([row('s', '2026-10-01T09:00:00Z', 1, { title: 'Short one' })], 'UTC', 90, NOW).posts[0].title).toBe('Short one')
   })
 
+  it('flags a scheduled slot that holds most posts, and leaves fresh posts out of the impressions comparison', () => {
+    const rows = Array.from({ length: 8 }, (_, i) => row(`s${i}`, `2026-10-${String(5 + i).padStart(2, '0')}T09:46:00Z`, 100))
+      .concat([row('h1', '2026-10-14T13:10:00Z', 900), row('h2', '2026-10-15T12:20:00Z', 800), row('fresh', '2026-10-30T09:46:00Z', 5000)])
+    const r = perfRead(rows, 'UTC', 90, NOW)
+    expect(r.slot).toEqual({ hm: '09:46', n: 8, of: 10 })
+    expect(r.now.impressions).toBe(8 * 100 + 900 + 800 + 5000)
+    expect(r.now.settledImpressions).toBe(8 * 100 + 900 + 800)
+    expect(perfRead(rows.slice(8), 'UTC', 90, NOW).slot).toBeNull()
+  })
+
   it('night band wraps midnight', () => {
     const r = perfRead([row('n', '2026-10-01T23:30:00Z', 10), row('m', '2026-10-02T02:00:00Z', 20)], 'UTC', 90, NOW)
     expect(r.times).toEqual([expect.objectContaining({ key: '20-05', n: 2 })])

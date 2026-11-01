@@ -52,17 +52,20 @@ export function PostPerformance({ lane, read, onRetry, now }: { lane: Lane; read
     <div className="cn-perf-stats">
       <div><small>Posts</small><b>{r.now.posts}</b>{r.before && <Delta now={r.now.posts} before={r.before.posts} />}</div>
       <div><small>Typical post</small><b>{n0(r.now.median)}</b><em>impressions</em>{r.before && <Delta now={r.now.median} before={r.before.median} />}</div>
-      <div><small>Impressions</small><b>{n0(r.now.impressions)}</b>{r.before && <Delta now={r.now.impressions} before={r.before.impressions} />}</div>
+      <div><small>Impressions</small><b>{n0(r.now.impressions)}</b>{r.before && <Delta now={r.now.settledImpressions} before={r.before.settledImpressions} />}</div>
       <div><small>Engagement</small><b>{pct(r.now.rate)}</b><em>typical post</em>{r.before && <Delta now={r.now.rate} before={r.before.rate} />}</div>
     </div>
     {(note => note && <p className="cn-perf-note">{note}</p>)([
       since && r.before ? `Arrows compare ${since}.` : '',
-      r.fresh ? `${r.fresh} post${r.fresh === 1 ? ' is' : 's are'} under ${SETTLE_DAYS} days old and left out of the typical post and best day and time.` : '',
+      r.fresh ? `${r.fresh} post${r.fresh === 1 ? ' is' : 's are'} under ${SETTLE_DAYS} days old and left out of the typical post, the impressions arrow and the best day and time.` : '',
       r.stalled ? `${r.stalled} post${r.stalled === 1 ? '' : 's'} stopped being tracked in the first ${SETTLE_DAYS} days, so ${r.stalled === 1 ? 'it is' : 'they are'} left out too.` : '',
     ].filter(Boolean).join(' '))}
     <div className="cn-perf-when">
       <Bars title="Typical impressions by day" list={r.days} />
-      <Bars title={`Typical impressions by time (${LANE_TZ_WORD[lane]})`} list={r.times} />
+      <div>
+        <Bars title={`Typical impressions by time (${LANE_TZ_WORD[lane]})`} list={r.times} />
+        {r.slot && <p className="cn-perf-note">{r.slot.n} of {r.slot.of} posts went out at {r.slot.hm}, so this also compares that slot's posts with the ones sent at other times, not only the hour.</p>}
+      </div>
     </div>
     <div className="cn-perf-head">
       <h3>Every post</h3>

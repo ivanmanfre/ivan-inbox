@@ -32,6 +32,7 @@ export type PerfPost = {
   at: string
   weekday: number // 0 Mon … 6 Sun, seat clock
   hour: number // 0-23, seat clock
+  hm: string // HH:MM, seat clock
   impressions: number | null
   reactions: number | null
   comments: number | null
@@ -43,7 +44,7 @@ export type PerfPost = {
   stalled: boolean // tracking stopped before the post settled
 }
 
-export type Totals = { posts: number; impressions: number; reactions: number; comments: number; median: number | null; rate: number | null }
+export type Totals = { posts: number; impressions: number; settledImpressions: number; reactions: number; comments: number; median: number | null; rate: number | null }
 export type Bucket = { key: string; label: string; n: number; median: number | null; best: boolean }
 export type PerfRead = {
   posts: PerfPost[]
@@ -54,6 +55,8 @@ export type PerfRead = {
   stalled: number
   days: Bucket[]
   times: Bucket[]
+  /** One exact minute that holds most settled posts (a scheduled slot), so the time read also compares kinds of post. */
+  slot: { hm: string; n: number; of: number } | null
 }
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
@@ -65,10 +68,11 @@ export function median(xs: number[]): number | null {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2
 }
 
-function clock(iso: string, tz: string): { weekday: number; hour: number } {
-  const p = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', hour: '2-digit', hourCycle: 'h23' }).formatToParts(Date.parse(iso))
+function clock(iso: string, tz: string): { weekday: number; hour: number; hm: string } {
+  const p = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(Date.parse(iso))
   const wd = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(p.find(x => x.type === 'weekday')?.value ?? '')
-  return { weekday: wd < 0 ? 0 : wd, hour: Number(p.find(x => x.type === 'hour')?.value ?? 0) % 24 }
+  const hour = Number(p.find(x => x.type === 'hour')?.value ?? 0) % 24
+  return { weekday: wd < 0 ? 0 : wd, hour, hm: `${String(hour).padStart(2, '0')}:${p.find(x => x.type === 'minute')?.value ?? '00'}` }
 }
 
 /** The tracker keeps the first 80 characters, so a title that long was cut. */
@@ -89,12 +93,12 @@ function maturity(r: PostAudienceRow, now: number): { settled: boolean; stalled:
 
 export function toPost(r: PostAudienceRow, tz: string, now: number): PerfPost | null {
   if (!r.published_at || !Number.isFinite(Date.parse(r.published_at))) return null
-  const { weekday, hour } = clock(r.published_at, tz)
+  const { weekday, hour, hm } = clock(r.published_at, tz)
   const parts = [r.reactions, r.comments, r.shares]
   const engagement = parts.some(isNum) ? parts.reduce<number>((s, v) => s + (isNum(v) ? v : 0), 0) : null
   const impressions = isNum(r.impressions) ? r.impressions : null
   return {
-    id: r.activity_id, url: r.post_url, title: firstLine(r.title), at: r.published_at, weekday, hour,
+    id: r.activity_id, url: r.post_url, title: firstLine(r.title), at: r.published_at, weekday, hour, hm,
     impressions, reactions: isNum(r.reactions) ? r.reactions : null, comments: isNum(r.comments) ? r.comments : null, shares: isNum(r.shares) ? r.shares : null,
     engagement, rate: engagement != null && impressions ? engagement / impressions : null, vsTypical: null,
     ...maturity(r, now),
@@ -104,7 +108,7 @@ export function toPost(r: PostAudienceRow, tz: string, now: number): PerfPost | 
 function totals(ps: PerfPost[]): Totals {
   const sum = (k: 'impressions' | 'reactions' | 'comments') => ps.reduce((s, p) => s + (p[k] ?? 0), 0)
   return {
-    posts: ps.length, impressions: sum('impressions'), reactions: sum('reactions'), comments: sum('comments'),
+    posts: ps.length, impressions: sum('impressions'), settledImpressions: ps.reduce((s, p) => s + (p.settled ? p.impressions ?? 0 : 0), 0), reactions: sum('reactions'), comments: sum('comments'),
     median: median(ps.filter(p => p.settled && p.impressions != null).map(p => p.impressions!)),
     rate: median(ps.filter(p => p.settled && p.rate != null).map(p => p.rate!)),
   }
@@ -130,6 +134,14 @@ function buckets(ps: PerfPost[], keyOf: (p: PerfPost) => string, order: string[]
   return out
 }
 
+function slotOf(ps: PerfPost[]): PerfRead['slot'] {
+  const settled = ps.filter(p => p.settled && p.impressions != null)
+  const n = new Map<string, number>()
+  for (const p of settled) n.set(p.hm, (n.get(p.hm) ?? 0) + 1)
+  const top = [...n].sort((a, b) => b[1] - a[1])[0]
+  return top && settled.length >= MIN_N * 2 && top[1] * 2 > settled.length ? { hm: top[0], n: top[1], of: settled.length } : null
+}
+
 export function perfRead(rows: PostAudienceRow[], tz: string, period: Period, now: number): PerfRead {
   const all = rows.map(r => toPost(r, tz, now)).filter((p): p is PerfPost => !!p)
   const span = period * DAY
@@ -144,6 +156,7 @@ export function perfRead(rows: PostAudienceRow[], tz: string, period: Period, no
     stalled: posts.filter(p => p.stalled).length,
     days: buckets(posts, p => DAY_LABEL[p.weekday], DAY_LABEL, k => k, true),
     times: buckets(posts, p => bandOf(p.hour), BANDS.map(b => b.key), bandLabel, false),
+    slot: slotOf(posts),
   }
 }
 
