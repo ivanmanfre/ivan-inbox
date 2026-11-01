@@ -141,7 +141,7 @@ export function isForeignHash(hash: string): boolean {
 
 /** Where a ⌘K search hit opens in D. */
 export function hitHash(h: CrossHit): string {
-  if (h.surface === 'dm') return dHash('dms', null, { thread: h.id })
+  if (h.surface === 'dm') return dHash('dms', null, { seat: h.lane, thread: h.id })
   if (h.surface === 'magnet') return dHash('content', 'magnets', { magnet: h.id, lane: h.lane })
   return dHash('content', null, { draft: h.id, lane: h.lane })
 }

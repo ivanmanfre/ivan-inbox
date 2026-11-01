@@ -8,7 +8,7 @@ vi.mock('../../lib/push', () => ({
   enablePush: push.enable,
   disablePush: push.disable,
 }))
-const auth = vi.hoisted(() => ({ signOut: vi.fn(async () => ({ error: null })) }))
+const auth = vi.hoisted(() => ({ signOut: vi.fn(async (_o?: { scope?: string }) => ({ error: null as unknown })) }))
 const calls = vi.hoisted(() => [] as string[])
 vi.mock('../../lib/supabase', () => {
   const q = () => {
@@ -81,6 +81,16 @@ describe('Settings keys', () => {
     await waitFor(() => expect(document.querySelector('[data-verb="confirm"]')).not.toBeNull())
     fireEvent.click(document.querySelector('[data-verb="confirm"]')!)
     await waitFor(() => expect(auth.signOut).toHaveBeenCalledTimes(1))
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' })
+  })
+
+  it('a failed sign out says so instead of staying silent', async () => {
+    auth.signOut.mockResolvedValueOnce({ error: new Error('network') })
+    renderInFrame(<SettingsPage {...props()} />)
+    fireEvent.click(document.querySelector('[data-verb="sign-out"]')!)
+    await waitFor(() => expect(document.querySelector('[data-verb="confirm"]')).not.toBeNull())
+    fireEvent.click(document.querySelector('[data-verb="confirm"]')!)
+    expect(await screen.findByText('Could not sign out. Try again.')).toBeTruthy()
   })
 
   it('no lime on saved preferences: the selected key is pressed, never primary', () => {

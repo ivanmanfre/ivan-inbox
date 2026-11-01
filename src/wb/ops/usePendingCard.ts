@@ -27,6 +27,15 @@ export function channelName(id: string | null | undefined): string | null {
   return id ? CHANNEL_NAME[id] ?? null : null
 }
 
+/** Who the "already replied" error names: the seat's own person, never a hard-coded one. */
+export function alreadyRepliedBy(clientId: string): string {
+  return clientId === 'ivan' ? 'You' : seatPerson(clientId)
+}
+/** The close-only comment note: whose words it needs. */
+export function wantsOwnWords(clientId: string): string {
+  return clientId === 'ivan' ? 'your own words' : `${seatPerson(clientId)} in his own words`
+}
+
 export function usePendingCard({ draft, refresh, feed, held, onGateResult, confirm }: {
   draft: OpsDraft
   refresh: () => void
@@ -214,7 +223,7 @@ export function usePendingCard({ draft, refresh, feed, held, onGateResult, confi
         } else {
           await retryFailedCommentReply(draft)
           const out = await postCommentReply(draft.id, body, tag, isHandWritten(draft, body)).catch(e => { refresh(); throw e })
-          if (!out.posted) setError(`${draft.client_id === 'arch' ? 'Davorin' : 'Mattan'} already replied to this one, so nothing was posted. Card cleared.`)
+          if (!out.posted) setError(`${alreadyRepliedBy(draft.client_id)} already replied to this one, so nothing was posted. Card cleared.`)
           else if (out.tagged && out.tagVerified === false) {
             setError('Posted fine, but the tag rendered as plain text: LinkedIn would not resolve this profile for a mention (usually an out-of-network commenter with a hidden surname).')
           }
@@ -305,7 +314,7 @@ export function usePendingCard({ draft, refresh, feed, held, onGateResult, confi
               ? (archOut
                 ? 'Davorin answers this one in his own words. Type above and the button posts it.'
                 : 'Press Draft it. The drafter answers only what Davorin has said in public, and says so when it cannot.')
-              : 'No draft on purpose: this one wants Mattan in his own words. Type above and the button posts it, or press Draft it for a starting point.')
+              : `No draft on purpose: this one wants ${wantsOwnWords(draft.client_id)}. Type above and the button posts it, or press Draft it for a starting point.`)
             : isEscalatedComment
               ? 'Your own words. Approve posts this live under their comment.'
               : onDemand

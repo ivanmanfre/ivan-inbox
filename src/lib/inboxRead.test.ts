@@ -113,6 +113,13 @@ describe('fetchMessages: newest page first, same result', () => {
     expect(h.reads).toHaveLength(10)
   })
 
+  it('reads past 20 pages, so the oldest rows are not dropped once the view passes 20,000', async () => {
+    h.view = mk(21_500)
+    const got = await fetchMessages()
+    expect(got).toHaveLength(21_500)
+    expect(got[0].id).toBe(ascIds(h.view)[0])
+  })
+
   it('a failed count falls back to reading until a short page', async () => {
     h.view = mk(3000)
     h.count = 'error'

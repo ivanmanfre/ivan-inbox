@@ -75,13 +75,14 @@ export function dmLaneValue(lane: ContentLane): string { return lane }
 
 /**
  * PostgREST's `or=(...)` is parsed as a comma-separated list inside brackets,
- * so a query containing a comma, a bracket or a quote would rewrite the filter
- * rather than be searched for. Those characters are dropped, `%` and `_` lose
+ * so a query containing a comma, a bracket or a double quote would rewrite the filter
+ * rather than be searched for. Those characters are dropped (an apostrophe is kept: it is
+ * not special there, and O'Brien must stay findable), `%` and `_` lose
  * their wildcard meaning, and `*` is reserved as ilike's own wildcard here.
  */
 export function safeTerm(q: string): string {
   return q
-    .replace(/[,()"']/g, ' ')
+    .replace(/[,()"]/g, ' ')
     .replace(/[%_*\\]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()

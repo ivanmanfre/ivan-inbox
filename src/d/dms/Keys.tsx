@@ -36,7 +36,10 @@ export function Composer({ to, from, big, disabled, note, value, setValue, onSen
   sendLabel?: string
   value: string; setValue: (s: string) => void; onSend: () => void; busy: boolean
 }) {
-  const dict = useDictate(s => setValue((value ? value + ' ' : '') + s.trim()))
+  // The recognizer keeps the callback from the render Mic was tapped in; read the live text from a ref.
+  const live = useRef({ value, setValue })
+  live.current = { value, setValue }
+  const dict = useDictate(s => { const { value: v, setValue: set } = live.current; set((v ? v + ' ' : '') + s.trim()) })
   const [focus, setFocus] = useState(false)
   if (disabled) return <div className="dm-comp dm-comp-off" role="note">{disabled}</div>
   const grown = big || focus || value.length > 0

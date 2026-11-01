@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { fetchOutlierLabels, setOutlierLabel, undoOutlierLabel, type OutlierLabelsData, type OutlierRef, type HumanOutlierLabel } from '../../lib/brainAccount'
 import type { Lane } from './model'
 import { OutlierLabelControls } from './OutlierLabelControls'
+import { BRAIN_NOT_COVERED } from '../../lib/brainAccount'
 export type OutlierLabelSource = { platform: 'linkedin' | 'x'; post_id: string }
 export function useOutlierLabels(lane: Lane, sources: OutlierLabelSource[] | null) {
   const [data, setData] = useState<OutlierLabelsData | null>(null)
@@ -20,6 +21,7 @@ export function useOutlierLabels(lane: Lane, sources: OutlierLabelSource[] | nul
     return { ...prev, calibration, rows: [...prev.rows.filter(r => r.platform !== ref.platform || r.post_ref !== ref.post_ref), ...(label ? [label] : [])] }
   })
   const control = (source: OutlierLabelSource) => {
+    if (error === BRAIN_NOT_COVERED) return null
     const ref: OutlierRef = { platform: source.platform, post_ref: source.post_id }
     const label = data?.client === lane ? data.rows.find(r => r.platform === ref.platform && r.post_ref === ref.post_ref) ?? null : null
     return <OutlierLabelControls key={`${lane}:${source.platform}:${source.post_id}`} identity={`${lane}:${source.platform}:${source.post_id}`} label={label} loading={!data && !error} readError={error} onSave={async (verdict, reason) => {
@@ -34,6 +36,6 @@ export function useOutlierLabels(lane: Lane, sources: OutlierLabelSource[] | nul
       return result.label
     }} />
   }
-  const summary = refs == null ? null : error ? <p className="cn-brain-notice" role="alert">Your labels are unavailable: {error} <button type="button" className="cn-quiet-link" onClick={() => setTick(t => t + 1)}>Read labels again</button></p> : !data ? <p className="cn-brain-note">Reading your outlier labels…</p> : <p className="cn-brain-note" role="status">{data.calibration.state === 'waiting_for_labels' ? `Waiting for labels (${data.calibration.labelN}/30).` : `${data.calibration.state === 'review_required' ? 'Calibration awaits review' : data.calibration.state === 'running' ? 'Calibration running' : 'Calibration queued'} · ${data.calibration.labelN} labels.`} {data.calibration.state === 'review_required' && !data.calibration.runnerReady ? 'Automatic calibration is unavailable. Your labels are saved for review.' : data.calibration.state === 'waiting_for_labels' ? 'Only your own Keep and Drop choices count.' : data.calibration.reason}</p>
+  const summary = refs == null ? null : error === BRAIN_NOT_COVERED ? <p className="cn-brain-note">{error}</p> : error ? <p className="cn-brain-notice" role="alert">Your labels are unavailable: {error} <button type="button" className="cn-quiet-link" onClick={() => setTick(t => t + 1)}>Read labels again</button></p> : !data ? <p className="cn-brain-note">Reading your outlier labels…</p> : <p className="cn-brain-note" role="status">{data.calibration.state === 'waiting_for_labels' ? `Waiting for labels (${data.calibration.labelN}/30).` : `${data.calibration.state === 'review_required' ? 'Calibration awaits review' : data.calibration.state === 'running' ? 'Calibration running' : 'Calibration queued'} · ${data.calibration.labelN} labels.`} {data.calibration.state === 'review_required' && !data.calibration.runnerReady ? 'Automatic calibration is unavailable. Your labels are saved for review.' : data.calibration.state === 'waiting_for_labels' ? 'Only your own Keep and Drop choices count.' : data.calibration.reason}</p>
   return { control, summary }
 }

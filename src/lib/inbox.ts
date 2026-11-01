@@ -1228,9 +1228,11 @@ function unansweredSince(t: Thread): string | null {
   // needs you"). An approved reply waiting in the dispatcher queue (approved_at, no sent_at, no
   // block) is Ivan's answer; the thread leaves Needs you at the approval, not at the send minutes
   // later. A queued send that then fails gets send_blocked_at and the thread owes a reply again.
+  // A reply scheduled in the inbox (scheduled_in_inbox, no approval yet) is an answer too: Ivan wrote it and
+  // picked the time. It is stamped send_blocked_at when scheduled; a newer inbound still makes the thread owed.
   const lastSent = t.messages
-    .filter(m => m.direction === 'outbound' && (m.sent_at || (m.approved_at && !m.send_blocked_at)))
-    .map(m => m.sent_at ?? m.approved_at!)
+    .filter(m => m.direction === 'outbound' && (m.sent_at || (m.approved_at && !m.send_blocked_at) || (m.send_blocked_reason === 'scheduled_in_inbox' && m.send_blocked_at && !m.approved_at)))
+    .map(m => m.sent_at ?? (m.approved_at && !m.send_blocked_at ? m.approved_at : m.send_blocked_at!))
     // As instants: a just-approved local patch ('Z') and PostgREST ('+00:00') do not sort alike as text.
     .reduce<string | null>((max, x) => (max === null || Date.parse(x) > Date.parse(max) ? x : max), null)
   return (lastSent === null || Date.parse(lastSent) <= Date.parse(lastInbound)) ? lastInbound : null
@@ -1522,7 +1524,8 @@ export async function markNotSpam(t: Thread): Promise<void> {
    are dropped before dedupeMessages runs, as before, over the asc rows. */
 const MSG_PAGE = 1000
 const MSG_BATCH = 4
-const MSG_MAX_PAGES = 20
+// 100k rows. The view grows ~300 a day, so a cap of 20 pages silently dropped the OLDEST threads once it passed 20,000.
+const MSG_MAX_PAGES = 100
 const EARLY_PAINT_WAIT_MS = 2500
 
 export async function fetchMessages(knownRows = 0, onNewest?: (rows: InboxMessage[]) => void | Promise<unknown>): Promise<InboxMessage[]> {
@@ -1575,6 +1578,8 @@ export async function fetchMessages(knownRows = 0, onNewest?: (rows: InboxMessag
     await Promise.all(Array.from({ length: MSG_BATCH }, worker))
     // Every counted page came back full: rows arrived since the count. Read on until a short page.
     while (end === Infinity && next < MSG_MAX_PAGES) { planned = next + 1; await worker() }
+    // Never drop the oldest rows quietly: a full read that hit the cap fails loudly instead.
+    if (end === Infinity) throw new Error('The inbox is too big to read in full. Ask for the page limit to be raised.')
     pages.length = Math.min(pages.length, end + 1)
   }
   const seen = new Set<string>()
@@ -1950,20 +1955,24 @@ export async function saveDraftEmailCc(id: string, value: unknown): Promise<stri
 // and a stale view asking to push one is a zero-row no-op rather than a write
 // that resurrects it.
 export async function snoozeDraft(id: string, until: string): Promise<void> {
-  const { error } = await supabase.from('outreach_messages')
+  const { data, error } = await supabase.from('outreach_messages')
     .update({ snoozed_until: until, snoozed_at: new Date().toISOString() })
     .eq('id', id).is('sent_at', null).is('approved_at', null)
-    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*`)
+    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*,and(send_blocked_reason.eq.${SWISHDM_REPLY_HOLD},ai_model.like.swishdm_reply_*)`)
+    .select('id')
   if (error) throw error
+  if (!data?.length) throw new Error('This draft changed, so it was not moved. Refresh and try again.')
 }
 
 /** Bring a pushed draft back now. */
 export async function unsnoozeDraft(id: string): Promise<void> {
-  const { error } = await supabase.from('outreach_messages')
+  const { data, error } = await supabase.from('outreach_messages')
     .update({ snoozed_until: null, snoozed_at: null })
     .eq('id', id).is('sent_at', null).is('approved_at', null)
-    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*`)
+    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*,and(send_blocked_reason.eq.${SWISHDM_REPLY_HOLD},ai_model.like.swishdm_reply_*)`)
+    .select('id')
   if (error) throw error
+  if (!data?.length) throw new Error('This draft changed, so it was not moved. Refresh and try again.')
 }
 
 // ---- discard and restore: the guards, declared once ------------------------

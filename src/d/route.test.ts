@@ -56,7 +56,8 @@ describe('toDHash (old addresses land in D)', () => {
 
 describe('hitHash (⌘K search hits)', () => {
   it('opens each surface in its D place', () => {
-    expect(hitHash({ surface: 'dm', id: 'p1', title: '', sub: '', snippet: '', lane: 'ivan' })).toBe('#exp/d/dms?thread=p1')
+    expect(hitHash({ surface: 'dm', id: 'p1', title: '', sub: '', snippet: '', lane: 'ivan' })).toBe('#exp/d/dms?seat=ivan&thread=p1')
+    expect(hitHash({ surface: 'dm', id: 'p2', title: '', sub: '', snippet: '', lane: 'arch' })).toBe('#exp/d/dms?seat=arch&thread=p2')
     expect(hitHash({ surface: 'draft', id: 'd1', title: '', sub: '', snippet: '', lane: 'risedtc' })).toBe('#exp/d/content?draft=d1&lane=risedtc')
     expect(hitHash({ surface: 'magnet', id: 'm1', title: '', sub: '', snippet: '', lane: 'arch' })).toBe('#exp/d/content/magnets?magnet=m1&lane=arch')
   })

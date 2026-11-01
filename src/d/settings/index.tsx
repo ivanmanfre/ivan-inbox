@@ -12,6 +12,7 @@ import { dHash } from '../route'
 import { AnswerRow, N } from '../ui/AnswerRow'
 import { useDConfirm } from '../ui/confirm'
 import { Key } from '../ui/Key'
+import { useToast } from '../ui/toast'
 import { Failed, Skeleton } from '../ui/states'
 import { useRead, useRetryRead } from '../lanes/useRead'
 import { warsawDm } from '../ui/time'
@@ -43,6 +44,7 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
   const [theme, resetTheme] = useStoredTheme()
   const brief = isBriefNative()
   const confirm = useDConfirm()
+  const toast = useToast()
   const [devices, retryDevices] = useRetryRead(fetchDevices, 'devices')
   const boards = useRead(fetchBoards, 'boards')
   const [money, retryMoney] = useRetryRead(fetchMoneyPlate, 'money')
@@ -59,7 +61,11 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
   const pushSub = push.blocked ?? (push.state === 'unknown' ? `Could not read whether push is on for this ${here}.` : null)
   const board = (id: string) => (boards.kind === 'ready' ? boards.data.find(b => b.client_id === id) : undefined)
   const signOut = async () => {
-    if (await confirm({ title: 'Sign out?', message: 'This signs the app out on this device. You sign back in with the 6-digit code or the email link.', confirmText: 'Sign out' })) void supabase.auth.signOut()
+    if (await confirm({ title: 'Sign out?', message: 'This signs the app out on this device. You sign back in with the 6-digit code or the email link.', confirmText: 'Sign out' })) {
+      // This device only: a global sign-out would also log out the phone. A failed call keeps the session, so say so.
+      const { error } = await supabase.auth.signOut({ scope: 'local' })
+      if (error) toast.show({ message: 'Could not sign out. Try again.', tone: 'failed' })
+    }
   }
 
   const notif = (

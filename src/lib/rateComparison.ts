@@ -25,8 +25,15 @@ export function validRateDates(d: RateDates, today: string): boolean {
   const valid = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && Number.isFinite(Date.parse(s)) && shift(s, 0) === s
   return valid(d.from) && valid(d.to) && d.from <= d.to && d.to <= today
 }
+/** 57014 = the 8s statement limit. These reads take 2-4s alone and collide when they start together, so one late retry clears it. */
+export async function retryOnTimeout<T>(read: () => PromiseLike<{ data: T; error: { code?: string } | null }>, waitMs = 1500): Promise<{ data: T; error: { code?: string } | null }> {
+  const first = await read()
+  if (first.error?.code !== '57014') return first
+  await new Promise(r => setTimeout(r, waitMs + Math.round(Math.random() * 1000)))
+  return read()
+}
 export async function fetchRateComparison(d: RateDates): Promise<RateComparisonRow[]> {
-  const { data, error } = await supabase.rpc('inbox_interest_rate_comparison', { p_from: d.from, p_to: d.to })
+  const { data, error } = await retryOnTimeout(() => supabase.rpc('inbox_interest_rate_comparison', { p_from: d.from, p_to: d.to }))
   if (error) throw error
   return (data ?? []) as RateComparisonRow[]
 }

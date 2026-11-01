@@ -222,7 +222,10 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   }
   const toggleMore = (id: string, v?: boolean) => setMore(m => { const n = new Set(m); if (v ?? !n.has(id)) n.add(id); else n.delete(id); return n })
 
+  // A card with unsaved typed text must not be approved, skipped or dropped: the row would leave and take the edit with it.
+  const unsaved = (id: string) => !!document.querySelector(`[data-card-id="${id}"][data-unsaved]`)
   const approveCard = (c: WeekCard) => {
+    if (unsaved(c.r.id)) { toast.show({ message: 'Save or cancel your edit first.' }); return }
     if (c.judge) void verbs.judgeIt(c, 'keep')
     else if (c.primary === 'approve') verbs.approve(c)
   }
@@ -230,6 +233,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   // when it returns: the reason rides along with it in ONE write, exactly ContentBrain's judge + giveReason.
   const dropWith = (c: WeekCard, slug: string, note: string | null) => {
     if (c.lane === 'swishdm') return
+    if (unsaved(c.r.id)) { setPicking(null); toast.show({ message: 'Save or cancel your edit first.' }); return }
     setPicking(null)
     void verbs.judgeIt(c, 'drop')
     giveReason(c.r.id, slug, note)
@@ -297,7 +301,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
         onFocus={() => setFocus(c.r.id)}
         onOpen={() => onOpen(c.r.id, c.lane)} onEdit={() => onEdit(c.r.id, c.lane)}
         onApprove={() => approveCard(c)} onDrop={(slug, note) => dropWith(c, slug, note)}
-        onSkip={() => void rowVerbs.run(c.r, c.lane, 'skip')}
+        onSkip={() => { if (unsaved(c.r.id)) toast.show({ message: 'Save or cancel your edit first.' }); else void rowVerbs.run(c.r, c.lane, 'skip') }}
         onBoard={() => void verbs.board(c)} onSchedule={(at?: Date) => void verbs.schedule(c, at)} onDate={() => setMoving(c)}
         onChanged={onChanged} />
     )
@@ -460,6 +464,9 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
   const postNow = saved ?? (c.r.post_body ?? '')
   const inPlace = c.lane === 'ivan' || clientEditable(c.r.status, c.lane)
   const startEdit = () => { editBase.current = postNow; setEdit(postNow) }
+  // Typed text that is not saved yet: Approve, Skip and Drop wait, or the row would leave with the edit.
+  const unsaved = edit !== null && edit !== editBase.current
+  const saveFirst = unsaved ? 'Save or cancel your edit first' : undefined
   const id = c.r.id
   const judgeable = c.judge
   // Time to verdict starts when a draft to judge is first on screen (once per draft), as on the stack.
@@ -493,14 +500,14 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
     { key: 'open', label: 'Open post', run: onOpen },
     { key: 'preview', label: more ? 'Hide preview' : 'Preview here', run: () => setMore(!more) },
     { key: 'edit', label: 'Edit', run: onEdit },
-    ...(c.judge ? [{ key: 'drop', label: 'Drop…', run: () => setPicking(true), danger: true }] : []),
-    ...(!c.judge && c.primary === 'approve' ? [{ key: 'skip', label: 'Skip', run: onSkip }] : []),
+    ...(c.judge && !unsaved ? [{ key: 'drop', label: 'Drop…', run: () => setPicking(true), danger: true }] : []),
+    ...(!c.judge && c.primary === 'approve' && !unsaved ? [{ key: 'skip', label: 'Skip', run: onSkip }] : []),
     ...(canDate ? [{ key: 'date', label: c.r.scheduled_at ? 'Move date' : 'Add a date', run: onDate }] : []),
   ]
 
   let primary: React.ReactNode = null
   if (boardDate) primary = <button type="button" className={`cv2-k${c.r.scheduled_at ? ' cv2-k-q' : ' cv2-k-p'}`} data-key-main data-verb="card-board-date" disabled={busy} onClick={onDate}>{c.r.scheduled_at ? 'Change date' : 'Schedule'}</button>
-  else if (c.judge || c.primary === 'approve') primary = <button type="button" className="cv2-k cv2-k-p" data-key-safe data-verb={c.judge ? 'card-keep' : 'card-approve'} disabled={busy} onClick={onApprove}>Approve</button>
+  else if (c.judge || c.primary === 'approve') primary = <button type="button" className="cv2-k cv2-k-p" data-key-safe data-verb={c.judge ? 'card-keep' : 'card-approve'} disabled={busy || unsaved} title={saveFirst} onClick={onApprove}>Approve</button>
   else if (c.primary === 'board' || next === 'board') primary = <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-board" disabled={busy} title={boardWord} onClick={onBoard}>{busy ? 'Working…' : <><span className="cv2-wide-only">{boardWord}</span><span className="cv2-narrow-only">Put on board</span></>}</button>
   else if (next === 'schedule' && (c.r.scheduled_at || slot)) primary = <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-schedule" disabled={busy} onClick={() => onSchedule(c.r.scheduled_at ? undefined : slot!.at)}>
     {busy ? 'Working…' : c.r.scheduled_at ? `Schedule ${whenOf(c, now)}` : `Schedule ${slotWord(slot!)}`}</button>
@@ -515,7 +522,7 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
   }
 
   return (
-    <article ref={ref} className={`cv2-row${open ? ' cv2-row-open' : ''}${more ? ' cv2-row-x' : ''}`} role="listitem" data-card-id={id} data-lane={c.lane} data-held={held || undefined}
+    <article ref={ref} className={`cv2-row${open ? ' cv2-row-open' : ''}${more ? ' cv2-row-x' : ''}`} role="listitem" data-card-id={id} data-lane={c.lane} data-held={held || undefined} data-unsaved={unsaved || undefined}
       style={{ '--i': Math.min(i, 10) } as React.CSSProperties}
       tabIndex={focused ? 0 : -1} aria-current={focused ? 'true' : undefined} aria-label={`${tag.label}: ${title}`} onFocus={onFocus} onClick={onRowClick}>
       <div className="cv2-row-main">
@@ -541,8 +548,8 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
           {pill.text !== 'Needs review' && !(hideHold && hold) && <Pill tone={pill.tone} title={hold?.kind === 'changes' ? undefined : hold?.detail}>{pill.text}</Pill>}
         </div>
         <div className="cv2-row-keys">
-          {c.judge && c.lane !== 'swishdm' && <button type="button" className="cv2-k cv2-k-q" data-verb="card-drop" disabled={busy} onClick={() => setPicking(true)}>Drop</button>}
-          {!c.judge && c.primary === 'approve' && <button type="button" className="cv2-k cv2-k-q" data-verb="card-skip" disabled={busy} onClick={onSkip}>Skip</button>}
+          {c.judge && c.lane !== 'swishdm' && <button type="button" className="cv2-k cv2-k-q" data-verb="card-drop" disabled={busy || unsaved} title={saveFirst} onClick={() => setPicking(true)}>Drop</button>}
+          {!c.judge && c.primary === 'approve' && <button type="button" className="cv2-k cv2-k-q" data-verb="card-skip" disabled={busy || unsaved} title={saveFirst} onClick={onSkip}>Skip</button>}
           <button type="button" className="cv2-k cv2-k-q cv2-wide-only" data-verb="card-edit" disabled={busy || (grid && !more && edit !== null)} onClick={grid && !more && inPlace ? startEdit : onEdit}>Edit</button>
           {next === 'schedule' && !c.r.scheduled_at && <button type="button" className="cv2-k cv2-k-q cv2-wide-only" data-verb="card-pick-day" disabled={busy} onClick={onDate}>Pick a day</button>}
           {primary}

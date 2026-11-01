@@ -34,7 +34,8 @@ export function supplyOf(d: LanesData, seat: Seat, now: number): Supply {
   const rs = d.ready.value ? readyOf(d.ready.value, seat, g) : null
   const ready = rs?.total ?? null
   const rows = d.replacement.value ? d.replacement.value.filter(r => r.client_id === seat && r.lane in INTEREST_LABEL) : null
-  const cut = new Date(now - 7 * DAY).toISOString().slice(0, 10)
+  // 7 whole days ending today: today plus the 6 before it (not 8 days divided by 7).
+  const cut = new Date(now - 6 * DAY).toISOString().slice(0, 10)
   const wk = (rows ?? []).filter(r => r.day >= cut)
   const in7 = wk.reduce((a, r) => a + r.qualified_in, 0), out7 = wk.reduce((a, r) => a + r.sent_out, 0)
   const rate = rows ? out7 / 7 : 0

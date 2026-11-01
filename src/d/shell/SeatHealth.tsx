@@ -1,4 +1,4 @@
-import { useSeatHealth } from '../../hooks/useSeatHealth'
+import { useSeatHealthState } from '../../hooks/useSeatHealth'
 import { DIcon } from '../ui/icons'
 import { Btn } from '../ui/Key'
 import { healthLines } from './healthLines'
@@ -10,8 +10,9 @@ import { healthLines } from './healthLines'
 // write); a guard silent for more than 5 hours says so, because a dead guard
 // looks exactly like healthy seats.
 export function SeatHealthBanner() {
-  const summary = useSeatHealth()
+  const { summary, failed } = useSeatHealthState()
   const lines = healthLines(summary)
+  if (failed) lines.push({ key: 'unread', text: summary ? 'Seat health could not be refreshed. This is the last good check.' : 'Seat health could not be read.', link: null })
   if (lines.length === 0) return null
   return (
     <div className="d-health" role="alert" data-seat-health>

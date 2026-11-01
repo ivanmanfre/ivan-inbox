@@ -9,7 +9,7 @@
    no era cutoff. */
 import { useState } from 'react'
 import type { CcPayload } from '../../lib/campaignControl'
-import { buildLedger, fetchDayLedger, fetchRangeKpis, type RangeKpiRow } from '../../lib/kpis'
+import { buildLedger, fetchDayLedgerStrict, fetchRangeKpis, type RangeKpiRow } from '../../lib/kpis'
 import { SEATS, SEAT_NAME, type Seat } from '../seats'
 import { Btn } from '../ui/Key'
 import { Sheet } from './LSheet'
@@ -30,7 +30,7 @@ export function confirmedInvites(p: CcPayload | null, seat: Seat, day: string): 
 
 /** `seats`: the seats to draw (Lanes 3 passes the chosen one); every seat when absent. */
 export function LedgerSheet({ p, range, onClose, seats = SEATS }: { p: CcPayload | null; range: Range; onClose: () => void; seats?: readonly Seat[] }) {
-  const rows = useRead(fetchDayLedger, 'ledger')
+  const rows = useRead(fetchDayLedgerStrict, 'ledger')
   const days = range === '7d' ? 7 : 14
   const today = new Date().toISOString().slice(0, 10)
   const pct = (a: number, i: number) => (i > 0 ? ` ${Math.round((a / i) * 100)}%` : '')

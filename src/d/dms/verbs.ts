@@ -165,8 +165,9 @@ export function useDmVerbs(ctx: VerbCtx) {
       } catch (e) { fail(`Channel choice not saved: ${errText(e)}`); return false }
     }
 
-    /** Approve & send (both legs on a pair). Always asks first, as today's thread does. */
-    async function send(t: Thread, ed: Edits): Promise<string | null> {
+    /** Approve & send (both legs on a pair). Always asks first, as today's thread does.
+     *  `onDeclined`: he cancelled the confirm, so nothing was written (the caller re-arms any autosave it paused). */
+    async function send(t: Thread, ed: Edits, onDeclined?: () => void): Promise<string | null> {
       const draft = t.draft
       if (!draft) return null
       const comp = t.companionDraft
@@ -184,7 +185,7 @@ export function useDmVerbs(ctx: VerbCtx) {
           confirmText: 'Approve reply',
           verb: 'confirm-send',
         })
-        if (!ok) return null
+        if (!ok) { onDeclined?.(); return null }
       } else {
         const ok = await confirm({
           title: `Send to ${t.prospect_name}?`,
@@ -194,7 +195,7 @@ export function useDmVerbs(ctx: VerbCtx) {
           confirmText: comp ? 'Approve & send both' : channelChoice ? mode === 'email' ? 'Send email' : mode === 'both' ? 'Send both' : 'Send DM' : 'Approve & send',
           verb: 'confirm-send',
         })
-        if (!ok) return null
+        if (!ok) { onDeclined?.(); return null }
       }
       let companionForApproval: InboxMessage | null = null
       try {
@@ -202,14 +203,13 @@ export function useDmVerbs(ctx: VerbCtx) {
         await saveCcs(t, ed)
         // All rich legs are persisted before either approval; approval may queue immediately.
         const saved = await saveEditedLegs(t, ed, true)
+        // Carry the fresh evidence into the second approval below, even if the first approval gets no answer
+        // but lands (the companion would otherwise go out with its text from before his edit).
+        if (saved.companion) companionForApproval = saved.companion
         await approveDraft(draft.id, saved.main.message_text, messageChannel(draft) === 'email' ? null : threadChatId(t), {
           ...saved.main,
           email_cc: ed.cc === undefined ? draft.email_cc : parseEmailCc(ed.cc),
         })
-        if (saved.companion) {
-          // Carry the fresh evidence into the second approval below.
-          companionForApproval = saved.companion
-        }
       } catch (e) {
         if (!isNoAnswer(e)) { const m = errText(e); fail(`Not sent: ${m}`); return m }
         const ok = await landed([draft.id])

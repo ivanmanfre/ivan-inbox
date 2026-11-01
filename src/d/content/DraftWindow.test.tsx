@@ -142,6 +142,24 @@ describe('draft window', () => {
     expect(lib.saveDraftBody.mock.calls[1].slice(0, 4)).toEqual(['d1', 'MINE', detail.taxonomy, 'THEIR TEXT'])
   })
 
+  it('after a save the panel keeps the saved text while the detail is still the old one, and a quick re-edit starts from it', async () => {
+    lib.saveDraftBody.mockResolvedValue(undefined)
+    renderInFrame(<DraftWindow {...props()} />)
+    fireEvent.click(document.querySelector('[data-verb="edit"]')!)
+    fireEvent.change(document.querySelector('.cn-ed')!, { target: { value: 'NEW COPY' } })
+    fireEvent.click(document.querySelector('[data-verb="save"]')!)
+    await screen.findByText('Saved.')
+    // the detail refetch has not landed: d.post_body is still the old text
+    expect(screen.getByText('NEW COPY')).toBeTruthy()
+    expect(screen.queryByText('Para two.')).toBeNull()
+    fireEvent.click(document.querySelector('[data-verb="edit"]')!)
+    expect((document.querySelector('.cn-ed') as HTMLTextAreaElement).value).toBe('NEW COPY')
+    fireEvent.change(document.querySelector('.cn-ed')!, { target: { value: 'NEWER COPY' } })
+    fireEvent.click(document.querySelector('[data-verb="save"]')!)
+    await waitFor(() => expect(lib.saveDraftBody).toHaveBeenCalledTimes(2))
+    expect(lib.saveDraftBody.mock.calls[1].slice(0, 4)).toEqual(['d1', 'NEWER COPY', detail.taxonomy, 'NEW COPY'])
+  })
+
   it('schedule asks first, then arms the picked time', async () => {
     sa.scheduleDraft.mockResolvedValue(undefined)
     renderInFrame(<DraftWindow {...props()} />)

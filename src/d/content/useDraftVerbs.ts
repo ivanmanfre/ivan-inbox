@@ -5,8 +5,7 @@ import {
 } from '../../lib/content'
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
-import { warsawDayTime } from '../ui/time'
-import { OWNER, POSS, canSchedule, titleOf, type Lane } from './model'
+import { OWNER, POSS, armedReceipt, canSchedule, isPastSchedule, titleOf, type Lane } from './model'
 import { scheduleGuarded } from './writes'
 import { HOLD_MS, holdDecision, undoDecision } from './decisions'
 import { VERDICT_HOLD_MS, judge, undoVerdict } from './verdictStore'
@@ -30,9 +29,14 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
   const [err, setErr] = useState('')
   const [visible, setVisible] = useState(d.board_visible === true)
 
+  // The body just saved and the detail it replaced: until the refetch lands, d.post_body is still the old text, and re-seating from it
+  // would flash the old copy and hand the next edit a stale compare base (a false "changed in the database").
+  const justSaved = useRef<{ id: string; prior: string } | null>(null)
   // A refetch (an engine rewrite) re-seats the read view, never mid-edit.
   useEffect(() => {
     if (editing) return
+    if (justSaved.current?.id === d.id && justSaved.current.prior === (d.post_body ?? '')) return
+    justSaved.current = null
     setShown(d.post_body ?? ''); setText(d.post_body ?? ''); base.current = d.post_body ?? ''
   }, [d.id, d.post_body, editing])
   useEffect(() => { setVisible(d.board_visible === true) }, [d.id, d.board_visible])
@@ -52,6 +56,7 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
       await (lane === 'ivan'
         ? saveDraftBody(d.id, body, d.taxonomy, base.current, d.updated_at)
         : saveClientDraftBody(d.id, body, d.taxonomy, base.current, d.updated_at))
+      justSaved.current = { id: d.id, prior: d.post_body ?? '' }
       base.current = body; setShown(body); setEditing(false)
       toast.show({ message: 'Saved.', sub: 'Marked as edited by you, so a regeneration will not overwrite it.' })
       refresh()
@@ -59,7 +64,7 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
       if (e instanceof DraftSaveConflict) setConflict(e.detail)
       else fail(e, 'save')
     } finally { saving.current = false; setBusy(false) }
-  }, [busy, d.id, d.taxonomy, d.updated_at, lane, refresh, text, toast])
+  }, [busy, d.id, d.post_body, d.taxonomy, d.updated_at, lane, refresh, text, toast])
 
   const takeTheirs = useCallback(() => {
     const t = conflict?.theirs ?? ''
@@ -103,6 +108,7 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
     if (editing || busy) return
     if (Number.isNaN(at.getTime())) { setErr('That is not a time.'); return }
     if (!canSchedule(d)) { setErr(`Not offered: this draft is ${d.published_at ? 'published' : d.status}. Only a draft in review, approved or already scheduled can be put on LinkedIn.`); return }
+    if (isPastSchedule(at.toISOString())) { setErr('That time has already passed. Pick a later time.'); return }
     const already = d.status === 'scheduled'
     const ok = await confirm({
       title: already ? 'Move this post?' : 'Put this post on LinkedIn?',
@@ -113,8 +119,8 @@ export function useDraftVerbs(d: ContentDraftDetail, lane: Lane, advance: () => 
     if (!ok) return
     setBusy(true); setErr('')
     try {
-      await scheduleGuarded(d.id, at.toISOString())
-      toast.show({ message: `Armed for ${warsawDayTime(at)} Warsaw.`, sub: 'The publisher posts it then.' })
+      const stored = await scheduleGuarded(d.id, at.toISOString())
+      toast.show(armedReceipt(at, stored))
       refresh(); if (!already) advance()
     } catch (e) { fail(e, 'schedule it') } finally { setBusy(false) }
   }, [advance, busy, confirm, d, editing, refresh, toast])

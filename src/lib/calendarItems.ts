@@ -616,8 +616,10 @@ export function buildCalendarRail(rows: ContentDraft[]): CalendarRail[] {
  * The media guard is gone with the arming RPC: a date-only write has no
  * `awaiting_media` branch, so there is nothing left to mirror or to guess at.
  */
-export function canMoveDate(d: Pick<ContentDraft, 'status'>): boolean {
-  return d.status === 'review' || d.status === 'scheduled'
+export function canMoveDate(d: Pick<ContentDraft, 'status'> & { client_id?: string | null }): boolean {
+  if (d.status === 'review' || d.status === 'scheduled') return true
+  // Since 2026-10-08 the RPC also takes Ivan's own approved drafts (`client_id` null or 'ivan'); a client's approved row is still refused.
+  return d.status === 'approved' && (d.client_id === null || d.client_id === 'ivan')
 }
 
 /**

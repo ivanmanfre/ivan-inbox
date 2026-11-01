@@ -2,9 +2,8 @@ import { useCallback } from 'react'
 import { setBoardVisible } from '../../lib/content'
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
-import { warsawDayTime } from '../ui/time'
 import { HOLD_MS, holdDecision, undoDecision } from './decisions'
-import { OWNER, POSS, type Lane } from './model'
+import { OWNER, POSS, armedReceipt, isPastSchedule, type Lane } from './model'
 import type { WeekCard } from './weekModel'
 import { scheduleGuarded } from './writes'
 import { judge } from './verdictStore'
@@ -82,6 +81,7 @@ export function useWeekVerbs({ ids, onChanged, onOpen, setBusy }: {
   const schedule = useCallback(async (c: WeekCard, slot?: Date) => {
     if (!c.r.scheduled_at && !slot) { onOpen(c.r.id, c.lane); return }
     const at = c.r.scheduled_at ? new Date(c.r.scheduled_at) : slot as Date
+    if (isPastSchedule(at.toISOString())) { toast.show({ tone: 'failed', message: 'That time has already passed. Pick a later time.' }); return }
     const ok = await confirm({
       title: 'Put this post on LinkedIn?',
       message: `The publisher posts this on ${at.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })} at ${at.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}. This is not an internal mark, it goes out on LinkedIn.`,
@@ -89,7 +89,7 @@ export function useWeekVerbs({ ids, onChanged, onOpen, setBusy }: {
     })
     if (!ok) return
     setBusy(c.r.id)
-    try { await scheduleGuarded(c.r.id, at.toISOString()); toast.show({ message: `Armed for ${warsawDayTime(at)} Warsaw.`, sub: 'The publisher posts it then.' }); onChanged(); advance(c.r.id) }
+    try { const stored = await scheduleGuarded(c.r.id, at.toISOString()); toast.show(armedReceipt(at, stored)); onChanged(); advance(c.r.id) }
     catch (e) { toast.show({ tone: 'failed', message: (e as { message?: unknown })?.message && typeof (e as { message?: unknown }).message === 'string' ? (e as { message: string }).message : 'Could not arm it.' }) }
     finally { setBusy(null) }
   }, [advance, confirm, onChanged, onOpen, setBusy, toast])

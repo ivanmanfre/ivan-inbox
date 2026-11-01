@@ -160,7 +160,7 @@ export function OpsPage({ layout, route, navigate }: PlaceProps) {
         {stale}
         {want && !sel && <div className="op-ban">That card is not waiting any more: it was handled or it aged out.</div>}
         <XFlag />
-        <PhoneLanes board={board} seat={phoneSeat} setSeat={setSeat} onPick={pick} refresh={refresh} queueLine={queueLine} sel={null} />
+        <PhoneLanes board={board} seat={phoneSeat} setSeat={setSeat} onPick={pick} refresh={refresh} queueLine={queueLine} onGateResult={queue.record} sel={null} />
         {side}
       </div>
     )
@@ -174,7 +174,7 @@ export function OpsPage({ layout, route, navigate }: PlaceProps) {
           <XFlag />
           {fresh}
           {stale}
-          <DeskLanes board={board} sel={sel?.id ?? null} onPick={pick} refresh={refresh} queueLine={queueLine} />
+          <DeskLanes board={board} sel={sel?.id ?? null} onPick={pick} refresh={refresh} queueLine={queueLine} onGateResult={queue.record} />
           <div className="op-master">
             {card ?? <div className="op-quiet op-big" title={`Checked ${checked}`}>Nothing waiting on you.</div>}
           </div>

@@ -340,6 +340,12 @@ describe('needsAnswer', () => {
     const failed = { ...queued, send_blocked_at: '2026-07-21T11:05:00Z', send_blocked_reason: 'send_failed' }
     expect(needsAnswer(groupThreads([inbound('b', '2026-07-21T10:00:00+00:00'), failed])[0], now)).toBe(true)
   })
+  it('a reply scheduled in the inbox answers the thread until they write again', () => {
+    const now = Date.parse('2026-07-21T12:00:00Z')
+    const scheduled = { ...base, id: 'sc', sent_at: null, approved_at: null, created_at: '2026-07-21T10:30:00Z', send_blocked_reason: 'scheduled_in_inbox', send_blocked_at: '2026-07-21T11:00:00Z' }
+    expect(needsAnswer(groupThreads([inbound('b', '2026-07-21T10:00:00+00:00'), scheduled])[0], now)).toBe(false)
+    expect(needsAnswer(groupThreads([inbound('b', '2026-07-21T11:30:00+00:00'), scheduled])[0], now)).toBe(true)
+  })
   it('unread inbound already answered by a later send is NOT waiting', () => {
     const t = groupThreads([inbound('b', '2026-07-21T10:00:00Z'), sent('c', '2026-07-22T10:00:00Z')])[0]
     expect(needsAnswer(t)).toBe(false)
@@ -1419,5 +1425,21 @@ describe('held sends', () => {
     }
     expect(canScheduleHeld(held('lint_calendar_proposal_edited', { approved_at: '2026-07-22T10:00:00Z' }))).toBe(false)
     expect(canScheduleHeld(held('lint_calendar_proposal_edited', { message_text: ' ' }))).toBe(false)
+  })
+})
+
+describe('snoozeDraft / unsnoozeDraft on a SwishDM reply hold', () => {
+  it('include the awaiting_client_review clause and fail when no row matched', async () => {
+    const { snoozeDraft } = await import('./inbox')
+    const { supabase } = await import('./supabase')
+    const calls: string[] = []
+    const q: Record<string, unknown> = {}
+    q.update = () => q; q.eq = () => q; q.is = () => q
+    q.or = (f: string) => { calls.push(f); return q }
+    q.select = () => Promise.resolve({ data: [], error: null })
+    const spy = vi.spyOn(supabase, 'from').mockReturnValue(q as never)
+    await expect(snoozeDraft('x', '2026-07-30T00:00:00Z')).rejects.toThrow(/not moved/)
+    expect(calls[0]).toContain('awaiting_client_review')
+    spy.mockRestore()
   })
 })

@@ -4,13 +4,14 @@ import { brainDate, safeBrainUrl, type RepeatEngagersData } from '../../lib/brai
 import { Failed, Skeleton } from '../ui/states'
 import type { Lane } from './model'
 import './brain-account.css'
+import { BRAIN_NOT_COVERED } from '../../lib/brainAccount'
 
 export function RepeatEngagersBody({ lane, data, error, onRetry }: { lane: Lane; data: RepeatEngagersData | null; error: string | null; onRetry: () => void }) {
   const checked = data?.client === lane ? data : null
   const mismatch = data && !checked ? 'The engager list returned a different client.' : null
   return <section className="cn-result-section cn-repeat-engagers" aria-label="Repeat engagers"><h2>Repeat engagers</h2>
     <p className="cn-brain-note">People with repeat engagement and their recorded relationship evidence. Read-only; nothing is contacted from this list.</p>
-    {error || mismatch ? <Failed what="repeat engagers" detail={error || mismatch!} onRetry={onRetry} /> : !checked ? <Skeleton lines={3} label="Reading repeat engagers" /> : <>
+    {error === BRAIN_NOT_COVERED ? <p className="cn-wk2-empty">{error}</p> : error || mismatch ? <Failed what="repeat engagers" detail={error || mismatch!} onRetry={onRetry} /> : !checked ? <Skeleton lines={3} label="Reading repeat engagers" /> : <>
       {checked.state === 'source_unavailable' ? <p className="cn-brain-notice">{checked.reason === 'verified_repeat_activation_source_supports_RISE_only' ? 'The verified repeat-engager source covers RISE. Current relationship evidence is unavailable for this client.' : checked.reason || 'Repeat engagement and current relationship evidence are unavailable for this client.'}</p> : !checked.rows.length ? <p className="cn-brain-empty">No eligible repeat engagers are recorded for this client.</p> : <ul className="cn-repeat-list">{checked.rows.map(person => {
         const url = safeBrainUrl(person.profileUrl)
         return <li key={person.personKey}><div className="cn-repeat-heading">{url ? <a href={url} target="_blank" rel="noreferrer">{person.name || 'Name not recorded'} ↗</a> : <b>{person.name || 'Name not recorded'}</b>}<small>{person.engagedPosts} posts · last seen {brainDate(person.lastSeen)}</small></div>

@@ -35,7 +35,7 @@ export type WhenProps = {
   onDone: () => void
   /** The day and time on screen, so the calendar can light the cell (null = nothing picked). */
   onPreview?: (day: string | null, label: string | null) => void
-  /** After a write: the stored day, so the calendar can hold it until the re-read agrees. */
+  /** After a write: the stored day, so the calendar can hold it until the re-read agrees ('' = no date). null = let go of the held day, the write did not happen. */
   onMoved?: (id: string, day: string | null) => void
   /** A tap on a day saves at once (the phone sheet, the Review day picker). */
   commitOnPick?: boolean
@@ -109,6 +109,7 @@ export function WhenEditor({ r, lane, seatRows, initialDay, focus = 'day', gap =
       else await clearScheduleDate(r.id)
       toast.show({ id: `when-${r.id}`, message: prev ? `Put back on ${dayLabel(dayIn(prev, tz))} · ${laneTimeWord(prev, lane)}.` : 'Put back with no date.', sub: LANE_NAME[lane] })
     } catch (e) {
+      onMoved?.(r.id, null)
       toast.show({ message: 'Could not put it back.', sub: plainWhy(e), tone: 'failed' })
     }
     onDone()

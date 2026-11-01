@@ -39,4 +39,9 @@ describe('the coverage target is the seat’s own', () => {
     expect(cov.seats.arch).toMatchObject({ set: 1, target: 3, short: 2 })
     expect(cov.seats.risedtc.target).toBe(3)
   })
+  it('says whether the target was the seat’s own or the floor, so a screen can leave out "of 3"', () => {
+    expect(cov.seats.ivan.known).toBe(true)
+    expect(cov.seats.arch.known).toBe(false)
+    expect(cov.seats.risedtc.known).toBe(false)
+  })
 })

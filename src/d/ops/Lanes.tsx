@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { OpsDraft } from '../../lib/ops'
+import type { GateVerdict, OpsDraft } from '../../lib/ops'
 import { kindsLine } from '../../wb/ops/lanes'
 import { SEATS, SEAT_NAME, type Seat } from '../seats'
 import { Batch } from './Batch'
@@ -49,9 +49,9 @@ function QueueBan({ cards, queueLine }: { cards: OpsDraft[]; queueLine?: QueueLi
   return q ? <div className={`op-ban${q.warn ? ' op-ban-warn' : ''}`} data-lane-queue>{q.text}</div> : null
 }
 
-type LaneProps = { sel: string | null; onPick: (id: string) => void; refresh: () => void; queueLine?: QueueLine }
+type LaneProps = { sel: string | null; onPick: (id: string) => void; refresh: () => void; queueLine?: QueueLine; onGateResult?: (id: string, v: GateVerdict) => void }
 
-function Column({ lane, name, owner, cards, later, sel, onPick, refresh, queueLine }: LaneProps & {
+function Column({ lane, name, owner, cards, later, sel, onPick, refresh, queueLine, onGateResult }: LaneProps & {
   lane: string; name: string; owner: string; cards: OpsDraft[]; later: OpsDraft[]
 }) {
   const [all, setAll] = useState(false)
@@ -65,7 +65,7 @@ function Column({ lane, name, owner, cards, later, sel, onPick, refresh, queueLi
       <div className="op-plate"><b title={owner}>{name}</b></div>
       <div className="op-cnt"><em className={n ? '' : 'op-dim'}>{n}</em><small>{n ? kindsLine(cards, true) : 'Nothing waiting'}</small></div>
       <QueueBan cards={cards} queueLine={queueLine} />
-      <Batch lane={lane} cards={cards} refresh={refresh} />
+      <Batch lane={lane} cards={cards} refresh={refresh} onGateResult={onGateResult} />
       {vis.map(d => <Row key={d.id} d={d} on={d.id === sel} onPick={onPick} />)}
       {n > SHOW && (
         <button type="button" className="op-fold" aria-expanded={all} onClick={() => setAll(a => !a)}>
@@ -97,7 +97,7 @@ export function DeskLanes({ board, ...p }: LaneProps & { board: OpsBoard }) {
   )
 }
 
-export function PhoneLanes({ board, seat, setSeat, onPick, refresh, queueLine }: LaneProps & {
+export function PhoneLanes({ board, seat, setSeat, onPick, refresh, queueLine, onGateResult }: LaneProps & {
   board: OpsBoard; seat: Seat; setSeat: (s: Seat) => void
 }) {
   const cards = board.lanes[seat]
@@ -112,7 +112,7 @@ export function PhoneLanes({ board, seat, setSeat, onPick, refresh, queueLine }:
         ))}
       </div>
       <QueueBan cards={cards} queueLine={queueLine} />
-      <Batch lane={seat} cards={cards} refresh={refresh} />
+      <Batch lane={seat} cards={cards} refresh={refresh} onGateResult={onGateResult} />
       <div className="op-sec"><span>{SEAT_NAME[seat]}'s lane</span><span className="op-sk">{cards.length ? kindsLine(cards, true) : ''}</span></div>
       {cards.length === 0 && <div className="op-quiet">Nothing waiting in {SEAT_NAME[seat]}'s lane.</div>}
       {cards.map(d => <Row key={d.id} d={d} on={false} onPick={onPick} />)}
@@ -121,7 +121,7 @@ export function PhoneLanes({ board, seat, setSeat, onPick, refresh, queueLine }:
         <div key={o.key} data-seat={o.key}>
           <div className="op-sec"><span>{o.name} lane</span><span className="op-sk">{o.cards.length ? kindsLine(o.cards, true) : ''}</span></div>
           <QueueBan cards={o.cards} queueLine={queueLine} />
-          <Batch lane={o.key} cards={o.cards} refresh={refresh} />
+          <Batch lane={o.key} cards={o.cards} refresh={refresh} onGateResult={onGateResult} />
           {o.cards.map(d => <Row key={d.id} d={d} on={false} onPick={onPick} />)}
           <Later later={o.later} sel={null} onPick={onPick} />
         </div>

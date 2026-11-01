@@ -9,7 +9,7 @@
    ========================================================================== */
 import {
   approveWeeklyReport, discardOpsDraft, isStaleComment, OUTBOUND_EXPIRED, dispatchCommentGate, outboundApproveUrl,
-  outboundSkipUrl, type GateOutcome, type OpsDraft,
+  outboundSkipUrl, type GateOutcome, type GateVerdict, type OpsDraft,
 } from '../../lib/ops'
 
 /** The card's own gate confirm (PendingCard), for one comment or several. */
@@ -43,14 +43,15 @@ export function discardConfirm(n: number) {
 }
 
 export type ApproveResult =
-  | { ok: true }
-  | { ok: false; message: string; outcome: GateOutcome | 'error' }
+  | { ok: true; verdict?: GateVerdict }
+  | { ok: false; message: string; outcome: GateOutcome | 'error'; verdict?: GateVerdict }
 
 /**
  * manual_invite double-stamps (nothing is sent). comment_outbound fires the
  * ivan-lane gate and stamps only on accepted/already; with no gate link it
  * copies and stamps. Never throws on a gate refusal: the caller reads `ok`,
- * and a `timing` refusal is a queue position, not an error.
+ * and a `timing` refusal is a queue position, not an error. A gate answer is
+ * returned as `verdict` so the caller can hand it to the comment queue.
  */
 export async function dispatchApprove(d: OpsDraft): Promise<ApproveResult> {
   if (d.kind === 'manual_invite') {
@@ -65,9 +66,9 @@ export async function dispatchApprove(d: OpsDraft): Promise<ApproveResult> {
       if (v.outcome === 'accepted' || v.outcome === 'already') {
         if (isStaleComment(d)) return { ok: false, message: OUTBOUND_EXPIRED, outcome: 'refused' }
         await approveWeeklyReport(d.id, d.body)
-        return { ok: true }
+        return { ok: true, verdict: v }
       }
-      return { ok: false, message: v.message, outcome: v.outcome }
+      return { ok: false, message: v.message, outcome: v.outcome, verdict: v }
     }
     await navigator.clipboard.writeText(d.body)
     if (isStaleComment(d)) return { ok: false, message: OUTBOUND_EXPIRED, outcome: 'refused' }

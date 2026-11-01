@@ -54,6 +54,10 @@ export function useInbox(enabled = true, seedCache = enabled) {
   const [loadedAt, setLoadedAt] = useState<string | null>(null)
   // Complete priority conversations are live, while the older archive still follows.
   const [priorityAt, setPriorityAt] = useState<string | null>(null)
+  // When the read that last landed STARTED (ms). A local write is in that read only if the write came first,
+  // so callers drop an optimistic patch against this, never against the time the read landed.
+  const readStarted = useRef(0)
+  const [readStartedAt, setReadStartedAt] = useState(0)
   // Newest inbound timestamp we've already seen — a refresh that surfaces an
   // inbound row newer than this plays the chime. Null until first load so the
   // initial fetch never dings.
@@ -113,6 +117,7 @@ export function useInbox(enabled = true, seedCache = enabled) {
     setThreads(grouped)
     setFromCache(false)
     setError(null)
+    setReadStartedAt(readStarted.current)
     setLoadedAt(new Date().toISOString())
     setLoading(false)
     return true
@@ -134,6 +139,7 @@ export function useInbox(enabled = true, seedCache = enabled) {
           // serial round trip on every cold open). The watermark can now trail the first page's
           // snapshot by a few hundred ms; every sweep re-reads from withOverlap(watermark), two
           // minutes earlier, so nothing committed in that gap is missed.
+          readStarted.current = Date.now()
           const markRead = changedSince(null).then(c => c.now, () => null)
           // A cold screen (nothing on it: no saved copy, no good read yet) paints the newest page
           // while the rest is read. That paint is PROVISIONAL: it never touches knownRows, the
@@ -156,7 +162,7 @@ export function useInbox(enabled = true, seedCache = enabled) {
         }
         if (ranIncremental || (due.pids.size === 0 && !due.sweep)) break
         ranIncremental = true
-        lastIncremental.current = Date.now()
+        lastIncremental.current = readStarted.current = Date.now()
         owed.current = { full: false, pids: new Set(), sweep: false, urgent: false }
         const pids = new Set(due.pids)
         let nextMark: string | null = null
@@ -281,5 +287,5 @@ export function useInbox(enabled = true, seedCache = enabled) {
       document.removeEventListener('visibilitychange', onReturn)
     }
   }, [refresh, pump, topic, enabled])
-  return { threads, loading, error, loadedAt, priorityAt, fromCache, cachedAt, refresh }
+  return { threads, loading, error, loadedAt, readStartedAt, priorityAt, fromCache, cachedAt, refresh }
 }

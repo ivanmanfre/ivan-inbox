@@ -20,6 +20,8 @@ export async function fetchSeatHealth(): Promise<SeatHealthSummary | null> {
     .select('value')
     .eq('key', 'seat_health_summary')
     .maybeSingle()
-  if (error || !data?.value) return null
-  try { return JSON.parse(data.value) as SeatHealthSummary } catch { return null }
+  // A failed read throws so callers keep what they had; only a missing row is null.
+  if (error) throw error
+  if (!data?.value) return null
+  return JSON.parse(data.value) as SeatHealthSummary
 }

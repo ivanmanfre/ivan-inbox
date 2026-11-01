@@ -7,7 +7,8 @@ import type { ContentDraft } from '../../../lib/content'
 const lib = vi.hoisted(() => ({ unpublishPost: vi.fn() }))
 vi.mock('../../../lib/content', async orig => ({ ...(await orig<typeof import('../../../lib/content')>()), unpublishPost: lib.unpublishPost }))
 
-import { CalCard, dotText } from './CalendarV2'
+import { CalCard, CoverageBar, dotText } from './CalendarV2'
+import { coverageOf } from './coverage'
 import type { Entry } from '../calModel'
 import type { PlanItem } from '../planModel'
 
@@ -41,5 +42,17 @@ describe('the clean calendar card', () => {
     await waitFor(() => expect(screen.getByText('Take this post off LinkedIn?')).toBeTruthy())
     expect(screen.getByText(/Deletes it from your feed for everyone, likes and comments included\./)).toBeTruthy()
     expect(lib.unpublishPost).not.toHaveBeenCalled()
+  })
+})
+
+describe('the coverage bar', () => {
+  const NOW = Date.parse('2026-10-14T10:00:00Z')
+  const empty = { ivan: new Map(), risedtc: new Map(), arch: new Map(), swishdm: new Map() } as unknown as Parameters<typeof coverageOf>[0]
+  it('uses each seat’s own weekly target, and leaves out "of N" while it is not known', () => {
+    const cov = coverageOf(empty, NOW, { risedtc: 5, arch: null })
+    const { container } = renderInFrame(<CoverageBar cov={cov} lanes={['risedtc', 'arch']} loaded={() => true} />)
+    const text = [...container.querySelectorAll('.cv2-cov-p')].map(x => x.textContent)
+    expect(text[0]).toBe('Rise 0 of 5 · 5 to fill')
+    expect(text[1]).toBe('Arch 0 set')
   })
 })

@@ -5,6 +5,7 @@ import { brainDate, brainNumber } from '../../lib/brainAccount'
 import { Failed, Skeleton } from '../ui/states'
 import type { Lane } from './model'
 import './brain-account.css'
+import { BRAIN_NOT_COVERED } from '../../lib/brainAccount'
 
 const percent = (n: number | null) => n == null ? 'Not recorded' : `${(n * 100).toLocaleString('en-US', { maximumFractionDigits: 1 })}%`
 const ratio = (n: number | null, reason: string | null) => n == null ? reason === 'zero_floor' ? 'Floor is zero; ratio unavailable' : 'Comparison unavailable' : `${brainNumber(n)}× the frozen floor`
@@ -23,7 +24,7 @@ export function BrainScoreboardBody({ lane, data, error, onRetry }: { lane: Lane
   return <section className="cn-result-section cn-brain-scoreboard" aria-label="Brain scoreboard">
     <div className="cn-brain-heading"><h2>Brain scoreboard</h2>{c && <span className="cn-brain-status">{c.status === 'no_cohort' ? 'No published brain posts' : c.status === 'early' ? 'Early · fewer than 8 brain posts' : c.status === 'inconclusive' ? 'Inconclusive' : 'Observed results'}</span>}</div>
     <p className="cn-brain-note">Observed account results. These comparisons are correlation, with mixed post ages; they describe recorded outcomes.</p>
-    {error || mismatch ? <Failed what="the brain scoreboard" detail={error || mismatch!} onRetry={onRetry} /> : !checked ? <Skeleton lines={4} label="Reading the brain scoreboard" /> : <>
+    {error === BRAIN_NOT_COVERED ? <p className="cn-wk2-empty">{error}</p> : error || mismatch ? <Failed what="the brain scoreboard" detail={error || mismatch!} onRetry={onRetry} /> : !checked ? <Skeleton lines={4} label="Reading the brain scoreboard" /> : <>
       {checked.stale && <p className="cn-brain-notice" role="status">Showing the saved scoreboard. The weekly refresh is overdue.</p>}
       {floor ? <p className="cn-brain-floor-note">Frozen floor: {brainDate(floor.window_start)} to {brainDate(floor.window_end_exclusive)} (end exclusive) · {floor.published_n} published posts · {floor.window_complete ? 'complete window' : <strong>Partial window</strong>}. Observed through {brainDate(floor.observed_through)} · frozen {brainDate(floor.frozen_at)}.{floor.limitation && ` ${floor.limitation}`}</p> : <p className="cn-brain-notice">The frozen floor is unavailable. No floor comparison is established.</p>}
       {floor && <dl className="cn-brain-floor-metrics" aria-label="Frozen baseline metrics"><div><dt>Floor median engagement</dt><dd>{brainNumber(floor.engagement_median)} <small>n={floor.engagement_n}</small></dd></div><div><dt>Floor engagement p75</dt><dd>{brainNumber(floor.engagement_p75)} <small>n={floor.engagement_n}</small></dd></div><div><dt>Floor median impressions</dt><dd>{brainNumber(floor.impressions_median)} <small>n={floor.impressions_n}</small></dd></div></dl>}

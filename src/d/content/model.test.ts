@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ContentDraft } from '../../lib/content'
 import {
-  isPlanned, isScheduled, landingDay, nextFreeWeekday, postOn, ptOf, scheduledIn, timeLine,
+  armedReceipt, isPastSchedule, isPlanned, isScheduled, landingDay, nextFreeWeekday, postOn, ptOf, scheduledIn, timeLine,
   wallDays, waitingRows, weekWord,
 } from './model'
 
@@ -105,5 +105,22 @@ describe('queue row source + title tag (Ivan 29 Sep, review list had no source)'
     expect(queueSourceOf({ source_label: 'Call with Leighto ("Lito"), 18 Sep 2026', source_ref: null, taxonomy: null })?.text).toBe('Call with Leighto ("Lito"), 18 Sep 2026')
     expect(queueSourceOf({ source_label: null, source_ref: null, taxonomy: { source: 'manual' } }, s => s.toUpperCase())).toEqual({ text: 'MANUAL', href: null })
     expect(queueSourceOf({ source_label: null, source_ref: null, taxonomy: {} })).toBeNull()
+  })
+})
+
+describe('Schedule: past time and the day that was stored', () => {
+  const NOW = Date.parse('2026-10-14T10:00:00Z')
+  it('refuses a time that already went by, allows a few minutes of clock drift', () => {
+    expect(isPastSchedule('2026-10-13T09:45:00Z', NOW)).toBe(true)
+    expect(isPastSchedule('2026-10-14T09:58:00Z', NOW)).toBe(false)
+    expect(isPastSchedule('2026-10-15T09:45:00Z', NOW)).toBe(false)
+  })
+  it('the receipt names the stored day, and says so when it is not the asked one', () => {
+    const asked = new Date('2026-10-17T08:00:00Z') // Saturday
+    expect(armedReceipt(asked, '2026-10-17T08:00:00Z')).toEqual({ message: 'Armed for Sat 17 Oct, 10:00 Warsaw.', sub: 'The publisher posts it then.' })
+    const moved = armedReceipt(asked, '2026-10-19T08:00:00Z')
+    expect(moved.message).toBe('Armed for Mon 19 Oct, 10:00 Warsaw.')
+    expect(moved.sub).toContain('moved from Sat 17 Oct, 10:00')
+    expect(armedReceipt(asked, null).message).toBe('Armed for Sat 17 Oct, 10:00 Warsaw.')
   })
 })

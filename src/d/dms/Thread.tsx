@@ -69,7 +69,7 @@ export async function copyText(s: string): Promise<boolean> {
   try { await navigator.clipboard.writeText(s); return true } catch { window.prompt('Copy this link', s); return false }
 }
 
-export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, now, onBack, onAsk, onDraftStart, onMenu, staleN, pre, reload, signal, engagements, v4 = false, registerGuard }: {
+export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, now, onBack, onAsk, onDraftStart, onMenu, staleN, pre, reload, signal, engagements, v4 = false, registerGuard, reading = false }: {
   t: T; auto?: boolean; all: readonly T[]; phone: boolean; verbs: DmVerbs; now: number
   onBack: () => void; onAsk: () => void
   onDraftStart?: () => void
@@ -82,8 +82,10 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
   v4?: boolean
   /** Brief 4: where this pane registers its unsaved check (SPEC-dms §3.4). Only given under v4. */
   registerGuard?: (f: (() => boolean) | null) => void
+  /** Only the newest page of the inbox is on screen (the full read is still running). */
+  reading?: boolean
 }) {
-  const { thread: t, loading: emailLoading, error: emailDetailsError, retry: retryEmailDetails } = useEmailDetails(sourceThread)
+  const { thread: t, loading: emailLoading, settling: emailSettling, error: emailDetailsError, retry: retryEmailDetails } = useEmailDetails(sourceThread)
   const [edits, setEdits] = useState<Edits>(() => seed(t))
   const [reply, setReply] = useState('')
   const [replyComposition, setReplyComposition] = useState<EmailComposition | null>(null)
@@ -165,6 +167,9 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
   const lastIn = t.messages.filter(m => m.direction === 'inbound').at(-1)?.id ?? ''
   useEffect(() => { if (!auto && t.unread > 0) stampReadOnce(t.prospect_id, lastIn) }, [auto, t.prospect_id, t.unread, lastIn])
   const saver = useAutosave(t, edits, seed(t), verbs.autosave)
+  // A thread nobody opened (desktop auto-open) can be swapped for another one by a refresh. Typing a reply
+  // makes it his thread: pin it to the link, so the pane is not remounted under the text.
+  useEffect(() => { if (auto && reply.trim()) onDraftStart?.() }, [auto, reply]) // eslint-disable-line react-hooks/exhaustive-deps
   // Brief 4 unsaved guard (SPEC-dms §3.4, placed right after the saver, H1): dirty = a typed reply, an
   // edit still waiting to save, a save in flight or a save that failed. Read through a ref, so the
   // registration never goes stale. beforeunload covers a reload and Brief's own canLeave().
@@ -311,7 +316,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
     if (saver.isPending()) return
     if (await verbs.sendVia(t, mode)) setEdits(e => ({ ...e, cc: mode === 'dm' ? undefined : e.cc ?? '' }))
   }) }
-  const send = () => { if (busy || emailLoading || emailDetailsError || draftFormattingError) return; return run(async () => { if (scheduledPending) return; saver.cancel(); await verbs.send(t, edits) }) }
+  const send = () => { if (busy || emailLoading || emailSettling || emailDetailsError || draftFormattingError) return; return run(async () => { if (scheduledPending) return; const hadEdit = saver.isPending(); saver.cancel(); await verbs.send(t, edits, () => { if (hadEdit) saver.retry() }) }) }
   const openSchedule = () => run(async () => {
     saver.cancel(); setScheduleFailure('')
     if (reply.trim()) { setSchedule({ ids: [], texts: [reply.trim()], manual: true }); return }
@@ -361,7 +366,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
     small = <>
       {t.ownerConfirmation && !manualReply
         ? <Btn verb="ask-owner-link" className="dm-k" onClick={() => void copy()} title="copies the chat link">{seat === 'ivan' ? 'Copy chat link' : `Ask ${from}`}</Btn>
-        : owed && t.client_id !== 'swishdm' && <Btn verb="draft-it" className="dm-k" disabled={Boolean(draftJob?.running)} onClick={() => void draftIt()} title="Create a reply draft">{draftRunning ? 'Drafting…' : 'Draft it'}</Btn>}
+        : owed && !scheduledPending && t.client_id !== 'swishdm' && <Btn verb="draft-it" className="dm-k" disabled={Boolean(draftJob?.running)} onClick={() => void draftIt()} title="Create a reply draft">{draftRunning ? 'Drafting…' : 'Draft it'}</Btn>}
       {laterKey}
       {canMarkSolved(t) && solvedKey}
     </>
@@ -377,7 +382,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
     if (t.ownerConfirmation) void verbs.holdRelease(t)
     dock.current?.querySelector('textarea')?.focus()
   }} />
-  const history = <History v4={v4} onSendAnyways={m => void sendAnyways(m)} onDiscardHeld={m => { if (!busy) void run(() => verbs.discardHeld(t, m)) }} onEditHeld={editHeld} heldLater={!scheduledPending} sending={busy} t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} onReplyEmail={canComposeEmail(t) && !t.spam && !busy ? openEmailReply : undefined}
+  const history = <History v4={v4} reading={reading} onSendAnyways={m => void sendAnyways(m)} onDiscardHeld={m => { if (!busy) void run(() => verbs.discardHeld(t, m)) }} onEditHeld={editHeld} heldLater={!scheduledPending} sending={busy} t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} onReplyEmail={canComposeEmail(t) && !t.spam && !busy ? openEmailReply : undefined}
     revealMessageId={revealMessageId} activeEmailReplyId={resolvedEmail?.target?.source_message_id ?? null}
     onForwardEmail={['arch', 'risedtc'].includes(t.client_id) && !busy ? setForwardEmail : undefined} />
   const historyView = referredLead && !t.messages.some(m => m.direction === 'inbound')

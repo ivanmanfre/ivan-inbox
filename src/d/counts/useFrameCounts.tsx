@@ -236,14 +236,19 @@ export function FrameCountsProvider({ children, readers = LIVE }: { children: Re
   // per-seat read above stays the answer until the inbox has rows, and when it fails.
   const inbox = useDInboxMaybe()
   const inboxThreads = inbox?.threads
-  const inboxAt = inbox?.loadedAt ? Date.parse(inbox.loadedAt) : inbox?.cachedAt ? Date.parse(inbox.cachedAt) : null
+  // Only a live read that has not since failed counts. A saved copy, or a failed read, falls back to the small per-seat reads.
+  const inboxAt = inbox?.loadedAt && !inbox.error ? Date.parse(inbox.loadedAt) : null
   const dmsLive = useMemo(() => {
-    if (!inboxThreads || inboxThreads.length === 0 || inboxAt == null) return null
+    if (!inboxThreads || inboxThreads.length === 0 || inboxAt == null || !Number.isFinite(inboxAt)) return null
     const now = Date.now()
     const one = (s: Seat): Slice<DmSeatCount> => ({ value: countDmSeat(inboxThreads, s, now), failed: false, at: inboxAt })
     return { ivan: one('ivan'), risedtc: one('risedtc'), arch: one('arch') , swishdm: one('swishdm')}
   }, [inboxThreads, inboxAt])
-  useEffect(() => { inboxCovers.current = dmsLive != null }, [dmsLive])
+  useEffect(() => {
+    const was = inboxCovers.current
+    inboxCovers.current = dmsLive != null
+    if (was && dmsLive == null) refresh('dms')
+  }, [dmsLive, refresh])
 
   const value = useMemo<FrameCounts>(
     () => ({ dms: dmsLive ?? dms, content, ops, nextCall, bell, alerts, health, magnets, calls, refresh }),

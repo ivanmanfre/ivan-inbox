@@ -76,7 +76,8 @@ function Dms({ layout, route, navigate }: PlaceProps) {
   const warmVerbs = useWarmVerbs(warmAfter)
 
   const folder = route.query.get('folder')
-  const mode: Mode = folder === 'spam' ? 'spam' : folder === 'email' ? 'email' : q.trim() || tokens.length ? 'search' : 'conversations'
+  // A query or filter chip always searches, in any folder (it used to be ignored inside Email and Likely spam).
+  const mode: Mode = q.trim() || tokens.length ? 'search' : folder === 'spam' ? 'spam' : folder === 'email' ? 'email' : 'conversations'
   const threadId = route.query.get('thread')
   // One seat at a time: the link's ?seat=, else the remembered pick, else the seat with most Needs you.
   const [stored, setStored] = useState<Seat | null>(readSeat)

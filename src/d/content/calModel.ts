@@ -4,7 +4,7 @@
 // not) and, for a post that must not move, the reason it says when lifted.
 // Built on planModel (today's calendar builder), so the calendar shows every
 // kind of post the planner did.
-import { buildCalendarItems } from '../../lib/calendarItems'
+import { buildCalendarItems, canMoveDate } from '../../lib/calendarItems'
 import { taxonomyValue, type ContentDraft } from '../../lib/content'
 import { isBrainPost } from '../../lib/brainDraft'
 import { LANES, imgOf, titleOf, type Lane } from './model'
@@ -122,7 +122,7 @@ export function looseOf(rows: Record<Lane, ContentDraft[]>, pick: Pick, moved: M
   const out: Loose[] = []
   for (const lane of lanesOf(pick)) {
     for (const r of rows[lane]) {
-      if (r.scheduled_at || moved.has(r.id) || (r.status !== 'review' && r.status !== 'scheduled')) continue
+      if (r.scheduled_at || moved.has(r.id) || !canMoveDate(r)) continue
       out.push({ id: r.id, lane, hook: hookOf(r, titleOf(r)), thumb: imgOf(r.image_urls, 400), lm: isMagnetPost(r), brain: isBrainPost(r), createdAt: r.created_at, r })
     }
   }

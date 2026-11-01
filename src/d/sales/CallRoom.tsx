@@ -60,7 +60,7 @@ export function CallRoom({ row, clean = false }: { row: CallRow; clean?: boolean
           <Lines head="What set this off" items={list(b.triggers)} />
         </>
       ) : (
-        <div className="sl-note">The extractor writes this for sales calls and it never ran on this one. Only 1 of the 96 calls on record carries it, so an empty panel here is the normal state and not a failure.</div>
+        <div className="sl-note">The extractor writes this for sales calls and it never ran on this one. Most calls on record do not carry it, so an empty panel here is the normal state and not a failure.</div>
       ))}
       {!clean && <div className="sl-note">Reading only. Nothing on this screen writes to the database, and nothing here can reach the people who were on the call.</div>}
     </div>

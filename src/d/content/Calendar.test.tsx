@@ -67,6 +67,10 @@ describe('calendar model', () => {
     expect(looseOf(rows, 'all', new Map()).map(l => l.id)).toEqual(['loose'])
     expect(looseOf(rows, 'all', new Map([['loose', '2026-10-02']]))).toEqual([])
   })
+  it('Ivan’s approved undated draft is on the No date yet rail; a client’s approved one is not', () => {
+    const both = { ...rows, ivan: [...rows.ivan, row('iap', { status: 'approved' })], risedtc: [...rows.risedtc, row('rap', { client_id: 'risedtc', status: 'approved' })] }
+    expect(looseOf(both, 'all', new Map()).map(l => l.id).sort()).toEqual(['iap', 'loose'])
+  })
   it('lead-magnet posts are found by the stager tag or ARCH’s label', () => {
     expect(isMagnetPost({ taxonomy: { source: 'lead-magnet' } })).toBe(true)
     expect(isMagnetPost({ taxonomy: null, source_label: 'Original ARCH resource · lead magnet' })).toBe(true)

@@ -1,4 +1,4 @@
-import { useCallback, useState, type ComponentProps, useRef } from 'react'
+import { useCallback, useEffect, useState, type ComponentProps, useRef } from 'react'
 import { Avatar } from '../../../ds/Avatar'
 import { Banner } from '../../../ds/Banner'
 import { Chip } from '../../../ds/Chip'
@@ -34,7 +34,8 @@ export function CardV4({ d, refresh, feed, held, onGateResult, layout, pos, wait
   const confirmed = useRef(false)
   const confirm = useCallback(async (o: OldConfirmOpts) => {
     const ok = await ask(o)
-    if (ok) { confirmed.current = true; onActed?.(d.id, o.danger ? 'Discarded' : o.confirmText === 'Mark handled' ? 'Marked handled' : 'Approved') }
+    confirmed.current = ok
+    if (ok) { onActed?.(d.id, o.danger ? 'Discarded' : o.confirmText === 'Mark handled' ? 'Marked handled' : 'Approved') }
     return ok
   }, [ask, d.id, onActed])
   // A warning set beside a success ("Posted fine, but the tag…") keeps the card up to be read:
@@ -50,6 +51,9 @@ export function CardV4({ d, refresh, feed, held, onGateResult, layout, pos, wait
     }))
   }, [refresh, onDone, d.id])
   const st = usePendingCard({ draft: d, refresh: refreshAfter, feed, held, onGateResult, confirm })
+  // A confirmed write that ended without a refresh (it failed, or the gate only queued it) must not
+  // leave the flag up: the next successful Like / Draft / Needs Davor would read as that write's success.
+  useEffect(() => { if (!st.busy) confirmed.current = false }, [st.busy, st.error])
   const [more, setMore] = useState(false)
   // Booking cards read as the Slack message they become (Ivan 2026-09-27: "I want
   // to see it formatted"). Tap the message to edit the text; leave the box and

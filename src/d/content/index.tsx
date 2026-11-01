@@ -9,6 +9,7 @@ import { AnswerRow } from '../ui/AnswerRow'
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
 import { warsawDayTime } from '../ui/time'
+import { useDayAnchor, useLiveNow } from './useLiveNow'
 import { scheduleGuarded } from './writes'
 import { DraftWindow } from './DraftWindow'
 import { Ideas, useIdeaBanks } from './Ideas'
@@ -20,7 +21,7 @@ import { Calendar } from './Calendar'
 import { isPick, savedPick, type Pick } from './calModel'
 import { DayPanel } from './DayPanel'
 import { byDay, seatItems } from './planModel'
-import { LANES, LANE_NAME, errorsLanding, titleOf, wallDays, type Lane } from './model'
+import { LANES, LANE_NAME, armedReceipt, errorsLanding, isPastSchedule, titleOf, wallDays, type Lane } from './model'
 import { useLanes } from '../../hooks/useLanes'
 import type { ContentLane } from '../../lib/content'
 import { useContentData } from './useContentData'
@@ -73,8 +74,8 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const onCal = sub === 'calendar'
   const allPosts = onNow && view === 'posts'
   const magnetView = onNow && (view === 'magnets' || !!q.get('magnet'))
-  const [now] = useState(() => Date.now())
-  const weekRead = useWeekRead(onNow || (sub === 'plan' && !!q.get('draft')), now)
+  const now = useLiveNow()
+  const weekRead = useWeekRead(onNow || (sub === 'plan' && !!q.get('draft')), useDayAnchor(now))
   const onIdeas = sub === 'ideas'
   const [fullOn, setFullOn] = useState(!onNow && !onIdeas)
   useEffect(() => {
@@ -171,8 +172,9 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
     const r = data.seats.ivan.rows.find(x => x.id === id)
     if (!r?.scheduled_at) return
     const at = new Date(r.scheduled_at)
+    if (isPastSchedule(at.toISOString())) { toast.show({ tone: 'failed', message: 'That time has already passed. Pick a later time.' }); return }
     if (!await confirm({ title: 'Put this post on LinkedIn?', message: `The publisher posts this on ${warsawDayTime(at)} Warsaw.`, confirmText: 'Schedule it', verb: 'confirm' })) return
-    try { await scheduleGuarded(id, at.toISOString()); toast.show({ message: `Armed for ${warsawDayTime(at)} Warsaw.` }); refresh() }
+    try { const stored = await scheduleGuarded(id, at.toISOString()); toast.show(armedReceipt(at, stored)); refresh() }
     catch (e) { toast.show({ message: (e as { message?: unknown })?.message && typeof (e as { message?: unknown }).message === 'string' ? (e as { message: string }).message : 'Could not arm it.', tone: 'failed' }) }
   }
   // The open draft stays open behind the move sheet when it is on the same seat (2026-10-09).

@@ -3,7 +3,7 @@ import { ReplySources } from './ReplySources'
    rate per lane for the window picked with 7d / 30d / 90d, and the last 14
    days big. Folded (PerfDetail): acceptance per campaign, the window in words,
    Delivery and the Daily ledger (this seat only). Read-only. */
-import { fetchDayLedger, type LedgerRow } from '../../lib/kpis'
+import { fetchDayLedgerStrict, type LedgerRow } from '../../lib/kpis'
 import type { Seat } from '../seats'
 import { WindowNotes, type BandCtx } from './bandCells'
 import { Shs } from './CampaignSheet'
@@ -20,7 +20,7 @@ const noop = () => {}
 
 /** Open on the first screen: acceptance and reply rate per lane for the window, and the last 14 days. */
 export function PerfCharts({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
-  const ledger = useRead<LedgerRow[]>(fetchDayLedger, 'ledger')
+  const ledger = useRead<LedgerRow[]>(fetchDayLedgerStrict, 'ledger')
   const p = ctx.d.cc.value
   const pf = ctx.d.cc.failed
   const days = RANGE_DAYS[ctx.range]

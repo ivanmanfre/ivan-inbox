@@ -276,6 +276,9 @@ describe('quick discard keeps the open editor', () => {
     const p = page('desktop', '#exp/d/dms?seat=risedtc')
     await waitFor(() => expect(document.querySelector('.dm-comp textarea')).not.toBeNull())
     fireEvent.change(document.querySelector('.dm-comp textarea')!, { target: { value: 'Keep my reply' } })
+    // Typing a reply pins the auto-opened conversation to the link, so a refresh cannot swap it away.
+    await waitFor(() => expect(p.navigate).toHaveBeenCalledWith('#exp/d/dms?seat=risedtc&thread=a'))
+    p.navigate.mockClear()
     fireEvent.keyDown(document.querySelector('.dm-list [data-d-row="a"]')!, { key: 'ArrowRight' })
     fireEvent.click(document.querySelector('[data-verb="quick-discard"]')!)
     expect(lib.discardLegs).not.toHaveBeenCalled()
@@ -295,5 +298,16 @@ describe('quick discard keeps the open editor', () => {
     fireEvent.change(document.querySelector('.dm-comp textarea')!, { target: { value: 'Typed while discarding' } })
     await act(async () => finish([]))
     expect((document.querySelector('.dm-comp textarea') as HTMLTextAreaElement).value).toBe('Typed while discarding')
+  })
+})
+
+describe('search inside a folder', () => {
+  it('a typed query searches instead of being ignored in the Email folder', async () => {
+    skin(['dms', 'tokens', 'type', 'motion', 'shell']); seedPage()
+    page('desktop', '#exp/d/dms?seat=risedtc&folder=email')
+    await waitFor(() => expect(document.querySelector('input[aria-label="Search people and messages"]')).not.toBeNull())
+    fireEvent.change(document.querySelector('input[aria-label="Search people and messages"]')!, { target: { value: 'Lovelace' } })
+    await waitFor(() => expect(document.querySelector('.dm-list [data-d-row="a"]')).not.toBeNull())
+    expect(document.querySelector('.dm-list [data-d-row="b"]')).toBeNull()
   })
 })

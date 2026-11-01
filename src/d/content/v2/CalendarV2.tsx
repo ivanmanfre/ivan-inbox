@@ -194,20 +194,20 @@ export function MonthCard({ e, a }: { e: Entry; a: CardActs }) {
   )
 }
 
-/** Next week per seat against the target of 3; gaps read as drop targets on the wall. */
+/** Next week per seat against the seat's own weekly target (no "of N" until it is known); gaps read as drop targets on the wall. */
 export function CoverageBar({ cov, lanes, loaded, phone = false }: { cov: Coverage; lanes: readonly Lane[]; loaded: (l: Lane) => boolean; phone?: boolean }) {
   return (
     <div className="cv2-cov" role="group" aria-label="Next week, posts set to go out per seat" data-cal-noswipe={phone || undefined}>
       <span className="cv2-cov-l">Next week</span>
       {lanes.map(l => {
         const s = cov.seats[l]
-        const ok = s.set >= s.target
+        const ok = s.known && s.set >= s.target
         // A seat still reading has no coverage yet: never "0/3 · 3 gaps" off an empty list.
         if (!loaded(l)) return <span key={l} className="cv2-cov-s"><span className="cv2-pill cv2-pill-neutral cv2-cov-p"><span>{LANE_NAME[l]} …</span></span></span>
         return (
-          <span key={l} className="cv2-cov-s" title={`${LANE_NAME[l]}: ${s.set} set to go out Mon-Fri next week (target ${s.target})`}>
-            <span key={`${ok}`} className={`cv2-pill cv2-pill-${ok ? 'ok' : 'warn'} cv2-cov-p`}>
-              <span>{LANE_NAME[l]} <b className="cv2-roll" key={s.set}>{s.set}</b> of {s.target}{ok ? ' ✓' : ` · ${s.short} to fill`}</span>
+          <span key={l} className="cv2-cov-s" title={`${LANE_NAME[l]}: ${s.set} set to go out Mon-Fri next week (${s.known ? `target ${s.target}` : 'weekly target not known yet'})`}>
+            <span key={`${ok}`} className={`cv2-pill cv2-pill-${s.known ? (ok ? 'ok' : 'warn') : 'neutral'} cv2-cov-p`}>
+              <span>{LANE_NAME[l]} <b className="cv2-roll" key={s.set}>{s.set}</b>{s.known ? ` of ${s.target}${ok ? ' ✓' : ` · ${s.short} to fill`}` : ' set'}</span>
             </span>
           </span>
         )

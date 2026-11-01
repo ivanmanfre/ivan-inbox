@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { CLIENT_OPS_GATE } from './content'
 import type { Lane } from '../d/content/model'
+import { brainSeatError } from './brainAccount'
 
 export type PatternRate = {
   client_id: string; dimension: string; value: string; n: number; breakouts: number; rate: number
@@ -100,7 +101,7 @@ export async function fetchDraftReads(lane: Lane, ids: string[], signal?: AbortS
 export async function fetchPatternResults(lane: Lane, signal?: AbortSignal): Promise<PatternResults> {
   const query = supabase.rpc('cb33_results', { p_gate: CLIENT_OPS_GATE, p_client: lane })
   const { data, error } = await (signal ? query.abortSignal(signal) : query)
-  if (error) throw new Error(error.message || 'Could not read what works in this niche.')
+  if (error) throw new Error(brainSeatError(error.message) ?? (error.message || 'Could not read what works in this niche.'))
   return parseResults(data, lane)
 }
 export const rateText = (rate: number): string => `${(rate * 100).toLocaleString('en-US', { maximumFractionDigits: 1 })}%`

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { batchResultLine, isStillPending, runBatch } from '../../lib/focus'
-import { outboundApproveUrl, seatLabel, type GateOutcome, type OpsDraft } from '../../lib/ops'
+import { outboundApproveUrl, seatLabel, type GateOutcome, type GateVerdict, type OpsDraft } from '../../lib/ops'
 import { discardConfirm, dispatchApprove, dispatchDiscard, gateConfirm, inviteConfirm } from '../../wb/ops/batchActs'
 import { useDConfirm } from '../ui/confirm'
 import { Working } from '../../ds/Working'
@@ -14,13 +14,15 @@ import { seatBatches, type SeatBatch } from './model'
 //    approved and parked, so "Discard all" must never cancel it at the poster;
 //  - ids resolved here hide at once (doneIds), so a second tap cannot re-fire;
 //  - the label opens the list, each body with its own Approve / Discard and its
-//    own gate note (a `timing` refusal is a queue position, not an error).
+//    own gate note (a `timing` refusal is a queue position, not an error);
+//  - every gate answer goes to onGateResult (the comment queue's record), so a
+//    `timing` refusal joins the retry line instead of being forgotten.
 // Writes are the card's own (wb/ops/batchActs.ts).
 
 type Note = { message: string; outcome: GateOutcome | 'error' }
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
-export function Batch({ lane, cards, refresh, look = 'v3', onActed, onHighlight }: { lane: string; cards: OpsDraft[]; refresh: () => void; look?: 'v3' | 'v4'; onActed?: (id: string, verb: string) => void; onHighlight?: (ids: string[]) => void }) {
+export function Batch({ lane, cards, refresh, look = 'v3', onActed, onHighlight, onGateResult }: { lane: string; cards: OpsDraft[]; refresh: () => void; look?: 'v3' | 'v4'; onActed?: (id: string, verb: string) => void; onHighlight?: (ids: string[]) => void; onGateResult?: (id: string, v: GateVerdict) => void }) {
   const confirm = useDConfirm()
   const [done, setDone] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState<Set<string>>(new Set())
@@ -52,6 +54,7 @@ export function Batch({ lane, cards, refresh, look = 'v3', onActed, onHighlight 
     try {
       onActed?.(d.id, 'Approved')
       const r = await dispatchApprove(d)
+      if (r.verdict) onGateResult?.(d.id, r.verdict)
       if (r.ok) { markDone(d.id); clearReceipt(d); refresh() } else setOne(s => ({ ...s, [d.id]: { message: r.message, outcome: r.outcome } }))
     } catch (e) { setOne(s => ({ ...s, [d.id]: { message: errText(e), outcome: 'error' } })) }
     finally { mark([d.id], false) }
@@ -81,6 +84,7 @@ export function Batch({ lane, cards, refresh, look = 'v3', onActed, onHighlight 
       onActed?.(id, verb === 'discard' ? 'Discarded' : 'Approved')
       if (verb === 'discard') { await dispatchDiscard(d); markDone(id); return }
       const res = await dispatchApprove(d)
+      if (res.verdict) onGateResult?.(id, res.verdict)
       if (res.ok) { markDone(id); return }
       setOne(s => ({ ...s, [id]: { message: res.message, outcome: res.outcome } }))
       throw new Error(res.message)

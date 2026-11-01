@@ -108,6 +108,15 @@ describe('canMoveDate — operator_set_schedule_date’s status line, and nothin
       expect(canMoveDate({ status: s })).toBe(false)
     }
   })
+  it('Ivan’s own approved drafts move too (RPC since 2026-10-08); a client’s approved draft and a lane-less row still do not', () => {
+    expect(canMoveDate({ status: 'approved', client_id: null })).toBe(true)
+    expect(canMoveDate({ status: 'approved', client_id: 'ivan' })).toBe(true)
+    expect(canMoveDate({ status: 'approved', client_id: 'risedtc' })).toBe(false)
+    expect(canMoveDate({ status: 'approved' })).toBe(false)
+    expect(canMoveDate({ status: 'published', client_id: null })).toBe(false)
+    expect(buildCalendarItems([d({ status: 'approved', client_id: null })], [], NOW)[0].movable).toBe(true)
+    expect(buildCalendarRail([d({ id: 'ia', status: 'approved', client_id: null, scheduled_at: null })]).map(r => r.id)).toEqual(['ia'])
+  })
   it('🔴 published is refused BY THE DATABASE now, not by a promise we keep here', () => {
     expect(canMoveDate({ status: 'published' })).toBe(false)
   })

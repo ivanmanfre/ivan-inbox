@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PhoneWall } from './PhoneWall'
 import type { ContentData, SeatRead } from './useContentData'
 import type { Lane } from './model'
+import type { ContentDraft } from '../../lib/content'
 
 // B4-DEV finding 3: a seat still reading printed "next none · published 0".
 // Loading shows "…", never a zero; a loaded seat shows its real numbers.
@@ -22,5 +23,16 @@ describe('PhoneWall seat lines', () => {
     expect(lines.filter(t => t === 'in 2 weeks')).toHaveLength(3)
     expect(lines.filter(t => t === 'scheduled in 2 weeks · published 0')).toHaveLength(1)
     expect([...container.querySelectorAll('.cn-bh em')].map(x => x.textContent)).toEqual(['…', '0', '…', '…'])
+  })
+})
+
+describe('PhoneWall scheduled count', () => {
+  it('counts the weekend posts its strip lists, not only weekdays', () => {
+    const wk = (key: string, dow: string, n: number) => ({ key, dow, dm: `${n} Oct`, n })
+    const days = [wk('2026-10-16', 'Fri', 16), wk('2026-10-19', 'Mon', 19)]
+    const post = (id: string, at: string) => ({ id, client_id: null, status: 'scheduled', scheduled_at: at, published_at: null }) as unknown as ContentDraft
+    const seat: SeatRead = { ...loaded, rows: [post('fri', '2026-10-16T08:00:00Z'), post('sat', '2026-10-17T08:00:00Z')] }
+    const { container } = render(<PhoneWall data={data({ ivan: seat, risedtc: loaded, arch: loaded, swishdm: loaded })} items={items} days={days} stuck={null} onOpen={vi.fn()} onMove={vi.fn()} onArm={vi.fn()} />)
+    expect([...container.querySelectorAll('.cn-bh em')].map(x => x.textContent)).toEqual(['2', '0', '0', '0'])
   })
 })

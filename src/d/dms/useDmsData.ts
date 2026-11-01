@@ -153,14 +153,17 @@ export function useDmsData() {
       return next
     })
   }, [])
+  // A read that STARTED before the write may land after it without the write in it, so the patch is kept
+  // until a read that began after it lands. (A caller that cannot say when its read began keeps the old rule.)
   const loadedMs = inbox.loadedAt ? Date.parse(inbox.loadedAt) : 0
+  const keepAfter = inbox.readStartedAt || loadedMs - 1500
   useEffect(() => {
     setPatches(prev => {
       if (!prev.size) return prev
-      const next = new Map([...prev].filter(([, v]) => v.at > loadedMs - 1500))
+      const next = new Map([...prev].filter(([, v]) => v.at > keepAfter))
       return next.size === prev.size ? prev : next
     })
-  }, [loadedMs])
+  }, [keepAfter])
 
   const threads: Thread[] = useMemo(() => {
     if (!patches.size) return inbox.threads

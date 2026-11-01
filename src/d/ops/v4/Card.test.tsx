@@ -5,7 +5,7 @@ import { renderInFrame } from '../../test-utils'
 import type { OpsDraft } from '../../../lib/ops'
 import { CardV4 } from './Card'
 import { Batch } from '../Batch'
-vi.mock('../../../lib/ops', async orig => ({ ...await orig<typeof import('../../../lib/ops')>(), approveOpsDraft: vi.fn(async () => {}), dispatchCommentGate: vi.fn(async () => ({ outcome: 'accepted', message: 'approved', retryable: false })), approveWeeklyReport: vi.fn(async () => {}), postCommentReply: vi.fn(async () => ({ posted: true })) }))
+vi.mock('../../../lib/ops', async orig => ({ ...await orig<typeof import('../../../lib/ops')>(), discardOpsDraft: vi.fn(async () => { throw new Error('network blip') }), likeComment: vi.fn(async () => {}), approveOpsDraft: vi.fn(async () => {}), dispatchCommentGate: vi.fn(async () => ({ outcome: 'accepted', message: 'approved', retryable: false })), approveWeeklyReport: vi.fn(async () => {}), postCommentReply: vi.fn(async () => ({ posted: true })) }))
 const row = (kind: OpsDraft['kind'], context: Record<string, unknown> = {}): OpsDraft => ({ id: 'a', kind, client_id: 'ivan', body: 'My words', context: { posted_at: new Date().toISOString(), ...context }, created_at: new Date().toISOString(), slack_channel: '', approved_at: null, sent_at: null, send_blocked_reason: null })
 const render = (d: OpsDraft, held?: Parameters<typeof CardV4>[0]['held']) => renderInFrame(<div className="op4"><CardV4 d={d} refresh={() => {}} layout="desktop" pos="card 1 of 1" held={held} /></div>)
 afterEach(cleanup)
@@ -68,5 +68,17 @@ describe('Ops v4 details', () => {
     fireEvent.click(document.querySelector('[data-verb=cancel]')!)
     editor.focus(); fireEvent.keyDown(editor, { key: 'Escape' })
     expect(document.activeElement).not.toBe(editor)
+  })
+  it('a failed Discard does not make a later Like count as that card being done', async () => {
+    const onDone = vi.fn(), onActed = vi.fn()
+    renderInFrame(<div className="op4"><CardV4 d={row('comment_reply', { comment_id: 'c', author_name: 'Ada' })} refresh={() => {}} layout="desktop" pos="card 1 of 1" onDone={onDone} onActed={onActed} /></div>)
+    fireEvent.click(document.querySelector('[data-verb=discard]')!)
+    fireEvent.click(await waitFor(() => { const el = document.querySelector('.d-confirm [data-verb=confirm]'); if (!el) throw Error('confirm'); return el }))
+    await waitFor(() => expect(document.querySelector('.op-err')?.textContent).toContain('network blip'))
+    fireEvent.click(document.querySelector('[data-verb=more]')!)
+    fireEvent.click(await waitFor(() => { const el = document.querySelector('[data-verb=like]'); if (!el) throw Error('like'); return el }))
+    await waitFor(() => expect(document.querySelector('[data-verb=like]')?.hasAttribute('disabled')).toBe(true))
+    await new Promise(r => setTimeout(r, 80))
+    expect(onDone).not.toHaveBeenCalled()
   })
 })

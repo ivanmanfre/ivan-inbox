@@ -8,6 +8,8 @@ import { CONTENT_LANES, type ContentLane } from '../../lib/content'
 import type { IconName } from '../../ds'
 import { PLACES, PLACE_ORDER, type PlaceId } from '../places'
 import { dHash, hitHash } from '../route'
+import { seatOf } from '../seats'
+import { readSeat } from '../dms/SeatSquares'
 import { peopleFromThreads } from '../../exp/v2c/commandVerbs'
 import { useDInbox } from '../counts/inbox'
 import { usePageCommands } from './commands'
@@ -60,10 +62,12 @@ const GO_SUBS: { id: string; title: string; icon: IconName; hash: string }[] = [
   { id: 'go.money', title: 'Go to Money', icon: 'settings', hash: dHash('settings', 'money') },
 ]
 
-/** The lane the page on screen is showing (`?lane=` or `?seat=`), for the search's first lane. */
-export function laneOnScreen(hash: string): ContentLane {
-  const q = new URLSearchParams(hash.split('?')[1] ?? '')
-  const v = q.get('lane') ?? q.get('seat') ?? ''
+/** The lane the page on screen is showing (`?lane=` or `?seat=`, else the DMs page's remembered seat), for the search's first lane. */
+export function laneOnScreen(hash: string, stored: string | null = readSeat()): ContentLane {
+  const [path, query = ''] = hash.split('?')
+  const q = new URLSearchParams(query)
+  const onDms = /^#exp\/d\/dms(?:[/]|$)/.test(path)
+  const v = q.get('lane') ?? q.get('seat') ?? (onDms ? stored ?? '' : '')
   return v === 'risedtc' || v === 'rise' ? 'risedtc' : v === 'arch' ? 'arch' : v === 'swishdm' ? 'swishdm' : 'ivan'
 }
 
@@ -75,6 +79,8 @@ export function DPalette({ onClose, navigate, toggleClaude, openBell, lane: star
   const [layer] = useState(() => layerCommands({ page: [], openSheet: openKeySheet, closeTop: () => {}, runBulk }))
   // Live: the inbox may still be landing when the palette opens.
   const people = useMemo(() => (desktop ? peopleFromThreads(inbox.threads) : []), [desktop, inbox.threads])
+  // Each person's seat, so Open lands on that seat's list and not the remembered one.
+  const personSeat = useMemo(() => new Map(inbox.threads.map(t => [t.prospect_id, seatOf(t.client_id)])), [inbox.threads])
   const [q, setQ] = useState('')
   const [lane, setLane] = useState<ContentLane>(startLane)
   const [res, setRes] = useState<CrossResults>(EMPTY)
@@ -151,9 +157,9 @@ export function DPalette({ onClose, navigate, toggleClaude, openBell, lane: star
     },
     ...people.map<WbCommand>(p => ({
       id: `person.${p.id}`, title: `Open ${p.name}`, group: 'People', icon: 'person', key: null,
-      hint: p.sub, search: p.search, ready: true, run: () => navigate(dHash('dms', null, { thread: p.id })),
+      hint: p.sub, search: p.search, ready: true, run: () => navigate(dHash('dms', null, personSeat.get(p.id) ? { seat: personSeat.get(p.id)!, thread: p.id } : { thread: p.id })),
     })),
-  ]), [page, layer, people, toggleClaude, openBell, navigate])
+  ]), [page, layer, people, personSeat, toggleClaude, openBell, navigate])
 
   const pick = (h: CrossHit) => {
     window.dispatchEvent(new CustomEvent('d-open', { detail: h }))

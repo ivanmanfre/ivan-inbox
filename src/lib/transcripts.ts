@@ -68,18 +68,30 @@ export type CallBrief = {
 const LIST_COLS = 'id, title, date, duration_minutes, participants, summary, action_items, '
   + 'topics, follow_up_draft, follow_up_sent, source, meeting_type, brief'
 
+const PAGE = 200
+const MAX_PAGES = 10
+
 export async function fetchCalls(): Promise<CallRow[]> {
-  const { data, error } = await supabase
-    .from('transcripts')
-    .select(LIST_COLS)
-    .order('date', { ascending: false })
-    .limit(200)
-  if (error) throw error
-  // `transcripts` carries no generated schema type in this client, same as
-  // `calendar_events` in nextCall.ts: PostgREST-js cannot infer the select
-  // shape and falls back to its safety-net error type, so this casts through
-  // unknown exactly as every other ad-hoc read in this codebase does.
-  return (data ?? []) as unknown as CallRow[]
+  // Paged past the server's single-read window: the table passed 200 rows and the oldest calls
+  // were silently missing (and read as "didn't load"). Id breaks date ties so pages never overlap.
+  const rows: CallRow[] = []
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const { data, error } = await supabase
+      .from('transcripts')
+      .select(LIST_COLS)
+      .order('date', { ascending: false })
+      .order('id', { ascending: false })
+      .range(page * PAGE, page * PAGE + PAGE - 1)
+    if (error) throw error
+    // `transcripts` carries no generated schema type in this client, same as
+    // `calendar_events` in nextCall.ts: PostgREST-js cannot infer the select
+    // shape and falls back to its safety-net error type, so this casts through
+    // unknown exactly as every other ad-hoc read in this codebase does.
+    const got = (data ?? []) as unknown as CallRow[]
+    rows.push(...got)
+    if (got.length < PAGE) break
+  }
+  return rows
 }
 
 export async function fetchCallBody(id: string): Promise<string> {

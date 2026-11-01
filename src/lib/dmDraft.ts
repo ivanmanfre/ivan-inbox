@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { scheduleHeld } from './dmSchedule'
 import { groupThreads, isInternalConfirmation, isReplyRetryExhausted, type InboxMessage, type Thread } from './inbox'
 
 
@@ -22,6 +23,7 @@ export async function requestDmDraft(t: Thread): Promise<void> {
   if (rows.some(m => m.prospect_blacklisted || ['archived', 'skipped', 'disqualified', 'unsubscribed', 'blacklisted', 'engaged'].includes(m.prospect_stage) || m.prospect_skip_reason)) throw new Error('This conversation is paused or closed. Refresh before drafting.')
   const hold = groupThreads(rows)[0]?.ownerConfirmation
   if (hold && (hold.id !== t.ownerConfirmation?.id || !isReplyRetryExhausted(t.ownerConfirmation))) throw new Error('Add the confirmed owner answer before drafting this reply.')
+  if (rows.some(m => m.direction === 'outbound' && !m.sent_at && !m.approved_at && scheduleHeld(m.send_blocked_reason))) throw new Error('A reply is already scheduled for this conversation.')
   if (rows.some(m => m.direction === 'outbound' && !m.sent_at && !m.send_blocked_at && m.message_text.trim())) throw new Error('A reply is already waiting. Refresh the conversation.')
   const conversation = rows.filter(m => m.message_text.trim() && !isInternalConfirmation(m) && (m.direction === 'inbound' || m.sent_at))
     .sort((a, b) => (a.sent_at || a.created_at).localeCompare(b.sent_at || b.created_at))

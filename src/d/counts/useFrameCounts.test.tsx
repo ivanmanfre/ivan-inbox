@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ZERO_READERS } from '../test-utils'
 import type { Thread } from '../../lib/inbox'
 
-const inboxHold = vi.hoisted(() => ({ value: null as null | { threads: Thread[]; loadedAt: string | null; cachedAt: string | null } }))
+const inboxHold = vi.hoisted(() => ({ value: null as null | { threads: Thread[]; loadedAt: string | null; cachedAt: string | null; error?: string | null } }))
 vi.mock('./inbox', () => ({ useDInboxMaybe: () => inboxHold.value }))
 import { FrameCountsProvider, useFrameCounts } from './useFrameCounts'
 
@@ -60,5 +60,19 @@ describe('DMs counts come off the frame inbox when it has rows', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(3 * 60_000 + 10) })
     expect(dm.mock.calls.length).toBe(atMount)
     expect(bell.mock.calls.length).toBeGreaterThan(1)
+  })
+  it('a saved copy alone does not cover the numbers: the per-seat read still runs', async () => {
+    inboxHold.value = { threads: [thread], loadedAt: null, cachedAt: '2026-09-27T00:00:00Z', error: null }
+    const dm = vi.fn().mockResolvedValue({ drafts: 0, needs: 0 })
+    render(<FrameCountsProvider readers={{ ...ZERO_READERS, dm }}><Count /></FrameCountsProvider>)
+    await act(async () => { await Promise.resolve() })
+    expect(dm).toHaveBeenCalledTimes(4)
+  })
+  it('a failed live inbox read falls back to the per-seat read', async () => {
+    inboxHold.value = { threads: [thread], loadedAt: '2026-09-29T00:00:00Z', cachedAt: null, error: 'inbox unavailable' }
+    const dm = vi.fn().mockResolvedValue({ drafts: 0, needs: 0 })
+    render(<FrameCountsProvider readers={{ ...ZERO_READERS, dm }}><Count /></FrameCountsProvider>)
+    await act(async () => { await Promise.resolve() })
+    expect(dm).toHaveBeenCalledTimes(4)
   })
 })

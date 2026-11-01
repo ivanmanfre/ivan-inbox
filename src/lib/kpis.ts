@@ -101,6 +101,14 @@ export async function fetchDayLedger(): Promise<LedgerRow[]> {
   return (data ?? []) as LedgerRow[]
 }
 
+// The D Lanes read: a failed read must show as failed (with retry), never as an empty
+// ledger. The soft-failing fetchDayLedger above stays for the legacy Overview screens.
+export async function fetchDayLedgerStrict(): Promise<LedgerRow[]> {
+  const { data, error } = await supabase.from('inbox_day_ledger_v').select('*')
+  if (error) throw error
+  return (data ?? []) as LedgerRow[]
+}
+
 export type LedgerDay = {
   day: string
   invites: number; accepted: number; dms: number; inmails: number

@@ -46,7 +46,7 @@ export function PhoneWall({ data, items, days, stuck, onOpen, onMove, onArm, now
             <div className="cn-bh">
               <div><b title={FEED[l]}>{LANE_NAME[l]}</b></div>
               {s.error ? <small className="cn-warn">could not read</small> : (
-                <div><em>{s.loadedAt ? scheduledIn(s.rows, l, days) : '…'}</em>{s.loadedAt
+                <div><em>{s.loadedAt ? scheduledIn(s.rows, l, keys.map(key => ({ key }))) : '…'}</em>{s.loadedAt
                   ? <small title={next?.scheduled_at ? `next ${warsawDow(next.scheduled_at)} ${warsawDm(next.scheduled_at)}` : 'nothing next'}>scheduled in 2 weeks · published {publishedCount(s.rows)}</small>
                   : <small>in 2 weeks</small>}</div>
               )}

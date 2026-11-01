@@ -149,15 +149,16 @@ describe('this week: the one key and the date control', () => {
     expect(primaryOf(row({ client_id: 'risedtc', board_visible: true }), 'risedtc')).toBe('open')
   })
 
-  it('the date control follows operator_set_schedule_date: review or scheduled, never published or approved', () => {
+  it('the date control follows operator_set_schedule_date: review or scheduled, Ivan’s own approved too, never published or a client’s approved', () => {
     const w = buildWeek([
       row({ id: 'rev', scheduled_at: at(D) }),
       row({ id: 'sch', status: 'scheduled', scheduled_at: at(D) }),
       row({ id: 'app', status: 'approved', scheduled_at: at(D) }),
+      row({ id: 'capp', client_id: 'risedtc', status: 'approved', scheduled_at: at(D) }),
       row({ id: 'pub', status: 'published', published_at: at(-H), scheduled_at: at(-2 * H) }),
     ], { now: NOW })
     const by = Object.fromEntries(w.groups.flatMap(g => g.cards).map(c => [c.r.id, c.canDate]))
-    expect(by).toEqual({ rev: true, sch: true, app: false, pub: false })
+    expect(by).toEqual({ rev: true, sch: true, app: true, capp: false, pub: false })
   })
 })
 

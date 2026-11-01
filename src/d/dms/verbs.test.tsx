@@ -283,6 +283,16 @@ describe('DM verbs', () => {
     await waitFor(() => expect(lib.approveDraft).toHaveBeenCalledWith(t.draft!.id, t.draft!.message_text, 'chat1', expect.objectContaining({ id: t.draft!.id })))
   })
 
+  it('cancelling the Send confirm still saves the edit typed just before it', async () => {
+    const [t] = threads(drafted('keep', { prospect_name: 'Kay', unipile_chat_id: 'chat1' }))
+    mount(t)
+    fireEvent.change(document.querySelector('textarea.dm-edit')!, { target: { value: 'Edited just now' } })
+    fireEvent.click(key('send'))
+    fireEvent.click(await screen.findByText('Cancel'))
+    expect(lib.approveDraft).not.toHaveBeenCalled()
+    await waitFor(() => expect(lib.saveDraftText).toHaveBeenCalledWith(t.draft!.id, 'Edited just now'))
+  })
+
   it('Send both approves both legs; the email leg without a chat id', async () => {
     const rows = [...drafted('p', { prospect_name: 'Sally', client_id: 'risedtc' }),
       msg({ prospect_id: 'p', prospect_name: 'Sally', client_id: 'risedtc', channel: 'email', message_text: 'Email leg', created_at: new Date(NOW - 3_000_000).toISOString(), recipient_email: 's@x.com' })]

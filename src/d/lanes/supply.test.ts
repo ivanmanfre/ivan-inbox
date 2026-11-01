@@ -36,6 +36,17 @@ describe('lead supply of one seat', () => {
     expect(s.days!.at(-2)).toEqual({ day: '2026-09-27', inn: 20, out: 40 })
   })
 
+  it('the 7-day pace is 7 whole days ending today, not 8 days divided by 7', () => {
+    const edge = [
+      { client_id: 'arch', lane: 'competitor_engager', day: '2026-09-21', qualified_in: 5, sent_out: 70 }, // 7 days before today: out
+      { client_id: 'arch', lane: 'competitor_engager', day: '2026-09-22', qualified_in: 5, sent_out: 7 }, // 6 days before today: in
+      { client_id: 'arch', lane: 'competitor_engager', day: '2026-09-28', qualified_in: 0, sent_out: 7 }, // today: in
+    ]
+    const s = supplyOf(base({ ready, replacement: edge, pipeline, gov: [] }), 'arch', NOW)
+    expect(s.out7).toBe(14); expect(s.in7).toBe(5)
+    expect(s.rate).toBe(2)
+  })
+
   it('says unknown, never 0, while the reads are pending', () => {
     const s = supplyOf(base({}), 'arch', NOW)
     expect(s.ready).toBeNull(); expect(s.runwayDays).toBeNull(); expect(s.refill).toBeNull(); expect(s.days).toBeNull()

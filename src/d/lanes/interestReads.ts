@@ -2,6 +2,7 @@ import { supabase } from '../../lib/supabase'
 import type { ReplacementRow } from '../../lib/kpis'
 import type { Seat } from '../seats'
 import type { InterestSource } from './interest'
+import { retryOnTimeout } from '../../lib/rateComparison'
 
 export type InterestPerf = {
   client_id: Seat; source_lane: InterestSource; invites_7d: number; dms_7d: number
@@ -19,7 +20,7 @@ export async function fetchInterestPerf(): Promise<InterestPerf[]> {
 }
 
 export async function fetchInterestReplacement(): Promise<ReplacementRow[]> {
-  const { data, error } = await supabase.from('inbox_interest_replacement_v').select('*')
+  const { data, error } = await retryOnTimeout(() => supabase.from('inbox_interest_replacement_v').select('*'))
   if (error) throw error
   return ((data ?? []) as Record<string, unknown>[]).map(r => ({
     client_id: String(r.client_id), lane: String(r.lane), day: String(r.day),

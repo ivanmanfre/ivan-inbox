@@ -24,11 +24,15 @@ export async function fetchCameBack(): Promise<CameBackCard[]> {
   return (data ?? []) as CameBackCard[]
 }
 
-/** Ivan's warm signals waiting for a look (the DMs lane card). */
+/** Ivan's own warm signals waiting for a look (the DMs lane card). The rpc returns every seat's
+    cards, each row carrying its `tenant`, so only Ivan's are counted (a row with no tenant is Ivan's, as in the DMs lane). */
+export function warmCountFor(data: unknown, tenant: string): number {
+  return Array.isArray(data) ? data.filter(r => { const t = (r as { tenant?: string | null } | null)?.tenant; return (t || 'ivan') === tenant }).length : 0
+}
 export async function fetchWarmCount(): Promise<number> {
   const { data, error } = await supabase.rpc('warm_signal_cards')
   if (error) throw error
-  return Array.isArray(data) ? data.length : 0
+  return warmCountFor(data, 'ivan')
 }
 
 const since = (days: number, now = Date.now()) => new Date(now - days * 864e5).toISOString()

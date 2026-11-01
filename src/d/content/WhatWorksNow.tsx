@@ -3,6 +3,7 @@ import { fetchPatternResults, holdoutText, rateText, type PatternRate, type Patt
 import { Failed, Skeleton } from '../ui/states'
 import type { Lane } from './model'
 import './early-read.css'
+import { BRAIN_NOT_COVERED } from '../../lib/brainAccount'
 
 export function WhatWorksNow({ lane }: { lane: Lane }) {
   const [data, setData] = useState<PatternResults | null>(null)
@@ -30,7 +31,7 @@ export function WhatWorksNowBody({ lane, data, error, onRetry }: { lane: Lane; d
   </li>)}</ul>
   return <section className="cn-result-section cn-what-works" aria-label="What works now">
     <h2>What works now</h2><p className="cn-pattern-caption">Early read{lane === 'arch' || data?.smallSample ? ' · small sample' : ''}. Patterns in this client’s niche, based on stored breakouts.</p>
-    {error ? <Failed what="the niche patterns" detail={error} onRetry={onRetry} /> : !data ? <Skeleton lines={3} label="Reading niche patterns" /> : <>
+    {error === BRAIN_NOT_COVERED ? <p className="cn-wk2-empty">{error}</p> : error ? <Failed what="the niche patterns" detail={error} onRetry={onRetry} /> : !data ? <Skeleton lines={3} label="Reading niche patterns" /> : <>
       {!top.length && !bottom.length ? <p className="cn-wk2-empty">No patterns with at least 25 niche posts are stored yet.</p> : <div className="cn-pattern-groups">
         <div><h3>More breakouts</h3>{top.length ? list(top) : <p>No eligible stronger patterns.</p>}</div>
         <div><h3>Fewer breakouts</h3>{bottom.length ? list(bottom) : <p>No other eligible patterns.</p>}</div>

@@ -44,7 +44,7 @@ describe('the term cannot rewrite the filter', () => {
   it('drops the characters that would break out of or(...)', () => {
     expect(safeTerm('a,b')).toBe('a b')
     expect(safeTerm('x)or=(y')).toBe('x or= y')
-    expect(safeTerm("o'brien")).toBe('o brien')
+    expect(safeTerm("o'brien")).toBe("o'brien")
   })
 
   it('strips the wildcards so a search for a literal stays a literal', () => {

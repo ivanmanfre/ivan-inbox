@@ -132,10 +132,13 @@ function parseLabelMutation(raw: unknown, lane: Lane, ref: OutlierRef, invocatio
   if (!undo && label) { const u = obj(d.undo); if (u.invocation_id !== invocationId || u.revision !== label.version) throw new Error('The label receipt is missing its guarded Undo identity.'); label.undoInvocationId = invocationId }
   return { client: lane, label, calibration: calibration(d.calibration), invocationId, auditId: String(d.audit_id), mutationAt: string(d.mutation_at, 'mutation time') }
 }
+/** The brain RPCs refuse a seat they do not read yet ('unknown seat'). That is a plain fact for the panel, never a retryable failure. */
+export const BRAIN_NOT_COVERED = 'The content brain does not read this seat yet.'
+export const brainSeatError = (message: string | undefined): string | null => (/unknown seat/i.test(message ?? '') ? BRAIN_NOT_COVERED : null)
 async function rpc(name: string, args: Record<string, unknown>, signal?: AbortSignal) {
   const q = supabase.rpc(name, args)
   const { data, error } = await (signal ? q.abortSignal(signal) : q)
-  if (error) throw new Error(error.code === 'PGRST202' || error.code === '42883' ? 'This Brain service is not available yet.' : error.message || 'The brain read could not be completed.')
+  if (error) throw new Error(error.code === 'PGRST202' || error.code === '42883' ? 'This Brain service is not available yet.' : brainSeatError(error.message) ?? (error.message || 'The brain read could not be completed.'))
   return data
 }
 export async function fetchBrainScoreboard(lane: Lane, signal?: AbortSignal) { return parseBrainScoreboard(await rpc('cb34_scoreboard', { p_gate: CLIENT_OPS_GATE, p_client: lane }, signal), lane) }

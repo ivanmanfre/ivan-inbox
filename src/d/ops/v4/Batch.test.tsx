@@ -48,4 +48,16 @@ describe('v4 batch presentation', () => {
     finishSecond({ ok: true })
     await waitFor(() => expect(document.body.textContent).toContain('2 approved'))
   })
+  it('hands every gate answer to the comment queue, so a timing refusal joins the retry line', async () => {
+    const timing = { outcome: 'timing' as const, message: 'next slot 14:20', retryable: true }
+    const accepted = { outcome: 'accepted' as const, message: 'approved', retryable: false }
+    vi.mocked(dispatchApprove).mockResolvedValueOnce({ ok: true, verdict: accepted }).mockResolvedValueOnce({ ok: false, outcome: 'timing', message: timing.message, verdict: timing })
+    const record = vi.fn()
+    renderInFrame(<Batch lane="ivan" cards={[a, { ...a, id: 'b' }]} refresh={() => {}} look="v4" onGateResult={record} />)
+    fireEvent.click(document.querySelector('[data-verb=batch-approve]')!)
+    fireEvent.click(await waitFor(() => { const el = document.querySelector('.d-confirm [data-verb=confirm]'); if (!el) throw Error('confirm'); return el }))
+    await waitFor(() => expect(record).toHaveBeenCalledTimes(2))
+    expect(record).toHaveBeenNthCalledWith(1, 'a', accepted)
+    expect(record).toHaveBeenNthCalledWith(2, 'b', timing)
+  })
 })

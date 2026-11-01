@@ -9,7 +9,7 @@ import {
   boardGroupOf, clientScheduleArmed, isStuckGenerating, localDay, stageOfLane,
   type ContentDraft, type ContentLane,
 } from '../../lib/content'
-import { warsawDay, warsawDm, warsawDow, warsawHm } from '../ui/time'
+import { warsawDay, warsawDayTime, warsawDm, warsawDow, warsawHm } from '../ui/time'
 
 export type Lane = ContentLane
 export const LANES: readonly Lane[] = ['ivan', 'risedtc', 'arch', 'swishdm']
@@ -43,6 +43,22 @@ export const SCHEDULABLE = ['review', 'approved', 'scheduled'] as const
 
 export function canSchedule(r: Pick<ContentDraft, 'status' | 'published_at'>): boolean {
   return (SCHEDULABLE as readonly string[]).includes(r.status ?? '') && !r.published_at
+}
+
+/** A time that has already gone by publishes on the next publisher tick, so Schedule refuses it (the database's own past_date rule). A few minutes of grace for a clock a little behind. */
+export const PAST_GRACE_MS = 5 * 60_000
+export function isPastSchedule(iso: string, now: number = Date.now()): boolean {
+  return Date.parse(iso) < now - PAST_GRACE_MS
+}
+
+/** The receipt after Schedule. The database can snap a weekend or a taken day to another one, so say the day it stored, never the day that was asked for. */
+export function armedReceipt(asked: Date, stored?: string | null): { message: string; sub: string } {
+  const landed = stored && !Number.isNaN(Date.parse(stored)) ? new Date(stored) : asked
+  const moved = warsawDay(landed) !== warsawDay(asked)
+  return {
+    message: `Armed for ${warsawDayTime(landed)} Warsaw.`,
+    sub: moved ? `That day was not free, so it moved from ${warsawDayTime(asked)}. The publisher posts it then.` : 'The publisher posts it then.',
+  }
 }
 
 /** Today's default: the date row is open at review or approved, folded on an armed row. */
@@ -89,7 +105,7 @@ export function postOn(rows: ContentDraft[], lane: Lane, key: string): ContentDr
   return on.find(r => isScheduled(r, lane)) ?? on.find(r => isPlanned(r, lane)) ?? null
 }
 
-export function scheduledIn(rows: ContentDraft[], lane: Lane, days: WallDay[]): number {
+export function scheduledIn(rows: ContentDraft[], lane: Lane, days: ReadonlyArray<Pick<WallDay, 'key'>>): number {
   const keys = new Set(days.map(d => d.key))
   return rows.filter(r => isScheduled(r, lane) && keys.has(warsawDay(r.scheduled_at as string))).length
 }

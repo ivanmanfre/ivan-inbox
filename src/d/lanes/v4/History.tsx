@@ -1,4 +1,4 @@
-import { fetchDayLedger } from '../../../lib/kpis'
+import { fetchDayLedgerStrict } from '../../../lib/kpis'
 import type { BandCtx } from '../bandCells'
 import type { Seat } from '../../seats'
 import { seriesOf, type Bar } from '../model'
@@ -15,7 +15,7 @@ function Line({ label, bars }: { label: string; bars: Bar[] }) {
   </button>)}</div><small>today {today ?? '?'} · 14d {known.length ? known.reduce((a, b) => a + b.v!, 0) : '?'}</small></div>
 }
 export function History({ seat, ctx }: { seat: Seat; ctx: BandCtx }) {
-  const ledger = useRead(fetchDayLedger, 'ledger')
+  const ledger = useRead(fetchDayLedgerStrict, 'ledger')
   const p = ctx.d.cc.value
   const inv = seriesOf(p, seat, ctx.now, 'invitation')
   return <section className="dl4-panel dl4-history" data-bx-block><h2>Last 14 days <small>all account activity</small></h2>

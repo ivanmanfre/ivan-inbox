@@ -106,7 +106,9 @@ type HistoryProps = { onSendAnyways?: (m: InboxMessage) => void; onDiscardHeld?:
   onEditHeld?: (m: InboxMessage, text: string, then: HeldEditThen) => Promise<boolean>; heldLater?: boolean; sending?: boolean; t: Thread; cap?: number; engagements?: readonly CameBackSignal[] | null; now?: number; onReplyEmail?: (m: InboxMessage) => void; onForwardEmail?: (m: InboxMessage) => void
   revealMessageId?: string | null; activeEmailReplyId?: string | null
   /** Brief 4: meta once per run (status, reaction, email and a channel change always), arrivals grow from their tail. */
-  v4?: boolean }
+  v4?: boolean
+  /** The list on screen is only the newest page of a read still running: an empty history is not yet a fact. */
+  reading?: boolean }
 
 export function History(props: HistoryProps) {
   const [retry, setRetry] = useState(0)
@@ -131,7 +133,7 @@ function EngagementLine({ s, owner }: { s: CameBackSignal; owner: string }) {
   )
 }
 
-function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = false, sending, t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail, retry, v4 = false, engagements, revealMessageId, activeEmailReplyId }: HistoryProps & { retry: () => void }) {
+function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = false, sending, t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail, retry, v4 = false, engagements, revealMessageId, activeEmailReplyId, reading = false }: HistoryProps & { retry: () => void }) {
   const source = useReplySource({ kind: 'operator', clientId: t.client_id ?? 'ivan' }, t.prospect_id, true)
   const [all, setAll] = useState(false)
   useEffect(() => {
@@ -175,7 +177,7 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
   const edge = rows.length > shown.length ? Date.parse(timelineTime(shown[0])) : -Infinity
   const evs = engagementSignals(engagements).filter(e => Date.parse(e.at) >= edge).reverse()
   if (!rows.length && !evs.length) {
-    return <div className="dm-hist">{v4 ? <ReplySourceLine state={source} retry={retry} /> : <ReplySourceContent state={source} retry={retry} />}<p className="dm-hist-empty">No messages yet. {t.draft ? 'The draft below is the first one.' : 'Nothing has been sent or received on this thread yet.'}</p></div>
+    return <div className="dm-hist">{v4 ? <ReplySourceLine state={source} retry={retry} /> : <ReplySourceContent state={source} retry={retry} />}<p className="dm-hist-empty">{reading ? 'Reading the conversation…' : `No messages yet. ${t.draft ? 'The draft below is the first one.' : 'Nothing has been sent or received on this thread yet.'}`}</p></div>
   }
   let day = ''
   let prevSide: 'in' | 'out' | null = null

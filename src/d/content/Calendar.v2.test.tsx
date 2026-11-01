@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, within } from '@testing-library/react'
+import { useState } from 'react'
 import { renderInFrame } from '../test-utils'
 import { Calendar } from './Calendar'
 import { byDay, seatItems } from './planModel'
@@ -119,6 +120,35 @@ describe('the On board tag and the post tags', () => {
     expect(await screen.findByText('Date removed.')).toBeTruthy()
     expect(writes.clearScheduleDate).toHaveBeenCalledWith('supp')
     expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy()
+  })
+})
+
+describe('a refused Undo', () => {
+  it('lets the card snap back to the day the database holds, not the day it was moved from', async () => {
+    const mine = row('mine', { status: 'scheduled', scheduled_at: '2026-10-20T07:00:00Z' })
+    let swap: (r: ContentDraft[]) => void = () => {}
+    function Live() {
+      const [rows, setRows] = useState([mine]); swap = setRows
+      const { data, items } = setup({ ivan: rows })
+      return <Calendar {...props} data={data} items={items} phone={false} pick="ivan" />
+    }
+    renderInFrame(<Live />)
+    const card = document.querySelector('.cv2-mc[data-cal-id="mine"]')!
+    const start = card.closest('[data-cal-day]')!
+    const target = document.querySelector('.cal-day[data-cal-day="2026-10-22"]')!
+    Object.defineProperty(document, 'elementFromPoint', { configurable: true, value: vi.fn((x: number) => (x >= 200 ? target : start)) })
+    writes.setScheduleDateAt.mockResolvedValueOnce('2026-10-22T07:00:00.000Z')
+    pointer(card, 'pointerdown', 100, 100); pointer(window, 'pointermove', 110, 100); pointer(window, 'pointermove', 220, 100); pointer(window, 'pointerup', 220, 100)
+    fireEvent.click(card)
+    expect(await screen.findByText(/^Moved to /)).toBeTruthy()
+    // the re-read lands: the row now holds the 22nd
+    act(() => swap([row('mine', { status: 'scheduled', scheduled_at: '2026-10-22T07:00:00Z' })]))
+    writes.setScheduleDateAt.mockRejectedValueOnce(new ClientRpcError('past_date', clientRpcMessage('past_date')))
+    await new Promise(r => setTimeout(r, 450)) // the drag engine swallows clicks for 400 ms
+    fireEvent.click(document.querySelector('.d-toasts [data-verb="undo"]')!)
+    expect(await screen.findByText('Could not put it back.')).toBeTruthy()
+    expect(document.querySelector('.cal-day[data-cal-day="2026-10-22"] [data-cal-id="mine"]')).toBeTruthy()
+    expect(document.querySelector('.cal-day[data-cal-day="2026-10-20"] [data-cal-id="mine"]')).toBeNull()
   })
 })
 

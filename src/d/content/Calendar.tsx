@@ -27,6 +27,7 @@ import { useXDays, XMarks, type XDays } from './xDays'
 import './calendar.css'
 import './phone-ox-cal.css'
 import { coverageOf } from './v2/coverage'
+import { directionWords, policyOf, useDirection, type DirectionState } from './ContentBrain'
 import { BufferDock, CoverageBar, DayList, MonthCard, WallV2, type CardActs } from './v2/CalendarV2'
 import { SeatAv, Seg } from './v2/ui'
 import { usePanelLink } from './panelLink'
@@ -91,6 +92,13 @@ function spring(from: number, to: number, set: (v: number) => void, done: () => 
   }
   raf = requestAnimationFrame(step)
   return () => cancelAnimationFrame(raf)
+}
+
+/** The seat's posts a week from its adopted direction; null while it reads or has none (SwishDM's cadence counts only once adopted, as on the Brain). */
+function weeklyOf(lane: Lane, dir: DirectionState): number | null {
+  const policy = policyOf(dir)
+  if (lane === 'swishdm' && policy?.status !== 'adopted') return null
+  return directionWords(policy).weekly
 }
 
 export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMove, onArm, onDay, onChanged, v2 = false }: CalendarProps) {
@@ -171,7 +179,12 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
     const start = first.getTime() - first.getUTCDay() * DAY_MS
     return Array.from({ length: 14 }, (_, i) => new Date(start + i * DAY_MS).toISOString().slice(0, 10))
   }, [grid2, lineDays])
-  const cov = useMemo(() => coverageOf(items, now), [items, now])
+  // Each seat's own weekly target, from its direction (the Content Brain reads the same): never a made-up 3.
+  const targets = {
+    ivan: weeklyOf('ivan', useDirection('ivan')), risedtc: weeklyOf('risedtc', useDirection('risedtc')),
+    arch: weeklyOf('arch', useDirection('arch')), swishdm: weeklyOf('swishdm', useDirection('swishdm')),
+  }
+  const cov = useMemo(() => coverageOf(items, now, targets), [items, now, targets.ivan, targets.risedtc, targets.arch, targets.swishdm]) // eslint-disable-line react-hooks/exhaustive-deps
   const label = view === 'month' ? monthLabel(ym.year, ym.month)
     : grid2 ? `${dayLabel(grid2Keys[0])} – ${dayLabel(grid2Keys[13])}`
     : `${dayLabel(lineDays[0].key)} – ${dayLabel(lineDays[lineDays.length - 1].key)}`
@@ -244,6 +257,8 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
       else await clearScheduleDate(id)
       toast.show({ message: prev ? `Put back on ${warsawDayTime(prev)}.` : 'Put back with no date.', sub: LANE_NAME[lane] })
     } catch (e) {
+      // The put-back was refused: the post is still on the day it was moved to, so let go of the held day.
+      setMoved(m => { const n = new Map(m); n.delete(id); return n })
       toast.show({ message: 'Could not put it back.', sub: plainWhy(e), tone: 'failed' })
     }
     onChanged()
@@ -453,7 +468,7 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
           const gap = cov.seats[when.lane].gaps.find(g => g >= todayKey) ?? null
           return <WhenPopover key={`${when.id}:${when.day ?? ''}`} anchor={when.anchor} r={r} lane={when.lane} seatRows={rows[when.lane]} initialDay={when.day} focus={when.focus} gap={gap}
             onClose={() => setWhen(null)} onDone={onChanged} onPreview={(d, l) => preview(when.lane, d, l)}
-            onMoved={(id, d) => setMoved(m => new Map(m).set(id, d ?? ''))} />
+            onMoved={(id, d) => setMoved(m => { const n = new Map(m); if (d === null) n.delete(id); else n.set(id, d); return n })} />
         })()}
       </section>
     )

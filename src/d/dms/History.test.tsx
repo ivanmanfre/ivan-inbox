@@ -352,3 +352,14 @@ it('not connected stays a held send with the invite hint', () => {
   expect(bubble.hasAttribute('data-held')).toBe(true)
   expect(bubble.textContent).toContain('Not connected on LinkedIn: send an invite first.')
 })
+
+// Cold open: only the newest page of the inbox is on screen, so an empty history is not yet a fact.
+it('does not say "No messages yet" while the inbox is still reading', () => {
+  const draft = msg({ prospect_id: 'alex', message_text: 'Draft reply' })
+  const [t] = threads([draft])
+  const { rerender } = render(<History t={t} reading />)
+  expect(screen.queryByText(/No messages yet/)).toBeNull()
+  expect(screen.getByText('Reading the conversation…')).toBeTruthy()
+  rerender(<History t={t} />)
+  expect(screen.getByText(/No messages yet/)).toBeTruthy()
+})

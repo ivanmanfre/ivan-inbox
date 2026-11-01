@@ -258,8 +258,12 @@ describe('the seat next step comes only after the verdict is saved', () => {
     await waitFor(() => expect(strip('b1')!.dataset.phase).toBe('saved'))
     const next = verb(strip('b1'), 'next-schedule')!
     expect(next.textContent).toMatch(/^Schedule \w{3} \d+ · 10:45$/)
-    fireEvent.click(next)
-    await waitFor(() => expect(screen.getByText('Put this post on LinkedIn?')).toBeTruthy())
+    // the fixture's day is in the past by the real clock; the past-time guard reads Date.now
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(NOW)
+    try {
+      fireEvent.click(next)
+      await waitFor(() => expect(screen.getByText('Put this post on LinkedIn?')).toBeTruthy())
+    } finally { vi.useRealTimers() }
     expect(lib.scheduleGuarded).not.toHaveBeenCalled()
   })
 
@@ -410,6 +414,22 @@ describe('the row', () => {
     fireEvent.click(card('k1')!.querySelector('.cv2-row-t')!)
     expect(onOpen).not.toHaveBeenCalled()
     expect(card('k1')!.querySelector('textarea')).toBeTruthy()
+  })
+  it('typed text that is not saved holds Approve, Skip and Drop, and the a key; an untouched box does not', () => {
+    renderInFrame(<Harness rows={[brain({ id: 'u1', post_body: 'Text.' }), row({ id: 'u2', post_body: 'Other.' })]} />)
+    fireEvent.click(card('u1')!.querySelector('.cv2-li-b p')!)
+    expect(verb(card('u1'), 'card-keep')!.disabled).toBe(false)
+    fireEvent.change(card('u1')!.querySelector('textarea')!, { target: { value: 'Text, rewritten.' } })
+    expect(verb(card('u1'), 'card-keep')!.disabled).toBe(true)
+    expect(verb(card('u1'), 'card-drop')!.disabled).toBe(true)
+    expect(verb(card('u1'), 'card-keep')!.title).toBe('Save or cancel your edit first')
+    act(() => card('u1')!.focus())
+    key('a')
+    expect(strip('u1')).toBeNull()
+    expect(card('u1')).toBeTruthy()
+    // an edit back to the loaded text is not unsaved
+    fireEvent.change(card('u1')!.querySelector('textarea')!, { target: { value: 'Text.' } })
+    expect(verb(card('u1'), 'card-keep')!.disabled).toBe(false)
   })
 })
 

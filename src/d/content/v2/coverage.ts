@@ -12,7 +12,8 @@ import type { PlanItem } from '../planModel'
 // 4 a week, Rise 5, Arch 3): a seat with no target passed keeps the old floor of 3.
 export const TARGET = 3
 
-export type SeatCoverage = { lane: Lane; set: number; target: number; short: number; gaps: string[] }
+/** `known` = the target was passed in (the seat's own plan), not the floor of 3: a screen that has no target yet should not print "of 3". */
+export type SeatCoverage = { lane: Lane; set: number; target: number; known: boolean; short: number; gaps: string[] }
 export type WeekCount = { set: number; posted: number }
 /** `thisWeek` sums every seat; `thisWeekBy` keeps each seat's own count (thisWeekFor reads the picked ones). */
 export type Coverage = { days: string[]; seats: Record<Lane, SeatCoverage>; thisWeek: WeekCount; thisWeekBy: Record<Lane, WeekCount> }
@@ -49,7 +50,8 @@ export function coverageOf(items: Record<Lane, Map<string, PlanItem[]>>, now: nu
   const seats = {} as Record<Lane, SeatCoverage>
   for (const lane of LANES) {
     const t = targets[lane]
-    const target = typeof t === 'number' && Number.isFinite(t) && t > 0 ? t : TARGET
+    const known = typeof t === 'number' && Number.isFinite(t) && t > 0
+    const target = known ? t : TARGET
     let set = 0
     const gaps: string[] = []
     for (const k of days) {
@@ -58,7 +60,7 @@ export function coverageOf(items: Record<Lane, Map<string, PlanItem[]>>, now: nu
       if (n === 0) gaps.push(k)
     }
     const short = Math.max(0, target - set)
-    seats[lane] = { lane, set, target, short, gaps: short > 0 ? gaps : [] }
+    seats[lane] = { lane, set, target, known, short, gaps: short > 0 ? gaps : [] }
   }
   const thisWeekBy = {} as Record<Lane, WeekCount>
   for (const lane of LANES) {
