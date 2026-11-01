@@ -9,23 +9,24 @@ const row = (id: string, at: string, impressions: number | null, extra: Partial<
 })
 
 describe('perfRead', () => {
-  it('reads days and times in the seat clock and only calls a bucket with 3+ posts best', () => {
+  it('reads days and times in the seat clock and only calls a bucket with 5+ posts best', () => {
     // 07:30 UTC on a Tuesday = 09:30 Warsaw (CET from 26 Oct = UTC+1 → 08:30); use October CEST dates.
     const rows = [
       row('a', '2026-10-06T07:30:00Z', 300), row('b', '2026-10-13T07:30:00Z', 400), row('c', '2026-10-20T07:30:00Z', 500), // Tue 09:30 Warsaw
+      row('a2', '2026-09-29T07:30:00Z', 350), row('a3', '2026-09-22T07:30:00Z', 450),
       row('d', '2026-10-08T12:00:00Z', 900), // Thu 14:00 Warsaw, alone
       row('e', '2026-10-30T07:30:00Z', 50), // Fri, under 3 days old
     ]
-    const r = perfRead(rows, 'Europe/Warsaw', 30, NOW)
-    expect(r.posts).toHaveLength(5)
+    const r = perfRead(rows, 'Europe/Warsaw', 90, NOW)
+    expect(r.posts).toHaveLength(7)
     expect(r.fresh).toBe(1)
-    expect(r.typical).toBe(450) // median of 300, 400, 500, 900; the fresh post left out
+    expect(r.typical).toBe(425) // median of 300, 350, 400, 450, 500, 900; the fresh post left out
     const tue = r.days.find(d => d.key === 'Tue')!, thu = r.days.find(d => d.key === 'Thu')!
-    expect([tue.n, tue.median, tue.best]).toEqual([3, 400, true])
+    expect([tue.n, tue.median, tue.best]).toEqual([5, 400, true])
     expect([thu.n, thu.best]).toEqual([1, false])
     expect(r.days.find(d => d.key === 'Fri')!.n).toBe(0)
-    expect(r.times.map(t => [t.key, t.n])).toEqual([['08-11', 3], ['14-17', 1]])
-    expect(r.posts.find(p => p.id === 'd')!.vsTypical).toBeCloseTo(2)
+    expect(r.times.map(t => [t.key, t.n])).toEqual([['08-11', 5], ['14-17', 1]])
+    expect(r.posts.find(p => p.id === 'd')!.vsTypical).toBeCloseTo(900 / 425)
     expect(r.posts[0].title).toBe('Post a')
   })
 
@@ -43,6 +44,33 @@ describe('perfRead', () => {
     const r = perfRead([row('x', '2026-10-01T09:00:00Z', 1000, { reactions: 30, comments: 15, shares: 5 })], 'UTC', 90, NOW)
     expect(r.posts[0].rate).toBeCloseTo(0.05)
     expect(r.now.rate).toBeCloseTo(0.05)
+  })
+
+  it('a post whose tracking stopped in its first days is listed but never counted or compared', () => {
+    const rows = [
+      row('ok1', '2026-10-01T09:00:00Z', 100, { captured_at: '2026-10-20T09:00:00Z' }),
+      row('ok2', '2026-10-02T09:00:00Z', 300, { captured_at: '2026-10-21T09:00:00Z' }),
+      row('dead', '2026-10-03T09:00:00Z', 13, { captured_at: '2026-10-03T14:00:00Z' }),
+    ]
+    const r = perfRead(rows, 'UTC', 90, NOW)
+    const dead = r.posts.find(p => p.id === 'dead')!
+    expect([dead.settled, dead.stalled]).toEqual([false, true])
+    expect([r.typical, r.fresh, r.stalled]).toEqual([200, 0, 1])
+  })
+
+  it('engagement is the typical post rate, so one viral post cannot swing it', () => {
+    const rows = [
+      row('a', '2026-10-01T09:00:00Z', 100, { reactions: 2, comments: 0, shares: 0 }),
+      row('b', '2026-10-02T09:00:00Z', 100, { reactions: 3, comments: 0, shares: 0 }),
+      row('viral', '2026-10-03T09:00:00Z', 100000, { reactions: 100, comments: 0, shares: 0 }),
+    ]
+    expect(perfRead(rows, 'UTC', 90, NOW).now.rate).toBeCloseTo(0.02)
+  })
+
+  it('marks a title the tracker cut at 80 characters', () => {
+    const long = 'x'.repeat(79) + ' y'
+    expect(perfRead([row('t', '2026-10-01T09:00:00Z', 1, { title: long })], 'UTC', 90, NOW).posts[0].title.endsWith('…')).toBe(true)
+    expect(perfRead([row('s', '2026-10-01T09:00:00Z', 1, { title: 'Short one' })], 'UTC', 90, NOW).posts[0].title).toBe('Short one')
   })
 
   it('night band wraps midnight', () => {

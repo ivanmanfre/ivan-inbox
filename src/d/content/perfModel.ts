@@ -7,6 +7,11 @@ import type { PostAudienceRow } from '../../lib/reach'
 
    · A post under SETTLE_DAYS old is still collecting views: it is listed, but
      left out of every median and of the best day / best time read.
+   · A post whose last capture came under SETTLE_DAYS after it went out stopped
+     being tracked early (two Ivan posts read 13 and 28 forever): listed, left
+     out the same way, never compared.
+   · Engagement is the typical (median) post's rate, like impressions, so one
+     viral post cannot swing the period on its own.
    · "Typical" is the median impressions of the settled posts in the period.
    · Days and times are read in the seat's own clock (laneTime LANE_TZ).
    · A day or time with fewer than MIN_N settled posts is shown but never
@@ -14,7 +19,7 @@ import type { PostAudienceRow } from '../../lib/reach'
    ========================================================================== */
 
 export const SETTLE_DAYS = 3
-export const MIN_N = 3
+export const MIN_N = 5
 const DAY = 86_400_000
 
 export type Period = 30 | 90 | 0 // 0 = all time
@@ -35,6 +40,7 @@ export type PerfPost = {
   rate: number | null // engagement / impressions
   vsTypical: number | null // impressions / typical
   settled: boolean
+  stalled: boolean // tracking stopped before the post settled
 }
 
 export type Totals = { posts: number; impressions: number; reactions: number; comments: number; median: number | null; rate: number | null }
@@ -45,6 +51,7 @@ export type PerfRead = {
   before: Totals | null
   typical: number | null
   fresh: number
+  stalled: number
   days: Bucket[]
   times: Bucket[]
 }
@@ -64,9 +71,20 @@ function clock(iso: string, tz: string): { weekday: number; hour: number } {
   return { weekday: wd < 0 ? 0 : wd, hour: Number(p.find(x => x.type === 'hour')?.value ?? 0) % 24 }
 }
 
+/** The tracker keeps the first 80 characters, so a title that long was cut. */
+const CLIP = 80
 function firstLine(t: string | null): string {
-  const line = (t ?? '').split('\n').map(s => s.trim()).find(Boolean)
-  return line || 'Published post'
+  const lines = (t ?? '').split('\n').map(s => s.trim()).filter(Boolean)
+  if (!lines.length) return 'Published post'
+  return lines.length === 1 && (t ?? '').length >= CLIP ? `${lines[0].replace(/[\s.,;:–-]+$/, '')}…` : lines[0]
+}
+
+function maturity(r: PostAudienceRow, now: number): { settled: boolean; stalled: boolean } {
+  const at = Date.parse(r.published_at!)
+  if (now - at < SETTLE_DAYS * DAY) return { settled: false, stalled: false }
+  const cap = r.captured_at ? Date.parse(r.captured_at) : NaN
+  const stalled = Number.isFinite(cap) && cap - at < SETTLE_DAYS * DAY
+  return { settled: !stalled, stalled }
 }
 
 export function toPost(r: PostAudienceRow, tz: string, now: number): PerfPost | null {
@@ -79,18 +97,16 @@ export function toPost(r: PostAudienceRow, tz: string, now: number): PerfPost | 
     id: r.activity_id, url: r.post_url, title: firstLine(r.title), at: r.published_at, weekday, hour,
     impressions, reactions: isNum(r.reactions) ? r.reactions : null, comments: isNum(r.comments) ? r.comments : null, shares: isNum(r.shares) ? r.shares : null,
     engagement, rate: engagement != null && impressions ? engagement / impressions : null, vsTypical: null,
-    settled: now - Date.parse(r.published_at) >= SETTLE_DAYS * DAY,
+    ...maturity(r, now),
   }
 }
 
 function totals(ps: PerfPost[]): Totals {
   const sum = (k: 'impressions' | 'reactions' | 'comments') => ps.reduce((s, p) => s + (p[k] ?? 0), 0)
-  const rated = ps.filter(p => p.impressions && p.engagement != null)
-  const ri = rated.reduce((s, p) => s + (p.impressions ?? 0), 0)
   return {
     posts: ps.length, impressions: sum('impressions'), reactions: sum('reactions'), comments: sum('comments'),
     median: median(ps.filter(p => p.settled && p.impressions != null).map(p => p.impressions!)),
-    rate: ri > 0 ? rated.reduce((s, p) => s + (p.engagement ?? 0), 0) / ri : null,
+    rate: median(ps.filter(p => p.settled && p.rate != null).map(p => p.rate!)),
   }
 }
 
@@ -124,7 +140,8 @@ export function perfRead(rows: PostAudienceRow[], tz: string, period: Period, no
   const posts = inNow.map(p => ({ ...p, vsTypical: typical && p.impressions != null ? p.impressions / typical : null }))
   return {
     posts, now: nowT, before: inBefore && inBefore.length ? totals(inBefore) : null, typical,
-    fresh: posts.filter(p => !p.settled).length,
+    fresh: posts.filter(p => !p.settled && !p.stalled).length,
+    stalled: posts.filter(p => p.stalled).length,
     days: buckets(posts, p => DAY_LABEL[p.weekday], DAY_LABEL, k => k, true),
     times: buckets(posts, p => bandOf(p.hour), BANDS.map(b => b.key), bandLabel, false),
   }

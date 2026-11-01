@@ -3,7 +3,7 @@ import type { ReachRead } from '../../lib/reach'
 import { Failed, Skeleton } from '../ui/states'
 import { LANE_TZ, LANE_TZ_WORD } from './laneTime'
 import { LANE_NAME, type Lane } from './model'
-import { change, perfRead, sortPosts, SETTLE_DAYS, type Bucket, type Period, type SortKey } from './perfModel'
+import { change, MIN_N, perfRead, sortPosts, SETTLE_DAYS, type Bucket, type Period, type SortKey } from './perfModel'
 import './perf.css'
 
 const n0 = (v: number | null | undefined) => (v == null ? '–' : Math.round(v).toLocaleString('en-US'))
@@ -25,7 +25,7 @@ function Bars({ title, list }: { title: string; list: Bucket[] }) {
   const top = Math.max(1, ...list.map(b => b.median ?? 0))
   return <div className="cn-perf-bars">
     <h3>{title}</h3>
-    {list.map(b => <div key={b.key} className={`cn-perf-bar${b.best ? ' is-best' : ''}${b.n > 0 && b.n < 3 ? ' is-thin' : ''}`}>
+    {list.map(b => <div key={b.key} className={`cn-perf-bar${b.best ? ' is-best' : ''}${b.n > 0 && b.n < MIN_N ? ' is-thin' : ''}`}>
       <span>{b.label}</span>
       <span className="cn-perf-track"><span style={{ width: `${((b.median ?? 0) / top) * 100}%` }} /></span>
       <b>{b.n ? n0(b.median) : '–'}</b>
@@ -53,10 +53,13 @@ export function PostPerformance({ lane, read, onRetry, now }: { lane: Lane; read
       <div><small>Posts</small><b>{r.now.posts}</b>{r.before && <Delta now={r.now.posts} before={r.before.posts} />}</div>
       <div><small>Typical post</small><b>{n0(r.now.median)}</b><em>impressions</em>{r.before && <Delta now={r.now.median} before={r.before.median} />}</div>
       <div><small>Impressions</small><b>{n0(r.now.impressions)}</b>{r.before && <Delta now={r.now.impressions} before={r.before.impressions} />}</div>
-      <div><small>Engagement</small><b>{pct(r.now.rate)}</b><em>of impressions</em>{r.before && <Delta now={r.now.rate} before={r.before.rate} />}</div>
+      <div><small>Engagement</small><b>{pct(r.now.rate)}</b><em>typical post</em>{r.before && <Delta now={r.now.rate} before={r.before.rate} />}</div>
     </div>
-    {since && r.before && <p className="cn-perf-note">Arrows compare {since}.{r.fresh ? ` ${r.fresh} post${r.fresh === 1 ? ' is' : 's are'} under ${SETTLE_DAYS} days old and left out of the typical post and best day and time.` : ''}</p>}
-    {(!since || !r.before) && r.fresh > 0 && <p className="cn-perf-note">{r.fresh} post{r.fresh === 1 ? ' is' : 's are'} under {SETTLE_DAYS} days old and left out of the typical post and best day and time.</p>}
+    {(note => note && <p className="cn-perf-note">{note}</p>)([
+      since && r.before ? `Arrows compare ${since}.` : '',
+      r.fresh ? `${r.fresh} post${r.fresh === 1 ? ' is' : 's are'} under ${SETTLE_DAYS} days old and left out of the typical post and best day and time.` : '',
+      r.stalled ? `${r.stalled} post${r.stalled === 1 ? '' : 's'} stopped being tracked in the first ${SETTLE_DAYS} days, so ${r.stalled === 1 ? 'it is' : 'they are'} left out too.` : '',
+    ].filter(Boolean).join(' '))}
     <div className="cn-perf-when">
       <Bars title="Typical impressions by day" list={r.days} />
       <Bars title={`Typical impressions by time (${LANE_TZ_WORD[lane]})`} list={r.times} />
@@ -67,14 +70,15 @@ export function PostPerformance({ lane, read, onRetry, now }: { lane: Lane; read
     </div>
     <ol className="cn-perf-posts">
       <li className="cn-perf-row cn-perf-cols" aria-hidden="true"><span>Posted</span><span>Post</span><span>Impr.</span><span>React.</span><span>Comm.</span><span>Eng.</span><span>vs typical</span></li>
-      {(all ? list : list.slice(0, 25)).map(p => <li key={p.id} className={`cn-perf-row${p.settled ? '' : ' is-fresh'}`}>
+      {(all ? list : list.slice(0, 25)).map(p => <li key={p.id} className={`cn-perf-row${p.settled ? '' : ' is-fresh'}`} title={p.stalled ? 'Tracking stopped before this post had 3 days of numbers.' : undefined}>
         <span className="cn-perf-at">{whenWord(p.at, tz)}</span>
         <span className="cn-perf-title">{p.url ? <a href={p.url} target="_blank" rel="noreferrer">{p.title}</a> : p.title}</span>
         <span data-k="Impressions">{n0(p.impressions)}</span>
         <span data-k="Reactions">{n0(p.reactions)}</span>
         <span data-k="Comments">{n0(p.comments)}</span>
         <span data-k="Engagement">{pct(p.rate)}</span>
-        <span data-k="vs typical" className={p.vsTypical == null ? undefined : p.vsTypical >= 1.5 ? 'cn-perf-up' : p.vsTypical <= 0.67 ? 'cn-perf-down' : undefined}>{p.settled ? (p.vsTypical == null ? '–' : `${p.vsTypical >= 10 ? Math.round(p.vsTypical) : p.vsTypical.toFixed(1)}×`) : 'still counting'}</span>
+        <span data-k="vs typical" className={!p.settled || p.vsTypical == null ? undefined : p.vsTypical >= 1.5 ? 'cn-perf-up' : p.vsTypical <= 0.67 ? 'cn-perf-down' : undefined}>{p.stalled ? 'not tracked' : !p.settled ? 'still counting' : p.vsTypical == null ? '–' : `${p.vsTypical >= 10 ? Math.round(p.vsTypical) : p.vsTypical.toFixed(1)}×`}</span>
+        <span className="cn-perf-meta">{n0(p.impressions)} impressions · {n0(p.reactions)} reactions · {n0(p.comments)} comments · {pct(p.rate)}</span>
       </li>)}
     </ol>
     {list.length > 25 && <button type="button" className="cn-quiet-link" onClick={() => setAll(v => !v)}>{all ? 'Show top 25' : `Show all ${list.length} posts`}</button>}

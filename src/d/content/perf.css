@@ -41,8 +41,7 @@
 .cn-perf-title{grid-column:1 / -1;color:var(--t1);font-size:14px;line-height:1.35;overflow-wrap:anywhere}
 .cn-perf-title a{color:inherit;text-decoration:none}
 .cn-perf-title a:hover{text-decoration:underline;text-underline-offset:3px}
-.cn-perf-row>span[data-k='Impressions']{display:block;grid-column:1 / -1;font-size:12.5px;color:var(--t2)}
-.cn-perf-row>span[data-k='Impressions']::after{content:' impressions'}
+.cn-perf-meta{grid-column:1 / -1;font-size:12.5px;color:var(--t2)}
 .cn-perf-cols{display:none}
 .cn-perf-row.is-fresh>span[data-k='vs typical']{color:var(--t3);font-size:12px}
 @container perf (min-width:720px){
@@ -50,7 +49,7 @@
   .cn-perf-row>span,.cn-perf-row>span[data-k]{display:block;grid-column:auto;grid-row:auto;text-align:right}
   .cn-perf-row>.cn-perf-at,.cn-perf-row>.cn-perf-title,.cn-perf-cols>span:nth-child(-n+2){text-align:left}
   .cn-perf-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13.5px}
-  .cn-perf-row>span[data-k='Impressions']{font-size:13px;color:var(--t1)}
-  .cn-perf-row>span[data-k='Impressions']::after{content:none}
+  .cn-perf-row>span[data-k='Impressions']{color:var(--t1)}
+  .cn-perf-row>.cn-perf-meta{display:none}
   .cn-perf-cols{padding:6px 2px;font:500 11px var(--m);letter-spacing:.05em;text-transform:uppercase;color:var(--t3)}
 }
