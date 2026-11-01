@@ -18,7 +18,7 @@ export function Results({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => v
   useEffect(() => {
     let live = true
     setOwn(null); setEvidence(null); setEvidenceError(null)
-    void fetchPostAudience(lane).then(r => { if (live) setOwn(r) }).catch(e => { if (live) setOwn({ kind: 'failed', message: e instanceof Error ? e.message : 'Could not read the posts.' }) })
+    if (lane !== 'swishdm') void fetchPostAudience(lane).then(r => { if (live) setOwn(r) }).catch(e => { if (live) setOwn({ kind: 'failed', message: e instanceof Error ? e.message : 'Could not read the posts.' }) })
     void fetchContentEvidenceViews(lane).then(r => { if (live) setEvidence(r) }).catch(e => { if (live) setEvidenceError(e instanceof Error ? e.message : 'Could not read the weekly picks.') })
     return () => { live = false }
   }, [lane, tick])
@@ -31,7 +31,7 @@ export function Results({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => v
     <BrainScoreboard key={`scoreboard:${lane}`} lane={lane} />
     <WhatWorksNow key={lane} lane={lane} />
     <ComparableResults key={`comparable:${lane}`} lane={lane} />
-    <ResultsBody key={`body:${lane}`} own={own} evidence={evidence} evidenceError={evidenceError} now={Date.now()} onRetry={retry} />
+    <ResultsBody key={`body:${lane}`} untracked={lane === 'swishdm' ? `${LANE_NAME[lane]} posts are not tracked yet.` : undefined} own={own} evidence={evidence} evidenceError={evidenceError} now={Date.now()} onRetry={retry} />
   </div>
 }
 
@@ -42,18 +42,18 @@ function outcome(c: ContentEvidenceChoice): string {
   return c.outcome ? `${c.outcome.metric_label}: ${c.outcome.observed_value == null ? 'not recorded' : c.outcome.observed_value.toLocaleString('en-US')} · ${c.outcome.comparison_label}` : 'No result recorded yet'
 }
 
-export function ResultsBody({ own, evidence, evidenceError, now, onRetry }: { own: ReachRead | null; evidence: ContentEvidenceViews | null; evidenceError?: string | null; now: number; onRetry: () => void }) {
+export function ResultsBody({ own, evidence, evidenceError, now, onRetry, untracked }: { untracked?: string; own: ReachRead | null; evidence: ContentEvidenceViews | null; evidenceError?: string | null; now: number; onRetry: () => void }) {
   const [showAll, setShowAll] = useState(false)
   const winners = own?.kind === 'ready' ? reachWinners(own.rows, now) : null
   const choices = evidence?.results.choices ?? []
   const picks = evidence?.thisWeek.candidates ?? []
   const measured = choices.filter(c => !pending.has(c.status) && c.outcome?.observed_value != null && !c.incomplete_measurement)
   return <>
-    <p className="cn-results-verdict">{evidenceError || (own && own.kind !== 'ready') || evidence?.results.state === 'failed' || evidence?.thisWeek.state === 'failed' ? 'Some results could not be read.' : !own || !evidence ? 'Reading what worked…' : `${winners?.posts.length ?? 0} ${winners?.mode === 'flagged' ? `winning post${winners.posts.length === 1 ? '' : 's'}` : 'posts with the most comments'} · ${measured.length} brain pick${measured.length === 1 ? '' : 's'} measured.`}</p>
+    <p className="cn-results-verdict">{evidenceError || (!untracked && own && own.kind !== 'ready') || evidence?.results.state === 'failed' || evidence?.thisWeek.state === 'failed' ? 'Some results could not be read.' : (!own && !untracked) || !evidence ? 'Reading what worked…' : untracked ? `${measured.length} brain pick${measured.length === 1 ? '' : 's'} measured.` : `${winners?.posts.length ?? 0} ${winners?.mode === 'flagged' ? `winning post${winners.posts.length === 1 ? '' : 's'}` : 'posts with the most comments'} · ${measured.length} brain pick${measured.length === 1 ? '' : 's'} measured.`}</p>
     <section className="cn-result-section" aria-label="Your own posts"><h2>{winners?.mode === 'flagged' ? 'Winning posts' : 'Your strongest posts'}</h2>
       {winners && <p>{winners.mode === 'flagged' ? 'Tracker flags: at least 6 comments and three times the trailing 12-week comment median. All recorded flagged posts, newest first.' : `Most comments in the trailing ${winners.weeks} ISO weeks, at least one comment; ties use reach. Up to five candidates.`}</p>}
       {winners?.mode === 'flagged' && winners.posts.length > 5 && <p>Showing {showAll ? winners.posts.length : 5} of {winners.posts.length} winning posts.</p>}
-      {!own ? <Skeleton lines={3} label="Reading your posts" /> : own.kind !== 'ready' ? <Failed what="your post results" detail={own.message} onRetry={onRetry} /> : !winners?.posts.length ? <p className="cn-wk2-empty">No winning post recorded yet.</p> : winners.posts.slice(0, showAll ? undefined : 5).map(p => <article className="cn-result-card" key={p.activity_id}>
+      {untracked ? <p className="cn-wk2-empty">{untracked}</p> : !own ? <Skeleton lines={3} label="Reading your posts" /> : own.kind !== 'ready' ? <Failed what="your post results" detail={own.message} onRetry={onRetry} /> : !winners?.posts.length ? <p className="cn-wk2-empty">No winning post recorded yet.</p> : winners.posts.slice(0, showAll ? undefined : 5).map(p => <article className="cn-result-card" key={p.activity_id}>
         <small>{p.published_at ? dayLabel(p.published_at.slice(0, 10)) : 'Date not recorded'}{winners.mode === 'candidates' ? ' · Most comments' : ''}</small>
         <h3>{p.title || 'Published post'}</h3>
         <p>{[p.impressions != null ? `${p.impressions.toLocaleString('en-US')} impressions` : null, p.members_reached != null ? `${p.members_reached.toLocaleString('en-US')} people reached` : null, p.comments != null ? `${p.comments.toLocaleString('en-US')} comments` : null].filter(Boolean).join(' · ') || 'No metrics recorded yet'}</p>

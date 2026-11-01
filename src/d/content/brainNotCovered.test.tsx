@@ -22,3 +22,12 @@ describe('a seat the content brain does not read', () => {
     expect(screen.queryByRole('button', { name: /again|retry/i })).toBeNull()
   })
 })
+
+describe('Results for a seat with no post tracker', () => {
+  it('says the posts are not tracked, with no failure and no retry', async () => {
+    const { ResultsBody } = await import('./Results')
+    render(<ResultsBody untracked="SwishDM posts are not tracked yet." own={null} evidence={null} now={Date.parse('2026-11-01T12:00:00Z')} onRetry={() => {}} />)
+    expect(screen.getByText('SwishDM posts are not tracked yet.')).toBeTruthy()
+    expect(screen.queryByText(/Could not read your post results/)).toBeNull()
+  })
+})
