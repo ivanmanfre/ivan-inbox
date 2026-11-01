@@ -64,7 +64,7 @@ export function PostPerformance({ lane, read, onRetry, now }: { lane: Lane; read
       <Bars title="Typical impressions by day" list={r.days} />
       <div>
         <Bars title={`Typical impressions by time (${LANE_TZ_WORD[lane]})`} list={r.times} />
-        {r.slot && <p className="cn-perf-note">{r.slot.n} of {r.slot.of} posts went out at {r.slot.hm}, so this also compares that slot's posts with the ones sent at other times, not only the hour.</p>}
+        {r.slot && <p className="cn-perf-note">{r.slot.n} of {r.slot.of} posts went out at about {r.slot.hm}, so this also compares that slot's posts with the ones sent at other times, not only the hour.</p>}
       </div>
     </div>
     <div className="cn-perf-head">

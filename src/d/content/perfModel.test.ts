@@ -81,6 +81,10 @@ describe('perfRead', () => {
     expect(r.now.impressions).toBe(8 * 100 + 900 + 800 + 5000)
     expect(r.now.settledImpressions).toBe(8 * 100 + 900 + 800)
     expect(perfRead(rows.slice(8), 'UTC', 90, NOW).slot).toBeNull()
+    // a slot a few minutes wide still counts, and a third of the posts is enough
+    const loose = ['09:46', '09:45', '09:50', '09:46', '09:41', '09:46'].map((t, i) => row(`l${i}`, `2026-10-${String(5 + i).padStart(2, '0')}T${t}:00Z`, 100))
+      .concat(Array.from({ length: 12 }, (_, i) => row(`o${i}`, `2026-09-${String(5 + i).padStart(2, '0')}T${String(12 + (i % 8)).padStart(2, '0')}:${String(i * 4).padStart(2, '0')}:00Z`, 100)))
+    expect(perfRead(loose, 'UTC', 90, NOW).slot).toEqual({ hm: '09:46', n: 6, of: 18 })
   })
 
   it('night band wraps midnight', () => {

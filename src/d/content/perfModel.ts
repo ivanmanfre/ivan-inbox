@@ -134,12 +134,16 @@ function buckets(ps: PerfPost[], keyOf: (p: PerfPost) => string, order: string[]
   return out
 }
 
+/** A scheduled slot: the minute (±5) that holds at least a third of the settled posts. */
 function slotOf(ps: PerfPost[]): PerfRead['slot'] {
   const settled = ps.filter(p => p.settled && p.impressions != null)
-  const n = new Map<string, number>()
-  for (const p of settled) n.set(p.hm, (n.get(p.hm) ?? 0) + 1)
-  const top = [...n].sort((a, b) => b[1] - a[1])[0]
-  return top && settled.length >= MIN_N * 2 && top[1] * 2 > settled.length ? { hm: top[0], n: top[1], of: settled.length } : null
+  const mins = settled.map(p => Number(p.hm.slice(0, 2)) * 60 + Number(p.hm.slice(3)))
+  const near = (c: number) => mins.filter(m => Math.min(Math.abs(m - c), 1440 - Math.abs(m - c)) <= 5).length
+  const exact = (c: number) => mins.filter(m => m === c).length
+  let at = -1
+  for (const c of mins) if (at < 0 || near(c) > near(at) || (near(c) === near(at) && exact(c) > exact(at))) at = c
+  const n = at < 0 ? 0 : near(at)
+  return n >= MIN_N && n * 3 >= settled.length ? { hm: settled[mins.indexOf(at)].hm, n, of: settled.length } : null
 }
 
 export function perfRead(rows: PostAudienceRow[], tz: string, period: Period, now: number): PerfRead {
