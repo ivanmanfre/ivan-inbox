@@ -18,6 +18,12 @@ export function BookedKey({ d, onDone }: { d: OpsDraft; onDone: () => void }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   if (!isBookLinkTask(d)) return null
+  // db/20261102 stamps the prospect's own words on every booking card (Gene Kakaulin: fee structure, creator
+  // examples, recent creative). Shown verbatim above the key so the call prep starts from the card.
+  const ask = typeof d.context?.their_ask === 'string' ? d.context.their_ask.trim() : ''
+  const askBlock = ask
+    ? <div className="op-ask" data-ask style={ASK_STYLE}><b style={ASK_HEAD}>What they asked for</b>{ask}</div>
+    : null
   const t = !edited && proposed && when ? new Date(proposed) : when ? new Date(when) : null
   const valid = !!t && !isNaN(t.getTime())
   const utc = valid ? t!.toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : ''
@@ -29,17 +35,21 @@ export function BookedKey({ d, onDone }: { d: OpsDraft; onDone: () => void }) {
     catch (x) { setErr(x instanceof Error ? x.message : String(x)) }
     finally { setBusy(false) }
   }
-  if (!open) return <Btn verb="booked" onClick={() => setOpen(true)} aria-label={`Booked: ${d.context?.prospect_name ?? 'this call'}`}>Booked</Btn>
+  if (!open) return <>{askBlock}<Btn verb="booked" onClick={() => setOpen(true)} aria-label={`Booked: ${d.context?.prospect_name ?? 'this call'}`}>Booked</Btn></>
   return (
-    <form className="op-bk" onSubmit={e => void save(e)}>
+    <>{askBlock}<form className="op-bk" onSubmit={e => void save(e)}>
       <input type="datetime-local" value={when} onChange={e => setWhen(e.target.value)} aria-label="Call time (your clock)" autoFocus />
       <small>{valid ? `Saves as ${utc}` : 'Call time, your clock'}</small>
       <Btn primary verb="booked-save" type="submit" disabled={!valid || busy}>{busy ? 'Saving…' : 'Save'}</Btn>
       <Btn verb="booked-cancel" disabled={busy} onClick={() => { setOpen(false); setErr('') }}>Cancel</Btn>
       {err && <div className="op-err">{err}</div>}
-    </form>
+    </form></>
   )
 }
+
+// Inline so the block looks the same on Home (which does not load ops.css) and on Ops.
+const ASK_STYLE = { display: 'block', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: 12.5, lineHeight: 1.4, color: 'var(--t2)', margin: '6px 0', paddingLeft: 8, borderLeft: '2px solid var(--line)' } as const
+const ASK_HEAD = { display: 'block', fontWeight: 500, color: 'var(--t1)', marginBottom: 2 } as const
 
 function toLocalInput(iso: unknown): string {
   const t = typeof iso === 'string' ? new Date(iso) : null

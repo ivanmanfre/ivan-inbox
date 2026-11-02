@@ -20,6 +20,18 @@ describe('BookedKey', () => {
     const { container } = render(<BookedKey d={task({})} onDone={() => {}} />)
     expect(container.innerHTML).toBe('')
   })
+  it('shows what the prospect asked for, verbatim, on a booking card', () => {
+    const ask = 'can you prepare:\n1) proposed partnership structure\n2) examples of creators'
+    const { container } = render(<BookedKey d={task({ action: 'book_link', their_ask: ask })} onDone={() => {}} />)
+    const el = container.querySelector('[data-ask]')!
+    expect(el.textContent).toBe('What they asked for' + ask)
+    fireEvent.click(container.querySelector('[data-verb="booked"]')!)
+    expect(container.querySelector('[data-ask]')).not.toBeNull()
+  })
+  it('draws no ask block when the card has none', () => {
+    const { container } = render(<BookedKey d={task({ action: 'book_link' })} onDone={() => {}} />)
+    expect(container.querySelector('[data-ask]')).toBeNull()
+  })
   it('sends the local call time as UTC and closes the task', async () => {
     const done = vi.fn()
     const { container } = render(<BookedKey d={task({ action: 'book_link', prospect_name: 'Ofir Bello' })} onDone={done} />)
