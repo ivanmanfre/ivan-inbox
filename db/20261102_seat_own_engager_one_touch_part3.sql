@@ -10,7 +10,8 @@ begin;
 
 create or replace function public.own_engager_dm_hold_reason(p_message_id uuid)
  returns text
- language plpgsql stable security definer set search_path to 'public', 'pg_temp'
+ -- volatile + clock_timestamp() (Sol r2): judged at the moment of the call, also after a wait on the day-counter lock
+ language plpgsql volatile security definer set search_path to 'public', 'pg_temp'
 as $f$
 declare m outreach_messages%rowtype; p outreach_prospects%rowtype; v_age integer; v_at timestamptz;
 begin
@@ -21,7 +22,7 @@ begin
     select * into p from outreach_prospects where id = m.prospect_id;
     select o.max_age_days into v_age from outreach_seat_own_engager_cfg() o where o.campaign_id = p.campaign_id limit 1;
     v_at := case when p.enrichment_data->>'engaged_at' ~ '^\d{4}-\d{2}-\d{2}' then (p.enrichment_data->>'engaged_at')::timestamptz end;
-    if v_age is null or v_at is null or v_at + make_interval(days => v_age) <= now() then return 'own_engager_window_expired'; end if;
+    if v_age is null or v_at is null or v_at + make_interval(days => v_age) <= clock_timestamp() then return 'own_engager_window_expired'; end if;
   end if;
   return null;
 end $f$;
