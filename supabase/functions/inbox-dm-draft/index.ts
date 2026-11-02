@@ -1,13 +1,14 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { referralCandidate } from './referral.ts'
 import { researchReferral } from './research.ts'
+import { readMentions } from './mention.ts'
+import { askClaude, DRAFT_MODEL } from './llm.ts'
 
 const CANON: Record<string, { author: string; slugs: string[] }> = {
   arch: { author: 'Davorin', slugs: ['arch-company-facts', 'arch-reply-voice-core', 'arch-icp-outreach', 'arch-reply-exemplars'] },
   risedtc: { author: 'Mattan', slugs: ['rise-company-facts', 'rise-reply-voice-core', 'rise-reply-exemplars'] },
   ivan: { author: 'Ivan Manfredi', slugs: ['author-voice', 'ivan-reply-voice-core', 'ivan-company-facts'] },
 }
-const MODEL = 'gpt-4.1'
 
 Deno.serve(async req => {
   const origin = req.headers.get('origin') ?? ''
@@ -21,8 +22,8 @@ Deno.serve(async req => {
   if (req.method === 'OPTIONS') return respond({ ok: true })
   if (req.method !== 'POST') return respond({ error: 'Method not allowed.' }, 405)
   const url = Deno.env.get('SUPABASE_URL'), anon = Deno.env.get('SUPABASE_ANON_KEY'), service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-  const allowed = Deno.env.get('INBOX_CLAUDE_ALLOWED_USER_ID'), key = Deno.env.get('OPENAI_API_KEY')
-  if (!url || !anon || !service || !allowed || !key) return respond({ error: 'Drafting is not configured.' }, 503)
+  const allowed = Deno.env.get('INBOX_CLAUDE_ALLOWED_USER_ID'), proxy = Deno.env.get('RAILWAY_CLAUDE_URL') && Deno.env.get('RAILWAY_CLAUDE_API_KEY')
+  if (!url || !anon || !service || !allowed || !proxy) return respond({ error: 'Drafting is not configured.' }, 503)
   const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer /, '')
   if (!token) return respond({ error: 'Sign in again to draft.' }, 401)
   const auth = createClient(url, anon, { auth: { persistSession: false } })
@@ -60,22 +61,19 @@ Deno.serve(async req => {
       const inbound = conversation.filter(m => m.direction === 'inbound').at(-1)
       if (!inbound || !referralCandidate(inbound.message_text)) return respond({ referral: null })
       const cached = prospect.enrichment_data?.inbox_referral
-      if (!retryReferral && cached?.input_message_id === inbound.id && cached?.revision === 2) return respond({ referral: cached })
+      if (!retryReferral && cached?.input_message_id === inbound.id && cached?.revision === 3) return respond({ referral: cached })
       const context = conversation.map(m => ({ speaker: m.direction === 'inbound' ? rows[0].prospect_name : canon.author, text: m.message_text }))
-      const referral = await researchReferral(key, { id: inbound.id, text: inbound.message_text, company: rows[0].prospect_company, referrer: rows[0].prospect_name }, canon.author, prompts, context)
+      const referral = await researchReferral(sb, { id: inbound.id, text: inbound.message_text, company: rows[0].prospect_company, referrer: rows[0].prospect_name }, canon.author, prompts, context, await readMentions(sb, inbound.id))
       const { data: fresh, error: freshError } = await sb.from('inbox_messages_v').select('id,message_text,sent_at,created_at,prospect_stage,prospect_blacklisted')
         .eq('prospect_id', id).eq('direction', 'inbound').order('created_at', { ascending: false }).limit(1)
       if (freshError) throw freshError
       if (fresh?.[0]?.id !== inbound.id || fresh[0].message_text !== inbound.message_text || fresh[0].prospect_blacklisted
         || ['archived', 'skipped', 'disqualified', 'unsubscribed', 'blacklisted'].includes(fresh[0].prospect_stage)) return respond({ error: 'The conversation changed during referral research. Refresh and try again.' }, 409)
-      // Read again after the web lookup; preserve enrichment written by other workers.
-      const { data: current, error: currentError } = await sb.from('outreach_prospects').select('enrichment_data').eq('id', id).single()
-      if (currentError) throw currentError
-      let update = sb.from('outreach_prospects').update({ enrichment_data: { ...(current.enrichment_data ?? {}), inbox_referral: { ...referral, researched_at: new Date().toISOString() } } }).eq('id', id)
-      update = current.enrichment_data == null ? update.is('enrichment_data', null) : update.eq('enrichment_data', JSON.stringify(current.enrichment_data))
-      const { data: saved, error: saveError } = await update.select('id')
+      // Merge only this key server side. Other workers' enrichment survives, and a large row cannot
+      // overflow the request URL (the old whole-JSON equality filter broke on rows over ~16 KB).
+      const { data: saved, error: saveError } = await sb.rpc('inbox_set_referral', { p_prospect: id, p_referral: { ...referral, researched_at: new Date().toISOString() } })
       if (saveError) throw saveError
-      if (!saved?.length) return respond({ error: 'The contact changed while saving research. Try again.' }, 409)
+      if (saved !== true) return respond({ error: 'The contact changed while saving research. Try again.' }, 409)
       return respond({ referral })
     }
     // Sent invitations establish first-touch provenance. Counters and unsent drafts do not.
@@ -99,18 +97,13 @@ Deno.serve(async req => {
     const context = JSON.stringify({ author: canon.author, client, name: rows[0].prospect_name, company: rows[0].prospect_company,
       operator_note: prospect.operator_note, first_dm_after_invite: firstDm, rules: prompts, messages: conversation.map(m => ({ speaker: m.direction === 'inbound' ? rows[0].prospect_name : canon.author, text: m.message_text, message_type: m.message_type, at: m.sent_at || m.created_at })) })
     if (context.length > 180_000) return respond({ error: 'This conversation is too long for direct drafting.' }, 413)
-    const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, max_tokens: 2200, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: `${instructions}\n\n${context}` }] }),
-      signal: AbortSignal.timeout(120_000),
-    })
-    if (!upstream.ok) return respond({ error: `The drafting service is unavailable (${upstream.status}). Try again.` }, 503)
-    const output = await upstream.json()
-    const text = output.choices?.[0]?.message?.content?.trim() ?? ''
+    let text
+    try { text = await askClaude(`${instructions}\n\n${context}`, 2200, 120_000) }
+    catch (e) { return respond({ error: e instanceof Error ? e.message : 'The drafting service is unavailable. Try again.' }, 503) }
     let result
-    try { result = JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, '')) } catch { return respond({ error: 'The drafter returned an invalid answer. Try again.' }, 502) }
+    try { result = JSON.parse(text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1] ?? text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)) } catch { return respond({ error: 'The drafter returned an invalid answer. Try again.' }, 502) }
     if (!result || (result.reply !== null && typeof result.reply !== 'string')) return respond({ error: 'The drafter returned no usable answer.' }, 502)
-    return respond({ reply: result.reply, reason: typeof result.reason === 'string' ? result.reason : null, model: output.model || MODEL,
+    return respond({ reply: result.reply, reason: typeof result.reason === 'string' ? result.reason : null, model: DRAFT_MODEL,
       sources: prompts!.map(p => ({ slug: p.slug, updated_at: p.updated_at })), input_message_ids: conversation.map(m => m.id) })
   } catch (e) {
     console.error('dm_draft_failed', e instanceof Error ? e.name : 'unknown')
