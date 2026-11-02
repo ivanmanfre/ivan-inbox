@@ -52,7 +52,7 @@ export function useWarmVerbs(after: () => void) {
             ? (seat === 'arch' && c.qualification !== 'eligible'
               ? `A blank connection request${from}, by rule. It goes out once research clears.`
               : `A blank connection request${from}, by rule. The sender picks it up on its next run.`)
-            : <span className="dm-pre">{`The connection request goes out with this note on the sender’s next hour:\n\n${note}`}</span>,
+            : <span className="dm-pre">{`The connection request goes out${from} with this note on the sender’s next hour:\n\n${note}`}</span>,
         confirmText: firstDegree ? 'Approve' : 'Approve invite', verb: 'confirm-invite',
       })
       if (!yes) return ''
@@ -74,7 +74,10 @@ export function useWarmVerbs(after: () => void) {
       if (agentManaged) return 'Review this proposal through the conversation agent action below.'
       if (!dm1Deliverable(c)) return `Approve unlocks once ${firstOf(c)} accepts the invite.`
       if (dm1.trim().length === 0) return 'The DM is empty.'
-      const yes = await confirm({ title: `Send this DM to ${firstOf(c)}?`, message: 'The sender picks it up within about 2 minutes.', confirmText: 'Approve & send', verb: 'confirm-dm1' })
+      // 2026-11-02: a client seat's warm DM names whose seat sends it
+      const dmSeat = seatOf(c.tenant ?? null) ?? 'ivan'
+      const dmFrom = dmSeat === 'ivan' ? '' : `It goes out from ${SEAT_OWNER[dmSeat]}. `
+      const yes = await confirm({ title: `Send this DM to ${firstOf(c)}?`, message: `${dmFrom}The sender picks it up within about 2 minutes.`, confirmText: 'Approve & send', verb: 'confirm-dm1' })
       if (!yes) return ''
       try {
         // A held row whose invite already went out goes back to connection_sent first, so the

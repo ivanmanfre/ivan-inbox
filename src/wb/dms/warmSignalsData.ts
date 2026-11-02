@@ -67,7 +67,7 @@ export type WarmGroupKey = 'commented_own_post' | 'reacted_two_posts' | 'profile
 
 export const WARM_GROUPS: { key: WarmGroupKey; label: string }[] = [
   { key: 'commented_own_post', label: 'Commented on your post' },
-  { key: 'reacted_two_posts', label: 'Reacted to two posts' },
+  { key: 'reacted_two_posts', label: 'Reacted to a post' },
   { key: 'profile_view', label: 'Viewed your profile' },
 ]
 
@@ -136,11 +136,18 @@ export function evidenceLine(c: Pick<WarmCard, 'signal_source' | 'trigger_type' 
     if (dw) parts.push(dw)
     return parts.join(' · ')
   }
+  // one touch is enough since 2026-10-12 (Ivan seat) and 2026-11-02 (client seats); a client seat's card names no owner
+  const whosePost = !c.tenant || c.tenant === 'ivan' ? 'your' : 'the'
+  const dw = distanceWord(ev.distance)
   if (g === 'commented_own_post') {
     const when = dayOf(ev.comment_at ?? (ev.touches ?? []).find(t => t.kind === 'comment')?.at)
-    return `commented on your post${when ? ` · ${when}` : ''}`
+    return `commented on ${whosePost} post${when ? ` · ${when}` : ''}${dw && c.tenant && c.tenant !== 'ivan' ? ` · ${dw}` : ''}`
   }
   const n = ev.n_posts ?? (ev.touches ?? []).length
+  if (n === 1) {
+    const when = dayOf((ev.touches ?? [])[0]?.at)
+    return `reacted to ${whosePost} post${when ? ` · ${when}` : ''}${dw && c.tenant && c.tenant !== 'ivan' ? ` · ${dw}` : ''}`
+  }
   return `reacted to ${n || 2} posts`
 }
 
