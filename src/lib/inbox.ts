@@ -1806,8 +1806,21 @@ export function reviewedEmailMirror(draft: Pick<InboxMessage, 'email_mirror_text
   return draft.email_mirror_text == null ? null : editedEmail
 }
 
+// iOS smart punctuation turns a typed "---" bubble break into "—" (or "—-"), and the
+// senders only split on a line of 3+ hyphens, so Ivan's breaks went out as a dash line
+// inside one message (Ivan 2026-11-02, Alec/Slumber). A line holding nothing but dash
+// characters is a bubble break: written back as "---" before any save or approve.
+const DASH_ONLY_LINE = /^[ \t]*[-\u2010-\u2015\u2212]+[ \t]*$/
+export function normalizeBubbleBreaks(text: string): string {
+  return text.split('\n').map((line) => {
+    const hasDash = /[\u2010-\u2015\u2212]/.test(line) || /-{3,}/.test(line)
+    return DASH_ONLY_LINE.test(line) && hasDash ? '---' : line
+  }).join('\n')
+}
+
 export async function approveDraft(id: string, editedText: string, chatId?: string | null,
   snapshot?: Pick<InboxMessage, 'email_mirror_text' | 'recipient_email' | 'email_cc' | 'draft_evidence' | 'send_via'>): Promise<void> {
+  editedText = normalizeBubbleBreaks(editedText)
   const { data: draft, error: readError } = await supabase.from('outreach_messages')
     .select('ai_model,draft_evidence').eq('id', id).single()
   if (readError) throw readError
@@ -1884,6 +1897,7 @@ export function snoozeTarget(days: number, from: Date = new Date()): string {
 // decisions always happened together, wrong now that a draft can be edited
 // today and sent in a fortnight.
 export async function saveDraftText(id: string, text: string): Promise<void> {
+  text = normalizeBubbleBreaks(text)
   const { error } = await supabase.from('outreach_messages')
     .update({ message_text: text })
     .eq('id', id).is('sent_at', null).is('approved_at', null)

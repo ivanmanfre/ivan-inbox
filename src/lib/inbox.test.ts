@@ -1443,3 +1443,17 @@ describe('snoozeDraft / unsnoozeDraft on a SwishDM reply hold', () => {
     spy.mockRestore()
   })
 })
+
+describe('normalizeBubbleBreaks', () => {
+  it('turns iOS smart-dash bubble breaks back into ---', async () => {
+    const { normalizeBubbleBreaks } = await import('./inbox')
+    expect(normalizeBubbleBreaks('Hey Alec\n—\nMay I send you a short report?')).toBe('Hey Alec\n---\nMay I send you a short report?')
+    expect(normalizeBubbleBreaks('Hey\n—-\nx')).toBe('Hey\n---\nx')
+    expect(normalizeBubbleBreaks('Hey\n – \nx')).toBe('Hey\n---\nx')
+    expect(normalizeBubbleBreaks('Hey\n---\nx')).toBe('Hey\n---\nx')
+  })
+  it('leaves dashes inside sentences and a lone hyphen line alone', async () => {
+    const { normalizeBubbleBreaks } = await import('./inbox')
+    expect(normalizeBubbleBreaks('Price — about $3k\n-\nok')).toBe('Price — about $3k\n-\nok')
+  })
+})
