@@ -2,7 +2,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode
 import { Segmented } from '../../../ds/Segmented'
 import { LiveDot } from '../../../ds/Working'
 import { wordCount } from '../../../lib/xArticleMd'
-import { decideXArticle, decideXQuote, saveXArticle, saveXQuote, xFlagItems, type XArticle, type XQuote } from '../../../lib/xReview'
+import { decideXArticle, decideXQuick, decideXQuote, saveXArticle, saveXQuick, saveXQuote, xFlagItems, type XArticle, type XQuick, type XQuote } from '../../../lib/xReview'
 import { useFrameCounts } from '../../counts/useFrameCounts'
 import type { Layout, PlaceProps } from '../../places'
 import { dHash } from '../../route'
@@ -54,7 +54,7 @@ function useAutosize(value: string) {
   return ref
 }
 
-function StatusBanner({ kind, status, url, error }: { kind: 'article' | 'quote'; status: string; url: string | null; error: string | null }) {
+function StatusBanner({ kind, status, url, error }: { kind: 'article' | 'quote' | 'quick'; status: string; url: string | null; error: string | null }) {
   if (status === 'approved' || status === 'publishing' || status === 'posting') {
     return <div className="xr-ban xr-ban-moving" data-x-state="moving"><LiveDot label="Going out" />{kind === 'article' ? 'Publishing on X. Usually under a minute.' : 'Posting on X. Usually under a minute.'}</div>
   }
@@ -99,7 +99,7 @@ function Head({ layout, label, title, navigate, actions }: { layout: Layout; lab
   )
 }
 
-function useDecide(kind: 'article' | 'quote', id: string, title: string, navigate: (h: string) => void, flush: () => Promise<boolean>) {
+function useDecide(kind: 'article' | 'quote' | 'quick', id: string, title: string, navigate: (h: string) => void, flush: () => Promise<boolean>, getText?: () => string) {
   const confirm = useDConfirm()
   const toast = useToast()
   const c = useFrameCounts()
@@ -109,29 +109,37 @@ function useDecide(kind: 'article' | 'quote', id: string, title: string, navigat
   const go = useCallback(async () => {
     const ok = await confirm(kind === 'article'
       ? { title: 'Publish this article on X?', message: 'It goes live on @theivanpill within about a minute, with the title, cover, images and text as the preview shows them.', confirmText: 'Publish to X', verb: 'x-publish-confirm' }
-      : { title: 'Post this on X?', message: 'It goes live on @theivanpill within about a minute: your line, the GIF, and the article quoted underneath.', confirmText: 'Post on X', verb: 'x-post-confirm' })
+      : kind === 'quick'
+        ? { title: 'Post this on X?', message: 'It goes live on @theivanpill within about a minute, exactly as the preview shows it.', confirmText: 'Post on X', verb: 'x-post-confirm' }
+        : { title: 'Post this on X?', message: 'It goes live on @theivanpill within about a minute: your line, the GIF, and the article quoted underneath.', confirmText: 'Post on X', verb: 'x-post-confirm' })
     if (!ok) return
+    // what the preview showed when he confirmed; the editor locks while busy, the server checks it
+    const confirmed = getText ? getText() : ''
     setBusy('go'); setErr(null)
     try {
       if (!await flush()) throw new Error('Your last edit is not saved, so nothing went out. Retry the save first')
       if (kind === 'article') {
         await decideXArticle(id, 'publish')
         patchX(l => ({ ...l, articles: l.articles.map(a => a.id === id ? { ...a, status: 'approved' } : a) }))
+      } else if (kind === 'quick') {
+        await decideXQuick(id, 'post', confirmed)
+        patchX(l => ({ ...l, quicks: l.quicks.map(k => k.id === id ? { ...k, status: 'approved' } : k) }))
       } else {
         await decideXQuote(id, 'post')
         patchX(l => ({ ...l, quotes: l.quotes.map(q => q.id === id ? { ...q, status: 'approved' } : q) }))
       }
       refreshCounts('ops')
     } catch (e) { setErr(msg(e)) } finally { setBusy(null) }
-  }, [confirm, kind, id, flush, refreshCounts])
+  }, [confirm, kind, id, flush, refreshCounts, getText])
   const discard = useCallback(async () => {
-    const ok = await confirm({ title: kind === 'article' ? 'Discard this article?' : 'Discard this quote post?', message: 'It is cancelled and never goes to X.', confirmText: 'Discard', verb: 'x-discard-confirm', danger: true })
+    const ok = await confirm({ title: kind === 'article' ? 'Discard this article?' : kind === 'quick' ? 'Discard this post?' : 'Discard this quote post?', message: 'It is cancelled and never goes to X.', confirmText: 'Discard', verb: 'x-discard-confirm', danger: true })
     if (!ok) return
     setBusy('discard'); setErr(null)
     try {
       if (kind === 'article') await decideXArticle(id, 'discard')
+      else if (kind === 'quick') await decideXQuick(id, 'discard')
       else await decideXQuote(id, 'discard')
-      patchX(l => ({ articles: l.articles.filter(a => a.id !== id), quotes: l.quotes.filter(q => q.id !== id) }))
+      patchX(l => ({ articles: l.articles.filter(a => a.id !== id), quotes: l.quotes.filter(q => q.id !== id), quicks: l.quicks.filter(k => k.id !== id) }))
       refreshCounts('ops')
       toast.show({ id: `x-${id}`, message: `Discarded · ${title}` })
       navigate(dHash('ops'))
@@ -140,7 +148,7 @@ function useDecide(kind: 'article' | 'quote', id: string, title: string, navigat
   return { busy, err, go, discard }
 }
 
-function Actions({ kind, d, canAct }: { kind: 'article' | 'quote'; d: ReturnType<typeof useDecide>; canAct: boolean }) {
+function Actions({ kind, d, canAct }: { kind: 'article' | 'quote' | 'quick'; d: ReturnType<typeof useDecide>; canAct: boolean }) {
   if (!canAct) return null
   return (
     <div className="xr-keys">
@@ -307,16 +315,91 @@ function QuoteReview({ q, layout, navigate }: { q: XQuote; layout: Layout; navig
   )
 }
 
+const KIND_WORD: Record<string, string> = { win: 'Win', doubt: 'Doubt', funny: 'Funny', build: 'Building', take: 'Take' }
+
+function QuickReview({ k, layout, navigate }: { k: XQuick; layout: Layout; navigate: (h: string) => void }) {
+  const editable = k.status === 'draft'
+  const server = useMemo(() => k.text ?? '', []) // eslint-disable-line react-hooks/exhaustive-deps
+  const save = useCallback((v: string) => saveXQuick(k.id, v), [k.id])
+  const auto = useAutosave({ backupKey: `x-review-quick:${k.id}`, server, equal: sameHook, save, enabled: editable })
+  const text = auto.value
+  const ref = useAutosize(text)
+  const textRef = useRef(text)
+  textRef.current = text
+  const getText = useCallback(() => textRef.current, [])
+  const d = useDecide('quick', k.id, text.split('\n')[0] || 'Quick post', navigate, auto.flush, getText)
+  const locked = !editable || d.busy !== null
+  const options = [k.text ?? '', ...(k.options ?? [])].filter((o, i, a) => typeof o === 'string' && o.trim() && a.indexOf(o) === i)
+  const label = `Quick post${k.kind && KIND_WORD[k.kind] ? ` · ${KIND_WORD[k.kind]}` : ''} · ${STATUS_WORD[k.status] ?? k.status}`
+  const editor = (
+    <div className="xr-editor" data-x-editor>
+      <label className="xr-field">
+        <span>Post <small>{text.length} characters</small></span>
+        <textarea ref={ref} rows={4} className="xr-input xr-line" value={text} readOnly={locked} data-x-quick
+          onChange={e => auto.setValue(e.target.value)} onBlur={() => void auto.flush()} />
+      </label>
+      {options.length > 1 && (
+        <div className="xr-chips xr-chips-quick" role="group" aria-label="Other versions">
+          {options.map((o, i) => (
+            <button key={i} type="button" className={`xr-chip${o === text ? ' xr-chip-on' : ''}`} data-verb="x-quick-option" disabled={locked}
+              onClick={() => auto.setValue(o)}>{o}</button>
+          ))}
+        </div>
+      )}
+      {(k.source_label || k.source_excerpt) && (
+        <details className="xr-checks" data-x-source>
+          <summary><span>From</span><small>{k.source_label ?? 'Source'}</small></summary>
+          {k.source_excerpt && <p className="xr-quiet xr-src">{k.source_excerpt}</p>}
+        </details>
+      )}
+    </div>
+  )
+  const preview = <XPostPreview text={text} media={null} handle={k.account || 'theivanpill'} quoteTitle={null} quoteCover={null} />
+  const saveLine = <SaveLine status={auto.status} error={auto.error} savedAt={auto.savedAt} retry={() => void auto.flush()} readOnly={!editable} />
+  const top = (
+    <>
+      <StatusBanner kind="quick" status={k.status} url={k.posted_url} error={k.error} />
+      {auto.restored && editable && <div className="xr-ban">Restored edits from this device that had not reached the server. They save now.</div>}
+      {d.err && <div className="xr-ban xr-ban-failed" role="alert">{d.err}</div>}
+    </>
+  )
+  if (layout === 'desktop') {
+    return (
+      <div className="xr xr-desktop" data-x-review="quick">
+        <AnswerRow title="X review" sub="What you see on the right is what X posts." />
+        <Head layout={layout} label={label} title="Quick post" navigate={navigate} actions={<>{saveLine}<Actions kind="quick" d={d} canAct={editable} /></>} />
+        <div className="xr-top">{top}</div>
+        <div className="xr-cols">
+          <div className="xr-col xr-col-edit">{editor}</div>
+          <div className="xr-col xr-col-prev"><div className="xr-stage">{preview}</div></div>
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="xr xr-phone" data-x-review="quick">
+      <Head layout={layout} label={label} title="Quick post" navigate={navigate} />
+      {top}
+      <div className="xr-stage">{preview}</div>
+      <div className="xr-bar xr-bar-plain">{saveLine}</div>
+      {editor}
+      <Actions kind="quick" d={d} canAct={editable} />
+    </div>
+  )
+}
+
 export default function XReviewPage({ layout, route, navigate }: PlaceProps) {
   const x = useXReview()
   const id = route.query.get('id')
   const items = useMemo(() => xFlagItems(x.list), [x.list])
   const article = id ? x.list?.articles.find(a => a.id === id) ?? null : null
   const quote = id && !article ? x.list?.quotes.find(q => q.id === id) ?? null : null
+  const quick = id && !article && !quote ? x.list?.quicks.find(k => k.id === id) ?? null : null
   const first = !id ? items.find(i => i.state === 'waiting') ?? null : null
 
   if (article) return <ArticleReview key={article.id} a={article} layout={layout} navigate={navigate} />
   if (quote) return <QuoteReview key={quote.id} q={quote} layout={layout} navigate={navigate} />
+  if (quick) return <QuickReview key={quick.id} k={quick} layout={layout} navigate={navigate} />
   const head = <Head layout={layout} label="X review" title={first ? 'Waiting on you' : 'X review'} navigate={navigate} />
   if (!x.list && x.error) return <div className={`xr xr-${layout}`}>{head}<Failed what="the X review list" detail={x.error} onRetry={() => void x.refresh()} /></div>
   if (!x.list) return <div className={`xr xr-${layout}`}>{head}<Skeleton lines={8} label="Reading the X review" /></div>

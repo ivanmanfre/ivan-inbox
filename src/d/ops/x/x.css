@@ -154,3 +154,7 @@
 .xs-qbody{display:flex;flex-direction:column;gap:2px;padding:10px 12px 12px}
 .xs-qbody small{font-size:13px;line-height:16px;color:var(--xs-dim)}
 .xs-qbody b{font-size:15px;line-height:20px;font-weight:700}
+/* quick posts (2026-11-03): the whole post reads on the flag; versions keep their line breaks */
+.xf-row-quick .xf-row-t b{font:450 15px/21px var(--f);white-space:pre-line;-webkit-line-clamp:7}
+.xr-chips-quick .xr-chip{white-space:pre-line}
+.xr-src{white-space:pre-line;font-size:13px}

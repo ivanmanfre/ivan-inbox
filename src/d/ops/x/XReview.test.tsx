@@ -6,7 +6,7 @@ import { parseDHash } from '../../route'
 import { renderInFrame } from '../../test-utils'
 
 const api = vi.hoisted(() => ({
-  fetchXReview: vi.fn(), saveXArticle: vi.fn(), decideXArticle: vi.fn(), saveXQuote: vi.fn(), decideXQuote: vi.fn(),
+  fetchXReview: vi.fn(), saveXArticle: vi.fn(), decideXArticle: vi.fn(), saveXQuote: vi.fn(), decideXQuote: vi.fn(), saveXQuick: vi.fn(), decideXQuick: vi.fn(),
 }))
 vi.mock('../../../lib/xReview', async (orig) => ({ ...(await orig<typeof import('../../../lib/xReview')>()), ...api }))
 
@@ -22,6 +22,7 @@ const LIST: XReviewList = {
     x_url: null, error: null, lm_slug: null, lm_topic: null, account: 'theivanpill', created_at: '2026-10-10T21:00:00Z', updated_at: '2026-10-10T21:25:00Z',
   }],
   quotes: [],
+  quicks: [],
 }
 
 function page(layout: 'phone' | 'desktop' = 'phone') {
@@ -35,6 +36,7 @@ beforeEach(() => {
   api.fetchXReview.mockResolvedValue(LIST)
   api.saveXArticle.mockResolvedValue(undefined)
   api.decideXArticle.mockResolvedValue(undefined)
+  api.saveXQuick.mockResolvedValue(undefined)
 })
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 
@@ -82,5 +84,49 @@ describe('X review page', () => {
     await screen.findByText(/Not saved: article is no longer in review/)
     expect(title.value).toBe('Kept text')
     expect(localStorage.getItem(`x-review-draft:${ID}`)).toContain('Kept text')
+  })
+})
+
+describe('quick X post review', () => {
+  const QID = '7b0c4b52-1d1e-4f43-9a55-3f3f0a3e6c11'
+  const QLIST: XReviewList = {
+    articles: [], quotes: [],
+    quicks: [{
+      id: QID, status: 'draft', text: '27 follow-up drafts showed up today\n\nfixed it', options: ['another version\n\nline two'], kind: 'funny',
+      source_label: 'Today’s work: discarded follow-ups', source_excerpt: '27 follow-up drafts appeared today', posted_url: null, error: null,
+      account: 'theivanpill', created_at: '2026-11-03T08:00:00Z', updated_at: null, expires_at: '2026-11-04T04:00:00Z',
+    }],
+  }
+
+  it('shows the post on X, swaps a version, saves it, and posts only after the confirm', async () => {
+    api.fetchXReview.mockResolvedValue(QLIST)
+    const hash = `#exp/d/ops/x?id=${QID}`
+    renderInFrame(<XReviewPage layout="phone" route={parseDHash(hash)} navigate={() => {}} />, { layout: 'phone', hash })
+    await screen.findByText('Quick post')
+    const text = document.querySelector('[data-x-preview=post] .xs-text')!
+    expect(text.textContent).toContain('27 follow-up drafts showed up today')
+    expect(document.querySelectorAll('[data-verb=x-quick-option]').length).toBe(2)
+    fireEvent.click(document.querySelectorAll('[data-verb=x-quick-option]')[1])
+    expect(document.querySelector<HTMLTextAreaElement>('[data-x-quick]')!.value).toBe('another version\n\nline two')
+    expect(document.querySelector('[data-x-source]')?.textContent).toContain('discarded follow-ups')
+  })
+
+  it('posts the exact text he confirmed and locks the editor while it goes out', async () => {
+    api.fetchXReview.mockResolvedValue(QLIST)
+    api.saveXQuick.mockResolvedValue(undefined)
+    let release: () => void = () => {}
+    api.decideXQuick.mockImplementation(() => new Promise<void>(r => { release = r }))
+    const hash = `#exp/d/ops/x?id=${QID}`
+    renderInFrame(<XReviewPage layout="phone" route={parseDHash(hash)} navigate={() => {}} />, { layout: 'phone', hash })
+    await screen.findByText('Quick post')
+    const box = document.querySelector<HTMLTextAreaElement>('[data-x-quick]')!
+    fireEvent.change(box, { target: { value: 'edited B' } })
+    fireEvent.click(document.querySelector('[data-verb=x-post]')!)
+    await screen.findByRole('alertdialog')
+    await act(async () => { fireEvent.click(document.querySelector('[data-verb=x-post-confirm]')!) })
+    await waitFor(() => expect(api.decideXQuick).toHaveBeenCalledWith(QID, 'post', 'edited B'))
+    expect(api.saveXQuick).toHaveBeenCalledWith(QID, 'edited B')
+    expect(document.querySelector<HTMLTextAreaElement>('[data-x-quick]')!.readOnly).toBe(true)
+    await act(async () => { release() })
   })
 })

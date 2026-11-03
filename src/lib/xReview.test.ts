@@ -22,6 +22,7 @@ describe('x review flag', () => {
       art('a5', 'failed', '2026-10-10T08:00:00Z', { error: 'zernio 500' }),
     ],
     quotes: [quo('q1', 'draft', '2026-10-11T10:00:00Z'), quo('q2', 'posted', '2026-10-01T10:00:00Z'), quo('q3', 'failed', '2026-10-01T10:00:00Z')],
+    quicks: [],
   }
   it('counts only what waits on Ivan', () => {
     expect(xWaitingCount(list)).toBe(2)
@@ -38,18 +39,18 @@ describe('x flag: scheduled and publishing articles (Ivan 2026-10-15)', () => {
   const at = (iso: string) => Date.parse(iso)
   const scheduled = art('s1', 'approved', '2026-10-11T19:15:00Z', { publish_after: '2026-10-15T15:00:00Z' })
   it('an approved article waiting for its slot is not "Publishing on X…"', () => {
-    expect(xFlagItems({ articles: [scheduled], quotes: [] }, at('2026-10-15T11:00:00Z'))).toEqual([])
+    expect(xFlagItems({ articles: [scheduled], quotes: [], quicks: [] }, at('2026-10-15T11:00:00Z'))).toEqual([])
   })
   it('it reads as moving once its slot comes, and leaves the flag once stuck 2h after', () => {
-    expect(xFlagItems({ articles: [scheduled], quotes: [] }, at('2026-10-15T15:01:00Z')).map(i => i.state)).toEqual(['moving'])
-    expect(xFlagItems({ articles: [scheduled], quotes: [] }, at('2026-10-15T18:00:00Z'))).toEqual([])
+    expect(xFlagItems({ articles: [scheduled], quotes: [], quicks: [] }, at('2026-10-15T15:01:00Z')).map(i => i.state)).toEqual(['moving'])
+    expect(xFlagItems({ articles: [scheduled], quotes: [], quicks: [] }, at('2026-10-15T18:00:00Z'))).toEqual([])
   })
   it('a just-approved article without a slot is moving', () => {
     const a = art('n1', 'approved', '2026-10-15T10:59:00Z')
-    expect(xFlagItems({ articles: [a], quotes: [] }, at('2026-10-15T11:00:00Z')).map(i => i.state)).toEqual(['moving'])
+    expect(xFlagItems({ articles: [a], quotes: [], quicks: [] }, at('2026-10-15T11:00:00Z')).map(i => i.state)).toEqual(['moving'])
   })
   it('a posted quote leaves the flag at once', () => {
     const q = quo('p1', 'posted', '2026-10-15T01:00:00Z', { posted_url: 'https://x.com/s/1' })
-    expect(xFlagItems({ articles: [], quotes: [q] }, at('2026-10-15T11:00:00Z'))).toEqual([])
+    expect(xFlagItems({ articles: [], quotes: [q], quicks: [] }, at('2026-10-15T11:00:00Z'))).toEqual([])
   })
 })
