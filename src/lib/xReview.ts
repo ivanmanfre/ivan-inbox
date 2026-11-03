@@ -52,7 +52,27 @@ export type XQuote = {
   created_at: string
 }
 
-export type XReviewList = { articles: XArticle[]; quotes: XQuote[] }
+/** A quick in-the-moment X post (lane x-quick, 2026-11-03), drafted at Warsaw slots from his notes and the day's work. */
+export type XQuickStatus = 'draft' | 'approved' | 'posting' | 'posted' | 'failed'
+
+export type XQuick = {
+  id: string
+  status: XQuickStatus
+  text: string | null
+  /** Other versions he can swap in. */
+  options: string[] | null
+  kind: string | null
+  source_label: string | null
+  source_excerpt: string | null
+  posted_url: string | null
+  error: string | null
+  account: string | null
+  created_at: string
+  updated_at: string | null
+  expires_at: string | null
+}
+
+export type XReviewList = { articles: XArticle[]; quotes: XQuote[]; quicks: XQuick[] }
 
 function fail(error: { message?: string } | null): never {
   throw new Error(error?.message || 'The database refused the request')
@@ -62,7 +82,11 @@ export async function fetchXReview(): Promise<XReviewList> {
   const { data, error } = await supabase.rpc('x_review_list')
   if (error) fail(error)
   const d = (data ?? {}) as Partial<XReviewList>
-  return { articles: Array.isArray(d.articles) ? d.articles : [], quotes: Array.isArray(d.quotes) ? d.quotes : [] }
+  return {
+    articles: Array.isArray(d.articles) ? d.articles : [],
+    quotes: Array.isArray(d.quotes) ? d.quotes : [],
+    quicks: Array.isArray(d.quicks) ? d.quicks : [],
+  }
 }
 
 export async function saveXArticle(id: string, title: string, body: string): Promise<void> {
@@ -85,11 +109,22 @@ export async function decideXQuote(id: string, action: 'post' | 'discard'): Prom
   if (error) fail(error)
 }
 
+export async function saveXQuick(id: string, text: string): Promise<void> {
+  const { error } = await supabase.rpc('x_quick_save', { p_id: id, p_text: text })
+  if (error) fail(error)
+}
+
+/** Post is bound to the exact text Ivan confirmed: the server refuses if the stored post differs. */
+export async function decideXQuick(id: string, action: 'post' | 'discard', confirmedText?: string): Promise<void> {
+  const { error } = await supabase.rpc('x_quick_decide', { p_id: id, p_action: action, p_text: confirmedText ?? null })
+  if (error) fail(error)
+}
+
 // ---- the flag ----
 
 export type XFlagItem = {
   id: string
-  kind: 'article' | 'quote'
+  kind: 'article' | 'quote' | 'quick'
   /** waiting = needs Ivan; moving = publishing/posting now; live = went out recently; failed = did not go out. */
   state: 'waiting' | 'moving' | 'live' | 'failed'
   title: string
@@ -139,16 +174,21 @@ export function xFlagItems(l: XReviewList | null, now: number = Date.now()): XFl
     const state = quoteState(q.status)
     out.push({ id: q.id, kind: 'quote', state, title: q.hook?.trim() || q.article_title?.trim() || 'Quote post', url: q.posted_url, error: q.error, at: stamp(q.created_at) })
   }
+  for (const k of l.quicks ?? []) {
+    const state = quoteState(k.status === 'draft' ? 'draft' : k.status === 'posted' ? 'posted' : k.status === 'failed' ? 'failed' : 'approved')
+    out.push({ id: k.id, kind: 'quick', state, title: k.text?.trim() || 'Quick post', url: k.posted_url, error: k.error, at: stamp(k.created_at) })
+  }
   const rank = { waiting: 0, moving: 1, failed: 2, live: 3 } as const
   return out
     .filter(i => i.state === 'waiting' || i.state === 'moving')
     .sort((a, b) => rank[a.state] - rank[b.state] || b.at - a.at)
 }
 
-/** How many X items wait on Ivan (articles in review + quote drafts). Counts in the Ops number. */
+/** How many X items wait on Ivan (articles in review + quote drafts + quick-post drafts). Counts in the Ops number. */
 export function xWaitingCount(l: XReviewList | null): number {
   if (!l) return 0
   return l.articles.filter(a => a.status === 'review').length + l.quotes.filter(q => q.status === 'draft').length
+    + (l.quicks ?? []).filter(k => k.status === 'draft').length
 }
 
 /** An X article with a day on the content calendar: scheduled, going out, out, or failed. */

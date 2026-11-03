@@ -14,10 +14,10 @@ import './x.css'
 
 const xReviewHref = (id: string) => dHash('ops', 'x', { id })
 
-const KIND: Record<XFlagItem['kind'], string> = { article: 'X article to review', quote: 'X quote post to review' }
+const KIND: Record<XFlagItem['kind'], string> = { article: 'X article to review', quote: 'X quote post to review', quick: 'Quick X post' }
 
 function StatusLine({ i }: { i: XFlagItem }) {
-  const what = i.kind === 'article' ? 'Article' : 'Quote post'
+  const what = i.kind === 'article' ? 'Article' : i.kind === 'quick' ? 'Post' : 'Quote post'
   if (i.state === 'live') {
     return (
       <div className="xf-st xf-st-live" data-x-status="live">
@@ -56,7 +56,7 @@ export function XFlag({ className }: { className?: string }) {
             <b className="xf-n" aria-label={`${waiting.length} waiting`}>{waiting.length}</b>
           </div>
           {waiting.map(i => (
-            <a key={i.id} className="xf-row" href={xReviewHref(i.id)} data-x-item={i.id}>
+            <a key={i.id} className={`xf-row${i.kind === 'quick' ? ' xf-row-quick' : ''}`} href={xReviewHref(i.id)} data-x-item={i.id}>
               <span className="xf-row-t"><small>{KIND[i.kind]}</small><b>{i.title}</b></span>
               <span className="xf-chev" aria-hidden="true">›</span>
             </a>
