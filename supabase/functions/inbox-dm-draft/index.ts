@@ -24,12 +24,18 @@ Deno.serve(async req => {
   const url = Deno.env.get('SUPABASE_URL'), anon = Deno.env.get('SUPABASE_ANON_KEY'), service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
   const allowed = Deno.env.get('INBOX_CLAUDE_ALLOWED_USER_ID'), proxy = Deno.env.get('RAILWAY_CLAUDE_URL') && Deno.env.get('RAILWAY_CLAUDE_API_KEY')
   if (!url || !anon || !service || !allowed || !proxy) return respond({ error: 'Drafting is not configured.' }, 503)
-  const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer /, '')
-  if (!token) return respond({ error: 'Sign in again to draft.' }, 401)
-  const auth = createClient(url, anon, { auth: { persistSession: false } })
-  const { data: user, error: authError } = await auth.auth.getUser(token)
-  if (authError || !user.user) return respond({ error: 'Sign in again to draft.' }, 401)
-  if (user.user.id !== allowed) return respond({ error: 'Access denied.' }, 403)
+  // pg_cron researches a new referral reply as soon as it lands, so the card is ready when it is opened.
+  // That server door is referral research only, never a retry or a reply draft.
+  const pushSecret = Deno.env.get('INBOX_PUSH_SECRET')
+  const server = Boolean(pushSecret) && req.headers.get('x-inbox-secret') === pushSecret
+  if (!server) {
+    const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer /, '')
+    if (!token) return respond({ error: 'Sign in again to draft.' }, 401)
+    const auth = createClient(url, anon, { auth: { persistSession: false } })
+    const { data: user, error: authError } = await auth.auth.getUser(token)
+    if (authError || !user.user) return respond({ error: 'Sign in again to draft.' }, 401)
+    if (user.user.id !== allowed) return respond({ error: 'Access denied.' }, 403)
+  }
   let id: string
   let referralMode = false, retryReferral = false
   try {
@@ -39,11 +45,12 @@ Deno.serve(async req => {
     referralMode = body.mode === 'referral'
     retryReferral = body.retry === true
   } catch { return respond({ error: 'A conversation is required.' }, 400) }
+  if (server && (!referralMode || retryReferral)) return respond({ error: 'Access denied.' }, 403)
   const sb = createClient(url, service, { auth: { persistSession: false } })
   try {
     const { data: rows, error } = await sb.from('inbox_messages_v')
       .select('id,client_id,prospect_name,prospect_company,direction,message_type,message_text,sent_at,created_at,prospect_blacklisted,prospect_stage')
-      .eq('prospect_id', id).order('created_at')
+      .eq('prospect_id', id).order('created_at').order('id')
     if (error) throw error
     if (!rows?.length) return respond({ error: 'Conversation not found.' }, 404)
     const client = rows[0].client_id, canon = CANON[client]
@@ -64,16 +71,29 @@ Deno.serve(async req => {
       if (!retryReferral && cached?.input_message_id === inbound.id && cached?.revision === 3) return respond({ referral: cached })
       const context = conversation.map(m => ({ speaker: m.direction === 'inbound' ? rows[0].prospect_name : canon.author, text: m.message_text }))
       const referral = await researchReferral(sb, { id: inbound.id, text: inbound.message_text, company: rows[0].prospect_company, referrer: rows[0].prospect_name }, canon.author, prompts, context, await readMentions(sb, inbound.id))
-      const { data: fresh, error: freshError } = await sb.from('inbox_messages_v').select('id,message_text,sent_at,created_at,prospect_stage,prospect_blacklisted')
-        .eq('prospect_id', id).eq('direction', 'inbound').order('created_at', { ascending: false }).limit(1)
+      const { data: freshRows, error: freshError } = await sb.from('inbox_messages_v').select('id,message_text,sent_at,created_at,prospect_stage,prospect_blacklisted')
+        .eq('prospect_id', id).eq('direction', 'inbound').order('created_at').order('id')
       if (freshError) throw freshError
-      if (fresh?.[0]?.id !== inbound.id || fresh[0].message_text !== inbound.message_text || fresh[0].prospect_blacklisted
-        || ['archived', 'skipped', 'disqualified', 'unsubscribed', 'blacklisted'].includes(fresh[0].prospect_stage)) return respond({ error: 'The conversation changed during referral research. Refresh and try again.' }, 409)
+      // Same latest-inbound rule as the conversation above (message time, then import order), so an
+      // older message imported late never reads as a change.
+      type Fresh = { id: string; message_text?: string; sent_at?: string; created_at: string; prospect_stage: string; prospect_blacklisted: boolean }
+      const fresh = ((freshRows ?? []) as Fresh[]).filter(m => m.message_text?.trim())
+        .sort((a, b) => (a.sent_at || a.created_at).localeCompare(b.sent_at || b.created_at)).at(-1)
+      if (fresh?.id !== inbound.id || fresh.message_text !== inbound.message_text || fresh.prospect_blacklisted
+        || ['archived', 'skipped', 'disqualified', 'unsubscribed', 'blacklisted'].includes(fresh.prospect_stage)) return respond({ error: 'The conversation changed during referral research. Refresh and try again.' }, 409)
       // Merge only this key server side. Other workers' enrichment survives, and a large row cannot
       // overflow the request URL (the old whole-JSON equality filter broke on rows over ~16 KB).
-      const { data: saved, error: saveError } = await sb.rpc('inbox_set_referral', { p_prospect: id, p_referral: { ...referral, researched_at: new Date().toISOString() } })
+      // The cron warm-up and a card open can research the same message at once: with p_keep_verified
+      // the save itself refuses to replace a verified answer for this message with a weaker one.
+      // Only an explicit retry replaces it.
+      const { data: saved, error: saveError } = await sb.rpc('inbox_set_referral_guarded', { p_prospect: id, p_referral: { ...referral, researched_at: new Date().toISOString() }, p_keep_verified: !retryReferral })
       if (saveError) throw saveError
       if (saved !== true) return respond({ error: 'The contact changed while saving research. Try again.' }, 409)
+      if (!retryReferral && referral.status !== 'verified') {
+        const { data: latest } = await sb.from('outreach_prospects').select('referral:enrichment_data->inbox_referral').eq('id', id).single()
+        const kept = latest?.referral
+        if (kept?.input_message_id === inbound.id && kept?.revision === 3 && kept?.status === 'verified') return respond({ referral: kept })
+      }
       return respond({ referral })
     }
     // Sent invitations establish first-touch provenance. Counters and unsent drafts do not.
