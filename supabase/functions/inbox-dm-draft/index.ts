@@ -73,14 +73,9 @@ Deno.serve(async req => {
       const cached = prospect.enrichment_data?.inbox_referral
       if (!retryReferral && cached?.input_message_id === inbound.id && cached?.revision === REFERRAL_REVISION && offerFresh(cached.offer_verified_at)) return respond({ referral: cached })
       const context = conversation.map(m => ({ speaker: m.direction === 'inbound' ? rows[0].prospect_name : canon.author, text: m.message_text }))
-      // ARCH's verified competitor offer (O2) for this company, when one was drafted for the referrer
-      // in the last 72 h (the sequencer's freshness bound), closes the intro instead of a generic ask.
-      const { data: o2Rows } = await sb.from('outreach_messages').select('draft_evidence').eq('prospect_id', id).eq('direction', 'outbound')
-        .not('draft_evidence->o2->>offer_text', 'is', null).order('created_at', { ascending: false }).limit(1)
-      const o2 = (o2Rows as { draft_evidence?: { o2?: { offer_text?: unknown; verified_at?: unknown } } }[] | null)?.[0]?.draft_evidence?.o2
-      const fresh72h = typeof o2?.verified_at === 'string' && offerFresh(o2.verified_at)
-      const offer = client === 'arch' && fresh72h && typeof o2?.offer_text === 'string' && o2.offer_text.trim() ? o2.offer_text.trim() : null
-      const referral = await researchReferral(sb, { id: inbound.id, text: inbound.message_text, company: rows[0].prospect_company, referrer: rows[0].prospect_name, offer, offerVerifiedAt: offer ? o2!.verified_at as string : null }, canon.author, prompts, context, await readMentions(sb, inbound.id))
+      // No offer line in a referral first touch (Ivan 2026-11-04: the Preply list stacked on a pitch read
+      // as a sell to someone who never heard of us). One easy question closes it instead.
+      const referral = await researchReferral(sb, { id: inbound.id, text: inbound.message_text, company: rows[0].prospect_company, referrer: rows[0].prospect_name }, canon.author, prompts, context, await readMentions(sb, inbound.id))
       const { data: freshRows, error: freshError } = await sb.from('inbox_messages_v').select('id,message_text,sent_at,created_at,prospect_stage,prospect_blacklisted')
         .eq('prospect_id', id).eq('direction', 'inbound').order('created_at').order('id')
       if (freshError) throw freshError
