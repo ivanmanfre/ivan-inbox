@@ -16,7 +16,7 @@ function stamp(rows: InboxMessage[]): string {
 
 /** A click creates an unapproved draft. The normal review and send controls own approval. */
 export async function requestDmDraft(t: Thread): Promise<void> {
-  if (!['ivan', 'arch', 'risedtc'].includes(t.client_id) || t.spam || t.blacklisted || t.stage === 'engaged' || t.channel === 'email') throw new Error('Drafting is unavailable for this conversation.')
+  if (!['ivan', 'arch', 'risedtc', 'anna'].includes(t.client_id) || t.spam || t.blacklisted || t.stage === 'engaged' || t.channel === 'email') throw new Error('Drafting is unavailable for this conversation.')
   if (t.ownerConfirmation && !isReplyRetryExhausted(t.ownerConfirmation)) throw new Error('Add the confirmed owner answer before drafting this reply.')
   const rows = await readThread(t.prospect_id)
   if (rows.some(m => m.client_id !== t.client_id)) throw new Error('The conversation identity changed. Refresh and try again.')
@@ -35,6 +35,8 @@ export async function requestDmDraft(t: Thread): Promise<void> {
   })
   const result = await response.json()
   if (!response.ok) throw new Error(result.error || 'Drafting failed. Try again.')
+  if (t.client_id === 'anna' && (result?.client_id !== 'anna' || result?.author !== 'Anna Sol Manfredi')) throw new Error('The draft identity could not be verified. Try again.')
+  if (t.client_id === 'anna' && result.scan_requested === true) throw new Error('The profile scan needs to be built and verified before its reply can be drafted.')
   if (!result || typeof result.reply !== 'string' || !result.reply.trim()) throw new Error(typeof result?.reason === 'string' ? result.reason : 'The drafter returned no reply. Try again.')
   const reply = result.reply.trim()
   if (reply.length > 8000) throw new Error('The draft was too long. Try again.')
@@ -43,7 +45,7 @@ export async function requestDmDraft(t: Thread): Promise<void> {
   const { error: saveError } = await supabase.from('outreach_messages').insert({
     id: crypto.randomUUID(), prospect_id: t.prospect_id, direction: 'outbound', channel: 'linkedin', message_type: 'dm',
     message_text: reply, ai_model: 'inbox_on_demand_reply', sequence_step: null, sent_at: null, approved_at: null,
-    draft_evidence: { v: 'inbox_on_demand_reply_v1', generated_text: reply, input_message_ids: conversation.map(m => m.id), model: result.model ?? null, facts: result.sources ?? [] },
+    draft_evidence: { v: 'inbox_on_demand_reply_v1', ...(t.client_id === 'anna' ? { client_id: 'anna', author: result.author } : {}), generated_text: reply, input_message_ids: conversation.map(m => m.id), model: result.model ?? null, facts: result.sources ?? [] },
   })
   if (saveError) throw saveError
 }

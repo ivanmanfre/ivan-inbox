@@ -152,3 +152,80 @@ describe('server referral warm-up', () => {
     expect((await draft([invite, inbound], null, { headers: { 'x-inbox-secret': 'wrong' }, signedIn: false, body: { mode: 'referral' } })).status).toBe(401)
   })
 })
+
+
+describe('Anna reply identity', () => {
+  const rows = [invite, { ...inbound, message_text: 'Can we book a call?' }].map(row => ({ ...row, client_id: 'anna', channel: 'linkedin' }))
+  it('uses Ivan’s verified offer facts with Anna’s identity and Ivan on calls', async () => {
+    const { status, result, upstream } = await draft(rows, 'Ivan can join the call.')
+    expect(status).toBe(200)
+    expect(result).toMatchObject({ author: 'Anna Sol Manfredi', client_id: 'anna' })
+    const prompt = upstream[0].messages[0].content
+    expect(prompt).toContain('Write one LinkedIn reply as Anna Sol Manfredi')
+    expect(prompt).toContain('ivan-company-facts')
+    expect(prompt).toContain('Do not claim to be Ivan')
+    expect(prompt).toContain('Ivan attends calls')
+    expect(prompt).toContain('booking URL only if it appears in the verified company facts')
+    expect(prompt).not.toContain("btw, I scale founder's LinkedIn")
+  })
+  it('rejects mixed-seat rows before generation', async () => {
+    const { status, upstream } = await draft([rows[0], inbound])
+    expect(status).toBe(409)
+    expect(upstream).toHaveLength(0)
+  })
+  it('rejects Anna email threads before generation', async () => {
+    const { status, upstream } = await draft(rows.map(row => ({ ...row, channel: 'email' })))
+    expect(status).toBe(409)
+    expect(upstream).toHaveLength(0)
+  })
+})
+
+
+describe('bounded Anna server drafting', () => {
+  const server = { headers: { 'x-inbox-secret': 'configured' }, signedIn: false }
+  const annaRows = [invite, inbound].map(row => ({ ...row, client_id: 'anna', channel: 'linkedin' }))
+  it('generates an Anna auto reply without inserting or approving anything', async () => {
+    const { status, result, saved } = await draft(annaRows, 'I work with Ivan.', { ...server, body: { mode: 'anna_auto' } })
+    expect(status).toBe(200)
+    expect(result).toMatchObject({ client_id: 'anna', author: 'Anna Sol Manfredi', input_message_ids: ['invite', 'reaction'] })
+    expect(saved).toHaveLength(0)
+  })
+  it('generates a follow-up only after a sent DM', async () => {
+    const rows = [...annaRows, { ...annaRows[0], id: 'sent-dm', message_type: 'dm', message_text: 'Would a profile scan help?', sent_at: '2026-10-09T08:00:00Z' }]
+    const { status, upstream, saved } = await draft(rows, 'Is this useful for you?', { ...server, body: { mode: 'anna_followup' } })
+    expect(status).toBe(200)
+    expect(upstream[0].messages[0].content).toContain('Follow up after our latest sent message')
+    expect(upstream[0].messages[0].content).toContain('no invented deadlines')
+    expect(saved).toHaveLength(0)
+  })
+  it.each(['anna_auto', 'anna_followup'])('rejects cross-seat use of %s', async mode => {
+    const { status, upstream } = await draft([invite, inbound], null, { ...server, body: { mode } })
+    expect(status).toBe(403)
+    expect(upstream).toHaveLength(0)
+  })
+  it.each(['anna_auto', 'anna_followup'])('requires server authentication for %s', async mode => {
+    expect((await draft(annaRows, null, { body: { mode } })).status).toBe(403)
+    expect((await draft(annaRows, null, { ...server, body: { mode, retry: true } })).status).toBe(403)
+  })
+  it('withholds a model-written delivery promise when a scan was requested', async () => {
+    const { status, result } = await draft(annaRows, null, { ...server, body: { mode: 'anna_auto' }, fetch: () => ({ content: [{ type: 'text', text: JSON.stringify({ reply: 'Your scan is on its way.', reason: 'Build the scan first.', scan_requested: true }) }] }) })
+    expect(status).toBe(200)
+    expect(result).toMatchObject({ reply: null, scan_requested: true, reason: 'Build the scan first.' })
+  })
+  it('returns one LinkedIn message, removing inherited bubble delimiters', async () => {
+    const { result } = await draft(annaRows, 'Thanks.\n---\nIvan can join the call.', { ...server, body: { mode: 'anna_auto' } })
+    expect(result.reply).toBe('Thanks.\n\nIvan can join the call.')
+    expect(result.scan_requested).toBe(false)
+  })
+  it('does not answer an old inbound after our newer sent reply', async () => {
+    const rows = [...annaRows, { ...annaRows[0], id: 'sent-dm', message_type: 'dm', sent_at: '2026-10-09T08:00:00Z' }]
+    const { status, upstream } = await draft(rows, null, { ...server, body: { mode: 'anna_auto' } })
+    expect(status).toBe(409)
+    expect(upstream).toHaveLength(0)
+  })
+  it('refuses a follow-up while the latest message is inbound', async () => {
+    const { status, upstream } = await draft(annaRows, null, { ...server, body: { mode: 'anna_followup' } })
+    expect(status).toBe(409)
+    expect(upstream).toHaveLength(0)
+  })
+})

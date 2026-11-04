@@ -98,7 +98,7 @@ export function NoDraftBanner({ t, now }: { t: Thread; now: number }) {
   const since = owedSince(t)
   if (!since) return null
   const days = Math.max(0, Math.round((now - Date.parse(since)) / 86_400_000))
-  if (t.client_id === 'anna') return <div className="dm-ban dm-ban-hl"><b>{firstOf(t)} is waiting for a reply.</b><p>Write your reply below. Automatic messages are off for Anna’s lane.</p></div>
+  if (t.client_id === 'anna') return <div className="dm-ban dm-ban-hl"><b>{firstOf(t)} is waiting for a reply.</b><p>Write your reply below, or use Draft it to prepare a reply for review.</p></div>
   if (hold?.owed) return (
     <div className="dm-ban">
       <b><DIcon name="time" />{firstOf(t)} said yes to the scan. It is being built and repaired automatically.</b>
@@ -129,7 +129,7 @@ export function WaitingBanner({ t }: { t: Thread }) {
   const lo = t.messages.filter(m => m.direction === 'outbound' && m.sent_at).at(-1)
   const dated = seatOf(t.client_id) !== 'ivan'
   const cbDone = !dated && hasSentCamebackFollowup(t)
-  if (t.client_id === 'anna') return <div className="dm-ban"><b>Waiting on {firstOf(t)}.</b><p className="dm-hint">You can write another reply below. No automatic follow-up is scheduled.</p></div>
+  if (t.client_id === 'anna') return <div className="dm-ban"><b>Waiting on {firstOf(t)}.</b><p className="dm-hint">You can write another reply below.</p></div>
   return (
     <div className="dm-ban">
       <b><DIcon name="time" />Waiting on {firstOf(t)}{lo ? ` since ${warsawDow(eventTime(lo))} ${warsawDm(eventTime(lo))}` : ''}.</b>

@@ -69,3 +69,37 @@ it('does not draft when a fresh owner question replaced the retry failure', asyn
   await expect(requestDmDraft(t)).rejects.toThrow(/owner answer/i)
   expect(fetchDraft).not.toHaveBeenCalled()
 })
+
+
+describe('Anna on-demand drafts', () => {
+  const makeAnna = () => threads(owedNoDraft('anna-prospect', { client_id: 'anna' }))[0]
+  it('saves an unapproved Anna draft with explicit identity evidence', async () => {
+    const t = makeAnna(); db.rows = t.messages
+    fetchDraft.mockResolvedValue({ ok: true, json: async () => ({ reply: 'I work with Ivan on Studio.', author: 'Anna Sol Manfredi', client_id: 'anna', input_message_ids: t.messages.map(m => m.id) }) })
+    await requestDmDraft(t)
+    expect(db.insert).toHaveBeenCalledWith(expect.objectContaining({ approved_at: null, sent_at: null, ai_model: 'inbox_on_demand_reply',
+      draft_evidence: expect.objectContaining({ author: 'Anna Sol Manfredi', client_id: 'anna' }) }))
+  })
+  it.each([{ author: 'Ivan Manfredi', client_id: 'anna' }, { author: 'Anna Sol Manfredi', client_id: 'ivan' }, {}])('refuses wrong or absent author identity: %j', async identity => {
+    const t = makeAnna(); db.rows = t.messages
+    fetchDraft.mockResolvedValue({ ok: true, json: async () => ({ reply: 'I founded Studio.', ...identity, input_message_ids: t.messages.map(m => m.id) }) })
+    await expect(requestDmDraft(t)).rejects.toThrow(/identity/i)
+    expect(db.insert).not.toHaveBeenCalled()
+  })
+  it('does not insert a delivery promise while a requested scan is unbuilt', async () => {
+    const t = makeAnna(); db.rows = t.messages
+    fetchDraft.mockResolvedValue({ ok: true, json: async () => ({ reply: 'Your scan is on its way.', author: 'Anna Sol Manfredi', client_id: 'anna', scan_requested: true, input_message_ids: t.messages.map(m => m.id) }) })
+    await expect(requestDmDraft(t)).rejects.toThrow(/scan needs to be built/i)
+    expect(db.insert).not.toHaveBeenCalled()
+  })
+  it('refuses changed seat before asking for generation', async () => {
+    const t = makeAnna(); db.rows = t.messages.map(m => ({ ...m, client_id: 'ivan' }))
+    await expect(requestDmDraft(t)).rejects.toThrow(/identity/i)
+    expect(fetchDraft).not.toHaveBeenCalled()
+  })
+  it('keeps email drafting unavailable', async () => {
+    const t = { ...makeAnna(), channel: 'email' as const }; db.rows = t.messages
+    await expect(requestDmDraft(t)).rejects.toThrow(/unavailable/i)
+    expect(fetchDraft).not.toHaveBeenCalled()
+  })
+})

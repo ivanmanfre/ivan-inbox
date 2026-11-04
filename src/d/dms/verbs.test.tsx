@@ -283,6 +283,29 @@ describe('DM verbs', () => {
     await waitFor(() => expect(lib.approveDraft).toHaveBeenCalledWith(t.draft!.id, t.draft!.message_text, 'chat1', expect.objectContaining({ id: t.draft!.id })))
   })
 
+  it('Anna’s on-demand LinkedIn draft uses ordinary review and approval', async () => {
+    const [t] = threads(drafted('anna-review', { client_id: 'anna', prospect_name: 'Taylor', ai_model: 'inbox_on_demand_reply', unipile_chat_id: 'anna-chat' }))
+    mount(t)
+    fireEvent.click(key('send'))
+    expect(lib.approveDraft).not.toHaveBeenCalled()
+    fireEvent.click(await screen.findByText('Approve & send'))
+    await waitFor(() => expect(lib.approveDraft).toHaveBeenCalledWith(t.draft!.id, t.draft!.message_text, 'anna-chat', expect.objectContaining({ id: t.draft!.id })))
+  })
+
+  it.each([
+    { ai_model: 'legacy_anna_draft' },
+    { ai_model: 'inbox_on_demand_reply', channel: 'email' as const },
+    { ai_model: 'inbox_on_demand_reply', email_mirror_text: 'Email mirror', recipient_email: 'taylor@example.com' },
+  ])('keeps unsupported Anna draft delivery unavailable: %j', async fields => {
+    const [t] = threads(drafted('anna-unsupported', { client_id: 'anna', prospect_name: 'Taylor', ...fields }))
+    mount(t)
+    await waitForEmailRead()
+    fireEvent.click(key('send'))
+    await screen.findByText('Anna supports reviewed LinkedIn reply drafts only.')
+    expect(lib.approveDraft).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
+
   it('cancelling the Send confirm still saves the edit typed just before it', async () => {
     const [t] = threads(drafted('keep', { prospect_name: 'Kay', unipile_chat_id: 'chat1' }))
     mount(t)

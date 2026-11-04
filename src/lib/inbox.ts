@@ -1637,6 +1637,10 @@ export type DraftContextGap = { question: string | null; why: string | null; cha
 export type DraftEvidenceFact = { id: string; fact: string; topic: string; at: string; from: string | null }
 export type DraftEvidenceExemplar = { they: string | null; reply: string | null; at: string | null; prospect: string | null }
 export type DraftEvidence = {
+  client_id?: string
+  author?: string
+  anna_snapshot?: string
+  scan?: { url: string; prospect_id: string; revision_id: string; scan_id: string; scan_slug: string; warnings?: unknown[]; blockers?: unknown[]; blockers_overridden?: boolean; [key: string]: unknown } | null
   email_composition?: EmailComposition | null
   email_mirror_composition?: EmailComposition | null
   email_composition_reviewed?: EmailComposition | null
@@ -1829,6 +1833,13 @@ export async function approveDraft(id: string, editedText: string, chatId?: stri
     if (!sameEmailComposition(draft?.draft_evidence?.[key], snapshot?.draft_evidence?.[key])) {
       throw new Error('The email formatting changed after review. Refresh before sending.')
     }
+  }
+  if (draft?.ai_model === 'inbox_on_demand_reply' && draft.draft_evidence?.client_id === 'anna') {
+    const { error } = await supabase.rpc('anna_approve_reply', {
+      p_message_id: id, p_text: editedText, p_expected_scan: snapshot?.draft_evidence?.scan ?? null,
+    })
+    if (error) throw error
+    return
   }
   if (draft?.ai_model === 'inbox_on_demand_reply') {
     const { error } = await supabase.rpc('approve_inbox_on_demand_reply', {

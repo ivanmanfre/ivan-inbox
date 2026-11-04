@@ -168,7 +168,7 @@ export function useDmVerbs(ctx: VerbCtx) {
     /** Approve & send (both legs on a pair). Always asks first, as today's thread does.
      *  `onDeclined`: he cancelled the confirm, so nothing was written (the caller re-arms any autosave it paused). */
     async function send(t: Thread, ed: Edits, onDeclined?: () => void): Promise<string | null> {
-      if (t.client_id === 'anna') { fail('Anna’s lane supports replies you type here. Automatic drafts are off.'); return 'Draft sending is unavailable.' }
+      if (t.client_id === 'anna' && (!t.draft || t.draft.ai_model !== 'inbox_on_demand_reply' || messageChannel(t.draft) !== 'dm' || t.draft.recipient_email || t.draft.email_mirror_text || t.companionDraft)) { fail('Anna supports reviewed LinkedIn reply drafts only.'); return 'Draft sending is unavailable.' }
       const draft = t.draft
       if (!draft) return null
       const comp = t.companionDraft
@@ -190,7 +190,9 @@ export function useDmVerbs(ctx: VerbCtx) {
       } else {
         const ok = await confirm({
           title: `Send to ${t.prospect_name}?`,
-          message: comp ? `Both legs go out: the ${legName(draft)} and the ${legName(comp)}. The sender picks them up within about 2 minutes.`
+          message: t.client_id === 'anna' && draft.draft_evidence?.scan
+            ? `Approve this scan and send its delivery message from Anna’s LinkedIn. Review the scan page first.${draft.draft_evidence.scan.blockers_overridden || draft.draft_evidence.scan.blockers?.length ? ' The builder reported unresolved findings; approving accepts them.' : ''}`
+            : comp ? `Both legs go out: the ${legName(draft)} and the ${legName(comp)}. The sender picks them up within about 2 minutes.`
             : channelChoice ? `${mode === 'email' ? `Only the email to ${draft.recipient_email}${emailSenderLabel(t.client_id)}` : mode === 'both' ? `The LinkedIn DM and email to ${draft.recipient_email}${emailSenderLabel(t.client_id)}` : 'Only the LinkedIn DM'} will be sent. The sender picks it up within about 2 minutes.`
               : 'The sender picks it up within about 2 minutes.',
           confirmText: comp ? 'Approve & send both' : channelChoice ? mode === 'email' ? 'Send email' : mode === 'both' ? 'Send both' : 'Send DM' : 'Approve & send',

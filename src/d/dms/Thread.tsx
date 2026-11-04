@@ -1,3 +1,4 @@
+import { AnnaTools } from './AnnaTools'
 import { parseEmailCc } from '../../lib/emailCc'
 // The open conversation (desktop right pane / phone full page).
 // Hooks first, always: no hook sits after an early return (09-09).
@@ -188,7 +189,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
   const from = seat ? FROM[seat] : 'Unknown seat'
   const first = t.prospect_name.split(' ')[0] || t.prospect_name
   const owed = threadBucket(t, now) !== 'waiting' || unansweredWaitSince(t) !== null
-  const hasDraft = t.draft !== null && t.client_id !== 'anna'
+  const hasDraft = t.draft !== null
   const lp = laterPath(t)
   const manualReply = Boolean(t.ownerConfirmation && isReplyRetryExhausted(t.ownerConfirmation))
   const replyThread = emailReplyFor === t.prospect_id ? { ...t, channel: 'email' as const } : t
@@ -246,7 +247,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
   const replyToLatest = () => { setEmailReplySource(null); setEmailTarget(null); setEmailRetry(n => n + 1) }
 
   const draftIt = async () => {
-    if (t.client_id === 'anna' || !seat) return
+    if (!seat) return
     const pid = t.prospect_id
     if (draftJobOf(pid)?.running) return
     onDraftStart?.()
@@ -367,14 +368,14 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
     small = <>
       {t.ownerConfirmation && !manualReply
         ? <Btn verb="ask-owner-link" className="dm-k" onClick={() => void copy()} title="copies the chat link">{seat === 'ivan' ? 'Copy chat link' : `Ask ${from}`}</Btn>
-        : owed && !scheduledPending && t.client_id !== 'swishdm' && t.client_id !== 'anna' && <Btn verb="draft-it" className="dm-k" disabled={Boolean(draftJob?.running)} onClick={() => void draftIt()} title="Create a reply draft">{draftRunning ? 'Drafting…' : 'Draft it'}</Btn>}
+        : owed && !scheduledPending && t.client_id !== 'swishdm' && (t.client_id !== 'anna' || t.channel !== 'email') && <Btn verb="draft-it" className="dm-k" disabled={Boolean(draftJob?.running)} onClick={() => void draftIt()} title="Create a reply draft">{draftRunning ? 'Drafting…' : 'Draft it'}</Btn>}
       {laterKey}
       {canMarkSolved(t) && solvedKey}
     </>
     if (!composeOff) primary = <Key primary verb="compose-send" aria-label={composeLabel} className="dm-send" disabled={busy || emailBlocked || !reply.trim()} onClick={() => void compose()}>{composeLabel}</Key>
   }
 
-  const calendar = !t.spam && t.client_id !== 'anna' && <CalendarPanel key={t.prospect_id} prospectId={t.prospect_id} clientId={t.client_id} onInsert={text => { setReply(value => value.trim() ? `${value.trim()}\n\n${text}` : text); setReplyComposition(null); dock.current?.querySelector<HTMLElement>('[aria-label="Email reply"], textarea')?.focus() }} />
+  const calendar = !t.spam && (t.client_id === 'anna' ? <AnnaTools prospectId={t.prospect_id} onInsert={text => setReply(value => value.trim() ? `${value.trim()}\n\n${text}` : text)} /> : <CalendarPanel key={t.prospect_id} prospectId={t.prospect_id} clientId={t.client_id} onInsert={text => { setReply(value => value.trim() ? `${value.trim()}\n\n${text}` : text); setReplyComposition(null); dock.current?.querySelector<HTMLElement>('[aria-label="Email reply"], textarea')?.focus() }}  />)
 
   const referredLead = t.messages.some(m => m.ai_model === 'arch_referral_package_v1')
   const referral = <ReferralCard key={t.prospect_id} t={t} onUseAcknowledgement={text => {
