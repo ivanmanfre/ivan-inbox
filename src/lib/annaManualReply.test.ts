@@ -3,7 +3,7 @@ import { composeReply, groupThreads } from './inbox'
 import { msg, NOW } from '../d/dms/fixtures'
 
 const insert = vi.hoisted(() => vi.fn(async () => ({ error: null })))
-const rpc = vi.hoisted(() => vi.fn(async () => ({ data: { ok: true, allow_send: true, revision: 4 }, error: null })))
+const rpc = vi.hoisted(() => vi.fn(async () => ({ data: { ok: true, allow_send: true, revision: 3 }, error: null })))
 vi.mock('./supabase', () => ({ supabase: { rpc, from: vi.fn(() => ({ insert })) } }))
 beforeEach(() => { insert.mockClear(); rpc.mockClear() })
 
@@ -19,7 +19,7 @@ it('still takes conversation ownership for Ivan’s existing manual replies', as
   const [t] = groupThreads([msg({ prospect_id: 'ivan-prospect', client_id: 'ivan', direction: 'inbound' })], new Set(), NOW)
   await composeReply(t, 'Hello')
   expect(rpc).toHaveBeenCalledWith('conversation_agent_before_manual_send', { p_prospect_id: 'ivan-prospect' })
-  expect(insert).toHaveBeenCalledWith(expect.objectContaining({ draft_evidence: { conversation_agent_manual_revision: 4 } }))
+  expect(insert).toHaveBeenCalledWith(expect.objectContaining({ draft_evidence: { conversation_agent_manual_revision: 3 } }))
 })
 
 it('refuses unknown sender identities before queueing a reply', async () => {
