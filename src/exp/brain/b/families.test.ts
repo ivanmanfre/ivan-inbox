@@ -36,10 +36,12 @@ const ALL_FAMILIES: FamilyKey[] = [
   'bot',
   // Run 39: brain drafts waiting for a Keep or Drop.
   'brain_drafts_pending',
+  // 2026-11-05: SwishDM AI search report requests.
+  'lead_request_notice',
 ]
 
 describe('FAMILY_LABEL', () => {
-  it('covers all 17 keys plus chat, claude_turn, bot and brain_drafts_pending', () => {
+  it('covers all 17 keys plus chat, claude_turn, bot, brain_drafts_pending and lead_request_notice', () => {
     expect(Object.keys(FAMILY_LABEL).sort()).toEqual([...ALL_FAMILIES].sort())
   })
   it('never leaks a raw DB value as the label', () => {
@@ -418,5 +420,26 @@ describe('brain_drafts_pending (run 39)', () => {
   it('has a state word and a counted noun', () => {
     expect(stateWord(n('brain_drafts_pending', 'Three brain drafts are ready to judge.'))).toBe('To judge')
     expect(groupStateWord(3, 'brain_drafts_pending')).toBe('3 drafts to judge')
+  })
+})
+
+describe('lead_request_notice (SwishDM report requests, 2026-11-05)', () => {
+  const card = (media: Record<string, unknown> | null) => n('lead_request_notice',
+    'Fit: yes. Real Shopify store with a matching email.', { title: 'SwishDM report request: Ana, brand.com ($1M to $5M, this month), fit yes', media })
+  it('has a human label, so the tile never prints Notification', () => {
+    expect(familyLabel('lead_request_notice')).toBe('Report request')
+    expect(FAMILY_LANE.lead_request_notice).toBeNull()
+    expect(groupStateWord(2, 'lead_request_notice')).toContain('report requests')
+  })
+  it('leads with the brand check verdict from media', () => {
+    expect(stateWord(card({ fit: 'yes', check_state: 'checked' }))).toBe('Good fit')
+    expect(stateWord(card({ fit: 'maybe', check_state: 'checked' }))).toBe('Maybe a fit')
+    expect(stateWord(card({ fit: 'no', check_state: 'checked' }))).toBe('Not a fit')
+    expect(stateWord(card({ fit: null, check_state: 'unchecked' }))).toBe('Unchecked')
+    expect(stateWord(card({ check_state: 'pending' }))).toBe('Checking')
+  })
+  it('never prints an unknown value off media', () => {
+    expect(stateWord(card({ fit: 'DEFINITELY', check_state: 'weird' }))).toBe('New request')
+    expect(stateWord(card(null))).toBe('New request')
   })
 })

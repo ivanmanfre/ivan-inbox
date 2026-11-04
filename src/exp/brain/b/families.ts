@@ -44,6 +44,10 @@ export type FamilyKey =
   // Run 39: brain drafts waiting for Ivan's Keep or Drop. Its kind resolves to
   // 'needs_you' through alert-kinds' name fallback ("pending"), no shared edit.
   | 'brain_drafts_pending'
+  // 2026-11-05: a SwishDM AI search report request (DB trigger on
+  // swishdm_lm_requests, then the swishdm-report-check edge fn edits the same
+  // row with the brand check). Its media carries fit / check_state.
+  | 'lead_request_notice'
 
 // ---------------------------------------------------------------------------
 // 1. The human label. What "family" printed on screen actually says.
@@ -70,6 +74,7 @@ export const FAMILY_LABEL: Record<FamilyKey, string> = {
   claude_turn: 'Claude answered',
   bot: 'Claude needs you',
   brain_drafts_pending: 'Brain drafts',
+  lead_request_notice: 'Report request',
 }
 
 /** Any string, mapped to its human label; an unknown key falls back rather than throwing. */
@@ -112,6 +117,8 @@ export const FAMILY_LANE: Record<FamilyKey, Job | null> = {
   bot: null,
   // The drafts to judge live in Review.
   brain_drafts_pending: 'content',
+  // No lane holds report requests; the card itself carries the facts.
+  lead_request_notice: null,
 }
 
 // ---------------------------------------------------------------------------
@@ -246,7 +253,7 @@ const FALLBACK_BY_SEVERITY: Record<NotificationSeverity, string> = {
  * family (even one this map has never seen) resolves to a safe fallback
  * rather than throwing or printing raw text.
  */
-export function stateWord(n: Pick<Notification, 'family' | 'title' | 'body' | 'severity' | 'count'>): string {
+export function stateWord(n: Pick<Notification, 'family' | 'title' | 'body' | 'severity' | 'count'> & { media?: Notification['media'] }): string {
   const body = n.body ?? n.title ?? ''
   const family = n.family as FamilyKey
   let word: string
@@ -279,6 +286,7 @@ export function stateWord(n: Pick<Notification, 'family' | 'title' | 'body' | 's
     // away" one.
     case 'bot': word = n.severity === 'error' ? 'The turn failed' : 'Answered'; break
     case 'brain_drafts_pending': word = n.count > 1 ? `${n.count} to judge` : 'To judge'; break
+    case 'lead_request_notice': word = leadRequestWord(n.media); break
     default: word = FALLBACK_BY_SEVERITY[n.severity] ?? 'Update'
   }
   // The safety net: whatever branch ran, a raw enum token never survives to
@@ -303,6 +311,18 @@ export function stateWord(n: Pick<Notification, 'family' | 'title' | 'body' | 's
 // Each family gets a counted noun rather than its label pasted after a digit:
 // the tournament build printed "3 new reply" off `familyLabel().toLowerCase()`.
 // ---------------------------------------------------------------------------
+// The brand check's verdict, written onto media by swishdm-report-check. Only
+// these exact values print; anything else reads as the plain request.
+function leadRequestWord(media: Notification['media'] | undefined): string {
+  const fit = media?.fit
+  if (fit === 'yes') return 'Good fit'
+  if (fit === 'maybe') return 'Maybe a fit'
+  if (fit === 'no') return 'Not a fit'
+  if (media?.check_state === 'unchecked') return 'Unchecked'
+  if (media?.check_state === 'pending') return 'Checking'
+  return 'New request'
+}
+
 const COUNTED_NOUN: Record<FamilyKey, [one: string, many: string]> = {
   reply_draft_pending: ['draft waiting', 'drafts waiting'],
   system_infra_alarm: ['thing broke', 'things broke'],
@@ -325,6 +345,7 @@ const COUNTED_NOUN: Record<FamilyKey, [one: string, many: string]> = {
   claude_turn: ['answer', 'answers'],
   bot: ['answer', 'answers'],
   brain_drafts_pending: ['draft to judge', 'drafts to judge'],
+  lead_request_notice: ['report request', 'report requests'],
 }
 
 /** The hero line for a folded GROUP: the count and the thing it counts. */

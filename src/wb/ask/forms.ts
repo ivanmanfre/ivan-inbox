@@ -220,7 +220,7 @@ export function timeCard(n: { title: string | null; body: string | null }): { wh
 // Mattan Danino" is the same word twice.
 // ---------------------------------------------------------------------------
 
-export function tileCard(n: Pick<Notification, 'family' | 'title' | 'body' | 'severity' | 'count'>): { label: string; state: string } {
+export function tileCard(n: Pick<Notification, 'family' | 'title' | 'body' | 'severity' | 'count'> & { media?: Notification['media'] }): { label: string; state: string } {
   const state = stateWord(n)
   const title = (n.title ?? '').trim()
   const label = title && title.length <= 42 && title.toLowerCase() !== state.toLowerCase()
