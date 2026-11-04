@@ -1,3 +1,4 @@
+import { seatOf } from '../d/seats'
 import { parseEmailCc } from './emailCc'
 import { label } from './labels'
 import { supabase } from './supabase'
@@ -2330,6 +2331,7 @@ export async function emailReplyTarget(prospectId: string, sourceMessageId?: str
 }
 
 export async function composeReply(t: Thread, text: string, expectedEmail?: EmailReplyTarget, composition?: EmailComposition): Promise<LegFailure[]> {
+  if (!seatOf(t.client_id)) throw new Error('The sender for this conversation is unknown. Nothing was queued.')
   const isEmail = t.channel === 'email'
   if (isEmail && !canComposeEmail(t)) throw new Error('Email compose is only on for ARCH threads.')
   const target = isEmail ? await emailReplyTarget(t.prospect_id, expectedEmail?.selection === 'specific' ? expectedEmail.source_message_id : undefined) : null
@@ -2346,7 +2348,9 @@ export async function composeReply(t: Thread, text: string, expectedEmail?: Emai
     renderEmailComposition(composition)
   }
   const replyCc = target ? parseEmailCc(expectedEmail?.cc ?? target.cc ?? []) : []
-  const manualRevision = await takeOwnershipBeforeManualReply(t.prospect_id)
+  // Anna has no conversation agent. Her dedicated dispatcher validates the
+  // campaign and bound account; never route her through another seat's agent.
+  const manualRevision = t.client_id === 'anna' ? null : await takeOwnershipBeforeManualReply(t.prospect_id)
   const evidence = {
     ...(manualRevision === null ? {} : { conversation_agent_manual_revision: manualRevision }),
     ...(target?.email_headers ? { email_headers: target.email_headers } : {}),

@@ -52,7 +52,7 @@ export function ContextSheet({ t, all, onClose }: { t: Thread; all: readonly Thr
     fetchProspectContext(t.prospect_id).then(async c => {
       if (!live) return
       setCtx(c); setNote(c.operator_note ?? '')
-      const s = await fetchScan(t.prospect_name, c.company_domain).catch(() => null)
+      const s = t.client_id === 'anna' ? null : await fetchScan(t.prospect_name, c.company_domain).catch(() => null)
       if (live) setScan(s)
     }).catch(() => { if (live) setFailed(true) })
     if (t.client_id === 'arch' && t.lane === 'company_expansion') readVertical(t.prospect_id).then(v => { if (live) setVertical(v) }).catch(() => {})

@@ -35,7 +35,7 @@ export function useSubjects(route: DRoute): Subject[] {
     if (draft) {
       const seat = seatOf(draft.client_id)
       const qa = normalizeQa(draft.qa)
-      out.push(draftSubject({ ...draft, qa_verdict: draft.qa_verdict ?? qa?.verdict, qa_score: draft.qa_score ?? qa?.score }, seat ? LANE_LABEL[seat] : lane))
+      out.push(draftSubject({ ...draft, qa_verdict: draft.qa_verdict ?? qa?.verdict, qa_score: draft.qa_score ?? qa?.score }, seat === 'anna' ? 'Anna' : seat ? LANE_LABEL[seat] : lane))
     }
     out.push(laneSubject(page, lane))
     return out

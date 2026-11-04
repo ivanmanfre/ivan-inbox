@@ -1,0 +1,19 @@
+.anna-control{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}
+.anna-control p{margin:6px 0;font-size:14px;line-height:1.5;color:var(--t2)}
+.anna-control small,.anna-dates{font-size:12px;line-height:1.6;color:var(--t2)}
+.anna-control .d-btn{flex:none}
+.anna-kpis{grid-template-columns:repeat(5,minmax(0,1fr))}
+.anna-kpis .dl4-kpi{height:auto;min-height:96px}
+.anna-kpis .dl4-kpi>small{letter-spacing:0;text-transform:none;min-height:32px}
+.anna-number{display:block;font-size:28px;line-height:1.4;font-variant-numeric:tabular-nums}
+.anna-events{list-style:none;margin:0;padding:0}
+.anna-events li{padding:16px 0;border-top:1px solid var(--line);overflow-wrap:anywhere}
+.anna-event-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.anna-event-head>span{font-size:12px;color:var(--t2)}
+.anna-events p{margin:4px 0;font-size:13px;color:var(--t2)}
+.anna-dates{display:flex;flex-wrap:wrap;gap:4px 16px}
+.anna-reply{display:inline-block;margin-top:8px;font-size:13px}
+.dl4-phone .anna-control{align-items:flex-start;flex-direction:column}
+.dl4-phone .anna-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+
+.dl4-strip .dl4-tab-head b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

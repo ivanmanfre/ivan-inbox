@@ -10,7 +10,7 @@ type Item = { act: MenuAct; label: string; hint?: string; danger?: boolean }
 
 export function menuItems(t: Thread, staleN: number, withAsk = false): { head: string; items: Item[] }[] {
   const seat = seatOf(t.client_id)
-  const owner = seat === 'risedtc' ? 'Mattan' : seat === 'arch' ? 'Davorin' : 'Mattan or Davorin'
+  const owner = seat === 'anna' ? 'Anna' : seat === 'risedtc' ? 'Mattan' : seat === 'arch' ? 'Davorin' : 'Mattan or Davorin'
   const filing: Item[] = []
   if (t.spam) filing.push({ act: 'not-spam', label: 'Not spam', hint: 'back to Needs you' })
   else if (seat !== 'ivan') filing.push({ act: 'spam', label: 'Spam' })
@@ -20,8 +20,8 @@ export function menuItems(t: Thread, staleN: number, withAsk = false): { head: s
       ...(withAsk ? [{ act: 'ask' as const, label: 'Ask Claude', hint: 'with this person attached' }] : []),
       { act: 'sum', label: 'Sum up', hint: 'Claude reads it' },
       { act: 'copy-chat', label: 'Copy chat link', hint: `for ${owner}` },
-      { act: 'context', label: 'Context', hint: 'fit, scan, your note' },
-      { act: 'agent', label: 'Conversation agent', hint: 'Take over, approve, Stop contact' },
+      { act: 'context', label: 'Context', hint: seat === 'anna' ? 'profile, your note' : 'fit, scan, your note' },
+      ...(seat === 'anna' ? [] : [{ act: 'agent' as const, label: 'Conversation agent', hint: 'Take over, approve, Stop contact' }]),
     ] },
     ...(filing.length ? [{ head: 'Filing', items: filing }] : []),
     { head: 'This list', items: [

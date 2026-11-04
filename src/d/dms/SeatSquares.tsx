@@ -2,6 +2,7 @@
 // that seat below"). Each square: whose seat, Needs you (the frame's number, so the rail and the page
 // never disagree), drafts ready, replied in 7 days and today's sends. Clicking one picks the seat the
 // list below shows; the choice is remembered. Seats are never added together.
+import type { CSSProperties } from 'react'
 import { SEATS, SEAT_NAME, SEAT_OWNER, type Seat, type SeatNumbers } from '../seats'
 import type { DayOut } from './model'
 
@@ -30,7 +31,7 @@ export function SeatSquares({ seat, pick, needs, drafts, stats, phone = false }:
   seat: Seat; pick: (s: Seat) => void; needs: SeatNumbers; drafts: SeatNumbers; stats: Record<Seat, SquareStat>; phone?: boolean
 }) {
   return (
-    <div className={`dm-sqs${phone ? ' dm-sqs-phone' : ''}`} role="tablist" aria-label="Seats">
+    <div className={`dm-sqs${phone ? ' dm-sqs-phone' : ''}`} role="tablist" aria-label="Seats" style={{ '--seat-count': SEATS.length } as CSSProperties}>
       {SEATS.map(s => {
         const n = needs[s], d = drafts[s], st = stats[s]
         return (

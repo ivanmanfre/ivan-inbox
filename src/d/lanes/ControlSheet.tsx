@@ -64,7 +64,7 @@ export function ControlSheet({ seat, p, pFailed = null, gov, pauses, pausesFaile
         {v.blockers.length > 0 && <p className="dl-sl dl-bad">Cannot send right now: {v.blockers.join('; ')}.</p>}
         <Shs>Pauses</Shs>
         {pausesFailed && !pauses ? <p className="dl-sl dl-bad">The pause keys could not be read: {pausesFailed}</p>
-          : <>{pause(PAUSE_KEY[seat], pauses?.[seat], CHANNEL_PAUSE_KEYS[seat] ? 'Invite pause' : undefined)}{(CHANNEL_PAUSE_KEYS[seat] ?? []).map(k => pause(k.key, pauses?.byKey?.[k.key], k.label))}{pause(KILL_SWITCH_KEY, pauses?.all)}</>}
+          : <>{PAUSE_KEY[seat] && pause(PAUSE_KEY[seat]!, pauses?.[seat], CHANNEL_PAUSE_KEYS[seat] ? 'Invite pause' : undefined)}{(CHANNEL_PAUSE_KEYS[seat] ?? []).map(k => pause(k.key, pauses?.byKey?.[k.key], k.label))}{pause(KILL_SWITCH_KEY, pauses?.all)}</>}
         <a className="dl-more" href={dHash('content', 'strategy')}>What we filter on ›</a>
         <Shs>Governor</Shs>
         {gov ? <GovernorDetail g={gov} /> : <p className="dl-sl dl-unk">No governor reading for this seat.</p>}

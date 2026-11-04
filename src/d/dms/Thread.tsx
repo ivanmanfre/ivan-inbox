@@ -45,7 +45,7 @@ import { sameEmailComposition } from '../../lib/emailCompositionSave'
 import { buildEmailComposition } from '../../lib/emailCompositionDraft'
 import { renderEmailComposition, renderEmailDocument, type EmailComposition } from '../../lib/emailRichText'
 
-const FROM: Record<string, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan' }
+const FROM: Record<string, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan', anna: 'Anna' }
 
 function seed(t: T): Edits {
   return { main: t.draft?.message_text ?? '', email: t.draft?.email_mirror_text ?? null, companion: t.companionDraft?.message_text ?? null,
@@ -184,11 +184,11 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
     return () => { registerGuard(null); window.removeEventListener('beforeunload', onUnload) }
   }, [registerGuard])
 
-  const seat = seatOf(t.client_id) ?? 'ivan'
-  const from = FROM[seat]
+  const seat = seatOf(t.client_id)
+  const from = seat ? FROM[seat] : 'Unknown seat'
   const first = t.prospect_name.split(' ')[0] || t.prospect_name
   const owed = threadBucket(t, now) !== 'waiting' || unansweredWaitSince(t) !== null
-  const hasDraft = t.draft !== null
+  const hasDraft = t.draft !== null && t.client_id !== 'anna'
   const lp = laterPath(t)
   const manualReply = Boolean(t.ownerConfirmation && isReplyRetryExhausted(t.ownerConfirmation))
   const replyThread = emailReplyFor === t.prospect_id ? { ...t, channel: 'email' as const } : t
@@ -232,7 +232,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
     return () => { current = false }
   }, [replyingByEmail, t.prospect_id, t.client_id, emailKey]) // eslint-disable-line react-hooks/exhaustive-deps
   const scheduledPending = t.messages.some(m => scheduleHeld(m.send_blocked_reason) && !m.sent_at && !m.approved_at)
-  const composeOff = scheduledPending ? 'A DM is scheduled. Cancel the scheduled send to write another reply.'
+  const composeOff = !seat ? 'The sender for this conversation is unknown.' : scheduledPending ? 'A DM is scheduled. Cancel the scheduled send to write another reply.'
     : replyingByEmail && !canComposeEmail(t) ? 'Email compose is on for Arch threads only. Approving email drafts works here.'
       : !replyingByEmail && t.stage === 'engaged' ? 'Not connected yet. A reply here would go out as a connection invite, so compose is off for this thread.'
         : t.client_id === 'swishdm' ? 'Jonathan\u2019s seat sends through its own sender, so a reply typed here would never go out. Its reply drafts are staged here automatically: edit and approve one, or answer on LinkedIn.' : null
@@ -246,6 +246,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
   const replyToLatest = () => { setEmailReplySource(null); setEmailTarget(null); setEmailRetry(n => n + 1) }
 
   const draftIt = async () => {
+    if (t.client_id === 'anna' || !seat) return
     const pid = t.prospect_id
     if (draftJobOf(pid)?.running) return
     onDraftStart?.()
@@ -366,14 +367,14 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
     small = <>
       {t.ownerConfirmation && !manualReply
         ? <Btn verb="ask-owner-link" className="dm-k" onClick={() => void copy()} title="copies the chat link">{seat === 'ivan' ? 'Copy chat link' : `Ask ${from}`}</Btn>
-        : owed && !scheduledPending && t.client_id !== 'swishdm' && <Btn verb="draft-it" className="dm-k" disabled={Boolean(draftJob?.running)} onClick={() => void draftIt()} title="Create a reply draft">{draftRunning ? 'Drafting…' : 'Draft it'}</Btn>}
+        : owed && !scheduledPending && t.client_id !== 'swishdm' && t.client_id !== 'anna' && <Btn verb="draft-it" className="dm-k" disabled={Boolean(draftJob?.running)} onClick={() => void draftIt()} title="Create a reply draft">{draftRunning ? 'Drafting…' : 'Draft it'}</Btn>}
       {laterKey}
       {canMarkSolved(t) && solvedKey}
     </>
     if (!composeOff) primary = <Key primary verb="compose-send" aria-label={composeLabel} className="dm-send" disabled={busy || emailBlocked || !reply.trim()} onClick={() => void compose()}>{composeLabel}</Key>
   }
 
-  const calendar = !t.spam && <CalendarPanel key={t.prospect_id} prospectId={t.prospect_id} clientId={t.client_id} onInsert={text => { setReply(value => value.trim() ? `${value.trim()}\n\n${text}` : text); setReplyComposition(null); dock.current?.querySelector<HTMLElement>('[aria-label="Email reply"], textarea')?.focus() }} />
+  const calendar = !t.spam && t.client_id !== 'anna' && <CalendarPanel key={t.prospect_id} prospectId={t.prospect_id} clientId={t.client_id} onInsert={text => { setReply(value => value.trim() ? `${value.trim()}\n\n${text}` : text); setReplyComposition(null); dock.current?.querySelector<HTMLElement>('[aria-label="Email reply"], textarea')?.focus() }} />
 
   const referredLead = t.messages.some(m => m.ai_model === 'arch_referral_package_v1')
   const referral = <ReferralCard key={t.prospect_id} t={t} onUseAcknowledgement={text => {
@@ -382,7 +383,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
     if (t.ownerConfirmation) void verbs.holdRelease(t)
     dock.current?.querySelector('textarea')?.focus()
   }} />
-  const history = <History v4={v4} reading={reading} onSendAnyways={m => void sendAnyways(m)} onDiscardHeld={m => { if (!busy) void run(() => verbs.discardHeld(t, m)) }} onEditHeld={editHeld} heldLater={!scheduledPending} sending={busy} t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} onReplyEmail={canComposeEmail(t) && !t.spam && !busy ? openEmailReply : undefined}
+  const history = <History v4={v4} reading={reading} onSendAnyways={t.client_id === 'anna' ? undefined : m => void sendAnyways(m)} onDiscardHeld={m => { if (!busy) void run(() => verbs.discardHeld(t, m)) }} onEditHeld={t.client_id === 'anna' ? undefined : editHeld} heldLater={t.client_id !== 'anna' && !scheduledPending} sending={busy} t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} onReplyEmail={canComposeEmail(t) && !t.spam && !busy ? openEmailReply : undefined}
     revealMessageId={revealMessageId} activeEmailReplyId={resolvedEmail?.target?.source_message_id ?? null}
     onForwardEmail={['arch', 'risedtc'].includes(t.client_id) && !busy ? setForwardEmail : undefined} />
   const historyView = referredLead && !t.messages.some(m => m.direction === 'inbound')
@@ -406,7 +407,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
     const sendV4 = canSendDraft
       ? <Key primary={!t.draftStale && !reply.trim()} verb="send" className="dm-send" disabled={busy || scheduledPending || emailLoading || !!emailDetailsError || draftFormattingError} onClick={() => void send()}>{sendLabel}</Key>
       : primary
-    const scheduleKey = !t.spam && !swishReply && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim())
+    const scheduleKey = !t.spam && t.client_id !== 'anna' && !swishReply && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim())
       ? <Btn verb="schedule-send" className="dm-k dm-schedule-key" disabled={busy} onClick={() => void openSchedule()}>{reply.trim() ? 'Schedule reply' : 'Schedule send'}</Btn> : null
     return <ThreadV4 name={t.prospect_name} phone={phone} pid={t.prospect_id} scrollRef={scroll} dockRef={dock}
       head={<HeadV4 t={t} phone={phone} onBack={onBack} onCopy={() => void copy()} copied={copied} onAsk={onAsk} onMore={() => setMenu(m => (m ? null : 'top'))} moreOpen={menu === 'top'}
@@ -417,7 +418,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
         {referredLead && referral}
         {historyView}
         {draftRunning && <div className="dm-b dm-b-in dx-typing" aria-hidden="true"><div className="dm-b-body"><i /><i /><i /></div></div>}
-        <Banners v4 questionDirty={questionDirty} t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
+        <Banners v4 questionDirty={questionDirty} t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft && t.client_id !== 'anna' ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
         {!referredLead && referral}
         {t.client_id === 'swishdm' && <SwishReferral key={t.prospect_id} t={t} />}
         <Draft v4 onSendVia={sendVia} deliveryBusy={busy} emailLoading={emailLoading} emailUnavailable={!!emailDetailsError} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload}
@@ -460,7 +461,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
       <div className="dm-scroll" ref={scroll}>
         {referredLead && referral}
         {historyView}
-        <Banners questionDirty={questionDirty} t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
+        <Banners questionDirty={questionDirty} t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft && t.client_id !== 'anna' ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
         {!referredLead && referral}
         {t.client_id === 'swishdm' && <SwishReferral key={t.prospect_id} t={t} />}
         <Draft onSendVia={sendVia} deliveryBusy={busy} emailLoading={emailLoading} emailUnavailable={!!emailDetailsError} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
@@ -479,7 +480,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
           onSend={note => void run(async () => { saver.cancel(); if (!(await verbs.redraft(t, note, edits))) setRedraftFor(null) })} />}
         {!hasDraft && !t.spam && composer(true)}
         <div className="dm-keys">
-          <div className="dm-keys-s">{!t.spam && !swishReply && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim()) && <Btn verb="schedule-send" className="dm-k dm-schedule-key" disabled={busy} onClick={() => void openSchedule()}>{reply.trim() ? 'Schedule reply' : 'Schedule send'}</Btn>}{small}{more}</div>
+          <div className="dm-keys-s">{!t.spam && t.client_id !== 'anna' && !swishReply && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim()) && <Btn verb="schedule-send" className="dm-k dm-schedule-key" disabled={busy} onClick={() => void openSchedule()}>{reply.trim() ? 'Schedule reply' : 'Schedule send'}</Btn>}{small}{more}</div>
           {primary}
         </div>
         {hasDraft && !t.spam && composer(false)}

@@ -47,7 +47,7 @@ describe('DMs counts come off the frame inbox when it has rows', () => {
     const dm = vi.fn().mockResolvedValue({ drafts: 0, needs: 0 })
     render(<FrameCountsProvider readers={{ ...ZERO_READERS, dm }}><Count /></FrameCountsProvider>)
     await act(async () => { await Promise.resolve() })
-    expect(dm).toHaveBeenCalledTimes(4)
+    expect(dm).toHaveBeenCalledTimes(5)
   })
   it('no per-seat DM re-read on the 3-minute poll once the inbox covers the numbers', async () => {
     vi.useFakeTimers()
@@ -66,13 +66,13 @@ describe('DMs counts come off the frame inbox when it has rows', () => {
     const dm = vi.fn().mockResolvedValue({ drafts: 0, needs: 0 })
     render(<FrameCountsProvider readers={{ ...ZERO_READERS, dm }}><Count /></FrameCountsProvider>)
     await act(async () => { await Promise.resolve() })
-    expect(dm).toHaveBeenCalledTimes(4)
+    expect(dm).toHaveBeenCalledTimes(5)
   })
   it('a failed live inbox read falls back to the per-seat read', async () => {
     inboxHold.value = { threads: [thread], loadedAt: '2026-09-29T00:00:00Z', cachedAt: null, error: 'inbox unavailable' }
     const dm = vi.fn().mockResolvedValue({ drafts: 0, needs: 0 })
     render(<FrameCountsProvider readers={{ ...ZERO_READERS, dm }}><Count /></FrameCountsProvider>)
     await act(async () => { await Promise.resolve() })
-    expect(dm).toHaveBeenCalledTimes(4)
+    expect(dm).toHaveBeenCalledTimes(5)
   })
 })

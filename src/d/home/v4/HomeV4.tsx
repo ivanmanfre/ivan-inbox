@@ -78,12 +78,12 @@ function Matrix({ h }: { h: HomeData }) {
   const [open, setOpen] = useState(() => {try{return localStorage.getItem('hm4-ready-open')==='1'}catch{return false}})
   function toggle(){setOpen(v=>{try{localStorage.setItem('hm4-ready-open',v?'0':'1')}catch{/* tab only */}return !v})}
   return <section className="hm4-matrix" aria-label="Seats at a glance" data-bx-block>
-    <div className="hm4-matrix-row hm4-matrix-head"><span />{SEATS.map(s=><b key={s}>{SEAT_NAME[s]}</b>)}</div>
-    <div className="hm4-matrix-row"><b>Next week</b>{SEATS.map(s=><div key={s}><Week seat={s} h={h}/></div>)}</div>
-    <div className="hm4-matrix-row"><b>DM drafts</b>{SEATS.map(s=><div key={s}><Drafts seat={s} h={h}/></div>)}</div>
-    <div className="hm4-matrix-row"><b>Invites</b>{SEATS.map(s=><div key={s}><Invites seat={s} h={h}/></div>)}</div>
-    <div className={`hm4-matrix-row hm4-matrix-ready${open?' hm4-expanded':''}`}><button type="button" aria-expanded={open} onClick={toggle}>Ready {open?'⌄':'›'}</button>{SEATS.map(s=><div key={s}><Ready seat={s} h={h}/></div>)}</div>
-    <div className="hm4-matrix-row"><b>Rate limit</b>{SEATS.map(s=><div key={s}><Limit seat={s} h={h}/></div>)}</div>
+    <div className="hm4-matrix-row hm4-matrix-head"><span />{SEATS.filter(s => s !== 'anna').map(s=><b key={s}>{SEAT_NAME[s]}</b>)}</div>
+    <div className="hm4-matrix-row"><b>Next week</b>{SEATS.filter(s => s !== 'anna').map(s=><div key={s}><Week seat={s} h={h}/></div>)}</div>
+    <div className="hm4-matrix-row"><b>DM drafts</b>{SEATS.filter(s => s !== 'anna').map(s=><div key={s}><Drafts seat={s} h={h}/></div>)}</div>
+    <div className="hm4-matrix-row"><b>Invites</b>{SEATS.filter(s => s !== 'anna').map(s=><div key={s}><Invites seat={s} h={h}/></div>)}</div>
+    <div className={`hm4-matrix-row hm4-matrix-ready${open?' hm4-expanded':''}`}><button type="button" aria-expanded={open} onClick={toggle}>Ready {open?'⌄':'›'}</button>{SEATS.filter(s => s !== 'anna').map(s=><div key={s}><Ready seat={s} h={h}/></div>)}</div>
+    <div className="hm4-matrix-row"><b>Rate limit</b>{SEATS.filter(s => s !== 'anna').map(s=><div key={s}><Limit seat={s} h={h}/></div>)}</div>
   </section>
 }
 export default function HomeV4({ layout }: PlaceProps) {
@@ -93,6 +93,7 @@ export default function HomeV4({ layout }: PlaceProps) {
     {layout==='desktop' && <AnswerRow title="Home" />}{!online && <Offline since={null} />}
     <XFlag />
     <HotNow />
-    {layout==='phone' ? <><Matrix h={h}/><HomeTasks v4 /></> : <div className="hm4-grid"><div className="hm4-seats">{SEATS.map(s=><SeatCard key={s} seat={s} h={h}/>)}</div><HomeTasks v4 /></div>}
+    <a className="hm4-more" href={dHash('lanes', null, { seat: 'anna' })}>Anna’s LinkedIn invitations and replies</a>
+    {layout==='phone' ? <><Matrix h={h}/><HomeTasks v4 /></> : <div className="hm4-grid"><div className="hm4-seats">{SEATS.filter(s => s !== 'anna').map(s=><SeatCard key={s} seat={s} h={h}/>)}</div><HomeTasks v4 /></div>}
   </div>
 }

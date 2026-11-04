@@ -123,7 +123,7 @@ export function CampaignSheet({ c, onClose }: { c: CampaignPerf | null; onClose:
   const seat = c?.client_id as Seat | undefined
 
   useEffect(() => {
-    if (!name || !seat) return
+    if (!name || !seat || seat === 'anna') return
     let live = true
     setPerf({ kind: 'loading' }); setSends({ kind: 'loading' })
     void loadPerf(seat).then(s => { if (live) setPerf(s) })

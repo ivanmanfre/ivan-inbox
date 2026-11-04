@@ -111,7 +111,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
         pauses={data.pauses.value} pausesFailed={data.pauses.failed} now={now} onClose={close} />}
       {sheet === 'outreach' && (
         <Sheet open onClose={close} title="DM outreach results" sub="Matured sends and replies per lane and step, against the prior period" className="dl-sheet">
-          <div className="cn-legacy app wb ds-shell wb-work"><Suspense fallback={<p className="dl-sl">Reading…</p>}><OutreachBlock lane={forSeat ?? seat} /></Suspense></div>
+          <div className="cn-legacy app wb ds-shell wb-work"><Suspense fallback={<p className="dl-sl">Reading…</p>}>{(forSeat ?? seat) !== 'anna' && <OutreachBlock lane={(forSeat ?? seat) as Exclude<Seat, 'anna'>} />}</Suspense></div>
         </Sheet>
       )}
       {sheet && (SHEETS as string[]).includes(sheet) &&<LanesSheet kind={sheet as SheetKind} seat={forSeat} p={data.cc.value} pFailed={data.cc.failed} range={range} now={now} setSeat={s => go({ for: s })} onClose={close} />}

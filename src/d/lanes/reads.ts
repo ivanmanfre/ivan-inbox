@@ -46,7 +46,7 @@ const base = () => supabase.from('outreach_prospects').select('id', { count: 'ex
 
 /** New people with classified person-level interest, by seat and source provenance. */
 export async function fetchEngagers7d(): Promise<Record<Seat, number>> {
-  const seats: Seat[] = ['ivan', 'risedtc', 'arch', 'swishdm']
+  const seats: Seat[] = ['ivan', 'risedtc', 'arch', 'swishdm', 'anna']
   const counts = await Promise.all(seats.map(async seat => {
     const { count, error } = await supabase.from('inbox_interest_prospects_v')
       .select('id', { count: 'exact', head: true }).eq('client_id', seat).gte('created_at', since(7))
@@ -155,7 +155,7 @@ export function laneMixOnce(campaignId: string): Promise<LaneMix> {
 
 /** The senders' own pause keys: one per seat (a 422 streak arms it for 2h) and the
     global manual kill switch `conn_send_pause_until` (stops every seat's invites). */
-export const PAUSE_KEY: Record<Seat, string> = { ivan: 'ivan_conn_422_pause_until', risedtc: 'risedtc_conn_422_pause_until', arch: 'arch_conn_send_pause_until' , swishdm: 'swishdm_invite_pause_until' }
+export const PAUSE_KEY: Partial<Record<Seat, string>> = { ivan: 'ivan_conn_422_pause_until', risedtc: 'risedtc_conn_422_pause_until', arch: 'arch_conn_send_pause_until' , swishdm: 'swishdm_invite_pause_until' }
 export const KILL_SWITCH_KEY = 'conn_send_pause_until'
 /** A seat's other senders' own pause keys (SwishDM's DM and InMail senders each read one). */
 export const CHANNEL_PAUSE_KEYS: Partial<Record<Seat, ReadonlyArray<{ key: string; label: string }>>> = {

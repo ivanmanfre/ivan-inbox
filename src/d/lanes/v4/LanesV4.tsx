@@ -15,7 +15,7 @@ import { useLanes } from '../../../hooks/useLanes'
 import { monitorLiveness } from '../../../lib/campaignControl'
 import type { PlaceProps } from '../../places'
 import { dHash } from '../../route'
-import { SEATS, type Seat } from '../../seats'
+import { SEATS, outreachSeats, type Seat } from '../../seats'
 import { useReportFailed } from '../../shell/health'
 import { AnswerRow } from '../../ui/AnswerRow'
 import { DIcon } from '../../ui/icons'
@@ -30,6 +30,8 @@ import { answerOf, hm, RANGES, type Range } from '../model'
 import { storedSeat, storeSeat } from '../prefs'
 import { Strip } from './Strip'
 import { SeatView4 } from './SeatView'
+import { AnnaLane } from '../AnnaLane'
+import { useAnnaLane } from '../anna'
 import { LanesSheet, type SheetKind } from '../Sheets'
 import { failedCount, useLanesData } from '../useLanesData'
 import '../lanes.css'
@@ -43,6 +45,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
   const motion = useMotionLevel()
   const { data, at, refresh } = useLanesData()
   const reg = useLanes()
+  const anna = useAnnaLane()
   const online = useOnline()
   // A remembered copy (useLanesData's seed) is judged as of its own read, so an old copy never reads as a silent monitor.
   const [now, setNow] = useState(() => at ?? Date.now())
@@ -50,7 +53,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
   useReportFailed('lanes', failedCount(data))
 
   const q = route.query
-  const seats: Seat[] = SEATS.filter(s => reg.lanes.some(l => l.client_id === s))
+  const seats: Seat[] = outreachSeats(reg.lanes)
   const cols = seats.length ? seats : [...SEATS]
   const [kept, setKept] = useState<Seat>(storedSeat)
   const seat: Seat = isSeat(q.get('seat')) ? (q.get('seat') as Seat) : cols.includes(kept) ? kept : cols[0]
@@ -61,7 +64,7 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
     for (const [k, v] of Object.entries(patch)) { if (v == null) next.delete(k); else next.set(k, v) }
     navigate(dHash('lanes', null, next))
   }
-  const pick = (s: Seat) => { storeSeat(s); setKept(s); go({ seat: s }) }
+  const pick = (s: Seat) => { storeSeat(s); setKept(s); go({ seat: s, sheet: null, for: null, c: null }) }
   const ctx: BandCtx = {
     d: data, now, range, selected: sheet === 'campaign' ? q.get('c') : null,
     openCampaign: id => go({ sheet: 'campaign', c: id }),
@@ -81,29 +84,29 @@ export default function LanesPage({ layout, route, navigate }: PlaceProps) {
   const p = data.cc.value
   const staleMin = p && monitorLiveness(p, now) === 'stale' && p.monitor.last_tick_at ? Math.max(1, Math.round((now - Date.parse(p.monitor.last_tick_at)) / 6e4)) : null
   const tools = (
-    <button type="button" className={`d-ib dl-refresh dl-refresh-${layout}`} data-verb="refresh" onClick={refresh} title={`Read everything again · ${monitorLine(data, now)}`} aria-label="Refresh">
+    <button type="button" className={`d-ib dl-refresh dl-refresh-${layout}`} data-verb="refresh" onClick={() => { refresh(); void anna.refresh() }} title={seat === 'anna' ? 'Refresh Anna’s lane' : `Read everything again · ${monitorLine(data, now)}`} aria-label="Refresh">
       <DIcon name="retry" />
     </button>
   )
   return (
     <div data-motion={motion} className={`dl-root dl4 dl4-${layout}`} data-layout-v4="lanes">
-      <AnswerRow title="Lanes" sub={staleMin != null ? `Monitor silent ${staleMin} min: numbers unverified.` : p ? ans.alert : null} tools={tools} />
+      <AnswerRow title="Lanes" sub={seat === 'anna' ? null : staleMin != null ? `Monitor silent ${staleMin} min: numbers unverified.` : p ? ans.alert : null} tools={tools} />
       <div className="dl4-scroll" data-d-scroll>
         {!online && <Offline since={at ? hm(at) : null} />}
-        {data.cc.failed && !data.cc.value && <Failed what="the send monitor" detail={data.cc.failed} onRetry={refresh} />}
-        {otherFailed > 0 && <Failed what={otherFailed === 1 ? 'one of the reads on this page' : `${otherFailed} of the reads on this page`} onRetry={refresh} />}
+        {seat !== 'anna' && data.cc.failed && !data.cc.value && <Failed what="the send monitor" detail={data.cc.failed} onRetry={refresh} />}
+        {seat !== 'anna' && otherFailed > 0 && <Failed what={otherFailed === 1 ? 'one of the reads on this page' : `${otherFailed} of the reads on this page`} onRetry={refresh} />}
         
-        {summaryAt != null && <p className="dl-notice">Results and supply saved at {hm(summaryAt)}. Refresh reads them again.</p>}
-        {p?.coverage.degraded && <p className="dl-notice">Coverage degraded{p.coverage.degraded_reasons.length ? `: ${p.coverage.degraded_reasons.join(' · ')}` : '.'}</p>}
+        {seat !== 'anna' && summaryAt != null && <p className="dl-notice">Results and supply saved at {hm(summaryAt)}. Refresh reads them again.</p>}
+        {seat !== 'anna' && p?.coverage.degraded && <p className="dl-notice">Coverage degraded{p.coverage.degraded_reasons.length ? `: ${p.coverage.degraded_reasons.join(' · ')}` : '.'}</p>}
         
-        <Strip seats={cols} seat={seat} pick={pick} d={data} now={now} phone={layout === 'phone'} />
-        <SeatView4 key={seat} seat={seat} ctx={ctx} range={range} setRange={setRange} retry={refresh} onCustom={() => go({ sheet: 'range', c: null })} />
+        <Strip anna={anna.read} seats={cols} seat={seat} pick={pick} d={data} now={now} phone={layout === 'phone'} />
+        {seat === 'anna' ? <AnnaLane read={anna.read} refresh={anna.refresh} control={anna.control} /> : <SeatView4 key={seat} seat={seat} ctx={ctx} range={range} setRange={setRange} retry={refresh} onCustom={() => go({ sheet: 'range', c: null })} />}
       </div>
-      {sheet === 'range' && <RangeSheet from={q.get('from')} to={q.get('to')} setRange={(from, to) => go({ from, to })} onClose={() => go({ sheet: null, from: null, to: null })} />}
-      {sheet === 'channels' && <ChannelsSheet seat={forSeat ?? seat} setSeat={s => go({ for: s })} now={now} onClose={close} />}
-      {sheet === 'control' && <ControlSheet seat={forSeat ?? seat} p={data.cc.value} pFailed={data.cc.failed} gov={data.gov.value?.find(x => x.client_id === (forSeat ?? seat)) ?? null}
+      {seat !== 'anna' && forSeat !== 'anna' && sheet === 'range' && <RangeSheet from={q.get('from')} to={q.get('to')} setRange={(from, to) => go({ from, to })} onClose={() => go({ sheet: null, from: null, to: null })} />}
+      {seat !== 'anna' && forSeat !== 'anna' && sheet === 'channels' && <ChannelsSheet seat={forSeat ?? seat} setSeat={s => go({ for: s })} now={now} onClose={close} />}
+      {seat !== 'anna' && forSeat !== 'anna' && sheet === 'control' && <ControlSheet seat={forSeat ?? seat} p={data.cc.value} pFailed={data.cc.failed} gov={data.gov.value?.find(x => x.client_id === (forSeat ?? seat)) ?? null}
         pauses={data.pauses.value} pausesFailed={data.pauses.failed} now={now} onClose={close} />}
-      {sheet && (SHEETS as string[]).includes(sheet) &&<LanesSheet kind={sheet as SheetKind} seat={forSeat} p={data.cc.value} pFailed={data.cc.failed} range={range} now={now} setSeat={s => go({ for: s })} onClose={close} />}
+      {seat !== 'anna' && forSeat !== 'anna' && sheet && (SHEETS as string[]).includes(sheet) &&<LanesSheet kind={sheet as SheetKind} seat={forSeat} p={data.cc.value} pFailed={data.cc.failed} range={range} now={now} setSeat={s => go({ for: s })} onClose={close} />}
     </div>
   )
 }

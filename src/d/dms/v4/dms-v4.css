@@ -27,8 +27,8 @@
 :root[data-skin-on~='dms'] .d-tools-page .dm-search kbd{border:0;background:transparent;font:400 12px var(--f);color:var(--t3);padding:0}
 
 /* ---- seat control: 3 equal segments, a thumb positioned by --i (no measuring) ---- */
-:root[data-skin-on~='dms'] .dx-seats{position:relative;isolation:isolate;flex:none;width:var(--dx-list-w,320px);height:32px;padding:2px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-radius:9px;background:rgba(19,18,16,.05);box-shadow:var(--ds-well-shadow)}
-:root[data-skin-on~='dms'] .dx-seats-thumb{position:absolute;top:2px;bottom:2px;left:2px;width:calc((100% - 4px) / 4);border-radius:7px;z-index:-1;pointer-events:none;
+:root[data-skin-on~='dms'] .dx-seats{position:relative;isolation:isolate;flex:none;width:var(--dx-list-w,320px);height:32px;padding:2px;display:grid;grid-template-columns:repeat(var(--seat-count,4),minmax(0,1fr));gap:0;border-radius:9px;background:rgba(19,18,16,.05);box-shadow:var(--ds-well-shadow)}
+:root[data-skin-on~='dms'] .dx-seats-thumb{position:absolute;top:2px;bottom:2px;left:2px;width:calc((100% - 4px) / var(--seat-count,4));border-radius:7px;z-index:-1;pointer-events:none;
   background:linear-gradient(#fff,#fbfcfa);box-shadow:0 1px 3px rgba(19,18,16,.08),inset 0 1px 0 #fff,0 0 0 1px rgba(19,18,16,.08);
   transform:translateX(calc(var(--i,0) * 100%));transition:transform var(--ds-m-slow) var(--ds-e-settle)}
 :root[data-skin-on~='dms'] .dx-seats .dm-sq{all:unset;box-sizing:border-box;min-width:0;height:28px;padding:0 10px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:7px;cursor:pointer;
@@ -455,3 +455,8 @@ html.brief-motion-off .dx-thumb-jump .dx-seats-thumb > span,html.brief-motion-of
 .dm-sends-tags button{font:500 12px/22px var(--f);padding:0 8px;border-radius:999px;background:var(--ds-well-fill,rgba(0,0,0,.04));color:var(--t2);border:0;cursor:pointer}
 .dm-sends-tags button[aria-pressed=true]{background:var(--ds-fill-tab,#fff);color:var(--t1);box-shadow:var(--ds-hi,0 0 0 1px rgba(0,0,0,.08))}
 .dm-sends-tags b{font-weight:600;margin-left:2px;color:var(--t3)}
+
+/* Five outreach seats share the track; long names remain available in the tab label. */
+:root[data-skin-on~='dms'] .dx-seats .dm-sq{padding-left:4px;padding-right:4px;gap:3px}
+:root[data-skin-on~='dms'] .dx-seats .dm-sq b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+:root[data-skin-on~='dms'] .dx-seats .dx-badge{flex-shrink:0}

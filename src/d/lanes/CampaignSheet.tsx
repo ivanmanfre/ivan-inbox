@@ -29,7 +29,7 @@ export function CampaignSheet({ c, onClose, now }: { c: CampaignPerf; onClose: (
   const seat = seatOf(c.client_id) ?? 'ivan'
   const stages = useRead(() => fetchStageCounts(c.campaign_id, c.client_id), `st:${c.campaign_id}`)
   const mix = useRead<LaneMix>(() => laneMixOnce(c.campaign_id), `mx:${c.campaign_id}`)
-  const perf = useRead<PerfState>(() => loadPerf(seat), `pf:${seat}`)
+  const perf = useRead<PerfState>(seat === 'anna' ? null : () => loadPerf(seat), `pf:${seat}`)
   const replies = useRead<Reply[]>(() => fetchCampaignReplies(c.campaign_name), `rp:${c.campaign_id}`)
   const sends = useRead<CampaignRecentSend[]>(() => fetchCampaignRecent(c.campaign_name, 25), `sd:${c.campaign_id}`)
   const lanes = mix.kind === 'ready' ? mix.data.lanes.map(l => l.lane) : []

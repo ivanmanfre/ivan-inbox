@@ -87,11 +87,12 @@ export function heldWhy(m: InboxMessage): string {
   return `${sent.scheduled ? 'Scheduled for' : 'You sent this at'} ${at(sent.at)} · held at ${at(m.send_blocked_at)}: ${reason}`
 }
 
-const OURS: Record<string, string> = { ivan: 'You', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan' }
+const OURS: Record<string, string> = { ivan: 'You', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan', anna: 'Anna' }
 
 /** Who wrote our side of this thread: "You" on Ivan's seat, the seat owner's name on Rise and Arch. */
 export function oursLabel(t: Pick<Thread, 'client_id'>): string {
-  return OURS[seatOf(t.client_id) ?? 'ivan']
+  const seat = seatOf(t.client_id)
+  return seat ? OURS[seat] : 'Unknown seat'
 }
 
 /** The conversation as chat bubbles (Ivan 09-27: "very hard to distinguish who is doing the DM"):

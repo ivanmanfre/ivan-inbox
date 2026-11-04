@@ -168,6 +168,7 @@ export function useDmVerbs(ctx: VerbCtx) {
     /** Approve & send (both legs on a pair). Always asks first, as today's thread does.
      *  `onDeclined`: he cancelled the confirm, so nothing was written (the caller re-arms any autosave it paused). */
     async function send(t: Thread, ed: Edits, onDeclined?: () => void): Promise<string | null> {
+      if (t.client_id === 'anna') { fail('Anna’s lane supports replies you type here. Automatic drafts are off.'); return 'Draft sending is unavailable.' }
       const draft = t.draft
       if (!draft) return null
       const comp = t.companionDraft
@@ -244,6 +245,7 @@ export function useDmVerbs(ctx: VerbCtx) {
     }
 
     async function sendAnyways(t: Thread, m: InboxMessage): Promise<void> {
+      if (t.client_id === 'anna') { fail('Send anyway is unavailable on Anna’s lane.'); return }
       // Jonathan's seat is sent only by the SwishDM senders: no override, no "about 2 minutes" promise.
       if (isSwishdmRow(m) || t.client_id === 'swishdm') { fail('SwishDM messages are sent only by the SwishDM senders. Nothing was sent.'); return }
       const ok = await confirm({ title: `Send anyway to ${t.prospect_name}?`,
@@ -518,6 +520,7 @@ export function useDmVerbs(ctx: VerbCtx) {
     async function compose(t: Thread, text: string, emailTarget?: EmailReplyTarget, composition?: EmailComposition | null): Promise<boolean> {
       const body = text.trim()
       if (!body) return false
+      const queueNote = t.client_id === 'anna' ? 'Anna’s sender picks it up while her lane is enabled. Paused replies stay queued.' : 'The sender picks it up within about 2 minutes.'
       const rich = emailTarget ? buildEmailComposition(emailTarget.message_text_prefix + text, emailRowSender(t.client_id), { composition }) : null
       const sentBody = rich ? renderEmailDocument(rich.body).text : body
       const reviewed = rich ? { ...rich, source_text: emailTarget!.message_text_prefix + sentBody } : null
@@ -532,7 +535,7 @@ export function useDmVerbs(ctx: VerbCtx) {
         const context = emailTarget?.context
         const preview = details ? createElement('div', { style: { maxHeight: '50vh', overflowY: 'auto' } },
           createElement('p', null, context ? `Replying to ${context.fromName || context.from}${context.isLatest ? ' · latest received email' : ' · earlier email in this thread'}` : `Replying to email ${emailTarget?.source_message_id ?? ''}`),
-          createElement(EmailPreview, { details, state: 'Ready to send' })) : 'The sender picks it up within about 2 minutes.'
+          createElement(EmailPreview, { details, state: 'Ready to send' })) : queueNote
         const ok = await confirm({ title: `Send this to ${t.prospect_name}?`, message: preview, confirmText: 'Send it', verb: 'confirm-compose' })
         if (!ok) return false
       }
@@ -564,7 +567,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       const hold = t.ownerConfirmation
       if (hold) await dismissConfirmation(hold.id, hold.send_blocked_reason === 'reply_retry_pending' ? 'reply_retry_pending' : 'owner_confirmation').catch(e => fail(`Your reply is queued, but the internal question stayed open: ${errText(e)}`))
       if (failed.length) fail(`Your reply is queued. ${failed.map(legFailureText).join(' ')}`)
-      else toast.show({ message: `Queued your reply to ${t.prospect_name}.`, sub: 'The sender picks it up within about 2 minutes.' })
+      else toast.show({ message: `Queued your reply to ${t.prospect_name}.`, sub: queueNote })
       ctx.refresh()
       return true
     }

@@ -30,6 +30,7 @@ export type ContentWeek = { n: number; days: ContentDay[]; below: boolean }
 
 /** Next week's content for one seat. `n` = the Content place's own count (scheduled, posts not days). */
 export function contentWeek(rows: ContentDraft[], lane: Seat, days: WallDay[]): ContentWeek {
+  if (lane === 'anna') return { n: 0, days: [], below: false }
   const out = days.map(d => {
     const on = rows.filter(r => r.scheduled_at && warsawDay(r.scheduled_at) === d.key)
     const sch = on.filter(r => isScheduled(r, lane))

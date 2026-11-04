@@ -13,7 +13,7 @@ export type OpsWaiting = Record<Seat, number> & {
 }
 
 export function opsWaitingBySeat(rows: OpsDraft[], now: number = Date.now()): OpsWaiting {
-  const out: OpsWaiting = { ivan: 0, risedtc: 0, arch: 0, swishdm: 0 }
+  const out: OpsWaiting = { ivan: 0, risedtc: 0, arch: 0, swishdm: 0, anna: 0 }
   for (const d of pendingOps(rows, now)) {
     if (!countsAsWaiting(d)) continue
     const s = seatOf(d.client_id)
