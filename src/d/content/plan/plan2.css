@@ -408,3 +408,17 @@
 :root:is([data-skin-on~='content.plan'],:has(.pl2)) .d-phone .pl2-nx .cv2-k{min-height:44px;min-width:44px}
 :root:is([data-skin-on~='content.plan'],:has(.pl2)) .d-phone .pl2-link{display:inline-flex;align-items:center;min-height:44px;min-width:44px;font-size:15px}
 :root:is([data-skin-on~='content.plan'],:has(.pl2)) .d-phone .pl2-warn-b{display:inline-flex;align-items:center;flex:1 1 auto;min-height:44px;text-align:left}
+
+/* drag a card to another day (calGestures, 2026-11-04). The lifted copy lives on a fixed layer on .d-app. */
+:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-wks .pl2-card[data-cal-id]:not([data-cal-refuse]){cursor:grab}
+:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-wks.cal-layer{position:fixed;inset:0;z-index:1000;pointer-events:none;display:block;margin:0;padding:0;border:0;background:none;overflow:visible}
+:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-wks .pl2-card.cal-ghost{position:fixed!important;z-index:1000;pointer-events:none;margin:0!important;background:var(--ds-surface-1);border-color:var(--ds-line-strong);box-shadow:var(--ds-shadow-float);opacity:.97;will-change:transform;transition:none}
+:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-wks .pl2-card.cal-ghost-land{transition:transform .24s cubic-bezier(.25,1,.5,1),opacity .24s}
+:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-wks .pl2-card.cal-lifted{opacity:.3;transform:none}
+:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-wks .pl2-card.cal-refuse{animation:pl2-refuse .32s}
+:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-wks .pl2-dcol.cal-hot{position:relative;background:var(--ds-accent-soft);border-color:transparent;box-shadow:inset 0 0 0 1.5px var(--ds-text)}
+:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-wks .pl2-dcol.cal-hot[data-cal-drop]::after{content:attr(data-cal-drop);position:absolute;left:50%;bottom:8px;transform:translateX(-50%);z-index:4;width:max-content;max-width:calc(100% - 12px);padding:4px 7px;border-radius:6px;background:var(--ds-text);color:var(--ds-surface-1);font:600 11.5px/14px var(--ds-font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;box-shadow:var(--ds-shadow-soft)}
+html.cal-dragging,html.cal-dragging *{cursor:grabbing!important;user-select:none!important;-webkit-user-select:none!important}
+html:is(.cal-dragging,.cal-dropped) .pl2-hc{display:none!important}
+@keyframes pl2-refuse{0%,100%{translate:0}25%{translate:-4px}75%{translate:4px}}
+@media (prefers-reduced-motion:reduce){:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-wks .pl2-card.cal-refuse{animation:none;outline:1px solid var(--ds-sev-attention-ui)}}

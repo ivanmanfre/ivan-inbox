@@ -8,6 +8,7 @@ import ivanFx from './fixtures/ivan.json'
 import archFx from './fixtures/arch.json'
 import { itemsOf, mixLine, reasonFor, resultLine, type PlanItem } from './planBrain'
 import { PlanWeeks } from './PlanWeeks'
+import { ToastProvider } from '../../ui/toast'
 
 const rise = () => structuredClone(riseFull) as unknown as PlanRead
 const ivan = () => structuredClone(ivanFx) as unknown as PlanRead
@@ -263,7 +264,8 @@ describe('PlanWeeks', () => {
     vi.useFakeTimers()
     const r = rise()
     const items = itemsOf(r)
-    const ui = (hover: boolean) => <PlanWeeks read={r} items={items} today={r.today} onOpen={() => {}} hover={hover} />
+    // rerender drops renderInFrame's shell, so the toast the drag uses comes along here.
+    const ui = (hover: boolean) => <ToastProvider><PlanWeeks read={r} items={items} today={r.today} onOpen={() => {}} hover={hover} /></ToastProvider>
     const v = renderInFrame(ui(false))
     fireEvent.pointerOver(card(/Elemental Air/))
     act(() => { vi.advanceTimersByTime(1000) })

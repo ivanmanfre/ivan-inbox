@@ -18,7 +18,7 @@ import './plan2.css'
 
 // CONTENT > PLAN, Oxygen (spec 2026-10-12 §3, R2.1, R4; skin section `content.plan`). The head (seat switch,
 // Weeks | List on the desktop, the planner line only when it is late), one answer line, the warnings with their
-// fix links, then the plan. Read only: nothing here dates, moves or publishes a post.
+// fix links, then the plan. Nothing here publishes a post; the Weeks drag and the panel's Move day are the tab's writes.
 // Weeks is the desktop default (PlanWeeks, with the hover card); List is the desktop option and the phone's only
 // view. A card or "Why, in full" opens PlanPanel (the seven questions; its Move day is the tab's one write, and a
 // move re-reads the plan with the panel kept open). Closing it puts focus back on the card that opened it.
@@ -176,7 +176,7 @@ export function PlanV2({ lane, setLane, verdicts, showInsights = false }: { lane
 
   // Weeks gets every item of the three weeks (past days of this week keep their posts); List starts from today.
   const body = !r ? null
-    : view === 'weeks' && !phone ? <PlanWeeks key={`weeks:${r.account}`} read={r} items={all} today={r.today} onOpen={openItem} hover={!open} />
+    : view === 'weeks' && !phone ? <PlanWeeks key={`weeks:${r.account}`} read={r} items={all} today={r.today} onOpen={openItem} onChanged={retry} hover={!open} />
       : <PlanList key={`list:${r.account}`} read={r} items={items} phone={phone} onOpen={openItem} />
 
   return <div className={`cv2 pl2${phone ? ' pl2-phone' : ''}`} data-motion={level} data-open={open?.key}>

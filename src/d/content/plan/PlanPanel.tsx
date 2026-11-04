@@ -10,6 +10,7 @@ import { dayIn, hmIn, zonedToUtc } from '../laneTime'
 import type { Lane } from '../model'
 import { FlagChip, GuessBlock } from './PlanList'
 import { MoveDay } from './MoveDay'
+import { moveError, refuseWhy } from './planDrag'
 import {
   ACCT_NAME, NO_DAY_LINE, ST_WORD, angleLine, briefLine, dayWhy, dimsNote, dimsOf, engagedLine, factsLine, firstLineChecks, firstLines, flagsFor,
   itemsOf, metaLine, photoLine, qaLine, quoteFor, reasonFor, replacedLine, shapeLine, sourceLine, traitLine, tzOf, weekWhy, writerRuleLine,
@@ -26,25 +27,6 @@ import {
 // A dated Rise post still waiting for OK gets no Move day: on Mattan's board a date arms it to publish (db/242),
 // and a move must keep the status.
 
-const MOVE_ERR: Record<string, string> = {
-  past_date: 'That time has already passed. Nothing changed.',
-  no_room: 'That week is full. Nothing changed.',
-  no_free_day: 'That week has no free weekday left. Nothing changed.',
-  same_week: 'It is already in that week. Nothing changed.',
-  out_of_horizon: 'That week is not in the plan. Nothing changed.',
-  bad_week: 'That week is not in the plan. Nothing changed.',
-  bad_status: 'This post can no longer be moved. Nothing changed.',
-  not_found: 'This post is no longer in the plan. Nothing changed.',
-  bad_gate: 'The app could not confirm it is you. Nothing changed.',
-}
-function moveError(e: unknown): string {
-  const code = (e as { code?: unknown } | null)?.code
-  if (typeof code === 'string' && MOVE_ERR[code]) return MOVE_ERR[code]
-  const msg = e instanceof Error ? e.message : ''
-  // The one refusal content.ts already says in plain words (a Rise idea flagged for Mattan).
-  if (/Mattan/.test(msg) && !msg.includes('—')) return msg
-  return 'Could not move it. Nothing changed.'
-}
 
 function Q({ n, title, children }: { n: number; title: string; children: ReactNode }) {
   return <li className="pl2-pn-q"><span className="pl2-pn-n" aria-hidden="true">{n}</span><div><h5>{title}</h5>{children}</div></li>
@@ -115,9 +97,8 @@ export function PlanPanel({ item, read, lane, onClose, onChanged }: Props) {
   const approve = item.st === 'review' && item.draftId ? dHash('content', 'now', { draft: item.draftId, lane }) : null
   const openDraft = !published && item.draftId ? dHash('content', 'calendar', { draft: item.draftId, lane }) : null
   const linkedin = published && res?.url ? res.url : null
-  const canMove = !published && item.st !== 'failed' && (item.kind === 'planned'
-    ? !!item.slotId
-    : !!item.draftId && !!item.at && !(acct === 'risedtc' && item.st === 'review'))
+  // One rule with the Weeks drag (planDrag.refuseWhy).
+  const canMove = !refuseWhy(item, acct)
 
   const movePost = async (to: string) => {
     const id = item.draftId!, prev = item.at!

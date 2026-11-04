@@ -1,10 +1,15 @@
-import { useCallback, useId, useMemo, useState, useSyncExternalStore, type CSSProperties } from 'react'
-import { planDay, type BrainStrip, type PlanRead, type PlanWeek } from '../../../lib/contentPlan'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
+import { setScheduleDateAt } from '../../../lib/content'
+import { moveSlotWeek, planDay, type BrainStrip, type PlanRead, type PlanWeek } from '../../../lib/contentPlan'
+import { useToast } from '../../ui/toast'
+import { useCalGestures } from '../calGestures'
+import { dayIn, hmIn } from '../laneTime'
 import { useMotionLevel } from '../../../ds/motionLevel'
 import { useFrameMaybe } from '../../shell/frame'
 import { FlagChip, useEntered, usePulsed } from './PlanList'
 import { PlanHoverCard } from './PlanHoverCard'
-import { ST_WORD, flagsFor, mixLine, reasonFor, timeLabel, tzOf, weekDays, type Acct, type PlanItem, type Tz } from './planBrain'
+import { dropLabel, dropPlan, moveError, refuseWhy } from './planDrag'
+import { ACCT_NAME, ST_WORD, flagsFor, mixLine, reasonFor, timeLabel, tzOf, weekDays, type Acct, type PlanItem, type Tz } from './planBrain'
 import { thumbUrl } from './thumbs'
 import { useHoverIntent } from './useHoverIntent'
 
@@ -14,6 +19,9 @@ import { useHoverIntent } from './useHoverIntent'
 // for the week's real open days, on future weekdays. Desktop only: the phone always shows the List.
 // A post still waiting for OK from a day before today is never dropped: it leaves its own past column and sits at
 // the top of today's column, headed "Waiting since <day>". The meter and the mix count what each row draws.
+// DRAG (Ivan 2026-11-04): a card drags to another day with the Calendar's pointer engine (calGestures). A post
+// keeps its time of day; a planned slot moves to the dropped day's week (planDrag). The card lands at once, the
+// plan re-reads, and the receipt has Undo. Today and later days take a drop; past days do not.
 
 const STAGGER_MS = 30
 const STAGGER_CAP_MS = 400
@@ -35,10 +43,10 @@ const readHover = () => typeof window !== 'undefined' && !!window.matchMedia?.(H
 
 type CardProps = {
   it: PlanItem; acct: Acct; tz: Tz; strip: BrainStrip | null; late?: string
-  describedBy?: string; bind: ReturnType<ReturnType<typeof useHoverIntent>['bind']>; onOpen: (it: PlanItem) => void
+  refuse: string | null; describedBy?: string; bind: ReturnType<ReturnType<typeof useHoverIntent>['bind']>; onOpen: (it: PlanItem) => void
 }
 
-function Card({ it, acct, tz, strip, late, describedBy, bind, onOpen }: CardProps) {
+function Card({ it, acct, tz, strip, late, refuse, describedBy, bind, onOpen }: CardProps) {
   // 0: the resized copy, 1: the original after the resized one failed, 2: no picture (the reason line shows).
   const [miss, setMiss] = useState(0)
   const orig = it.brain?.thumb || null
@@ -49,7 +57,7 @@ function Card({ it, acct, tz, strip, late, describedBy, bind, onOpen }: CardProp
   // A waiting card moved to today already says its day in its header; "No day yet" would contradict it.
   const time = it.suggested ? (late ? '' : 'Suggested day') : timeLabel(it, tz)
   return <button type="button" className={`pl2-card pl2-s-${it.st}${it.suggested ? ' pl2-sugg' : ''}${late ? ' pl2-card-late' : ''}`}
-    data-plan-key={it.key} data-verb="plan-card" aria-describedby={describedBy} onClick={() => onOpen(it)} {...bind}>
+    data-plan-key={it.key} data-verb="plan-card" data-cal-id={it.key} data-cal-lane={acct} data-cal-refuse={refuse ?? undefined} aria-describedby={describedBy} onClick={() => onOpen(it)} {...bind}>
     {late && <span className="pl2-late-l">{late}</span>}
     <span className="pl2-cr">
       <span className="pl2-st"><i className="pl2-dot" aria-hidden="true" />{ST_WORD[it.st]}</span>
@@ -63,7 +71,7 @@ function Card({ it, acct, tz, strip, late, describedBy, bind, onOpen }: CardProp
 }
 
 /** `hover` false (the panel is open) keeps the hover card shut; it stays shut on the card focus returns to after. */
-export function PlanWeeks({ read, items, today, onOpen, hover = true }: { read: PlanRead; items: PlanItem[]; today: string; onOpen: (it: PlanItem) => void; hover?: boolean }) {
+export function PlanWeeks({ read, items: given, today, onOpen, onChanged, hover = true }: { read: PlanRead; items: PlanItem[]; today: string; onOpen: (it: PlanItem) => void; onChanged?: () => void; hover?: boolean }) {
   const f = useFrameMaybe()
   const hoverable = useSyncExternalStore(subscribeHover, readHover, () => false)
   const level = useMotionLevel()
@@ -76,6 +84,78 @@ export function PlanWeeks({ read, items, today, onOpen, hover = true }: { read: 
 
   const acct = read.account as Acct
   const tz = tzOf(read)
+  const toast = useToast()
+  const root = useRef<HTMLDivElement>(null)
+  // A dropped card sits where it was dropped until the re-read lands (key -> day, or week for a planned slot).
+  const [moved, setMoved] = useState<Map<string, { day: string | null; week: string }>>(() => new Map())
+  useEffect(() => { setMoved(new Map()) }, [read])
+  const items = useMemo(() => (moved.size ? given.map(i => { const m = moved.get(i.key); return m ? { ...i, ...m } : i }) : given), [given, moved])
+  const byKey = useMemo(() => new Map(items.map(i => [i.key, i])), [items])
+  const reread = () => onChanged?.()
+
+  const drop = async (key: string, day: string) => {
+    const it = byKey.get(key)
+    if (!it) return
+    const p = dropPlan(it, acct, tz, day, today)
+    if (p.kind === 'none') { if (p.why) toast.show({ id: 'pl2-drop', message: p.why }); return }
+    const hold = (v: { day: string | null; week: string } | null) => setMoved(m => { const n = new Map(m); if (v) n.set(key, v); else n.delete(key); return n })
+    if (p.kind === 'post') {
+      const landed = dayIn(p.when, tz.name)
+      hold({ day: landed, week: it.week })
+      try {
+        const stored = await setScheduleDateAt(p.draftId, p.when)
+        const at = `${planDay(dayIn(stored, tz.name))} · ${hmIn(stored, tz.name)} ${tz.label}`
+        toast.show({
+          id: 'pl2-drop', message: `Moved to ${at}.`,
+          sub: dayIn(stored, tz.name) !== landed ? 'The database stored a different day.' : hmIn(p.when, tz.name) !== hmIn(p.prev, tz.name) ? 'Its time already went by today, so it posts in an hour.' : ACCT_NAME[acct],
+          action: {
+            label: 'Undo', verb: 'plan-drag-undo', run: () => {
+              void setScheduleDateAt(p.draftId, p.prev)
+                .then(() => toast.show({ id: 'pl2-drop', message: `Put back on ${planDay(dayIn(p.prev, tz.name))} · ${hmIn(p.prev, tz.name)} ${tz.label}.`, sub: ACCT_NAME[acct] }))
+                .catch(e => toast.show({ id: 'pl2-drop', message: moveError(e), tone: 'failed' }))
+                .finally(reread)
+            },
+          },
+        })
+        reread()
+      } catch (e) {
+        hold(null)
+        toast.show({ id: 'pl2-drop', message: moveError(e), tone: 'failed' })
+      }
+      return
+    }
+    hold({ day: null, week: p.week })
+    try {
+      const r = await moveSlotWeek(p.slotId, p.week)
+      const back = r.from_week || p.from
+      toast.show({
+        id: 'pl2-drop', message: `Moved to the week of ${planDay(r.to_week || p.week).replace(/^\w+ /, '')}.`, sub: 'It gets its day when you approve it.',
+        action: {
+          label: 'Undo', verb: 'plan-drag-undo', run: () => {
+            void moveSlotWeek(p.slotId, back)
+              .then(() => toast.show({ id: 'pl2-drop', message: `Put back in the week of ${planDay(back).replace(/^\w+ /, '')}.`, sub: ACCT_NAME[acct] }))
+              .catch(e => toast.show({ id: 'pl2-drop', message: moveError(e), tone: 'failed' }))
+              .finally(reread)
+          },
+        },
+      })
+      reread()
+    } catch (e) {
+      hold(null)
+      toast.show({ id: 'pl2-drop', message: moveError(e), tone: 'failed' })
+    }
+  }
+
+  useCalGestures(root, {
+    reducedMotion: level === 'off',
+    labelFor: (key, _lane, day) => { const it = byKey.get(key); return it ? dropLabel(it, acct, tz, day, today) : null },
+    onDrop: (key, _lane, day) => { void drop(key, day) },
+    onRefuse: why => toast.show({ id: 'pl2-drop', message: why }),
+    onMiss: () => toast.show({ id: 'pl2-drop', message: 'Not moved. Let go over today or a later day.' }),
+    onSwipeMove: () => {},
+    onSwipeEnd: () => {},
+    onEdgePage: () => {},
+  })
   const strip = read.brain_strip ?? null
   const xDays = useMemo(() => new Set(Array.isArray(read.x_days) ? read.x_days : []), [read.x_days])
   const weeks = useMemo(() => (Array.isArray(read.weeks) ? read.weeks : []), [read.weeks])
@@ -89,10 +169,10 @@ export function PlanWeeks({ read, items, today, onOpen, hover = true }: { read: 
 
   let n = 0
   const delay = () => (level === 'off' ? 0 : Math.min(n++ * STAGGER_MS, STAGGER_CAP_MS))
-  const card = (it: PlanItem, late?: string) => <Card key={it.key} it={it} acct={acct} tz={tz} strip={strip} late={late}
+  const card = (it: PlanItem, late?: string) => <Card key={it.key} it={it} acct={acct} tz={tz} strip={strip} late={late} refuse={refuseWhy(it, acct)}
     describedBy={hc.open === it.key && hoverItem ? hcId : undefined} bind={hc.bind(it.key)} onOpen={open} />
 
-  return <div className="pl2-wks" data-entered={entered || undefined} data-pulsed={pulsed || undefined}>
+  return <div ref={root} className="pl2-wks" data-entered={entered || undefined} data-pulsed={pulsed || undefined}>
     {weeks.map((w, wi) => {
       const end = addDays(w.start, 6)
       const inWeek = items.filter(i => i.day != null && i.day >= w.start && i.day <= end && !lateKeys.has(i.key))
@@ -129,7 +209,7 @@ export function PlanWeeks({ read, items, today, onOpen, hover = true }: { read: 
             const lateHere = day === lateDay ? late : []
             const well = !past && !isToday && d < 5 && !cards.length && !lateHere.length && free > 0
             if (well) free--
-            return <div key={day} className={`pl2-dcol${past ? ' pl2-past' : ''}${isToday ? ' pl2-today' : ''}`} data-day={day}
+            return <div key={day} className={`pl2-dcol${past ? ' pl2-past' : ''}${isToday ? ' pl2-today' : ''}`} data-day={day} data-cal-day={past ? undefined : day}
               style={{ '--pl2-d': `${delay()}ms` } as CSSProperties}>
               <div className="pl2-dh">
                 <span>{dayName(day)}{isToday && <> · <em>Today</em></>}</span>
