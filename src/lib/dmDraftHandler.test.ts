@@ -22,7 +22,7 @@ async function draft(rows: Record<string, unknown>[], reply: string | null = 'co
       const query = {
         select(value: string) { fields = value; return query },
         eq(field: string, value: unknown) { if (field === 'direction') direction = value; return query }, in(_field: string, values: string[]) { requestedSlugs = values; return query },
-        order(_field: string, opts?: { ascending?: boolean }) { newest = opts?.ascending === false; return query }, limit() { return query },
+        order(_field: string, opts?: { ascending?: boolean }) { newest = opts?.ascending === false; return query }, limit() { return query }, not() { return query },
         maybeSingle: async () => ({ data: null }),
         single: async () => ({ data: fields.startsWith('referral:') ? { referral: req.latest ?? null } : { operator_note: null, enrichment_data: req.enrichment ?? {}, dm_count: 0 } }),
         then(resolve: (value: unknown) => unknown) {
@@ -113,25 +113,31 @@ describe('server referral warm-up', () => {
   const sentInvite = { ...invite, client_id: 'arch', prospect_name: 'Núria Oliveira', prospect_company: 'Wildlife Studios' }
   const larissa = { id: 'ACoAAlarissa', publicIdentifier: 'larissarvieira', firstName: 'Larissa', lastName: 'Vieira', headline: 'Creative Strategy',
     experience: [{ companyName: 'Wildlife Studios', position: 'Creator Strategy Manager', endDate: { text: 'Present' } }] }
-  const dm = 'Hi Larissa. Núria said you look after creator campaigns at Wildlife. Are you running them for the US or Europe?'
+  const dm = 'Hi Larissa\n\nNúria said you look after creator campaigns at Wildlife.\n\nAre you running them for the US or Europe?'
   const stages = (url: string, body: { messages?: { content: string }[] }) => url.includes('api.apify.com') ? [larissa]
     : { content: [{ type: 'text', text: JSON.stringify(body.messages?.[0].content.includes('Extract only the person name') ? { name: 'Larissa Vieira' } : { draft: dm }) }] }
   it('researches a referral with the push secret and no signed-in user, and saves the verified person', async () => {
     const { status, result, saved } = await draft([sentInvite, handoff], null, { ...server, body: { mode: 'referral' }, fetch: stages })
     expect(status).toBe(200)
-    expect(result.referral).toMatchObject({ status: 'verified', name: 'Larissa Vieira', role: 'Creator Strategy Manager', linkedin_url: 'https://www.linkedin.com/in/larissarvieira', draft: dm, revision: 3, input_message_id: 'handoff' })
+    expect(result.referral).toMatchObject({ status: 'verified', name: 'Larissa Vieira', role: 'Creator Strategy Manager', linkedin_url: 'https://www.linkedin.com/in/larissarvieira', draft: dm, revision: 4, input_message_id: 'handoff' })
     expect(saved).toHaveLength(1)
     expect((saved[0] as { p_referral: { status: string; researched_at: string } }).p_referral).toMatchObject({ status: 'verified', input_message_id: 'handoff' })
   })
-  it('a cached revision-3 result is served without research', async () => {
-    const cached = { status: 'verified', input_message_id: 'handoff', revision: 3, name: 'Larissa Vieira' }
+  it('a cached draft whose offer line is past 72 h is researched again', async () => {
+    const cached = { status: 'verified', input_message_id: 'handoff', revision: 4, name: 'Larissa Vieira', offer_verified_at: new Date(Date.now() - 73 * 3600_000).toISOString() }
+    const { result, upstream } = await draft([sentInvite, handoff], null, { ...server, body: { mode: 'referral' }, enrichment: { inbox_referral: cached }, fetch: stages })
+    expect(upstream.length).toBeGreaterThan(0)
+    expect(result.referral).toMatchObject({ status: 'verified', draft: dm, offer_verified_at: null })
+  })
+  it('a cached revision-4 result is served without research', async () => {
+    const cached = { status: 'verified', input_message_id: 'handoff', revision: 4, name: 'Larissa Vieira' }
     const { result, upstream, saved } = await draft([sentInvite, handoff], null, { ...server, body: { mode: 'referral' }, enrichment: { inbox_referral: cached } })
     expect(result.referral).toEqual(cached)
     expect(upstream).toHaveLength(0)
     expect(saved).toHaveLength(0)
   })
   it('a verified result saved meanwhile is never overwritten by a weaker one', async () => {
-    const kept = { status: 'verified', input_message_id: 'handoff', revision: 3, name: 'Larissa Vieira' }
+    const kept = { status: 'verified', input_message_id: 'handoff', revision: 4, name: 'Larissa Vieira' }
     const failing = (url: string, body: { messages?: { content: string }[] }) => url.includes('api.apify.com') ? [] : stages(url, body)
     const { result, saved } = await draft([sentInvite, handoff], null, { ...server, body: { mode: 'referral' }, fetch: failing, latest: kept })
     expect(result.referral).toEqual(kept)

@@ -28,7 +28,7 @@ describe('referral draft pair', () => {
     expect(result.draft).toBeNull()
   })
   it('returns separate drafts addressed to the referrer and verified referred person', async () => {
-    const draft = 'Hey Alicia, Ismail said you handle UGC marketing at MWM. I run ARCH. Would you be open to discussing your creator campaigns?'
+    const draft = 'Hey Alicia\n\nIsmail said you handle UGC marketing at MWM.\n\nI run ARCH. Are you running your creator campaigns in-house?'
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(extraction())
       .mockResolvedValueOnce(apify([item('Alicia', 'Yang', 'alicia-test', [['MWM', 'UGC marketing', true]])]))
       .mockResolvedValueOnce(claude(JSON.stringify({ draft }))))
@@ -37,7 +37,7 @@ describe('referral draft pair', () => {
     expect(result.acknowledgement).toMatch(/Ismail.*Alicia/)
   })
   it('keeps a same-company profile with a different surname as a reviewable candidate', async () => {
-    const draft = 'Hey Alicia, Ismail said you handle UGC marketing at MWM. Would you be open to discussing your creator campaigns?'
+    const draft = 'Hey Alicia\n\nIsmail said you handle UGC marketing at MWM.\n\nAre you running your creator campaigns in-house?'
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(extraction())
       .mockResolvedValueOnce(apify([item('Alicia Yingru', 'WANG', 'alicia-test', [['MWM', 'UGC Manager', true]])]))
       .mockResolvedValueOnce(claude(JSON.stringify({ draft }))))

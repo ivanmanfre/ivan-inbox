@@ -11,6 +11,8 @@ export type ReferralDraft = {
   reason: string | null
   sources: ReferralSource[]
   acknowledgement?: string | null
+  /** verified_at of the appended offer line; the cached draft expires with it (72 h). */
+  offer_verified_at?: string | null
   revision?: number
   candidate?: { name: string; linkedin_url: string; summary: string | null; draft: string; sources: ReferralSource[] }
   lead_prospect_id?: string
@@ -36,6 +38,25 @@ const profileKey = (s: string): string | null => {
     if (u.protocol !== 'https:' || !/^(?:[a-z]{2,3}\.)?linkedin\.com$/.test(u.hostname) && u.hostname !== 'www.linkedin.com') return null
     return /^\/in\/[^/]+\/?$/.test(u.pathname) ? u.pathname.replace(/\/$/, '').toLowerCase() : null
   } catch { return null }
+}
+
+/** Lay out a referral first touch like a sent first DM: greeting alone, then one short thought per
+ * paragraph with a blank line between them. An approved offer line is appended verbatim by code,
+ * never paraphrased by the model. Returns null when nothing usable came back. */
+export function formatReferralDm(raw: unknown, offer: string | null = null): string | null {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const parts: string[] = Array.isArray(r.paragraphs) ? r.paragraphs.filter((p): p is string => typeof p === 'string')
+    : typeof r.draft === 'string' ? r.draft.split(/\n\s*\n/) : []
+  const paras = parts.map(p => p.replace(/[ \t]+/g, ' ').trim()).filter(Boolean)
+  if (!paras.length) return null
+  // "Hi Olena. Vadym said..." -> "Hi Olena" on its own line, the rest as the next paragraph.
+  // The name must end at punctuation, a line break or the end, so "Hey O’Connor" or a combining
+  // accent never splits mid-name; an unpunctuated run ("Hey Olena Vadym said") is left as written.
+  const greet = paras[0].match(/^((?:hey|hi|hello)(?: there)?(?: [\p{L}\p{M}'’-]+)?)(?:\s*[,.:]\s*|\s*\n\s*|\s*$)([\s\S]*)$/iu)
+  if (greet) paras.splice(0, 1, greet[1], ...(greet[2].trim() ? [greet[2].trim()] : []))
+  // The offer appears exactly once, last: strip any copy the model wrote inside a paragraph.
+  const body = offer ? paras.map(p => p.split(offer.trim()).join(' ').replace(/[ \t]+/g, ' ').trim()).filter(Boolean) : paras
+  return [...body, ...(offer ? [offer.trim()] : [])].join('\n\n')
 }
 
 /** Prospect-facing copy rules every referral DM draft must pass. */

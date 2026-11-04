@@ -1,6 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { referralCandidate } from './referral.ts'
-import { researchReferral } from './research.ts'
+import { researchReferral, REFERRAL_REVISION } from './research.ts'
 import { readMentions } from './mention.ts'
 import { askClaude, DRAFT_MODEL } from './llm.ts'
 
@@ -9,6 +9,9 @@ const CANON: Record<string, { author: string; slugs: string[] }> = {
   risedtc: { author: 'Mattan', slugs: ['rise-company-facts', 'rise-reply-voice-core', 'rise-reply-exemplars'] },
   ivan: { author: 'Ivan Manfredi', slugs: ['author-voice', 'ivan-reply-voice-core', 'ivan-company-facts'] },
 }
+
+/** An appended offer line is good for 72 h after verification (the sequencer's bound). No offer, no expiry. */
+const offerFresh = (at: unknown) => at == null || (typeof at === 'string' && Date.now() - Date.parse(at) < 72 * 3600_000)
 
 Deno.serve(async req => {
   const origin = req.headers.get('origin') ?? ''
@@ -68,9 +71,16 @@ Deno.serve(async req => {
       const inbound = conversation.filter(m => m.direction === 'inbound').at(-1)
       if (!inbound || !referralCandidate(inbound.message_text)) return respond({ referral: null })
       const cached = prospect.enrichment_data?.inbox_referral
-      if (!retryReferral && cached?.input_message_id === inbound.id && cached?.revision === 3) return respond({ referral: cached })
+      if (!retryReferral && cached?.input_message_id === inbound.id && cached?.revision === REFERRAL_REVISION && offerFresh(cached.offer_verified_at)) return respond({ referral: cached })
       const context = conversation.map(m => ({ speaker: m.direction === 'inbound' ? rows[0].prospect_name : canon.author, text: m.message_text }))
-      const referral = await researchReferral(sb, { id: inbound.id, text: inbound.message_text, company: rows[0].prospect_company, referrer: rows[0].prospect_name }, canon.author, prompts, context, await readMentions(sb, inbound.id))
+      // ARCH's verified competitor offer (O2) for this company, when one was drafted for the referrer
+      // in the last 72 h (the sequencer's freshness bound), closes the intro instead of a generic ask.
+      const { data: o2Rows } = await sb.from('outreach_messages').select('draft_evidence').eq('prospect_id', id).eq('direction', 'outbound')
+        .not('draft_evidence->o2->>offer_text', 'is', null).order('created_at', { ascending: false }).limit(1)
+      const o2 = (o2Rows as { draft_evidence?: { o2?: { offer_text?: unknown; verified_at?: unknown } } }[] | null)?.[0]?.draft_evidence?.o2
+      const fresh72h = typeof o2?.verified_at === 'string' && offerFresh(o2.verified_at)
+      const offer = client === 'arch' && fresh72h && typeof o2?.offer_text === 'string' && o2.offer_text.trim() ? o2.offer_text.trim() : null
+      const referral = await researchReferral(sb, { id: inbound.id, text: inbound.message_text, company: rows[0].prospect_company, referrer: rows[0].prospect_name, offer, offerVerifiedAt: offer ? o2!.verified_at as string : null }, canon.author, prompts, context, await readMentions(sb, inbound.id))
       const { data: freshRows, error: freshError } = await sb.from('inbox_messages_v').select('id,message_text,sent_at,created_at,prospect_stage,prospect_blacklisted')
         .eq('prospect_id', id).eq('direction', 'inbound').order('created_at').order('id')
       if (freshError) throw freshError
@@ -92,7 +102,7 @@ Deno.serve(async req => {
       if (!retryReferral && referral.status !== 'verified') {
         const { data: latest } = await sb.from('outreach_prospects').select('referral:enrichment_data->inbox_referral').eq('id', id).single()
         const kept = latest?.referral
-        if (kept?.input_message_id === inbound.id && kept?.revision === 3 && kept?.status === 'verified') return respond({ referral: kept })
+        if (kept?.input_message_id === inbound.id && kept?.revision === REFERRAL_REVISION && kept?.status === 'verified' && offerFresh(kept.offer_verified_at)) return respond({ referral: kept })
       }
       return respond({ referral })
     }
