@@ -363,7 +363,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
       {laterKey}
       {solvedKey}
     </>
-    primary = <Key primary verb="send" className="dm-send" disabled={busy || scheduledPending || emailLoading || !!emailDetailsError || draftFormattingError} onClick={() => void send()}>{handEmailOpen && replyingByEmail ? `Draft: ${sendLabel}` : sendLabel}</Key>
+    primary = <Key primary verb="send" className="dm-send" disabled={busy || scheduledPending || emailLoading || !!emailDetailsError || draftFormattingError} onClick={() => void send()}>{replyingByEmail && (!v4 || handEmailOpen) ? `Draft: ${sendLabel}` : sendLabel}</Key>
   } else {
     small = <>
       {t.ownerConfirmation && !manualReply
@@ -406,7 +406,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
     // a stale draft, or a draft with his own words in the composer, draws Send outlined.
     const canSendDraft = hasDraft && !t.ownerConfirmation && !t.spam
     const sendV4 = canSendDraft
-      ? <Key primary={!t.draftStale && !reply.trim()} verb="send" className="dm-send" disabled={busy || scheduledPending || emailLoading || !!emailDetailsError || draftFormattingError} onClick={() => void send()}>{handEmailOpen && replyingByEmail ? `Draft: ${sendLabel}` : sendLabel}</Key>
+      ? <Key primary={!t.draftStale && !reply.trim()} verb="send" className="dm-send" disabled={busy || scheduledPending || emailLoading || !!emailDetailsError || draftFormattingError} onClick={() => void send()}>{replyingByEmail && (!v4 || handEmailOpen) ? `Draft: ${sendLabel}` : sendLabel}</Key>
       : primary
     const scheduleKey = !t.spam && t.client_id !== 'anna' && !swishReply && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim())
       ? <Btn verb="schedule-send" className="dm-k dm-schedule-key" disabled={busy} onClick={() => void openSchedule()}>{reply.trim() ? 'Schedule reply' : 'Schedule send'}</Btn> : null

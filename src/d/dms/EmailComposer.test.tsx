@@ -8,6 +8,15 @@ import type { EmailComposition } from '../../lib/emailRichText'
 afterEach(cleanup)
 const base = { from: 'im@ivanmanfredi.com', to: 'alex@example.com', subject: 'Re: Store review', busy: false, onSend: vi.fn() }
 
+it('shows a failed recipient lookup as unavailable while preserving a long reply and Retry', () => {
+  const value = 'Keep these reply paragraphs.\n\n'.repeat(80)
+  render(<EmailComposer {...base} to={null} value={value} setValue={() => {}} error="Email lookup failed" onRetry={vi.fn()} />)
+  expect(document.querySelector('.dm-email-toolbar')!.textContent).toContain('Recipient unavailable')
+  expect((screen.getByRole('textbox', { name: 'Email reply' }) as HTMLTextAreaElement).value).toBe(value)
+  expect(screen.getByRole('button', { name: 'Retry email details' })).toBeTruthy()
+  expect((screen.getByRole('button', { name: 'Send email' }) as HTMLButtonElement).disabled).toBe(true)
+})
+
 it('keeps the reply subject fixed and previews the exact edited body including a typed Subject line', () => {
   const body = 'Subject: This belongs to the body\n\nHi Alex,\n\nhttps://example.com/review\n\nIvan\n'
   function Editor() {
