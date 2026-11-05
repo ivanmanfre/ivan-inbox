@@ -12,6 +12,7 @@ vi.mock('../../../lib/xReview', async (orig) => ({ ...(await orig<typeof import(
 
 import XReviewPage from './XReview'
 import { __resetXForTests } from './useXReview'
+import { __resetPhotoSavesForTests } from './photoSaves'
 
 const ID = '040bf74b-6ee0-4558-8fd3-e4e1c604f091'
 const LIST: XReviewList = {
@@ -32,6 +33,7 @@ function page(layout: 'phone' | 'desktop' = 'phone') {
 
 beforeEach(() => {
   __resetXForTests()
+  __resetPhotoSavesForTests()
   localStorage.clear()
   api.fetchXReview.mockResolvedValue(LIST)
   api.saveXArticle.mockResolvedValue(undefined)
@@ -218,7 +220,7 @@ describe('quick X post review', () => {
     await open(withPhoto())
     expect(document.querySelector('[data-x-photo-dots]')).toBeNull()
     expect(document.querySelector('[data-verb=x-photo-next]')).toBeNull()
-    cleanup(); __resetXForTests()
+    cleanup(); __resetXForTests(); __resetPhotoSavesForTests()
     await open(withRing({ media_ring: [RING[0]] }))
     expect(document.querySelector('[data-x-photo-dots]')).toBeNull()
   })
@@ -324,5 +326,60 @@ describe('quick X post review', () => {
     await open(withRing({ media_url: 'https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/post-stills/ivan-photos/own.jpg', media_photo_id: 'p9', media_source: 'ivan' }))
     expect(document.querySelectorAll('[data-x-photo-dots] [data-dot]').length).toBe(4)
     expect(dot()).toBe(0)
+  })
+
+  it('Sol r1: a save whose answer fails while the Post dialog is open sends nothing (the photo on screen changed)', async () => {
+    const a = deferred()
+    api.setXQuickPhoto.mockReturnValueOnce(a.p)
+    api.decideXQuick.mockResolvedValue(undefined)
+    await open(withRing())
+    swipe(-120)
+    fireEvent.click(document.querySelector('[data-verb=x-post]')!)
+    await screen.findByRole('alertdialog')
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2'), { timeout: 2000 })
+    await act(async () => { a.rej(new Error('network down')) })
+    expect(shown()).toBe(PHOTO)
+    await act(async () => { fireEvent.click(document.querySelector('[data-verb=x-post-confirm]')!) })
+    await screen.findByText(/The photo changed while you confirmed, so nothing went out/)
+    expect(api.decideXQuick).not.toHaveBeenCalled()
+  })
+
+  it('Sol r1: leaving and reopening the card mid-save never lets an older swipe land after a newer one', async () => {
+    const a = deferred()
+    api.setXQuickPhoto.mockReturnValueOnce(a.p).mockResolvedValue(OTHER)
+    await open(withRing())
+    swipe(-120)
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2'), { timeout: 2000 })
+    swipe(-120) // wants p3 while p2 saves
+    cleanup()
+    await open(withRing())
+    expect(shown()).toBe(THIRD) // the wanted photo carries over
+    fireEvent.click(document.querySelector('[data-verb=x-photo-prev]')!) // now wants p2
+    await new Promise(r => setTimeout(r, 900))
+    await act(async () => { a.res(OTHER) })
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledTimes(2))
+    await new Promise(r => setTimeout(r, 100))
+    expect(api.setXQuickPhoto.mock.calls.map(c => c[1])).toEqual(['p2', 'p2'])
+    expect(shown()).toBe(OTHER)
+  })
+
+  it('Sol r1: a swipe during a gallery save queues behind it and the later choice wins', async () => {
+    const a = deferred()
+    api.fetchXQuickPhotos.mockResolvedValue([{ id: 'p3', url: THIRD, place: 'Gdańsk, Poland', scene: '', mood: '', description: '', has_ivan: false, recent: false }])
+    api.setXQuickPhoto.mockReturnValueOnce(a.p).mockResolvedValue(OTHER)
+    await open(withRing())
+    fireEvent.click(document.querySelector('[data-verb=x-photo-change]')!)
+    await waitFor(() => expect(document.querySelector('[data-photo-id=p3]')).toBeTruthy())
+    fireEvent.click(document.querySelector('[data-photo-id=p3]')!)
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p3'))
+    expect(shown()).toBe(THIRD)
+    swipe(120) // back to p2 while p3 saves
+    expect(shown()).toBe(OTHER)
+    await new Promise(r => setTimeout(r, 900))
+    expect(api.setXQuickPhoto).toHaveBeenCalledTimes(1)
+    await act(async () => { a.res(THIRD) })
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledTimes(2))
+    expect(api.setXQuickPhoto.mock.calls.map(c => c[1])).toEqual(['p3', 'p2'])
+    await waitFor(() => expect(shown()).toBe(OTHER))
   })
 })
