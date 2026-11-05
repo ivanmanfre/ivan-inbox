@@ -382,4 +382,28 @@ describe('quick X post review', () => {
     expect(api.setXQuickPhoto.mock.calls.map(c => c[1])).toEqual(['p3', 'p2'])
     await waitFor(() => expect(shown()).toBe(OTHER))
   })
+
+  it('Sol r2: a refresh during a slow text save cannot swap the photo back before the check', async () => {
+    const photoSave = deferred()
+    let textDone: () => void = () => {}
+    api.setXQuickPhoto.mockReturnValueOnce(photoSave.p)
+    api.saveXQuick.mockImplementation(() => new Promise<void>(r => { textDone = r }))
+    api.decideXQuick.mockResolvedValue(undefined)
+    await open(withRing())
+    fireEvent.change(document.querySelector<HTMLTextAreaElement>('[data-x-quick]')!, { target: { value: 'edited' } })
+    swipe(-120)
+    fireEvent.click(document.querySelector('[data-verb=x-post]')!)
+    await screen.findByRole('alertdialog')
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2'), { timeout: 2000 })
+    // the server committed B but the answer failed: the screen falls back to A, and the recovery read returns B
+    let readDone: () => void = () => {}
+    api.fetchXReview.mockReturnValue(new Promise<XReviewList>(r => { readDone = () => r(withRing({ media_url: OTHER, media_photo_id: 'p2', media_source: 'ivan' })) }))
+    await act(async () => { photoSave.rej(new Error('network down')) })
+    expect(shown()).toBe(PHOTO)
+    await act(async () => { fireEvent.click(document.querySelector('[data-verb=x-post-confirm]')!) })
+    await act(async () => { readDone() }) // the recovery read lands while the text save is still out
+    await act(async () => { textDone() })
+    await screen.findByText(/The photo changed while you confirmed, so nothing went out/)
+    expect(api.decideXQuick).not.toHaveBeenCalled()
+  })
 })

@@ -120,6 +120,9 @@ function useDecide(kind: 'article' | 'quote' | 'quick', id: string, title: strin
     const confirmed = getText ? getText() : ''
     setBusy('go'); setErr(null)
     try {
+      // the photo on screen at the confirm tap must be the one the dialog named (Sol r2: checking only after
+      // the flush lets a refresh that lands during a slow text save put the other photo back first)
+      if (getMedia && getMedia() !== media) throw new Error('The photo changed while you confirmed, so nothing went out. Check it and tap Post again')
       if (!await flush()) throw new Error('Your last change is not saved, so nothing went out. Retry it first')
       // the photo shown after every pending save settled must still be the one he confirmed (Sol r1: a save
       // whose answer failed puts the old photo back on screen while the server may hold the new one)
