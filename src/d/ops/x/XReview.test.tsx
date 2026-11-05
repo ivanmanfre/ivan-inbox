@@ -6,7 +6,7 @@ import { parseDHash } from '../../route'
 import { renderInFrame } from '../../test-utils'
 
 const api = vi.hoisted(() => ({
-  fetchXReview: vi.fn(), saveXArticle: vi.fn(), decideXArticle: vi.fn(), saveXQuote: vi.fn(), decideXQuote: vi.fn(), saveXQuick: vi.fn(), decideXQuick: vi.fn(),
+  fetchXReview: vi.fn(), saveXArticle: vi.fn(), decideXArticle: vi.fn(), saveXQuote: vi.fn(), decideXQuote: vi.fn(), saveXQuick: vi.fn(), decideXQuick: vi.fn(), fetchXQuickPhotos: vi.fn(), setXQuickPhoto: vi.fn(),
 }))
 vi.mock('../../../lib/xReview', async (orig) => ({ ...(await orig<typeof import('../../../lib/xReview')>()), ...api }))
 
@@ -124,9 +124,79 @@ describe('quick X post review', () => {
     fireEvent.click(document.querySelector('[data-verb=x-post]')!)
     await screen.findByRole('alertdialog')
     await act(async () => { fireEvent.click(document.querySelector('[data-verb=x-post-confirm]')!) })
-    await waitFor(() => expect(api.decideXQuick).toHaveBeenCalledWith(QID, 'post', 'edited B'))
+    await waitFor(() => expect(api.decideXQuick).toHaveBeenCalledWith(QID, 'post', 'edited B', null))
     expect(api.saveXQuick).toHaveBeenCalledWith(QID, 'edited B')
     expect(document.querySelector<HTMLTextAreaElement>('[data-x-quick]')!.readOnly).toBe(true)
     await act(async () => { release() })
+  })
+
+  const PHOTO = 'https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/post-stills/ivan-photos/warsaw-castle-square.jpg'
+  const OTHER = 'https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/post-stills/ivan-photos/poland-train-laptop.jpg'
+  const withPhoto = (): XReviewList => ({ ...QLIST, quicks: [{ ...QLIST.quicks[0], media_url: PHOTO, media_photo_id: 'p1', media_source: 'auto', media_reason: 'a Warsaw post', media_place: 'Warsaw, Poland' }] })
+  const open = async (list: XReviewList) => {
+    api.fetchXReview.mockResolvedValue(list)
+    const hash = `#exp/d/ops/x?id=${QID}`
+    renderInFrame(<XReviewPage layout="phone" route={parseDHash(hash)} navigate={() => {}} />, { layout: 'phone', hash })
+    await screen.findByText('Quick post')
+  }
+  const post = async () => {
+    fireEvent.click(document.querySelector('[data-verb=x-post]')!)
+    const dlg = await screen.findByRole('alertdialog')
+    const said = dlg.textContent
+    await act(async () => { fireEvent.click(document.querySelector('[data-verb=x-post-confirm]')!) })
+    return said
+  }
+
+  it('shows the photo on the X preview and binds Post to text AND photo', async () => {
+    api.decideXQuick.mockResolvedValue(undefined)
+    await open(withPhoto())
+    expect(document.querySelector('[data-x-preview=post] [data-x-photo] img')?.getAttribute('src')).toBe(PHOTO)
+    expect(document.querySelector('[data-x-photo-panel]')?.textContent).toContain('Warsaw, Poland')
+    const said = await post()
+    expect(said).toContain('the text and the photo')
+    await waitFor(() => expect(api.decideXQuick).toHaveBeenCalledWith(QID, 'post', QLIST.quicks[0].text, PHOTO))
+  })
+
+  it('removes the photo: preview goes text only and Post confirms text only', async () => {
+    api.setXQuickPhoto.mockResolvedValue(null)
+    api.decideXQuick.mockResolvedValue(undefined)
+    await open(withPhoto())
+    await act(async () => { fireEvent.click(document.querySelector('[data-verb=x-photo-remove]')!) })
+    expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, null)
+    await waitFor(() => expect(document.querySelector('[data-x-photo]')).toBeNull())
+    expect(document.querySelector('[data-x-photo-panel]')?.textContent).toContain('text only')
+    const said = await post()
+    expect(said).toContain('text only, no photo')
+    await waitFor(() => expect(api.decideXQuick).toHaveBeenCalledWith(QID, 'post', QLIST.quicks[0].text, null))
+  })
+
+  it('swaps the photo from his gallery and posts the new one', async () => {
+    api.fetchXQuickPhotos.mockResolvedValue([
+      { id: 'p1', url: PHOTO, place: 'Warsaw, Poland', scene: 'city', mood: 'sunny', description: 'Castle Square', has_ivan: false, recent: false },
+      { id: 'p2', url: OTHER, place: 'Fałków, Poland', scene: 'work', mood: 'focused', description: 'Laptop on a train', has_ivan: false, recent: true },
+    ])
+    api.setXQuickPhoto.mockResolvedValue(OTHER)
+    api.decideXQuick.mockResolvedValue(undefined)
+    await open(withPhoto())
+    fireEvent.click(document.querySelector('[data-verb=x-photo-change]')!)
+    await waitFor(() => expect(document.querySelectorAll('[data-verb=x-photo-pick]').length).toBe(2))
+    expect(document.querySelector<HTMLButtonElement>('[data-photo-id=p1]')!.disabled).toBe(true)
+    expect(document.querySelector('[data-photo-id=p2]')?.textContent).toContain('used')
+    await act(async () => { fireEvent.click(document.querySelector('[data-photo-id=p2]')!) })
+    expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2')
+    await waitFor(() => expect(document.querySelector('[data-x-preview=post] [data-x-photo] img')?.getAttribute('src')).toBe(OTHER))
+    await post()
+    await waitFor(() => expect(api.decideXQuick).toHaveBeenCalledWith(QID, 'post', QLIST.quicks[0].text, OTHER))
+  })
+
+  it('a failed swap keeps the old photo and says so', async () => {
+    api.fetchXQuickPhotos.mockResolvedValue([{ id: 'p2', url: OTHER, place: 'Fałków, Poland', scene: 'work', mood: '', description: '', has_ivan: false, recent: false }])
+    api.setXQuickPhoto.mockRejectedValue(new Error('post is no longer a draft'))
+    await open(withPhoto())
+    fireEvent.click(document.querySelector('[data-verb=x-photo-change]')!)
+    await waitFor(() => expect(document.querySelector('[data-photo-id=p2]')).toBeTruthy())
+    await act(async () => { fireEvent.click(document.querySelector('[data-photo-id=p2]')!) })
+    await screen.findByText(/Photo not changed: post is no longer a draft/)
+    expect(document.querySelector('[data-x-preview=post] [data-x-photo] img')?.getAttribute('src')).toBe(PHOTO)
   })
 })

@@ -82,8 +82,10 @@ export function XArticlePreview({ title, body, cover, images, handle, onLine }: 
   )
 }
 
-export function XPostPreview({ text, media, handle, quoteTitle, quoteCover }: {
+export function XPostPreview({ text, media, handle, quoteTitle, quoteCover, photo = null }: {
   text: string; media: string | null; handle: string; quoteTitle: string | null; quoteCover: string | null
+  /** A still image attached to the post (quick posts carry one of Ivan's own photos). */
+  photo?: string | null
 }) {
   return (
     <article className="xs xs-post" data-x-preview="post">
@@ -91,6 +93,11 @@ export function XPostPreview({ text, media, handle, quoteTitle, quoteCover }: {
       <div className="xs-main">
         <div className="xs-head"><Who handle={handle} extra={<> · now</>} /></div>
         <div className="xs-text">{text.trim() ? text : <span className="xs-empty">The line is empty.</span>}</div>
+        {photo && (
+          <div className="xs-media xs-photo" data-x-photo>
+            <img src={photo} alt="" />
+          </div>
+        )}
         {media && (
           <div className="xs-media">
             <video src={media} autoPlay muted loop playsInline preload="auto" />
