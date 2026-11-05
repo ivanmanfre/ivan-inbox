@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 vi.mock('./supabase', () => ({ supabase: { rpc: vi.fn() } }))
-import { xFlagItems, xWaitingCount, type XArticle, type XQuote, type XReviewList } from './xReview'
+import { photoRing, xFlagItems, xWaitingCount, type XArticle, type XQuote, type XReviewList } from './xReview'
 
 const NOW = Date.parse('2026-10-11T12:00:00Z')
 const art = (id: string, status: XArticle['status'], updated: string, extra: Partial<XArticle> = {}): XArticle => ({
@@ -52,5 +52,23 @@ describe('x flag: scheduled and publishing articles (Ivan 2026-10-15)', () => {
   it('a posted quote leaves the flag at once', () => {
     const q = quo('p1', 'posted', '2026-10-15T01:00:00Z', { posted_url: 'https://x.com/s/1' })
     expect(xFlagItems({ articles: [], quotes: [q], quicks: [] }, at('2026-10-15T11:00:00Z'))).toEqual([])
+  })
+})
+
+describe('photoRing: the photos the X quick card swipes through', () => {
+  const R = [{ id: 'a', url: 'https://x/a.jpg', place: 'Warsaw' }, { id: 'b', url: 'https://x/b.jpg', place: null }]
+  const k = (o: Record<string, unknown>) => ({ media_url: 'https://x/a.jpg', media_photo_id: 'a', media_place: 'Warsaw', media_ring: R, ...o }) as never
+  it('ranked order, current position', () => {
+    expect(photoRing(k({}))).toEqual({ ring: R, index: 0 })
+    expect(photoRing(k({ media_url: 'https://x/b.jpg', media_photo_id: 'b' })).index).toBe(1)
+  })
+  it('a current photo off the ranking leads', () => {
+    const r = photoRing(k({ media_url: 'https://x/c.jpg', media_photo_id: 'c', media_place: 'Kraków' }))
+    expect(r.ring.map(p => p.id)).toEqual(['c', 'a', 'b']); expect(r.index).toBe(0)
+  })
+  it('no current photo or no ring = nothing to swipe', () => {
+    expect(photoRing(k({ media_url: null, media_photo_id: null })).ring).toEqual([])
+    expect(photoRing(k({ media_ring: undefined })).ring.map(p => p.id)).toEqual(['a'])
+    expect(photoRing(k({ media_ring: [null, { id: 'z' }, ...R] })).ring.map(p => p.id)).toEqual(['a', 'b'])
   })
 })
