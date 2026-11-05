@@ -969,8 +969,10 @@ export function groupThreads(
     // it as one turned Ofir Bello's ARCH composer into an EMAIL composer and
     // switched Heather Sloan's RISE composer off. The thread stays LinkedIn unless
     // a real email conversation (their email, or a native email row) happened.
+    // 2026-11-05: a discarded or held outbound row never left either. A discarded referral email to
+    // the referred person (Éléa G. -> Gambit) was flipping the referrer's LinkedIn thread to email.
     const lastRode = messages.filter(m => !isDraft(m) && !isInternalConfirmation(m)
-      && !isSenderMirrorEmail(m) && !isEngineRetired(m)).at(-1) ?? last
+      && !isSenderMirrorEmail(m) && !isEngineRetired(m) && (m.direction !== 'outbound' || !!m.sent_at || !!m.approved_at)).at(-1) ?? last
     threads.push({
       prospect_id: last.prospect_id, prospect_name: last.prospect_name,
       prospect_company: last.prospect_company, client_id: last.client_id,

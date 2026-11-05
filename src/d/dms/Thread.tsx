@@ -378,7 +378,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
   const calendar = !t.spam && (t.client_id === 'anna' ? <AnnaTools prospectId={t.prospect_id} onInsert={text => setReply(value => value.trim() ? `${value.trim()}\n\n${text}` : text)} /> : <CalendarPanel key={'calendar:' + t.prospect_id} prospectId={t.prospect_id} clientId={t.client_id} onInsert={text => { setReply(value => value.trim() ? `${value.trim()}\n\n${text}` : text); setReplyComposition(null); dock.current?.querySelector<HTMLElement>('[aria-label="Email reply"], textarea')?.focus() }}  />)
 
   const referredLead = t.messages.some(m => m.ai_model === 'arch_referral_package_v1')
-  const referral = <ReferralCard key={'referral:' + t.prospect_id} t={t} onUseAcknowledgement={text => {
+  const referral = <ReferralCard key={'referral:' + t.prospect_id} t={t} onStaged={reload} onUseAcknowledgement={text => {
     setReply(text)
     setReplyComposition(null)
     if (t.ownerConfirmation) void verbs.holdRelease(t)

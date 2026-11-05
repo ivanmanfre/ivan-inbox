@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { Thread } from '../../lib/inbox'
-import { referralInbound, requestDmReferral } from '../../lib/dmReferral'
-import type { ReferralDraft } from '../../../supabase/functions/inbox-dm-draft/referral'
+import { referralEmailRow, referralInbound, requestDmReferral, stageReferralEmail } from '../../lib/dmReferral'
+import type { ReferralDraft, ReferralEmail } from '../../../supabase/functions/inbox-dm-draft/referral'
 import { ReferredLeadCard } from './ReferredLeadCard'
+import { emailRowSender } from '../../lib/inbox'
 
-export function ReferralCard({ t, onUseAcknowledgement }: { t: Thread; onUseAcknowledgement?: (text: string) => void }) {
+export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread; onUseAcknowledgement?: (text: string) => void; onStaged?: () => void }) {
   const inbound = referralInbound(t)
   const stamp = inbound ? `${t.prospect_id}:${inbound.id}` : ''
   const [retry, setRetry] = useState(0)
@@ -59,7 +60,46 @@ export function ReferralCard({ t, onUseAcknowledgement }: { t: Thread; onUseAckn
       </div>
       <details><summary>Research sources</summary>{contact.sources.map(s => <a className="d-link" key={s.url} href={s.url} target="_blank" rel="noreferrer">{s.title}</a>)}</details>
     </>}
+    {r?.email && inbound && <ReferralEmailDraft key={stamp} t={t} inbound={inbound} email={r.email} referredName={r.name} referredCompany={r.company} onStaged={onStaged} />}
+    {r?.email_reason && <p>{r.email_reason}</p>}
     {copyError && <p role="alert">Could not copy. Select the draft above and copy it.</p>}
-    {(result?.error || r?.status === 'unresolved' && !r.lead_prospect_id) && <button type="button" className="dm-k" onClick={() => setRetry(n => n + 1)}>Retry research</button>}
+    {(result?.error || r?.email_reason || r?.status === 'unresolved' && !r.lead_prospect_id) && <button type="button" className="dm-k" onClick={() => setRetry(n => n + 1)}>Retry research</button>}
   </section>
+}
+
+/** The first email to the referred person. Adding it writes an unapproved draft; Send approves it. */
+function ReferralEmailDraft({ t, inbound, email, referredName, referredCompany, onStaged }: { t: Thread; inbound: Thread['messages'][number]; email: ReferralEmail; referredName: string | null; referredCompany: string | null; onStaged?: () => void }) {
+  const [to, setTo] = useState(email.to)
+  const [cc, setCc] = useState(email.cc.join(', '))
+  const [subject, setSubject] = useState(email.subject)
+  const [body, setBody] = useState(email.body)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [added, setAdded] = useState(false)
+  const first = (referredName ?? '').split(' ')[0] || 'them'
+  const from = emailRowSender(t.client_id)
+  const row = referralEmailRow(t.messages, inbound)
+  // The optimistic "added" holds only until the refreshed thread shows the row; a later discard brings the form back.
+  useEffect(() => { if (row) setAdded(false) }, [row])
+  if (row?.sent_at) return <p className="dm-meta">Email sent to {row.recipient_email ?? to}.</p>
+  if (row || added) return <p className="dm-meta">The email to {first} is in the draft below. Send approves it (from {from}).</p>
+  const add = async () => {
+    setBusy(true); setError(null)
+    try { await stageReferralEmail(t, inbound, { to, cc: cc.split(/[,;\s]+/).filter(Boolean), subject, body }, referredName, referredCompany); setAdded(true); onStaged?.() }
+    catch (e) { setError(e instanceof Error ? e.message : 'The email could not be added. Try again.') }
+    finally { setBusy(false) }
+  }
+  return <>
+    <h4>Email to {first}</h4>
+    <p className="dm-meta">From {from}. Their reply comes back to this conversation.</p>
+    <label className="dm-email-field"><span className="dm-email-field-name">To</span><input aria-label="Referral email To" value={to} onChange={e => setTo(e.target.value)} disabled={busy} /></label>
+    <label className="dm-email-field"><span className="dm-email-field-name">Cc</span><input aria-label="Referral email Cc" value={cc} onChange={e => setCc(e.target.value)} disabled={busy} /></label>
+    <label className="dm-email-field"><span className="dm-email-field-name">Subject</span><input aria-label="Referral email subject" value={subject} onChange={e => setSubject(e.target.value)} disabled={busy} /></label>
+    <textarea aria-label={`Email draft for ${first}`} value={body} onChange={e => setBody(e.target.value)} rows={7} disabled={busy} />
+    <div className="dm-referral-actions">
+      <button type="button" className="dm-k" disabled={busy || !to.trim() || !subject.trim() || !body.trim()} onClick={() => void add()}>{busy ? 'Adding…' : 'Add email to draft'}</button>
+    </div>
+    {error && <p role="alert">{error}</p>}
+    <p className="dm-meta">Nothing is sent until you press Send on the draft.</p>
+  </>
 }

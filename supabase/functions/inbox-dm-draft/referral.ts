@@ -16,7 +16,13 @@ export type ReferralDraft = {
   revision?: number
   candidate?: { name: string; linkedin_url: string; summary: string | null; draft: string; sources: ReferralSource[] }
   lead_prospect_id?: string
+  /** First email to the referred person when the handoff gives their address (Éléa G. -> Gambit, 2026-11-05).
+   * Staged by the operator as an unapproved draft; the normal Send owns approval. */
+  email?: ReferralEmail | null
+  /** Why no email draft exists although the handoff gave an address. */
+  email_reason?: string | null
 }
+export type ReferralEmail = { to: string; cc: string[]; subject: string; body: string }
 
 /** A cheap trigger only. The researcher must confirm a named human handoff. */
 export function referralCandidate(text: string): boolean {

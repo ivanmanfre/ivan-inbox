@@ -56,6 +56,7 @@ describe('referral researcher', () => {
     vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
       calls.push({ url, body: JSON.parse(String(init.body)) })
       if (calls.length === 1) return claude(JSON.stringify({ name: 'Guillaume', company: 'Gambit' }))
+      if (calls.length === 3) return claude(JSON.stringify({ subject: 'Éléa from Panache pointed me your way', paragraphs: ['Hi Guillaume', 'Éléa said you handle creator work for Panache.', 'How do you usually set up creator campaigns for the studios you work with?'], reason: null }))
       return apify([item('Guillaume', 'Mesnage', 'guillaumemesnage', [['Gambit Guru', 'Founder', true]]), item('Guillaume', 'Dupont', 'gdupont', [['Gambit Digital Guru', 'Founder', true]])])
     })
     const text = "Yes, it's handled by the Gambit team. You can contact Guillaume or Laurène for any inquiries. :) guillaume@gambitdigital.ca laurene@gambitdigital.ca"
@@ -63,7 +64,24 @@ describe('referral researcher', () => {
     expect(calls[1].body.searchQuery).toBe('Guillaume Gambit')
     expect(result).toMatchObject({ status: 'unresolved', company: 'Gambit' })
     expect(result.candidate).toBeUndefined()
-    expect(calls).toHaveLength(2)
+    // No LinkedIn match, but the handoff gave the address: the first email is drafted (Ivan 2026-11-05).
+    expect(calls).toHaveLength(3)
+    expect(result.email).toEqual({ to: 'guillaume@gambitdigital.ca', cc: ['laurene@gambitdigital.ca'], subject: 'Éléa from Panache pointed me your way',
+      body: 'Hi Guillaume\n\nÉléa said you handle creator work for Panache.\n\nHow do you usually set up creator campaigns for the studios you work with?\n\nDavorin' })
+    expect(result.email_reason).toBeNull()
+  })
+  it('records why no email exists when the email draft breaks the copy rules', async () => {
+    let n = 0
+    vi.stubGlobal('fetch', async () => {
+      n++
+      if (n === 1) return claude(JSON.stringify({ name: 'Guillaume', company: 'Gambit' }))
+      if (n === 3) return claude(JSON.stringify({ subject: 'Hello there!', paragraphs: ['Hi Guillaume', 'Great to meet you!'], reason: null }))
+      return apify([])
+    })
+    const text = "Yes, it's handled by the Gambit team. You can contact Guillaume or Laurène for any inquiries. :) guillaume@gambitdigital.ca laurene@gambitdigital.ca"
+    const result = await researchReferral(db, { id: 'in-g3', text, company: 'Panache Jeux Numériques', referrer: 'Éléa G.' }, 'Davorin', [], [])
+    expect(result.email).toBeNull()
+    expect(result.email_reason).toMatch(/could not be written/)
   })
   it('searches a company stated beside the name even with no referrer company', async () => {
     const calls: { url: string; body: Record<string, unknown> }[] = []
