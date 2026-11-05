@@ -13,6 +13,17 @@ import { extras, when, type RowCtx } from './threadRows'
 
 export const ALL_PAGE = 30
 
+/** The row's last line. "You:" only for a message that went out; a live draft says "Draft:"; a
+ * discarded draft or an empty owner hold is never shown as sent (Jesse Padilla showed the drafter's
+ * "No reply recommended..." note as "You:", Matt Harlow a bare "You:", 2026-11-05). */
+export function previewLine(t: Thread): string {
+  const has = (m: Thread['last']) => Boolean(m.message_text?.trim())
+  if (t.draft && t.draft.id === t.last.id && has(t.draft)) return `Draft: ${flat(t.draft.message_text)}`
+  const real = t.messages.filter(m => has(m) && (m.direction === 'inbound' || m.sent_at)).at(-1)
+  if (real) return `${real.direction === 'outbound' ? 'You: ' : ''}${flat(real.message_text)}`
+  return t.last.direction === 'inbound' ? flat(t.last.message_text) : ''
+}
+
 export function AllConvos({ threads, c, folds, dated }: { threads: Thread[]; c: RowCtx; folds: Folds; dated: ReadonlyMap<string, string> }) {
   const [q, setQ] = useState('')
   const [n, setN] = useState(ALL_PAGE)
@@ -28,12 +39,11 @@ export function AllConvos({ threads, c, folds, dated }: { threads: Thread[]; c: 
         </div>
         {shown.map(t => {
           const st = statusOf(t, c.now, dated.get(t.prospect_id) ?? null)
-          const ours = t.last.direction === 'outbound'
           const ex = extras(t, c)
           return (
             <div key={t.prospect_id} className="dm-xrow" data-status={st.kind}>
               <Row {...ex} id={t.prospect_id} name={t.prospect_name} company={t.prospect_company} dim={st.kind === 'waiting' || st.kind === 'auto'}
-                line={<><span className={`dm-st dm-st-${st.kind}`}>{st.word}</span>{ours ? 'You: ' : ''}{flat(t.last.message_text)}</>}
+                line={<><span className={`dm-st dm-st-${st.kind}`}>{st.word}</span>{previewLine(t)}</>}
                 right={when(eventTime(t.last), c.now)} selected={c.selected === t.prospect_id}
                 onOpen={() => c.open(t)} />
             </div>
