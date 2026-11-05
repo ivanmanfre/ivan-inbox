@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { employerDomain, personEmailDomains, statedOutsideCompany } from '../../supabase/functions/inbox-dm-draft/research'
+import { employerDomain, handoffEmails, personEmailDomains, statedOutsideCompany } from '../../supabase/functions/inbox-dm-draft/research'
 
 const elea = "Yes, it's handled by the Gambit team. You can contact Guillaume or Laurène for any inquiries. :) guillaume@gambitdigital.ca laurene@gambitdigital.ca"
 describe('referral employer evidence (Éléa G. -> Gambit, Sol r4 cases)', () => {
@@ -21,5 +21,10 @@ describe('referral employer evidence (Éléa G. -> Gambit, Sol r4 cases)', () =>
     const text = 'Contact Ben Patton: old email ben@oldagency.com; current email ben@acmegrowth.com'
     expect(statedOutsideCompany(text, 'Acme Growth', 'Saint Spritz', 'Ben Patton')).toBe(true)
     expect(employerDomain(text, 'Ben Patton', 'Acme Growth')).toBe('acmegrowth')
+  })
+  it('hands over the addresses when no profile is found', () => {
+    expect(handoffEmails(elea, 'Guillaume', 'gambitdigital')).toEqual(['guillaume@gambitdigital.ca', 'laurene@gambitdigital.ca'])
+    expect(handoffEmails('Contact Ben Patton, ben.patton@gmail.com', 'Ben Patton', null)).toEqual([])
+    expect(handoffEmails('Try Ben, ben@acmegrowth.com, cc ops@other.com', 'Ben', null)).toEqual(['ben@acmegrowth.com'])
   })
 })

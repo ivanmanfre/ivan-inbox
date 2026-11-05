@@ -54,7 +54,13 @@ async function searchReferral(sb: Db, input: Input, name: string, author: string
     return e.current && (c === domain || c.startsWith(domain) && COMPANY_SUFFIX.test(c.slice(domain.length)))
   })) : found
   const pick = pickSearchMatch(profiles, name, input.company!)
-  if (!pick) return verifyReferral({ status: 'unresolved', reason: `No single LinkedIn profile named ${name} with a current ${input.company} role was found.` }, [], input)
+  if (!pick) {
+    // Some agency staff never list the employer on LinkedIn (Gambit Digital shows 5 of its people):
+    // point to the addresses the referrer gave so the card is not a dead end (Éléa G., 2026-11-05).
+    const emails = handoffEmails(input.text, name, domain)
+    return verifyReferral({ status: 'unresolved', reason: `No single LinkedIn profile named ${name} with a current ${input.company} role was found.${
+      emails.length ? ` The message gives email instead: ${emails.join(', ')}.` : ''}` }, [], input)
+  }
   const drafted = await fromProfile(profileIdentity(pick.profile, input, 'LinkedIn profile search'), author, rules, context, input.offer ?? null, agencyFor)
   if (pick.exact || drafted.status !== 'verified') return drafted
   // Same first name, different surname: the operator confirms the person before any contact.
@@ -124,13 +130,29 @@ export function personEmailDomains(text: string, person: string): string[] {
   for (const [, local, host] of text.matchAll(/([A-Za-z0-9._%+-]+)@((?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,})/g)) {
     const l = flat(local)
     if (!l.split(' ').includes(first) && l.replace(/ /g, '') !== full.replace(/ /g, '')) continue
-    const labels = host.toLowerCase().split('.')
-    // example.co.uk / example.com.au: a short second-level label under a country code is a public suffix.
-    const cut = labels.length > 2 && labels.at(-1)!.length === 2 && /^(?:co|com|net|org|gov|edu|ac|ltd|plc)$/.test(labels.at(-2)!) ? 3 : 2
-    const label = (labels.at(-cut) ?? '').replace(/-/g, '')
+    const label = registrable(host)
     if (label && !PERSONAL_MAIL.has(label) && !out.includes(label)) out.push(label)
   }
   return out
+}
+
+function registrable(host: string): string {
+  const labels = host.toLowerCase().split('.')
+  // example.co.uk / example.com.au: a short second-level label under a country code is a public suffix.
+  const cut = labels.length > 2 && labels.at(-1)!.length === 2 && /^(?:co|com|net|org|gov|edu|ac|ltd|plc)$/.test(labels.at(-2)!) ? 3 : 2
+  return (labels.at(-cut) ?? '').replace(/-/g, '')
+}
+
+/** Addresses the referrer handed over: every one at the person's employer domain (colleagues named in
+ * the same handoff included), else the person's own non-personal ones. */
+export function handoffEmails(text: string, person: string, domain: string | null): string[] {
+  const own = domain ? [domain] : personEmailDomains(text, person)
+  const out: string[] = []
+  for (const [addr, , host] of text.matchAll(/([A-Za-z0-9._%+-]+)@((?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,})/g)) {
+    const a = addr.toLowerCase()
+    if (own.includes(registrable(host)) && !out.includes(a)) out.push(a)
+  }
+  return out.slice(0, 4)
 }
 
 /** The one email domain of this person that names their employer, when the company agrees with it. */
