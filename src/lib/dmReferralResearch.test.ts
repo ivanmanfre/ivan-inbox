@@ -51,6 +51,20 @@ describe('referral researcher', () => {
     await researchReferral(db, input, 'Mattan', [], [])
     expect(calls[1].body.searchQuery).toBe('Ben Patton Saint Spritz')
   })
+  it('drops a same-word company that is not the email domain (Gambit Guru vs @gambitdigital.ca, live 2026-11-05)', async () => {
+    const calls: { url: string; body: Record<string, unknown> }[] = []
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      calls.push({ url, body: JSON.parse(String(init.body)) })
+      if (calls.length === 1) return claude(JSON.stringify({ name: 'Guillaume', company: 'Gambit' }))
+      return apify([item('Guillaume', 'Mesnage', 'guillaumemesnage', [['Gambit Guru', 'Founder', true]]), item('Guillaume', 'Dupont', 'gdupont', [['Gambit Digital Guru', 'Founder', true]])])
+    })
+    const text = "Yes, it's handled by the Gambit team. You can contact Guillaume or Laurène for any inquiries. :) guillaume@gambitdigital.ca laurene@gambitdigital.ca"
+    const result = await researchReferral(db, { id: 'in-g2', text, company: 'Panache Jeux Numériques', referrer: 'Éléa G.' }, 'Davorin', [], [])
+    expect(calls[1].body.searchQuery).toBe('Guillaume Gambit')
+    expect(result).toMatchObject({ status: 'unresolved', company: 'Gambit' })
+    expect(result.candidate).toBeUndefined()
+    expect(calls).toHaveLength(2)
+  })
   it('searches a company stated beside the name even with no referrer company', async () => {
     const calls: { url: string; body: Record<string, unknown> }[] = []
     vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {

@@ -6,7 +6,7 @@ type Db = { from: (t: string) => any } // eslint-disable-line @typescript-eslint
 type Input = { id: string; text: string; company: string | null; referrer?: string; offer?: string | null; offerVerifiedAt?: string | null }
 
 /** Bump when the draft shape changes so cached drafts (and the cron warm-up) redraft. */
-export const REFERRAL_REVISION = 6
+export const REFERRAL_REVISION = 7
 
 export async function researchReferral(sb: Db, input: Input, author: string, rules: unknown, context: unknown, mentions: Mention[] = []): Promise<ReferralDraft> {
   let name: unknown, outside: unknown
@@ -35,7 +35,7 @@ ${input.text}
   // Acknowledging a named handoff needs no capability claim or verified destination profile.
   try {
     const referral = tagged ? await fromProfile(mentionIdentity(tagged, input), author, rules, context, input.offer ?? null, agencyFor)
-      : input.company ? await searchReferral(sb, input, name, author, rules, context, agencyFor)
+      : input.company ? await searchReferral(sb, input, name, author, rules, context, agencyFor, employerDomain(input.text, name, input.company))
       : verifyReferral({ status: 'unresolved', reason: 'The company is needed to verify the referred profile.' }, [], input)
     return { ...referral, name: referral.name ?? name, acknowledgement, revision: REFERRAL_REVISION,
       offer_verified_at: input.offer && (referral.draft || referral.candidate) ? input.offerVerifiedAt ?? null : null }
@@ -45,8 +45,14 @@ ${input.text}
 }
 
 /** Untagged referral: search the name with the company through Apify (no seat, no cookie). */
-async function searchReferral(sb: Db, input: Input, name: string, author: string, rules: unknown, context: unknown, agencyFor: string | null): Promise<ReferralDraft> {
-  const profiles: MentionProfile[] = await apifyProfiles(sb, { query: `${name} ${input.company}` })
+async function searchReferral(sb: Db, input: Input, name: string, author: string, rules: unknown, context: unknown, agencyFor: string | null, domain: string | null = null): Promise<ReferralDraft> {
+  const found: MentionProfile[] = await apifyProfiles(sb, { query: `${name} ${input.company}` })
+  // Their own email names the employer exactly: "Gambit" in the text must not match a Gambit Guru
+  // founder when the address is @gambitdigital.ca (Éléa G., 2026-11-05).
+  const profiles = domain ? found.filter(p => p.experience.some(e => {
+    const c = flat(e.company).replace(/ /g, '')
+    return e.current && (c === domain || c.startsWith(domain) && COMPANY_SUFFIX.test(c.slice(domain.length)))
+  })) : found
   const pick = pickSearchMatch(profiles, name, input.company!)
   if (!pick) return verifyReferral({ status: 'unresolved', reason: `No single LinkedIn profile named ${name} with a current ${input.company} role was found.` }, [], input)
   const drafted = await fromProfile(profileIdentity(pick.profile, input, 'LinkedIn profile search'), author, rules, context, input.offer ?? null, agencyFor)
@@ -97,11 +103,40 @@ export function statedOutsideCompany(text: string, company: unknown, referrerCom
   if (typeof company !== 'string' || !/^[\p{L}\p{N}][\p{L}\p{N} &.'-]{0,59}$/u.test(company.trim()) || company.trim().split(/\s+/).length > 6) return false
   const want = flat(company), compact = want.replace(/ /g, ''), full = flat(person), first = full.split(' ')[0]
   if (!want || !first) return false
-  const byEmail = [...text.matchAll(/([A-Za-z0-9._%+-]+)@([A-Za-z0-9-]+)\./g)].some(([, local, domain]) => {
-    const d = flat(domain).replace(/ /g, ''), l = flat(local)
-    return (l.split(' ').includes(first) || l.replace(/ /g, '') === full.replace(/ /g, '')) && (d === compact || d.startsWith(compact))
-  })
+  const byEmail = personEmailDomains(text, person).some(d => d === compact || d.startsWith(compact))
   const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const byName = new RegExp(`(?:^| )(?:${esc(full)}|${esc(first)}) (?:at|from|of) ${esc(want)}(?: |$)`).test(flat(text))
   return (byEmail || byName) && (!referrerCompany || !sameCompany(company, referrerCompany))
+}
+
+const COMPANY_SUFFIX = /^(?:inc|llc|ltd|limited|gmbh|ag|sa|sas|sarl|srl|spa|bv|oy|ab|as|co|corp|group|agency|studio|studios|digital|media)$/
+// A personal mailbox says nothing about the employer.
+const PERSONAL_MAIL = new Set(['gmail', 'googlemail', 'yahoo', 'ymail', 'hotmail', 'outlook', 'live', 'msn', 'icloud', 'me', 'mac', 'aol',
+  'proton', 'protonmail', 'pm', 'gmx', 'yandex', 'mail', 'zoho', 'hey', 'fastmail', 'web', 'orange', 'free', 'laposte', 'wanadoo', 'videotron', 'sympatico', 'qq', '163'])
+
+/** The compacted registrable label of each of the person's own emails in the message
+ * (guillaume@gambitdigital.ca -> "gambitdigital", ben@team.saintspritz.com -> "saintspritz"): the local
+ * part holds their first name as a whole token, or their full name. Personal mailboxes are skipped. */
+export function personEmailDomains(text: string, person: string): string[] {
+  const full = flat(person), first = full.split(' ')[0]
+  if (!first) return []
+  const out: string[] = []
+  for (const [, local, host] of text.matchAll(/([A-Za-z0-9._%+-]+)@((?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,})/g)) {
+    const l = flat(local)
+    if (!l.split(' ').includes(first) && l.replace(/ /g, '') !== full.replace(/ /g, '')) continue
+    const labels = host.toLowerCase().split('.')
+    // example.co.uk / example.com.au: a short second-level label under a country code is a public suffix.
+    const cut = labels.length > 2 && labels.at(-1)!.length === 2 && /^(?:co|com|net|org|gov|edu|ac|ltd|plc)$/.test(labels.at(-2)!) ? 3 : 2
+    const label = (labels.at(-cut) ?? '').replace(/-/g, '')
+    if (label && !PERSONAL_MAIL.has(label) && !out.includes(label)) out.push(label)
+  }
+  return out
+}
+
+/** The one email domain of this person that names their employer, when the company agrees with it. */
+export function employerDomain(text: string, person: string, company: string | null): string | null {
+  if (!company) return null
+  const compact = flat(company).replace(/ /g, '')
+  const hits = personEmailDomains(text, person).filter(d => d === compact || d.startsWith(compact))
+  return hits.length === 1 ? hits[0] : null
 }

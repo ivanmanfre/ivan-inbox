@@ -1,4 +1,4 @@
--- Referral drafts moved to revision 6 (an outside company named in the handoff, by name or email domain,
+-- Referral drafts moved to revision 7 (an outside company named in the handoff, by name or email domain,
 -- is searched instead of the referrer's company: Éléa G. -> Gambit, 2026-11-05). Must match the handler revision.
 CREATE OR REPLACE FUNCTION public.inbox_referral_prewarm()
  RETURNS integer
@@ -34,9 +34,9 @@ begin
       and (l.message_text ~* '\m(speak(ing)?|talk(ing)?|reach(ing)? out|connect(ing)?|check(ing)?)\s+(to|with)\s+(?!(me|us|you|him|her|them)\M)(?!\S*@\S+\.[a-z]{2,})\S|\mcontact(ing)?\s+(?!(me|us|you|him|her|them)\M)(?!\S*@\S+\.[a-z]{2,})\S'
         or substring(l.message_text from '(?i)([[:alpha:]][[:alpha:]''-]*(?:\s+[[:alpha:]][[:alpha:]''-]*){0,3})\s+(?:handles?|does|manages?|runs?|looks after|is responsible for|is in charge of)\M')
            !~* '\m(i|we|you|he|she|they|it)\M')
-      -- Skip only what the handler would serve from cache (same message, revision 6: outside-company handoffs, 2026-11-05).
+      -- Skip only what the handler would serve from cache (same message, revision 7: outside-company handoffs + email-domain employer check, 2026-11-05).
       and not coalesce((p.enrichment_data -> 'inbox_referral' ->> 'input_message_id') = l.id::text
-                       and (p.enrichment_data -> 'inbox_referral' ->> 'revision') = '6', false)
+                       and (p.enrichment_data -> 'inbox_referral' ->> 'revision') = '7', false)
     order by l.at desc
     -- Calls the handler rejects are cheap (no model call), so a wide batch keeps a real referral
     -- from being crowded out.
