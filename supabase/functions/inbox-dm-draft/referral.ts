@@ -72,7 +72,7 @@ export type MentionProfile = {
 /** A LinkedIn @mention carries the tagged member's id, so it names one exact profile, not a search guess. */
 export type Mention = { label: string; profile: MentionProfile }
 
-const sameCompany = (a: string, b: string) => {
+export const sameCompany = (a: string, b: string) => {
   const x = norm(a), y = norm(b)
   return Boolean(x && y && (x === y || ` ${x} `.includes(` ${y} `) || ` ${y} `.includes(` ${x} `)))
 }

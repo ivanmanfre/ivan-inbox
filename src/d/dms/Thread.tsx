@@ -375,10 +375,10 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
     if (!composeOff) primary = <Key primary verb="compose-send" aria-label={composeLabel} className="dm-send" disabled={busy || emailBlocked || !reply.trim()} onClick={() => void compose()}>{composeLabel}</Key>
   }
 
-  const calendar = !t.spam && (t.client_id === 'anna' ? <AnnaTools prospectId={t.prospect_id} onInsert={text => setReply(value => value.trim() ? `${value.trim()}\n\n${text}` : text)} /> : <CalendarPanel key={t.prospect_id} prospectId={t.prospect_id} clientId={t.client_id} onInsert={text => { setReply(value => value.trim() ? `${value.trim()}\n\n${text}` : text); setReplyComposition(null); dock.current?.querySelector<HTMLElement>('[aria-label="Email reply"], textarea')?.focus() }}  />)
+  const calendar = !t.spam && (t.client_id === 'anna' ? <AnnaTools prospectId={t.prospect_id} onInsert={text => setReply(value => value.trim() ? `${value.trim()}\n\n${text}` : text)} /> : <CalendarPanel key={'calendar:' + t.prospect_id} prospectId={t.prospect_id} clientId={t.client_id} onInsert={text => { setReply(value => value.trim() ? `${value.trim()}\n\n${text}` : text); setReplyComposition(null); dock.current?.querySelector<HTMLElement>('[aria-label="Email reply"], textarea')?.focus() }}  />)
 
   const referredLead = t.messages.some(m => m.ai_model === 'arch_referral_package_v1')
-  const referral = <ReferralCard key={t.prospect_id} t={t} onUseAcknowledgement={text => {
+  const referral = <ReferralCard key={'referral:' + t.prospect_id} t={t} onUseAcknowledgement={text => {
     setReply(text)
     setReplyComposition(null)
     if (t.ownerConfirmation) void verbs.holdRelease(t)
@@ -421,7 +421,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
         {draftRunning && <div className="dm-b dm-b-in dx-typing" aria-hidden="true"><div className="dm-b-body"><i /><i /><i /></div></div>}
         <Banners v4 questionDirty={questionDirty} t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft && t.client_id !== 'anna' ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
         {!referredLead && referral}
-        {t.client_id === 'swishdm' && <SwishReferral key={t.prospect_id} t={t} />}
+        {t.client_id === 'swishdm' && <SwishReferral key={'swish-referral:' + t.prospect_id} t={t} />}
         <Draft v4 onSendVia={sendVia} deliveryBusy={busy} emailLoading={emailLoading} emailUnavailable={!!emailDetailsError} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload}
           strips={<DraftStrips t={t} verbs={verbs} />}
           foot={t.draft && <DraftWhy v4 t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
@@ -464,7 +464,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
         {historyView}
         <Banners questionDirty={questionDirty} t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft && t.client_id !== 'anna' ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
         {!referredLead && referral}
-        {t.client_id === 'swishdm' && <SwishReferral key={t.prospect_id} t={t} />}
+        {t.client_id === 'swishdm' && <SwishReferral key={'swish-referral:' + t.prospect_id} t={t} />}
         <Draft onSendVia={sendVia} deliveryBusy={busy} emailLoading={emailLoading} emailUnavailable={!!emailDetailsError} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
         {t.draft && <DraftWhy t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
         <RestoreStrip t={t} verbs={verbs} />

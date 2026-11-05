@@ -119,25 +119,25 @@ describe('server referral warm-up', () => {
   it('researches a referral with the push secret and no signed-in user, and saves the verified person', async () => {
     const { status, result, saved } = await draft([sentInvite, handoff], null, { ...server, body: { mode: 'referral' }, fetch: stages })
     expect(status).toBe(200)
-    expect(result.referral).toMatchObject({ status: 'verified', name: 'Larissa Vieira', role: 'Creator Strategy Manager', linkedin_url: 'https://www.linkedin.com/in/larissarvieira', draft: dm, revision: 5, input_message_id: 'handoff' })
+    expect(result.referral).toMatchObject({ status: 'verified', name: 'Larissa Vieira', role: 'Creator Strategy Manager', linkedin_url: 'https://www.linkedin.com/in/larissarvieira', draft: dm, revision: 6, input_message_id: 'handoff' })
     expect(saved).toHaveLength(1)
     expect((saved[0] as { p_referral: { status: string; researched_at: string } }).p_referral).toMatchObject({ status: 'verified', input_message_id: 'handoff' })
   })
   it('a cached draft whose offer line is past 72 h is researched again', async () => {
-    const cached = { status: 'verified', input_message_id: 'handoff', revision: 5, name: 'Larissa Vieira', offer_verified_at: new Date(Date.now() - 73 * 3600_000).toISOString() }
+    const cached = { status: 'verified', input_message_id: 'handoff', revision: 6, name: 'Larissa Vieira', offer_verified_at: new Date(Date.now() - 73 * 3600_000).toISOString() }
     const { result, upstream } = await draft([sentInvite, handoff], null, { ...server, body: { mode: 'referral' }, enrichment: { inbox_referral: cached }, fetch: stages })
     expect(upstream.length).toBeGreaterThan(0)
     expect(result.referral).toMatchObject({ status: 'verified', draft: dm, offer_verified_at: null })
   })
-  it('a cached revision-4 result is served without research', async () => {
-    const cached = { status: 'verified', input_message_id: 'handoff', revision: 5, name: 'Larissa Vieira' }
+  it('a cached current-revision result is served without research', async () => {
+    const cached = { status: 'verified', input_message_id: 'handoff', revision: 6, name: 'Larissa Vieira' }
     const { result, upstream, saved } = await draft([sentInvite, handoff], null, { ...server, body: { mode: 'referral' }, enrichment: { inbox_referral: cached } })
     expect(result.referral).toEqual(cached)
     expect(upstream).toHaveLength(0)
     expect(saved).toHaveLength(0)
   })
   it('a verified result saved meanwhile is never overwritten by a weaker one', async () => {
-    const kept = { status: 'verified', input_message_id: 'handoff', revision: 5, name: 'Larissa Vieira' }
+    const kept = { status: 'verified', input_message_id: 'handoff', revision: 6, name: 'Larissa Vieira' }
     const failing = (url: string, body: { messages?: { content: string }[] }) => url.includes('api.apify.com') ? [] : stages(url, body)
     const { result, saved } = await draft([sentInvite, handoff], null, { ...server, body: { mode: 'referral' }, fetch: failing, latest: kept })
     expect(result.referral).toEqual(kept)
