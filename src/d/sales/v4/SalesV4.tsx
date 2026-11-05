@@ -15,6 +15,7 @@ import { Segmented } from '../../../ds/Segmented'
 import { filterFortnight, SalesFilter, tokenLine, useSalesTokens } from '../Filter'
 import { nextCall, packIndex, readFortnight, throughLabel } from '../model'
 import { OrbitHost } from '../OrbitHost'
+import { EmailListsLink, EmailListsPage } from '../EmailLists'
 import { useSalesData } from '../useSalesData'
 import '../sales.css'
 import './sales4.css'
@@ -59,7 +60,10 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
 
   // Orbit opens inside the frame; the default view is today's (Ivan, 30 days).
   const orbit = (
-    <a href={ORBIT} className="sl-orbit" data-verb="open-orbit" onClick={e => { e.preventDefault(); navigate(ORBIT) }}><DIcon name="eye" /><span>Orbit</span></a>
+    <>
+      <EmailListsLink navigate={navigate} />
+      <a href={ORBIT} className="sl-orbit" data-verb="open-orbit" onClick={e => { e.preventDefault(); navigate(ORBIT) }}><DIcon name="eye" /><span>Orbit</span></a>
+    </>
   )
   const n = nextCall(f)
   const through = throughLabel(data.week.to)
@@ -74,6 +78,7 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
   const answer = <AnswerRow title={title} sub={savedLine ? `Showing saved ${savedLine}.` : undefined} tools={orbit} />
 
   if (route.sub === 'orbit') return <OrbitHost navigate={navigate} layout={layout} />
+  if (route.sub === 'email') return <EmailListsPage navigate={navigate} layout={layout} />
 
   const soft = [
     data.state.events === 'failed' && data.events.length > 0 ? `The calendar refresh failed (${data.eventsError}); showing the last read.` : '',
