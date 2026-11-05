@@ -363,7 +363,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
       {laterKey}
       {solvedKey}
     </>
-    primary = <Key primary verb="send" className="dm-send" disabled={busy || scheduledPending || emailLoading || !!emailDetailsError || draftFormattingError} onClick={() => void send()}>{sendLabel}</Key>
+    primary = <Key primary verb="send" className="dm-send" disabled={busy || scheduledPending || emailLoading || !!emailDetailsError || draftFormattingError} onClick={() => void send()}>{handEmailOpen && replyingByEmail ? `Draft: ${sendLabel}` : sendLabel}</Key>
   } else {
     small = <>
       {t.ownerConfirmation && !manualReply
@@ -406,7 +406,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
     // a stale draft, or a draft with his own words in the composer, draws Send outlined.
     const canSendDraft = hasDraft && !t.ownerConfirmation && !t.spam
     const sendV4 = canSendDraft
-      ? <Key primary={!t.draftStale && !reply.trim()} verb="send" className="dm-send" disabled={busy || scheduledPending || emailLoading || !!emailDetailsError || draftFormattingError} onClick={() => void send()}>{sendLabel}</Key>
+      ? <Key primary={!t.draftStale && !reply.trim()} verb="send" className="dm-send" disabled={busy || scheduledPending || emailLoading || !!emailDetailsError || draftFormattingError} onClick={() => void send()}>{handEmailOpen && replyingByEmail ? `Draft: ${sendLabel}` : sendLabel}</Key>
       : primary
     const scheduleKey = !t.spam && t.client_id !== 'anna' && !swishReply && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim())
       ? <Btn verb="schedule-send" className="dm-k dm-schedule-key" disabled={busy} onClick={() => void openSchedule()}>{reply.trim() ? 'Schedule reply' : 'Schedule send'}</Btn> : null
@@ -429,15 +429,15 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
         <RestoreStrip t={t} verbs={verbs} />
         <RedraftStatus t={t} now={now} reload={reload} />
         {scheduledPending && <ScheduledSends t={t} reload={reload} onEdit={setSchedule} />}
+        {calendar}
+        {redraftFor === t.prospect_id && hasDraft && canDraftAgain(t) && <RedraftAsk busy={busy} onCancel={() => setRedraftFor(null)}
+          onSend={note => void run(async () => { saver.cancel(); if (!(await verbs.redraft(t, note, edits))) setRedraftFor(null) })} />}
       </>}
       status={<>
         {emailError}
-        {calendar}
         {draftRunning && <p className="dm-meta dx-status" role="status"><span className="dx-busy">Reading the conversation and writing a draft. It will appear here for review.</span></p>}
         {scheduleFailure && <p className="dm-meta" role="alert">{scheduleFailure}</p>}
         {draftError && <p className="dm-meta" role="alert">{draftError}</p>}
-        {redraftFor === t.prospect_id && hasDraft && canDraftAgain(t) && <RedraftAsk busy={busy} onCancel={() => setRedraftFor(null)}
-          onSend={note => void run(async () => { saver.cancel(); if (!(await verbs.redraft(t, note, edits))) setRedraftFor(null) })} />}
       </>}
       keys={<>{scheduleKey}{small}{more}</>}
       primary={sendV4}
@@ -470,15 +470,15 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
         <RestoreStrip t={t} verbs={verbs} />
         <RedraftStatus t={t} now={now} reload={reload} />
         {scheduledPending && <ScheduledSends t={t} reload={reload} onEdit={setSchedule} />}
+        {calendar}
+        {redraftFor === t.prospect_id && hasDraft && canDraftAgain(t) && <RedraftAsk busy={busy} onCancel={() => setRedraftFor(null)}
+          onSend={note => void run(async () => { saver.cancel(); if (!(await verbs.redraft(t, note, edits))) setRedraftFor(null) })} />}
       </div>
       <div className="dm-dock" ref={dock}>
         {emailError}
-        {calendar}
         {draftRunning && <p className="dm-meta" role="status">Reading the conversation and writing a draft. It will appear here for review.</p>}
         {scheduleFailure && <p className="dm-meta" role="alert">{scheduleFailure}</p>}
         {draftError && <p className="dm-meta" role="alert">{draftError}</p>}
-        {redraftFor === t.prospect_id && hasDraft && canDraftAgain(t) && <RedraftAsk busy={busy} onCancel={() => setRedraftFor(null)}
-          onSend={note => void run(async () => { saver.cancel(); if (!(await verbs.redraft(t, note, edits))) setRedraftFor(null) })} />}
         {!hasDraft && !t.spam && composer(true)}
         <div className="dm-keys">
           <div className="dm-keys-s">{!t.spam && t.client_id !== 'anna' && !swishReply && !scheduledPending && !composeOff && !replyingByEmail && (hasDraft || reply.trim()) && <Btn verb="schedule-send" className="dm-k dm-schedule-key" disabled={busy} onClick={() => void openSchedule()}>{reply.trim() ? 'Schedule reply' : 'Schedule send'}</Btn>}{small}{more}</div>

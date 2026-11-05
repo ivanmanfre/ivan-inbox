@@ -304,11 +304,30 @@
 :root[data-skin-on~='dms'] .dx-card .dm-src-g{padding:2px 0 6px;border-top:0}
 :root[data-skin-on~='dms'] .dx-card .dm-src-g small{font:500 12px var(--f);letter-spacing:.16em;text-transform:uppercase;color:var(--t3)}
 :root[data-skin-on~='dms'] .dx-conv .dm-referral{margin-top:12px;border-radius:12px;background:rgba(225,234,219,.45)}
+:root[data-skin-on~='dms'] .dx-conv>.dm-calendar{margin:12px 0}
 
 /* ---- the dock: keys row (secondary · primary pinned right, never clipped), composer under it ---- */
 :root[data-skin-on~='dms'] .dx-pane .dm-dock.dx-dock{flex:none;gap:8px;padding:12px 20px;border-top:1px solid var(--ds-line);background:transparent}
-/* 2026-10-27: the dock never takes more than half the pane, so the history above always stays visible and scrollable */
+/* Keep the conversation visible while the email body scrolls below fixed action rows. */
 :root[data-skin-on~='dms'] .d-desktop .dx-pane .dm-dock.dx-dock{max-height:50%;overflow-y:auto;overscroll-behavior:contain}
+:root[data-skin-on~='dms'] .dx-pane .dm-dock.dx-dock:has(>.dm-email-composer){max-height:50%;min-height:0;overflow:hidden}
+:root[data-skin-on~='dms'] .dx-dock>.dm-email-composer{display:flex;flex:1 1 auto;flex-direction:column;min-height:0;overflow:hidden}
+:root[data-skin-on~='dms'] .dx-dock .dm-email-composer-body{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;overflow-anchor:none}
+:root[data-skin-on~='dms'] .dx-dock .dm-email-toolbar,:root[data-skin-on~='dms'] .dx-dock .dm-email-composer-foot{flex:none}
+:root[data-skin-on~='dms'] .dx-dock .dm-email-composer .dm-email-sheet{max-height:none;overflow:visible}
+:root[data-skin-on~='dms'] .dx-dock .dm-rich-email-content .tiptap{min-height:80px;max-height:none;overflow-y:visible}
+:root[data-skin-on~='dms'] .dx-dock .dm-email-composer .dm-email-textarea{min-height:80px;max-height:none;resize:none}
+:root[data-skin-on~='dms'] .dx-dock .dm-email-reply-context{margin-bottom:6px;padding:6px 10px}
+:root[data-skin-on~='dms'] .dx-dock .dm-email-reply-context-top>span:first-child{display:none}
+:root[data-skin-on~='dms'] .dx-dock .dm-email-reply-context-meta{margin-top:2px}
+:root[data-skin-on~='dms'] .dx-dock .dm-email-reply-context-subject{min-width:0;max-width:45%;margin-top:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+:root[data-skin-on~='dms'] .dx-dock .dm-email-reply-context p{margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:root[data-skin-on~='dms'] .dx-dock .dm-email-reply-context p[data-expanded]{white-space:pre-wrap;overflow:visible}
+:root[data-skin-on~='dms'] .dx-dock .dm-email-reply-context-actions{margin-top:2px}
+:root[data-skin-on~='dms'] .dx-dock .dm-email-edit-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:12px;padding-top:0}
+:root[data-skin-on~='dms'] .dx-dock .dm-email-edit-fields .dm-email-field{padding:4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:root[data-skin-on~='dms'] .dx-dock .dm-email-edit-fields .dm-email-field-name{width:auto}
+:root[data-skin-on~='dms'] .dx-dock .dm-email-edit-fields .dm-email-field>span:last-child{overflow:hidden;text-overflow:ellipsis}
 :root[data-skin-on~='dms'] .dx-dock .dx-hand-email{width:100%;min-height:36px;padding:6px 12px;font:400 13px/1.45 var(--f);color:var(--t2);border:0;border-radius:10px;background:var(--ds-well-fill);box-shadow:var(--ds-well-shadow);text-align:left;cursor:pointer}
 :root[data-skin-on~='dms'] .dx-dock .dx-hand-email:hover{background:var(--ds-accent-soft);color:var(--t1)}
 :root[data-skin-on~='dms'] .dx-dock .dm-meta{font:400 12px/1.45 var(--f);color:var(--t2)}
@@ -380,6 +399,7 @@
 :root[data-skin-on~='dms'] .d-phone .dx-phone .dx-conv{padding:0 12px}
 :root[data-skin-on~='dms'] .d-phone .dx-phone .dx-conv .dm-b{max-width:86%}
 :root[data-skin-on~='dms'] .d-phone .dx-phone .dx-pane .dm-dock.dx-dock{padding:8px 12px;background:var(--ds-canvas)}
+:root[data-skin-on~='dms'] .d-phone .dx-phone .dx-pane .dm-dock.dx-dock:has(>.dm-email-composer){max-height:65%}
 :root[data-skin-on~='dms'] .d-phone .dx-phone .dx-keys .dm-k{min-height:44px;height:44px}
 :root[data-skin-on~='dms'] .d-phone .dx-phone .dx-pane :is(.dx-keys,.dm-comp) .d-key{height:44px;min-width:96px}
 :root[data-skin-on~='dms'] .d-phone .dx-phone .dx-dock .dm-comp textarea,:root[data-skin-on~='dms'] .d-phone .dx-phone .dx-card .dm-edit{font-size:16px}
@@ -450,6 +470,10 @@ html.brief-motion-off .dx-thumb-jump .dx-seats-thumb > span,html.brief-motion-of
 :root[data-skin-on~='dms'] .dx-pane.dm-pane-phone .dx-keys .dm-keys-s{flex-wrap:nowrap;justify-content:space-between;gap:2px}
 :root[data-skin-on~='dms'] .dx-pane.dm-pane-phone .dx-keys .dm-keys-s>*{white-space:nowrap}
 :root[data-skin-on~='dms'] .dx-pane.dm-pane-phone .dx-keys>:last-child:not(.dm-keys-s){width:100%;flex:none}
+/* A manual email reply below a draft has its own Send; keep the draft key beside scrollable secondary actions. */
+:root[data-skin-on~='dms'] .dx-pane.dm-pane-phone .dx-dock:has(.dm-email-composer-foot .dm-email-send) .dm-keys.dx-keys{grid-template-columns:minmax(0,1fr) auto}
+:root[data-skin-on~='dms'] .dx-pane.dm-pane-phone .dx-dock:has(.dm-email-composer-foot .dm-email-send) .dx-keys .dm-keys-s{min-width:0;overflow-x:auto;flex-wrap:nowrap;justify-content:flex-start;scrollbar-width:thin}
+:root[data-skin-on~='dms'] .dx-pane.dm-pane-phone .dx-dock:has(.dm-email-composer-foot .dm-email-send) .dx-keys>:last-child:not(.dm-keys-s){width:auto}
 /* All sends: tag filter chips above the log. */
 .dm-sends-tags{display:flex;flex-wrap:wrap;gap:4px;padding:4px 8px 8px}
 .dm-sends-tags button{font:500 12px/22px var(--f);padding:0 8px;border-radius:999px;background:var(--ds-well-fill,rgba(0,0,0,.04));color:var(--t2);border:0;cursor:pointer}
