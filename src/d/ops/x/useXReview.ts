@@ -12,21 +12,30 @@ let st: XState = { list: null, error: null, loading: false, at: null }
 const subs = new Set<() => void>()
 const emit = () => subs.forEach(f => f())
 let inflight: Promise<void> | null = null
+// Bumped by every local change. A read that started before a change is stale (it could put back the
+// photo Ivan just swapped away, Sol r1 2026-11-05): it is dropped and read again.
+let rev = 0
 
 export function refreshX(): Promise<void> {
   if (inflight) return inflight
+  const started = rev
   st = { ...st, loading: true }
   emit()
   inflight = fetchXReview().then(
-    list => { st = { list, error: null, loading: false, at: Date.now() } },
+    list => { st = started === rev ? { list, error: null, loading: false, at: Date.now() } : { ...st, loading: false } },
     (e: unknown) => { st = { ...st, error: e instanceof Error ? e.message : String(e), loading: false } },
-  ).finally(() => { inflight = null; emit() })
+  ).finally(() => {
+    inflight = null
+    emit()
+    if (started !== rev) void refreshX()
+  })
   return inflight
 }
 
 /** Optimistic local change (e.g. the status right after Publish), replaced by the next read. */
 export function patchX(f: (l: XReviewList) => XReviewList) {
   if (!st.list) return
+  rev++
   st = { ...st, list: f(st.list) }
   emit()
 }
@@ -35,7 +44,7 @@ const subscribe = (f: () => void) => { subs.add(f); return () => { subs.delete(f
 const snap = () => st
 
 /** Test hook. */
-export function __resetXForTests(s: Partial<XState> = {}) { st = { list: null, error: null, loading: false, at: null, ...s }; inflight = null }
+export function __resetXForTests(s: Partial<XState> = {}) { st = { list: null, error: null, loading: false, at: null, ...s }; inflight = null; rev = 0 }
 
 export function useXReview() {
   const s = useSyncExternalStore(subscribe, snap, snap)

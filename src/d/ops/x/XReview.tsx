@@ -2,7 +2,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode
 import { Segmented } from '../../../ds/Segmented'
 import { LiveDot } from '../../../ds/Working'
 import { wordCount } from '../../../lib/xArticleMd'
-import { decideXArticle, decideXQuick, decideXQuote, saveXArticle, saveXQuick, saveXQuote, xFlagItems, type XArticle, type XQuick, type XQuote } from '../../../lib/xReview'
+import { decideXArticle, decideXQuick, decideXQuote, fetchXQuickPhotos, photoThumb, saveXArticle, saveXQuick, saveXQuote, setXQuickPhoto, xFlagItems, type XArticle, type XPhoto, type XQuick, type XQuote } from '../../../lib/xReview'
 import { useFrameCounts } from '../../counts/useFrameCounts'
 import type { Layout, PlaceProps } from '../../places'
 import { dHash } from '../../route'
@@ -99,7 +99,7 @@ function Head({ layout, label, title, navigate, actions }: { layout: Layout; lab
   )
 }
 
-function useDecide(kind: 'article' | 'quote' | 'quick', id: string, title: string, navigate: (h: string) => void, flush: () => Promise<boolean>, getText?: () => string) {
+function useDecide(kind: 'article' | 'quote' | 'quick', id: string, title: string, navigate: (h: string) => void, flush: () => Promise<boolean>, getText?: () => string, getMedia?: () => string | null) {
   const confirm = useDConfirm()
   const toast = useToast()
   const c = useFrameCounts()
@@ -107,10 +107,12 @@ function useDecide(kind: 'article' | 'quote' | 'quick', id: string, title: strin
   const [busy, setBusy] = useState<null | 'go' | 'discard'>(null)
   const [err, setErr] = useState<string | null>(null)
   const go = useCallback(async () => {
+    // the photo the preview shows when he taps Post; the server refuses if the stored one differs by then
+    const media = getMedia ? getMedia() : null
     const ok = await confirm(kind === 'article'
       ? { title: 'Publish this article on X?', message: 'It goes live on @theivanpill within about a minute, with the title, cover, images and text as the preview shows them.', confirmText: 'Publish to X', verb: 'x-publish-confirm' }
       : kind === 'quick'
-        ? { title: 'Post this on X?', message: 'It goes live on @theivanpill within about a minute, exactly as the preview shows it.', confirmText: 'Post on X', verb: 'x-post-confirm' }
+        ? { title: 'Post this on X?', message: `It goes live on @theivanpill within about a minute, exactly as the preview shows it: ${media ? 'the text and the photo' : 'text only, no photo'}.`, confirmText: 'Post on X', verb: 'x-post-confirm' }
         : { title: 'Post this on X?', message: 'It goes live on @theivanpill within about a minute: your line, the GIF, and the article quoted underneath.', confirmText: 'Post on X', verb: 'x-post-confirm' })
     if (!ok) return
     // what the preview showed when he confirmed; the editor locks while busy, the server checks it
@@ -122,7 +124,7 @@ function useDecide(kind: 'article' | 'quote' | 'quick', id: string, title: strin
         await decideXArticle(id, 'publish')
         patchX(l => ({ ...l, articles: l.articles.map(a => a.id === id ? { ...a, status: 'approved' } : a) }))
       } else if (kind === 'quick') {
-        await decideXQuick(id, 'post', confirmed)
+        await decideXQuick(id, 'post', confirmed, media)
         patchX(l => ({ ...l, quicks: l.quicks.map(k => k.id === id ? { ...k, status: 'approved' } : k) }))
       } else {
         await decideXQuote(id, 'post')
@@ -130,7 +132,7 @@ function useDecide(kind: 'article' | 'quote' | 'quick', id: string, title: strin
       }
       refreshCounts('ops')
     } catch (e) { setErr(msg(e)) } finally { setBusy(null) }
-  }, [confirm, kind, id, flush, refreshCounts, getText])
+  }, [confirm, kind, id, flush, refreshCounts, getText, getMedia])
   const discard = useCallback(async () => {
     const ok = await confirm({ title: kind === 'article' ? 'Discard this article?' : kind === 'quick' ? 'Discard this post?' : 'Discard this quote post?', message: 'It is cancelled and never goes to X.', confirmText: 'Discard', verb: 'x-discard-confirm', danger: true })
     if (!ok) return
@@ -317,6 +319,71 @@ function QuoteReview({ q, layout, navigate }: { q: XQuote; layout: Layout; navig
 
 const KIND_WORD: Record<string, string> = { win: 'Win', doubt: 'Doubt', funny: 'Funny', build: 'Building', take: 'Take' }
 
+// THE PHOTO (Ivan 2026-11-05: every quick post carries one of his own photos, picked to fit). Swap opens
+// his gallery (ivan_photo_library only); Remove posts text only. Each change is saved on the server at
+// once, and Post is bound to the photo the preview shows.
+function PhotoPanel({ k, locked }: { k: XQuick; locked: boolean }) {
+  const [open, setOpen] = useState(false)
+  const [photos, setPhotos] = useState<XPhoto[] | null>(null)
+  const [loadErr, setLoadErr] = useState<string | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const media = k.media_url ?? null
+  const load = useCallback(async () => {
+    setLoadErr(null)
+    try { setPhotos(await fetchXQuickPhotos()) } catch (e) { setLoadErr(msg(e)) }
+  }, [])
+  const choose = useCallback(async (photoId: string | null) => {
+    setBusy(photoId ?? 'remove'); setErr(null)
+    try {
+      const url = await setXQuickPhoto(k.id, photoId)
+      const p = photos?.find(x => x.id === photoId)
+      patchX(l => ({ ...l, quicks: l.quicks.map(q => q.id === k.id ? { ...q, media_url: url, media_photo_id: photoId, media_source: 'ivan', media_reason: photoId ? 'picked by Ivan' : 'removed by Ivan', media_place: p?.place ?? null } : q) }))
+      setOpen(false)
+    } catch (e) { setErr(msg(e)) } finally { setBusy(null) }
+  }, [k.id, photos])
+  const toggle = () => { const next = !open; setOpen(next); if (next && !photos) void load() }
+  const disabled = locked || busy !== null
+  const note = media
+    ? (k.media_source === 'ivan' ? 'Your pick' : k.media_reason ? `Picked: ${k.media_reason}` : 'Picked for this post')
+    : k.media_source === 'ivan' ? 'Removed: this one posts as text only.'
+      : k.media_source === 'auto' ? `No photo fits: ${(k.media_reason ?? '').replace(/^none:\s*/, '') || 'nothing in your gallery matched.'}`
+        : 'No photo picked yet. Pick one from your gallery.'
+  return (
+    <div className="xr-photo" data-x-photo-panel>
+      <div className="xr-photo-row">
+        {media ? <img className="xr-photo-cur" src={photoThumb(media, 160)} alt="" /> : <div className="xr-photo-cur xr-photo-none" aria-hidden>No photo</div>}
+        <div className="xr-photo-t">
+          <b>Photo{k.media_place ? ` · ${k.media_place}` : ''}</b>
+          <small>{note}</small>
+        </div>
+      </div>
+      {!locked && (
+        <div className="xr-photo-keys">
+          <button type="button" className="xr-link" data-verb="x-photo-change" aria-expanded={open} disabled={disabled} onClick={toggle}>{open ? 'Close gallery' : media ? 'Change photo' : 'Pick a photo'}</button>
+          {media && <button type="button" className="xr-link xr-link-quiet" data-verb="x-photo-remove" disabled={disabled} onClick={() => void choose(null)}>{busy === 'remove' ? 'Removing…' : 'Remove photo'}</button>}
+        </div>
+      )}
+      {err && <div className="xr-ban xr-ban-failed" role="alert">Photo not changed: {err}</div>}
+      {open && !locked && (
+        <div className="xr-gallery" role="group" aria-label="Your photos">
+          {loadErr ? <div className="xr-ban xr-ban-failed" role="alert">Could not read your gallery: {loadErr} <button type="button" className="xr-link" onClick={() => void load()}>Retry</button></div>
+            : !photos ? <p className="xr-quiet">Reading your gallery…</p>
+              : photos.map(p => (
+                <button key={p.id} type="button" className={`xr-gal${p.url === media ? ' xr-gal-on' : ''}`} data-verb="x-photo-pick" data-photo-id={p.id}
+                  disabled={disabled || p.url === media} aria-label={`${p.place ?? 'Photo'}: ${p.description ?? ''}${p.recent ? ' (used recently)' : ''}`}
+                  onClick={() => void choose(p.id)}>
+                  <img src={photoThumb(p.url)} alt="" loading="lazy" />
+                  {p.recent && <span className="xr-gal-tag">used</span>}
+                  {busy === p.id && <span className="xr-gal-tag xr-gal-busy">saving…</span>}
+                </button>
+              ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function QuickReview({ k, layout, navigate }: { k: XQuick; layout: Layout; navigate: (h: string) => void }) {
   const editable = k.status === 'draft'
   const server = useMemo(() => k.text ?? '', []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -327,7 +394,10 @@ function QuickReview({ k, layout, navigate }: { k: XQuick; layout: Layout; navig
   const textRef = useRef(text)
   textRef.current = text
   const getText = useCallback(() => textRef.current, [])
-  const d = useDecide('quick', k.id, text.split('\n')[0] || 'Quick post', navigate, auto.flush, getText)
+  const mediaRef = useRef<string | null>(k.media_url ?? null)
+  mediaRef.current = k.media_url ?? null
+  const getMedia = useCallback(() => mediaRef.current, [])
+  const d = useDecide('quick', k.id, text.split('\n')[0] || 'Quick post', navigate, auto.flush, getText, getMedia)
   const locked = !editable || d.busy !== null
   const options = [k.text ?? '', ...(k.options ?? [])].filter((o, i, a) => typeof o === 'string' && o.trim() && a.indexOf(o) === i)
   const label = `Quick post${k.kind && KIND_WORD[k.kind] ? ` · ${KIND_WORD[k.kind]}` : ''} · ${STATUS_WORD[k.status] ?? k.status}`
@@ -338,6 +408,7 @@ function QuickReview({ k, layout, navigate }: { k: XQuick; layout: Layout; navig
         <textarea ref={ref} rows={4} className="xr-input xr-line" value={text} readOnly={locked} data-x-quick
           onChange={e => auto.setValue(e.target.value)} onBlur={() => void auto.flush()} />
       </label>
+      <PhotoPanel k={k} locked={locked} />
       {options.length > 1 && (
         <div className="xr-chips xr-chips-quick" role="group" aria-label="Other versions">
           {options.map((o, i) => (
@@ -354,7 +425,7 @@ function QuickReview({ k, layout, navigate }: { k: XQuick; layout: Layout; navig
       )}
     </div>
   )
-  const preview = <XPostPreview text={text} media={null} handle={k.account || 'theivanpill'} quoteTitle={null} quoteCover={null} />
+  const preview = <XPostPreview text={text} media={null} photo={k.media_url ?? null} handle={k.account || 'theivanpill'} quoteTitle={null} quoteCover={null} />
   const saveLine = <SaveLine status={auto.status} error={auto.error} savedAt={auto.savedAt} retry={() => void auto.flush()} readOnly={!editable} />
   const top = (
     <>

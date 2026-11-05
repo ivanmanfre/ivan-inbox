@@ -70,6 +70,26 @@ export type XQuick = {
   created_at: string
   updated_at: string | null
   expires_at: string | null
+  /** One of Ivan's own library photos that goes out with the post (2026-11-05); null = text only. */
+  media_url?: string | null
+  media_photo_id?: string | null
+  /** auto = the lane picked it, ivan = he swapped or removed it here, null = not picked yet. */
+  media_source?: 'auto' | 'ivan' | null
+  media_reason?: string | null
+  media_place?: string | null
+}
+
+/** A photo from Ivan's own gallery (ivan_photo_library), offered by the quick-post photo picker. */
+export type XPhoto = {
+  id: string
+  url: string
+  place: string | null
+  scene: string | null
+  mood: string | null
+  description: string | null
+  has_ivan: boolean | null
+  /** On one of the last 10 quick posts. */
+  recent: boolean
 }
 
 export type XReviewList = { articles: XArticle[]; quotes: XQuote[]; quicks: XQuick[] }
@@ -114,10 +134,34 @@ export async function saveXQuick(id: string, text: string): Promise<void> {
   if (error) fail(error)
 }
 
-/** Post is bound to the exact text Ivan confirmed: the server refuses if the stored post differs. */
-export async function decideXQuick(id: string, action: 'post' | 'discard', confirmedText?: string): Promise<void> {
-  const { error } = await supabase.rpc('x_quick_decide', { p_id: id, p_action: action, p_text: confirmedText ?? null })
+/**
+ * Post is bound to the exact text AND photo Ivan confirmed: the server refuses if the stored post or
+ * photo differs. confirmedMedia null = he confirmed a text-only post.
+ */
+export async function decideXQuick(id: string, action: 'post' | 'discard', confirmedText?: string, confirmedMedia?: string | null): Promise<void> {
+  const { error } = await supabase.rpc('x_quick_decide', { p_id: id, p_action: action, p_text: confirmedText ?? null, p_media_url: confirmedMedia ?? null })
   if (error) fail(error)
+}
+
+/** Ivan's gallery for the photo picker (operator only). */
+export async function fetchXQuickPhotos(): Promise<XPhoto[]> {
+  const { data, error } = await supabase.rpc('x_quick_photo_choices')
+  if (error) fail(error)
+  return Array.isArray(data) ? (data as XPhoto[]) : []
+}
+
+/** Swap the photo of a draft (a gallery photo id) or remove it (null). Returns the new image URL. */
+export async function setXQuickPhoto(id: string, photoId: string | null): Promise<string | null> {
+  const { data, error } = await supabase.rpc('x_quick_set_photo', { p_id: id, p_photo_id: photoId })
+  if (error) fail(error)
+  const d = (data ?? {}) as { media_url?: string | null }
+  return d.media_url ?? null
+}
+
+/** A small square thumbnail of a public storage image (Supabase image transform); other URLs pass through. */
+export function photoThumb(url: string, px = 240): string {
+  const m = url.match(/^(https:\/\/[a-z0-9]+\.supabase\.co\/storage\/v1)\/object\/public\/(.+)$/)
+  return m ? `${m[1]}/render/image/public/${m[2]}?width=${px}&height=${px}&resize=cover&quality=60` : url
 }
 
 // ---- the flag ----
