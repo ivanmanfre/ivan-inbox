@@ -12,6 +12,7 @@ vi.mock('../../../lib/xReview', async (orig) => ({ ...(await orig<typeof import(
 
 import XReviewPage from './XReview'
 import { __resetXForTests } from './useXReview'
+import { __resetPhotoSavesForTests } from './photoSaves'
 
 const ID = '040bf74b-6ee0-4558-8fd3-e4e1c604f091'
 const LIST: XReviewList = {
@@ -32,6 +33,7 @@ function page(layout: 'phone' | 'desktop' = 'phone') {
 
 beforeEach(() => {
   __resetXForTests()
+  __resetPhotoSavesForTests()
   localStorage.clear()
   api.fetchXReview.mockResolvedValue(LIST)
   api.saveXArticle.mockResolvedValue(undefined)
@@ -198,5 +200,210 @@ describe('quick X post review', () => {
     await act(async () => { fireEvent.click(document.querySelector('[data-photo-id=p2]')!) })
     await screen.findByText(/Photo not changed: post is no longer a draft/)
     expect(document.querySelector('[data-x-preview=post] [data-x-photo] img')?.getAttribute('src')).toBe(PHOTO)
+  })
+
+  // ---- swipe through the ranked photos (Ivan 2026-11-05) ----
+  const THIRD = 'https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/post-stills/ivan-photos/gdansk-pier.jpg'
+  const RING = [{ id: 'p1', url: PHOTO, place: 'Warsaw, Poland' }, { id: 'p2', url: OTHER, place: 'Fałków, Poland' }, { id: 'p3', url: THIRD, place: 'Gdańsk, Poland' }]
+  const withRing = (over: Partial<XReviewList['quicks'][number]> = {}): XReviewList => ({ ...QLIST, quicks: [{ ...withPhoto().quicks[0], media_ring: RING, ...over }] })
+  const shown = () => document.querySelector('[data-x-preview=post] [data-x-photo] img')?.getAttribute('src')
+  const dot = () => [...document.querySelectorAll('[data-x-photo-dots] [data-dot]')].findIndex(d => d.getAttribute('aria-current') === 'true')
+  const swipe = (dx: number) => {
+    const el = document.querySelector('[data-x-photo]')!
+    fireEvent.pointerDown(el, { clientX: 200, clientY: 100, pointerId: 1, isPrimary: true })
+    fireEvent.pointerMove(el, { clientX: 200 + dx / 2, clientY: 102, pointerId: 1, isPrimary: true })
+    fireEvent.pointerUp(el, { clientX: 200 + dx, clientY: 104, pointerId: 1, isPrimary: true })
+  }
+  const deferred = () => { let res: (v: string | null) => void = () => {}; let rej: (e: Error) => void = () => {}; const p = new Promise<string | null>((a, b) => { res = a; rej = b }); return { p, res, rej } }
+
+  it('no other fitting photos = no swipe UI', async () => {
+    await open(withPhoto())
+    expect(document.querySelector('[data-x-photo-dots]')).toBeNull()
+    expect(document.querySelector('[data-verb=x-photo-next]')).toBeNull()
+    cleanup(); __resetXForTests(); __resetPhotoSavesForTests()
+    await open(withRing({ media_ring: [RING[0]] }))
+    expect(document.querySelector('[data-x-photo-dots]')).toBeNull()
+  })
+
+  it('a locked post (not a draft) shows its photo without the swipe UI', async () => {
+    await open(withRing({ status: 'approved' }))
+    expect(shown()).toBe(PHOTO)
+    expect(document.querySelector('[data-x-photo-dots]')).toBeNull()
+  })
+
+  it('swiping left shows the next photo at once and saves it once he settles', async () => {
+    api.setXQuickPhoto.mockResolvedValue(OTHER)
+    await open(withRing())
+    expect(dot()).toBe(0)
+    expect(document.querySelectorAll('[data-x-photo-dots] [data-dot]').length).toBe(3)
+    swipe(-120)
+    expect(shown()).toBe(OTHER)
+    expect(dot()).toBe(1)
+    expect(document.querySelector('[data-x-photo-panel]')?.textContent).toContain('Fałków, Poland')
+    expect(api.setXQuickPhoto).not.toHaveBeenCalled()
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2'), { timeout: 2000 })
+    expect(api.setXQuickPhoto).toHaveBeenCalledTimes(1)
+    swipe(90)
+    expect(shown()).toBe(PHOTO)
+    swipe(90) // already first: stays
+    expect(shown()).toBe(PHOTO)
+  })
+
+  it('a small or mostly vertical drag is not a swipe', async () => {
+    await open(withRing())
+    swipe(-20)
+    expect(shown()).toBe(PHOTO)
+    const el = document.querySelector('[data-x-photo]')!
+    fireEvent.pointerDown(el, { clientX: 200, clientY: 100, pointerId: 1, isPrimary: true })
+    fireEvent.pointerUp(el, { clientX: 140, clientY: 260, pointerId: 1, isPrimary: true })
+    expect(shown()).toBe(PHOTO)
+  })
+
+  it('a fast swipe through several photos saves only the last one', async () => {
+    api.setXQuickPhoto.mockResolvedValue(THIRD)
+    await open(withRing())
+    swipe(-120); swipe(-120); swipe(-120)
+    expect(shown()).toBe(THIRD)
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalled(), { timeout: 2000 })
+    await new Promise(r => setTimeout(r, 900))
+    expect(api.setXQuickPhoto).toHaveBeenCalledTimes(1)
+    expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p3')
+  })
+
+  it('arrows step through the photos; prev is off at the first', async () => {
+    api.setXQuickPhoto.mockResolvedValue(OTHER)
+    await open(withRing())
+    expect(document.querySelector<HTMLButtonElement>('[data-verb=x-photo-prev]')!.disabled).toBe(true)
+    fireEvent.click(document.querySelector('[data-verb=x-photo-next]')!)
+    expect(shown()).toBe(OTHER)
+    fireEvent.click(document.querySelector('[data-verb=x-photo-next]')!)
+    expect(shown()).toBe(THIRD)
+    expect(document.querySelector<HTMLButtonElement>('[data-verb=x-photo-next]')!.disabled).toBe(true)
+  })
+
+  it('saves stay in order: a swipe during a save waits for it, and the last photo wins', async () => {
+    const a = deferred(), b = deferred()
+    api.setXQuickPhoto.mockReturnValueOnce(a.p).mockReturnValueOnce(b.p)
+    await open(withRing())
+    swipe(-120)
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2'), { timeout: 2000 })
+    swipe(-120)
+    await new Promise(r => setTimeout(r, 900))
+    expect(api.setXQuickPhoto).toHaveBeenCalledTimes(1) // still waiting on the first save
+    expect(shown()).toBe(THIRD)
+    await act(async () => { a.res(OTHER) })
+    expect(shown()).toBe(THIRD) // the first save landing never pulls the preview back
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledTimes(2))
+    expect(api.setXQuickPhoto.mock.calls.map(c => c[1])).toEqual(['p2', 'p3'])
+    await act(async () => { b.res(THIRD) })
+    expect(shown()).toBe(THIRD)
+  })
+
+  it('Post right after a swipe saves the shown photo first, then binds Post to it', async () => {
+    api.setXQuickPhoto.mockResolvedValue(OTHER)
+    api.decideXQuick.mockResolvedValue(undefined)
+    await open(withRing())
+    swipe(-120)
+    const said = await post()
+    expect(said).toContain('the text and the photo')
+    await waitFor(() => expect(api.decideXQuick).toHaveBeenCalledWith(QID, 'post', QLIST.quicks[0].text, OTHER))
+    expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2')
+    expect(api.setXQuickPhoto.mock.invocationCallOrder[0]).toBeLessThan(api.decideXQuick.mock.invocationCallOrder[0])
+  })
+
+  it('a failed swipe save goes back to the saved photo, says so, and Post sends nothing', async () => {
+    api.setXQuickPhoto.mockRejectedValue(new Error('post is no longer a draft'))
+    api.decideXQuick.mockResolvedValue(undefined)
+    await open(withRing())
+    swipe(-120)
+    await post()
+    await screen.findByText(/Photo not changed: post is no longer a draft/)
+    expect(shown()).toBe(PHOTO)
+    expect(api.decideXQuick).not.toHaveBeenCalled()
+  })
+
+  it('a photo picked from the gallery that is not ranked joins the swipe as the current one', async () => {
+    await open(withRing({ media_url: 'https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/post-stills/ivan-photos/own.jpg', media_photo_id: 'p9', media_source: 'ivan' }))
+    expect(document.querySelectorAll('[data-x-photo-dots] [data-dot]').length).toBe(4)
+    expect(dot()).toBe(0)
+  })
+
+  it('Sol r1: a save whose answer fails while the Post dialog is open sends nothing (the photo on screen changed)', async () => {
+    const a = deferred()
+    api.setXQuickPhoto.mockReturnValueOnce(a.p)
+    api.decideXQuick.mockResolvedValue(undefined)
+    await open(withRing())
+    swipe(-120)
+    fireEvent.click(document.querySelector('[data-verb=x-post]')!)
+    await screen.findByRole('alertdialog')
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2'), { timeout: 2000 })
+    await act(async () => { a.rej(new Error('network down')) })
+    expect(shown()).toBe(PHOTO)
+    await act(async () => { fireEvent.click(document.querySelector('[data-verb=x-post-confirm]')!) })
+    await screen.findByText(/The photo changed while you confirmed, so nothing went out/)
+    expect(api.decideXQuick).not.toHaveBeenCalled()
+  })
+
+  it('Sol r1: leaving and reopening the card mid-save never lets an older swipe land after a newer one', async () => {
+    const a = deferred()
+    api.setXQuickPhoto.mockReturnValueOnce(a.p).mockResolvedValue(OTHER)
+    await open(withRing())
+    swipe(-120)
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2'), { timeout: 2000 })
+    swipe(-120) // wants p3 while p2 saves
+    cleanup()
+    await open(withRing())
+    expect(shown()).toBe(THIRD) // the wanted photo carries over
+    fireEvent.click(document.querySelector('[data-verb=x-photo-prev]')!) // now wants p2
+    await new Promise(r => setTimeout(r, 900))
+    await act(async () => { a.res(OTHER) })
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledTimes(2))
+    await new Promise(r => setTimeout(r, 100))
+    expect(api.setXQuickPhoto.mock.calls.map(c => c[1])).toEqual(['p2', 'p2'])
+    expect(shown()).toBe(OTHER)
+  })
+
+  it('Sol r1: a swipe during a gallery save queues behind it and the later choice wins', async () => {
+    const a = deferred()
+    api.fetchXQuickPhotos.mockResolvedValue([{ id: 'p3', url: THIRD, place: 'Gdańsk, Poland', scene: '', mood: '', description: '', has_ivan: false, recent: false }])
+    api.setXQuickPhoto.mockReturnValueOnce(a.p).mockResolvedValue(OTHER)
+    await open(withRing())
+    fireEvent.click(document.querySelector('[data-verb=x-photo-change]')!)
+    await waitFor(() => expect(document.querySelector('[data-photo-id=p3]')).toBeTruthy())
+    fireEvent.click(document.querySelector('[data-photo-id=p3]')!)
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p3'))
+    expect(shown()).toBe(THIRD)
+    swipe(120) // back to p2 while p3 saves
+    expect(shown()).toBe(OTHER)
+    await new Promise(r => setTimeout(r, 900))
+    expect(api.setXQuickPhoto).toHaveBeenCalledTimes(1)
+    await act(async () => { a.res(THIRD) })
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledTimes(2))
+    expect(api.setXQuickPhoto.mock.calls.map(c => c[1])).toEqual(['p3', 'p2'])
+    await waitFor(() => expect(shown()).toBe(OTHER))
+  })
+
+  it('Sol r2: a refresh during a slow text save cannot swap the photo back before the check', async () => {
+    const photoSave = deferred()
+    let textDone: () => void = () => {}
+    api.setXQuickPhoto.mockReturnValueOnce(photoSave.p)
+    api.saveXQuick.mockImplementation(() => new Promise<void>(r => { textDone = r }))
+    api.decideXQuick.mockResolvedValue(undefined)
+    await open(withRing())
+    fireEvent.change(document.querySelector<HTMLTextAreaElement>('[data-x-quick]')!, { target: { value: 'edited' } })
+    swipe(-120)
+    fireEvent.click(document.querySelector('[data-verb=x-post]')!)
+    await screen.findByRole('alertdialog')
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2'), { timeout: 2000 })
+    // the server committed B but the answer failed: the screen falls back to A, and the recovery read returns B
+    let readDone: () => void = () => {}
+    api.fetchXReview.mockReturnValue(new Promise<XReviewList>(r => { readDone = () => r(withRing({ media_url: OTHER, media_photo_id: 'p2', media_source: 'ivan' })) }))
+    await act(async () => { photoSave.rej(new Error('network down')) })
+    expect(shown()).toBe(PHOTO)
+    await act(async () => { fireEvent.click(document.querySelector('[data-verb=x-post-confirm]')!) })
+    await act(async () => { readDone() }) // the recovery read lands while the text save is still out
+    await act(async () => { textDone() })
+    await screen.findByText(/The photo changed while you confirmed, so nothing went out/)
+    expect(api.decideXQuick).not.toHaveBeenCalled()
   })
 })

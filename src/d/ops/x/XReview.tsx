@@ -1,8 +1,8 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Segmented } from '../../../ds/Segmented'
 import { LiveDot } from '../../../ds/Working'
 import { wordCount } from '../../../lib/xArticleMd'
-import { decideXArticle, decideXQuick, decideXQuote, fetchXQuickPhotos, photoThumb, saveXArticle, saveXQuick, saveXQuote, setXQuickPhoto, xFlagItems, type XArticle, type XPhoto, type XQuick, type XQuote } from '../../../lib/xReview'
+import { decideXArticle, decideXQuick, decideXQuote, fetchXQuickPhotos, photoRing, photoThumb, saveXArticle, saveXQuick, saveXQuote, xFlagItems, type XArticle, type XPhoto, type XQuick, type XQuote, type XRingPhoto } from '../../../lib/xReview'
 import { useFrameCounts } from '../../counts/useFrameCounts'
 import type { Layout, PlaceProps } from '../../places'
 import { dHash } from '../../route'
@@ -14,8 +14,9 @@ import { warsawHm } from '../../ui/time'
 import { useToast } from '../../ui/toast'
 import { XLogo } from './glyphs'
 import { XFlag } from './XFlag'
-import { XArticlePreview, XPostPreview } from './XPreview'
+import { XArticlePreview, XPostPreview, type PhotoNav } from './XPreview'
 import { useAutosave, type SaveStatus } from './useAutosave'
+import { choosePhoto, flushPhoto, swipePhoto, usePhotoSlot } from './photoSaves'
 import { patchX, useXReview } from './useXReview'
 import './x.css'
 
@@ -119,7 +120,13 @@ function useDecide(kind: 'article' | 'quote' | 'quick', id: string, title: strin
     const confirmed = getText ? getText() : ''
     setBusy('go'); setErr(null)
     try {
-      if (!await flush()) throw new Error('Your last edit is not saved, so nothing went out. Retry the save first')
+      // the photo on screen at the confirm tap must be the one the dialog named (Sol r2: checking only after
+      // the flush lets a refresh that lands during a slow text save put the other photo back first)
+      if (getMedia && getMedia() !== media) throw new Error('The photo changed while you confirmed, so nothing went out. Check it and tap Post again')
+      if (!await flush()) throw new Error('Your last change is not saved, so nothing went out. Retry it first')
+      // the photo shown after every pending save settled must still be the one he confirmed (Sol r1: a save
+      // whose answer failed puts the old photo back on screen while the server may hold the new one)
+      if (getMedia && getMedia() !== media) throw new Error('The photo changed while you confirmed, so nothing went out. Check it and tap Post again')
       if (kind === 'article') {
         await decideXArticle(id, 'publish')
         patchX(l => ({ ...l, articles: l.articles.map(a => a.id === id ? { ...a, status: 'approved' } : a) }))
@@ -322,31 +329,29 @@ const KIND_WORD: Record<string, string> = { win: 'Win', doubt: 'Doubt', funny: '
 // THE PHOTO (Ivan 2026-11-05: every quick post carries one of his own photos, picked to fit). Swap opens
 // his gallery (ivan_photo_library only); Remove posts text only. Each change is saved on the server at
 // once, and Post is bound to the photo the preview shows.
-function PhotoPanel({ k, locked }: { k: XQuick; locked: boolean }) {
+function PhotoPanel({ k, locked, swipe }: { k: XQuick; locked: boolean; swipe: PhotoSwipe }) {
   const [open, setOpen] = useState(false)
   const [photos, setPhotos] = useState<XPhoto[] | null>(null)
   const [loadErr, setLoadErr] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
-  const [err, setErr] = useState<string | null>(null)
-  const media = k.media_url ?? null
+  const media = swipe.shown ? swipe.shown.url : (k.media_url ?? null)
+  const place = swipe.shown ? swipe.shown.place : (k.media_place ?? null)
   const load = useCallback(async () => {
     setLoadErr(null)
     try { setPhotos(await fetchXQuickPhotos()) } catch (e) { setLoadErr(msg(e)) }
   }, [])
   const choose = useCallback(async (photoId: string | null) => {
-    setBusy(photoId ?? 'remove'); setErr(null)
-    try {
-      const url = await setXQuickPhoto(k.id, photoId)
-      const p = photos?.find(x => x.id === photoId)
-      patchX(l => ({ ...l, quicks: l.quicks.map(q => q.id === k.id ? { ...q, media_url: url, media_photo_id: photoId, media_source: 'ivan', media_reason: photoId ? 'picked by Ivan' : 'removed by Ivan', media_place: p?.place ?? null } : q) }))
-      setOpen(false)
-    } catch (e) { setErr(msg(e)) } finally { setBusy(null) }
+    const p = photoId ? photos?.find(x => x.id === photoId) : null
+    if (photoId && !p) return
+    setBusy(photoId ?? 'remove')
+    // the same per-post queue as the swipes: one write at a time, the latest choice wins
+    try { if (await choosePhoto(k.id, p ? { id: p.id, url: p.url, place: p.place } : null)) setOpen(false) } finally { setBusy(null) }
   }, [k.id, photos])
   const toggle = () => { const next = !open; setOpen(next); if (next && !photos) void load() }
   const disabled = locked || busy !== null
   const note = media
-    ? (k.media_source === 'ivan' ? 'Your pick' : k.media_reason ? `Picked: ${k.media_reason}` : 'Picked for this post')
-    : k.media_source === 'ivan' ? 'Removed: this one posts as text only.'
+    ? (swipe.pending || k.media_source === 'ivan' ? 'Your pick' : k.media_reason ? `Picked: ${k.media_reason}` : 'Picked for this post')
+    : swipe.pending || k.media_source === 'ivan' ? 'Removed: this one posts as text only.'
       : k.media_source === 'auto' ? `No photo fits: ${(k.media_reason ?? '').replace(/^none:\s*/, '') || 'nothing in your gallery matched.'}`
         : 'No photo picked yet. Pick one from your gallery.'
   return (
@@ -354,8 +359,8 @@ function PhotoPanel({ k, locked }: { k: XQuick; locked: boolean }) {
       <div className="xr-photo-row">
         {media ? <img className="xr-photo-cur" src={photoThumb(media, 160)} alt="" /> : <div className="xr-photo-cur xr-photo-none" aria-hidden>No photo</div>}
         <div className="xr-photo-t">
-          <b>Photo{k.media_place ? ` · ${k.media_place}` : ''}</b>
-          <small>{note}</small>
+          <b>Photo{place ? ` · ${place}` : ''}</b>
+          <small>{note}{swipe.nav ? ` · ${swipe.nav.index + 1} of ${swipe.nav.count}, swipe the photo for the others` : ''}</small>
         </div>
       </div>
       {!locked && (
@@ -364,7 +369,7 @@ function PhotoPanel({ k, locked }: { k: XQuick; locked: boolean }) {
           {media && <button type="button" className="xr-link xr-link-quiet" data-verb="x-photo-remove" disabled={disabled} onClick={() => void choose(null)}>{busy === 'remove' ? 'Removing…' : 'Remove photo'}</button>}
         </div>
       )}
-      {err && <div className="xr-ban xr-ban-failed" role="alert">Photo not changed: {err}</div>}
+      {swipe.err && <div className="xr-ban xr-ban-failed" role="alert">Photo not changed: {swipe.err}</div>}
       {open && !locked && (
         <div className="xr-gallery" role="group" aria-label="Your photos">
           {loadErr ? <div className="xr-ban xr-ban-failed" role="alert">Could not read your gallery: {loadErr} <button type="button" className="xr-link" onClick={() => void load()}>Retry</button></div>
@@ -384,6 +389,33 @@ function PhotoPanel({ k, locked }: { k: XQuick; locked: boolean }) {
   )
 }
 
+// SWIPE THROUGH THE RANKED PHOTOS (Ivan 2026-11-05: "swipe the photo to cycle through other relevant photos").
+// The preview moves at once; photoSaves.ts saves after he settles (PHOTO_SETTLE_MS), one write at a time per
+// post, always the latest want, so a fast swipe through 4 photos is one save of the last one. Post flushes
+// that queue and binds the photo shown.
+type PhotoSwipe = { shown: XRingPhoto | null; nav: PhotoNav | null; pending: boolean; err: string | null; flush: () => Promise<boolean> }
+
+function usePhotoSwipe(k: XQuick, locked: boolean): PhotoSwipe {
+  const { ring, index: savedIndex } = useMemo(() => photoRing(k), [k.media_url, k.media_photo_id, k.media_place, k.media_ring]) // eslint-disable-line react-hooks/exhaustive-deps
+  const slotView = usePhotoSlot(k.id)
+  const want = slotView.want
+  const shown = want ? want.photo : (savedIndex >= 0 ? ring[savedIndex] : null)
+  const index = shown ? ring.findIndex(p => p.url === shown.url) : -1
+  const id = k.id
+  const step = useCallback((d: -1 | 1) => {
+    if (index < 0) return
+    const n = Math.max(0, Math.min(ring.length - 1, index + d))
+    if (n !== index) swipePhoto(id, ring[n])
+  }, [id, index, ring])
+  const flush = useCallback(() => flushPhoto(id), [id])
+  // the neighbours load before he swipes to them
+  useEffect(() => {
+    for (const p of [ring[index - 1], ring[index + 1]]) if (p) { const img = new Image(); img.src = p.url }
+  }, [ring, index])
+  const nav = !locked && ring.length > 1 && index >= 0 ? { index, count: ring.length, onStep: step } : null
+  return { shown, nav, pending: want !== null || slotView.saving, err: slotView.err, flush }
+}
+
 function QuickReview({ k, layout, navigate }: { k: XQuick; layout: Layout; navigate: (h: string) => void }) {
   const editable = k.status === 'draft'
   const server = useMemo(() => k.text ?? '', []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -394,10 +426,18 @@ function QuickReview({ k, layout, navigate }: { k: XQuick; layout: Layout; navig
   const textRef = useRef(text)
   textRef.current = text
   const getText = useCallback(() => textRef.current, [])
-  const mediaRef = useRef<string | null>(k.media_url ?? null)
-  mediaRef.current = k.media_url ?? null
+  const [deciding, setDeciding] = useState(false)
+  const swipe = usePhotoSwipe(k, !editable || deciding)
+  const shownUrl = swipe.shown ? swipe.shown.url : (k.media_url ?? null)
+  const mediaRef = useRef<string | null>(shownUrl)
+  mediaRef.current = shownUrl
   const getMedia = useCallback(() => mediaRef.current, [])
-  const d = useDecide('quick', k.id, text.split('\n')[0] || 'Quick post', navigate, auto.flush, getText, getMedia)
+  const { flush: flushText } = auto
+  const { flush: flushPhoto } = swipe
+  // Post waits for the text save AND a photo still settling from a swipe
+  const flush = useCallback(async () => (await flushText()) && (await flushPhoto()), [flushText, flushPhoto])
+  const d = useDecide('quick', k.id, text.split('\n')[0] || 'Quick post', navigate, flush, getText, getMedia)
+  useEffect(() => { setDeciding(d.busy !== null) }, [d.busy])
   const locked = !editable || d.busy !== null
   const options = [k.text ?? '', ...(k.options ?? [])].filter((o, i, a) => typeof o === 'string' && o.trim() && a.indexOf(o) === i)
   const label = `Quick post${k.kind && KIND_WORD[k.kind] ? ` · ${KIND_WORD[k.kind]}` : ''} · ${STATUS_WORD[k.status] ?? k.status}`
@@ -408,7 +448,7 @@ function QuickReview({ k, layout, navigate }: { k: XQuick; layout: Layout; navig
         <textarea ref={ref} rows={4} className="xr-input xr-line" value={text} readOnly={locked} data-x-quick
           onChange={e => auto.setValue(e.target.value)} onBlur={() => void auto.flush()} />
       </label>
-      <PhotoPanel k={k} locked={locked} />
+      <PhotoPanel k={k} locked={locked} swipe={swipe} />
       {options.length > 1 && (
         <div className="xr-chips xr-chips-quick" role="group" aria-label="Other versions">
           {options.map((o, i) => (
@@ -425,7 +465,7 @@ function QuickReview({ k, layout, navigate }: { k: XQuick; layout: Layout; navig
       )}
     </div>
   )
-  const preview = <XPostPreview text={text} media={null} photo={k.media_url ?? null} handle={k.account || 'theivanpill'} quoteTitle={null} quoteCover={null} />
+  const preview = <XPostPreview text={text} media={null} photo={shownUrl} photoNav={swipe.nav} handle={k.account || 'theivanpill'} quoteTitle={null} quoteCover={null} />
   const saveLine = <SaveLine status={auto.status} error={auto.error} savedAt={auto.savedAt} retry={() => void auto.flush()} readOnly={!editable} />
   const top = (
     <>

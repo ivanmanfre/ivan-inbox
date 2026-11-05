@@ -77,7 +77,12 @@ export type XQuick = {
   media_source?: 'auto' | 'ivan' | null
   media_reason?: string | null
   media_place?: string | null
+  /** The photos the card swipes through (2026-11-05): the lane's ranked fits, best first, current one included. */
+  media_ring?: XRingPhoto[] | null
 }
+
+/** One photo the quick-post card can swipe to (an ivan_photo_library photo). */
+export type XRingPhoto = { id: string; url: string; place: string | null }
 
 /** A photo from Ivan's own gallery (ivan_photo_library), offered by the quick-post photo picker. */
 export type XPhoto = {
@@ -156,6 +161,21 @@ export async function setXQuickPhoto(id: string, photoId: string | null): Promis
   if (error) fail(error)
   const d = (data ?? {}) as { media_url?: string | null }
   return d.media_url ?? null
+}
+
+/**
+ * The photos the card swipes through and where the current photo sits. A current photo that is not on the
+ * ranking (a gallery pick) leads. No current photo = nothing to swipe (the gallery picks one).
+ */
+export function photoRing(k: Pick<XQuick, 'media_url' | 'media_photo_id' | 'media_place' | 'media_ring'>): { ring: XRingPhoto[]; index: number } {
+  const cur = k.media_url ?? null
+  if (!cur) return { ring: [], index: -1 }
+  const ranked = (Array.isArray(k.media_ring) ? k.media_ring : [])
+    .filter((p): p is XRingPhoto => !!p && typeof p.id === 'string' && typeof p.url === 'string' && !!p.url)
+    .filter((p, i, a) => a.findIndex(x => x.url === p.url) === i)
+  const at = ranked.findIndex(p => p.url === cur)
+  if (at >= 0) return { ring: ranked, index: at }
+  return { ring: [{ id: k.media_photo_id ?? '', url: cur, place: k.media_place ?? null }, ...ranked], index: 0 }
 }
 
 /** A small square thumbnail of a public storage image (Supabase image transform); other URLs pass through. */
