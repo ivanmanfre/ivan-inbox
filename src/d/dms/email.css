@@ -26,6 +26,9 @@
 .dm-email-history[data-reply-target] .dm-email-sheet{border-color:#1a73e8;box-shadow:0 0 0 1px #1a73e8}
 .dm-email-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;font:400 12px/1.5 Arial,Helvetica,system-ui,sans-serif;color:var(--t2,#5f6368)}
 .dm-email-toolbar>div{display:flex;gap:6px}
+.dm-email-toolbar-summary{display:flex;flex-direction:column;min-width:0;line-height:1.25}
+.dm-email-toolbar-summary>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dm-email-toolbar>div{flex:none}
 .dm-email-toolbar button,.dm-email-error button{border:1px solid #dadce0;border-radius:5px;background:#fff;color:#3c4043;padding:5px 10px;min-height:32px;font:400 12px/1.5 Arial,Helvetica,system-ui,sans-serif;cursor:pointer}
 .dm-email-edit-fields{padding:4px 18px 0}
 .dm-email-edit-fields .dm-email-field{padding:9px 0;border-bottom:1px solid #eceff1;margin:0;font:400 13px/1.5 Arial,Helvetica,system-ui,sans-serif;color:#202124}
@@ -41,13 +44,26 @@
 .dm-email-composer-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:8px;color:var(--t2,#5f6368);font:400 11px/1.5 Arial,Helvetica,system-ui,sans-serif}
 .dm-email-composer .dm-email-send{font:500 13px/1.5 Arial,Helvetica,system-ui,sans-serif;border:0;border-radius:5px;background:#1a73e8;color:#fff;padding:8px 20px;min-height:44px;cursor:pointer}
 .dm-email-composer .dm-email-sheet{max-height:min(52dvh,560px);overflow-y:auto}
+.dm-pane:not(.dx-pane) .dm-dock:has(>.dm-email-composer){max-height:50%;overflow:hidden}
+.dm-pane:not(.dx-pane) .dm-dock>.dm-email-composer{display:flex;flex:1 1 auto;flex-direction:column;min-height:0;overflow:hidden}
+.dm-pane:not(.dx-pane) .dm-dock .dm-email-composer-body{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;overflow-anchor:none}
+.dm-pane:not(.dx-pane) .dm-dock .dm-email-toolbar,.dm-pane:not(.dx-pane) .dm-dock .dm-email-composer-foot{flex:none}
+.dm-pane:not(.dx-pane) .dm-dock .dm-email-composer .dm-email-sheet{max-height:none;overflow:visible}
+.dm-pane:not(.dx-pane) .dm-dock .dm-rich-email-content .tiptap{min-height:80px;max-height:none;overflow-y:visible}
+.dm-pane:not(.dx-pane) .dm-dock .dm-email-composer .dm-email-textarea{min-height:80px;max-height:none;resize:none}
+.dm-dock .dm-email-composer .dm-rich-email-toolbar{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-inline:contain}
+.dm-dock .dm-email-composer .dm-rich-email-toolbar :is(button,.dm-rich-email-separator){flex:none}
 .dm-email-composer button:disabled{opacity:.5;cursor:default}
 .dm-email-composer button:focus-visible,.dm-email-editor button:focus-visible,.dm-email-history button:focus-visible{outline:2px solid #1a73e8;outline-offset:2px}
 .dm-pane .dm-native-email-draft{width:auto;max-width:none;margin:12px 18px 0;padding:0;border:0;background:transparent;border-radius:0}
 .dx-card .dm-native-email-draft{margin:0;padding:12px 14px}
 .dm-pane .dm-leg.dm-email-leg{width:auto;max-width:none;margin:10px 18px 0}
+.dm-scroll>.dm-calendar{margin:12px 18px}
 .dx-card .dm-leg.dm-email-leg{margin:0;padding:12px 14px}
 @media(max-width:600px){
+  .dm-pane:not(.dx-pane).dm-pane-phone .dm-dock:has(>.dm-email-composer){max-height:65%}
+  .dm-dock .dm-email-composer-foot:not(:has(button)){display:none}
+  .dm-pane:not(.dx-pane).dm-pane-phone .dm-dock:has(.dm-email-composer-foot .dm-email-send) .dm-keys-s{min-width:0;flex:1 1 auto;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}
   .dm-email-toolbar button,.dm-email-error button,.dm-email-history .dm-email-reply{min-height:44px}
   .dm-email-heading{padding:14px 14px 10px;gap:8px}.dm-email-heading h3{font-size:18px}
   .dm-email-envelope-fields{padding:0 14px 12px}.dm-email-body{padding:16px 14px}
@@ -55,5 +71,6 @@
   .dm-email-edit-fields{padding:4px 14px 0}
   .dm-email-editor .dm-email-sheet .dm-email-textarea,.dm-email-composer .dm-email-sheet .dm-email-textarea,.dm-email-edit-fields input{font-size:16px}
   .dm-pane .dm-native-email-draft,.dm-pane .dm-leg.dm-email-leg{margin-left:12px;margin-right:12px}
+  .dm-pane-phone .dm-scroll>.dm-calendar{margin-left:12px;margin-right:12px}
   .dx-card .dm-native-email-draft,.dx-card .dm-leg.dm-email-leg{margin:0}
 }

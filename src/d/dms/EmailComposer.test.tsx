@@ -8,6 +8,15 @@ import type { EmailComposition } from '../../lib/emailRichText'
 afterEach(cleanup)
 const base = { from: 'im@ivanmanfredi.com', to: 'alex@example.com', subject: 'Re: Store review', busy: false, onSend: vi.fn() }
 
+it('shows a failed recipient lookup as unavailable while preserving a long reply and Retry', () => {
+  const value = 'Keep these reply paragraphs.\n\n'.repeat(80)
+  render(<EmailComposer {...base} to={null} value={value} setValue={() => {}} error="Email lookup failed" onRetry={vi.fn()} />)
+  expect(document.querySelector('.dm-email-toolbar')!.textContent).toContain('Recipient unavailable')
+  expect((screen.getByRole('textbox', { name: 'Email reply' }) as HTMLTextAreaElement).value).toBe(value)
+  expect(screen.getByRole('button', { name: 'Retry email details' })).toBeTruthy()
+  expect((screen.getByRole('button', { name: 'Send email' }) as HTMLButtonElement).disabled).toBe(true)
+})
+
 it('keeps the reply subject fixed and previews the exact edited body including a typed Subject line', () => {
   const body = 'Subject: This belongs to the body\n\nHi Alex,\n\nhttps://example.com/review\n\nIvan\n'
   function Editor() {
@@ -15,6 +24,7 @@ it('keeps the reply subject fixed and previews the exact edited body including a
     return <EmailComposer {...base} value={value} setValue={setValue} />
   }
   render(<Editor />)
+  fireEvent.click(screen.getByRole('button', { name: 'Email details' }))
   expect(screen.getByText('Re: Store review')).toBeTruthy()
   expect(screen.queryByRole('textbox', { name: /subject/i })).toBeNull()
   fireEvent.change(screen.getByRole('textbox', { name: 'Email reply' }), { target: { value: body } })
@@ -40,7 +50,7 @@ it('blocks buttons and shortcuts until the recipient loads and while sending is 
   const send = vi.fn(), retry = vi.fn()
   const props = { ...base, value: 'Draft words', setValue: () => {}, onSend: send, onRetry: retry }
   const view = render(<EmailComposer {...props} to={null} />)
-  expect(screen.getByText('Loading recipient...')).toBeTruthy()
+  expect(screen.getByText(/Loading recipient\.\.\./)).toBeTruthy()
   expect((screen.getByRole('button', { name: 'Send email' }) as HTMLButtonElement).disabled).toBe(true)
   fireEvent.keyDown(screen.getByRole('textbox', { name: 'Email reply' }), { key: 'Enter', metaKey: true })
   expect(send).not.toHaveBeenCalled()
@@ -79,6 +89,7 @@ it('shows and removes the verified sender signature while previewing the same ri
 it('shows the selected reply source and expands its excerpt', () => {
   const sourceBody = 'A long source email asking about the launch timeline and next steps for the store. '.repeat(4)
   render(<EmailComposer {...base} value="Reply" setValue={() => {}} replyContext={{ from: 'alex@example.com', fromName: 'Alex', date: '2026-10-25T13:00:00Z', subject: 'Original question', body: sourceBody, isLatest: false, selection: 'specific' }} onViewOriginal={vi.fn()} onReplyLatest={vi.fn()} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Email details' }))
   expect(screen.getByText('Earlier email in this thread')).toBeTruthy()
   expect(screen.getByText('Original question')).toBeTruthy()
   expect(screen.getByText(/A long source email/)).toBeTruthy()
@@ -135,11 +146,49 @@ describe('reply-all Cc (Lou Fasulo 10-27)', () => {
   it('locks Cc while the recipient is loading and blocks Send on an invalid address', () => {
     const base = { from: 'davorin@madebyarch.com', subject: 'Re: x', value: 'hi', setValue: () => {}, busy: false, onSend: () => {}, onCcChange: () => {} }
     const { rerender } = render(<EmailComposer {...base} to={null} cc="" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Email details' }))
     expect((screen.getByLabelText('Email reply CC recipients') as HTMLInputElement).disabled).toBe(true)
     rerender(<EmailComposer {...base} to="lou@starform.co" cc="margaret@starform.co, jesse@starform.co" />)
     expect((screen.getByLabelText('Email reply CC recipients') as HTMLInputElement).disabled).toBe(false)
+    expect(screen.getByText(/Cc 2/)).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Send email' }) as HTMLButtonElement).disabled).toBe(false)
     rerender(<EmailComposer {...base} to="lou@starform.co" cc="margaret@" />)
+    expect(screen.getByText(/Check Cc/)).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Send email' }) as HTMLButtonElement).disabled).toBe(true)
   })
+})
+
+it('starts with a visible reply editor and a compact recipient and target, with full details on demand', () => {
+  const source = { from: 'alex@example.com', fromName: 'Alex', date: '2026-10-25T13:00:00Z', subject: 'Original question', body: 'Please send me the plan.', isLatest: true, selection: 'latest' as const }
+  render(<EmailComposer {...base} value="" setValue={() => {}} replyContext={source} onCcChange={() => {}} />)
+  expect(screen.getByRole('textbox', { name: 'Email reply' })).toBeTruthy()
+  expect(screen.getByText('To alex@example.com')).toBeTruthy()
+  expect(screen.getByText('Latest email')).toBeTruthy()
+  expect(screen.queryByText('Please send me the plan.')).toBeNull()
+  expect(screen.queryByLabelText('Email reply CC recipients')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Email details' }))
+  expect(screen.getByText('Please send me the plan.')).toBeTruthy()
+  expect(screen.getByLabelText('Email reply CC recipients')).toBeTruthy()
+  expect(screen.getByText('Original question')).toBeTruthy()
+})
+
+it('keeps the selected earlier target and Cc count separate from a long recipient', () => {
+  render(<EmailComposer {...base} to="long.person.with.a.name@long-example-company.com" cc="one@example.com, two@example.com" onCcChange={() => {}}
+    value="Reply" setValue={() => {}} replyContext={{ from: 'alex@example.com', date: null, subject: 'Earlier topic', body: 'Question', isLatest: false, selection: 'specific' }} />)
+  expect(screen.getByText('To long.person.with.a.name@long-example-company.com')).toBeTruthy()
+  expect(screen.getByText('Earlier email · Cc 2')).toBeTruthy()
+})
+
+it('returns to the top of the composer after details or preview changes', () => {
+  const { container } = render(<EmailComposer {...base} value="Reply" setValue={() => {}} />)
+  const body = container.querySelector('.dm-email-composer-body') as HTMLDivElement
+  body.scrollTop = 120
+  fireEvent.click(screen.getByRole('button', { name: 'Email details' }))
+  expect(body.scrollTop).toBe(0)
+  body.scrollTop = 120
+  fireEvent.click(screen.getByRole('button', { name: 'Preview' }))
+  expect(body.scrollTop).toBe(0)
+  body.scrollTop = 120
+  fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+  expect(body.scrollTop).toBe(0)
 })

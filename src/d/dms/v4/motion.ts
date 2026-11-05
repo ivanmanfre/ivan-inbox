@@ -76,6 +76,7 @@ export function useStickToEnd(ref: RefObject<HTMLElement | null>, enabled: boole
     const onScroll = () => { pinned = atEnd() }
     const ro = new ResizeObserver(() => { if (pinned) el.scrollTop = el.scrollHeight })
     ro.observe(el)
+    if (el.firstElementChild) ro.observe(el.firstElementChild)
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => { ro.disconnect(); el.removeEventListener('scroll', onScroll) }
   }, [ref, enabled])

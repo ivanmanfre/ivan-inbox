@@ -78,6 +78,17 @@ describe('direct email reply', () => {
     msg({ prospect_id: 'ofir', prospect_name: 'Ofir Bello', client_id: client, direction: 'inbound', channel: 'linkedin', sent_at: '2026-09-27T09:00:00Z', created_at: '2026-09-27T09:00:00Z', message_text: 'I emailed you.' }),
   ])[0]
 
+  it.each([false, true])('distinguishes the saved draft from a manual email reply (v4=%s)', async v4 => {
+    const original = emailThread()
+    const draft = msg({ prospect_id: original.prospect_id, client_id: 'arch', channel: 'email', recipient_email: 'ofir.b@doktorabc.com', message_text: 'Subject: Re: Meeting\n\nSaved draft reply.' })
+    mount({ ...original, channel: 'email', draft, messages: [...original.messages, draft] }, v4)
+    if (v4) fireEvent.click(screen.getByRole('button', { name: 'Write your own email reply' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Draft: Send email' })).toBeTruthy())
+    expect(screen.getByRole('button', { name: 'Send email' }).closest('.dm-email-composer')).toBeTruthy()
+    expect(lib.approveDraft).not.toHaveBeenCalled()
+    expect(lib.composeReply).not.toHaveBeenCalled()
+  })
+
   it('forwards a received email without approving, discarding, or replying to the prospect', async () => {
     const t = emailThread()
     mount(t)
@@ -99,6 +110,7 @@ describe('direct email reply', () => {
     await waitFor(() => expect(document.activeElement).toBe(input))
     expect(lib.composeReply).not.toHaveBeenCalled()
     await waitFor(() => expect(document.querySelector('.dm-email-composer')!.textContent).toContain('ofir.b@doktorabc.com'))
+    fireEvent.click(screen.getByRole('button', { name: 'Email details' }))
     expect(screen.getByText('Re: Meeting')).toBeTruthy()
     typeRich('Email reply', 'Thursday works for me.')
     await waitFor(() => expect((screen.getByRole('button', { name: 'Send email' }) as HTMLButtonElement).disabled).toBe(false))
@@ -124,6 +136,7 @@ describe('direct email reply', () => {
     mount(t)
     fireEvent.focus(screen.getByRole('textbox', { name: 'Email reply' }))
     await waitFor(() => expect(document.querySelector('.dm-email-composer')!.textContent).toContain('ofir.b@doktorabc.com'))
+    fireEvent.click(screen.getByRole('button', { name: 'Email details' }))
     expect(document.querySelector('.dm-email-composer')!.textContent).toContain('davorin@madebyarch.com')
     expect(screen.queryByText(/Davorin's LinkedIn/)).toBeNull()
   })
