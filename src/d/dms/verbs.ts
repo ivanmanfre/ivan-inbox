@@ -6,7 +6,7 @@ import { parseEmailCc } from '../../lib/emailCc'
 import { createElement, useMemo, useRef } from 'react'
 import {
   draftSendVia, approveDraft, composeReply, deleteThread, discardLegs, dismissConfirmation, draftLegs, escalateDraftToClient,
-  emailSenderLabel, heldReasonText, isFollowUp, isHeldSend, isStoppedOnPurpose, isSwishdmReply, isSwishdmRow, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft, swishdmPageUrl,
+  emailSenderLabel, heldReasonText, isAnnaReviewedModel, isFollowUp, isHeldSend, isStoppedOnPurpose, isSwishdmReply, isSwishdmRow, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft, swishdmPageUrl,
   saveDraftEmailCc, setDraftSendVia, saveDraftText, snoozeDraft, threadChatId, unsnoozeDraft, REPLY_MYSELF, REDRAFT_REASON, requestRedraft,
   findLandedReply, readSendState, type DraftSendVia, type InboxMessage, type SendState, type Thread,
   type EmailReplyTarget,
@@ -168,7 +168,7 @@ export function useDmVerbs(ctx: VerbCtx) {
     /** Approve & send (both legs on a pair). Always asks first, as today's thread does.
      *  `onDeclined`: he cancelled the confirm, so nothing was written (the caller re-arms any autosave it paused). */
     async function send(t: Thread, ed: Edits, onDeclined?: () => void): Promise<string | null> {
-      if (t.client_id === 'anna' && (!t.draft || t.draft.ai_model !== 'inbox_on_demand_reply' || messageChannel(t.draft) !== 'dm' || t.draft.recipient_email || t.draft.email_mirror_text || t.companionDraft)) { fail('Anna supports reviewed LinkedIn reply drafts only.'); return 'Draft sending is unavailable.' }
+      if (t.client_id === 'anna' && (!t.draft || !isAnnaReviewedModel(t.draft.ai_model) || messageChannel(t.draft) !== 'dm' || t.draft.recipient_email || t.draft.email_mirror_text || t.companionDraft)) { fail('Anna supports reviewed LinkedIn reply drafts only.'); return 'Draft sending is unavailable.' }
       const draft = t.draft
       if (!draft) return null
       const comp = t.companionDraft

@@ -292,8 +292,17 @@ describe('DM verbs', () => {
     await waitFor(() => expect(lib.approveDraft).toHaveBeenCalledWith(t.draft!.id, t.draft!.message_text, 'anna-chat', expect.objectContaining({ id: t.draft!.id })))
   })
 
+  it('Anna’s held ladder step uses the same review and approval', async () => {
+    const [t] = threads(drafted('anna-ladder', { client_id: 'anna', prospect_name: 'Taylor', ai_model: 'anna_content_system_bump_v2_plan', unipile_chat_id: 'anna-chat' }))
+    mount(t)
+    fireEvent.click(key('send'))
+    fireEvent.click(await screen.findByText('Approve & send'))
+    await waitFor(() => expect(lib.approveDraft).toHaveBeenCalledWith(t.draft!.id, t.draft!.message_text, 'anna-chat', expect.objectContaining({ id: t.draft!.id })))
+  })
+
   it.each([
     { ai_model: 'legacy_anna_draft' },
+    { ai_model: 'content_system_dm4_v1' },
     { ai_model: 'inbox_on_demand_reply', channel: 'email' as const },
     { ai_model: 'inbox_on_demand_reply', email_mirror_text: 'Email mirror', recipient_email: 'taylor@example.com' },
   ])('keeps unsupported Anna draft delivery unavailable: %j', async fields => {

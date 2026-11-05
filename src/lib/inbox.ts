@@ -1823,6 +1823,10 @@ export function normalizeBubbleBreaks(text: string): string {
   }).join('\n')
 }
 
+// Anna's scripted ladder steps (DM1-DM5), held for review when her lane's ladder_autosend is off.
+export const ANNA_LADDER_MODEL = /^anna_content_system_[a-z0-9_]+$/
+export const isAnnaReviewedModel = (model: string | null | undefined) => model === 'inbox_on_demand_reply' || ANNA_LADDER_MODEL.test(model ?? '')
+
 export async function approveDraft(id: string, editedText: string, chatId?: string | null,
   snapshot?: Pick<InboxMessage, 'email_mirror_text' | 'recipient_email' | 'email_cc' | 'draft_evidence' | 'send_via'>): Promise<void> {
   editedText = normalizeBubbleBreaks(editedText)
@@ -1834,7 +1838,7 @@ export async function approveDraft(id: string, editedText: string, chatId?: stri
       throw new Error('The email formatting changed after review. Refresh before sending.')
     }
   }
-  if (draft?.ai_model === 'inbox_on_demand_reply' && draft.draft_evidence?.client_id === 'anna') {
+  if (isAnnaReviewedModel(draft?.ai_model) && draft?.draft_evidence?.client_id === 'anna') {
     const { error } = await supabase.rpc('anna_approve_reply', {
       p_message_id: id, p_text: editedText, p_expected_scan: snapshot?.draft_evidence?.scan ?? null,
     })

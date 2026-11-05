@@ -129,3 +129,9 @@ it('refuses a rich approval from a caller that never loaded its formatting', asy
   await expect(approveDraft('draft', 'DM')).rejects.toThrow(/formatting changed|refresh/i)
   expect(db.rpc).not.toHaveBeenCalled()
 })
+it('routes a held Anna ladder step through Anna’s guarded approval, never the pipeline RPC', async () => {
+  db.read.mockResolvedValue({ data: { ai_model: 'anna_content_system_dm4_v1', draft_evidence: { client_id: 'anna', lane: 'anna' } }, error: null })
+  await approveDraft('ladder-draft', 'Reviewed ladder text', 'anna-chat')
+  expect(db.rpc).toHaveBeenCalledWith('anna_approve_reply', { p_message_id: 'ladder-draft', p_text: 'Reviewed ladder text', p_expected_scan: null })
+  expect(db.rpc).not.toHaveBeenCalledWith('approve_inbox_pipeline_draft', expect.anything())
+})
