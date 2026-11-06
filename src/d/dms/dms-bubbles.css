@@ -123,3 +123,4 @@
 .dm-bub-ed .dm-edit{flex:1;min-width:0}
 .dm-bub-x{flex:none;min-width:28px;min-height:28px;border-radius:7px;color:var(--t3)}
 .d-phone .dm-bub-x{min-width:44px;min-height:44px}
+.dm-bubs-1 .dm-bub-ed{display:block}

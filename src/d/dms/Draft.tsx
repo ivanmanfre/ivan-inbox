@@ -38,26 +38,52 @@ export function Grow({ value, onChange, label, onBlur, max = 240, onKeyDown, aut
   return <textarea ref={ref} className="dm-edit" data-autosave={autosave || undefined} aria-label={label} value={value} rows={rows} spellCheck onBlur={onBlur} onChange={e => onChange(e.target.value)} onKeyDown={onKeyDown} />
 }
 
-/** The bubbles of a LinkedIn draft, split on the `---` lines the sender splits on. Only the one newline
- *  each side of a `---` line is the separator, so join(split(x)) gives back x exactly. Empty bubbles are
- *  kept while he types (the sender drops them). */
-export function splitBubbles(text: string): string[] {
-  return text.split(/\n?^[ \t]*-{3,}[ \t\r]*$\n?/m)
+/** The bubbles of a LinkedIn draft, split on the `---` lines the sender splits on. The separators are
+ *  kept as they were written, so joinBubbles(splitBubbles(x)) gives back x exactly, and an edit to one
+ *  bubble leaves every other boundary untouched. Empty bubbles are kept while he types (the sender
+ *  drops them). */
+export type Bubbles = { parts: string[]; seps: string[] }
+export function splitBubbles(text: string): Bubbles {
+  const t = text.split(/(\n?^[ \t]*-{3,}[ \t\r]*$\n?)/m)
+  return { parts: t.filter((_, i) => i % 2 === 0), seps: t.filter((_, i) => i % 2 === 1) }
 }
-export const joinBubbles = (parts: readonly string[]) => parts.join('\n---\n')
+export function joinBubbles({ parts, seps }: Bubbles): string {
+  return parts.map((p, i) => (i === 0 ? p : (seps[i - 1] ?? '\n---\n') + p)).join('')
+}
+/** Bubble i out, with the separator before it (or after it, for the first). */
+export function removeBubble(b: Bubbles, i: number): Bubbles {
+  const cut = i === 0 ? 0 : i - 1
+  return { parts: b.parts.filter((_, j) => j !== i), seps: b.seps.filter((_, j) => j !== cut) }
+}
 
 /** #16: a draft of two or more bubbles is edited bubble by bubble, each with a ✕ that removes it
- *  (21 of his 33 edits on his seat only cut whole bubbles). Same text, same autosave: the bubbles are
- *  joined back with `---` lines. One bubble stays one box. */
+ *  (21 of his 33 edits on his seat only cut whole bubbles). Same text, same autosave. One bubble is
+ *  drawn as one plain box, in the same tree, so typing a `---` line never drops focus: the caret
+ *  moves on to the new bubble. */
 export function BubbleEdit({ value, onChange, onBlur, label, max, onKeyDown }: { value: string; onChange: (s: string) => void; onBlur?: () => void; label: string; max: number; onKeyDown?: (e: KeyboardEvent<HTMLTextAreaElement>) => void }) {
-  const parts = splitBubbles(value)
-  if (parts.length < 2) return <Grow value={value} onChange={onChange} onBlur={onBlur} label={label} max={max} onKeyDown={onKeyDown} />
-  return <div className="dm-bubs" role="group" aria-label={`${label}, ${parts.length} bubbles`}>
-    {parts.map((p, i) => <div key={i} className="dm-bub-ed">
-      <Grow value={p} onChange={s => onChange(joinBubbles(parts.map((x, j) => (j === i ? s : x))))} onBlur={onBlur}
-        label={i === 0 ? label : `${label}, bubble ${i + 1}`} max={max} onKeyDown={onKeyDown} rows={1} />
-      <button type="button" className="dm-bub-x" data-verb="remove-bubble" aria-label={`Remove bubble ${i + 1}`} title="Remove this bubble"
-        onClick={() => onChange(joinBubbles(parts.filter((_, j) => j !== i)))}>✕</button>
+  const box = useRef<HTMLDivElement>(null)
+  const focusNext = useRef<number | null>(null)
+  const b = splitBubbles(value)
+  const n = b.parts.length
+  useEffect(() => {
+    const i = focusNext.current
+    if (i == null) return
+    focusNext.current = null
+    const el = box.current?.querySelectorAll<HTMLTextAreaElement>('textarea.dm-edit')[i]
+    if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length) }
+  }, [value])
+  const edit = (i: number, text: string) => {
+    const inner = splitBubbles(text)
+    // He typed a `---` line inside bubble i: it becomes two (or more) bubbles; the caret follows.
+    if (inner.parts.length > 1) focusNext.current = i + inner.parts.length - 1
+    onChange(joinBubbles({ parts: [...b.parts.slice(0, i), ...inner.parts, ...b.parts.slice(i + 1)], seps: [...b.seps.slice(0, i), ...inner.seps, ...b.seps.slice(i)] }))
+  }
+  return <div ref={box} className={n > 1 ? 'dm-bubs' : 'dm-bubs dm-bubs-1'} role={n > 1 ? 'group' : undefined} aria-label={n > 1 ? `${label}, ${n} bubbles` : undefined}>
+    {b.parts.map((p, i) => <div key={i} className="dm-bub-ed">
+      <Grow value={p} onChange={s => edit(i, s)} onBlur={onBlur}
+        label={i === 0 ? label : `${label}, bubble ${i + 1}`} max={max} onKeyDown={onKeyDown} rows={n > 1 ? 1 : 2} />
+      {n > 1 && <button type="button" className="dm-bub-x" data-verb="remove-bubble" aria-label={`Remove bubble ${i + 1}`} title="Remove this bubble"
+        onClick={() => onChange(joinBubbles(removeBubble(b, i)))}>✕</button>}
     </div>)}
   </div>
 }

@@ -21,7 +21,7 @@ import { outByDay, replied7d, seatView } from './model'
 import { copyText } from './Thread'
 import { useDmsData } from './useDmsData'
 import { useDmVerbs } from './verbs'
-import { nextNeedsYou } from './next'
+import { needsRows, nextNeedsYou } from './next'
 import { AgentOnlySheet, WarmSheet } from './Warm'
 import { useWarmVerbs } from './warmVerbs'
 import { RowMenu } from './RowMenu'
@@ -70,6 +70,7 @@ function Dms({ layout, route, navigate }: PlaceProps) {
   const refreshCounts = counts.refresh
   // Step 8 (#9): set further down each render, once the views and the open thread are known.
   const advance = useRef<(t: Thread) => string | null>(() => null)
+  const needsOrder = useRef<{ pid: string; ids: string[] } | null>(null)
   const ctx = useMemo(() => ({ prepareQuickDiscard: () => prepareQuick.current(), refresh: () => { data.refreshList(); data.reloadCame(); refreshCounts('dms') }, patch: data.patch, solved: data.solved.setLocal, dated: data.reloadDated, advance: (t: Thread) => advance.current(t) }),
     [data.refreshList, data.reloadCame, data.patch, data.solved.setLocal, data.reloadDated, refreshCounts]) // eslint-disable-line react-hooks/exhaustive-deps
   const verbs = useDmVerbs(ctx)
@@ -121,9 +122,13 @@ function Dms({ layout, route, navigate }: PlaceProps) {
   // After Send, Discard, Later or Solved on the open thread: open the next Needs you thread on the same
   // seat, then the next seat. Only when that thread is the one on screen and nothing unsaved is in it
   // (a typed reply stays where it is). Opening never sends.
+  // The open thread's place in its seat's Needs you list, kept from the last render it was in it.
+  const openSeat = open ? seatOf(open.client_id) : null
+  const openOrder = openSeat ? needsRows(views[openSeat]).map(r => r.prospect_id) : null
+  if (open && openOrder?.includes(open.prospect_id)) needsOrder.current = { pid: open.prospect_id, ids: openOrder }
   advance.current = (t: Thread) => {
     if (open?.prospect_id !== t.prospect_id || guard.current?.()) return null
-    const n = nextNeedsYou(views, t)
+    const n = nextNeedsYou(views, t, needsOrder.current?.pid === t.prospect_id ? needsOrder.current.ids : undefined)
     if (!n) return null
     const s = seatOf(n.client_id)
     const next = new URLSearchParams(route.query)

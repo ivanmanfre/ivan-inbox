@@ -296,6 +296,8 @@
 :root[data-skin-on~='dms'] .dx-card .dm-bub-ed{position:relative;display:flex;align-items:flex-start;gap:8px;padding:8px 8px 8px 12px;border-radius:10px;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px var(--ds-line)}
 :root[data-skin-on~='dms'] .dx-card .dm-bub-ed:focus-within{box-shadow:inset 0 0 0 1px var(--ds-line-strong)}
 :root[data-skin-on~='dms'] .dx-card .dm-bub-ed .dm-edit{flex:1;min-width:0;min-height:24px}
+:root[data-skin-on~='dms'] .dx-card .dm-bubs-1 .dm-bub-ed{display:block;padding:0;border-radius:0;background:transparent;box-shadow:none}
+:root[data-skin-on~='dms'] .dx-card .dm-bubs-1 .dm-bub-ed .dm-edit{min-height:64px}
 :root[data-skin-on~='dms'] .dx-card .dm-bub-x{flex:none;width:28px;height:28px;display:grid;place-items:center;border-radius:7px;color:var(--t3);font:500 13px/1 var(--f)}
 :root[data-skin-on~='dms'] .dx-card .dm-bub-x:hover{background:var(--ds-wash-strong,rgba(19,18,16,.06));color:var(--t1)}
 :root[data-skin-on~='dms'] .d-phone .dx-card .dm-bub-x{width:44px;height:44px;margin:-8px -8px -8px 0}
