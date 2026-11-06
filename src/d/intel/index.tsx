@@ -7,17 +7,22 @@ import { AnswerRow, N } from '../ui/AnswerRow'
 import { Btn } from '../ui/Key'
 import { Empty, Failed, Skeleton } from '../ui/states'
 import { useToast } from '../ui/toast'
-import { DROP_WINDOW_DAYS, FEED_WINDOW_DAYS, ago, clock, inDropped, inFeed, length, sortSources, tabOf, thumbUrl, watchUrl, type IntelItem, type IntelSource, type IntelTab } from './model'
+import { DROP_WINDOW_DAYS, FEED_WINDOW_DAYS, ago, clock, inDropped, inFeed, inSeen, length, sortSources, tabOf, thumbUrl, watchUrl, type IntelItem, type IntelSource, type IntelTab } from './model'
 import './intel.css'
 
 // D · INTEL. YouTube without the mess: every new upload from the chosen
 // channels (plus channels found by the weekly search) is read in full and
 // judged against what we run and what is open (~/.claude/intel-feed). The feed
-// shows only recent keeps (and drops Ivan rescued). Useful / Noise go back into
-// the judge; Mute stops a channel. Writer: ~/.claude/intel-feed/run.py. Tables:
+// shows only recent keeps (and drops Ivan rescued) he has not gone through yet.
+// Useful / Noise go back into the judge; Useful and Done move a card to Seen;
+// Mute stops a channel. Writer: ~/.claude/intel-feed/run.py. Tables:
 // db/240_intel_feed.sql.
 
-const ITEM_COLS = 'id,source_id,source_name,url,title,published_at,duration_sec,found_via,verdict,score,headline,what_new,applies_to,try_this,watch_from_sec,drop_reason,ivan_verdict,created_at'
+const ITEM_COLS = 'id,source_id,source_name,url,title,published_at,duration_sec,found_via,verdict,score,headline,what_new,applies_to,try_this,watch_from_sec,drop_reason,ivan_verdict,ivan_seen_at,created_at'
+
+/** Ivan's marks on a card. One row write carries both, so they travel together through the race guards. */
+type Mark = Pick<IntelItem, 'ivan_verdict' | 'ivan_seen_at'>
+const markOf = (i: IntelItem): Mark => ({ ivan_verdict: i.ivan_verdict, ivan_seen_at: i.ivan_seen_at })
 
 type Load<T> = { kind: 'loading' } | { kind: 'failed'; message: string } | { kind: 'ready'; data: T }
 
@@ -36,7 +41,7 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
   // Rows Ivan touched since a read started keep their local value when that read lands, so a refresh can
   // never revert a tap (finding r2-5). `confirmed` holds the last value the server accepted per row.
   const touched = useRef(new Map<string, number>())
-  const confirmed = useRef(new Map<string, string | null>())
+  const confirmed = useRef(new Map<string, unknown>())
   const inflight = useRef(new Map<string, number>())
 
   useEffect(() => {
@@ -61,8 +66,8 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
           const local = new Map(prev.kind === 'ready' ? prev.data.map(x => [x.id, x]) : [])
           return { kind: 'ready', data: [...byId.values()].map(r => {
             const key = 'item:' + r.id
-            if (fresh(key)) { const l = local.get(r.id); return l ? { ...r, ivan_verdict: l.ivan_verdict } : r }
-            confirmed.current.set(key, r.ivan_verdict)  // a clean read is the server's value (finding r3-2)
+            if (fresh(key)) { const l = local.get(r.id); return l ? { ...r, ...markOf(l) } : r }
+            confirmed.current.set(key, markOf(r))  // a clean read is the server's value (finding r3-2)
             return r
           }) }
         })
@@ -96,13 +101,13 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
   const drops = useMemo(() => all.filter(i => inDropped(i, now)).sort((a, b) => b.created_at.localeCompare(a.created_at)), [all, now])
   const srcList = useMemo(() => sources.kind === 'ready' ? sortSources(sources.data) : [], [sources])
   const following = srcList.filter(s => s.status === 'core' || s.status === 'trial').length
-  const fresh = keeps.filter(i => !i.ivan_verdict).length
+  const seen = useMemo(() => all.filter(i => inSeen(i, now)).sort((a, b) => (b.ivan_seen_at ?? '').localeCompare(a.ivan_seen_at ?? '')), [all, now])
 
   // Writes are serialized per row: each tap waits for the previous write on that row, and only the
   // newest tap may roll back, so a slow early request can never overwrite or undo a later choice.
   const chains = useRef(new Map<string, Promise<unknown>>())
   const seqs = useRef(new Map<string, number>())
-  const serial = useCallback((key: string, current: string | null, next: string | null, write: () => PromiseLike<{ error: { message: string } | null }>) => {
+  const serial = useCallback((key: string, current: unknown, next: unknown, write: () => PromiseLike<{ error: { message: string } | null }>) => {
     const seq = (seqs.current.get(key) ?? 0) + 1
     seqs.current.set(key, seq)
     touched.current.set(key, Date.now())
@@ -115,22 +120,24 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
       inflight.current.set(key, (inflight.current.get(key) ?? 1) - 1)
       if (!r.error) confirmed.current.set(key, next)
       // On the newest tap's failure, restore what the server last accepted (finding r2-4).
-      return { error: r.error, latest: seqs.current.get(key) === seq, restore: confirmed.current.get(key) ?? null }
+      return { error: r.error, latest: seqs.current.get(key) === seq, restore: confirmed.current.get(key) }
     })
   }, [])
 
-  const rate = useCallback(async (item: IntelItem, v: 'useful' | 'noise' | null, before: IntelItem['ivan_verdict'] = item.ivan_verdict) => {
-    setItems(p => p.kind === 'ready' ? { kind: 'ready', data: p.data.map(x => x.id === item.id ? { ...x, ivan_verdict: v } : x) } : p)
-    const { error, latest, restore } = await serial('item:' + item.id, item.ivan_verdict, v, () =>
-      supabase.from('intel_items').update({ ivan_verdict: v, ivan_verdict_at: v ? new Date().toISOString() : null }).eq('id', item.id))
+  // `said` is the toast for this tap; its Undo writes `before` back with no toast of its own.
+  const mark = useCallback(async (item: IntelItem, next: Mark, said?: string, before: Mark = markOf(item)) => {
+    const put = (m: Mark) => setItems(p => p.kind === 'ready' ? { kind: 'ready', data: p.data.map(x => x.id === item.id ? { ...x, ...m } : x) } : p)
+    put(next)
+    const { error, latest, restore } = await serial('item:' + item.id, markOf(item), next, () =>
+      supabase.from('intel_items').update({ ...next, ivan_verdict_at: next.ivan_verdict ? new Date().toISOString() : null }).eq('id', item.id))
     if (error) {
-      if (latest) setItems(p => p.kind === 'ready' ? { kind: 'ready', data: p.data.map(x => x.id === item.id ? { ...x, ivan_verdict: restore as IntelItem['ivan_verdict'] } : x) } : p)
+      if (latest && restore) put(restore as Mark)
       toast.show({ message: 'Could not save that.', sub: error.message, tone: 'failed' })
       return
     }
-    if (v === 'noise') toast.show({ id: 'intel-' + item.id, message: 'Marked noise. The judge learns from it.', action: { label: 'Undo', verb: 'undo', run: () => void rate(item, before, 'noise') } })
-    if (v === 'useful' && item.verdict === 'drop') toast.show({ id: 'intel-' + item.id, message: 'Moved to For you. The judge learns it was wrong.', action: { label: 'Undo', verb: 'undo', run: () => void rate(item, before, 'useful') } })
+    if (said) toast.show({ id: 'intel-' + item.id, message: said, action: { label: 'Undo', verb: 'undo', run: () => void mark(item, before, undefined, next) } })
   }, [serial, toast])
+  const stamp = () => new Date().toISOString()
 
   const setStatus = useCallback(async (sourceId: string, status: IntelSource['status'], prevStatus?: IntelSource['status']) => {
     const prev = prevStatus ?? (sources.kind === 'ready' ? sources.data.find(s => s.id === sourceId)?.status : undefined)
@@ -149,7 +156,7 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
 
   const go = (t: IntelTab) => navigate(dHash('intel', null, t === 'feed' ? {} : { tab: t }))
   const title = items.kind === 'ready'
-    ? (keeps.length === 0 ? 'Nothing worth your time yet.' : <>Worth watching: <N v={fresh} /> new</>)
+    ? (keeps.length === 0 ? (seen.length ? 'Nothing new since you last looked.' : 'Nothing worth your time yet.') : <>Worth watching: <N v={keeps.length} /> new</>)
     : 'Intel'
   const sub = items.kind === 'ready' && sources.kind === 'ready'
     ? `${following} channels read in full. ${drops.length} dropped in the last ${DROP_WINDOW_DAYS} days.`
@@ -157,7 +164,7 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
 
   const tabs = (
     <nav className="it-tabs" aria-label="Intel views">
-      {([['feed', 'For you', keeps.length], ['dropped', 'Dropped', drops.length], ['sources', 'Channels', following]] as const).map(([id, label, n]) => (
+      {([['feed', 'For you', keeps.length], ['seen', 'Seen', seen.length], ['dropped', 'Dropped', drops.length], ['sources', 'Channels', following]] as const).map(([id, label, n]) => (
         <button key={id} type="button" className={tab === id ? 'it-on' : ''} aria-current={tab === id ? 'page' : undefined} onClick={() => go(id)}>
           {label}<i>{n}</i>
         </button>
@@ -178,15 +185,24 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
     body = drops.length === 0 ? <Empty title="Nothing dropped in the last two weeks." />
       : <ol className="it-grid it-grid-drops">{drops.map(i => (
         <Tile key={i.id} i={i} line={i.drop_reason} tone="drop"
-          keys={inFeed({ ...i, ivan_verdict: 'useful' }, now) ? <Btn verb="intel-rescue" onClick={() => rate(i, 'useful')}>Useful after all</Btn> : null} />
+          keys={inFeed({ ...i, ivan_verdict: 'useful', ivan_seen_at: null }, now) ? <Btn verb="intel-rescue" onClick={() => mark(i, { ivan_verdict: 'useful', ivan_seen_at: null }, 'Moved to For you. The judge learns it was wrong.')}>Useful after all</Btn> : null} />
       ))}</ol>
+  } else if (tab === 'seen') {
+    body = seen.length === 0 ? <Empty title="Nothing marked done yet." reason="Useful or Done on a card moves it here." />
+      : <ol className="it-grid">{seen.map(i => <Tile key={i.id} i={i} line={i.headline} tone="keep" details
+          keys={<>
+            <Btn verb="intel-useful" className={i.ivan_verdict === 'useful' ? 'it-pressed' : ''} aria-pressed={i.ivan_verdict === 'useful'} onClick={() => mark(i, { ...markOf(i), ivan_verdict: i.ivan_verdict === 'useful' ? null : 'useful' })}>Useful</Btn>
+            <Btn verb="intel-noise" onClick={() => mark(i, { ...markOf(i), ivan_verdict: 'noise' }, 'Marked noise. The judge learns from it.')}>Noise</Btn>
+            <Btn verb="intel-back" className="it-mute" onClick={() => mark(i, { ...markOf(i), ivan_seen_at: null }, 'Back in For you.')}>Back to For you</Btn>
+          </>} />)}</ol>
   } else {
     body = keeps.length === 0
-      ? <Empty title="Nothing worth watching in the last three weeks." reason="Every new video from your channels is read and judged. Most get dropped." action={<Btn onClick={() => go('dropped')}>See what was dropped</Btn>} />
+      ? <Empty title={seen.length ? 'You are through everything worth watching.' : 'Nothing worth watching in the last three weeks.'} reason="Every new video from your channels is read and judged. Most get dropped. New ones land here." action={<Btn onClick={() => go('dropped')}>See what was dropped</Btn>} />
       : <ol className="it-grid">{keeps.map(i => <Tile key={i.id} i={i} line={i.headline} tone="keep" details
           keys={<>
-            <Btn verb="intel-useful" className={i.ivan_verdict === 'useful' ? 'it-pressed' : ''} aria-pressed={i.ivan_verdict === 'useful'} onClick={() => rate(i, i.ivan_verdict === 'useful' ? null : 'useful')}>Useful</Btn>
-            <Btn verb="intel-noise" onClick={() => rate(i, 'noise')}>Noise</Btn>
+            <Btn verb="intel-useful" onClick={() => mark(i, { ivan_verdict: 'useful', ivan_seen_at: stamp() }, 'Saved as useful. It is in Seen now.')}>Useful</Btn>
+            <Btn verb="intel-noise" onClick={() => mark(i, { ...markOf(i), ivan_verdict: 'noise' }, 'Marked noise. The judge learns from it.')}>Noise</Btn>
+            <Btn verb="intel-done" onClick={() => mark(i, { ...markOf(i), ivan_seen_at: stamp() }, 'Done. It is in Seen now.')}>Done</Btn>
             {i.source_id && <Btn verb="intel-mute" className="it-mute" onClick={() => void setStatus(i.source_id!, 'muted')}>Mute</Btn>}
           </>} />)}</ol>
   }

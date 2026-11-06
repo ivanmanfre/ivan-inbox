@@ -42,10 +42,10 @@ vi.mock('../../lib/supabase', () => {
 const { default: IntelPage } = await import('./index')
 
 const recent = new Date(Date.now() - 2 * 86400000).toISOString()
-const keep = { id: 'k1', source_id: 'yt:a', source_name: 'Hamel', url: 'https://www.youtube.com/watch?v=x', title: 'T', published_at: recent, duration_sec: 600, found_via: 'source', verdict: 'keep', score: 50, headline: 'Flip-rate check', what_new: 'w', applies_to: 'LLM judges', try_this: 't', watch_from_sec: 60, drop_reason: null, ivan_verdict: null, created_at: recent }
+const keep = { id: 'k1', source_id: 'yt:a', source_name: 'Hamel', url: 'https://www.youtube.com/watch?v=x', title: 'T', published_at: recent, duration_sec: 600, found_via: 'source', verdict: 'keep', score: 50, headline: 'Flip-rate check', what_new: 'w', applies_to: 'LLM judges', try_this: 't', watch_from_sec: 60, drop_reason: null, ivan_verdict: null, ivan_seen_at: null, created_at: recent }
 
-function page() {
-  return renderInFrame(<IntelPage layout="desktop" route={parseDHash('#exp/d/intel')} navigate={() => {}} />, { hash: '#exp/d/intel' })
+function page(hash = '#exp/d/intel') {
+  return renderInFrame(<IntelPage layout="desktop" route={parseDHash(hash)} navigate={() => {}} />, { hash })
 }
 
 afterEach(() => cleanup())
@@ -59,7 +59,8 @@ beforeEach(() => {
 
 describe('Intel page writes', () => {
   it('two failed taps restore what the server last accepted (unrated)', async () => {
-    page()
+    h.keeps = [{ ...keep, ivan_seen_at: recent }]
+    page('#exp/d/intel?tab=seen')
     const useful = await screen.findByRole('button', { name: 'Useful' })
     fireEvent.click(useful)               // -> useful (in flight)
     fireEvent.click(useful)               // -> null (queued behind it)
@@ -71,7 +72,8 @@ describe('Intel page writes', () => {
   })
 
   it('a refresh that read before a tap does not revert the tap', async () => {
-    page()
+    h.keeps = [{ ...keep, ivan_seen_at: recent }]
+    page('#exp/d/intel?tab=seen')
     const useful = await screen.findByRole('button', { name: 'Useful' })
     let open!: () => void
     h.readGate = new Promise<void>(r => { open = r })
@@ -106,6 +108,27 @@ describe('Intel page writes', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Undo' }))
     await waitFor(() => expect(h.updates.length).toBe(2))
     await act(async () => { h.updates[1].settle({ error: { message: 'boom' } }) })
+    await waitFor(() => expect(screen.queryByText('Flip-rate check')).toBeNull())
+  })
+  it('Done takes a card out of For you, into Seen, and the write stamps it', async () => {
+    page()
+    fireEvent.click(await screen.findByRole('button', { name: 'Done' }))
+    await waitFor(() => expect(screen.queryByText('Flip-rate check')).toBeNull())
+    await waitFor(() => expect(h.updates.length).toBe(1))
+    expect(h.updates[0].patch.ivan_seen_at).toEqual(expect.any(String))
+    expect(h.updates[0].patch.ivan_verdict).toBeNull()
+    await act(async () => { h.updates[0].settle({ error: null }) })
+    cleanup()
+    h.keeps = [{ ...keep, ivan_seen_at: recent }]
+    page('#exp/d/intel?tab=seen')
+    expect(await screen.findByText('Flip-rate check')).toBeTruthy()
+  })
+
+  it('Useful from For you saves the verdict and marks the card seen in one write', async () => {
+    page()
+    fireEvent.click(await screen.findByRole('button', { name: 'Useful' }))
+    await waitFor(() => expect(h.updates.length).toBe(1))
+    expect(h.updates[0].patch).toMatchObject({ ivan_verdict: 'useful', ivan_seen_at: expect.any(String) })
     await waitFor(() => expect(screen.queryByText('Flip-rate check')).toBeNull())
   })
 })

@@ -18,6 +18,8 @@ export type IntelItem = {
   watch_from_sec: number | null
   drop_reason: string | null
   ivan_verdict: 'useful' | 'noise' | null
+  /** When Ivan was done with the card (Done, or Useful). Seen cards leave For you. */
+  ivan_seen_at: string | null
   created_at: string
 }
 
@@ -34,7 +36,7 @@ export type IntelSource = {
   last_kept_at: string | null
 }
 
-export type IntelTab = 'feed' | 'dropped' | 'sources'
+export type IntelTab = 'feed' | 'seen' | 'dropped' | 'sources'
 
 /** Only recent videos reach For you (Ivan 10-30: "they need to be recent videos"). Matches the job's
  *  widest ingestion window (discovery hits up to 21 days old). */
@@ -42,10 +44,24 @@ export const FEED_WINDOW_DAYS = 21
 export const DROP_WINDOW_DAYS = 14
 const DAY = 86400000
 
-/** For you: recent keeps Ivan has not marked Noise, plus drops he rescued with Useful. */
-export function inFeed(i: IntelItem, now: number = Date.now()): boolean {
-  if (!i.published_at || now - Date.parse(i.published_at) > FEED_WINDOW_DAYS * DAY) return false
+function recent(i: IntelItem, now: number): boolean {
+  return !!i.published_at && now - Date.parse(i.published_at) <= FEED_WINDOW_DAYS * DAY
+}
+
+/** Worth showing at all: a keep Ivan has not marked Noise, or a drop he rescued with Useful. */
+function wanted(i: IntelItem): boolean {
   return i.verdict === 'keep' ? i.ivan_verdict !== 'noise' : i.ivan_verdict === 'useful'
+}
+
+/** For you: recent wanted videos Ivan has not gone through yet (Ivan 11-06: "i already went through
+ *  these... instead of showing new stuff"). Done or Useful moves a card to Seen. */
+export function inFeed(i: IntelItem, now: number = Date.now()): boolean {
+  return recent(i, now) && wanted(i) && !i.ivan_seen_at
+}
+
+/** Seen: recent wanted videos Ivan is done with, so a card can be brought back. */
+export function inSeen(i: IntelItem, now: number = Date.now()): boolean {
+  return recent(i, now) && wanted(i) && !!i.ivan_seen_at
 }
 
 /** Dropped: the judge's drops from the last two weeks that Ivan has not rescued. */
@@ -55,7 +71,7 @@ export function inDropped(i: IntelItem, now: number = Date.now()): boolean {
 
 export function tabOf(q: URLSearchParams): IntelTab {
   const t = q.get('tab')
-  return t === 'dropped' || t === 'sources' ? t : 'feed'
+  return t === 'seen' || t === 'dropped' || t === 'sources' ? t : 'feed'
 }
 
 /** 754 -> "12:34", 3725 -> "1:02:05". */
