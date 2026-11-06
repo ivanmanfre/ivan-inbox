@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { kindFor } from './alertKinds'
 import { isImportantWorkflowFamily, MUTED_NOTIFICATION_FAMILIES } from '../../supabase/functions/_shared/notification-lifecycle'
+import { MUTED_FAMILIES as BOT_MUTED_FAMILIES } from '../../supabase/functions/inbox-bot-tick/bundle'
 
 // turns.ts — the client data layer for db/049: persisted Claude turns, the
 // threads that hold their CLI session, and the one notification feed.
@@ -153,6 +154,49 @@ export async function listThreads(limit = 30): Promise<Thread[]> {
     .limit(limit)
   if (error) throw error
   return (data ?? []) as unknown as Thread[]
+}
+
+/**
+ * What the Claude page needs to tell "Claude's thread is resting" from "it is
+ * broken" (2026-11-06: every tick was refused for 6 days and the page showed a
+ * plain grey date). Mirrors the tick's own gates (inbox-bot-tick steps 4-5):
+ * the on switch, the daily cap counted from 00:00 UTC, and the oldest unread
+ * row the tick would read.
+ */
+export type BotHealth = { on: boolean; cap: number; today: number; busy: boolean; lastTurnAt: string | null; waitingSince: string | null }
+
+export async function readBotHealth(botThreadId: string, now = Date.now()): Promise<BotHealth> {
+  const d = new Date(now)
+  const dayStart = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).toISOString()
+  const [cfg, turns, open, last, rows] = await Promise.all([
+    supabase.from('integration_config').select('key, value').in('key', ['bot_tick_enabled', 'bot_daily_turn_cap']),
+    // Same count the tick's cap uses: bot-origin turns since 00:00 UTC (operator replies do not count).
+    supabase.from('inbox_turns').select('id', { count: 'exact', head: true }).eq('origin', 'bot').gte('created_at', dayStart),
+    // A queued or running bot turn here makes the tick answer "busy": that is work, not silence.
+    supabase.from('inbox_turns').select('id', { count: 'exact', head: true }).eq('origin', 'bot').eq('thread_id', botThreadId).in('status', ['queued', 'running']),
+    // Read with the rest so the silence rule never compares fresh health to a stale thread row (Sol r2).
+    supabase.from('inbox_turns').select('created_at').eq('thread_id', botThreadId).order('created_at', { ascending: false }).limit(1),
+    supabase.from('inbox_notifications').select('created_at')
+      .is('read_at', null).is('dismissed_at', null)
+      .or(`expires_at.is.null,expires_at.gt.${d.toISOString()}`)
+      .not('family', 'in', `(${BOT_MUTED_FAMILIES.join(',')})`)
+      .order('created_at', { ascending: true }).limit(1),
+  ])
+  if (cfg.error) throw cfg.error
+  if (turns.error) throw turns.error
+  if (open.error) throw open.error
+  if (last.error) throw last.error
+  if (rows.error) throw rows.error
+  const m = new Map((cfg.data ?? []).map(r => [r.key as string, String(r.value)]))
+  const capN = Number(m.get('bot_daily_turn_cap'))
+  return {
+    on: m.get('bot_tick_enabled') === 'true',
+    cap: Number.isFinite(capN) && capN > 0 ? capN : 24,
+    today: turns.count ?? 0,
+    busy: (open.count ?? 0) > 0,
+    lastTurnAt: (last.data?.[0]?.created_at as string | undefined) ?? null,
+    waitingSince: (rows.data?.[0]?.created_at as string | undefined) ?? null,
+  }
 }
 
 export async function getThread(id: string): Promise<Thread | null> {

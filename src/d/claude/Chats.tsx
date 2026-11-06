@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { listThreads, type Thread } from '../../lib/turns'
+import { listThreads, readBotHealth, type BotHealth, type Thread } from '../../lib/turns'
 import { Failed, Skeleton } from '../ui/states'
 import { warsawDm, warsawDow, warsawHm } from '../ui/time'
 import { useClaude } from './ClaudeProvider'
 import { CIcon } from './icons'
-import { chatTail, chatsByDay, shortTitle } from './model'
+import { botSilentLine, chatTail, chatsByDay, shortTitle } from './model'
 
 // Chats: search, Claude's own thread pinned with the Pushes switch (the one
 // write here, today's `setBotPushMuted`, db/065), then every chat by day with
@@ -33,6 +33,22 @@ export function Chats({ onPicked, list }: { onPicked: () => void; list: ReturnTy
   const bot = chat.botThread
   const pick = (fn: () => void) => { fn(); onPicked() }
   const muted = chat.botPushMuted
+  const [health, setHealth] = useState<{ h: BotHealth | null; at: number }>({ h: null, at: Date.now() })
+  const botId = bot?.id
+  useEffect(() => {
+    if (!botId) return
+    let live = true
+    // A failed read shows nothing extra: the row keeps its plain date. Re-read
+    // every 5 minutes and when the page comes back, so a silence that starts
+    // while the page is open still shows (Sol r1).
+    const read = () => readBotHealth(botId).then(h => { if (live) setHealth({ h, at: Date.now() }) }, () => { if (live) setHealth({ h: null, at: Date.now() }) })
+    read()
+    const timer = window.setInterval(read, 5 * 60_000)
+    const onVis = () => { if (document.visibilityState === 'visible') read() }
+    document.addEventListener('visibilitychange', onVis)
+    return () => { live = false; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVis) }
+  }, [botId, bot?.last_turn_at])
+  const silent = botSilentLine(health.h, health.h?.lastTurnAt ?? bot?.last_turn_at, health.at)
 
   return (
     <div className="dcl-chats" data-chats>
@@ -45,6 +61,7 @@ export function Chats({ onPicked, list }: { onPicked: () => void; list: ReturnTy
           <button type="button" className="dcl-bot-m" onClick={() => pick(() => chat.openBot())}>
             <b>Claude's thread{chat.botUnread && <em className="dcl-new">new</em>}</b>
             <small>{bot.turn_count} turns{bot.last_turn_at ? ` · last ${warsawDow(bot.last_turn_at)} ${warsawDm(bot.last_turn_at)}` : ''}</small>
+            {silent && <span className="dcl-bot-warn" role="status" data-bot-silent>{silent}</span>}
           </button>
           <span className="dcl-bot-l">Pushes {muted ? 'off' : 'on'}</span>
           <button

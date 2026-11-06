@@ -94,6 +94,30 @@ export { ALLOWLIST }
 // consequence is the one already priced above (~$0.22 per first turn).
 export const MAX_SYSTEM_PROMPT_CHARS = 60_000
 
+/**
+ * 2026-11-06: the last ladder step. MEMORY.md grew to 73,422 chars after the
+ * daily index rerender jammed on 10-27, and every turn from 11-01 was refused
+ * with context_assembly_over_cap, bot ticks included, for six days, silently.
+ * A refused turn costs the whole brain; a cut index costs only its tail. So when
+ * the rest of the ladder is not enough, P15 is cut at a LINE boundary from the
+ * bottom (the index puts Quick ctx, Critical rules and Infra traps first and the
+ * long tail last) and the cut is named inside the block and in the LOAD-SHED
+ * line. Below this floor the turn still fails with 413: a stub index is no brain.
+ */
+export const P15_MIN_CHARS = 4_000
+
+/** Keep the first `keep` whole lines of `content`, then say where it was cut. */
+export function cutIndexAtLine(content: string, keep: number): { text: string; kept: number; total: number; keptChars: number } {
+  const lines = content.split('\n')
+  const total = lines.length
+  const kept = Math.max(0, Math.min(keep, total))
+  const body = lines.slice(0, kept).join('\n')
+  const note =
+    `[MEMORY.md CUT to fit the context cap: first ${kept} of ${total} lines shown. The rest is in ` +
+    `claude_memory project/MEMORY-FULL.md and the project memory files: read them before relying on a fact not shown here.]`
+  return { text: body + '\n' + note, kept: kept, total: total, keptChars: body.length }
+}
+
 /** Warn into the function log above this, so the next squeeze is seen before it bites. */
 const CAP_WARN_RATIO = 0.9
 
@@ -1053,8 +1077,10 @@ export async function assembleSystemPrompt(deps: AssembleDeps): Promise<Assemble
   // ---- P15 is mandatory: whole, or the stale fallback, or a visible error --
   if (rP15.status === 'rejected') {
     const last = memoGet<StaleEntry>('LAST_GOOD')
-    if (last && now - last.at < TTL_STALE_MS) {
-      const text = `[STALE: assembled ${last.iso}, live sources unreachable — ${reason(rP15.reason)}]\n${last.text}`
+    const staleText = last ? `[STALE: assembled ${last.iso}, live sources unreachable — ${reason(rP15.reason)}]\n${last.text}` : ''
+    // Sol r1: a cached assembly built under a smaller reserve must still fit THIS turn's cap.
+    if (last && now - last.at < TTL_STALE_MS && staleText.length <= cap) {
+      const text = staleText
       const staleBlocks: BlockReport[] = [
         { id: 'STALE', chars: text.length, ok: false, note: `served from ${last.iso}` },
       ]
@@ -1110,6 +1136,8 @@ export async function assembleSystemPrompt(deps: AssembleDeps): Promise<Assemble
   let shedB8 = false
   let shedB9 = false
   let shedP16 = false
+  /** null = MEMORY.md whole; a number = how many of its lines are kept (last ladder step). */
+  let p15Keep: number | null = null
 
   function absentNote(id: string, label: string, r: PromiseSettledResult<unknown>): string {
     const why = r.status === 'rejected' ? reason(r.reason) : 'empty'
@@ -1285,7 +1313,9 @@ export async function assembleSystemPrompt(deps: AssembleDeps): Promise<Assemble
       })
     }
 
-    // P15 last: biggest, never shed, never mid-truncated.
+    // P15 last: biggest, never shed, cut only at a line boundary as the final
+    // ladder step (see P15_MIN_CHARS), never mid-line.
+    const p15Cut = p15Keep === null ? null : cutIndexAtLine(p15.content, p15Keep)
     out.push({
       id: 'P15',
       source: 'claude_memory.content',
@@ -1293,7 +1323,8 @@ export async function assembleSystemPrompt(deps: AssembleDeps): Promise<Assemble
       file: 'project/MEMORY.md',
       freshness: p15.updatedAt,
       ok: true,
-      render: () => p15.content,
+      note: p15Cut ? `cut to ${p15Cut.kept} of ${p15Cut.total} lines to fit the cap` : undefined,
+      render: () => (p15Cut ? p15Cut.text : p15.content),
     })
 
     return out
@@ -1406,11 +1437,36 @@ export async function assembleSystemPrompt(deps: AssembleDeps): Promise<Assemble
     out = render(nonce)
   }
 
+  // Last step: cut MEMORY.md from the bottom at a line boundary. Binary search
+  // on the number of kept lines, measured on the RENDERED payload (escaping can
+  // change lengths), for the most lines that fit. The floor is on the index
+  // content actually kept, never on the budget asked for.
   if (out.text.length > cap) {
+    const total = p15.content.split('\n').length
+    shed.push('trim:P15')
+    let lo = 0
+    let hi = total - 1
+    let best = -1
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1
+      p15Keep = mid
+      if (render(nonce).text.length <= cap) { best = mid; lo = mid + 1 } else hi = mid - 1
+    }
+    if (best >= 0 && cutIndexAtLine(p15.content, best).keptChars >= P15_MIN_CHARS) {
+      p15Keep = best
+      console.warn('context assembly cut MEMORY.md to fit', { memory_chars: p15.content.length, kept_lines: best, total_lines: total, cap: cap })
+    } else {
+      p15Keep = best >= 0 ? best : 0
+    }
+    out = render(nonce)
+  }
+
+  const p15Stub = p15Keep !== null && cutIndexAtLine(p15.content, p15Keep).keptChars < P15_MIN_CHARS
+  if (out.text.length > cap || p15Stub) {
     throw new Error(
       `413 context_assembly_over_cap: ${out.text.length} chars after the full load-shed ladder ` +
         `(cap ${MAX_SYSTEM_PROMPT_CHARS}, reserved ${reserve} for the depth block). ` +
-        `MEMORY.md is never mid-truncated (PARITY-SPEC §3).`,
+        `MEMORY.md would have to be cut below ${P15_MIN_CHARS} chars.`,
     )
   }
 
