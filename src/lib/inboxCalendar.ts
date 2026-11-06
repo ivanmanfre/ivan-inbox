@@ -27,3 +27,18 @@ export async function requestCalendar(input: { prospect_id: string; action: 'ava
   if (!r.ok) throw Error(result.error || 'Calendar assistance is unavailable. Try again.')
   return result
 }
+
+// BOOKING_CARD_OFFERED_SLOT_V1 (2026-11-06): Book on an Ops card whose prospect said yes to the time we offered.
+// Books that exact time on the owner's scheduler server-side; the held confirm reply stays unapproved.
+export type CardBookResult = { status: 'booked' | 'blocked'; start?: string; recorded?: boolean; released?: boolean; already?: boolean; existing?: string; message?: string }
+export async function bookFromCard(cardId: string, requestId: string): Promise<CardBookResult> {
+  const { data } = await supabase.auth.getSession()
+  if (!data.session?.access_token) throw Error('Sign in again to book.')
+  const r = await window.fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/inbox-calendar`, {
+    method: 'POST', headers: { Authorization: `Bearer ${data.session.access_token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'book_card', card_id: cardId, request_id: requestId, confirmed: true }), signal: AbortSignal.timeout(75000),
+  })
+  const result = await r.json()
+  if (!r.ok) throw Error(result.error || 'Booking is unavailable. Try again.')
+  return result
+}
