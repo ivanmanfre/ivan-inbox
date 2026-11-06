@@ -59,4 +59,8 @@ describe('incomplete checks', () => {
     expect(needsKeep(f, 'abc')).toBe(true)
     expect(needsKeep({ ...f, keptSha: 'abc' }, 'abc')).toBe(false)
   })
+  it('an old count stops counting once the text changed', () => {
+    const f = lineFlagsOf({ lines: [], lines_sha: 'old', lines_rejected: 1 }, 'I run a one-man agency.')!
+    expect(needsKeep(f, 'new')).toBe(false)
+  })
 })

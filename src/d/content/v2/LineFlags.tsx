@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useToast } from '../../ui/toast'
 import { saveDraftBody, DraftSaveConflict, type ContentDraft } from '../../../lib/content'
-import { bodySha, cutLine, keepLineFlags, lineFlagsOf, needsKeep, type LineFlags } from '../../../lib/lineFlags'
+import { bodySha, cutLine, keepLineFlags, lineFlagsOf, needsKeep, rejectedNow, type LineFlags } from '../../../lib/lineFlags'
 import './line-flags.css'
 
 const KIND_WORD = { personal: 'Their line', dated: 'Dated' } as const
@@ -104,7 +104,7 @@ export function LineFlagsBlock({ r, flags, sha, body, edit, setEdit, onStartEdit
           ))}
         </ul>
       )}
-      {flags.rejected > 0 && <p className="cv2-lf-note">The check found {flags.rejected === 1 ? 'a line' : `${flags.rejected} lines`} it could not point to. Read the post through before it goes out.</p>}
+      {rejectedNow(flags, sha) > 0 && <p className="cv2-lf-note">The check found {rejectedNow(flags, sha) === 1 ? 'a line' : `${rejectedNow(flags, sha)} lines`} it could not point to. Read the post through before it goes out.</p>}
       {kept && <p className="cv2-lf-note">You kept these as written.</p>}
       {asking && !kept && (
         <div className="cv2-lf-confirm" role="group" aria-label="Approve with flagged lines">
