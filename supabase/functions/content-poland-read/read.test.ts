@@ -5,7 +5,7 @@ Deno.test('body has no system field and puts the instruction and the post in the
   if ('system' in b) throw new Error('system field present')
   if (b.messages.length !== 1 || b.messages[0].role !== 'user') throw new Error('not one user turn')
   if (!String(b.messages[0].content).includes('More riots in Warsaw today.')) throw new Error('post missing')
-  if (!/Politics, migration and strong opinions about Poland count/.test(String(b.messages[0].content))) throw new Error('polemic rule missing')
+  if (!/Politics, migration and strong opinions about Poland count[\s\S]*speaks as a Pole/.test(String(b.messages[0].content))) throw new Error('Polish point-of-view rule missing')
   if (b.model !== MODEL) throw new Error('model')
 })
 
