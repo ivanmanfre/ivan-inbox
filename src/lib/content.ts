@@ -489,7 +489,10 @@ export async function fetchScheduledQueue(): Promise<ScheduledQueueRow[]> {
 // control's default is the next day that is not in this set (see
 // ScheduleDraft): one date column, Ivan's lane only, future rows only, so the
 // read stays a few hundred bytes however long the archive gets.
-export async function fetchIvanArmedDays(): Promise<Set<string>> {
+/** The armed days, plus the dated instants they came from (`times`), so a slot at another hour can check the
+ *  24 h spacing itself (cross-review 2026-11-06: the days assume 10:45). */
+export type ArmedDays = Set<string> & { times?: readonly string[] }
+export async function fetchIvanArmedDays(): Promise<ArmedDays> {
   // 2026-10-30 ("could not arm it"): the database's spacing guard (zzy_content_plan_ivan_spacing) refuses any
   // automatic date within 24 h of another dated draft in review, approved or scheduled, and this read only knew
   // scheduled rows on the same day. Thu 10:45 was offered 21 h after Wed 13:00 and the write was refused.
@@ -501,7 +504,8 @@ export async function fetchIvanArmedDays(): Promise<Set<string>> {
     .gte('scheduled_at', new Date(Date.now() - 86_400_000).toISOString())
     .limit(500)
   if (error) throw error
-  const days = new Set<string>()
+  const days: ArmedDays = new Set<string>()
+  days.times = ((data ?? []) as { scheduled_at: string | null }[]).map(r => r.scheduled_at).filter((x): x is string => !!x)
   for (const r of (data ?? []) as { scheduled_at: string | null }[]) {
     if (!r.scheduled_at) continue
     const at = new Date(r.scheduled_at)
@@ -795,6 +799,18 @@ export async function fetchLaneProbe(lane: ContentLane): Promise<LaneProbe> {
 
 // Approve is a status write and does NOT publish (phase1b §4): publishing needs
 // scheduled_at + status='scheduled', or the explicit publish-now webhook.
+/** Approve for "Approve + schedule": only a draft still undated in review, never one archived, dated, published or
+ *  deleted by the operator (deleteDraft moves those out of review) while the Undo was held (cross-review 2026-11-06). Zero rows is a refusal. */
+export async function approveReviewDraft(id: string): Promise<void> {
+  const { data, error } = await supabase.from('carousel_drafts')
+    .update({ status: 'approved' })
+    .eq('id', id).is('client_id', null).eq('status', 'review')
+    .is('published_at', null).is('scheduled_at', null)
+    .select('id')
+  if (error) throw error
+  if (!data || data.length === 0) throw new Error('Not approved: this draft changed since it loaded (archived, dated or published).')
+}
+
 export async function approveDraft(id: string): Promise<void> {
   const { data, error } = await supabase.from('carousel_drafts')
     .update({ status: 'approved' })

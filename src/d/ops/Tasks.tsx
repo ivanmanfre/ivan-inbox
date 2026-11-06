@@ -8,7 +8,7 @@ import { useDConfirm } from '../ui/confirm'
 import { Btn } from '../ui/Key'
 import { BookedKey } from './BookedKey'
 import { warsawHm } from '../ui/time'
-import { ago } from './model'
+import { addedAgo, ago } from './model'
 
 // YOUR LIST. A task is a row, never a card (Ivan 08-29): a small Done key, the
 // title (two lines), the detail, and one mono line "due · source · seat ·
@@ -67,6 +67,7 @@ function Row({ d, refresh, onLeaving }: { d: OpsDraft; refresh: () => void; onLe
               onClick={() => setOpen(true)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(true) } }}>{detail}</small>)}
         <div className="op-tm2">
           {dl && <b className={dl.tone === 'over' || dl.tone === 'now' ? 'op-hot' : ''}>{dl.tone === 'over' ? 'overdue' : dl.text}</b>}
+          {addedAgo(d.created_at) && <span className="op-age">{addedAgo(d.created_at)}</span>}
           {seat && seat !== 'ivan' && <span>{SEAT_NAME[seat]}</span>}
           <span><button type="button" className="op-rm" data-verb="remove" disabled={busy} onClick={() => void remove()} aria-label={`Remove: ${title}`}>remove</button></span>
         </div>

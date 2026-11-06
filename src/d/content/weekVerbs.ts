@@ -1,12 +1,85 @@
-import { useCallback } from 'react'
-import { setBoardVisible } from '../../lib/content'
+import { useCallback, useSyncExternalStore } from 'react'
+import { approveReviewDraft, setBoardVisible } from '../../lib/content'
+import { setVerdict } from '../../lib/verdicts'
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
 import { HOLD_MS, holdDecision, undoDecision } from './decisions'
 import { OWNER, POSS, armedReceipt, isPastSchedule, type Lane } from './model'
 import type { WeekCard } from './weekModel'
 import { scheduleGuarded } from './writes'
-import { judge } from './verdictStore'
+import { judge, shownForMs } from './verdictStore'
+import { warsawDm, warsawDow, warsawHm } from '../ui/time'
+
+/** "Tue 10 Nov · 10:45": the time the one-tap key names. */
+export const slotWords = (at: Date) => `${warsawDow(at)} ${warsawDm(at)} · ${warsawHm(at)}`
+
+/** Approve, then schedule at `at`: the one write behind "Approve + schedule". A brain draft still to judge approves
+ *  through its verdict (cb39_verdict_set keep, which approves on Ivan's seat), any other review draft through
+ *  approveDraft. Returns the scheduled_at the row now holds. Throws ApprovedNotScheduled when only the first half
+ *  landed. */
+export class ApprovedNotScheduled extends Error {}
+export async function approveThenSchedule(id: string, viaVerdict: boolean, at: Date): Promise<string | null> {
+  if (viaVerdict) await setVerdict(id, 'keep', { msToVerdict: shownForMs(id) })
+  else await approveReviewDraft(id)
+  try { return await scheduleGuarded(id, at.toISOString()) }
+  catch (e) { throw new ApprovedNotScheduled(e instanceof Error ? e.message : 'Could not schedule it.') }
+}
+
+// RESERVED SLOTS (cross-review 2026-11-06): a held "Approve + schedule" keeps its time taken until the write lands
+// and the next read shows it, so the next card (or the Plan's next gap) never offers the same slot. Released on
+// Undo or failure; kept 30 s after the write so the re-read has time to carry the real date.
+export type Reserved = { at: string; poland: boolean }
+const reserved = new Map<string, Reserved>()
+let reservedSnap: ReadonlyMap<string, Reserved> = new Map()
+const reservedSubs = new Set<() => void>()
+const reservedPublish = () => { reservedSnap = new Map(reserved); for (const l of reservedSubs) l() }
+export function reserveSlot(id: string, r: Reserved): void { reserved.set(id, r); reservedPublish() }
+export function releaseSlot(id: string): void { if (reserved.delete(id)) reservedPublish() }
+export function useReservedSlots(): ReadonlyMap<string, Reserved> {
+  return useSyncExternalStore(l => { reservedSubs.add(l); return () => { reservedSubs.delete(l) } }, () => reservedSnap, () => reservedSnap)
+}
+/** Tests only. */
+export function resetReservedForTest(): void { reserved.clear(); reservedPublish() }
+
+// APPROVE + SCHEDULE, ONE TAP (review 2026-11-06 #15 and #31; Ivan's seat only, client seats keep their board flow).
+// The key names the time, so the tap is the decision: no confirm sheet (only a QA-refused draft asks first). It is
+// held for the same 8 s Undo as Approve (decisions.ts), then approves and schedules in one go; Undo inside the
+// window writes nothing. Used by the Review desk row and the Poland gap card on Plan > Weeks.
+export function useApproveSchedule(onChanged: () => void) {
+  const toast = useToast()
+  const confirm = useDConfirm()
+  return useCallback(async (d: { id: string; status: string; viaVerdict: boolean; poland?: boolean }, at: Date): Promise<boolean> => {
+    if (isPastSchedule(at.toISOString())) { toast.show({ tone: 'failed', message: 'That time has already passed. Pick a later time.' }); return false }
+    if (d.status === 'error') {
+      const ok = await confirm({
+        title: 'Approve this draft anyway?',
+        message: `QA refused this one. Approving overrides that verdict, and it posts on LinkedIn ${slotWords(at)}.`,
+        confirmText: 'Approve and schedule', verb: 'confirm',
+      })
+      if (!ok) return false
+    }
+    const id = d.id
+    let stored: string | null = null
+    reserveSlot(id, { at: at.toISOString(), poland: !!d.poland })
+    holdDecision(id, 'approve', {
+      write: async () => { stored = await approveThenSchedule(id, d.viaVerdict, at) },
+      onCommitted: () => { toast.show(armedReceipt(at, stored)); onChanged(); setTimeout(() => releaseSlot(id), 30_000) },
+      onFailed: e => {
+        releaseSlot(id)
+        const msg = e instanceof Error ? e.message : 'That did not go through.'
+        toast.show(e instanceof ApprovedNotScheduled
+          ? { tone: 'failed', message: `Approved, not scheduled: ${msg}`, sub: 'It waits under Approved for a date.' }
+          : { tone: 'failed', message: msg, sub: 'It is back in review.' })
+        onChanged()
+      },
+    })
+    toast.show({
+      id: `decide-${id}`, ms: HOLD_MS, message: `Approved. Posts ${slotWords(at)}.`, sub: 'It goes out on LinkedIn then.',
+      action: { label: 'Undo', verb: 'undo-decision', run: () => { if (undoDecision(id)) releaseSlot(id); else toast.show({ message: 'Too late to undo: it was already written.' }) } },
+    })
+    return true
+  }, [confirm, onChanged, toast])
+}
 
 // THE REVIEW KEYS' WRITES, shared by today's stack (WeekStack) and the Brief 4
 // review desk (v2/ReviewDesk). Lifted out of WeekStack unchanged so both trees
@@ -51,6 +124,12 @@ export function useWeekVerbs({ ids, onChanged, onOpen, setBusy }: {
     })
     advance(id)
   }, [advance, onChanged, toast])
+
+  const oneTap = useApproveSchedule(onChanged)
+  const approveSchedule = useCallback(async (c: WeekCard, at: Date) => {
+    if (c.lane !== 'ivan') return
+    if (await oneTap({ id: c.r.id, status: c.r.status, viaVerdict: c.judge }, at)) advance(c.r.id)
+  }, [advance, oneTap])
 
   const board = useCallback(async (c: WeekCard) => {
     const lane = c.lane
@@ -118,5 +197,5 @@ export function useWeekVerbs({ ids, onChanged, onOpen, setBusy }: {
     else onOpen(c.r.id, c.lane)
   }
 
-  return { advance, approve, board, schedule, judgeIt, act }
+  return { advance, approve, approveSchedule, board, schedule, judgeIt, act }
 }

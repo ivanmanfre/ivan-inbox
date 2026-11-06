@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { fetchPatternResults, holdoutText, rateText, type PatternRate, type PatternResults } from '../../lib/earlyReads'
+import { fetchPatternResults, rateText, type Holdout, type PatternRate, type PatternResults } from '../../lib/earlyReads'
+import { TRAIT } from './plan/planBrain'
+import { warsawDm, warsawDow } from '../ui/time'
 import { Failed, Skeleton } from '../ui/states'
 import type { Lane } from './model'
 import './early-read.css'
@@ -19,29 +21,46 @@ export function WhatWorksNow({ lane }: { lane: Lane }) {
   return <WhatWorksNowBody lane={lane} data={data?.client === lane ? data : null} error={error} onRetry={() => setTick(t => t + 1)} />
 }
 const cellKey = (p: PatternRate) => `${p.dimension}:${p.value}`
+
+// PLAIN WORDS (review 2026-11-06, Ivan asks for simple wording): no "n=", no "90% interval", no "holdout". A row says
+// what kind of post it is, how often those took off, the usual rate, and how many posts that rests on.
+/** "Personal posts", "Posts about a career risk"; an unmapped value reads as "Screenshot visual posts". */
+export function patternLabel(p: Pick<PatternRate, 'dimension' | 'value'>): string {
+  const known = TRAIT[p.dimension]?.[p.value]
+  if (known) return known
+  const w = p.value.replaceAll('_', ' ').trim()
+  return w ? `${w[0].toUpperCase()}${w.slice(1)} posts` : 'Posts'
+}
+const posts = (n: number) => `${n.toLocaleString('en-US')} post${n === 1 ? '' : 's'}`
+/** The recent-post check in one plain sentence. */
+export function checkText(h: Holdout): string {
+  const top = h.top.rate, bottom = h.bottom.rate
+  const split = top != null && bottom != null ? ` The best third took off ${rateText(top)} of the time, the weakest third ${rateText(bottom)}.` : ''
+  if (h.state === 'confirmed') return `It held on newer posts (from September on).${split}`
+  if (h.state === 'cannot_judge') return 'Not proven on newer posts yet: too many of them scored the same, so they could not be split into best and weakest.'
+  return `Not proven on newer posts yet.${split}`
+}
+
 export function WhatWorksNowBody({ lane, data, error, onRetry }: { lane: Lane; data: PatternResults | null; error: string | null; onRetry: () => void }) {
   const top = data?.topPatterns.filter(p => p.n >= 25).slice(0, 3) ?? []
   const keys = new Set(top.map(cellKey))
   const bottom = data?.bottomPatterns.filter(p => p.n >= 25 && !keys.has(cellKey(p))).slice(0, 3) ?? []
   const h = data?.holdout
   const list = (rows: PatternRate[]) => <ul className="cn-pattern-list">{rows.map(p => <li key={cellKey(p)}>
-    <span><b>{p.value.replaceAll('_', ' ')}</b><small>{p.dimension.replaceAll('_', ' ')}</small></span>
-    <span className="cn-pattern-rate"><b>{rateText(p.rate)}</b><small>n={p.n.toLocaleString('en-US')}</small></span>
-    <small className="cn-pattern-base">Usual {rateText(p.base_rate)} · n={p.base_n.toLocaleString('en-US')}{p.wilson_low != null && p.wilson_high != null ? ` · 90% interval ${rateText(p.wilson_low)}–${rateText(p.wilson_high)}` : ''}</small>
+    <span><b>{patternLabel(p)}</b><small>from {posts(p.n)}</small></span>
+    <span className="cn-pattern-rate"><b>{rateText(p.rate)}</b><small>took off</small></span>
+    <small className="cn-pattern-base">Usual in this niche: {rateText(p.base_rate)}</small>
   </li>)}</ul>
   return <section className="cn-result-section cn-what-works" aria-label="What works now">
-    <h2>What works now</h2><p className="cn-pattern-caption">Early read{lane === 'arch' || data?.smallSample ? ' · small sample' : ''}. Patterns in this client’s niche, based on stored breakouts.</p>
+    <h2>What works now</h2><p className="cn-pattern-caption">Which kinds of posts took off in this client’s niche{lane === 'arch' || data?.smallSample ? '. Few posts so far, so read it loosely' : ''}.</p>
     {error === BRAIN_NOT_COVERED ? <p className="cn-wk2-empty">{error}</p> : error ? <Failed what="the niche patterns" detail={error} onRetry={onRetry} /> : !data ? <Skeleton lines={3} label="Reading niche patterns" /> : <>
-      {!top.length && !bottom.length ? <p className="cn-wk2-empty">No patterns with at least 25 niche posts are stored yet.</p> : <div className="cn-pattern-groups">
-        <div><h3>More breakouts</h3>{top.length ? list(top) : <p>No eligible stronger patterns.</p>}</div>
-        <div><h3>Fewer breakouts</h3>{bottom.length ? list(bottom) : <p>No other eligible patterns.</p>}</div>
+      {!top.length && !bottom.length ? <p className="cn-wk2-empty">Not enough niche posts yet: each kind needs at least 25.</p> : <div className="cn-pattern-groups">
+        <div><h3>Took off more often</h3>{top.length ? list(top) : <p>None stands out yet.</p>}</div>
+        <div><h3>Took off less often</h3>{bottom.length ? list(bottom) : <p>None stands out yet.</p>}</div>
       </div>}
-      <p className="cn-read-note">A stored breakout has at least 40 likes and three times that author’s usual score (likes + 3× reposts). These rates describe the niche, never a promise for a post.</p>
-      <div className="cn-pattern-check"><b>Recent-post check</b><p>{h ? holdoutText(h) : 'No recent-post check is stored yet.'}</p>
-        {h && <p>{h.top.n == null ? 'Top n not recorded' : `Top n=${h.top.n}${h.top.rate != null ? ` · ${rateText(h.top.rate)} breakouts` : ''}`} · {h.bottom.n == null ? 'Bottom n not recorded' : `bottom n=${h.bottom.n}${h.bottom.rate != null ? ` · ${rateText(h.bottom.rate)} breakouts` : ''}`}</p>}
-        {h?.limitation && <p>{h.limitation}</p>}
-      </div>
-      {data.computedAt && <p className="cn-read-note">Computed {data.computedAt}.</p>}
+      <p className="cn-read-note">A post took off when it got at least 40 likes and three times what its author usually gets. This describes the niche. It is no promise for one post.</p>
+      <div className="cn-pattern-check"><b>Checked on newer posts</b><p>{h ? checkText(h) : 'Not checked on newer posts yet.'}</p></div>
+      {data.computedAt && <p className="cn-read-note">Worked out {Number.isFinite(Date.parse(data.computedAt)) ? `${warsawDow(data.computedAt)} ${warsawDm(data.computedAt)}` : data.computedAt}.</p>}
     </>}
   </section>
 }

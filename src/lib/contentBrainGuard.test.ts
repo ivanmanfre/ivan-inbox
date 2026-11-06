@@ -9,7 +9,7 @@ beforeEach(() => {
  mock.from.mockReset()
  mock.result = { data: [], error: null, count: 0 }
  const chain: Record<string, unknown> = {}
- for (const key of ['select', 'is', 'eq', 'in', 'or', 'order', 'limit', 'maybeSingle', 'gt', 'not']) chain[key] = vi.fn(() => chain)
+ for (const key of ['select', 'is', 'eq', 'in', 'or', 'order', 'limit', 'maybeSingle', 'gt', 'lte', 'not']) chain[key] = vi.fn(() => chain)
  chain.then = (resolve: (value: unknown) => unknown) => Promise.resolve(mock.result).then(resolve)
  mock.from.mockReturnValue(chain)
 })
@@ -45,10 +45,11 @@ it('a safely hidden lane reports zero visible rows and zero waiting count withou
  expect(await fetchLaneProbe('ivan')).toEqual({ scoped: 0, total: 0 })
  expect(await fetchContentWaiting('ivan')).toBe(0)
  expect(await fetchContentWaiting('risedtc')).toBe(0)
- expect(mock.from.mock.calls.map(call => call[0])).toEqual(['cb34_p2_safe_drafts', 'cb34_p2_safe_drafts', 'cb34_p2_safe_drafts'])
+ // the waiting count is two guarded head counts (fresh drafts + older dated ones), both on the safe view
+ expect(mock.from.mock.calls.map(call => call[0])).toEqual(Array(5).fill('cb34_p2_safe_drafts'))
  mock.result.count = 3
  expect(await fetchLaneProbe('arch')).toEqual({ scoped: 3, total: 3 })
- expect(await fetchContentWaiting('arch')).toBe(3)
+ expect(await fetchContentWaiting('arch')).toBe(6)
 })
 
 it('hides explicit internal fixtures from both readers while retaining real posts about tests', async () => {

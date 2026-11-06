@@ -7,7 +7,9 @@ import { otherPerson } from './model'
 // An item with no owner, or one the notes call "Unclear", is nobody's yet: it is not theirs.
 const unowned = (o: string | null) => !o || /^(?:unclear|unknown|tbd)$/i.test(o.trim())
 
-export function Window({ row, at, of, onStep, layout, missing }: { row: CallRow | null; at: number; of: number; onStep: (d: 1 | -1) => void; layout: 'phone' | 'desktop'; missing?: boolean }) {
+/** `sendsRecorded`: some call on record has follow_up_sent true. Nothing writes that flag today (0 of 24 drafts), so
+ *  "Not sent" would be on every draft; the pill shows only once something records sends (review 2026-11-06). */
+export function Window({ row, at, of, onStep, layout, missing, sendsRecorded = false }: { row: CallRow | null; at: number; of: number; onStep: (d: 1 | -1) => void; layout: 'phone' | 'desktop'; missing?: boolean; sendsRecorded?: boolean }) {
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState('')
   const timer = useRef<number | null>(null)
@@ -44,7 +46,7 @@ export function Window({ row, at, of, onStep, layout, missing }: { row: CallRow 
       <Items head="They owe" list={items.filter(i => !i.mine && !unowned(i.owner))} />
       <Items head="Open, no owner" list={items.filter(i => !i.mine && unowned(i.owner))} />
       <Text head="Next step" text={b?.next_step} />
-      {row.follow_up_draft?.trim() && <section className="sl4-follow"><div className="sl4-follow-head"><h3 className="sl4-eyebrow">Follow-up draft</h3><span className={`sl4-pill${row.follow_up_sent ? ' sl4-sent' : ''}`}>{row.follow_up_sent ? 'Sent' : 'Not sent'}</span><button type="button" data-verb="copy" onClick={() => void copy()} className={copied ? 'sl4-copied' : undefined}><span key={copied ? 'check' : 'copy'} className={copied ? 'sl4-check-pop' : undefined}>{copied ? '✓ Copied' : 'Copy'}</span></button></div><p>{row.follow_up_draft}</p>{copyError && <small role="alert">{copyError}</small>}</section>}
+      {row.follow_up_draft?.trim() && <section className="sl4-follow"><div className="sl4-follow-head"><h3 className="sl4-eyebrow">Follow-up draft</h3>{(row.follow_up_sent || sendsRecorded) && <span className={`sl4-pill${row.follow_up_sent ? ' sl4-sent' : ''}`}>{row.follow_up_sent ? 'Sent' : 'Not sent'}</span>}<button type="button" data-verb="copy" onClick={() => void copy()} className={copied ? 'sl4-copied' : undefined}><span key={copied ? 'check' : 'copy'} className={copied ? 'sl4-check-pop' : undefined}>{copied ? '✓ Copied' : 'Copy'}</span></button></div><p>{row.follow_up_draft}</p>{copyError && <small role="alert">{copyError}</small>}</section>}
       <Text head="Summary" text={row.summary} />
       {objections.length > 0 && <div className="sl-cb"><div className="sl-cbh">They pushed back on</div><ul className="sl-dots">{objections.map((o,i) => <li key={i}>{o}</li>)}</ul></div>}
       <Text head="The hook to open a proposal with" text={b?.proposal_hook} />

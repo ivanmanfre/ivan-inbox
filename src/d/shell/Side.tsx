@@ -40,7 +40,6 @@ function Roll({ v }: { v: string }) {
 export function NavCount({ item, total = false }: { item: NavItem; total?: boolean }) {
   const l = item.line
   if (!l) return null
-  if (item.id === 'content') return l.kind === 'seats' && SEATS.some(s => (l.numbers[s] ?? 0) > 0) ? <i className="d-content-attention" aria-label="Content needs a tap" /> : null
   if (l.kind === 'text') return <span className="d-nct" title={l.label}>{l.text}</span>
   if (total) {
     const unk = SEATS.some(s => l.failed[s] && l.numbers[s] == null)

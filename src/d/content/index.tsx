@@ -159,7 +159,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   useEffect(() => { if (deskOn && isLane(laneParam) && laneParam !== show) setShow(laneParam) }, [laneParam, deskOn]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (deskOn && focusLane && focusLane !== show) setShow(focusLane) }, [focusAsk, focusLane, deskOn]) // eslint-disable-line react-hooks/exhaustive-deps
   const pickSeat = (l: Lane) => { setShow(l); go({ lane: l }, 'now') }
-  const review = reviewCounts(allNow)
+  const review = reviewCounts(allNow, now)
   const reading = LANES.some(l => !data.seats[l].loadedAt && !data.seats[l].error) || LANES.some(l => magnets[l] === undefined)
   const magnetLanes = LANES.filter(l => (magnets[l] ?? 0) > 0)
   const needs = allNow.ids.length + magnetLanes.reduce((n, l) => n + (magnets[l] ?? 0), 0)
@@ -215,7 +215,8 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   // Brief 4 sub-tabs sit in the page's one scrolling column (the 24 edge), like Review and Calendar.
   const column = (n: React.ReactNode) => <div className="cn-split"><div className="cn-left" data-d-scroll>{n}</div></div>
   if (sub === 'plan') {
-    const plan = <PlanV2 lane={qLane} setLane={lane => go({ lane }, 'plan')} verdicts={saved.map} showInsights={q.get('insights') === '1'} />
+    const plan = <PlanV2 lane={qLane} setLane={lane => go({ lane }, 'plan')} verdicts={saved.map} showInsights={q.get('insights') === '1'}
+      ivanRows={qLane === 'ivan' ? data.seats.ivan.rows : undefined} onRowsChanged={refresh} />
     body = window_ ? phone ? window_ : <div className="cn-split cn-open"><div className="cn-left" data-d-scroll>{plan}</div>{window_}</div> : column(plan)
   }
   else if (sub === 'ideas') body = cv2.ideas ? column(<Ideas banks={banks} phone={phone} lane={qLane} onLaneChange={lane => go({ lane }, 'ideas')} v2 />) : <Ideas banks={banks} phone={phone} lane={qLane} onLaneChange={lane => go({ lane }, 'ideas')} />

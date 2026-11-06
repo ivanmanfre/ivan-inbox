@@ -12,7 +12,14 @@ import { Seg, SeatAv } from '../v2/ui'
 import { BrainStrip, IdeaStockPopover } from './BrainStrip'
 import { PlanList, useEntered } from './PlanList'
 import { PlanPanel } from './PlanPanel'
-import { PlanWeeks } from './PlanWeeks'
+import { PlanWeeks, type PolandMeter } from './PlanWeeks'
+import type { ContentDraft } from '../../../lib/content'
+import { fetchPoland, type PolandRead } from '../../../lib/poland'
+import { isBrainPost } from '../../../lib/brainDraft'
+import { usePendingDecisions } from '../decisions'
+import { seatSlotOf } from '../model'
+import { useApproveSchedule, useReservedSlots } from '../weekVerbs'
+import { polandPicks } from './poland'
 import { answerOf, itemsOf, lateRun, tzOf, upcoming, warningOf, type PlanItem } from './planBrain'
 import './plan2.css'
 
@@ -107,7 +114,13 @@ function PlanInsights({ lane, read, failed, verdicts, onIdeaStock, onChanged }: 
   </div>
 }
 
-export function PlanV2({ lane, setLane, verdicts, showInsights = false }: { lane: Lane; setLane: (l: Lane) => void; verdicts?: Map<string, SavedVerdict>; showInsights?: boolean }) {
+export function PlanV2({ lane, setLane, verdicts, showInsights = false, ivanRows, onRowsChanged }: {
+  lane: Lane; setLane: (l: Lane) => void; verdicts?: Map<string, SavedVerdict>; showInsights?: boolean
+  /** Ivan's seat rows (the Poland meter's waiting drafts); none on client seats. */
+  ivanRows?: readonly ContentDraft[]
+  /** The page's rows changed (a Poland draft was approved and scheduled from here). */
+  onRowsChanged?: () => void
+}) {
   const f = useFrameMaybe()
   const phone = f?.layout === 'phone'
   const level = useMotionLevel()
@@ -170,13 +183,66 @@ export function PlanV2({ lane, setLane, verdicts, showInsights = false }: { lane
   const hasStock = !!(r && Array.isArray(r.brain_strip?.idea_stock) && r.brain_strip!.idea_stock.length)
   const warnings = useMemo(() => (r ? (Array.isArray(r.warnings) ? r.warnings : []).map(w => ({ w, x: warningOf(w) })).filter(v => v.x.text) : []), [r])
 
+  // THE POLAND METER (Ivan's seat): the reasoned Poland read for every post on the three weeks and every review
+  // draft that could fill a short week (review 2026-11-06 #31).
+  const ivanOn = lane === 'ivan' && !!ivanRows
+  const [pol, setPol] = useState<{ reads: Map<string, PolandRead> | null; failed: boolean }>({ reads: null, failed: false })
+  const reviewIds = useMemo(() => (ivanRows ?? []).filter(x => x.status === 'review' && !x.scheduled_at).map(x => x.id), [ivanRows])
+  const polKey = ivanOn ? [...new Set([...all.map(i => i.draftId).filter((x): x is string => !!x), ...reviewIds])].sort().join(',') : ''
+  // Re-read when a draft's text changes (its read is per body: an edit drops the old answer), on every plan re-read,
+  // and every 5 minutes while some draft is still unread (the reader runs twice an hour). Cross-review 2026-11-06.
+  const bodyStamp = useMemo(() => (ivanRows ?? []).map(x => `${x.id}:${x.updated_at ?? ''}`).sort().join(','), [ivanRows])
+  const [poll, setPoll] = useState(0)
+  const unread = !!pol.reads && polKey.split(',').some(id => id && pol.reads!.get(id)?.poland == null)
+  useEffect(() => {
+    if (!unread && !pol.failed) return
+    const t = window.setInterval(() => setPoll(n => n + 1), pol.failed ? 60_000 : 5 * 60_000)
+    return () => window.clearInterval(t)
+  }, [unread, pol.failed])
+  // A draft whose text changed since its answer was read loses that answer at once (cross-review r2): it is never
+  // offered on an old reading while the re-read is in flight or failing.
+  const readStamp = useRef<Map<string, string>>(new Map())
+  useEffect(() => {
+    const now = new Map((ivanRows ?? []).map(x => [x.id, x.updated_at ?? ''] as const))
+    const changed = [...now].filter(([id, st]) => readStamp.current.has(id) && readStamp.current.get(id) !== st).map(([id]) => id)
+    if (changed.length) setPol(p => {
+      if (!p.reads) return p
+      const m = new Map(p.reads); for (const id of changed) m.delete(id)
+      return { ...p, reads: m }
+    })
+  }, [bodyStamp]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!polKey) return
+    const c = new AbortController()
+    let live = true
+    const asked = new Map((ivanRows ?? []).map(x => [x.id, x.updated_at ?? ''] as const))
+    void fetchPoland(polKey.split(','), c.signal)
+      .then(m => { if (live) { readStamp.current = asked; setPol({ reads: m, failed: false }) } })
+      // A failed re-read keeps what is still valid and retries every minute.
+      .catch(() => { if (live) setPol(p => ({ reads: p.reads, failed: true })) })
+    return () => { live = false; c.abort() }
+  }, [polKey, bodyStamp, tick, poll]) // eslint-disable-line react-hooks/exhaustive-deps
+  const held = usePendingDecisions()
+  const reserved = useReservedSlots()
+  const take = useApproveSchedule(useCallback(() => { retry(); onRowsChanged?.() }, [retry, onRowsChanged]))
+  const meter: PolandMeter | null = useMemo(() => {
+    if (!ivanOn || !r) return null
+    const onPlan = new Set(all.map(i => i.draftId).filter((x): x is string => !!x))
+    const skip = new Set([...onPlan, ...held.keys()])
+    const picks = pol.reads ? polandPicks(ivanRows ?? [], pol.reads, skip, now.getTime()) : []
+    return {
+      reads: pol.reads, failed: pol.failed, picks, hm: seatSlotOf(ivanRows ?? [], now.getTime()), reserved,
+      onTake: (d, at) => { void take({ id: d.id, status: d.status, viaVerdict: isBrainPost(d) && !verdicts?.has(d.id), poland: true }, at) },
+    }
+  }, [ivanOn, r, all, held, reserved, pol, ivanRows, now, take, verdicts])
+
   const seats = <Seg label="Account" value={lane} onChange={id => setLane(id as Lane)} verb="plan-seat"
     options={LANES.map(l => ({ id: l, label: <><SeatAv lane={l} />{LANE_NAME[l]}</> }))} />
   const late = r && r.state !== 'awaiting_cadence' && lateRun(r, now) ? (ranAt(r) ? `The planner has not run since ${ranAt(r)}.` : 'The planner has not run yet.') : null
 
   // Weeks gets every item of the three weeks (past days of this week keep their posts); List starts from today.
   const body = !r ? null
-    : view === 'weeks' && !phone ? <PlanWeeks key={`weeks:${r.account}`} read={r} items={all} today={r.today} onOpen={openItem} onChanged={retry} hover={!open} />
+    : view === 'weeks' && !phone ? <PlanWeeks key={`weeks:${r.account}`} read={r} items={all} today={r.today} onOpen={openItem} onChanged={retry} hover={!open} poland={meter} />
       : <PlanList key={`list:${r.account}`} read={r} items={items} phone={phone} onOpen={openItem} />
 
   return <div className={`cv2 pl2${phone ? ' pl2-phone' : ''}`} data-motion={level} data-open={open?.key}>
