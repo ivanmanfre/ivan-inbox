@@ -3087,6 +3087,51 @@ export async function setDraftMedia(id: string, url: string | null): Promise<str
   return typeof r.media_url === 'string' ? r.media_url : url ?? ''
 }
 
+// ---------------------------------------------------------------------------
+// THE PHOTO LIST on Ivan's own posts (db/20261106_operator_set_draft_photos)
+// ---------------------------------------------------------------------------
+// The Scheduled Post Publisher posts every photo in one LinkedIn post (6 Nov,
+// Ivan: X outlier copies "including the pics"). db/230 writes one url, so the
+// Ivan row writes the whole list here. Client lanes keep setDraftMedia: their
+// publishers post one photo.
+
+/** LinkedIn's multi-image cap; the publisher's lint gate and the RPC use the same 9. */
+export const MAX_POST_PHOTOS = 9
+
+const PHOTOS_RPC_MESSAGES: Record<string, string> = {
+  ...PICTURE_RPC_MESSAGES,
+  too_many_photos: `A post takes at most ${MAX_POST_PHOTOS} photos. Nothing changed.`,
+  duplicate_photo: 'That photo is already on the post. Nothing changed.',
+  client_row: 'A client post takes one picture. Nothing changed.',
+  posting_now: 'This post is going out right now, so its photos are fixed. Nothing changed.',
+  calendar_busy: 'The calendar is busy for a moment. Try again. Nothing changed.',
+}
+
+/** Every photo this post has had, in first-seen order: taxonomy.photo_options, then image_urls. */
+export function photoOptions(d: { image_urls: unknown; taxonomy?: unknown }): string[] {
+  const t = parseMaybeJson(d.taxonomy) as { photo_options?: unknown } | null
+  const opts = t && typeof t === 'object' && !Array.isArray(t) ? normalizeImageUrls(t.photo_options) : []
+  return [...new Set([...opts, ...normalizeImageUrls(d.image_urls)])]
+}
+
+/**
+ * Set the photos on one of Ivan's posts, in posting order. [] = text only
+ * (stamps taxonomy.no_photo so the selfie job leaves it bare).
+ * @returns the list the database now holds.
+ */
+export async function setDraftPhotos(id: string, urls: string[]): Promise<string[]> {
+  const { data, error } = await supabase.rpc('operator_set_draft_photos', {
+    p_gate: CLIENT_OPS_GATE, p_draft_id: id, p_urls: urls,
+  })
+  if (error) throw new Error(error.message)
+  const r = (data ?? {}) as Record<string, unknown>
+  if (r.ok !== true) {
+    const code = typeof r.error === 'string' ? r.error : 'unknown'
+    throw new ClientRpcError(code, PHOTOS_RPC_MESSAGES[code] ?? clientRpcMessage(code))
+  }
+  return normalizeImageUrls(r.image_urls)
+}
+
 /** A picture in a library grid. Same `url` / `thumb` contract as Still. */
 export type Picture = { name: string; url: string; thumb: string }
 

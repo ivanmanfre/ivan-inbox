@@ -197,6 +197,16 @@
 :root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-play{position:absolute;inset:0;margin:auto;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.55);color:#fff;font-size:22px}
 :root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-top:2px}
 :root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-strip img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+/* multi-photo post (2026-11-06): LinkedIn's grid, 2px gutters like the feed */
+:root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-grid{display:flex;flex-direction:column;gap:2px;margin-top:4px;background:#fff}
+:root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-grid-top,:root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-grid-bot{display:grid;gap:2px;grid-template-columns:repeat(var(--n,1),1fr)}
+:root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-grid-top[data-n='1']{--n:1} :root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-grid-top[data-n='2'],:root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-grid-bot[data-n='2']{--n:2} :root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-grid-bot[data-n='3']{--n:3}
+:root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-grid button{position:relative;display:block;padding:0;border:0;background:#f3f2ef;cursor:zoom-in;aspect-ratio:1;overflow:hidden}
+:root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-grid-top[data-n='1'] button{aspect-ratio:1.5}
+:root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-grid[data-n='2'] .cv2-li-grid-top button{aspect-ratio:.8}
+:root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-grid button img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+:root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-more{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.45);color:#fff;font:600 24px/1 var(--f)}
+:root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-c .cv2-li-grid{max-height:220px;overflow:hidden}
 :root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-r{display:flex;justify-content:space-around;height:36px;align-items:center;margin:4px 16px 0;border-top:1px solid #e8e8e8;color:#666;font-size:13px;font-weight:600}
 :root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-c{font-size:13px;line-height:18px}
 :root:is([data-skin-on~='content'],:has(.pl2)) .cv2-li-c .cv2-li-h > i{width:36px;height:36px;font-size:13px}

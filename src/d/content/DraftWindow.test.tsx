@@ -19,10 +19,10 @@ vi.mock('../../hooks/useContent', () => ({
   useDraftDetail: () => ({ detail: current, missing: false, loading: false, error: null }),
 }))
 
-const lib = vi.hoisted(() => ({ saveDraftBody: vi.fn(), approveDraft: vi.fn(), skipDraft: vi.fn(), setBoardVisible: vi.fn(), setDraftImage: vi.fn(), setDraftMedia: vi.fn(), listClientPhotos: vi.fn(), listStills: vi.fn() }))
+const lib = vi.hoisted(() => ({ saveDraftBody: vi.fn(), approveDraft: vi.fn(), skipDraft: vi.fn(), setBoardVisible: vi.fn(), setDraftImage: vi.fn(), setDraftMedia: vi.fn(), setDraftPhotos: vi.fn(), listClientPhotos: vi.fn(), listStills: vi.fn() }))
 vi.mock('../../lib/content', async orig => {
   const real = await orig<typeof import('../../lib/content')>()
-  return { ...real, saveDraftBody: lib.saveDraftBody, approveDraft: lib.approveDraft, skipDraft: lib.skipDraft, setBoardVisible: lib.setBoardVisible, setDraftImage: lib.setDraftImage, setDraftMedia: lib.setDraftMedia, listClientPhotos: lib.listClientPhotos, listStills: lib.listStills }
+  return { ...real, saveDraftBody: lib.saveDraftBody, approveDraft: lib.approveDraft, skipDraft: lib.skipDraft, setBoardVisible: lib.setBoardVisible, setDraftImage: lib.setDraftImage, setDraftMedia: lib.setDraftMedia, setDraftPhotos: lib.setDraftPhotos, listClientPhotos: lib.listClientPhotos, listStills: lib.listStills }
 })
 const sa = vi.hoisted(() => ({ scheduleDraft: vi.fn() }))
 vi.mock('./writes', () => ({ scheduleGuarded: sa.scheduleDraft }))
@@ -249,23 +249,137 @@ describe('the picture, under the post (every lane)', () => {
   const verb = (v: string) => document.querySelector(`[data-verb="${v}"]`) as HTMLButtonElement | null
   const previewImg = () => document.querySelector('.cn-liimg') as HTMLImageElement | null
 
-  it('a scheduled text post offers Change and Remove; Remove goes through the gated RPC and says so', async () => {
+  it("a scheduled post of Ivan's: No photo writes an empty list through the gated RPC and says so", async () => {
     current = { ...detail, status: 'scheduled', scheduled_at: '2026-09-29T18:16:00Z', image_urls: [img] }
-    lib.setDraftMedia.mockResolvedValue('')
+    lib.setDraftPhotos.mockResolvedValue([])
     const refresh = vi.fn()
     renderInFrame(<DraftWindow {...props({ refresh })} />)
-    expect(verb('picture-change')!.textContent).toBe('Change')
+    expect(verb('picture-change')!.textContent).toBe('+All photos')
     fireEvent.click(verb('picture-remove')!)
-    await waitFor(() => expect(lib.setDraftMedia).toHaveBeenCalledWith('d1', null))
+    await waitFor(() => expect(lib.setDraftPhotos).toHaveBeenCalledWith('d1', []))
     await waitFor(() => expect(refresh).toHaveBeenCalled())
-    expect(await screen.findByText('Picture removed.')).toBeTruthy()
+    expect(await screen.findByText('Photo taken off the post.')).toBeTruthy()
+    expect(lib.setDraftMedia).not.toHaveBeenCalled()
     expect(lib.setDraftImage).not.toHaveBeenCalled()
   })
 
-  it('an image-less post offers Add, not Remove', () => {
+  it("an image-less post of Ivan's: No photo still stamps the opt-out until it is stamped", async () => {
+    lib.setDraftPhotos.mockResolvedValue([])
     renderInFrame(<DraftWindow {...props()} />)
-    expect(verb('picture-change')!.textContent).toBe('Add')
-    expect(verb('picture-remove')).toBeNull()
+    expect(verb('picture-change')!.textContent).toBe('+All photos')
+    expect(verb('picture-remove')!.getAttribute('aria-pressed')).toBe('true')
+    expect(verb('picture-remove')!.disabled).toBe(false)
+    expect(document.querySelectorAll('[data-verb="picture-option"]')).toHaveLength(0)
+    fireEvent.click(verb('picture-remove')!)
+    await waitFor(() => expect(lib.setDraftPhotos).toHaveBeenCalledWith('d1', []))
+    cleanup()
+    current = { ...detail, taxonomy: { no_photo: true } }
+    renderInFrame(<DraftWindow {...props()} />)
+    expect(verb('picture-remove')!.disabled).toBe(true)
+  })
+
+  describe("Ivan's multi-photo post (Rome, 2aa68333: 3 photos)", () => {
+    const rome = [1, 2, 3].map(n => `https://x.supabase.co/storage/v1/object/public/post-stills/x-tracked/denisyurchak/2118384446910935081-${n}.jpg`)
+    const options = () => [...document.querySelectorAll('[data-verb="picture-option"]')] as HTMLButtonElement[]
+    const checked = () => options().map(b => b.getAttribute('aria-checked'))
+    const previewSrcs = () => [...document.querySelectorAll('.cn-liimg, .cn-slides img')].map(i => i.getAttribute('src'))
+
+    it('shows every photo checked and numbered; the preview shows all three', () => {
+      current = { ...detail, image_urls: rome }
+      renderInFrame(<DraftWindow {...props()} />)
+      expect(options()).toHaveLength(3)
+      expect(checked()).toEqual(['true', 'true', 'true'])
+      expect(options().map(b => b.querySelector('.xr-pick-cap')!.textContent)).toEqual(['Photo 1', 'Photo 2', 'Photo 3'])
+      expect(screen.getByText('3 photos post together in one post, in this order. Tap a photo to take it off.')).toBeTruthy()
+      expect(previewSrcs()).toHaveLength(3)
+    })
+
+    it('tapping photo 2 takes only photo 2 off, keeps it as an option, and Undo puts it back', async () => {
+      current = { ...detail, image_urls: rome }
+      lib.setDraftPhotos.mockImplementation(async (_id: string, urls: string[]) => urls)
+      const refresh = vi.fn()
+      renderInFrame(<DraftWindow {...props({ refresh })} />)
+      fireEvent.click(options()[1])
+      expect(lib.setDraftPhotos).toHaveBeenCalledWith('d1', [rome[0], rome[2]])
+      // optimistic, and the removed photo is still on the row, unchecked
+      await waitFor(() => expect(checked()).toEqual(['true', 'false', 'true']))
+      expect(previewSrcs()).toEqual([rome[0], rome[2]])
+      expect(await screen.findByText('Photo taken off the post.')).toBeTruthy()
+      expect(screen.getByText('2 photos post together in one post.')).toBeTruthy()
+      fireEvent.click(document.querySelector('[data-verb="picture-undo"]')!)
+      await waitFor(() => expect(lib.setDraftPhotos).toHaveBeenLastCalledWith('d1', rome))
+    })
+
+    it('a photo taken off goes back in its own place, never at the end', async () => {
+      current = { ...detail, image_urls: [rome[0], rome[2]], taxonomy: { photo_options: rome } }
+      lib.setDraftPhotos.mockImplementation(async (_id: string, urls: string[]) => urls)
+      renderInFrame(<DraftWindow {...props()} />)
+      expect(checked()).toEqual(['true', 'false', 'true'])
+      fireEvent.click(options()[1])
+      expect(lib.setDraftPhotos).toHaveBeenCalledWith('d1', rome)
+    })
+
+    it('No photo clears all three but keeps all three options', async () => {
+      current = { ...detail, image_urls: rome }
+      lib.setDraftPhotos.mockResolvedValue([])
+      renderInFrame(<DraftWindow {...props()} />)
+      fireEvent.click(verb('picture-remove')!)
+      expect(lib.setDraftPhotos).toHaveBeenCalledWith('d1', [])
+      await waitFor(() => expect(checked()).toEqual(['false', 'false', 'false']))
+      expect(await screen.findByText('Photos taken off the post.')).toBeTruthy()
+    })
+
+    it('a refused write puts all the photos back and raises a failed toast', async () => {
+      current = { ...detail, image_urls: rome }
+      lib.setDraftPhotos.mockRejectedValue(new Error('This post is already published, so its picture is fixed. Nothing changed.'))
+      const refresh = vi.fn()
+      renderInFrame(<DraftWindow {...props({ refresh })} />)
+      fireEvent.click(options()[0])
+      expect(await screen.findByText(/already published/)).toBeTruthy()
+      await waitFor(() => expect(checked()).toEqual(['true', 'true', 'true']))
+      expect(previewSrcs()).toHaveLength(3)
+      expect(refresh).not.toHaveBeenCalled()
+    })
+
+    it('a library pick is added to the post, not swapped in', async () => {
+      current = { ...detail, image_urls: rome }
+      lib.listStills.mockResolvedValue([{ name: 'b.jpg', folder: 'library', url: 'https://x/b.jpg', thumb: 'https://x/b.jpg' }])
+      lib.setDraftPhotos.mockImplementation(async (_id: string, urls: string[]) => urls)
+      renderInFrame(<DraftWindow {...props()} />)
+      fireEvent.click(verb('picture-change')!)
+      fireEvent.click(await screen.findByLabelText('Look at b.jpg'))
+      expect(document.querySelector('[data-verb="picture-use"]')!.textContent).toBe('Add to the post')
+      fireEvent.click(document.querySelector('[data-verb="picture-use"]')!)
+      expect(lib.setDraftPhotos).toHaveBeenCalledWith('d1', [...rome, 'https://x/b.jpg'])
+      await waitFor(() => expect(options()).toHaveLength(4))
+    })
+
+    it('a removed photo picked again from the library goes back in its own place', async () => {
+      current = { ...detail, image_urls: [rome[0], rome[2]], taxonomy: { photo_options: rome } }
+      lib.listStills.mockResolvedValue([{ name: 'rome-2.jpg', folder: 'library', url: rome[1], thumb: rome[1] }])
+      lib.setDraftPhotos.mockImplementation(async (_id: string, urls: string[]) => urls)
+      renderInFrame(<DraftWindow {...props()} />)
+      fireEvent.click(verb('picture-change')!)
+      fireEvent.click(await screen.findByLabelText('Look at rome-2.jpg'))
+      fireEvent.click(document.querySelector('[data-verb="picture-use"]')!)
+      expect(lib.setDraftPhotos).toHaveBeenCalledWith('d1', rome)
+    })
+
+    it('a tenth photo is refused in the app before any write', async () => {
+      const nine = Array.from({ length: 9 }, (_, i) => `https://x/p${i}.jpg`)
+      current = { ...detail, image_urls: nine.slice(0, 8), taxonomy: { photo_options: nine } }
+      lib.setDraftPhotos.mockImplementation(async (_id: string, urls: string[]) => urls)
+      renderInFrame(<DraftWindow {...props()} />)
+      fireEvent.click(options()[8])
+      await waitFor(() => expect(lib.setDraftPhotos).toHaveBeenCalledWith('d1', nine))
+      await waitFor(() => expect(checked().every(c => c === 'true')).toBe(true))
+      current = { ...detail, image_urls: nine, taxonomy: { photo_options: [...nine, 'https://x/p9.jpg'] } }
+      cleanup(); lib.setDraftPhotos.mockClear()
+      renderInFrame(<DraftWindow {...props()} />)
+      fireEvent.click(options()[9])
+      expect(await screen.findByText('A post takes at most 9 photos.')).toBeTruthy()
+      expect(lib.setDraftPhotos).not.toHaveBeenCalled()
+    })
   })
 
   it('a carousel gets no picture row at all: one photo would replace the deck', () => {
@@ -300,12 +414,13 @@ describe('the picture, under the post (every lane)', () => {
     expect(await screen.findByText('Davorin’s board shows it now.')).toBeTruthy()
   })
 
-  it('a refused write puts the old picture back and raises a failed toast', async () => {
-    current = { ...detail, image_urls: [img] }
+  it('a refused write puts the old picture back and raises a failed toast (client lane)', async () => {
+    current = { ...detail, client_id: 'risedtc', image_urls: [img] }
+    lib.listClientPhotos.mockResolvedValue([{ name: 'b.jpg', url: 'https://x/b.jpg', thumb: 'https://x/b.jpg' }])
     lib.listStills.mockResolvedValue([{ name: 'b.jpg', folder: 'library', url: 'https://x/b.jpg', thumb: 'https://x/b.jpg' }])
     lib.setDraftMedia.mockRejectedValue(new Error('Only a draft at Needs review, Approved or Scheduled can change its picture. Nothing changed.'))
     const refresh = vi.fn()
-    renderInFrame(<DraftWindow {...props({ refresh })} />)
+    renderInFrame(<DraftWindow {...props({ lane: 'risedtc', refresh })} />)
     fireEvent.click(verb('picture-change')!)
     fireEvent.click(await screen.findByLabelText('Look at b.jpg'))
     fireEvent.click(document.querySelector('[data-verb="picture-use"]')!)
