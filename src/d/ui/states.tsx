@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { DIcon } from './icons'
 import { Btn } from './Key'
+import { warsawHm } from './time'
 import '../home/phone-ox-offline.css'
 
 // Honest states. Every page draws all four; none of them is a blank.
@@ -26,17 +27,37 @@ export function Empty({ title, reason, action }: { title: ReactNode; reason?: Re
   )
 }
 
-/** A read that failed. Never rendered as "empty". */
-export function Failed({ what, onRetry, detail }: { what: string; onRetry?: () => void; detail?: ReactNode }) {
+/** A read that failed. Never rendered as "empty". `compact`: one line inside a list section (warn colour,
+ *  icon, Retry), with "last read HH:MM" when an earlier read worked (`at`, ms or ISO). */
+export function Failed({ what, onRetry, detail, compact = false, at }: { what: string; onRetry?: () => void; detail?: ReactNode; compact?: boolean; at?: number | string | null }) {
+  const last = at != null && at !== '' ? `last read ${warsawHm(at)}` : null
+  if (compact) return (
+    <div className="d-failed d-failed-c" role="alert">
+      <DIcon name="alert" />
+      <p>Could not read {what}.{detail != null && <> {detail}</>}{last && <small> · {last}</small>}</p>
+      {onRetry && <Btn onClick={onRetry} verb="retry">Retry</Btn>}
+    </div>
+  )
   return (
     <div className="d-failed" role="alert">
       <DIcon name="alert" />
       <div>
         <p>Could not read {what}.</p>
-        {detail != null && <small>{detail}</small>}
+        {(detail != null || last) && <small>{detail}{detail != null && last ? ' · ' : ''}{last}</small>}
       </div>
       {onRetry && <Btn onClick={onRetry} verb="retry">Retry</Btn>}
     </div>
+  )
+}
+
+/** A figure whose read failed (#39): one visible line, "Lanes read failed · Retry". The reason stays in
+ *  the title for a mouse; the line itself is what the phone shows. */
+export function FailLine({ what, why, onRetry }: { what: string; why?: string | null; onRetry?: () => void }) {
+  return (
+    <p className="d-failline" role="alert" title={why ?? undefined}>
+      <span>{what} read failed</span>
+      {onRetry && <> · <button type="button" className="d-failline-k" data-verb="retry" onClick={onRetry}>Retry</button></>}
+    </p>
   )
 }
 

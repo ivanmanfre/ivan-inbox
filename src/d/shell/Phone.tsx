@@ -194,7 +194,7 @@ export function PhoneTabs() {
   const calls = c.calls.value
   const badge: Partial<Record<string, { n: string; tone: 'signal' | 'ink' | 'warn'; label: string }>> = {}
   if (dmsF && dmsN == null) badge.dms = { n: '!', tone: 'warn', label: 'DMs count could not be read' }
-  else if (dmsN) badge.dms = { n: dmsN > 99 ? '99+' : String(dmsN), tone: 'signal', label: `${dmsN} waiting on you` }
+  else if (dmsN) badge.dms = { n: dmsN > 99 ? '99+' : String(dmsN), tone: 'signal', label: `${dmsN} DMs waiting` }
   if (c.ops.failed && opsN == null) badge.ops = { n: '!', tone: 'warn', label: 'Ops count could not be read' }
   else if (opsN) badge.ops = { n: opsN > 99 ? '99+' : String(opsN), tone: 'ink', label: `${opsN} waiting on you` }
   if (calls == null && c.calls.failed) badge.sales = { n: '!', tone: 'warn', label: 'calls today could not be read' }

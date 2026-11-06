@@ -116,3 +116,11 @@
 .dm-email-choice select{min-height:44px;max-width:100%;padding:8px 30px 8px 10px;border:1px solid var(--line2);border-radius:6px;background:var(--p2);color:var(--t1);font:inherit}.dm-email-choice select:focus-visible{outline:2px solid var(--t2);outline-offset:2px}
 
 .dm-send-via{padding:8px 16px}
+
+/* #16 (legacy skin): one box per bubble with its ✕. */
+.dm-bubs{display:flex;flex-direction:column;gap:8px}
+.dm-bub-ed{display:flex;align-items:flex-start;gap:8px}
+.dm-bub-ed .dm-edit{flex:1;min-width:0}
+.dm-bub-x{flex:none;min-width:28px;min-height:28px;border-radius:7px;color:var(--t3)}
+.d-phone .dm-bub-x{min-width:44px;min-height:44px}
+.dm-bubs-1 .dm-bub-ed{display:block}

@@ -12,6 +12,8 @@ type Props = {
   company?: string | null
   tags?: RowTag[]
   line?: ReactNode
+  /** A dim third line under the text (#17: our draft, under their last message). */
+  sub?: ReactNode
   right?: ReactNode
   rightKind?: 'needs' | 'later' | 'fu' | 'plain'
   verbs?: RowVerb[]
@@ -49,7 +51,7 @@ export function Row(p: Props) {
 }
 
 function RowLegacy(p: Props) {
-  const { id, name, company, tags = [], line, right, rightKind = 'plain', verbs, selected, checked, dim, conversation = true, onOpen, unread, onMore, note, signal } = p
+  const { id, name, company, tags = [], line, sub, right, rightKind = 'plain', verbs, selected, checked, dim, conversation = true, onOpen, unread, onMore, note, signal } = p
   const onKey = (e: KeyboardEvent) => { if (e.key === 'Enter' && onOpen) { e.preventDefault(); onOpen() } }
   return (
     <div
@@ -68,6 +70,7 @@ function RowLegacy(p: Props) {
           {tags.map((t, i) => <span key={i} className={`dm-tag dm-tag-${t.kind}`}>{t.text}</span>)}
           {line}
         </div>
+        {sub != null && sub !== '' && <div className="dm-s dm-sub">{sub}</div>}
         {note != null && <span className="dm-qnote" role="status">{note}</span>}
       </div>
       {verbs && verbs.length ? (
@@ -84,7 +87,7 @@ function RowLegacy(p: Props) {
 /** The v4 row (SPEC-dms §2.3.3): avatar 28 · name + age · pill + line + ⋯. The name stays a direct
  *  text node of .dm-n (the deploy check reads text nodes only); avatar, dot and tick sit outside it.
  *  No hooks: Row picks this at its top, before any hook could exist. */
-function RowV4({ id, name, company, tags = [], line, right, rightKind = 'plain', verbs, selected, checked, dim, conversation = true, onOpen, unread, onMore, note, signal, pre, pill, index }: Props) {
+function RowV4({ id, name, company, tags = [], line, sub, right, rightKind = 'plain', verbs, selected, checked, dim, conversation = true, onOpen, unread, onMore, note, signal, pre, pill, index }: Props) {
   const onKey = (e: KeyboardEvent) => { if (e.key === 'Enter' && onOpen) { e.preventDefault(); onOpen() } }
   const timeline = pre != null
   const hasVerbs = Boolean(verbs && verbs.length)
@@ -121,6 +124,7 @@ function RowV4({ id, name, company, tags = [], line, right, rightKind = 'plain',
             onClick={e => { e.stopPropagation(); v.run() }}>{v.busy ? '…' : v.label}</button>
         ))}</span>
       ) : onMore ? <button type="button" className="dm-qmore" aria-label={`More for ${name}`} title={`More for ${name}`} data-verb="row-more" onClick={e => { e.stopPropagation(); onMore() }}>⋯</button> : null}
+      {sub != null && sub !== '' && <div className="dm-s dx-sub">{sub}</div>}
       {note != null && <span className="dm-qnote" role="status">{note}</span>}
     </div>
   )
