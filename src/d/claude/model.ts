@@ -1,10 +1,10 @@
 // Pure pieces of the D Claude drawer, so the rules are testable without a DOM.
 // Nothing here reads the network; the data is today's (useChat, turns.ts).
 import type { Subject } from '../../exp/v2c/chat/paneContext'
-import type { Thread } from '../../lib/turns'
+import type { BotHealth, Thread } from '../../lib/turns'
 import { LANE_LABEL, type ContentLane } from '../../lib/content'
 import { SEAT_NAME, type Seat } from '../seats'
-import { warsawDayWord } from '../ui/time'
+import { warsawDayTime, warsawDayWord } from '../ui/time'
 
 /** What the subject chip prints about the person the DMs page handed over. */
 export type SubjectMeta = { name: string; first: string; seat: string | null; draftWaiting: boolean }
@@ -135,3 +135,23 @@ export const QUICK_ASKS: { label: string; send?: string; insert?: string }[] = [
   { label: 'Draft a reply', insert: 'Draft a reply to ' },
   { label: 'Run a scan', insert: 'Run a scan on ' },
 ]
+
+/** The tick runs every 30 min, so 2 hours without a turn is four missed ticks. */
+export const BOT_SILENT_MS = 2 * 3_600_000
+/** A row this old should already have been read by a tick. */
+const BOT_ROW_WAIT_MS = 30 * 60_000
+
+/**
+ * "Silent since <day time>" when Claude's thread should be talking and is not:
+ * the switch is on, the last turn is over 2 hours old, today's cap is not used
+ * up (it is 24 turns from 00:00 UTC, so most afternoons are a planned rest),
+ * no bot turn is queued or running, and a feed row has waited past a tick. null otherwise, or when health is unknown.
+ */
+export function botSilentLine(h: BotHealth | null, lastTurnAt: string | null | undefined, now = Date.now()): string | null {
+  if (!h || !h.on || h.busy || h.today >= h.cap) return null
+  const last = lastTurnAt ? Date.parse(lastTurnAt) : NaN
+  if (Number.isFinite(last) && now - last <= BOT_SILENT_MS) return null
+  const waiting = h.waitingSince ? Date.parse(h.waitingSince) : NaN
+  if (!Number.isFinite(waiting) || now - waiting < BOT_ROW_WAIT_MS) return null
+  return Number.isFinite(last) ? `Silent since ${warsawDayTime(last)}` : 'Silent: no turns yet'
+}

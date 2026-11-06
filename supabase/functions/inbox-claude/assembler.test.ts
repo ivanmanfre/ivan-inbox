@@ -116,7 +116,7 @@ describe('happy path', () => {
     expect(heads.every((h) => Number(h[2]) === total)).toBe(true)
   })
 
-  it('puts P15 MEMORY.md last and never truncates it', async () => {
+  it('puts P15 MEMORY.md last and keeps it whole when it fits', async () => {
     const md = '# Memory\n' + 'x'.repeat(5_000)
     install({ memoryMd: md })
     const r = await assembleSystemPrompt({ env: env() })
@@ -289,9 +289,47 @@ describe('cap accounting', () => {
     expect(r.text.length + 5_000).toBeLessThanOrEqual(MAX_SYSTEM_PROMPT_CHARS)
   })
 
-  it('throws 413 rather than mid-truncating MEMORY.md', async () => {
+  it('cuts an oversized MEMORY.md at a line boundary instead of refusing the turn', async () => {
+    // 11-01 to 11-06: a 73k index refused every turn. Now the tail goes, the top stays.
+    const lines = ['# Ivan System - Memory Index', '## Critical rules', '- TOP RULE stays']
+    for (let i = 0; i < 900; i++) lines.push(`- entry ${i} ` + 'z'.repeat(80))
+    lines.push('- LAST LINE goes')
+    install({ memoryMd: lines.join('\n') })
+    const r = await assembleSystemPrompt({ env: env() })
+    expect(r.text.length).toBeLessThanOrEqual(MAX_SYSTEM_PROMPT_CHARS)
+    expect(r.text).toContain('- TOP RULE stays')
+    expect(r.text).not.toContain('- LAST LINE goes')
+    expect(r.text).toMatch(/MEMORY\.md CUT to fit the context cap: first \d+ of 904 lines shown/)
+    expect(r.text).toMatch(/\[LOAD-SHED: .*truncated .*P15/)
+    expect(r.shed).toContain('P15')
+    expect(r.text).toMatch(new RegExp(`- entry \\d+ z{80}\\n\\[MEMORY\\.md CUT`)) // never mid-line: a whole line precedes the note
+    expect(r.blocks.find((b) => b.id === 'P15')?.note).toMatch(/cut to \d+ of 904 lines/)
+  })
+
+  it('keeps MEMORY.md whole when it fits (no cut note, no P15 shed)', async () => {
+    install()
+    const r = await assembleSystemPrompt({ env: env() })
+    expect(r.text).not.toContain('MEMORY.md CUT')
+    expect(r.shed).not.toContain('P15')
+  })
+
+  it('throws 413 when only a heading would survive the cut (floor is on kept content)', async () => {
     install({ memoryMd: '# M\n' + 'y'.repeat(MAX_SYSTEM_PROMPT_CHARS) })
     await expect(assembleSystemPrompt({ env: env() })).rejects.toThrow(/413 context_assembly_over_cap/)
+  })
+
+  it('never serves a cached assembly that breaks this turn\'s larger reserve', async () => {
+    install()
+    const first = await assembleSystemPrompt({ env: env() })
+    install({ memoryMdStatus: 500 })
+    await expect(assembleSystemPrompt({ env: env(), reserveChars: MAX_SYSTEM_PROMPT_CHARS - first.text.length }))
+      .rejects.toThrow(/context_assembly_unavailable/)
+  })
+
+  it('still throws 413 when the cut would leave a stub index', async () => {
+    install({ memoryMd: '# M\n' + 'y'.repeat(MAX_SYSTEM_PROMPT_CHARS) })
+    await expect(assembleSystemPrompt({ env: env(), reserveChars: MAX_SYSTEM_PROMPT_CHARS - 3_000 }))
+      .rejects.toThrow(/413 context_assembly_over_cap/)
   })
 
   it('is set above the measured 35,971-char payload with real headroom', () => {

@@ -4,7 +4,7 @@ import { LANE_LABEL } from '../../lib/content'
 import type { Thread } from '../../lib/turns'
 import { sourcesLine } from './Answer'
 import { outgoing } from './Composer'
-import { bundleLabel, chatTail, chatsByDay, chipLabel, draftStarter, firstLine, secsSince, shortTitle, statusOf, stepOffset, subjectMeta, uuidOrNull } from './model'
+import { botSilentLine, bundleLabel, chatTail, chatsByDay, chipLabel, draftStarter, firstLine, secsSince, shortTitle, statusOf, stepOffset, subjectMeta, uuidOrNull } from './model'
 import { runnerCount, visibleJobs } from './Runner'
 import { stepWords } from './Steps'
 import type { RunnerJob } from '../../wb/ask/jobs'
@@ -136,5 +136,28 @@ describe('plain words and meta', () => {
     expect(jobNote({ status: 'error', error_detail: 'disk full' } as RunnerJob)).toBe('disk full')
     expect(jobNote({ status: 'queued' } as RunnerJob)).toMatch(/fifteen seconds/)
     expect(jobNote({ status: 'done' } as RunnerJob)).toBeNull()
+  })
+})
+
+describe('botSilentLine', () => {
+  const now = Date.parse('2026-11-06T12:00:00Z')
+  const h = { on: true, cap: 24, today: 3, busy: false, lastTurnAt: null, waitingSince: '2026-11-06T09:00:00Z' }
+  it('warns when on, under cap, rows waiting and the last turn is over 2 hours old', () => {
+    expect(botSilentLine(h, '2026-11-01T11:30:04Z', now)).toBe('Silent since Sun 1 Nov, 12:30')
+  })
+  it('stays quiet inside 2 hours', () => {
+    expect(botSilentLine(h, '2026-11-06T10:30:00Z', now)).toBeNull()
+  })
+  it('stays quiet while a bot turn is queued or running', () => {
+    expect(botSilentLine({ ...h, busy: true }, '2026-11-01T11:30:04Z', now)).toBeNull()
+  })
+  it('stays quiet when the daily cap is used up (planned rest)', () => {
+    expect(botSilentLine({ ...h, today: 24 }, '2026-11-06T06:00:00Z', now)).toBeNull()
+  })
+  it('stays quiet when the bot is off, health is unknown, or nothing waits', () => {
+    expect(botSilentLine({ ...h, on: false }, '2026-11-01T11:30:04Z', now)).toBeNull()
+    expect(botSilentLine(null, '2026-11-01T11:30:04Z', now)).toBeNull()
+    expect(botSilentLine({ ...h, waitingSince: null }, '2026-11-01T11:30:04Z', now)).toBeNull()
+    expect(botSilentLine({ ...h, waitingSince: '2026-11-06T11:50:00Z' }, '2026-11-01T11:30:04Z', now)).toBeNull()
   })
 })
