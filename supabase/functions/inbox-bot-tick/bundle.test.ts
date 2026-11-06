@@ -29,7 +29,7 @@ describe('selectRows', () => {
   it('filters expired rows in SQL before the 200-row bot limit', () => {
     const source = readFileSync('supabase/functions/inbox-bot-tick/index.ts', 'utf8')
     const query = source.slice(source.indexOf(".from('inbox_notifications')", source.indexOf('// ---- 5. the rows')),
-      source.indexOf('.limit(SELECT_LIMIT)', source.indexOf('// ---- 5. the rows')))
+      source.indexOf('.range(page * SELECT_LIMIT', source.indexOf('// ---- 5. the rows')))
     expect(query).toContain('.is(\'dismissed_at\', null)')
     expect(query).toContain('expires_at.is.null,expires_at.gt.')
   })
@@ -155,26 +155,43 @@ describe('new since the last message (2026-11-06)', () => {
   ].join('\n')
 
   it('a count bump of a line the bot was already handed is a repeat', () => {
-    const { fresh, repeats } = splitTold([runner], toldKeys([pastPrompt]))
+    const { fresh, repeats } = splitTold([runner], toldKeys([{ created_at: '2026-11-01T07:00:04Z', prompt: pastPrompt }]))
     expect(fresh).toEqual([])
     expect(repeats.map((r) => r.id)).toEqual(['runner'])
   })
 
   it('a repeat whose body or severity changed is new', () => {
-    const told = toldKeys([pastPrompt])
+    const told = toldKeys([{ created_at: '2026-11-01T07:00:04Z', prompt: pastPrompt }])
     expect(splitTold([{ ...runner, body: 'git fetch/merge failed' }], told).fresh.length).toBe(1)
     expect(splitTold([{ ...runner, severity: 'attention' }], told).fresh.length).toBe(1)
   })
 
   it('a row never handed to the bot is new, and nothing told means everything is new', () => {
     const other = row({ id: 'booking', created_at: '2026-11-01T07:10:00Z', family: 'booking_notice', title: 'Alan booked' })
-    expect(splitTold([runner, other], toldKeys([pastPrompt])).fresh.map((r) => r.id)).toEqual(['booking'])
+    expect(splitTold([runner, other], toldKeys([{ created_at: '2026-11-01T07:00:04Z', prompt: pastPrompt }])).fresh.map((r) => r.id)).toEqual(['booking'])
     expect(splitTold([runner, other], toldKeys([])).fresh.length).toBe(2)
+  })
+
+  it('a separate row with the same text, created after the telling, is new', () => {
+    const again = { ...runner, id: 'runner-2', created_at: '2026-11-01T07:20:00Z', count: 1 }
+    const { fresh, repeats } = splitTold([runner, again], toldKeys([{ created_at: '2026-11-01T07:00:04Z', prompt: pastPrompt }]))
+    expect(fresh.map((r) => r.id)).toEqual(['runner-2'])
+    expect(repeats.map((r) => r.id)).toEqual(['runner'])
+  })
+
+  it('a line break inside a field stays on one line, round-trips, and never matches a shorter title', () => {
+    const multi = row({ id: 'm', created_at: '2026-11-01T06:00:00Z', family: 'booking_notice', title: 'Alan booked\nThursday', url: './#a\n' })
+    const text = buildBundle([multi], null).text
+    expect(text.split('\n')[1]).toBe('[booking_notice · info · ivan · 1x] Alan booked Thursday (./#a)')
+    const told = toldKeys([{ created_at: '2026-11-01T07:00:00Z', prompt: text }])
+    expect(splitTold([multi], told).repeats.length).toBe(1)
+    const shorter = row({ id: 's', created_at: '2026-11-01T05:00:00Z', family: 'booking_notice', title: 'Alan booked' })
+    expect(splitTold([shorter], told).fresh.length).toBe(1)
   })
 
   it('the key round-trips through the rendered bundle the bot is sent', () => {
     const rows = [runner, row({ id: 'u', created_at: '2026-11-01T07:00:00Z', url: './#today', body: 'b '.repeat(300) })]
-    const told = toldKeys([buildBundle(rows, 'x').text])
+    const told = toldKeys([{ created_at: '2026-11-01T08:00:00Z', prompt: buildBundle(rows, 'x').text }])
     for (const r of rows) expect(told.has(toldKey({ ...r, count: 99 }))).toBe(true)
   })
 

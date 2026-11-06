@@ -78,13 +78,16 @@ export function selectRows(rows: FeedRow[], openBotTurnIds: Iterable<string>): F
 /** The parts of a row's line, without the count. A dedupe repeat bumps only the
  *  count, so this is what says whether the bot was already told the same thing. */
 function rowParts(r: FeedRow): { tag: string; rest: string } {
-  const tenant = (r.tenant ?? '').trim() || 'ivan'
-  const severity = (r.severity ?? '').trim() || 'info'
-  const body = (r.body ?? '').replace(/\s+/g, ' ').trim().slice(0, BODY_CLIP_CHARS)
-  const url = (r.url ?? '').trim()
+  // One line per row, always: a line break inside a field would split the row
+  // across prompt lines and the told-key parse would read half of it.
+  const flat = (v: string | null | undefined) => (v ?? '').replace(/\s+/g, ' ').trim()
+  const tenant = flat(r.tenant) || 'ivan'
+  const severity = flat(r.severity) || 'info'
+  const body = flat(r.body).slice(0, BODY_CLIP_CHARS)
+  const url = flat(r.url)
   return {
-    tag: `${r.family} · ${severity} · ${tenant}`,
-    rest: `${r.title.trim()}${body ? ` : ${body}` : ''}${url ? ` (${url})` : ''}`,
+    tag: `${flat(r.family)} · ${severity} · ${tenant}`,
+    rest: `${flat(r.title)}${body ? ` : ${body}` : ''}${url ? ` (${url})` : ''}`,
   }
 }
 
@@ -105,16 +108,23 @@ export function toldKey(r: FeedRow): string {
  *  feed's 24h dedupe window: a repeat after that is a new telling anyway. */
 export const TOLD_WINDOW_MS = 24 * 60 * 60 * 1000
 
+/** One finished bot turn: when it was created and the prompt it was handed. */
+export interface ToldTurn { created_at: string; prompt: string | null }
+
 /**
- * The keys of every row line in past bot prompts. Only prompts of turns that
- * finished (status done) may be passed in: an errored turn told nobody.
+ * For every row line in past bot prompts, the latest time a finished turn was
+ * handed it. Only turns that finished (status done) may be passed in: an
+ * errored turn told nobody.
  */
-export function toldKeys(prompts: Iterable<string>): Set<string> {
-  const out = new Set<string>()
-  for (const p of prompts) {
-    for (const line of p.split('\n')) {
+export function toldKeys(turns: Iterable<ToldTurn>): Map<string, string> {
+  const out = new Map<string, string>()
+  for (const t of turns) {
+    for (const line of (t.prompt ?? '').split('\n')) {
       const m = /^\[(.+?) · \d+x\] (.*)$/.exec(line)
-      if (m) out.add(`[${m[1]}] ${m[2]}`)
+      if (!m) continue
+      const k = `[${m[1]}] ${m[2]}`
+      const prev = out.get(k)
+      if (!prev || Date.parse(t.created_at) > Date.parse(prev)) out.set(k, t.created_at)
     }
   }
   return out
@@ -123,14 +133,20 @@ export function toldKeys(prompts: Iterable<string>): Set<string> {
 /**
  * Split the selectable rows into the ones the bot has not been told and the
  * repeats it has. A row is a repeat only when the same line (family, severity,
- * tenant, title, clipped body, url) sat in a finished bot prompt: a dedupe
- * repeat whose title, body or severity changed is new. A row that never fitted
- * a bundle was never in a prompt, so it is new too.
+ * tenant, title, clipped body, url) sat in a finished bot prompt of a turn that
+ * started after the row was created. So a dedupe repeat whose title, body or
+ * severity changed is new; a row that never fitted a bundle was never in a
+ * prompt and is new; and a separate row created after the last telling is new
+ * even when its text is the same.
  */
-export function splitTold(rows: FeedRow[], told: Set<string>): { fresh: FeedRow[]; repeats: FeedRow[] } {
+export function splitTold(rows: FeedRow[], told: Map<string, string>): { fresh: FeedRow[]; repeats: FeedRow[] } {
   const fresh: FeedRow[] = []
   const repeats: FeedRow[] = []
-  for (const r of rows) (told.has(toldKey(r)) ? repeats : fresh).push(r)
+  for (const r of rows) {
+    const at = told.get(toldKey(r))
+    const isRepeat = at !== undefined && Date.parse(at) > Date.parse(r.created_at)
+    ;(isRepeat ? repeats : fresh).push(r)
+  }
   return { fresh, repeats }
 }
 
