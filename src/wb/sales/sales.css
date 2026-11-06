@@ -308,3 +308,7 @@
 }
 .wb-sl-retry:active{ transform:scale(.98); background:var(--ds-surface-3) }
 .a-sl[data-density='b'] .a-sl-log .a-rows > .a-row + .a-row{ box-shadow:inset 0 1px 0 var(--ds-line) }
+
+/* The calendar sync line (2026-11-06): quiet when fresh, urgent when stale or unread. */
+.a-sl-sync{ padding:var(--ds-row-y) var(--ds-row-x) 0 }
+.a-sl-sync[data-stale]{ color:var(--ds-sev-urgent) }

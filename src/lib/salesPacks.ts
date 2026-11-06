@@ -132,6 +132,17 @@ export const COMPARE_URL = 'https://inboundonsteroids.com/compare'
 
 export type WeekEvent = CalendarEvent
 
+/** When the calendar sync last got an answer from Google, and when it last saw a new booking. */
+export type CalendarSyncStatus = { checked_at: string | null; fetched: number | null; last_new_booking_at: string | null }
+
+/** db/20261106_calendar_sync_status.sql: the heartbeat the sync writes every run Google answers. */
+export async function fetchCalendarSyncStatus(): Promise<CalendarSyncStatus> {
+  const { data, error } = await supabase.rpc('calendar_sync_status')
+  if (error) throw error
+  const d = (data ?? {}) as Partial<CalendarSyncStatus>
+  return { checked_at: d.checked_at ?? null, fetched: d.fetched ?? null, last_new_booking_at: d.last_new_booking_at ?? null }
+}
+
 // nextCall.ts keeps its column list private, so this is a deliberate copy and
 // not an edit to Today's fetcher to export it. The two lists are asserted equal
 // in salesPacks.test.ts, so a column added there and forgotten here fails a test
