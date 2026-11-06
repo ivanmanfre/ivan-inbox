@@ -34,13 +34,14 @@ import { Chip, EmptyState, FilterTokens, IconButton } from '../../ds'
 import { InboxSkeleton } from '../chrome/Skeleton'
 import { Group, HeadChromeSlot, Rows, Sep } from '../kit'
 import {
-  fetchPackIndex, fetchWeekEvents, subscribePacks,
-  type PackKind, type PackMeta, type SalesPack, type WeekEvent,
+  fetchCalendarSyncStatus, fetchPackIndex, fetchWeekEvents, subscribePacks,
+  type CalendarSyncStatus, type PackKind, type PackMeta, type SalesPack, type WeekEvent,
 } from '../../lib/salesPacks'
 import { callStats, fetchCalls, type CallRow } from '../../lib/transcripts'
 import { MEETING_TYPE_LABEL, resolveMeetingType } from '../../lib/nextCall'
 import { CallLog } from './CallLog'
 import { docHref, DOC_LABEL, type PackDoc } from './Doc'
+import { syncLine } from './syncLine'
 import { callPhase, dayKey, describeTimes, groupEvents, matchPack, packsInWindow, reportIdFor, weekWindow } from './match'
 import {
   SALES_FIELDS, readTokens, salesRowMatches, writeTokens,
@@ -157,6 +158,8 @@ export function SalesSurface({ onOpenCall }: {
   const [events, setEvents] = useState<WeekEvent[]>([])
   const [index, setIndex] = useState<SalesPack[]>([])
   const [calls, setCalls] = useState<CallRow[]>([])
+  // undefined = not read yet (draw nothing); null = the read failed (say so).
+  const [sync, setSync] = useState<CalendarSyncStatus | null | undefined>(undefined)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   // The two reads the screen CAN be drawn without still say when they fail
@@ -229,8 +232,8 @@ export function SalesSurface({ onOpenCall }: {
       // Three independent reads: one failing must not blank the other two. The
       // calendar is the only one the screen cannot be drawn without, so it is
       // the only one whose failure is reported on the surface.
-      const [ev, packs, tx] = await Promise.allSettled([
-        fetchWeekEvents(week.from, week.to), fetchPackIndex(), fetchCalls(),
+      const [ev, packs, tx, sync] = await Promise.allSettled([
+        fetchWeekEvents(week.from, week.to), fetchPackIndex(), fetchCalls(), fetchCalendarSyncStatus(),
       ])
       if (!alive.current) return
       readAt.current = Date.now()
@@ -238,11 +241,21 @@ export function SalesSurface({ onOpenCall }: {
       else setError(ev.reason instanceof Error ? ev.reason.message : String(ev.reason))
       if (packs.status === 'fulfilled') { setIndex(packs.value); setPacksFailed(false) } else setPacksFailed(true)
       if (tx.status === 'fulfilled') { setCalls(tx.value); setCallsState('ok') } else setCallsState('failed')
+      setSync(sync.status === 'fulfilled' ? sync.value : null)
       setLoading(false)
     })()
     const off = subscribePacks(() => { void loadIndex() })
     return () => { alive.current = false; off() }
   }, [week, loadIndex, reads])
+
+  // The sync line goes stale after 45 minutes, so it is re-read every 5 while the screen is visible.
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (document.visibilityState !== 'visible') return
+      fetchCalendarSyncStatus().then(v => { if (alive.current) setSync(v) }, () => { if (alive.current) setSync(null) })
+    }, 5 * 60_000)
+    return () => clearInterval(t)
+  }, [])
 
   const toggleDensity = useCallback(() => {
     setDensity(d => {
@@ -452,6 +465,11 @@ export function SalesSurface({ onOpenCall }: {
       </div>
 
       <div className="a-body">
+        {/* An empty week and a broken sync used to look the same (2026-11-06). */}
+        {sync !== undefined ? (() => {
+          const line = syncLine(sync, now)
+          return <div className="a-meta a-sl-sync" data-stale={line.stale ? '' : undefined} role="status">{line.text}</div>
+        })() : null}
         {error || softFail ? (
           <div className="a-sl-warn" role="status">
             <span className="a-meta a-sl-err">
