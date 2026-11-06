@@ -28,6 +28,7 @@ import { awaitsReview, reviewCounts, type Week, type WeekCard } from '../weekMod
 import { useReviewMotion } from './motion'
 import { clientHoldOf } from '../../../lib/clientBoardState'
 import { LinkedInCard } from './LinkedInCard'
+import { MediaSwitch } from './MediaSwitch'
 import { picRepeats, type Repeat } from './picRepeat'
 import { sourceTag, type SourceTagView } from './sourceTag'
 import { Answer, Menu, Pill, SeatAv, Seg, useDeferred, type MenuItem, type Tone } from './ui'
@@ -568,6 +569,7 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
             <LinkedInCard lane={c.lane} body={body} images={pic ?? c.r.image_urls} type={c.r.type} videoUrl={c.r.video_url} bare open />
           </div>
           <div className="cv2-row-side">
+            {c.lane === 'ivan' && <MediaSwitch d={c.r} onDone={onChanged} disabled={busy} />}
             {editablePic && <div className="cv2-pic" data-repeat={repeat ? 'yes' : undefined}><PictureRow d={c.r} lane={c.lane} onShow={setPic} onDone={onChanged} disabled={busy} /></div>}
             <BrainDraftBadge draft={c.r} />
             {(src.author || src.result || src.kind) && <div className="cv2-src"><SourceCol src={src} loading={srcLoading} /></div>}

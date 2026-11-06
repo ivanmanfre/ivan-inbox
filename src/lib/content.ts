@@ -3087,6 +3087,51 @@ export async function setDraftMedia(id: string, url: string | null): Promise<str
   return typeof r.media_url === 'string' ? r.media_url : url ?? ''
 }
 
+// ---------- media choice on a copied X post (#29, 2026-11-06) ----------
+// The X ingestor copies the tweet's video, poster and photos into storage
+// (source_detail.media_copy) and stamps taxonomy.media_options. LinkedIn posts a
+// video OR photos, so Ivan picks one: operator_set_draft_media_choice
+// (db/20261106_x_tracked_media_choice) writes the draft and its pending queue row.
+export type MediaChoice = 'video' | 'photos' | 'text'
+const MEDIA_CHOICES: readonly MediaChoice[] = ['video', 'photos', 'text']
+
+/** The choices this draft offers, or null when it has no copied video (no switch then). */
+export function mediaOptionsOf(d: { taxonomy: ContentDraft['taxonomy'] }): MediaChoice[] | null {
+  const tax = d.taxonomy && typeof d.taxonomy === 'object' ? d.taxonomy as Record<string, unknown> : null
+  const raw = Array.isArray(tax?.media_options) ? tax.media_options : []
+  const opts = MEDIA_CHOICES.filter(c => raw.includes(c))
+  return opts.includes('video') && opts.length > 1 ? opts : null
+}
+
+/** What the draft posts now, read from the row itself. */
+export function mediaChoiceOf(d: { type: string | null; image_urls: string[] | null }): MediaChoice {
+  if (d.type === 'video') return 'video'
+  return normalizeImageUrls(d.image_urls).length ? 'photos' : 'text'
+}
+
+const MEDIA_CHOICE_MESSAGES: Record<string, string> = {
+  no_video: 'This post has no stored video. Nothing changed.',
+  no_photos: 'This post has no stored photos. Nothing changed.',
+  no_media_copy: 'This post has no copied media to switch. Nothing changed.',
+  published: 'This post is already published. Nothing changed.',
+  bad_status: 'This post is not in Review or scheduled. Nothing changed.',
+  not_text_or_video: 'Only a text or video post can switch. Nothing changed.',
+  ig_queued: 'An Instagram copy is queued for this post. Nothing changed.',
+  posting: 'This post is being published right now. Nothing changed.',
+}
+
+export async function setDraftMediaChoice(id: string, choice: MediaChoice): Promise<void> {
+  const { data, error } = await supabase.rpc('operator_set_draft_media_choice', {
+    p_gate: CLIENT_OPS_GATE, p_draft_id: id, p_choice: choice,
+  })
+  if (error) throw new Error(error.message)
+  const r = (data ?? {}) as Record<string, unknown>
+  if (r.ok !== true) {
+    const code = typeof r.error === 'string' ? r.error : 'unknown'
+    throw new ClientRpcError(code, MEDIA_CHOICE_MESSAGES[code] ?? clientRpcMessage(code))
+  }
+}
+
 /** A picture in a library grid. Same `url` / `thumb` contract as Still. */
 export type Picture = { name: string; url: string; thumb: string }
 
