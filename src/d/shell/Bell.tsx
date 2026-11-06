@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type TouchEvent } from 'react'
 import { useFeedData } from '../../exp/brain/b/useFeedData'
-import { ALERT_LOOK, kindOf } from '../../wb/ask/alertLook'
+import { kindOf } from '../../wb/ask/alertLook'
+import { isActivityRow } from '../../../supabase/functions/_shared/notification-lifecycle'
 import { getTurn, routableHash, type Notification, type NotificationGroup } from '../../lib/turns'
 import { dismissSystemAlert, resolveAllSystemAlerts, undoResolveAll } from '../../lib/systemAlerts'
 import { useFrameCounts } from '../counts/useFrameCounts'
@@ -35,7 +36,9 @@ import './phone-ox-feed.css'
 //                 (`bot:<turn>`) opens that Claude turn; a url nothing routes -> Lanes
 //   alert ×    -> dismissSystemAlert per id (resolved_by 'inbox'), final as today
 // Above the feed: the system alerts (SystemAlerts.tsx).
-// Digests fold under "Routine updates"; a row landing while scrolled shows "N new".
+// Two tiers: needs-you rows by day on top; Activity (sent logs, published posts, run summaries,
+// digests: lifecycle isActivityRow) folds into one quiet group at the end. A row landing while
+// scrolled shows "N new".
 // ---------------------------------------------------------------------------
 
 export function BellButton() {
@@ -66,8 +69,9 @@ export function BellButton() {
   )
 }
 
-/** A group that is a routine digest (today's "Routine updates" fold). */
-const isRoutine = (g: NotificationGroup) => ALERT_LOOK[kindOf(g.family, g.latest.severity, g.latest.title)].routine
+/** A group that only reports things that already happened (the quiet Activity fold). Every row must be
+ * Activity: one unresolved error inside a group keeps the whole group on top. */
+const isActivity = (g: NotificationGroup) => g.items.every(n => isActivityRow(n.family, n.severity, n.title))
 
 /** Keys that arrived after the first paint (today's arrival pill). */
 function useArrivals(keys: string[]): Set<string> {
@@ -94,7 +98,7 @@ export function BellFeed() {
   const [clearedAt, setClearedAt] = useState<string | null>(null)
   const [clearing, setClearing] = useState(false)
   const clearingRef = useRef(false)
-  const [routineOpen, setRoutineOpen] = useState(false)
+  const [activityOpen, setActivityOpen] = useState(false)
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [scrolled, setScrolled] = useState(false)
   const scroller = useRef<HTMLDivElement>(null)
@@ -108,10 +112,9 @@ export function BellFeed() {
     const dy = e.changedTouches[0].clientY - start.y
     if (dy > 72 && dy > Math.abs(e.changedTouches[0].clientX - start.x) * 1.4) close()
   }
-  const routine = useMemo(() => feed.groups.filter(isRoutine), [feed.groups])
-  const days = useMemo(() => feedDays(feed.groups.filter(g => !isRoutine(g))), [feed.groups])
+  const activity = useMemo(() => feed.groups.filter(isActivity), [feed.groups])
+  const days = useMemo(() => feedDays(feed.groups.filter(g => !isActivity(g))), [feed.groups])
   const fresh = useArrivals(feed.groups.map(g => g.key))
-  const open = c.bell.value?.open ?? null
   const unread = c.bell.value?.unreadGroups ?? null
   const groups = useMemo(() => {
     const gs = c.alerts.value?.groups ?? null
@@ -225,7 +228,7 @@ export function BellFeed() {
   const systemEmpty = groups != null && groups.length === 0 && !c.alerts.failed
   const sub = clearedAt && !clearing && !feed.error && feed.groups.length === 0 && systemEmpty ? 'All clear' : feed.error && !feed.loaded ? 'Could not read the feed'
     : unread == null ? (c.bell.failed ? 'Count could not be read' : 'Reading…')
-      : `${unread === 0 ? 'No' : unread} unread in the last 4 hours · ${(open ?? 0).toLocaleString('en-US')} not cleared`
+      : `${unread === 0 ? 'No' : unread} unread in the last 4 hours`
   const arrived = [...fresh].filter(k => feed.groups.some(g => g.key === k)).length
 
   return (
@@ -252,12 +255,12 @@ export function BellFeed() {
             {d.groups.map(g => <FeedGroup key={g.key} g={g} onOpen={openRow} onDismissAll={dismiss} onDismissOne={dismissMember} primary={g.key === primaryKey} />)}
           </section>
         ))}
-        {routine.length > 0 && (
-          <section className="d-routine" data-routine>
-            <button type="button" className="d-routine-h" aria-expanded={routineOpen} onClick={() => setRoutineOpen(o => !o)}>
-              <span>Routine updates</span><b>{routine.length}</b><em>{routineOpen ? 'Hide' : 'Show'}</em>
+        {activity.length > 0 && (
+          <section className="d-routine" data-routine data-activity>
+            <button type="button" className="d-routine-h" aria-expanded={activityOpen} onClick={() => setActivityOpen(o => !o)}>
+              <span>Activity</span><b>{activity.length}</b><em>{activityOpen ? 'Hide' : 'Show'}</em>
             </button>
-            {routineOpen && routine.map(g => <FeedGroup key={g.key} g={g} onOpen={openRow} onDismissAll={dismiss} onDismissOne={dismissMember} />)}
+            {activityOpen && activity.map(g => <FeedGroup key={g.key} g={g} onOpen={openRow} onDismissAll={dismiss} onDismissOne={dismissMember} />)}
           </section>
         )}
       </div>
