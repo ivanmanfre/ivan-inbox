@@ -8,7 +8,8 @@ import { CLIENT_OPS_GATE } from './content'
 
 export type FlagLine = { text: string; kinds: ('personal' | 'dated')[]; ask: string | null }
 export type RerunNote = { postedAt: string | null; impressions: number; bar: number | null; boosted: boolean; url: string | null; heldFrom: string | null }
-export type LineFlags = { lines: FlagLine[]; rerun: RerunNote | null; keptSha: string | null; rerunKeptSha: string | null }
+/** rejected: lines the check proposed that could not be matched to the text (its read is incomplete, Ivan reads it through). */
+export type LineFlags = { lines: FlagLine[]; rerun: RerunNote | null; keptSha: string | null; rerunKeptSha: string | null; rejected: number }
 
 const obj = (v: unknown): Record<string, unknown> | null => (v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : null)
 const str = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null)
@@ -34,8 +35,10 @@ export function lineFlagsOf(raw: unknown, body: string | null): LineFlags | null
     boosted: r.boosted === true, url: str(r.url), heldFrom: str(r.held_from),
   } : null
   const lines = [...byText.values()]
-  if (!lines.length && !rerun) return null
-  return { lines, rerun, keptSha: str(obj(lf.kept)?.sha), rerunKeptSha: str(obj(lf.rerun_kept)?.sha) }
+  // A count from an older text no longer applies.
+  const rejected = str(lf.lines_sha) && Number(lf.lines_rejected) > 0 ? Number(lf.lines_rejected) : 0
+  if (!lines.length && !rerun && !rejected) return null
+  return { lines, rerun, keptSha: str(obj(lf.kept)?.sha), rerunKeptSha: str(obj(lf.rerun_kept)?.sha), rejected }
 }
 
 /** sha256 hex of the body, the same bytes the DB hashes (convert_to(post_body, 'UTF8')). */
@@ -48,7 +51,7 @@ export async function bodySha(body: string | null): Promise<string> {
 export function needsKeep(f: LineFlags | null, sha: string | null): boolean {
   if (!f || !sha) return false
   if (f.keptSha === sha) return false
-  return f.lines.length > 0 || (!!f.rerun && f.rerunKeptSha !== sha)
+  return f.lines.length > 0 || f.rejected > 0 || (!!f.rerun && f.rerunKeptSha !== sha)
 }
 
 /** The body with one flagged line cut: a whole line goes with its line break, a part of a line goes with its space. */

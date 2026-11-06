@@ -104,10 +104,11 @@ export function LineFlagsBlock({ r, flags, sha, body, edit, setEdit, onStartEdit
           ))}
         </ul>
       )}
+      {flags.rejected > 0 && <p className="cv2-lf-note">The check found {flags.rejected === 1 ? 'a line' : `${flags.rejected} lines`} it could not point to. Read the post through before it goes out.</p>}
       {kept && <p className="cv2-lf-note">You kept these as written.</p>}
       {asking && !kept && (
         <div className="cv2-lf-confirm" role="group" aria-label="Approve with flagged lines">
-          <span>{n ? `${n} flagged line${n === 1 ? '' : 's'} will post as written.` : 'This re-run is under the bar.'} Approve anyway?</span>
+          <span>{n ? `${n} flagged line${n === 1 ? '' : 's'} will post as written.` : rr ? 'This re-run is under the bar.' : 'The line check was incomplete.'} Approve anyway?</span>
           <button type="button" className="cv2-k cv2-k-p" data-verb="flag-keep-approve" disabled={busy || !sha || edit !== null} title={edit !== null ? 'Save or cancel your edit first' : undefined} onClick={() => void keep()}>Approve as written</button>
           <button type="button" className="cv2-k cv2-k-q" data-verb="flag-keep-back" disabled={busy} onClick={onBack}>Back</button>
         </div>

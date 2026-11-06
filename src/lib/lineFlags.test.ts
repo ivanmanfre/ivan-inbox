@@ -51,3 +51,12 @@ describe('cutLine', () => {
     expect(cutLine(body, 'not here')).toBe(body)
   })
 })
+
+describe('incomplete checks', () => {
+  it('a check that could not match a line still shows and asks once', () => {
+    const f = lineFlagsOf({ lines: [], lines_sha: 'abc', lines_rejected: 1 }, 'I run a one-man agency.')!
+    expect(f.rejected).toBe(1)
+    expect(needsKeep(f, 'abc')).toBe(true)
+    expect(needsKeep({ ...f, keptSha: 'abc' }, 'abc')).toBe(false)
+  })
+})
