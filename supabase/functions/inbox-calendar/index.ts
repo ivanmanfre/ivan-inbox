@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { calendarUser, handleCalendar, type Booking, type Store } from './handler.ts'
+import { handleBookCard, type CardStore } from './card.ts'
 
 // INBOX_CALENDAR_V1. Provider credentials and the private write ledger never reach the browser.
 Deno.serve(async req => {
@@ -56,10 +57,41 @@ Deno.serve(async req => {
       if (error) throw Error('The invite is confirmed; the Ops handoff is awaiting sync.')
     },
   }
+  // BOOKING_CARD_OFFERED_SLOT_V1: the Book key on an Ops card (card.ts). Same login, same private ledger.
+  const cardStore: CardStore = {
+    async card(id) {
+      const { data, error } = await sb.from('ops_drafts').select('id,kind,approved_at,sent_at,send_blocked_reason,context').eq('id', id).maybeSingle()
+      if (error) throw Error('The card could not be loaded.')
+      return data
+    },
+    async prospect(id) {
+      const p = await store.prospect(id)
+      if (!p) return null
+      const { data, error } = await sb.from('outreach_prospects').select('company_domain').eq('id', id).single()
+      if (error) throw Error('Conversation could not be loaded.')
+      const domain = String(data?.company_domain ?? '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
+      return { id: p.id, name: p.name, client_id: p.client_id, call_booked_at: p.call_booked_at, closed: p.closed, company_domain: /^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain) ? domain : null }
+    },
+    async existing(id, client) {
+      const { data, error } = await sb.from('inbox_calendar_bookings').select('request_id,status,start_at,calendar_event_id,meeting_id,booked_at').eq('prospect_id', id).eq('client_id', client).neq('status', 'failed').limit(1).maybeSingle()
+      if (error) throw Error('Booking status could not be verified. Nothing was booked.')
+      if (data) return { request_id: data.request_id, status: data.status, start: data.start_at, calendar_event_id: data.calendar_event_id, meeting_id: data.meeting_id, booked_at: data.booked_at }
+      const { data: a, error: ae } = await sb.from('booking_attributions').select('meeting_id').eq('prospect_id', id).eq('client_id', client).or('meeting_outcome.is.null,meeting_outcome.neq.CANCELED').limit(1).maybeSingle()
+      if (ae) throw Error('Existing bookings could not be verified. Nothing was booked.')
+      return a ? { request_id: '', status: 'booked' } : null
+    },
+    secret: store.secret,
+    claim: store.claim,
+    async commit(requestId, cardId, event, meeting, booked) {
+      const { data, error } = await sb.rpc('inbox_booking_card_commit', { p_request: requestId, p_card: cardId, p_event: event, p_meeting: meeting, p_booked: booked })
+      if (error) throw Error('The booking could not be saved.')
+      return data ?? {}
+    },
+  }
   let input
   try { input = await req.json(); if (!input || typeof input !== 'object' || Array.isArray(input)) throw Error() }
   catch { return respond({ error: 'A valid calendar request is required.' }, 400) }
-  try { return respond(await handleCalendar(input, store)) }
+  try { return respond(input.action === 'book_card' ? await handleBookCard(input, cardStore) : await handleCalendar(input, store)) }
   catch (e) {
     // Only controlled errors are returned. Do not log contact data, tokens or provider responses.
     return respond({ error: e instanceof Error ? e.message : 'Calendar assistance is unavailable. Try again.' }, 409)

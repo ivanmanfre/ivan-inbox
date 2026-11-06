@@ -422,7 +422,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
         <Banners v4 questionDirty={questionDirty} t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft && t.client_id !== 'anna' ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
         {!referredLead && referral}
         {t.client_id === 'swishdm' && <SwishReferral key={'swish-referral:' + t.prospect_id} t={t} />}
-        <Draft v4 onSendVia={sendVia} deliveryBusy={busy} emailLoading={emailLoading} emailUnavailable={!!emailDetailsError} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload}
+        <Draft v4 phone={phone} onSendVia={sendVia} deliveryBusy={busy} emailLoading={emailLoading} emailUnavailable={!!emailDetailsError} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload}
           strips={<DraftStrips t={t} verbs={verbs} />}
           foot={t.draft && <DraftWhy v4 t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
           onSend={canSendDraft ? () => { if (!busy && !scheduledPending) void send() } : undefined} />
@@ -465,7 +465,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
         <Banners questionDirty={questionDirty} t={t} verbs={verbs} now={now} owed={owed} hasDraft={hasDraft} onNote={() => setSheet('context')} reload={reload} fuTick={fuTick} sending={busy} onSendAnyways={t.draft && t.client_id !== 'anna' ? () => void sendAnyways({ ...t.draft!, message_text: edits.main }) : undefined} />
         {!referredLead && referral}
         {t.client_id === 'swishdm' && <SwishReferral key={'swish-referral:' + t.prospect_id} t={t} />}
-        <Draft onSendVia={sendVia} deliveryBusy={busy} emailLoading={emailLoading} emailUnavailable={!!emailDetailsError} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
+        <Draft phone={phone} onSendVia={sendVia} deliveryBusy={busy} emailLoading={emailLoading} emailUnavailable={!!emailDetailsError} t={t} edits={edits} setEdits={setEdits} save={saver.state} onBlur={() => void saver.flush()} onRetrySave={saver.retry} now={now} onRetry={reload} />
         {t.draft && <DraftWhy t={t} draft={t.draft} edited={edits.main} onRetry={reload} />}
         <RestoreStrip t={t} verbs={verbs} />
         <RedraftStatus t={t} now={now} reload={reload} />

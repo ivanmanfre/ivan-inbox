@@ -6,7 +6,9 @@ import { useReportedFailures } from './health'
 // What the left panel, the phone drawer and the dock draw for each place:
 // its per-seat line (never a total), and how many of its reads failed.
 export type NavLine =
-  | { kind: 'seats'; label: string; numbers: SeatNumbers; failed: Record<Seat, boolean> }
+  | { kind: 'seats'; label: string; numbers: SeatNumbers; failed: Record<Seat, boolean>
+      /** A second number shown with the first where there is room (DMs: "N drafted"). */
+      second?: { label: string; numbers: SeatNumbers } }
   | { kind: 'text'; label: string; text: string }
 
 export type NavItem = {
@@ -20,8 +22,9 @@ export function navLines(c: FrameCounts): Partial<Record<PlaceId, { line: NavLin
   const dmsF = seatFailed(c.dms)
   const contentF = seatFailed(c.content)
   return {
-    // Today's DMs number: threads with an unanswered reply or a draft to approve, per seat.
-    dms: { line: { kind: 'seats', label: 'Waiting on you', numbers: dmNumbers(c, 'needs'), failed: dmsF }, failed: nFailed(dmsF) },
+    // Today's DMs number: threads with an unanswered reply or a draft to approve, per seat. The same
+    // number and words as Home's "DMs waiting" tile (#36); the drafts count rides as the second line.
+    dms: { line: { kind: 'seats', label: 'DMs waiting', numbers: dmNumbers(c, 'needs'), failed: dmsF, second: { label: 'drafted', numbers: dmNumbers(c, 'drafts') } }, failed: nFailed(dmsF) },
     content: { line: { kind: 'seats', label: 'Waiting on you', numbers: contentNumbers(c), failed: contentF }, failed: nFailed(contentF) },
     ops: { line: { kind: 'seats', label: 'Waiting on you', numbers: opsNumbers(c), failed: allFailed(c.ops.failed) }, failed: c.ops.failed ? 1 : 0 },
     sales: {

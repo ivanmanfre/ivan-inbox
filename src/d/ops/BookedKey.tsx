@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { isBookLinkTask, markTaskBooked, type OpsDraft } from '../../lib/ops'
+import { bookFromCard } from '../../lib/inboxCalendar'
 import { Btn } from '../ui/Key'
 
 // The "Booked" key on a book-their-link task (2026-09-27). Opens a call-time field on YOUR clock
@@ -35,7 +36,7 @@ export function BookedKey({ d, onDone }: { d: OpsDraft; onDone: () => void }) {
     catch (x) { setErr(x instanceof Error ? x.message : String(x)) }
     finally { setBusy(false) }
   }
-  if (!open) return <>{askBlock}<Btn verb="booked" onClick={() => setOpen(true)} aria-label={`Booked: ${d.context?.prospect_name ?? 'this call'}`}>Booked</Btn></>
+  if (!open) return <>{askBlock}<BookSlotKey d={d} onDone={onDone} /><Btn verb="booked" onClick={() => setOpen(true)} aria-label={`Booked: ${d.context?.prospect_name ?? 'this call'}`}>Booked</Btn></>
   return (
     <>{askBlock}<form className="op-bk" onSubmit={e => void save(e)}>
       <input type="datetime-local" value={when} onChange={e => setWhen(e.target.value)} aria-label="Call time (your clock)" autoFocus />
@@ -46,6 +47,35 @@ export function BookedKey({ d, onDone }: { d: OpsDraft; onDone: () => void }) {
     </form></>
   )
 }
+
+// BOOKING_CARD_OFFERED_SLOT_V1 (2026-11-06). On a card where the prospect said yes to the time we offered
+// (context.kind_detail = book_offered_slot): one key, "Book <time> for <email>". The tap books that exact time on the
+// owner's scheduler (Mattan's HubSpot, Jonathan's TidyCal). The confirm reply in the thread then becomes sendable,
+// still waiting for your approval. Nothing books until this tap; nothing sends from here.
+function BookSlotKey({ d, onDone }: { d: OpsDraft; onDone: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState('')
+  const [err, setErr] = useState('')
+  const b = (d.context?.booking ?? null) as { label?: string; invite_email?: string; start?: string } | null
+  if (d.context?.kind_detail !== 'book_offered_slot' || !b?.label || !b.invite_email || !b.start) return null
+  async function book() {
+    if (busy) return
+    setBusy(true); setErr(''); setNote('')
+    try {
+      const r = await bookFromCard(d.id, crypto.randomUUID())   // a new key per tap; the server ledger blocks any double booking
+      if (r.status === 'blocked') setErr(r.message || 'Nothing was booked.')
+      else if (r.recorded) { setNote(r.released ? 'Booked. The confirm reply is ready in the thread.' : 'Booked. The confirm reply was changed, so reply in the thread yourself.'); onDone() }
+      else setNote(r.message || 'Invite sent. The booking record is still syncing. Tap Book again in a minute to finish. It will not book twice.')
+    } catch (x) { setErr(x instanceof Error ? x.message : String(x)) }
+    finally { setBusy(false) }
+  }
+  return <>
+    <Btn primary verb="book-slot" disabled={busy} onClick={() => void book()} aria-label={`Book ${b.label} for ${b.invite_email}`}>{busy ? 'Booking…' : `Book ${b.label} for ${b.invite_email}`}</Btn>
+    {note && <div className="op-note" role="status" style={NOTE_STYLE}>{note}</div>}
+    {err && <div className="op-err" role="alert">{err}</div>}
+  </>
+}
+const NOTE_STYLE = { fontSize: 15, lineHeight: 1.4, color: 'var(--t1)', margin: '6px 0' } as const
 
 // Inline so the block looks the same on Home (which does not load ops.css) and on Ops.
 const ASK_STYLE = { display: 'block', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: 12.5, lineHeight: 1.4, color: 'var(--t2)', margin: '6px 0', paddingLeft: 8, borderLeft: '2px solid var(--line)' } as const

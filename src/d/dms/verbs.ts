@@ -43,6 +43,9 @@ export type VerbCtx = {
   solved?: (pid: string, at: string | null) => void
   /** Re-read the dated follow-ups (the Later section). */
   dated?: () => void
+  /** After Send, Discard, Later or Solved on the OPEN thread: open the next Needs you thread and
+   *  return its name for the receipt ("Next: Ana Ruiz"), or null when nothing moves. It only opens. */
+  advance?: (t: Thread) => string | null
 }
 
 // supabase-js hands back a plain PostgrestError object ({message, code}), not an Error: read its
@@ -84,6 +87,8 @@ export function useDmVerbs(ctx: VerbCtx) {
   const { askDiscard, askDate } = useAsks()
   return useMemo(() => {
     const fail = (message: string) => { toast.show({ message, tone: 'failed' }) }
+    /** Move on to the next Needs you thread; the receipt names it. Never sends. */
+    const next = (t: Thread) => { const n = ctx.advance?.(t); return n ? ` Next: ${n}.` : '' }
     // Ivan 10-21 (Leighton Penrose): after Send, watch the row; a hold that comes back says so.
     const watch = (t: Thread, ids: string[]) => watchSend(ids, (r, kind) => {
       // LinkedIn will not deliver to this person: one neutral line, never a failure (Ivan 10-21).
@@ -238,9 +243,10 @@ export function useDmVerbs(ctx: VerbCtx) {
           }
         }
       }
+      const nx = half ? '' : next(t)
       if (!half) toast.show(swish
-        ? { message: `Approved the reply to ${t.prospect_name}.`, sub: 'It goes out from Jonathan\u2019s LinkedIn in the next send window (Sun-Fri 9am-5pm UK).' }
-        : { message: `Queued to ${t.prospect_name}.`, sub: 'The sender picks it up within about 2 minutes.' })
+        ? { message: `Approved the reply to ${t.prospect_name}.${nx}`, sub: 'It goes out from Jonathan\u2019s LinkedIn in the next send window (Sun-Fri 9am-5pm UK).' }
+        : { message: `Queued to ${t.prospect_name}.${nx}`, sub: 'The sender picks it up within about 2 minutes.' })
       if (!swish) watch(t, half ? [draft.id] : [draft.id, ...(comp ? [comp.id] : [])])
       ctx.refresh()
       return half
@@ -341,7 +347,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       ctx.refresh()
       if (failed.length) { const m = failed.map(legFailureText).join(' '); fail(m); return m }
       toast.show({
-        message: `Discarded the draft to ${t.prospect_name}.`,
+        message: `Discarded the draft to ${t.prospect_name}.${next(t)}`,
         sub: ans === 'myself' ? 'The reply stays owed. It stays under Discarded for 3 days.' : 'It stays under Discarded for 3 days.',
         action: { label: 'Undo', verb: 'undo', run: () => { void undoDiscard(gone) } },
       })
@@ -422,7 +428,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       ctx.solved?.(t.prospect_id, at)
       ctx.refresh()
       toast.show({
-        message: `Marked ${t.prospect_name} as solved.`,
+        message: `Marked ${t.prospect_name} as solved.${next(t)}`,
         sub: `It comes back if ${first(t)} writes again.${gone.length ? ' The draft stays under Discarded for 3 days.' : ''}`,
         action: { label: 'Undo', verb: 'undo', run: () => { void undoSolved(t.prospect_id, gone, prevAt, lower && t.needsManualReply, hold?.id, holdReason, at, hold?.send_blocked_at) } },
       })
@@ -455,7 +461,7 @@ export function useDmVerbs(ctx: VerbCtx) {
      *  today's dated follow-up. laterPath (later.ts) picks the path; both carry Undo. */
     async function later(t: Thread, ed: Edits): Promise<string | null> {
       const path = laterPath(t)
-      if (path === 'followup') { await followUp(t, null, ''); return null }
+      if (path === 'followup') { await followUp(t, null, '', true); return null }
       if (path !== 'snooze') return null
       const draft = t.draft
       if (!draft) return null
@@ -476,7 +482,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       ctx.patch(ids, { snoozed_until: until, snoozed_at: new Date().toISOString() })
       ctx.refresh()
       toast.show({
-        message: `Later: ${first(t)} comes back ${formatReturn(until)}.`, sub: 'Nothing is sent. It comes back sooner if they write.',
+        message: `Later: ${first(t)} comes back ${formatReturn(until)}.${next(t)}`, sub: 'Nothing is sent. It comes back sooner if they write.',
         action: { label: 'Undo', verb: 'undo', run: () => { void bringBackNow(t) } },
       })
       return null
@@ -618,8 +624,9 @@ export function useDmVerbs(ctx: VerbCtx) {
     }
 
     /** Today's dated follow-up (setFollowUp). `at` given = the one-tap suggestion; null asks the
-     *  Later picker (with the note). Undo puts the previous date back, or clears it. */
-    async function followUp(t: Thread, at: string | null, why: string): Promise<boolean> {
+     *  Later picker (with the note). Undo puts the previous date back, or clears it.
+     *  `advance`: the Later key on the open thread, which then moves on to the next one. */
+    async function followUp(t: Thread, at: string | null, why: string, advance = false): Promise<boolean> {
       let prev: FollowUp | null = null
       try { prev = await fetchFollowUp(t.prospect_id) } catch { prev = null }
       let when = at, note = why
@@ -631,7 +638,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       try { await setFollowUp(t.prospect_id, when, note) } catch (e) { fail(errText(e)); return false }
       ctx.dated?.()
       toast.show({
-        message: `Later: a follow-up to ${first(t)} drafts ${formatReturn(when)}.`, sub: `If ${first(t)} writes first, the date is dropped.`,
+        message: `Later: a follow-up to ${first(t)} drafts ${formatReturn(when)}.${advance ? next(t) : ''}`, sub: `If ${first(t)} writes first, the date is dropped.`,
         action: { label: 'Undo', verb: 'undo', run: () => { void (prev ? setFollowUp(t.prospect_id, prev.at, prev.note ?? '') : clearFollowUp(t.prospect_id)).then(() => ctx.dated?.()).catch(e => fail(`Could not undo: ${errText(e)}`)) } },
       })
       return true

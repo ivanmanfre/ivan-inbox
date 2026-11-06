@@ -6,7 +6,7 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import type { OpsDraft } from '../../lib/ops'
 
 const rpc = vi.fn(async (_fn: string, _args: unknown) => ({ data: { ok: true, action: 'inserted', prospect: 'Ofir Bello' }, error: null }))
-vi.mock('../../lib/supabase', () => ({ supabase: { rpc: (fn: string, args: unknown) => rpc(fn, args) } }))
+vi.mock('../../lib/supabase', () => ({ supabase: { rpc: (fn: string, args: unknown) => rpc(fn, args), auth: { getSession: async () => ({ data: { session: { access_token: 't' } } }) } } }))
 import { BookedKey } from './BookedKey'
 
 const task = (context: Record<string, unknown>): OpsDraft => ({
@@ -71,5 +71,39 @@ describe('BookedKey', () => {
     fireEvent.click(container.querySelector('[data-verb="booked-save"]')!)
     await waitFor(() => expect(container.textContent).toContain('This task is already closed.'))
     expect(done).not.toHaveBeenCalled()
+  })
+})
+
+describe('Book key on an accepted-time card (BOOKING_CARD_OFFERED_SLOT_V1)', () => {
+  const card = (extra: Record<string, unknown> = {}) => task({ action: 'book_link', kind_detail: 'book_offered_slot', prospect_name: 'Zech Strauser', booking: { label: 'this Thursday at 1pm ET', invite_email: 'zech@urture.com', start: '2026-11-05T18:00:00.000Z' }, ...extra })
+  const fetchMock = vi.fn()
+  afterEach(() => { fetchMock.mockReset() })
+  it('names the time and the email on the key, and books only on the tap', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ status: 'booked', recorded: true, released: true }) })
+    const done = vi.fn()
+    const { container } = render(<BookedKey d={card()} onDone={done} />)
+    const key = container.querySelector('[data-verb="book-slot"]')!
+    expect(key.textContent).toContain('Book this Thursday at 1pm ET for zech@urture.com')
+    expect(fetchMock).not.toHaveBeenCalled()
+    fireEvent.click(key)
+    await waitFor(() => expect(done).toHaveBeenCalled())
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body).toMatchObject({ action: 'book_card', card_id: 'card-1', confirmed: true })
+    expect(container.textContent).toContain('The confirm reply is ready in the thread.')
+  })
+  it('keeps the card open when the server books nothing', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ status: 'blocked', message: 'A call is already booked for this person. Nothing new was booked.' }) })
+    const done = vi.fn()
+    const { container } = render(<BookedKey d={card()} onDone={done} />)
+    fireEvent.click(container.querySelector('[data-verb="book-slot"]')!)
+    await waitFor(() => expect(container.textContent).toContain('Nothing new was booked.'))
+    expect(done).not.toHaveBeenCalled()
+  })
+  it('a send-invite card without an accepted slot has no Book key', () => {
+    const { container } = render(<BookedKey d={task({ action: 'book_link', kind_detail: 'send_invite' })} onDone={() => {}} />)
+    expect(container.querySelector('[data-verb="book-slot"]')).toBeNull()
+    expect(container.querySelector('[data-verb="booked"]')).not.toBeNull()
   })
 })

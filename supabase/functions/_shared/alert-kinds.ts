@@ -131,6 +131,9 @@ const BASE_KIND: Record<string, Kind> = {
   relay_smoke: 'digest',
 }
 
+/** Every family with an explicit kind (for server-side filters built from this table). */
+export const KNOWN_FAMILIES: readonly string[] = Object.keys(BASE_KIND)
+
 /**
  * A family this table has never seen, guessed from its own name. Cheap and
  * conservative: it only fires suffixes/substrings that already carry the

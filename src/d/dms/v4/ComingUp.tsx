@@ -6,6 +6,7 @@ import { Fragment } from 'react'
 import type { LaterItem } from '../later'
 import { firstLine } from '../model'
 import { Quiet, Row } from '../Row'
+import { Failed } from '../../ui/states'
 import { Section, type Folds } from '../Section'
 import { dayMonth, type RowCtx } from '../threadRows'
 import type { UpcomingItem } from '../upcoming'
@@ -30,8 +31,10 @@ export function comingItems(due: UpcomingItem[], future: UpcomingItem[], later: 
   ]
 }
 
-export function ComingUp({ c, folds, due, future, later, failed, loaded }: {
+export function ComingUp({ c, folds, due, future, later, failed, loaded, at, onRetry }: {
   c: RowCtx; folds: Folds; due: UpcomingItem[]; future: UpcomingItem[]; later: LaterItem[]; failed: boolean; loaded: boolean
+  /** The last read that worked (ms) and its Retry, for the shared Failed line. */
+  at?: number | null; onRetry?: () => void
 }) {
   const items = comingItems(due, future, later, c.now)
   let prev = ''
@@ -48,7 +51,7 @@ export function ComingUp({ c, folds, due, future, later, failed, loaded }: {
   })
   return (
     <Section id="coming" foldable label="Coming up" n={failed ? '?' : items.length} folds={folds} rows={rows}
-      before={failed ? <Quiet>Could not refresh the follow-up schedule. Use Refresh to try again.</Quiet>
+      before={failed ? <Failed compact what="the follow-up schedule" at={at} onRetry={onRetry} />
         : !loaded ? <Quiet><span className="dx-busy">Reading the follow-up schedule…</span></Quiet>
           : items.length === 0 ? <Quiet>No follow-ups scheduled in the next three days.</Quiet> : null} />
   )

@@ -42,7 +42,11 @@ export function LinkedInCard({ lane, body, images, type, videoUrl = null, expand
   const all = normalizeImageUrls(images)
   const carousel = type === 'carousel' && all.length > 0
   const video = type === 'video'
-  const single = !carousel ? imgOf(all) : null
+  // 2026-11-06: a photo post with 2+ photos posts them all in one post (Scheduled Post Publisher),
+  // so the preview draws LinkedIn's multi-image layout. A video keeps its poster, a carousel its deck.
+  // Ivan's lane only: client publishers still post one photo, so their preview keeps photo 1.
+  const multi = lane === 'ivan' && !carousel && !video && all.length >= 2
+  const single = !carousel && !multi ? imgOf(all) : null
   return (
     <div className={`cv2-li${compact ? ' cv2-li-c' : ''}`}>
       <div className="cv2-li-h">
@@ -68,6 +72,7 @@ export function LinkedInCard({ lane, body, images, type, videoUrl = null, expand
           {video && <span className="cv2-li-play" aria-label="Video">▶</span>}
         </div>
       )}
+      {multi && <PhotoGrid urls={all} onOpen={setViewing} />}
       {carousel && (
         <div className="cv2-li-car" aria-label={`Carousel, ${all.length} slides`}>
           <button type="button" className="cv2-li-m" style={{ aspectRatio: '0.8' }} aria-label={`Open slide 1 of ${all.length}`} onClick={e => { e.stopPropagation(); setViewing(0) }}>
@@ -77,9 +82,34 @@ export function LinkedInCard({ lane, body, images, type, videoUrl = null, expand
           {all.length > 1 && <div className="cv2-li-strip">{all.slice(1, 4).map((u, i) => <button key={`${u}-${i}`} type="button" aria-label={`Open slide ${i + 2} of ${all.length}`} onClick={e => { e.stopPropagation(); setViewing(i + 1) }}><img src={imgOf([u], 200) ?? u} alt="" loading="lazy" draggable={false} /></button>)}</div>}
         </div>
       )}
-      {emptyMedia && !single && !carousel && !(videoUrl && video) && <div className="cv2-li-m cv2-li-empty" style={{ aspectRatio: '1' }} aria-label="No image" />}
+      {emptyMedia && !single && !carousel && !multi && !(videoUrl && video) && <div className="cv2-li-m cv2-li-empty" style={{ aspectRatio: '1' }} aria-label="No image" />}
       {viewing !== null && <MediaViewer images={all} initial={viewing} onClose={() => setViewing(null)} />}
       {!bare && <div className="cv2-li-r" aria-hidden="true"><span>Like</span><span>Comment</span><span>Repost</span><span>Send</span></div>}
+    </div>
+  )
+}
+
+// LinkedIn's multi-image layouts: 2 side by side; 3 or 4 = one wide on top and the rest in a row
+// below; 5 or more = two on top, three below, the last carrying "+N" for the photos not shown.
+function photoLayout(n: number): { top: number; bottom: number; more: number } {
+  if (n <= 1) return { top: n, bottom: 0, more: 0 }
+  if (n === 2) return { top: 2, bottom: 0, more: 0 }
+  if (n <= 4) return { top: 1, bottom: n - 1, more: 0 }
+  return { top: 2, bottom: 3, more: n - 5 }
+}
+
+function PhotoGrid({ urls, onOpen }: { urls: string[]; onOpen: (i: number) => void }) {
+  const { top, bottom, more } = photoLayout(urls.length)
+  const cell = (u: string, i: number, last: boolean) => (
+    <button key={`${u}-${i}`} type="button" aria-label={`Open photo ${i + 1} of ${urls.length}`} onClick={e => { e.stopPropagation(); onOpen(i) }}>
+      <img src={imgOf([u], 800) ?? u} alt="" loading="lazy" draggable={false} />
+      {last && more > 0 && <span className="cv2-li-more" aria-hidden="true">+{more}</span>}
+    </button>
+  )
+  return (
+    <div className="cv2-li-grid" data-n={Math.min(urls.length, 5)} aria-label={`${urls.length} photos`}>
+      <div className="cv2-li-grid-top" data-n={top}>{urls.slice(0, top).map((u, i) => cell(u, i, false))}</div>
+      {bottom > 0 && <div className="cv2-li-grid-bot" data-n={bottom}>{urls.slice(top, top + bottom).map((u, i) => cell(u, top + i, i === bottom - 1))}</div>}
     </div>
   )
 }

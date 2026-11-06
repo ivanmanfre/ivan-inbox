@@ -41,15 +41,19 @@ export function useHome() {
   const week = useHomeContentWeek(weekNow)
   const counts = useFrameCounts()
   const dn = dmNumbers(counts, 'drafts')
-  const dr = (s: Seat): Read<number> => {
-    const v = dn[s]
-    return v != null ? { v } : counts.dms[s].failed ? { fail: 'the drafts count could not be read' } : { wait: true }
+  // #36: the DM number is the same one the sidebar and the phone tab draw (threads that need him:
+  // an unanswered reply or a draft); the drafts count rides under it as "N drafted".
+  const wn = dmNumbers(counts, 'needs')
+  const dr = (s: Seat, n = dn): Read<number> => {
+    const v = n[s]
+    return v != null ? { v } : counts.dms[s].failed ? { fail: 'the DM count could not be read' } : { wait: true }
   }
   return {
     now,
     lanes: lanes.data,
     content: week.content,
     drafts: { ivan: dr('ivan'), risedtc: dr('risedtc'), arch: dr('arch') , swishdm: dr('swishdm'), anna: dr('anna')} as Record<Seat, Read<number>>,
+    waiting: { ivan: dr('ivan', wn), risedtc: dr('risedtc', wn), arch: dr('arch', wn), swishdm: dr('swishdm', wn), anna: dr('anna', wn) } as Record<Seat, Read<number>>,
     retry: {
       content: week.refresh,
       drafts: () => counts.refresh('dms'),

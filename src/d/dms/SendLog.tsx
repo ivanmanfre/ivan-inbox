@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Thread } from '../../lib/inbox'
 import { Btn } from '../ui/Key'
+import { Failed } from '../ui/states'
 import { History } from './History'
 import { flat } from './model'
 import { Quiet, Row } from './Row'
@@ -42,7 +43,7 @@ export function SendLog({ threads, c, folds, v4 = false }: { threads: Thread[]; 
   return (
     <Section id="sends" foldable defaultOpen={false} label={`All sends, ${LOG_DAYS} days`} n={sent.length} folds={folds} rows={[]}
       before={<>
-        {failed && <Quiet>The DM numbers could not be read, so DMs show as Other. <button type="button" className="d-link" onClick={() => { setFailed(false); setSteps(null) }}>Retry</button></Quiet>}
+        {failed && <Failed compact what="the DM numbers" detail="DMs show as Other." onRetry={() => { setFailed(false); setSteps(null) }} />}
         {!steps && !failed && <Quiet>Reading which DM each send was…</Quiet>}
         <div className="dm-sends-tags" role="group" aria-label="Filter sends by type">
           <button type="button" aria-pressed={tag === 'all'} onClick={() => { setTag('all'); setN(PAGE) }}>All <b>{rows.length}</b></button>

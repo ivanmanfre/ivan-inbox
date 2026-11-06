@@ -10,6 +10,7 @@ import { scheduleHeld, SCHEDULE_REVIEW } from '../../lib/dmSchedule'
 import { sendTimeLabel } from '../../lib/dmScheduleTime'
 import { laterItems } from './later'
 import { Btn } from '../ui/Key'
+import { Failed } from '../ui/states'
 import { Quiet, Row, Sec } from './Row'
 import { Section, useFolds, type Folds } from './Section'
 import { AnyRow, DraftRow, HeldRow, LaterRow, NoDraftRow, SpamRow, ThrownRow, dayMonth, type RowCtx } from './threadRows'
@@ -47,6 +48,8 @@ export type ColumnProps = {
   stale: Thread[]
   /** Switch to the Email folder (the pointer line for email-only threads that need a reply). */
   toEmail: () => void
+  /** Retry for each side read whose failure shows in the list (the shared Failed line). */
+  retry?: { warm?: () => void; came?: () => void; owners?: () => void; upcoming?: () => void; agent?: () => void }
 }
 
 const WHO: Record<Seat, string> = { ivan: 'you', risedtc: 'Mattan', arch: 'Davorin', swishdm: 'Jonathan', anna: 'Anna' }
@@ -143,7 +146,6 @@ export function ColumnBody(p: ColumnProps) {
       ...v.nodraft.map(t => <NoDraftRow key={t.prospect_id} t={t} c={c} />),
     ]
     return <>
-      {scheduledSection}
       <Section id="needs" label="Needs you" n={needsCount(v)} folds={folds} rows={needsV4}
         before={staleKey && (
           <div className="dm-stale dx-strip" role="note">
@@ -157,13 +159,15 @@ export function ColumnBody(p: ColumnProps) {
           {needsCount(v) === 0 && <Quiet>{blocked.length ? 'No drafts ready. Check the blocked follow-ups below.' : `Nothing waiting on ${WHO[seat]}.`}</Quiet>}
         </>} />
 
+      {scheduledSection}
+
       {heldSection}
 
       {blocked.length > 0 && <Section id="followup-blocked" label="Blocked follow-ups" n={blocked.length} folds={folds}
         rows={blocked.map(({ t, hold }) => <Row key={t.prospect_id} v4 id={t.prospect_id} name={t.prospect_name} company={t.prospect_company}
           pill={{ text: 'Review', tone: 'bad' }} line={hold!.reason} selected={c.selected === t.prospect_id} onOpen={() => c.open(t)} />)} />}
 
-      <ComingUp c={c} folds={folds} due={due} future={future} later={later} failed={Boolean(p.upcoming?.failed)} loaded={Boolean(p.upcoming?.loaded)} />
+      <ComingUp c={c} folds={folds} due={due} future={future} later={later} failed={Boolean(p.upcoming?.failed)} loaded={Boolean(p.upcoming?.loaded)} at={p.upcoming?.at} onRetry={p.retry?.upcoming} />
 
       <div className="dx-grp" aria-hidden="true">More</div>
       <SignalsSection p={p} folds={folds} came={came} />
@@ -174,7 +178,6 @@ export function ColumnBody(p: ColumnProps) {
     </>
   }
   return <>
-    {scheduledSection}
     {p.stale.length > 0 && (
       <div className="dm-stale" role="note">
         <span>{p.stale.length} draft{p.stale.length === 1 ? '' : 's'} where you already replied</span>
@@ -188,6 +191,8 @@ export function ColumnBody(p: ColumnProps) {
         {needsCount(v) === 0 && <Quiet>{blocked.length ? 'No drafts ready. Check the blocked follow-ups below.' : `Nothing waiting on ${WHO[seat]}.`}</Quiet>}
       </>} />
 
+    {scheduledSection}
+
     {heldSection}
 
     {blocked.length > 0 && <Section id="followup-blocked" label="Blocked follow-ups" n={blocked.length} folds={folds}
@@ -200,7 +205,7 @@ export function ColumnBody(p: ColumnProps) {
         line={i.line} right={dayMonth(i.at)} rightKind="fu" selected={c.selected === i.t.prospect_id} onOpen={() => c.open(i.t)} />)} />}
 
     <Section id="upcoming" foldable label="Upcoming, next 3 days" n={p.upcoming?.failed ? '?' : future.length} folds={folds}
-      before={p.upcoming?.failed ? <Quiet>Could not refresh the follow-up schedule. Use Refresh to try again.</Quiet> : !p.upcoming?.loaded ? <Quiet>Reading the follow-up schedule…</Quiet> : future.length === 0 ? <Quiet>No follow-ups scheduled in the next three days.</Quiet> : null}
+      before={p.upcoming?.failed ? <Failed compact what="the follow-up schedule" at={p.upcoming.at} onRetry={p.retry?.upcoming} /> : !p.upcoming?.loaded ? <Quiet>Reading the follow-up schedule…</Quiet> : future.length === 0 ? <Quiet>No follow-ups scheduled in the next three days.</Quiet> : null}
       rows={future.map(i => <Row key={i.t.prospect_id} id={i.t.prospect_id} name={i.t.prospect_name} company={i.t.prospect_company}
         line={i.line} right={`${dayMonth(i.at)} ${warsawHm(i.at)}`} rightKind="later" selected={c.selected === i.t.prospect_id} onOpen={() => c.open(i.t)} />)}
       after={future.length > 0 ? <Quiet>Estimated dates are checked against the conversation before a draft is created.</Quiet> : null} />
@@ -289,11 +294,11 @@ function SignalsSection({ p, folds, came }: { p: ColumnProps; folds: Folds; came
     <span id="dm-warm" aria-hidden="true" />
     <Section key={empty ? 'sig-empty' : 'sig'} id={empty ? 'signals-empty' : 'signals'} foldable defaultOpen={!empty} label="Signals" n={failed ? '?' : items.length + owners.length} folds={folds} rows={[...rows, ...ownerRows]}
       before={<>
-        {seat === 'ivan' && p.agent.failed && <Quiet>Agent status could not be verified. Agent approvals are blocked; warm review still works.</Quiet>}
+        {seat === 'ivan' && p.agent.failed && <Failed compact what="the agent status" detail="Agent approvals are blocked. Warm review still works." onRetry={p.retry?.agent} />}
         {seat === 'ivan' && p.agent.note && !p.agent.failed && <Quiet>{p.agent.note}</Quiet>}
-        {p.warm.failed && <Quiet>Could not read the warm signals.</Quiet>}
-        {p.cameBack.failed && <Quiet>Could not read who came back.</Quiet>}
-        {p.ownerEngagers?.failed && <Quiet>Could not read new post engagers.</Quiet>}
+        {p.warm.failed && <Failed compact what="the warm signals" at={p.warm.at} onRetry={p.retry?.warm} />}
+        {p.cameBack.failed && <Failed compact what="who came back" at={p.cameBack.at} onRetry={p.retry?.came} />}
+        {p.ownerEngagers?.failed && <Failed compact what="new post engagers" at={p.ownerEngagers.at} onRetry={p.retry?.owners} />}
         {empty && <Quiet>No signals now. Profile views, post engagers and people who came back without replying land here.</Quiet>}
       </>}
       after={waiting > 0 ? <Quiet>{waiting === 1 ? '1 invite out, waiting on their accept.' : `${waiting} invites out, waiting on their accept.`}</Quiet> : null} />

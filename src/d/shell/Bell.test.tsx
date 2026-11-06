@@ -37,12 +37,12 @@ beforeEach(() => {
   feed.groups = [{ key: 'k1', groupKey: null, family: note.family, latest: note, items: [note], count: 1, unread: 1, lastSeenAt: note.last_seen_at! } as NotificationGroup]
 })
 
-const readers = { bell: async () => ({ unreadGroups: 104, open: 1102 }) }
+const readers = { bell: async () => ({ unreadGroups: 104 }) }
 const alert: SystemAlert = { id: 'a1', source: 'test', dedupe_key: 'a1', severity: 'critical', title: 'Test alert', body: null, action_url: null, action_label: null, created_at: '2026-09-28T08:00:00Z', resolved_at: null }
 const alertReaders = { ...readers, alerts: async () => ({ rows: [alert], groups: [{ key: 'a1', severity: 'critical' as const, members: [{ ids: ['a1'], source: 'test', severity: 'critical' as const, title: 'Test alert', body: null, action_url: null, action_label: null, created_at: alert.created_at }], count: 1, newestCreatedAt: alert.created_at }], critical: 1 }) }
 
 describe('BellFeed verbs', () => {
-  it('files auto-queued DM1 progress under Routine updates without an approval action', async () => {
+  it('files auto-queued DM1 progress under Activity without an approval action', async () => {
     const queued = ['Jamie Woodbridge', 'Kate Sikora', 'Sambhav Chadha', 'Ben Wood'].map((name, i) => ({
       ...note, id: `queued-${i}`, family: 'reply_draft_pending', severity: 'info' as const,
       title: `DM1 wins auto-queued for ${name}:`, body: `DM1 wins auto-queued for ${name}:`,
@@ -51,16 +51,26 @@ describe('BellFeed verbs', () => {
     feed.groups = [{ key: 'queue', groupKey: queued[0].group_key, family: queued[0].family,
       latest: queued[0], items: queued, count: 4, unread: 4, lastSeenAt: queued[0].last_seen_at! } as NotificationGroup]
     renderInFrame(<BellFeed />, { readers })
-    expect(await screen.findByText('Routine updates')).toBeTruthy()
-    fireEvent.click(screen.getByText('Routine updates'))
+    expect(await screen.findByText('Activity')).toBeTruthy()
+    fireEvent.click(screen.getByText('Activity'))
     expect(document.querySelector('[data-feed-group] .d-fn-m b')?.textContent).toContain('4 queued')
     expect(document.querySelector('[data-feed-group]')?.textContent).not.toContain('Needs you')
     expect(document.querySelector('[data-feed-group]')?.textContent).not.toContain('Pick this up')
   })
 
+  it('keeps a group on top when any of its rows still needs a look', async () => {
+    const ok = { ...note, id: 'ok', family: 'content_board_activity', severity: 'info' as const, title: 'Post published', group_key: 'board' }
+    const bad = { ...note, id: 'bad', family: 'content_board_activity', severity: 'error' as const, title: 'Publish failed', group_key: 'board' }
+    feed.groups = [{ key: 'board', groupKey: 'board', family: ok.family, latest: ok, items: [ok, bad], count: 2, unread: 2, lastSeenAt: ok.last_seen_at! } as NotificationGroup]
+    renderInFrame(<BellFeed />, { readers })
+    await screen.findByText('104 unread in the last 4 hours')
+    expect(document.querySelector('[data-activity]')).toBeNull()
+    expect(document.querySelector('[data-feed-group]')).toBeTruthy()
+  })
+
   it('one click clears notifications and alerts, then Undo restores both stamps', async () => {
     renderInFrame(<BellFeed />, { readers: alertReaders })
-    await screen.findByText('104 unread in the last 4 hours · 1,102 not cleared')
+    await screen.findByText('104 unread in the last 4 hours')
     await act(async () => { fireEvent.click(document.querySelector('[data-verb="clear-all"]')!) })
     expect(feed.clearAll).toHaveBeenCalledTimes(1)
     expect(resolveAllSystemAlerts).toHaveBeenCalledTimes(1)
@@ -74,14 +84,14 @@ describe('BellFeed verbs', () => {
   it('a refused Clear all says so and offers Retry', async () => {
     feed.clearAll.mockResolvedValueOnce(null)
     renderInFrame(<BellFeed />, { readers })
-    await screen.findByText('104 unread in the last 4 hours · 1,102 not cleared')
+    await screen.findByText('104 unread in the last 4 hours')
     await act(async () => { fireEvent.click(document.querySelector('[data-verb="clear-all"]')!) })
     await screen.findByText('Could not clear notifications.')
   })
 
   it('offers Clear all when system alerts are the only rows', async () => {
     feed.groups = []
-    renderInFrame(<BellFeed />, { readers: { ...alertReaders, bell: async () => ({ unreadGroups: 0, open: 0 }) } })
+    renderInFrame(<BellFeed />, { readers: { ...alertReaders, bell: async () => ({ unreadGroups: 0 }) } })
     await screen.findByText('Test alert')
     await act(async () => { fireEvent.click(document.querySelector('[data-verb="clear-all"]')!) })
     expect(resolveAllSystemAlerts).toHaveBeenCalledTimes(1)
@@ -168,7 +178,7 @@ describe('BellFeed verbs', () => {
 
 describe('BellButton', () => {
   it('shows no number when only older unread history remains', async () => {
-    renderInFrame(<BellButton />, { readers: { ...readers, bell: async () => ({ unreadGroups: 0, open: 1102 }) } })
+    renderInFrame(<BellButton />, { readers: { ...readers, bell: async () => ({ unreadGroups: 0 }) } })
     await waitFor(() => expect(document.querySelector('.d-bell')!.getAttribute('aria-label')).toBe('Alerts, 0 unread in the last 4 hours'))
     expect(document.querySelector('.d-bell-n')).toBeNull()
   })
@@ -183,7 +193,7 @@ describe('BellButton', () => {
     await waitFor(() => expect(document.querySelector('.d-bell')!.className).toContain('d-crit'))
   })
   it('keeps the critical alert fallback when recent unread count is zero', async () => {
-    renderInFrame(<BellButton />, { readers: { ...readers, bell: async () => ({ unreadGroups: 0, open: 1102 }), alerts: async () => ({ rows: [], groups: [], critical: 1 }) } })
+    renderInFrame(<BellButton />, { readers: { ...readers, bell: async () => ({ unreadGroups: 0 }), alerts: async () => ({ rows: [], groups: [], critical: 1 }) } })
     await screen.findByText('!')
     expect(document.querySelector('.d-bell')!.getAttribute('aria-label')).toBe('Alerts, 0 unread in the last 4 hours, 1 critical alert open')
   })

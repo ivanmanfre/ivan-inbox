@@ -8,6 +8,7 @@ import { formatReturn, returnsIn } from '../../lib/pushLater'
 import { seatOf } from '../seats'
 import { Btn } from '../ui/Key'
 import { DIcon } from '../ui/icons'
+import { Failed } from '../ui/states'
 import { warsawDm, warsawDow } from '../ui/time'
 import { owedSince } from './model'
 import type { DmVerbs } from './verbs'
@@ -52,7 +53,7 @@ export function FollowUpBanner({ t, verbs, tick }: { t: Thread; verbs: DmVerbs; 
     return () => { live = false }
   }, [t.prospect_id, supported, tick, n])
   if (!supported || state === 'loading') return null
-  if (state === 'failed') return <div className="dm-ban"><b><DIcon name="time" />Could not read the follow-up date.</b></div>
+  if (state === 'failed') return <Failed compact what="the follow-up date" onRetry={() => setN(x => x + 1)} />
   const first = firstOf(t)
   const stamp = async (at: string | null, note: string) => {
     setBusy(true)

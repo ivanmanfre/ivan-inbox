@@ -114,6 +114,7 @@
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dx-phone .dx-row .dx-t.dm-t-needs{color:var(--ds-text);font-weight:600}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dx-phone .dx-row .dx-t:is(.dm-t-later,.dm-t-fu){color:var(--ds-text-2)}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dx-phone .dx-row .dm-s{grid-column:2 / 4;margin-top:0;display:block;font:400 14px/20px var(--ds-font);color:var(--ds-text-2)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dx-phone .dx-row .dm-s.dx-sub{color:var(--ds-text-3)}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dx-phone .dx-row .dm-dot{left:7px;width:8px;height:8px;margin:-4px 0 0;background:var(--ds-signal)}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dx-phone .dx-row .dm-sig{height:20px;line-height:20px;padding:0 8px;border-radius:10px;font:500 13px/20px var(--ds-font)}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .dx-phone .dx-row .dm-qnote{grid-column:2 / 4;font:400 14px/20px var(--ds-font)}

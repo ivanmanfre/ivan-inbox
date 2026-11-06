@@ -211,6 +211,15 @@ html.d-root,html.d-root body{background:#0A0A09}
 .d-failed{display:flex;gap:10px;align-items:center;padding:10px 12px;margin:12px 16px;border:1px solid rgba(232,160,143,.35);border-radius:10px;background:rgba(232,160,143,.05)}
 .d-failed>.d-ico{color:var(--warn)}
 .d-failed>div{flex:1;min-width:0}.d-failed p{font-size:14px}.d-failed small{display:block;color:var(--t2);font-size:12.5px}
+/* Compact: one line inside a list section (DMs Signals, Coming up). Warn colour, icon, Retry. */
+.d-failed.d-failed-c{margin:4px 12px 8px;padding:6px 8px 6px 10px;gap:8px;border-radius:8px}
+.d-failed-c>p{flex:1;min-width:0;font-size:13px;line-height:18px;color:var(--warn)}.d-failed-c>p small{display:inline;color:var(--t2);font-size:12px}
+.d-failed-c .d-btn{min-height:28px}
+.d-phone .d-failed-c .d-btn{min-height:44px;min-width:44px}
+/* A failed figure's visible line (#39). 12px warn; Retry gets a 28px hit, 44px on the phone. */
+.d-failline{margin:0;font:500 12px/16px var(--f);color:var(--warn)}
+.d-failline-k{font:600 12px/16px var(--f);color:inherit;text-decoration:underline;text-underline-offset:2px;min-height:28px;padding:0 4px;background:none;border:0;cursor:pointer}
+.d-phone .d-failline-k{min-height:44px;min-width:44px}
 .d-pagefail,.d-pageload{padding-top:8px}
 
 /* not built yet */

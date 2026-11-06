@@ -31,9 +31,14 @@ export function extras(t: Thread, c: RowCtx): { unread: boolean; onMore: () => v
   return { ...(t.draft && !c.checked.size ? { onQuickDiscard: () => c.verbs.quickDiscard(t) } : {}), unread: t.unread > 0, onMore: () => c.more(t), note, signal: c.came?.get(t.prospect_id) ?? null, ...(c.v4 ? { v4: true } : {}) }
 }
 
+/** #17: what they said first (their last message), our draft dimmed under it; the age is how long
+ *  they have waited. A thread with nothing from them yet shows the draft as before. */
 export function DraftRow({ t, c }: { t: Thread; c: RowCtx }) {
+  const said = flat(t.messages.filter(m => m.direction === 'inbound').at(-1)?.message_text)
+  const draft = firstLine(t.draft?.message_text)
+  const since = owedSince(t) ?? eventTime(t.draft ?? t.last)
   return <Row {...extras(t, c)} id={t.prospect_id} name={t.prospect_name} company={t.prospect_company} tags={rowTags(t)}
-    line={firstLine(t.draft?.message_text)} right={ago(eventTime(t.draft ?? t.last), c.now)} rightKind="needs"
+    line={said || draft} sub={said && draft ? `Draft: ${draft}` : undefined} right={ago(since, c.now)} rightKind="needs"
     selected={c.selected === t.prospect_id} checked={c.checked.has(t.prospect_id)} onOpen={() => c.open(t)} />
 }
 

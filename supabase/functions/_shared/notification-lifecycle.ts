@@ -1,3 +1,5 @@
+import { KNOWN_FAMILIES, kindFor } from './alert-kinds.ts'
+
 /** The existing interrupting workflow families, shared with the browser popup. */
 export const IMPORTANT_WORKFLOW_FAMILIES = [
   'system_infra_alarm', 'send_failed_alert', 'lane_supply_alarm',
@@ -49,3 +51,20 @@ export const MUTED_NOTIFICATION_FAMILIES = [
 export function isMutedNotificationFamily(family: string): boolean {
   return (MUTED_NOTIFICATION_FAMILIES as readonly string[]).includes(family)
 }
+
+/**
+ * The bell's two tiers (Ivan's review, 2026-11-06: "the bell is a log, not a to-do list").
+ * Activity = things that already happened and ask nothing of him: sent logs, published posts, run
+ * summaries, digests (kinds `digest` and `done`). They fold into one quiet "Activity" group, never count
+ * in the badge. A finished Claude answer is `done` too, but he asked for it, so it stays a needs-you row.
+ * An error row is always `failed`, so a broken log still lands on top.
+ */
+export function isActivityRow(family: string, severity: string | null | undefined, title = ''): boolean {
+  if (family === 'claude_turn') return false
+  const sev = severity === 'error' || severity === 'attention' ? severity : 'info'
+  const kind = kindFor(family, sev, title)
+  return kind === 'digest' || kind === 'done'
+}
+
+/** Known families whose non-error rows are always Activity: the badge query leaves them out server side. */
+export const ACTIVITY_FAMILIES: readonly string[] = KNOWN_FAMILIES.filter(f => isActivityRow(f, 'attention') && isActivityRow(f, 'info'))
