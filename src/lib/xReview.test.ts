@@ -55,7 +55,7 @@ describe('x flag: scheduled and publishing articles (Ivan 2026-10-15)', () => {
   })
 })
 
-describe('photoRing: the photos the X quick card swipes through', () => {
+describe('photoRing: the photo options the X quick card offers', () => {
   const R = [{ id: 'a', url: 'https://x/a.jpg', place: 'Warsaw' }, { id: 'b', url: 'https://x/b.jpg', place: null }]
   const k = (o: Record<string, unknown>) => ({ media_url: 'https://x/a.jpg', media_photo_id: 'a', media_place: 'Warsaw', media_ring: R, ...o }) as never
   it('ranked order, current position', () => {
@@ -66,8 +66,8 @@ describe('photoRing: the photos the X quick card swipes through', () => {
     const r = photoRing(k({ media_url: 'https://x/c.jpg', media_photo_id: 'c', media_place: 'Kraków' }))
     expect(r.ring.map(p => p.id)).toEqual(['c', 'a', 'b']); expect(r.index).toBe(0)
   })
-  it('no current photo or no ring = nothing to swipe', () => {
-    expect(photoRing(k({ media_url: null, media_photo_id: null })).ring).toEqual([])
+  it('no current photo keeps the options (index -1); no ring = just the current one', () => {
+    expect(photoRing(k({ media_url: null, media_photo_id: null }))).toEqual({ ring: R, index: -1 })
     expect(photoRing(k({ media_ring: undefined })).ring.map(p => p.id)).toEqual(['a'])
     expect(photoRing(k({ media_ring: [null, { id: 'z' }, ...R] })).ring.map(p => p.id)).toEqual(['a', 'b'])
   })

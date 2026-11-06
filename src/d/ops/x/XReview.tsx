@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Segmented } from '../../../ds/Segmented'
 import { LiveDot } from '../../../ds/Working'
 import { wordCount } from '../../../lib/xArticleMd'
@@ -14,9 +14,9 @@ import { warsawHm } from '../../ui/time'
 import { useToast } from '../../ui/toast'
 import { XLogo } from './glyphs'
 import { XFlag } from './XFlag'
-import { XArticlePreview, XPostPreview, type PhotoNav } from './XPreview'
+import { XArticlePreview, XPostPreview } from './XPreview'
 import { useAutosave, type SaveStatus } from './useAutosave'
-import { choosePhoto, flushPhoto, swipePhoto, usePhotoSlot } from './photoSaves'
+import { choosePhoto, flushPhoto, usePhotoSlot } from './photoSaves'
 import { patchX, useXReview } from './useXReview'
 import './x.css'
 
@@ -325,51 +325,87 @@ function QuoteReview({ q, layout, navigate }: { q: XQuote; layout: Layout; navig
 }
 
 const KIND_WORD: Record<string, string> = { win: 'Win', doubt: 'Doubt', funny: 'Funny', build: 'Building', take: 'Take' }
+const X_LIMIT = 280
 
-// THE PHOTO (Ivan 2026-11-05: every quick post carries one of his own photos, picked to fit). Swap opens
-// his gallery (ivan_photo_library only); Remove posts text only. Each change is saved on the server at
-// once, and Post is bound to the photo the preview shows.
-function PhotoPanel({ k, locked, swipe }: { k: XQuick; locked: boolean; swipe: PhotoSwipe }) {
+// THE PHOTO (Ivan 2026-11-05: every quick post carries one of his own photos, picked to fit; 2026-11-06:
+// "why does it show 5 pictures and when i remove one its removing others"). A post carries ONE photo. The
+// preview shows only that one; the lane's ranked fits sit under the post as a row of options, with "No photo"
+// and "All photos" (his whole gallery) at the end. Removing the photo keeps the options, so one tap brings
+// one back. Every pick is saved on the server at once (one queue per post, latest wins), and Post is bound
+// to the photo the preview shows.
+type PhotoPick = { shown: XRingPhoto | null; options: XRingPhoto[]; pending: boolean; err: string | null; flush: () => Promise<boolean> }
+
+function usePhotoPick(k: XQuick): PhotoPick {
+  const { ring } = useMemo(() => photoRing(k), [k.media_url, k.media_photo_id, k.media_place, k.media_ring]) // eslint-disable-line react-hooks/exhaustive-deps
+  const slotView = usePhotoSlot(k.id)
+  const want = slotView.want
+  const saved: XRingPhoto | null = k.media_url ? { id: k.media_photo_id ?? '', url: k.media_url, place: k.media_place ?? null } : null
+  const shown = want ? want.photo : saved
+  // a gallery pick still saving is not on the ring yet: it leads, so the row always marks what the preview shows
+  const options = shown && !ring.some(p => p.url === shown.url) ? [shown, ...ring] : ring
+  const id = k.id
+  const flush = useCallback(() => flushPhoto(id), [id])
+  return { shown, options, pending: want !== null || slotView.saving, err: slotView.err, flush }
+}
+
+function photoNote(k: XQuick, pick: PhotoPick): string {
+  if (pick.shown) return pick.pending || k.media_source === 'ivan' ? 'Your pick.' : k.media_reason ? `Picked: ${k.media_reason}` : 'Picked for this post.'
+  if (pick.pending || k.media_source === 'ivan') return 'No photo: this one posts as text only.'
+  if (k.media_source === 'auto') return `No photo fits: ${(k.media_reason ?? '').replace(/^none:\s*/, '') || 'nothing in your gallery matched.'}`
+  return 'No photo picked yet.'
+}
+
+function PhotoPanel({ k, locked, pick }: { k: XQuick; locked: boolean; pick: PhotoPick }) {
   const [open, setOpen] = useState(false)
   const [photos, setPhotos] = useState<XPhoto[] | null>(null)
   const [loadErr, setLoadErr] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
-  const media = swipe.shown ? swipe.shown.url : (k.media_url ?? null)
-  const place = swipe.shown ? swipe.shown.place : (k.media_place ?? null)
+  const media = pick.shown ? pick.shown.url : null
   const load = useCallback(async () => {
     setLoadErr(null)
     try { setPhotos(await fetchXQuickPhotos()) } catch (e) { setLoadErr(msg(e)) }
   }, [])
-  const choose = useCallback(async (photoId: string | null) => {
-    const p = photoId ? photos?.find(x => x.id === photoId) : null
-    if (photoId && !p) return
-    setBusy(photoId ?? 'remove')
-    // the same per-post queue as the swipes: one write at a time, the latest choice wins
-    try { if (await choosePhoto(k.id, p ? { id: p.id, url: p.url, place: p.place } : null)) setOpen(false) } finally { setBusy(null) }
-  }, [k.id, photos])
+  const choose = useCallback(async (p: XRingPhoto | null, fromGallery: boolean) => {
+    setBusy(p ? p.id : 'none')
+    // the same per-post queue for every photo change: one write at a time, the latest choice wins
+    try { if (await choosePhoto(k.id, p) && fromGallery) setOpen(false) } finally { setBusy(b => (b === (p ? p.id : 'none') ? null : b)) }
+  }, [k.id])
   const toggle = () => { const next = !open; setOpen(next); if (next && !photos) void load() }
-  const disabled = locked || busy !== null
-  const note = media
-    ? (swipe.pending || k.media_source === 'ivan' ? 'Your pick' : k.media_reason ? `Picked: ${k.media_reason}` : 'Picked for this post')
-    : swipe.pending || k.media_source === 'ivan' ? 'Removed: this one posts as text only.'
-      : k.media_source === 'auto' ? `No photo fits: ${(k.media_reason ?? '').replace(/^none:\s*/, '') || 'nothing in your gallery matched.'}`
-        : 'No photo picked yet. Pick one from your gallery.'
+  // never blocked while a save runs: the queue saves the latest pick, so a second tap just wins
+  const disabled = locked
+  const count = pick.options.length
   return (
-    <div className="xr-photo" data-x-photo-panel>
-      <div className="xr-photo-row">
-        {media ? <img className="xr-photo-cur" src={photoThumb(media, 160)} alt="" /> : <div className="xr-photo-cur xr-photo-none" aria-hidden>No photo</div>}
-        <div className="xr-photo-t">
-          <b>Photo{place ? ` · ${place}` : ''}</b>
-          <small>{note}{swipe.nav ? ` · ${swipe.nav.index + 1} of ${swipe.nav.count}, swipe the photo for the others` : ''}</small>
-        </div>
+    <section className="xr-sec" data-x-photo-panel>
+      <div className="xr-sec-h">
+        <span>Photo</span>
+        <small>{media ? `1 photo${pick.shown?.place ? ` · ${pick.shown.place}` : ''}` : 'Text only'}</small>
       </div>
-      {!locked && (
-        <div className="xr-photo-keys">
-          <button type="button" className="xr-link" data-verb="x-photo-change" aria-expanded={open} disabled={disabled} onClick={toggle}>{open ? 'Close gallery' : media ? 'Change photo' : 'Pick a photo'}</button>
-          {media && <button type="button" className="xr-link xr-link-quiet" data-verb="x-photo-remove" disabled={disabled} onClick={() => void choose(null)}>{busy === 'remove' ? 'Removing…' : 'Remove photo'}</button>}
+      <p className="xr-sec-note">{photoNote(k, pick).replace(/([^.!?])$/, '$1.')}{!locked && count > 1 ? ` ${count} options fit this post: tap one to use it.` : ''}</p>
+      {locked ? (media && <img className="xr-pick-locked" src={photoThumb(media, 200)} alt="" />) : (
+        <div className="xr-picks" role="radiogroup" aria-label="Photo for this post">
+          {pick.options.map((p, i) => {
+            const on = p.url === media
+            return (
+              <button key={p.url} type="button" role="radio" aria-checked={on} className={`xr-pick${on ? ' xr-pick-on' : ''}`}
+                data-verb="x-photo-option" data-photo-id={p.id} disabled={disabled}
+                aria-label={`${p.place ?? `Option ${i + 1}`}${on ? ', on the post' : ''}`} onClick={() => { if (!on) void choose(p, false) }}>
+                <span className="xr-pick-img"><img src={photoThumb(p.url, 200)} alt="" loading="lazy" />{on && <span className="xr-pick-check" aria-hidden>✓</span>}</span>
+                <span className="xr-pick-cap">{busy === p.id ? 'Saving…' : on ? 'On the post' : `Option ${i + 1}`}</span>
+              </button>
+            )
+          })}
+          <button type="button" role="radio" aria-checked={!media} className={`xr-pick xr-pick-text${!media ? ' xr-pick-on' : ''}`}
+            data-verb="x-photo-remove" disabled={disabled} onClick={() => { if (media) void choose(null, false) }}>
+            <span className="xr-pick-img"><span className="xr-pick-glyph" aria-hidden>Aa</span>{!media && <span className="xr-pick-check" aria-hidden>✓</span>}</span>
+            <span className="xr-pick-cap">{busy === 'none' ? 'Saving…' : 'No photo'}</span>
+          </button>
+          <button type="button" className="xr-pick xr-pick-more" data-verb="x-photo-change" aria-expanded={open} disabled={disabled} onClick={toggle}>
+            <span className="xr-pick-img"><span className="xr-pick-glyph" aria-hidden>{open ? '×' : '+'}</span></span>
+            <span className="xr-pick-cap">{open ? 'Close' : 'All photos'}</span>
+          </button>
         </div>
       )}
-      {swipe.err && <div className="xr-ban xr-ban-failed" role="alert">Photo not changed: {swipe.err}</div>}
+      {pick.err && <div className="xr-ban xr-ban-failed" role="alert">Photo not changed: {pick.err}</div>}
       {open && !locked && (
         <div className="xr-gallery" role="group" aria-label="Your photos">
           {loadErr ? <div className="xr-ban xr-ban-failed" role="alert">Could not read your gallery: {loadErr} <button type="button" className="xr-link" onClick={() => void load()}>Retry</button></div>
@@ -377,7 +413,7 @@ function PhotoPanel({ k, locked, swipe }: { k: XQuick; locked: boolean; swipe: P
               : photos.map(p => (
                 <button key={p.id} type="button" className={`xr-gal${p.url === media ? ' xr-gal-on' : ''}`} data-verb="x-photo-pick" data-photo-id={p.id}
                   disabled={disabled || p.url === media} aria-label={`${p.place ?? 'Photo'}: ${p.description ?? ''}${p.recent ? ' (used recently)' : ''}`}
-                  onClick={() => void choose(p.id)}>
+                  onClick={() => void choose({ id: p.id, url: p.url, place: p.place }, true)}>
                   <img src={photoThumb(p.url)} alt="" loading="lazy" />
                   {p.recent && <span className="xr-gal-tag">used</span>}
                   {busy === p.id && <span className="xr-gal-tag xr-gal-busy">saving…</span>}
@@ -385,35 +421,8 @@ function PhotoPanel({ k, locked, swipe }: { k: XQuick; locked: boolean; swipe: P
               ))}
         </div>
       )}
-    </div>
+    </section>
   )
-}
-
-// SWIPE THROUGH THE RANKED PHOTOS (Ivan 2026-11-05: "swipe the photo to cycle through other relevant photos").
-// The preview moves at once; photoSaves.ts saves after he settles (PHOTO_SETTLE_MS), one write at a time per
-// post, always the latest want, so a fast swipe through 4 photos is one save of the last one. Post flushes
-// that queue and binds the photo shown.
-type PhotoSwipe = { shown: XRingPhoto | null; nav: PhotoNav | null; pending: boolean; err: string | null; flush: () => Promise<boolean> }
-
-function usePhotoSwipe(k: XQuick, locked: boolean): PhotoSwipe {
-  const { ring, index: savedIndex } = useMemo(() => photoRing(k), [k.media_url, k.media_photo_id, k.media_place, k.media_ring]) // eslint-disable-line react-hooks/exhaustive-deps
-  const slotView = usePhotoSlot(k.id)
-  const want = slotView.want
-  const shown = want ? want.photo : (savedIndex >= 0 ? ring[savedIndex] : null)
-  const index = shown ? ring.findIndex(p => p.url === shown.url) : -1
-  const id = k.id
-  const step = useCallback((d: -1 | 1) => {
-    if (index < 0) return
-    const n = Math.max(0, Math.min(ring.length - 1, index + d))
-    if (n !== index) swipePhoto(id, ring[n])
-  }, [id, index, ring])
-  const flush = useCallback(() => flushPhoto(id), [id])
-  // the neighbours load before he swipes to them
-  useEffect(() => {
-    for (const p of [ring[index - 1], ring[index + 1]]) if (p) { const img = new Image(); img.src = p.url }
-  }, [ring, index])
-  const nav = !locked && ring.length > 1 && index >= 0 ? { index, count: ring.length, onStep: step } : null
-  return { shown, nav, pending: want !== null || slotView.saving, err: slotView.err, flush }
 }
 
 function QuickReview({ k, layout, navigate }: { k: XQuick; layout: Layout; navigate: (h: string) => void }) {
@@ -426,46 +435,52 @@ function QuickReview({ k, layout, navigate }: { k: XQuick; layout: Layout; navig
   const textRef = useRef(text)
   textRef.current = text
   const getText = useCallback(() => textRef.current, [])
-  const [deciding, setDeciding] = useState(false)
-  const swipe = usePhotoSwipe(k, !editable || deciding)
-  const shownUrl = swipe.shown ? swipe.shown.url : (k.media_url ?? null)
+  const pick = usePhotoPick(k)
+  const shownUrl = pick.shown ? pick.shown.url : null
   const mediaRef = useRef<string | null>(shownUrl)
   mediaRef.current = shownUrl
   const getMedia = useCallback(() => mediaRef.current, [])
   const { flush: flushText } = auto
-  const { flush: flushPhoto } = swipe
-  // Post waits for the text save AND a photo still settling from a swipe
-  const flush = useCallback(async () => (await flushText()) && (await flushPhoto()), [flushText, flushPhoto])
+  const { flush: flushPick } = pick
+  // Post waits for the text save AND any photo change still saving
+  const flush = useCallback(async () => (await flushText()) && (await flushPick()), [flushText, flushPick])
   const d = useDecide('quick', k.id, text.split('\n')[0] || 'Quick post', navigate, flush, getText, getMedia)
-  useEffect(() => { setDeciding(d.busy !== null) }, [d.busy])
   const locked = !editable || d.busy !== null
   const options = [k.text ?? '', ...(k.options ?? [])].filter((o, i, a) => typeof o === 'string' && o.trim() && a.indexOf(o) === i)
-  const label = `Quick post${k.kind && KIND_WORD[k.kind] ? ` · ${KIND_WORD[k.kind]}` : ''} · ${STATUS_WORD[k.status] ?? k.status}`
+  // the version in the editor is the post itself; the list shows only the others (swapping one in moves the old one here)
+  const others = options.filter(o => o !== text)
+  const kind = k.kind && KIND_WORD[k.kind] ? KIND_WORD[k.kind] : null
+  const exp = k.expires_at ? Date.parse(k.expires_at) : NaN
+  const label = `${STATUS_WORD[k.status] ?? k.status}${editable && Number.isFinite(exp) ? ` · expires ${warsawHm(exp)}` : ''}`
+  const title = kind ? `Quick post · ${kind}` : 'Quick post'
+  const over = text.length > X_LIMIT
   const editor = (
     <div className="xr-editor" data-x-editor>
       <label className="xr-field">
-        <span>Post <small>{text.length} characters</small></span>
+        <span>Post <small className={over ? 'xr-over' : undefined}>{text.length} / {X_LIMIT}</small></span>
         <textarea ref={ref} rows={4} className="xr-input xr-line" value={text} readOnly={locked} data-x-quick
           onChange={e => auto.setValue(e.target.value)} onBlur={() => void auto.flush()} />
       </label>
-      <PhotoPanel k={k} locked={locked} swipe={swipe} />
-      {options.length > 1 && (
-        <div className="xr-chips xr-chips-quick" role="group" aria-label="Other versions">
-          {options.map((o, i) => (
-            <button key={i} type="button" className={`xr-chip${o === text ? ' xr-chip-on' : ''}`} data-verb="x-quick-option" disabled={locked}
-              onClick={() => auto.setValue(o)}>{o}</button>
-          ))}
-        </div>
+      <PhotoPanel k={k} locked={locked} pick={pick} />
+      {others.length > 0 && (
+        <section className="xr-sec">
+          <div className="xr-sec-h"><span>Other versions</span><small>{locked ? `${others.length} more written` : 'Tap one to swap it in'}</small></div>
+          <div className="xr-chips xr-chips-quick" role="group" aria-label="Other versions">
+            {others.map(o => (
+              <button key={o} type="button" className="xr-chip" data-verb="x-quick-option" disabled={locked} onClick={() => auto.setValue(o)}>{o}</button>
+            ))}
+          </div>
+        </section>
       )}
       {(k.source_label || k.source_excerpt) && (
         <details className="xr-checks" data-x-source>
-          <summary><span>From</span><small>{k.source_label ?? 'Source'}</small></summary>
+          <summary><span>Where it came from</span><small>{k.source_label ?? 'Source'}</small></summary>
           {k.source_excerpt && <p className="xr-quiet xr-src">{k.source_excerpt}</p>}
         </details>
       )}
     </div>
   )
-  const preview = <XPostPreview text={text} media={null} photo={shownUrl} photoNav={swipe.nav} handle={k.account || 'theivanpill'} quoteTitle={null} quoteCover={null} />
+  const preview = <XPostPreview text={text} media={null} photo={shownUrl} handle={k.account || 'theivanpill'} quoteTitle={null} quoteCover={null} />
   const saveLine = <SaveLine status={auto.status} error={auto.error} savedAt={auto.savedAt} retry={() => void auto.flush()} readOnly={!editable} />
   const top = (
     <>
@@ -476,20 +491,19 @@ function QuickReview({ k, layout, navigate }: { k: XQuick; layout: Layout; navig
   )
   if (layout === 'desktop') {
     return (
-      <div className="xr xr-desktop" data-x-review="quick">
-        <AnswerRow title="X review" sub="What you see on the right is what X posts." />
-        <Head layout={layout} label={label} title="Quick post" navigate={navigate} actions={<>{saveLine}<Actions kind="quick" d={d} canAct={editable} /></>} />
+      <div className="xr xr-desktop xr-quick" data-x-review="quick">
+        <Head layout={layout} label={label} title={title} navigate={navigate} actions={<>{saveLine}<Actions kind="quick" d={d} canAct={editable} /></>} />
         <div className="xr-top">{top}</div>
         <div className="xr-cols">
           <div className="xr-col xr-col-edit">{editor}</div>
-          <div className="xr-col xr-col-prev"><div className="xr-stage">{preview}</div></div>
+          <div className="xr-col xr-col-prev"><div className="xr-stage"><div className="xr-stage-h">On X</div>{preview}</div></div>
         </div>
       </div>
     )
   }
   return (
-    <div className="xr xr-phone" data-x-review="quick">
-      <Head layout={layout} label={label} title="Quick post" navigate={navigate} />
+    <div className="xr xr-phone xr-quick" data-x-review="quick">
+      <Head layout={layout} label={label} title={title} navigate={navigate} />
       {top}
       <div className="xr-stage">{preview}</div>
       <div className="xr-bar xr-bar-plain">{saveLine}</div>

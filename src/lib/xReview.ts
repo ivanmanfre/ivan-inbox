@@ -164,15 +164,16 @@ export async function setXQuickPhoto(id: string, photoId: string | null): Promis
 }
 
 /**
- * The photos the card swipes through and where the current photo sits. A current photo that is not on the
- * ranking (a gallery pick) leads. No current photo = nothing to swipe (the gallery picks one).
+ * The photo options the quick-post card offers and where the current photo sits. A current photo that is not
+ * on the ranking (a gallery pick) leads. No current photo (removed, text only) keeps the ranked options with
+ * index -1, so one tap puts a photo back (Ivan 2026-11-06: removing the photo made the other options vanish).
  */
 export function photoRing(k: Pick<XQuick, 'media_url' | 'media_photo_id' | 'media_place' | 'media_ring'>): { ring: XRingPhoto[]; index: number } {
   const cur = k.media_url ?? null
-  if (!cur) return { ring: [], index: -1 }
   const ranked = (Array.isArray(k.media_ring) ? k.media_ring : [])
     .filter((p): p is XRingPhoto => !!p && typeof p.id === 'string' && typeof p.url === 'string' && !!p.url)
     .filter((p, i, a) => a.findIndex(x => x.url === p.url) === i)
+  if (!cur) return { ring: ranked, index: -1 }
   const at = ranked.findIndex(p => p.url === cur)
   if (at >= 0) return { ring: ranked, index: at }
   return { ring: [{ id: k.media_photo_id ?? '', url: cur, place: k.media_place ?? null }, ...ranked], index: 0 }
