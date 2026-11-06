@@ -163,13 +163,13 @@ export async function listThreads(limit = 30): Promise<Thread[]> {
  * the on switch, the daily cap counted from 00:00 UTC, and the oldest unread
  * row the tick would read.
  */
-export type BotHealth = { on: boolean; cap: number; today: number; busy: boolean; lastTurnAt: string | null; waitingSince: string | null }
+export type BotHealth = { on: boolean; cap: number; today: number; busy: boolean; lastTurnAt: string | null; waitingSince: string | null; heldAt?: string | null }
 
 export async function readBotHealth(botThreadId: string, now = Date.now()): Promise<BotHealth> {
   const d = new Date(now)
   const dayStart = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).toISOString()
   const [cfg, turns, open, last, rows] = await Promise.all([
-    supabase.from('integration_config').select('key, value').in('key', ['bot_tick_enabled', 'bot_daily_turn_cap']),
+    supabase.from('integration_config').select('key, value').in('key', ['bot_tick_enabled', 'bot_daily_turn_cap', 'bot_tick_last']),
     // Same count the tick's cap uses: bot-origin turns since 00:00 UTC (operator replies do not count).
     supabase.from('inbox_turns').select('id', { count: 'exact', head: true }).eq('origin', 'bot').gte('created_at', dayStart),
     // A queued or running bot turn here makes the tick answer "busy": that is work, not silence.
@@ -189,6 +189,9 @@ export async function readBotHealth(botThreadId: string, now = Date.now()): Prom
   if (rows.error) throw rows.error
   const m = new Map((cfg.data ?? []).map(r => [r.key as string, String(r.value)]))
   const capN = Number(m.get('bot_daily_turn_cap'))
+  // The tick writes {at, outcome} when it holds on purpose (only repeats, pacing, nothing unread).
+  let heldAt: string | null = null
+  try { const v = JSON.parse(m.get('bot_tick_last') ?? 'null'); if (typeof v?.at === 'string') heldAt = v.at } catch { heldAt = null }
   return {
     on: m.get('bot_tick_enabled') === 'true',
     cap: Number.isFinite(capN) && capN > 0 ? capN : 24,
@@ -196,6 +199,7 @@ export async function readBotHealth(botThreadId: string, now = Date.now()): Prom
     busy: (open.count ?? 0) > 0,
     lastTurnAt: (last.data?.[0]?.created_at as string | undefined) ?? null,
     waitingSince: (rows.data?.[0]?.created_at as string | undefined) ?? null,
+    heldAt,
   }
 }
 

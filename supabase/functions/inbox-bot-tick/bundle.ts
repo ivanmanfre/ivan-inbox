@@ -75,38 +75,109 @@ export function selectRows(rows: FeedRow[], openBotTurnIds: Iterable<string>): F
     .sort((a, b) => (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0))
 }
 
-/** One feed row as one line the bot reads. */
-export function renderRow(r: FeedRow): string {
+/** The parts of a row's line, without the count. A dedupe repeat bumps only the
+ *  count, so this is what says whether the bot was already told the same thing. */
+function rowParts(r: FeedRow): { tag: string; rest: string } {
   const tenant = (r.tenant ?? '').trim() || 'ivan'
   const severity = (r.severity ?? '').trim() || 'info'
-  const count = typeof r.count === 'number' && r.count > 0 ? r.count : 1
-  const head = `[${r.family} · ${severity} · ${tenant} · ${count}x]`
   const body = (r.body ?? '').replace(/\s+/g, ' ').trim().slice(0, BODY_CLIP_CHARS)
   const url = (r.url ?? '').trim()
-  return `${head} ${r.title.trim()}${body ? ` : ${body}` : ''}${url ? ` (${url})` : ''}`
+  return {
+    tag: `${r.family} · ${severity} · ${tenant}`,
+    rest: `${r.title.trim()}${body ? ` : ${body}` : ''}${url ? ` (${url})` : ''}`,
+  }
+}
+
+/** One feed row as one line the bot reads. */
+export function renderRow(r: FeedRow): string {
+  const { tag, rest } = rowParts(r)
+  const count = typeof r.count === 'number' && r.count > 0 ? r.count : 1
+  return `[${tag} · ${count}x] ${rest}`
+}
+
+/** A row's line with the count left out: the key a past prompt is checked against. */
+export function toldKey(r: FeedRow): string {
+  const { tag, rest } = rowParts(r)
+  return `[${tag}] ${rest}`
+}
+
+/** How far back a past bot prompt counts as "already told". Same as the
+ *  feed's 24h dedupe window: a repeat after that is a new telling anyway. */
+export const TOLD_WINDOW_MS = 24 * 60 * 60 * 1000
+
+/**
+ * The keys of every row line in past bot prompts. Only prompts of turns that
+ * finished (status done) may be passed in: an errored turn told nobody.
+ */
+export function toldKeys(prompts: Iterable<string>): Set<string> {
+  const out = new Set<string>()
+  for (const p of prompts) {
+    for (const line of p.split('\n')) {
+      const m = /^\[(.+?) · \d+x\] (.*)$/.exec(line)
+      if (m) out.add(`[${m[1]}] ${m[2]}`)
+    }
+  }
+  return out
 }
 
 /**
- * The prompt: the rows the bot has not seen, oldest first, plus the head of what
- * it said last time so it does not restate a row it already folded.
- *
- * Rows are added until the text would pass BUNDLE_MAX_CHARS; the rest stay
- * unread and ride the next tick.
+ * Split the selectable rows into the ones the bot has not been told and the
+ * repeats it has. A row is a repeat only when the same line (family, severity,
+ * tenant, title, clipped body, url) sat in a finished bot prompt: a dedupe
+ * repeat whose title, body or severity changed is new. A row that never fitted
+ * a bundle was never in a prompt, so it is new too.
  */
-export function buildBundle(rows: FeedRow[], lastHead: string | null): Bundle {
+export function splitTold(rows: FeedRow[], told: Set<string>): { fresh: FeedRow[]; repeats: FeedRow[] } {
+  const fresh: FeedRow[] = []
+  const repeats: FeedRow[] = []
+  for (const r of rows) (told.has(toldKey(r)) ? repeats : fresh).push(r)
+  return { fresh, repeats }
+}
+
+/**
+ * How many bot turns may have started by `now`, so the daily cap lasts the
+ * whole UTC day instead of running out by late morning. One turn per hour on
+ * a cap of 24: ceil(cap * (minutes since 00:00 + 30) / 1440), never above the
+ * cap. A quiet hour leaves its turn unspent, so a busy hour after it can catch
+ * up on consecutive ticks.
+ */
+export function paceAllowance(cap: number, now: Date): number {
+  const minutes = now.getUTCHours() * 60 + now.getUTCMinutes()
+  return Math.min(cap, Math.ceil((cap * (minutes + 30)) / 1440))
+}
+
+/**
+ * The prompt: the rows the bot has not seen, oldest first, then the repeats of
+ * rows it already told (count went up), oldest first, plus the head of what it
+ * said last time so it does not restate a row it already folded.
+ *
+ * New rows go first so a backlog of repeats can never push them out of the
+ * bundle. Rows are added until the text would pass BUNDLE_MAX_CHARS; the rest
+ * stay unread and ride the next tick.
+ */
+export function buildBundle(rows: FeedRow[], lastHead: string | null, repeats: FeedRow[] = []): Bundle {
   const budget = BUNDLE_MAX_CHARS - TAIL_RESERVE_CHARS
   const lines: string[] = []
   const included: string[] = []
   let used = 0
-  for (const r of rows) {
-    const line = renderRow(r)
-    if (used + line.length + 1 > budget) break
-    lines.push(line)
-    included.push(r.id)
-    used += line.length + 1
+  let freshIn = 0
+  let full = false
+  for (const [list, isFresh] of [[rows, true], [repeats, false]] as const) {
+    for (const r of list) {
+      if (full) break
+      const line = renderRow(r)
+      if (used + line.length + 1 > budget) { full = true; break }
+      lines.push(line)
+      included.push(r.id)
+      used += line.length + 1
+      if (isFresh) freshIn++
+    }
   }
 
-  const head = `Feed rows since my last message (${included.length} rows, oldest first):`
+  const repeatIn = included.length - freshIn
+  const head = repeatIn === 0
+    ? `Feed rows since my last message (${included.length} rows, oldest first):`
+    : `Feed rows since my last message (${included.length} rows: ${freshIn} new, then ${repeatIn} repeats of rows I already told, oldest first in each):`
   const last = (lastHead ?? '').trim().slice(0, LAST_HEAD_CHARS)
   const tail = `\n\nWhat I said last time (first ${LAST_HEAD_CHARS} chars):\n${last || '(nothing yet)'}`
   const text = `${head}\n${lines.join('\n')}${tail}`

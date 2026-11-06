@@ -7,7 +7,9 @@
 // Ivan twice: the open-turn exclusion, and "only what fits gets stamped".
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { buildBundle, BUNDLE_MAX_CHARS, type FeedRow, MUTED_FAMILIES, selectRows } from './bundle.ts'
+import {
+  buildBundle, BUNDLE_MAX_CHARS, type FeedRow, MUTED_FAMILIES, paceAllowance, selectRows, splitTold, toldKey, toldKeys,
+} from './bundle.ts'
 
 function row(over: Partial<FeedRow> & { id: string; created_at: string }): FeedRow {
   return {
@@ -133,5 +135,78 @@ describe('buildBundle', () => {
     expect(out.included).toEqual(wanted)
     // One line per included row, plus the header and the two tail lines.
     expect(out.text.split('\n').length).toBe(out.included.length + 4)
+  })
+})
+
+describe('new since the last message (2026-11-06)', () => {
+  // Real prompt line from the 2026-11-01 07:00 turn: runner_sync repeated every
+  // few minutes, each repeat re-opened the row, and the tick spent a turn on it.
+  const runner = row({
+    id: 'runner', created_at: '2026-10-31T20:00:00Z', family: 'runner_sync', severity: 'error',
+    tenant: 'ivan', count: 49, title: 'The runner sync failed on mac', body: 'git add failed',
+  })
+  const pastPrompt = [
+    'Feed rows since my last message (2 rows, oldest first):',
+    '[runner_sync · error · ivan · 43x] The runner sync failed on mac : git add failed',
+    '[comment_engagement_notice · info · ivan · 1x] Comment drafts 2026-11-01: nothing worth posting today.',
+    '',
+    'What I said last time (first 300 chars):',
+    'No response requested.',
+  ].join('\n')
+
+  it('a count bump of a line the bot was already handed is a repeat', () => {
+    const { fresh, repeats } = splitTold([runner], toldKeys([pastPrompt]))
+    expect(fresh).toEqual([])
+    expect(repeats.map((r) => r.id)).toEqual(['runner'])
+  })
+
+  it('a repeat whose body or severity changed is new', () => {
+    const told = toldKeys([pastPrompt])
+    expect(splitTold([{ ...runner, body: 'git fetch/merge failed' }], told).fresh.length).toBe(1)
+    expect(splitTold([{ ...runner, severity: 'attention' }], told).fresh.length).toBe(1)
+  })
+
+  it('a row never handed to the bot is new, and nothing told means everything is new', () => {
+    const other = row({ id: 'booking', created_at: '2026-11-01T07:10:00Z', family: 'booking_notice', title: 'Alan booked' })
+    expect(splitTold([runner, other], toldKeys([pastPrompt])).fresh.map((r) => r.id)).toEqual(['booking'])
+    expect(splitTold([runner, other], toldKeys([])).fresh.length).toBe(2)
+  })
+
+  it('the key round-trips through the rendered bundle the bot is sent', () => {
+    const rows = [runner, row({ id: 'u', created_at: '2026-11-01T07:00:00Z', url: './#today', body: 'b '.repeat(300) })]
+    const told = toldKeys([buildBundle(rows, 'x').text])
+    for (const r of rows) expect(told.has(toldKey({ ...r, count: 99 }))).toBe(true)
+  })
+
+  it('puts new rows ahead of repeats so a pile of repeats cannot crowd them out', () => {
+    const repeats = Array.from({ length: 80 }, (_, i) =>
+      row({ id: `rep-${i}`, created_at: '2026-11-01T00:00:00Z', title: `repeat ${i} `.padEnd(200, 'r') }))
+    const fresh = [row({ id: 'new', created_at: '2026-11-01T07:00:00Z', title: 'Alan booked' })]
+    const out = buildBundle(fresh, null, repeats)
+    expect(out.included[0]).toBe('new')
+    expect(out.included.length).toBeLessThan(81)
+    expect(out.text.split('\n')[0]).toMatch(/^Feed rows since my last message \(\d+ rows: 1 new, then \d+ repeats of rows I already told, oldest first in each\):$/)
+  })
+})
+
+describe('paceAllowance', () => {
+  const at = (hhmm: string) => new Date(`2026-11-06T${hhmm}:00Z`)
+  it('spends a cap of 24 at about one turn an hour across the UTC day', () => {
+    expect(paceAllowance(24, at('00:00'))).toBe(1)
+    expect(paceAllowance(24, at('00:30'))).toBe(1)
+    expect(paceAllowance(24, at('01:00'))).toBe(2)
+    expect(paceAllowance(24, at('11:30'))).toBe(12)
+    expect(paceAllowance(24, at('23:00'))).toBe(24)
+    expect(paceAllowance(24, at('23:30'))).toBe(24)
+  })
+  it('never passes the cap, whatever the cap is', () => {
+    for (const cap of [1, 5, 24, 48, 100]) {
+      for (let m = 0; m < 1440; m += 30) {
+        const a = paceAllowance(cap, new Date(Date.UTC(2026, 10, 6, 0, m)))
+        expect(a).toBeLessThanOrEqual(cap)
+        expect(a).toBeGreaterThanOrEqual(1)
+      }
+      expect(paceAllowance(cap, at('23:30'))).toBe(cap)
+    }
   })
 })
