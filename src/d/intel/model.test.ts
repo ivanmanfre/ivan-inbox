@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ago, clock, inDropped, inFeed, length, sortSources, tabOf, watchUrl, type IntelItem, type IntelSource } from './model'
+import { ago, clock, inDropped, inFeed, inSeen, length, sortSources, tabOf, watchUrl, type IntelItem, type IntelSource } from './model'
 
 describe('intel model', () => {
   it('formats clock times', () => {
@@ -38,13 +38,17 @@ describe('intel model', () => {
 
   it('keeps For you recent and honours Ivan\'s taps', () => {
     const now = Date.parse('2026-10-30T12:00:00Z')
-    const it_ = (o: Partial<IntelItem>) => ({ verdict: 'keep', ivan_verdict: null, published_at: '2026-10-25T00:00:00Z', created_at: '2026-10-29T00:00:00Z', ...o }) as IntelItem
+    const it_ = (o: Partial<IntelItem>) => ({ verdict: 'keep', ivan_verdict: null, ivan_seen_at: null, published_at: '2026-10-25T00:00:00Z', created_at: '2026-10-29T00:00:00Z', ...o }) as IntelItem
     expect(inFeed(it_({}), now)).toBe(true)
     expect(inFeed(it_({ published_at: '2026-10-02T00:00:00Z' }), now)).toBe(false)
     expect(inFeed(it_({ ivan_verdict: 'noise' }), now)).toBe(false)
     expect(inFeed(it_({ verdict: 'drop', ivan_verdict: 'useful' }), now)).toBe(true)
     expect(inFeed(it_({ verdict: 'drop' }), now)).toBe(false)
     expect(inFeed(it_({ published_at: null }), now)).toBe(false)
+    expect(inFeed(it_({ ivan_seen_at: '2026-10-29T00:00:00Z' }), now)).toBe(false)
+    expect(inSeen(it_({ ivan_seen_at: '2026-10-29T00:00:00Z' }), now)).toBe(true)
+    expect(inSeen(it_({ ivan_seen_at: '2026-10-29T00:00:00Z', ivan_verdict: 'noise' }), now)).toBe(false)
+    expect(inSeen(it_({}), now)).toBe(false)
     expect(inDropped(it_({ verdict: 'drop' }), now)).toBe(true)
     expect(inDropped(it_({ verdict: 'drop', ivan_verdict: 'useful' }), now)).toBe(false)
     expect(inDropped(it_({ verdict: 'drop', created_at: '2026-10-01T00:00:00Z' }), now)).toBe(false)
