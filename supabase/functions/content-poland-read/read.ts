@@ -1,7 +1,8 @@
 // Pure prompt/parse for content-poland-read: no I/O, so it is unit-tested alone.
 //
 // "Is this post about Poland?" is a reasoned read, never a keyword list (Ivan's rule: gates are reasoned). The
-// definition is the content-brain invention check's own "poland" field, so both sources mean the same thing.
+// definition starts from the content-brain invention check's own "poland" field and adds one case (11-06, Ivan):
+// a take made from a Polish point of view ("I am Polish. ...") is a Poland post even when Poland is named once.
 // The Railway proxy refuses a `system` field, so the instruction leads the one user turn. Only
 // `type === "text"` blocks are the answer; a thinking block is not.
 
@@ -14,11 +15,16 @@ export function buildBody(post: string) {
     messages: [{
       role: 'user' as const,
       content:
-        'Read the LinkedIn post below and decide one thing: is its subject Poland?\n' +
+        'Read the LinkedIn post below and decide one thing: is it a Poland post?\n' +
         'Answer true when the post is about Poland, a Polish city or place, Polish people, living in or moving to Poland, ' +
         'or doing business in or with Poland. Politics, migration and strong opinions about Poland count as Poland too.\n' +
-        'Answer false when Poland is not the subject: another country or city, a business topic, or Poland only named in passing.\n' +
-        'Do not judge whether the post is good, true or polite. Only the subject.\n' +
+        'Answer true also when the author speaks as a Pole, or from life in Poland, and that standpoint frames the take: a ' +
+        'political, cultural, civilizational, religious, historical or migration view given from a Polish point of view. ' +
+        'Such a post can be very short and name Poland only once. The Polish identity is the ground the take stands on, ' +
+        'so it is not a passing mention.\n' +
+        'Answer false when Poland is not the subject and no Polish point of view frames the post: another country or city, ' +
+        'a business topic, or Poland only named in passing.\n' +
+        'Do not judge whether the post is good, true or polite. Only the subject and the standpoint.\n' +
         'Return only JSON, nothing else: {"poland": true or false, "why": "one short plain sentence"}\n\n' +
         'Post:\n<<<\n' + post.slice(0, 6000) + '\n>>>',
     }],
