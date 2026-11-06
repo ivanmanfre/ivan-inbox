@@ -33,6 +33,7 @@ import { sourceTag, type SourceTagView } from './sourceTag'
 import { Answer, Menu, Pill, SeatAv, Seg, useDeferred, type MenuItem, type Tone } from './ui'
 import { DIcon } from '../../ui/icons'
 import './review-list.css'
+import { LineFlagsBlock, useLineFlags } from './LineFlags'
 
 // CONTENT > REVIEW, THE ONE DESK. One seat at a time (Ivan 2026-10-15: "I will see it per client always"),
 // every draft to decide as ONE ROW: where it came from first (the source tag), the hook, its tags, age and
@@ -164,6 +165,8 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   const [focus, setFocus] = useState<string | null>(focusId)
   const [more, setMore] = useState<ReadonlySet<string>>(() => new Set())
   const [keys, setKeys] = useState(false)
+  // An Ivan draft with flagged lines still in its text: Approve asks once ("Approve as written") on the row.
+  const [keepAsk, setKeepAsk] = useState<string | null>(null)
   const list = useRef<HTMLDivElement>(null)
   const mason = useCallback((el: HTMLDivElement | null) => el ? masonry(el) : undefined, [])
   const listMason = useCallback((el: HTMLDivElement | null) => { list.current = el; return el ? masonry(el) : undefined }, [])
@@ -224,10 +227,14 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
 
   // A card with unsaved typed text must not be approved, skipped or dropped: the row would leave and take the edit with it.
   const unsaved = (id: string) => !!document.querySelector(`[data-card-id="${id}"][data-unsaved]`)
-  const approveCard = (c: WeekCard) => {
-    if (unsaved(c.r.id)) { toast.show({ message: 'Save or cancel your edit first.' }); return }
+  const approveNow = (c: WeekCard) => {
     if (c.judge) void verbs.judgeIt(c, 'keep')
     else if (c.primary === 'approve') verbs.approve(c)
+  }
+  const approveCard = (c: WeekCard) => {
+    if (unsaved(c.r.id)) { toast.show({ message: 'Save or cancel your edit first.' }); return }
+    if (c.lane === 'ivan' && document.querySelector(`[data-card-id="${c.r.id}"][data-needs-keep]`)) { setKeepAsk(c.r.id); return }
+    approveNow(c)
   }
   // judgeIt never waits on a Drop (only Approve on an errored Ivan draft asks first), so the held verdict exists
   // when it returns: the reason rides along with it in ONE write, exactly ContentBrain's judge + giveReason.
@@ -301,6 +308,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
         onFocus={() => setFocus(c.r.id)}
         onOpen={() => onOpen(c.r.id, c.lane)} onEdit={() => onEdit(c.r.id, c.lane)}
         onApprove={() => approveCard(c)} onDrop={(slug, note) => dropWith(c, slug, note)}
+        asking={keepAsk === c.r.id} onKeepApprove={() => { setKeepAsk(null); approveNow(c) }} onKeepBack={() => setKeepAsk(null)}
         onSkip={() => { if (unsaved(c.r.id)) toast.show({ message: 'Save or cancel your edit first.' }); else void rowVerbs.run(c.r, c.lane, 'skip') }}
         onBoard={() => void verbs.board(c)} onSchedule={(at?: Date) => void verbs.schedule(c, at)} onDate={() => setMoving(c)}
         onChanged={onChanged} />
@@ -439,7 +447,7 @@ export function snippetOf(c: Pick<WeekCard, 'body' | 'title'>): string {
   return line.length > 220 ? `${line.slice(0, 218)}…` : line
 }
 
-function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, slot, src, srcLoading, more, setMore, hideHold = false, picking, setPicking, onFocus, onOpen, onEdit, onApprove, onDrop, onSkip, onBoard, onSchedule, onDate, onChanged }: {
+function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, slot, src, srcLoading, more, setMore, hideHold = false, picking, setPicking, onFocus, onOpen, onEdit, onApprove, onDrop, onSkip, onBoard, onSchedule, onDate, onChanged, asking = false, onKeepApprove, onKeepBack }: {
   c: WeekCard; i: number; now: number; focused: boolean; open: boolean; busy: boolean; held: boolean
   /** The 3-up card grid (no post open): the whole post, its media, edited in place. */
   grid: boolean
@@ -452,6 +460,8 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
   onFocus: () => void; onOpen: () => void; onEdit: () => void; onApprove: () => void
   onDrop: (slug: string, note: string | null) => void; onSkip: () => void; onBoard: () => void
   onSchedule: (at?: Date) => void; onDate: () => void; onChanged: () => void
+  /** Approve met flagged lines: the row asks once. */
+  asking?: boolean; onKeepApprove?: () => void; onKeepBack?: () => void
 }) {
   const ref = useRef<HTMLElement>(null)
   const [pic, setPic] = useState<string[] | undefined>(undefined)
@@ -466,6 +476,8 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
   const startEdit = () => { editBase.current = postNow; setEdit(postNow) }
   // Typed text that is not saved yet: Approve, Skip and Drop wait, or the row would leave with the edit.
   const unsaved = edit !== null && edit !== editBase.current
+  const lf = useLineFlags(c.r, postNow)
+  const showFlags = c.lane === 'ivan' && !!lf.flags
   const saveFirst = unsaved ? 'Save or cancel your edit first' : undefined
   const id = c.r.id
   const judgeable = c.judge
@@ -517,12 +529,12 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
   const onRowClick = (e: React.MouseEvent) => {
     // mid-edit, a stray click on the card never opens the post; it puts the cursor back in the box (so Esc still cancels)
     if (edit !== null) { if (!(e.target as HTMLElement).closest('button,a,input,select')) ref.current?.querySelector('textarea')?.focus(); return }
-    if ((e.target as HTMLElement).closest('button,a,input,textarea,select,label,[role="menu"],.cv2-row-more,.cv2-why')) return
+    if ((e.target as HTMLElement).closest('button,a,input,textarea,select,label,[role="menu"],.cv2-row-more,.cv2-why,.cv2-lf')) return
     onOpen()
   }
 
   return (
-    <article ref={ref} className={`cv2-row${open ? ' cv2-row-open' : ''}${more ? ' cv2-row-x' : ''}`} role="listitem" data-card-id={id} data-lane={c.lane} data-held={held || undefined} data-unsaved={unsaved || undefined}
+    <article ref={ref} className={`cv2-row${open ? ' cv2-row-open' : ''}${more ? ' cv2-row-x' : ''}`} role="listitem" data-card-id={id} data-lane={c.lane} data-held={held || undefined} data-unsaved={unsaved || undefined} data-needs-keep={(showFlags && lf.ask) || undefined}
       style={{ '--i': Math.min(i, 10) } as React.CSSProperties}
       tabIndex={focused ? 0 : -1} aria-current={focused ? 'true' : undefined} aria-label={`${tag.label}: ${title}`} onFocus={onFocus} onClick={onRowClick}>
       <div className="cv2-row-main">
@@ -561,6 +573,9 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
       </div>
       {hold?.kind === 'changes' && hold.detail && <p className="cv2-ask" data-ask><b>{OWNER[c.lane]} on the panel:</b> “{hold.detail}”</p>}
       {hold && hold.kind !== 'changes' && hold.detail && !hideHold && <p className="cv2-ask cv2-ask-hold">{hold.detail}</p>}
+      {showFlags && lf.flags && <LineFlagsBlock r={c.r} flags={lf.flags} sha={lf.sha} body={postNow} edit={edit} setEdit={setEdit}
+        onStartEdit={() => { if (grid && !more && inPlace) { startEdit(); return true } onEdit(); return false }}
+        onSaved={setSaved} onChanged={onChanged} asking={asking} onKeep={() => onKeepApprove?.()} onBack={() => onKeepBack?.()} />}
       {picking && <div className="cv2-row-why"><ReasonPicker lane={c.lane} onPick={onDrop} onCancel={() => setPicking(false)} /></div>}
       {more && (
         <div className="cv2-row-more">
