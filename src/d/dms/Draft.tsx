@@ -48,7 +48,16 @@ export function splitBubbles(text: string): Bubbles {
   return { parts: t.filter((_, i) => i % 2 === 0), seps: t.filter((_, i) => i % 2 === 1) }
 }
 export function joinBubbles({ parts, seps }: Bubbles): string {
-  return parts.map((p, i) => (i === 0 ? p : (seps[i - 1] ?? '\n---\n') + p)).join('')
+  let out = parts[0] ?? ''
+  for (let i = 1; i < parts.length; i++) {
+    let sep = seps[i - 1] ?? '\n---\n'
+    // A separator written at an edge (no newline on that side) must still sit on its own line once
+    // text appears beside it, or the `---` would join the text and the two bubbles would merge.
+    if (out !== '' && !out.endsWith('\n') && !sep.startsWith('\n')) sep = '\n' + sep
+    if (parts[i] !== '' && !parts[i].startsWith('\n') && !sep.endsWith('\n')) sep += '\n'
+    out += sep + parts[i]
+  }
+  return out
 }
 /** Bubble i out, with the separator before it (or after it, for the first). */
 export function removeBubble(b: Bubbles, i: number): Bubbles {
@@ -62,20 +71,32 @@ export function removeBubble(b: Bubbles, i: number): Bubbles {
  *  moves on to the new bubble. */
 export function BubbleEdit({ value, onChange, onBlur, label, max, onKeyDown }: { value: string; onChange: (s: string) => void; onBlur?: () => void; label: string; max: number; onKeyDown?: (e: KeyboardEvent<HTMLTextAreaElement>) => void }) {
   const box = useRef<HTMLDivElement>(null)
-  const focusNext = useRef<number | null>(null)
+  const focusNext = useRef<{ i: number; at: number } | null>(null)
   const b = splitBubbles(value)
   const n = b.parts.length
   useEffect(() => {
-    const i = focusNext.current
-    if (i == null) return
+    const f = focusNext.current
+    if (f == null) return
     focusNext.current = null
-    const el = box.current?.querySelectorAll<HTMLTextAreaElement>('textarea.dm-edit')[i]
-    if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length) }
+    const el = box.current?.querySelectorAll<HTMLTextAreaElement>('textarea.dm-edit')[f.i]
+    if (el) { el.focus(); const at = Math.min(f.at, el.value.length); el.setSelectionRange(at, at) }
   }, [value])
   const edit = (i: number, text: string) => {
     const inner = splitBubbles(text)
-    // He typed a `---` line inside bubble i: it becomes two (or more) bubbles; the caret follows.
-    if (inner.parts.length > 1) focusNext.current = i + inner.parts.length - 1
+    // He typed a `---` line inside bubble i: it becomes two (or more) bubbles; the caret follows to the
+    // same place in the text (inside a separator = the start of the bubble after it).
+    if (inner.parts.length > 1) {
+      const el = document.activeElement
+      const caret = el instanceof HTMLTextAreaElement ? el.selectionStart : text.length
+      let off = 0, k = 0, at = 0
+      for (; k < inner.parts.length; k++) {
+        const end = off + inner.parts[k].length
+        if (caret <= end) { at = caret - off; break }
+        off = end + (inner.seps[k]?.length ?? 0)
+        if (caret < off) { k++; at = 0; break }
+      }
+      focusNext.current = { i: i + Math.min(k, inner.parts.length - 1), at }
+    }
     onChange(joinBubbles({ parts: [...b.parts.slice(0, i), ...inner.parts, ...b.parts.slice(i + 1)], seps: [...b.seps.slice(0, i), ...inner.seps, ...b.seps.slice(i)] }))
   }
   return <div ref={box} className={n > 1 ? 'dm-bubs' : 'dm-bubs dm-bubs-1'} role={n > 1 ? 'group' : undefined} aria-label={n > 1 ? `${label}, ${n} bubbles` : undefined}>

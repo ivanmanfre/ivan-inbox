@@ -81,6 +81,24 @@ describe('bubble editor', () => {
     expect(screen.getAllByRole('textbox')).toHaveLength(2)
     expect(document.activeElement).toBe(screen.getByLabelText('The draft, bubble 2'))
   })
+  it('text typed beside an edge separator never merges it into a bubble', () => {
+    expect(joinBubbles({ parts: ['NEW', 'body'], seps: ['---\n'] })).toBe('NEW\n---\nbody')
+    expect(joinBubbles({ parts: ['body', 'NEW'], seps: ['\n---'] })).toBe('body\n---\nNEW')
+    const mid = splitBubbles('a\n---\n---\nb')
+    expect(splitBubbles(joinBubbles({ ...mid, parts: ['a', 'X', 'b'] })).parts).toEqual(['a', 'X', 'b'])
+    for (const x of ['---\nbody', 'body\n---', '---\n---\nb']) expect(joinBubbles(splitBubbles(x))).toBe(x)
+  })
+  it('splitting mid-text puts the caret where he was typing, at the start of the new bubble', () => {
+    function Live() { const [v, setV] = useState('hello\nworld'); return <BubbleEdit value={v} onChange={setV} label="The draft" max={240} /> }
+    render(<Live />)
+    const box = screen.getByLabelText('The draft') as HTMLTextAreaElement
+    box.focus()
+    fireEvent.change(box, { target: { value: 'hello\n---\nworld', selectionStart: 10, selectionEnd: 10 } })
+    const next = screen.getByLabelText('The draft, bubble 2') as HTMLTextAreaElement
+    expect(document.activeElement).toBe(next)
+    expect(next.value).toBe('world')
+    expect(next.selectionStart).toBe(0)
+  })
   it('a one-bubble draft stays one box with no ✕', () => {
     render(<BubbleEdit value="Just one" onChange={() => {}} label="The draft" max={240} />)
     expect(screen.getAllByRole('textbox')).toHaveLength(1)
