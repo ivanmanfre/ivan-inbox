@@ -104,12 +104,15 @@ describe('quick X post review', () => {
     api.fetchXReview.mockResolvedValue(QLIST)
     const hash = `#exp/d/ops/x?id=${QID}`
     renderInFrame(<XReviewPage layout="phone" route={parseDHash(hash)} navigate={() => {}} />, { layout: 'phone', hash })
-    await screen.findByText('Quick post')
+    await screen.findByText(/^Quick post/)
     const text = document.querySelector('[data-x-preview=post] .xs-text')!
     expect(text.textContent).toContain('27 follow-up drafts showed up today')
-    expect(document.querySelectorAll('[data-verb=x-quick-option]').length).toBe(2)
-    fireEvent.click(document.querySelectorAll('[data-verb=x-quick-option]')[1])
+    // the version in the editor is not repeated; only the other one is offered
+    expect(document.querySelectorAll('[data-verb=x-quick-option]').length).toBe(1)
+    fireEvent.click(document.querySelectorAll('[data-verb=x-quick-option]')[0])
     expect(document.querySelector<HTMLTextAreaElement>('[data-x-quick]')!.value).toBe('another version\n\nline two')
+    // the swapped-out version moves into the list
+    expect(document.querySelector('[data-verb=x-quick-option]')?.textContent).toContain('27 follow-up drafts showed up today')
     expect(document.querySelector('[data-x-source]')?.textContent).toContain('discarded follow-ups')
   })
 
@@ -120,7 +123,7 @@ describe('quick X post review', () => {
     api.decideXQuick.mockImplementation(() => new Promise<void>(r => { release = r }))
     const hash = `#exp/d/ops/x?id=${QID}`
     renderInFrame(<XReviewPage layout="phone" route={parseDHash(hash)} navigate={() => {}} />, { layout: 'phone', hash })
-    await screen.findByText('Quick post')
+    await screen.findByText(/^Quick post/)
     const box = document.querySelector<HTMLTextAreaElement>('[data-x-quick]')!
     fireEvent.change(box, { target: { value: 'edited B' } })
     fireEvent.click(document.querySelector('[data-verb=x-post]')!)
@@ -139,7 +142,7 @@ describe('quick X post review', () => {
     api.fetchXReview.mockResolvedValue(list)
     const hash = `#exp/d/ops/x?id=${QID}`
     renderInFrame(<XReviewPage layout="phone" route={parseDHash(hash)} navigate={() => {}} />, { layout: 'phone', hash })
-    await screen.findByText('Quick post')
+    await screen.findByText(/^Quick post/)
   }
   const post = async () => {
     fireEvent.click(document.querySelector('[data-verb=x-post]')!)
@@ -182,9 +185,9 @@ describe('quick X post review', () => {
     await open(withPhoto())
     fireEvent.click(document.querySelector('[data-verb=x-photo-change]')!)
     await waitFor(() => expect(document.querySelectorAll('[data-verb=x-photo-pick]').length).toBe(2))
-    expect(document.querySelector<HTMLButtonElement>('[data-photo-id=p1]')!.disabled).toBe(true)
-    expect(document.querySelector('[data-photo-id=p2]')?.textContent).toContain('used')
-    await act(async () => { fireEvent.click(document.querySelector('[data-photo-id=p2]')!) })
+    expect(document.querySelector<HTMLButtonElement>('[data-verb=x-photo-pick][data-photo-id=p1]')!.disabled).toBe(true)
+    expect(document.querySelector('[data-verb=x-photo-pick][data-photo-id=p2]')?.textContent).toContain('used')
+    await act(async () => { fireEvent.click(document.querySelector('[data-verb=x-photo-pick][data-photo-id=p2]')!) })
     expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2')
     await waitFor(() => expect(document.querySelector('[data-x-preview=post] [data-x-photo] img')?.getAttribute('src')).toBe(OTHER))
     await post()
@@ -196,99 +199,71 @@ describe('quick X post review', () => {
     api.setXQuickPhoto.mockRejectedValue(new Error('post is no longer a draft'))
     await open(withPhoto())
     fireEvent.click(document.querySelector('[data-verb=x-photo-change]')!)
-    await waitFor(() => expect(document.querySelector('[data-photo-id=p2]')).toBeTruthy())
-    await act(async () => { fireEvent.click(document.querySelector('[data-photo-id=p2]')!) })
+    await waitFor(() => expect(document.querySelector('[data-verb=x-photo-pick][data-photo-id=p2]')).toBeTruthy())
+    await act(async () => { fireEvent.click(document.querySelector('[data-verb=x-photo-pick][data-photo-id=p2]')!) })
     await screen.findByText(/Photo not changed: post is no longer a draft/)
     expect(document.querySelector('[data-x-preview=post] [data-x-photo] img')?.getAttribute('src')).toBe(PHOTO)
   })
 
-  // ---- swipe through the ranked photos (Ivan 2026-11-05) ----
+  // ---- one photo, picked from a row of ranked options (Ivan 2026-11-06: "why does it show 5 pictures and
+  // when i remove one its removing others") ----
   const THIRD = 'https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/post-stills/ivan-photos/gdansk-pier.jpg'
   const RING = [{ id: 'p1', url: PHOTO, place: 'Warsaw, Poland' }, { id: 'p2', url: OTHER, place: 'Fałków, Poland' }, { id: 'p3', url: THIRD, place: 'Gdańsk, Poland' }]
   const withRing = (over: Partial<XReviewList['quicks'][number]> = {}): XReviewList => ({ ...QLIST, quicks: [{ ...withPhoto().quicks[0], media_ring: RING, ...over }] })
   const shown = () => document.querySelector('[data-x-preview=post] [data-x-photo] img')?.getAttribute('src')
-  const dot = () => [...document.querySelectorAll('[data-x-photo-dots] [data-dot]')].findIndex(d => d.getAttribute('aria-current') === 'true')
-  const swipe = (dx: number) => {
-    const el = document.querySelector('[data-x-photo]')!
-    fireEvent.pointerDown(el, { clientX: 200, clientY: 100, pointerId: 1, isPrimary: true })
-    fireEvent.pointerMove(el, { clientX: 200 + dx / 2, clientY: 102, pointerId: 1, isPrimary: true })
-    fireEvent.pointerUp(el, { clientX: 200 + dx, clientY: 104, pointerId: 1, isPrimary: true })
-  }
+  const opts = () => [...document.querySelectorAll<HTMLButtonElement>('[data-verb=x-photo-option]')]
+  const checked = () => opts().findIndex(b => b.getAttribute('aria-checked') === 'true')
+  const tap = (id: string) => fireEvent.click(document.querySelector(`[data-verb=x-photo-option][data-photo-id=${id}]`)!)
   const deferred = () => { let res: (v: string | null) => void = () => {}; let rej: (e: Error) => void = () => {}; const p = new Promise<string | null>((a, b) => { res = a; rej = b }); return { p, res, rej } }
 
-  it('no other fitting photos = no swipe UI', async () => {
-    await open(withPhoto())
+  it('the preview carries exactly one photo; the options sit under the post, never as a carousel', async () => {
+    await open(withRing())
+    expect(document.querySelectorAll('[data-x-preview=post] [data-x-photo] img').length).toBe(1)
     expect(document.querySelector('[data-x-photo-dots]')).toBeNull()
     expect(document.querySelector('[data-verb=x-photo-next]')).toBeNull()
-    cleanup(); __resetXForTests(); __resetPhotoSavesForTests()
-    await open(withRing({ media_ring: [RING[0]] }))
-    expect(document.querySelector('[data-x-photo-dots]')).toBeNull()
+    expect(opts().length).toBe(3)
+    expect(checked()).toBe(0)
+    expect(document.querySelector('[data-x-photo-panel]')?.textContent).toContain('1 photo')
   })
 
-  it('a locked post (not a draft) shows its photo without the swipe UI', async () => {
+  it('a locked post (not a draft) shows its photo without the option row', async () => {
     await open(withRing({ status: 'approved' }))
     expect(shown()).toBe(PHOTO)
-    expect(document.querySelector('[data-x-photo-dots]')).toBeNull()
+    expect(opts().length).toBe(0)
   })
 
-  it('swiping left shows the next photo at once and saves it once he settles', async () => {
+  it('tapping an option puts it on the post at once and saves it', async () => {
     api.setXQuickPhoto.mockResolvedValue(OTHER)
     await open(withRing())
-    expect(dot()).toBe(0)
-    expect(document.querySelectorAll('[data-x-photo-dots] [data-dot]').length).toBe(3)
-    swipe(-120)
+    await act(async () => { tap('p2') })
     expect(shown()).toBe(OTHER)
-    expect(dot()).toBe(1)
-    expect(document.querySelector('[data-x-photo-panel]')?.textContent).toContain('Fałków, Poland')
-    expect(api.setXQuickPhoto).not.toHaveBeenCalled()
-    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2'), { timeout: 2000 })
+    expect(checked()).toBe(1)
+    expect(document.querySelectorAll('[data-x-preview=post] [data-x-photo] img').length).toBe(1)
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2'))
     expect(api.setXQuickPhoto).toHaveBeenCalledTimes(1)
-    swipe(90)
-    expect(shown()).toBe(PHOTO)
-    swipe(90) // already first: stays
-    expect(shown()).toBe(PHOTO)
   })
 
-  it('a small or mostly vertical drag is not a swipe', async () => {
+  it('No photo keeps every option on screen, and one tap puts a photo back', async () => {
+    api.setXQuickPhoto.mockResolvedValueOnce(null).mockResolvedValueOnce(THIRD)
     await open(withRing())
-    swipe(-20)
-    expect(shown()).toBe(PHOTO)
-    const el = document.querySelector('[data-x-photo]')!
-    fireEvent.pointerDown(el, { clientX: 200, clientY: 100, pointerId: 1, isPrimary: true })
-    fireEvent.pointerUp(el, { clientX: 140, clientY: 260, pointerId: 1, isPrimary: true })
-    expect(shown()).toBe(PHOTO)
-  })
-
-  it('a fast swipe through several photos saves only the last one', async () => {
-    api.setXQuickPhoto.mockResolvedValue(THIRD)
-    await open(withRing())
-    swipe(-120); swipe(-120); swipe(-120)
+    await act(async () => { fireEvent.click(document.querySelector('[data-verb=x-photo-remove]')!) })
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, null))
+    expect(document.querySelector('[data-x-photo]')).toBeNull()
+    expect(opts().length).toBe(3)
+    expect(checked()).toBe(-1)
+    expect(document.querySelector('[data-verb=x-photo-remove]')?.getAttribute('aria-checked')).toBe('true')
+    await act(async () => { tap('p3') })
     expect(shown()).toBe(THIRD)
-    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalled(), { timeout: 2000 })
-    await new Promise(r => setTimeout(r, 900))
-    expect(api.setXQuickPhoto).toHaveBeenCalledTimes(1)
-    expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p3')
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenLastCalledWith(QID, 'p3'))
   })
 
-  it('arrows step through the photos; prev is off at the first', async () => {
-    api.setXQuickPhoto.mockResolvedValue(OTHER)
-    await open(withRing())
-    expect(document.querySelector<HTMLButtonElement>('[data-verb=x-photo-prev]')!.disabled).toBe(true)
-    fireEvent.click(document.querySelector('[data-verb=x-photo-next]')!)
-    expect(shown()).toBe(OTHER)
-    fireEvent.click(document.querySelector('[data-verb=x-photo-next]')!)
-    expect(shown()).toBe(THIRD)
-    expect(document.querySelector<HTMLButtonElement>('[data-verb=x-photo-next]')!.disabled).toBe(true)
-  })
-
-  it('saves stay in order: a swipe during a save waits for it, and the last photo wins', async () => {
+  it('saves stay in order: a tap during a save waits for it, and the last photo wins', async () => {
     const a = deferred(), b = deferred()
     api.setXQuickPhoto.mockReturnValueOnce(a.p).mockReturnValueOnce(b.p)
     await open(withRing())
-    swipe(-120)
-    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2'), { timeout: 2000 })
-    swipe(-120)
-    await new Promise(r => setTimeout(r, 900))
+    await act(async () => { tap('p2') })
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2'))
+    await act(async () => { tap('p3') })
     expect(api.setXQuickPhoto).toHaveBeenCalledTimes(1) // still waiting on the first save
     expect(shown()).toBe(THIRD)
     await act(async () => { a.res(OTHER) })
@@ -299,11 +274,11 @@ describe('quick X post review', () => {
     expect(shown()).toBe(THIRD)
   })
 
-  it('Post right after a swipe saves the shown photo first, then binds Post to it', async () => {
+  it('Post right after a tap saves the shown photo first, then binds Post to it', async () => {
     api.setXQuickPhoto.mockResolvedValue(OTHER)
     api.decideXQuick.mockResolvedValue(undefined)
     await open(withRing())
-    swipe(-120)
+    await act(async () => { tap('p2') })
     const said = await post()
     expect(said).toContain('the text and the photo')
     await waitFor(() => expect(api.decideXQuick).toHaveBeenCalledWith(QID, 'post', QLIST.quicks[0].text, OTHER))
@@ -311,21 +286,20 @@ describe('quick X post review', () => {
     expect(api.setXQuickPhoto.mock.invocationCallOrder[0]).toBeLessThan(api.decideXQuick.mock.invocationCallOrder[0])
   })
 
-  it('a failed swipe save goes back to the saved photo, says so, and Post sends nothing', async () => {
+  it('a failed save goes back to the saved photo, says so, and Post sends nothing', async () => {
     api.setXQuickPhoto.mockRejectedValue(new Error('post is no longer a draft'))
     api.decideXQuick.mockResolvedValue(undefined)
     await open(withRing())
-    swipe(-120)
-    await post()
+    await act(async () => { tap('p2') })
     await screen.findByText(/Photo not changed: post is no longer a draft/)
     expect(shown()).toBe(PHOTO)
     expect(api.decideXQuick).not.toHaveBeenCalled()
   })
 
-  it('a photo picked from the gallery that is not ranked joins the swipe as the current one', async () => {
+  it('a photo picked from the gallery that is not ranked leads the options as the current one', async () => {
     await open(withRing({ media_url: 'https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/post-stills/ivan-photos/own.jpg', media_photo_id: 'p9', media_source: 'ivan' }))
-    expect(document.querySelectorAll('[data-x-photo-dots] [data-dot]').length).toBe(4)
-    expect(dot()).toBe(0)
+    expect(opts().length).toBe(4)
+    expect(checked()).toBe(0)
   })
 
   it('Sol r1: a save whose answer fails while the Post dialog is open sends nothing (the photo on screen changed)', async () => {
@@ -333,10 +307,10 @@ describe('quick X post review', () => {
     api.setXQuickPhoto.mockReturnValueOnce(a.p)
     api.decideXQuick.mockResolvedValue(undefined)
     await open(withRing())
-    swipe(-120)
+    await act(async () => { tap('p2') })
     fireEvent.click(document.querySelector('[data-verb=x-post]')!)
     await screen.findByRole('alertdialog')
-    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2'), { timeout: 2000 })
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2'))
     await act(async () => { a.rej(new Error('network down')) })
     expect(shown()).toBe(PHOTO)
     await act(async () => { fireEvent.click(document.querySelector('[data-verb=x-post-confirm]')!) })
@@ -344,18 +318,17 @@ describe('quick X post review', () => {
     expect(api.decideXQuick).not.toHaveBeenCalled()
   })
 
-  it('Sol r1: leaving and reopening the card mid-save never lets an older swipe land after a newer one', async () => {
+  it('Sol r1: leaving and reopening the card mid-save never lets an older pick land after a newer one', async () => {
     const a = deferred()
     api.setXQuickPhoto.mockReturnValueOnce(a.p).mockResolvedValue(OTHER)
     await open(withRing())
-    swipe(-120)
-    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2'), { timeout: 2000 })
-    swipe(-120) // wants p3 while p2 saves
+    await act(async () => { tap('p2') })
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2'))
+    await act(async () => { tap('p3') }) // wants p3 while p2 saves
     cleanup()
     await open(withRing())
     expect(shown()).toBe(THIRD) // the wanted photo carries over
-    fireEvent.click(document.querySelector('[data-verb=x-photo-prev]')!) // now wants p2
-    await new Promise(r => setTimeout(r, 900))
+    await act(async () => { tap('p2') }) // now wants p2
     await act(async () => { a.res(OTHER) })
     await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledTimes(2))
     await new Promise(r => setTimeout(r, 100))
@@ -363,19 +336,18 @@ describe('quick X post review', () => {
     expect(shown()).toBe(OTHER)
   })
 
-  it('Sol r1: a swipe during a gallery save queues behind it and the later choice wins', async () => {
+  it('Sol r1: an option tap during a gallery save queues behind it and the later choice wins', async () => {
     const a = deferred()
     api.fetchXQuickPhotos.mockResolvedValue([{ id: 'p3', url: THIRD, place: 'Gdańsk, Poland', scene: '', mood: '', description: '', has_ivan: false, recent: false }])
     api.setXQuickPhoto.mockReturnValueOnce(a.p).mockResolvedValue(OTHER)
     await open(withRing())
     fireEvent.click(document.querySelector('[data-verb=x-photo-change]')!)
-    await waitFor(() => expect(document.querySelector('[data-photo-id=p3]')).toBeTruthy())
-    fireEvent.click(document.querySelector('[data-photo-id=p3]')!)
+    await waitFor(() => expect(document.querySelector('[data-verb=x-photo-pick][data-photo-id=p3]')).toBeTruthy())
+    fireEvent.click(document.querySelector('[data-verb=x-photo-pick][data-photo-id=p3]')!)
     await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p3'))
     expect(shown()).toBe(THIRD)
-    swipe(120) // back to p2 while p3 saves
+    await act(async () => { tap('p2') }) // back to p2 while p3 saves
     expect(shown()).toBe(OTHER)
-    await new Promise(r => setTimeout(r, 900))
     expect(api.setXQuickPhoto).toHaveBeenCalledTimes(1)
     await act(async () => { a.res(THIRD) })
     await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledTimes(2))
@@ -391,10 +363,10 @@ describe('quick X post review', () => {
     api.decideXQuick.mockResolvedValue(undefined)
     await open(withRing())
     fireEvent.change(document.querySelector<HTMLTextAreaElement>('[data-x-quick]')!, { target: { value: 'edited' } })
-    swipe(-120)
+    await act(async () => { tap('p2') })
     fireEvent.click(document.querySelector('[data-verb=x-post]')!)
     await screen.findByRole('alertdialog')
-    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2'), { timeout: 2000 })
+    await waitFor(() => expect(api.setXQuickPhoto).toHaveBeenCalledWith(QID, 'p2'))
     // the server committed B but the answer failed: the screen falls back to A, and the recovery read returns B
     let readDone: () => void = () => {}
     api.fetchXReview.mockReturnValue(new Promise<XReviewList>(r => { readDone = () => r(withRing({ media_url: OTHER, media_photo_id: 'p2', media_source: 'ivan' })) }))

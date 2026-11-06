@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { Fragment, type MouseEvent, type ReactNode } from 'react'
 import { spans, xArticleBlocks, type XBlock, type XImageRef } from '../../../lib/xArticleMd'
 import { XCheck } from './glyphs'
 
@@ -82,48 +82,10 @@ export function XArticlePreview({ title, body, cover, images, handle, onLine }: 
   )
 }
 
-/** Swipe/arrow controls for a quick post's photo: position among the ranked photos. */
-export type PhotoNav = { index: number; count: number; onStep: (delta: -1 | 1) => void }
-
-const SWIPE_PX = 40
-
-// Phone: swipe the photo left/right (touch-action pan-y keeps the page scrolling vertically). Desktop: arrows.
-function SwipePhoto({ photo, nav }: { photo: string; nav: PhotoNav }) {
-  const start = useRef<{ x: number; y: number; id: number } | null>(null)
-  const [drag, setDrag] = useState(0)
-  const end = (x: number, y: number) => {
-    const s = start.current
-    start.current = null
-    setDrag(0)
-    if (!s) return
-    const dx = x - s.x, dy = y - s.y
-    if (Math.abs(dx) >= SWIPE_PX && Math.abs(dx) > Math.abs(dy) * 1.2) nav.onStep(dx < 0 ? 1 : -1)
-  }
-  const atStart = nav.index <= 0, atEnd = nav.index >= nav.count - 1
-  return (
-    <div className="xs-media xs-photo xs-photo-swipe" data-x-photo
-      onPointerDown={e => { if (e.isPrimary === false) return; start.current = { x: e.clientX, y: e.clientY, id: e.pointerId } }}
-      onPointerMove={e => { const s = start.current; if (s && s.id === e.pointerId) setDrag(Math.max(-80, Math.min(80, e.clientX - s.x))) }}
-      onPointerUp={e => { if (start.current && start.current.id === e.pointerId) end(e.clientX, e.clientY) }}
-      onPointerCancel={() => { start.current = null; setDrag(0) }}>
-      <img src={photo} alt="" draggable={false} style={drag ? { transform: `translateX(${drag}px)` } : undefined} />
-      <button type="button" className="xs-pnav xs-pnav-l" data-verb="x-photo-prev" aria-label="Previous photo" disabled={atStart}
-        onPointerDown={e => e.stopPropagation()} onClick={() => nav.onStep(-1)}>‹</button>
-      <button type="button" className="xs-pnav xs-pnav-r" data-verb="x-photo-next" aria-label="Next photo" disabled={atEnd}
-        onPointerDown={e => e.stopPropagation()} onClick={() => nav.onStep(1)}>›</button>
-      <div className="xs-pdots" data-x-photo-dots aria-label={`Photo ${nav.index + 1} of ${nav.count}`}>
-        {Array.from({ length: nav.count }, (_, i) => <span key={i} data-dot aria-current={i === nav.index ? 'true' : undefined} />)}
-      </div>
-    </div>
-  )
-}
-
-export function XPostPreview({ text, media, handle, quoteTitle, quoteCover, photo = null, photoNav = null }: {
+export function XPostPreview({ text, media, handle, quoteTitle, quoteCover, photo = null }: {
   text: string; media: string | null; handle: string; quoteTitle: string | null; quoteCover: string | null
-  /** A still image attached to the post (quick posts carry one of Ivan's own photos). */
+  /** The one still image the post carries (quick posts: one of Ivan's own photos, chosen in the editor). */
   photo?: string | null
-  /** Other fitting photos to swipe to (only when there are 2+). */
-  photoNav?: PhotoNav | null
 }) {
   return (
     <article className="xs xs-post" data-x-preview="post">
@@ -131,8 +93,7 @@ export function XPostPreview({ text, media, handle, quoteTitle, quoteCover, phot
       <div className="xs-main">
         <div className="xs-head"><Who handle={handle} extra={<> · now</>} /></div>
         <div className="xs-text">{text.trim() ? text : <span className="xs-empty">The line is empty.</span>}</div>
-        {photo && photoNav && photoNav.count > 1 && <SwipePhoto photo={photo} nav={photoNav} />}
-        {photo && !(photoNav && photoNav.count > 1) && (
+        {photo && (
           <div className="xs-media xs-photo" data-x-photo>
             <img src={photo} alt="" />
           </div>
