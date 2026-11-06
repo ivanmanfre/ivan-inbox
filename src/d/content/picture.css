@@ -53,3 +53,14 @@
 .cn-chips .cn-st-bad{color:var(--crit);background:var(--ds-sev-urgent-soft,#fee6e3)}
 .cn-chips .cn-early-chip{min-height:0;border:0;padding:3px 10px;border-radius:999px;background:var(--ds-surface-2,var(--p3));color:var(--t2);font:400 12px var(--f)}
 .cn-chips .cn-early-chip:hover{color:var(--t1)}
+
+/* Ivan's photo row (2026-11-06): the X quick-post option row (x.css .xr-pick) on LinkedIn drafts */
+.cn-pic3{padding:14px 16px}
+.cn-pic3-h{display:flex;align-items:baseline;gap:8px;margin:0 0 4px}
+.cn-pic3-h span{font:600 16px/22px var(--f);color:var(--t1)}
+.cn-pic3-h small{font:400 14px/20px var(--f);color:var(--t2)}
+.cn-pic3-note{margin:0 0 12px;font:400 15px/21px var(--f);color:var(--t2)}
+.cn-pic3 .xr-pick-check{font-size:12px}
+.cn-pic3-libh{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cn-pic3-libh .d-btn{height:36px;padding:0 14px;font-size:14px}
+:root[data-skin-on~='content.review'] .cv2-pic .cn-pic2.cn-pic3{display:block;padding:12px 0 0}

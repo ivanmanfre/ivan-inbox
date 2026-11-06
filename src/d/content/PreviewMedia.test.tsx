@@ -77,3 +77,37 @@ it('a video post without a video_url keeps the poster and play mark', () => {
   expect(container.querySelector('video')).toBeNull()
   expect(screen.getByLabelText('Video')).toBeTruthy()
 })
+
+// 2026-11-06 multi-photo: the Review card draws LinkedIn's multi-image layout for a photo post.
+it.each([
+  [2, 2, 0, null], [3, 1, 2, null], [4, 1, 3, null], [5, 2, 3, null], [7, 2, 3, '+2'],
+])('%i photos: %i on top, %i below, more mark %s', (n, top, bottom, more) => {
+  const urls = Array.from({ length: n }, (_, i) => `https://example.test/p${i + 1}.jpg`)
+  const { container } = render(<LinkedInCard lane="ivan" body="Post copy." type="text" images={urls} />)
+  expect(container.querySelectorAll('.cv2-li-grid-top button')).toHaveLength(top)
+  expect(container.querySelectorAll('.cv2-li-grid-bot button')).toHaveLength(bottom)
+  expect(container.querySelector('.cv2-li-more')?.textContent ?? null).toBe(more)
+  expect(container.querySelector('.cv2-li-grid')!.getAttribute('aria-label')).toBe(`${n} photos`)
+  fireEvent.click(screen.getByRole('button', { name: `Open photo 2 of ${n}` }))
+  expect(screen.getByRole('dialog', { name: 'Image viewer' }).querySelector('img')?.getAttribute('src')).toBe(urls[1])
+})
+
+it('one photo stays one photo; video and carousel keep their own layout', () => {
+  const one = render(<LinkedInCard lane="ivan" body="x" type="text" images={[images[0]]} />)
+  expect(one.container.querySelector('.cv2-li-grid')).toBeNull()
+  expect(one.container.querySelectorAll('.cv2-li-m img')).toHaveLength(1)
+  one.unmount()
+  const vid = render(<LinkedInCard lane="ivan" body="x" type="video" images={images} videoUrl="https://example.test/v.mp4" />)
+  expect(vid.container.querySelector('.cv2-li-grid')).toBeNull()
+  expect(vid.container.querySelector('video')).toBeTruthy()
+  vid.unmount()
+  const car = render(<LinkedInCard lane="ivan" body="x" type="carousel" images={images} />)
+  expect(car.container.querySelector('.cv2-li-grid')).toBeNull()
+  expect(car.container.querySelector('.cv2-li-car')).toBeTruthy()
+})
+
+it("a client lane keeps photo 1 only (their publishers post one photo)", () => {
+  const { container } = render(<LinkedInCard lane="risedtc" body="x" type="text" images={images} />)
+  expect(container.querySelector('.cv2-li-grid')).toBeNull()
+  expect(container.querySelectorAll('.cv2-li-m img')).toHaveLength(1)
+})
