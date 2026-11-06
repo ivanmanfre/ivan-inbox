@@ -125,7 +125,7 @@
 :root[data-skin-on~='dms'] .dx-row .dm-dot{position:absolute;left:4px;top:50%;width:6px;height:6px;margin:-3px 0 0;background:var(--ds-accent)}
 :root[data-skin-on~='dms'] .dx-av{grid-row:1 / 3;grid-column:1;width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:var(--ds-accent-soft);color:var(--ds-accent);font:600 12px/1 var(--f);letter-spacing:.02em}
 :root[data-skin-on~='dms'] .dx-av-on{background:var(--ds-accent);color:var(--ds-accent-ink);font-size:13px}
-:root[data-skin-on~='dms'] .dx-row .dm-n{grid-row:1;grid-column:2;min-width:0;font:var(--ds-fw-em) 13px/18px var(--f);color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+:root[data-skin-on~='dms'] .dx-row .dm-n{grid-row:1;grid-column:2;min-width:0;font:600 14px/20px var(--f);color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 :root[data-skin-on~='dms'] .dx-row.dm-owed .dm-n{font-weight:600}
 :root[data-skin-on~='dms'] .dx-row.dm-dim .dm-n{color:var(--t2);font-weight:450}
 /* the company stays in .dm-n for VoiceOver, not drawn (as in 3.0) */
@@ -134,7 +134,7 @@
 :root[data-skin-on~='dms'] .dx-row .dx-t{grid-row:1;grid-column:3;justify-self:end;font:400 12px/18px var(--f);color:var(--t3);font-variant-numeric:tabular-nums;white-space:nowrap;border:0;padding:0}
 :root[data-skin-on~='dms'] .dx-row .dx-t.dm-t-needs{color:var(--ds-accent);font-weight:500}
 :root[data-skin-on~='dms'] .dx-row .dx-t:is(.dm-t-later,.dm-t-fu){border:0;padding:0;color:var(--t2)}
-:root[data-skin-on~='dms'] .dx-row .dm-s{grid-row:2;grid-column:2;min-width:0;margin:0;font:400 13px/18px var(--f);color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+:root[data-skin-on~='dms'] .dx-row .dm-s{grid-row:2;grid-column:2;min-width:0;margin:0;font:400 14px/20px var(--f);color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 :root[data-skin-on~='dms'] .dx-row .dm-qmore,:root[data-skin-on~='dms'] .dx-row .dm-qvs{grid-row:2;grid-column:3;justify-self:end}
 :root[data-skin-on~='dms'] .dx-row.dx-row-1 .dx-av{grid-row:1}
 :root[data-skin-on~='dms'] .dx-row.dx-row-1 :is(.dm-qmore,.dm-qvs){grid-row:1}
@@ -145,6 +145,8 @@
 :root[data-skin-on~='dms'] .dx-row .dm-qv{height:24px;padding:0 8px;margin:0;border:0;border-radius:999px;background:transparent;box-shadow:inset 0 0 0 1px var(--ds-line-3);font:500 12px/24px var(--f);color:var(--t1)}
 :root[data-skin-on~='dms'] .dx-row .dm-qv:hover{background:var(--ds-accent-soft)}
 :root[data-skin-on~='dms'] .dx-row .dm-qv-q{color:var(--t2);box-shadow:none}
+:root[data-skin-on~='dms'] .dx-row .dx-sub{grid-row:3;grid-column:2 / 4;color:var(--t3);font-size:13px;line-height:18px}
+:root[data-skin-on~='dms'] .dx-row:has(.dx-sub) .dm-qnote{grid-row:4}
 :root[data-skin-on~='dms'] .dx-row .dm-qnote{grid-row:3;grid-column:2 / 4;margin:2px 0 0;font:400 12px/1.4 var(--f);color:var(--t2)}
 /* tags and pills on line 2: the pill never takes the line */
 :root[data-skin-on~='dms'] .dx-pill,:root[data-skin-on~='dms'] .dx-row .dm-tag{display:inline-block;max-width:120px;height:18px;margin:0 6px 0 0;padding:0 6px;border:0;border-radius:5px;vertical-align:1px;
@@ -219,7 +221,7 @@
 :root[data-skin-on~='dms'] .dx-conv .dm-b-first{margin-top:10px}
 :root[data-skin-on~='dms'] .dx-conv .dm-b-who{padding:0 2px;font:500 12px/16px var(--f);color:var(--t2)}
 :root[data-skin-on~='dms'] .dx-conv .dm-b-out .dm-b-who{color:var(--ds-accent)}
-:root[data-skin-on~='dms'] .dx-conv .dm-b-body{padding:8px 12px;border:0;border-radius:12px;font:400 14px/1.55 var(--f);color:var(--t1)}
+:root[data-skin-on~='dms'] .dx-conv .dm-b-body{padding:8px 12px;border:0;border-radius:12px;font:400 15px/1.55 var(--f);color:var(--t1)}
 :root[data-skin-on~='dms'] .dx-conv .dm-b-in .dm-b-body{background:#f3f5f0;box-shadow:inset 0 0 0 1px rgba(19,18,16,.05)}
 :root[data-skin-on~='dms'] .dx-conv .dm-b-out .dm-b-body{background:var(--ds-accent-soft)}
 :root[data-skin-on~='dms'] .dx-conv .dm-b-in.dx-b-last .dm-b-body{border-bottom-left-radius:5px}
@@ -282,13 +284,21 @@
 :root[data-skin-on~='dms'] .dx-strips .dm-ban-row{margin-top:6px}
 :root[data-skin-on~='dms'] .dx-card .dm-b-draft.dx-card-b{margin:0;max-width:none;width:auto;padding:12px 16px;border:0;border-radius:0;background:transparent;cursor:text}
 :root[data-skin-on~='dms'] .dx-card .dm-b-draft.dx-card-b:focus-within{border:0;background:transparent}
-:root[data-skin-on~='dms'] .dx-card .dm-edit{display:block;width:100%;min-height:64px;margin:0;padding:0;border:0;outline:0;resize:none;background:transparent;font:400 14px/1.55 var(--f);color:var(--t1)}
+:root[data-skin-on~='dms'] .dx-card .dm-edit{display:block;width:100%;min-height:64px;margin:0;padding:0;border:0;outline:0;resize:none;background:transparent;font:400 15px/1.55 var(--f);color:var(--t1)}
 :root[data-skin-on~='dms'] .dx-card .dm-email-cc label{font:400 13px var(--f)}
 :root[data-skin-on~='dms'] .dx-card .dm-email-cc input{min-height:32px;border:0;border-radius:var(--ds-r-btn);background:var(--ds-well-fill);box-shadow:var(--ds-well-shadow);font:400 13px var(--f)}
 :root[data-skin-on~='dms'] .dx-card .dm-email-subject input{min-height:44px}
 :root[data-skin-on~='dms'] .dx-card .dx-leg{margin:0;width:auto;max-width:none;padding:10px 16px 12px;border:0;border-top:1px dashed var(--ds-line-strong);border-radius:0;background:transparent;font:400 13px/1.5 var(--f)}
 :root[data-skin-on~='dms'] .dx-card .dx-leg .dm-tm{margin-bottom:6px;font:500 12px/16px var(--f);letter-spacing:0;text-transform:none;color:var(--t2)}
-:root[data-skin-on~='dms'] .dx-card .dx-leg .dm-edit{min-height:48px;font-size:13px}
+:root[data-skin-on~='dms'] .dx-card .dx-leg .dm-edit{min-height:48px;font-size:14px}
+/* #16: a multi-bubble draft, one box per bubble with its ✕ (remove). */
+:root[data-skin-on~='dms'] .dx-card .dm-bubs{display:flex;flex-direction:column;gap:8px}
+:root[data-skin-on~='dms'] .dx-card .dm-bub-ed{position:relative;display:flex;align-items:flex-start;gap:8px;padding:8px 8px 8px 12px;border-radius:10px;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px var(--ds-line)}
+:root[data-skin-on~='dms'] .dx-card .dm-bub-ed:focus-within{box-shadow:inset 0 0 0 1px var(--ds-line-strong)}
+:root[data-skin-on~='dms'] .dx-card .dm-bub-ed .dm-edit{flex:1;min-width:0;min-height:24px}
+:root[data-skin-on~='dms'] .dx-card .dm-bub-x{flex:none;width:28px;height:28px;display:grid;place-items:center;border-radius:7px;color:var(--t3);font:500 13px/1 var(--f)}
+:root[data-skin-on~='dms'] .dx-card .dm-bub-x:hover{background:var(--ds-wash-strong,rgba(19,18,16,.06));color:var(--t1)}
+:root[data-skin-on~='dms'] .d-phone .dx-card .dm-bub-x{width:44px;height:44px;margin:-8px -8px -8px 0}
 :root[data-skin-on~='dms'] .dx-card .dx-leg .dm-email-title{font:var(--ds-fw-em) 12px var(--f)}
 :root[data-skin-on~='dms'] .dx-card .dx-leg .dm-email-envelope{font:400 13px var(--f);color:var(--t2)}
 :root[data-skin-on~='dms'] .dx-card-f{padding:6px 16px 10px;border-top:1px solid var(--ds-line);display:flex;flex-direction:column;gap:2px}

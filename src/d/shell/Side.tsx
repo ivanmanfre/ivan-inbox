@@ -49,7 +49,8 @@ export function NavCount({ item, total = false }: { item: NavItem; total?: boole
     // Known work stays visible beside a failed or pending read; a failure never draws blank.
     const shown = sum > 0 ? `${sum}${unk ? '?' : ''}` : unk ? '?' : wait ? '…' : ''
     if (!shown) return null
-    const split = SEATS.map(s => `${SEAT_NAME[s]} ${l.failed[s] && l.numbers[s] == null ? 'could not read' : l.numbers[s] ?? 'reading'}`).join(', ')
+    const sec = l.second ? SEATS.reduce<number | null>((a, s) => l.second!.numbers[s] == null ? a : (a ?? 0) + l.second!.numbers[s]!, null) : null
+    const split = SEATS.map(s => `${SEAT_NAME[s]} ${l.failed[s] && l.numbers[s] == null ? 'could not read' : l.numbers[s] ?? 'reading'}`).join(', ') + (sec != null && l.second ? `. ${sec} ${l.second.label}` : '')
     return <span className={`d-nt${sum > 0 ? ' d-hot' : ''}${unk ? ' d-unk' : ''}`} title={split} aria-label={`${l.label}: ${split}`}><Roll v={shown} /></span>
   }
   const cell = (s: Seat) => {

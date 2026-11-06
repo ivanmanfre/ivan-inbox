@@ -21,6 +21,7 @@ import { outByDay, replied7d, seatView } from './model'
 import { copyText } from './Thread'
 import { useDmsData } from './useDmsData'
 import { useDmVerbs } from './verbs'
+import { nextNeedsYou } from './next'
 import { AgentOnlySheet, WarmSheet } from './Warm'
 import { useWarmVerbs } from './warmVerbs'
 import { RowMenu } from './RowMenu'
@@ -67,7 +68,9 @@ function Dms({ layout, route, navigate }: PlaceProps) {
 
   const setTokens = useCallback((t: FilterToken[]) => { setTokensState(t); writeTokens('dms', t) }, [])
   const refreshCounts = counts.refresh
-  const ctx = useMemo(() => ({ prepareQuickDiscard: () => prepareQuick.current(), refresh: () => { data.refreshList(); data.reloadCame(); refreshCounts('dms') }, patch: data.patch, solved: data.solved.setLocal, dated: data.reloadDated }),
+  // Step 8 (#9): set further down each render, once the views and the open thread are known.
+  const advance = useRef<(t: Thread) => string | null>(() => null)
+  const ctx = useMemo(() => ({ prepareQuickDiscard: () => prepareQuick.current(), refresh: () => { data.refreshList(); data.reloadCame(); refreshCounts('dms') }, patch: data.patch, solved: data.solved.setLocal, dated: data.reloadDated, advance: (t: Thread) => advance.current(t) }),
     [data.refreshList, data.reloadCame, data.patch, data.solved.setLocal, data.reloadDated, refreshCounts]) // eslint-disable-line react-hooks/exhaustive-deps
   const verbs = useDmVerbs(ctx)
   const toast = useToast()
@@ -113,6 +116,22 @@ function Dms({ layout, route, navigate }: PlaceProps) {
       navigate(dHash('dms', null, next))
     }
     return true
+  }
+
+  // After Send, Discard, Later or Solved on the open thread: open the next Needs you thread on the same
+  // seat, then the next seat. Only when that thread is the one on screen and nothing unsaved is in it
+  // (a typed reply stays where it is). Opening never sends.
+  advance.current = (t: Thread) => {
+    if (open?.prospect_id !== t.prospect_id || guard.current?.()) return null
+    const n = nextNeedsYou(views, t)
+    if (!n) return null
+    const s = seatOf(n.client_id)
+    const next = new URLSearchParams(route.query)
+    next.set('thread', n.prospect_id)
+    next.delete('warm')
+    if (s && s !== seat) { writeSeat(s); setStored(s); next.delete('seat') }
+    navigate(dHash('dms', null, next))
+    return n.prospect_name
   }
 
   const failedN = (data.error ? 1 : 0) + (data.cameBack.failed ? 1 : 0) + (data.ownerEngagers?.failed ? 1 : 0) + (data.warm.failed ? 1 : 0) + (data.dated.failed ? 1 : 0) + (data.upcoming?.failed ? 1 : 0)

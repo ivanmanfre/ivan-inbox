@@ -27,7 +27,7 @@ function legPipe(t: Thread): string {
 
 /** The draft editor box. `autosave={false}` for a box that saves only on a key (the held-message edit):
  *  an update reload then treats it as typed-in, unsaved work. */
-export function Grow({ value, onChange, label, onBlur, max = 240, onKeyDown, autosave = true }: { value: string; onChange: (s: string) => void; label: string; onBlur?: () => void; max?: number; onKeyDown?: (e: KeyboardEvent<HTMLTextAreaElement>) => void; autosave?: boolean }) {
+export function Grow({ value, onChange, label, onBlur, max = 240, onKeyDown, autosave = true, rows = 2 }: { value: string; onChange: (s: string) => void; label: string; onBlur?: () => void; max?: number; onKeyDown?: (e: KeyboardEvent<HTMLTextAreaElement>) => void; autosave?: boolean; rows?: number }) {
   const ref = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
     const el = ref.current
@@ -35,7 +35,31 @@ export function Grow({ value, onChange, label, onBlur, max = 240, onKeyDown, aut
     el.style.height = 'auto'
     el.style.height = `${Math.min(el.scrollHeight + 2, max)}px`
   }, [value, max])
-  return <textarea ref={ref} className="dm-edit" data-autosave={autosave || undefined} aria-label={label} value={value} rows={2} spellCheck onBlur={onBlur} onChange={e => onChange(e.target.value)} onKeyDown={onKeyDown} />
+  return <textarea ref={ref} className="dm-edit" data-autosave={autosave || undefined} aria-label={label} value={value} rows={rows} spellCheck onBlur={onBlur} onChange={e => onChange(e.target.value)} onKeyDown={onKeyDown} />
+}
+
+/** The bubbles of a LinkedIn draft, split on the `---` lines the sender splits on. Only the one newline
+ *  each side of a `---` line is the separator, so join(split(x)) gives back x exactly. Empty bubbles are
+ *  kept while he types (the sender drops them). */
+export function splitBubbles(text: string): string[] {
+  return text.split(/\n?^[ \t]*-{3,}[ \t\r]*$\n?/m)
+}
+export const joinBubbles = (parts: readonly string[]) => parts.join('\n---\n')
+
+/** #16: a draft of two or more bubbles is edited bubble by bubble, each with a ✕ that removes it
+ *  (21 of his 33 edits on his seat only cut whole bubbles). Same text, same autosave: the bubbles are
+ *  joined back with `---` lines. One bubble stays one box. */
+export function BubbleEdit({ value, onChange, onBlur, label, max, onKeyDown }: { value: string; onChange: (s: string) => void; onBlur?: () => void; label: string; max: number; onKeyDown?: (e: KeyboardEvent<HTMLTextAreaElement>) => void }) {
+  const parts = splitBubbles(value)
+  if (parts.length < 2) return <Grow value={value} onChange={onChange} onBlur={onBlur} label={label} max={max} onKeyDown={onKeyDown} />
+  return <div className="dm-bubs" role="group" aria-label={`${label}, ${parts.length} bubbles`}>
+    {parts.map((p, i) => <div key={i} className="dm-bub-ed">
+      <Grow value={p} onChange={s => onChange(joinBubbles(parts.map((x, j) => (j === i ? s : x))))} onBlur={onBlur}
+        label={i === 0 ? label : `${label}, bubble ${i + 1}`} max={max} onKeyDown={onKeyDown} rows={1} />
+      <button type="button" className="dm-bub-x" data-verb="remove-bubble" aria-label={`Remove bubble ${i + 1}`} title="Remove this bubble"
+        onClick={() => onChange(joinBubbles(parts.filter((_, j) => j !== i)))}>✕</button>
+    </div>)}
+  </div>
 }
 
 function EmailEdit({ value, onChange, label, subjectLabel = 'Email subject', fixedSubject, onBlur, max = 360, onKeyDown }: {
@@ -54,8 +78,10 @@ const SAVE_WORD: Record<SaveState, string> = { idle: '', saving: 'Saving…', sa
 /** The draft is the last bubble of the conversation, on our side, and it IS the editor (Ivan 09-27:
  *  "I want the direct editing capabilities"): type in it, it saves itself (useAutosave). Its email
  *  leg and the mirror email edit the same way. */
-export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRetry, v4 = false, strips, foot, onSend, onSendVia, deliveryBusy = false, emailLoading = false, emailUnavailable = false }: {
+export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRetry, v4 = false, strips, foot, onSend, onSendVia, deliveryBusy = false, emailLoading = false, emailUnavailable = false, phone = false }: {
   t: Thread; edits: Edits; setEdits: (e: Edits) => void; save: SaveState; onBlur: () => void; onRetrySave: () => void; now: number; onRetry: () => void
+  /** #16: on desktop the draft box grows to fit (no inner scroll); the phone keeps the 240px cap. */
+  phone?: boolean
   /** Brief 4: one card, the editor (SPEC-dms §2.4.5): caveats attached as strips, Why in the foot. */
   v4?: boolean; strips?: ReactNode; foot?: ReactNode
   /** Brief 4: ⌘↩ in the draft runs the SAME send (its confirm always opens first). */
@@ -66,6 +92,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
   const draft = t.draft
   if (!draft) return null
   const comp = t.companionDraft
+  const grow = phone ? 240 : 100_000
   // Ivan 10-21 (Barak Zuman): a send check that holds his own edited reply returns it here. It is his
   // text, not an "AI draft": say so, and when it was held.
   const words = draft.send_blocked_at ? operatorWords(draft) : null
@@ -132,7 +159,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
           onClick={e => { if (!(e.target as HTMLElement).closest('textarea,input,button,a')) e.currentTarget.querySelector<HTMLTextAreaElement>('textarea.dm-edit')?.focus() }}>
           {inmail && <p className="dm-meta">InMail to {t.prospect_name}</p>}
           {email ? mainEmail : inmail ? <EmailEdit subjectLabel="InMail subject" fixedSubject={fixedSubject} value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" onKeyDown={sendKey} />
-            : <Grow value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" onKeyDown={sendKey} />}
+            : <BubbleEdit value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" max={grow} onKeyDown={sendKey} />}
         </div> : null}
         {comp && (
           <div className={`dm-leg dx-leg${messageChannel(comp) === 'email' ? ' dm-email-leg' : ''}`}>
@@ -141,7 +168,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
               <span>{messageChannel(comp) === 'email' ? `from ${emailRowSender(t.client_id)}` : 'rides with the draft'}</span>
             </div>}
             {messageChannel(comp) === 'email' ? companionEmail
-              : <Grow value={edits.companion ?? ''} onChange={companion => setEdits({ ...edits, companion })} onBlur={onBlur} label="The other leg" max={360} onKeyDown={sendKey} />}
+              : <BubbleEdit value={edits.companion ?? ''} onChange={companion => setEdits({ ...edits, companion })} onBlur={onBlur} label="The other leg" max={phone ? 360 : grow} onKeyDown={sendKey} />}
             <Explain inset v4 messageId={comp.id} messageText={comp.message_text} editedText={edits.companion ?? comp.message_text}
               evidence={comp.draft_evidence} unavailable={comp.draft_evidence_unavailable} onRetry={onRetry} />
           </div>
@@ -185,7 +212,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
         </div>
         {inmail && <p className="dm-meta">InMail to {t.prospect_name}</p>}
         {email ? mainEmail : inmail ? <EmailEdit subjectLabel="InMail subject" fixedSubject={fixedSubject} value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" />
-          : <Grow value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" />}
+          : <BubbleEdit value={edits.main} onChange={main => setEdits({ ...edits, main })} onBlur={onBlur} label="The draft" max={grow} />}
       </div> : null}
       {comp && (
         <div className={`dm-leg${messageChannel(comp) === 'email' ? ' dm-email-leg' : ''}`}>
@@ -194,7 +221,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
             <span>{messageChannel(comp) === 'email' ? `from ${emailRowSender(t.client_id)}` : 'rides with the draft'}</span>
           </div>}
           {messageChannel(comp) === 'email' ? companionEmail
-            : <Grow value={edits.companion ?? ''} onChange={companion => setEdits({ ...edits, companion })} onBlur={onBlur} label="The other leg" max={360} />}
+            : <BubbleEdit value={edits.companion ?? ''} onChange={companion => setEdits({ ...edits, companion })} onBlur={onBlur} label="The other leg" max={phone ? 360 : grow} />}
           <Explain inset messageId={comp.id} messageText={comp.message_text} editedText={edits.companion ?? comp.message_text}
             evidence={comp.draft_evidence} unavailable={comp.draft_evidence_unavailable} onRetry={onRetry} />
         </div>

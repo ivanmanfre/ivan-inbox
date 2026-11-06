@@ -18,6 +18,7 @@ const home = (o: Partial<HomeData> = {}): HomeData => ({
   now: NOW, lanes: lanes(),
   content: { ivan: { v: { n: 3, days, below: false } }, risedtc: { wait: true }, arch: { fail: 'boom' } , swishdm: { fail: 'boom' }, anna: { fail: 'boom' }},
   drafts: { ivan: { v: 2 }, risedtc: { wait: true }, arch: { fail: 'x' } , swishdm: { fail: 'x' }, anna: { fail: 'x' }},
+  waiting: { ivan: { v: 5 }, risedtc: { wait: true }, arch: { fail: 'x' }, swishdm: { fail: 'x' }, anna: { fail: 'x' } },
   retry: { content: vi.fn(), drafts: vi.fn(), lanes: vi.fn() }, ...o,
 })
 

@@ -4,7 +4,7 @@ import { cleanup } from '@testing-library/react'
 import { renderInFrame } from '../../test-utils'
 import { parseDHash } from '../../route'
 vi.mock('../Tasks',()=>({HomeTasks:()=> <section aria-label="Mocked tasks"/>}))
-vi.mock('../reads',()=>({useHome:()=>({now:Date.parse('2026-10-08T10:00:00Z'),lanes:Object.fromEntries(['cc','gov','pauses','attempts','ready'].map(k=>[k,{value:null,failed:null}])),content:Object.fromEntries(['ivan','risedtc','arch','swishdm'].map(k=>[k,{wait:true}])),drafts:Object.fromEntries(['ivan','risedtc','arch','swishdm'].map(k=>[k,{wait:true}])),retry:{content:vi.fn(),drafts:vi.fn(),lanes:vi.fn()}})}))
+vi.mock('../reads',()=>({useHome:()=>({now:Date.parse('2026-10-08T10:00:00Z'),lanes:Object.fromEntries(['cc','gov','pauses','attempts','ready'].map(k=>[k,{value:null,failed:null}])),content:Object.fromEntries(['ivan','risedtc','arch','swishdm'].map(k=>[k,{wait:true}])),drafts:Object.fromEntries(['ivan','risedtc','arch','swishdm'].map(k=>[k,{wait:true}])),waiting:Object.fromEntries(['ivan','risedtc','arch','swishdm'].map(k=>[k,{wait:true}])),retry:{content:vi.fn(),drafts:vi.fn(),lanes:vi.fn()}})}))
 import HomeV4 from './HomeV4'
 afterEach(cleanup)
 for(const layout of ['phone','desktop'] as const)it(`renders all seats and safe destinations in ${layout} without inventing zeros`,()=>{
