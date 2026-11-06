@@ -8,8 +8,8 @@ const inboxHold = vi.hoisted(() => ({ value: null as null | { threads: Thread[];
 vi.mock('./inbox', () => ({ useDInboxMaybe: () => inboxHold.value }))
 import { FrameCountsProvider, useFrameCounts } from './useFrameCounts'
 
-function Count() { return <span data-testid="bell-count">{useFrameCounts().bell.value?.open ?? 'loading'}</span> }
-function RefreshCount() { const counts = useFrameCounts(); return <button onClick={() => counts.refresh('bell')}>{counts.bell.value?.open ?? 'loading'}</button> }
+function Count() { return <span data-testid="bell-count">{useFrameCounts().bell.value?.unreadGroups ?? 'loading'}</span> }
+function RefreshCount() { const counts = useFrameCounts(); return <button onClick={() => counts.refresh('bell')}>{counts.bell.value?.unreadGroups ?? 'loading'}</button> }
 
 afterEach(() => { vi.useRealTimers(); inboxHold.value = null })
 
@@ -18,8 +18,8 @@ describe('frame bell expiry deadline', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-09-28T10:00:00Z'))
     const bell = vi.fn()
-      .mockResolvedValueOnce({ unreadGroups: 1, open: 1, nextExpiryAt: '2026-09-28T10:00:04Z' })
-      .mockResolvedValue({ unreadGroups: 0, open: 0, nextExpiryAt: null })
+      .mockResolvedValueOnce({ unreadGroups: 1, nextExpiryAt: '2026-09-28T10:00:04Z' })
+      .mockResolvedValue({ unreadGroups: 0, nextExpiryAt: null })
     render(<FrameCountsProvider readers={{ ...ZERO_READERS, bell }}><Count /></FrameCountsProvider>)
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
     expect(screen.getByTestId('bell-count').textContent).toBe('1')
@@ -31,11 +31,11 @@ describe('frame bell expiry deadline', () => {
 
 describe('frame count refresh during an in-flight read', () => {
   it('re-reads after the old request settles so Clear can replace a stale badge', async () => {
-    let finish!: (value: { unreadGroups: number; open: number }) => void
+    let finish!: (value: { unreadGroups: number }) => void
     const bell = vi.fn().mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
-      .mockResolvedValue({ unreadGroups: 0, open: 0 })
+      .mockResolvedValue({ unreadGroups: 0 })
     render(<FrameCountsProvider readers={{ ...ZERO_READERS, bell }}><RefreshCount /></FrameCountsProvider>)
-    await act(async () => { screen.getByRole('button').click(); finish({ unreadGroups: 1, open: 1 }); await Promise.resolve(); await Promise.resolve() })
+    await act(async () => { screen.getByRole('button').click(); finish({ unreadGroups: 1 }); await Promise.resolve(); await Promise.resolve() })
     expect(bell).toHaveBeenCalledTimes(2)
     expect(screen.getByRole('button').textContent).toBe('0')
   })
@@ -53,7 +53,7 @@ describe('DMs counts come off the frame inbox when it has rows', () => {
     vi.useFakeTimers()
     inboxHold.value = { threads: [thread], loadedAt: '2026-09-29T00:00:00Z', cachedAt: null }
     const dm = vi.fn().mockResolvedValue({ drafts: 0, needs: 0 })
-    const bell = vi.fn().mockResolvedValue({ unreadGroups: 0, open: 0 })
+    const bell = vi.fn().mockResolvedValue({ unreadGroups: 0 })
     render(<FrameCountsProvider readers={{ ...ZERO_READERS, dm, bell }}><Count /></FrameCountsProvider>)
     await act(async () => { await Promise.resolve() })
     const atMount = dm.mock.calls.length
