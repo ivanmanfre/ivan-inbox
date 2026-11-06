@@ -47,14 +47,16 @@ export function splitBubbles(text: string): Bubbles {
   const t = text.split(/(\n?^[ \t]*-{3,}[ \t\r]*$\n?)/m)
   return { parts: t.filter((_, i) => i % 2 === 0), seps: t.filter((_, i) => i % 2 === 1) }
 }
+// The splitter's `^`/`$` (multiline) treat all four of these as line ends, so the guards do too.
+const EOL_START = /^[\n\r\u2028\u2029]/, EOL_END = /[\n\r\u2028\u2029]$/
 export function joinBubbles({ parts, seps }: Bubbles): string {
   let out = parts[0] ?? ''
   for (let i = 1; i < parts.length; i++) {
     let sep = seps[i - 1] ?? '\n---\n'
     // A separator written at an edge (no newline on that side) must still sit on its own line once
     // text appears beside it, or the `---` would join the text and the two bubbles would merge.
-    if (out !== '' && !out.endsWith('\n') && !sep.startsWith('\n')) sep = '\n' + sep
-    if (parts[i] !== '' && !parts[i].startsWith('\n') && !sep.endsWith('\n')) sep += '\n'
+    if (out !== '' && !EOL_END.test(out) && !EOL_START.test(sep)) sep = '\n' + sep
+    if (parts[i] !== '' && !EOL_START.test(parts[i]) && !EOL_END.test(sep)) sep += '\n'
     out += sep + parts[i]
   }
   return out

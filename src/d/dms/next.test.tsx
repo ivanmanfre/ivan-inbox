@@ -87,6 +87,9 @@ describe('bubble editor', () => {
     const mid = splitBubbles('a\n---\n---\nb')
     expect(splitBubbles(joinBubbles({ ...mid, parts: ['a', 'X', 'b'] })).parts).toEqual(['a', 'X', 'b'])
     for (const x of ['---\nbody', 'body\n---', '---\n---\nb']) expect(joinBubbles(splitBubbles(x))).toBe(x)
+    for (const x of ['a\r---\rb', 'a\r\n---\r\nb', 'a\u2028---\u2028b']) expect(joinBubbles(splitBubbles(x))).toBe(x)
+    const cr = splitBubbles('a\r---\rb\n---\nc')
+    expect(joinBubbles({ ...cr, parts: [...cr.parts.slice(0, 2), 'c!'] })).toBe('a\r---\rb\n---\nc!')
   })
   it('splitting mid-text puts the caret where he was typing, at the start of the new bubble', () => {
     function Live() { const [v, setV] = useState('hello\nworld'); return <BubbleEdit value={v} onChange={setV} label="The draft" max={240} /> }
