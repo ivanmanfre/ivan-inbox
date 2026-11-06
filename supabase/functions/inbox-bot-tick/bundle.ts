@@ -151,6 +151,30 @@ export function splitTold(rows: FeedRow[], told: Map<string, string>): { fresh: 
 }
 
 /**
+ * Read the feed a page at a time, oldest first, until a page holds a new row
+ * or the feed runs out. A page of only repeats is not the end: a new row can
+ * sit behind any number of them, so there is no page cutoff. `fetchPage(n)`
+ * returns page n (0-based) of at most `pageSize` rows, or throws.
+ */
+export async function scanForFresh(
+  fetchPage: (page: number) => Promise<FeedRow[]>,
+  pageSize: number,
+  told: Map<string, string>,
+  openBotTurnIds: Iterable<string>,
+): Promise<{ fresh: FeedRow[]; repeats: FeedRow[] }> {
+  const open = [...openBotTurnIds]
+  const fresh: FeedRow[] = []
+  const repeats: FeedRow[] = []
+  for (let page = 0; ; page++) {
+    const got = await fetchPage(page)
+    const split = splitTold(selectRows(got, open), told)
+    fresh.push(...split.fresh)
+    repeats.push(...split.repeats)
+    if (fresh.length > 0 || got.length < pageSize) return { fresh, repeats }
+  }
+}
+
+/**
  * How many bot turns may have started by `now`, so the daily cap lasts the
  * whole UTC day instead of running out by late morning. One turn per hour on
  * a cap of 24: ceil(cap * (minutes since 00:00 + 30) / 1440), never above the

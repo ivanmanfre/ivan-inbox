@@ -8,7 +8,8 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import {
-  buildBundle, BUNDLE_MAX_CHARS, type FeedRow, MUTED_FAMILIES, paceAllowance, selectRows, splitTold, toldKey, toldKeys,
+  buildBundle, BUNDLE_MAX_CHARS, type FeedRow, MUTED_FAMILIES, paceAllowance, scanForFresh, selectRows, splitTold, toldKey,
+  toldKeys,
 } from './bundle.ts'
 
 function row(over: Partial<FeedRow> & { id: string; created_at: string }): FeedRow {
@@ -30,6 +31,7 @@ describe('selectRows', () => {
     const source = readFileSync('supabase/functions/inbox-bot-tick/index.ts', 'utf8')
     const query = source.slice(source.indexOf(".from('inbox_notifications')", source.indexOf('// ---- 5. the rows')),
       source.indexOf('.range(page * SELECT_LIMIT', source.indexOf('// ---- 5. the rows')))
+    expect(source).not.toContain('MAX_PAGES')
     expect(query).toContain('.is(\'dismissed_at\', null)')
     expect(query).toContain('expires_at.is.null,expires_at.gt.')
   })
@@ -225,5 +227,37 @@ describe('paceAllowance', () => {
       }
       expect(paceAllowance(cap, at('23:30'))).toBe(cap)
     }
+  })
+})
+
+describe('scanForFresh', () => {
+  const tellAt = '2026-11-02T00:00:00Z'
+  const rep = (i: number) => row({ id: `rep-${String(i).padStart(5, '0')}`, created_at: '2026-11-01T00:00:00Z', title: `repeat ${i}` })
+  const told = toldKeys([{ created_at: tellAt, prompt: Array.from({ length: 2500 }, (_, i) => `[outreach_engine_ops · info · ivan · 3x] repeat ${i}`).join('\n') }])
+  const pager = (rows: FeedRow[], size: number) => async (page: number) => rows.slice(page * size, page * size + size)
+
+  it('finds a new row behind 2,000 repeats (no page cutoff)', async () => {
+    const rows = [...Array.from({ length: 2000 }, (_, i) => rep(i)), row({ id: 'new', created_at: '2026-11-03T00:00:00Z', title: 'Alan booked' })]
+    const out = await scanForFresh(pager(rows, 200), 200, told, [])
+    expect(out.fresh.map((r) => r.id)).toEqual(['new'])
+    expect(buildBundle(out.fresh, null, out.repeats).included[0]).toBe('new')
+  })
+
+  it('exactly 2,000 repeats and nothing new: no fresh row, so the tick holds', async () => {
+    const out = await scanForFresh(pager(Array.from({ length: 2000 }, (_, i) => rep(i)), 200), 200, told, [])
+    expect(out.fresh).toEqual([])
+    expect(out.repeats.length).toBe(2000)
+  })
+
+  it('stops at the first page that has a new row', async () => {
+    const pages: number[] = []
+    const rows = [row({ id: 'new', created_at: '2026-11-03T00:00:00Z' }), ...Array.from({ length: 999 }, (_, i) => rep(i))]
+    const base = pager(rows, 200)
+    await scanForFresh(async (p) => { pages.push(p); return base(p) }, 200, told, [])
+    expect(pages).toEqual([0])
+  })
+
+  it('passes a page error through', async () => {
+    await expect(scanForFresh(async () => { throw new Error('boom') }, 200, told, [])).rejects.toThrow('boom')
   })
 })

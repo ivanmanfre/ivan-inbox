@@ -30,7 +30,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import {
-  buildBundle, type FeedRow, LAST_HEAD_CHARS, MUTED_FAMILIES, paceAllowance, selectRows, splitTold,
+  buildBundle, type FeedRow, LAST_HEAD_CHARS, MUTED_FAMILIES, paceAllowance, scanForFresh,
   TOLD_WINDOW_MS, type ToldTurn, toldKeys,
 } from './bundle.ts'
 
@@ -41,9 +41,6 @@ const OPERATOR_ID = Deno.env.get('INBOX_CLAUDE_ALLOWED_USER_ID')
 
 /** How many unread rows one page of the tick's read holds. */
 const SELECT_LIMIT = 200
-
-/** Pages of repeats the tick reads through looking for a new row (2,000 rows). */
-const MAX_PAGES = 10
 
 /** Used when integration_config has no bot_daily_turn_cap, or a non-number. */
 const DEFAULT_DAILY_CAP = 24
@@ -253,43 +250,39 @@ Deno.serve(async (req) => {
   if (toldErr) return say({ bot_tick: 'told_lookup_failed', error: toldErr.message.slice(0, 200) }, 500)
   const told = toldKeys((toldTurns ?? []) as ToldTurn[])
 
-  // Oldest first, a page at a time. A page holding only repeats is not the
-  // end: a new row can sit behind it, so keep reading until a page has a new
-  // row or the feed runs out. Past MAX_PAGES the tick stops reading and treats
-  // the rest as new, so a huge backlog never hides a row.
+  // Oldest first, a page at a time, until a page has a new row or the feed
+  // runs out (bundle.ts scanForFresh): a new row can sit behind any number of
+  // repeats, so there is no page cutoff.
   const nowIso = new Date().toISOString()
-  const fresh: FeedRow[] = []
-  const repeats: FeedRow[] = []
-  let seen = 0
-  let unscanned = false
-  for (let page = 0; ; page++) {
-    if (page >= MAX_PAGES) { unscanned = true; break }
-    const { data: rawRows, error: rowsErr } = await db
-      .from('inbox_notifications')
-      .select('id, family, severity, tenant, count, title, body, url, group_key, created_at')
-      .is('read_at', null)
-      .is('dismissed_at', null)
-      .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
-      .not('family', 'in', `(${MUTED_FAMILIES.join(',')})`)
-      .order('created_at', { ascending: true })
-      .order('id', { ascending: true })
-      .range(page * SELECT_LIMIT, page * SELECT_LIMIT + SELECT_LIMIT - 1)
-    if (rowsErr) return say({ bot_tick: 'rows_lookup_failed', error: rowsErr.message.slice(0, 200) }, 500)
-    const got = (rawRows ?? []) as FeedRow[]
-    const split = splitTold(selectRows(got, openIds), told)
-    fresh.push(...split.fresh)
-    repeats.push(...split.repeats)
-    seen += split.fresh.length + split.repeats.length
-    if (fresh.length > 0 || got.length < SELECT_LIMIT) break
+  let fresh: FeedRow[]
+  let repeats: FeedRow[]
+  try {
+    ;({ fresh, repeats } = await scanForFresh(async (page) => {
+      const { data, error } = await db
+        .from('inbox_notifications')
+        .select('id, family, severity, tenant, count, title, body, url, group_key, created_at')
+        .is('read_at', null)
+        .is('dismissed_at', null)
+        .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
+        .not('family', 'in', `(${MUTED_FAMILIES.join(',')})`)
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(page * SELECT_LIMIT, page * SELECT_LIMIT + SELECT_LIMIT - 1)
+      if (error) throw new Error(error.message)
+      return (data ?? []) as FeedRow[]
+    }, SELECT_LIMIT, told, openIds))
+  } catch (e) {
+    const detail = e instanceof Error ? e.message.slice(0, 200) : 'rows lookup failed'
+    return say({ bot_tick: 'rows_lookup_failed', error: detail }, 500)
   }
-  if (seen === 0 && !unscanned) {
+  if (fresh.length + repeats.length === 0) {
     return held(db, {
       bot_tick: 'quiet',
       ...(createdThread ? { created_thread: threadId } : {}),
       ...(forced ? { forced: true } : {}),
     })
   }
-  if (fresh.length === 0 && !unscanned) {
+  if (fresh.length === 0) {
     return held(db, {
       bot_tick: 'repeats_only',
       repeats: repeats.length,
