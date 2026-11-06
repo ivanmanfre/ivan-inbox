@@ -4,7 +4,7 @@ import { emailDetails } from '../../lib/emailPresentation'
 // rider, and the warnings today's card carries (held, email check failed, you already replied).
 // The tape IS the editor: typing saves (useAutosave); Send sends what is in it.
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
-import { draftSendVia, type DraftSendVia, emailRowSender, emailSenderLabel, eventTime, holdReason, isFollowUp, isSwishdmReply, messageChannel, operatorWords, type Thread } from '../../lib/inbox'
+import { draftSendVia, type DraftSendVia, emailSenderLabel, eventTime, holdReason, isFollowUp, isSwishdmReply, messageChannel, operatorWords, type Thread, rowEmailSender } from '../../lib/inbox'
 import { DIcon } from '../ui/icons'
 import { warsawHm } from '../ui/time'
 import { Explain } from './Explain'
@@ -214,7 +214,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
           <div className={`dm-leg dx-leg${messageChannel(comp) === 'email' ? ' dm-email-leg' : ''}`}>
             {messageChannel(comp) !== 'email' && <div className="dm-tm">
               <span>{messageChannel(comp) === 'email' ? `Email leg${comp.recipient_email ? ` · to ${comp.recipient_email}` : ''}` : 'LinkedIn DM leg'}</span>
-              <span>{messageChannel(comp) === 'email' ? `from ${emailRowSender(t.client_id)}` : 'rides with the draft'}</span>
+              <span>{messageChannel(comp) === 'email' ? `from ${rowEmailSender(t, comp)}` : 'rides with the draft'}</span>
             </div>}
             {messageChannel(comp) === 'email' ? companionEmail
               : <BubbleEdit value={edits.companion ?? ''} onChange={companion => setEdits({ ...edits, companion })} onBlur={onBlur} label="The other leg" max={phone ? 360 : grow} onKeyDown={sendKey} />}
@@ -229,7 +229,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
             <div className="dm-tm">
               <span>{draft.email_mirror_text && mode !== 'email' && !emailSenderLabel(t.client_id)
                 ? `This email does not send from your seat, only the DM goes. Copy it into Gmail to ${draft.recipient_email} if you want it sent.`
-                : draft.email_mirror_text ? `${mode === 'email' ? 'Approving sends' : 'Approving also sends'} this email to ${draft.recipient_email}${mode === 'email' ? ` (from ${emailRowSender(t.client_id)})` : emailSenderLabel(t.client_id)}`
+                : draft.email_mirror_text ? `${mode === 'email' ? 'Approving sends' : 'Approving also sends'} this email to ${draft.recipient_email}${mode === 'email' ? ` (from ${rowEmailSender(t, draft)})` : emailSenderLabel(t.client_id)}`
                   : `Approving also emails the scan link to ${draft.recipient_email}${emailSenderLabel(t.client_id)}. The sender writes that email itself.`}</span>
             </div>
             {generatedEnvelope}
@@ -267,7 +267,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
         <div className={`dm-leg${messageChannel(comp) === 'email' ? ' dm-email-leg' : ''}`}>
           {messageChannel(comp) !== 'email' && <div className="dm-tm">
             <span>{messageChannel(comp) === 'email' ? `Email leg${comp.recipient_email ? ` · to ${comp.recipient_email}` : ''}` : 'LinkedIn DM leg'}</span>
-            <span>{messageChannel(comp) === 'email' ? `from ${emailRowSender(t.client_id)}` : 'rides with the draft'}</span>
+            <span>{messageChannel(comp) === 'email' ? `from ${rowEmailSender(t, comp)}` : 'rides with the draft'}</span>
           </div>}
           {messageChannel(comp) === 'email' ? companionEmail
             : <BubbleEdit value={edits.companion ?? ''} onChange={companion => setEdits({ ...edits, companion })} onBlur={onBlur} label="The other leg" max={phone ? 360 : grow} />}
@@ -282,7 +282,7 @@ export function Draft({ t, edits, setEdits, save, onBlur, onRetrySave, now, onRe
           <div className="dm-tm">
             <span>{draft.email_mirror_text && mode !== 'email' && !emailSenderLabel(t.client_id)
               ? `This email does not send from your seat, only the DM goes. Copy it into Gmail to ${draft.recipient_email} if you want it sent.`
-              : draft.email_mirror_text ? `${mode === 'email' ? 'Approving sends' : 'Approving also sends'} this email to ${draft.recipient_email}${mode === 'email' ? ` (from ${emailRowSender(t.client_id)})` : emailSenderLabel(t.client_id)}`
+              : draft.email_mirror_text ? `${mode === 'email' ? 'Approving sends' : 'Approving also sends'} this email to ${draft.recipient_email}${mode === 'email' ? ` (from ${rowEmailSender(t, draft)})` : emailSenderLabel(t.client_id)}`
                 : `Approving also emails the scan link to ${draft.recipient_email}${emailSenderLabel(t.client_id)}. The sender writes that email itself.`}</span>
           </div>
           {generatedEnvelope}

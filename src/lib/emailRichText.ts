@@ -178,7 +178,13 @@ function signer(from: string) {
   return SIGNERS[address as keyof typeof SIGNERS] ?? null
 }
 
+// Ivan's Instantly cold-email mailboxes sign off the way the campaign emails do: a plain "Iván" line,
+// no block. Instantly adds nothing on API replies (no account signature is set), so this is the signature.
+const IVAN_COLD_MAILBOX = /@(get|team|try|hello)inboundonsteroids\.com$|@inboundonsteroidshq\.com$/i
+const ivanColdMailbox = (from: string) => IVAN_COLD_MAILBOX.test((from.match(/<([^<>]+)>/)?.[1] ?? from).trim())
+
 export function defaultEmailSignature(from: string): EmailRichNode | null {
+  if (ivanColdMailbox(from)) return { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Iván' }] }] }
   const cfg = signer(from)
   if (!cfg) return null
   return { type: 'doc', content: [
@@ -187,6 +193,13 @@ export function defaultEmailSignature(from: string): EmailRichNode | null {
 }
 
 export function stripLegacyEmailSignature(body: string, from: string): string {
+  if (ivanColdMailbox(from)) {
+    const lines = body.trimEnd().split(/\r?\n/)
+    if (!/^(?:Iv[aá]n|Ivan Manfredi|Iván Manfredi)$/i.test(lines[lines.length - 1]?.trim() ?? '')) return body
+    lines.pop()
+    while (lines.length && !lines[lines.length - 1].trim()) lines.pop()
+    return lines.join('\n').trimEnd()
+  }
   const cfg = signer(from)
   if (!cfg) return body
   const lines = body.trimEnd().split(/\r?\n/)

@@ -1639,6 +1639,7 @@ export type DraftContextGap = { question: string | null; why: string | null; cha
 export type DraftEvidenceFact = { id: string; fact: string; topic: string; at: string; from: string | null }
 export type DraftEvidenceExemplar = { they: string | null; reply: string | null; at: string | null; prospect: string | null }
 export type DraftEvidence = {
+  instantly_reply?: { eaccount?: string } | null
   client_id?: string
   author?: string
   anna_snapshot?: string
@@ -2272,21 +2273,62 @@ async function takeOwnershipBeforeManualReply(prospectId: string): Promise<numbe
   return result.revision ?? null
 }
 
-// ARCH email threads (madebyarch.com inbound, 2026-09-24) can be answered from the composer.
-// Other clients' email threads stay draft-approval only.
-export function canComposeEmail(t: Thread): boolean {
-  return t.client_id === 'arch'
+// Ivan's Instantly campaigns the sender accepts. Keep in sync with IVAN_EMAIL_CAMPAIGNS in n8n Send Messages.
+const IVAN_INSTANTLY_CAMPAIGNS = new Set(['8d1bbcd9-42a9-4afd-a17c-d47f8a4794d0', 'b5e71ed6-c984-4e68-a7ec-8efad9cb6728', '5f5e6641-bd10-4f41-be99-9281628320c4'])
+const INSTANTLY_UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i
+// Ivan's cold-email mailboxes (Instantly). Keep in sync with IVAN_EMAIL_DOMAINS in n8n Send Messages.
+const IVAN_INSTANTLY_DOMAINS = new Set(['getinboundonsteroids.com', 'inboundonsteroidshq.com', 'teaminboundonsteroids.com', 'tryinboundonsteroids.com', 'helloinboundonsteroids.com'])
+const bareAddress = (value: unknown): string => {
+  const raw = String(value ?? '').trim()
+  return (raw.match(/<([^<>]+)>/)?.[1] ?? raw).trim().toLowerCase()
 }
+export function isIvanInstantlyMailbox(value: unknown): boolean {
+  return IVAN_INSTANTLY_DOMAINS.has(bareAddress(value).split('@')[1] ?? '')
+}
+
+/** The Instantly mailbox an Ivan cold-email thread runs through (the newest Instantly row's mailbox), or null.
+ *  2026-11-06 (Mark Woodcock): replies on these threads go back through Instantly from that mailbox, never Gmail. */
+export function instantlyMailbox(t: Pick<Thread, 'client_id' | 'messages'>): string | null {
+  if (t.client_id !== 'ivan') return null
+  const ts = (m: InboxMessage) => Date.parse(m.sent_at ?? m.created_at ?? '') || 0
+  const row = (t.messages ?? []).filter(m => m.channel === 'email' && m.draft_evidence?.email?.source === 'instantly' && isIvanInstantlyMailbox(m.draft_evidence.email.our_mailbox)
+    && IVAN_INSTANTLY_CAMPAIGNS.has(String(m.draft_evidence.email.campaign_id ?? '')))
+    .sort((a, b) => ts(b) - ts(a))[0]
+  return row ? bareAddress(row.draft_evidence!.email!.our_mailbox) : null
+}
+
+/** The address an email row leaves from: its own stored Instantly context wins over the thread default. */
+export function rowEmailSender(t: Pick<Thread, 'client_id' | 'messages'>, m: { draft_evidence?: { instantly_reply?: { eaccount?: string } | null } | null } | null | undefined): string {
+  const own = m?.draft_evidence?.instantly_reply?.eaccount
+  return own && isIvanInstantlyMailbox(own) ? bareAddress(own) : threadEmailSender(t)
+}
+
+/** The address a reply on this thread leaves from. */
+export function threadEmailSender(t: Pick<Thread, 'client_id' | 'messages'>): string {
+  return instantlyMailbox(t) ?? emailRowSender(t.client_id)
+}
+
+// ARCH email threads (madebyarch.com inbound, 2026-09-24) and Ivan's Instantly cold-email threads (2026-11-06)
+// can be answered from the composer. Other clients' email threads stay draft-approval only.
+export function canComposeEmail(t: Thread): boolean {
+  return t.client_id === 'arch' || !!instantlyMailbox(t)
+}
+
+/** Send Messages routes a row carrying this through Instantly's reply API on the native thread. */
+export type InstantlyReplyContext = { source: 'instantly'; inbound_message_id: string; reply_to_uuid: string; eaccount: string
+  recipient_email: string; campaign_id: string; lead_id: string | null; subject: string }
 
 export type EmailReplyContext = { from: string; fromName: string | null; date: string | null; body: string; isLatest: boolean; selection: 'latest' | 'specific'; subject?: string; direction?: string }
 export type EmailReplyTarget = { recipient_email: string; message_text_prefix: string; email_headers?: Record<string, string>; subject?: string; source_message_id?: string
   /** Reply-all: everyone else on their To/Cc (our own domains removed). The composer shows it and can edit it. */
   cc?: string[]
+  /** Set when the source email came in through Instantly: the reply goes back on that native thread. */
+  instantly_reply?: InstantlyReplyContext
   selection?: 'latest' | 'specific'; latest_source_message_id?: string; context?: EmailReplyContext }
 
 // 2026-10-27 (Lou Fasulo put two colleagues on To; the hand reply reached Lou only): a reply
 // keeps everyone else on the thread on Cc. Our own mailboxes and Ivan's never go on it.
-const OWN_EMAIL_DOMAIN = /@(.+\.)?(madebyarch\.com|arch\.agency|ivanmanfredi\.com|inboundonsteroids\.com|risedtc\.com)$/i
+const OWN_EMAIL_DOMAIN = /@(.+\.)?(madebyarch\.com|arch\.agency|ivanmanfredi\.com|(get|team|try|hello)?inboundonsteroids(hq)?\.com|risedtc\.com)$/i
 export function replyAllCc(lists: Array<string | string[] | null | undefined>, recipient: string): string[] {
   const seen = new Set([recipient.trim().toLowerCase()])
   const out: string[] = []
@@ -2334,7 +2376,14 @@ export async function emailReplyTarget(prospectId: string, sourceMessageId?: str
   const subject = /^re:/i.test(baseSubject) ? baseSubject : `Re: ${baseSubject}`
   const mid = (em.message_id ?? '').trim()
   const recipient = String(row.recipient_email).split(/[,;\s]+/).filter(Boolean)[0]
+  const src = em as EmailMetadata & { source?: string; instantly_email_id?: string; campaign_id?: string; lead_id?: string | null }
+  const instantly: InstantlyReplyContext | null = row.direction === 'inbound' && src.source === 'instantly' && src.instantly_email_id && INSTANTLY_UUID.test(src.instantly_email_id)
+    && src.campaign_id && IVAN_INSTANTLY_CAMPAIGNS.has(src.campaign_id) && isIvanInstantlyMailbox(src.our_mailbox)
+    ? { source: 'instantly', inbound_message_id: row.id, reply_to_uuid: src.instantly_email_id, eaccount: bareAddress(src.our_mailbox),
+      recipient_email: bareAddress(recipient), campaign_id: src.campaign_id, lead_id: src.lead_id ?? null, subject: baseSubject }
+    : null
   return {
+    ...(instantly ? { instantly_reply: instantly } : {}),
     recipient_email: recipient,
     cc: replyAllCc(row.direction === 'inbound' ? [em.to, em.cc] : [row.draft_evidence?.email_cc], recipient),
     subject, source_message_id: row.id,
@@ -2350,7 +2399,7 @@ export async function emailReplyTarget(prospectId: string, sourceMessageId?: str
 export async function composeReply(t: Thread, text: string, expectedEmail?: EmailReplyTarget, composition?: EmailComposition): Promise<LegFailure[]> {
   if (!seatOf(t.client_id)) throw new Error('The sender for this conversation is unknown. Nothing was queued.')
   const isEmail = t.channel === 'email'
-  if (isEmail && !canComposeEmail(t)) throw new Error('Email compose is only on for ARCH threads.')
+  if (isEmail && !canComposeEmail(t)) throw new Error('Email compose is only on for ARCH and Instantly threads.')
   const target = isEmail ? await emailReplyTarget(t.prospect_id, expectedEmail?.selection === 'specific' ? expectedEmail.source_message_id : undefined) : null
   if (target && expectedEmail && (target.recipient_email !== expectedEmail.recipient_email
     || target.message_text_prefix !== expectedEmail.message_text_prefix
@@ -2364,6 +2413,8 @@ export async function composeReply(t: Thread, text: string, expectedEmail?: Emai
     }
     renderEmailComposition(composition)
   }
+  // An Instantly thread answered from anything but its native inbound would leave through Gmail as im@: refuse.
+  if (target && instantlyMailbox(t) && !target.instantly_reply) throw new Error('Pick one of their emails to reply to. This thread replies through Instantly.')
   const replyCc = target ? parseEmailCc(expectedEmail?.cc ?? target.cc ?? []) : []
   // Anna has no conversation agent. Her dedicated dispatcher validates the
   // campaign and bound account; never route her through another seat's agent.
@@ -2372,6 +2423,7 @@ export async function composeReply(t: Thread, text: string, expectedEmail?: Emai
     ...(manualRevision === null ? {} : { conversation_agent_manual_revision: manualRevision }),
     ...(target?.email_headers ? { email_headers: target.email_headers } : {}),
     ...(target ? { email_subject: target.subject, email_reply_to_message_id: target.source_message_id } : {}),
+    ...(target?.instantly_reply ? { instantly_reply: target.instantly_reply } : {}),
     // The operator's reviewed Cc (prefilled reply-all, editable); the target's default when none was passed.
     ...(replyCc.length ? { email_cc: replyCc } : {}),
     ...(composition ? { email_composition: composition, email_composition_reviewed: composition } : {}),

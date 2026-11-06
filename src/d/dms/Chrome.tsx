@@ -58,18 +58,12 @@ const Dot = ({ on }: { on: boolean }) => on ? <span className="dm-fdot" role="im
 export function Folders({ folder, setFolder, views, phone, v4 }: { folder: string | null; setFolder: (f: string | null) => void; views: Record<Seat, SeatView>; phone?: boolean
   /** Brief 4: counts move to the tooltip and the label; "Likely " can drop at narrow widths. */ v4?: boolean }) {
   // Waiting only (emailFolder.ts): an old archived reply nobody stamped read never lights it.
-  const emailDot = SEATS.some(s => anyUnread(views[s].emailWaiting))
   const spamDot = anyUnread(views.risedtc.spam) || anyUnread(views.arch.spam) || anyUnread(views.swishdm.spam)
   if (v4) {
-    const emailN = SEATS.map(s => `${SEAT_NAME[s]} ${views[s].emailWaiting.length}`).join(', ')
     const spamN = `Rise ${views.risedtc.spam.length}, Arch ${views.arch.spam.length}, SwishDM ${views.swishdm.spam.length}`
     return (
       <span className={`dm-folders dx-folders${phone ? ' dm-folders-phone' : ''}`} role="tablist" aria-label="Folders">
         <button type="button" role="tab" aria-selected={!folder} className={`dm-fd${!folder ? ' dm-on' : ''}`} onClick={() => setFolder(null)}>Conversations</button>
-        <button type="button" role="tab" aria-selected={folder === 'email'} className={`dm-fd${folder === 'email' ? ' dm-on' : ''}`} onClick={() => setFolder('email')} data-unread={emailDot ? 'true' : undefined}
-          title={`Email waiting: ${emailN}`} aria-label={`Email${emailDot ? ', unread' : ''}. Waiting: ${emailN}`}>
-          <Dot on={emailDot} />Email
-        </button>
         <button type="button" role="tab" aria-selected={folder === 'spam'} className={`dm-fd${folder === 'spam' ? ' dm-on' : ''}`} onClick={() => setFolder('spam')} data-unread={spamDot ? 'true' : undefined}
           title={`Likely spam: ${spamN}`} aria-label={`Likely spam${spamDot ? ', unread' : ''}. ${spamN}`}>
           <Dot on={spamDot} /><span className="dx-long">Likely </span>spam
@@ -80,9 +74,6 @@ export function Folders({ folder, setFolder, views, phone, v4 }: { folder: strin
   return (
     <span className={`dm-folders${phone ? ' dm-folders-phone' : ''}`} role="tablist" aria-label="Folders">
       <button type="button" role="tab" aria-selected={!folder} className={`dm-fd${!folder ? ' dm-on' : ''}`} onClick={() => setFolder(null)}>Conversations</button>
-      <button type="button" role="tab" aria-selected={folder === 'email'} className={`dm-fd${folder === 'email' ? ' dm-on' : ''}`} onClick={() => setFolder('email')} data-unread={emailDot ? 'true' : undefined}>
-        <Dot on={emailDot} />Email <small>{SEATS.map(s => <span key={s}>{SEAT_NAME[s]} <b>{views[s].emailWaiting.length}</b> </span>)}</small>
-      </button>
       <button type="button" role="tab" aria-selected={folder === 'spam'} className={`dm-fd${folder === 'spam' ? ' dm-on' : ''}`} onClick={() => setFolder('spam')} data-unread={spamDot ? 'true' : undefined}>
         <Dot on={spamDot} />Likely spam <small>Rise <b>{views.risedtc.spam.length}</b> Arch <b>{views.arch.spam.length}</b></small>
       </button>

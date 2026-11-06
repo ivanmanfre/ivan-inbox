@@ -15,6 +15,7 @@ export type EmailMetadata = {
   to?: string | string[] | null; cc?: string | string[] | null; message_id?: string | null
   references?: string | null; in_reply_to?: string | null; resend_id?: string | null
   our_mailbox?: string | null
+  source?: string | null; instantly_email_id?: string | null; campaign_id?: string | null; lead_id?: string | null; thread_id?: string | null
 }
 
 export type EmailDetailRow = {
@@ -85,7 +86,10 @@ export function emailDetails(m: InboxMessage, t?: Thread): EmailDetails {
   const headers = m.draft_evidence?.email_headers
   const saved = m.email_details
   const incoming = m.direction === 'inbound'
-  const own = ['ivan', 'arch', 'risedtc', 'swishdm'].includes(m.client_id) ? emailRowSender(m.client_id) : null
+  // An Instantly reply row (drafter or compose) carries its sending mailbox in instantly_reply; the editor's From and
+  // default signature must come from it, never the seat's Gmail address.
+  const instantlyFrom = (m.draft_evidence as { instantly_reply?: { eaccount?: string } | null } | null | undefined)?.instantly_reply?.eaccount
+  const own = instantlyFrom ? instantlyFrom : em?.source === 'instantly' && em.our_mailbox ? em.our_mailbox : ['ivan', 'arch', 'risedtc', 'swishdm'].includes(m.client_id) ? emailRowSender(m.client_id) : null
   const preview = emailPreview(m.message_text ?? '', {
     subject: saved?.subject ?? em?.subject ?? m.draft_evidence?.email_subject ?? mirrorSubject(m, t),
     from: saved?.from ?? em?.from ?? (incoming ? m.recipient_email || m.prospect_email : own),
