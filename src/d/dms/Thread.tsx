@@ -6,7 +6,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode }
 import { requestDmDraft } from '../../lib/dmDraft'
 import { useDCommands } from '../shell/commands'
 import type { WbCommand } from '../../exp/v2c/commandSource'
-import { draftSendVia, type DraftSendVia, canComposeEmail, canDraftAgain, emailReplyTarget, emailRowSender, isReplyRetryExhausted, isSwishdmReply, markThreadRead, messageChannel, threadBucket, unansweredWaitSince, type InboxMessage, type Thread as T } from '../../lib/inbox'
+import { draftSendVia, type DraftSendVia, canComposeEmail, canDraftAgain, emailReplyTarget, isReplyRetryExhausted, isSwishdmReply, markThreadRead, messageChannel, threadBucket, unansweredWaitSince, type InboxMessage, type Thread as T, threadEmailSender } from '../../lib/inbox'
 import type { PreReadHandle } from '../../exp/v2c/chat/usePreRead'
 import { chatLink } from '../../components/CopyChatLink'
 import { seatOf } from '../seats'
@@ -124,7 +124,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
   const companionId = t.companionDraft?.id ?? ''
   const companionText = t.companionDraft?.message_text ?? null
   const recipients = seed(t)
-  const sender = emailRowSender(t.client_id)
+  const sender = threadEmailSender(t)
   const badComposition = (value: string | null, composition: EmailComposition | null | undefined, transport: 'native' | 'mirror') => {
     if (!composition) return false
     if (value == null || composition.source_text !== value) return true
@@ -205,7 +205,8 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
   let replyCcList: string[] | null = []
   try { replyCcList = parseEmailCc(replyCc) } catch { replyCcList = null }
   const emailBlocked = replyingByEmail && (!resolvedEmail?.address || latestChanged || emailLoading || !!emailDetailsError || replyFormattingError || !replyCcList)
-  const composeNote = replyingByEmail ? `From ${emailRowSender(t.client_id)} · ${resolvedEmail?.address ? `To ${resolvedEmail.address}` : resolvedEmail?.error ? 'Email address unavailable' : 'Loading email recipient…'}` : undefined
+  const replyFrom = resolvedEmail?.target?.instantly_reply?.eaccount ?? threadEmailSender(t)
+  const composeNote = replyingByEmail ? `From ${replyFrom} · ${resolvedEmail?.address ? `To ${resolvedEmail.address}` : resolvedEmail?.error ? 'Email address unavailable' : 'Loading email recipient…'}` : undefined
   const composeLabel = replyingByEmail ? 'Send email' : 'Send'
   useEffect(() => {
     if (!replyingByEmail || !canComposeEmail(t)) return
@@ -391,7 +392,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
     ? <details className="dm-referral-history"><summary>Sent messages</summary>{history}</details> : history
   const emailError = emailDetailsError && <p className="dm-meta" role="alert">{emailDetailsError} <Btn className="dm-k" onClick={retryEmailDetails}>Refresh email details</Btn></p>
   const composer = (noSend: boolean) => replyingByEmail
-    ? <EmailComposer from={emailRowSender(t.client_id)} to={resolvedEmail?.address ?? null}
+    ? <EmailComposer from={replyFrom} to={resolvedEmail?.address ?? null}
         subject={resolvedEmail?.target?.subject ?? splitEmailDraft(resolvedEmail?.target?.message_text_prefix ?? '').subject}
         replyToMessageId={resolvedEmail?.target?.email_headers?.['In-Reply-To']} value={reply} setValue={value => { setReply(value); setReplyComposition(null) }}
         composition={replyComposition} onRichChange={(value, composition) => { setReply(value); setReplyComposition(composition) }}

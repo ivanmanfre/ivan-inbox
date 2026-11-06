@@ -68,16 +68,16 @@ describe('sections', () => {
 })
 
 describe('email-only people', () => {
-  it('stay in the Email folder only; an owed one still counts in Needs you (pointer line)', () => {
+  it('sit in Needs you with everyone else (one list per lead, 2026-11-06); no second pointer line', () => {
     const rows = [
       msg({ prospect_id: 'e', prospect_name: 'Mail Only', channel: 'email', message_type: 'email', direction: 'outbound', sent_at: iso(40 * 3_600_000), created_at: iso(40 * 3_600_000) }),
       msg({ prospect_id: 'e', prospect_name: 'Mail Only', channel: 'email', message_type: 'email_reply', direction: 'inbound', sent_at: iso(3_600_000), created_at: iso(3_600_000), message_text: 'Can we talk next week?' }),
       ...owedNoDraft('li', { prospect_name: 'On LinkedIn' }),
     ]
     const v = seatView(threads(rows), 'ivan', NOW)
-    expect(v.nodraft.map(t => t.prospect_id)).toEqual(['li'])
+    expect(v.nodraft.map(t => t.prospect_id).sort()).toEqual(['e', 'li'])
     expect(v.email.map(t => t.prospect_id)).toEqual(['e'])
-    expect(v.emailOwed.map(t => t.prospect_id)).toEqual(['e'])
+    expect(v.emailOwed).toEqual([])
     expect(needsCount(v)).toBe(2)
   })
 
@@ -144,12 +144,10 @@ describe('folder dots', () => {
   ], new Set(), NOW)
   const views = (ts: Thread[]) => ({ ivan: seatView(ts, 'ivan', NOW), risedtc: seatView([], 'risedtc', NOW), arch: seatView([], 'arch', NOW) , swishdm: seatView([], 'swishdm', NOW), anna: seatView([], 'anna', NOW)})
 
-  it('a lime dot on Email while an email thread is unread, none once read', () => {
+  it('no separate Email tab: an unread email thread lights nothing extra (it lives in Conversations)', () => {
     render(<Folders folder={null} setFolder={() => {}} views={views(mailThread(false))} />)
-    expect(document.querySelector('[role="tab"][data-unread="true"] .dm-fdot')).toBeTruthy()
-    cleanup()
-    render(<Folders folder={null} setFolder={() => {}} views={views(mailThread(true))} />)
-    expect(document.querySelector('.dm-fdot')).toBeNull()
+    expect([...document.querySelectorAll('[role="tab"]')].map(b => b.textContent)).not.toContain('Email')
+    expect(document.querySelector('[role="tab"][data-unread="true"]')).toBeNull()
   })
 })
 

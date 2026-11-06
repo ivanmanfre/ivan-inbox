@@ -31,9 +31,9 @@ import { formatReturn, returnsIn, usePushLater } from '../../lib/pushLater'
 import {
   approveDraft, channelFamilies, canComposeEmail, composeReply, discardLegs, draftLegs, legFailureText, holdReason, isEngineRetired, isHiddenRetired, isIntentionalStop, retiredLabel, stopLabel, dismissConfirmation, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isPendingSend, pendingSendLabel, sentThenPending, shownTime, isFollowUp, isMixedChannel,
   reviewedEmailMirror, saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
-  markThreadRead, messageChannel, threadChatId, emailRowSender, ladderSteps, sendFailed, isUnreachableSend, unreachableLabel,
+  markThreadRead, messageChannel, threadChatId, ladderSteps, sendFailed, isUnreachableSend, unreachableLabel,
   offersReplyMyself, REPLY_MYSELF, type DiscardMode,
-  type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../../lib/inbox'
+  type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel, threadEmailSender } from '../../lib/inbox'
 import { copyRouteTag, label, threadLaneLabel } from '../../lib/labels'
 import { deleteThread, markNotSpam, markSpam } from '../../lib/inbox'
 import { askAbout } from '../ask/askAbout'
@@ -766,7 +766,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
                   happens to start with "Subject:". */}
               {messageChannel(draft) === 'email' && draft.recipient_email && (
                 <div className="a-meta">
-                  Email to {draft.recipient_email} (from {emailRowSender(thread.client_id)})
+                  Email to {draft.recipient_email} (from {threadEmailSender(thread)})
                 </div>
               )}
               <div ref={editRef} className="a-thread-editbox">
@@ -876,7 +876,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
                     // one whose pipe is the Gmail node. A LinkedIn row stamped
                     // with an address is the mirror, which the badge below names.
                     + (messageChannel(companion) === 'email' && companion.recipient_email
-                      ? ` to ${companion.recipient_email} (from ${emailRowSender(thread.client_id)})`
+                      ? ` to ${companion.recipient_email} (from ${threadEmailSender(thread)})`
                       : '')}
                   className="a-thread-leg"
                   value={editedCompanion}

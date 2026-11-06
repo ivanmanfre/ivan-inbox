@@ -9,8 +9,7 @@ import {
   emailSenderLabel, heldReasonText, isAnnaReviewedModel, isFollowUp, isHeldSend, isStoppedOnPurpose, isSwishdmReply, isSwishdmRow, legFailureText, markNotSpam, markSpam, messageChannel, offersReplyMyself, restoreConfirmation, restoreDraft, swishdmPageUrl,
   saveDraftEmailCc, setDraftSendVia, saveDraftText, snoozeDraft, threadChatId, unsnoozeDraft, REPLY_MYSELF, REDRAFT_REASON, requestRedraft,
   findLandedReply, readSendState, type DraftSendVia, type InboxMessage, type SendState, type Thread,
-  type EmailReplyTarget,
-} from '../../lib/inbox'
+  type EmailReplyTarget, rowEmailSender, threadEmailSender } from '../../lib/inbox'
 import { isNoAnswer } from '../../lib/noAnswer'
 import { clearFollowUp, fetchFollowUp, followUpSuggestion, setFollowUp, type FollowUp } from '../../lib/followUp'
 import { laterPath } from './later'
@@ -23,7 +22,7 @@ import { canMarkSolved, writeSolved } from './solved'
 import { watchSend } from './sendWatch'
 import { splitEmailDraft } from '../../lib/emailSubject'
 import { emailPreview } from '../../lib/emailPresentation'
-import { emailRowSender, threadKind } from '../../lib/inbox'
+import { threadKind } from '../../lib/inbox'
 import { saveEmailComposition, sameEmailComposition } from '../../lib/emailCompositionSave'
 import { buildEmailComposition } from '../../lib/emailCompositionDraft'
 import { renderEmailComposition, renderEmailDocument, type EmailComposition } from '../../lib/emailRichText'
@@ -137,7 +136,7 @@ export function useDmVerbs(ctx: VerbCtx) {
     async function saveEditedLegs(t: Thread, ed: Edits, prepareForSend = false) {
       const draft = t.draft
       if (!draft) throw new Error('The draft is unavailable.')
-      const from = emailRowSender(t.client_id)
+      const from = rowEmailSender(t, draft)
       let main = draft
       let companion = t.companionDraft
       if (messageChannel(main) === 'email') main = await saveEmailLeg(main, ed.main, ed.mainComposition, false, from, prepareForSend)
@@ -529,14 +528,14 @@ export function useDmVerbs(ctx: VerbCtx) {
       const body = text.trim()
       if (!body) return false
       const queueNote = t.client_id === 'anna' ? 'Anna’s sender picks it up while her lane is enabled. Paused replies stay queued.' : 'The sender picks it up within about 2 minutes.'
-      const rich = emailTarget ? buildEmailComposition(emailTarget.message_text_prefix + text, emailRowSender(t.client_id), { composition }) : null
+      const rich = emailTarget ? buildEmailComposition(emailTarget.message_text_prefix + text, emailTarget.instantly_reply?.eaccount ?? threadEmailSender(t), { composition }) : null
       const sentBody = rich ? renderEmailDocument(rich.body).text : body
       const reviewed = rich ? { ...rich, source_text: emailTarget!.message_text_prefix + sentBody } : null
       const identity = emailTarget ? sentBody : body
       {
         const rendered = reviewed ? renderEmailComposition(reviewed) : null
         const details = emailTarget && rendered ? {
-          ...emailPreview(emailTarget.message_text_prefix + sentBody, { from: emailRowSender(t.client_id), to: [emailTarget.recipient_email], cc: emailTarget.cc ?? [], replyToMessageId: emailTarget.email_headers?.['In-Reply-To'] }),
+          ...emailPreview(emailTarget.message_text_prefix + sentBody, { from: emailTarget.instantly_reply?.eaccount ?? threadEmailSender(t), to: [emailTarget.recipient_email], cc: emailTarget.cc ?? [], replyToMessageId: emailTarget.email_headers?.['In-Reply-To'] }),
           subject: emailTarget.subject ?? splitEmailDraft(emailTarget.message_text_prefix).subject,
           body: rendered.text, html: rendered.html,
         } : null

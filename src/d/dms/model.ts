@@ -66,11 +66,10 @@ export function seatView(threads: Thread[], seat: Seat, now: number = Date.now()
   const v: SeatView = { seat, owner: [], drafted: [], nodraft: [], later: [], older: [], auto: [], rest: [], thrown: [], spam: [], email: [], emailOwed: [], emailWaiting: [], emailRest: [], all: [] }
   for (const t of live) {
     const bucket = threadBucket(t, now)
-    if (isEmailOnly(t)) {
-      v.email.push(t)
-      if (bucket !== 'waiting') v.emailOwed.push(t)
-      continue
-    }
+    // 2026-11-06 (Ivan: "emails and conversations should share same conversation"): one list per lead,
+    // whatever channel it rode. Email-only people sit in Needs you / Sent like everyone else; `email`
+    // still collects them for the folded email filter, and `emailOwed` stays empty (no second pointer).
+    if (isEmailOnly(t)) v.email.push(t)
     if (bucket !== 'waiting') {
       if (t.ownerConfirmation) v.owner.push(t)
       else if (t.draft !== null && t.draftSnoozedUntil === null) v.drafted.push(t)
@@ -81,7 +80,7 @@ export function seatView(threads: Thread[], seat: Seat, now: number = Date.now()
     else v.rest.push(t)
     if (t.draftSnoozedUntil !== null) v.later.push(t)
     if (isThrownRecently(t, now)) v.thrown.push(t)
-    if (threadKind(t) === 'email') v.email.push(t)
+    if (!isEmailOnly(t) && threadKind(t) === 'email') v.email.push(t)
   }
   v.spam = mine.filter(t => t.spam).sort(threadOrder)
   for (const k of ['owner', 'drafted', 'nodraft', 'older', 'auto'] as const) v[k].sort(threadOrder)

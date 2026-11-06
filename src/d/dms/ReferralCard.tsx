@@ -3,7 +3,7 @@ import type { Thread } from '../../lib/inbox'
 import { referralEmailRow, referralInbound, requestDmReferral, stageReferralEmail } from '../../lib/dmReferral'
 import type { ReferralDraft, ReferralEmail } from '../../../supabase/functions/inbox-dm-draft/referral'
 import { ReferredLeadCard } from './ReferredLeadCard'
-import { emailRowSender } from '../../lib/inbox'
+import { threadEmailSender } from '../../lib/inbox'
 
 export function ReferralCard({ t, onUseAcknowledgement, onStaged }: { t: Thread; onUseAcknowledgement?: (text: string) => void; onStaged?: () => void }) {
   const inbound = referralInbound(t)
@@ -77,7 +77,7 @@ function ReferralEmailDraft({ t, inbound, email, referredName, referredCompany, 
   const [error, setError] = useState<string | null>(null)
   const [added, setAdded] = useState(false)
   const first = (referredName ?? '').split(' ')[0] || 'them'
-  const from = emailRowSender(t.client_id)
+  const from = threadEmailSender(t)
   const row = referralEmailRow(t.messages, inbound)
   // The optimistic "added" holds only until the refreshed thread shows the row; a later discard brings the form back.
   useEffect(() => { if (row) setAdded(false) }, [row])
