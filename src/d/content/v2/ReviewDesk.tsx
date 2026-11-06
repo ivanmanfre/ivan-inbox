@@ -13,19 +13,21 @@ import { useToast } from '../../ui/toast'
 import { warsawDay, warsawDm, warsawDow, warsawHm } from '../../ui/time'
 import { BrainDraftBadge } from '../BrainDraftBadge'
 import { SourceCol, useSources } from '../ContentBrain'
-import { undoDecision, usePendingDecisions } from '../decisions'
+import { HOLD_MS, holdDecision, undoDecision, usePendingDecisions } from '../decisions'
 import { EarlyReadChip } from '../EarlyReadChip'
 import { MovePanel } from '../MovePanel'
 import { usePanelLink } from '../panelLink'
-import { LANES, OWNER, POSS, age, dayLabel, nextFreeWeekday, ptOf, splitTitleTag, type Lane, type Slot } from '../model'
+import { LANES, OWNER, POSS, age, dayLabel, nextSpacedSlot, ptOf, seatSlotOf, splitTitleTag, type Lane, type Slot } from '../model'
 import { PictureRow } from '../PictureRow'
 import { useRowVerbs } from '../rowVerbs'
 import { useEarlyReads } from '../useEarlyReads'
 import type { WeekRead } from '../useWeek'
 import { forgetVerdict, giveReason, markShown, retryVerdict, undoVerdict, useJudged, VERDICT_HOLD_MS, type Judged } from '../verdictStore'
-import { useWeekVerbs } from '../weekVerbs'
-import { awaitsReview, reviewCounts, type Week, type WeekCard } from '../weekModel'
+import { releaseSlot, slotWords, useReservedSlots, useWeekVerbs } from '../weekVerbs'
+import { awaitsReview, goingStale, reviewCounts, type Week, type WeekCard } from '../weekModel'
+import { archiveStaleDraft } from '../writes'
 import { useReviewMotion } from './motion'
+import { zonedToUtc } from '../laneTime'
 import { clientHoldOf } from '../../../lib/clientBoardState'
 import { LinkedInCard } from './LinkedInCard'
 import { picRepeats, type Repeat } from './picRepeat'
@@ -105,6 +107,8 @@ export type DeskModel = {
   /** Decided, the seat's next step still open (a date, the board). Not counted as to decide. */
   waiting: WeekCard[]
   board: WeekCard[]
+  /** Undated drafts to decide written more than 14 days ago: their own fold, not counted (review 2026-11-06 #30). */
+  stale: WeekCard[]
   /** Errors and posts that did not go out; `pinned` are the misses of the last 48 h, shown open. */
   fix: WeekCard[]
   pinned: WeekCard[]
@@ -118,11 +122,13 @@ export function deskModel(week: Week, now: number): DeskModel {
   const drafts = week.groups.find(g => g.key === 'drafts')?.cards ?? []
   const board = (week.groups.find(g => g.key === 'board')?.cards ?? []).slice().sort(deskOrder)
   const all = [...fixGroup, ...drafts]
-  const decide = all.filter(c => c.strip || awaitsReview(c)).sort(deskOrder)
+  const open = all.filter(c => c.strip || awaitsReview(c)).sort(deskOrder)
+  const stale = open.filter(c => goingStale(c, now))
+  const decide = open.filter(c => !stale.includes(c))
   const waiting = drafts.filter(c => !c.strip && !awaitsReview(c)).sort(deskOrder)
   const fix = fixGroup.filter(c => !c.strip && !awaitsReview(c))
   const pinned = fix.filter(c => c.flags.some(f => f.key === 'stuck') && !!c.r.scheduled_at && now - Date.parse(c.r.scheduled_at) < 2 * 86_400_000)
-  return { decide, waiting, board, fix, pinned, queue: decide.filter(c => awaitsReview(c)).map(c => c.r.id) }
+  return { decide, stale, waiting, board, fix, pinned, queue: decide.filter(c => awaitsReview(c)).map(c => c.r.id) }
 }
 
 const slotWord = (s: Slot) => `${warsawDow(s.at)} ${warsawDm(s.at).split(' ')[0]} · ${warsawHm(s.at)}`
@@ -161,12 +167,15 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   const [moving, setMoving] = useState<WeekCard | null>(null)
   const [fixOpen, setFixOpen] = useState(false)
   const [waitOpen, setWaitOpen] = useState(false)
+  const [staleOpen, setStaleOpen] = useState(false)
   const [picking, setPicking] = useState<string | null>(null)
   const [focus, setFocus] = useState<string | null>(focusId)
   const [more, setMore] = useState<ReadonlySet<string>>(() => new Set())
   const [keys, setKeys] = useState(false)
   // An Ivan draft with flagged lines still in its text: Approve asks once ("Approve as written") on the row.
   const [keepAsk, setKeepAsk] = useState<string | null>(null)
+  /** The slot the one-tap key asked for while the keep-lines question is open (null: plain Approve). */
+  const [keepAt, setKeepAt] = useState<Date | null>(null)
   const list = useRef<HTMLDivElement>(null)
   const mason = useCallback((el: HTMLDivElement | null) => el ? masonry(el) : undefined, [])
   const listMason = useCallback((el: HTMLDivElement | null) => { list.current = el; return el ? masonry(el) : undefined }, [])
@@ -174,7 +183,20 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
 
   const verbs = useWeekVerbs({ ids: week.ids, onChanged, onOpen, setBusy })
   const rowVerbs = useRowVerbs(onChanged)
-  const slot = useMemo(() => (armed ? nextFreeWeekday(armed, now) : armedFailed ? nextFreeWeekday(new Set(), now) : null), [armed, armedFailed, now])
+  // The seat's own posting time from its history (review 2026-11-06 #15), not one fixed hour.
+  const ivanRows = seatRows('ivan')
+  const hm = useMemo(() => seatSlotOf(ivanRows, now), [ivanRows, now])
+  // A held Approve + schedule keeps its slot taken, so the next card never offers the same time (cross-review).
+  const reservedSlots = useReservedSlots()
+  const slot = useMemo(() => {
+    const held = [...reservedSlots.values()].map(r => r.at)
+    if (!armed && !armedFailed) return null
+    // Always Warsaw-built (cross-review r2). Without the dated instants (an older read, or a failed one) each armed
+    // day stands in as its 10:45 Warsaw slot, the instant fetchIvanArmedDays tested it against.
+    const times = (armed as { times?: readonly string[] } | null)?.times
+    const dayBusy = times ? [] : [...(armed ?? [])].map(d => zonedToUtc(d, '10:45', 'Europe/Warsaw'))
+    return nextSpacedSlot([...(times ?? []), ...dayBusy, ...held], now, hm)
+  }, [armed, armedFailed, now, hm, reservedSlots])
 
   const desk = useMemo(() => deskModel(week, now), [week, now])
   const work = desk.decide.filter(c => awaitsReview(c))
@@ -183,7 +205,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   const orphans = [...judged.values()].filter(e => !e.collapsed && !inList.has(e.id) && show === e.lane).sort((a, b) => a.at - b.at)
   const folded = desk.fix.filter(c => !desk.pinned.includes(c))
 
-  const shownCards = [...desk.pinned, ...stream, ...(waitOpen ? desk.waiting : []), ...(fixOpen ? folded : []), ...desk.board]
+  const shownCards = [...desk.pinned, ...stream, ...(staleOpen ? desk.stale : []), ...(waitOpen ? desk.waiting : []), ...(fixOpen ? folded : []), ...desk.board]
   const earlyReads = useEarlyReads(shownCards.map(c => c.r))
   const srcKey = stream.slice(0, 60).map(c => c.r.id).join(',')
   const srcIds = useMemo(() => (srcKey ? srcKey.split(',') : []), [srcKey])
@@ -194,12 +216,14 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   const ghosts = useDeferred(loading)
 
   const waitIds = desk.waiting.map(c => c.r.id).join(',')
+  const staleIds = desk.stale.map(c => c.r.id).join(',')
   const foldIds = folded.map(c => c.r.id).join(',')
   useLayoutEffect(() => {
     if (!focusId) return
     if (folded.some(c => c.r.id === focusId)) setFixOpen(true)
     if (desk.waiting.some(c => c.r.id === focusId)) setWaitOpen(true)
-  }, [focusId, waitIds, foldIds]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (desk.stale.some(c => c.r.id === focusId)) setStaleOpen(true)
+  }, [focusId, waitIds, foldIds, staleIds]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Focus lands on the first row, or on the row Content Brain sent.
   const rowIds = useMemo(() => shownCards.filter(c => !c.strip).map(c => c.r.id), [shownCards.map(c => `${c.r.id}:${c.strip}`).join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -211,7 +235,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
     if (!focusId) return
     setFocus(focusId)
     requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-card-id="${focusId}"]`)?.scrollIntoView?.({ block: 'center' }))
-  }, [focusId, rowIds.join(','), fixOpen, waitOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [focusId, rowIds.join(','), fixOpen, waitOpen, staleOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const cardOf = (id: string | null) => shownCards.find(c => c.r.id === id) ?? null
   const moveFocus = (dir: 1 | -1) => {
@@ -235,6 +259,29 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
     if (unsaved(c.r.id)) { toast.show({ message: 'Save or cancel your edit first.' }); return }
     if (c.lane === 'ivan' && document.querySelector(`[data-card-id="${c.r.id}"][data-needs-keep]`)) { setKeepAsk(c.r.id); return }
     approveNow(c)
+  }
+  // The one-tap key asks the same "keep these lines?" first as Approve does (post-quality line flags).
+  const approveScheduleCard = (c: WeekCard, at: Date) => {
+    if (unsaved(c.r.id)) { toast.show({ message: 'Save or cancel your edit first.' }); return }
+    if (c.lane === 'ivan' && document.querySelector(`[data-card-id="${c.r.id}"][data-needs-keep]`)) { setKeepAsk(c.r.id); setKeepAt(at); return }
+    void verbs.approveSchedule(c, at)
+  }
+  // GOING STALE: one Archive for the whole fold, held for the 8 s Undo (nothing is written before it ends), then
+  // each draft moves to 'archived'. Ivan's seat only: client drafts keep their own queue rules.
+  const archiveStale = () => {
+    const cards = desk.stale.filter(c => c.lane === 'ivan' && !unsaved(c.r.id))
+    if (!cards.length) return
+    let left = cards.length, failed = 0
+    const done = () => {
+      if (--left > 0) return
+      if (failed) toast.show({ tone: 'failed', message: `${failed} of ${cards.length} were not archived.`, sub: 'They changed since the list loaded. They stay in review.' })
+      onChanged()
+    }
+    for (const c of cards) holdDecision(c.r.id, 'skip', { write: archiveStaleDraft, onCommitted: done, onFailed: () => { failed++; done() } })
+    toast.show({
+      id: 'stale-archive', ms: HOLD_MS, message: `Archived ${cards.length} old draft${cards.length === 1 ? '' : 's'}.`, sub: 'Nothing is deleted. They leave Review.',
+      action: { label: 'Undo', verb: 'undo-stale-archive', run: () => { const back = cards.filter(c => undoDecision(c.r.id)).length; if (back < cards.length) toast.show({ message: 'Too late to undo some: they were already archived.' }) } },
+    })
   }
   // judgeIt never waits on a Drop (only Approve on an errored Ivan draft asks first), so the held verdict exists
   // when it returns: the reason rides along with it in ONE write, exactly ContentBrain's judge + giveReason.
@@ -268,7 +315,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
         const heldV = [...judged.values()].filter(x => x.phase === 'held').sort((a, b) => b.at - a.at)[0]
         if (heldV) { e.preventDefault(); undoVerdict(heldV.id); return }
         const last = [...pending.keys()].pop()
-        if (last && undoDecision(last)) { e.preventDefault(); toast.show({ id: `decide-${last}`, message: 'Undone. Nothing was written.' }) }
+        if (last && undoDecision(last)) { releaseSlot(last); e.preventDefault(); toast.show({ id: `decide-${last}`, message: 'Undone. Nothing was written.' }) }
       }
       else if (!c) return
       else if (e.key === 'a') { e.preventDefault(); approveCard(c) }
@@ -281,7 +328,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
     return () => window.removeEventListener('keydown', onKey)
   })
 
-  const counts = reviewCounts(total)
+  const counts = reviewCounts(total, now)
   const who = show === 'ivan' ? 'Ivan’s ' : `${OWNER[show]}’s `
   const n = work.length
   const oldestFix = folded.length ? Math.max(...folded.map(c => now - createdMs(c))) : 0
@@ -307,8 +354,8 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
         picking={picking === c.r.id} setPicking={v => setPicking(v ? c.r.id : null)}
         onFocus={() => setFocus(c.r.id)}
         onOpen={() => onOpen(c.r.id, c.lane)} onEdit={() => onEdit(c.r.id, c.lane)}
-        onApprove={() => approveCard(c)} onDrop={(slug, note) => dropWith(c, slug, note)}
-        asking={keepAsk === c.r.id} onKeepApprove={() => { setKeepAsk(null); if (unsaved(c.r.id)) toast.show({ message: 'Save or cancel your edit first.' }); else approveNow(c) }} onKeepBack={() => setKeepAsk(null)}
+        onApprove={() => { setKeepAt(null); approveCard(c) }} onApproveSchedule={at => approveScheduleCard(c, at)} onDrop={(slug, note) => dropWith(c, slug, note)}
+        asking={keepAsk === c.r.id} onKeepApprove={() => { const at = keepAt; setKeepAsk(null); setKeepAt(null); if (unsaved(c.r.id)) toast.show({ message: 'Save or cancel your edit first.' }); else if (at) void verbs.approveSchedule(c, at); else approveNow(c) }} onKeepBack={() => { setKeepAsk(null); setKeepAt(null) }}
         onSkip={() => { if (unsaved(c.r.id)) toast.show({ message: 'Save or cancel your edit first.' }); else void rowVerbs.run(c.r, c.lane, 'skip') }}
         onBoard={() => void verbs.board(c)} onSchedule={(at?: Date) => void verbs.schedule(c, at)} onDate={() => setMoving(c)}
         onChanged={onChanged} />
@@ -365,6 +412,18 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
             {stream.map((c, i) => renderRow(c, i + orphans.length))}
           </div></>
         )}
+
+      {desk.stale.length > 0 && (
+        <section className="cv2-fold cv2-stale" aria-label="Going stale">
+          <div className="cv2-fold-row">
+            <button type="button" className="cv2-fold-h" aria-expanded={staleOpen} data-verb="stale-fold" onClick={() => setStaleOpen(o => !o)}>
+              <i aria-hidden="true">{staleOpen ? '▾' : '▸'}</i><b>Going stale ({desk.stale.length})</b><span>older than 2 weeks, not counted above</span>
+            </button>
+            {show === 'ivan' && <button type="button" className="cv2-k cv2-k-q" data-verb="stale-archive-all" onClick={archiveStale}>Archive all</button>}
+          </div>
+          {staleOpen && <div ref={mason} className={`cv2-list${openId ? '' : ' cv2-grid'}`} role="list" aria-label="Going stale">{desk.stale.map((c, i) => renderRow(c, i))}</div>}
+        </section>
+      )}
 
       {desk.waiting.length > 0 && (
         <section className="cv2-fold" aria-label="Approved, next step waiting">
@@ -447,7 +506,7 @@ export function snippetOf(c: Pick<WeekCard, 'body' | 'title'>): string {
   return line.length > 220 ? `${line.slice(0, 218)}…` : line
 }
 
-function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, slot, src, srcLoading, more, setMore, hideHold = false, picking, setPicking, onFocus, onOpen, onEdit, onApprove, onDrop, onSkip, onBoard, onSchedule, onDate, onChanged, asking = false, onKeepApprove, onKeepBack }: {
+function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, slot, src, srcLoading, more, setMore, hideHold = false, picking, setPicking, onFocus, onOpen, onEdit, onApprove, onApproveSchedule, onDrop, onSkip, onBoard, onSchedule, onDate, onChanged, asking = false, onKeepApprove, onKeepBack }: {
   c: WeekCard; i: number; now: number; focused: boolean; open: boolean; busy: boolean; held: boolean
   /** The 3-up card grid (no post open): the whole post, its media, edited in place. */
   grid: boolean
@@ -458,6 +517,8 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
   hideHold?: boolean
   picking: boolean; setPicking: (v: boolean) => void
   onFocus: () => void; onOpen: () => void; onEdit: () => void; onApprove: () => void
+  /** Ivan's seat: approve and schedule at the seat's next free slot, one tap (held 8 s for Undo). */
+  onApproveSchedule: (at: Date) => void
   onDrop: (slug: string, note: string | null) => void; onSkip: () => void; onBoard: () => void
   onSchedule: (at?: Date) => void; onDate: () => void; onChanged: () => void
   /** Approve met flagged lines: the row asks once. */
@@ -507,8 +568,11 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
   const boardWord = `Put on ${POSS[c.lane]} board`
   const canDate = c.canDate && (c.r.board_visible !== true || (c.lane !== 'swishdm' && hold?.kind !== 'removed'))
   const boardDate = c.lane !== 'ivan' && c.r.board_visible === true && canDate
+  // Ivan's seat: the main key approves AND schedules at the next free slot; "Approve only" moves to the menu.
+  const oneTap = c.lane === 'ivan' && (c.judge || c.primary === 'approve') && !c.r.scheduled_at && !!slot
 
   const menu: MenuItem[] = [
+    ...(oneTap && !unsaved ? [{ key: 'approve-only', label: 'Approve only', run: onApprove }] : []),
     { key: 'open', label: 'Open post', run: onOpen },
     { key: 'preview', label: more ? 'Hide preview' : 'Preview here', run: () => setMore(!more) },
     { key: 'edit', label: 'Edit', run: onEdit },
@@ -519,6 +583,8 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
 
   let primary: React.ReactNode = null
   if (boardDate) primary = <button type="button" className={`cv2-k${c.r.scheduled_at ? ' cv2-k-q' : ' cv2-k-p'}`} data-key-main data-verb="card-board-date" disabled={busy} onClick={onDate}>{c.r.scheduled_at ? 'Change date' : 'Schedule'}</button>
+  else if (oneTap) primary = <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-approve-schedule" disabled={busy || unsaved} aria-label={`Approve and schedule ${slotWords(slot!.at)}`} title={saveFirst ?? `Approves it and schedules it on LinkedIn ${slotWords(slot!.at)}. Undo for 8 seconds.`} onClick={() => onApproveSchedule(slot!.at)}>
+    <span className="cv2-wide-only">Approve + schedule {slotWords(slot!.at)}</span><span className="cv2-narrow-only">Approve · <span className="cv2-k-dow">{warsawDow(slot!.at)} </span>{warsawHm(slot!.at)}</span></button>
   else if (c.judge || c.primary === 'approve') primary = <button type="button" className="cv2-k cv2-k-p" data-key-safe data-verb={c.judge ? 'card-keep' : 'card-approve'} disabled={busy || unsaved} title={saveFirst} onClick={onApprove}>Approve</button>
   else if (c.primary === 'board' || next === 'board') primary = <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-board" disabled={busy} title={boardWord} onClick={onBoard}>{busy ? 'Working…' : <><span className="cv2-wide-only">{boardWord}</span><span className="cv2-narrow-only">Put on board</span></>}</button>
   else if (next === 'schedule' && (c.r.scheduled_at || slot)) primary = <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-schedule" disabled={busy} onClick={() => onSchedule(c.r.scheduled_at ? undefined : slot!.at)}>

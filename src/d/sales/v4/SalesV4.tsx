@@ -1,7 +1,7 @@
 import { useMotionLevel } from '../../../ds/motionLevel'
 import { useCallback, useMemo, useState } from 'react'
 import { packsInWindow } from '../../../wb/sales/match'
-import { callStats, segmentCalls, type CallSegment } from '../../../lib/transcripts'
+import { segmentCalls, type CallSegment } from '../../../lib/transcripts'
 import type { PlaceProps } from '../../places'
 import { dHash } from '../../route'
 import { useReportFailed } from '../../shell/health'
@@ -36,10 +36,11 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
   const [rail, setRail] = useState<'schedule' | 'calls'>('schedule')
   const idx = useMemo(() => packIndex(data.packs), [data.packs])
   const f = useMemo(() => readFortnight(data.events, idx, data.calls, data.now), [data.events, idx, data.calls, data.now])
-  const stats = useMemo(() => callStats(data.calls), [data.calls])
   const q = route.query
   const segQ = q.get('seg') as CallSegment | null
-  const seg: CallSegment = segQ && SEGS.includes(segQ) ? segQ : stats.withActions > 0 ? 'open' : 'recent'
+  // Sales opens on the last 7 days (review 2026-11-06): the action-items tab was mostly calls older than 30 days.
+  const seg: CallSegment = segQ && SEGS.includes(segQ) ? segQ : 'recent'
+  const sendsRecorded = useMemo(() => data.calls.some(c => c.follow_up_sent === true), [data.calls])
   const queue = useMemo(() => segmentCalls(data.calls, seg), [data.calls, seg])
   const want = q.get('call')
   const wanted = want ? queue.find(c => c.id === want) ?? data.calls.find(c => c.id === want) ?? null : null
@@ -105,7 +106,7 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
           <button type="button" className="d-ib" aria-label="Back to Sales" onClick={() => navigate(dHash('sales', null, { seg }))}><DIcon name="back" /></button>
           <div><small>Calls on record</small><b>{at} of {queue.length}, {seg === 'open' ? 'with action items' : seg === 'recent' ? 'last 7 days' : 'all calls'}</b></div>
         </div>
-        <Window row={open} at={at} of={queue.length} onStep={step} layout="phone" missing={missing} />
+        <Window row={open} at={at} of={queue.length} onStep={step} layout="phone" missing={missing} sendsRecorded={sendsRecorded} />
       </div>
     )
   }
@@ -127,7 +128,7 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
         <div className="sl4-rail-tabs"><Segmented markerId="sl4-rail" label="Sales rail" value={rail} options={[{ id:'schedule', label:'Schedule' }, { id:'calls', label:'Calls' }]} onChange={r => setRail(r as 'schedule' | 'calls')} /></div>
         <section className="sl4-cal" data-d-scroll>{cal}</section>
         <section className="sl4-mid">{calls()}</section>
-        <section className="sl4-win"><Window row={open} at={at} of={queue.length} onStep={step} layout="desktop" missing={missing} /></section>
+        <section className="sl4-win"><Window row={open} at={at} of={queue.length} onStep={step} layout="desktop" missing={missing} sendsRecorded={sendsRecorded} /></section>
       </div>
     </div>
   )

@@ -79,10 +79,21 @@ export function awaitsReview(c: WeekCard): boolean {
   return c.judge || !c.flags.some(f => f.key === 'blocked' || f.key === 'stuck' || f.key === 'stalled' || f.key === 'error' || f.key === 'qa_held')
 }
 
-export function reviewCounts(w: Week): Record<Show, number> {
+/** Review's "Going stale" fold (review 2026-11-06 #30): an undated draft still to decide, written more than 14 days
+ *  ago. The same 14-day clock the nav count uses (counts/content.ts CONTENT_WAIT_DAYS), so the numbers agree. */
+export const STALE_DAYS = WAIT_DAYS
+export function goingStale(c: WeekCard, now: number): boolean {
+  if (c.strip || c.r.scheduled_at || !awaitsReview(c)) return false
+  const t = Date.parse(c.r.created_at)
+  return Number.isFinite(t) && t <= now - STALE_DAYS * DAY_MS
+}
+
+/** `now` given: drafts going stale are not counted (they sit in their own fold). */
+export function reviewCounts(w: Week, now?: number): Record<Show, number> {
   const counts: Record<Show, number> = { all: 0, ivan: 0, risedtc: 0, arch: 0, swishdm: 0 }
   for (const c of w.groups.flatMap(g => g.cards)) {
     if (!awaitsReview(c)) continue
+    if (now != null && goingStale(c, now)) continue
     counts.all++
     counts[c.lane]++
   }

@@ -269,8 +269,9 @@ export function dmNumbers(c: FrameCounts, which: keyof DmSeatCount = 'drafts'): 
   return { ivan: c.dms.ivan.value?.[which] ?? null, risedtc: c.dms.risedtc.value?.[which] ?? null, arch: c.dms.arch.value?.[which] ?? null , swishdm: c.dms.swishdm.value?.[which] ?? null, anna: c.dms.anna.value?.[which] ?? null}
 }
 
+/** Anna has no content seat: 0, never "reading", so a count line does not wait on her forever. */
 export function contentNumbers(c: FrameCounts): SeatNumbers {
-  return { ivan: c.content.ivan.value, risedtc: c.content.risedtc.value, arch: c.content.arch.value , swishdm: c.content.swishdm.value, anna: null}
+  return { ivan: c.content.ivan.value, risedtc: c.content.risedtc.value, arch: c.content.arch.value , swishdm: c.content.swishdm.value, anna: 0}
 }
 
 export function opsNumbers(c: FrameCounts): SeatNumbers {

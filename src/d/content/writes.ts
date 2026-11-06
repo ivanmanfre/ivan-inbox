@@ -24,3 +24,18 @@ export async function scheduleGuarded(id: string, scheduledAtIso: string): Promi
   }
   return (data[0] as { scheduled_at?: string | null }).scheduled_at ?? null
 }
+
+/**
+ * GOING STALE (review 2026-11-06 #30): Archive for an undated review draft of Ivan's seat. Nothing is deleted, the
+ * row only moves to 'archived'. The filter refuses a draft that moved on since it loaded (dated, approved,
+ * published); an empty `.select()` is that refusal. Called once the Undo window has passed (decisions.ts).
+ */
+export async function archiveStaleDraft(id: string): Promise<void> {
+  const { data, error } = await supabase.from('carousel_drafts')
+    .update({ status: 'archived' })
+    .eq('id', id).is('client_id', null).eq('status', 'review')
+    .is('published_at', null).is('scheduled_at', null)
+    .select('id')
+  if (error) throw error
+  if (!data || data.length === 0) throw new Error('Not archived: this draft changed since it loaded.')
+}

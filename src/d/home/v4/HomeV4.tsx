@@ -47,6 +47,12 @@ function Drafts({ seat, h }: { seat: Seat; h: HomeData }) {
     {'v' in r && r.v > 0 && 'v' in d && <small className="hm4-sub">{d.v} drafted</small>}
   </Band>
 }
+function Review({ seat, h }: { seat: Seat; h: HomeData }) {
+  const r = h.review[seat]
+  return <Band id="review" label="Posts to review" seat={seat} href={dHash('content', 'now', { lane: seat })} r={r} retry={h.retry.review} src="Content">
+    <span className={'v' in r && r.v > 0 ? 'hm4-action' : ''}><Figure r={r} size="xl" unit={'v' in r && r.v === 0 ? 'none waiting' : undefined} /></span>
+  </Band>
+}
 function Invites({ seat, h }: { seat: Seat; h: HomeData }) {
   const r = invites(h,seat), bars = seriesOf(h.lanes.cc.value,seat,h.now,'invitation','sent',7)
   const max = Math.max(1,...bars.map(b => b.v ?? 0))
@@ -77,7 +83,7 @@ function Limit({ seat, h }: { seat: Seat; h: HomeData }) {
 export function SeatCard({ seat, h }: { seat: Seat; h: HomeData }) {
   return <section className="hm4-card" data-seat={seat} aria-label={SEAT_NAME[seat]} data-bx-block>
     <header><span className="hm4-avatar">{SEAT_NAME[seat][0]}</span><h2>{SEAT_NAME[seat]}</h2><Limit seat={seat} h={h} /></header>
-    <div className="hm4-card-bands"><Week seat={seat} h={h} /><Drafts seat={seat} h={h} /><Invites seat={seat} h={h} /><Ready seat={seat} h={h} /></div>
+    <div className="hm4-card-bands"><Week seat={seat} h={h} /><Review seat={seat} h={h} /><Drafts seat={seat} h={h} /><Invites seat={seat} h={h} /><Ready seat={seat} h={h} /></div>
   </section>
 }
 /** Phone matrix: a cell is too narrow for the line, so a row whose read failed gets one line under it. */
@@ -93,6 +99,8 @@ function Matrix({ h }: { h: HomeData }) {
     <div className="hm4-matrix-row hm4-matrix-head"><span />{seats.map(s=><b key={s}>{SEAT_NAME[s]}</b>)}</div>
     <div className="hm4-matrix-row"><b>Next week</b>{seats.map(s=><div key={s}><Week seat={s} h={h}/></div>)}</div>
     <RowFail src="Content" rs={seats.map(s => h.content[s])} retry={h.retry.content} />
+    <div className="hm4-matrix-row"><b>Posts to review</b>{seats.map(s=><div key={s}><Review seat={s} h={h}/></div>)}</div>
+    <RowFail src="Content" rs={seats.map(s => h.review[s])} retry={h.retry.review} />
     <div className="hm4-matrix-row"><b>DMs waiting</b>{seats.map(s=><div key={s}><Drafts seat={s} h={h}/></div>)}</div>
     <RowFail src="DMs" rs={seats.map(s => h.waiting[s])} retry={h.retry.drafts} />
     <div className="hm4-matrix-row"><b>Invites</b>{seats.map(s=><div key={s}><Invites seat={s} h={h}/></div>)}</div>

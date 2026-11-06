@@ -16,6 +16,7 @@ import { SEAT_NAME, seatOf } from '../seats'
 import { useDConfirm } from '../ui/confirm'
 import { Btn } from '../ui/Key'
 import { BookedKey } from '../ops/BookedKey'
+import { addedAgo } from '../ops/model'
 
 const SHOWN = 6
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e))
@@ -54,6 +55,7 @@ function Row({ d, refresh, onDone, v4 = false }: { d: OpsDraft; refresh: () => v
         : title}{open && detail && <small className="gt-td">{detail}</small>}{err && <small className="gt-err">{err}</small>}<BookedKey d={d} onDone={() => { onDone?.(d.id); setTimeout(refresh, 420) }} /></span>
       <span className="gt-m">
         {dl && <b className={`gt-${dl.tone}`}>{dl.tone === 'over' ? 'overdue' : dl.text}</b>}
+        {addedAgo(d.created_at) && <span className="gt-age">{addedAgo(d.created_at)}</span>}
         {seat && seat !== 'ivan' && <span>{SEAT_NAME[seat]}</span>}
         <button type="button" className="gt-rm" data-verb="remove" disabled={busy} onClick={() => void remove()} aria-label={`Remove: ${title}`}>remove</button>
       </span>

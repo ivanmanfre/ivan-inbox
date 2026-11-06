@@ -422,3 +422,12 @@ html.cal-dragging,html.cal-dragging *{cursor:grabbing!important;user-select:none
 html:is(.cal-dragging,.cal-dropped) .pl2-hc{display:none!important}
 @keyframes pl2-refuse{0%,100%{translate:0}25%{translate:-4px}75%{translate:4px}}
 @media (prefers-reduced-motion:reduce){:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-wks .pl2-card.cal-refuse{animation:none;outline:1px solid var(--ds-sev-attention-ui)}}
+
+/* POLAND METER + GAP CARD (review 2026-11-06 #31). The split sits after the week's mix; short weeks read in the warn
+   tone. A short week's free day holds the best waiting Poland draft as a dashed card with one key. */
+:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-wk-pol{font:400 13px/18px var(--ds-font);color:var(--ds-text-2);white-space:nowrap}
+:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-wk-pol.pl2-wk-short{color:var(--ds-warn-ui, var(--warn))}
+:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-gap{flex:1 1 auto;display:flex;flex-direction:column;gap:6px;min-height:56px;padding:10px;border:1px dashed var(--ds-line-strong);border-radius:var(--pl2-r-card,10px);background:transparent}
+:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-gap-l{font:500 12px/16px var(--ds-font);color:var(--ds-text-3)}
+:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-gap-t{font:400 13px/18px var(--ds-font);color:var(--ds-text);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-gap-k{align-self:flex-start;min-height:32px;padding:0 10px;border-radius:8px;background:var(--ds-text);color:var(--ds-canvas,#fff);font:500 13px/32px var(--ds-font)}

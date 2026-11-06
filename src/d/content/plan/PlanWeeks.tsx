@@ -12,6 +12,13 @@ import { dropLabel, dropPlan, moveError, refuseWhy } from './planDrag'
 import { ACCT_NAME, ST_WORD, flagsFor, mixLine, reasonFor, timeLabel, tzOf, weekDays, type Acct, type PlanItem, type Tz } from './planBrain'
 import { thumbUrl } from './thumbs'
 import { useHoverIntent } from './useHoverIntent'
+import type { ContentDraft } from '../../../lib/content'
+import type { PolandRead } from '../../../lib/poland'
+import { zonedToUtc } from '../laneTime'
+import { hmText, spacedFrom, type SlotHm } from '../model'
+import { slotWords, type Reserved } from '../weekVerbs'
+import { warsawDay } from '../../ui/time'
+import { POLAND_TARGET, mixWords, weekMix } from './poland'
 
 // PLAN > WEEKS (spec 2026-10-12 §3a, R2.1, R2.2, R3.5; mock v3 `weeks()`). Three week rows, Mon to Fri plus a
 // weekend day only when a post sits there. The header carries the name, the range, the fill meter, n of target
@@ -70,8 +77,32 @@ function Card({ it, acct, tz, strip, late, refuse, describedBy, bind, onOpen }: 
   </button>
 }
 
+/** Ivan's seat: the Poland split per week and the Poland drafts a short week can take (review 2026-11-06 #31). */
+export type PolandMeter = {
+  /** null: still reading. */
+  reads: ReadonlyMap<string, PolandRead> | null
+  failed: boolean
+  /** Best first (polandPicks). */
+  picks: readonly ContentDraft[]
+  hm: SlotHm
+  /** Held "Approve + schedule" taps (weekVerbs): their slots are taken and a held Poland one counts. */
+  reserved: ReadonlyMap<string, Reserved>
+  /** One tap: approve and schedule the draft at that instant (held for Undo). */
+  onTake: (r: ContentDraft, at: Date) => void
+}
+
+/** The dashed card in a short week's free day: the best Poland draft waiting in Review, one tap to approve it there. */
+function PolandGap({ r, at, onTake }: { r: ContentDraft; at: Date; onTake: (r: ContentDraft, at: Date) => void }) {
+  const title = (r.title ?? '').replace(/^\[[^\]]*\]\s*/, '').trim() || (r.post_body ?? '').split('\n').find(l => l.trim())?.trim() || 'Untitled post'
+  return <div className="pl2-gap" data-gap-draft={r.id}>
+    <span className="pl2-gap-l">Poland · waiting in Review</span>
+    <span className="pl2-gap-t">{title}</span>
+    <button type="button" className="pl2-gap-k" data-verb="plan-poland-take" onClick={() => onTake(r, at)}>Approve + schedule {slotWords(at).replace(/^\w+ \d+ \w+ · /, '')}</button>
+  </div>
+}
+
 /** `hover` false (the panel is open) keeps the hover card shut; it stays shut on the card focus returns to after. */
-export function PlanWeeks({ read, items: given, today, onOpen, onChanged, hover = true }: { read: PlanRead; items: PlanItem[]; today: string; onOpen: (it: PlanItem) => void; onChanged?: () => void; hover?: boolean }) {
+export function PlanWeeks({ read, items: given, today, onOpen, onChanged, hover = true, poland = null }: { read: PlanRead; items: PlanItem[]; today: string; onOpen: (it: PlanItem) => void; onChanged?: () => void; hover?: boolean; poland?: PolandMeter | null }) {
   const f = useFrameMaybe()
   const hoverable = useSyncExternalStore(subscribeHover, readHover, () => false)
   const level = useMotionLevel()
@@ -172,6 +203,12 @@ export function PlanWeeks({ read, items: given, today, onOpen, onChanged, hover 
   const card = (it: PlanItem, late?: string) => <Card key={it.key} it={it} acct={acct} tz={tz} strip={strip} late={late} refuse={refuseWhy(it, acct)}
     describedBy={hc.open === it.key && hoverItem ? hcId : undefined} bind={hc.bind(it.key)} onOpen={open} />
 
+  // Each short week takes its own pick, best first, so one draft is never offered twice. Held picks are not offered.
+  const left = poland ? poland.picks.filter(p => !poland.reserved.has(p.id)) : []
+  // Every dated instant the gap must keep 24 h from (the database's spacing rule): the plan's posts and held slots.
+  const busy = poland ? [...items.map(i => i.at).filter((x): x is string => !!x), ...[...poland.reserved.values()].map(r => r.at)] : []
+  const heldDays = new Set(poland ? [...poland.reserved.values()].map(r => warsawDay(r.at)) : [])
+
   return <div ref={root} className="pl2-wks" data-entered={entered || undefined} data-pulsed={pulsed || undefined}>
     {weeks.map((w, wi) => {
       const end = addDays(w.start, 6)
@@ -189,6 +226,12 @@ export function PlanWeeks({ read, items: given, today, onOpen, onChanged, hover 
       const mix = mixLine(drawn)
       const seg0 = wi * 5
       let free = Number.isFinite(w.open) ? Math.max(0, w.open) : 0
+      const pm0 = poland?.reads ? weekMix(drawn, poland.reads, target) : null
+      // A held Poland tap in this week already counts (its card is not on the plan until the re-read).
+      const drawnIds = new Set(drawn.map(i => i.draftId))
+      const heldPoland = poland ? [...poland.reserved.entries()].filter(([id, r]) => r.poland && !drawnIds.has(id) && warsawDay(r.at) >= w.start && warsawDay(r.at) <= end).length : 0
+      const pm = pm0 ? { ...pm0, poland: pm0.poland + heldPoland } : null
+      let gapsWanted = pm ? Math.max(0, POLAND_TARGET - pm.poland) : 0
       return <section key={w.start} className="pl2-wk" aria-label={NAME[w.which] ?? 'Week'}>
         <div className="pl2-wk-h">
           <b>{NAME[w.which] ?? 'Week'}</b>
@@ -199,6 +242,8 @@ export function PlanWeeks({ read, items: given, today, onOpen, onChanged, hover 
           </span>
           <span className="pl2-wk-n">{count > target ? `${count} posts, plan says ${target}` : `${count} of ${target}`}</span>
           {mix && <span className="pl2-wk-mix">{mix}</span>}
+          {poland && <span className={`pl2-wk-pol${pm && pm.poland < POLAND_TARGET ? ' pl2-wk-short' : ''}`} data-poland={pm ? pm.poland : undefined}>
+            {pm ? mixWords(pm) : poland.failed ? 'Poland split could not be read' : 'Reading the Poland split…'}</span>}
         </div>
         <div className="pl2-grid" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}>
           {days.map(d => {
@@ -209,6 +254,12 @@ export function PlanWeeks({ read, items: given, today, onOpen, onChanged, hover 
             const lateHere = day === lateDay ? late : []
             const well = !past && !isToday && d < 5 && !cards.length && !lateHere.length && free > 0
             if (well) free--
+            // A free day in a week short of Poland posts holds the best waiting Poland draft, at the seat's own time.
+            const candAt = well && poland ? Date.parse(zonedToUtc(day, hmText(poland.hm), 'Europe/Warsaw')) : NaN
+            const fits = Number.isFinite(candAt) && !heldDays.has(day) && spacedFrom(busy, candAt)
+            const gap = fits && gapsWanted > 0 && left.length ? left.shift()! : null
+            if (gap) gapsWanted--
+            const gapAt = gap ? new Date(candAt) : null
             return <div key={day} className={`pl2-dcol${past ? ' pl2-past' : ''}${isToday ? ' pl2-today' : ''}`} data-day={day} data-cal-day={past ? undefined : day}
               style={{ '--pl2-d': `${delay()}ms` } as CSSProperties}>
               <div className="pl2-dh">
@@ -220,7 +271,7 @@ export function PlanWeeks({ read, items: given, today, onOpen, onChanged, hover 
                 {lateHere.map(it => card(it, `Waiting since ${planDay(it.day!)}`))}
                 {cards.map(it => card(it))}
               </div>}
-              {well && <div className="pl2-free">Free</div>}
+              {gap && gapAt ? <PolandGap r={gap} at={gapAt} onTake={poland!.onTake} /> : well && <div className="pl2-free">Free</div>}
             </div>
           })}
         </div>

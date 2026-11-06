@@ -118,6 +118,18 @@ export function ago(iso: string | null | undefined, now = Date.now()): string {
   return `${Math.round(m / 1440)}d ago`
 }
 
+/** A task's age as plain words beside its due day ("added 3 weeks ago"): the tooltip never shows on the phone. */
+export function addedAgo(iso: string | null | undefined, now = Date.now()): string {
+  const t = new Date(iso ?? '').getTime()
+  if (!Number.isFinite(t)) return ''
+  const h = (now - t) / 3_600_000
+  if (h < 1) return 'added just now'
+  if (h < 24) return `added ${Math.round(h)}h ago`
+  const d = Math.floor(h / 24)
+  if (d < 14) return `added ${d} day${d === 1 ? '' : 's'} ago`
+  return `added ${Math.floor(d / 7)} weeks ago`
+}
+
 const firstLine = (s: string) => s.split('\n').map(x => x.trim()).find(Boolean) ?? ''
 const str = (v: unknown) => (typeof v === 'string' ? v : '')
 

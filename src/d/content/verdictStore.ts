@@ -67,6 +67,12 @@ export function markShown(id: string): void {
   if (!shownAt.has(id)) shownAt.set(id, Date.now())
 }
 
+/** Ms from the card first on screen to now, for a verdict written outside this store (Approve + schedule). */
+export function shownForMs(id: string): number | undefined {
+  const seen = shownAt.get(id)
+  return seen === undefined ? undefined : Math.max(0, Date.now() - seen)
+}
+
 async function commit(id: string): Promise<void> {
   const e = entries.get(id)
   if (!e || (e.phase !== 'held' && e.phase !== 'failed')) return

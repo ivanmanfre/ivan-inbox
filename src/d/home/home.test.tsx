@@ -19,7 +19,8 @@ const home = (o: Partial<HomeData> = {}): HomeData => ({
   content: { ivan: { v: { n: 3, days, below: false } }, risedtc: { wait: true }, arch: { fail: 'boom' } , swishdm: { fail: 'boom' }, anna: { fail: 'boom' }},
   drafts: { ivan: { v: 2 }, risedtc: { wait: true }, arch: { fail: 'x' } , swishdm: { fail: 'x' }, anna: { fail: 'x' }},
   waiting: { ivan: { v: 5 }, risedtc: { wait: true }, arch: { fail: 'x' }, swishdm: { fail: 'x' }, anna: { fail: 'x' } },
-  retry: { content: vi.fn(), drafts: vi.fn(), lanes: vi.fn() }, ...o,
+  review: { ivan: { v: 4 }, risedtc: { wait: true }, arch: { fail: 'x' } , swishdm: { v: 0 }, anna: { v: 0 }},
+  retry: { content: vi.fn(), drafts: vi.fn(), review: vi.fn(), lanes: vi.fn() }, ...o,
 })
 
 describe('home tiles', () => {

@@ -10,6 +10,7 @@ import {
   type ContentDraft, type ContentLane,
 } from '../../lib/content'
 import { warsawDay, warsawDayTime, warsawDm, warsawDow, warsawHm } from '../ui/time'
+import { zonedToUtc } from './laneTime'
 
 export type Lane = ContentLane
 export const LANES: readonly Lane[] = ['ivan', 'risedtc', 'arch', 'swishdm']
@@ -238,14 +239,42 @@ export const BUFFER_DAYS = 3
 
 export type Slot = { at: Date; skipped: { day: string; why: 'weekend' | 'has a post' }[] }
 
+/** "10:45": the seat's own posting time. */
+export type SlotHm = { h: number; m: number }
+export const SLOT_DEFAULT: SlotHm = { h: SLOT_H, m: SLOT_M }
+
 /**
- * Today's nextFreeSlot (wb/draft/actions: 3 days out, 10:45 local, first day
+ * THE SEAT'S REAL SLOT (review 2026-11-06 #15): the Warsaw time of day its posts most often went out at, over the
+ * last 90 days (published or scheduled), instead of one fixed SLOT_H. Ivan's history: 10:45 on 24 of ~50 posts,
+ * then 13:00 (5). Ties go to the earlier time; fewer than 3 dated posts keep the fixed 10:45.
+ */
+export function seatSlotOf(rows: readonly Pick<ContentDraft, 'scheduled_at' | 'published_at' | 'status'>[], now: number = Date.now()): SlotHm {
+  const since = now - 90 * DAY_MS
+  const tally = new Map<string, number>()
+  for (const r of rows) {
+    const at = r.scheduled_at ?? r.published_at
+    const t = at ? Date.parse(at) : NaN
+    if (!Number.isFinite(t) || t < since) continue
+    if (!(r.published_at || r.status === 'published' || r.status === 'scheduled')) continue
+    const hm = warsawHm(t)
+    tally.set(hm, (tally.get(hm) ?? 0) + 1)
+  }
+  const total = [...tally.values()].reduce((a, b) => a + b, 0)
+  if (total < 3) return SLOT_DEFAULT
+  const [best] = [...tally.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+  const [h, m] = best[0].split(':').map(Number)
+  return Number.isFinite(h) && Number.isFinite(m) ? { h, m } : SLOT_DEFAULT
+}
+
+/**
+ * Today's nextFreeSlot (wb/draft/actions: 3 days out, at the seat's slot time, first day
  * the queue does not hold) plus the weekday guard operator_set_schedule_date
  * applies (coordinator ruling): Saturday and Sunday are skipped too.
+ * `hm` is the seat's real slot (seatSlotOf); the device clock is Ivan's Warsaw clock.
  */
-export function nextFreeWeekday(taken: Set<string>, now: number = Date.now()): Slot {
+export function nextFreeWeekday(taken: Set<string>, now: number = Date.now(), hm: SlotHm = SLOT_DEFAULT): Slot {
   const t = new Date(now)
-  t.setHours(SLOT_H, SLOT_M, 0, 0)
+  t.setHours(hm.h, hm.m, 0, 0)
   t.setDate(t.getDate() + BUFFER_DAYS)
   const skipped: Slot['skipped'] = []
   for (let i = 0; i < 366; i++) {
@@ -256,6 +285,36 @@ export function nextFreeWeekday(taken: Set<string>, now: number = Date.now()): S
     t.setDate(t.getDate() + 1)
   }
   return { at: t, skipped }
+}
+
+/** "10:45" */
+export const hmText = (hm: SlotHm) => `${String(hm.h).padStart(2, '0')}:${String(hm.m).padStart(2, '0')}`
+
+/** True when `at` keeps the database's spacing rule against every dated post (zzy_content_plan_ivan_spacing):
+ *  24 h or more from each, and never the same Warsaw day. */
+export function spacedFrom(busy: readonly string[], at: number): boolean {
+  const day = warsawDay(at)
+  return busy.every(b => { const t = Date.parse(b); return !Number.isFinite(t) || (Math.abs(t - at) >= DAY_MS && warsawDay(t) !== day) })
+}
+
+/**
+ * The next free slot in Warsaw time (cross-review 2026-11-06): the first weekday from BUFFER_DAYS out, at the seat's
+ * own slot (seatSlotOf), that keeps the spacing rule against every dated post (`busy`, ISO instants). Built on Warsaw
+ * days with zonedToUtc, so a browser in another zone gets the same Warsaw time.
+ */
+export function nextSpacedSlot(busy: readonly string[], now: number = Date.now(), hm: SlotHm = SLOT_DEFAULT): Slot {
+  const skipped: Slot['skipped'] = []
+  const start = Date.parse(`${warsawDay(now)}T12:00:00Z`) + BUFFER_DAYS * DAY_MS
+  for (let i = 0; i < 366; i++) {
+    const day = warsawDay(start + i * DAY_MS)
+    const noon = Date.parse(`${day}T12:00:00Z`)
+    const dow = warsawDow(noon)
+    const at = Date.parse(zonedToUtc(day, hmText(hm), 'Europe/Warsaw'))
+    const we = dow === 'Sat' || dow === 'Sun'
+    if (!we && spacedFrom(busy, at)) return { at: new Date(at), skipped }
+    skipped.push({ day: `${dow} ${warsawDm(noon)}`, why: we ? 'weekend' : 'has a post' })
+  }
+  return { at: new Date(Date.parse(zonedToUtc(warsawDay(start), hmText(hm), 'Europe/Warsaw'))), skipped }
 }
 
 // ---------- moving a post ----------

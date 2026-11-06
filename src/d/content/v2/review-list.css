@@ -78,6 +78,10 @@
 :root[data-skin-on~='content.review'] .cv2-fold-h:hover{background:var(--ds-fill-hover);color:var(--ds-text)}
 :root[data-skin-on~='content.review'] .cv2-fold-h i{font-style:normal;font-size:11px;color:var(--ds-text-3);width:12px}
 :root[data-skin-on~='content.review'] .cv2-fold-h b{font-weight:var(--ds-fw-em);color:var(--ds-text)}
+/* Going stale: the fold head with its one Archive all key at the row's end (review 2026-11-06 #30). */
+:root[data-skin-on~='content.review'] .cv2-fold-row{display:flex;align-items:center;gap:8px}
+:root[data-skin-on~='content.review'] .cv2-fold-row .cv2-fold-h{flex:1;min-width:0}
+:root[data-skin-on~='content.review'] .cv2-fold-row .cv2-fold-h span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 :root[data-skin-on~='content.review'] .cv2-board h2{margin:0;padding:0;min-height:24px}
 :root[data-skin-on~='content.review'] .cv2-board > .cv2-note{margin:0 0 8px}
 :root[data-skin-on~='content.review'] .d-phone .cv2-board .d-failed button{min-width:44px;min-height:44px}
@@ -206,10 +210,14 @@
   :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp .cv2-li-empty{background:#f3f2ef;box-shadow:inset 0 0 0 1px #e0dfdc;cursor:default}
   :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp .cv2-li-count{font-size:11px;line-height:15px}
   :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp-edit{margin:0;cursor:auto;display:flex;flex-direction:column;gap:8px}
-  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp-edit textarea{width:100%;box-sizing:border-box;min-height:160px;resize:vertical;padding:8px 10px;border:1px solid #0a66c2;border-radius:8px;background:#fff;color:#191919;font:400 12px/16.5px var(--ds-font);white-space:pre-wrap}
+  /* Editing grows the text to 15px (cards stay 12px): typing at 12px let typos through (review 2026-11-06 #40). */
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp-edit textarea{width:100%;box-sizing:border-box;min-height:160px;resize:vertical;padding:8px 10px;border:1px solid #0a66c2;border-radius:8px;background:#fff;color:#191919;font:400 15px/22px var(--ds-font);white-space:pre-wrap}
   :root[data-skin-on~='content.review'] .cv2-grid .cv2-gp-keys{display:flex;gap:6px}
   :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-meta .cv2-tag-warn:not([title]){display:none}
   /* Each card is its own height, so the keys sit right under its post (a long neighbour no longer leaves a gap). */
   :root[data-skin-on~='content.review'] .cv2-list.cv2-grid > .cv2-row,:root[data-skin-on~='content.review'] .cv2-grid .cv2-row-main{height:auto}
   :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-main{grid-template-rows:auto auto auto}
 }
+
+/* The one-tap key on the phone row: "Approve · 10:45" (the day is in the Undo toast), so the row's menu stays on screen (review 2026-11-06 #15). */
+:root[data-skin-on~='content.review'] .d-phone .cv2-k-dow{display:none}

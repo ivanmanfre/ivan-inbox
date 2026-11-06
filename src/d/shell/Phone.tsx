@@ -44,6 +44,7 @@ export function Dock() {
   const trio: Partial<Record<string, { n: ReturnType<typeof dmNumbers>; failed: ReturnType<typeof seatFailed> }>> = {
     dms: { n: dmNumbers(c, 'needs'), failed: seatFailed(c.dms) },
     ops: { n: opsNumbers(c), failed: opsF },
+    content: { n: contentNumbers(c), failed: seatFailed(c.content) },
   }
   const calls = c.calls.value
   return (
@@ -53,7 +54,6 @@ export function Dock() {
         {PLACE_ORDER.filter(id => PLACES[id].dock).map(id => (
           <a key={id} href={dHash(id)} className={`d-dk${f.route.place === id ? ' d-on' : ''}`} aria-current={f.route.place === id ? 'page' : undefined}>
             <b>{PLACES[id].label}</b>
-            {id === 'content' && Object.values(contentNumbers(c)).some(n => (n ?? 0) > 0) && <i className="d-content-attention" aria-label="Content needs a tap" />}
             {trio[id] && <SeatTrio numbers={trio[id]!.n} failed={trio[id]!.failed} />}
             {id === 'sales' && (
               <u className="d-trio" aria-label={calls == null ? (c.calls.failed ? 'calls today could not be read' : 'reading calls today') : `${calls} calls today not started`}>
@@ -199,7 +199,11 @@ export function PhoneTabs() {
   else if (opsN) badge.ops = { n: opsN > 99 ? '99+' : String(opsN), tone: 'ink', label: `${opsN} waiting on you` }
   if (calls == null && c.calls.failed) badge.sales = { n: '!', tone: 'warn', label: 'calls today could not be read' }
   else if (calls) badge.sales = { n: String(calls), tone: 'ink', label: `${calls} calls today not started` }
-  const contentDot = Object.values(contentNumbers(c)).some(n => (n ?? 0) > 0)
+  // Content shows its real review count, like DMs and Ops (review 2026-11-06 #36; was a dot).
+  const contentF = Object.values(seatFailed(c.content)).some(Boolean)
+  const contentN = total({ ...contentNumbers(c), anna: null })
+  if (contentF && contentN == null) badge.content = { n: '!', tone: 'warn', label: 'Content count could not be read' }
+  else if (contentN) badge.content = { n: contentN > 99 ? '99+' : String(contentN), tone: 'ink', label: `${contentN} posts to review` }
   const on = f.route.place
   useLayoutEffect(() => {
     const n = nav.current, l = lens.current
@@ -223,10 +227,9 @@ export function PhoneTabs() {
             const b = badge[id]
             return (
               <a key={id} href={dHash(id)} className={`d-dk po-tab${on === id ? ' d-on' : ''}`} aria-current={on === id ? 'page' : undefined}
-                aria-label={b ? `${PLACES[id].label}, ${b.label}` : id === 'content' && contentDot ? `${PLACES[id].label}, needs a tap` : PLACES[id].label}>
+                aria-label={b ? `${PLACES[id].label}, ${b.label}` : PLACES[id].label}>
                 <span className="po-tab-ico"><DIcon name={PLACES[id].icon} />
                   {b && <i className={`po-badge po-badge-${b.tone}`}>{b.n}</i>}
-                  {id === 'content' && contentDot && <i className="po-dot d-content-attention" />}
                 </span>
                 <b>{PLACES[id].label}</b>
               </a>

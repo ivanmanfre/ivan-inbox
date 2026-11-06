@@ -24,6 +24,8 @@ export const HOLD_MS = 8000
 
 type Held = {
   kind: Decision
+  /** The write when it is not the kind's own (Approve + schedule, Archive stale). The screen still reads `kind`. */
+  write?: (id: string) => Promise<void>
   timer: ReturnType<typeof setTimeout> | null
   onCommitted?: () => void
   onFailed?: (e: unknown) => void
@@ -49,7 +51,7 @@ async function commit(id: string): Promise<void> {
   if (h.timer) clearTimeout(h.timer)
   h.timer = null
   try {
-    await WRITE[h.kind](id)
+    await (h.write ?? WRITE[h.kind])(id)
     held.delete(id)
     publish()
     h.onCommitted?.()
@@ -65,10 +67,10 @@ async function commit(id: string): Promise<void> {
  * Hold a decision on a draft and write it after `ms` (default HOLD_MS) unless
  * undone. A second decision on the same draft replaces the first.
  */
-export function holdDecision(id: string, kind: Decision, o: { ms?: number; onCommitted?: () => void; onFailed?: (e: unknown) => void } = {}): void {
+export function holdDecision(id: string, kind: Decision, o: { ms?: number; write?: (id: string) => Promise<void>; onCommitted?: () => void; onFailed?: (e: unknown) => void } = {}): void {
   const prev = held.get(id)
   if (prev?.timer) clearTimeout(prev.timer)
-  const h: Held = { kind, timer: null, onCommitted: o.onCommitted, onFailed: o.onFailed }
+  const h: Held = { kind, write: o.write, timer: null, onCommitted: o.onCommitted, onFailed: o.onFailed }
   held.set(id, h)
   h.timer = setTimeout(() => { void commit(id) }, o.ms ?? HOLD_MS)
   publish()

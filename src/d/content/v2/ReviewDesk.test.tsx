@@ -9,10 +9,10 @@ import { clearBoardState, setBoardState } from '../../../lib/clientBoardState'
 // Write parity for the Brief 4 review desk (SPEC-content §5): the same verdict
 // store, the same schedule / board writes, the reason as the drop's commit, and
 // the seat's next step only once a verdict is SAVED. Every write is mocked.
-const lib = vi.hoisted(() => ({ setVerdict: vi.fn(), scheduleGuarded: vi.fn(), setBoardVisible: vi.fn(), setScheduleDateAt: vi.fn(), deleteDraft: vi.fn(), deleteClientDraft: vi.fn(), saveDraftBody: vi.fn(), saveClientDraftBody: vi.fn() }))
+const lib = vi.hoisted(() => ({ setVerdict: vi.fn(), scheduleGuarded: vi.fn(), archiveStaleDraft: vi.fn(), approveReviewDraft: vi.fn(), setBoardVisible: vi.fn(), setScheduleDateAt: vi.fn(), deleteDraft: vi.fn(), deleteClientDraft: vi.fn(), saveDraftBody: vi.fn(), saveClientDraftBody: vi.fn() }))
 vi.mock('../../../lib/verdicts', async orig => ({ ...(await orig<typeof import('../../../lib/verdicts')>()), setVerdict: lib.setVerdict }))
-vi.mock('../writes', () => ({ scheduleGuarded: lib.scheduleGuarded }))
-vi.mock('../../../lib/content', async orig => ({ ...(await orig<typeof import('../../../lib/content')>()), setBoardVisible: lib.setBoardVisible, setScheduleDateAt: lib.setScheduleDateAt, deleteDraft: lib.deleteDraft, deleteClientDraft: lib.deleteClientDraft, saveDraftBody: lib.saveDraftBody, saveClientDraftBody: lib.saveClientDraftBody }))
+vi.mock('../writes', () => ({ scheduleGuarded: lib.scheduleGuarded, archiveStaleDraft: lib.archiveStaleDraft }))
+vi.mock('../../../lib/content', async orig => ({ ...(await orig<typeof import('../../../lib/content')>()), setBoardVisible: lib.setBoardVisible, approveReviewDraft: lib.approveReviewDraft, setScheduleDateAt: lib.setScheduleDateAt, deleteDraft: lib.deleteDraft, deleteClientDraft: lib.deleteClientDraft, saveDraftBody: lib.saveDraftBody, saveClientDraftBody: lib.saveClientDraftBody }))
 vi.mock('../../../lib/brainPage', async orig => ({ ...(await orig<typeof import('../../../lib/brainPage')>()), fetchDraftSources: vi.fn(() => Promise.resolve(new Map())) }))
 vi.mock('../useEarlyReads', () => ({ useEarlyReads: () => new Map() }))
 
@@ -20,7 +20,8 @@ import { DESK_SEATS, ReviewDesk, deskModel, deskSeatOf, nextOf, pillOf } from '.
 import type { Lane } from '../model'
 import { buildNow } from '../weekModel'
 import { flushVerdicts, resetVerdictsForTest, useJudged } from '../verdictStore'
-import { resetDecisionsForTest } from '../decisions'
+import { flushDecisions, resetDecisionsForTest, usePendingDecisions } from '../decisions'
+import { resetReservedForTest } from '../weekVerbs'
 import type { WeekRead } from '../useWeek'
 
 const NOW = Date.parse('2026-09-29T10:00:00Z')
@@ -42,8 +43,9 @@ const read = (rows: ContentDraft[]): WeekRead => ({ rows, source: 'live', at: at
 
 function Harness({ rows = ROWS, onOpen = vi.fn(), onEdit = vi.fn(), focusId = null, show = 'ivan', verdicts, boardRead }: { rows?: ContentDraft[]; onOpen?: () => void; onEdit?: () => void; focusId?: string | null; show?: Lane; verdicts?: ReadonlyMap<string, 'keep'>; boardRead?: { loading: boolean; error: string | null; loadedAt: string | null; refresh: () => void } }) {
   const judged = useJudged()
-  const week = buildNow(rows, { now: NOW, judged, show, verdicts, includeBoard: true })
-  const total = buildNow(rows, { now: NOW, judged, verdicts, includeBoard: true })
+  const pending = usePendingDecisions()
+  const week = buildNow(rows, { now: NOW, judged, pending, show, verdicts, includeBoard: true })
+  const total = buildNow(rows, { now: NOW, judged, pending, verdicts, includeBoard: true })
   return <ReviewDesk week={week} total={total} read={read(rows)} show={show} setShow={vi.fn()} now={NOW} openId={null} focusId={focusId}
     onOpen={onOpen} onEdit={onEdit} onChanged={vi.fn()} firstDay="2026-09-28" seatRows={() => rows} rows={rows}
     armed={new Set()} armedFailed={false} boardRead={boardRead} />
@@ -56,7 +58,7 @@ const saveOk = (id: string, v: string, o: { reasons?: string[] }) => Promise.res
 
 beforeEach(() => {
   lib.setVerdict.mockReset(); lib.scheduleGuarded.mockReset(); lib.setBoardVisible.mockReset()
-  lib.setScheduleDateAt.mockReset(); lib.deleteDraft.mockReset(); lib.deleteClientDraft.mockReset()
+  lib.setScheduleDateAt.mockReset(); lib.deleteDraft.mockReset(); lib.deleteClientDraft.mockReset(); lib.archiveStaleDraft.mockReset(); lib.approveReviewDraft.mockReset(); resetReservedForTest()
   resetVerdictsForTest(); resetDecisionsForTest()
   for (const client of ['risedtc', 'arch', 'swishdm']) clearBoardState(client)
   vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
@@ -249,7 +251,8 @@ describe('the seat next step comes only after the verdict is saved', () => {
     let done!: (v: unknown) => void
     lib.setVerdict.mockImplementation(() => new Promise(r => { done = r }))
     renderInFrame(<Harness />)
-    fireEvent.click(verb(card('b1'), 'card-keep')!)
+    // Approve only (the a key, or the row menu): the one-tap key is Approve + schedule now
+    act(() => card('b1')!.focus()); key('a')
     expect(verb(strip('b1'), 'next-schedule')).toBeNull()
     const flushing = flushVerdicts()
     await waitFor(() => expect(strip('b1')!.dataset.phase).toBe('saving'))
@@ -418,18 +421,18 @@ describe('the row', () => {
   it('typed text that is not saved holds Approve, Skip and Drop, and the a key; an untouched box does not', () => {
     renderInFrame(<Harness rows={[brain({ id: 'u1', post_body: 'Text.' }), row({ id: 'u2', post_body: 'Other.' })]} />)
     fireEvent.click(card('u1')!.querySelector('.cv2-li-b p')!)
-    expect(verb(card('u1'), 'card-keep')!.disabled).toBe(false)
+    expect(verb(card('u1'), 'card-approve-schedule')!.disabled).toBe(false)
     fireEvent.change(card('u1')!.querySelector('textarea')!, { target: { value: 'Text, rewritten.' } })
-    expect(verb(card('u1'), 'card-keep')!.disabled).toBe(true)
+    expect(verb(card('u1'), 'card-approve-schedule')!.disabled).toBe(true)
     expect(verb(card('u1'), 'card-drop')!.disabled).toBe(true)
-    expect(verb(card('u1'), 'card-keep')!.title).toBe('Save or cancel your edit first')
+    expect(verb(card('u1'), 'card-approve-schedule')!.title).toBe('Save or cancel your edit first')
     act(() => card('u1')!.focus())
     key('a')
     expect(strip('u1')).toBeNull()
     expect(card('u1')).toBeTruthy()
     // an edit back to the loaded text is not unsaved
     fireEvent.change(card('u1')!.querySelector('textarea')!, { target: { value: 'Text.' } })
-    expect(verb(card('u1'), 'card-keep')!.disabled).toBe(false)
+    expect(verb(card('u1'), 'card-approve-schedule')!.disabled).toBe(false)
   })
 })
 
@@ -545,5 +548,101 @@ describe('Ideas landing reveals and selects the exact draft', () => {
     expect(verb(document, 'fix-fold')?.getAttribute('aria-expanded')).toBe('true')
     expect(card('b1')?.getAttribute('aria-current')).not.toBe('true')
     expect(lib.setVerdict).not.toHaveBeenCalled()
+  })
+})
+
+describe('approve + schedule in one tap (review 2026-11-06 #15)', () => {
+  // Ivan's real history: most posts went out at 13:00 here, so the key must name 13:00, not the fixed 10:45.
+  const hist = Array.from({ length: 4 }, (_, i) => row({ id: `p${i}`, status: 'published', published_at: '2026-09-1' + i + 'T11:00:00Z', scheduled_at: '2026-09-1' + i + 'T11:00:00Z' }))
+  it('names the seat\'s real slot, holds 8 s, then approves and schedules; Approve only sits in the menu', async () => {
+    lib.setVerdict.mockImplementation(saveOk)
+    lib.scheduleGuarded.mockResolvedValue('2026-10-02T11:00:00.000Z')
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(NOW)
+    try {
+      renderInFrame(<Harness rows={[...ROWS, ...hist]} />)
+      const k = verb(card('b1'), 'card-approve-schedule')!
+      expect(k.textContent).toMatch(/Approve \+ schedule Fri 2 Oct · 13:00/)
+      expect(verb(card('b1'), 'card-keep')).toBeNull()
+      fireEvent.click(k)
+      // held: nothing written yet, the card has left the list
+      expect(lib.setVerdict).not.toHaveBeenCalled()
+      expect(lib.scheduleGuarded).not.toHaveBeenCalled()
+      expect(screen.getByText(/Approved\. Posts Fri 2 Oct · 13:00\./)).toBeTruthy()
+      await act(() => flushDecisions())
+      expect(lib.setVerdict).toHaveBeenCalledWith('b1', 'keep', expect.anything())
+      // 13:00 Warsaw (CEST) whatever the test machine's zone
+      expect(lib.scheduleGuarded).toHaveBeenCalledWith('b1', '2026-10-02T11:00:00.000Z')
+    } finally { vi.useRealTimers() }
+  })
+  it('Undo inside the window writes nothing', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(NOW)
+    try {
+      renderInFrame(<Harness />)
+      fireEvent.click(verb(card('n1'), 'card-approve-schedule')!)
+      expect(card('n1')).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: /^Undo/ }))
+    } finally { vi.useRealTimers() }
+    await act(() => flushDecisions())
+    expect(lib.approveReviewDraft).not.toHaveBeenCalled()
+    expect(lib.scheduleGuarded).not.toHaveBeenCalled()
+    expect(card('n1')).toBeTruthy()
+  })
+  it('a held tap keeps its slot: the next card offers the next free day, and Undo gives the slot back', () => {
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(NOW)
+    try {
+      renderInFrame(<Harness />)
+      const first = verb(card('b1'), 'card-approve-schedule')!.getAttribute('aria-label')
+      expect(first).toMatch(/Fri 2 Oct · 10:45$/)
+      fireEvent.click(verb(card('b1'), 'card-approve-schedule')!)
+      expect(verb(card('b2'), 'card-approve-schedule')!.getAttribute('aria-label')).toMatch(/Mon 5 Oct · 10:45$/)
+      fireEvent.click(screen.getByRole('button', { name: /^Undo/ }))
+      expect(verb(card('b2'), 'card-approve-schedule')!.getAttribute('aria-label')).toBe(first)
+    } finally { vi.useRealTimers() }
+  })
+  it('client seats keep their own keys', () => {
+    renderInFrame(<Harness show="risedtc" />)
+    expect(verb(card('br'), 'card-approve-schedule')).toBeNull()
+    expect(verb(card('br'), 'card-keep')).toBeTruthy()
+  })
+})
+
+describe('going stale (review 2026-11-06 #30)', () => {
+  const D = 86_400_000
+  const rows = [
+    row({ id: 'fresh', title: 'Fresh one', created_at: at(-2 * D) }),
+    row({ id: 'old1', title: 'Old one', created_at: at(-20 * D) }),
+    row({ id: 'old2', title: 'Older one', created_at: at(-40 * D) }),
+    row({ id: 'dated', title: 'Old but dated', created_at: at(-30 * D), scheduled_at: at(5 * D) }),
+  ]
+  it('folds undated drafts older than 14 days under the list; fresh and dated drafts lead and are the only ones counted', () => {
+    renderInFrame(<Harness rows={rows} />)
+    const list = document.querySelector('[aria-label="Drafts to decide"]')!
+    expect([...list.querySelectorAll('[data-card-id]')].map(x => x.getAttribute('data-card-id')).sort()).toEqual(['dated', 'fresh'])
+    expect(screen.getByText(/^2 Ivan’s drafts to decide/)).toBeTruthy()
+    expect(screen.getByText('Going stale (2)')).toBeTruthy()
+    expect(card('old1')).toBeNull()
+    fireEvent.click(verb(document, 'stale-fold')!)
+    expect(card('old1')).toBeTruthy()
+    expect(card('old2')).toBeTruthy()
+  })
+  it('Archive all is held for Undo and archives only the stale drafts; Undo writes nothing', async () => {
+    lib.archiveStaleDraft.mockResolvedValue(undefined)
+    renderInFrame(<Harness rows={rows} />)
+    fireEvent.click(verb(document, 'stale-archive-all')!)
+    expect(lib.archiveStaleDraft).not.toHaveBeenCalled()
+    expect(screen.queryByText(/Going stale/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /^Undo/ }))
+    await act(() => flushDecisions())
+    expect(lib.archiveStaleDraft).not.toHaveBeenCalled()
+    expect(screen.getByText('Going stale (2)')).toBeTruthy()
+    fireEvent.click(verb(document, 'stale-archive-all')!)
+    await act(() => flushDecisions())
+    expect(lib.archiveStaleDraft.mock.calls.map(c => c[0]).sort()).toEqual(['old1', 'old2'])
+    expect(lib.deleteDraft).not.toHaveBeenCalled()
+  })
+  it('client seats get the fold without Archive all', () => {
+    renderInFrame(<Harness show="arch" rows={[row({ id: 'a-old', client_id: 'arch', created_at: at(-20 * D) })]} />)
+    expect(screen.getByText('Going stale (1)')).toBeTruthy()
+    expect(verb(document, 'stale-archive-all')).toBeNull()
   })
 })
