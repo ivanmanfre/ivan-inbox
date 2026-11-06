@@ -7,7 +7,10 @@
 // Ivan twice: the open-turn exclusion, and "only what fits gets stamped".
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { buildBundle, BUNDLE_MAX_CHARS, type FeedRow, MUTED_FAMILIES, selectRows } from './bundle.ts'
+import {
+  buildBundle, BUNDLE_MAX_CHARS, type FeedRow, MUTED_FAMILIES, paceAllowance, scanForFresh, selectRows, splitTold, toldKey,
+  toldKeys,
+} from './bundle.ts'
 
 function row(over: Partial<FeedRow> & { id: string; created_at: string }): FeedRow {
   return {
@@ -27,7 +30,8 @@ describe('selectRows', () => {
   it('filters expired rows in SQL before the 200-row bot limit', () => {
     const source = readFileSync('supabase/functions/inbox-bot-tick/index.ts', 'utf8')
     const query = source.slice(source.indexOf(".from('inbox_notifications')", source.indexOf('// ---- 5. the rows')),
-      source.indexOf('.limit(SELECT_LIMIT)', source.indexOf('// ---- 5. the rows')))
+      source.indexOf('.range(page * SELECT_LIMIT', source.indexOf('// ---- 5. the rows')))
+    expect(source).not.toContain('MAX_PAGES')
     expect(query).toContain('.is(\'dismissed_at\', null)')
     expect(query).toContain('expires_at.is.null,expires_at.gt.')
   })
@@ -133,5 +137,127 @@ describe('buildBundle', () => {
     expect(out.included).toEqual(wanted)
     // One line per included row, plus the header and the two tail lines.
     expect(out.text.split('\n').length).toBe(out.included.length + 4)
+  })
+})
+
+describe('new since the last message (2026-11-06)', () => {
+  // Real prompt line from the 2026-11-01 07:00 turn: runner_sync repeated every
+  // few minutes, each repeat re-opened the row, and the tick spent a turn on it.
+  const runner = row({
+    id: 'runner', created_at: '2026-10-31T20:00:00Z', family: 'runner_sync', severity: 'error',
+    tenant: 'ivan', count: 49, title: 'The runner sync failed on mac', body: 'git add failed',
+  })
+  const pastPrompt = [
+    'Feed rows since my last message (2 rows, oldest first):',
+    '[runner_sync · error · ivan · 43x] The runner sync failed on mac : git add failed',
+    '[comment_engagement_notice · info · ivan · 1x] Comment drafts 2026-11-01: nothing worth posting today.',
+    '',
+    'What I said last time (first 300 chars):',
+    'No response requested.',
+  ].join('\n')
+
+  it('a count bump of a line the bot was already handed is a repeat', () => {
+    const { fresh, repeats } = splitTold([runner], toldKeys([{ created_at: '2026-11-01T07:00:04Z', prompt: pastPrompt }]))
+    expect(fresh).toEqual([])
+    expect(repeats.map((r) => r.id)).toEqual(['runner'])
+  })
+
+  it('a repeat whose body or severity changed is new', () => {
+    const told = toldKeys([{ created_at: '2026-11-01T07:00:04Z', prompt: pastPrompt }])
+    expect(splitTold([{ ...runner, body: 'git fetch/merge failed' }], told).fresh.length).toBe(1)
+    expect(splitTold([{ ...runner, severity: 'attention' }], told).fresh.length).toBe(1)
+  })
+
+  it('a row never handed to the bot is new, and nothing told means everything is new', () => {
+    const other = row({ id: 'booking', created_at: '2026-11-01T07:10:00Z', family: 'booking_notice', title: 'Alan booked' })
+    expect(splitTold([runner, other], toldKeys([{ created_at: '2026-11-01T07:00:04Z', prompt: pastPrompt }])).fresh.map((r) => r.id)).toEqual(['booking'])
+    expect(splitTold([runner, other], toldKeys([])).fresh.length).toBe(2)
+  })
+
+  it('a separate row with the same text, created after the telling, is new', () => {
+    const again = { ...runner, id: 'runner-2', created_at: '2026-11-01T07:20:00Z', count: 1 }
+    const { fresh, repeats } = splitTold([runner, again], toldKeys([{ created_at: '2026-11-01T07:00:04Z', prompt: pastPrompt }]))
+    expect(fresh.map((r) => r.id)).toEqual(['runner-2'])
+    expect(repeats.map((r) => r.id)).toEqual(['runner'])
+  })
+
+  it('a line break inside a field stays on one line, round-trips, and never matches a shorter title', () => {
+    const multi = row({ id: 'm', created_at: '2026-11-01T06:00:00Z', family: 'booking_notice', title: 'Alan booked\nThursday', url: './#a\n' })
+    const text = buildBundle([multi], null).text
+    expect(text.split('\n')[1]).toBe('[booking_notice · info · ivan · 1x] Alan booked Thursday (./#a)')
+    const told = toldKeys([{ created_at: '2026-11-01T07:00:00Z', prompt: text }])
+    expect(splitTold([multi], told).repeats.length).toBe(1)
+    const shorter = row({ id: 's', created_at: '2026-11-01T05:00:00Z', family: 'booking_notice', title: 'Alan booked' })
+    expect(splitTold([shorter], told).fresh.length).toBe(1)
+  })
+
+  it('the key round-trips through the rendered bundle the bot is sent', () => {
+    const rows = [runner, row({ id: 'u', created_at: '2026-11-01T07:00:00Z', url: './#today', body: 'b '.repeat(300) })]
+    const told = toldKeys([{ created_at: '2026-11-01T08:00:00Z', prompt: buildBundle(rows, 'x').text }])
+    for (const r of rows) expect(told.has(toldKey({ ...r, count: 99 }))).toBe(true)
+  })
+
+  it('puts new rows ahead of repeats so a pile of repeats cannot crowd them out', () => {
+    const repeats = Array.from({ length: 80 }, (_, i) =>
+      row({ id: `rep-${i}`, created_at: '2026-11-01T00:00:00Z', title: `repeat ${i} `.padEnd(200, 'r') }))
+    const fresh = [row({ id: 'new', created_at: '2026-11-01T07:00:00Z', title: 'Alan booked' })]
+    const out = buildBundle(fresh, null, repeats)
+    expect(out.included[0]).toBe('new')
+    expect(out.included.length).toBeLessThan(81)
+    expect(out.text.split('\n')[0]).toMatch(/^Feed rows since my last message \(\d+ rows: 1 new, then \d+ repeats of rows I already told, oldest first in each\):$/)
+  })
+})
+
+describe('paceAllowance', () => {
+  const at = (hhmm: string) => new Date(`2026-11-06T${hhmm}:00Z`)
+  it('spends a cap of 24 at about one turn an hour across the UTC day', () => {
+    expect(paceAllowance(24, at('00:00'))).toBe(1)
+    expect(paceAllowance(24, at('00:30'))).toBe(1)
+    expect(paceAllowance(24, at('01:00'))).toBe(2)
+    expect(paceAllowance(24, at('11:30'))).toBe(12)
+    expect(paceAllowance(24, at('23:00'))).toBe(24)
+    expect(paceAllowance(24, at('23:30'))).toBe(24)
+  })
+  it('never passes the cap, whatever the cap is', () => {
+    for (const cap of [1, 5, 24, 48, 100]) {
+      for (let m = 0; m < 1440; m += 30) {
+        const a = paceAllowance(cap, new Date(Date.UTC(2026, 10, 6, 0, m)))
+        expect(a).toBeLessThanOrEqual(cap)
+        expect(a).toBeGreaterThanOrEqual(1)
+      }
+      expect(paceAllowance(cap, at('23:30'))).toBe(cap)
+    }
+  })
+})
+
+describe('scanForFresh', () => {
+  const tellAt = '2026-11-02T00:00:00Z'
+  const rep = (i: number) => row({ id: `rep-${String(i).padStart(5, '0')}`, created_at: '2026-11-01T00:00:00Z', title: `repeat ${i}` })
+  const told = toldKeys([{ created_at: tellAt, prompt: Array.from({ length: 2500 }, (_, i) => `[outreach_engine_ops · info · ivan · 3x] repeat ${i}`).join('\n') }])
+  const pager = (rows: FeedRow[], size: number) => async (page: number) => rows.slice(page * size, page * size + size)
+
+  it('finds a new row behind 2,000 repeats (no page cutoff)', async () => {
+    const rows = [...Array.from({ length: 2000 }, (_, i) => rep(i)), row({ id: 'new', created_at: '2026-11-03T00:00:00Z', title: 'Alan booked' })]
+    const out = await scanForFresh(pager(rows, 200), 200, told, [])
+    expect(out.fresh.map((r) => r.id)).toEqual(['new'])
+    expect(buildBundle(out.fresh, null, out.repeats).included[0]).toBe('new')
+  })
+
+  it('exactly 2,000 repeats and nothing new: no fresh row, so the tick holds', async () => {
+    const out = await scanForFresh(pager(Array.from({ length: 2000 }, (_, i) => rep(i)), 200), 200, told, [])
+    expect(out.fresh).toEqual([])
+    expect(out.repeats.length).toBe(2000)
+  })
+
+  it('stops at the first page that has a new row', async () => {
+    const pages: number[] = []
+    const rows = [row({ id: 'new', created_at: '2026-11-03T00:00:00Z' }), ...Array.from({ length: 999 }, (_, i) => rep(i))]
+    const base = pager(rows, 200)
+    await scanForFresh(async (p) => { pages.push(p); return base(p) }, 200, told, [])
+    expect(pages).toEqual([0])
+  })
+
+  it('passes a page error through', async () => {
+    await expect(scanForFresh(async () => { throw new Error('boom') }, 200, told, [])).rejects.toThrow('boom')
   })
 })

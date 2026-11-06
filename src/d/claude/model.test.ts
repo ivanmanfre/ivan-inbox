@@ -160,4 +160,8 @@ describe('botSilentLine', () => {
     expect(botSilentLine({ ...h, waitingSince: null }, '2026-11-01T11:30:04Z', now)).toBeNull()
     expect(botSilentLine({ ...h, waitingSince: '2026-11-06T11:50:00Z' }, '2026-11-01T11:30:04Z', now)).toBeNull()
   })
+  it('stays quiet while the tick reports a planned hold, and warns again once that report is stale', () => {
+    expect(botSilentLine({ ...h, heldAt: '2026-11-06T11:30:02Z' }, '2026-11-06T08:00:00Z', now)).toBeNull()
+    expect(botSilentLine({ ...h, heldAt: '2026-11-06T10:00:02Z' }, '2026-11-06T08:00:00Z', now)).toBe('Silent since Fri 6 Nov, 09:00')
+  })
 })

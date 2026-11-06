@@ -140,15 +140,21 @@ export const QUICK_ASKS: { label: string; send?: string; insert?: string }[] = [
 export const BOT_SILENT_MS = 2 * 3_600_000
 /** A row this old should already have been read by a tick. */
 const BOT_ROW_WAIT_MS = 30 * 60_000
+/** A planned hold the tick wrote this recently means the clock is alive (one missed tick of slack). */
+const BOT_HELD_FRESH_MS = 45 * 60_000
 
 /**
  * "Silent since <day time>" when Claude's thread should be talking and is not:
  * the switch is on, the last turn is over 2 hours old, today's cap is not used
- * up (it is 24 turns from 00:00 UTC, so most afternoons are a planned rest),
- * no bot turn is queued or running, and a feed row has waited past a tick. null otherwise, or when health is unknown.
+ * up (24 turns from 00:00 UTC, paced about one an hour since 2026-11-06),
+ * no bot turn is queued or running, the tick has not reported a planned hold
+ * (only repeats waiting, or pacing) in the last 45 minutes, and a feed row has
+ * waited past a tick. null otherwise, or when health is unknown.
  */
 export function botSilentLine(h: BotHealth | null, lastTurnAt: string | null | undefined, now = Date.now()): string | null {
   if (!h || !h.on || h.busy || h.today >= h.cap) return null
+  const heldAt = h.heldAt ? Date.parse(h.heldAt) : NaN
+  if (Number.isFinite(heldAt) && now - heldAt <= BOT_HELD_FRESH_MS) return null
   const last = lastTurnAt ? Date.parse(lastTurnAt) : NaN
   if (Number.isFinite(last) && now - last <= BOT_SILENT_MS) return null
   const waiting = h.waitingSince ? Date.parse(h.waitingSince) : NaN

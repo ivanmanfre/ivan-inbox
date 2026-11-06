@@ -2,7 +2,8 @@
 //
 // Every 30 minutes (pg_cron 'inbox-bot-tick', db/061) this reads the feed rows
 // Ivan has not read, hands them to the broker's server door as one bot turn, and
-// returns. It does NOT hold the stream: the broker writes the row before it
+// returns. It starts a turn only when a row is new to the bot (not a repeat of a
+// line it was already handed) and the day's pace allows one (2026-11-06). It does NOT hold the stream: the broker writes the row before it
 // streams, so the row is the truth and inbox-turn-run finishes it (decision D3).
 //
 // BORN-DEAD: no-ops until integration_config.bot_tick_enabled = 'true'. A body
@@ -28,14 +29,17 @@
 //      if the broker refuses, every one of them is unstamped again.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { buildBundle, type FeedRow, LAST_HEAD_CHARS, MUTED_FAMILIES, selectRows } from './bundle.ts'
+import {
+  buildBundle, type FeedRow, LAST_HEAD_CHARS, MUTED_FAMILIES, paceAllowance, scanForFresh,
+  TOLD_WINDOW_MS, type ToldTurn, toldKeys,
+} from './bundle.ts'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 
 /** The one operator, same id the broker's allowlist holds. */
 const OPERATOR_ID = Deno.env.get('INBOX_CLAUDE_ALLOWED_USER_ID')
 
-/** How many unread rows one tick will even look at. */
+/** How many unread rows one page of the tick's read holds. */
 const SELECT_LIMIT = 200
 
 /** Used when integration_config has no bot_daily_turn_cap, or a non-number. */
@@ -54,6 +58,22 @@ function say(body: Record<string, unknown>, status = 200) {
 
 function err(status: number, code: string, detail?: string) {
   return new Response(JSON.stringify({ error: code, detail }), { status, headers: JSON_HEADERS })
+}
+
+/**
+ * A tick that holds on purpose (nothing unread, only repeats, or pacing) says
+ * so in integration_config.bot_tick_last, so the Claude page can tell a planned
+ * hold from a dead tick. Only held outcomes write it: a broker error or a dead
+ * cron leaves it stale, and the page's "Silent since" line comes back.
+ */
+const HELD_KEY = 'bot_tick_last'
+async function held(db: SupabaseClient, body: Record<string, unknown>) {
+  const value = JSON.stringify({ at: new Date().toISOString(), outcome: body.bot_tick })
+  const { error } = await db
+    .from('integration_config')
+    .upsert({ key: HELD_KEY, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+  if (error) console.error('held stamp failed', error.message)
+  return say(body)
 }
 
 /** Start of the current UTC day, which is what the daily cap counts from. */
@@ -213,23 +233,69 @@ Deno.serve(async (req) => {
   }
 
   // ---- 5. the rows -------------------------------------------------------
-  const { data: rawRows, error: rowsErr } = await db
-    .from('inbox_notifications')
-    .select('id, family, severity, tenant, count, title, body, url, group_key, created_at')
-    .is('read_at', null)
-    .is('dismissed_at', null)
-    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-    .not('family', 'in', `(${MUTED_FAMILIES.join(',')})`)
-    .order('created_at', { ascending: true })
-    .limit(SELECT_LIMIT)
-  if (rowsErr) return say({ bot_tick: 'rows_lookup_failed', error: rowsErr.message.slice(0, 200) }, 500)
-  const candidates = selectRows((rawRows ?? []) as FeedRow[], openIds)
-  if (candidates.length === 0) {
-    return say({
+  // ---- 5b. new since the last message -----------------------------------
+  // A dedupe repeat re-opens a row the bot already read (notify.ts, D13), so a
+  // producer that repeats every few minutes made every tick look busy and the
+  // 24-turn cap ran out by 11:30 UTC on turns that said "No response
+  // requested". A turn starts only when at least one row is not a line the bot
+  // was already handed in a finished turn inside the last 24 hours. Repeats
+  // are not dropped: they stay unread and ride the next turn.
+  const { data: toldTurns, error: toldErr } = await db
+    .from('inbox_turns')
+    .select('created_at, prompt')
+    .eq('thread_id', threadId)
+    .eq('origin', 'bot')
+    .eq('status', 'done')
+    .gte('created_at', new Date(Date.now() - TOLD_WINDOW_MS).toISOString())
+  if (toldErr) return say({ bot_tick: 'told_lookup_failed', error: toldErr.message.slice(0, 200) }, 500)
+  const told = toldKeys((toldTurns ?? []) as ToldTurn[])
+
+  // Oldest first, a page at a time, until a page has a new row or the feed
+  // runs out (bundle.ts scanForFresh): a new row can sit behind any number of
+  // repeats, so there is no page cutoff.
+  const nowIso = new Date().toISOString()
+  let fresh: FeedRow[]
+  let repeats: FeedRow[]
+  try {
+    ;({ fresh, repeats } = await scanForFresh(async (page) => {
+      const { data, error } = await db
+        .from('inbox_notifications')
+        .select('id, family, severity, tenant, count, title, body, url, group_key, created_at')
+        .is('read_at', null)
+        .is('dismissed_at', null)
+        .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
+        .not('family', 'in', `(${MUTED_FAMILIES.join(',')})`)
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(page * SELECT_LIMIT, page * SELECT_LIMIT + SELECT_LIMIT - 1)
+      if (error) throw new Error(error.message)
+      return (data ?? []) as FeedRow[]
+    }, SELECT_LIMIT, told, openIds))
+  } catch (e) {
+    const detail = e instanceof Error ? e.message.slice(0, 200) : 'rows lookup failed'
+    return say({ bot_tick: 'rows_lookup_failed', error: detail }, 500)
+  }
+  if (fresh.length + repeats.length === 0) {
+    return held(db, {
       bot_tick: 'quiet',
       ...(createdThread ? { created_thread: threadId } : {}),
       ...(forced ? { forced: true } : {}),
     })
+  }
+  if (fresh.length === 0) {
+    return held(db, {
+      bot_tick: 'repeats_only',
+      repeats: repeats.length,
+      ...(forced ? { forced: true } : {}),
+    })
+  }
+
+  // ---- 5c. the pace ------------------------------------------------------
+  // The cap is a day's budget, so it is spent across the day: about one turn
+  // an hour on a cap of 24. A held tick stamps nothing; its rows wait.
+  const allowance = paceAllowance(cap, new Date())
+  if ((todayCount ?? 0) >= allowance && !forced) {
+    return held(db, { bot_tick: 'paced', count: todayCount ?? 0, allowance, cap, fresh: fresh.length })
   }
 
   // ---- 6. the bundle -----------------------------------------------------
@@ -244,11 +310,11 @@ Deno.serve(async (req) => {
     .limit(1)
     .maybeSingle()
   const lastHead = typeof lastDone?.answer === 'string' ? lastDone.answer.slice(0, LAST_HEAD_CHARS) : null
-  const bundle = buildBundle(candidates, lastHead)
+  const bundle = buildBundle(fresh, lastHead, repeats)
 
   // ---- 7. stamp, before the broker is asked anything ---------------------
   const groupKey = `bot:${turnId}`
-  const previousKeys = new Map(candidates.filter((r) => bundle.included.includes(r.id)).map((r) => [r.id, r.group_key ?? null]))
+  const previousKeys = new Map([...fresh, ...repeats].filter((r) => bundle.included.includes(r.id)).map((r) => [r.id, r.group_key ?? null]))
   const { error: stampErr } = await db
     .from('inbox_notifications')
     .update({ group_key: groupKey })
