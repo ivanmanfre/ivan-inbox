@@ -308,7 +308,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
         onFocus={() => setFocus(c.r.id)}
         onOpen={() => onOpen(c.r.id, c.lane)} onEdit={() => onEdit(c.r.id, c.lane)}
         onApprove={() => approveCard(c)} onDrop={(slug, note) => dropWith(c, slug, note)}
-        asking={keepAsk === c.r.id} onKeepApprove={() => { setKeepAsk(null); approveNow(c) }} onKeepBack={() => setKeepAsk(null)}
+        asking={keepAsk === c.r.id} onKeepApprove={() => { setKeepAsk(null); if (unsaved(c.r.id)) toast.show({ message: 'Save or cancel your edit first.' }); else approveNow(c) }} onKeepBack={() => setKeepAsk(null)}
         onSkip={() => { if (unsaved(c.r.id)) toast.show({ message: 'Save or cancel your edit first.' }); else void rowVerbs.run(c.r, c.lane, 'skip') }}
         onBoard={() => void verbs.board(c)} onSchedule={(at?: Date) => void verbs.schedule(c, at)} onDate={() => setMoving(c)}
         onChanged={onChanged} />

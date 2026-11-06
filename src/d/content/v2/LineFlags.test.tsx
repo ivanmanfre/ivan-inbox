@@ -42,3 +42,12 @@ describe('LineFlagsBlock', () => {
     await vi.waitFor(() => expect(onKeep).toHaveBeenCalled())
   })
 })
+
+describe('LineFlagsBlock guards', () => {
+  afterEach(cleanup)
+  it('Approve as written waits while an edit is open', () => {
+    render(<ToastProvider><LineFlagsBlock r={r} flags={flags} sha="s" body={body} edit={body + ' x'} setEdit={() => {}} onStartEdit={() => true}
+      onSaved={() => {}} onChanged={() => {}} asking onKeep={() => {}} onBack={() => {}} /></ToastProvider>)
+    expect((screen.getByRole('button', { name: 'Approve as written' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+})
