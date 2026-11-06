@@ -1,0 +1,16 @@
+/* Line flags on an Ivan Review row (build 09): the copied author's own lines, dated life claims, the re-run note.
+   Readable 15px text, sentence-case labels, compact (the X review direction, PR #87). */
+.cv2-lf{margin:8px 0 0;padding:10px 12px;border-radius:10px;background:var(--ds-sev-attention-soft,#fcf1e2);color:var(--ds-text);font:400 15px/1.45 var(--ds-font)}
+.cv2-lf[data-kept]{background:var(--ds-surface-2)}
+.cv2-lf-rerun{margin:0 0 6px}
+.cv2-lf-rerun:last-child{margin:0}
+.cv2-lf-rerun a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+.cv2-lf-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.cv2-lf-line{display:grid;gap:4px}
+.cv2-lf-mark{background:rgba(255,196,0,.32);color:inherit;border-radius:3px;padding:0 2px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.cv2-lf-ask{color:var(--ds-text-2)}
+.cv2-lf-kind{font-weight:600;color:var(--ds-text)}
+.cv2-lf-keys{display:flex;gap:6px;flex-wrap:wrap}
+.cv2-lf-note{margin:6px 0 0;color:var(--ds-text-2)}
+.cv2-lf-confirm{margin:10px 0 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cv2-lf-confirm > span{flex:1 1 220px}

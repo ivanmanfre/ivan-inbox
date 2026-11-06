@@ -139,6 +139,9 @@ export type ContentDraft = {
   log_agent?: string | null
   log_body?: string | null
   log_ts?: string | null
+  // qa.line_flags (db 20261106_post_quality_09): lines Ivan must check (the copied author's own life, dated
+  // claims), the re-run note and his keep stamp. Read through lib/lineFlags. Optional so fixtures compile.
+  line_flags?: unknown
 }
 
 const COLS =
@@ -146,6 +149,7 @@ const COLS =
   'source_post_id, image_urls, video_url, taxonomy, updated_at, created_at, board_visible, ' +
   'funnel_stage, qa_verdict:qa->>verdict, qa_score:qa->>score, ' +
   'qa_regen:qa->>qa_regen_attempts, qa_backfilled:qa->>backfilled, source_label, source_ref, source_kind:source_detail->>kind, ' +
+  'line_flags:qa->line_flags, ' +
   'log_agent:agent_log->-1->>agent, log_body:agent_log->-1->>body, log_ts:agent_log->-1->>ts'
 
 // ---------- lane scoping ----------
