@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useSyncExternalStore } from 'react'
-import { fetchXReview, xFlagItems, xWaitingCount, type XReviewList } from '../../lib/xReview'
+import { fetchXReview, markXQuickSeen, xFlagItems, xWaitingCount, type XReviewList } from '../../lib/xReview'
 
 // ONE X REVIEW READ FOR THE APP. The flag on Home, the X desk, its nav count and the review screen all read
 // the same store, so a decision on the review screen moves the flag at once. Re-read on mount
@@ -16,7 +16,32 @@ let inflight: Promise<void> | null = null
 // photo Ivan just swapped away, Sol r1 2026-11-05): it is dropped and read again.
 let rev = 0
 
+// Quick-post cards he opened whose seen stamp has not reached the server yet (2026-11-07, Sol r1): an unseen
+// draft rolls to the next day, so a failed stamp is kept here and sent again on every read, also after he
+// leaves the card.
+const seenOwed = new Set<string>()
+const seenSending = new Set<string>()
+
+function sendSeen(id: string) {
+  if (seenSending.has(id)) return
+  seenSending.add(id)
+  markXQuickSeen(id).then(
+    () => {
+      seenOwed.delete(id)
+      patchX(l => ({ ...l, quicks: l.quicks.map(q => q.id === id ? { ...q, seen_at: q.seen_at ?? new Date().toISOString() } : q) }))
+    },
+    () => { /* kept in seenOwed: the next read sends it again */ },
+  ).finally(() => { seenSending.delete(id) })
+}
+
+/** He opened this quick-post card. Sent now, and again with every read until the server has it. */
+export function markQuickSeen(id: string) {
+  seenOwed.add(id)
+  sendSeen(id)
+}
+
 export function refreshX(): Promise<void> {
+  seenOwed.forEach(sendSeen)
   if (inflight) return inflight
   const started = rev
   st = { ...st, loading: true }
@@ -44,7 +69,7 @@ const subscribe = (f: () => void) => { subs.add(f); return () => { subs.delete(f
 const snap = () => st
 
 /** Test hook. */
-export function __resetXForTests(s: Partial<XState> = {}) { st = { list: null, error: null, loading: false, at: null, ...s }; inflight = null; rev = 0 }
+export function __resetXForTests(s: Partial<XState> = {}) { st = { list: null, error: null, loading: false, at: null, ...s }; inflight = null; rev = 0; seenOwed.clear(); seenSending.clear() }
 
 export function useXReview() {
   const s = useSyncExternalStore(subscribe, snap, snap)

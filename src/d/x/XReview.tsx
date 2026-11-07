@@ -1,8 +1,8 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Segmented } from '../../ds/Segmented'
 import { LiveDot } from '../../ds/Working'
 import { wordCount } from '../../lib/xArticleMd'
-import { decideXArticle, decideXQuick, decideXQuote, fetchXQuickPhotos, photoRing, photoThumb, saveXArticle, saveXQuick, saveXQuote, xFlagItems, type XArticle, type XPhoto, type XQuick, type XQuote, type XRingPhoto } from '../../lib/xReview'
+import { decideXArticle, decideXQuick, decideXQuote, fetchXQuickPhotos, photoRing, quickFate, photoThumb, saveXArticle, saveXQuick, saveXQuote, xFlagItems, type XArticle, type XPhoto, type XQuick, type XQuote, type XRingPhoto } from '../../lib/xReview'
 import { useFrameCounts } from '../counts/useFrameCounts'
 import type { Layout, PlaceProps } from '../places'
 import { dHash } from '../route'
@@ -10,14 +10,14 @@ import { AnswerRow } from '../ui/AnswerRow'
 import { useDConfirm } from '../ui/confirm'
 import { Key } from '../ui/Key'
 import { Failed, Skeleton } from '../ui/states'
-import { warsawHm } from '../ui/time'
+import { warsawDayWord, warsawHm } from '../ui/time'
 import { useToast } from '../ui/toast'
 import { XLogo } from './glyphs'
 import { XFlag } from './XFlag'
 import { XArticlePreview, XPostPreview } from './XPreview'
 import { useAutosave, type SaveStatus } from './useAutosave'
 import { choosePhoto, flushPhoto, usePhotoSlot } from './photoSaves'
-import { patchX, useXReview } from './useXReview'
+import { markQuickSeen, patchX, useXReview } from './useXReview'
 import './x.css'
 
 // X REVIEW: `#exp/d/x?id=<article or quote id>` (the X desk; `#exp/d/ops/x` redirects here, route.ts). Ivan, 2026-10-11: "allow me to click on the
@@ -450,8 +450,18 @@ function QuickReview({ k, layout, navigate }: { k: XQuick; layout: Layout; navig
   // the version in the editor is the post itself; the list shows only the others (swapping one in moves the old one here)
   const others = options.filter(o => o !== text)
   const kind = k.kind && KIND_WORD[k.kind] ? KIND_WORD[k.kind] : null
-  const exp = k.expires_at ? Date.parse(k.expires_at) : NaN
-  const label = `${STATUS_WORD[k.status] ?? k.status}${editable && Number.isFinite(exp) ? ` · expires ${warsawHm(exp)}` : ''}`
+  // Opening this card counts as seeing the post (2026-11-07): an unseen draft moves to the next day instead of
+  // expiring, a seen one expires. Stamped when the page is in front of him; a failed stamp is resent (useXReview).
+  useEffect(() => {
+    if (!editable || k.seen_at) return
+    const stamp = () => { if (document.visibilityState === 'visible') markQuickSeen(k.id) }
+    stamp()
+    document.addEventListener('visibilitychange', stamp)
+    return () => document.removeEventListener('visibilitychange', stamp)
+  }, [editable, k.id, k.seen_at])
+  const fate = editable ? quickFate(k, Date.now(), true) : null
+  const carried = editable && (k.rolls ?? 0) > 0 ? ` · from ${warsawDayWord(k.created_at).toLowerCase()}` : ''
+  const label = `${STATUS_WORD[k.status] ?? k.status}${carried}${fate ? ` · ${fate}` : ''}`
   const title = kind ? `Quick post · ${kind}` : 'Quick post'
   const over = text.length > X_LIMIT
   const editor = (

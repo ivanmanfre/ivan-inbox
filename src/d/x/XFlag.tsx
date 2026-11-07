@@ -57,7 +57,7 @@ export function XFlag({ className }: { className?: string }) {
           </div>
           {waiting.map(i => (
             <a key={i.id} className={`xf-row${i.kind === 'quick' ? ' xf-row-quick' : ''}`} href={xReviewHref(i.id)} data-x-item={i.id}>
-              <span className="xf-row-t"><small>{KIND[i.kind]}</small><b>{i.title}</b></span>
+              <span className="xf-row-t"><small>{KIND[i.kind]}{i.note ? ` · ${i.note}` : ''}</small><b>{i.title}</b></span>
               <span className="xf-chev" aria-hidden="true">›</span>
             </a>
           ))}
