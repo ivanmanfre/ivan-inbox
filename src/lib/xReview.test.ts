@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 vi.mock('./supabase', () => ({ supabase: { rpc: vi.fn() } }))
-import { photoRing, xFlagItems, xWaitingCount, type XArticle, type XQuote, type XReviewList } from './xReview'
+import { photoRing, quickFate, xFlagItems, xWaitingCount, type XArticle, type XQuote, type XReviewList } from './xReview'
 
 const NOW = Date.parse('2026-10-11T12:00:00Z')
 const art = (id: string, status: XArticle['status'], updated: string, extra: Partial<XArticle> = {}): XArticle => ({
@@ -70,5 +70,29 @@ describe('photoRing: the photo options the X quick card offers', () => {
     expect(photoRing(k({ media_url: null, media_photo_id: null }))).toEqual({ ring: R, index: -1 })
     expect(photoRing(k({ media_ring: undefined })).ring.map(p => p.id)).toEqual(['a'])
     expect(photoRing(k({ media_ring: [null, { id: 'z' }, ...R] })).ring.map(p => p.id)).toEqual(['a', 'b'])
+  })
+})
+
+describe('quickFate (2026-11-07: unseen quick drafts move to the next day once)', () => {
+  const k = (over = {}) => ({ status: 'draft' as const, slot: '2026-11-06:13', seen_at: null, rolls_left: 1, expires_at: '2026-11-07T08:00:00Z', ...over })
+  const T = (iso: string) => Date.parse(iso)
+  it('unseen on a regular slot: moves to the same hour the next day', () => {
+    expect(quickFate(k(), T('2026-11-06T19:00:00Z'))).toBe('moves to 13:00 tomorrow')
+    expect(quickFate(k(), T('2026-11-07T07:00:00Z'))).toBe('moves to 13:00 today')
+  })
+  it('seen, out of moves, manual slot, or on the card itself: expires, in hours then minutes', () => {
+    const now = T('2026-11-07T03:00:00Z')
+    expect(quickFate(k({ seen_at: '2026-11-06T13:10:00Z' }), now)).toBe('expires in 5h')
+    expect(quickFate(k({ rolls_left: 0 }), now)).toBe('expires in 5h')
+    expect(quickFate(k({ slot: '2026-11-06:manual-1' }), now)).toBe('expires in 5h')
+    expect(quickFate(k(), now, true)).toBe('expires in 5h')
+    expect(quickFate(k({ seen_at: 'x' }), T('2026-11-07T07:20:00Z'))).toBe('expires in 40 min')
+    expect(quickFate(k({ seen_at: 'x' }), T('2026-11-07T08:00:00Z'))).toBe('expires now')
+  })
+  it('only drafts get a note, and the flag row carries it', () => {
+    expect(quickFate(k({ status: 'approved' }), T('2026-11-06T19:00:00Z'))).toBeNull()
+    const list: XReviewList = { articles: [], quotes: [], quicks: [{ id: 'q', status: 'draft', text: 'hi', options: [], kind: null, source_label: null, source_excerpt: null,
+      posted_url: null, error: null, account: 'theivanpill', created_at: '2026-11-06T12:00:00Z', updated_at: null, expires_at: '2026-11-07T08:00:00Z', slot: '2026-11-06:13', seen_at: null, rolls: 0, rolls_left: 1 }] }
+    expect(xFlagItems(list, T('2026-11-06T19:00:00Z'))[0].note).toBe('moves to 13:00 tomorrow')
   })
 })

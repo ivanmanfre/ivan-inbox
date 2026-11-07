@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { warsawDay, warsawDow } from '../d/ui/time'
 
 // X REVIEW (2026-10-11). X Articles and their reaction-GIF quote posts wait here for Ivan's
 // read. The RPCs live in Supabase (x_review_list / x_article_save / x_article_decide /
@@ -79,6 +80,13 @@ export type XQuick = {
   media_place?: string | null
   /** The photos the card swipes through (2026-11-05): the lane's ranked fits, best first, current one included. */
   media_ring?: XRingPhoto[] | null
+  /** 'YYYY-MM-DD:HH' Warsaw slot (or 'YYYY-MM-DD:manual-…'). */
+  slot?: string | null
+  /** First time he opened this card, edited it or changed its photo (2026-11-07); null = never seen. */
+  seen_at?: string | null
+  /** How often it moved to the next day unseen, and how many moves it has left (the lane allows 1). */
+  rolls?: number | null
+  rolls_left?: number | null
 }
 
 /** One photo the quick-post card can swipe to (an ivan_photo_library photo). */
@@ -148,6 +156,33 @@ export async function decideXQuick(id: string, action: 'post' | 'discard', confi
   if (error) fail(error)
 }
 
+/** He opened this quick-post card. An unseen draft moves to the next day instead of expiring; a seen one expires. */
+export async function markXQuickSeen(id: string): Promise<void> {
+  const { error } = await supabase.rpc('x_quick_seen', { p_id: id })
+  if (error) fail(error)
+}
+
+/**
+ * What happens to a quick draft if he does nothing, in plain words (2026-11-07, triage #14): an unseen draft on a
+ * regular slot "moves to 13:00 tomorrow" (the lane rolls it once), everything else "expires in 5h". On the card
+ * itself (viewing) it always expires: opening the card counts as seeing it.
+ */
+export function quickFate(k: Pick<XQuick, 'status' | 'expires_at' | 'slot' | 'seen_at' | 'rolls_left'>, now: number = Date.now(), viewing = false): string | null {
+  if (k.status !== 'draft') return null
+  const exp = k.expires_at ? Date.parse(k.expires_at) : NaN
+  if (!Number.isFinite(exp)) return null
+  const m = (k.slot ?? '').match(/^(\d{4})-(\d{2})-(\d{2}):(\d{2})$/)
+  if (!viewing && !k.seen_at && (k.rolls_left ?? 0) > 0 && m) {
+    const next = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + 1, 12)
+    const day = warsawDay(next) === warsawDay(now) ? 'today' : warsawDay(next) === warsawDay(now + 86_400_000) ? 'tomorrow' : `on ${warsawDow(next)}`
+    return `moves to ${m[4]}:00 ${day}`
+  }
+  const left = exp - now
+  if (left <= 60_000) return 'expires now'
+  if (left < 3_600_000) return `expires in ${Math.round(left / 60_000)} min`
+  return `expires in ${Math.floor(left / 3_600_000)}h`
+}
+
 /** Ivan's gallery for the photo picker (operator only). */
 export async function fetchXQuickPhotos(): Promise<XPhoto[]> {
   const { data, error } = await supabase.rpc('x_quick_photo_choices')
@@ -196,6 +231,8 @@ export type XFlagItem = {
   url: string | null
   error: string | null
   at: number
+  /** Quick drafts: "expires in 5h" / "moves to 13:00 tomorrow". */
+  note?: string | null
 }
 
 // An approved item still not out this long after its slot is stuck, and says so.
@@ -241,7 +278,7 @@ export function xFlagItems(l: XReviewList | null, now: number = Date.now()): XFl
   }
   for (const k of l.quicks ?? []) {
     const state = quoteState(k.status === 'draft' ? 'draft' : k.status === 'posted' ? 'posted' : k.status === 'failed' ? 'failed' : 'approved')
-    out.push({ id: k.id, kind: 'quick', state, title: k.text?.trim() || 'Quick post', url: k.posted_url, error: k.error, at: stamp(k.created_at) })
+    out.push({ id: k.id, kind: 'quick', state, title: k.text?.trim() || 'Quick post', url: k.posted_url, error: k.error, at: stamp(k.created_at), note: quickFate(k, now) })
   }
   const rank = { waiting: 0, moving: 1, failed: 2, live: 3 } as const
   return out

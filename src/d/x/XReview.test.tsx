@@ -6,12 +6,12 @@ import { parseDHash } from '../route'
 import { renderInFrame } from '../test-utils'
 
 const api = vi.hoisted(() => ({
-  fetchXReview: vi.fn(), saveXArticle: vi.fn(), decideXArticle: vi.fn(), saveXQuote: vi.fn(), decideXQuote: vi.fn(), saveXQuick: vi.fn(), decideXQuick: vi.fn(), fetchXQuickPhotos: vi.fn(), setXQuickPhoto: vi.fn(),
+  fetchXReview: vi.fn(), saveXArticle: vi.fn(), decideXArticle: vi.fn(), saveXQuote: vi.fn(), decideXQuote: vi.fn(), saveXQuick: vi.fn(), decideXQuick: vi.fn(), fetchXQuickPhotos: vi.fn(), setXQuickPhoto: vi.fn(), markXQuickSeen: vi.fn(),
 }))
 vi.mock('../../lib/xReview', async (orig) => ({ ...(await orig<typeof import('../../lib/xReview')>()), ...api }))
 
 import XReviewPage from './XReview'
-import { __resetXForTests } from './useXReview'
+import { __resetXForTests, refreshX } from './useXReview'
 import { __resetPhotoSavesForTests } from './photoSaves'
 
 const ID = '040bf74b-6ee0-4558-8fd3-e4e1c604f091'
@@ -39,6 +39,7 @@ beforeEach(() => {
   api.saveXArticle.mockResolvedValue(undefined)
   api.decideXArticle.mockResolvedValue(undefined)
   api.saveXQuick.mockResolvedValue(undefined)
+  api.markXQuickSeen.mockResolvedValue(undefined)
 })
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 
@@ -114,6 +115,39 @@ describe('quick X post review', () => {
     // the swapped-out version moves into the list
     expect(document.querySelector('[data-verb=x-quick-option]')?.textContent).toContain('27 follow-up drafts showed up today')
     expect(document.querySelector('[data-x-source]')?.textContent).toContain('discarded follow-ups')
+  })
+
+  it('opening the card marks the draft seen once and the head says when it expires', async () => {
+    api.fetchXReview.mockResolvedValue({ ...QLIST, quicks: [{ ...QLIST.quicks[0], slot: '2026-11-03:09', seen_at: null, rolls: 1, rolls_left: 0, expires_at: new Date(Date.now() + 5.5 * 3600e3).toISOString() }] })
+    const hash = `#exp/d/ops/x?id=${QID}`
+    renderInFrame(<XReviewPage layout="phone" route={parseDHash(hash)} navigate={() => {}} />, { layout: 'phone', hash })
+    await screen.findByText(/^Quick post/)
+    await waitFor(() => expect(api.markXQuickSeen).toHaveBeenCalledWith(QID))
+    expect(document.querySelector('.xr-head-t small')?.textContent).toMatch(/In review · from .+ · expires in 5h$/)
+    await act(async () => { await Promise.resolve() })
+    expect(api.markXQuickSeen).toHaveBeenCalledTimes(1)
+  })
+
+  it('a failed seen stamp is sent again on the next read, also after he left the card', async () => {
+    api.fetchXReview.mockResolvedValue(QLIST)
+    api.markXQuickSeen.mockRejectedValueOnce(new Error('offline'))
+    const hash = `#exp/d/ops/x?id=${QID}`
+    const r = renderInFrame(<XReviewPage layout="phone" route={parseDHash(hash)} navigate={() => {}} />, { layout: 'phone', hash })
+    await screen.findByText(/^Quick post/)
+    await waitFor(() => expect(api.markXQuickSeen).toHaveBeenCalledTimes(1))
+    r.unmount()
+    await act(async () => { await refreshX() })
+    await waitFor(() => expect(api.markXQuickSeen).toHaveBeenCalledTimes(2))
+    await act(async () => { await refreshX() })
+    expect(api.markXQuickSeen).toHaveBeenCalledTimes(2)
+  })
+
+  it('never marks a post that already went out as seen', async () => {
+    api.fetchXReview.mockResolvedValue({ ...QLIST, quicks: [{ ...QLIST.quicks[0], status: 'posting' }] })
+    const hash = `#exp/d/ops/x?id=${QID}`
+    renderInFrame(<XReviewPage layout="phone" route={parseDHash(hash)} navigate={() => {}} />, { layout: 'phone', hash })
+    await screen.findByText(/^Quick post/)
+    expect(api.markXQuickSeen).not.toHaveBeenCalled()
   })
 
   it('posts the exact text he confirmed and locks the editor while it goes out', async () => {
