@@ -5,6 +5,8 @@ const P = {
   lanes: <path d="M7 4v16M7 4 3 8M7 4l4 4M17 20V4M17 20l-4-4M17 20l4-4" />,
   dms: <path d="M4 5h16v11H9l-5 4z" />,
   content: <path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" />,
+  // The X logo as a line glyph: the long stroke as an outlined band, the short one as two strokes.
+  xlogo: <path d="M4.5 4h4.2l10.8 16h-4.2zM19 4l-5.6 6.4M5 20l5.6-6.4" />,
   ops: <path d="M9 4h6v3H9zM6 6h12v14H6zM9 12l2 2 4-4" />,
   sales: <path d="M4 13l4-4 4 3 4-5 4 3M4 19h16" />,
   intel: <path d="M4 6h16v12H4zM10.5 9.5v5l4-2.5z" />,

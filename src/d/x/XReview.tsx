@@ -1,17 +1,17 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Segmented } from '../../../ds/Segmented'
-import { LiveDot } from '../../../ds/Working'
-import { wordCount } from '../../../lib/xArticleMd'
-import { decideXArticle, decideXQuick, decideXQuote, fetchXQuickPhotos, photoRing, photoThumb, saveXArticle, saveXQuick, saveXQuote, xFlagItems, type XArticle, type XPhoto, type XQuick, type XQuote, type XRingPhoto } from '../../../lib/xReview'
-import { useFrameCounts } from '../../counts/useFrameCounts'
-import type { Layout, PlaceProps } from '../../places'
-import { dHash } from '../../route'
-import { AnswerRow } from '../../ui/AnswerRow'
-import { useDConfirm } from '../../ui/confirm'
-import { Key } from '../../ui/Key'
-import { Failed, Skeleton } from '../../ui/states'
-import { warsawHm } from '../../ui/time'
-import { useToast } from '../../ui/toast'
+import { Segmented } from '../../ds/Segmented'
+import { LiveDot } from '../../ds/Working'
+import { wordCount } from '../../lib/xArticleMd'
+import { decideXArticle, decideXQuick, decideXQuote, fetchXQuickPhotos, photoRing, photoThumb, saveXArticle, saveXQuick, saveXQuote, xFlagItems, type XArticle, type XPhoto, type XQuick, type XQuote, type XRingPhoto } from '../../lib/xReview'
+import { useFrameCounts } from '../counts/useFrameCounts'
+import type { Layout, PlaceProps } from '../places'
+import { dHash } from '../route'
+import { AnswerRow } from '../ui/AnswerRow'
+import { useDConfirm } from '../ui/confirm'
+import { Key } from '../ui/Key'
+import { Failed, Skeleton } from '../ui/states'
+import { warsawHm } from '../ui/time'
+import { useToast } from '../ui/toast'
 import { XLogo } from './glyphs'
 import { XFlag } from './XFlag'
 import { XArticlePreview, XPostPreview } from './XPreview'
@@ -20,7 +20,7 @@ import { choosePhoto, flushPhoto, usePhotoSlot } from './photoSaves'
 import { patchX, useXReview } from './useXReview'
 import './x.css'
 
-// X REVIEW: `#exp/d/ops/x?id=<article or quote id>`. Ivan, 2026-10-11: "allow me to click on the
+// X REVIEW: `#exp/d/x?id=<article or quote id>` (the X desk; `#exp/d/ops/x` redirects here, route.ts). Ivan, 2026-10-11: "allow me to click on the
 // inputs and then on the same screen you open the X simulation so it should look like X so I can
 // review in there". Phone: Preview / Edit on one screen (a tap on a paragraph in the preview opens
 // the editor at that line). Desktop: editor and preview side by side. Publish and Post ask first.
@@ -90,10 +90,10 @@ function Checks({ a, words }: { a: XArticle; words: number }) {
   )
 }
 
-function Head({ layout, label, title, navigate, actions }: { layout: Layout; label: string; title: string; navigate: (h: string) => void; actions?: ReactNode }) {
+function Head({ layout, label, title, navigate, actions, back = true }: { layout: Layout; label: string; title: string; navigate: (h: string) => void; actions?: ReactNode; back?: boolean }) {
   return (
     <div className={`xr-head xr-head-${layout}`}>
-      <button type="button" className="d-ib xr-back" aria-label="Back to Ops" onClick={() => { if (!document.querySelector('.d-confirm')) navigate(dHash('ops')) }}>‹</button>
+      {back && <button type="button" className="d-ib xr-back" aria-label="Back to the X desk" onClick={() => { if (!document.querySelector('.d-confirm')) navigate(dHash('x')) }}>‹</button>}
       <div className="xr-head-t"><small><XLogo size={11} /> {label}</small><b>{title}</b></div>
       {actions && <div className="xr-head-k">{actions}</div>}
     </div>
@@ -151,7 +151,7 @@ function useDecide(kind: 'article' | 'quote' | 'quick', id: string, title: strin
       patchX(l => ({ articles: l.articles.filter(a => a.id !== id), quotes: l.quotes.filter(q => q.id !== id), quicks: l.quicks.filter(k => k.id !== id) }))
       refreshCounts('ops')
       toast.show({ id: `x-${id}`, message: `Discarded · ${title}` })
-      navigate(dHash('ops'))
+      navigate(dHash('x'))
     } catch (e) { setErr(msg(e)) } finally { setBusy(null) }
   }, [confirm, kind, id, title, navigate, refreshCounts, toast])
   return { busy, err, go, discard }
@@ -525,7 +525,7 @@ export default function XReviewPage({ layout, route, navigate }: PlaceProps) {
   if (article) return <ArticleReview key={article.id} a={article} layout={layout} navigate={navigate} />
   if (quote) return <QuoteReview key={quote.id} q={quote} layout={layout} navigate={navigate} />
   if (quick) return <QuickReview key={quick.id} k={quick} layout={layout} navigate={navigate} />
-  const head = <Head layout={layout} label="X review" title={first ? 'Waiting on you' : 'X review'} navigate={navigate} />
+  const head = <Head layout={layout} label="X desk" title={first ? 'Waiting on you' : 'X review'} navigate={navigate} back={false} />
   if (!x.list && x.error) return <div className={`xr xr-${layout}`}>{head}<Failed what="the X review list" detail={x.error} onRetry={() => void x.refresh()} /></div>
   if (!x.list) return <div className={`xr xr-${layout}`}>{head}<Skeleton lines={8} label="Reading the X review" /></div>
   return (

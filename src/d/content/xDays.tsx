@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fetchXCalendar, type XCalendarItem } from '../../lib/xReview'
-import { XLogo } from '../ops/x/glyphs'
+import { XLogo } from '../x/glyphs'
 import { warsawDay, warsawDayTime, warsawHm } from '../ui/time'
 
 // X ARTICLES ON THE CALENDAR (Ivan 2026-10-11: "a small flag on every box when there is an
@@ -44,7 +44,7 @@ export function XMarks({ items, time = true }: { items: XCalendarItem[] | undefi
         return (
           <a
             key={x.id} className="xmark" data-status={x.status}
-            href={out ? x.x_url! : `#exp/d/ops/x?id=${x.id}`}
+            href={out ? x.x_url! : `#exp/d/x?id=${x.id}`}
             {...(out ? { target: '_blank', rel: 'noreferrer' } : {})}
             aria-label={label} title={label}
             onClick={e => e.stopPropagation()}

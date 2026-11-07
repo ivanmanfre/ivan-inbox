@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { XReviewList } from '../../../lib/xReview'
+import type { XReviewList } from '../../lib/xReview'
 
 const api = vi.hoisted(() => ({ fetchXReview: vi.fn() }))
-vi.mock('../../../lib/xReview', async (orig) => ({ ...(await orig<typeof import('../../../lib/xReview')>()), ...api }))
+vi.mock('../../lib/xReview', async (orig) => ({ ...(await orig<typeof import('../../lib/xReview')>()), ...api }))
 
 import { __resetXForTests, patchX, refreshX, useXReview } from './useXReview'
 

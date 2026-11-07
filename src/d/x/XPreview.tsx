@@ -1,5 +1,5 @@
 import { Fragment, type MouseEvent, type ReactNode } from 'react'
-import { spans, xArticleBlocks, type XBlock, type XImageRef } from '../../../lib/xArticleMd'
+import { spans, xArticleBlocks, type XBlock, type XImageRef } from '../../lib/xArticleMd'
 import { XCheck } from './glyphs'
 
 // THE X SIMULATIONS. A white X page whatever the app's theme: the article reader (5:2 cover,

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useSyncExternalStore } from 'react'
-import { fetchXReview, xFlagItems, type XReviewList } from '../../../lib/xReview'
+import { fetchXReview, xFlagItems, xWaitingCount, type XReviewList } from '../../lib/xReview'
 
-// ONE X REVIEW READ FOR THE APP. The flag on Home, the flag on Ops and the review screen all read
+// ONE X REVIEW READ FOR THE APP. The flag on Home, the X desk, its nav count and the review screen all read
 // the same store, so a decision on the review screen moves the flag at once. Re-read on mount
 // (if older than 15 s), on focus, every minute while visible, and every 5 s while anything is
 // publishing / posting (so "Publishing…" turns into "Live on X" without a pull).
@@ -61,4 +61,23 @@ export function useXReview() {
     return () => window.clearInterval(t)
   }, [moving])
   return { ...s, refresh: refreshX }
+}
+
+/**
+ * THE X DESK'S ONE NUMBER (nav line, dock badge): items waiting on Ivan, off the same store as the
+ * desk, so a decision there moves the count at once. Reads on mount when stale, on focus, and every
+ * 3 min while visible (the frame counts' pace; the desk itself reads every minute while open).
+ * n is null until the first read lands; failed = no list at all because the read failed.
+ */
+export function useXWaiting(): { n: number | null; failed: boolean } {
+  const s = useSyncExternalStore(subscribe, snap, snap)
+  useEffect(() => {
+    if (!st.at || Date.now() - st.at > 15_000) void refreshX()
+    const onFocus = () => { if (document.visibilityState === 'visible') void refreshX() }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+    const t = window.setInterval(() => { if (document.visibilityState === 'visible') void refreshX() }, 180_000)
+    return () => { window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onFocus); window.clearInterval(t) }
+  }, [])
+  return { n: s.list ? xWaitingCount(s.list) : null, failed: !s.list && s.error != null }
 }

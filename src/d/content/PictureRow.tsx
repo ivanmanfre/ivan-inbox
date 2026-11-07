@@ -8,7 +8,7 @@ import { Btn } from '../ui/Key'
 import { useToast } from '../ui/toast'
 import { OWNER, POSS, type Lane } from './model'
 import './picture.css'
-import '../ops/x/x.css'
+import '../x/x.css'
 
 // THE PICTURE ROW, under the post, on every lane (Ivan 29 Sep: "can't do basic
 // shit like change the pictures from there"). One write for all three lanes:
