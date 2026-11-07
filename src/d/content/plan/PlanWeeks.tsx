@@ -19,6 +19,8 @@ import { hmText, spacedFrom, type SlotHm } from '../model'
 import { slotWords, type Reserved } from '../weekVerbs'
 import { warsawDay } from '../../ui/time'
 import { POLAND_TARGET, mixWords, weekMix } from './poland'
+import { heldWhy, type FillPair } from './archFill'
+import type { ArchFillRead } from '../../../lib/archFill'
 
 // PLAN > WEEKS (spec 2026-10-12 §3a, R2.1, R2.2, R3.5; mock v3 `weeks()`). Three week rows, Mon to Fri plus a
 // weekend day only when a post sits there. The header carries the name, the range, the fill meter, n of target
@@ -101,8 +103,52 @@ function PolandGap({ r, at, onTake }: { r: ContentDraft; at: Date; onTake: (r: C
   </div>
 }
 
+/** ARCH's seat: the "Fill next week" key (review 2026-11-06 #25). Only repurposed posts that pass the 0.40 overlap
+ *  check are offered; every other draft waits for Davorin. Nothing is written until Ivan taps the key. */
+export type ArchFillMeter = {
+  /** null: still reading. */
+  read: ArchFillRead | null
+  failed: boolean
+  /** The week the key fills (next week's start). */
+  week: string
+  pairs: readonly FillPair[]
+  /** A tap is held for its Undo window or being written. */
+  busy: boolean
+  onFill: () => void
+}
+
+const origWord = (iso: string | null) => (iso ? `From his ${planDay(iso.slice(0, 10)).replace(/^\w+ /, '')} post` : 'From his own post')
+
+/** The dashed card in the slot a repurposed post would fill. */
+function FillGap({ p }: { p: FillPair }) {
+  const title = (p.offer.title ?? '').trim() || (p.offer.post_body ?? '').split('\n').find(l => l.trim())?.trim() || 'Untitled post'
+  return <div className="pl2-gap pl2-fill-gap" data-fill-draft={p.offer.id}>
+    <span className="pl2-gap-l">Repurposed · {slotWords(new Date(p.at)).replace(/^\w+ \d+ \w+ · /, '')} · {p.offer.overlap.toFixed(2)} overlap</span>
+    <span className="pl2-gap-t">{title}</span>
+    <span className="pl2-gap-l">{origWord(p.offer.original_at)}</span>
+  </div>
+}
+
+/** The strip under next week's header: what the key fills, or why it fills nothing. */
+function FillStrip({ f }: { f: ArchFillMeter }) {
+  if (f.failed && !f.read) return <div className="pl2-fill" data-fill="failed"><span>Repurposed posts could not be read.</span></div>
+  if (!f.read) return <div className="pl2-fill" data-fill="reading"><span>Reading repurposed posts…</span></div>
+  const waits = f.read.waiting_davorin
+  const rest = waits > 0 ? `${waits} other draft${waits === 1 ? '' : 's'} wait for Davorin.` : 'Everything else waits for Davorin.'
+  const n = f.pairs.length
+  return <div className="pl2-fill" data-fill={n ? 'ready' : 'none'}>
+    <div className="pl2-fill-t">
+      {n ? <span>{n} repurposed post{n === 1 ? '' : 's'} can fill this week without Davorin. {rest}</span>
+        : <span>Nothing to fill without Davorin: {f.read.offered.length ? 'the week has no open slot.' : 'no repurposed post is waiting.'} {rest}</span>}
+      {f.read.held.map(h => <span key={h.id} className="pl2-fill-h">Held: {(h.title ?? 'Untitled').trim()}, {heldWhy(h.reason, h.overlap)}.</span>)}
+    </div>
+    {n > 0 && <button type="button" className="pl2-gap-k pl2-fill-k" data-verb="plan-arch-fill" disabled={f.busy} onClick={f.onFill}>
+      {f.busy ? 'Filling…' : `Fill next week · ${n} post${n === 1 ? '' : 's'}`}</button>}
+  </div>
+}
+
 /** `hover` false (the panel is open) keeps the hover card shut; it stays shut on the card focus returns to after. */
-export function PlanWeeks({ read, items: given, today, onOpen, onChanged, hover = true, poland = null }: { read: PlanRead; items: PlanItem[]; today: string; onOpen: (it: PlanItem) => void; onChanged?: () => void; hover?: boolean; poland?: PolandMeter | null }) {
+export function PlanWeeks({ read, items: given, today, onOpen, onChanged, hover = true, poland = null, archFill = null }: { read: PlanRead; items: PlanItem[]; today: string; onOpen: (it: PlanItem) => void; onChanged?: () => void; hover?: boolean; poland?: PolandMeter | null; archFill?: ArchFillMeter | null }) {
   const f = useFrameMaybe()
   const hoverable = useSyncExternalStore(subscribeHover, readHover, () => false)
   const level = useMotionLevel()
@@ -232,6 +278,7 @@ export function PlanWeeks({ read, items: given, today, onOpen, onChanged, hover 
       const heldPoland = poland ? [...poland.reserved.entries()].filter(([id, r]) => r.poland && !drawnIds.has(id) && warsawDay(r.at) >= w.start && warsawDay(r.at) <= end).length : 0
       const pm = pm0 ? { ...pm0, poland: pm0.poland + heldPoland } : null
       let gapsWanted = pm ? Math.max(0, POLAND_TARGET - pm.poland) : 0
+      const fill = archFill && archFill.week === w.start ? archFill : null
       return <section key={w.start} className="pl2-wk" aria-label={NAME[w.which] ?? 'Week'}>
         <div className="pl2-wk-h">
           <b>{NAME[w.which] ?? 'Week'}</b>
@@ -245,6 +292,7 @@ export function PlanWeeks({ read, items: given, today, onOpen, onChanged, hover 
           {poland && <span className={`pl2-wk-pol${pm && pm.poland < POLAND_TARGET ? ' pl2-wk-short' : ''}`} data-poland={pm ? pm.poland : undefined}>
             {pm ? mixWords(pm) : poland.failed ? 'Poland split could not be read' : 'Reading the Poland split…'}</span>}
         </div>
+        {fill && <FillStrip f={fill} />}
         <div className="pl2-grid" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}>
           {days.map(d => {
             const day = addDays(w.start, d)
@@ -260,6 +308,7 @@ export function PlanWeeks({ read, items: given, today, onOpen, onChanged, hover 
             const gap = fits && gapsWanted > 0 && left.length ? left.shift()! : null
             if (gap) gapsWanted--
             const gapAt = gap ? new Date(candAt) : null
+            const fillHere = fill && !fill.busy ? fill.pairs.filter(p => p.day === day) : []
             return <div key={day} className={`pl2-dcol${past ? ' pl2-past' : ''}${isToday ? ' pl2-today' : ''}`} data-day={day} data-cal-day={past ? undefined : day}
               style={{ '--pl2-d': `${delay()}ms` } as CSSProperties}>
               <div className="pl2-dh">
@@ -271,7 +320,8 @@ export function PlanWeeks({ read, items: given, today, onOpen, onChanged, hover 
                 {lateHere.map(it => card(it, `Waiting since ${planDay(it.day!)}`))}
                 {cards.map(it => card(it))}
               </div>}
-              {gap && gapAt ? <PolandGap r={gap} at={gapAt} onTake={poland!.onTake} /> : well && <div className="pl2-free">Free</div>}
+              {fillHere.length > 0 ? fillHere.map(p => <FillGap key={p.offer.id} p={p} />)
+                : gap && gapAt ? <PolandGap r={gap} at={gapAt} onTake={poland!.onTake} /> : well && <div className="pl2-free">Free</div>}
             </div>
           })}
         </div>

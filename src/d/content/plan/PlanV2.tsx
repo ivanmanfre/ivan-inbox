@@ -12,11 +12,15 @@ import { Seg, SeatAv } from '../v2/ui'
 import { BrainStrip, IdeaStockPopover } from './BrainStrip'
 import { PlanList, useEntered } from './PlanList'
 import { PlanPanel } from './PlanPanel'
-import { PlanWeeks, type PolandMeter } from './PlanWeeks'
+import { PlanWeeks, type ArchFillMeter, type PolandMeter } from './PlanWeeks'
+import { FillUnsure, commitArchFill, fetchArchFill, undoArchFill, type ArchFillRead } from '../../../lib/archFill'
+import { fillPairs, type FillPair } from './archFill'
+import { useToast } from '../../ui/toast'
+import { slotWords } from '../weekVerbs'
 import type { ContentDraft } from '../../../lib/content'
 import { fetchPoland, type PolandRead } from '../../../lib/poland'
 import { isBrainPost } from '../../../lib/brainDraft'
-import { usePendingDecisions } from '../decisions'
+import { HOLD_MS, holdDecision, undoDecision, usePendingDecisions } from '../decisions'
 import { seatSlotOf } from '../model'
 import { useApproveSchedule, useReservedSlots } from '../weekVerbs'
 import { polandPicks } from './poland'
@@ -236,13 +240,88 @@ export function PlanV2({ lane, setLane, verdicts, showInsights = false, ivanRows
     }
   }, [ivanOn, r, all, held, reserved, pol, ivanRows, now, take, verdicts])
 
+  // ARCH "FILL NEXT WEEK" (review 2026-11-06 #25; Ivan 27 Oct). Read on the ARCH seat with every plan re-read. The
+  // tap is held for the 8 s Undo (nothing written), then one all-or-nothing commit carrying a batch id made here and
+  // each body's hash (the database refuses a post that changed since it was shown). Its receipt carries an Undo
+  // (arch_fill_undo). The key stays off from the tap until a fresh read lands, so old pairs never come back.
+  // Only repurposed posts at 0.40 overlap or less are offered.
+  const toast = useToast()
+  const archOn = lane === 'arch'
+  const [af, setAf] = useState<{ read: ArchFillRead | null; failed: boolean }>({ read: null, failed: false })
+  const [afHeld, setAfHeld] = useState<{ pairs: readonly FillPair[]; stale: ArchFillRead | null } | null>(null)
+  useEffect(() => {
+    if (!archOn) return
+    const c = new AbortController()
+    let live = true
+    void fetchArchFill(c.signal)
+      .then(x => { if (live) setAf({ read: x, failed: false }) })
+      .catch(() => { if (live) setAf(p => ({ read: p.read, failed: true })) })
+    return () => { live = false; c.abort() }
+  }, [archOn, tick])
+  // A tap stays held until the read after it lands (afHeld.stale = the read it was made from).
+  useEffect(() => { setAfHeld(h => (h && h.stale && af.read !== h.stale ? null : h)) }, [af.read])
+  const nextWeek = r?.weeks.find(w => w.which === 'next') ?? null
+  const afPairs = useMemo(() => {
+    // A plan and a fill read for different weeks (a tab left open over Monday) offer nothing until both re-read.
+    if (!archOn || !af.read || !nextWeek || af.read.week.start !== nextWeek.start) return []
+    const busy = all.map(i => i.at).filter((x): x is string => !!x)
+    return fillPairs({ offered: af.read.offered, week: af.read.week, busy, slotHm: af.read.slot_hm, tz: af.read.tz, now: Date.now() })
+  }, [archOn, af.read, nextWeek, all])
+  const fillKey = nextWeek ? `arch-fill:${nextWeek.start}` : 'arch-fill'
+  const fillBusy = !!afHeld || held.has(fillKey)
+  const fillNow = useCallback((pairs: readonly FillPair[]) => {
+    if (!pairs.length || fillBusy) return
+    const key = fillKey
+    const when = pairs.map(p => slotWords(new Date(p.at))).join(', ')
+    const batch = crypto.randomUUID()
+    const items = pairs.map(p => ({ id: p.offer.id, at: p.at, body_sha256: p.offer.body_sha256 }))
+    const reread = () => { retry(); onRowsChanged?.() }
+    const undo = () => {
+      void undoArchFill(batch)
+        .then(u => toast.show({
+          id: `${key}:undo`, message: u.undone ? `Taken back: ${u.undone} post${u.undone === 1 ? '' : 's'}.` : 'Nothing was taken back.',
+          sub: [u.posted ? `${u.posted} already posted.` : '', u.tooLate ? `${u.tooLate} posts within 15 minutes, so it stays.` : '', u.changed ? `${u.changed} changed since the fill, so it stays.` : ''].filter(Boolean).join(' ') || 'They are back in Review with no date.',
+        }))
+        .catch(e => toast.show({ id: `${key}:undo`, tone: 'failed', message: e instanceof Error ? e.message : 'The undo did not go through.' }))
+        .finally(reread)
+    }
+    setAfHeld({ pairs, stale: null })
+    holdDecision(key, 'approve', {
+      write: async () => {
+        // One retry on an unclear answer: the batch id makes it safe (the RPC returns what it already wrote).
+        try { await commitArchFill(batch, items) }
+        catch (e) { if (e instanceof FillUnsure) await commitArchFill(batch, items); else throw e }
+      },
+      onCommitted: () => {
+        setAfHeld({ pairs, stale: af.read }); reread()
+        toast.show({
+          id: `${key}:done`, ms: 20_000, message: `${pairs.length === 1 ? 'Set' : `${pairs.length} posts set`}: ${when}.`, sub: 'They show on Davorin’s board and post on LinkedIn then.',
+          action: { label: 'Undo', verb: 'plan-arch-fill-undo', run: undo },
+        })
+      },
+      onFailed: e => {
+        setAfHeld({ pairs, stale: af.read }); reread()
+        toast.show(e instanceof FillUnsure
+          ? { id: `${key}:done`, ms: 20_000, tone: 'failed', message: 'No clear answer from the database.', sub: 'It may have been set. Undo takes back anything it set.', action: { label: 'Undo', verb: 'plan-arch-fill-undo', run: undo } }
+          : { id: `${key}:done`, tone: 'failed', message: e instanceof Error ? e.message : 'The fill did not go through.', sub: 'Nothing was set.' })
+      },
+    })
+    toast.show({
+      id: key, ms: HOLD_MS, message: `Filling next week: ${when}.`, sub: 'Repurposed posts only. Each goes out on LinkedIn at its time.',
+      action: { label: 'Undo', verb: 'undo-decision', run: () => { if (undoDecision(key)) setAfHeld(null); else toast.show({ id: key, message: 'Too late to undo here: use Undo on the next note.' }) } },
+    })
+  }, [af.read, fillBusy, fillKey, onRowsChanged, retry, toast])
+  const fillMeter: ArchFillMeter | null = useMemo(() => (!archOn || !nextWeek ? null : {
+    read: af.read, failed: af.failed, week: nextWeek.start, pairs: afHeld?.pairs ?? afPairs, busy: fillBusy, onFill: () => fillNow(afPairs),
+  }), [archOn, nextWeek, af, afHeld, afPairs, fillBusy, fillNow])
+
   const seats = <Seg label="Account" value={lane} onChange={id => setLane(id as Lane)} verb="plan-seat"
     options={LANES.map(l => ({ id: l, label: <><SeatAv lane={l} />{LANE_NAME[l]}</> }))} />
   const late = r && r.state !== 'awaiting_cadence' && lateRun(r, now) ? (ranAt(r) ? `The planner has not run since ${ranAt(r)}.` : 'The planner has not run yet.') : null
 
   // Weeks gets every item of the three weeks (past days of this week keep their posts); List starts from today.
   const body = !r ? null
-    : view === 'weeks' && !phone ? <PlanWeeks key={`weeks:${r.account}`} read={r} items={all} today={r.today} onOpen={openItem} onChanged={retry} hover={!open} poland={meter} />
+    : view === 'weeks' && !phone ? <PlanWeeks key={`weeks:${r.account}`} read={r} items={all} today={r.today} onOpen={openItem} onChanged={retry} hover={!open} poland={meter} archFill={fillMeter} />
       : <PlanList key={`list:${r.account}`} read={r} items={items} phone={phone} onOpen={openItem} />
 
   return <div className={`cv2 pl2${phone ? ' pl2-phone' : ''}`} data-motion={level} data-open={open?.key}>

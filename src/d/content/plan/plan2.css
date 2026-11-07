@@ -431,3 +431,9 @@ html:is(.cal-dragging,.cal-dropped) .pl2-hc{display:none!important}
 :root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-gap-l{font:500 12px/16px var(--ds-font);color:var(--ds-text-3)}
 :root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-gap-t{font:400 13px/18px var(--ds-font);color:var(--ds-text);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 :root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-gap-k{align-self:flex-start;min-height:32px;padding:0 10px;border-radius:8px;background:var(--ds-text);color:var(--ds-canvas,#fff);font:500 13px/32px var(--ds-font)}
+/* ARCH "Fill next week" (review 2026-11-06 #25): one strip under next week's header, dashed cards in the slots. */
+:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-fill{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:0 0 10px;padding:10px 12px;border:1px solid var(--ds-line);border-radius:var(--pl2-r-card,10px);font:400 15px/21px var(--ds-font);color:var(--ds-text)}
+:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-fill-t{display:flex;flex-direction:column;gap:4px;min-width:0}
+:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-fill-h{font:400 13px/18px var(--ds-font);color:var(--ds-text-3)}
+:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-fill-k{flex:none;align-self:center}
+:root:is([data-skin-on~='content.plan'],:has(.pl2)) .pl2-fill-k:disabled{opacity:.55;cursor:default}
