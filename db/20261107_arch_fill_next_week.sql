@@ -332,3 +332,5 @@ revoke all on function public.tg_arch_fill_body_changed(), public.tg_arch_approv
   public.arch_fill_check(uuid), public.arch_fill_read(text), public.arch_fill_commit(text, uuid, jsonb), public.arch_fill_undo(text, uuid) from public, anon;
 grant execute on function public.arch_fill_read(text), public.arch_fill_commit(text, uuid, jsonb), public.arch_fill_undo(text, uuid) to authenticated, service_role;
 grant execute on function public.arch_rework_tokens(text), public.arch_rework_overlap(text, text), public.arch_fill_slot_hm(), public.arch_fill_week(timestamptz), public.arch_fill_check(uuid) to service_role;
+-- Helpers stay server-side (Supabase grants new functions to authenticated by default).
+revoke execute on function public.tg_arch_fill_body_changed(), public.tg_arch_approval_order(), public.arch_rework_tokens(text), public.arch_rework_overlap(text, text), public.arch_fill_slot_hm(), public.arch_fill_week(timestamptz), public.arch_fill_check(uuid) from authenticated;
