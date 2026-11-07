@@ -228,7 +228,8 @@ begin
     select * into d from public.carousel_drafts where id = v_ids[i];
     c := public.arch_fill_check(d.id);
     v_prev := coalesce(d.board_visible, false);
-    -- the approval state before the fill, so Undo can put it back exactly
+    -- the approval state before the fill, so Undo can put it back exactly (read under the post's approval lock)
+    perform pg_advisory_xact_lock(hashtext('arch_approval:' || d.id::text));
     select jsonb_build_object('action', a.action, 'payload', a.payload) into v_prev_appr from public.client_board_actions a
      where a.ref = d.id::text and (a.action in ('approve', 'undo_approve') or (a.action = 'note' and a.payload->>'event' in ('approve', 'undo_approve')))
      order by a.created_at desc, a.id desc limit 1;
@@ -264,6 +265,9 @@ begin
   for a in select * from public.client_board_actions
             where client_id = 'arch' and action = 'approve' and payload->>'batch' = p_batch::text order by created_at, id loop
     v_found := v_found + 1;
+    -- the post's approval lock before reading its latest approval, held to the end (review r5): a board approve or
+    -- undo still in flight finishes first, so the check below sees it.
+    perform pg_advisory_xact_lock(hashtext('arch_approval:' || a.ref));
     select * into d from public.carousel_drafts where id::text = a.ref and client_id = 'arch' for update;
     if d.id is null then v_changed := v_changed + 1; continue; end if;
     if d.published_at is not null then v_posted := v_posted + 1; continue; end if;
@@ -306,6 +310,7 @@ create or replace function public.tg_arch_fill_body_changed()
 returns trigger language plpgsql security definer set search_path = public, extensions, pg_temp as $$
 declare a public.client_board_actions;
 begin
+  perform pg_advisory_xact_lock(hashtext('arch_approval:' || new.id::text));
   select * into a from public.client_board_actions
    where ref = new.id::text and (action in ('approve', 'undo_approve') or (action = 'note' and payload->>'event' in ('approve', 'undo_approve')))
    order by created_at desc, id desc limit 1;
