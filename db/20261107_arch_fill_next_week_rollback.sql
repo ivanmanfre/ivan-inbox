@@ -1,5 +1,7 @@
 -- Rollback for db/20261107_arch_fill_next_week.sql. Drops the new functions only; rows written by a fill stay
 -- (they are ordinary approve/undo_approve rows and dates; use arch_fill_undo before rolling back if needed).
+drop trigger if exists arch_fill_body_changed on public.carousel_drafts;
+drop function if exists public.tg_arch_fill_body_changed();
 drop function if exists public.arch_fill_undo(text, uuid);
 drop function if exists public.arch_fill_commit(text, uuid, jsonb);
 drop function if exists public.arch_fill_read(text);

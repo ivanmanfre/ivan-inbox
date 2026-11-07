@@ -165,6 +165,19 @@ describe('arch_fill_commit and arch_fill_undo', { timeout: 60_000 }, () => {
     expect(await undo(db)).toMatchObject({ ok: true, undone: 0, changed: 1 })
   })
 
+  it('an edit after the fill takes the approval away until it is approved again (review r2)', async () => {
+    const db = await setup()
+    const [mon] = await slots(db)
+    expect((await commit(db, [await item(db, ids.rework, mon)])).ok).toBe(true)
+    await db.query(`update carousel_drafts set post_body = $1 where id = $2`, [ORIG, ids.rework])
+    const last = (await db.query<{ action: string; payload: Record<string, unknown> }>(`select action, payload from client_board_actions order by created_at desc limit 1`)).rows[0]
+    expect(last).toMatchObject({ action: 'undo_approve', payload: { event: 'body_changed_after_fill', batch_of: BATCH } })
+    // a non-fill approval is left alone by the trigger
+    await db.query(`insert into client_board_actions (board_slug, client_id, action, ref, payload) values ('arch-agency','arch','approve',$1,'{"by":"Davorin"}')`, [ids.fresh])
+    await db.query(`update carousel_drafts set post_body = 'Edited.' where id = $1`, [ids.fresh])
+    expect((await db.query(`select 1 from client_board_actions where ref = $1 and action = 'undo_approve'`, [ids.fresh])).rows.length).toBe(0)
+  })
+
   it('Undo puts back an approval that was there before the fill', async () => {
     const db = await setup()
     await db.query(`insert into client_board_actions (board_slug, client_id, action, ref, payload) values ('arch-agency','arch','approve',$1,'{"by":"Davorin"}')`, [ids.rework])
@@ -200,6 +213,6 @@ describe('arch_fill_commit and arch_fill_undo', { timeout: 60_000 }, () => {
   it('rolls back cleanly', async () => {
     const db = await setup()
     await db.exec(rollback)
-    expect((await db.query(`select proname from pg_proc where proname like 'arch_fill%' or proname like 'arch_rework%'`)).rows).toEqual([])
+    expect((await db.query(`select proname from pg_proc where proname like 'arch_fill%' or proname like 'arch_rework%' or proname like 'tg_arch_fill%'`)).rows).toEqual([])
   })
 })

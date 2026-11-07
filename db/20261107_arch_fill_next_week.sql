@@ -277,7 +277,31 @@ begin
   return jsonb_build_object('ok', true, 'undone', v_undone, 'posted', v_posted, 'changed', v_changed, 'too_late', v_late);
 end $$;
 
-revoke all on function public.arch_rework_tokens(text), public.arch_rework_overlap(text, text), public.arch_fill_slot_hm(), public.arch_fill_week(timestamptz),
+-- A FILLED POST WHOSE TEXT CHANGES LOSES ITS APPROVAL (cross-review r2). The ARCH publisher reads the body at send
+-- time and does not compare it with approved_body_sha256, so an edit after the tap (Ivan's editor, Davorin's board,
+-- any engine) could post a text that never passed the 0.40 check. When the latest approval is a fill's and the new
+-- body no longer matches its hash, an undo_approve goes in: the publisher skips it until it is approved again.
+create or replace function public.tg_arch_fill_body_changed()
+returns trigger language plpgsql security definer set search_path = public, extensions, pg_temp as $$
+declare a public.client_board_actions;
+begin
+  select * into a from public.client_board_actions
+   where ref = new.id::text and action in ('approve', 'undo_approve') order by created_at desc, id desc limit 1;
+  if a.action = 'approve' and a.payload->>'via' = 'inbox fill next week'
+     and a.payload->>'approved_body_sha256' is distinct from encode(digest(coalesce(new.post_body, ''), 'sha256'), 'hex') then
+    insert into public.client_board_actions (board_slug, client_id, action, ref, payload)
+    values ('arch-agency', 'arch', 'undo_approve', new.id::text, jsonb_build_object(
+      'by', 'system', 'via', 'inbox fill next week', 'event', 'body_changed_after_fill', 'batch_of', a.payload->>'batch',
+      'note', 'The text changed after Fill next week approved it, so it waits for a new approval.'));
+  end if;
+  return null;
+end $$;
+drop trigger if exists arch_fill_body_changed on public.carousel_drafts;
+create trigger arch_fill_body_changed after update of post_body on public.carousel_drafts
+  for each row when (new.client_id = 'arch' and new.published_at is null and old.post_body is distinct from new.post_body)
+  execute function public.tg_arch_fill_body_changed();
+
+revoke all on function public.tg_arch_fill_body_changed(), public.arch_rework_tokens(text), public.arch_rework_overlap(text, text), public.arch_fill_slot_hm(), public.arch_fill_week(timestamptz),
   public.arch_fill_check(uuid), public.arch_fill_read(text), public.arch_fill_commit(text, uuid, jsonb), public.arch_fill_undo(text, uuid) from public, anon;
 grant execute on function public.arch_fill_read(text), public.arch_fill_commit(text, uuid, jsonb), public.arch_fill_undo(text, uuid) to authenticated, service_role;
 grant execute on function public.arch_rework_tokens(text), public.arch_rework_overlap(text, text), public.arch_fill_slot_hm(), public.arch_fill_week(timestamptz), public.arch_fill_check(uuid) to service_role;
