@@ -191,6 +191,19 @@ describe('arch_fill_commit and arch_fill_undo', { timeout: 60_000 }, () => {
     expect(last.action).toBe('undo_approve')
   })
 
+  it('a board undo whose transaction started before the fill still sorts after it (review r4: mixed writers)', async () => {
+    const db = await setup()
+    const [mon] = await slots(db)
+    expect((await commit(db, [await item(db, ids.rework, mon)])).ok).toBe(true)
+    // Davorin's board writes with DEFAULT now() = its transaction start, which can be before the fill's row
+    await db.query(`insert into client_board_actions (board_slug, client_id, action, ref, payload, created_at) values ('arch-agency','arch','note',$1,'{"event":"undo_approve","by":"Davorin"}', now() - interval '5 seconds')`, [ids.rework])
+    const last = (await db.query<{ action: string; ev: string | null }>(`select action, payload->>'event' ev from client_board_actions where ref = $1 and (action in ('approve','undo_approve') or payload->>'event' in ('approve','undo_approve')) order by created_at desc limit 1`, [ids.rework])).rows[0]
+    expect(last).toEqual({ action: 'note', ev: 'undo_approve' })
+    // other tenants' rows keep what they were given
+    await db.query(`insert into client_board_actions (board_slug, client_id, action, ref, payload, created_at) values ('rise','risedtc','approve',$1,'{}', '2020-01-01T00:00:00Z')`, [ids.rise])
+    expect((await db.query<{ created_at: Date }>(`select created_at from client_board_actions where ref = $1`, [ids.rise])).rows[0].created_at.toISOString()).toBe('2020-01-01T00:00:00.000Z')
+  })
+
   it('Undo puts back an approval that was there before the fill', async () => {
     const db = await setup()
     await db.query(`insert into client_board_actions (board_slug, client_id, action, ref, payload) values ('arch-agency','arch','approve',$1,'{"by":"Davorin"}')`, [ids.rework])
@@ -226,6 +239,6 @@ describe('arch_fill_commit and arch_fill_undo', { timeout: 60_000 }, () => {
   it('rolls back cleanly', async () => {
     const db = await setup()
     await db.exec(rollback)
-    expect((await db.query(`select proname from pg_proc where proname like 'arch_fill%' or proname like 'arch_rework%' or proname like 'tg_arch_fill%'`)).rows).toEqual([])
+    expect((await db.query(`select proname from pg_proc where proname like 'arch_fill%' or proname like 'arch_rework%' or proname like 'tg_arch_%'`)).rows).toEqual([])
   })
 })
