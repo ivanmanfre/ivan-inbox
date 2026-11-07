@@ -1,5 +1,4 @@
 import { countsAsWaiting, fetchOpsDrafts, pendingOps, type OpsDraft } from '../../lib/ops'
-import { fetchXReview, xWaitingCount } from '../../lib/xReview'
 import { seatOf, type Seat } from '../seats'
 
 // Ops "Waiting on you", per seat: THE Ops number (lib/ops.ts opsBadge), split
@@ -23,15 +22,7 @@ export function opsWaitingBySeat(rows: OpsDraft[], now: number = Date.now()): Op
   return out
 }
 
-// X articles and quote posts waiting for review (lib/xReview.ts) are Ivan's and count in his
-// number, so the Ops badge rings for them too. A failed X read never fails the ops count: it
-// adds nothing and the X flag on the page says the rest.
+// X items no longer count here: they have their own place and number (the X desk, useXWaiting).
 export async function fetchOpsWaiting(now: number = Date.now()): Promise<OpsWaiting> {
-  const [rows, x] = await Promise.all([
-    fetchOpsDrafts(),
-    fetchXReview().catch((e: unknown) => { console.warn('[d] x review count read failed', e); return null }),
-  ])
-  const out = opsWaitingBySeat(rows, now)
-  out.ivan += xWaitingCount(x)
-  return out
+  return opsWaitingBySeat(await fetchOpsDrafts(), now)
 }

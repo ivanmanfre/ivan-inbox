@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { XReviewList } from '../../../lib/xReview'
-import { parseDHash } from '../../route'
-import { renderInFrame } from '../../test-utils'
+import type { XReviewList } from '../../lib/xReview'
+import { parseDHash } from '../route'
+import { renderInFrame } from '../test-utils'
 
 const api = vi.hoisted(() => ({
   fetchXReview: vi.fn(), saveXArticle: vi.fn(), decideXArticle: vi.fn(), saveXQuote: vi.fn(), decideXQuote: vi.fn(), saveXQuick: vi.fn(), decideXQuick: vi.fn(), fetchXQuickPhotos: vi.fn(), setXQuickPhoto: vi.fn(),
 }))
-vi.mock('../../../lib/xReview', async (orig) => ({ ...(await orig<typeof import('../../../lib/xReview')>()), ...api }))
+vi.mock('../../lib/xReview', async (orig) => ({ ...(await orig<typeof import('../../lib/xReview')>()), ...api }))
 
 import XReviewPage from './XReview'
 import { __resetXForTests } from './useXReview'

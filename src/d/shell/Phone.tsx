@@ -9,13 +9,14 @@ import { useClock } from '../ui/useClock'
 import { warsawDm, warsawDow, warsawHm } from '../ui/time'
 import { BellButton } from './Bell'
 import { useFrame } from './frame'
-import { useNavModel } from './navModel'
+import { useNavModel, xNumbers } from './navModel'
+import { useXWaiting } from '../x/useXReview'
 import { Brand, MeFooter, NavCount, NavLineView, SeatHead } from './Side'
 import { Glance } from './Glance'
 import type { SeatNumbers } from '../seats'
 
 // The phone frame (D pshell.js): top bar (panel key, place + Warsaw time,
-// bell), the dock (five places + the lime Claude key), and the left panel as a
+// bell), the dock (six places + the lime Claude key), and the left panel as a
 // drawer from the left edge.
 
 export function PhoneTop({ onPanel, setToolsSlot }: { onPanel: () => void; setToolsSlot: (el: HTMLElement | null) => void }) {
@@ -41,9 +42,11 @@ export function Dock() {
   const c = useFrameCounts()
   // Today's bar carried DMs, Content, Ops and Sales numbers; D keeps one per seat (never a total).
   const opsF = { ivan: c.ops.failed, risedtc: c.ops.failed, arch: c.ops.failed , swishdm: c.ops.failed, anna: c.ops.failed}
+  const x = useXWaiting()
   const trio: Partial<Record<string, { n: ReturnType<typeof dmNumbers>; failed: ReturnType<typeof seatFailed> }>> = {
     dms: { n: dmNumbers(c, 'needs'), failed: seatFailed(c.dms) },
     ops: { n: opsNumbers(c), failed: opsF },
+    x: { n: xNumbers(x), failed: { ivan: x.failed, risedtc: false, arch: false, swishdm: false, anna: false } },
     content: { n: contentNumbers(c), failed: seatFailed(c.content) },
   }
   const calls = c.calls.value
@@ -191,12 +194,16 @@ export function PhoneTabs() {
   const dmsF = Object.values(seatFailed(c.dms)).some(Boolean)
   const dmsN = total(dmNumbers(c, 'needs'))
   const opsN = total(opsNumbers(c))
+  const x = useXWaiting()
   const calls = c.calls.value
   const badge: Partial<Record<string, { n: string; tone: 'signal' | 'ink' | 'warn'; label: string }>> = {}
   if (dmsF && dmsN == null) badge.dms = { n: '!', tone: 'warn', label: 'DMs count could not be read' }
   else if (dmsN) badge.dms = { n: dmsN > 99 ? '99+' : String(dmsN), tone: 'signal', label: `${dmsN} DMs waiting` }
   if (c.ops.failed && opsN == null) badge.ops = { n: '!', tone: 'warn', label: 'Ops count could not be read' }
   else if (opsN) badge.ops = { n: opsN > 99 ? '99+' : String(opsN), tone: 'ink', label: `${opsN} waiting on you` }
+  // The X desk's own number (X desk plan P3), off the desk's store.
+  if (x.failed) badge.x = { n: '!', tone: 'warn', label: 'X count could not be read' }
+  else if (x.n) badge.x = { n: x.n > 99 ? '99+' : String(x.n), tone: 'ink', label: `${x.n} to review on X` }
   if (calls == null && c.calls.failed) badge.sales = { n: '!', tone: 'warn', label: 'calls today could not be read' }
   else if (calls) badge.sales = { n: String(calls), tone: 'ink', label: `${calls} calls today not started` }
   // Content shows its real review count, like DMs and Ops (review 2026-11-06 #36; was a dot).

@@ -15,7 +15,7 @@ import { HotNow } from '../HotNow'
 import { readyRead, when, type Read } from '../model'
 import { invites, pill } from './model'
 import './home4.css'
-import { XFlag } from '../../ops/x/XFlag'
+import { XFlag } from '../../x/XFlag'
 import '../phone-ox.css'
 
 /** #39: a failed read says so in a visible line ("Lanes read failed · Retry"), never only in a tooltip.

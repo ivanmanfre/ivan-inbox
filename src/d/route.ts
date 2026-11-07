@@ -12,7 +12,7 @@ import type { CrossHit } from '../lib/crossSearch'
 
 export const D_PREFIX = '#exp/d'
 
-export const PLACE_IDS: readonly PlaceId[] = ['home', 'lanes', 'dms', 'content', 'ops', 'sales', 'intel', 'claude', 'settings']
+export const PLACE_IDS: readonly PlaceId[] = ['home', 'lanes', 'dms', 'content', 'x', 'ops', 'sales', 'intel', 'claude', 'settings']
 
 export const HOME: PlaceId = 'home'
 
@@ -48,9 +48,19 @@ function placeFor(seg: string): { place: PlaceId; sub?: string } {
 
 const D_RE = /^#exp\/d(?=[/?#]|$)(?:\/([^/?#]*))?(?:\/([^?#]*))?(?:\?([^#]*))?/
 
+// The X review lived under Ops (`#exp/d/ops/x[?id=…]`) until the X desk got its own place (X desk
+// plan P3, 2026-11-03). Runner notify links and pushes already delivered carry the old address, so it
+// redirects for good, query kept: canonicalHash rewrites the address bar, parseDHash reads it too.
+const OLD_X_RE = /^#exp\/d\/ops\/x(?=[?#]|$)/i
+
+/** `#exp/d/ops/x?id=…` -> `#exp/d/x?id=…`; any other hash unchanged. */
+export function movedXHash(hash: string): string {
+  return OLD_X_RE.test(hash) ? hash.replace(OLD_X_RE, `${D_PREFIX}/x`) : hash
+}
+
 /** Parse a D hash. Anything that is not a D hash is the home place. */
 export function parseDHash(hash: string): DRoute {
-  const m = hash.match(D_RE)
+  const m = movedXHash(hash).match(D_RE)
   if (!m) return { place: HOME, sub: null, query: new URLSearchParams() }
   const hit = placeFor(decodeURIComponent(m[1] ?? ''))
   const sub = m[2] ? decodeURIComponent(m[2]) : (hit.sub ?? null)
@@ -150,7 +160,7 @@ const isD = (h: string) => /^#exp\/d(?:[/?]|$)/.test(h)
 
 /** The hash D should be on for whatever the address bar says now. */
 export function canonicalHash(h: string): string {
-  if (isD(h)) return h
+  if (isD(h)) return movedXHash(h)
   // A sign-in redirect's token: the auth client reads it, D never rewrites it.
   if (/^#(?:access_token|error)=/.test(h)) return h
   return toDHash(h) ?? dHash(HOME)

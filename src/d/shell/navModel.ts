@@ -2,6 +2,7 @@ import { contentNumbers, dmNumbers, opsNumbers, seatFailed, useFrameCounts, type
 import { PLACES, PLACE_ORDER, type PlaceId } from '../places'
 import type { Seat, SeatNumbers } from '../seats'
 import { useReportedFailures } from './health'
+import { useXWaiting } from '../x/useXReview'
 
 // What the left panel, the phone drawer and the dock draw for each place:
 // its per-seat line (never a total), and how many of its reads failed.
@@ -18,7 +19,15 @@ export type NavItem = {
 const allFailed = (b: boolean): Record<Seat, boolean> => ({ ivan: b, risedtc: b, arch: b , swishdm: b, anna: b})
 const nFailed = (r: Record<Seat, boolean>) => Object.values(r).filter(Boolean).length
 
-export function navLines(c: FrameCounts): Partial<Record<PlaceId, { line: NavLine; failed: number }>> {
+/** The X desk's count as a nav input: Ivan's items waiting (null until read), and a failed read. */
+export type XCount = { n: number | null; failed: boolean }
+
+/** X is Ivan's lane only: his seat carries the number, the other seats have none (0). */
+export function xNumbers(x: XCount): SeatNumbers {
+  return { ivan: x.n, risedtc: 0, arch: 0, swishdm: 0, anna: 0 }
+}
+
+export function navLines(c: FrameCounts, x: XCount = { n: null, failed: false }): Partial<Record<PlaceId, { line: NavLine; failed: number }>> {
   const dmsF = seatFailed(c.dms)
   const contentF = seatFailed(c.content)
   return {
@@ -26,6 +35,8 @@ export function navLines(c: FrameCounts): Partial<Record<PlaceId, { line: NavLin
     // number and words as Home's "DMs waiting" tile (#36); the drafts count rides as the second line.
     dms: { line: { kind: 'seats', label: 'DMs waiting', numbers: dmNumbers(c, 'needs'), failed: dmsF, second: { label: 'drafted', numbers: dmNumbers(c, 'drafts') } }, failed: nFailed(dmsF) },
     content: { line: { kind: 'seats', label: 'Waiting on you', numbers: contentNumbers(c), failed: contentF }, failed: nFailed(contentF) },
+    // The X desk's own number (X desk plan P3): what waits on Ivan in X review, off the desk's own store.
+    x: { line: { kind: 'seats', label: 'To review on X', numbers: xNumbers(x), failed: { ...allFailed(false), ivan: x.failed } }, failed: x.failed ? 1 : 0 },
     ops: { line: { kind: 'seats', label: 'Waiting on you', numbers: opsNumbers(c), failed: allFailed(c.ops.failed) }, failed: c.ops.failed ? 1 : 0 },
     sales: {
       line: { kind: 'text', label: 'Next call', text: c.nextCall.value ? c.nextCall.value.label.replace(/^(\w{3}) \d{1,2} \w{3}, /, '$1 ') : (c.nextCall.failed ? '?' : '…') },
@@ -46,7 +57,8 @@ export function lastSynced(c: FrameCounts): number | null {
 export function useNavModel(): { items: NavItem[]; synced: number | null } {
   const c = useFrameCounts()
   const reported = useReportedFailures()
-  const lines = navLines(c)
+  const x = useXWaiting()
+  const lines = navLines(c, x)
   const items = PLACE_ORDER.map<NavItem>(id => ({
     id,
     label: PLACES[id].label,

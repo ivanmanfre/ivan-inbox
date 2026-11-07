@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { setXQuickPhoto, type XRingPhoto } from '../../../lib/xReview'
+import { setXQuickPhoto, type XRingPhoto } from '../../lib/xReview'
 import { patchX, refreshX } from './useXReview'
 
 // ONE PHOTO-WRITE QUEUE PER QUICK POST (Sol r1 2026-11-05). Swipes, gallery picks and Remove all set the

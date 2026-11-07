@@ -15,7 +15,7 @@ import type { DIconName } from './ui/icons'
 // place, blank line between, so two agents never touch the same hunk.
 // ---------------------------------------------------------------------------
 
-export type PlaceId = 'home' | 'lanes' | 'dms' | 'content' | 'ops' | 'sales' | 'intel' | 'claude' | 'settings'
+export type PlaceId = 'home' | 'lanes' | 'dms' | 'content' | 'x' | 'ops' | 'sales' | 'intel' | 'claude' | 'settings'
 
 export type Layout = 'desktop' | 'phone'
 
@@ -45,11 +45,15 @@ export type PlaceDef = {
 export const PLACES: Record<PlaceId, PlaceDef> = {
   home: { id: 'home', label: 'Home', icon: 'home', nav: 'main', dock: true, today: '#exp/brain-b/today', Page: lazy(() => import('./home')) },
 
-  lanes: { id: 'lanes', label: 'Lanes', icon: 'lanes', nav: 'main', dock: true, today: '#exp/brain-b/sends', Page: lazy(() => import('./lanes')) },
+  // Off the phone dock since the X desk took its key (X desk plan P3, 2026-11-03); still in the panel.
+  lanes: { id: 'lanes', label: 'Lanes', icon: 'lanes', nav: 'main', dock: false, today: '#exp/brain-b/sends', Page: lazy(() => import('./lanes')) },
 
   dms: { id: 'dms', label: 'DMs', icon: 'dms', nav: 'main', dock: true, today: '#exp/brain-b/dms', Page: lazy(() => import('./dms')) },
 
   content: { id: 'content', label: 'Content', icon: 'content', nav: 'main', dock: true, today: '#exp/brain-b/content', Page: lazy(() => import('./content')) },
+
+  // The X desk (Ivan 2026-11-03: out of Ops into its own place). Ivan's X review queue.
+  x: { id: 'x', label: 'X', icon: 'xlogo', nav: 'main', dock: true, today: '#exp/d/x', Page: lazy(() => import('./x')) },
 
   ops: { id: 'ops', label: 'Ops', icon: 'ops', nav: 'main', dock: true, today: '#exp/brain-b/ops', Page: lazy(() => import('./ops')) },
 
@@ -63,4 +67,4 @@ export const PLACES: Record<PlaceId, PlaceDef> = {
 }
 
 /** Draw order: main nav, then low nav. */
-export const PLACE_ORDER: readonly PlaceId[] = ['home', 'lanes', 'dms', 'content', 'ops', 'sales', 'intel', 'claude', 'settings']
+export const PLACE_ORDER: readonly PlaceId[] = ['home', 'lanes', 'dms', 'content', 'x', 'ops', 'sales', 'intel', 'claude', 'settings']
