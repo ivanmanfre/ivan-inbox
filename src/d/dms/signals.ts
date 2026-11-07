@@ -66,6 +66,8 @@ export function warmWord(w: Pick<WarmCard, 'signal_source' | 'trigger_type'> & P
   if (w.signal_kind === 'next_touch') return 'viewed, no reply yet'
   if (w.signal_kind === 'dm1_pull') return 'viewed, accepted'
   if (warmGroup(w) === 'profile_view' && w.tenant && w.tenant !== 'ivan') return 'viewed the profile'
+  // 2026-11-02: one touch on a client seat's own post (the seat's own list; never "your")
+  if (w.tenant && w.tenant !== 'ivan') return warmGroup(w) === 'commented_own_post' ? 'commented on the post' : 'engaged the post'
   return WARM_WORD[warmGroup(w)] ?? 'engaged a post'
 }
 
