@@ -11,6 +11,14 @@ begin;
 --    Ivan tracks (competitor_posts, client_id null). Each scored against the author's OWN median likes.
 --    Posts that already have any draft (source_ref = url) are out. An X post that meets the outlier-copy bar
 --    (>= 3x own median and >= 25 likes) is left to that lane for its first 2 days. Reposts ("RT @") are out.
+-- The post's own id: X status id or LinkedIn activity/ugcPost/share id. Same post = same id, whatever the URL form.
+create or replace function public.ivan_take_native_id(p_url text)
+returns text language sql immutable as $$
+  select coalesce(
+    (regexp_match(coalesce(p_url, ''), '/status(?:es)?/([0-9]{5,25})'))[1],
+    (regexp_match(coalesce(p_url, ''), '(?:activity|ugcPost|share)[-:]([0-9]{16,20})'))[1]);
+$$;
+
 create or replace function public.ivan_take_candidates_v1(
   p_exclude text[] default '{}', p_x_days int default 7, p_li_days int default 14, p_per_platform int default 25)
 returns jsonb
@@ -28,7 +36,8 @@ with x as (
            order by coalesce((cf->'observed_metrics'->>'likes')::numeric, 0)))::numeric med, count(*) n
   from x group by owner
 ), xc as (
-  select 'x'::text platform, x.source_url url, x.owner handle, null::text author_name,
+  select 'x'::text platform,
+         'https://x.com/' || x.owner || '/status/' || coalesce(public.ivan_take_native_id(x.source_url), x.source_id) url, x.owner handle, null::text author_name,
          x.source_published_at published_at,
          coalesce((cf->'observed_metrics'->>'likes')::int, 0) likes,
          coalesce((cf->'observed_metrics'->>'reposts')::int, 0) reposts,
@@ -63,11 +72,17 @@ with x as (
     and length(coalesce(p.post_text, '')) >= 40
     and coalesce(p.likes_count, 0) >= greatest(1.5 * lm.med, 10)
 ), u as (
-  select * from xc union all select * from lc
+  select u0.*, public.ivan_take_native_id(u0.url) native_id
+  from (select * from xc union all select * from lc) u0
+), used as (
+  -- Any draft of the same post, whatever URL form it was stored under (x.com / twitter.com / mobile / query string).
+  select distinct public.ivan_take_native_id(source_ref) native_id
+  from carousel_drafts where source_ref ~ '[0-9]{16,25}'
 ), fresh as (
   select u.* from u
-  where not (u.url = any (coalesce(p_exclude, '{}')))
-    and not exists (select 1 from carousel_drafts c where c.source_ref = u.url)
+  where u.native_id is not null
+    and not exists (select 1 from unnest(coalesce(p_exclude, '{}')) e where public.ivan_take_native_id(e) = u.native_id)
+    and not exists (select 1 from used where used.native_id = u.native_id)
 ), ranked as (
   select fresh.*, row_number() over (partition by platform order by ratio desc, likes desc) rn from fresh
 )
@@ -76,6 +91,54 @@ from ranked r where r.rn <= greatest(1, least(p_per_platform, 200));
 $$;
 revoke all on function public.ivan_take_candidates_v1(text[], int, int, int) from public, anon, authenticated;
 grant execute on function public.ivan_take_candidates_v1(text[], int, int, int) to service_role;
+
+-- 1b. The only write the lane makes. One transaction under an advisory lock: re-checks that no draft of the same
+--     post exists (native id) and, for a Review row, the pace (per day + still waiting), then inserts with
+--     client_id null (Ivan's lane), board_visible false, scheduled_at null. Two runs at once cannot both insert.
+create or replace function public.ivan_take_insert_v1(p_row jsonb)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  cfg jsonb;
+  nid text := public.ivan_take_native_id(p_row->>'source_ref');
+  held boolean := coalesce(p_row->>'status', '') = 'rejected';
+  per_day int; max_waiting int; waiting_days int;
+  made_today int; waiting int;
+  new_id uuid;
+begin
+  if nid is null then return jsonb_build_object('ok', false, 'why', 'no_native_id'); end if;
+  if coalesce(p_row->'taxonomy'->>'source', '') <> 'take_screenshot' then return jsonb_build_object('ok', false, 'why', 'not_take_row'); end if;
+  if coalesce(p_row->>'status', '') not in ('review', 'rejected') then return jsonb_build_object('ok', false, 'why', 'bad_status'); end if;
+  perform pg_advisory_xact_lock(hashtext('ivan_take_lane'));
+  if exists (select 1 from carousel_drafts where source_ref ~ '[0-9]{16,25}' and public.ivan_take_native_id(source_ref) = nid) then
+    return jsonb_build_object('ok', false, 'why', 'duplicate');
+  end if;
+  if not held then
+    select value::jsonb into cfg from integration_config where key = 'ivan_take_lane';
+    per_day := coalesce((cfg->>'per_day')::int, 1);
+    max_waiting := coalesce((cfg->>'max_waiting')::int, 3);
+    waiting_days := coalesce((cfg->>'waiting_days')::int, 7);
+    select count(*) filter (where created_at >= date_trunc('day', now() at time zone 'utc') at time zone 'utc'),
+           count(*) filter (where status = 'review' and created_at > now() - make_interval(days => waiting_days))
+      into made_today, waiting
+      from carousel_drafts
+     where client_id is null and taxonomy->>'source' = 'take_screenshot' and status <> 'rejected';
+    if made_today >= per_day or waiting >= max_waiting then
+      return jsonb_build_object('ok', false, 'why', 'pace', 'made_today', made_today, 'waiting', waiting);
+    end if;
+  end if;
+  insert into carousel_drafts (client_id, type, status, board_visible, scheduled_at, qa, title, topic, post_body,
+                               source_ref, image_urls, source_label, source_detail, taxonomy, agent_log)
+  values (null, 'text', p_row->>'status', false, null, p_row->'qa', p_row->>'title', p_row->>'topic', p_row->>'post_body',
+          p_row->>'source_ref', array(select jsonb_array_elements_text(coalesce(p_row->'image_urls', '[]'::jsonb))),
+          p_row->>'source_label', p_row->'source_detail', p_row->'taxonomy', coalesce(p_row->'agent_log', '[]'::jsonb))
+  returning id into new_id;
+  return jsonb_build_object('ok', true, 'id', new_id);
+end;
+$$;
+revoke all on function public.ivan_take_insert_v1(jsonb) from public, anon, authenticated;
+grant execute on function public.ivan_take_insert_v1(jsonb) to service_role;
 
 -- 2. Lane settings (read by the n8n job each run). Pace from his approvals: of ~45 outlier copies put in his
 --    Review since 27 Sep, ~8 were scheduled or posted (~1.3 a week). So: at most 1 take a day, and none while
