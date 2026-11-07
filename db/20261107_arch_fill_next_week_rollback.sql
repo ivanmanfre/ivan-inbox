@@ -7,6 +7,7 @@ drop function if exists public.arch_fill_commit(text, uuid, jsonb);
 drop function if exists public.arch_fill_read(text);
 drop function if exists public.arch_fill_check(uuid);
 drop function if exists public.arch_fill_week(timestamptz);
+drop function if exists public.arch_fill_next_ts(text);
 drop function if exists public.arch_fill_slot_hm();
 drop function if exists public.arch_rework_overlap(text, text);
 drop function if exists public.arch_rework_tokens(text);

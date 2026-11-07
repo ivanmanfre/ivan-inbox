@@ -22,7 +22,7 @@ create table public.carousel_drafts (
   created_at timestamptz default now(), updated_at timestamptz default now());
 create table public.content_plan_config (account text primary key, posts_per_week int);
 insert into public.content_plan_config values ('arch', 3);
-create table public.client_board_actions (id uuid primary key default gen_random_uuid(), board_slug text, client_id text, action text, ref text, payload jsonb, created_at timestamptz default clock_timestamp());
+create table public.client_board_actions (id uuid primary key default gen_random_uuid(), board_slug text, client_id text, action text, ref text, payload jsonb, created_at timestamptz default now()); -- live default: ties inside one transaction
 create function public.operator_set_schedule_date(p_gate text, p_draft_id uuid, p_scheduled_at timestamptz) returns jsonb language plpgsql as $f$
 declare d carousel_drafts; begin
   if not operator_gate_ok(p_gate) then return jsonb_build_object('ok', false, 'error', 'bad_gate'); end if;
@@ -176,6 +176,19 @@ describe('arch_fill_commit and arch_fill_undo', { timeout: 60_000 }, () => {
     await db.query(`insert into client_board_actions (board_slug, client_id, action, ref, payload) values ('arch-agency','arch','approve',$1,'{"by":"Davorin"}')`, [ids.fresh])
     await db.query(`update carousel_drafts set post_body = 'Edited.' where id = $1`, [ids.fresh])
     expect((await db.query(`select 1 from client_board_actions where ref = $1 and action = 'undo_approve'`, [ids.fresh])).rows.length).toBe(0)
+  })
+
+  it('a fill and an edit in one transaction still end unapproved (review r3: created_at ties)', async () => {
+    const db = await setup()
+    const [mon] = await slots(db)
+    const it1 = await item(db, ids.rework, mon)
+    await db.exec(`begin;
+      select public.arch_fill_commit('clientops', '${BATCH}'::uuid, '${JSON.stringify([it1])}'::jsonb);
+      update carousel_drafts set post_body = 'Our negotiators move fast. Before we approve a pitch, I still want three checks on comparable sponsored posts, similar products and repeat bookings.' where id = '${ids.rework}';
+      commit;`)
+    // the publisher's own read: latest approve/undo by created_at desc
+    const last = (await db.query<{ action: string }>(`select action from client_board_actions where ref = $1 and action in ('approve','undo_approve') order by created_at desc limit 1`, [ids.rework])).rows[0]
+    expect(last.action).toBe('undo_approve')
   })
 
   it('Undo puts back an approval that was there before the fill', async () => {

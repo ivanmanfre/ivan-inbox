@@ -138,6 +138,13 @@ begin
     'offered', v_offered, 'held', v_held, 'waiting_davorin', v_waiting);
 end $$;
 
+-- The time a fill/undo/trigger action is stamped with: strictly after every earlier action on the same post, so
+-- "latest approve or undo" (the publisher orders by created_at only) never ties inside one transaction (review r3).
+create or replace function public.arch_fill_next_ts(p_ref text)
+returns timestamptz language sql volatile security definer set search_path = public, pg_temp as $$
+  select greatest(clock_timestamp(), coalesce((select max(created_at) from public.client_board_actions where ref = p_ref), '-infinity') + interval '1 microsecond')
+$$;
+
 -- The week the key fills: next Monday to Friday in Zagreb, and how many posts that week still takes
 -- (content_plan_config.posts_per_week for ARCH, 3 when unset, minus ARCH posts already dated or posted there).
 create or replace function public.arch_fill_week(p_now timestamptz default now())
@@ -213,13 +220,13 @@ begin
     select jsonb_build_object('action', a.action, 'payload', a.payload) into v_prev_appr from public.client_board_actions a
      where a.ref = d.id::text and a.action in ('approve', 'undo_approve') order by a.created_at desc, a.id desc limit 1;
     if not v_prev then update public.carousel_drafts set board_visible = true, updated_at = now() where id = d.id; end if;
-    insert into public.client_board_actions (board_slug, client_id, action, ref, payload)
+    insert into public.client_board_actions (board_slug, client_id, action, ref, payload, created_at)
     values ('arch-agency', 'arch', 'approve', d.id::text, jsonb_build_object(
       'by', 'Ivan', 'via', 'inbox fill next week', 'event', 'operator_release_approval',
       'note', 'Repurposed from Davorin''s own published post; word overlap with the original ' || round((c->>'overlap')::numeric, 2) || ' (limit 0.40).',
       'approved_body_sha256', encode(digest(d.post_body, 'sha256'), 'hex'),
       'overlap', round((c->>'overlap')::numeric, 4), 'original_id', c->>'original_id',
-      'batch', p_batch, 'scheduled_at', v_ats[i], 'prev_board_visible', v_prev, 'prev_approval', v_prev_appr));
+      'batch', p_batch, 'scheduled_at', v_ats[i], 'prev_board_visible', v_prev, 'prev_approval', v_prev_appr), public.arch_fill_next_ts(d.id::text));
     v_res := public.operator_set_schedule_date(p_gate, d.id, v_ats[i]);
     if not coalesce((v_res->>'ok')::boolean, false) then
       raise exception 'arch_fill_commit: date refused for %: %', d.id, v_res::text;
@@ -258,12 +265,12 @@ begin
     if d.scheduled_at <= now() + interval '15 minutes' then v_late := v_late + 1; continue; end if;
     v_prev := a.payload->'prev_approval';
     if v_prev is not null and v_prev->>'action' = 'approve' then
-      insert into public.client_board_actions (board_slug, client_id, action, ref, payload)
+      insert into public.client_board_actions (board_slug, client_id, action, ref, payload, created_at)
       values ('arch-agency', 'arch', 'approve', a.ref, coalesce(v_prev->'payload', '{}'::jsonb) - 'batch'
-              || jsonb_build_object('restored_by', 'inbox fill next week undo', 'undone_batch', p_batch));
+              || jsonb_build_object('restored_by', 'inbox fill next week undo', 'undone_batch', p_batch), public.arch_fill_next_ts(a.ref));
     else
-      insert into public.client_board_actions (board_slug, client_id, action, ref, payload)
-      values ('arch-agency', 'arch', 'undo_approve', a.ref, jsonb_build_object('by', 'Ivan', 'via', 'inbox fill next week', 'event', 'fill_undo', 'undone_batch', p_batch));
+      insert into public.client_board_actions (board_slug, client_id, action, ref, payload, created_at)
+      values ('arch-agency', 'arch', 'undo_approve', a.ref, jsonb_build_object('by', 'Ivan', 'via', 'inbox fill next week', 'event', 'fill_undo', 'undone_batch', p_batch), public.arch_fill_next_ts(a.ref));
     end if;
     v_res := public.operator_set_schedule_date(p_gate, d.id, null);
     if not coalesce((v_res->>'ok')::boolean, false) then raise exception 'arch_fill_undo: date clear refused for %: %', d.id, v_res::text; end if;
@@ -289,10 +296,10 @@ begin
    where ref = new.id::text and action in ('approve', 'undo_approve') order by created_at desc, id desc limit 1;
   if a.action = 'approve' and a.payload->>'via' = 'inbox fill next week'
      and a.payload->>'approved_body_sha256' is distinct from encode(digest(coalesce(new.post_body, ''), 'sha256'), 'hex') then
-    insert into public.client_board_actions (board_slug, client_id, action, ref, payload)
+    insert into public.client_board_actions (board_slug, client_id, action, ref, payload, created_at)
     values ('arch-agency', 'arch', 'undo_approve', new.id::text, jsonb_build_object(
       'by', 'system', 'via', 'inbox fill next week', 'event', 'body_changed_after_fill', 'batch_of', a.payload->>'batch',
-      'note', 'The text changed after Fill next week approved it, so it waits for a new approval.'));
+      'note', 'The text changed after Fill next week approved it, so it waits for a new approval.'), public.arch_fill_next_ts(new.id::text));
   end if;
   return null;
 end $$;
@@ -301,7 +308,7 @@ create trigger arch_fill_body_changed after update of post_body on public.carous
   for each row when (new.client_id = 'arch' and new.published_at is null and old.post_body is distinct from new.post_body)
   execute function public.tg_arch_fill_body_changed();
 
-revoke all on function public.tg_arch_fill_body_changed(), public.arch_rework_tokens(text), public.arch_rework_overlap(text, text), public.arch_fill_slot_hm(), public.arch_fill_week(timestamptz),
+revoke all on function public.tg_arch_fill_body_changed(), public.arch_fill_next_ts(text), public.arch_rework_tokens(text), public.arch_rework_overlap(text, text), public.arch_fill_slot_hm(), public.arch_fill_week(timestamptz),
   public.arch_fill_check(uuid), public.arch_fill_read(text), public.arch_fill_commit(text, uuid, jsonb), public.arch_fill_undo(text, uuid) from public, anon;
 grant execute on function public.arch_fill_read(text), public.arch_fill_commit(text, uuid, jsonb), public.arch_fill_undo(text, uuid) to authenticated, service_role;
 grant execute on function public.arch_rework_tokens(text), public.arch_rework_overlap(text, text), public.arch_fill_slot_hm(), public.arch_fill_week(timestamptz), public.arch_fill_check(uuid) to service_role;
