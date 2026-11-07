@@ -60,7 +60,7 @@ it('puts the freshest three originals first per seat, preserving noncomment slot
   expect(splitCommentIdeas(rows, NOW).later.map(d => d.id)).toEqual(['older'])
   expect(readBoard(rows, new Set(), NOW).lanes.ivan.map(d => d.id)).toEqual(['newest', 'second', 'reply', 'third'])
   expect(opsBadge(rows, NOW)).toEqual({ n: 2, ideasFolded: 1 })
-  expect(opsWaitingBySeat(rows, NOW)).toEqual({ ivan: 2, risedtc: 0, arch: 0, swishdm: 0 })
+  expect(opsWaitingBySeat(rows, NOW)).toEqual({ ivan: 2, risedtc: 0, arch: 0, swishdm: 0, anna: 0 })
 })
 
 it('fills each seat’s remaining room with its freshest originals', () => {
