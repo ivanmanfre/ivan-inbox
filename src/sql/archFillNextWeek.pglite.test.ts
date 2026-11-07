@@ -22,7 +22,7 @@ create table public.carousel_drafts (
   created_at timestamptz default now(), updated_at timestamptz default now());
 create table public.content_plan_config (account text primary key, posts_per_week int);
 insert into public.content_plan_config values ('arch', 3);
-create table public.client_board_actions (id serial primary key, board_slug text, client_id text, action text, ref text, payload jsonb, created_at timestamptz default clock_timestamp());
+create table public.client_board_actions (id uuid primary key default gen_random_uuid(), board_slug text, client_id text, action text, ref text, payload jsonb, created_at timestamptz default clock_timestamp());
 create function public.operator_set_schedule_date(p_gate text, p_draft_id uuid, p_scheduled_at timestamptz) returns jsonb language plpgsql as $f$
 declare d carousel_drafts; begin
   if not operator_gate_ok(p_gate) then return jsonb_build_object('ok', false, 'error', 'bad_gate'); end if;
@@ -153,7 +153,7 @@ describe('arch_fill_commit and arch_fill_undo', { timeout: 60_000 }, () => {
     expect(row.scheduled_at.toISOString()).toBe(wed)
     expect(row.board_visible).toBe(true)
     expect(row.status).toBe('review')
-    const acts = (await db.query<{ action: string; client_id: string; payload: Record<string, unknown> }>(`select action, client_id, payload from client_board_actions order by id`)).rows
+    const acts = (await db.query<{ action: string; client_id: string; payload: Record<string, unknown> }>(`select action, client_id, payload from client_board_actions order by created_at`)).rows
     expect(acts).toHaveLength(1)
     expect(acts[0]).toMatchObject({ action: 'approve', client_id: 'arch', payload: { by: 'Ivan', event: 'operator_release_approval', batch: BATCH, prev_board_visible: false, approved_body_sha256: it1.body_sha256 } })
     expect((await one<{ offered: unknown[] }>(db, `select public.arch_fill_read('clientops') v`)).offered).toEqual([])
@@ -161,7 +161,7 @@ describe('arch_fill_commit and arch_fill_undo', { timeout: 60_000 }, () => {
     expect(await undo(db)).toMatchObject({ ok: true, undone: 1 })
     const back = (await db.query<{ scheduled_at: Date | null; board_visible: boolean }>(`select scheduled_at, board_visible from carousel_drafts where id = $1`, [ids.rework])).rows[0]
     expect(back).toEqual({ scheduled_at: null, board_visible: false })
-    expect((await db.query<{ action: string }>(`select action from client_board_actions order by id desc limit 1`)).rows[0].action).toBe('undo_approve')
+    expect((await db.query<{ action: string }>(`select action from client_board_actions order by created_at desc limit 1`)).rows[0].action).toBe('undo_approve')
     expect(await undo(db)).toMatchObject({ ok: true, undone: 0, changed: 1 })
   })
 
@@ -171,7 +171,7 @@ describe('arch_fill_commit and arch_fill_undo', { timeout: 60_000 }, () => {
     const [mon] = await slots(db)
     expect((await commit(db, [await item(db, ids.rework, mon)])).ok).toBe(true)
     expect(await undo(db)).toMatchObject({ ok: true, undone: 1 })
-    const last = (await db.query<{ action: string; payload: Record<string, unknown> }>(`select action, payload from client_board_actions order by id desc limit 1`)).rows[0]
+    const last = (await db.query<{ action: string; payload: Record<string, unknown> }>(`select action, payload from client_board_actions order by created_at desc limit 1`)).rows[0]
     expect(last).toMatchObject({ action: 'approve', payload: { by: 'Davorin', restored_by: 'inbox fill next week undo' } })
   })
 

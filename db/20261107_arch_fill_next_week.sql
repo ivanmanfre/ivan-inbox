@@ -172,7 +172,7 @@ begin
   perform pg_advisory_xact_lock(hashtext('arch_fill_calendar'));
   -- the same batch again (a retry after a lost answer): report what it wrote, write nothing
   if exists (select 1 from public.client_board_actions where client_id = 'arch' and action = 'approve' and payload->>'batch' = p_batch::text) then
-    select coalesce(jsonb_agg(jsonb_build_object('id', ref, 'scheduled_at', payload->'scheduled_at') order by id), '[]') into v_out
+    select coalesce(jsonb_agg(jsonb_build_object('id', ref, 'scheduled_at', payload->'scheduled_at') order by created_at, id), '[]') into v_out
       from public.client_board_actions where client_id = 'arch' and action = 'approve' and payload->>'batch' = p_batch::text;
     return jsonb_build_object('ok', true, 'batch', p_batch, 'items', v_out, 'again', true);
   end if;
@@ -236,13 +236,13 @@ end $$;
 -- Davorin's board if the fill put it there. Anything else is left alone and counted.
 create or replace function public.arch_fill_undo(p_gate text, p_batch uuid)
 returns jsonb language plpgsql volatile security definer set search_path = public, extensions, pg_temp as $$
-declare a record; d public.carousel_drafts; v_last bigint; v_undone int := 0; v_posted int := 0; v_changed int := 0; v_late int := 0;
+declare a record; d public.carousel_drafts; v_last public.client_board_actions.id%type; v_undone int := 0; v_posted int := 0; v_changed int := 0; v_late int := 0;
   v_found int := 0; v_res jsonb; v_prev jsonb;
 begin
   if auth.uid() is null or not public.operator_gate_ok(p_gate) then return jsonb_build_object('ok', false, 'error', 'bad_gate'); end if;
   perform pg_advisory_xact_lock(hashtext('arch_fill_calendar'));
   for a in select * from public.client_board_actions
-            where client_id = 'arch' and action = 'approve' and payload->>'batch' = p_batch::text order by id loop
+            where client_id = 'arch' and action = 'approve' and payload->>'batch' = p_batch::text order by created_at, id loop
     v_found := v_found + 1;
     select * into d from public.carousel_drafts where id::text = a.ref and client_id = 'arch' for update;
     if d.id is null then v_changed := v_changed + 1; continue; end if;
@@ -250,6 +250,7 @@ begin
     select id into v_last from public.client_board_actions
      where ref = a.ref and action in ('approve', 'undo_approve') order by created_at desc, id desc limit 1;
     if v_last is distinct from a.id
+       or exists (select 1 from public.client_board_actions u where u.ref = a.ref and u.payload->>'undone_batch' = p_batch::text)
        or d.scheduled_at is distinct from (a.payload->>'scheduled_at')::timestamptz
        or encode(digest(coalesce(d.post_body, ''), 'sha256'), 'hex') is distinct from a.payload->>'approved_body_sha256'
        or d.board_visible is not true or d.status <> 'review' then
