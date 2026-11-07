@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { outboundApproveUrl, outboundSkipUrl, pendingOps, pendingDmLaneOps, sentOps, blockedOps, canGenerateDraft, isCloseOnlyComment, claimingOps, engineLabel, expiresIn, DISCARDED_REASON, classifyGateReply, cardStateOf, outboundFeedId, taskTitle, taskDetails, taskDue, taskSource, dueLabel, pendingTasks, doneTodayTasks, isTaskKind, TASK_TITLE_MAX, weeklyReportDispatches, weeklySendAfter, isExpiredNewsjack, emptyReadOverRows, type OpsDraft } from './ops'
+import { outboundApproveUrl, outboundSkipUrl, pendingOps, pendingDmLaneOps, sentOps, blockedOps, canGenerateDraft, isCloseOnlyComment, claimingOps, engineLabel, expiresIn, DISCARDED_REASON, IDEA_EXPIRED_REASON, classifyGateReply, cardStateOf, outboundFeedId, taskTitle, taskDetails, taskDue, taskSource, dueLabel, pendingTasks, doneTodayTasks, isTaskKind, TASK_TITLE_MAX, weeklyReportDispatches, weeklySendAfter, isExpiredNewsjack, emptyReadOverRows, type OpsDraft } from './ops'
 
 const base: OpsDraft = {
   id: '1', client_id: 'risedtc', kind: 'update', slack_channel: '#rise-ops',
@@ -63,6 +63,14 @@ describe('blockedOps', () => {
       { ...base, id: 'c', send_blocked_reason: 'invalid_channel', created_at: '2026-07-24T12:00:00Z' },
     ]
     expect(blockedOps(rows).map(r => r.id)).toEqual(['c', 'b'])
+  })
+  it('keeps comment ideas expired by the daily sweep hidden, like a discard', () => {
+    const rows: OpsDraft[] = [
+      { ...base, id: 'x', kind: 'comment_outbound', send_blocked_reason: IDEA_EXPIRED_REASON },
+      { ...base, id: 'y', kind: 'comment_outbound', send_blocked_reason: 'rate_limited' },
+    ]
+    expect(blockedOps(rows).map(r => r.id)).toEqual(['y'])
+    expect(pendingOps(rows)).toEqual([])
   })
 })
 

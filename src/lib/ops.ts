@@ -219,6 +219,10 @@ export type OpsDraft = {
 // Distinct from a dispatcher/guard block below — an operator-initiated
 // discard is deliberately invisible everywhere (never re-shown as "blocked").
 export const DISCARDED_REASON = 'discarded_by_operator'
+// A comment idea whose target post grew too old (db/300, daily sweep). Hidden like a discard and
+// reversible (comment_ideas_expire_undo), but kept apart from DISCARDED_REASON so Ivan's own discards
+// stay countable as his.
+export const IDEA_EXPIRED_REASON = 'expired_post_too_old'
 
 // An audience proposal lives in this table and is NOT an ops card (Run 06
 // CONTRACTS B2). It has no channel, no dispatcher and no approve button here:
@@ -514,10 +518,11 @@ export function sentOps(rows: OpsDraft[], limit = 10): OpsDraft[] {
 }
 
 // Blocked = the dispatcher (or a guard) refused to send it — never includes
-// operator discards, which stay hidden.
+// operator discards or expired comment ideas, which stay hidden.
 export function blockedOps(rows: OpsDraft[]): OpsDraft[] {
   return rows
-    .filter(d => d.kind !== 'escalation' && d.send_blocked_reason && d.send_blocked_reason !== DISCARDED_REASON)
+    .filter(d => d.kind !== 'escalation' && d.send_blocked_reason && d.send_blocked_reason !== DISCARDED_REASON
+      && d.send_blocked_reason !== IDEA_EXPIRED_REASON)
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
 }
 
