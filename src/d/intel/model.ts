@@ -42,10 +42,14 @@ export type IntelTab = 'feed' | 'seen' | 'dropped' | 'sources'
  *  widest ingestion window (discovery hits up to 21 days old). */
 export const FEED_WINDOW_DAYS = 21
 export const DROP_WINDOW_DAYS = 14
+/** A video the weekly search finds late (published 20 days ago) still gets a week on For you (11-07: the
+ *  Semrush ghost-citation card vanished a day after it was found). */
+export const FOUND_GRACE_DAYS = 7
 const DAY = 86400000
 
 function recent(i: IntelItem, now: number): boolean {
-  return !!i.published_at && now - Date.parse(i.published_at) <= FEED_WINDOW_DAYS * DAY
+  if (!i.published_at) return false
+  return now - Date.parse(i.published_at) <= FEED_WINDOW_DAYS * DAY || now - Date.parse(i.created_at) <= FOUND_GRACE_DAYS * DAY
 }
 
 /** Worth showing at all: a keep Ivan has not marked Noise, or a drop he rescued with Useful. */

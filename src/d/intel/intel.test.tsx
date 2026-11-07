@@ -90,7 +90,7 @@ describe('Intel page writes', () => {
     h.keeps = []
     h.drops = [
       { ...keep, id: 'd1', verdict: 'drop', headline: null, title: 'Fresh drop', drop_reason: 'basic' },
-      { ...keep, id: 'd2', verdict: 'drop', headline: null, title: 'Old drop', drop_reason: 'basic', published_at: old },
+      { ...keep, id: 'd2', verdict: 'drop', headline: null, title: 'Old drop', drop_reason: 'basic', published_at: old, created_at: old },
     ]
     renderInFrame(<IntelPage layout="desktop" route={parseDHash('#exp/d/intel?tab=dropped')} navigate={() => {}} />)
     await screen.findByText('Fresh drop')
