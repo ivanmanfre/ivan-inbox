@@ -6,7 +6,8 @@ import { PGlite } from '@electric-sql/pglite'
 // are stand-ins with the live refusals that matter here (gate, status, past date); net.http_post is a no-op.
 // Expected overlap ratios come from Python: difflib.SequenceMatcher(None, w(a), w(b), autojunk=False).ratio() with
 // w = re.findall(r"[\w'€$%,.]+", s.lower()) (the check every ARCH rework was measured with, 28 Oct and 1 Nov).
-const migration = readFileSync('db/20261107_arch_fill_next_week.sql', 'utf8')
+// the base migration, then the review r6 delta (Undo takes the draft row lock before the approval lock)
+const migration = readFileSync('db/20261107_arch_fill_next_week.sql', 'utf8') + '\n' + readFileSync('db/20261107_arch_fill_next_week_sol_r6.sql', 'utf8')
 const rollback = readFileSync('db/20261107_arch_fill_next_week_rollback.sql', 'utf8')
 
 const schema = `
