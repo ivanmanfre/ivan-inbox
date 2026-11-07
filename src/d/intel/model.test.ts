@@ -40,7 +40,9 @@ describe('intel model', () => {
     const now = Date.parse('2026-10-30T12:00:00Z')
     const it_ = (o: Partial<IntelItem>) => ({ verdict: 'keep', ivan_verdict: null, ivan_seen_at: null, published_at: '2026-10-25T00:00:00Z', created_at: '2026-10-29T00:00:00Z', ...o }) as IntelItem
     expect(inFeed(it_({}), now)).toBe(true)
-    expect(inFeed(it_({ published_at: '2026-10-02T00:00:00Z' }), now)).toBe(false)
+    expect(inFeed(it_({ published_at: '2026-10-02T00:00:00Z', created_at: '2026-10-03T00:00:00Z' }), now)).toBe(false)
+    expect(inFeed(it_({ published_at: '2026-10-08T00:00:00Z', created_at: '2026-10-29T00:00:00Z' }), now)).toBe(true)
+    expect(inFeed(it_({ published_at: '2026-10-02T00:00:00Z', created_at: '2026-10-20T00:00:00Z' }), now)).toBe(false)
     expect(inFeed(it_({ ivan_verdict: 'noise' }), now)).toBe(false)
     expect(inFeed(it_({ verdict: 'drop', ivan_verdict: 'useful' }), now)).toBe(true)
     expect(inFeed(it_({ verdict: 'drop' }), now)).toBe(false)

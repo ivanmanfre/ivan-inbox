@@ -50,7 +50,8 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
     const fresh = (key: string) => (touched.current.get(key) ?? 0) >= t0 || (inflight.current.get(key) ?? 0) > 0
     Promise.all([
       supabase.from('intel_items').select(ITEM_COLS).or('verdict.eq.keep,ivan_verdict.eq.useful')
-        .gte('published_at', daysAgo(FEED_WINDOW_DAYS)).order('published_at', { ascending: false }).limit(200),
+        // created_at is never older than published_at, so this covers both windows in recent() (model.ts).
+        .gte('created_at', daysAgo(FEED_WINDOW_DAYS)).order('published_at', { ascending: false }).limit(200),
       supabase.from('intel_items').select(ITEM_COLS).eq('verdict', 'drop')
         .gte('created_at', daysAgo(DROP_WINDOW_DAYS)).order('created_at', { ascending: false }).limit(300),
       supabase.from('intel_sources').select('id,name,url,topic,status,added_by,note,items_judged,items_kept,last_kept_at'),
