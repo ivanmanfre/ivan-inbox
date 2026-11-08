@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Thread } from '../../lib/inbox'
-import { referralEmailRow, referralInbound, requestDmReferral, stageReferralEmail } from '../../lib/dmReferral'
+import { drafterEmailRow, referralEmailRow, referralInbound, requestDmReferral, stageReferralEmail } from '../../lib/dmReferral'
 import type { ReferralDraft, ReferralEmail } from '../../../supabase/functions/inbox-dm-draft/referral'
 import { ReferredLeadCard } from './ReferredLeadCard'
 import { threadEmailSender } from '../../lib/inbox'
@@ -81,6 +81,8 @@ function ReferralEmailDraft({ t, inbound, email, referredName, referredCompany, 
   const row = referralEmailRow(t.messages, inbound)
   // The optimistic "added" holds only until the refreshed thread shows the row; a later discard brings the form back.
   useEffect(() => { if (row) setAdded(false) }, [row])
+  const drafted = row ? null : drafterEmailRow(t.messages, inbound, email.to)
+  if (drafted) return <p className="dm-meta">{drafted.sent_at ? `Email sent to ${email.to}.` : `The reply draft below already emails ${email.to}.`}</p>
   if (row?.sent_at) return <p className="dm-meta">Email sent to {row.recipient_email ?? to}.</p>
   if (row || added) return <p className="dm-meta">The email to {first} is in the draft below. Send approves it (from {from}).</p>
   const add = async () => {

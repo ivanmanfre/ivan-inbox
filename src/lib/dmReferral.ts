@@ -53,6 +53,17 @@ export function referralEmailRow<T extends EmailRow>(rows: readonly T[], inbound
     && (m.sent_at || m.approved_at || !m.send_blocked_at || isRecoverableHold(m.send_blocked_reason ?? null))) ?? null
 }
 
+type ReplyRow = EmailRow & { recipient_email?: string | null }
+/** A lane reply draft (or sent reply) after this handoff that already emails the same address: the ARCH and RISE
+ * drafters email the person the prospect pointed us to (Yossi -> miad@, 2026-11-08), so the card must not
+ * stage a second email to them. Discarded, expired and failed rows no longer count. */
+export function drafterEmailRow<T extends ReplyRow>(rows: readonly T[], inbound: Pick<EmailRow, 'sent_at' | 'created_at'>, to: string): T | null {
+  const after = inbound.sent_at || inbound.created_at, want = to.trim().toLowerCase()
+  return rows.find(m => m.ai_model !== REFERRAL_EMAIL_MODEL && m.direction === 'outbound' && (m.sent_at || m.created_at) >= after
+    && (m.recipient_email ?? '').trim().toLowerCase() === want
+    && (m.sent_at || m.approved_at || !m.send_blocked_at || isRecoverableHold(m.send_blocked_reason ?? null))) ?? null
+}
+
 export async function stageReferralEmail(t: Thread, inbound: { id: string; sent_at: string | null; created_at: string }, email: { to: string; cc: string[]; subject: string; body: string }, referredName: string | null, referredCompany: string | null = null): Promise<void> {
   if (!['ivan', 'arch', 'risedtc'].includes(t.client_id)) throw new Error('Email is unavailable for this conversation.')
   const to = email.to.trim(), subject = email.subject.replace(/\s+/g, ' ').trim(), body = email.body.trim()
