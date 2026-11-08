@@ -78,7 +78,7 @@ as $function$
   select pl.prospect_id, pl.linkedin_url, m.last_posted_at
   from m join owner_comment_pool(p_seat) pl on pl.prospect_id = m.prospect_id
   cross join s
-  where not m.owner_rejected and pl.linkedin_url ~* 'linkedin\.com/in/'
+  where m.owner_rejected is not true and pl.linkedin_url ~* 'linkedin\.com/in/'
   order by m.last_posted_at desc
   limit greatest(0, least(300, coalesce((select (oc->>'fresh_pull_max_profiles')::int from s), 150)));
 $function$;
