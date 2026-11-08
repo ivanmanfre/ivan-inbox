@@ -5,11 +5,13 @@ import { readMentions } from './mention.ts'
 import { askClaude, DRAFT_MODEL } from './llm.ts'
 import { ANNA_AUTHOR, ANNA_IDENTITY_INSTRUCTION, ANNA_FOLLOWUP_INSTRUCTION } from './anna.ts'
 
+const STUDIO_REPLY_SLUGS = ['author-voice', 'ivan-reply-voice-core', 'ivan-company-facts', 'ivan-reply-exemplars']
+
 const CANON: Record<string, { author: string; slugs: string[] }> = {
   arch: { author: 'Davorin', slugs: ['arch-company-facts', 'arch-reply-voice-core', 'arch-icp-outreach', 'arch-reply-exemplars'] },
   risedtc: { author: 'Mattan', slugs: ['rise-company-facts', 'rise-reply-voice-core', 'rise-reply-exemplars'] },
-  ivan: { author: 'Ivan Manfredi', slugs: ['author-voice', 'ivan-reply-voice-core', 'ivan-company-facts'] },
-  anna: { author: ANNA_AUTHOR, slugs: ['author-voice', 'ivan-reply-voice-core', 'ivan-company-facts'] },
+  ivan: { author: 'Ivan Manfredi', slugs: STUDIO_REPLY_SLUGS },
+  anna: { author: ANNA_AUTHOR, slugs: STUDIO_REPLY_SLUGS },
 }
 
 /** An appended offer line is good for 72 h after verification (the sequencer's bound). No offer, no expiry. */
