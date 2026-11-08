@@ -39,6 +39,17 @@ describe('referral email envelope (Ivan 2026-11-05: "we should be able to send e
     expect(referralEnvelope('Talk to Ben, or write to ops@other.com', 'Ben', null)).toBeNull()
     expect(referralEnvelope('Ben Patton handles it', 'Ben Patton', null)).toBeNull()
   })
+  it('takes the address the referrer gave for the person when its local part is not their name (Yossi, 2026-11-08)', () => {
+    const yossi = 'please connect with Mia who leads our influencer programs miad@fitness22.com'
+    expect(referralEnvelope(yossi, 'Mia', null)).toBeNull()
+    expect(referralEnvelope(yossi, 'Mia', null, 'miad@fitness22.com')).toEqual({ to: 'miad@fitness22.com', cc: [] })
+    expect(employerDomain(yossi, 'Mia', 'Fitness22', 'miad@fitness22.com')).toBe('fitness22')
+    expect(handoffEmails(yossi, 'Mia', null, 'miad@fitness22.com')).toEqual(['miad@fitness22.com'])
+    expect(referralEnvelope('Talk to Mia, or write to ops@other.com', 'Mia', null, 'mia@other.com')).toBeNull()
+    // The referrer's signature or an unrelated inbox at the same domain never rides along on Cc.
+    const signed = 'Please connect with Mia, mdavis@fitness22.com\n--\nYossi Tarablus | CMO | ytarablus@fitness22.com | billing@fitness22.com'
+    expect(referralEnvelope(signed, 'Mia', employerDomain(signed, 'Mia', 'Fitness22', 'mdavis@fitness22.com'), 'mdavis@fitness22.com')).toEqual({ to: 'mdavis@fitness22.com', cc: [] })
+  })
   it('never puts an unrelated address from the message on the email', () => {
     expect(referralEnvelope('Try Ben, ben@acmegrowth.com, cc ops@other.com', 'Ben', null)).toEqual({ to: 'ben@acmegrowth.com', cc: [] })
   })
