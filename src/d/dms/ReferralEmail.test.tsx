@@ -41,6 +41,17 @@ describe('referral email on the card (Éléa G. -> Gambit)', () => {
     expect(await screen.findByText(/The email to Guillaume is in the draft below/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Add email to draft' })).not.toBeInTheDocument()
   })
+  it('does not offer a second email when the lane reply draft already emails that address (Yossi -> miad@, 2026-11-08)', async () => {
+    const reply = msg({ prospect_id: 'elea', client_id: 'arch', direction: 'outbound', channel: 'linkedin', ai_model: 'arch_reply_draft_v2', recipient_email: 'Guillaume@gambitdigital.ca', message_text: "Thanks Éléa, I'll reach out to Guillaume.", sent_at: null, approved_at: null, created_at: '2026-11-05T17:20:00Z' })
+    render(<ReferralCard t={threads([handoff, reply])[0]} />)
+    expect(await screen.findByText('The reply draft below already emails guillaume@gambitdigital.ca.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add email to draft' })).not.toBeInTheDocument()
+  })
+  it('offers the email when the lane reply draft that emailed them was discarded', async () => {
+    const reply = msg({ prospect_id: 'elea', client_id: 'arch', direction: 'outbound', channel: 'linkedin', ai_model: 'arch_reply_draft_v2', recipient_email: 'guillaume@gambitdigital.ca', message_text: 'x', sent_at: null, approved_at: null, send_blocked_reason: 'discarded_in_inbox', send_blocked_at: '2026-11-05T17:30:00Z', created_at: '2026-11-05T17:20:00Z' })
+    render(<ReferralCard t={threads([handoff, reply])[0]} />)
+    expect(await screen.findByRole('button', { name: 'Add email to draft' })).toBeInTheDocument()
+  })
   it('offers it again after the staged copy was discarded', async () => {
     const gone = msg({ prospect_id: 'elea', client_id: 'arch', direction: 'outbound', channel: 'email', ai_model: REFERRAL_EMAIL_MODEL, recipient_email: 'guillaume@gambitdigital.ca', message_text: 'Subject: x\n\nHi', sent_at: null, approved_at: null, send_blocked_reason: 'discarded_in_inbox', send_blocked_at: '2026-11-05T19:35:00Z', created_at: '2026-11-05T19:30:00Z' })
     render(<ReferralCard t={threads([handoff, gone])[0]} />)
