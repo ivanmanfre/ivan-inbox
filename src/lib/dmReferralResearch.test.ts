@@ -70,6 +70,29 @@ describe('referral researcher', () => {
       body: 'Hi Guillaume\n\nÉléa said you handle creator work for Panache.\n\nHow do you usually set up creator campaigns for the studios you work with?\n\nDavorin' })
     expect(result.email_reason).toBeNull()
   })
+  it('emails the address the referrer gave even when it is not the first name (Yossi -> miad@fitness22.com, 2026-11-08)', async () => {
+    const calls: { url: string; body: Record<string, unknown> }[] = []
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      calls.push({ url, body: JSON.parse(String(init.body)) })
+      if (calls.length === 1) return claude(JSON.stringify({ name: 'Mia', company: null, email: 'MiaD@fitness22.com' }))
+      if (calls.length === 3) return claude(JSON.stringify({ subject: 'Yossi from Fitness22 pointed me your way', paragraphs: ['Hi Mia', 'Yossi said you lead the influencer programs at Fitness22.', 'Do you run creator campaigns in-house or with an agency?'], reason: null }))
+      return apify([])
+    })
+    const text = 'hi Davorin\nNice to meet you. \n\nplease connect with Mia who leads our influencer programs miad@fitness22.com'
+    const result = await researchReferral(db, { id: 'in-y', text, company: 'Fitness22', referrer: 'Yossi Tarablus' }, 'Davorin', [], [])
+    expect(String((calls[0].body.messages as { content: string }[])[0].content)).toMatch(/"email"/)
+    expect(result.status).toBe('unresolved')
+    expect(result.reason).toContain('miad@fitness22.com')
+    expect(result.email).toMatchObject({ to: 'miad@fitness22.com', cc: [], subject: 'Yossi from Fitness22 pointed me your way' })
+    expect(result.email_reason).toBeNull()
+  })
+  it('never emails an address the message does not contain', async () => {
+    let n = 0
+    vi.stubGlobal('fetch', async () => { n++; return n === 1 ? claude(JSON.stringify({ name: 'Mia', company: null, email: 'mia@evil.example' })) : apify([]) })
+    const result = await researchReferral(db, { id: 'in-y2', text: 'please connect with Mia who leads our influencer programs', company: 'Fitness22' }, 'Davorin', [], [])
+    expect(result.email).toBeUndefined()
+    expect(n).toBe(2)
+  })
   it('records why no email exists when the email draft breaks the copy rules', async () => {
     let n = 0
     vi.stubGlobal('fetch', async () => {
