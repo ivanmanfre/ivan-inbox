@@ -1,5 +1,17 @@
 -- Rollback for db/301: restores the 11-07 pre-change functions and seat settings exactly.
--- Run the n8n rollback first (Weekly Pull snapshot), or the fresh path will call a missing function.
+-- Order (Sol r1 late finding, 11-09): a fresh run that is still uncollected would lose its paid posts,
+-- because the old collector skips anything not purpose posts_pull.
+--   1. Stop new fresh starts: set settings.owner_comment.fresh_pull_enabled = false.
+--   2. Let the CURRENT collector (every 15 min) collect every fresh_pull run. This query must return 0:
+--        select count(*) from owner_comment_apify_ledger where purpose = 'fresh_pull' and not collected;
+--   3. Restore the n8n Weekly Pull snapshot, then run this file. The guard below refuses to run otherwise.
+
+do $guard$
+begin
+  if exists (select 1 from public.owner_comment_apify_ledger where purpose = 'fresh_pull' and not collected) then
+    raise exception 'db/301 rollback refused: uncollected fresh_pull runs exist; let the collector finish first';
+  end if;
+end $guard$;
 
 CREATE OR REPLACE FUNCTION public.owner_comment_candidates(p_seat text, p_limit integer)
  RETURNS TABLE(post_id uuid, prospect_id uuid, owner_name text, owner_headline text, owner_company text, owner_provider_id text, owner_public_id text, owner_linkedin_url text, bucket text, post_social_id text, post_url text, post_text text, posted_at timestamp with time zone, stage text, connected boolean, dm_state text, pick_rank integer)
