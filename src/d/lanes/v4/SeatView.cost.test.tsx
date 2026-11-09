@@ -17,6 +17,7 @@ vi.mock('../ProblemsSheet', () => ({ ProblemsSheet: () => null }))
 vi.mock('./Numbers', () => ({ Numbers: () => null }))
 vi.mock('./Supply', () => ({ Supply: () => null }))
 vi.mock('./Sending', () => ({ Sending: () => null }))
+vi.mock('./Email', () => ({ Email: () => null }))
 vi.mock('./History', () => ({ History: () => null, Rates: () => null }))
 vi.mock('./InterestPerformance', () => ({ InterestPerformance: () => null }))
 

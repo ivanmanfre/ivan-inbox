@@ -2,7 +2,7 @@
    "show the important things on the first side without collapsible stuff...
    the log collapsed for sure, and the recurring problems as well").
    Open: one status line, the key numbers for the window, invites sent by lane
-   (today / 7 days) and lead supply beside lanes & campaigns, the rate charts and the last 14 days.
+   (today / 7 days) and lead supply beside lanes & campaigns, Ivan's Instantly email (Ivan only), the rate charts and the last 14 days.
    Folded (remembered): Caps & control · Inbound · Numbers in detail ·
    Channels · Send log · Recurring problems. A folded section does not mount,
    so it reads nothing. An open incident shows its Control cell open. */
@@ -14,6 +14,7 @@ import { Segmented } from '../../../ds/Segmented'
 import { Numbers } from './Numbers'
 import { Supply } from './Supply'
 import { Sending } from './Sending'
+import { Email } from './Email'
 import { History, Rates } from './History'
 import { ackId, useAck } from '../ack'
 import { Btn } from '../../ui/Key'
@@ -50,6 +51,7 @@ export function SeatView4({ seat, ctx, range, setRange, onCustom, retry }: { sea
       <div className="dl4-filter"><b>{SEAT_NAME[seat]}</b><Segmented markerId="dl4-range" label="Window for the totals" value={range} options={['7d','30d','90d','custom'].map(r => ({ id:r, label:r === 'custom' ? 'Custom' : r }))} onChange={r => r === 'custom' ? onCustom() : setRange(r as Range)} /></div>
       <Numbers seat={seat} ctx={ctx} retry={retry} />
       <div className="dl4-first"><Supply seat={seat} d={ctx.d} s={s} now={ctx.now} retry={retry} /><Sending seat={seat} now={ctx.now} /></div>
+      {seat === 'ivan' && <Email now={ctx.now} />}
       <div className="dl4-below"><History seat={seat} ctx={ctx} /><InterestPerformance seat={seat} /></div>
       <Rates seat={seat} ctx={ctx} />
       <h2 className="dl4-more-head">More</h2>
