@@ -414,6 +414,17 @@ export function unreachableLabel(m: Pick<InboxMessage, 'send_blocked_reason'>): 
 }
 
 /** Why a row is held, in plain words. An unknown code shows as written. */
+/** Words for an Ivan email-lane hold (ivan_email_channel_gate / native Instantly check reasons). */
+export function emailLaneHoldText(why: string): string {
+  if (why === 'replied' || why === 'native_email_reply') return 'They replied to your email, so the LinkedIn follow-up stopped. Nothing was sent.'
+  if (why === 'booked') return 'They booked a call, so the LinkedIn follow-up stopped. Nothing was sent.'
+  if (why === 'opted_out') return 'They opted out by email. Nothing was sent.'
+  if (why === 'interchannel_spacing') return 'An email went to them in the last 2 days, so LinkedIn waited. Nothing was sent. Send anyway to try again.'
+  if (why === 'email_followup_due') return 'Their next email goes first, then LinkedIn. Nothing was sent. Send anyway to try again.'
+  if (['email_first_owned', 'email_reserved', 'email_owner_ambiguous'].includes(why)) return 'This person is in the cold-email lane, so LinkedIn waits. Nothing was sent.'
+  return 'The email lane could not confirm what was already emailed to them. Nothing was sent. Send anyway to try again.'
+}
+
 export function heldReasonText(reason: string | null | undefined): string {
   const r = (reason ?? '').trim()
   const tail = r.includes(':') ? r.slice(r.indexOf(':') + 1).trim() : ''
@@ -423,6 +434,10 @@ export function heldReasonText(reason: string | null | undefined): string {
   // without writing a reason; only the 3rd failure writes dispatch_error:<why>, clears the approval and stops.
   // Nothing retries after that, so the words say so. dispatch_hold:<why> is the same stop before any attempt,
   // and dm_dispatch:<why> is the send-slot reservation refusing it (the row keeps its approval but is not retried).
+  // 2026-11-09 (Ivan: Donald, Ashley x2, Noah, Sean read as "they blocked me"): the email lane's own check held these;
+  // LinkedIn was never asked. Say which email-lane answer stopped it.
+  const emailLane = /email_bridge_dispatch_hold:([a-z_]+)/.exec(r)?.[1]
+  if (emailLane) return emailLaneHoldText(emailLane)
   if (r.startsWith('dispatch_error')) return 'Couldn\u2019t reach LinkedIn after 3 tries. Nothing was sent. Send anyway to try again.'
   if (r.startsWith('dispatch_hold')) return 'Our system stopped it before it reached LinkedIn. Nothing was sent. Send anyway to try again.'
   if (r.startsWith('dm_dispatch')) return r.includes('claim_changed')

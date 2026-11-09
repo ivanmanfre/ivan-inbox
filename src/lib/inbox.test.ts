@@ -1335,6 +1335,12 @@ describe('held sends', () => {
     // dispatch_error is written only on the 3rd and final failure, with the approval cleared: nothing retries it.
     expect(heldReasonText('dispatch_error:riseReferralInmail is not defined')).toBe('Couldn\u2019t reach LinkedIn after 3 tries. Nothing was sent. Send anyway to try again.')
     expect(heldReasonText('dispatch_error: prior_reservation_requires_reconciliation')).toBe('Couldn\u2019t reach LinkedIn after 3 tries. Nothing was sent. Send anyway to try again.')
+    // 2026-11-09: an email-lane hold never says LinkedIn could not be reached.
+    expect(heldReasonText('dispatch_error: email_bridge_dispatch_hold:interchannel_spacing')).toBe('An email went to them in the last 2 days, so LinkedIn waited. Nothing was sent. Send anyway to try again.')
+    expect(heldReasonText('dispatch_error: email_bridge_dispatch_hold:replied')).toBe('They replied to your email, so the LinkedIn follow-up stopped. Nothing was sent.')
+    expect(heldReasonText('dispatch_error: email_bridge_dispatch_hold:email_reserved')).toBe('This person is in the cold-email lane, so LinkedIn waits. Nothing was sent.')
+    expect(heldReasonText('dispatch_error: email_bridge_dispatch_hold:email_bridge_gate_unavailable')).toBe('The email lane could not confirm what was already emailed to them. Nothing was sent. Send anyway to try again.')
+    expect(heldReasonText('dispatch_error: email_bridge_dispatch_hold:interchannel_spacing')).not.toMatch(/reach LinkedIn/)
     expect(heldReasonText('dispatch_error:x')).not.toMatch(/will retry|approval/i)
     expect(heldReasonText('provider_invalid_recipient: 422')).toBe('LinkedIn says this person can\u2019t receive messages.')
     expect(heldReasonText('send_failed_verified: hard error: 422 {"type":"errors/invalid_recipient"}')).toBe('LinkedIn says this person can\u2019t receive messages.')
