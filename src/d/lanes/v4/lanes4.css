@@ -60,3 +60,8 @@ html.brief-motion-off .dl4-seat{animation:none}
 .dl4-phone .dl4-tab-head{flex-direction:column;align-items:flex-start;flex-wrap:nowrap;gap:3px}
 .dl4-phone .dl4-strip .ds-seg-item{padding:8px}
 .dl4-phone .dl4-strip .ds-seg-item.ds-seg-item{height:auto;min-height:64px;align-items:flex-start}
+/* Email (Instantly) panel, Ivan's details only (2026-11-09) */
+.dl4-email{margin-bottom:16px}.dl4-email-nums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:8px 0 16px}.dl4-email-nums>div{min-width:0;display:flex;flex-direction:column;gap:2px}.dl4-email-nums small,.dl4-email-nums span{font-size:12px;line-height:16px;color:var(--t3)}.dl4-email-nums b{font:500 22px var(--m)}
+.dl4-email-camp{margin-bottom:12px;min-width:0}.dl4-email-camp b{font-size:13px}.dl4-email-camp small{font-size:12px;color:var(--t3)}.dl4-email-camp p{font-size:13px;line-height:20px;color:var(--t2);margin:2px 0 0}
+.dl4-email-days{display:grid;gap:6px;margin-top:8px}.dl4-email-days .dl4-sent-bar>small{width:56px;font:400 12px var(--m);color:var(--t3)}
+.dl4-phone .dl4-email-nums{grid-template-columns:repeat(2,minmax(0,1fr))}

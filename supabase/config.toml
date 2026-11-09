@@ -18,3 +18,7 @@ verify_jwt = false
 # Called by the swishdm_lm_requests insert trigger and its retry sweep (pg_net); the handler checks x-inbox-secret.
 [functions.swishdm-report-check]
 verify_jwt = false
+
+# The handler verifies the signed-in inbox owner with auth.getUser.
+[functions.inbox-email-stats]
+verify_jwt = false
