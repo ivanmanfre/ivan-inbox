@@ -540,6 +540,12 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
   const unsaved = edit !== null && edit !== editBase.current
   const lf = useLineFlags(c.r, postNow)
   const showFlags = c.lane === 'ivan' && !!lf.flags
+  // Flags fold into one tag on the row (Ivan 2026-11-09: the open blocks were "a total mess"); the lines show on a tap
+  // on the tag, with the preview, or when Approve asks once.
+  const [flagsOpen, setFlagsOpen] = useState(false)
+  const flagTag = showFlags && lf.ask
+  const flagsShown = showFlags && (asking || (flagTag && (flagsOpen || more)))
+  const nFlag = lf.flags?.lines.length ?? 0
   const saveFirst = unsaved ? 'Save or cancel your edit first' : undefined
   const id = c.r.id
   const judgeable = c.judge
@@ -621,6 +627,9 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
           {noImg?.tone === 'warn' && <span className="cv2-tag cv2-tag-warn">No image</span>}
           {repeat && <span className="cv2-tag cv2-tag-warn" title="The same picture sits on another post of this seat within two weeks">Same picture</span>}
           {qa && <Pill tone="warn" title={qa.title}>{qaWord(c.r)}</Pill>}
+          {flagTag && <button type="button" className="cv2-lf-tag" data-verb="flag-toggle" aria-expanded={flagsShown}
+            title={flagsShown ? 'Hide the lines to check' : 'Show the lines to check'} onClick={() => setFlagsOpen(!flagsOpen)}>
+            {nFlag ? `${nFlag} to check` : 'Repeat'}</button>}
           {read?.state === 'ready' && <EarlyReadChip read={read} lane={c.lane} />}
           <span className="cv2-row-age" title={`Created ${age(c.r.created_at, now)} ago`}>{c.r.board_visible === true && !c.r.scheduled_at ? 'No date yet' : whenOf(c, now)}</span>
           {/* Every row of the list needs review: only a different status earns a pill. */}
@@ -640,7 +649,7 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
       </div>
       {hold?.kind === 'changes' && hold.detail && <p className="cv2-ask" data-ask><b>{OWNER[c.lane]} on the panel:</b> “{hold.detail}”</p>}
       {hold && hold.kind !== 'changes' && hold.detail && !hideHold && <p className="cv2-ask cv2-ask-hold">{hold.detail}</p>}
-      {showFlags && lf.flags && <LineFlagsBlock r={c.r} flags={lf.flags} sha={lf.sha} body={postNow} edit={edit} setEdit={setEdit}
+      {flagsShown && lf.flags && <LineFlagsBlock r={c.r} flags={lf.flags} sha={lf.sha} body={postNow} edit={edit} setEdit={setEdit}
         onStartEdit={() => { if (grid && !more && inPlace) { startEdit(); return true } onEdit(); return false }}
         onSaved={setSaved} onChanged={onChanged} asking={asking} onKeep={() => onKeepApprove?.()} onBack={() => onKeepBack?.()} />}
       {picking && <div className="cv2-row-why"><ReasonPicker lane={c.lane} onPick={onDrop} onCancel={() => setPicking(false)} /></div>}

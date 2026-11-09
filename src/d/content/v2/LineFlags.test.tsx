@@ -21,7 +21,7 @@ describe('LineFlagsBlock', () => {
       onSaved={() => {}} onChanged={() => {}} asking={false} onKeep={() => {}} onBack={() => {}} /></ToastProvider>)
     expect(screen.getByText('Just back from a wonderful weekend in Kraków.').tagName).toBe('MARK')
     expect(screen.getByText(/Were you in Kraków that weekend\?/)).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Swap for mine' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Cut' })).toBeTruthy()
     expect(screen.getByText(/repeats your 30 Sept? post/)).toBeTruthy()
     expect(screen.getByText(/A re-run needs 170 or more/)).toBeTruthy()

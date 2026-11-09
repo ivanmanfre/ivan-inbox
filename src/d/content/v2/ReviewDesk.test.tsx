@@ -646,3 +646,22 @@ describe('going stale (review 2026-11-06 #30)', () => {
     expect(verb(document, 'stale-archive-all')).toBeNull()
   })
 })
+
+describe('line flags fold into one tag on the row (Ivan 2026-11-09)', () => {
+  it('shows "N to check" closed; a tap opens the lines with Edit and Cut', () => {
+    const body = 'Last night I walked home.\n\nThe point stands.'
+    const flagged = row({ id: 'f1', title: 'Flagged', post_body: body, line_flags: { lines: [{ text: 'Last night I walked home.', kind: 'dated', ask: 'Did this happen last night?' }] } })
+    renderInFrame(<Harness rows={[flagged]} />)
+    const c = card('f1')!
+    expect(c.hasAttribute('data-needs-keep')).toBe(true)
+    expect(c.querySelector('[data-line-flags]')).toBeNull()
+    const tag = verb(c, 'flag-toggle')!
+    expect(tag.textContent).toBe('1 to check')
+    fireEvent.click(tag)
+    expect(c.querySelector('[data-line-flags]')).not.toBeNull()
+    expect(verb(c, 'flag-swap')!.textContent).toBe('Edit')
+    expect(verb(c, 'flag-cut')!.textContent).toBe('Cut')
+    fireEvent.click(verb(c, 'flag-toggle')!)
+    expect(c.querySelector('[data-line-flags]')).toBeNull()
+  })
+})

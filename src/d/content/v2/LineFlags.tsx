@@ -4,8 +4,6 @@ import { saveDraftBody, DraftSaveConflict, type ContentDraft } from '../../../li
 import { bodySha, cutLine, keepLineFlags, lineFlagsOf, needsKeep, rejectedNow, type LineFlags } from '../../../lib/lineFlags'
 import './line-flags.css'
 
-const KIND_WORD = { personal: 'Their line', dated: 'Dated' } as const
-
 function dayWord(iso: string | null): string {
   if (!iso) return 'an earlier'
   try { return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Warsaw', day: 'numeric', month: 'short' }).format(new Date(iso)) } catch { return iso.slice(0, 10) }
@@ -26,7 +24,7 @@ export function useLineFlags(r: ContentDraft, body: string): { flags: LineFlags 
   return { flags, sha: sha || null, ask: !!flags && (sha === null || (sha !== '' && needsKeep(flags, sha))) }
 }
 
-/** The flagged lines under a Review row: each line, its ask, "Swap for mine" and "Cut". Approve asks once (asking). */
+/** The flagged lines under a Review row: each line, its ask, "Edit" and "Cut". Approve asks once (asking). */
 export function LineFlagsBlock({ r, flags, sha, body, edit, setEdit, onStartEdit, onSaved, onChanged, asking, onKeep, onBack }: {
   r: ContentDraft; flags: LineFlags; sha: string | null; body: string
   /** The row's in-place edit text (null = not editing). */
@@ -94,11 +92,10 @@ export function LineFlagsBlock({ r, flags, sha, body, edit, setEdit, onStartEdit
         <ul className="cv2-lf-list" aria-label="Lines to check">
           {flags.lines.map(l => (
             <li key={l.text} className="cv2-lf-line">
-              <mark className="cv2-lf-mark">{l.text}</mark>
-              <span className="cv2-lf-ask"><span className="cv2-lf-kind">{l.kinds.map(k => KIND_WORD[k]).join(' · ')}</span>{l.ask ? ` ${l.ask}` : ''}</span>
+              <span className="cv2-lf-text"><mark className="cv2-lf-mark">{l.text}</mark>{l.ask && <span className="cv2-lf-ask">{l.ask}</span>}</span>
               <span className="cv2-lf-keys">
-                <button type="button" className="cv2-k" data-verb="flag-swap" disabled={busy} onClick={() => swap(l.text)}>Swap for mine</button>
-                <button type="button" className="cv2-k cv2-k-q" data-verb="flag-cut" disabled={busy} onClick={() => void cut(l.text)}>Cut</button>
+                <button type="button" className="cv2-lf-key" data-verb="flag-swap" disabled={busy} onClick={() => swap(l.text)}>Edit</button>
+                <button type="button" className="cv2-lf-key" data-verb="flag-cut" disabled={busy} onClick={() => void cut(l.text)}>Cut</button>
               </span>
             </li>
           ))}
