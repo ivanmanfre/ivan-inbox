@@ -588,10 +588,10 @@ describe('isFollowUp / draftStale', () => {
   it('tags every bump/follow-up drafter, and no reply drafter', () => {
     for (const m of ['stall_bump_v1', 'rise_stall_bump_time_ask_v1', 'rise_stall_bump_ctx_v1',
       'content_system_bump_v1', 'content_system_followup_v1', 'template/agency_followup_v1',
-      'inmail_followup_connect_v1']) {
+      'inmail_followup_connect_v1', 'swishdm_reply_nudge_v1']) {
       expect(isFollowUp({ ...base, ai_model: m })).toBe(true)
     }
-    for (const m of ['rise_reply_draft_v1', 'warm_reply_auto_v1', 'manual_mirror', null]) {
+    for (const m of ['rise_reply_draft_v1', 'warm_reply_auto_v1', 'manual_mirror', 'swishdm_reply_page_v1', 'rise_dm2_nudge_v1', null]) {
       expect(isFollowUp({ ...base, ai_model: m })).toBe(false)
     }
   })
@@ -603,6 +603,12 @@ describe('isFollowUp / draftStale', () => {
 
   it('a FOLLOW-UP draft in the identical thread shape is NOT stale', () => {
     const t = groupThreads([inbound, ourReply, pending('rise_stall_bump_time_ask_v1')])[0]
+    expect(t.draft?.id).toBe('d')
+    expect(t.draftStale).toBe(false)
+  })
+
+  it('a SwishDM report nudge in the same thread shape is NOT stale', () => {
+    const t = groupThreads([inbound, ourReply, pending('swishdm_reply_nudge_v1')])[0]
     expect(t.draft?.id).toBe('d')
     expect(t.draftStale).toBe(false)
   })

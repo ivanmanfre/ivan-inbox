@@ -707,7 +707,11 @@ export function isDraft(m: InboxMessage): boolean {
 // touch broad: a false positive costs one advisory warning, a false negative
 // costs a prospect. Reply drafters (rise_reply_draft_v1, warm_reply_auto_v1)
 // carry none of these tokens and are unaffected.
-const FOLLOW_UP_MODEL = /stall_bump|_bump_|bump_v|_followup|follow_up/i
+//
+// swishdm_reply_nudge (2026-11-10): the SwishDM report nudges ("have you been able to take a look", then the
+// second message with a time) are follow-ups by the same definition, and the second one is one-per-prospect-ever.
+// Named in full on purpose: other "nudge" tags (rise_dm2_nudge_v1, arch_nudge*) are sequence steps, left as they were.
+const FOLLOW_UP_MODEL = /stall_bump|_bump_|bump_v|_followup|follow_up|swishdm_reply_nudge/i
 
 export function isFollowUp(m: InboxMessage): boolean {
   return FOLLOW_UP_MODEL.test(m.ai_model ?? '')
