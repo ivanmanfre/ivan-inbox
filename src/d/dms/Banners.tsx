@@ -3,13 +3,14 @@
 import { useEffect, useState } from 'react'
 import { clientOwner, eventTime, isReplyRetryExhausted, isReplyRetryPending, type Thread } from '../../lib/inbox'
 import { fetchFollowUp, followUpSuggestion, type FollowUp } from '../../lib/followUp'
+import { fetchCheckState, readCheckWait, type CheckState } from '../../lib/checkWait'
 import { fetchScanHold, type ScanHold } from '../../lib/scanHold'
 import { formatReturn, returnsIn } from '../../lib/pushLater'
 import { seatOf } from '../seats'
 import { Btn } from '../ui/Key'
 import { DIcon } from '../ui/icons'
 import { Failed } from '../ui/states'
-import { warsawDm, warsawDow } from '../ui/time'
+import { warsawDm, warsawDow, warsawHm } from '../ui/time'
 import { owedSince } from './model'
 import type { DmVerbs } from './verbs'
 
@@ -96,10 +97,28 @@ export function NoDraftBanner({ t, now }: { t: Thread; now: number }) {
     fetchScanHold(t.prospect_id).then(h => { if (live) setHold(h) }).catch(() => {})
     return () => { live = false }
   }, [t.prospect_id, rise])
+  // SwishDM: a reply before the first message waits for the search check that runs after the accept
+  const swish = seatOf(t.client_id) === 'swishdm'
+  const [check, setCheck] = useState<CheckState | null>(null)
+  const lastId = t.last.id   // a new message on the thread re-reads the check
+  useEffect(() => {
+    setCheck(null)
+    if (!swish) return
+    let live = true
+    fetchCheckState(t.prospect_id).then(c => { if (live) setCheck(c) }).catch(() => {})
+    return () => { live = false }
+  }, [t.prospect_id, swish, lastId])
+  const wait = swish ? readCheckWait(check, t.messages, now) : null
   const since = owedSince(t)
   if (!since) return null
   const days = Math.max(0, Math.round((now - Date.parse(since)) / 86_400_000))
   if (t.client_id === 'anna') return <div className="dm-ban dm-ban-hl"><b>{firstOf(t)} is waiting for a reply.</b><p>Write your reply below, or use Draft it to prepare a reply for review.</p></div>
+  if (wait) return (
+    <div className="dm-ban" data-ban="check-wait">
+      <b><DIcon name="time" />{firstOf(t)} replied before the first message. The ChatGPT and Gemini check on {t.prospect_company || 'their brand'} is still running{wait.startedAt ? ` (started ${warsawHm(wait.startedAt)})` : ''}.</b>
+      <p>The reply drafts itself here once the check finishes, usually within the hour. You can also write it yourself below.</p>
+    </div>
+  )
   if (hold?.owed) return (
     <div className="dm-ban">
       <b><DIcon name="time" />{firstOf(t)} said yes to the scan. It is being built and repaired automatically.</b>
