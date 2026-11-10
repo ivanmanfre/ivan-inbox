@@ -28,7 +28,8 @@ begin
       where w.name = 'Michelle Sartorio' and w.seat = 'risedtc' and w.kind = 'no_reply_48h' and w.since::date = date '2026-11-04'),
     'Michelle Sartorio (risedtc) is no_reply_48h since 2026-11-04');
   -- 2. held drafts
-  -- Dan T. (arch) and Kinsen Siu (risedtc) were held_draft_48h on 11-10 morning; their drafts are now actively snoozed
+  -- Dan T. (arch) and Kinsen Siu (risedtc) were named as held_draft_48h by the plan, but Ivan had already snoozed both drafts
+  -- (10-28 until 11-24, 10-27 until 2027-01-11); the data did not change, the predicate did: they are actively snoozed
   -- (round-1 fix S3), so they are suppressed. Re-pointed: the held kind is asserted on Prakhar Vohra (ivan), and the snooze on the other two.
   perform pg_temp.assert_true(exists (select 1 from inbox_true_waiting() w where w.name = 'Prakhar Vohra' and w.seat = 'ivan' and w.kind = 'held_draft_48h'),
     'Prakhar Vohra (ivan) is held_draft_48h (replaces Dan T. / Kinsen Siu, now snoozed)');

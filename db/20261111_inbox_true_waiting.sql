@@ -32,6 +32,9 @@
 -- connection_note. said = last inbound text, whitespace collapsed, 90 characters; for a reaction 'reacted <emoji>'.
 -- Rollback: db/20261111_inbox_true_waiting_rollback.sql
 
+begin;
+set local lock_timeout = '3s';
+
 create or replace function public.inbox_true_waiting(p_seat text default null)
 returns table(seat text, prospect_id uuid, name text, company text, kind text, since timestamptz, said text, note text)
 language sql stable security definer set search_path = public
@@ -156,3 +159,5 @@ $fn$;
 
 revoke all on function public.inbox_true_waiting(text) from public, anon, authenticated;
 grant execute on function public.inbox_true_waiting(text) to service_role;
+
+commit;
