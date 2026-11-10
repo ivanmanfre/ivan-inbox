@@ -69,12 +69,23 @@ as $fn$
                             when o.send_blocked_reason = 'scheduled_in_inbox' and o.send_blocked_at is not null and o.approved_at is null then o.send_blocked_at end)
               from public.outreach_messages o
              where o.prospect_id = cd.id and o.direction = 'outbound' and o.sent_at is null) as hand_at,
-           -- S3: an actively snoozed draft parks the thread, void once a newer inbound lands after snoozed_at
-           -- (src/lib/inbox.ts snoozeActive, lines 728-733; unansweredSince returns null while snoozed, line 1219)
-           exists (select 1 from public.outreach_messages o
-                    where o.prospect_id = cd.id and o.direction = 'outbound' and o.sent_at is null
-                      and o.snoozed_until > now()
-                      and not (o.snoozed_at is not null and li.at > o.snoozed_at)) as snoozed,
+           -- S3: the thread's CURRENT draft being actively snoozed parks the thread, void once a newer inbound lands after
+           -- snoozed_at (src/lib/inbox.ts snoozeActive, lines 728-733; unansweredSince returns null while snoozed, line 1219).
+           -- S5: the current draft is the newest pending draft (same test as inbox_prospect_has_waiting_draft), as groupThreads
+           -- picks it (src/lib/inbox.ts line 945, newestDraft = last of the isDraft rows, snooze tested on it at line 978). A draft
+           -- that was discarded or superseded after being snoozed keeps its stamps but is no longer a draft, so it parks nothing.
+           -- Not mirrored: the email-leg-first swap of a paired invite/email draft (line 957).
+           exists (select 1 from (
+                     select o.snoozed_until, o.snoozed_at from public.outreach_messages o
+                      where o.prospect_id = cd.id and o.direction = 'outbound' and o.sent_at is null and o.approved_at is null
+                        and (o.send_blocked_at is null
+                             or o.send_blocked_reason in ('awaiting_client_review', 'owner_confirmation', 'reply_retry_pending')
+                             or o.send_blocked_reason like 'post_approval_race:%'
+                             or o.send_blocked_reason like 'lint\_%')
+                      order by o.created_at desc, o.id desc
+                      limit 1) cur
+                    where cur.snoozed_until > now()
+                      and not (cur.snoozed_at is not null and li.at > cur.snoozed_at)) as snoozed,
            -- R-B: any inbound since our last real send that asks something
            exists (select 1 from public.outreach_messages a
                     where a.prospect_id = cd.id and a.direction = 'inbound' and a.reply_intent in ('info_ask', 'booking', 'price_ask')

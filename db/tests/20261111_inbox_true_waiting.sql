@@ -76,15 +76,20 @@ begin
                  where nd.discard_mode is not null or nd.send_blocked_reason ~ '^superseded'
                     or (nd.send_blocked_reason ~ '^discarded' and not (
                          coalesce((select i.reply_intent from outreach_messages i where i.prospect_id = p.id and i.direction = 'inbound' order by coalesce(i.sent_at, i.created_at) desc, i.created_at desc limit 1), '') in ('info_ask','booking','price_ask')
-                         or exists (select 1 from outreach_messages i where i.prospect_id = p.id and i.direction = 'inbound' and i.message_type = 'email_reply' and i.reply_intent is null
+                         or exists (select 1 from outreach_messages i where i.prospect_id = p.id and i.direction = 'inbound' and (i.message_type = 'email_reply' or i.channel = 'email') and i.reply_intent is null
                                       and coalesce(i.sent_at, i.created_at) = (select max(coalesce(i2.sent_at, i2.created_at)) from outreach_messages i2 where i2.prospect_id = p.id and i2.direction = 'inbound'))
                          or exists (select 1 from outreach_messages i where i.prospect_id = p.id and i.direction = 'inbound' and i.reply_intent in ('info_ask','booking','price_ask')
                                       and coalesce(i.sent_at, i.created_at) > coalesce((select max(o2.sent_at) from outreach_messages o2 where o2.prospect_id = p.id and o2.direction = 'outbound' and o2.sent_at is not null and o2.message_type is distinct from 'connection_note'), '-infinity'::timestamptz)))))
             and not exists (select 1 from outreach_messages o where o.prospect_id = p.id and o.direction = 'outbound' and o.sent_at is null
                               and ((o.approved_at is not null and o.send_blocked_at is null) or (o.send_blocked_reason = 'scheduled_in_inbox' and o.send_blocked_at is not null and o.approved_at is null))
                               and coalesce(o.approved_at, o.send_blocked_at) > (select max(coalesce(i.sent_at, i.created_at)) from outreach_messages i where i.prospect_id = p.id and i.direction = 'inbound'))
-            and not exists (select 1 from outreach_messages o where o.prospect_id = p.id and o.direction = 'outbound' and o.sent_at is null and o.snoozed_until > now()
-                              and not (o.snoozed_at is not null and (select max(coalesce(i.sent_at, i.created_at)) from outreach_messages i where i.prospect_id = p.id and i.direction = 'inbound') > o.snoozed_at))
+            and not exists (select 1 from (
+                  select o.snoozed_until, o.snoozed_at from outreach_messages o where o.prospect_id = p.id and o.direction = 'outbound' and o.sent_at is null and o.approved_at is null
+                     and (o.send_blocked_at is null or o.send_blocked_reason in ('awaiting_client_review', 'owner_confirmation', 'reply_retry_pending')
+                          or o.send_blocked_reason like 'post_approval_race:%' or o.send_blocked_reason like 'lint\_%')
+                   order by o.created_at desc, o.id desc limit 1) cur
+                 where cur.snoozed_until > now()
+                   and not (cur.snoozed_at is not null and (select max(coalesce(i.sent_at, i.created_at)) from outreach_messages i where i.prospect_id = p.id and i.direction = 'inbound') > cur.snoozed_at))
           group by s.seat) q)
       = (select coalesce(jsonb_object_agg(seat, c), '{}'::jsonb) from (
            select seat, count(*) c from inbox_true_waiting() where kind = 'no_reply_48h' group by seat) q2),
@@ -108,6 +113,17 @@ begin
       values (now() - interval '12 hours', now() - interval '100 hours'), (now() - interval '72 hours', now() - interval '100 hours')) d(created_at, in_at)
       order by (d.created_at >= d.in_at) desc, d.created_at asc limit 1),
     'S1: the held clock uses the oldest eligible waiting draft');
+
+  -- S5 regression (synthetic): a draft that was snoozed and later plain-discarded keeps its snooze stamps but is not a pending draft,
+  -- so it must not park the thread; a pending snoozed draft still does
+  perform pg_temp.assert_true((select count(*) filter (where d.name = 'discarded') = 0 and count(*) filter (where d.name = 'pending') = 1 from (
+      values ('discarded', now() + interval '10 days', null::timestamptz, now(), 'discarded_in_inbox', null::timestamptz),
+             ('pending', now() + interval '10 days', null::timestamptz, null::timestamptz, null::text, null::timestamptz)) d(name, snoozed_until, approved_at, send_blocked_at, send_blocked_reason, sent_at)
+      where d.sent_at is null and d.approved_at is null
+        and (d.send_blocked_at is null or d.send_blocked_reason in ('awaiting_client_review', 'owner_confirmation', 'reply_retry_pending')
+             or d.send_blocked_reason like 'post_approval_race:%' or d.send_blocked_reason like 'lint\_%')
+        and d.snoozed_until > now()),
+    'S5: a plain-discarded draft carrying an active snooze is not a snooze candidate');
 
   -- S2 (approved / scheduled sends answer the thread) has no live flagged thread to exercise it; the production
   -- check_true_waiting.py compares the function with an independent Python implementation and the independent count above carries the rule.
