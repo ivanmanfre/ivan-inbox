@@ -22,7 +22,12 @@
 --                     without a mode is still a decision Ivan took on that draft, EXCEPT when the last inbound asks us something:
 --                     reply_intent info_ask / booking / price_ask keeps the thread listed, note 'draft discarded <date>'
 --                     [orchestrator ruling 2026-11-10: the prospect asked a question or said yes to a call or price talk,
---                     and a discarded draft is not an answer]), not a superseded* reason. since = last inbound.
+--                     and a discarded draft is not an answer]. Round-1 review extensions to the same exception: R-A the last inbound
+--                     is an email reply with no reply_intent (email replies are never classified); R-B ANY inbound since our last
+--                     real send asked (info_ask / booking / price_ask), not only the newest), not a superseded* reason. since = last inbound.
+-- All three kinds are suppressed while the thread is handled in the inbox: an approved-and-unsent reply or a reply scheduled in
+-- the inbox that is newer than the last inbound (S2), or a snoozed draft (S3). held_draft_48h clock (S1) = the OLDEST waiting
+-- draft written after the last inbound (a thread whose waiting drafts all predate the inbound falls back to its oldest one).
 -- Last inbound time = coalesce(sent_at, created_at). A real send is an outbound row with sent_at set that is not a
 -- connection_note. said = last inbound text, whitespace collapsed, 90 characters; for a reaction 'reacted <emoji>'.
 -- Rollback: db/20261111_inbox_true_waiting_rollback.sql
@@ -51,15 +56,34 @@ as $fn$
   thr as (
     select cd.*,
            li.at as in_at, li.message_text as in_text, li.is_reaction as in_reaction, li.reply_intent as in_intent,
+           (li.message_type = 'email_reply' or li.channel = 'email') as in_email,
            (select max(o.sent_at) from public.outreach_messages o
              where o.prospect_id = cd.id and o.direction = 'outbound' and o.sent_at is not null
                and o.message_type is distinct from 'connection_note') as out_at,
+           -- S2: an approved-and-unsent reply (approved_at, no block) or a reply scheduled in the inbox answers the thread
+           -- once it is newer than the last inbound (src/lib/inbox.ts unansweredSince, lastSent filter, line 1256)
+           (select max(case when o.approved_at is not null and o.send_blocked_at is null then o.approved_at
+                            when o.send_blocked_reason = 'scheduled_in_inbox' and o.send_blocked_at is not null and o.approved_at is null then o.send_blocked_at end)
+              from public.outreach_messages o
+             where o.prospect_id = cd.id and o.direction = 'outbound' and o.sent_at is null) as hand_at,
+           -- S3: an actively snoozed draft parks the thread, void once a newer inbound lands after snoozed_at
+           -- (src/lib/inbox.ts snoozeActive, lines 728-733; unansweredSince returns null while snoozed, line 1219)
+           exists (select 1 from public.outreach_messages o
+                    where o.prospect_id = cd.id and o.direction = 'outbound' and o.sent_at is null
+                      and o.snoozed_until > now()
+                      and not (o.snoozed_at is not null and li.at > o.snoozed_at)) as snoozed,
+           -- R-B: any inbound since our last real send that asks something
+           exists (select 1 from public.outreach_messages a
+                    where a.prospect_id = cd.id and a.direction = 'inbound' and a.reply_intent in ('info_ask', 'booking', 'price_ask')
+                      and coalesce(a.sent_at, a.created_at) > coalesce((select max(o2.sent_at) from public.outreach_messages o2
+                            where o2.prospect_id = cd.id and o2.direction = 'outbound' and o2.sent_at is not null
+                              and o2.message_type is distinct from 'connection_note'), '-infinity'::timestamptz)) as ask_burst,
            nd.created_at as nd_created, nd.discard_mode as nd_mode, nd.send_blocked_reason as nd_reason,
            coalesce(nd.send_blocked_at, nd.created_at) as nd_at,
            w.created_at as w_created, w.send_blocked_reason as w_reason
       from cand cd
      cross join lateral (
-        select m.message_text, m.is_reaction, m.reply_intent, coalesce(m.sent_at, m.created_at) as at
+        select m.message_text, m.is_reaction, m.reply_intent, m.message_type, m.channel, coalesce(m.sent_at, m.created_at) as at
           from public.outreach_messages m
          where m.prospect_id = cd.id and m.direction = 'inbound'
          order by coalesce(m.sent_at, m.created_at) desc, m.created_at desc
@@ -78,7 +102,7 @@ as $fn$
                 or d.send_blocked_reason in ('awaiting_client_review', 'owner_confirmation', 'reply_retry_pending')
                 or d.send_blocked_reason like 'post_approval_race:%'
                 or d.send_blocked_reason like 'lint\_%')
-         order by d.created_at desc, d.id desc
+         order by (d.created_at >= li.at) desc, d.created_at asc, d.id asc
          limit 1) w on true
   ),
   hits as (
@@ -89,6 +113,7 @@ as $fn$
        and t.w_created < now() - interval '48 hours'
        and t.in_at < now() - interval '48 hours'
        and (t.out_at is null or t.out_at < t.in_at)
+       and (t.hand_at is null or t.hand_at <= t.in_at) and not t.snoozed
     union all
     select t.seat, t.id, t.name, t.company, 2, 'reply_myself_48h', t.in_at,
            'you said you''d reply ' || to_char(t.nd_at at time zone 'UTC', 'YYYY-MM-DD'), t
@@ -97,6 +122,7 @@ as $fn$
        and t.nd_at < now() - interval '48 hours'
        and t.w_created is null
        and (t.out_at is null or t.out_at < t.in_at)
+       and (t.hand_at is null or t.hand_at <= t.in_at) and not t.snoozed
     union all
     select t.seat, t.id, t.name, t.company, 3, 'no_reply_48h', t.in_at,
            case when t.nd_created is null then 'no draft made'
@@ -107,12 +133,16 @@ as $fn$
        and t.in_at < now() - interval '48 hours'
        and (t.out_at is null or t.out_at < t.in_at)
        and t.w_created is null
+       and (t.hand_at is null or t.hand_at <= t.in_at) and not t.snoozed
        and t.in_intent is distinct from 'negative'
        and not (t.nd_created is not null
                 and (coalesce(t.nd_mode, '') in ('stop', 'answered_by_send', 'reply_myself')
                      or coalesce(t.nd_reason, '') ~ '^superseded'
                      or (coalesce(t.nd_reason, '') ~ '^discarded'
-                         and not (t.nd_mode is null and coalesce(t.in_intent, '') in ('info_ask', 'booking', 'price_ask')))))
+                         and not (t.nd_mode is null
+                                  and (coalesce(t.in_intent, '') in ('info_ask', 'booking', 'price_ask')
+                                       or (t.in_email and t.in_intent is null)
+                                       or t.ask_burst)))))
   )
   select distinct on (h.id)
          h.seat, h.id as prospect_id, h.name, h.company, h.kind, h.since,

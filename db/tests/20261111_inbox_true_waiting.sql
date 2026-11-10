@@ -28,12 +28,16 @@ begin
       where w.name = 'Michelle Sartorio' and w.seat = 'risedtc' and w.kind = 'no_reply_48h' and w.since::date = date '2026-11-04'),
     'Michelle Sartorio (risedtc) is no_reply_48h since 2026-11-04');
   -- 2. held drafts
-  perform pg_temp.assert_true(exists (select 1 from inbox_true_waiting() w where w.name = 'Dan T.' and w.seat = 'arch' and w.kind = 'held_draft_48h'),
-    'Dan T. (arch) is held_draft_48h');
-  perform pg_temp.assert_true(exists (select 1 from inbox_true_waiting() w where w.name = 'Kinsen Siu' and w.seat = 'risedtc' and w.kind = 'held_draft_48h'),
-    'Kinsen Siu (risedtc) is held_draft_48h');
-  perform pg_temp.assert_true((select note from inbox_true_waiting() w where w.name = 'Dan T.' and w.seat = 'arch') like '%draft 20%',
+  -- Dan T. (arch) and Kinsen Siu (risedtc) were held_draft_48h on 11-10 morning; their drafts are now actively snoozed
+  -- (round-1 fix S3), so they are suppressed. Re-pointed: the held kind is asserted on Prakhar Vohra (ivan), and the snooze on the other two.
+  perform pg_temp.assert_true(exists (select 1 from inbox_true_waiting() w where w.name = 'Prakhar Vohra' and w.seat = 'ivan' and w.kind = 'held_draft_48h'),
+    'Prakhar Vohra (ivan) is held_draft_48h (replaces Dan T. / Kinsen Siu, now snoozed)');
+  perform pg_temp.assert_true((select note from inbox_true_waiting() w where w.name = 'Prakhar Vohra' and w.seat = 'ivan') like '%draft 20%',
     'held_draft_48h note carries the draft date');
+  perform pg_temp.assert_true(not exists (select 1 from inbox_true_waiting() w where w.name in ('Dan T.', 'Kinsen Siu', 'Emma Farrow'))
+    and (select count(distinct p.id) from outreach_prospects p join outreach_messages m on m.prospect_id = p.id
+          where p.name in ('Dan T.', 'Kinsen Siu', 'Emma Farrow') and p.needs_manual_reply and m.direction = 'outbound' and m.sent_at is null and m.snoozed_until > now()) >= 3,
+    'S3: Dan T., Kinsen Siu, Emma Farrow have an actively snoozed draft and are not returned');
   -- 3. blacklisted / operator-deleted thread with a stale scan_owed stamp
   perform pg_temp.assert_true(exists (select 1 from outreach_prospects where name = 'Cameo Hanlon')
     and not exists (select 1 from inbox_true_waiting() w where w.name = 'Cameo Hanlon'),
@@ -64,10 +68,22 @@ begin
                               and o.sent_at >= (select max(coalesce(i.sent_at, i.created_at)) from outreach_messages i where i.prospect_id = p.id and i.direction = 'inbound'))
             and (select i.reply_intent from outreach_messages i where i.prospect_id = p.id and i.direction = 'inbound'
                   order by coalesce(i.sent_at, i.created_at) desc, i.created_at desc limit 1) is distinct from 'negative'
-            and not exists (select 1 from outreach_messages d where d.prospect_id = p.id and d.direction = 'outbound' and d.sent_at is null
-                              and d.created_at >= (select max(coalesce(i.sent_at, i.created_at)) from outreach_messages i where i.prospect_id = p.id and i.direction = 'inbound')
-                              and (d.discard_mode is not null or d.send_blocked_reason ~ '^superseded'
-                                   or (d.send_blocked_reason ~ '^discarded' and coalesce((select i.reply_intent from outreach_messages i where i.prospect_id = p.id and i.direction = 'inbound' order by coalesce(i.sent_at, i.created_at) desc, i.created_at desc limit 1), '') not in ('info_ask','booking','price_ask'))))
+            and not exists (select 1 from (
+                  select d.* from outreach_messages d where d.prospect_id = p.id and d.direction = 'outbound' and d.sent_at is null
+                     and d.created_at >= (select max(coalesce(i.sent_at, i.created_at)) from outreach_messages i where i.prospect_id = p.id and i.direction = 'inbound')
+                   order by d.created_at desc, d.id desc limit 1) nd
+                 where nd.discard_mode is not null or nd.send_blocked_reason ~ '^superseded'
+                    or (nd.send_blocked_reason ~ '^discarded' and not (
+                         coalesce((select i.reply_intent from outreach_messages i where i.prospect_id = p.id and i.direction = 'inbound' order by coalesce(i.sent_at, i.created_at) desc, i.created_at desc limit 1), '') in ('info_ask','booking','price_ask')
+                         or exists (select 1 from outreach_messages i where i.prospect_id = p.id and i.direction = 'inbound' and i.message_type = 'email_reply' and i.reply_intent is null
+                                      and coalesce(i.sent_at, i.created_at) = (select max(coalesce(i2.sent_at, i2.created_at)) from outreach_messages i2 where i2.prospect_id = p.id and i2.direction = 'inbound'))
+                         or exists (select 1 from outreach_messages i where i.prospect_id = p.id and i.direction = 'inbound' and i.reply_intent in ('info_ask','booking','price_ask')
+                                      and coalesce(i.sent_at, i.created_at) > coalesce((select max(o2.sent_at) from outreach_messages o2 where o2.prospect_id = p.id and o2.direction = 'outbound' and o2.sent_at is not null and o2.message_type is distinct from 'connection_note'), '-infinity'::timestamptz)))))
+            and not exists (select 1 from outreach_messages o where o.prospect_id = p.id and o.direction = 'outbound' and o.sent_at is null
+                              and ((o.approved_at is not null and o.send_blocked_at is null) or (o.send_blocked_reason = 'scheduled_in_inbox' and o.send_blocked_at is not null and o.approved_at is null))
+                              and coalesce(o.approved_at, o.send_blocked_at) > (select max(coalesce(i.sent_at, i.created_at)) from outreach_messages i where i.prospect_id = p.id and i.direction = 'inbound'))
+            and not exists (select 1 from outreach_messages o where o.prospect_id = p.id and o.direction = 'outbound' and o.sent_at is null and o.snoozed_until > now()
+                              and not (o.snoozed_at is not null and (select max(coalesce(i.sent_at, i.created_at)) from outreach_messages i where i.prospect_id = p.id and i.direction = 'inbound') > o.snoozed_at))
           group by s.seat) q)
       = (select coalesce(jsonb_object_agg(seat, c), '{}'::jsonb) from (
            select seat, count(*) c from inbox_true_waiting() where kind = 'no_reply_48h' group by seat) q2),
@@ -77,6 +93,23 @@ begin
   perform pg_temp.assert_true((select count(*) = 4 from inbox_true_waiting() w where w.kind = 'no_reply_48h' and w.note like 'draft discarded%'
       and w.prospect_id in ('9c0ad359-e9c2-4fb5-8c84-51bf5d48daaf', 'a7c65ec6-74b0-4a7d-a32a-de834450c2e3', '8cf7890a-fea4-49ec-832b-d795235d9793', 'd9f27950-6331-4a78-86cc-6f5e65b87196')),
     'Saif Hassan, Kirilo Sztarcsak, Sapho Dlangamandla (ivan) and Heidi Vogel Brockmann (arch) are no_reply_48h, draft discarded');
+
+  -- R-A / R-B (round-1 review): an email reply with no intent, and an earlier ask in the same burst, keep a plain-discarded thread listed
+  perform pg_temp.assert_true(exists (select 1 from inbox_true_waiting() w where w.prospect_id = '47ac0603-4b69-5f22-b53f-501b43e858af' and w.kind = 'no_reply_48h' and w.note like 'draft discarded%'),
+    'R-A: Mark Woodcock (ivan, email reply, both drafts plain-discarded) is no_reply_48h');
+  perform pg_temp.assert_true(exists (select 1 from inbox_true_waiting() w where w.prospect_id = '7e9270f7-933b-434b-92dc-3ec40751bc48' and w.kind = 'no_reply_48h'),
+    'R-B: Creative Agency (ivan, "Tell me more" then a reaction) is no_reply_48h');
+  perform pg_temp.assert_true(not exists (select 1 from inbox_true_waiting() w where w.name = 'Stefan Davy'), 'negatives stay out: Stefan Davy is not returned');
+
+  -- S1 (synthetic, no live thread has an old and a new waiting draft together): the production ordering of the held-draft clock
+  -- picks the OLDEST draft written after the last inbound, so a 72h draft is not hidden by a 12h one
+  perform pg_temp.assert_true((select created_at = now() - interval '72 hours' from (
+      values (now() - interval '12 hours', now() - interval '100 hours'), (now() - interval '72 hours', now() - interval '100 hours')) d(created_at, in_at)
+      order by (d.created_at >= d.in_at) desc, d.created_at asc limit 1),
+    'S1: the held clock uses the oldest eligible waiting draft');
+
+  -- S2 (approved / scheduled sends answer the thread) has no live flagged thread to exercise it; the production
+  -- check_true_waiting.py compares the function with an independent Python implementation and the independent count above carries the rule.
 
   -- 6. no thread whose newest draft after its last inbound is a stop / answered_by_send discard is returned; no blacklisted thread
   perform pg_temp.assert_true(not exists (
