@@ -101,12 +101,16 @@ export function NoDraftBanner({ t, now }: { t: Thread; now: number }) {
   const swish = seatOf(t.client_id) === 'swishdm'
   const [check, setCheck] = useState<CheckState | null>(null)
   const lastId = t.last.id   // a new message on the thread re-reads the check
+  useEffect(() => { setCheck(null) }, [t.prospect_id])
   useEffect(() => {
-    setCheck(null)
     if (!swish) return
     let live = true
-    fetchCheckState(t.prospect_id).then(c => { if (live) setCheck(c) }).catch(() => {})
-    return () => { live = false }
+    // re-read every minute: the check finishing changes the prospect row, never the thread. A failed read
+    // keeps what the pane last knew and is tried again on the next tick.
+    const read = () => { fetchCheckState(t.prospect_id).then(c => { if (live) setCheck(c) }).catch(() => {}) }
+    read()
+    const iv = setInterval(read, 60_000)
+    return () => { live = false; clearInterval(iv) }
   }, [t.prospect_id, swish, lastId])
   const wait = swish ? readCheckWait(check, t.messages, now) : null
   const since = owedSince(t)
