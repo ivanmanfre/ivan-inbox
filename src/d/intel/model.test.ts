@@ -68,6 +68,11 @@ describe('intel model', () => {
     expect(openLabel('reddit')).toBe('Open the thread')
     expect(openLabel('kyle')).toBe('Open the call notes')
     expect(openLabel('youtube')).toBe('Open on YouTube')
+    // A kind that names an Object.prototype member must not resolve to that member.
+    expect(kindLabel('__proto__')).toBe('__proto__')
+    expect(kindLabel('constructor')).toBe('constructor')
+    expect(openLabel('constructor')).toBe('Open')
+    expect(openLabel('__proto__')).toBe('Open')
     expect(kindLabel('kyle')).toBe('Kyle call')
     expect(kindLabel('podcast')).toBe('Podcast')
     expect(kindLabel('weird')).toBe('weird')

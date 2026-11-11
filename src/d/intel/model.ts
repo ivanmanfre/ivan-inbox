@@ -114,12 +114,12 @@ export const isVideo = (i: { kind?: string | null }): boolean => kindOf(i) === '
 const KIND_LABEL: Record<string, string> = { youtube: 'YouTube', github: 'GitHub', blog: 'Blog', reddit: 'Reddit', kyle: 'Kyle call', podcast: 'Podcast' }
 /** An unknown kind shows as itself, so a new source type never crashes or hides. */
 export function kindLabel(kind: string): string {
-  return KIND_LABEL[kind] ?? kind
+  return Object.prototype.hasOwnProperty.call(KIND_LABEL, kind) ? KIND_LABEL[kind] : kind
 }
 
 const OPEN_LABEL: Record<string, string> = { github: 'Open on GitHub', blog: 'Open the post', reddit: 'Open the thread', kyle: 'Open the call notes', youtube: 'Open on YouTube' }
 export function openLabel(kind: string): string {
-  return OPEN_LABEL[kind] ?? 'Open'
+  return Object.prototype.hasOwnProperty.call(OPEN_LABEL, kind) ? OPEN_LABEL[kind] : 'Open'
 }
 
 const num = (v: unknown): number | null => typeof v === 'number' && Number.isFinite(v) ? v : null
