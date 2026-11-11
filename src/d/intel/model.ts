@@ -21,6 +21,10 @@ export type IntelItem = {
   /** When Ivan was done with the card (Done, or Useful). Seen cards leave For you. */
   ivan_seen_at: string | null
   created_at: string
+  /** youtube | podcast | github | reddit | blog | kyle. Old cached rows have none: they are videos. */
+  kind?: string
+  /** Per kind: github {stars, window, created_at}, blog {chars}, reddit {comments, subreddit}, kyle {minutes, call_type}. */
+  meta?: Record<string, unknown> | null
 }
 
 export type IntelSource = {
@@ -34,6 +38,7 @@ export type IntelSource = {
   items_judged: number
   items_kept: number
   last_kept_at: string | null
+  kind?: string
 }
 
 export type IntelTab = 'feed' | 'seen' | 'dropped' | 'sources'
@@ -98,10 +103,47 @@ export function thumbUrl(url: string): string | null {
   return id ? `https://i.ytimg.com/vi/${id}/mqdefault.jpg` : null
 }
 
-/** The video link, opened at the useful part when the judge found one. */
-export function watchUrl(url: string, sec: number | null): string {
-  if (!sec || sec <= 0) return url
-  return `${url}${url.includes('?') ? '&' : '?'}t=${Math.floor(sec)}s`
+/** The item's kind; rows from before the column existed are videos. */
+export function kindOf(i: { kind?: string | null }): string {
+  return i.kind || 'youtube'
+}
+
+/** Video-style tile (thumbnail, length, "from mm:ss") only for YouTube. Everything else is a text tile. */
+export const isVideo = (i: { kind?: string | null }): boolean => kindOf(i) === 'youtube'
+
+const KIND_LABEL: Record<string, string> = { youtube: 'YouTube', github: 'GitHub', blog: 'Blog', reddit: 'Reddit', kyle: 'Kyle call', podcast: 'Podcast' }
+/** An unknown kind shows as itself, so a new source type never crashes or hides. */
+export function kindLabel(kind: string): string {
+  return KIND_LABEL[kind] ?? kind
+}
+
+const OPEN_LABEL: Record<string, string> = { github: 'Open on GitHub', blog: 'Open the post', reddit: 'Open the thread', kyle: 'Open the call notes', youtube: 'Open on YouTube' }
+export function openLabel(kind: string): string {
+  return OPEN_LABEL[kind] ?? 'Open'
+}
+
+const num = (v: unknown): number | null => typeof v === 'number' && Number.isFinite(v) ? v : null
+
+/** The one small fact under a card: stars, comments, read time, call date, or the video length. Null when unknown. */
+export function metaChip(i: Pick<IntelItem, 'kind' | 'meta' | 'published_at' | 'duration_sec'>): string | null {
+  const kind = kindOf(i), m = i.meta ?? {}
+  if (kind === 'youtube') return length(i.duration_sec)
+  if (kind === 'github') { const n = num(m.stars); return n === null ? null : `\u2605 ${n}` }
+  if (kind === 'reddit') { const n = num(m.comments); return n === null ? null : `${n} comments` }
+  if (kind === 'blog') { const n = num(m.chars); return n === null || n <= 0 ? null : `~${Math.max(1, Math.round(n / 1100))} min read` }
+  if (kind === 'kyle') {
+    const t = i.published_at ? Date.parse(i.published_at) : NaN
+    return Number.isNaN(t) ? null : new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+  }
+  return null
+}
+
+/** The item link. Only a YouTube video opens at the useful minute; other kinds open as they are.
+ *  Accepts a plain url (video) or the item itself. */
+export function watchUrl(src: string | Pick<IntelItem, 'url' | 'kind' | 'watch_from_sec'>, sec?: number | null): string {
+  const item = typeof src === 'string' ? { url: src, kind: 'youtube', watch_from_sec: sec ?? null } : { ...src, watch_from_sec: sec === undefined ? src.watch_from_sec : sec }
+  if (!isVideo(item) || !item.watch_from_sec || item.watch_from_sec <= 0) return item.url
+  return `${item.url}${item.url.includes('?') ? '&' : '?'}t=${Math.floor(item.watch_from_sec)}s`
 }
 
 /** "2h ago", "3d ago", "5w ago". */
