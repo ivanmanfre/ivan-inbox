@@ -7,18 +7,18 @@ import { AnswerRow, N } from '../ui/AnswerRow'
 import { Btn } from '../ui/Key'
 import { Empty, Failed, Skeleton } from '../ui/states'
 import { useToast } from '../ui/toast'
-import { DROP_WINDOW_DAYS, FEED_WINDOW_DAYS, ago, clock, inDropped, inFeed, inSeen, length, sortSources, tabOf, thumbUrl, watchUrl, type IntelItem, type IntelSource, type IntelTab } from './model'
+import { DROP_WINDOW_DAYS, FEED_WINDOW_DAYS, ago, clock, inDropped, inFeed, inSeen, isVideo, kindLabel, kindOf, length, metaChip, openLabel, sortSources, tabOf, thumbUrl, watchUrl, type IntelItem, type IntelSource, type IntelTab } from './model'
 import './intel.css'
 
-// D · INTEL. YouTube without the mess: every new upload from the chosen
-// channels (plus channels found by the weekly search) is read in full and
+// D · INTEL. Research without the mess: every new upload or post from the chosen
+// sources (YouTube, GitHub, blogs, Reddit, Kyle's calls, plus sources found by the weekly search) is read in full and
 // judged against what we run and what is open (~/.claude/intel-feed). The feed
 // shows only recent keeps (and drops Ivan rescued) he has not gone through yet.
 // Useful / Noise go back into the judge; Useful and Done move a card to Seen;
-// Mute stops a channel. Writer: ~/.claude/intel-feed/run.py. Tables:
+// Mute stops a source. Writer: ~/.claude/intel-feed/run.py. Tables:
 // db/240_intel_feed.sql.
 
-const ITEM_COLS = 'id,source_id,source_name,url,title,published_at,duration_sec,found_via,verdict,score,headline,what_new,applies_to,try_this,watch_from_sec,drop_reason,ivan_verdict,ivan_seen_at,created_at'
+const ITEM_COLS = 'id,source_id,source_name,url,title,published_at,duration_sec,found_via,verdict,score,headline,what_new,applies_to,try_this,watch_from_sec,drop_reason,ivan_verdict,ivan_seen_at,created_at,kind,meta'
 
 /** Ivan's marks on a card. One row write carries both, so they travel together through the race guards. */
 type Mark = Pick<IntelItem, 'ivan_verdict' | 'ivan_seen_at'>
@@ -54,7 +54,7 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
         .gte('created_at', daysAgo(FEED_WINDOW_DAYS)).order('published_at', { ascending: false }).limit(200),
       supabase.from('intel_items').select(ITEM_COLS).eq('verdict', 'drop')
         .gte('created_at', daysAgo(DROP_WINDOW_DAYS)).order('created_at', { ascending: false }).limit(300),
-      supabase.from('intel_sources').select('id,name,url,topic,status,added_by,note,items_judged,items_kept,last_kept_at'),
+      supabase.from('intel_sources').select('id,name,url,topic,status,added_by,note,items_judged,items_kept,last_kept_at,kind'),
     ]).then(([k, d, s]) => {
       if (!live) return
       setNow(Date.now())
@@ -148,24 +148,24 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
       supabase.from('intel_sources').update({ status, updated_at: new Date().toISOString() }).eq('id', sourceId))
     if (error) {
       if (latest && restore) setSources(p => p.kind === 'ready' ? { kind: 'ready', data: p.data.map(s => s.id === sourceId ? { ...s, status: restore as IntelSource['status'] } : s) } : p)
-      toast.show({ message: 'Could not change that channel.', sub: error.message, tone: 'failed' })
+      toast.show({ message: 'Could not change that source.', sub: error.message, tone: 'failed' })
       return
     }
-    const name = srcList.find(s => s.id === sourceId)?.name ?? 'Channel'
-    if (status === 'muted' && prev) toast.show({ id: 'intel-src-' + sourceId, message: `${name} muted.`, sub: 'No new videos from it get read.', action: { label: 'Undo', verb: 'undo', run: () => void setStatus(sourceId, prev, 'muted') } })
+    const name = srcList.find(s => s.id === sourceId)?.name ?? 'Source'
+    if (status === 'muted' && prev) toast.show({ id: 'intel-src-' + sourceId, message: `${name} muted.`, sub: 'No new items from it get read.', action: { label: 'Undo', verb: 'undo', run: () => void setStatus(sourceId, prev, 'muted') } })
   }, [serial, sources, srcList, toast])
 
   const go = (t: IntelTab) => navigate(dHash('intel', null, t === 'feed' ? {} : { tab: t }))
   const title = items.kind === 'ready'
-    ? (keeps.length === 0 ? (seen.length ? 'Nothing new since you last looked.' : 'Nothing worth your time yet.') : <>Worth watching: <N v={keeps.length} /> new</>)
+    ? (keeps.length === 0 ? (seen.length ? 'Nothing new since you last looked.' : 'Nothing worth your time yet.') : <>Worth your time: <N v={keeps.length} /> new</>)
     : 'Intel'
   const sub = items.kind === 'ready' && sources.kind === 'ready'
-    ? `${following} channels read in full. ${drops.length} dropped in the last ${DROP_WINDOW_DAYS} days.`
+    ? `${following} sources read in full. ${drops.length} dropped in the last ${DROP_WINDOW_DAYS} days.`
     : undefined
 
   const tabs = (
     <nav className="it-tabs" aria-label="Intel views">
-      {([['feed', 'For you', keeps.length], ['seen', 'Seen', seen.length], ['dropped', 'Dropped', drops.length], ['sources', 'Channels', following]] as const).map(([id, label, n]) => (
+      {([['feed', 'For you', keeps.length], ['seen', 'Seen', seen.length], ['dropped', 'Dropped', drops.length], ['sources', 'Sources', following]] as const).map(([id, label, n]) => (
         <button key={id} type="button" className={tab === id ? 'it-on' : ''} aria-current={tab === id ? 'page' : undefined} onClick={() => go(id)}>
           {label}<i>{n}</i>
         </button>
@@ -175,8 +175,8 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
 
   let body
   if (tab === 'sources') {
-    body = sources.kind === 'loading' ? <Skeleton lines={6} label="Reading channels" />
-      : sources.kind === 'failed' ? <Failed what="the channel list" detail={sources.message} onRetry={retry} />
+    body = sources.kind === 'loading' ? <Skeleton lines={6} label="Reading sources" />
+      : sources.kind === 'failed' ? <Failed what="the source list" detail={sources.message} onRetry={retry} />
       : <ol className="it-srcs">{srcList.map(s => <SourceRow key={s.id} s={s} onStatus={setStatus} />)}</ol>
   } else if (items.kind === 'loading') {
     body = <Skeleton lines={8} label="Reading intel" />
@@ -198,7 +198,7 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
           </>} />)}</ol>
   } else {
     body = keeps.length === 0
-      ? <Empty title={seen.length ? 'You are through everything worth watching.' : 'Nothing worth watching in the last three weeks.'} reason="Every new video from your channels is read and judged. Most get dropped. New ones land here." action={<Btn onClick={() => go('dropped')}>See what was dropped</Btn>} />
+      ? <Empty title={seen.length ? 'You are through everything worth your time.' : 'Nothing worth your time in the last three weeks.'} reason="Every new item from your sources is read and judged. Most get dropped. New ones land here." action={<Btn onClick={() => go('dropped')}>See what was dropped</Btn>} />
       : <ol className="it-grid">{keeps.map(i => <Tile key={i.id} i={i} line={i.headline} tone="keep" details
           keys={<>
             <Btn verb="intel-useful" onClick={() => mark(i, { ivan_verdict: 'useful', ivan_seen_at: stamp() }, 'Saved as useful. It is in Seen now.')}>Useful</Btn>
@@ -223,19 +223,25 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
 // title, channel and age, and ONE line on why it matters. The method and the test fold behind "Why".
 function Tile({ i, line, tone, keys, details }: { i: IntelItem; line: string | null; tone: 'keep' | 'drop'; keys?: ReactNode; details?: boolean }) {
   const [open, setOpen] = useState(false)
+  const kind = kindOf(i)
+  const video = isVideo(i)
   const len = length(i.duration_sec)
   const thumb = thumbUrl(i.url)
-  const href = watchUrl(i.url, tone === 'keep' ? i.watch_from_sec : null)
+  const href = watchUrl(tone === 'keep' ? i : { ...i, watch_from_sec: null })
+  const chip = metaChip(i)
   return (
-    <li className={`it-tile it-${tone}${i.ivan_verdict === 'useful' ? ' it-useful' : ''}`}>
-      <a className="it-thumb" href={href} target="_blank" rel="noreferrer" title={`Open on YouTube: ${i.title}`}>
-        {thumb ? <img src={thumb} alt="" loading="lazy" /> : <span className="it-nothumb" />}
-        {len && <span className="it-len">{len}</span>}
-        {tone === 'keep' && i.watch_from_sec ? <span className="it-from">▶ from {clock(i.watch_from_sec)}</span> : null}
-      </a>
+    <li className={`it-tile it-${tone}${video ? '' : ' it-text'}${i.ivan_verdict === 'useful' ? ' it-useful' : ''}`}>
+      {video && (
+        <a className="it-thumb" href={href} target="_blank" rel="noreferrer" title={`Open on YouTube: ${i.title}`}>
+          {thumb ? <img src={thumb} alt="" loading="lazy" /> : <span className="it-nothumb" />}
+          {len && <span className="it-len">{len}</span>}
+          {tone === 'keep' && i.watch_from_sec ? <span className="it-from">▶ from {clock(i.watch_from_sec)}</span> : null}
+        </a>
+      )}
       <div className="it-body">
+        {!video && <div className="it-kindrow"><span className="it-kind">{kindLabel(kind)}</span>{chip && <span className="it-chipmeta">{chip}</span>}</div>}
         <a className="it-title" href={href} target="_blank" rel="noreferrer">{i.title}</a>
-        <div className="it-by">{i.source_name} · {ago(i.published_at)}{i.found_via === 'discovery' ? <span className="it-new"> · new channel</span> : null}</div>
+        <div className="it-by">{i.source_name} · {ago(i.published_at)}{i.found_via === 'discovery' ? <span className="it-new">{video ? ' · new channel' : ' · new source'}</span> : null}</div>
         {line && <p className={`it-line${tone === 'drop' ? ' it-why-drop' : ''}`}>{line}</p>}
         {details && (i.what_new || i.try_this) && (
           <>
@@ -248,6 +254,7 @@ function Tile({ i, line, tone, keys, details }: { i: IntelItem; line: string | n
             </div>}
           </>
         )}
+        {!video && <a className="it-open" href={href} target="_blank" rel="noreferrer">{openLabel(kind)}</a>}
         {keys && <div className="it-keys">{keys}</div>}
       </div>
     </li>
@@ -264,6 +271,7 @@ function SourceRow({ s, onStatus }: { s: IntelSource; onStatus: (id: string, st:
         <a href={s.url} target="_blank" rel="noreferrer"><b>{s.name}</b></a>
         <small>
           <span className={`it-chip it-${s.status}`}>{STATUS_LABEL[s.status]}</span>
+          <span className="it-chip">{kindLabel(kindOf(s))}</span>
           {s.items_kept}/{s.items_judged} kept{s.last_kept_at ? ` · last ${ago(s.last_kept_at)}` : ''}{s.topic ? ` · ${s.topic}` : ''}
         </small>
         {s.note && <small className="it-note">{s.note}</small>}

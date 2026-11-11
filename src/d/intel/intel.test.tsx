@@ -131,4 +131,63 @@ describe('Intel page writes', () => {
     expect(h.updates[0].patch).toMatchObject({ ivan_verdict: 'useful', ivan_seen_at: expect.any(String) })
     await waitFor(() => expect(screen.queryByText('Flip-rate check')).toBeNull())
   })
+
+  it('shows no "from mm:ss" chip when kind is not youtube', async () => {
+    h.keeps = [{ ...keep, kind: 'github', url: 'https://github.com/a/b', watch_from_sec: 60, duration_sec: null, meta: { stars: 143 } }]
+    const { container } = page()
+    await screen.findByText('Flip-rate check')
+    expect(container.textContent).not.toMatch(/from \d/)
+  })
+
+  it('renders a text tile with no thumbnail box for github, blog, reddit, kyle', async () => {
+    const mk = (id: string, kind: string, meta: unknown, extra = {}) => ({ ...keep, id, kind, meta, title: 'Title ' + kind, headline: 'Line ' + kind, url: 'https://example.com/' + id, duration_sec: null, watch_from_sec: null, ...extra })
+    h.keeps = [mk('g', 'github', { stars: 143 }), mk('b', 'blog', { chars: 9900 }), mk('r', 'reddit', { comments: 27 }), mk('c', 'kyle', { minutes: 50 })]
+    const { container } = page()
+    await screen.findByText('Line github')
+    expect(container.querySelectorAll('.it-tile')).toHaveLength(4)
+    expect(container.querySelector('.it-thumb')).toBeNull()
+    expect(container.querySelector('.it-nothumb')).toBeNull()
+    for (const t of ['GitHub', 'Blog', 'Reddit', 'Kyle call']) expect(screen.getAllByText(t).length).toBeGreaterThan(0)
+    expect(screen.getByText('\u2605 143')).toBeTruthy()
+    expect(screen.getByText('~9 min read')).toBeTruthy()
+    expect(screen.getByText('27 comments')).toBeTruthy()
+    expect(container.textContent).not.toMatch(/undefined|NaN/)
+    // the Why fold and buttons are the same
+    expect(screen.getAllByRole('button', { name: /Why/ })).toHaveLength(4)
+    expect(screen.getAllByRole('button', { name: 'Done' })).toHaveLength(4)
+  })
+
+  it('labels the open link by kind', async () => {
+    h.keeps = [{ ...keep, id: 'g', kind: 'github', title: 'Repo', url: 'https://github.com/a/b', headline: 'H', duration_sec: null }]
+    page()
+    const a = await screen.findByRole('link', { name: 'Open on GitHub' })
+    expect(a.getAttribute('href')).toBe('https://github.com/a/b')
+  })
+
+  it('an unknown kind renders as a text tile labelled by the kind', async () => {
+    h.keeps = [{ ...keep, id: 'x', kind: 'newsletter', url: 'https://example.com/x', duration_sec: null }]
+    const { container } = page()
+    await screen.findByText('newsletter')
+    expect(container.querySelector('.it-thumb')).toBeNull()
+  })
+
+  it('a row with kind missing renders as youtube', async () => {
+    const { container } = page()
+    await screen.findByText('Flip-rate check')
+    expect(container.querySelector('.it-thumb')).not.toBeNull()
+    expect(container.textContent).toMatch(/from 1:00/)
+  })
+
+  it('Sources tab shows the kind of each source', async () => {
+    h.sources = [
+      { id: 's1', name: 'Hamel', url: 'https://youtube.com/@h', topic: null, status: 'core', added_by: 'ivan', note: null, items_judged: 3, items_kept: 1, last_kept_at: null, kind: 'youtube' },
+      { id: 's2', name: 'ai-repos', url: 'https://github.com', topic: null, status: 'core', added_by: 'ivan', note: null, items_judged: 3, items_kept: 1, last_kept_at: null, kind: 'github' },
+      { id: 's3', name: 'Old', url: 'https://x.com', topic: null, status: 'core', added_by: 'ivan', note: null, items_judged: 0, items_kept: 0, last_kept_at: null },
+    ]
+    page('#exp/d/intel?tab=sources')
+    await screen.findByText('ai-repos')
+    expect(screen.getByRole('button', { name: /Sources/ })).toBeTruthy()
+    expect(screen.getAllByText('GitHub')).toHaveLength(1)
+    expect(screen.getAllByText('YouTube')).toHaveLength(2)   // explicit youtube + missing kind
+  })
 })

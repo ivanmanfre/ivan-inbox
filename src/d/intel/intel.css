@@ -38,6 +38,15 @@
 .it-keys .d-btn.it-pressed{border-color:var(--limeD);color:var(--lime)}
 .it-keys .it-mute{margin-left:auto;color:var(--t3)}
 .it-grid-drops .it-thumb{opacity:.75}
+/* Text tile (GitHub, blog, Reddit, Kyle call): no thumbnail box, a kind row on top. */
+.it-text{padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--p1)}
+.it-useful.it-text{outline:2px solid var(--limeD);outline-offset:2px}
+.it-kindrow{display:flex;align-items:center;gap:8px}
+.it-kind{font:500 10.5px var(--m);letter-spacing:.06em;text-transform:uppercase;color:var(--t2)}
+.it-chipmeta{font:400 11.5px var(--m);color:var(--t3)}
+.it-open{align-self:flex-start;font:500 12px var(--f);color:var(--t2);text-decoration:none;margin-top:2px}
+.it-open:hover{color:var(--t1);text-decoration:underline;text-underline-offset:3px}
+.it-grid-drops .it-text{opacity:.75}
 
 
 .it-desktop .it-scroll>.it-srcs{max-width:1240px}
