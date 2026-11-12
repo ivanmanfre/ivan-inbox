@@ -67,7 +67,8 @@ export function WarmSignals({ filter, refresh, inboxLoadedAt, focus, onOpenThrea
   const load = useCallback(async () => {
     const [warm, agent] = await Promise.allSettled([fetchWarmCards(), fetchConversationAgentCards()])
     if (warm.status === 'fulfilled') {
-      setCards(warm.value)
+      // 2026-11-02: this legacy list is Ivan's seat; client seats' cards live in their own seat lists (src/d/dms)
+      setCards(warm.value.filter(c => !c.tenant || c.tenant === 'ivan'))
       setError(null)
     } else {
       setError(warm.reason instanceof Error ? warm.reason.message : 'Could not read the warm signals')

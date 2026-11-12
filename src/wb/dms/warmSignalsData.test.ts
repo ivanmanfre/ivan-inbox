@@ -62,6 +62,8 @@ describe('warm signals helpers', () => {
   it('writes the evidence line from what they did', () => {
     expect(evidenceLine(natalia)).toMatch(/^commented on your post · Sep 7$/)
     expect(evidenceLine({ signal_source: 'reacted_two_posts', trigger_type: 'engaged_post', signal_evidence: { n_posts: 2 }, created_at: '2026-09-12T00:00:00Z' })).toBe('reacted to 2 posts')
+    expect(evidenceLine({ signal_source: 'engaged_own_post', trigger_type: 'engaged_post', signal_evidence: { touches: [{ kind: 'reaction', at: '2026-11-01T12:00:00Z' }] }, created_at: '2026-11-02T00:00:00Z' })).toBe('reacted to your post · Nov 1')
+    expect(evidenceLine({ signal_source: 'engaged_own_post', trigger_type: 'engaged_post', tenant: 'risedtc', signal_evidence: { touches: [{ kind: 'reaction', at: '2026-11-01T12:00:00Z' }], distance: 'DISTANCE_1' }, created_at: '2026-11-02T00:00:00Z' })).toBe('reacted to the post · Nov 1 · 1st degree')
     expect(evidenceLine({ signal_source: 'profile_view', trigger_type: 'profile_view', signal_evidence: { viewed_at: '2026-09-12T09:18:00Z', distance: 'DISTANCE_1' }, created_at: '2026-09-12T11:41:41Z' })).toBe('viewed your profile Sep 12 · 1st degree')
     expect(evidenceLine({ signal_source: 'profile_view', trigger_type: 'profile_view', signal_evidence: { distance: 'DISTANCE_1' }, created_at: '2026-09-12T11:41:41Z' })).toBe('viewed your profile · date unavailable · 1st degree')
     // db/298: another seat's viewer, and a person already in the sequence
