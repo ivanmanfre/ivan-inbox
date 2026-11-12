@@ -228,11 +228,12 @@ as $$
        order by coalesce(m.sent_at, m.created_at) desc, m.id desc limit 1) li on true
 $$;
 
--- Ivan's own prospects (campaign client_id null or 'ivan') that are this person. When the row's own prospect_id is one of
--- Ivan's, that prospect alone (no other lookup runs). Otherwise: the member id (li_member_key of the provider id or of the
--- profile url, against the prospect's profile id and url) or the profile slug (li_slug, db/057 + db/059); a slug match
--- is refused when both sides carry a member id and the two differ. A prospect of another seat neither suppresses nor is
--- linked. Called only for engagements already at icp_score 7+.
+-- Ivan's own prospects (campaign client_id null or 'ivan') that are this person: the row's own prospect_id, and every
+-- prospect with the same member id (li_member_key of the provider id or of the profile url, against the prospect's
+-- profile id and url) or profile slug (li_slug, db/057 + db/059); a slug match is refused when both sides carry a member
+-- id and the two differ. Every match counts for suppression (a stopped twin suppresses); the link prefers the row's own
+-- prospect (callers order by has_thread, then own). A prospect of another seat neither suppresses nor is linked. Called
+-- only for engagements already at icp_score 7+ (live 2026-11-12: one call 0.7 ms on 51k prospects, all index scans).
 create or replace function public.prospect_engaged_ivan_prospects(p_prospect uuid, p_provider text, p_url text)
 returns table(prospect_id uuid, has_thread boolean)
 language sql stable security definer
@@ -245,7 +246,6 @@ as $$
   ), k as (
     select public.li_member_key(p_provider) as mk_provider, public.li_member_key(p_url) as mk_url, public.li_slug(p_url) as slug,
            coalesce(public.li_member_key(p_provider), public.li_member_key(p_url)) as mk
-     where not exists (select 1 from own)
   ), hit as (
     select own.id from own
     union select p.id from public.outreach_prospects p, k where k.mk_provider is not null and public.li_member_key(p.linkedin_profile_id) = k.mk_provider
@@ -304,6 +304,10 @@ as $$
          ev.first_seen_at, ev.ready, op.post_key, op.post_text, ip.prospect_id, coalesce(ip.has_thread, false),
          case
            when ev.pkey is null then 'no person id'
+           -- this exact engagement already rang (its person key may have changed since), or its feed row exists from an
+           -- earlier install (read or dismissed, any age): never again
+           when exists (select 1 from public.prospect_engaged_alerts a where a.engager_id = ev.id) then 'already alerted'
+           when exists (select 1 from public.inbox_notifications n where n.dedupe_key = 'prospect-engaged:' || ev.id) then 'already in the feed'
            when exists (select 1 from public.prospect_engaged_alerts a where a.person_key = ev.pkey and a.alerted_at > p_now - interval '90 days')
              then 'alerted in the last 90 days'
            else public.prospect_engaged_block(ev.prospect_id, ev.provider_id, ev.linkedin_url, p_now)
@@ -452,6 +456,8 @@ begin
     else
       select c.* into r from public.content_result_candidates(p_now) c
        where not exists (select 1 from public.content_result_alerts a where a.post_key = c.post_key)
+         -- a feed row for this post from an earlier install (read or dismissed, any age) means it already rang
+         and not exists (select 1 from public.inbox_notifications n where n.dedupe_key = 'content-result:' || c.post_key)
        order by c.impressions desc, c.post_key limit 1;
       if not found then
         v_posts := jsonb_build_object('fired', false, 'why', 'none took off', 'retried', v_retried);

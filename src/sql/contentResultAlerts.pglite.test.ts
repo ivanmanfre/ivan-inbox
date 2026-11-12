@@ -354,19 +354,38 @@ describe('a good-fit person engaged (prospect_engaged)', { timeout: 60_000 }, ()
     expect((await calledFamily(db, 'prospect_engaged'))[0]).toMatchObject({ url: 'https://www.linkedin.com/in/example', media: { prospect_id: null } })
   })
 
-  it('a row whose own prospect_id is Ivan\'s uses that prospect only: the member id and slug lookups never run', async () => {
+  it('a stopped twin on Ivan\'s seat suppresses, and the link still prefers the row\'s own prospect', async () => {
     const db = await setup()
     await posts(db)
     const mid = 'ACoAASamePersonTwoRowsXYZ'
-    await prospect(db, 1, { linkedin_profile_id: mid })                                // open, with a thread
-    await prospect(db, 2, { linkedin_profile_id: mid, linkedin_url: 'https://www.linkedin.com/in/same', stage: 'archived' })
-    expect((await db.query<{ prospect_id: string }>(`select prospect_id::text from prospect_engaged_ivan_prospects($1::uuid, $2, 'https://www.linkedin.com/in/same')`, [pid(1), mid])).rows)
-      .toEqual([{ prospect_id: pid(1) }])
-    await ev(db, { n: 1, provider: mid, prospect: 1, url: 'https://www.linkedin.com/in/same' })
-    await run(db)
+    await prospect(db, 1, { linkedin_profile_id: mid })                                // the row's own prospect: open, with a thread
+    await prospect(db, 2, { linkedin_profile_id: mid })                                // the same person again, stopped, with a thread
+    await db.query(`insert into outreach_messages (prospect_id, direction, message_type, discard_mode) values ($1, 'outbound', 'dm', 'stop')`, [pid(2)])
+    await ev(db, { n: 1, provider: mid, prospect: 1 })
+    const c = (await db.query<{ prospect_id: string; suppressed: string }>(`select prospect_id::text, suppressed from prospect_engaged_candidates($1::timestamptz - interval '26 hours', $1::timestamptz)`, [NOW])).rows
+    expect(c).toEqual([{ prospect_id: pid(1), suppressed: 'stopped in DMs' }])
+    expect((await run(db)).people.sent).toEqual([])
+    // without the stop, it rings and links the row's own prospect
+    await db.exec(`update outreach_messages set discard_mode = null`)
+    await ev(db, { n: 2, provider: mid, prospect: 1, hoursAgo: 0.5 }, '2026-11-12T16:00:00Z')
+    await run(db, '2026-11-12T16:00:00Z')
     expect((await calledFamily(db, 'prospect_engaged'))[0]).toMatchObject({ url: `./#exp/d/dms?thread=${pid(1)}` })
-    // without a usable prospect_id the lookups run and find both (the closed one suppresses)
-    expect((await db.query(`select prospect_id from prospect_engaged_ivan_prospects(null, $1, null)`, [mid])).rows).toHaveLength(2)
+  })
+
+  it('an engagement that rang is never picked again, even after its person key changed (url, then provider id)', async () => {
+    const db = await setup()
+    await posts(db)
+    await ev(db, { n: 1, provider: null, url: 'https://www.linkedin.com/in/url-only' })
+    expect((await run(db)).people.sent).toHaveLength(1)
+    await db.exec(`insert into inbox_notifications (dedupe_key) select body ->> 'dedupe_key' from net.calls`)
+    await db.query(`update post_engagers set provider_id = 'ACoAAGainedLaterXXXXXXXXXX' where id = $1`, [pid(1001)])
+    // a held mark reads the same window again, with a fresh engagement in it
+    await db.query(`update content_alert_state set hwm = $1::timestamptz - interval '26 hours'`, [NOW])
+    await ev(db, { n: 2 }, '2026-11-12T18:00:00Z')
+    const r = await run(db, '2026-11-12T18:00:00Z')
+    expect(r.people.error).toBeUndefined()
+    expect(r.people.sent.map(x => x.title)).toEqual(['Person 2 reacted to your post'])
+    expect(await one<string>(db, `select suppressed v from prospect_engaged_candidates($1::timestamptz - interval '30 hours', $1::timestamptz) where engager_id = $2`, ['2026-11-12T18:00:00Z', pid(1001)])).toBe('already alerted')
   })
 
   it('a lock timeout on the very first run keeps the mark the migration seeded', async () => {
@@ -584,6 +603,21 @@ describe('both alerts: kill switch, delivery bookkeeping, service only', { timeo
     const again = await run(db, '2026-11-12T20:00:00Z')
     expect(again.posts).toMatchObject({ fired: true })
     expect(again.people.sent).toHaveLength(1)
+  })
+
+  it('rollback then re-apply never rings a dismissed alert again, post or person', async () => {
+    const db = await setup()
+    await both(db)
+    await run(db)
+    expect(await calls(db)).toHaveLength(2)
+    await db.exec(`insert into inbox_notifications (dedupe_key, dismissed_at) select body ->> 'dedupe_key', now() from net.calls`)
+    await db.exec(rollback)
+    await db.exec(migration)
+    await db.query(`update content_alert_state set hwm = $1::timestamptz - interval '26 hours'`, [NOW])   // re-applied at the same time
+    const r = await run(db, '2026-11-12T16:00:00Z')
+    expect(r.posts).toMatchObject({ fired: false, why: 'none took off' })
+    expect(r.people.sent).toEqual([])
+    expect(await calls(db)).toHaveLength(2)
   })
 
   it('refuses a signed-in browser', async () => {
