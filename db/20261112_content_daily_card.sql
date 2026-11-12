@@ -48,6 +48,14 @@ revoke all on table public.content_daily_cards from public, anon, authenticated;
 grant all on table public.content_daily_cards to service_role;
 comment on table public.content_daily_cards is 'One post card per Warsaw day for Ivan''s seat (20261112_content_daily_card). draft_id is unique: a draft is carded once.';
 
+-- JavaScript's String.prototype.trim(): every whitespace and line terminator it strips, Unicode spaces and BOM included
+-- (btrim alone strips only spaces), so the database reads taxonomy the way the app's isBrainPost / parseMaybeJson do.
+create or replace function public.content_card_jstrim(p text)
+returns text
+language sql immutable
+set search_path = public, pg_temp
+as $$ select regexp_replace(p, '^[\s\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]+|[\s\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]+$', '', 'g') $$;
+
 -- A taxonomy as an object, whichever way it was stored (a jsonb object, or a JSON string inside jsonb).
 create or replace function public.content_card_tax(p jsonb)
 returns jsonb
@@ -56,9 +64,9 @@ set search_path = public, pg_temp
 as $$
 begin
   if jsonb_typeof(p) = 'object' then return p; end if;
-  if jsonb_typeof(p) = 'string' and left(btrim(p #>> '{}'), 1) = '{' then
+  if jsonb_typeof(p) = 'string' and left(public.content_card_jstrim(p #>> '{}'), 1) = '{' then
     begin
-      p := (p #>> '{}')::jsonb;
+      p := public.content_card_jstrim(p #>> '{}')::jsonb;
       if jsonb_typeof(p) = 'object' then return p; end if;
     exception when others then null;
     end;
@@ -340,7 +348,12 @@ begin
       exists (select 1 from jsonb_array_elements(case when jsonb_typeof(lf -> 'lines') = 'array' then lf -> 'lines' else '[]'::jsonb end) x
                where jsonb_typeof(x) = 'object' and x ->> 'kind' in ('personal', 'dated') and jsonb_typeof(x -> 'text') = 'string'
                  and btrim(x ->> 'text') <> '' and strpos(coalesce(d.post_body, ''), x ->> 'text') > 0)
-      or (lf ->> 'lines_sha' = p_body_sha and coalesce(lf ->> 'lines_rejected', '') ~ '^\s*[0-9]*\.?[0-9]+\s*$' and (lf ->> 'lines_rejected')::numeric > 0)
+      -- unmatched lines for this text: anything but an absent/null count or a clean zero means Review (stricter than Number())
+      or (lf ->> 'lines_sha' = p_body_sha and coalesce(jsonb_typeof(lf -> 'lines_rejected'), 'null') <> 'null'
+          and not case jsonb_typeof(lf -> 'lines_rejected')
+                    when 'number' then (lf -> 'lines_rejected')::numeric = 0
+                    when 'string' then (lf ->> 'lines_rejected') ~ '^0+$'
+                    else false end)
       or (jsonb_typeof(lf -> 'rerun') = 'object' and lf -> 'rerun' -> 'pass' = 'false'::jsonb and (lf -> 'rerun_kept' ->> 'sha') is distinct from p_body_sha));
     if coalesce(d.qa ->> 'verdict', '') <> 'PASS' or public.cb34_p2_review_block(d.qa, d.taxonomy) is not null
        or (v_member and not v_released) or v_flagged then
@@ -348,7 +361,7 @@ begin
     if p_at < now() - interval '5 minutes' then
       raise exception 'That time has already passed. Pick a later time.' using errcode = 'P0001', hint = 'card_past'; end if;
 
-    v_brain := v_member or btrim(coalesce(public.content_card_tax(d.taxonomy) ->> 'source', '')) = 'content-brain';
+    v_brain := v_member or public.content_card_jstrim(coalesce(public.content_card_tax(d.taxonomy) ->> 'source', '')) = 'content-brain';
     if v_brain then
       perform public.cb39_verdict_set(p_draft, 'keep', '{}'::text[], null, null, p_ms_to_verdict);
     else
@@ -390,6 +403,7 @@ begin
   return v_n = 1;
 end $function$;
 
+revoke all on function public.content_card_jstrim(text) from public, anon, authenticated;
 revoke all on function public.content_card_tax(jsonb) from public, anon, authenticated;
 revoke all on function public.content_card_sha(text) from public, anon, authenticated;
 revoke all on function public.content_card_poland(uuid) from public, anon, authenticated;

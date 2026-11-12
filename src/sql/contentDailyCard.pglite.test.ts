@@ -349,6 +349,14 @@ describe('content_card_post: Post in one transaction', { timeout: 60_000 }, () =
     db = await carded({ tax: { source: 'x-outlier' } })
     expect((await post(db)).via).toBe('approve')
     expect(await state(db)).toMatchObject({ card: 'posted', verdicts: 0 })
+    // JavaScript trim() whitespace, as isBrainPost reads it; and a stringified taxonomy with leading whitespace
+    for (const tax of [{ source: 'content-brain\n' }, { source: '\tcontent-brain ' }, { source: '\u00a0content-brain\u2028' }]) {
+      db = await carded({ tax })
+      expect((await post(db)).via).toBe('verdict')
+    }
+    db = await carded()
+    await db.query(`update carousel_drafts set taxonomy = to_jsonb($1::text)`, ['\n {"source":"content-brain"}\n'])
+    expect((await post(db)).via).toBe('verdict')
   })
 
   it('line flags saved after the device read, before the call, refuse (the client rule, on the locked row)', async () => {
@@ -358,6 +366,10 @@ describe('content_card_post: Post in one transaction', { timeout: 60_000 }, () =
       { lines: [{ text: 'Line two', kind: 'personal', ask: 'Is this yours?' }] },
       { lines: [{ text: 'Line one', kind: 'dated' }] },
       { lines: [], lines_rejected: 2, lines_sha: real },
+      ...['1e0', '+1', ' 1', 'abc', '-0', ''].map(v => ({ lines: [], lines_rejected: v, lines_sha: real })),
+      { lines: [], lines_rejected: 1.0, lines_sha: real },
+      { lines: [], lines_rejected: 0.5, lines_sha: real },
+      { lines: [], lines_rejected: true, lines_sha: real },
       { rerun: { pass: false, impressions: 120 } },
     ]) {
       const db = await carded()
@@ -365,11 +377,18 @@ describe('content_card_post: Post in one transaction', { timeout: 60_000 }, () =
       await expect(post(db)).rejects.toThrow('Not posted: it needs a look in Review.')
       expect(await state(db)).toEqual(untouched)
     }
+    // a JSON number written as 1.0 (JavaScript cannot produce one: stored here as a literal)
+    const dbx = await carded()
+    await dbx.query(`update carousel_drafts set qa = jsonb_build_object('verdict', 'PASS', 'line_flags', jsonb_build_object('lines', '[]'::jsonb, 'lines_sha', $1::text, 'lines_rejected', '1.0'::jsonb))`, [real])
+    await expect(post(dbx)).rejects.toThrow('Not posted: it needs a look in Review.')
     // no longer applies to this text, or Ivan kept this exact text: it posts
     for (const lf of [
       { lines: [{ text: 'A line he cut', kind: 'personal' }] },
       { lines: [{ text: 'Line two', kind: 'other' }] },
       { lines: [], lines_rejected: 2, lines_sha: 'an older text' },
+      { lines: [], lines_rejected: 0, lines_sha: real },
+      { lines: [], lines_rejected: '0', lines_sha: real },
+      { lines: [], lines_rejected: null, lines_sha: real },
       { rerun: { pass: true } },
       { lines: [{ text: 'Line two', kind: 'personal' }], kept: { sha: real } },
       { rerun: { pass: false }, rerun_kept: { sha: real } },

@@ -13,4 +13,5 @@ drop function if exists public.content_card_candidates(timestamptz);
 drop function if exists public.content_card_poland(uuid);
 drop function if exists public.content_card_sha(text);
 drop function if exists public.content_card_tax(jsonb);
+drop function if exists public.content_card_jstrim(text);
 drop table if exists public.content_daily_cards;
