@@ -7,7 +7,7 @@ import { AnswerRow, N } from '../ui/AnswerRow'
 import { Btn } from '../ui/Key'
 import { Empty, Failed, Skeleton } from '../ui/states'
 import { useToast } from '../ui/toast'
-import { DROP_WINDOW_DAYS, FEED_WINDOW_DAYS, ago, clock, inDropped, inFeed, inSeen, isVideo, kindLabel, kindOf, length, metaChip, openLabel, sortSources, tabOf, thumbUrl, watchUrl, type IntelItem, type IntelSource, type IntelTab } from './model'
+import { DROP_WINDOW_DAYS, FEED_WINDOW_DAYS, ago, clock, inDropped, inFeed, inSeen, isVideo, kindCounts, kindLabel, kindOf, length, metaChip, openLabel, pickKind, sortSources, tabOf, thumbUrl, watchUrl, type IntelItem, type IntelSource, type IntelTab } from './model'
 import './intel.css'
 
 // D · INTEL. Research without the mess: every new upload or post from the chosen
@@ -18,7 +18,10 @@ import './intel.css'
 // Mute stops a source. Writer: ~/.claude/intel-feed/run.py. Tables:
 // db/240_intel_feed.sql.
 
-const ITEM_COLS = 'id,source_id,source_name,url,title,published_at,duration_sec,found_via,verdict,score,headline,what_new,applies_to,try_this,watch_from_sec,drop_reason,ivan_verdict,ivan_seen_at,created_at,kind,meta'
+const ITEM_COLS = 'id,source_id,source_name,url,title,published_at,duration_sec,found_via,verdict,score,headline,what_new,applies_to,try_this,watch_from_sec,drop_reason,ivan_verdict,ivan_seen_at,created_at,kind,meta,quote'
+
+/** Cards drawn at once. A deep read can land hundreds; the rest wait behind "Show more". */
+const PAGE = 60
 
 /** Ivan's marks on a card. One row write carries both, so they travel together through the race guards. */
 type Mark = Pick<IntelItem, 'ivan_verdict' | 'ivan_seen_at'>
@@ -36,6 +39,10 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
   const [tick, setTick] = useState(0)
   const [now, setNow] = useState(() => Date.now())
   const retry = useCallback(() => setTick(t => t + 1), [])
+  // One source type at a time (All by default), and how many cards are drawn. Both reset with the tab.
+  const [kind, setKind] = useState<string | null>(null)
+  const [shown, setShown] = useState(PAGE)
+  useEffect(() => { setKind(null); setShown(PAGE) }, [tab])
 
   // Reads: keeps and drops are separate queries so a busy week of drops can never push a keep out.
   // Rows Ivan touched since a read started keep their local value when that read lands, so a refresh can
@@ -51,7 +58,7 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
     Promise.all([
       supabase.from('intel_items').select(ITEM_COLS).or('verdict.eq.keep,ivan_verdict.eq.useful')
         // created_at is never older than published_at, so this covers both windows in recent() (model.ts).
-        .gte('created_at', daysAgo(FEED_WINDOW_DAYS)).order('published_at', { ascending: false }).limit(200),
+        .gte('created_at', daysAgo(FEED_WINDOW_DAYS)).order('published_at', { ascending: false }).limit(1000),
       supabase.from('intel_items').select(ITEM_COLS).eq('verdict', 'drop')
         .gte('created_at', daysAgo(DROP_WINDOW_DAYS)).order('created_at', { ascending: false }).limit(300),
       supabase.from('intel_sources').select('id,name,url,topic,status,added_by,note,items_judged,items_kept,last_kept_at,kind'),
@@ -173,6 +180,27 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
     </nav>
   )
 
+  // The filter chips: only when the tab holds more than one kind. A kind that emptied falls back to All.
+  const list = tab === 'feed' ? keeps : tab === 'seen' ? seen : tab === 'dropped' ? drops : []
+  const kinds = kindCounts(list)
+  const picked = kind && kinds.some(([k]) => k === kind) ? kind : null
+  const view = pickKind(list, picked)
+  const page = view.slice(0, shown)
+  const chips = kinds.length > 1 && (
+    <nav className="it-kinds" aria-label="Source type">
+      {([[null, 'All', list.length], ...kinds.map(([k, n]) => [k, kindLabel(k), n])] as [string | null, string, number][]).map(([k, label, n]) => (
+        <button key={k ?? 'all'} type="button" className={picked === k ? 'it-on' : ''} aria-pressed={picked === k} onClick={() => { setKind(k); setShown(PAGE) }}>
+          {label}<i>{n}</i>
+        </button>
+      ))}
+    </nav>
+  )
+  const more = view.length > shown && (
+    <button type="button" className="it-showmore" onClick={() => setShown(s => s + PAGE)}>
+      Show {Math.min(PAGE, view.length - shown)} more<i>{view.length - shown} left</i>
+    </button>
+  )
+
   let body
   if (tab === 'sources') {
     body = sources.kind === 'loading' ? <Skeleton lines={6} label="Reading sources" />
@@ -184,13 +212,13 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
     body = <Failed what="the intel feed" detail={items.message} onRetry={retry} />
   } else if (tab === 'dropped') {
     body = drops.length === 0 ? <Empty title="Nothing dropped in the last two weeks." />
-      : <ol className="it-grid it-grid-drops">{drops.map(i => (
+      : <ol className="it-grid it-grid-drops">{page.map(i => (
         <Tile key={i.id} i={i} line={i.drop_reason} tone="drop"
           keys={inFeed({ ...i, ivan_verdict: 'useful', ivan_seen_at: null }, now) ? <Btn verb="intel-rescue" onClick={() => mark(i, { ivan_verdict: 'useful', ivan_seen_at: null }, 'Moved to For you. The judge learns it was wrong.')}>Useful after all</Btn> : null} />
       ))}</ol>
   } else if (tab === 'seen') {
     body = seen.length === 0 ? <Empty title="Nothing marked done yet." reason="Useful or Done on a card moves it here." />
-      : <ol className="it-grid">{seen.map(i => <Tile key={i.id} i={i} line={i.headline} tone="keep" details
+      : <ol className="it-grid">{page.map(i => <Tile key={i.id} i={i} line={i.headline} tone="keep" details
           keys={<>
             <Btn verb="intel-useful" className={i.ivan_verdict === 'useful' ? 'it-pressed' : ''} aria-pressed={i.ivan_verdict === 'useful'} onClick={() => mark(i, { ...markOf(i), ivan_verdict: i.ivan_verdict === 'useful' ? null : 'useful' })}>Useful</Btn>
             <Btn verb="intel-noise" onClick={() => mark(i, { ...markOf(i), ivan_verdict: 'noise' }, 'Marked noise. The judge learns from it.')}>Noise</Btn>
@@ -199,7 +227,7 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
   } else {
     body = keeps.length === 0
       ? <Empty title={seen.length ? 'You are through everything worth your time.' : 'Nothing worth your time in the last three weeks.'} reason="Every new item from your sources is read and judged. Most get dropped. New ones land here." action={<Btn onClick={() => go('dropped')}>See what was dropped</Btn>} />
-      : <ol className="it-grid">{keeps.map(i => <Tile key={i.id} i={i} line={i.headline} tone="keep" details
+      : <ol className="it-grid">{page.map(i => <Tile key={i.id} i={i} line={i.headline} tone="keep" details
           keys={<>
             <Btn verb="intel-useful" onClick={() => mark(i, { ivan_verdict: 'useful', ivan_seen_at: stamp() }, 'Saved as useful. It is in Seen now.')}>Useful</Btn>
             <Btn verb="intel-noise" onClick={() => mark(i, { ...markOf(i), ivan_verdict: 'noise' }, 'Marked noise. The judge learns from it.')}>Noise</Btn>
@@ -213,7 +241,9 @@ export default function IntelPage({ layout, route, navigate }: PlaceProps) {
       <AnswerRow title={title} sub={sub} />
       <div className="it-scroll">
         {tabs}
+        {tab !== 'sources' && items.kind === 'ready' && chips}
         {body}
+        {tab !== 'sources' && items.kind === 'ready' && more}
       </div>
     </div>
   )
@@ -229,6 +259,9 @@ function Tile({ i, line, tone, keys, details }: { i: IntelItem; line: string | n
   const thumb = thumbUrl(i.url)
   const href = watchUrl(tone === 'keep' ? i : { ...i, watch_from_sec: null })
   const chip = metaChip(i)
+  // An idea from a call: the idea is the title, the call it came from sits in the byline.
+  const idea = kind === 'kyle' && !!i.headline
+  const shownLine = idea && tone === 'keep' ? null : line
   return (
     <li className={`it-tile it-${tone}${video ? '' : ' it-text'}${i.ivan_verdict === 'useful' ? ' it-useful' : ''}`}>
       {video && (
@@ -240,9 +273,9 @@ function Tile({ i, line, tone, keys, details }: { i: IntelItem; line: string | n
       )}
       <div className="it-body">
         {!video && <div className="it-kindrow"><span className="it-kind">{kindLabel(kind)}</span>{chip && <span className="it-chipmeta">{chip}</span>}</div>}
-        <a className="it-title" href={href} target="_blank" rel="noreferrer">{i.title}</a>
-        <div className="it-by">{i.source_name} · {ago(i.published_at)}{i.found_via === 'discovery' ? <span className="it-new">{video ? ' · new channel' : ' · new source'}</span> : null}</div>
-        {line && <p className={`it-line${tone === 'drop' ? ' it-why-drop' : ''}`}>{line}</p>}
+        <a className="it-title" href={href} target="_blank" rel="noreferrer">{idea ? i.headline : i.title}</a>
+        <div className="it-by">{i.source_name}{idea ? ` · ${i.title}` : ''} · {ago(i.published_at)}{i.found_via === 'discovery' ? <span className="it-new">{video ? ' · new channel' : ' · new source'}</span> : null}</div>
+        {shownLine && <p className={`it-line${tone === 'drop' ? ' it-why-drop' : ''}`}>{shownLine}</p>}
         {details && (i.what_new || i.try_this) && (
           <>
             <button type="button" className="it-more" aria-expanded={open} onClick={() => setOpen(o => !o)}>
@@ -251,6 +284,7 @@ function Tile({ i, line, tone, keys, details }: { i: IntelItem; line: string | n
             {open && <div className="it-detail">
               {i.what_new && <p>{i.what_new}</p>}
               {i.try_this && <p><b>Try</b> {i.try_this}</p>}
+              {i.quote && <p className="it-quote">{'\u201c'}{i.quote}{'\u201d'}</p>}
             </div>}
           </>
         )}
