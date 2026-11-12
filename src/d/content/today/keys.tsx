@@ -83,7 +83,7 @@ export function useCardKeys(card: LiveCard, body: string, version: number): Card
         const sha = await bodySha(shown)
         // Lines flagged during the hold that need his answer: Review asks, the card does not post.
         if (needsKeep(lineFlagsOf(fresh?.draft?.line_flags, shown), sha)) { toReview(); throw new Error(`${NOT_POSTED} it has lines to check in Review.`) }
-        try { return await postCard(card.day, d.id, sha, slot.at.toISOString(), viaVerdict, shownForMs(d.id)) }
+        try { return await postCard(card.day, d.id, sha, slot.at.toISOString(), shownForMs(d.id)) }
         catch (e) { if (e instanceof CardRefused && e.review) toReview(); throw e }
       },
     }, slot.at)

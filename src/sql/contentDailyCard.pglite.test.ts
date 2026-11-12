@@ -314,18 +314,18 @@ describe('the migration', { timeout: 60_000 }, () => {
 
 describe('content_card_post: Post in one transaction', { timeout: 60_000 }, () => {
   const BODY = 'Line one\n\nLine two'
-  async function carded(o: { client?: string | null; scheduled?: string | null; member?: string | null; qa?: object } = {}) {
+  async function carded(o: { client?: string | null; scheduled?: string | null; member?: string | null; qa?: object; tax?: object } = {}) {
     const db = await setup()
-    await db.query(`insert into carousel_drafts (id, client_id, status, type, title, post_body, qa, scheduled_at) values ($1, $2, 'review', 'text', 'T', $3, $4, $5)`,
-      [id(1), o.client ?? null, BODY, JSON.stringify(o.qa ?? PASS), o.scheduled ?? null])
+    await db.query(`insert into carousel_drafts (id, client_id, status, type, title, post_body, qa, scheduled_at, taxonomy) values ($1, $2, 'review', 'text', 'T', $3, $4, $5, $6)`,
+      [id(1), o.client ?? null, BODY, JSON.stringify(o.qa ?? PASS), o.scheduled ?? null, o.tax ? JSON.stringify(o.tax) : null])
     if (o.member) await db.query(`insert into cb34_p2_members values ($1, 'ivan', $2, '{"verdict":"PASS"}', null)`, [id(1), o.member])
     await db.query(`insert into content_daily_cards (day, draft_id, body_sha256, why) select (now() at time zone 'Europe/Warsaw')::date, id, encode(sha256(convert_to(post_body, 'UTF8')), 'hex'), 'newest' from carousel_drafts where id = $1`, [id(1)])
     return db
   }
   const shaOf = (db: PGlite, body: string) => one<string>(db, `select encode(sha256(convert_to($1, 'UTF8')), 'hex') v`, [body])
-  const post = async (db: PGlite, o: { sha?: string; brain?: boolean; at?: string } = {}) =>
-    one<{ ok: boolean; scheduled_at: string }>(db, `select public.content_card_post((now() at time zone 'Europe/Warsaw')::date, $1::uuid, $2, coalesce($3::timestamptz, now() + interval '2 days'), $4, 1200) v`,
-      [id(1), o.sha ?? await shaOf(db, BODY), o.at ?? null, o.brain ?? false])
+  const post = async (db: PGlite, o: { sha?: string; at?: string } = {}) =>
+    one<{ ok: boolean; scheduled_at: string; via: string }>(db, `select public.content_card_post((now() at time zone 'Europe/Warsaw')::date, $1::uuid, $2, coalesce($3::timestamptz, now() + interval '2 days'), 1200) v`,
+      [id(1), o.sha ?? await shaOf(db, BODY), o.at ?? null])
   const state = async (db: PGlite) => (await db.query<{ card: string; status: string; scheduled: boolean; verdicts: number }>(
     `select c.state card, d.status, d.scheduled_at is not null scheduled, (select count(*)::int from verdict_calls) verdicts from content_daily_cards c join carousel_drafts d on d.id = c.draft_id`)).rows[0]
   const untouched = { card: 'shown', status: 'review', scheduled: false, verdicts: 0 }
@@ -338,11 +338,55 @@ describe('content_card_post: Post in one transaction', { timeout: 60_000 }, () =
     expect(await state(db)).toEqual({ card: 'posted', status: 'scheduled', scheduled: true, verdicts: 0 })
   })
 
-  it('a brain draft approves through cb39_verdict_set keep, with the time to verdict', async () => {
-    const db = await carded({ member: 'released' })
-    await post(db, { brain: true })
+  it('the database picks the approve path: a brain draft (member, or taxonomy.source content-brain) goes through cb39_verdict_set keep', async () => {
+    let db = await carded({ member: 'released' })
+    expect((await post(db)).via).toBe('verdict')
     expect((await db.query(`select verdict, ms from verdict_calls`)).rows).toEqual([{ verdict: 'keep', ms: 1200 }])
     expect(await state(db)).toMatchObject({ card: 'posted', status: 'scheduled' })
+    db = await carded({ tax: { source: ' content-brain ' } })
+    expect((await post(db)).via).toBe('verdict')
+    expect(await state(db)).toMatchObject({ card: 'posted', verdicts: 1 })
+    db = await carded({ tax: { source: 'x-outlier' } })
+    expect((await post(db)).via).toBe('approve')
+    expect(await state(db)).toMatchObject({ card: 'posted', verdicts: 0 })
+  })
+
+  it('line flags saved after the device read, before the call, refuse (the client rule, on the locked row)', async () => {
+    const flags = (lf: object) => ({ verdict: 'PASS', line_flags: lf })
+    const real = await shaOf(await setup(), BODY)
+    for (const lf of [
+      { lines: [{ text: 'Line two', kind: 'personal', ask: 'Is this yours?' }] },
+      { lines: [{ text: 'Line one', kind: 'dated' }] },
+      { lines: [], lines_rejected: 2, lines_sha: real },
+      { rerun: { pass: false, impressions: 120 } },
+    ]) {
+      const db = await carded()
+      await db.query(`update carousel_drafts set qa = $1`, [JSON.stringify(flags(lf))])
+      await expect(post(db)).rejects.toThrow('Not posted: it needs a look in Review.')
+      expect(await state(db)).toEqual(untouched)
+    }
+    // no longer applies to this text, or Ivan kept this exact text: it posts
+    for (const lf of [
+      { lines: [{ text: 'A line he cut', kind: 'personal' }] },
+      { lines: [{ text: 'Line two', kind: 'other' }] },
+      { lines: [], lines_rejected: 2, lines_sha: 'an older text' },
+      { rerun: { pass: true } },
+      { lines: [{ text: 'Line two', kind: 'personal' }], kept: { sha: real } },
+      { rerun: { pass: false }, rerun_kept: { sha: real } },
+    ]) {
+      const db = await carded()
+      await db.query(`update carousel_drafts set qa = $1`, [JSON.stringify(flags(lf))])
+      expect((await post(db)).ok).toBe(true)
+    }
+  })
+
+  it('a busy row (NOWAIT or a lock timeout, SQLSTATE 55P03) is a plain retry line and nothing is written', async () => {
+    const db = await carded({ member: 'released' })
+    // the verdict write records itself, then hits a busy lock: the record must roll back with everything else
+    await db.exec(`create or replace function public.cb39_verdict_set(p_draft uuid, p_verdict text, p_reasons text[] default '{}', p_note text default null, p_invocation uuid default null, p_ms_to_verdict int default null)
+      returns jsonb language plpgsql as $$ begin insert into verdict_calls values (p_draft, p_verdict, p_ms_to_verdict); raise exception 'busy' using errcode = '55P03'; end $$`)
+    await expect(post(db)).rejects.toThrow('Not posted: it is being changed right now. Try again.')
+    expect(await state(db)).toEqual(untouched)
   })
 
   it('refuses a body other than the one shown, also after another device fixed it and the card followed', async () => {
@@ -370,7 +414,7 @@ describe('content_card_post: Post in one transaction', { timeout: 60_000 }, () =
   it('refuses when QA or the brain release changed during the hold (send him to Review), and a time already past', async () => {
     for (const o of [{ qa: { verdict: 'FAIL' } }, { qa: { verdict: 'PASS', feedback: 'GATE: BLOCKED' } }, { member: 'staged' }]) {
       const db = await carded(o)
-      await expect(post(db, { brain: !!o.member })).rejects.toThrow('Not posted: it needs a look in Review.')
+      await expect(post(db)).rejects.toThrow('Not posted: it needs a look in Review.')
       expect(await state(db)).toEqual(untouched)
     }
     const db = await carded()

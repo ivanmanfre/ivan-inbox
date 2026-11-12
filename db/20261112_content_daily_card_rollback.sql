@@ -2,7 +2,7 @@
 -- then the table. Notifications already written to inbox_notifications (family content_card) stay as history.
 select cron.unschedule('content-daily-card') where exists (select 1 from cron.job where jobname = 'content-daily-card');
 
-drop function if exists public.content_card_post(date, uuid, text, timestamptz, boolean, int);
+drop function if exists public.content_card_post(date, uuid, text, timestamptz, int);
 drop function if exists public.content_card_rebase(date, uuid, text);
 drop function if exists public.content_card_set(date, uuid, text);
 drop function if exists public.content_card_today();

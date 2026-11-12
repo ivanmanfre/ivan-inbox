@@ -46,13 +46,14 @@ export class CardRefused extends Error {
   constructor(message: string, review: boolean) { super(message); this.review = review }
 }
 
-/** Post, one transaction (db: content_card_post): card and draft locked, every check (today's shown card, the draft
- *  still in review, undated, unpublished, its body hash = `bodySha` of the text shown, QA and release still good),
- *  then the existing approve (cb39 keep verdict when `viaVerdict`, else approveReviewDraft's update) and
- *  scheduleGuarded's update, and the card marked posted. Returns the scheduled_at the row holds. */
-export async function postCard(day: string, draftId: string, bodySha: string, atIso: string, viaVerdict: boolean, msToVerdict?: number): Promise<string | null> {
+/** Post, one transaction (db: content_card_post): card, draft and membership locked, every check (today's shown card,
+ *  the draft still in review, undated, unpublished, its body hash = `bodySha` of the text shown, QA, line flags and
+ *  release still good), then the existing approve (the database decides: cb39 keep verdict for a brain draft, else
+ *  approveReviewDraft's update) and scheduleGuarded's update, and the card marked posted. A busy row is refused
+ *  ("being changed right now", card_busy) with nothing written. Returns the scheduled_at the row holds. */
+export async function postCard(day: string, draftId: string, bodySha: string, atIso: string, msToVerdict?: number): Promise<string | null> {
   const { data, error } = await supabase.rpc('content_card_post', {
-    p_day: day, p_draft: draftId, p_body_sha: bodySha, p_at: atIso, p_via_verdict: viaVerdict, p_ms_to_verdict: msToVerdict ?? null,
+    p_day: day, p_draft: draftId, p_body_sha: bodySha, p_at: atIso, p_ms_to_verdict: msToVerdict ?? null,
   })
   if (error) {
     const hint = (error as { hint?: string | null }).hint ?? ''

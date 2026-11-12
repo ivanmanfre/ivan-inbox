@@ -99,16 +99,26 @@ describe('the sliding post card', () => {
     expect(screen.getByText(/^Approved\. Posts /)).toBeTruthy()
     expect(lib.postCard).not.toHaveBeenCalled()
     await act(() => flushDecisions())
-    expect(lib.postCard).toHaveBeenCalledWith('2026-11-12', ID, await bodySha(BODY), expect.stringMatching(/^20\d\d-/), false, expect.any(Number))
+    expect(lib.postCard).toHaveBeenCalledWith('2026-11-12', ID, await bodySha(BODY), expect.stringMatching(/^20\d\d-/), expect.any(Number))
     noClientWrites()
     expect(await screen.findByText(/^Armed for /)).toBeTruthy()
   })
 
-  it('a brain draft asks the database for the cb39 keep verdict, as the Review desk does', async () => {
+  it('the database decides the approve path: the client sends no brain flag', async () => {
     lib.readTodayCard.mockResolvedValue(card({}, { cb34_p2_member: true }))
     await tapPost()
     await act(() => flushDecisions())
-    expect(lib.postCard.mock.calls[0][4]).toBe(true)
+    expect(lib.postCard.mock.calls[0]).toHaveLength(5)
+    expect(lib.postCard.mock.calls[0].slice(4)).toEqual([expect.any(Number)])
+  })
+
+  it('a busy row is refused with a line to try again, and the card comes back', async () => {
+    lib.postCard.mockRejectedValueOnce(new CardRefused('Not posted: it is being changed right now. Try again.', false))
+    await tapPost()
+    await act(() => flushDecisions())
+    expect(await screen.findByText('Not posted: it is being changed right now. Try again.')).toBeTruthy()
+    expect(nav).not.toHaveBeenCalled()
+    noClientWrites()
   })
 
   it('refuses a card whose text changed since it slid in: nothing is written', async () => {
@@ -257,7 +267,7 @@ describe('the card on Content', () => {
     await waitFor(() => expect(verb('card-post')?.disabled).toBe(false))
     fireEvent.click(verb('card-post')!)
     await act(() => flushDecisions())
-    expect(lib.postCard).toHaveBeenCalledWith('2026-11-12', ID, await bodySha('Fixed first line.\n\nFixed second.'), expect.any(String), false, expect.any(Number))
+    expect(lib.postCard).toHaveBeenCalledWith('2026-11-12', ID, await bodySha('Fixed first line.\n\nFixed second.'), expect.any(String), expect.any(Number))
     expect(lib.approveReviewDraft).not.toHaveBeenCalled()
   })
 })
