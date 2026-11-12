@@ -8,7 +8,7 @@ import { warsawDayTime } from '../../ui/time'
 import { usePendingDecisions } from '../decisions'
 import { LinkedInCard } from '../v2/LinkedInCard'
 import { GridPost } from '../v2/ReviewDesk'
-import { checkWords, postWords, useCardKeys } from './keys'
+import { checkWords, postLabel, postWords, useCardKeys } from './keys'
 import { isWaiting, patchTodayCard, refreshTodayCard, useTodayCard, type LiveCard } from './store'
 import './today.css'
 
@@ -17,7 +17,7 @@ import './today.css'
 // Review untouched; Undo) and Fix (the Review grid's own in-place edit, compare-and-swap; Post then posts the fixed
 // text). With no card, or once it is posted or skipped, Content lands on Plan as before (index.tsx).
 // The one guided question (db/20261112b_content_card_question), when the card has one on its current text: one line
-// under the post, a one-line input and Add. Add keeps his answer, asks content-card-weave for the post with it worked
+// above the post (beside it on a wide screen), a one-line input and Add. Add keeps his answer, asks content-card-weave for the post with it worked
 // in, and opens Fix on that text; he reads it and saves it himself (the weave never writes the draft). A failed weave
 // says so and opens Fix on the unchanged text, his answer still in the input. Post and Skip never wait on it.
 
@@ -99,19 +99,25 @@ function Live({ card, version }: { card: LiveCard; version: number }) {
   }
 
   return (
-    <article className="ct-card" data-card-id={r.id} data-today-card aria-label="Post for today">
-      {editing
-        ? <GridPost c={{ r, lane: 'ivan', title: r.title ?? '' }} body={body} text={fix} setText={setFix} base={base.current} canEdit
-            onStart={startFix} onSaved={onSaved} onChanged={() => {}} />
-        : <div className="ct-post"><LinkedInCard lane="ivan" body={body} images={r.image_urls} type={r.type} videoUrl={r.video_url ?? null} bare open expandable={false} /></div>}
-      {q && <Ask key={q.sha} q={q} busy={busy} adding={asking} onAdd={a => void add(q, a)} />}
-      <div className="ct-keys">
-        {keys.check != null
-          ? <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-check" disabled={busy} onClick={() => f.navigate(dHash('content', 'now', { focus: r.id }))}>{checkWords(keys.check)}</button>
-          : <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-post" disabled={busy || !keys.slot || !keys.ready} onClick={keys.post}
-              title={editing ? 'Save or cancel your edit first' : undefined}>{keys.slot ? postWords(keys.slot.at) : 'Post'}</button>}
-        <button type="button" className="cv2-k cv2-k-q" data-verb="card-skip" disabled={busy} title={editing ? 'Save or cancel your edit first' : undefined} onClick={skip}>Skip</button>
-        <button type="button" className="cv2-k cv2-k-q" data-verb="card-fix" disabled={busy || asking} onClick={startFix}>Fix</button>
+    <article className="ct-card" data-card-id={r.id} data-today-card data-editing={editing ? '' : undefined} aria-label="Post for today">
+      <div className="ct-lay">
+        {editing
+          ? <GridPost c={{ r, lane: 'ivan', title: r.title ?? '' }} body={body} text={fix} setText={setFix} base={base.current} canEdit
+              onStart={startFix} onSaved={onSaved} onChanged={() => {}} />
+          : <div className="ct-post"><LinkedInCard lane="ivan" body={body} images={r.image_urls} type={r.type} videoUrl={r.video_url ?? null} bare open expandable={false} /></div>}
+        {/* Keys in reach without scrolling: a column right of the post on a wide screen, else the question above the
+            post and the keys pinned at the bottom (today.css). */}
+        <div className="ct-side">
+          {q && <Ask key={q.sha} q={q} busy={busy} adding={asking} onAdd={a => void add(q, a)} />}
+          <div className="ct-keys">
+            {keys.check != null
+              ? <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-check" disabled={busy} onClick={() => f.navigate(dHash('content', 'now', { focus: r.id }))}>{checkWords(keys.check)}</button>
+              : <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-post" disabled={busy || !keys.slot || !keys.ready} onClick={keys.post}
+                  aria-label={keys.slot ? postLabel(keys.slot.at) : undefined} title={editing ? 'Save or cancel your edit first' : undefined}>{keys.slot ? postWords(keys.slot.at) : 'Post'}</button>}
+            <button type="button" className="cv2-k cv2-k-q" data-verb="card-skip" disabled={busy} title={editing ? 'Save or cancel your edit first' : undefined} onClick={skip}>Skip</button>
+            <button type="button" className="cv2-k cv2-k-q" data-verb="card-fix" disabled={busy || asking} onClick={startFix}>Fix</button>
+          </div>
+        </div>
       </div>
     </article>
   )

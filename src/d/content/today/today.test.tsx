@@ -11,6 +11,8 @@ import { ToastProvider } from '../../ui/toast'
 import { DConfirmProvider } from '../../ui/confirm'
 import { CardRefused, type TodayCard } from '../../../lib/contentCard'
 import { bodySha } from '../../../lib/lineFlags'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 // The day's post card (db/20261112_content_daily_card): the sliding toast, the card on Content, Home's peek and the
 // landing rule. Every read and write is mocked. Post keeps the Review desk's one-tap hold and ends in ONE database
@@ -28,6 +30,7 @@ vi.mock('../../../lib/verdicts', async orig => ({ ...(await orig<typeof import('
 import CardToast, { CARD_TOAST_ID, resetSlidForTest } from './CardToast'
 import { TodayCardView } from './TodayCard'
 import { HomeCard } from './HomeCard'
+import { postLabel, postWords } from './keys'
 import { cardLanding, cardOnScreen, isContentLanding, refreshTodayCard, resetTodayCardForTest } from './store'
 import { contentRedirect, subOf } from '../SubNav'
 import { flushDecisions, resetDecisionsForTest } from '../decisions'
@@ -324,7 +327,7 @@ describe('the card’s one question', () => {
     expect(verb('card-ask-add')).toBeNull()
   })
 
-  it('a live question: one line under the post, a plain one-line input and Add, nothing else', async () => {
+  it('a live question: one line above the post, a plain one-line input and Add, nothing else', async () => {
     await open(withQ())
     const a = ask()!
     expect(a.textContent).toBe(Q + 'Add')
@@ -333,9 +336,9 @@ describe('the card’s one question', () => {
     expect(screen.getByLabelText(Q)).toBe(input())
     expect(verb('card-ask-add')!.textContent).toBe('Add')
     expect(verb('card-ask-add')!.disabled).toBe(true)
-    // under the post, above the keys
-    const card$ = document.querySelector('[data-today-card]')!
-    expect([...card$.children].indexOf(a)).toBe([...card$.children].indexOf(card$.querySelector('.ct-keys')!) - 1)
+    // with the keys, in the side block: drawn above the post when narrow (order), beside it when wide (today.css)
+    const side = document.querySelector('[data-today-card] .ct-side')!
+    expect([...side.children]).toEqual([a, side.querySelector('.ct-keys')])
     expect(a.textContent).not.toContain('—')
   })
 
@@ -448,5 +451,127 @@ describe('the card’s one question', () => {
     await waitFor(() => expect(document.querySelector('.ct-home')).toBeTruthy())
     expect(document.querySelector('.ct-home input')).toBeNull()
     expect(document.querySelector('.ct-home')!.textContent).not.toContain(Q)
+  })
+})
+
+describe('the card’s keys in reach', () => {
+  const css = readFileSync(resolve(__dirname, 'today.css'), 'utf8').replace(/\s+/g, ' ')
+  const lay = () => document.querySelector('[data-today-card] .ct-lay')!
+
+  it('the post first, then one side block holding the keys: pinned at the bottom when narrow, a column when wide', async () => {
+    for (const layout of ['desktop', 'phone'] as const) {
+      renderInFrame(<TodayCardView />, { hash: '#exp/d/content/today', layout })
+      await waitFor(() => expect(verb('card-post')?.disabled).toBe(false))
+      expect([...lay().children].map(c => c.className)).toEqual(['ct-post', 'ct-side'])
+      expect(lay().querySelector('.ct-side > .ct-keys')).toBe(verb('card-post')!.parentElement)
+      expect(document.querySelector('[data-today-card]')!.hasAttribute('data-editing')).toBe(false)
+      cleanup(); resetTodayCardForTest()
+    }
+    // narrow: the keys stick to the bottom over the post; on the phone above the dock and the safe area
+    expect(css).toMatch(/\.ct-side\{display:contents\}/)
+    expect(css).toMatch(/\.ct-ask\{order:-1\}/)
+    expect(css).toMatch(/\.ct-keys\{[^}]*position:sticky;bottom:0/)
+    expect(css).toMatch(/\.d-phone \.ct-keys\{[^}]*bottom:calc\(var\(--dock-h\) \+ var\(--dock-bottom\) \+ 8px\)/)
+    expect(css).toMatch(/\.d-phone \.ct-keys\{bottom:calc\(var\(--po-tab-h\) \+ var\(--po-tab-bottom\) \+ 8px\)/)
+    expect(css).toMatch(/\.d-phone \.ct-keys \.cv2-k\{min-height:44px\}/)
+    // the dock's fade starts under the pinned keys instead of washing them out
+    expect(css).toMatch(/\.d-phone:has\(\.ct-card:not\(\[data-editing\]\)\) \.po-fade\{height:calc\(var\(--po-tab-h\) \+ var\(--po-tab-bottom\) \+ 8px\)\}/)
+    // wide: a sticky column right of the post
+    expect(css).toMatch(/@container ctcard \(min-width:900px\)\{ \.ct-lay\{display:grid;grid-template-columns:minmax\(0,552px\) minmax\(240px,300px\)/)
+    expect(css).toMatch(/\.ct-side\{display:flex;flex-direction:column;gap:16px;position:sticky;top:12px\}/)
+  })
+
+  it('while Fix is open the keys stop pinning (the editor’s own Save and Cancel are never under them)', async () => {
+    renderInFrame(<TodayCardView />, { hash: '#exp/d/content/today', layout: 'phone' })
+    await waitFor(() => expect(verb('card-fix')).toBeTruthy())
+    fireEvent.click(verb('card-fix')!)
+    const el = document.querySelector('[data-today-card]')!
+    expect(el.hasAttribute('data-editing')).toBe(true)
+    expect([...lay().children].map(c => c.className)).toEqual(['cv2-gp cv2-gp-edit', 'ct-side'])
+    expect(verb('grid-save')).toBeTruthy()
+    expect(verb('card-post')!.disabled).toBe(true)
+    expect(css).toMatch(/\.ct-card\[data-editing\] \.ct-keys\{position:static\}/)
+    // the box itself shows: Review's skin hides .cv2-gp outside its grid at (0,3,0), the card's rule outranks it
+    expect(css).toMatch(/\.ct-card\[data-today-card\] \.cv2-gp\.cv2-gp-edit\{display:flex/)
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(el.hasAttribute('data-editing')).toBe(false))
+  })
+
+  it('“Check N lines” takes Post’s place in the pinned keys', async () => {
+    lib.readTodayCard.mockResolvedValue(card({}, { line_flags: { lines: [{ text: 'You charge for the result.', kind: 'personal', ask: 'Is this yours?' }] } }))
+    renderInFrame(<TodayCardView />, { hash: '#exp/d/content/today', layout: 'phone' })
+    await waitFor(() => expect(verb('card-check')).toBeTruthy())
+    expect(verb('card-post')).toBeNull()
+    expect(verb('card-check')!.textContent).toBe('Check 1 line')
+    expect(verb('card-check')!.parentElement!.className).toBe('ct-keys')
+  })
+})
+
+describe('the Post key names the real day', () => {
+  // Thursday 12 Nov 2026, 22:40 Warsaw.
+  const NOW = Date.parse('2026-11-12T21:40:00Z')
+  it('inside the coming week the weekday and time; a week or more out the weekday and date', () => {
+    expect(postWords(new Date('2026-11-13T09:45:00Z'), NOW)).toBe('Post · Fri 10:45')
+    expect(postWords(new Date('2026-11-12T22:30:00Z'), NOW)).toBe('Post · Thu 23:30')
+    // 6 Warsaw days out
+    expect(postWords(new Date('2026-11-18T09:45:00Z'), NOW)).toBe('Post · Wed 10:45')
+    // 7 Warsaw days out: the same weekday as today, so the date
+    expect(postWords(new Date('2026-11-19T09:45:00Z'), NOW)).toBe('Post · Thu 19 Nov')
+    // the live case: Tue 1 Dec, 19 days out
+    expect(postWords(new Date('2026-12-01T09:45:00Z'), NOW)).toBe('Post · Tue 1 Dec')
+    // Warsaw days, not UTC: 23:30 UTC on the 18th is already the 19th in Warsaw
+    expect(postWords(new Date('2026-11-18T23:30:00Z'), NOW)).toBe('Post · Thu 19 Nov')
+  })
+
+  it('the accessible name always says the full day and time', () => {
+    expect(postLabel(new Date('2026-11-13T09:45:00Z'))).toBe('Post: approve and schedule Fri 13 Nov · 10:45')
+    expect(postLabel(new Date('2026-12-01T09:45:00Z'))).toBe('Post: approve and schedule Tue 1 Dec · 10:45')
+  })
+
+  it('the card, the toast and Home show the date when the calendar is full for weeks, with the full day and time as its name', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-12T10:00:00Z'))
+    try {
+      // Every 10:45 from today to Mon 30 Nov already taken: the next free slot is Tue 1 Dec 10:45.
+      const times = Array.from({ length: 19 }, (_, i) => new Date(Date.UTC(2026, 10, 12 + i, 9, 45)).toISOString())
+      lib.fetchIvanArmedDays.mockResolvedValue(Object.assign(new Set<string>(), { times }))
+      const name = 'Post: approve and schedule Tue 1 Dec · 10:45'
+      renderInFrame(<TodayCardView />, { hash: '#exp/d/content/today' })
+      await waitFor(() => expect(verb('card-post')?.disabled).toBe(false))
+      expect(verb('card-post')!.textContent).toBe('Post · Tue 1 Dec')
+      expect(verb('card-post')!.getAttribute('aria-label')).toBe(name)
+      cleanup(); resetTodayCardForTest()
+      render(<Frame hash="#exp/d/dms"><CardToast /></Frame>)
+      await waitFor(() => expect(toastEl()).toBeTruthy())
+      expect(verb('card-post', toastEl()!)!.textContent).toBe('Post · Tue 1 Dec')
+      expect(verb('card-post', toastEl()!)!.getAttribute('aria-label')).toBe(name)
+      cleanup(); resetTodayCardForTest()
+      renderInFrame(<HomeCard />, { hash: '#exp/d/home' })
+      await waitFor(() => expect(verb('card-post')?.textContent).toBe('Post · Tue 1 Dec'))
+      expect(verb('card-post')!.getAttribute('aria-label')).toBe(name)
+    } finally { vi.useRealTimers() }
+  })
+})
+
+describe('the toast and Home’s card block', () => {
+  it('never slides in on Home while Home shows the card block; still slides in elsewhere', async () => {
+    render(<Frame hash="#exp/d/home"><HomeCard /><CardToast /></Frame>)
+    await waitFor(() => expect(document.querySelector('.ct-home')).toBeTruthy())
+    await waitFor(() => expect(verb('card-post', document.querySelector('.ct-home')!)?.disabled).toBe(false))
+    await act(async () => { await new Promise(r => setTimeout(r, 20)) })
+    expect(toastEl()).toBeNull()
+    cleanup(); resetTodayCardForTest(); resetSlidForTest()
+
+    render(<Frame hash="#exp/d/dms"><CardToast /></Frame>)
+    await waitFor(() => expect(toastEl()).toBeTruthy())
+  })
+
+  it('a toast already in when he goes Home leaves once the card block is there', async () => {
+    const { rerender } = render(<Frame hash="#exp/d/dms"><CardToast /></Frame>)
+    await waitFor(() => expect(toastEl()).toBeTruthy())
+    rerender(<Frame hash="#exp/d/home"><HomeCard /><CardToast /></Frame>)
+    await waitFor(() => expect(toastEl()).toBeNull())
+    expect(document.querySelector('.ct-home')).toBeTruthy()
+    expect(lib.setCardState).not.toHaveBeenCalled()
   })
 })

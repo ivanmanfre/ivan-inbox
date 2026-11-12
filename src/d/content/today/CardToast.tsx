@@ -3,7 +3,7 @@ import { dHash } from '../../route'
 import { useFrame } from '../../shell/frame'
 import { useToast } from '../../ui/toast'
 import { CardPeek, useCardKeys } from './keys'
-import { cardOnScreen, useTodayCard, type LiveCard } from './store'
+import { cardOnScreen, useCardBlockShown, useTodayCard, type LiveCard } from './store'
 import './today.css'
 
 // THE SLIDING POST CARD (Ivan 2026-11-12: "a sliding notif" inside the app, not only on the phone). When today's
@@ -11,7 +11,8 @@ import './today.css'
 // while the app is open (the store re-reads on the push). The post's first two lines, "Post · <day HH:MM>" (the
 // Review desk's one-tap key) and Open. No timer: it leaves on Post, Open, the close mark or a sideways swipe.
 // Closing writes nothing (the card is not skipped). Once per app open: never again on a route change, and not at
-// all when the card is already the page. Loaded only while a card waits (Shell), so the shell stays light.
+// all when the card is already on screen (the card on Content, Home's card block). Loaded only while a card waits
+// (Shell), so the shell stays light.
 
 export const CARD_TOAST_ID = 'content-card'
 /** The days whose card already slid in since the app opened (module memory: a reload is a new open). */
@@ -31,7 +32,9 @@ function Live({ card, version }: { card: LiveCard; version: number }) {
   const { show, dismiss } = useToast()
   const body = card.draft.post_body ?? ''
   const keys = useCardKeys(card, body, version)
-  const here = cardOnScreen(f.route, true)
+  // The card is already on screen: the card itself on Content, or Home's card block.
+  const homeBlock = useCardBlockShown()
+  const here = cardOnScreen(f.route, true) || homeBlock
   const [open, setOpen] = useState(false)
   const ready = !!keys.slot && keys.ready
 
