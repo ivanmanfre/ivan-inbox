@@ -13,7 +13,7 @@
 -- 2. A good-fit person engaged (family prospect_engaged). Events: post_engagers rows on his own posts, icp_score >= 7
 --    and scored, that became ready (first seen, or scored when the score came later) since the last run. The mark
 --    starts at now minus 26 hours on the first run, so the first run never replays the backlog. At most one per
---    person per 30 days (person = provider_id, else linkedin_url) and 2 a day, highest score first, then the most
+--    person per 90 days (person = provider_id, else linkedin_url) and 2 a day, highest score first, then the most
 --    recent. A person whose thread is closed or stopped never rings (prospect_engaged_closed: the Stalled
 --    Conversation Bump selector's holds plus the inbox's own stop and solved marks; when in doubt it suppresses).
 --    The tap opens their DM thread when one exists, else their LinkedIn profile.
@@ -64,7 +64,7 @@ create index if not exists prospect_engaged_alerts_day on public.prospect_engage
 alter table public.prospect_engaged_alerts enable row level security;
 revoke all on table public.prospect_engaged_alerts from public, anon, authenticated;
 grant all on table public.prospect_engaged_alerts to service_role;
-comment on table public.prospect_engaged_alerts is 'One row per good-fit engagement that rang (20261112c_content_result_alerts). person_key = provider_id, else linkedin_url; 30 days between alerts for one person.';
+comment on table public.prospect_engaged_alerts is 'One row per good-fit engagement that rang (20261112c_content_result_alerts). person_key = provider_id, else linkedin_url; 90 days between alerts for one person.';
 
 create table if not exists public.content_alert_state (
   k text primary key,
@@ -246,8 +246,8 @@ as $$
          ev.prospect_id is not null and exists (select 1 from public.outreach_messages m where m.prospect_id = ev.prospect_id),
          case
            when ev.pkey is null then 'no person id'
-           when exists (select 1 from public.prospect_engaged_alerts a where a.person_key = ev.pkey and a.alerted_at > p_now - interval '30 days')
-             then 'alerted in the last 30 days'
+           when exists (select 1 from public.prospect_engaged_alerts a where a.person_key = ev.pkey and a.alerted_at > p_now - interval '90 days')
+             then 'alerted in the last 90 days'
            when exists (select 1 from public.integration_config ic
                          where ic.key in ('unipile_linkedin_id', 'risedtc_linkedin_id', 'arch_linkedin_id', 'swishdm_linkedin_id')
                            and nullif(btrim(ic.value), '') is not null

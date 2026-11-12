@@ -216,7 +216,7 @@ describe('a good-fit person engaged (prospect_engaged)', { timeout: 60_000 }, ()
     expect((await run(db, '2026-11-12T18:00:00Z')).people.sent).toEqual([])
   })
 
-  it('never rings the same person twice in 30 days, by provider id, else by profile url', async () => {
+  it('never rings the same person twice in 90 days, by provider id, else by profile url', async () => {
     const db = await setup()
     await posts(db)
     await ev(db, { n: 1, provider: 'ACoAuke' })
@@ -228,10 +228,12 @@ describe('a good-fit person engaged (prospect_engaged)', { timeout: 60_000 }, ()
     await run(db, '2026-11-20T15:10:00Z')
     expect(await sentTitles(db)).toEqual(['Person 1 reacted to your post', 'Person 3 reacted to your post'])
     const c = await db.query<{ suppressed: string }>(`select suppressed from prospect_engaged_candidates($1::timestamptz - interval '26 hours', $1::timestamptz) where engager_id = $2`, ['2026-11-20T15:10:00Z', pid(1002)])
-    expect(c.rows[0].suppressed).toBe('alerted in the last 30 days')
-    // 31 days later the same person may ring again
-    await ev(db, { n: 4, post: 2, provider: 'ACoAuke', name: 'Auke later' }, '2026-12-13T15:10:00Z')
-    expect((await run(db, '2026-12-13T15:10:00Z')).people.sent.map(s => s.title)).toEqual(['Auke later reacted to your post'])
+    expect(c.rows[0].suppressed).toBe('alerted in the last 90 days')
+    // 31 days later the same person still does not ring; 91 days later they may
+    await ev(db, { n: 4, post: 2, provider: 'ACoAuke', name: 'Auke month' }, '2026-12-13T15:10:00Z')
+    expect((await run(db, '2026-12-13T15:10:00Z')).people.sent.map(s => s.title)).toEqual([])
+    await ev(db, { n: 5, post: 2, provider: 'ACoAuke', name: 'Auke later' }, '2027-02-11T15:10:00Z')
+    expect((await run(db, '2027-02-11T15:10:00Z')).people.sent.map(s => s.title)).toEqual(['Auke later reacted to your post'])
   })
 
   it('never rings for a person whose thread is closed or stopped, and does for the automatic states that are not a stop', async () => {
