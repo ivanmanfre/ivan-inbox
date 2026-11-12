@@ -50,6 +50,10 @@ export type FamilyKey =
   | 'lead_request_notice'
   // 2026-11-12: the day's one post card (db/20261112_content_daily_card), 11:00 Warsaw, Ivan's seat.
   | 'content_card'
+  // 2026-11-12: his results (db/20261112c_content_result_alerts), 15:10 UTC daily: a post that passed 5x his usual
+  // views, and a good-fit person (icp_score 7+) who reacted to or commented on one of his posts.
+  | 'content_result'
+  | 'prospect_engaged'
 
 // ---------------------------------------------------------------------------
 // 1. The human label. What "family" printed on screen actually says.
@@ -78,6 +82,8 @@ export const FAMILY_LABEL: Record<FamilyKey, string> = {
   brain_drafts_pending: 'Brain drafts',
   lead_request_notice: 'Report request',
   content_card: 'Post for today',
+  content_result: 'Post result',
+  prospect_engaged: 'Good fit on your post',
 }
 
 /** Any string, mapped to its human label; an unknown key falls back rather than throwing. */
@@ -124,6 +130,10 @@ export const FAMILY_LANE: Record<FamilyKey, Job | null> = {
   lead_request_notice: null,
   // The row's own url opens the card.
   content_card: 'content',
+  // The row's own url opens Performance.
+  content_result: 'content',
+  // The row's own url opens their DM thread, else their LinkedIn profile.
+  prospect_engaged: 'dms',
 }
 
 // ---------------------------------------------------------------------------
@@ -293,6 +303,8 @@ export function stateWord(n: Pick<Notification, 'family' | 'title' | 'body' | 's
     case 'brain_drafts_pending': word = n.count > 1 ? `${n.count} to judge` : 'To judge'; break
     case 'lead_request_notice': word = leadRequestWord(n.media); break
     case 'content_card': word = 'Ready to post'; break
+    case 'content_result': word = 'Took off'; break
+    case 'prospect_engaged': word = n.media?.engagement === 'comment' || / commented on your post$/.test(n.title) ? 'Commented' : 'Reacted'; break
     default: word = FALLBACK_BY_SEVERITY[n.severity] ?? 'Update'
   }
   // The safety net: whatever branch ran, a raw enum token never survives to
@@ -353,6 +365,8 @@ const COUNTED_NOUN: Record<FamilyKey, [one: string, many: string]> = {
   brain_drafts_pending: ['draft to judge', 'drafts to judge'],
   lead_request_notice: ['report request', 'report requests'],
   content_card: ['post for today', 'posts for today'],
+  content_result: ['post took off', 'posts took off'],
+  prospect_engaged: ['person engaged', 'people engaged'],
 }
 
 /** The hero line for a folded GROUP: the count and the thing it counts. */

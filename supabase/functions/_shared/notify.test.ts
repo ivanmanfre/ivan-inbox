@@ -89,6 +89,14 @@ describe('notify transient workflow claim', () => {
     expect(validateNotify({ family: 'content_card', title: 'Kraków taught me one thing about pricing.', url: './#exp/d/content/today' }).url).toBe('./#exp/d/content/today')
   })
 
+  it('rings for his results (families content_result and prospect_engaged) by default, with the urls the SQL writes', () => {
+    expect(pushDefault('content_result', 'info')).toBe(true)
+    expect(pushDefault('prospect_engaged', 'info')).toBe(true)
+    expect(validateNotify({ family: 'content_result', title: 'Your post passed 1,650 views', url: './#exp/d/content/results?lane=ivan' }).url).toBe('./#exp/d/content/results?lane=ivan')
+    expect(validateNotify({ family: 'prospect_engaged', title: 'Jo Kaminska reacted to your post', url: './#exp/d/dms?thread=00000000-0000-4000-8000-000000000001' }).url).toMatch(/^\.\/#exp\/d\/dms\?thread=/)
+    expect(validateNotify({ family: 'prospect_engaged', title: 'Jo Kaminska reacted to your post', url: 'https://www.linkedin.com/in/jokaminsky' }).url).toBe('https://www.linkedin.com/in/jokaminsky')
+  })
+
   it('a plan_ready row is stored and rings (push true, url kept); a repeat inside the window folds without ringing', async () => {
     const id = '33333333-3333-4333-8333-333333333333'
     let existing: unknown = null

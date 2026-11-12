@@ -85,6 +85,12 @@ describe('kindFor: every census family resolves to a real kind', () => {
   it('the day\'s post card needs Ivan: never a digest, so it is not folded into Activity', () => {
     expect(kindFor('content_card', 'info', 'Kraków taught me one thing about pricing.')).toBe('needs_you')
   })
+  it('his results need Ivan: a post that took off and a good-fit person who engaged are never digests', () => {
+    expect(kindFor('content_result', 'info', 'Your post passed 1,650 views')).toBe('needs_you')
+    expect(kindFor('prospect_engaged', 'info', 'Jo Kaminska commented on your post')).toBe('needs_you')
+    expect(presentPush({ family: 'prospect_engaged', severity: 'info', title: 'Jo Kaminska commented on your post',
+      body: 'Founder at Acme\n“You can move to Warsaw.”' })).toEqual({ title: '✋ Needs you · Jo Kaminska commented on your post', body: 'Founder at Acme “You can move to Warsaw.”' })
+  })
   it('lane supply attention needs an operator while an error is a failure', () => {
     expect(kindFor('lane_supply_alarm', 'attention', 'Lane below floor')).toBe('needs_you')
     expect(kindFor('lane_supply_alarm', 'error', 'Lane halted')).toBe('failed')

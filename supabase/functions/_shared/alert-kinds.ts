@@ -86,6 +86,8 @@ const BASE_KIND: Record<string, Kind> = {
   bot: 'needs_you',
   content_plan: 'needs_you', // plan_ready: a week of written drafts waits for his OK (db/265)
   content_card: 'needs_you', // the day's post card waits for Post / Skip / Fix (db/20261112_content_daily_card)
+  content_result: 'needs_you', // a post took off: his own results, never a digest (db/20261112c_content_result_alerts)
+  prospect_engaged: 'needs_you', // a good-fit person engaged with his post: a person to look at (same migration)
   scan_quality_alert: 'needs_you',
 
   // reply: a person outside the system said something back
