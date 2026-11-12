@@ -40,6 +40,9 @@ const ALL_FAMILIES: FamilyKey[] = [
   'lead_request_notice',
   // 2026-11-12: the day's one post card.
   'content_card',
+  // 2026-11-12: his results: a post that took off, a good-fit person who engaged.
+  'content_result',
+  'prospect_engaged',
 ]
 
 describe('FAMILY_LABEL', () => {
@@ -457,5 +460,32 @@ describe('content_card (the day\'s post card, 2026-11-12)', () => {
     expect(isMutedNotificationFamily('content_card')).toBe(false)
     expect(isActivityRow('content_card', 'info', 'A first line')).toBe(false)
     expect(ACTIVITY_FAMILIES).not.toContain('content_card')
+  })
+})
+
+describe('content_result and prospect_engaged (his results, 2026-11-12)', () => {
+  it('both have a label, a lane and a word, and are needs-you rows: never muted, never folded into Activity', async () => {
+    const { isActivityRow, isMutedNotificationFamily, ACTIVITY_FAMILIES } = await import('../../../../supabase/functions/_shared/notification-lifecycle')
+    expect(familyLabel('content_result')).toBe('Post result')
+    expect(familyLabel('prospect_engaged')).toBe('Good fit on your post')
+    expect(FAMILY_LANE.content_result).toBe('content')
+    expect(FAMILY_LANE.prospect_engaged).toBe('dms')
+    expect(stateWord({ ...n('content_result', 'Do people even speak English in Poland? 7 times your usual 113.'), title: 'Your post passed 830 views' })).toBe('Took off')
+    for (const f of ['content_result', 'prospect_engaged'] as const) {
+      expect(kindFor(f, 'info', 'A title')).toBe('needs_you')
+      expect(isExplicitFamily(f)).toBe(true)
+      expect(isMutedNotificationFamily(f)).toBe(false)
+      expect(isActivityRow(f, 'info', 'A title')).toBe(false)
+      expect(ACTIVITY_FAMILIES).not.toContain(f)
+    }
+  })
+
+  it('says whether the person reacted or commented, from the row itself', () => {
+    const row = (title: string, media: Notification['media'] = null) => ({ ...n('prospect_engaged', 'Founder at Acme'), title, media })
+    expect(stateWord(row('Jo Kaminska commented on your post'))).toBe('Commented')
+    expect(stateWord(row('Jo Kaminska reacted to your post'))).toBe('Reacted')
+    expect(stateWord(row('Jo Kaminska reacted to your post', { engagement: 'comment' }))).toBe('Commented')
+    expect(groupStateWord(2, 'prospect_engaged')).toBe('2 people engaged')
+    expect(groupStateWord(1, 'content_result')).toBe('1 post took off')
   })
 })

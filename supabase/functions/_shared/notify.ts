@@ -55,6 +55,8 @@ export const PUSH_DEFAULT: Record<string, boolean> = {
   thursday_brief: true,       // the Thursday brief
   content_plan: true,         // plan_ready only: one alert per account-week (db/265); the Monday plan line is written by SQL and never pushes
   content_card: true,         // the day's one post card at 11:00 Warsaw (db/20261112_content_daily_card), one per day
+  content_result: true,       // a post of his passed 5x his usual views, one a day at most (db/20261112c_content_result_alerts)
+  prospect_engaged: true,     // a good-fit person reacted or commented on his post, 2 a day at most (same migration)
 
   // Generic infrastructure failures stay recorded for diagnostics. Failed
   // prospect sends still interrupt because an actual message did not go out.
