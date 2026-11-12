@@ -105,6 +105,15 @@ describe('readAsk', () => {
     expect(ok({ ...q, anchor: 'you.\n\nI told a client' })).toMatchObject({ ok: false, error: 'anchor_spans_paragraphs' })
     // a line break inside one paragraph is fine
     expect(readAsk(text(JSON.stringify({ ...q, anchor: 'Line one\nline two' })), 'Line one\nline two\n\nNext.')).toMatchObject({ ok: true })
+    // the same with CRLF, lone CR, U+2028 / U+2029 and blank space between the breaks
+    const crlf = 'Line one\r\nline two\r\n\r\nNext one.\r\n \t\r\nLast one.'
+    expect(readAsk(text(JSON.stringify({ ...q, anchor: 'Line one\r\nline two' })), crlf)).toMatchObject({ ok: true })
+    expect(readAsk(text(JSON.stringify({ ...q, anchor: 'line two\r\n\r\nNext one.' })), crlf)).toMatchObject({ ok: false, error: 'anchor_spans_paragraphs' })
+    expect(readAsk(text(JSON.stringify({ ...q, anchor: 'Next one.\r\n \t\r\nLast one.' })), crlf)).toMatchObject({ ok: false, error: 'anchor_spans_paragraphs' })
+    for (const sep of ['\r\r', '\u2028\u2028', '\u2029', '\n\u00a0\n']) {
+      const post = `First part here.${sep}Second part here.`
+      expect(readAsk(text(JSON.stringify({ ...q, anchor: post })), post)).toMatchObject({ ok: false, error: 'anchor_spans_paragraphs' })
+    }
   })
 
   it('two questions, no question mark, an em dash, an unknown kind, no question at all', () => {
@@ -142,6 +151,31 @@ describe('checkWeave: the code checks on the woven post', () => {
     const four = ['One.', 'Two.', 'Three.', 'Four.', 'Five stays.', 'Six stays.'].join('\n\n')
     const span = 'One.\n\nTwo.\n\nThree.\n\nFour.'
     expect(checkWeave(four, four.replace(span, 'All four replaced.'), span, answer)).toBe('anchor_spans_paragraphs')
+  })
+
+  it('CRLF and U+2029 posts keep their far paragraphs protected', () => {
+    const six = (sep: string) => ['One stays.', 'Two stays.', 'Three is the anchor.', 'Four.', 'Five stays.', 'Six stays.'].join(sep)
+    for (const sep of ['\r\n\r\n', '\u2029', '\r\r', '\u2028\u2028', '\r\n \r\n']) {
+      const post = six(sep)
+      expect(checkWeave(post, post.replace('Six stays.', 'Six changed.').replace('Three is the anchor.', 'Three is the anchor. Yes.'), 'Three is the anchor.', answer)).toBe('touched_far_paragraph')
+      expect(checkWeave(post, post.replace('One stays.', 'One changed.').replace('Three is the anchor.', 'Three is the anchor. Yes.'), 'Three is the anchor.', answer)).toBe('touched_far_paragraph')
+      expect(checkWeave(post, post.replace('Three is the anchor.', 'Three is the anchor. Yes.'), 'Three is the anchor.', answer)).toBeNull()
+    }
+    const post = six('\r\n\r\n')
+    expect(checkWeave(post, post.replace('Two stays.\r\n\r\nThree is the anchor.', 'Gone.'), 'Two stays.\r\n\r\nThree is the anchor.', answer)).toBe('anchor_spans_paragraphs')
+  })
+
+  it('an en dash passes only between two digits', () => {
+    expect(checkWeave(P, P.replace(A, A + ' He said yes\u2013maybe.'), A, answer)).toBe('dash')
+    expect(checkWeave(P, P.replace(A, A + ' It took 10\u2013twenty days.'), A, answer)).toBe('dash')
+    expect(checkWeave(P, P.replace(A, A + ' It took 10\u201320 days.'), A, answer)).toBeNull()
+    // an edit next to an existing range that turns it into punctuation
+    const range = P.replace('Fourth is a neighbour.', 'Fourth took 10\u201320 days.')
+    expect(checkWeave(range, range.replace('10\u201320', '10 \u201320'), A, answer)).toBe('dash')
+    expect(checkWeave(range, range.replace('10\u201320', '10\u2013 20'), A, answer)).toBe('dash')
+    // and the question itself
+    expect(readAsk(text(JSON.stringify({ has_lived_detail: false, question: 'Was it yes\u2013maybe for you?', anchor: ANCHOR, kind: 'own_take', why: '' })), DRAFT))
+      .toMatchObject({ ok: false, error: 'dash' })
   })
 
   it('a dash swapped in: an existing em dash removed and a new one added elsewhere in the region fails', () => {

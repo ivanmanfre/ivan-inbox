@@ -231,6 +231,19 @@ describe('content_card_ask_input and content_card_ask_save', { timeout: 60_000 }
     await expect(save(db, { state: 'weird' }, { day: '2026-11-13' })).resolves.toEqual({ ok: false, why: 'not a shown card' })
   })
 
+  it('the anchor rule in SQL is the same paragraph grammar: CRLF, lone CR, U+2028 and U+2029 separate paragraphs', async () => {
+    const crlf = 'Line one\r\nline two\r\n\r\nNext one.\r\n \t\r\nLast one.\u2029After a U+2029.\r\rAfter two CRs.'
+    const db = await setup()
+    await draft(db, 1, { body: crlf })
+    await pick(db)
+    const sha = await shaOf(db, crlf)
+    for (const anchor of ['line two\r\n\r\nNext one.', 'Next one.\r\n \t\r\nLast one.', 'Last one.\u2029After', 'U+2029.\r\rAfter']) {
+      expect(await save(db, { ...asked, anchor }, { sha })).toEqual({ ok: true, state: 'failed' })
+    }
+    // one CRLF inside a paragraph is a line, not a paragraph break
+    expect(await save(db, { ...asked, anchor: 'Line one\r\nline two' }, { sha })).toEqual({ ok: true, state: 'asked' })
+  })
+
   it('"none": the post already has his detail, no question', async () => {
     const db = await setup()
     await draft(db, 1)

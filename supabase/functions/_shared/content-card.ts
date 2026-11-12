@@ -86,12 +86,21 @@ function objectOf(raw: string): Record<string, unknown> | null {
   } catch { return null }
 }
 
-const EM_DASH = /—|\s–\s/g
 const count = (s: string, re: RegExp) => (s.match(re) ?? []).length
-/** The paragraph rule, the same in readAsk, checkWeave and content_card_ask_save (SQL '\n[[:blank:]]*\n'): paragraphs
- *  are split by a blank line (newline, spaces or tabs, newline). An anchor holding one spans paragraphs. */
-const PARA_SEP = /\n[ \t]*(?:\n[ \t]*)+/g
-export const spansParagraphs = (anchor: string) => /\n[ \t]*\n/.test(anchor)
+/** THE PARAGRAPH RULE, one grammar for readAsk, checkWeave and content_card_ask_save (SQL mirrors it):
+ *  a line break is \r\n, a lone \r, \n, U+2028 or U+2029; blank space is any whitespace that is not a line break.
+ *  Paragraphs are split by two or more line breaks with only blank space between them, or by any U+2029 (the
+ *  paragraph separator itself). An anchor holding a separator spans paragraphs. Splitting runs on the text as it
+ *  is (no normalising), so the offsets line up with the original. */
+const BREAK = '(?:\\r\\n|\\r(?!\\n)|[\\n\\u2028\\u2029])'
+const BLANK = '[\\t\\v\\f \\u00a0\\u1680\\u2000-\\u200a\\u202f\\u205f\\u3000\\ufeff]'
+const PARA_SEP_SRC = `${BREAK}(?:${BLANK}*${BREAK})+${BLANK}*|\\u2029${BLANK}*`
+export const spansParagraphs = (anchor: string) => new RegExp(PARA_SEP_SRC).test(anchor)
+/** A dash used as punctuation at s[i]: an em dash, or an en dash that is not between two digits (10\u201320 is a range;
+ *  yes\u2013maybe, 10\u2013twenty and 10 \u201320 are not). */
+const dashAt = (s: string, i: number) =>
+  s[i] === '\u2014' || (s[i] === '\u2013' && !(/[0-9]/.test(s[i - 1] ?? '') && /[0-9]/.test(s[i + 1] ?? '')))
+const hasDash = (s: string) => { for (let i = 0; i < s.length; i++) if (dashAt(s, i)) return true; return false }
 /** Sentence-ending question marks: "'GEO?'." inside a quote does not end the sentence. */
 const questionEnds = (s: string) => count(s, /\?(?=\s|$)/g)
 export const words = (s: string) => s.trim().split(/\s+/).filter(Boolean).length
@@ -115,7 +124,7 @@ export function readAsk(json: unknown, draft: string): AskRead {
   const fail = (error: string): AskRead => ({ ok: false, error, result: o })
   if (!q) return fail('no_question')
   if (words(q) > QUESTION_MAX_WORDS) return fail('question_too_long')
-  if (count(q, EM_DASH) > 0) return fail('dash')
+  if (hasDash(q)) return fail('dash')
   if (!q.endsWith('?')) return fail('not_a_question')
   if (questionEnds(q) > 1) return fail('two_questions')
   if (anchor.length < 3 || !draft.includes(anchor)) return fail('anchor_not_in_body')
@@ -127,7 +136,7 @@ export function readAsk(json: unknown, draft: string): AskRead {
 /** Paragraphs (blank-line separated) with their start offsets, each trimmed for comparison. */
 function paragraphs(s: string): { text: string; start: number; end: number }[] {
   const out: { text: string; start: number; end: number }[] = []
-  const sep = new RegExp(PARA_SEP)
+  const sep = new RegExp(PARA_SEP_SRC, 'g')
   let at = 0
   for (let m = sep.exec(s); m; m = sep.exec(s)) {
     out.push({ text: s.slice(at, m.index).trim(), start: at, end: m.index })
@@ -139,10 +148,6 @@ function paragraphs(s: string): { text: string; start: number; end: number }[] {
 
 /** How much the post may grow: twice the answer plus room for the joining words. */
 export const growthBound = (answer: string) => answer.length * 2 + 200
-
-/** A dash used as punctuation at p[i]: an em dash, or an en dash with a space beside it (a range like 10–20 is not). */
-const dashAt = (p: string, i: number) =>
-  p[i] === '—' || (p[i] === '–' && (/\s/.test(p[i - 1] ?? '') || /\s/.test(p[i + 1] ?? '')))
 
 /** [from, to) of `p` that differs from `o`: everything between their common start and their common end. */
 function changedSpan(o: string, p: string): [number, number] {
@@ -165,8 +170,10 @@ export function checkWeave(original: string, proposed: string, anchor: string, a
   const at = anchor ? o.indexOf(anchor) : -1
   if (at < 0) return 'anchor_not_in_body'
   if (spansParagraphs(anchor)) return 'anchor_spans_paragraphs'
+  // One character beyond each end of the changed span too: an edit next to a dash can change what the dash is
+  // (10\u201320 edited to 10 \u201320 leaves the dash itself in the unchanged end).
   const [from, to] = changedSpan(o, p)
-  for (let i = from; i < to; i++) if (dashAt(p, i)) return 'dash'
+  for (let i = Math.max(0, from - 1); i < Math.min(p.length, to + 1); i++) if (dashAt(p, i)) return 'dash'
   if (count(p, /,\s+not\s/gi) > count(o, /,\s+not\s/gi)) return 'contrast'
   if (p.length - o.length > growthBound(answer.trim())) return 'too_long'
   const op = paragraphs(o), pp = paragraphs(p).map(x => x.text)

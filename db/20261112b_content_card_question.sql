@@ -228,8 +228,9 @@ end $function$;
 -- What content-card-ask stores (service only). First result wins; only for the day's shown card whose body is still
 -- the one asked about (p_sha). p_result.state: 'asked' (question, anchor verbatim in the body, kind), 'none' (the post
 -- already carries his detail) or 'failed' (transient: retried by the pick while attempts last). A question that does
--- not hold up here is stored as failed, never as a question. The anchor must sit inside ONE paragraph: it may not
--- hold a blank line (newline, spaces or tabs, newline), the paragraph rule of _shared/content-card.ts.
+-- not hold up here is stored as failed, never as a question. The anchor must sit inside ONE paragraph, by the
+-- paragraph rule of _shared/content-card.ts: line breaks are \r\n, a lone \r, \n, U+2028 and U+2029; two of them with
+-- only blank space between, or any U+2029, separate paragraphs. (CR forms are folded to \n first, for the check only.)
 create or replace function public.content_card_ask_save(p_day date, p_draft uuid, p_sha text, p_result jsonb)
 returns jsonb
 language plpgsql
@@ -248,7 +249,8 @@ begin
   if p_sha is null or c.body_sha256 <> p_sha or public.content_card_sha(v_body) <> p_sha then
     return jsonb_build_object('ok', false, 'why', 'text changed'); end if;
   if v_state = 'asked' and (v_q is null or length(v_q) > 300 or v_a is null or strpos(coalesce(v_body, ''), v_a) = 0
-       or v_a ~ '\n[[:blank:]]*\n' or v_k is null or v_k not in ('own_moment', 'own_number', 'own_take', 'own_words')) then
+       or regexp_replace(v_a, '\r\n?', E'\n', 'g') ~ '[\n\u2028\u2029][\t\v\f \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff]*[\n\u2028\u2029]|\u2029'
+       or v_k is null or v_k not in ('own_moment', 'own_number', 'own_take', 'own_words')) then
     v_state := 'failed'; p_result := jsonb_build_object('error', 'question refused by the database');
   end if;
   if v_state = 'asked' then
