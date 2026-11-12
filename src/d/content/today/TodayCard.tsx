@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { ContentDraft } from '../../../lib/content'
-import { rebaseCard, setCardState, type TodayCard } from '../../../lib/contentCard'
+import { answerCard, rebaseCard, setCardState, weaveCard, type CardQuestion, type TodayCard } from '../../../lib/contentCard'
 import { dHash } from '../../route'
 import { useFrame } from '../../shell/frame'
 import { useToast } from '../../ui/toast'
@@ -16,6 +16,10 @@ import './today.css'
 // three keys: Post (the Review desk's one-tap key), Skip (asks nothing, marks the card skipped, the draft stays in
 // Review untouched; Undo) and Fix (the Review grid's own in-place edit, compare-and-swap; Post then posts the fixed
 // text). With no card, or once it is posted or skipped, Content lands on Plan as before (index.tsx).
+// The one guided question (db/20261112b_content_card_question), when the card has one on its current text: one line
+// under the post, a one-line input and Add. Add keeps his answer, asks content-card-weave for the post with it worked
+// in, and opens Fix on that text; he reads it and saves it himself (the weave never writes the draft). A failed weave
+// says so and opens Fix on the unchanged text, his answer still in the input. Post and Skip never wait on it.
 
 /** The card on the page. Only drawn while the card waits (index.tsx checks isWaiting first). */
 export function TodayCardView() {
@@ -38,6 +42,10 @@ function Live({ card, version }: { card: LiveCard; version: number }) {
   const held = pending.has(r.id)
   const editing = fix !== null
   const busy = held || editing
+  // The editor was opened by Add: saving it answers the question (the answer itself is kept at Add).
+  const fromAsk = useRef<string | null>(null)
+  const [asking, setAsking] = useState(false)
+  const q = saved === null ? card.question ?? null : null
 
   const skip = () => {
     const before: TodayCard = card
@@ -58,11 +66,26 @@ function Live({ card, version }: { card: LiveCard; version: number }) {
       toast.show({ tone: 'failed', message: e instanceof Error ? e.message : 'Not skipped.', action: { label: 'Retry', verb: 'retry', run: skip } })
     })
   }
-  const startFix = () => { base.current = body; setFix(body) }
+  const startFix = () => { fromAsk.current = null; base.current = body; setFix(body) }
   const onSaved = (text: string) => {
     setSaved(text)
+    const answer = fromAsk.current
+    fromAsk.current = null
     // The card follows the saved text, so Post posts what he just fixed; then one read confirms it.
-    void rebaseCard(card.day, r.id, text).catch(() => false).then(() => refreshTodayCard())
+    void rebaseCard(card.day, r.id, text).catch(() => false)
+      .then(() => answer ? answerCard(card.day, r.id, answer, true).catch(() => false) : false)
+      .then(() => refreshTodayCard())
+  }
+  const add = async (question: CardQuestion, answer: string) => {
+    if (asking || busy) return
+    setAsking(true)
+    void answerCard(card.day, r.id, answer).catch(() => false)
+    const shown = body
+    let text = shown
+    try { text = await weaveCard(card.day, r.id, question.sha, answer) }
+    catch { toast.show({ tone: 'failed', message: 'Could not add it. Edit the post yourself.' }) }
+    finally { setAsking(false) }
+    fromAsk.current = answer; base.current = shown; setFix(text)
   }
 
   return (
@@ -71,15 +94,36 @@ function Live({ card, version }: { card: LiveCard; version: number }) {
         ? <GridPost c={{ r, lane: 'ivan', title: r.title ?? '' }} body={body} text={fix} setText={setFix} base={base.current} canEdit
             onStart={startFix} onSaved={onSaved} onChanged={() => {}} />
         : <div className="ct-post"><LinkedInCard lane="ivan" body={body} images={r.image_urls} type={r.type} videoUrl={r.video_url ?? null} bare open expandable={false} /></div>}
+      {q && <Ask key={q.sha} q={q} busy={busy} adding={asking} onAdd={a => void add(q, a)} />}
       <div className="ct-keys">
         {keys.check != null
           ? <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-check" disabled={busy} onClick={() => f.navigate(dHash('content', 'now', { focus: r.id }))}>{checkWords(keys.check)}</button>
           : <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-post" disabled={busy || !keys.slot || !keys.ready} onClick={keys.post}
               title={editing ? 'Save or cancel your edit first' : undefined}>{keys.slot ? postWords(keys.slot.at) : 'Post'}</button>}
         <button type="button" className="cv2-k cv2-k-q" data-verb="card-skip" disabled={busy} title={editing ? 'Save or cancel your edit first' : undefined} onClick={skip}>Skip</button>
-        <button type="button" className="cv2-k cv2-k-q" data-verb="card-fix" disabled={busy} onClick={startFix}>Fix</button>
+        <button type="button" className="cv2-k cv2-k-q" data-verb="card-fix" disabled={busy || asking} onClick={startFix}>Fix</button>
       </div>
     </article>
+  )
+}
+
+/** The question, a one-line input (plain text, so the phone keyboard's dictation works) and Add. Nothing else. */
+function Ask({ q, busy, adding, onAdd }: { q: CardQuestion; busy: boolean; adding: boolean; onAdd: (answer: string) => void }) {
+  const [text, setText] = useState(q.answer ?? '')
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    const a = text.trim()
+    if (a && !adding && !busy) onAdd(a)
+  }
+  return (
+    <form className="ct-ask" data-card-ask onSubmit={submit}>
+      <p className="ct-ask-q" id={`ct-ask-${q.sha.slice(0, 12)}`}>{q.text}</p>
+      <div className="ct-ask-row">
+        <input type="text" value={text} maxLength={1000} autoComplete="off" enterKeyHint="done" disabled={adding}
+          aria-labelledby={`ct-ask-${q.sha.slice(0, 12)}`} onChange={e => setText(e.target.value)} />
+        <button type="submit" className="cv2-k cv2-k-q" data-verb="card-ask-add" disabled={busy || adding || !text.trim()}>{adding ? 'Adding…' : 'Add'}</button>
+      </div>
+    </form>
   )
 }
 

@@ -18,8 +18,9 @@ import { bodySha } from '../../../lib/lineFlags'
 const lib = vi.hoisted(() => ({
   readTodayCard: vi.fn(), setCardState: vi.fn(), rebaseCard: vi.fn(), fetchIvanSlotRows: vi.fn(), postCard: vi.fn(),
   fetchIvanArmedDays: vi.fn(), approveReviewDraft: vi.fn(), saveDraftBody: vi.fn(), scheduleGuarded: vi.fn(), setVerdict: vi.fn(),
+  answerCard: vi.fn(), weaveCard: vi.fn(),
 }))
-vi.mock('../../../lib/contentCard', async orig => ({ ...(await orig<typeof import('../../../lib/contentCard')>()), readTodayCard: lib.readTodayCard, setCardState: lib.setCardState, rebaseCard: lib.rebaseCard, fetchIvanSlotRows: lib.fetchIvanSlotRows, postCard: lib.postCard }))
+vi.mock('../../../lib/contentCard', async orig => ({ ...(await orig<typeof import('../../../lib/contentCard')>()), readTodayCard: lib.readTodayCard, setCardState: lib.setCardState, rebaseCard: lib.rebaseCard, fetchIvanSlotRows: lib.fetchIvanSlotRows, postCard: lib.postCard, answerCard: lib.answerCard, weaveCard: lib.weaveCard }))
 vi.mock('../../../lib/content', async orig => ({ ...(await orig<typeof import('../../../lib/content')>()), fetchIvanArmedDays: lib.fetchIvanArmedDays, approveReviewDraft: lib.approveReviewDraft, saveDraftBody: lib.saveDraftBody }))
 vi.mock('../writes', () => ({ scheduleGuarded: lib.scheduleGuarded, archiveStaleDraft: vi.fn() }))
 vi.mock('../../../lib/verdicts', async orig => ({ ...(await orig<typeof import('../../../lib/verdicts')>()), setVerdict: lib.setVerdict }))
@@ -61,6 +62,8 @@ beforeEach(() => {
   lib.approveReviewDraft.mockResolvedValue(undefined)
   lib.scheduleGuarded.mockImplementation((_id: string, at: string) => Promise.resolve(at))
   lib.postCard.mockImplementation((_d: string, _i: string, _s: string, at: string) => Promise.resolve(at))
+  lib.answerCard.mockResolvedValue(true)
+  lib.weaveCard.mockRejectedValue(new Error('not mocked'))
   resetTodayCardForTest(); resetSlidForTest(); resetDecisionsForTest(); resetReservedForTest()
 })
 afterEach(() => { cleanup(); resetDecisionsForTest() })
@@ -298,5 +301,120 @@ describe('Home and the landing', () => {
     // the card's own address keeps the Plan under it and is never redirected
     expect(subOf('today')).toBe('plan')
     expect(contentRedirect('today', new URLSearchParams())).toBeNull()
+  })
+})
+
+describe('the card’s one question', () => {
+  const Q = 'You told the client their expert posts only reach followers. What did they say back?'
+  const SHA = 'a'.repeat(64)
+  const withQ = (o: Partial<NonNullable<TodayCard['question']>> = {}) => card({ question: { text: Q, anchor: 'You charge for the result.', kind: 'own_words', sha: SHA, answer: null, ...o } })
+  const ask = () => document.querySelector('[data-card-ask]') as HTMLElement | null
+  const input = () => ask()!.querySelector('input') as HTMLInputElement
+  const WOVEN = BODY.replace('You charge for the result.', 'You charge for the result. He said "so who do we write for then?"')
+  const open = async (c: TodayCard, layout?: 'phone') => {
+    lib.readTodayCard.mockResolvedValue(c)
+    renderInFrame(<TodayCardView />, { hash: '#exp/d/content/today', ...(layout ? { layout } : {}) })
+    await waitFor(() => expect(document.querySelector('[data-today-card]')).toBeTruthy())
+  }
+
+  it('nothing extra renders when there is no question', async () => {
+    await open(card())
+    expect(ask()).toBeNull()
+    expect(document.querySelector('[data-today-card] input')).toBeNull()
+    expect(verb('card-ask-add')).toBeNull()
+  })
+
+  it('a live question: one line under the post, a plain one-line input and Add, nothing else', async () => {
+    await open(withQ())
+    const a = ask()!
+    expect(a.textContent).toBe(Q + 'Add')
+    expect(input().type).toBe('text')
+    expect(input().placeholder).toBe('')
+    expect(screen.getByLabelText(Q)).toBe(input())
+    expect(verb('card-ask-add')!.textContent).toBe('Add')
+    expect(verb('card-ask-add')!.disabled).toBe(true)
+    // under the post, above the keys
+    const card$ = document.querySelector('[data-today-card]')!
+    expect([...card$.children].indexOf(a)).toBe([...card$.children].indexOf(card$.querySelector('.ct-keys')!) - 1)
+    expect(a.textContent).not.toContain('—')
+  })
+
+  it('Add keeps his answer, asks for the woven post, opens Fix on it; his save answers the question', async () => {
+    lib.weaveCard.mockResolvedValue(WOVEN)
+    lib.saveDraftBody.mockResolvedValue(undefined)
+    await open(withQ())
+    fireEvent.change(input(), { target: { value: '  he said so who do we write for then ' } })
+    fireEvent.click(verb('card-ask-add')!)
+    expect(lib.answerCard).toHaveBeenCalledWith('2026-11-12', ID, 'he said so who do we write for then')
+    expect(lib.weaveCard).toHaveBeenCalledWith('2026-11-12', ID, SHA, 'he said so who do we write for then')
+    const box = await screen.findByLabelText('Post text') as HTMLTextAreaElement
+    expect(box.value).toBe(WOVEN)
+    // nothing was written to the draft by the weave: only his save writes
+    expect(lib.saveDraftBody).not.toHaveBeenCalled()
+    lib.readTodayCard.mockResolvedValue(card({}, { post_body: WOVEN, updated_at: '2026-11-12T10:30:00Z' }))
+    fireEvent.click(verb('grid-save')!)
+    await waitFor(() => expect(lib.saveDraftBody).toHaveBeenCalledWith(ID, WOVEN, null, BODY, '2026-11-10T09:00:00Z'))
+    await waitFor(() => expect(lib.rebaseCard).toHaveBeenCalledWith('2026-11-12', ID, WOVEN))
+    await waitFor(() => expect(lib.answerCard).toHaveBeenCalledWith('2026-11-12', ID, 'he said so who do we write for then', true))
+    await waitFor(() => expect(ask()).toBeNull())
+    expect(document.querySelector('[data-today-card]')!.textContent).toContain('so who do we write for then?')
+  })
+
+  it('a failed weave says one plain line and opens Fix on the unchanged text, his answer still in the input', async () => {
+    lib.weaveCard.mockRejectedValue(new Error('touched_far_paragraph'))
+    await open(withQ())
+    fireEvent.change(input(), { target: { value: 'He laughed' } })
+    fireEvent.submit(ask()!)
+    expect(await screen.findByText('Could not add it. Edit the post yourself.')).toBeTruthy()
+    const box = await screen.findByLabelText('Post text') as HTMLTextAreaElement
+    expect(box.value).toBe(BODY)
+    expect(input().value).toBe('He laughed')
+    expect(lib.answerCard).toHaveBeenCalledWith('2026-11-12', ID, 'He laughed')
+    // cancelling the edit leaves the answer kept and the question up; it is not marked answered
+    fireEvent.click(verb('grid-cancel')!)
+    expect(ask()).toBeTruthy()
+    expect(lib.answerCard).not.toHaveBeenCalledWith('2026-11-12', ID, 'He laughed', true)
+  })
+
+  it('an answer he gave earlier is back in the input', async () => {
+    await open(withQ({ answer: 'He laughed' }))
+    expect(input().value).toBe('He laughed')
+    expect(verb('card-ask-add')!.disabled).toBe(false)
+  })
+
+  it('Post and Skip work whether or not he answers', async () => {
+    await open(withQ())
+    await waitFor(() => expect(verb('card-post')?.disabled).toBe(false))
+    fireEvent.click(verb('card-post')!)
+    await act(() => flushDecisions())
+    expect(lib.postCard).toHaveBeenCalledWith('2026-11-12', ID, await bodySha(BODY), expect.any(String), expect.any(Number))
+    expect(lib.weaveCard).not.toHaveBeenCalled()
+    expect(lib.answerCard).not.toHaveBeenCalled()
+    cleanup(); resetTodayCardForTest(); resetDecisionsForTest()
+    await open(withQ())
+    fireEvent.click(verb('card-skip')!)
+    await waitFor(() => expect(lib.setCardState).toHaveBeenCalledWith('2026-11-12', ID, 'skipped'))
+    expect(lib.weaveCard).not.toHaveBeenCalled()
+  })
+
+  it('works on the phone layout too', async () => {
+    lib.weaveCard.mockResolvedValue(WOVEN)
+    await open(withQ(), 'phone')
+    fireEvent.change(input(), { target: { value: 'He said so who do we write for' } })
+    fireEvent.click(verb('card-ask-add')!)
+    expect((await screen.findByLabelText('Post text') as HTMLTextAreaElement).value).toBe(WOVEN)
+  })
+
+  it('the toast and Home peek stay two lines, Post and Open', async () => {
+    lib.readTodayCard.mockResolvedValue(withQ())
+    render(<Frame hash="#exp/d/home"><CardToast /></Frame>)
+    await waitFor(() => expect(toastEl()).toBeTruthy())
+    expect(toastEl()!.querySelector('input')).toBeNull()
+    expect(toastEl()!.textContent).not.toContain(Q)
+    cleanup()
+    renderInFrame(<HomeCard />, { hash: '#exp/d/home' })
+    await waitFor(() => expect(document.querySelector('.ct-home')).toBeTruthy())
+    expect(document.querySelector('.ct-home input')).toBeNull()
+    expect(document.querySelector('.ct-home')!.textContent).not.toContain(Q)
   })
 })

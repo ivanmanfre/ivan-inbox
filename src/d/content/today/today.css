@@ -32,3 +32,12 @@
 .ct-done{margin:8px 0 12px;font-size:13.5px;color:var(--t2)}
 .ct-done a{color:var(--t1)}
 .d-phone .ct-done{padding:0 16px}
+
+/* The one guided question (db/20261112b_content_card_question): the question, a one-line input and Add. */
+.ct-ask{display:flex;flex-direction:column;gap:8px;margin:0}
+.ct-ask-q{margin:0;font-size:14px;line-height:1.4;color:var(--t1)}
+.ct-ask-row{display:flex;gap:8px;align-items:center}
+.ct-ask-row input{flex:1;min-width:0;height:var(--ds-control-h,36px);padding:0 10px;border-radius:var(--ds-r-btn,8px);border:0;background:var(--ds-well-fill);box-shadow:var(--ds-well-shadow);font:400 var(--ds-fs-input,14px) var(--ds-font,var(--f));color:var(--ds-text,var(--t1))}
+.d-phone .ct-ask{padding:0 16px}
+.d-phone .ct-ask-row input{height:44px;font-size:16px}
+.d-phone .ct-ask-row .cv2-k{min-height:44px}
