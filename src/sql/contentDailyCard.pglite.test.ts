@@ -28,7 +28,7 @@ create table public.integration_config (key text primary key, value text);
 insert into public.integration_config values ('inbox_notify_url', 'https://example.test/inbox-notify'), ('inbox_push_secret', 's');
 create table public.carousel_drafts (
   id uuid primary key, client_id text, status text not null, type text, title text, post_body text, qa jsonb, taxonomy jsonb,
-  source_label text, image_urls jsonb, video_url text, scheduled_at timestamptz, published_at timestamptz,
+  source_label text, source_detail jsonb, image_urls jsonb, video_url text, scheduled_at timestamptz, published_at timestamptz,
   created_at timestamptz default now(), updated_at timestamptz default now());
 create table public.cb34_p2_members (draft_id uuid primary key, client_id text, state text, validation jsonb, body_sha256 text);
 create table public.inbox_notifications (id bigserial primary key, dedupe_key text, dismissed_at timestamptz);
@@ -191,6 +191,35 @@ describe('content_card_pick', { timeout: 60_000 }, () => {
     await draft(s, { n: 7, status: 'published', published: '2026-11-10T09:45:00Z' }); await readPoland(s, 7, true)
     expect(await one<number>(s, `select public.content_card_week_poland($1::timestamptz) v`, [AT_11])).toBe(1)
     expect(await pick(s)).toMatchObject({ fire: true, draft_id: id(2), why: 'poland' })
+  })
+
+  it('the X tracked-outlier lane counts as Poland for the order: business first once the week has its 2', async () => {
+    // two Poland posts already dated this week
+    const twoPoland = async (db: PGlite) => {
+      await draft(db, { n: 6, status: 'scheduled', scheduled: '2026-11-13T09:45:00Z' }); await readPoland(db, 6, true)
+      await draft(db, { n: 7, status: 'published', published: '2026-11-10T09:45:00Z' }); await readPoland(db, 7, true)
+    }
+    const xLane = (db: PGlite, n: number) => db.query(`update carousel_drafts set taxonomy = '{"source":"x_tracked_outlier"}' where id = $1`, [id(n)])
+    // newer X-outlier copy (no stored Poland read) + older business draft: the business draft
+    let db = await setup()
+    await twoPoland(db)
+    await draft(db, { n: 1, daysAgo: 1, body: 'Today Poland celebrates Independence Day...' }); await xLane(db, 1)
+    await draft(db, { n: 2, daysAgo: 4 }); await readPoland(db, 2, false)
+    expect((await db.query(`select draft_id::text, poland, poland_lane from content_card_candidates($1::timestamptz) order by draft_id`, [AT_11])).rows)
+      .toEqual([{ draft_id: id(1), poland: null, poland_lane: true }, { draft_id: id(2), poland: false, poland_lane: false }])
+    expect(await pick(db)).toMatchObject({ fire: true, draft_id: id(2), why: 'newest' })
+    // only X-outlier drafts left (source_detail.kind, the field the app reads): one of them, why 'poland'
+    db = await setup()
+    await twoPoland(db)
+    await draft(db, { n: 1, daysAgo: 2 }); await xLane(db, 1)
+    await draft(db, { n: 3, daysAgo: 1 })
+    await db.query(`update carousel_drafts set source_detail = '{"kind":"x_tracked_outlier"}' where id = $1`, [id(3)])
+    expect(await pick(db)).toMatchObject({ fire: true, draft_id: id(3), why: 'poland' })
+    // week at 0: the Poland-lane draft still comes first, ahead of a newer business draft
+    db = await setup()
+    await draft(db, { n: 1, daysAgo: 1 })
+    await draft(db, { n: 2, daysAgo: 3 }); await xLane(db, 2)
+    expect(await pick(db)).toMatchObject({ fire: true, draft_id: id(2), why: 'poland' })
   })
 
   it('expires an earlier day’s card still shown, and never cards the same draft twice', async () => {

@@ -94,16 +94,22 @@ as $$
    where d.id = p_draft
 $$;
 
--- The drafts a card may be made from, now. poland and lift order the Poland-first pick.
+-- The drafts a card may be made from, now. poland_lane and lift order the pick. poland_lane = the reasoned Poland read
+-- says so, OR the draft comes from the X tracked-outlier lane (source_detail.kind, the field the app's brainPage reads;
+-- or taxonomy.source, which the live rows also carry): copies of tracked X posts, mostly Polish political takes, kept
+-- to the 2-a-week Poland share (a stale Independence Day copy was the "newest" in the 2026-11-12 dry run). No keywords.
 create or replace function public.content_card_candidates(p_now timestamptz default now())
-returns table(draft_id uuid, created_at timestamptz, poland boolean, lift numeric)
+returns table(draft_id uuid, created_at timestamptz, poland boolean, lift numeric, poland_lane boolean)
 language sql stable security definer
 set search_path = public, pg_temp
 as $$
   select d.id, d.created_at, public.content_card_poland(d.id),
          coalesce((select case when x.m[2]::numeric > 0 then replace(x.m[1], ',', '')::numeric / x.m[2]::numeric
                                else replace(x.m[1], ',', '')::numeric end
-                     from regexp_match(coalesce(d.source_label, ''), '([0-9][0-9,]*) likes vs own median ([0-9]+(?:\.[0-9]+)?)', 'i') as x(m)), 0)
+                     from regexp_match(coalesce(d.source_label, ''), '([0-9][0-9,]*) likes vs own median ([0-9]+(?:\.[0-9]+)?)', 'i') as x(m)), 0),
+         coalesce(public.content_card_poland(d.id), false)
+           or (jsonb_typeof(d.source_detail) = 'object' and public.content_card_jstrim(coalesce(d.source_detail ->> 'kind', '')) = 'x_tracked_outlier')
+           or public.content_card_jstrim(coalesce(public.content_card_tax(d.taxonomy) ->> 'source', '')) = 'x_tracked_outlier'
     from public.carousel_drafts d
    where d.client_id is null
      and d.status = 'review'
@@ -203,15 +209,21 @@ begin
   else
     v_week := public.content_card_week_poland(p_now);
     if v_week < 2 then
+      -- short of 2 Poland posts this week: the best Poland-lane draft, else the newest
       select x.draft_id into v_pick from public.content_card_candidates(p_now) x
-       where x.poland is true
+       where x.poland_lane
        order by (x.created_at > p_now - interval '14 days') desc, x.lift desc, x.created_at desc, x.draft_id
        limit 1;
       if v_pick is not null then v_why := 'poland'; end if;
+    else
+      -- the week has its 2: the newest business draft; a Poland-lane one only when there is nothing else
+      select x.draft_id into v_pick from public.content_card_candidates(p_now) x
+       where not x.poland_lane order by x.created_at desc, x.draft_id limit 1;
+      if v_pick is not null then v_why := 'newest'; end if;
     end if;
     if v_pick is null then
-      select x.draft_id into v_pick from public.content_card_candidates(p_now) x order by x.created_at desc, x.draft_id limit 1;
-      v_why := 'newest';
+      select x.draft_id, case when x.poland_lane then 'poland' else 'newest' end into v_pick, v_why
+        from public.content_card_candidates(p_now) x order by x.created_at desc, x.draft_id limit 1;
     end if;
     if v_pick is null then return jsonb_build_object('fire', false, 'why', 'nothing eligible', 'expired', v_expired); end if;
     select post_body into v_body from public.carousel_drafts where id = v_pick;
