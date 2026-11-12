@@ -6,7 +6,7 @@ import { dHash } from '../../route'
 import { useFrame } from '../../shell/frame'
 import { isBrainPost } from '../../../lib/brainDraft'
 import { Btn } from '../../ui/Key'
-import { warsawDow, warsawHm } from '../../ui/time'
+import { warsawDay, warsawDm, warsawDow, warsawHm } from '../../ui/time'
 import { seatSlotOf, type Slot } from '../model'
 import { useLiveNow } from '../useLiveNow'
 import { markShown, shownForMs } from '../verdictStore'
@@ -99,7 +99,14 @@ export function firstLines(body: string): [string, string | null] {
   return [lines[0] ?? '', lines[1] ?? null]
 }
 
-export const postWords = (at: Date) => `Post · ${warsawDow(at)} ${warsawHm(at)}`
+/** Whole Warsaw days from `now` to `at` (0 = the same Warsaw day). */
+const warsawDaysAhead = (at: Date, now: number) => Math.round((Date.parse(warsawDay(at)) - Date.parse(warsawDay(now))) / 86_400_000)
+/** "Post · Tue 10:45" inside the coming week; a week or more out the weekday alone reads as next week, so the date:
+ *  "Post · Tue 1 Dec". The card's keys only (the Review desk keeps its own). */
+export const postWords = (at: Date, now: number = Date.now()) =>
+  `Post · ${warsawDow(at)} ${warsawDaysAhead(at, now) >= 7 ? warsawDm(at) : warsawHm(at)}`
+/** The Post key's accessible name: always the full day and time. */
+export const postLabel = (at: Date) => `Post: approve and schedule ${slotWords(at)}`
 export const checkWords = (n: number) => n > 0 ? `Check ${n} line${n === 1 ? '' : 's'}` : 'Check it'
 
 /** Two lines and two keys: the toast and Home. Plain props only (the toast draws it outside the confirm provider). */
@@ -117,7 +124,7 @@ export function CardPeek({ body, keys, onOpen, onCheck, label }: {
         {keys.check != null
           ? <Btn primary verb="card-check" onClick={onCheck}>{checkWords(keys.check)}</Btn>
           : <Btn primary verb="card-post" disabled={!keys.slot || !keys.ready} onClick={keys.post}
-            aria-label={keys.slot ? `Post: approve and schedule ${slotWords(keys.slot.at)}` : 'Post'}>
+            aria-label={keys.slot ? postLabel(keys.slot.at) : 'Post'}>
             {keys.slot ? postWords(keys.slot.at) : 'Post'}</Btn>}
         <Btn verb="card-open" onClick={onOpen}>Open</Btn>
       </div>

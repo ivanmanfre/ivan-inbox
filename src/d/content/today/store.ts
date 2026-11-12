@@ -68,6 +68,19 @@ export function useTodayCard(): CardSnap & { active: boolean; waiting: boolean }
   return { ...s, active: isActive(s.card, held), waiting: isWaiting(s.card) }
 }
 
+/** Home's card block (HomeCard) on screen: the toast does not slide in over a screen that already shows the card. */
+let blocks = 0
+const blockShown = () => blocks > 0
+export function useCardBlockMounted(): void {
+  useEffect(() => {
+    blocks++; for (const l of subs) l()
+    return () => { blocks--; for (const l of subs) l() }
+  }, [])
+}
+export function useCardBlockShown(): boolean {
+  return useSyncExternalStore(subscribe, blockShown, blockShown)
+}
+
 /** Content opened from its nav key or the phone's Content key: no sub-page and no link into a post, seat or view. */
 export function isContentLanding(r: Pick<DRoute, 'place' | 'sub' | 'query'>): boolean {
   if (r.place !== 'content' || r.sub) return false
