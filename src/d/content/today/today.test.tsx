@@ -28,7 +28,7 @@ vi.mock('../../../lib/verdicts', async orig => ({ ...(await orig<typeof import('
 import CardToast, { CARD_TOAST_ID, resetSlidForTest } from './CardToast'
 import { TodayCardView } from './TodayCard'
 import { HomeCard } from './HomeCard'
-import { cardLanding, cardOnScreen, isContentLanding, resetTodayCardForTest } from './store'
+import { cardLanding, cardOnScreen, isContentLanding, refreshTodayCard, resetTodayCardForTest } from './store'
 import { contentRedirect, subOf } from '../SubNav'
 import { flushDecisions, resetDecisionsForTest } from '../decisions'
 import { resetReservedForTest } from '../weekVerbs'
@@ -374,6 +374,38 @@ describe('the card’s one question', () => {
     fireEvent.click(verb('grid-cancel')!)
     expect(ask()).toBeTruthy()
     expect(lib.answerCard).not.toHaveBeenCalledWith('2026-11-12', ID, 'He laughed', true)
+  })
+
+  it('a weave that answers after the card moved on (another device fixed the text) is dropped, never opened', async () => {
+    let finish: (t: string) => void = () => {}
+    lib.weaveCard.mockImplementation(() => new Promise<string>(ok => { finish = ok }))
+    await open(withQ())
+    fireEvent.change(input(), { target: { value: 'He laughed' } })
+    fireEvent.click(verb('card-ask-add')!)
+    await waitFor(() => expect(lib.weaveCard).toHaveBeenCalled())
+    // the phone fixed the text meanwhile: the card follows it and the question was about the old text
+    lib.readTodayCard.mockResolvedValue(card({}, { post_body: 'Fixed on the phone.', updated_at: '2026-11-12T10:40:00Z' }))
+    await act(() => refreshTodayCard())
+    await waitFor(() => expect(document.querySelector('[data-today-card]')!.textContent).toContain('Fixed on the phone.'))
+    await act(async () => { finish(WOVEN) })
+    expect(await screen.findByText('Could not add it. Edit the post yourself.')).toBeTruthy()
+    expect(screen.queryByLabelText('Post text')).toBeNull()
+    expect(document.querySelector('[data-today-card]')!.textContent).not.toContain('so who do we write for then?')
+  })
+
+  it('a weave whose question changed under it is dropped too, his answer stays in the input', async () => {
+    let finish: (t: string) => void = () => {}
+    lib.weaveCard.mockImplementation(() => new Promise<string>(ok => { finish = ok }))
+    await open(withQ())
+    fireEvent.change(input(), { target: { value: 'He laughed' } })
+    fireEvent.click(verb('card-ask-add')!)
+    await waitFor(() => expect(lib.weaveCard).toHaveBeenCalled())
+    lib.readTodayCard.mockResolvedValue(withQ({ sha: 'b'.repeat(64), answer: 'He laughed' }))
+    await act(() => refreshTodayCard())
+    await act(async () => { finish(WOVEN) })
+    expect(await screen.findByText('Could not add it. Edit the post yourself.')).toBeTruthy()
+    expect(screen.queryByLabelText('Post text')).toBeNull()
+    expect(input().value).toBe('He laughed')
   })
 
   it('an answer he gave earlier is back in the input', async () => {

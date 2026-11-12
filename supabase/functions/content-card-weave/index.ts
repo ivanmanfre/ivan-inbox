@@ -58,5 +58,12 @@ Deno.serve(async req => {
   const read = readWeave(call.json, inp.body, inp.anchor, answer)
   console.log('content-card-weave', JSON.stringify(read.ok ? { ok: true } : { error: read.error }))
   if (!read.ok) return respond({ error: read.error, why: read.why ?? null }, 422)
+  // The call can take up to 100 s: the card, its text or its question may have moved meanwhile (another device). A
+  // weave of a body that is no longer the card's is never offered.
+  const { data: again, error: ae } = await sb.rpc('content_card_weave_input', { p_day: day, p_draft: draft, p_sha: sha })
+  const now = again as typeof inp | null
+  if (ae || !now?.ok || now.body !== inp.body || now.question !== inp.question || now.anchor !== inp.anchor) {
+    return respond({ error: 'text changed' }, 409)
+  }
   return respond({ ok: true, text: read.text })
 })

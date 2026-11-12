@@ -74,16 +74,20 @@ $$;
 
 -- Queue the ask for today's card, or a retry of a failed one. Called by content_card_pick only. Never raises: any
 -- error is returned as {"ask": "error"} and everything this function changed is rolled back with its own block.
+-- It never waits long: the card row is locked NOWAIT and any other lock gives up after 1 s (its own lock_timeout),
+-- so it cannot eat the pick's 30 s statement timeout. query_canceled is named in the handler because OTHERS does not
+-- catch it: a cancel landing here (the pick's statement timeout) costs the ask, never the card or its notification.
 create or replace function public.content_card_ask_try(p_day date, p_now timestamptz)
 returns jsonb
 language plpgsql
 security definer
 set search_path to 'public', 'pg_temp'
+set lock_timeout to '1s'
 as $function$
 declare c public.content_daily_cards%rowtype; v_url text; v_secret text; v_req bigint; v_has boolean := false; v_status int;
 begin
   begin
-    select * into c from public.content_daily_cards where day = p_day for update;
+    select * into c from public.content_daily_cards where day = p_day for update nowait;
     if not found or c.state <> 'shown' then return jsonb_build_object('ask', 'no card'); end if;
     if c.ask_state in ('asked', 'none', 'answered') then return jsonb_build_object('ask', c.ask_state); end if;
     if c.ask_state = 'queued' then
@@ -104,8 +108,11 @@ begin
              body := jsonb_build_object('day', p_day, 'draft_id', c.draft_id), timeout_milliseconds := 150000) into v_req;
     update public.content_daily_cards set ask_request_id = v_req where day = p_day;
     return jsonb_build_object('ask', 'queued', 'attempt', c.ask_attempts + 1);
-  exception when others then
-    return jsonb_build_object('ask', 'error', 'error', left(sqlerrm, 200));
+  exception
+    when query_canceled then
+      return jsonb_build_object('ask', 'error', 'error', 'canceled');
+    when others then
+      return jsonb_build_object('ask', 'error', 'error', left(sqlerrm, 200));
   end;
 end $function$;
 
@@ -221,7 +228,8 @@ end $function$;
 -- What content-card-ask stores (service only). First result wins; only for the day's shown card whose body is still
 -- the one asked about (p_sha). p_result.state: 'asked' (question, anchor verbatim in the body, kind), 'none' (the post
 -- already carries his detail) or 'failed' (transient: retried by the pick while attempts last). A question that does
--- not hold up here is stored as failed, never as a question.
+-- not hold up here is stored as failed, never as a question. The anchor must sit inside ONE paragraph: it may not
+-- hold a blank line (newline, spaces or tabs, newline), the paragraph rule of _shared/content-card.ts.
 create or replace function public.content_card_ask_save(p_day date, p_draft uuid, p_sha text, p_result jsonb)
 returns jsonb
 language plpgsql
@@ -240,7 +248,7 @@ begin
   if p_sha is null or c.body_sha256 <> p_sha or public.content_card_sha(v_body) <> p_sha then
     return jsonb_build_object('ok', false, 'why', 'text changed'); end if;
   if v_state = 'asked' and (v_q is null or length(v_q) > 300 or v_a is null or strpos(coalesce(v_body, ''), v_a) = 0
-       or v_k is null or v_k not in ('own_moment', 'own_number', 'own_take', 'own_words')) then
+       or v_a ~ '\n[[:blank:]]*\n' or v_k is null or v_k not in ('own_moment', 'own_number', 'own_take', 'own_words')) then
     v_state := 'failed'; p_result := jsonb_build_object('error', 'question refused by the database');
   end if;
   if v_state = 'asked' then

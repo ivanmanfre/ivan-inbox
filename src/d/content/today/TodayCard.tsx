@@ -46,6 +46,9 @@ function Live({ card, version }: { card: LiveCard; version: number }) {
   const fromAsk = useRef<string | null>(null)
   const [asking, setAsking] = useState(false)
   const q = saved === null ? card.question ?? null : null
+  // What is on screen now, for a weave that answers after a refresh (another device may have changed the card).
+  const onScreen = useRef({ day: card.day, id: r.id, body, q })
+  useEffect(() => { onScreen.current = { day: card.day, id: r.id, body, q } })
 
   const skip = () => {
     const before: TodayCard = card
@@ -82,9 +85,16 @@ function Live({ card, version }: { card: LiveCard; version: number }) {
     void answerCard(card.day, r.id, answer).catch(() => false)
     const shown = body
     let text = shown
+    const failed = () => toast.show({ tone: 'failed', message: 'Could not add it. Edit the post yourself.' })
     try { text = await weaveCard(card.day, r.id, question.sha, answer) }
-    catch { toast.show({ tone: 'failed', message: 'Could not add it. Edit the post yourself.' }) }
+    catch { failed() }
     finally { setAsking(false) }
+    // A completion for a card, text or question no longer on screen is dropped: never a proposal on old text.
+    const now = onScreen.current
+    if (now.day !== card.day || now.id !== r.id || now.body !== shown || now.q?.sha !== question.sha || now.q?.text !== question.text) {
+      if (text !== shown) failed()
+      return
+    }
     fromAsk.current = answer; base.current = shown; setFix(text)
   }
 

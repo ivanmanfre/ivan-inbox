@@ -88,6 +88,10 @@ function objectOf(raw: string): Record<string, unknown> | null {
 
 const EM_DASH = /—|\s–\s/g
 const count = (s: string, re: RegExp) => (s.match(re) ?? []).length
+/** The paragraph rule, the same in readAsk, checkWeave and content_card_ask_save (SQL '\n[[:blank:]]*\n'): paragraphs
+ *  are split by a blank line (newline, spaces or tabs, newline). An anchor holding one spans paragraphs. */
+const PARA_SEP = /\n[ \t]*(?:\n[ \t]*)+/g
+export const spansParagraphs = (anchor: string) => /\n[ \t]*\n/.test(anchor)
 /** Sentence-ending question marks: "'GEO?'." inside a quote does not end the sentence. */
 const questionEnds = (s: string) => count(s, /\?(?=\s|$)/g)
 export const words = (s: string) => s.trim().split(/\s+/).filter(Boolean).length
@@ -115,6 +119,7 @@ export function readAsk(json: unknown, draft: string): AskRead {
   if (!q.endsWith('?')) return fail('not_a_question')
   if (questionEnds(q) > 1) return fail('two_questions')
   if (anchor.length < 3 || !draft.includes(anchor)) return fail('anchor_not_in_body')
+  if (spansParagraphs(anchor)) return fail('anchor_spans_paragraphs')
   if (!kind) return fail('bad_kind')
   return { ok: true, state: 'asked', result: { has_lived_detail: false, question: q, anchor, kind, why } }
 }
@@ -122,7 +127,7 @@ export function readAsk(json: unknown, draft: string): AskRead {
 /** Paragraphs (blank-line separated) with their start offsets, each trimmed for comparison. */
 function paragraphs(s: string): { text: string; start: number; end: number }[] {
   const out: { text: string; start: number; end: number }[] = []
-  const sep = /\n[ \t]*(?:\n[ \t]*)+/g
+  const sep = new RegExp(PARA_SEP)
   let at = 0
   for (let m = sep.exec(s); m; m = sep.exec(s)) {
     out.push({ text: s.slice(at, m.index).trim(), start: at, end: m.index })
@@ -135,16 +140,33 @@ function paragraphs(s: string): { text: string; start: number; end: number }[] {
 /** How much the post may grow: twice the answer plus room for the joining words. */
 export const growthBound = (answer: string) => answer.length * 2 + 200
 
+/** A dash used as punctuation at p[i]: an em dash, or an en dash with a space beside it (a range like 10–20 is not). */
+const dashAt = (p: string, i: number) =>
+  p[i] === '—' || (p[i] === '–' && (/\s/.test(p[i - 1] ?? '') || /\s/.test(p[i + 1] ?? '')))
+
+/** [from, to) of `p` that differs from `o`: everything between their common start and their common end. */
+function changedSpan(o: string, p: string): [number, number] {
+  let a = 0
+  while (a < o.length && a < p.length && o[a] === p[a]) a++
+  let b = 0
+  while (b < o.length - a && b < p.length - a && o[o.length - 1 - b] === p[p.length - 1 - b]) b++
+  return [a, p.length - b]
+}
+
 /** The weave's code checks: null when the proposed post keeps every rule code can check, else the failed rule.
- *  Only the paragraph holding the anchor and its immediate neighbours may change; every other paragraph must still be
- *  there verbatim and in place. No new em dash, no new "X, not Y", no closing question, bounded growth. */
+ *  The anchor sits in ONE paragraph; only that paragraph and its immediate neighbours may change; every other
+ *  paragraph must still be there verbatim and in place. No dash as punctuation anywhere in the changed text (a dash
+ *  already in the post may stay only where the text is unchanged), no new "X, not Y", no closing question, bounded
+ *  growth. */
 export function checkWeave(original: string, proposed: string, anchor: string, answer: string): string | null {
   const o = original.trim(), p = proposed.trim()
   if (!p) return 'empty'
   if (p === o) return 'unchanged'
   const at = anchor ? o.indexOf(anchor) : -1
   if (at < 0) return 'anchor_not_in_body'
-  if (count(p, EM_DASH) > count(o, EM_DASH)) return 'dash'
+  if (spansParagraphs(anchor)) return 'anchor_spans_paragraphs'
+  const [from, to] = changedSpan(o, p)
+  for (let i = from; i < to; i++) if (dashAt(p, i)) return 'dash'
   if (count(p, /,\s+not\s/gi) > count(o, /,\s+not\s/gi)) return 'contrast'
   if (p.length - o.length > growthBound(answer.trim())) return 'too_long'
   const op = paragraphs(o), pp = paragraphs(p).map(x => x.text)

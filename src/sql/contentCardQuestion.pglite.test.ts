@@ -30,6 +30,9 @@ create function net.http_post(url text, body jsonb, headers jsonb, timeout_milli
 declare v bigint;
 begin
   if url like '%content-card-ask%' and current_setting('test.ask_breaks', true) = '1' then raise exception 'pg_net is down'; end if;
+  -- any other value is a SQLSTATE to raise there: 57014 query_canceled (a statement timeout), 55P03 lock_not_available
+  if url like '%content-card-ask%' and length(coalesce(current_setting('test.ask_breaks', true), '')) = 5 then
+    raise exception 'ask broke' using errcode = current_setting('test.ask_breaks', true); end if;
   insert into net.calls(url, body, headers) values (url, body, headers) returning id into v;
   return v;
 end $$;
@@ -159,6 +162,21 @@ describe('content_card_pick queues the ask', { timeout: 60_000 }, () => {
     expect(await pick(db, '2026-11-12T10:15:00Z')).toMatchObject({ why: 'already picked', ask: 'queued', attempt: 1 })
   })
 
+  it('a statement cancel or a busy lock inside the ask costs the ask only: the card row and the notify call stay', async () => {
+    for (const code of ['57014', '55P03']) {
+      const db = await setup()
+      await db.exec(`set test.ask_breaks = '${code}'`)
+      await draft(db, 1)
+      expect(await pick(db)).toMatchObject({ fire: true, draft_id: id(1), ask: 'error' })
+      expect(await allCalls(db)).toEqual(['https://example.test/inbox-notify'])
+      expect(await row(db)).toMatchObject({ draft_id: id(1), state: 'shown', notify_attempts: 1, ask_state: null, ask_attempts: 0 })
+    }
+    // the helper's own lock_timeout and the NOWAIT row lock: it never waits long on its own
+    const db = await setup()
+    expect(await one<string[]>(db, `select proconfig v from pg_proc where proname = 'content_card_ask_try'`)).toContain('lock_timeout=1s')
+    expect(await one<string>(db, `select prosrc v from pg_proc where proname = 'content_card_ask_try'`)).toMatch(/for update nowait[\s\S]*when query_canceled then/)
+  })
+
   it('a notification retry does not ask twice', async () => {
     const db = await setup()
     await draft(db, 1)
@@ -201,6 +219,10 @@ describe('content_card_ask_input and content_card_ask_save', { timeout: 60_000 }
     expect(await save(db, { ...asked, anchor: 'Not in the text.' })).toEqual({ ok: true, state: 'failed' })
     expect(await row(db)).toMatchObject({ ask_state: 'failed', question: null })
     expect(await save(db, { ...asked, kind: 'own_story' })).toEqual({ ok: true, state: 'failed' })
+    // an anchor across paragraphs (here the whole post) is refused: it would open every paragraph to the weave
+    expect(await save(db, { ...asked, anchor: BODY })).toEqual({ ok: true, state: 'failed' })
+    expect(await save(db, { ...asked, anchor: 'I told a client exactly that.\n \t\nReach comes' })).toEqual({ ok: true, state: 'failed' })
+    expect(await row(db)).toMatchObject({ ask_state: 'failed', question: null })
     expect(await save(db, asked)).toEqual({ ok: true, state: 'asked' })
     expect(await row(db)).toMatchObject({ ask_state: 'asked', question: asked.question, question_anchor: ANCHOR, question_kind: 'own_words', question_sha256: await shaOf(db, BODY) })
     // a late second call never overwrites it

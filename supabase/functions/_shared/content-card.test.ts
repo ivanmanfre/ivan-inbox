@@ -100,6 +100,13 @@ describe('readAsk', () => {
     expect(ok({ ...q, anchor: null })).toMatchObject({ ok: false, error: 'anchor_not_in_body' })
   })
 
+  it('an anchor across paragraphs (or the whole post) is refused', () => {
+    expect(ok({ ...q, anchor: DRAFT })).toMatchObject({ ok: false, error: 'anchor_spans_paragraphs' })
+    expect(ok({ ...q, anchor: 'you.\n\nI told a client' })).toMatchObject({ ok: false, error: 'anchor_spans_paragraphs' })
+    // a line break inside one paragraph is fine
+    expect(readAsk(text(JSON.stringify({ ...q, anchor: 'Line one\nline two' })), 'Line one\nline two\n\nNext.')).toMatchObject({ ok: true })
+  })
+
   it('two questions, no question mark, an em dash, an unknown kind, no question at all', () => {
     expect(ok({ ...q, question: 'What did they say? And what did you answer?' })).toMatchObject({ ok: false, error: 'two_questions' })
     expect(ok({ ...q, question: 'Tell me what they said.' })).toMatchObject({ ok: false, error: 'not_a_question' })
@@ -129,6 +136,21 @@ describe('checkWeave: the code checks on the woven post', () => {
     // anchor in the first paragraph: only the first two may change
     expect(checkWeave(P, P.replace('First paragraph stays.', 'First paragraph stays. Yes.').replace('Fourth is a neighbour.', 'Fourth moved.'), 'First paragraph stays.', answer)).toBe('touched_far_paragraph')
     expect(checkWeave(P, P.replace('First paragraph stays.', 'First paragraph stays. Yes.'), 'First paragraph stays.', answer)).toBeNull()
+  })
+
+  it('an anchor across paragraphs never widens the editable region', () => {
+    const four = ['One.', 'Two.', 'Three.', 'Four.', 'Five stays.', 'Six stays.'].join('\n\n')
+    const span = 'One.\n\nTwo.\n\nThree.\n\nFour.'
+    expect(checkWeave(four, four.replace(span, 'All four replaced.'), span, answer)).toBe('anchor_spans_paragraphs')
+  })
+
+  it('a dash swapped in: an existing em dash removed and a new one added elsewhere in the region fails', () => {
+    const withDash = P.replace('Fourth is a neighbour.', 'Fourth \u2014 a neighbour.')
+    const swapped = withDash.replace('Fourth \u2014 a neighbour.', 'Fourth, a neighbour.').replace(A, A + ' He said \u2014 maybe.')
+    expect(checkWeave(withDash, swapped, A, answer)).toBe('dash')
+    // an en dash used as punctuation is a dash too; a range is not
+    expect(checkWeave(P, P.replace(A, A + ' He said \u2013 maybe.'), A, answer)).toBe('dash')
+    expect(checkWeave(P, P.replace(A, A + ' It took 10\u201320 days.'), A, answer)).toBeNull()
   })
 
   it('a new em dash fails; one already in the post may stay', () => {
