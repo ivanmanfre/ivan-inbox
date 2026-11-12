@@ -79,6 +79,9 @@ alter table public.content_alert_state enable row level security;
 revoke all on table public.content_alert_state from public, anon, authenticated;
 grant all on table public.content_alert_state to service_role;
 comment on table public.content_alert_state is 'High-water marks for 20261112c_content_result_alerts (k = prospect_engaged: engager events ready up to here were read).';
+-- The first mark is written here, at apply time (26 h back), outside any run: a first run that fails in any way keeps it.
+insert into public.content_alert_state (k, hwm, updated_at) values ('prospect_engaged', now() - interval '26 hours', now())
+on conflict (k) do nothing;
 
 create or replace function public.content_alert_off()
 returns boolean
@@ -225,22 +228,33 @@ as $$
        order by coalesce(m.sent_at, m.created_at) desc, m.id desc limit 1) li on true
 $$;
 
--- Ivan's own prospects (campaign client_id null or 'ivan') that are this person: the row's own prospect_id, the member
--- id (li_member_key of the provider id or of the profile url, against the prospect's profile id and url) or the profile
--- slug (li_slug, db/057 + db/059). A prospect of another seat neither suppresses nor is linked.
+-- Ivan's own prospects (campaign client_id null or 'ivan') that are this person. When the row's own prospect_id is one of
+-- Ivan's, that prospect alone (no other lookup runs). Otherwise: the member id (li_member_key of the provider id or of the
+-- profile url, against the prospect's profile id and url) or the profile slug (li_slug, db/057 + db/059); a slug match
+-- is refused when both sides carry a member id and the two differ. A prospect of another seat neither suppresses nor is
+-- linked. Called only for engagements already at icp_score 7+.
 create or replace function public.prospect_engaged_ivan_prospects(p_prospect uuid, p_provider text, p_url text)
 returns table(prospect_id uuid, has_thread boolean)
 language sql stable security definer
 set search_path = public, pg_temp
 as $$
-  with k as (select public.li_member_key(p_provider) as mk_provider, public.li_member_key(p_url) as mk_url, public.li_slug(p_url) as slug),
-  hit as (
-    select p.id from public.outreach_prospects p where p.id = p_prospect
+  with own as (
+    select p.id from public.outreach_prospects p
+      join public.outreach_campaigns c on c.id = p.campaign_id and coalesce(c.client_id, 'ivan') = 'ivan'
+     where p.id = p_prospect
+  ), k as (
+    select public.li_member_key(p_provider) as mk_provider, public.li_member_key(p_url) as mk_url, public.li_slug(p_url) as slug,
+           coalesce(public.li_member_key(p_provider), public.li_member_key(p_url)) as mk
+     where not exists (select 1 from own)
+  ), hit as (
+    select own.id from own
     union select p.id from public.outreach_prospects p, k where k.mk_provider is not null and public.li_member_key(p.linkedin_profile_id) = k.mk_provider
     union select p.id from public.outreach_prospects p, k where k.mk_provider is not null and public.li_member_key(p.linkedin_url) = k.mk_provider
     union select p.id from public.outreach_prospects p, k where k.mk_url is not null and public.li_member_key(p.linkedin_profile_id) = k.mk_url
     union select p.id from public.outreach_prospects p, k where k.mk_url is not null and public.li_member_key(p.linkedin_url) = k.mk_url
     union select p.id from public.outreach_prospects p, k where k.slug is not null and public.li_slug(p.linkedin_url) = k.slug
+       and (k.mk is null or coalesce(public.li_member_key(p.linkedin_profile_id), public.li_member_key(p.linkedin_url)) is null
+            or coalesce(public.li_member_key(p.linkedin_profile_id), public.li_member_key(p.linkedin_url)) = k.mk)
   )
   select p.id, exists (select 1 from public.outreach_messages m where m.prospect_id = p.id)
     from hit join public.outreach_prospects p on p.id = hit.id
@@ -330,6 +344,20 @@ begin
     'push', true);
 end $$;
 
+-- Where the tap goes: the thread of Ivan's matched prospect when it has one, else the LinkedIn profile (https only).
+create or replace function public.prospect_engaged_url(p_prospect uuid, p_has_thread boolean, p_linkedin text)
+returns text
+language sql immutable
+set search_path = public, pg_temp
+as $$
+  select case
+    when p_prospect is not null and p_has_thread then './#exp/d/dms?thread=' || p_prospect
+    when btrim(coalesce(p_linkedin, '')) ~* '^https://' then btrim(p_linkedin)
+    when btrim(coalesce(p_linkedin, '')) ~* '^http://' then regexp_replace(btrim(p_linkedin), '^http://', 'https://', 'i')
+    when btrim(coalesce(p_linkedin, '')) ~* '^(www\.)?linkedin\.com/' then 'https://' || btrim(p_linkedin)
+    end
+$$;
+
 create or replace function public.prospect_engaged_payload(p_engager uuid, p_name text, p_headline text, p_type text, p_reaction text,
                                                            p_score numeric, p_post_key text, p_post_text text, p_prospect uuid,
                                                            p_has_thread boolean, p_linkedin text)
@@ -343,12 +371,7 @@ begin
   v_head := nullif(public.content_alert_cut(p_headline, 90), '');
   v_line := nullif(public.content_alert_cut(public.content_alert_first_line(p_post_text), greatest(140 - coalesce(length(v_head), 0) - 3, 24)), '');
   v_body := nullif(concat_ws(E'\n', v_head, case when v_line is not null then '“' || v_line || '”' end), '');
-  v_url := case
-    when p_prospect is not null and p_has_thread then './#exp/d/dms?thread=' || p_prospect
-    when btrim(coalesce(p_linkedin, '')) ~* '^https://' then btrim(p_linkedin)
-    when btrim(coalesce(p_linkedin, '')) ~* '^http://' then regexp_replace(btrim(p_linkedin), '^http://', 'https://', 'i')
-    when btrim(coalesce(p_linkedin, '')) ~* '^(www\.)?linkedin\.com/' then 'https://' || btrim(p_linkedin)
-    end;
+  v_url := public.prospect_engaged_url(p_prospect, p_has_thread, p_linkedin);
   return jsonb_build_object('family', 'prospect_engaged', 'source', 'content-result-alerts', 'dedupe_key', 'prospect-engaged:' || p_engager,
     'severity', 'info',
     'title', v_name || case when v_comment then ' commented on your post' else ' reacted to your post' end,
@@ -389,7 +412,7 @@ as $function$
 declare
   v_day date := (p_now at time zone 'Europe/Warsaw')::date;
   v_since timestamptz; v_posts jsonb; v_people jsonb; v_payload jsonb; v_req bigint; v_left int;
-  v_retried int; v_dropped int; v_sent jsonb; v_why text; r record;
+  v_retried int; v_dropped int; v_sent jsonb; v_why text; v_hold timestamptz; v_pid uuid; v_thread boolean; r record;
 begin
   if not public.content_plan_service_ok() then raise exception 'service only'; end if;
   -- A run waiting behind a lock (DDL on a table it reads) gives up after lock_timeout (5 s) and writes nothing; the next
@@ -452,9 +475,10 @@ begin
   begin
     v_retried := 0; v_dropped := 0;
     -- Two people sent per Warsaw day, retries included: what was sent today counts first.
-    v_left := 2 - (select count(*)::int from public.prospect_engaged_alerts a where (a.notified_at at time zone 'Europe/Warsaw')::date = v_day);
+    v_left := 2 - (select count(*)::int from public.prospect_engaged_alerts a
+                    where a.dropped is null and (a.notified_at at time zone 'Europe/Warsaw')::date = v_day);
     -- A retry is read again first: a thread closed or stopped since yesterday drops it (recorded in dropped), never sent.
-    for r in select a.engager_id, a.payload, e.id as e_id, e.prospect_id, e.provider_id, e.linkedin_url
+    for r in select a.engager_id, a.payload, a.notified_at, e.id as e_id, e.prospect_id, e.provider_id, e.linkedin_url
                from public.prospect_engaged_alerts a
                left join public.post_engagers e on e.id = a.engager_id
               where a.notify_attempts < 2 and a.dropped is null
@@ -466,11 +490,21 @@ begin
       if v_why is not null then
         update public.prospect_engaged_alerts set dropped = v_why where engager_id = r.engager_id;
         v_dropped := v_dropped + 1;
+        -- a row first sent earlier today counted in v_left: its slot is free again
+        if (r.notified_at at time zone 'Europe/Warsaw')::date = v_day then v_left := v_left + 1; end if;
         continue;
       end if;
       exit when v_left <= 0;
-      v_req := public.content_alert_post(r.payload);
-      update public.prospect_engaged_alerts set notified_at = p_now, request_id = v_req, notify_attempts = notify_attempts + 1
+      -- The link is rebuilt from today's match: a prospect moved to another seat (or without a campaign) is never linked.
+      v_pid := null; v_thread := false;
+      select x.prospect_id, x.has_thread into v_pid, v_thread
+        from public.prospect_engaged_ivan_prospects(r.prospect_id, r.provider_id, r.linkedin_url) x
+       order by x.has_thread desc, (x.prospect_id = r.prospect_id) desc, x.prospect_id limit 1;
+      v_payload := jsonb_set(r.payload || jsonb_build_object('url', public.prospect_engaged_url(v_pid, coalesce(v_thread, false), r.linkedin_url)),
+                             '{media,prospect_id}', coalesce(to_jsonb(v_pid), 'null'::jsonb));
+      v_req := public.content_alert_post(v_payload);
+      update public.prospect_engaged_alerts set notified_at = p_now, request_id = v_req, notify_attempts = notify_attempts + 1,
+             payload = v_payload, prospect_id = v_pid
        where engager_id = r.engager_id;
       v_retried := v_retried + 1;
       v_left := v_left - 1;
@@ -492,9 +526,13 @@ begin
       update public.prospect_engaged_alerts set request_id = v_req where engager_id = r.engager_id;
       v_sent := v_sent || jsonb_build_array(jsonb_build_object('engager_id', r.engager_id, 'title', v_payload ->> 'title'));
     end loop;
-    insert into public.content_alert_state (k, hwm, updated_at) values ('prospect_engaged', p_now, p_now)
+    -- The mark stops just before the earliest engagement still eligible after this run (left over by the daily cap), so
+    -- the next run reads it again. One that rang is now suppressed by the per-person ledger and never holds the mark.
+    select min(c.ready_at) into v_hold from public.prospect_engaged_candidates(v_since, p_now) c where c.suppressed is null;
+    insert into public.content_alert_state (k, hwm, updated_at)
+    values ('prospect_engaged', coalesce(v_hold - interval '1 microsecond', p_now), p_now)
     on conflict (k) do update set hwm = greatest(public.content_alert_state.hwm, excluded.hwm), updated_at = excluded.updated_at;
-    v_people := jsonb_build_object('sent', v_sent, 'retried', v_retried, 'dropped', v_dropped, 'since', v_since);
+    v_people := jsonb_build_object('sent', v_sent, 'retried', v_retried, 'dropped', v_dropped, 'since', v_since, 'held_at', v_hold);
   exception when others then
     v_people := jsonb_build_object('sent', '[]'::jsonb, 'error', sqlerrm);
   end;
@@ -518,6 +556,7 @@ revoke all on function public.content_result_candidates(timestamptz) from public
 revoke all on function public.prospect_engaged_closed(uuid, timestamptz) from public, anon, authenticated;
 revoke all on function public.prospect_engaged_ivan_prospects(uuid, text, text) from public, anon, authenticated;
 revoke all on function public.prospect_engaged_block(uuid, text, text, timestamptz) from public, anon, authenticated;
+revoke all on function public.prospect_engaged_url(uuid, boolean, text) from public, anon, authenticated;
 revoke all on function public.prospect_engaged_candidates(timestamptz, timestamptz) from public, anon, authenticated;
 revoke all on function public.content_result_payload(text, int, numeric, int, text, timestamptz, text, text) from public, anon, authenticated;
 revoke all on function public.prospect_engaged_payload(uuid, text, text, text, text, numeric, text, text, uuid, boolean, text) from public, anon, authenticated;

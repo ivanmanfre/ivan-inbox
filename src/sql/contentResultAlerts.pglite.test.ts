@@ -63,6 +63,8 @@ async function setup() {
   await db.exec(schema)
   await db.exec(identity)
   await db.exec(migration)
+  // the migration seeds the first mark at apply time (now() - 26 h); the suite pins "apply time" to NOW
+  await db.query(`update content_alert_state set hwm = $1::timestamptz - interval '26 hours'`, [NOW])
   return db
 }
 type Post = { n: number; daysAgo: number; imp: number; text?: string; sid?: string; url?: string | null; measured?: boolean }
@@ -341,6 +343,43 @@ describe('a good-fit person engaged (prospect_engaged)', { timeout: 60_000 }, ()
     expect(await one<string>(db, `select public.prospect_engaged_closed($1::uuid, $2::timestamptz) v`, [pid(2), NOW])).toBe('marked solved')
   })
 
+  it('a slug match is refused when the two member ids differ: it neither suppresses nor links', async () => {
+    const db = await setup()
+    await posts(db)
+    // an older Ivan prospect kept the slug /in/example but is a different person (another member id), archived, with a thread
+    await prospect(db, 1, { linkedin_url: 'https://www.linkedin.com/in/example', linkedin_profile_id: 'ACoAABBBBBBBBBBBBBBBBBBB2', stage: 'archived' })
+    await ev(db, { n: 1, provider: 'ACoAAEngagerAAAAAAAAAAAA1', prospect: null, url: 'https://www.linkedin.com/in/example' })
+    expect((await db.query(`select * from prospect_engaged_ivan_prospects(null, 'ACoAAEngagerAAAAAAAAAAAA1', 'https://www.linkedin.com/in/example')`)).rows).toEqual([])
+    await run(db)
+    expect((await calledFamily(db, 'prospect_engaged'))[0]).toMatchObject({ url: 'https://www.linkedin.com/in/example', media: { prospect_id: null } })
+  })
+
+  it('a row whose own prospect_id is Ivan\'s uses that prospect only: the member id and slug lookups never run', async () => {
+    const db = await setup()
+    await posts(db)
+    const mid = 'ACoAASamePersonTwoRowsXYZ'
+    await prospect(db, 1, { linkedin_profile_id: mid })                                // open, with a thread
+    await prospect(db, 2, { linkedin_profile_id: mid, linkedin_url: 'https://www.linkedin.com/in/same', stage: 'archived' })
+    expect((await db.query<{ prospect_id: string }>(`select prospect_id::text from prospect_engaged_ivan_prospects($1::uuid, $2, 'https://www.linkedin.com/in/same')`, [pid(1), mid])).rows)
+      .toEqual([{ prospect_id: pid(1) }])
+    await ev(db, { n: 1, provider: mid, prospect: 1, url: 'https://www.linkedin.com/in/same' })
+    await run(db)
+    expect((await calledFamily(db, 'prospect_engaged'))[0]).toMatchObject({ url: `./#exp/d/dms?thread=${pid(1)}` })
+    // without a usable prospect_id the lookups run and find both (the closed one suppresses)
+    expect((await db.query(`select prospect_id from prospect_engaged_ivan_prospects(null, $1, null)`, [mid])).rows).toHaveLength(2)
+  })
+
+  it('a lock timeout on the very first run keeps the mark the migration seeded', async () => {
+    const db = await setup()
+    await posts(db)
+    await ev(db, { n: 1, hoursAgo: 20 })
+    await db.exec(`create or replace function public.content_alert_off() returns boolean language plpgsql as $$ begin raise exception 'lock timeout' using errcode = 'lock_not_available'; end $$`)
+    expect(await run(db)).toMatchObject({ busy: true })
+    expect(await one<boolean>(db, `select hwm = $1::timestamptz - interval '26 hours' v from content_alert_state`, [NOW])).toBe(true)
+    await db.exec(`create or replace function public.content_alert_off() returns boolean language sql stable as $$ select false $$`)
+    expect((await run(db, '2026-11-13T15:10:00Z')).people.sent.map(x => x.title)).toEqual(['Person 1 reacted to your post'])
+  })
+
   it('a failed first run keeps its window: the next day picks up an engagement that is 44 h old by then', async () => {
     const db = await setup()
     await posts(db)
@@ -431,10 +470,54 @@ describe('both alerts: kill switch, delivery bookkeeping, service only', { timeo
     expect(day2.posts).toMatchObject({ fired: false, why: 'one already today', retried: 1 })
     expect(day2.people).toMatchObject({ sent: [], retried: 2 })
     expect(await calls(db)).toHaveLength(6)   // 3 on day 1, the same 3 again on day 2, nothing new
-    // Day 3: the second post rings now; the two people of day 2 were read and stay unrung.
-    const day3 = await run(db, '2026-11-14T15:10:00Z')
+    // the mark stopped just before the two people the cap left out
+    expect(await one<boolean>(db, `select hwm < $1::timestamptz v from content_alert_state`, [at(0.05, D2)])).toBe(true)
+    // Day 3: the second post rings now, and so do the two people of day 2 (still inside 72 h).
+    const D3 = '2026-11-14T15:10:00Z'
+    const day3 = await run(db, D3)
     expect(day3.posts).toMatchObject({ fired: true, post_key: nid(2), retried: 0 })
-    expect(await calls(db)).toHaveLength(7)
+    expect(day3.people.sent.map(x => x.title).sort()).toEqual(['Person 3 reacted to your post', 'Person 4 reacted to your post'])
+    expect(await calls(db)).toHaveLength(9)
+    expect(await one<boolean>(db, `select hwm = $1::timestamptz v from content_alert_state`, [D3])).toBe(true)
+    // they landed; nothing rings twice on later runs
+    await db.exec(`insert into inbox_notifications (dedupe_key) select distinct body ->> 'dedupe_key' from net.calls`)
+    await run(db, '2026-11-14T20:00:00Z')
+    await run(db, '2026-11-15T15:10:00Z')
+    expect(await calls(db)).toHaveLength(9)
+  })
+
+  it('a retry is linked from today\'s match: a prospect moved to another seat gets the LinkedIn profile', async () => {
+    const db = await setup()
+    await db.query(`insert into outreach_prospects (id, stage) values ($1, 'dm_sent')`, [pid(1)])
+    await db.query(`insert into outreach_messages (prospect_id, direction, message_type, sent_at) values ($1, 'outbound', 'dm', $2)`, [pid(1), at(5)])
+    await post(db, { n: 1, daysAgo: 2, imp: 80 })
+    await db.query(`insert into post_engagers (post_social_id, provider_id, name, linkedin_url, engagement_type, icp_score, scored_at, first_seen_at, prospect_id)
+      values ($1, 'ACoX', 'Jo', 'https://www.linkedin.com/in/jo', 'reaction', 8, $2, $2, $3)`, [`urn:li:activity:${nid(1)}`, at(0.05), pid(1)])
+    await run(db)
+    expect((await calls(db))[0].body).toMatchObject({ url: `./#exp/d/dms?thread=${pid(1)}` })
+    await db.query(`update outreach_prospects set campaign_id = $2 where id = $1`, [pid(1), RISE_CAMPAIGN])
+    expect((await run(db, '2026-11-13T15:10:00Z')).people).toMatchObject({ retried: 1 })
+    expect((await calls(db))[1].body).toMatchObject({ url: 'https://www.linkedin.com/in/jo', media: { prospect_id: null } })
+    expect(await one<string | null>(db, `select prospect_id::text v from prospect_engaged_alerts`)).toBeNull()
+  })
+
+  it('a dropped retry frees its slot the same day and never counts again', async () => {
+    const db = await setup()
+    await db.query(`insert into outreach_prospects (id, stage) values ($1, 'dm_sent')`, [pid(1)])
+    await post(db, { n: 1, daysAgo: 2, imp: 80 })
+    const ev = (n: number, from: string, prospect: string | null = null) => db.query(`insert into post_engagers (post_social_id, provider_id, name, linkedin_url, engagement_type, icp_score, scored_at, first_seen_at, prospect_id)
+      values ($1, $2, $3, $4, 'reaction', 8, $5, $5, $6)`, [`urn:li:activity:${nid(1)}`, `ACoZ${n}`, `Person ${n}`, `https://www.linkedin.com/in/z-${n}`, at(0.01, from), prospect])
+    const EARLY = '2026-11-12T00:30:00Z'   // 01:30 in Warsaw
+    await ev(1, EARLY, pid(1))
+    expect((await run(db, EARLY)).people.sent).toHaveLength(1)            // first try, no feed row: it failed
+    await db.query(`update outreach_prospects set solved_at = now() where id = $1`, [pid(1)])
+    const LATE = '2026-11-12T13:00:00Z'    // 12.5 h later, the same Warsaw day
+    await ev(2, LATE); await ev(3, LATE)
+    const r = await run(db, LATE)
+    expect(r.people).toMatchObject({ dropped: 1, retried: 0 })
+    expect(r.people.sent).toHaveLength(2)                                  // the dropped row's slot came back
+    await ev(4, '2026-11-12T20:00:00Z')
+    expect((await run(db, '2026-11-12T20:00:00Z')).people.sent).toEqual([]) // 2 sent today; the dropped one is not counted
   })
 
   it('a people retry is read again first: a thread closed since yesterday drops it, recorded, and never sent', async () => {
@@ -515,6 +598,9 @@ describe('the migration', { timeout: 60_000 }, () => {
     const db = await setup()
     const before = await setup()
     await before.exec(rollback)
+    const fresh = new PGlite()
+    await fresh.exec(schema); await fresh.exec(identity); await fresh.exec(migration)
+    expect(await one<boolean>(fresh, `select hwm between now() - interval '26 hours 1 minute' and now() - interval '25 hours 59 minutes' v from content_alert_state where k = 'prospect_engaged'`)).toBe(true)
     await db.exec(migration)
     expect((await db.query(`select schedule, command from cron.job where jobname = 'content-result-alerts'`)).rows)
       .toEqual([{ schedule: '10 15 * * *', command: 'select public.content_result_alerts_run()' }])
