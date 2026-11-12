@@ -23,8 +23,9 @@
 -- at 11:00, and retries a notification whose post failed (at most 3 tries in all).
 -- A card still 'shown' on a later day becomes 'expired' at the next run.
 --
--- The app reads today's card through content_card_today (signed in, Ivan's lane), writes posted / skipped (and the
--- Undo of a skip) through content_card_set, and content_card_rebase keeps the card on a body Ivan fixed from it.
+-- The app reads today's card through content_card_today (signed in, Ivan's lane). Post is ONE transaction,
+-- content_card_post (card and draft locked, every check, the existing approve and schedule writes, the card marked
+-- posted). content_card_set writes skipped and its Undo; content_card_rebase keeps the card on a body fixed from it.
 -- Rollback = 20261112_content_daily_card_rollback.sql.
 
 select set_config('lock_timeout', '5s', true);
@@ -180,6 +181,13 @@ begin
     -- A card whose notification post came back with an error (or no answer) is sent again, 3 tries in all.
     if c.state = 'shown' and c.request_id is not null and c.notify_attempts < 3 and c.notified_at < p_now - interval '3 minutes'
        and exists (select 1 from net._http_response h where h.id = c.request_id and (h.status_code is null or h.status_code not between 200 and 299)) then
+      -- At most one ring a day: a row inbox-notify already wrote for this card (read, dismissed or not) means the post
+      -- landed even though its answer did not. Record it as sent and never call again (notify's dedupe skips dismissed
+      -- rows, so a second call would ring a second time).
+      if exists (select 1 from public.inbox_notifications n where n.dedupe_key = 'content-card:' || v_day::text) then
+        update public.content_daily_cards set request_id = null where day = v_day;
+        return jsonb_build_object('fire', false, 'why', 'already sent', 'day', v_day, 'expired', v_expired);
+      end if;
       update public.content_daily_cards set notified_at = null, request_id = null where day = v_day;
     else
       return jsonb_build_object('fire', false, 'why', 'already picked', 'day', v_day, 'draft_id', c.draft_id, 'expired', v_expired);
@@ -252,30 +260,24 @@ begin
       'qa_verdict', d.qa ->> 'verdict', 'line_flags', d.qa -> 'line_flags') end);
 end $function$;
 
--- posted: from shown, only once the draft really left Review (approved or dated); skipped: today's shown card, the
--- draft untouched; shown: the Undo of a skip, today only. Anything else is refused and changes nothing.
+-- skipped: today's shown card, the draft untouched; shown: the Undo of a skip, today only. Anything else is refused
+-- and changes nothing. (posted is written only by content_card_post.)
 create or replace function public.content_card_set(p_day date, p_draft uuid, p_state text)
 returns jsonb
 language plpgsql
 security definer
 set search_path to 'public', 'pg_temp'
 as $function$
-declare c public.content_daily_cards%rowtype; d public.carousel_drafts%rowtype; v_today date := (now() at time zone 'Europe/Warsaw')::date;
+declare c public.content_daily_cards%rowtype; v_today date := (now() at time zone 'Europe/Warsaw')::date;
 begin
   if auth.uid() is null or not public.cb34_p2_operator_lane_allowed('ivan') then
     raise exception 'unauthorized' using errcode = '42501';
   end if;
-  if p_state is null or p_state not in ('posted', 'skipped', 'shown') then raise exception 'bad state' using errcode = '22023'; end if;
+  if p_state is null or p_state not in ('skipped', 'shown') then raise exception 'bad state' using errcode = '22023'; end if;
   select * into c from public.content_daily_cards where day = p_day and draft_id = p_draft for update;
   if not found then return jsonb_build_object('ok', false, 'why', 'no such card'); end if;
   if c.state = p_state then return jsonb_build_object('ok', true, 'state', c.state, 'replayed', true); end if;
-  if p_state = 'posted' then
-    if c.state <> 'shown' then return jsonb_build_object('ok', false, 'why', 'not shown', 'state', c.state); end if;
-    select * into d from public.carousel_drafts where id = p_draft;
-    if not found or not (d.scheduled_at is not null or d.status in ('approved', 'scheduled', 'published')) then
-      return jsonb_build_object('ok', false, 'why', 'still in review', 'state', c.state);
-    end if;
-  elsif p_state = 'skipped' then
+  if p_state = 'skipped' then
     if c.state <> 'shown' or p_day <> v_today then return jsonb_build_object('ok', false, 'why', 'not today''s card', 'state', c.state); end if;
   else
     if c.state <> 'skipped' or p_day <> v_today then return jsonb_build_object('ok', false, 'why', 'not today''s card', 'state', c.state); end if;
@@ -283,6 +285,66 @@ begin
   update public.content_daily_cards set state = p_state, resolved_at = case when p_state = 'shown' then null else now() end
    where day = p_day returning * into c;
   return jsonb_build_object('ok', true, 'state', c.state);
+end $function$;
+
+-- POST, ONE TRANSACTION. Called once the client's 8 s Undo hold has ended (after that, like the Review desk's one-tap
+-- key, there is no Undo: the receipt names the time). Locks, in the order the cb39 verdict path takes them: the cb39
+-- advisory lock for the draft, today's card row, the draft row. Then requires: today's card, still 'shown', for this
+-- draft; the draft on Ivan's seat (client_id null), in review, undated, unpublished, its body hash equal to the hash of
+-- the text the device showed (and to the card's); QA still PASS with no review block; a brain draft still released and
+-- validated; a time not already past (scheduleGuarded's rule). Then the existing path's own writes, unchanged:
+--   approve   brain draft (p_via_verdict, the client's isBrainPost rule) = cb39_verdict_set(keep) itself;
+--             otherwise approveReviewDraft's update (status 'approved' where client_id null, review, undated, unpublished)
+--   schedule  scheduleGuarded's update (status 'scheduled', scheduled_at; the spacing trigger may move the day)
+-- and marks the card posted. Any refused condition raises a plain message and nothing is written (one transaction).
+-- A second device tapping Post waits on the card lock, then finds it posted: "already used".
+create or replace function public.content_card_post(p_day date, p_draft uuid, p_body_sha text, p_at timestamptz, p_via_verdict boolean, p_ms_to_verdict int default null)
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+set lock_timeout to '3s'
+set statement_timeout to '20s'
+as $function$
+declare c public.content_daily_cards%rowtype; d public.carousel_drafts%rowtype; v_n int; v_at timestamptz;
+begin
+  if auth.uid() is null or not public.cb34_p2_operator_lane_allowed('ivan') then
+    raise exception 'unauthorized' using errcode = '42501';
+  end if;
+  if p_day is null or p_draft is null or p_body_sha is null or p_at is null then raise exception 'bad request' using errcode = '22023'; end if;
+  perform pg_advisory_xact_lock(hashtextextended('cb39-verdict:' || p_draft::text, 0));
+  select * into c from public.content_daily_cards where day = p_day for update;
+  if not found or c.draft_id <> p_draft or p_day <> (now() at time zone 'Europe/Warsaw')::date then
+    raise exception 'Not posted: today''s card changed.' using errcode = 'P0001', hint = 'card_used'; end if;
+  if c.state = 'skipped' then raise exception 'Not posted: the card was skipped.' using errcode = 'P0001', hint = 'card_used'; end if;
+  if c.state <> 'shown' then raise exception 'Not posted: the card was already used.' using errcode = 'P0001', hint = 'card_used'; end if;
+  select * into d from public.carousel_drafts where id = p_draft for update;
+  if not found or d.client_id is not null or d.status <> 'review' or d.scheduled_at is not null or d.published_at is not null then
+    raise exception 'Not posted: it was already decided in Review.' using errcode = 'P0001', hint = 'card_used'; end if;
+  if public.content_card_sha(d.post_body) <> p_body_sha or c.body_sha256 <> p_body_sha then
+    raise exception 'Not posted: the text changed.' using errcode = 'P0001', hint = 'card_changed'; end if;
+  if coalesce(d.qa ->> 'verdict', '') <> 'PASS' or public.cb34_p2_review_block(d.qa, d.taxonomy) is not null
+     or (exists (select 1 from public.cb34_p2_members m where m.draft_id = d.id)
+         and not exists (select 1 from public.cb34_p2_members m where m.draft_id = d.id and m.state = 'released'
+                           and m.validation ->> 'verdict' = 'PASS' and m.client_id = 'ivan')) then
+    raise exception 'Not posted: it needs a look in Review.' using errcode = 'P0001', hint = 'card_review'; end if;
+  if p_at < now() - interval '5 minutes' then
+    raise exception 'That time has already passed. Pick a later time.' using errcode = 'P0001', hint = 'card_past'; end if;
+
+  if p_via_verdict then
+    perform public.cb39_verdict_set(p_draft, 'keep', '{}'::text[], null, null, p_ms_to_verdict);
+  else
+    update public.carousel_drafts set status = 'approved'
+     where id = p_draft and client_id is null and status = 'review' and published_at is null and scheduled_at is null;
+    get diagnostics v_n = row_count;
+    if v_n = 0 then raise exception 'Not approved: this draft changed since it loaded (archived, dated or published).' using errcode = 'P0001'; end if;
+  end if;
+  update public.carousel_drafts set status = 'scheduled', scheduled_at = p_at
+   where id = p_draft and client_id is null and status in ('review', 'approved', 'scheduled') and published_at is null
+  returning scheduled_at into v_at;
+  if v_at is null then raise exception 'Not scheduled. This draft is no longer in review, approved or scheduled.' using errcode = 'P0001'; end if;
+  update public.content_daily_cards set state = 'posted', resolved_at = now() where day = p_day;
+  return jsonb_build_object('ok', true, 'scheduled_at', v_at);
 end $function$;
 
 -- After a fix from the card (the Review editor's own compare-and-swap save), the card follows the new body: only while
@@ -316,11 +378,13 @@ revoke all on function public.content_card_pick(timestamptz) from public, anon, 
 revoke all on function public.content_card_today() from public, anon;
 revoke all on function public.content_card_set(date, uuid, text) from public, anon;
 revoke all on function public.content_card_rebase(date, uuid, text) from public, anon;
+revoke all on function public.content_card_post(date, uuid, text, timestamptz, boolean, int) from public, anon;
 grant execute on function public.content_card_pick(timestamptz) to service_role;
 grant execute on function public.content_card_candidates(timestamptz) to service_role;
 grant execute on function public.content_card_today() to authenticated, service_role;
 grant execute on function public.content_card_set(date, uuid, text) to authenticated, service_role;
 grant execute on function public.content_card_rebase(date, uuid, text) to authenticated, service_role;
+grant execute on function public.content_card_post(date, uuid, text, timestamptz, boolean, int) to authenticated, service_role;
 
 select cron.schedule('content-daily-card', '*/15 9,10 * * *', 'select public.content_card_pick()')
  where not exists (select 1 from cron.job where jobname = 'content-daily-card');

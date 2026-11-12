@@ -31,6 +31,15 @@ create table public.carousel_drafts (
   source_label text, image_urls jsonb, video_url text, scheduled_at timestamptz, published_at timestamptz,
   created_at timestamptz default now(), updated_at timestamptz default now());
 create table public.cb34_p2_members (draft_id uuid primary key, client_id text, state text, validation jsonb, body_sha256 text);
+create table public.inbox_notifications (id bigserial primary key, dedupe_key text, dismissed_at timestamptz);
+-- cb39_verdict_set stand-in: records the call and does the live function's Ivan-seat write (status 'approved').
+create table public.verdict_calls (draft_id uuid, verdict text, ms int);
+create function public.cb39_verdict_set(p_draft uuid, p_verdict text, p_reasons text[] default '{}', p_note text default null, p_invocation uuid default null, p_ms_to_verdict int default null)
+returns jsonb language plpgsql as $$ begin
+  insert into verdict_calls values (p_draft, p_verdict, p_ms_to_verdict);
+  update carousel_drafts set status = 'approved' where id = p_draft and client_id is null;
+  return jsonb_build_object('draft_id', p_draft, 'verdict', p_verdict);
+end $$;
 `
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
@@ -215,6 +224,18 @@ describe('content_card_pick', { timeout: 60_000 }, () => {
     expect(await calls(ok)).toHaveLength(1)
   })
 
+  it('never rings twice: a retry finds the row inbox-notify already wrote (even dismissed) and does not call again', async () => {
+    const db = await setup()
+    await draft(db, { n: 1 })
+    await pick(db)
+    // the post landed (the row exists) but its answer timed out; Ivan dismissed the bell row before the next run
+    await db.exec(`insert into net._http_response values (1, null)`)
+    await db.exec(`insert into inbox_notifications (dedupe_key, dismissed_at) values ('content-card:${DAY}', now())`)
+    expect(await pick(db, '2026-11-12T10:15:00Z')).toMatchObject({ fire: false, why: 'already sent' })
+    expect(await pick(db, '2026-11-12T10:30:00Z')).toMatchObject({ fire: false, why: 'already picked' })
+    expect(await calls(db)).toHaveLength(1)
+  })
+
   it('refuses a signed-in browser', async () => {
     const db = await setup()
     await db.exec(`set test.service = '0'`)
@@ -257,18 +278,14 @@ describe('content_card_today, content_card_set, content_card_rebase', { timeout:
     await expect(set(db, 'skipped')).rejects.toThrow(/unauthorized/)
   })
 
-  it('skip leaves the draft untouched and can be undone; posted needs the draft to have left Review', async () => {
+  it('skip leaves the draft untouched and can be undone; posted is never written here', async () => {
     const db = await carded()
     expect(await set(db, 'skipped')).toMatchObject({ ok: true, state: 'skipped' })
+    expect(await set(db, 'skipped')).toMatchObject({ ok: true, replayed: true })
     expect(await one<string>(db, `select status v from carousel_drafts`)).toBe('review')
-    expect(await set(db, 'posted')).toMatchObject({ ok: false, why: 'not shown' })
     expect(await set(db, 'shown')).toMatchObject({ ok: true, state: 'shown' })
-    expect(await set(db, 'posted')).toMatchObject({ ok: false, why: 'still in review' })
-    await db.exec(`update carousel_drafts set status = 'approved', scheduled_at = now() + interval '2 days'`)
-    expect(await set(db, 'posted')).toMatchObject({ ok: true, state: 'posted' })
-    expect(await set(db, 'posted')).toMatchObject({ ok: true, replayed: true })
-    expect(await set(db, 'skipped')).toMatchObject({ ok: false })
     expect(await set(db, 'skipped', 2)).toMatchObject({ ok: false, why: 'no such card' })
+    await expect(set(db, 'posted')).rejects.toThrow(/bad state/)
     await expect(set(db, 'expired')).rejects.toThrow(/bad state/)
   })
 
@@ -292,5 +309,85 @@ describe('the migration', { timeout: 60_000 }, () => {
     expect((await db.query(`select 1 from cron.job where jobname = 'content-daily-card'`)).rows).toEqual([])
     expect((await db.query(`select 1 from pg_tables where tablename = 'content_daily_cards'`)).rows).toEqual([])
     expect((await db.query(`select 1 from pg_proc where proname like 'content_card_%'`)).rows).toEqual([])
+  })
+})
+
+describe('content_card_post: Post in one transaction', { timeout: 60_000 }, () => {
+  const BODY = 'Line one\n\nLine two'
+  async function carded(o: { client?: string | null; scheduled?: string | null; member?: string | null; qa?: object } = {}) {
+    const db = await setup()
+    await db.query(`insert into carousel_drafts (id, client_id, status, type, title, post_body, qa, scheduled_at) values ($1, $2, 'review', 'text', 'T', $3, $4, $5)`,
+      [id(1), o.client ?? null, BODY, JSON.stringify(o.qa ?? PASS), o.scheduled ?? null])
+    if (o.member) await db.query(`insert into cb34_p2_members values ($1, 'ivan', $2, '{"verdict":"PASS"}', null)`, [id(1), o.member])
+    await db.query(`insert into content_daily_cards (day, draft_id, body_sha256, why) select (now() at time zone 'Europe/Warsaw')::date, id, encode(sha256(convert_to(post_body, 'UTF8')), 'hex'), 'newest' from carousel_drafts where id = $1`, [id(1)])
+    return db
+  }
+  const shaOf = (db: PGlite, body: string) => one<string>(db, `select encode(sha256(convert_to($1, 'UTF8')), 'hex') v`, [body])
+  const post = async (db: PGlite, o: { sha?: string; brain?: boolean; at?: string } = {}) =>
+    one<{ ok: boolean; scheduled_at: string }>(db, `select public.content_card_post((now() at time zone 'Europe/Warsaw')::date, $1::uuid, $2, coalesce($3::timestamptz, now() + interval '2 days'), $4, 1200) v`,
+      [id(1), o.sha ?? await shaOf(db, BODY), o.at ?? null, o.brain ?? false])
+  const state = async (db: PGlite) => (await db.query<{ card: string; status: string; scheduled: boolean; verdicts: number }>(
+    `select c.state card, d.status, d.scheduled_at is not null scheduled, (select count(*)::int from verdict_calls) verdicts from content_daily_cards c join carousel_drafts d on d.id = c.draft_id`)).rows[0]
+  const untouched = { card: 'shown', status: 'review', scheduled: false, verdicts: 0 }
+
+  it('happy path: approves (approveReviewDraft’s update), schedules (scheduleGuarded’s update), marks the card posted', async () => {
+    const db = await carded()
+    const r = await post(db)
+    expect(r.ok).toBe(true)
+    expect(r.scheduled_at).toBeTruthy()
+    expect(await state(db)).toEqual({ card: 'posted', status: 'scheduled', scheduled: true, verdicts: 0 })
+  })
+
+  it('a brain draft approves through cb39_verdict_set keep, with the time to verdict', async () => {
+    const db = await carded({ member: 'released' })
+    await post(db, { brain: true })
+    expect((await db.query(`select verdict, ms from verdict_calls`)).rows).toEqual([{ verdict: 'keep', ms: 1200 }])
+    expect(await state(db)).toMatchObject({ card: 'posted', status: 'scheduled' })
+  })
+
+  it('refuses a body other than the one shown, also after another device fixed it and the card followed', async () => {
+    const db = await carded()
+    await expect(post(db, { sha: 'f'.repeat(64) })).rejects.toThrow('Not posted: the text changed.')
+    expect(await state(db)).toEqual(untouched)
+    await db.exec(`update carousel_drafts set post_body = 'Fixed'; update content_daily_cards set body_sha256 = encode(sha256(convert_to('Fixed', 'UTF8')), 'hex')`)
+    await expect(post(db)).rejects.toThrow('Not posted: the text changed.')
+    expect(await state(db)).toEqual(untouched)
+  })
+
+  it('refuses a skipped card, an already dated draft and a client seat draft, writing nothing', async () => {
+    let db = await carded()
+    await db.exec(`update content_daily_cards set state = 'skipped'`)
+    await expect(post(db)).rejects.toThrow('Not posted: the card was skipped.')
+    expect(await state(db)).toEqual({ ...untouched, card: 'skipped' })
+    db = await carded({ scheduled: '2030-01-07T09:45:00Z' })
+    await expect(post(db)).rejects.toThrow('Not posted: it was already decided in Review.')
+    expect((await db.query(`select status, scheduled_at from carousel_drafts`)).rows[0]).toEqual({ status: 'review', scheduled_at: new Date('2030-01-07T09:45:00Z') })
+    db = await carded({ client: 'risedtc' })
+    await expect(post(db)).rejects.toThrow('Not posted: it was already decided in Review.')
+    expect(await state(db)).toEqual(untouched)
+  })
+
+  it('refuses when QA or the brain release changed during the hold (send him to Review), and a time already past', async () => {
+    for (const o of [{ qa: { verdict: 'FAIL' } }, { qa: { verdict: 'PASS', feedback: 'GATE: BLOCKED' } }, { member: 'staged' }]) {
+      const db = await carded(o)
+      await expect(post(db, { brain: !!o.member })).rejects.toThrow('Not posted: it needs a look in Review.')
+      expect(await state(db)).toEqual(untouched)
+    }
+    const db = await carded()
+    await expect(post(db, { at: '2026-01-01T09:45:00Z' })).rejects.toThrow(/already passed/)
+    expect(await state(db)).toEqual(untouched)
+  })
+
+  it('two taps: the first posts, the second is told the card was already used', async () => {
+    const db = await carded()
+    await post(db)
+    await expect(post(db)).rejects.toThrow('Not posted: the card was already used.')
+    expect(await state(db)).toMatchObject({ card: 'posted', status: 'scheduled' })
+  })
+
+  it('needs a signed-in user on Ivan’s lane', async () => {
+    const db = await carded()
+    await db.exec(`set test.lane_ok = '0'`)
+    await expect(post(db)).rejects.toThrow(/unauthorized/)
   })
 })

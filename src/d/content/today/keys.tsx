@@ -1,22 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fetchIvanArmedDays, type ArmedDays, type ContentDraft } from '../../../lib/content'
-import { fetchIvanSlotRows, readTodayCard, setCardState, type SlotRow, type TodayCard } from '../../../lib/contentCard'
+import { CardRefused, fetchIvanSlotRows, postCard, readTodayCard, type SlotRow, type TodayCard } from '../../../lib/contentCard'
+import { bodySha, lineFlagsOf, needsKeep } from '../../../lib/lineFlags'
+import { dHash } from '../../route'
+import { useFrame } from '../../shell/frame'
 import { isBrainPost } from '../../../lib/brainDraft'
 import { Btn } from '../../ui/Key'
 import { warsawDow, warsawHm } from '../../ui/time'
 import { seatSlotOf, type Slot } from '../model'
 import { useLiveNow } from '../useLiveNow'
-import { markShown } from '../verdictStore'
+import { markShown, shownForMs } from '../verdictStore'
 import { oneTapSlot, slotWords, useApproveSchedule, useReservedSlots } from '../weekVerbs'
 import { useLineFlags } from '../v2/LineFlags'
 import { refreshTodayCard, type LiveCard } from './store'
 
 // THE CARD'S KEYS, shared by the sliding toast, Home and the card on Content. Post is the Review desk's own one-tap
-// key (weekVerbs.useApproveSchedule: held 8 s with Undo, then the cb39 keep verdict for a brain draft or the guarded
-// approveReviewDraft, then scheduleGuarded at the seat's next free slot). Two additions only: right before the write
-// the card is read again, and a card whose text changed (or that was decided elsewhere) is refused before anything is
-// written; after the write the card is marked posted. A draft with flagged lines to check goes to Review instead,
-// where Approve asks once, as it does for every other draft.
+// key (weekVerbs.useApproveSchedule: held 8 s with Undo, the same slot, the same receipt; no Undo after the write,
+// as on that key). When the hold ends the card is read again (the text must be exactly the one shown; flagged lines
+// that need his answer send him to Review), then ONE database call, content_card_post, rechecks everything under a
+// lock and does the existing approve (cb39 keep / approveReviewDraft's update) and scheduleGuarded's update and marks
+// the card posted, or writes nothing. A draft with flagged lines to check goes to Review instead, where Approve asks.
 
 /** The one-tap slot for Ivan's seat, from the same reads as the Review desk. Null until both reads answered. */
 export function useOneTapSlot(version: number): Slot | null {
@@ -37,11 +40,13 @@ export function useOneTapSlot(version: number): Slot | null {
 }
 
 const NOT_POSTED = 'Not posted:'
-function refusal(now: TodayCard | null, day: string, id: string): string | null {
+function refusal(now: TodayCard | null, day: string, id: string, shown: string): string | null {
   if (!now || now.day !== day || now.draft?.id !== id) return `${NOT_POSTED} today’s card changed.`
   if (now.state === 'skipped') return `${NOT_POSTED} the card was skipped.`
   if (now.state !== 'shown') return `${NOT_POSTED} the card was already used.`
-  if (now.live === 'changed') return `${NOT_POSTED} the text changed after it was picked.`
+  // The text this device showed, exactly: another device's Fix keeps the card 'ok' with a body this one never showed.
+  if ((now.draft.post_body ?? '') !== shown) return `${NOT_POSTED} the text changed.`
+  if (now.live === 'changed') return `${NOT_POSTED} the text changed.`
   if (now.live === 'decided') return `${NOT_POSTED} it was already decided in Review.`
   if (now.live === 'gone') return `${NOT_POSTED} it is no longer in Review.`
   return null
@@ -58,6 +63,7 @@ export type CardKeys = {
 
 export function useCardKeys(card: LiveCard, body: string, version: number): CardKeys {
   const d = card.draft
+  const f = useFrame()
   const slot = useOneTapSlot(version)
   const refresh = useCallback(() => { void refreshTodayCard() }, [])
   const oneTap = useApproveSchedule(refresh)
@@ -65,13 +71,23 @@ export function useCardKeys(card: LiveCard, body: string, version: number): Card
   useEffect(() => { markShown(d.id) }, [d.id])
   const post = useCallback(() => {
     if (!slot) return
+    const shown = body
+    const viaVerdict = isBrainPost(d) && (d.status === 'review' || d.status === 'error')
+    const toReview = () => f.navigate(dHash('content', 'now', { focus: d.id }))
     void oneTap({
-      id: d.id, status: d.status, poland: card.why === 'poland',
-      viaVerdict: isBrainPost(d) && (d.status === 'review' || d.status === 'error'),
-      guard: async () => { const why = refusal(await readTodayCard(), card.day, d.id); if (why) throw new Error(why) },
-      after: async () => { await setCardState(card.day, d.id, 'posted') },
+      id: d.id, status: d.status, poland: card.why === 'poland', viaVerdict,
+      write: async () => {
+        const fresh = await readTodayCard()
+        const why = refusal(fresh, card.day, d.id, shown)
+        if (why) throw new Error(why)
+        const sha = await bodySha(shown)
+        // Lines flagged during the hold that need his answer: Review asks, the card does not post.
+        if (needsKeep(lineFlagsOf(fresh?.draft?.line_flags, shown), sha)) { toReview(); throw new Error(`${NOT_POSTED} it has lines to check in Review.`) }
+        try { return await postCard(card.day, d.id, sha, slot.at.toISOString(), viaVerdict, shownForMs(d.id)) }
+        catch (e) { if (e instanceof CardRefused && e.review) toReview(); throw e }
+      },
     }, slot.at)
-  }, [slot, oneTap, d, card.day, card.why])
+  }, [slot, oneTap, d, card.day, card.why, body, f])
   // While the body is still being hashed, flagged text counts as asking (useLineFlags); the keys wait for the answer.
   const ready = !lf.flags || !lf.ask || lf.sha !== null
   return { slot, check: lf.ask ? lf.flags?.lines.length ?? 0 : null, ready, post }

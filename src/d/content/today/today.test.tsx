@@ -9,16 +9,17 @@ import { canonicalHash, parseDHash, toDHash } from '../../route'
 import { routableHash } from '../../../lib/turns'
 import { ToastProvider } from '../../ui/toast'
 import { DConfirmProvider } from '../../ui/confirm'
-import type { TodayCard } from '../../../lib/contentCard'
+import { CardRefused, type TodayCard } from '../../../lib/contentCard'
+import { bodySha } from '../../../lib/lineFlags'
 
 // The day's post card (db/20261112_content_daily_card): the sliding toast, the card on Content, Home's peek and the
-// landing rule. Every read and write is mocked; Post goes through the Review desk's own one-tap path, so the
-// mocks are that path's writes (approveReviewDraft / the cb39 verdict, then scheduleGuarded).
+// landing rule. Every read and write is mocked. Post keeps the Review desk's one-tap hold and ends in ONE database
+// call (content_card_post), so the client-side approve and schedule writes must never run for a card.
 const lib = vi.hoisted(() => ({
-  readTodayCard: vi.fn(), setCardState: vi.fn(), rebaseCard: vi.fn(), fetchIvanSlotRows: vi.fn(),
+  readTodayCard: vi.fn(), setCardState: vi.fn(), rebaseCard: vi.fn(), fetchIvanSlotRows: vi.fn(), postCard: vi.fn(),
   fetchIvanArmedDays: vi.fn(), approveReviewDraft: vi.fn(), saveDraftBody: vi.fn(), scheduleGuarded: vi.fn(), setVerdict: vi.fn(),
 }))
-vi.mock('../../../lib/contentCard', () => ({ readTodayCard: lib.readTodayCard, setCardState: lib.setCardState, rebaseCard: lib.rebaseCard, fetchIvanSlotRows: lib.fetchIvanSlotRows }))
+vi.mock('../../../lib/contentCard', async orig => ({ ...(await orig<typeof import('../../../lib/contentCard')>()), readTodayCard: lib.readTodayCard, setCardState: lib.setCardState, rebaseCard: lib.rebaseCard, fetchIvanSlotRows: lib.fetchIvanSlotRows, postCard: lib.postCard }))
 vi.mock('../../../lib/content', async orig => ({ ...(await orig<typeof import('../../../lib/content')>()), fetchIvanArmedDays: lib.fetchIvanArmedDays, approveReviewDraft: lib.approveReviewDraft, saveDraftBody: lib.saveDraftBody }))
 vi.mock('../writes', () => ({ scheduleGuarded: lib.scheduleGuarded, archiveStaleDraft: vi.fn() }))
 vi.mock('../../../lib/verdicts', async orig => ({ ...(await orig<typeof import('../../../lib/verdicts')>()), setVerdict: lib.setVerdict }))
@@ -59,6 +60,7 @@ beforeEach(() => {
   lib.fetchIvanArmedDays.mockResolvedValue(Object.assign(new Set<string>(), { times: [] }))
   lib.approveReviewDraft.mockResolvedValue(undefined)
   lib.scheduleGuarded.mockImplementation((_id: string, at: string) => Promise.resolve(at))
+  lib.postCard.mockImplementation((_d: string, _i: string, _s: string, at: string) => Promise.resolve(at))
   resetTodayCardForTest(); resetSlidForTest(); resetDecisionsForTest(); resetReservedForTest()
 })
 afterEach(() => { cleanup(); resetDecisionsForTest() })
@@ -78,42 +80,76 @@ describe('the sliding post card', () => {
     expect(t.textContent).not.toContain('—')
   })
 
-  it('Post goes through the Review desk’s one-tap path (held, then approve + schedule) and marks the card posted', async () => {
-    render(<Frame hash="#exp/d/lanes"><CardToast /></Frame>)
+  const noClientWrites = () => {
+    expect(lib.approveReviewDraft).not.toHaveBeenCalled()
+    expect(lib.scheduleGuarded).not.toHaveBeenCalled()
+    expect(lib.setVerdict).not.toHaveBeenCalled()
+    expect(lib.setCardState).not.toHaveBeenCalled()
+  }
+  const tapPost = async (hash = '#exp/d/lanes') => {
+    render(<Frame hash={hash}><CardToast /></Frame>)
     await waitFor(() => expect(verb('card-post', toastEl()!)?.disabled).toBe(false))
     fireEvent.click(verb('card-post', toastEl()!)!)
+  }
+
+  it('Post holds for the 8 s Undo, then posts in ONE database call with the hash of the text it showed', async () => {
+    await tapPost()
     expect(toastEl()).toBeNull()
     // the 8 s Undo receipt names the time; nothing is written yet
     expect(screen.getByText(/^Approved\. Posts /)).toBeTruthy()
-    expect(lib.approveReviewDraft).not.toHaveBeenCalled()
+    expect(lib.postCard).not.toHaveBeenCalled()
     await act(() => flushDecisions())
-    expect(lib.approveReviewDraft).toHaveBeenCalledWith(ID)
-    expect(lib.setVerdict).not.toHaveBeenCalled()
-    expect(lib.scheduleGuarded).toHaveBeenCalledWith(ID, expect.stringMatching(/^2026-|^20\d\d-/))
-    expect(lib.setCardState).toHaveBeenCalledWith('2026-11-12', ID, 'posted')
+    expect(lib.postCard).toHaveBeenCalledWith('2026-11-12', ID, await bodySha(BODY), expect.stringMatching(/^20\d\d-/), false, expect.any(Number))
+    noClientWrites()
+    expect(await screen.findByText(/^Armed for /)).toBeTruthy()
   })
 
-  it('a brain draft posts through the cb39 keep verdict, as the Review desk does', async () => {
+  it('a brain draft asks the database for the cb39 keep verdict, as the Review desk does', async () => {
     lib.readTodayCard.mockResolvedValue(card({}, { cb34_p2_member: true }))
-    lib.setVerdict.mockResolvedValue({ draft_id: ID, verdict: 'keep', reasons: [] })
-    render(<Frame hash="#exp/d/lanes"><CardToast /></Frame>)
-    await waitFor(() => expect(verb('card-post', toastEl()!)?.disabled).toBe(false))
-    fireEvent.click(verb('card-post', toastEl()!)!)
+    await tapPost()
     await act(() => flushDecisions())
-    expect(lib.setVerdict).toHaveBeenCalledWith(ID, 'keep', expect.anything())
-    expect(lib.approveReviewDraft).not.toHaveBeenCalled()
+    expect(lib.postCard.mock.calls[0][4]).toBe(true)
   })
 
-  it('refuses to post a card whose text changed since it slid in: nothing is written', async () => {
-    render(<Frame hash="#exp/d/lanes"><CardToast /></Frame>)
-    await waitFor(() => expect(verb('card-post', toastEl()!)?.disabled).toBe(false))
-    fireEvent.click(verb('card-post', toastEl()!)!)
+  it('refuses a card whose text changed since it slid in: nothing is written', async () => {
+    await tapPost()
     lib.readTodayCard.mockResolvedValue(card({ live: 'changed' }))
     await act(() => flushDecisions())
-    expect(lib.approveReviewDraft).not.toHaveBeenCalled()
-    expect(lib.scheduleGuarded).not.toHaveBeenCalled()
-    expect(lib.setCardState).not.toHaveBeenCalled()
-    expect(await screen.findByText('Not posted: the text changed after it was picked.')).toBeTruthy()
+    expect(lib.postCard).not.toHaveBeenCalled()
+    noClientWrites()
+    expect(await screen.findByText('Not posted: the text changed.')).toBeTruthy()
+  })
+
+  it('refuses when another device fixed the text during the hold (the card is still "ok", but not the text shown here)', async () => {
+    await tapPost()
+    lib.readTodayCard.mockResolvedValue(card({}, { post_body: 'Fixed on the phone.', updated_at: '2026-11-12T10:40:00Z' }))
+    await act(() => flushDecisions())
+    expect(lib.postCard).not.toHaveBeenCalled()
+    noClientWrites()
+    expect(await screen.findByText('Not posted: the text changed.')).toBeTruthy()
+  })
+
+  it('lines flagged during the hold refuse the card and send him to Review', async () => {
+    await tapPost()
+    lib.readTodayCard.mockResolvedValue(card({}, { line_flags: { lines: [{ text: 'You charge for the result.', kind: 'personal', ask: 'Is this yours?' }] } }))
+    await act(() => flushDecisions())
+    expect(lib.postCard).not.toHaveBeenCalled()
+    expect(nav).toHaveBeenCalledWith(`#exp/d/content/now?focus=${ID}`)
+    expect(await screen.findByText('Not posted: it has lines to check in Review.')).toBeTruthy()
+  })
+
+  it('the database refusing for QA or release sends him to Review; "already used" does not', async () => {
+    lib.postCard.mockRejectedValueOnce(new CardRefused('Not posted: it needs a look in Review.', true))
+    await tapPost()
+    await act(() => flushDecisions())
+    expect(nav).toHaveBeenCalledWith(`#exp/d/content/now?focus=${ID}`)
+    expect(await screen.findByText('Not posted: it needs a look in Review.')).toBeTruthy()
+    cleanup(); nav.mockReset(); resetTodayCardForTest(); resetSlidForTest()
+    lib.postCard.mockRejectedValueOnce(new CardRefused('Not posted: the card was already used.', false))
+    await tapPost()
+    await act(() => flushDecisions())
+    expect(nav).not.toHaveBeenCalled()
+    expect(await screen.findByText('Not posted: the card was already used.')).toBeTruthy()
   })
 
   it('closing it writes nothing (the card is not skipped) and it does not slide in again on a route change', async () => {
@@ -221,8 +257,8 @@ describe('the card on Content', () => {
     await waitFor(() => expect(verb('card-post')?.disabled).toBe(false))
     fireEvent.click(verb('card-post')!)
     await act(() => flushDecisions())
-    expect(lib.approveReviewDraft).toHaveBeenCalledWith(ID)
-    expect(lib.setCardState).toHaveBeenCalledWith('2026-11-12', ID, 'posted')
+    expect(lib.postCard).toHaveBeenCalledWith('2026-11-12', ID, await bodySha('Fixed first line.\n\nFixed second.'), expect.any(String), false, expect.any(Number))
+    expect(lib.approveReviewDraft).not.toHaveBeenCalled()
   })
 })
 

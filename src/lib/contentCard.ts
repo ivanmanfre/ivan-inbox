@@ -33,11 +33,33 @@ export async function readTodayCard(): Promise<TodayCard | null> {
   return { day: c.day, state: c.state as CardState, live: c.live as CardLive, why: c.why === 'poland' ? 'poland' : 'newest', picked_at: String(c.picked_at ?? ''), draft: (c.draft ?? null) as CardDraft | null }
 }
 
-/** posted / skipped / shown (the Undo of a skip). Resolves to whether the database took it. */
-export async function setCardState(day: string, draftId: string, state: 'posted' | 'skipped' | 'shown'): Promise<boolean> {
+/** skipped / shown (the Undo of a skip). Resolves to whether the database took it. */
+export async function setCardState(day: string, draftId: string, state: 'skipped' | 'shown'): Promise<boolean> {
   const { data, error } = await supabase.rpc('content_card_set', { p_day: day, p_draft: draftId, p_state: state })
   if (error) throw new Error(error.message || 'The card did not change.')
   return !!(data as { ok?: boolean } | null)?.ok
+}
+
+/** A Post the database refused on purpose (db: content_card_post). `review`: it needs a look in Review now. */
+export class CardRefused extends Error {
+  readonly review: boolean
+  constructor(message: string, review: boolean) { super(message); this.review = review }
+}
+
+/** Post, one transaction (db: content_card_post): card and draft locked, every check (today's shown card, the draft
+ *  still in review, undated, unpublished, its body hash = `bodySha` of the text shown, QA and release still good),
+ *  then the existing approve (cb39 keep verdict when `viaVerdict`, else approveReviewDraft's update) and
+ *  scheduleGuarded's update, and the card marked posted. Returns the scheduled_at the row holds. */
+export async function postCard(day: string, draftId: string, bodySha: string, atIso: string, viaVerdict: boolean, msToVerdict?: number): Promise<string | null> {
+  const { data, error } = await supabase.rpc('content_card_post', {
+    p_day: day, p_draft: draftId, p_body_sha: bodySha, p_at: atIso, p_via_verdict: viaVerdict, p_ms_to_verdict: msToVerdict ?? null,
+  })
+  if (error) {
+    const hint = (error as { hint?: string | null }).hint ?? ''
+    if (/^card_/.test(hint)) throw new CardRefused(error.message, hint === 'card_review')
+    throw new Error(error.message || 'Not posted.')
+  }
+  return (data as { scheduled_at?: string | null } | null)?.scheduled_at ?? null
 }
 
 /** After a fix from the card: the card follows the saved body (only while that body is the stored one). */

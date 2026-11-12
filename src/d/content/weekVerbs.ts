@@ -62,10 +62,9 @@ export function useApproveSchedule(onChanged: () => void) {
   const confirm = useDConfirm()
   return useCallback(async (d: {
     id: string; status: string; viaVerdict: boolean; poland?: boolean
-    /** Runs first inside the held write; a throw stops it before anything is written (the day's card: its text is still the one shown). */
-    guard?: () => Promise<void>
-    /** Runs after both halves landed; its failure never fails the post (the day's card marks itself posted). */
-    after?: () => Promise<void>
+    /** The held write in place of approveThenSchedule (the day's card: one database call that checks, approves,
+     *  schedules and marks the card in one transaction). Returns the scheduled_at the row holds. */
+    write?: () => Promise<string | null>
   }, at: Date): Promise<boolean> => {
     if (isPastSchedule(at.toISOString())) { toast.show({ tone: 'failed', message: 'That time has already passed. Pick a later time.' }); return false }
     if (d.status === 'error') {
@@ -80,11 +79,7 @@ export function useApproveSchedule(onChanged: () => void) {
     let stored: string | null = null
     reserveSlot(id, { at: at.toISOString(), poland: !!d.poland })
     holdDecision(id, 'approve', {
-      write: async () => {
-        await d.guard?.()
-        stored = await approveThenSchedule(id, d.viaVerdict, at)
-        try { await d.after?.() } catch (e) { console.error('[d] after the post', e) }
-      },
+      write: async () => { stored = d.write ? await d.write() : await approveThenSchedule(id, d.viaVerdict, at) },
       onCommitted: () => { toast.show(armedReceipt(at, stored)); onChanged(); setTimeout(() => releaseSlot(id), 30_000) },
       onFailed: e => {
         releaseSlot(id)
