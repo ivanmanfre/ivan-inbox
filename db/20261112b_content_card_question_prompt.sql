@@ -68,7 +68,8 @@ Rules:
 3. Every other paragraph stays exactly as it is, character for character, in the same order.
 4. Add no fact, name, number, quote or feeling his answer does not say.
 5. No dashes as punctuation (no em dash, no en dash). No "X, not Y" contrast. Do not end the post with a question.
-6. If his answer is empty, off topic or cannot be used, return the draft unchanged with changed false, and say why in reason.
+6. If his answer is empty, off topic or cannot be used, return the draft unchanged with changed false, and say why in reason. That includes an answer that says he has no experience of it ("never been", "no idea", "does not apply to me").
+7. If his answer disagrees with what the post argues, do not bolt his disagreement onto a post that argues the opposite: the result would contradict itself. Return the draft unchanged with changed false and reason "his answer disagrees with the post".
 
 DRAFT:
 <<<
