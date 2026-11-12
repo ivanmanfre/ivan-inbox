@@ -18,6 +18,16 @@ export type TodayCard = {
   why: 'poland' | 'newest'
   picked_at: string
   draft: CardDraft | null
+  /** The one guided question (db/20261112b_content_card_question): only while it was asked on the current text. */
+  question?: CardQuestion | null
+}
+/** `sha` = the body hash it was asked on; `answer` = his answer if he already gave one. */
+export type CardQuestion = { text: string; anchor: string; kind: string | null; sha: string; answer: string | null }
+
+function questionOf(raw: unknown): CardQuestion | null {
+  const q = raw as Partial<CardQuestion> | null
+  if (!q || typeof q.text !== 'string' || !q.text.trim() || typeof q.anchor !== 'string' || typeof q.sha !== 'string') return null
+  return { text: q.text, anchor: q.anchor, kind: typeof q.kind === 'string' ? q.kind : null, sha: q.sha, answer: typeof q.answer === 'string' ? q.answer : null }
 }
 
 const STATES: readonly string[] = ['shown', 'posted', 'skipped', 'expired']
@@ -30,7 +40,7 @@ export async function readTodayCard(): Promise<TodayCard | null> {
   if (data == null) return null
   const c = data as Partial<TodayCard>
   if (typeof c.day !== 'string' || !STATES.includes(String(c.state)) || !LIVES.includes(String(c.live))) throw new Error('The post card came back malformed.')
-  return { day: c.day, state: c.state as CardState, live: c.live as CardLive, why: c.why === 'poland' ? 'poland' : 'newest', picked_at: String(c.picked_at ?? ''), draft: (c.draft ?? null) as CardDraft | null }
+  return { day: c.day, state: c.state as CardState, live: c.live as CardLive, why: c.why === 'poland' ? 'poland' : 'newest', picked_at: String(c.picked_at ?? ''), draft: (c.draft ?? null) as CardDraft | null, question: questionOf(c.question) }
 }
 
 /** skipped / shown (the Undo of a skip). Resolves to whether the database took it. */
@@ -68,6 +78,27 @@ export async function rebaseCard(day: string, draftId: string, body: string): Pr
   const { data, error } = await supabase.rpc('content_card_rebase', { p_day: day, p_draft: draftId, p_body: body })
   if (error) throw new Error(error.message || 'The card did not follow the edit.')
   return data === true
+}
+
+/** His answer to the card's question, kept even if he cancels the edit; `saved`: he saved the post with it. */
+export async function answerCard(day: string, draftId: string, answer: string, saved = false): Promise<boolean> {
+  const { data, error } = await supabase.rpc('content_card_answer', { p_day: day, p_draft: draftId, p_answer: answer, p_saved: saved })
+  if (error) throw new Error(error.message || 'The answer was not kept.')
+  return data === true
+}
+
+/** The post with his answer worked in (content-card-weave). Never writes the draft: the text is a proposal for his own
+ *  edit. Throws on any failure. Bare fetch, same as emailStats.ts. */
+export async function weaveCard(day: string, draftId: string, bodySha: string, answer: string): Promise<string> {
+  const { data } = await supabase.auth.getSession()
+  if (!data.session?.access_token) throw Error('Sign in again.')
+  const r = await window.fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/content-card-weave`, {
+    method: 'POST', headers: { Authorization: `Bearer ${data.session.access_token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ day, draft_id: draftId, body_sha: bodySha, answer }), signal: AbortSignal.timeout(120_000),
+  })
+  const result = await r.json().catch(() => ({})) as { ok?: boolean; text?: unknown; error?: string }
+  if (!r.ok || !result.ok || typeof result.text !== 'string' || !result.text.trim()) throw Error(result.error || 'Not woven.')
+  return result.text
 }
 
 export type SlotRow = Pick<ContentDraft, 'scheduled_at' | 'published_at' | 'status'>
