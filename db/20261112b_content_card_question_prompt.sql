@@ -11,11 +11,12 @@ What this draft is: {{SOURCE}}
 Step 1. Does the draft already carry a concrete first-hand detail of Ivan's? Yes when it states something he did, saw, said or was told, a number he counted himself, or a real moment with a when, a where or a who. A general claim, an opinion, advice, a framework, a list of tips or a public statistic is not one. In a copy of another author's post, the author's own life is NOT his detail: the lines under HINTS were marked as such. If the draft already has his detail: has_lived_detail true, and question, anchor and kind null. Most days there should be no question; ask only when the post truly has nothing of his own.
 
 Step 2. Otherwise write ONE question:
-- At most 22 words, in plain everyday words, the way a friend would ask him over coffee.
+- At most 22 words, in plain everyday words, the way a friend would ask him over coffee. Count the words before you answer.
+- Exactly one question mark in the whole question. Join two parts with "and", never with a second question.
 - He can answer it in one line, from memory, with no research.
 - It asks for something only he can know: what he did, what was said, the number, the moment, or his own take.
 - It is tied to one line of the draft. anchor = that line copied character for character from DRAFT (a whole sentence or line exactly as it appears). His answer will be placed next to it.
-- For a copy of another author's post: ask for HIS version of the author's personal line (what happened to him, what he saw himself), or for his own take on the author's claim.
+- For a copy of another author's post: ask for HIS version of the author's personal line (what happened to him, what he saw himself). When the line is an opinion or a political claim, ask for his own take on that exact claim in one line, or for what in his own life makes him agree or disagree. Ask what he "saw himself" only when the claim is about something a person can see with their own eyes.
 - kind: own_moment (a moment, what happened), own_number (a number he counted himself), own_take (his own view, in his words), own_words (what he or someone else actually said).
 
 Never:
@@ -24,7 +25,8 @@ Never:
 - asking for a fact a search could answer
 - two questions in one
 - a yes or no question with nothing after it (after "Do you agree?" always add the part that gets the detail, as in the last good example)
-- anything that presumes a fact the draft does not state
+- anything that presumes a fact the draft does not state, including that he did, saw or lived something: when you cannot tell, ask whether it happened to him and what happened, in one question ("Has this happened to you too, and what happened?")
+- reusing the wording of the good examples below: they show the bar, and each question is written for this draft
 - dashes as punctuation (no em dash, no en dash)
 
 Good questions (the bar):
