@@ -12,6 +12,7 @@ import { healthNote } from '../counts/glance'
 import { useFrameCounts } from '../counts/useFrameCounts'
 import { useDInbox } from '../counts/inbox'
 import { SUB_LABEL, SUBS, PLANNING, subOf, type Sub } from '../content/SubNav'
+import { cardOnScreen, useTodayCard } from '../content/today/store'
 import { useEffect, useRef, useState } from 'react'
 import { glideStyle, useNavGlide } from './useNavGlide'
 import { Glance } from './Glance'
@@ -129,7 +130,9 @@ function PlaceLink({ i, on, min }: { i: NavItem; on: boolean; min: boolean }) {
 function ContentGroup({ i, min }: { i: NavItem; min: boolean }) {
   const f = useFrame()
   const here = f.route.place === 'content'
-  const sub = here ? subOf(f.route.sub, f.route.query) : null
+  // While today's post card fills the page, no Content tab is lit (the card is not one of them).
+  const card = useTodayCard()
+  const sub = here ? (cardOnScreen(f.route, card.waiting) ? 'today' : subOf(f.route.sub, f.route.query)) : null
   const open = here && !min
   return (
     <div className="d-navi">

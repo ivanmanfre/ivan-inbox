@@ -82,6 +82,9 @@ describe('kindFor: every census family resolves to a real kind', () => {
     expect(presentPush({ family: 'content_plan', severity: 'info', title: 'Rise · week of 26 Oct is ready',
       body: '5 posts written and checked. They wait for your OK.' }).title).toMatch(/Needs you/)
   })
+  it('the day\'s post card needs Ivan: never a digest, so it is not folded into Activity', () => {
+    expect(kindFor('content_card', 'info', 'Kraków taught me one thing about pricing.')).toBe('needs_you')
+  })
   it('lane supply attention needs an operator while an error is a failure', () => {
     expect(kindFor('lane_supply_alarm', 'attention', 'Lane below floor')).toBe('needs_you')
     expect(kindFor('lane_supply_alarm', 'error', 'Lane halted')).toBe('failed')

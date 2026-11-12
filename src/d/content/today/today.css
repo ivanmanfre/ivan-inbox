@@ -1,0 +1,34 @@
+/* The day's post card (db/20261112_content_daily_card): the toast and Home peek, and the card on Content. */
+
+/* Peek: the post's first two lines, then Post and Open. */
+.ct-peek{display:flex;flex-direction:column;gap:10px;min-width:0}
+.ct-peek-l{font:500 12px/16px var(--f);letter-spacing:.16em;text-transform:uppercase;color:var(--t2)}
+.ct-peek-t{margin:0;display:flex;flex-direction:column;gap:2px;min-width:0}
+.ct-peek-1{font-weight:600;font-size:14px;line-height:1.35;color:var(--t1);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ct-peek-2{font-size:13px;line-height:1.4;color:var(--t2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ct-peek-k{display:flex;gap:8px;flex-wrap:wrap}
+.ct-peek-k .d-btn{min-height:40px}
+.d-phone .ct-peek-k .d-btn{min-height:44px;flex:1 1 auto;justify-content:center}
+
+/* Home: above the seats, the same peek in a band. */
+.ct-home{padding:12px 16px;border-bottom:1px solid var(--line)}
+.d-desktop .ct-home{max-width:640px}
+
+/* The card on Content: the whole post at reading size, its picture, and Post / Skip / Fix under it. */
+.ct-card{display:flex;flex-direction:column;gap:14px;max-width:552px;margin:8px 0 24px}
+.ct-card .cv2-li-b{font-size:15px;line-height:22px}
+.ct-keys{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.d-phone .ct-card{margin:0 0 24px}
+.d-phone .ct-keys{padding:0 16px}
+.d-phone .ct-keys .cv2-k{min-height:44px}
+.d-phone .ct-keys .cv2-k-p{flex:1 1 auto}
+/* Fix: the Review grid's own edit box, at the 15px it edits at there. */
+.ct-card .cv2-gp-edit{display:flex;flex-direction:column;gap:8px}
+.ct-card .cv2-gp-edit textarea{width:100%;box-sizing:border-box;min-height:220px;resize:vertical;padding:8px 10px;border:1px solid #0a66c2;border-radius:8px;background:#fff;color:#191919;font:400 15px/22px var(--ds-font);white-space:pre-wrap}
+.ct-card .cv2-gp-keys{display:flex;gap:6px}
+.d-phone .ct-card .cv2-gp-edit{padding:0 16px}
+
+/* Content > today once the card is done: one line over the Plan. */
+.ct-done{margin:8px 0 12px;font-size:13.5px;color:var(--t2)}
+.ct-done a{color:var(--t1)}
+.d-phone .ct-done{padding:0 16px}

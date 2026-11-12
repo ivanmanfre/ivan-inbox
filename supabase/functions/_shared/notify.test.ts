@@ -84,6 +84,11 @@ describe('notify transient workflow claim', () => {
     expect(pushDefault('system_watchdog_digest', 'info')).toBe(false)
   })
 
+  it('rings for the day\'s post card (family content_card) by default', () => {
+    expect(pushDefault('content_card', 'info')).toBe(true)
+    expect(validateNotify({ family: 'content_card', title: 'Kraków taught me one thing about pricing.', url: './#exp/d/content/today' }).url).toBe('./#exp/d/content/today')
+  })
+
   it('a plan_ready row is stored and rings (push true, url kept); a repeat inside the window folds without ringing', async () => {
     const id = '33333333-3333-4333-8333-333333333333'
     let existing: unknown = null

@@ -251,6 +251,14 @@ html.d-root,html.d-root body{background:#0A0A09}
 .d-toast{pointer-events:auto;border:1px solid var(--strong);border-radius:12px;background:var(--p2);padding:10px 10px 10px 14px;display:flex;gap:10px;align-items:center;font-size:13.5px;box-shadow:0 12px 32px rgba(0,0,0,.5)}
 .d-toast>div{flex:1;min-width:0}.d-toast small{display:block;color:var(--t2);font-size:12px;margin-top:1px}
 .d-toast.d-toast-failed{border-color:rgba(232,160,143,.55)}
+/* An incoming toast (the day's post card): slides in, no timer, a close mark; a swipe sideways closes it too. */
+.d-toast.d-toast-in{position:relative;flex-direction:column;align-items:stretch;padding:12px 44px 12px 14px;animation:d-toast-slide 280ms cubic-bezier(.2,.8,.2,1) both}
+.d-toast-x{position:absolute;top:4px;right:4px;width:40px;height:40px;border:0;border-radius:10px;background:transparent;color:var(--t2);font-size:20px;line-height:1;cursor:pointer}
+.d-toast-x:focus-visible{outline:2px solid var(--t1);outline-offset:-2px}
+.d-phone .d-toast.d-toast-in{animation-name:d-toast-rise}
+@keyframes d-toast-slide{from{transform:translateX(32px);opacity:0}}
+@keyframes d-toast-rise{from{transform:translateY(24px);opacity:0}}
+@media (prefers-reduced-motion:reduce){.d-toast.d-toast-in{animation:none}}
 
 /* Claude slot (placeholder until the Claude agent's drawer lands) */
 .d-cslot{display:flex;flex-direction:column;flex:1;min-height:0;height:100%}

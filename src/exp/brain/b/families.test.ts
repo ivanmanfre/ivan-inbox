@@ -38,6 +38,8 @@ const ALL_FAMILIES: FamilyKey[] = [
   'brain_drafts_pending',
   // 2026-11-05: SwishDM AI search report requests.
   'lead_request_notice',
+  // 2026-11-12: the day's one post card.
+  'content_card',
 ]
 
 describe('FAMILY_LABEL', () => {
@@ -441,5 +443,19 @@ describe('lead_request_notice (SwishDM report requests, 2026-11-05)', () => {
   it('never prints an unknown value off media', () => {
     expect(stateWord(card({ fit: 'DEFINITELY', check_state: 'weird' }))).toBe('New request')
     expect(stateWord(card(null))).toBe('New request')
+  })
+})
+
+describe('content_card (the day\'s post card, 2026-11-12)', () => {
+  it('has a label, a lane and a word, and is a needs-you row: never muted, never folded into Activity', async () => {
+    const { isActivityRow, isMutedNotificationFamily, ACTIVITY_FAMILIES } = await import('../../../../supabase/functions/_shared/notification-lifecycle')
+    expect(familyLabel('content_card')).toBe('Post for today')
+    expect(FAMILY_LANE.content_card).toBe('content')
+    expect(stateWord(n('content_card', 'The second line of the post.'))).toBe('Ready to post')
+    expect(kindFor('content_card', 'info', 'A first line')).toBe('needs_you')
+    expect(isExplicitFamily('content_card')).toBe(true)
+    expect(isMutedNotificationFamily('content_card')).toBe(false)
+    expect(isActivityRow('content_card', 'info', 'A first line')).toBe(false)
+    expect(ACTIVITY_FAMILIES).not.toContain('content_card')
   })
 })
