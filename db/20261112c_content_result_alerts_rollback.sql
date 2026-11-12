@@ -9,6 +9,8 @@ drop function if exists public.content_alert_post(jsonb);
 drop function if exists public.prospect_engaged_payload(uuid, text, text, text, text, numeric, text, text, uuid, boolean, text);
 drop function if exists public.content_result_payload(text, int, numeric, int, text, timestamptz, text, text);
 drop function if exists public.prospect_engaged_candidates(timestamptz, timestamptz);
+drop function if exists public.prospect_engaged_block(uuid, text, text, timestamptz);
+drop function if exists public.prospect_engaged_ivan_prospects(uuid, text, text);
 drop function if exists public.prospect_engaged_closed(uuid, timestamptz);
 drop function if exists public.content_result_candidates(timestamptz);
 drop function if exists public.content_alert_posts();

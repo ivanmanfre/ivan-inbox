@@ -14,14 +14,17 @@
 --    and scored, that became ready (first seen, or scored when the score came later) since the last run. The mark
 --    starts at now minus 26 hours on the first run, so the first run never replays the backlog. At most one per
 --    person per 90 days (person = provider_id, else linkedin_url) and 2 a day, highest score first, then the most
---    recent. A person whose thread is closed or stopped never rings (prospect_engaged_closed: the Stalled
---    Conversation Bump selector's holds plus the inbox's own stop and solved marks; when in doubt it suppresses).
---    The tap opens their DM thread when one exists, else their LinkedIn profile.
+--    recent; retries count in the 2. A person whose thread is closed or stopped never rings (prospect_engaged_closed:
+--    the Stalled Conversation Bump selector's holds plus the inbox's own stop and solved marks; when in doubt it
+--    suppresses), matched to Ivan's seat's prospects only (prospect_engaged_ivan_prospects: prospect_id, member id,
+--    profile slug). The tap opens their DM thread when one exists, else their LinkedIn profile.
 --
 -- Runs once a day at 15:10 UTC (pg_cron), after the own-post tracker (14:00 UTC) and the engager scrape (14:30 UTC).
 -- Each alert's ledger row and its queued pg_net call to inbox-notify are written in one transaction. A call that never
--- became a feed row (inbox-notify unreachable) is sent once more on the next day's run, never again; a feed row that
--- exists for the dedupe key, read or dismissed, means it landed and it is never sent twice.
+-- became a feed row (inbox-notify unreachable) is sent once more on the next day's run, never again, and counts in that
+-- day's limit; a people retry is checked again first and dropped when the thread closed meanwhile. A feed row that
+-- exists for the dedupe key, read or dismissed, means it landed and it is never sent twice. The run gives up on a lock
+-- after 5 s and writes nothing.
 -- Kill switch: integration_config content_result_alerts = 'off' (no row = on). While off nothing is sent and the
 -- engager mark still moves, so switching back on never replays the days it was off.
 -- Rollback = 20261112c_content_result_alerts_rollback.sql.
@@ -57,7 +60,8 @@ create table if not exists public.prospect_engaged_alerts (
   payload jsonb not null,
   notified_at timestamptz not null,
   request_id bigint,
-  notify_attempts int not null default 1
+  notify_attempts int not null default 1,
+  dropped text
 );
 create index if not exists prospect_engaged_alerts_person on public.prospect_engaged_alerts (person_key, alerted_at desc);
 create index if not exists prospect_engaged_alerts_day on public.prospect_engaged_alerts (alert_day);
@@ -217,13 +221,54 @@ as $$
     left join lateral (
       select m.reply_intent, coalesce(m.sent_at, m.created_at) as at
         from public.outreach_messages m
-       where m.prospect_id = p.id and m.direction = 'inbound'
+       where m.prospect_id = p.id and m.direction = 'inbound' and not coalesce(m.is_reaction, false)
        order by coalesce(m.sent_at, m.created_at) desc, m.id desc limit 1) li on true
 $$;
 
+-- Ivan's own prospects (campaign client_id null or 'ivan') that are this person: the row's own prospect_id, the member
+-- id (li_member_key of the provider id or of the profile url, against the prospect's profile id and url) or the profile
+-- slug (li_slug, db/057 + db/059). A prospect of another seat neither suppresses nor is linked.
+create or replace function public.prospect_engaged_ivan_prospects(p_prospect uuid, p_provider text, p_url text)
+returns table(prospect_id uuid, has_thread boolean)
+language sql stable security definer
+set search_path = public, pg_temp
+as $$
+  with k as (select public.li_member_key(p_provider) as mk_provider, public.li_member_key(p_url) as mk_url, public.li_slug(p_url) as slug),
+  hit as (
+    select p.id from public.outreach_prospects p where p.id = p_prospect
+    union select p.id from public.outreach_prospects p, k where k.mk_provider is not null and public.li_member_key(p.linkedin_profile_id) = k.mk_provider
+    union select p.id from public.outreach_prospects p, k where k.mk_provider is not null and public.li_member_key(p.linkedin_url) = k.mk_provider
+    union select p.id from public.outreach_prospects p, k where k.mk_url is not null and public.li_member_key(p.linkedin_profile_id) = k.mk_url
+    union select p.id from public.outreach_prospects p, k where k.mk_url is not null and public.li_member_key(p.linkedin_url) = k.mk_url
+    union select p.id from public.outreach_prospects p, k where k.slug is not null and public.li_slug(p.linkedin_url) = k.slug
+  )
+  select p.id, exists (select 1 from public.outreach_messages m where m.prospect_id = p.id)
+    from hit join public.outreach_prospects p on p.id = hit.id
+    join public.outreach_campaigns c on c.id = p.campaign_id and coalesce(c.client_id, 'ivan') = 'ivan'
+$$;
+
+-- Why this person may not ring right now, or null: one of his own seats, or any of his matched prospects closed.
+-- Read again before a retry is sent.
+create or replace function public.prospect_engaged_block(p_prospect uuid, p_provider text, p_url text, p_now timestamptz default now())
+returns text
+language sql stable security definer
+set search_path = public, pg_temp
+as $$
+  select case
+    when exists (select 1 from public.integration_config ic
+                  where ic.key in ('unipile_linkedin_id', 'risedtc_linkedin_id', 'arch_linkedin_id', 'swishdm_linkedin_id')
+                    and nullif(btrim(ic.value), '') is not null
+                    and (p_provider = ic.value or coalesce(p_url, '') ilike '%' || ic.value || '%'))
+      then 'own seat'
+    else (select r.why from (select public.prospect_engaged_closed(x.prospect_id, p_now) as why
+                               from public.prospect_engaged_ivan_prospects(p_prospect, p_provider, p_url) x) r
+           where r.why is not null order by r.why limit 1)
+  end
+$$;
+
 -- Good-fit engagements on Ivan's own posts that became ready in (p_since, p_now], each with the reason it may not ring
--- (null = it may). Ready = first seen, or scored if the score came later; never older than 72 h. A person matched to
--- prospects by provider_id as well as by the row's own prospect_id: any closed one suppresses.
+-- (null = it may). Ready = first seen, or scored if the score came later; never older than 72 h. prospect_id is the
+-- matched prospect of Ivan's seat (one with a thread first), never another seat's.
 create or replace function public.prospect_engaged_candidates(p_since timestamptz, p_now timestamptz default now())
 returns table(engager_id uuid, person_key text, name text, headline text, linkedin_url text, engagement_type text, reaction_type text,
               icp_score numeric, first_seen_at timestamptz, ready_at timestamptz, post_key text, post_text text, prospect_id uuid,
@@ -242,26 +287,17 @@ as $$
        and greatest(e.first_seen_at, coalesce(e.scored_at, e.first_seen_at)) <= p_now
   )
   select ev.id, ev.pkey, ev.name, ev.headline, ev.linkedin_url, ev.engagement_type, ev.reaction_type, ev.icp_score,
-         ev.first_seen_at, ev.ready, op.post_key, op.post_text, ev.prospect_id,
-         ev.prospect_id is not null and exists (select 1 from public.outreach_messages m where m.prospect_id = ev.prospect_id),
+         ev.first_seen_at, ev.ready, op.post_key, op.post_text, ip.prospect_id, coalesce(ip.has_thread, false),
          case
            when ev.pkey is null then 'no person id'
            when exists (select 1 from public.prospect_engaged_alerts a where a.person_key = ev.pkey and a.alerted_at > p_now - interval '90 days')
              then 'alerted in the last 90 days'
-           when exists (select 1 from public.integration_config ic
-                         where ic.key in ('unipile_linkedin_id', 'risedtc_linkedin_id', 'arch_linkedin_id', 'swishdm_linkedin_id')
-                           and nullif(btrim(ic.value), '') is not null
-                           and (ev.provider_id = ic.value or coalesce(ev.linkedin_url, '') ilike '%' || ic.value || '%'))
-             then 'own seat'
-           else (select r.why from (
-                   select public.prospect_engaged_closed(x.id, p_now) as why
-                     from (select ev.prospect_id as id where ev.prospect_id is not null
-                           union
-                           select p.id from public.outreach_prospects p
-                            where nullif(btrim(ev.provider_id), '') is not null and p.linkedin_profile_id = ev.provider_id) x) r
-                  where r.why is not null order by r.why limit 1)
+           else public.prospect_engaged_block(ev.prospect_id, ev.provider_id, ev.linkedin_url, p_now)
          end
     from ev
+    left join lateral (
+      select x.prospect_id, x.has_thread from public.prospect_engaged_ivan_prospects(ev.prospect_id, ev.provider_id, ev.linkedin_url) x
+       order by x.has_thread desc, (x.prospect_id = ev.prospect_id) desc, x.prospect_id limit 1) ip on true
     join lateral (
       select coalesce(case when coalesce(o.linkedin_url, '') not like 'unipile-%' then substring(o.linkedin_url from 'activity-([0-9]+)') end,
                       substring(o.social_id from '([0-9]+)$')) as post_key, o.post_text
@@ -348,16 +384,22 @@ language plpgsql
 security definer
 set search_path to 'public', 'pg_temp'
 set statement_timeout to '60s'
+set lock_timeout to '5s'
 as $function$
 declare
   v_day date := (p_now at time zone 'Europe/Warsaw')::date;
   v_since timestamptz; v_posts jsonb; v_people jsonb; v_payload jsonb; v_req bigint; v_left int;
-  v_retried int; v_sent jsonb; r record;
+  v_retried int; v_dropped int; v_sent jsonb; v_why text; r record;
 begin
   if not public.content_plan_service_ok() then raise exception 'service only'; end if;
+  -- A run waiting behind a lock (DDL on a table it reads) gives up after lock_timeout (5 s) and writes nothing; the next
+  -- day's run reads the same window again. A busy lock inside one alert's block rolls back that block only.
+  begin
   perform pg_advisory_xact_lock(hashtextextended('content-result-alerts', 0));
+  -- The first mark (26 h back) is kept outside the engager block: a first run that fails keeps its window.
+  insert into public.content_alert_state (k, hwm, updated_at) values ('prospect_engaged', p_now - interval '26 hours', p_now)
+  on conflict (k) do nothing;
   select s.hwm into v_since from public.content_alert_state s where s.k = 'prospect_engaged';
-  v_since := coalesce(v_since, p_now - interval '26 hours');
 
   if public.content_alert_off() then
     insert into public.content_alert_state (k, hwm, updated_at) values ('prospect_engaged', p_now, p_now)
@@ -368,17 +410,21 @@ begin
   -- 1. A post took off. Its own block: a failure here rolls back only this part, and never the engager part.
   begin
     v_retried := 0;
+    -- One post alert sent per Warsaw day, a retry included: what was sent today counts first.
+    v_left := 1 - (select count(*)::int from public.content_result_alerts a where (a.notified_at at time zone 'Europe/Warsaw')::date = v_day);
     -- Yesterday's call that never became a feed row (any row for its key, read or dismissed, means it landed).
     for r in select a.post_key, a.payload from public.content_result_alerts a
               where a.notify_attempts < 2 and a.alerted_at <= p_now - interval '12 hours' and a.alerted_at > p_now - interval '48 hours'
                 and not exists (select 1 from public.inbox_notifications n where n.dedupe_key = a.payload ->> 'dedupe_key')
               order by a.alerted_at for update of a loop
+      exit when v_left <= 0;
       v_req := public.content_alert_post(r.payload);
       update public.content_result_alerts set notified_at = p_now, request_id = v_req, notify_attempts = notify_attempts + 1
        where post_key = r.post_key;
       v_retried := v_retried + 1;
+      v_left := v_left - 1;
     end loop;
-    if exists (select 1 from public.content_result_alerts a where a.alert_day = v_day) then
+    if v_left <= 0 then
       v_posts := jsonb_build_object('fired', false, 'why', 'one already today', 'retried', v_retried);
     else
       select c.* into r from public.content_result_candidates(p_now) c
@@ -404,17 +450,31 @@ begin
 
   -- 2. Good-fit people who engaged. The mark moves only when this block commits, so a failed run is read again tomorrow.
   begin
-    v_retried := 0;
-    for r in select a.engager_id, a.payload from public.prospect_engaged_alerts a
-              where a.notify_attempts < 2 and a.alerted_at <= p_now - interval '12 hours' and a.alerted_at > p_now - interval '48 hours'
+    v_retried := 0; v_dropped := 0;
+    -- Two people sent per Warsaw day, retries included: what was sent today counts first.
+    v_left := 2 - (select count(*)::int from public.prospect_engaged_alerts a where (a.notified_at at time zone 'Europe/Warsaw')::date = v_day);
+    -- A retry is read again first: a thread closed or stopped since yesterday drops it (recorded in dropped), never sent.
+    for r in select a.engager_id, a.payload, e.id as e_id, e.prospect_id, e.provider_id, e.linkedin_url
+               from public.prospect_engaged_alerts a
+               left join public.post_engagers e on e.id = a.engager_id
+              where a.notify_attempts < 2 and a.dropped is null
+                and a.alerted_at <= p_now - interval '12 hours' and a.alerted_at > p_now - interval '48 hours'
                 and not exists (select 1 from public.inbox_notifications n where n.dedupe_key = a.payload ->> 'dedupe_key')
               order by a.alerted_at for update of a loop
+      v_why := case when r.e_id is null then 'engagement row gone'
+                    else public.prospect_engaged_block(r.prospect_id, r.provider_id, r.linkedin_url, p_now) end;
+      if v_why is not null then
+        update public.prospect_engaged_alerts set dropped = v_why where engager_id = r.engager_id;
+        v_dropped := v_dropped + 1;
+        continue;
+      end if;
+      exit when v_left <= 0;
       v_req := public.content_alert_post(r.payload);
       update public.prospect_engaged_alerts set notified_at = p_now, request_id = v_req, notify_attempts = notify_attempts + 1
        where engager_id = r.engager_id;
       v_retried := v_retried + 1;
+      v_left := v_left - 1;
     end loop;
-    v_left := 2 - (select count(*)::int from public.prospect_engaged_alerts a where a.alert_day = v_day);
     v_sent := '[]'::jsonb;
     for r in select x.* from (
                select distinct on (c.person_key) c.*
@@ -434,7 +494,7 @@ begin
     end loop;
     insert into public.content_alert_state (k, hwm, updated_at) values ('prospect_engaged', p_now, p_now)
     on conflict (k) do update set hwm = greatest(public.content_alert_state.hwm, excluded.hwm), updated_at = excluded.updated_at;
-    v_people := jsonb_build_object('sent', v_sent, 'retried', v_retried, 'since', v_since);
+    v_people := jsonb_build_object('sent', v_sent, 'retried', v_retried, 'dropped', v_dropped, 'since', v_since);
   exception when others then
     v_people := jsonb_build_object('sent', '[]'::jsonb, 'error', sqlerrm);
   end;
@@ -443,6 +503,9 @@ begin
     raise warning 'content_result_alerts_run: posts %, people %', v_posts ->> 'error', v_people ->> 'error';
   end if;
   return jsonb_build_object('day', v_day, 'posts', v_posts, 'people', v_people);
+  exception when lock_not_available then
+    return jsonb_build_object('busy', true, 'day', v_day, 'error', sqlerrm);
+  end;
 end $function$;
 
 revoke all on function public.content_alert_off() from public, anon, authenticated;
@@ -453,6 +516,8 @@ revoke all on function public.content_alert_figure(bigint) from public, anon, au
 revoke all on function public.content_alert_posts() from public, anon, authenticated;
 revoke all on function public.content_result_candidates(timestamptz) from public, anon, authenticated;
 revoke all on function public.prospect_engaged_closed(uuid, timestamptz) from public, anon, authenticated;
+revoke all on function public.prospect_engaged_ivan_prospects(uuid, text, text) from public, anon, authenticated;
+revoke all on function public.prospect_engaged_block(uuid, text, text, timestamptz) from public, anon, authenticated;
 revoke all on function public.prospect_engaged_candidates(timestamptz, timestamptz) from public, anon, authenticated;
 revoke all on function public.content_result_payload(text, int, numeric, int, text, timestamptz, text, text) from public, anon, authenticated;
 revoke all on function public.prospect_engaged_payload(uuid, text, text, text, text, numeric, text, text, uuid, boolean, text) from public, anon, authenticated;

@@ -7,6 +7,11 @@ import { PGlite } from '@electric-sql/pglite'
 // never assumed. The boost view is the live definition.
 const migration = readFileSync('db/20261112c_content_result_alerts.sql', 'utf8')
 const rollback = readFileSync('db/20261112c_content_result_alerts_rollback.sql', 'utf8')
+// The live LinkedIn identity helpers (db/057 _urldecode, db/059 li_member_id / li_member_key / li_slug, as applied).
+const db057 = readFileSync('db/057_signal_orbit_identity.sql', 'utf8')
+const db059 = readFileSync('db/059_signal_orbit_slug_fix.sql', 'utf8')
+const identity = db057.slice(db057.indexOf('create or replace function public._urldecode'), db057.indexOf('create or replace function public.li_member_id'))
+  + db059.slice(db059.indexOf('create or replace function public.li_member_id'), db059.indexOf('reindex index public.contacts_li_slug_idx'))
 
 const schema = `
 create role anon; create role authenticated; create role service_role;
@@ -31,12 +36,16 @@ create view public.own_post_boost_current_v as
 create table public.post_engagers (id uuid primary key default gen_random_uuid(), post_social_id text, provider_id text, member_id text,
   name text, headline text, linkedin_url text, engagement_type text, comment_text text, reaction_type text, icp_score numeric,
   scored_at timestamptz, first_seen_at timestamptz default now(), last_seen_at timestamptz default now(), prospect_id uuid);
-create table public.outreach_prospects (id uuid primary key, linkedin_profile_id text, name text, stage text, blacklisted boolean default false,
+create table public.outreach_campaigns (id uuid primary key, client_id text);
+insert into public.outreach_campaigns values ('00000000-0000-4000-8000-00000000c001', null), ('00000000-0000-4000-8000-00000000c002', 'ivan'),
+  ('00000000-0000-4000-8000-00000000c003', 'risedtc');
+create table public.outreach_prospects (id uuid primary key, campaign_id uuid default '00000000-0000-4000-8000-00000000c001', linkedin_url text,
+  linkedin_profile_id text, name text, stage text, blacklisted boolean default false,
   call_booked_at timestamptz, skip_state text, skip_reason text, next_touch_after timestamptz, enrichment_data jsonb, solved_at timestamptz,
   needs_manual_reply boolean);
 create table public.outreach_messages (id uuid primary key default gen_random_uuid(), prospect_id uuid, direction text, message_type text,
   sent_at timestamptz, created_at timestamptz default now(), reply_intent text, discard_mode text, email_sequence_stopped_at timestamptz,
-  email_sequence_stopped_reason text);
+  email_sequence_stopped_reason text, is_reaction boolean);
 create table public.outreach_agent_threads (id uuid primary key default gen_random_uuid(), prospect_id uuid, state text, closed_at timestamptz);
 create table public.inbox_notifications (id bigserial primary key, dedupe_key text, dismissed_at timestamptz);
 `
@@ -44,12 +53,15 @@ create table public.inbox_notifications (id bigserial primary key, dedupe_key te
 const NOW = '2026-11-12T15:10:00Z'
 const DAY = '2026-11-12'
 const at = (daysAgo: number, from = NOW) => new Date(Date.parse(from) - daysAgo * 86400000).toISOString()
+const RISE_CAMPAIGN = '00000000-0000-4000-8000-00000000c003'
+const IVAN_LITERAL_CAMPAIGN = '00000000-0000-4000-8000-00000000c002'
 const pid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 const nid = (n: number) => String(7500000000000000000n + BigInt(n))
 
 async function setup() {
   const db = new PGlite()
   await db.exec(schema)
+  await db.exec(identity)
   await db.exec(migration)
   return db
 }
@@ -262,8 +274,8 @@ describe('a good-fit person engaged (prospect_engaged)', { timeout: 60_000 }, ()
     await db.query(`insert into outreach_messages (prospect_id, direction, message_type, email_sequence_stopped_at, email_sequence_stopped_reason) values ($1, 'outbound', 'email', $2, 'superseded_by_operator_coba_draft')`, [pid(13), at(4)])
     for (const [n] of closed) await ev(db, { n, prospect: n })
     // A person whose row has no prospect_id but whose provider id matches a closed prospect is suppressed too.
-    await db.query(`insert into outreach_prospects (id, linkedin_profile_id, stage, blacklisted) values ($1, 'ACoP14', 'archived', false)`, [pid(14)])
-    await ev(db, { n: 14, prospect: null })
+    await db.query(`insert into outreach_prospects (id, linkedin_profile_id, stage, blacklisted) values ($1, 'ACoAAFourteenPersonId123', 'archived', false)`, [pid(14)])
+    await ev(db, { n: 14, prospect: null, provider: 'acoaafourteenpersonid123' })   // the member id compared case-insensitively
     // His own seat never rings.
     await ev(db, { n: 15, provider: 'ACoIVAN' })
     const reasons = (await db.query<{ n: string; suppressed: string | null }>(`select right(engager_id::text, 2) n, suppressed from prospect_engaged_candidates($1::timestamptz - interval '26 hours', $1::timestamptz) order by engager_id`, [NOW])).rows
@@ -288,6 +300,57 @@ describe('a good-fit person engaged (prospect_engaged)', { timeout: 60_000 }, ()
     expect(await one<string | null>(s, `select public.prospect_engaged_closed($1::uuid, $2::timestamptz) v`, [pid(3), NOW])).toBeNull()
   })
 
+  it('matches only prospects of Ivan\'s seat: a RISE twin neither suppresses nor gets the thread link', async () => {
+    const db = await setup()
+    await posts(db)
+    const mid = 'ACoAATwinPersonIdABCDEF12'
+    await prospect(db, 1, { linkedin_profile_id: mid, campaign_id: IVAN_LITERAL_CAMPAIGN })            // open, on Ivan's seat ('ivan')
+    await prospect(db, 2, { linkedin_profile_id: mid, campaign_id: RISE_CAMPAIGN, stage: 'archived' })  // closed, on RISE
+    await ev(db, { n: 1, provider: mid, prospect: 2 })                                                // the row links the RISE twin
+    await run(db)
+    expect((await calledFamily(db, 'prospect_engaged'))[0]).toMatchObject({ url: `./#exp/d/dms?thread=${pid(1)}`, media: { prospect_id: pid(1) } })
+    // only a RISE prospect (with a thread): it rings, and the tap opens LinkedIn, never the RISE thread
+    const s = await setup()
+    await posts(s)
+    await prospect(s, 2, { linkedin_profile_id: mid, campaign_id: RISE_CAMPAIGN, stage: 'archived' })
+    await ev(s, { n: 1, provider: mid, prospect: 2 })
+    await run(s)
+    expect((await calledFamily(s, 'prospect_engaged'))[0]).toMatchObject({ url: 'https://www.linkedin.com/in/person-1', media: { prospect_id: null } })
+    expect(await one<string | null>(s, `select prospect_id::text v from prospect_engaged_alerts`)).toBeNull()
+  })
+
+  it('finds a stopped Ivan prospect from the profile url alone (no prospect id, no provider id)', async () => {
+    const db = await setup()
+    await posts(db)
+    await prospect(db, 1, { linkedin_url: 'https://www.linkedin.com/in/stopped-person' })
+    await db.query(`insert into outreach_messages (prospect_id, direction, message_type, discard_mode) values ($1, 'outbound', 'dm', 'stop')`, [pid(1)])
+    await ev(db, { n: 1, provider: null, prospect: null, url: 'https://linkedin.com/in/Stopped-Person/?utm=x' })
+    expect(await one<string>(db, `select suppressed v from prospect_engaged_candidates($1::timestamptz - interval '26 hours', $1::timestamptz)`, [NOW])).toBe('stopped in DMs')
+    expect((await run(db)).people.sent).toEqual([])
+  })
+
+  it('a reaction after a negative reply or after Mark as solved never reopens the thread', async () => {
+    const db = await setup()
+    await posts(db)
+    await prospect(db, 1)
+    await db.query(`insert into outreach_messages (prospect_id, direction, message_type, sent_at, reply_intent) values ($1, 'inbound', 'dm', $2, 'negative')`, [pid(1), at(3)])
+    await prospect(db, 2, { solved_at: at(2) })
+    await db.query(`insert into outreach_messages (prospect_id, direction, message_type, sent_at, reply_intent) values ($1, 'inbound', 'dm', $2, 'neutral')`, [pid(2), at(3)])
+    for (const n of [1, 2]) await db.query(`insert into outreach_messages (prospect_id, direction, message_type, sent_at, is_reaction) values ($1, 'inbound', 'dm', $2, true)`, [pid(n), at(1)])
+    expect(await one<string>(db, `select public.prospect_engaged_closed($1::uuid, $2::timestamptz) v`, [pid(1), NOW])).toBe('last reply negative')
+    expect(await one<string>(db, `select public.prospect_engaged_closed($1::uuid, $2::timestamptz) v`, [pid(2), NOW])).toBe('marked solved')
+  })
+
+  it('a failed first run keeps its window: the next day picks up an engagement that is 44 h old by then', async () => {
+    const db = await setup()
+    await posts(db)
+    await ev(db, { n: 1, hoursAgo: 20 })
+    await db.exec(`delete from integration_config where key = 'inbox_notify_url'`)
+    expect((await run(db)).people.error).toMatch(/inbox_notify_url/)
+    await db.exec(`insert into integration_config values ('inbox_notify_url', 'https://example.test/inbox-notify')`)
+    expect((await run(db, '2026-11-13T15:10:00Z')).people.sent.map(x => x.title)).toEqual(['Person 1 reacted to your post'])
+  })
+
   it('first run starts 26 hours back (no flood); the next run reads only what came after; a late score still counts', async () => {
     const db = await setup()
     await posts(db)
@@ -296,6 +359,7 @@ describe('a good-fit person engaged (prospect_engaged)', { timeout: 60_000 }, ()
     expect((await run(db)).people.sent.map(s => s.title)).toEqual(['Person 2 reacted to your post'])
     expect(await one<boolean>(db, `select hwm = $1::timestamptz v from content_alert_state where k = 'prospect_engaged'`, [NOW])).toBe(true)
     const next = '2026-11-13T15:10:00Z'
+    await db.exec(`insert into inbox_notifications (dedupe_key) select body ->> 'dedupe_key' from net.calls`)   // it landed
     await ev(db, { n: 3, hoursAgo: 2 }, next)
     // first seen before the last run but scored only after it: ready when the score came
     await ev(db, { n: 4, hoursAgo: 25, scoredLate: 20 }, next)
@@ -349,6 +413,68 @@ describe('both alerts: kill switch, delivery bookkeeping, service only', { timeo
     expect(await calls(db)).toHaveLength(4)
   })
 
+  it('a retry counts in the day\'s limit: 1 post and 2 people a day in all, retries first', async () => {
+    const db = await setup()
+    await baseline(db)
+    await post(db, { n: 1, daysAgo: 1, imp: 2000 })
+    const person = (n: number, from: string) => db.query(`insert into post_engagers (post_social_id, provider_id, name, linkedin_url, engagement_type, icp_score, scored_at, first_seen_at)
+      values ($1, $2, $3, $4, 'reaction', 8, $5, $5)`, [`urn:li:activity:${nid(1)}`, `ACoQ${n}`, `Person ${n}`, `https://www.linkedin.com/in/q-${n}`, at(0.05, from)])
+    await person(1, NOW); await person(2, NOW)
+    const day1 = await run(db)
+    expect(day1.posts).toMatchObject({ fired: true })
+    expect(day1.people.sent).toHaveLength(2)
+    // inbox-notify was down. Day 2: a second post took off and two new people engaged.
+    const D2 = '2026-11-13T15:10:00Z'
+    await post(db, { n: 2, daysAgo: 0.2, imp: 3000 })
+    await person(3, D2); await person(4, D2)
+    const day2 = await run(db, D2)
+    expect(day2.posts).toMatchObject({ fired: false, why: 'one already today', retried: 1 })
+    expect(day2.people).toMatchObject({ sent: [], retried: 2 })
+    expect(await calls(db)).toHaveLength(6)   // 3 on day 1, the same 3 again on day 2, nothing new
+    // Day 3: the second post rings now; the two people of day 2 were read and stay unrung.
+    const day3 = await run(db, '2026-11-14T15:10:00Z')
+    expect(day3.posts).toMatchObject({ fired: true, post_key: nid(2), retried: 0 })
+    expect(await calls(db)).toHaveLength(7)
+  })
+
+  it('a people retry is read again first: a thread closed since yesterday drops it, recorded, and never sent', async () => {
+    const db = await setup()
+    await db.query(`insert into outreach_prospects (id, stage) values ($1, 'dm_sent')`, [pid(1)])
+    await db.query(`insert into outreach_messages (prospect_id, direction, message_type, sent_at) values ($1, 'outbound', 'dm', $2)`, [pid(1), at(5)])
+    await post(db, { n: 1, daysAgo: 2, imp: 80 })
+    await db.query(`insert into post_engagers (post_social_id, provider_id, name, linkedin_url, engagement_type, icp_score, scored_at, first_seen_at, prospect_id)
+      values ($1, 'ACoX', 'Jo', 'https://www.linkedin.com/in/jo', 'reaction', 8, $2, $2, $3)`, [`urn:li:activity:${nid(1)}`, at(0.05), pid(1)])
+    expect((await run(db)).people.sent).toHaveLength(1)
+    await db.query(`update outreach_prospects set solved_at = now() where id = $1`, [pid(1)])
+    const r = await run(db, '2026-11-13T15:10:00Z')
+    expect(r.people).toMatchObject({ retried: 0, dropped: 1 })
+    expect(await one<string>(db, `select dropped v from prospect_engaged_alerts`)).toBe('marked solved')
+    expect(await calls(db)).toHaveLength(1)
+    expect((await run(db, '2026-11-13T18:00:00Z')).people).toMatchObject({ retried: 0, dropped: 0 })
+  })
+
+  it('a busy lock ends the run cleanly: lock_timeout is set, nothing is written, the mark does not move', async () => {
+    const db = await setup()
+    await both(db)
+    expect(await one<string[]>(db, `select proconfig v from pg_proc where proname = 'content_result_alerts_run'`)).toEqual(expect.arrayContaining(['lock_timeout=5s', 'statement_timeout=60s']))
+    await run(db)
+    const mark = () => one<string>(db, `select hwm::text v from content_alert_state`)
+    const before = await mark()
+    // a lock that times out (SQLSTATE 55P03) inside the engager block: that block rolls back, the mark stays
+    await db.exec(`create or replace function public.prospect_engaged_block(p_prospect uuid, p_provider text, p_url text, p_now timestamptz default now())
+      returns text language plpgsql as $$ begin raise exception 'lock timeout' using errcode = 'lock_not_available'; end $$`)
+    await db.query(`insert into post_engagers (post_social_id, provider_id, name, engagement_type, icp_score, scored_at, first_seen_at) values ($1, 'ACoY', 'Later', 'reaction', 9, $2, $2)`, [`urn:li:activity:${nid(1)}`, at(0.05, '2026-11-13T15:10:00Z')])
+    const r = await run(db, '2026-11-13T15:10:00Z')
+    expect(r.people.error).toMatch(/lock timeout/)
+    expect(await mark()).toBe(before)
+    // a lock that times out before either block (the run's own lock): the run returns busy and writes nothing
+    await db.exec(`create or replace function public.content_alert_off() returns boolean language plpgsql as $$ begin raise exception 'lock timeout' using errcode = 'lock_not_available'; end $$`)
+    const n = (await calls(db)).length
+    expect(await run(db, '2026-11-14T15:10:00Z')).toMatchObject({ busy: true })
+    expect(await mark()).toBe(before)
+    expect(await calls(db)).toHaveLength(n)
+  })
+
   it('never rings twice: a feed row for the key (even dismissed) means it landed', async () => {
     const db = await setup()
     await both(db)
@@ -368,7 +494,9 @@ describe('both alerts: kill switch, delivery bookkeeping, service only', { timeo
     const r = await run(db)
     expect(r.posts.error).toMatch(/inbox_notify_url/)
     expect(r.people.error).toMatch(/inbox_notify_url/)
-    expect(await one<number>(db, `select (select count(*) from content_result_alerts) + (select count(*) from prospect_engaged_alerts) + (select count(*) from content_alert_state) v`)).toBe(0)
+    expect(await one<number>(db, `select (select count(*) from content_result_alerts) + (select count(*) from prospect_engaged_alerts) v`)).toBe(0)
+    // the first mark is kept: the failed first run keeps its 26 h window
+    expect(await one<boolean>(db, `select hwm = $1::timestamptz - interval '26 hours' v from content_alert_state`, [NOW])).toBe(true)
     await db.exec(`insert into integration_config values ('inbox_notify_url', 'https://example.test/inbox-notify')`)
     const again = await run(db, '2026-11-12T20:00:00Z')
     expect(again.posts).toMatchObject({ fired: true })
