@@ -16,6 +16,7 @@ import { readyRead, when, type Read } from '../model'
 import { invites, pill } from './model'
 import './home4.css'
 import { XFlag } from '../../x/XFlag'
+import { HomeCard } from '../../content/today/HomeCard'
 import '../phone-ox.css'
 
 /** #39: a failed read says so in a visible line ("Lanes read failed · Retry"), never only in a tooltip.
@@ -117,6 +118,7 @@ export default function HomeV4({ layout }: PlaceProps) {
   return <div data-motion={motion} className={`hm4 hm4-${layout}`} data-d-scroll={layout==='desktop'?'':undefined} data-layout-v4="home">
     {layout==='desktop' && <AnswerRow title="Home" />}{!online && <Offline since={null} />}
     <XFlag />
+    <HomeCard />
     <HotNow />
     <a className="hm4-more" href={dHash('lanes', null, { seat: 'anna' })}>Anna’s LinkedIn invitations and replies</a>
     {layout==='phone' ? <><Matrix h={h}/><HomeTasks v4 /></> : <div className="hm4-grid"><div className="hm4-seats">{SEATS.filter(s => s !== 'anna').map(s=><SeatCard key={s} seat={s} h={h}/>)}</div><HomeTasks v4 /></div>}

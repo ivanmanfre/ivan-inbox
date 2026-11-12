@@ -216,6 +216,23 @@ describe('the review desk: two-tap Drop, the reason is the commit', () => {
     expect(lib.setVerdict.mock.calls[0][2]).toMatchObject({ reasons: ['other'], note: 'Too salesy' })
   })
 
+  it('the reason is optional: No reason drops it with none, stored as the verdict\'s skip (reason_skipped)', async () => {
+    // cb39_verdict_set stores 'skip' as reason_skipped = true with no reasons (db/277)
+    lib.setVerdict.mockImplementation((id: string, v: string) => Promise.resolve({ draft_id: id, verdict: v, reasons: [], reason_skipped: true }))
+    renderInFrame(<Harness />)
+    fireEvent.click(verb(card('b1'), 'card-drop')!)
+    // the chips still show
+    expect(card('b1')!.querySelector('[data-reason="invented_fact"]')).toBeTruthy()
+    await act(() => flushVerdicts())
+    expect(lib.setVerdict).not.toHaveBeenCalled()
+    fireEvent.click(verb(card('b1'), 'desk-reason-none')!)
+    expect(strip('b1')!.textContent).toContain('no reason')
+    await act(() => flushVerdicts())
+    expect(lib.setVerdict).toHaveBeenCalledTimes(1)
+    expect(lib.setVerdict.mock.calls[0].slice(0, 2)).toEqual(['b1', 'drop'])
+    expect(lib.setVerdict.mock.calls[0][2].reasons).toEqual(['skip'])
+  })
+
   it('z undoes the newest held verdict: nothing is written', async () => {
     renderInFrame(<Harness />)
     key('a')

@@ -17,17 +17,16 @@ import { HOLD_MS, holdDecision, undoDecision, usePendingDecisions } from '../dec
 import { EarlyReadChip } from '../EarlyReadChip'
 import { MovePanel } from '../MovePanel'
 import { usePanelLink } from '../panelLink'
-import { LANES, OWNER, POSS, age, dayLabel, nextSpacedSlot, ptOf, seatSlotOf, splitTitleTag, type Lane, type Slot } from '../model'
+import { LANES, OWNER, POSS, age, dayLabel, ptOf, seatSlotOf, splitTitleTag, type Lane, type Slot } from '../model'
 import { PictureRow } from '../PictureRow'
 import { useRowVerbs } from '../rowVerbs'
 import { useEarlyReads } from '../useEarlyReads'
 import type { WeekRead } from '../useWeek'
 import { forgetVerdict, giveReason, markShown, retryVerdict, undoVerdict, useJudged, VERDICT_HOLD_MS, type Judged } from '../verdictStore'
-import { releaseSlot, slotWords, useReservedSlots, useWeekVerbs } from '../weekVerbs'
+import { oneTapSlot, releaseSlot, slotWords, useReservedSlots, useWeekVerbs } from '../weekVerbs'
 import { awaitsReview, goingStale, reviewCounts, type Week, type WeekCard } from '../weekModel'
 import { archiveStaleDraft } from '../writes'
 import { useReviewMotion } from './motion'
-import { zonedToUtc } from '../laneTime'
 import { clientHoldOf } from '../../../lib/clientBoardState'
 import { LinkedInCard } from './LinkedInCard'
 import { MediaSwitch } from './MediaSwitch'
@@ -189,15 +188,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   const hm = useMemo(() => seatSlotOf(ivanRows, now), [ivanRows, now])
   // A held Approve + schedule keeps its slot taken, so the next card never offers the same time (cross-review).
   const reservedSlots = useReservedSlots()
-  const slot = useMemo(() => {
-    const held = [...reservedSlots.values()].map(r => r.at)
-    if (!armed && !armedFailed) return null
-    // Always Warsaw-built (cross-review r2). Without the dated instants (an older read, or a failed one) each armed
-    // day stands in as its 10:45 Warsaw slot, the instant fetchIvanArmedDays tested it against.
-    const times = (armed as { times?: readonly string[] } | null)?.times
-    const dayBusy = times ? [] : [...(armed ?? [])].map(d => zonedToUtc(d, '10:45', 'Europe/Warsaw'))
-    return nextSpacedSlot([...(times ?? []), ...dayBusy, ...held], now, hm)
-  }, [armed, armedFailed, now, hm, reservedSlots])
+  const slot = useMemo(() => oneTapSlot(armed, armedFailed, [...reservedSlots.values()].map(r => r.at), now, hm), [armed, armedFailed, now, hm, reservedSlots])
 
   const desk = useMemo(() => deskModel(week, now), [week, now])
   const work = desk.decide.filter(c => awaitsReview(c))
@@ -462,7 +453,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
       )}
       <Sheet open={keys} onClose={() => setKeys(false)} title="Review keys" className="cv2-keys-sheet">
         <dl className="cv2-keys">
-          {[['j / k', 'Next / previous draft'], ['a', 'Approve the focused draft'], ['d', 'Drop: pick the reason'], ['1-6, 0', 'The reason (it commits the drop) / Other'],
+          {[['j / k', 'Next / previous draft'], ['a', 'Approve the focused draft'], ['d', 'Drop: pick the reason, or No reason'], ['1-6, 0', 'The reason (it commits the drop) / Other'],
             ['e', 'Open the post with the editor'], ['Enter', 'Open the post'], ['o', 'Preview in place'], ['z', 'Undo the newest held verdict'], ['Esc', 'Close the reasons or the post'], ['?', 'This sheet']]
             .map(([k, d]) => <div key={k}><dt><kbd>{k}</kbd></dt><dd>{d}</dd></div>)}
         </dl>
@@ -674,8 +665,9 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
 /** The grid card's post. A click on the text opens it for editing in place; ⌘/Ctrl+Enter saves, Esc cancels.
  *  The save is the editor's own compare-and-swap against the body the edit started from (a body changed
  *  elsewhere meanwhile is refused, never overwritten). A client draft the DB won't edit opens the post instead. */
-function GridPost({ c, body, text, setText, base, canEdit, onStart, onSaved, onChanged }: {
-  c: WeekCard; body: string; text: string | null; setText: (v: string | null) => void; base: string; canEdit: boolean
+export function GridPost({ c, body, text, setText, base, canEdit, onStart, onSaved, onChanged }: {
+  /** Also the day's post card's Fix (content/today), which has a draft but no week card. */
+  c: Pick<WeekCard, 'r' | 'lane' | 'title'>; body: string; text: string | null; setText: (v: string | null) => void; base: string; canEdit: boolean
   onStart: () => void; onSaved: (body: string) => void; onChanged: () => void
 }) {
   const toast = useToast()
@@ -723,7 +715,8 @@ function GridPost({ c, body, text, setText, base, canEdit, onStart, onSaved, onC
   )
 }
 
-/** Drop's reason IS the commit: one tap (or 1-6), "Other" takes a line. Nothing is written before a reason. */
+/** Drop's reason IS the commit: one tap (or 1-6), "Other" takes a line. A reason is optional (Ivan 2026-11-12): "No reason"
+ *  drops it with none, recorded as the verdict's reason_skipped (cb39_verdict_set's 'skip'). */
 function ReasonPicker({ lane, onPick, onCancel }: { lane: Lane; onPick: (slug: string, note: string | null) => void; onCancel: () => void }) {
   const [other, setOther] = useState(false)
   const [note, setNote] = useState('')
@@ -736,6 +729,7 @@ function ReasonPicker({ lane, onPick, onCancel }: { lane: Lane; onPick: (slug: s
           <button key={slug} ref={i === 0 ? first : undefined} type="button" style={{ '--j': i } as React.CSSProperties} data-verb="desk-reason" data-reason={slug}
             onClick={() => (slug === 'other' ? setOther(true) : onPick(slug, null))}><kbd>{key}</kbd>{label}</button>
         ))}
+        <button type="button" style={{ '--j': DESK_REASONS.length } as React.CSSProperties} data-verb="desk-reason-none" data-reason="skip" onClick={() => onPick('skip', null)}>No reason</button>
         <button type="button" className="cv2-why-x" data-verb="desk-reason-cancel" onClick={onCancel}>Cancel</button>
       </div>
       {other && (

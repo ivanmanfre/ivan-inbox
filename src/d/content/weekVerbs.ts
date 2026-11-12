@@ -4,7 +4,8 @@ import { setVerdict } from '../../lib/verdicts'
 import { useDConfirm } from '../ui/confirm'
 import { useToast } from '../ui/toast'
 import { HOLD_MS, holdDecision, undoDecision } from './decisions'
-import { OWNER, POSS, armedReceipt, isPastSchedule, type Lane } from './model'
+import { OWNER, POSS, armedReceipt, isPastSchedule, nextSpacedSlot, type Lane, type Slot, type SlotHm } from './model'
+import { zonedToUtc } from './laneTime'
 import type { WeekCard } from './weekModel'
 import { scheduleGuarded } from './writes'
 import { judge, shownForMs } from './verdictStore'
@@ -41,6 +42,17 @@ export function useReservedSlots(): ReadonlyMap<string, Reserved> {
 /** Tests only. */
 export function resetReservedForTest(): void { reserved.clear(); reservedPublish() }
 
+/** The one-tap key's slot: the seat's next free spaced weekday at its own time, never a slot a held tap reserved.
+ *  Always Warsaw-built (cross-review r2). Without the dated instants (an older read, or a failed one) each armed day
+ *  stands in as its 10:45 Warsaw slot, the instant fetchIvanArmedDays tested it against. Null until the armed read
+ *  has answered or failed. Shared by the Review desk and the day's post card. */
+export function oneTapSlot(armed: ReadonlySet<string> | null, armedFailed: boolean, heldAts: readonly string[], now: number, hm: SlotHm): Slot | null {
+  if (!armed && !armedFailed) return null
+  const times = (armed as { times?: readonly string[] } | null)?.times
+  const dayBusy = times ? [] : [...(armed ?? [])].map(d => zonedToUtc(d, '10:45', 'Europe/Warsaw'))
+  return nextSpacedSlot([...(times ?? []), ...dayBusy, ...heldAts], now, hm)
+}
+
 // APPROVE + SCHEDULE, ONE TAP (review 2026-11-06 #15 and #31; Ivan's seat only, client seats keep their board flow).
 // The key names the time, so the tap is the decision: no confirm sheet (only a QA-refused draft asks first). It is
 // held for the same 8 s Undo as Approve (decisions.ts), then approves and schedules in one go; Undo inside the
@@ -48,7 +60,13 @@ export function resetReservedForTest(): void { reserved.clear(); reservedPublish
 export function useApproveSchedule(onChanged: () => void) {
   const toast = useToast()
   const confirm = useDConfirm()
-  return useCallback(async (d: { id: string; status: string; viaVerdict: boolean; poland?: boolean }, at: Date): Promise<boolean> => {
+  return useCallback(async (d: {
+    id: string; status: string; viaVerdict: boolean; poland?: boolean
+    /** Runs first inside the held write; a throw stops it before anything is written (the day's card: its text is still the one shown). */
+    guard?: () => Promise<void>
+    /** Runs after both halves landed; its failure never fails the post (the day's card marks itself posted). */
+    after?: () => Promise<void>
+  }, at: Date): Promise<boolean> => {
     if (isPastSchedule(at.toISOString())) { toast.show({ tone: 'failed', message: 'That time has already passed. Pick a later time.' }); return false }
     if (d.status === 'error') {
       const ok = await confirm({
@@ -62,7 +80,11 @@ export function useApproveSchedule(onChanged: () => void) {
     let stored: string | null = null
     reserveSlot(id, { at: at.toISOString(), poland: !!d.poland })
     holdDecision(id, 'approve', {
-      write: async () => { stored = await approveThenSchedule(id, d.viaVerdict, at) },
+      write: async () => {
+        await d.guard?.()
+        stored = await approveThenSchedule(id, d.viaVerdict, at)
+        try { await d.after?.() } catch (e) { console.error('[d] after the post', e) }
+      },
       onCommitted: () => { toast.show(armedReceipt(at, stored)); onChanged(); setTimeout(() => releaseSlot(id), 30_000) },
       onFailed: e => {
         releaseSlot(id)

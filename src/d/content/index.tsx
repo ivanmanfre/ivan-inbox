@@ -42,6 +42,8 @@ import { reviewLanding } from './v2/reviewLanding'
 import { ReviewDesk, deskModel, deskSeatOf } from './v2/ReviewDesk'
 import { useSteadyRows } from './v2/steadyRows'
 import { MagnetsV2 } from './v2/MagnetsV2'
+import { cardLanding, cardOnScreen, useTodayCard } from './today/store'
+import { CardDoneLine, TodayCardView } from './today/TodayCard'
 import './v2/cv2.css'
 import './content.css'
 import './content2.css'
@@ -61,6 +63,12 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const lanesV4 = useSkin('lanes')
   const sub = subOf(route.sub, route.query)
   const q = route.query
+  // Today's post card (db/20261112_content_daily_card): while it waits, opening Content lands on it, not on Plan.
+  const today = useTodayCard()
+  const cardShown = cardOnScreen(route, today.waiting)
+  const land = cardLanding(route, today.loaded, today.waiting)
+  const cardReading = land === 'wait'
+  const onTab = cardShown ? 'today' as const : sub
   // Brief 4 (SPEC-content): the frame flag and one flag per sub-tab; every hook below runs either way.
   const cv2 = useContentFlags()
   // The client panels' approvals, removals and change requests (db/243), refreshed on focus.
@@ -84,10 +92,13 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
     const t = setTimeout(() => setFullOn(true), 2500)
     return () => clearTimeout(t)
   }, [fullOn, onNow, onIdeas, weekRead.settled])
+  // Opening Content (its nav key, the phone's Content key) while today's post card waits lands on the card; with no
+  // card, or once it is posted or skipped, it lands where it always did (Plan). The landing waits for the card's read.
   useEffect(() => {
-    const target = contentRedirect(route.sub, route.query)
+    if (land === 'wait') return
+    const target = land === 'card' ? dHash('content', 'today') : contentRedirect(route.sub, route.query)
     if (target) navigate(target)
-  }, [navigate, route.sub, route.query])
+  }, [navigate, route.sub, route.query, land])
   const data = useContentData(fullOn)
   const pending = usePendingDecisions()
   const [bankCounts, setBankCounts] = useState(false)
@@ -214,9 +225,11 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   let body: React.ReactNode
   // Brief 4 sub-tabs sit in the page's one scrolling column (the 24 edge), like Review and Calendar.
   const column = (n: React.ReactNode) => <div className="cn-split"><div className="cn-left" data-d-scroll>{n}</div></div>
-  if (sub === 'plan') {
-    const plan = <PlanV2 lane={qLane} setLane={lane => go({ lane }, 'plan')} verdicts={saved.map} showInsights={q.get('insights') === '1'}
-      ivanRows={qLane === 'ivan' ? data.seats.ivan.rows : undefined} onRowsChanged={refresh} />
+  if (cardShown) body = column(<TodayCardView />)
+  else if (cardReading) body = column(<Skeleton lines={6} label="Reading today’s post" />)
+  else if (sub === 'plan') {
+    const plan = <>{route.sub === 'today' && <CardDoneLine card={today.card} />}<PlanV2 lane={qLane} setLane={lane => go({ lane }, 'plan')} verdicts={saved.map} showInsights={q.get('insights') === '1'}
+      ivanRows={qLane === 'ivan' ? data.seats.ivan.rows : undefined} onRowsChanged={refresh} /></>
     body = window_ ? phone ? window_ : <div className="cn-split cn-open"><div className="cn-left" data-d-scroll>{plan}</div>{window_}</div> : column(plan)
   }
   else if (sub === 'ideas') body = cv2.ideas ? column(<Ideas banks={banks} phone={phone} lane={qLane} onLaneChange={lane => go({ lane }, 'ideas')} v2 />) : <Ideas banks={banks} phone={phone} lane={qLane} onLaneChange={lane => go({ lane }, 'ideas')} />
@@ -231,8 +244,8 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
     const left = magnetView ? <><div className="cn-now-tools"><a href={dHash('content', 'now')}>← Review</a></div>{legacy('magnets')}</> : allPosts ? <><div className="cn-now-tools"><a href={dHash('content', 'now')}>← Review</a></div>{legacy('errors')}</> : desk ? deskBody : nowBody
     body = phone && window_ ? window_ : <div className={`cn-split${window_ ? ' cn-open' : ''}${desk ? ' cv2-split' : ''}`} data-wide={desk ? (wide ? 'yes' : 'no') : undefined}><div className={`cn-left${allPosts ? ' cn-left-legacy' : ''}`}>{left}</div>{window_}</div>
   }
-  const title = sub === 'plan' ? 'Plan' : sub === 'brain' ? 'Patterns and benchmarks' : sub === 'ideas' ? 'Best ideas for your next post' : sub === 'results' ? 'Performance' : sub === 'strategy' ? (q.get('section') === 'direction' ? 'Strategy' : q.get('section') === 'this-week' ? 'Content brain' : 'Strategy') : sub === 'inputs' ? 'Outliers' : sub === 'magnets' ? 'Lead magnets' : sub === 'styles' ? 'Styles' : onCal ? 'Calendar' : allPosts ? 'All posts' : magnetView ? 'Lead magnets' : 'Review'
-  return <div ref={presentation} className={`cn${cv2.frame ? ' cv2-frame' : ''}`} data-cv2-sub={cv2.frame ? sub : undefined}>{!(phone && (title === SUB_LABEL[sub] || (cv2.frame && sub === 'ideas'))) && <AnswerRow title={title} />}<SubNav on={sub} attention={needs > 0} lane={qLane} section={q.get('section')} v2={cv2.frame} counts={{ now: reading && !weekRead.settled ? null : review.all, magnets: LANES.some(l => magnets[l] === undefined) ? null : LANES.reduce((n, l) => n + (magnets[l] ?? 0), 0) }} />{body}
+  const title = cardShown ? SUB_LABEL.today : sub === 'plan' ? 'Plan' : sub === 'brain' ? 'Patterns and benchmarks' : sub === 'ideas' ? 'Best ideas for your next post' : sub === 'results' ? 'Performance' : sub === 'strategy' ? (q.get('section') === 'direction' ? 'Strategy' : q.get('section') === 'this-week' ? 'Content brain' : 'Strategy') : sub === 'inputs' ? 'Outliers' : sub === 'magnets' ? 'Lead magnets' : sub === 'styles' ? 'Styles' : onCal ? 'Calendar' : allPosts ? 'All posts' : magnetView ? 'Lead magnets' : 'Review'
+  return <div ref={presentation} className={`cn${cv2.frame ? ' cv2-frame' : ''}`} data-cv2-sub={cv2.frame ? sub : undefined}>{!(phone && (title === SUB_LABEL[onTab] || (cv2.frame && sub === 'ideas'))) && <AnswerRow title={title} />}<SubNav on={onTab} attention={needs > 0} lane={qLane} section={q.get('section')} v2={cv2.frame} counts={{ now: reading && !weekRead.settled ? null : review.all, magnets: LANES.some(l => magnets[l] === undefined) ? null : LANES.reduce((n, l) => n + (magnets[l] ?? 0), 0) }} />{body}
     {dayOpen && <DayPanel lane={dayOpen.lane} keys={dayOpen.keys} items={items[dayOpen.lane]} onClose={() => setDayOpen(null)} onOpen={openFromPlan} onMove={onMove} onArm={armIt} onChanged={refresh} />}
   </div>
 }
