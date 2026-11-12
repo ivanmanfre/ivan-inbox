@@ -157,6 +157,50 @@ describe('Intel page writes', () => {
     expect(screen.getAllByRole('button', { name: 'Done' })).toHaveLength(4)
   })
 
+  it('filters For you by source type and goes back to All', async () => {
+    const mk = (id: string, kind: string, headline: string, score = 50) => ({ ...keep, id, kind, title: 'Title ' + id, headline, score, url: 'https://example.com/' + id, duration_sec: null, watch_from_sec: null, meta: {} })
+    h.keeps = [mk('g1', 'github', 'Repo idea'), mk('c1', 'kyle', 'Low idea', 20), mk('c2', 'kyle', 'High idea', 80)]
+    const { container } = page()
+    await screen.findByText('Repo idea')
+    const nav = container.querySelector('.it-kinds')!
+    expect([...nav.querySelectorAll('button')].map(b => b.textContent)).toEqual(['All3', 'Kyle call2', 'GitHub1'])
+    fireEvent.click(nav.querySelectorAll('button')[1])
+    expect(container.querySelectorAll('.it-tile')).toHaveLength(2)
+    expect(screen.queryByText('Repo idea')).toBeNull()
+    // Kyle's ideas: best first
+    expect([...container.querySelectorAll('.it-title')].map(a => a.textContent)).toEqual(['High idea', 'Low idea'])
+    fireEvent.click(nav.querySelectorAll('button')[0])
+    expect(container.querySelectorAll('.it-tile')).toHaveLength(3)
+  })
+
+  it('shows no filter when the tab holds one kind', async () => {
+    const { container } = page()
+    await screen.findByText('Flip-rate check')
+    expect(container.querySelector('.it-kinds')).toBeNull()
+  })
+
+  it('an idea from a call leads with the idea, names the call and shows the quote', async () => {
+    h.keeps = [{ ...keep, id: 'c1', kind: 'kyle', title: 'AO + Rello | 1on1', headline: 'Send two videos before the call', what_new: 'W', try_this: 'T', quote: 'anyone who watches the two videos closes', url: 'https://example.com/c', duration_sec: null, watch_from_sec: null, meta: { area: 'sales call', calls: 3 } }]
+    const { container } = page()
+    const title = await screen.findByRole('link', { name: 'Send two videos before the call' })
+    expect(title.className).toBe('it-title')
+    expect(container.querySelector('.it-by')!.textContent).toContain('AO + Rello | 1on1')
+    expect(container.querySelector('.it-line')).toBeNull()      // the idea is not printed twice
+    expect(screen.getByText('sales call \u00b7 3 calls')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Why/ }))
+    expect(container.querySelector('.it-quote')!.textContent).toBe('\u201canyone who watches the two videos closes\u201d')
+  })
+
+  it('draws 60 cards and the rest on Show more', async () => {
+    h.keeps = Array.from({ length: 70 }, (_, n) => ({ ...keep, id: 'k' + n, headline: 'Card ' + n }))
+    const { container } = page()
+    await screen.findByText('Card 0')
+    expect(container.querySelectorAll('.it-tile')).toHaveLength(60)
+    fireEvent.click(screen.getByRole('button', { name: /Show 10 more/ }))
+    expect(container.querySelectorAll('.it-tile')).toHaveLength(70)
+    expect(screen.queryByRole('button', { name: /Show/ })).toBeNull()
+  })
+
   it('labels the open link by kind', async () => {
     h.keeps = [{ ...keep, id: 'g', kind: 'github', title: 'Repo', url: 'https://github.com/a/b', headline: 'H', duration_sec: null }]
     page()

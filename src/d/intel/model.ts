@@ -23,8 +23,11 @@ export type IntelItem = {
   created_at: string
   /** youtube | podcast | github | reddit | blog | kyle. Old cached rows have none: they are videos. */
   kind?: string
-  /** Per kind: github {stars, window, created_at}, blog {chars}, reddit {comments, subreddit}, kyle {minutes, call_type}. */
+  /** Per kind: github {stars, window, created_at}, blog {chars | words}, reddit {comments, subreddit},
+   *  kyle {area, who, ran_it, calls, minutes, call_type}. */
   meta?: Record<string, unknown> | null
+  /** One line copied word for word from the source. */
+  quote?: string | null
 }
 
 export type IntelSource = {
@@ -54,6 +57,9 @@ const DAY = 86400000
 
 function recent(i: IntelItem, now: number): boolean {
   if (!i.published_at) return false
+  // A text item is as old as the day it was found: an idea from a call two months back or an article from a
+  // deep read is new to Ivan when it lands (11-12: the first deep reads reach back 30 to 90 days).
+  if (!isVideo(i)) return now - Date.parse(i.created_at) <= FEED_WINDOW_DAYS * DAY
   return now - Date.parse(i.published_at) <= FEED_WINDOW_DAYS * DAY || now - Date.parse(i.created_at) <= FOUND_GRACE_DAYS * DAY
 }
 
@@ -130,8 +136,17 @@ export function metaChip(i: Pick<IntelItem, 'kind' | 'meta' | 'published_at' | '
   if (kind === 'youtube') return length(i.duration_sec)
   if (kind === 'github') { const n = num(m.stars); return n === null ? null : `\u2605 ${n}` }
   if (kind === 'reddit') { const n = num(m.comments); return n === null ? null : `${n} comments` }
-  if (kind === 'blog') { const n = num(m.chars); return n === null || n <= 0 ? null : `~${Math.max(1, Math.round(n / 1100))} min read` }
+  if (kind === 'blog') {
+    const n = num(m.chars), w = num(m.words)
+    if (n !== null && n > 0) return `~${Math.max(1, Math.round(n / 1100))} min read`
+    return w === null || w <= 0 ? null : `~${Math.max(1, Math.round(w / 220))} min read`
+  }
   if (kind === 'kyle') {
+    // An idea from a call: its area, and on how many calls it was heard when more than one.
+    const area = typeof m.area === 'string' && m.area ? m.area : null
+    const calls = num(m.calls)
+    const parts = [area, calls !== null && calls > 1 ? `${calls} calls` : null].filter(Boolean)
+    if (parts.length) return parts.join(' \u00b7 ')
     const t = i.published_at ? Date.parse(i.published_at) : NaN
     return Number.isNaN(t) ? null : new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
   }
@@ -155,6 +170,21 @@ export function ago(iso: string | null, now: number = Date.now()): string {
   if (h < 48) return `${h}h ago`
   const d = Math.round(h / 24)
   return d < 21 ? `${d}d ago` : `${Math.round(d / 7)}w ago`
+}
+
+/** The kinds in a list with their counts, most cards first: the filter chips. */
+export function kindCounts(items: { kind?: string | null }[]): [string, number][] {
+  const n = new Map<string, number>()
+  for (const i of items) n.set(kindOf(i), (n.get(kindOf(i)) ?? 0) + 1)
+  return [...n.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+}
+
+/** One kind of a list, in reading order. Kyle's ideas come best first (their score says how usable the idea
+ *  is and the call date says little); everything else stays newest first, as the list came. */
+export function pickKind<T extends { kind?: string | null; score: number }>(items: T[], kind: string | null): T[] {
+  if (!kind) return items
+  const xs = items.filter(i => kindOf(i) === kind)
+  return kind === 'kyle' ? [...xs].sort((a, b) => b.score - a.score) : xs
 }
 
 const STATUS_RANK: Record<IntelSource['status'], number> = { trial: 0, core: 1, muted: 2, dropped: 3 }

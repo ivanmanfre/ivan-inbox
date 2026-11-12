@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ago, clock, inDropped, inFeed, inSeen, kindLabel, length, metaChip, openLabel, sortSources, tabOf, watchUrl, type IntelItem, type IntelSource } from './model'
+import { ago, clock, inDropped, inFeed, inSeen, kindCounts, kindLabel, length, metaChip, openLabel, pickKind, sortSources, tabOf, watchUrl, type IntelItem, type IntelSource } from './model'
 
 describe('intel model', () => {
   it('formats clock times', () => {
@@ -56,6 +56,33 @@ describe('intel model', () => {
     expect(inDropped(it_({ verdict: 'drop', created_at: '2026-10-01T00:00:00Z' }), now)).toBe(false)
   })
 
+  it('a text item is as old as the day it was found, a video keeps its own window', () => {
+    const now = Date.parse('2026-11-12T12:00:00Z')
+    const it_ = (o: Partial<IntelItem>) => ({ verdict: 'keep', ivan_verdict: null, ivan_seen_at: null, ...o }) as IntelItem
+    // an idea from a call 80 days back, found 10 days ago: still in For you
+    expect(inFeed(it_({ kind: 'kyle', published_at: '2026-08-24T00:00:00Z', created_at: '2026-11-02T00:00:00Z' }), now)).toBe(true)
+    expect(inFeed(it_({ kind: 'blog', published_at: '2026-09-20T00:00:00Z', created_at: '2026-11-02T00:00:00Z' }), now)).toBe(true)
+    // found more than three weeks ago: gone
+    expect(inFeed(it_({ kind: 'kyle', published_at: '2026-08-24T00:00:00Z', created_at: '2026-10-18T00:00:00Z' }), now)).toBe(false)
+    // a video published 80 days back and found 10 days ago stays out, as before
+    expect(inFeed(it_({ kind: 'youtube', published_at: '2026-08-24T00:00:00Z', created_at: '2026-11-02T00:00:00Z' }), now)).toBe(false)
+    expect(inFeed(it_({ published_at: '2026-08-24T00:00:00Z', created_at: '2026-11-02T00:00:00Z' }), now)).toBe(false)
+  })
+
+  it('counts kinds for the filter chips, most cards first', () => {
+    const xs = [{ kind: 'kyle' }, { kind: 'github' }, { kind: 'kyle' }, {}, { kind: null }, { kind: 'kyle' }]
+    expect(kindCounts(xs)).toEqual([['kyle', 3], ['youtube', 2], ['github', 1]])
+    expect(kindCounts([])).toEqual([])
+  })
+
+  it('picks one kind; Kyle ideas come best first, the rest keep their order', () => {
+    const xs = [{ id: 'a', kind: 'kyle', score: 30 }, { id: 'b', kind: 'github', score: 90 }, { id: 'c', kind: 'kyle', score: 70 }, { id: 'd', kind: 'github', score: 10 }]
+    expect(pickKind(xs, null)).toBe(xs)
+    expect(pickKind(xs, 'kyle').map(x => x.id)).toEqual(['c', 'a'])
+    expect(pickKind(xs, 'github').map(x => x.id)).toEqual(['b', 'd'])
+    expect(pickKind(xs, 'blog')).toEqual([])
+  })
+
   it('adds no t= to a non-YouTube url', () => {
     const gh = { kind: 'github', url: 'https://github.com/a/b', watch_from_sec: 90 } as IntelItem
     expect(watchUrl(gh)).toBe(gh.url)
@@ -88,5 +115,8 @@ describe('intel model', () => {
     expect(metaChip(i({ kind: 'github', meta: null }))).toBeNull()
     expect(metaChip(i({ kind: 'blog', meta: {} }))).toBeNull()
     expect(metaChip(i({ kind: 'kyle', published_at: null }))).toBeNull()
+    expect(metaChip(i({ kind: 'kyle', meta: { area: 'sales call', calls: 1 } }))).toBe('sales call')
+    expect(metaChip(i({ kind: 'kyle', meta: { area: 'retention', calls: 4 } }))).toBe('retention \u00b7 4 calls')
+    expect(metaChip(i({ kind: 'blog', meta: { words: 2200 } }))).toBe('~10 min read')
   })
 })
