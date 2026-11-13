@@ -36,6 +36,9 @@ import { Answer, Menu, Pill, SeatAv, Seg, useDeferred, type MenuItem, type Tone 
 import { DIcon } from '../../ui/icons'
 import './review-list.css'
 import { LineFlagsBlock, useLineFlags } from './LineFlags'
+import type { LiveCard } from '../today/store'
+import { Ask, PickMark } from '../today/TodayCard'
+import { usePickAsk } from '../today/pickAsk'
 
 // CONTENT > REVIEW, THE ONE DESK. One seat at a time (Ivan 2026-10-15: "I will see it per client always"),
 // every draft to decide as ONE ROW: where it came from first (the source tag), the hook, its tags, age and
@@ -116,15 +119,17 @@ export type DeskModel = {
   queue: string[]
 }
 
-/** Pure: the desk's sections from a seat's week (buildNow with `show` set). */
-export function deskModel(week: Week, now: number): DeskModel {
+/** Pure: the desk's sections from a seat's week (buildNow with `show` set). `pickId`: today's post card on Ivan's seat
+ *  (today/store): its draft is the first row to decide, pulled out of the stale fold if it sat there. */
+export function deskModel(week: Week, now: number, pickId: string | null = null): DeskModel {
   const fixGroup = week.groups.find(g => g.key === 'fix')?.cards ?? []
   const drafts = week.groups.find(g => g.key === 'drafts')?.cards ?? []
   const board = (week.groups.find(g => g.key === 'board')?.cards ?? []).slice().sort(deskOrder)
   const all = [...fixGroup, ...drafts]
   const open = all.filter(c => c.strip || awaitsReview(c)).sort(deskOrder)
-  const stale = open.filter(c => goingStale(c, now))
-  const decide = open.filter(c => !stale.includes(c))
+  const stale = open.filter(c => goingStale(c, now) && c.r.id !== pickId)
+  const rest = open.filter(c => !stale.includes(c))
+  const decide = pickId ? [...rest.filter(c => c.r.id === pickId), ...rest.filter(c => c.r.id !== pickId)] : rest
   const waiting = drafts.filter(c => !c.strip && !awaitsReview(c)).sort(deskOrder)
   const fix = fixGroup.filter(c => !c.strip && !awaitsReview(c))
   const pinned = fix.filter(c => c.flags.some(f => f.key === 'stuck') && !!c.r.scheduled_at && now - Date.parse(c.r.scheduled_at) < 2 * 86_400_000)
@@ -133,7 +138,7 @@ export function deskModel(week: Week, now: number): DeskModel {
 
 const slotWord = (s: Slot) => `${warsawDow(s.at)} ${warsawDm(s.at).split(' ')[0]} · ${warsawHm(s.at)}`
 
-export function ReviewDesk({ week, total, read, show, setShow, now, openId, focusId, onOpen, onEdit, onChanged, firstDay, seatRows, rows, armed, armedFailed, held, boardRead }: {
+export function ReviewDesk({ week, total, read, show, setShow, now, openId, focusId, onOpen, onEdit, onChanged, firstDay, seatRows, rows, armed, armedFailed, held, boardRead, today = null }: {
   /** The desk's cards (buildNow for this seat). */
   week: Week
   /** Every seat's work (buildNow without the filter): the seat counts. */
@@ -158,8 +163,12 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   /** Brain drafts held in place while a refresh re-reads them (steadyRows). */
   held?: ReadonlySet<string>
   boardRead?: { loading: boolean; error: string | null; loadedAt: string | null; refresh: () => void }
+  /** Today's post card while it waits (index.tsx): its draft is the first row of Ivan's seat, tagged Today. */
+  today?: LiveCard | null
 }) {
   const toast = useToast()
+  const pick = show === 'ivan' && today?.draft.client_id == null ? today : null
+  const pickId = pick?.draft.id ?? null
   const panelHref = usePanelLink()(show)
   const judged = useJudged()
   const pending = usePendingDecisions()
@@ -170,7 +179,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   const [staleOpen, setStaleOpen] = useState(false)
   const [picking, setPicking] = useState<string | null>(null)
   const [focus, setFocus] = useState<string | null>(focusId)
-  const [more, setMore] = useState<ReadonlySet<string>>(() => new Set())
+  const [more, setMore] = useState<ReadonlySet<string>>(() => new Set(pickId ? [pickId] : []))
   const [keys, setKeys] = useState(false)
   // An Ivan draft with flagged lines still in its text: Approve asks once ("Approve as written") on the row.
   const [keepAsk, setKeepAsk] = useState<string | null>(null)
@@ -190,7 +199,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   const reservedSlots = useReservedSlots()
   const slot = useMemo(() => oneTapSlot(armed, armedFailed, [...reservedSlots.values()].map(r => r.at), now, hm), [armed, armedFailed, now, hm, reservedSlots])
 
-  const desk = useMemo(() => deskModel(week, now), [week, now])
+  const desk = useMemo(() => deskModel(week, now, pickId), [week, now, pickId])
   const work = desk.decide.filter(c => awaitsReview(c))
   const stream = desk.decide
   const inList = new Set([...desk.decide, ...desk.waiting, ...desk.board, ...desk.fix].map(c => c.r.id))
@@ -226,8 +235,17 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
   useEffect(() => {
     if (!focusId) return
     setFocus(focusId)
+    // The pick is the first row, its preview open and taller than the screen: centring it would scroll its keys away.
+    if (focusId === pickId) return
     requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-card-id="${focusId}"]`)?.scrollIntoView?.({ block: 'center' }))
   }, [focusId, rowIds.join(','), fixOpen, waitOpen, staleOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The pick's preview opens by default, so the whole post reads without a tap (once per pick: closing it stays closed).
+  const pickOpened = useRef(pickId)
+  useEffect(() => {
+    if (!pickId || pickOpened.current === pickId) return
+    pickOpened.current = pickId
+    setMore(m => new Set(m).add(pickId))
+  }, [pickId])
 
   const cardOf = (id: string | null) => shownCards.find(c => c.r.id === id) ?? null
   const moveFocus = (dir: 1 | -1) => {
@@ -350,7 +368,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
         asking={keepAsk === c.r.id} onKeepApprove={() => { const at = keepAt; setKeepAsk(null); setKeepAt(null); if (unsaved(c.r.id)) toast.show({ message: 'Save or cancel your edit first.' }); else if (at) void verbs.approveSchedule(c, at); else approveNow(c) }} onKeepBack={() => { setKeepAsk(null); setKeepAt(null) }}
         onSkip={() => { if (unsaved(c.r.id)) toast.show({ message: 'Save or cancel your edit first.' }); else void rowVerbs.run(c.r, c.lane, 'skip') }}
         onBoard={() => void verbs.board(c)} onSchedule={(at?: Date) => void verbs.schedule(c, at)} onDate={() => setMoving(c)}
-        onChanged={onChanged} />
+        onChanged={onChanged} today={c.r.id === pickId ? pick ?? undefined : undefined} />
     )
   }
   const fixRow = (c: WeekCard) => {
@@ -498,7 +516,7 @@ export function snippetOf(c: Pick<WeekCard, 'body' | 'title'>): string {
   return line.length > 220 ? `${line.slice(0, 218)}…` : line
 }
 
-function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, slot, src, srcLoading, more, setMore, hideHold = false, picking, setPicking, onFocus, onOpen, onEdit, onApprove, onApproveSchedule, onDrop, onSkip, onBoard, onSchedule, onDate, onChanged, asking = false, onKeepApprove, onKeepBack }: {
+function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, slot, src, srcLoading, more, setMore, hideHold = false, picking, setPicking, onFocus, onOpen, onEdit, onApprove, onApproveSchedule, onDrop, onSkip, onBoard, onSchedule, onDate, onChanged, asking = false, onKeepApprove, onKeepBack, today }: {
   c: WeekCard; i: number; now: number; focused: boolean; open: boolean; busy: boolean; held: boolean
   /** The 3-up card grid (no post open): the whole post, its media, edited in place. */
   grid: boolean
@@ -515,6 +533,8 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
   onSchedule: (at?: Date) => void; onDate: () => void; onChanged: () => void
   /** Approve met flagged lines: the row asks once. */
   asking?: boolean; onKeepApprove?: () => void; onKeepBack?: () => void
+  /** This row is today's post card (Ivan's seat): the Today tag, its question, and its saves keep the card in step. */
+  today?: LiveCard
 }) {
   const ref = useRef<HTMLElement>(null)
   const [pic, setPic] = useState<string[] | undefined>(undefined)
@@ -526,7 +546,12 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
   useEffect(() => { setSaved(null) }, [c.r.post_body, c.r.updated_at])
   const postNow = saved ?? (c.r.post_body ?? '')
   const inPlace = c.lane === 'ivan' || clientEditable(c.r.status, c.lane)
-  const startEdit = () => { editBase.current = postNow; setEdit(postNow) }
+  // Today's pick: its question, and every save of its text moves the card to it (no-ops on every other row).
+  const pickAsk = usePickAsk(today, postNow, saved !== null, (text, base) => { editBase.current = base; setEdit(text) })
+  const onBodySaved = (text: string) => { setSaved(text); pickAsk.saved(text) }
+  const startEdit = () => { pickAsk.manual(); editBase.current = postNow; setEdit(postNow) }
+  // The pick edits in place inside its open preview too (other rows open the post's editor from there).
+  const hereEdit = !!today && more
   // Typed text that is not saved yet: Approve, Skip and Drop wait, or the row would leave with the edit.
   const unsaved = edit !== null && edit !== editBase.current
   const lf = useLineFlags(c.r, postNow)
@@ -539,6 +564,8 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
   const nFlag = lf.flags?.lines.length ?? 0
   const saveFirst = unsaved ? 'Save or cancel your edit first' : undefined
   const id = c.r.id
+  const ask = today && pickAsk.q ? <Ask key={pickAsk.q.sha} q={pickAsk.q} busy={busy || edit !== null} adding={pickAsk.asking}
+    onAdd={a => void pickAsk.add(pickAsk.q!, a, busy || edit !== null)} /> : null
   const judgeable = c.judge
   // Time to verdict starts when a draft to judge is first on screen (once per draft), as on the stack.
   useEffect(() => {
@@ -593,12 +620,12 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
   const onRowClick = (e: React.MouseEvent) => {
     // mid-edit, a stray click on the card never opens the post; it puts the cursor back in the box (so Esc still cancels)
     if (edit !== null) { if (!(e.target as HTMLElement).closest('button,a,input,select')) ref.current?.querySelector('textarea')?.focus(); return }
-    if ((e.target as HTMLElement).closest('button,a,input,textarea,select,label,[role="menu"],.cv2-row-more,.cv2-why,.cv2-lf')) return
+    if ((e.target as HTMLElement).closest('button,a,input,textarea,select,label,[role="menu"],.cv2-row-more,.cv2-why,.cv2-lf,.ct-ask')) return
     onOpen()
   }
 
   return (
-    <article ref={ref} className={`cv2-row${open ? ' cv2-row-open' : ''}${more ? ' cv2-row-x' : ''}`} role="listitem" data-card-id={id} data-lane={c.lane} data-held={held || undefined} data-unsaved={unsaved || undefined} data-needs-keep={(showFlags && lf.ask) || undefined}
+    <article ref={ref} className={`cv2-row${open ? ' cv2-row-open' : ''}${more ? ' cv2-row-x' : ''}`} role="listitem" data-card-id={id} data-lane={c.lane} data-held={held || undefined} data-unsaved={unsaved || undefined} data-needs-keep={(showFlags && lf.ask) || undefined} data-today={today ? '' : undefined}
       style={{ '--i': Math.min(i, 10) } as React.CSSProperties}
       tabIndex={focused ? 0 : -1} aria-current={focused ? 'true' : undefined} aria-label={`${tag.label}: ${title}`} onFocus={onFocus} onClick={onRowClick}>
       <div className="cv2-row-main">
@@ -606,12 +633,14 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
         <div className="cv2-row-text">
           <b className="cv2-row-t">{title}</b>
           {snippet && <span className="cv2-row-sub">{snippet}</span>}
+          {ask}
           {/* The grid card: the whole post as the feed shows it, with its media or an empty square, and the text
               edits in place (Ivan 2026-10-30: "see and edit from here fast"). The list row keeps the one-line snippet. */}
-          {grid && !more && <GridPost c={c} body={postNow} text={edit} setText={setEdit} base={editBase.current} canEdit={inPlace}
-            onStart={startEdit} onSaved={setSaved} onChanged={onChanged} />}
+          {!more && (grid || (!!today && edit !== null)) && <GridPost c={c} body={postNow} text={edit} setText={setEdit} base={editBase.current} canEdit={inPlace}
+            onStart={startEdit} onSaved={onBodySaved} onChanged={onChanged} />}
         </div>
         <div className="cv2-row-meta">
+          {today && <span className="cv2-tag cv2-tag-today">Today</span>}
           {(taxonomyValue(c.r.taxonomy, 'pillar') === 'personal' || taxonomyValue(c.r.taxonomy, 'register') === 'personal') && <span className="cv2-tag" data-pillar="personal">Personal</span>}
           {kindFlag && <span className="cv2-tag">{kindFlag.text}</span>}
           {/* Ivan's text-first drafts often have no picture yet (the selfie assigner adds one): only a client's missing picture is a tag. */}
@@ -629,7 +658,7 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
         <div className="cv2-row-keys">
           {c.judge && c.lane !== 'swishdm' && <button type="button" className="cv2-k cv2-k-q" data-verb="card-drop" disabled={busy || unsaved} title={saveFirst} onClick={() => setPicking(true)}>Drop</button>}
           {!c.judge && c.primary === 'approve' && <button type="button" className="cv2-k cv2-k-q" data-verb="card-skip" disabled={busy || unsaved} title={saveFirst} onClick={onSkip}>Skip</button>}
-          <button type="button" className="cv2-k cv2-k-q cv2-wide-only" data-verb="card-edit" disabled={busy || (grid && !more && edit !== null)} onClick={grid && !more && inPlace ? startEdit : onEdit}>Edit</button>
+          <button type="button" className="cv2-k cv2-k-q cv2-wide-only" data-verb="card-edit" disabled={busy || (((grid && !more) || hereEdit) && edit !== null)} onClick={((grid && !more) || hereEdit) && inPlace ? startEdit : onEdit}>Edit</button>
           {next === 'schedule' && !c.r.scheduled_at && <button type="button" className="cv2-k cv2-k-q cv2-wide-only" data-verb="card-pick-day" disabled={busy} onClick={onDate}>Pick a day</button>}
           {primary}
           <button type="button" className="cv2-chev" aria-expanded={more} aria-label={more ? 'Hide the preview' : 'Preview the post here'} data-verb="row-preview" onClick={() => setMore(!more)}>
@@ -641,13 +670,19 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
       {hold?.kind === 'changes' && hold.detail && <p className="cv2-ask" data-ask><b>{OWNER[c.lane]} on the panel:</b> “{hold.detail}”</p>}
       {hold && hold.kind !== 'changes' && hold.detail && !hideHold && <p className="cv2-ask cv2-ask-hold">{hold.detail}</p>}
       {flagsShown && lf.flags && <LineFlagsBlock r={c.r} flags={lf.flags} sha={lf.sha} body={postNow} edit={edit} setEdit={setEdit}
-        onStartEdit={() => { if (grid && !more && inPlace) { startEdit(); return true } onEdit(); return false }}
-        onSaved={setSaved} onChanged={onChanged} asking={asking} onKeep={() => onKeepApprove?.()} onBack={() => onKeepBack?.()} />}
+        onStartEdit={() => { if (((grid && !more) || hereEdit) && inPlace) { startEdit(); return true } onEdit(); return false }}
+        onSaved={onBodySaved} onChanged={onChanged} asking={asking} onKeep={() => onKeepApprove?.()} onBack={() => onKeepBack?.()} />}
       {picking && <div className="cv2-row-why"><ReasonPicker lane={c.lane} onPick={onDrop} onCancel={() => setPicking(false)} /></div>}
+      {today && <PickMark />}
       {more && (
         <div className="cv2-row-more">
           <div className="cv2-row-post">
-            <LinkedInCard lane={c.lane} body={body} images={pic ?? c.r.image_urls} type={c.r.type} videoUrl={c.r.video_url} bare open />
+            {today ? <div className="cv2-today-post">
+              {edit !== null
+                ? <GridPost c={c} body={postNow} text={edit} setText={setEdit} base={editBase.current} canEdit={inPlace} onStart={startEdit} onSaved={onBodySaved} onChanged={onChanged} />
+                : <LinkedInCard lane={c.lane} body={postNow.trim() || c.title} images={pic ?? c.r.image_urls} type={c.r.type} videoUrl={c.r.video_url} bare open />}
+            </div>
+              : <LinkedInCard lane={c.lane} body={body} images={pic ?? c.r.image_urls} type={c.r.type} videoUrl={c.r.video_url} bare open />}
           </div>
           <div className="cv2-row-side">
             {c.lane === 'ivan' && <MediaSwitch d={c.r} onDone={onChanged} disabled={busy} />}
@@ -666,7 +701,6 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
  *  The save is the editor's own compare-and-swap against the body the edit started from (a body changed
  *  elsewhere meanwhile is refused, never overwritten). A client draft the DB won't edit opens the post instead. */
 export function GridPost({ c, body, text, setText, base, canEdit, onStart, onSaved, onChanged }: {
-  /** Also the day's post card's Fix (content/today), which has a draft but no week card. */
   c: Pick<WeekCard, 'r' | 'lane' | 'title'>; body: string; text: string | null; setText: (v: string | null) => void; base: string; canEdit: boolean
   onStart: () => void; onSaved: (body: string) => void; onChanged: () => void
 }) {

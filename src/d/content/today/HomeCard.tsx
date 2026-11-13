@@ -17,7 +17,7 @@ function Live({ card, version }: { card: LiveCard; version: number }) {
   useCardBlockMounted()
   return (
     <section className="ct-home" aria-label="Post for today" data-bx-block>
-      <CardPeek label="Post for today" body={body} keys={keys} onOpen={() => f.navigate(dHash('content', 'today'))}
+      <CardPeek label="Post for today" body={body} keys={keys} onOpen={() => f.navigate(dHash('content', 'now', { focus: card.draft.id }))}
         onCheck={() => f.navigate(dHash('content', 'now', { focus: card.draft.id }))} />
     </section>
   )
