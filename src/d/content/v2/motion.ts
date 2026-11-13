@@ -65,10 +65,12 @@ export function useSubtabMotion(ref: RefObject<HTMLDivElement | null>, tab: stri
       ghost = old.copy
       Object.assign(ghost.style, { position: 'absolute', left: `${body.offsetLeft}px`, top: `${body.offsetTop}px`, width: `${body.offsetWidth}px`, height: `${body.offsetHeight}px`, zIndex: '2', pointerEvents: 'none' })
       root.append(ghost)
-      const exit = play(ghost, [{ opacity: 1 }, { opacity: 0 }], 120, level === 'subtle'); if (exit) animations.push(exit)
-      const enter = play(body, [{ opacity: 0 }, { opacity: 1 }], 240, level === 'subtle'); if (enter) animations.push(enter)
-      const blocks = [...body.querySelectorAll<HTMLElement>('.cv2-bar,.cv2-answer,.cv2-rc,.cv2-idea,.cv2-tiles > *,[data-bx-block]')].slice(0, 12)
-      blocks.forEach((el, i) => { const a = play(el, [{ opacity: 0, transform: 'translateY(5px)' }, { opacity: 1, transform: 'none' }], 380, level === 'subtle', content, 40+i*18); if (a) animations.push(a) })
+      // A tab change settles inside 250ms (Ivan 2026-11-13: "not smooth enough"): the old page leaves in 100, the new
+      // one is fully there by 240, its first blocks rising 4px a few ms apart. It ran to ~640ms before.
+      const exit = play(ghost, [{ opacity: 1 }, { opacity: 0 }], 100, level === 'subtle'); if (exit) animations.push(exit)
+      const enter = play(body, [{ opacity: 0 }, { opacity: 1 }], 180, level === 'subtle'); if (enter) animations.push(enter)
+      const blocks = [...body.querySelectorAll<HTMLElement>('.cv2-bar,.cv2-answer,.cv2-rc,.cv2-idea,.cv2-tiles > *,[data-bx-block]')].slice(0, 8)
+      blocks.forEach((el, i) => { const a = play(el, [{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], 200, level === 'subtle', content, 12+i*8); if (a) animations.push(a) })
     }
     const snapshot = () => { previous.current = { tab, copy: copy(body) } }
     snapshot()

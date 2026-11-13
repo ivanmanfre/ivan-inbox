@@ -8,8 +8,13 @@ import { BrainScoreboard } from './BrainScoreboard'
 import { WhatWorksNow } from './WhatWorksNow'
 import { ComparableResults } from './ComparableResults'
 import { PostPerformance } from './PostPerformance'
+import { Seg, SeatAv } from './v2/ui'
 
-export function Results({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => void }) {
+export function Results({ lane, setLane, v2 = false }: {
+  lane: Lane; setLane: (l: Lane) => void
+  /** Brief 4 frame: the page sits in Content's one scrolling column and takes the seat switch the other tabs use. */
+  v2?: boolean
+}) {
   const [own, setOwn] = useState<ReachRead | null>(null)
   const [evidence, setEvidence] = useState<ContentEvidenceViews | null>(null)
   const [evidenceError, setEvidenceError] = useState<string | null>(null)
@@ -23,8 +28,10 @@ export function Results({ lane, setLane }: { lane: Lane; setLane: (l: Lane) => v
     return () => { live = false }
   }, [lane, tick])
   const [now] = useState(() => Date.now())
-  return <div className="cn-results">
-    <div className="cn-wk2-chips" role="tablist" aria-label="Client">{LANES.map(l => <button key={l} type="button" role="tab" aria-selected={lane === l} onClick={() => setLane(l)}>{LANE_NAME[l]}</button>)}</div>
+  return <div className={`cn-results${v2 ? ' cv2 cv2-results' : ''}`}>
+    {v2
+      ? <div className="cv2-bar"><Seg label="Client" verb="results-lane" value={lane} onChange={id => setLane(id as Lane)} options={LANES.map(l => ({ id: l, label: <><SeatAv lane={l} />{LANE_NAME[l]}</> }))} /></div>
+      : <div className="cn-wk2-chips" role="tablist" aria-label="Client">{LANES.map(l => <button key={l} type="button" role="tab" aria-selected={lane === l} onClick={() => setLane(l)}>{LANE_NAME[l]}</button>)}</div>}
     <PostPerformance key={`perf:${lane}`} lane={lane} read={lane === 'swishdm' ? null : own} onRetry={retry} now={now} />
     <a className="cn-quiet-link" href={dHash('content', 'results', { lane, view: 'analytics' })}>Reach, audience and all analytics →</a>
     <a className="cn-quiet-link" href={dHash('content', 'brain', { lane, view: 'patterns' })}>Patterns and benchmarks →</a>
