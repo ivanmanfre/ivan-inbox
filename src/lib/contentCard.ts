@@ -73,6 +73,33 @@ export async function postCard(day: string, draftId: string, bodySha: string, at
   return (data as { scheduled_at?: string | null } | null)?.scheduled_at ?? null
 }
 
+/** The swap Post would do on today's card (db/20261114b_content_card_poland_swap): a Poland draft in a week short on
+ *  Poland takes the slot of a business post of this week, and that post moves back. Null = Post takes the next free slot. */
+export type SwapPlan = { day: string; draftId: string; incumbent: string; slotAt: string; autopilot: boolean; title: string }
+export async function readSwapPlan(): Promise<SwapPlan | null> {
+  const { data, error } = await supabase.rpc('content_card_swap_plan')
+  if (error) throw new Error(error.message || 'The week could not be read.')
+  const p = data as { day?: unknown; draft_id?: unknown; incumbent?: unknown; slot_at?: unknown; autopilot?: unknown; title?: unknown } | null
+  if (!p || typeof p.day !== 'string' || typeof p.draft_id !== 'string' || typeof p.incumbent !== 'string' || typeof p.slot_at !== 'string'
+    || Number.isNaN(Date.parse(p.slot_at))) return null
+  return { day: p.day, draftId: p.draft_id, incumbent: p.incumbent, slotAt: p.slot_at, autopilot: p.autopilot === true, title: typeof p.title === 'string' ? p.title : '' }
+}
+
+/** Post with the swap, one transaction (db: content_card_post_swap): the business post moves to `toIso` with its queue
+ *  row, then content_card_post approves this draft and dates it on the slot that post held. Any refusal undoes it all. */
+export async function postCardSwap(day: string, draftId: string, bodySha: string, plan: SwapPlan, toIso: string, msToVerdict?: number): Promise<string | null> {
+  const { data, error } = await supabase.rpc('content_card_post_swap', {
+    p_day: day, p_draft: draftId, p_body_sha: bodySha, p_incumbent: plan.incumbent, p_incumbent_slot: plan.slotAt,
+    p_incumbent_to: toIso, p_ms_to_verdict: msToVerdict ?? null,
+  })
+  if (error) {
+    const hint = (error as { hint?: string | null }).hint ?? ''
+    if (/^card_/.test(hint)) throw new CardRefused(error.message, hint === 'card_review')
+    throw new Error(error.message || 'Not posted.')
+  }
+  return (data as { scheduled_at?: string | null } | null)?.scheduled_at ?? null
+}
+
 /** After a fix from the card: the card follows the saved body (only while that body is the stored one). */
 export async function rebaseCard(day: string, draftId: string, body: string): Promise<boolean> {
   const { data, error } = await supabase.rpc('content_card_rebase', { p_day: day, p_draft: draftId, p_body: body })

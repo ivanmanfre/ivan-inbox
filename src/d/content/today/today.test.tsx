@@ -20,9 +20,9 @@ import { resolve } from 'node:path'
 const lib = vi.hoisted(() => ({
   readTodayCard: vi.fn(), setCardState: vi.fn(), rebaseCard: vi.fn(), fetchIvanSlotRows: vi.fn(), postCard: vi.fn(),
   fetchIvanArmedDays: vi.fn(), approveReviewDraft: vi.fn(), saveDraftBody: vi.fn(), scheduleGuarded: vi.fn(), setVerdict: vi.fn(),
-  answerCard: vi.fn(), weaveCard: vi.fn(),
+  answerCard: vi.fn(), weaveCard: vi.fn(), readSwapPlan: vi.fn(), postCardSwap: vi.fn(),
 }))
-vi.mock('../../../lib/contentCard', async orig => ({ ...(await orig<typeof import('../../../lib/contentCard')>()), readTodayCard: lib.readTodayCard, setCardState: lib.setCardState, rebaseCard: lib.rebaseCard, fetchIvanSlotRows: lib.fetchIvanSlotRows, postCard: lib.postCard, answerCard: lib.answerCard, weaveCard: lib.weaveCard }))
+vi.mock('../../../lib/contentCard', async orig => ({ ...(await orig<typeof import('../../../lib/contentCard')>()), readTodayCard: lib.readTodayCard, setCardState: lib.setCardState, rebaseCard: lib.rebaseCard, fetchIvanSlotRows: lib.fetchIvanSlotRows, postCard: lib.postCard, answerCard: lib.answerCard, weaveCard: lib.weaveCard, readSwapPlan: lib.readSwapPlan, postCardSwap: lib.postCardSwap }))
 vi.mock('../../../lib/content', async orig => ({ ...(await orig<typeof import('../../../lib/content')>()), fetchIvanArmedDays: lib.fetchIvanArmedDays, approveReviewDraft: lib.approveReviewDraft, saveDraftBody: lib.saveDraftBody }))
 vi.mock('../writes', () => ({ scheduleGuarded: lib.scheduleGuarded, archiveStaleDraft: vi.fn() }))
 vi.mock('../../../lib/verdicts', async orig => ({ ...(await orig<typeof import('../../../lib/verdicts')>()), setVerdict: lib.setVerdict }))
@@ -73,6 +73,8 @@ beforeEach(() => {
   lib.postCard.mockImplementation((_d: string, _i: string, _s: string, at: string) => Promise.resolve(at))
   lib.answerCard.mockResolvedValue(true)
   lib.weaveCard.mockRejectedValue(new Error('not mocked'))
+  lib.readSwapPlan.mockResolvedValue(null)
+  lib.postCardSwap.mockImplementation((_d: string, _i: string, _s: string, plan: { slotAt: string }) => Promise.resolve(plan.slotAt))
   resetTodayCardForTest(); resetSlidForTest(); resetDecisionsForTest(); resetReservedForTest()
 })
 afterEach(() => { cleanup(); resetDecisionsForTest() })
@@ -638,5 +640,81 @@ describe('the toast and Home’s card block', () => {
     await waitFor(() => expect(toastEl()).toBeNull())
     expect(document.querySelector('.ct-home')).toBeTruthy()
     expect(lib.setCardState).not.toHaveBeenCalled()
+  })
+})
+
+// A Poland pick in a week short on Poland (db/20261114b_content_card_poland_swap): Post takes a slot of this week and
+// the business post that held it moves to the next free slot.
+describe('the Poland swap', () => {
+  const PLAN = { day: '2026-11-12', draftId: ID, incumbent: '00000000-0000-4000-8000-0000000000aa', slotAt: '2026-11-17T17:30:00.000Z', autopilot: true,
+    title: 'Before I automate an outreach campaign, I want it to have worked by hand at least a few times first' }
+  const full = () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-12T10:00:00Z'))
+    // Every 10:45 from today to Mon 30 Nov already taken: the next free slot is Tue 1 Dec 10:45.
+    const times = Array.from({ length: 19 }, (_, i) => new Date(Date.UTC(2026, 10, 12 + i, 9, 45)).toISOString())
+    lib.fetchIvanArmedDays.mockResolvedValue(Object.assign(new Set<string>(), { times }))
+  }
+
+  it('Post names this week’s slot, says which post moves and where, and writes the swap in one call', async () => {
+    full()
+    try {
+      lib.readTodayCard.mockResolvedValue(card({ why: 'poland' }))
+      lib.readSwapPlan.mockResolvedValue(PLAN)
+      renderInFrame(<HomeCard />, { hash: '#exp/d/home' })
+      await waitFor(() => expect(verb('card-post')?.textContent).toBe('Post · Tue 18:30'))
+      const line = document.querySelector('[data-card-moves]')!.textContent!
+      expect(line).toMatch(/^Takes this week’s slot\. “Before I automate an outreach campaign, I want it…” moves to Tue 1 Dec\.$/)
+      expect(line).not.toContain('—')
+      fireEvent.click(verb('card-post')!)
+      expect(lib.postCardSwap).not.toHaveBeenCalled()
+      await act(() => flushDecisions())
+      expect(lib.postCardSwap).toHaveBeenCalledWith('2026-11-12', ID, await bodySha(BODY), PLAN, '2026-12-01T09:45:00.000Z', expect.any(Number))
+      expect(lib.postCard).not.toHaveBeenCalled()
+      expect(lib.approveReviewDraft).not.toHaveBeenCalled()
+      expect(lib.scheduleGuarded).not.toHaveBeenCalled()
+    } finally { vi.useRealTimers() }
+  })
+
+  it('a business pick never asks for a swap', async () => {
+    full()
+    try {
+      lib.readSwapPlan.mockResolvedValue(PLAN)
+      renderInFrame(<HomeCard />, { hash: '#exp/d/home' })
+      await waitFor(() => expect(verb('card-post')?.textContent).toBe('Post · Tue 1 Dec'))
+      expect(lib.readSwapPlan).not.toHaveBeenCalled()
+      expect(document.querySelector('[data-card-moves]')).toBeNull()
+    } finally { vi.useRealTimers() }
+  })
+
+  it('no plan, a failed plan read, or a plan for another draft: Post takes the next free slot as before', async () => {
+    full()
+    try {
+      lib.readTodayCard.mockResolvedValue(card({ why: 'poland' }))
+      for (const plan of [() => Promise.resolve(null), () => Promise.reject(new Error('down')), () => Promise.resolve({ ...PLAN, draftId: 'other' })]) {
+        lib.readSwapPlan.mockImplementation(plan)
+        renderInFrame(<HomeCard />, { hash: '#exp/d/home' })
+        await waitFor(() => expect(verb('card-post')?.textContent).toBe('Post · Tue 1 Dec'))
+        await waitFor(() => expect(lib.readSwapPlan).toHaveBeenCalled())
+        expect(document.querySelector('[data-card-moves]')).toBeNull()
+        cleanup(); resetTodayCardForTest(); lib.readSwapPlan.mockReset()
+      }
+      lib.readSwapPlan.mockResolvedValue(null)
+      renderInFrame(<HomeCard />, { hash: '#exp/d/home' })
+      await waitFor(() => expect(verb('card-post')?.disabled).toBe(false))
+      fireEvent.click(verb('card-post')!)
+      await act(() => flushDecisions())
+      expect(lib.postCard).toHaveBeenCalledWith('2026-11-12', ID, await bodySha(BODY), '2026-12-01T09:45:00.000Z', expect.any(Number))
+      expect(lib.postCardSwap).not.toHaveBeenCalled()
+    } finally { vi.useRealTimers() }
+  })
+
+  it('a plan whose slot is not earlier than the next free slot is ignored', async () => {
+    lib.readTodayCard.mockResolvedValue(card({ why: 'poland' }))
+    lib.readSwapPlan.mockResolvedValue({ ...PLAN, slotAt: '2099-01-01T10:00:00.000Z' })
+    renderInFrame(<HomeCard />, { hash: '#exp/d/home' })
+    await waitFor(() => expect(lib.readSwapPlan).toHaveBeenCalled())
+    await waitFor(() => expect(verb('card-post')?.disabled).toBe(false))
+    expect(document.querySelector('[data-card-moves]')).toBeNull()
   })
 })
