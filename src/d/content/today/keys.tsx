@@ -14,7 +14,7 @@ import { oneTapSlot, slotWords, useApproveSchedule, useReservedSlots } from '../
 import { useLineFlags } from '../v2/LineFlags'
 import { refreshTodayCard, type LiveCard } from './store'
 
-// THE CARD'S KEYS, shared by the sliding toast, Home and the card on Content. Post is the Review desk's own one-tap
+// THE CARD'S KEYS, shared by the sliding toast and Home (the pick's row in Review keeps its own). Post is the Review desk's own one-tap
 // key (weekVerbs.useApproveSchedule: held 8 s with Undo, the same slot, the same receipt; no Undo after the write,
 // as on that key). When the hold ends the card is read again (the text must be exactly the one shown; flagged lines
 // that need his answer send him to Review), then ONE database call, content_card_post, rechecks everything under a

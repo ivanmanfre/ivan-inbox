@@ -1,4 +1,4 @@
-/* The day's post card (db/20261112_content_daily_card): the toast and Home peek, and the card on Content. */
+/* The day's post card (db/20261112_content_daily_card): the toast and Home peek, and the pick's row in Ivan's Review list. */
 
 /* Peek: the post's first two lines, then Post and Open. */
 .ct-peek{display:flex;flex-direction:column;gap:10px;min-width:0}
@@ -14,42 +14,6 @@
 .ct-home{padding:12px 16px;border-bottom:1px solid var(--line)}
 .d-desktop .ct-home{max-width:640px}
 
-/* The card on Content: the whole post at reading size, its picture, and Post / Skip / Fix in reach without scrolling.
-   Narrow (the phone, or a desktop pane under ~900px): the question above the post, the keys pinned at the bottom
-   while the post scrolls under them (above the phone's dock; sticky, so at the end of the post they sit under it and
-   cover nothing). Wide: the question and the keys in a column right of the post that stays in view. While Fix is
-   open the keys stop pinning, so the editor's own Save / Cancel are never under them. */
-.ct-card{container:ctcard/inline-size;margin:8px 0 24px}
-.ct-lay{display:flex;flex-direction:column;gap:14px;max-width:552px}
-.ct-side{display:contents}
-.ct-ask{order:-1}
-.ct-card .cv2-li-b{font-size:15px;line-height:22px}
-.ct-keys{display:flex;gap:8px;flex-wrap:wrap;align-items:center;position:sticky;bottom:0;z-index:2;padding:10px 0;background:var(--ct-bar-bg,var(--bg))}
-.ct-card[data-editing] .ct-keys{position:static}
-.d-phone .ct-card{margin:0 0 24px}
-.d-phone .ct-keys{padding:10px 16px;bottom:calc(var(--dock-h) + var(--dock-bottom) + 8px)}
-:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone .ct-keys{bottom:calc(var(--po-tab-h) + var(--po-tab-bottom) + 8px);--ct-bar-bg:var(--ds-canvas)}
-.d-phone .ct-keys .cv2-k{min-height:44px}
-/* The shell's fade over the dock reaches above it and would wash out the pinned keys: on the card it starts under them. */
-.d-phone:has(.ct-card:not([data-editing])) .d-fade{height:calc(var(--dock-h) + var(--dock-bottom) + 8px)}
-:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-phone:has(.ct-card:not([data-editing])) .po-fade{height:calc(var(--po-tab-h) + var(--po-tab-bottom) + 8px)}
-.d-phone .ct-keys .cv2-k-p{flex:1 1 auto}
-@container ctcard (min-width:900px){
-  .ct-lay{display:grid;grid-template-columns:minmax(0,552px) minmax(240px,300px);gap:32px;align-items:start;max-width:none}
-  .ct-side{display:flex;flex-direction:column;gap:16px;position:sticky;top:12px}
-  .ct-ask{order:0}
-  .ct-keys{position:static;padding:0;background:none}
-  .ct-keys .cv2-k{min-height:40px}
-  .ct-keys .cv2-k-p{flex:1 1 100%}
-  .ct-keys .cv2-k-q{flex:1 1 0}
-}
-/* Fix: the Review grid's own edit box, at the 15px it edits at there. Review's skin hides every .cv2-gp outside its
-   grid (review-list.css, :root[data-skin-on~='content.review'] .cv2-gp), which left the box invisible here: outrank it. */
-.ct-card[data-today-card] .cv2-gp.cv2-gp-edit{display:flex;flex-direction:column;gap:8px}
-.ct-card .cv2-gp-edit textarea{width:100%;box-sizing:border-box;min-height:220px;resize:vertical;padding:8px 10px;border:1px solid #0a66c2;border-radius:8px;background:#fff;color:#191919;font:400 15px/22px var(--ds-font);white-space:pre-wrap}
-.ct-card .cv2-gp-keys{display:flex;gap:6px}
-.d-phone .ct-card .cv2-gp-edit{padding:0 16px}
-
 /* Content > today once the card is done: one line over the Plan. */
 .ct-done{margin:8px 0 12px;font-size:13.5px;color:var(--t2)}
 .ct-done a{color:var(--t1)}
@@ -60,6 +24,16 @@
 .ct-ask-q{margin:0;font-size:14px;line-height:1.4;color:var(--t1)}
 .ct-ask-row{display:flex;gap:8px;align-items:center}
 .ct-ask-row input{flex:1;min-width:0;height:var(--ds-control-h,36px);padding:0 10px;border-radius:var(--ds-r-btn,8px);border:0;background:var(--ds-well-fill);box-shadow:var(--ds-well-shadow);font:400 var(--ds-fs-input,14px) var(--ds-font,var(--f));color:var(--ds-text,var(--t1))}
-.d-phone .ct-ask{padding:0 16px}
 .d-phone .ct-ask-row input{height:44px;font-size:16px}
 .d-phone .ct-ask-row .cv2-k{min-height:44px}
+
+/* The pick as the first row of Ivan's Review list (ReviewDesk, data-today): the Today tag (kept on the phone, where the
+   row's other tags go), the question over the post, and the row's own in-place edit, which also opens inside the
+   preview and on the phone (the list hides the grid's post there). */
+:root[data-skin-on~='content.review'] .cv2-row-meta .cv2-tag.cv2-tag-today{display:inline-flex;background:var(--ds-accent-soft);color:var(--ds-text)}
+.cv2-today-post{display:flex;flex-direction:column;gap:12px;width:100%;max-width:520px;min-width:0}
+.cv2-row-text > .ct-ask{margin:4px 0 2px;cursor:default}
+:root[data-skin-on~='content.review'] .cv2-row[data-today] .cv2-gp.cv2-gp-edit{display:flex;flex-direction:column;gap:8px;margin:0;cursor:auto}
+:root[data-skin-on~='content.review'] .cv2-row[data-today] .cv2-gp-edit textarea{width:100%;box-sizing:border-box;min-height:220px;resize:vertical;padding:8px 10px;border:1px solid #0a66c2;border-radius:8px;background:#fff;color:#191919;font:400 15px/22px var(--ds-font);white-space:pre-wrap}
+:root[data-skin-on~='content.review'] .cv2-row[data-today] .cv2-gp-keys{display:flex;gap:6px}
+.d-phone .cv2-row[data-today] .cv2-gp-keys .cv2-k{min-height:44px;flex:1 1 0}

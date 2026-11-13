@@ -4,7 +4,7 @@ import { heldDecisions, usePendingDecisions } from '../decisions'
 import type { DRoute } from '../../route'
 
 // THE DAY'S POST CARD, ONE READ FOR THE WHOLE APP (db/20261112_content_daily_card). The sliding toast (Shell), the
-// Content landing, Home and the side panel all read this one store, so they never disagree about whether today's
+// Content landing, Home and Ivan's Review list all read this one store, so they never disagree about whether today's
 // card is waiting. It re-reads on open, when the app comes back to the front, when a push lands (the service worker
 // posts {type:'push'}, the same trigger the bell's feed uses), after any held decision is written (wb-rows-changed),
 // and every 5 minutes while the app is in front (a browser without push still sees the 11:00 card arrive).
@@ -68,7 +68,8 @@ export function useTodayCard(): CardSnap & { active: boolean; waiting: boolean }
   return { ...s, active: isActive(s.card, held), waiting: isWaiting(s.card) }
 }
 
-/** Home's card block (HomeCard) on screen: the toast does not slide in over a screen that already shows the card. */
+/** The card on screen elsewhere (Home's card block, the pick's row in Ivan's Review list): the toast does not slide in
+ *  over a screen that already shows the card. */
 let blocks = 0
 const blockShown = () => blocks > 0
 export function useCardBlockMounted(): void {
@@ -88,17 +89,20 @@ export function isContentLanding(r: Pick<DRoute, 'place' | 'sub' | 'query'>): bo
   return true
 }
 
-/** Where Content's landing goes: 'card' while today's card waits, 'wait' while its read is still out, null = the page's
- *  own redirect (Plan), as before the card existed. */
+/** Where Content's landing and the card's address (content/today: the push, old links) go: 'card' while today's card
+ *  waits (Ivan's Review list, the pick first and focused), 'wait' while its read is still out, null = the page's own
+ *  redirect (the landing goes to Plan; content/today keeps the Plan under the done line), as before the card existed. */
 export function cardLanding(r: Pick<DRoute, 'place' | 'sub' | 'query'>, loaded: boolean, waiting: boolean): 'card' | 'wait' | null {
-  if (!isContentLanding(r)) return null
+  if (!isContentLanding(r) && !(r.place === 'content' && r.sub === 'today')) return null
   if (!loaded) return 'wait'
   return waiting ? 'card' : null
 }
 
-/** The card itself fills the page: Content > today, or the Content landing, while the card is waiting. */
-export function cardOnScreen(r: Pick<DRoute, 'place' | 'sub' | 'query'>, waiting: boolean): boolean {
-  return waiting && r.place === 'content' && (r.sub === 'today' || isContentLanding(r))
+/** A route that lands on the pick (the toast stays out while it is being opened): the landing, content/today, or
+ *  Review focused on the pick. */
+export function cardRoute(r: Pick<DRoute, 'place' | 'sub' | 'query'>, draftId: string): boolean {
+  if (r.place !== 'content') return false
+  return r.sub === 'today' || isContentLanding(r) || (r.sub === 'now' && r.query.get('focus') === draftId)
 }
 
 /** Tests only. */

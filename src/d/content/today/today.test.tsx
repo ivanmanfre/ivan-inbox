@@ -14,8 +14,8 @@ import { bodySha } from '../../../lib/lineFlags'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-// The day's post card (db/20261112_content_daily_card): the sliding toast, the card on Content, Home's peek and the
-// landing rule. Every read and write is mocked. Post keeps the Review desk's one-tap hold and ends in ONE database
+// The day's post card (db/20261112_content_daily_card): the sliding toast, the pick as the first row of Ivan's Review
+// list, Home's peek and the landing rule. Every read and write is mocked. Post keeps the Review desk's one-tap hold and ends in ONE database
 // call (content_card_post), so the client-side approve and schedule writes must never run for a card.
 const lib = vi.hoisted(() => ({
   readTodayCard: vi.fn(), setCardState: vi.fn(), rebaseCard: vi.fn(), fetchIvanSlotRows: vi.fn(), postCard: vi.fn(),
@@ -26,15 +26,21 @@ vi.mock('../../../lib/contentCard', async orig => ({ ...(await orig<typeof impor
 vi.mock('../../../lib/content', async orig => ({ ...(await orig<typeof import('../../../lib/content')>()), fetchIvanArmedDays: lib.fetchIvanArmedDays, approveReviewDraft: lib.approveReviewDraft, saveDraftBody: lib.saveDraftBody }))
 vi.mock('../writes', () => ({ scheduleGuarded: lib.scheduleGuarded, archiveStaleDraft: vi.fn() }))
 vi.mock('../../../lib/verdicts', async orig => ({ ...(await orig<typeof import('../../../lib/verdicts')>()), setVerdict: lib.setVerdict }))
+vi.mock('../../../lib/brainPage', async orig => ({ ...(await orig<typeof import('../../../lib/brainPage')>()), fetchDraftSources: vi.fn(() => Promise.resolve(new Map())) }))
+vi.mock('../useEarlyReads', () => ({ useEarlyReads: () => new Map() }))
 
 import CardToast, { CARD_TOAST_ID, resetSlidForTest } from './CardToast'
-import { TodayCardView } from './TodayCard'
 import { HomeCard } from './HomeCard'
 import { postLabel, postWords } from './keys'
-import { cardLanding, cardOnScreen, isContentLanding, refreshTodayCard, resetTodayCardForTest } from './store'
+import { cardLanding, cardRoute, isContentLanding, isWaiting, refreshTodayCard, resetTodayCardForTest, useTodayCard } from './store'
 import { contentRedirect, subOf } from '../SubNav'
-import { flushDecisions, resetDecisionsForTest } from '../decisions'
+import { flushDecisions, resetDecisionsForTest, usePendingDecisions } from '../decisions'
 import { resetReservedForTest } from '../weekVerbs'
+import { ReviewDesk, deskModel } from '../v2/ReviewDesk'
+import { buildNow } from '../weekModel'
+import { resetVerdictsForTest, useJudged } from '../verdictStore'
+import type { Lane } from '../model'
+import type { ContentDraft } from '../../../lib/content'
 
 const ID = '00000000-0000-4000-8000-000000000001'
 const BODY = 'Kraków taught me one thing about pricing.\n\nYou charge for the result.\nA third line stays off the toast.'
@@ -191,20 +197,22 @@ describe('the sliding post card', () => {
     expect(lib.setCardState).not.toHaveBeenCalled()
   })
 
-  it('Open goes to the card; it never slides in over the card itself; no card, no toast', async () => {
+  it('Open goes to Review on the pick; it never slides in on a route that lands on the pick; no card, no toast', async () => {
     const a = render(<Frame hash="#exp/d/home"><CardToast /></Frame>)
     await waitFor(() => expect(toastEl()).toBeTruthy())
     fireEvent.click(verb('card-open', toastEl()!)!)
-    expect(nav).toHaveBeenCalledWith('#exp/d/content/today')
+    expect(nav).toHaveBeenCalledWith(`#exp/d/content/now?focus=${ID}`)
     expect(toastEl()).toBeNull()
     a.unmount()
 
-    resetTodayCardForTest(); resetSlidForTest()
-    const b = render(<Frame hash="#exp/d/content/today"><CardToast /></Frame>)
-    await waitFor(() => expect(lib.fetchIvanArmedDays).toHaveBeenCalled())
-    await act(async () => { await Promise.resolve() })
-    expect(toastEl()).toBeNull()
-    b.unmount()
+    for (const hash of ['#exp/d/content/today', '#exp/d/content', `#exp/d/content/now?focus=${ID}`]) {
+      resetTodayCardForTest(); resetSlidForTest()
+      const b = render(<Frame hash={hash}><CardToast /></Frame>)
+      await waitFor(() => expect(lib.fetchIvanArmedDays).toHaveBeenCalled())
+      await act(async () => { await new Promise(r => setTimeout(r, 20)) })
+      expect(toastEl()).toBeNull()
+      b.unmount()
+    }
 
     for (const c of [null, card({ state: 'skipped' }), card({ state: 'posted' }), card({ live: 'decided' })]) {
       resetTodayCardForTest(); resetSlidForTest()
@@ -228,86 +236,192 @@ describe('the sliding post card', () => {
   })
 })
 
-describe('the card on Content', () => {
-  it('shows the whole post with Post, Skip and Fix', async () => {
-    renderInFrame(<TodayCardView />, { hash: '#exp/d/content/today' })
-    await waitFor(() => expect(document.querySelector('[data-today-card]')).toBeTruthy())
-    const el = document.querySelector('[data-today-card]')!
-    expect(el.textContent).toContain('Kraków taught me one thing about pricing.')
-    expect(el.textContent).toContain('A third line stays off the toast.')
-    expect(el.textContent).not.toContain('see more')
-    await waitFor(() => expect(verb('card-post', el)?.disabled).toBe(false))
-    expect(verb('card-post', el)!.textContent).toMatch(/^Post · /)
-    expect(verb('card-skip', el)).toBeTruthy()
-    expect(verb('card-fix', el)).toBeTruthy()
-  })
-
-  it('Skip asks nothing, marks the card skipped and leaves the draft alone; Undo brings it back', async () => {
-    renderInFrame(<TodayCardView />, { hash: '#exp/d/content/today' })
-    await waitFor(() => expect(verb('card-skip')).toBeTruthy())
-    fireEvent.click(verb('card-skip')!)
-    expect(document.querySelector('.d-confirm')).toBeNull()
-    expect(document.querySelector('[data-today-card]')).toBeNull()
-    await waitFor(() => expect(lib.setCardState).toHaveBeenCalledWith('2026-11-12', ID, 'skipped'))
-    expect(lib.approveReviewDraft).not.toHaveBeenCalled()
-    expect(lib.saveDraftBody).not.toHaveBeenCalled()
-    expect(lib.setVerdict).not.toHaveBeenCalled()
-    fireEvent.click(await screen.findByRole('button', { name: 'Undo' }))
-    await waitFor(() => expect(lib.setCardState).toHaveBeenCalledWith('2026-11-12', ID, 'shown'))
-  })
-
-  it('Fix is the Review grid’s in-place edit (compare-and-swap save); the card follows the fixed text and Post posts it', async () => {
-    lib.saveDraftBody.mockResolvedValue(undefined)
-    renderInFrame(<TodayCardView />, { hash: '#exp/d/content/today' })
-    await waitFor(() => expect(verb('card-fix')).toBeTruthy())
-    fireEvent.click(verb('card-fix')!)
-    const box = screen.getByLabelText('Post text') as HTMLTextAreaElement
-    expect(box.value).toBe(BODY)
-    expect(verb('card-post')!.disabled).toBe(true)
-    fireEvent.change(box, { target: { value: 'Fixed first line.\n\nFixed second.' } })
-    lib.readTodayCard.mockResolvedValue(card({}, { post_body: 'Fixed first line.\n\nFixed second.', updated_at: '2026-11-12T10:30:00Z' }))
-    fireEvent.click(verb('grid-save')!)
-    await waitFor(() => expect(lib.saveDraftBody).toHaveBeenCalledWith(ID, 'Fixed first line.\n\nFixed second.', null, BODY, '2026-11-10T09:00:00Z'))
-    await waitFor(() => expect(lib.rebaseCard).toHaveBeenCalledWith('2026-11-12', ID, 'Fixed first line.\n\nFixed second.'))
-    await waitFor(() => expect(document.querySelector('[data-today-card]')!.textContent).toContain('Fixed first line.'))
-    await waitFor(() => expect(verb('card-post')?.disabled).toBe(false))
-    fireEvent.click(verb('card-post')!)
-    await act(() => flushDecisions())
-    expect(lib.postCard).toHaveBeenCalledWith('2026-11-12', ID, await bodySha('Fixed first line.\n\nFixed second.'), expect.any(String), expect.any(Number))
-    expect(lib.approveReviewDraft).not.toHaveBeenCalled()
-  })
-})
-
 describe('Home and the landing', () => {
   it('Home shows the card at the top while it waits, with the same keys', async () => {
-    renderInFrame(<HomeCard />, { hash: '#exp/d/home' })
+    renderInFrame(<HomeCard />, { hash: '#exp/d/home', frame: { navigate: nav } })
     await waitFor(() => expect(document.querySelector('.ct-home')).toBeTruthy())
     expect(document.querySelector('.ct-home')!.textContent).toContain('Kraków taught me one thing about pricing.')
-    expect(verb('card-open')).toBeTruthy()
+    fireEvent.click(verb('card-open')!)
+    expect(nav).toHaveBeenCalledWith(`#exp/d/content/now?focus=${ID}`)
   })
 
-  it('opening Content lands on the card while it waits, else where it always did; every other tab stays as it is', () => {
+  it('opening Content or content/today lands on Review while the card waits, else where it always did; every other tab stays as it is', () => {
     const r = (h: string) => parseDHash(h)
     expect(isContentLanding(r('#exp/d/content'))).toBe(true)
-    expect(cardLanding(r('#exp/d/content'), false, false)).toBe('wait')
-    expect(cardLanding(r('#exp/d/content'), true, true)).toBe('card')
-    expect(cardLanding(r('#exp/d/content'), true, false)).toBeNull()
+    for (const h of ['#exp/d/content', '#exp/d/content/today']) {
+      expect(cardLanding(r(h), false, false)).toBe('wait')
+      expect(cardLanding(r(h), true, true)).toBe('card')
+      expect(cardLanding(r(h), true, false)).toBeNull()
+    }
     expect(contentRedirect(null, new URLSearchParams())).toBe('#exp/d/content/plan')
-    for (const h of ['#exp/d/content/plan', '#exp/d/content/now', '#exp/d/content/calendar', '#exp/d/content?lane=ivan', '#exp/d/content?draft=x', '#exp/d/home'])
+    for (const h of ['#exp/d/content/plan', '#exp/d/content/now', `#exp/d/content/now?focus=${ID}`, '#exp/d/content/calendar', '#exp/d/content?lane=ivan', '#exp/d/content?draft=x', '#exp/d/home'])
       expect(cardLanding(r(h), true, true)).toBeNull()
-    expect(cardOnScreen(r('#exp/d/content/today'), true)).toBe(true)
-    expect(cardOnScreen(r('#exp/d/content/today'), false)).toBe(false)
-    expect(cardOnScreen(r('#exp/d/content/plan'), true)).toBe(false)
+    // the routes that land on the pick (the toast stays out of them)
+    for (const h of ['#exp/d/content', '#exp/d/content/today', `#exp/d/content/now?focus=${ID}`]) expect(cardRoute(r(h), ID)).toBe(true)
+    for (const h of ['#exp/d/content/now', '#exp/d/content/now?focus=other', '#exp/d/content/plan', '#exp/d/home']) expect(cardRoute(r(h), ID)).toBe(false)
     // the notification's url (db: './#exp/d/content/today') opens the card from the push and from the bell
     expect(toDHash(routableHash('./#exp/d/content/today') ?? '')).toBe('#exp/d/content/today')
     expect(canonicalHash('#exp/d/content/today')).toBe('#exp/d/content/today')
-    // the card's own address keeps the Plan under it and is never redirected
+    // with no card waiting, the card's own address keeps the Plan under the done line and is never redirected
     expect(subOf('today')).toBe('plan')
     expect(contentRedirect('today', new URLSearchParams())).toBeNull()
   })
 })
 
-describe('the card’s one question', () => {
+// Ivan's Review list as index.tsx draws it: the seat's week, and today's card while it waits (Ivan's seat only).
+const NOWMS = Date.now()
+const HR = 3_600_000
+const draftRow = (o: Partial<ContentDraft>): ContentDraft => ({
+  id: 'x', client_id: null, status: 'review', type: 'text', title: 'A post', topic: null, post_body: 'Body.',
+  scheduled_at: null, published_at: null, source_post_id: null, image_urls: null, taxonomy: null,
+  created_at: new Date(NOWMS - HR).toISOString(), updated_at: new Date(NOWMS - HR).toISOString(), board_visible: null, ...o,
+} as ContentDraft)
+const PICK = (o: Partial<ContentDraft> = {}) => draftRow({ id: ID, title: 'Kraków', post_body: BODY, created_at: new Date(NOWMS - 30 * HR).toISOString(), updated_at: '2026-11-10T09:00:00Z', ...o })
+const OTHERS = [draftRow({ id: 'newer', title: 'Newer draft', post_body: 'Newer draft\n\nIts body.' }), draftRow({ id: 'older', title: 'Older draft', post_body: 'Older draft\n\nIts body.', created_at: new Date(NOWMS - 40 * HR).toISOString() })]
+function Desk({ rows = [PICK(), ...OTHERS], show = 'ivan', focusId = ID, onEdit = vi.fn(), onOpen = vi.fn() }: { rows?: ContentDraft[]; show?: Lane; focusId?: string | null; onEdit?: () => void; onOpen?: () => void }) {
+  const judged = useJudged()
+  const pending = usePendingDecisions()
+  const t = useTodayCard()
+  const week = buildNow(rows, { now: NOWMS, judged, pending, show, includeBoard: true })
+  const total = buildNow(rows, { now: NOWMS, judged, pending, includeBoard: true })
+  return <ReviewDesk week={week} total={total} read={{ rows, source: 'live', at: null, loading: false, error: null, capped: null, settled: true, refresh: vi.fn() }} show={show} setShow={vi.fn()}
+    now={NOWMS} openId={null} focusId={focusId} onOpen={onOpen} onEdit={onEdit} onChanged={vi.fn()} firstDay="2026-11-13" seatRows={() => rows} rows={rows}
+    armed={new Set()} armedFailed={false} today={show === 'ivan' && isWaiting(t.card) ? t.card : null} />
+}
+const rowEl = (id: string) => document.querySelector(`[data-card-id="${id}"]`) as HTMLElement | null
+const listIds = () => [...document.querySelectorAll('[aria-label="Drafts to decide"] > [data-card-id]')].map(e => e.getAttribute('data-card-id'))
+const openDesk = async (c: TodayCard | null, o: Parameters<typeof Desk>[0] = {}, layout?: 'phone') => {
+  lib.readTodayCard.mockResolvedValue(c)
+  const r = renderInFrame(<Desk {...o} />, { hash: `#exp/d/content/now?focus=${ID}`, ...(layout ? { layout } : {}) })
+  await waitFor(() => expect(lib.readTodayCard).toHaveBeenCalled())
+  await act(async () => { await Promise.resolve() })
+  return r
+}
+
+describe('the pick as the first row of Ivan’s Review list', () => {
+  beforeEach(() => {
+    resetVerdictsForTest()
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
+  })
+  afterEach(() => { resetVerdictsForTest(); vi.unstubAllGlobals() })
+
+  it('sorts first in the to-decide list with one Today tag, its preview open; the others keep their order and look', async () => {
+    await openDesk(card())
+    await waitFor(() => expect(listIds()[0]).toBe(ID))
+    expect(listIds()).toEqual([ID, 'newer', 'older'])
+    const pick = rowEl(ID)!
+    expect(pick.querySelector('.cv2-tag-today')!.textContent).toBe('Today')
+    expect(document.querySelectorAll('.cv2-tag-today')).toHaveLength(1)
+    expect(pick.hasAttribute('data-today')).toBe(true)
+    // the whole post reads without a tap
+    expect(pick.classList.contains('cv2-row-x')).toBe(true)
+    expect(pick.querySelector('.cv2-row-more')!.textContent).toContain('A third line stays off the toast.')
+    for (const id of ['newer', 'older']) {
+      expect(rowEl(id)!.hasAttribute('data-today')).toBe(false)
+      expect(rowEl(id)!.classList.contains('cv2-row-x')).toBe(false)
+      expect(rowEl(id)!.querySelector('[data-card-ask]')).toBeNull()
+    }
+    expect(pick.getAttribute('aria-current')).toBe('true')
+    // j walks the drawn order from the pick
+    act(() => { fireEvent.keyDown(window, { key: 'j' }) })
+    expect(rowEl('newer')!.getAttribute('aria-current')).toBe('true')
+  })
+
+  it('with no card the list is exactly as before', async () => {
+    await openDesk(null)
+    expect(listIds()).toEqual(['newer', ID, 'older'])
+    expect(document.querySelector('.cv2-tag-today')).toBeNull()
+    expect(document.querySelector('[data-today]')).toBeNull()
+    expect(document.querySelector('.cv2-row-x')).toBeNull()
+  })
+
+  it('the model: the pick leads the to-decide list and its queue (the open post walks it), out of the stale fold too', () => {
+    const rows = [PICK({ created_at: new Date(NOWMS - 20 * 24 * HR).toISOString() }), ...OTHERS, draftRow({ id: 'dated', scheduled_at: new Date(NOWMS + 24 * HR).toISOString() })]
+    const week = buildNow(rows, { now: NOWMS, show: 'ivan', includeBoard: true })
+    const plain = deskModel(week, NOWMS)
+    expect(plain.stale.map(c => c.r.id)).toEqual([ID])
+    expect(plain.queue).toEqual(['dated', 'newer', 'older'])
+    const withPick = deskModel(week, NOWMS, ID)
+    expect(withPick.stale).toEqual([])
+    expect(withPick.decide.map(c => c.r.id)).toEqual([ID, 'dated', 'newer', 'older'])
+    expect(withPick.queue).toEqual([ID, 'dated', 'newer', 'older'])
+  })
+
+  it('its keys are the row’s own: Approve + schedule is the desk’s one-tap key, never the card’s post call', async () => {
+    await openDesk(card())
+    await waitFor(() => expect(verb('card-approve-schedule', rowEl(ID)!)?.disabled).toBe(false))
+    expect(verb('card-skip', rowEl(ID)!)).toBeTruthy()
+    expect(verb('card-edit', rowEl(ID)!)).toBeTruthy()
+    fireEvent.click(verb('card-approve-schedule', rowEl(ID)!)!)
+    await act(() => flushDecisions())
+    expect(lib.approveReviewDraft).toHaveBeenCalledWith(ID)
+    expect(lib.postCard).not.toHaveBeenCalled()
+  })
+
+  it('a manual edit of the pick in place moves the card to the saved text; it answers nothing', async () => {
+    lib.saveDraftBody.mockResolvedValue(undefined)
+    const onEdit = vi.fn()
+    await openDesk(card(), { onEdit })
+    await waitFor(() => expect(rowEl(ID)!.classList.contains('cv2-row-x')).toBe(true))
+    fireEvent.click(verb('card-edit', rowEl(ID)!)!)
+    expect(onEdit).not.toHaveBeenCalled()
+    const box = screen.getByLabelText('Post text') as HTMLTextAreaElement
+    expect(rowEl(ID)!.contains(box)).toBe(true)
+    expect(box.value).toBe(BODY)
+    fireEvent.change(box, { target: { value: 'Fixed first line.\n\nFixed second.' } })
+    fireEvent.click(verb('grid-save', rowEl(ID)!)!)
+    await waitFor(() => expect(lib.saveDraftBody).toHaveBeenCalledWith(ID, 'Fixed first line.\n\nFixed second.', null, BODY, '2026-11-10T09:00:00Z'))
+    await waitFor(() => expect(lib.rebaseCard).toHaveBeenCalledWith('2026-11-12', ID, 'Fixed first line.\n\nFixed second.'))
+    expect(lib.answerCard).not.toHaveBeenCalled()
+    await waitFor(() => expect(lib.readTodayCard.mock.calls.length).toBeGreaterThan(1))
+    expect(rowEl(ID)!.querySelector('.cv2-row-more')!.textContent).toContain('Fixed first line.')
+  })
+
+  it('every other row edits and saves as before: no card write', async () => {
+    lib.saveDraftBody.mockResolvedValue(undefined)
+    const onEdit = vi.fn()
+    await openDesk(card(), { onEdit })
+    await waitFor(() => expect(listIds()[0]).toBe(ID))
+    // its preview is closed, so Edit is the grid's in-place edit, exactly as before
+    fireEvent.click(verb('card-edit', rowEl('newer')!)!)
+    const box = rowEl('newer')!.querySelector('textarea')!
+    fireEvent.change(box, { target: { value: 'Newer, fixed.' } })
+    fireEvent.click(verb('grid-save', rowEl('newer')!)!)
+    await waitFor(() => expect(lib.saveDraftBody).toHaveBeenCalledWith('newer', 'Newer, fixed.', null, 'Newer draft\n\nIts body.', expect.any(String)))
+    await act(async () => { await Promise.resolve() })
+    expect(lib.rebaseCard).not.toHaveBeenCalled()
+  })
+
+  it('other seats are untouched: no pick, no tag, no question, no card writes', async () => {
+    const rise = [draftRow({ id: 'r1', client_id: 'risedtc', title: 'Rise one' }), draftRow({ id: 'r2', client_id: 'risedtc', title: 'Rise two', created_at: new Date(NOWMS - 2 * HR).toISOString() })]
+    for (const show of ['risedtc', 'arch', 'swishdm'] as const) {
+      const rows = show === 'risedtc' ? rise : rise.map(r => ({ ...r, client_id: show }))
+      await openDesk(card({ question: { text: 'Q?', anchor: 'A', kind: null, sha: 'a'.repeat(64), answer: null } }), { show, rows, focusId: null })
+      expect(listIds()).toEqual(['r1', 'r2'])
+      expect(document.querySelector('.cv2-tag-today')).toBeNull()
+      expect(document.querySelector('[data-today]')).toBeNull()
+      expect(document.querySelector('[data-card-ask]')).toBeNull()
+      expect(document.querySelector('.cv2-row-x')).toBeNull()
+      cleanup(); resetTodayCardForTest()
+    }
+    expect(lib.rebaseCard).not.toHaveBeenCalled()
+  })
+
+  it('the toast does not slide in over Review while the pick’s row is there; on another seat it does', async () => {
+    lib.readTodayCard.mockResolvedValue(card())
+    render(<Frame hash="#exp/d/content/now"><Desk focusId={null} /><CardToast /></Frame>)
+    await waitFor(() => expect(rowEl(ID)?.hasAttribute('data-today')).toBe(true))
+    await waitFor(() => expect(lib.fetchIvanSlotRows).toHaveBeenCalled())
+    await act(async () => { await new Promise(r => setTimeout(r, 20)) })
+    expect(toastEl()).toBeNull()
+    cleanup(); resetTodayCardForTest(); resetSlidForTest()
+
+    render(<Frame hash="#exp/d/content/now?lane=risedtc"><Desk show="risedtc" rows={[draftRow({ id: 'r1', client_id: 'risedtc' })]} focusId={null} /><CardToast /></Frame>)
+    await waitFor(() => expect(toastEl()).toBeTruthy())
+  })
+})
+
+describe('the card’s one question, in the pick’s row', () => {
   const Q = 'You told the client their expert posts only reach followers. What did they say back?'
   const SHA = 'a'.repeat(64)
   const withQ = (o: Partial<NonNullable<TodayCard['question']>> = {}) => card({ question: { text: Q, anchor: 'You charge for the result.', kind: 'own_words', sha: SHA, answer: null, ...o } })
@@ -315,34 +429,48 @@ describe('the card’s one question', () => {
   const input = () => ask()!.querySelector('input') as HTMLInputElement
   const WOVEN = BODY.replace('You charge for the result.', 'You charge for the result. He said "so who do we write for then?"')
   const open = async (c: TodayCard, layout?: 'phone') => {
-    lib.readTodayCard.mockResolvedValue(c)
-    renderInFrame(<TodayCardView />, { hash: '#exp/d/content/today', ...(layout ? { layout } : {}) })
-    await waitFor(() => expect(document.querySelector('[data-today-card]')).toBeTruthy())
+    await openDesk(c, {}, layout)
+    await waitFor(() => expect(rowEl(ID)?.hasAttribute('data-today')).toBe(true))
   }
+  beforeEach(() => {
+    resetVerdictsForTest()
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
+  })
+  afterEach(() => { resetVerdictsForTest(); vi.unstubAllGlobals() })
 
   it('nothing extra renders when there is no question', async () => {
     await open(card())
     expect(ask()).toBeNull()
-    expect(document.querySelector('[data-today-card] input')).toBeNull()
+    expect(rowEl(ID)!.querySelector('input[type="text"]')).toBeNull()
     expect(verb('card-ask-add')).toBeNull()
   })
 
-  it('a live question: one line above the post, a plain one-line input and Add, nothing else', async () => {
+  it('a live question: in the pick’s row above the post, a plain one-line input and Add, nothing else', async () => {
     await open(withQ())
     const a = ask()!
+    expect(rowEl(ID)!.contains(a)).toBe(true)
     expect(a.textContent).toBe(Q + 'Add')
     expect(input().type).toBe('text')
     expect(input().placeholder).toBe('')
     expect(screen.getByLabelText(Q)).toBe(input())
     expect(verb('card-ask-add')!.textContent).toBe('Add')
     expect(verb('card-ask-add')!.disabled).toBe(true)
-    // with the keys, in the side block: drawn above the post when narrow (order), beside it when wide (today.css)
-    const side = document.querySelector('[data-today-card] .ct-side')!
-    expect([...side.children]).toEqual([a, side.querySelector('.ct-keys')])
+    // above the post: before the preview in the row's order
+    expect(a.compareDocumentPosition(rowEl(ID)!.querySelector('.cv2-row-more')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(a.textContent).not.toContain('—')
+    // typing in it never fires the list's keys
+    fireEvent.keyDown(input(), { key: 'j' })
+    expect(rowEl(ID)!.getAttribute('aria-current')).toBe('true')
   })
 
-  it('Add keeps his answer, asks for the woven post, opens Fix on it; his save answers the question', async () => {
+  it('hidden while the row shows other text than the card (stale)', async () => {
+    lib.readTodayCard.mockResolvedValue(withQ())
+    renderInFrame(<Desk rows={[PICK({ post_body: 'Edited elsewhere.' }), ...OTHERS]} />, { hash: `#exp/d/content/now?focus=${ID}` })
+    await waitFor(() => expect(rowEl(ID)?.hasAttribute('data-today')).toBe(true))
+    expect(ask()).toBeNull()
+  })
+
+  it('Add keeps his answer, asks for the woven post, opens the row’s edit on it; his save answers the question', async () => {
     lib.weaveCard.mockResolvedValue(WOVEN)
     lib.saveDraftBody.mockResolvedValue(undefined)
     await open(withQ())
@@ -351,7 +479,10 @@ describe('the card’s one question', () => {
     expect(lib.answerCard).toHaveBeenCalledWith('2026-11-12', ID, 'he said so who do we write for then')
     expect(lib.weaveCard).toHaveBeenCalledWith('2026-11-12', ID, SHA, 'he said so who do we write for then')
     const box = await screen.findByLabelText('Post text') as HTMLTextAreaElement
+    expect(rowEl(ID)!.contains(box)).toBe(true)
     expect(box.value).toBe(WOVEN)
+    // the edit is unsaved: the row's keys wait for it
+    expect(verb('card-approve-schedule', rowEl(ID)!)?.disabled ?? true).toBe(true)
     // nothing was written to the draft by the weave: only his save writes
     expect(lib.saveDraftBody).not.toHaveBeenCalled()
     lib.readTodayCard.mockResolvedValue(card({}, { post_body: WOVEN, updated_at: '2026-11-12T10:30:00Z' }))
@@ -360,10 +491,10 @@ describe('the card’s one question', () => {
     await waitFor(() => expect(lib.rebaseCard).toHaveBeenCalledWith('2026-11-12', ID, WOVEN))
     await waitFor(() => expect(lib.answerCard).toHaveBeenCalledWith('2026-11-12', ID, 'he said so who do we write for then', true))
     await waitFor(() => expect(ask()).toBeNull())
-    expect(document.querySelector('[data-today-card]')!.textContent).toContain('so who do we write for then?')
+    expect(rowEl(ID)!.textContent).toContain('so who do we write for then?')
   })
 
-  it('a failed weave says one plain line and opens Fix on the unchanged text, his answer still in the input', async () => {
+  it('a failed weave says one plain line and opens the edit on the unchanged text, his answer still in the input', async () => {
     lib.weaveCard.mockRejectedValue(new Error('touched_far_paragraph'))
     await open(withQ())
     fireEvent.change(input(), { target: { value: 'He laughed' } })
@@ -389,11 +520,10 @@ describe('the card’s one question', () => {
     // the phone fixed the text meanwhile: the card follows it and the question was about the old text
     lib.readTodayCard.mockResolvedValue(card({}, { post_body: 'Fixed on the phone.', updated_at: '2026-11-12T10:40:00Z' }))
     await act(() => refreshTodayCard())
-    await waitFor(() => expect(document.querySelector('[data-today-card]')!.textContent).toContain('Fixed on the phone.'))
     await act(async () => { finish(WOVEN) })
     expect(await screen.findByText('Could not add it. Edit the post yourself.')).toBeTruthy()
     expect(screen.queryByLabelText('Post text')).toBeNull()
-    expect(document.querySelector('[data-today-card]')!.textContent).not.toContain('so who do we write for then?')
+    expect(rowEl(ID)!.textContent).not.toContain('so who do we write for then?')
   })
 
   it('a weave whose question changed under it is dropped too, his answer stays in the input', async () => {
@@ -417,27 +547,20 @@ describe('the card’s one question', () => {
     expect(verb('card-ask-add')!.disabled).toBe(false)
   })
 
-  it('Post and Skip work whether or not he answers', async () => {
-    await open(withQ())
-    await waitFor(() => expect(verb('card-post')?.disabled).toBe(false))
-    fireEvent.click(verb('card-post')!)
-    await act(() => flushDecisions())
-    expect(lib.postCard).toHaveBeenCalledWith('2026-11-12', ID, await bodySha(BODY), expect.any(String), expect.any(Number))
-    expect(lib.weaveCard).not.toHaveBeenCalled()
-    expect(lib.answerCard).not.toHaveBeenCalled()
-    cleanup(); resetTodayCardForTest(); resetDecisionsForTest()
-    await open(withQ())
-    fireEvent.click(verb('card-skip')!)
-    await waitFor(() => expect(lib.setCardState).toHaveBeenCalledWith('2026-11-12', ID, 'skipped'))
-    expect(lib.weaveCard).not.toHaveBeenCalled()
-  })
-
-  it('works on the phone layout too', async () => {
+  it('works on the phone layout too: the edit opens in the row', async () => {
     lib.weaveCard.mockResolvedValue(WOVEN)
     await open(withQ(), 'phone')
     fireEvent.change(input(), { target: { value: 'He said so who do we write for' } })
     fireEvent.click(verb('card-ask-add')!)
-    expect((await screen.findByLabelText('Post text') as HTMLTextAreaElement).value).toBe(WOVEN)
+    const box = await screen.findByLabelText('Post text') as HTMLTextAreaElement
+    expect(box.value).toBe(WOVEN)
+    expect(rowEl(ID)!.contains(box)).toBe(true)
+  })
+
+  it('the row’s edit shows on the phone and inside the preview (the list hides the grid’s post there)', () => {
+    const css = readFileSync(resolve(__dirname, 'today.css'), 'utf8').replace(/\s+/g, ' ')
+    expect(css).toMatch(/\.cv2-row\[data-today\] \.cv2-gp\.cv2-gp-edit\{display:flex/)
+    expect(css).toMatch(/\.cv2-row-meta \.cv2-tag\.cv2-tag-today\{display:inline-flex/)
   })
 
   it('the toast and Home peek stay two lines, Post and Open', async () => {
@@ -451,59 +574,6 @@ describe('the card’s one question', () => {
     await waitFor(() => expect(document.querySelector('.ct-home')).toBeTruthy())
     expect(document.querySelector('.ct-home input')).toBeNull()
     expect(document.querySelector('.ct-home')!.textContent).not.toContain(Q)
-  })
-})
-
-describe('the card’s keys in reach', () => {
-  const css = readFileSync(resolve(__dirname, 'today.css'), 'utf8').replace(/\s+/g, ' ')
-  const lay = () => document.querySelector('[data-today-card] .ct-lay')!
-
-  it('the post first, then one side block holding the keys: pinned at the bottom when narrow, a column when wide', async () => {
-    for (const layout of ['desktop', 'phone'] as const) {
-      renderInFrame(<TodayCardView />, { hash: '#exp/d/content/today', layout })
-      await waitFor(() => expect(verb('card-post')?.disabled).toBe(false))
-      expect([...lay().children].map(c => c.className)).toEqual(['ct-post', 'ct-side'])
-      expect(lay().querySelector('.ct-side > .ct-keys')).toBe(verb('card-post')!.parentElement)
-      expect(document.querySelector('[data-today-card]')!.hasAttribute('data-editing')).toBe(false)
-      cleanup(); resetTodayCardForTest()
-    }
-    // narrow: the keys stick to the bottom over the post; on the phone above the dock and the safe area
-    expect(css).toMatch(/\.ct-side\{display:contents\}/)
-    expect(css).toMatch(/\.ct-ask\{order:-1\}/)
-    expect(css).toMatch(/\.ct-keys\{[^}]*position:sticky;bottom:0/)
-    expect(css).toMatch(/\.d-phone \.ct-keys\{[^}]*bottom:calc\(var\(--dock-h\) \+ var\(--dock-bottom\) \+ 8px\)/)
-    expect(css).toMatch(/\.d-phone \.ct-keys\{bottom:calc\(var\(--po-tab-h\) \+ var\(--po-tab-bottom\) \+ 8px\)/)
-    expect(css).toMatch(/\.d-phone \.ct-keys \.cv2-k\{min-height:44px\}/)
-    // the dock's fade starts under the pinned keys instead of washing them out
-    expect(css).toMatch(/\.d-phone:has\(\.ct-card:not\(\[data-editing\]\)\) \.po-fade\{height:calc\(var\(--po-tab-h\) \+ var\(--po-tab-bottom\) \+ 8px\)\}/)
-    // wide: a sticky column right of the post
-    expect(css).toMatch(/@container ctcard \(min-width:900px\)\{ \.ct-lay\{display:grid;grid-template-columns:minmax\(0,552px\) minmax\(240px,300px\)/)
-    expect(css).toMatch(/\.ct-side\{display:flex;flex-direction:column;gap:16px;position:sticky;top:12px\}/)
-  })
-
-  it('while Fix is open the keys stop pinning (the editor’s own Save and Cancel are never under them)', async () => {
-    renderInFrame(<TodayCardView />, { hash: '#exp/d/content/today', layout: 'phone' })
-    await waitFor(() => expect(verb('card-fix')).toBeTruthy())
-    fireEvent.click(verb('card-fix')!)
-    const el = document.querySelector('[data-today-card]')!
-    expect(el.hasAttribute('data-editing')).toBe(true)
-    expect([...lay().children].map(c => c.className)).toEqual(['cv2-gp cv2-gp-edit', 'ct-side'])
-    expect(verb('grid-save')).toBeTruthy()
-    expect(verb('card-post')!.disabled).toBe(true)
-    expect(css).toMatch(/\.ct-card\[data-editing\] \.ct-keys\{position:static\}/)
-    // the box itself shows: Review's skin hides .cv2-gp outside its grid at (0,3,0), the card's rule outranks it
-    expect(css).toMatch(/\.ct-card\[data-today-card\] \.cv2-gp\.cv2-gp-edit\{display:flex/)
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-    await waitFor(() => expect(el.hasAttribute('data-editing')).toBe(false))
-  })
-
-  it('“Check N lines” takes Post’s place in the pinned keys', async () => {
-    lib.readTodayCard.mockResolvedValue(card({}, { line_flags: { lines: [{ text: 'You charge for the result.', kind: 'personal', ask: 'Is this yours?' }] } }))
-    renderInFrame(<TodayCardView />, { hash: '#exp/d/content/today', layout: 'phone' })
-    await waitFor(() => expect(verb('card-check')).toBeTruthy())
-    expect(verb('card-post')).toBeNull()
-    expect(verb('card-check')!.textContent).toBe('Check 1 line')
-    expect(verb('card-check')!.parentElement!.className).toBe('ct-keys')
   })
 })
 
@@ -528,7 +598,7 @@ describe('the Post key names the real day', () => {
     expect(postLabel(new Date('2026-12-01T09:45:00Z'))).toBe('Post: approve and schedule Tue 1 Dec · 10:45')
   })
 
-  it('the card, the toast and Home show the date when the calendar is full for weeks, with the full day and time as its name', async () => {
+  it('the toast and Home show the date when the calendar is full for weeks, with the full day and time as its name', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-11-12T10:00:00Z'))
     try {
@@ -536,11 +606,6 @@ describe('the Post key names the real day', () => {
       const times = Array.from({ length: 19 }, (_, i) => new Date(Date.UTC(2026, 10, 12 + i, 9, 45)).toISOString())
       lib.fetchIvanArmedDays.mockResolvedValue(Object.assign(new Set<string>(), { times }))
       const name = 'Post: approve and schedule Tue 1 Dec · 10:45'
-      renderInFrame(<TodayCardView />, { hash: '#exp/d/content/today' })
-      await waitFor(() => expect(verb('card-post')?.disabled).toBe(false))
-      expect(verb('card-post')!.textContent).toBe('Post · Tue 1 Dec')
-      expect(verb('card-post')!.getAttribute('aria-label')).toBe(name)
-      cleanup(); resetTodayCardForTest()
       render(<Frame hash="#exp/d/dms"><CardToast /></Frame>)
       await waitFor(() => expect(toastEl()).toBeTruthy())
       expect(verb('card-post', toastEl()!)!.textContent).toBe('Post · Tue 1 Dec')
