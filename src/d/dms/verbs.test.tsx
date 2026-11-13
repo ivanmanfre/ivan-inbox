@@ -571,6 +571,26 @@ describe('SwishDM threads', () => {
     expect(screen.queryByText(/switched on/)).toBeNull()
   })
 
+  // Siddik Patel, 2026-11-13: the approval RPC clears the review hold on the row, the local patch did not, so
+  // the pane read the approved reply as held and showed "owed a reply: today, no draft" until the next read.
+  it('approving a held SwishDM reply clears the hold locally, so the thread stops reading as owed with no draft', async () => {
+    const rows = drafted('swa', { prospect_name: 'Sam', client_id: 'swishdm' })
+    rows[2] = { ...rows[2], ai_model: 'swishdm_reply_writer_v1', send_blocked_at: '2026-09-27T08:00:00Z', send_blocked_reason: 'awaiting_client_review' }
+    const [t] = threads(rows)
+    mount(t)
+    fireEvent.click(key('send'))
+    fireEvent.click(await waitFor(() => key('confirm-send')))
+    await waitFor(() => expect(lib.approveDraft).toHaveBeenCalled())
+    await waitFor(() => expect(ctx.patch).toHaveBeenCalledWith([rows[2].id], expect.objectContaining({ send_blocked_at: null, send_blocked_reason: null })))
+    const p = ctx.patch.mock.calls.find(c => c[0][0] === rows[2].id && c[1].approved_at)![1]
+    const [after] = threads(rows.map(m => (m.id === rows[2].id ? { ...m, ...p } : m)))
+    expect(after.draft).toBeNull()
+    expect(lib.unansweredWaitSince(after)).toBeNull()
+    // hand-approved replies skip the send window (sender rule since 2026-10-23); this one left 4.5 minutes after approval
+    expect(await screen.findByText(/picks it up within about 10 minutes/)).toBeTruthy()
+    expect(screen.queryByText(/next send window/)).toBeNull()
+  })
+
   it('a failed SwishDM send offers no Send anyways and never promises a two-minute send', () => {
     const m = msg({ prospect_id: 'swf', client_id: 'swishdm', message_text: 'DM copy', approved_at: '2026-09-26T10:00:00Z', send_blocked_at: '2026-09-26T11:00:00Z', send_blocked_reason: 'send_failed_429: check LinkedIn before retrying' })
     const [t] = threads([m]); mount(t)
