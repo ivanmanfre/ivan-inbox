@@ -1,0 +1,11 @@
+/* Long / Short on a copied X post: the same segmented pill as the media switch, with the word count of each side.
+   It sits on its own line above the post it switches, on every width (on the phone the side column is below the whole post). */
+:root[data-skin-on~='content.review'] .cv2-copy{display:inline-flex;align-self:flex-start;max-width:100%;gap:2px;padding:2px;border-radius:9px;background:var(--ds-surface-2);box-shadow:inset 0 0 0 1px var(--ds-line)}
+:root[data-skin-on~='content.review'] .cv2-copy button{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:0;border-radius:7px;background:transparent;font:var(--ds-fw-em) 15px/1 var(--ds-font);color:var(--ds-text-2);white-space:nowrap;cursor:pointer}
+:root[data-skin-on~='content.review'] .cv2-copy button i{font-style:normal;font-weight:400;font-size:13px;font-variant-numeric:tabular-nums;color:var(--ds-text-3)}
+:root[data-skin-on~='content.review'] .cv2-copy button[aria-pressed='true']{background:var(--ds-chip-face);box-shadow:var(--ds-chip-shadow);color:var(--ds-text)}
+:root[data-skin-on~='content.review'] .cv2-copy button:disabled{cursor:default;opacity:.6}
+:root[data-skin-on~='content.review'] .cv2-copy button:focus-visible{outline:2px solid var(--ds-focus, currentColor);outline-offset:1px}
+:root[data-skin-on~='content.review'] .d-phone .cv2-copy button{height:40px}
+:root[data-skin-on~='content.review'] .cv2-row-more > .cv2-copy{grid-column:1 / -1;justify-self:start}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-row-more > .cv2-copy{margin:4px 12px 0}

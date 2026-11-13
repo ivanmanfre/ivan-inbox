@@ -30,6 +30,7 @@ import { useReviewMotion } from './motion'
 import { clientHoldOf } from '../../../lib/clientBoardState'
 import { LinkedInCard } from './LinkedInCard'
 import { MediaSwitch } from './MediaSwitch'
+import { CopySwitch } from './CopySwitch'
 import { picRepeats, type Repeat } from './picRepeat'
 import { sourceTag, type SourceTagView } from './sourceTag'
 import { Answer, Menu, Pill, SeatAv, Seg, useDeferred, type MenuItem, type Tone } from './ui'
@@ -587,7 +588,7 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
   const title = c.title
   const tag = sourceTag(c.r, OWNER[c.lane])
   const next = nextOf(c)
-  const body = (c.r.post_body ?? '').trim() || c.title
+  const body = postNow.trim() || c.title // a just-saved edit or version switch shows at once, before the list's next read
   const editablePic = pictureEditable(c.r, c.lane)
   const snippet = snippetOf(c)
   const boardWord = `Put on ${POSS[c.lane]} board`
@@ -678,6 +679,7 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
       {today && <PickMark />}
       {more && (
         <div className="cv2-row-more">
+          {c.lane === 'ivan' && <CopySwitch d={c.r} body={postNow} onSaved={onBodySaved} onChanged={onChanged} disabled={busy || edit !== null} />}
           <div className="cv2-row-post">
             {today ? <div className="cv2-today-post">
               {edit !== null
