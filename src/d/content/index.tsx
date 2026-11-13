@@ -44,6 +44,8 @@ import { useSteadyRows } from './v2/steadyRows'
 import { MagnetsV2 } from './v2/MagnetsV2'
 import { cardLanding, isWaiting, useTodayCard } from './today/store'
 import { CardDoneLine } from './today/TodayCard'
+import { anyHeld, nextLanding } from './next/model'
+import { useNextPosts } from './next/store'
 import './v2/cv2.css'
 import './content.css'
 import './content2.css'
@@ -69,7 +71,11 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   const today = useTodayCard()
   const land = cardLanding(route, today.loaded, today.waiting)
   // The card's read is out, or the landing is on its way to the pick: never a flash of Plan first.
-  const cardReading = land === 'wait' || land === 'card'
+  // The posts going out next (db: content_next_posts): while any of them will not go out as it stands, opening Content
+  // lands on Review, Ivan's seat, where those rows are first (next/NextRows). Today's waiting card keeps its own landing.
+  const next = useNextPosts()
+  const heldLand = nextLanding(route, land, next.loaded, anyHeld(next.posts))
+  const cardReading = land === 'wait' || land === 'card' || heldLand === 'wait' || heldLand === 'held'
   const pickCard = isWaiting(today.card) && today.card.draft.client_id == null ? today.card : null
   const pickId = pickCard?.draft.id ?? null
   // Brief 4 (SPEC-content): the frame flag and one flag per sub-tab; every hook below runs either way.
@@ -99,10 +105,10 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   // Review focused on the card's draft; with no card, or once it is posted or skipped, it lands where it always did
   // (Plan). The landing waits for the card's read.
   useEffect(() => {
-    if (land === 'wait') return
-    const target = land === 'card' && pickId ? dHash('content', 'now', { focus: pickId }) : contentRedirect(route.sub, route.query)
+    if (land === 'wait' || heldLand === 'wait') return
+    const target = land === 'card' && pickId ? dHash('content', 'now', { focus: pickId }) : heldLand === 'held' ? dHash('content', 'now', { next: '1' }) : contentRedirect(route.sub, route.query)
     if (target) navigate(target)
-  }, [navigate, route.sub, route.query, land, pickId])
+  }, [navigate, route.sub, route.query, land, pickId, heldLand])
   const data = useContentData(fullOn)
   const pending = usePendingDecisions()
   const [bankCounts, setBankCounts] = useState(false)
@@ -136,8 +142,10 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   // Review focused on the pick (the landing above) shows Ivan's seat without writing it over the remembered one: only
   // this tab's state follows, so opening the pick's post does not flip the seat back for a frame.
   const pickFocus = deskOn && !!pickId && focusAsk === pickId
-  useEffect(() => { if (pickFocus && show !== 'ivan') setShowState('ivan') }, [pickFocus]) // eslint-disable-line react-hooks/exhaustive-deps
-  const seat: Lane = pickFocus || show === 'all' ? 'ivan' : show
+  // The held landing (?next=1) shows Ivan's seat the same way: this tab only, the remembered seat left as it was.
+  const nextFocus = deskOn && q.get('next') === '1'
+  useEffect(() => { if ((pickFocus || nextFocus) && show !== 'ivan') setShowState('ivan') }, [pickFocus, nextFocus]) // eslint-disable-line react-hooks/exhaustive-deps
+  const seat: Lane = pickFocus || nextFocus || show === 'all' ? 'ivan' : show
   const seatPick = seat === 'ivan' ? pickCard : null
   const [listIds, setListIds] = useState<string[]>([])
   const [dayOpen, setDayOpen] = useState<{ lane: Lane; keys: string[] } | null>(null)

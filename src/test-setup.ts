@@ -10,3 +10,5 @@ if (typeof globalThis.WebSocket === 'undefined') {
 // Draft cards fetch a read-only history RPC on mount (src/lib/replyHistory.ts); unit tests never hit the network.
 import { vi } from 'vitest'
 vi.mock('./lib/replyHistory', async orig => ({ ...(await orig<typeof import('./lib/replyHistory')>()), fetchReplyHistory: vi.fn(async () => null) }))
+// The Content page reads the posts going out next on mount (src/lib/contentNext.ts); unit tests never hit the network.
+vi.mock('./lib/contentNext', async orig => ({ ...(await orig<typeof import('./lib/contentNext')>()), readNextPosts: vi.fn(async () => []) }))

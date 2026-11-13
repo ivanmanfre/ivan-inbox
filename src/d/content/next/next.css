@@ -1,0 +1,42 @@
+/* The post going out next, as rows over Ivan's Review list (NextRows.tsx). The rows are the list's own rows
+   (review-list.css: source column, text, meta, keys, the open preview), so every width rule of the list holds here.
+   Only what is new is styled: the Next / Held tag, the status line, the note, and the in-place edit. */
+
+:root[data-skin-on~='content.review'] .cv2-list.cv2-next{margin-bottom:12px}
+:root[data-skin-on~='content.review'] .cv2-next-row,:root[data-skin-on~='content.review'] .cv2-next-row:hover{cursor:default;background:transparent}
+:root[data-skin-on~='content.review'] .cv2-next-row .cv2-row-main{align-items:start}
+:root[data-skin-on~='content.review'] .cv2-next-row .cv2-row-main > .cv2-srctag{margin-top:2px}
+:root[data-skin-on~='content.review'] .cv2-next-row .cv2-row-meta{align-self:start;min-height:24px}
+:root[data-skin-on~='content.review'] .cv2-next-row .cv2-row-keys{align-self:start}
+
+/* The tag: Next on the accent, Held on the attention colour, a post being re-checked quiet. */
+:root[data-skin-on~='content.review'] .cv2-next-tag{--src:var(--ds-accent);--src-bg:var(--ds-accent-soft)}
+:root[data-skin-on~='content.review'] .cv2-next-tag[data-tone='held']{--src:var(--ds-sev-attention-ui);--src-bg:var(--ds-sev-attention-soft)}
+:root[data-skin-on~='content.review'] .cv2-next-tag[data-tone='wait']{--src:var(--ds-text-3);--src-bg:var(--ds-surface-2)}
+
+/* The status line wraps (it is the row's answer); the reason follows it in the same line. */
+:root[data-skin-on~='content.review'] .cv2-next-status{margin:0;font:400 13px/18px var(--ds-font);color:var(--ds-text-2);white-space:normal}
+:root[data-skin-on~='content.review'] .cv2-next-status[data-tone='held'] > span:first-child{font-weight:var(--ds-fw-em);color:var(--ds-sev-attention-ui)}
+:root[data-skin-on~='content.review'] .cv2-next-status[data-tone='wait']{color:var(--ds-text-3)}
+:root[data-skin-on~='content.review'] .cv2-next-note{margin:2px 0 0;font:400 12.5px/17px var(--ds-font);color:var(--ds-text-3);white-space:normal}
+:root[data-skin-on~='content.review'] .cv2-next-note[role='alert']{color:var(--ds-sev-attention-ui)}
+:root[data-skin-on~='content.review'] .cv2-next-when{white-space:nowrap}
+:root[data-skin-on~='content.review'] .cv2-next-reading{margin:0;font:400 12.5px/17px var(--ds-font);color:var(--ds-text-3)}
+:root[data-skin-on~='content.review'] .cv2-next-doc{align-self:flex-start;text-decoration:none}
+
+/* The in-place edit inside the open post (the list hides the grid's edit outside its cards). */
+:root[data-skin-on~='content.review'] .cv2-next-row .cv2-gp.cv2-gp-edit{display:flex;flex-direction:column;gap:8px;margin:0;cursor:auto}
+:root[data-skin-on~='content.review'] .cv2-next-row .cv2-gp-edit textarea{width:100%;box-sizing:border-box;min-height:220px;resize:vertical;padding:8px 10px;border:1px solid #0a66c2;border-radius:8px;background:#fff;color:#191919;font:400 15px/22px var(--ds-font);white-space:pre-wrap}
+:root[data-skin-on~='content.review'] .cv2-next-row .cv2-gp-keys{display:flex;gap:6px}
+.d-phone .cv2-next-row .cv2-gp-keys .cv2-k{min-height:44px;flex:1 1 0}
+.d-phone .cv2-next-row .cv2-gp-edit textarea{font-size:16px}
+
+/* Narrow desks: the day and time sit on the tag's line, the status under the hook at full width. */
+@container rdesk (max-width:1079px){
+  :root[data-skin-on~='content.review'] .cv2-next-row .cv2-row-meta{min-height:0}
+}
+@container rdesk (max-width:439px){
+  :root[data-skin-on~='content.review'] .cv2-next-row .cv2-row-main > .cv2-srctag{margin-top:0}
+  :root[data-skin-on~='content.review'] .cv2-next-status{font-size:14px;line-height:20px}
+  :root[data-skin-on~='content.review'] .cv2-next-note{font-size:13px;line-height:18px}
+}
