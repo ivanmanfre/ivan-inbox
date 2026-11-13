@@ -39,6 +39,7 @@ import { LineFlagsBlock, useLineFlags } from './LineFlags'
 import type { LiveCard } from '../today/store'
 import { Ask, PickMark } from '../today/TodayCard'
 import { usePickAsk } from '../today/pickAsk'
+import { NextRows } from '../next/NextRows'
 
 // CONTENT > REVIEW, THE ONE DESK. One seat at a time (Ivan 2026-10-15: "I will see it per client always"),
 // every draft to decide as ONE ROW: where it came from first (the source tag), the hook, its tags, age and
@@ -406,6 +407,7 @@ export function ReviewDesk({ week, total, read, show, setShow, now, openId, focu
       {read.capped != null && <p className="cv2-note" role="status">Showing the newest 1,000 of {read.capped.toLocaleString('en-US')} rows.</p>}
 
       {desk.pinned.length > 0 && <div className="cv2-fixlist cv2-fixlist-pinned" aria-label="Did not go out">{desk.pinned.map(fixRow)}</div>}
+      {show === 'ivan' && <NextRows rows={rows} onOpen={onOpen} onEdit={onEdit} onChanged={onChanged} />}
 
       {ghosts && loading ? (
         <div className="cv2-list" aria-busy="true" aria-label="Reading the drafts">{[0, 1, 2, 3, 4].map(i => <div key={i} className="cv2-row-ghost" />)}</div>
