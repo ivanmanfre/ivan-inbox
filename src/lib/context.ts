@@ -32,6 +32,43 @@ export type ScanInfo = {
   automation_grade: string | null
 }
 
+// What we already hold about the prospect's store: a third-party sales estimate and our own check of the
+// ad tags on their site. Shown so nobody has to ask "monthly sales?" or "paid or organic?" (Ivan 2026-11-13:
+// "sometimes we over-qualify ... ideally we got the data from the beginning").
+export type StoreNumbers = {
+  est_sales_monthly_usd: number | null
+  platform: string | null
+  meta_tag: boolean | null
+  google_ads_tag: boolean | null
+}
+
+function money(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
+  if (n >= 1_000) return `$${Math.round(n / 1_000)}k`
+  return `$${Math.round(n)}`
+}
+
+// One line for the context sheet. Every part is optional; an empty line means nothing is on file.
+export function storeLine(s: StoreNumbers): string {
+  const parts: string[] = []
+  if (s.est_sales_monthly_usd != null) parts.push(`about ${money(s.est_sales_monthly_usd)} a month in sales (estimate)`)
+  if (s.platform) parts.push(s.platform.charAt(0).toUpperCase() + s.platform.slice(1))
+  if (s.meta_tag != null && s.google_ads_tag != null) {
+    parts.push(s.meta_tag && s.google_ads_tag ? 'Meta and Google ad tags on the site'
+      : s.meta_tag ? 'Meta ad tag on the site, no Google'
+      : s.google_ads_tag ? 'Google ad tag on the site, no Meta'
+      : 'no Meta or Google ad tags on the site')
+  }
+  return parts.join(' · ')
+}
+
+export async function fetchStoreNumbers(prospectId: string): Promise<StoreNumbers | null> {
+  const { data, error } = await supabase.rpc('prospect_store_numbers', { p_prospect_id: prospectId })
+  if (error) throw error
+  const row = (Array.isArray(data) ? data[0] : data) as StoreNumbers | null | undefined
+  return row && storeLine(row) ? row : null
+}
+
 // Mirrors the drafter's _ht_slug base: slugified prospect NAME (not company),
 // stored with a 2-hex suffix, so lookups prefix-match `${base}-%`.
 export function nameSlug(name: string): string {

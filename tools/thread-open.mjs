@@ -59,7 +59,9 @@ const readRpcs = new Set(['inbox_changed_since', 'inbox_interest_cards', 'inbox_
   // The Signals post-engager read (src/d/dms/ownerEngagers.ts): STABLE security-definer, no writes.
   'owner_engager_cards',
   // Today's post card read (db/20261112_content_daily_card.sql content_card_today): STABLE security-definer, no writes.
-  'content_card_today'])
+  'content_card_today',
+  // The Context sheet's store row (db/302_prospect_store_numbers.sql): STABLE security-definer, no writes.
+  'prospect_store_numbers'])
 const replySourceRpcs = new Set(['inbox_reply_source', 'outreach_reply_sources', 'client_board_reply_source', 'client_board_reply_sources'])
 function missingReplySource(url, method, status, payload) {
   const u = new URL(url)
