@@ -222,7 +222,9 @@ export function useDmVerbs(ctx: VerbCtx) {
         const ok = await landed([draft.id])
         if (!ok) { const m = ok === false ? NO_ANSWER_NOT_SENT : NO_ANSWER_UNCHECKED; fail(m); ctx.refresh(); return m }
       }
-      ctx.patch([draft.id], { approved_at: new Date().toISOString() })
+      // The SwishDM approval clears the review hold on the row. Without the same here the approved reply reads as
+      // held: the thread shows "owed a reply, no draft" until the next read lands (Siddik Patel, 2026-11-13).
+      ctx.patch([draft.id], swish ? { approved_at: new Date().toISOString(), send_blocked_at: null, send_blocked_reason: null } : { approved_at: new Date().toISOString() })
       let half: string | null = null
       if (comp) {
         try {
@@ -244,7 +246,7 @@ export function useDmVerbs(ctx: VerbCtx) {
       }
       const nx = half ? '' : next(t)
       if (!half) toast.show(swish
-        ? { message: `Approved the reply to ${t.prospect_name}.${nx}`, sub: 'It goes out from Jonathan\u2019s LinkedIn in the next send window (Sun-Fri 9am-5pm UK).' }
+        ? { message: `Approved the reply to ${t.prospect_name}.${nx}`, sub: 'Jonathan\u2019s LinkedIn sender picks it up within about 10 minutes. A reply you approve does not wait for the send window.' }
         : { message: `Queued to ${t.prospect_name}.${nx}`, sub: 'The sender picks it up within about 2 minutes.' })
       if (!swish) watch(t, half ? [draft.id] : [draft.id, ...(comp ? [comp.id] : [])])
       ctx.refresh()
