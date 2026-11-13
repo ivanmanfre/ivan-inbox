@@ -3,9 +3,12 @@ import { DraftSaveConflict, saveDraftBody } from './content'
 
 // Long / Short on a copied X post (Poland lane, 2026-11-14). The ingestor keeps the near word-for-word
 // copy in source_detail.short_copy and makes the long version the post body. Ivan picks which one posts.
-// A switch is his edit: the chosen text is saved with saveDraftBody (the same compare-and-swap his typed
-// edits use, human_edited stamped), and the text it replaces is kept in source_detail first
-// (long_copy / short_copy), so an edit he made to either side survives the switch and the way back.
+// A switch is his edit: ONE saveDraftBody write (the same compare-and-swap his typed edits use,
+// human_edited stamped) sets the chosen text as the body and, in that same write, keeps the text it
+// replaces in source_detail (long_copy / short_copy) with source_detail.copy_choice = the side the body
+// now is. So an edit he made to either side survives the switch and the way back, and the body and its
+// side can never be out of step. copy_choice lives in source_detail, which a typed edit never writes
+// (a typed edit rewrites taxonomy from the list's copy, which can be a read behind).
 export type CopySide = 'long' | 'short'
 export type CopyVersions = { now: CopySide; long: string; short: string }
 
@@ -23,14 +26,14 @@ export function wordCount(s: string): number {
 /**
  * Both versions and which one is the body, from what the row holds. Null when the draft does not carry
  * two different texts (no short copy, or the body IS the short copy and no long one was ever kept).
- * `taxonomy.copy_choice` is written by the switch; before the first switch the body is the long version
- * unless it equals the short copy.
+ * `source_detail.copy_choice` is written by the switch, in the same write as the body; before the first
+ * switch the body is the long version unless it equals the short copy.
  */
-export function copyVersionsOf(body: string | null, taxonomy: unknown, sourceDetail: unknown): CopyVersions | null {
+export function copyVersionsOf(body: string | null, sourceDetail: unknown): CopyVersions | null {
   const sd = obj(sourceDetail), b = body ?? ''
   const short = text(sd.short_copy), kept = text(sd.long_copy)
   if (!short || !b.trim()) return null
-  const choice = obj(taxonomy).copy_choice
+  const choice = sd.copy_choice
   const now: CopySide = choice === 'short' || choice === 'long' ? choice : same(b, short) ? 'short' : 'long'
   const long = now === 'long' ? b : kept
   const shortNow = now === 'short' ? b : short
@@ -51,7 +54,7 @@ async function readRow(id: string): Promise<Row | null> {
 export async function readCopyVersions(id: string): Promise<CopyVersions | null> {
   const r = await readRow(id)
   if (!r || r.published_at) return null
-  return copyVersionsOf(r.post_body, r.taxonomy, r.source_detail)
+  return copyVersionsOf(r.post_body, r.source_detail)
 }
 
 /**
@@ -64,22 +67,15 @@ export async function switchDraftCopy(id: string, to: CopySide, base: string): P
   if (r.published_at) throw new Error('This post is already published. Nothing changed.')
   const stored = r.post_body ?? ''
   if (stored !== base) throw new DraftSaveConflict({ kind: 'conflict', theirs: r.post_body, theirUpdatedAt: r.updated_at })
-  const v = copyVersionsOf(stored, r.taxonomy, r.source_detail)
+  const v = copyVersionsOf(stored, r.source_detail)
   if (!v) throw new Error('This post has one version only. Nothing changed.')
   if (v.now === to) return stored
+  if (!r.updated_at) throw new Error('This post cannot be switched safely. Nothing changed.')
   const next = to === 'long' ? v.long : v.short
-  // 1 — keep the text that is leaving, in its own slot. Gated on updated_at, so a write that landed
-  // since the read above (and may have changed source_detail) is never overwritten.
-  const slot = v.now === 'long' ? 'long_copy' : 'short_copy'
-  const sd = obj(r.source_detail)
-  if (sd[slot] !== stored) {
-    let q = supabase.from('carousel_drafts').update({ source_detail: { ...sd, [slot]: stored } }).eq('id', id).is('client_id', null).is('published_at', null)
-    if (r.updated_at) q = q.eq('updated_at', r.updated_at)
-    const { data, error } = await q.select('id')
-    if (error) throw error
-    if (!data || data.length === 0) throw new DraftSaveConflict({ kind: 'conflict', theirs: r.post_body, theirUpdatedAt: r.updated_at })
-  }
-  // 2 — the body, through the editor's own save. It re-reads the row, so the write above is forgiven.
-  await saveDraftBody(id, next, { ...obj(r.taxonomy), copy_choice: to }, stored, null)
+  // One write: the body, the text that is leaving (in its own slot) and the side the body now is. It only
+  // lands while the row is exactly the one read above (updated_at) and unpublished, so another writer's
+  // change to source_detail or taxonomy since that read is refused, never overwritten.
+  const sourceDetail = { ...obj(r.source_detail), [v.now === 'long' ? 'long_copy' : 'short_copy']: stored, copy_choice: to }
+  await saveDraftBody(id, next, r.taxonomy, stored, r.updated_at, { sourceDetail, readAt: r.updated_at })
   return next
 }

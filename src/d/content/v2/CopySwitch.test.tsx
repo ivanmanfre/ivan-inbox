@@ -13,17 +13,17 @@ const LONG = `${SHORT}\n\nA paragraph that was added about what the day means.`
 const d = { id: 'd1', updated_at: '2026-11-14T08:00:00Z', source_kind: 'x_tracked_outlier' }
 
 it('reads both versions and the current side off the row', () => {
-  expect(copyVersionsOf(LONG, {}, { short_copy: SHORT })).toEqual({ now: 'long', long: LONG, short: SHORT })
-  expect(copyVersionsOf(SHORT, {}, { short_copy: SHORT, long_copy: LONG })).toEqual({ now: 'short', long: LONG, short: SHORT })
+  expect(copyVersionsOf(LONG, { short_copy: SHORT })).toEqual({ now: 'long', long: LONG, short: SHORT })
+  expect(copyVersionsOf(SHORT, { short_copy: SHORT, long_copy: LONG })).toEqual({ now: 'short', long: LONG, short: SHORT })
   // an edit on either side keeps its side: the switch's own stamp says which one the body is
-  expect(copyVersionsOf(`${SHORT} Edited.`, { copy_choice: 'short' }, { short_copy: SHORT, long_copy: LONG })).toEqual({ now: 'short', long: LONG, short: `${SHORT} Edited.` })
-  expect(copyVersionsOf(`${LONG} Edited.`, { copy_choice: 'long' }, { short_copy: SHORT, long_copy: LONG })).toEqual({ now: 'long', long: `${LONG} Edited.`, short: SHORT })
+  expect(copyVersionsOf(`${SHORT} Edited.`, { short_copy: SHORT, long_copy: LONG, copy_choice: 'short' })).toEqual({ now: 'short', long: LONG, short: `${SHORT} Edited.` })
+  expect(copyVersionsOf(`${LONG} Edited.`, { short_copy: SHORT, long_copy: LONG, copy_choice: 'long' })).toEqual({ now: 'long', long: `${LONG} Edited.`, short: SHORT })
   // nothing to switch between
-  expect(copyVersionsOf(LONG, {}, {})).toBeNull()
-  expect(copyVersionsOf(LONG, {}, { short_copy: null })).toBeNull()
-  expect(copyVersionsOf(SHORT, {}, { short_copy: SHORT })).toBeNull()
-  expect(copyVersionsOf(LONG, {}, 'not an object')).toBeNull()
-  expect(copyVersionsOf('', {}, { short_copy: SHORT })).toBeNull()
+  expect(copyVersionsOf(LONG, {})).toBeNull()
+  expect(copyVersionsOf(LONG, { short_copy: null })).toBeNull()
+  expect(copyVersionsOf(SHORT, { short_copy: SHORT })).toBeNull()
+  expect(copyVersionsOf(LONG, 'not an object')).toBeNull()
+  expect(copyVersionsOf('', { short_copy: SHORT })).toBeNull()
   expect(wordCount(SHORT)).toBe(10)
 })
 
