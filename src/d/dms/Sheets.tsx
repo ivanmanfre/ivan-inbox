@@ -3,7 +3,7 @@
 // today's: fetchProspectContext / fetchScan / saveOperatorNote (lib/context) and
 // conversation_agent_cards / conversation_agent_control (wb/dms/conversationAgentData).
 import { useEffect, useRef, useState } from 'react'
-import { fetchProspectContext, fetchScan, saveOperatorNote, type ProspectContext, type ScanInfo } from '../../lib/context'
+import { fetchProspectContext, fetchScan, fetchStoreNumbers, saveOperatorNote, storeLine, type ProspectContext, type ScanInfo, type StoreNumbers } from '../../lib/context'
 import { confirmationOwner, isOwnerConfirmation, type Thread } from '../../lib/inbox'
 import { supabase } from '../../lib/supabase'
 import { fetchConversationAgentCards, type ConversationAgentCard } from '../../wb/dms/conversationAgentData'
@@ -37,6 +37,7 @@ export function ContextSheet({ t, all, onClose }: { t: Thread; all: readonly Thr
   const toast = useToast()
   const [ctx, setCtx] = useState<ProspectContext | null>(null)
   const [scan, setScan] = useState<ScanInfo | null>(null)
+  const [store, setStore] = useState<StoreNumbers | null>(null)
   const [vertical, setVertical] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
   const [note, setNote] = useState('')
@@ -48,7 +49,9 @@ export function ContextSheet({ t, all, onClose }: { t: Thread; all: readonly Thr
   useEffect(() => { if (ctx && hold) { noteRef.current?.focus(); noteRef.current?.scrollIntoView({ block: 'center' }) } }, [ctx, hold])
   useEffect(() => {
     let live = true
-    setFailed(false); setCtx(null)
+    setFailed(false); setCtx(null); setStore(null)
+    // Store numbers are a bonus row: a failed or empty read just leaves the row out.
+    Promise.resolve().then(() => fetchStoreNumbers(t.prospect_id)).then(s => { if (live) setStore(s) }).catch(() => {})
     fetchProspectContext(t.prospect_id).then(async c => {
       if (!live) return
       setCtx(c); setNote(c.operator_note ?? '')
@@ -78,6 +81,7 @@ export function ContextSheet({ t, all, onClose }: { t: Thread; all: readonly Thr
             <div><dt>Role</dt><dd>{ctx.title || ctx.headline || 'unknown'}</dd></div>
             <div><dt>Where</dt><dd>{[ctx.location, ctx.industry].filter(Boolean).join(' · ') || 'unknown'}</dd></div>
             <div><dt>Scan</dt><dd>{scan ? <>{scan.report_url ? <a className="d-link" href={scan.report_url} target="_blank" rel="noreferrer">{scan.company_slug}</a> : scan.company_slug}{scan.automation_grade ? ` · grade ${scan.automation_grade}` : ''}{scan.completed_at ? ` · ${dayMonth(scan.completed_at)}` : ''}</> : 'no completed scan'}</dd></div>
+            {store && <div><dt>Store</dt><dd>{storeLine(store)}</dd></div>}
             <div><dt>Sequence</dt><dd>{[ctx.connection_sent_at && `invited ${dayMonth(ctx.connection_sent_at)}`, ctx.connected_at && `connected ${dayMonth(ctx.connected_at)}`, ctx.dm_count != null && `${ctx.dm_count} messages`, ctx.reply_count != null && `${ctx.reply_count} replies`, ctx.last_reply_at && `last reply ${ago(ctx.last_reply_at)}`].filter(Boolean).join(' · ') || 'nothing recorded'}</dd></div>
             <div><dt>LinkedIn</dt><dd>{ctx.linkedin_url ? <a className="d-link" href={ctx.linkedin_url} target="_blank" rel="noreferrer" data-verb="open-linkedin">LinkedIn profile</a> : 'no profile link'}</dd></div>
             {ctx.notes && <div><dt>System notes</dt><dd>{ctx.notes}</dd></div>}
