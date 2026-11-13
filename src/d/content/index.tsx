@@ -50,6 +50,7 @@ import './content2.css'
 import './content3.css'
 import './now.css'
 import './phone-ox.css'
+import './v2/polish.css'
 
 const BrainArea = lazy(() => import('./BrainArea').then(m => ({ default: m.BrainArea })))
 const InputsPage = lazy(() => import('./inputs/Inputs').then(m => ({ default: m.InputsPage })))
@@ -241,7 +242,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   }
   else if (sub === 'ideas') body = cv2.ideas ? column(<Ideas banks={banks} phone={phone} lane={qLane} onLaneChange={lane => go({ lane }, 'ideas')} v2 />) : <Ideas banks={banks} phone={phone} lane={qLane} onLaneChange={lane => go({ lane }, 'ideas')} />
   else if (sub === 'brain') body = <Suspense fallback={<Skeleton lines={5} label="Reading the brain area" />}><div className="cn-now-tools"><a href={dHash('content', 'plan', qLane === 'ivan' ? { insights: '1' } : { lane: qLane, insights: '1' })}>← Plan insights</a></div><BrainArea lane={qLane} setLane={setLane} phone={phone} query={q} /></Suspense>
-  else if (sub === 'results') body = view === 'analytics' ? legacy('results') : <Results lane={qLane} setLane={setLane} />
+  else if (sub === 'results') body = view === 'analytics' ? legacy('results') : cv2.frame ? column(<Results lane={qLane} setLane={setLane} v2 />) : <Results lane={qLane} setLane={setLane} />
   else if (sub === 'inputs') body = <Suspense fallback={<Skeleton lines={5} label="Reading outliers" />}><InputsPage lane={qLane} setLane={setLane} phone={phone} query={q} /></Suspense>
   else if (sub === 'magnets') body = cv2.lms ? column(<MagnetsV2 lane={qLane} setLane={l => go({ lane: l }, 'magnets')} phone={phone} magnet={q.get('magnet')} clearMagnet={clearMagnet} counts={magnets} />) : legacy('magnets')
   else if (sub === 'strategy' || sub === 'styles') body = legacy(sub)

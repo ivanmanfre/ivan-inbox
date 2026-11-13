@@ -1,0 +1,123 @@
+/* ==========================================================================
+   Content polish (2026-11-13, Ivan: "feel a bit still old-style and not smooth enough ... more adaptable ...
+   perfectly positioned in all different sections"). Craft only: alignment, widths, hierarchy and motion on the
+   look that is already shipped. Loaded last, so every rule here is an override of cv2.css, review-list.css,
+   plan2.css, perf.css or phone-ox.css; nothing in this file changes what a control does.
+   Layout keys off the content column (containers `main`, `rdesk`, `perf`), never the viewport.
+   ========================================================================== */
+
+/* ---- 1 · The tab row: one pill that glides to the open tab (SubNav.tsx writes --tab-x/y/w/h) ---- */
+:root[data-skin-on~='content'] .d-desktop .cv2-tabs.cn-sub[data-ind]{position:relative;isolation:isolate}
+:root[data-skin-on~='content'] .d-desktop .cv2-tabs.cn-sub[data-ind]::before{content:"";position:absolute;z-index:-1;left:0;top:var(--tab-y,0);width:var(--tab-w,0);height:var(--tab-h,0);transform:translateX(var(--tab-x,0));border-radius:var(--ds-r-nav);background:var(--ds-fill-sel);box-shadow:var(--ds-shadow-sel),0 0 0 1px var(--ds-line);pointer-events:none}
+:root[data-skin-on~='content'] .d-desktop .cv2-tabs.cn-sub[data-ind] a.cn-on{background:transparent;box-shadow:none}
+:root[data-skin-on~='content'][data-skin-on~='motion'] .cv2-tabs[data-ind][data-glide]::before{transition:transform var(--ds-d-nav) var(--ds-e-settle),width var(--ds-d-nav) var(--ds-e-settle)}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cn .cv2-tabs.cn-ptabs[data-ind]{position:relative;isolation:isolate}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cn .cv2-tabs.cn-ptabs[data-ind]::before{content:"";position:absolute;z-index:-1;left:0;top:calc(var(--tab-y,0px) + 4px);width:var(--tab-w,0);height:calc(var(--tab-h,8px) - 8px);transform:translateX(var(--tab-x,0));border-radius:18px;background:var(--ds-text);pointer-events:none}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cn .cv2-tabs.cn-ptabs[data-ind] > a.cn-on::before{background:transparent}
+
+/* A narrow desktop column (a 768 window): the row scrolls sideways and the ⋯ stays in reach at its end, as on the phone. */
+:root[data-skin-on~='content'] .d-desktop .cv2-tabs.cn-sub{overflow-y:hidden;scrollbar-width:none}
+:root[data-skin-on~='content'] .d-desktop .cv2-tabs.cn-sub::-webkit-scrollbar{display:none}
+:root[data-skin-on~='content'] .d-desktop .cv2-tabs.cn-sub a{flex:none}
+:root[data-skin-on~='content'] .d-desktop .cv2-tabs.cn-sub .cv2-tabs-more{position:sticky;right:0;flex:none;background:var(--ds-canvas);box-shadow:var(--ds-edge) 0 0 var(--ds-canvas),-14px 0 10px -4px var(--ds-canvas)}
+:root[data-skin-on~='content'] .d-desktop .cv2-tabs.cn-sub .cv2-tabs-more:hover{background:linear-gradient(var(--ds-fill-hover),var(--ds-fill-hover)),var(--ds-canvas)}
+
+/* ---- 2 · A failed read looks like one and takes one line (the brief behind the cancelled-slots note) ---- */
+:root[data-skin-on~='content'] .cn .dl-today{margin:0;padding:0;border:0;border-radius:0;background:transparent;gap:6px}
+:root[data-skin-on~='content'] .cn .dl-today p{font:400 13px/18px var(--ds-font);color:var(--ds-text-2)}
+:root[data-skin-on~='content'] .cn .dl-today .dl-today-warn{display:flex;align-items:flex-start;gap:8px;width:fit-content;max-width:100%;padding:7px 12px 7px 10px;border-radius:10px;background:var(--ds-sev-attention-soft);color:var(--ds-sev-attention-ui)}
+:root[data-skin-on~='content'] .cn .dl-today .dl-today-warn::before{content:"!";flex:none;display:grid;place-items:center;width:16px;height:16px;margin-top:1px;border-radius:50%;background:var(--ds-sev-attention-ui);color:var(--ds-surface-1);font:700 11px/1 var(--ds-font)}
+
+/* ---- 3 · Review ---- */
+/* The open preview keeps its side column (photos, source, Open) beside the post from a 760 desk up; it used to
+   drop under the post below 1080 and leave the right half of the row empty at 1024 to 1280 windows. */
+@container rdesk (min-width:760px) and (max-width:1079px){
+  :root[data-skin-on~='content.review'] .cv2-row-more{grid-template-columns:minmax(0,520px) minmax(200px,1fr)}
+}
+/* The source tag takes the room its card has before it cuts a handle short ("Outlier · @Kristof_Polan…"). */
+@container rdesk (min-width:700px){
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-main{grid-template-columns:minmax(0,max-content) minmax(96px,1fr)}
+  :root[data-skin-on~='content.review'] .cv2-grid .cv2-row-main > .cv2-srctag{max-width:100%}
+}
+/* "Did not go out": the three keys are one family at one height (Fix and Open on the chip face, Delete quiet). */
+:root[data-skin-on~='content.review'] .cv2-fixrow :is(.wb-btn,.ds-btn,button):not(.cv2-k){height:var(--ds-control-h);border:1px solid transparent;transition:background-color var(--ds-d-fast) var(--ds-e-content),box-shadow var(--ds-d-fast) var(--ds-e-content)}
+:root[data-skin-on~='content.review'] .cv2-fixrow :is(.wb-btn,.ds-btn,button):not(.cv2-k):hover:not(:disabled){box-shadow:var(--ds-chip-shadow),0 0 0 1px var(--ds-line-strong)}
+/* The fold heads never break their name ("Going / stale (2)"); the note beside it gives way first. */
+:root[data-skin-on~='content.review'] .cv2-fold-h b{flex:none;white-space:nowrap}
+:root[data-skin-on~='content.review'] .cv2-fold-h span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Phone: the source and the whole title get the row's width, the three keys share one line under them. */
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-fixrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-height:0;padding:14px 12px 12px}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-fixrow > .cv2-srctag{order:0;flex:0 1 auto;max-width:100%}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-fixrow > .cv2-fixt{order:1;flex:1 0 100%;gap:3px;padding:0 2px 4px}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-fixrow .cv2-fixt b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-fixrow > :is(button,.ds-btn,.wb-btn){order:2;flex:1 1 0;min-width:0;height:44px;min-height:44px;padding:0 10px;border-radius:14px;font:600 15px/1 var(--ds-font)}
+/* Phone: the post preview is flat inside its row (one hairline over it), never a bordered box inside a bordered card. */
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-row-more{padding:0 0 14px;gap:14px}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-row-more .cv2-row-post,:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-row-more .cv2-today-post{max-width:none;width:100%}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-row-more .cv2-li{max-width:none;border-radius:0;box-shadow:none;border-top:1px solid var(--ds-line);background:transparent}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-row-more .cv2-li-h{padding:14px 12px 0}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-row-more .cv2-li-b{padding:8px 12px 4px;font-size:15px;line-height:21px}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-row-more .cv2-row-side{padding:0 12px}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-review .cv2-fold-row .cv2-fold-h{padding-left:4px}
+
+/* ---- 4 · Performance: on the frame's grid (same edge, same seat switch, same column as the other five tabs) ---- */
+:root[data-skin-on~='content'] .cn-left > .cv2-results{max-width:none;overflow:visible;min-height:auto;gap:4px;container:presults / inline-size}
+:root[data-skin-on~='content'] .cv2-results .cn-result-section{padding:8px 0 16px}
+:root[data-skin-on~='content'] .cv2-results .cn-results-verdict{padding:12px 0}
+:root[data-skin-on~='content'] .cv2-results .cn-quiet-link{align-self:flex-start;margin:0 20px 8px 0}
+:root[data-skin-on~='content'] .cv2-results > :is(.cn-result-section,.cn-results-verdict,.d-failed,.cn-comparable,.cn-works,.cn-scoreboard){max-width:1180px}
+:root[data-skin-on~='content'] .cv2-results > .cn-perf{max-width:none}
+/* The headline numbers and the two bar lists share one measure; the post table takes the whole column. */
+:root[data-skin-on~='content'] .cv2-results .cn-perf :is(.cn-perf-top,.cn-perf-stats,.cn-perf-note,.cn-perf-when){max-width:1180px}
+/* A wide column (1440 and up): numbers and bars on the left, every post beside them, so the right half is in use. */
+@container presults (min-width:1320px){
+  :root[data-skin-on~='content'] .cv2-results > .cn-perf{display:grid;grid-template-columns:minmax(0,560px) minmax(0,1fr);column-gap:40px;align-items:start;align-content:start}
+  :root[data-skin-on~='content'] .cv2-results > .cn-perf > *{grid-column:1;min-width:0}
+  :root[data-skin-on~='content'] .cv2-results > .cn-perf > .cn-perf-head{grid-column:2;grid-row:1;margin-top:0;min-height:44px}
+  :root[data-skin-on~='content'] .cv2-results > .cn-perf > .cn-perf-posts{grid-column:2;grid-row:2 / span 12;margin-top:0}
+  :root[data-skin-on~='content'] .cv2-results > .cn-perf > .cn-perf-posts ~ .cn-quiet-link{grid-column:2}
+  :root[data-skin-on~='content'] .cv2-results > .cn-perf > .cn-perf-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  :root[data-skin-on~='content'] .cv2-results > .cn-perf > .cn-perf-when{grid-template-columns:minmax(0,1fr);gap:20px}
+}
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cn .cv2-results .cn-wk2-chips{padding-inline:0}
+
+/* ---- 5 · Ideas: the filters are the app's own fields (no browser-default select boxes) ---- */
+:root[data-skin-on~='content.ideas'] .cv2-ideas :is(.cn-idea-controls,.cn-idea-results) select{appearance:none;-webkit-appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%236b6760' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px;text-overflow:ellipsis}
+:root[data-skin-on~='content.ideas'] .cv2-ideas .cn-idea-controls :is(select,input){transition:box-shadow var(--ds-d-fast) var(--ds-e-content),background-color var(--ds-d-fast) var(--ds-e-content)}
+:root[data-skin-on~='content.ideas'] .cv2-ideas .cn-idea-results select{background-position:right 4px center;padding-right:22px;border-radius:8px}
+:root[data-skin-on~='content.ideas'] .cv2-ideas .cn-idea-results select:hover{color:var(--ds-text)}
+
+/* ---- 6 · Plan ---- */
+/* The waiting list shows its whole title while the column has the room (it stopped at 760 with 400 free). */
+:root[data-skin-on~='content.plan'] .pl2 :is(.pl2-waitl,.pl2-held){max-width:880px}
+/* Phone: two text keys were 32 tall; the tap area is 44 (the look does not change). */
+:root[data-skin-on~='content.plan'] .d-phone .pl2 .pl2-review-link{min-height:44px}
+:root[data-skin-on~='content.plan'] .d-phone .pl2 .cb-link{min-width:44px;min-height:44px;justify-content:center}
+
+/* ---- 7 · Phone: today's post toast never sits on the last rows of a tab ---- */
+:root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]):has(.d-toasts [data-toast='content-card']) .d-app .cn.cv2-frame .cn-left{padding-bottom:176px}
+
+/* ---- 8 · Motion: what opens, opens in 200ms on opacity and transform; nothing here moves layout ---- */
+@keyframes cv2p-open{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+:root[data-skin-on~='content'][data-skin-on~='motion'] .cn :is(.cv2-row-more,.cv2-row-why,.cv2-fold > .cv2-list,.cv2-fix > .cv2-fixlist,.cv2-panel,.cv2-lf){animation:cv2p-open 200ms var(--ds-e-content) both}
+@media (prefers-reduced-motion:reduce){
+  :root[data-skin-on~='content'] .cn :is(.cv2-row-more,.cv2-row-why,.cv2-fold > .cv2-list,.cv2-fix > .cv2-fixlist,.cv2-panel,.cv2-lf){animation:none !important}
+  :root[data-skin-on~='content'] .cv2-tabs[data-ind]::before{transition:none !important}
+}
+:root.brief-motion-off[data-skin-on~='content'] .cn :is(.cv2-row-more,.cv2-row-why,.cv2-fold > .cv2-list,.cv2-fix > .cv2-fixlist,.cv2-panel,.cv2-lf){animation:none !important}
+:root.brief-motion-off[data-skin-on~='content'] .cv2-tabs[data-ind]::before{transition:none !important}
+
+/* ---- 9 · Performance: the period and sort switches wear the segmented look the seat switch has (same control family) ---- */
+:root[data-skin-on~='content'] .cn .cv2-results .cn-perf-chips{flex:none;gap:2px;padding:3px;overflow:visible;border-radius:10px;background:rgba(19,18,16,.05);box-shadow:var(--ds-well-shadow)}
+:root[data-skin-on~='content'] .cn .cv2-results .cn-perf-chips button{height:28px;min-height:0;padding:0 10px;border:0;border-radius:7px;background:transparent;background-image:none;box-shadow:none;font:var(--ds-fw-em) 13px/1 var(--ds-font);color:var(--ds-text-2);transition:color var(--ds-d-fast) var(--ds-e-content),background-color var(--ds-d-fast) var(--ds-e-content),box-shadow var(--ds-d-fast) var(--ds-e-content)}
+:root[data-skin-on~='content'] .cn .cv2-results .cn-perf-chips button:hover{color:var(--ds-text)}
+:root[data-skin-on~='content'] .cn .cv2-results .cn-perf-chips button[aria-pressed='true']{background:var(--ds-surface-1);background-image:none;color:var(--ds-text);box-shadow:0 1px 2px rgba(19,18,16,.08),0 0 0 1px var(--ds-line),inset 0 1px 0 #fff}
+:root[data-skin-on~='content'] .cn .d-phone .cv2-results .cn-perf-chips button,:root[data-skin-on~='content'] .d-phone .cn .cv2-results .cn-perf-chips button{height:38px;font-size:14px}
+:root[data-skin-on~='content'] .cn .cv2-results .cn-perf-top h2,:root[data-skin-on~='content'] .cn .cv2-results .cn-perf-head h3{font:var(--ds-fw-em) 13px/18px var(--ds-font);color:var(--ds-text-2)}
+
+/* A narrow desk (a 768 window, or the list beside an open post): the "Did not go out" title takes two lines before it cuts. */
+@container rdesk (max-width:639px){
+  :root[data-skin-on~='content.review'] .cv2-fixt b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+}

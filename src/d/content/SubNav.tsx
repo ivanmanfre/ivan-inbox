@@ -60,7 +60,7 @@ export function SubNav({ on, attention = false, lane = 'ivan', section, v2 = fal
   // whole (left edge on the row's 20px gutter), so the row never opens on a half-cut tab (never the page: scrollLeft only).
   useLayoutEffect(() => {
     const row = tabs.current, cur = row?.querySelector<HTMLElement>('a.cn-on')
-    if (!row || !cur || f.layout !== 'phone') return
+    if (!row || !cur || row.scrollWidth <= row.clientWidth + 1) return
     const rowBox = row.getBoundingClientRect()
     const curBox = cur.getBoundingClientRect()
     const more = row.querySelector<HTMLElement>('.cn-more-key')
@@ -71,6 +71,28 @@ export function SubNav({ on, attention = false, lane = 'ivan', section, v2 = fal
     const left = row.scrollLeft + anchor.getBoundingClientRect().left - rowBox.left - (anchor === cur ? 20 : 0)
     row.scrollTo({ left: Math.max(0, left), behavior: 'instant' })
   }, [on, f.layout])
+  // The open tab's pill glides to the next tab (the Seg thumb's way, on the tab row): the row carries the open tab's
+  // box as --tab-x/y/w/h and polish.css draws one pill from them. Measured on a change and on a resize, never per
+  // frame; the first placement does not animate. Unmeasured (no layout) the tab keeps its own static pill.
+  useLayoutEffect(() => {
+    const row = tabs.current
+    if (!row || !v2) return
+    const place = () => {
+      const cur = row.querySelector<HTMLElement>('a.cn-on')
+      const a = cur?.getBoundingClientRect(), b = row.getBoundingClientRect()
+      if (!cur || !a || a.width < 1) { row.removeAttribute('data-ind'); row.removeAttribute('data-glide'); return }
+      row.style.setProperty('--tab-x', `${a.left - b.left + row.scrollLeft - row.clientLeft}px`)
+      row.style.setProperty('--tab-y', `${a.top - b.top + row.scrollTop - row.clientTop}px`)
+      row.style.setProperty('--tab-w', `${a.width}px`)
+      row.style.setProperty('--tab-h', `${a.height}px`)
+      row.setAttribute('data-ind', '')
+    }
+    place()
+    const raf = requestAnimationFrame(() => { if (row.hasAttribute('data-ind')) row.setAttribute('data-glide', '') })
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(place)
+    if (ro) { ro.observe(row); row.querySelectorAll('a').forEach(a => ro.observe(a)) }
+    return () => { cancelAnimationFrame(raf); ro?.disconnect() }
+  }, [on, v2, f.layout])
   const sheet = <Sheet open={more} onClose={() => setMore(false)} title="More in Content"><div className="cn-more">
     {MORE.map(g => <div key={g.group} className="cn-more-g"><span className="cn-more-h">{g.group}</span>
       {g.items.map(i => <a key={i.label} href={dHash('content', i.sub, { ...context, ...(i.q ?? {}) })} onClick={() => setMore(false)}><b>{i.label}</b>{i.small && <small>{i.small}</small>}</a>)}
