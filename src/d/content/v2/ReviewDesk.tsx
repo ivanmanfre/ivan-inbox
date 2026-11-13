@@ -606,10 +606,12 @@ function ReviewRow({ c, i, now, grid, focused, open, busy, held, read, repeat, s
     ...(canDate ? [{ key: 'date', label: c.r.scheduled_at ? 'Move date' : 'Add a date', run: onDate }] : []),
   ]
 
+  // A slot a week or more out: the weekday alone reads as this week, so the short key shows the date (Ivan 2026-11-13).
+  const farSlot = !!slot && Math.round((Date.parse(warsawDay(slot.at)) - Date.parse(warsawDay(now))) / 86_400_000) >= 7
   let primary: React.ReactNode = null
   if (boardDate) primary = <button type="button" className={`cv2-k${c.r.scheduled_at ? ' cv2-k-q' : ' cv2-k-p'}`} data-key-main data-verb="card-board-date" disabled={busy} onClick={onDate}>{c.r.scheduled_at ? 'Change date' : 'Schedule'}</button>
   else if (oneTap) primary = <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-approve-schedule" disabled={busy || unsaved} aria-label={`Approve and schedule ${slotWords(slot!.at)}`} title={saveFirst ?? `Approves it and schedules it on LinkedIn ${slotWords(slot!.at)}. Undo for 8 seconds.`} onClick={() => onApproveSchedule(slot!.at)}>
-    <span className="cv2-wide-only">Approve + schedule {slotWords(slot!.at)}</span><span className="cv2-narrow-only">Approve · <span className="cv2-k-dow">{warsawDow(slot!.at)} </span>{warsawHm(slot!.at)}</span></button>
+    <span className="cv2-wide-only">Approve + schedule {slotWords(slot!.at)}</span><span className="cv2-narrow-only">Approve · <span className="cv2-k-dow">{warsawDow(slot!.at)} </span>{farSlot ? warsawDm(slot!.at) : warsawHm(slot!.at)}</span></button>
   else if (c.judge || c.primary === 'approve') primary = <button type="button" className="cv2-k cv2-k-p" data-key-safe data-verb={c.judge ? 'card-keep' : 'card-approve'} disabled={busy || unsaved} title={saveFirst} onClick={onApprove}>Approve</button>
   else if (c.primary === 'board' || next === 'board') primary = <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-board" disabled={busy} title={boardWord} onClick={onBoard}>{busy ? 'Working…' : <><span className="cv2-wide-only">{boardWord}</span><span className="cv2-narrow-only">Put on board</span></>}</button>
   else if (next === 'schedule' && (c.r.scheduled_at || slot)) primary = <button type="button" className="cv2-k cv2-k-p" data-key-main data-verb="card-schedule" disabled={busy} onClick={() => onSchedule(c.r.scheduled_at ? undefined : slot!.at)}>
