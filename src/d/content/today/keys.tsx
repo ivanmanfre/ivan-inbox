@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fetchIvanArmedDays, type ArmedDays, type ContentDraft } from '../../../lib/content'
-import { CardRefused, fetchIvanSlotRows, postCard, readTodayCard, type SlotRow, type TodayCard } from '../../../lib/contentCard'
+import { CardRefused, fetchIvanSlotRows, postCard, postCardSwap, readSwapPlan, readTodayCard, type SlotRow, type SwapPlan, type TodayCard } from '../../../lib/contentCard'
 import { bodySha, lineFlagsOf, needsKeep } from '../../../lib/lineFlags'
 import { dHash } from '../../route'
 import { useFrame } from '../../shell/frame'
@@ -52,8 +52,24 @@ function refusal(now: TodayCard | null, day: string, id: string, shown: string):
   return null
 }
 
+/** The swap for a Poland pick in a week short on Poland (db: content_card_swap_plan), re-read with the card. A failed
+ *  read is "no swap": Post then takes the next free slot, as before the swap existed. */
+export function useSwapPlan(card: LiveCard, version: number): SwapPlan | null {
+  const [plan, setPlan] = useState<SwapPlan | null>(null)
+  const want = card.why === 'poland'
+  useEffect(() => {
+    if (!want) { setPlan(null); return }
+    let live = true
+    readSwapPlan().then(p => { if (live) setPlan(p && p.day === card.day && p.draftId === card.draft.id ? p : null) }, () => { if (live) setPlan(null) })
+    return () => { live = false }
+  }, [want, card.day, card.draft.id, version])
+  return want ? plan : null
+}
+
 export type CardKeys = {
   slot: Slot | null
+  /** Post takes this week's slot of another post, which moves to `to` (the next free slot). */
+  moves?: { title: string; to: Date } | null
   /** Lines to check before it can post (post-quality line flags): null when there is nothing to check. */
   check: number | null
   /** False while the line check is still being worked out (the keys would change under the finger). */
@@ -64,7 +80,11 @@ export type CardKeys = {
 export function useCardKeys(card: LiveCard, body: string, version: number): CardKeys {
   const d = card.draft
   const f = useFrame()
-  const slot = useOneTapSlot(version)
+  const free = useOneTapSlot(version)
+  const plan = useSwapPlan(card, version)
+  // With a swap the Post lands on the slot the other post gives up; that post takes the next free one.
+  const swap = plan && free && Date.parse(plan.slotAt) < free.at.getTime() ? plan : null
+  const slot = useMemo(() => swap && free ? { ...free, at: new Date(swap.slotAt) } : free, [swap, free])
   const refresh = useCallback(() => { void refreshTodayCard() }, [])
   const oneTap = useApproveSchedule(refresh)
   const lf = useLineFlags(d as ContentDraft, body)
@@ -83,14 +103,18 @@ export function useCardKeys(card: LiveCard, body: string, version: number): Card
         const sha = await bodySha(shown)
         // Lines flagged during the hold that need his answer: Review asks, the card does not post.
         if (needsKeep(lineFlagsOf(fresh?.draft?.line_flags, shown), sha)) { toReview(); throw new Error(`${NOT_POSTED} it has lines to check in Review.`) }
-        try { return await postCard(card.day, d.id, sha, slot.at.toISOString(), shownForMs(d.id)) }
+        try {
+          return swap && free ? await postCardSwap(card.day, d.id, sha, swap, free.at.toISOString(), shownForMs(d.id))
+            : await postCard(card.day, d.id, sha, slot.at.toISOString(), shownForMs(d.id))
+        }
         catch (e) { if (e instanceof CardRefused && e.review) toReview(); throw e }
       },
     }, slot.at)
-  }, [slot, oneTap, d, card.day, card.why, body, f])
+  }, [slot, swap, free, oneTap, d, card.day, card.why, body, f])
   // While the body is still being hashed, flagged text counts as asking (useLineFlags); the keys wait for the answer.
   const ready = !lf.flags || !lf.ask || lf.sha !== null
-  return { slot, check: lf.ask ? lf.flags?.lines.length ?? 0 : null, ready, post }
+  const moves = useMemo(() => swap && free ? { title: swap.title, to: free.at } : null, [swap, free])
+  return { slot, moves, check: lf.ask ? lf.flags?.lines.length ?? 0 : null, ready, post }
 }
 
 /** The first two lines of the post, as the feed opens it. */
@@ -107,6 +131,12 @@ export const postWords = (at: Date, now: number = Date.now()) =>
   `Post · ${warsawDow(at)} ${warsawDaysAhead(at, now) >= 7 ? warsawDm(at) : warsawHm(at)}`
 /** The Post key's accessible name: always the full day and time. */
 export const postLabel = (at: Date) => `Post: approve and schedule ${slotWords(at)}`
+/** The line under the keys when Post takes another post's slot this week. */
+export const movesWords = (title: string, to: Date) => {
+  const t = title.trim().replace(/\s+/g, ' ')
+  const short = t.length > 52 ? `${t.slice(0, 51).replace(/\s+\S*$/, '')}…` : t
+  return `Takes this week’s slot. “${short}” moves to ${warsawDow(to)} ${warsawDm(to)}.`
+}
 export const checkWords = (n: number) => n > 0 ? `Check ${n} line${n === 1 ? '' : 's'}` : 'Check it'
 
 /** Two lines and two keys: the toast and Home. Plain props only (the toast draws it outside the confirm provider). */
@@ -128,6 +158,7 @@ export function CardPeek({ body, keys, onOpen, onCheck, label }: {
             {keys.slot ? postWords(keys.slot.at) : 'Post'}</Btn>}
         <Btn verb="card-open" onClick={onOpen}>Open</Btn>
       </div>
+      {keys.check == null && keys.moves && <p className="ct-peek-m" data-card-moves>{movesWords(keys.moves.title, keys.moves.to)}</p>}
     </div>
   )
 }

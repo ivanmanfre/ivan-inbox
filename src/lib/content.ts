@@ -1047,6 +1047,10 @@ async function captureBrainOrigin(id: string, taxonomy: unknown): Promise<void> 
  * @param base  the post_body the editor was opened on — the compare half of the
  *              compare-and-swap. Pass what was LOADED, never what is displayed.
  * @param baseUpdatedAt the row's updated_at at load, or null to skip the CAS.
+ * @param also  a Long / Short switch (lib/copyVersions) saves the body and the draft's kept versions in this
+ *              ONE write: `sourceDetail` replaces source_detail, the write only lands while the row's
+ *              updated_at is still `readAt` (the read the caller built sourceDetail and taxonomy from), and
+ *              never on a published row. Typed edits pass nothing here.
  * @throws DraftSaveConflict when the stored body has moved, or the row is gone.
  */
 export async function saveDraftBody(
@@ -1055,6 +1059,7 @@ export async function saveDraftBody(
   taxonomy: unknown,
   base: string | null,
   baseUpdatedAt: string | null,
+  also?: { sourceDetail: Record<string, unknown>; readAt: string },
 ): Promise<void> {
   // 1 — pre-flight. A `maybeSingle` so a deleted row is a fact, not an error.
   const pre = await supabase.from('cb34_p2_safe_drafts')
@@ -1082,10 +1087,11 @@ export async function saveDraftBody(
   // read. Using the PRE-FLIGHT value (not the load-time one) keeps the CAS about
   // the window this function owns; a bookkeeping write between load and now has
   // already been forgiven by step 1, which compared the thing that matters.
-  const freshUpdatedAt = (pre.data.updated_at ?? baseUpdatedAt) as string | null
+  const freshUpdatedAt = also ? also.readAt : (pre.data.updated_at ?? baseUpdatedAt) as string | null
   let q = supabase.from('carousel_drafts')
-    .update({ post_body: body, taxonomy: stampHumanEdit(taxonomy) })
+    .update({ post_body: body, taxonomy: stampHumanEdit(taxonomy), ...(also ? { source_detail: also.sourceDetail } : {}) })
     .eq('id', id).is('client_id', null)
+  if (also) q = q.is('published_at', null)
   if (freshUpdatedAt) q = q.eq('updated_at', freshUpdatedAt)
   const { data, error } = await q.select('id')
   if (error) throw error
