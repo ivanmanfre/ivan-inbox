@@ -30,3 +30,6 @@ verify_jwt = false
 # The handler verifies the signed-in inbox owner with auth.getUser.
 [functions.content-card-weave]
 verify_jwt = false
+
+[functions.content-stranger-read]
+verify_jwt = false
