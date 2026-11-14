@@ -165,3 +165,8 @@
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-brain .cv2-dir .cb-dir{padding:10px 4px 10px 14px;align-items:flex-start}
 :root[data-skin-on~='shell'][data-layout='phone']:not([data-phone-oxygen-off]) .d-app .cv2-brain .cv2-dir .cb-dir .cb-dir-aim{font:400 13px/18px var(--ds-font);color:var(--ds-text-3)}
 :root[data-skin-on~='content.brain'] .d-phone .cv2-brain-old .cb-ideas{grid-template-columns:minmax(0,1fr)}
+
+/* What brings buyers (2026-11-14): Best posts' rows; the account total reads first, a touch stronger. */
+.cb-out li{grid-template-columns:72px minmax(0,1fr)}
+.cb-out b{white-space:normal}
+.cb-out li[data-lead] b{font-weight:600}

@@ -7,6 +7,7 @@ import { Count } from '../../ui/Count'
 import { Failed, Skeleton } from '../../ui/states'
 import type { SavedVerdict } from '../../../lib/verdicts'
 import { BestPosts, DirectionView, NicheIdeas, RecentDecisions, useDirection, usePostAudience } from '../ContentBrain'
+import { OutcomeRead } from '../OutcomeRead'
 import { LANES, LANE_NAME, type Lane } from '../model'
 import { Seg, SeatAv } from '../v2/ui'
 import { BrainStrip, IdeaStockPopover } from './BrainStrip'
@@ -113,6 +114,7 @@ function PlanInsights({ lane, read, failed, verdicts, onIdeaStock, onChanged }: 
     <div className="cv2-brain-old">
       <NicheIdeas lane={lane} />
       <BestPosts lane={lane} own={own} />
+      <OutcomeRead lane={lane} />
       <RecentDecisions lane={lane} verdicts={verdicts} />
     </div>
   </div>

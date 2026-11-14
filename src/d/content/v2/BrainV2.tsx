@@ -11,6 +11,7 @@ import type { Judged } from '../verdictStore'
 import { awaitsReview, type Week } from '../weekModel'
 import { warsawDay } from '../../ui/time'
 import { coverageOf } from './coverage'
+import { OutcomeRead } from '../OutcomeRead'
 import { SourceChip, deskModel } from './ReviewDesk'
 import { sourceTag } from './sourceTag'
 import { Answer, Seg } from './ui'
@@ -146,6 +147,7 @@ export function BrainV2({ lane, setLane, read, verdicts, judged, total, items, i
       <div className="cv2-brain-old">
         <NicheIdeas lane={lane} now={now} />
         <BestPosts lane={lane} own={own} now={now} />
+        <OutcomeRead lane={lane} />
         <RecentDecisions lane={lane} verdicts={verdicts} />
       </div>
     </div>
