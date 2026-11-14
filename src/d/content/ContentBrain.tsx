@@ -19,6 +19,7 @@ import { useToast } from '../ui/toast'
 import { DAY_MS, LANES, LANE_NAME, OWNER, POSS, age, dayLabel, titleOf, type Lane } from './model'
 import type { WeekRead } from './useWeek'
 import { VerdictStrip } from './VerdictStrip'
+import { OutcomeRead } from './OutcomeRead'
 import { foldText, laneOfRow } from './weekModel'
 import { giveReason, judge, markShown, useJudged } from './verdictStore'
 import './verdict.css'
@@ -102,6 +103,7 @@ export function ContentBrain({ lane, setLane, read, verdicts, openId, onOpen, on
 
       <NicheIdeas lane={lane} />
       <BestPosts lane={lane} own={own} />
+      <OutcomeRead lane={lane} />
       <RecentDecisions lane={lane} verdicts={verdicts} />
 
       <nav className="cb-links" aria-label="History and sources">
