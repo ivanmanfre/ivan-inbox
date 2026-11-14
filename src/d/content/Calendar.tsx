@@ -271,8 +271,10 @@ export function Calendar({ data, items, now, phone, pick, setPick, onOpen, onMov
     const prev = r.scheduled_at
     setMoved(m => new Map(m).set(id, ''))
     try {
-      await clearScheduleDate(id)
-      toast.show({ id: `when-${id}`, message: 'Date removed.', sub: `${LANE_NAME[lane]} · it waits under No date yet`, action: { label: 'Undo', verb: 'undo', run: () => { void undo(id, lane, prev) } } })
+      const out = await clearScheduleDate(id)
+      // One of his own scheduled posts is pulled: back in Review, so a put-back date would not queue it again (no Undo).
+      if (out?.pulled) toast.show({ id: `when-${id}`, message: 'Taken off the schedule.', sub: 'Nothing of it is queued now. It is back in Review with no date.' })
+      else toast.show({ id: `when-${id}`, message: 'Date removed.', sub: `${LANE_NAME[lane]} · it waits under No date yet`, action: { label: 'Undo', verb: 'undo', run: () => { void undo(id, lane, prev) } } })
       onChanged()
     } catch (e) {
       setMoved(m => { const n = new Map(m); n.delete(id); return n })

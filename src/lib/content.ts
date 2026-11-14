@@ -1375,6 +1375,8 @@ export const CLIENT_RPC_MESSAGES: Record<string, string> = {
   // has no Ivan-lane equivalent, which is why the calendar offers no move
   // control on that lane at all (calendarItems.ts, canMoveDate).
   not_found: 'The database has no draft with this id. Nothing changed.',
+  // operator_set_schedule_date with a null date, when the draft was scheduled between the read and the write (2026-11-14).
+  changed: 'This post changed while you were editing. Nothing changed. Try again.',
   not_a_client_draft:
     'That is one of your own drafts, and the scheduler RPC only accepts a client’s. '
     + 'Nothing changed — its date is exactly as it was.',
@@ -1520,15 +1522,19 @@ export async function setScheduleDateAt(id: string, scheduledAt: string): Promis
 }
 
 /**
- * Take the date back off a draft (the calendar's Undo after dating an undated
- * post). The same gated RPC with a null date: it writes scheduled_at and
- * nothing else, and refuses any status but review / scheduled.
+ * Take the date back off a draft (the calendar's Remove date, and its Undo after
+ * dating an undated post). The same gated RPC with a null date.
+ *
+ * Since 2026-11-14, on one of Ivan's own posts that is already Scheduled this is
+ * a PULL: the queued copy is cancelled and the draft goes back to Review with no
+ * date (before, the queued copy stayed and the post still went out). The answer
+ * says so with `pulled: true`; a put-back date then does not re-queue it.
  */
-export async function clearScheduleDate(id: string): Promise<void> {
+export async function clearScheduleDate(id: string): Promise<{ pulled: boolean }> {
   const { data, error } = await supabase.rpc('operator_set_schedule_date', {
     p_gate: CLIENT_OPS_GATE, p_draft_id: id, p_scheduled_at: null,
   })
-  rpcOk(data, error)
+  return { pulled: rpcOk(data, error).pulled === true }
 }
 
 export async function setBoardVisible(id: string, visible: boolean, reviewed?: Pick<ContentDraft, 'client_id' | 'updated_at'>): Promise<void> {

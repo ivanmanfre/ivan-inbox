@@ -142,9 +142,11 @@ export function WhenEditor({ r, lane, seatRows, initialDay, focus = 'day', gap =
     const prev = r.scheduled_at
     setBusy(true); setErr('')
     try {
-      await clearScheduleDate(r.id)
+      const out = await clearScheduleDate(r.id)
       onMoved?.(r.id, '')
-      toast.show({ id: `when-${r.id}`, message: 'Date removed.', sub: 'It waits under No date yet.', action: { label: 'Undo', verb: 'undo', run: () => { void undo(prev) } } })
+      // One of his own scheduled posts is pulled: back in Review, so a put-back date would not queue it again (no Undo).
+      if (out?.pulled) toast.show({ id: `when-${r.id}`, message: 'Taken off the schedule.', sub: 'Nothing of it is queued now. It is back in Review with no date.' })
+      else toast.show({ id: `when-${r.id}`, message: 'Date removed.', sub: 'It waits under No date yet.', action: { label: 'Undo', verb: 'undo', run: () => { void undo(prev) } } })
       onDone(); onClose()
     } catch (e) {
       setErr(`The date was not removed: ${plainWhy(e)}`)

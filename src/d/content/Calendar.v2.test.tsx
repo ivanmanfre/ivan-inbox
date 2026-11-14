@@ -121,6 +121,16 @@ describe('the On board tag and the post tags', () => {
     expect(writes.clearScheduleDate).toHaveBeenCalledWith('supp')
     expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy()
   })
+  it('Remove date that pulled a scheduled post of his says so, with no Undo (a put-back date would not queue it again)', async () => {
+    writes.clearScheduleDate.mockResolvedValue({ pulled: true })
+    const { data, items } = setup({ risedtc: [dated] })
+    renderInFrame(<Calendar {...props} data={data} items={items} phone={false} pick="risedtc" />)
+    fireEvent.click(document.querySelector('.cv2-mc[data-cal-id="supp"] [data-verb="card-more"]')!)
+    const menu = [...document.querySelectorAll<HTMLElement>('.cv2-menu')].find(m => !m.hidden)!
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Remove date' }))
+    expect(await screen.findByText('Taken off the schedule.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull()
+  })
 })
 
 describe('a refused Undo', () => {

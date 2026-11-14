@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ContentDraft } from '../../../lib/content'
-import { keepNext } from '../../../lib/contentNext'
+import { keepNext, NextRefused, pullNext } from '../../../lib/contentNext'
+import { useDConfirm } from '../../ui/confirm'
 import { DIcon } from '../../ui/icons'
 import { useToast } from '../../ui/toast'
 import type { Lane } from '../model'
@@ -20,8 +21,8 @@ import './next.css'
 // he has to look at sits on the same screen as Keep, and three open posts do not push his own list a long way down.
 //   Keep: his approval of exactly what the row shows (text hash + the attachment bytes on screen). Autopilot posts only.
 //   Fix:  the Review rows' own in-place edit and save path; after a save on an autopilot post, Keep is tapped for him.
-//   Pull: not here yet. The app's one unschedule verb (the Calendar's Remove date) leaves the queued copy in place, so
-//         it does not take a scheduled post of his off the publish path. It waits for a database verb that does.
+//   Pull: takes the post off the schedule for real (db content_next_pull, 2026-11-14): the queued copy is cancelled,
+//         the draft goes back to Review with no date, and the autopilot does not place it again. Asked once first.
 
 const wait = (ms: number) => new Promise<void>(r => window.setTimeout(r, ms))
 
@@ -52,6 +53,7 @@ function Row({ row, i, draft, onOpen, onEdit, onChanged }: {
 }) {
   const { post, tag } = row
   const toast = useToast()
+  const confirm = useDConfirm()
   const [more, setMore] = useState(true)
   const [files, setFiles] = useState<FilesRead | null>(null)
   // A refused Keep that said the row changed: the attachment is fetched again past the browser's cached copy.
@@ -60,7 +62,7 @@ function Row({ row, i, draft, onOpen, onEdit, onChanged }: {
   const editBase = useRef('')
   // The text he just saved, shown while the queued copy catches up with it.
   const [saved, setSaved] = useState<string | null>(null)
-  const [busy, setBusy] = useState<'keep' | 'fix' | null>(null)
+  const [busy, setBusy] = useState<'keep' | 'fix' | 'pull' | null>(null)
   // The last thing that left this row waiting on him, in the database's own words.
   const [said, setSaid] = useState<string | null>(null)
   const alive = useRef(true)
@@ -100,6 +102,26 @@ function Row({ row, i, draft, onOpen, onEdit, onChanged }: {
     setBusy(null)
     if (out.ok) toast.show({ id: `next-${post.queue_id}`, message: out.message })
     else setSaid(out.message)
+  }
+  const doPull = async () => {
+    if (busy || editing) return
+    const when = `${slotDay(post.slot_at)} at ${slotTime(post.slot_at)}`
+    if (!await confirm({ title: 'Take this post off the schedule?', message: `It will not go out ${when}. It goes back to Review with no date, and the autopilot will not place it again. You can date it again yourself.`,
+      confirmText: 'Pull', verb: 'next-pull-confirm', danger: true })) return
+    setBusy('pull'); setSaid(null)
+    let msg: string | null = null
+    try { await pullNext(post) } catch (e) {
+      const raw = e instanceof Error ? e.message : ''
+      msg = e instanceof NextRefused ? e.message
+        : /fetch|network|load failed/i.test(raw) || !raw ? 'Not pulled: the connection dropped. Nothing changed. Try again.' : `Not pulled: ${raw}`
+    }
+    // The receipt goes up before the re-read: a pulled row leaves the list, and this row with it.
+    if (!msg) toast.show({ id: `next-${post.queue_id}`, message: 'Pulled. It will not go out.', sub: 'It is back in Review with no date.' })
+    await refreshNextPosts()
+    if (!msg) onChanged()
+    if (!alive.current) return
+    setBusy(null)
+    if (msg) setSaid(msg)
   }
   const startFix = () => {
     if (busy) return
@@ -151,6 +173,7 @@ function Row({ row, i, draft, onOpen, onEdit, onChanged }: {
             </button>
           )}
           <button type="button" className="cv2-k cv2-k-q" data-verb="next-fix" disabled={!!busy || editing} onClick={startFix}>{busy === 'fix' ? 'Saving…' : 'Fix'}</button>
+          <button type="button" className="cv2-k cv2-k-q" data-verb="next-pull" disabled={!!busy || editing} title="Take it off the schedule" onClick={() => void doPull()}>{busy === 'pull' ? 'Pulling…' : 'Pull'}</button>
           <button type="button" className="cv2-chev" aria-expanded={more} aria-label={more ? 'Hide the post' : 'Show the post'} data-verb="next-preview" onClick={() => setMore(!more)}>
             <DIcon name="chevDown" />
           </button>

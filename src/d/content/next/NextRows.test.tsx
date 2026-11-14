@@ -4,12 +4,13 @@ import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react
 import type { ContentDraft } from '../../../lib/content'
 import type { NextPost } from '../../../lib/contentNext'
 import { ToastProvider } from '../../ui/toast'
+import { DConfirmProvider } from '../../ui/confirm'
 import type { FilesRead } from './hash'
 
 // The Next and Held rows over Ivan's Review list. The database calls and the attachment fetch are stubbed; what is
 // checked is what the row says, which keys it offers, and exactly what a Keep and a Fix send.
-const lib = vi.hoisted(() => ({ readNextPosts: vi.fn(), keepNext: vi.fn(), saveDraftBody: vi.fn(), loadFiles: vi.fn(), sha: vi.fn(async (t: string) => `sha(${t})`) }))
-vi.mock('../../../lib/contentNext', async orig => ({ ...(await orig<typeof import('../../../lib/contentNext')>()), readNextPosts: lib.readNextPosts, keepNext: lib.keepNext }))
+const lib = vi.hoisted(() => ({ readNextPosts: vi.fn(), keepNext: vi.fn(), pullNext: vi.fn(), saveDraftBody: vi.fn(), loadFiles: vi.fn(), sha: vi.fn(async (t: string) => `sha(${t})`) }))
+vi.mock('../../../lib/contentNext', async orig => ({ ...(await orig<typeof import('../../../lib/contentNext')>()), readNextPosts: lib.readNextPosts, keepNext: lib.keepNext, pullNext: lib.pullNext }))
 vi.mock('../../../lib/content', async orig => ({ ...(await orig<typeof import('../../../lib/content')>()), saveDraftBody: lib.saveDraftBody }))
 vi.mock('./hash', async orig => ({ ...(await orig<typeof import('./hash')>()), loadFiles: lib.loadFiles, sha256OfText: lib.sha, releaseFiles: vi.fn() }))
 vi.mock('./keepFlow', async orig => {
@@ -36,7 +37,7 @@ const row = (id: string) => document.querySelector(`[data-next-id="${id}"]`) as 
 const key = (id: string, verb: string) => row(id)?.querySelector(`[data-verb="${verb}"]`) as HTMLButtonElement | null
 const calls = { open: vi.fn(), edit: vi.fn(), changed: vi.fn() }
 const mount = (rows: ContentDraft[] = [draft('d1', 'First hook.\n\nBody one.'), draft('d2', 'Loop hook.\n\nBody two.')]) =>
-  render(<ToastProvider><NextRows rows={rows} onOpen={calls.open} onEdit={calls.edit} onChanged={calls.changed} /></ToastProvider>)
+  render(<DConfirmProvider><ToastProvider><NextRows rows={rows} onOpen={calls.open} onEdit={calls.edit} onChanged={calls.changed} /></ToastProvider></DConfirmProvider>)
 
 beforeEach(() => {
   for (const f of Object.values(lib)) f.mockReset()
@@ -44,6 +45,7 @@ beforeEach(() => {
   lib.sha.mockImplementation(async (t: string) => `sha(${t})`)
   lib.loadFiles.mockResolvedValue(FILES)
   lib.keepNext.mockResolvedValue(undefined)
+  lib.pullNext.mockResolvedValue(undefined)
   lib.saveDraftBody.mockResolvedValue(undefined)
   resetNextPostsForTest()
 })
@@ -82,7 +84,7 @@ describe('the rows', () => {
     expect(key('q1', 'next-keep')).toBeNull()
     expect(key('q1', 'next-fix')).toBeTruthy()
     expect(key('q2', 'next-keep')!.className).toContain('cv2-k-p')
-    expect(document.querySelector('[data-verb="next-pull"]')).toBeNull()
+    expect(key('q1', 'next-pull')!.className).toContain('cv2-k-q')
   })
   it('a ready autopilot post: Keep is quiet; once kept, it is gone', async () => {
     lib.readNextPosts.mockResolvedValue([post({ origin: 'autopilot' })])
@@ -242,5 +244,56 @@ describe('Fix', () => {
     fireEvent.click(key('q2', 'next-fix')!)
     expect(calls.edit).toHaveBeenCalledWith('d2', 'ivan')
     expect(row('q2')!.querySelector('textarea')).toBeNull()
+  })
+})
+
+describe('Pull', () => {
+  const confirmKey = () => document.querySelector('[data-verb="next-pull-confirm"]') as HTMLButtonElement | null
+  it('every row has Pull, after Fix', async () => {
+    lib.readNextPosts.mockResolvedValue([post(), held()])
+    mount()
+    await waitFor(() => expect(key('q2', 'next-pull')).toBeTruthy())
+    for (const id of ['q1', 'q2']) {
+      const verbs = [...row(id)!.querySelectorAll('.cv2-row-keys [data-verb]')].map(b => b.getAttribute('data-verb'))
+      expect(verbs.indexOf('next-pull')).toBe(verbs.indexOf('next-fix') + 1)
+    }
+  })
+  it('asks once, then sends the row and the slot it showed, re-reads and says it is back in Review', async () => {
+    lib.readNextPosts.mockResolvedValue([post()])
+    mount()
+    await waitFor(() => expect(key('q1', 'next-pull')).toBeTruthy())
+    fireEvent.click(key('q1', 'next-pull')!)
+    await waitFor(() => expect(confirmKey()).toBeTruthy())
+    expect(document.body.textContent).toContain('It will not go out Mon 16 Nov at 14:00.')
+    expect(lib.pullNext).not.toHaveBeenCalled()
+    lib.readNextPosts.mockResolvedValue([])
+    await act(async () => { fireEvent.click(confirmKey()!) })
+    await waitFor(() => expect(lib.pullNext).toHaveBeenCalledTimes(1))
+    expect(lib.pullNext.mock.calls[0][0]).toMatchObject({ queue_id: 'q1', slot_at: '2026-11-16T13:00:00+00:00' })
+    await waitFor(() => expect(document.body.textContent).toContain('Pulled. It will not go out.'))
+    expect(calls.changed).toHaveBeenCalled()
+  })
+  it('cancel sends nothing', async () => {
+    lib.readNextPosts.mockResolvedValue([post()])
+    mount()
+    await waitFor(() => expect(key('q1', 'next-pull')).toBeTruthy())
+    fireEvent.click(key('q1', 'next-pull')!)
+    await waitFor(() => expect(confirmKey()).toBeTruthy())
+    const cancel = [...document.querySelectorAll('button')].find(b => /cancel/i.test(b.textContent ?? ''))!
+    await act(async () => { fireEvent.click(cancel) })
+    expect(lib.pullNext).not.toHaveBeenCalled()
+  })
+  it('a refusal shows the database’s message as it is and the row stays', async () => {
+    const { NextRefused } = await import('../../../lib/contentNext')
+    lib.readNextPosts.mockResolvedValue([post()])
+    lib.pullNext.mockRejectedValue(new NextRefused('Not pulled: it is being published right now.', 'next_busy'))
+    mount()
+    await waitFor(() => expect(key('q1', 'next-pull')).toBeTruthy())
+    fireEvent.click(key('q1', 'next-pull')!)
+    await waitFor(() => expect(confirmKey()).toBeTruthy())
+    await act(async () => { fireEvent.click(confirmKey()!) })
+    await waitFor(() => expect(row('q1')!.querySelector('[data-next-note]')!.textContent).toBe('Not pulled: it is being published right now.'))
+    expect(calls.changed).not.toHaveBeenCalled()
+    expect(key('q1', 'next-pull')!.disabled).toBe(false)
   })
 })
