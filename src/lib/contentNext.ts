@@ -3,7 +3,9 @@ import { supabase } from './supabase'
 // THE POSTS GOING OUT NEXT (db: content_next_posts, content_next_keep). Ivan's own upcoming queue rows for the next 21
 // days, each with whether it will go out as it stands. Keep is his approval of one exact publication: the text the row
 // showed him, every attachment byte it showed him, and the slot it showed him. The database ends a keep for good the
-// moment the text, the files, the format or the time change (the row comes back with kept: false). These are the only two calls; nothing here schedules, moves or publishes.
+// moment the text, the files, the format or the time change (the row comes back with kept: false). Pull (db:
+// content_next_pull) takes one of these posts off the schedule: its queued copy is cancelled and the draft goes back to
+// Review with no date. Nothing here schedules, moves or publishes.
 
 export type NextState = 'ready' | 'checking' | 'held'
 export type NextOrigin = 'autopilot' | 'own'
@@ -61,7 +63,7 @@ export async function readNextPosts(): Promise<NextPost[]> {
   return data.map(nextPostOf).filter((p): p is NextPost => !!p).sort((a, b) => Date.parse(a.slot_at) - Date.parse(b.slot_at))
 }
 
-/** A Keep the database refused on purpose (hint next_gone, next_past, next_changed, next_unverifiable, next_busy).
+/** A Keep or a Pull the database refused on purpose (hint next_gone, next_past, next_changed, next_unverifiable, next_busy).
  *  Its message is the database's own plain sentence and is shown as it is. */
 export class NextRefused extends Error {
   readonly code: string
@@ -81,4 +83,15 @@ export async function keepNext(shown: NextShown, bodySha: string, files: KeepFil
   const hint = (error as { hint?: string | null }).hint ?? ''
   if (/^next_/.test(hint)) throw new NextRefused(error.message, hint)
   throw new Error(error.message || 'Not kept.')
+}
+
+/** His Pull of one upcoming post. `shown`: the row he was looking at (its queue row and the slot it showed him). The
+ *  database refuses (next_changed) when the post moved or is no longer waiting, and (next_busy) while it is being
+ *  published. On success nothing of it is queued any more and the draft is back in Review with no date. */
+export async function pullNext(shown: Pick<NextPost, 'queue_id' | 'slot_at'>): Promise<void> {
+  const { error } = await supabase.rpc('content_next_pull', { p_queue: shown.queue_id, p_slot_at: shown.slot_at })
+  if (!error) return
+  const hint = (error as { hint?: string | null }).hint ?? ''
+  if (/^next_/.test(hint)) throw new NextRefused(error.message, hint)
+  throw new Error(error.message || 'Not pulled.')
 }
