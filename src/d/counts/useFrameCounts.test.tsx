@@ -76,3 +76,28 @@ describe('DMs counts come off the frame inbox when it has rows', () => {
     expect(dm).toHaveBeenCalledTimes(5)
   })
 })
+
+describe('on open over saved DM numbers the per-seat read waits for the inbox (2026-11-15 speed review)', () => {
+  const thread = { prospect_id: 'p1', client_id: 'ivan', messages: [], stage: 'replied' } as unknown as Thread
+  const savedSeed = { 'dms:ivan': { value: { drafts: 1, needs: 2 }, failed: false, at: 1 } }
+  it('skips the read when the inbox covers the numbers within the wait', async () => {
+    vi.useFakeTimers()
+    const dm = vi.fn().mockResolvedValue({ drafts: 0, needs: 0 })
+    const { rerender } = render(<FrameCountsProvider readers={{ ...ZERO_READERS, dm }} savedSeed={savedSeed}><Count /></FrameCountsProvider>)
+    await act(async () => { await Promise.resolve() })
+    expect(dm).not.toHaveBeenCalled()
+    inboxHold.value = { threads: [thread], loadedAt: '2026-11-15T20:00:00Z', cachedAt: null }
+    rerender(<FrameCountsProvider readers={{ ...ZERO_READERS, dm }} savedSeed={savedSeed}><Count /></FrameCountsProvider>)
+    await act(async () => { await vi.advanceTimersByTimeAsync(12_100) })
+    expect(dm).not.toHaveBeenCalled()
+  })
+  it('reads after the wait when the inbox has not landed', async () => {
+    vi.useFakeTimers()
+    const dm = vi.fn().mockResolvedValue({ drafts: 0, needs: 0 })
+    render(<FrameCountsProvider readers={{ ...ZERO_READERS, dm }} savedSeed={savedSeed}><Count /></FrameCountsProvider>)
+    await act(async () => { await vi.advanceTimersByTimeAsync(11_000) })
+    expect(dm).not.toHaveBeenCalled()
+    await act(async () => { await vi.advanceTimersByTimeAsync(1_100) })
+    expect(dm).toHaveBeenCalledTimes(5)
+  })
+})

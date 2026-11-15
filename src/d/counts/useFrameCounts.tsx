@@ -61,6 +61,8 @@ const POLL_MS = 3 * 60_000
 const ALL: CountKey[] = ['dms', 'content', 'ops', 'nextCall', 'bell', 'alerts', 'health', 'magnets', 'calls']
 const SAVED = 'd-frame-counts-v1'
 const LIVE_MS = 1500
+/** On open over saved DM numbers, the per-seat read waits this long for the inbox to cover them (its slowest place starts at 9 s). */
+export const DMS_FIRST_WAIT_MS = 12_000
 
 type Saved = Partial<Record<string, Slice<unknown>>>
 
@@ -106,9 +108,9 @@ const LIVE: Readers = {
   calls: () => fetchCallsToday(),
 }
 
-export function FrameCountsProvider({ children, readers = LIVE }: { children: ReactNode; readers?: Readers }) {
+export function FrameCountsProvider({ children, readers = LIVE, savedSeed }: { children: ReactNode; readers?: Readers; savedSeed?: Saved }) {
   const live = readers === LIVE
-  const [saved] = useState<Saved>(() => (live ? readSaved() : {}))
+  const [saved] = useState<Saved>(() => savedSeed ?? (live ? readSaved() : {}))
   const [dms, setDms] = useState(() => ({ ivan: seed<DmSeatCount>(saved, 'dms:ivan'), risedtc: seed<DmSeatCount>(saved, 'dms:risedtc'), arch: seed<DmSeatCount>(saved, 'dms:arch') , swishdm: seed<DmSeatCount>(saved, 'dms:swishdm'), anna: seed<DmSeatCount>(saved, 'dms:anna')}))
   const [content, setContent] = useState(() => ({ ivan: seed<number>(saved, 'content:ivan'), risedtc: seed<number>(saved, 'content:risedtc'), arch: seed<number>(saved, 'content:arch') , swishdm: seed<number>(saved, 'content:swishdm'), anna: EMPTY<number>()}))
   const [ops, setOps] = useState(() => seed<Record<Seat, number>>(saved, 'ops'))
@@ -186,7 +188,13 @@ export function FrameCountsProvider({ children, readers = LIVE }: { children: Re
   }, [run, readers])
 
   useEffect(() => {
-    refresh()
+    // 2026-11-15 speed review: the DM numbers come off the frame's inbox once it lands, and with the
+    // inbox's warm start that is a few seconds after open. A device that already shows saved numbers
+    // waits DMS_FIRST_WAIT_MS before the per-seat read (~1 MB, the first-rows RPC) and skips it when
+    // the inbox covers the numbers by then. A device with nothing saved reads at once, as before.
+    const dmsSaved = SEATS.some(s => saved[`dms:${s}`]?.value != null)
+    refresh(dmsSaved ? ALL.filter(k => k !== 'dms') : undefined)
+    const firstDms = dmsSaved ? window.setTimeout(() => refresh('dms'), DMS_FIRST_WAIT_MS) : null
     const onVisible = () => { if (document.visibilityState === 'visible') refresh() }
     const onFocus = () => refresh()
     const onSw = (e: MessageEvent) => {
@@ -201,8 +209,9 @@ export function FrameCountsProvider({ children, readers = LIVE }: { children: Re
       window.removeEventListener('focus', onFocus)
       navigator.serviceWorker?.removeEventListener?.('message', onSw)
       window.clearInterval(t)
+      if (firstDms !== null) window.clearTimeout(firstDms)
     }
-  }, [refresh])
+  }, [refresh, saved])
 
   // The count query finds the earliest expiry across every open row, including
   // rows already read and rows outside the feed's 200-row window.
