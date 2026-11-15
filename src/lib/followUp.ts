@@ -69,16 +69,33 @@ export async function fetchFollowUp(prospectId: string): Promise<FollowUp | null
 }
 
 /**
+ * Hand-off stamps: the drafter parked the thread so a PERSON would act (book
+ * their calendar link, send the invite). The operator pressing Later IS that
+ * person acting, so a follow-up date may replace them. 2026-11-15 (David Ari
+ * Kahana, ARCH): the call was held on 5 Nov, he wrote again on the 15th, and
+ * Later refused because the 2 Nov invite hand-off was still on the row.
+ * Readers checked: the stall bump, sender and Anna lane only read this value to
+ * RELEASE a hold (handOffDone); the drafters skip it like any other reason.
+ */
+export const HANDOFF_REASONS: readonly string[] = ['booking_request_escalated_to_human']
+
+/** True when Later may stamp over this skip_reason. */
+export function followUpCanReplace(skipReason: string | null | undefined): boolean {
+  return !skipReason || skipReason === FOLLOW_UP_REASON || HANDOFF_REASONS.includes(skipReason)
+}
+
+/**
  * Stamp the date. Refuses to overwrite a skip_reason that means something else
  * (a spam verdict, a booked call, a park): those were decided elsewhere and a
- * follow-up must not silently undo them.
+ * follow-up must not silently undo them. A hand-off stamp is replaced, and the
+ * write is conditioned on the value read so a verdict landing in between wins.
  */
 export async function setFollowUp(prospectId: string, atIso: string, why: string): Promise<void> {
   const r = await readRow(prospectId)
-  if (r.skip_reason && r.skip_reason !== FOLLOW_UP_REASON) {
+  if (!followUpCanReplace(r.skip_reason)) {
     throw new Error(`This person is marked "${r.skip_reason}", clear that first`)
   }
-  const { error } = await supabase.from('outreach_prospects')
+  let q = supabase.from('outreach_prospects')
     .update({
       next_touch_after: atIso,
       skip_reason: FOLLOW_UP_REASON,
@@ -87,7 +104,10 @@ export async function setFollowUp(prospectId: string, atIso: string, why: string
       updated_at: new Date().toISOString(),
     })
     .eq('id', prospectId)
+  q = r.skip_reason ? q.eq('skip_reason', r.skip_reason) : q.is('skip_reason', null)
+  const { data, error } = await q.select('id')
   if (error) throw error
+  if (!data || data.length === 0) throw new Error('This person changed while you were setting the date, open the thread again')
 }
 
 /** Drop the date. Only touches a row that carries OUR stamp. */
