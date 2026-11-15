@@ -3,7 +3,7 @@ declare const self: ServiceWorkerGlobalScope
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
 import { clientsClaim } from 'workbox-core'
 import { supabase } from './lib/supabase'
-import { loadInbox } from './lib/inboxLoad'
+import { prefetchInboxThreads } from './lib/inboxPrefetch'
 import { INBOX_QUERY, buildInboxCache, type InboxCache } from './lib/inboxCache'
 import { CLAUDE_HANDOFF_KEY, SESSION_KEY, readHandoff, shouldPrefetch, swrHandoffKey, writeHandoff, type ClaudeHandoff } from './lib/handoff'
 import type { SwrEntry } from './lib/swr'
@@ -164,11 +164,12 @@ async function prefetchInbox(windowClients: number): Promise<string> {
     if (error || !data.session) return `auth: ${error?.message ?? 'no session'}`
     if (data.session.access_token !== parsed.access_token) await writeHandoff(SESSION_KEY, JSON.stringify(data.session))
     const prior = await readHandoff<SwrEntry<InboxCache>>(swrHandoffKey(INBOX_QUERY))
-    const { threads } = await loadInbox(prior?.payload?.threads?.length ?? 0)
+    // From the device snapshot plus what moved when it can be trusted, else the whole read (lib/inboxPrefetch).
+    const { threads, via } = await prefetchInboxThreads(data.session.user.id, prior?.payload?.threads?.length ?? 0)
     if (threads.length === 0) return 'empty read, not saved'
     const entry: SwrEntry<InboxCache> = { savedAt: new Date().toISOString(), user: data.session.user.id, payload: buildInboxCache(threads) }
     await writeHandoff(swrHandoffKey(INBOX_QUERY), entry)
-    return `saved ${entry.payload.threads.length} threads`
+    return `saved ${entry.payload.threads.length} threads (${via})`
   } catch (e) {
     return `failed: ${e instanceof Error ? e.message : String(e)}`
   }

@@ -144,13 +144,10 @@ it('while the membership feed is live the missed-event fallback runs once a minu
  await act(async () => {})
  await act(async () => { sdk.status!('SUBSCRIBED'); await vi.advanceTimersByTimeAsync(0) })
  const afterSubscribe = sdk.read.mock.calls.length
- await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
- const firstTick = sdk.read.mock.calls.length
- await act(async () => { await vi.advanceTimersByTimeAsync(50_000) })
- expect(sdk.read.mock.calls.length).toBe(firstTick)
+ await act(async () => { await vi.advanceTimersByTimeAsync(55_000) })
+ expect(sdk.read.mock.calls.length).toBe(afterSubscribe)
  await act(async () => { await vi.advanceTimersByTimeAsync(10_000) })
- expect(sdk.read.mock.calls.length).toBeGreaterThan(firstTick)
- expect(firstTick - afterSubscribe).toBeLessThanOrEqual(1)
+ expect(sdk.read.mock.calls.length).toBeGreaterThan(afterSubscribe)
  // The feed dropping brings the 5 s fallback back.
  await act(async () => { sdk.status!('CLOSED'); await vi.advanceTimersByTimeAsync(0) })
  const dropped = sdk.read.mock.calls.length

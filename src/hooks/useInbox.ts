@@ -5,7 +5,7 @@ import { assembleInbox, loadInbox } from '../lib/inboxLoad'
 import { FULL_EVERY_MS, changedSince, fetchConversations, mergeConversations, prospectOfEvent, withOverlap } from '../lib/inboxDelta'
 import { playChime } from '../lib/chime'
 import { readInboxCache, writeInboxCache } from '../lib/inboxCache'
-import { SNAPSHOT_READ_MS, SNAPSHOT_SAVE_EVERY_MS, readInboxSnapshot, writeInboxSnapshot } from '../lib/inboxSnapshot'
+import { SNAPSHOT_READ_MS, SNAPSHOT_SAVE_EVERY_MS, readInboxSnapshot, snapshotDelta, writeInboxSnapshot } from '../lib/inboxSnapshot'
 import { currentUserId } from '../lib/swr'
 import { withTimeout } from '../d/ui/timeout'
 import { isEditing } from '../lib/updateReload'
@@ -168,19 +168,13 @@ export function useInbox(enabled = true, seedCache = enabled) {
       const snap = await withTimeout(readInboxSnapshot(owner, started), SNAPSHOT_READ_MS).catch(() => null)
       if (!snap || !alive.current || currentUserId() !== owner) return false
       readStarted.current = Date.now()
-      const c = await changedSince(withOverlap(snap.watermark))
-      if (c.ids === null) return false
-      const pids = new Set(c.ids)
-      let rows = snap.rows
-      if (pids.size > 0) {
-        const fresh = await fetchConversations([...pids])
-        if (fresh.length === 0 && rows.some(m => pids.has(m.prospect_id))) return false
-        rows = mergeConversations(rows, pids, fresh)
-      }
+      const d = await snapshotDelta(snap)
+      if (!d) return false
+      const rows = d.rows
       const res = await assembleInbox(rows)
       if (!alive.current || currentUserId() !== owner) return false
       if (!land(res.rows, res.threads)) return false
-      viewRows.current = rows; watermark.current = c.now; rowsOwner.current = owner
+      viewRows.current = rows; watermark.current = d.watermark; rowsOwner.current = owner
       lastFull.current = fullAt.current = snap.fullAt
       lastIncremental.current = Date.now()
       // The stored copy is what we just started from: the next write waits out the usual gap (review r1).

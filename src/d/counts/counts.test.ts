@@ -51,3 +51,23 @@ describe('nextCallLine', () => {
     expect(nextCallLine([], new Date(NOW)).label).toBe('none booked')
   })
 })
+
+describe('the Ops number from the slim count read (2026-11-15 speed review)', () => {
+  it('rebuilt rows count the same as the full rows', async () => {
+    const { opsCountRow } = await import('./ops')
+    const NOW2 = Date.parse('2026-11-15T12:00:00Z')
+    const base = { slack_channel: 'c', body: 'long body', approved_at: null, sent_at: null, send_blocked_reason: null, created_at: '2026-11-15T10:00:00Z' }
+    const full = [
+      { ...base, id: '1', client_id: 'ivan', kind: 'task', context: { presentation: 'reference', other: 'x'.repeat(500) } },
+      { ...base, id: '2', client_id: 'ivan', kind: 'task', context: { other: 1 } },
+      { ...base, id: '3', client_id: 'rise', kind: 'reply', context: { dry_run: true } },
+      { ...base, id: '4', client_id: 'arch', kind: 'newsjack', context: { expires_at: '2026-11-15T11:00:00Z' } },
+      { ...base, id: '5', client_id: 'arch', kind: 'reply', context: null },
+      { ...base, id: '6', client_id: 'ivan', kind: 'comment_reply', context: { posted_at: '2026-11-14T10:00:00Z' } },
+    ] as unknown as OpsDraft[]
+    const slim = full.map(d => opsCountRow({ id: d.id, client_id: d.client_id, kind: d.kind, created_at: d.created_at, approved_at: d.approved_at, sent_at: d.sent_at, send_blocked_reason: d.send_blocked_reason,
+      dry_run: (d.context as Record<string, unknown> | null)?.dry_run ?? null, presentation: ((d.context as Record<string, unknown> | null)?.presentation as string) ?? null,
+      posted_at: ((d.context as Record<string, unknown> | null)?.posted_at as string) ?? null, expires_at: ((d.context as Record<string, unknown> | null)?.expires_at as string) ?? null }))
+    expect(opsWaitingBySeat(slim, NOW2)).toEqual(opsWaitingBySeat(full, NOW2))
+  })
+})

@@ -1,5 +1,6 @@
 import { readHandoff, writeHandoff } from './handoff'
 import type { InboxMessage } from './inbox'
+import { changedSince, fetchConversations, mergeConversations, withOverlap } from './inboxDelta'
 
 /* THE LAST WHOLE READ, KEPT ON THE DEVICE (2026-11-15 speed review).
    Every open of every place read the whole message view again: ~25 pages, ~7 MB gzip, 15-25 s on
@@ -46,4 +47,23 @@ export async function readInboxSnapshot(user: string | null, now: number = Date.
 
 export async function writeInboxSnapshot(s: InboxSnapshot): Promise<void> {
   await writeHandoff(KEY, s)
+}
+
+/**
+ * The snapshot brought up to now: the conversations inbox_changed_since names since its watermark,
+ * re-read whole and swapped in (the same delta the open app's sweep runs). Null = cannot be trusted
+ * (too old for the server, or an empty re-read of conversations it holds): read the whole view.
+ * Throws when a read fails. Used by the page's warm start and the worker's push-time prefetch.
+ */
+export async function snapshotDelta(snap: InboxSnapshot): Promise<{ rows: InboxMessage[]; watermark: string } | null> {
+  const c = await changedSince(withOverlap(snap.watermark))
+  if (c.ids === null) return null
+  const pids = new Set(c.ids)
+  let rows = snap.rows
+  if (pids.size > 0) {
+    const fresh = await fetchConversations([...pids])
+    if (fresh.length === 0 && rows.some(m => pids.has(m.prospect_id))) return null
+    rows = mergeConversations(rows, pids, fresh)
+  }
+  return { rows, watermark: c.now }
 }

@@ -24,7 +24,8 @@ vi.mock('../lib/supabase', () => ({ supabase: { channel: () => { const ch = { on
 vi.mock('../lib/inboxCache', () => ({ readInboxCache: () => null, writeInboxCache: () => {} }))
 vi.mock('../lib/chime', () => ({ playChime: () => {} }))
 vi.mock('../lib/swr', () => ({ currentUserId: () => 'u1' }))
-vi.mock('../lib/inboxSnapshot', () => ({
+vi.mock('../lib/inboxSnapshot', async () => ({
+  snapshotDelta: (await vi.importActual<typeof import('../lib/inboxSnapshot')>('../lib/inboxSnapshot')).snapshotDelta,
   SNAPSHOT_READ_MS: 2500, SNAPSHOT_SAVE_EVERY_MS: 600_000,
   readInboxSnapshot: async () => h.snapshot,
   writeInboxSnapshot: async (s: { rows: InboxMessage[]; watermark: string; fullAt: number }) => { h.saved.push({ rows: s.rows.length, watermark: s.watermark, fullAt: s.fullAt }) },
