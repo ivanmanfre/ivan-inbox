@@ -1,6 +1,9 @@
 # Ivan Listener tables: the last step of the public-key lock
 
-Prepared 2026-11-15. Nothing in this folder is applied.
+Prepared 2026-11-15. **Applied the same day:** the patch is in ivan-listener (branch
+`security/listener-service-key-2026-11-15`, commit 489572c, deployed 21:59 UTC) and the final lock went live at
+22:21 UTC as `db/20261115t_lock_listener_tables_final.sql` (same statements). The rest of this page is the plan as it
+was written; the "where things stand" table describes the state before the lock.
 
 ## Where things stand
 
