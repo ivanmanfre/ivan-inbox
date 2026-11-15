@@ -108,6 +108,8 @@ function bridge() {
   // 2026-11-15 (speed review): this fallback re-read every shown brain draft in full every 5 s, ~900 KB a
   // tick (~10 MB a minute on Content). While the membership feed is SUBSCRIBED every change already arrives
   // as an event (onExternal), so the fallback runs once a minute then; 5 s only while the feed is down.
+  // SUBSCRIBED itself re-checks (wb-rows-changed), so the minute counts from there: no full re-read
+  // 5 s after every Content open.
   let feedLive = false
   let lastRoutine = 0
   const timer = window.setInterval(() => {
@@ -133,7 +135,7 @@ function bridge() {
       })
     }
     feedLive = false
-    try { channel.subscribe(status => { if (!live || authenticatedUser !== userId) return; if (status === 'SUBSCRIBED') { feedLive = true; window.dispatchEvent(new Event('wb-rows-changed')) } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') { feedLive = false; onExternal() } }) } catch { feedLive = false; onExternal() }
+    try { channel.subscribe(status => { if (!live || authenticatedUser !== userId) return; if (status === 'SUBSCRIBED') { feedLive = true; lastRoutine = Date.now(); window.dispatchEvent(new Event('wb-rows-changed')) } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') { feedLive = false; onExternal() } }) } catch { feedLive = false; onExternal() }
   }
   const initialAuth = authRevision
   void supabase.auth?.getSession().then(({ data }) => { if (initialAuth === authRevision && data.session?.user.id) bind(data.session.user.id) }).catch(() => { /* Serial safe-view fallback remains available. */ })
