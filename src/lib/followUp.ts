@@ -52,11 +52,11 @@ export function mergeFollowUpNote(existing: string | null | undefined, atIso: st
   return rest ? `${rest}\n\n${line}` : line
 }
 
-type Row = { next_touch_after: string | null; skip_reason: string | null; operator_note: string | null }
+type Row = { next_touch_after: string | null; skip_reason: string | null; operator_note: string | null; updated_at: string | null }
 
 async function readRow(prospectId: string): Promise<Row> {
   const { data, error } = await supabase.from('outreach_prospects')
-    .select('next_touch_after,skip_reason,operator_note')
+    .select('next_touch_after,skip_reason,operator_note,updated_at')
     .eq('id', prospectId).single()
   if (error) throw error
   return data as Row
@@ -69,16 +69,43 @@ export async function fetchFollowUp(prospectId: string): Promise<FollowUp | null
 }
 
 /**
+ * Hand-off stamps: the drafter parked the thread so a PERSON would act (book
+ * their calendar link, send the invite). The operator pressing Later IS that
+ * person acting, so a follow-up date may replace them. 2026-11-15 (David Ari
+ * Kahana, ARCH): the call was held on 5 Nov, he wrote again on the 15th, and
+ * Later refused because the 2 Nov invite hand-off was still on the row.
+ * Readers checked: the stall bump, sender and Anna lane only read this value to
+ * RELEASE a hold (handOffDone); the drafters skip it like any other reason.
+ */
+export const HANDOFF_REASONS: readonly string[] = ['booking_request_escalated_to_human']
+
+/** True when Later may stamp over this skip_reason. */
+export function followUpCanReplace(skipReason: string | null | undefined): boolean {
+  return !skipReason || skipReason === FOLLOW_UP_REASON || HANDOFF_REASONS.includes(skipReason)
+}
+
+/** What a Later write replaced, so Undo can put a hand-off back exactly. */
+export type FollowUpReceipt = {
+  prospectId: string
+  /** The row's revision right after this write (Undo only applies to it). */
+  updatedAt: string | null
+  /** Set only when the write replaced a hand-off stamp. */
+  handOff: { skip_reason: string; next_touch_after: string | null; operator_note: string | null } | null
+}
+
+/**
  * Stamp the date. Refuses to overwrite a skip_reason that means something else
  * (a spam verdict, a booked call, a park): those were decided elsewhere and a
- * follow-up must not silently undo them.
+ * follow-up must not silently undo them. A hand-off stamp is replaced. The write
+ * is conditioned on the skip_reason AND revision read, so a verdict or a newer
+ * hand-off landing in between wins.
  */
-export async function setFollowUp(prospectId: string, atIso: string, why: string): Promise<void> {
+export async function setFollowUp(prospectId: string, atIso: string, why: string): Promise<FollowUpReceipt> {
   const r = await readRow(prospectId)
-  if (r.skip_reason && r.skip_reason !== FOLLOW_UP_REASON) {
+  if (!followUpCanReplace(r.skip_reason)) {
     throw new Error(`This person is marked "${r.skip_reason}", clear that first`)
   }
-  const { error } = await supabase.from('outreach_prospects')
+  let q = supabase.from('outreach_prospects')
     .update({
       next_touch_after: atIso,
       skip_reason: FOLLOW_UP_REASON,
@@ -87,7 +114,28 @@ export async function setFollowUp(prospectId: string, atIso: string, why: string
       updated_at: new Date().toISOString(),
     })
     .eq('id', prospectId)
+  q = r.skip_reason ? q.eq('skip_reason', r.skip_reason) : q.is('skip_reason', null)
+  if (r.updated_at) q = q.eq('updated_at', r.updated_at)
+  const { data, error } = await q.select('id,updated_at')
   if (error) throw error
+  if (!data || data.length === 0) throw new Error('This person changed while you were setting the date, open the thread again')
+  const handOff = r.skip_reason && HANDOFF_REASONS.includes(r.skip_reason)
+    ? { skip_reason: r.skip_reason, next_touch_after: r.next_touch_after, operator_note: r.operator_note }
+    : null
+  return { prospectId, updatedAt: (data[0] as { updated_at: string | null }).updated_at ?? null, handOff }
+}
+
+/** Undo a Later that replaced a hand-off: put the hand-off back, but only over
+ *  that exact write (a reply or another edit since then wins). */
+export async function restoreHandOff(receipt: FollowUpReceipt): Promise<void> {
+  if (!receipt.handOff) return
+  let q = supabase.from('outreach_prospects')
+    .update({ ...receipt.handOff, updated_at: new Date().toISOString() })
+    .eq('id', receipt.prospectId).eq('skip_reason', FOLLOW_UP_REASON)
+  if (receipt.updatedAt) q = q.eq('updated_at', receipt.updatedAt)
+  const { data, error } = await q.select('id')
+  if (error) throw error
+  if (!data || data.length === 0) throw new Error('The thread changed since Later, nothing was put back')
 }
 
 /** Drop the date. Only touches a row that carries OUR stamp. */

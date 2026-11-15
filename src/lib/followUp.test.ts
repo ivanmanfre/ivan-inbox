@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { followUpNoteLine, followUpSuggestion, mergeFollowUpNote, splitFollowUpNote, SUGGEST_DEFAULT_DAYS } from './followUp'
+import { followUpCanReplace, followUpNoteLine, followUpSuggestion, mergeFollowUpNote, splitFollowUpNote, SUGGEST_DEFAULT_DAYS } from './followUp'
 import { emailRowSender, NATIVE_EMAIL_SENDER, SNOOZE_HOUR } from './inbox'
 
 describe('follow-up note line', () => {
@@ -61,6 +61,20 @@ describe('followUpSuggestion', () => {
       expect(Math.round((d.getTime() - now.getTime()) / 864e5)).toBe(SUGGEST_DEFAULT_DAYS)
       expect(d.getHours()).toBe(SNOOZE_HOUR)
       expect(s!.dated).toBe(false)
+    }
+  })
+})
+
+describe('followUpCanReplace', () => {
+  it('lets Later stamp over nothing, its own stamp, or a booking hand-off', () => {
+    expect(followUpCanReplace(null)).toBe(true)
+    expect(followUpCanReplace('follow_up_dated')).toBe(true)
+    expect(followUpCanReplace('booking_request_escalated_to_human')).toBe(true)
+  })
+
+  it('still refuses verdicts decided elsewhere', () => {
+    for (const r of ['spam', 'suspected_phishing_booking_link', 'phishing_script_review', 'stale_thread', 'manual_skip', 'not_interested']) {
+      expect(followUpCanReplace(r)).toBe(false)
     }
   })
 })
