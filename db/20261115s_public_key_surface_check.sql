@@ -22,7 +22,8 @@
 --   9 row policies that let anon through with no condition for at least one command, on 7 tables (4 read by Ivan
 --     Listener, 3 written by public pages), compared by name, command, roles and expressions,
 --   on the 4 Listener tables: anon holds SELECT on 24 named columns and nothing else.
--- All privilege tests are effective ones (has_*_privilege), so a grant through PUBLIC or an inherited role counts.
+-- All privilege tests are effective ones (has_*_privilege, pg_has_role), so a grant or a policy that reaches anon
+-- through PUBLIC or an inherited role counts.
 -- When something is made public on purpose, add it to the list below in the same PR.
 WITH allowed_fn(sig) AS (
   SELECT unnest(ARRAY[
@@ -117,7 +118,8 @@ WITH allowed_fn(sig) AS (
          pg_get_expr(p.polqual, p.polrelid) AS q, pg_get_expr(p.polwithcheck, p.polrelid) AS w
   FROM pg_policy p JOIN pg_class c ON c.oid = p.polrelid JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE n.nspname = 'public' AND p.polpermissive
-    AND (p.polroles @> ARRAY[(SELECT oid FROM pg_roles WHERE rolname = 'anon')] OR p.polroles @> ARRAY[0::oid])
+    -- the policy reaches anon when it names PUBLIC, anon, or any role anon is a member of (inherited)
+    AND EXISTS (SELECT 1 FROM unnest(p.polroles) u(o) WHERE u.o = 0 OR pg_has_role('anon', u.o, 'USAGE'))
 ), pol AS (
   -- no condition for at least one command: rows it can read, change or remove (USING true), or rows it can add or
   -- write back (WITH CHECK true; an UPDATE or ALL policy with no WITH CHECK uses its USING)
