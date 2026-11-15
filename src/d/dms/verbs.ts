@@ -11,7 +11,7 @@ import {
   findLandedReply, readSendState, type DraftSendVia, type InboxMessage, type SendState, type Thread,
   type EmailReplyTarget, rowEmailSender, threadEmailSender } from '../../lib/inbox'
 import { isNoAnswer } from '../../lib/noAnswer'
-import { clearFollowUp, fetchFollowUp, followUpSuggestion, setFollowUp, type FollowUp } from '../../lib/followUp'
+import { clearFollowUp, fetchFollowUp, followUpSuggestion, restoreHandOff, setFollowUp, type FollowUp, type FollowUpReceipt } from '../../lib/followUp'
 import { laterPath } from './later'
 import { formatReturn } from '../../lib/pushLater'
 import { dismissCameBack, undismissCameBack } from '../../wb/dms/cameBackData'
@@ -636,11 +636,12 @@ export function useDmVerbs(ctx: VerbCtx) {
         if (!ans) return false
         when = ans.at; note = ans.note
       }
-      try { await setFollowUp(t.prospect_id, when, note) } catch (e) { fail(errText(e)); return false }
+      let receipt: FollowUpReceipt
+      try { receipt = await setFollowUp(t.prospect_id, when, note) } catch (e) { fail(errText(e)); return false }
       ctx.dated?.()
       toast.show({
         message: `Later: a follow-up to ${first(t)} drafts ${formatReturn(when)}.${advance ? next(t) : ''}`, sub: `If ${first(t)} writes first, the date is dropped.`,
-        action: { label: 'Undo', verb: 'undo', run: () => { void (prev ? setFollowUp(t.prospect_id, prev.at, prev.note ?? '') : clearFollowUp(t.prospect_id)).then(() => ctx.dated?.()).catch(e => fail(`Could not undo: ${errText(e)}`)) } },
+        action: { label: 'Undo', verb: 'undo', run: () => { void (receipt.handOff ? restoreHandOff(receipt) : prev ? setFollowUp(t.prospect_id, prev.at, prev.note ?? '') : clearFollowUp(t.prospect_id)).then(() => ctx.dated?.()).catch(e => fail(`Could not undo: ${errText(e)}`)) } },
       })
       return true
     }
