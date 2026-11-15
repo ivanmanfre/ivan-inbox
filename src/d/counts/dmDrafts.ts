@@ -4,7 +4,7 @@ import {
   type InboxMessage, type Thread,
 } from '../../lib/inbox'
 import { seatFilter, seatOf, type Seat } from '../seats'
-import { currentUserId } from '../../lib/swr'
+import { readFirstRows } from '../../lib/firstRows'
 import { fetchSolvedAt, owedIds, withSolved } from './solved'
 
 // ---------------------------------------------------------------------------
@@ -47,32 +47,8 @@ const WINDOW_DAYS = 15
 const PAGE = 1000
 const ID_CHUNK = 60
 
-// The parity-proven first-rows RPC contains complete histories for every
-// Needs-you candidate across seats. Share only concurrent reads; each later
-// refresh asks again, and a different signed-in user never joins this flight.
-const firstRowsInFlight = new Map<string, Promise<InboxMessage[] | null>>()
-
-async function firstRows(): Promise<InboxMessage[] | null> {
-  const user = currentUserId()
-  if (user) {
-    const running = firstRowsInFlight.get(user)
-    if (running) return running
-  }
-  const read = Promise.resolve(supabase.rpc('inbox_phone_first_rows_r2', {}, { get: true })).then(({ data, error }) => {
-    if (error?.code === 'PGRST202') return null
-    if (error) throw error
-    if (!Array.isArray(data)) throw new Error('Could not read DM count threads')
-    return data as InboxMessage[]
-  })
-  if (user) {
-    firstRowsInFlight.set(user, read)
-    void read.then(
-      () => { if (firstRowsInFlight.get(user) === read) firstRowsInFlight.delete(user) },
-      () => { if (firstRowsInFlight.get(user) === read) firstRowsInFlight.delete(user) },
-    )
-  }
-  return read
-}
+// Concurrent count reads share one first-rows request; every later refresh asks again (lib/firstRows).
+const firstRows = () => readFirstRows(0)
 
 /** Pure: the per-seat numbers from a set of complete threads. */
 export function countDmSeat(threads: Thread[], seat: Seat, now: number = Date.now()): DmSeatCount {

@@ -139,3 +139,21 @@ it('background verification commits without an intermediate missing-draft render
  await act(async () => { await vi.advanceTimersByTimeAsync(20000) })
  expect(counts.every(n => n === 2)).toBe(true)
 })
+it('while the membership feed is live the missed-event fallback runs once a minute, not every 5 s', async () => {
+ sdk.read.mockResolvedValue({ data: [row()], error: null }); renderHook(() => useRows([row()]))
+ await act(async () => {})
+ await act(async () => { sdk.status!('SUBSCRIBED'); await vi.advanceTimersByTimeAsync(0) })
+ const afterSubscribe = sdk.read.mock.calls.length
+ await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+ const firstTick = sdk.read.mock.calls.length
+ await act(async () => { await vi.advanceTimersByTimeAsync(50_000) })
+ expect(sdk.read.mock.calls.length).toBe(firstTick)
+ await act(async () => { await vi.advanceTimersByTimeAsync(10_000) })
+ expect(sdk.read.mock.calls.length).toBeGreaterThan(firstTick)
+ expect(firstTick - afterSubscribe).toBeLessThanOrEqual(1)
+ // The feed dropping brings the 5 s fallback back.
+ await act(async () => { sdk.status!('CLOSED'); await vi.advanceTimersByTimeAsync(0) })
+ const dropped = sdk.read.mock.calls.length
+ await act(async () => { await vi.advanceTimersByTimeAsync(10_000) })
+ expect(sdk.read.mock.calls.length).toBeGreaterThanOrEqual(dropped + 2)
+})

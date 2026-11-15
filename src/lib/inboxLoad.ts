@@ -1,5 +1,5 @@
 import { withTimeout } from '../d/ui/timeout'
-import { supabase } from './supabase'
+import { readFirstRows } from './firstRows'
 import { scheduleHeld } from './dmSchedule'
 import { fetchDraftContextGaps, fetchDraftEmailStamps, fetchEmailRecipients, fetchDraftEvidence, fetchManualReplyIds, fetchMessages, groupThreads, isHeldSend, type DraftContextGap, type DraftEmailStamp, type InboxMessage, type Thread } from './inbox'
 
@@ -9,6 +9,8 @@ import { fetchDraftContextGaps, fetchDraftEmailStamps, fetchEmailRecipients, fet
  * service worker's push-time prefetch (src/sw.ts) builds the SAME rows the
  * open app does; a second assembly would drift and the saved copy would lie.
  */
+const FIRST_ROWS_REUSE_MS = 10_000
+
 export async function loadInbox(knownRows: number, onNewest?: (threads: Thread[], priority?: boolean) => void): Promise<{ viewRows: InboxMessage[]; rows: InboxMessage[]; threads: Thread[] }> {
   let settled = false
   let priorityPainted = false
@@ -17,10 +19,10 @@ export async function loadInbox(knownRows: number, onNewest?: (threads: Thread[]
   // Classification remains the existing client rule; the full archive follows.
   if (early && onNewest) {
     try {
-      const { data, error } = await withTimeout(supabase.rpc('inbox_phone_first_rows_r2', {}, { get: true }), 4000)
-      if (error) throw error
-      if (!Array.isArray(data)) throw new Error('Could not read priority conversations')
-      const first = await assembleInbox(data as InboxMessage[], early)
+      // A read the frame's DM counts started up to 10 s ago is the same answer (lib/firstRows).
+      const data = await withTimeout(readFirstRows(FIRST_ROWS_REUSE_MS), 4000)
+      if (!data) throw new Error('Could not read priority conversations')
+      const first = await assembleInbox(data, early)
       if (first.threads.length) { priorityPainted = true; onNewest(first.threads, true) }
     } catch { /* The complete read below owns failure and the existing fallback. */ }
   }

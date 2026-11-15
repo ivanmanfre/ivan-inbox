@@ -5,6 +5,9 @@ import { assembleInbox, loadInbox } from '../lib/inboxLoad'
 import { FULL_EVERY_MS, changedSince, fetchConversations, mergeConversations, prospectOfEvent, withOverlap } from '../lib/inboxDelta'
 import { playChime } from '../lib/chime'
 import { readInboxCache, writeInboxCache } from '../lib/inboxCache'
+import { SNAPSHOT_READ_MS, SNAPSHOT_SAVE_EVERY_MS, readInboxSnapshot, writeInboxSnapshot } from '../lib/inboxSnapshot'
+import { currentUserId } from '../lib/swr'
+import { withTimeout } from '../d/ui/timeout'
 import { isEditing } from '../lib/updateReload'
 
 // A burst of dispatcher writes (one row every ~2 min per active lane, plus
@@ -23,6 +26,8 @@ const COALESCE_MS = 1500
 const TYPING_HOLD_MS = 30_000
 const SWEEP_EVERY_MS = 10 * 60_000
 const MIN_GAP_MS = 120_000
+/** After a warm start over an overdue snapshot, the whole read waits this long (the app may close first). */
+const OVERDUE_FULL_AFTER_MS = 120_000
 
 /**
  * `enabled` false: a second caller under a provider that already runs this read
@@ -82,6 +87,19 @@ export function useInbox(enabled = true, seedCache = enabled) {
   const watermark = useRef<string | null>(null)
   const lastFull = useRef(0)
   const busy = useRef(false)
+  // 2026-11-15 speed review (lib/inboxSnapshot): the MOUNT may start from the device's last whole read
+  // plus the conversations that moved since, instead of reading the whole view again. Only the mount:
+  // an explicit refresh() (pull, Retry, after a write) always reads the whole view.
+  const mayWarmStart = useRef(false)
+  const snapshotSavedAt = useRef(0)
+  const snapshotTimer = useRef<number | null>(null)
+  // When the last whole read behind viewRows landed (the snapshot's, after a warm start).
+  const fullAt = useRef(0)
+  // Who the rows in viewRows belong to (captured when a read STARTS), and whether this hook is still
+  // mounted: a read that finishes after a sign-out or an unmount never writes a snapshot (review r1).
+  const rowsOwner = useRef<string | null>(null)
+  const overdueTimer = useRef<number | null>(null)
+  const alive = useRef(true)
   // PERF-COLD: which whole read may still paint its newest page, and whether the screen holds one.
   const fullRun = useRef(0)
   const provisional = useRef(false)
@@ -125,6 +143,64 @@ export function useInbox(enabled = true, seedCache = enabled) {
     setLoading(false)
     return true
   }, [])
+  // Store the rows as read (never the annotated copies) with their watermark, off the paint path.
+  // `minGapMs` 0 = after a whole read; otherwise at most once per SNAPSHOT_SAVE_EVERY_MS.
+  const saveSnapshot = useCallback((minGapMs: number) => {
+    if (snapshotTimer.current !== null) return
+    snapshotTimer.current = window.setTimeout(() => {
+      snapshotTimer.current = null
+      const user = rowsOwner.current, rows = viewRows.current, mark = watermark.current
+      if (!alive.current || !user || user !== currentUserId() || !rows || rows.length === 0 || !mark || !fullAt.current) return
+      if (minGapMs > 0 && Date.now() - snapshotSavedAt.current < minGapMs) return
+      snapshotSavedAt.current = Date.now()
+      void writeInboxSnapshot({ user, rows, watermark: mark, fullAt: fullAt.current })
+    }, 3000)
+  }, [])
+  // The mount's warm start: the snapshot, the conversations that moved since its watermark read
+  // whole (the same delta the 10-minute sweep runs), then a normal land. Every doubt (no snapshot,
+  // a slow IndexedDB, too old for the server, an empty re-read of held conversations, a failed
+  // read) answers false and the caller does the whole read instead. Nothing lands until the delta
+  // is in, so `loadedAt` still means a read that resolved.
+  const warmStart = useCallback(async (): Promise<boolean> => {
+    try {
+      const started = Date.now()
+      const owner = currentUserId()
+      const snap = await withTimeout(readInboxSnapshot(owner, started), SNAPSHOT_READ_MS).catch(() => null)
+      if (!snap || !alive.current || currentUserId() !== owner) return false
+      readStarted.current = Date.now()
+      const c = await changedSince(withOverlap(snap.watermark))
+      if (c.ids === null) return false
+      const pids = new Set(c.ids)
+      let rows = snap.rows
+      if (pids.size > 0) {
+        const fresh = await fetchConversations([...pids])
+        if (fresh.length === 0 && rows.some(m => pids.has(m.prospect_id))) return false
+        rows = mergeConversations(rows, pids, fresh)
+      }
+      const res = await assembleInbox(rows)
+      if (!alive.current || currentUserId() !== owner) return false
+      if (!land(res.rows, res.threads)) return false
+      viewRows.current = rows; watermark.current = c.now; rowsOwner.current = owner
+      lastFull.current = fullAt.current = snap.fullAt
+      lastIncremental.current = Date.now()
+      // The stored copy is what we just started from: the next write waits out the usual gap (review r1).
+      snapshotSavedAt.current = Date.now()
+      // The snapshot's whole read is overdue (FULL_EVERY_MS): the whole read follows in the background
+      // OVERDUE_FULL_AFTER_MS after the screen is live, if the app is still open. Short opens skip it;
+      // usableSnapshot's hard cap (5 h since the last whole read) bounds how stale that can get (review r1).
+      if (Date.now() - snap.fullAt >= FULL_EVERY_MS && overdueTimer.current === null) {
+        overdueTimer.current = window.setTimeout(() => {
+          overdueTimer.current = null
+          if (!alive.current) return
+          owed.current.full = true
+          nudgeRef.current?.()
+        }, OVERDUE_FULL_AFTER_MS)
+      }
+      return true
+    } catch {
+      return false
+    }
+  }, [land])
   // One run at a time. A whole read owed meanwhile (an explicit refresh after a button write) runs
   // straight after; background work owed meanwhile goes back through the schedule, so it still
   // waits for the coalesce, the gap and the typing hold.
@@ -138,11 +214,21 @@ export function useInbox(enabled = true, seedCache = enabled) {
         if (due.full || viewRows.current === null) {
           // A whole read settles everything owed before it started.
           owed.current = { full: false, pids: new Set(), sweep: false, urgent: false }
+          if (viewRows.current === null && mayWarmStart.current) {
+            mayWarmStart.current = false
+            if (await warmStart()) { ranIncremental = true; continue }
+            // No usable snapshot, or the delta could not be trusted: the whole read, as before.
+            owed.current.full = true
+            continue
+          }
           // PERF-COLD (2026-10-08): the clock is asked WITH the read, not before it (it cost a
           // serial round trip on every cold open). The watermark can now trail the first page's
           // snapshot by a few hundred ms; every sweep re-reads from withOverlap(watermark), two
           // minutes earlier, so nothing committed in that gap is missed.
           readStarted.current = Date.now()
+          // A whole read settles an overdue warm start's pending one (review r2).
+          if (overdueTimer.current !== null) { clearTimeout(overdueTimer.current); overdueTimer.current = null }
+          const readOwner = currentUserId()
           const markRead = changedSince(null).then(c => c.now, () => null)
           // A cold screen (nothing on it: no saved copy, no good read yet) paints the newest page
           // while the rest is read. That paint is PROVISIONAL: it never touches knownRows, the
@@ -180,7 +266,9 @@ export function useInbox(enabled = true, seedCache = enabled) {
           const mark = await markRead
           // An empty read over a known-non-empty inbox is a failure (land says so): stop, never loop on it.
           if (!land(res.rows, res.threads)) break
-          viewRows.current = res.viewRows; watermark.current = mark; lastFull.current = Date.now()
+          viewRows.current = res.viewRows; watermark.current = mark; lastFull.current = fullAt.current = Date.now()
+          rowsOwner.current = readOwner
+          saveSnapshot(0)
           ranIncremental = true
           continue
         }
@@ -210,7 +298,7 @@ export function useInbox(enabled = true, seedCache = enabled) {
           if (!land(res.rows, res.threads)) break
           viewRows.current = merged
         }
-        if (nextMark) watermark.current = nextMark
+        if (nextMark) { watermark.current = nextMark; saveSnapshot(SNAPSHOT_SAVE_EVERY_MS) }
       }
     } catch (e: unknown) {
       // A newest-page paint is not a read that landed: never leave it on screen as the last good list.
@@ -224,8 +312,9 @@ export function useInbox(enabled = true, seedCache = enabled) {
       if (o.full || o.urgent) nudgeRef.current?.(true)
       else if (o.pids.size > 0 || o.sweep) nudgeRef.current?.()
     }
-  }, [land])
+  }, [land, warmStart, saveSnapshot])
   const refresh = useCallback(() => {
+    mayWarmStart.current = false
     owed.current.full = true
     void pump()
   }, [pump])
@@ -244,7 +333,11 @@ export function useInbox(enabled = true, seedCache = enabled) {
   const pendingUrgent = useRef(false)
   useEffect(() => {
     if (!enabled) return
-    refresh()
+    alive.current = true
+    // The mount's read may warm-start from the device snapshot; every later refresh() reads the whole view.
+    mayWarmStart.current = true
+    owed.current.full = true
+    void pump()
     // Trailing-edge coalesce: while a run is already scheduled, further events
     // only add to what it owes. `urgent` (a whole read, an inbound message, or a return check)
     // waits only for the coalesce; everything else also waits out MIN_GAP_MS since
@@ -305,6 +398,9 @@ export function useInbox(enabled = true, seedCache = enabled) {
     document.addEventListener('visibilitychange', onReturn)
     return () => {
       if (pending.current !== null) { clearTimeout(pending.current); pending.current = null }
+      alive.current = false
+      if (overdueTimer.current !== null) { clearTimeout(overdueTimer.current); overdueTimer.current = null }
+      if (snapshotTimer.current !== null) { clearTimeout(snapshotTimer.current); snapshotTimer.current = null }
       nudgeRef.current = null
       window.clearInterval(tick)
       supabase.removeChannel(ch)
