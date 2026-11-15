@@ -5,6 +5,8 @@ import { operatorDeleted, type ContentDraftDetail } from '../lib/content'
 export type BrainMember = { id: string; client_id: string | null; cb34_p2_member?: boolean }
 export type BrainInvalidation = { client: 'ivan' | 'risedtc' | 'arch' | 'swishdm'; draftId: string }
 export const BRAIN_INVALIDATED = 'brain-members-invalidated'
+/** The missed-event fallback's cadence while the membership feed is live. */
+export const FEED_LIVE_RECHECK_MS = 60_000
 type Watch = { rows: () => BrainMember[]; clear: () => void; fresh: (rows: ContentDraftDetail[], checkedIds: string[]) => boolean | void; revision: number; checked: string | null; hidden: boolean; pending: BrainMember[]; failed: () => void; blocked: () => boolean }
 const watches = new Set<Watch>()
 let busy = false
@@ -103,7 +105,16 @@ function bridge() {
   window.addEventListener('focus', onFocus, true)
   window.addEventListener('wb-rows-changed', onExternal, true)
   document.addEventListener('visibilitychange', onVisibility)
-  const timer = window.setInterval(() => { void revalidate() }, 5000)
+  // 2026-11-15 (speed review): this fallback re-read every shown brain draft in full every 5 s, ~900 KB a
+  // tick (~10 MB a minute on Content). While the membership feed is SUBSCRIBED every change already arrives
+  // as an event (onExternal), so the fallback runs once a minute then; 5 s only while the feed is down.
+  let feedLive = false
+  let lastRoutine = 0
+  const timer = window.setInterval(() => {
+    if (feedLive && Date.now() - lastRoutine < FEED_LIVE_RECHECK_MS) return
+    lastRoutine = Date.now()
+    void revalidate()
+  }, 5000)
   // The feed contains only canonical tenant/id metadata; RLS controls authenticated scope.
   let authRevision = 0
   let authenticatedUser: string | null = null
@@ -121,7 +132,8 @@ function bridge() {
         window.dispatchEvent(new Event('wb-rows-changed'))
       })
     }
-    try { channel.subscribe(status => { if (!live || authenticatedUser !== userId) return; if (status === 'SUBSCRIBED') window.dispatchEvent(new Event('wb-rows-changed')); else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') onExternal() }) } catch { onExternal() }
+    feedLive = false
+    try { channel.subscribe(status => { if (!live || authenticatedUser !== userId) return; if (status === 'SUBSCRIBED') { feedLive = true; window.dispatchEvent(new Event('wb-rows-changed')) } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') { feedLive = false; onExternal() } }) } catch { feedLive = false; onExternal() }
   }
   const initialAuth = authRevision
   void supabase.auth?.getSession().then(({ data }) => { if (initialAuth === authRevision && data.session?.user.id) bind(data.session.user.id) }).catch(() => { /* Serial safe-view fallback remains available. */ })
@@ -130,6 +142,7 @@ function bridge() {
     if ((session?.user.id ?? null) !== authenticatedUser) watches.forEach(w => { w.pending = []; ++w.revision })
     authenticatedUser = session?.user.id ?? null
     if (channel) { void supabase.removeChannel(channel); channel = null }
+    feedLive = false
     if (session?.user.id) bind(session.user.id)
   })
 
