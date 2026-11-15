@@ -19,6 +19,7 @@ const h = vi.hoisted(() => ({
   release: null as null | (() => void),
   fail: false,
   lateNewest: false,
+  priority: false,
 }))
 vi.mock('../lib/supabase', () => ({
   supabase: {
@@ -39,10 +40,10 @@ vi.mock('../lib/inboxLoad', async () => {
   const allRows = () => [row('a1', 'A', '2026-06-01T10:00:00+00:00'), row('b1', 'B', '2026-07-01T10:00:00+00:00'), ...newestRows()]
   return {
     assembleInbox: assemble,
-    loadInbox: async (_known: number, onNewest?: (t: Thread[]) => void) => {
+    loadInbox: async (_known: number, onNewest?: (t: Thread[], priority?: boolean) => void) => {
       const newest = newestRows(), all = allRows()
       h.gotCallback.push(Boolean(onNewest))
-      if (onNewest && !h.lateNewest) onNewest((await assemble(newest)).threads)
+      if (onNewest && !h.lateNewest) onNewest((await assemble(newest)).threads, h.priority)
       await new Promise<void>(r => { h.release = r })
       if (h.fail) throw new Error('page failed')
       const res = { viewRows: all, ...(await assemble(all)) }
@@ -56,7 +57,7 @@ import { useInbox } from './useInbox'
 const tick = async () => { await act(async () => { await vi.advanceTimersByTimeAsync(50) }) }
 
 describe('useInbox cold open: the newest page paints first', () => {
-  beforeEach(() => { vi.useFakeTimers(); h.seed = null; h.writes = []; h.gotCallback = []; h.release = null; h.fail = false; h.lateNewest = false })
+  beforeEach(() => { vi.useFakeTimers(); h.seed = null; h.writes = []; h.gotCallback = []; h.release = null; h.fail = false; h.lateNewest = false; h.priority = false })
   afterEach(() => { cleanup(); vi.useRealTimers() })
 
   it('paints the newest page provisionally, then the whole list; only the whole list is cached', async () => {
@@ -95,13 +96,44 @@ describe('useInbox cold open: the newest page paints first', () => {
     expect(result.current.threads).toHaveLength(3)
   })
 
-  it('a screen with a saved copy never asks for the early paint', async () => {
+  // 2026-11-15 (Ivan: "is not updating"): a warm phone sat on "Saved copy from 17:03 · reading…" for the
+  // whole 25-page archive read (pages up to 17 s on mobile). The complete Needs-you conversations now land
+  // over the saved copy first; the rest of the saved copy stays until the whole read lands.
+  it('a screen with a saved copy takes the Needs-you read over it, never the partial newest page', async () => {
+    h.seed = { savedAt: '2026-10-08T08:00:00.000Z', cache: { threads: [{ prospect_id: 'S' } as Thread, { prospect_id: 'C', stale: true } as unknown as Thread] } }
+    h.priority = true
+    const { result } = renderHook(() => useInbox())
+    await tick()
+    expect(h.gotCallback).toEqual([true])
+    expect(result.current.threads.map(t => t.prospect_id)).toEqual(['S', 'C'])
+    expect((result.current.threads[1] as unknown as { stale?: boolean }).stale).toBeUndefined()
+    expect(result.current.priorityAt).not.toBeNull()
+    expect(result.current.loadedAt).toBeNull()
+    expect(h.writes).toEqual([])
+    await act(async () => { h.release!(); await vi.advanceTimersByTimeAsync(50) })
+    expect(result.current.threads.map(t => t.prospect_id).sort()).toEqual(['A', 'B', 'C'])
+    expect(h.writes).toEqual([3])
+  })
+
+  it('a saved copy ignores the partial newest page', async () => {
     h.seed = { savedAt: '2026-10-08T08:00:00.000Z', cache: { threads: [{ prospect_id: 'S' } as Thread] } }
     const { result } = renderHook(() => useInbox())
     await tick()
-    expect(h.gotCallback).toEqual([false])
     expect(result.current.threads.map(t => t.prospect_id)).toEqual(['S'])
+    expect(result.current.priorityAt).toBeNull()
+  })
+
+  it('a failed read over a saved copy puts the saved copy back', async () => {
+    h.seed = { savedAt: '2026-10-08T08:00:00.000Z', cache: { threads: [{ prospect_id: 'S' } as Thread] } }
+    h.priority = true
+    h.fail = true
+    const { result } = renderHook(() => useInbox())
+    await tick()
+    expect(result.current.threads.map(t => t.prospect_id)).toEqual(['S', 'C'])
     await act(async () => { h.release!(); await vi.advanceTimersByTimeAsync(50) })
-    expect(result.current.threads).toHaveLength(3)
+    expect(result.current.threads.map(t => t.prospect_id)).toEqual(['S'])
+    expect(result.current.priorityAt).toBeNull()
+    expect(result.current.error).toBe('page failed')
+    expect(h.writes).toEqual([])
   })
 })
