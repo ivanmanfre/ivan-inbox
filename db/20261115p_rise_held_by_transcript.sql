@@ -7,7 +7,7 @@ BEGIN;
 -- SCHEDULED because nobody marks HubSpot meetings, so the RISE show rate was unknown. Mattan's Fathom recorder lands
 -- his calls in transcripts (source fathom-risedtc, daily import ~15:00 UTC) with which invitee spoke each line.
 --
--- Conservative by design (Sol rounds 1-2, 2026-11-15; the stamp feeds a client report, so a wrong held or a wrong
+-- Conservative by design (Sol rounds 1-3, 2026-11-15; the stamp feeds a client report, so a wrong held or a wrong
 -- no-show costs more than an unknown):
 --   held     only when the BOOKER spoke 5+ lines on a recording within 3 h of the slot, the booker proven by email
 --            (every email Fathom attaches to that speaker - matched email, linked invitee, email-shaped display name -
@@ -142,12 +142,14 @@ spk_id as (
                where e is not null) as known_emails
   from spk s
 ),
--- Guests: every speaker EXCEPT those with positive RISE identity evidence (a known @risedtc.com email, or no known
--- email and a name equal to an @risedtc.com invitee of that same recording). A speaker with no email and a name
--- the normalizer empties (non-Latin script, blank) stays a guest.
+-- Guests: every speaker EXCEPT those with positive RISE identity evidence: known emails that are ALL @risedtc.com
+-- (a mix of internal and external addresses stays a guest), or no known email and a name equal to an @risedtc.com
+-- invitee of that same recording. A speaker with no email and a name the normalizer empties (non-Latin script,
+-- blank) stays a guest.
 guest as (
   select s.* from spk_id s
-  where not exists (select 1 from unnest(s.known_emails) e where e like '%@risedtc.com')
+  where not (cardinality(s.known_emails) > 0
+             and not exists (select 1 from unnest(s.known_emails) e where e not like '%@risedtc.com'))
     and not (cardinality(s.known_emails) = 0 and s.nm <> ''
              and exists (select 1 from inv i where i.id = s.id and i.email like '%@risedtc.com' and i.nm = s.nm))
 ),

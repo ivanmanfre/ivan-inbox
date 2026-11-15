@@ -112,6 +112,14 @@ __MIGRATION__
   VALUES ('fx20a', 'risedtc', 'mattan5', null, '2025-04-09 18:00+00', 'SCHEDULED', 'pat@fx-20.com', 'Pat Park', 'unattributed'),
          ('fx20b', 'risedtc', null, 'mattan5', '2025-04-09 18:00+00', 'SCHEDULED', 'pat@fx-20.com', 'Pat Park', 'unattributed');
 
+  -- Sol round 3 regression.
+  -- F21 Alice booked; Bob spoke under his own matched email bob@customer while a RISE invitee is also linked to Bob
+  -- (mixed internal + external identity) -> Bob stays a guest -> unknown, never a no-show.
+  PERFORM pg_temp.fx_bk('fx21', '2025-04-11 18:00+00', 'Alice Archer', 'alice@fx-21.com', 'mattan5/fx');
+  PERFORM pg_temp.fx_tr('t21', '2025-04-11 18:00+00',
+                        jsonb_build_array(pg_temp.fx_inv('Alice Archer', 'alice@fx-21.com'), pg_temp.fx_inv('Matt Moore', 'matt@risedtc.com', false, 'Bob Bell')),
+                        pg_temp.fx_lines('Bob Bell', 'bob@fx-21customer.com', 30));
+
   IF to_regclass('public.guard_calls') IS NOT NULL THEN EXECUTE 'select count(*) from public.guard_calls' INTO g0; END IF;
 
   -- 1. Runs: first writes every judged row, second changes nothing (fingerprint matches unchanged rows).
@@ -144,7 +152,7 @@ __MIGRATION__
       ('fx07', 'host_not_recorded'), ('fx09', 'met_other_time'), ('fx10', 'no_transcript'), ('fx11', 'recorder_off'),
       ('fx12', 'name'), ('fx13', 'unverified_speaker'), ('fx14', 'email'),
       ('fx15', 'unverified_speaker'), ('fx16', 'unverified_speaker'), ('fx17', 'unverified_speaker'),
-      ('fx18', 'unverified_speaker'), ('fx19', 'unverified_speaker')) e(mid, want)
+      ('fx18', 'unverified_speaker'), ('fx19', 'unverified_speaker'), ('fx21', 'unverified_speaker')) e(mid, want)
   LOOP
     SELECT held_basis INTO v FROM public.booking_attributions WHERE meeting_id = k.mid;
     IF NOT FOUND OR v IS DISTINCT FROM k.want THEN fails := fails || (k.mid || ' got ' || coalesce(v, 'NULL') || ' want ' || k.want); END IF;
