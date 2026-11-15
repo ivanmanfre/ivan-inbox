@@ -7,15 +7,17 @@ BEGIN;
 -- SCHEDULED because nobody marks HubSpot meetings, so the RISE show rate was unknown. Mattan's Fathom recorder lands
 -- his calls in transcripts (source fathom-risedtc, daily import ~15:00 UTC) with which invitee spoke each line.
 --
--- Conservative by design (Sol round 1, 2026-11-15; the stamp feeds a client report, so a wrong held or a wrong
+-- Conservative by design (Sol rounds 1-2, 2026-11-15; the stamp feeds a client report, so a wrong held or a wrong
 -- no-show costs more than an unknown):
 --   held     only when the BOOKER spoke 5+ lines on a recording within 3 h of the slot, the booker proven by email
---            (Fathom matched the speaker to the booker's email, or linked the booker's invite to that speaker, or the
---            display name is the booker email) or by full first+last name with no contradicting known email.
+--            (every email Fathom attaches to that speaker - matched email, linked invitee, email-shaped display name -
+--            is the booker's) or by full first+last name when the speaker has no email attached and nobody else on the
+--            recording with that name holds another email. Each speaker's lines count once.
 --            A colleague, an invitee who never spoke, a domain, or a first name alone never makes a call held.
 --   no-show  only on Mattan's own booking page (slug mattan5*), past the 48 h import grace, when his recorder made
---            another recording in the same session (same New York day, within 4 h), no recording of the booker
---            exists within 14 days, and no unidentified guest spoke on the slot's own recording.
+--            another recording in the same session (same New York day, within 4 h), the booker said nothing on any
+--            recording within 14 days, and no guest at all (even one line, even unnamed or non-Latin) spoke on the
+--            slot's own recording.
 --   unknown  (NULL) everything else; a call that moved shows as met_other_time (no event id links a HubSpot meeting
 --            to a Fathom recording, so a moved call is never assumed).
 --
@@ -129,23 +131,31 @@ inv as (
          coalesce((x->>'is_external')::boolean, true) as is_external
   from tr, jsonb_array_elements(coalesce(tr.j->'calendar_invitees', '[]'::jsonb)) x
 ),
--- RISE team names, learned from @risedtc.com invitees/speakers; used ONLY for speakers that carry no email.
-team as (
-  select nm from inv where email like '%@risedtc.com' and nm <> ''
-  union
-  select nm from spk where email like '%@risedtc.com' and nm <> ''
+-- Every identity Fathom gives a speaker group: its matched email, the email of any invitee Fathom linked to it
+-- (matched_speaker_display_name), and the display name itself when it is an email address.
+spk_id as (
+  select s.id, s.dn, s.email as s_email, s.nm, s.lines,
+         array(select distinct e from (
+                 select s.email as e
+                 union all select i.email from inv i where i.id = s.id and i.matched_dn <> '' and i.matched_dn = s.dn
+                 union all select case when s.dn ~ '^[^@[:space:]]+@[^@[:space:]]+$' then s.dn end) z
+               where e is not null) as known_emails
+  from spk s
 ),
--- Guests: a speaker with a non-RISE email, or with no email and a name that is not a RISE team name.
+-- Guests: every speaker EXCEPT those with positive RISE identity evidence (a known @risedtc.com email, or no known
+-- email and a name equal to an @risedtc.com invitee of that same recording). A speaker with no email and a name
+-- the normalizer empties (non-Latin script, blank) stays a guest.
 guest as (
-  select s.* from spk s
-  where (s.email is not null and s.email not like '%@risedtc.com')
-     or (s.email is null and s.nm <> '' and s.nm not in (select nm from team))
+  select s.* from spk_id s
+  where not exists (select 1 from unnest(s.known_emails) e where e like '%@risedtc.com')
+    and not (cardinality(s.known_emails) = 0 and s.nm <> ''
+             and exists (select 1 from inv i where i.id = s.id and i.email like '%@risedtc.com' and i.nm = s.nm))
 ),
 bk as (
   select b.meeting_id, b.meeting_start, b.slug, b.meeting_outcome,
          nullif(lower(trim(b.booker_email)), '') as email,
          public._rise_held_norm(b.booker_name) as nm,
-         md5(concat_ws('|', b.meeting_start, b.booker_email, b.booker_name, b.meeting_outcome, b.slug, b.meeting_title)) as fp,
+         md5(jsonb_build_array(b.meeting_start, b.booker_email, b.booker_name, b.meeting_outcome, b.slug, b.meeting_title)::text) as fp,
          (lower(coalesce(b.booker_email, '')) like '%@risedtc.com' or lower(coalesce(b.booker_email, '')) like '%@ivanmanfredi.com') as internal,
          upper(coalesce(b.meeting_outcome, '')) in ('RESCHEDULED','CANCELED','CANCELLED') as dead
   from public.booking_attributions b
@@ -160,39 +170,39 @@ bkn as (  -- bookers with a usable full name: first and last word, 2+ letters ea
     and length(split_part(nm, ' ', 1)) >= 2
     and length(reverse(split_part(reverse(nm), ' ', 1))) >= 2
 ),
--- The BOOKER spoke (never a colleague, never "someone on the invite"):
---   email: the speaker's Fathom-matched email is the booker email, or the display name IS the booker email, or
---          Fathom linked the booker's invite entry to this speaker;
---   name:  the speaker has no matched email, carries the booker's first AND last word, and nobody on that recording
---          (invitee or speaker) with the same first+last words holds a different known email.
-booker_speech as (
+-- The BOOKER spoke (never a colleague, never "someone on the invite"). Per speaker group:
+--   email: the group's known emails are exactly the booker email (Fathom matched it, Fathom linked the booker's
+--          invite to this speaker, or the display name is the booker email), and no other email is attached;
+--   name:  the group has no known email at all, carries the booker's first AND last word, and nobody else on that
+--          recording (invitee or speaker) with the same two words holds an email other than the booker's.
+-- Each speaker group's lines count once per booking and recording, whichever proofs it satisfies.
+bsp as (
+  select b.meeting_id, s.id as tid, s.dn, s.s_email, s.lines, 1 as basis_rank
+  from bk b join spk_id s on b.email = any(s.known_emails)
+  where b.email is not null and s.known_emails <@ array[b.email]
+  union all
+  select n.meeting_id, s.id, s.dn, s.s_email, s.lines, 2
+  from bkn n
+  join spk_id s on cardinality(s.known_emails) = 0
+               and (' ' || s.nm || ' ') like ('% ' || n.first_w || ' %')
+               and (' ' || s.nm || ' ') like ('% ' || n.last_w || ' %')
+  where not exists (select 1 from inv i
+                    where i.id = s.id and i.email is not null and i.email is distinct from n.email
+                      and (' ' || i.nm || ' ') like ('% ' || n.first_w || ' %')
+                      and (' ' || i.nm || ' ') like ('% ' || n.last_w || ' %'))
+    and not exists (select 1 from spk_id s2, unnest(s2.known_emails) e
+                    where s2.id = s.id and e is distinct from n.email
+                      and (' ' || s2.nm || ' ') like ('% ' || n.first_w || ' %')
+                      and (' ' || s2.nm || ' ') like ('% ' || n.last_w || ' %'))
+),
+booker_speech_all as (  -- any booker speech at all (1+ lines)
   select meeting_id, tid, min(basis_rank) as basis_rank, sum(lines) as lines
-  from (
-    select distinct b.meeting_id, s.id as tid, 1 as basis_rank, s.dn, s.email as s_email, s.lines
-    from bk b join spk s on s.email = b.email or s.dn = b.email
-    where b.email is not null
-    union
-    select distinct b.meeting_id, s.id, 1, s.dn, s.email, s.lines
-    from bk b
-    join inv i on i.email = b.email and i.matched_dn <> ''
-    join spk s on s.id = i.id and s.dn = i.matched_dn and (s.email is null or s.email = b.email)
-    where b.email is not null
-    union
-    select distinct n.meeting_id, s.id, 2, s.dn, s.email, s.lines
-    from bkn n
-    join spk s on s.email is null
-              and (' ' || s.nm || ' ') like ('% ' || n.first_w || ' %')
-              and (' ' || s.nm || ' ') like ('% ' || n.last_w || ' %')
-    where not exists (
-            select 1 from (select i.email, i.nm from inv i where i.id = s.id
-                           union all select s2.email, s2.nm from spk s2 where s2.id = s.id) o
-            where o.email is not null
-              and o.email is distinct from n.email
-              and (' ' || o.nm || ' ') like ('% ' || n.first_w || ' %')
-              and (' ' || o.nm || ' ') like ('% ' || n.last_w || ' %'))
-  ) z
+  from (select meeting_id, tid, dn, s_email, min(basis_rank) as basis_rank, max(lines) as lines
+        from bsp group by meeting_id, tid, dn, s_email) g
   group by meeting_id, tid
-  having sum(lines) >= 5
+),
+booker_speech as (  -- enough to prove the booker attended: 5+ lines
+  select * from booker_speech_all where lines >= 5
 ),
 -- A held recording sits within 3 h of the booked slot. Cancelled/rescheduled and internal bookings never take part,
 -- so they cannot claim a recording away from the live booking. One recording counts for one booking (nearest start,
@@ -219,14 +229,18 @@ judged as (
       when b.internal then 'internal_booker'
       when b.dead then 'rescheduled'
       when m.tid is not null then (array['email','name'])[m.basis_rank]
+      -- the booker spoke near the slot but too little to prove it (or the recording went to another booking): unknown;
       -- the booker spoke on a recording at another time (moved call, rebooking, or a separate meeting): no event id
       -- links a HubSpot meeting to a Fathom recording, so the slot itself is unknown, never held and never a no-show
-      when exists (select 1 from booker_speech s join tr on tr.id = s.tid
+      when exists (select 1 from booker_speech_all s join tr on tr.id = s.tid
+                   where s.meeting_id = b.meeting_id
+                     and abs(extract(epoch from (tr.slot_start - b.meeting_start))) <= 3 * 3600) then 'unverified_speaker'
+      when exists (select 1 from booker_speech_all s join tr on tr.id = s.tid
                    where s.meeting_id = b.meeting_id
                      and abs(extract(epoch from (tr.slot_start - b.meeting_start))) <= 14 * 86400) then 'met_other_time'
-      -- someone external spoke on this slot's own recording (or on a recording the booker was invited to near the
-      -- slot) but it cannot be proven to be the booker: unknown
-      when exists (select 1 from tr join guest g on g.id = tr.id and g.lines >= 5
+      -- any guest speech (even one line) on this slot's own recording, or on a recording the booker was invited to
+      -- near the slot, vetoes a no-show: unknown. 5 lines are needed only to PROVE held.
+      when exists (select 1 from tr join guest g on g.id = tr.id
                    where abs(extract(epoch from (tr.slot_start - b.meeting_start))) <= 15 * 60
                       or (abs(extract(epoch from (tr.slot_start - b.meeting_start))) <= 3 * 3600
                           and exists (select 1 from inv i where i.id = tr.id and i.email = b.email))) then 'unverified_speaker'
@@ -285,7 +299,7 @@ begin
    where b.meeting_id = c.meeting_id
      and b.client_id = 'risedtc'
      and b.meeting_start < p_now - interval '3 hours'
-     and md5(concat_ws('|', b.meeting_start, b.booker_email, b.booker_name, b.meeting_outcome, b.slug, b.meeting_title)) = c.input_fp
+     and md5(jsonb_build_array(b.meeting_start, b.booker_email, b.booker_name, b.meeting_outcome, b.slug, b.meeting_title)::text) = c.input_fp
      and (b.held_by_transcript, b.held_transcript_id, b.held_basis, b.held_call_start)
          is distinct from (c.held_by_transcript, c.held_transcript_id, c.held_basis, c.held_call_start);
   get diagnostics v_changed = row_count;

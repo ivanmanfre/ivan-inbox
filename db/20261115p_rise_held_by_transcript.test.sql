@@ -89,6 +89,29 @@ __MIGRATION__
   PERFORM pg_temp.fx_bk('fx14', '2025-03-26 18:00+00', 'Nikola Rose', 'support@fx-n.com', 'mattan5/fx');
   PERFORM pg_temp.fx_tr('t14', '2025-03-26 18:00+00', jsonb_build_array(pg_temp.fx_inv('Nikola Rose', 'support@fx-n.com', true, 'nikki r')), pg_temp.fx_lines('nikki r', null, 30));
 
+  -- Sol round 2 regressions.
+  -- F15 a speaker "Alice Archer" has no email, but Fathom linked invitee bob@ to that speaker -> not held.
+  PERFORM pg_temp.fx_bk('fx15', '2025-03-28 18:00+00', 'Alice Archer', 'alice@fx-15.com', 'mattan5/fx');
+  PERFORM pg_temp.fx_tr('t15', '2025-03-28 18:00+00', jsonb_build_array(pg_temp.fx_inv('Bob Bell', 'bob@fx-15.com', true, 'Alice Archer')),
+                        pg_temp.fx_lines('Alice Archer', null, 30));
+  -- F16 display name is the booker email, but Fathom matched that speaker to another email -> not held.
+  PERFORM pg_temp.fx_bk('fx16', '2025-03-31 18:00+00', 'Eve Ewing', 'eve@fx-16.com', 'mattan5/fx');
+  PERFORM pg_temp.fx_tr('t16', '2025-03-31 18:00+00', jsonb_build_array(pg_temp.fx_inv('Other', 'other@fx-16x.com')),
+                        pg_temp.fx_lines('eve@fx-16.com', 'other@fx-16x.com', 30));
+  -- F17 a guest with a Hebrew display name and no email speaks the whole slot recording -> unknown, never a no-show.
+  PERFORM pg_temp.fx_bk('fx17', '2025-04-02 18:00+00', 'Lia Levi', 'lia@fx-17.com', 'mattan5/fx');
+  PERFORM pg_temp.fx_tr('t17', '2025-04-02 18:00+00', '[]'::jsonb, pg_temp.fx_lines('לילך', null, 30));
+  -- F18 the booker spoke 4 lines under their own matched email -> unknown (too little to prove held, never false).
+  PERFORM pg_temp.fx_bk('fx18', '2025-04-04 18:00+00', 'Max Mohr', 'max@fx-18.com', 'mattan5/fx');
+  PERFORM pg_temp.fx_tr('t18', '2025-04-04 18:00+00', jsonb_build_array(pg_temp.fx_inv('Max Mohr', 'max@fx-18.com')), pg_temp.fx_lines('Max Mohr', 'max@fx-18.com', 4));
+  -- F19 3 lines satisfy both the invite-link and the full-name proof -> counted once (3) -> not held, unknown.
+  PERFORM pg_temp.fx_bk('fx19', '2025-04-07 18:00+00', 'Zoe Zane', 'zoe@fx-19.com', 'mattan5/fx');
+  PERFORM pg_temp.fx_tr('t19', '2025-04-07 18:00+00', jsonb_build_array(pg_temp.fx_inv('Zoe Zane', 'zoe@fx-19.com', true, 'Zoe Zane')), pg_temp.fx_lines('Zoe Zane', null, 3));
+  -- F20 fingerprint: slug 'mattan5' + NULL title must not hash like NULL slug + title 'mattan5'.
+  INSERT INTO public.booking_attributions (meeting_id, client_id, slug, meeting_title, meeting_start, meeting_outcome, booker_email, booker_name, verdict)
+  VALUES ('fx20a', 'risedtc', 'mattan5', null, '2025-04-09 18:00+00', 'SCHEDULED', 'pat@fx-20.com', 'Pat Park', 'unattributed'),
+         ('fx20b', 'risedtc', null, 'mattan5', '2025-04-09 18:00+00', 'SCHEDULED', 'pat@fx-20.com', 'Pat Park', 'unattributed');
+
   IF to_regclass('public.guard_calls') IS NOT NULL THEN EXECUTE 'select count(*) from public.guard_calls' INTO g0; END IF;
 
   -- 1. Runs: first writes every judged row, second changes nothing (fingerprint matches unchanged rows).
@@ -119,11 +142,15 @@ __MIGRATION__
       ('fx01', 'unverified_speaker'), ('fx02a', 'unverified_speaker'), ('fx02b', 'unverified_speaker'), ('fx03', 'unverified_speaker'),
       ('fx04a', 'rescheduled'), ('fx04b', 'email'), ('fx05', 'email'), ('fx06a', 'met_other_time'), ('fx06b', 'email'),
       ('fx07', 'host_not_recorded'), ('fx09', 'met_other_time'), ('fx10', 'no_transcript'), ('fx11', 'recorder_off'),
-      ('fx12', 'name'), ('fx13', 'unverified_speaker'), ('fx14', 'email')) e(mid, want)
+      ('fx12', 'name'), ('fx13', 'unverified_speaker'), ('fx14', 'email'),
+      ('fx15', 'unverified_speaker'), ('fx16', 'unverified_speaker'), ('fx17', 'unverified_speaker'),
+      ('fx18', 'unverified_speaker'), ('fx19', 'unverified_speaker')) e(mid, want)
   LOOP
     SELECT held_basis INTO v FROM public.booking_attributions WHERE meeting_id = k.mid;
     IF NOT FOUND OR v IS DISTINCT FROM k.want THEN fails := fails || (k.mid || ' got ' || coalesce(v, 'NULL') || ' want ' || k.want); END IF;
   END LOOP;
+  IF (SELECT count(DISTINCT input_fp) FROM public.rise_booking_held_compute(pnow) WHERE meeting_id IN ('fx20a', 'fx20b')) <> 2 THEN
+    fails := fails || 'fingerprint collides on NULL slug/title swap'::text; END IF;
   SELECT c.held_basis INTO v FROM public.rise_booking_held_compute('2025-03-13 12:00+00') c WHERE c.meeting_id = 'fx08';
   IF v IS DISTINCT FROM 'pending_ingest' THEN fails := fails || ('fx08 got ' || coalesce(v, 'NULL') || ' want pending_ingest'); END IF;
 
