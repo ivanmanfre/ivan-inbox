@@ -85,6 +85,8 @@ export function useInbox(enabled = true, seedCache = enabled) {
   // PERF-COLD: which whole read may still paint its newest page, and whether the screen holds one.
   const fullRun = useRef(0)
   const provisional = useRef(false)
+  // The list on screen before a warm Needs-you paint, put back if the whole read fails.
+  const savedBeforePaint = useRef<Thread[] | null>(null)
   // When the last background conversation re-read started (the MIN_GAP_MS clock), and the
   // effect's scheduler, so a run that ends with work still owed hands it back to the schedule.
   const lastIncremental = useRef(0)
@@ -113,6 +115,7 @@ export function useInbox(enabled = true, seedCache = enabled) {
     if (latest && newestInbound.current && latest > newestInbound.current) playChime()
     if (latest) newestInbound.current = latest
     provisional.current = false
+    savedBeforePaint.current = null
     knownRows.current = grouped.length
     setThreads(grouped)
     setFromCache(false)
@@ -147,12 +150,33 @@ export function useInbox(enabled = true, seedCache = enabled) {
           // ?thread= link that is not in it yet waits instead of saying "not in the list"), and a
           // failed read takes it back off the screen (below), the pre-2026-10-08 cold failure.
           const run = ++fullRun.current
-          const res = await loadInbox(knownRows.current, knownRows.current === 0 ? (early, priority) => {
-            if (fullRun.current !== run || knownRows.current !== 0 || early.length === 0) return
+          // 2026-11-15 (Ivan: "is not updating"): a screen WITH a saved copy used to skip the early
+          // read and wait for the whole archive (25 pages, up to 17 s each on the phone), so it sat on
+          // "Saved copy · reading…" and every reopen restarted the wait. It now takes the COMPLETE
+          // Needs-you conversations (the priority read) over the saved copy, matched by person; the
+          // partial newest page never paints over it. Same provisional rules; a failure puts the
+          // saved copy back.
+          const warm = knownRows.current > 0
+          const res = await loadInbox(knownRows.current, (early, priority) => {
+            if (fullRun.current !== run || early.length === 0) return
+            if (!warm) {
+              if (knownRows.current !== 0) return
+              provisional.current = true
+              setThreads(early)
+              if (priority) setPriorityAt(new Date().toISOString())
+              return
+            }
+            if (!priority) return
+            const fresh = new Map(early.map(t => [t.prospect_id, t]))
             provisional.current = true
-            setThreads(early)
-            if (priority) setPriorityAt(new Date().toISOString())
-          } : undefined)
+            setThreads(prev => {
+              if (savedBeforePaint.current === null) savedBeforePaint.current = prev
+              const kept = prev.map(t => fresh.get(t.prospect_id) ?? t)
+              const held = new Set(prev.map(t => t.prospect_id))
+              return [...kept, ...early.filter(t => !held.has(t.prospect_id))]
+            })
+            setPriorityAt(new Date().toISOString())
+          })
           const mark = await markRead
           // An empty read over a known-non-empty inbox is a failure (land says so): stop, never loop on it.
           if (!land(res.rows, res.threads)) break
@@ -190,7 +214,8 @@ export function useInbox(enabled = true, seedCache = enabled) {
       }
     } catch (e: unknown) {
       // A newest-page paint is not a read that landed: never leave it on screen as the last good list.
-      if (provisional.current) { provisional.current = false; setThreads([]); setPriorityAt(null) }
+      if (provisional.current) { provisional.current = false; setThreads(savedBeforePaint.current ?? []); setPriorityAt(null) }
+      savedBeforePaint.current = null
       setError(e instanceof Error ? e.message : 'inbox unavailable')
       setLoading(false)
     } finally {
