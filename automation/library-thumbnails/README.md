@@ -26,8 +26,8 @@ The existing picker fallback handles a photo whose preview has not been built.
 The initial November 16 backfill planned 714 objects and 417 MB of original
 downloads. Bad image versions are recorded locally and skipped until the source changes.
 Authentication, service and network failures stop the batch. It accepts at most 1,000 objects and
-limits downloads to a rolling 512 MiB source budget. Large backlogs make bounded
-progress and resume on later days. Individual originals are capped
+warns above a rolling 512 MiB source threshold without pausing work. Large
+backlogs keep processing up to the normal per-run batch size. Individual originals are capped
 at 16 MB and decoded image dimensions are checked.
 
 Supabase log queries consume Log Query scan allowance. The old 15-minute
@@ -42,22 +42,26 @@ deletion is a separate maintenance task.
 
 ## Recurrence protections (November 16)
 
-Source downloads share a persistent 512 MiB rolling 24-hour budget, including
-failed attempts and restarted runs. Reservations are saved before each batch's
-GETs. A corrupt budget refuses downloads. The November 16 install seeds this
-ledger with the initial backfill. The preview input read is bounded by its
-reserved source size (or 16 MiB when the size is unknown).
+Ivan's availability preference: usage thresholds alert without disabling
+application features or pausing preview generation. Source downloads are
+accounted against a 512 MiB rolling 24-hour warning threshold, including failed
+attempts and restarted runs. Crossing it sets `budget_warning` and continues.
+An unreadable ledger sets `budget_unverified`, preserves the original file and
+continues. The earlier backfill remains in that ledger. The preview input read
+is bounded by its source size (or 16 MiB when the size is unknown).
 
 Every uploaded batch gets a keyed metadata read-back. Missing or mismatched
-source metadata opens a persistent circuit in `budget.json` and stops further
-source downloads. An operator must repair and verify the metadata handling
-before clearing that circuit. Do not delete the budget to retry an unhealthy
-batch. `last-run.json` records completion, errors, budget stops and circuit state.
+source metadata sets `freshness_warning` and continues through later batches
+and future runs. There is no latched usage stop. Old `blocked` state migrates to
+`previous_block_reason` without resetting usage reservations. `last-run.json`
+records completion, processing errors and warning flags. Invalid images and
+real service failures retain their normal handling. Missing previews fall back
+to original images; selection and publishing continue to use originals.
 
 `guard.py --client-id ivan --notify` runs hourly via
 `com.ivan.supabase-quota-guard`. Healthy checks use local files and launchd only,
 without credentials or API calls. It checks the last completed preview run,
-launchd exit status, open circuits, budget stops, disabled log polling and
+launchd exit status, usage/freshness/accounting warnings, disabled log polling and
 installed file hashes. Problems notify Ivan's existing inbox route; identical
 problems are limited to one successful notification per 24 hours. Diagnostics
 without `--notify` do not send. No real alert is sent as a deployment test.
@@ -69,7 +73,9 @@ The guard is a check of these protections, not a billing counter or a Storage
 traffic meter. It runs while the Mac is available. The existing remote hourly
 database-host meter remains active. Exact organization billing usage is still
 unavailable through the approved PAT; public Storage traffic remains outside
-that host meter. Keep the spend cap enabled.
+that host meter. Supabase's separate spend cap was not changed. It can restrict
+provider services at quota; allowing overages requires the account owner's
+explicit billing decision.
 
 Deployment parses application source with TypeScript to reject paid render
 constructors, including multiline SDK options and concatenated route literals.

@@ -17,17 +17,16 @@ class ProtectionHealth(unittest.TestCase):
             s=self.healthy();s['last_run']['completed_at']=stamp
             self.assertIn('Preview refresh has no recent verified completion',g.issues(s,200001))
 
-    def test_detects_failed_jobs_open_circuits_and_changed_runtime(self):
+    def test_detects_failed_jobs_usage_warnings_and_changed_runtime(self):
         cases=[('job_exit',1,'Preview launchd job failed'),('job_loaded',False,'Preview launchd job is unloaded'),
                ('poller_disabled',False,'Expensive Storage log poller is enabled'),
                ('files_match',False,'Installed quota protection files differ from the verified install')]
         for field,value,expected in cases:
             s=self.healthy();s[field]=value
             self.assertIn(expected,g.issues(s,200001))
-        s=self.healthy();s['budget']['blocked']='metadata mismatch'
-        self.assertIn('Preview freshness circuit is open',g.issues(s,200001))
-        s=self.healthy();s['last_run']['budget_stop']=True
-        self.assertIn('Preview download budget stopped the job',g.issues(s,200001))
+        for flag,expected in [('budget_warning','Preview downloads exceeded warning threshold; processing continues'),('freshness_warning','Preview metadata could not be verified; processing continues'),('budget_unverified','Preview usage accounting needs repair; processing continues')]:
+            s=self.healthy();s['last_run'][flag]=True
+            self.assertIn(expected,g.issues(s,200001))
 
     def test_same_problem_cannot_notify_every_hour(self):
         previous={'problems':['broken'],'alerted_problems':['broken'],'last_alert_at':200000}

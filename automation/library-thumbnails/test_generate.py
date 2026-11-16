@@ -65,7 +65,7 @@ class ThumbnailContract(unittest.TestCase):
             self.assertTrue(result.get('systemic_stop',False))
             self.assertEqual(json.loads((state/'failed.json').read_text()),{})
 
-    def test_repeated_runs_share_a_download_budget_and_expire_after_24_hours(self):
+    def test_repeated_runs_warn_after_threshold_but_keep_working(self):
         row={'bucket_id':'post-stills','name':'library/a.png','etag':'e','source_updated_at':'t','bytes':10}
         self.m.bindings=lambda:(types.SimpleNamespace(sql=lambda token,q:[{'mismatches':0}] if 'as expected' in q else [row]),'token','key')
         self.m.create_one=lambda *a:{'source_bytes':10,'preview_bytes':2}
@@ -74,31 +74,41 @@ class ThumbnailContract(unittest.TestCase):
             state=pathlib.Path(tmp)/'.local/state/library-thumbnails'
             with patch.object(self.m.time,'time',return_value=100000):
                 self.assertEqual(self.m.main(),0)
-                self.assertEqual(self.m.main(),1,'a second invocation bypassed the download budget')
-                self.assertEqual(json.loads((state/'last-run.json').read_text())['source_bytes'],0)
+                self.assertEqual(self.m.main(),0,'usage warning blocked preview work')
+                result=json.loads((state/'last-run.json').read_text())
+                self.assertEqual(result['source_bytes'],10)
+                self.assertTrue(result['budget_warning'])
             with patch.object(self.m.time,'time',return_value=190000):
                 self.assertEqual(self.m.main(),0)
                 self.assertEqual(json.loads((state/'last-run.json').read_text())['created'],1)
+                self.assertFalse(json.loads((state/'last-run.json').read_text())['budget_warning'])
 
-    def test_missing_uploaded_metadata_opens_circuit_before_more_batches(self):
+    def test_missing_metadata_warns_without_stopping_batches_or_future_runs(self):
         rows=[{'bucket_id':'post-stills','name':f'library/{i}.png','etag':'e','source_updated_at':'t','bytes':10} for i in range(8)]
         self.m.bindings=lambda:(types.SimpleNamespace(sql=lambda token,q:[{'mismatches':4}] if 'as expected' in q else rows),'token','key')
         self.m.create_one=lambda *a:{'source_bytes':10,'preview_bytes':2}
         with tempfile.TemporaryDirectory() as tmp, patch.object(pathlib.Path,'home',return_value=pathlib.Path(tmp)), patch.object(sys,'argv',['generate','--client-id','ivan','--apply']), contextlib.redirect_stdout(io.StringIO()):
-            self.assertEqual(self.m.main(),1)
+            self.assertEqual(self.m.main(),0)
             state=pathlib.Path(tmp)/'.local/state/library-thumbnails'
             result=json.loads((state/'last-run.json').read_text())
-            self.assertEqual(result['created'],4)
-            self.assertTrue(result['freshness_blocked'])
-            self.m.bindings=lambda: self.fail('open circuit reached credentials or source downloads')
-            self.assertEqual(self.m.main(),1)
+            self.assertEqual(result['created'],8)
+            self.assertTrue(result['freshness_warning'])
+            self.assertEqual(self.m.main(),0)
+            self.assertEqual(json.loads((state/'last-run.json').read_text())['created'],8)
 
-    def test_corrupt_budget_fails_before_downloads(self):
-        with tempfile.TemporaryDirectory() as tmp, patch.object(pathlib.Path,'home',return_value=pathlib.Path(tmp)), patch.object(sys,'argv',['generate','--client-id','ivan','--apply']):
+    def test_corrupt_budget_warns_and_preserves_history_without_blocking_work(self):
+        row={'bucket_id':'post-stills','name':'library/a.png','etag':'e','source_updated_at':'t','bytes':10}
+        self.m.bindings=lambda:(types.SimpleNamespace(sql=lambda token,q:[{'mismatches':0}] if 'as expected' in q else [row]),'token','key')
+        self.m.create_one=lambda *a:{'source_bytes':10,'preview_bytes':2}
+        with tempfile.TemporaryDirectory() as tmp, patch.object(pathlib.Path,'home',return_value=pathlib.Path(tmp)), patch.object(sys,'argv',['generate','--client-id','ivan','--apply']),contextlib.redirect_stdout(io.StringIO()):
             state=pathlib.Path(tmp)/'.local/state/library-thumbnails';state.mkdir(parents=True)
             (state/'budget.json').write_text('{"reservations":[{"at":1,"bytes":-100}]}')
-            self.m.bindings=lambda: self.fail('corrupt ledger reached credentials or source downloads')
-            with self.assertRaises(ValueError):self.m.main()
+            before=(state/'budget.json').read_bytes()
+            self.assertEqual(self.m.main(),0)
+            result=json.loads((state/'last-run.json').read_text())
+            self.assertEqual(result['created'],1)
+            self.assertTrue(result['budget_unverified'])
+            self.assertEqual((state/'budget.json').read_bytes(),before)
 
     def test_source_read_cannot_exceed_its_reserved_size(self):
         row={'bucket_id':'post-stills','name':'library/a.png','etag':'e','source_updated_at':'t','bytes':10}
@@ -111,6 +121,20 @@ class ThumbnailContract(unittest.TestCase):
             with self.assertRaises(self.m.InvalidSourceImage):self.m.create_one(row,'fixture-key')
         self.assertEqual(reads,[11],'untrusted metadata allowed an unbudgeted original download')
 
+    def test_legacy_stop_is_removed_without_resetting_usage_history(self):
+        row={'bucket_id':'post-stills','name':'library/a.png','etag':'e','source_updated_at':'t','bytes':10}
+        self.m.bindings=lambda:(types.SimpleNamespace(sql=lambda token,q:[{'mismatches':0}] if 'as expected' in q else [row]),'token','key')
+        self.m.create_one=lambda *a:{'source_bytes':10,'preview_bytes':2}
+        with tempfile.TemporaryDirectory() as tmp,patch.object(pathlib.Path,'home',return_value=pathlib.Path(tmp)),patch.object(sys,'argv',['generate','--client-id','ivan','--apply']),contextlib.redirect_stdout(io.StringIO()),patch.object(self.m.time,'time',return_value=100000):
+            state=pathlib.Path(tmp)/'.local/state/library-thumbnails';state.mkdir(parents=True)
+            (state/'budget.json').write_text(json.dumps({'reservations':[{'at':99999,'bytes':50}],'blocked':'old metadata failure'}))
+            self.assertEqual(self.m.main(),0)
+            result=json.loads((state/'budget.json').read_text())
+            self.assertEqual(result['mode'],'warn_only')
+            self.assertEqual(sum(r['bytes'] for r in result['reservations']),61)
+            self.assertEqual(result['previous_block_reason'],'old metadata failure')
+            self.assertFalse(result.get('blocked'))
+
     def test_failed_get_keeps_its_reservation_for_the_next_invocation(self):
         row={'bucket_id':'post-stills','name':'library/a.png','etag':'e','source_updated_at':'t','bytes':10}
         self.m.bindings=lambda:(types.SimpleNamespace(sql=lambda *a:[row]),'token','key')
@@ -122,10 +146,11 @@ class ThumbnailContract(unittest.TestCase):
             self.assertEqual(self.m.main(),1)
             state=pathlib.Path(tmp)/'.local/state/library-thumbnails'
             result=json.loads((state/'last-run.json').read_text())
-            self.assertTrue(result['budget_stop'])
+            self.assertTrue(result['budget_warning'])
+            self.assertFalse(result.get('budget_stop',False))
             self.assertEqual(result['source_bytes'],0)
 
-    def test_backlog_larger_than_daily_budget_makes_progress_across_days(self):
+    def test_large_backlog_finishes_without_a_usage_cutoff(self):
         rows=[{'bucket_id':'post-stills','name':f'library/{i}.png','etag':'e','source_updated_at':'t','bytes':10*1024*1024} for i in range(60)]
         completed=set()
         self.m.bindings=lambda:(types.SimpleNamespace(sql=lambda token,q:[{'mismatches':0}] if 'as expected' in q else [r for r in rows if r['name'] not in completed]),'token','key')
@@ -134,8 +159,8 @@ class ThumbnailContract(unittest.TestCase):
         self.m.create_one=create
         with tempfile.TemporaryDirectory() as tmp,patch.object(pathlib.Path,'home',return_value=pathlib.Path(tmp)),patch.object(sys,'argv',['generate','--client-id','ivan','--apply']),contextlib.redirect_stdout(io.StringIO()):
             with patch.object(self.m.time,'time',return_value=100000):
-                self.assertEqual(self.m.main(),1)
-                self.assertEqual(len(completed),48)
+                self.assertEqual(self.m.main(),0)
+                self.assertEqual(len(completed),60)
             with patch.object(self.m.time,'time',return_value=190000):
                 self.assertEqual(self.m.main(),0)
                 self.assertEqual(len(completed),60)

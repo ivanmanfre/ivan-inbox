@@ -19,20 +19,19 @@ def save_json(path,value):
 def load_budget(path,now):
     value=json.loads(path.read_text()) if path.exists() else {'reservations':[]}
     if not isinstance(value,dict) or not isinstance(value.get('reservations'),list):
-        raise ValueError('Invalid preview budget; refusing downloads')
+        raise ValueError('Invalid preview usage ledger')
     for item in value['reservations']:
         if (not isinstance(item,dict) or type(item.get('bytes')) is not int or item['bytes']<0
             or type(item.get('at')) not in (int,float) or not math.isfinite(item['at'])
-            or item['at']>now+300):raise ValueError('Invalid preview reservation; refusing downloads')
+            or item['at']>now+300):raise ValueError('Invalid preview reservation')
     value['reservations']=[r for r in value['reservations'] if r['at']>now-86400]
     return value
 
 def reserve_batch(path,budget,rows):
     amount=sum((int(r['bytes']) if int(r['bytes'])>0 else MAX_SOURCE)+1 for r in rows)
-    if sum(r['bytes'] for r in budget['reservations'])+amount>DAILY_SOURCE_BUDGET:return False
     budget['reservations'].append({'at':time.time(),'bytes':amount})
-    save_json(path,budget) # Charge before any GET, including failed or interrupted downloads.
-    return True
+    save_json(path,budget) # Account before GET, including failed attempts; never block on usage.
+    return sum(r['bytes'] for r in budget['reservations'])>DAILY_SOURCE_BUDGET
 
 def verify_created(w,token,rows):
     if not rows:return True
@@ -134,23 +133,30 @@ def main():
     with open(state/'lock','w') as lock:
         try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:print('Another preview run is active');return 0
-        budget_path=state/'budget.json';budget=load_budget(budget_path,time.time())
-        if args.apply and budget.get('blocked'):
-            summary={'apply':True,'errors':1,'freshness_blocked':True,'completed_at':time.time()}
-            save_json(state/'last-run.json',summary);print(json.dumps(summary));return 1
+        budget_path=state/'budget.json';budget_unverified=False
+        try:budget=load_budget(budget_path,time.time())
+        except (OSError,ValueError,TypeError):
+            budget={'reservations':[]};budget_unverified=True # Preserve unreadable history and keep serving work.
+        if not budget_unverified and args.apply:
+            if budget.get('blocked'):budget['previous_block_reason']=budget.pop('blocked')
+            budget['mode']='warn_only'
+            try:save_json(budget_path,budget)
+            except OSError:budget_unverified=True
         failed_path=state/'failed.json'
         failed=json.loads(failed_path.read_text()) if failed_path.exists() else {}
         w,token,key=bindings();rows=pending(w,token,args.limit,failed)
         summary={'pending':len(rows),'estimated_source_bytes':sum(r['bytes'] for r in rows),
                  'created':0,'source_bytes':0,'preview_bytes':0,'errors':0,'apply':args.apply,
                  'quarantined_versions':len(failed),'systemic_stop':False,
-                 'budget_stop':False,'freshness_blocked':False}
+                 'mode':'warn_only','budget_warning':sum(r['bytes'] for r in budget['reservations'])>DAILY_SOURCE_BUDGET,
+                 'budget_unverified':budget_unverified,'freshness_warning':False}
         if not args.apply:print(json.dumps(summary));return 0
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
             for i in range(0,len(rows),4):
                 batch=rows[i:i+4]
-                if not reserve_batch(budget_path,budget,batch):
-                    summary['budget_stop']=True;break
+                if not summary['budget_unverified']:
+                    try:summary['budget_warning']|=reserve_batch(budget_path,budget,batch)
+                    except OSError:summary['budget_unverified']=True
                 futures=[pool.submit(create_one,r,key) for r in batch];created=[]
                 for row,f in zip(batch,futures):
                     identity=row['bucket_id']+'/'+row['name']
@@ -174,14 +180,12 @@ def main():
                     try:verified=verify_created(w,token,created)
                     except Exception:verified=False
                     if not verified:
-                        budget['blocked']='Uploaded previews could not be verified; repair metadata before clearing this circuit.'
-                        save_json(budget_path,budget);summary['freshness_blocked']=True;summary['errors']+=1
-                        break
+                        summary['freshness_warning']=True
                 if summary['systemic_stop']:break
         summary['quarantined_versions']=len(failed)
         summary['completed_at']=time.time()
         save_json(state/'last-run.json',summary)
         print(json.dumps(summary))
-        return 1 if summary['errors'] or summary['budget_stop'] else 0
+        return 1 if summary['errors'] else 0
 
 if __name__=='__main__':raise SystemExit(main())

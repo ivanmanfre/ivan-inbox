@@ -10,8 +10,9 @@ def issues(snapshot,now):
     if type(stamp) not in (int,float) or not math.isfinite(stamp) or not 0<=now-stamp<=36*3600:
         problems.append('Preview refresh has no recent verified completion')
     if run.get('errors'):problems.append('Preview refresh reported errors')
-    if run.get('budget_stop'):problems.append('Preview download budget stopped the job')
-    if snapshot.get('budget',{}).get('blocked'):problems.append('Preview freshness circuit is open')
+    if run.get('budget_warning'):problems.append('Preview downloads exceeded warning threshold; processing continues')
+    if run.get('freshness_warning'):problems.append('Preview metadata could not be verified; processing continues')
+    if run.get('budget_unverified'):problems.append('Preview usage accounting needs repair; processing continues')
     if not snapshot.get('job_loaded'):problems.append('Preview launchd job is unloaded')
     elif snapshot.get('job_exit') not in (0,None):problems.append('Preview launchd job failed')
     if not snapshot.get('poller_disabled'):problems.append('Expensive Storage log poller is enabled')
@@ -66,7 +67,7 @@ def main():
             'alerted_problems':previous.get('alerted_problems',[]),'alert_history':history,'notified':False}
     if args.notify and should_notify(previous,problems,now):
         status=notify('SUPABASE USAGE PROTECTION NEEDS ATTENTION\n'+'\n'.join(problems)
-                      +'\nThe protection check used local state. It did not scan Supabase logs. The spend cap has not been changed.')
+                      +'\nWarnings do not disable application features. This check did not scan Supabase logs. The spend cap has not been changed.')
         if not 200<=status<300:raise RuntimeError('Quota protection notification was not accepted')
         history[json.dumps(sorted(problems))]=now
         result.update(last_alert_at=now,alerted_problems=problems,notified=True)
