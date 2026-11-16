@@ -146,7 +146,6 @@ def main():
                  'quarantined_versions':len(failed),'systemic_stop':False,
                  'budget_stop':False,'freshness_blocked':False}
         if not args.apply:print(json.dumps(summary));return 0
-        if summary['estimated_source_bytes']>512*1024*1024:raise ValueError('Batch exceeds 512 MB source budget')
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
             for i in range(0,len(rows),4):
                 batch=rows[i:i+4]
@@ -178,7 +177,7 @@ def main():
                         budget['blocked']='Uploaded previews could not be verified; repair metadata before clearing this circuit.'
                         save_json(budget_path,budget);summary['freshness_blocked']=True;summary['errors']+=1
                         break
-                if summary['systemic_stop'] or summary['source_bytes']>512*1024*1024:break
+                if summary['systemic_stop']:break
         summary['quarantined_versions']=len(failed)
         summary['completed_at']=time.time()
         save_json(state/'last-run.json',summary)

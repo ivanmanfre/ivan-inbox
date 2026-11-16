@@ -115,12 +115,29 @@ class ThumbnailContract(unittest.TestCase):
         row={'bucket_id':'post-stills','name':'library/a.png','etag':'e','source_updated_at':'t','bytes':10}
         self.m.bindings=lambda:(types.SimpleNamespace(sql=lambda *a:[row]),'token','key')
         self.m.DAILY_SOURCE_BUDGET=15
-        with tempfile.TemporaryDirectory() as tmp, patch.object(pathlib.Path,'home',return_value=pathlib.Path(tmp)), patch.object(sys,'argv',['generate','--client-id','ivan','--apply']), contextlib.redirect_stdout(io.StringIO()), patch.object(self.m.urllib.request,'urlopen',side_effect=urllib.error.HTTPError('fixture',503,'Unavailable',{},None)):
+        failure=urllib.error.HTTPError('fixture',503,'Unavailable',{},None)
+        self.addCleanup(failure.close)
+        with tempfile.TemporaryDirectory() as tmp, patch.object(pathlib.Path,'home',return_value=pathlib.Path(tmp)), patch.object(sys,'argv',['generate','--client-id','ivan','--apply']), contextlib.redirect_stdout(io.StringIO()), patch.object(self.m.urllib.request,'urlopen',side_effect=failure):
             self.assertEqual(self.m.main(),1)
             self.assertEqual(self.m.main(),1)
             state=pathlib.Path(tmp)/'.local/state/library-thumbnails'
             result=json.loads((state/'last-run.json').read_text())
             self.assertTrue(result['budget_stop'])
             self.assertEqual(result['source_bytes'],0)
+
+    def test_backlog_larger_than_daily_budget_makes_progress_across_days(self):
+        rows=[{'bucket_id':'post-stills','name':f'library/{i}.png','etag':'e','source_updated_at':'t','bytes':10*1024*1024} for i in range(60)]
+        completed=set()
+        self.m.bindings=lambda:(types.SimpleNamespace(sql=lambda token,q:[{'mismatches':0}] if 'as expected' in q else [r for r in rows if r['name'] not in completed]),'token','key')
+        def create(row,key):
+            completed.add(row['name']);return {'source_bytes':row['bytes'],'preview_bytes':2}
+        self.m.create_one=create
+        with tempfile.TemporaryDirectory() as tmp,patch.object(pathlib.Path,'home',return_value=pathlib.Path(tmp)),patch.object(sys,'argv',['generate','--client-id','ivan','--apply']),contextlib.redirect_stdout(io.StringIO()):
+            with patch.object(self.m.time,'time',return_value=100000):
+                self.assertEqual(self.m.main(),1)
+                self.assertEqual(len(completed),48)
+            with patch.object(self.m.time,'time',return_value=190000):
+                self.assertEqual(self.m.main(),0)
+                self.assertEqual(len(completed),60)
 
 if __name__=='__main__':unittest.main()

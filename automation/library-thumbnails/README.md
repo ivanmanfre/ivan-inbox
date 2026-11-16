@@ -26,7 +26,8 @@ The existing picker fallback handles a photo whose preview has not been built.
 The initial November 16 backfill planned 714 objects and 417 MB of original
 downloads. Bad image versions are recorded locally and skipped until the source changes.
 Authentication, service and network failures stop the batch. It accepts at most 1,000 objects and
-refuses an estimated source total above 512 MB. Individual originals are capped
+limits downloads to a rolling 512 MiB source budget. Large backlogs make bounded
+progress and resume on later days. Individual originals are capped
 at 16 MB and decoded image dimensions are checked.
 
 Supabase log queries consume Log Query scan allowance. The old 15-minute
@@ -60,6 +61,9 @@ launchd exit status, open circuits, budget stops, disabled log polling and
 installed file hashes. Problems notify Ivan's existing inbox route; identical
 problems are limited to one successful notification per 24 hours. Diagnostics
 without `--notify` do not send. No real alert is sent as a deployment test.
+The installer first runs the new generator and requires a successful timestamped
+completion before enabling the guard. A calendar job that has not run since a
+reboot relies on the persisted freshness heartbeat instead of raising a failure.
 
 The guard is a check of these protections, not a billing counter or a Storage
 traffic meter. It runs while the Mac is available. The existing remote hourly

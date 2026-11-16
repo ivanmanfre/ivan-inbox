@@ -13,15 +13,18 @@ def issues(snapshot,now):
     if run.get('budget_stop'):problems.append('Preview download budget stopped the job')
     if snapshot.get('budget',{}).get('blocked'):problems.append('Preview freshness circuit is open')
     if not snapshot.get('job_loaded'):problems.append('Preview launchd job is unloaded')
-    elif snapshot.get('job_exit')!=0:problems.append('Preview launchd job failed')
+    elif snapshot.get('job_exit') not in (0,None):problems.append('Preview launchd job failed')
     if not snapshot.get('poller_disabled'):problems.append('Expensive Storage log poller is enabled')
     if not snapshot.get('files_match'):problems.append('Installed quota protection files differ from the verified install')
     return problems
 
 def should_notify(previous,problems,now):
-    stamp=previous.get('last_alert_at',0)
-    recent=type(stamp) in (int,float) and math.isfinite(stamp) and 0<=now-stamp<86400
-    return bool(problems) and (previous.get('problems')!=problems or not recent)
+    history=previous.get('alert_history',{})
+    if not isinstance(history,dict):history={}
+    stamp=history.get(json.dumps(sorted(problems)),previous.get('last_alert_at',0)
+                      if previous.get('alerted_problems')==problems else 0)
+    recent=type(stamp) in (int,float) and math.isfinite(stamp) and stamp>0 and 0<=now-stamp<86400
+    return bool(problems) and not recent
 
 def read_json(path):
     try:
@@ -33,7 +36,7 @@ def snapshot():
     domain=f'gui/{os.getuid()}'
     job=subprocess.run(['launchctl','print',domain+'/com.ivan.library-thumbnails'],capture_output=True,text=True)
     disabled=subprocess.run(['launchctl','print-disabled',domain],capture_output=True,text=True)
-    match=re.search(r'last exit code = (\d+)',job.stdout)
+    match=re.search(r'last exit code = (-?\d+)',job.stdout)
     manifest=read_json(STATE/'installed.json');hashes=manifest.get('sha256',{})
     if not isinstance(hashes,dict):hashes={}
     files_match=bool(hashes)
@@ -56,12 +59,17 @@ def main():
     parser.add_argument('--notify',action='store_true')
     args=parser.parse_args();now=time.time()
     problems=issues(snapshot(),now);previous=read_json(STATE/'guard-last-run.json')
-    result={'checked_at':now,'problems':problems,'last_alert_at':previous.get('last_alert_at',0),'notified':False}
+    history=previous.get('alert_history',{})
+    if not isinstance(history,dict):history={}
+    history={k:v for k,v in history.items() if type(v) in (int,float) and math.isfinite(v) and 0<=now-v<86400}
+    result={'checked_at':now,'problems':problems,'last_alert_at':previous.get('last_alert_at',0),
+            'alerted_problems':previous.get('alerted_problems',[]),'alert_history':history,'notified':False}
     if args.notify and should_notify(previous,problems,now):
         status=notify('SUPABASE USAGE PROTECTION NEEDS ATTENTION\n'+'\n'.join(problems)
                       +'\nThe protection check used local state. It did not scan Supabase logs. The spend cap has not been changed.')
-        if status!=200:raise RuntimeError('Quota protection notification was not accepted')
-        result.update(last_alert_at=now,notified=True)
+        if not 200<=status<300:raise RuntimeError('Quota protection notification was not accepted')
+        history[json.dumps(sorted(problems))]=now
+        result.update(last_alert_at=now,alerted_problems=problems,notified=True)
     if args.notify:
         STATE.mkdir(parents=True,exist_ok=True)
         temp=STATE/'guard-last-run.tmp';temp.write_text(json.dumps(result,indent=2));temp.replace(STATE/'guard-last-run.json')
