@@ -7,7 +7,7 @@ import { REFERRAL_REVISION } from '../../supabase/functions/inbox-dm-draft/resea
 const offer = "Hey Robert :)\n---\nbtw, I scale founder's LinkedIn for a living. Can i send you one of my audits of your profile potential? 100% free"
 const invite = { id: 'invite', client_id: 'ivan', prospect_name: 'Robert Gilbreath', prospect_company: 'Robert Gilbreath Fractional Executive', direction: 'outbound', message_type: 'connection_note', message_text: "Hey Robert, saw you around Ross Hudgens's content 😂 figured I'd say hi.", sent_at: '2026-10-08T03:16:11Z', created_at: '2026-10-08T03:16:11Z', prospect_stage: 'connected', prospect_blacklisted: false }
 const inbound = { ...invite, id: 'reaction', direction: 'inbound', message_type: 'dm', message_text: '👍', sent_at: '2026-10-08T15:22:19Z', created_at: '2026-10-08T15:22:19Z' }
-const slugs = ['author-voice', 'ivan-reply-voice-core', 'ivan-company-facts', 'forbidden-language', 'anti-ai-patterns-outreach-playbook', 'arch-company-facts', 'arch-reply-voice-core', 'arch-icp-outreach', 'arch-reply-exemplars']
+const slugs = ['author-voice', 'ivan-reply-voice-core', 'ivan-company-facts', 'ivan-reply-exemplars', 'rise-company-facts', 'rise-reply-voice-core', 'rise-reply-exemplars', 'forbidden-language', 'anti-ai-patterns-outreach-playbook', 'arch-company-facts', 'arch-reply-voice-core', 'arch-icp-outreach', 'arch-reply-exemplars']
 
 async function draft(rows: Record<string, unknown>[], reply: string | null = 'cool, thanks for accepting 🙂', req: { headers?: Record<string, string>; body?: Record<string, unknown>; signedIn?: boolean; enrichment?: Record<string, unknown>; latest?: unknown; fetch?: (url: string, body: { messages?: { content: string }[] }) => unknown } = {}) {
   const saved: unknown[] = []
@@ -163,7 +163,7 @@ describe('server referral warm-up', () => {
 
 describe('Anna reply identity', () => {
   const rows = [invite, { ...inbound, message_text: 'Can we book a call?' }].map(row => ({ ...row, client_id: 'anna', channel: 'linkedin' }))
-  it('uses Ivan’s verified offer facts with Anna’s identity and Ivan on calls', async () => {
+  it('uses Ivan’s verified offer facts with Anna’s identity and no third-person booking handoff', async () => {
     const { status, result, upstream } = await draft(rows, 'Ivan can join the call.')
     expect(status).toBe(200)
     expect(result).toMatchObject({ author: 'Anna Sol Manfredi', client_id: 'anna' })
@@ -171,7 +171,8 @@ describe('Anna reply identity', () => {
     expect(prompt).toContain('Write one LinkedIn reply as Anna Sol Manfredi')
     expect(prompt).toContain('ivan-company-facts')
     expect(prompt).toContain('Do not claim to be Ivan')
-    expect(prompt).toContain('Ivan attends calls')
+    // 2026-11-08 (#111) replaced "Ivan attends calls" with a ban on third-person booking handoffs.
+    expect(prompt).toContain('Never add a third-person booking handoff')
     expect(prompt).toContain('booking URL only if it appears in the verified company facts')
     expect(prompt).not.toContain("btw, I scale founder's LinkedIn")
   })
