@@ -2,9 +2,9 @@
 import { useState } from 'react'
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-const sdk = vi.hoisted(() => ({ read: vi.fn(), queries: [] as { ids: string[]; client: string | null }[], events: [] as { filter: string; callback: (p: unknown) => void }[], status: null as null | ((s: string) => void), authChange: null as null | ((event: string, session: unknown) => void), remove: vi.fn(), unsubscribe: vi.fn(), subscribeFail: false }))
+const sdk = vi.hoisted(() => ({ catchUp: vi.fn(), read: vi.fn(), queries: [] as { ids: string[]; client: string | null }[], events: [] as { filter: string; callback: (p: unknown) => void }[], status: null as null | ((s: string) => void), authChange: null as null | ((event: string, session: unknown) => void), remove: vi.fn(), unsubscribe: vi.fn(), subscribeFail: false }))
 vi.mock('../lib/supabase', () => ({ supabase: {
-  auth: { getSession: async () => ({ data: { session: { user: { id: 'operator' } } } }), onAuthStateChange: (cb: typeof sdk.authChange) => { sdk.authChange = cb; return { data: { subscription: { unsubscribe: sdk.unsubscribe } } } } },
+  auth: { getSession: async () => ({ data: { session: { user: { id: 'operator' }, access_token: 'token' } } }), onAuthStateChange: (cb: typeof sdk.authChange) => { sdk.authChange = cb; return { data: { subscription: { unsubscribe: sdk.unsubscribe } } } } },
   channel: () => { const c = { on: (_: unknown, f: { filter: string }, cb: (p: unknown) => void) => { sdk.events.push({ filter: f.filter, callback: cb }); return c }, subscribe: (cb: typeof sdk.status) => { if (sdk.subscribeFail) throw new Error('subscription unavailable'); sdk.status = cb; return c } }; return c }, removeChannel: sdk.remove,
   from: (table: string) => { expect(table).toBe('cb34_p2_safe_drafts'); const info = { ids: [] as string[], client: null as string | null }; const q = { select: (cols: string) => { expect(cols).toBe('*'); return q }, in: (_: string, ids: string[]) => { info.ids = ids; return q }, is: (_: string, client: null) => { info.client = client; return q }, eq: (_: string, client: string) => { info.client = client; return q }, abortSignal: () => { sdk.queries.push(info); return sdk.read(info) } }; return q },
 } }))
@@ -13,8 +13,10 @@ import type { ContentDraftDetail } from '../lib/content'
 const a = '11111111-1111-1111-1111-111111111111', b = '22222222-2222-2222-2222-222222222222'
 const row = (id = a, client: string | null = null, member = true): ContentDraftDetail => ({ id, client_id: client, cb34_p2_member: member, post_body: 'current body', qa: { verdict: 'PASS' }, title: 'current title', status: 'review', created_at: '2026-10-01' } as ContentDraftDetail)
 function useRows(initial: ContentDraftDetail[]) { const [rows, setRows] = useState(initial); useBrainMembers(rows, () => setRows(p => p.filter(r => !r.cb34_p2_member)), fresh => setRows(p => [...p.filter(r => !r.cb34_p2_member), ...fresh]), 'fixture'); return rows }
-beforeEach(() => { vi.useFakeTimers(); sdk.read.mockReset(); sdk.queries = []; sdk.events = []; sdk.status = null; sdk.subscribeFail = false; sdk.remove.mockClear(); sdk.unsubscribe.mockClear(); Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' }) })
-afterEach(() => { cleanup(); vi.useRealTimers() })
+// The catch-up's answer: the newest visible event and the server clock (Date header).
+const answer = (rows: unknown, serverNow = Date.now(), ok = true) => ({ ok, status: ok ? 200 : 500, headers: { get: (k: string) => k === 'date' ? new Date(serverNow).toUTCString() : null }, json: async () => rows })
+beforeEach(() => { vi.useFakeTimers(); sdk.catchUp.mockReset(); sdk.catchUp.mockImplementation(async () => answer([{ emitted_at: '2026-11-15T05:20:41Z' }])); vi.stubGlobal('fetch', (...a: unknown[]) => sdk.catchUp(...a)); sdk.read.mockReset(); sdk.queries = []; sdk.events = []; sdk.status = null; sdk.subscribeFail = false; sdk.remove.mockClear(); sdk.unsubscribe.mockClear(); Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' }) })
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals() })
 it('missed-event fallback keeps verified members during a bounded read and removes revoked rows on completion', async () => {
  let done!: (x: unknown) => void; sdk.read.mockReturnValue(new Promise(resolve => { done = resolve }))
  const ordinary = row(b, null, false), { result } = renderHook(() => useRows([row(), ordinary]))
@@ -153,4 +155,70 @@ it('while the membership feed is live the missed-event fallback runs once a minu
  const dropped = sdk.read.mock.calls.length
  await act(async () => { await vi.advanceTimersByTimeAsync(10_000) })
  expect(sdk.read.mock.calls.length).toBeGreaterThanOrEqual(dropped + 2)
+})
+
+const subscribeAndWatch = async () => {
+ const seen: string[] = []; const on = () => seen.push('changed'); window.addEventListener('wb-rows-changed', on)
+ await act(async () => { sdk.status!('SUBSCRIBED'); await vi.advanceTimersByTimeAsync(0) })
+ window.removeEventListener('wb-rows-changed', on)
+ return seen
+}
+it('a clean first SUBSCRIBED asks the event table and re-checks nothing when no event landed', async () => {
+ vi.setSystemTime(new Date('2026-11-16T09:00:00Z'))
+ sdk.read.mockResolvedValue({ data: [row()], error: null }); renderHook(() => useRows([row()]))
+ await act(async () => {})
+ expect(await subscribeAndWatch()).toEqual([])
+ expect(sdk.catchUp).toHaveBeenCalledTimes(1)
+ expect(String(sdk.catchUp.mock.calls[0][0])).toContain('/rest/v1/cb34_p2_visibility_events?select=emitted_at&order=emitted_at.desc&limit=1')
+ expect(sdk.read).not.toHaveBeenCalled()
+})
+it('the first SUBSCRIBED re-checks when an event landed meanwhile, or when the check fails', async () => {
+ const replies = [() => answer([{ emitted_at: new Date(Date.now() - 60_000).toISOString() }]), () => answer(null, Date.now(), false), () => { throw new Error('offline') }, () => answer([{ emitted_at: 'nonsense' }])]
+ for (const reply of replies) {
+  cleanup(); sdk.status = null; sdk.catchUp.mockReset(); sdk.catchUp.mockImplementation(async () => reply()); sdk.read.mockReset(); sdk.read.mockResolvedValue({ data: [row()], error: null })
+  renderHook(() => useRows([row()]))
+  await act(async () => {})
+  expect(await subscribeAndWatch()).toEqual(['changed']); expect(sdk.read).toHaveBeenCalledTimes(1)
+ }
+})
+it('the cutoff sits on the server clock: a phone an hour ahead still sees an event from a minute ago', async () => {
+ vi.setSystemTime(new Date('2026-11-16T10:00:00Z')) // the phone; the server says 09:00
+ const server = Date.parse('2026-11-16T09:00:00Z')
+ sdk.catchUp.mockImplementation(async () => answer([{ emitted_at: new Date(server - 60_000).toISOString() }], server))
+ sdk.read.mockResolvedValue({ data: [row()], error: null }); renderHook(() => useRows([row()]))
+ await act(async () => {})
+ expect(await subscribeAndWatch()).toEqual(['changed'])
+})
+it('a sign-in event that took member rows off the screen forces the re-check', async () => {
+ sdk.read.mockResolvedValue({ data: [row()], error: null }); renderHook(() => useRows([row()]))
+ await act(async () => {})
+ act(() => sdk.authChange!('INITIAL_SESSION', { user: { id: 'operator' } }))
+ expect(await subscribeAndWatch()).toEqual(['changed'])
+ expect(sdk.catchUp).not.toHaveBeenCalled()
+})
+it('a sign-in event with nothing on screen keeps the catch-up', async () => {
+ sdk.read.mockResolvedValue({ data: [], error: null }); renderHook(() => useRows([row(b, null, false)]))
+ await act(async () => {})
+ act(() => sdk.authChange!('INITIAL_SESSION', { user: { id: 'operator' } }))
+ expect(await subscribeAndWatch()).toEqual([])
+ expect(sdk.catchUp).toHaveBeenCalledTimes(1)
+})
+it('a subscribe after the feed dropped re-checks at once, without the catch-up', async () => {
+ sdk.read.mockResolvedValue({ data: [row()], error: null }); renderHook(() => useRows([row()]))
+ await act(async () => {})
+ await act(async () => { sdk.status!('SUBSCRIBED'); await vi.advanceTimersByTimeAsync(0) })
+ await act(async () => { sdk.status!('CLOSED'); await vi.advanceTimersByTimeAsync(0) })
+ expect(await subscribeAndWatch()).toEqual(['changed'])
+ expect(sdk.catchUp).toHaveBeenCalledTimes(1)
+})
+it('a catch-up that answers after the feed dropped does nothing', async () => {
+ let release!: () => void; sdk.catchUp.mockImplementation(() => new Promise(resolve => { release = () => resolve(answer([{ emitted_at: new Date().toISOString() }])) }))
+ sdk.read.mockResolvedValue({ data: [row()], error: null }); renderHook(() => useRows([row()]))
+ await act(async () => {})
+ await act(async () => { sdk.status!('SUBSCRIBED'); await vi.advanceTimersByTimeAsync(0) })
+ await act(async () => { sdk.status!('CLOSED'); await vi.advanceTimersByTimeAsync(0) })
+ const seen: string[] = []; const on = () => seen.push('changed'); window.addEventListener('wb-rows-changed', on)
+ await act(async () => { release(); await vi.advanceTimersByTimeAsync(0) })
+ window.removeEventListener('wb-rows-changed', on)
+ expect(seen).toEqual([])
 })

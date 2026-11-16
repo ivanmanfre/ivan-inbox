@@ -37,6 +37,22 @@ export function rememberLane(lane: ContentLane, rows: ContentDraft[], matched: n
 // `enabled` = false holds the read (no fetch, no realtime binding) until the
 // caller lets it go: D Content > Review paints this week from its own small
 // read first and starts these after it (d/content/useWeek.ts).
+/** Whether a carousel_drafts change can move this lane's list (2026-11-16 speed review). Each lane listened
+ *  to the whole table, so one draft changing anywhere re-read all four lanes (~930 KB on Content). A change
+ *  counts when its row is in this lane now, or is a row this lane holds (moved out or deleted). A row whose
+ *  lane the payload does not carry counts too. */
+export function changeTouchesLane(lane: ContentLane, payload: { new?: unknown; old?: unknown }, held: ReadonlySet<string>): boolean {
+  const inLane = (c: unknown) => lane === 'ivan' ? c === null || c === 'ivan' : c === lane
+  for (const r of [payload.new, payload.old]) {
+    if (!r || typeof r !== 'object') continue
+    const v = r as { id?: unknown; client_id?: unknown }
+    if (typeof v.id === 'string' && held.has(v.id)) return true
+    if ('client_id' in v && inLane(v.client_id)) return true
+  }
+  const rec = payload.new
+  return !!rec && typeof rec === 'object' && Object.keys(rec).length > 0 && !('client_id' in rec)
+}
+
 export function useContent(lane: ContentLane = 'ivan', enabled: boolean = true) {
   const [seed] = useState(() => seedLane(lane, enabled))
   const [drafts, setDrafts] = useState<ContentDraft[]>(() => seed?.rows ?? [])
@@ -78,6 +94,9 @@ export function useContent(lane: ContentLane = 'ivan', enabled: boolean = true) 
   const active = useRef(false)
   const scope = useRef({ lane, enabled })
   scope.current = { lane, enabled }
+  // Ids this lane holds now: a change to one of them always re-reads (it may have left the lane).
+  const held = useRef<ReadonlySet<string>>(new Set())
+  held.current = new Set(drafts.map(r => r.id))
 
   const refresh = useCallback(() => {
     if (!active.current || !enabled || scope.current.lane !== lane || !scope.current.enabled) return
@@ -95,6 +114,7 @@ export function useContent(lane: ContentLane = 'ivan', enabled: boolean = true) 
       .then(([page, probe]) => {
         if (!current()) return
         fullAccepted.current = true
+        held.current = new Set(page.rows.map(r => r.id))
         setDrafts(page.rows)
         setBuckets(bucketDrafts(page.rows))
         setStages(groupByStage(page.rows))
@@ -121,13 +141,17 @@ export function useContent(lane: ContentLane = 'ivan', enabled: boolean = true) 
     active.current = true
     refresh()
     const ch = supabase.channel(topic)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'carousel_drafts' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'carousel_drafts' }, payload => {
+        // While a lane read is in flight its answer may predate this change, and a delete or a move out
+        // carries only the key (review r1): re-read, as before the filter.
+        if (fullPendingEpoch.current !== null || changeTouchesLane(lane, payload, held.current)) refresh()
+      })
       .subscribe()
     const onFocus = () => refresh()
     window.addEventListener('focus', onFocus)
     window.addEventListener('wb-rows-changed', onFocus)
     return () => { active.current = false; ++generation.current; supabase.removeChannel(ch); window.removeEventListener('focus', onFocus); window.removeEventListener('wb-rows-changed', onFocus) }
-  }, [enabled, refresh, topic])
+  }, [enabled, refresh, topic, lane])
 
   useBrainMembers(drafts, () => {
     fullAccepted.current = false

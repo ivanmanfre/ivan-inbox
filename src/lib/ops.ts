@@ -1,4 +1,6 @@
 import { supabase } from './supabase'
+import { OpsEmptyOverCache, readOpsRows } from './opsRowCache'
+import { currentUserId } from './swr'
 
 // `task` is the one kind with no engine behind it at all: it is Ivan's own to-do,
 // dictated to the WhatsApp assistant or written down by a Claude session. Done
@@ -558,7 +560,32 @@ export async function approveThreadEscalation(question: OpsDraft, body: string):
   if (data?.length !== 1) throw new Error('The question changed in another window. Refresh it before sending.')
 }
 
+const OPS_DIGEST_VIEW = 'ops_drafts_digest_v'
+const opsScoped = (table: string, columns: string) => supabase.from(table).select(columns)
+  .neq('kind', AUDN_KIND).neq('kind', 'escalation')
+function rowsOf<T>({ data, error }: { data: unknown; error: unknown }): T[] {
+  if (error) throw error
+  if (!Array.isArray(data)) throw new Error('ops read returned no rows array')
+  return data as T[]
+}
+
+/** The newest 300 Operations rows. Reads only the rows that changed since the device copy (opsRowCache);
+ *  the plain whole read below is the fallback when the digest view errors. */
 export async function fetchOpsDrafts(): Promise<OpsDraft[]> {
+  try {
+    return await readOpsRows({
+      user: currentUserId(),
+      index: async () => rowsOf(await opsScoped(OPS_DIGEST_VIEW, 'id,digest').order('created_at', { ascending: false }).limit(300)),
+      whole: async () => rowsOf(await opsScoped(OPS_DIGEST_VIEW, `${OPS_DRAFT_COLUMNS},digest`).order('created_at', { ascending: false }).limit(300)),
+      byIds: async ids => rowsOf(await opsScoped(OPS_DIGEST_VIEW, `${OPS_DRAFT_COLUMNS},digest`).in('id', ids)),
+    })
+  } catch (e) {
+    if (e instanceof OpsEmptyOverCache) throw e
+    return fetchOpsDraftsWhole()
+  }
+}
+
+async function fetchOpsDraftsWhole(): Promise<OpsDraft[]> {
   const { data, error } = await supabase.from('ops_drafts')
     .select(OPS_DRAFT_COLUMNS)
     // The audience kind is filtered at the READ as well as at `pendingOps`.

@@ -7,6 +7,41 @@ export type BrainInvalidation = { client: 'ivan' | 'risedtc' | 'arch' | 'swishdm
 export const BRAIN_INVALIDATED = 'brain-members-invalidated'
 /** The missed-event fallback's cadence while the membership feed is live. */
 export const FEED_LIVE_RECHECK_MS = 60_000
+/** The first SUBSCRIBED also looks back this far before the bridge started: an event is stamped
+ *  (clock_timestamp) inside its trigger, a little before its transaction commits. */
+export const CATCH_UP_MARGIN_MS = 5 * 60_000
+/** A catch-up check that has not answered by then counts as a miss: the full re-check runs. */
+export const CATCH_UP_TIMEOUT_MS = 8_000
+
+/**
+ * Did any membership event land since `started` (this device's wall and monotonic clocks when the bridge
+ * started)? Measured on the SERVER's clock (review r1: a phone clock running ahead must not push the cutoff
+ * past real events): the newest visible event against the response's Date header minus the time elapsed
+ * here. Throws when it cannot tell. RLS scopes the lanes.
+ */
+export async function membershipEventSince(started: { wall: number; mono: number }): Promise<boolean> {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  if (!token) throw new Error('not signed in')
+  const controller = new AbortController()
+  const deadline = window.setTimeout(() => controller.abort(), CATCH_UP_TIMEOUT_MS)
+  try {
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/cb34_p2_visibility_events?select=emitted_at&order=emitted_at.desc&limit=1`, {
+      headers: { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` }, cache: 'no-store', signal: controller.signal,
+    })
+    if (!res.ok) throw new Error(`membership catch-up ${res.status}`)
+    const rows: unknown = await res.json()
+    // Whole seconds, rounded down, and taken before the answer travelled: both put the cutoff earlier.
+    const serverNow = Date.parse(res.headers.get('date') ?? '')
+    if (!Number.isFinite(serverNow) || !Array.isArray(rows)) throw new Error('membership catch-up returned no clock or rows')
+    if (rows.length === 0) return false
+    const at = Date.parse((rows[0] as { emitted_at?: string } | null)?.emitted_at ?? '')
+    if (!Number.isFinite(at)) throw new Error('membership catch-up returned an invalid event')
+    const elapsed = Math.max(Date.now() - started.wall, performance.now() - started.mono)
+    return at >= serverNow - elapsed - CATCH_UP_MARGIN_MS
+  } finally { window.clearTimeout(deadline) }
+}
+
 type Watch = { rows: () => BrainMember[]; clear: () => void; fresh: (rows: ContentDraftDetail[], checkedIds: string[]) => boolean | void; revision: number; checked: string | null; hidden: boolean; pending: BrainMember[]; failed: () => void; blocked: () => boolean }
 const watches = new Set<Watch>()
 let busy = false
@@ -22,6 +57,7 @@ export function validMemberRows(rows: unknown, requested: BrainMember[]): Conten
   if (rows.some(r => !r || r.cb34_p2_member !== true || !expected.has(r.id) || expected.get(r.id) !== r.client_id || typeof r.post_body !== 'string' || !r.qa || typeof r.qa !== 'object')) throw new Error('member recheck scope or validation mismatch')
   return rows.map(r => ({ ...r, qa_verdict: r.qa.verdict ?? null, qa_score: r.qa.score ?? null, qa_regen: r.qa.qa_regen_attempts ?? null, qa_backfilled: r.qa.backfilled ?? null })) as ContentDraftDetail[]
 }
+
 
 async function revalidate() {
   if (busy || String(document.visibilityState) === 'hidden') return
@@ -88,10 +124,13 @@ async function revalidate() {
   finally { busy = false; if (run !== revision && [...watches].some(w => w.pending.length)) void revalidate() }
 }
 
-function invalidate() {
+/** True when it took member rows off a screen. */
+function invalidate(): boolean {
   ++revision
   activeRequest?.abort()
-  watches.forEach(w => { ++w.revision; w.checked = null; w.hidden = true; const shown = w.rows().filter(r => r.cb34_p2_member === true); if (shown.length) w.pending = shown; if (w.pending.length) w.clear() })
+  let cleared = false
+  watches.forEach(w => { ++w.revision; w.checked = null; w.hidden = true; const shown = w.rows().filter(r => r.cb34_p2_member === true); if (shown.length) w.pending = shown; if (w.pending.length) { w.clear(); cleared = true } })
+  return cleared
 }
 
 function bridge() {
@@ -112,6 +151,21 @@ function bridge() {
   // 5 s after every Content open.
   let feedLive = false
   let lastRoutine = 0
+  // 2026-11-16 (speed review): that SUBSCRIBED re-check made every list on screen read again about
+  // 100 ms after its first read started (Content: all four lanes twice, ~930 KB). The FIRST subscribe
+  // of a clean start now asks the event table whether anything landed since the bridge started
+  // (server clock, minus CATCH_UP_MARGIN_MS) and re-checks only if so, or if it cannot tell. Events are rare
+  // (427 in six weeks). Any later subscribe (after a drop, an error or another user) still re-checks.
+  let catchUpFrom: { wall: number; mono: number } | null = { wall: Date.now(), mono: performance.now() }
+  let catchUpRun = 0
+  const subscribed = (userId: string) => {
+    const from = catchUpFrom
+    catchUpFrom = null
+    const run = ++catchUpRun
+    const recheck = () => { if (live && authenticatedUser === userId && run === catchUpRun) window.dispatchEvent(new Event('wb-rows-changed')) }
+    if (from === null) { recheck(); return }
+    membershipEventSince(from).then(missed => { if (missed) recheck() }, recheck)
+  }
   const timer = window.setInterval(() => {
     if (feedLive && Date.now() - lastRoutine < FEED_LIVE_RECHECK_MS) return
     lastRoutine = Date.now()
@@ -135,13 +189,16 @@ function bridge() {
       })
     }
     feedLive = false
-    try { channel.subscribe(status => { if (!live || authenticatedUser !== userId) return; if (status === 'SUBSCRIBED') { feedLive = true; lastRoutine = Date.now(); window.dispatchEvent(new Event('wb-rows-changed')) } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') { feedLive = false; onExternal() } }) } catch { feedLive = false; onExternal() }
+    try { channel.subscribe(status => { if (!live || authenticatedUser !== userId) return; if (status === 'SUBSCRIBED') { feedLive = true; lastRoutine = Date.now(); subscribed(userId) } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') { feedLive = false; catchUpFrom = null; ++catchUpRun; onExternal() } }) } catch { feedLive = false; catchUpFrom = null; ++catchUpRun; onExternal() }
   }
   const initialAuth = authRevision
   void supabase.auth?.getSession().then(({ data }) => { if (initialAuth === authRevision && data.session?.user.id) bind(data.session.user.id) }).catch(() => { /* Serial safe-view fallback remains available. */ })
   const auth = supabase.auth?.onAuthStateChange((_event, session) => {
-    ++authRevision; invalidate()
+    ++authRevision; ++catchUpRun
+    // Rows this took off a screen come back only through the re-check (review r1): no catch-up skips it.
+    if (invalidate()) catchUpFrom = null
     if ((session?.user.id ?? null) !== authenticatedUser) watches.forEach(w => { w.pending = []; ++w.revision })
+    if (authenticatedUser !== null && (session?.user.id ?? null) !== authenticatedUser) catchUpFrom = null
     authenticatedUser = session?.user.id ?? null
     if (channel) { void supabase.removeChannel(channel); channel = null }
     feedLive = false
