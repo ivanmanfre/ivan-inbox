@@ -11,6 +11,11 @@ verify_jwt = false
 [functions.inbox-dm-draft]
 verify_jwt = false
 
+# Dedicated shadow ingress authenticates exact raw bytes with an endpoint HMAC.
+# It remains disabled until both the environment binding and DB row are enabled.
+[functions.unipile-v2-shadow]
+verify_jwt = false
+
 # The handler verifies the signed-in inbox owner with auth.getUser.
 [functions.inbox-calendar]
 verify_jwt = false
