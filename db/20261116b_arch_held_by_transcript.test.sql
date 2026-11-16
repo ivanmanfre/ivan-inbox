@@ -69,10 +69,14 @@ __MIGRATION__
   -- A09 no recording of the slot, though the bot recorded another call 2 h earlier the same day -> unknown (recorder_off).
   PERFORM pg_temp.fx_bk('fxa09', '2025-03-18 14:15+00', 'Alex Corn', 'alex@fxa-09.test', 'davorin-smit/30-minute-sales-call', 'Let''s work together (30 minutes meeting)');
   PERFORM pg_temp.fx_tr('ta09', '2025-03-18 12:15+00', array['other@fxa-09x.test'], pg_temp.fx_lines('Other Person', 30));
-  -- A10 the slot's own recording, booker invited, only Davorin spoke -> no-show (false).
+  -- A10 (Sol r1 #1) the slot's own recording, booker invited, only Davorin spoke, but the ingestor marked the labels
+  -- unreliable -> unknown (unverified_speaker), never a no-show.
   PERFORM pg_temp.fx_bk('fxa10', '2025-03-19 12:00+00', 'Kim Kerr', 'kim@fxa-10.test', null, 'Kim Kerr and Davorin Smit');
   PERFORM pg_temp.fx_tr('ta10', '2025-03-19 12:00+00', array['kim@fxa-10.test'], null, false);
-  -- A11 a Davorin-only recording at the slot time, but the booker is not on its invite -> unknown (recorder_off).
+  -- A10b same, labels reliable -> no-show (false).
+  PERFORM pg_temp.fx_bk('fxa10b', '2025-04-15 12:00+00', 'Kai Kerr', 'kai@fxa-10b.test', null, 'Kai Kerr and Davorin Smit');
+  PERFORM pg_temp.fx_tr('ta10b', '2025-04-15 12:00+00', array['kai@fxa-10b.test'], null, true);
+  -- A11 an unreliable Davorin-only recording at the slot time, booker not on its invite -> unknown (unverified_speaker).
   PERFORM pg_temp.fx_bk('fxa11', '2025-03-20 12:00+00', 'Lou Lane', 'lou@fxa-11.test', null, 'Lou Lane and Davorin Smit');
   PERFORM pg_temp.fx_tr('ta11', '2025-03-20 12:00+00', '{}'::text[], null, false);
   -- A12 another host's calendar (marko-jovic), no recording -> host_not_recorded.
@@ -106,6 +110,29 @@ __MIGRATION__
   PERFORM pg_temp.fx_bk('fxa21', '2025-04-03 12:00+00', 'Vjeran Belošević', 'vjeran@fxa-21.test', null, 'Vjeran Belošević and Davorin Smit');
   PERFORM pg_temp.fx_tr('ta21', '2025-04-03 12:00+00', array['vjeran@fxa-21.test'], pg_temp.fx_lines('Vjeran Belosevic', 30));
 
+  -- Sol round 1 regressions (each fails on c43a80d2).
+  -- A22a (#2) an external booker named "Davorin Smit" never came; only the host spoke, labelled "Davorin Smit (ARCH)"
+  -- -> unknown, never held from the host's speech.
+  PERFORM pg_temp.fx_bk('fxa22a', '2025-04-11 12:00+00', 'Davorin Smit', 'dsmit@fxa-22.test', null, 'Davorin Smit and Davorin Smit');
+  PERFORM pg_temp.fx_tr('ta22a', '2025-04-11 12:00+00', array['dsmit@fxa-22.test'], pg_temp.fx_lines('Davorin Smit (ARCH)', 30), true, 'fireflies-arch', true, 0);
+  -- A22b (#2) booker "Smit Arch": both words sit inside the host label "Davorin Smit (ARCH)" -> not booker speech.
+  PERFORM pg_temp.fx_bk('fxa22b', '2025-04-14 12:00+00', 'Smit Arch', 'sa@fxa-22b.test', null, 'Smit Arch and Davorin Smit');
+  PERFORM pg_temp.fx_tr('ta22b', '2025-04-14 12:00+00', array['sa@fxa-22b.test'], pg_temp.fx_lines('Davorin Smit (ARCH)', 30), true, 'fireflies-arch', true, 0);
+  -- A23 (#3) two different people named Sam Lee (different emails, both invited) book the same slot; one "Sam Lee"
+  -- speaks -> neither is held.
+  PERFORM pg_temp.fx_bk('fxa23a', '2025-04-16 12:00+00', 'Sam Lee', 'sam@fxa-23a.test', null, 'Sam Lee and Davorin Smit');
+  PERFORM pg_temp.fx_bk('fxa23b', '2025-04-16 12:00+00', 'Sam Lee', 'sam@fxa-23b.test', null, 'Sam Lee and Davorin Smit');
+  PERFORM pg_temp.fx_tr('ta23', '2025-04-16 12:00+00', array['sam@fxa-23a.test', 'sam@fxa-23b.test'], pg_temp.fx_lines('Sam Lee', 30));
+  -- A24 (#4) the booker spoke 30 lines on a reliable recording they were invited to, 2 h after the slot (maybe another
+  -- meeting with the same person) -> unknown.
+  PERFORM pg_temp.fx_bk('fxa24', '2025-04-17 12:00+00', 'Ola Ode', 'ola@fxa-24.test', null, 'Ola Ode and Davorin Smit');
+  PERFORM pg_temp.fx_tr('ta24', '2025-04-17 14:00+00', array['ola@fxa-24.test'], pg_temp.fx_lines('Ola Ode', 30));
+  -- A25 (#5) NULL slug and NULL title, no recording -> host_not_recorded (host ownership unproven).
+  PERFORM pg_temp.fx_bk('fxa25', '2025-04-18 12:00+00', 'Uma Uno', 'uma@fxa-25.test', null, null);
+  -- A26 (#6) staff email with a trailing space; the trimmed invite match would find the speaker -> internal_booker.
+  PERFORM pg_temp.fx_bk('fxa26', '2025-04-21 12:00+00', 'Tina Two', 'tin2@arch.agency ', null, 'Tina Two and Davorin Smit');
+  PERFORM pg_temp.fx_tr('ta26', '2025-04-21 12:00+00', array['tin2@arch.agency'], pg_temp.fx_lines('Tina Two', 30));
+
   -- 1. Runs: first writes every judged ARCH row, second changes nothing.
   r1 := public.arch_booking_held_apply(pnow);
   r2 := public.arch_booking_held_apply(pnow);
@@ -135,10 +162,12 @@ __MIGRATION__
   FOR k IN SELECT * FROM (VALUES
       ('fxa01', 'name'), ('fxa02', 'unverified_speaker'), ('fxa03', 'unverified_speaker'), ('fxa04', 'unverified_speaker'),
       ('fxa05', 'unverified_speaker'), ('fxa06', 'unverified_speaker'), ('fxa07', 'met_other_time'), ('fxa08', 'unverified_speaker'),
-      ('fxa09', 'recorder_off'), ('fxa10', 'no_transcript'), ('fxa11', 'recorder_off'), ('fxa12', 'host_not_recorded'),
+      ('fxa09', 'recorder_off'), ('fxa10', 'unverified_speaker'), ('fxa10b', 'no_transcript'), ('fxa11', 'unverified_speaker'), ('fxa12', 'host_not_recorded'),
       ('fxa13', 'internal_booker'), ('fxa14a', 'rescheduled'), ('fxa14b', 'name'), ('fxa15a', 'name'), ('fxa15b', 'met_other_time'),
       ('fxa16', 'name'), ('fxa17', 'met_other_time'), ('fxa18', 'recorder_off'), ('fxa19', 'unverified_speaker'),
-      ('fxa20', 'recorder_off'), ('fxa21', 'name')) e(mid, want)
+      ('fxa20', 'recorder_off'), ('fxa21', 'name'),
+      ('fxa22a', 'unverified_speaker'), ('fxa22b', 'unverified_speaker'), ('fxa23a', 'unverified_speaker'), ('fxa23b', 'unverified_speaker'),
+      ('fxa24', 'unverified_speaker'), ('fxa25', 'host_not_recorded'), ('fxa26', 'internal_booker')) e(mid, want)
   LOOP
     SELECT held_basis INTO v FROM public.booking_attributions WHERE meeting_id = k.mid;
     IF NOT FOUND OR v IS DISTINCT FROM k.want THEN fails := fails || (k.mid || ' got ' || coalesce(v, 'NULL') || ' want ' || k.want); END IF;

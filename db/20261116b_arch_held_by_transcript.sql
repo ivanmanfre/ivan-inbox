@@ -22,14 +22,20 @@ BEGIN;
 --     only Davorin spoke.
 --
 -- Rules (conservative; the stamp feeds a client report, so a wrong held or a wrong no-show costs more than unknown):
---   held     the BOOKER spoke 5+ lines on a Davorin recording within 3 h of the slot (name basis above). One
---            recording counts for one booking (nearest start), then each booking keeps its best recording.
+--   held     the BOOKER spoke 5+ lines on a Davorin recording that starts within 15 min of the slot (name basis
+--            above; a recording further off may be another meeting with the same person). A label carrying Davorin's
+--            first name ("Davorin Smit (ARCH)", "Davor") is never booker speech, and a booker whose own name carries it
+--            stays unknown. If the speaking name also fits another booker invited to that recording under a different
+--            email, nobody is held. One recording counts for one booking (nearest start), then each booking keeps its
+--            best recording.
 --   no-show  past a 96 h import grace (live lag reached 2 d 21 h since 09-15), the slot's own recording (start within
---            15 min, booker email on the invite) exists, has lines, and every line is Davorin Smit; the booker said
---            nothing on any recording within 14 days and was not invited to another recording within 14 days.
+--            15 min, booker email on the invite) exists, has lines, its labels are marked reliable, and every line is
+--            the exact "Davorin Smit" label; the booker said nothing on any recording within 14 days and was not
+--            invited to another recording within 14 days. (The ingestor marks labels reliable only with 2+ speakers
+--            of 5+ lines, so today no real recording can prove a no-show; the rule exists for a corrected ingestor.)
 --   unknown  (NULL) everything else; a call that moved shows as met_other_time (no event id links a HubSpot meeting
 --            to a Fireflies recording, so a moved call is never assumed held).
---   staff    a booker email at @arch.agency or @ivanmanfredi.com is internal_booker (never judged).
+--   staff    a booker email (trimmed, lower case) at @arch.agency or @ivanmanfredi.com is internal_booker (never judged).
 --
 -- Replay of this exact migration on live data (one rolled-back transaction, p_now 2026-11-16 12:00 UTC), 36 ARCH
 -- rows: held 4 (Legends 09-23, Pixel Federation 09-28, DoktorABC 10-05, Funcell 11-10 08:00), no-show 0, unknown 32
@@ -88,21 +94,26 @@ with
 tr as (
   select distinct on (coalesce(t.transcript_json->>'recording_id', t.id::text)) t.id,
          t.date as slot_start,
-         array(select lower(btrim(p)) from unnest(coalesce(t.participants, '{}'::text[])) p) as parts,
+         array(select lower(btrim(p, E' \t\r\n')) from unnest(coalesce(t.participants, '{}'::text[])) p) as parts,
          coalesce((t.diarization->>'labels_reliable')::boolean, false) as reliable,
          t.transcript_text as txt
   from public.transcripts t
   where t.source = 'fireflies-arch'
     and t.date is not null
-    and 'davorinsmit@arch.agency' = any(array(select lower(btrim(p)) from unnest(coalesce(t.participants, '{}'::text[])) p))
+    and 'davorinsmit@arch.agency' = any(array(select lower(btrim(p, E' \t\r\n')) from unnest(coalesce(t.participants, '{}'::text[])) p))
   order by coalesce(t.transcript_json->>'recording_id', t.id::text), t.created_at, t.id
 ),
--- Who spoke, per recording: the "Name:" label of each line, normalized, and how many lines it has.
-spk as (
+-- Who spoke, per recording: the "Name:" label of each line, normalized, and how many lines it has. host_like marks
+-- any label carrying Davorin's first name as a word ("davorin smit", "davor", "davorin smit arch"): such a label is
+-- never booker speech (Sol r1 #2).
+spk0 as (
   select tr.id, public._arch_held_norm(substring(x from '^([^:\n]{1,80}):\s')) as nm, count(*) as lines
   from tr, regexp_split_to_table(coalesce(tr.txt, ''), E'\n') x
   where substring(x from '^([^:\n]{1,80}):\s') is not null
   group by 1, 2
+),
+spk as (
+  select spk0.*, spk0.nm ~ '(^| )davor(in)?( |$)' as host_like from spk0
 ),
 -- Per recording: any line at all, and any line by someone other than Davorin (an empty or non-Latin label counts as
 -- someone else). Staff speakers count as "someone else" too: that can only make a no-show less likely.
@@ -112,22 +123,30 @@ rec as (
          exists (select 1 from spk s where s.id = tr.id and s.nm <> 'davorin smit') as other_spoke
   from tr
 ),
-bk as (
+bk0 as (
   select b.meeting_id, b.meeting_start, b.slug, b.meeting_title, b.meeting_outcome,
-         nullif(lower(trim(b.booker_email)), '') as email,
+         nullif(lower(btrim(b.booker_email, E' \t\r\n')), '') as email,
          public._arch_held_norm(b.booker_name) as nm,
          md5(jsonb_build_array(b.meeting_start, b.booker_email, b.booker_name, b.meeting_outcome, b.slug, b.meeting_title)::text) as fp,
-         (lower(coalesce(b.booker_email, '')) like '%@arch.agency' or lower(coalesce(b.booker_email, '')) like '%@ivanmanfredi.com') as internal,
          upper(coalesce(b.meeting_outcome, '')) in ('RESCHEDULED','CANCELED','CANCELLED') as dead
   from public.booking_attributions b
   where b.client_id = 'arch'
     and b.meeting_start is not null
     and b.meeting_start < p_now - interval '3 hours'
 ),
-bkn as (  -- bookers with a usable full name: first and last word, 2+ letters each
+-- internal from the same trimmed, lower-cased email the invite match uses (Sol r1 #6); host_collision = the booker
+-- carries Davorin's first name as a word, so their speech cannot be told from his (Sol r1 #2): always unknown.
+bk as (
+  select bk0.*,
+         (coalesce(bk0.email, '') like '%@arch.agency' or coalesce(bk0.email, '') like '%@ivanmanfredi.com') as internal,
+         bk0.nm ~ '(^| )davor(in)?( |$)' as host_collision
+  from bk0
+),
+bkn as (  -- bookers with a usable full name: first and last word, 2+ letters each; never a host-name collision
   select meeting_id, email, split_part(nm, ' ', 1) as first_w, reverse(split_part(reverse(nm), ' ', 1)) as last_w
   from bk
-  where array_length(string_to_array(nm, ' '), 1) >= 2
+  where not host_collision
+    and array_length(string_to_array(nm, ' '), 1) >= 2
     and length(split_part(nm, ' ', 1)) >= 2
     and length(reverse(split_part(reverse(nm), ' ', 1))) >= 2
 ),
@@ -136,29 +155,40 @@ bkn as (  -- bookers with a usable full name: first and last word, 2+ letters ea
 booker_speech_all as (
   select n.meeting_id, s.id as tid, sum(s.lines) as lines
   from bkn n
-  join spk s on s.nm <> 'davorin smit'
+  join spk s on not s.host_like
             and (' ' || s.nm || ' ') like ('% ' || n.first_w || ' %')
             and (' ' || s.nm || ' ') like ('% ' || n.last_w || ' %')
   group by 1, 2
 ),
--- Enough to prove the booker attended: 5+ lines, labels marked reliable by the ingestor, and (when the booking has
--- an email) the booker's email on that recording's invite.
+-- Enough to prove the booker attended: 5+ lines, labels marked reliable by the ingestor, (when the booking has an
+-- email) the booker's email on that recording's invite, and the speaking name fits no OTHER booker invited to that
+-- recording under a different email (two people with one name: nobody is held, Sol r1 #3).
 booker_speech as (
   select s.meeting_id, s.tid
   from booker_speech_all s
   join bkn n on n.meeting_id = s.meeting_id
   join rec r on r.id = s.tid
   where s.lines >= 5 and r.reliable and (n.email is null or n.email = any(r.parts))
+    and not exists (select 1 from spk s2 join bkn n2 on n2.meeting_id <> n.meeting_id
+                    where s2.id = s.tid and not s2.host_like
+                      and (' ' || s2.nm || ' ') like ('% ' || n.first_w || ' %')
+                      and (' ' || s2.nm || ' ') like ('% ' || n.last_w || ' %')
+                      and (' ' || s2.nm || ' ') like ('% ' || n2.first_w || ' %')
+                      and (' ' || s2.nm || ' ') like ('% ' || n2.last_w || ' %')
+                      and n2.email is not null and n2.email is distinct from n.email
+                      and n2.email = any(r.parts))
 ),
--- A held recording sits within 3 h of the booked slot. Cancelled/rescheduled and internal bookings never take part.
+-- A held recording starts within 15 min of the booked slot (no event id links a booking to a recording, so a
+-- recording further off may be another meeting with the same person: unknown, Sol r1 #4). Cancelled/rescheduled,
+-- internal and host-name bookings never take part.
 -- One recording counts for one booking (nearest start), then each booking keeps its best recording.
 pairs as (
   select s.meeting_id, s.tid, r.slot_start,
          abs(extract(epoch from (r.slot_start - b.meeting_start))) as gap_s
   from booker_speech s
-  join bk b on b.meeting_id = s.meeting_id and not b.internal and not b.dead
+  join bk b on b.meeting_id = s.meeting_id and not b.internal and not b.dead and not b.host_collision
   join rec r on r.id = s.tid
-  where abs(extract(epoch from (r.slot_start - b.meeting_start))) <= 3 * 3600
+  where abs(extract(epoch from (r.slot_start - b.meeting_start))) <= 15 * 60
 ),
 by_t as (
   select p.*, row_number() over (partition by tid order by gap_s, meeting_id) as rn from pairs p
@@ -173,9 +203,10 @@ judged as (
     case
       when b.internal then 'internal_booker'
       when b.dead then 'rescheduled'
+      when b.host_collision then 'unverified_speaker'
       when m.tid is not null then 'name'
-      -- the booker spoke near the slot but too little / on unreliable labels / without their invite to prove it
-      -- (or the recording went to another booking): unknown
+      -- the booker spoke within 3 h of the slot but not enough to prove it (too little, unreliable labels, no invite,
+      -- a same-name second booker, more than 15 min off, or the recording went to another booking): unknown
       when exists (select 1 from booker_speech_all s join rec r on r.id = s.tid
                    where s.meeting_id = b.meeting_id
                      and abs(extract(epoch from (r.slot_start - b.meeting_start))) <= 3 * 3600) then 'unverified_speaker'
@@ -183,10 +214,11 @@ judged as (
       when exists (select 1 from booker_speech_all s join rec r on r.id = s.tid
                    where s.meeting_id = b.meeting_id
                      and abs(extract(epoch from (r.slot_start - b.meeting_start))) <= 14 * 86400) then 'met_other_time'
-      -- the slot's own recording (within 15 min), or a recording near the slot the booker was invited to, is empty
-      -- or has anyone but Davorin on it: unknown, never a no-show
+      -- the slot's own recording (within 15 min), or a recording near the slot the booker was invited to, is empty,
+      -- has labels the ingestor marked unreliable (Sol r1 #1), or has anyone but the exact "Davorin Smit" label on
+      -- it: unknown, never a no-show
       when exists (select 1 from rec r
-                   where (not r.has_lines or r.other_spoke)
+                   where (not r.has_lines or r.other_spoke or not r.reliable)
                      and (abs(extract(epoch from (r.slot_start - b.meeting_start))) <= 15 * 60
                           or (abs(extract(epoch from (r.slot_start - b.meeting_start))) <= 3 * 3600
                               and b.email = any(r.parts)))) then 'unverified_speaker'
@@ -197,15 +229,15 @@ judged as (
                          and abs(extract(epoch from (r.slot_start - b.meeting_start))) > 15 * 60
                          and abs(extract(epoch from (r.slot_start - b.meeting_start))) <= 14 * 86400) then 'met_other_time'
       -- only Davorin's calendar is recorded: his booking page, or a calendar event that names him
-      when not ((b.slug like 'davorin-smit/%') is true
-                or (b.slug is null and b.meeting_title ilike '%davorin%')) then 'host_not_recorded'
+      when ((b.slug like 'davorin-smit/%')
+            or (b.slug is null and b.meeting_title ilike '%davorin%')) is not true then 'host_not_recorded'
       -- full grace for the daily Fireflies import
       when b.meeting_start > p_now - interval '96 hours' then 'pending_ingest'
-      -- the slot's own recording, booker invited, only Davorin spoke: he waited, the booker never came
+      -- the slot's own recording, booker invited, labels reliable, only Davorin spoke: he waited, the booker never came
       when b.email is not null
            and exists (select 1 from rec r
                        where abs(extract(epoch from (r.slot_start - b.meeting_start))) <= 15 * 60
-                         and b.email = any(r.parts) and r.has_lines and not r.other_spoke) then 'no_transcript'
+                         and b.email = any(r.parts) and r.has_lines and not r.other_spoke and r.reliable) then 'no_transcript'
       -- no recording of this slot: the bot was not in the meeting, so nothing is known
       else 'recorder_off'
     end as basis
