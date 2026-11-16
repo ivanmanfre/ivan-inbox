@@ -35,6 +35,8 @@ An accepted alert updates its own cooldown. Failures to
 send remain retryable. These are response-header monitoring estimates, with
 cached and uncached traffic included where present in edge logs. They are not
 invoice totals. Very late ingestion and missing size headers can affect counts.
+HTTP 204 and 304 responses have no body and are excluded from byte sums and
+unknown-size warnings; they remain in request counts.
 Warnings never pause preview jobs, alter application traffic or change billing.
 
 ## Existing server deployment

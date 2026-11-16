@@ -19,8 +19,9 @@ def logs_url(start,end):
     if type(start) is not int or type(end) is not int or start<0 or start%STEP or end-start!=STEP:
         raise ValueError('Storage queries require one aligned 15-minute interval')
     a,b=iso(start),iso(end)
-    sql=("SELECT count() AS requests, sum(toUInt64OrZero(log_attributes['response.headers.content_length'])) AS bytes, "
-         "countIf(log_attributes['response.headers.content_length']='') AS unknown_lengths FROM logs "
+    has_body="log_attributes['response.status_code'] NOT IN ('204','304')"
+    sql=("SELECT count() AS requests, sumIf(toUInt64OrZero(log_attributes['response.headers.content_length']), "+has_body+") AS bytes, "
+         "countIf(log_attributes['response.headers.content_length']='' AND "+has_body+") AS unknown_lengths FROM logs "
          "WHERE source='edge_logs' AND log_attributes['request.method']='GET' "
          "AND log_attributes['request.path'] LIKE '/storage/%' "
          "AND timestamp >= parseDateTime64BestEffort('"+a+"') "

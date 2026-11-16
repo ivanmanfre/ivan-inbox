@@ -14,6 +14,8 @@ class StorageTraffic(unittest.TestCase):
         self.assertIn("timestamp >= parseDateTime64BestEffort('1970-01-01T00:00:00Z')",q['sql'][0])
         self.assertIn("timestamp < parseDateTime64BestEffort('1970-01-01T00:15:00Z')",q['sql'][0])
         self.assertIn("LIKE '/storage/%'",q['sql'][0])
+        self.assertIn('sumIf(',q['sql'][0])
+        self.assertEqual(q['sql'][0].count("log_attributes['response.status_code'] NOT IN ('204','304')"),2)
         for start,end in [(0,901),(0,86400),(-1,899),(900,0)]:
             with self.assertRaises(ValueError):m.logs_url(start,end)
 
