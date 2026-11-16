@@ -40,7 +40,6 @@ CREATE OR REPLACE FUNCTION public.content_autonomy_park_missed_ivan(p_now timest
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public', 'pg_temp'
- SET statement_timeout TO '30s'
  SET lock_timeout TO '2s'
 AS $function$
 DECLARE r record; q public.scheduled_posts%ROWTYPE; d public.carousel_drafts%ROWTYPE; s jsonb; fails jsonb;
@@ -60,7 +59,13 @@ BEGIN
     BEGIN
       -- Lock order as the claim and the pull: account lock, queue row, draft.
       SELECT * INTO q FROM public.scheduled_posts WHERE id = r.id FOR UPDATE;
-      IF q.status IS DISTINCT FROM 'pending' THEN CONTINUE; END IF;
+      -- Sol r1: the cursor read the row before the lock. operator_set_schedule_date can retime it without the account lock,
+      -- so every selection rule is checked again on the locked row (eligibility is read below, after both locks).
+      IF q.status IS DISTINCT FROM 'pending' OR q.platform IS DISTINCT FROM 'linkedin' OR coalesce(q.is_repost, false)
+         OR q.scheduled_at IS NULL OR q.scheduled_at > p_now - interval '15 minutes' THEN
+        skipped := skipped || jsonb_build_array(jsonb_build_object('queue_id', r.id, 'why', 'changed_before_lock'));
+        CONTINUE;
+      END IF;
       SELECT * INTO d FROM public.carousel_drafts WHERE id::text = q.clickup_task_id AND client_id IS NULL FOR UPDATE;
       IF NOT FOUND THEN CONTINUE; END IF;
       s := public.content_autonomy_publish_state_ivan(q.id);
@@ -77,7 +82,9 @@ BEGIN
              error_message = left('missed_slot: ' || coalesce((SELECT string_agg(f, '; ') FROM jsonb_array_elements_text(fails) f), 'not eligible')
                                   || '. Back in Review ' || to_char(p_now AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD HH24:MI') || ' Warsaw.', 300)
        WHERE id = q.id AND status = 'pending';
-      UPDATE public.content_autopilot_picks SET state = 'released' WHERE draft_id = d.id AND state = 'armed';
+      -- Sol r1: only the pick of THIS copy's slot. A newer copy of the same draft keeps its armed pick.
+      UPDATE public.content_autopilot_picks SET state = 'released'
+       WHERE draft_id = d.id AND account = 'ivan' AND state = 'armed' AND slot_at = q.scheduled_at;
       -- The draft goes back to Review only when it is still the scheduled post of exactly this slot and nothing else of it
       -- waits in the queue. Same writes as the owner pull, without the "you pulled it" mark.
       v_returned := false;
@@ -116,14 +123,15 @@ BEGIN
         'url', './#exp/d/content/now?focus=' || d.id::text,
         'media', jsonb_build_object('kind', 'missed_post', 'queue_id', q.id, 'draft_id', d.id, 'slot_at', q.scheduled_at),
         'push', true);
-      BEGIN
-        SELECT value INTO v_url FROM public.integration_config WHERE key = 'inbox_notify_url';
-        SELECT value INTO v_secret FROM public.integration_config WHERE key = 'inbox_push_secret';
-        SELECT net.http_post(url := v_url, headers := jsonb_build_object('Content-Type', 'application/json', 'x-inbox-secret', v_secret),
-                 body := v_payload, timeout_milliseconds := 30000) INTO v_req;
-        v_notify := jsonb_build_object('request_id', v_req, 'dedupe_key', v_payload->>'dedupe_key', 'body', v_payload->>'body');
-      EXCEPTION WHEN others THEN v_notify := jsonb_build_object('error', left(SQLERRM, 300), 'body', v_payload->>'body');
-      END;
+      -- Sol r1: no inner handler. If the alert cannot be queued, the error reaches this row's savepoint: the cancellation is
+      -- undone, the row stays pending and the next sweep tries again. The request is queued in the same transaction as the
+      -- cancellation (pg_net sends only committed requests), so the alert goes out once or not at all, never twice.
+      SELECT value INTO v_url FROM public.integration_config WHERE key = 'inbox_notify_url';
+      SELECT value INTO v_secret FROM public.integration_config WHERE key = 'inbox_push_secret';
+      IF nullif(v_url, '') IS NULL OR nullif(v_secret, '') IS NULL THEN RAISE EXCEPTION 'inbox notify is not configured'; END IF;
+      SELECT net.http_post(url := v_url, headers := jsonb_build_object('Content-Type', 'application/json', 'x-inbox-secret', v_secret),
+               body := v_payload, timeout_milliseconds := 30000) INTO v_req;
+      v_notify := jsonb_build_object('request_id', v_req, 'dedupe_key', v_payload->>'dedupe_key', 'body', v_payload->>'body');
       INSERT INTO public.content_missed_posts (queue_id, draft_id, slot_at, fails, draft_returned, parked_at, notify)
       VALUES (q.id, d.id, q.scheduled_at, fails, v_returned, now(), v_notify)
       ON CONFLICT (queue_id) DO NOTHING;
@@ -147,4 +155,7 @@ BEGIN
 END $function$;
 REVOKE ALL ON FUNCTION public.content_autonomy_park_missed_ivan(timestamptz) FROM PUBLIC, anon, authenticated, service_role;
 
-SELECT cron.schedule('content-missed-post-park', '*/5 * * * *', $cron$select public.content_autonomy_park_missed_ivan()$cron$);
+-- Sol r1: the time limit is set in the job's own command. A function-level statement_timeout does not bound the call that is
+-- already running, and a slow sweep holds the account lock the publisher claim needs (it would answer calendar_busy).
+SELECT cron.schedule('content-missed-post-park', '*/5 * * * *',
+  $cron$SET statement_timeout = '30s'; SET lock_timeout = '2s'; select public.content_autonomy_park_missed_ivan()$cron$);

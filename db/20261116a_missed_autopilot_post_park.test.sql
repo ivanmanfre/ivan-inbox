@@ -5,6 +5,8 @@ DECLARE res jsonb := '{}'::jsonb; before jsonb; after jsonb; r jsonb; msg text; 
   q_stuck uuid := '64803ecd-3401-4587-942f-1f11298a681e'; d_stuck uuid := 'f92d9e05-52a4-475d-bddd-8057091966dd';
   q_gif20 uuid := 'ab3e40e3-7071-488a-9946-21277fde3532'; q_gif25 uuid := 'fd288cbc-8a5f-42a8-87fb-edd1ebccf50c';
   row_before jsonb; content_before text; content_after text; req0 bigint; req1 bigint;
+  q_23 uuid := '38af6926-a044-4338-9c48-858495b11af7'; q_24 uuid := 'e3ff0d26-4e14-4c3d-9e90-33217e34d8d3';
+  d23 uuid; s23 timestamptz; d24 uuid; q_tmp uuid;
 BEGIN
   SELECT jsonb_object_agg(q.id, public.content_autonomy_publish_snapshot_ivan(q.id) - 'expected') INTO before
     FROM public.scheduled_posts q WHERE q.platform = 'linkedin' AND q.status = 'pending';
@@ -36,7 +38,62 @@ __MIGRATION__
     res := res || jsonb_build_object('p02_sibling_posting', coalesce(nullif(msg, ''), hint));
   END;
 
-  -- 3. The real sweep, now.
+  -- R1 (Sol r1 #1). An obsolete overdue copy of a draft whose current copy is a live, eligible automatic post (23 Nov):
+  -- the old copy is parked, but the pick of the future slot stays armed and the future copy stays publish-eligible.
+  BEGIN
+    SELECT d.id, q.scheduled_at INTO d23, s23 FROM public.scheduled_posts q JOIN public.carousel_drafts d ON d.id::text = q.clickup_task_id WHERE q.id = q_23;
+    INSERT INTO public.scheduled_posts (clickup_task_id, post_text, scheduled_at, status, platform)
+    VALUES (d23::text, 'rolled-back test: obsolete overdue copy', '2026-11-14 12:00+00', 'pending', 'linkedin') RETURNING id INTO q_tmp;
+    r := public.content_autonomy_park_missed_ivan();
+    RAISE EXCEPTION 'undo' USING DETAIL = jsonb_build_object(
+      'obsolete_copy_parked', EXISTS (SELECT 1 FROM jsonb_array_elements(r->'parked') x WHERE x->>'queue_id' = q_tmp::text),
+      'obsolete_copy_status', (SELECT status FROM public.scheduled_posts WHERE id = q_tmp),
+      'future_pick', (SELECT state || ' @ ' || slot_at FROM public.content_autopilot_picks WHERE draft_id = d23),
+      'future_copy_status', (SELECT status FROM public.scheduled_posts WHERE id = q_23),
+      'future_draft', (SELECT status || ' @ ' || scheduled_at FROM public.carousel_drafts WHERE id = d23),
+      'future_publish_state', public.content_autonomy_publish_snapshot_ivan(q_23) - 'expected')::text;
+  EXCEPTION WHEN others THEN GET STACKED DIAGNOSTICS msg = PG_EXCEPTION_DETAIL, hint = MESSAGE_TEXT;
+    res := res || jsonb_build_object('r1_obsolete_copy_keeps_future_pick', coalesce(nullif(msg, ''), hint));
+  END;
+
+  -- R2 (Sol r1 #2). A row is retimed into the future after the sweep's cursor read it and before its lock: a trigger on the
+  -- first row's cancellation retimes the second candidate (an overdue copy of the 24 Nov draft), the way an unlocked
+  -- operator_set_schedule_date could. The locked recheck must skip it.
+  BEGIN
+    SELECT d.id INTO d24 FROM public.scheduled_posts q JOIN public.carousel_drafts d ON d.id::text = q.clickup_task_id WHERE q.id = q_24;
+    INSERT INTO public.scheduled_posts (clickup_task_id, post_text, scheduled_at, status, platform)
+    VALUES (d24::text, 'rolled-back test: copy retimed under the sweep', '2026-11-13 12:30+00', 'pending', 'linkedin') RETURNING id INTO q_tmp;
+    PERFORM set_config('test.retime_id', q_tmp::text, true);
+    CREATE FUNCTION public.test_retime_20261116() RETURNS trigger LANGUAGE plpgsql AS $f$
+    BEGIN
+      UPDATE public.scheduled_posts SET scheduled_at = now() + interval '3 days' WHERE id = current_setting('test.retime_id')::uuid;
+      RETURN NULL;
+    END $f$;
+    CREATE TRIGGER test_retime_20261116 AFTER UPDATE OF status ON public.scheduled_posts FOR EACH ROW
+      WHEN (new.id = '64803ecd-3401-4587-942f-1f11298a681e'::uuid AND new.status = 'cancelled') EXECUTE FUNCTION public.test_retime_20261116();
+    r := public.content_autonomy_park_missed_ivan();
+    RAISE EXCEPTION 'undo' USING DETAIL = jsonb_build_object('run', r,
+      'retimed_copy_status', (SELECT status || ' @ ' || scheduled_at FROM public.scheduled_posts WHERE id = q_tmp),
+      'retimed_copy_parked', EXISTS (SELECT 1 FROM jsonb_array_elements(r->'parked') x WHERE x->>'queue_id' = q_tmp::text),
+      'd24_pick', (SELECT state FROM public.content_autopilot_picks WHERE draft_id = d24))::text;
+  EXCEPTION WHEN others THEN GET STACKED DIAGNOSTICS msg = PG_EXCEPTION_DETAIL, hint = MESSAGE_TEXT;
+    res := res || jsonb_build_object('r2_retimed_before_lock_is_skipped', coalesce(nullif(msg, ''), hint));
+  END;
+
+  -- R3 (Sol r1 #3). The alert cannot be queued: the row is not cancelled, gets no receipt, and stays pending for the next
+  -- sweep. The real run below (alerts working) then parks it with exactly one alert.
+  UPDATE public.integration_config SET key = 'inbox_notify_url__test_off' WHERE key = 'inbox_notify_url';
+  r := public.content_autonomy_park_missed_ivan();
+  res := res || jsonb_build_object('r3_enqueue_fails', jsonb_build_object('run', r,
+    'row_status', (SELECT status FROM public.scheduled_posts WHERE id = q_stuck),
+    'draft', (SELECT status || ' @ ' || scheduled_at FROM public.carousel_drafts WHERE id = d_stuck),
+    'pick', (SELECT state FROM public.content_autopilot_picks WHERE draft_id = d_stuck),
+    'receipt', EXISTS (SELECT 1 FROM public.content_missed_posts WHERE queue_id = q_stuck),
+    'alerts_queued', (SELECT count(*) FROM net.http_request_queue WHERE id > req0),
+    'silent_failure', (SELECT detail->>'error' FROM public.silent_failures WHERE source = 'content-missed-post-park' ORDER BY created_at DESC LIMIT 1)));
+  UPDATE public.integration_config SET key = 'inbox_notify_url' WHERE key = 'inbox_notify_url__test_off';
+
+  -- 3. The real sweep, now (alerts working again after R3): parks the stuck row with exactly one alert.
   r := public.content_autonomy_park_missed_ivan();
   res := res || jsonb_build_object('p03_run_now', r);
   SELECT md5(coalesce(post_body,'') || coalesce(qa::text,'') || coalesce(image_urls::text,'') || coalesce(pdf_url,'') || coalesce(video_url,'') || coalesce(type,''))
