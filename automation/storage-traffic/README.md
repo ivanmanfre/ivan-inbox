@@ -28,7 +28,10 @@ add-on is enabled. The separate old Storage scanner remains disabled.
 Warnings use Ivan's existing own-inbox `supabase-egress` source. The defaults are
 1 GB observed in the hour and 8 GB observed in 24 hours. Partial coverage stays
 visible in the message. Hour alerts have a three-hour cooldown; other conditions
-have a 24-hour cooldown. An accepted alert updates its own cooldown. Failures to
+have a 24-hour cooldown. A failed latest attempted interval has its own
+three-hour warning cooldown, independent of old coverage gaps. Intervals awaiting
+catch-up are counted in partial totals and are excluded from failed-gap alarms.
+An accepted alert updates its own cooldown. Failures to
 send remain retryable. These are response-header monitoring estimates, with
 cached and uncached traffic included where present in edge logs. They are not
 invoice totals. Very late ingestion and missing size headers can affect counts.
@@ -46,6 +49,11 @@ credential files are `/etc/ivan-storage-traffic/management-token` and
 `/etc/ivan-storage-traffic/relay-config`. The latter is a JSON object with `key`
 and `number`. Never commit credential values. The dynamic service user writes
 only its private systemd state directory at `/var/lib/ivan-storage-traffic`.
+
+A missing or invalid relay credential prevents inbox delivery. Inspect
+`systemctl status ivan-storage-traffic.service` for that failure. The service's
+180-second limit can interrupt a slow request; its reserved interval remains a
+visible gap on the next run.
 
 Offline checks:
 

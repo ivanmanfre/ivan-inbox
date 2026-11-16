@@ -66,6 +66,36 @@ class StorageTraffic(unittest.TestCase):
             state['windows']['0']={'status':'ok','requests':4,'bytes':0,'unknown_lengths':4}
             self.assertIn('sizes',m.alert_candidates(state,900))
 
+    def test_transient_gap_does_not_silence_later_monitor_outage(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path=pathlib.Path(tmp)/'state.json';state=m.load_state(path,900)
+            def fail(*args):raise TimeoutError('fixture')
+            m.collect(state,path,1200,fail)
+            first=m.due_alerts(state,m.alert_candidates(state,900),1200)
+            for kind in first:state['alerts'][kind]=1200
+            # Recovery leaves the old gap in the day, then collection fails
+            # again four hours later while coverage's cooldown still applies.
+            for end in range(1800,15301,900):
+                m.collect(state,path,end+300,lambda *a:{'requests':1,'bytes':0,'unknown_lengths':0})
+            m.collect(state,path,16500,fail)
+            due=m.due_alerts(state,m.alert_candidates(state,16200),16500)
+            self.assertNotIn('coverage',due)
+            self.assertIn('monitor_down',due)
+            state['alerts']['monitor_down']=16500
+            self.assertNotIn('monitor_down',m.due_alerts(state,m.alert_candidates(state,16200),17400))
+            self.assertIn('monitor_down',m.due_alerts(state,m.alert_candidates(state,16200),27300))
+
+    def test_catchup_backlog_does_not_count_unattempted_intervals_as_failed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path=pathlib.Path(tmp)/'state.json';state=m.load_state(path,900)
+            state['cursor']=900
+            state['windows']['0']={'status':'ok','requests':0,'bytes':0,'unknown_lengths':0}
+            m.collect(state,path,12000,lambda *a:{'requests':0,'bytes':0,'unknown_lengths':0})
+            self.assertLess(state['cursor'],m.eligible_end(12000))
+            candidates=m.alert_candidates(state,m.eligible_end(12000))
+            self.assertNotIn('coverage',candidates)
+            self.assertNotIn('monitor_down',candidates)
+
     def test_corrupt_state_is_preserved(self):
         with tempfile.TemporaryDirectory() as tmp:
             path=pathlib.Path(tmp)/'state.json';path.write_text('{broken')

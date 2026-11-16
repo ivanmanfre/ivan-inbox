@@ -10,7 +10,7 @@ LAG=300
 LOOKBACK=86400
 MAX_CATCHUP=4
 MAX_ATTEMPTS=192
-COOLDOWN={'hour':10800,'day':86400,'sizes':86400,'coverage':86400,'clock':86400,'query_budget':86400}
+COOLDOWN={'hour':10800,'monitor_down':10800,'day':86400,'sizes':86400,'coverage':86400,'clock':86400,'query_budget':86400}
 
 def iso(value):return dt.datetime.fromtimestamp(value,dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 def eligible_end(now):return ((now-LAG)//STEP)*STEP
@@ -112,9 +112,12 @@ def alert_candidates(state,end):
     hour=aggregate(state,end,3600);day=aggregate(state,end,86400);alerts={}
     if hour['bytes']>1_000_000_000:alerts['hour']='Storage downloads: %.2f GB observed across %d/4 measured intervals in the hour ending %s.'%(hour['bytes']/1e9,hour['covered'],iso(end))
     if day['bytes']>8_000_000_000:alerts['day']='Storage downloads: %.2f GB observed across %d/96 measured intervals in the 24-hour window ending %s.'%(day['bytes']/1e9,day['covered'],iso(end))
-    expected=range(max(state['started'],end-LOOKBACK),end,STEP)
+    expected=range(max(state['started'],end-LOOKBACK),min(end,state['cursor']),STEP)
     gaps=sum(state['windows'].get(str(t),{}).get('status')!='ok' for t in expected)
     if gaps:alerts['coverage']='Storage monitoring has %d unmeasured intervals; traffic totals are partial.'%gaps
+    latest=state['cursor']-STEP
+    if latest>=state['started'] and state['windows'].get(str(latest),{}).get('status')!='ok':
+        alerts['monitor_down']='The latest attempted Storage measurement failed or was interrupted (interval ending %s); traffic totals are partial.'%iso(state['cursor'])
     if day['unknown_lengths']:alerts['sizes']='Storage response sizes were unavailable for %d requests in the measured 24-hour window.'%day['unknown_lengths']
     if state.get('clock_ahead'):alerts['clock']='Storage monitoring clock moved behind its saved cursor; previous intervals will remain saved.'
     if state.get('query_budget'):alerts['query_budget']='Storage monitoring reached its own query-attempt allowance; application processing continues.'
