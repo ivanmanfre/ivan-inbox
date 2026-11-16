@@ -2901,22 +2901,16 @@ export type Still = {
   /** The full asset — what gets pinned to the draft. */
   url: string
   /**
-   * A ~200px render of the same object, for the picker grid ONLY.
-   *
-   * The grid draws 48 tiles at 84px and was pointing every one of them at the
-   * full-size original: measured 2.09MB for one PNG and 1.06MB for one JPG, so
-   * one open of the library pulled tens of megabytes to fill 84px squares. The
-   * same object through storage's render endpoint is 39.9KB at width=200 —
-   * measured, same file, 26x lighter.
-   *
-   * NEVER pinned to a draft: `pick()` sends `url`. A 200px render is a preview,
-   * and publishing one would put a thumbnail on LinkedIn.
+   * Stored 480 x 600 preview for the picker grid. Generated once locally and
+   * reused as a normal storage object, avoiding paid image transformations.
+   * `pick()` pins `url`, preserving the original publishing asset.
    */
   thumb: string
   folder: StillFolder
 }
 
 const STILL_BUCKET = 'post-stills'
+const LIBRARY_THUMB_PREFIX = '_library-thumbnails/w480-h600-q75/'
 const IMAGE_RE = /\.(jpe?g|png|webp|gif|avif)$/i
 
 /**
@@ -2963,12 +2957,9 @@ export async function listStills(folder: StillFolder): Promise<Still[]> {
       // getPublicUrl is pure string building — no auth, no request — so the URL
       // still comes from the SDK and stays encoded the way it encodes it.
       url: supabase.storage.from(STILL_BUCKET).getPublicUrl(`${folder}/${o.name}`).data.publicUrl,
-      // Same path, the render endpoint instead of the object endpoint. If image
-      // transformation is ever off on this project the render URL 4xxs and the
-      // tile falls back to `url` in the picker's onError — a heavy grid is a
-      // worse outcome than a slow one, and a blank grid is worse than both.
+      // Missing previews retain the picker's existing original-image fallback.
       thumb: supabase.storage.from(STILL_BUCKET)
-        .getPublicUrl(`${folder}/${o.name}`, { transform: { width: 480, height: 600, resize: 'contain', quality: 75 } })
+        .getPublicUrl(`${LIBRARY_THUMB_PREFIX}${folder}/${o.name}.webp`)
         .data.publicUrl,
     }))
 }
@@ -2993,7 +2984,7 @@ export async function searchStills(q: string): Promise<Still[]> {
         folder: path.slice(0, Math.max(i, 0)) as StillFolder,
         url: r.public_url as string,
         thumb: supabase.storage.from(STILL_BUCKET)
-          .getPublicUrl(path, { transform: { width: 480, height: 600, resize: 'contain', quality: 75 } })
+          .getPublicUrl(`${LIBRARY_THUMB_PREFIX}${path}.webp`)
           .data.publicUrl,
       }
     })
@@ -3246,7 +3237,7 @@ export async function listClientPhotos(slug: string): Promise<Picture[]> {
       return {
         name: o.name as string,
         url: supabase.storage.from(CLIENT_BUCKET).getPublicUrl(path).data.publicUrl,
-        thumb: supabase.storage.from(CLIENT_BUCKET).getPublicUrl(path, { transform: { width: 480, height: 600, resize: 'contain', quality: 75 } }).data.publicUrl,
+        thumb: supabase.storage.from(CLIENT_BUCKET).getPublicUrl(`${LIBRARY_THUMB_PREFIX}${path}.webp`).data.publicUrl,
       }
     })
 }

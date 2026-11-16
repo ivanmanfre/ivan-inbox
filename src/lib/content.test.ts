@@ -933,15 +933,15 @@ describe('listStills', () => {
     expect(out.every(s => s.folder === 'library')).toBe(true)
   })
 
-  it('gives the grid a rendered thumb and the DRAFT the full asset', async () => {
+  it('gives the grid a stored preview and the draft the original asset', async () => {
     const [first] = await listStills('library')
     // What gets pinned is the object itself — a 200px render on LinkedIn would
     // be a thumbnail on the feed.
     expect(first.url).toContain('/object/public/post-stills/library/selfie-14.jpg')
     expect(first.url).not.toContain('width=')
     // What the 84px tile loads is not the 1-2MB original.
-    expect(first.thumb).toContain('/render/image/public/post-stills/library/selfie-14.jpg')
-    expect(first.thumb).toContain('resize=contain')
+    expect(first.thumb).toContain('/object/public/post-stills/_library-thumbnails/w480-h600-q75/library/selfie-14.jpg.webp')
+    expect(first.thumb).not.toContain('/render/image/')
     expect(first.thumb).not.toBe(first.url)
   })
 

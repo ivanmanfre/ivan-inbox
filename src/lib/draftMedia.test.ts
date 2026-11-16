@@ -51,7 +51,7 @@ vi.mock('./supabase', () => ({
 }))
 
 const {
-  setDraftImage, setDraftMedia, pictureEditable, listClientPhotos, uploadDraftPicture,
+  setDraftImage, setDraftMedia, pictureEditable, listClientPhotos, searchStills, uploadDraftPicture,
   CAROUSEL_REFUSAL, ClientRpcError, CLIENT_OPS_GATE,
 } = await import('./content')
 
@@ -159,7 +159,7 @@ describe('client library and uploads go out as ANON', () => {
     expect(JSON.parse(String(calls[0].init.body)).prefix).toBe('arch-agency')
     expect(out.map(p => p.name)).toEqual(['davorin-1.jpg', 'Team.PNG'])
     expect(out[0].url).toBe('https://project.supabase.co/storage/v1/object/public/client-photos/arch-agency/davorin-1.jpg')
-    expect(out[0].thumb).toContain('/render/image/public/client-photos/arch-agency/davorin-1.jpg')
+    expect(out[0].thumb).toContain('/object/public/client-photos/_library-thumbnails/w480-h600-q75/arch-agency/davorin-1.jpg.webp')
   })
   it('a refused list throws instead of showing an empty library', async () => {
     reply = () => new Response('{}', { status: 403 })
@@ -193,5 +193,17 @@ describe('client library and uploads go out as ANON', () => {
   it('a refused upload throws', async () => {
     reply = () => new Response('{"error":"exists"}', { status: 409 })
     await expect(uploadDraftPicture('arch', 'd1', file('a.jpg', 'image/jpeg'))).rejects.toThrow(/409/)
+  })
+})
+
+
+describe('photo search uses stored previews', () => {
+  it('keeps the public original for pinning and a separate small file for the grid', async () => {
+    const original = 'https://project.supabase.co/storage/v1/object/public/post-stills/ivan-photos/one.jpg'
+    rpcResult = { data: [{ storage_path: 'ivan-photos/one.jpg', public_url: original }], error: null }
+    const [picture] = await searchStills('Warsaw')
+    expect(picture.url).toBe(original)
+    expect(picture.thumb).toBe('https://project.supabase.co/storage/v1/object/public/post-stills/_library-thumbnails/w480-h600-q75/ivan-photos/one.jpg.webp')
+    expect(rpcCalls).toEqual([{ fn: 'search_content_photos', args: { q: 'Warsaw' } }])
   })
 })
