@@ -70,3 +70,9 @@ export function scoreText(s: number | null): string {
 export function linkOf(ref: string | null | undefined): string | null {
   return ref && /^https?:/.test(ref) ? ref : null
 }
+
+/** Ivan's bank only: the idea needs a fact only Ivan has and has no answer yet (same rule as
+ *  content_idea_waits in the database: an answer with no character outside [ \t\n\r\f\v] counts as none). */
+export function waitsForIvan(it: IdeaItem): boolean {
+  return !!it.ivan?.needs_ivan_data && !/[^ \t\n\r\f\v]/.test(it.ivan?.needs_ivan_answer ?? '')
+}

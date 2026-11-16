@@ -652,6 +652,10 @@ export type IdeaCandidate = {
   slack_permalink: string | null
   ingested_at: string | null
   scored_at: string | null
+  // 2026-11-14 (db/20261114): an idea that needs a fact only Ivan has waits until he answers it.
+  needs_ivan_data?: boolean | null
+  needs_ivan_question?: string | null
+  needs_ivan_answer?: string | null
   // The join back to a promoted draft. NULL on every reviewing row, as it must
   // be — carried so a promoted idea can be recognised if the status ever widens.
   promoted_draft_id: string | null

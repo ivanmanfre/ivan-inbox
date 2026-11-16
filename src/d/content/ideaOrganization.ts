@@ -8,7 +8,7 @@ export const IDEA_TOPICS = ['Content & LinkedIn', 'Sales & outreach', 'Founder l
 export type IdeaTopic = typeof IDEA_TOPICS[number]
 export type IdeaOrganization = { id: string; shortlisted: boolean; topic: IdeaTopic | null }
 export type IdeaOrganizationMap = Record<string, IdeaOrganization>
-export type IdeaView = 'new' | 'shortlisted' | 'all'
+export type IdeaView = 'new' | 'shortlisted' | 'all' | 'answer'
 
 /** Suggested from the idea title only. Quotes and scoring prose are someone else's context. */
 export function ideaTopic(it: IdeaItem, override?: string | null): string {
