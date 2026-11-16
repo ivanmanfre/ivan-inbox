@@ -142,11 +142,11 @@ bk as (
          bk0.nm ~ '(^| )davor(in)?( |$)' as host_collision
   from bk0
 ),
-bkn as (  -- bookers with a usable full name: first and last word, 2+ letters each; never a host-name collision
+bkn as (  -- bookers with a usable full name: first and last word, 2+ letters each. Host-name collisions stay in, so
+          -- they still count as a competing same-name booker in the veto below (Sol r2); pairs and judged keep them unknown.
   select meeting_id, email, split_part(nm, ' ', 1) as first_w, reverse(split_part(reverse(nm), ' ', 1)) as last_w
   from bk
-  where not host_collision
-    and array_length(string_to_array(nm, ' '), 1) >= 2
+  where array_length(string_to_array(nm, ' '), 1) >= 2
     and length(split_part(nm, ' ', 1)) >= 2
     and length(reverse(split_part(reverse(nm), ' ', 1))) >= 2
 ),

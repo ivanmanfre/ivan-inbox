@@ -133,6 +133,13 @@ __MIGRATION__
   PERFORM pg_temp.fx_bk('fxa26', '2025-04-21 12:00+00', 'Tina Two', 'tin2@arch.agency ', null, 'Tina Two and Davorin Smit');
   PERFORM pg_temp.fx_tr('ta26', '2025-04-21 12:00+00', array['tin2@arch.agency'], pg_temp.fx_lines('Tina Two', 30));
 
+  -- Sol round 2 regression (fails on c64c0268).
+  -- A27 two bookings at one slot, "Sam Lee" and "Sam Davorin Lee" (host-name collision), different emails, both
+  -- invited; only the second came, labelled "Sam Lee" 30 lines, labels reliable -> the absent "Sam Lee" is not held.
+  PERFORM pg_temp.fx_bk('fxa27a', '2025-04-22 12:00+00', 'Sam Lee', 'sl1@fxa-27.test', null, 'Sam Lee and Davorin Smit');
+  PERFORM pg_temp.fx_bk('fxa27b', '2025-04-22 12:00+00', 'Sam Davorin Lee', 'sl2@fxa-27.test', null, 'Sam Davorin Lee and Davorin Smit');
+  PERFORM pg_temp.fx_tr('ta27', '2025-04-22 12:00+00', array['sl1@fxa-27.test', 'sl2@fxa-27.test'], pg_temp.fx_lines('Sam Lee', 30));
+
   -- 1. Runs: first writes every judged ARCH row, second changes nothing.
   r1 := public.arch_booking_held_apply(pnow);
   r2 := public.arch_booking_held_apply(pnow);
@@ -167,7 +174,8 @@ __MIGRATION__
       ('fxa16', 'name'), ('fxa17', 'met_other_time'), ('fxa18', 'recorder_off'), ('fxa19', 'unverified_speaker'),
       ('fxa20', 'recorder_off'), ('fxa21', 'name'),
       ('fxa22a', 'unverified_speaker'), ('fxa22b', 'unverified_speaker'), ('fxa23a', 'unverified_speaker'), ('fxa23b', 'unverified_speaker'),
-      ('fxa24', 'unverified_speaker'), ('fxa25', 'host_not_recorded'), ('fxa26', 'internal_booker')) e(mid, want)
+      ('fxa24', 'unverified_speaker'), ('fxa25', 'host_not_recorded'), ('fxa26', 'internal_booker'),
+      ('fxa27a', 'unverified_speaker'), ('fxa27b', 'unverified_speaker')) e(mid, want)
   LOOP
     SELECT held_basis INTO v FROM public.booking_attributions WHERE meeting_id = k.mid;
     IF NOT FOUND OR v IS DISTINCT FROM k.want THEN fails := fails || (k.mid || ' got ' || coalesce(v, 'NULL') || ' want ' || k.want); END IF;
