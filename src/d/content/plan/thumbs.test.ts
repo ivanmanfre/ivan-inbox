@@ -3,12 +3,12 @@ import { thumbUrl } from './thumbs'
 
 const BASE = 'https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1'
 describe('thumbUrl', () => {
-  it('asks Supabase storage for a resized copy', () => {
+  it('uses a stored public preview', () => {
     expect(thumbUrl(`${BASE}/object/public/client-photos/risedtc-com/a b.png`))
-      .toBe(`${BASE}/render/image/public/client-photos/risedtc-com/a b.png?width=360&height=144&resize=cover`)
+      .toBe(`${BASE}/object/public/client-photos/_library-thumbnails/w480-h600-q75/risedtc-com/a%20b.png.webp`)
   })
   it('keeps a query the stored URL already has', () => {
-    expect(thumbUrl(`${BASE}/object/public/ig-slides/x.jpg?v=2`)).toBe(`${BASE}/render/image/public/ig-slides/x.jpg?v=2&width=360&height=144&resize=cover`)
+    expect(thumbUrl(`${BASE}/object/public/ig-slides/x.jpg?v=2`)).toBe(`${BASE}/object/public/ig-slides/x.jpg?v=2`)
   })
   it('leaves other hosts, private objects and empty values alone', () => {
     expect(thumbUrl('https://media.licdn.com/dms/image/abc.jpg')).toBe('https://media.licdn.com/dms/image/abc.jpg')

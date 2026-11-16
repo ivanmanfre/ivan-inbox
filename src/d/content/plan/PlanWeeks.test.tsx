@@ -232,14 +232,14 @@ describe('PlanWeeks', () => {
     expect(screen.queryByRole('tooltip')).toBeNull()
   })
 
-  it('thumbnails ask storage for a resized copy; on error the original once, then the reason line', () => {
+  it('stored previews fall back to the original once, then the reason line', () => {
     const r = rise()
     const p = r.weeks[0].posts[1] // Elemental Air
     p.brain!.thumb = `${STORE}/object/public/client-photos/risedtc-com/x.png`
     const items = show(r)
     const c = card(/Elemental Air/)
     const img = () => c.querySelector<HTMLImageElement>('img.pl2-thumb')
-    expect(img()!.getAttribute('src')).toBe(`${STORE}/render/image/public/client-photos/risedtc-com/x.png?width=360&height=144&resize=cover`)
+    expect(img()!.getAttribute('src')).toBe(`${STORE}/object/public/client-photos/_library-thumbnails/w480-h600-q75/risedtc-com/x.png.webp`)
     fireEvent.error(img()!)
     expect(img()!.getAttribute('src')).toBe(`${STORE}/object/public/client-photos/risedtc-com/x.png`)
     expect(c.querySelector('.pl2-why1')).toBeNull()

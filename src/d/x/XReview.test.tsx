@@ -260,6 +260,24 @@ describe('quick X post review', () => {
     expect(document.querySelector('[data-x-photo-panel]')?.textContent).toContain('1 photo')
   })
 
+  it.each(['option', 'locked', 'gallery'] as const)('uses the original if a %s preview is missing', async kind => {
+    api.fetchXQuickPhotos.mockResolvedValue([{ id: 'p9', url: THIRD, place: 'Gdańsk', scene: '', mood: '', description: '', has_ivan: false, recent: false }])
+    await open(withRing(kind === 'locked' ? { status: 'approved' } : {}))
+    const selector = kind === 'locked' ? '.xr-pick-locked' : kind === 'gallery' ? '[data-verb=x-photo-pick][data-photo-id=p9] img' : '[data-verb=x-photo-option][data-photo-id=p1] img'
+    if (kind === 'gallery') {
+      fireEvent.click(document.querySelector('[data-verb=x-photo-change]')!)
+      await waitFor(() => expect(document.querySelector(selector)).toBeTruthy())
+    }
+    const image = document.querySelector<HTMLImageElement>(selector)!
+    const original = kind === 'gallery' ? THIRD : PHOTO
+    expect(image.getAttribute('src')).toContain('_library-thumbnails/')
+    fireEvent.error(image)
+    expect(image.getAttribute('src')).toBe(original)
+    fireEvent.error(image)
+    expect(image.getAttribute('src')).toBe(original)
+    expect(api.setXQuickPhoto).not.toHaveBeenCalled()
+  })
+
   it('a locked post (not a draft) shows its photo without the option row', async () => {
     await open(withRing({ status: 'approved' }))
     expect(shown()).toBe(PHOTO)

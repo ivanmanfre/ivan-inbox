@@ -1,3 +1,4 @@
+import { storedPreviewUrl } from './storagePreview'
 import { supabase } from './supabase'
 import { warsawDay, warsawDow } from '../d/ui/time'
 
@@ -214,10 +215,9 @@ export function photoRing(k: Pick<XQuick, 'media_url' | 'media_photo_id' | 'medi
   return { ring: [{ id: k.media_photo_id ?? '', url: cur, place: k.media_place ?? null }, ...ranked], index: 0 }
 }
 
-/** A small square thumbnail of a public storage image (Supabase image transform); other URLs pass through. */
-export function photoThumb(url: string, px = 240): string {
-  const m = url.match(/^(https:\/\/[a-z0-9]+\.supabase\.co\/storage\/v1)\/object\/public\/(.+)$/)
-  return m ? `${m[1]}/render/image/public/${m[2]}?width=${px}&height=${px}&resize=cover&quality=60` : url
+/** Reusable preview for a public library photo. */
+export function photoThumb(url: string, _px = 240): string {
+  return storedPreviewUrl(url)
 }
 
 // ---- the flag ----
