@@ -1,24 +1,26 @@
 -- Post-deploy checks for 20261115p on LIVE. Read-only: run after the migration and the first
 -- `select public.rise_booking_held_apply();`. Every row should show ok = true.
 -- Expected at deploy time (dry run p_now 2026-11-15 21:30 UTC): ~147 RISE rows judged; Aug-Nov held 40, no-show 4.
+-- Since 20261116b, ARCH rows carry held_* stamps too (arch_booking_held_apply): the RISE checks are scoped to
+-- client_id = 'risedtc' and the shared stamping check allows both tenants. ARCH checks: 20261116b_*.postdeploy.sql.
 select 'columns present' as check_name, count(*) = 5 as ok, count(*)::text as detail
   from pg_attribute where attrelid = 'public.booking_attributions'::regclass and attname like 'held%' and not attisdropped
 union all
-select 'no non-RISE row stamped', count(*) = 0, count(*)::text
-  from public.booking_attributions where client_id <> 'risedtc' and (held_basis is not null or held_checked_at is not null)
+select 'no tenant other than RISE/ARCH stamped', count(*) = 0, count(*)::text
+  from public.booking_attributions where client_id not in ('risedtc','arch') and (held_basis is not null or held_checked_at is not null)
 union all
-select 'no future row stamped', count(*) = 0, count(*)::text
-  from public.booking_attributions where held_basis is not null and meeting_start >= now() - interval '3 hours'
+select 'no future RISE row stamped', count(*) = 0, count(*)::text
+  from public.booking_attributions where client_id = 'risedtc' and held_basis is not null and meeting_start >= now() - interval '3 hours'
 union all
-select 'no-show only on Mattan''s page', count(*) = 0, count(*)::text
-  from public.booking_attributions where held_by_transcript is false and (slug like 'mattan5%') is not true
+select 'RISE no-show only on Mattan''s page', count(*) = 0, count(*)::text
+  from public.booking_attributions where client_id = 'risedtc' and held_by_transcript is false and (slug like 'mattan5%') is not true
 union all
 select 'every past RISE row judged', count(*) = 0, count(*)::text
   from public.booking_attributions where client_id = 'risedtc' and meeting_start < now() - interval '3 hours' and held_basis is null
 union all
-select 'held rows point at a fathom-risedtc recording', count(*) = 0, count(*)::text
+select 'RISE held rows point at a fathom-risedtc recording', count(*) = 0, count(*)::text
   from public.booking_attributions b left join public.transcripts t on t.id = b.held_transcript_id
- where b.held_by_transcript and (t.id is null or t.source <> 'fathom-risedtc')
+ where b.client_id = 'risedtc' and b.held_by_transcript and (t.id is null or t.source <> 'fathom-risedtc')
 union all
 select 'stamps match a fresh compute', count(*) = 0, count(*)::text
   from public.rise_booking_held_compute() c join public.booking_attributions b using (meeting_id)
