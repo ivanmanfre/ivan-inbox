@@ -1,0 +1,22 @@
+[Unit]
+Description=Ivan Storage traffic observation and alerts
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+DynamicUser=yes
+StateDirectory=ivan-storage-traffic
+StateDirectoryMode=0700
+UMask=0077
+LoadCredential=management-token:/etc/ivan-storage-traffic/management-token
+LoadCredential=relay-config:/etc/ivan-storage-traffic/relay-config
+ExecStart=/usr/bin/python3 -B /opt/ivan-storage-traffic/monitor.py --client-id ivan --state-dir /var/lib/ivan-storage-traffic --collect --notify
+TimeoutStartSec=180
+MemoryMax=128M
+Nice=10
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
