@@ -10,13 +10,20 @@ export type ReferralDraft = {
   draft: string | null
   reason: string | null
   sources: ReferralSource[]
+  acknowledgement?: string | null
+  revision?: number
+  candidate?: { name: string; linkedin_url: string; summary: string | null; draft: string; sources: ReferralSource[] }
 }
 
 /** A cheap trigger only. The researcher must confirm a named human handoff. */
 export function referralCandidate(text: string): boolean {
   // The object must be someone other than the two people in the thread: "happy to check out",
   // "happy to connect" and "talk to you soon" are acceptances, never handoffs.
-  if (/\b(?:(?:speak|talk|reach out|connect|check)\s+(?:to|with)|contact)\s+(?!(?:me|us|you|him|her|them)\b)\S+/i.test(text)) return true
+  const handoffs = text.matchAll(/\b(?:(?:speak(?:ing)?|talk(?:ing)?|reach(?:ing)? out|connect(?:ing)?|check(?:ing)?)\s+(?:to|with)|contact(?:ing)?)\s+((?!(?:me|us|you|him|her|them)\b)\S+)/gi)
+  for (const handoff of handoffs) {
+    // An email address is handled by the reply's email leg and supplies no named person to research.
+    if (!/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(handoff[1])) return true
+  }
   const named = text.match(/\b([\p{L}][\p{L}'-]*(?:\s+[\p{L}][\p{L}'-]*){0,3})\s+(?:handles?|does|manages?|runs?|looks after|is responsible for|is in charge of)\b/iu)
   return Boolean(named && !/\b(?:i|we|you|he|she|they|it)\b/i.test(named[1]))
 }
@@ -30,6 +37,67 @@ const profileKey = (s: string): string | null => {
   } catch { return null }
 }
 
+/** Prospect-facing copy rules every referral DM draft must pass. */
+export const draftBreaksRules = (draft: string) => /[—–!]|\bcurious if\b|\b(?:performance.only|no retainers?|only (?:get )?paid (?:on|when))\b/i.test(draft)
+
+export type MentionProfile = {
+  provider_id: string
+  name: string
+  headline: string | null
+  public_identifier: string
+  experience: { company: string; position: string | null; current: boolean }[]
+}
+/** A LinkedIn @mention carries the tagged member's id, so it names one exact profile, not a search guess. */
+export type Mention = { label: string; profile: MentionProfile }
+
+const sameCompany = (a: string, b: string) => {
+  const x = norm(a), y = norm(b)
+  return Boolean(x && y && (x === y || ` ${x} `.includes(` ${y} `) || ` ${y} `.includes(` ${x} `)))
+}
+
+/** Pick the mention the referral names. The label must appear in the message, match the extracted name,
+ * and match the resolved profile's name. */
+export function matchMention(mentions: Mention[], name: string, text: string): Mention | null {
+  const want = norm(name)
+  const hits = mentions.filter(m => {
+    const label = norm(m.label)
+    return Boolean(label && want && norm(text).includes(label) && (label === want || label.includes(want) || want.includes(label))
+      && norm(m.profile.name) === label)
+  })
+  return hits.length === 1 ? hits[0] : null
+}
+
+/** Identity from a LinkedIn profile read. A current role at the referred company makes it verified;
+ * otherwise it stays a candidate for the operator to check before contact. */
+export function profileIdentity(p: MentionProfile, input: { id: string; company: string | null }, via: string): { identity: ReferralDraft; atCompany: boolean } {
+  const url = `https://www.linkedin.com/in/${p.public_identifier}`
+  const role = input.company ? p.experience.find(e => e.current && sameCompany(e.company, input.company!)) : undefined
+  const current = p.experience.filter(e => e.current).map(e => `${e.position ?? 'Role'} at ${e.company}`).slice(0, 2).join('; ')
+  const summary = role ? `${p.name} is ${role.position ? `${role.position} at` : 'at'} ${role.company} (current role on their LinkedIn profile).`
+    : `${p.name}'s LinkedIn profile lists no current ${input.company ?? 'company'} role${current ? ` (current: ${current})` : ''}.`
+  return { atCompany: Boolean(role), identity: {
+    status: 'verified', input_message_id: input.id, name: p.name, company: input.company, role: role?.position ?? p.headline,
+    linkedin_url: url, summary, draft: null, reason: null,
+    sources: [{ url, title: `${p.name}${p.headline ? ` | ${p.headline}` : ''} | ${via}` }],
+  } }
+}
+
+/** The tagged profile is the referred person, whatever the search index says. */
+export const mentionIdentity = (m: Mention, input: { id: string; company: string | null }) =>
+  profileIdentity(m.profile, input, 'LinkedIn profile tagged in the message')
+
+/** Pick the one search result that is the named person with a current role at the company. A single
+ * same-first-name profile at the company is only a candidate; namesakes elsewhere never match. */
+export function pickSearchMatch(profiles: MentionProfile[], name: string, company: string): { profile: MentionProfile; exact: boolean } | null {
+  const at = profiles.filter(p => p.experience.some(e => e.current && sameCompany(e.company, company)))
+  const exact = at.filter(p => norm(p.name) === norm(name))
+  if (exact.length === 1) return { profile: exact[0], exact: true }
+  if (exact.length > 1) return null
+  const first = norm(name).split(' ')[0]
+  const near = at.filter(p => norm(p.name).split(' ')[0] === first)
+  return near.length === 1 ? { profile: near[0], exact: false } : null
+}
+
 /** Only a cited person profile at the referred company can carry a DM draft. */
 export function verifyReferral(raw: unknown, cited: ReferralSource[], input: { id: string; text: string; company: string | null }): ReferralDraft {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
@@ -39,7 +107,7 @@ export function verifyReferral(raw: unknown, cited: ReferralSource[], input: { i
   if (r.status !== 'verified') return base
   if (typeof r.name !== 'string' || typeof r.company !== 'string' || typeof r.linkedin_url !== 'string'
     || typeof r.draft !== 'string' || !r.draft.trim() || r.draft.length > 3000 || typeof r.summary !== 'string') return base
-  if (/[—–!]|\bcurious if\b|\b(?:performance.only|no retainers?|only (?:get )?paid (?:on|when))\b/i.test(r.draft)) return { ...base, reason: 'The DM draft did not pass the copy rules. Retry research to draft again.' }
+  if (draftBreaksRules(r.draft)) return { ...base, reason: 'The DM draft did not pass the copy rules. Retry research to draft again.' }
   const name = norm(r.name), text = norm(input.text), key = profileKey(r.linkedin_url)
   if (!name || !text.includes(name) || !input.company || norm(r.company) !== norm(input.company) || !key) return base
   const sources = cited.filter(s => { try { return new URL(s.url).protocol === 'https:' } catch { return false } })
