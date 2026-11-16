@@ -12,6 +12,7 @@ export function storedPreviewUrl(value: string): string {
       url.pathname = `/storage/v1/object/public/${bucket}/${path}`
     }
     if (bucket !== 'post-stills' && bucket !== 'client-photos') return route === 'object' ? value : url.toString()
+    if (path.split('/').some(part => part === 'onepost' || part === '_edit_preview')) return route === 'object' ? value : url.toString()
     if (!path.startsWith('_library-thumbnails/')) {
       url.pathname = `/storage/v1/object/public/${bucket}/${PREFIX}${path}.webp`
     }

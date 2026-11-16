@@ -12,6 +12,12 @@ describe('storedPreviewUrl', () => {
       expect(storedPreviewUrl(u)).toBe(u)
     }
   })
+  it('uses originals for excluded scratch and one-post folders', () => {
+    for (const segment of ['onepost', '_edit_preview']) {
+      const original = `${base}/object/public/post-stills/${segment}/a.jpg`
+      expect(storedPreviewUrl(original)).toBe(original)
+    }
+  })
   it('normalizes existing transformed library URLs and is idempotent', () => {
     const original = `${base}/render/image/public/client-photos/arch/a.jpg?width=200&height=200&resize=cover&quality=60&v=2`
     const expected = `${base}/object/public/client-photos/_library-thumbnails/w480-h600-q75/arch/a.jpg.webp?v=2`

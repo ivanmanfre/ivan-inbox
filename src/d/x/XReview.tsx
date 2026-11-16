@@ -381,7 +381,7 @@ function PhotoPanel({ k, locked, pick }: { k: XQuick; locked: boolean; pick: Pho
         <small>{media ? `1 photo${pick.shown?.place ? ` · ${pick.shown.place}` : ''}` : 'Text only'}</small>
       </div>
       <p className="xr-sec-note">{photoNote(k, pick).replace(/([^.!?])$/, '$1.')}{!locked && count > 1 ? ` ${count} options fit this post: tap one to use it.` : ''}</p>
-      {locked ? (media && <img className="xr-pick-locked" src={photoThumb(media, 200)} alt="" />) : (
+      {locked ? (media && <img className="xr-pick-locked" src={photoThumb(media, 200)} alt="" onError={e => { const el = e.currentTarget; if (media && el.getAttribute('src') !== media) el.src = media }} />) : (
         <div className="xr-picks" role="radiogroup" aria-label="Photo for this post">
           {pick.options.map((p, i) => {
             const on = p.url === media
@@ -389,7 +389,7 @@ function PhotoPanel({ k, locked, pick }: { k: XQuick; locked: boolean; pick: Pho
               <button key={p.url} type="button" role="radio" aria-checked={on} className={`xr-pick${on ? ' xr-pick-on' : ''}`}
                 data-verb="x-photo-option" data-photo-id={p.id} disabled={disabled}
                 aria-label={`${p.place ?? `Option ${i + 1}`}${on ? ', on the post' : ''}`} onClick={() => { if (!on) void choose(p, false) }}>
-                <span className="xr-pick-img"><img src={photoThumb(p.url, 200)} alt="" loading="lazy" />{on && <span className="xr-pick-check" aria-hidden>✓</span>}</span>
+                <span className="xr-pick-img"><img src={photoThumb(p.url, 200)} alt="" loading="lazy" onError={e => { const el = e.currentTarget; if (el.getAttribute('src') !== p.url) el.src = p.url }} />{on && <span className="xr-pick-check" aria-hidden>✓</span>}</span>
                 <span className="xr-pick-cap">{busy === p.id ? 'Saving…' : on ? 'On the post' : `Option ${i + 1}`}</span>
               </button>
             )
@@ -414,7 +414,7 @@ function PhotoPanel({ k, locked, pick }: { k: XQuick; locked: boolean; pick: Pho
                 <button key={p.id} type="button" className={`xr-gal${p.url === media ? ' xr-gal-on' : ''}`} data-verb="x-photo-pick" data-photo-id={p.id}
                   disabled={disabled || p.url === media} aria-label={`${p.place ?? 'Photo'}: ${p.description ?? ''}${p.recent ? ' (used recently)' : ''}`}
                   onClick={() => void choose({ id: p.id, url: p.url, place: p.place }, true)}>
-                  <img src={photoThumb(p.url)} alt="" loading="lazy" />
+                  <img src={photoThumb(p.url)} alt="" loading="lazy" onError={e => { const el = e.currentTarget; if (el.getAttribute('src') !== p.url) el.src = p.url }} />
                   {p.recent && <span className="xr-gal-tag">used</span>}
                   {busy === p.id && <span className="xr-gal-tag xr-gal-busy">saving…</span>}
                 </button>
