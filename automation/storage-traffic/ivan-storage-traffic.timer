@@ -1,0 +1,12 @@
+[Unit]
+Description=Observe newly closed Storage traffic intervals
+
+[Timer]
+OnCalendar=*-*-* *:05,20,35,50:00 UTC
+AccuracySec=15s
+RandomizedDelaySec=15s
+Persistent=yes
+Unit=ivan-storage-traffic.service
+
+[Install]
+WantedBy=timers.target

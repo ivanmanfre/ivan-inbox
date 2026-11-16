@@ -1,0 +1,8 @@
+{
+  "source": "Supabase Management API aggregate replay, no notification sent",
+  "start": "2026-11-13T09:30:00Z",
+  "end": "2026-11-13T09:45:00Z",
+  "requests": 107,
+  "bytes": 1112410527,
+  "unknown_lengths": 0
+}

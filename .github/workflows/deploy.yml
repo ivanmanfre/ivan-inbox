@@ -13,6 +13,7 @@ jobs:
       - name: Check storage costs and build
         run: |
           npm ci
+          python3 -B automation/storage-traffic/test_monitor.py
           node --test tools/check-storage-costs.test.mjs
           node tools/check-storage-costs.mjs
           npm run build
