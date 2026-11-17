@@ -1,7 +1,7 @@
 import { withTimeout } from '../d/ui/timeout'
 import { readFirstRows } from './firstRows'
 import { scheduleHeld } from './dmSchedule'
-import { fetchDraftContextGaps, fetchDraftEmailStamps, fetchEmailRecipients, fetchDraftEvidence, fetchManualReplyIds, fetchMessages, groupThreads, isHeldSend, type DraftContextGap, type DraftEmailStamp, type InboxMessage, type Thread } from './inbox'
+import { dedupeMessages, fetchDraftContextGaps, fetchDraftEmailStamps, fetchEmailRecipients, fetchDraftEvidence, fetchManualReplyIds, fetchMessages, groupThreads, isHeldSend, type DraftContextGap, type DraftEmailStamp, type InboxMessage, type Thread } from './inbox'
 
 /**
  * The DMs list exactly as the screen assembles it: the message read, the four
@@ -31,6 +31,20 @@ export async function loadInbox(knownRows: number, onNewest?: (threads: Thread[]
   const full = await assembleInbox(viewRows)
   settled = true
   return { viewRows, ...full }
+}
+
+/**
+ * 2026-11-17 speed pass: off the DMs page the frame's inbox reads only this, the complete
+ * conversations of every Needs-you and Coming-up candidate (the same first-rows read the frame's DM
+ * counts make, shared with them), never the whole message view (~25 pages of ~2 s each on every
+ * place). Null = the first-rows RPC is absent, so the caller takes the whole read instead.
+ */
+export async function loadPriority(): Promise<{ viewRows: InboxMessage[]; rows: InboxMessage[]; threads: Thread[] } | null> {
+  const read = await readFirstRows(FIRST_ROWS_REUSE_MS)
+  if (!read) return null
+  // Deduped the way the whole read (fetchMessages) and the per-seat counts dedupe their rows.
+  const viewRows = dedupeMessages(read)
+  return { viewRows, ...(await assembleInbox(viewRows)) }
 }
 
 type Probes = [Set<string>, Map<string, DraftEmailStamp> | null, Map<string, { recipient_email: string; email_cc: string[] }>]

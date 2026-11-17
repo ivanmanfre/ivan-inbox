@@ -122,6 +122,9 @@ export function FrameCountsProvider({ children, readers = LIVE, savedSeed }: { c
   const [health, setHealth] = useState(() => seed<AutomationHealth>(saved, 'health'))
   const [magnets, setMagnets] = useState(() => seed<number>(saved, 'magnets'))
   const [calls, setCalls] = useState(() => seed<number>(saved, 'calls'))
+  // The frame inbox's scope when the frame opened (counts/inbox): 'all' = opened on the DMs page.
+  const openScope = useDInboxMaybe()?.scope
+  const inboxScope = useRef(openScope ?? 'all')
   // One read in flight per key: a focus event during a slow read does not
   // stack a second one on the database.
   const busy = useRef(new Set<string>())
@@ -194,7 +197,11 @@ export function FrameCountsProvider({ children, readers = LIVE, savedSeed }: { c
     // inbox's warm start that is a few seconds after open. A device that already shows saved numbers
     // waits DMS_FIRST_WAIT_MS before the per-seat read (~1 MB, the first-rows RPC) and skips it when
     // the inbox covers the numbers by then. A device with nothing saved reads at once, as before.
-    const dmsSaved = SEATS.some(s => saved[`dms:${s}`]?.value != null)
+    // 2026-11-17 speed pass: only an open ON the DMs page waits (its inbox may warm-start from the
+    // snapshot). Off it the inbox reads the Needs-you conversations itself, a few seconds in, and
+    // takes this read's first-rows answer (lib/firstRows reuse) instead of a second one; the wait
+    // used to hold Home's queue on "Reading what needs you" for the full 12 s on every reopen.
+    const dmsSaved = SEATS.some(s => saved[`dms:${s}`]?.value != null) && inboxScope.current === 'all'
     refresh(dmsSaved ? ALL.filter(k => k !== 'dms') : undefined)
     const firstDms = dmsSaved ? window.setTimeout(() => refresh('dms'), DMS_FIRST_WAIT_MS) : null
     const onVisible = () => { if (document.visibilityState === 'visible') refresh() }
@@ -248,7 +255,9 @@ export function FrameCountsProvider({ children, readers = LIVE, savedSeed }: { c
   const inbox = useDInboxMaybe()
   const inboxThreads = inbox?.threads
   // Only a live read that has not since failed counts. A saved copy, or a failed read, falls back to the small per-seat reads.
-  const inboxAt = inbox?.loadedAt && !inbox.error ? Date.parse(inbox.loadedAt) : null
+  // `liveAt`: off the DMs page the inbox holds the Needs-you conversations only, which is every thread these numbers count.
+  const inboxLive = inbox?.liveAt ?? inbox?.loadedAt
+  const inboxAt = inboxLive && !inbox?.error ? Date.parse(inboxLive) : null
   const dmsLive = useMemo(() => {
     if (!inboxThreads || inboxThreads.length === 0 || inboxAt == null || !Number.isFinite(inboxAt)) return null
     const now = Date.now()

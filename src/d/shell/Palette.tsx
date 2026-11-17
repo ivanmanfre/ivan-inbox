@@ -78,7 +78,10 @@ export function DPalette({ onClose, navigate, toggleClaude, openBell, lane: star
   const runBulk = useLayerBulk()
   // Read once when the palette opens (it mounts on open), as today's layer did.
   const [layer] = useState(() => layerCommands({ page: [], openSheet: openKeySheet, closeTop: () => {}, runBulk }))
-  // Live: the inbox may still be landing when the palette opens.
+  // Live: the inbox may still be landing when the palette opens. Off the DMs page the frame's inbox
+  // holds only the Needs-you conversations: the People band asks for the whole history (counts/inbox).
+  const askAll = inbox.askAll
+  useEffect(() => { if (desktop) askAll() }, [desktop, askAll])
   const people = useMemo(() => (desktop ? peopleFromThreads(inbox.threads) : []), [desktop, inbox.threads])
   // Each person's seat, so Open lands on that seat's list and not the remembered one.
   const personSeat = useMemo(() => new Map(inbox.threads.map(t => [t.prospect_id, seatOf(t.client_id)])), [inbox.threads])

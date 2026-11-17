@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { type InboxMessage, type Thread, SPAM_REASON } from '../lib/inbox'
-import { assembleInbox, loadInbox } from '../lib/inboxLoad'
+import { assembleInbox, loadInbox, loadPriority } from '../lib/inboxLoad'
 import { FULL_EVERY_MS, changedSince, fetchConversations, mergeConversations, prospectOfEvent, withOverlap } from '../lib/inboxDelta'
 import { playChime } from '../lib/chime'
 import { readInboxCache, writeInboxCache } from '../lib/inboxCache'
@@ -28,6 +28,20 @@ const SWEEP_EVERY_MS = 10 * 60_000
 const MIN_GAP_MS = 120_000
 /** After a warm start over an overdue snapshot, the whole read waits this long (the app may close first). */
 const OVERDUE_FULL_AFTER_MS = 120_000
+/** The first-rows read holds every prospect with an inbound row this recent (db: inbox_phone_first_rows_r2). */
+const PRIORITY_INBOUND_MS = 15 * 86_400_000
+
+/**
+ * 'all': the whole message view (the DMs list). 'priority' (2026-11-17 speed pass): only the
+ * complete conversations of every Needs-you and Coming-up candidate (lib/inboxLoad loadPriority),
+ * which is all the frame needs off the DMs page (the per-seat counts, the Glance line, the reply
+ * chime). A whole read in 'priority' is that read; it never writes the saved copy or the snapshot
+ * (both stay the whole list), and it never starts from the snapshot. Once 'all' is asked for it
+ * stays 'all' for the life of the hook: the whole read follows (snapshot first), and until it lands
+ * the hook reports the Needs-you rows the way it reports its own early paint (priorityAt set,
+ * loadedAt null, loading true), so the DMs page never shows a part list as the whole one.
+ */
+export type InboxScope = 'all' | 'priority'
 
 /**
  * `enabled` false: a second caller under a provider that already runs this read
@@ -35,8 +49,9 @@ const OVERDUE_FULL_AFTER_MS = 120_000
  * no focus listener. Default true: every existing caller is unchanged.
  * `seedCache`: paint the saved copy even while the live read waits (D's frame
  * starts its read a few seconds late off the DMs page, so the page's own reads go first).
+ * `scope`: see InboxScope. Default 'all': every existing caller is unchanged.
  */
-export function useInbox(enabled = true, seedCache = enabled) {
+export function useInbox(enabled = true, seedCache = enabled, scope: InboxScope = 'all') {
   // N3-1: the last reconciled list, read SYNCHRONOUSLY so the first render pass
   // already has rows. Anything async here (IndexedDB, supabase.auth.getSession)
   // paints a frame late, which is the skeleton flash this exists to remove.
@@ -112,7 +127,14 @@ export function useInbox(enabled = true, seedCache = enabled) {
   // What the next run owes: a whole read, these conversations, or a changed-since sweep.
   // `urgent`: an inbound message or a return/reconnect check is owed, which runs at the coalesce even inside the gap.
   const owed = useRef<{ full: boolean; pids: Set<string>; sweep: boolean; urgent: boolean }>({ full: false, pids: new Set(), sweep: false, urgent: false })
-  const land = useCallback((rows: InboxMessage[], grouped: Thread[]) => {
+  // 2026-11-17 speed pass (InboxScope): whether the whole view is wanted (sticky), and what the rows
+  // behind viewRows are: nothing yet, the Needs-you read only, or the whole view.
+  const [all, setAll] = useState(scope === 'all')
+  if (scope === 'all' && !all) setAll(true)
+  const wantAll = useRef(all)
+  const base = useRef<'none' | 'priority' | 'full'>('none')
+  const [baseKind, setBaseKind] = useState<'none' | 'priority' | 'full'>('none')
+  const land = useCallback((rows: InboxMessage[], grouped: Thread[], kind: 'priority' | 'full' = base.current === 'priority' ? 'priority' : 'full') => {
     // 2026-09-10 (Ivan: strangers filed under Likely spam get "no notifications or sound"):
     // a filed thread never moves the chime watermark. Registration inserts old messages with
     // a fresh created_at, so without this every triage batch would ring the open app.
@@ -130,8 +152,15 @@ export function useInbox(enabled = true, seedCache = enabled) {
       setLoading(false)
       return false
     }
-    if (latest && newestInbound.current && latest > newestInbound.current) playChime()
+    // The whole read landing over a Needs-you read: an inbound newer than the last one heard is new
+    // only inside the window that read holds (every prospect with an inbound in 15 days); an older
+    // one was outside it, never a new message.
+    const widened = kind === 'full' && base.current === 'priority'
+    if (latest && newestInbound.current && latest > newestInbound.current
+      && (!widened || Date.parse(latest) >= Date.now() - PRIORITY_INBOUND_MS)) playChime()
     if (latest) newestInbound.current = latest
+    base.current = kind
+    setBaseKind(kind)
     provisional.current = false
     savedBeforePaint.current = null
     knownRows.current = grouped.length
@@ -150,7 +179,7 @@ export function useInbox(enabled = true, seedCache = enabled) {
     snapshotTimer.current = window.setTimeout(() => {
       snapshotTimer.current = null
       const user = rowsOwner.current, rows = viewRows.current, mark = watermark.current
-      if (!alive.current || !user || user !== currentUserId() || !rows || rows.length === 0 || !mark || !fullAt.current) return
+      if (!alive.current || !user || user !== currentUserId() || !rows || rows.length === 0 || !mark || !fullAt.current || base.current !== 'full') return
       if (minGapMs > 0 && Date.now() - snapshotSavedAt.current < minGapMs) return
       snapshotSavedAt.current = Date.now()
       void writeInboxSnapshot({ user, rows, watermark: mark, fullAt: fullAt.current })
@@ -173,7 +202,7 @@ export function useInbox(enabled = true, seedCache = enabled) {
       const rows = d.rows
       const res = await assembleInbox(rows)
       if (!alive.current || currentUserId() !== owner) return false
-      if (!land(res.rows, res.threads)) return false
+      if (!land(res.rows, res.threads, 'full')) return false
       viewRows.current = rows; watermark.current = d.watermark; rowsOwner.current = owner
       lastFull.current = fullAt.current = snap.fullAt
       lastIncremental.current = Date.now()
@@ -208,7 +237,10 @@ export function useInbox(enabled = true, seedCache = enabled) {
         if (due.full || viewRows.current === null) {
           // A whole read settles everything owed before it started.
           owed.current = { full: false, pids: new Set(), sweep: false, urgent: false }
-          if (viewRows.current === null && mayWarmStart.current) {
+          const whole = wantAll.current
+          // The snapshot is the whole view: only a read that wants it starts from it (the mount's,
+          // or the first one after 'priority' turned into 'all').
+          if (whole && base.current !== 'full' && mayWarmStart.current) {
             mayWarmStart.current = false
             if (await warmStart()) { ranIncremental = true; continue }
             // No usable snapshot, or the delta could not be trusted: the whole read, as before.
@@ -224,6 +256,20 @@ export function useInbox(enabled = true, seedCache = enabled) {
           if (overdueTimer.current !== null) { clearTimeout(overdueTimer.current); overdueTimer.current = null }
           const readOwner = currentUserId()
           const markRead = changedSince(null).then(c => c.now, () => null)
+          if (!whole) {
+            // 'priority': the Needs-you read, shared with the frame's DM counts (lib/firstRows: a read
+            // they started up to 10 s ago, well inside the sweeps' 2-minute overlap). Null = the RPC is
+            // absent: the whole read below, as before.
+            const res = await loadPriority()
+            if (res) {
+              const mark = await markRead
+              if (!land(res.rows, res.threads, 'priority')) break
+              viewRows.current = res.viewRows; watermark.current = mark; lastFull.current = Date.now()
+              rowsOwner.current = readOwner
+              ranIncremental = true
+              continue
+            }
+          }
           // A cold screen (nothing on it: no saved copy, no good read yet) paints the newest page
           // while the rest is read. That paint is PROVISIONAL: it never touches knownRows, the
           // cache, the chime or loadedAt (the screen still says Reading…, loading stays true, so a
@@ -237,7 +283,8 @@ export function useInbox(enabled = true, seedCache = enabled) {
           // partial newest page never paints over it. Same provisional rules; a failure puts the
           // saved copy back.
           const warm = knownRows.current > 0
-          const res = await loadInbox(knownRows.current, (early, priority) => {
+          // Over a landed Needs-you read ('priority' turned 'all') that paint is already on screen: no second one.
+          const res = await loadInbox(knownRows.current, base.current === 'priority' ? undefined : (early, priority) => {
             if (fullRun.current !== run || early.length === 0) return
             if (!warm) {
               if (knownRows.current !== 0) return
@@ -259,7 +306,7 @@ export function useInbox(enabled = true, seedCache = enabled) {
           })
           const mark = await markRead
           // An empty read over a known-non-empty inbox is a failure (land says so): stop, never loop on it.
-          if (!land(res.rows, res.threads)) break
+          if (!land(res.rows, res.threads, 'full')) break
           viewRows.current = res.viewRows; watermark.current = mark; lastFull.current = fullAt.current = Date.now()
           rowsOwner.current = readOwner
           saveSnapshot(0)
@@ -318,10 +365,23 @@ export function useInbox(enabled = true, seedCache = enabled) {
   // resurrect a row this session took away. Gated on `loadedAt`, which is only
   // stamped by a fetch that RESOLVED, so a 4xx/5xx session writes nothing at all
   // and a cache-seeded paint never rewrites itself.
+  // The saved copy is the whole list: a Needs-you read ('priority') never writes it.
   useEffect(() => {
-    if (loadedAt === null) return
+    if (loadedAt === null || baseKind !== 'full') return
     writeInboxCache(threads)
-  }, [threads, loadedAt])
+  }, [threads, loadedAt, baseKind])
+
+  // 'priority' turned 'all' (the DMs page, ⌘K): the whole read is owed now, from the snapshot first.
+  // Before the mount effect below, so a read that starts on this commit already wants the whole view.
+  useEffect(() => {
+    wantAll.current = all
+    if (!all || !enabled || base.current === 'full') return
+    // Nothing read and nothing reading: the mount's read below already wants the whole view.
+    if (base.current === 'none' && !busy.current) return
+    mayWarmStart.current = true
+    owed.current.full = true
+    void pump()
+  }, [all, enabled, pump])
 
   const pending = useRef<number | null>(null)
   const pendingUrgent = useRef(false)
@@ -402,5 +462,13 @@ export function useInbox(enabled = true, seedCache = enabled) {
       document.removeEventListener('visibilitychange', onReturn)
     }
   }, [refresh, pump, topic, enabled])
-  return { threads, loading, error, loadedAt, readStartedAt, priorityAt, fromCache, cachedAt, refresh }
+  // A Needs-you read under 'all' is the early paint, not the list: reported as one until the whole read lands.
+  const partial = all && baseKind === 'priority'
+  return {
+    threads, loading: loading || (partial && error === null), error, loadedAt: partial ? null : loadedAt, readStartedAt,
+    priorityAt: partial ? (priorityAt ?? loadedAt) : priorityAt, fromCache, cachedAt, refresh,
+    /** When the last read that holds every Needs-you conversation landed (either scope): the frame's DM counts read this. */
+    liveAt: loadedAt,
+    scope: (all ? 'all' : 'priority') as InboxScope,
+  }
 }
