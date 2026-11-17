@@ -65,9 +65,7 @@ const readRpcs = new Set(['inbox_changed_since', 'inbox_interest_cards', 'inbox_
   // The Context sheet's store row (db/302_prospect_store_numbers.sql): STABLE security-definer, no writes.
   'prospect_store_numbers',
   // The Home page's card swap read (content_card_swap_plan): a read RPC, no writes.
-  'content_card_swap_plan',
-  // The visit log (db: inbox_log_visit): a WRITE of one row into inbox_place_visits, allowed on purpose; the gates assert no other mutation.
-  'inbox_log_visit'])
+  'content_card_swap_plan'])
 const replySourceRpcs = new Set(['inbox_reply_source', 'outreach_reply_sources', 'client_board_reply_source', 'client_board_reply_sources'])
 function missingReplySource(url, method, status, payload) {
   const u = new URL(url)
@@ -145,6 +143,8 @@ try {
               return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': new URL(base).origin } })
             }
           }
+          // The visit log is stubbed: a gate run must not write rows that look like real visits.
+          if (method === 'POST' && url.pathname === '/rest/v1/rpc/inbox_log_visit') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': new URL(base).origin } })
           if (url.pathname.startsWith('/functions/')) {
             forbidden.push(`${method} edge function`)
             return route.fulfill({ status: 403, contentType: 'application/json', body: '{"error":"Smoke blocked an edge function"}' })

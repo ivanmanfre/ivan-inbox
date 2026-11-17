@@ -2,6 +2,11 @@
 // A visit counts once the place and sub have stayed the same for 3 seconds, so a pass-through
 // click is not logged, and the same page twice in a row is logged once.
 
+import { supabase } from './supabase'
+
+// Content's bare landing always redirects to a sub; logging it would write two rows for one stay.
+export function shouldLog(place: string, sub: string | null): boolean { return !(place === 'content' && sub === null) }
+
 export function surfaceOf(layout: 'desktop' | 'phone', briefNative: boolean): 'brief' | 'phone' | 'web' {
   if (layout === 'phone') return 'phone'
   return briefNative ? 'brief' : 'web'
@@ -37,8 +42,6 @@ export function createVisitLogger(
 export function sendVisit(place: string, sub: string | null, surface: string): void {
   void (async () => {
     try {
-      // Loaded on first use so the logger itself stays free of the client (and testable without env).
-      const { supabase } = await import('./supabase')
       const { data } = await supabase.auth.getSession()
       if (!data.session) return
       await supabase.rpc('inbox_log_visit', { p_place: place, p_sub: sub, p_surface: surface })

@@ -1,7 +1,7 @@
 import { hashNavigationAllowed } from '../lib/navigationGuard'
 import { Component, Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { applySkin, subscribeSkin, isBriefNative } from '../ds/skin'
-import { createVisitLogger, sendVisit, surfaceOf } from '../lib/visits'
+import { createVisitLogger, sendVisit, shouldLog, surfaceOf } from '../lib/visits'
 import { useSkin } from '../ds/useSkin'
 import { ClaudeProvider } from './claude/ClaudeProvider'
 import { Island } from './claude/Island'
@@ -125,7 +125,7 @@ function useDRoute(): DRoute {
   }, [])
   useEffect(() => {
     const r = parseDHash(hash)
-    visits.current?.seen(r.place, r.sub ?? null, surfaceOf(isDeskNow() ? 'desktop' : 'phone', isBriefNative()))
+    if (shouldLog(r.place, r.sub ?? null)) visits.current?.seen(r.place, r.sub ?? null, surfaceOf(isDeskNow() ? 'desktop' : 'phone', isBriefNative()))
   }, [hash])
   return useMemo(() => parseDHash(hash), [hash])
 }

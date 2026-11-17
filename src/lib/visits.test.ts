@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createVisitLogger, surfaceOf } from './visits'
+import { createVisitLogger, shouldLog, surfaceOf } from './visits'
+
+vi.mock('./supabase', () => ({ supabase: {} }))
 
 describe('visit logger', () => {
   beforeEach(() => { vi.useFakeTimers() })
@@ -12,4 +14,6 @@ describe('visit logger', () => {
   it('does not log after stop', () => { const s = vi.fn(); const l = createVisitLogger(s); l.seen('dms', null, 'web'); vi.advanceTimersByTime(1000); l.stop(); vi.advanceTimersByTime(5000); expect(s).not.toHaveBeenCalled() })
   it('swallows a send that throws', () => { const l = createVisitLogger(() => { throw new Error('boom') }); l.seen('dms', null, 'web'); expect(() => vi.advanceTimersByTime(3000)).not.toThrow() })
   it('names the surface', () => { expect(surfaceOf('phone', false)).toBe('phone'); expect(surfaceOf('desktop', true)).toBe('brief'); expect(surfaceOf('desktop', false)).toBe('web') })
+  it('does not restart the clock for the same page', () => { const s = vi.fn(); const l = createVisitLogger(s); l.seen('dms', null, 'brief'); vi.advanceTimersByTime(2000); l.seen('dms', null, 'brief'); vi.advanceTimersByTime(1000); expect(s).toHaveBeenCalledTimes(1) })
+  it('skips the content landing but logs its subs', () => { expect(shouldLog('content', null)).toBe(false); expect(shouldLog('content', 'now')).toBe(true); expect(shouldLog('home', null)).toBe(true) })
 })

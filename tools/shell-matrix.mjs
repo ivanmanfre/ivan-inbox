@@ -25,9 +25,7 @@ const places = (process.env.SHELL_PLACES || 'home,dms,content/calendar,content/n
 const skin = process.env.SHELL_SKIN ?? 'brief:shell'
 const shots = process.env.SHELL_SHOTS !== '0'
 const authKey = 'sb-bjbvqvzbzczjbatgmccb-auth-token'
-const readRpcs = new Set(['inbox_changed_since', 'inbox_interest_cards', 'inbox_followup_sources', 'warm_signal_cards', 'conversation_agent_cards', 'inbox_reply_source', 'outreach_reply_sources', 'x_review_list', 'content_card_swap_plan',
-  // A WRITE (one visit row, db: inbox_log_visit), allowed on purpose; every other mutation stays blocked.
-  'inbox_log_visit'])
+const readRpcs = new Set(['inbox_changed_since', 'inbox_interest_cards', 'inbox_followup_sources', 'warm_signal_cards', 'conversation_agent_cards', 'inbox_reply_source', 'outreach_reply_sources', 'x_review_list', 'content_card_swap_plan'])
 let session = readFileSync(process.env.SHELL_SESSION_PATH, 'utf8')
 const reportPath = join(outDir, 'report.json')
 if (existsSync(reportPath)) { console.error('report.json exists; use a new outDir'); process.exit(2) }
@@ -101,6 +99,8 @@ for (const engine of engines) {
     await page.route('**/*', async route => {
       const req = route.request(), url = new URL(req.url()), method = req.method()
       if (url.hostname === 'bjbvqvzbzczjbatgmccb.supabase.co') {
+        // The visit log is stubbed: a gate run must not write rows that look like real visits.
+        if (method === 'POST' && url.pathname === '/rest/v1/rpc/inbox_log_visit') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*' } })
         if (url.pathname.startsWith('/functions/')) return route.fulfill({ status: 403, contentType: 'application/json', body: '{"error":"matrix blocked an edge function"}' })
         if (method === 'POST' && url.pathname === '/auth/v1/token' && url.searchParams.get('grant_type') === 'refresh_token') return route.continue()
         if (method === 'POST' && url.pathname.startsWith('/rest/v1/rpc/') && readRpcs.has(url.pathname.split('/').pop())) return route.continue()
