@@ -28,6 +28,7 @@ import './sales4.css'
 // Hooks rule: every hook runs before any branch that returns.
 
 const ORBIT = dHash('sales', 'orbit', { tenant: 'ivan', range: '30d' })
+const SEG_BAR: Record<SalesSegment, string> = { mine: 'your calls, last 60 days', open: 'with action items', recent: 'last 7 days', all: 'all calls' }
 const SEGS: SalesSegment[] = ['mine', 'open', 'recent', 'all']
 
 export default function SalesPage({ layout, route, navigate }: PlaceProps) {
@@ -41,7 +42,7 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
   // Sales opens on Ivan's own calls (2026-11-17); the last 7 days was mixing in client recorders.
   const seg: SalesSegment = segQ && SEGS.includes(segQ) ? segQ : 'mine'
   const sendsRecorded = useMemo(() => data.calls.some(c => c.follow_up_sent === true), [data.calls])
-  const queue = useMemo(() => segmentCalls(data.calls, seg), [data.calls, seg])
+  const queue = useMemo(() => segmentCalls(data.calls, seg, data.now), [data.calls, seg, data.now])
   const want = q.get('call')
   const wanted = want ? queue.find(c => c.id === want) ?? data.calls.find(c => c.id === want) ?? null : null
   // Today's "This call didn't load": the address names a call the archive read does not hold.
@@ -96,7 +97,7 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
 
   const calls = (limit?: number) => (
     <CallsOnRecord calls={data.calls} state={data.state.calls} seg={seg} setSeg={s => go(s)} openId={open?.id ?? null}
-      onOpen={id => go(seg, id)} onRetry={data.retry} limit={limit} />
+      onOpen={id => go(seg, id)} now={data.now} onRetry={data.retry} limit={limit} />
   )
 
   if (layout === 'phone' && want && (open || missing)) {
@@ -104,7 +105,7 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
       <div data-motion={motion} className="sl4 sl4-phone sl4-open" data-layout-v4="sales">
         <div className="sl-back">
           <button type="button" className="d-ib" aria-label="Back to Sales" onClick={() => navigate(dHash('sales', null, { seg }))}><DIcon name="back" /></button>
-          <div><small>Calls on record</small><b>{at} of {queue.length}, {seg === 'open' ? 'with action items' : seg === 'recent' ? 'last 7 days' : 'all calls'}</b></div>
+          <div><small>Calls on record</small><b>{at} of {queue.length}, {SEG_BAR[seg]}</b></div>
         </div>
         <Window row={open} at={at} of={queue.length} onStep={step} layout="phone" missing={missing} sendsRecorded={sendsRecorded} />
       </div>

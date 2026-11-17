@@ -10,9 +10,9 @@ import type { ReadState } from '../useSalesData'
 
 export const SEG_LABEL: Record<SalesSegment, string> = { mine: 'Mine', open: 'Action items', recent: 'Last 7 days', all: 'All' }
 
-export function CallsOnRecord({ calls, state, seg, setSeg, openId, onOpen, onRetry, limit }: {
+export function CallsOnRecord({ calls, state, seg, setSeg, openId, onOpen, onRetry, limit, now = new Date() }: {
   calls: CallRow[]; state: ReadState; seg: SalesSegment; setSeg: (s: SalesSegment) => void
-  openId: string | null; onOpen: (id: string) => void; onRetry: () => void; limit?: number
+  openId: string | null; onOpen: (id: string) => void; onRetry: () => void; limit?: number; now?: Date
 }) {
   const box = useRef<HTMLElement>(null)
   // The open call stays in view (a report or j / k can open one far down the list).
@@ -22,12 +22,12 @@ export function CallsOnRecord({ calls, state, seg, setSeg, openId, onOpen, onRet
   }, [openId, seg])
   const known = state === 'ok' || calls.length > 0
   const st = callStats(calls)
-  const weeks = callsByWeek(calls, new Date(), state)
+  const weeks = callsByWeek(calls, now, state)
   const max = Math.max(1, ...(weeks?.map(w => w.n) ?? []))
-  const queue = segmentCalls(calls, seg)
+  const queue = segmentCalls(calls, seg, now)
   const [more, setMore] = useState(false)
   const shown = limit && !more ? queue.slice(0, limit) : queue
-  const counts: Record<SalesSegment, number> = { mine: segmentCalls(calls, "mine").length, open: st.withActions, recent: st.week, all: st.total }
+  const counts: Record<SalesSegment, number> = { mine: segmentCalls(calls, 'mine', now).length, open: st.withActions, recent: st.week, all: st.total }
   return (
     <section className="sl4-rec" aria-label="Calls on record" ref={box}>
       <div className="sl4-record-head"><h2 className="sl4-eyebrow">Calls on record</h2>{weeks && <div className="sl4-spark" aria-label="Calls in the last 8 weeks">{weeks.map(w => <button key={w.day} type="button" title={`Week of ${w.day}: ${w.n} calls${w.avg != null ? ` · ${w.avg}m avg` : ''}`} aria-label={`Week of ${w.day}: ${w.n} calls`}><i data-current={w.current} style={{ height: `${Math.max(2,w.n / max * 100)}%` }} /></button>)}</div>}</div>

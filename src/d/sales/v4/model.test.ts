@@ -47,3 +47,8 @@ describe('otherPerson never shows an email', () => {
     expect(otherPerson({ ...row, participants: ['davorinsmit@arch.agency'], title: '' })).toBe('davorinsmit')
   })
 })
+it('never shows Ivan own email as the other person', () => {
+  const r = { ...row, title: '', participants: ['ivan@example.com', 'client@example.com'] }
+  expect(otherPerson(r)).toBe('client')
+  expect(otherPerson({ ...r, participants: ['ivan@example.com'] })).toBe('ivan')
+})

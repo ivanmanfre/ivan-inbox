@@ -21,3 +21,8 @@ it('j/k navigate except while an input owns focus',()=>{
  expect(step.mock.calls).toEqual([[1],[-1]])
  screen.getByRole('textbox').focus();fireEvent.keyDown(window,{key:'j'});expect(step).toHaveBeenCalledTimes(2)
 })
+it('the call window shows one line per speaker', () => {
+ render(<Window row={{...row,talk_stats:{words:{'Ivan Manfredi':120,Ada:30},total:150,ivan_pct:80}}} at={1} of={1} onStep={vi.fn()} layout="desktop" />)
+ const lines=[...document.querySelectorAll('.sl4-talk small')].map(e=>e.textContent)
+ expect(lines).toEqual(['Ivan Manfredi 120 words','Ada 30 words'])
+})

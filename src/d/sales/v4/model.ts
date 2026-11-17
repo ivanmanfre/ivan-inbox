@@ -46,6 +46,7 @@ export function otherPerson(row: CallRow) {
   const named = all.find(p => !IVAN.test(p.trim()) && !p.includes('@'))
   if (named) return named
   if ((row.title ?? '').trim()) return nameFromTitle(row.title)
-  const email = all.find(p => p.includes('@'))
+  const emails = all.filter(p => p.includes('@'))
+  const email = emails.find(p => !/^ivan/i.test(p)) ?? emails[0]
   return email ? email.split('@')[0] : nameFromTitle(row.title)
 }
