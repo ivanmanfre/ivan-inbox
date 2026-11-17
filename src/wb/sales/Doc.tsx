@@ -49,7 +49,7 @@
 
    Nothing here writes. The page has no control that changes a pack.
    ========================================================================== */
-import { useEffect, useState, type MouseEvent } from 'react'
+import { useEffect, useMemo, useState, type MouseEvent } from 'react'
 import { Icon, Skeleton, type IconName } from '../../ds'
 import { relAge, Sep } from '../kit'
 import {
@@ -112,8 +112,9 @@ export function readDocHash(hash: string): { slug: string; doc: PackDoc } | null
 // D is the app's default route (parity 09-27): the week is D's Sales, not the old one.
 const SALES_HREF = '#exp/d/sales'
 
-/** The deck: scripts, and nothing else. No allow-same-origin: the app's session is out of its reach. */
-export const DECK_SANDBOX = 'allow-scripts'
+/** The deck: scripts, and popups so its own links open during a call. Never allow-same-origin, allow-top-navigation or allow-forms:
+ *  the frame keeps an opaque origin, so the app's session is out of its reach, and a popup takes the origin of its own address. */
+export const DECK_SANDBOX = 'allow-scripts allow-popups allow-popups-to-escape-sandbox'
 /** Every other HTML page: no scripts. Popups may open (and leave the sandbox) so the links to sibling documents open as tabs of the app. */
 export const PAGE_SANDBOX = 'allow-same-origin allow-popups allow-popups-to-escape-sandbox'
 
@@ -214,6 +215,14 @@ export function SalesDoc() {
   const stamp = row ? `${want}:${row.updated_at}` : ''
   const have = stamp ? cache[stamp] : undefined
   const loading = Boolean(stamp) && !have && error === ''
+  const kindsKey = rows.map(r => r.kind).sort().join(',')
+  const pageBody = have?.body
+  const rewritten = useMemo(
+    () => (pageBody !== undefined && want !== 'deck'
+      ? rewritePackLinks(pageBody, new Set(kindsKey ? kindsKey.split(',') : []), k => location.href.split('#')[0] + docHref(slug, k))
+      : ''),
+    [pageBody, want, kindsKey, slug],
+  )
 
   useEffect(() => {
     if (!slug || !stamp || have) return
@@ -290,15 +299,14 @@ export function SalesDoc() {
     // this app's localStorage (the Supabase session lives there), cookies or
     // IndexedDB. Every other page stays script-less.
     const isDeck = want === 'deck'
-    const here = location.href.split('#')[0]
-    const srcDoc = isDeck ? have.body
-      : rewritePackLinks(have.body, new Set(rows.map(r => r.kind)), k => here + docHref(slug, k))
+    const srcDoc = isDeck ? have.body : rewritten
     return (
       <iframe
         className="a-dc-full"
         title={`${label} ${DOC_LABEL[doc]}`}
         sandbox={isDeck ? DECK_SANDBOX : PAGE_SANDBOX}
         srcDoc={srcDoc}
+        onLoad={isDeck ? e => e.currentTarget.focus() : undefined}
         data-surface="sales-doc"
         data-doc={doc}
         data-slug={slug}
@@ -327,7 +335,7 @@ export function SalesDoc() {
 
       <div className="a-body a-pk">
         <div className="a-pk-tabs" role="tablist" aria-label="This pack">
-          {DOCS.map(d => {
+          {DOCS.filter(d => d !== 'deck' || byKind('deck')).map(d => {
             const missing = d !== 'compare' && !byKind(d)
             return missing
               ? (

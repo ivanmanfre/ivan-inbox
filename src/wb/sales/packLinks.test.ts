@@ -22,3 +22,22 @@ it('a sibling file with no such document becomes plain text, never a dead link',
   expect([...out.querySelectorAll('a')].map(a => a.textContent)).toEqual(['deck', 'out', 'top'])
   expect(out.body.textContent).toContain('audit')
 })
+
+it('javascript, data and vbscript links become plain text', () => {
+  const html = '<body><a href="javascript:alert(1)">a</a><a href=" JavaScript:x">b</a><a href="data:text/html,x">c</a><a href="vbscript:x">d</a></body>'
+  const out = new DOMParser().parseFromString(rewritePackLinks(html, new Set(), k => k), 'text/html')
+  expect(out.querySelectorAll('a').length).toBe(0)
+  expect(out.body.textContent).toBe('abcd')
+})
+
+it('every absolute http link opens in its own tab and cannot navigate the frame', () => {
+  const html = '<body><a href="https://example.com/x">x</a><a href="//cdn.example.com/y" target="_self">y</a><a href="mailto:a@b.co">m</a><a href="#top">t</a></body>'
+  const out = new DOMParser().parseFromString(rewritePackLinks(html, new Set(), k => k), 'text/html')
+  const [x, y, m, t] = [...out.querySelectorAll('a')]
+  for (const a of [x, y]) {
+    expect(a.getAttribute('target')).toBe('_blank')
+    expect(a.getAttribute('rel')).toBe('noopener noreferrer')
+  }
+  expect(m.getAttribute('target')).toBeNull()
+  expect(t.getAttribute('target')).toBeNull()
+})
