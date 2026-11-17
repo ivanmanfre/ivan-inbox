@@ -49,15 +49,16 @@
 
    Nothing here writes. The page has no control that changes a pack.
    ========================================================================== */
-import { useEffect, useState, type MouseEvent } from 'react'
+import { useEffect, useMemo, useState, type MouseEvent } from 'react'
 import { Icon, Skeleton, type IconName } from '../../ds'
 import { relAge, Sep } from '../kit'
 import {
-  COMPARE_URL, PACK_KINDS, fetchPackBody, fetchPackIndex, subscribePacks,
+  COMPARE_URL, PACK_KINDS, fetchPackBody, fetchPackIndex, slugWords, subscribePacks,
   type PackKind, type SalesPack, type SalesPackBody,
 } from '../../lib/salesPacks'
 import { Markdown } from './Markdown'
-import { Prospect, auditUrl, prettify, readProspect } from './Prospect'
+import { Prospect, auditUrl, readProspect } from './Prospect'
+import { rewritePackLinks } from './packLinks'
 import './pack.css'
 
 /** The five published kinds, plus the virtual link document. */
@@ -69,6 +70,7 @@ export const DOC_LABEL: Record<PackDoc, string> = {
   audience_audit: 'Audience audit',
   asset_ideas: 'Asset ideas',
   prospect: 'Prospect',
+  deck: 'Deck',
   extra: 'Extra',
   compare: 'Compare',
 }
@@ -109,6 +111,12 @@ export function readDocHash(hash: string): { slug: string; doc: PackDoc } | null
  *  deliberate reload on the way out. */
 // D is the app's default route (parity 09-27): the week is D's Sales, not the old one.
 const SALES_HREF = '#exp/d/sales'
+
+/** The deck: scripts, and popups so its own links open during a call. Never allow-same-origin, allow-top-navigation or allow-forms:
+ *  the frame keeps an opaque origin, so the app's session is out of its reach, and a popup takes the origin of its own address. */
+export const DECK_SANDBOX = 'allow-scripts allow-popups allow-popups-to-escape-sandbox'
+/** Every other HTML page: no scripts. Popups may open (and leave the sandbox) so the links to sibling documents open as tabs of the app. */
+export const PAGE_SANDBOX = 'allow-same-origin allow-popups allow-popups-to-escape-sandbox'
 
 /** Is this body a page in its own right? `mime` is the publisher's word for it;
  *  the doctype sniff covers a row written before the column carried html. */
@@ -207,6 +215,14 @@ export function SalesDoc() {
   const stamp = row ? `${want}:${row.updated_at}` : ''
   const have = stamp ? cache[stamp] : undefined
   const loading = Boolean(stamp) && !have && error === ''
+  const kindsKey = rows.map(r => r.kind).sort().join(',')
+  const pageBody = have?.body
+  const rewritten = useMemo(
+    () => (pageBody !== undefined && want !== 'deck'
+      ? rewritePackLinks(pageBody, new Set(kindsKey ? kindsKey.split(',') : []), k => location.href.split('#')[0] + docHref(slug, k))
+      : ''),
+    [pageBody, want, kindsKey, slug],
+  )
 
   useEffect(() => {
     if (!slug || !stamp || have) return
@@ -227,7 +243,7 @@ export function SalesDoc() {
   // never leaves the header blank.
   const prospectRow = byKind('prospect')
   const named = [prospectRow?.meta.name, prospectRow?.meta.company].filter(Boolean).join(' · ')
-  const label = named || prettify(slug.replace(/-/g, ' '))
+  const label = named || slugWords(slug)
   const sub = whenLine(row?.call_at ?? prospectRow?.call_at ?? null)
     || row?.meta.when || prospectRow?.meta.when
     || rows.find(r => r.meta.when)?.meta.when || ''
@@ -277,12 +293,20 @@ export function SalesDoc() {
   // the frame. Same sandbox as ever: `allow-same-origin`, no `allow-scripts`,
   // so a published page cannot execute.
   if (have && isHtml(have)) {
+    // THE DECK RUNS SCRIPTS (arrow keys move the slides), so it is the one
+    // document that gets `allow-scripts`, and it gets it ALONE: without
+    // `allow-same-origin` the frame has an opaque origin, so it cannot read
+    // this app's localStorage (the Supabase session lives there), cookies or
+    // IndexedDB. Every other page stays script-less.
+    const isDeck = want === 'deck'
+    const srcDoc = isDeck ? have.body : rewritten
     return (
       <iframe
         className="a-dc-full"
         title={`${label} ${DOC_LABEL[doc]}`}
-        sandbox="allow-same-origin"
-        srcDoc={have.body}
+        sandbox={isDeck ? DECK_SANDBOX : PAGE_SANDBOX}
+        srcDoc={srcDoc}
+        onLoad={isDeck ? e => e.currentTarget.focus() : undefined}
         data-surface="sales-doc"
         data-doc={doc}
         data-slug={slug}
@@ -311,7 +335,7 @@ export function SalesDoc() {
 
       <div className="a-body a-pk">
         <div className="a-pk-tabs" role="tablist" aria-label="This pack">
-          {DOCS.map(d => {
+          {DOCS.filter(d => d !== 'deck' || byKind('deck')).map(d => {
             const missing = d !== 'compare' && !byKind(d)
             return missing
               ? (

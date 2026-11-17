@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { canonicalHash, dHash, hitHash, parseDHash, toDHash } from './route'
+import { subOf } from './content/SubNav'
+import { PLACE_ORDER } from './places'
 
 describe('parseDHash', () => {
   it('reads place, sub and the raw query', () => {
@@ -51,6 +53,24 @@ describe('toDHash (old addresses land in D)', () => {
   it('canonicalHash sends anything else home', () => {
     expect(canonicalHash('')).toBe('#exp/d/home')
     expect(canonicalHash('#exp/brain-b/ops')).toBe('#exp/d/ops')
+  })
+})
+
+// X became a Content tab (daily-brief-trim Task 6.1): pushes and runner links still carry the
+// X desk's address and the older Ops one, so both land on the tab with their query.
+describe('X lives in Content', () => {
+  it('old X addresses land on the Content tab, query kept', () => {
+    expect(canonicalHash('#exp/d/x?id=abc')).toBe('#exp/d/content/x?id=abc')
+    expect(canonicalHash('#exp/d/ops/x?id=abc')).toBe('#exp/d/content/x?id=abc')
+    expect(canonicalHash('#exp/d/x')).toBe('#exp/d/content/x')
+  })
+  it('x is a content sub, not a place', () => {
+    expect(subOf('x')).toBe('x'); expect(PLACE_ORDER).not.toContain('x')
+  })
+  it('the X address is written under Content', () => {
+    expect(dHash('content', 'x', { id: 'abc' })).toBe('#exp/d/content/x?id=abc')
+    expect(parseDHash('#exp/d/x?id=abc')).toMatchObject({ place: 'content', sub: 'x' })
+    expect(parseDHash('#exp/d/x?id=abc').query.get('id')).toBe('abc')
   })
 })
 

@@ -41,7 +41,7 @@ function dedupe(cmds: WbCommand[]): WbCommand[] {
 }
 
 const PLACE_ICON: Record<PlaceId, IconName> = {
-  home: 'home', lanes: 'sends', dms: 'dms', content: 'content', x: 'quote', ops: 'ops', sales: 'sales', intel: 'video', claude: 'ask', settings: 'settings',
+  home: 'home', lanes: 'sends', dms: 'dms', content: 'content', ops: 'ops', sales: 'sales', intel: 'video', claude: 'ask', settings: 'settings',
 }
 
 type Props = {
@@ -55,6 +55,7 @@ type Props = {
 
 /** Places inside a place: today's jobs that D keeps under a sub. */
 const GO_SUBS: { id: string; title: string; icon: IconName; hash: string }[] = [
+  { id: 'go.x', title: 'Go to X', icon: 'quote', hash: dHash('content', 'x') },
   { id: 'go.magnets', title: 'Go to Magnets', icon: 'content', hash: dHash('content', 'magnets') },
   { id: 'go.styles', title: 'Go to Styles', icon: 'content', hash: dHash('content', 'styles') },
   { id: 'go.strategy', title: 'Go to Strategy', icon: 'content', hash: dHash('content', 'strategy') },

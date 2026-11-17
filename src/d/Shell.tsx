@@ -309,6 +309,13 @@ export default function DShell() {
   // One overlay at a time on the phone: opening the bell closes Claude and the drawer.
   const openBell = useCallback((o: boolean) => { setBellOpen(o); if (o) setPanelOpen(false) }, [])
   const openClaude = useCallback((o: boolean) => { setClaudeOpen(o); if (o) setPanelOpen(false) }, [])
+  const claudeOpenRef = useRef(claudeOpen)
+  claudeOpenRef.current = claudeOpen
+  // The one toggle (⌘J, the palette, the side panel's key). On the Claude workspace (claude section) it goes to the composer instead of a drawer.
+  const toggleClaude = useCallback(() => {
+    const ws = claudeHereRef.current ? document.querySelector<HTMLTextAreaElement>('.dcl-ws textarea') : null
+    if (ws) ws.focus(); else openClaude(!claudeOpenRef.current)
+  }, [openClaude])
   const openPalette = useCallback(() => setPalette(true), [])
 
   useEffect(() => { if (layout === 'desktop') writeFlag(DRAWER_KEY, claudeOpen) }, [claudeOpen, layout])
@@ -353,9 +360,7 @@ export default function DShell() {
       if (mod && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); setPalette(true); return }
       if (mod && (e.key === 'j' || e.key === 'J')) {
         e.preventDefault()
-        // On the Claude workspace (claude section) ⌘J goes to its composer instead of a drawer.
-        const ws = claudeHereRef.current ? document.querySelector<HTMLTextAreaElement>('.dcl-ws textarea') : null
-        if (ws) ws.focus(); else setClaudeOpen(o => !o)
+        toggleClaude()
         return
       }
       if (mod && e.key === '\\') { e.preventDefault(); setSideMin(m => !m); return }
@@ -367,13 +372,13 @@ export default function DShell() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [toggleClaude])
 
   const frame = useMemo<Frame>(() => ({
     layout, route, navigate: navigateTo,
-    bellOpen, setBellOpen: openBell, claudeOpen, setClaudeOpen: openClaude, openPalette,
+    bellOpen, setBellOpen: openBell, claudeOpen, setClaudeOpen: openClaude, claudeShown, toggleClaude, openPalette,
     titleSlot: layout === 'desktop' ? titleSlot : null, toolsSlot,
-  }), [layout, route, bellOpen, openBell, claudeOpen, openClaude, openPalette, titleSlot, toolsSlot])
+  }), [layout, route, bellOpen, openBell, claudeOpen, openClaude, claudeShown, toggleClaude, openPalette, titleSlot, toolsSlot])
 
   return (
     <DInboxProvider now={route.place === 'dms'} delayMs={route.place === 'content' && route.sub === 'ideas' ? HEAVY_PAGE_DELAY_MS : undefined}>
@@ -394,7 +399,7 @@ export default function DShell() {
                 {palette && (
                   <DPalette
                     onClose={() => setPalette(false)} navigate={navigateTo} desktop={layout === 'desktop'}
-                    toggleClaude={() => openClaude(!claudeOpen)} openBell={() => openBell(true)}
+                    toggleClaude={toggleClaude} openBell={() => openBell(true)}
                   />
                 )}
               </DLayer>

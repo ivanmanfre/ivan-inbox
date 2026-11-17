@@ -23,7 +23,7 @@ export function opsWaitingBySeat(rows: OpsDraft[], now: number = Date.now()): Op
   return out
 }
 
-// X items no longer count here: they have their own place and number (the X desk, useXWaiting).
+// X items no longer count here: they count on the X tab in Content and in Content's number (useXWaiting).
 export async function fetchOpsWaiting(now: number = Date.now()): Promise<OpsWaiting> {
   return opsWaitingBySeat(await fetchOpsCountRows(), now)
 }

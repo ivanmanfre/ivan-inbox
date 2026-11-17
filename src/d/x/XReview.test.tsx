@@ -430,4 +430,24 @@ describe('quick X post review', () => {
     await screen.findByText(/The photo changed while you confirmed, so nothing went out/)
     expect(api.decideXQuick).not.toHaveBeenCalled()
   })
+
+  it('the back control goes to the X tab in Content', async () => {
+    const navigate = vi.fn()
+    const hash = `#exp/d/content/x?id=${ID}`
+    renderInFrame(<XReviewPage layout="phone" route={parseDHash(hash)} navigate={navigate} />, { layout: 'phone', hash })
+    await screen.findByRole('heading', { level: 1, name: 'The checks to run' })
+    fireEvent.click(screen.getByRole('button', { name: 'Back to X' }))
+    expect(navigate).toHaveBeenCalledWith('#exp/d/content/x')
+  })
+
+  it('inside Content the list head drops its own X label; on its own it says X', async () => {
+    const route = parseDHash('#exp/d/content/x')
+    renderInFrame(<XReviewPage layout="desktop" route={route} navigate={() => {}} embedded />, { layout: 'desktop', hash: '#exp/d/content/x' })
+    await waitFor(() => expect(document.querySelector('.xr-head')).not.toBeNull())
+    expect(document.querySelector('.xr-head small')).toBeNull()
+    expect(document.body.textContent).not.toContain('X desk')
+    cleanup()
+    renderInFrame(<XReviewPage layout="desktop" route={route} navigate={() => {}} />, { layout: 'desktop', hash: '#exp/d/content/x' })
+    await waitFor(() => expect(document.querySelector('.xr-head small')?.textContent?.trim()).toBe('X'))
+  })
 })

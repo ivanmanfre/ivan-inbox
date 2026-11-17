@@ -60,7 +60,7 @@ const card = (): TodayCard => ({
 const desk = () => document.querySelector('[data-desk]') as HTMLElement | null
 const page = (hash: string, navigate = vi.fn()) => {
   const ui = (h: string) => {
-    const frame: Frame = { layout: 'desktop', route: parseDHash(h), navigate, bellOpen: false, setBellOpen: () => {}, claudeOpen: false, setClaudeOpen: () => {}, openPalette: () => {}, titleSlot: null, toolsSlot: null }
+    const frame: Frame = { layout: 'desktop', route: parseDHash(h), navigate, bellOpen: false, setBellOpen: () => {}, claudeOpen: false, setClaudeOpen: () => {}, claudeShown: false, toggleClaude: () => {}, openPalette: () => {}, titleSlot: null, toolsSlot: null }
     return <FrameCountsProvider readers={ZERO_READERS}><FrameCtx.Provider value={frame}><div className="d-app d-desktop"><ToastProvider><DConfirmProvider>
       <ContentPage layout="desktop" route={frame.route} navigate={navigate} />
     </DConfirmProvider></ToastProvider></div></FrameCtx.Provider></FrameCountsProvider>

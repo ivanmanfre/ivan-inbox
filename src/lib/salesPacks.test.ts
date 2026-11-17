@@ -186,8 +186,8 @@ describe('subscribePacks', () => {
 })
 
 describe('the tab contract', () => {
-  it('offers the five real documents in reading order, and never the extra bucket', () => {
-    expect(PACK_KINDS).toEqual(['card', 'call_sheet', 'audience_audit', 'asset_ideas', 'prospect'])
+  it('offers the six real documents in reading order, and never the extra bucket', () => {
+    expect(PACK_KINDS).toEqual(['card', 'call_sheet', 'audience_audit', 'asset_ideas', 'prospect', 'deck'])
     expect(PACK_KINDS).not.toContain('extra')
   })
 

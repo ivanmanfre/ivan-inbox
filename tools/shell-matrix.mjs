@@ -6,7 +6,7 @@
 // node tools/shell-matrix.mjs <baseUrl> <outDir> [chromium|webkit ...]
 //   SHELL_SESSION_PATH  private Supabase session file (required)
 //   SHELL_WIDTHS        canvas widths, default 1272,1144,1092,964,936,808,764
-//   SHELL_PLACES        default home,dms,content/calendar,content/now,content/ideas,content/brain,content/magnets,lanes,ops,sales,claude,settings
+//   SHELL_PLACES        default home,dms,content/calendar,content/now,content/x,content/ideas,content/brain,content/magnets,ops,sales,lanes,intel,claude,settings
 //   SHELL_SKIN          ?skin= value, default brief:shell
 //   SHELL_SHOTS         0 = report only
 //   SHELL_RAIL          1 = keep the web rail (default hides it, as Daily Brief does, so the
@@ -17,11 +17,27 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { chromium, webkit } from 'playwright'
 
+// Storage-media block, copied from ~/.claude/skills/playwright-driver/block-storage-media.js (the repo cannot import from the home folder).
+// Headless runs once pulled 7.4 GB of video and GIF out of Supabase storage in a day. Opt out with PW_ALLOW_STORAGE_MEDIA=1.
+const STORAGE_URL = /\.supabase\.co\/storage\/v1\/(object|render)\//i
+const HEAVY_MEDIA = /\.(mp4|mov|m4v|webm|gif)(\?|#|$)/i
+const VIDEO_BUCKET = /\/storage\/v1\/object\/(public\/|sign\/)?post-videos\//i
+async function blockStorageMedia(page) {
+  if (process.env.PW_ALLOW_STORAGE_MEDIA === '1') return
+  await page.route(STORAGE_URL, route => {
+    const req = route.request(), url = req.url()
+    // Only GET/HEAD media is decided here; everything else falls back to the catch-all, which blocks and counts writes.
+    if (req.method() !== 'GET' && req.method() !== 'HEAD') return route.fallback()
+    if (req.resourceType() === 'media' || HEAVY_MEDIA.test(url) || VIDEO_BUCKET.test(url)) return route.abort('blockedbyclient')
+    return route.fallback()
+  })
+}
+
 const [base, outDir, ...engineArgs] = process.argv.slice(2)
 if (!base || !outDir) { console.error('usage: shell-matrix.mjs <baseUrl> <outDir> [engines]'); process.exit(2) }
 const engines = engineArgs.length ? engineArgs : ['chromium', 'webkit']
 const widths = (process.env.SHELL_WIDTHS || '1272,1144,1092,964,936,808,764').split(',').map(Number)
-const places = (process.env.SHELL_PLACES || 'home,dms,content/calendar,content/now,content/ideas,content/brain,content/magnets,lanes,ops,sales,claude,settings').split(',')
+const places = (process.env.SHELL_PLACES || 'home,dms,content/calendar,content/now,content/x,content/ideas,content/brain,content/magnets,ops,sales,lanes,intel,claude,settings').split(',')
 const skin = process.env.SHELL_SKIN ?? 'brief:shell'
 const shots = process.env.SHELL_SHOTS !== '0'
 const authKey = 'sb-bjbvqvzbzczjbatgmccb-auth-token'
@@ -108,6 +124,8 @@ for (const engine of engines) {
       if (['GET', 'HEAD', 'OPTIONS'].includes(method)) return route.continue()
       return route.fulfill({ status: 403, contentType: 'application/json', body: '{"error":"matrix blocked a mutation"}' })
     })
+    // Registered after the catch-all on purpose: Playwright tries the newest matching route first.
+    await blockStorageMedia(page)
     if (process.env.SHELL_RAIL !== '1') await page.addInitScript(() => {
       const st = document.createElement('style'); st.textContent = '.d-app .d-side{display:none!important}'
       document.addEventListener('DOMContentLoaded', () => document.head.appendChild(st))

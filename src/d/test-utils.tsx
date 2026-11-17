@@ -27,7 +27,7 @@ export function renderInFrame(ui: ReactElement, opts: { layout?: Layout; hash?: 
   const layout = opts.layout ?? 'desktop'
   const frame: Frame = {
     layout, route: parseDHash(opts.hash ?? '#exp/d/lanes'), navigate: () => {},
-    bellOpen: false, setBellOpen: () => {}, claudeOpen: false, setClaudeOpen: () => {}, openPalette: () => {},
+    bellOpen: false, setBellOpen: () => {}, claudeOpen: false, setClaudeOpen: () => {}, claudeShown: false, toggleClaude: () => {}, openPalette: () => {},
     titleSlot: null, toolsSlot: null, ...opts.frame,
   }
   return render(

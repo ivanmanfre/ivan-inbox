@@ -6,13 +6,13 @@ import { useXReview } from './useXReview'
 import './x.css'
 
 // THE X FLAG (Ivan 2026-10-11: "I don't want it to be just a task. It should be like a flag").
-// A dark plate at the top of Home and the X desk whenever an X article or quote post waits on him,
+// A dark plate at the top of Home and the X tab whenever an X article or quote post waits on him,
 // one row per item with its title, and the count. Publishing-now items show below it as
 // quiet status lines. Scheduled, posted and failed items never show here (Ivan 2026-10-15,
 // 2026-10-22): the calendar carries them.
 // Renders nothing when there is nothing to say. Every hook runs before that return.
 
-const xReviewHref = (id: string) => dHash('x', null, { id })
+const xReviewHref = (id: string) => dHash('content', 'x', { id })
 
 const KIND: Record<XFlagItem['kind'], string> = { article: 'X article to review', quote: 'X quote post to review', quick: 'Quick X post' }
 
