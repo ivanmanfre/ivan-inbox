@@ -18,10 +18,10 @@ import { buildQueue, type QueueSection } from './queue'
 import './home4.css'
 import { HomeCard } from '../../content/today/HomeCard'
 import { useOps } from '../../../hooks/useOps'
-import { pendingOps, pendingTasks, type OpsDraft } from '../../../lib/ops'
+import { pendingOps, type OpsDraft } from '../../../lib/ops'
 import type { NextPost } from '../../../lib/contentNext'
 import { useFrameCounts } from '../../counts/useFrameCounts'
-import { useNextPosts } from '../../content/next/store'
+import { refreshNextPosts, useNextPosts } from '../../content/next/store'
 import { useStalled } from '../../ui/timeout'
 import { useClock } from '../../ui/useClock'
 import { warsawDayTime } from '../../ui/time'
@@ -132,26 +132,31 @@ function bookingOf(d: OpsDraft) {
 }
 
 type Ops = ReturnType<typeof useOps>
-/** `failed` names each read that could not be read; `loading` = a read is still out. Only when neither holds is an empty queue "Nothing needs you." */
-type QueueRead = { sections: QueueSection[]; total: number; loading: boolean; failed: string[] }
+/** `failed` names each read that could not be read; `loading` = a read has no live answer yet (still out, or only a
+ *  saved copy painted). Only when neither holds is an empty queue "Nothing needs you." `retry` re-runs the failed reads. */
+type QueueRead = { sections: QueueSection[]; total: number; loading: boolean; failed: string[]; retry: () => void }
 
-function useQueue(h: HomeData, ops: Ops): QueueRead {
+function useQueue(h: HomeData, ops: Ops, opsStalled: boolean): QueueRead {
   const counts = useFrameCounts(), next = useNextPosts(), now = useClock(60_000)
-  // The same 12 s rule as the Tasks column: a board read with no answer counts as failed. No retry here (Tasks owns it).
-  const opsStalled = useStalled(!ops.loadedAt && !ops.error)
   const failed: string[] = []
+  const again = new Set<() => void>(), refreshDms = () => counts.refresh('dms')
   let loading = false
   const waiting: Record<string, number | null> = {}
   for (const s of SEATS) {
-    const r = h.waiting[s]
+    const r = h.waiting[s], slice = counts.dms[s]
+    // A failed re-read keeps its last value: the row stays, and the seat is still named as not read.
     waiting[s] = 'v' in r ? r.v : null
-    if ('fail' in r) failed.push(`${SEAT_NAME[s]} replies`)
-    else if ('wait' in r) loading = true
+    if ('fail' in r || slice.failed) { failed.push(`${SEAT_NAME[s]} replies`); again.add(refreshDms) }
+    else if ('wait' in r || slice.saved) loading = true
   }
-  if (!ops.loadedAt) { if (ops.error || opsStalled) failed.push('bookings'); else loading = true }
+  // A board read that failed is named even over a good earlier read (its rows stay); a saved board is still reading.
+  if (ops.error || opsStalled) { failed.push('bookings'); again.add(ops.refresh) }
+  else if (!ops.loadedAt || ops.saved) loading = true
   const call = counts.nextCall
-  if (call.failed) failed.push('next call'); else if (call.value == null) loading = true
-  if (next.failed) failed.push("today's posts"); else if (!next.loaded) loading = true
+  if (call.failed) { failed.push('next call'); again.add(() => counts.refresh('nextCall')) }
+  else if (call.value == null || call.saved) loading = true
+  if (next.failed) { failed.push("today's posts"); again.add(() => { void refreshNextPosts() }) }
+  else if (!next.loaded) loading = true
   const sections = buildQueue({
     waiting,
     bookings: pendingOps(ops.drafts, now).filter(d => d.kind === 'booking').map(bookingOf),
@@ -159,7 +164,7 @@ function useQueue(h: HomeData, ops: Ops): QueueRead {
     posts: next.posts.map(p => ({ id: p.draft_id, slot_at: p.slot_at, post_text: p.post_text, state: STATE_WORD[p.state] ?? p.state })),
     now: new Date(now),
   })
-  return { sections, total: sections.reduce((n, s) => n + s.count, 0), loading, failed }
+  return { sections, total: sections.reduce((n, s) => n + s.count, 0), loading, failed, retry: () => { for (const f of again) f() } }
 }
 
 const things = (n: number) => `${n} ${n === 1 ? 'thing needs' : 'things need'} you.`
@@ -179,8 +184,8 @@ function Queue({ q }: { q: QueueRead }) {
         <a className={`hm4-q-row${i.warn ? ' hm4-q-warn' : ''}`} href={i.href}><span className="hm4-q-l">{i.label}</span>{i.meta && <small className="hm4-q-m">{i.meta}</small>}</a>
       </li>)}</ul>
     </section>)}
-    {q.failed.length > 0 && <p className="hm4-q-note" role="status">Could not read: {q.failed.join(', ')}.</p>}
-    {q.loading && <p className="hm4-q-wait" aria-label="Reading what needs you"><span className="ols-skeleton" /></p>}
+    {q.failed.length > 0 && <p className="hm4-q-note" role="status">Could not read: {q.failed.join(', ')}. · <button type="button" className="d-failline-k" data-verb="retry" onClick={q.retry}>Retry</button></p>}
+    {q.loading && <p className="hm4-q-wait" role="status"><span className="ols-skeleton" aria-hidden="true" /><span className="ols-sr">Reading what needs you</span></p>}
     {empty && <p className="hm4-q-note">Nothing needs you.</p>}
   </section>
 }
@@ -188,17 +193,19 @@ function Queue({ q }: { q: QueueRead }) {
 export default function HomeV4({ layout }: PlaceProps) {
   const motion = useMotionLevel()
   const h = useHome(), online = useOnline()
-  // One board read for the bookings and the Tasks column.
+  // One board read for the bookings and the Tasks column. 12 s without a live answer (a saved board is not one)
+  // counts as failed, re-read quietly every 20 s (Home owns this timer; the Tasks block gets the same verdict).
   const ops = useOps()
-  const q = useQueue(h, ops)
-  // The Tasks column stays while its read is out or failed (it says so itself); it goes when nothing is open.
-  const tasks = !ops.loadedAt || pendingTasks(ops.drafts).length > 0
+  const opsStalled = useStalled((!ops.loadedAt || ops.saved) && !ops.error, ops.refresh)
+  const q = useQueue(h, ops, opsStalled)
+  // R17: the Tasks block, with its Add row, is hidden only while its read has not finished, whatever the number of open tasks.
+  const tasks = Boolean(ops.loadedAt || ops.error || opsStalled)
   return <div data-motion={motion} className={`hm4 hm4-${layout}`} data-d-scroll={layout==='desktop'?'':undefined} data-layout-v4="home">
     {layout==='desktop' && <AnswerRow title={answer(q)} />}{!online && <Offline since={null} />}
     <Queue q={q} />
     <HomeCard />
     <HotNow />
-    {tasks && <HomeTasks v4 ops={ops} />}
+    {tasks && <HomeTasks v4 ops={ops} stalled={opsStalled} />}
     <h2 className="hm4-lanes-h">Lane numbers</h2>
     {layout==='phone' ? <Matrix h={h}/> : <div className="hm4-seats">{SEATS.filter(s => s !== 'anna').map(s=><SeatCard key={s} seat={s} h={h}/>)}</div>}
   </div>

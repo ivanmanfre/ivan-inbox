@@ -42,7 +42,9 @@ function call(next: QueueInput['nextCall'], now: Date): QueueSection | null {
   if (!Number.isFinite(t)) return null
   const ahead = t - now.getTime()
   if (ahead > 24 * HOUR) return null
-  const item = { key: 'call', label: next.title, meta: warsawDayTime(t), href: dHash('sales'), warn: ahead <= HOUR }
+  // The warn colour also says why in a word, so it never rests on colour alone.
+  const word = ahead <= 0 ? ' · now' : ahead <= HOUR ? ' · soon' : ''
+  const item = { key: 'call', label: next.title, meta: `${warsawDayTime(t)}${word}`, href: dHash('sales'), warn: ahead <= HOUR }
   return { id: 'call', title: 'Next call', count: 1, items: [item] }
 }
 

@@ -134,4 +134,13 @@ describe('buildQueue (7.2 fixes)', () => {
     const s = buildQueue(input({ nextCall:{ title:'Demo', start:plus(-10,'m') } })).find(x => x.id === 'call')!
     expect(s.items[0].warn).toBe(true)
   })
+
+  it('the warn row says why in a word: soon inside 60 minutes, now once started, nothing further out', () => {
+    const meta = (n: number) => buildQueue(input({ nextCall:{ title:'Demo', start:plus(n,'m') } })).find(x => x.id === 'call')!.items[0].meta
+    expect(meta(45)).toBe('Tue 17 Nov, 11:45 · soon')
+    expect(meta(60)).toBe('Tue 17 Nov, 12:00 · soon')
+    expect(meta(0)).toBe('Tue 17 Nov, 11:00 · now')
+    expect(meta(-10)).toBe('Tue 17 Nov, 10:50 · now')
+    expect(meta(61)).toBe('Tue 17 Nov, 12:01')
+  })
 })

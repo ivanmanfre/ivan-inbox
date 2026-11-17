@@ -94,15 +94,17 @@ function Add({ refresh, v4 = false }: { refresh: () => void; v4?: boolean }) {
   )
 }
 
-/** `ops`: a page that already reads ops_drafts (Home v4, for its bookings) passes its read so the board is read once. */
-export function HomeTasks({ v4 = false, ops: shared }: { v4?: boolean; ops?: ReturnType<typeof useOps> } = {}) {
+/** `ops`: a page that already reads ops_drafts (Home v4, for its bookings) passes its read so the board is read once,
+ *  with its own 12 s verdict (`stalled`), so only one timer re-reads the board. */
+export function HomeTasks({ v4 = false, ops: shared, stalled: sharedStalled }: { v4?: boolean; ops?: ReturnType<typeof useOps>; stalled?: boolean } = {}) {
   const own = useOps(!shared)
   const ops = shared ?? own
   const [all, setAll] = useState(false)
   const tasks = pendingTasks(ops.drafts)
   const shown = all || v4 ? tasks : tasks.slice(0, SHOWN)
   // 12 s without a first answer = the quiet "?" with Retry (and a quiet re-read every 20 s).
-  const stalled = useStalled(!ops.loadedAt && !ops.error, ops.refresh)
+  const ownStalled = useStalled(sharedStalled === undefined && !ops.loadedAt && !ops.error, ops.refresh)
+  const stalled = sharedStalled ?? ownStalled
   const reading = ops.loading && !ops.loadedAt && !stalled
   const failed = (ops.error || stalled) && !ops.loadedAt
   return (
@@ -110,7 +112,8 @@ export function HomeTasks({ v4 = false, ops: shared }: { v4?: boolean; ops?: Ret
       <h2 className="hm-h"><a href={dHash('ops')}>Tasks</a>{ops.loadedAt && tasks.length > 0 && <span className="hm-hn">{tasks.length}</span>}</h2>
       {reading ? <p className="gt-q" aria-label="Reading your tasks">{v4 ? <span className="ols-skeleton" /> : '…'}</p>
         : failed ? <p className="gt-q" title={ops.error ?? 'no answer after 12 s'}><span className="hm-q">?</span> <button type="button" className="gt-rm" data-verb="retry" onClick={ops.refresh}>Retry</button></p>
-        : tasks.length === 0 ? <p className="gt-q">Nothing open.</p>
+        // R17: on v4 Home an empty list is just the Add row below.
+        : tasks.length === 0 ? (v4 ? null : <p className="gt-q">Nothing open.</p>)
         : <ul className="gt-list">{shown.map(d => <Row key={d.id} v4={v4} d={d} refresh={ops.refresh} onDone={ops.markDone} />)}</ul>}
       {!v4 && tasks.length > SHOWN && <button type="button" className="gt-rm gt-more" aria-expanded={all} onClick={() => setAll(a => !a)}>{all ? 'Fewer' : `${tasks.length - SHOWN} more`}</button>}
       <Add refresh={ops.refresh} v4={v4} />
