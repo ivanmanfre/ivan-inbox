@@ -1,12 +1,29 @@
--- 304 open tracking truth, part 2: context, finalize, nightly relabel, backfill.
+-- 304 open tracking truth, part 2: context, finalize, nightly relabel, network seed, batched backfill, release grant.
 -- Plan Task 3. Requires 303. No reader changes here; nothing in this file can send, draft or ring.
 -- Round 3 (rulings P1-P7): every fact a label uses is a fact about the request or the address (network, referrer,
--- user agent, owner flags, slugs, times, and the stored `near_send`), never another row's label, so one relabel pass
--- gives the same answer as the first label would with the same rows. `eligible` (may feed automation) is granted
--- only by scan_open_label on the FIRST label of a fresh row (inserted under 10 minutes ago), by the page_opens insert
--- trigger (305), or once by open_release_grant(). reclassify_opens can only revoke it.
+-- user agent, owner flags, slugs, times, and the messages that carried the link), never another row's label, so one
+-- relabel pass gives the same answer as the first label would with the same rows. `eligible` (may feed automation) is
+-- granted only by scan_open_label on the FIRST label of a fresh row (inserted under 10 minutes ago), by the page_opens
+-- insert trigger (305), or once by open_release_grant(). A relabel can only revoke it.
 -- Round 4 (rulings R1, R2): no address-based owner class (an owner flag elsewhere on the address is only
 -- suspect:owner_address), and a scanner address is confirmed by 3+ different RECIPIENTS, not 3+ different links.
+-- Round 5 (release 2026-11-17 stopped: the one-shot backfill hit the 2-minute statement timeout of the management API):
+--   * Why it was slow: the context of every row recomputed the address facts from scratch. For a Microsoft address it
+--     called scan_open_sends once for every row of that address (rows x rows lookups), each lookup an index scan over
+--     the whole outreach_messages table because no index leads with sent_at, and the burst check ran a nested count
+--     over every row of the address (rows^3 for the busiest address).
+--   * Fix: an index on outbound sent_at; the address facts (scanner recipients, owner rows, distinct scans) are one
+--     function, scan_open_addr, computed once per address per relabel batch; burst reads only the 20-minute index
+--     range around the row. The answers are the same (proved on the local copy of the live rows, r5-fixes.md).
+--   * This file applies in seconds and runs NO backfill. The backfill is open_backfill_step(), called in a loop by the
+--     release checklist until it returns done: true; each call is its own transaction over at most p_limit rows.
+--     open_release_grant() refuses to run until the backfill is done, then relabels in the same transaction every row
+--     that arrived since the backfill began (and every row sharing an address with one), and grants once.
+
+-- Every send lookup below filters outbound messages by sent_at; without this index each lookup scanned the index of
+-- the whole table (25,659 rows on 2026-11-17).
+create index if not exists outreach_messages_outbound_sent_idx on public.outreach_messages (sent_at)
+  where direction = 'outbound' and sent_at is not null;
 
 -- The outbound messages (any channel: LinkedIn, InMail, email) carrying this exact link that went out in the 15
 -- minutes before the open, one row per message with its recipient (prospect_id, null when the message has none).
@@ -47,12 +64,51 @@ returns boolean language sql stable security definer set search_path = public, p
   select exists (select 1 from public.page_open_sends(p_page, p_at))
 $$;
 
--- One scan open's facts (rulings P2-P4). Rows of the same address (ip_hash) are read by their own stored facts:
---   burst:        3+ distinct scans from this address inside one 10-minute span that includes this row (non-owner rows).
+-- Burst (P3): this address opened 3+ distinct scans inside one 10-minute span that includes this row. Other rows count
+-- only when they are not the owner's; this row always counts. Reads only the address's rows in the 20 minutes around
+-- the row (index scan_opens_ip_hash_opened_idx from 303).
+create or replace function public.scan_open_burst(p_id bigint)
+returns boolean language sql stable security definer set search_path = public, pg_temp as $$
+  select coalesce((
+    select exists (
+      select 1 from public.scan_opens w
+       where w.ip_hash = r.ip_hash and (w.id = r.id or not w.is_owner)
+         and w.opened_at between r.opened_at - interval '10 minutes' and r.opened_at
+         and (select count(distinct lower(x.company_slug)) from public.scan_opens x
+               where x.ip_hash = r.ip_hash and (x.id = r.id or not x.is_owner)
+                 and x.opened_at between w.opened_at and w.opened_at + interval '10 minutes') >= 3)
+      from public.scan_opens r where r.id = p_id and r.ip_hash is not null), false)
+$$;
+
+-- The facts of one address, computed once per address (rulings P2, R2):
+--   addr_scanner: only when p_scanner (the caller's row is on the Microsoft network with no LinkedIn referrer, the only
+--                 case the classifier reads it): the address's opens with no LinkedIn referrer, not by the owner, each
+--                 within 15 minutes after a message carrying that link (the stored near_send), reach 3+ DIFFERENT
+--                 RECIPIENTS (the prospect ids of those messages; a message with no known recipient counts for none).
+--                 p_self / p_self_counts: the finalizer's row, counted by its fresh near-send instead of its stored one
+--                 (it has none yet); a relabel passes null and reads every row's stored near_send, refreshed first.
+--   owner_rows:   rows of the address that carried the owner flag (any time).
+--   slugs:        different scans the address appears on (any period).
+create or replace function public.scan_open_addr(p_ip_hash text, p_scanner boolean, p_self bigint, p_self_counts boolean)
+returns table (addr_scanner boolean, owner_rows int, slugs int)
+language sql stable security definer set search_path = public, pg_temp as $$
+  select case when p_scanner then (
+           select count(distinct s.prospect_id) from (
+             select o.id from public.scan_opens o
+              where o.ip_hash = p_ip_hash and o.id is distinct from p_self and o.near_send and not o.is_owner
+                and not public.open_from_linkedin(o.referrer_host, o.user_agent)
+             union all select p_self where p_self_counts) x
+            cross join lateral public.scan_open_sends(x.id) s
+            where s.prospect_id is not null) >= 3 else false end,
+         (select count(*)::int from public.scan_opens o where o.ip_hash = p_ip_hash and o.is_owner),
+         (select count(distinct lower(o.company_slug))::int from public.scan_opens o where o.ip_hash = p_ip_hash)
+$$;
+
+-- One scan open's facts (rulings P2-P4):
+--   burst:        scan_open_burst.
 --   near_send:    scan_open_near_send for this row, computed now.
---   addr_scanner: the address is on the Microsoft network and its opens with no LinkedIn referrer, not by the owner,
---                 each within 15 minutes after a message carrying that link, reach 3+ DIFFERENT RECIPIENTS (the
---                 prospect ids of those messages; a message with no known recipient counts for none). Ruling R2.
+--   addr_scanner: scan_open_addr for this row's address, when this row is Microsoft with no LinkedIn referrer: other
+--                 rows by their stored near_send, this row by near_send computed now.
 --   addr_owner:   another row of this address carried the owner flag (any time).
 --   many_scans:   the address appears on 8+ different scans (any period, this row included).
 drop function if exists public.scan_open_context(bigint);
@@ -60,34 +116,19 @@ create or replace function public.scan_open_context(p_id bigint)
 returns table (burst boolean, near_send boolean, addr_scanner boolean, addr_owner boolean, many_scans boolean)
 language sql stable security definer set search_path = public, pg_temp as $$
   with r as (
-    select so.id, so.ip_hash, so.opened_at, so.is_owner, lower(so.company_slug) as slug,
+    select so.id, so.ip_hash, so.is_owner,
            public.open_from_linkedin(so.referrer_host, so.user_agent) as li,
            public.scan_open_near_send(so.id) as near,
            public.open_is_microsoft(coalesce(n.asn, so.net_asn), coalesce(n.org, so.net_org)) as addr_ms
       from public.scan_opens so left join public.open_networks n on n.ip_hash = so.ip_hash
-     where so.id = p_id),
-  a as (
-    select o.id, o.opened_at, o.is_owner, lower(o.company_slug) as slug, o.near_send,
-           public.open_from_linkedin(o.referrer_host, o.user_agent) as li
-      from public.scan_opens o, r
-     where r.ip_hash is not null and o.ip_hash = r.ip_hash and o.id <> r.id)
-  select
-    r.ip_hash is not null and exists (
-      select 1 from (select a.opened_at as at from a where not a.is_owner union all select r.opened_at) w
-       where w.at between r.opened_at - interval '10 minutes' and r.opened_at
-         and (select count(distinct x.slug) from (
-                select a.slug from a where not a.is_owner and a.opened_at between w.at and w.at + interval '10 minutes'
-                union all select r.slug where r.opened_at between w.at and w.at + interval '10 minutes') x) >= 3),
-    r.near,
-    case when r.ip_hash is not null and r.addr_ms then (
-      select count(distinct s.prospect_id) from (
-        select a.id from a where a.near_send and not a.li and not a.is_owner
-        union all select r.id where r.near and not r.li and not r.is_owner) x
-      cross join lateral public.scan_open_sends(x.id) s
-       where s.prospect_id is not null) >= 3 else false end,
-    r.ip_hash is not null and exists (select 1 from a where a.is_owner),
-    r.ip_hash is not null and (select count(distinct x.slug) from (select a.slug from a union all select r.slug) x) >= 8
-  from r
+     where so.id = p_id)
+  select r.ip_hash is not null and public.scan_open_burst(r.id),
+         r.near,
+         r.ip_hash is not null and coalesce(f.addr_scanner, false),
+         r.ip_hash is not null and coalesce(f.owner_rows, 0) > (case when r.is_owner then 1 else 0 end),
+         r.ip_hash is not null and coalesce(f.slugs, 0) >= 8
+    from r left join lateral public.scan_open_addr(r.ip_hash, r.addr_ms and not r.li, r.id,
+                                                   r.near and not r.li and not r.is_owner) f on r.ip_hash is not null
 $$;
 
 -- The same facts for a page open (shared pages, SwishDM reports). Called by the page_opens trigger before the row
@@ -192,36 +233,44 @@ begin
   return jsonb_build_object('open_class', l.open_class, 'class_reason', l.class_reason, 'eligible', l.eligible, 'ring', false);
 end $$;
 
--- Relabel history. Plain UPDATEs only: no notify, no draft, no ring (page_opens' trigger is BEFORE INSERT; scan_opens
--- has no trigger). First the stored near_send of every row in range, from the messages as they are now; then one
--- labelling pass (no label reads another row's label). eligible can only go from true to false here (P6). Every
--- row it reads gets classified_at, so a relabelled row can never take a first-label grant or ring later.
-create or replace function public.reclassify_opens(p_since timestamptz default now() - interval '90 days')
+-- Relabel the given scan rows. Plain UPDATEs only: no notify, no draft, no ring (scan_opens has no trigger). First the
+-- stored near_send of each row, from the messages as they are now; then one labelling pass in which the address facts
+-- are computed once per address. No label reads another row's label. eligible can only go from true to false here
+-- (P6). Every row it reads gets classified_at, so a relabelled row can never take a first-label grant or ring later.
+-- The one body behind the nightly relabel, every backfill batch and the release grant's final pass.
+create or replace function public.scan_opens_relabel(p_ids bigint[])
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
-declare v_scan int; v_page int; v_rev_scan int; v_rev_page int;
+declare v_changed int; v_revoked int;
 begin
-  -- the network a later open of the same address found (lookup retry)
-  update public.scan_opens so set net_asn = coalesce(so.net_asn, n.asn), net_org = coalesce(so.net_org, n.org)
-    from public.open_networks n
-   where n.ip_hash = so.ip_hash and so.opened_at >= p_since
-     and ((so.net_asn is null and n.asn is not null) or (so.net_org is null and n.org is not null));
-
   update public.scan_opens so set near_send = x.n
-    from (select s.id, public.scan_open_near_send(s.id) as n from public.scan_opens s where s.opened_at >= p_since) x
+    from (select s.id, public.scan_open_near_send(s.id) as n from public.scan_opens s where s.id = any (p_ids)) x
    where so.id = x.id and so.near_send is distinct from x.n;
-  update public.page_opens po set near_send = x.n
-    from (select o.id, public.page_open_near_send(o.page, o.created_at) as n from public.page_opens o where o.created_at >= p_since) x
-   where po.id = x.id and po.near_send is distinct from x.n;
 
-  with s as (
-    select so.id, so.open_class as old_class, so.class_reason as old_reason, so.eligible as old_elig, k.open_class, k.class_reason
-      from public.scan_opens so
-      left join public.open_networks n on n.ip_hash = so.ip_hash
-      cross join lateral public.scan_open_context(so.id) x
-      cross join lateral public.scan_open_classify(so.is_owner, so.user_agent, so.referrer_host, so.device_type,
-                                                   coalesce(so.net_asn, n.asn), coalesce(so.net_org, n.org),
-                                                   x.burst, x.near_send, x.addr_scanner, x.addr_owner, x.many_scans) k
-     where so.opened_at >= p_since),
+  with b as (
+    select so.id, so.ip_hash, so.is_owner, so.user_agent, so.referrer_host, so.device_type, so.near_send,
+           coalesce(so.net_asn, n.asn) as asn, coalesce(so.net_org, n.org) as org,
+           public.open_from_linkedin(so.referrer_host, so.user_agent) as li,
+           public.open_is_microsoft(coalesce(n.asn, so.net_asn), coalesce(n.org, so.net_org)) as addr_ms
+      from public.scan_opens so left join public.open_networks n on n.ip_hash = so.ip_hash
+     where so.id = any (p_ids)),
+  h as (
+    select b.ip_hash, bool_or(b.addr_ms and not b.li) as need from b where b.ip_hash is not null group by b.ip_hash),
+  f as (
+    select h.ip_hash, x.addr_scanner, x.owner_rows, x.slugs
+      from h cross join lateral public.scan_open_addr(h.ip_hash, h.need, null, false) x),
+  s as (
+    select so.id, so.open_class as old_class, so.class_reason as old_reason, so.eligible as old_elig,
+           k.open_class, k.class_reason
+      from b
+      join public.scan_opens so on so.id = b.id
+      left join f on f.ip_hash = b.ip_hash
+      cross join lateral public.scan_open_classify(
+        b.is_owner, b.user_agent, b.referrer_host, b.device_type, b.asn, b.org,
+        b.ip_hash is not null and public.scan_open_burst(b.id),
+        b.near_send,
+        b.ip_hash is not null and b.addr_ms and not b.li and coalesce(f.addr_scanner, false),
+        b.ip_hash is not null and coalesce(f.owner_rows, 0) > (case when b.is_owner then 1 else 0 end),
+        b.ip_hash is not null and coalesce(f.slugs, 0) >= 8) k),
   u as (
     update public.scan_opens t
        set open_class = s.open_class, class_reason = s.class_reason, classified_at = now(),
@@ -231,7 +280,18 @@ begin
                             or t.classified_at is null or (t.eligible and s.open_class <> 'human'))
     returning (s.old_class, s.old_reason) is distinct from (s.open_class, s.class_reason) as changed,
               s.old_elig and s.open_class <> 'human' as revoked)
-  select count(*) filter (where changed), count(*) filter (where revoked) into v_scan, v_rev_scan from u;
+  select count(*) filter (where changed), count(*) filter (where revoked) into v_changed, v_revoked from u;
+  return jsonb_build_object('rows', coalesce(cardinality(p_ids), 0), 'changed', v_changed, 'revoked', v_revoked);
+end $$;
+
+-- The same for page rows (per-row context; the table is small: 114 rows on 2026-11-17).
+create or replace function public.page_opens_relabel(p_ids bigint[])
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_changed int; v_revoked int;
+begin
+  update public.page_opens po set near_send = x.n
+    from (select o.id, public.page_open_near_send(o.page, o.created_at) as n from public.page_opens o where o.id = any (p_ids)) x
+   where po.id = x.id and po.near_send is distinct from x.n;
 
   with p as (
     select po.id, po.open_class as old_class, po.class_reason as old_reason, po.eligible as old_elig, k.open_class, k.class_reason
@@ -239,7 +299,7 @@ begin
       cross join lateral public.page_open_context(po.page, po.ip_hash, po.created_at, po.id, po.org, po.city, po.user_agent, po.referrer) x
       cross join lateral public.page_open_classify(po.is_external, po.org, po.user_agent, po.referrer, x.burst, x.burst_no_address,
                                                    x.near_send, x.addr_scanner, x.addr_owner, x.many_pages) k
-     where po.created_at >= p_since),
+     where po.id = any (p_ids)),
   u as (
     update public.page_opens t
        set open_class = p.open_class, class_reason = p.class_reason, classified_at = now(),
@@ -249,10 +309,112 @@ begin
                             or t.classified_at is null or (t.eligible and p.open_class <> 'human'))
     returning (p.old_class, p.old_reason) is distinct from (p.open_class, p.class_reason) as changed,
               p.old_elig and p.open_class <> 'human' as revoked)
-  select count(*) filter (where changed), count(*) filter (where revoked) into v_page, v_rev_page from u;
+  select count(*) filter (where changed), count(*) filter (where revoked) into v_changed, v_revoked from u;
+  return jsonb_build_object('rows', coalesce(cardinality(p_ids), 0), 'changed', v_changed, 'revoked', v_revoked);
+end $$;
 
-  return jsonb_build_object('scan_changed', v_scan, 'page_changed', v_page,
-                            'scan_eligibility_revoked', v_rev_scan, 'page_eligibility_revoked', v_rev_page);
+-- Relabel history (the nightly job: 90 days by default). Same result as before round 5, in one transaction.
+create or replace function public.reclassify_opens(p_since timestamptz default now() - interval '90 days')
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_scan jsonb; v_page jsonb;
+begin
+  -- the network a later open of the same address found (lookup retry)
+  update public.scan_opens so set net_asn = coalesce(so.net_asn, n.asn), net_org = coalesce(so.net_org, n.org)
+    from public.open_networks n
+   where n.ip_hash = so.ip_hash and so.opened_at >= p_since
+     and ((so.net_asn is null and n.asn is not null) or (so.net_org is null and n.org is not null));
+
+  v_scan := public.scan_opens_relabel(array(select so.id from public.scan_opens so where so.opened_at >= p_since));
+  v_page := public.page_opens_relabel(array(select po.id from public.page_opens po where po.created_at >= p_since));
+
+  return jsonb_build_object('scan_changed', (v_scan->>'changed')::int, 'page_changed', (v_page->>'changed')::int,
+                            'scan_eligibility_revoked', (v_scan->>'revoked')::int,
+                            'page_eligibility_revoked', (v_page->>'revoked')::int);
+end $$;
+
+-- Release backfill progress. One row. The high-water marks are the newest ids when 304 was applied: every row up to
+-- them existed before the finalizer did, so the backfill labels them; every later row is labelled by the scan-open
+-- edge function at insert (a fresh row's first label) and relabelled by the grant's final pass.
+create table if not exists public.open_backfill_state (
+  id int primary key default 1 check (id = 1),
+  scan_high_water bigint not null,
+  page_high_water bigint not null,
+  scan_cursor bigint not null default 0,
+  page_cursor bigint not null default 0,
+  batches int not null default 0,
+  created_at timestamptz not null default now(),
+  done_at timestamptz
+);
+alter table public.open_backfill_state enable row level security;
+revoke all on public.open_backfill_state from anon, authenticated;
+
+-- One bounded, resumable backfill batch. Each call does one of these, in order, over at most p_limit rows, and commits
+-- with its caller:
+--   1. scan rows up to the high-water mark with no stored near_send: the network on record and near_send (a label
+--      reads the stored near_send of every other row of its address, so all of them are stored before any label);
+--   2. scan rows above the label cursor up to the high-water mark: relabel (scan_opens_relabel), move the cursor;
+--   3. and 4. the same for page rows.
+-- Run it until it returns done: true. A failed or interrupted call changes nothing (its transaction rolls back) and
+-- the next call redoes the same rows; a call after done does nothing. It only relabels (plain UPDATEs, no grant).
+create or replace function public.open_backfill_step(p_limit int default 500)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare st public.open_backfill_state; v_ids bigint[]; v_res jsonb;
+begin
+  if p_limit is null or p_limit < 1 or p_limit > 5000 then raise exception 'p_limit must be between 1 and 5000'; end if;
+  select * into st from public.open_backfill_state where id = 1 for update;   -- one batch at a time
+  if not found then raise exception 'open_backfill_state has no row: apply db/304 first'; end if;
+  if st.done_at is not null then
+    return jsonb_build_object('done', true, 'batches', st.batches, 'note', 'already done');
+  end if;
+
+  -- 1. scan: network + near_send
+  v_ids := array(select so.id from public.scan_opens so
+                  where so.id <= st.scan_high_water and so.near_send is null order by so.id limit p_limit);
+  if cardinality(v_ids) > 0 then
+    -- the network on record for the address (seed + edge lookups), as the one-shot backfill set it before relabelling
+    update public.scan_opens so set net_asn = n.asn, net_org = n.org
+      from public.open_networks n
+     where so.id = any (v_ids) and n.ip_hash = so.ip_hash and (so.net_asn, so.net_org) is distinct from (n.asn, n.org);
+    update public.scan_opens so set near_send = public.scan_open_near_send(so.id) where so.id = any (v_ids);
+    update public.open_backfill_state set batches = batches + 1 where id = 1;
+    return jsonb_build_object('done', false, 'phase', 'scan_near_send', 'from_id', v_ids[1], 'to_id', v_ids[cardinality(v_ids)],
+                              'high_water', st.scan_high_water, 'rows', cardinality(v_ids));
+  end if;
+
+  -- 2. scan: labels
+  v_ids := array(select so.id from public.scan_opens so
+                  where so.id > st.scan_cursor and so.id <= st.scan_high_water order by so.id limit p_limit);
+  if cardinality(v_ids) > 0 then
+    v_res := public.scan_opens_relabel(v_ids);
+    update public.open_backfill_state set scan_cursor = v_ids[cardinality(v_ids)], batches = batches + 1 where id = 1;
+    return jsonb_build_object('done', false, 'phase', 'scan_label', 'from_id', v_ids[1], 'to_id', v_ids[cardinality(v_ids)],
+                              'high_water', st.scan_high_water, 'rows', cardinality(v_ids), 'changed', v_res->'changed');
+  end if;
+
+  -- 3. page: near_send
+  v_ids := array(select po.id from public.page_opens po
+                  where po.id <= st.page_high_water and po.near_send is null order by po.id limit p_limit);
+  if cardinality(v_ids) > 0 then
+    update public.page_opens po set near_send = public.page_open_near_send(po.page, po.created_at) where po.id = any (v_ids);
+    update public.open_backfill_state set batches = batches + 1 where id = 1;
+    return jsonb_build_object('done', false, 'phase', 'page_near_send', 'from_id', v_ids[1], 'to_id', v_ids[cardinality(v_ids)],
+                              'high_water', st.page_high_water, 'rows', cardinality(v_ids));
+  end if;
+
+  -- 4. page: labels
+  v_ids := array(select po.id from public.page_opens po
+                  where po.id > st.page_cursor and po.id <= st.page_high_water order by po.id limit p_limit);
+  if cardinality(v_ids) > 0 then
+    v_res := public.page_opens_relabel(v_ids);
+    update public.open_backfill_state set page_cursor = v_ids[cardinality(v_ids)], batches = batches + 1 where id = 1;
+    return jsonb_build_object('done', false, 'phase', 'page_label', 'from_id', v_ids[1], 'to_id', v_ids[cardinality(v_ids)],
+                              'high_water', st.page_high_water, 'rows', cardinality(v_ids), 'changed', v_res->'changed');
+  end if;
+
+  update public.open_backfill_state set done_at = now() where id = 1;
+  return jsonb_build_object('done', true, 'batches', st.batches,
+    'scan_unlabelled_to_high_water', (select count(*) from public.scan_opens where id <= st.scan_high_water and open_class is null),
+    'page_unlabelled_to_high_water', (select count(*) from public.page_opens where id <= st.page_high_water and open_class is null));
 end $$;
 
 -- Ruling P6(b): ONCE, at release, grant eligibility to rows that the live readers already treat as evidence on release
@@ -261,13 +423,35 @@ end $$;
 -- (ivan/rise evidence RPCs, came-back and interest cards each add their own narrower conditions, which they still
 -- apply to links sent before the cutover, db/306); a SwishDM report page open from outside our country (the nudge
 -- drafter's read). The marker row makes a second call a no-op, whoever calls it.
+-- Round 5: it refuses (and writes no marker) until open_backfill_step has reported done. Then, in the same transaction
+-- as the grant, it relabels every scan row that arrived after the high-water mark, every row sharing an address with
+-- one of them, every row still unlabelled, and every page row (pages get no label at insert until 305), so the grant
+-- reads the same labels a one-shot relabel at this moment would give.
 create or replace function public.open_release_grant()
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
-declare v_scan int; v_page int;
+declare st public.open_backfill_state; v_scan int; v_page int; v_ids bigint[]; v_sweep_scan jsonb; v_sweep_page jsonb;
 begin
+  if exists (select 1 from public.integration_config where key = 'open_eligibility_granted_at') then
+    return jsonb_build_object('granted', false, 'reason', 'already_ran');
+  end if;
+  select * into st from public.open_backfill_state where id = 1 for update;
+  if not found or st.done_at is null then
+    return jsonb_build_object('granted', false, 'reason', 'backfill_not_done');
+  end if;
   insert into public.integration_config (key, value) values ('open_eligibility_granted_at', now()::text)
   on conflict (key) do nothing;
   if not found then return jsonb_build_object('granted', false, 'reason', 'already_ran'); end if;
+
+  v_ids := array(
+    select so.id from public.scan_opens so
+     where so.id > st.scan_high_water or so.open_class is null
+        or so.ip_hash in (select n.ip_hash from public.scan_opens n where n.id > st.scan_high_water and n.ip_hash is not null));
+  update public.scan_opens so set net_asn = n.asn, net_org = n.org
+    from public.open_networks n
+   where so.id = any (v_ids) and n.ip_hash = so.ip_hash and (so.net_asn, so.net_org) is distinct from (n.asn, n.org);
+  v_sweep_scan := public.scan_opens_relabel(v_ids);
+  v_sweep_page := public.page_opens_relabel(array(select po.id from public.page_opens po));
+
   with links as (
     select coalesce(lower(substring(m.message_text from '/scan/([A-Za-z0-9_-]+)')),
                     'arch-' || lower(substring(m.message_text from 'madebyarch\.com/([A-Za-z0-9_-]+-audit)'))) as slug,
@@ -289,35 +473,42 @@ begin
      where po.open_class = 'human' and not po.eligible and po.is_external and po.page ~ '^swishdm/compare/[a-z2-7]{20}$'
     returning po.id)
   select count(*) into v_page from g;
-  return jsonb_build_object('granted', true, 'scan', v_scan, 'page', v_page);
+  return jsonb_build_object('granted', true, 'scan', v_scan, 'page', v_page,
+                            'final_pass_scan_rows', v_sweep_scan->'rows', 'final_pass_page_rows', v_sweep_page->'rows');
 end $$;
 
 revoke all on function public.scan_open_sends(bigint) from public, anon, authenticated;
 revoke all on function public.page_open_sends(text, timestamptz) from public, anon, authenticated;
 revoke all on function public.scan_open_near_send(bigint) from public, anon, authenticated;
 revoke all on function public.page_open_near_send(text, timestamptz) from public, anon, authenticated;
+revoke all on function public.scan_open_burst(bigint) from public, anon, authenticated;
+revoke all on function public.scan_open_addr(text, boolean, bigint, boolean) from public, anon, authenticated;
 revoke all on function public.scan_open_context(bigint) from public, anon, authenticated;
 revoke all on function public.page_open_context(text, text, timestamptz, bigint, text, text, text, text) from public, anon, authenticated;
 revoke all on function public.scan_open_label(bigint, int, text, text, text) from public, anon, authenticated;
 revoke all on function public.scan_open_finalize(bigint, int, text, text, text) from public, anon, authenticated;
+revoke all on function public.scan_opens_relabel(bigint[]) from public, anon, authenticated;
+revoke all on function public.page_opens_relabel(bigint[]) from public, anon, authenticated;
 revoke all on function public.reclassify_opens(timestamptz) from public, anon, authenticated;
+revoke all on function public.open_backfill_step(int) from public, anon, authenticated;
 revoke all on function public.open_release_grant() from public, anon, authenticated;
 grant execute on function public.scan_open_sends(bigint) to service_role;
 grant execute on function public.page_open_sends(text, timestamptz) to service_role;
 grant execute on function public.scan_open_near_send(bigint) to service_role;
 grant execute on function public.page_open_near_send(text, timestamptz) to service_role;
+grant execute on function public.scan_open_burst(bigint) to service_role;
+grant execute on function public.scan_open_addr(text, boolean, bigint, boolean) to service_role;
 grant execute on function public.scan_open_context(bigint) to service_role;
 grant execute on function public.page_open_context(text, text, timestamptz, bigint, text, text, text, text) to service_role;
 grant execute on function public.scan_open_label(bigint, int, text, text, text) to service_role;
 grant execute on function public.scan_open_finalize(bigint, int, text, text, text) to service_role;
+grant execute on function public.scan_opens_relabel(bigint[]) to service_role;
+grant execute on function public.page_opens_relabel(bigint[]) to service_role;
 grant execute on function public.reclassify_opens(timestamptz) to service_role;
+grant execute on function public.open_backfill_step(int) to service_role;
 grant execute on function public.open_release_grant() to service_role;
 
-select cron.schedule('open-reclassify-nightly', '15 3 * * *', 'select public.reclassify_opens()');
-
--- BACKFILL (live apply only; tests stop at the line above). Seed = open_networks_seed.sql
--- (117 hashes from the gateway log, 9 Microsoft, 1 Railway, no raw IPs). Uses reclassify_opens, never scan_open_finalize,
--- then the one-time eligibility grant (P6b) for rows the live readers treat as evidence today.
+-- Network seed (117 hashes from the gateway log, 9 Microsoft, 1 Railway, no raw IPs; open_networks_seed.sql).
 insert into public.open_networks (ip_hash, asn, org, country_code, city, source) values
   ('06df1d443944f21028e56b575a0e931b2883030991c5b419513924dae7bc02b0', null, 'Mobile Broadband Service', 'GB', 'Morley', 'gateway_log_backfill'),
   ('07029e95dd59cf21cb3d6470f605a8174094e2c9f51472a30fcba84475661dd7', null, '02 Online (uk)', 'GB', 'London', 'gateway_log_backfill'),
@@ -438,7 +629,15 @@ insert into public.open_networks (ip_hash, asn, org, country_code, city, source)
   ('ffe9625a0b336b1e0a3c3b13b677b41c3a4c703200332a1c875ac6c63cdcdf3b', null, 'DSL', 'FR', 'Paris', 'gateway_log_backfill')
 on conflict (ip_hash) do nothing;
 
-update public.scan_opens so set net_asn = n.asn, net_org = n.org
-  from public.open_networks n where n.ip_hash = so.ip_hash and (so.net_asn, so.net_org) is distinct from (n.asn, n.org);
-select public.reclassify_opens('-infinity');
-select public.open_release_grant();
+-- The backfill's high-water marks: every row that exists now. A re-apply keeps the first marks.
+insert into public.open_backfill_state (id, scan_high_water, page_high_water)
+select 1, coalesce((select max(id) from public.scan_opens), 0), coalesce((select max(id) from public.page_opens), 0)
+on conflict (id) do nothing;
+
+-- Nightly relabel (90 days). Re-applying replaces the job of the same name. The server's statement_timeout (2 minutes,
+-- postgresql.conf) applies to cron jobs too; the job states its own bound so a change there cannot loosen it. Measured
+-- on the local copy: 0.4 s for 90 days of today's rows, 1.5 s with three times the rows (r5-fixes.md).
+select cron.schedule('open-reclassify-nightly', '15 3 * * *', 'set statement_timeout = ''90s''; select public.reclassify_opens()');
+
+-- NO BACKFILL HERE. Release checklist step 1b: loop `select public.open_backfill_step(500)` until it returns
+-- done: true (db/304_open_backfill_step.sql), then `select public.open_release_grant()` once (db/304_open_release_grant.sql).

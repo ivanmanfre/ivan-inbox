@@ -212,12 +212,12 @@ describe('context, finalize, relabel (304)', () => {
       .toEqual(['suspect:burst_no_address', 'suspect:burst_no_address', 'suspect:burst_no_address'])
   })
   it('nightly relabel job is scheduled', async () => {
-    expect((await d.query(`select schedule, command from cron.job where jobname='open-reclassify-nightly'`)).rows[0]).toEqual({ schedule: '15 3 * * *', command: 'select public.reclassify_opens()' })
+    expect((await d.query(`select schedule, command from cron.job where jobname='open-reclassify-nightly'`)).rows[0]).toEqual({ schedule: '15 3 * * *', command: "set statement_timeout = '90s'; select public.reclassify_opens()" })
   })
 })
 
 describe('304 backfill block', () => {
-  it('runs end to end on a fresh copy and seeds 117 hashes with no raw IPs', async () => {
+  it('applies with no backfill, then the batch loop and the one grant label a fresh copy; seeds 117 hashes with no raw IPs', async () => {
     const { PGlite } = await import('@electric-sql/pglite')
     const { readFileSync } = await import('node:fs')
     const { BASE } = await import('./openTrackingSchema')
@@ -229,6 +229,14 @@ describe('304 backfill block', () => {
     await d.exec(readFileSync('db/304_open_finalize_backfill.sql', 'utf8'))
     expect((await d.query(`select count(*)::int n, count(*) filter (where asn = 8075)::int ms from open_networks`)).rows[0]).toEqual({ n: 117, ms: 9 })
     expect((await d.query(`select count(*)::int n from open_networks where ip_hash !~ '^[0-9a-f]{64}$' or org ~ '\\d+\\.\\d+\\.\\d+\\.\\d+'`)).rows[0]).toEqual({ n: 0 })
+    // applying 304 labels nothing and grants nothing; the grant refuses before the backfill is done and leaves no marker
+    expect((await d.query(`select open_class from scan_opens`)).rows[0]).toEqual({ open_class: null })
+    expect((await d.query<{ r: unknown }>(`select open_release_grant() r`)).rows[0].r).toEqual({ granted: false, reason: 'backfill_not_done' })
+    expect((await d.query(`select count(*)::int n from integration_config where key = 'open_eligibility_granted_at'`)).rows[0]).toEqual({ n: 0 })
+    // the checklist's helper files are exactly the loop body and the one grant
+    const one = async (file: string) => (await d.query<{ [k: string]: Record<string, unknown> }>(readFileSync(file, 'utf8'))).rows[0]
+    for (let i = 0; i < 20; i++) if ((await one('db/304_open_backfill_step.sql')).open_backfill_step.done) break
+    expect((await one('db/304_open_release_grant.sql')).open_release_grant.granted).toBe(true)
     // a lone Microsoft row with no send, burst or confirmed address is unresolved (P3), never eligible
     expect((await d.query(`select net_asn, open_class, class_reason, eligible from scan_opens`)).rows[0]).toEqual({ net_asn: 8075, open_class: 'suspect', class_reason: 'microsoft_uncorroborated', eligible: false })
     // the release grant ran once and wrote its marker

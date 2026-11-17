@@ -175,7 +175,9 @@ describe('round-3 cases', () => {
     // only shrink.
     let seed = 20261117
     const rnd = (k: number) => { seed = (seed * 1103515245 + 12345) % 2147483648; return Math.floor(seed / 65536) % k }
-    await q(`select open_release_grant()`)   // the one release grant is spent before the walk
+    // the release backfill runs to done, then the one release grant is spent before the walk
+    for (let i = 0; i < 100 && !(await q(`select open_backfill_step(500) r`))[0].r.done; i++);
+    expect((await q(`select open_release_grant() r`))[0].r.granted).toBe(true)
     const slugs = ['walk-a', 'walk-b', 'walk-c', 'walk-d', 'walk-e']
     for (const s of slugs) await prospect('Walker ' + s, s, '6 days')
     const hashes = ['w-ms', 'w-home', 'w-vpn', null]
@@ -197,6 +199,7 @@ describe('round-3 cases', () => {
       ['owner row appears', () => q(`insert into scan_opens(company_slug, opened_at, is_owner, ip_hash, user_agent, open_class, class_reason, classified_at) values ('walk-owner', now() - interval '3 days', true, 'w-home', $1, 'owner', 'owner_flag_or_ip', now())`, [CHROME])],
       ['send appears', () => q(`insert into outreach_messages(prospect_id, direction, channel, sent_at, message_text) values ($1, 'outbound', 'linkedin', now() - interval '2 days 1 minute', 'https://inboundonsteroids.com/scan/walk-b')`, [pid()])],
       ['release grant again', () => q(`select open_release_grant()`)],
+      ['backfill step after done', () => q(`select open_backfill_step(2)`)],
       ['finalizer failure', () => q(`update scan_opens set open_class = null, class_reason = null, classified_at = null where id = (select min(id) from scan_opens where company_slug like 'walk-%' and open_class is not null)`)],
     ]
     let prev = await eligible()

@@ -1,5 +1,7 @@
 -- Real-corpus replay for the open classifier (plan 2026-11-17-open-tracking-truth, Task 3 Step 5). READ-ONLY.
--- Run after 303 + 304 are applied (live, or on a local copy of the live rows). Every row must say pass = true.
+-- Run after 303 + 304 are applied and the backfill loop (open_backfill_step until done) and open_release_grant() ran
+-- (live, or on a local copy of the live rows). Every row must say pass = true. It calls service-role functions
+-- (open_is_signal), so live it runs through apply.sh with `set transaction read only;` in front, not q.sh.
 -- Expected values are frozen in ~/.claude/docs/superpowers/plans/2026-11-17-open-tracking-truth-assets/replay_expectations.r4.json
 -- (round 4, rulings P1-P9 + R1/R2, same numbers as round 3; round 3 in replay_expectations.r3.json, round 2 in .r2.json, round 1 in replay_expectations.json)
 -- (scan_opens id <= 3760, read 2026-11-17). Opens after that id are ignored so the numbers stay comparable.

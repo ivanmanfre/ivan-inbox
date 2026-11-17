@@ -11,7 +11,13 @@ create table cron.job (jobid bigserial primary key, jobname text unique, schedul
 create function cron.schedule(n text, s text, c text) returns bigint language sql as $$
   insert into cron.job(jobname, schedule, command) values (n, s, c)
   on conflict (jobname) do update set schedule = excluded.schedule, command = excluded.command returning jobid $$;
-create function cron.unschedule(n text) returns boolean language sql as $$ delete from cron.job where jobname = n returning true $$;
+-- like pg_cron: unscheduling a job that does not exist is an error (round 5: the old 304 rollback failed on it live)
+create function cron.unschedule(n text) returns boolean language plpgsql as $$
+begin
+  delete from cron.job where jobname = n;
+  if not found then raise exception 'could not find valid entry for job ''%''', n; end if;
+  return true;
+end $$;
 create table net.calls (id bigserial primary key, url text, body jsonb, headers jsonb);
 create function net.http_post(url text, body jsonb default '{}'::jsonb, params jsonb default '{}'::jsonb,
   headers jsonb default '{}'::jsonb, timeout_milliseconds int default 5000) returns bigint language plpgsql as $$
@@ -49,11 +55,10 @@ export const MIGRATIONS = [
   'db/309_open_daily_check.sql',
 ]
 
-// The backfill block at the end of 304 runs against live rows; tests load the file without it.
+// Round 5: 304 no longer carries a backfill block (the backfill is open_backfill_step, run by the release checklist),
+// so every migration loads whole.
 export function migration(path: string): string {
-  const sql = readFileSync(path, 'utf8')
-  const cut = sql.indexOf('-- BACKFILL')
-  return cut >= 0 ? sql.slice(0, cut) : sql
+  return readFileSync(path, 'utf8')
 }
 
 export async function openDb(upTo: number, extra = ''): Promise<PGlite> {
