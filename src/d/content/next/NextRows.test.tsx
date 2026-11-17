@@ -273,6 +273,18 @@ describe('Pull', () => {
     await waitFor(() => expect(document.body.textContent).toContain('Pulled. It will not go out.'))
     expect(calls.changed).toHaveBeenCalled()
   })
+  it('sends the optional reason he typed with the pull', async () => {
+    lib.readNextPosts.mockResolvedValue([post()])
+    mount()
+    await waitFor(() => expect(key('q1', 'next-pull')).toBeTruthy())
+    fireEvent.click(key('q1', 'next-pull')!)
+    await waitFor(() => expect(confirmKey()).toBeTruthy())
+    fireEvent.change(document.querySelector('.d-confirm-reason-input')!, { target: { value: 'Wrong timing' } })
+    lib.readNextPosts.mockResolvedValue([])
+    await act(async () => { fireEvent.click(confirmKey()!) })
+    await waitFor(() => expect(lib.pullNext).toHaveBeenCalledTimes(1))
+    expect(lib.pullNext.mock.calls[0][1]).toBe('Wrong timing')
+  })
   it('cancel sends nothing', async () => {
     lib.readNextPosts.mockResolvedValue([post()])
     mount()

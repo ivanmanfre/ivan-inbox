@@ -106,11 +106,13 @@ function Row({ row, i, draft, onOpen, onEdit, onChanged }: {
   const doPull = async () => {
     if (busy || editing) return
     const when = `${slotDay(post.slot_at)} at ${slotTime(post.slot_at)}`
+    let why = ''
     if (!await confirm({ title: 'Take this post off the schedule?', message: `It will not go out ${when}. It goes back to Review with no date, and the autopilot will not place it again. You can date it again yourself.`,
-      confirmText: 'Pull', verb: 'next-pull-confirm', danger: true })) return
+      confirmText: 'Pull', verb: 'next-pull-confirm', danger: true,
+      reason: { chips: ['Wrong timing', 'Changed my mind', 'Needs a rewrite', 'Said it already'], placeholder: 'Why? (optional)' }, onReason: t => { why = t } })) return
     setBusy('pull'); setSaid(null)
     let msg: string | null = null
-    try { await pullNext(post) } catch (e) {
+    try { await pullNext(post, why) } catch (e) {
       const raw = e instanceof Error ? e.message : ''
       msg = e instanceof NextRefused ? e.message
         : /fetch|network|load failed/i.test(raw) || !raw ? 'Not pulled: the connection dropped. Nothing changed. Try again.' : `Not pulled: ${raw}`

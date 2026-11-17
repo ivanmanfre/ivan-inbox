@@ -960,6 +960,12 @@ export function stampHumanEdit(t: unknown, at: string = new Date().toISOString()
   return stampTaxonomy(t, { human_edited: true, human_edited_at: at })
 }
 
+/** One short optional reason: trimmed, one line, at most 200 characters; null when empty. */
+export function cleanReason(r: string | null | undefined): string | null {
+  const t = (r ?? '').replace(/\s+/g, ' ').trim().slice(0, 200)
+  return t || null
+}
+
 export function stampOperatorDelete(t: unknown, at: string = new Date().toISOString()): Record<string, unknown> {
   return stampTaxonomy(t, { deleted_by_operator: true, deleted_at: at })
 }
@@ -1128,7 +1134,18 @@ export async function saveDraftBody(
 // with taxonomy.deleted_by_operator so it leaves every list (fetch filter
 // above) — and THAT write is verified too. Skip ≠ Delete: skip is a visible
 // archive decision, delete removes the row from the surface entirely.
-export async function deleteDraft(id: string, taxonomy: unknown): Promise<'deleted' | 'disqualified'> {
+//
+// REASON (optional, 2026-11-17): Ivan's one short line on why. It rides on taxonomy.delete_reason, which the
+// carousel_drafts_deletion_audit trigger copies into draft_deletions.reason on a hard DELETE (otherwise 'unspecified'),
+// and the archive fallback keeps it on the row. Stamped in its own write first and fail-soft: a reason is never worth
+// blocking a delete over.
+export async function deleteDraft(id: string, taxonomy: unknown, reason?: string | null): Promise<'deleted' | 'disqualified'> {
+  const why = cleanReason(reason)
+  let tax = taxonomy
+  if (why) {
+    tax = stampTaxonomy(taxonomy, { delete_reason: why })
+    try { await supabase.from('carousel_drafts').update({ taxonomy: tax }).eq('id', id).is('client_id', null) } catch { /* see above */ }
+  }
   const del = await supabase.from('carousel_drafts')
     .delete()
     .eq('id', id).is('client_id', null)
@@ -1138,7 +1155,7 @@ export async function deleteDraft(id: string, taxonomy: unknown): Promise<'delet
     return 'deleted'
   }
   const upd = await supabase.from('carousel_drafts')
-    .update({ status: SKIP_STATUS, taxonomy: stampOperatorDelete(taxonomy) })
+    .update({ status: SKIP_STATUS, taxonomy: stampOperatorDelete(tax) })
     .eq('id', id).is('client_id', null)
     .select('id')
   if (upd.error) throw upd.error

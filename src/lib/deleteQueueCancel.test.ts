@@ -75,3 +75,25 @@ describe('deleteDraft — the post leaves the publish queue too', () => {
     expect(queueWrites()).toHaveLength(0)
   })
 })
+
+describe('deleteDraft — an optional reason', () => {
+  it('stamps taxonomy.delete_reason before the hard delete so the audit row carries it', async () => {
+    expect(await deleteDraft('d1', { a: 1 }, '  Not my   voice ')).toBe('deleted')
+    const first = steps[0]
+    expect(first).toMatchObject({ table: 'carousel_drafts', op: 'update' })
+    expect(first.payload).toEqual({ taxonomy: { a: 1, delete_reason: 'Not my voice' } })
+    expect(steps[1]).toMatchObject({ table: 'carousel_drafts', op: 'delete' })
+  })
+
+  it('keeps the reason on the archive fallback', async () => {
+    deleteResult = { data: [], error: null }
+    expect(await deleteDraft('d1', {}, 'Wrong topic')).toBe('disqualified')
+    const fb = steps.filter(s => s.table === 'carousel_drafts' && s.op === 'update').pop()!
+    expect((fb.payload as { taxonomy: Record<string, unknown> }).taxonomy).toMatchObject({ delete_reason: 'Wrong topic', deleted_by_operator: true })
+  })
+
+  it('writes nothing extra when there is no reason', async () => {
+    await deleteDraft('d1', {}, '   ')
+    expect(steps.filter(s => s.table === 'carousel_drafts' && s.op === 'update')).toHaveLength(0)
+  })
+})

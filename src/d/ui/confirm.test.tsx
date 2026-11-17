@@ -85,3 +85,32 @@ it('a replaced question answers no; the open one still answers with the press', 
   await expect(second).resolves.toBe(true)
   expect(document.body.textContent).not.toContain('Second?')
 })
+
+describe('useDConfirm optional reason', () => {
+  it('hands the typed text (trimmed) to onReason on confirm, and a chip fills the box', async () => {
+    let got: string | null = null
+    const r = await open({ danger: true, reason: { chips: ['Alpha', 'Beta'] }, onReason: t => { got = t } })
+    act(() => { fireEvent.click(document.querySelectorAll('[data-verb="reason-chip"]')[1]) })
+    const input = document.querySelector('.d-confirm-reason-input') as HTMLInputElement
+    expect(input.value).toBe('Beta')
+    act(() => { fireEvent.change(input, { target: { value: '  Beta, and more ' } }) })
+    act(() => { fireEvent.click(document.querySelector('[data-verb="confirm-delete"]')!) })
+    await act(async () => {})
+    expect(r.get()).toBe(true)
+    expect(got).toBe('Beta, and more')
+  })
+  it('cancel never calls onReason; an empty box confirms with an empty reason', async () => {
+    let calls = 0, last = 'x'
+    const r = await open({ reason: {}, onReason: t => { calls++; last = t } })
+    act(() => { fireEvent.click(document.querySelector('[data-verb="cancel"]')!) })
+    await act(async () => {})
+    expect(r.get()).toBe(false)
+    expect(calls).toBe(0)
+    cleanup(); document.body.innerHTML = ''
+    const r2 = await open({ reason: {}, onReason: t => { calls++; last = t } })
+    act(() => { fireEvent.click(document.querySelector('[data-verb="confirm-delete"]')!) })
+    await act(async () => {})
+    expect(r2.get()).toBe(true)
+    expect([calls, last]).toEqual([1, ''])
+  })
+})

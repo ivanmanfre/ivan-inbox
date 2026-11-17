@@ -88,8 +88,16 @@ export async function keepNext(shown: NextShown, bodySha: string, files: KeepFil
 /** His Pull of one upcoming post. `shown`: the row he was looking at (its queue row and the slot it showed him). The
  *  database refuses (next_changed) when the post moved or is no longer waiting, and (next_busy) while it is being
  *  published. On success nothing of it is queued any more and the draft is back in Review with no date. */
-export async function pullNext(shown: Pick<NextPost, 'queue_id' | 'slot_at'>): Promise<void> {
-  const { error } = await supabase.rpc('content_next_pull', { p_queue: shown.queue_id, p_slot_at: shown.slot_at })
+export async function pullNext(shown: Pick<NextPost, 'queue_id' | 'slot_at'>, reason?: string | null): Promise<void> {
+  const args = { p_queue: shown.queue_id, p_slot_at: shown.slot_at }
+  const why = (reason ?? '').replace(/\s+/g, ' ').trim().slice(0, 200)
+  // His optional reason lands in content_owner_pulls.reason (db/20261117a_pull_reason.sql). Until that migration is
+  // applied the function has no reason argument and the database answers PGRST202: the Pull itself must still go
+  // through, so it is retried without the reason.
+  let { error } = await supabase.rpc('content_next_pull', why ? { ...args, p_reason: why } : args)
+  if (error && why && (error as { code?: string }).code === 'PGRST202') {
+    ;({ error } = await supabase.rpc('content_next_pull', args))
+  }
   if (!error) return
   const hint = (error as { hint?: string | null }).hint ?? ''
   if (/^next_/.test(hint)) throw new NextRefused(error.message, hint)

@@ -38,6 +38,8 @@ export function rowVerbsFor(d: ContentDraft, lane: Lane): RowVerb[] {
   ]
 }
 
+const DELETE_REASON = { chips: ['Not my voice', 'Invented a fact', 'Said it already', 'Wrong topic'], placeholder: 'Why? (optional)' } as const
+
 export function useRowVerbs(onDone: () => void) {
   const confirm = useDConfirm()
   const toast = useToast()
@@ -56,6 +58,7 @@ export function useRowVerbs(onDone: () => void) {
       })
       return
     }
+    let why = ''
     const ok = await confirm(v === 'board' ? {
       title: `Put this on ${LANE_POSSESSIVE[lane]} board?`,
       message: `${LANE_LABEL[lane]} sees it. This is the one action here that reaches a client, and it fires his board’s own `
@@ -66,12 +69,13 @@ export function useRowVerbs(onDone: () => void) {
       title: 'Delete this draft?',
       message: lane !== 'ivan' ? `${LANE_LABEL[lane]} has never seen it, and this removes it permanently.` : 'This removes it permanently.',
       confirmText: 'Delete', verb: 'confirm', danger: true,
+      ...(v === 'delete' && lane === 'ivan' ? { reason: DELETE_REASON, onReason: (t: string) => { why = t } } : {}),
     })
     if (!ok) return
     setBusy(d.id)
     try {
       if (v === 'board') await setBoardVisible(d.id, true, ...(d.client_id === 'swishdm' ? [d] as const : []))
-      else await (lane !== 'ivan' ? deleteClientDraft(d.id, d.taxonomy) : deleteDraft(d.id, d.taxonomy))
+      else await (lane !== 'ivan' ? deleteClientDraft(d.id, d.taxonomy) : deleteDraft(d.id, d.taxonomy, why))
       toast.show({ message: v === 'board' ? `On ${LANE_POSSESSIVE[lane]} board.` : 'Deleted.' })
       onDone(); window.dispatchEvent(new Event('wb-rows-changed'))
     } catch (e) {
