@@ -55,6 +55,8 @@ export type CallBrief = {
   industry?: string | null
   automation_maturity?: string | null
   team_size?: string | null
+  /** Points Ivan himself made two or more times on the call (at most 5; [] when none). Older briefs lack the key. */
+  repeated_points?: { point: string; times: number }[] | null
 }
 
 // ---------------------------------------------------------------------------
