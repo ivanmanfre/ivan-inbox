@@ -6,7 +6,7 @@
 // node tools/shell-matrix.mjs <baseUrl> <outDir> [chromium|webkit ...]
 //   SHELL_SESSION_PATH  private Supabase session file (required)
 //   SHELL_WIDTHS        canvas widths, default 1272,1144,1092,964,936,808,764
-//   SHELL_PLACES        default home,dms,content/calendar,content/now,content/ideas,content/brain,content/magnets,lanes,ops,sales,claude,settings
+//   SHELL_PLACES        default home,dms,content/calendar,content/now,content/x,content/ideas,content/brain,content/magnets,ops,sales,lanes,intel,claude,settings
 //   SHELL_SKIN          ?skin= value, default brief:shell
 //   SHELL_SHOTS         0 = report only
 //   SHELL_RAIL          1 = keep the web rail (default hides it, as Daily Brief does, so the
@@ -21,7 +21,7 @@ const [base, outDir, ...engineArgs] = process.argv.slice(2)
 if (!base || !outDir) { console.error('usage: shell-matrix.mjs <baseUrl> <outDir> [engines]'); process.exit(2) }
 const engines = engineArgs.length ? engineArgs : ['chromium', 'webkit']
 const widths = (process.env.SHELL_WIDTHS || '1272,1144,1092,964,936,808,764').split(',').map(Number)
-const places = (process.env.SHELL_PLACES || 'home,dms,content/calendar,content/now,content/ideas,content/brain,content/magnets,lanes,ops,sales,claude,settings').split(',')
+const places = (process.env.SHELL_PLACES || 'home,dms,content/calendar,content/now,content/x,content/ideas,content/brain,content/magnets,ops,sales,lanes,intel,claude,settings').split(',')
 const skin = process.env.SHELL_SKIN ?? 'brief:shell'
 const shots = process.env.SHELL_SHOTS !== '0'
 const authKey = 'sb-bjbvqvzbzczjbatgmccb-auth-token'

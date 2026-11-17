@@ -57,6 +57,10 @@
 :root[data-skin-on~='shell'] .d-desktop .d-nav .d-navsub a.d-on{color:var(--ds-nav-text-on)}
 :root[data-skin-on~='shell'] .d-desktop .d-side-min .d-nav a,
 :root[data-skin-on~='shell'] .d-desktop .d-side-min .d-nav button{padding:0;justify-content:center}
+:root[data-skin-on~='shell'] .d-desktop .d-nav .d-claude-key .d-ico{width:17px;height:17px;color:var(--ds-text-2)}
+:root[data-skin-on~='shell'] .d-desktop .d-nav .d-claude-key[aria-pressed='true']{font-weight:550;color:var(--ds-nav-text-on)}
+:root[data-skin-on~='shell'] .d-desktop .d-nav .d-claude-key[aria-pressed='true'] .d-ico{color:var(--ds-nav-text-on)}
+:root[data-skin-on~='shell'] .d-desktop .d-claude-key .d-kh{font:500 11px/16px var(--f);color:var(--ds-text-3);border-color:var(--ds-line-strong)}
 
 .d-glide{position:absolute;left:0;top:0;z-index:-1;border-radius:8px;pointer-events:none;opacity:0;font-style:normal}
 .d-glide[data-on]{opacity:1}

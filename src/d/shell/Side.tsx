@@ -19,8 +19,8 @@ import { isBriefNative } from '../../ds/skin'
 
 // The left panel, desktop, and the same content as the phone's drawer. Brand,
 // the seat names once (Ivan · Rise · Arch) over the count columns, one line per place with its per-seat numbers
-// on the right, the low nav, and the me/clock footer (it speaks only when a
-// read failed).
+// on the right, the low nav with the Claude key at its foot, and the me/clock footer (it speaks only when a
+// read failed). Places with nav 'hidden' (Intel, Claude) get no line here.
 
 /** Under a place: only a failed read, said once. The numbers sit on the place's own line (NavCount). */
 export function NavLineView({ item }: { item: NavItem }) {
@@ -120,7 +120,7 @@ export const RAIL_SUBS: readonly Sub[] = SUBS
 function PlaceLink({ i, on, min }: { i: NavItem; on: boolean; min: boolean }) {
   return (
     <a href={dHash(i.id)} className={on ? 'd-on' : undefined} aria-current={on ? 'page' : undefined} title={min ? i.label : undefined}>
-      <DIcon name={PLACES[i.id].icon} /><span>{i.label}</span>{i.id === 'claude' && <ClaudeWorking />}<NavCount item={i} total />
+      <DIcon name={PLACES[i.id].icon} /><span>{i.label}</span><NavCount item={i} total />
       {min && i.failed > 0 && <em className="d-side-pip" aria-label={`${i.failed} failed`}>!</em>}
     </a>
   )
@@ -148,6 +148,22 @@ function ContentGroup({ i, min }: { i: NavItem; min: boolean }) {
         </div>
       )}
     </div>
+  )
+}
+
+/** The Claude key (daily-brief-trim Task 6.2): Claude left the nav, so the drawer opens from here or ⌘J.
+ *  On the Claude workspace (the place, Brief 4 `claude` section) it goes to the composer, as ⌘J does. */
+function ClaudeKey() {
+  const f = useFrame()
+  const toggle = () => {
+    const ws = f.route.place === 'claude' ? document.querySelector<HTMLTextAreaElement>('.dcl-ws textarea') : null
+    if (ws) ws.focus(); else f.setClaudeOpen(!f.claudeOpen)
+  }
+  return (
+    <button type="button" className="d-claude-key" data-verb="claude" aria-label="Claude" aria-keyshortcuts="Meta+J" aria-pressed={f.claudeOpen}
+      title="Claude (⌘J)" onClick={toggle}>
+      <DIcon name="claude" /><span>Claude</span><ClaudeWorking /><kbd className="d-kh" aria-hidden="true">⌘J</kbd>
+    </button>
   )
 }
 
@@ -193,6 +209,7 @@ export function Side({ min = false, setMin }: { min?: boolean; setMin?: (m: bool
             {i.failed > 0 && <div className="d-navfail">{i.failed} failed</div>}
           </div>
         ))}
+        <ClaudeKey />
       </nav>
       </div>
       {/* The fold sits with the me line at the foot, as Brief's native sidebar keeps it in its tool row,
