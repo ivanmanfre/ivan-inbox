@@ -54,6 +54,17 @@ it('shows no rate for a week with no invite old enough, and says when none was s
   expect(screen.getByText('No invites sent')).toBeTruthy()
   expect(screen.queryByText(/%$/)).toBeNull()
 })
+it('opens on the first week with an invite and keeps an empty week after it', () => {
+  const quiet = { accept_base: 0, accepted: 0, invites: 0, reply_base: 0, replied: 0, replied_so_far: 0, calls: 0 }
+  render(<ChangeRateRows rows={[
+    row({ period_from: '2026-02-16', period_to: '2026-02-22', ...quiet }), row({ period_from: '2026-02-23', period_to: '2026-03-01', ...quiet }),
+    row({}), row({ period_from: '2026-03-09', period_to: '2026-03-15', ...quiet }),
+  ]} seat="risedtc" />)
+  const items = screen.getAllByRole('listitem')
+  expect(items).toHaveLength(2)
+  expect(within(items[0]).getByText('2 Mar to 8 Mar')).toBeTruthy()
+  expect(within(items[1]).getByText('No invites sent')).toBeTruthy()
+})
 it('keeps another seat out and says when a seat sent nothing', () => {
   render(<ChangeRateRows rows={rows} seat="swishdm" />)
   expect(screen.getByText('No invite went out on this seat in the last 8 weeks.')).toBeTruthy()

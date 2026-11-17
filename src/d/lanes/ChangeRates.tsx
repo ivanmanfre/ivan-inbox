@@ -17,7 +17,10 @@ const n = (v: number) => Number(v).toLocaleString('en-US')
 const calls = (v: number) => `${n(v)} call${Number(v) === 1 ? '' : 's'}`
 
 export function ChangeRateRows({ rows, seat }: { rows: AdjustmentCohort[]; seat: Seat }) {
-  const mine = rows.filter(r => r.client_id === seat).sort((a, b) => a.period_from.localeCompare(b.period_from))
+  const all = rows.filter(r => r.client_id === seat).sort((a, b) => a.period_from.localeCompare(b.period_from))
+  // A seat that started inside the window opens on its first week with an invite, never on empty rows.
+  const first = all.findIndex(r => Number(r.invites) > 0)
+  const mine = first < 0 ? [] : all.slice(first)
   if (mine.length === 0) return <p className="dl-chg-note">No invite went out on this seat in the last 8 weeks.</p>
   const top = Math.max(0, ...mine.map(r => rate(r.accepted, r.accept_base) ?? 0))
   const max = Math.max(10, Math.ceil(top / 10) * 10)
