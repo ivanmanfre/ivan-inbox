@@ -36,3 +36,66 @@ describe('read-only readers count people (305)', () => {
     expect(cols).toEqual(['client_id', 'opens_7d', 'opens_30d', 'opens_total', 'distinct_prospects', 'last_open'])
   })
 })
+
+describe('page open alerts only for people (305, Task 6)', () => {
+  let db: PGlite
+  const TOK = 'abcdefghijklmnopqrst'
+  const PID = '00000000-0000-0000-0000-0000000000a1'
+  beforeAll(async () => {
+    db = await openDb(3, EXTRA)
+    await db.exec(`
+      insert into outreach_prospects(id, name, company) values ('${PID}', 'Pat Prospect', 'Acme');
+      insert into swishdm_comparison_pages values ('${TOK}', '${PID}', 'Acme', 'https://madebyswishdm.com/compare/${TOK}/', 'published');
+      insert into outreach_messages(prospect_id, direction, channel, sent_at, message_text, unipile_message_id)
+        values ('${PID}', 'outbound', 'linkedin', now() - interval '3 hours', 'here: https://madebyswishdm.com/compare/${TOK}/', 'u1');`)
+  }, 20_000)
+  afterAll(async () => { await db?.close() })
+  const calls = async () => (await db.query<{ n: number }>(`select count(*)::int n from net.calls`)).rows[0].n
+  const insert = async (page: string, org: string, city = 'Des Moines', ext = true) =>
+    (await db.query<{ open_class: string; class_reason: string; alerted: boolean; classified_at: string | null }>(
+      `insert into page_opens(page, org, city, country, user_agent, is_external) values ($1, $2, $3, 'United States', $4, $5)
+       returning open_class, class_reason, alerted, classified_at`, [page, org, city, WIN, ext])).rows[0]
+  const opened = async () => (await db.query<{ o: boolean }>(`select swishdm_report_opened($1, now() - interval '1 day') o`, [TOK])).rows[0].o
+
+  it('a SwishDM report opened from the Microsoft network is the scanner and never rings', async () => {
+    const r = await insert(`swishdm/compare/${TOK}`, 'Microsoft Corporation')
+    expect(r).toMatchObject({ open_class: 'link_scanner', class_reason: 'scanner_network', alerted: false })
+    expect(r.classified_at).not.toBeNull()
+    expect(await calls()).toBe(0)
+  })
+  it('swishdm_report_opened is false with only scanner rows', async () => expect(await opened()).toBe(false))
+  it('a person on a home network rings once', async () => {
+    const r = await insert(`swishdm/compare/${TOK}`, 'Comcast Cable Communications, LLC', 'Denver')
+    expect(r).toMatchObject({ open_class: 'human', alerted: true })
+    expect(await calls()).toBe(1)
+    expect(await opened()).toBe(true)
+  })
+  it('a shared page from Microsoft is labelled the scanner', async () => {
+    expect((await insert('leading-social', 'Microsoft Limited', 'Dublin')).open_class).toBe('link_scanner')
+  })
+  it('our own country is the owner on every page', async () => {
+    expect((await insert('tracker-test-ext', 'PLAY', 'Warsaw', false))).toMatchObject({ open_class: 'owner', class_reason: 'own_country' })
+  })
+  it('one network on three report pages is the owner and does not ring', async () => {
+    const before = await calls()
+    await insert('swishdm/compare/bbbbbbbbbbbbbbbbbbbb', 'Metranet Communications Ltd.', 'Brighton')
+    await insert('swishdm/compare/cccccccccccccccccccc', 'Metranet Communications Ltd.', 'Brighton')
+    const r = await insert(`swishdm/compare/${TOK}`, 'Metranet Communications Ltd.', 'Brighton')
+    expect(r).toMatchObject({ open_class: 'owner', class_reason: 'network_on_3_plus_pages', alerted: false })
+    expect(await calls()).toBe(before)
+  })
+  it('a classifier failure never drops the insert', async () => {
+    await db.exec(`alter function public.page_open_classify(boolean, text, text, boolean) rename to page_open_classify_off`)
+    try {
+      const r = await insert('leading-social', 'Comcast', 'Austin')
+      expect(r.open_class).toBeNull()
+    } finally {
+      await db.exec(`alter function public.page_open_classify_off(boolean, text, text, boolean) rename to page_open_classify`)
+    }
+  })
+  it('swishdm_report_opened is for the service role only', async () => {
+    const acl = (await db.query<{ a: string }>(`select proacl::text a from pg_proc where proname='swishdm_report_opened'`)).rows[0].a
+    expect(acl).toContain('service_role=X')
+    expect(acl).not.toContain('anon=X')
+  })
+})
