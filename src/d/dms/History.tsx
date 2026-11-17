@@ -21,6 +21,8 @@ import { Grow } from './Draft'
 import { engagementSignals, type CameBackSignal } from '../../wb/dms/cameBackData'
 import { emailDetails } from '../../lib/emailPresentation'
 import { EmailPreview } from './EmailMessage'
+import { Attachments } from './Attachments'
+import type { DmAttachments, LooseFiles } from '../../lib/dmAttachments'
 
 export function kindPill(m: InboxMessage): string | null {
   if (m.ai_model === 'lm_gate_v1') return 'Lead magnet'
@@ -109,7 +111,9 @@ type HistoryProps = { onSendAnyways?: (m: InboxMessage) => void; onDiscardHeld?:
   /** Brief 4: meta once per run (status, reaction, email and a channel change always), arrivals grow from their tail. */
   v4?: boolean
   /** The list on screen is only the newest page of a read still running: an empty history is not yet a fact. */
-  reading?: boolean }
+  reading?: boolean
+  /** The files the LinkedIn messages carried (useDmAttachments). Absent or null: the thread renders as it always did. */
+  attachments?: DmAttachments | null }
 
 export function History(props: HistoryProps) {
   const [retry, setRetry] = useState(0)
@@ -134,7 +138,21 @@ function EngagementLine({ s, owner }: { s: CameBackSignal; owner: string }) {
   )
 }
 
-function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = false, sending, t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail, retry, v4 = false, engagements, revealMessageId, activeEmailReplyId, reading = false }: HistoryProps & { retry: () => void }) {
+type TimelineExtra = CameBackSignal | LooseFiles
+
+/** A file sent on LinkedIn with no words: its own bubble on the sender's side, at its time. */
+function FilesOnly({ l, who }: { l: LooseFiles; who: string }) {
+  const side = l.direction === 'inbound' ? 'in' : 'out'
+  return (
+    <div className={`dm-b dm-b-${side} dm-h-whole dm-b-first${side === 'in' ? ' dm-h-in' : ''}`} data-files-only={l.key} data-side={side}>
+      <b className="dm-b-who">{who}</b>
+      <Attachments files={l.files} />
+      <div className="dm-b-meta"><i>LinkedIn</i><time dateTime={l.at}>{warsawHm(l.at)}</time></div>
+    </div>
+  )
+}
+
+function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = false, sending, t, cap = 6, now = Date.now(), onReplyEmail, onForwardEmail, retry, v4 = false, engagements, revealMessageId, activeEmailReplyId, reading = false, attachments = null }: HistoryProps & { retry: () => void }) {
   const source = useReplySource({ kind: 'operator', clientId: t.client_id ?? 'ivan' }, t.prospect_id, true)
   const [all, setAll] = useState(false)
   useEffect(() => {
@@ -176,7 +194,10 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
   // Engagements ride the same clock as the messages; with older messages folded away, the ones before
   // the first shown message fold with them.
   const edge = rows.length > shown.length ? Date.parse(timelineTime(shown[0])) : -Infinity
-  const evs = engagementSignals(engagements).filter(e => Date.parse(e.at) >= edge).reverse()
+  const evs: TimelineExtra[] = engagementSignals(engagements).filter(e => Date.parse(e.at) >= edge).reverse()
+  // A file sent with no words has no message row: it takes its own place on the same clock.
+  const loose = (attachments?.loose ?? []).filter(l => Date.parse(l.at) >= edge)
+  if (loose.length) { evs.push(...loose); evs.sort((a, b) => Date.parse(a.at) - Date.parse(b.at)) }
   if (!rows.length && !evs.length) {
     return <div className="dm-hist">{v4 ? <ReplySourceLine state={source} retry={retry} /> : <ReplySourceContent state={source} retry={retry} />}<p className="dm-hist-empty">{reading ? 'Reading the conversation…' : `No messages yet. ${t.draft ? 'The draft below is the first one.' : 'Nothing has been sent or received on this thread yet.'}`}</p></div>
   }
@@ -200,7 +221,10 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
       const newDay = d !== day
       day = d
       prevSide = null
-      out.push(<Fragment key={`ev:${e.kind}:${e.at}:${e.post_url ?? ''}`}>
+      out.push('files' in e ? <Fragment key={`files:${e.key}`}>
+        {newDay && <div className="dm-day" role="separator"><span>{warsawDayWord(e.at, now)}</span></div>}
+        <FilesOnly l={e} who={e.direction === 'inbound' ? first : ours} />
+      </Fragment> : <Fragment key={`ev:${e.kind}:${e.at}:${e.post_url ?? ''}`}>
         {newDay && <div className="dm-day" role="separator"><span>{warsawDayWord(e.at, now)}</span></div>}
         <EngagementLine s={e} owner={owner} />
       </Fragment>)
@@ -252,6 +276,7 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
         if (fresh && !s0.ids.has(m.id)) s0.arrived.add(m.id)
         const arrive = v4 && s0.arrived.has(m.id)
         const envelope = email ? emailDetails(m, t) : null
+        const files = email ? null : attachments?.byMessage.get(m.id) ?? null
         if (isUnreachableSend(m)) return (
           <Fragment key={m.id}>
             {before}
@@ -280,10 +305,11 @@ function HistoryRead({ onSendAnyways, onDiscardHeld, onEditHeld, heldLater = fal
               {envelope && !edit ? <EmailPreview details={{ ...envelope, date: pend ? at : envelope.date ?? at }} state={st?.text ?? (inb ? 'Received' : 'Sent')} /> : edit ? <div className="dm-b-body dm-b-draft dm-held-edit" data-held-edit={m.id}>
                 <Grow autosave={false} value={edit.text} max={360} label={`Edit the held message to ${first}`} onChange={text => setEditing({ id: m.id, text })}
                   onKeyDown={e => { if (e.key === 'Escape' && !editBusy) { e.preventDefault(); setEditing(null) } }} />
-              </div> : <div className="dm-b-body">
+              </div> : files && !blank && parts.length === 0 ? null : <div className="dm-b-body">
                 {blank ? <em className="dm-b-blank">Invite sent with no note, by design</em> : parts.length === 0 ? <em className="dm-b-blank">Message text unavailable</em>
                   : parts.map((p, i) => <span key={i} className="dm-bub">{i > 0 && <br />}<Linkified text={p} /></span>)}
               </div>}
+              {files && !edit && <Attachments files={files} />}
               {showMeta && (!email || firstObs || latestObs) ? <div className="dm-b-meta">
                 {showKind && !email && <i>{kind}</i>}
                 {st && !email && <i className={st.fail ? 'dm-i-fail' : undefined}>{st.text}</i>}

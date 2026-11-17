@@ -11,6 +11,11 @@ verify_jwt = false
 [functions.inbox-dm-draft]
 verify_jwt = false
 
+# The list call verifies the signed-in inbox owner with auth.getUser. The file link is opened by the
+# phone's own viewer with no session, so it carries its own signature, checked in the handler.
+[functions.inbox-dm-attachments]
+verify_jwt = false
+
 # The handler verifies the signed-in inbox owner with auth.getUser.
 [functions.inbox-calendar]
 verify_jwt = false

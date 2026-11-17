@@ -141,6 +141,14 @@ try {
               return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': new URL(base).origin } })
             }
           }
+          // The open thread's file list (src/lib/dmAttachments.ts -> inbox-dm-attachments): a read with no write
+          // behind it. Answered here with "no files", so the smoke never reaches the chat provider and does not
+          // depend on the function being deployed. Every other edge function stays blocked below.
+          if (url.pathname === '/functions/v1/inbox-dm-attachments' && (method === 'POST' || method === 'OPTIONS')) {
+            const headers = { 'access-control-allow-origin': new URL(base).origin, 'access-control-allow-headers': 'authorization, content-type, apikey, x-client-info', 'access-control-allow-methods': 'POST, OPTIONS' }
+            return method === 'OPTIONS' ? route.fulfill({ status: 204, headers })
+              : route.fulfill({ status: 200, contentType: 'application/json', headers, body: '{"ok":true,"groups":[],"expires_at":null,"complete":true}' })
+          }
           if (url.pathname.startsWith('/functions/')) {
             forbidden.push(`${method} edge function`)
             return route.fulfill({ status: 403, contentType: 'application/json', body: '{"error":"Smoke blocked an edge function"}' })

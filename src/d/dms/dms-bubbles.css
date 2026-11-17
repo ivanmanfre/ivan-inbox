@@ -124,3 +124,16 @@
 .dm-bub-x{flex:none;min-width:28px;min-height:28px;border-radius:7px;color:var(--t3)}
 .d-phone .dm-bub-x{min-width:44px;min-height:44px}
 .dm-bubs-1 .dm-bub-ed{display:block}
+/* Files a LinkedIn message carried: a chip (name, then type and size) or a picture, on the sender's side. */
+.dm-files{display:flex;flex-direction:column;gap:4px;max-width:100%;min-width:0}
+.dm-b-out .dm-files{align-items:flex-end}
+.dm-file{display:flex;align-items:center;gap:10px;min-height:44px;max-width:100%;padding:7px 12px 7px 10px;border-radius:12px;border:1px solid var(--line2);background:var(--p2);color:var(--t1);text-decoration:none;min-width:0}
+a.dm-file:hover{border-color:var(--t3)}
+a.dm-file:focus-visible,.dm-file-img:focus-visible{outline:2px solid var(--t1);outline-offset:3px}
+.dm-file>svg{flex:none;color:var(--t2)}
+.dm-file-t{display:flex;flex-direction:column;min-width:0}
+.dm-file-t b{font:500 14px/1.3 var(--f);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dm-file-t small{font:400 11px/1.4 var(--m);color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dm-file-off{opacity:.62}
+.dm-file-img{display:block;width:220px;max-width:100%;max-height:260px;border-radius:12px;overflow:hidden;border:1px solid var(--line2);background:var(--p2)}
+.dm-file-img img{display:block;width:100%;height:100%;max-height:260px;object-fit:cover}
