@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ZERO_READERS } from '../test-utils'
 import type { Thread } from '../../lib/inbox'
@@ -99,5 +99,27 @@ describe('on open over saved DM numbers the per-seat read waits for the inbox (2
     expect(dm).not.toHaveBeenCalled()
     await act(async () => { await vi.advanceTimersByTimeAsync(1_100) })
     expect(dm).toHaveBeenCalledTimes(5)
+  })
+})
+
+describe('a saved copy is marked until a live answer replaces it (Home never counts a saved copy as read)', () => {
+  afterEach(cleanup)
+  function Saved() { const c = useFrameCounts(); return <span data-testid="saved">{`${c.nextCall.value?.title ?? '-'}:${c.nextCall.saved === true}:${c.nextCall.failed}`}</span> }
+  const savedSeed = { nextCall: { value: { label: 'x', title: 'Old', start: '2026-11-17T09:00:00Z' }, failed: false, at: 1 } }
+  it('a seeded slice says saved; a live read clears it', async () => {
+    let finish!: (v: { label: string; title: string | null; start: string | null }) => void
+    const nextCall = vi.fn(() => new Promise<{ label: string; title: string | null; start: string | null }>(r => { finish = r }))
+    render(<FrameCountsProvider readers={{ ...ZERO_READERS, nextCall }} savedSeed={savedSeed}><Saved /></FrameCountsProvider>)
+    expect(screen.getByTestId('saved').textContent).toBe('Old:true:false')
+    await act(async () => { finish({ label: 'y', title: 'New', start: null }); await Promise.resolve(); await Promise.resolve() })
+    expect(screen.getByTestId('saved').textContent).toBe('New:false:false')
+  })
+  it('a failed live read over a saved copy keeps it marked saved and failed', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const nextCall = vi.fn().mockRejectedValue(new Error('calendar down'))
+    render(<FrameCountsProvider readers={{ ...ZERO_READERS, nextCall }} savedSeed={savedSeed}><Saved /></FrameCountsProvider>)
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve() })
+    expect(screen.getByTestId('saved').textContent).toBe('Old:true:true')
+    vi.restoreAllMocks()
   })
 })

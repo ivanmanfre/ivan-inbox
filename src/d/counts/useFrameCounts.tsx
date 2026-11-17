@@ -31,9 +31,11 @@ import { ReadTimeout, RETRY_MS, withTimeout } from '../ui/timeout'
 // SAVED COPY: the last good value of every slice is kept on the device and
 // painted on a cold boot with its own time (`at`), so the panel never opens on
 // "…" when it has read before. A saved value is never newer than its stamp.
+// Such a slice carries `saved: true` until the first live answer replaces it, so a
+// page can tell "read" from "painted from the device" (Home never counts a saved copy).
 // ---------------------------------------------------------------------------
 
-export type Slice<T> = { value: T | null; failed: boolean; at: number | null }
+export type Slice<T> = { value: T | null; failed: boolean; at: number | null; saved?: true }
 
 export type SystemAlertsRead = { rows: SystemAlert[]; groups: AlertGroup[]; critical: number }
 
@@ -70,10 +72,10 @@ function readSaved(): Saved {
   try { return JSON.parse(localStorage.getItem(SAVED) ?? '{}') as Saved } catch { return {} }
 }
 
-/** A saved slice, painted as not-failed with its own stamp; a missing one is "not read yet". */
+/** A saved slice, painted as not-failed with its own stamp and marked `saved`; a missing one is "not read yet". */
 function seed<T>(saved: Saved, key: string): Slice<T> {
   const s = saved[key]
-  return s && s.value != null && s.at != null ? { value: s.value as T, failed: false, at: s.at } : EMPTY<T>()
+  return s && s.value != null && s.at != null ? { value: s.value as T, failed: false, at: s.at, saved: true } : EMPTY<T>()
 }
 
 const Ctx = createContext<FrameCounts | null>(null)

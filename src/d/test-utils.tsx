@@ -23,7 +23,8 @@ export const ZERO_READERS: NonNullable<TestReaders> = {
   calls: async () => 0,
 }
 
-export function renderInFrame(ui: ReactElement, opts: { layout?: Layout; hash?: string; readers?: Partial<NonNullable<TestReaders>>; frame?: Partial<Frame> } = {}) {
+/** `saved`: the frame's saved copy (what a cold boot paints before any live answer). */
+export function renderInFrame(ui: ReactElement, opts: { layout?: Layout; hash?: string; readers?: Partial<NonNullable<TestReaders>>; frame?: Partial<Frame>; saved?: Parameters<typeof FrameCountsProvider>[0]['savedSeed'] } = {}) {
   const layout = opts.layout ?? 'desktop'
   const frame: Frame = {
     layout, route: parseDHash(opts.hash ?? '#exp/d/lanes'), navigate: () => {},
@@ -31,7 +32,7 @@ export function renderInFrame(ui: ReactElement, opts: { layout?: Layout; hash?: 
     titleSlot: null, toolsSlot: null, ...opts.frame,
   }
   return render(
-    <FrameCountsProvider readers={{ ...ZERO_READERS, ...opts.readers }}>
+    <FrameCountsProvider readers={{ ...ZERO_READERS, ...opts.readers }} savedSeed={opts.saved}>
       <FrameCtx.Provider value={frame}>
         <div className={`d-app d-${layout}`}>
           <ToastProvider><DConfirmProvider>{ui}</DConfirmProvider></ToastProvider>

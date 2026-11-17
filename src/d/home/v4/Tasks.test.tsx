@@ -52,6 +52,13 @@ describe('home tasks', () => {
     expect(r).toMatchObject({ client_id: 'ivan', kind: 'task', body: 'Call Basile', context: { source: 'inbox', due_at: lib.localDay(Date.now()) } })
     expect(r.context.card_key).toMatch(/^inbox:/)
   })
+  it('R17: with zero open tasks the block keeps its Add row and has no Nothing open. line', () => {
+    rows.splice(0, rows.length)
+    renderInFrame(<HomeTasks v4 />, { hash: '#exp/d/home' })
+    expect(document.querySelector('input[aria-label="New task"]')).toBeTruthy()
+    expect(key('add-task')).toBeTruthy()
+    expect(document.body.textContent).not.toContain('Nothing open.')
+  })
   it('createBotTask still writes its own shape through the same insert', async () => {
     await lib.createBotTask('turn1', 2, 'Title', 'Detail')
     expect(insert).toHaveBeenCalledWith({ client_id: 'ivan', kind: 'task', body: 'Title\n\nDetail', context: { source: 'claude', card_key: 'bot:turn1:2' } })
