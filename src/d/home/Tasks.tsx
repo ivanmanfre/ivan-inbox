@@ -94,8 +94,10 @@ function Add({ refresh, v4 = false }: { refresh: () => void; v4?: boolean }) {
   )
 }
 
-export function HomeTasks({ v4 = false }: { v4?: boolean } = {}) {
-  const ops = useOps()
+/** `ops`: a page that already reads ops_drafts (Home v4, for its bookings) passes its read so the board is read once. */
+export function HomeTasks({ v4 = false, ops: shared }: { v4?: boolean; ops?: ReturnType<typeof useOps> } = {}) {
+  const own = useOps(!shared)
+  const ops = shared ?? own
   const [all, setAll] = useState(false)
   const tasks = pendingTasks(ops.drafts)
   const shown = all || v4 ? tasks : tasks.slice(0, SHOWN)

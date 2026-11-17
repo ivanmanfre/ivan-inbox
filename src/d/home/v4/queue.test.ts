@@ -104,3 +104,34 @@ describe('buildQueue (details)', () => {
     expect(s.items[0].meta).toBe('11:00 · scheduled')
   })
 })
+
+describe('buildQueue (7.2 fixes)', () => {
+  it('a label cut at 80 characters is trimmed again, so it never ends in a space', () => {
+    const text = `${'a'.repeat(79)} tail`
+    const s = buildQueue(input({ posts:[p('a', plus(1,'h'), text)] }))[0]
+    expect(s.items[0].label).toBe('a'.repeat(79))
+  })
+
+  it('only finite positive numbers count as waiting', () => {
+    const q = buildQueue(input({ waiting:{ ivan:Infinity, risedtc:Number.NaN, arch:-2, swishdm:2 } }))
+    expect(q[0].items.map(i => i.key)).toEqual(['swishdm'])
+    expect(q[0].count).toBe(2)
+  })
+
+  it('posts at the same time keep one order, by id', () => {
+    const at = plus(2,'h')
+    const one = buildQueue(input({ posts:[p('b', at), p('a', at)] }))[0].items.map(i => i.key)
+    const two = buildQueue(input({ posts:[p('a', at), p('b', at)] }))[0].items.map(i => i.key)
+    expect(one).toEqual(['a','b']); expect(two).toEqual(['a','b'])
+  })
+
+  it('a post with no text says so', () => {
+    const s = buildQueue(input({ posts:[p('a', plus(1,'h'), '  \n \n')] }))[0]
+    expect(s.items[0].label).toBe('(no text)')
+  })
+
+  it('a call that already started still shows, with warn', () => {
+    const s = buildQueue(input({ nextCall:{ title:'Demo', start:plus(-10,'m') } })).find(x => x.id === 'call')!
+    expect(s.items[0].warn).toBe(true)
+  })
+})

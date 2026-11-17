@@ -22,8 +22,8 @@ function replies(waiting: QueueInput['waiting']): QueueSection | null {
   let count = 0
   for (const seat of SEATS) {
     const n = waiting[seat]
-    // null = the read failed: left out, never shown as 0.
-    if (typeof n !== 'number' || !(n > 0)) continue
+    // null = the read failed: left out, never shown as 0. Only a finite positive number is a count.
+    if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0) continue
     count += n
     items.push({ key: seat, label: SEAT_NAME[seat], meta: `${n} waiting`, href: repliesHref(seat) })
   }
@@ -48,7 +48,8 @@ function call(next: QueueInput['nextCall'], now: Date): QueueSection | null {
 
 const firstLine = (text: string) => {
   const line = (text.split('\n').find(l => l.trim() !== '') ?? '').trim()
-  return Array.from(line).slice(0, LABEL_MAX).join('')
+  // Trimmed again after the cut, so a label never ends on a space.
+  return Array.from(line).slice(0, LABEL_MAX).join('').trim() || '(no text)'
 }
 
 function today(posts: QueueInput['posts'], now: Date): QueueSection | null {
@@ -56,7 +57,8 @@ function today(posts: QueueInput['posts'], now: Date): QueueSection | null {
   const items = posts
     .map(p => ({ p, t: Date.parse(p.slot_at) }))
     .filter(({ t }) => Number.isFinite(t) && warsawDay(t) === day)
-    .sort((a, b) => a.t - b.t)
+    // Equal times keep one order, by id, whatever order the read returned.
+    .sort((a, b) => a.t - b.t || (a.p.id < b.p.id ? -1 : a.p.id > b.p.id ? 1 : 0))
     // Content's own landing opens a single post this way (Review, focused on the draft).
     .map(({ p, t }) => ({ key: p.id, label: firstLine(p.post_text), meta: `${warsawHm(t)} · ${p.state}`, href: dHash('content', 'now', { focus: p.id }) }))
   return items.length ? { id: 'today', title: 'Going out today', count: items.length, items } : null

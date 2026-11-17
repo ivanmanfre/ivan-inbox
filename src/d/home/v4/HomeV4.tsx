@@ -14,9 +14,17 @@ import { HomeTasks } from '../Tasks'
 import { HotNow } from '../HotNow'
 import { readyRead, when, type Read } from '../model'
 import { invites, pill } from './model'
+import { buildQueue, type QueueSection } from './queue'
 import './home4.css'
-import { XFlag } from '../../x/XFlag'
 import { HomeCard } from '../../content/today/HomeCard'
+import { useOps } from '../../../hooks/useOps'
+import { pendingOps, pendingTasks, type OpsDraft } from '../../../lib/ops'
+import type { NextPost } from '../../../lib/contentNext'
+import { useFrameCounts } from '../../counts/useFrameCounts'
+import { useNextPosts } from '../../content/next/store'
+import { useStalled } from '../../ui/timeout'
+import { useClock } from '../../ui/useClock'
+import { warsawDayTime } from '../../ui/time'
 import '../phone-ox.css'
 
 /** #39: a failed read says so in a visible line ("Lanes read failed · Retry"), never only in a tooltip.
@@ -112,15 +120,86 @@ function Matrix({ h }: { h: HomeData }) {
     <RowFail src="Lanes" rs={seats.map(s => pill(h, s))} retry={h.retry.lanes} />
   </section>
 }
+// ---- The queue: what needs him, in money order (queue.ts), fed from the reads Home already makes. ----
+
+/** The post states in the words Content uses for them (Review: "Being re-checked", the Held tag). */
+const STATE_WORD: Record<NextPost['state'], string> = { ready: 'ready', checking: 'being re-checked', held: 'held' }
+const text = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
+/** A booking card as one queue row: who booked, and the call time in Warsaw time (Ops' own words when the time is unreadable). */
+function bookingOf(d: OpsDraft) {
+  const c = d.context ?? {}, t = Date.parse(text(c.when_iso))
+  return { id: d.id, who: text(c.prospect_name) || text(c.company) || 'Booking', when: Number.isFinite(t) ? warsawDayTime(t) : text(c.when_str) }
+}
+
+type Ops = ReturnType<typeof useOps>
+/** `failed` names each read that could not be read; `loading` = a read is still out. Only when neither holds is an empty queue "Nothing needs you." */
+type QueueRead = { sections: QueueSection[]; total: number; loading: boolean; failed: string[] }
+
+function useQueue(h: HomeData, ops: Ops): QueueRead {
+  const counts = useFrameCounts(), next = useNextPosts(), now = useClock(60_000)
+  // The same 12 s rule as the Tasks column: a board read with no answer counts as failed. No retry here (Tasks owns it).
+  const opsStalled = useStalled(!ops.loadedAt && !ops.error)
+  const failed: string[] = []
+  let loading = false
+  const waiting: Record<string, number | null> = {}
+  for (const s of SEATS) {
+    const r = h.waiting[s]
+    waiting[s] = 'v' in r ? r.v : null
+    if ('fail' in r) failed.push(`${SEAT_NAME[s]} replies`)
+    else if ('wait' in r) loading = true
+  }
+  if (!ops.loadedAt) { if (ops.error || opsStalled) failed.push('bookings'); else loading = true }
+  const call = counts.nextCall
+  if (call.failed) failed.push('next call'); else if (call.value == null) loading = true
+  if (next.failed) failed.push("today's posts"); else if (!next.loaded) loading = true
+  const sections = buildQueue({
+    waiting,
+    bookings: pendingOps(ops.drafts, now).filter(d => d.kind === 'booking').map(bookingOf),
+    nextCall: call.value?.start ? { title: call.value.title || 'Call', start: call.value.start } : null,
+    posts: next.posts.map(p => ({ id: p.draft_id, slot_at: p.slot_at, post_text: p.post_text, state: STATE_WORD[p.state] ?? p.state })),
+    now: new Date(now),
+  })
+  return { sections, total: sections.reduce((n, s) => n + s.count, 0), loading, failed }
+}
+
+const things = (n: number) => `${n} ${n === 1 ? 'thing needs' : 'things need'} you.`
+/** The answer line: a count only when every read finished; partial when one failed; the page name while reading. */
+function answer(q: QueueRead): string {
+  if (q.failed.length) return q.total > 0 ? `At least ${things(q.total)}` : 'Could not read everything that needs you.'
+  if (q.loading) return 'Home'
+  return q.total > 0 ? things(q.total) : 'Nothing needs you.'
+}
+
+function Queue({ q }: { q: QueueRead }) {
+  const empty = !q.loading && q.failed.length === 0 && q.sections.length === 0
+  return <section className="hm4-queue" aria-label="What needs you" data-home-queue data-bx-block>
+    {q.sections.map(s => <section key={s.id} className="hm4-q-sec" data-queue={s.id} aria-labelledby={`hm4-q-${s.id}`}>
+      <h2 id={`hm4-q-${s.id}`} className="hm4-q-h">{s.title}</h2>
+      <ul className="hm4-q-list">{s.items.map(i => <li key={i.key}>
+        <a className={`hm4-q-row${i.warn ? ' hm4-q-warn' : ''}`} href={i.href}><span className="hm4-q-l">{i.label}</span>{i.meta && <small className="hm4-q-m">{i.meta}</small>}</a>
+      </li>)}</ul>
+    </section>)}
+    {q.failed.length > 0 && <p className="hm4-q-note" role="status">Could not read: {q.failed.join(', ')}.</p>}
+    {q.loading && <p className="hm4-q-wait" aria-label="Reading what needs you"><span className="ols-skeleton" /></p>}
+    {empty && <p className="hm4-q-note">Nothing needs you.</p>}
+  </section>
+}
+
 export default function HomeV4({ layout }: PlaceProps) {
   const motion = useMotionLevel()
   const h = useHome(), online = useOnline()
+  // One board read for the bookings and the Tasks column.
+  const ops = useOps()
+  const q = useQueue(h, ops)
+  // The Tasks column stays while its read is out or failed (it says so itself); it goes when nothing is open.
+  const tasks = !ops.loadedAt || pendingTasks(ops.drafts).length > 0
   return <div data-motion={motion} className={`hm4 hm4-${layout}`} data-d-scroll={layout==='desktop'?'':undefined} data-layout-v4="home">
-    {layout==='desktop' && <AnswerRow title="Home" />}{!online && <Offline since={null} />}
-    <XFlag />
+    {layout==='desktop' && <AnswerRow title={answer(q)} />}{!online && <Offline since={null} />}
+    <Queue q={q} />
     <HomeCard />
     <HotNow />
-    <a className="hm4-more" href={dHash('lanes', null, { seat: 'anna' })}>Anna’s LinkedIn invitations and replies</a>
-    {layout==='phone' ? <><Matrix h={h}/><HomeTasks v4 /></> : <div className="hm4-grid"><div className="hm4-seats">{SEATS.filter(s => s !== 'anna').map(s=><SeatCard key={s} seat={s} h={h}/>)}</div><HomeTasks v4 /></div>}
+    {tasks && <HomeTasks v4 ops={ops} />}
+    <h2 className="hm4-lanes-h">Lane numbers</h2>
+    {layout==='phone' ? <Matrix h={h}/> : <div className="hm4-seats">{SEATS.filter(s => s !== 'anna').map(s=><SeatCard key={s} seat={s} h={h}/>)}</div>}
   </div>
 }
