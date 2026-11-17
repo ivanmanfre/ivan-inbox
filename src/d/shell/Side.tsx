@@ -15,6 +15,7 @@ import { SUB_LABEL, SUBS, PLANNING, subOf, type Sub } from '../content/SubNav'
 import { useEffect, useRef, useState } from 'react'
 import { glideStyle, useNavGlide } from './useNavGlide'
 import { Glance } from './Glance'
+import { PlacesNode } from './PlacesNode'
 import { isBriefNative } from '../../ds/skin'
 
 // The left panel, desktop, and the same content as the phone's drawer. Brand,
@@ -193,7 +194,7 @@ export function Side({ min = false, setMin }: { min?: boolean; setMin?: (m: bool
           </div>
         ))}
       </nav>
-      {isBriefNative() && <Glance dataOnly />}
+      {isBriefNative() && <><Glance dataOnly /><PlacesNode /></>}
       <div className="d-low-wrap">
       {!min && <div className="d-navgroup" role="presentation">System</div>}
       <nav className="d-nav d-low" data-glide={sys.ready ? 'ready' : ''} ref={sys.ref} onPointerOver={sys.onPointerOver} onPointerLeave={sys.onPointerLeave}>
