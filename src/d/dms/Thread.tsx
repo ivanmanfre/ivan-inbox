@@ -39,6 +39,7 @@ import { useStickToEnd } from './v4/motion'
 import { useToast } from '../ui/toast'
 import { draftJobOf, holdPane, paneBusy, setDraftJob, useDraftJob, usePaneBusy } from './paneBusy'
 import { useEmailDetails } from './useEmailDetails'
+import { useDmAttachments } from './useDmAttachments'
 import { EmailComposer } from './EmailComposer'
 import { splitEmailDraft } from '../../lib/emailSubject'
 import type { EmailReplyTarget } from '../../lib/inbox'
@@ -87,6 +88,9 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
   reading?: boolean
 }) {
   const { thread: t, loading: emailLoading, settling: emailSettling, error: emailDetailsError, retry: retryEmailDetails } = useEmailDetails(sourceThread)
+  // The files on the LinkedIn chat (a deck, a screenshot), read live; null until known and when there are none.
+  // A pane shown on its own (desktop, nothing opened) never starts that read: it can be swapped by a refresh or a search.
+  const attachments = useDmAttachments(sourceThread, !auto)
   const [edits, setEdits] = useState<Edits>(() => seed(t))
   const [reply, setReply] = useState('')
   const [replyComposition, setReplyComposition] = useState<EmailComposition | null>(null)
@@ -385,7 +389,7 @@ export function ThreadPane({ t: sourceThread, auto = false, all, phone, verbs, n
     if (t.ownerConfirmation) void verbs.holdRelease(t)
     dock.current?.querySelector('textarea')?.focus()
   }} />
-  const history = <History v4={v4} reading={reading} onSendAnyways={t.client_id === 'anna' ? undefined : m => void sendAnyways(m)} onDiscardHeld={m => { if (!busy) void run(() => verbs.discardHeld(t, m)) }} onEditHeld={t.client_id === 'anna' ? undefined : editHeld} heldLater={t.client_id !== 'anna' && !scheduledPending} sending={busy} t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} onReplyEmail={canComposeEmail(t) && !t.spam && !busy ? openEmailReply : undefined}
+  const history = <History v4={v4} reading={reading} onSendAnyways={t.client_id === 'anna' ? undefined : m => void sendAnyways(m)} onDiscardHeld={m => { if (!busy) void run(() => verbs.discardHeld(t, m)) }} onEditHeld={t.client_id === 'anna' ? undefined : editHeld} heldLater={t.client_id !== 'anna' && !scheduledPending} sending={busy} t={t} cap={phone ? 6 : 12} now={now} engagements={engagements} attachments={attachments} onReplyEmail={canComposeEmail(t) && !t.spam && !busy ? openEmailReply : undefined}
     revealMessageId={revealMessageId} activeEmailReplyId={resolvedEmail?.target?.source_message_id ?? null}
     onForwardEmail={['arch', 'risedtc'].includes(t.client_id) && !busy ? setForwardEmail : undefined} />
   const historyView = referredLead && !t.messages.some(m => m.direction === 'inbound')

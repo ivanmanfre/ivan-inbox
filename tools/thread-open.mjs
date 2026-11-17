@@ -143,6 +143,14 @@ try {
               return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': new URL(base).origin } })
             }
           }
+          // The open thread's file list (src/lib/dmAttachments.ts -> inbox-dm-attachments): a read with no write
+          // behind it. Answered here with "no files", so the smoke never reaches the chat provider and does not
+          // depend on the function being deployed. Every other edge function stays blocked below.
+          if (url.pathname === '/functions/v1/inbox-dm-attachments' && (method === 'POST' || method === 'OPTIONS')) {
+            const headers = { 'access-control-allow-origin': new URL(base).origin, 'access-control-allow-headers': 'authorization, content-type, apikey, x-client-info', 'access-control-allow-methods': 'POST, OPTIONS' }
+            return method === 'OPTIONS' ? route.fulfill({ status: 204, headers })
+              : route.fulfill({ status: 200, contentType: 'application/json', headers, body: '{"ok":true,"groups":[],"expires_at":null,"complete":true}' })
+          }
           // The visit log is stubbed: a gate run must not write rows that look like real visits.
           if (method === 'POST' && url.pathname === '/rest/v1/rpc/inbox_log_visit') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': new URL(base).origin } })
           if (url.pathname.startsWith('/functions/')) {
