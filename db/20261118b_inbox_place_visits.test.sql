@@ -2,14 +2,16 @@
 -- always ends in an exception whose message is the result (PASS or a FAIL list).
 DO $t$
 DECLARE uid uuid; n int; fails text[] := '{}'; got uuid; cnt int; other uuid := gen_random_uuid();
+  -- a place no real visit has, so live visit rows never change the count below
+  probe text := '__test_' || gen_random_uuid();
 BEGIN
   SELECT u.id INTO uid FROM auth.users u ORDER BY u.created_at LIMIT 1;
   PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', uid, 'role', 'authenticated')::text, true);
 
   -- 1. authenticated: the RPC inserts one row with this user's id
   SET LOCAL ROLE authenticated;
-  PERFORM public.inbox_log_visit('home', null, 'web');
-  SELECT count(*), min(user_id::text)::uuid INTO cnt, got FROM public.inbox_place_visits WHERE place = 'home';
+  PERFORM public.inbox_log_visit(probe, null, 'web');
+  SELECT count(*), min(user_id::text)::uuid INTO cnt, got FROM public.inbox_place_visits WHERE place = probe;
   RESET ROLE;
   IF cnt <> 1 OR got IS DISTINCT FROM uid THEN fails := fails || format('1 insert: rows=%s user_ok=%s', cnt, got = uid); END IF;
 

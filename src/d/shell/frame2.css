@@ -100,11 +100,6 @@
 .d-side-min .d-brand>div:not(.d-mark),.d-side-min .d-nav a>span,.d-side-min .d-nav button>span,.d-side-min .d-per,.d-side-min .d-navfail,.d-side-min .d-me>div,.d-side-min .d-wfn,.d-side-min .d-nav a>em:not(.d-side-pip){display:none}
 .d-side-min .d-side-top{justify-content:center;padding-bottom:14px}
 .d-side-min .d-brand{display:none}
-/* Content opens into its pages in the rail while you are on it, as the old app's did. */
-.d-navsub{display:flex;flex-direction:column;margin:2px 0 6px 21px;padding-left:10px;border-left:1px solid var(--sideL)}
-.d-nav .d-navsub a{height:32px;font-size:14px;padding:0 10px;color:var(--sideM)}
-.d-nav .d-navsub a:hover{color:var(--sideT)}
-.d-nav .d-navsub a.d-on{color:var(--sideH);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),inset 2px 0 0 var(--lime)}
 .d-side-min .d-nav a,.d-side-min .d-nav button{justify-content:center;padding:0;position:relative}
 .d-side-pip{position:absolute;top:4px;right:6px;font:700 10px var(--m);font-style:normal;color:#fff;background:var(--crit);border-radius:7px;padding:0 4px}
 .d-side-min .d-me{justify-content:center}

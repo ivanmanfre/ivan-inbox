@@ -184,7 +184,7 @@ function Queue({ q }: { q: QueueRead }) {
         <a className={`hm4-q-row${i.warn ? ' hm4-q-warn' : ''}`} href={i.href}><span className="hm4-q-l">{i.label}</span>{i.meta && <small className="hm4-q-m">{i.meta}</small>}</a>
       </li>)}</ul>
     </section>)}
-    {q.failed.length > 0 && <p className="hm4-q-note" role="status">Could not read: {q.failed.join(', ')}. · <button type="button" className="d-failline-k" data-verb="retry" onClick={q.retry}>Retry</button></p>}
+    {q.failed.length > 0 && <p className="hm4-q-note" role="status">Could not read: {q.failed.join(', ')}. <button type="button" className="d-failline-k" data-verb="retry" onClick={q.retry}>Retry</button></p>}
     {q.loading && <p className="hm4-q-wait" role="status"><span className="ols-skeleton" aria-hidden="true" /><span className="ols-sr">Reading what needs you</span></p>}
     {empty && <p className="hm4-q-note">Nothing needs you.</p>}
   </section>

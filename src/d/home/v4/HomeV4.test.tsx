@@ -215,7 +215,8 @@ it('a saved next call that already ended is no final count; the live read settle
 it('a read failed and nothing else came back: no count, never Nothing needs you.', async () => {
   st.home = home({ arch:{ fail:'the DM count could not be read' } }, ZERO); st.ops = ops(); st.next = nextSnap()
   show('desktop', { nextCall: NONE_BOOKED })
-  await waitFor(() => expect(queue().textContent).toBe('Could not read: Arch replies. · Retry'))
+  await waitFor(() => expect(queue().textContent).toBe('Could not read: Arch replies. Retry'))
+  expect(queue().textContent).not.toContain('·')
   expect(slot.textContent).toBe('Could not read everything that needs you.')
 })
 

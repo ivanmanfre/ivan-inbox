@@ -116,7 +116,9 @@ describe('X desk count', () => {
     renderInFrame(<Side />, { layout: 'desktop', hash: '#exp/d/content/x' })
     const link = await waitFor(() => { const a = document.querySelector<HTMLAnchorElement>('a[href="#exp/d/content"]'); expect(a?.textContent).toContain('3'); return a! })
     expect(link.querySelector('.d-nt')?.getAttribute('aria-label')).toMatch(/^Waiting on you: Ivan 3/)
-    expect(document.querySelector('a[href="#exp/d/content/x?lane=ivan"]')?.getAttribute('aria-current')).toBe('page')
+    // the panel draws one Content link (no child links); on Content's X page it is the current place
+    expect(link.getAttribute('aria-current')).toBe('page')
+    expect(document.querySelectorAll('.d-side a[href^="#exp/d/content"]')).toHaveLength(1)
     expect(document.querySelector('a[href="#exp/d/x"]')).toBeNull()
     // Ops' own number stays its own
     expect(document.querySelector('a[href="#exp/d/ops"] .d-nt')).toBeNull()
