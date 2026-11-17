@@ -15,7 +15,7 @@ function Plate({ r }: { r: CallEvent }) {
     <h2>{r.name}</h2>{r.company && <p>{r.company}</p>}
     <div className="sl4-clocks"><div><b>{r.warsaw}</b><small>Warsaw · {r.day}</small></div><div><b>{r.utc}</b><small>UTC</small></div></div>
     <p className="sl4-facts" data-next-facts>{[r.type, r.source, meetingKind(r.ev.meeting_url)].filter(Boolean).join(' · ')}{r.withAll && <span> · with {r.withAll}</span>}</p>
-    <div className="sl4-docs">{r.slug ? PACK_LINKS.map(l => l.kind == null || r.have.has(l.kind) ? <a key={l.doc} data-doc={l.doc} href={docHref(r.slug!, l.doc)} target="_blank" rel="noreferrer">{l.label}{l.doc === 'compare' && ' ↗'}</a> : <span key={l.doc} data-doc-missing={l.doc} title={`The ${l.label} is not published yet`}>{l.label}</span>) : <span>no pack yet</span>}</div>
+    <div className="sl4-docs">{r.slug && r.have.has('deck') && <a className="sl4-deck" data-doc="deck" href={docHref(r.slug, 'deck')} target="_blank" rel="noreferrer">Open deck</a>}{r.slug ? PACK_LINKS.filter(l => l.doc !== 'deck').map(l => l.kind == null || r.have.has(l.kind) ? <a key={l.doc} data-doc={l.doc} href={docHref(r.slug!, l.doc)} target="_blank" rel="noreferrer">{l.label}{l.doc === 'compare' && ' ↗'}</a> : <span key={l.doc} data-doc-missing={l.doc} title={`The ${l.label} is not published yet`}>{l.label}</span>) : <span>no pack yet</span>}</div>
     <Join r={r} big />
   </section>
 }

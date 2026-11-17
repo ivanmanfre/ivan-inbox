@@ -12,7 +12,7 @@ export function PackLinks({ slug, have, big, noCompare, report, onReport }: {
   slug: string | null; have: Set<string>; big?: boolean; noCompare?: boolean
   report?: boolean; onReport?: () => void
 }) {
-  const links = slug ? PACK_LINKS.filter(l => !((noCompare || big) && l.doc === 'compare')) : []
+  const links = slug ? PACK_LINKS.filter(l => !((noCompare || big) && l.doc === 'compare') && (l.doc !== 'deck' || have.has('deck'))) : []
   return (
     <div className={`sl-pk${big ? ' sl-pk-big' : ''}`}>
       {slug ? links.map((l, i) => {

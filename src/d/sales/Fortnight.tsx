@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Join, PackLinks } from './NextCall'
 import type { CallEvent, Fortnight as F, PackIndex } from './model'
 import { throughLabel } from './model'
+import { slugWords } from '../../lib/salesPacks'
 
 // THE FORTNIGHT, by Warsaw day: Today (always drawn, "No calls today" is an
 // answer), Later this week, Next week, Earlier this week (newest first). A row:
@@ -59,14 +60,13 @@ export function FortnightList({ f, from, onReport, packs, tools, filtered, onCle
 
 export function PacksOnFile({ idx }: { idx: PackIndex }) {
   const rows = idx.slugs.map(s => ({ s, m: idx.meta[s], at: idx.at[s] ?? '' })).sort((a, b) => b.at.localeCompare(a.at))
-  const title = (s: string) => s.split('-').map(w => (w ? w[0].toUpperCase() + w.slice(1) : w)).join(' ')
   return (
     <section className="sl-grp" aria-label="Packs on file">
       <div className="sl-sec"><span>Packs on file</span><span>{rows.length}</span></div>
       {rows.length === 0 && <div className="sl-quiet">No packs published yet.</div>}
       {rows.map(({ s, m }) => (
         <div className="sl-pf" key={s} data-slug={s}>
-          <div className="sl-pfn"><b>{m.name || title(s)}</b>{m.company && <span>{m.company}</span>}{m.when && <small>{m.when.split('·')[0].trim()}</small>}</div>
+          <div className="sl-pfn"><b>{m.name || slugWords(s)}</b>{m.company && <span>{m.company}</span>}{m.when && <small>{m.when.split('·')[0].trim()}</small>}</div>
           <PackLinks slug={s} have={idx.have[s] ?? new Set()} noCompare />
         </div>
       ))}
