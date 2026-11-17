@@ -1,7 +1,7 @@
 -- Real-corpus replay for the open classifier (plan 2026-11-17-open-tracking-truth, Task 3 Step 5). READ-ONLY.
 -- Run after 303 + 304 are applied (live, or on a local copy of the live rows). Every row must say pass = true.
--- Expected values are frozen in ~/.claude/docs/superpowers/plans/2026-11-17-open-tracking-truth-assets/replay_expectations.r3.json
--- (round 3, rulings P1-P9; round 2 values in replay_expectations.r2.json, round 1 in replay_expectations.json)
+-- Expected values are frozen in ~/.claude/docs/superpowers/plans/2026-11-17-open-tracking-truth-assets/replay_expectations.r4.json
+-- (round 4, rulings P1-P9 + R1/R2, same numbers as round 3; round 3 in replay_expectations.r3.json, round 2 in .r2.json, round 1 in replay_expectations.json)
 -- (scan_opens id <= 3760, read 2026-11-17). Opens after that id are ignored so the numbers stay comparable.
 with
 cut as (select max(opened_at) as at from public.scan_opens where id <= 3760),
@@ -13,8 +13,8 @@ cc as (
     from (values ('owner', 734), ('own_tool', 440), ('link_scanner', 493), ('human', 328), ('suspect', 4)) e(k, n)),
 
 -- 2. the nine Microsoft scanner hashes never feed a signal, and every row on them is the confirmed scanner except the
--- addresses that never opened 3 different scans after a send (ruling P2: one recipient is never 3 prospects): 4 rows
--- on 2 addresses (one row 20 s after an email send, three rows of one scan), all suspect, never eligible.
+-- addresses whose opens after a send never reached 3 different recipients (ruling R2): 4 rows on 2 addresses (one row
+-- 20 s after an email send, three rows of one scan for one recipient), all suspect, never eligible.
 sh as (
   select count(*) filter (where public.open_is_signal(so.open_class, so.eligible)) as actual,
          count(*) filter (where so.open_class <> 'link_scanner') as not_scanner,

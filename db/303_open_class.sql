@@ -98,18 +98,20 @@ $$;
 -- First match wins. The order is the algorithm (rulings P2-P5).
 --   p_burst:        this address opened 3+ distinct scans inside 10 minutes (this row included).
 --   p_near_send:    an outbound message (any channel) carrying this link went out in the 15 minutes before.
---   p_addr_scanner: this address, on the Microsoft network, opened 3+ DIFFERENT scans with no LinkedIn referrer, each
---                   within 15 minutes after a message carrying that scan's link (one recipient is never 3 prospects).
---   p_addr_egress:  5+ owner-flagged rows on this address within 7 days either side of this row (our dedicated egress).
+--   p_addr_scanner: this address, on the Microsoft network, opened links of 3+ DIFFERENT RECIPIENTS (prospect ids) with
+--                   no LinkedIn referrer, each open within 15 minutes after an outbound message to that recipient
+--                   carrying the link (ruling R2: one recipient's three reports are still one recipient).
 --   p_addr_owner:   this address carried an owner flag on some other row, at any time.
 --   p_many_scans:   this address appears on 8+ different scans, any period.
--- Confirmed classes first (owner flag, tool, egress, confirmed scanner), then the suspect reasons in P3 order, then
--- human. A LinkedIn referrer is never burst / microsoft_after_send / microsoft_uncorroborated (P4).
+-- Confirmed classes first (owner flag, tool, confirmed scanner), then the suspect reasons in P3 order, then human.
+-- `owner` comes only from the owner flag on THIS request (ruling R1): owner flags elsewhere on the address, however
+-- many, give suspect:owner_address. A LinkedIn referrer is never burst / microsoft_after_send /
+-- microsoft_uncorroborated (P4).
 drop function if exists public.scan_open_classify(boolean, text, text, text, int, text, boolean, boolean, boolean, boolean);
+drop function if exists public.scan_open_classify(boolean, text, text, text, int, text, boolean, boolean, boolean, boolean, boolean, boolean);
 create or replace function public.scan_open_classify(
   p_is_owner boolean, p_user_agent text, p_referrer_host text, p_device_type text, p_net_asn int, p_net_org text,
-  p_burst boolean, p_near_send boolean, p_addr_scanner boolean, p_addr_egress boolean, p_addr_owner boolean,
-  p_many_scans boolean)
+  p_burst boolean, p_near_send boolean, p_addr_scanner boolean, p_addr_owner boolean, p_many_scans boolean)
 returns table (open_class text, class_reason text)
 language sql stable set search_path = public, pg_temp as $$
   with x as (
@@ -120,7 +122,6 @@ language sql stable set search_path = public, pg_temp as $$
     select case
       when coalesce(p_is_owner, false) then 'owner:owner_flag_or_ip'
       when x.tool_ua then 'own_tool:tool_user_agent'
-      when coalesce(p_addr_egress, false) then 'owner:dedicated_egress'
       when x.ms and not x.li and coalesce(p_addr_scanner, false) then 'link_scanner:confirmed_scanner_address'
       when coalesce(p_many_scans, false) then 'suspect:many_scans'
       when coalesce(p_addr_owner, false) then 'suspect:owner_address'
@@ -138,10 +139,11 @@ $$;
 -- Poland). Pages carry an organization but no ASN. A row with no address hash cannot use the address rules; for it
 -- only, p_burst_no_address = same organization + city + user agent on 3+ different pages inside 10 minutes.
 drop function if exists public.page_open_classify(boolean, text, text, text, boolean, boolean, boolean, boolean);
+drop function if exists public.page_open_classify(boolean, text, text, text, boolean, boolean, boolean, boolean, boolean, boolean, boolean);
 create or replace function public.page_open_classify(
   p_is_external boolean, p_org text, p_user_agent text, p_referrer text,
-  p_burst boolean, p_burst_no_address boolean, p_near_send boolean, p_addr_scanner boolean, p_addr_egress boolean,
-  p_addr_owner boolean, p_many_pages boolean)
+  p_burst boolean, p_burst_no_address boolean, p_near_send boolean, p_addr_scanner boolean, p_addr_owner boolean,
+  p_many_pages boolean)
 returns table (open_class text, class_reason text)
 language sql stable set search_path = public, pg_temp as $$
   with x as (
@@ -152,7 +154,6 @@ language sql stable set search_path = public, pg_temp as $$
       when not coalesce(p_is_external, false) then 'owner:own_country'
       when coalesce(p_user_agent, '') ~* 'headless|bot|crawler|spider|preview|prerender|lighthouse'
            or p_user_agent = 'Mozilla/5.0' then 'own_tool:tool_user_agent'
-      when coalesce(p_addr_egress, false) then 'owner:dedicated_egress'
       when x.ms and not x.li and coalesce(p_addr_scanner, false) then 'link_scanner:confirmed_scanner_address'
       when coalesce(p_many_pages, false) then 'suspect:many_scans'
       when coalesce(p_addr_owner, false) then 'suspect:owner_address'
@@ -172,11 +173,11 @@ revoke all on function public.open_is_microsoft(int, text) from public, anon, au
 revoke all on function public.open_from_linkedin(text, text) from public, anon, authenticated;
 revoke all on function public.open_may_ring(text, boolean, boolean) from public, anon, authenticated;
 revoke all on function public.open_is_signal(text, boolean) from public, anon, authenticated;
-revoke all on function public.scan_open_classify(boolean, text, text, text, int, text, boolean, boolean, boolean, boolean, boolean, boolean) from public, anon, authenticated;
-revoke all on function public.page_open_classify(boolean, text, text, text, boolean, boolean, boolean, boolean, boolean, boolean, boolean) from public, anon, authenticated;
+revoke all on function public.scan_open_classify(boolean, text, text, text, int, text, boolean, boolean, boolean, boolean, boolean) from public, anon, authenticated;
+revoke all on function public.page_open_classify(boolean, text, text, text, boolean, boolean, boolean, boolean, boolean, boolean) from public, anon, authenticated;
 grant execute on function public.open_is_microsoft(int, text) to service_role;
 grant execute on function public.open_from_linkedin(text, text) to service_role;
 grant execute on function public.open_may_ring(text, boolean, boolean) to service_role;
 grant execute on function public.open_is_signal(text, boolean) to service_role;
-grant execute on function public.scan_open_classify(boolean, text, text, text, int, text, boolean, boolean, boolean, boolean, boolean, boolean) to service_role;
-grant execute on function public.page_open_classify(boolean, text, text, text, boolean, boolean, boolean, boolean, boolean, boolean, boolean) to service_role;
+grant execute on function public.scan_open_classify(boolean, text, text, text, int, text, boolean, boolean, boolean, boolean, boolean) to service_role;
+grant execute on function public.page_open_classify(boolean, text, text, text, boolean, boolean, boolean, boolean, boolean, boolean) to service_role;

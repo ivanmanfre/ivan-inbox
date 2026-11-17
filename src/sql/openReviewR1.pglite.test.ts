@@ -23,9 +23,9 @@ afterAll(async () => { await db?.close() })
 
 describe('round-1 review reproducers', () => {
   it('finding 3 (ruling P1/P5): an ordinary browser on AS8075 and a Microsoft-org page visitor are unresolved, a lookup timeout after a send is a person; none rings', async () => {
-    const rows = await q(`select 'azure-no-referrer' s, * from scan_open_classify(false, $1, null, 'desktop', 8075, 'Microsoft Corporation', false, false, false, false, false, false)
-      union all select 'lookup-timeout', * from scan_open_classify(false, $1, null, 'desktop', null, null, false, true, false, false, false, false)
-      union all select 'azure-page', * from page_open_classify(true, 'Microsoft Corporation', $1, null, false, false, false, false, false, false, false)`, [CHROME])
+    const rows = await q(`select 'azure-no-referrer' s, * from scan_open_classify(false, $1, null, 'desktop', 8075, 'Microsoft Corporation', false, false, false, false, false)
+      union all select 'lookup-timeout', * from scan_open_classify(false, $1, null, 'desktop', null, null, false, true, false, false, false)
+      union all select 'azure-page', * from page_open_classify(true, 'Microsoft Corporation', $1, null, false, false, false, false, false, false)`, [CHROME])
     expect(rows.map(r => [r.s, r.open_class, r.class_reason])).toEqual([['azure-no-referrer', 'suspect', 'microsoft_uncorroborated'], ['lookup-timeout', 'human', 'network_unknown'], ['azure-page', 'suspect', 'microsoft_uncorroborated']])
     // none of them may ring or alert, even if eligible: suspect never, an unknown network never
     expect((await q(`select open_may_ring('suspect', true, true) a, open_may_ring('human', true, false) b`))[0]).toEqual({ a: false, b: false })
@@ -73,7 +73,7 @@ describe('round-1 review reproducers', () => {
     expect(acl.every(r => r.anon_execute === false)).toBe(true)
     await db.exec(`set role anon`)
     try {
-      await expect(db.query(`select * from public.page_open_classify(true, 'Comcast', $1, null, false, false, false, false, false, false, false)`, [CHROME])).rejects.toThrow(/permission denied/)
+      await expect(db.query(`select * from public.page_open_classify(true, 'Comcast', $1, null, false, false, false, false, false, false)`, [CHROME])).rejects.toThrow(/permission denied/)
     } finally { await db.exec(`reset role`) }
   })
 

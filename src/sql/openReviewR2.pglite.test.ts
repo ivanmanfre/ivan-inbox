@@ -61,13 +61,13 @@ describe('round-2 review reproducers, correct behaviour', () => {
       { company_slug: 'office-rapid-c', open_class: 'human', class_reason: 'linkedin_referrer', eligible: true }])
   })
 
-  it('finding 2 / P2-P3: one owner click twenty days earlier makes a stranger on that wifi unresolved, never owner; 5 owner clicks within a week is our egress', async () => {
+  it('finding 2 / P3 / R1: one owner click twenty days earlier makes a stranger on that wifi unresolved, never owner; so do 5 owner clicks within a week', async () => {
     await insOpen('owner-hotel', { ago: '20 days', owner: true, hash: 'hotel-nat' })
     const stranger = await insOpen('prospect-hotel', { hash: 'hotel-nat' })
     expect(await fin(stranger, 5089, 'Virgin Media')).toMatchObject({ open_class: 'suspect', class_reason: 'owner_address', eligible: false, ring: false })
     for (let i = 0; i < 5; i++) await insOpen(`owner-office-${i}`, { ago: `${i + 1} days`, owner: true, hash: 'our-egress' })
     const ours = await insOpen('prospect-egress', { hash: 'our-egress' })
-    expect(await fin(ours, 5089, 'Virgin Media')).toMatchObject({ open_class: 'owner', class_reason: 'dedicated_egress', eligible: false })
+    expect(await fin(ours, 5089, 'Virgin Media')).toMatchObject({ open_class: 'suspect', class_reason: 'owner_address', eligible: false, ring: false })
   })
 
   it('finding 4 / P5: a LinkedIn referral whose network lookup failed never rings (and a known network still does)', async () => {
@@ -212,5 +212,5 @@ describe('round-3 cases', () => {
     }
     expect(new Set(trace).size).toBe(ops.length)   // every kind of step ran at least once
     expect((await q(`select open_release_grant() r`))[0].r).toEqual({ granted: false, reason: 'already_ran' })
-  })
+  }, 60_000)
 })

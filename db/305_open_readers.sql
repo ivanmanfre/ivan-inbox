@@ -71,7 +71,7 @@ begin
     select * into c from public.page_open_context(new.page, new.ip_hash, v_at, null, new.org, new.city, new.user_agent, new.referrer);
     select k.open_class, k.class_reason into new.open_class, new.class_reason
       from public.page_open_classify(new.is_external, new.org, new.user_agent, new.referrer, c.burst, c.burst_no_address,
-                                     c.near_send, c.addr_scanner, c.addr_egress, c.addr_owner, c.many_pages) k;
+                                     c.near_send, c.addr_scanner, c.addr_owner, c.many_pages) k;
     new.near_send := c.near_send;
     new.classified_at := now();
     new.eligible := new.open_class = 'human' and v_at > now() - interval '10 minutes';

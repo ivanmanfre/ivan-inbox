@@ -10,23 +10,25 @@ const WIN = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML
 const APP = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 [LinkedInApp]/9.32.5383'
 type Cls = { open_class: string; class_reason: string }
 const c = async (a: unknown[]) => (await db.query<Cls>(
-  `select * from scan_open_classify($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`, a)).rows[0]
+  `select * from scan_open_classify($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`, a)).rows[0]
 const pc = async (a: unknown[]) => (await db.query<Cls>(
-  `select * from page_open_classify($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`, a)).rows[0]
-// scan args: owner, ua, referrer, device, asn, org, burst, near_send, addr_scanner, addr_egress, addr_owner, many_scans
-const S = (o: Partial<Record<'owner' | 'burst' | 'near' | 'scanner' | 'egress' | 'addrOwner' | 'many', boolean>> & { ua?: string; ref?: string | null; asn?: number | null; org?: string | null } = {}) =>
+  `select * from page_open_classify($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, a)).rows[0]
+// scan args: owner, ua, referrer, device, asn, org, burst, near_send, addr_scanner, addr_owner, many_scans
+const S = (o: Partial<Record<'owner' | 'burst' | 'near' | 'scanner' | 'addrOwner' | 'many', boolean>> & { ua?: string; ref?: string | null; asn?: number | null; org?: string | null } = {}) =>
   [o.owner ?? false, o.ua ?? WIN, o.ref ?? null, 'desktop', o.asn === undefined ? 5089 : o.asn, o.org === undefined ? 'Virgin Media' : o.org,
-   o.burst ?? false, o.near ?? false, o.scanner ?? false, o.egress ?? false, o.addrOwner ?? false, o.many ?? false]
-// page args: external, org, ua, referrer, burst, burst_no_address, near_send, addr_scanner, addr_egress, addr_owner, many_pages
-const P = (o: Partial<Record<'ext' | 'burst' | 'noAddr' | 'near' | 'scanner' | 'egress' | 'addrOwner' | 'many', boolean>> & { ua?: string; ref?: string | null; org?: string | null } = {}) =>
+   o.burst ?? false, o.near ?? false, o.scanner ?? false, o.addrOwner ?? false, o.many ?? false]
+// page args: external, org, ua, referrer, burst, burst_no_address, near_send, addr_scanner, addr_owner, many_pages
+const P = (o: Partial<Record<'ext' | 'burst' | 'noAddr' | 'near' | 'scanner' | 'addrOwner' | 'many', boolean>> & { ua?: string; ref?: string | null; org?: string | null } = {}) =>
   [o.ext ?? true, o.org === undefined ? 'Comcast' : o.org, o.ua ?? WIN, o.ref ?? null,
-   o.burst ?? false, o.noAddr ?? false, o.near ?? false, o.scanner ?? false, o.egress ?? false, o.addrOwner ?? false, o.many ?? false]
+   o.burst ?? false, o.noAddr ?? false, o.near ?? false, o.scanner ?? false, o.addrOwner ?? false, o.many ?? false]
 const MS = { asn: 8075, org: 'Microsoft Limited' }
 describe('scan_open_classify (round 3: rulings P1-P5)', () => {
   it('owner flag wins', async () => expect(await c(S({ owner: true, ...MS, burst: true, near: true, scanner: true }))).toEqual({ open_class: 'owner', class_reason: 'owner_flag_or_ip' }))
   it('headless is our own tool', async () => expect((await c(S({ ua: 'x HeadlessChrome/147', asn: 400940, org: 'Railway' }))).class_reason).toBe('tool_user_agent'))
-  it('P2: 5+ owner rows on the address within 7 days is our dedicated egress', async () => expect(await c(S({ egress: true, addrOwner: true }))).toEqual({ open_class: 'owner', class_reason: 'dedicated_egress' }))
-  it('P3: an owner flag on the address without egress evidence is only suspect', async () => expect(await c(S({ addrOwner: true }))).toEqual({ open_class: 'suspect', class_reason: 'owner_address' }))
+  it('R1: an owner flag elsewhere on the address is only suspect, never owner, even with a LinkedIn referrer', async () => {
+    expect(await c(S({ addrOwner: true }))).toEqual({ open_class: 'suspect', class_reason: 'owner_address' })
+    expect(await c(S({ addrOwner: true, ref: 'www.linkedin.com' }))).toEqual({ open_class: 'suspect', class_reason: 'owner_address' })
+  })
   it('the Railway network alone is not our tool', async () => expect(await c(S({ asn: 400940, org: 'Railway' }))).toEqual({ open_class: 'human', class_reason: 'default' }))
   it('P2: Microsoft + no referrer + confirmed scanner address = link_scanner', async () => expect(await c(S({ ...MS, scanner: true }))).toEqual({ open_class: 'link_scanner', class_reason: 'confirmed_scanner_address' }))
   it('P3: Microsoft + no referrer just after a send, address not confirmed = suspect', async () => expect(await c(S({ ...MS, near: true }))).toEqual({ open_class: 'suspect', class_reason: 'microsoft_after_send' }))
@@ -83,11 +85,11 @@ describe('context, finalize, relabel (304)', () => {
       `insert into scan_opens(company_slug, opened_at, is_owner, device_type, referrer_host, ip_hash, user_agent)
        values ($1, $2::timestamptz, $3, $4, $5, $6, $7) returning id`,
       [slug, at, o.owner ?? false, o.dev ?? 'desktop', o.ref ?? null, o.hash === undefined ? 'H' : o.hash, o.ua ?? WIN])).rows[0].id
-  const ctx = async (id: number) => (await d.query<{ burst: boolean; near_send: boolean; addr_scanner: boolean; addr_egress: boolean; addr_owner: boolean; many_scans: boolean }>(`select * from scan_open_context($1)`, [id])).rows[0]
-  const send = (slug: string, at: string, channel: string | null = 'linkedin') => d.query(
+  const ctx = async (id: number) => (await d.query<{ burst: boolean; near_send: boolean; addr_scanner: boolean; addr_owner: boolean; many_scans: boolean }>(`select * from scan_open_context($1)`, [id])).rows[0]
+  const send = (slug: string, at: string, channel: string | null = 'linkedin', to = '00000000-0000-0000-0000-000000000001') => d.query(
     `insert into outreach_messages(prospect_id, direction, channel, sent_at, message_text)
-     values ('00000000-0000-0000-0000-000000000001', 'outbound', $1, $2::timestamptz, $3)`,
-    [channel, at, `Made this for you: https://inboundonsteroids.com/scan/${slug}`])
+     values ($4, 'outbound', $1, $2::timestamptz, $3)`,
+    [channel, at, `Made this for you: https://inboundonsteroids.com/scan/${slug}`, to])
   const fin = async (id: number, asn: number | null = null, org: string | null = null, cc: string | null = null, city: string | null = null) =>
     (await d.query<{ r: Record<string, unknown> }>(`select scan_open_finalize($1,$2,$3,$4,$5) as r`, [id, asn, org, cc, city])).rows[0].r
 
@@ -145,11 +147,11 @@ describe('context, finalize, relabel (304)', () => {
     expect((await d.query(`select net_asn, open_class, class_reason, eligible from scan_opens where id=$1`, [id])).rows[0])
       .toEqual({ net_asn: 8075, open_class: 'suspect', class_reason: 'microsoft_after_send', eligible: false })
   })
-  it('finalize stores the network; the third different scan after a send confirms the address as the scanner (P2)', async () => {
+  it('finalize stores the network; the third different recipient after their own send confirms the address as the scanner (R2)', async () => {
     const now = Date.now()
     const ids: number[] = []
     for (const [k, slug] of ['fin-b1', 'fin-b2', 'fin-b3'].entries()) {
-      await send(slug, new Date(now - 60_000 * (30 - k * 10) - 30_000).toISOString())
+      await send(slug, new Date(now - 60_000 * (30 - k * 10) - 30_000).toISOString(), 'linkedin', `00000000-0000-0000-0000-0000000000b${k + 1}`)
       ids.push(await ins(slug, new Date(now - 60_000 * (30 - k * 10)).toISOString(), { hash: 'MS1' }))
     }
     expect(await fin(ids[0], 8075, 'Microsoft Limited', 'US', 'Boydton')).toMatchObject({ open_class: 'suspect', class_reason: 'microsoft_after_send' })

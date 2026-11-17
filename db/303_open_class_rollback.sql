@@ -1,7 +1,7 @@
 -- Rollback 303. Roll back 305..309 first, or readers will reference dropped columns.
 -- The scan-open edge function must already be reverted (it writes the `view` column): see RELEASE-CHECKLIST rollback order.
-drop function if exists public.page_open_classify(boolean, text, text, text, boolean, boolean, boolean, boolean, boolean, boolean, boolean);
-drop function if exists public.scan_open_classify(boolean, text, text, text, int, text, boolean, boolean, boolean, boolean, boolean, boolean);
+drop function if exists public.page_open_classify(boolean, text, text, text, boolean, boolean, boolean, boolean, boolean, boolean);
+drop function if exists public.scan_open_classify(boolean, text, text, text, int, text, boolean, boolean, boolean, boolean, boolean);
 drop function if exists public.open_is_signal(text, boolean);
 drop function if exists public.open_may_ring(text, boolean, boolean);
 drop function if exists public.open_from_linkedin(text, text);

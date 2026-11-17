@@ -119,14 +119,14 @@ describe('page open alerts only for people (305, Task 6)', () => {
     expect(await calls()).toBe(before)
   })
   it('a classifier failure never drops the insert and never alerts', async () => {
-    await db.exec(`alter function public.page_open_classify(boolean, text, text, text, boolean, boolean, boolean, boolean, boolean, boolean, boolean) rename to page_open_classify_off`)
+    await db.exec(`alter function public.page_open_classify(boolean, text, text, text, boolean, boolean, boolean, boolean, boolean, boolean) rename to page_open_classify_off`)
     try {
       const r = await insertAddr('leading-social', 'Comcast', null, 'Austin')
       expect(r.open_class).toBeNull()
       expect(r.alerted).toBe(false)
       expect(r.eligible).toBe(false)
     } finally {
-      await db.exec(`alter function public.page_open_classify_off(boolean, text, text, text, boolean, boolean, boolean, boolean, boolean, boolean, boolean) rename to page_open_classify`)
+      await db.exec(`alter function public.page_open_classify_off(boolean, text, text, text, boolean, boolean, boolean, boolean, boolean, boolean) rename to page_open_classify`)
     }
   })
   it('swishdm_report_opened is for the service role only', async () => {

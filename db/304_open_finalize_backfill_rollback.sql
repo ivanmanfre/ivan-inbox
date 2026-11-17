@@ -9,3 +9,5 @@ drop function if exists public.page_open_context(text, text, timestamptz, bigint
 drop function if exists public.scan_open_context(bigint);
 drop function if exists public.page_open_near_send(text, timestamptz);
 drop function if exists public.scan_open_near_send(bigint);
+drop function if exists public.page_open_sends(text, timestamptz);
+drop function if exists public.scan_open_sends(bigint);
