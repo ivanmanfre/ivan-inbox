@@ -45,4 +45,6 @@
 .hm4-q-wait{margin:0;min-height:20px}
 .hm4-lanes-h{margin:24px 0 12px}
 .hm4.hm4-desktop>.hm4-tasks{min-height:0;max-height:420px;margin:0 0 8px}
+/* R17: the Tasks block now shows on every finished read; under the post card it keeps the queue's 24px step. */
+.hm4.hm4-desktop>.ct-home+.hm4-tasks{margin-top:24px}
 .hm4-phone .hm4-q-m{max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
