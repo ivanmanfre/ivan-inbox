@@ -12,7 +12,7 @@ drop function if exists public.scan_open_finalize(bigint, int, text, text, text)
 drop function if exists public.scan_open_label(bigint, int, text, text, text);
 drop function if exists public.page_open_context(text, text, timestamptz, bigint, text, text, text, text);
 drop function if exists public.scan_open_context(bigint);
-drop function if exists public.scan_open_addr(text, boolean);
+drop function if exists public.scan_open_addr(text, boolean, bigint, boolean);
 drop function if exists public.scan_open_burst(bigint);
 drop function if exists public.page_open_near_send(text, timestamptz);
 drop function if exists public.scan_open_near_send(bigint);

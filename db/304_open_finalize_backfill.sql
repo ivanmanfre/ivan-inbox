@@ -20,6 +20,11 @@
 --     open_release_grant() refuses to run until the backfill is done, then relabels in the same transaction every row
 --     that arrived since the backfill began (and every row sharing an address with one), and grants once.
 
+-- The index below takes a lock on outreach_messages; a long writer must not hold this apply (and the inserts queued
+-- behind it) for the full 2-minute statement timeout. If the lock cannot be taken in 5 s the apply fails cleanly and
+-- changes nothing: retry it later.
+set local lock_timeout = '5s';
+
 -- Every send lookup below filters outbound messages by sent_at; without this index each lookup scanned the index of
 -- the whole table (25,659 rows on 2026-11-17).
 create index if not exists outreach_messages_outbound_sent_idx on public.outreach_messages (sent_at)

@@ -8,6 +8,8 @@ set timezone = 'UTC';
 create role anon; create role authenticated; create role service_role;
 create schema auth; create schema net; create schema cron;
 create table cron.job (jobid bigserial primary key, jobname text unique, schedule text, command text);
+create table cron.job_run_details (runid bigserial primary key, jobid bigint, status text, return_message text,
+  start_time timestamptz, end_time timestamptz);
 create function cron.schedule(n text, s text, c text) returns bigint language sql as $$
   insert into cron.job(jobname, schedule, command) values (n, s, c)
   on conflict (jobname) do update set schedule = excluded.schedule, command = excluded.command returning jobid $$;

@@ -264,6 +264,39 @@ describe('rollback files on partial states (round 5)', () => {
     await d.exec(`insert into scan_opens(company_slug, is_owner, device_type, ip_hash, user_agent) values ('after-rollback', false, 'mobile', 'h', 'ua')`)
     await d.close()
   }, 120_000)
+  // Round 5 review finding 1: the rollback dropped scan_open_addr(text, boolean) while 304 creates
+  // scan_open_addr(text, boolean, bigint, boolean), so the function stayed behind. Compare the catalog before 304 and
+  // after 304 plus its rollback: every function (with its signature), table, index, view, trigger and cron job 304
+  // creates must be gone. Data 304 writes into tables it does not own stays by design and is dropped by the 303
+  // rollback (the open_networks seed rows, the labels in the 303 columns) or kept on purpose (the grant marker).
+  const catalog = async (d: PGlite) => ({
+    functions: (await d.query<{ f: string }>(`select p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' f
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' order by 1`)).rows.map(r => r.f),
+    relations: (await d.query<{ r: string }>(`select c.relkind::text || ':' || c.relname r from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' order by 1`)).rows.map(r => r.r),
+    triggers: (await d.query<{ t: string }>(`select tgname t from pg_trigger where not tgisinternal order by 1`)).rows.map(r => r.t),
+    cron: (await d.query<{ j: string }>(`select jobname j from cron.job order by 1`)).rows.map(r => r.j),
+  })
+  it('the 304 rollback leaves nothing 304 created behind (applied only, stopped halfway, and granted)', async () => {
+    for (const stage of ['applied', 'halfway', 'granted'] as const) {
+      const d = new PG()
+      await d.exec(BASE + EXTRA)
+      await d.exec(migration('db/303_open_class.sql'))
+      await seedHistory(d)
+      const before = await catalog(d)
+      await d.exec(migration('db/304_open_finalize_backfill.sql'))
+      // the lock timeout is local to the apply's transaction and does not leak into the session
+      expect((await d.query<{ lock_timeout: string }>(`show lock_timeout`)).rows[0].lock_timeout).toBe('0')
+      const during = await catalog(d)
+      expect(during.functions).toContain('scan_open_addr(p_ip_hash text, p_scanner boolean, p_self bigint, p_self_counts boolean)')
+      expect(during.relations).toEqual(expect.arrayContaining(['r:open_backfill_state', 'i:outreach_messages_outbound_sent_idx']))
+      if (stage === 'halfway') { await step(d, 7); await step(d, 7) }
+      if (stage === 'granted') { await loop(d, 500); expect((await grant(d)).granted).toBe(true) }
+      await d.exec(readFileSync('db/304_open_finalize_backfill_rollback.sql', 'utf8'))
+      expect(await catalog(d), stage).toEqual(before)
+      await d.close()
+    }
+  }, 120_000)
   it('re-applying 304 after its rollback keeps the grant marker, so the grant never runs twice', async () => {
     const d = await released()
     await loop(d, 500)

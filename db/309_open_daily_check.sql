@@ -6,7 +6,7 @@ create or replace function public.open_tracking_daily_check()
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_unclassified int; v_sends int; v_covered int; v_base_sends int; v_base_covered int; v_fast int;
-  v_new_fleet int; v_fleet_names text; v_rows int; v_failed int;
+  v_new_fleet int; v_fleet_names text; v_rows int; v_failed int; v_relabel_hours numeric;
   v_checks jsonb := '[]'::jsonb; v_lines text[] := '{}'; v_url text; v_secret text; v_alerted boolean := false;
 begin
   -- 1. every open older than 15 minutes carries a class
@@ -62,6 +62,12 @@ begin
   select count(*), count(*) filter (where net_org is null) into v_rows, v_failed from public.scan_opens
    where opened_at > now() - interval '24 hours' and ip_hash is not null and is_owner = false;
 
+  -- 6. the nightly relabel (open-reclassify-nightly, 304) succeeded in the last 26 hours. It runs under a 90 s cap;
+  --    a run that hits it rolls back silently and rows that should lose eligibility keep it.
+  select round(extract(epoch from now() - max(d.start_time)) / 3600, 1) into v_relabel_hours
+    from cron.job_run_details d join cron.job j on j.jobid = d.jobid
+   where j.jobname = 'open-reclassify-nightly' and d.status = 'succeeded';
+
   v_checks := jsonb_build_array(
     jsonb_build_object('name', 'unclassified', 'value', v_unclassified, 'limit', 0, 'ok', v_unclassified = 0),
     jsonb_build_object('name', 'scanner_coverage', 'value', case when v_sends > 0 then round(100.0 * v_covered / v_sends) else null end,
@@ -69,7 +75,8 @@ begin
     jsonb_build_object('name', 'fast_bare_desktop_humans', 'value', v_fast, 'limit', 2, 'ok', v_fast < 3),
     jsonb_build_object('name', 'new_fleet_hash', 'value', v_new_fleet, 'limit', 0, 'ok', v_new_fleet = 0),
     jsonb_build_object('name', 'lookup_failures', 'value', case when v_rows > 0 then round(100.0 * v_failed / v_rows) else null end,
-                       'limit', 30, 'ok', v_rows < 10 or v_failed * 10 <= v_rows * 3));
+                       'limit', 30, 'ok', v_rows < 10 or v_failed * 10 <= v_rows * 3),
+    jsonb_build_object('name', 'nightly_relabel', 'value', v_relabel_hours, 'limit', 26, 'ok', coalesce(v_relabel_hours <= 26, false)));
 
   if v_unclassified > 0 then
     v_lines := v_lines || format('%s scan opens from the last day still have no label after 15 minutes. The scan-open function or scan_open_finalize may be failing.', v_unclassified);
@@ -86,6 +93,11 @@ begin
   end if;
   if not (v_rows < 10 or v_failed * 10 <= v_rows * 3) then
     v_lines := v_lines || format('The network lookup failed on %s of %s opens yesterday. New opens are labelled without their network.', v_failed, v_rows);
+  end if;
+
+  if not coalesce(v_relabel_hours <= 26, false) then
+    v_lines := v_lines || format('The nightly open relabel (open-reclassify-nightly) has not succeeded in the last 26 hours (last success: %s). Rows that should lose eligibility may still have it. Read cron.job_run_details.',
+      coalesce(v_relabel_hours::text || ' hours ago', 'never'));
   end if;
 
   if array_length(v_lines, 1) > 0 then

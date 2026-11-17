@@ -276,7 +276,13 @@ describe('daily check that the classifier still tells the truth (309, Task 10)',
   const P = '00000000-0000-0000-0000-0000000000d1'
   beforeAll(async () => { db = await openDb(7, EXTRA) }, 60_000)
   afterAll(async () => { await db?.close() })
-  beforeEach(async () => { await db.exec(`delete from scan_opens; delete from outreach_messages; delete from net.calls; delete from open_networks;`) })
+  // a nightly relabel that succeeded 4 hours ago, so only the test that removes it trips the nightly_relabel check
+  const nightlyRun = (ago: string, status: string) => db.query(`insert into cron.job_run_details(jobid, status, start_time, end_time)
+    select jobid, $2, now() - $1::interval, now() - $1::interval + interval '2 seconds' from cron.job where jobname = 'open-reclassify-nightly'`, [ago, status])
+  beforeEach(async () => {
+    await db.exec(`delete from scan_opens; delete from outreach_messages; delete from net.calls; delete from open_networks; delete from cron.job_run_details;`)
+    await nightlyRun('4 hours', 'succeeded')
+  })
   type Check = { name: string; value: number; limit: number; ok: boolean }
   const run = async () => (await db.query<{ r: { checks: Check[]; alerted: boolean } }>(`select open_tracking_daily_check() r`)).rows[0].r
   const check = (r: { checks: Check[] }, name: string) => r.checks.find(c => c.name === name)!
@@ -292,7 +298,7 @@ describe('daily check that the classifier still tells the truth (309, Task 10)',
     await open('ok-0', '1 hour', 'human', { ref: 'www.linkedin.com', hash: 'H1' })
     const r = await run()
     expect(r.alerted).toBe(false)
-    expect(r.checks.map(c => c.name)).toEqual(['unclassified', 'scanner_coverage', 'fast_bare_desktop_humans', 'new_fleet_hash', 'lookup_failures'])
+    expect(r.checks.map(c => c.name)).toEqual(['unclassified', 'scanner_coverage', 'fast_bare_desktop_humans', 'new_fleet_hash', 'lookup_failures', 'nightly_relabel'])
     expect(r.checks.every(c => c.ok)).toBe(true)
     expect(await body()).toBeUndefined()
   })
@@ -341,6 +347,23 @@ describe('daily check that the classifier still tells the truth (309, Task 10)',
     await db.exec(`delete from scan_opens`)
     for (let i = 0; i < 10; i++) await open('l-' + i, '2 hours', i < 4 ? 'owner' : 'human', { hash: 'L' + i, org: i < 4 ? null : 'ISP', owner: i < 4 })
     expect(check(await run(), 'lookup_failures').ok).toBe(true)
+  })
+  it('a nightly relabel with no success in 26 hours trips it (failed run after an old success, and never run)', async () => {
+    await db.exec(`delete from cron.job_run_details`)
+    await nightlyRun('30 hours', 'succeeded')
+    await nightlyRun('5 hours', 'failed')
+    let r = await run()
+    expect(check(r, 'nightly_relabel')).toMatchObject({ value: 30, limit: 26, ok: false })
+    expect(r.alerted).toBe(true)
+    const b = await body()
+    expect(b.body).toContain('The nightly open relabel (open-reclassify-nightly) has not succeeded in the last 26 hours (last success: 30.0 hours ago)')
+    expect(b.body).not.toMatch(/—/)
+    await db.exec(`delete from cron.job_run_details; delete from net.calls`)
+    r = await run()
+    expect(check(r, 'nightly_relabel')).toMatchObject({ value: null, ok: false })
+    expect((await body()).body).toContain('(last success: never)')
+    await nightlyRun('25 hours', 'succeeded')
+    expect(check(await run(), 'nightly_relabel').ok).toBe(true)
   })
   it('daily job is scheduled', async () => {
     expect((await db.query(`select schedule, command from cron.job where jobname = 'open-tracking-daily-check'`)).rows[0]).toEqual({ schedule: '50 7 * * *', command: 'select public.open_tracking_daily_check()' })
