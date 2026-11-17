@@ -1,5 +1,7 @@
 -- Rollback 305: the live bodies read 2026-11-17 (pg_get_viewdef / pg_get_functiondef). Apply before 304/303 rollbacks.
--- create or replace cannot drop the two appended columns of scan_open_stats, so that view is dropped and recreated with its grants.
+-- create or replace cannot drop appended columns, so scan_open_stats and inbox_scan_opens_v are dropped and recreated
+-- with their live grants (scan_open_stats: service role only; inbox_scan_opens_v: signed-in app + service role, never
+-- the public key, as after db/20261115l).
 drop view if exists public.scan_open_stats;
 create view public.scan_open_stats as
  SELECT company_slug,
@@ -12,7 +14,8 @@ create view public.scan_open_stats as
 revoke all on public.scan_open_stats from anon, authenticated;
 grant all on public.scan_open_stats to service_role;
 
-create or replace view public.inbox_scan_opens_v with (security_invoker = off) as
+drop view if exists public.inbox_scan_opens_v;
+create view public.inbox_scan_opens_v with (security_invoker = off) as
  WITH j AS (
          SELECT so.opened_at,
             so.company_slug,
@@ -43,6 +46,9 @@ create or replace view public.inbox_scan_opens_v with (security_invoker = off) a
     max(opened_at) AS last_open
    FROM j
   GROUP BY client_id;
+revoke all on public.inbox_scan_opens_v from anon;
+grant select on public.inbox_scan_opens_v to authenticated;
+grant all on public.inbox_scan_opens_v to service_role;
 
 -- Trigger function: live body 2026-11-17.
 CREATE OR REPLACE FUNCTION public.swishdm_report_open_notify()

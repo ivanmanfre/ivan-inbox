@@ -31,6 +31,9 @@ export type ReplacementRow = {
 export type ScanOpenRow = {
   client_id: string; opens_7d: number; opens_30d: number; opens_total: number
   distinct_prospects: number; last_open: string | null
+  // db/305 (open tracking truth): opens we could not settle as a person or as the link checker. Shown apart, never
+  // counted as people. Absent until that file is applied.
+  unresolved_7d?: number; unresolved_30d?: number; unresolved_total?: number
 }
 export type OutcomeRow = {
   client_id: string

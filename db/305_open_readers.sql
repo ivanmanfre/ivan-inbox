@@ -1,7 +1,8 @@
 -- 305 open tracking truth, part 3: readers count people. Plan Tasks 5 and 6. Requires 303 + 304 (rows labelled).
 -- Rollback: db/305_open_readers_rollback.sql (live bodies as of 2026-11-17).
 
--- Task 5. Same four columns, same names and types; "real" now means open_class = 'human'. Two columns appended.
+-- Task 5. Same four columns, same names and types; "real" now means open_class = 'human'. Columns appended:
+-- scanner_opens, own_tool_opens and (round 3, ruling P1) suspect_opens, the unresolved rows shown apart from people.
 create or replace view public.scan_open_stats as
  select company_slug,
     count(*) filter (where open_class = 'human') as real_opens,
@@ -9,15 +10,19 @@ create or replace view public.scan_open_stats as
     max(opened_at) filter (where open_class = 'human') as last_real_open,
     count(distinct date_trunc('day'::text, opened_at)) filter (where open_class = 'human') as real_open_days,
     count(*) filter (where open_class = 'link_scanner') as scanner_opens,
-    count(*) filter (where open_class = 'own_tool') as own_tool_opens
+    count(*) filter (where open_class = 'own_tool') as own_tool_opens,
+    count(*) filter (where open_class = 'suspect') as suspect_opens
    from public.scan_opens
   group by company_slug;
 
--- Same six columns; the inner filter becomes open_class = 'human' (was is_owner = false).
+-- Same six columns, now people only (open_class = 'human'; was is_owner = false). Round 3 (ruling P1): three columns
+-- appended for the unresolved rows (open_class = 'suspect'), which the inbox shows as a separate number, never as
+-- people.
 create or replace view public.inbox_scan_opens_v with (security_invoker = off) as
  with j as (
          select so.opened_at,
             so.company_slug,
+            so.open_class,
             coalesce(c.client_id,
                 case
                     when (sc.wordmark = 'RISE DTC'::text) then 'risedtc'::text
@@ -35,46 +40,52 @@ create or replace view public.inbox_scan_opens_v with (security_invoker = off) a
                   order by scans.company_slug, scans.prospect_token) sc on ((sc.company_slug = so.company_slug)))
              left join public.outreach_prospects pr on (((pr.id)::text = sc.prospect_token)))
              left join public.outreach_campaigns c on ((c.id = pr.campaign_id)))
-          where (so.open_class = 'human'::text)
+          where (so.open_class = any (array['human'::text, 'suspect'::text]))
         )
  select client_id,
-    count(*) filter (where (opened_at >= (now() - '7 days'::interval))) as opens_7d,
-    count(*) filter (where (opened_at >= (now() - '30 days'::interval))) as opens_30d,
-    count(*) as opens_total,
-    count(distinct company_slug) as distinct_prospects,
-    max(opened_at) as last_open
+    count(*) filter (where open_class = 'human' and (opened_at >= (now() - '7 days'::interval))) as opens_7d,
+    count(*) filter (where open_class = 'human' and (opened_at >= (now() - '30 days'::interval))) as opens_30d,
+    count(*) filter (where open_class = 'human') as opens_total,
+    count(distinct company_slug) filter (where open_class = 'human') as distinct_prospects,
+    max(opened_at) filter (where open_class = 'human') as last_open,
+    count(*) filter (where open_class = 'suspect' and (opened_at >= (now() - '7 days'::interval))) as unresolved_7d,
+    count(*) filter (where open_class = 'suspect' and (opened_at >= (now() - '30 days'::interval))) as unresolved_30d,
+    count(*) filter (where open_class = 'suspect') as unresolved_total
    from j
   group by client_id;
 
--- Task 6. Every page_opens row is labelled at insert (all pages, so shared pages are labelled too), and only a
--- person whose open may ring (open_may_ring: human, network known, not an uncorroborated scanner network) can ring a
--- SwishDM report or keep a shared-page alert. Started from the live body (defs.txt 2026-11-17); changes: the class
--- step at the top (above the page-shape guard), the removal of the "org ~* '^microsoft'" line, which the class
--- replaces, and (round 2, finding 7) the stored `alerted` of a shared page now agrees with the class: the n8n tracker
--- alerts only when the stored row says alerted. A failure in the class step leaves the row unlabelled, unalerted and
--- silent; the insert always goes through.
+-- Task 6. Every page_opens row is labelled at insert (all pages, so shared pages are labelled too). Round 3
+-- (rulings P1, P5, P6): the insert is the row's first label, so a fresh human row is granted `eligible` here; a
+-- suspect, scanner, tool or owner row never is. Only an eligible person whose network is known (open_may_ring) can
+-- ring a SwishDM report or keep a shared-page alert (the n8n tracker alerts only when the stored row says alerted).
+-- Started from the live body (defs.txt 2026-11-17); changes: the class step at the top (above the page-shape guard)
+-- and the removal of the "org ~* '^microsoft'" line, which the class replaces. A failure in the class step leaves the
+-- row unlabelled, not eligible, unalerted and silent; the insert always goes through.
 create or replace function public.swishdm_report_open_notify()
 returns trigger language plpgsql security definer set search_path = public, pg_temp as $function$
 declare v_url text; v_secret text; v_tok text; v_pid uuid; v_brand text; v_page_url text; v_name text; v_company text;
-        v_sent timestamptz; v_last timestamptz; v_day date; v_where text;
-        v_burst boolean; v_near boolean; v_addr boolean; v_own boolean;
+        v_sent timestamptz; v_last timestamptz; v_day date; v_where text; c record; v_at timestamptz;
 begin
   begin
-    select c.burst, c.near_li_send, c.addr_scanner, c.addr_owner into v_burst, v_near, v_addr, v_own
-      from public.page_open_context(new.page, new.ip_hash, coalesce(new.created_at, now()), null) c;
+    v_at := coalesce(new.created_at, now());
+    select * into c from public.page_open_context(new.page, new.ip_hash, v_at, null, new.org, new.city, new.user_agent, new.referrer);
     select k.open_class, k.class_reason into new.open_class, new.class_reason
-      from public.page_open_classify(new.is_external, new.org, new.user_agent, new.referrer, v_burst, v_near, v_addr, v_own) k;
+      from public.page_open_classify(new.is_external, new.org, new.user_agent, new.referrer, c.burst, c.burst_no_address,
+                                     c.near_send, c.addr_scanner, c.addr_egress, c.addr_owner, c.many_pages) k;
+    new.near_send := c.near_send;
     new.classified_at := now();
-    new.alerted := coalesce(new.alerted, false) and public.open_may_ring(new.open_class, new.class_reason);
+    new.eligible := new.open_class = 'human' and v_at > now() - interval '10 minutes';
+    new.alerted := coalesce(new.alerted, false) and public.open_may_ring(new.open_class, new.eligible, nullif(new.org, '') is not null);
   exception when others then
     raise warning 'swishdm_report_open_notify classify failed: %', sqlerrm;
-    new.open_class := null; new.class_reason := null; new.classified_at := null; new.alerted := false;
+    new.open_class := null; new.class_reason := null; new.classified_at := null; new.near_send := null;
+    new.eligible := false; new.alerted := false;
     return new;
   end;
   if new.page is null or new.page !~ '^swishdm/compare/[a-z2-7]{20}$' or not coalesce(new.is_external, false) then return new; end if;
-  -- 2026-11-17: the class replaces the 11-09 Microsoft line. Scanner, own tool and owner rows are logged, never ring;
-  -- so are people whose network is unknown or who sit on the scanner network with no behaviour behind it.
-  if not public.open_may_ring(new.open_class, new.class_reason) then return new; end if;
+  -- 2026-11-17: the class replaces the 11-09 Microsoft line. Scanner, own tool, owner and suspect rows are logged,
+  -- never ring; so are people whose network is unknown.
+  if not public.open_may_ring(new.open_class, new.eligible, nullif(new.org, '') is not null) then return new; end if;
   begin
     v_tok := substring(new.page from '^swishdm/compare/([a-z2-7]{20})$');
     select prospect_id, brand, url into v_pid, v_brand, v_page_url
@@ -130,11 +141,12 @@ drop trigger if exists swishdm_report_open_notify on public.page_opens;
 create trigger swishdm_report_open_notify before insert on public.page_opens
   for each row execute function public.swishdm_report_open_notify();
 
--- Read by the SwishDM nudge drafter (jtsk91O6gXkUoj1C) in place of its two page_opens reads.
+-- Read by the SwishDM nudge drafter (jtsk91O6gXkUoj1C) in place of its two page_opens reads. A person whose row is
+-- eligible (ruling P6): never a suspect row, never a row the relabel made human later.
 create or replace function public.swishdm_report_opened(p_token text, p_since timestamptz)
 returns boolean language sql stable security definer set search_path = public, pg_temp as $$
   select exists (select 1 from public.page_opens o
-                  where o.page = 'swishdm/compare/' || p_token and public.open_is_signal(o.open_class, o.class_reason)
+                  where o.page = 'swishdm/compare/' || p_token and public.open_is_signal(o.open_class, o.eligible)
                     and o.created_at >= p_since)
 $$;
 revoke all on function public.swishdm_report_opened(text, timestamptz) from public, anon, authenticated;

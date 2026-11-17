@@ -13,7 +13,8 @@ begin
   select count(*) into v_unclassified from public.scan_opens
    where opened_at > now() - interval '24 hours' and opened_at <= now() - interval '15 minutes' and open_class is null;
 
-  -- 2. the link checker still shows up after LinkedIn link sends (one row per link message)
+  -- 2. the link checker still shows up after LinkedIn link sends (one row per link message). A new checker address is
+  --    `suspect: microsoft_after_send` until it has opened 3 different scans after sends, so both count as seen.
   with sends as (
     select m.sent_at, coalesce(lower(substring(m.message_text from '/scan/([A-Za-z0-9_-]+)')),
                                'arch-' || lower(substring(m.message_text from 'madebyarch\.com/([A-Za-z0-9_-]+-audit)'))) as slug
@@ -24,7 +25,8 @@ begin
   s as (
     select sends.sent_at > now() - interval '24 hours' - interval '15 minutes' as recent,
            exists (select 1 from public.scan_opens o
-                    where lower(o.company_slug) = sends.slug and o.open_class = 'link_scanner'
+                    where lower(o.company_slug) = sends.slug
+                      and (o.open_class = 'link_scanner' or (o.open_class = 'suspect' and o.class_reason = 'microsoft_after_send'))
                       and o.opened_at between sends.sent_at and sends.sent_at + interval '15 minutes') as covered
       from sends)
   select count(*) filter (where recent), count(*) filter (where recent and covered),
@@ -80,7 +82,7 @@ begin
     v_lines := v_lines || format('%s desktop opens with no referrer came in within 5 minutes of a LinkedIn link send and were counted as people (usually about 1 in 7 weeks). The link checker may be on a new network.', v_fast);
   end if;
   if v_new_fleet > 0 then
-    v_lines := v_lines || format('An address on a network we do not know opened 3 or more different scans in a day: %s. A burst inside 10 minutes is already left out of the counts; a slower spread still counts as people. Read the rows.', v_fleet_names);
+    v_lines := v_lines || format('An address on a network we do not know opened 3 or more different scans in a day: %s. Bursts inside 10 minutes and addresses on 8 or more scans are counted as unresolved; a slower spread under 8 scans still counts as people. Read the rows.', v_fleet_names);
   end if;
   if not (v_rows < 10 or v_failed * 10 <= v_rows * 3) then
     v_lines := v_lines || format('The network lookup failed on %s of %s opens yesterday. New opens are labelled without their network.', v_failed, v_rows);

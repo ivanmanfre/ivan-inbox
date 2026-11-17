@@ -30,15 +30,17 @@ async function person(lane: keyof typeof C = 'ivan', o: { host?: string; slugPre
   const host = o.host ?? (lane === 'risedtc' ? 'resources.risedtc.com/scan' : 'inboundonsteroids.com/scan')
   await db.query(`insert into outreach_prospects(id, campaign_id, name, company) values ($1, $2, 'Pat Prospect', 'Acme Ltd')`, [id, C[lane]])
   await db.query(`insert into outreach_messages(prospect_id, direction, channel, sent_at, message_text) values ($1, 'outbound', 'linkedin', now() - interval '3 days', $2)`, [id, `Made this: https://${host}/${slug}`])
-  await db.query(`insert into scan_opens(company_slug, opened_at, device_type, referrer_host, user_agent, open_class, class_reason, classified_at)
-    values ($1, now() - interval '2 days', 'mobile', 'www.linkedin.com', $2, 'human', 'linkedin_referrer', now() - interval '2 days')`, [slug, PHONE])
+  await db.query(`insert into scan_opens(company_slug, opened_at, device_type, referrer_host, user_agent, open_class, class_reason, classified_at, eligible)
+    values ($1, now() - interval '2 days', 'mobile', 'www.linkedin.com', $2, 'human', 'linkedin_referrer', now() - interval '2 days', true)`, [slug, PHONE])
   return { id, slug }
 }
-async function openNow(slug: string, o: { at?: string; ua?: string; ref?: string | null; view?: string } = {}) {
+// a fresh open from a known mobile network (ruling P5: an unknown network never rings); net: null = lookup failed
+async function openNow(slug: string, o: { at?: string; ua?: string; ref?: string | null; view?: string; net?: [number | null, string | null] } = {}) {
   const id = (await db.query<{ id: number }>(`insert into scan_opens(company_slug, opened_at, device_type, referrer_host, user_agent, view)
     values ($1, coalesce($2::timestamptz, now()), 'mobile', $3, $4, coalesce($5, 'main')) returning id`,
     [slug, o.at ?? null, o.ref === undefined ? 'www.linkedin.com' : o.ref, o.ua ?? PHONE, o.view ?? null])).rows[0].id
-  return (await db.query<{ r: { open_class: string; ring: boolean } }>(`select scan_open_finalize($1, null, null, null, null) r`, [id])).rows[0].r
+  const [asn, org] = o.net ?? [25135, 'Vodafone UK']
+  return (await db.query<{ r: { open_class: string; class_reason: string; ring: boolean; eligible: boolean } }>(`select scan_open_finalize($1, $2, $3, 'GB', 'London') r`, [id, asn, org])).rows[0].r
 }
 
 describe('second-day reopen ring (308)', () => {
@@ -64,27 +66,34 @@ describe('second-day reopen ring (308)', () => {
   })
   it('scanner reopen does not ring', async () => {
     const p = await person()
-    // the link checker right after a LinkedIn resend of the link
+    // the link checker right after a LinkedIn resend of the link (a new checker address: suspect until confirmed)
     await db.query(`insert into outreach_messages(prospect_id, direction, channel, sent_at, message_text) values ($1, 'outbound', 'linkedin', now() - interval '30 seconds', $2)`, [p.id, `again: https://inboundonsteroids.com/scan/${p.slug}`])
     const id = (await db.query<{ id: number }>(`insert into scan_opens(company_slug, device_type, user_agent, ip_hash) values ($1, 'desktop', 'Mozilla/5.0 (Windows NT 10.0)', 'MSFT') returning id`, [p.slug])).rows[0].id
-    expect((await db.query<{ r: { open_class: string; ring: boolean } }>(`select scan_open_finalize($1, 8075, 'Microsoft Corporation', 'US', 'Des Moines') r`, [id])).rows[0].r).toMatchObject({ open_class: 'link_scanner', ring: false })
+    expect((await db.query<{ r: { open_class: string; ring: boolean } }>(`select scan_open_finalize($1, 8075, 'Microsoft Corporation', 'US', 'Des Moines') r`, [id])).rows[0].r).toMatchObject({ open_class: 'suspect', class_reason: 'microsoft_after_send', eligible: false, ring: false })
     expect((await db.query(`select 1 from scan_reopen_rings where slug = $1`, [p.slug])).rows).toHaveLength(0)
     // the same person reopening right after still rings: the scanner row did not use up the day
     expect((await openNow(p.slug)).ring).toBe(true)
   })
-  it('a Microsoft-network open with no behaviour counts as a person but never rings', async () => {
+  it('a Microsoft-network open with no behaviour is unresolved and never rings', async () => {
     const p = await person()
     const before = await calls()
     const id = (await db.query<{ id: number }>(`insert into scan_opens(company_slug, device_type, user_agent, ip_hash) values ($1, 'desktop', 'Mozilla/5.0 (Windows NT 10.0)', 'AZURE-VDI') returning id`, [p.slug])).rows[0].id
-    expect((await db.query<{ r: { open_class: string; class_reason: string; ring: boolean } }>(`select scan_open_finalize($1, 8075, 'Microsoft Corporation', 'US', 'Des Moines') r`, [id])).rows[0].r).toMatchObject({ open_class: 'human', class_reason: 'microsoft_uncorroborated', ring: false })
+    expect((await db.query<{ r: { open_class: string; class_reason: string; ring: boolean } }>(`select scan_open_finalize($1, 8075, 'Microsoft Corporation', 'US', 'Des Moines') r`, [id])).rows[0].r).toMatchObject({ open_class: 'suspect', class_reason: 'microsoft_uncorroborated', eligible: false, ring: false })
     expect(await calls()).toBe(before)
     expect((await db.query(`select 1 from scan_reopen_rings where slug = $1`, [p.slug])).rows).toHaveLength(0)
   })
   it('a person whose network lookup failed counts but never rings', async () => {
     const p = await person()
     const before = await calls()
-    expect(await openNow(p.slug, { ref: null, ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) Mobile/15E148' })).toMatchObject({ open_class: 'human', class_reason: 'network_unknown', ring: false })
+    expect(await openNow(p.slug, { ref: null, ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) Mobile/15E148', net: [null, null] })).toMatchObject({ open_class: 'human', class_reason: 'network_unknown', eligible: true, ring: false })
     expect(await calls()).toBe(before)
+  })
+  it('P5 (round-2 finding 4): a LinkedIn referral whose network lookup failed never rings', async () => {
+    const p = await person()
+    const before = await calls()
+    expect(await openNow(p.slug, { net: [null, null] })).toMatchObject({ open_class: 'human', class_reason: 'linkedin_referrer', ring: false })
+    expect(await calls()).toBe(before)
+    expect((await db.query(`select 1 from scan_reopen_rings where slug = $1`, [p.slug])).rows).toHaveLength(0)
   })
   it('replied or booked prospect does not ring', async () => {
     const a = await person()
@@ -109,7 +118,7 @@ describe('second-day reopen ring (308)', () => {
     const id = (await db.query<{ id: number }>(`insert into scan_opens(company_slug, opened_at, device_type, user_agent, open_class)
       values ($1, now() - interval '1 day', 'mobile', $2, 'link_scanner') returning id`, [p.slug, PHONE])).rows[0].id
     await db.query(`select reclassify_opens('-infinity')`)
-    expect((await db.query(`select open_class from scan_opens where id = $1`, [id])).rows[0]).toEqual({ open_class: 'human' })
+    expect((await db.query(`select open_class, eligible from scan_opens where id = $1`, [id])).rows[0]).toEqual({ open_class: 'human', eligible: false })
     expect((await db.query<{ r: { ring: boolean } }>(`select scan_open_finalize($1, null, null, null, null) r`, [id])).rows[0].r.ring).toBe(false)
     expect((await db.query(`select 1 from scan_reopen_rings where slug = $1`, [p.slug])).rows).toHaveLength(0)
   })
