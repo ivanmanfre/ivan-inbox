@@ -8,6 +8,8 @@ create table public.swishdm_comparison_pages (token text, prospect_id uuid, bran
 create table public.profile_view_log (prospect_id uuid, seat text, viewed_at timestamptz, captured_at timestamptz default now());
 create table public.post_engagers (prospect_id uuid, first_seen_at timestamptz, last_seen_at timestamptz, engagement_type text, comment_text text, post_social_id text);
 create table public.client_post_metrics (title text, post_url text, social_id text, captured_at timestamptz);
+create table public.booking_attributions (meeting_id text not null, client_id text not null default 'risedtc', slug text,
+  booked_at timestamptz, prospect_id uuid, verdict text not null default 'attributed');
 `
 const WIN = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.7444.162 Safari/537.36'
 
@@ -172,5 +174,58 @@ describe('draft readers move to the human class behind a cutover (306, Task 7)',
     const { migration } = await import('./openTrackingSchema')
     await db.exec(migration('db/306_open_evidence_cutover.sql'))
     expect((await db.query<{ v: string }>(`select value v from integration_config where key='open_class_cutover_at'`)).rows[0].v).toBe(before)
+  })
+})
+
+describe('page events and the booking link (307, Task 8)', () => {
+  let db: PGlite
+  const P1 = '00000000-0000-0000-0000-0000000000b1', P2 = '00000000-0000-0000-0000-0000000000b2'
+  beforeAll(async () => { db = await openDb(5, EXTRA) }, 20_000)
+  afterAll(async () => { await db?.close() })
+  const open = async (slug: string, at: string, cls: string) => (await db.query<{ id: number }>(
+    `insert into scan_opens(company_slug, opened_at, open_class) values ($1, $2::timestamptz, $3) returning id`, [slug, at, cls])).rows[0].id
+  const ev = (id: number, slug: string, kind: string, name: string, at: string) => db.query(
+    `insert into scan_page_events(open_id, company_slug, kind, name, at) values ($1, $2, $3, $4, $5::timestamptz)`, [id, slug, kind, name, at])
+
+  it('one event per open, kind and name', async () => {
+    const id = await open('evt-a', '2026-11-10T10:00:00Z', 'human')
+    await ev(id, 'evt-a', 'section_view', 'buyers', '2026-11-10T10:00:05Z')
+    await expect(ev(id, 'evt-a', 'section_view', 'buyers', '2026-11-10T10:00:09Z')).rejects.toThrow()
+    await expect(ev(id, 'evt-a', 'scroll', 'x', '2026-11-10T10:00:09Z')).rejects.toThrow()
+  })
+  it('events go with their open', async () => {
+    const id = await open('evt-b', '2026-11-10T10:00:00Z', 'human')
+    await ev(id, 'evt-b', 'section_view', 'close', '2026-11-10T10:00:05Z')
+    await db.query(`delete from scan_opens where id = $1`, [id])
+    expect((await db.query(`select * from scan_page_events where open_id = $1`, [id])).rows).toHaveLength(0)
+  })
+  it('a booking shows the last human click in the hour before it, never a scanner one', async () => {
+    const h = await open('evt-c', '2026-11-10T10:00:00Z', 'human')
+    await ev(h, 'evt-c', 'section_view', 'buyers', '2026-11-10T10:01:00Z')
+    await ev(h, 'evt-c', 'section_view', 'close', '2026-11-10T10:03:00Z')
+    await ev(h, 'evt-c', 'cta_click', 'book-close', '2026-11-10T10:04:00Z')
+    const s = await open('evt-c', '2026-11-10T10:30:00Z', 'link_scanner')
+    await ev(s, 'evt-c', 'cta_click', 'book-header', '2026-11-10T10:31:00Z')
+    await db.query(`insert into booking_attributions(meeting_id, slug, booked_at, prospect_id) values ('m1', 'evt-c', '2026-11-10T10:40:00Z', '${P1}')`)
+    expect((await db.query(`select meeting_id, slug, last_click_name, deepest_section from scan_booking_page_link where meeting_id='m1'`)).rows[0])
+      .toEqual({ meeting_id: 'm1', slug: 'evt-c', last_click_name: 'book-close', deepest_section: 'close' })
+  })
+  it('a booking with no click in the hour before reads null', async () => {
+    const h = await open('evt-d', '2026-11-10T08:00:00Z', 'human')
+    await ev(h, 'evt-d', 'cta_click', 'book-close', '2026-11-10T08:01:00Z')
+    await db.query(`insert into booking_attributions(meeting_id, slug, booked_at, prospect_id) values ('m2', 'evt-d', '2026-11-10T10:40:00Z', '${P2}')`)
+    expect((await db.query(`select last_click_at, last_click_name from scan_booking_page_link where meeting_id='m2'`)).rows[0]).toEqual({ last_click_at: null, last_click_name: null })
+  })
+  it('bookings without a prospect are not listed; the slug falls back to the link we sent', async () => {
+    await db.query(`insert into booking_attributions(meeting_id, slug, booked_at, prospect_id) values ('m3', 'evt-c', '2026-11-10T10:40:00Z', null)`)
+    expect((await db.query(`select 1 from scan_booking_page_link where meeting_id='m3'`)).rows).toHaveLength(0)
+    const P3 = '00000000-0000-0000-0000-0000000000b3'
+    await db.query(`insert into outreach_messages(prospect_id, direction, sent_at, message_text) values ('${P3}', 'outbound', '2026-11-09T10:00:00Z', 'https://inboundonsteroids.com/scan/Evt-E')`)
+    await db.query(`insert into booking_attributions(meeting_id, slug, booked_at, prospect_id) values ('m4', null, '2026-11-10T10:40:00Z', '${P3}')`)
+    expect((await db.query(`select slug from scan_booking_page_link where meeting_id='m4'`)).rows[0]).toEqual({ slug: 'evt-e' })
+  })
+  it('events and the view are closed to the public key', async () => {
+    for (const rel of ['scan_page_events', 'scan_booking_page_link'])
+      expect((await db.query<{ a: string | null }>(`select relacl::text a from pg_class where relname = $1`, [rel])).rows[0].a ?? '').not.toMatch(/anon=|authenticated=/)
   })
 })
