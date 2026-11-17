@@ -25,7 +25,8 @@ const { navLines } = await import('../shell/navModel')
 const { Side } = await import('../shell/Side')
 const { PhoneTabs } = await import('../shell/Phone')
 const { renderInFrame } = await import('../test-utils')
-const { __resetXForTests } = await import('./useXReview')
+const { __resetXForTests, useXWaiting } = await import('./useXReview')
+const XProbe = () => { const w = useXWaiting(); return <i data-x-probe={w.failed ? 'failed' : w.n == null ? 'loading' : 'ok'} /> }
 const { XFlag } = await import('./XFlag')
 const { XMarks } = await import('../content/xDays')
 
@@ -92,9 +93,10 @@ describe('X desk count', () => {
     const empty: Record<string, unknown> = { then: (ok: (v: unknown) => unknown) => Promise.resolve({ data: [], error: null }).then(ok) }
     for (const k of ['select', 'neq', 'eq', 'is', 'in', 'or', 'not', 'gte', 'lte', 'order', 'limit']) empty[k] = () => empty
     const from = vi.spyOn(supabase, 'from').mockReturnValue(empty as unknown as ReturnType<typeof supabase.from>)
-    expect(await fetchOpsWaiting()).toEqual({ ivan: 0, risedtc: 0, arch: 0, swishdm: 0, anna: 0 })
-    expect(api.fetchXReview).not.toHaveBeenCalled()
-    from.mockRestore()
+    try {
+      expect(await fetchOpsWaiting()).toEqual({ ivan: 0, risedtc: 0, arch: 0, swishdm: 0, anna: 0 })
+      expect(api.fetchXReview).not.toHaveBeenCalled()
+    } finally { from.mockRestore() }
   })
 
   it('the Content line is review drafts plus X waiting (Ivan only); an X read that fails or is loading leaves it alone', () => {
@@ -129,7 +131,9 @@ describe('X desk count', () => {
 
   it('an X read that fails shows the review count alone, never a failed Content badge', async () => {
     api.fetchXReview.mockRejectedValue(new Error('x down'))
-    renderInFrame(<PhoneTabs />, { layout: 'phone', hash: '#exp/d/home', readers: { content: async () => 2 } })
+    renderInFrame(<><PhoneTabs /><XProbe /></>, { layout: 'phone', hash: '#exp/d/home', readers: { content: async () => 2 } })
+    // wait for the read to have rejected, so this can tell failure from loading
+    await waitFor(() => expect(document.querySelector('[data-x-probe]')?.getAttribute('data-x-probe')).toBe('failed'))
     await screen.findByRole('link', { name: 'Content, 8 posts to review' })
     expect(document.body.textContent).not.toContain('NaN')
   })

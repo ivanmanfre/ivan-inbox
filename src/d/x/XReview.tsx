@@ -90,11 +90,11 @@ function Checks({ a, words }: { a: XArticle; words: number }) {
   )
 }
 
-function Head({ layout, label, title, navigate, actions, back = true }: { layout: Layout; label: string; title: string; navigate: (h: string) => void; actions?: ReactNode; back?: boolean }) {
+function Head({ layout, label, title, navigate, actions, back = true }: { layout: Layout; label?: string; title: string; navigate: (h: string) => void; actions?: ReactNode; back?: boolean }) {
   return (
     <div className={`xr-head xr-head-${layout}`}>
-      {back && <button type="button" className="d-ib xr-back" aria-label="Back to the X desk" onClick={() => { if (!document.querySelector('.d-confirm')) navigate(dHash('content', 'x')) }}>‹</button>}
-      <div className="xr-head-t"><small><XLogo size={11} /> {label}</small><b>{title}</b></div>
+      {back && <button type="button" className="d-ib xr-back" aria-label="Back to X" onClick={() => { if (!document.querySelector('.d-confirm')) navigate(dHash('content', 'x')) }}>‹</button>}
+      <div className="xr-head-t">{label && <small><XLogo size={11} /> {label}</small>}<b>{title}</b></div>
       {actions && <div className="xr-head-k">{actions}</div>}
     </div>
   )
@@ -523,7 +523,8 @@ function QuickReview({ k, layout, navigate }: { k: XQuick; layout: Layout; navig
   )
 }
 
-export default function XReviewPage({ layout, route, navigate }: PlaceProps) {
+/** embedded: the page sits under Content's own "X" title, so the list head does not say X again. */
+export default function XReviewPage({ layout, route, navigate, embedded = false }: PlaceProps & { embedded?: boolean }) {
   const x = useXReview()
   const id = route.query.get('id')
   const items = useMemo(() => xFlagItems(x.list), [x.list])
@@ -535,7 +536,7 @@ export default function XReviewPage({ layout, route, navigate }: PlaceProps) {
   if (article) return <ArticleReview key={article.id} a={article} layout={layout} navigate={navigate} />
   if (quote) return <QuoteReview key={quote.id} q={quote} layout={layout} navigate={navigate} />
   if (quick) return <QuickReview key={quick.id} k={quick} layout={layout} navigate={navigate} />
-  const head = <Head layout={layout} label="X desk" title={first ? 'Waiting on you' : 'X review'} navigate={navigate} back={false} />
+  const head = <Head layout={layout} label={embedded ? undefined : 'X'} title={first ? 'Waiting on you' : 'X review'} navigate={navigate} back={false} />
   if (!x.list && x.error) return <div className={`xr xr-${layout}`}>{head}<Failed what="the X review list" detail={x.error} onRetry={() => void x.refresh()} /></div>
   if (!x.list) return <div className={`xr xr-${layout}`}>{head}<Skeleton lines={8} label="Reading the X review" /></div>
   return (

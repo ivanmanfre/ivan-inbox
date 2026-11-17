@@ -256,7 +256,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   else if (sub === 'brain') body = <Suspense fallback={<Skeleton lines={5} label="Reading the brain area" />}><div className="cn-now-tools"><a href={dHash('content', 'plan', qLane === 'ivan' ? { insights: '1' } : { lane: qLane, insights: '1' })}>← Plan insights</a></div><BrainArea lane={qLane} setLane={setLane} phone={phone} query={q} /></Suspense>
   else if (sub === 'results') body = view === 'analytics' ? legacy('results') : cv2.frame ? column(<Results lane={qLane} setLane={setLane} v2 />) : <Results lane={qLane} setLane={setLane} />
   else if (sub === 'x') {
-    const x = <Suspense fallback={<Skeleton lines={8} label="Reading the X review" />}><XReviewPage layout={layout} route={route} navigate={navigate} /></Suspense>
+    const x = <Suspense fallback={<Skeleton lines={8} label="Reading the X review" />}><XReviewPage layout={layout} route={route} navigate={navigate} embedded /></Suspense>
     body = cv2.frame ? column(x) : x
   }
   else if (sub === 'inputs') body = <Suspense fallback={<Skeleton lines={5} label="Reading outliers" />}><InputsPage lane={qLane} setLane={setLane} phone={phone} query={q} /></Suspense>
@@ -269,7 +269,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
     body = phone && window_ ? window_ : <div className={`cn-split${window_ ? ' cn-open' : ''}${desk ? ' cv2-split' : ''}`} data-wide={desk ? (wide ? 'yes' : 'no') : undefined}><div className={`cn-left${allPosts ? ' cn-left-legacy' : ''}`}>{left}</div>{window_}</div>
   }
   const title = sub === 'plan' ? 'Plan' : sub === 'brain' ? 'Patterns and benchmarks' : sub === 'ideas' ? 'Best ideas for your next post' : sub === 'results' ? 'Performance' : sub === 'strategy' ? (q.get('section') === 'direction' ? 'Strategy' : q.get('section') === 'this-week' ? 'Content brain' : 'Strategy') : sub === 'inputs' ? 'Outliers' : sub === 'x' ? 'X' : sub === 'magnets' ? 'Lead magnets' : sub === 'styles' ? 'Styles' : onCal ? 'Calendar' : allPosts ? 'All posts' : magnetView ? 'Lead magnets' : 'Review'
-  return <div ref={presentation} className={`cn${cv2.frame ? ' cv2-frame' : ''}`} data-cv2-sub={cv2.frame ? sub : undefined}>{!(phone && (title === SUB_LABEL[sub] || (cv2.frame && sub === 'ideas'))) && <AnswerRow title={title} />}<SubNav on={sub} attention={needs > 0} lane={qLane} section={q.get('section')} v2={cv2.frame} counts={{ now: reading && !weekRead.settled ? null : review.all, x: xWaiting.failed ? undefined : xWaiting.n, magnets: LANES.some(l => magnets[l] === undefined) ? null : LANES.reduce((n, l) => n + (magnets[l] ?? 0), 0) }} />{body}
+  return <div ref={presentation} className={`cn${cv2.frame ? ' cv2-frame' : ''}`} data-cv2-sub={cv2.frame ? sub : undefined}>{!(phone && (title === SUB_LABEL[sub] || (cv2.frame && sub === 'ideas'))) && <AnswerRow title={title} />}<SubNav on={sub} attention={needs > 0} lane={qLane} section={q.get('section')} v2={cv2.frame} failed={{ x: xWaiting.failed }} counts={{ now: reading && !weekRead.settled ? null : review.all, x: xWaiting.failed ? undefined : xWaiting.n, magnets: LANES.some(l => magnets[l] === undefined) ? null : LANES.reduce((n, l) => n + (magnets[l] ?? 0), 0) }} />{body}
     {dayOpen && <DayPanel lane={dayOpen.lane} keys={dayOpen.keys} items={items[dayOpen.lane]} onClose={() => setDayOpen(null)} onOpen={openFromPlan} onMove={onMove} onArm={armIt} onChanged={refresh} />}
   </div>
 }

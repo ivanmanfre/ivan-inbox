@@ -47,11 +47,13 @@ export function contentRedirect(sub: string | null, query: URLSearchParams): str
 }
 export type Trio = Record<Lane, number | null | undefined>
 export type Gen = Record<Lane, { n: number; stalled: number }>
-export function SubNav({ on, attention = false, lane = 'ivan', section, v2 = false, counts }: {
+export function SubNav({ on, attention = false, lane = 'ivan', section, v2 = false, counts, failed }: {
   on: Sub; attention?: boolean; lane?: Lane; section?: string | null
   /** Brief 4 frame (SPEC-content §2.0): counts on the tabs, the ⋯ at the end of the tab row, no second row. */
   v2?: boolean
   counts?: Partial<Record<Sub, number | null>>
+  /** A tab whose own count could not be read: shows a ! (the other tabs and the Content number are unaffected). */
+  failed?: Partial<Record<Sub, boolean>>
 }) {
   const f = useFrame()
   const context = { lane }
@@ -104,8 +106,9 @@ export function SubNav({ on, attention = false, lane = 'ivan', section, v2 = fal
     <nav ref={tabs} className={`cn-now-tabs cv2-tabs ${f.layout === 'phone' ? 'cn-ptabs' : 'cn-sub'}`} aria-label="Content places">
       {SUBS.map(s => {
         const n = counts?.[s]
+        const bad = failed?.[s] === true
         return <a key={s} href={dHash('content', s, context)} className={s === on ? 'cn-on' : ''} aria-current={s === on ? 'page' : undefined} data-sub={s}>
-          {SUB_LABEL[s]}{n !== undefined && <b className="cv2-tabn" aria-label={n == null ? 'counting' : `${n} waiting`}>{n == null ? '…' : n}</b>}
+          {SUB_LABEL[s]}{bad && <b className="cv2-tabn" aria-label="X count could not be read">!</b>}{!bad && n !== undefined && <b className="cv2-tabn" aria-label={n == null ? 'counting' : `${n} waiting`}>{n == null ? '…' : n}</b>}
         </a>
       })}
       <span className="cn-grow" />

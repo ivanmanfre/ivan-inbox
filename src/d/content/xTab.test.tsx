@@ -38,7 +38,7 @@ vi.mock('./Ideas', () => {
   return { Ideas: () => null, useIdeaBanks: () => banks }
 })
 vi.mock('../x/XReview', () => ({
-  default: ({ route, layout }: PlaceProps) => <div data-x-review data-id={route.query.get('id') ?? ''} data-layout={layout} />,
+  default: ({ route, layout, embedded }: PlaceProps & { embedded?: boolean }) => <div data-x-review data-id={route.query.get('id') ?? ''} data-layout={layout} data-embedded={embedded ? 'yes' : 'no'} />,
 }))
 
 import ContentPage from './index'
@@ -96,5 +96,29 @@ describe('the X tab inside Content', () => {
     lib.fetchXReview.mockResolvedValue({ articles: [{ id: 'a1', status: 'review', title: 'A', created_at: '2026-11-07T10:00:00Z', updated_at: '2026-11-07T10:00:00Z' }], quotes: [], quicks: [] })
     page('#exp/d/content/x')
     await screen.findByLabelText('1 waiting')
+  })
+
+  it('the X review is told it sits inside Content, so it does not repeat the page title', async () => {
+    page('#exp/d/content/x')
+    await waitFor(() => expect(review()?.dataset.embedded).toBe('yes'))
+  })
+
+  it('a failed X read puts a ! on the X tab only; Content and the other tabs stay as they were', async () => {
+    lib.fetchXReview.mockRejectedValue(new Error('x down'))
+    page('#exp/d/content/x')
+    const mark = await screen.findByLabelText('X count could not be read')
+    expect(mark.textContent).toBe('!')
+    expect(document.querySelector('a[data-sub="x"]')?.contains(mark)).toBe(true)
+    expect(document.querySelector('a[data-sub="x"] [aria-label$="waiting"]')).toBeNull()
+    expect(document.querySelectorAll('[aria-label="X count could not be read"]')).toHaveLength(1)
+  })
+
+  it('a loading X read shows neither a number nor the failure mark on the X tab', async () => {
+    lib.fetchXReview.mockReturnValue(new Promise(() => {}))
+    page('#exp/d/content/x')
+    await waitFor(() => expect(review()).not.toBeNull())
+    const tab = document.querySelector('a[data-sub="x"]')!
+    expect(tab.querySelector('[aria-label$="waiting"]')).toBeNull()
+    expect(screen.queryByLabelText('X count could not be read')).toBeNull()
   })
 })

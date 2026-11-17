@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useSyncExternalStore } from 'react'
 import { fetchXReview, markXQuickSeen, xFlagItems, xWaitingCount, type XReviewList } from '../../lib/xReview'
 
-// ONE X REVIEW READ FOR THE APP. The flag on Home, the X desk, its nav count and the review screen all read
+// ONE X REVIEW READ FOR THE APP. The flag on Home, the X tab in Content, its count and the review screen all read
 // the same store, so a decision on the review screen moves the flag at once. Re-read on mount
 // (if older than 15 s), on focus, every minute while visible, and every 5 s while anything is
 // publishing / posting (so "Publishing…" turns into "Live on X" without a pull).
@@ -89,9 +89,9 @@ export function useXReview() {
 }
 
 /**
- * THE X DESK'S ONE NUMBER (nav line, dock badge): items waiting on Ivan, off the same store as the
- * desk, so a decision there moves the count at once. Reads on mount when stale, on focus, and every
- * 3 min while visible (the frame counts' pace; the desk itself reads every minute while open).
+ * THE X TAB'S NUMBER (it is added to Ivan's Content number in the nav line, dock and phone badge): items waiting on Ivan, off the same store as the
+ * X tab, so a decision there moves the count at once. Reads on mount when stale, on focus, and every
+ * 3 min while visible (the frame counts' pace; the X tab itself reads every minute while open).
  * n is null until the first read lands; failed = no list at all because the read failed.
  */
 export function useXWaiting(): { n: number | null; failed: boolean } {
