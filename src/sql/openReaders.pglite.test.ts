@@ -305,3 +305,19 @@ describe('daily check that the classifier still tells the truth (309, Task 10)',
     expect((await db.query(`select schedule, command from cron.job where jobname = 'open-tracking-daily-check'`)).rows[0]).toEqual({ schedule: '50 7 * * *', command: 'select public.open_tracking_daily_check()' })
   })
 })
+
+describe('rollbacks', () => {
+  it('every rollback runs, newest first, and leaves the live shapes', async () => {
+    const { readFileSync } = await import('node:fs')
+    const db = await openDb(7, EXTRA)
+    for (const f of ['309_open_daily_check', '308_scan_reopen_ring', '307_scan_page_events', '306_open_evidence_cutover', '305_open_readers', '304_open_finalize_backfill', '303_open_class'])
+      await db.exec(readFileSync(`db/${f}_rollback.sql`, 'utf8'))
+    const cols = (await db.query<{ c: string }>(`select column_name c from information_schema.columns where table_name = 'scan_opens' order by ordinal_position`)).rows.map(r => r.c)
+    expect(cols).toEqual(['id', 'company_slug', 'opened_at', 'is_owner', 'device_type', 'referrer_host', 'ip_hash', 'user_agent'])
+    expect((await db.query(`select count(*)::int n from cron.job`)).rows[0]).toEqual({ n: 0 })
+    expect((await db.query(`select real_opens from scan_open_stats limit 1`)).fields.map(f => f.name)).toEqual(['real_opens'])
+    expect((await db.query<{ r: string }>(`select pg_get_function_result('public.ivan_scan_open_evidence()'::regprocedure) r`)).rows[0].r).toContain('scan_slug text')
+    await db.query(`insert into page_opens(page, org, is_external) values ('leading-social', 'Comcast', true)`)
+    await db.close()
+  }, 30_000)
+})
