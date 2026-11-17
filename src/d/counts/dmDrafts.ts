@@ -121,12 +121,17 @@ async function threadRows(ids: string[]): Promise<InboxMessage[]> {
 /** One seat's DM numbers, read live. Throws on a failed read; never guesses. */
 export async function fetchDmSeatCount(seat: Seat, now?: number): Promise<DmSeatCount> {
   const at = now ?? Date.now()
+  // The flag read is small and needs no rows: it goes out WITH the rows read, not after it (2026-11-17
+  // speed pass: it was a serial round trip on Home's queue). Still required below; an answer that
+  // returns before it (no candidates) never waits on it.
+  const manual = fetchManualReplyIds()
+  manual.catch(() => {})
   // Explicit historical-time reads keep the original date-window path. The
   // quick RPC is a live snapshot and must not classify a past instant.
   const quick = now === undefined ? await firstRows() : null
   const ids = quick === null ? await candidateIds(seat, at) : []
   if ((quick === null && ids.length === 0) || (quick !== null && quick.length === 0)) return { drafts: 0, needs: 0 }
-  const [rows, manualReplyIds] = await Promise.all([quick ?? threadRows(ids), fetchManualReplyIds()])
+  const [rows, manualReplyIds] = await Promise.all([quick ?? threadRows(ids), manual])
   // "Mark as solved" (outreach_prospects.solved_at) is not in the view: one small read for the
   // owed threads only, then TODAY'S rule (unansweredSince honours solvedAt). A failed read throws
   // like any other: the count says it could not be read, never a guess.
