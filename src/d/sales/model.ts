@@ -10,6 +10,7 @@ import { warsawDm, warsawDow, warsawHm } from '../ui/time'
 
 /** The pack links, left to right: document, label, the row kind it needs (null = always there). */
 export const PACK_LINKS: Array<{ doc: PackDoc; label: string; kind: PackKind | null }> = [
+  { doc: 'deck', label: 'deck', kind: 'deck' },
   { doc: 'card', label: 'card', kind: 'card' },
   { doc: 'call_sheet', label: 'sheet', kind: 'call_sheet' },
   { doc: 'audience_audit', label: 'audit', kind: 'audience_audit' },

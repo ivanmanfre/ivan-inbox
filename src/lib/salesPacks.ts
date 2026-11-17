@@ -26,7 +26,7 @@ import { isLiveBooking, type CalendarEvent } from './nextCall'
 // Packs
 // ---------------------------------------------------------------------------
 
-export type PackKind = 'card' | 'call_sheet' | 'audience_audit' | 'asset_ideas' | 'prospect' | 'extra'
+export type PackKind = 'card' | 'call_sheet' | 'audience_audit' | 'asset_ideas' | 'prospect' | 'deck' | 'extra'
 
 /**
  * Tab order, and the only kinds the surface offers. `extra` is a valid row kind
@@ -34,7 +34,12 @@ export type PackKind = 'card' | 'call_sheet' | 'audience_audit' | 'asset_ideas' 
  * not a tab: a tab with no stated meaning is a tab nobody opens on a live call.
  * `compare` is a seventh, VIRTUAL tab — a link card, never a row.
  */
-export const PACK_KINDS: PackKind[] = ['card', 'call_sheet', 'audience_audit', 'asset_ideas', 'prospect']
+export const PACK_KINDS: PackKind[] = ['card', 'call_sheet', 'audience_audit', 'asset_ideas', 'prospect', 'deck']
+
+/** A slug said in words: `sebastian-studio-nordost` is `Sebastian Studio Nordost`. The name of a pack whose meta is empty. */
+export function slugWords(slug: string): string {
+  return slug.split(/[-_\s]+/).filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1)).join(' ')
+}
 
 /** What the list row needs to draw a heading without opening a dossier. */
 export type PackMeta = {
