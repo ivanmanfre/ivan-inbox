@@ -37,9 +37,9 @@ const panel = (): Panel => ({
   },
   pv48: [{ posted_at: '2026-11-12T09:00:00Z', first_line: 'Made-up opening line one', kind: 'poland_with_him', contacted_viewers_48h: 7, contacted_fit_viewers_48h: 4, baseline_per_48h: 5.5, window_open: true }],
   cohorts: {
-    filter_key: '2026-11-02|v3|campaign-x', note: 'Rates compare only within one filter key.',
+    filter_key: '2026-11-02|v3|campaign-x', note: 'Compare rates only inside one group.',
     rows: [{
-      filter_key: '2026-11-02|v3|campaign-x', campaign_name: 'Campaign X', period_from: '2026-11-02', period_to: null, top_post_kind: 'proof', top_belief: 1, top_vehicle: 'rant', scorer_version: 'v3',
+      filter_key: '2026-11-02|v3|campaign-x', campaign_name: 'Campaign X', period_from: '2026-11-02', period_to: null, top_post_kind: 'proof', top_belief: 1, top_vehicle: 'rant', scorer_version: 'v3', note_arm: 'note',
       invites: 30, accept_base: 24, accepts: 12, reply_base: 10, replies: 2, booking_base: 0, bookings: 0, accept_rate: 0.5, reply_rate: 0.2, booking_rate: null, small_n: false,
     }],
   },
@@ -73,7 +73,7 @@ describe('week strip', () => {
     expect(within(strip).getByText('2 of 5 filled, 3 open')).toBeTruthy()
     expect(within(strip).getByText('Belief 3: 1')).toBeTruthy()
     expect(within(strip).getByText('1 with no belief yet')).toBeTruthy()
-    expect(within(strip).getByText('1 copy on top')).toBeTruthy()
+    expect(within(strip).getByText('1 copy as extras')).toBeTruthy()
     expect(within(strip).getByText(/one every 2 weeks/)).toBeTruthy()
   })
 })
@@ -95,11 +95,11 @@ describe('measurement', () => {
     const { container } = render(<CalendarPanel state={{ panel: panel(), failed: false }} />)
     const m = container.querySelector('.cp17-measure') as HTMLElement
     expect(within(m).getByText('7 people, 4 a fit')).toBeTruthy()
-    expect(m.textContent).toContain('normal 5.5')
+    expect(m.textContent).toContain('usual 5.5 per 48 h')
     expect(m.textContent).toContain('still counting')
-    expect(m.textContent).toContain('Campaign X · scorer v3 · from 2026-11-02 · filter 2026-11-02|v3|campaign-x')
+    expect(m.textContent).toContain('Campaign X · scorer v3 · with a note · from 2026-11-02')
     expect(m.textContent).toContain('accepted 12 of 24 (50%)')
-    expect(m.textContent).toContain('booked 0 of 0 (none yet)')
+    expect(m.textContent).toContain('booked 0 of 0, small sample')
     expect(m.textContent).not.toContain('accepted 12 of 24, small sample')
     expect(within(m).getByText('Made-up quote about a post.')).toBeTruthy()
     expect(m.textContent).toContain('Content')
@@ -121,6 +121,26 @@ describe('small samples and key groups', () => {
     expect(m.textContent).toContain('replied 2 of 10, small sample')
     expect(m.querySelectorAll('.cp17-group')).toHaveLength(2)
     expect(m.querySelector('.cp17-group')!.textContent).toContain('scorer v4')
+  })
+})
+
+describe('fit not measured and unrecorded scorer', () => {
+  it('prints "fit not measured" for a null fit count, never blank or 0', () => {
+    const p = panel()
+    p.pv48 = [{ ...p.pv48[0], contacted_fit_viewers_48h: null, contacted_fit_known_48h: null }]
+    const { container } = render(<CalendarPanel state={{ panel: p, failed: false }} />)
+    const m = container.querySelector('.cp17-measure') as HTMLElement
+    expect(m.textContent).toContain('7 people, fit not measured')
+    expect(m.textContent).not.toContain(' a fit')
+  })
+  it('says "scorer not recorded" and "no note" in words and keeps the raw key out of the text', () => {
+    const p = panel()
+    p.cohorts.rows = [{ ...p.cohorts.rows[0], scorer_version: 'unstamped', note_arm: 'blank' }]
+    const { container } = render(<CalendarPanel state={{ panel: p, failed: false }} />)
+    const m = container.querySelector('.cp17-measure') as HTMLElement
+    expect(m.textContent).toContain('Campaign X · scorer not recorded · no note · from 2026-11-02')
+    expect(m.textContent).not.toContain('campaign-x')
+    expect(m.textContent).not.toContain('vunstamped')
   })
 })
 

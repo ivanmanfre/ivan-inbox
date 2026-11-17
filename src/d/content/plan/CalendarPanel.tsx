@@ -58,7 +58,7 @@ function WeekStrip({ p }: { p: Panel }) {
           <span>{target > 0 ? `${w.slots} of ${target} filled` : `${w.slots} planned`}{open ? `, ${open} open` : ''}</span>
           {beliefs.map(([b, n]) => <span key={b} className="cp17-chip">Belief {b}: {n}</span>)}
           {w.no_belief > 0 && <span className="cp17-chip cp17-chip-open">{w.no_belief} with no belief yet</span>}
-          {w.copies > 0 && <span className="cp17-extra">{w.copies} {w.copies === 1 ? 'copy' : 'copies'} on top</span>}
+          {w.copies > 0 && <span className="cp17-extra">{w.copies} {w.copies === 1 ? 'copy' : 'copies'} as extras</span>}
         </li>
       })}
     </ul>
@@ -92,7 +92,9 @@ function ProfileFirst({ p }: { p: Panel }) {
 
 type Cohort = Panel['cohorts']['rows'][number]
 const SMALL = 20
-const keyLabel = (c: Cohort) => [c.campaign_name ?? 'Campaign', c.scorer_version != null && c.scorer_version !== '' ? `scorer ${String(c.scorer_version).replace(/^v?/, 'v')}` : null, c.period_from ? `from ${c.period_from}` : null].filter(Boolean).join(' · ')
+const scorerText = (v: Cohort['scorer_version']) => v == null || v === '' || v === 'unstamped' ? 'scorer not recorded' : `scorer ${String(v).replace(/^v?/, 'v')}`
+const noteText = (a: Cohort['note_arm']) => a === 'note' ? 'with a note' : a === 'blank' ? 'no note' : null
+const keyLabel = (c: Cohort) => [c.campaign_name ?? 'Campaign', scorerText(c.scorer_version), noteText(c.note_arm), c.period_from ? `from ${c.period_from}` : null].filter(Boolean).join(' · ')
 const kindText = (c: Cohort) => `${c.top_post_kind ? (KIND_LABEL[c.top_post_kind] ?? c.top_post_kind.replace(/_/g, ' ')) : 'no post'}${c.top_belief != null ? `, belief ${c.top_belief}` : ''}${c.top_vehicle ? `, ${vehicleWord(c.top_vehicle)}` : ''}`
 /** A rate, or "small sample" when the base is too thin to read. */
 const rate = (word: string, n: number, base: number, small: boolean) => small ? `${word} ${n} of ${base}, small sample` : `${word} ${n} of ${base} (${pct(n, base)})`
@@ -113,23 +115,22 @@ function Measure({ p }: { p: Panel }) {
       {p.pv48.map((v, i) => <li key={`${v.posted_at}:${i}`}>
         <span className="cp17-date">{warsawDm(v.posted_at)}</span>
         <span className="cp17-first">{v.first_line}{v.kind ? <em> ({KIND_LABEL[v.kind] ?? v.kind.replace(/_/g, ' ')})</em> : null}</span>
-        <span className="cp17-num">{v.contacted_viewers_48h} people, {v.contacted_fit_viewers_48h} a fit</span>
-        <span className="cp17-note">{v.baseline_per_48h != null ? `normal ${v.baseline_per_48h}` : ''}{v.window_open ? ' · still counting' : ''}</span>
+        <span className="cp17-num">{v.contacted_viewers_48h} people, {v.contacted_fit_viewers_48h == null ? 'fit not measured' : `${v.contacted_fit_viewers_48h} a fit`}</span>
+        <span className="cp17-note">{v.baseline_per_48h != null ? `usual ${v.baseline_per_48h} per 48 h` : ''}{v.window_open ? ' · still counting' : ''}</span>
       </li>)}
     </ul>}
     <h4>Invites by what sat on top of your feed</h4>
     {co.rows.length === 0 ? <p className="cp17-note">No cohort rows yet.</p> : <>
       <p className="cp17-note">{co.note}</p>
       {groupsOf(co.rows).map(g => <div key={g.key} className="cp17-group">
-        <p className="cp17-note"><b>{keyLabel(g.head)}</b> · filter {g.key}</p>
+        <p className="cp17-note" title={`filter ${g.key}`}><b>{keyLabel(g.head)}</b></p>
         <ul className="cp17-rows">
           {g.rows.map((c, i) => <li key={`${c.top_post_kind}:${c.top_belief}:${c.top_vehicle}:${i}`}>
             <span className="cp17-first">{kindText(c)}</span>
             <span className="cp17-num">{c.invites} invites</span>
             <span className="cp17-num">{rate('accepted', c.accepts, c.accept_base, c.small_n || c.accept_base < SMALL)}</span>
-            <span className="cp17-num">{rate('replied', c.replies, c.reply_base, c.reply_small_n === true)}</span>
-            <span className="cp17-num">{rate('booked', c.bookings, c.booking_base, c.booking_small_n === true)}</span>
-            <span className="cp17-note">{keyLabel(c)}</span>
+            <span className="cp17-num">{rate('replied', c.replies, c.reply_base, (c.reply_small_n ?? c.reply_base < SMALL))}</span>
+            <span className="cp17-num">{rate('booked', c.bookings, c.booking_base, (c.booking_small_n ?? c.booking_base < SMALL))}</span>
           </li>)}
         </ul>
       </div>)}

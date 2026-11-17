@@ -8,13 +8,13 @@ export type PanelQuota = { slot_kind: string; belief: number | null; vehicle: st
 export type PanelWeekFill = { week_start: string; slots: number; copies: number; no_belief: number; by_belief: Record<string, number>; by_vehicle: Record<string, number> }
 export type PanelPost = { id: string; posted_at: string; first_line: string; kind: string | null; belief: number | null; vehicle: string | null; proof: boolean; him: boolean; is_copy: boolean }
 export type PanelProfileFirst = { score: string; proof: boolean; outreach_belief: boolean; him: boolean; unlabeled: string[]; posts: PanelPost[] }
-export type PanelViews = { posted_at: string; first_line: string; kind: string | null; contacted_viewers_48h: number; contacted_fit_viewers_48h: number; baseline_per_48h: number | null; window_open: boolean }
+export type PanelViews = { posted_at: string; first_line: string; kind: string | null; contacted_viewers_48h: number; contacted_fit_viewers_48h: number | null; contacted_fit_known_48h?: number | null; baseline_per_48h: number | null; window_open: boolean }
 export type PanelCohort = {
   filter_key: string; campaign_name: string | null; period_from: string | null; period_to: string | null
   top_post_kind: string | null; top_belief: number | null; top_vehicle: string | null
   invites: number; accept_base: number; accepts: number; reply_base: number; replies: number; booking_base: number; bookings: number
   accept_rate: number | null; reply_rate: number | null; booking_rate: number | null; small_n: boolean
-  scorer_version?: string | number | null; reply_small_n?: boolean | null; booking_small_n?: boolean | null
+  scorer_version?: string | number | null; note_arm?: string | null; reply_small_n?: boolean | null; booking_small_n?: boolean | null
 }
 export type PanelBooking = { call_date: string; reason_class: string; quote: string }
 export type CalendarPanel = {

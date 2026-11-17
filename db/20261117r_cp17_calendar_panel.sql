@@ -4,8 +4,8 @@
 -- One read for Ivan's Plan tab: belief and vehicle per slot for this Warsaw
 -- week and the next 3, the weekly quotas, how full each week is by belief and
 -- vehicle, the profile-first score, profile views by contacted people in 48 h per
--- post, cohort rates of the newest filter period (rates compare only within one
--- filter_key), and the newest "what made you book" quotes.
+-- post, cohort rates of every period (grouped by filter_key in the app; rates compare
+-- only within one filter_key), and the newest "what made you book" quotes.
 --
 -- Read only. Same operator check as inbox_lane_adjustment_cohorts. A slot with
 -- no belief and no belief on its placed draft returns null, never a guess.
@@ -20,7 +20,7 @@ begin;
 
 create or replace function public.cp17_calendar_panel_ivan()
 returns jsonb
-language plpgsql stable security definer set search_path = public, pg_temp as $$
+language plpgsql stable security definer set search_path = pg_catalog, public as $$
 declare
   as_of timestamptz := statement_timestamp();
   this_monday date;
@@ -86,14 +86,14 @@ begin
     'posted_at', p.posted_at, 'first_line', p.first_line, 'kind', p.kind,
     'contacted_viewers_48h', p.contacted_viewers_48h,
     'contacted_fit_viewers_48h', p.contacted_fit_viewers_48h,
+    'contacted_fit_known_48h', p.contacted_fit_known_48h,
     'baseline_per_48h', p.baseline_per_48h, 'window_open', p.window_open
   ) order by p.posted_at desc), '[]'::jsonb) into v_pv
   from (select * from public.cp17_post_profile_views_ivan x
         where not coalesce(x.deleted, false) order by x.posted_at desc limit 10) p;
 
   select string_agg(distinct c.filter_key, '; ') into v_key
-  from public.cp17_top_of_feed_cohorts_ivan c
-  where c.period_from = (select max(c2.period_from) from public.cp17_top_of_feed_cohorts_ivan c2);
+  from public.cp17_top_of_feed_cohorts_ivan c;
 
   select coalesce(jsonb_agg(jsonb_build_object(
     'filter_key', c.filter_key, 'campaign_name', c.campaign_name,
@@ -103,13 +103,12 @@ begin
     'reply_base', c.reply_base, 'replies', c.replies,
     'booking_base', c.booking_base, 'bookings', c.bookings,
     'accept_rate', c.accept_rate, 'reply_rate', c.reply_rate, 'booking_rate', c.booking_rate,
-    'scorer_version', to_jsonb(c)->'scorer_version',
+    'scorer_version', to_jsonb(c)->'scorer_version', 'note_arm', to_jsonb(c)->'note_arm',
     'small_n', c.small_n,
     'reply_small_n', to_jsonb(c)->'reply_small_n',
     'booking_small_n', to_jsonb(c)->'booking_small_n'
   ) order by c.filter_key, c.top_post_kind, c.top_belief, c.top_vehicle), '[]'::jsonb) into v_coh
-  from public.cp17_top_of_feed_cohorts_ivan c
-  where c.period_from = (select max(c2.period_from) from public.cp17_top_of_feed_cohorts_ivan c2);
+  from public.cp17_top_of_feed_cohorts_ivan c;
 
   select coalesce(jsonb_agg(jsonb_build_object(
     'call_date', b.call_date, 'reason_class', b.reason_class, 'quote', b.quote
@@ -125,7 +124,7 @@ begin
     'profile_first', public.cp17_profile_first_ivan(),
     'pv48', v_pv,
     'cohorts', jsonb_build_object('filter_key', v_key, 'rows', v_coh,
-      'note', 'Rates compare only within one filter key.'),
+      'note', 'Compare rates only inside one group.'),
     'booking_reasons', v_book,
     'enforce', v_enf
   );
