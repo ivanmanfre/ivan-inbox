@@ -3,6 +3,8 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useState, type ReactNode } from 'react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 vi.mock('../counts/inbox', () => ({
   useDInbox: () => ({ refresh: () => {} }),
@@ -79,6 +81,31 @@ function DesktopWithDrawerState({ min = false }: { min?: boolean }) {
     </FrameCtx.Provider>
   )
 }
+
+describe('daily-brief-trim Task 10.1: Content sub-pages are listed once', () => {
+  it('on Content the side panel keeps the place link and draws no sub-page links', () => {
+    const { container } = renderInFrame(<Desktop setTitleSlot={() => {}} setToolsSlot={() => {}} sideMin={false} setSideMin={() => {}} />, { layout: 'desktop', hash: '#exp/d/content/calendar' })
+    expect(container.querySelector('.d-side .d-nav a[href="#exp/d/content/calendar"]')).toBeNull()
+    expect(container.querySelector('.d-side .d-navsub')).toBeNull()
+    const link = container.querySelector('.d-side .d-nav a[href="#exp/d/content"]')
+    expect(link).toBeTruthy()
+    expect(link!.classList.contains('d-on')).toBe(true)
+    expect(link!.getAttribute('aria-current')).toBe('page')
+  })
+})
+
+describe('daily-brief-trim Task 10.1: the alert popup leaves the thread header alone', () => {
+  const css = readFileSync(join(__dirname, 'ForegroundAlerts.css'), 'utf8')
+  const rule = css.split('\n').find(l => l.startsWith('.d-foreground{'))!
+  it('sits at the bottom right, past the Claude drawer, not at the top', () => {
+    expect(rule).not.toMatch(/top:74px/)
+    expect(rule).toMatch(/bottom:calc\(16px \+ var\(--toast-clear,0px\)\)/)
+    expect(rule).toMatch(/right:calc\(16px \+ var\(--drawer-col,0px\)\)/)
+  })
+  it('the phone rule is unchanged', () => {
+    expect(css).toContain('.d-phone .d-foreground,.wb-foreground-phone .d-foreground{top:auto;right:10px;left:10px;bottom:calc(var(--dock-h,56px) + 40px + env(safe-area-inset-bottom));width:auto}')
+  })
+})
 
 describe('daily-brief-trim Task 6.2: Claude and Intel leave the nav, stay reachable', () => {
   it('the side panel lists six places and settings', () => {

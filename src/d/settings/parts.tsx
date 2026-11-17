@@ -1,5 +1,5 @@
 // Settings parts shared by the legacy plates and the Brief 4 grouped list (same components, same handlers).
-import { fmtUsd, PLAIN_UNVERIFIED, plainNote, plainProvenance } from '../../lib/money'
+import { fmtUsd, PLAIN_UNVERIFIED, plainProvenance } from '../../lib/money'
 import { Key } from '../ui/Key'
 import type { MoneyPlate } from './reads'
 
@@ -19,26 +19,29 @@ export function Pair<T extends string>({ value, options, onPick, disabled, name 
 
 const CLIENT_NAME: Record<string, string> = { risedtc: 'Rise', arch: 'Arch', swishdm: 'SwishDM' }
 
-export function MoneyCells({ m }: { m: MoneyPlate }) {
+type MoneyCell = { id: string; label: string; value: string; note: string }
+
+// A cell with no value to show (no amount recorded, no MRR row, no runway) is left out, never drawn as a placeholder.
+function moneyCells(m: MoneyPlate): MoneyCell[] {
   // Every client the ledger carries an MRR row for (Rise and Arch first), never a typed-in pair.
   const ids = [...new Set(['risedtc', 'arch', ...m.mrr.map(r => r.clientId).filter((x): x is string => Boolean(x))])]
-  const cell = (id: string) => {
-    const r = m.mrr.find(x => x.clientId === id)
-    const a = r?.amountRow
-    const label = CLIENT_NAME[id] ?? id
-    return (
-      <div key={id}><small>{label} MRR</small>
-        {a ? <><em>{fmtUsd(a.amount_usd)}</em><u>{a.verified ? 'verified' : PLAIN_UNVERIFIED} · {plainProvenance(a)}</u></>
-          : r ? <><em className="ds2-z">not recorded</em><u>{plainNote(r.latestRow.note)}</u></>
-            : <><em className="ds2-z">not recorded</em><u>no MRR row on file</u></>}
-      </div>
-    )
+  const cells: MoneyCell[] = []
+  for (const id of ids) {
+    const a = m.mrr.find(x => x.clientId === id)?.amountRow
+    if (a) cells.push({ id, label: `${CLIENT_NAME[id] ?? id} MRR`, value: fmtUsd(a.amount_usd), note: `${a.verified ? 'verified' : PLAIN_UNVERIFIED} · ${plainProvenance(a)}` })
   }
+  if (m.cash != null) cells.push({ id: 'runway', label: 'Runway', value: 'in Money', note: `cash as of ${m.cashAsOf ?? 'unknown'}` })
+  return cells
+}
+
+export const hasMoneyCells = (m: MoneyPlate) => moneyCells(m).length > 0
+
+export function MoneyCells({ m }: { m: MoneyPlate }) {
+  const cells = moneyCells(m)
+  if (cells.length === 0) return null
   return (
     <div className="ds2-money">
-      {ids.map(cell)}
-      <div><small>Runway</small>{m.cash == null ? <><em className="ds2-z">not computed</em><u>no cash on hand recorded</u></> : <><em className="ds2-z">in Money</em><u>cash as of {m.cashAsOf ?? 'unknown'}</u></>}</div>
+      {cells.map(c => <div key={c.id}><small>{c.label}</small><em className={c.id === 'runway' ? 'ds2-z' : undefined}>{c.value}</em><u>{c.note}</u></div>)}
     </div>
   )
 }
-

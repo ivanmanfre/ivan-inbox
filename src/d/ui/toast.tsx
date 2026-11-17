@@ -49,12 +49,25 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     const map = timers.current
     return () => { for (const t of map.values()) window.clearTimeout(t) }
   }, [])
+  // The alert popup (.d-foreground) shares the bottom right with this stack and sits above it:
+  // publish how much room the stack takes, plus the gap, so the popup clears it.
+  const stack = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = stack.current
+    const root = document.documentElement
+    const sync = () => { const h = el?.offsetHeight ?? 0; root.style.setProperty('--toast-clear', h > 0 ? `${h + 16}px` : '0px') }
+    sync()
+    if (!el || typeof ResizeObserver === 'undefined') return () => root.style.removeProperty('--toast-clear')
+    const ro = new ResizeObserver(sync)
+    ro.observe(el)
+    return () => { ro.disconnect(); root.style.removeProperty('--toast-clear') }
+  }, [])
   const swipe = useRef<{ x: number; y: number } | null>(null)
   const close = (t: Item) => { dismiss(t.id); t.onClose?.() }
   return (
     <Ctx.Provider value={{ show, dismiss }}>
       {children}
-      <div className="d-toasts" aria-live="polite">
+      <div className="d-toasts" aria-live="polite" ref={stack}>
         {items.map(t => t.incoming ? (
           <div key={t.id} className="d-toast d-toast-in" role="status" data-toast={t.id}
             onTouchStart={e => { swipe.current = { x: e.touches[0].clientX, y: e.touches[0].clientY } }}
