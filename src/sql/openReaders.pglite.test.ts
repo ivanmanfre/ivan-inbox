@@ -99,3 +99,78 @@ describe('page open alerts only for people (305, Task 6)', () => {
     expect(acl).not.toContain('anon=X')
   })
 })
+
+describe('draft readers move to the human class behind a cutover (306, Task 7)', () => {
+  let db: PGlite
+  const IVAN_C = '00000000-0000-0000-0000-00000000c001', RISE_C = '00000000-0000-0000-0000-00000000c002'
+  let n = 0
+  const pid = () => `00000000-0000-0000-0000-${String(++n).padStart(12, '0')}`
+  beforeAll(async () => {
+    db = await openDb(4, EXTRA)
+    await db.exec(`insert into outreach_campaigns values ('${IVAN_C}', null, 'Ivan'), ('${RISE_C}', 'risedtc', 'RISE');
+      update integration_config set value = (now() - interval '1 day')::text where key = 'open_class_cutover_at';`)
+  }, 20_000)
+  afterAll(async () => { await db?.close() })
+  // a prospect with one link message sent `sentAgo` ago; opens are [minutes after the send, class, ua?, referrer?]
+  async function person(lane: 'ivan' | 'rise', sentAgo: string, opens: Array<[number, string, string?, string?]>) {
+    const id = pid(), slug = 'slug-' + n
+    const host = lane === 'rise' ? 'resources.risedtc.com' : 'inboundonsteroids.com'
+    await db.query(`insert into outreach_prospects(id, campaign_id, name, stage) values ($1, $2, 'P', 'dm_sent')`, [id, lane === 'rise' ? RISE_C : IVAN_C])
+    await db.query(`insert into outreach_messages(prospect_id, direction, channel, message_type, sent_at, message_text)
+      values ($1, 'outbound', 'linkedin', 'dm', now() - $2::interval, $3)`, [id, sentAgo, `here https://${host}/scan/${slug}`])
+    for (const [min, cls, ua, ref] of opens)
+      await db.query(`insert into scan_opens(company_slug, opened_at, device_type, user_agent, referrer_host, open_class)
+        values ($1, now() - $2::interval + $3 * interval '1 minute', 'desktop', $4, $5, $6)`, [slug, sentAgo, min, ua ?? 'Mozilla/5.0 (iPhone) Mobile', ref ?? null, cls])
+    return { id, slug }
+  }
+  const evidence = async (fn: string, id: string) => (await db.query<{ real_opens: number; open_days: number }>(`select * from ${fn}() where prospect_id = $1`, [id])).rows[0]
+
+  it('links sent before the cutover keep the old rule', async () => {
+    const old = await person('ivan', '2 days', [[2, 'human']])
+    expect(await evidence('ivan_scan_open_evidence', old.id)).toBeUndefined()
+    const fresh = await person('ivan', '2 hours', [[2, 'human']])
+    expect((await evidence('ivan_scan_open_evidence', fresh.id))?.real_opens).toBe(1)
+    const oldLater = await person('ivan', '2 days', [[60, 'human']])
+    expect((await evidence('ivan_scan_open_evidence', oldLater.id))?.real_opens).toBe(1)
+  })
+  it('scanner open 20 minutes after a second link message is never evidence', async () => {
+    const old = await person('ivan', '2 days', [[20, 'link_scanner', 'Mozilla/5.0 (Windows NT 10.0) Chrome/142.0.7444.162']])
+    const fresh = await person('ivan', '2 hours', [[20, 'link_scanner', 'Mozilla/5.0 (Windows NT 10.0) Chrome/142.0.7444.162']])
+    expect(await evidence('ivan_scan_open_evidence', old.id)).toBeUndefined()
+    expect(await evidence('ivan_scan_open_evidence', fresh.id)).toBeUndefined()
+    const rise = await person('rise', '2 hours', [[20, 'link_scanner']])
+    expect(await evidence('rise_scan_open_evidence', rise.id)).toBeUndefined()
+  })
+  it('RISE old links also keep the full-version Chrome filter', async () => {
+    const old = await person('rise', '2 days', [[60, 'human', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/142.0.7444.162 Safari/537.36']])
+    expect(await evidence('rise_scan_open_evidence', old.id)).toBeUndefined()
+    const fresh = await person('rise', '2 hours', [[60, 'human', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/142.0.7444.162 Safari/537.36']])
+    expect((await evidence('rise_scan_open_evidence', fresh.id))?.real_opens).toBe(1)
+  })
+  it('lanes stay apart', async () => {
+    const r = await person('rise', '2 hours', [[30, 'human']])
+    expect(await evidence('ivan_scan_open_evidence', r.id)).toBeUndefined()
+    expect((await evidence('rise_scan_open_evidence', r.id))?.real_opens).toBe(1)
+  })
+  it('evidence RPC columns unchanged', async () => {
+    for (const fn of ['ivan_scan_open_evidence', 'rise_scan_open_evidence'])
+      expect((await db.query<{ r: string }>(`select pg_get_function_result('public.${fn}()'::regprocedure) r`)).rows[0].r)
+        .toBe('TABLE(prospect_id uuid, scan_slug text, scan_sent_at timestamp with time zone, open_days integer, real_opens integer, first_open_at timestamp with time zone, last_open_at timestamp with time zone, replied_after_scan boolean)')
+  })
+  it('came back card needs a human reopen 1 hour after the first human open', async () => {
+    const p = await person('ivan', '5 hours', [[10, 'human', 'Mozilla/5.0 (Windows NT 10.0) Chrome/142', undefined], [180, 'human', 'Mozilla/5.0 (Windows NT 10.0) Chrome/142', undefined]])
+    for (const fn of ['came_back_cards', 'inbox_interest_cards']) {
+      const card = (await db.query<{ signals: Array<{ kind: string }> }>(`select signals from ${fn}() where prospect_id = $1`, [p.id])).rows[0]
+      expect(card?.signals.map(s => s.kind)).toEqual(['scan_open'])
+    }
+    const q = await person('ivan', '5 hours', [[10, 'human'], [180, 'link_scanner']])
+    for (const fn of ['came_back_cards', 'inbox_interest_cards'])
+      expect((await db.query(`select 1 from ${fn}() where prospect_id = $1`, [q.id])).rows).toHaveLength(0)
+  })
+  it('the cutover row is written once and kept on re-apply', async () => {
+    const before = (await db.query<{ v: string }>(`select value v from integration_config where key='open_class_cutover_at'`)).rows[0].v
+    const { migration } = await import('./openTrackingSchema')
+    await db.exec(migration('db/306_open_evidence_cutover.sql'))
+    expect((await db.query<{ v: string }>(`select value v from integration_config where key='open_class_cutover_at'`)).rows[0].v).toBe(before)
+  })
+})
