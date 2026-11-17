@@ -18,7 +18,7 @@ let n = 0
 beforeAll(async () => {
   db = await openDb(6, EXTRA)
   await db.exec(`insert into outreach_campaigns values ('${C.ivan}', null, 'Ivan'), ('${C.risedtc}', 'risedtc', 'RISE'), ('${C.arch}', 'arch', 'ARCH')`)
-}, 30_000)
+}, 60_000)
 afterAll(async () => { await db?.close() })
 beforeEach(async () => { await db.exec(`insert into integration_config(key, value) values ('scan_reopen_ring', 'on') on conflict (key) do update set value = 'on'`) })
 

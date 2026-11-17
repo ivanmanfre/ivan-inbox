@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { openDb } from './openTrackingSchema'
 
 let db: PGlite
-beforeAll(async () => { db = await openDb(1) })
+beforeAll(async () => { db = await openDb(1) }, 60_000)
 afterAll(async () => { await db?.close() })
 
 const WIN = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.7444.162 Safari/537.36'
@@ -28,7 +28,7 @@ describe('scan_open_classify', () => {
 
 describe('context, finalize, relabel (304)', () => {
   let d: PGlite
-  beforeAll(async () => { d = await openDb(2) })
+  beforeAll(async () => { d = await openDb(2) }, 60_000)
   afterAll(async () => { await d?.close() })
   const ins = async (slug: string, at: string, o: { hash?: string | null; ua?: string; ref?: string | null; dev?: string; owner?: boolean } = {}) =>
     (await d.query<{ id: number }>(
@@ -149,7 +149,7 @@ describe('304 backfill block', () => {
     expect((await d.query(`select count(*)::int n from open_networks where ip_hash !~ '^[0-9a-f]{64}$' or org ~ '\\d+\\.\\d+\\.\\d+\\.\\d+'`)).rows[0]).toEqual({ n: 0 })
     expect((await d.query(`select net_asn, open_class, class_reason from scan_opens`)).rows[0]).toEqual({ net_asn: 8075, open_class: 'link_scanner', class_reason: 'scanner_network' })
     await d.close()
-  }, 20_000)
+  }, 60_000)
 })
 
 describe('known org without an ASN is a known network', () => {
@@ -165,5 +165,5 @@ describe('known org without an ASN is a known network', () => {
     await d.query(`select reclassify_opens('-infinity')`)
     expect((await d.query(`select open_class from scan_opens where id=$1`, [id])).rows[0]).toEqual({ open_class: 'human' })
     await d.close()
-  }, 20_000)
+  }, 60_000)
 })

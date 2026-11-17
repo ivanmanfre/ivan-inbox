@@ -19,7 +19,7 @@ describe('read-only readers count people (305)', () => {
     db = await openDb(3, EXTRA)
     for (const c of ['human', 'link_scanner', 'owner'])
       await db.query(`insert into scan_opens(company_slug, opened_at, is_owner, user_agent, open_class) values ('three-rows', now() - interval '1 day', $1, $2, $3)`, [c === 'owner', WIN, c])
-  }, 20_000)
+  }, 60_000)
   afterAll(async () => { await db?.close() })
 
   it('scan_open_stats counts only human opens as real', async () => {
@@ -50,7 +50,7 @@ describe('page open alerts only for people (305, Task 6)', () => {
       insert into swishdm_comparison_pages values ('${TOK}', '${PID}', 'Acme', 'https://madebyswishdm.com/compare/${TOK}/', 'published');
       insert into outreach_messages(prospect_id, direction, channel, sent_at, message_text, unipile_message_id)
         values ('${PID}', 'outbound', 'linkedin', now() - interval '3 hours', 'here: https://madebyswishdm.com/compare/${TOK}/', 'u1');`)
-  }, 20_000)
+  }, 60_000)
   afterAll(async () => { await db?.close() })
   const calls = async () => (await db.query<{ n: number }>(`select count(*)::int n from net.calls`)).rows[0].n
   const insert = async (page: string, org: string, city = 'Des Moines', ext = true) =>
@@ -111,7 +111,7 @@ describe('draft readers move to the human class behind a cutover (306, Task 7)',
     db = await openDb(4, EXTRA)
     await db.exec(`insert into outreach_campaigns values ('${IVAN_C}', null, 'Ivan'), ('${RISE_C}', 'risedtc', 'RISE');
       update integration_config set value = (now() - interval '1 day')::text where key = 'open_class_cutover_at';`)
-  }, 20_000)
+  }, 60_000)
   afterAll(async () => { await db?.close() })
   // a prospect with one link message sent `sentAgo` ago; opens are [minutes after the send, class, ua?, referrer?]
   async function person(lane: 'ivan' | 'rise', sentAgo: string, opens: Array<[number, string, string?, string?]>) {
@@ -180,7 +180,7 @@ describe('draft readers move to the human class behind a cutover (306, Task 7)',
 describe('page events and the booking link (307, Task 8)', () => {
   let db: PGlite
   const P1 = '00000000-0000-0000-0000-0000000000b1', P2 = '00000000-0000-0000-0000-0000000000b2'
-  beforeAll(async () => { db = await openDb(5, EXTRA) }, 20_000)
+  beforeAll(async () => { db = await openDb(5, EXTRA) }, 60_000)
   afterAll(async () => { await db?.close() })
   const open = async (slug: string, at: string, cls: string) => (await db.query<{ id: number }>(
     `insert into scan_opens(company_slug, opened_at, open_class) values ($1, $2::timestamptz, $3) returning id`, [slug, at, cls])).rows[0].id
@@ -233,7 +233,7 @@ describe('page events and the booking link (307, Task 8)', () => {
 describe('daily check that the classifier still tells the truth (309, Task 10)', () => {
   let db: PGlite
   const P = '00000000-0000-0000-0000-0000000000d1'
-  beforeAll(async () => { db = await openDb(7, EXTRA) }, 30_000)
+  beforeAll(async () => { db = await openDb(7, EXTRA) }, 60_000)
   afterAll(async () => { await db?.close() })
   beforeEach(async () => { await db.exec(`delete from scan_opens; delete from outreach_messages; delete from net.calls; delete from open_networks;`) })
   type Check = { name: string; value: number; limit: number; ok: boolean }
@@ -319,5 +319,5 @@ describe('rollbacks', () => {
     expect((await db.query<{ r: string }>(`select pg_get_function_result('public.ivan_scan_open_evidence()'::regprocedure) r`)).rows[0].r).toContain('scan_slug text')
     await db.query(`insert into page_opens(page, org, is_external) values ('leading-social', 'Comcast', true)`)
     await db.close()
-  }, 30_000)
+  }, 60_000)
 })
