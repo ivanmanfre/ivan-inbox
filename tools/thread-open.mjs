@@ -63,7 +63,11 @@ const readRpcs = new Set(['inbox_changed_since', 'inbox_interest_cards', 'inbox_
   // The posts going out next (db: content_next_posts): STABLE security-definer, no writes. content_next_keep is a write and stays blocked.
   'content_next_posts',
   // The Context sheet's store row (db/302_prospect_store_numbers.sql): STABLE security-definer, no writes.
-  'prospect_store_numbers'])
+  'prospect_store_numbers',
+  // The Home page's card swap read (content_card_swap_plan): a read RPC, no writes.
+  'content_card_swap_plan',
+  // The visit log (db: inbox_log_visit): a WRITE of one row into inbox_place_visits, allowed on purpose; the gates assert no other mutation.
+  'inbox_log_visit'])
 const replySourceRpcs = new Set(['inbox_reply_source', 'outreach_reply_sources', 'client_board_reply_source', 'client_board_reply_sources'])
 function missingReplySource(url, method, status, payload) {
   const u = new URL(url)
