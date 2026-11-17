@@ -47,31 +47,34 @@ create or replace view public.inbox_scan_opens_v with (security_invoker = off) a
   group by client_id;
 
 -- Task 6. Every page_opens row is labelled at insert (all pages, so shared pages are labelled too), and only a
--- 'human' SwishDM report open can ring. Started from the live body (defs.txt 2026-11-17); changes: the class step at
--- the top (above the page-shape guard) and the removal of the "org ~* '^microsoft'" line, which the class replaces.
--- A failure in the class step leaves the row unlabelled and silent; the insert always goes through.
+-- person whose open may ring (open_may_ring: human, network known, not an uncorroborated scanner network) can ring a
+-- SwishDM report or keep a shared-page alert. Started from the live body (defs.txt 2026-11-17); changes: the class
+-- step at the top (above the page-shape guard), the removal of the "org ~* '^microsoft'" line, which the class
+-- replaces, and (round 2, finding 7) the stored `alerted` of a shared page now agrees with the class: the n8n tracker
+-- alerts only when the stored row says alerted. A failure in the class step leaves the row unlabelled, unalerted and
+-- silent; the insert always goes through.
 create or replace function public.swishdm_report_open_notify()
 returns trigger language plpgsql security definer set search_path = public, pg_temp as $function$
 declare v_url text; v_secret text; v_tok text; v_pid uuid; v_brand text; v_page_url text; v_name text; v_company text;
-        v_sent timestamptz; v_last timestamptz; v_day date; v_where text; v_fleet boolean;
+        v_sent timestamptz; v_last timestamptz; v_day date; v_where text;
+        v_burst boolean; v_near boolean; v_addr boolean; v_own boolean;
 begin
   begin
-    -- page fleet: this (org, city) already opened 2+ OTHER pages in the last 90 days (3+ counting this row)
-    v_fleet := new.org is not null and (
-      select count(distinct o.page) from public.page_opens o
-       where o.org = new.org and o.city is not distinct from new.city
-         and o.created_at >= now() - interval '90 days' and o.page <> new.page) >= 2;
+    select c.burst, c.near_li_send, c.addr_scanner, c.addr_owner into v_burst, v_near, v_addr, v_own
+      from public.page_open_context(new.page, new.ip_hash, coalesce(new.created_at, now()), null) c;
     select k.open_class, k.class_reason into new.open_class, new.class_reason
-      from public.page_open_classify(new.is_external, new.org, new.user_agent, v_fleet) k;
+      from public.page_open_classify(new.is_external, new.org, new.user_agent, new.referrer, v_burst, v_near, v_addr, v_own) k;
     new.classified_at := now();
+    new.alerted := coalesce(new.alerted, false) and public.open_may_ring(new.open_class, new.class_reason);
   exception when others then
     raise warning 'swishdm_report_open_notify classify failed: %', sqlerrm;
-    new.open_class := null; new.class_reason := null; new.classified_at := null;
+    new.open_class := null; new.class_reason := null; new.classified_at := null; new.alerted := false;
     return new;
   end;
   if new.page is null or new.page !~ '^swishdm/compare/[a-z2-7]{20}$' or not coalesce(new.is_external, false) then return new; end if;
-  -- 2026-11-17: the class replaces the 11-09 Microsoft line. Scanner, own tool and owner rows are logged, never ring.
-  if new.open_class is distinct from 'human' then return new; end if;
+  -- 2026-11-17: the class replaces the 11-09 Microsoft line. Scanner, own tool and owner rows are logged, never ring;
+  -- so are people whose network is unknown or who sit on the scanner network with no behaviour behind it.
+  if not public.open_may_ring(new.open_class, new.class_reason) then return new; end if;
   begin
     v_tok := substring(new.page from '^swishdm/compare/([a-z2-7]{20})$');
     select prospect_id, brand, url into v_pid, v_brand, v_page_url
@@ -131,7 +134,8 @@ create trigger swishdm_report_open_notify before insert on public.page_opens
 create or replace function public.swishdm_report_opened(p_token text, p_since timestamptz)
 returns boolean language sql stable security definer set search_path = public, pg_temp as $$
   select exists (select 1 from public.page_opens o
-                  where o.page = 'swishdm/compare/' || p_token and o.open_class = 'human' and o.created_at >= p_since)
+                  where o.page = 'swishdm/compare/' || p_token and public.open_is_signal(o.open_class, o.class_reason)
+                    and o.created_at >= p_since)
 $$;
 revoke all on function public.swishdm_report_opened(text, timestamptz) from public, anon, authenticated;
 grant execute on function public.swishdm_report_opened(text, timestamptz) to service_role;

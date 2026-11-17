@@ -64,11 +64,27 @@ describe('second-day reopen ring (308)', () => {
   })
   it('scanner reopen does not ring', async () => {
     const p = await person()
+    // the link checker right after a LinkedIn resend of the link
+    await db.query(`insert into outreach_messages(prospect_id, direction, channel, sent_at, message_text) values ($1, 'outbound', 'linkedin', now() - interval '30 seconds', $2)`, [p.id, `again: https://inboundonsteroids.com/scan/${p.slug}`])
     const id = (await db.query<{ id: number }>(`insert into scan_opens(company_slug, device_type, user_agent, ip_hash) values ($1, 'desktop', 'Mozilla/5.0 (Windows NT 10.0)', 'MSFT') returning id`, [p.slug])).rows[0].id
     expect((await db.query<{ r: { open_class: string; ring: boolean } }>(`select scan_open_finalize($1, 8075, 'Microsoft Corporation', 'US', 'Des Moines') r`, [id])).rows[0].r).toMatchObject({ open_class: 'link_scanner', ring: false })
     expect((await db.query(`select 1 from scan_reopen_rings where slug = $1`, [p.slug])).rows).toHaveLength(0)
     // the same person reopening right after still rings: the scanner row did not use up the day
     expect((await openNow(p.slug)).ring).toBe(true)
+  })
+  it('a Microsoft-network open with no behaviour counts as a person but never rings', async () => {
+    const p = await person()
+    const before = await calls()
+    const id = (await db.query<{ id: number }>(`insert into scan_opens(company_slug, device_type, user_agent, ip_hash) values ($1, 'desktop', 'Mozilla/5.0 (Windows NT 10.0)', 'AZURE-VDI') returning id`, [p.slug])).rows[0].id
+    expect((await db.query<{ r: { open_class: string; class_reason: string; ring: boolean } }>(`select scan_open_finalize($1, 8075, 'Microsoft Corporation', 'US', 'Des Moines') r`, [id])).rows[0].r).toMatchObject({ open_class: 'human', class_reason: 'microsoft_uncorroborated', ring: false })
+    expect(await calls()).toBe(before)
+    expect((await db.query(`select 1 from scan_reopen_rings where slug = $1`, [p.slug])).rows).toHaveLength(0)
+  })
+  it('a person whose network lookup failed counts but never rings', async () => {
+    const p = await person()
+    const before = await calls()
+    expect(await openNow(p.slug, { ref: null, ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) Mobile/15E148' })).toMatchObject({ open_class: 'human', class_reason: 'network_unknown', ring: false })
+    expect(await calls()).toBe(before)
   })
   it('replied or booked prospect does not ring', async () => {
     const a = await person()

@@ -1,6 +1,7 @@
 -- Real-corpus replay for the open classifier (plan 2026-11-17-open-tracking-truth, Task 3 Step 5). READ-ONLY.
 -- Run after 303 + 304 are applied (live, or on a local copy of the live rows). Every row must say pass = true.
--- Expected values are frozen in ~/.claude/docs/superpowers/plans/2026-11-17-open-tracking-truth-assets/replay_expectations.json
+-- Expected values are frozen in ~/.claude/docs/superpowers/plans/2026-11-17-open-tracking-truth-assets/replay_expectations.r2.json
+-- (round 2, cross-review rulings A-D; round 1 values in replay_expectations.json)
 -- (scan_opens id <= 3760, read 2026-11-17). Opens after that id are ignored so the numbers stay comparable.
 with
 cut as (select max(opened_at) as at from public.scan_opens where id <= 3760),
@@ -9,12 +10,16 @@ so as (select * from public.scan_opens where id <= 3760),
 -- 1. class counts since 1 October (tolerance 3 rows each)
 cc as (
   select e.k, e.n as expected, (select count(*) from so where so.opened_at >= timestamptz '2026-10-01T00:00:00Z' and so.open_class = e.k) as actual
-    from (values ('owner', 734), ('own_tool', 440), ('link_scanner', 497), ('human', 328)) e(k, n)),
+    from (values ('owner', 734), ('own_tool', 440), ('link_scanner', 496), ('human', 329)) e(k, n)),
 
--- 2. the nine Microsoft scanner hashes never count as a person
+-- 2. the nine Microsoft scanner hashes never feed a signal. Round 2: one row (id 1558, 20 s after an EMAIL send, so
+-- no LinkedIn-send corroborator, no burst, no other row on that address) is human/microsoft_uncorroborated: counted,
+-- never rings, never alerts, never feeds a draft (open_is_signal false).
 sh as (
-  select count(*) as actual from so
-   where so.open_class = 'human' and so.ip_hash in (
+  select count(*) filter (where public.open_is_signal(so.open_class, so.class_reason)) as actual,
+         count(*) filter (where so.open_class = 'human' and so.class_reason = 'microsoft_uncorroborated') as uncorroborated
+    from so
+   where so.ip_hash in (
      '17016c70a8d4539e7a6e8b061e65888b337352d5883b36eefdd0b8a6778d8f98',
      '473bc2408fdedb55c729177c782d1f34a931979e2ebfff586d7c6adf2d0003c0',
      '82366861b54c9b8232a54ede5e6b5edc47d647c6bfca1efd703f1b6fa2f705a3',
@@ -49,20 +54,21 @@ ph as (
     left join so on lower(so.company_slug) = any (p.slugs) and so.opened_at > p.first_at and so.open_class = 'human'
    group by 1, 2, 3),
 
--- 3. people who booked keep their human opens (at least the listed number)
+-- 3. people who booked keep their human opens (at least the listed number). Names stay out of this public repo;
+--    the id -> name list is in replay_expectations.r2.json next to the plan.
 bk as (
   select e.name, e.n as expected, coalesce(ph.human_opens, 0) as actual
     from (values
-      ('30ae409e-6b83-4052-a1d1-8deeb8695633'::uuid, 'Cameron Ford', 3),
-      ('10a9f0ce-2ced-460a-9242-0ec8f0a1296d'::uuid, 'Sebastian Hemetsberger', 5),
-      ('45880bd2-3daa-419a-bd96-a6b2cfb81085'::uuid, 'Mohsin Raza', 2),
-      ('902ad2e4-99fd-4318-a9b2-685a633e151d'::uuid, 'Aryan Gulzar', 8),
-      ('5fbc18cc-2795-4fe9-9d8e-fafb11b22574'::uuid, 'Pratham Mangla', 2),
-      ('0298f171-64c1-49e2-8ba9-4e87a3cda687'::uuid, 'Petros Fotiadis', 2),
-      ('fcb36c18-f943-4821-88f0-a8013f7a3a5d'::uuid, 'Alex Sunshine', 8),
-      ('d3b8ff5e-e7e7-40df-ac32-8e95f88d12e9'::uuid, 'Tomi Olagbemiro', 1),
-      ('0bc5e72d-61e1-4d4c-a97b-cc22c5d61f52'::uuid, 'Darrius Dickerson', 4),
-      ('6c5d1adb-f67d-4acd-a658-d8de21e5aef1'::uuid, 'Renei Kingi', 6)) e(pid, name, n)
+      ('30ae409e-6b83-4052-a1d1-8deeb8695633'::uuid, 'booker_01', 3),
+      ('10a9f0ce-2ced-460a-9242-0ec8f0a1296d'::uuid, 'booker_02', 5),
+      ('45880bd2-3daa-419a-bd96-a6b2cfb81085'::uuid, 'booker_03', 2),
+      ('902ad2e4-99fd-4318-a9b2-685a633e151d'::uuid, 'booker_04', 8),
+      ('5fbc18cc-2795-4fe9-9d8e-fafb11b22574'::uuid, 'booker_05', 2),
+      ('0298f171-64c1-49e2-8ba9-4e87a3cda687'::uuid, 'booker_06', 2),
+      ('fcb36c18-f943-4821-88f0-a8013f7a3a5d'::uuid, 'booker_07', 8),
+      ('d3b8ff5e-e7e7-40df-ac32-8e95f88d12e9'::uuid, 'booker_08', 1),
+      ('0bc5e72d-61e1-4d4c-a97b-cc22c5d61f52'::uuid, 'booker_09', 4),
+      ('6c5d1adb-f67d-4acd-a658-d8de21e5aef1'::uuid, 'booker_10', 6)) e(pid, name, n)
     left join ph on ph.prospect_id = e.pid),
 
 -- 4. lanes: links sent since 1 October with a human open after the send (tolerance 2)
@@ -83,16 +89,22 @@ rw as (select count(*) as actual from so where so.ip_hash = '436790ed5db5de75667
 sw as (
   select count(*) filter (where open_class = 'link_scanner') as scanner,
          count(*) filter (where open_class = 'owner') as owner,
-         count(*) filter (where open_class = 'human' and org ilike 'mullvad%' and city = 'London') as mullvad_human
+         count(*) filter (where open_class = 'human' and org ilike 'mullvad%' and city = 'London') as mullvad_human,
+         count(*) filter (where open_class = 'human' and class_reason = 'microsoft_uncorroborated') as ms_uncorroborated
     from public.page_opens where page like 'swishdm/compare/%' and id <= (select max(id) from public.page_opens where created_at <= (select at from cut)))
 
 select 'class_counts:' || k as check_name, expected::text, actual::text, abs(actual - expected) <= 3 as pass from cc
-union all select 'scanner_hashes_drop', '0', actual::text, actual = 0 from sh
+union all select 'scanner_hashes_no_signal', '0', actual::text, actual = 0 from sh
+union all select 'scanner_hashes_uncorroborated', '1', uncorroborated::text, uncorroborated = 1 from sh
 union all select 'bookers_stay_human:' || name, '>=' || expected, actual::text, actual >= expected from bk
 union all select 'lanes:' || lane || ':' || metric, expected::text, actual::text, abs(actual - expected) <= 2 from ln
 union all select 'railway_arch', '0', actual::text, actual = 0 from rw
-union all select 'swishdm_pages:link_scanner', '50', scanner::text, abs(scanner - 50) <= 3 from sw
--- owner 16 = 12 own-country rows + the 4 Mullvad London rows (one VPN user opening 3 reports inside a minute on 11-11),
--- now caught by the page fleet rule: the plan's "Mullvad London rows not human" and its owner 12 cannot both hold.
-union all select 'swishdm_pages:owner', '16', owner::text, abs(owner - 16) <= 3 from sw
-union all select 'swishdm_pages:mullvad_london_not_human', '0', mullvad_human::text, mullvad_human = 0 from sw;
+union all select 'swishdm_pages:link_scanner', '37', scanner::text, abs(scanner - 37) <= 3 from sw
+-- round 2: 13 Microsoft rows days after the send have no LinkedIn-send corroborator; page rows carry no address, so
+-- no burst or proven-address corroborator exists for them. Counted as people, never ring, never alert, never "opened".
+union all select 'swishdm_pages:microsoft_uncorroborated', '13', ms_uncorroborated::text, abs(ms_uncorroborated - 13) <= 3 from sw
+-- owner 12 = own-country rows. The 4 Mullvad London rows (one VPN user, 3 reports inside a minute on 11-11) were owner
+-- by the dropped org+city fleet rule; ruling D allows only an address burst, and these rows have no address. They count
+-- as people (history never rings). New page rows carry a salted address hash once PAGE_OPEN_IP_SALT is set.
+union all select 'swishdm_pages:owner', '12', owner::text, abs(owner - 12) <= 3 from sw
+union all select 'swishdm_pages:mullvad_london_no_address_human', '4', mullvad_human::text, mullvad_human = 4 from sw;

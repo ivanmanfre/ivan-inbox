@@ -1,6 +1,6 @@
 -- 308 open tracking truth, part 6: ring the owner on a second-day human reopen (Ivan and RISE lanes). Plan Task 9.
 -- BUILT AND LEFT OFF: it rings only when integration_config scan_reopen_ring = 'on'. This file never creates that row.
--- Only scan_open_finalize, called once by the scan-open edge function for a fresh row, can reach the ring.
+-- Only scan_open_finalize, on the first label of a fresh row (the scan-open edge function), can reach the ring.
 
 create table if not exists public.scan_reopen_rings (
   slug text not null,
@@ -24,7 +24,7 @@ declare
   v_first_open timestamptz; v_days int; v_name text; v_company text; v_url text; v_secret text; v_title text;
 begin
   select * into r from public.scan_opens where id = p_id;
-  if not found or r.open_class is distinct from 'human' or r.opened_at <= now() - interval '10 minutes' then return false; end if;
+  if not found or not public.open_may_ring(r.open_class, r.class_reason) or r.opened_at <= now() - interval '10 minutes' then return false; end if;
   if coalesce((select value from public.integration_config where key = 'scan_reopen_ring'), '') <> 'on' then return false; end if;
   v_slug := lower(r.company_slug);
   v_slug_re := regexp_replace(v_slug, '([^a-z0-9_-])', '\\\1', 'g');
@@ -42,7 +42,7 @@ begin
   if v_n <> 1 or v_lane not in ('ivan', 'risedtc') then return false; end if;
   -- 4. an earlier human open on an earlier UTC date
   if not exists (select 1 from public.scan_opens o
-                  where lower(o.company_slug) = v_slug and o.open_class = 'human' and o.id <> r.id
+                  where lower(o.company_slug) = v_slug and public.open_is_signal(o.open_class, o.class_reason) and o.id <> r.id
                     and (o.opened_at at time zone 'UTC')::date < v_day) then return false; end if;
   -- 5. no real reply since the first link, no call booked
   if exists (select 1 from public.outreach_messages i
@@ -60,7 +60,7 @@ begin
   select value into v_secret from public.integration_config where key = 'inbox_push_secret';
   if v_url is null or v_secret is null then raise exception 'inbox notify not configured'; end if;
   select min(o.opened_at), count(distinct (o.opened_at at time zone 'UTC')::date) into v_first_open, v_days
-    from public.scan_opens o where lower(o.company_slug) = v_slug and o.open_class = 'human';
+    from public.scan_opens o where lower(o.company_slug) = v_slug and public.open_is_signal(o.open_class, o.class_reason);
   v_title := case when r.view = 'team' then format('%s''s team page was opened', coalesce(v_name, 'A prospect'))
                   else format('%s reopened the scan', coalesce(v_name, 'A prospect')) end;
   perform net.http_post(url := v_url,
@@ -82,46 +82,20 @@ revoke all on function public.scan_reopen_ring_step(bigint) from public, anon, a
 grant execute on function public.scan_reopen_ring_step(bigint) to service_role;
 
 -- scan_open_finalize = the 304 body plus the ring step at the end.
+-- Round 2 (finding 2): only the row's FIRST label can ring. scan_open_label locks the row and reports first_label =
+-- nothing (no finalize, no relabel, no backfill) ever labelled it, so a second finalize, a relabelled row or a
+-- backfilled row never rings, whatever its age. The 10-minute fence stays as a second guard. A person whose network
+-- is unknown, or who sits on the scanner network with no behaviour behind it, never rings (open_may_ring).
 create or replace function public.scan_open_finalize(p_id bigint, p_asn int, p_org text, p_country text, p_city text)
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
-declare
-  r public.scan_opens;
-  v_asn int := p_asn;
-  v_org text := p_org;
-  v_fleet boolean;
-  v_near boolean;
-  v_class text;
-  v_reason text;
-  v_ring boolean;
+declare l record; v_ring boolean := false;
 begin
-  select * into r from public.scan_opens where id = p_id;
-  if not found then
+  select * into l from public.scan_open_label(p_id, p_asn, p_org, p_country, p_city);
+  if l.open_class is null then
     return jsonb_build_object('open_class', null, 'class_reason', 'no_row', 'ring', false);
   end if;
-  if r.ip_hash is not null and (p_org is not null or p_asn is not null) then
-    insert into public.open_networks (ip_hash, asn, org, country_code, city, source)
-    values (r.ip_hash, p_asn, p_org, p_country, p_city, 'edge_lookup')
-    on conflict (ip_hash) do update set
-      asn = coalesce(excluded.asn, open_networks.asn), org = coalesce(excluded.org, open_networks.org),
-      country_code = coalesce(excluded.country_code, open_networks.country_code),
-      city = coalesce(excluded.city, open_networks.city), source = 'edge_lookup', last_seen = now();
-  elsif r.ip_hash is not null then
-    select n.asn, n.org into v_asn, v_org from public.open_networks n where n.ip_hash = r.ip_hash;
-    update public.open_networks set last_seen = now() where ip_hash = r.ip_hash;
-  end if;
-  select c.fleet, c.near_li_send into v_fleet, v_near from public.scan_open_context(p_id) c;
-  -- Rule 8 means "the lookup failed". A known org with no ASN (gateway-log seed rows) is a known network: pass the
-  -- reserved AS0 to the classifier, which is never in open_known_networks. Only the real ASN is stored on the row.
-  select k.open_class, k.class_reason into v_class, v_reason
-    from public.scan_open_classify(r.is_owner, r.user_agent, r.referrer_host, r.device_type,
-                                   coalesce(v_asn, case when v_org is not null then 0 end), v_fleet, v_near) k;
-  update public.scan_opens
-     set net_asn = v_asn, net_org = v_org, open_class = v_class, class_reason = v_reason, classified_at = now()
-   where id = p_id;
-  v_ring := false;
-  -- 308: ring on a second-day human reopen. Fence: only a row opened in the last 10 minutes can ring, so a relabelled
-  -- or backfilled row never does. Own block: a ring failure never fails the open (and leaves no ledger row).
-  if v_class = 'human' and r.opened_at > now() - interval '10 minutes' then
+  -- Own block: a ring failure never fails the open (and leaves no ledger row).
+  if l.first_label and public.open_may_ring(l.open_class, l.class_reason) and l.opened_at > now() - interval '10 minutes' then
     begin
       v_ring := public.scan_reopen_ring_step(p_id);
     exception when others then
@@ -129,7 +103,7 @@ begin
       v_ring := false;
     end;
   end if;
-  return jsonb_build_object('open_class', v_class, 'class_reason', v_reason, 'ring', v_ring);
+  return jsonb_build_object('open_class', l.open_class, 'class_reason', l.class_reason, 'ring', v_ring);
 end $$;
 
 revoke all on function public.scan_open_finalize(bigint, int, text, text, text) from public, anon, authenticated;

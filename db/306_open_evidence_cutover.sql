@@ -37,7 +37,7 @@ language sql stable security definer set search_path = public, pg_temp as $$
   select sl.prospect_id, sl.slug, sl.sent_at, so.opened_at, so.device_type, so.referrer_host
     from sl
     join public.scan_opens so on lower(so.company_slug) = sl.slug
-   where so.open_class = 'human'
+   where public.open_is_signal(so.open_class, so.class_reason)
      and so.opened_at > sl.sent_at
      and (sl.sent_at >= public.open_class_cutover() or (
            -- the lane's old rule (live bodies 2026-11-17)
@@ -125,9 +125,12 @@ with sig as (
           from outreach_messages m
           where m.direction = 'outbound' and m.sent_at is not null and m.message_text ~ '/scan/[A-Za-z0-9_-]+'
           group by 1, 3) sl on lower(so.company_slug) = sl.slug
-    -- 306 (2026-11-17): a person is open_class = 'human'. Links sent before the cutover also keep the old rule, so
-    -- the relabel can only remove old evidence, never add an old prospect to a card.
-    where so.open_class = 'human'
+    -- 306 (2026-11-17): a person is open_class = 'human' (open_is_signal: never an uncorroborated scanner-network
+    -- open). Links sent before the cutover also keep the old rule, so the relabel can only remove old evidence, never
+    -- add an old prospect to a card. Round 2 (finding 1): an open counts only AFTER the link went out, on both sides
+    -- of the cutover (an older open of the same page is never a reaction to this link).
+    where public.open_is_signal(so.open_class, so.class_reason)
+      and so.opened_at > sl.sent_at
       and (sl.sent_at >= public.open_class_cutover() or (
             so.is_owner = false
         and so.opened_at > sl.sent_at + interval '5 minutes'
@@ -233,9 +236,12 @@ with sig as (
           where m.direction = 'outbound' and m.sent_at is not null
             and m.message_text ~ '(/scan/[A-Za-z0-9_-]+|madebyarch\.com/[A-Za-z0-9_-]+-audit)'
           group by 1, 3) sl on lower(so.company_slug) = sl.slug
-    -- 306 (2026-11-17): a person is open_class = 'human'. Links sent before the cutover also keep the old rule, so
-    -- the relabel can only remove old evidence, never add an old prospect to a card.
-    where so.open_class = 'human'
+    -- 306 (2026-11-17): a person is open_class = 'human' (open_is_signal: never an uncorroborated scanner-network
+    -- open). Links sent before the cutover also keep the old rule, so the relabel can only remove old evidence, never
+    -- add an old prospect to a card. Round 2 (finding 1): an open counts only AFTER the link went out, on both sides
+    -- of the cutover (an older open of the same page is never a reaction to this link).
+    where public.open_is_signal(so.open_class, so.class_reason)
+      and so.opened_at > sl.sent_at
       and (sl.sent_at >= public.open_class_cutover() or (
             so.is_owner = false
         and so.opened_at > sl.sent_at + interval '5 minutes'

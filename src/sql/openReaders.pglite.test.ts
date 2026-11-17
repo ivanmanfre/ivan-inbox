@@ -59,40 +59,58 @@ describe('page open alerts only for people (305, Task 6)', () => {
        returning open_class, class_reason, alerted, classified_at`, [page, org, city, WIN, ext])).rows[0]
   const opened = async () => (await db.query<{ o: boolean }>(`select swishdm_report_opened($1, now() - interval '1 day') o`, [TOK])).rows[0].o
 
-  it('a SwishDM report opened from the Microsoft network is the scanner and never rings', async () => {
+  const insertAddr = async (page: string, org: string, addr: string | null, city = 'Brighton') =>
+    (await db.query<{ open_class: string; class_reason: string; alerted: boolean }>(
+      `insert into page_opens(page, org, city, country, user_agent, is_external, ip_hash, alerted) values ($1, $2, $3, 'United Kingdom', $4, true, $5, true)
+       returning open_class, class_reason, alerted`, [page, org, city, WIN, addr])).rows[0]
+
+  it('finding 3: a SwishDM report opened from the Microsoft network hours after the send counts as a person and never rings', async () => {
     const r = await insert(`swishdm/compare/${TOK}`, 'Microsoft Corporation')
-    expect(r).toMatchObject({ open_class: 'link_scanner', class_reason: 'scanner_network', alerted: false })
+    expect(r).toMatchObject({ open_class: 'human', class_reason: 'microsoft_uncorroborated', alerted: false })
     expect(r.classified_at).not.toBeNull()
     expect(await calls()).toBe(0)
   })
-  it('swishdm_report_opened is false with only scanner rows', async () => expect(await opened()).toBe(false))
+  it('swishdm_report_opened is false with only scanner-network rows', async () => expect(await opened()).toBe(false))
   it('a person on a home network rings once', async () => {
     const r = await insert(`swishdm/compare/${TOK}`, 'Comcast Cable Communications, LLC', 'Denver')
     expect(r).toMatchObject({ open_class: 'human', alerted: true })
     expect(await calls()).toBe(1)
     expect(await opened()).toBe(true)
   })
-  it('a shared page from Microsoft is labelled the scanner', async () => {
-    expect((await insert('leading-social', 'Microsoft Limited', 'Dublin')).open_class).toBe('link_scanner')
+  it('a shared page from Microsoft right after a LinkedIn message carrying it is the scanner, never alerted', async () => {
+    await db.query(`insert into outreach_messages(prospect_id, direction, channel, sent_at, message_text) values ('${PID}', 'outbound', 'linkedin', now() - interval '40 seconds', 'https://inboundonsteroids.com/shared/leading-social/')`)
+    expect(await insertAddr('leading-social', 'Microsoft Limited', null, 'Dublin')).toMatchObject({ open_class: 'link_scanner', class_reason: 'after_send', alerted: false })
+  })
+  it('finding 7: a shared-page row keeps alerted only when the stored class may alert', async () => {
+    expect(await insertAddr('other-shared-page', 'Comcast', null, 'Austin')).toMatchObject({ open_class: 'human', class_reason: 'default', alerted: true })
+    expect(await insertAddr('other-shared-page', 'Microsoft Corporation', null, 'Quincy')).toMatchObject({ open_class: 'human', class_reason: 'microsoft_uncorroborated', alerted: false })
+    expect(await insertAddr('other-shared-page', '', null, 'Austin')).toMatchObject({ open_class: 'human', class_reason: 'network_unknown', alerted: false })
   })
   it('our own country is the owner on every page', async () => {
     expect((await insert('tracker-test-ext', 'PLAY', 'Warsaw', false))).toMatchObject({ open_class: 'owner', class_reason: 'own_country' })
   })
-  it('one network on three report pages is the owner and does not ring', async () => {
+  it('finding 4: three visitors sharing an ISP and city on three report pages all stay people', async () => {
+    const r1 = await insert('swishdm/compare/bbbbbbbbbbbbbbbbbbbb', 'Comcast', 'Denver')
+    const r2 = await insert('swishdm/compare/cccccccccccccccccccc', 'Comcast', 'Denver')
+    const r3 = await insert('swishdm/compare/dddddddddddddddddddd', 'Comcast', 'Denver')
+    expect([r1, r2, r3].map(r => r.open_class)).toEqual(['human', 'human', 'human'])
+  })
+  it('one address on three report pages inside 10 minutes is a burst, not a person, and does not ring', async () => {
     const before = await calls()
-    await insert('swishdm/compare/bbbbbbbbbbbbbbbbbbbb', 'Metranet Communications Ltd.', 'Brighton')
-    await insert('swishdm/compare/cccccccccccccccccccc', 'Metranet Communications Ltd.', 'Brighton')
-    const r = await insert(`swishdm/compare/${TOK}`, 'Metranet Communications Ltd.', 'Brighton')
-    expect(r).toMatchObject({ open_class: 'owner', class_reason: 'network_on_3_plus_pages', alerted: false })
+    await insertAddr('swishdm/compare/eeeeeeeeeeeeeeeeeeee', 'Mullvad Vpn Ab', 'VPN1', 'London')
+    await insertAddr('swishdm/compare/ffffffffffffffffffff', 'Mullvad Vpn Ab', 'VPN1', 'London')
+    const r = await insertAddr(`swishdm/compare/${TOK}`, 'Mullvad Vpn Ab', 'VPN1', 'London')
+    expect(r).toMatchObject({ open_class: 'owner', class_reason: 'burst_3_plus_pages', alerted: false })
     expect(await calls()).toBe(before)
   })
-  it('a classifier failure never drops the insert', async () => {
-    await db.exec(`alter function public.page_open_classify(boolean, text, text, boolean) rename to page_open_classify_off`)
+  it('a classifier failure never drops the insert and never alerts', async () => {
+    await db.exec(`alter function public.page_open_classify(boolean, text, text, text, boolean, boolean, boolean, boolean) rename to page_open_classify_off`)
     try {
-      const r = await insert('leading-social', 'Comcast', 'Austin')
+      const r = await insertAddr('leading-social', 'Comcast', null, 'Austin')
       expect(r.open_class).toBeNull()
+      expect(r.alerted).toBe(false)
     } finally {
-      await db.exec(`alter function public.page_open_classify_off(boolean, text, text, boolean) rename to page_open_classify`)
+      await db.exec(`alter function public.page_open_classify_off(boolean, text, text, text, boolean, boolean, boolean, boolean) rename to page_open_classify`)
     }
   })
   it('swishdm_report_opened is for the service role only', async () => {

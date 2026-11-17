@@ -80,7 +80,7 @@ begin
     v_lines := v_lines || format('%s desktop opens with no referrer came in within 5 minutes of a LinkedIn link send and were counted as people (usually about 1 in 7 weeks). The link checker may be on a new network.', v_fast);
   end if;
   if v_new_fleet > 0 then
-    v_lines := v_lines || format('A new network opened 3 or more different scans in a day: %s. If it is a link checker or our own tool, add it to open_known_networks.', v_fleet_names);
+    v_lines := v_lines || format('An address on a network we do not know opened 3 or more different scans in a day: %s. A burst inside 10 minutes is already left out of the counts; a slower spread still counts as people. Read the rows.', v_fleet_names);
   end if;
   if not (v_rows < 10 or v_failed * 10 <= v_rows * 3) then
     v_lines := v_lines || format('The network lookup failed on %s of %s opens yesterday. New opens are labelled without their network.', v_failed, v_rows);

@@ -1,48 +1,95 @@
 -- 304 open tracking truth, part 2: context, finalize, nightly relabel, backfill.
 -- Plan Task 3. Requires 303. No reader changes here; nothing in this file can send, draft or ring.
--- scan_open_finalize is the only function that later (308) may ring, and only for a row younger than 10 minutes.
+-- Round 2 (rulings A-D): the 90-day fleet rule is gone. Several pages from one address count only as a 10-minute burst.
+-- scan_open_finalize is the only function that later (308) may ring, and only on the FIRST label of a fresh row.
 
--- fleet: the row's hash opened 3+ distinct scans (non-owner rows, within 90 days either side of this row, the row included).
--- At insert time no later rows exist, so this looks back only; the nightly relabel also catches the first rows of a
--- fleet once the third scan arrives. The window only ever adds fleet-ness, so a relabel can move a row away from
--- human but never towards it on this rule.
--- near_li_send: a LinkedIn (non-email) message carrying this exact link went out in the 20 minutes before the open.
--- The slug must end at a non-slug character, so /scan/acme never matches a message about /scan/acme-2.
+-- One open's behaviour, from the stored rows:
+--   burst:         the row's address (ip_hash) opened 3+ distinct scans inside one 10-minute span that includes this
+--                  row (non-owner rows). At insert time only earlier rows exist; the nightly relabel also sees later ones.
+--   near_li_send:  a LinkedIn (non-email) message carrying this exact link went out in the 15 minutes before the open.
+--                  The slug must end at a non-slug character, so /scan/acme never matches a message about /scan/acme-2.
+--   addr_scanner:  another open of the same address is already a proven scanner (after_send or burst).
+--   addr_owner:    another open of the same address carried the owner flag: an address proven ours (ruling D).
 create or replace function public.scan_open_context(p_id bigint)
-returns table (fleet boolean, near_li_send boolean)
+returns table (burst boolean, near_li_send boolean, addr_scanner boolean, addr_owner boolean)
 language sql stable security definer set search_path = public, pg_temp as $$
   select
-    r.ip_hash is not null and (
-      select count(distinct lower(o.company_slug)) from public.scan_opens o
-       where o.ip_hash = r.ip_hash and o.is_owner = false
-         and o.opened_at between r.opened_at - interval '90 days' and r.opened_at + interval '90 days') >= 3,
+    r.ip_hash is not null and exists (
+      select 1 from public.scan_opens a
+       where a.ip_hash = r.ip_hash and a.is_owner = false
+         and a.opened_at between r.opened_at - interval '10 minutes' and r.opened_at
+         and (select count(distinct lower(b.company_slug)) from public.scan_opens b
+               where b.ip_hash = r.ip_hash and b.is_owner = false
+                 and b.opened_at between a.opened_at and a.opened_at + interval '10 minutes') >= 3),
     exists (
       select 1 from public.outreach_messages m
        where m.direction = 'outbound' and m.sent_at is not null
-         and m.sent_at between r.opened_at - interval '20 minutes' and r.opened_at
+         and m.sent_at between r.opened_at - interval '15 minutes' and r.opened_at
          and coalesce(m.channel, 'linkedin') <> 'email'
          and (lower(m.message_text) ~ ('/scan/' || r.slug_re || '([^a-z0-9_-]|$)')
-              or (r.slug like 'arch-%' and lower(m.message_text) ~ ('madebyarch\.com/' || substr(r.slug_re, 6) || '([^a-z0-9_-]|$)'))))
-  from (select so.ip_hash, so.opened_at, lower(so.company_slug) as slug,
+              or (r.slug like 'arch-%' and lower(m.message_text) ~ ('madebyarch\.com/' || substr(r.slug_re, 6) || '([^a-z0-9_-]|$)')))),
+    r.ip_hash is not null and exists (
+      select 1 from public.scan_opens o
+       where o.ip_hash = r.ip_hash and o.id <> r.id
+         and o.open_class = 'link_scanner' and o.class_reason in ('after_send', 'burst')),
+    r.ip_hash is not null and exists (
+      select 1 from public.scan_opens o where o.ip_hash = r.ip_hash and o.id <> r.id and o.is_owner)
+  from (select so.id, so.ip_hash, so.opened_at, lower(so.company_slug) as slug,
                regexp_replace(lower(so.company_slug), '([^a-z0-9_-])', '\\\1', 'g') as slug_re
           from public.scan_opens so where so.id = p_id) r
 $$;
 
-create or replace function public.scan_open_finalize(p_id bigint, p_asn int, p_org text, p_country text, p_city text)
-returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+-- The same three facts for a page open (shared pages, SwishDM reports). Called by the page_opens trigger before the
+-- row exists (p_id null) and by the relabel. A SwishDM report link is /compare/<token>; a shared page is /shared/<page>.
+create or replace function public.page_open_context(p_page text, p_ip_hash text, p_at timestamptz, p_id bigint)
+returns table (burst boolean, near_li_send boolean, addr_scanner boolean, addr_owner boolean)
+language sql stable security definer set search_path = public, pg_temp as $$
+  with k as (
+    select case when p_page ~ '^swishdm/compare/[a-z2-7]{20}$' then '/compare/' || substring(p_page from '([a-z2-7]{20})$')
+                else '/shared/' || regexp_replace(lower(p_page), '([^a-z0-9_-])', '\\\1', 'g') end as link_re)
+  select
+    p_ip_hash is not null and exists (
+      select 1 from (select o.created_at as at from public.page_opens o
+                      where o.ip_hash = p_ip_hash and o.is_external and o.id is distinct from p_id
+                        and o.created_at between p_at - interval '10 minutes' and p_at
+                     union all select p_at) a
+       where (select count(distinct x.page) from (
+                select o.page from public.page_opens o
+                 where o.ip_hash = p_ip_hash and o.is_external and o.id is distinct from p_id
+                   and o.created_at between a.at and a.at + interval '10 minutes'
+                union all select p_page) x) >= 3),
+    exists (
+      select 1 from public.outreach_messages m, k
+       where m.direction = 'outbound' and m.sent_at is not null
+         and m.sent_at between p_at - interval '15 minutes' and p_at
+         and coalesce(m.channel, 'linkedin') <> 'email'
+         and lower(m.message_text) ~ (k.link_re || '([^a-z0-9_-]|$)')),
+    p_ip_hash is not null and exists (
+      select 1 from public.page_opens o
+       where o.ip_hash = p_ip_hash and o.id is distinct from p_id
+         and o.open_class = 'link_scanner' and o.class_reason in ('after_send', 'burst')),
+    p_ip_hash is not null and exists (
+      select 1 from public.page_opens o where o.ip_hash = p_ip_hash and o.id is distinct from p_id and not o.is_external)
+  from k
+$$;
+
+-- Labels one scan open. Returns the class and whether this was the row's FIRST label: true only when nothing (no
+-- earlier finalize, no relabel, no backfill) ever labelled it. The row is locked, so two calls cannot both be first.
+-- Lookup failure is not a signal: with no network the classifier uses the other evidence and, lacking any, says
+-- human/network_unknown (counted, never rings). The next open of the same address looks the network up again, and
+-- the nightly relabel picks it up from open_networks.
+create or replace function public.scan_open_label(p_id bigint, p_asn int, p_org text, p_country text, p_city text)
+returns table (open_class text, class_reason text, first_label boolean, opened_at timestamptz)
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   r public.scan_opens;
   v_asn int := p_asn;
   v_org text := p_org;
-  v_fleet boolean;
-  v_near boolean;
-  v_class text;
-  v_reason text;
+  v_burst boolean; v_near boolean; v_addr boolean; v_own boolean;
+  v_class text; v_reason text;
 begin
-  select * into r from public.scan_opens where id = p_id;
-  if not found then
-    return jsonb_build_object('open_class', null, 'class_reason', 'no_row', 'ring', false);
-  end if;
+  select * into r from public.scan_opens s where s.id = p_id for update;
+  if not found then return; end if;
   if r.ip_hash is not null and (p_org is not null or p_asn is not null) then
     insert into public.open_networks (ip_hash, asn, org, country_code, city, source)
     values (r.ip_hash, p_asn, p_org, p_country, p_city, 'edge_lookup')
@@ -50,64 +97,92 @@ begin
       asn = coalesce(excluded.asn, open_networks.asn), org = coalesce(excluded.org, open_networks.org),
       country_code = coalesce(excluded.country_code, open_networks.country_code),
       city = coalesce(excluded.city, open_networks.city), source = 'edge_lookup', last_seen = now();
+    select n.asn, n.org into v_asn, v_org from public.open_networks n where n.ip_hash = r.ip_hash;
   elsif r.ip_hash is not null then
     select n.asn, n.org into v_asn, v_org from public.open_networks n where n.ip_hash = r.ip_hash;
     update public.open_networks set last_seen = now() where ip_hash = r.ip_hash;
   end if;
-  select c.fleet, c.near_li_send into v_fleet, v_near from public.scan_open_context(p_id) c;
-  -- Rule 8 means "the lookup failed". A known org with no ASN (gateway-log seed rows) is a known network: pass the
-  -- reserved AS0 to the classifier, which is never in open_known_networks. Only the real ASN is stored on the row.
+  select c.burst, c.near_li_send, c.addr_scanner, c.addr_owner into v_burst, v_near, v_addr, v_own
+    from public.scan_open_context(p_id) c;
   select k.open_class, k.class_reason into v_class, v_reason
     from public.scan_open_classify(r.is_owner, r.user_agent, r.referrer_host, r.device_type,
-                                   coalesce(v_asn, case when v_org is not null then 0 end), v_fleet, v_near) k;
-  update public.scan_opens
+                                   v_asn, v_org, v_burst, v_near, v_addr, v_own) k;
+  update public.scan_opens s
      set net_asn = v_asn, net_org = v_org, open_class = v_class, class_reason = v_reason, classified_at = now()
-   where id = p_id;
-  return jsonb_build_object('open_class', v_class, 'class_reason', v_reason, 'ring', false);
+   where s.id = p_id;
+  return query select v_class, v_reason, (r.open_class is null and r.classified_at is null), r.opened_at;
 end $$;
 
--- Relabel history. Plain UPDATEs of the class columns only: no notify, no draft, no ring
--- (page_opens' trigger is BEFORE INSERT; scan_opens has no trigger).
+create or replace function public.scan_open_finalize(p_id bigint, p_asn int, p_org text, p_country text, p_city text)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare l record;
+begin
+  select * into l from public.scan_open_label(p_id, p_asn, p_org, p_country, p_city);
+  if l.open_class is null then
+    return jsonb_build_object('open_class', null, 'class_reason', 'no_row', 'ring', false);
+  end if;
+  return jsonb_build_object('open_class', l.open_class, 'class_reason', l.class_reason, 'ring', false);
+end $$;
+
+-- Relabel history. Plain UPDATEs of the class (and missing network) columns only: no notify, no draft, no ring
+-- (page_opens' trigger is BEFORE INSERT; scan_opens has no trigger). Two passes: the second sees the proven scanner
+-- addresses written by the first (rule B iii). Every row it reads gets classified_at, so a relabelled row can never
+-- take a first-label ring later.
 create or replace function public.reclassify_opens(p_since timestamptz default now() - interval '90 days')
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
-declare v_scan int; v_page int;
+declare v_scan bigint[] := '{}'; v_page bigint[] := '{}'; v_ids bigint[]; i int;
 begin
-  with s as (
-    select so.id, k.open_class, k.class_reason
-      from public.scan_opens so
-      left join public.open_networks n on n.ip_hash = so.ip_hash
-      cross join lateral public.scan_open_context(so.id) x
-      cross join lateral public.scan_open_classify(so.is_owner, so.user_agent, so.referrer_host, so.device_type,
-                                                   coalesce(so.net_asn, n.asn, case when coalesce(so.net_org, n.org) is not null then 0 end),
-                                                   x.fleet, x.near_li_send) k
-     where so.opened_at >= p_since)
-  update public.scan_opens t
-     set open_class = s.open_class, class_reason = s.class_reason, classified_at = now()
-    from s
-   where t.id = s.id and (t.open_class, t.class_reason) is distinct from (s.open_class, s.class_reason);
-  get diagnostics v_scan = row_count;
+  -- the network a later open of the same address found (lookup retry)
+  update public.scan_opens so set net_asn = coalesce(so.net_asn, n.asn), net_org = coalesce(so.net_org, n.org)
+    from public.open_networks n
+   where n.ip_hash = so.ip_hash and so.opened_at >= p_since
+     and ((so.net_asn is null and n.asn is not null) or (so.net_org is null and n.org is not null));
 
-  with p as (
-    select po.id, k.open_class, k.class_reason
-      from public.page_opens po
-      cross join lateral (select po.org is not null and (
-               select count(distinct q.page) from public.page_opens q
-                where q.org = po.org and q.city is not distinct from po.city
-                  and q.created_at between po.created_at - interval '90 days' and po.created_at + interval '90 days') >= 3 as fleet) f
-      cross join lateral public.page_open_classify(po.is_external, po.org, po.user_agent, f.fleet) k
-     where po.created_at >= p_since)
-  update public.page_opens t
-     set open_class = p.open_class, class_reason = p.class_reason, classified_at = now()
-    from p
-   where t.id = p.id and (t.open_class, t.class_reason) is distinct from (p.open_class, p.class_reason);
-  get diagnostics v_page = row_count;
-  return jsonb_build_object('scan_changed', v_scan, 'page_changed', v_page);
+  for i in 1..2 loop
+    with s as (
+      select so.id, so.open_class as old_class, so.class_reason as old_reason, k.open_class, k.class_reason
+        from public.scan_opens so
+        cross join lateral public.scan_open_context(so.id) x
+        cross join lateral public.scan_open_classify(so.is_owner, so.user_agent, so.referrer_host, so.device_type,
+                                                     so.net_asn, so.net_org, x.burst, x.near_li_send, x.addr_scanner, x.addr_owner) k
+       where so.opened_at >= p_since),
+    u as (
+      update public.scan_opens t
+         set open_class = s.open_class, class_reason = s.class_reason, classified_at = now()
+        from s
+       where t.id = s.id and ((t.open_class, t.class_reason) is distinct from (s.open_class, s.class_reason) or t.classified_at is null)
+      returning t.id, (s.old_class, s.old_reason) is distinct from (s.open_class, s.class_reason) as changed)
+    select coalesce(array_agg(u.id) filter (where u.changed), '{}') into v_ids from u;
+    v_scan := v_scan || v_ids;
+
+    with p as (
+      select po.id, po.open_class as old_class, po.class_reason as old_reason, k.open_class, k.class_reason
+        from public.page_opens po
+        cross join lateral public.page_open_context(po.page, po.ip_hash, po.created_at, po.id) x
+        cross join lateral public.page_open_classify(po.is_external, po.org, po.user_agent, po.referrer,
+                                                     x.burst, x.near_li_send, x.addr_scanner, x.addr_owner) k
+       where po.created_at >= p_since),
+    u as (
+      update public.page_opens t
+         set open_class = p.open_class, class_reason = p.class_reason, classified_at = now()
+        from p
+       where t.id = p.id and ((t.open_class, t.class_reason) is distinct from (p.open_class, p.class_reason) or t.classified_at is null)
+      returning t.id, (p.old_class, p.old_reason) is distinct from (p.open_class, p.class_reason) as changed)
+    select coalesce(array_agg(u.id) filter (where u.changed), '{}') into v_ids from u;
+    v_page := v_page || v_ids;
+  end loop;
+  return jsonb_build_object('scan_changed', (select count(distinct x) from unnest(v_scan) x),
+                            'page_changed', (select count(distinct x) from unnest(v_page) x));
 end $$;
 
 revoke all on function public.scan_open_context(bigint) from public, anon, authenticated;
+revoke all on function public.page_open_context(text, text, timestamptz, bigint) from public, anon, authenticated;
+revoke all on function public.scan_open_label(bigint, int, text, text, text) from public, anon, authenticated;
 revoke all on function public.scan_open_finalize(bigint, int, text, text, text) from public, anon, authenticated;
 revoke all on function public.reclassify_opens(timestamptz) from public, anon, authenticated;
 grant execute on function public.scan_open_context(bigint) to service_role;
+grant execute on function public.page_open_context(text, text, timestamptz, bigint) to service_role;
+grant execute on function public.scan_open_label(bigint, int, text, text, text) to service_role;
 grant execute on function public.scan_open_finalize(bigint, int, text, text, text) to service_role;
 grant execute on function public.reclassify_opens(timestamptz) to service_role;
 
