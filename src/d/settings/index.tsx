@@ -19,7 +19,7 @@ import { warsawDm } from '../ui/time'
 import { useDensity, useNativeMotion, usePush, useSound, useStoredTheme } from './prefs'
 import { isBriefNative } from '../../ds/skin'
 import { fetchBoards, fetchDevices, fetchMoneyPlate } from './reads'
-import { MoneyCells, Pair } from './parts'
+import { hasMoneyCells, MoneyCells, Pair } from './parts'
 import { useSkin } from '../../ds/useSkin'
 import { setSkinHere, skinOnHere, storedSkinOff } from './skinSwitch'
 import { Group, Row4, SettingsV4 } from './v4/SettingsV4'
@@ -172,7 +172,7 @@ function SettingsHome({ layout, navigate }: PlaceProps) {
         </Row4>
       </Group>
       <Group label="Money" id="money">
-        <div className="ds4-sub">{money.kind === 'loading' ? <Skeleton lines={2} title={false} label="Reading money" /> : money.kind === 'failed' ? <Failed what="the money figures" detail={money.message} onRetry={retryMoney} /> : <MoneyCells m={money.data} />}</div>
+        {(money.kind !== 'ready' || hasMoneyCells(money.data)) && <div className="ds4-sub">{money.kind === 'loading' ? <Skeleton lines={2} title={false} label="Reading money" /> : money.kind === 'failed' ? <Failed what="the money figures" detail={money.message} onRetry={retryMoney} /> : <MoneyCells m={money.data} />}</div>}
         <button type="button" className="ds4-row ds4-link" data-verb="open-money" onClick={() => navigate(dHash('settings', 'money'))}><span className="ds4-t"><b>Open Money</b></span><span className="ds4-chev" aria-hidden="true">›</span></button>
       </Group>
       <Group label="Account" id="account">

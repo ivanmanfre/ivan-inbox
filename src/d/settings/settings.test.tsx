@@ -30,6 +30,8 @@ import { pushBlocked } from './prefs'
 import { __resetSkinForTests } from '../../ds/skin'
 import { setSkinHere } from './skinSwitch'
 import SettingsPage from './index'
+import { MoneyCells } from './parts'
+import { render } from '@testing-library/react'
 
 const props = () => ({ layout: 'desktop' as const, route: parseDHash('#exp/d/settings'), navigate: vi.fn() })
 beforeEach(() => { mrr.rows = []; push.state = 'off'; push.enable.mockClear(); push.disable.mockClear(); auth.signOut.mockClear() })
@@ -166,6 +168,30 @@ describe('Money inside D', () => {
   })
 })
 
+describe('Task 10.1: Money cells hide placeholders', () => {
+  const empty = { mrr: [], cash: null, cashAsOf: null }
+  it('renders nothing when every cell is a placeholder', () => {
+    const { container } = render(<MoneyCells m={empty} />)
+    expect(container.innerHTML).toBe('')
+  })
+  it('renders exactly the one cell that has a real value', () => {
+    const arch = { clientId: 'arch', amountRow: { amount_usd: 3000, verified: true, currency: 'USD', occurred_on: '2026-08-31', source_kind: 'stripe', source_ref: null, observed_at: new Date().toISOString() }, latestRow: { note: null } }
+    const { container } = render(<MoneyCells m={{ ...empty, mrr: [arch] as never }} />)
+    const cells = container.querySelectorAll('.ds2-money > div')
+    expect(cells).toHaveLength(1)
+    expect(cells[0].textContent).toContain('Arch MRR')
+    expect(cells[0].textContent).toContain('$3,000')
+    expect(container.textContent).not.toMatch(/not recorded|no MRR row on file|not computed/)
+  })
+  it('the Settings home shows no placeholder text with empty money data', async () => {
+    renderInFrame(<SettingsPage {...props()} />)
+    await waitFor(() => expect(document.querySelector('[data-verb="push-on"]')).not.toBeNull())
+    await waitFor(() => expect(document.body.textContent).not.toMatch(/Reading money/))
+    expect(document.body.textContent).not.toMatch(/not recorded|no MRR row on file|not computed/)
+    expect(document.querySelector('.ds2-money')).toBeNull()
+  })
+})
+
 describe('Money plate in plain English (final gate 09-27)', () => {
   it('never prints memory_claim, a file path or MEMORY.md; keeps unverified and stale', async () => {
     const old = new Date(Date.now() - 25 * 86_400_000).toISOString()
@@ -179,7 +205,7 @@ describe('Money plate in plain English (final gate 09-27)', () => {
     expect(text).not.toMatch(/memory_claim|\.md|MEMORY|core-refs|_/)
     expect(text).toContain('$3,000')
     expect(text).toContain('unverified, waiting on a Stripe read · from a note, not a Stripe reading · observed 25 days ago · stale')
-    expect(text).toContain('Not recorded in any table yet. Waiting on a Stripe read.')
+    expect(text).not.toContain('Rise MRR')
   })
 })
 
