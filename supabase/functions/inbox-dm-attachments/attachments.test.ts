@@ -7,8 +7,8 @@ const NOW = Date.parse('2026-11-17T12:10:00Z')
 const json = (v: unknown, status = 200) => new Response(JSON.stringify(v), { status })
 
 // The shape Unipile returns for a PDF sent in a LinkedIn DM (field names from a real read; every id and name is made up).
-const deck = { id: 'DeckAttachment00000001', url: 'att://ACCOUNTIDACCOUNTIDACCO/aHR0cHM6Ly93d3cubGlua2VkaW4uY29tL2Rtcy9wcnY', type: 'file', mimetype: 'application/pdf', file_name: 'partner-deck.pdf', file_size: 4958246, unavailable: false }
-const sent = { id: 'SentDeckMessage0000001', is_sender: 1, timestamp: '2026-11-13T12:29:02.855Z', text: 'Here is the deck', attachments: [deck] }
+const deck = { id: 'DeckAttachment00000001', url: 'att://ACCOUNTIDACCOUNTIDACCO/aHR0cHM6Ly93d3cubGlua2VkaW4uY29tL2Rtcy9wcnY', type: 'file', mimetype: 'application/pdf', file_name: 'partner-deck.pdf', file_size: 3250586, unavailable: false }
+const sent = { id: 'SentDeckMessage0000001', is_sender: 1, timestamp: '2026-11-10T12:00:00.000Z', text: 'Here is the deck', attachments: [deck] }
 const rows = [
   { id: 'row-sent', unipile_message_id: 'SentDeckMessage0000001', unipile_chat_id: 'ChatWithThePerson00001' },
   { id: 'row-listen', unipile_message_id: 'listen:InboundMessage0000001', unipile_chat_id: 'ChatWithThePerson00001' },
@@ -24,8 +24,8 @@ describe('listing the files on a conversation', () => {
     expect(out.complete).toBe(true)
     expect(out.groups).toHaveLength(1)
     const [g] = out.groups
-    expect(g).toMatchObject({ message_id: 'row-sent', direction: 'outbound', at: '2026-11-13T12:29:02.855Z' })
-    expect(g.files[0]).toMatchObject({ id: deck.id, kind: 'file', mime: 'application/pdf', name: 'partner-deck.pdf', size: 4958246, unavailable: false })
+    expect(g).toMatchObject({ message_id: 'row-sent', direction: 'outbound', at: '2026-11-10T12:00:00.000Z' })
+    expect(g.files[0]).toMatchObject({ id: deck.id, kind: 'file', mime: 'application/pdf', name: 'partner-deck.pdf', size: 3250586, unavailable: false })
     const text = JSON.stringify(out)
     expect(text).not.toContain('att://')
     expect(text).not.toContain('ACCOUNTID')

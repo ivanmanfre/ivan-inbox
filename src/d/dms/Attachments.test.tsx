@@ -13,12 +13,12 @@ import { clearDmAttachmentsCache, useDmAttachments } from './useDmAttachments'
 afterEach(() => { cleanup(); clearDmAttachmentsCache(); fetchDmAttachments.mockReset(); vi.useRealTimers() })
 
 const FN = 'https://project.supabase.co/functions/v1/inbox-dm-attachments'
-const file = (over: Partial<DmFile> = {}): DmFile => ({ id: 'a1', kind: 'file', mime: 'application/pdf', name: 'partner-deck.pdf', size: 4958246, width: null, height: null, unavailable: false, href: `${FN}?m=x&a=a1&e=1&s=sig`, ...over })
+const file = (over: Partial<DmFile> = {}): DmFile => ({ id: 'a1', kind: 'file', mime: 'application/pdf', name: 'partner-deck.pdf', size: 3250586, width: null, height: null, unavailable: false, href: `${FN}?m=x&a=a1&e=1&s=sig`, ...over })
 const files = (byMessage: [string, DmFile[]][] = [], loose: DmAttachments['loose'] = []): DmAttachments => ({ byMessage: new Map(byMessage), loose, expiresAt: Date.now() + 3_600_000 })
 
 function deckThread() {
-  const theirs = msg({ prospect_id: 'pat', prospect_name: 'Pat Example', direction: 'inbound', unipile_chat_id: 'chat', sent_at: '2026-11-13T09:36:15Z', message_text: 'Any chance we move it?' })
-  const deck = msg({ prospect_id: 'pat', prospect_name: 'Pat Example', unipile_chat_id: 'chat', ai_model: 'manual_mirror', sent_at: '2026-11-13T12:29:02Z', message_text: "Here's the deck for your partners." })
+  const theirs = msg({ prospect_id: 'pat', prospect_name: 'Pat Example', direction: 'inbound', unipile_chat_id: 'chat', sent_at: '2026-11-10T09:00:00Z', message_text: 'Any chance we move it?' })
+  const deck = msg({ prospect_id: 'pat', prospect_name: 'Pat Example', unipile_chat_id: 'chat', ai_model: 'manual_mirror', sent_at: '2026-11-10T12:00:00Z', message_text: "The deck is attached." })
   return { theirs, deck, t: threads([theirs, deck])[0] }
 }
 
@@ -26,14 +26,14 @@ describe('files in the conversation', () => {
   it('shows a sent document as a chip with its name, type and size that opens in a new tab', () => {
     const { deck, t } = deckThread()
     const { container } = render(<History t={t} attachments={files([[deck.id, [file()]]])} />)
-    const chip = screen.getByRole('link', { name: /Open partner-deck\.pdf, PDF · 4\.7 MB/ })
+    const chip = screen.getByRole('link', { name: /Open partner-deck\.pdf, PDF · 3\.1 MB/ })
     expect(chip.getAttribute('href')).toBe(`${FN}?m=x&a=a1&e=1&s=sig`)
     expect(chip.getAttribute('target')).toBe('_blank')
     expect(chip.getAttribute('rel')).toBe('noreferrer')
     // Under the message's own words, inside its bubble, on our side.
     const bubble = container.querySelector(`[data-msg="${deck.id}"]`)!
     expect(bubble.getAttribute('data-side')).toBe('out')
-    expect(bubble.querySelector('.dm-b-body')!.textContent).toBe("Here's the deck for your partners.")
+    expect(bubble.querySelector('.dm-b-body')!.textContent).toBe("The deck is attached.")
     expect(bubble.querySelector('.dm-files')).toBeTruthy()
   })
 
@@ -58,7 +58,7 @@ describe('files in the conversation', () => {
   })
 
   it('lets the file stand in for a message that had no words', () => {
-    const wordless = msg({ prospect_id: 'pat', direction: 'inbound', unipile_chat_id: 'chat', sent_at: '2026-11-13T13:00:00Z', message_text: '' })
+    const wordless = msg({ prospect_id: 'pat', direction: 'inbound', unipile_chat_id: 'chat', sent_at: '2026-11-10T13:00:00Z', message_text: '' })
     const [t] = threads([wordless])
     const { container } = render(<History t={t} attachments={files([[wordless.id, [file()]]])} />)
     expect(screen.queryByText('Message text unavailable')).toBeNull()
@@ -68,7 +68,7 @@ describe('files in the conversation', () => {
 
   it('places a file sent with no words (no row of ours) at its time, on the sender side', () => {
     const { theirs, deck, t } = deckThread()
-    const loose = [{ key: 'k1', direction: 'outbound' as const, at: '2026-11-13T11:00:00Z', files: [file({ id: 'l1', name: 'pricing.pdf' })] }]
+    const loose = [{ key: 'k1', direction: 'outbound' as const, at: '2026-11-10T11:00:00Z', files: [file({ id: 'l1', name: 'pricing.pdf' })] }]
     const { container } = render(<History t={t} attachments={files([], loose)} />)
     const order = [...container.querySelectorAll('[data-msg],[data-files-only]')].map(e => e.getAttribute('data-msg') ?? `files:${e.getAttribute('data-files-only')}`)
     expect(order).toEqual([theirs.id, 'files:k1', deck.id])
@@ -106,7 +106,7 @@ describe('reading the files for an open conversation', () => {
   })
 
   it('never asks for a thread with no LinkedIn chat (an invite, an email)', async () => {
-    const [t] = threads([msg({ prospect_id: 'inv', message_type: 'connection_note', sent_at: '2026-11-13T12:00:00Z' })])
+    const [t] = threads([msg({ prospect_id: 'inv', message_type: 'connection_note', sent_at: '2026-11-10T12:30:00Z' })])
     render(<Probe t={t} />)
     await act(async () => { await Promise.resolve() })
     expect(fetchDmAttachments).not.toHaveBeenCalled()
@@ -135,9 +135,36 @@ describe('reading the files for an open conversation', () => {
     const again = render(<Probe t={t} />)
     expect(screen.getByText('1 with files')).toBeTruthy()
     expect(fetchDmAttachments).toHaveBeenCalledTimes(1)
-    const reply = msg({ prospect_id: 'pat', direction: 'inbound', unipile_chat_id: 'chat', sent_at: '2026-11-13T14:00:00Z', message_text: 'Got it' })
+    const reply = msg({ prospect_id: 'pat', direction: 'inbound', unipile_chat_id: 'chat', sent_at: '2026-11-10T14:00:00Z', message_text: 'Got it' })
     again.rerender(<Probe t={threads([theirs, deck, reply])[0]} />)
     await waitFor(() => expect(fetchDmAttachments).toHaveBeenCalledTimes(2))
+  })
+
+  it('does not read again when older messages of the same conversation land', async () => {
+    const { theirs, deck, t } = deckThread()
+    fetchDmAttachments.mockResolvedValue(files([[deck.id, [file()]]]))
+    const view = render(<Probe t={threads([deck])[0]} />)
+    await waitFor(() => expect(screen.getByText('1 with files')).toBeTruthy())
+    const older = msg({ prospect_id: 'pat', direction: 'inbound', unipile_chat_id: 'chat', sent_at: '2026-11-09T08:00:00Z', message_text: 'Hello' })
+    view.rerender(<Probe t={threads([older, theirs, deck])[0]} />)
+    view.rerender(<Probe t={t} />)
+    await act(async () => { await Promise.resolve() })
+    expect(fetchDmAttachments).toHaveBeenCalledTimes(1)
+  })
+
+  it('holds the read back for a pane nobody opened, and drops it when the pane goes first', async () => {
+    vi.useFakeTimers()
+    const { deck, t } = deckThread()
+    fetchDmAttachments.mockResolvedValue(files([[deck.id, [file()]]]))
+    const Shown = ({ t }: { t: Thread }) => { useDmAttachments(t, 1500); return null }
+    const gone = render(<Shown t={t} />)
+    await act(async () => { vi.advanceTimersByTime(1400) })
+    gone.unmount()
+    await act(async () => { vi.advanceTimersByTime(5000) })
+    expect(fetchDmAttachments).not.toHaveBeenCalled()
+    render(<Shown t={t} />)
+    await act(async () => { vi.advanceTimersByTime(1500) })
+    expect(fetchDmAttachments).toHaveBeenCalledTimes(1)
   })
 
   it('never shows one person’s files on another person’s thread', async () => {
@@ -146,7 +173,7 @@ describe('reading the files for an open conversation', () => {
     const view = render(<Probe t={t} />)
     await waitFor(() => expect(screen.getByText('1 with files')).toBeTruthy())
     fetchDmAttachments.mockReturnValueOnce(new Promise(() => {}))
-    const other = threads([msg({ prospect_id: 'other', direction: 'inbound', unipile_chat_id: 'chat2', sent_at: '2026-11-13T14:00:00Z' })])[0]
+    const other = threads([msg({ prospect_id: 'other', direction: 'inbound', unipile_chat_id: 'chat2', sent_at: '2026-11-10T14:00:00Z' })])[0]
     view.rerender(<Probe t={other} />)
     expect(screen.getByText('none')).toBeTruthy()
   })

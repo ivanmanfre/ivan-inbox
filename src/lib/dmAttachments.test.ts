@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { fileName, fileSize, fileType, parseDmAttachments } from './dmAttachments'
 
 const FN = 'https://project.supabase.co/functions/v1/inbox-dm-attachments'
-const deck = { id: 'a1', kind: 'file', mime: 'application/pdf', name: 'partner-deck.pdf', size: 4958246, width: null, height: null, unavailable: false, href: `${FN}?m=x&a=a1&e=1&s=sig` }
+const deck = { id: 'a1', kind: 'file', mime: 'application/pdf', name: 'partner-deck.pdf', size: 3250586, width: null, height: null, unavailable: false, href: `${FN}?m=x&a=a1&e=1&s=sig` }
 
 describe('reading the files answer', () => {
   it('groups files by our message id and keeps wordless ones in time order', () => {
     const out = parseDmAttachments({ ok: true, expires_at: '2026-11-17T13:00:00.000Z', groups: [
       { message_id: null, direction: 'outbound', at: '2026-11-14T10:00:00Z', files: [{ ...deck, id: 'late' }] },
-      { message_id: 'row-1', direction: 'outbound', at: '2026-11-13T12:29:02Z', files: [deck] },
+      { message_id: 'row-1', direction: 'outbound', at: '2026-11-10T12:00:00Z', files: [deck] },
       { message_id: null, direction: 'inbound', at: '2026-11-12T10:00:00Z', files: [{ ...deck, id: 'early' }] },
     ] }, FN)
     expect([...out.byMessage.keys()]).toEqual(['row-1'])
@@ -42,7 +42,7 @@ describe('what a chip says', () => {
   })
 
   it('writes sizes the way a person reads them', () => {
-    expect(fileSize(4958246)).toBe('4.7 MB')
+    expect(fileSize(3250586)).toBe('3.1 MB')
     expect(fileSize(31 * 1024 * 1024)).toBe('31 MB')
     expect(fileSize(320_000)).toBe('313 KB')
     expect(fileSize(900)).toBe('900 B')

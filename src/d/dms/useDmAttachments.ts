@@ -14,11 +14,16 @@ export function clearDmAttachmentsCache() { cache.clear() }
 /**
  * The files on this conversation, or null (none known yet, no LinkedIn chat, or the read failed).
  * Null renders the thread exactly as it was before files existed here.
+ * `wait` (ms) holds the read back for a pane that was shown without being opened.
  */
-export function useDmAttachments(t: Pick<Thread, 'prospect_id' | 'messages'>): DmAttachments | null {
-  // Only a thread with a LinkedIn chat can carry files. The key moves when a message lands or is sent.
+export function useDmAttachments(t: Pick<Thread, 'prospect_id' | 'messages'>, wait = 0): DmAttachments | null {
+  // Only a thread with a LinkedIn chat can carry files. The key is the newest message on it: it moves when
+  // one lands or is sent, and stays put while older pages of the same conversation are still being read in
+  // (a count would move with every page, and each move is a provider read).
   const chat = t.messages.some(m => m.unipile_chat_id)
-  const key = chat ? `${t.prospect_id}:${t.messages.filter(m => m.direction === 'inbound' || m.sent_at).length}` : ''
+  let newest = 0
+  if (chat) for (const m of t.messages) if (m.direction === 'inbound' || m.sent_at) newest = Math.max(newest, Date.parse(m.sent_at ?? m.created_at) || 0)
+  const key = chat ? `${t.prospect_id}:${newest}` : ''
   const [read, setRead] = useState<{ pid: string; data: DmAttachments } | null>(null)
   const [tick, setTick] = useState(0)
   useEffect(() => {
@@ -35,13 +40,16 @@ export function useDmAttachments(t: Pick<Thread, 'prospect_id' | 'messages'>): D
     }
     if (hit) setRead({ pid, data: hit.data })
     if (hit && hit.key === key && now - hit.at < FRESH_MS && hit.data.expiresAt - now > RENEW_BEFORE_MS) { renewAt(hit.data); return () => { current = false; clearTimeout(timer) } }
-    void fetchDmAttachments(pid).then(data => {
+    const go = () => void fetchDmAttachments(pid).then(data => {
       cache.set(pid, { key, data, at: Date.now() })
       if (!current) return
       setRead({ pid, data })
       renewAt(data)
     }).catch(() => { /* the thread keeps what it had */ })
-    return () => { current = false; clearTimeout(timer) }
+    // A pane nobody opened (`wait`) reads only once it has stayed on screen, so a pane that is swapped
+    // while he types a search never reaches the provider.
+    const dwell = wait > 0 ? setTimeout(go, wait) : (go(), undefined)
+    return () => { current = false; clearTimeout(timer); clearTimeout(dwell) }
   }, [key, tick]) // eslint-disable-line react-hooks/exhaustive-deps
   // Back from the background with links about to run out: read again.
   useEffect(() => {
