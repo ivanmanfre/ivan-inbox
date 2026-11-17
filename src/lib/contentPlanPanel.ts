@@ -14,7 +14,7 @@ export type PanelCohort = {
   top_post_kind: string | null; top_belief: number | null; top_vehicle: string | null
   invites: number; accept_base: number; accepts: number; reply_base: number; replies: number; booking_base: number; bookings: number
   accept_rate: number | null; reply_rate: number | null; booking_rate: number | null; small_n: boolean
-  scorer_version?: string | number | null; note_arm?: string | null; reply_small_n?: boolean | null; booking_small_n?: boolean | null
+  scorer_version?: string | number | null; note_arm?: string | null; comparable?: boolean | null; reply_small_n?: boolean | null; booking_small_n?: boolean | null
 }
 export type PanelBooking = { call_date: string; reason_class: string; quote: string }
 export type CalendarPanel = {

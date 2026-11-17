@@ -144,6 +144,17 @@ describe('fit not measured and unrecorded scorer', () => {
   })
 })
 
+describe('rows that are not comparable', () => {
+  it('shows counts and "scorer not recorded, not comparable" with no rate', () => {
+    const p = panel()
+    p.cohorts.rows = [{ ...p.cohorts.rows[0], scorer_version: 'unstamped', comparable: false, accept_rate: null, reply_rate: null, booking_rate: null }]
+    const { container } = render(<CalendarPanel state={{ panel: p, failed: false }} />)
+    const t = (container.querySelector('.cp17-measure') as HTMLElement).textContent!
+    expect(t).toContain('accepted 12 of 24, replied 2 of 10, booked 0 of 0; scorer not recorded, not comparable')
+    expect(t).not.toContain('%')
+  })
+})
+
 describe('a failed read', () => {
   it('shows one quiet line', () => {
     render(<CalendarPanel state={{ panel: null, failed: true }} />)

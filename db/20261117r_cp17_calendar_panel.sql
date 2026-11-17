@@ -7,6 +7,8 @@
 -- post, cohort rates of every period (grouped by filter_key in the app; rates compare
 -- only within one filter_key), and the newest "what made you book" quotes.
 --
+-- Only active slots count (planned, proposal, requested), the same filter as
+-- content_plan_week; dropped and superseded slots never fill a week.
 -- Read only. Same operator check as inbox_lane_adjustment_cohorts. A slot with
 -- no belief and no belief on its placed draft returns null, never a guess.
 -- Outlier copies are listed as extras (is_copy) and never counted in the fill.
@@ -54,7 +56,7 @@ begin
         or coalesce(d.taxonomy->>'source_ref', '') like 'outlier:%') is_copy
     from public.content_plan_slots s
     left join public.carousel_drafts d on d.id = s.placed_draft_id
-    where s.account = 'ivan' and s.status <> 'dropped'
+    where s.account = 'ivan' and s.status in ('planned', 'proposal', 'requested')
       and s.week_start >= this_monday and s.week_start < this_monday + 28
   ) x;
 
@@ -106,7 +108,8 @@ begin
     'scorer_version', to_jsonb(c)->'scorer_version', 'note_arm', to_jsonb(c)->'note_arm',
     'small_n', c.small_n,
     'reply_small_n', to_jsonb(c)->'reply_small_n',
-    'booking_small_n', to_jsonb(c)->'booking_small_n'
+    'booking_small_n', to_jsonb(c)->'booking_small_n',
+    'comparable', to_jsonb(c)->'comparable'
   ) order by c.filter_key, c.top_post_kind, c.top_belief, c.top_vehicle), '[]'::jsonb) into v_coh
   from public.cp17_top_of_feed_cohorts_ivan c;
 

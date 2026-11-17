@@ -92,6 +92,8 @@ function ProfileFirst({ p }: { p: Panel }) {
 
 type Cohort = Panel['cohorts']['rows'][number]
 const SMALL = 20
+/** Rows the view marks not comparable, or whose scorer was never recorded: counts only, no rate. */
+const notComparable = (c: Cohort) => c.comparable === false || c.scorer_version === 'unstamped'
 const scorerText = (v: Cohort['scorer_version']) => v == null || v === '' || v === 'unstamped' ? 'scorer not recorded' : `scorer ${String(v).replace(/^v?/, 'v')}`
 const noteText = (a: Cohort['note_arm']) => a === 'note' ? 'with a note' : a === 'blank' ? 'no note' : null
 const keyLabel = (c: Cohort) => [c.campaign_name ?? 'Campaign', scorerText(c.scorer_version), noteText(c.note_arm), c.period_from ? `from ${c.period_from}` : null].filter(Boolean).join(' · ')
@@ -128,9 +130,10 @@ function Measure({ p }: { p: Panel }) {
           {g.rows.map((c, i) => <li key={`${c.top_post_kind}:${c.top_belief}:${c.top_vehicle}:${i}`}>
             <span className="cp17-first">{kindText(c)}</span>
             <span className="cp17-num">{c.invites} invites</span>
+            {notComparable(c) ? <span className="cp17-num">accepted {c.accepts} of {c.accept_base}, replied {c.replies} of {c.reply_base}, booked {c.bookings} of {c.booking_base}; {c.scorer_version === 'unstamped' || c.scorer_version == null || c.scorer_version === '' ? 'scorer not recorded, ' : ''}not comparable</span> : <>
             <span className="cp17-num">{rate('accepted', c.accepts, c.accept_base, c.small_n || c.accept_base < SMALL)}</span>
             <span className="cp17-num">{rate('replied', c.replies, c.reply_base, (c.reply_small_n ?? c.reply_base < SMALL))}</span>
-            <span className="cp17-num">{rate('booked', c.bookings, c.booking_base, (c.booking_small_n ?? c.booking_base < SMALL))}</span>
+            <span className="cp17-num">{rate('booked', c.bookings, c.booking_base, (c.booking_small_n ?? c.booking_base < SMALL))}</span></>}
           </li>)}
         </ul>
       </div>)}

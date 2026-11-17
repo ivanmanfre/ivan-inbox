@@ -26,6 +26,13 @@ describe('parseCalendarPanel', () => {
     expect(p.profile_first).toBeNull()
     expect(p.cohorts).toEqual({ filter_key: null, rows: [], note: '' })
   })
+  it('accepts cohort rows with null rates and a comparable flag', () => {
+    const d = ok() as Record<string, unknown>
+    d.cohorts = { filter_key: null, note: '', rows: [{ filter_key: 'k', invites: 7, accept_base: 7, accepts: 1, accept_rate: null, reply_rate: null, booking_rate: null, comparable: false, scorer_version: 'unstamped' }] }
+    const p = parseCalendarPanel(d)
+    expect(p.cohorts.rows[0].accept_rate).toBeNull()
+    expect(p.cohorts.rows[0].comparable).toBe(false)
+  })
   it('refuses an answer that is not ok or has no weeks', () => {
     expect(() => parseCalendarPanel(null)).toThrow()
     expect(() => parseCalendarPanel({ ...ok(), ok: false })).toThrow()
