@@ -19,12 +19,16 @@ export type NavItem = {
 const allFailed = (b: boolean): Record<Seat, boolean> => ({ ivan: b, risedtc: b, arch: b , swishdm: b, anna: b})
 const nFailed = (r: Record<Seat, boolean>) => Object.values(r).filter(Boolean).length
 
-/** The X desk's count as a nav input: Ivan's items waiting (null until read), and a failed read. */
+/** The X review's count as a nav input: Ivan's items waiting (null until read), and a failed read. */
 export type XCount = { n: number | null; failed: boolean }
 
-/** X is Ivan's lane only: his seat carries the number, the other seats have none (0). */
-export function xNumbers(x: XCount): SeatNumbers {
-  return { ivan: x.n, risedtc: 0, arch: 0, swishdm: 0, anna: 0 }
+/**
+ * Content's number with X in it (X is a Content tab, daily-brief-trim Task 6.1): review drafts plus X posts
+ * waiting, so a waiting X post is never invisible. X is Ivan's lane only, so it rides his seat. While the X
+ * read is loading or has failed, the review count stands alone: X never blanks or fails Content's number.
+ */
+export function contentWithX(n: SeatNumbers, x: XCount): SeatNumbers {
+  return { ...n, ivan: n.ivan == null ? null : n.ivan + (x.n ?? 0) }
 }
 
 export function navLines(c: FrameCounts, x: XCount = { n: null, failed: false }): Partial<Record<PlaceId, { line: NavLine; failed: number }>> {
@@ -34,9 +38,7 @@ export function navLines(c: FrameCounts, x: XCount = { n: null, failed: false })
     // Today's DMs number: threads with an unanswered reply or a draft to approve, per seat. The same
     // number and words as Home's "DMs waiting" tile (#36); the drafts count rides as the second line.
     dms: { line: { kind: 'seats', label: 'DMs waiting', numbers: dmNumbers(c, 'needs'), failed: dmsF, second: { label: 'drafted', numbers: dmNumbers(c, 'drafts') } }, failed: nFailed(dmsF) },
-    content: { line: { kind: 'seats', label: 'Waiting on you', numbers: contentNumbers(c), failed: contentF }, failed: nFailed(contentF) },
-    // The X desk's own number (X desk plan P3): what waits on Ivan in X review, off the desk's own store.
-    x: { line: { kind: 'seats', label: 'To review on X', numbers: xNumbers(x), failed: { ...allFailed(false), ivan: x.failed } }, failed: x.failed ? 1 : 0 },
+    content: { line: { kind: 'seats', label: 'Waiting on you', numbers: contentWithX(contentNumbers(c), x), failed: contentF }, failed: nFailed(contentF) },
     ops: { line: { kind: 'seats', label: 'Waiting on you', numbers: opsNumbers(c), failed: allFailed(c.ops.failed) }, failed: c.ops.failed ? 1 : 0 },
     sales: {
       line: { kind: 'text', label: 'Next call', text: c.nextCall.value ? c.nextCall.value.label.replace(/^(\w{3}) \d{1,2} \w{3}, /, '$1 ') : (c.nextCall.failed ? '?' : '…') },

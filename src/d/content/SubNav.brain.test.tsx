@@ -5,15 +5,17 @@ import { renderInFrame } from '../test-utils'
 import { SubNav, contentRedirect, subOf } from './SubNav'
 
 afterEach(cleanup)
-it('puts Plan first in six phone tabs, Performance last, while More reaches sources and history', () => {
+it('puts Plan first in seven phone tabs (X after Review), Performance last, while More reaches sources and history', () => {
   renderInFrame(<SubNav on="results" lane="risedtc" />, { layout: 'phone' })
   const tabs = within(screen.getByRole('navigation', { name: 'Content places' })).getAllByRole('link')
-  expect(tabs).toHaveLength(6)
+  expect(tabs).toHaveLength(7)
+  expect(tabs[4].textContent).toBe('X')
+  expect(tabs[4].getAttribute('href')).toBe('#exp/d/content/x?lane=risedtc')
   expect(tabs[0].textContent).toBe('Plan')
   expect(tabs[0].getAttribute('href')).toBe('#exp/d/content/plan?lane=risedtc')
-  expect(tabs[5].textContent).toBe('Performance')
-  expect(tabs[5].getAttribute('href')).toBe('#exp/d/content/results?lane=risedtc')
-  expect(tabs[5].getAttribute('aria-current')).toBe('page')
+  expect(tabs[6].textContent).toBe('Performance')
+  expect(tabs[6].getAttribute('href')).toBe('#exp/d/content/results?lane=risedtc')
+  expect(tabs[6].getAttribute('aria-current')).toBe('page')
   fireEvent.click(screen.getByRole('button', { name: 'More in Content' }))
   expect(screen.getByRole('link', { name: 'Patterns and benchmarks' }).getAttribute('href')).toBe('#exp/d/content/brain?lane=risedtc&view=patterns')
   expect(screen.getByRole('link', { name: 'Research library' }).getAttribute('href')).toBe('#exp/d/content/strategy?lane=risedtc&section=research')

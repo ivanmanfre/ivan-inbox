@@ -20,7 +20,7 @@ import { choosePhoto, flushPhoto, usePhotoSlot } from './photoSaves'
 import { markQuickSeen, patchX, useXReview } from './useXReview'
 import './x.css'
 
-// X REVIEW: `#exp/d/x?id=<article or quote id>` (the X desk; `#exp/d/ops/x` redirects here, route.ts). Ivan, 2026-10-11: "allow me to click on the
+// X REVIEW: `#exp/d/content/x?id=<article or quote id>` (Content's X tab; `#exp/d/x` and `#exp/d/ops/x` redirect here, route.ts). Ivan, 2026-10-11: "allow me to click on the
 // inputs and then on the same screen you open the X simulation so it should look like X so I can
 // review in there". Phone: Preview / Edit on one screen (a tap on a paragraph in the preview opens
 // the editor at that line). Desktop: editor and preview side by side. Publish and Post ask first.
@@ -93,7 +93,7 @@ function Checks({ a, words }: { a: XArticle; words: number }) {
 function Head({ layout, label, title, navigate, actions, back = true }: { layout: Layout; label: string; title: string; navigate: (h: string) => void; actions?: ReactNode; back?: boolean }) {
   return (
     <div className={`xr-head xr-head-${layout}`}>
-      {back && <button type="button" className="d-ib xr-back" aria-label="Back to the X desk" onClick={() => { if (!document.querySelector('.d-confirm')) navigate(dHash('x')) }}>‹</button>}
+      {back && <button type="button" className="d-ib xr-back" aria-label="Back to the X desk" onClick={() => { if (!document.querySelector('.d-confirm')) navigate(dHash('content', 'x')) }}>‹</button>}
       <div className="xr-head-t"><small><XLogo size={11} /> {label}</small><b>{title}</b></div>
       {actions && <div className="xr-head-k">{actions}</div>}
     </div>
@@ -151,7 +151,7 @@ function useDecide(kind: 'article' | 'quote' | 'quick', id: string, title: strin
       patchX(l => ({ articles: l.articles.filter(a => a.id !== id), quotes: l.quotes.filter(q => q.id !== id), quicks: l.quicks.filter(k => k.id !== id) }))
       refreshCounts('ops')
       toast.show({ id: `x-${id}`, message: `Discarded · ${title}` })
-      navigate(dHash('x'))
+      navigate(dHash('content', 'x'))
     } catch (e) { setErr(msg(e)) } finally { setBusy(null) }
   }, [confirm, kind, id, title, navigate, refreshCounts, toast])
   return { busy, err, go, discard }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fetchXCalendar, type XCalendarItem } from '../../lib/xReview'
+import { dHash } from '../route'
 import { XLogo } from '../x/glyphs'
 import { warsawDay, warsawDayTime, warsawHm } from '../ui/time'
 
@@ -44,7 +45,7 @@ export function XMarks({ items, time = true }: { items: XCalendarItem[] | undefi
         return (
           <a
             key={x.id} className="xmark" data-status={x.status}
-            href={out ? x.x_url! : `#exp/d/x?id=${x.id}`}
+            href={out ? x.x_url! : dHash('content', 'x', { id: x.id })}
             {...(out ? { target: '_blank', rel: 'noreferrer' } : {})}
             aria-label={label} title={label}
             onClick={e => e.stopPropagation()}

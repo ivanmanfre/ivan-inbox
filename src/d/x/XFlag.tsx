@@ -12,7 +12,7 @@ import './x.css'
 // 2026-10-22): the calendar carries them.
 // Renders nothing when there is nothing to say. Every hook runs before that return.
 
-const xReviewHref = (id: string) => dHash('x', null, { id })
+const xReviewHref = (id: string) => dHash('content', 'x', { id })
 
 const KIND: Record<XFlagItem['kind'], string> = { article: 'X article to review', quote: 'X quote post to review', quick: 'Quick X post' }
 
