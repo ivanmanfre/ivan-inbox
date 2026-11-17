@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { callsByWeek, fortnightDays, nameFromTitle, otherPerson } from './model'
 import { packIndex, readFortnight } from '../model'
 import type { CallRow } from '../../../lib/transcripts'
-const row: CallRow = { id:'a', title:'Meeting title', date:'2026-10-25T23:30:00Z', duration_minutes:31, participants:['Ivan Manfredi','Ada'], summary:null,action_items:null,topics:null,follow_up_draft:null,follow_up_sent:false,source:null,meeting_type:null,brief:null }
+const row: CallRow = { id:'a', title:'Meeting title', date:'2026-10-25T23:30:00Z', duration_minutes:31, participants:['Ivan Manfredi','Ada'], talk_stats:null, summary:null,action_items:null,topics:null,follow_up_draft:null,follow_up_sent:false,source:null,meeting_type:null,brief:null }
 it('uses fourteen Warsaw civil days across DST and UTC midnight', () => {
   const now = new Date('2026-10-25T23:30:00Z')
   const days = fortnightDays(readFortnight([], packIndex([]), [], now), now)
@@ -36,5 +36,14 @@ describe('nameFromTitle', () => {
     expect(nameFromTitle('Manual recording')).toBe('Manual recording')
     expect(nameFromTitle('Participants')).toBe('Participants')
     expect(nameFromTitle(null)).toBe('Untitled call')
+  })
+})
+
+describe('otherPerson never shows an email', () => {
+  it('skips an email address and uses the title', () => {
+    expect(otherPerson({ ...row, participants: ['davorinsmit@arch.agency', 'Ivan Manfredi'], title: 'Davorin / Marianna' })).toBe('Davorin / Marianna')
+  })
+  it('falls back to the local part when the title is empty', () => {
+    expect(otherPerson({ ...row, participants: ['davorinsmit@arch.agency'], title: '' })).toBe('davorinsmit')
   })
 })

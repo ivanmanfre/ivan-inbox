@@ -1,7 +1,7 @@
 import { useMotionLevel } from '../../../ds/motionLevel'
 import { useCallback, useMemo, useState } from 'react'
 import { packsInWindow } from '../../../wb/sales/match'
-import { segmentCalls, type CallSegment } from '../../../lib/transcripts'
+import { segmentCalls, type SalesSegment } from '../../../lib/transcripts'
 import type { PlaceProps } from '../../places'
 import { dHash } from '../../route'
 import { useReportFailed } from '../../shell/health'
@@ -28,7 +28,7 @@ import './sales4.css'
 // Hooks rule: every hook runs before any branch that returns.
 
 const ORBIT = dHash('sales', 'orbit', { tenant: 'ivan', range: '30d' })
-const SEGS: CallSegment[] = ['open', 'recent', 'all']
+const SEGS: SalesSegment[] = ['mine', 'open', 'recent', 'all']
 
 export default function SalesPage({ layout, route, navigate }: PlaceProps) {
   const motion = useMotionLevel()
@@ -37,9 +37,9 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
   const idx = useMemo(() => packIndex(data.packs), [data.packs])
   const f = useMemo(() => readFortnight(data.events, idx, data.calls, data.now), [data.events, idx, data.calls, data.now])
   const q = route.query
-  const segQ = q.get('seg') as CallSegment | null
-  // Sales opens on the last 7 days (review 2026-11-06): the action-items tab was mostly calls older than 30 days.
-  const seg: CallSegment = segQ && SEGS.includes(segQ) ? segQ : 'recent'
+  const segQ = q.get('seg') as SalesSegment | null
+  // Sales opens on Ivan's own calls (2026-11-17); the last 7 days was mixing in client recorders.
+  const seg: SalesSegment = segQ && SEGS.includes(segQ) ? segQ : 'mine'
   const sendsRecorded = useMemo(() => data.calls.some(c => c.follow_up_sent === true), [data.calls])
   const queue = useMemo(() => segmentCalls(data.calls, seg), [data.calls, seg])
   const want = q.get('call')
@@ -51,7 +51,7 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
   const shownF = useMemo(() => filterFortnight(f, tokens), [f, tokens])
   const packsIn = data.state.packs === 'ok' || data.packs.length > 0 ? packsInWindow(data.events, idx.slugs, idx.meta) : null
   const at = open ? queue.findIndex(c => c.id === open.id) + 1 : 0
-  const go = useCallback((s: CallSegment, call?: string | null) => navigate(dHash('sales', null, call ? { seg: s, call } : { seg: s })), [navigate])
+  const go = useCallback((s: SalesSegment, call?: string | null) => navigate(dHash('sales', null, call ? { seg: s, call } : { seg: s })), [navigate])
   const step = useCallback((d: 1 | -1) => {
     const i = at - 1 + d
     if (i >= 0 && i < queue.length) go(seg, queue[i].id)

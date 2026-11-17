@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { actionItems, callTopics, people, type CallRow } from '../../../lib/transcripts'
+import { actionItems, callTopics, people, talkLine, type CallRow } from '../../../lib/transcripts'
 import { Items, Text, Said } from '../CallWindow'
 import { CallRoom, callWhen } from '../CallRoom'
 import { otherPerson } from './model'
@@ -35,11 +35,14 @@ export function Window({ row, at, of, onStep, layout, missing, sendsRecorded = f
   if (missing) return <div className="sl4-window" data-call-missing><p className="sl4-empty">This call didn't load. It is not in the archive that was read. Pick one from calls on record.</p></div>
   if (!row) return <div className="sl4-window"><p className="sl4-empty">No call open. Pick one from calls on record.</p></div>
   const items = actionItems(row), b = row.brief, who = people(row.participants), topics = callTopics(row)
+  const talk = talkLine(row)
+  const speakers = Object.entries(row.talk_stats?.words ?? {}).sort((a, b) => b[1] - a[1])
   const objections = (b?.objections ?? []).map(x => (x ?? '').trim()).filter(Boolean)
   return <div className={`sl4-window sl4-window-${layout}`} data-open-call={row.id}>
     <header className="sl4-window-head"><div className="sl4-eyebrow">Call · {callWhen(row.date)}</div>
       <nav aria-label="Step through calls"><button type="button" data-verb="prev-call" disabled={at <= 1} aria-label="Previous call (k)" title="Previous call · k" onClick={() => onStep(-1)}>‹</button><button type="button" data-verb="next-call" disabled={at >= of} aria-label="Next call (j)" title="Next call · j" onClick={() => onStep(1)}>›</button><small>{at} of {of}</small></nav>
       <h2>{otherPerson(row)}</h2><small>{row.duration_minutes ? `${row.duration_minutes} min` : 'length not recorded'}{who.length ? ` · ${who.join(', ')}` : ''}</small>
+      {talk && <section className="sl4-talk" data-talk><span className={talk.warn ? 'sl4-warn' : undefined}>{talk.text}</span>{speakers.map(([n, w]) => <small key={n}>{n} {w} words</small>)}</section>}
     </header>
     <div className="sl4-window-body">
       <div className="sl4-you"><Items head="You owe" list={items.filter(i => i.mine)} /></div>

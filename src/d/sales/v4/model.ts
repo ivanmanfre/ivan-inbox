@@ -42,5 +42,10 @@ export function nameFromTitle(title: string | null | undefined): string {
 }
 
 export function otherPerson(row: CallRow) {
-  return people(row.participants).find(p => !IVAN.test(p.trim())) ?? nameFromTitle(row.title)
+  const all = people(row.participants)
+  const named = all.find(p => !IVAN.test(p.trim()) && !p.includes('@'))
+  if (named) return named
+  if ((row.title ?? '').trim()) return nameFromTitle(row.title)
+  const email = all.find(p => p.includes('@'))
+  return email ? email.split('@')[0] : nameFromTitle(row.title)
 }
