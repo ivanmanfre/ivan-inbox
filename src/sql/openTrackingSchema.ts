@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 // Stand-in for the live tables the open-tracking migrations touch (shapes read from the live
 // information_schema on 2026-11-17). net.http_post records every call so a ring is counted, never assumed.
 export const BASE = `
+set timezone = 'UTC';
 create role anon; create role authenticated; create role service_role;
 create schema auth; create schema net; create schema cron;
 create table cron.job (jobid bigserial primary key, jobname text unique, schedule text, command text);
