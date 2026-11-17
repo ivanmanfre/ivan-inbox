@@ -10,7 +10,7 @@
 -- One row per recorded change, per client. A period starts on its change date
 -- (Europe/Warsaw) and ends the day before the next one; the newest is open.
 -- Acceptance counts invites that have had 72 hours; replies count invites that
--- have had 7 days. Younger invites stay out of both rates and are returned as
+-- have had 7 days (168 elapsed hours, so a clock change never moves the window). Younger invites stay out of both rates and are returned as
 -- raw counts. Reactions, vendor pitches and auto-replies are not replies.
 create or replace function public.inbox_lane_adjustment_cohorts()
 returns table(client_id text, period_from date, period_to date, label text,
@@ -21,6 +21,9 @@ language plpgsql stable security definer set search_path=pg_catalog as $$
 declare
   as_of timestamptz := statement_timestamp();
   marks jsonb;
+  good jsonb := '[]'::jsonb;
+  e jsonb;
+  d date;
 begin
   if auth.role() is distinct from 'service_role' and not exists (
     select 1 from public.outreach_agent_accounts a
@@ -31,17 +34,26 @@ begin
   exception when others then marks := null;
   end;
   if marks is null or jsonb_typeof(marks) <> 'array' then return; end if;
+  -- One entry at a time: a malformed entry (not an object, blank client or
+  -- label, a date that does not exist) is left out and never fails the read.
+  for e in select t.x from jsonb_array_elements(marks) t(x) loop
+    begin
+      if jsonb_typeof(e) = 'object'
+        and btrim(coalesce(e->>'client_id','')) <> ''
+        and btrim(coalesce(e->>'label','')) <> ''
+        and (e->>'effective_on') ~ '^\d{4}-\d{2}-\d{2}$' then
+        d := (e->>'effective_on')::date;
+        good := good || jsonb_build_object('client_id', btrim(e->>'client_id'),
+          'label', btrim(e->>'label'), 'd', d);
+      end if;
+    exception when others then null;
+    end;
+  end loop;
   return query
-  with raw as (
-    select btrim(e->>'client_id') client_id, btrim(e->>'label') label, e->>'effective_on' as eff
-    from jsonb_array_elements(marks) e
-  ), ok as (
-    -- A malformed entry is left out; it never fails the whole read.
-    select distinct on (r.client_id, r.eff) r.client_id, r.label, r.eff::date effective_on
-    from raw r
-    where r.client_id <> '' and r.label <> '' and r.eff ~ '^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$'
-      and to_char(to_date(r.eff,'YYYY-MM-DD'),'YYYY-MM-DD') = r.eff
-    order by r.client_id, r.eff
+  with ok as (
+    select distinct on (g.client_id, g.d) g.client_id, g.label, g.d effective_on
+    from jsonb_to_recordset(good) as g(client_id text, label text, d date)
+    order by g.client_id, g.d, g.label
   ), per as (
     select m.client_id, m.label, m.effective_on d0,
       lead(m.effective_on) over (partition by m.client_id order by m.effective_on) d1
@@ -73,9 +85,9 @@ begin
     count(i.id) filter (where i.s <= as_of - interval '72 hours'),
     count(i.id) filter (where i.s <= as_of - interval '72 hours'
       and i.a >= i.s and i.a <= i.s + interval '72 hours'),
-    count(i.id) filter (where i.s <= as_of - interval '7 days'),
-    count(i.id) filter (where i.s <= as_of - interval '7 days'
-      and fr.r <= i.s + interval '7 days'),
+    count(i.id) filter (where i.s <= as_of - interval '168 hours'),
+    count(i.id) filter (where i.s <= as_of - interval '168 hours'
+      and fr.r <= i.s + interval '168 hours'),
     count(i.id) filter (where fr.r is not null),
     count(i.id) filter (where i.k is not null)
   from b
