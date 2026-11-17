@@ -62,7 +62,7 @@ const desk = () => document.querySelector('[data-desk]') as HTMLElement | null
 /** The page in the frame's providers; `go` moves the route with the page kept mounted, as the Shell does. */
 const page = (hash: string, navigate = vi.fn(), layout: 'desktop' | 'phone' = 'desktop') => {
   const ui = (h: string) => {
-    const frame: Frame = { layout, route: parseDHash(h), navigate, bellOpen: false, setBellOpen: () => {}, claudeOpen: false, setClaudeOpen: () => {}, openPalette: () => {}, titleSlot: null, toolsSlot: null }
+    const frame: Frame = { layout, route: parseDHash(h), navigate, bellOpen: false, setBellOpen: () => {}, claudeOpen: false, setClaudeOpen: () => {}, claudeShown: false, toggleClaude: () => {}, openPalette: () => {}, titleSlot: null, toolsSlot: null }
     return <FrameCountsProvider readers={ZERO_READERS}><FrameCtx.Provider value={frame}><div className={`d-app d-${layout}`}><ToastProvider><DConfirmProvider>
       <ContentPage layout={layout} route={frame.route} navigate={navigate} />
     </DConfirmProvider></ToastProvider></div></FrameCtx.Provider></FrameCountsProvider>

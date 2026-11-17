@@ -9,14 +9,14 @@ import { useClock } from '../ui/useClock'
 import { warsawDm, warsawDow, warsawHm } from '../ui/time'
 import { BellButton } from './Bell'
 import { useFrame } from './frame'
-import { useNavModel, xNumbers } from './navModel'
+import { contentWithX, useNavModel } from './navModel'
 import { useXWaiting } from '../x/useXReview'
 import { Brand, MeFooter, NavCount, NavLineView, SeatHead } from './Side'
 import { Glance } from './Glance'
 import type { SeatNumbers } from '../seats'
 
 // The phone frame (D pshell.js): top bar (panel key, place + Warsaw time,
-// bell), the dock (six places + the lime Claude key), and the left panel as a
+// bell), the dock (five places + the lime Claude key), and the left panel as a
 // drawer from the left edge.
 
 export function PhoneTop({ onPanel, setToolsSlot }: { onPanel: () => void; setToolsSlot: (el: HTMLElement | null) => void }) {
@@ -46,8 +46,7 @@ export function Dock() {
   const trio: Partial<Record<string, { n: ReturnType<typeof dmNumbers>; failed: ReturnType<typeof seatFailed> }>> = {
     dms: { n: dmNumbers(c, 'needs'), failed: seatFailed(c.dms) },
     ops: { n: opsNumbers(c), failed: opsF },
-    x: { n: xNumbers(x), failed: { ivan: x.failed, risedtc: false, arch: false, swishdm: false, anna: false } },
-    content: { n: contentNumbers(c), failed: seatFailed(c.content) },
+    content: { n: contentWithX(contentNumbers(c), x), failed: seatFailed(c.content) },
   }
   const calls = c.calls.value
   return (
@@ -130,9 +129,8 @@ function deviceInWarsaw(): boolean {
 // The large title names where you are: a Content sub-page by its own name (the tab bar already says Content),
 // Settings > Money as Money. Kept local so the shell chunk does not pull in Content's SubNav.
 const SUB_TITLE: Partial<Record<string, Record<string, string>>> = {
-  content: { brain: 'Patterns and benchmarks', plan: 'Plan', calendar: 'Calendar', ideas: 'Ideas', now: 'Review', review: 'Review', magnets: 'Lead magnets', results: 'Performance', strategy: 'Strategy', styles: 'Styles', inputs: 'Outliers', markets: 'Outliers', today: 'Post for today' },
+  content: { brain: 'Patterns and benchmarks', plan: 'Plan', calendar: 'Calendar', ideas: 'Ideas', now: 'Review', x: 'X', review: 'Review', magnets: 'Lead magnets', results: 'Performance', strategy: 'Strategy', styles: 'Styles', inputs: 'Outliers', markets: 'Outliers', today: 'Post for today' },
   settings: { money: 'Money' },
-  ops: { x: 'X review' },
 }
 function placeTitle(r: { place: keyof typeof PLACES; sub: string | null }): string {
   return (r.sub && SUB_TITLE[r.place]?.[r.sub]) || PLACES[r.place].label
@@ -184,7 +182,7 @@ function total(n: SeatNumbers): number | null {
   return v.reduce<number>((a, x) => a + (x ?? 0), 0)
 }
 
-/** The tab bar: a glass capsule of six places with one gliding lens, and the round Claude key beside it. */
+/** The tab bar: a glass capsule of five places with one gliding lens, and the round Claude key beside it. */
 export function PhoneTabs() {
   const f = useFrame()
   const c = useFrameCounts()
@@ -201,14 +199,12 @@ export function PhoneTabs() {
   else if (dmsN) badge.dms = { n: dmsN > 99 ? '99+' : String(dmsN), tone: 'signal', label: `${dmsN} DMs waiting` }
   if (c.ops.failed && opsN == null) badge.ops = { n: '!', tone: 'warn', label: 'Ops count could not be read' }
   else if (opsN) badge.ops = { n: opsN > 99 ? '99+' : String(opsN), tone: 'ink', label: `${opsN} waiting on you` }
-  // The X desk's own number (X desk plan P3), off the desk's store.
-  if (x.failed) badge.x = { n: '!', tone: 'warn', label: 'X count could not be read' }
-  else if (x.n) badge.x = { n: x.n > 99 ? '99+' : String(x.n), tone: 'ink', label: `${x.n} to review on X` }
   if (calls == null && c.calls.failed) badge.sales = { n: '!', tone: 'warn', label: 'calls today could not be read' }
   else if (calls) badge.sales = { n: String(calls), tone: 'ink', label: `${calls} calls today not started` }
-  // Content shows its real review count, like DMs and Ops (review 2026-11-06 #36; was a dot).
+  // Content shows its real review count, like DMs and Ops (review 2026-11-06 #36; was a dot), plus X posts
+  // waiting (X is a Content tab); a loading or failed X read leaves the review count alone.
   const contentF = Object.values(seatFailed(c.content)).some(Boolean)
-  const contentN = total({ ...contentNumbers(c), anna: null })
+  const contentN = total({ ...contentWithX(contentNumbers(c), x), anna: null })
   if (contentF && contentN == null) badge.content = { n: '!', tone: 'warn', label: 'Content count could not be read' }
   else if (contentN) badge.content = { n: contentN > 99 ? '99+' : String(contentN), tone: 'ink', label: `${contentN} posts to review` }
   const on = f.route.place

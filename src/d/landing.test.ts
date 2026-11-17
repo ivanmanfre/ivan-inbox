@@ -51,6 +51,12 @@ describe('dLandingHash: every address today writes lands in D on a cold start', 
     expect(todayAppHash('#exp/brain-b/orbit?app=today')).toBe('#exp/brain-b/orbit?app=today')
   })
 
+  // Push notifications and runner links already delivered point at the X desk's old addresses.
+  it('an X push lands on the Content tab with the post id', () => {
+    for (const h of ['#exp/d/x?id=abc', '#exp/d/ops/x?id=abc', '#exp/d/X?id=abc']) expect(canonicalHash(h)).toBe('#exp/d/content/x?id=abc')
+    expect(canonicalHash('#exp/d/content/x?id=abc')).toBe('#exp/d/content/x?id=abc')
+  })
+
   it('never rewrites a sign-in token', () => {
     expect(canonicalHash('#access_token=abc&type=recovery')).toBe('#access_token=abc&type=recovery')
   })

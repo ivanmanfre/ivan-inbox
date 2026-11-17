@@ -13,6 +13,10 @@ export type Frame = {
   setBellOpen: (open: boolean) => void
   claudeOpen: boolean
   setClaudeOpen: (open: boolean) => void
+  /** True only while a drawer is actually drawn (the flag is not enough: the Claude workspace draws none). */
+  claudeShown: boolean
+  /** The one toggle for the drawer: ⌘J, the palette's Claude command and the side panel's key. On the Claude workspace it focuses the composer. */
+  toggleClaude: () => void
   openPalette: () => void
   /** Desktop: the answer row's title box. Phone: null (the title renders inline). */
   titleSlot: HTMLElement | null

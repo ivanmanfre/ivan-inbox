@@ -48,12 +48,18 @@ export function Island() {
 }
 
 /** The panel's Claude item: "working" while a turn runs, "new" when Claude's own thread has an unread turn. */
-export function ClaudeWorking() {
+export function ClaudeWorking({ id }: { id?: string }) {
   const c = useClaudeMaybe()
   if (!c) return null
-  if (c.chat.busy || c.chat.runningElsewhere) return <em className="dcl-working">working</em>
-  if (c.chat.botUnread) return <em className="dcl-working dcl-new-w" title="Claude's thread has something new">new</em>
+  if (c.chat.busy || c.chat.runningElsewhere) return <em className="dcl-working" id={id}>working</em>
+  if (c.chat.botUnread) return <em className="dcl-working dcl-new-w" id={id} title="Claude's thread has something new">new</em>
   return null
+}
+
+/** True while ClaudeWorking would draw its pill. */
+export function useClaudePill(): boolean {
+  const c = useClaudeMaybe()
+  return !!c && (c.chat.busy || c.chat.runningElsewhere || c.chat.botUnread)
 }
 
 /** The lime dock key's mark on the phone: Claude working, or Claude's thread has something new. */

@@ -46,6 +46,7 @@ import { cardLanding, isWaiting, useTodayCard } from './today/store'
 import { CardDoneLine } from './today/TodayCard'
 import { anyHeld, nextLanding } from './next/model'
 import { useNextPosts } from './next/store'
+import { useXWaiting } from '../x/useXReview'
 import './v2/cv2.css'
 import './content.css'
 import './content2.css'
@@ -56,6 +57,8 @@ import './v2/polish.css'
 
 const BrainArea = lazy(() => import('./BrainArea').then(m => ({ default: m.BrainArea })))
 const InputsPage = lazy(() => import('./inputs/Inputs').then(m => ({ default: m.InputsPage })))
+// X is a Content tab (daily-brief-trim Task 6.1): Ivan's X review, its own chunk as when it was a place.
+const XReviewPage = lazy(() => import('../x'))
 
 const isLane = (s: string | null): s is Lane => s === 'ivan' || s === 'risedtc' || s === 'arch' || s === 'swishdm'
 const SHOW_KEY = 'd-content-review-show'
@@ -128,6 +131,7 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
     return () => clearTimeout(t)
   }, [onIdeas, ideasSettled, cv2.ideas, bankCounts, fullOn])
   const magnets = useMagnetCounts()
+  const xWaiting = useXWaiting()
   const registry = useLanes()
   const qLane: Lane = isLane(q.get('lane')) ? q.get('lane') as Lane : 'ivan'
   const legacyLane = q.get('lane') && registry.lanes.some(l => l.client_id === q.get('lane')) ? q.get('lane') as ContentLane : qLane
@@ -251,6 +255,10 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
   else if (sub === 'ideas') body = cv2.ideas ? column(<Ideas banks={banks} phone={phone} lane={qLane} onLaneChange={lane => go({ lane }, 'ideas')} v2 />) : <Ideas banks={banks} phone={phone} lane={qLane} onLaneChange={lane => go({ lane }, 'ideas')} />
   else if (sub === 'brain') body = <Suspense fallback={<Skeleton lines={5} label="Reading the brain area" />}><div className="cn-now-tools"><a href={dHash('content', 'plan', qLane === 'ivan' ? { insights: '1' } : { lane: qLane, insights: '1' })}>← Plan insights</a></div><BrainArea lane={qLane} setLane={setLane} phone={phone} query={q} /></Suspense>
   else if (sub === 'results') body = view === 'analytics' ? legacy('results') : cv2.frame ? column(<Results lane={qLane} setLane={setLane} v2 />) : <Results lane={qLane} setLane={setLane} />
+  else if (sub === 'x') {
+    const x = <Suspense fallback={<Skeleton lines={8} label="Reading the X review" />}><XReviewPage layout={layout} route={route} navigate={navigate} embedded /></Suspense>
+    body = cv2.frame ? column(x) : x
+  }
   else if (sub === 'inputs') body = <Suspense fallback={<Skeleton lines={5} label="Reading outliers" />}><InputsPage lane={qLane} setLane={setLane} phone={phone} query={q} /></Suspense>
   else if (sub === 'magnets') body = cv2.lms ? column(<MagnetsV2 lane={qLane} setLane={l => go({ lane: l }, 'magnets')} phone={phone} magnet={q.get('magnet')} clearMagnet={clearMagnet} counts={magnets} />) : legacy('magnets')
   else if (sub === 'strategy' || sub === 'styles') body = legacy(sub)
@@ -260,8 +268,8 @@ export default function ContentPage({ layout, route, navigate }: PlaceProps) {
     const left = magnetView ? <><div className="cn-now-tools"><a href={dHash('content', 'now')}>← Review</a></div>{legacy('magnets')}</> : allPosts ? <><div className="cn-now-tools"><a href={dHash('content', 'now')}>← Review</a></div>{legacy('errors')}</> : desk ? deskBody : nowBody
     body = phone && window_ ? window_ : <div className={`cn-split${window_ ? ' cn-open' : ''}${desk ? ' cv2-split' : ''}`} data-wide={desk ? (wide ? 'yes' : 'no') : undefined}><div className={`cn-left${allPosts ? ' cn-left-legacy' : ''}`}>{left}</div>{window_}</div>
   }
-  const title = sub === 'plan' ? 'Plan' : sub === 'brain' ? 'Patterns and benchmarks' : sub === 'ideas' ? 'Best ideas for your next post' : sub === 'results' ? 'Performance' : sub === 'strategy' ? (q.get('section') === 'direction' ? 'Strategy' : q.get('section') === 'this-week' ? 'Content brain' : 'Strategy') : sub === 'inputs' ? 'Outliers' : sub === 'magnets' ? 'Lead magnets' : sub === 'styles' ? 'Styles' : onCal ? 'Calendar' : allPosts ? 'All posts' : magnetView ? 'Lead magnets' : 'Review'
-  return <div ref={presentation} className={`cn${cv2.frame ? ' cv2-frame' : ''}`} data-cv2-sub={cv2.frame ? sub : undefined}>{!(phone && (title === SUB_LABEL[sub] || (cv2.frame && sub === 'ideas'))) && <AnswerRow title={title} />}<SubNav on={sub} attention={needs > 0} lane={qLane} section={q.get('section')} v2={cv2.frame} counts={{ now: reading && !weekRead.settled ? null : review.all, magnets: LANES.some(l => magnets[l] === undefined) ? null : LANES.reduce((n, l) => n + (magnets[l] ?? 0), 0) }} />{body}
+  const title = sub === 'plan' ? 'Plan' : sub === 'brain' ? 'Patterns and benchmarks' : sub === 'ideas' ? 'Best ideas for your next post' : sub === 'results' ? 'Performance' : sub === 'strategy' ? (q.get('section') === 'direction' ? 'Strategy' : q.get('section') === 'this-week' ? 'Content brain' : 'Strategy') : sub === 'inputs' ? 'Outliers' : sub === 'x' ? 'X' : sub === 'magnets' ? 'Lead magnets' : sub === 'styles' ? 'Styles' : onCal ? 'Calendar' : allPosts ? 'All posts' : magnetView ? 'Lead magnets' : 'Review'
+  return <div ref={presentation} className={`cn${cv2.frame ? ' cv2-frame' : ''}`} data-cv2-sub={cv2.frame ? sub : undefined}>{!(phone && (title === SUB_LABEL[sub] || (cv2.frame && sub === 'ideas'))) && <AnswerRow title={title} />}<SubNav on={sub} attention={needs > 0} lane={qLane} section={q.get('section')} v2={cv2.frame} failed={{ x: xWaiting.failed }} counts={{ now: reading && !weekRead.settled ? null : review.all, x: xWaiting.failed ? undefined : xWaiting.n, magnets: LANES.some(l => magnets[l] === undefined) ? null : LANES.reduce((n, l) => n + (magnets[l] ?? 0), 0) }} />{body}
     {dayOpen && <DayPanel lane={dayOpen.lane} keys={dayOpen.keys} items={items[dayOpen.lane]} onClose={() => setDayOpen(null)} onOpen={openFromPlan} onMove={onMove} onArm={armIt} onChanged={refresh} />}
   </div>
 }
