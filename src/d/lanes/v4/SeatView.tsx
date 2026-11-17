@@ -16,6 +16,7 @@ import { Supply } from './Supply'
 import { Sending } from './Sending'
 import { Email } from './Email'
 import { History, Rates } from './History'
+import { ChangeRates } from '../ChangeRates'
 import { ackId, useAck } from '../ack'
 import { Btn } from '../../ui/Key'
 import { LogSheet } from '../LogSheet'
@@ -53,6 +54,7 @@ export function SeatView4({ seat, ctx, range, setRange, onCustom, retry }: { sea
       <div className="dl4-first"><Supply seat={seat} d={ctx.d} s={s} now={ctx.now} retry={retry} /><Sending seat={seat} now={ctx.now} /></div>
       {seat === 'ivan' && <Email now={ctx.now} />}
       <div className="dl4-below"><History seat={seat} ctx={ctx} /><InterestPerformance seat={seat} /></div>
+      <ChangeRates seat={seat} />
       <Rates seat={seat} ctx={ctx} />
       <h2 className="dl4-more-head">More</h2>
       <div className="dl-folds">
