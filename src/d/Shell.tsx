@@ -1,6 +1,7 @@
 import { hashNavigationAllowed } from '../lib/navigationGuard'
 import { Component, Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { applySkin, subscribeSkin } from '../ds/skin'
+import { applySkin, subscribeSkin, isBriefNative } from '../ds/skin'
+import { createVisitLogger, sendVisit, shouldLog, surfaceOf } from '../lib/visits'
 import { useSkin } from '../ds/useSkin'
 import { ClaudeProvider } from './claude/ClaudeProvider'
 import { Island } from './claude/Island'
@@ -114,6 +115,17 @@ function useDRoute(): DRoute {
     // Only the place and its sub: a one-shot key (thread, turn, feed, warm) must not replay on the next open.
     const r = parseDHash(hash)
     try { localStorage.setItem(LAST_PLACE, dHash(r.place, r.sub)) } catch { /* private mode */ }
+  }, [hash])
+  // The visit log: a page he stays on for 3 seconds (src/lib/visits.ts). Stops with the frame.
+  const visits = useRef<ReturnType<typeof createVisitLogger> | null>(null)
+  useEffect(() => {
+    const v = createVisitLogger(sendVisit)
+    visits.current = v
+    return () => { v.stop(); visits.current = null }
+  }, [])
+  useEffect(() => {
+    const r = parseDHash(hash)
+    if (shouldLog(r.place, r.sub ?? null)) visits.current?.seen(r.place, r.sub ?? null, surfaceOf(isDeskNow() ? 'desktop' : 'phone', isBriefNative()))
   }, [hash])
   return useMemo(() => parseDHash(hash), [hash])
 }
