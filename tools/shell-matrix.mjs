@@ -26,8 +26,10 @@ async function blockStorageMedia(page) {
   if (process.env.PW_ALLOW_STORAGE_MEDIA === '1') return
   await page.route(STORAGE_URL, route => {
     const req = route.request(), url = req.url()
+    // Only GET/HEAD media is decided here; everything else falls back to the catch-all, which blocks and counts writes.
+    if (req.method() !== 'GET' && req.method() !== 'HEAD') return route.fallback()
     if (req.resourceType() === 'media' || HEAVY_MEDIA.test(url) || VIDEO_BUCKET.test(url)) return route.abort('blockedbyclient')
-    return route.continue()
+    return route.fallback()
   })
 }
 
