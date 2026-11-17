@@ -133,7 +133,8 @@
 /* The Claude key at the foot of the low nav (Claude left the nav): the ⌘J hint on the right, the working
    pill before it. Collapsed: the icon alone, with a lime dot while Claude works. */
 .d-claude-key .d-kh{margin-left:auto;flex:none;font:400 11px/16px var(--m);color:var(--sideM);border:1px solid var(--sideL);border-radius:4px;padding:0 5px}
-.d-claude-key .dcl-working+.d-kh{margin-left:6px}
+.d-claude-key>span{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.d-claude-key .dcl-working{flex:none}
 .d-claude-key[aria-pressed='true']{color:var(--sideH)}
 .d-side-min .d-claude-key .d-kh{display:none}
 .d-side-min .d-claude-key .dcl-working{position:absolute;top:6px;right:8px;width:7px;height:7px;padding:0;border:0;border-radius:50%;background:var(--lime);font-size:0;line-height:0}

@@ -17,6 +17,20 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { chromium, webkit } from 'playwright'
 
+// Storage-media block, copied from ~/.claude/skills/playwright-driver/block-storage-media.js (the repo cannot import from the home folder).
+// Headless runs once pulled 7.4 GB of video and GIF out of Supabase storage in a day. Opt out with PW_ALLOW_STORAGE_MEDIA=1.
+const STORAGE_URL = /\.supabase\.co\/storage\/v1\/(object|render)\//i
+const HEAVY_MEDIA = /\.(mp4|mov|m4v|webm|gif)(\?|#|$)/i
+const VIDEO_BUCKET = /\/storage\/v1\/object\/(public\/|sign\/)?post-videos\//i
+async function blockStorageMedia(page) {
+  if (process.env.PW_ALLOW_STORAGE_MEDIA === '1') return
+  await page.route(STORAGE_URL, route => {
+    const req = route.request(), url = req.url()
+    if (req.resourceType() === 'media' || HEAVY_MEDIA.test(url) || VIDEO_BUCKET.test(url)) return route.abort('blockedbyclient')
+    return route.continue()
+  })
+}
+
 const [base, outDir, ...engineArgs] = process.argv.slice(2)
 if (!base || !outDir) { console.error('usage: shell-matrix.mjs <baseUrl> <outDir> [engines]'); process.exit(2) }
 const engines = engineArgs.length ? engineArgs : ['chromium', 'webkit']
@@ -108,6 +122,8 @@ for (const engine of engines) {
       if (['GET', 'HEAD', 'OPTIONS'].includes(method)) return route.continue()
       return route.fulfill({ status: 403, contentType: 'application/json', body: '{"error":"matrix blocked a mutation"}' })
     })
+    // Registered after the catch-all on purpose: Playwright tries the newest matching route first.
+    await blockStorageMedia(page)
     if (process.env.SHELL_RAIL !== '1') await page.addInitScript(() => {
       const st = document.createElement('style'); st.textContent = '.d-app .d-side{display:none!important}'
       document.addEventListener('DOMContentLoaded', () => document.head.appendChild(st))

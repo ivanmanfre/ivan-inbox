@@ -55,7 +55,7 @@ const toastEl = () => document.querySelector(`[data-toast="${CARD_TOAST_ID}"]`) 
 
 /** The frame with a route that can change between renders (the Shell keeps the toast mounted across routes). */
 function Frame({ hash, children, layout = 'desktop' }: { hash: string; children: ReactNode; layout?: 'desktop' | 'phone' }) {
-  const frame: Frame = { layout, route: parseDHash(hash), navigate: nav, bellOpen: false, setBellOpen: () => {}, claudeOpen: false, setClaudeOpen: () => {}, openPalette: () => {}, titleSlot: null, toolsSlot: null }
+  const frame: Frame = { layout, route: parseDHash(hash), navigate: nav, bellOpen: false, setBellOpen: () => {}, claudeOpen: false, setClaudeOpen: () => {}, claudeShown: false, toggleClaude: () => {}, openPalette: () => {}, titleSlot: null, toolsSlot: null }
   return <FrameCountsProvider readers={ZERO_READERS}><FrameCtx.Provider value={frame}><div className={`d-app d-${layout}`}><ToastProvider><DConfirmProvider>{children}</DConfirmProvider></ToastProvider></div></FrameCtx.Provider></FrameCountsProvider>
 }
 const nav = vi.fn()

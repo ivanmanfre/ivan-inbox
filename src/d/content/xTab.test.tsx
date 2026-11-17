@@ -47,7 +47,7 @@ import { resetNextPostsForTest } from './next/store'
 import { __resetXForTests } from '../x/useXReview'
 
 const page = (hash: string, navigate = vi.fn()) => {
-  const frame: Frame = { layout: 'desktop', route: parseDHash(hash), navigate, bellOpen: false, setBellOpen: () => {}, claudeOpen: false, setClaudeOpen: () => {}, openPalette: () => {}, titleSlot: null, toolsSlot: null }
+  const frame: Frame = { layout: 'desktop', route: parseDHash(hash), navigate, bellOpen: false, setBellOpen: () => {}, claudeOpen: false, setClaudeOpen: () => {}, claudeShown: false, toggleClaude: () => {}, openPalette: () => {}, titleSlot: null, toolsSlot: null }
   render(<FrameCountsProvider readers={ZERO_READERS}><FrameCtx.Provider value={frame}><div className="d-app d-desktop"><ToastProvider><DConfirmProvider>
     <ContentPage layout="desktop" route={frame.route} navigate={navigate} />
   </DConfirmProvider></ToastProvider></div></FrameCtx.Provider></FrameCountsProvider>)

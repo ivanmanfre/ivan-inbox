@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // S0 (SPEC-shell-spacing §2.1) and the Daily Brief sidebar contract (SPEC-foundation §2.5, §5.4).
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useState, type ReactNode } from 'react'
 
@@ -18,6 +18,7 @@ const { PhonePanel } = await import('./Phone')
 const { renderInFrame } = await import('../test-utils')
 const { FrameCtx, useFrame } = await import('./frame')
 const { parseDHash } = await import('../route')
+const { ClaudeValueProvider } = await import('../claude/ClaudeProvider')
 const { PLACES, PLACE_ORDER } = await import('../places')
 
 afterEach(cleanup)
@@ -73,7 +74,7 @@ function DesktopWithDrawerState({ min = false }: { min?: boolean }) {
   const f = useFrame()
   const [claudeOpen, setClaudeOpen] = useState(false)
   return (
-    <FrameCtx.Provider value={{ ...f, claudeOpen, setClaudeOpen }}>
+    <FrameCtx.Provider value={{ ...f, claudeOpen, setClaudeOpen, claudeShown: claudeOpen, toggleClaude: () => setClaudeOpen(o => !o) }}>
       <Desktop setTitleSlot={() => {}} setToolsSlot={() => {}} sideMin={min} setSideMin={() => {}} />
     </FrameCtx.Provider>
   )
@@ -114,5 +115,52 @@ describe('daily-brief-trim Task 6.2: Claude and Intel leave the nav, stay reacha
     expect(container.querySelector('.d-side-min')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Claude' }))
     expect(container.querySelector('aside.d-claude')).toBeTruthy()
+  })
+  it('the hint is drawn while idle and left out while a working or new pill shows', () => {
+    const chat = (o: object) => ({ chat: { busy: false, runningElsewhere: false, botUnread: false, ...o }, landed: null, clearLanded: () => {}, since: Date.now() }) as never
+    const { container } = renderInFrame(<DesktopWithDrawerState />, { layout: 'desktop', hash: '#exp/d/home' })
+    const key = () => screen.getByRole('button', { name: 'Claude' })
+    expect(key().querySelector('.d-kh')?.textContent).toBe('⌘J')
+    expect(key().hasAttribute('aria-describedby')).toBe(false)
+    cleanup()
+    for (const [state, word] of [[{ busy: true }, 'working'], [{ botUnread: true }, 'new']] as const) {
+      renderInFrame(<ClaudeValueProvider value={chat(state)}><DesktopWithDrawerState /></ClaudeValueProvider>, { layout: 'desktop', hash: '#exp/d/home' })
+      expect(key().querySelector('.d-kh'), word).toBeNull()
+      expect(key().textContent).toContain(word)
+      expect(key().getAttribute('aria-label')).toBe('Claude')
+      expect(key().getAttribute('aria-keyshortcuts')).toBe('Meta+J')
+      const pill = container.ownerDocument.getElementById(key().getAttribute('aria-describedby')!)
+      expect(pill?.textContent).toBe(word)
+      cleanup()
+    }
+  })
+  it('the key is not pressed when no drawer is drawn, and a click uses the frame toggle', () => {
+    const toggleClaude = vi.fn()
+    renderInFrame(<Desktop setTitleSlot={() => {}} setToolsSlot={() => {}} sideMin={false} setSideMin={() => {}} drawer={false} />,
+      { layout: 'desktop', hash: '#exp/d/claude', frame: { claudeOpen: true, claudeShown: false, toggleClaude } })
+    const key = screen.getByRole('button', { name: 'Claude' })
+    expect(key.getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(key)
+    expect(toggleClaude).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('the one Claude toggle (Shell frame)', () => {
+  it('on the Claude page the key and the keyboard shortcut focus the chat box; elsewhere they toggle the drawer', async () => {
+    const { default: DShell } = await import('../Shell')
+    const box = document.createElement('div'); box.className = 'dcl-ws'
+    const area = document.createElement('textarea'); box.appendChild(area); document.body.appendChild(box)
+    location.hash = '#exp/d/claude'
+    vi.stubGlobal('matchMedia', (q: string) => ({ matches: true, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }))
+    const { container } = render(<DShell />)
+    const key = await screen.findByRole('button', { name: 'Claude' })
+    expect(document.activeElement).not.toBe(area)
+    fireEvent.click(key)
+    expect(document.activeElement).toBe(area)
+    area.blur()
+    fireEvent.keyDown(window, { key: 'j', metaKey: true })
+    expect(document.activeElement).toBe(area)
+    expect(container.querySelector('aside.d-claude')).toBeNull()
+    box.remove(); vi.unstubAllGlobals(); location.hash = ''
   })
 })

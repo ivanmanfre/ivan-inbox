@@ -1,4 +1,4 @@
-import { ClaudeWorking } from '../claude/Island'
+import { ClaudeWorking, useClaudePill } from '../claude/Island'
 import { PLACES } from '../places'
 import { dHash } from '../route'
 import { DIcon } from '../ui/icons'
@@ -155,14 +155,12 @@ function ContentGroup({ i, min }: { i: NavItem; min: boolean }) {
  *  On the Claude workspace (the place, Brief 4 `claude` section) it goes to the composer, as ⌘J does. */
 function ClaudeKey() {
   const f = useFrame()
-  const toggle = () => {
-    const ws = f.route.place === 'claude' ? document.querySelector<HTMLTextAreaElement>('.dcl-ws textarea') : null
-    if (ws) ws.focus(); else f.setClaudeOpen(!f.claudeOpen)
-  }
+  const pill = useClaudePill()
   return (
-    <button type="button" className="d-claude-key" data-verb="claude" aria-label="Claude" aria-keyshortcuts="Meta+J" aria-pressed={f.claudeOpen}
-      title="Claude (⌘J)" onClick={toggle}>
-      <DIcon name="claude" /><span>Claude</span><ClaudeWorking /><kbd className="d-kh" aria-hidden="true">⌘J</kbd>
+    <button type="button" className="d-claude-key" data-verb="claude" aria-label="Claude" aria-keyshortcuts="Meta+J" aria-pressed={f.claudeShown}
+      aria-describedby={pill ? 'd-claude-key-pill' : undefined} title="Claude (⌘J)" onClick={f.toggleClaude}>
+      <DIcon name="claude" /><span>Claude</span><ClaudeWorking id="d-claude-key-pill" />
+      {!pill && <kbd className="d-kh" aria-hidden="true">⌘J</kbd>}
     </button>
   )
 }

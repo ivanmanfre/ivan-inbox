@@ -13,6 +13,20 @@ import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { chromium, webkit, firefox } from 'playwright'
 
+// Storage-media block, copied from ~/.claude/skills/playwright-driver/block-storage-media.js (the repo cannot import from the home folder).
+// Headless runs once pulled 7.4 GB of video and GIF out of Supabase storage in a day. Opt out with PW_ALLOW_STORAGE_MEDIA=1.
+const STORAGE_URL = /\.supabase\.co\/storage\/v1\/(object|render)\//i
+const HEAVY_MEDIA = /\.(mp4|mov|m4v|webm|gif)(\?|#|$)/i
+const VIDEO_BUCKET = /\/storage\/v1\/object\/(public\/|sign\/)?post-videos\//i
+async function blockStorageMedia(page) {
+  if (process.env.PW_ALLOW_STORAGE_MEDIA === '1') return
+  await page.route(STORAGE_URL, route => {
+    const req = route.request(), url = req.url()
+    if (req.resourceType() === 'media' || HEAVY_MEDIA.test(url) || VIDEO_BUCKET.test(url)) return route.abort('blockedbyclient')
+    return route.continue()
+  })
+}
+
 // Begin live-history helpers (also exercised by the offline receipt fixture).
 function responseMessages(status, payload) {
   if (status < 200 || status >= 300 || !Array.isArray(payload)) return []
@@ -156,6 +170,8 @@ try {
         forbidden.push(`${method} ${url.pathname.replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, '[id]')}`)
         return route.fulfill({ status: 403, contentType: 'application/json', body: '{"error":"Smoke blocked a mutation"}' })
       })
+      // Registered after the catch-all on purpose: Playwright tries the newest matching route first.
+      await blockStorageMedia(page)
       await page.addInitScript(({ session, authKey, seat, skinValue }) => {
         localStorage.setItem(authKey, session)
         if (skinValue) sessionStorage.setItem('ds-skin', skinValue)
