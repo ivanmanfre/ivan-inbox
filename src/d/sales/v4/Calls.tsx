@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { LEAD_LABEL, actionItems, callStats, isMine, leadLine, owedByMe, segmentCalls, talkLine, type CallRow, type SalesSegment } from '../../../lib/transcripts'
+import { LEAD_LABEL, actionItems, callStats, leadLine, owedByMe, segmentCalls, talkLine, type CallRow, type SalesSegment } from '../../../lib/transcripts'
 import { warsawDm } from '../../ui/time'
 import { Segmented } from '../../../ds/Segmented'
 import { callsByWeek, otherPerson } from './model'
@@ -27,7 +27,7 @@ export function CallsOnRecord({ calls, state, seg, setSeg, openId, onOpen, onRet
   const queue = segmentCalls(calls, seg)
   const [more, setMore] = useState(false)
   const shown = limit && !more ? queue.slice(0, limit) : queue
-  const counts: Record<SalesSegment, number> = { mine: callStats(calls.filter(isMine)).total, open: st.withActions, recent: st.week, all: st.total }
+  const counts: Record<SalesSegment, number> = { mine: segmentCalls(calls, "mine").length, open: st.withActions, recent: st.week, all: st.total }
   return (
     <section className="sl4-rec" aria-label="Calls on record" ref={box}>
       <div className="sl4-record-head"><h2 className="sl4-eyebrow">Calls on record</h2>{weeks && <div className="sl4-spark" aria-label="Calls in the last 8 weeks">{weeks.map(w => <button key={w.day} type="button" title={`Week of ${w.day}: ${w.n} calls${w.avg != null ? ` · ${w.avg}m avg` : ''}`} aria-label={`Week of ${w.day}: ${w.n} calls`}><i data-current={w.current} style={{ height: `${Math.max(2,w.n / max * 100)}%` }} /></button>)}</div>}</div>
