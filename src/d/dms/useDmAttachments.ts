@@ -3,9 +3,10 @@ import type { Thread } from '../../lib/inbox'
 import { fetchDmAttachments, type DmAttachments, type DmFile } from '../../lib/dmAttachments'
 
 // The last read per person, in memory only (the links are signed and short-lived: never a saved copy).
+// `at` is when the read STARTED.
 const cache = new Map<string, { key: string; data: DmAttachments; at: number }>()
 // The read under way per person: a pane that is closed and opened again joins it, it never starts a second.
-const pending = new Map<string, { key: string; p: Promise<DmAttachments> }>()
+const pending = new Map<string, { key: string; at: number; p: Promise<DmAttachments> }>()
 const FRESH_MS = 60_000
 /** Read again this long before the links run out, so a chip on a thread left open still opens. */
 const RENEW_BEFORE_MS = 5 * 60_000
@@ -16,13 +17,26 @@ const MAX_RETRIES = 4
 /** Test seam. */
 export function clearDmAttachmentsCache() { cache.clear(); pending.clear() }
 
-function readOnce(pid: string, key: string): Promise<DmAttachments> {
+/** Room for this device's clock against the clock that stamped the message. */
+const CLOCK_SLACK_MS = 2 * 60_000
+
+/**
+ * A read answers for every message that was on the chat when it started. So when the newest message here
+ * moves to one sent before that read began (the rest of the conversation landing after its first rows),
+ * the read already covers it: only a message sent after the read started needs another one.
+ */
+function covers(read: { key: string; at: number }, key: string, newest: number): boolean {
+  return read.key === key || newest < read.at - CLOCK_SLACK_MS
+}
+
+function readOnce(pid: string, key: string, newest: number): Promise<DmAttachments> {
   const going = pending.get(pid)
-  if (going && going.key === key) return going.p
+  if (going && covers(going, key, newest)) return going.p
+  const at = Date.now()
   const p: Promise<DmAttachments> = fetchDmAttachments(pid)
-    .then(data => { cache.set(pid, { key, data, at: Date.now() }); return data })
+    .then(data => { cache.set(pid, { key, data, at }); return data })
     .finally(() => { if (pending.get(pid)?.p === p) pending.delete(pid) })
-  pending.set(pid, { key, p })
+  pending.set(pid, { key, at, p })
   return p
 }
 
@@ -63,9 +77,9 @@ export function useDmAttachments(t: Pick<Thread, 'prospect_id' | 'messages'>, en
     // Nothing to renew on a thread with no files.
     const renewAt = (data: DmAttachments) => { if (hasFiles(data)) later(Math.max(30_000, data.expiresAt - RENEW_BEFORE_MS - Date.now())) }
     if (hit) setRead({ pid, data: hit.data })
-    if (hit && hit.key === key && now - hit.at < FRESH_MS && hit.data.expiresAt - now > RENEW_BEFORE_MS) { renewAt(hit.data); return stop }
+    if (hit && covers(hit, key, newest) && now - hit.at < FRESH_MS && hit.data.expiresAt - now > RENEW_BEFORE_MS) { renewAt(hit.data); return stop }
     if (!enabled) return stop
-    void readOnce(pid, key).then(data => {
+    void readOnce(pid, key, newest).then(data => {
       if (!current) return
       fails.current = 0
       setRead({ pid, data })

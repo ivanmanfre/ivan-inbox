@@ -135,7 +135,8 @@ describe('reading the files for an open conversation', () => {
     const again = render(<Probe t={t} />)
     expect(screen.getByText('1 with files')).toBeTruthy()
     expect(fetchDmAttachments).toHaveBeenCalledTimes(1)
-    const reply = msg({ prospect_id: 'pat', direction: 'inbound', unipile_chat_id: 'chat', sent_at: '2026-11-10T14:00:00Z', message_text: 'Got it' })
+    // A message sent after the last read began: only that needs another read.
+    const reply = msg({ prospect_id: 'pat', direction: 'inbound', unipile_chat_id: 'chat', sent_at: new Date(Date.now() + 1000).toISOString(), message_text: 'Got it' })
     again.rerender(<Probe t={threads([theirs, deck, reply])[0]} />)
     await waitFor(() => expect(fetchDmAttachments).toHaveBeenCalledTimes(2))
   })
@@ -147,6 +148,21 @@ describe('reading the files for an open conversation', () => {
     await waitFor(() => expect(screen.getByText('1 with files')).toBeTruthy())
     const older = msg({ prospect_id: 'pat', direction: 'inbound', unipile_chat_id: 'chat', sent_at: '2026-11-09T08:00:00Z', message_text: 'Hello' })
     view.rerender(<Probe t={threads([older, theirs, deck])[0]} />)
+    view.rerender(<Probe t={t} />)
+    await act(async () => { await Promise.resolve() })
+    expect(fetchDmAttachments).toHaveBeenCalledTimes(1)
+  })
+
+  it('reads once when the rest of a conversation lands after its first rows, even with a later message in it', async () => {
+    const { theirs, deck, t } = deckThread()
+    let land!: (d: DmAttachments) => void
+    fetchDmAttachments.mockReturnValueOnce(new Promise<DmAttachments>(r => { land = r }))
+    // First rows: only their message. Then the whole conversation, whose newest message is our later one.
+    const view = render(<Probe t={threads([theirs])[0]} />)
+    view.rerender(<Probe t={t} />)
+    await act(async () => { land(files([[deck.id, [file()]]])) })
+    await waitFor(() => expect(screen.getByText('1 with files')).toBeTruthy())
+    view.rerender(<Probe t={threads([theirs])[0]} />)
     view.rerender(<Probe t={t} />)
     await act(async () => { await Promise.resolve() })
     expect(fetchDmAttachments).toHaveBeenCalledTimes(1)
