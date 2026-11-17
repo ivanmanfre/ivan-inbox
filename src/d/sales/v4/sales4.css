@@ -55,3 +55,5 @@ html.brief-motion-off .sl4 *,html.brief-motion-subtle .sl4 .sl-join::after{anima
 .sl4-crl i{color:var(--t3)}
 .sl4-crn{flex:none;font:500 12px/16px var(--f);padding:0 6px;border-radius:var(--ds-r-chip);background:var(--ds-well-fill);color:var(--t2)}
 .sl4-crn.sl4-mine{background:var(--ds-sev-attention-soft);color:var(--warn)}
+.sl4-crtalk{font:400 12px/16px var(--f);color:var(--t3)}.sl4-crtalk.sl4-warn,.sl4-talk .sl4-warn{color:var(--warn)}
+.sl4-talk{display:flex;flex-direction:column;gap:2px;margin-top:6px;font:400 12px/16px var(--f);color:var(--t2)}.sl4-talk small{font-size:12px;color:var(--t3)}

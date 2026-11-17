@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { LEAD_LABEL, actionItems, callStats, leadLine, owedByMe, segmentCalls, type CallRow, type CallSegment } from '../../../lib/transcripts'
+import { LEAD_LABEL, actionItems, callStats, leadLine, owedByMe, segmentCalls, talkLine, type CallRow, type SalesSegment } from '../../../lib/transcripts'
 import { warsawDm } from '../../ui/time'
 import { Segmented } from '../../../ds/Segmented'
 import { callsByWeek, otherPerson } from './model'
@@ -8,11 +8,11 @@ import type { ReadState } from '../useSalesData'
 // CALLS ON RECORD: three segments with their counts (unfinished business
 // first), then the rows. Read only: nothing here marks an item done.
 
-export const SEG_LABEL: Record<CallSegment, string> = { open: 'Action items', recent: 'Last 7 days', all: 'All' }
+export const SEG_LABEL: Record<SalesSegment, string> = { mine: 'Mine', open: 'Action items', recent: 'Last 7 days', all: 'All' }
 
-export function CallsOnRecord({ calls, state, seg, setSeg, openId, onOpen, onRetry, limit }: {
-  calls: CallRow[]; state: ReadState; seg: CallSegment; setSeg: (s: CallSegment) => void
-  openId: string | null; onOpen: (id: string) => void; onRetry: () => void; limit?: number
+export function CallsOnRecord({ calls, state, seg, setSeg, openId, onOpen, onRetry, limit, now = new Date() }: {
+  calls: CallRow[]; state: ReadState; seg: SalesSegment; setSeg: (s: SalesSegment) => void
+  openId: string | null; onOpen: (id: string) => void; onRetry: () => void; limit?: number; now?: Date
 }) {
   const box = useRef<HTMLElement>(null)
   // The open call stays in view (a report or j / k can open one far down the list).
@@ -22,12 +22,12 @@ export function CallsOnRecord({ calls, state, seg, setSeg, openId, onOpen, onRet
   }, [openId, seg])
   const known = state === 'ok' || calls.length > 0
   const st = callStats(calls)
-  const weeks = callsByWeek(calls, new Date(), state)
+  const weeks = callsByWeek(calls, now, state)
   const max = Math.max(1, ...(weeks?.map(w => w.n) ?? []))
-  const queue = segmentCalls(calls, seg)
+  const queue = segmentCalls(calls, seg, now)
   const [more, setMore] = useState(false)
   const shown = limit && !more ? queue.slice(0, limit) : queue
-  const counts: Record<CallSegment, number> = { open: st.withActions, recent: st.week, all: st.total }
+  const counts: Record<SalesSegment, number> = { mine: segmentCalls(calls, 'mine', now).length, open: st.withActions, recent: st.week, all: st.total }
   return (
     <section className="sl4-rec" aria-label="Calls on record" ref={box}>
       <div className="sl4-record-head"><h2 className="sl4-eyebrow">Calls on record</h2>{weeks && <div className="sl4-spark" aria-label="Calls in the last 8 weeks">{weeks.map(w => <button key={w.day} type="button" title={`Week of ${w.day}: ${w.n} calls${w.avg != null ? ` · ${w.avg}m avg` : ''}`} aria-label={`Week of ${w.day}: ${w.n} calls`}><i data-current={w.current} style={{ height: `${Math.max(2,w.n / max * 100)}%` }} /></button>)}</div>}</div>
@@ -36,17 +36,19 @@ export function CallsOnRecord({ calls, state, seg, setSeg, openId, onOpen, onRet
           <button type="button" data-verb="retry" onClick={onRetry}>Read again</button></div>
       )}
       {state === 'loading' && calls.length === 0 && <div className="sl-quiet">Reading the call archive…</div>}
-      <Segmented markerId="sl4-segment" className="sl4-segments" label="Calls on record" value={seg} onChange={s => setSeg(s as CallSegment)} options={(['open','recent','all'] as CallSegment[]).map(s => ({ id: s, label: <>{s === 'recent' ? '7 days' : SEG_LABEL[s]} <b>{known ? counts[s] : state === 'failed' ? '?' : <span className="ols-skeleton" aria-label="Reading count" />}</b></> }))} />
+      <Segmented markerId="sl4-segment" className="sl4-segments" label="Calls on record" value={seg} onChange={s => setSeg(s as SalesSegment)} options={(['mine','open','recent','all'] as SalesSegment[]).map(s => ({ id: s, label: <>{s === 'recent' ? '7 days' : SEG_LABEL[s]} <b>{known ? counts[s] : state === 'failed' ? '?' : <span className="ols-skeleton" aria-label="Reading count" />}</b></> }))} />
       {state === 'ok' && queue.length === 0 && (
-        <div className="sl-quiet">{seg === 'open' ? 'Nothing was left open on any call.' : seg === 'recent' ? 'No calls in the last seven days.' : 'No calls have been transcribed yet.'}</div>
+        <div className="sl-quiet">{seg === 'mine' ? 'None of your own calls in the last 60 days.' : seg === 'open' ? 'Nothing was left open on any call.' : seg === 'recent' ? 'No calls in the last seven days.' : 'No calls have been transcribed yet.'}</div>
       )}
       {shown.map(c => {
         const n = actionItems(c).length
         const mine = owedByMe(c)
         const lead = leadLine(c)
+        const talk = talkLine(c)
                 return (
           <button key={c.id} type="button" className={`sl4-cr${c.id === openId ? ' sl-on' : ''}`} data-call={c.id} onClick={() => onOpen(c.id)}>
             <span className="sl4-crt"><b>{otherPerson(c)}</b><span className="sl4-crm">{c.date ? warsawDm(c.date) : 'no date'}</span></span>
+            {talk && <span className={`sl4-crtalk${talk.warn ? ' sl4-warn' : ''}`} data-talk>{talk.text}</span>}
             <span className="sl4-crb">
               {lead ? <span className="sl4-crl"><i>{LEAD_LABEL[lead.kind]}:</i> {lead.text}</span> : <span className="sl4-crl" />}
               {n > 0 && <span className={`sl4-crn${mine > 0 ? ' sl4-mine' : ''}`} title={mine > 0 ? `${mine} of ${n} open items are yours` : `${n} open item${n === 1 ? '' : 's'}, none yours`}>{mine > 0 ? `${mine} for you` : `${n} open`}</span>}

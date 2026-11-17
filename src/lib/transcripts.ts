@@ -36,7 +36,10 @@ export type CallRow = {
   source: string | null
   meeting_type: string | null
   brief: CallBrief | null
+  talk_stats?: TalkStats | null
 }
+
+export type TalkStats = { words: Record<string, number>; total: number; ivan_pct: number | null }
 
 export type CallBrief = {
   pain?: string[] | null
@@ -66,7 +69,7 @@ export type CallBrief = {
 // why the raw body is a second, per-row read (fetchCallBody) rather than
 // something the list drags along and then hides behind a disclosure.
 const LIST_COLS = 'id, title, date, duration_minutes, participants, summary, action_items, '
-  + 'topics, follow_up_draft, follow_up_sent, source, meeting_type, brief'
+  + 'topics, follow_up_draft, follow_up_sent, source, meeting_type, brief, talk_stats'
 
 const PAGE = 200
 const MAX_PAGES = 10
@@ -347,9 +350,28 @@ export function rankCalls(rows: CallRow[]): CallRow[] {
   })
 }
 
+// The calls Ivan was on himself (his Listener, a manual paste, Fireflies), not a
+// client's recorder. Sales opens on these.
+export const MINE_SOURCES = ['ivan-listener', 'manual', 'manual-paste', 'fireflies'] as const
+export const isMine = (c: CallRow): boolean => (MINE_SOURCES as readonly string[]).includes(c.source ?? '')
+
+/** The share of the talking that was Ivan's. Null when it is unknown. */
+export function talkLine(c: CallRow): { text: string; warn: boolean } | null {
+  const pct = c.talk_stats?.ivan_pct
+  if (pct == null) return null
+  return { text: `You ${pct}% of the talking`, warn: pct >= 65 }
+}
+
+// Sales adds 'mine'; the older pages keep the three-segment CallSegment.
+export type SalesSegment = CallSegment | 'mine'
+
 export function segmentCalls(
-  rows: CallRow[], seg: CallSegment, now: Date = new Date(),
+  rows: CallRow[], seg: SalesSegment, now: Date = new Date(),
 ): CallRow[] {
+  if (seg === 'mine') {
+    const cutoff = now.getTime() - 60 * 86_400_000
+    return rankCalls(rows.filter(r => isMine(r) && timeOf(r) >= cutoff))
+  }
   if (seg === 'open') return rankCalls(rows.filter(hasOpenBusiness))
   if (seg === 'recent') {
     const weekAgo = now.getTime() - 7 * 86_400_000
