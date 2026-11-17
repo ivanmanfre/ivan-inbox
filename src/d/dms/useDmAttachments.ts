@@ -1,22 +1,45 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Thread } from '../../lib/inbox'
-import { fetchDmAttachments, type DmAttachments } from '../../lib/dmAttachments'
+import { fetchDmAttachments, type DmAttachments, type DmFile } from '../../lib/dmAttachments'
 
 // The last read per person, in memory only (the links are signed and short-lived: never a saved copy).
 const cache = new Map<string, { key: string; data: DmAttachments; at: number }>()
+// The read under way per person: a pane that is closed and opened again joins it, it never starts a second.
+const pending = new Map<string, { key: string; p: Promise<DmAttachments> }>()
 const FRESH_MS = 60_000
 /** Read again this long before the links run out, so a chip on a thread left open still opens. */
 const RENEW_BEFORE_MS = 5 * 60_000
+/** A failed read with files on screen is tried again this often, this many times, then left alone. */
+const RETRY_MS = 60_000
+const MAX_RETRIES = 4
 
 /** Test seam. */
-export function clearDmAttachmentsCache() { cache.clear() }
+export function clearDmAttachmentsCache() { cache.clear(); pending.clear() }
+
+function readOnce(pid: string, key: string): Promise<DmAttachments> {
+  const going = pending.get(pid)
+  if (going && going.key === key) return going.p
+  const p: Promise<DmAttachments> = fetchDmAttachments(pid)
+    .then(data => { cache.set(pid, { key, data, at: Date.now() }); return data })
+    .finally(() => { if (pending.get(pid)?.p === p) pending.delete(pid) })
+  pending.set(pid, { key, p })
+  return p
+}
+
+const hasFiles = (d: DmAttachments) => d.byMessage.size > 0 || d.loose.length > 0
+const shut = (f: DmFile): DmFile => ({ ...f, href: null })
+/** The same files with nothing to tap: their links have run out and could not be renewed. */
+function withoutLinks(d: DmAttachments): DmAttachments {
+  return { byMessage: new Map([...d.byMessage].map(([id, files]) => [id, files.map(shut)])), loose: d.loose.map(l => ({ ...l, files: l.files.map(shut) })), expiresAt: d.expiresAt }
+}
 
 /**
  * The files on this conversation, or null (none known yet, no LinkedIn chat, or the read failed).
  * Null renders the thread exactly as it was before files existed here.
- * `wait` (ms) holds the read back for a pane that was shown without being opened.
+ * `enabled: false` is a pane that was shown without being opened: it shows a read it already has and
+ * never starts one.
  */
-export function useDmAttachments(t: Pick<Thread, 'prospect_id' | 'messages'>, wait = 0): DmAttachments | null {
+export function useDmAttachments(t: Pick<Thread, 'prospect_id' | 'messages'>, enabled = true): DmAttachments | null {
   // Only a thread with a LinkedIn chat can carry files. The key is the newest message on it: it moves when
   // one lands or is sent, and stays put while older pages of the same conversation are still being read in
   // (a count would move with every page, and each move is a provider read).
@@ -26,6 +49,8 @@ export function useDmAttachments(t: Pick<Thread, 'prospect_id' | 'messages'>, wa
   const key = chat ? `${t.prospect_id}:${newest}` : ''
   const [read, setRead] = useState<{ pid: string; data: DmAttachments } | null>(null)
   const [tick, setTick] = useState(0)
+  const [, setClock] = useState(0)
+  const fails = useRef(0)
   useEffect(() => {
     if (!key) return
     const pid = t.prospect_id
@@ -33,35 +58,44 @@ export function useDmAttachments(t: Pick<Thread, 'prospect_id' | 'messages'>, wa
     const now = Date.now()
     let current = true
     let timer: ReturnType<typeof setTimeout> | undefined
-    const renewAt = (data: DmAttachments) => {
-      // Nothing to renew on a thread with no files.
-      if (!data.byMessage.size && !data.loose.length) return
-      timer = setTimeout(() => { if (current) setTick(n => n + 1) }, Math.max(30_000, data.expiresAt - RENEW_BEFORE_MS - Date.now()))
-    }
+    const later = (ms: number) => { timer = setTimeout(() => { if (current) setTick(n => n + 1) }, ms) }
+    const stop = () => { current = false; clearTimeout(timer) }
+    // Nothing to renew on a thread with no files.
+    const renewAt = (data: DmAttachments) => { if (hasFiles(data)) later(Math.max(30_000, data.expiresAt - RENEW_BEFORE_MS - Date.now())) }
     if (hit) setRead({ pid, data: hit.data })
-    if (hit && hit.key === key && now - hit.at < FRESH_MS && hit.data.expiresAt - now > RENEW_BEFORE_MS) { renewAt(hit.data); return () => { current = false; clearTimeout(timer) } }
-    const go = () => void fetchDmAttachments(pid).then(data => {
-      cache.set(pid, { key, data, at: Date.now() })
+    if (hit && hit.key === key && now - hit.at < FRESH_MS && hit.data.expiresAt - now > RENEW_BEFORE_MS) { renewAt(hit.data); return stop }
+    if (!enabled) return stop
+    void readOnce(pid, key).then(data => {
       if (!current) return
+      fails.current = 0
       setRead({ pid, data })
       renewAt(data)
-    }).catch(() => { /* the thread keeps what it had */ })
-    // A pane nobody opened (`wait`) reads only once it has stayed on screen, so a pane that is swapped
-    // while he types a search never reaches the provider.
-    const dwell = wait > 0 ? setTimeout(go, wait) : (go(), undefined)
-    return () => { current = false; clearTimeout(timer); clearTimeout(dwell) }
-  }, [key, tick]) // eslint-disable-line react-hooks/exhaustive-deps
+    }).catch(() => {
+      // The thread keeps what it had. With files on screen their links are running out, so try again a few times.
+      const had = cache.get(pid)?.data
+      if (current && had && hasFiles(had) && fails.current < MAX_RETRIES) { fails.current++; later(RETRY_MS) }
+    })
+    return stop
+  }, [key, tick, enabled]) // eslint-disable-line react-hooks/exhaustive-deps
   // Back from the background with links about to run out: read again.
   useEffect(() => {
-    if (!key) return
+    if (!key || !enabled) return
     const onShow = () => {
       const hit = cache.get(t.prospect_id)
       if (document.visibilityState === 'visible' && hit && hit.data.expiresAt - Date.now() < RENEW_BEFORE_MS) setTick(n => n + 1)
     }
     document.addEventListener('visibilitychange', onShow)
     return () => document.removeEventListener('visibilitychange', onShow)
-  }, [key, t.prospect_id])
-  if (!key || read?.pid !== t.prospect_id) return null
-  const d = read.data
-  return d.byMessage.size || d.loose.length ? d : null
+  }, [key, enabled, t.prospect_id])
+  const mine = key && read?.pid === t.prospect_id && hasFiles(read.data) ? read.data : null
+  // Links that ran out and could not be renewed stop being links: the chip stays, a tap opens nothing.
+  const expiresAt = mine?.expiresAt ?? 0
+  useEffect(() => {
+    const ms = expiresAt - Date.now()
+    if (ms <= 0) return
+    const id = setTimeout(() => setClock(n => n + 1), ms + 50)
+    return () => clearTimeout(id)
+  }, [expiresAt])
+  const expired = !!mine && mine.expiresAt <= Date.now()
+  return useMemo(() => mine && expired ? withoutLinks(mine) : mine, [mine, expired])
 }

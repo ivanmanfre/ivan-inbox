@@ -62,6 +62,8 @@ export async function fetchDmAttachments(prospectId: string): Promise<DmAttachme
     method: 'POST',
     headers: { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ prospect_id: prospectId }),
+    // A read that hangs is given up on, so the next one is not left waiting behind it.
+    signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(45_000) : undefined,
   })
   const out = await res.json().catch(() => null)
   if (!res.ok || out?.ok !== true) throw new Error(out?.error ?? `files read failed (${res.status})`)

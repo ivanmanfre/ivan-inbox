@@ -152,19 +152,51 @@ describe('reading the files for an open conversation', () => {
     expect(fetchDmAttachments).toHaveBeenCalledTimes(1)
   })
 
-  it('holds the read back for a pane nobody opened, and drops it when the pane goes first', async () => {
-    vi.useFakeTimers()
+  it('never starts a read for a pane nobody opened, and reads once it is opened', async () => {
     const { deck, t } = deckThread()
     fetchDmAttachments.mockResolvedValue(files([[deck.id, [file()]]]))
-    const Shown = ({ t }: { t: Thread }) => { useDmAttachments(t, 1500); return null }
-    const gone = render(<Shown t={t} />)
-    await act(async () => { vi.advanceTimersByTime(1400) })
-    gone.unmount()
-    await act(async () => { vi.advanceTimersByTime(5000) })
+    const Pane = ({ open }: { open: boolean }) => <output>{useDmAttachments(t, open) ? 'files' : 'none'}</output>
+    const view = render(<Pane open={false} />)
+    await act(async () => { await new Promise(r => setTimeout(r, 30)) })
     expect(fetchDmAttachments).not.toHaveBeenCalled()
-    render(<Shown t={t} />)
-    await act(async () => { vi.advanceTimersByTime(1500) })
+    expect(screen.getByText('none')).toBeTruthy()
+    view.rerender(<Pane open />)
+    await waitFor(() => expect(screen.getByText('files')).toBeTruthy())
     expect(fetchDmAttachments).toHaveBeenCalledTimes(1)
+  })
+
+  it('joins a read still under way when the same conversation is opened again', async () => {
+    const { deck, t } = deckThread()
+    let land!: (d: DmAttachments) => void
+    fetchDmAttachments.mockReturnValue(new Promise<DmAttachments>(r => { land = r }))
+    render(<Probe t={t} />).unmount()
+    render(<Probe t={t} />)
+    expect(fetchDmAttachments).toHaveBeenCalledTimes(1)
+    await act(async () => { land(files([[deck.id, [file()]]])) })
+    await waitFor(() => expect(screen.getByText('1 with files')).toBeTruthy())
+  })
+
+  it('tries a failed renewal again, and closes the links once they run out', async () => {
+    vi.useFakeTimers()
+    const { deck, t } = deckThread()
+    const until = Date.now() + 30 * 60_000
+    fetchDmAttachments.mockResolvedValueOnce({ ...files([[deck.id, [file()]]]), expiresAt: until })
+    fetchDmAttachments.mockRejectedValue(new Error('files read failed (401)'))
+    const Links = () => { const a = useDmAttachments(t); return <output>{a ? `${[...a.byMessage.values()].flat().filter(f => f.href).length} links of ${a.byMessage.size}` : 'none'}</output> }
+    render(<Links />)
+    await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+    expect(screen.getByText('1 links of 1')).toBeTruthy()
+    // The renewal 5 minutes before the end fails, and so do the retries after it: a few, then no more.
+    const minutes = async (n: number) => { for (let i = 0; i < n; i++) await act(async () => { await vi.advanceTimersByTimeAsync(60_000) }) }
+    await minutes(24)
+    expect(fetchDmAttachments).toHaveBeenCalledTimes(1)
+    await minutes(5)
+    expect(fetchDmAttachments).toHaveBeenCalledTimes(6)
+    expect(screen.getByText('1 links of 1')).toBeTruthy()
+    await minutes(2)
+    expect(screen.getByText('0 links of 1')).toBeTruthy()
+    await minutes(120)
+    expect(fetchDmAttachments).toHaveBeenCalledTimes(6)
   })
 
   it('never shows one person’s files on another person’s thread', async () => {
