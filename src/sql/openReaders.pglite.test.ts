@@ -1,5 +1,5 @@
 import type { PGlite } from '@electric-sql/pglite'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { openDb } from './openTrackingSchema'
 
 const EXTRA = `
@@ -227,5 +227,81 @@ describe('page events and the booking link (307, Task 8)', () => {
   it('events and the view are closed to the public key', async () => {
     for (const rel of ['scan_page_events', 'scan_booking_page_link'])
       expect((await db.query<{ a: string | null }>(`select relacl::text a from pg_class where relname = $1`, [rel])).rows[0].a ?? '').not.toMatch(/anon=|authenticated=/)
+  })
+})
+
+describe('daily check that the classifier still tells the truth (309, Task 10)', () => {
+  let db: PGlite
+  const P = '00000000-0000-0000-0000-0000000000d1'
+  beforeAll(async () => { db = await openDb(7, EXTRA) }, 30_000)
+  afterAll(async () => { await db?.close() })
+  beforeEach(async () => { await db.exec(`delete from scan_opens; delete from outreach_messages; delete from net.calls; delete from open_networks;`) })
+  type Check = { name: string; value: number; limit: number; ok: boolean }
+  const run = async () => (await db.query<{ r: { checks: Check[]; alerted: boolean } }>(`select open_tracking_daily_check() r`)).rows[0].r
+  const check = (r: { checks: Check[] }, name: string) => r.checks.find(c => c.name === name)!
+  const send = (slug: string, ago: string) => db.query(`insert into outreach_messages(prospect_id, direction, channel, sent_at, message_text)
+    values ('${P}', 'outbound', 'linkedin', now() - $1::interval, $2)`, [ago, 'https://inboundonsteroids.com/scan/' + slug])
+  const open = (slug: string, ago: string, cls: string | null, o: { dev?: string; ref?: string | null; hash?: string | null; org?: string | null; owner?: boolean } = {}) =>
+    db.query(`insert into scan_opens(company_slug, opened_at, is_owner, device_type, referrer_host, ip_hash, net_org, open_class)
+      values ($1, now() - $2::interval, $3, $4, $5, $6, $7, $8)`, [slug, ago, o.owner ?? false, o.dev ?? 'mobile', o.ref ?? null, o.hash ?? null, o.org === undefined ? 'Some ISP' : o.org, cls])
+  const body = async () => (await db.query<{ b: { title: string; body: string; family: string; source: string; dedupe_key: string } }>(`select body b from net.calls order by id desc limit 1`)).rows[0]?.b
+
+  it('all clear posts nothing', async () => {
+    for (let i = 0; i < 8; i++) { await send('ok-' + i, '3 hours'); await open('ok-' + i, '2 hours 59 minutes', 'link_scanner', { hash: 'MS' + i, org: 'Microsoft' }) }
+    await open('ok-0', '1 hour', 'human', { ref: 'www.linkedin.com', hash: 'H1' })
+    const r = await run()
+    expect(r.alerted).toBe(false)
+    expect(r.checks.map(c => c.name)).toEqual(['unclassified', 'scanner_coverage', 'fast_bare_desktop_humans', 'new_fleet_hash', 'lookup_failures'])
+    expect(r.checks.every(c => c.ok)).toBe(true)
+    expect(await body()).toBeUndefined()
+  })
+  it('unclassified rows older than 15 minutes trip it', async () => {
+    await open('u-1', '20 minutes', null)
+    await open('u-2', '5 minutes', null)
+    const r = await run()
+    expect(check(r, 'unclassified')).toMatchObject({ value: 1, ok: false })
+    expect(r.alerted).toBe(true)
+    const b = await body()
+    expect(b).toMatchObject({ family: 'system_infra_alarm', source: 'db:open_tracking_check', title: 'Open tracking needs a look' })
+    expect(b.dedupe_key).toMatch(/^open_tracking_check:\d{4}-\d{2}-\d{2}$/)
+    expect(b.body).not.toMatch(/—/)
+  })
+  it('scanner missing after most link sends trips it', async () => {
+    for (let i = 0; i < 11; i++) await send('c-' + i, '5 hours')
+    for (let i = 0; i < 3; i++) await open('c-' + i, '4 hours 59 minutes', 'link_scanner', { hash: 'M' + i, org: 'Microsoft' })
+    const r = await run()
+    expect(check(r, 'scanner_coverage')).toMatchObject({ ok: false })
+    expect((await body()).body).toContain('Scanner seen after 3 of 11 LinkedIn link sends yesterday')
+  })
+  it('few sends never trip coverage', async () => {
+    for (let i = 0; i < 5; i++) await send('f-' + i, '5 hours')
+    expect(check(await run(), 'scanner_coverage').ok).toBe(true)
+  })
+  it('three fast bare desktop people trip it', async () => {
+    for (let i = 0; i < 3; i++) { await send('b-' + i, '2 hours'); await open('b-' + i, '1 hour 58 minutes', 'human', { dev: 'desktop', hash: 'B' + i }) }
+    const r = await run()
+    expect(check(r, 'fast_bare_desktop_humans')).toMatchObject({ value: 3, ok: false })
+  })
+  it('a new hash on three scans from an unknown network trips it and names the network', async () => {
+    await db.query(`insert into open_networks(ip_hash, asn, org, source) values ('NEWFLEET', 64500, 'Example Cloud', 'edge_lookup')`)
+    for (const s of ['n-1', 'n-2', 'n-3']) await open(s, '3 hours', 'link_scanner', { hash: 'NEWFLEET', org: 'Example Cloud' })
+    const r = await run()
+    expect(check(r, 'new_fleet_hash')).toMatchObject({ value: 1, ok: false })
+    expect((await body()).body).toContain('Example Cloud')
+  })
+  it('a fleet on a known network is fine', async () => {
+    await db.query(`insert into open_networks(ip_hash, asn, org, source) values ('MSFLEET', 8075, 'Microsoft Corporation', 'edge_lookup')`)
+    for (const s of ['k-1', 'k-2', 'k-3']) await open(s, '3 hours', 'link_scanner', { hash: 'MSFLEET', org: 'Microsoft Corporation' })
+    expect(check(await run(), 'new_fleet_hash').ok).toBe(true)
+  })
+  it('network lookups failing on most rows trips it; owners do not count', async () => {
+    for (let i = 0; i < 10; i++) await open('l-' + i, '2 hours', 'human', { hash: 'L' + i, org: i < 4 ? null : 'ISP' })
+    expect(check(await run(), 'lookup_failures').ok).toBe(false)
+    await db.exec(`delete from scan_opens`)
+    for (let i = 0; i < 10; i++) await open('l-' + i, '2 hours', i < 4 ? 'owner' : 'human', { hash: 'L' + i, org: i < 4 ? null : 'ISP', owner: i < 4 })
+    expect(check(await run(), 'lookup_failures').ok).toBe(true)
+  })
+  it('daily job is scheduled', async () => {
+    expect((await db.query(`select schedule, command from cron.job where jobname = 'open-tracking-daily-check'`)).rows[0]).toEqual({ schedule: '50 7 * * *', command: 'select public.open_tracking_daily_check()' })
   })
 })
