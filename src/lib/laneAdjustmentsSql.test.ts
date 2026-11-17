@@ -95,6 +95,27 @@ it('notes a change on its own week and client only, skipping malformed entries',
   expect(plain.every(r => r.label === '')).toBe(true)
 })
 
+it('splits weeks at Warsaw midnight across the autumn clock change', async () => {
+  // Clocks go back on Sunday 25 October 2026, so Monday 26 October starts at 23:00 UTC.
+  await pg.exec(`insert into public.outreach_prospects(id, campaign_id, connection_sent_at) values
+    ('sunday', 'a', '2026-10-25 22:59:59Z'), ('monday', 'a', '2026-10-25 23:00:00Z')`)
+  await pg.exec(at('2026-10-28 10:00:00Z'))
+  const a = of(await read(), 'fixture_a')
+  expect(a.slice(-2).map(r => [r.period_from, r.period_to, r.invites])).toEqual([
+    ['2026-10-19', '2026-10-25', 1], ['2026-10-26', '2026-11-01', 1]])
+})
+
+it('holds back a change dated later in the current week until its day', async () => {
+  await pg.exec(`insert into public.outreach_prospects(id, campaign_id, connection_sent_at) values ('a1', 'a', '2026-03-31 10:00:00Z')`)
+  await marks([mark('2026-04-01', 'Today'), mark('2026-04-03', 'Later this week')])
+  // Read at 22:30 UTC on 31 March: already 1 April in Warsaw.
+  await pg.exec(at('2026-03-31 22:30:00Z'))
+  const label = async () => of(await read(), 'fixture_a').find(r => r.period_from === '2026-03-30')!.label
+  expect(await label()).toBe('Today (1 Apr)')
+  await pg.exec(at('2026-04-03 10:00:00Z'))
+  expect(await label()).toBe('Today (1 Apr); Later this week (3 Apr)')
+})
+
 it.each(['UTC', 'Europe/Warsaw'])('counts the reply window in elapsed hours with the session in %s', async zone => {
   await pg.exec(`set time zone '${zone}'`)
   // Sent 167.5 hours before the read, across the spring clock change: not yet judged.

@@ -89,6 +89,8 @@ begin
     from (select distinct g.client_id, g.label, g.d
           from jsonb_to_recordset(good) as g(client_id text, label text, d date)) m
     join b on m.d >= b.d0 and m.d < b.d1
+    -- A change dated later this week has not taken effect yet.
+    where m.d <= (as_of at time zone 'Europe/Warsaw')::date
     group by m.client_id, b.d0
   )
   select cl.client_id, b.d0, (b.d1 - 1), coalesce(n.txt, ''),
