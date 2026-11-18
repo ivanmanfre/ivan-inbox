@@ -273,19 +273,21 @@ Deno.test('r4#3 date and photo: undo carries exactly what the forward transactio
   const userDb = { rpc: (name: string, args: unknown) => {
     calls.push([name, args])
     return Promise.resolve({ error: null, data: name === 'desk_set_date'
-      ? { ok: true, before: null, applied: '2027-03-09T09:45:00+00:00', applied_status: 'review', applied_updated_at: '2026-11-18T10:00:05+00:00', rpc: { ok: true } }
-      : { ok: true, before: [], applied: ['https://img.test/a.jpg'], applied_status: 'review', applied_updated_at: '2026-11-18T10:00:06+00:00', rpc: { ok: true } } })
+      ? { ok: true, before: null, applied: '2027-03-09T09:45:00+00:00', before_image: { scheduled_at: null, hand_dated_at: null, queue: [] }, applied_image: { scheduled_at: '2027-03-09T09:45:00+00:00', hand_dated_at: '2027-03-09T09:45:00+00:00', queue: [] }, rpc: { ok: true } }
+      : { ok: true, before_image: { image_urls: [], photo_options: null, no_photo: null }, applied_image: { image_urls: ['https://img.test/a.jpg'], photo_options: ['https://img.test/a.jpg'], no_photo: false }, rpc: { ok: true } } })
   } }
   const ctx = { brief: r, attachments: [{ kind: 'photo', url: 'https://img.test/a.jpg' }], text: '', env: () => undefined, userDb, svc: forbidden } as never
   const h = r.handleOf.get(ID1)!
   const pd = await plan(ctx, { kind: 'date', draft: h, line: 'Snow in the park', at: '2027-03-09 10:45' })
   const rd = await pd.run!()
   assertEquals(calls[0], ['desk_set_date', { p_draft: ID1, p_expected_updated_at: d.updated_at, p_expected_status: 'review', p_at: '2027-03-09T09:45:00.000Z', p_expected_scheduled_at: null }])
-  assertEquals(rd.undo, { op: 'date', draft_id: ID1, prev: null, applied: '2027-03-09T09:45:00+00:00', applied_status: 'review', applied_updated_at: '2026-11-18T10:00:05+00:00' })
+  // round 13 #4: the undo carries the exact before/applied images the forward transaction captured
+  assertEquals(rd.undo, { op: 'date_v3', draft_id: ID1, before: { scheduled_at: null, hand_dated_at: null, queue: [] }, applied: { scheduled_at: '2027-03-09T09:45:00+00:00', hand_dated_at: '2027-03-09T09:45:00+00:00', queue: [] } })
   const pp = await plan(ctx, { kind: 'photo_attach', draft: h, line: 'Snow in the park', photo: 1 })
   const rp = await pp.run!()
   assertEquals((calls[1] as [string])[0], 'desk_set_photos')
-  assertEquals(rp.undo, { op: 'photos', draft_id: ID1, prev: [], applied: ['https://img.test/a.jpg'], applied_status: 'review', applied_updated_at: '2026-11-18T10:00:06+00:00' })
+  assertEquals(rp.undo, { op: 'photos_v3', draft_id: ID1, before: { image_urls: [], photo_options: null, no_photo: null }, applied: { image_urls: ['https://img.test/a.jpg'], photo_options: ['https://img.test/a.jpg'], no_photo: false } })
+  assertEquals((calls[1] as [string, Record<string, unknown>])[1].p_expected_scheduled_at, null)   // photos check the source date too
 })
 
 Deno.test('r4#4 held pull: another queue row, no row or an unreadable queue fails closed; a pull never falls back to the calendar', async () => {
@@ -409,8 +411,8 @@ Deno.test('r5 B2/B3: approve, Brain Keep and delete go only through the locked d
   const pd = await plan({ brief: r, attachments: [], text: '', env: () => undefined, userDb, svc: forbidden } as never, { kind: 'delete', draft: r.handleOf.get(ID1)!, line: 'Snow in the park', reason: 'off topic' })
   await pd.run!()
   assertEquals(calls, [
-    ['desk_approve', { p_draft: ID1, p_expected_updated_at: 'U7', p_expected_status: 'review' }],
-    ['desk_keep', { p_draft: ID1, p_expected_updated_at: 'U7', p_expected_status: 'review' }],
+    ['desk_approve', { p_draft: ID1, p_expected_updated_at: 'U7', p_expected_status: 'review', p_expected_scheduled_at: null }],
+    ['desk_keep', { p_draft: ID1, p_expected_updated_at: 'U7', p_expected_status: 'review', p_expected_scheduled_at: null }],
     ['desk_delete', { p_draft: ID1, p_expected_updated_at: 'U7', p_reason: 'off topic' }],
   ])
   // a refusal from the locked check is a code, never a write
@@ -797,7 +799,7 @@ Deno.test('round 10 #1: the eval command texts resolve from his words alone', ()
   const id = (t: string, o: { kind?: string } = {}) => identify(t, FX, null, { today: '2026-11-18', ...o }).ids.sort()
   assertEquals(id('approve the gdansk one'), ['amber', 'ferry'])                      // C01: act on none, both as chips
   assertEquals(id('approve the cold brew one'), ['cold'])                              // C02
-  assertEquals(id('put the cold brew one on tuesday 9 march', { kind: 'date' }), ['cold'])   // C03: the destination is never identity
+  assertEquals(identify('put the cold brew one on tuesday 9 march', FX, null, { today: '2026-11-18', kind: 'date', dest: '2027-03-09' }).ids, ['cold'])   // C03: the destination is never identity
   assertEquals(id('remove the date from the tram one'), ['tram'])                     // C04
   assertEquals(id('delete the gdansk ferry one, it makes no sense'), ['ferry'])       // C05
   assertEquals(id('redo the tram one, more about the business, less about the city'), ['tram'])   // C06: "about" never counts
@@ -925,7 +927,7 @@ Deno.test('round 11/12 core: approve, delete, pull and redo held; date and photo
   for (const a of [{ kind: 'date', at: '2027-03-09 10:45' }, { kind: 'photo_attach', photo: 1 }]) {
     const p = await plan(ctx, { ...a, draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
     assertEquals(p.echo.state, 'done', a.kind); assertEquals(p.echo.undo, true)
-    assert(p.echo.label.includes('Snow in the park this morning') && p.echo.label.includes('(ref aaaaaa)'), p.echo.label)
+    assert(p.echo.label.includes('Snow in the park this morning') && p.echo.label.includes('(ref aaaaaaaa)'), p.echo.label)
   }
   const pd = await plan(ctx, { kind: 'date', at: '2027-03-09 10:45', draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
   const j = journalArgs({ kind: 'date', at: '2027-03-09 10:45' }, pd, null, {}, '')
@@ -975,12 +977,11 @@ Deno.test('round 12 #3: numbers and the map come from the same uniquely matched 
   const body = 'Here they are:\n\n- "Cold brew at 7am and a 40 minute queue"\n\n- "Tram 33 at rush hour is the best market research"\n\n- something unclear'
   const out = numberRows(body, ds)
   assertEquals(out.rows, [{ n: 1, id: 'a', rev: 'R1' }])   // the tram line matches two drafts: unmapped
-  assert(out.body.includes('1. "Cold brew at 7am'))
+  assert(out.body.includes('1\\. "Cold brew at 7am'))
   assert(out.body.includes('- "Tram 33') && out.body.includes('- something unclear'))
   const two = numberRows('- "Cold brew at 7am and a 40 minute queue"\n\n- "Tram 33 at rush hour is the best market research again"', ds)
   assertEquals(two.rows.map((x) => x.id), ['a', 'c'])
-  assertEquals(two.body, '1. "Cold brew at 7am and a 40 minute queue"\n2. "Tram 33 at rush hour is the best market research again"')
-  assertEquals(shortParagraphs(two.body), two.body)   // the numbered list stays one block
+  assertEquals(two.body, '1\\. "Cold brew at 7am and a 40 minute queue"\n\n2\\. "Tram 33 at rush hour is the best market research again"')
 })
 
 Deno.test('round 12 #4: the target phrase drops verb, destination and redo direction; numbered references keep source days', () => {
@@ -1005,4 +1006,58 @@ Deno.test('round 12 #7: a follow-up chip is emitted only if it resolves to its d
   const b = draft('bbbbbbbb-0000-4000-8000-000000000002', 'Snow in the park again tonight')
   assert(roundTrips('remove the date from the post that starts "Snow in the park this morning"', ID1, [a, b]))
   assert(!roundTrips('remove the date from the post that starts "Snow in the park"', ID1, [a, b]))
+})
+
+// ---- Round 13 (made-up data only) ------------------------------------------------
+import { uniqueRef, chipKind } from './actions.ts'
+import { withoutDays } from './target.ts'
+
+Deno.test('round 13 #1: numbers are literal text across sections, and the map is built from exactly those lines', () => {
+  const ds = [
+    { id: 'a', first_line: 'Cold brew at 7am and a 40 minute queue', updated_at: 'R1' },
+    { id: 'b', first_line: 'Tram 33 at rush hour is the best market research', updated_at: 'R2' },
+    { id: 'c', first_line: 'Amber sellers in the old town quote prices', updated_at: 'R3' },
+    { id: 'd', first_line: 'The ferry to the peninsula takes fifty minutes', updated_at: 'R4' },
+  ]
+  const body = 'This week:\n1. "Cold brew at 7am and a 40 minute queue"\n2. "Tram 33 at rush hour is the best market research"\n\nNext week:\n- "Amber sellers in the old town quote prices"\n- "The ferry to the peninsula takes fifty minutes"'
+  const out = numberRows(body, ds)
+  // literal "N\\." labels: Markdown renders the text "1." .. "4.", never an <ol> that restarts at 1
+  for (const n of [1, 2, 3, 4]) assert(out.body.includes(`${n}\\. "`), out.body)
+  assert(!/^\d+\.\s/m.test(out.body))
+  assertEquals(out.rows.map((r) => [r.n, r.id]), [[1, 'a'], [2, 'b'], [3, 'c'], [4, 'd']])
+  // the map is exactly the rewritten lines, in order
+  const labelled = out.body.split('\n').filter((l) => /^\d+\\\. /.test(l)).map((l) => Number(l.split('\\')[0]))
+  assertEquals(labelled, [1, 2, 3, 4])
+})
+
+Deno.test('round 13 #2: only the destination is stripped; source days always filter; a day-only reference needs one draft on that day', () => {
+  const ds = [
+    { id: 'fri', first_line: 'Snow in the park this morning', day: '2026-11-20' },
+    { id: 'mon', first_line: 'Snow in the park again', day: '2026-11-23' },
+    { id: 'says', first_line: 'Friday deploys are a bad idea', day: '2026-11-24' },
+  ]
+  const t = { today: '2026-11-18' }
+  // "on friday" is a source day for a move to monday: it filters; "to monday" is the destination
+  assertEquals(identify('move the snow in the park post on friday to monday', ds, null, { ...t, kind: 'date', dest: '2026-11-23' }).ids, ['fri'])
+  assertEquals(identify("pull friday's snow in the park post", ds, null, t).ids, ['fri'])
+  // a day-only reference: the opener that SAYS "Friday" does not count
+  assertEquals(identify("pull friday's post", ds, null, t).ids, ['fri'])
+  assertEquals(identify("pull friday's post", [...ds, { id: 'fri2', first_line: 'A DM that got a reply', day: '2026-11-20' }], null, t).ids.length, 2)
+  assert(!withoutDays("friday's snow post").toLowerCase().includes('friday'))
+})
+
+Deno.test('round 13 #7/#9: the shortest unique 8+ hex ref; chips round-trip with their own kind', () => {
+  assertEquals(uniqueRef('aaaaaaaa-1111-4000-8000-000000000001', [{ id: 'aaaaaaaa-1111-4000-8000-000000000001' }, { id: 'aaaaaaaa-2222-4000-8000-000000000002' }]), 'aaaaaaaa1')
+  assertEquals(uniqueRef('bbbbbbbb-0000-4000-8000-000000000002', [{ id: 'aaaaaaaa-1111-4000-8000-000000000001' }]), 'bbbbbbbb')
+  assertEquals(chipKind('remove the date from the post that starts "x"'), 'undate')
+  assertEquals(chipKind('redo "Snow, rain and more" (no date)'), 'redo')
+  // quoted punctuation never cuts a redo reference
+  assert(referencePart('redo the post that starts "Snow, rain and sleet in the park" through the writer', 'redo').includes('sleet in the park'))
+})
+
+Deno.test('round 13 #8: a closer counts only as a valid closing tag for exactly that name', () => {
+  assertEquals(scan('<tool_call>a</tool_call/typo> still inside</tool_call><reply>After.</reply>').reply, 'After.')
+  assertEquals(scan('<tool_call>a</tool_call/typo> never closed').cut, true)
+  assertEquals(scan('<actions>[{"kind":"idea"}]</actions   ><reply>Ok.</reply>').reply, 'Ok.')
+  assert(scan('<actions>[{"kind":"idea"}]</actions   ><reply>Ok.</reply>').actions!.includes('"idea"'))
 })

@@ -54,23 +54,39 @@ const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'frida
 // the command verb a message starts with: never part of the reference (Sol r10 #3)
 const VERB_HEAD = /^\s*(?:ok(?:ay)?,?\s+|please\s+|can you\s+|could you\s+)*(?:approve|delete|remove the date from|remove|undate|unschedule|move|put|schedule|reschedule|date|pull|redo|rewrite|attach (?:this|the|my) (?:photo|picture|pic) to|add (?:this|the|my) (?:photo|picture|pic) to|attach|add)\b\s*/i
 const DAY_WORD = '(?:today|tonight|tomorrow|(?:next|this)\\s+(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*|(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*|\\d{1,2}\\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*|\\d{4}-\\d{2}-\\d{2})'
-// a date move's destination ("to Friday", "on tuesday 9 march 10:45"): never identity (Sol r10 #2)
-const DESTINATION = new RegExp(`\\b(?:to|on|for|at|until)\\s+(?:the\\s+)?${DAY_WORD}[^,.;!?]*`, 'gi')
+// a day phrase with an optional preposition before it and a date/time after it ("on tuesday 9 march 10:45")
+const DAY_PHRASE = new RegExp(`(?:\\b(?:to|on|for|at|until|from)\\s+(?:the\\s+)?)?${DAY_WORD}(?:'s)?(?:\\s+\\d{1,2}(?:\\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*)?)?(?:\\s+(?:at\\s+)?\\d{1,2}(?::\\d{2})?\\s*(?:am|pm)?)?`, 'gi')
 
 /**
- * The target phrase of his message (Sol r11 #4): no command verb, no destination for a date move
- * ("to Friday"), and no redo direction (the proposed note's own span, and anything after the first
- * comma or "make it ..."). Source days stay.
+ * The target phrase of his message (Sol r11 #4, r12 #2): no command verb; for a date move only the
+ * DESTINATION is removed, i.e. the day phrase that names the new date (`dest`, the move's own Warsaw
+ * day) plus a bare time; every other day phrase is a source day and stays. For a redo, the direction
+ * goes (the proposed note's own span, and anything after the first comma, "make it", "but" ...),
+ * where punctuation inside a quoted opener never counts as the cut.
  */
-export function referencePart(text: string, kind?: string, note?: unknown): string {
+export function referencePart(text: string, kind?: string, note?: unknown, dest?: string | null, today?: string): string {
   let t = text.replace(VERB_HEAD, '')
-  if (kind === 'date') t = t.replace(DESTINATION, ' ').replace(/\b(?:to|at)\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?\b/gi, ' ')
+  if (kind === 'date') {
+    t = t.replace(DAY_PHRASE, (m) => {
+      if (!dest) return /^\s*(?:to|until)\b/i.test(m) ? ' ' : m   // no known destination: only "to/until X" is one
+      const nd = namedDays(m, today)
+      return nd.dates.some((d) => (d.length === 5 ? dest.slice(5) === d : dest === d)) ? ' ' : m
+    }).replace(/\b(?:to|at)\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?\b/gi, ' ')
+  }
   if (kind === 'redo') {
     const n = typeof note === 'string' ? note.trim() : ''
     if (n) { const i = t.toLowerCase().indexOf(n.toLowerCase()); if (i >= 0) t = t.slice(0, i) + ' ' + t.slice(i + n.length) }
-    t = t.split(/,|;|\s(?:and\s+)?make it\s|\sbut\s|\swith more\s|\swith less\s/i)[0]
+    // cut at the first direction marker OUTSIDE a quoted span
+    const masked = t.replace(/"[^"\n]*"|\u201c[^\u201d\n]*\u201d/g, (q) => 'x'.repeat(q.length))
+    const m = masked.match(/,|;|\s(?:and\s+)?make it\s|\sbut\s|\swith more\s|\swith less\s/i)
+    if (m && m.index != null) t = t.slice(0, m.index)
   }
   return t
+}
+
+/** The reference without its day phrases: day words never score as content (an opener that says "Friday" is not Friday's post). */
+export function withoutDays(ref: string): string {
+  return ref.replace(DAY_PHRASE, ' ')
 }
 
 // words that only point at "a post" and never identify one
@@ -78,7 +94,7 @@ const GENERIC = new Set(['post', 'posts', 'one', 'ones', 'draft', 'drafts', 'the
 
 /** The reference is JUST a day ("tomorrow's post", "the one on friday"): day-only matching is allowed only then. */
 export function justADay(ref: string): boolean {
-  const stripped = ref.toLowerCase().replace(new RegExp(DAY_WORD, 'gi'), ' ')
+  const stripped = withoutDays(ref).toLowerCase()
   const rest = words(stripped).filter((w) => !GENERIC.has(w) && !/^\d+$/.test(w) && !MONTHS.includes(w.slice(0, 3)))
   return rest.length === 0 && new RegExp(DAY_WORD, 'i').test(ref)
 }
@@ -137,8 +153,8 @@ export const RIVAL_CAP = 5
  * desk answer rendered to {id, rev}; a number resolves only while that draft's revision is unchanged.
  */
 export function identify(text: string, cands: IdDraft[], shown?: Map<number, { id: string; rev?: string | null }> | null,
-  opts: { today?: string; kind?: string; note?: unknown } = {}): IdResult {
-  const ref = referencePart(text, opts.kind, opts.note)
+  opts: { today?: string; kind?: string; note?: unknown; dest?: string | null } = {}): IdResult {
+  const ref = referencePart(text, opts.kind, opts.note, opts.dest, opts.today)
   const named = namedDays(ref, opts.today)
   const namesDay = named.dates.length > 0 || (!opts.today && named.weekdays.length > 0)
   const n = listNumber(text)
@@ -151,15 +167,17 @@ export function identify(text: string, cands: IdDraft[], shown?: Map<number, { i
     if (namesDay && !dayMatches(c.day, named, opts.today)) return { ids: [], how: 'list', span: 0, rivals: [] }
     return { ids: [c.id], how: 'list', span: 0, rivals: [] }
   }
-  const msg = words(ref)
+  // day words never score (Sol r12 #2): they only filter
+  const msg = words(withoutDays(ref))
   const scored = cands.map((c) => ({ c, s: sharedSpan(msg, words(c.first_line)) }))
-  // a source day is a REQUIRED intersection; day-only matching only for an explicit day reference
+  // a source day ALWAYS filters the candidates (numbered references included, above)
   const onDay = (c: IdDraft) => !namesDay || dayMatches(c.day, named, opts.today)
   const pool = scored.filter((x) => onDay(x.c))
   const max = Math.max(0, ...pool.map((x) => x.s))
   let top = max > 0 ? pool.filter((x) => x.s === max) : []
   let how: IdResult['how'] = 'span'
-  if (!top.length && namesDay && justADay(ref)) { top = pool; how = 'day' }
+  // a day-only reference: every draft on that day is a candidate, and it resolves only if that is ONE
+  if (namesDay && justADay(ref)) { top = pool; how = 'day' }
   if (!top.length) return { ids: [], how: 'none', span: 0, rivals: [] }
   const ids = top.map((x) => x.c.id)
   // relevant alternatives: other drafts on the day that come within one content word of the best
@@ -205,10 +223,12 @@ export function numberRows(body: string, drafts: { id: string; first_line: strin
       const hits = scored.filter((x) => x.k === top)
       if (top > 0 && hits.length === 1 && !rows.some((r) => r.id === hits[0].d.id)) {
         rows.push({ n: rows.length + 1, id: hits[0].d.id, rev: hits[0].d.updated_at ?? null })
-        numbered.push(`${rows.length}. ${t}`)
+        // a LITERAL label ("1\\." in Markdown renders the text "1." and never an ordered list), so the
+        // number Ivan sees is exactly the stored one, whatever the renderer does (Sol r12 #1)
+        numbered.push(`${rows.length}\\. ${t}`)
       } else plainItems.push(`- ${t}`)
     }
-    if (numbered.length) out.push(numbered.join('\n'))
+    if (numbered.length) out.push(numbered.join('\n\n'))
     if (plainItems.length) { if (numbered.length) out.push(''); out.push(plainItems.join('\n\n')) }
   }
   return { body: out.join('\n'), rows }

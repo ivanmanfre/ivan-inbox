@@ -83,7 +83,7 @@ function failText(e: unknown): string {
     no_queue_row: 'Its queued copy is no longer there, so I pulled nothing.', queue_changed: 'Its queued copy changed since, so I pulled nothing.',
     write_failed: 'The write did not confirm. Check the post before trying again.', queue_still_live: 'It still has a queued copy, so I deleted nothing.',
     gone: 'That post is gone or no longer in your Review.', queue_read_failed: 'I could not read its queue, so I did nothing.',
-    brain_draft: 'Brain drafts take Keep or Drop in Review.', failed_release: 'The writer did not run, and the draft may show as generating. Open it in Review.',
+    brain_draft: 'Brain drafts take Keep or Drop in Review.', pull_instead: 'It has a queued copy, so I did nothing. Pull it instead.', failed_release: 'The writer did not run, and the draft may show as generating. Open it in Review.',
     dated_mismatch: 'That post is not on the day you named, so I did nothing.', not_saved: 'That answer was never saved, so this action cannot run.',
     posting_now: 'It is being published right now, so I left it.', next_changed: 'Its queued copy changed since, so I pulled nothing.',
     next_gone: 'It is no longer scheduled, so I pulled nothing.', next_busy: 'It is being changed right now, so I did nothing. Try again in a minute.',
@@ -149,6 +149,27 @@ async function loadBrief(svc: any, fixtures: boolean, force = false): Promise<{ 
 }
 
 function invalidate() { briefCache = null }
+
+let bannedCache: { at: number; words: string[] } | null = null
+/**
+ * The live banned-word list (content_prompts slug forbidden-language, §1 "Banned Words"), read-only and
+ * parsed exactly as the G4 check reads it. Cached like the brief (10 min). A failed read keeps the last list.
+ */
+// deno-lint-ignore no-explicit-any
+async function bannedWords(svc: any): Promise<string[]> {
+  if (bannedCache && Date.now() - bannedCache.at < BRIEF_MAX_AGE_MS) return bannedCache.words
+  const { data, error } = await svc.from('content_prompts').select('body').eq('slug', 'forbidden-language').eq('is_active', true)
+    .order('version', { ascending: false }).limit(1).maybeSingle()
+  if (error || !data?.body) return bannedCache?.words ?? []
+  const fl = String(data.body)
+  let sec = fl.slice(Math.max(0, fl.indexOf('1) Banned Words')))
+  const end = sec.indexOf('2)')
+  sec = sec.slice(0, end > 0 ? end : 6000)
+  const words = [...new Set([...sec.matchAll(/\d+:1 ([^|\\]+?) \|/g)].map((m) => m[1].trim().toLowerCase())
+    .filter((w) => !w.includes('(') && w !== 'banned word'))].sort()
+  bannedCache = { at: Date.now(), words }
+  return words
+}
 
 /**
  * Published post URL -> its labeled vehicle (the post labeler, cp17_post_labels, newest label), so a
@@ -401,16 +422,16 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         // rate cap run alongside the brief read, so the model call starts as early as possible
         const rate = svc.from('desk_messages').select('id', { count: 'exact', head: true })
           .eq('user_id', userId).eq('role', 'user').gte('created_at', new Date(Date.now() - RATE_WINDOW_MS).toISOString())
-        const rest = Promise.all([rate, loadBrief(svc, mode.fixtures), recentMessages(svc, userId, mode.evalMode), openJobs(svc, userId), visibleDrafts(userDb)])
+        const rest = Promise.all([rate, loadBrief(svc, mode.fixtures), recentMessages(svc, userId, mode.evalMode), openJobs(svc, userId), visibleDrafts(userDb), bannedWords(svc)])
         emit('ack', { user_message_id: userRow.id, client_key: clientKey })
         if (replayAnswer) { rest.catch(() => {}); emit('final', { message: forClient(replayAnswer) }); return }
-        const [rateRes, brief, recent, jobs, visible] = await rest
+        const [rateRes, brief, recent, jobs, visible, banned] = await rest
         if (!mode.evalMode && (rateRes.count ?? 0) > RATE_MAX) throw new LlmError('rate_limited', 'Too many messages in 10 minutes.')
         timings.ack_ms = Date.now() - t0
         timings.brief_ms = brief.ms
         later(sweepT3Stalls(svc), 't3_sweep')
         const r = render(applyVisibility(brief.json, visible ?? new Map()), recent.filter((m: { role: string; body: string; created_at: string }) => !(m.role === 'user' && m.body === text && Date.now() - Date.parse(m.created_at) < 60_000)).slice(-10), jobs)
-        let prompt = buildPrompt({ brief: r.text, message: text || '(no text, see attachment)', attachments, voice: body.voice === true })
+        let prompt = buildPrompt({ brief: r.text, message: text || '(no text, see attachment)', attachments, voice: body.voice === true, banned })
         // Token streaming through the proxy's opt-in stream (DESK_STREAM=1): the reply reaches
         // the phone as it is written. Otherwise the whole answer goes out the moment it exists.
         const streaming = env('DESK_STREAM') === '1'
@@ -443,7 +464,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         if (parsed.reads.length && !parsed.actions.length) {
           toolCalls += parsed.reads.length
           const results = await runReads(svc, userDb, r, parsed.reads)
-          prompt = buildPrompt({ brief: r.text, message: text, attachments, voice: body.voice === true, readResults: results })
+          prompt = buildPrompt({ brief: r.text, message: text, attachments, voice: body.voice === true, readResults: results, banned })
           const m2 = await ask(prompt)
           timings.model_ms += m2.ms
           parsed = parse(m2.text)
@@ -478,8 +499,10 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           userDb, svc, userId, messageId, brief: r, attachments, text, env, fixtures: mode.fixtures,
           // list numbers the previous desk answer displayed (its meta.shown_drafts), for "number 2"
           shown: (() => {
-            const prev = [...recent].reverse().find((m: { role: string }) => m.role === 'assistant') as { meta?: { shown_drafts?: { n: number; id: string; rev?: string | null }[] } } | undefined
-            const list = Array.isArray(prev?.meta?.shown_drafts) ? prev!.meta!.shown_drafts! : []
+            // only a map of the current version: built from the literal "N\\." labels of that answer (Sol r12 #1)
+            const prev = [...recent].reverse().find((m: { role: string }) => m.role === 'assistant') as { meta?: { shown_map?: { v?: number; rows?: { n: number; id: string; rev?: string | null }[] } } } | undefined
+            const map = prev?.meta?.shown_map
+            const list = map?.v === 2 && Array.isArray(map.rows) ? map.rows : []
             return new Map(list.filter((x) => typeof x?.n === 'number' && typeof x?.id === 'string').map((x) => [x.n, { id: x.id, rev: x.rev ?? null }]))
           })(),
           unfurl: (u) => deskUnfurl(u),
@@ -633,7 +656,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           ...(echoes.length ? { actions: echoes } : {}), ...(chips.length ? { chips: oneText(chips) } : {}), ...(t3 ? { t3_job: t3 } : {}),
           turn_token: turnToken, side_effects: sideEffects, ...(mode.evalMode ? { test: true } : {}),
           // the drafts this answer shows, in order: a later "number 2" means the second of these (Sol r9 #1a)
-          shown_drafts: numbered.rows,
+          shown_map: { v: 2, rows: numbered.rows },
         }
         // The final row (with its echoes) is the only thing that lets a hold arm: held_seen and commit
         // both require it (echoDurable). It is written only over this turn's own streaming row (a
@@ -722,7 +745,7 @@ function proposedLine(act: Act, p: Planned, snap: Snapshot | null): string {
   const VERB: Record<string, string> = { approve: 'approve', date: 'move', undate: 'remove the date from', pull: 'pull', delete: 'delete', redo: 'rewrite', photo_attach: 'add your photo to' }
   // the FULL opener (the UI wraps), a short distinct reference, the source date and, for a move, the new date (Sol r11 #2)
   const line = (p.echo.target?.first_line ?? '').replace(/\s+/g, ' ').trim()
-  const ref = draftRef(p.target_id ?? '')
+  const ref = p.ref ?? ((act as { _ref?: string })._ref) ?? draftRef(p.target_id ?? '')
   const day = snap?.scheduled_at ? warsaw(snap.scheduled_at) : 'no date'
   const to = act.kind === 'date' && typeof p.canon?.at === 'string' ? ` to ${warsaw(p.canon.at)}` : ''
   return `Proposed (ref ${ref}): ${VERB[act.kind] ?? act.kind} "${line}" (${day})${to}.`
@@ -823,21 +846,26 @@ async function echoDurable(svc: any, messageId: string, actionId: string): Promi
 /** Compare-and-set on desk_actions.result.state: only one of two racing requests wins (Sol desk-ui r1 #1). */
 /** held -> committing, only while the hold's deadline has not passed (one atomic update). */
 // deno-lint-ignore no-explicit-any
-async function claimCommit(svc: any, a: { id: string; result: Record<string, unknown> | null }): Promise<boolean> {
-  const { data } = await svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'committing' } })
-    .eq('id', a.id).filter('result->>state', 'eq', 'held').filter('result->>expires_at', 'gt', new Date().toISOString()).select('id')
-  return Array.isArray(data) && data.length === 1
+async function claimCommit(svc: any, a: { id: string; user_id?: string; result: Record<string, unknown> | null }): Promise<boolean> {
+  // one SQL UPDATE: held -> committing only while expires_at > now() on the DATABASE clock (Sol r12 #6)
+  const { data, error } = await svc.rpc('desk_claim_commit', { p_action: a.id, p_user: a.user_id })
+  return !error && data === true
 }
 
 /** A hold that will never run: CAS held -> cancelled, and the message's echo says so (Sol r11 #6). */
 // deno-lint-ignore no-explicit-any
-async function expireHold(svc: any, a: { id: string; result: Record<string, unknown> | null; message_id?: string }, label: string): Promise<void> {
-  if (!await claimState(svc, a, 'held', 'cancelled')) return
+async function expireHold(svc: any, a: { id: string; result: Record<string, unknown> | null; message_id?: string }, label: string): Promise<string | null> {
+  if (!await claimState(svc, a, 'held', 'cancelled')) {
+    // lost the race: report the state that actually won
+    const { data, error } = await svc.from('desk_actions').select('result').eq('id', a.id).maybeSingle()
+    return error ? null : ((data?.result as { state?: string } | null)?.state ?? null)
+  }
   const messageId = a.message_id ?? (await svc.from('desk_actions').select('message_id').eq('id', a.id).maybeSingle()).data?.message_id
   if (messageId) for (let i = 0; i < 3; i++) {
     const { data } = await svc.rpc('desk_patch_action_echo', { p_message: messageId, p_action: a.id, p_patch: { state: 'cancelled', undo: false, label } })
     if (data) break
   }
+  return 'cancelled'
 }
 
 // deno-lint-ignore no-explicit-any
@@ -850,7 +878,8 @@ async function claimState(svc: any, a: { id: string; result: Record<string, unkn
 // deno-lint-ignore no-explicit-any
 async function settle(svc: any, userDb: any, userId: string, op: string, actionId: string, dryReq = false) {
   if (!/^[0-9a-f-]{36}$/i.test(actionId)) return { ok: false, error: 'bad_action' }
-  const { data: a } = await svc.from('desk_actions').select('*').eq('id', actionId).eq('user_id', userId).maybeSingle()
+  const { data: a, error: aErr } = await svc.from('desk_actions').select('*').eq('id', actionId).eq('user_id', userId).maybeSingle()
+  if (aErr) return { ok: false, error: 'read_failed' }   // a failed read is an error, never "legacy" (Sol r12 #6)
   if (!a) return { ok: false, error: 'not_found' }
   const state = (a.result as { state?: string } | null)?.state
   let newState: ActionEcho['state'] | null = null
@@ -946,13 +975,15 @@ async function heldSeen(svc: any, userDb: any, userId: string, ids: string[], ev
       let r = (a.result ?? {}) as { state?: string; seen_at?: string; hold_ms?: number }
       if (r.state === 'held') {
         // a hold past its deadline, or without the v2 confirmation, will never run: cancelled, echo persisted
-        const { data: full } = await svc.from('desk_actions').select('args').eq('id', id).maybeSingle()
-        const v2 = (full?.args as { _confirm?: { v?: number } } | null)?._confirm?.v === 2
+        const { data: full, error: fErr } = await svc.from('desk_actions').select('args').eq('id', id).maybeSingle()
+        if (fErr || !full) { results.push({ id, error: 'read_failed' }); continue }   // an error, never "legacy"
+        const v2 = (full.args as { _confirm?: { v?: number } } | null)?._confirm?.v === 2
         const exp = (r as { expires_at?: string }).expires_at
         const expired = exp ? Date.now() >= Date.parse(exp) : Date.now() - Date.parse(a.created_at) > HOLD_EXPIRE_MS
         if (!v2 || expired) {
-          await expireHold(svc, a, expired ? 'Expired after 24 hours. Nothing changed.' : 'Cancelled: this proposal is from an older version. Ask again.')
-          r = { ...r, state: 'cancelled' }
+          const won = await expireHold(svc, a, expired ? 'Expired after 24 hours. Nothing changed.' : 'Cancelled: this proposal is from an older version. Ask again.')
+          if (won == null) { results.push({ id, error: 'read_failed' }); continue }
+          r = { ...r, state: won }
         }
       }
       const ms = Number(r.hold_ms ?? 8000)

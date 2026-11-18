@@ -24,7 +24,7 @@
 
 import type { Rendered, Draft } from './brief.ts'
 import { warsaw, warsawDay } from './brief.ts'
-import type { Act } from './parse.ts'
+import { oneText, type Act } from './parse.ts'
 import { urlInMessage } from './unfurl.ts'
 import { MAX_BRIEF_CHARS, MAX_TITLE_CHARS } from '../_shared/desk-t3.ts'
 import { identify, words, type IdDraft } from './target.ts'
@@ -56,6 +56,8 @@ export type Ctx = {
   fetchImpl?: typeof fetch
   t3?: (args: { title: string; brief: string }) => Promise<{ job_id: string; status: string; error?: string }>
   unfurl?: (url: string) => Promise<{ title?: string; description?: string; author?: string } | null>
+  /** the receipt reference for a draft: its shortest unique UUID prefix (8+ hex) among the candidates */
+  refOf?: (id: string) => string
   /** eval fixtures mode: only desk eval fixture drafts are candidates then */
   fixtures?: boolean
   /** the numbered rows the previous desk answer rendered -> draft id + revision (its meta.shown_drafts) */
@@ -77,6 +79,8 @@ export type Planned = {
   canon?: Record<string, unknown>
   /** for the verifier: the resolved post's full live opener (Sol r7 #1, r8 #1) */
   context?: string
+  /** the receipt reference of the target (shortest unique UUID prefix, 8+ hex) */
+  ref?: string
   /** an unresolved or ambiguous reference: a display (a line and chips) only, never an action entry (Sol r10 #10) */
   display?: boolean
   /** the confirmation the held card stands for (round 12): the commit runs only while the live row still matches it */
@@ -87,7 +91,15 @@ export type Planned = {
 export type Confirmation = { v: 2; draft_id: string; revision: string | null; source_at: string | null; args: Record<string, unknown> }
 
 /** A short distinct draft reference shown to Ivan: the first 6 hex of the draft UUID. */
-export const draftRef = (id: string) => id.replace(/-/g, '').slice(0, 6)
+export const draftRef = (id: string) => id.replace(/-/g, '').slice(0, 8)
+
+/** The shortest prefix (at least 8 hex) of this draft's UUID that no other candidate shares (Sol r12 #7). */
+export function uniqueRef(id: string, all: { id: string }[]): string {
+  const hex = id.replace(/-/g, '')
+  const others = all.map((d) => d.id.replace(/-/g, '')).filter((h) => h !== hex)
+  for (let n = 8; n <= hex.length; n++) if (!others.some((h) => h.startsWith(hex.slice(0, n)))) return hex.slice(0, n)
+  return hex
+}
 
 const sameInstant = (a: string | null | undefined, b: string | null | undefined) => (a ? Date.parse(a) : null) === (b ? Date.parse(b) : null)
 
@@ -171,17 +183,32 @@ export function pickChips(act: Act, ds: Draft[], all: Draft[]): { label: string;
 }
 
 /** A chip's own text, resolved by identify against the same candidates, returns exactly this draft. */
-export function roundTrips(send: string, draftId: string, all: Draft[]): boolean {
+export function roundTrips(send: string, draftId: string, all: Draft[], kind?: string): boolean {
   const ids: IdDraft[] = all.map((d) => ({ id: d.id, first_line: d.first_line, day: dayOf(d), rev: d.updated_at ?? null }))
-  const r = identify(send, ids, null, { today: warsawDay(new Date().toISOString()) })
+  // the text Ivan will actually send (oneText's own transform), resolved with the chip's real kind
+  const text = oneText([{ send }])[0]?.send ?? send
+  const r = identify(text, ids, null, { today: warsawDay(new Date().toISOString()), kind: kind ?? chipKind(text) })
   return r.ids.length === 1 && r.ids[0] === draftId
+}
+
+/** The kind a chip's text asks for (its leading verb), as the model would read it. */
+export function chipKind(text: string): string {
+  const t = text.trim().toLowerCase()
+  if (/^(?:undate|remove the date)/.test(t)) return 'undate'
+  if (/^pull/.test(t)) return 'pull'
+  if (/^(?:move|put|date|schedule)/.test(t)) return 'date'
+  if (/^(?:redo|rewrite)/.test(t)) return 'redo'
+  if (/^delete/.test(t)) return 'delete'
+  if (/^approve/.test(t)) return 'approve'
+  if (/^(?:add|attach)/.test(t)) return 'photo_attach'
+  return 'unknown'
 }
 
 /** Server chips that survive a round trip: each chip's own text, resolved by identify, returns its draft alone (Sol r10 #8). */
 export function verifiedChips(act: Act, ds: Draft[], all: Draft[], opts: { today?: string; kind?: string }): { label: string; send: string }[] {
   const ids: IdDraft[] = all.map((d) => ({ id: d.id, first_line: d.first_line, day: dayOf(d), rev: d.updated_at ?? null }))
   return ds.slice(0, 6).map((d) => ({ d, c: pickChips(act, [d], all)[0] }))
-    .filter(({ d, c }) => { const r = identify(c.send, ids, null, opts); return r.ids.length === 1 && r.ids[0] === d.id })
+    .filter(({ d, c }) => { const t = oneText([{ send: c.send }])[0]?.send ?? c.send; const r = identify(t, ids, null, { ...opts, kind: act.kind }); return r.ids.length === 1 && r.ids[0] === d.id })
     .slice(0, 3).map(({ c }) => c)
 }
 
@@ -368,7 +395,9 @@ export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: 
   let cands = await liveCandidates(ctx)
   if (!cands) return ask('read_failed', 'I could not read your drafts, so I did nothing.')
   const today = warsawDay(new Date().toISOString())
-  const idOpts = { today, kind: act.kind, note: act.note }
+  // a date move's destination is the move's own Warsaw day: only that day phrase is removed from identity
+  const destIso = act.kind === 'date' ? warsawToIso(String(act.at ?? '')) : null
+  const idOpts = { today, kind: act.kind, note: act.note, dest: destIso ? warsawDay(destIso) : null }
   const asId = (ds: Draft[]): IdDraft[] => ds.map((d) => ({ id: d.id, first_line: d.first_line, day: dayOf(d), rev: d.updated_at ?? null }))
   let res = identify(ctx.text, asId(cands), ctx.shown, idOpts)
   if (ctx.fixtures && !res.ids.length && res.why !== 'too_many_rivals') {
@@ -411,15 +440,18 @@ export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: 
     return { p: { echo: { kind: kindOut, label: 'That post changed while I was reading it, so I did nothing.', state: 'failed', undo: false, detail: 'changed' }, refuse: 'changed', target_id: r.d.id }, snap: live.snap }
   }
   act.line = live.d.first_line
-  const p = await plan({ ...ctx, brief: liveBrief(ctx, live.d, live.snap, r.handle) }, act)
+  const refOf = (id: string) => uniqueRef(id, all)
+  const p = await plan({ ...ctx, brief: liveBrief(ctx, live.d, live.snap, r.handle), refOf }, act)
   p.target_id = live.d.id
-  // every draft-targeting chip, refusal follow-ups included, is emitted only if it resolves to this draft alone (Sol r11 #7)
+  p.ref = refOf(live.d.id)
+  // every draft-targeting chip, refusal follow-ups included, is emitted only if its FINAL text, resolved
+  // with its own kind, returns this draft alone (Sol r11 #7, r12 #9)
   if (p.chips?.length) p.chips = p.chips.filter((c) => roundTrips(c.send, live!.d.id, all))
   if (p.run) p.confirm = { v: 2, draft_id: live.d.id, revision: live.d.updated_at ?? null, source_at: live.d.scheduled_at ?? null, args: p.canon ?? {} }
   // the verifier reads the resolved post's whole live opener and every rival opener with its day
   const dayText = (x: Draft) => (dayOf(x) === 'undated' ? 'undated' : `dated ${dayOf(x)}`)
-  p.context = `Target post, found from his words, full first line: "${live.d.first_line.slice(0, 300)}" (${dayText(live.d)}).` +
-    (rivals.length ? ` Other posts that share some of his words: ${rivals.map((o) => `"${o.first_line.slice(0, 300)}" (${dayText(o)})`).join('; ')}. Allowed only if his message means the target, not one of these.` : '')
+  p.context = `Target post, found from his words, full first line: "${live.d.first_line}" (${dayText(live.d)}).` +
+    (rivals.length ? ` Other posts that share some of his words: ${rivals.map((o) => `"${o.first_line}" (${dayText(o)})`).join('; ')}. Allowed only if his message means the target, not one of these.` : '')
   return { p, snap: live.snap }
 }
 
@@ -457,7 +489,8 @@ export async function planForTarget(ctx: Ctx, act: Act, snap: Snapshot): Promise
 }
 
 export function firstLineOf(body: unknown): string {
-  return (String(body ?? '').split('\n').map((l) => l.trim()).find((l) => l !== '') ?? '').slice(0, 300)
+  // the FULL first line (the receipt shows it whole, Sol r12 #7); 2000 chars is a safety bound only
+  return (String(body ?? '').split('\n').map((l) => l.trim()).find((l) => l !== '') ?? '').slice(0, 2000)
 }
 
 /**
@@ -497,6 +530,12 @@ export function canonArgs(kind: string, act: Act, ctx: Pick<Ctx, 'text' | 'attac
     }
   }
   return {}
+}
+
+/** The source date to compare in SQL: the CONFIRMED one at commit (exact PostgreSQL text), the live one at proposal. */
+function sourceAt(act: Act, d: Draft): string | null {
+  const c = act._confirm as Confirmation | undefined
+  return c && c.v === 2 ? c.source_at : (d.scheduled_at ?? null)
 }
 
 async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
@@ -542,7 +581,7 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
         run: async () => {
           if (failedCheck && act._qa_override !== true) throw new Error('qa_override_missing')
           // the authorized revision only, under the publisher's locks; Brain Keep then calls the app's keep RPC (Sol r5 B3)
-          return { result: await deskWrite(ctx, brain ? 'desk_keep' : 'desk_approve', { p_draft: id, p_expected_updated_at: pinned, p_expected_status: d!.status }) }
+          return { result: await deskWrite(ctx, brain ? 'desk_keep' : 'desk_approve', { p_draft: id, p_expected_updated_at: pinned, p_expected_status: d!.status, p_expected_scheduled_at: sourceAt(act, d!) }) }
         },
       }
     }
@@ -554,12 +593,12 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
       return {
         ...base,
         // immediate (the locked split): date runs at once through desk_set_date, with an exact server undo
-        echo: { kind, label: `Moved (ref ${draftRef(id)}) "${d!.first_line}" (${prev ? warsaw(prev) : 'no date'}) to ${warsaw(iso)}`, state: 'done', undo: true, target },
+        echo: { kind, label: `Moved (ref ${ctx.refOf?.(id) ?? draftRef(id)}) "${d!.first_line}" (${prev ? warsaw(prev) : 'no date'}) to ${warsaw(iso)}`, state: 'done', undo: true, target },
         describe: `date ${qq} for ${String(act.at)} Warsaw time (${warsaw(iso)})`,
         command: `move ${qq} to ${String(act.at)}`,
         run: async () => {
           const w = await setDate(ctx, d!, iso)
-          return { result: w.rpc, undo: { op: 'date', draft_id: id, prev: w.before, applied: w.applied, applied_status: w.applied_status, applied_updated_at: w.applied_updated_at },
+          return { result: w.rpc, undo: { op: 'date_v3', draft_id: id, before: w.before_image, applied: w.applied_image },
             detail: w.applied && Date.parse(w.applied) !== Date.parse(iso) ? `The calendar stored ${warsaw(w.applied)}.` : undefined }
         },
       }
@@ -593,19 +632,19 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
             return { result: await deskWrite(ctx, 'desk_pull', {
               p_draft: id, p_expected_updated_at: d!.updated_at ?? null, p_queue_ids: d!.queue_ids,
               p_next_queue: kind === 'pull' ? queue!.queue_id : null, p_next_slot: kind === 'pull' ? queue!.slot_at : null,
-              p_reason: kind === 'pull' ? reason : null, p_expected_scheduled_at: d!.scheduled_at ?? null,
+              p_reason: kind === 'pull' ? reason : null, p_expected_scheduled_at: sourceAt(act, d!),
             }) }
           },
         }
       }
       return {
         ...base,
-        echo: { kind: 'undate', label: `Removed the date (ref ${draftRef(id)}) from "${d!.first_line}" (was ${warsaw(prev)})`, state: 'done', undo: true, target },
+        echo: { kind: 'undate', label: `Removed the date (ref ${ctx.refOf?.(id) ?? draftRef(id)}) from "${d!.first_line}" (was ${warsaw(prev)})`, state: 'done', undo: true, target },
         describe: `remove the date from ${qq} (now ${warsaw(prev)})`,
         command: `remove the date from ${qq}`,
         run: async () => {
           const w = await setDate(ctx, d!, null)
-          return { result: w.rpc, undo: { op: 'date', draft_id: id, prev: w.before, applied: w.applied, applied_status: w.applied_status, applied_updated_at: w.applied_updated_at } }
+          return { result: w.rpc, undo: { op: 'date_v3', draft_id: id, before: w.before_image, applied: w.applied_image } }
         },
       }
     }
@@ -663,7 +702,7 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
           if (!d!.updated_at) throw new Error('changed')
           const startedAt = new Date().toISOString()
           const before = d!.status
-          const row = await deskWrite(ctx, 'desk_redo_claim', { p_draft: id, p_expected_updated_at: d!.updated_at, p_expected_status: before, p_started_at: startedAt }) as
+          const row = await deskWrite(ctx, 'desk_redo_claim', { p_draft: id, p_expected_updated_at: d!.updated_at, p_expected_status: before, p_started_at: startedAt, p_expected_scheduled_at: sourceAt(act, d!) }) as
             { type?: string; topic?: string | null; title?: string | null }
           const postFormat = row.type === 'carousel' ? 'Carousel' : row.type === 'single_image' ? 'Single Image' : 'Text Post'
           const f = ctx.fetchImpl ?? fetch
@@ -704,15 +743,15 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
       const id = d!.id
       return {
         ...base,
-        echo: { kind, label: `Added your photo (ref ${draftRef(id)}) to "${d!.first_line}" (${d!.scheduled_at ? warsaw(d!.scheduled_at) : 'no date'})`, state: 'done', undo: true, target },
+        echo: { kind, label: `Added your photo (ref ${ctx.refOf?.(id) ?? draftRef(id)}) to "${d!.first_line}" (${d!.scheduled_at ? warsaw(d!.scheduled_at) : 'no date'})`, state: 'done', undo: true, target },
         describe: `attach the photo he sent to ${qq}`,
         command: `attach this photo to ${qq}`,
         run: async () => {
-          const { data, error } = await ctx.userDb.rpc('desk_set_photos', { p_draft: id, p_expected_updated_at: d!.updated_at ?? null, p_expected_status: d!.status, p_add_url: att.url })
+          const { data, error } = await ctx.userDb.rpc('desk_set_photos', { p_draft: id, p_expected_updated_at: d!.updated_at ?? null, p_expected_status: d!.status, p_add_url: att.url, p_expected_scheduled_at: d!.scheduled_at ?? null })
           if (error) throw new Error(lockCode(error) ? 'changed' : 'write_failed')
-          const w = (data ?? {}) as { ok?: boolean; error?: string; before?: string[]; applied?: string[]; applied_status?: string; applied_updated_at?: string; rpc?: unknown }
+          const w = (data ?? {}) as { ok?: boolean; error?: string; before_image?: unknown; applied_image?: unknown; rpc?: unknown }
           if (w.ok !== true) throw new Error(String(w.error ?? 'refused'))
-          return { result: w.rpc ?? null, undo: { op: 'photos', draft_id: id, prev: w.before ?? [], applied: w.applied ?? [], applied_status: w.applied_status, applied_updated_at: w.applied_updated_at } }
+          return { result: w.rpc ?? null, undo: { op: 'photos_v3', draft_id: id, before: w.before_image, applied: w.applied_image } }
         },
       }
     }
@@ -928,11 +967,11 @@ export function verbatimIn(s: unknown, text: string): boolean {
  * canonical args its write consumes plus what a held commit re-plans from; a refusal keeps only kind
  * and refusal code, except that a refused directed redo keeps its note as his own words.
  */
-export function journalArgs(act: Act, p: Pick<Planned, 'run' | 'refuse' | 'canon' | 'confirm'>, snap: Snapshot | null, mode: { fixtures?: boolean; dry?: boolean }, text: string): Record<string, unknown> {
+export function journalArgs(act: Act, p: Pick<Planned, 'run' | 'refuse' | 'canon' | 'confirm' | 'ref'>, snap: Snapshot | null, mode: { fixtures?: boolean; dry?: boolean }, text: string): Record<string, unknown> {
   if (p.run) {
     const canon = { ...(p.canon ?? {}) }
     // what a held commit re-plans from, as server-owned fields
-    const own = act.kind === 'date' && canon.at ? { _at: canon.at } : act.kind === 'photo_attach' && canon.url ? { _url: canon.url } : {}
+    const own = { ...(act.kind === 'date' && canon.at ? { _at: canon.at } : act.kind === 'photo_attach' && canon.url ? { _url: canon.url } : {}), ...(p.ref ? { _ref: p.ref } : {}) }
     return { kind: act.kind, ...canon, ...own, ...(p.confirm ? { _confirm: p.confirm } : {}), ...(act._qa_override === true ? { _qa_override: true } : {}),
       ...(snap ? { _snapshot: snap } : {}), ...(mode.fixtures ? { _fixtures: true } : {}), ...(mode.dry ? { _dry: true } : {}) }
   }
@@ -967,9 +1006,10 @@ export class QueueReadError extends Error { constructor() { super('queue_read_fa
 async function setDate(ctx: Ctx, d: Draft, iso: string | null) {
   const { data, error } = await ctx.userDb.rpc('desk_set_date', { p_draft: d.id, p_expected_updated_at: d.updated_at ?? null, p_expected_status: d.status, p_at: iso, p_expected_scheduled_at: d.scheduled_at ?? null })
   if (error) throw new Error(lockCode(error) ? 'changed' : 'write_failed')
-  const w = (data ?? {}) as { ok?: boolean; error?: string; before?: string | null; applied?: string | null; applied_status?: string; applied_updated_at?: string; rpc?: unknown }
+  const w = (data ?? {}) as { ok?: boolean; error?: string; before?: string | null; applied?: string | null; applied_status?: string; applied_updated_at?: string; before_image?: unknown; applied_image?: unknown; rpc?: unknown }
   if (w.ok !== true) throw new Error(String(w.error ?? 'refused'))
-  return { rpc: w.rpc ?? null, before: w.before ?? null, applied: w.applied ?? null, applied_status: w.applied_status ?? null, applied_updated_at: w.applied_updated_at ?? null }
+  return { rpc: w.rpc ?? null, before: w.before ?? null, applied: w.applied ?? null, applied_status: w.applied_status ?? null, applied_updated_at: w.applied_updated_at ?? null,
+    before_image: w.before_image ?? null, applied_image: w.applied_image ?? null }
 }
 
 
@@ -978,6 +1018,19 @@ async function setDate(ctx: Ctx, d: Draft, iso: string | null) {
  * action applied (Sol r1): a later edit in the calendar or the app is never overwritten.
  */
 export async function runUndo(ctx: Pick<Ctx, 'userDb' | 'svc'>, undo: Record<string, unknown>): Promise<void> {
+  if (undo.op === 'date_v3' || undo.op === 'photos_v3') {
+    // exact before-images (Sol r12 #4): the SQL compares the current image with the applied one under the
+    // locks, then restores every field the setter changed; any mismatch = nothing undone
+    if (!undo.before || !undo.applied) throw new UndoRefused('legacy')
+    const { data, error } = await ctx.userDb.rpc(undo.op === 'date_v3' ? 'desk_undo_date_v3' : 'desk_undo_photos_v3', { p_draft: undo.draft_id, p_before: undo.before, p_applied: undo.applied })
+    if (error) { if (lockCode(error)) throw new UndoRefused('changed_since'); throw new Error('undo_failed') }
+    const r = (data ?? {}) as { ok?: boolean; error?: string }
+    if (r.ok !== true) {
+      if (r.error === 'changed_since' || r.error === 'gone') throw new UndoRefused(r.error)
+      throw new Error(String(r.error ?? 'undo_failed'))
+    }
+    return
+  }
   if (undo.op === 'date' || undo.op === 'photos') {
     if (!('applied' in undo) || !undo.applied_status || !undo.applied_updated_at) throw new UndoRefused('legacy')
     // compare (value, status, updated_at) + app RPC in one statement under a row lock, as Ivan's own

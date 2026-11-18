@@ -160,29 +160,35 @@ export type Scan = {
  * honoured), so "</actions>" or "<reply>" inside a string never ends or opens anything. Any other tool
  * tag counts nesting depth of its own name.
  */
-function closerOf(text: string, from: number, name: string, json: boolean): number {
+function closerOf(text: string, from: number, name: string, json: boolean): { at: number; end: number } | null {
   // offsets on the ORIGINAL buffer: a case-insensitive sticky match at each position, never a lowercased
-  // copy (a length-changing case map would shift them); complete tag names only (Sol r11 #5)
+  // copy (a length-changing case map would shift them). A closer counts only as a syntactically valid
+  // closing tag for exactly this name: "</name>" with optional whitespace before ">" (Sol r12 #8).
   const safe = name.replace(/[^\w:-]/g, '')
+  const close = new RegExp(`</${safe}\\s*>`, 'iy')
   if (json) {
-    const close = new RegExp(`</${safe}>`, 'iy')
     let inStr = false
     for (let i = from; i < text.length; i++) {
       const ch = text[i]
       if (inStr) { if (ch === '\\') i++; else if (ch === '"') inStr = false; continue }
       if (ch === '"') { inStr = true; continue }
-      if (ch === '<') { close.lastIndex = i; if (close.test(text)) return i }
+      if (ch === '<') { close.lastIndex = i; const m = close.exec(text); if (m) return { at: i, end: i + m[0].length } }
     }
-    return -1
+    return null
   }
+  // other tool tags: nesting depth of this exact name; an opener is "<name" + whitespace, "/" or ">"
+  const open = new RegExp(`<${safe}(?=[\\s/>])[^<>]*>`, 'iy')
   let depth = 1
-  const re = new RegExp(`<(/?)${safe}(?=[\\s/>])[^<>]*>`, 'gi')
-  re.lastIndex = from
-  for (let m = re.exec(text); m; m = re.exec(text)) {
-    depth += m[1] ? -1 : 1
-    if (depth === 0) return m.index
+  for (let i = from; i < text.length; i++) {
+    if (text[i] !== '<') continue
+    close.lastIndex = i
+    const c = close.exec(text)
+    if (c) { if (--depth === 0) return { at: i, end: i + c[0].length }; i += c[0].length - 1; continue }
+    open.lastIndex = i
+    const o = open.exec(text)
+    if (o && !o[0].endsWith('/>')) { depth++; i += o[0].length - 1 }
   }
-  return -1
+  return null
 }
 
 export function scan(text: string): Scan {
@@ -213,13 +219,13 @@ export function scan(text: string): Scan {
     }
     if (isTool) {
       if (!out.first) out.first = name
-      const close = closerOf(text, m.index + whole.length, name, TOOL_BLOCK.has(name))
-      if (close < 0) { out.cut = true; return out }   // unclosed tool opener: nothing after it counts
-      const body = text.slice(m.index + whole.length, close)
+      const closer = closerOf(text, m.index + whole.length, name, TOOL_BLOCK.has(name))
+      if (!closer) { out.cut = true; return out }   // unclosed tool opener: nothing after it counts
+      const body = text.slice(m.index + whole.length, closer.at)
       if (name === 'actions' && out.actions == null) out.actions = body
       if (name === 'reads' && out.reads == null) out.reads = body
       if (name === 'chips' && out.chips == null) out.chips = body
-      pos = close + name.length + 3
+      pos = closer.end   // past the WHOLE matched closing tag
       continue
     }
     // any other tag is text

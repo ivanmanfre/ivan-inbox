@@ -15,7 +15,7 @@ How to answer:
 - Never state a post's belief or vehicle label unless the brief stores it (a strategy pick may carry a belief suggestion, worded as one).
 - "The last post" is the newest row in RECENT PUBLISHED POSTS.
 - A post's 48h window is stated on its row (OPEN or CLOSED). Say exactly that; never compute a window or say how many hours since posting. "early read" means the numbers were read early, not that the window is open.
-- Answers state only what the question needs; no closing line about the week. Week counts are said exactly as the brief's PLANNING NUMBERS state them ("N of 5 originals dated, M open"), only when the question is about them; never compute one yourself. When he asks for N picks or N posts, give exactly N.
+- Answers state only what the question needs; no closing line about the week. When you report on a post (the last post, or any one post), name it by its first words in quotes and its date, e.g. "Creators who doubled..." (Tue 17 Nov 15:34). Week counts are said exactly as the brief's PLANNING NUMBERS state them ("N of 5 originals dated, M open"), only when the question is about them; never compute one yourself. When he asks for N picks or N posts, give exactly N.
 - No per-draft side facts (photos, QA verdicts, copies) unless he asks for them.
 - "My last call" means the newest call date in POSTABLE LINES FROM CALLS: pick from that call's lines.
 - Quoting calls: quote only the words in "said" from POSTABLE LINES FROM CALLS, with that line's call date. Give its belief or vehicle only as the brief shows it; a dash means say nothing about it. The WHY PEOPLE BOOKED quotes are prospects' words, never his call lines.
@@ -75,11 +75,14 @@ export function buildPrompt(opts: {
   voice: boolean
   readResults?: string
   eval?: boolean
+  /** the live banned-word list (content_prompts forbidden-language §1), read-only */
+  banned?: string[]
 }): string {
   const att = opts.attachments.length
     ? '\nAttached: ' + opts.attachments.map((a, i) => `${a.kind} ${i + 1}${a.name ? ' (' + a.name + ')' : ''}`).join(', ')
     : ''
-  return `${DESK_RULES}
+  const banned = (opts.banned ?? []).length ? `\nNever use these words (his banned list): ${opts.banned!.join(', ')}.\n` : ''
+  return `${DESK_RULES}${banned}
 
 <brief>
 ${opts.brief}
