@@ -4,7 +4,8 @@
 // when the answer lands. Phone: a full-bleed layer over the frame; desktop: the page.
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Markdown } from '../claude/Markdown'
-import { warsawDm, warsawDow, warsawHm } from '../ui/time'
+import { dHash } from '../route'
+import { warsawDayWord, warsawDm, warsawDow, warsawHm } from '../ui/time'
 import { DeskComposer } from './Composer'
 import { useDesk, type DeskHandle } from './useDesk'
 import { useKeyboardInset } from './useKeyboardInset'
@@ -12,27 +13,52 @@ import { actionStore } from './actionGuards'
 import { heldSeenStore, reportHeldSeen } from './heldSeen'
 import {
   T3_LABEL, T3_LIVE,
-  type DeskAction, type DeskMessage, type T3Job,
+  type DeskAction, type DeskDraftCard, type DeskMessage, type T3Job,
 } from './model'
 import '../claude/claude.css'
 import './desk.css'
 
-const ORIGIN_NOTE: Partial<Record<DeskMessage['origin'], string>> = { proactive: 'The desk wrote first', t3: 'From T3' }
+/** Questions, never commands: a starter only asks, so it can never write anything. */
+const STARTERS = [
+  "What's going out this week?",
+  'What should I post next?',
+  'Any post ideas from my recent calls?',
+  'How did my last post do?',
+]
+// The starter row comes back above the composer once the desk has been quiet this long.
+const QUIET_MS = 2 * 60 * 60 * 1000
+
+const ORIGIN_NOTE: Partial<Record<DeskMessage['origin'], string>> = { proactive: 'wrote first', t3: 'from T3' }
+
+function Mark() {
+  return <span className="dk-mark" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M8 1.8l1.55 4.65L14.2 8l-4.65 1.55L8 14.2l-1.55-4.65L1.8 8l4.65-1.55z" /></svg></span>
+}
 
 export function Desk({ layout, onBack }: { layout: 'phone' | 'desktop'; onBack?: () => void }) {
   const desk = useDesk()
   const root = useRef<HTMLElement>(null)
   useKeyboardInset(root)
+  const last = desk.messages[desk.messages.length - 1]
+  const quiet = !!last && !desk.busy && !last.meta.chips?.length && !last.meta.actions?.some(a => a.state === 'held')
+    && Date.now() - Date.parse(last.created_at) > QUIET_MS
+  const status = desk.readFailed ? 'Offline, showing the saved copy' : desk.fromCache ? 'Saved copy, checking for new' : desk.busy ? 'Answering' : 'Knows your week, drafts and calls'
   return (
     <section ref={root} className={`dk dk-${layout}`} data-desk aria-label="Content desk">
       <header className="dk-head">
         {onBack && <button type="button" className="dk-back" aria-label="Back" onClick={onBack}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
         </button>}
-        <div className="dk-title"><b>Content desk</b><small>{desk.readFailed ? 'Offline, showing the saved copy' : desk.fromCache ? 'Saved copy, checking for new' : 'Knows your week, drafts and calls'}</small></div>
+        <Mark />
+        <div className="dk-title">
+          <b>Content desk</b>
+          <small className={desk.readFailed ? 'dk-off' : desk.busy ? 'dk-on' : undefined}><i aria-hidden="true" />{status}</small>
+        </div>
+        <a className="dk-headkey" href={dHash('content', 'calendar')} aria-label="Open the calendar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14" rx="3" /><path d="M4 10h16M9 3.5v4M15 3.5v4" /></svg>
+        </a>
       </header>
       <DeskList desk={desk} />
-      <DeskComposer busy={desk.busy} onSend={desk.send} prefill={desk.prefill} />
+      <DeskComposer busy={desk.busy} onSend={desk.send} prefill={desk.prefill} suggest={quiet ? STARTERS : undefined} />
     </section>
   )
 }
@@ -40,13 +66,17 @@ export function Desk({ layout, onBack }: { layout: 'phone' | 'desktop'; onBack?:
 function DeskList({ desk }: { desk: DeskHandle }) {
   const list = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
+  const [away, setAway] = useState(false)
   const { messages } = desk
   const last = messages[messages.length - 1]
   // Stay at the bottom while Ivan is at the bottom; never yank him down while he reads back.
+  // Ivan's own send always brings him down to it, wherever he was reading.
+  const sentKey = [...messages].reverse().find(m => m.role === 'user' && m.local === 'sending')?.client_key
   useLayoutEffect(() => {
     const el = list.current
+    if (sentKey) { pinned.current = true; setAway(false) }
     if (el && pinned.current) el.scrollTop = el.scrollHeight
-  }, [messages.length, last?.body, last?.status, last?.meta])
+  }, [messages.length, last?.body, last?.status, last?.meta, sentKey])
   // The keyboard opening or the composer growing shrinks the list without a new message: keep the
   // newest line in view when Ivan was at the bottom (Sol desk-ui r1 #8).
   useEffect(() => {
@@ -58,39 +88,110 @@ function DeskList({ desk }: { desk: DeskHandle }) {
   }, [])
   const onScroll = () => {
     const el = list.current
-    if (el) pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    if (!el) return
+    pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    const far = el.scrollHeight - el.scrollTop - el.clientHeight > 400
+    if (far !== away) setAway(far)
+  }
+  const toLatest = () => {
+    const el = list.current
+    if (!el) return
+    pinned.current = true
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
   }
   let day = ''
+  let prevRole: DeskMessage['role'] | null = null
   return (
-    <div ref={list} className="dk-list" data-desk-list onScroll={onScroll} role="log" aria-live="polite">
-      {messages.length === 0 && (desk.loaded
-        ? <div className="dk-empty">Ask about this week, paste a link, or say a half-thought. Try: what's going out this week</div>
-        : <div className="dk-empty" aria-busy="true">Reading the desk</div>)}
-      {messages.map(m => {
-        const d = `${warsawDow(m.created_at)} ${warsawDm(m.created_at)}`
-        const head = d !== day ? <div className="dk-day" key={`d-${d}`}>{d}</div> : null
-        day = d
-        return [head, <Row key={m.answers ? `a-${m.answers}` : m.id} m={m} desk={desk} />]
-      })}
+    <div className="dk-body">
+      <div ref={list} className="dk-list" data-desk-list onScroll={onScroll} role="log" aria-live="polite">
+        {messages.length === 0 && (desk.loaded
+          ? <Hero busy={desk.busy} onPick={t => desk.send(t)} />
+          : <div className="dk-empty" aria-busy="true"><span className="dk-typing"><i /><i /><i /></span>Reading the desk</div>)}
+        {messages.map((m, i) => {
+          const d = warsawDayWord(m.created_at)
+          const head = d !== day ? <div className="dk-day" key={`d-${d}`}><span>{d}</span></div> : null
+          const fresh = !!head || prevRole !== m.role
+          day = d
+          prevRole = m.role
+          return [head, <Row key={m.answers ? `a-${m.answers}` : m.id} m={m} desk={desk} fresh={fresh} latest={i === messages.length - 1} />]
+        })}
+      </div>
+      {away && <button type="button" className="dk-jump" aria-label="Jump to the latest" onClick={toLatest}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6" /></svg>
+      </button>}
     </div>
   )
 }
 
-function Row({ m, desk }: { m: DeskMessage; desk: DeskHandle }) {
+function Hero({ busy, onPick }: { busy: boolean; onPick: (t: string) => void }) {
+  return (
+    <div className="dk-hero" data-desk-hero>
+      <Mark />
+      <h2>What are we posting?</h2>
+      <p>I know your week, your drafts and your calls. Ask anything. A change to a post waits for your tap.</p>
+      <div className="dk-starters">
+        {STARTERS.map(t => <button key={t} type="button" disabled={busy} onClick={() => onPick(t)}>{t}</button>)}
+      </div>
+    </div>
+  )
+}
+
+/** Older long answers fold to a few lines; the newest one always shows in full. */
+const FOLD_AT = 720
+function Body({ text, latest }: { text: string; latest: boolean }) {
+  const [open, setOpen] = useState(false)
+  const fold = !latest && !open && text.length > FOLD_AT
+  return (
+    <div className={`dk-text${fold ? ' dk-fold' : ''}`}>
+      <Markdown text={text} />
+      {fold && <button type="button" className="dk-more" onClick={() => setOpen(true)}>Show all</button>}
+    </div>
+  )
+}
+
+function Byline({ m, live }: { m: DeskMessage; live?: boolean }) {
+  const note = ORIGIN_NOTE[m.origin]
+  return (
+    <div className={`dk-by${live ? ' dk-by-live' : ''}`}>
+      <Mark /><b>Desk</b>{note && <span>{note}</span>}{!live && <time>{warsawHm(m.created_at)}</time>}
+    </div>
+  )
+}
+
+function DraftCard({ d }: { d: DeskDraftCard }) {
+  const when = d.scheduled_at
+  const status = /sched|queue/i.test(d.status) ? 'Scheduled' : /post|publish/i.test(d.status) ? 'Posted' : /review/i.test(d.status) ? 'In review' : d.status
+  return (
+    <div className="dk-card" data-draft={d.handle}>
+      <div className={`dk-date${when ? '' : ' dk-date-none'}`} aria-hidden="true">
+        {when ? <><small>{warsawDow(when)}</small><b>{warsawDm(when).split(' ')[0]}</b></> : <small>No date</small>}
+      </div>
+      <div className="dk-card-t">
+        <b>{d.first_line}</b>
+        <small><span className={`dk-st dk-st-${status.toLowerCase().replace(/\s+/g, '-')}`}>{status}</span>{when ? ` ${warsawDm(when)}, ${warsawHm(when)}` : ''}<span className="dk-h">{d.handle}</span></small>
+      </div>
+    </div>
+  )
+}
+
+function Row({ m, desk, fresh, latest }: { m: DeskMessage; desk: DeskHandle; fresh: boolean; latest: boolean }) {
   if (m.role === 'user') {
     // Stored, but its answer has not arrived: Check again and a same-key Retry stay until it does.
     const waiting = desk.awaitingAnswer(m)
+    const trouble = m.local === 'failed' || m.local === 'unconfirmed' || waiting || m.mismatch
     return (
-      <div className={`dk-me${m.local === 'failed' ? ' dk-failed' : ''}`} data-msg={m.id}>
-        {m.meta.attachments?.filter(a => a.kind === 'photo').map(a => <img key={a.url} className="dk-photo" src={a.url} alt="Photo you sent" width={120} height={120} />)}
+      <div className={`dk-me${m.local === 'failed' ? ' dk-failed' : ''}${fresh ? ' dk-fresh' : ''}`} data-msg={m.id}>
+        {m.meta.attachments?.filter(a => a.kind === 'photo').map(a => <img key={a.url} className="dk-photo" src={a.url} alt="Photo you sent" width={160} height={160} />)}
         {m.body && <div className="dk-me-t">{m.body}</div>}
-        <small>{m.meta.voice ? 'Voice · ' : ''}{m.local === 'sending' ? 'Sending' : m.local === 'failed' ? (m.error ?? 'Not sent') : m.local === 'unconfirmed' ? (m.error ?? 'Not confirmed: the app could not check.') : waiting ? 'No answer yet.' : warsawHm(m.created_at)}</small>
-        {(m.local === 'unconfirmed' || waiting || m.mismatch) && <button type="button" className="dk-pill" onClick={desk.reload}>Check again</button>}
-        {/* Retry always resends under the ORIGINAL client_key: the server answers a known key idempotently
-            (its stored answer, still working, or key_mismatch), so a send can never run twice (Sol desk-ui
-            r3 #4, r4 #2, r6 #2). A refused key (key_mismatch) is never resent: Edit and send only. */}
-        {(m.local === 'failed' || m.local === 'unconfirmed' || waiting) && !m.mismatch && <button type="button" className="dk-pill" onClick={() => desk.retry(m)}>Retry</button>}
-        {m.mismatch && <button type="button" className="dk-pill" onClick={() => desk.editAndSend(m)}>Edit and send</button>}
+        <small className={trouble ? 'dk-warn' : undefined}>{m.meta.voice ? 'Voice · ' : ''}{m.local === 'sending' ? 'Sending' : m.local === 'failed' ? (m.error ?? 'Not sent') : m.local === 'unconfirmed' ? (m.error ?? 'Not confirmed: the app could not check.') : waiting ? 'No answer yet.' : warsawHm(m.created_at)}</small>
+        {trouble && <div className="dk-me-keys">
+          {(m.local === 'unconfirmed' || waiting || m.mismatch) && <button type="button" className="dk-pill" onClick={desk.reload}>Check again</button>}
+          {/* Retry always resends under the ORIGINAL client_key: the server answers a known key idempotently
+              (its stored answer, still working, or key_mismatch), so a send can never run twice (Sol desk-ui
+              r3 #4, r4 #2, r6 #2). A refused key (key_mismatch) is never resent: Edit and send only. */}
+          {(m.local === 'failed' || m.local === 'unconfirmed' || waiting) && !m.mismatch && <button type="button" className="dk-pill" onClick={() => desk.retry(m)}>Retry</button>}
+          {m.mismatch && <button type="button" className="dk-pill" onClick={() => desk.editAndSend(m)}>Edit and send</button>}
+        </div>}
       </div>
     )
   }
@@ -99,28 +200,25 @@ function Row({ m, desk }: { m: DeskMessage; desk: DeskHandle }) {
     if (m.status === 'error') return <FailedAnswer m={m} text={m.error ?? 'The desk did not answer.'} desk={desk} />
     return (
       <div className="dk-ans dk-streaming" data-msg={m.id} data-streaming>
-        {m.body ? <Markdown text={m.body} caret /> : <span className="dk-typing" aria-label="The desk is answering"><i /><i /><i /></span>}
+        <Byline m={m} live />
+        {m.body
+          ? <div className="dk-text"><Markdown text={m.body} caret /></div>
+          : <span className="dk-typing" aria-label="The desk is answering"><i /><i /><i /><em>Reading your week</em></span>}
       </div>
     )
   }
   if (m.status === 'error') return <FailedAnswer m={m} text={m.body || 'The desk could not answer just now.'} desk={desk} />
-  const note = ORIGIN_NOTE[m.origin]
+  const byline = fresh || m.origin !== 'desk'
   return (
-    <div className={`dk-ans${m.origin === 'proactive' ? ' dk-pro' : ''}`} data-msg={m.id}>
-      {note && <div className="dk-note">{note} · {warsawHm(m.created_at)}</div>}
-      {m.body && <Markdown text={m.body} />}
-      {m.meta.drafts?.map(d => (
-        <div key={d.handle} className="dk-card" data-draft={d.handle}>
-          <span className="dk-h">{d.handle}</span>
-          <b>{d.first_line}</b>
-          <small>{d.status}{d.scheduled_at ? ` · ${warsawDow(d.scheduled_at)} ${warsawDm(d.scheduled_at)} ${warsawHm(d.scheduled_at)}` : ''}</small>
-        </div>
-      ))}
+    <div className={`dk-ans${m.origin === 'proactive' ? ' dk-pro' : ''}${byline ? '' : ' dk-cont'}`} data-msg={m.id}>
+      {byline && <Byline m={m} />}
+      {m.body && <Body text={m.body} latest={latest} />}
+      {!!m.meta.drafts?.length && <div className="dk-cards">{m.meta.drafts.map(d => <DraftCard key={d.handle} d={d} />)}</div>}
       {m.meta.actions?.map(a => <ActionRow key={a.id} a={a} at={m.created_at} desk={desk} />)}
       {m.meta.t3_job && <T3Card job={desk.jobs[m.meta.t3_job.id]} fallback={m.meta.t3_job} />}
       {!!m.meta.chips?.length && (
         <div className="dk-chips">
-          {m.meta.chips.map(c => <button key={c.send} type="button" className="dk-pill" disabled={desk.busy} onClick={() => desk.send(c.send, { chip: true })}>{c.send}</button>)}
+          {m.meta.chips.map(c => <button key={c.send} type="button" className="dk-pill dk-chip" disabled={desk.busy} onClick={() => desk.send(c.send, { chip: true })}>{c.send}</button>)}
         </div>
       )}
     </div>
@@ -144,10 +242,12 @@ const FINISH_GRACE_MS = 4000
 function FailedAnswer({ m, text, desk }: { m: DeskMessage; text: string; desk: DeskHandle }) {
   return (
     <div className="dk-ans dk-ans-err" data-msg={m.id} role="alert">
-      <p>{text}</p>
+      <div className="dk-err-t"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.2v.3" /></svg><p>{text}</p></div>
       <small>{m.meta.side_effects === 'none' ? 'Nothing was changed.' : 'Check Review before repeating.'}</small>
-      <button type="button" className="dk-pill" onClick={desk.reload}>Check again</button>
-      {desk.canRetry(m) && <button type="button" className="dk-pill" onClick={() => desk.editAndSend(m)}>Edit and send</button>}
+      <div className="dk-me-keys">
+        <button type="button" className="dk-pill" onClick={desk.reload}>Check again</button>
+        {desk.canRetry(m) && <button type="button" className="dk-pill" onClick={() => desk.editAndSend(m)}>Edit and send</button>}
+      </div>
     </div>
   )
 }
@@ -246,29 +346,38 @@ function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle })
   }
   const waiting = held && !counting && !finishing && !busy
   const expired = failed?.error === SETTLED_NOTE.hold_expired
+  const stateWord = a.state === 'done' ? 'Done' : held ? (counting ? 'Doing it soon' : finishing || busy === 'commit' ? 'Doing it' : busy === 'cancel' ? 'Cancelling' : 'Waiting for your tap')
+    : a.state === 'committing' ? 'Doing it' : a.state === 'undoing' ? 'Undoing' : a.state === 'undone' ? 'Undone' : a.state === 'cancelled' ? 'Cancelled'
+    : a.state === 'failed' ? 'Failed' : 'Not confirmed'
   return (
-    <div className={`dk-act dk-act-${a.state}`} data-action={a.id} data-state={a.state} data-seen={seen?.state}>
+    <div className={`dk-act dk-act-${a.state}${counting ? ' dk-act-counting' : ''}`} data-action={a.id} data-state={a.state} data-seen={seen?.state}>
+      <div className="dk-act-eye"><i aria-hidden="true" />{stateWord}</div>
       <span className="dk-act-t">
-        {a.state === 'done' && <>Done: {a.label}</>}
-        {counting && <>{a.label} in <b className="dk-count">{left}s</b></>}
-        {finishing && <>Doing it: {a.label}</>}
-        {held && busy === 'commit' && <>Doing it: {a.label}</>}
-        {held && busy === 'cancel' && <>Cancelling: {a.label}</>}
-        {waiting && <>Not done yet: {a.label}.</>}
-        {a.state === 'committing' && <>Doing it: {a.label}</>}
-        {a.state === 'undoing' && <>Undoing: {a.label}</>}
-        {a.state === 'undone' && <>Undone: {a.label}</>}
-        {a.state === 'cancelled' && <>Cancelled: {a.label}</>}
-        {a.state === 'failed' && <>Failed: {a.label}{a.detail ? `. ${a.detail}` : ''}</>}
-        {a.state === 'unconfirmed' && <>Not confirmed: {a.label}. The writer may be running, check Review in a few minutes.</>}
-        {a.target && <small>{a.target.handle} {a.target.first_line}</small>}
+        <span className="dk-act-l">
+          {a.state === 'done' && <>Done: {a.label}</>}
+          {counting && <>{a.label} in <b className="dk-count">{left}s</b></>}
+          {finishing && <>Doing it: {a.label}</>}
+          {held && busy === 'commit' && <>Doing it: {a.label}</>}
+          {held && busy === 'cancel' && <>Cancelling: {a.label}</>}
+          {waiting && <>Not done yet: {a.label}.</>}
+          {a.state === 'committing' && <>Doing it: {a.label}</>}
+          {a.state === 'undoing' && <>Undoing: {a.label}</>}
+          {a.state === 'undone' && <>Undone: {a.label}</>}
+          {a.state === 'cancelled' && <>Cancelled: {a.label}</>}
+          {a.state === 'failed' && <>Failed: {a.label}{a.detail ? `. ${a.detail}` : ''}</>}
+          {a.state === 'unconfirmed' && <>Not confirmed: {a.label}. The writer may be running, check Review in a few minutes.</>}
+        </span>
+        {a.target && <small className="dk-act-post"><span className="dk-h">{a.target.handle}</span> {a.target.first_line}</small>}
         {failed && <small className="dk-warn" role="alert">{failed.error}</small>}
       </span>
-      {a.state === 'done' && a.undo && <button type="button" className="dk-pill" disabled={!!busy} onClick={() => go('undo')}>{failed?.op === 'undo' ? 'Try Undo again' : 'Undo'}</button>}
-      {/* Undo on EVERY idle held row: during the countdown, while the server commits, and on a held row
-          seen later (a reopened desk). The server's compare-and-set decides who wins (Sol desk-ui r4 #1). */}
-      {held && !busy && <button ref={setUndoEl} type="button" className="dk-pill" onClick={() => go('cancel')}>{failed?.op === 'cancel' || tapped ? 'Try Undo again' : 'Undo'}</button>}
-      {held && !busy && !expired && <button type="button" className="dk-pill" onClick={() => go('commit')}>Do it now</button>}
+      {(a.state === 'done' && a.undo) || (held && !busy) ? <div className="dk-act-keys">
+        {/* "Do it now" first and filled: it is the one tap that makes a held change happen. */}
+        {held && !busy && !expired && <button type="button" className="dk-pill dk-go" onClick={() => go('commit')}>Do it now</button>}
+        {/* Undo on EVERY idle held row: during the countdown, while the server commits, and on a held row
+            seen later (a reopened desk). The server's compare-and-set decides who wins (Sol desk-ui r4 #1). */}
+        {held && !busy && <button ref={setUndoEl} type="button" className="dk-pill" onClick={() => go('cancel')}>{failed?.op === 'cancel' || tapped ? 'Try Undo again' : 'Undo'}</button>}
+        {a.state === 'done' && a.undo && <button type="button" className="dk-pill dk-quiet" disabled={!!busy} onClick={() => go('undo')}>{failed?.op === 'undo' ? 'Try Undo again' : 'Undo'}</button>}
+      </div> : null}
     </div>
   )
 }
@@ -279,7 +388,10 @@ function T3Card({ job, fallback }: { job?: T3Job; fallback: { id: string; status
   const liveNow = T3_LIVE.has(status)
   return (
     <div className={`dk-t3${liveNow ? ' dk-live' : ''}${status === 'failed' || status === 'stalled' ? ' dk-t3-bad' : ''}`} data-t3={fallback.id} data-status={status}>
-      <span className="dk-t3-s">{liveNow && <i aria-hidden="true" />}{T3_LABEL[status]}</span>
+      <div className="dk-t3-top">
+        <span className="dk-t3-s">{liveNow && <i aria-hidden="true" />}{T3_LABEL[status]}</span>
+        <span className="dk-t3-k">T3 cloud</span>
+      </div>
       <b>{job?.title ?? fallback.title}</b>
       {job?.result_summary && status === 'done' && <small>{job.result_summary}</small>}
       {link && <a className="dk-pill" href={link} target="_blank" rel="noreferrer">Open in T3</a>}

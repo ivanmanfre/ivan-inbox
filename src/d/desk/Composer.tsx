@@ -8,8 +8,10 @@ import { CIcon } from '../claude/icons'
 import { uploadDeskPhoto } from './api'
 import type { DeskAttachment } from './model'
 
-export function DeskComposer({ busy, onSend, prefill }: {
+export function DeskComposer({ busy, onSend, prefill, suggest }: {
   busy: boolean
+  /** Starter questions shown above the field while it is empty; a tap sends one as typed text. */
+  suggest?: string[]
   onSend: (text: string, opts?: { attachments?: DeskAttachment[]; voice?: boolean }) => void
   /** "Edit and send": this text goes into the field (each new n once); Send stays Ivan's own tap. */
   prefill?: { text: string; n: number } | null
@@ -103,39 +105,49 @@ export function DeskComposer({ busy, onSend, prefill }: {
     return ps.filter(x => x.id !== id)
   })
 
+  const showSuggest = !!suggest?.length && !text.trim() && !photos.length && !recording && !busy
   return (
     <div className="dk-comp" data-desk-composer>
-      {(recording || stt.state === 'transcribing' || stt.note || note || uploading) && (
-        <div className="dk-comp-note" role="status">
-          {recording ? `Listening ${Math.round(stt.elapsedMs / 1000)}s` : stt.state === 'transcribing' ? 'Writing down what you said' : uploading ? 'Sending your photo' : note ?? stt.note}
+      {showSuggest && (
+        <div className="dk-suggest" role="group" aria-label="Ask the desk">
+          {suggest!.map(t => <button key={t} type="button" onClick={() => onSend(t)}>{t}</button>)}
         </div>
       )}
-      {photos.length > 0 && (
-        <div className="dk-comp-ph">
-          {photos.map(p => (
-            <span key={p.id} className="dk-comp-thumb">
-              <img src={p.preview} alt="" width={56} height={56} />
-              <button type="button" aria-label="Remove photo" disabled={uploading} onClick={() => remove(p.id)}><CIcon name="x" /></button>
-            </span>
-          ))}
-        </div>
-      )}
-      <div className="dk-comp-row">
-        <button type="button" className="dk-key" aria-label="Add a photo" disabled={uploading} onClick={() => file.current?.click()}>
-          {uploading ? <span className="dk-spin" aria-hidden="true" /> : <CIcon name="clip" />}
-        </button>
-        <input ref={file} type="file" accept="image/*" hidden onChange={e => pick(e.target.files?.[0])} data-desk-photo />
+      <div className={`dk-comp-box${recording ? ' dk-comp-rec' : ''}`}>
+        {(recording || stt.state === 'transcribing' || stt.note || note || uploading) && (
+          <div className="dk-comp-note" role="status">
+            {recording && <i className="dk-rec-dot" aria-hidden="true" />}
+            {recording ? `Listening ${Math.round(stt.elapsedMs / 1000)}s` : stt.state === 'transcribing' ? 'Writing down what you said' : uploading ? 'Sending your photo' : note ?? stt.note}
+          </div>
+        )}
+        {photos.length > 0 && (
+          <div className="dk-comp-ph">
+            {photos.map(p => (
+              <span key={p.id} className="dk-comp-thumb">
+                <img src={p.preview} alt="" width={56} height={56} />
+                <button type="button" aria-label="Remove photo" disabled={uploading} onClick={() => remove(p.id)}><CIcon name="x" /></button>
+              </span>
+            ))}
+          </div>
+        )}
         <textarea
           ref={field} rows={1} value={text} onChange={e => { const v = e.target.value; edit(() => v) }} onKeyDown={onKey}
-          placeholder="Ask, or paste a link" aria-label="Message the desk" enterKeyHint="send"
+          placeholder="Ask about your posts, or paste a link" aria-label="Message the desk" enterKeyHint="send"
         />
-        {stt.supported && (
-          <button type="button" className={`dk-key${recording ? ' dk-rec' : ''}`} aria-label={recording ? 'Stop and write it down' : 'Talk'}
-            disabled={stt.state === 'transcribing'} onClick={stt.toggle}>
-            <CIcon name={recording ? 'stop' : 'mic'} />
+        <div className="dk-comp-row">
+          <button type="button" className="dk-key" aria-label="Add a photo" disabled={uploading} onClick={() => file.current?.click()}>
+            {uploading ? <span className="dk-spin" aria-hidden="true" /> : <CIcon name="clip" />}
           </button>
-        )}
-        <button type="button" className="dk-key dk-send" aria-label="Send" disabled={!canSend} onClick={() => void send()}><CIcon name="up" /></button>
+          <input ref={file} type="file" accept="image/*" hidden onChange={e => pick(e.target.files?.[0])} data-desk-photo />
+          {stt.supported && (
+            <button type="button" className={`dk-key${recording ? ' dk-rec' : ''}`} aria-label={recording ? 'Stop and write it down' : 'Talk'}
+              disabled={stt.state === 'transcribing'} onClick={stt.toggle}>
+              <CIcon name={recording ? 'stop' : 'mic'} />
+            </button>
+          )}
+          <span className="dk-comp-gap" />
+          <button type="button" className="dk-key dk-send" aria-label="Send" disabled={!canSend} onClick={() => void send()}><CIcon name="up" /></button>
+        </div>
       </div>
     </div>
   )

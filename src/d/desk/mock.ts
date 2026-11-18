@@ -35,6 +35,11 @@ let rows: DeskMessage[] = [
   { id: 'm-2', role: 'user', origin: 'operator', body: 'whats going out this week', status: 'done', meta: {}, client_key: 'k-2', created_at: at(30) },
   { id: 'm-3', role: 'assistant', origin: 'desk', body: 'Four posts this week. Tuesday 09:30 the trains post, Wednesday the Monday post, Thursday and Saturday the two copies.', status: 'done', meta: { model: 'mock' }, client_key: null, created_at: at(31) },
 ]
+/** Dev harness only: put extra made-up rows (and jobs) in the canned desk before it opens. */
+export function seedDeskMock(extra: DeskMessage[], extraJobs: T3Job[] = [], replace = false): void {
+  rows = replace ? extra.slice() : rows.concat(extra)
+  extraJobs.forEach(j => jobs.set(j.id, j))
+}
 const jobs = new Map<string, T3Job>()
 type Listener = { message: (m: DeskMessage) => void; job?: (j: T3Job) => void }
 const listeners = new Set<Listener>()

@@ -241,7 +241,7 @@ describe('round 2 independent reproducers', () => {
     let reads = 0
     readRows = async () => { if (++reads > 1) throw Error('offline'); return [] }
     render(<Desk layout="phone" />)
-    await screen.findByText(/Ask about this week/)
+    await screen.findByText(/What are we posting/)
     type('whats going out this week')
     await screen.findByText(/Offline, showing the saved copy/)
     expect(screen.queryByText('Sending')).toBeNull()
@@ -285,7 +285,7 @@ it('does not auto-commit a hold whose final first arrived in the background', as
   const override = vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility as DocumentVisibilityState)
   try {
     const { unmount } = render(<Desk layout="phone" />)
-    await screen.findByText(/Ask about this week/)
+    await screen.findByText(/What are we posting/)
     readRows = () => new Promise(() => {})
     vi.useFakeTimers({ shouldAdvanceTime: true })
     type('approve the trains one')
@@ -307,7 +307,7 @@ it('r3 review (server-commit design): expiry, then a hide and a show, never make
   const override = vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility)
   try {
     render(<Desk layout="phone" />)
-    await screen.findByText(/Ask about this week/)
+    await screen.findByText(/What are we posting/)
     readRows = () => new Promise(() => {})
     type('approve the trains one')
     await screen.findByText('Undo')
@@ -337,7 +337,7 @@ it('pins the latest line on resize only while the list is pinned', async () => {
   })
   try {
     const { container } = render(<Desk layout="phone" />)
-    await screen.findByText(/Ask about this week/)
+    await screen.findByText(/What are we posting/)
     const list = container.querySelector('[data-desk-list]') as HTMLElement
     Object.defineProperty(list, 'scrollHeight', { configurable: true, value: 1200 })
     Object.defineProperty(list, 'clientHeight', { configurable: true, value: 530 })
@@ -371,7 +371,7 @@ it('r3 review: a failed cancel after remount leaves Undo retry available', async
   cancelGate = new Promise(r => { release = r })
   cancelAnswer = { ok: false, error: 'No connection.' }
   const first = render(<Desk layout="phone" />)
-  await screen.findByText(/Ask about this week/)
+  await screen.findByText(/What are we posting/)
   type('approve the trains one')
   fireEvent.click(await screen.findByText('Undo'))
   expect(screen.getByText('Cancelling: Approve the trains post')).toBeTruthy()
@@ -391,7 +391,7 @@ it('r3 review: an unconfirmed write cannot resend under a fresh key', async () =
   let reads = 0
   readRows = async () => { if (++reads > 1) throw Error('offline'); return [] }
   render(<Desk layout="phone" />)
-  await screen.findByText(/Ask about this week/)
+  await screen.findByText(/What are we posting/)
   type('approve the trains one')
   const original = sends[0].client_key
   await screen.findByText(/Not confirmed/)
@@ -436,7 +436,7 @@ it('r3 review: hiding an active countdown leaves the hold manual when the page r
   const override = vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility)
   try {
     render(<Desk layout="phone" />)
-    await screen.findByText(/Ask about this week/)
+    await screen.findByText(/What are we posting/)
     readRows = () => new Promise(() => {})
     vi.useFakeTimers({ shouldAdvanceTime: true })
     type('approve the trains one')
@@ -471,7 +471,7 @@ describe('round 4', () => {
   it('r4 #2: a connection lost before any answer is unconfirmed, and Retry reuses the original key', async () => {
     sendMode = 'offline'
     render(<Desk layout="phone" />)
-    await screen.findByText(/Ask about this week/)
+    await screen.findByText(/What are we posting/)
     type('whats going out this week')
     await screen.findByText(/Not confirmed: the connection dropped/)
     expect(screen.getByText('Check again')).toBeTruthy()
@@ -484,7 +484,7 @@ describe('round 4', () => {
   it('r4 #2: a turn still being answered says so and offers Check again', async () => {
     sendMode = 'in-progress'
     render(<Desk layout="phone" />)
-    await screen.findByText(/Ask about this week/)
+    await screen.findByText(/What are we posting/)
     type('whats going out this week')
     await screen.findByText('Still working, check again.')
     expect(screen.getByText('Check again')).toBeTruthy()
@@ -494,7 +494,7 @@ describe('round 4', () => {
   it('r6 #2: a refused key (key_mismatch) is never resent: Check again and Edit and send only; only Ivan\'s own Send makes a new key', async () => {
     sendMode = 'key-reused'
     render(<Desk layout="phone" />)
-    await screen.findByText(/Ask about this week/)
+    await screen.findByText(/What are we posting/)
     type('whats going out this week')
     await screen.findByText(/Not sent: this text does not match/)
     expect(screen.queryByText('Retry')).toBeNull()
@@ -638,7 +638,7 @@ describe('round 5 (Sol desk-ui r4 follow-ups)', () => {
     cancelGate = new Promise(r => { release = r })
     cancelAnswer = { ok: false, error: 'timeout' } // what the bounded op returns after 15 s with no answer
     const first = render(<Desk layout="phone" />)
-    await screen.findByText(/Ask about this week/)
+    await screen.findByText(/What are we posting/)
     type('approve the trains one')
     fireEvent.click(await screen.findByText('Undo'))
     first.unmount()
@@ -683,7 +683,7 @@ describe('round 5 (Sol desk-ui r4 follow-ups)', () => {
   it('r4 #2: a retry under the original key shows the stored answer once (the server replays it, nothing runs twice)', async () => {
     sendMode = 'offline'
     render(<Desk layout="phone" />)
-    await screen.findByText(/Ask about this week/)
+    await screen.findByText(/What are we posting/)
     type('whats going out this week')
     await screen.findByText(/Not confirmed: the connection dropped/)
     sendMode = 'held'
@@ -815,7 +815,7 @@ describe('round 6 (Sol desk-ui r5 U1-U4, backend B11 on the client)', () => {
   it('U4: a read that finds the stored question without its answer keeps Check again and a same-key Retry', async () => {
     sendMode = 'drop-before-ack'
     render(<Desk layout="phone" />)
-    await screen.findByText(/Ask about this week/)
+    await screen.findByText(/What are we posting/)
     readRows = async () => [row({ id: 'u-stored', role: 'user', origin: 'operator', body: 'whats going out this week', client_key: sends[0].client_key })]
     type('whats going out this week')
     await screen.findByText('No answer yet.', {}, { timeout: 3000 })
@@ -832,7 +832,7 @@ describe('round 6 (Sol desk-ui r5 U1-U4, backend B11 on the client)', () => {
   it('U4: the wait ends when the answer arrives by realtime', async () => {
     sendMode = 'drop-before-ack'
     render(<Desk layout="phone" />)
-    await screen.findByText(/Ask about this week/)
+    await screen.findByText(/What are we posting/)
     type('whats going out this week')
     const key = sends[0].client_key
     readRows = async () => [row({ id: 'u-stored', role: 'user', origin: 'operator', body: 'whats going out this week', client_key: key })]
@@ -935,7 +935,7 @@ describe('round 8 (Sol desk-ui r7 P1, P2)', () => {
     render(<Desk layout="phone" />)
     await waitFor(() => expect(document.querySelectorAll('[data-seen="pending"]')).toHaveLength(12))
     // the first batch (10 ids) is on its way; act-11 waits for the second batch
-    fireEvent.click(document.querySelector('[data-action="act-11"] .dk-pill') as HTMLElement)
+    fireEvent.click(document.querySelector('[data-action="act-11"] .dk-pill:not(.dk-go)') as HTMLElement)
     await screen.findByText('Try Undo again')
     heldSeenGate = null
     await act(async () => { release() })
@@ -952,7 +952,7 @@ describe('round 8 (Sol desk-ui r7 P1, P2)', () => {
     heldSeenGate = new Promise(r => { release = r })
     render(<Desk layout="phone" />)
     await waitFor(() => expect(document.querySelectorAll('[data-seen="pending"]')).toHaveLength(11))
-    fireEvent.click(document.querySelector('[data-action="act-10"] .dk-pill') as HTMLElement)
+    fireEvent.click(document.querySelector('[data-action="act-10"] .dk-pill:not(.dk-go)') as HTMLElement)
     await screen.findByText('Try Undo again')
     heldSeenGate = null
     await act(async () => { release() })
