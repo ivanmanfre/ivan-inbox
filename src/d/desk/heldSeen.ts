@@ -6,6 +6,7 @@
 // e.g. in another tab). If the call or that id fails, the row keeps Undo and "Do it now" and shows no
 // countdown; if the row is no longer held, the desk reads it back.
 import { markHeldSeen, type HeldSeenResult } from './api'
+import { actionStore } from './actionGuards'
 
 type Seen = { state: 'pending' } | { state: 'armed'; until: number } | { state: 'failed' } | { state: 'settled' }
 const seen = new Map<string, Seen>()
@@ -25,6 +26,8 @@ export const heldSeenStore = {
 /** The row is visibly on screen: arm its hold on the server once. Returns nothing; the store updates. */
 export function reportHeldSeen(id: string): void {
   // Once per id; a failed report (offline) is tried again on the next visible render or tab return.
+  // Never after Ivan tapped Undo on it, whatever that cancel's result (Sol desk-ui r6 #1).
+  if (actionStore.undoTapped(id)) return
   const prev = seen.get(id)
   if (prev && prev.state !== 'failed') return
   seen.set(id, { state: 'pending' })
@@ -33,7 +36,8 @@ export function reportHeldSeen(id: string): void {
   if (flushing) return
   flushing = true
   queueMicrotask(async () => {
-    const ids = queue.splice(0)
+    // An Undo tapped while the report waited for this tick wins: that id is not sent.
+    const ids = queue.splice(0).filter(x => !actionStore.undoTapped(x) || (seen.delete(x), changed(), false))
     flushing = false
     // The server takes at most 10 ids per call.
     for (let i = 0; i < ids.length; i += 10) {

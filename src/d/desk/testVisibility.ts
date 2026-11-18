@@ -64,5 +64,7 @@ export function removeVisibility(): void {
 }
 /** The observer reports this visible fraction for every observed element, now. */
 export function setVisibleRatio(r: number): void { ratio = r; observed.slice().forEach(fire) }
+/** The next observation (a new observe) reports this fraction; nothing fires now (a hidden tab's layout moved). */
+export function setRatioQuiet(r: number): void { ratio = r }
 /** Something (a sheet, the keyboard bar) lies over every button. */
 export function setCovered(c: boolean): void { covered = c }

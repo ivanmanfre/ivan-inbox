@@ -29,7 +29,7 @@ export type DeskMeta = {
   reply_to?: string
   error?: string
   /** On a terminal answer, from that turn's action journal (Sol backend r5 B11): 'none' only when the
-   *  turn wrote nothing and queued no job. Only 'none' allows a retry under a new key. */
+   *  turn wrote nothing and queued no job. Shown as a note; it never makes the UI send anything. */
   side_effects?: 'none' | 'some' | 'unknown'
 }
 
@@ -50,8 +50,8 @@ export type DeskMessage = {
   answers?: string
   /** Local only: why a send failed, in plain words. */
   error?: string
-  /** Local only: the key was refused for this text (key_reused), so a retry needs a new key. */
-  retryFresh?: boolean
+  /** Local only: the server refused this key for this text (key_mismatch); it is never resent. */
+  mismatch?: boolean
 }
 
 export type T3Job = { id: string; status: T3Status; title: string; t3_link: string | null; result_summary: string | null; updated_at?: string }

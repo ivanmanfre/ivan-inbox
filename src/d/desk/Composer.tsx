@@ -8,9 +8,11 @@ import { CIcon } from '../claude/icons'
 import { uploadDeskPhoto } from './api'
 import type { DeskAttachment } from './model'
 
-export function DeskComposer({ busy, onSend }: {
+export function DeskComposer({ busy, onSend, prefill }: {
   busy: boolean
   onSend: (text: string, opts?: { attachments?: DeskAttachment[]; voice?: boolean }) => void
+  /** "Edit and send": this text goes into the field (each new n once); Send stays Ivan's own tap. */
+  prefill?: { text: string; n: number } | null
 }) {
   const [text, setText] = useState('')
   // Picked photos stay on the device (a local preview) until Send; nothing is uploaded before that.
@@ -30,6 +32,16 @@ export function DeskComposer({ busy, onSend }: {
     field.current?.focus()
   })
   const recording = stt.state === 'recording'
+  // Each new prefill (a new n) replaces the field once; it never sends.
+  const applied = useRef(0)
+  useEffect(() => {
+    if (!prefill || prefill.n === applied.current) return
+    applied.current = prefill.n
+    rev.current++
+    setText(prefill.text)
+    voiced.current = false
+    field.current?.focus()
+  }, [prefill])
 
   // Autosize: one line to six, measured, so the list above never jumps by a guess.
   useLayoutEffect(() => {

@@ -32,7 +32,7 @@ export function Desk({ layout, onBack }: { layout: 'phone' | 'desktop'; onBack?:
         <div className="dk-title"><b>Content desk</b><small>{desk.readFailed ? 'Offline, showing the saved copy' : desk.fromCache ? 'Saved copy, checking for new' : 'Knows your week, drafts and calls'}</small></div>
       </header>
       <DeskList desk={desk} />
-      <DeskComposer busy={desk.busy} onSend={desk.send} />
+      <DeskComposer busy={desk.busy} onSend={desk.send} prefill={desk.prefill} />
     </section>
   )
 }
@@ -85,39 +85,25 @@ function Row({ m, desk }: { m: DeskMessage; desk: DeskHandle }) {
         {m.meta.attachments?.filter(a => a.kind === 'photo').map(a => <img key={a.url} className="dk-photo" src={a.url} alt="Photo you sent" width={120} height={120} />)}
         {m.body && <div className="dk-me-t">{m.body}</div>}
         <small>{m.meta.voice ? 'Voice · ' : ''}{m.local === 'sending' ? 'Sending' : m.local === 'failed' ? (m.error ?? 'Not sent') : m.local === 'unconfirmed' ? (m.error ?? 'Not confirmed: the app could not check.') : waiting ? 'No answer yet.' : warsawHm(m.created_at)}</small>
-        {(m.local === 'unconfirmed' || waiting) && <button type="button" className="dk-pill" onClick={desk.reload}>Check again</button>}
-        {/* Retry resends under the ORIGINAL client_key (a refused key aside): the server answers a known key
-            idempotently (its stored answer, or "still working"), so an unconfirmed send can never run twice
-            (Sol desk-ui r3 #4, r4 #2). */}
-        {(m.local === 'failed' || m.local === 'unconfirmed' || waiting) && <button type="button" className="dk-pill" onClick={() => desk.retry(m)}>Retry</button>}
+        {(m.local === 'unconfirmed' || waiting || m.mismatch) && <button type="button" className="dk-pill" onClick={desk.reload}>Check again</button>}
+        {/* Retry always resends under the ORIGINAL client_key: the server answers a known key idempotently
+            (its stored answer, still working, or key_mismatch), so a send can never run twice (Sol desk-ui
+            r3 #4, r4 #2, r6 #2). A refused key (key_mismatch) is never resent: Edit and send only. */}
+        {(m.local === 'failed' || m.local === 'unconfirmed' || waiting) && !m.mismatch && <button type="button" className="dk-pill" onClick={() => desk.retry(m)}>Retry</button>}
+        {m.mismatch && <button type="button" className="dk-pill" onClick={() => desk.editAndSend(m)}>Edit and send</button>}
       </div>
     )
   }
   if (m.answers) {
     // The reserved answer bubble: it exists at its minimum height before a token lands.
-    if (m.status === 'error') return (
-      <div className="dk-ans dk-ans-err" data-msg={m.id} role="alert">
-        <p>{m.error}</p>
-        {desk.canRetry(m) && <button type="button" className="dk-pill" onClick={() => desk.retry(m)}>Try again</button>}
-      </div>
-    )
+    if (m.status === 'error') return <FailedAnswer m={m} text={m.error ?? 'The desk did not answer.'} desk={desk} />
     return (
       <div className="dk-ans dk-streaming" data-msg={m.id} data-streaming>
         {m.body ? <Markdown text={m.body} caret /> : <span className="dk-typing" aria-label="The desk is answering"><i /><i /><i /></span>}
       </div>
     )
   }
-  if (m.status === 'error') return (
-    // A stored failed answer offers "Try again" (a new key) only when the server recorded that the
-    // turn did nothing (side_effects 'none'). Otherwise it may have done something before it failed:
-    // it says so and offers only Check again, which re-reads and never reruns (Sol desk-ui r5 U3).
-    <div className="dk-ans dk-ans-err" data-msg={m.id} role="alert">
-      <p>{m.body || 'The desk could not answer just now.'}</p>
-      {m.meta.side_effects === 'none'
-        ? desk.canRetry(m) && <button type="button" className="dk-pill" onClick={() => desk.retry(m)}>Try again</button>
-        : <><small>Check Review before repeating.</small><button type="button" className="dk-pill" onClick={desk.reload}>Check again</button></>}
-    </div>
-  )
+  if (m.status === 'error') return <FailedAnswer m={m} text={m.body || 'The desk could not answer just now.'} desk={desk} />
   const note = ORIGIN_NOTE[m.origin]
   return (
     <div className={`dk-ans${m.origin === 'proactive' ? ' dk-pro' : ''}`} data-msg={m.id}>
@@ -149,13 +135,32 @@ const SETTLED_NOTE: Record<string, string> = {
 // before it offers "Do it now" (the server's answer normally lands by realtime first).
 const FINISH_GRACE_MS = 4000
 
-/** Nothing covers the button: its centre and its four extremes (left, right, top, bottom; inset by the
- *  pill's radius so a rounded corner is not read as covered) all hit it (or a child of it). */
+/**
+ * A failed answer, stored or live, whatever its side_effects: the note says what the server recorded,
+ * and the only actions are Check again (a re-read) and Edit and send (the question's text goes into
+ * the composer; only Ivan's own Send makes a new message with a new key). Nothing here ever sends
+ * (Sol desk-ui r6 #2/#3).
+ */
+function FailedAnswer({ m, text, desk }: { m: DeskMessage; text: string; desk: DeskHandle }) {
+  return (
+    <div className="dk-ans dk-ans-err" data-msg={m.id} role="alert">
+      <p>{text}</p>
+      <small>{m.meta.side_effects === 'none' ? 'Nothing was changed.' : 'Check Review before repeating.'}</small>
+      <button type="button" className="dk-pill" onClick={desk.reload}>Check again</button>
+      {desk.canRetry(m) && <button type="button" className="dk-pill" onClick={() => desk.editAndSend(m)}>Edit and send</button>}
+    </div>
+  )
+}
+
+/** Nothing covers or clips the button: its centre and its four extremes (left, right, top, bottom, on
+ *  the centre lines) all hit it (or a child of it). */
 function undoUncovered(b: HTMLElement): boolean {
   const r = b.getBoundingClientRect()
   if (r.width <= 0 || r.height <= 0) return false
-  const cx = r.left + r.width / 2, cy = r.top + r.height / 2, k = Math.min(r.width, r.height) / 2
-  const pts: [number, number][] = [[cx, cy], [r.left + k, cy], [r.right - k, cy], [cx, r.top + 2], [cx, r.bottom - 2]]
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2
+  // Half a pixel in from each edge, on the centre lines: inside any pill or rounded box, and on the
+  // button's outermost pixel rows and columns, so a one-pixel clip counts as not visible.
+  const pts: [number, number][] = [[cx, cy], [r.left + 0.5, cy], [r.right - 0.5, cy], [cx, r.top + 0.5], [cx, r.bottom - 0.5]]
   return pts.every(([x, y]) => { const hit = document.elementFromPoint(x, y); return !!hit && (hit === b || b.contains(hit)) })
 }
 
@@ -169,13 +174,14 @@ function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle })
   // Without the means to verify it (no IntersectionObserver or elementFromPoint), held_seen is never
   // sent: the hold stays manual, with Undo and "Do it now" and no countdown.
   const [undoEl, setUndoEl] = useState<HTMLButtonElement | null>(null)
+  const tapped = actionStore.undoTapped(a.id)
   useEffect(() => {
     const known = heldSeenStore.get(a.id)
-    if (!isHeld || !undoEl || (known && known.state !== 'failed')) return
+    if (!isHeld || !undoEl || tapped || (known && known.state !== 'failed')) return
     if (typeof IntersectionObserver === 'undefined' || typeof document.elementFromPoint !== 'function') return
     let full = false
     const tryReport = () => {
-      if (full && document.visibilityState === 'visible' && undoEl.isConnected && !undoEl.disabled && undoUncovered(undoEl)) reportHeldSeen(a.id)
+      if (full && document.visibilityState === 'visible' && !actionStore.undoTapped(a.id) && undoEl.isConnected && !undoEl.disabled && undoUncovered(undoEl)) reportHeldSeen(a.id)
     }
     const io = new IntersectionObserver(entries => {
       const e = entries[entries.length - 1]
@@ -183,9 +189,17 @@ function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle })
       tryReport()
     }, { threshold: 1 })
     io.observe(undoEl)
-    document.addEventListener('visibilitychange', tryReport)
-    return () => { io.disconnect(); document.removeEventListener('visibilitychange', tryReport) }
-  }, [isHeld, a.id, undoEl])
+    // A tab return never trusts the last observation (layout may have moved while hidden): it drops it
+    // and re-observes, so only a FRESH entry with ratio 1 can report (Sol desk-ui r6 #4).
+    const onVis = () => {
+      full = false
+      if (document.visibilityState !== 'visible') return
+      io.unobserve(undoEl)
+      io.observe(undoEl)
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => { io.disconnect(); document.removeEventListener('visibilitychange', onVis) }
+  }, [isHeld, a.id, undoEl, tapped])
   const seen = heldSeenStore.get(a.id)
   // The countdown is display only and runs to the server's hold_until: the SERVER commits then, unless
   // Undo wins first. Without a deadline from the server there is no countdown, only the buttons.
@@ -203,8 +217,8 @@ function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle })
   const lastFail = actionStore.failed(a.id)
   const failed = lastFail && (lastFail.op === 'undo' ? a.state === 'done' : a.state === 'held') ? lastFail : undefined
   const held = a.state === 'held'
-  const counting = held && until !== null && !busy && !failed && now < until
-  const finishing = held && until !== null && !busy && !failed && !counting && now < until + FINISH_GRACE_MS
+  const counting = held && until !== null && !busy && !failed && !tapped && now < until
+  const finishing = held && until !== null && !busy && !failed && !tapped && !counting && now < until + FINISH_GRACE_MS
   useEffect(() => {
     if (!(counting || finishing)) return
     const t = window.setInterval(() => setNow(Date.now()), 250)
@@ -212,6 +226,9 @@ function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle })
   }, [counting, finishing])
   const left = counting ? Math.max(1, Math.ceil(((until ?? now) - now) / 1000)) : 0
   const go = async (kind: 'undo' | 'commit' | 'cancel') => {
+    if (actionStore.inFlight(a.id)) return
+    // Undo on a held action: recorded BEFORE the request, so no held_seen can follow it (r6 #1).
+    if (kind === 'cancel') actionStore.markUndoTapped(a.id)
     if (!actionStore.start(a.id, kind)) return
     // A rejected call counts as a failed one: the in-flight state is always cleared (Sol desk-ui r4 #3).
     const r = await desk.act(kind, a.id).catch((): { ok: false; error: string } => ({ ok: false, error: 'No connection.' }))
@@ -247,7 +264,7 @@ function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle })
       {a.state === 'done' && a.undo && <button type="button" className="dk-pill" disabled={!!busy} onClick={() => go('undo')}>{failed?.op === 'undo' ? 'Try Undo again' : 'Undo'}</button>}
       {/* Undo on EVERY idle held row: during the countdown, while the server commits, and on a held row
           seen later (a reopened desk). The server's compare-and-set decides who wins (Sol desk-ui r4 #1). */}
-      {held && !busy && <button ref={setUndoEl} type="button" className="dk-pill" onClick={() => go('cancel')}>{failed?.op === 'cancel' ? 'Try Undo again' : 'Undo'}</button>}
+      {held && !busy && <button ref={setUndoEl} type="button" className="dk-pill" onClick={() => go('cancel')}>{failed?.op === 'cancel' || tapped ? 'Try Undo again' : 'Undo'}</button>}
       {held && !busy && !expired && <button type="button" className="dk-pill" onClick={() => go('commit')}>Do it now</button>}
     </div>
   )

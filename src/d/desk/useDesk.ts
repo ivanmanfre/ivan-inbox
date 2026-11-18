@@ -30,6 +30,10 @@ export type DeskHandle = {
   awaitingAnswer: (m: DeskMessage) => boolean
   /** Read the rows back now; resolves when that read has answered (or failed). */
   refresh: () => Promise<void>
+  /** Put the question's text into the composer; only Ivan's own Send makes it a new message. */
+  editAndSend: (m: DeskMessage) => void
+  /** The text "Edit and send" put into the composer, with a counter so the same text can be put twice. */
+  prefill: { text: string; n: number } | null
 }
 
 // Held actions commit on the SERVER, timed from the moment the row was first visibly on screen
@@ -200,16 +204,18 @@ export function useDesk(): DeskHandle {
         mergeLive([m], x => x.id === phId)
       },
       onError: (code, detail) => {
-        const mark = (local: 'failed' | 'unconfirmed', error: string, retryFresh = false) => apply(prev => prev
+        const mark = (local: 'failed' | 'unconfirmed', error: string, mismatch = false) => apply(prev => prev
           .filter(m => m.id !== phId)
-          .map(m => (m.role === 'user' && m.client_key === key ? { ...m, local, error, retryFresh } : m)))
+          .map(m => (m.role === 'user' && m.client_key === key ? { ...m, local, error, mismatch } : m)))
         // Ambiguous: the request may have reached the server (connection lost before any answer). It
         // stays unconfirmed and any retry reuses THIS key, which the server answers idempotently.
         if (code === 'offline') return mark('unconfirmed', 'Not confirmed: the connection dropped.')
         // The server holds this turn and is still answering it: say so, offer Check again.
         if (code === 'turn_in_progress') return mark('unconfirmed', 'Still working, check again.')
         // The key is taken by a different message: this text needs a new key.
-        if (code === 'key_mismatch') return mark('failed', 'Not sent', true)
+        // The server has this key for other text (a cached copy with its link taken out, say). Nothing ran
+        // for it; the question offers Check again and Edit and send, never a resend.
+        if (code === 'key_mismatch') return mark('failed', 'Not sent: this text does not match what was sent.', true)
         // A refusal before the turn ran (no stream): nothing was stored for it; a retry may reuse the key.
         if (!acked) return mark('failed', detail ?? 'Not sent')
         // The turn ran and failed: the stored error row arrives as `final` and carries its own retry.
@@ -245,19 +251,10 @@ export function useDesk(): DeskHandle {
     if (!key) return
     const asked = listRef.current.find(x => x.role === 'user' && x.client_key === key)
     if (!asked) return
-    // A turn the server ran and recorded as failed would be replayed as that same failure under its key,
-    // and a refused key cannot be reused: those two retry under a NEW key. Every other case (unsent,
-    // unconfirmed, the stream lost) retries under the ORIGINAL key, which the server answers
-    // idempotently: an existing turn returns its stored answer, so nothing runs twice (Sol desk-ui r4 #2).
-    // A new key only when the server recorded that the failed turn did nothing (meta.side_effects
-    // 'none', backend r5 B11) or refused the key outright (key_mismatch). Anything else, a missing
-    // side_effects included, retries under the original key, which only replays (Sol desk-ui r5 U3).
-    const knownFailure = (m.role === 'assistant' && m.status === 'error' && !m.answers && m.meta.side_effects === 'none') || asked.retryFresh === true
-    if (knownFailure) {
-      setMessages(prev => prev.filter(x => x !== asked && x !== m && x.id !== `stream:${key}` && x.id !== `local:${key}`))
-      send(asked.body, { attachments: asked.meta.attachments, voice: asked.meta.voice })
-      return
-    }
+    // Retry ALWAYS reuses the original key (Sol desk-ui r6 #2/#3): the server answers a known key
+    // idempotently (its stored answer, still working, or key_mismatch), so a retry can never run a turn
+    // twice. The UI never mints a new key for an existing question; only Ivan's own Send of a new
+    // message does (see editAndSend).
     ended.current.delete(key)
     const ph: DeskMessage = { id: `stream:${key}`, role: 'assistant', origin: 'desk', body: '', status: 'streaming', meta: {}, client_key: null,
       created_at: new Date(Date.parse(asked.created_at) + 1).toISOString(), answers: key }
@@ -269,7 +266,7 @@ export function useDesk(): DeskHandle {
       [],
     ))
     run(asked.body, key, { attachments: asked.meta.attachments, voice: asked.meta.voice })
-  }, [send, run])
+  }, [run])
 
   const act = useCallback(async (kind: 'undo' | 'commit' | 'cancel', actionId: string) => {
     const r = await (kind === 'undo' ? undoAction(actionId) : kind === 'commit' ? commitAction(actionId) : cancelAction(actionId))
@@ -294,6 +291,14 @@ export function useDesk(): DeskHandle {
   }, [messages])
 
   const reload = useCallback(() => setN(x => x + 1), [])
+  const [prefill, setPrefill] = useState<{ text: string; n: number } | null>(null)
+  const editAndSend = useCallback((m: DeskMessage) => {
+    const key = m.role === 'user' ? m.client_key : (m.answers ?? m.meta.client_key ?? null)
+    const asked = key ? listRef.current.find(x => x.role === 'user' && x.client_key === key) : undefined
+    const text = (asked ?? (m.role === 'user' ? m : undefined))?.body
+    if (text === undefined) return
+    setPrefill(p => ({ text, n: (p?.n ?? 0) + 1 }))
+  }, [])
   // This mount's read-back. Registered while mounted, so an op that ends after its desk was closed
   // still reads the row back in the desk that is open now (Sol desk-ui r4 #3).
   const refreshSelf = useCallback(() => new Promise<void>(resolve => {
@@ -308,5 +313,5 @@ export function useDesk(): DeskHandle {
     openDesks.add(refreshSelf)
     return () => { openDesks.delete(refreshSelf) }
   }, [refreshSelf])
-  return { messages, jobs, fromCache, loaded, readFailed, busy, send, retry, act, reload, canRetry, awaitingAnswer, refresh: refreshOpenDesks }
+  return { messages, jobs, fromCache, loaded, readFailed, busy, send, retry, act, reload, canRetry, awaitingAnswer, refresh: refreshOpenDesks, editAndSend, prefill }
 }

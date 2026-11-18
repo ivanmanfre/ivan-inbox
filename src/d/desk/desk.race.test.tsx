@@ -78,7 +78,7 @@ vi.mock('../../exp/v2c/chat/useStt', () => ({
 
 const { Desk } = await import('./Desk')
 const { resetHeldSeen } = await import('./heldSeen')
-const { installVisibility, removeVisibility, setVisibleRatio, setCovered } = await import('./testVisibility')
+const { installVisibility, removeVisibility, setVisibleRatio, setCovered, setRatioQuiet } = await import('./testVisibility')
 const { resetActionGuards } = await import('./actionGuards')
 const { resetLiveHolds } = await import('./useDesk')
 
@@ -182,16 +182,16 @@ describe('desk races', () => {
     expect(sends[1].client_key).toBe(sends[0].client_key)
   })
 
-  it('#5 a failed answer row keeps a retry tied to the send it failed', async () => {
+  it('#5 a failed answer row is tied to the send it failed: Edit and send puts that text in the composer, sends nothing', async () => {
     sendMode = 'error-final'
     render(<Desk layout="phone" />)
     type('how did the made up post do')
     await screen.findByText(/could not answer just now/)
     sendMode = 'held'
-    fireEvent.click(screen.getByText('Try again'))
-    await waitFor(() => expect(sends).toHaveLength(2))
-    expect(sends[1].text).toBe('how did the made up post do')
-    await waitFor(() => expect(screen.queryByText(/could not answer just now/)).toBeNull())
+    fireEvent.click(screen.getByText('Edit and send'))
+    expect((screen.getByLabelText('Message the desk') as HTMLTextAreaElement).value).toBe('how did the made up post do')
+    await act(async () => {})
+    expect(sends).toHaveLength(1)
   })
 })
 
@@ -491,27 +491,36 @@ describe('round 4', () => {
     expect(document.querySelector('[data-streaming]')).toBeNull()
   })
 
-  it('r4 #2: a refused key (used for another message) retries under a NEW key', async () => {
+  it('r6 #2: a refused key (key_mismatch) is never resent: Check again and Edit and send only; only Ivan\'s own Send makes a new key', async () => {
     sendMode = 'key-reused'
     render(<Desk layout="phone" />)
     await screen.findByText(/Ask about this week/)
     type('whats going out this week')
-    await screen.findByText('Not sent')
+    await screen.findByText(/Not sent: this text does not match/)
+    expect(screen.queryByText('Retry')).toBeNull()
+    expect(screen.getByText('Check again')).toBeTruthy()
     sendMode = 'held'
-    fireEvent.click(screen.getByText('Retry'))
+    fireEvent.click(screen.getByText('Edit and send'))
+    await act(async () => {})
+    expect(sends).toHaveLength(1)
+    expect((screen.getByLabelText('Message the desk') as HTMLTextAreaElement).value).toBe('whats going out this week')
+    fireEvent.click(screen.getByLabelText('Send'))
     await waitFor(() => expect(sends).toHaveLength(2))
     expect(sends[1].client_key).not.toBe(sends[0].client_key)
   })
 
-  it('r4 #2: a turn the server recorded as failed retries under a NEW key (its key would replay the failure)', async () => {
+  it('r6 #3: a stored error with side_effects "none" offers no automatic rerun either, only Check again and Edit and send', async () => {
     sendMode = 'error-final'
     render(<Desk layout="phone" />)
     type('how did the made up post do')
     await screen.findByText(/could not answer just now/)
-    sendMode = 'held'
-    fireEvent.click(screen.getByText('Try again'))
-    await waitFor(() => expect(sends).toHaveLength(2))
-    expect(sends[1].client_key).not.toBe(sends[0].client_key)
+    expect(screen.getByText('Nothing was changed.')).toBeTruthy()
+    expect(screen.queryByText('Try again')).toBeNull()
+    expect(screen.queryByText('Retry')).toBeNull()
+    fireEvent.click(screen.getByText('Check again'))
+    fireEvent.click(screen.getByText('Edit and send'))
+    await act(async () => {})
+    expect(sends).toHaveLength(1)
   })
 
   it('r4 #3: a timed-out cancel clears the in-flight state, reads the row back, then offers Undo again', async () => {
@@ -822,5 +831,84 @@ describe('round 6 (Sol desk-ui r5 U1-U4, backend B11 on the client)', () => {
     await screen.findByText('Four posts are out this week.')
     expect(screen.queryByText('No answer yet.')).toBeNull()
     expect(screen.queryByText('Retry')).toBeNull()
+  })
+})
+
+
+describe('round 7 (Sol desk-ui r6 #1-#4)', () => {
+  const heldRow = () => row({ id: 'a-' + sends[0].client_key, body: 'Approving it.', meta: { client_key: sends[0].client_key, actions: [{ id: 'act-live', kind: 'approve', label: 'Approve the trains post', state: 'held', undo: true, hold_ms: 8000 }] } })
+
+  it('r6 #1: after an Undo tap no held_seen is ever sent for that id, across a remount, and the row keeps "Try Undo again"', async () => {
+    heldSeenOk = false
+    const first = render(<Desk layout="phone" />)
+    type('approve the trains one')
+    await waitFor(() => expect(document.querySelector('[data-seen="failed"]')).toBeTruthy())
+    cancelAnswer = { ok: false, error: 'No connection.' }
+    heldSeenOk = true
+    fireEvent.click(screen.getByText('Undo'))
+    await screen.findByText('Try Undo again')
+    expect(JSON.parse(sessionStorage.getItem('desk:undo-tapped:v1') ?? '[]')).toEqual(['act-live'])
+    first.unmount()
+    readRows = async () => [heldRow()]
+    render(<Desk layout="phone" />)
+    await screen.findByText('Try Undo again')
+    await act(async () => { setVisibleRatio(1); document.dispatchEvent(new Event('visibilitychange')) })
+    expect(seenCalls).toEqual([['act-live']]) // only the one before the tap
+    expect(document.querySelector('.dk-count')).toBeNull()
+  })
+
+  it('r6 #1: a successful cancel that the server has not settled yet still says "Try Undo again" and never reports seen', async () => {
+    render(<Desk layout="phone" />)
+    type('approve the trains one')
+    await waitFor(() => expect(seenCalls).toHaveLength(1))
+    resetHeldSeen() // as if the first report never happened in this tab
+    seenCalls.length = 0
+    fireEvent.click(screen.getByText('Undo'))
+    await screen.findByText('Try Undo again')
+    await act(async () => { setVisibleRatio(1) })
+    expect(seenCalls).toEqual([])
+  })
+
+  it('r6 #1: a tapped Undo kept in sessionStorage is honoured by a fresh module load (a reloaded tab)', async () => {
+    sessionStorage.setItem('desk:undo-tapped:v1', JSON.stringify(['act-reloaded']))
+    vi.resetModules()
+    const fresh = await import('./actionGuards')
+    expect(fresh.actionStore.undoTapped('act-reloaded')).toBe(true)
+    expect(fresh.actionStore.undoTapped('act-other')).toBe(false)
+  })
+
+  it('r6 #1: sessionStorage that throws does not break Undo; the tap is still held in memory', async () => {
+    const set = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota') })
+    try {
+      heldSeenOk = false
+      render(<Desk layout="phone" />)
+      type('approve the trains one')
+      await waitFor(() => expect(document.querySelector('[data-seen="failed"]')).toBeTruthy())
+      cancelAnswer = { ok: false, error: 'No connection.' }
+      heldSeenOk = true
+      fireEvent.click(screen.getByText('Undo'))
+      await screen.findByText('Try Undo again')
+      await act(async () => { setVisibleRatio(1); document.dispatchEvent(new Event('visibilitychange')) })
+      expect(seenCalls).toEqual([['act-live']])
+    } finally { set.mockRestore() }
+  })
+
+  it('r6 #4: a tab return drops the cached full observation; a fresh clipped entry does not report, a fresh full one does', async () => {
+    let visibility: DocumentVisibilityState = 'hidden'
+    const override = vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility)
+    try {
+      render(<Desk layout="phone" />)
+      type('approve the trains one')
+      await screen.findByText('Undo')
+      await act(async () => { setVisibleRatio(1) }) // full, but the tab is hidden
+      expect(seenCalls).toEqual([])
+      setRatioQuiet(0.9) // layout moved while hidden: the next observation is clipped
+      readRows = async () => [heldRow()] // the return re-reads; the server still holds it
+      visibility = 'visible'
+      await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
+      expect(seenCalls).toEqual([])
+      await act(async () => { setVisibleRatio(1) })
+      await waitFor(() => expect(seenCalls).toEqual([['act-live']]))
+    } finally { override.mockRestore() }
   })
 })
