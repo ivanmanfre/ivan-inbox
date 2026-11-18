@@ -754,13 +754,14 @@ const clipLine = (s: string, n = 70) => { const t = s.replace(/\s+/g, ' ').trim(
  * the tap or a cancel: it says what was proposed, and the structured echo carries the state.
  */
 function proposedLine(act: Act, p: Planned, snap: Snapshot | null): string {
-  const VERB: Record<string, string> = { approve: 'approve', date: 'move', undate: 'remove the date from', pull: 'pull', delete: 'delete', redo: 'rewrite', photo_attach: 'add your photo to' }
+  const VERB: Record<string, string> = { approve: 'approve', date: 'move', undate: 'remove the date from', remove_date: 'remove the date from', pull: 'pull', delete: 'delete', redo: 'rewrite', photo_attach: 'add your photo to', attach_photo: 'add your photo to' }
   // the FULL opener (the UI wraps), a short distinct reference, the source date and, for a move, the new date (Sol r11 #2)
   const line = (p.echo.target?.first_line ?? '').replace(/\s+/g, ' ').trim()
   const ref = p.ref ?? ((act as { _ref?: string })._ref) ?? draftRef(p.target_id ?? '')
   const day = snap?.scheduled_at ? warsaw(snap.scheduled_at) : 'no date'
   const to = act.kind === 'date' && typeof p.canon?.at === 'string' ? ` to ${warsaw(p.canon.at)}` : ''
-  return `Proposed (ref ${ref}): ${VERB[act.kind] ?? act.kind} "${line}" (${day})${to}.`
+  // the card's verb is what will run (a remove date on a queued draft is a pull, round 19 #3)
+  return `Proposed (ref ${ref}): ${VERB[p.echo.kind] ?? VERB[act.kind] ?? act.kind} "${line}" (${day})${to}.`
 }
 
 
@@ -875,7 +876,7 @@ function cardFor(journal: string, e: unknown, what: string): { state: ActionEcho
   switch (journal) {
     case 'done': return { state: 'done', label: 'Done.' }
     // the write may have happened and nothing says so: never "done", never re-sent (round 17 C)
-    case 'unconfirmed': return { state: 'done', label: what === 'redo' || msg === 'writer_unconfirmed' ? UNCONFIRMED_REDO : UNCONFIRMED }
+    case 'unconfirmed': return { state: 'unconfirmed', label: what === 'redo' || msg === 'writer_unconfirmed' ? UNCONFIRMED_REDO : UNCONFIRMED }
     case 'committing': return { state: 'held', label: 'It is running right now. Check again in a minute.' }
     case 'held': return { state: 'held', label: 'Nothing ran. Tap Do it now again.' }
     case 'cancelled': return { state: 'cancelled', label: 'Cancelled. Nothing changed.' }
@@ -971,7 +972,8 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
     // Confirm-to-act: ONLY this op, Ivan's "Do it now" tap, runs a draft write. No server clock.
     // A hold without the v2 confirmation (made before round 11) is cancelled, never run (Sol r11 #2).
     const conf = (a.args as { _confirm?: Confirmation } | null)?._confirm
-    if (conf?.v !== 2) { await expireHold(svc, a); return { ok: false, error: 'stale_hold' } }
+    // GRAMMAR.md 3: a commit refuses any hold without the grammar proof v3; older holds are cancelled
+    if (conf?.v !== 3 || conf.proof?.grammar !== 3) { await expireHold(svc, a); return { ok: false, error: 'stale_hold' } }
     const durable = await echoDurable(svc, a.message_id, actionId)
     if (durable === null) return { ok: false, error: 'read_failed' }
     if (!durable) return { ok: false, error: 'not_saved', detail: failText('not_saved') }
@@ -1017,12 +1019,17 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
       // still 'committing' after a real write, shows "unconfirmed", never done (round 17 C).
       const cur = await claimState2(svc, actionId, token)
       const journal = isDry ? 'done' : !cur || !cur.state || cur.state === 'committing' ? 'unconfirmed' : cur.state
-      const recorded = cur ? await retry3(() => svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: journal, value: res.result ?? null, claim_token: token }, undo: (res as { undo?: unknown }).undo ?? null })
+      // a draft write's undo images were stored by its SQL function on this row in the commit's own
+      // transaction (round 19: date, remove date and photo are held too): never overwritten here
+      const inDb = (res as { undoInDb?: boolean }).undoInDb === true
+      const recorded = cur ? await retry3(() => svc.from('desk_actions').update(inDb
+        ? { result: { ...(a.result ?? {}), state: journal, value: res.result ?? null, claim_token: token } }
+        : { result: { ...(a.result ?? {}), state: journal, value: res.result ?? null, claim_token: token }, undo: (res as { undo?: unknown }).undo ?? null })
         .eq('id', actionId).filter('result->>claim_token', 'eq', token)) : false
       newState = 'done'
       if (journal !== 'done') { const c = cardFor(journal, (res as { detail?: string }).detail ? 'writer_unconfirmed' : null, args.kind === 'redo' ? 'redo' : 'post'); newState = c.state; label = c.label }
       if (!recorded && journal === 'done') receiptLost = true
-      canUndo = !!(res as { undo?: unknown }).undo && recorded
+      canUndo = journal === 'done' && (inDb ? !!cur?.undo : !!(res as { undo?: unknown }).undo && recorded)
       resDetail = journal === 'done' ? (res as { detail?: string }).detail : undefined
       label = label ?? (doneLabel(p) || p.echo.label.replace(/^Approving/, 'Approved').replace(/^Deleting/, 'Deleted').replace(/^Taking (.*) off the schedule$/, 'Took $1 off the schedule')
         .replace(/^Moving/, 'Moved').replace(/^Removing the date/, 'Removed the date').replace(/^Adding your photo/, 'Added your photo')
@@ -1062,7 +1069,8 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
     const { data } = await svc.rpc('desk_patch_action_echo', { p_message: a.message_id, p_action: actionId, p_patch: patch })
     updated = data ?? null
   }
-  return { ok: newState !== 'failed', ...(updated ? { message: forClient(updated) } : { detail: receiptLost || newState === 'done' ? 'Done, but I could not record it. Check before repeating it.' : undefined }) }
+  // the echo patch failed: the reply still says only what the journal says (an unconfirmed redo is never "done")
+  return { ok: newState !== 'failed', ...(updated ? { message: forClient(updated) } : { detail: newState === 'unconfirmed' ? (label ?? UNCONFIRMED_REDO) : receiptLost || newState === 'done' ? 'Done, but I could not record it. Check before repeating it.' : undefined }) }
 }
 
 // The held row is on Ivan's screen: record seen_at once (only while held) and start the server clock.

@@ -37,7 +37,7 @@ export type ActionEcho = {
   id: string
   kind: string
   label: string
-  state: 'done' | 'held' | 'undone' | 'failed' | 'cancelled'
+  state: 'done' | 'held' | 'undone' | 'failed' | 'cancelled' | 'unconfirmed'
   undo: boolean
   hold_ms?: number
   detail?: string
@@ -89,7 +89,9 @@ export type Planned = {
 }
 
 /** Versioned confirmation payload stored with a held draft action (Sol r11 #2). */
-export type Confirmation = { v: 2; draft_id: string; revision: string | null; source_at: string | null; args: Record<string, unknown> }
+export type Confirmation = { v: 3; draft_id: string; revision: string | null; source_at: string | null; args: Record<string, unknown>
+  /** grammar proof v3 (GRAMMAR.md 3): how the target was found and the exact tokens or day that found it */
+  proof: { grammar: 3; how: string; tokens: string[]; at?: string | null } }
 
 /** A short distinct draft reference shown to Ivan: the first 6 hex of the draft UUID. */
 export const draftRef = (id: string) => id.replace(/-/g, '').slice(0, 8)
@@ -106,7 +108,7 @@ const sameInstant = (a: string | null | undefined, b: string | null | undefined)
 
 /** Does the live row (and the re-planned args) still match what the card showed? */
 export function confirmMatches(c: Confirmation | undefined, live: { id: string; updated_at?: string | null; scheduled_at: string | null }, canon: Record<string, unknown> | undefined): boolean {
-  if (!c || c.v !== 2) return false
+  if (!c || c.v !== 3 || c.proof?.grammar !== 3) return false
   return c.draft_id === live.id && String(c.revision) === String(live.updated_at) && sameInstant(c.source_at, live.scheduled_at)
     && JSON.stringify(c.args ?? {}) === JSON.stringify(canon ?? {})
 }
@@ -226,8 +228,10 @@ const ELIGIBLE: Record<string, string[]> = {
 }
 
 /** Does this kind act on this draft at all (else a resolved target is refused, never swapped)? */
-export function eligible(kind: string, d: Pick<Draft, 'status' | 'scheduled_at'>): boolean {
+export function eligible(kind: string, d: Pick<Draft, 'status' | 'scheduled_at'> & { queued?: boolean }): boolean {
   if (!(ELIGIBLE[kind] ?? []).includes(d.status)) return false
+  // a move or a photo acts only on a draft with no live queue row (round 19 #5: counted before uniqueness)
+  if ((kind === 'date' || kind === 'photo_attach') && d.queued === true) return false
   return !((kind === 'undate' || kind === 'pull') && !d.scheduled_at)
 }
 
@@ -239,10 +243,10 @@ export function eligible(kind: string, d: Pick<Draft, 'status' | 'scheduled_at'>
 export async function liveCandidates(ctx: Pick<Ctx, 'userDb' | 'fixtures'>): Promise<Draft[] | null> {
   const { data, error } = await ctx.userDb.rpc('desk_live_drafts', { p_fixtures: !!ctx.fixtures })
   if (error || !Array.isArray(data)) return null
-  return (data as { id: string; status: string; type: string; scheduled_at: string | null; published_at: string | null; body_head: string; updated_at: string; created_at: string; fixture: string | null }[])
+  return (data as { id: string; status: string; type: string; scheduled_at: string | null; published_at: string | null; body_head: string; updated_at: string; created_at: string; fixture: string | null; queued?: boolean }[])
     .map((r) => ({ id: r.id, status: r.status, type: r.type, scheduled_at: r.scheduled_at, published_at: r.published_at, first_line: firstLineOf(r.body_head),
       title: '', belief: null, vehicle: null, recipe: null, qa_verdict: null, is_copy: false, photos: 0, brain: false, human_edited: false,
-      slot_kind: null, selling: false, chars: 0, created_at: r.created_at, fixture: r.fixture ?? null, updated_at: r.updated_at }))
+      slot_kind: null, selling: false, chars: 0, created_at: r.created_at, fixture: r.fixture ?? null, updated_at: r.updated_at, queued: r.queued === true }))
 }
 
 /**
@@ -479,7 +483,8 @@ export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: 
   // every draft-targeting chip, refusal follow-ups included, is emitted only if its FINAL text, resolved
   // with its own kind, returns this draft alone (Sol r11 #7, r12 #9)
   if (p.chips?.length) p.chips = p.chips.filter((c) => roundTrips(c.send, live!.d.id, all))
-  if (p.run) p.confirm = { v: 2, draft_id: live.d.id, revision: live.d.updated_at ?? null, source_at: live.d.scheduled_at ?? null, args: p.canon ?? {} }
+  if (p.run) p.confirm = { v: 3, draft_id: live.d.id, revision: live.d.updated_at ?? null, source_at: live.d.scheduled_at ?? null, args: p.canon ?? {},
+    proof: { grammar: 3, how: res.how, tokens: res.tokens ?? [], ...(act.kind === 'date' ? { at: (p.canon?.at as string | null) ?? null } : {}) } }
   // the verifier reads the resolved post's whole live opener and every rival opener with its day
   const dayText = (x: Draft) => (dayOf(x) === 'undated' ? 'undated' : `dated ${dayOf(x)}`)
   p.context = `Target post, found from his words, full first line: "${live.d.first_line}" (${dayText(live.d)}).` +
@@ -567,7 +572,7 @@ export function canonArgs(kind: string, act: Act, ctx: Pick<Ctx, 'text' | 'attac
 /** The source date to compare in SQL: the CONFIRMED one at commit (exact PostgreSQL text), the live one at proposal. */
 function sourceAt(act: Act, d: Draft): string | null {
   const c = act._confirm as Confirmation | undefined
-  return c && c.v === 2 ? c.source_at : (d.scheduled_at ?? null)
+  return c && c.v === 3 ? c.source_at : (d.scheduled_at ?? null)
 }
 
 async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
@@ -623,26 +628,32 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
       if (d!.status === 'published') return { echo: { kind, label: `${q} is already published.`, state: 'failed', undo: false, target }, refuse: 'published' }
       // immediate kinds act only on a draft with no live queue row (round 14 #3): a queued post moves in the calendar
       if (d!.queue_ids?.length) return { echo: { kind, label: IN_QUEUE, state: 'failed', undo: false, target }, refuse: 'in_queue' }
-      // the SERVER resolves the destination instant from his words (round 15 #2): day plus his explicit
-      // time, else the draft's current time, else 10:45. The planned instant must equal it exactly.
-      const dc = parseDestination(ctx.text, warsawDay(new Date().toISOString()))
-      if (!dc.ok) return { echo: { kind, label: sayItAs('date'), state: 'failed', undo: false, target }, refuse: dc.code }
-      // defaults only after a full parse: his time, else the draft's current time, else 10:45
-      const hhmm = dc.time ?? (d!.scheduled_at ? warsawClock(d!.scheduled_at) : '10:45')
-      const want = warsawToIso(`${dc.date} ${hhmm}`)
-      if (!want) return { echo: { kind, label: `I could not read the date: ${dc.date} ${hhmm} does not exist in Warsaw time.`, state: 'failed', undo: false, target }, refuse: 'unclear_date' }
-      if (Date.parse(want) !== Date.parse(iso)) {
-        return { echo: { kind, label: `I read the new time as ${warsaw(want)}, and that is not what I was about to use, so I did nothing. Say the day and time again.`, state: 'failed', undo: false, target }, refuse: 'date_mismatch' }
+      // at the proposal the SERVER resolves the destination instant from his words (GRAMMAR.md 2) and the
+      // planned instant must equal it exactly; at the commit (round 19: every draft write is held) the
+      // confirmed instant itself is used, re-checked against the card's confirmation (confirmMatches)
+      let want = iso
+      const committing = (act._confirm as Confirmation | undefined)?.v === 3
+      if (!committing) {
+        const dc = parseDestination(ctx.text, warsawDay(new Date().toISOString()))
+        if (!dc.ok) return { echo: { kind, label: sayItAs('date'), state: 'failed', undo: false, target }, refuse: dc.code }
+        // defaults only after a full parse: his time, else the draft's current time, else 10:45
+        const hhmm = dc.time ?? (d!.scheduled_at ? warsawClock(d!.scheduled_at) : '10:45')
+        const w0 = warsawToIso(`${dc.date} ${hhmm}`)
+        if (!w0) return { echo: { kind, label: sayItAs('date'), state: 'failed', undo: false, target }, refuse: 'unclear_date' }
+        if (Date.parse(w0) !== Date.parse(iso)) {
+          return { echo: { kind, label: `I read the new time as ${warsaw(w0)}, and that is not what I was about to use, so I did nothing. Say the day and time again.`, state: 'failed', undo: false, target }, refuse: 'date_mismatch' }
+        }
+        want = w0
       }
-      const id = d!.id, prev = d!.scheduled_at
+      const id = d!.id
       return {
         ...base,
-        // immediate (the locked split): date runs at once through desk_set_date, with an exact server undo
-        echo: { kind, label: `Moved (ref ${ctx.refOf?.(id) ?? draftRef(id)}) "${d!.first_line}" (${prev ? warsaw(prev) : 'no date'}) to ${warsaw(iso)}${dc.note ? `. ${dc.note}` : ''}`, state: 'done', undo: true, target },
-        describe: `date ${qq} for ${String(act.at)} Warsaw time (${warsaw(iso)})`,
-        command: `move ${qq} to ${String(act.at)}`,
-        run: async (actionId) => {
-          const w = await setDate(ctx, actionId, d!, want)
+        // held (round 19): runs only on his Do it now tap, through desk_set_date with its exact server undo
+        echo: { kind, label: `Moving ${q}`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
+        describe: `date ${qq} for ${String(act.at ?? warsaw(iso))} Warsaw time (${warsaw(iso)})`,
+        command: `move ${qq} to ${warsaw(iso)}`,
+        run: async (actionId, claim) => {
+          const w = await setDate(ctx, actionId, claim, d!, want)
           return { result: w.rpc, undoInDb: true,
             detail: w.applied && Date.parse(w.applied) !== Date.parse(iso) ? `The calendar stored ${warsaw(w.applied)}.` : undefined }
         },
@@ -655,41 +666,48 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
       if (d!.status === 'published') return { echo: { kind, label: `${q} is already published.`, state: 'failed', undo: false, target }, refuse: 'published' }
       const queue = ctx.brief.queueByDraft.get(id)
       const reason = (c.reason as string | null | undefined) ?? null
-      if (d!.status === 'scheduled') {
-        if (kind === 'pull' && !queue) {
+      // round 19 #3: the queue is checked FIRST. Remove date on a draft with a live queue row is a pull, which
+      // needs the exact Next row; without one it is refused.
+      const queued = (d!.queue_ids?.length ?? 0) > 0   // the SQL re-checks the queue under the lock
+      const asPull = kind === 'pull' || queued
+      if (asPull && (!queue || d!.status !== 'scheduled')) {
+        if (kind === 'pull' && !queued && d!.status === 'scheduled') {
           // a pull acts on the exact Next row only (Sol r4 #4); without one it is the calendar's Remove date, asked for as such
           return { echo: { kind: 'pull', label: `${q} has no queued copy I can pull, so I did nothing.`, state: 'failed', undo: false, target }, refuse: 'no_queue_row',
             chips: [{ label: 'Remove the date', send: `remove the date from "${d!.first_line}"` }] }
         }
+        return { echo: { kind: 'pull', label: `${q} has a queued copy, but not one I can pull exactly, so I did nothing. Move it in the calendar.`, state: 'failed', undo: false, target }, refuse: 'no_queue_row' }
+      }
+      if (asPull || d!.status === 'scheduled') {
         // Pull: the queued copy is cancelled and the draft goes back to Review. No undo exists in the app.
         return {
           ...base,
           echo: { kind: 'pull', label: `Taking ${q} off the schedule`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
-          describe: kind === 'pull'
+          describe: asPull
             ? `take ${qq} off the schedule (it is scheduled for ${warsaw(prev)}; its queued copy for ${warsaw(queue!.slot_at)} is cancelled)${reason ? `, reason: "${reason}"` : ''}`
             : `remove the date from ${qq}, which takes it off the schedule (it is scheduled for ${warsaw(prev)})`,
           command: `pull ${qq} off the schedule`,
           run: async (actionId, claim) => {
             // the exact queue set (and for a pull the exact Next row) it was authorized on, checked again
             // under the publisher's locks before the app's own pull runs (Sol r4 #4, r5 B2)
-            if (kind === 'pull' && !queue) throw new Error('no_queue_row')
+            if (asPull && !queue) throw new Error('no_queue_row')
             if (!Array.isArray(d!.queue_ids)) throw new Error('changed')
             return { result: await deskWrite(ctx, actionId, claim, 'desk_pull', {
               p_draft: id, p_expected_updated_at: d!.updated_at ?? null, p_queue_ids: d!.queue_ids,
-              p_next_queue: kind === 'pull' ? queue!.queue_id : null, p_next_slot: kind === 'pull' ? queue!.slot_at : null,
-              p_reason: kind === 'pull' ? reason : null, p_expected_scheduled_at: sourceAt(act, d!),
+              p_next_queue: asPull ? queue!.queue_id : null, p_next_slot: asPull ? queue!.slot_at : null,
+              p_reason: asPull ? reason : null, p_expected_scheduled_at: sourceAt(act, d!),
             }) }
           },
         }
       }
-      if (d!.queue_ids?.length) return { echo: { kind: 'undate', label: IN_QUEUE, state: 'failed', undo: false, target }, refuse: 'in_queue' }
       return {
         ...base,
-        echo: { kind: 'undate', label: `Removed the date (ref ${ctx.refOf?.(id) ?? draftRef(id)}) from "${d!.first_line}" (was ${warsaw(prev)})`, state: 'done', undo: true, target },
+        // held (round 19), with its exact server undo after the commit
+        echo: { kind: 'undate', label: `Removing the date from ${q}`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
         describe: `remove the date from ${qq} (now ${warsaw(prev)})`,
         command: `remove the date from ${qq}`,
-        run: async (actionId) => {
-          const w = await setDate(ctx, actionId, d!, null)
+        run: async (actionId, claim) => {
+          const w = await setDate(ctx, actionId, claim, d!, null)
           return { result: w.rpc, undoInDb: true }
         },
       }
@@ -763,12 +781,13 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
       if (d!.queue_ids?.length) return { echo: { kind, label: IN_QUEUE, state: 'failed', undo: false, target }, refuse: 'in_queue' }
       return {
         ...base,
-        echo: { kind, label: `Added your photo (ref ${ctx.refOf?.(id) ?? draftRef(id)}) to "${d!.first_line}" (${d!.scheduled_at ? warsaw(d!.scheduled_at) : 'no date'})`, state: 'done', undo: true, target },
+        // held (round 19), with its exact server undo after the commit
+        echo: { kind, label: `Adding your photo to ${q}`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
         describe: `attach the photo he sent to ${qq}`,
         command: `attach this photo to ${qq}`,
-        run: async (actionId) => {
-          // service role only (round 14 #4): the SQL acts for the owner of this action row
-          const { data, error } = await ctx.svc.rpc('desk_set_photos', { p_action: actionId, p_draft: id, p_expected_updated_at: d!.updated_at ?? null, p_expected_status: d!.status, p_add_url: att.url, p_expected_scheduled_at: d!.scheduled_at ?? null })
+        run: async (actionId, claim) => {
+          // service role only (round 14 #4): the SQL acts for the owner of this action row and this claim
+          const { data, error } = await ctx.svc.rpc('desk_set_photos', { p_action: actionId, p_claim: claim ?? null, p_draft: id, p_expected_updated_at: d!.updated_at ?? null, p_expected_status: d!.status, p_add_url: att.url, p_expected_scheduled_at: d!.scheduled_at ?? null })
           if (error) throw new Error(lockCode(error) ? 'changed' : 'write_failed')
           const w = (data ?? {}) as { ok?: boolean; error?: string; before_image?: unknown; applied_image?: unknown; rpc?: unknown }
           if (w.ok !== true) throw new Error(String(w.error ?? 'refused'))
@@ -1064,8 +1083,8 @@ export class QueueReadError extends Error { constructor() { super('queue_read_fa
 
 /** Date write through desk_set_date (round 14): lock, version check, empty live queue, app setter, and the
  * whole-column before/applied images stored on the action row itself, in one transaction. */
-async function setDate(ctx: Ctx, actionId: string, d: Draft, iso: string | null) {
-  const { data, error } = await ctx.svc.rpc('desk_set_date', { p_action: actionId, p_draft: d.id, p_expected_updated_at: d.updated_at ?? null, p_expected_status: d.status, p_at: iso, p_expected_scheduled_at: d.scheduled_at ?? null })
+async function setDate(ctx: Ctx, actionId: string, claim: string | undefined, d: Draft, iso: string | null) {
+  const { data, error } = await ctx.svc.rpc('desk_set_date', { p_action: actionId, p_claim: claim ?? null, p_draft: d.id, p_expected_updated_at: d.updated_at ?? null, p_expected_status: d.status, p_at: iso, p_expected_scheduled_at: d.scheduled_at ?? null })
   if (error) throw new Error(lockCode(error) ? 'changed' : 'write_failed')
   const w = (data ?? {}) as { ok?: boolean; error?: string; before?: string | null; applied?: string | null; rpc?: unknown }
   if (w.ok !== true) throw new Error(String(w.error ?? 'refused'))

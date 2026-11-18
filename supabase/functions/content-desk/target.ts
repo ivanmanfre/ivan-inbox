@@ -73,12 +73,13 @@ const DAY_PHRASE = new RegExp(`(?:\\b(?:to|on|for|at|until|from)\\s+(?:the\\s+)?
  * direction also goes (the proposed note's own span, "make it", "but" ...). Punctuation inside a quoted
  * opener never counts as a cut.
  */
-export function referencePart(text: string, kind?: string, note?: unknown, destSpan?: { at: number; end: number } | null): string {
+export function referencePart(text: string, kind?: string, note?: unknown, destSpan?: { at: number; end: number } | null, uncut = false): string {
   let t = text
   if (kind === 'date' && destSpan) t = text.slice(0, destSpan.at) + ' ' + text.slice(destSpan.end)
   t = t.replace(verbHead(kind), '')
   // GRAMMAR.md 1 T2 (d): a trailing clause after the first comma or semicolon outside quotes; nothing else
   void note
+  if (uncut) return t
   const m = maskQuotes(t).match(/,|;/)
   if (m && m.index != null) t = t.slice(0, m.index)
   return t
@@ -114,10 +115,11 @@ export function sourceDays(ref: string, today?: string): { weekdays: string[]; d
  * references, so these are refused with chips, never resolved.
  */
 export function positional(ref: string): boolean {
-  const t = maskQuotes(ref).trim().toLowerCase()
-  return /^(?:the\s+)?(?:number\s+|no\.?\s*|#)?\d{1,2}(?:st|nd|rd|th)?(?:\s+(?:one|post|draft))?(?=$|[\s,.!?])/.test(t)
-    || /^(?:the\s+)?(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|last|previous|other)(?:\s+(?:one|post|draft))?(?=$|[\s,.!?])/.test(t)
-    || /(?:^|\s)#\d{1,2}\b/.test(t)
+  // round 19 #5: only a STANDALONE positional reference ("#2", "number 2", "the second one", "2nd" alone);
+  // "approve 40 minute queue" is an opener match, never a position
+  const t = maskQuotes(ref).trim().toLowerCase().replace(/[?!.]+$/, '').trim()
+  return /^(?:the\s+)?(?:number\s+|no\.?\s*|#)?\d{1,2}(?:st|nd|rd|th)?(?:\s+(?:one|post|draft))?$/.test(t)
+    || /^(?:the\s+)?(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|last|previous|other)(?:\s+(?:one|post|draft))?$/.test(t)
 }
 
 // words that only point at "a post" and never identify one
@@ -235,6 +237,8 @@ export function parseDestination(text: string, today: string): Destination {
   const bad = { ok: false as const, code: 'unclear_date', label: `I could not read the date: "${span}".` }
   // one day and one time only: any date-like token after the destination ("or 10", "and monday") means nothing is done
   const after = masked.slice(end)
+  // round 19 #6: the destination ends the message: a dangling ':' or a trailing clause means no write
+  if (!/^[\s.!?]*$/.test(after)) return { ok: false, code: 'unclear_date', label: `I could not read the date: "${text.slice(r.at).trim()}".` }
   if (/\d/.test(after) || new RegExp(`\\b(?:${WEEKDAY_WORD}|today|tonight|tomorrow|${MONTH_WORD}|noon|midday)\\b`, 'i').test(after)) {
     return { ok: false, code: 'unclear_date', label: `I could not read the date: "${text.slice(r.at).trim()}".` }
   }
@@ -255,9 +259,10 @@ export function parseDestination(text: string, today: string): Destination {
     const d = +(g.d1 ?? g.d2), mo = monthNo(g.m1 ?? g.m2), yGiven = g.y1 ?? g.y2
     if (yGiven) date = validDate(+yGiven, mo, d)   // a year in the text is used as given
     else {
-      const y = +today.slice(0, 4)
-      date = validDate(y, mo, d)
-      if (date && date < today) date = validDate(y + 1, mo, d)
+      // the next occurrence on or after today; a yearless 29 February is the next leap year's (round 19 #5)
+      const y0 = +today.slice(0, 4)
+      date = null
+      for (let y = y0; y <= y0 + 8 && !date; y++) { const c = validDate(y, mo, d); if (c && c >= today) date = c }
     }
     if (!date) return bad
     if (g.wd1) {
@@ -294,7 +299,7 @@ function dayMatches(day: string, named: { weekdays: string[]; dates: string[] },
   return named.dates.some((d) => d.length === 5 ? day.slice(5) === d : day === d)
 }
 
-export type IdResult = { ids: string[]; how: 'words' | 'day' | 'none'; rivals: string[]; why?: 'positional' | 'needs_words' | 'no_words' }
+export type IdResult = { ids: string[]; how: 'words' | 'day' | 'none'; rivals: string[]; why?: 'positional' | 'needs_words' | 'no_words' | 'no_verb'; tokens?: string[] }
 
 /** The tokens a reference must find in an opener: every word left after the verb, destination and frame words. */
 export function refTokens(ref: string): string[] {
@@ -313,24 +318,27 @@ export function hasAll(firstLine: string, tokens: string[]): boolean {
  * so the caller refuses it as itself (never swapped); zero or several act on none, with chips.
  */
 export function identify(text: string, cands: (IdDraft & { ok?: boolean })[], opts: { today?: string; kind?: string; note?: unknown; destSpan?: { at: number; end: number } | null } = {}): IdResult {
+  // round 19 #6: the message must start with the proposed kind's own verb phrase
+  if (opts.kind && KIND_VERB[opts.kind] && !verbHead(opts.kind).test(text)) return { ids: [], how: 'none', rivals: [], why: 'no_verb' }
   const ref = referencePart(text, opts.kind, opts.note, opts.destSpan)
   // a positional selector never resolves: there are no numbered references
   if (positional(ref)) return { ids: [], how: 'none', rivals: [], why: 'positional' }
   const onNamedDays = () => { const n = sourceDays(ref, opts.today); return cands.filter((c) => dayMatches(c.day, n, opts.today)).map((c) => c.id) }
-  if (justADay(ref)) {
+  // T3 is checked on the FULL reference, before the trailing-clause cut (round 19 #6)
+  if (justADay(referencePart(text, opts.kind, opts.note, opts.destSpan, true))) {
     // day-only identity: held kinds only; an immediate kind gets chips and must name words
     if (!DAY_ONLY_KINDS.has(opts.kind ?? '')) return { ids: [], how: 'none', rivals: onNamedDays(), why: 'needs_words' }
     // GRAMMAR.md 1 T3: exactly one live ELIGIBLE draft dated that day (a single ineligible one is refused as itself)
     const onDay = onNamedDays()
     const ok = onDay.filter((id) => cands.find((c) => c.id === id)?.ok !== false)
     const ids = ok.length ? ok : onDay
-    return ids.length ? { ids, how: 'day', rivals: [] } : { ids: [], how: 'none', rivals: [] }
+    return ids.length ? { ids, how: 'day', rivals: [], tokens: [] } : { ids: [], how: 'none', rivals: [] }
   }
   const tokens = refTokens(ref)
   if (!tokens.length) return { ids: [], how: 'none', rivals: [], why: 'no_words' }
   const matches = cands.filter((c) => hasAll(c.first_line, tokens))
   const eligible = matches.filter((c) => c.ok !== false)
-  if (eligible.length >= 1) return { ids: eligible.map((c) => c.id), how: 'words', rivals: matches.filter((c) => c.ok === false).map((c) => c.id) }
+  if (eligible.length >= 1) return { ids: eligible.map((c) => c.id), how: 'words', rivals: matches.filter((c) => c.ok === false).map((c) => c.id), tokens }
   if (matches.length) return { ids: matches.map((c) => c.id), how: 'words', rivals: [] }
   // no draft holds every token: chips for the drafts that hold the most of them (never acted on)
   const scored = cands.map((c) => { const w = new Set(words(c.first_line)); return { c, n: tokens.filter((t) => w.has(t)).length } }).filter((x) => x.n > 0)

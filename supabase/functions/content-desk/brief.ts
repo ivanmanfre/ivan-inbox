@@ -15,6 +15,7 @@ export type Draft = {
   slot_kind: string | null; selling: boolean; chars: number; created_at: string; fixture: string | null
   updated_at?: string | null  // set only on a live row read (actions.ts loadLive), never from the brief
   queue_ids?: string[]        // the live queue set (pending/queued_v2/posting ids, sorted); live row read only
+  queued?: boolean            // the candidate read says it has a live queue row (desk_live_drafts, round 19)
 }
 export type QueueRow = { queue_id: string; draft_id: string; slot_at: string; origin: string; first_line: string }
 export type CallLine = { id: string; ingested_at: string; status: string; topic: string; said: string; when: string | null; belief: string | null; vehicle: string | null; score: number | null; draft_id: string | null }

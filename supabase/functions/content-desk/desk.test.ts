@@ -277,13 +277,13 @@ Deno.test('r4#3 + r14 #3/#4 date and photo: service role, bound to the action ro
   const ctx = { brief: r, attachments: [{ kind: 'photo', url: 'https://img.test/a.jpg' }], text: 'move the snow in the park one to 9 march 2027 at 10:45', env: () => undefined, userDb: forbidden, svc } as never
   const h = r.handleOf.get(ID1)!
   const pd = await plan(ctx, { kind: 'date', draft: h, line: 'Snow in the park', at: '2027-03-09 10:45' })
-  const rd = await pd.run!('A1')
-  assertEquals(calls[0], ['desk_set_date', { p_action: 'A1', p_draft: ID1, p_expected_updated_at: d.updated_at, p_expected_status: 'review', p_at: '2027-03-09T09:45:00.000Z', p_expected_scheduled_at: null }])
+  const rd = await pd.run!('A1', 'C1')
+  assertEquals(calls[0], ['desk_set_date', { p_action: 'A1', p_claim: 'C1', p_draft: ID1, p_expected_updated_at: d.updated_at, p_expected_status: 'review', p_at: '2027-03-09T09:45:00.000Z', p_expected_scheduled_at: null }])
   // no caller-built images: the undo lives on the action row, written by the SQL in the same transaction
   assertEquals(rd.undo, undefined); assertEquals(rd.undoInDb, true)
   const pp = await plan(ctx, { kind: 'photo_attach', draft: h, line: 'Snow in the park', photo: 1 })
-  const rp = await pp.run!('A2')
-  assertEquals(calls[1], ['desk_set_photos', { p_action: 'A2', p_draft: ID1, p_expected_updated_at: d.updated_at, p_expected_status: 'review', p_add_url: 'https://img.test/a.jpg', p_expected_scheduled_at: null }])
+  const rp = await pp.run!('A2', 'C2')
+  assertEquals(calls[1], ['desk_set_photos', { p_action: 'A2', p_claim: 'C2', p_draft: ID1, p_expected_updated_at: d.updated_at, p_expected_status: 'review', p_add_url: 'https://img.test/a.jpg', p_expected_scheduled_at: null }])
   assertEquals(rp.undo, undefined); assertEquals(rp.undoInDb, true)
 })
 
@@ -294,8 +294,9 @@ Deno.test('r14 #3: an immediate kind on a draft with a live queue row is refused
   const h = r.handleOf.get(ID1)!
   for (const a of [{ kind: 'date', at: '2027-03-09 10:45' }, { kind: 'undate' }, { kind: 'photo_attach', photo: 1 }]) {
     const p = await plan(ctx, { ...a, draft: h, line: 'Snow in the park' })
-    assertEquals(p.refuse, 'in_queue', a.kind); assertEquals(p.run, undefined)
-    assertEquals(p.echo.label, 'This one is already in the queue. Move it in the calendar.')
+    // round 19 #3: a remove date on a queued draft is a pull, which needs the exact Next row (none here)
+    assertEquals(p.refuse, a.kind === 'undate' ? 'no_queue_row' : 'in_queue', a.kind); assertEquals(p.run, undefined)
+    if (a.kind !== 'undate') assertEquals(p.echo.label, 'This one is already in the queue. Move it in the calendar.')
   }
 })
 
@@ -923,7 +924,7 @@ Deno.test('round 16 #1+2: day-only identity is for held kinds and an exact day p
     { id: 'b', first_line: 'A DM that got a reply', day: '2026-11-20' },
   ]
   const t = { today: '2026-11-18' }
-  for (const k of ['pull', 'approve', 'delete']) assertEquals(identify("tomorrow's post", ds, { ...t, kind: k }).ids, ['a'], k)
+  for (const k of ['pull', 'approve', 'delete']) assertEquals(identify(`${k} tomorrow's post`, ds, { ...t, kind: k }).ids, ['a'], k)
   for (const [k, x] of [['undate', "remove the date from tomorrow's post"], ['photo_attach', "attach this photo to tomorrow's post"]]) {
     const r = identify(x, ds, { ...t, kind: k })
     assertEquals(r.ids, [], k); assertEquals(r.why, 'needs_words', k)
@@ -1003,10 +1004,11 @@ Deno.test('round 11/12 core: approve, delete, pull and redo held; date and photo
     const p = await plan(ctx, { ...a, draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
     assertEquals(p.echo.state, 'held', a.kind)
   }
+  // round 19: every draft write is held (GRAMMAR.md 3), with its exact Undo after the commit
   for (const a of [{ kind: 'date', at: '2027-03-09 10:45' }, { kind: 'photo_attach', photo: 1 }]) {
     const p = await plan(ctx, { ...a, draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
-    assertEquals(p.echo.state, 'done', a.kind); assertEquals(p.echo.undo, true)
-    assert(p.echo.label.includes('Snow in the park this morning') && p.echo.label.includes('(ref aaaaaaaa)'), p.echo.label)
+    assertEquals(p.echo.state, 'held', a.kind); assertEquals(p.echo.undo, true)
+    assert(p.echo.label.includes('Snow in the park this morning'), p.echo.label)   // the card line (proposedLine) adds the ref and the source date
   }
   const pd = await plan(ctx, { kind: 'date', at: '2027-03-09 10:45', draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
   const j = journalArgs({ kind: 'date', at: '2027-03-09 10:45' }, pd, null, {}, '')
@@ -1037,7 +1039,7 @@ Deno.test('round 12 #1: a commit re-checks the source date it showed', async () 
 })
 
 Deno.test('round 12 #2: the v2 confirmation must match the live row and the re-planned args', () => {
-  const c = { v: 2 as const, draft_id: ID1, revision: 'U1', source_at: '2026-11-26T09:45:00Z', args: { at: '2027-03-09T09:45:00.000Z' } }
+  const c = { v: 3 as const, draft_id: ID1, revision: 'U1', source_at: '2026-11-26T09:45:00Z', args: { at: '2027-03-09T09:45:00.000Z' }, proof: { grammar: 3 as const, how: 'words', tokens: ['snow'] } }
   const live = { id: ID1, updated_at: 'U1', scheduled_at: '2026-11-26T09:45:00.000Z' }
   assert(confirmMatches(c, live, { at: '2027-03-09T09:45:00.000Z' }))
   assert(!confirmMatches(c, { ...live, scheduled_at: '2026-11-27T09:45:00Z' }, { at: '2027-03-09T09:45:00.000Z' }))
@@ -1045,6 +1047,8 @@ Deno.test('round 12 #2: the v2 confirmation must match the live row and the re-p
   assert(!confirmMatches(c, live, { at: '2027-03-10T09:45:00.000Z' }))
   assert(!confirmMatches(undefined, live, {}))
   assert(!confirmMatches({ ...c, v: 1 } as never, live, c.args))
+  assert(!confirmMatches({ ...c, v: 2 } as never, live, c.args))                 // pre-v3: refused (round 19)
+  assert(!confirmMatches({ ...c, proof: undefined } as never, live, c.args))     // no grammar proof: refused
 })
 
 Deno.test('round 12 #4: the target phrase drops verb, destination and redo direction', () => {
@@ -1112,7 +1116,7 @@ Deno.test('round 15 #2: the date action does nothing unless the planned instant 
   const base = { brief: r, attachments: [], env: () => undefined, userDb: forbidden, svc: forbidden }
   const h = r.handleOf.get(ID1)!
   const ok = await plan({ ...base, text: 'move the snow one to 9 march 2027' } as never, { kind: 'date', draft: h, line: 'Snow in the park', at: '2027-03-09 10:45' })
-  assertEquals(ok.echo.state, 'done')
+  assertEquals(ok.echo.state, 'held')   // round 19: held
   const off = await plan({ ...base, text: 'move the snow one to 9 march 2027' } as never, { kind: 'date', draft: h, line: 'Snow in the park', at: '2027-03-09 11:00' })
   assertEquals(off.refuse, 'date_mismatch'); assertEquals(off.run, undefined)
   const unclear = await plan({ ...base, text: 'move the snow one somewhere' } as never, { kind: 'date', draft: h, line: 'Snow in the park', at: '2027-03-09 10:45' })
@@ -1179,4 +1183,32 @@ Deno.test('round 17 B + D: the destination grammar consumes the whole span; quot
   assertEquals(identify('approve the \u2018Friday\u2019s cold brew\u2019 one', fx.map((x) => ({ ...x, first_line: 'Friday\u2019s cold brew line was out the door' })), { today: '2026-11-18', kind: 'approve' }).ids, ['f'])
   // the destination preposition is read on the original text
   const s1 = 'move the cold brew one to friday'; const d1 = P(s1); assert(d1.ok && s1.slice(d1.span.at, d1.span.end) === 'to friday')
+})
+
+// ---- Round 19 (made-up data only) ------------------------------------------------
+Deno.test('round 19: standalone positional only; leading verb required; T3 on the full reference; nothing after the destination; 29 Feb', () => {
+  const t = { today: '2026-11-18' }
+  // "approve 40 minute queue" is an opener match, not a position
+  assertEquals(identify('approve 40 minute queue', FX, { ...t, kind: 'approve' }).ids, ['cold'])
+  assertEquals(identify('approve 2nd', FX, { ...t, kind: 'approve' }).why, 'positional')
+  // the message must start with the proposed kind's verb
+  assertEquals(identify('the cold brew one', FX, { ...t, kind: 'approve' }).why, 'no_verb')
+  assertEquals(identify('move the cold brew one', FX, { ...t, kind: 'approve' }).why, 'no_verb')
+  // T3 is checked on the full reference: a trailing clause makes it not a day-only reference
+  const ds = [{ id: 'a', first_line: 'Snow in the park this morning', day: '2026-11-19' }]
+  assertEquals(identify("pull tomorrow's post", ds, { ...t, kind: 'pull' }).ids, ['a'])
+  assertEquals(identify("pull tomorrow's post, wrong week", ds, { ...t, kind: 'pull' }).ids.length === 1, false)
+  // a dangling ':' or a trailing clause after the destination: no write
+  for (const x of ['move it to friday at 9:', 'move it to friday please', 'move it to friday, it fits better']) assert(!parseDestination(x, t.today).ok, x)
+  assert(parseDestination('move it to friday.', t.today).ok)
+  // a yearless 29 February is the next leap year's
+  const f = parseDestination('move it to 29 feb', t.today); assert(f.ok && f.date === '2028-02-29', JSON.stringify(f))
+})
+
+Deno.test('round 19 #5: queue eligibility counts before uniqueness for a move or a photo', async () => {
+  const { eligible } = await import('./actions.ts')
+  assert(!eligible('date', { status: 'review', scheduled_at: null, queued: true }))
+  assert(!eligible('photo_attach', { status: 'scheduled', scheduled_at: '2026-11-26T09:45:00Z', queued: true }))
+  assert(eligible('date', { status: 'review', scheduled_at: null, queued: false }))
+  assert(eligible('undate', { status: 'scheduled', scheduled_at: '2026-11-26T09:45:00Z', queued: true }))   // a remove date there is a pull
 })
