@@ -269,7 +269,13 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           timings.model_ms += m2.ms
           parsed = parse(m2.text)
         }
-        const reply = parsed.reply || 'Done.'
+        if (!parsed.reply && !parsed.actions.length && !parsed.reads.length) {
+          // an empty answer is never shown as an answer: ask once more, buffered
+          const again = await askDesk(prompt)
+          timings.model_ms += again.ms; timings.retried = 1
+          parsed = parse(again.text)
+        }
+        const reply = parsed.reply || (parsed.actions.length ? 'On it.' : 'I could not put an answer together. Send it again?')
         if (!streamed) {
           timings.ttft_ms = Date.now() - t0
           for (let i = 0; i < reply.length; i += 400) emit('delta', { text: reply.slice(i, i + 400) })

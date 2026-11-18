@@ -36,9 +36,9 @@ export function plain(s: string): string {
 
 export function parse(text: string): Parsed {
   let reply = block(text, 'reply')
-  if (reply == null) {
-    // No reply tag: take everything outside the other blocks as the reply.
-    reply = text.replace(/<(actions|reads|chips)>[\s\S]*?<\/\1>/gi, '').trim()
+  if (!reply) {
+    // No (or an empty, or an unclosed) reply tag: take everything outside the other blocks.
+    reply = text.replace(/<(actions|reads|chips)>[\s\S]*?<\/\1>/gi, '').replace(/<\/?reply>/gi, '').trim()
   }
   const actions = jsonArray(block(text, 'actions'))
     .filter((a) => typeof a.kind === 'string') as Act[]

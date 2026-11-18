@@ -42,7 +42,7 @@ Reads (only when the brief truly lacks it):
 - read_posts {q}  search his older published posts (last 120 days) by words
 When you read, leave <reply></reply> empty in that answer: you get the result and answer then.
 
-Output format, exactly:
+Output format, exactly. Your very first characters are <reply>; write nothing before it and never repeat the answer outside it:
 <reply>
 your answer to Ivan
 </reply>

@@ -104,3 +104,9 @@ Deno.test('triggers: Monday plan once, call line quoted verbatim, cap 5 a week, 
   assertEquals(planTriggers({ ...input, now: '2026-11-16T22:30:00Z' }).length, 0)
   assertEquals(warsawMonday('2026-11-22T22:59:00Z'), '2026-11-16') // Sun 23:59 Warsaw
 })
+
+Deno.test('parse: an answer written outside or before the tags still becomes the reply', () => {
+  assertEquals(parse('Two posts go out.\n<chips>[]</chips>').reply, 'Two posts go out.')
+  assertEquals(parse('<reply>\n</reply>Two posts go out.').reply, 'Two posts go out.')
+  assertEquals(parse('<reply>Two posts go out.').reply, 'Two posts go out.')
+})
