@@ -4,7 +4,10 @@
    Every class is dk-. */
 .dk{display:flex;flex-direction:column;min-height:0;background:var(--bg);color:var(--t1);font:400 15px/1.5 var(--f);-webkit-font-smoothing:antialiased}
 .dk-phone{position:fixed;left:0;right:0;top:0;bottom:var(--dk-kb,0px);z-index:62;padding-top:env(safe-area-inset-top,0px)}
-.dk-desktop{height:calc(100dvh - 150px);min-height:420px;max-width:780px;margin:0 auto;width:100%;border:1px solid var(--line);border-radius:var(--ds-r4,20px);overflow:hidden}
+/* Desktop: no box. The page's own title names it; the conversation is one centred 760px column on the full
+   width (the scrollbar sits at the page edge), the composer under it at the window's bottom. */
+.dk-desktop{height:calc(100dvh - 150px);min-height:420px;width:100%;background:transparent;--dk-col:760px;--dk-pad:max(32px,calc((100% - var(--dk-col)) / 2))}
+.dk-desktop .dk-head{display:none}
 
 /* the mark: one ink tile, the desk's face in the head, the byline and the empty state */
 .dk-mark{flex:none;width:32px;height:32px;border-radius:10px;background:var(--t1);color:var(--bg);display:grid;place-items:center}
@@ -181,9 +184,22 @@
 .dk-spin{width:16px;height:16px;border-radius:50%;border:2px solid var(--seg);border-top-color:var(--t1);animation:dk-spin 1s linear infinite}
 @keyframes dk-spin{to{transform:rotate(360deg)}}
 
-@media (min-width:760px){
-  .dk-list{padding:12px 28px 24px}
-  .dk-starters{grid-template-columns:repeat(4,minmax(0,1fr))}
+.dk-desktop .dk-list{padding:8px var(--dk-pad) 28px}
+.dk-desktop .dk-comp{background:transparent;padding:4px var(--dk-pad) 16px}
+.dk-desktop .dk-suggest{margin:0 0 10px;padding:2px 0;flex-wrap:wrap;overflow:visible}
+.dk-desktop .dk-suggest button,.dk-desktop .dk-pill,.dk-desktop .dk-more{min-height:36px}
+.dk-desktop .dk-key{width:40px;height:40px}
+.dk-desktop .dk-me{max-width:70%}
+.dk-desktop .dk-hero{padding-top:12vh}
+.dk-desktop .dk-hero h2{font-size:32px}
+.dk-desktop .dk-starters{grid-template-columns:repeat(4,minmax(0,1fr))}
+.dk-desktop .dk-starters button{min-height:88px}
+.dk-desktop .dk-jump{right:calc(var(--dk-pad) - 56px)}
+.dk-desktop .dk-cards,.dk-desktop .dk-act,.dk-desktop .dk-t3{max-width:560px}
+@media (hover:hover){
+  .dk-pill:hover:not(:disabled),.dk-suggest button:hover,.dk-starters button:hover:not(:disabled),.dk-more:hover{background:var(--p2)}
+  .dk-go:hover:not(:disabled){background:var(--t2)}
+  .dk-headkey:hover,.dk-back:hover,.dk-key:hover:not(:disabled):not(.dk-send){background:var(--p2)}
 }
 @media (prefers-reduced-motion:reduce){
   .dk-typing i,.dk-spin,.dk-title small i,.dk-act-eye i,.dk-t3-s i,.dk-rec-dot{animation-duration:.01ms;animation-iteration-count:1}

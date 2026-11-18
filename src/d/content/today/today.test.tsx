@@ -80,14 +80,14 @@ beforeEach(() => {
 afterEach(() => { cleanup(); resetDecisionsForTest() })
 
 describe('the sliding post card', () => {
-  it('slides in on any screen with the post’s first two lines, Post · <day HH:MM> and Open, in the polite live region', async () => {
+  it('slides in on any screen with the post’s first line only, Post · <day HH:MM> and Open, in the polite live region', async () => {
     render(<Frame hash="#exp/d/home"><CardToast /></Frame>)
     await waitFor(() => expect(toastEl()).toBeTruthy())
     const t = toastEl()!
     expect(t.getAttribute('role')).toBe('status')
     expect(t.closest('[aria-live="polite"]')).toBeTruthy()
     expect(t.textContent).toContain('Kraków taught me one thing about pricing.')
-    expect(t.textContent).toContain('You charge for the result.')
+    expect(t.textContent).not.toContain('You charge for the result.')
     expect(t.textContent).not.toContain('A third line')
     expect(verb('card-post', t)!.textContent).toMatch(/^Post · (Mon|Tue|Wed|Thu|Fri) \d\d:\d\d$/)
     expect(verb('card-open', t)!.textContent).toBe('Open')
@@ -188,6 +188,33 @@ describe('the sliding post card', () => {
     expect(toastEl()).toBeNull()
     expect(lib.setCardState).not.toHaveBeenCalled()
     expect(lib.approveReviewDraft).not.toHaveBeenCalled()
+  })
+
+  it('once a day on this device: a new app open the same day does not slide it in again', async () => {
+    render(<Frame hash="#exp/d/home"><CardToast /></Frame>)
+    await waitFor(() => expect(toastEl()).toBeTruthy())
+    fireEvent.click(verb('toast-close')!)
+    cleanup()
+    // A new open: the module memory is gone, the day kept on the device is not.
+    resetTodayCardForTest()
+    const day = localStorage.getItem('ct-toast-day-v1')
+    expect(day).toBeTruthy()
+    render(<Frame hash="#exp/d/dms"><CardToast /></Frame>)
+    await act(async () => { await Promise.resolve() })
+    expect(toastEl()).toBeNull()
+  })
+
+  it('never covers the chat screens: on the desk or Claude it waits, then slides in on the next screen', async () => {
+    const { rerender } = render(<Frame hash="#exp/d/content/desk"><CardToast /></Frame>)
+    await act(async () => { await new Promise(r => setTimeout(r, 50)) })
+    expect(toastEl()).toBeNull()
+    rerender(<Frame hash="#exp/d/claude"><CardToast /></Frame>)
+    await act(async () => { await new Promise(r => setTimeout(r, 50)) })
+    expect(toastEl()).toBeNull()
+    rerender(<Frame hash="#exp/d/dms"><CardToast /></Frame>)
+    await waitFor(() => expect(toastEl()).toBeTruthy())
+    rerender(<Frame hash="#exp/d/content/desk"><CardToast /></Frame>)
+    await waitFor(() => expect(toastEl()).toBeNull())
   })
 
   it('a sideways swipe closes it too, without a write', async () => {

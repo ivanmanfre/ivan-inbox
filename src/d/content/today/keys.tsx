@@ -140,16 +140,19 @@ export const movesWords = (title: string, to: Date) => {
 export const checkWords = (n: number) => n > 0 ? `Check ${n} line${n === 1 ? '' : 's'}` : 'Check it'
 
 /** Two lines and two keys: the toast and Home. Plain props only (the toast draws it outside the confirm provider). */
-export function CardPeek({ body, keys, onOpen, onCheck, label }: {
+export function CardPeek({ body, keys, onOpen, onCheck, label, compact }: {
   body: string; keys: CardKeys; onOpen: () => void; onCheck: () => void
   /** Home names the block; the toast does not need to. */
   label?: string
+  /** The toast: an eyebrow, the first line only, small keys. */
+  compact?: boolean
 }) {
   const [l1, l2] = firstLines(body)
   return (
-    <div className="ct-peek" data-card-peek>
+    <div className={`ct-peek${compact ? ' ct-peek-c' : ''}`} data-card-peek>
       {label && <b className="ct-peek-l">{label}</b>}
-      <p className="ct-peek-t"><span className="ct-peek-1">{l1}</span>{l2 && <span className="ct-peek-2">{l2}</span>}</p>
+      {compact && <b className="ct-peek-l">Today's post</b>}
+      <p className="ct-peek-t"><span className="ct-peek-1">{l1}</span>{l2 && !compact && <span className="ct-peek-2">{l2}</span>}</p>
       <div className="ct-peek-k">
         {keys.check != null
           ? <Btn primary verb="card-check" onClick={onCheck}>{checkWords(keys.check)}</Btn>
@@ -158,7 +161,7 @@ export function CardPeek({ body, keys, onOpen, onCheck, label }: {
             {keys.slot ? postWords(keys.slot.at) : 'Post'}</Btn>}
         <Btn verb="card-open" onClick={onOpen}>Open</Btn>
       </div>
-      {keys.check == null && keys.moves && <p className="ct-peek-m" data-card-moves>{movesWords(keys.moves.title, keys.moves.to)}</p>}
+      {keys.check == null && keys.moves && !compact && <p className="ct-peek-m" data-card-moves>{movesWords(keys.moves.title, keys.moves.to)}</p>}
     </div>
   )
 }

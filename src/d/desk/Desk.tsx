@@ -25,7 +25,7 @@ const STARTERS = [
   'Any post ideas from my recent calls?',
   'How did my last post do?',
 ]
-// The starter row comes back above the composer once the desk has been quiet this long.
+// The starter row shows above the composer on a young desk, and again once it has been quiet this long.
 const QUIET_MS = 2 * 60 * 60 * 1000
 
 const ORIGIN_NOTE: Partial<Record<DeskMessage['origin'], string>> = { proactive: 'wrote first', t3: 'from T3' }
@@ -38,9 +38,19 @@ export function Desk({ layout, onBack }: { layout: 'phone' | 'desktop'; onBack?:
   const desk = useDesk()
   const root = useRef<HTMLElement>(null)
   useKeyboardInset(root)
+  // Desktop: the desk fills the page from under the tab row to the frame's bottom edge, measured, so the
+  // conversation scrolls and the composer stays at the bottom of the window.
+  useLayoutEffect(() => {
+    const el = root.current
+    if (layout !== 'desktop' || !el) return
+    const fit = () => { el.style.height = `${Math.max(420, window.innerHeight - el.getBoundingClientRect().top - 12)}px` }
+    fit()
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [layout])
   const last = desk.messages[desk.messages.length - 1]
   const quiet = !!last && !desk.busy && !last.meta.chips?.length && !last.meta.actions?.some(a => a.state === 'held')
-    && Date.now() - Date.parse(last.created_at) > QUIET_MS
+    && (desk.messages.length < 6 || Date.now() - Date.parse(last.created_at) > QUIET_MS)
   const status = desk.readFailed ? 'Offline, showing the saved copy' : desk.fromCache ? 'Saved copy, checking for new' : desk.busy ? 'Answering' : 'Knows your week, drafts and calls'
   return (
     <section ref={root} className={`dk dk-${layout}`} data-desk aria-label="Content desk">

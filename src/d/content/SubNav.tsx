@@ -62,7 +62,8 @@ export function SubNav({ on, attention = false, lane = 'ivan', section, v2 = fal
   const context = { lane }
   const [more, setMore] = useState(false)
   // The Content Desk's key (desk_config.desk_enabled): one link beside the ⋯, nothing else moves.
-  const desk = useDeskFlags().desk_enabled ? <a href={dHash('content', 'desk')} className={`dk-entry${on === 'desk' ? ' cn-on' : ''}`} data-verb="open-desk" aria-current={on === 'desk' ? 'page' : undefined}>Desk</a> : null
+  // A tab like the others (the open-tab pill glides to it), right after them.
+  const desk = useDeskFlags().desk_enabled ? <a href={dHash('content', 'desk')} className={on === 'desk' ? 'cn-on' : ''} data-sub="desk" data-verb="open-desk" aria-current={on === 'desk' ? 'page' : undefined}>Desk</a> : null
   const tabs = useRef<HTMLElement>(null)
   // Phone: the tab row scrolls sideways; the open tab is brought into view only when it is off-screen, and then
   // whole (left edge on the row's 20px gutter), so the row never opens on a half-cut tab (never the page: scrollLeft only).
@@ -116,8 +117,8 @@ export function SubNav({ on, attention = false, lane = 'ivan', section, v2 = fal
           {SUB_LABEL[s]}{bad && <b className="cv2-tabn" aria-label="X count could not be read">!</b>}{!bad && n !== undefined && <b className="cv2-tabn" aria-label={n == null ? 'counting' : `${n} waiting`}>{n == null ? '…' : n}</b>}
         </a>
       })}
-      <span className="cn-grow" />
       {desk}
+      <span className="cn-grow" />
       <button type="button" className="cn-more-key cv2-tabs-more" data-verb="content-more" aria-label="Sources, history and more" aria-expanded={more} onClick={() => setMore(true)}>⋯</button>
     </nav>
     {sheet}
@@ -127,8 +128,8 @@ export function SubNav({ on, attention = false, lane = 'ivan', section, v2 = fal
       {SUBS.map(s => <a key={s} href={dHash('content', s, context)} className={s === on ? 'cn-on' : ''} aria-current={s === on ? 'page' : undefined}>
         {SUB_LABEL[s]}{s === 'now' && attention && <i className="cn-attention" aria-label="Needs a tap" />}
       </a>)}
-      <span className="cn-grow" />
       {desk}
+      <span className="cn-grow" />
     </nav>
     <nav className="cn-planning" aria-label="Content planning">
       {PLANNING.map(p => {

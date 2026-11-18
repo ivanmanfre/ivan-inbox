@@ -11,6 +11,13 @@
 .ct-peek-m{margin:0;font-size:12.5px;line-height:1.4;color:var(--t2)}
 .d-phone .ct-peek-k .d-btn{min-height:44px;flex:1 1 auto;justify-content:center}
 
+/* The toast: small. One line of the post, keys at 36 px on the desktop and 44 px on the phone; the moves note stays on Home and Review. */
+.ct-peek-c{gap:7px}
+.ct-peek-c .ct-peek-l{font-size:11px;line-height:14px;letter-spacing:.1em}
+.ct-peek-c .ct-peek-1{-webkit-line-clamp:1;font-size:13.5px}
+.ct-peek-c .ct-peek-k .d-btn{min-height:36px}
+.d-phone .ct-peek-c .ct-peek-k .d-btn{min-height:44px;flex:0 1 auto}
+
 /* Home: above the seats, the same peek in a band. */
 .ct-home{padding:12px 16px;border-bottom:1px solid var(--line)}
 .d-desktop .ct-home{max-width:640px}
