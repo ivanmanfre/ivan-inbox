@@ -13,7 +13,7 @@
 // Flags (desk_config): desk_enabled, triggers_enabled, t3_enabled. `x-desk-eval: 1`
 // from the allowlisted user bypasses the off flags and stamps meta.test (the eval).
 
-import { createClient } from 'npm:@supabase/supabase-js@2'
+import { createClient } from 'npm:@supabase/supabase-js@2.119.0'   // pinned: 2.119.1's storage-js was missing from the bundler registry (11-18)
 import { render, applyVisibility, warsaw, type BriefJson, type Rendered } from './brief.ts'
 import { buildPrompt } from './prompt.ts'
 import { parse, shortParagraphs, oneText, sanitize, HandleStream, type Act } from './parse.ts'
