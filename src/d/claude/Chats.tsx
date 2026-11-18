@@ -62,7 +62,8 @@ export function Chats({ onPicked, list }: { onPicked: () => void; list: ReturnTy
       </label>
       {deskOn && !needle && (
         <a className="dk-pin" href={dHash('content', 'desk')} data-verb="open-desk">
-          <span><b>Content</b><small>Your content desk: the week, drafts, calls and ideas</small></span>
+          <span className="dk-pin-m" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M8 1.8l1.55 4.65L14.2 8l-4.65 1.55L8 14.2l-1.55-4.65L1.8 8l4.65-1.55z" /></svg></span>
+          <span><b>Content desk</b><small>Your week, drafts, calls and ideas</small></span>
         </a>
       )}
       {bot && !needle && (
