@@ -1039,7 +1039,7 @@ Deno.test('round 12 #1: a commit re-checks the source date it showed', async () 
 })
 
 Deno.test('round 12 #2: the v2 confirmation must match the live row and the re-planned args', () => {
-  const c = { v: 3 as const, draft_id: ID1, revision: 'U1', source_at: '2026-11-26T09:45:00Z', args: { at: '2027-03-09T09:45:00.000Z' }, proof: { grammar: 3 as const, how: 'words', tokens: ['snow'] } }
+  const c = { v: 4 as const, draft_id: ID1, revision: 'U1', source_at: '2026-11-26T09:45:00Z', args: { at: '2027-03-09T09:45:00.000Z' }, proof: { grammar: 4 as const, how: 'words', tokens: ['snow'] } }
   const live = { id: ID1, updated_at: 'U1', scheduled_at: '2026-11-26T09:45:00.000Z' }
   assert(confirmMatches(c, live, { at: '2027-03-09T09:45:00.000Z' }))
   assert(!confirmMatches(c, { ...live, scheduled_at: '2026-11-27T09:45:00Z' }, { at: '2027-03-09T09:45:00.000Z' }))
@@ -1048,6 +1048,7 @@ Deno.test('round 12 #2: the v2 confirmation must match the live row and the re-p
   assert(!confirmMatches(undefined, live, {}))
   assert(!confirmMatches({ ...c, v: 1 } as never, live, c.args))
   assert(!confirmMatches({ ...c, v: 2 } as never, live, c.args))                 // pre-v3: refused (round 19)
+  assert(!confirmMatches({ ...c, v: 3, proof: { ...c.proof, grammar: 3 } } as never, live, c.args))   // v3 (round 19 cards): refused (round 21)
   assert(!confirmMatches({ ...c, proof: undefined } as never, live, c.args))     // no grammar proof: refused
 })
 
@@ -1262,7 +1263,21 @@ Deno.test('round 20 #6: the suffix after the destination is read on the original
 })
 
 Deno.test('round 20: the confirmation compares the args independent of key order (jsonb reorders keys)', () => {
-  const c = { v: 3 as const, draft_id: ID1, revision: 'U1', source_at: null, args: { url: 'https://img.test/a.jpg', photo_n: 1, photo_id: 'abc123', photo_of: 1, photo_name: 'a.jpg' }, proof: { grammar: 3 as const, how: 'words', tokens: ['snow'] } }
+  const c = { v: 4 as const, draft_id: ID1, revision: 'U1', source_at: null, args: { url: 'https://img.test/a.jpg', photo_n: 1, photo_id: 'abc123', photo_of: 1, photo_name: 'a.jpg' }, proof: { grammar: 4 as const, how: 'words', tokens: ['snow'] } }
   assert(confirmMatches(c, { id: ID1, updated_at: 'U1', scheduled_at: null }, { url: 'https://img.test/a.jpg', photo_n: 1, photo_of: 1, photo_name: 'a.jpg', photo_id: 'abc123' }))
   assert(!confirmMatches(c, { id: ID1, updated_at: 'U1', scheduled_at: null }, { url: 'https://img.test/b.jpg', photo_n: 1, photo_of: 1, photo_name: 'a.jpg', photo_id: 'abc123' }))
+})
+
+Deno.test('round 21 #2: a converted remove date passes the SAVED Next slot to desk_pull at commit', async () => {
+  const saved = '2026-12-01T09:45:00.123456+00:00', live = '2026-12-01T09:45:00.123+00:00'
+  const d = { ...draft(ID1, 'Snow in the park this morning', { status: 'scheduled', scheduled_at: '2026-12-01T09:45:00Z', updated_at: 'U1' }), queue_ids: ['q-A'] }
+  const r = render(brief([d]))
+  const calls: [string, Record<string, unknown>][] = []
+  const svc = { rpc: (n: string, a: Record<string, unknown>) => { calls.push([n, a]); return Promise.resolve({ data: { ok: true }, error: null }) } }
+  const queueByDraft = new Map([[ID1, { queue_id: 'q-A', draft_id: ID1, slot_at: live, origin: 'own', first_line: d.first_line }]])
+  const act = { kind: 'undate', draft: r.handleOf.get(ID1)!, line: 'Snow in the park', _confirm: { v: 4 }, _snapshot: { next: { queue_id: 'q-A', slot_at: saved } } }
+  const p = await plan({ brief: { ...r, queueByDraft }, attachments: [], text: '', env: () => undefined, svc, userDb: forbidden } as never, act as never)
+  assertEquals(p.echo.kind, 'pull')
+  await p.run!('A1', 'C1')
+  assertEquals(calls[0][0], 'desk_pull'); assertEquals(calls[0][1].p_next_slot, saved); assertEquals(calls[0][1].p_next_queue, 'q-A')
 })

@@ -978,7 +978,8 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
     // A hold without the v2 confirmation (made before round 11) is cancelled, never run (Sol r11 #2).
     const conf = (a.args as { _confirm?: Confirmation } | null)?._confirm
     // GRAMMAR.md 3: a commit refuses any hold without the grammar proof v3; older holds are cancelled
-    if (conf?.v !== 3 || conf.proof?.grammar !== 3) { await expireHold(svc, a); return { ok: false, error: 'stale_hold' } }
+    // GRAMMAR.md 3 / round 21: a commit refuses and cancels any hold below v4 (grammar proof 4)
+    if (conf?.v !== 4 || conf.proof?.grammar !== 4) { await expireHold(svc, a); return { ok: false, error: 'stale_hold' } }
     const durable = await echoDurable(svc, a.message_id, actionId)
     if (durable === null) return { ok: false, error: 'read_failed' }
     if (!durable) return { ok: false, error: 'not_saved', detail: failText('not_saved') }

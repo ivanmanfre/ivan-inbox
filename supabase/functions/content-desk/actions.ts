@@ -89,9 +89,9 @@ export type Planned = {
 }
 
 /** Versioned confirmation payload stored with a held draft action (Sol r11 #2). */
-export type Confirmation = { v: 3; draft_id: string; revision: string | null; source_at: string | null; args: Record<string, unknown>
+export type Confirmation = { v: 4; draft_id: string; revision: string | null; source_at: string | null; args: Record<string, unknown>
   /** grammar proof v3 (GRAMMAR.md 3): how the target was found and the exact tokens or day that found it */
-  proof: { grammar: 3; how: string; tokens: string[]; at?: string | null } }
+  proof: { grammar: 4; how: string; tokens: string[]; at?: string | null } }
 
 /** A short distinct draft reference shown to Ivan: the first 6 hex of the draft UUID. */
 export const draftRef = (id: string) => id.replace(/-/g, '').slice(0, 8)
@@ -115,7 +115,8 @@ export function stableJson(v: unknown): string {
 
 /** Does the live row (and the re-planned args) still match what the card showed? */
 export function confirmMatches(c: Confirmation | undefined, live: { id: string; updated_at?: string | null; scheduled_at: string | null }, canon: Record<string, unknown> | undefined): boolean {
-  if (!c || c.v !== 3 || c.proof?.grammar !== 3) return false
+  // round 21: v4 / grammar proof 4 only (round-19 move cards had no year or offset and can never commit)
+  if (!c || c.v !== 4 || c.proof?.grammar !== 4) return false
   return c.draft_id === live.id && String(c.revision) === String(live.updated_at) && sameInstant(c.source_at, live.scheduled_at)
     && stableJson(c.args ?? {}) === stableJson(canon ?? {})
 }
@@ -502,8 +503,8 @@ export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: 
   // every draft-targeting chip, refusal follow-ups included, is emitted only if its FINAL text, resolved
   // with its own kind, returns this draft alone (Sol r11 #7, r12 #9)
   if (p.chips?.length) p.chips = p.chips.filter((c) => roundTrips(c.send, live!.d.id, all))
-  if (p.run) p.confirm = { v: 3, draft_id: live.d.id, revision: live.d.updated_at ?? null, source_at: live.d.scheduled_at ?? null, args: p.canon ?? {},
-    proof: { grammar: 3, how: res.how, tokens: res.tokens ?? [], ...(act.kind === 'date' ? { at: (p.canon?.at as string | null) ?? null } : {}) } }
+  if (p.run) p.confirm = { v: 4, draft_id: live.d.id, revision: live.d.updated_at ?? null, source_at: live.d.scheduled_at ?? null, args: p.canon ?? {},
+    proof: { grammar: 4, how: res.how, tokens: res.tokens ?? [], ...(act.kind === 'date' ? { at: (p.canon?.at as string | null) ?? null } : {}) } }
   // the verifier reads the resolved post's whole live opener and every rival opener with its day
   const dayText = (x: Draft) => (dayOf(x) === 'undated' ? 'undated' : `dated ${dayOf(x)}`)
   p.context = `Target post, found from his words, full first line: "${live.d.first_line}" (${dayText(live.d)}).` +
@@ -602,7 +603,7 @@ export function canonArgs(kind: string, act: Act, ctx: Pick<Ctx, 'text' | 'attac
 /** The source date to compare in SQL: the CONFIRMED one at commit (exact PostgreSQL text), the live one at proposal. */
 function sourceAt(act: Act, d: Draft): string | null {
   const c = act._confirm as Confirmation | undefined
-  return c && c.v === 3 ? c.source_at : (d.scheduled_at ?? null)
+  return c && c.v === 4 ? c.source_at : (d.scheduled_at ?? null)
 }
 
 async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
@@ -662,7 +663,7 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
       // planned instant must equal it exactly; at the commit (round 19: every draft write is held) the
       // confirmed instant itself is used, re-checked against the card's confirmation (confirmMatches)
       let want = iso
-      const committing = (act._confirm as Confirmation | undefined)?.v === 3
+      const committing = (act._confirm as Confirmation | undefined)?.v === 4
       if (!committing) {
         const dc = parseDestination(ctx.text, warsawDay(new Date().toISOString()))
         if (!dc.ok) return { echo: { kind, label: sayItAs('date'), state: 'failed', undo: false, target }, refuse: dc.code }
@@ -695,6 +696,8 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
       if (!prev) return { echo: { kind, label: `${q} has no date.`, state: 'failed', undo: false, target }, refuse: 'no_date' }
       if (d!.status === 'published') return { echo: { kind, label: `${q} is already published.`, state: 'failed', undo: false, target }, refuse: 'published' }
       const queue = ctx.brief.queueByDraft.get(id)
+      // at the commit, the Next row saved with the confirmed card (the journal's _snapshot)
+      const savedNext = (act._confirm ? (act._snapshot as Snapshot | undefined)?.next : null) ?? null
       const reason = (c.reason as string | null | undefined) ?? null
       // round 19 #3: the queue is checked FIRST. Remove date on a draft with a live queue row is a pull, which
       // needs the exact Next row; without one it is refused.
@@ -724,7 +727,9 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
             if (!Array.isArray(d!.queue_ids)) throw new Error('changed')
             return { result: await deskWrite(ctx, actionId, claim, 'desk_pull', {
               p_draft: id, p_expected_updated_at: d!.updated_at ?? null, p_queue_ids: d!.queue_ids,
-              p_next_queue: asPull ? queue!.queue_id : null, p_next_slot: asPull ? queue!.slot_at : null,
+              // round 21 #2: the SAVED Next row the card was confirmed on (its exact PostgreSQL text), compared
+              // at full precision by desk_pull under the lock; the live one only at the proposal
+              p_next_queue: asPull ? (savedNext?.queue_id ?? queue!.queue_id) : null, p_next_slot: asPull ? (savedNext?.slot_at ?? queue!.slot_at) : null,
               p_reason: asPull ? reason : null, p_expected_scheduled_at: sourceAt(act, d!),
             }) }
           },
