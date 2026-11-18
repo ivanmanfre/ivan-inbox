@@ -61,7 +61,9 @@ function json(body: unknown, status: number, origin: string | null) {
 // Kept while desk_brief_stamp() (a ~20 ms fingerprint of every table the brief
 // reads) is unchanged, for at most 15 minutes; dropped on every desk write.
 let briefCache: { at: number; fixtures: boolean; stamp: string; json: BriefJson } | null = null
+let panelCache: { at: number; panel: Record<string, unknown> } | null = null
 const BRIEF_MAX_AGE_MS = 15 * 60_000
+const PANEL_MAX_AGE_MS = 10 * 60_000
 // deno-lint-ignore no-explicit-any
 async function loadBrief(svc: any, fixtures: boolean, force = false): Promise<{ json: BriefJson; ms: number; cached: boolean }> {
   const t0 = Date.now()
@@ -70,11 +72,18 @@ async function loadBrief(svc: any, fixtures: boolean, force = false): Promise<{ 
     const stamp = await stampP
     if (stamp && stamp === briefCache.stamp) return { json: briefCache.json, ms: Date.now() - t0, cached: true }
   }
-  const [{ data, error }, stamp] = await Promise.all([svc.rpc('desk_brief_ivan', { p_fixtures: fixtures }), stampP])
+  // The calendar panel (slots, quotas, 48h profile views, booking reasons) is the slow ~1.2 s
+  // part and changes slowly: it is reused for up to 10 minutes; the fast core is always fresh.
+  const panelFresh = !force && !!panelCache && Date.now() - panelCache.at < PANEL_MAX_AGE_MS
+  const [{ data, error }, stamp] = await Promise.all([svc.rpc('desk_brief_core', { p_fixtures: fixtures, p_with_panel: !panelFresh }), stampP])
   if (error || !data) throw new Error(`brief failed: ${error?.message ?? 'empty'}`)
-  briefCache = { at: Date.now(), fixtures, stamp, json: data as BriefJson }
-  return { json: data as BriefJson, ms: Date.now() - t0, cached: false }
+  const json = data as BriefJson
+  if (panelFresh) json.panel = panelCache!.panel
+  else if ((json.panel as { ok?: boolean })?.ok !== false) panelCache = { at: Date.now(), panel: json.panel }
+  briefCache = { at: Date.now(), fixtures, stamp, json }
+  return { json, ms: Date.now() - t0, cached: false }
 }
+
 function invalidate() { briefCache = null }
 
 let flagCache: { at: number; value: Record<string, unknown> } | null = null

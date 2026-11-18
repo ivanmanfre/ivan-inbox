@@ -17,7 +17,10 @@ as $$
       where btrim(l) <> '' limit 1), ''), 160)
 $$;
 
-create or replace function public.desk_brief_ivan(p_fixtures boolean default false)
+-- desk_brief_core does the work. p_with_panel=false skips the calendar panel
+-- (~1.2 s, mostly the 48h profile-view view): the desk caches the panel for 10
+-- minutes and asks for the fast core alone in between.
+create or replace function public.desk_brief_core(p_fixtures boolean default false, p_with_panel boolean default true)
 returns jsonb
 language plpgsql
 stable
@@ -44,11 +47,15 @@ begin
     raise exception 'desk_brief_ivan: service role only' using errcode = '42501';
   end if;
 
-  begin
-    v_panel := public.cp17_calendar_panel_ivan();
-  exception when others then
-    v_panel := jsonb_build_object('ok', false, 'error', left(sqlerrm, 200));
-  end;
+  if p_with_panel then
+    begin
+      v_panel := public.cp17_calendar_panel_ivan();
+    exception when others then
+      v_panel := jsonb_build_object('ok', false, 'error', left(sqlerrm, 200));
+    end;
+  else
+    v_panel := jsonb_build_object('omitted', true);
+  end if;
 
   -- Ivan's live drafts: everything not finished, plus anything published in
   -- the last 14 days.
@@ -205,6 +212,17 @@ begin
   );
 end $$;
 
+-- The original entry point, kept as a thin wrapper (full brief, panel included).
+create or replace function public.desk_brief_ivan(p_fixtures boolean default false)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$ select public.desk_brief_core(p_fixtures, true) $$;
+
+revoke all on function public.desk_brief_core(boolean, boolean) from public, anon, authenticated;
+grant execute on function public.desk_brief_core(boolean, boolean) to service_role;
 revoke all on function public.desk_brief_ivan(boolean) from public, anon, authenticated;
 grant execute on function public.desk_brief_ivan(boolean) to service_role;
 revoke all on function public.desk_first_line(text) from public, anon;
