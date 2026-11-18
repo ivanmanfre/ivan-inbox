@@ -5,6 +5,8 @@ import { reviewOf, type CallRow, type ReviewPattern } from '../../../lib/transcr
 // Read only. Nothing on this section sends or writes.
 
 const LONG_RUN = 150 // words in one uninterrupted stretch worth pointing out
+// Script items Ivan does himself; their stored quote is his own line, so they never sit under "What they answered".
+const IVAN_ITEMS = new Set(['recap', 'show_deck', 'confirm_close'])
 
 export function Review({ row, pattern }: { row: CallRow; pattern?: ReviewPattern | null }) {
   const rv = reviewOf(row)
@@ -12,7 +14,7 @@ export function Review({ row, pattern }: { row: CallRow; pattern?: ReviewPattern
   const ns = rv.next_step
   const missed = rv.items.filter(i => i.status === 'missed')
   const half = rv.items.filter(i => i.status === 'partial')
-  const got = rv.items.filter(i => i.status === 'answered' && i.quote)
+  const got = rv.items.filter(i => i.status === 'answered' && i.quote && !IVAN_ITEMS.has(i.id))
   const run = rv.talk.longest_run_words
   return <section className="sl4-review" data-call-review>
     <h3 className="sl4-eyebrow">After-call review</h3>

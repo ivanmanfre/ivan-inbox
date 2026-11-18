@@ -11,6 +11,7 @@ const review = (over: Partial<CallReviewRaw> = {}): CallReviewRaw => ({
     { id: 'booking_reason', label: 'What made you book the call?', status: 'answered', quote: 'Our referrals went quiet this spring' },
     { id: 'goal', label: 'What would client acquisition look like in 90 days?', status: 'missed', quote: null },
     { id: 'budget', label: 'What budget would this come from?', status: 'partial', quote: null },
+    { id: 'recap', label: 'Recap their answers', status: 'answered', quote: 'So you work with clinics and want two more a month' },
   ],
   missed_follow_ups: [{ buyer_quote: 'I need to run it past my partner first', what_ivan_did: 'moved on', better_question: 'Can your partner join a call on Thursday?' }],
   next_step: { booked: false, when: null, everyone_who_decides: false, quote: 'Let me get back to you next month', note: 'left open' },
@@ -31,7 +32,8 @@ it('shows the unbooked next call, the skipped follow-up with its question, and w
   expect(screen.getByText('Not covered (1)').parentElement!.textContent).toContain('90 days')
   expect(screen.getByText('Only half answered (1)')).toBeTruthy()
   expect(screen.getByText(/240 words without a break, 41% into the call/)).toBeTruthy()
-  expect(screen.getByText('What they answered (1)')).toBeTruthy()
+  expect(screen.getByText('What they answered (1)')).toBeTruthy() // Ivan's own recap line is not counted as their answer
+  expect(document.body.textContent).not.toContain('So you work with clinics')
   const text = document.body.textContent!
   expect(text.indexOf('Next step')).toBeLessThan(text.indexOf('After-call review'))
 })
