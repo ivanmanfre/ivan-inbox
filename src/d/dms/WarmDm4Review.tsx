@@ -41,11 +41,12 @@ export function WarmDm4Review({ folds, v4 }: { folds: Folds; v4?: boolean }) {
 export function WarmDm4Sheet({ item, onClose, onDone }: { item: WarmDm4Item; onClose: () => void; onDone: () => void }) {
   const [image, setImage] = useState<VerifiedImage | null>(null)
   const [imageError, setImageError] = useState<string | null>(null)
+  const [shown, setShown] = useState(false)   // the verified bytes actually rendered on screen
   const [busy, setBusy] = useState<null | 'approve' | 'discard'>(null)
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
     let live = true, url: string | null = null
-    setImage(null); setImageError(null)
+    setImage(null); setImageError(null); setShown(false)
     if (item.image_sha256) {
       fetchVerifiedImage(item).then(v => { url = v.url; if (live) setImage(v); else URL.revokeObjectURL(v.url) })
         .catch(e => { if (live) setImageError(e instanceof Error ? e.message : 'The image could not be read.') })
@@ -53,7 +54,7 @@ export function WarmDm4Sheet({ item, onClose, onDone }: { item: WarmDm4Item; onC
     return () => { live = false; if (url) URL.revokeObjectURL(url) }
   }, [item])
   const needsImage = Boolean(item.image_sha256)
-  const canApprove = !busy && (!needsImage || image !== null)
+  const canApprove = !busy && (!needsImage || (image !== null && shown && !imageError))
   const run = async (k: 'approve' | 'discard') => {
     if (busy) return
     setBusy(k); setError(null)
@@ -71,7 +72,8 @@ export function WarmDm4Sheet({ item, onClose, onDone }: { item: WarmDm4Item; onC
       <ol className="dm-bubbles" aria-label="Messages in send order">
         {item.bubbles.map((b, i) => b === IMAGE_LINE
           ? <li key={i} data-bubble="image">
-              {image ? <img src={image.url} alt="Campaign preview image that will be sent" style={{ width: '100%', height: 'auto' }} />
+              {image && !imageError ? <img src={image.url} alt="Campaign preview image that will be sent" style={{ width: '100%', height: 'auto' }}
+                  onLoad={() => setShown(true)} onError={() => { setShown(false); setImageError('The image could not be displayed. It cannot be approved.') }} />
                 : imageError ? <p role="alert">{imageError}</p> : <p>Checking the image…</p>}
             </li>
           : <li key={i} data-bubble="text" style={{ whiteSpace: 'pre-wrap' }}>{b}</li>)}

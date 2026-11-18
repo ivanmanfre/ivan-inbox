@@ -52,7 +52,9 @@ describe('Warm DM4 review', () => {
     render(<WarmDm4Sheet item={it0} onClose={() => {}} onDone={done} />)
     const list = screen.getByRole('list', { name: 'Messages in send order' })
     expect(list.querySelectorAll('li')[0]).toHaveTextContent('mocked up what Example Co')
-    expect(await screen.findByRole('img', { name: 'Campaign preview image that will be sent' })).toBeInTheDocument()
+    const img = await screen.findByRole('img', { name: 'Campaign preview image that will be sent' })
+    expect(screen.getByRole('button', { name: /Approve this DM4/ })).toBeDisabled()
+    fireEvent.load(img)
     expect(list.querySelectorAll('li')[1].getAttribute('data-bubble')).toBe('image')
     expect(list.querySelectorAll('li')[2]).toHaveTextContent('want to see the whole thing?')
     fireEvent.click(screen.getByRole('button', { name: /Approve this DM4/ }))
@@ -101,5 +103,16 @@ describe('Warm DM4 review', () => {
     fireEvent.click(screen.getByRole('button', { name: /Approve this DM4/ }))
     await waitFor(() => expect(rpc.calls.length).toBeGreaterThan(0))
     expect(rpc.calls.map(c => c.fn)).toEqual(['ivan_warm_review_approve'])
+  })
+
+  it('an image that fails to display can never be approved', async () => {
+    const bytes = pngBytes(3000)
+    const it0 = await item({}, bytes)
+    rpc.answers.ivan_warm_review_image = { sha256: it0.image_sha256, bytes: bytes.length, png_base64: b64(bytes) }
+    render(<WarmDm4Sheet item={it0} onClose={() => {}} onDone={() => {}} />)
+    fireEvent.error(await screen.findByRole('img', { name: 'Campaign preview image that will be sent' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('could not be displayed')
+    fireEvent.click(screen.getByRole('button', { name: /Approve this DM4/ }))
+    expect(rpc.calls.some(c => c.fn === 'ivan_warm_review_approve')).toBe(false)
   })
 })
