@@ -16,9 +16,9 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { render, applyVisibility, warsaw, type BriefJson, type Rendered } from './brief.ts'
 import { buildPrompt } from './prompt.ts'
-import { parse, plain, shortParagraphs, oneText, stripLineHandles, HandleStream, type Act } from './parse.ts'
+import { parse, shortParagraphs, oneText, sanitize, HandleStream, type Act } from './parse.ts'
 import { askDesk, askDeskStream, LlmError, DESK_MODEL } from './llm.ts'
-import { planLive, planForTarget, runUndo, UndoRefused, stillSame, actionKey, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
+import { planLive, planForTarget, runUndo, UndoRefused, stillSame, actionKey, verbatimIn, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
 import { authorize } from './auth.ts'
 import { planTriggers } from './triggers.ts'
 import { queueT3Job, sweepT3Stalls } from '../_shared/desk-t3.ts'
@@ -397,7 +397,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           if (!t) return
           if (!streamed) { streamed = true; timings.ttft_ms = Date.now() - t0 }
           const out = hs.push(t)
-          if (out) emit('delta', { text: plain(out, true) })
+          if (out) emit('delta', { text: out })
         }
         const ask = (p: string) => streaming ? askDeskStream(p, onReply) : askDesk(p)
         const m1 = await ask(prompt)
@@ -418,16 +418,16 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           parsed = parse(again.text)
         }
         const reply = parsed.reply || (parsed.actions.length ? 'On it.' : 'I could not put an answer together. Send it again?')
-        { const tail = hs.flush(); if (tail) emit('delta', { text: plain(tail, true) }) }
+        { const tail = hs.flush(); if (tail) emit('delta', { text: tail }) }
         if (!streamed) {
           timings.ttft_ms = Date.now() - t0
-          const shown = stripLineHandles(reply, r.lines.keys())
+          const shown = sanitize(reply, r.lines.keys())
           for (let i = 0; i < shown.length; i += 400) emit('delta', { text: shown.slice(i, i + 400) })
         }
 
         // insert the assistant row now so actions can reference it
         const { data: aRow } = await svc.from('desk_messages').insert({
-          user_id: userId, role: 'assistant', origin: 'desk', body: reply, status: 'streaming',
+          user_id: userId, role: 'assistant', origin: 'desk', body: sanitize(reply, r.lines.keys()), status: 'streaming',
           meta: { model: m1.model, reply_to: userRow.id, client_key: clientKey, turn_token: turnToken, ...(mode.evalMode ? { test: true } : {}) },
         }).select('id').single()
         if (!aRow?.id) throw new LlmError('desk_failed', 'answer row')
@@ -435,7 +435,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         assistantId = messageId
 
         const ctx: Ctx = {
-          userDb, svc, userId, messageId, brief: r, attachments, text, env,
+          userDb, svc, userId, messageId, brief: r, attachments, text, env, fixtures: mode.fixtures,
           unfurl: (u) => deskUnfurl(u),
           t3: mode.t3On ? async ({ title, brief: b }) => {
             const j = mode.t3Test
@@ -485,14 +485,12 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
             if (x.act.kind === 'approve' && x.snap?.status === 'error') x.act._qa_override = true
             return
           }
-          // fixed text only, never the proposal or the verifier description; no chip carries the
-          // rejected payload. Only when other posts start the same way: one server-built chip per candidate (Sol r7 #1, #3)
+          // fixed text only, never the proposal or the verifier description; no chip carries it (Sol r7 #3)
           x.p.run = undefined
           x.p.refuse = 'not_asked'
-          const which = !!x.p.candidates?.length
+          x.p.chips = undefined
           x.p.echo = { ...x.p.echo, state: 'failed', undo: false, hold_ms: undefined, detail: 'not_asked',
-            label: which ? 'I did not do that: your message does not single out one post.' : 'I did not do that: you did not ask for it in this message.' }
-          if (which) chips = [...x.p.candidates!, ...chips].slice(0, 3)
+            label: 'I did not do that: you did not ask for it in this message.' }
         })
         // at most one cloud job per turn, chosen among the AUTHORIZED ones (Sol r7 #7)
         let t3s = 0
@@ -503,6 +501,9 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
             x.p.echo = { ...x.p.echo, state: 'failed', undo: false, label: 'I did not do that: one cloud job per message.' }
           }
         }
+        // Sol r8 #3: on any refusal, every model chip is dropped; only the server's own chips remain
+        // (built from draft identity: an opener excerpt and a day, never a rejected argument)
+        if (planned.some((x) => !x.p.run)) chips = []
         timings.auth_ms = Date.now() - t0
         // 3) a durable journal row first ('pending'), then the guarded write, then the terminal state
         for (const { act, p, snap } of planned) {
@@ -510,10 +511,14 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           const immediate = !!p.run && p.echo.state === 'done'
           const { data: aRec, error: recErr } = await svc.from('desk_actions').insert({
             user_id: userId, message_id: messageId, kind: p.echo.kind, target_id: p.target_id ?? null,
-            // only the canonical args the write consumes, plus what a held commit re-plans from (Sol r7 #3)
-            args: { kind: act.kind, ...(p.canon ?? {}), ...(act._qa_override === true ? { _qa_override: true } : {}),
-              ...(typeof act.dated === 'string' && act.dated.trim() ? { dated: act.dated.trim() } : {}),
-              ...(snap ? { _snapshot: snap } : {}), ...(mode.fixtures ? { _fixtures: true } : {}), ...(mode.dry ? { _dry: true } : {}) },
+            // a run: only the canonical args the write consumes, plus what a held commit re-plans from (Sol r7 #3).
+            // A refusal: only kind + refusal code (Sol r8 #3); the one exception is a directed redo, which
+            // keeps the note it was refused for, and only as a verbatim span of his own message (eval E12)
+            args: p.run
+              ? { kind: act.kind, ...(p.canon ?? {}), ...(act._qa_override === true ? { _qa_override: true } : {}),
+                ...(typeof act.dated === 'string' && act.dated.trim() ? { dated: act.dated.trim() } : {}),
+                ...(snap ? { _snapshot: snap } : {}), ...(mode.fixtures ? { _fixtures: true } : {}), ...(mode.dry ? { _dry: true } : {}) }
+              : { kind: act.kind, refusal_code: p.refuse ?? 'refused', ...(p.refuse === 'direction_unsupported' && verbatimIn(p.canon?.note, text) ? { note: p.canon!.note } : {}) },
             result: { state: immediate ? 'pending' : p.echo.state, refuse: p.refuse ?? null, ...(p.echo.state === 'held' ? { hold_ms: p.echo.hold_ms ?? 8000 } : {}) },
           }).select('id').single()
           if (recErr || !aRec?.id) {
@@ -521,7 +526,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
             continue
           }
           const echo: ActionEcho = { id: aRec.id, ...p.echo }
-          if (p.chips?.length) chips = [...p.chips, ...chips].slice(0, 3)
+          if (p.chips?.length) chips = [...p.chips, ...chips].slice(0, 3)   // server chips (identity only) first
           if (immediate) {
             let terminal: Record<string, unknown>
             let undo: Record<string, unknown> | null = null
@@ -552,16 +557,17 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           echoes.push(echo)
         }
         if (wrote) invalidate()
-        // The reply streamed before the actions ran. If one failed, say so in the body too, so the
-        // text never claims a change that did not happen.
-        const failedEchoes = echoes.filter((e) => e.state === 'failed' && !['ambiguous', 'line_mismatch'].includes(e.detail ?? ''))
+        // Sol r8 #5: write confirmations come only from action results. A turn that proposed a write
+        // stores the server's own echo lines; the model's prose stays only when every proposed action
+        // was done or held. If any was refused or failed, the body is the echo lines alone, and the UI
+        // replaces the streamed text with this final body.
         let finalBody = reply
-        if (failedEchoes.length) {
-          const note = failedEchoes.map((e) => e.label).join(' ')
-          finalBody = `${reply}\n\nThat did not go through: ${note}`
-          emit('delta', { text: `\n\nThat did not go through: ${note}` })
+        if (planned.length) {
+          const lines = echoes.map((e) => e.label + (e.detail && !/^[a-z_]+$/.test(e.detail) ? ` ${e.detail}` : ''))
+          const allOk = echoes.length > 0 && echoes.every((e) => e.state === 'done' || e.state === 'held')
+          finalBody = allOk ? [reply, ...lines].filter(Boolean).join('\n\n') : lines.join('\n\n')
         }
-        finalBody = shortParagraphs(stripLineHandles(finalBody, r.lines.keys()))
+        finalBody = shortParagraphs(sanitize(finalBody, r.lines.keys()))
         const sideEffects = await turnSideEffects(svc, messageId)
         timings.total_ms = Date.now() - t0
         const t3 = echoes.find((e) => e.t3_job)?.t3_job
@@ -627,15 +633,15 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
               const { data: closed } = await svc.from('desk_messages').update(errFields).eq('id', won.id).eq('status', 'streaming')
                 .filter('meta->>turn_token', 'eq', turnToken).select('*').maybeSingle()
               errRow = closed ?? await answerFor(svc, userRow.id)
-            } else if (won && won.status === 'streaming') {
-              // another worker's live turn: say so, and send no final
-              emit('error', { error: 'turn_in_progress' })
-              return
             } else errRow = won
           }
         }
+        // ONE place decides what goes out (Sol r8 #4): reread the answer; still streaming (another
+        // worker's live turn, or our own close did not land) = turn_in_progress and never a final
+        const settled = (await answerFor(svc, userRow.id)) ?? errRow
+        if (!settled || settled.status === 'streaming') { emit('error', { error: 'turn_in_progress' }); return }
         emit('error', { error: code, detail })
-        if (errRow) emit('final', { message: forClient(errRow) })
+        emit('final', { message: forClient(settled) })
       } finally {
         ctl.close()
       }
@@ -891,7 +897,7 @@ async function tick(svc: any, opts: { dry: boolean }) {
     // dedupe + Warsaw-week cap + the message itself in ONE transaction (desk_fire_trigger)
     const { data: res, error } = await svc.rpc('desk_fire_trigger', {
       p_kind: p.kind, p_dedupe_key: p.dedupe_key, p_payload: { artifact: p.artifact }, p_cap: cap, p_user: ALLOWED,
-      p_body: p.kind === 't3_done' ? null : plain(p.body),
+      p_body: p.kind === 't3_done' ? null : sanitize(p.body, []),
       p_meta: { trigger: p.kind, artifact: p.artifact, ...(p.chips.length ? { chips: oneText(p.chips) } : {}) },
     })
     if (error || !(res as { fired?: boolean } | null)?.fired) continue

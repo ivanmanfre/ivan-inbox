@@ -55,6 +55,8 @@ export type Ctx = {
   fetchImpl?: typeof fetch
   t3?: (args: { title: string; brief: string }) => Promise<{ job_id: string; status: string; error?: string }>
   unfurl?: (url: string) => Promise<{ title?: string; description?: string; author?: string } | null>
+  /** eval fixtures mode: desk eval fixture drafts are candidates only then */
+  fixtures?: boolean
 }
 
 export type Planned = {
@@ -70,10 +72,8 @@ export type Planned = {
   target_id?: string
   /** the canonical arguments this kind's write consumes (canonArgs): the dedupe key and the journal (Sol r7 #2, #3) */
   canon?: Record<string, unknown>
-  /** for the verifier: the resolved post's full live opener and every competing post that starts the same way (Sol r7 #1) */
+  /** for the verifier: the resolved post's full live opener (Sol r7 #1, r8 #1) */
   context?: string
-  /** when the verifier does not see one post singled out: one server-built chip per candidate */
-  candidates?: { label: string; send: string }[]
 }
 
 export const HOLD_MS = 8000
@@ -87,13 +87,22 @@ export async function sha256Hex(s: string): Promise<string> {
   return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('')
 }
 
-/** Strict: the quoted words (normalized) must start, or appear whole inside, the draft's first line; min 3 words or 12 chars. */
-export function lineMatches(firstLine: string, quoted: unknown): boolean {
+/** The ONE matcher (Sol r8 #1): the quoted words, normalized, appear whole anywhere in the first line. */
+export function quoteIn(firstLine: string, quoted: unknown): boolean {
   if (typeof quoted !== 'string') return false
   const q = norm(quoted)
-  if (!q || (q.split(' ').length < 3 && q.length < 12)) return false
-  const f = norm(firstLine)
-  return f.startsWith(q) || ` ${f} `.includes(` ${q} `)
+  return !!q && ` ${norm(firstLine)} `.includes(` ${q} `)
+}
+
+/** Long enough to single out a post: min 3 words or 12 chars. */
+export function quoteLongEnough(quoted: unknown): boolean {
+  const q = typeof quoted === 'string' ? norm(quoted) : ''
+  return !!q && (q.split(' ').length >= 3 || q.length >= 12)
+}
+
+/** Strict: quoteIn and long enough. */
+export function lineMatches(firstLine: string, quoted: unknown): boolean {
+  return quoteLongEnough(quoted) && quoteIn(firstLine, quoted)
 }
 
 const normHandle = (h: unknown) => { const x = String(h ?? '').trim().toLowerCase(); return x ? (x.startsWith('#') ? x : '#' + x) : '' }
@@ -109,32 +118,65 @@ export function distinctExcerpt(d: Draft, all: Draft[]): string {
   const words = d.first_line.split(/\s+/).filter(Boolean)
   for (let n = 3; n <= Math.min(words.length, 24); n++) {
     const ex = words.slice(0, n).join(' ')
-    if (all.filter((o) => lineMatches(o.first_line, ex)).length === 1) return ex
+    if (all.filter((o) => quoteIn(o.first_line, ex)).length === 1) return ex
   }
   return d.first_line
 }
 
-const VERB: Record<string, (ref: string, act: Act) => string> = {
+// the verb only: a chip carries draft identity and never a rejected argument (no time, no reason) (Sol r8 #3)
+const VERB: Record<string, (ref: string) => string> = {
   approve: (r) => `approve ${r}`, delete: (r) => `delete ${r}`, redo: (r) => `redo ${r} through the writer, same idea`,
-  date: (r, a) => `move ${r} to ${String(a.at ?? '')}`.trim(), undate: (r) => `remove the date from ${r}`,
+  date: (r) => `move ${r}`, undate: (r) => `remove the date from ${r}`,
   pull: (r) => `pull ${r} off the schedule`, photo_attach: (r) => `attach the photo to ${r}`,
 }
 
-/** One chip per candidate: a distinct excerpt plus its day, so each chip names exactly one draft. */
-function pickChips(act: Act, ds: Draft[], all: Draft[]): { label: string; send: string }[] {
+/** One chip per candidate, built from draft identity only: a distinct opener excerpt plus its day. */
+export function pickChips(act: Act, ds: Draft[], all: Draft[]): { label: string; send: string }[] {
   return ds.slice(0, 3).map((d) => {
     const day = dayOf(d)
     const ref = `the one that starts "${distinctExcerpt(d, all)}" ${day === 'undated' ? 'undated' : `dated ${day}`}`
-    const send = (VERB[IN_ALIAS[act.kind] ?? act.kind] ?? ((r: string) => `${act.kind} ${r}`))(ref, act)
+    const send = (VERB[IN_ALIAS[act.kind] ?? act.kind] ?? ((r: string) => `${act.kind} ${r}`))(ref)
     return { label: send, send }
   })
 }
 
-/** Every other draft whose first line starts with the same opening words as the quoted excerpt (Sol r7 #1). */
-export function competitorsOf(d: Draft, line: unknown, all: Draft[]): Draft[] {
-  const words = norm(String(line ?? '')).split(' ').filter(Boolean).slice(0, 3).join(' ')
-  if (!words) return []
-  return all.filter((o) => o.id !== d.id && (norm(o.first_line) + ' ').startsWith(words + ' '))
+// the statuses a kind can act on (or refuse with its own reason); only these drafts are candidates
+const ELIGIBLE: Record<string, string[]> = {
+  approve: ['review', 'error'], date: ['review', 'approved', 'scheduled'], undate: ['review', 'approved', 'scheduled'],
+  pull: ['scheduled'], delete: ['review', 'error'], redo: ['review', 'error', 'approved', 'generating'],
+  photo_attach: ['review', 'approved', 'scheduled'],
+}
+const UNFINISHED = new Set(['review', 'approved', 'error', 'generating'])
+
+/**
+ * Every live draft of Ivan's that this kind could act on, read FRESH (no brief cache, no cap of a few):
+ * his lane, an eligible status, not published, in his Review when unfinished; dated for undate/pull.
+ * Null when it cannot be read: nothing is resolved then.
+ */
+export async function liveCandidates(ctx: Pick<Ctx, 'svc' | 'userDb' | 'fixtures'>, kind: string): Promise<Draft[] | null> {
+  const statuses = ELIGIBLE[kind]
+  if (!statuses) return []
+  const { data, error } = await ctx.svc.from('carousel_drafts').select('id, status, type, scheduled_at, published_at, post_body, taxonomy, created_at, updated_at')
+    .is('client_id', null).is('published_at', null).in('status', statuses).limit(1000)
+  if (error || !Array.isArray(data)) return null
+  let visible: Set<string> | null = null
+  if (ctx.userDb && data.some((r: { status: string }) => UNFINISHED.has(r.status))) {
+    const { data: vis, error: vErr } = await ctx.userDb.from('cb34_p2_safe_drafts').select('id').limit(5000)
+    if (vErr || !Array.isArray(vis)) return null
+    visible = new Set(vis.map((v: { id: string }) => v.id))
+  }
+  const out: Draft[] = []
+  for (const r of data as { id: string; status: string; type: string; scheduled_at: string | null; published_at: string | null; post_body: string | null; taxonomy: unknown; created_at: string; updated_at: string }[]) {
+    const tax = (r.taxonomy && typeof r.taxonomy === 'object' && !Array.isArray(r.taxonomy)) ? r.taxonomy as Record<string, unknown> : {}
+    const fixture = !!tax.desk_eval_fixture
+    if (fixture && !ctx.fixtures) continue   // eval fixtures are candidates only in fixtures mode
+    if (!fixture && UNFINISHED.has(r.status) && visible && !visible.has(r.id)) continue
+    if ((kind === 'undate' || kind === 'pull') && !r.scheduled_at) continue
+    out.push({ id: r.id, status: r.status, type: r.type, scheduled_at: r.scheduled_at, published_at: r.published_at, first_line: firstLineOf(r.post_body),
+      title: '', belief: null, vehicle: null, recipe: null, qa_verdict: null, is_copy: false, photos: 0, brain: false, human_edited: false,
+      slot_kind: null, selling: false, chars: 0, created_at: r.created_at, fixture: fixture ? String(tax.desk_eval_fixture) : null, updated_at: r.updated_at })
+  }
+  return out
 }
 
 /**
@@ -274,33 +316,47 @@ export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: 
   act.kind = IN_ALIAS[act.kind] ?? act.kind
   const needsDraft = ['approve', 'date', 'undate', 'pull', 'delete', 'redo', 'photo_attach'].includes(act.kind)
   if (!needsDraft || Array.isArray(act.draft)) return { p: await plan(ctx, act), snap: null }
-  const r = resolveDraft(ctx.brief, act)
-  if ('error' in r) return { p: await plan(ctx, act), snap: null }   // plan() renders the refusal + chips
+  const kindOut = OUT_NAME[act.kind] ?? act.kind
+  const none = (refuse: string, label: string, chips?: { label: string; send: string }[], target_id?: string) =>
+    ({ p: { echo: { kind: kindOut, label, state: 'failed' as const, undo: false, detail: refuse }, refuse, chips, target_id }, snap: null })
+  // Sol r8 #1: the target comes from a FRESH read of every live eligible draft, matched with the one
+  // matcher anywhere in the first line. Exactly one match proceeds; none or several act on none,
+  // with one identity-only chip per match.
+  const cands = await liveCandidates(ctx, act.kind)
+  if (!cands) return none('read_failed', 'I could not read your drafts, so I did nothing.')
+  const dated = typeof act.dated === 'string' && act.dated.trim() ? act.dated.trim() : null
+  const byQuote = cands.filter((d) => quoteIn(d.first_line, act.line))
+  const matches = byQuote.length > 1 && dated ? byQuote.filter((d) => dayOf(d) === dated) : byQuote
+  if (matches.length !== 1 || !quoteLongEnough(act.line)) {
+    const shown = matches.length ? matches : byQuote
+    return shown.length
+      ? none(shown.length > 1 ? 'ambiguous' : 'too_short', shown.length > 1 ? `${shown.length} posts match. Pick one.` : 'Say a few more words of its first line, so I know it is this one.', pickChips(act, shown, cands))
+      : none('no_match', 'I could not find a post that starts like that, so I did nothing.')
+  }
+  const match = matches[0]
+  const handle = normHandle(act.draft)
+  if (!handle || ctx.brief.drafts.get(handle)?.id !== match.id) return none('handle_mismatch', 'I could not tell which post you mean, so I did nothing.', pickChips(act, [match], cands))
+  if (dated && dayOf(match) !== dated) return none('dated_mismatch', 'That post is not on the day you named, so I did nothing.', pickChips(act, [match], cands), match.id)
+  const r = { d: match, handle }
   let live: Awaited<ReturnType<typeof loadLive>>
   try { live = await loadLive(ctx, r.d.id) } catch (e) {
     if (!(e instanceof QueueReadError)) throw e
     return { p: { echo: { kind: OUT_NAME[act.kind] ?? act.kind, label: 'I could not read its queue, so I did nothing.', state: 'failed', undo: false }, refuse: 'queue_read_failed', target_id: r.d.id }, snap: null }
   }
   if (!live) return { p: { echo: { kind: OUT_NAME[act.kind] ?? act.kind, label: 'That post is gone or no longer in your Review.', state: 'failed', undo: false }, refuse: 'gone', target_id: r.d.id }, snap: null }
-  const all = [...ctx.brief.drafts.values()]
   if (!lineMatches(live.d.first_line, act.line)) {
-    return { p: { echo: { kind: OUT_NAME[act.kind] ?? act.kind, label: 'That post was rewritten since, so I did nothing.', state: 'failed', undo: false, detail: 'line_mismatch' }, refuse: 'line_mismatch', target_id: r.d.id,
-      chips: pickChips(act, [live.d], all) }, snap: live.snap }
+    return { p: { echo: { kind: kindOut, label: 'That post was rewritten since, so I did nothing.', state: 'failed', undo: false, detail: 'line_mismatch' }, refuse: 'line_mismatch', target_id: r.d.id,
+      chips: pickChips(act, [live.d], cands) }, snap: live.snap }
   }
   // the day he named holds on the LIVE row too; a conflict does nothing (Sol r7 #1)
-  const dated = typeof act.dated === 'string' && act.dated.trim() ? act.dated.trim() : null
   if (dated && dayOf(live.d) !== dated) {
-    return { p: { echo: { kind: OUT_NAME[act.kind] ?? act.kind, label: 'That post is not on the day you named, so I did nothing.', state: 'failed', undo: false, detail: 'dated_mismatch' }, refuse: 'dated_mismatch', target_id: r.d.id,
-      chips: pickChips(act, [live.d], all) }, snap: live.snap }
+    return { p: { echo: { kind: kindOut, label: 'That post is not on the day you named, so I did nothing.', state: 'failed', undo: false, detail: 'dated_mismatch' }, refuse: 'dated_mismatch', target_id: r.d.id,
+      chips: pickChips(act, [live.d], cands) }, snap: live.snap }
   }
   const p = await plan({ ...ctx, brief: liveBrief(ctx, live.d, live.snap, r.handle) }, act)
   p.target_id = live.d.id
-  // what the verifier must weigh (Sol r7 #1): the whole live opener, and every post that starts the same way
-  const rivals = competitorsOf(live.d, act.line, all)
-  const dayText = (x: Draft) => (dayOf(x) === 'undated' ? 'undated' : `dated ${dayOf(x)}`)
-  p.context = `Target post, full first line: "${live.d.first_line.slice(0, 300)}" (${dayText(live.d)}).` +
-    (rivals.length ? ` Other posts that start the same way: ${rivals.slice(0, 5).map((o) => `"${o.first_line.slice(0, 160)}" (${dayText(o)})`).join('; ')}. Allowed only if his message singles out the target over these.` : '')
-  if (rivals.length) p.candidates = pickChips(act, [live.d, ...rivals], all)
+  // the verifier reads the resolved post's whole live opener (Sol r7 #1, r8 #1)
+  p.context = `Target post, full first line: "${live.d.first_line.slice(0, 300)}" (${dayOf(live.d) === 'undated' ? 'undated' : `dated ${dayOf(live.d)}`}).`
   return { p, snap: live.snap }
 }
 
@@ -349,7 +405,9 @@ export function canonArgs(kind: string, act: Act, ctx: Pick<Ctx, 'text' | 'attac
   const reason = typeof act.reason === 'string' ? act.reason.replace(/\s+/g, ' ').trim().slice(0, 200) || null : null
   const photoUrl = () => ctx.attachments.filter((a) => a.kind === 'photo')[Number(act.photo ?? 1) - 1]?.url ?? null
   switch (kind) {
-    case 'approve': case 'redo': case 'undate': return {}
+    case 'approve': case 'undate': return {}
+    // the note decides the redo (a directed redo is refused: the writer takes no direction) (eval E12)
+    case 'redo': return { note: typeof act.note === 'string' && act.note.trim() ? act.note.replace(/\s+/g, ' ').trim().slice(0, 500) : null }
     case 'date': return { at: warsawToIso(String(act.at ?? '')) }
     case 'pull': case 'delete': return { reason }
     case 'photo_attach': return { url: photoUrl() }
@@ -519,7 +577,7 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
       if (d!.status === 'scheduled') return { echo: { kind, label: `${q} is scheduled. Pull it first, then rewrite.`, state: 'failed', undo: false, target }, refuse: 'scheduled' }
       if (!['review', 'error', 'approved'].includes(d!.status)) return { echo: { kind, label: `${q} is ${d!.status === 'generating' ? 'already being rewritten' : d!.status}, so I left it.`, state: 'failed', undo: false, target }, refuse: 'not_redoable' }
       if (d!.human_edited) return { echo: { kind, label: `${q} has your hand edits, and the writer will not overwrite them.`, state: 'failed', undo: false, target }, refuse: 'human_edited' }
-      const note = typeof act.note === 'string' ? act.note.trim() : ''
+      const note = String(c.note ?? '')
       if (note) {
         // Sol r1: the writer takes no direction from here, so a directed redo is refused, never silently dropped.
         return {
@@ -781,7 +839,9 @@ async function deskWrite(ctx: Pick<Ctx, 'userDb'>, fn: string, args: Record<stri
  * whitespace-collapsed and lowercased). Two actions with one key are one action.
  */
 export function actionKey(p: Pick<Planned, 'echo' | 'target_id' | 'canon'>): string {
-  const canon = Object.entries(p.canon ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+  // an idea's text is compared casefolded with whitespace collapsed; storage and the verifier keep it exact (Sol r8 #2)
+  const fold = p.echo.kind === 'idea' ? (v: unknown) => (typeof v === 'string' ? v.toLowerCase().replace(/\s+/g, ' ').trim() : v) : (v: unknown) => v
+  const canon = Object.entries(p.canon ?? {}).map(([k, v]) => [k, fold(v)] as [string, unknown]).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
   return JSON.stringify([p.echo.kind, p.target_id ?? null, canon])
 }
 

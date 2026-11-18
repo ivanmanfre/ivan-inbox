@@ -96,7 +96,7 @@ export function planTriggers(input: TriggerInput): Planned[] {
       const key = `week_plan:${monday}`
       if (!fired.has(key)) {
         const auto = input.queue.filter((x) => x.origin === 'autopilot' && warsawMonday(x.slot_at) === monday)
-        const lines = [`Your week: ${thisWeek.originals} of ${thisWeek.cap} originals dated${thisWeek.dated.length > thisWeek.originals ? `, plus ${thisWeek.dated.length - thisWeek.originals} ${thisWeek.dated.length - thisWeek.originals === 1 ? 'copy' : 'copies'}` : ''}.`]
+        const lines = [`Your week: ${thisWeek.originals} of ${thisWeek.cap} originals dated${thisWeek.copies ? `, plus ${thisWeek.copies} ${thisWeek.copies === 1 ? 'copy' : 'copies'}` : ''}.`]
         for (const x of thisWeek.dated) lines.push(`- ${warsaw(x.at)} ${q(x.first_line, 70)}${auto.some((a) => a.slot_at === x.at) ? ' (autopilot pick)' : ''}`)
         if (thisWeek.open.length) lines.push(`Open: ${thisWeek.open.join('; ')}.`)
         const fit = fillers(thisWeek, input.drafts)

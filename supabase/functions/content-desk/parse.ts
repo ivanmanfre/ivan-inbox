@@ -22,56 +22,106 @@ function jsonArray(raw: string | null): Record<string, unknown>[] {
   }
 }
 
-/** Plain-prose guard: no em/en dashes reach Ivan, whatever the model did. */
-export function plain(s: string, keepEdges = false): string {
-  const out = s
+// A COMPLETE quoted span on one line ("..." or curly quotes) is protected: his or a post's words stay
+// exactly as written. An unmatched opening quote protects nothing (Sol r8 #8).
+const QUOTED = /("[^"\n]*"|\u201c[^\u201d\n]*\u201d)/
+
+function outsideQuotes(text: string, fn: (s: string) => string): string {
+  return text.split(QUOTED).map((part, i) => (i % 2 === 1 ? part : fn(part))).join('')
+}
+
+function dashFix(s: string): string {
+  return s
     .replace(/\s*[—–]\s*/g, (m, off, str) => {
       // "word — word" -> "word, word"; a dash between digits (ranges) -> "-"
       const prev = str[off - 1] ?? '', next = str[off + m.length] ?? ''
       return /\d/.test(prev) && /\d/.test(next) ? '-' : ', '
     })
     .replace(/,\s*,/g, ',')
+}
+
+/** Plain-prose guard: no em/en dashes reach Ivan, never edited inside a complete quoted span. */
+export function plain(s: string, keepEdges = false): string {
+  const out = outsideQuotes(s, dashFix)
   // a streamed piece keeps its edge spaces (trimming each delta would glue words together)
   return keepEdges ? out : out.trim()
 }
 
-/**
- * Call-line handles (L1..L12) are for the ACTIONS block only: any that the brief handed out is taken
- * out of the reply text (with a trailing comma), and an emptied "()" goes with it. Text inside a
- * quoted span ("..." or curly quotes, an unclosed quote runs to the end) is never touched: his own
- * or a post's words stay exactly as written (Sol r7 #8).
- */
+function stripHandlesIn(part: string, hs: Set<string>): string {
+  return part.replace(/\(?\b([Ll]\d{1,2})\b\)?(,[ \t]*|[ \t]+)?/g, (m, h: string, tail?: string) => {
+    if (!hs.has(h.toUpperCase())) return m
+    return m.startsWith('(') && m.includes(')') ? (tail ?? '') : ''
+  }).replace(/[ \t]{2,}/g, ' ').replace(/ +([,.!?])/g, '$1')
+}
+
+/** Call-line handles (L1..L12, any case) out of the reply text, outside complete quoted spans only. */
 export function stripLineHandles(text: string, handles: Iterable<string>): string {
   const hs = new Set([...handles].map((h) => h.toUpperCase()))
-  if (!hs.size) return text
-  return text.split(/("[^"]*"?|\u201c[^\u201d]*\u201d?)/).map((part, i) => {
-    if (i % 2 === 1) return part
-    return part.replace(/\(?\b(L\d{1,2})\b\)?(,[ \t]*|[ \t]+)?/g, (m, h: string, tail?: string) => {
-      if (!hs.has(h.toUpperCase())) return m
-      return m.startsWith('(') && m.includes(')') ? (tail ?? '') : ''
-    }).replace(/[ \t]{2,}/g, ' ').replace(/ +([,.!?])/g, '$1')
-  }).join('')
+  return hs.size ? outsideQuotes(text, (p) => stripHandlesIn(p, hs)) : text
 }
 
 /**
- * The same rule for a stream of deltas (Sol r7 #8): only a prefix that ends at whitespace at least
- * 6 characters before the newest text is released, so a handle split across deltas ("L" then "1")
- * is never shown. What goes out is always the cleaned text so far; if a later cleaning would rewrite
- * text already shown, nothing more is released and the final body (cleaned in full) replaces it.
+ * The ONE sanitizer for every text Ivan sees from the model (Sol r8 #8): deltas, the streaming row and
+ * the final body. Outside complete quoted spans: no em/en dashes, no call-line handles. Inside: untouched.
+ */
+export function sanitize(text: string, handles: Iterable<string>, keepEdges = false): string {
+  const hs = new Set([...handles].map((h) => h.toUpperCase()))
+  const out = outsideQuotes(text, (p) => (hs.size ? stripHandlesIn(dashFix(p), hs) : dashFix(p)))
+  return keepEdges ? out : out.trim()
+}
+
+// tool tags the model may open: a block left unclosed is dropped from its open tag to the end (Sol r8 #6)
+const TOOL_OPEN = /<\/?(?:actions|reads|chips|tool[\w-]*|function[\w-]*|invoke|antml[\w:-]*)\b/i
+
+/** Remove closed tool blocks, then cut at the first open tool tag that is still left. */
+export function dropToolBlocks(text: string): string {
+  const s = text.replace(/<(actions|reads|chips)>[\s\S]*?<\/\1>/gi, '')
+  const open = s.search(TOOL_OPEN)
+  return open >= 0 ? s.slice(0, open) : s
+}
+
+/**
+ * The sanitizer for a stream of deltas (Sol r7 #8, r8 #6, #8). Released text is always sanitize() of
+ * a prefix that ends:
+ * - at whitespace at least 6 characters before the newest text (a handle split across deltas is
+ *   never shown),
+ * - before an opening quote that is not closed yet (its span may still become protected),
+ * - before a "<" that is not closed by ">" yet, and for good at an open tool tag (nothing after it
+ *   is ever released).
+ * If a later sanitize would rewrite text already shown, nothing more is released; the final body
+ * (sanitized in full) replaces the streamed text.
  */
 export class HandleStream {
   private acc = ''
   private sent = ''
+  private frozen = -1
   private readonly hs: string[]
   constructor(handles: Iterable<string>) { this.hs = [...handles] }
   push(t: string): string {
     this.acc += t
-    let cut = -1
-    for (let i = this.acc.length - 7; i >= 0; i--) if (/\s/.test(this.acc[i])) { cut = i; break }
-    return cut > 0 ? this.release(stripLineHandles(this.acc.slice(0, cut), this.hs)) : ''
+    return this.release(this.safeEnd(false))
   }
-  flush(): string { return this.release(stripLineHandles(this.acc, this.hs)) }
-  private release(clean: string): string {
+  flush(): string { return this.release(this.safeEnd(true)) }
+  private safeEnd(final: boolean): number {
+    const tool = this.acc.search(TOOL_OPEN)
+    if (tool >= 0 && (this.frozen < 0 || tool < this.frozen)) this.frozen = tool
+    let end = this.frozen >= 0 ? this.frozen : this.acc.length
+    if (final) return end
+    const lt = this.acc.lastIndexOf('<', end - 1)
+    if (lt >= 0 && this.acc.indexOf('>', lt) < 0) end = lt
+    // an opening quote not yet closed on the current line (spans never cross a line): hold back from it
+    const lineStart = this.acc.lastIndexOf('\n', end - 1) + 1
+    const line = this.acc.slice(lineStart, end)
+    if ((line.split('"').length - 1) % 2 === 1) end = lineStart + line.lastIndexOf('"')
+    const lo = line.lastIndexOf('\u201c')
+    if (lo >= 0 && line.indexOf('\u201d', lo) < 0) end = Math.min(end, lineStart + lo)
+    let cut = -1
+    for (let i = Math.min(end, this.acc.length - 7); i >= 0; i--) if (/\s/.test(this.acc[i])) { cut = i; break }
+    return Math.min(end, cut)
+  }
+  private release(end: number): string {
+    if (end <= 0) return ''
+    const clean = sanitize(this.acc.slice(0, end), this.hs, true)
     if (!clean.startsWith(this.sent)) return ''
     const out = clean.slice(this.sent.length)
     this.sent = clean
@@ -86,9 +136,11 @@ export function oneText(chips: { label?: unknown; send: unknown }[]): Chip[] {
 
 export function parse(text: string): Parsed {
   let reply = block(text, 'reply')
-  if (!reply) {
-    // No (or an empty, or an unclosed) reply tag: take everything outside the other blocks.
-    reply = text.replace(/<(actions|reads|chips)>[\s\S]*?<\/\1>/gi, '').replace(/<\/?reply>/gi, '').trim()
+  if (reply) reply = dropToolBlocks(reply).trim()
+  else {
+    // No (or an empty, or an unclosed) reply tag: take everything outside the other blocks; an unclosed
+    // tool block is dropped from its open tag to the end (Sol r8 #6)
+    reply = dropToolBlocks(text.replace(/<\/?reply>/gi, '')).trim()
   }
   // Keys starting with "_" are server-owned (overrides, snapshots, flags): never taken from the model.
   const actions = jsonArray(block(text, 'actions'))

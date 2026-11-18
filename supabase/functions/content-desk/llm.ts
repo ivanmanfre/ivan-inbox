@@ -4,6 +4,8 @@
 
 const env = (k: string) => (globalThis as { Deno?: { env: { get(k: string): string | undefined } } }).Deno?.env.get(k)
 
+import { dropToolBlocks } from './parse.ts'
+
 export const DESK_MODEL = () => env('DESK_MODEL') || 'claude-sonnet-5-5'
 
 const REFUSAL = /\b(usage|session|rate|weekly) limit\b|limit reached|try again later|prompt injection|I can(?:'|no)t (?:follow|comply with) (?:these|those|the) instructions/i
@@ -203,6 +205,7 @@ export async function askDeskStream(prompt: string, onReply: (t: string) => void
 }
 
 function parseReply(text: string): string {
+  // the same tool-block rule as parse(): an unclosed block is dropped from its open tag (Sol r8 #6)
   const m = text.match(/<reply>([\s\S]*?)<\/reply>/i)
-  return (m ? m[1] : text.replace(/<(actions|reads|chips)>[\s\S]*?<\/\1>/gi, '')).trim()
+  return dropToolBlocks(m ? m[1] : text.replace(/<\/?reply>/gi, '')).trim()
 }

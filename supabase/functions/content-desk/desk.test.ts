@@ -570,19 +570,8 @@ Deno.test('L-handles never reach the reply text', () => {
 
 // ---- Sol r7 fixes + eval rV3 (made-up data only) -------------------------------
 import { HandleStream } from './parse.ts'
-import { competitorsOf, canonArgs } from './actions.ts'
+import { canonArgs } from './actions.ts'
 import { weekCount } from './brief.ts'
-
-Deno.test('r7 #1: dated is enforced on the resolved draft; rivals that start the same way are listed', async () => {
-  const a = draft(ID1, 'Snow in the park this morning and a long walk home', { scheduled_at: '2026-11-26T09:45:00Z' })
-  const b = draft('bbbbbbbb-0000-4000-8000-000000000002', 'Snow in the city again, trams stuck')
-  const r = render(brief([a, b]))
-  const wrongDay = resolveDraft(r, { kind: 'delete', draft: r.handleOf.get(ID1)!, line: 'Snow in the park this', dated: '2026-11-27' })
-  assert('error' in wrongDay && wrongDay.error === 'dated_mismatch')
-  const ok = resolveDraft(r, { kind: 'delete', draft: r.handleOf.get(ID1)!, line: 'Snow in the park this', dated: '2026-11-26' })
-  assert('d' in ok)
-  assertEquals(competitorsOf(a, 'Snow in the park this', [a, b]).map((x) => x.id), ['bbbbbbbb-0000-4000-8000-000000000002'])
-})
 
 Deno.test('r7 #3: the journal-facing canon holds only what each write consumes', () => {
   const ctx = { text: 'file https://example.test/a my note here', attachments: [], brief: render(brief([])) } as never
@@ -626,16 +615,101 @@ Deno.test('r7 #8: a handle split across deltas is never shown; a quoted L1 is ke
   assertEquals(outs.join(''), 'Post your call line from Mon 2 Nov is the pick.')
   const q = new HandleStream(['L1', 'L2'])
   const qouts = [q.push('He said "L1 is'), q.push(' the best" and L2'), q.push(' is next.'), q.flush()]
+  for (const o of qouts.slice(0, 1)) assert(!o.includes('L1'), o)   // held back while the quote is open
   assertEquals(qouts.join(''), 'He said "L1 is the best" and is next.')
   assertEquals(stripLineHandles('Your words: "take L1 off" (L2).', ['L1', 'L2']), 'Your words: "take L1 off".')
   assertEquals(plain(' a — b ', true), ' a, b ')
 })
 
-Deno.test('eval E8: week counts read "N of 5 originals dated (M open)" from the calendar panel', () => {
-  assertEquals(weekCount({ originals: 4, cap: 5 }), '4 of 5 originals dated (1 open)')
-  assertEquals(weekCount({ originals: 5, cap: 5 }), '5 of 5 originals dated')
-  const txt = render(brief([], { this_monday: '2026-11-16', panel: { quotas: [], week_fill: [{ week_start: '2026-11-16', slots: 4 }, { week_start: '2026-11-23', slots: 4 }, { week_start: '2026-11-30', slots: 2 }] } })).text
-  assert(txt.includes('THIS WEEK (Mon 2026-11-16 to Sun 2026-11-22): 4 of 5 originals dated (1 open)'), txt.slice(0, 600))
-  assert(txt.includes('week after next: 2 of 5 originals dated (3 open)'))
-  assert(!/open slots?: ?\d/.test(txt) && !txt.includes('original slots still open'))
+
+// ---- Sol r8 fixes + eval rV4 (made-up data only) --------------------------------
+import { planLive, pickChips } from './actions.ts'
+import { sanitize, dropToolBlocks } from './parse.ts'
+
+const freshCtx = (rows: Draft[], extra: Record<string, unknown> = {}) => {
+  const r = render(brief(rows))
+  const dbRows = rows.map((d) => ({ id: d.id, status: d.status, type: 'text', scheduled_at: d.scheduled_at, published_at: null, post_body: d.first_line + '\nmore text', taxonomy: {}, created_at: d.created_at, updated_at: 'U1' }))
+  const svc = { from: (t: string) => chain(t === 'carousel_drafts' ? { data: dbRows, error: null } : { data: [], error: null }) }
+  const userDb = { from: () => chain({ data: rows.map((d) => ({ id: d.id })), error: null }) }
+  return { r, ctx: { brief: r, attachments: [], text: '', env: () => undefined, svc, userDb, ...extra } as never }
+}
+
+Deno.test('r8 #1: "delete the snow one" against two drafts with snow mid-opener: two chips, no action', async () => {
+  const a = draft(ID1, 'Fresh snow in the park this morning')
+  const b = draft('bbbbbbbb-0000-4000-8000-000000000002', 'Old snow on the tram roof tonight', { scheduled_at: '2026-11-26T09:45:00Z' })
+  const { r, ctx } = freshCtx([a, b])
+  for (const line of ['snow', 'Snow']) {
+    const { p } = await planLive(ctx, { kind: 'delete', draft: r.handleOf.get(ID1)!, line })
+    assertEquals(p.run, undefined)
+    assertEquals(p.chips?.length, 2)
+    for (const c of p.chips!) assert(c.send.includes('dated 2026-11-26') || c.send.includes('undated'))
+  }
+  // a quote that appears mid-line in only one fresh draft resolves; the brief's handle must be that draft
+  const one = await planLive(ctx, { kind: 'delete', draft: r.handleOf.get(ID1)!, line: 'snow in the park' })
+  assert(one.p.refuse !== 'ambiguous')
+  const wrong = await planLive(ctx, { kind: 'delete', draft: r.handleOf.get(b.id)!, line: 'snow in the park' })
+  assertEquals(wrong.p.refuse, 'handle_mismatch'); assertEquals(wrong.p.run, undefined)
+})
+
+Deno.test('r8 #1: a draft outside the brief still counts as a match (fresh read, no cap)', async () => {
+  const a = draft(ID1, 'Fresh snow in the park this morning')
+  const hidden = draft('cccccccc-0000-4000-8000-000000000003', 'Fresh snow in the park again today')
+  const r = render(brief([a]))
+  const dbRows = [a, hidden].map((d) => ({ id: d.id, status: 'review', type: 'text', scheduled_at: null, published_at: null, post_body: d.first_line, taxonomy: {}, created_at: d.created_at, updated_at: 'U1' }))
+  const ctx = { brief: r, attachments: [], text: '', env: () => undefined,
+    svc: { from: () => chain({ data: dbRows, error: null }) }, userDb: { from: () => chain({ data: dbRows.map((x) => ({ id: x.id })), error: null }) } } as never
+  const { p } = await planLive(ctx, { kind: 'approve', draft: r.handleOf.get(ID1)!, line: 'Fresh snow in the park' })
+  assertEquals(p.refuse, 'ambiguous'); assertEquals(p.chips?.length, 2)
+  // an unreadable candidate set resolves nothing
+  const bad = { ...(ctx as Record<string, unknown>), svc: { from: () => chain({ data: null, error: { message: 'down' } }) } } as never
+  assertEquals((await planLive(bad, { kind: 'approve', draft: r.handleOf.get(ID1)!, line: 'Fresh snow in the park' })).p.refuse, 'read_failed')
+})
+
+Deno.test('r8 #2 + #3: idea keys fold case and spaces; disambiguation chips carry identity only', async () => {
+  const ctx = { brief: render(brief([])), attachments: [], text: 'x', env: () => undefined } as never
+  const i1 = await plan(ctx, { kind: 'idea', text: 'Cold  Brew queues' })
+  const i2 = await plan(ctx, { kind: 'idea', text: 'cold brew queues ' })
+  assertEquals(actionKey(i1), actionKey(i2))
+  assertEquals(i1.canon!.raw_topic, 'Cold  Brew queues')   // storage keeps the exact text
+  const d = draft(ID1, 'Snow in the park this morning', { scheduled_at: '2026-11-26T09:45:00Z' })
+  const chips = pickChips({ kind: 'date', at: '2027-01-01 10:00', reason: 'secret' }, [d], [d])
+  assert(!chips[0].send.includes('2027-01-01') && !chips[0].send.includes('secret'), chips[0].send)
+  assertEquals(chips[0].send, 'move the one that starts "Snow in the" dated 2026-11-26')
+})
+
+Deno.test('r8 #6: an unclosed tool block is dropped from its open tag in every path', () => {
+  assertEquals(parse('<reply>Moving it.</reply><actions>[{"kind":"date"').reply, 'Moving it.')
+  assertEquals(parse('Moving it now. <actions>[{"kind":"date","draft":"#a"').reply, 'Moving it now.')
+  assertEquals(parse('<reply>Sure. <chips>[{"send":"x"}').reply, 'Sure.')
+  assertEquals(dropToolBlocks('ok <reads>[1]</reads> then <actions>[{'), 'ok  then ')
+  const hs = new HandleStream([])
+  const outs = [hs.push('Here is the plan for this week. '), hs.push('<acti'), hs.push('ons>[{"kind":"date"}] more text after it'), hs.flush()]
+  assert(!outs.join('').includes('<') && !outs.join('').includes('kind'), outs.join('|'))
+})
+
+Deno.test('r8 #7 + E13/E14: the week counts all come from week_fill and never go negative', () => {
+  const dated = draft(ID1, 'Snow in the park this morning', { status: 'scheduled', scheduled_at: '2026-11-17T09:45:00Z' })
+  const txt = render(brief([dated], { this_monday: '2026-11-16', panel: { quotas: [], week_fill: [{ week_start: '2026-11-16', slots: 4, copies: 1, no_belief: 4, by_belief: {}, by_vehicle: {} }] } })).text
+  assert(!/-\d+ (copy|copies|of)/.test(txt), txt.slice(0, 800))
+  assert(txt.includes('THIS WEEK (Mon 2026-11-16 to Sun 2026-11-22): 4 of 5 originals dated, 1 copy (extras). Stored form: "4 originals dated, 1 copy".'))
+  assert(txt.includes('4 of 4 originals have NO belief label'))
+  assert(txt.includes('calendar vehicles (post kinds): none labeled'))
+  assert(!txt.includes('(1 open)') && !txt.includes('SELLING'))
+  assertEquals(weekCount({ originals: 4, cap: 5 }), '4 of 5 originals dated')
+})
+
+Deno.test('r8 #8: one quote-aware sanitizer: complete quotes protected, an unmatched quote protects nothing, any case', () => {
+  const hs = ['L1', 'L2']
+  assertEquals(sanitize('Use l1 for this, and "keep L1 — as is" here', hs), 'Use for this, and "keep L1 — as is" here')
+  assertEquals(sanitize('He said "L1 is the best', hs), 'He said "is the best')
+  assertEquals(sanitize('one — two', []), 'one, two')
+  assertEquals(plain('"a — b" and c — d'), '"a — b" and c, d')
+})
+
+Deno.test('eval E12: a directed redo keeps its note in the canon (the refusal is about it)', async () => {
+  const d = draft(ID1, 'Tram 33 at rush hour is the best', { status: 'review', updated_at: 'U1' })
+  const r = render(brief([d]))
+  const p = await plan({ brief: r, attachments: [], text: 'redo the tram one, more about the business', env: () => undefined } as never,
+    { kind: 'redo', draft: r.handleOf.get(ID1)!, line: 'Tram 33 at rush hour', note: 'more about the business' })
+  assertEquals(p.refuse, 'direction_unsupported'); assertEquals(p.canon, { note: 'more about the business' })
 })
