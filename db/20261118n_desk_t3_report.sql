@@ -99,7 +99,8 @@ begin
     return jsonb_build_object('ok', false, 'error', 'thread_required');
   end if;
   -- a summary needs one visible character; tabs and newlines alone do not count (Sol r3 #5)
-  if p_status = 'done' and coalesce(p_summary, '') !~ '[^[:space:]]' then
+  -- judged on the stored text (after trim and the 4000-char cut), not the raw input (Sol r4 M6)
+  if p_status = 'done' and coalesce(v_summary, '') !~ '[^[:space:]]' then
     return jsonb_build_object('ok', false, 'error', 'summary_required');
   end if;
 
