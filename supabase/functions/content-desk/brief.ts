@@ -154,9 +154,9 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
       selling: orig.filter((x) => x.selling).length, beliefs,
       missing_beliefs: [1, 2, 3, 4, 5].filter((n) => beliefs[String(n)] === 0), open: [],
     }
-    if (w.originals < cap) w.open.push(`${cap - w.originals} of ${cap} original slots still open`)
-    if (w.poland < 1) w.open.push('Poland-with-him post (belief 5, vehicle poland_place) not dated')
-    if (w.events < 2) w.open.push(`${2 - w.events} of 2 business-event posts not dated`)
+    if (w.originals < cap) w.open.push(`${cap - w.originals} of ${cap} original slots still open (the brief does not say which day)`)
+    const unlabeledV = orig.filter((x) => !x.vehicle).length
+    if (w.poland < 1) w.open.push(unlabeledV ? `no dated original is LABELED as the Poland-with-him post (belief 5); ${unlabeledV} originals have no vehicle label, so this is not certain` : 'Poland-with-him post (belief 5) not dated')
     weeks.push(w)
   }
   for (const w of weeks) {
@@ -168,8 +168,9 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
     if (!w.dated.length) L.push('- nothing dated')
     const unlabeled = w.dated.filter((x) => !x.copy && !x.belief).length
     L.push(`  belief counts (originals): ${Object.entries(w.beliefs).map(([k, v]) => `B${k}=${v}`).join(' ')}; ` +
-      (unlabeled ? `${unlabeled} of ${w.originals} originals have NO belief label, so which belief is missing cannot be known for sure; among labeled ones missing: ` : 'missing beliefs: ') +
-      (w.missing_beliefs.length ? w.missing_beliefs.map((n) => 'B' + n).join(', ') : 'none'))
+      (unlabeled ? `${unlabeled} of ${w.originals} originals have NO belief label. Beliefs not covered by any labeled post: ` : 'missing beliefs: ') +
+      (w.missing_beliefs.length ? w.missing_beliefs.map((n) => 'B' + n).join(', ') : 'none') +
+      (unlabeled === w.originals && w.originals > 0 ? ' (no post this week has a belief set, so no belief is covered yet)' : ''))
     if (w.open.length) L.push(`  open quota: ${w.open.join('; ')}`)
   }
   L.push('', 'QUOTA RULES (weekly): ' + quotas.map((q) => `${q.slot_kind}${q.per_week != null ? ' ' + Number(q.per_week) + '/wk' : ''}${(q.every_n_weeks ?? 1) > 1 ? ' every ' + q.every_n_weeks + ' wks' : ''}`).join('; ') + '. Max 2 originals per belief per week. Copies are extras, never counted.')
@@ -189,7 +190,7 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
     S.push(`All live drafts by status: ${Object.entries(byStatus).map(([k, v]) => `${k} ${v}`).join(', ')}.`)
     for (const w of weeks) S.push(`${w.label.toLowerCase()}: ${w.originals} of ${w.cap} originals dated, ${w.dated.length - w.originals} ${w.dated.length - w.originals === 1 ? 'copy' : 'copies'}, ${w.dated.filter((x) => x.status === 'published').length} already published.`)
     if (last) S.push(`Last post out: ${warsaw(last.posted_at)} "${clip(last.first_line, 70)}" (${last.impressions ?? '?'} impressions so far).`)
-    if (best) S.push(`Best post of the last 21 days by impressions: "${clip(best.first_line, 70)}" ${warsaw(best.posted_at, false)}, ${best.impressions} impressions.`)
+    if (best) S.push(`Best post of the last 31 days by impressions: "${clip(best.first_line, 70)}" ${warsaw(best.posted_at, false)}, ${best.impressions} impressions.`)
     S.push(`Ideas waiting: ${b.ideas?.reviewing ?? 0}. Queue armed (next 21 days): ${(b.queue ?? []).length} posts, ${(b.queue ?? []).filter((x) => x.origin === 'autopilot').length} picked by the autopilot.`)
     L.splice(1, 0, '', 'SUMMARY (exact counts, use these):', ...S.map((x) => '- ' + x))
   }
@@ -216,7 +217,7 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
   // ---- posts
   const posts = (b.posts as { posts?: PostRow[] }).posts ?? []
   const bar = (b.posts as { bar?: number }).bar
-  L.push('', `RECENT PUBLISHED POSTS (last 21 days; "worked" = 1.5x his organic median, bar ${bar ?? '?'} impressions; boosted never counts; under 48h = too new):`)
+  L.push('', `RECENT PUBLISHED POSTS (last 31 days; "worked" = 1.5x his organic median, bar ${bar ?? '?'} impressions; boosted never counts; under 48h = too new):`)
   for (const p of posts.slice().sort((a, z) => String(z.posted_at).localeCompare(String(a.posted_at)))) {
     L.push(`- ${warsaw(p.posted_at)} "${clip(p.first_line, 90)}": ${p.impressions ?? '?'} impressions, ${p.likes ?? 0} likes, ${p.comments ?? 0} comments, ${p.times_median ?? '?'}x median${p.boosted ? ', BOOSTED' : ''}${p.too_new ? ', too new' : p.worked ? ', WORKED' : ''}`)
   }
@@ -233,11 +234,11 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
   }
   const lines = new Map<string, CallLine>()
   if (b.call_lines?.length) {
-    L.push('', 'POSTABLE LINES FROM CALLS (his own words, from the call extractor). Handle L1.. for draft_line actions:')
+    L.push('', 'POSTABLE LINES FROM CALLS (his own words, from the call extractor; newest call first). "call" = the day he SAID it. Handle L1.. for draft_line actions:')
     b.call_lines.forEach((c, i) => {
       const h = 'L' + (i + 1)
       lines.set(h, c)
-      L.push(`- ${h} ${warsaw(c.ingested_at, false)} [${c.status}${c.draft_id ? ', draft exists ' + (handleOf.get(c.draft_id) ?? '') : ''}] B${c.belief ?? '-'} ${c.vehicle ?? ''}: ${clip(c.topic, 120)} | said: "${clip(c.said, 220)}"`)
+      L.push(`- ${h} call ${c.when ?? 'date unknown'} (found ${String(c.ingested_at).slice(0, 10)}) [${c.status}${c.draft_id ? ', draft exists ' + (handleOf.get(c.draft_id) ?? '') : ''}] B${c.belief ?? '-'} ${c.vehicle ?? ''}: ${clip(c.topic, 120)} | said: "${clip(c.said, 220)}"`)
     })
   }
   const br = Array.isArray((b.panel as { booking_reasons?: unknown }).booking_reasons) ? (b.panel as { booking_reasons: { call_date: string; reason_class: string; quote: string }[] }).booking_reasons : []

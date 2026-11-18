@@ -117,10 +117,12 @@ async function visibleDrafts(userDb: any): Promise<Map<string, boolean> | null> 
 }
 
 // deno-lint-ignore no-explicit-any
-async function recentMessages(svc: any, userId: string) {
-  const { data } = await svc.from('desk_messages').select('role, origin, body, created_at')
-    .eq('user_id', userId).order('created_at', { ascending: false }).limit(11)
-  return (data ?? []).reverse()
+async function recentMessages(svc: any, userId: string, evalMode = false) {
+  // Eval items are independent questions: they carry no history. Real turns never see eval rows.
+  if (evalMode) return []
+  const { data } = await svc.from('desk_messages').select('role, origin, body, created_at, meta')
+    .eq('user_id', userId).order('created_at', { ascending: false }).limit(30)
+  return (data ?? []).filter((m: { meta?: { test?: boolean } }) => m.meta?.test !== true).slice(0, 11).reverse()
 }
 // deno-lint-ignore no-explicit-any
 async function openJobs(svc: any, userId: string) {
@@ -236,7 +238,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         })()
         const rate = svc.from('desk_messages').select('id', { count: 'exact', head: true })
           .eq('user_id', userId).eq('role', 'user').gte('created_at', new Date(Date.now() - RATE_WINDOW_MS).toISOString())
-        const rest = Promise.all([rate, loadBrief(svc, mode.fixtures), recentMessages(svc, userId), openJobs(svc, userId), visibleDrafts(userDb)])
+        const rest = Promise.all([rate, loadBrief(svc, mode.fixtures), recentMessages(svc, userId, mode.evalMode), openJobs(svc, userId), visibleDrafts(userDb)])
         const userRow = await saveUser
         emit('ack', { user_message_id: userRow.id, client_key: clientKey })
         const [rateRes, brief, recent, jobs, visible] = await rest

@@ -115,7 +115,7 @@ begin
     and d.client_id is null and q.scheduled_at > v_now and q.scheduled_at < v_now + interval '21 days';
 
   begin
-    v_posts := public.ivan_week_posts_worked(v_now - interval '21 days', v_now);
+    v_posts := public.ivan_week_posts_worked(v_now - interval '31 days', v_now);
   exception when others then
     v_posts := jsonb_build_object('error', left(sqlerrm, 200));
   end;
@@ -135,7 +135,7 @@ begin
   ) s;
 
   -- Postable lines from calls: the call extractor's ideas (Ivan's own words).
-  select coalesce(jsonb_agg(x order by x->>'ingested_at' desc), '[]'::jsonb) into v_lines from (
+  select coalesce(jsonb_agg(x order by coalesce(x->>'when', '') desc, x->>'ingested_at' desc), '[]'::jsonb) into v_lines from (
     select jsonb_build_object(
       'id', i.id, 'ingested_at', i.ingested_at, 'status', i.status,
       'topic', left(coalesce(i.raw_topic, ''), 200),
@@ -147,7 +147,7 @@ begin
     ) as x
     from public.lm_idea_candidates i
     where i.source in ('ivan_call', 'calls')
-      and i.status in ('scored', 'reviewing', 'promoted', 'pending')
+      and i.status in ('scored', 'reviewing', 'promoted')  -- scored lines only; pending ones are not yet judged
       and i.ingested_at > v_now - interval '21 days'
     order by i.ingested_at desc
     limit 12
