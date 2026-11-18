@@ -14,6 +14,17 @@ const stored = (over: Partial<DeskMessage> & { id: string }): DeskMessage => ({
   role: 'assistant', origin: 'desk', body: '', status: 'done', meta: {}, client_key: null, created_at: new Date().toISOString(), ...over,
 })
 
+// held_seen: the server arms a hold when its row is first visibly on screen (made-up answers).
+const seenCalls: string[][] = []
+let heldSeenOk = true
+function heldSeenAnswer(ids: string[]) {
+  seenCalls.push(ids)
+  const at = Date.now()
+  return heldSeenOk
+    ? { ok: true, results: ids.map(id => ({ id, state: 'held', seen_at: new Date(at).toISOString(), hold_until: new Date(at + 8000).toISOString() })) }
+    : { ok: false, error: 'No connection.' }
+}
+
 vi.mock('../../lib/swr', async orig => ({
   ...(await orig<typeof import('../../lib/swr')>()),
   currentUserId: () => '00000000-0000-4000-8000-000000000001',
@@ -22,6 +33,7 @@ vi.mock('./api', () => ({
   readMessages: vi.fn(async () => [stored({ id: 'h1', body: 'Saved answer from yesterday.', created_at: '2026-11-17T10:00:00Z' })]),
   readJobs: vi.fn(async () => []),
   warmDesk: vi.fn(async () => {}),
+  markHeldSeen: vi.fn(async (ids: string[]) => heldSeenAnswer(ids)),
   subscribeDesk: vi.fn(() => () => {}),
   uploadDeskPhoto: vi.fn(async () => 'https://example.com/p.jpg'),
   sendDesk: vi.fn(async (body: { text: string; client_key: string }, h: { onAck: (a: unknown) => void; onDelta: (t: string) => void; onFinal: (m: DeskMessage) => void }) => {
@@ -50,9 +62,10 @@ vi.mock('../../exp/v2c/chat/useStt', () => ({
 }))
 
 const { Desk } = await import('./Desk')
+const { resetHeldSeen } = await import('./heldSeen')
 const { resetActionGuards } = await import('./actionGuards')
 
-beforeEach(() => { sent.length = 0; ops.length = 0; streamGate = null; localStorage.clear(); resetActionGuards() })
+beforeEach(() => { sent.length = 0; ops.length = 0; streamGate = null; localStorage.clear(); resetActionGuards(); resetHeldSeen(); seenCalls.length = 0; heldSeenOk = true })
 afterEach(() => { cleanup(); vi.useRealTimers() })
 
 function type(text: string) {

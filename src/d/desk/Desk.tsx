@@ -9,8 +9,9 @@ import { DeskComposer } from './Composer'
 import { useDesk, type DeskHandle } from './useDesk'
 import { useKeyboardInset } from './useKeyboardInset'
 import { actionStore } from './actionGuards'
+import { heldSeenStore, reportHeldSeen } from './heldSeen'
 import {
-  DEFAULT_HOLD_MS, T3_LABEL, T3_LIVE, holdLeft,
+  T3_LABEL, T3_LIVE,
   type DeskAction, type DeskMessage, type T3Job,
 } from './model'
 import '../claude/claude.css'
@@ -81,11 +82,12 @@ function Row({ m, desk }: { m: DeskMessage; desk: DeskHandle }) {
       <div className={`dk-me${m.local === 'failed' ? ' dk-failed' : ''}`} data-msg={m.id}>
         {m.meta.attachments?.filter(a => a.kind === 'photo').map(a => <img key={a.url} className="dk-photo" src={a.url} alt="Photo you sent" width={120} height={120} />)}
         {m.body && <div className="dk-me-t">{m.body}</div>}
-        <small>{m.meta.voice ? 'Voice · ' : ''}{m.local === 'sending' ? 'Sending' : m.local === 'failed' ? 'Not sent' : m.local === 'unconfirmed' ? 'Not confirmed: the app could not check' : warsawHm(m.created_at)}</small>
+        <small>{m.meta.voice ? 'Voice · ' : ''}{m.local === 'sending' ? 'Sending' : m.local === 'failed' ? (m.error ?? 'Not sent') : m.local === 'unconfirmed' ? (m.error ?? 'Not confirmed: the app could not check.') : warsawHm(m.created_at)}</small>
         {m.local === 'unconfirmed' && <button type="button" className="dk-pill" onClick={desk.reload}>Check again</button>}
-        {/* Retry only once a successful check confirmed the send is not stored (it is then 'failed');
-            an unconfirmed send may be stored, and resending it could do the turn twice (Sol desk-ui r3 #4). */}
-        {m.local === 'failed' && <button type="button" className="dk-pill" onClick={() => desk.retry(m)}>Retry</button>}
+        {/* Retry resends under the ORIGINAL client_key (a refused key aside): the server answers a known key
+            idempotently (its stored answer, or "still working"), so an unconfirmed send can never run twice
+            (Sol desk-ui r3 #4, r4 #2). */}
+        {(m.local === 'failed' || m.local === 'unconfirmed') && <button type="button" className="dk-pill" onClick={() => desk.retry(m)}>Retry</button>}
       </div>
     )
   }
@@ -143,33 +145,68 @@ const FINISH_GRACE_MS = 4000
 
 function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle }) {
   useSyncExternalStore(actionStore.subscribe, actionStore.version, actionStore.version)
-  const holdMs = a.hold_ms ?? DEFAULT_HOLD_MS
-  // The countdown is display only: the SERVER commits when the hold ends, unless Undo wins first.
-  const start = desk.liveHoldStart(a.id)
+  useSyncExternalStore(heldSeenStore.subscribe, heldSeenStore.version, heldSeenStore.version)
+  const el = useRef<HTMLDivElement>(null)
+  const isHeld = a.state === 'held'
+  // held_seen: the first time this held row is visibly on screen (tab visible + in view), tell the
+  // server; it arms the commit timer from then. The countdown runs from the server's answer.
+  useEffect(() => {
+    const known = heldSeenStore.get(a.id)
+    if (!isHeld || (known && known.state !== 'failed')) return
+    const node = el.current
+    let inView = typeof IntersectionObserver === 'undefined' // no observer (tests, old browsers): treat as in view
+    const tryReport = () => { if (inView && document.visibilityState === 'visible') reportHeldSeen(a.id) }
+    const io = typeof IntersectionObserver === 'undefined' || !node ? null
+      : new IntersectionObserver(entries => { inView = entries.some(e => e.isIntersecting); tryReport() })
+    if (io && node) io.observe(node)
+    document.addEventListener('visibilitychange', tryReport)
+    tryReport()
+    return () => { io?.disconnect(); document.removeEventListener('visibilitychange', tryReport) }
+  }, [isHeld, a.id])
+  const seen = heldSeenStore.get(a.id)
+  // The countdown is display only and runs to the server's hold_until: the SERVER commits then, unless
+  // Undo wins first. Without a deadline from the server there is no countdown, only the buttons.
+  const until = seen?.state === 'armed' ? seen.until : null
+  const settledOnServer = seen?.state === 'settled'
+  // Read the row back once when the server says it is no longer held (refresh is a stable callback).
+  const refresh = desk.refresh
+  useEffect(() => { if (settledOnServer && isHeld) void refresh() }, [settledOnServer, isHeld, refresh])
   const [now, setNow] = useState(() => Date.now())
+  // The clock restarts when the server's deadline arrives, so the first frame never shows a stale count.
+  useEffect(() => { if (until !== null) setNow(Date.now()) }, [until])
   const busy = actionStore.inFlight(a.id)
-  const failed = actionStore.failed(a.id)
+  // A failed op's note shows only while the row is still in the state that op applies to: once the
+  // read-back shows the server settled it, the stored state speaks for itself.
+  const lastFail = actionStore.failed(a.id)
+  const failed = lastFail && (lastFail.op === 'undo' ? a.state === 'done' : a.state === 'held') ? lastFail : undefined
   const held = a.state === 'held'
-  const counting = held && start !== null && !busy && !failed && now < (start as number) + holdMs
-  const finishing = held && start !== null && !busy && !failed && !counting && now < (start as number) + holdMs + FINISH_GRACE_MS
+  const counting = held && until !== null && !busy && !failed && now < until
+  const finishing = held && until !== null && !busy && !failed && !counting && now < until + FINISH_GRACE_MS
   useEffect(() => {
     if (!(counting || finishing)) return
     const t = window.setInterval(() => setNow(Date.now()), 250)
     return () => window.clearInterval(t)
   }, [counting, finishing])
-  const left = counting ? holdLeft(start as number, holdMs, now) : 0
+  const left = counting ? Math.max(1, Math.ceil(((until ?? now) - now) / 1000)) : 0
   const go = async (kind: 'undo' | 'commit' | 'cancel') => {
-    if (!actionStore.start(a.id, kind)) return
-    const r = await desk.act(kind, a.id)
+    if (actionStore.checking(a.id) || !actionStore.start(a.id, kind)) return
+    // A rejected call counts as a failed one: the in-flight state is always cleared (Sol desk-ui r4 #3).
+    const r = await desk.act(kind, a.id).catch((): { ok: false; error: string } => ({ ok: false, error: 'No connection.' }))
     // A lost race ('not_held' / 'nothing_to_undo') means the server already settled it: the row is read
-    // back and shows that state, never an error. Any other failure is offered again.
+    // back and shows that state, never an error. Any other failure (or a 15 s timeout) clears the
+    // in-flight state, reads the row back, and only then offers the action again (Sol desk-ui r4 #3).
     const settled = r.ok || r.error === 'not_held' || r.error === 'nothing_to_undo'
-    actionStore.finish(a.id, settled ? undefined : { op: kind, error: SETTLED_NOTE[r.error ?? ''] ?? r.error ?? 'That did not go through.' })
+    if (settled) { actionStore.finish(a.id); return }
+    const error = r.error === 'timeout' ? 'No answer from the desk.' : SETTLED_NOTE[r.error ?? ''] ?? r.error ?? 'That did not go through.'
+    actionStore.setChecking(a.id, true)
+    actionStore.finish(a.id, { op: kind, error })
+    try { await desk.refresh() } finally { actionStore.setChecking(a.id, false) }
   }
+  const checking = actionStore.checking(a.id)
   const waiting = held && !counting && !finishing && !busy
   const expired = failed?.error === SETTLED_NOTE.hold_expired
   return (
-    <div className={`dk-act dk-act-${a.state}`} data-action={a.id} data-state={a.state}>
+    <div ref={el} className={`dk-act dk-act-${a.state}`} data-action={a.id} data-state={a.state} data-seen={seen?.state}>
       <span className="dk-act-t">
         {a.state === 'done' && <>Done: {a.label}</>}
         {counting && <>{a.label} in <b className="dk-count">{left}s</b></>}
@@ -177,6 +214,7 @@ function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle })
         {held && busy === 'commit' && <>Doing it: {a.label}</>}
         {held && busy === 'cancel' && <>Cancelling: {a.label}</>}
         {waiting && <>Not done yet: {a.label}.</>}
+        {held && checking && <small>Checking the row again</small>}
         {a.state === 'committing' && <>Doing it: {a.label}</>}
         {a.state === 'undoing' && <>Undoing: {a.label}</>}
         {a.state === 'undone' && <>Undone: {a.label}</>}
@@ -186,9 +224,10 @@ function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle })
         {failed && <small className="dk-warn" role="alert">{failed.error}</small>}
       </span>
       {a.state === 'done' && a.undo && <button type="button" className="dk-pill" disabled={!!busy} onClick={() => go('undo')}>{failed?.op === 'undo' ? 'Try Undo again' : 'Undo'}</button>}
-      {counting && <button type="button" className="dk-pill" onClick={() => go('cancel')}>Undo</button>}
-      {waiting && failed?.op === 'cancel' && <button type="button" className="dk-pill" onClick={() => go('cancel')}>Try Undo again</button>}
-      {waiting && failed?.op !== 'cancel' && !expired && <button type="button" className="dk-pill" onClick={() => go('commit')}>Do it now</button>}
+      {/* Undo on EVERY idle held row: during the countdown, while the server commits, and on a held row
+          seen later (a reopened desk). The server's compare-and-set decides who wins (Sol desk-ui r4 #1). */}
+      {held && !busy && !checking && <button type="button" className="dk-pill" onClick={() => go('cancel')}>{failed?.op === 'cancel' ? 'Try Undo again' : 'Undo'}</button>}
+      {held && !busy && !checking && !expired && <button type="button" className="dk-pill" onClick={() => go('commit')}>Do it now</button>}
     </div>
   )
 }

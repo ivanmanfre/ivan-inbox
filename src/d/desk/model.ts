@@ -43,6 +43,8 @@ export type DeskMessage = {
   answers?: string
   /** Local only: why a send failed, in plain words. */
   error?: string
+  /** Local only: the key was refused for this text (key_reused), so a retry needs a new key. */
+  retryFresh?: boolean
 }
 
 export type T3Job = { id: string; status: T3Status; title: string; t3_link: string | null; result_summary: string | null; updated_at?: string }

@@ -89,22 +89,63 @@ export async function sendDesk(body: SendBody, h: SendHandlers, signal?: AbortSi
   return ended ?? 'dropped'
 }
 
-async function op(o: 'undo' | 'commit' | 'cancel', actionId: string): Promise<ActionResult> {
-  if (mockOn()) return mockApi.op(o, actionId)
-  const token = await bearer()
-  if (!token) return { ok: false, error: 'Sign in again.' }
+export const OP_TIMEOUT_MS = 15_000
+
+/**
+ * One bounded POST to the function: the whole call (session token, request, body) ends after
+ * OP_TIMEOUT_MS, so no op can hang a row on "Cancelling" (Sol desk-ui r4 #3). A timeout comes back as
+ * error 'timeout', any other network failure as 'No connection.'.
+ */
+async function post<T>(payload: Record<string, unknown>): Promise<{ ok: true; status: number; okHttp: boolean; j: T } | { ok: false; error: string }> {
+  const c = new AbortController()
+  const t = setTimeout(() => c.abort(), OP_TIMEOUT_MS)
+  const aborted = new Promise<never>((_, rej) => c.signal.addEventListener('abort', () => rej(new Error('timeout')), { once: true }))
+  aborted.catch(() => {})
   try {
-    const res = await window.fetch(FN, {
+    const token = await Promise.race([bearer(), aborted])
+    if (!token) return { ok: false, error: 'Sign in again.' }
+    const res = await Promise.race([window.fetch(FN, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...evalHeader() },
-      body: JSON.stringify({ op: o, action_id: actionId }),
-    })
-    const j = await res.json().catch(() => ({})) as ActionResult & { detail?: string }
-    if (!res.ok) return { ok: false, error: j.error ?? `http_${res.status}` }
-    return { ok: j.ok !== false, message: j.message ? asMessage(j.message) : undefined, error: j.error }
+      body: JSON.stringify(payload),
+      signal: c.signal,
+    }), aborted])
+    const j = await Promise.race([res.json().catch(() => ({})), aborted]) as T
+    return { ok: true, status: res.status, okHttp: res.ok, j }
   } catch {
-    return { ok: false, error: 'No connection.' }
+    return { ok: false, error: c.signal.aborted ? 'timeout' : 'No connection.' }
+  } finally {
+    clearTimeout(t)
   }
+}
+
+async function op(o: 'undo' | 'commit' | 'cancel', actionId: string): Promise<ActionResult> {
+  if (mockOn()) return mockApi.op(o, actionId)
+  const r = await post<ActionResult & { detail?: string }>({ op: o, action_id: actionId })
+  if (!r.ok) return { ok: false, error: r.error }
+  const j = r.j ?? {} as ActionResult
+  if (!r.okHttp) return { ok: false, error: j.error ?? `http_${r.status}` }
+  return { ok: j.ok !== false, message: j.message ? asMessage(j.message) : undefined, error: j.error }
+}
+
+/** Per action id, from the stored row (also when it was already armed): its state, when it was first
+ *  seen, and when the server will commit it; or an error for that id (content-desk heldSeen). */
+export type HeldSeenEntry = { id: string; state?: string; seen_at?: string | null; hold_until?: string | null; error?: string }
+export type HeldSeenResult = { ok: boolean; error?: string; results?: HeldSeenEntry[] }
+
+/**
+ * Tell the server these held actions are now on Ivan's screen. The server arms each hold's commit
+ * timer only from this moment (commit at seen + hold_ms, through the same compare-and-set as a tap),
+ * so nothing can commit before he could see its Undo. Bounded like every op. The top-level `ok` is
+ * false when any id failed; the per-id `results` still say which.
+ */
+export async function markHeldSeen(actionIds: string[]): Promise<HeldSeenResult> {
+  if (mockOn()) return mockApi.heldSeen(actionIds)
+  const r = await post<HeldSeenResult>({ op: 'held_seen', action_ids: actionIds })
+  if (!r.ok) return { ok: false, error: r.error }
+  const j = r.j ?? {} as HeldSeenResult
+  if (!r.okHttp) return { ok: false, error: j.error ?? `http_${r.status}` }
+  return { ok: j.ok !== false, results: Array.isArray(j.results) ? j.results : [], error: j.error }
 }
 export const undoAction = (id: string) => op('undo', id)
 export const commitAction = (id: string) => op('commit', id)
@@ -128,7 +169,6 @@ export async function readJobs(ids: string[]): Promise<T3Job[]> {
 /** Live rows: every insert or update of a desk message or a T3 job of this user. Returns the unsubscribe. */
 export function subscribeDesk(topic: string, userId: string, on: { message: (m: DeskMessage) => void; job: (j: T3Job) => void; resubscribed: () => void }): () => void {
   if (mockOn()) return mockApi.subscribe(on.message, on.job)
-  let subscribed = false
   const ch = supabase.channel(topic)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'desk_messages', filter: `user_id=eq.${userId}` }, p => {
       const row = (p as unknown as { new?: DeskMessage }).new
@@ -139,8 +179,9 @@ export function subscribeDesk(topic: string, userId: string, on: { message: (m: 
       if (row && row.id) on.job(row)
     })
     .subscribe(status => {
-      // A re-subscribe after a drop missed whatever happened in between: the caller re-reads.
-      if (status === 'SUBSCRIBED') { if (subscribed) on.resubscribed(); subscribed = true }
+      // Every SUBSCRIBED re-reads, the first one too: anything settled between the history read
+      // and the subscription (a server commit, an answer) would otherwise be missed (Sol desk-ui r4 #4).
+      if (status === 'SUBSCRIBED') on.resubscribed()
     })
   return () => { void supabase.removeChannel(ch) }
 }

@@ -18,11 +18,25 @@ let cancelAnswer: { ok: boolean; error?: string } = { ok: true }
 let commitAnswer: { ok: boolean; error?: string } = { ok: true }
 let readRows: () => Promise<DeskMessage[]> = async () => []
 let realtime: ((m: DeskMessage) => void) | null = null
-let sendMode: 'held' | 'drop-before-ack' | 'error-final' = 'held'
+let sendMode: 'held' | 'drop-before-ack' | 'error-final' | 'offline' | 'in-progress' | 'key-reused' = 'held'
 
 const row = (over: Partial<DeskMessage> & { id: string }): DeskMessage => ({
   role: 'assistant', origin: 'desk', body: '', status: 'done', meta: {}, client_key: null, created_at: new Date().toISOString(), ...over,
 })
+
+// held_seen: the server arms a hold when its row is first visibly on screen (made-up answers).
+const seenCalls: string[][] = []
+let heldSeenOk = true
+let heldSeenEntry: ((id: string, at: number) => Record<string, unknown>) | null = null
+let heldSeenGate: Promise<void> | null = null
+function heldSeenAnswer(ids: string[]) {
+  seenCalls.push(ids)
+  if (heldSeenEntry) { const res = ids.map(id => ({ id, ...heldSeenEntry!(id, Date.now()) })); return { ok: res.every(x => !('error' in x)), results: res } }
+  const at = Date.now()
+  return heldSeenOk
+    ? { ok: true, results: ids.map(id => ({ id, state: 'held', seen_at: new Date(at).toISOString(), hold_until: new Date(at + 8000).toISOString() })) }
+    : { ok: false, error: 'No connection.' }
+}
 
 vi.mock('../../lib/swr', async orig => ({
   ...(await orig<typeof import('../../lib/swr')>()),
@@ -32,13 +46,17 @@ vi.mock('./api', () => ({
   readMessages: vi.fn(() => readRows()),
   readJobs: vi.fn(async () => []),
   warmDesk: vi.fn(async () => {}),
+  markHeldSeen: vi.fn(async (ids: string[]) => { if (heldSeenGate) await heldSeenGate; return heldSeenAnswer(ids) }),
   subscribeDesk: vi.fn((_t: string, _u: string, on: { message: (m: DeskMessage) => void }) => { realtime = on.message; return () => {} }),
   uploadDeskPhoto: vi.fn(async () => { await uploadGate; return 'https://example.com/p.jpg' }),
   sendDesk: vi.fn(async (body: { text: string; client_key: string }, h: { onAck: (a: unknown) => void; onDelta: (t: string) => void; onFinal: (m: DeskMessage) => void; onError: (c: string, d?: string) => void }) => {
     sends.push(body)
     if (sendMode === 'drop-before-ack') return 'dropped'
+    if (sendMode === 'offline') { h.onError('offline', 'No connection. Your message is kept.'); return 'error' }
+    if (sendMode === 'key-reused') { h.onError('key_mismatch', 'That message id was already used for a different message.'); return 'error' }
     if (ackGate) await ackGate
     h.onAck({ user_message_id: `u-${body.client_key}`, client_key: body.client_key })
+    if (sendMode === 'in-progress') { h.onError('turn_in_progress', 'That message is still being answered.'); return 'error' }
     if (sendMode === 'error-final') {
       h.onError('desk_llm_unavailable', 'The desk model did not answer.')
       h.onFinal(row({ id: `e-${body.client_key}`, status: 'error', body: 'The desk could not answer just now. Send it again in a moment.', meta: { error: 'desk_llm_unavailable', client_key: body.client_key } }))
@@ -57,13 +75,14 @@ vi.mock('../../exp/v2c/chat/useStt', () => ({
 }))
 
 const { Desk } = await import('./Desk')
+const { resetHeldSeen } = await import('./heldSeen')
 const { resetActionGuards } = await import('./actionGuards')
 const { resetLiveHolds } = await import('./useDesk')
 
 beforeEach(() => {
   ops.length = 0; sends.length = 0; cancelGate = null; commitAnswer = { ok: true }
   readRows = async () => []; realtime = null; sendMode = 'held'; finalGate = null; uploadGate = null; ackGate = null; cancelAnswer = { ok: true }
-  localStorage.clear(); resetLiveHolds(); resetActionGuards()
+  localStorage.clear(); resetLiveHolds(); resetActionGuards(); resetHeldSeen(); seenCalls.length = 0; heldSeenOk = true; heldSeenEntry = null; heldSeenGate = null
 })
 afterEach(() => { cleanup(); vi.useRealTimers() })
 
@@ -109,7 +128,7 @@ describe('desk races', () => {
     expect(ops).toEqual([])
   })
 
-  it('#2 a hold restored from the saved copy never commits by itself; it waits for "Do it now"', async () => {
+  it('#2 a hold restored from the saved copy never commits in the browser; "Do it now" commits it early', async () => {
     localStorage.setItem(`swr1:${UID}:desk:messages:v1`, JSON.stringify({
       savedAt: new Date().toISOString(), user: UID,
       payload: [row({ id: 'old', body: 'Approving it.', created_at: new Date(Date.now() - 20_000).toISOString(),
@@ -119,8 +138,9 @@ describe('desk races', () => {
     render(<Desk layout="phone" />)
     vi.useFakeTimers({ shouldAdvanceTime: true })
     await act(async () => { vi.advanceTimersByTime(20_000) })
+    // Seen on screen: the server was told (held_seen) and arms its own timer; the browser commits nothing.
+    expect(seenCalls).toEqual([['act-old']])
     expect(ops).toEqual([])
-    expect(screen.getByText(/Not done yet: Approve the quiet post/)).toBeTruthy()
     fireEvent.click(screen.getByText('Do it now'))
     await waitFor(() => expect(ops).toEqual([{ kind: 'commit', id: 'act-old' }]))
   })
@@ -142,17 +162,21 @@ describe('desk races', () => {
     expect(screen.queryByText('Older text.')).toBeNull()
   })
 
-  it('#4 a send dropped before its ack, with no stored row, shows "Not sent" and a retry', async () => {
+  it('#4 a send dropped before its ack, with an empty read, stays unconfirmed (never "Not sent") and retries under its key', async () => {
     sendMode = 'drop-before-ack'
     render(<Desk layout="phone" />)
     type('whats going out this week')
-    await screen.findByText('Not sent', {}, { timeout: 3000 })
+    // r4 #2: the request may still be on its way, so an empty read does not call it failed.
+    await screen.findByText('Not confirmed yet.', {}, { timeout: 3000 })
+    expect(screen.queryByText('Not sent')).toBeNull()
     expect(screen.queryByText('Sending')).toBeNull()
+    expect(screen.getByText('Check again')).toBeTruthy()
     sendMode = 'held'
     fireEvent.click(screen.getByText('Retry'))
     await waitFor(() => expect(sends).toHaveLength(2))
     expect(sends[1].text).toBe('whats going out this week')
-    expect(sends[1].client_key).not.toBe(sends[0].client_key)
+    // r4 #2: an unsent message retries under its ORIGINAL key (the server answers a known key idempotently).
+    expect(sends[1].client_key).toBe(sends[0].client_key)
   })
 
   it('#5 a failed answer row keeps a retry tied to the send it failed', async () => {
@@ -182,13 +206,16 @@ describe('round 2 independent reproducers', () => {
     expect(ops).toEqual([])
   })
 
-  it('a failed cancel offers a way to retry cancel without rearming commit', async () => {
+  it('a failed cancel offers a way to retry cancel without rearming commit (after the row is read back)', async () => {
     cancelAnswer = { ok: false, error: 'No connection.' }
     render(<Desk layout="phone" />)
     type('approve the trains one')
+    const answer = row({ id: 'a-' + sends[0].client_key, body: 'Approving it.', meta: { actions: [{ id: 'act-live', kind: 'approve', label: 'Approve the trains post', state: 'held', undo: true, hold_ms: 8000 }] } })
+    readRows = async () => [answer] // the server still holds it
     fireEvent.click(await screen.findByText('Undo'))
     await screen.findByText('No connection.')
-    expect(screen.queryByRole('button', { name: /undo|retry cancellation/i })).toBeTruthy()
+    await waitFor(() => expect(screen.queryByRole('button', { name: /undo|retry cancellation/i })).toBeTruthy())
+    expect(ops.filter(o => o.kind === 'commit')).toHaveLength(0)
   })
 
   it('a stale SSE final must not erase the newer realtime row from the in-flight history journal', async () => {
@@ -206,7 +233,7 @@ describe('round 2 independent reproducers', () => {
     expect(screen.queryByText('Newer realtime answer.')).toBeTruthy()
   })
 
-  it('a pre-ack socket drop and failed history read leave "Check again" instead of Sending (no blind resend)', async () => {
+  it('a pre-ack socket drop and failed history read leave "Check again", and Retry reuses the original key', async () => {
     sendMode = 'drop-before-ack'
     let reads = 0
     readRows = async () => { if (++reads > 1) throw Error('offline'); return [] }
@@ -216,7 +243,9 @@ describe('round 2 independent reproducers', () => {
     await screen.findByText(/Offline, showing the saved copy/)
     expect(screen.queryByText('Sending')).toBeNull()
     expect(screen.queryByText('Check again')).toBeTruthy()
-    expect(screen.queryByText('Retry')).toBeNull()
+    fireEvent.click(screen.getByText('Retry'))
+    await waitFor(() => expect(sends).toHaveLength(2))
+    expect(sends[1].client_key).toBe(sends[0].client_key)
   })
 
   it('does not erase text typed while a photo is uploading', async () => {
@@ -351,7 +380,7 @@ it('r3 review: a failed cancel after remount leaves Undo retry available', async
   await screen.findByText('Knows your week, drafts and calls')
   expect(screen.getByText('Cancelling: Approve the trains post')).toBeTruthy()
   await act(async () => { release() })
-  expect(screen.queryByText('Try Undo again')).toBeTruthy()
+  await waitFor(() => expect(screen.queryByText('Try Undo again')).toBeTruthy())
 })
 
 it('r3 review: an unconfirmed write cannot resend under a fresh key', async () => {
@@ -424,4 +453,247 @@ it('r3 review: hiding an active countdown leaves the hold manual when the page r
   } finally {
     override.mockRestore()
   }
+})
+
+
+describe('round 4', () => {
+  it('r4 #1: a held row seen later (reopened desk) offers Undo as well as Do it now', async () => {
+    readRows = async () => [row({ id: 'reopened', meta: { actions: [{ id: 'act-re', kind: 'approve', label: 'Approve the quiet post', state: 'held', undo: false }] } })]
+    render(<Desk layout="phone" />)
+    await screen.findByText('Do it now')
+    fireEvent.click(screen.getByText('Undo'))
+    await waitFor(() => expect(ops).toEqual([{ kind: 'cancel', id: 'act-re' }]))
+  })
+
+  it('r4 #2: a connection lost before any answer is unconfirmed, and Retry reuses the original key', async () => {
+    sendMode = 'offline'
+    render(<Desk layout="phone" />)
+    await screen.findByText(/Ask about this week/)
+    type('whats going out this week')
+    await screen.findByText(/Not confirmed: the connection dropped/)
+    expect(screen.getByText('Check again')).toBeTruthy()
+    sendMode = 'held'
+    fireEvent.click(screen.getByText('Retry'))
+    await waitFor(() => expect(sends).toHaveLength(2))
+    expect(sends[1].client_key).toBe(sends[0].client_key)
+  })
+
+  it('r4 #2: a turn still being answered says so and offers Check again', async () => {
+    sendMode = 'in-progress'
+    render(<Desk layout="phone" />)
+    await screen.findByText(/Ask about this week/)
+    type('whats going out this week')
+    await screen.findByText('Still working, check again.')
+    expect(screen.getByText('Check again')).toBeTruthy()
+    expect(document.querySelector('[data-streaming]')).toBeNull()
+  })
+
+  it('r4 #2: a refused key (used for another message) retries under a NEW key', async () => {
+    sendMode = 'key-reused'
+    render(<Desk layout="phone" />)
+    await screen.findByText(/Ask about this week/)
+    type('whats going out this week')
+    await screen.findByText('Not sent')
+    sendMode = 'held'
+    fireEvent.click(screen.getByText('Retry'))
+    await waitFor(() => expect(sends).toHaveLength(2))
+    expect(sends[1].client_key).not.toBe(sends[0].client_key)
+  })
+
+  it('r4 #2: a turn the server recorded as failed retries under a NEW key (its key would replay the failure)', async () => {
+    sendMode = 'error-final'
+    render(<Desk layout="phone" />)
+    type('how did the made up post do')
+    await screen.findByText(/could not answer just now/)
+    sendMode = 'held'
+    fireEvent.click(screen.getByText('Try again'))
+    await waitFor(() => expect(sends).toHaveLength(2))
+    expect(sends[1].client_key).not.toBe(sends[0].client_key)
+  })
+
+  it('r4 #3: a timed-out cancel clears the in-flight state, reads the row back, then offers Undo again', async () => {
+    cancelAnswer = { ok: false, error: 'timeout' }
+    render(<Desk layout="phone" />)
+    type('approve the trains one')
+    const answer = row({ id: 'a-' + sends[0].client_key, body: 'Approving it.', meta: { actions: [{ id: 'act-live', kind: 'approve', label: 'Approve the trains post', state: 'held', undo: true, hold_ms: 8000 }] } })
+    let reads = 0
+    readRows = async () => { reads++; return [answer] }
+    fireEvent.click(await screen.findByText('Undo'))
+    await screen.findByText(/No answer from the desk/)
+    await waitFor(() => expect(reads).toBeGreaterThan(0))
+    await waitFor(() => expect(screen.getByText('Try Undo again')).toBeTruthy())
+    expect(screen.queryByText(/Cancelling/)).toBeNull()
+  })
+})
+
+
+describe('held_seen (the server arms a hold when Ivan can first see it)', () => {
+  it('a live hold is reported once when its row is visibly rendered, and the countdown starts then', async () => {
+    render(<Desk layout="phone" />)
+    type('approve the trains one')
+    await waitFor(() => expect(document.querySelector('[data-seen="armed"]')).toBeTruthy())
+    expect(seenCalls).toEqual([['act-live']])
+    expect(document.querySelector('[data-state="held"]')?.textContent).toMatch(/in [1-8]s/)
+  })
+
+  it('a hold rendered while the tab is hidden is reported only once the tab is visible', async () => {
+    let visibility: DocumentVisibilityState = 'hidden'
+    const override = vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility)
+    try {
+      render(<Desk layout="phone" />)
+      type('approve the trains one')
+      await screen.findByText(/Approving it\./)
+      await act(async () => {})
+      expect(seenCalls).toEqual([])
+      visibility = 'visible'
+      await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
+      await waitFor(() => expect(seenCalls).toEqual([['act-live']]))
+    } finally {
+      override.mockRestore()
+    }
+  })
+
+  it('a reopened desk does not report the same hold twice', async () => {
+    const first = render(<Desk layout="phone" />)
+    type('approve the trains one')
+    await waitFor(() => expect(seenCalls).toHaveLength(1))
+    first.unmount()
+    readRows = async () => [row({ id: 'a-' + sends[0].client_key, body: 'Approving it.', meta: { actions: [{ id: 'act-live', kind: 'approve', label: 'Approve the trains post', state: 'held', undo: true, hold_ms: 8000 }] } })]
+    render(<Desk layout="phone" />)
+    await screen.findByText(/Approving it\./)
+    await act(async () => {})
+    expect(seenCalls).toHaveLength(1)
+  })
+
+  it('if held_seen fails, the row shows no countdown and keeps Undo and Do it now', async () => {
+    heldSeenOk = false
+    render(<Desk layout="phone" />)
+    type('approve the trains one')
+    await waitFor(() => expect(document.querySelector('[data-seen="failed"]')).toBeTruthy())
+    expect(document.querySelector('.dk-count')).toBeNull()
+    expect(screen.getByText('Undo')).toBeTruthy()
+    expect(screen.getByText('Do it now')).toBeTruthy()
+    expect(ops).toEqual([])
+  })
+})
+
+
+describe('held_seen answers (server r3: per id {state, seen_at, hold_until} or {error})', () => {
+  it('the countdown runs to the server hold_until, not a fresh local 8 s', async () => {
+    heldSeenEntry = (_id, at) => ({ state: 'held', seen_at: new Date(at - 6000).toISOString(), hold_until: new Date(at + 2500).toISOString() })
+    render(<Desk layout="phone" />)
+    type('approve the trains one')
+    await waitFor(() => expect(document.querySelector('[data-seen="armed"]')).toBeTruthy())
+    expect(document.querySelector('.dk-count')?.textContent).toMatch(/^[1-3]s$/)
+  })
+
+  it('a per-id error shows no countdown and keeps Undo and Do it now', async () => {
+    heldSeenEntry = () => ({ error: 'not_found' })
+    render(<Desk layout="phone" />)
+    type('approve the trains one')
+    await waitFor(() => expect(document.querySelector('[data-seen="failed"]')).toBeTruthy())
+    expect(document.querySelector('.dk-count')).toBeNull()
+    expect(screen.getByText('Undo')).toBeTruthy()
+    expect(screen.getByText('Do it now')).toBeTruthy()
+  })
+
+  it('a row the server already settled is read back', async () => {
+    heldSeenEntry = (_id, at) => ({ state: 'done', seen_at: new Date(at - 20000).toISOString(), hold_until: new Date(at - 12000).toISOString() })
+    let release!: () => void
+    heldSeenGate = new Promise(r => { release = r })
+    let reads = 0
+    let stored: DeskMessage[] = []
+    readRows = async () => { reads++; return stored }
+    render(<Desk layout="phone" />)
+    type('approve the trains one')
+    await waitFor(() => expect(document.querySelector('[data-seen="pending"]')).toBeTruthy())
+    await act(async () => {})
+    // The server committed it before the row was seen: the stored row now says done.
+    stored = [row({ id: 'a-' + sends[0].client_key, body: 'Approving it.', meta: { actions: [{ id: 'act-live', kind: 'approve', label: 'Approve the trains post', state: 'done', undo: true }] } })]
+    const before = reads
+    await act(async () => { release() })
+    await waitFor(() => expect(reads).toBeGreaterThan(before))
+    await screen.findByText('Done: Approve the trains post')
+    expect(screen.queryByText('Do it now')).toBeNull()
+    expect(ops).toEqual([])
+  })
+})
+
+
+describe('round 5 (Sol desk-ui r4 follow-ups)', () => {
+  it('r4 #3: a cancel left unanswered while the desk is reopened ends on its timeout and reads back in the OPEN desk', async () => {
+    let release!: () => void
+    cancelGate = new Promise(r => { release = r })
+    cancelAnswer = { ok: false, error: 'timeout' } // what the bounded op returns after 15 s with no answer
+    const first = render(<Desk layout="phone" />)
+    await screen.findByText(/Ask about this week/)
+    type('approve the trains one')
+    fireEvent.click(await screen.findByText('Undo'))
+    first.unmount()
+    let reads = 0
+    readRows = async () => { reads++; return [row({ id: 'a-' + sends[0].client_key, body: 'Approving it.', meta: {
+      actions: [{ id: 'act-live', kind: 'approve', label: 'Approve the trains post', state: 'held', undo: true, hold_ms: 8000 }],
+    } })] }
+    render(<Desk layout="phone" />)
+    await screen.findByText('Cancelling: Approve the trains post')
+    const before = reads
+    await act(async () => { release() })
+    await waitFor(() => expect(reads).toBeGreaterThan(before)) // read back by the reopened desk
+    await waitFor(() => expect(screen.getByText('Try Undo again')).toBeTruthy())
+    expect(screen.queryByText(/Cancelling/)).toBeNull()
+    expect(screen.getByText('No answer from the desk.')).toBeTruthy()
+  })
+
+  it('r4 #3: if the read-back shows the server already cancelled it, no action and no stale error is offered', async () => {
+    cancelAnswer = { ok: false, error: 'timeout' }
+    render(<Desk layout="phone" />)
+    type('approve the trains one')
+    readRows = async () => [row({ id: 'a-' + sends[0].client_key, body: 'Approving it.', meta: {
+      actions: [{ id: 'act-live', kind: 'approve', label: 'Approve the trains post', state: 'cancelled', undo: false }],
+    } })]
+    fireEvent.click(await screen.findByText('Undo'))
+    await screen.findByText('Cancelled: Approve the trains post')
+    expect(screen.queryByText('Undo')).toBeNull()
+    expect(screen.queryByText('Do it now')).toBeNull()
+    expect(screen.queryByText('No answer from the desk.')).toBeNull()
+  })
+
+  it('r4 #2: a retry under the original key shows the stored answer once (the server replays it, nothing runs twice)', async () => {
+    sendMode = 'offline'
+    render(<Desk layout="phone" />)
+    await screen.findByText(/Ask about this week/)
+    type('whats going out this week')
+    await screen.findByText(/Not confirmed: the connection dropped/)
+    sendMode = 'held'
+    fireEvent.click(screen.getByText('Retry'))
+    await screen.findByText(/Approving it\./)
+    expect(sends.map(x => x.client_key)).toEqual([sends[0].client_key, sends[0].client_key])
+    expect(screen.getAllByText(/Approving it\./)).toHaveLength(1)
+    expect(screen.queryByText('Retry')).toBeNull()
+  })
+
+  it('held_seen: more than 10 held rows are sent in calls of at most 10 ids, each row answered', async () => {
+    const actions = Array.from({ length: 12 }, (_, i) => ({ id: `act-${i}`, kind: 'approve', label: `Approve post ${i}`, state: 'held' as const, undo: true, hold_ms: 8000 }))
+    readRows = async () => [row({ id: 'many', body: 'Approving them.', meta: { actions } })]
+    render(<Desk layout="phone" />)
+    await waitFor(() => expect(document.querySelectorAll('[data-seen="armed"]')).toHaveLength(12))
+    expect(seenCalls.map(c => c.length)).toEqual([10, 2])
+    expect(screen.getAllByText('Undo')).toHaveLength(12)
+  })
+})
+
+it('held_seen: a failed report is sent again when the tab returns, and the countdown then starts', async () => {
+  heldSeenOk = false
+  render(<Desk layout="phone" />)
+  type('approve the trains one')
+  await waitFor(() => expect(document.querySelector('[data-seen="failed"]')).toBeTruthy())
+  expect(document.querySelector('.dk-count')).toBeNull()
+  heldSeenOk = true
+  // the return to the app also re-reads; the server still holds the row
+  readRows = async () => [row({ id: 'a-' + sends[0].client_key, body: 'Approving it.', meta: { actions: [{ id: 'act-live', kind: 'approve', label: 'Approve the trains post', state: 'held', undo: true, hold_ms: 8000 }] } })]
+  await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
+  await waitFor(() => expect(document.querySelector('[data-seen="armed"]')).toBeTruthy())
+  expect(seenCalls).toEqual([['act-live'], ['act-live']])
+  expect(document.querySelector('.dk-count')).toBeTruthy()
+  expect(ops).toEqual([])
 })

@@ -24,17 +24,22 @@ export type DeskHandle = {
   retry: (m: DeskMessage) => void
   act: (kind: 'undo' | 'commit' | 'cancel', actionId: string) => Promise<ActionResult>
   reload: () => void
-  /** When a held action was delivered live to THIS mounted desk (its countdown start), else null. */
-  liveHoldStart: (actionId: string) => number | null
   /** The original send of a failed answer is loaded, so a retry can resend it. */
   canRetry: (m: DeskMessage) => boolean
+  /** Read the rows back now; resolves when that read has answered (or failed). */
+  refresh: () => Promise<void>
 }
 
-// Held actions commit on the SERVER when the hold ends, unless Undo's compare-and-set wins first
-// (content-desk 0d7edb6a). The desk only shows the countdown for holds a live turn delivered to this
-// mount; nothing in the browser ever commits by itself.
-/** Tests only: kept for the test files' resets; countdown starts are per mount. */
-export function resetLiveHolds(): void { /* per-mount state: nothing global to clear */ }
+// Held actions commit on the SERVER, timed from the moment the row was first visibly on screen
+// (held_seen, src/d/desk/heldSeen.ts); nothing in the browser ever commits by itself.
+/** Tests only: kept for the test files' resets. */
+export function resetLiveHolds(): void { /* see heldSeen.ts resetHeldSeen */ }
+
+// Every mounted desk's read-back. refresh() reads back in all of them (none open: nothing to show).
+const openDesks = new Set<() => Promise<void>>()
+function refreshOpenDesks(): Promise<void> {
+  return Promise.all([...openDesks].map(f => f())).then(() => {})
+}
 
 function userId(): string | null {
   return mockOn() ? MOCK_USER : currentUserId()
@@ -58,8 +63,6 @@ export function useDesk(): DeskHandle {
   const topic = `desk:${useId()}`
   const listRef = useRef(messages)
   listRef.current = messages
-  // Countdown starts of holds a live turn delivered to this mount (display only).
-  const liveHolds = useRef(new Map<string, number>())
 
   const apply = useCallback((fn: (l: DeskMessage[]) => DeskMessage[]) => {
     setMessages(prev => {
@@ -93,9 +96,21 @@ export function useDesk(): DeskHandle {
   // these keys was never stored, so it shows "Not sent" with a retry (Sol desk-ui r1 #4).
   const ended = useRef(new Set<string>())
 
+  // Callers waiting for the next read to finish (desk.refresh): resolved when this read answers, when
+  // the desk unmounts, or after 10 s at the latest, so a waiting row can never stay stuck.
+  const pendingReads = useRef<(() => void)[]>([])
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    const pending = pendingReads.current
+    return () => { mounted.current = false; pending.splice(0).forEach(r => r()) }
+  }, [])
+
   // Live read: reconciles the saved copy (stored rows replace, local rows stay).
   useEffect(() => {
     let live = true
+    const waiting = pendingReads.current.splice(0)
+    const done = () => waiting.forEach(r => r())
     sinceRead.current = new Map()
     readMessages().then(rows => {
       if (!live) return
@@ -107,20 +122,25 @@ export function useDesk(): DeskHandle {
         let next = mergeRows(prev.filter(m => m.local || m.answers || (m.client_key && open.has(m.client_key))), rows)
         if (late.length) next = mergeRows(next, late)
         const stored = new Set(next.filter(m => !m.local && m.client_key).map(m => m.client_key))
-        return next.map(m => ((m.local === 'sending' || m.local === 'unconfirmed') && m.client_key && ended.current.has(m.client_key) && !stored.has(m.client_key)
-          ? { ...m, local: 'failed' as const, error: 'Not sent.' } : m))
+        // An ended send with no stored row is NOT declared failed: the request may still be on its way
+        // (headers lost, a drop before the ack). It stays unconfirmed; its Retry reuses the same key,
+        // which the server answers idempotently (Sol desk-ui r4 #2). Only a server refusal says "Not sent".
+        return next.map(m => (m.local === 'sending' && m.client_key && ended.current.has(m.client_key) && !stored.has(m.client_key)
+          ? { ...m, local: 'unconfirmed' as const, error: 'Not confirmed yet.' } : m))
       })
       setLoaded(true); setFromCache(false); setReadFailed(false)
+      done()
     }, () => {
       if (!live) return
       sinceRead.current = null
       // The check could not reach the server: a send that ended without a confirmed row is not left on
       // "Sending"; it says it is unconfirmed and offers Check again and Retry (Sol desk-ui r2 #4).
       apply(prev => prev.map(m => (m.local === 'sending' && m.client_key && ended.current.has(m.client_key)
-        ? { ...m, local: 'unconfirmed' as const, error: 'Not confirmed.' } : m)))
+        ? { ...m, local: 'unconfirmed' as const, error: 'Not confirmed: the app could not check.' } : m)))
       setReadFailed(true); setLoaded(true)
+      done()
     })
-    return () => { live = false }
+    return () => { live = false; done() }
   }, [n, apply])
 
   // Jobs referenced by cards: read once each, then realtime keeps them.
@@ -169,14 +189,24 @@ export function useDesk(): DeskHandle {
       },
       onDelta: t => setMessages(prev => patch(prev, phId, m => ({ ...m, body: m.body + t }))),
       onFinal: m => {
-        // Holds delivered by this live turn are the only ones that may count down and commit.
-        for (const x of m.meta.actions ?? []) if (x.state === 'held' && !liveHolds.current.has(x.id)) liveHolds.current.set(x.id, Date.now())
         mergeLive([m], x => x.id === phId)
       },
-      onError: (_code, detail) => apply(prev => patch(
-        patch(prev, `local:${key}`, m => ({ ...m, local: 'failed' })),
-        phId, m => ({ ...m, status: 'error', body: '', error: detail ?? 'The desk did not answer. Tap to try again.' }),
-      )),
+      onError: (code, detail) => {
+        const mark = (local: 'failed' | 'unconfirmed', error: string, retryFresh = false) => apply(prev => prev
+          .filter(m => m.id !== phId)
+          .map(m => (m.role === 'user' && m.client_key === key ? { ...m, local, error, retryFresh } : m)))
+        // Ambiguous: the request may have reached the server (connection lost before any answer). It
+        // stays unconfirmed and any retry reuses THIS key, which the server answers idempotently.
+        if (code === 'offline') return mark('unconfirmed', 'Not confirmed: the connection dropped.')
+        // The server holds this turn and is still answering it: say so, offer Check again.
+        if (code === 'turn_in_progress') return mark('unconfirmed', 'Still working, check again.')
+        // The key is taken by a different message: this text needs a new key.
+        if (code === 'key_mismatch') return mark('failed', 'Not sent', true)
+        // A refusal before the turn ran (no stream): nothing was stored for it; a retry may reuse the key.
+        if (!acked) return mark('failed', detail ?? 'Not sent')
+        // The turn ran and failed: the stored error row arrives as `final` and carries its own retry.
+        apply(prev => patch(prev, phId, m => ({ ...m, status: 'error', body: '', error: detail ?? 'The desk did not answer. Tap to try again.' })))
+      },
     }).then(end => {
       setBusy(false)
       ended.current.add(key)
@@ -207,9 +237,28 @@ export function useDesk(): DeskHandle {
     if (!key) return
     const asked = listRef.current.find(x => x.role === 'user' && x.client_key === key)
     if (!asked) return
-    setMessages(prev => prev.filter(x => x !== asked && x !== m && x.id !== `stream:${key}` && x.id !== `local:${key}`))
-    send(asked.body, { attachments: asked.meta.attachments, voice: asked.meta.voice })
-  }, [send])
+    // A turn the server ran and recorded as failed would be replayed as that same failure under its key,
+    // and a refused key cannot be reused: those two retry under a NEW key. Every other case (unsent,
+    // unconfirmed, the stream lost) retries under the ORIGINAL key, which the server answers
+    // idempotently: an existing turn returns its stored answer, so nothing runs twice (Sol desk-ui r4 #2).
+    const knownFailure = (m.role === 'assistant' && m.status === 'error' && !m.answers) || asked.retryFresh === true
+    if (knownFailure) {
+      setMessages(prev => prev.filter(x => x !== asked && x !== m && x.id !== `stream:${key}` && x.id !== `local:${key}`))
+      send(asked.body, { attachments: asked.meta.attachments, voice: asked.meta.voice })
+      return
+    }
+    ended.current.delete(key)
+    const ph: DeskMessage = { id: `stream:${key}`, role: 'assistant', origin: 'desk', body: '', status: 'streaming', meta: {}, client_key: null,
+      created_at: new Date(Date.parse(asked.created_at) + 1).toISOString(), answers: key }
+    // mergeRows with no new rows only re-sorts and puts the placeholder right under its question.
+    setMessages(prev => mergeRows(
+      prev.filter(x => x.id !== `stream:${key}` && !(x === m && m.role === 'assistant'))
+        .map(x => (x === asked ? { ...x, local: x.id.startsWith('local:') ? 'sending' as const : undefined, error: undefined } : x))
+        .concat(ph),
+      [],
+    ))
+    run(asked.body, key, { attachments: asked.meta.attachments, voice: asked.meta.voice })
+  }, [send, run])
 
   const act = useCallback(async (kind: 'undo' | 'commit' | 'cancel', actionId: string) => {
     const r = await (kind === 'undo' ? undoAction(actionId) : kind === 'commit' ? commitAction(actionId) : cancelAction(actionId))
@@ -225,6 +274,19 @@ export function useDesk(): DeskHandle {
   }, [])
 
   const reload = useCallback(() => setN(x => x + 1), [])
-  const liveHoldStart = useCallback((id: string) => liveHolds.current.get(id) ?? null, [])
-  return { messages, jobs, fromCache, loaded, readFailed, busy, send, retry, act, reload, liveHoldStart, canRetry }
+  // This mount's read-back. Registered while mounted, so an op that ends after its desk was closed
+  // still reads the row back in the desk that is open now (Sol desk-ui r4 #3).
+  const refreshSelf = useCallback(() => new Promise<void>(resolve => {
+    if (!mounted.current) { resolve(); return }
+    let settled = false
+    const once = () => { if (!settled) { settled = true; resolve() } }
+    pendingReads.current.push(once)
+    setTimeout(once, 10_000)
+    setN(x => x + 1)
+  }), [])
+  useEffect(() => {
+    openDesks.add(refreshSelf)
+    return () => { openDesks.delete(refreshSelf) }
+  }, [refreshSelf])
+  return { messages, jobs, fromCache, loaded, readFailed, busy, send, retry, act, reload, canRetry, refresh: refreshOpenDesks }
 }
