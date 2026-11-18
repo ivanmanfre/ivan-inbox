@@ -11,6 +11,7 @@ import { PlanHoverCard } from './PlanHoverCard'
 import { dropLabel, dropPlan, moveError, refuseWhy } from './planDrag'
 import { ACCT_NAME, ST_WORD, flagsFor, mixLine, reasonFor, timeLabel, tzOf, weekDays, type Acct, type PlanItem, type Tz } from './planBrain'
 import { thumbUrl } from './thumbs'
+import { BeliefChips } from './CalendarPanel'
 import { useHoverIntent } from './useHoverIntent'
 import type { ContentDraft } from '../../../lib/content'
 import type { PolandRead } from '../../../lib/poland'
@@ -74,6 +75,7 @@ function Card({ it, acct, tz, strip, late, refuse, describedBy, bind, onOpen }: 
     </span>
     {thumb && <img className="pl2-thumb" src={thumb} alt="" loading="lazy" decoding="async" onError={() => setMiss(m => (m === 0 && small !== orig ? 1 : 2))} />}
     <span className="pl2-ct">{it.title || 'Untitled post'}</span>
+    <BeliefChips slotId={it.slotId} draftId={it.draftId} />
     {reason && <span className="pl2-why1">{reason}</span>}
     {flags.length > 0 && <span className="pl2-flags">{flags.map(f => <FlagChip key={f.key} f={f} compact />)}</span>}
   </button>

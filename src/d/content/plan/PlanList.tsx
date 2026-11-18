@@ -3,6 +3,7 @@ import { planDay, type BrainStrip, type PlanRead } from '../../../lib/contentPla
 import { useMotionLevel } from '../../../ds/motionLevel'
 import { dHash } from '../../route'
 import { Empty } from '../../ui/states'
+import { BeliefChips } from './CalendarPanel'
 import {
   ST_WORD, flagsFor, quoteFor, readLine, reasonFor, timeLabel, traitLine, tzOf,
   type Acct, type Flag, type PlanItem, type Tz,
@@ -84,6 +85,7 @@ function Row({ it, acct, tz, strip, open, delay, onToggle, onOpen }: RowProps) {
         {time && <span className="pl2-time">{time}</span>}
       </span>
       <span className="pl2-t">{it.title || 'Untitled post'}</span>
+      <BeliefChips slotId={it.slotId} draftId={it.draftId} />
       {(flags.length > 0 || reason) && <span className="pl2-sub">
         {flags.map(f => <FlagChip key={f.key} f={f} />)}
         {reason && <span className="pl2-why1">{reason}</span>}

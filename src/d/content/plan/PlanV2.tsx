@@ -13,6 +13,7 @@ import { Seg, SeatAv } from '../v2/ui'
 import { BrainStrip, IdeaStockPopover } from './BrainStrip'
 import { PlanList, useEntered } from './PlanList'
 import { PlanPanel } from './PlanPanel'
+import { CalendarChipsProvider, CalendarPanel, useCalendarPanel } from './CalendarPanel'
 import { PlanWeeks, type ArchFillMeter, type PolandMeter } from './PlanWeeks'
 import { FillUnsure, commitArchFill, fetchArchFill, undoArchFill, type ArchFillRead } from '../../../lib/archFill'
 import { fillPairs, type FillPair } from './archFill'
@@ -177,6 +178,8 @@ export function PlanV2({ lane, setLane, verdicts, showInsights = false, ivanRows
       .catch(e => { if (live) setError(e instanceof Error ? e.message : 'The plan could not load.') })
     return () => { live = false; c.abort() }
   }, [lane, tick])
+  // Ivan's seat only: belief and vehicle on each post, the week strip, the profile check, the measurement panel.
+  const panel = useCalendarPanel(lane === 'ivan', tick)
   // A read from another seat never paints under this one.
   const r = read?.account === lane ? read : null
   const all = useMemo(() => (r ? itemsOf(r) : []), [r])
@@ -359,7 +362,10 @@ export function PlanV2({ lane, setLane, verdicts, showInsights = false, ivanRows
               stock={lane !== 'ivan' && hasStock} stockOpen={stockOpen} onStock={toggleStock} />}
             {stockOpen && <IdeaStockPopover strip={r.brain_strip} onClose={closeStock} />}
           </div>}
-          {body}
+          <CalendarChipsProvider panel={lane === 'ivan' ? panel.panel : null}>
+            {lane === 'ivan' && <CalendarPanel state={panel} />}
+            {body}
+          </CalendarChipsProvider>
           {shown && <PlanPanel key={shown.key} item={shown} read={r} lane={lane} onClose={closePanel} onChanged={retry} />}
         </>}
     <section className="pl2-insights" aria-label="Content Brain insights">

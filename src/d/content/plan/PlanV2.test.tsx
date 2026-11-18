@@ -12,6 +12,7 @@ import archFx from './fixtures/arch.json'
 
 const api = vi.hoisted(() => ({ fetchPlan: vi.fn(), moveSlotWeek: vi.fn() }))
 vi.mock('../../../lib/contentPlan', async o => ({ ...await o<typeof import('../../../lib/contentPlan')>(), fetchPlan: api.fetchPlan, moveSlotWeek: api.moveSlotWeek }))
+vi.mock('../../../lib/contentPlanPanel', async o => ({ ...await o<typeof import('../../../lib/contentPlanPanel')>(), fetchCalendarPanel: () => Promise.reject(new Error('no panel in this test')) }))
 import { PlanV2 } from './PlanV2'
 
 const rise = () => structuredClone(riseFx) as unknown as PlanRead
