@@ -28,7 +28,7 @@ import { warsaw, warsawDay } from './brief.ts'
 import { oneText, type Act } from './parse.ts'
 import { urlInMessage } from './unfurl.ts'
 import { MAX_BRIEF_CHARS, MAX_TITLE_CHARS } from '../_shared/desk-t3.ts'
-import { identify, words, sharedSpan, withoutDays, destinationCheck, type IdDraft } from './target.ts'
+import { identify, words, sharedSpan, withoutDays, resolveDestination, type IdDraft } from './target.ts'
 
 // deno-lint-ignore no-explicit-any
 type Db = any
@@ -68,7 +68,7 @@ export type Planned = {
   // what to run now (done) or on commit (held), for the journaled action row `actionId` (the desk SQL
   // functions act only for that row's owner and target); returns result + undo payload. undoInDb: the SQL
   // function stored the undo images on the action row itself (round 14 #4), the caller writes no undo.
-  run?: (actionId: string) => Promise<{ result: unknown; undo?: Record<string, unknown> | null; undoInDb?: boolean; detail?: string; t3_job?: ActionEcho['t3_job']; label?: string }>
+  run?: (actionId: string, claim?: string) => Promise<{ result: unknown; undo?: Record<string, unknown> | null; undoInDb?: boolean; detail?: string; t3_job?: ActionEcho['t3_job']; label?: string }>
   refuse?: string
   chips?: { label: string; send: string }[]
   /** the action in plain words, for the authorization check */
@@ -231,7 +231,7 @@ export function eligible(kind: string, d: Pick<Draft, 'status' | 'scheduled_at'>
 
 /**
  * Every live visible draft of Ivan's (unfinished ones in his Review, scheduled, published in the last
- * 31 days), read in ONE statement through desk_live_drafts (db/20261118m_content_desk_r11.sql): no
+ * 30 days), read in ONE statement through desk_live_drafts (db/20261118m_content_desk_r11.sql): no
  * paging, no row cap, never partial (Sol r10 #7). Null when it cannot be read: nothing is resolved then.
  */
 export async function liveCandidates(ctx: Pick<Ctx, 'userDb' | 'fixtures'>): Promise<Draft[] | null> {
@@ -269,6 +269,13 @@ export function resolveDraft(brief: Rendered, act: Act): { d: Draft; handle: str
   // a day he named is enforced on the resolved draft itself, not only used to narrow (Sol r7 #1)
   if (dated && dayOf(d) !== dated) return { error: 'dated_mismatch', chips: pickChips(act, [d], all) }
   return { d, handle }
+}
+
+/** The Warsaw wall clock (HH:MM) of an instant. */
+export function warsawClock(iso: string): string {
+  const p = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Warsaw', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date(iso))
+    .reduce((a, x) => (a[x.type] = x.value, a), {} as Record<string, string>)
+  return `${String(+p.hour % 24).padStart(2, '0')}:${p.minute}`
 }
 
 /** "2026-11-26 10:45" in Warsaw -> UTC ISO. A date or time that does not exist in Warsaw is null. */
@@ -400,11 +407,13 @@ export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: 
   if (!cands) return ask('read_failed', 'I could not read your drafts, so I did nothing.')
   const today = warsawDay(new Date().toISOString())
   // a date move's destination is the move's own Warsaw day: only that day phrase is removed from identity
-  const destIso = act.kind === 'date' ? warsawToIso(String(act.at ?? '')) : null
-  const idOpts = { today, kind: act.kind, note: act.note, dest: destIso ? warsawDay(destIso) : null }
+  // a date move's destination day, resolved by the SERVER from his words (never the model's instant):
+  // only that day phrase is taken out of the identity reference
+  const destDay = act.kind === 'date' ? (() => { const r = resolveDestination(ctx.text, today, null); return r.ok ? r.date : null })() : null
+  const idOpts = { today, kind: act.kind, note: act.note, dest: destDay }
   const asId = (ds: Draft[]): IdDraft[] => ds.map((d) => ({ id: d.id, first_line: d.first_line, day: dayOf(d), rev: d.updated_at ?? null }))
   let res = identify(ctx.text, asId(cands), idOpts)
-  if (ctx.fixtures && !res.ids.length && res.why !== 'too_many_rivals') {
+  if (ctx.fixtures && !res.ids.length && res.why !== 'too_many_rivals' && res.why !== 'positional' && res.why !== 'day_conflict') {
     // eval fixtures mode: fixtures first; only when no fixture fits his words do his real drafts count
     const real = await liveCandidates({ ...ctx, fixtures: false })
     if (!real) return ask('read_failed', 'I could not read your drafts, so I did nothing.')
@@ -417,6 +426,16 @@ export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: 
   if (res.ids.length !== 1) {
     const shown = [...res.ids, ...res.rivals].map((x) => byId.get(x)!).filter(Boolean)
     if (res.why === 'too_many_rivals') return ask('ambiguous', 'Several posts match your words. Pick one.', chipsFor(shown))
+    if (res.why === 'positional') {
+      // no numbered references (round 15 #1): a position is refused, with chips for the posts this kind can act on
+      const pick = all.filter((d) => eligible(act.kind, d))
+        .sort((a, z) => (a.scheduled_at && z.scheduled_at ? Date.parse(a.scheduled_at) - Date.parse(z.scheduled_at) : a.scheduled_at ? -1 : z.scheduled_at ? 1 : Date.parse(z.created_at) - Date.parse(a.created_at)))
+      return ask('positional', 'I do not pick posts by number. Tap the one you mean, or name a few of its words.', chipsFor(pick))
+    }
+    if (res.why === 'day_conflict') {
+      // a source day only vetoes (round 15 #1): the post his words match is on another day
+      return ask('day_conflict', 'The post your words match is not on the day you named, so I did nothing. Tap it if you mean it.', chipsFor(shown))
+    }
     return shown.length
       ? ask('ambiguous', `${res.ids.length} posts match your words. Pick one.`, chipsFor(shown))
       : ask('no_match', 'I could not tell which post you mean from your words.')
@@ -581,10 +600,10 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
         echo: { kind, label: `Approving ${q}${failedCheck ? ' (it failed its check)' : ''}`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
         describe: `approve ${qq}${failedCheck ? ', even though it FAILED its quality check' : ''}`,
         command: `approve ${qq}${failedCheck ? ' even though it failed its check' : ''}`,
-        run: async (actionId) => {
+        run: async (actionId, claim) => {
           if (failedCheck && act._qa_override !== true) throw new Error('qa_override_missing')
           // the authorized revision only, under the publisher's locks; Brain Keep then calls the app's keep RPC (Sol r5 B3)
-          return { result: await deskWrite(ctx, actionId, brain ? 'desk_keep' : 'desk_approve', { p_draft: id, p_expected_updated_at: pinned, p_expected_status: d!.status, p_expected_scheduled_at: sourceAt(act, d!) }) }
+          return { result: await deskWrite(ctx, actionId, claim, brain ? 'desk_keep' : 'desk_approve', { p_draft: id, p_expected_updated_at: pinned, p_expected_status: d!.status, p_expected_scheduled_at: sourceAt(act, d!) }) }
         },
       }
     }
@@ -594,9 +613,15 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
       if (d!.status === 'published') return { echo: { kind, label: `${q} is already published.`, state: 'failed', undo: false, target }, refuse: 'published' }
       // immediate kinds act only on a draft with no live queue row (round 14 #3): a queued post moves in the calendar
       if (d!.queue_ids?.length) return { echo: { kind, label: IN_QUEUE, state: 'failed', undo: false, target }, refuse: 'in_queue' }
-      // a relative destination must name one day, and it must be the day the move uses (round 14 #2)
-      const dc = ctx.text ? destinationCheck(ctx.text, iso, warsawDay(new Date().toISOString())) : { ok: true as const }
+      // the SERVER resolves the destination instant from his words (round 15 #2): day plus his explicit
+      // time, else the draft's current time, else 10:45. The planned instant must equal it exactly.
+      const dc = resolveDestination(ctx.text, warsawDay(new Date().toISOString()), d!.scheduled_at ? { day: warsawDay(d!.scheduled_at), time: warsawClock(d!.scheduled_at) } : null)
       if (!dc.ok) return { echo: { kind, label: dc.label, state: 'failed', undo: false, target }, refuse: dc.code }
+      const want = warsawToIso(`${dc.date} ${dc.time}`)
+      if (!want) return { echo: { kind, label: `${dc.date} ${dc.time} does not exist in Warsaw time, so I did nothing. Say another time.`, state: 'failed', undo: false, target }, refuse: 'unclear_time' }
+      if (Date.parse(want) !== Date.parse(iso)) {
+        return { echo: { kind, label: `I read the new time as ${warsaw(want)}, and that is not what I was about to use, so I did nothing. Say the day and time again.`, state: 'failed', undo: false, target }, refuse: 'date_mismatch' }
+      }
       const id = d!.id, prev = d!.scheduled_at
       return {
         ...base,
@@ -605,7 +630,7 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
         describe: `date ${qq} for ${String(act.at)} Warsaw time (${warsaw(iso)})`,
         command: `move ${qq} to ${String(act.at)}`,
         run: async (actionId) => {
-          const w = await setDate(ctx, actionId, d!, iso)
+          const w = await setDate(ctx, actionId, d!, want)
           return { result: w.rpc, undoInDb: true,
             detail: w.applied && Date.parse(w.applied) !== Date.parse(iso) ? `The calendar stored ${warsaw(w.applied)}.` : undefined }
         },
@@ -632,12 +657,12 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
             ? `take ${qq} off the schedule (it is scheduled for ${warsaw(prev)}; its queued copy for ${warsaw(queue!.slot_at)} is cancelled)${reason ? `, reason: "${reason}"` : ''}`
             : `remove the date from ${qq}, which takes it off the schedule (it is scheduled for ${warsaw(prev)})`,
           command: `pull ${qq} off the schedule`,
-          run: async (actionId) => {
+          run: async (actionId, claim) => {
             // the exact queue set (and for a pull the exact Next row) it was authorized on, checked again
             // under the publisher's locks before the app's own pull runs (Sol r4 #4, r5 B2)
             if (kind === 'pull' && !queue) throw new Error('no_queue_row')
             if (!Array.isArray(d!.queue_ids)) throw new Error('changed')
-            return { result: await deskWrite(ctx, actionId, 'desk_pull', {
+            return { result: await deskWrite(ctx, actionId, claim, 'desk_pull', {
               p_draft: id, p_expected_updated_at: d!.updated_at ?? null, p_queue_ids: d!.queue_ids,
               p_next_queue: kind === 'pull' ? queue!.queue_id : null, p_next_slot: kind === 'pull' ? queue!.slot_at : null,
               p_reason: kind === 'pull' ? reason : null, p_expected_scheduled_at: sourceAt(act, d!),
@@ -679,11 +704,11 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
         echo: { kind, label: `Deleting ${q}${why ? ` (${why})` : ''}`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
         describe: `delete ${qq}${why ? `, reason: "${why}"` : ', no reason given'}`,
         command: `delete ${qq}${why ? `, reason: ${why}` : ''}`,
-        run: async (actionId) => {
+        run: async (actionId, claim) => {
           // undated, review/error, no live queue copy, the authorized revision: all checked under the
           // publisher's locks in desk_delete, which then stamps the reason and deletes (or archives)
           if (!pinned) throw new Error('changed')
-          return { result: await deskWrite(ctx, actionId, 'desk_delete', { p_draft: id, p_expected_updated_at: pinned, p_reason: why }) }
+          return { result: await deskWrite(ctx, actionId, claim, 'desk_delete', { p_draft: id, p_expected_updated_at: pinned, p_reason: why }) }
         },
       }
     }
@@ -705,13 +730,13 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
         echo: { kind, label: `Rewriting ${q} through your writer. It takes a few minutes.`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
         describe: `rerun the writer on ${qq} (rewrites its copy)`,
         command: `redo ${qq} through the writer, same idea`,
-        run: async (actionId) => {
+        run: async (actionId, claim) => {
           // the 'generating' claim under the publisher's locks: authorized status + updated_at, and no
           // live queued copy (Sol r6 #6); only the request that gets the row fires the writer
           if (!d!.updated_at) throw new Error('changed')
           const startedAt = new Date().toISOString()
           const before = d!.status
-          const row = await deskWrite(ctx, actionId, 'desk_redo_claim', { p_draft: id, p_expected_updated_at: d!.updated_at, p_expected_status: before, p_started_at: startedAt, p_expected_scheduled_at: sourceAt(act, d!) }) as
+          const row = await deskWrite(ctx, actionId, claim, 'desk_redo_claim', { p_draft: id, p_expected_updated_at: d!.updated_at, p_expected_status: before, p_started_at: startedAt, p_expected_scheduled_at: sourceAt(act, d!) }) as
             { type?: string; topic?: string | null; title?: string | null }
           const postFormat = row.type === 'carousel' ? 'Carousel' : row.type === 'single_image' ? 'Single Image' : 'Text Post'
           const f = ctx.fetchImpl ?? fetch
@@ -730,7 +755,7 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
             // needs no release. Still busy after 3: say so plainly (Sol r7 #5)
             let released = false
             for (let i = 0; i < 3 && !released; i++) {
-              const { data, error } = await ctx.svc.rpc('desk_redo_release', { p_action: actionId, p_draft: id, p_started_at: startedAt, p_status: before })
+              const { data, error } = await ctx.svc.rpc('desk_redo_release', { p_action: actionId, p_claim: claim ?? null, p_draft: id, p_started_at: startedAt, p_status: before })
               const code = error ? (lockCode(error) ? 'busy' : 'error') : String((data as { ok?: boolean; error?: string } | null)?.ok === true ? 'ok' : (data as { error?: string } | null)?.error ?? 'error')
               if (code === 'ok' || code === 'changed' || code === 'gone') released = true
               else await new Promise((res) => setTimeout(res, 150 * (i + 1)))
@@ -942,10 +967,12 @@ export function normT3(title: string, brief: string): { title: string; brief: st
 }
 
 /** A desk SQL write (db/20261118m_content_desk_r6.sql): locks, checks, then the app's own write; a refusal is a code. */
-async function deskWrite(ctx: Pick<Ctx, 'svc'>, actionId: string, fn: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
+async function deskWrite(ctx: Pick<Ctx, 'svc'>, actionId: string, claim: string | undefined, fn: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
   // every desk forward function executes only for service_role (round 14 #4): the edge function calls it
   // after its own user check, and the SQL acts for the owner of the claimed action row `p_action`
-  const { data, error } = await ctx.svc.rpc(fn, { p_action: actionId, ...args })
+  // a held write runs only for the claim token of this commit attempt, and marks its action row done in
+  // the same transaction (round 15 #6)
+  const { data, error } = await ctx.svc.rpc(fn, { p_action: actionId, p_claim: claim ?? null, ...args })
   if (error) throw new Error(lockCode(error) ? 'changed' : 'write_failed')
   const r = (data ?? {}) as Record<string, unknown>
   if (r.ok !== true) throw new Error(typeof r.error === 'string' ? r.error : 'refused')

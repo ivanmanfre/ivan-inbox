@@ -601,6 +601,8 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
             let undo: Record<string, unknown> | null = null
             // a draft write's undo images were stored by its SQL function on this row: never overwritten here
             let undoInDb = false
+            let failed = false
+            const okLabel = echo.label
             try {
               if (snap && !mode.dry && !await stillSame(svc, snap)) throw new Error('changed')
               const res = await p.run!(echo.id)
@@ -619,8 +621,25 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
               echo.label = stuck ? failText(e) : `Could not do it: ${failText(e)}`
               console.error('desk action failed', echo.kind)
               terminal = { state: stuck ? 'failed_release' : 'failed', error: failText(e) }
+              failed = true
             }
-            if (!await retry3(() => svc.from('desk_actions').update(undoInDb ? { result: terminal } : { result: terminal, undo }).eq('id', echo.id))) {
+            if (failed) {
+              // the failure is recorded only over the row this turn left pending (round 15 #4): a draft
+              // write whose SQL committed already set the row done with its undo, and only its response
+              // was lost. Then the receipt comes from the committed row, never "failed".
+              const { data: won, error: wErr } = await svc.from('desk_actions').update({ result: terminal, undo: null })
+                .eq('id', echo.id).filter('result->>state', 'eq', 'pending').select('id')
+              if (wErr || !Array.isArray(won) || won.length !== 1) {
+                const { data: cur } = await svc.from('desk_actions').select('result, undo').eq('id', echo.id).maybeSingle()
+                const st = (cur?.result as { state?: string } | null)?.state
+                if (st === 'done') {
+                  echo.state = 'done'; echo.label = okLabel; echo.undo = !!cur?.undo; wrote = true
+                  echo.detail = undefined
+                } else if (!cur) {
+                  echo.detail = 'I could not read back what happened. Check the post before trying again.'
+                }
+              }
+            } else if (!await retry3(() => svc.from('desk_actions').update(undoInDb ? { result: terminal } : { result: terminal, undo }).eq('id', echo.id))) {
               // the write happened; only its record failed: never invite a repeat (Sol r3 lost receipt)
               echo.detail = 'Done, but I could not record it. Check before repeating it.'
               echo.undo = false
@@ -842,10 +861,19 @@ async function echoDurable(svc: any, messageId: string, actionId: string): Promi
  * cancels a hold (round 14 #5).
  */
 // deno-lint-ignore no-explicit-any
-async function claimCommit(svc: any, a: { id: string; user_id?: string }): Promise<'claimed' | 'expired' | 'not_held' | 'error'> {
-  const { data, error } = await svc.rpc('desk_claim_commit', { p_action: a.id, p_user: a.user_id })
+async function claimCommit(svc: any, a: { id: string; user_id?: string }, token: string): Promise<'claimed' | 'expired' | 'not_held' | 'busy' | 'error'> {
+  const { data, error } = await svc.rpc('desk_claim_commit', { p_action: a.id, p_user: a.user_id, p_token: token })
   if (error) return 'error'
-  return data === 'claimed' || data === 'expired' || data === 'not_held' ? data : 'error'
+  return data === 'claimed' || data === 'expired' || data === 'not_held' || data === 'busy' ? data : 'error'
+}
+
+/** Reread the action row: the state, and whether the stored claim token is this attempt's. */
+// deno-lint-ignore no-explicit-any
+async function claimState2(svc: any, id: string, token: string): Promise<{ state: string | null; ours: boolean; undo: unknown } | null> {
+  const { data, error } = await svc.from('desk_actions').select('result, undo').eq('id', id).maybeSingle()
+  if (error || !data) return null
+  const r = (data.result ?? {}) as { state?: string; claim_token?: string }
+  return { state: r.state ?? null, ours: r.claim_token === token, undo: data.undo ?? null }
 }
 
 const EXPIRED_LABEL = 'Expired after 24 hours. Nothing changed.'
@@ -920,7 +948,9 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
     if (state !== 'held' || !await claimState(svc, a, 'held', 'cancelled')) return { ok: false, error: 'not_held' }
     newState = 'cancelled'; label = 'Cancelled. Nothing changed.'
   } else {
-    if (state !== 'held') return { ok: false, error: 'not_held' }
+    // a row left committing past its lease is reconciled by the claim below (never run twice: the write
+    // and its "done" are one transaction, so a committing row past the lease never committed a write)
+    if (state !== 'held' && state !== 'committing') return { ok: false, error: 'not_held' }
     // Confirm-to-act: ONLY this op, Ivan's "Do it now" tap, runs a draft write. No server clock.
     // A hold without the v2 confirmation (made before round 11) is cancelled, never run (Sol r11 #2).
     const conf = (a.args as { _confirm?: Confirmation } | null)?._confirm
@@ -930,16 +960,25 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
     if (!durable) return { ok: false, error: 'not_saved', detail: failText('not_saved') }
     // exactly one commit wins, a cancel that already won makes this one refuse, and the 24 h deadline is
     // part of the SAME atomic claim: held -> committing only while now < expires_at (Sol r11 #6)
-    const claim = await claimCommit(svc, a)
-    // an RPC error never cancels a hold: nothing ran, the card stays held (round 14 #5)
-    if (claim === 'error') return { ok: false, error: 'claim_failed', detail: failText('claim_failed') }
+    // a per-attempt claim token (round 15 #6): an ambiguous claim response is settled by rereading against it
+    const token = crypto.randomUUID()
+    let claim = await claimCommit(svc, a, token)
+    if (claim === 'error') {
+      const cur = await claimState2(svc, actionId, token)
+      if (cur?.state === 'committing' && cur.ours) claim = 'claimed'
+      // an RPC error never cancels a hold: nothing ran under this attempt; report what is stored
+      else return { ok: false, error: cur?.state === 'held' || !cur ? 'claim_failed' : 'not_held', detail: failText('claim_failed') }
+    }
+    if (claim === 'busy') return { ok: false, error: 'busy', detail: 'It is running right now. Check again in a minute.' }
     if (claim === 'expired') {
       const won = await expireHold(svc, a)
       return { ok: false, error: won?.state === 'cancelled' ? 'hold_expired' : won ? 'not_held' : 'claim_failed' }
     }
     if (claim !== 'claimed') return { ok: false, error: 'not_held' }
+    let planned: Planned | null = null
+    const args = (a.args ?? {}) as Act & { _snapshot?: Snapshot; _dry?: boolean; _fixtures?: boolean }
+    const doneLabel = (p: Planned | null) => (p ? proposedLine(args as Act, { ...p, target_id: args._snapshot?.target_id }, args._snapshot ?? null).replace(/^Proposed/, 'Done') : '') || 'Done.'
     try {
-      const args = (a.args ?? {}) as Act & { _snapshot?: Snapshot; _dry?: boolean; _fixtures?: boolean }
       const snap = args._snapshot
       if (!snap?.target_id) throw new Error('changed')
       // re-plan from the stored target UUID only (Sol r1 #2): never a handle, never a fuzzy match
@@ -947,25 +986,37 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
       const ctx: Ctx = { userDb, svc, userId, messageId: a.message_id, brief: emptyBrief, attachments: [], text: '', env }
       const p = await planForTarget(ctx, { ...args }, snap)
       if (!('echo' in p) || !p.run || p.echo.state !== 'held') throw new Error(('refuse' in p && p.refuse) || 'changed')
+      planned = p
       // the live row and the re-planned args must still be exactly what the card showed (planForTarget
       // checked the live row against the snapshot; the card was built from that same snapshot)
       if (!confirmMatches(args._confirm as Confirmation, { id: snap.target_id, updated_at: snap.updated_at, scheduled_at: snap.scheduled_at }, p.canon)) throw new Error('changed')
       const isDry = dryReq || args._dry === true
-      const res = isDry ? { result: { dry: true } } : await p.run(actionId)
-      // the undo payload of a committed write is kept, so Undo works after the tap (date, photo)
-      const recorded = await retry3(() => svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'done', value: res.result ?? null }, undo: (res as { undo?: unknown }).undo ?? null }).eq('id', actionId))
+      const res = isDry ? { result: { dry: true } } : await p.run(actionId, token)
+      // the held write's SQL already set the row done in its own transaction; this records its value, only
+      // over this attempt's claim
+      const recorded = await retry3(() => svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'done', value: res.result ?? null, claim_token: token }, undo: (res as { undo?: unknown }).undo ?? null })
+        .eq('id', actionId).filter('result->>claim_token', 'eq', token))
       newState = 'done'
       if (!recorded) receiptLost = true
       canUndo = !!(res as { undo?: unknown }).undo && recorded
       resDetail = (res as { detail?: string }).detail
-      label = proposedLine(args as Act, { ...p, target_id: snap.target_id }, snap).replace(/^Proposed/, 'Done') || p.echo.label.replace(/^Approving/, 'Approved').replace(/^Deleting/, 'Deleted').replace(/^Taking (.*) off the schedule$/, 'Took $1 off the schedule')
+      label = doneLabel(p) || p.echo.label.replace(/^Approving/, 'Approved').replace(/^Deleting/, 'Deleted').replace(/^Taking (.*) off the schedule$/, 'Took $1 off the schedule')
         .replace(/^Moving/, 'Moved').replace(/^Removing the date/, 'Removed the date').replace(/^Adding your photo/, 'Added your photo')
         .replace(/^Rewriting (.*) through your writer\. It takes a few minutes\.$/, 'Sent $1 to your writer. It takes a few minutes.')
     } catch (e) {
-      // a claimed action that throws anywhere ends failed, never stuck in "committing"
-      await svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'failed', error: failText(e) } }).eq('id', actionId)
-      const why = typeof (a.args as { reason?: unknown } | null)?.reason === 'string' ? String((a.args as { reason: string }).reason).replace(/\s+/g, ' ').trim().slice(0, 200) : ''
-      newState = 'failed'; label = `Not done: ${failText(e)}${why ? ` Your reason was: "${why}".` : ''}`
+      const msg = e instanceof Error ? e.message : String(e)
+      // the write's own transaction marks the row done: if it did, only the response was lost, and the
+      // receipt comes from the committed row (a writer refusal after the claim is a real failure)
+      const cur = await claimState2(svc, actionId, token)
+      if (cur?.state === 'done' && cur.ours && msg !== 'writer_refused' && msg !== 'failed_release') {
+        newState = 'done'; label = doneLabel(planned); canUndo = !!cur.undo
+      } else {
+        // a claimed action that throws ends failed, never stuck in "committing", and only over our own claim
+        await svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'failed', error: failText(e), claim_token: token } })
+          .eq('id', actionId).filter('result->>claim_token', 'eq', token)
+        const why = typeof (a.args as { reason?: unknown } | null)?.reason === 'string' ? String((a.args as { reason: string }).reason).replace(/\s+/g, ' ').trim().slice(0, 200) : ''
+        newState = 'failed'; label = `Not done: ${failText(e)}${why ? ` Your reason was: "${why}".` : ''}`
+      }
     }
     invalidate()
   }

@@ -249,7 +249,7 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
     // the same call (same inputs) builds RECENT PUBLISHED POSTS below, so its first row is this line (Sol r4 #8)
     const merged = mergedPosts(drafts, (b.posts as { posts?: PostRow[] }).posts ?? [], b.post_links)
     if (merged[0]) S.push(`Last post out: ${warsaw(merged[0].at)} "${clip(merged[0].first_line, 70)}" (${merged[0].p ? `${merged[0].p.impressions ?? '?'} impressions so far` : 'no numbers yet'}).`)
-    if (best) S.push(`Best post of the last 31 days by impressions: "${clip(best.first_line, 70)}" ${warsaw(best.posted_at, false)}, ${best.impressions} impressions.`)
+    if (best) S.push(`Best post of the last 30 days (this is what 'this month' means) by impressions: "${clip(best.first_line, 70)}" ${warsaw(best.posted_at, false)}, ${best.impressions} impressions.`)
     S.push(`Ideas waiting: ${b.ideas?.reviewing ?? 0}. Queue armed (next 21 days): ${(b.queue ?? []).length} posts, ${(b.queue ?? []).filter((x) => x.origin === 'autopilot').length} picked by the autopilot.`)
     L.splice(1, 0, '', 'SUMMARY (exact counts, use these):', ...S.map((x) => '- ' + x))
   }
@@ -283,7 +283,7 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
     // eval F2: the window state is the fact; the hour count is never shown
     return h == null || Number.isNaN(h) ? '48h window unknown' : `48h window ${h < 48 ? 'OPEN' : 'CLOSED'}`
   }
-  L.push('', `RECENT PUBLISHED POSTS (last 31 days; "worked" = 1.5x his organic median, bar ${bar ?? '?'} impressions; boosted never counts; "early read" = its numbers were read before its 48h mark and may still be low; each row states its own 48h window):`)
+  L.push('', `RECENT PUBLISHED POSTS (last 30 days (this is what 'this month' means); "worked" = 1.5x his organic median, bar ${bar ?? '?'} impressions; boosted never counts; "early read" = its numbers were read before its 48h mark and may still be low; each row states its own 48h window):`)
   // the lane's quota sits next to the posts it governs (content_plan_quotas via the panel)
   const lane = (d: Draft | null, url?: string) => {
     const v = (url ? b.post_vehicles?.[url] : undefined) ?? (d ? vehicleOf(d) : null)
