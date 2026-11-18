@@ -5,6 +5,9 @@ import { warsawDm, warsawDow, warsawHm } from '../ui/time'
 import { useClaude } from './ClaudeProvider'
 import { CIcon } from './icons'
 import { botSilentLine, chatTail, chatsByDay, shortTitle } from './model'
+import { dHash } from '../route'
+import { useDeskFlags } from '../desk/flags'
+import '../desk/entry.css'
 
 // Chats: search, Claude's own thread pinned with the Pushes switch (the one
 // write here, today's `setBotPushMuted`, db/065), then every chat by day with
@@ -49,6 +52,7 @@ export function Chats({ onPicked, list }: { onPicked: () => void; list: ReturnTy
     return () => { live = false; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVis) }
   }, [botId, bot?.last_turn_at])
   const silent = botSilentLine(health.h, health.h?.lastTurnAt ?? bot?.last_turn_at, health.at)
+  const deskOn = useDeskFlags().desk_enabled
 
   return (
     <div className="dcl-chats" data-chats>
@@ -56,6 +60,11 @@ export function Chats({ onPicked, list }: { onPicked: () => void; list: ReturnTy
         <CIcon name="search" />
         <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search chats" aria-label="Search chats" />
       </label>
+      {deskOn && !needle && (
+        <a className="dk-pin" href={dHash('content', 'desk')} data-verb="open-desk">
+          <span><b>Content</b><small>Your content desk: the week, drafts, calls and ideas</small></span>
+        </a>
+      )}
       {bot && !needle && (
         <div className="dcl-bot">
           <button type="button" className="dcl-bot-m" onClick={() => pick(() => chat.openBot())}>
