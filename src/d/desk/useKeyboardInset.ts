@@ -23,6 +23,9 @@ export function useKeyboardInset(ref: RefObject<HTMLElement | null>): void {
       raf = requestAnimationFrame(() => {
         const kb = keyboardInset(window.innerHeight, vv.height, vv.offsetTop)
         el.style.setProperty('--dk-kb', `${kb}px`)
+        // When iOS pans the visual viewport up instead of only shrinking it, the head follows it, so the layer
+        // is exactly the visible area: head at its top, composer at its bottom.
+        el.style.setProperty('--dk-top', `${kb > 0 ? Math.max(0, Math.round(vv.offsetTop)) : 0}px`)
         el.toggleAttribute('data-kb', kb > 0)
         // iOS scrolls the whole page to reveal a focused field; the desk already moved the field up.
         if (kb > 0 && window.scrollY !== 0) window.scrollTo(0, 0)

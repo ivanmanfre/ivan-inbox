@@ -8,8 +8,10 @@ import { CIcon } from '../claude/icons'
 import { uploadDeskPhoto } from './api'
 import type { DeskAttachment } from './model'
 
-export function DeskComposer({ busy, onSend, prefill, suggest, autoFocus }: {
+export function DeskComposer({ busy, onSend, prefill, suggest, autoFocus, onUploading }: {
   busy: boolean
+  /** The photo upload is part of the turn: the desk holds every other send while it runs. */
+  onUploading?: (on: boolean) => void
   /** Desktop: the field takes the focus when the desk opens (never on the phone: it would raise the keyboard). */
   autoFocus?: boolean
   /** Starter questions shown above the field while it is empty; a tap sends one as typed text. */
@@ -21,7 +23,8 @@ export function DeskComposer({ busy, onSend, prefill, suggest, autoFocus }: {
   const [text, setText] = useState('')
   // Picked photos stay on the device (a local preview) until Send; nothing is uploaded before that.
   const [photos, setPhotos] = useState<{ id: string; file: File; preview: string }[]>([])
-  const [uploading, setUploading] = useState(false)
+  const [uploading, setUploadingState] = useState(false)
+  const setUploading = (on: boolean) => { setUploadingState(on); onUploading?.(on) }
   const [note, setNote] = useState<string | null>(null)
   const voiced = useRef(false)
   // Every edit (typing or dictation) bumps the revision; an upload that finishes clears the field and
@@ -90,6 +93,8 @@ export function DeskComposer({ busy, onSend, prefill, suggest, autoFocus }: {
     setPhotos(ps => ps.filter(p => !gone.has(p.id)))
     setNote(null)
     if (rev.current === sentRev) { setText(''); voiced.current = false; stt.clearClip() }
+    // Desktop: the field keeps the focus after a click on Send, so the next message is just typing.
+    if (autoFocus) field.current?.focus({ preventScroll: true })
   }
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send() }
@@ -118,9 +123,11 @@ export function DeskComposer({ busy, onSend, prefill, suggest, autoFocus }: {
       )}
       <div className={`dk-comp-box${recording ? ' dk-comp-rec' : ''}`}>
         {(recording || stt.state === 'transcribing' || stt.note || note || uploading) && (
-          <div className="dk-comp-note" role="status">
+          <div className="dk-comp-note">
             {recording && <i className="dk-rec-dot" aria-hidden="true" />}
-            {recording ? `Listening ${Math.round(stt.elapsedMs / 1000)}s` : stt.state === 'transcribing' ? 'Writing down what you said' : uploading ? 'Sending your photo' : note ?? stt.note}
+            {/* The state words are announced; the running seconds are not (they would speak every second). */}
+            <span role="status">{recording ? 'Listening' : stt.state === 'transcribing' ? 'Writing down what you said' : uploading ? 'Sending your photo' : note ?? stt.note}</span>
+            {recording && <span aria-hidden="true">{Math.round(stt.elapsedMs / 1000)}s</span>}
           </div>
         )}
         {photos.length > 0 && (
@@ -135,7 +142,7 @@ export function DeskComposer({ busy, onSend, prefill, suggest, autoFocus }: {
         )}
         <textarea
           ref={field} rows={1} value={text} onChange={e => { const v = e.target.value; edit(() => v) }} onKeyDown={onKey}
-          placeholder="Ask about your posts, or paste a link" aria-label="Message the desk" enterKeyHint="send"
+          placeholder="Ask about your posts" aria-label="Message the desk" enterKeyHint="send"
         />
         <div className="dk-comp-row">
           <button type="button" className="dk-key" aria-label="Add a photo" disabled={uploading} onClick={() => file.current?.click()}>

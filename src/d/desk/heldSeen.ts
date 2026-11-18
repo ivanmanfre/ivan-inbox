@@ -8,7 +8,9 @@
 import { markHeldSeen, type HeldSeenResult } from './api'
 import { actionStore } from './actionGuards'
 
-type Seen = { state: 'pending' } | { state: 'armed'; until: number } | { state: 'failed' } | { state: 'settled' }
+// 'manual': the server recorded the sighting and set no deadline (every hold waits for Do it now, server r19+):
+// no countdown, and the report is never sent again.
+type Seen = { state: 'pending' } | { state: 'armed'; until: number } | { state: 'manual' } | { state: 'failed' } | { state: 'settled' }
 const seen = new Map<string, Seen>()
 const listeners = new Set<() => void>()
 let version = 0
@@ -56,7 +58,9 @@ export function reportHeldSeen(id: string): void {
         if (!e || e.error) seen.set(x, { state: 'failed' })
         else if (e.state && e.state !== 'held') seen.set(x, { state: 'settled' })
         else if (Number.isFinite(until)) seen.set(x, { state: 'armed', until })
-        else seen.set(x, { state: 'failed' }) // no deadline from the server: no countdown, keep the buttons
+        // Recorded with no deadline: a manual hold. Not a failure, so it is not reported again on every render.
+        else if (e.seen_at) seen.set(x, { state: 'manual' })
+        else seen.set(x, { state: 'failed' }) // no deadline and no record: no countdown, keep the buttons
       }
       changed()
     }

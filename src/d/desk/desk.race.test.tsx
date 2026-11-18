@@ -599,6 +599,20 @@ describe('held_seen answers (server r3: per id {state, seen_at, hold_until} or {
     expect(document.querySelector('.dk-count')?.textContent).toMatch(/^[1-3]s$/)
   })
 
+  it('a sighting recorded with no deadline is a manual hold: no countdown, nothing changes, reported once', async () => {
+    heldSeenEntry = (_id, at) => ({ state: 'held', seen_at: new Date(at).toISOString(), hold_until: null })
+    render(<Desk layout="phone" />)
+    type('approve the trains one')
+    await waitFor(() => expect(document.querySelector('[data-seen="manual"]')).toBeTruthy())
+    expect(document.querySelector('.dk-count')).toBeNull()
+    expect(document.querySelector('[data-state="held"]')).toBeTruthy()
+    expect(screen.getByText('Do it now')).toBeTruthy()
+    expect(screen.getByText('Undo')).toBeTruthy()
+    const calls = seenCalls.length
+    await act(async () => { await new Promise(r => setTimeout(r, 60)) })
+    expect(seenCalls.length).toBe(calls)
+  })
+
   it('a per-id error shows no countdown and keeps Undo and Do it now', async () => {
     heldSeenEntry = () => ({ error: 'not_found' })
     render(<Desk layout="phone" />)

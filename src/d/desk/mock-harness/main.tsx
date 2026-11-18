@@ -18,6 +18,17 @@ root.dataset.skin = 'brief'
 root.dataset.skinOn = 'tokens type motion shell content claude'
 if (new URLSearchParams(location.search).get('dark') === '1') root.dataset.theme = 'dark'
 if (new URLSearchParams(location.search).get('empty') === '1') seedDeskMock([], [], true)
+// `?edge=1`: the hard cases (made up): a long URL chip, 30 choices, a long post line.
+if (new URLSearchParams(location.search).get('edge') === '1') {
+  const now = Date.now()
+  seedDeskMock([
+    { id: 'e-1', role: 'user', origin: 'operator', body: 'which ones', status: 'done', meta: {}, client_key: 'e1', created_at: new Date(now - 60000).toISOString() },
+    { id: 'e-2', role: 'assistant', origin: 'desk', status: 'done', client_key: null, created_at: new Date(now - 50000).toISOString(),
+      body: 'See https://example.com/a/very/long/path/that/never/breaks/on/its/own/because/it/has/no/spaces/at/all/anywhere for the source.',
+      meta: { chips: [{ send: 'https://example.com/another/very/long/link/with/no/spaces/that/would/widen/the/page/if/nothing/wrapped/it' },
+        ...Array.from({ length: 29 }, (_, i) => ({ send: `move #a${String(i).padStart(2, '0')} to thursday` }))] } },
+  ], [], true)
+}
 // `?rich=1`: every card the desk can draw, all made up.
 if (new URLSearchParams(location.search).get('rich') === '1') {
   const now = Date.now()

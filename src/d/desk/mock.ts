@@ -109,10 +109,11 @@ export const mockApi = {
     listeners.add(l)
     return () => { listeners.delete(l) }
   },
-  async heldSeen(ids: string[]): Promise<{ ok: boolean; results: { id: string; state: string; seen_at: string; hold_until: string }[] }> {
+  async heldSeen(ids: string[]): Promise<{ ok: boolean; results: { id: string; state: string; seen_at: string; hold_until: string | null }[] }> {
     await sleep(40)
     const at = Date.now()
-    return { ok: true, results: ids.map(id => ({ id, state: 'held', seen_at: new Date(at).toISOString(), hold_until: new Date(at + 8000).toISOString() })) }
+    // As the server answers since r19: the sighting is recorded, no deadline (the hold waits for Do it now).
+    return { ok: true, results: ids.map(id => ({ id, state: 'held', seen_at: new Date(at).toISOString(), hold_until: null })) }
   },
   async upload(file: File): Promise<string> { await sleep(200); return `https://example.com/mock/${encodeURIComponent(file.name || 'photo.jpg')}` },
 }

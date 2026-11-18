@@ -61,6 +61,7 @@ vi.mock('../../exp/v2c/chat/useStt', () => ({
   useStt: () => ({ state: 'idle', elapsedMs: 0, note: null, supported: true, toggle: vi.fn(), clip: null, clearClip: vi.fn() }),
 }))
 
+const api = await import('./api')
 const { Desk } = await import('./Desk')
 const { resetHeldSeen } = await import('./heldSeen')
 const { installVisibility, removeVisibility } = await import('./testVisibility')
@@ -120,5 +121,75 @@ describe('Desk', () => {
     await act(async () => { streamGate?.() })
     fireEvent.click(await screen.findByText('Undo'))
     await waitFor(() => expect(ops).toEqual([{ kind: 'undo', id: 'act-2' }]))
+  })
+})
+
+describe('Desk polish (review of the new layout)', () => {
+  it('a photo still uploading holds every other send: a chip waits', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'h2', body: 'Two match.', meta: { chips: [{ send: 'move #a1b2c to thursday' }] } })])
+    let release: (u: string) => void = () => {}
+    vi.mocked(api.uploadDeskPhoto).mockImplementationOnce(() => new Promise<string>(r => { release = r }))
+    const { container } = render(<Desk layout="phone" />)
+    await screen.findByText('Two match.')
+    const file = new File([new Uint8Array([1])], 'x.png', { type: 'image/png' })
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x'); globalThis.URL.revokeObjectURL = vi.fn()
+    fireEvent.change(container.querySelector('[data-desk-photo]')!, { target: { files: [file] } })
+    fireEvent.click(screen.getByLabelText('Send'))
+    await waitFor(() => expect((screen.getByText('move #a1b2c to thursday', { selector: 'button' }) as HTMLButtonElement).disabled).toBe(true))
+    expect(sent).toHaveLength(0)
+    await act(async () => { release('https://example.com/p.jpg') })
+    await waitFor(() => expect(sent).toHaveLength(1))
+  })
+
+  it('a failed first read with nothing saved is an error with Try again, never the empty starter screen', async () => {
+    vi.mocked(api.readMessages).mockRejectedValueOnce(new Error('offline'))
+    const { container } = render(<Desk layout="desktop" />)
+    await screen.findByText(/Could not read the desk/)
+    expect(container.querySelector('[data-desk-hero]')).toBeNull()
+    expect(screen.getByText('Try again')).toBeTruthy()
+  })
+
+  it('an old long answer folds as a real disclosure: the hidden part is inert, the key says Show all / Show less', async () => {
+    const long = 'A made up paragraph about trains. '.repeat(40)
+    vi.mocked(api.readMessages).mockResolvedValueOnce([
+      stored({ id: 'o1', body: long, created_at: '2026-11-17T09:00:00Z' }),
+      ...['a', 'b', 'c', 'd'].map((k, i) => stored({ id: `n${k}`, body: `Short ${k}.`, created_at: `2026-11-17T10:0${i}:00Z` })),
+    ])
+    const { container } = render(<Desk layout="desktop" />)
+    const key = await screen.findByText('Show all')
+    expect(key.getAttribute('aria-expanded')).toBe('false')
+    expect(container.querySelector('#dk-t-o1')!.hasAttribute('inert')).toBe(true)
+    fireEvent.click(key)
+    expect(screen.getByText('Show less').getAttribute('aria-expanded')).toBe('true')
+    expect(container.querySelector('#dk-t-o1')!.hasAttribute('inert')).toBe(false)
+  })
+
+  it('a long list of choices shows six, then Show N more', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'h3', body: 'Many match.', meta: { chips: Array.from({ length: 10 }, (_, i) => ({ send: `move #a${i} to thursday` })) } })])
+    render(<Desk layout="phone" />)
+    await screen.findByText('Many match.')
+    expect(document.querySelectorAll('.dk-chip')).toHaveLength(6)
+    fireEvent.click(screen.getByText('Show 4 more'))
+    expect(document.querySelectorAll('.dk-chip')).toHaveLength(10)
+  })
+
+  it('the newest read-only answer offers Try again, which asks the same question as a new turn', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([
+      stored({ id: 'q1', role: 'user', origin: 'operator', body: 'how did my last post do', client_key: 'k-q1', created_at: '2026-11-17T10:00:00Z' }),
+      stored({ id: 'r1', body: 'It did fine.', created_at: '2026-11-17T10:00:05Z' }),
+    ])
+    render(<Desk layout="phone" />)
+    await screen.findByText('It did fine.')
+    fireEvent.click(screen.getByLabelText('Ask that again'))
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect((sent[0].body as { text: string; client_key: string })).toMatchObject({ text: 'how did my last post do' })
+    expect((sent[0].body as { client_key: string }).client_key).not.toBe('k-q1')
+  })
+
+  it('a change card shows the server sentence once, without a ref or a doubled state word', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'u1', body: '', meta: { actions: [{ id: 'act-u', kind: 'date', label: 'Undone.', state: 'undone', undo: false }] } })])
+    render(<Desk layout="phone" />)
+    await screen.findByText('Back as it was.')
+    expect(screen.queryByText(/Undone: Undone/)).toBeNull()
   })
 })
