@@ -18,9 +18,14 @@ export type SendHandlers = {
 }
 export type ActionResult = { ok: boolean; message?: DeskMessage; error?: string }
 
-function evalHeader(): Record<string, string> {
-  try { return localStorage.getItem('desk-eval') === '1' ? { 'x-desk-eval': '1' } : {} } catch { return {} }
+function evalOn(): boolean {
+  try { return localStorage.getItem('desk-eval') === '1' } catch { return false }
 }
+function evalHeader(): Record<string, string> {
+  return evalOn() ? { 'x-desk-eval': '1' } : {}
+}
+/** Eval and smoke turns are stamped meta.test by the server; Ivan's desk never shows them (only eval mode does). */
+const isTestRow = (m: { meta?: unknown }) => !!m.meta && typeof m.meta === 'object' && (m.meta as { test?: unknown }).test === true
 
 async function bearer(): Promise<string | null> {
   const { data } = await supabase.auth.getSession()
@@ -166,9 +171,11 @@ export const cancelAction = (id: string) => op('cancel', id)
 /** The newest 60 desk messages, oldest first. Owner RLS decides what comes back. */
 export async function readMessages(): Promise<DeskMessage[]> {
   if (mockOn()) return mockApi.read()
-  const { data, error } = await supabase.from('desk_messages').select(MESSAGE_COLS).order('created_at', { ascending: false }).limit(60)
+  let q = supabase.from('desk_messages').select(MESSAGE_COLS)
+  if (!evalOn()) q = q.or('meta->>test.is.null,meta->>test.neq.true')
+  const { data, error } = await q.order('created_at', { ascending: false }).limit(60)
   if (error) throw error
-  return (data ?? []).map(r => asMessage(r as DeskMessage)).reverse()
+  return (data ?? []).filter(r => evalOn() || !isTestRow(r as DeskMessage)).map(r => asMessage(r as DeskMessage)).reverse()
 }
 
 export async function readJobs(ids: string[]): Promise<T3Job[]> {
@@ -184,7 +191,7 @@ export function subscribeDesk(topic: string, userId: string, on: { message: (m: 
   const ch = supabase.channel(topic)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'desk_messages', filter: `user_id=eq.${userId}` }, p => {
       const row = (p as unknown as { new?: DeskMessage }).new
-      if (row && row.id) on.message(asMessage(row))
+      if (row && row.id && (evalOn() || !isTestRow(row))) on.message(asMessage(row))
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'desk_t3_jobs', filter: `user_id=eq.${userId}` }, p => {
       const row = (p as unknown as { new?: T3Job }).new
