@@ -22,9 +22,11 @@ vi.mock('../../lib/supabase', async orig => {
 
 const { SubNav, subOf, contentRedirect } = await import('../content/SubNav')
 const { renderInFrame } = await import('../test-utils')
-const { claudeNav, saveDeskFlags, FLAGS_OFF } = await import('./navFlag')
+const { claudeNav, saveDeskFlags, FLAGS_OFF, resetDeskFlagStore } = await import('./navFlag')
+const { resetDeskFlagReads } = await import('./flags')
+const { PLACES } = await import('../places')
 
-afterEach(() => { cleanup(); localStorage.clear() })
+afterEach(() => { cleanup(); localStorage.clear(); resetDeskFlagStore(); resetDeskFlagReads() })
 
 describe('desk entry points', () => {
   it('the Content tab row carries a Desk key when desk_enabled is on', async () => {
@@ -47,5 +49,11 @@ describe('desk entry points', () => {
     expect(claudeNav()).toBe('hidden')
     saveDeskFlags({ ...FLAGS_OFF, desk_enabled: true, nav_visible: true })
     expect(claudeNav()).toBe('main')
+  })
+  it('the nav slot follows a later read in the same session (never captured at load)', () => {
+    saveDeskFlags({ ...FLAGS_OFF, desk_enabled: true, nav_visible: true })
+    expect(PLACES.claude.nav).toBe('main')
+    saveDeskFlags({ ...FLAGS_OFF, desk_enabled: true, nav_visible: false })
+    expect(PLACES.claude.nav).toBe('hidden')
   })
 })

@@ -4,8 +4,15 @@
 import type { ActionResult, SendBody, SendHandlers } from './api'
 import type { DeskMessage, T3Job } from './model'
 
+// The canned desk only exists where something switched it on: the dev server, or the
+// mock harness's own build (enableDeskMock). The app's production bundle never does,
+// so `?deskmock=1` on the real app does nothing (Sol desk-ui r1 #6).
+let enabled = false
+export function enableDeskMock(): void { enabled = true }
+
 export function mockOn(): boolean {
   if (typeof window === 'undefined') return false
+  if (!enabled && !import.meta.env.DEV) return false
   try {
     const s = new URLSearchParams(window.location.search)
     if (s.get('deskmock') === '1') return true

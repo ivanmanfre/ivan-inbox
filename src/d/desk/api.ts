@@ -145,8 +145,17 @@ export function subscribeDesk(topic: string, userId: string, on: { message: (m: 
   return () => { void supabase.removeChannel(ch) }
 }
 
-/** The photo goes where the app's own picture upload puts it (post-stills/onepost), named desk-. */
+/**
+ * The photo goes where the app's own picture upload puts it (post-stills/onepost), which is a PUBLIC
+ * bucket on purpose: a photo the desk attaches to a draft must be a public URL for the post to go out
+ * with it (operator_set_draft_photos takes https URLs), so a private bucket would break attach.
+ * Called only when Ivan taps Send (a removed thumbnail uploads nothing), and the stored name is random:
+ * the original file name never reaches the path (Sol desk-ui r1 #7).
+ */
 export async function uploadDeskPhoto(file: File): Promise<string> {
   if (mockOn()) return mockApi.upload(file)
-  return uploadDraftPicture('ivan', 'desk0000', file)
+  const ext = (file.type.split('/')[1] || 'jpg').replace(/[^a-z0-9]/gi, '').slice(0, 5) || 'jpg'
+  const renamed = new File([file], `photo.${ext}`, { type: file.type })
+  const rand = Array.from(crypto.getRandomValues(new Uint8Array(4)), b => b.toString(16).padStart(2, '0')).join('')
+  return uploadDraftPicture('ivan', rand, renamed)
 }

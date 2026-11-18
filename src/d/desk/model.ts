@@ -4,7 +4,7 @@
 
 export type DeskRole = 'user' | 'assistant'
 export type DeskOrigin = 'operator' | 'desk' | 'proactive' | 't3'
-export type ActionState = 'done' | 'held' | 'undone' | 'failed' | 'cancelled'
+export type ActionState = 'done' | 'held' | 'undone' | 'failed' | 'cancelled' | 'committing' | 'undoing'
 export type T3Status = 'queued' | 'sent' | 'launched' | 'running' | 'done' | 'failed' | 'stalled'
 
 export type DeskAction = {
@@ -21,6 +21,9 @@ export type DeskMeta = {
   t3_job?: DeskT3; drafts?: DeskDraftCard[]
   model?: string; timings?: Record<string, number>; tool_calls?: number
   trigger?: string; voice?: boolean; test?: boolean
+  /** On a failed answer row: the client_key of the send it failed to answer (the retry's key). */
+  client_key?: string
+  error?: string
 }
 
 export type DeskMessage = {
@@ -32,6 +35,8 @@ export type DeskMessage = {
   meta: DeskMeta
   client_key: string | null
   created_at: string
+  /** The row's last write; when two copies of a row meet, the newer one wins. */
+  updated_at?: string
   /** Local only: an optimistic row the server has not stored yet. */
   local?: 'sending' | 'failed'
   /** Local only: the stream placeholder answering the user message with this client_key. */
@@ -43,7 +48,7 @@ export type DeskMessage = {
 export type T3Job = { id: string; status: T3Status; title: string; t3_link: string | null; result_summary: string | null; updated_at?: string }
 
 /** The columns the app reads. */
-export const MESSAGE_COLS = 'id,role,origin,body,status,meta,client_key,created_at'
+export const MESSAGE_COLS = 'id,role,origin,body,status,meta,client_key,created_at,updated_at'
 
 export function byTime(a: DeskMessage, b: DeskMessage): number {
   if (a.created_at !== b.created_at) return a.created_at.localeCompare(b.created_at)
@@ -63,7 +68,13 @@ export function asMessage(row: Partial<DeskMessage> & { id: string }): DeskMessa
     meta: row.meta && typeof row.meta === 'object' ? row.meta : {},
     client_key: row.client_key ?? null,
     created_at: row.created_at ?? new Date().toISOString(),
+    ...(row.updated_at ? { updated_at: row.updated_at } : {}),
   }
+}
+
+/** True when `a` is a strictly older write of the same row than `b` (both stamped). */
+export function olderThan(a: DeskMessage, b: DeskMessage): boolean {
+  return !!a.updated_at && !!b.updated_at && a.updated_at < b.updated_at
 }
 
 /**
@@ -77,6 +88,9 @@ export function asMessage(row: Partial<DeskMessage> & { id: string }): DeskMessa
 export function mergeRows(list: DeskMessage[], rows: DeskMessage[]): DeskMessage[] {
   let out = list.slice()
   for (const r of rows) {
+    // A late snapshot never rolls a row back: an older write of a row we already hold is skipped.
+    const have = out.find(m => m.id === r.id)
+    if (have && olderThan(r, have)) continue
     out = out.filter(m => m.id !== r.id && !(r.client_key && m.local && m.client_key === r.client_key && m.role === r.role))
     if (r.role === 'assistant' && r.origin === 'desk') {
       const ph = out.find(m => m.answers && m.status === 'streaming')

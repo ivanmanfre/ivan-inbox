@@ -7,6 +7,9 @@ import '../../d.css'
 
 // Static, as the Content page imports it.
 import DeskPage from '../index'
+import { enableDeskMock } from '../mock'
+
+enableDeskMock()
 
 function Harness() {
   const [open, setOpen] = useState(() => new URLSearchParams(location.search).get('open') === '1')

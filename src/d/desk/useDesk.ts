@@ -24,7 +24,18 @@ export type DeskHandle = {
   retry: (m: DeskMessage) => void
   act: (kind: 'undo' | 'commit' | 'cancel', actionId: string) => Promise<ActionResult>
   reload: () => void
+  /** When a held action was delivered live in this session (its countdown start), else null. */
+  liveHoldStart: (actionId: string) => number | null
 }
+
+// Holds delivered by a live turn in THIS session, with the moment their countdown began.
+// Module level: a remount (or StrictMode's double effect) keeps the same countdown and
+// never starts a second one. A hold read from the cache or history is never in here,
+// so it never auto-commits (Sol desk-ui r1 #2).
+const liveHolds = new Map<string, number>()
+export function liveHoldStartOf(id: string): number | null { return liveHolds.get(id) ?? null }
+/** Tests only. */
+export function resetLiveHolds(): void { liveHolds.clear() }
 
 function userId(): string | null {
   return mockOn() ? MOCK_USER : currentUserId()
@@ -60,18 +71,38 @@ export function useDesk(): DeskHandle {
   // Build the brief while Ivan reads and types.
   useEffect(() => { void warmDesk() }, [])
 
+  // Stored rows this session merged while a history read was in flight (realtime, a turn's final
+  // row, an action's answer, an acked user row): the snapshot may predate them, so they are merged
+  // again on top of it and never erased (Sol desk-ui r1 #3).
+  const sinceRead = useRef<Map<string, DeskMessage> | null>(null)
+  const note = useCallback((rows: DeskMessage[]) => { for (const r of rows) sinceRead.current?.set(r.id, r) }, [])
+  const mergeLive = useCallback((rows: DeskMessage[], drop?: (m: DeskMessage) => boolean) => {
+    note(rows)
+    apply(prev => mergeRows(drop ? prev.filter(m => !drop(m)) : prev, rows))
+  }, [apply, note])
+  // Sends that ended (final, error or a dropped socket): an unmatched 'sending' row for one of
+  // these keys was never stored, so it shows "Not sent" with a retry (Sol desk-ui r1 #4).
+  const ended = useRef(new Set<string>())
+
   // Live read: reconciles the saved copy (stored rows replace, local rows stay).
   useEffect(() => {
     let live = true
+    sinceRead.current = new Map()
     readMessages().then(rows => {
       if (!live) return
-      // Stored rows replace the saved copy; a send still in flight (its bubble and its answer) stays.
+      const late = [...(sinceRead.current?.values() ?? [])]
+      sinceRead.current = null
       apply(prev => {
+        // Stored rows replace the saved copy; a send still in flight (its bubble and its answer) stays.
         const open = new Set(prev.filter(m => m.answers).map(m => m.answers))
-        return mergeRows(prev.filter(m => m.local || m.answers || (m.client_key && open.has(m.client_key))), rows)
+        let next = mergeRows(prev.filter(m => m.local || m.answers || (m.client_key && open.has(m.client_key))), rows)
+        if (late.length) next = mergeRows(next, late)
+        const stored = new Set(next.filter(m => !m.local && m.client_key).map(m => m.client_key))
+        return next.map(m => (m.local === 'sending' && m.client_key && ended.current.has(m.client_key) && !stored.has(m.client_key)
+          ? { ...m, local: 'failed' as const, error: 'Not sent.' } : m))
       })
       setLoaded(true); setFromCache(false); setReadFailed(false)
-    }, () => { if (live) { setReadFailed(true); setLoaded(true) } })
+    }, () => { if (live) { sinceRead.current = null; setReadFailed(true); setLoaded(true) } })
     return () => { live = false }
   }, [n, apply])
 
@@ -82,16 +113,17 @@ export function useDesk(): DeskHandle {
     let live = true
     readJobs(jobIds.split(',')).then(js => { if (live) setJobs(prev => ({ ...prev, ...Object.fromEntries(js.map(j => [j.id, j])) })) }, () => {})
     return () => { live = false }
-  }, [jobIds])
+    // n: a reconnect or a return to the app re-reads the jobs too, not only new job ids
+  }, [jobIds, n])
 
   useEffect(() => {
     if (!uid) return
     return subscribeDesk(topic, uid, {
-      message: m => apply(prev => mergeRows(prev, [m])),
+      message: m => mergeLive([m]),
       job: j => setJobs(prev => ({ ...prev, [j.id]: j })),
       resubscribed: () => setN(x => x + 1),
     })
-  }, [uid, topic, apply])
+  }, [uid, topic, mergeLive])
 
   // Coming back to the app re-reads: a proactive message may have landed while the phone was locked.
   useEffect(() => {
@@ -103,21 +135,38 @@ export function useDesk(): DeskHandle {
   const run = useCallback((text: string, key: string, opts: { attachments?: DeskAttachment[]; voice?: boolean; chip?: boolean }) => {
     setBusy(true)
     const phId = `stream:${key}`
+    let acked = false
     void sendDesk({ text, client_key: key, ...opts }, {
-      onAck: a => apply(prev => patch(prev, `local:${key}`, m => ({ ...m, id: a.user_message_id || m.id, local: undefined }))),
+      onAck: a => {
+        acked = true
+        apply(prev => {
+          const next = patch(prev, `local:${key}`, m => ({ ...m, id: a.user_message_id || m.id, local: undefined }))
+          note(next.filter(m => m.role === 'user' && m.client_key === key && !m.local))
+          return next
+        })
+      },
       onDelta: t => setMessages(prev => patch(prev, phId, m => ({ ...m, body: m.body + t }))),
-      onFinal: m => apply(prev => mergeRows(prev.filter(x => x.id !== phId), [m])),
+      onFinal: m => {
+        // Holds delivered by this live turn are the only ones that may count down and commit.
+        for (const x of m.meta.actions ?? []) if (x.state === 'held' && !liveHolds.has(x.id)) liveHolds.set(x.id, Date.now())
+        mergeLive([m], x => x.id === phId)
+      },
       onError: (_code, detail) => apply(prev => patch(
         patch(prev, `local:${key}`, m => ({ ...m, local: 'failed' })),
         phId, m => ({ ...m, status: 'error', body: '', error: detail ?? 'The desk did not answer. Tap to try again.' }),
       )),
     }).then(end => {
       setBusy(false)
+      ended.current.add(key)
       // The socket dropped before the answer: the row is the truth, so drop the bubble and read it back
-      // (realtime brings the answer too, whenever the function finishes writing it).
-      if (end === 'dropped') { setMessages(prev => prev.filter(m => m.id !== phId)); setTimeout(() => setN(x => x + 1), 1200) }
+      // (realtime brings the answer too, whenever the function finishes writing it). A send that never
+      // got its ack and has no stored row then shows "Not sent" with a retry.
+      if (end === 'dropped') {
+        setMessages(prev => prev.filter(m => m.id !== phId))
+        setTimeout(() => setN(x => x + 1), acked ? 1200 : 300)
+      }
     })
-  }, [apply])
+  }, [apply, note, mergeLive])
 
   const send = useCallback((text: string, opts: { attachments?: DeskAttachment[]; voice?: boolean; chip?: boolean } = {}) => {
     const t = text.trim()
@@ -130,19 +179,24 @@ export function useDesk(): DeskHandle {
   }, [run])
 
   const retry = useCallback((m: DeskMessage) => {
-    const key = m.answers ?? m.client_key
+    // The send this failure belongs to: the placeholder's key, a stored error row's meta.client_key,
+    // or the user row's own key (Sol desk-ui r1 #5).
+    const key = m.answers ?? m.meta.client_key ?? m.client_key
+    if (!key) return
     const asked = listRef.current.find(x => x.role === 'user' && x.client_key === key)
     if (!asked) return
-    setMessages(prev => prev.filter(x => x !== asked && x.id !== `stream:${key}` && x.id !== `local:${key}`))
+    setMessages(prev => prev.filter(x => x !== asked && x !== m && x.id !== `stream:${key}` && x.id !== `local:${key}`))
     send(asked.body, { attachments: asked.meta.attachments, voice: asked.meta.voice })
   }, [send])
 
   const act = useCallback(async (kind: 'undo' | 'commit' | 'cancel', actionId: string) => {
     const r = await (kind === 'undo' ? undoAction(actionId) : kind === 'commit' ? commitAction(actionId) : cancelAction(actionId))
-    if (r.message) apply(prev => mergeRows(prev, [r.message!]))
+    if (r.message) mergeLive([r.message])
+    // Lost a race (a cancel won, another tab committed): read the row back to show what really happened.
+    if (!r.ok && (r.error === 'not_held' || r.error === 'nothing_to_undo')) setN(x => x + 1)
     return r
-  }, [apply])
+  }, [mergeLive])
 
   const reload = useCallback(() => setN(x => x + 1), [])
-  return { messages, jobs, fromCache, loaded, readFailed, busy, send, retry, act, reload }
+  return { messages, jobs, fromCache, loaded, readFailed, busy, send, retry, act, reload, liveHoldStart: liveHoldStartOf }
 }

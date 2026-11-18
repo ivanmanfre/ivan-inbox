@@ -8,8 +8,9 @@ import { warsawDm, warsawDow, warsawHm } from '../ui/time'
 import { DeskComposer } from './Composer'
 import { useDesk, type DeskHandle } from './useDesk'
 import { useKeyboardInset } from './useKeyboardInset'
+import { committed, disarmed } from './actionGuards'
 import {
-  DEFAULT_HOLD_MS, T3_LABEL, T3_LIVE, holdLeft, holdStart,
+  DEFAULT_HOLD_MS, T3_LABEL, T3_LIVE, holdLeft,
   type DeskAction, type DeskMessage, type T3Job,
 } from './model'
 import '../claude/claude.css'
@@ -45,6 +46,15 @@ function DeskList({ desk }: { desk: DeskHandle }) {
     const el = list.current
     if (el && pinned.current) el.scrollTop = el.scrollHeight
   }, [messages.length, last?.body, last?.status, last?.meta])
+  // The keyboard opening or the composer growing shrinks the list without a new message: keep the
+  // newest line in view when Ivan was at the bottom (Sol desk-ui r1 #8).
+  useEffect(() => {
+    const el = list.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => { if (pinned.current) el.scrollTop = el.scrollHeight })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   const onScroll = () => {
     const el = list.current
     if (el) pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
@@ -72,6 +82,7 @@ function Row({ m, desk }: { m: DeskMessage; desk: DeskHandle }) {
         {m.meta.attachments?.filter(a => a.kind === 'photo').map(a => <img key={a.url} className="dk-photo" src={a.url} alt="Photo you sent" width={120} height={120} />)}
         {m.body && <div className="dk-me-t">{m.body}</div>}
         <small>{m.meta.voice ? 'Voice · ' : ''}{m.local === 'sending' ? 'Sending' : m.local === 'failed' ? 'Not sent' : warsawHm(m.created_at)}</small>
+        {m.local === 'failed' && <button type="button" className="dk-pill" onClick={() => desk.retry(m)}>Retry</button>}
       </div>
     )
   }
@@ -89,6 +100,13 @@ function Row({ m, desk }: { m: DeskMessage; desk: DeskHandle }) {
       </div>
     )
   }
+  if (m.status === 'error') return (
+    // A stored failed answer keeps its retry, tied to the send it failed (meta.client_key).
+    <div className="dk-ans dk-ans-err" data-msg={m.id} role="alert">
+      <p>{m.body || 'The desk could not answer just now.'}</p>
+      {m.meta.client_key && <button type="button" className="dk-pill" onClick={() => desk.retry(m)}>Try again</button>}
+    </div>
+  )
   const note = ORIGIN_NOTE[m.origin]
   return (
     <div className={`dk-ans${m.origin === 'proactive' ? ' dk-pro' : ''}`} data-msg={m.id}>
@@ -112,39 +130,60 @@ function Row({ m, desk }: { m: DeskMessage; desk: DeskHandle }) {
   )
 }
 
-// Commits already sent from this tab: a re-render or a second mount never commits twice.
-const committed = new Set<string>()
 
-function ActionRow({ a, at, desk }: { a: DeskAction; at: string; desk: DeskHandle }) {
+const SETTLED_NOTE: Record<string, string> = {
+  hold_expired: 'Too late to do it from here. Ask again if you still want it.',
+}
+
+function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const holdMs = a.hold_ms ?? DEFAULT_HOLD_MS
-  const [since] = useState(() => holdStart(at, Date.now(), holdMs))
+  // Only a hold this session's live turn delivered counts down; anything restored waits for a tap.
+  const start = desk.liveHoldStart(a.id)
+  const [hiddenAtExpiry, setHiddenAtExpiry] = useState(false)
   const [now, setNow] = useState(() => Date.now())
-  const live = a.state === 'held' && since !== 'stale'
+  const live = a.state === 'held' && start !== null && !disarmed.has(a.id) && !hiddenAtExpiry
   useEffect(() => {
     if (!live) return
     const t = window.setInterval(() => setNow(Date.now()), 250)
-    return () => window.clearInterval(t)
+    // A hidden tab never commits by itself: if the page is hidden while the hold runs, it waits for a tap.
+    const onVis = () => { if (document.visibilityState !== 'visible') setHiddenAtExpiry(true) }
+    document.addEventListener('visibilitychange', onVis)
+    return () => { window.clearInterval(t); document.removeEventListener('visibilitychange', onVis) }
   }, [live])
-  const left = live ? holdLeft(since as number, holdMs, now) : 0
+  const left = live ? holdLeft(start as number, holdMs, now) : 0
   const go = async (kind: 'undo' | 'commit' | 'cancel') => {
-    if (kind === 'commit') { if (committed.has(a.id)) return; committed.add(a.id) }
+    if (kind === 'cancel') disarmed.add(a.id) // synchronous: the timer below can no longer commit
+    if (kind === 'commit') { if (committed.has(a.id) || disarmed.has(a.id)) return; committed.add(a.id) }
     setBusy(true); setErr(null)
     const r = await desk.act(kind, a.id)
     setBusy(false)
-    if (!r.ok) { setErr(r.error ?? 'That did not go through.'); if (kind === 'commit') committed.delete(a.id) }
+    if (r.ok) return
+    // A lost race is settled, not an error: the row is read back and shows what really happened.
+    if (r.error === 'not_held' || r.error === 'nothing_to_undo') return
+    setErr(SETTLED_NOTE[r.error ?? ''] ?? r.error ?? 'That did not go through.')
+    if (kind === 'commit' && r.error !== 'hold_expired') committed.delete(a.id)
   }
   // go is rebuilt each render; only the clock decides when the hold runs out.
+  useEffect(() => {
+    if (!live || left !== 0) return
+    if (document.visibilityState !== 'visible') { setHiddenAtExpiry(true); return }
+    void go('commit')
   // oxlint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (live && left === 0) void go('commit') }, [live, left])
+  }, [live, left])
+  const waiting = a.state === 'held' && !live && !committed.has(a.id) && !disarmed.has(a.id)
   const cls = `dk-act dk-act-${a.state}`
   return (
     <div className={cls} data-action={a.id} data-state={a.state}>
       <span className="dk-act-t">
         {a.state === 'done' && <>Done: {a.label}</>}
-        {a.state === 'held' && since !== 'stale' && <>{a.label} in <b className="dk-count">{left}s</b></>}
-        {a.state === 'held' && since === 'stale' && <>Not done: {a.label}. The app closed during the wait.</>}
+        {a.state === 'held' && live && <>{a.label} in <b className="dk-count">{left}s</b></>}
+        {waiting && <>Not done: {a.label}.</>}
+        {a.state === 'held' && !live && disarmed.has(a.id) && <>Cancelling: {a.label}</>}
+        {a.state === 'held' && !live && committed.has(a.id) && !disarmed.has(a.id) && <>Doing it: {a.label}</>}
+        {a.state === 'committing' && <>Doing it: {a.label}</>}
+        {a.state === 'undoing' && <>Undoing: {a.label}</>}
         {a.state === 'undone' && <>Undone: {a.label}</>}
         {a.state === 'cancelled' && <>Cancelled: {a.label}</>}
         {a.state === 'failed' && <>Failed: {a.label}{a.detail ? `. ${a.detail}` : ''}</>}
@@ -152,8 +191,8 @@ function ActionRow({ a, at, desk }: { a: DeskAction; at: string; desk: DeskHandl
         {err && <small className="dk-warn" role="alert">{err}</small>}
       </span>
       {a.state === 'done' && a.undo && <button type="button" className="dk-pill" disabled={busy} onClick={() => go('undo')}>Undo</button>}
-      {a.state === 'held' && since !== 'stale' && <button type="button" className="dk-pill" disabled={busy} onClick={() => go('cancel')}>Undo</button>}
-      {a.state === 'held' && since === 'stale' && <button type="button" className="dk-pill" disabled={busy} onClick={() => go('commit')}>Do it now</button>}
+      {a.state === 'held' && live && <button type="button" className="dk-pill" disabled={busy} onClick={() => go('cancel')}>Undo</button>}
+      {waiting && !err && <button type="button" className="dk-pill" disabled={busy} onClick={() => go('commit')}>Do it now</button>}
     </div>
   )
 }
