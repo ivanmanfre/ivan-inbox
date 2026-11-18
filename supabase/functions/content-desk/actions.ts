@@ -58,8 +58,8 @@ export type Ctx = {
   unfurl?: (url: string) => Promise<{ title?: string; description?: string; author?: string } | null>
   /** eval fixtures mode: only desk eval fixture drafts are candidates then */
   fixtures?: boolean
-  /** list numbers the previous desk answer displayed -> draft id (its meta.shown_drafts) */
-  shown?: Map<number, string> | null
+  /** the numbered rows the previous desk answer rendered -> draft id + revision (its meta.shown_drafts) */
+  shown?: Map<number, { id: string; rev?: string | null }> | null
 }
 
 export type Planned = {
@@ -77,9 +77,13 @@ export type Planned = {
   canon?: Record<string, unknown>
   /** for the verifier: the resolved post's full live opener (Sol r7 #1, r8 #1) */
   context?: string
+  /** an unresolved or ambiguous reference: a display (a line and chips) only, never an action entry (Sol r10 #10) */
+  display?: boolean
 }
 
 export const HOLD_MS = 8000
+/** Confirm-to-act: a held draft action waits for Ivan's tap up to this long, then is cancelled, never committed. */
+export const HOLD_EXPIRE_MS = 24 * 3600e3
 const POSTGEN = 'https://n8n.ivanmanfredi.com/webhook/post-gen-v2'
 
 const norm = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim()
@@ -147,62 +151,39 @@ export function pickChips(act: Act, ds: Draft[], all: Draft[]): { label: string;
   })
 }
 
-// the statuses a kind can act on (or refuse with its own reason); only these drafts are candidates
+/** Server chips that survive a round trip: each chip's own text, resolved by identify, returns its draft alone (Sol r10 #8). */
+export function verifiedChips(act: Act, ds: Draft[], all: Draft[], opts: { today?: string; kind?: string }): { label: string; send: string }[] {
+  const ids: IdDraft[] = all.map((d) => ({ id: d.id, first_line: d.first_line, day: dayOf(d), rev: d.updated_at ?? null }))
+  return ds.slice(0, 6).map((d) => ({ d, c: pickChips(act, [d], all)[0] }))
+    .filter(({ d, c }) => { const r = identify(c.send, ids, null, opts); return r.ids.length === 1 && r.ids[0] === d.id })
+    .slice(0, 3).map(({ c }) => c)
+}
+
+// the statuses a kind can act on; resolution runs over ALL visible drafts, eligibility is checked after (Sol r10 #3)
 const ELIGIBLE: Record<string, string[]> = {
   approve: ['review', 'error'], date: ['review', 'approved', 'scheduled'], undate: ['review', 'approved', 'scheduled'],
   pull: ['scheduled'], delete: ['review', 'error'], redo: ['review', 'error', 'approved', 'generating'],
   photo_attach: ['review', 'approved', 'scheduled'],
 }
-const UNFINISHED = new Set(['review', 'approved', 'error', 'generating'])
 
-/**
- * Every live draft of Ivan's that this kind could act on, read FRESH (no brief cache, no cap of a few):
- * his lane, an eligible status, not published, in his Review when unfinished; dated for undate/pull.
- * Null when it cannot be read: nothing is resolved then.
- */
-/**
- * Read every row of a query, page by page, in a stable order (Sol r9 #3). The exact count comes with
- * the first page; anything short of it, an error or a missing count = null (fail closed).
- */
-// deno-lint-ignore no-explicit-any
-export async function readAll(page: (from: number, to: number) => any, size = 1000): Promise<any[] | null> {
-  const out: unknown[] = []
-  let total: number | null = null
-  for (let from = 0; from < 50_000; from += size) {
-    const { data, error, count } = await page(from, from + size - 1)
-    if (error || !Array.isArray(data)) return null
-    if (total == null) { if (typeof count !== 'number') return null; total = count }
-    out.push(...data)
-    if (out.length >= total || data.length < size) break
-  }
-  return total != null && out.length === total ? out : null
+/** Does this kind act on this draft at all (else a resolved target is refused, never swapped)? */
+export function eligible(kind: string, d: Pick<Draft, 'status' | 'scheduled_at'>): boolean {
+  if (!(ELIGIBLE[kind] ?? []).includes(d.status)) return false
+  return !((kind === 'undate' || kind === 'pull') && !d.scheduled_at)
 }
 
-export async function liveCandidates(ctx: Pick<Ctx, 'svc' | 'userDb' | 'fixtures'>, kind: string): Promise<Draft[] | null> {
-  const statuses = ELIGIBLE[kind]
-  if (!statuses) return []
-  const data = await readAll((from, to) => ctx.svc.from('carousel_drafts')
-    .select('id, status, type, scheduled_at, published_at, post_body, taxonomy, created_at, updated_at', { count: 'exact' })
-    .is('client_id', null).is('published_at', null).in('status', statuses).order('id', { ascending: true }).range(from, to))
-  if (!data) return null
-  let visible: Set<string> | null = null
-  if (ctx.userDb && data.some((r: { status: string }) => UNFINISHED.has(r.status))) {
-    const vis = await readAll((from, to) => ctx.userDb.from('cb34_p2_safe_drafts').select('id', { count: 'exact' }).order('id', { ascending: true }).range(from, to))
-    if (!vis) return null
-    visible = new Set(vis.map((v: { id: string }) => v.id))
-  }
-  const out: Draft[] = []
-  for (const r of data as { id: string; status: string; type: string; scheduled_at: string | null; published_at: string | null; post_body: string | null; taxonomy: unknown; created_at: string; updated_at: string }[]) {
-    const tax = (r.taxonomy && typeof r.taxonomy === 'object' && !Array.isArray(r.taxonomy)) ? r.taxonomy as Record<string, unknown> : {}
-    const fixture = !!tax.desk_eval_fixture
-    if (fixture !== !!ctx.fixtures) continue   // fixtures mode: only eval fixtures; otherwise never a fixture
-    if (!fixture && UNFINISHED.has(r.status) && visible && !visible.has(r.id)) continue
-    if ((kind === 'undate' || kind === 'pull') && !r.scheduled_at) continue
-    out.push({ id: r.id, status: r.status, type: r.type, scheduled_at: r.scheduled_at, published_at: r.published_at, first_line: firstLineOf(r.post_body),
+/**
+ * Every live visible draft of Ivan's (unfinished ones in his Review, scheduled, published in the last
+ * 31 days), read in ONE statement through desk_live_drafts (db/20261118m_content_desk_r11.sql): no
+ * paging, no row cap, never partial (Sol r10 #7). Null when it cannot be read: nothing is resolved then.
+ */
+export async function liveCandidates(ctx: Pick<Ctx, 'userDb' | 'fixtures'>): Promise<Draft[] | null> {
+  const { data, error } = await ctx.userDb.rpc('desk_live_drafts', { p_fixtures: !!ctx.fixtures })
+  if (error || !Array.isArray(data)) return null
+  return (data as { id: string; status: string; type: string; scheduled_at: string | null; published_at: string | null; body_head: string; updated_at: string; created_at: string; fixture: string | null }[])
+    .map((r) => ({ id: r.id, status: r.status, type: r.type, scheduled_at: r.scheduled_at, published_at: r.published_at, first_line: firstLineOf(r.body_head),
       title: '', belief: null, vehicle: null, recipe: null, qa_verdict: null, is_copy: false, photos: 0, brain: false, human_edited: false,
-      slot_kind: null, selling: false, chars: 0, created_at: r.created_at, fixture: fixture ? String(tax.desk_eval_fixture) : null, updated_at: r.updated_at })
-  }
-  return out
+      slot_kind: null, selling: false, chars: 0, created_at: r.created_at, fixture: r.fixture ?? null, updated_at: r.updated_at }))
 }
 
 /**
@@ -347,35 +328,46 @@ function liveBrief(ctx: Ctx, d: Draft, snap: Snapshot, handle: string): Rendered
 export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: Snapshot | null }> {
   act.kind = IN_ALIAS[act.kind] ?? act.kind
   const needsDraft = ['approve', 'date', 'undate', 'pull', 'delete', 'redo', 'photo_attach'].includes(act.kind)
-  if (!needsDraft || Array.isArray(act.draft)) return { p: await plan(ctx, act), snap: null }
+  // an array-shaped model pointer is ignored like any other: the server resolver decides (Sol r10 #8)
+  if (!needsDraft) return { p: await plan(ctx, act), snap: null }
   const kindOut = OUT_NAME[act.kind] ?? act.kind
   const none = (refuse: string, label: string, chips?: { label: string; send: string }[], target_id?: string) =>
     ({ p: { echo: { kind: kindOut, label, state: 'failed' as const, undo: false, detail: refuse }, refuse, chips, target_id }, snap: null })
-  // Round 10 (Sol r9 #1): the model does NOT choose the target. Its handle, excerpt and day are
-  // ignored; the draft comes from Ivan's CURRENT message alone (target.ts identify), against a fresh,
-  // complete read of every live eligible draft. Exactly one candidate proceeds; otherwise act on none.
-  let cands = await liveCandidates(ctx, act.kind)
-  if (!cands) return none('read_failed', 'I could not read your drafts, so I did nothing.')
+  // an unresolved reference is a display only (a line and chips), never an action entry (Sol r10 #10)
+  const ask = (refuse: string, label: string, chips?: { label: string; send: string }[]) =>
+    ({ p: { echo: { kind: kindOut, label, state: 'failed' as const, undo: false, detail: refuse }, refuse, chips, display: true }, snap: null })
+  // The model does NOT choose the target (Sol r9 #1): its handle, excerpt and day are ignored. The draft
+  // comes from Ivan's CURRENT message (target.ts identify) against ALL his live visible drafts, read in
+  // one statement; write-eligibility is checked only after the match (Sol r10 #3).
+  let cands = await liveCandidates(ctx)
+  if (!cands) return ask('read_failed', 'I could not read your drafts, so I did nothing.')
   const today = warsawDay(new Date().toISOString())
-  // a date move's named day is the NEW date, never identity (eval C03 "on tuesday 9 march")
-  const idOpts = { today, dayIsArg: act.kind === 'date' }
-  const asId = (ds: Draft[]): IdDraft[] => ds.map((d) => ({ id: d.id, first_line: d.first_line, day: dayOf(d) }))
+  const idOpts = { today, kind: act.kind }
+  const asId = (ds: Draft[]): IdDraft[] => ds.map((d) => ({ id: d.id, first_line: d.first_line, day: dayOf(d), rev: d.updated_at ?? null }))
   let res = identify(ctx.text, asId(cands), ctx.shown, idOpts)
-  if (ctx.fixtures && !res.ids.length) {
+  if (ctx.fixtures && !res.ids.length && res.why !== 'too_many_rivals') {
     // eval fixtures mode: fixtures first; only when no fixture fits his words do his real drafts count
-    const real = await liveCandidates({ ...ctx, fixtures: false }, act.kind)
-    if (!real) return none('read_failed', 'I could not read your drafts, so I did nothing.')
+    const real = await liveCandidates({ ...ctx, fixtures: false })
+    if (!real) return ask('read_failed', 'I could not read your drafts, so I did nothing.')
     cands = real
     res = identify(ctx.text, asId(cands), ctx.shown, idOpts)
   }
-  const byId = new Map(cands.map((d) => [d.id, d]))
+  const all = cands
+  const byId = new Map(all.map((d) => [d.id, d]))
+  const chipsFor = (ds: Draft[]) => verifiedChips(act, ds, all, idOpts)
   if (res.ids.length !== 1) {
-    const shown = res.ids.map((x) => byId.get(x)!).filter(Boolean)
+    const shown = [...res.ids, ...res.rivals].map((x) => byId.get(x)!).filter(Boolean)
+    if (res.why === 'list_changed') return ask('list_changed', 'That post changed since I listed it. Pick it again.', chipsFor(shown))
+    if (res.why === 'too_many_rivals') return ask('ambiguous', 'Several posts match your words. Pick one.', chipsFor(shown))
     return shown.length
-      ? none('ambiguous', `${shown.length} posts match your words. Pick one.`, pickChips(act, shown, cands))
-      : none('no_match', 'I could not tell which post you mean from your words, so I did nothing.')
+      ? ask('ambiguous', `${res.ids.length} posts match your words. Pick one.`, chipsFor(shown))
+      : ask('no_match', 'I could not tell which post you mean from your words.')
   }
   const match = byId.get(res.ids[0])!
+  // resolved, but not one this kind can act on: refused as itself, never swapped for another draft
+  if (!eligible(act.kind, match)) {
+    return none('not_eligible', `"${short(match.first_line, 60)}" is ${match.status}${(act.kind === 'undate' || act.kind === 'pull') && !match.scheduled_at ? ' and has no date' : ''}, so I did nothing.`, undefined, match.id)
+  }
   const handle = '#target'
   // the action now names that draft; the model's own pointers are dropped (never used again, never journaled)
   act.draft = handle; act.line = match.first_line; delete act.dated
@@ -387,10 +379,10 @@ export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: 
     return { p: { echo: { kind: OUT_NAME[act.kind] ?? act.kind, label: 'I could not read its queue, so I did nothing.', state: 'failed', undo: false }, refuse: 'queue_read_failed', target_id: r.d.id }, snap: null }
   }
   if (!live) return { p: { echo: { kind: OUT_NAME[act.kind] ?? act.kind, label: 'That post is gone or no longer in your Review.', state: 'failed', undo: false }, refuse: 'gone', target_id: r.d.id }, snap: null }
-  if (live.d.first_line !== match.first_line) {
-    // rewritten between the two reads: the words he matched are not this row's any more
-    return { p: { echo: { kind: kindOut, label: 'That post was rewritten since, so I did nothing.', state: 'failed', undo: false, detail: 'line_mismatch' }, refuse: 'line_mismatch', target_id: r.d.id,
-      chips: pickChips(act, [live.d], cands) }, snap: live.snap }
+  // the row he matched must be the row we plan on: revision, status, schedule and opener (Sol r10 #4)
+  if (live.d.first_line !== match.first_line || String(live.d.updated_at) !== String(match.updated_at) || live.d.status !== match.status
+      || (live.d.scheduled_at ? Date.parse(live.d.scheduled_at) : null) !== (match.scheduled_at ? Date.parse(match.scheduled_at) : null)) {
+    return { p: { echo: { kind: kindOut, label: 'That post changed while I was reading it, so I did nothing.', state: 'failed', undo: false, detail: 'changed' }, refuse: 'changed', target_id: r.d.id }, snap: live.snap }
   }
   act.line = live.d.first_line
   const p = await plan({ ...ctx, brief: liveBrief(ctx, live.d, live.snap, r.handle) }, act)
@@ -450,9 +442,11 @@ export function canonArgs(kind: string, act: Act, ctx: Pick<Ctx, 'text' | 'attac
     case 'approve': case 'undate': return {}
     // the note decides the redo (a directed redo is refused: the writer takes no direction) (eval E12)
     case 'redo': return { note: typeof act.note === 'string' && act.note.trim() ? act.note.replace(/\s+/g, ' ').trim().slice(0, 500) : null }
-    case 'date': return { at: warsawToIso(String(act.at ?? '')) }
+    // at commit the journal holds the canonical ISO instant itself (confirm-to-act re-plans from it)
+    case 'date': return { at: warsawToIso(String(act.at ?? '')) ?? (typeof act._at === 'string' && !Number.isNaN(Date.parse(act._at)) ? act._at : null) }
     case 'pull': case 'delete': return { reason }
-    case 'photo_attach': return { url: photoUrl() }
+    // at commit the journal holds the url of his attachment as a server-owned field (the model cannot set "_" keys)
+    case 'photo_attach': return { url: photoUrl() ?? (typeof act._url === 'string' && act._url.startsWith('https://') ? act._url : null) }
     case 'photo_stage': return {
       url: photoUrl(),
       tags: [...new Set((Array.isArray(act.tags) ? act.tags : []).map((t) => String(t).toLowerCase().trim()).filter(Boolean))].slice(0, 8).sort(),
@@ -529,7 +523,7 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
       const id = d!.id, prev = d!.scheduled_at
       return {
         ...base,
-        echo: { kind, label: `Moved ${q} to ${warsaw(iso)}${prev ? ` (was ${warsaw(prev)})` : ''}`, state: 'done', undo: true, target },
+        echo: { kind, label: `Moving ${q} to ${warsaw(iso)}${prev ? ` (was ${warsaw(prev)})` : ''}`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
         describe: `date ${qq} for ${String(act.at)} Warsaw time (${warsaw(iso)})`,
         command: `move ${qq} to ${String(act.at)}`,
         run: async () => {
@@ -575,7 +569,7 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
       }
       return {
         ...base,
-        echo: { kind: 'undate', label: `Removed the date from ${q} (was ${warsaw(prev)})`, state: 'done', undo: true, target },
+        echo: { kind: 'undate', label: `Removing the date from ${q} (was ${warsaw(prev)})`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
         describe: `remove the date from ${qq} (now ${warsaw(prev)})`,
         command: `remove the date from ${qq}`,
         run: async () => {
@@ -629,7 +623,7 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
       }
       return {
         ...base,
-        echo: { kind, label: `Rewriting ${q} through your writer. It takes a few minutes.`, state: 'done', undo: false, target },
+        echo: { kind, label: `Rewriting ${q} through your writer. It takes a few minutes.`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
         describe: `rerun the writer on ${qq} (rewrites its copy)`,
         command: `redo ${qq} through the writer, same idea`,
         run: async () => {
@@ -679,7 +673,7 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
       const id = d!.id
       return {
         ...base,
-        echo: { kind, label: `Added your photo to ${q}`, state: 'done', undo: true, target },
+        echo: { kind, label: `Adding your photo to ${q}`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
         describe: `attach the photo he sent to ${qq}`,
         command: `attach this photo to ${qq}`,
         run: async () => {
@@ -905,10 +899,14 @@ export function verbatimIn(s: unknown, text: string): boolean {
  */
 export function journalArgs(act: Act, p: Pick<Planned, 'run' | 'refuse' | 'canon'>, snap: Snapshot | null, mode: { fixtures?: boolean; dry?: boolean }, text: string): Record<string, unknown> {
   if (p.run) {
-    return { kind: act.kind, ...(p.canon ?? {}), ...(act._qa_override === true ? { _qa_override: true } : {}),
+    const canon = { ...(p.canon ?? {}) }
+    // what a held commit re-plans from, as server-owned fields
+    const own = act.kind === 'date' && canon.at ? { _at: canon.at } : act.kind === 'photo_attach' && canon.url ? { _url: canon.url } : {}
+    return { kind: act.kind, ...canon, ...own, ...(act._qa_override === true ? { _qa_override: true } : {}),
       ...(snap ? { _snapshot: snap } : {}), ...(mode.fixtures ? { _fixtures: true } : {}), ...(mode.dry ? { _dry: true } : {}) }
   }
-  const note = p.refuse === 'direction_unsupported' ? ivanSpan(p.canon?.note, text) : null
+  // the ORIGINAL proposed note, matched against his message and sliced from it (Sol r10 #9)
+  const note = p.refuse === 'direction_unsupported' ? ivanSpan(act.note, text) : null
   return { kind: act.kind, refusal_code: p.refuse ?? 'refused', ...(note ? { note } : {}) }
 }
 

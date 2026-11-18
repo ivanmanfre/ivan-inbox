@@ -18,7 +18,7 @@ import { render, applyVisibility, warsaw, type BriefJson, type Rendered } from '
 import { buildPrompt } from './prompt.ts'
 import { parse, shortParagraphs, oneText, sanitize, HandleStream, type Act } from './parse.ts'
 import { askDesk, askDeskStream, LlmError, DESK_MODEL } from './llm.ts'
-import { planLive, planForTarget, runUndo, UndoRefused, stillSame, actionKey, journalArgs, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
+import { planLive, planForTarget, runUndo, UndoRefused, stillSame, actionKey, journalArgs, HOLD_EXPIRE_MS, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
 import { authorize } from './auth.ts'
 import { planTriggers } from './triggers.ts'
 import { queueT3Job, sweepT3Stalls } from '../_shared/desk-t3.ts'
@@ -43,8 +43,6 @@ const TICK_SECRET = env('DESK_TICK_SECRET')
 const MAX_TEXT = 6000
 // A held action can be committed for this long after it was proposed; the client auto-commits only
 // holds delivered live while the desk is visible (older ones need an explicit tap).
-const HOLD_COMMIT_WINDOW_MS = 2 * 60 * 1000
-const EXPLICIT_COMMIT_WINDOW_MS = 10 * 60 * 1000
 const MAX_ATTACH = 4
 const RATE_WINDOW_MS = 10 * 60 * 1000
 const RATE_MAX = 60
@@ -413,6 +411,8 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         // the phone as it is written. Otherwise the whole answer goes out the moment it exists.
         const streaming = env('DESK_STREAM') === '1'
         let streamed = false
+        // any model prose already shown: a write in the same turn is refused (Sol r10 #6)
+        let proseReleased = false
         // call-line handles are stripped BEFORE a delta goes out: a short tail is held back across
         // delta boundaries so a split "L" + "1" is never shown (Sol r7 #8)
         const hs = new HandleStream(r.lines.keys())
@@ -420,7 +420,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           if (!t) return
           if (!streamed) { streamed = true; timings.ttft_ms = Date.now() - t0 }
           const out = hs.push(t)
-          if (out) emit('delta', { text: out })
+          if (out) { proseReleased = true; emit('delta', { text: out }) }
         }
         // a write turn shows only server text (Sol r9 #4): the model acts first, no prose streams, and
         // one fixed status line goes out at once; the final body is the server echo from action results
@@ -451,7 +451,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           parsed = parse(again.text)
         }
         const reply = parsed.reply || (parsed.actions.length ? 'On it.' : 'I could not put an answer together. Send it again?')
-        { const tail = hs.flush(); if (tail) emit('delta', { text: tail }) }
+        { const tail = hs.flush(); if (tail) { proseReleased = true; emit('delta', { text: tail }) } }
         if (!streamed) {
           timings.ttft_ms = Date.now() - t0
           if (parsed.actions.length) emit('delta', { text: WORKING })
@@ -474,9 +474,9 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           userDb, svc, userId, messageId, brief: r, attachments, text, env, fixtures: mode.fixtures,
           // list numbers the previous desk answer displayed (its meta.shown_drafts), for "number 2"
           shown: (() => {
-            const prev = [...recent].reverse().find((m: { role: string }) => m.role === 'assistant') as { meta?: { shown_drafts?: { n: number; id: string }[] } } | undefined
+            const prev = [...recent].reverse().find((m: { role: string }) => m.role === 'assistant') as { meta?: { shown_drafts?: { n: number; id: string; rev?: string | null }[] } } | undefined
             const list = Array.isArray(prev?.meta?.shown_drafts) ? prev!.meta!.shown_drafts! : []
-            return new Map(list.filter((x) => typeof x?.n === 'number' && typeof x?.id === 'string').map((x) => [x.n, x.id]))
+            return new Map(list.filter((x) => typeof x?.n === 'number' && typeof x?.id === 'string').map((x) => [x.n, { id: x.id, rev: x.rev ?? null }]))
           })(),
           unfurl: (u) => deskUnfurl(u),
           t3: mode.t3On ? async ({ title, brief: b }) => {
@@ -543,12 +543,25 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
             x.p.echo = { ...x.p.echo, state: 'failed', undo: false, label: 'I did not do that: one cloud job per message.' }
           }
         }
+        // Sol r10 #6: model prose already reached his screen before the actions block: every write of the
+        // turn is refused (the shown text could have claimed something the actions do not do)
+        if (proseReleased) for (const x of planned) if (x.p.run) {
+          x.p.run = undefined; x.p.refuse = 'prose_first'
+          x.p.echo = { ...x.p.echo, state: 'failed', undo: false, hold_ms: undefined, label: 'I did not do that: say it again and I will set it up for your tap.' }
+        }
         // Sol r8 #3: on any refusal, every model chip is dropped; only the server's own chips remain
         // (built from draft identity: an opener excerpt and a day, never a rejected argument)
         if (planned.some((x) => !x.p.run)) chips = []
         timings.auth_ms = Date.now() - t0
         // 3) a durable journal row first ('pending'), then the guarded write, then the terminal state
+        const bodyLines: string[] = []
         for (const { act, p, snap } of planned) {
+          if (p.display) {
+            // an ambiguous or unresolved reference: a line and chips only, NO action entry (Sol r10 #10)
+            bodyLines.push(p.echo.label)
+            if (p.chips?.length) chips = [...p.chips, ...chips].slice(0, 3)
+            continue
+          }
           if (mode.dry && p.run) { const label = p.echo.label; p.run = async () => ({ result: { dry: true, label } }) }
           const immediate = !!p.run && p.echo.state === 'done'
           const { data: aRec, error: recErr } = await svc.from('desk_actions').insert({
@@ -590,6 +603,8 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
             }
           }
           echoes.push(echo)
+          // the body line: for a held draft action, a fixed label naming exactly what he will tap on
+          bodyLines.push(echo.state === 'held' ? proposedLine(act, p, snap) : echo.label + (echo.detail && !/^[a-z_]+$/.test(echo.detail) ? ` ${echo.detail}` : ''))
         }
         if (wrote) invalidate()
         // Sol r8 #5: write confirmations come only from action results. A turn that proposed a write
@@ -600,13 +615,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         // A held action's line names what was asked with a fixed label that stays true ("Delete:
         // <opener>, held for Undo"); its live state lives only in the structured echo.
         let finalBody = reply
-        if (parsed.actions.length) {
-          const HELD: Record<string, string> = { approve: 'Approve', delete: 'Delete', pull: 'Pull' }
-          const lines = echoes.map((e) => e.state === 'held'
-            ? `${HELD[e.kind] ?? 'Action'}: "${clipLine(e.target?.first_line ?? '')}", held for Undo`
-            : e.label + (e.detail && !/^[a-z_]+$/.test(e.detail) ? ` ${e.detail}` : ''))
-          finalBody = lines.length ? lines.join('\n\n') : 'I did not do anything.'
-        }
+        if (parsed.actions.length) finalBody = bodyLines.length ? bodyLines.join('\n\n') : 'I did not do anything.'
         finalBody = shortParagraphs(sanitize(finalBody, r.lines.keys()))
         const sideEffects = await turnSideEffects(svc, messageId)
         timings.total_ms = Date.now() - t0
@@ -616,7 +625,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           ...(echoes.length ? { actions: echoes } : {}), ...(chips.length ? { chips: oneText(chips) } : {}), ...(t3 ? { t3_job: t3 } : {}),
           turn_token: turnToken, side_effects: sideEffects, ...(mode.evalMode ? { test: true } : {}),
           // the drafts this answer shows, in order: a later "number 2" means the second of these (Sol r9 #1a)
-          shown_drafts: shownDrafts(finalBody, [...r.drafts.values()]),
+          shown_drafts: await shownWithRevision(userDb, finalBody, [...r.drafts.values()], mode.fixtures),
         }
         // The final row (with its echoes) is the only thing that lets a hold arm: held_seen and commit
         // both require it (echoDurable). It is written only over this turn's own streaming row (a
@@ -695,6 +704,30 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
 }
 
 const clipLine = (s: string, n = 70) => { const t = s.replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1) + '…' : t }
+
+/**
+ * Confirm-to-act (round 11): the held card's fixed body line names the exact resolved draft (its first
+ * line up to 120 chars and its day, or "(no date)") and, for a move, the new date. It stays true after
+ * the tap or a cancel: it says what was proposed, and the structured echo carries the state.
+ */
+function proposedLine(act: Act, p: Planned, snap: Snapshot | null): string {
+  const VERB: Record<string, string> = { approve: 'approve', date: 'move', undate: 'remove the date from', pull: 'pull', delete: 'delete', redo: 'rewrite', photo_attach: 'add your photo to' }
+  const line = (p.echo.target?.first_line ?? '').replace(/\s+/g, ' ').trim().slice(0, 120)
+  const day = snap?.scheduled_at ? warsaw(snap.scheduled_at) : 'no date'
+  const to = act.kind === 'date' && typeof p.canon?.at === 'string' ? ` to ${warsaw(p.canon.at)}` : ''
+  return `Proposed: ${VERB[act.kind] ?? act.kind} "${line}" (${day})${to}. It runs only when you tap Do it now.`
+}
+
+/** The numbered rows an answer rendered, each with its draft's current revision (Sol r10 #1). */
+// deno-lint-ignore no-explicit-any
+async function shownWithRevision(userDb: any, body: string, drafts: { id: string; first_line: string }[], fixtures: boolean) {
+  const rows = shownDrafts(body, drafts)
+  if (!rows.length) return []
+  const { data } = await userDb.rpc('desk_live_drafts', { p_fixtures: fixtures })
+  const rev = new Map(((Array.isArray(data) ? data : []) as { id: string; updated_at: string }[]).map((d) => [d.id, d.updated_at]))
+  // a row whose revision cannot be read is not stored: a number then never resolves to it
+  return rows.filter((x) => rev.has(x.id)).map((x) => ({ ...x, rev: rev.get(x.id) ?? null }))
+}
 
 // ---- turn recovery and side effects (Sol r5 B4, B11) ----------------------------
 /** No worker can still be alive after this (the edge wall-clock limit is far below it). */
@@ -796,7 +829,7 @@ async function claimState(svc: any, a: { id: string; result: Record<string, unkn
 }
 
 // deno-lint-ignore no-explicit-any
-async function settle(svc: any, userDb: any, userId: string, op: string, actionId: string, dryReq = false, auto = false) {
+async function settle(svc: any, userDb: any, userId: string, op: string, actionId: string, dryReq = false) {
   if (!/^[0-9a-f-]{36}$/i.test(actionId)) return { ok: false, error: 'bad_action' }
   const { data: a } = await svc.from('desk_actions').select('*').eq('id', actionId).eq('user_id', userId).maybeSingle()
   if (!a) return { ok: false, error: 'not_found' }
@@ -804,6 +837,8 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
   let newState: ActionEcho['state'] | null = null
   let label: string | null = null
   let receiptLost = false
+  let canUndo = false
+  let resDetail: string | undefined
   if (op === 'undo') {
     if (state !== 'done' || a.undone_at || !a.undo) return { ok: false, error: 'nothing_to_undo' }
     if (!await claimState(svc, a, 'done', 'undoing')) return { ok: false, error: 'nothing_to_undo' }
@@ -819,14 +854,10 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
     newState = 'cancelled'; label = 'Cancelled. Nothing changed.'
   } else {
     if (state !== 'held') return { ok: false, error: 'not_held' }
-    const seenAt = (a.result as { seen_at?: string } | null)?.seen_at
-    const holdMs = Number((a.result as { hold_ms?: number } | null)?.hold_ms ?? 8000)
-    if (auto) {
-      // the server clock: only after Ivan saw the hold (held_seen), once it ran out, within 2 min of seeing it
-      if (!seenAt || Date.now() < Date.parse(seenAt) + holdMs - 200) return { ok: false, error: 'hold_not_over' }
-      if (Date.now() > Date.parse(seenAt) + HOLD_COMMIT_WINDOW_MS) return { ok: false, error: 'hold_expired' }
-    } else if (Date.now() - Date.parse(a.created_at) > EXPLICIT_COMMIT_WINDOW_MS) {
-      // "Do it now" may commit any time within 10 minutes of the proposal
+    // Confirm-to-act (round 11): ONLY this op, Ivan's "Do it now" tap, runs a draft write. There is no
+    // server clock. After 24 h a hold is cancelled, never committed.
+    if (Date.now() - Date.parse(a.created_at) > HOLD_EXPIRE_MS) {
+      await claimState(svc, a, 'held', 'cancelled')
       return { ok: false, error: 'hold_expired' }
     }
     const durable = await echoDurable(svc, a.message_id, actionId)
@@ -845,10 +876,15 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
       if (!('echo' in p) || !p.run || p.echo.state !== 'held') throw new Error(('refuse' in p && p.refuse) || 'changed')
       const isDry = dryReq || args._dry === true
       const res = isDry ? { result: { dry: true } } : await p.run()
-      const recorded = await retry3(() => svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'done', value: res.result ?? null } }).eq('id', actionId))
+      // the undo payload of a committed write is kept, so Undo works after the tap (date, photo)
+      const recorded = await retry3(() => svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'done', value: res.result ?? null }, undo: (res as { undo?: unknown }).undo ?? null }).eq('id', actionId))
       newState = 'done'
       if (!recorded) receiptLost = true
+      canUndo = !!(res as { undo?: unknown }).undo && recorded
+      resDetail = (res as { detail?: string }).detail
       label = p.echo.label.replace(/^Approving/, 'Approved').replace(/^Deleting/, 'Deleted').replace(/^Taking (.*) off the schedule$/, 'Took $1 off the schedule')
+        .replace(/^Moving/, 'Moved').replace(/^Removing the date/, 'Removed the date').replace(/^Adding your photo/, 'Added your photo')
+        .replace(/^Rewriting (.*) through your writer\. It takes a few minutes\.$/, 'Sent $1 to your writer. It takes a few minutes.')
     } catch (e) {
       // a claimed action that throws anywhere ends failed, never stuck in "committing"
       await svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'failed', error: failText(e) } }).eq('id', actionId)
@@ -858,8 +894,9 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
     invalidate()
   }
   // reflect the new state in the message's echo (the stored action is the source of truth)
-  const patch: Record<string, unknown> = { state: newState, undo: false }
+  const patch: Record<string, unknown> = { state: newState, undo: canUndo }
   if (label) patch.label = label
+  if (resDetail) patch.detail = resDetail
   if (receiptLost) patch.detail = 'Done, but I could not record it. Check before repeating it.'
   let updated: unknown = null
   for (let i = 0; i < 3 && !updated; i++) {
@@ -875,10 +912,14 @@ async function heldSeen(svc: any, userDb: any, userId: string, ids: string[], ev
   const results: { id: string; state?: string; seen_at?: string | null; hold_until?: string | null; error?: string }[] = []
   for (const id of ids) {
     try {
-      const { data: a, error } = await svc.from('desk_actions').select('id, result, message_id').eq('id', id).eq('user_id', userId).maybeSingle()
+      const { data: a, error } = await svc.from('desk_actions').select('id, result, message_id, created_at').eq('id', id).eq('user_id', userId).maybeSingle()
       if (error) { results.push({ id, error: 'read_failed' }); continue }
       if (!a) { results.push({ id, error: 'not_found' }); continue }
       let r = (a.result ?? {}) as { state?: string; seen_at?: string; hold_ms?: number }
+      if (r.state === 'held' && Date.now() - Date.parse(a.created_at) > HOLD_EXPIRE_MS) {
+        // older than 24 h: cancelled, never committed
+        if (await claimState(svc, a, 'held', 'cancelled')) r = { ...r, state: 'cancelled' }
+      }
       const ms = Number(r.hold_ms ?? 8000)
       if (r.state === 'held' && !r.seen_at) {
         // the clock starts only for an echo that is durably saved (Sol r4 #7)
@@ -890,13 +931,8 @@ async function heldSeen(svc: any, userDb: any, userId: string, ids: string[], ev
           .eq('id', id).filter('result->>state', 'eq', 'held').is('result->>seen_at', null).select('id, result')
         if (wErr) { results.push({ id, error: 'write_failed' }); continue }
         if (Array.isArray(won) && won.length) {
+          // confirm-to-act (round 11): seen_at is recorded, and NO timer is armed; only the commit op writes
           r = won[0].result
-          if (!evalMode) {
-            later((async () => {
-              await new Promise((res) => setTimeout(res, ms + 300))
-              await settle(svc, userDb, userId, 'commit', id, false, true)
-            })(), 'hold_commit')
-          }
         } else {
           // lost the CAS: report only what a successful reread shows
           const { data: again, error: rErr } = await svc.from('desk_actions').select('result').eq('id', id).maybeSingle()
@@ -904,8 +940,8 @@ async function heldSeen(svc: any, userDb: any, userId: string, ids: string[], ev
           r = again.result as typeof r
         }
       }
-      // the stored row is the truth: the UI counts down to hold_until
-      results.push({ id, state: r.state, seen_at: r.seen_at ?? null, hold_until: r.seen_at ? new Date(Date.parse(r.seen_at) + ms).toISOString() : null })
+      // the stored row is the truth; there is no deadline (hold_until null): the UI shows Undo and Do it now
+      results.push({ id, state: r.state, seen_at: r.seen_at ?? null, hold_until: null })
     } catch { results.push({ id, error: 'failed' }) }
   }
   return { ok: results.every((x) => !x.error), results }

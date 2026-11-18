@@ -154,6 +154,35 @@ export type Scan = {
  * its JSON never opens anything. A <reply> ends at its closer or at the first tool opener. After an
  * unclosed tool opener (any tool tag), everything to the end is discarded.
  */
+/**
+ * Where the block opened at `from` closes (Sol r10 #5), or -1. A typed tool block (actions, reads,
+ * chips) holds JSON: its closer counts only outside JSON strings (quotes and backslash escapes are
+ * honoured), so "</actions>" or "<reply>" inside a string never ends or opens anything. Any other tool
+ * tag counts nesting depth of its own name.
+ */
+function closerOf(text: string, from: number, name: string, json: boolean): number {
+  const lower = text.toLowerCase()
+  const close = `</${name}>`
+  if (json) {
+    let inStr = false
+    for (let i = from; i < text.length; i++) {
+      const ch = text[i]
+      if (inStr) { if (ch === '\\') i++; else if (ch === '"') inStr = false; continue }
+      if (ch === '"') { inStr = true; continue }
+      if (ch === '<' && lower.startsWith(close, i)) return i
+    }
+    return -1
+  }
+  let depth = 1
+  const re = new RegExp(`<(/?)${name.replace(/[^\w:-]/g, '')}\\b[^<>]*>`, 'gi')
+  re.lastIndex = from
+  for (let m = re.exec(text); m; m = re.exec(text)) {
+    depth += m[1] ? -1 : 1
+    if (depth === 0) return m.index
+  }
+  return -1
+}
+
 export function scan(text: string): Scan {
   const out: Scan = { reply: null, loose: '', actions: null, reads: null, chips: null, first: null, cut: false }
   const TAG = /<(\/?)([A-Za-z][\w:-]*)[^<>]*>/g
@@ -182,7 +211,7 @@ export function scan(text: string): Scan {
     }
     if (isTool) {
       if (!out.first) out.first = name
-      const close = text.toLowerCase().indexOf(`</${name}>`, m.index + whole.length)
+      const close = closerOf(text, m.index + whole.length, name, TOOL_BLOCK.has(name))
       if (close < 0) { out.cut = true; return out }   // unclosed tool opener: nothing after it counts
       const body = text.slice(m.index + whole.length, close)
       if (name === 'actions' && out.actions == null) out.actions = body

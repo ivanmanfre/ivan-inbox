@@ -11,7 +11,7 @@
 // Exactly one candidate proceeds. This is identity matching, not a consent gate: the verifier still
 // judges whether he asked for the action.
 
-export type IdDraft = { id: string; first_line: string; day: string }   // day: YYYY-MM-DD (Warsaw) or 'undated'
+export type IdDraft = { id: string; first_line: string; day: string; rev?: string | null }   // day: YYYY-MM-DD (Warsaw) or 'undated'; rev = updated_at
 
 /** Casefolded, accent-folded word tokens. */
 export function words(s: string): string[] {
@@ -51,13 +51,34 @@ const ORD: Record<string, number> = { first: 1, second: 2, third: 3, fourth: 4, 
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
 const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 
-/** A list reference in his message: "number 2", "#2", "no. 2", "the 2nd one", "the second one", or just "2". */
+// the command verb a message starts with: never part of the reference (Sol r10 #3)
+const VERB_HEAD = /^\s*(?:ok(?:ay)?,?\s+|please\s+|can you\s+|could you\s+)*(?:approve|delete|remove the date from|remove|undate|unschedule|move|put|schedule|reschedule|date|pull|redo|rewrite|attach (?:this|the|my) (?:photo|picture|pic) to|add (?:this|the|my) (?:photo|picture|pic) to|attach|add)\b\s*/i
+const DAY_WORD = '(?:today|tonight|tomorrow|(?:next|this)\\s+(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*|(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*|\\d{1,2}\\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*|\\d{4}-\\d{2}-\\d{2})'
+// a date move's destination ("to Friday", "on tuesday 9 march 10:45"): never identity (Sol r10 #2)
+const DESTINATION = new RegExp(`\\b(?:to|on|for|at|until)\\s+(?:the\\s+)?${DAY_WORD}[^,.;!?]*`, 'gi')
+
+/** The part of his message that names the post: no command verb, and for a date move no destination. */
+export function referencePart(text: string, kind?: string): string {
+  let t = text.replace(VERB_HEAD, '')
+  if (kind === 'date') t = t.replace(DESTINATION, ' ').replace(/\b(?:to|at)\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?\b/gi, ' ')
+  return t
+}
+
+/**
+ * A list reference in the TARGET position only (Sol r10 #1): right after the command verb, or the whole
+ * message: "approve 2", "delete number 2", "#2", "the 2nd one", "the second one", "2". Never "reason number 2".
+ */
 export function listNumber(text: string): number | null {
-  const t = text.trim().toLowerCase()
-  const m = t.match(/(?:^|\s)(?:number|no\.?|#)\s*(\d{1,2})\b/) ?? t.match(/\bthe\s+(\d{1,2})(?:st|nd|rd|th)?\s+one\b/) ?? t.match(/^(\d{1,2})[.!]?$/)
+  const t = text.replace(VERB_HEAD, '').trim().toLowerCase()
+  const m = t.match(/^(?:the\s+)?(?:number\s+|no\.?\s*|#)?(\d{1,2})(?:st|nd|rd|th)?(?:\s+one)?(?=$|[\s,.!?])/)
   if (m) return Number(m[1])
-  const o = t.match(/\bthe\s+(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)\b/)
+  const o = t.match(/^the\s+(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)(?:\s+one)?(?=$|[\s,.!?])/)
   return o ? ORD[o[1]] : null
+}
+
+/** An explicit day reference to the post itself: "tomorrow's post", "friday's one", "the post on thursday". */
+export function explicitDayRef(text: string): boolean {
+  return new RegExp(`\\b${DAY_WORD}'s\\b|\\b(?:post|one|draft)\\s+(?:on|for|from)\\s+${DAY_WORD}`, 'i').test(text)
 }
 
 /** Days his message names, as Warsaw dates (YYYY-MM-DD or MM-DD): today, tomorrow, a weekday (the next one coming, today included), "26 Nov", 2026-11-26. */
@@ -83,60 +104,60 @@ export function namedDays(text: string, today?: string): { weekdays: string[]; d
 
 function dayMatches(day: string, named: { weekdays: string[]; dates: string[] }, today?: string): boolean {
   if (day === 'undated') return false
-  // with a known today, weekdays already resolved to exact dates; without one, a weekday name matches any week
   if (!today && named.weekdays.includes(WEEKDAYS[new Date(day + 'T12:00:00Z').getUTCDay()])) return true
   return named.dates.some((d) => d.length === 5 ? day.slice(5) === d : day === d)
 }
 
-export type IdResult = { ids: string[]; how: 'list' | 'span' | 'none'; span: number; rivals: string[] }
+export type IdResult = { ids: string[]; how: 'list' | 'span' | 'day' | 'none'; span: number; rivals: string[]; why?: 'list_changed' | 'too_many_rivals' }
+
+/** At most this many relevant alternatives are shown to the verifier; more = act on none (Sol r10 #3). */
+export const RIVAL_CAP = 5
 
 /**
- * Resolve the target from his message. `shown` maps list numbers the previous desk answer displayed
- * to draft ids. `today` (Warsaw) resolves today, tomorrow and weekdays. `dayIsArg`: for a date move the
- * day he names is the NEW date, never identity. `rivals` = the other drafts that share any qualifying
- * span (for the verifier).
+ * Resolve the target from his message (see the header). `shown` maps the numbered rows the previous
+ * desk answer rendered to {id, rev}; a number resolves only while that draft's revision is unchanged.
  */
-export function identify(text: string, cands: IdDraft[], shown?: Map<number, string> | null,
-  opts: { today?: string; dayIsArg?: boolean } = {}): IdResult {
+export function identify(text: string, cands: IdDraft[], shown?: Map<number, { id: string; rev?: string | null }> | null,
+  opts: { today?: string; kind?: string } = {}): IdResult {
   const n = listNumber(text)
   if (n != null && shown?.has(n)) {
-    const id = shown.get(n)!
-    return { ids: cands.some((c) => c.id === id) ? [id] : [], how: 'list', span: 0, rivals: [] }
+    const row = shown.get(n)!
+    const c = cands.find((x) => x.id === row.id)
+    if (!c) return { ids: [], how: 'list', span: 0, rivals: [] }
+    if (row.rev && c.rev && row.rev !== c.rev) return { ids: [], how: 'list', span: 0, rivals: [], why: 'list_changed' }
+    return { ids: [c.id], how: 'list', span: 0, rivals: [] }
   }
-  const msg = words(text)
-  const scored = cands.map((c) => ({ c, s: sharedSpan(msg, words(c.first_line)) })).filter((x) => x.s > 0)
-  const max = scored.length ? Math.max(...scored.map((x) => x.s)) : 0
-  let top = scored.filter((x) => x.s === max)
-  const named = namedDays(text, opts.today)
+  const ref = referencePart(text, opts.kind)
+  const msg = words(ref)
+  const scored = cands.map((c) => ({ c, s: sharedSpan(msg, words(c.first_line)) }))
+  const named = namedDays(ref, opts.today)
   const namesDay = named.dates.length > 0 || (!opts.today && named.weekdays.length > 0)
-  if (namesDay && !opts.dayIsArg) {
-    // a day he names is identity here ("tomorrow's post"): the drafts on that day, among the word
-    // matches when any of them is on it, else every eligible draft on it
-    const onDay = cands.filter((c) => dayMatches(c.day, named, opts.today))
-    const both = top.filter((x) => onDay.some((c) => c.id === x.c.id))
-    if (both.length) top = both
-    else if (onDay.length) return { ids: onDay.map((c) => c.id), how: 'span', span: 0, rivals: scored.map((x) => x.c.id).filter((id) => !onDay.some((c) => c.id === id)) }
-  } else if (top.length > 1 && namesDay) {
-    const narrowed = top.filter((x) => dayMatches(x.c.day, named, opts.today))
-    if (narrowed.length) top = narrowed
-  }
+  // a source day is a REQUIRED intersection; day-only matching only for an explicit day reference
+  const onDay = (c: IdDraft) => !namesDay || dayMatches(c.day, named, opts.today)
+  const pool = scored.filter((x) => onDay(x.c))
+  const max = Math.max(0, ...pool.map((x) => x.s))
+  let top = max > 0 ? pool.filter((x) => x.s === max) : []
+  let how: IdResult['how'] = 'span'
+  if (!top.length && namesDay && explicitDayRef(ref)) { top = pool; how = 'day' }
   if (!top.length) return { ids: [], how: 'none', span: 0, rivals: [] }
   const ids = top.map((x) => x.c.id)
-  return { ids, how: 'span', span: max, rivals: scored.filter((x) => !ids.includes(x.c.id)).sort((a, z) => z.s - a.s).map((x) => x.c.id) }
+  // relevant alternatives: other drafts on the day that come within one content word of the best
+  const relevant = pool.filter((x) => !ids.includes(x.c.id) && x.s >= Math.max(1, max - 1)).sort((a, z) => z.s - a.s).map((x) => x.c.id)
+  if (ids.length === 1 && relevant.length > RIVAL_CAP) return { ids: [], how, span: max, rivals: relevant, why: 'too_many_rivals' }
+  return { ids, how, span: max, rivals: relevant }
 }
 
 /**
- * The drafts an answer displayed, in order of first appearance (its first 6 words appear in the body):
- * stored in that answer's meta so a later "number 2" means exactly the second one shown.
+ * The numbered rows an answer rendered (Sol r10 #1): only list lines ("1." / "- " / "•"), numbered in
+ * order, each the draft whose first 6 words the line carries, with its revision.
  */
-export function shownDrafts(body: string, drafts: { id: string; first_line: string }[]): { n: number; id: string }[] {
-  const b = ` ${words(body).join(' ')} `
-  const pos: { id: string; at: number }[] = []
-  for (const d of drafts) {
-    const head = words(d.first_line).slice(0, 6)
-    if (head.length < 3) continue
-    const at = b.indexOf(` ${head.join(' ')} `)
-    if (at >= 0) pos.push({ id: d.id, at })
+export function shownDrafts(body: string, drafts: { id: string; first_line: string; updated_at?: string | null }[]): { n: number; id: string; rev: string | null }[] {
+  const out: { n: number; id: string; rev: string | null }[] = []
+  for (const line of body.split('\n')) {
+    if (!/^\s*(?:\d{1,2}[.)]|[-•*])\s+/.test(line)) continue
+    const lw = ` ${words(line).join(' ')} `
+    const hit = drafts.find((d) => { const h = words(d.first_line).slice(0, 6); return h.length >= 3 && lw.includes(` ${h.join(' ')} `) })
+    if (hit && !out.some((x) => x.id === hit.id)) out.push({ n: out.length + 1, id: hit.id, rev: hit.updated_at ?? null })
   }
-  return pos.sort((a, z) => a.at - z.at).map((p, i) => ({ n: i + 1, id: p.id }))
+  return out
 }

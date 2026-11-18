@@ -633,42 +633,39 @@ Deno.test('r7 #8: a handle split across deltas is never shown; a quoted L1 is ke
 import { planLive, pickChips } from './actions.ts'
 import { sanitize, dropToolBlocks } from './parse.ts'
 
+// desk_live_drafts mock: the one-statement read of every live visible draft (round 11 #7)
+const liveRow = (d: Draft, rev = 'U1') => ({ id: d.id, status: d.status, type: 'text', scheduled_at: d.scheduled_at, published_at: null, body_head: d.first_line + '\nmore text', updated_at: rev, created_at: d.created_at, fixture: null })
 const freshCtx = (rows: Draft[], extra: Record<string, unknown> = {}) => {
   const r = render(brief(rows))
-  const dbRows = rows.map((d) => ({ id: d.id, status: d.status, type: 'text', scheduled_at: d.scheduled_at, published_at: null, post_body: d.first_line + '\nmore text', taxonomy: {}, created_at: d.created_at, updated_at: 'U1' }))
-  const svc = { from: (t: string) => chain(t === 'carousel_drafts' ? { data: dbRows, error: null, count: dbRows.length } : { data: [], error: null, count: 0 }) }
-  const userDb = { from: () => chain({ data: rows.map((d) => ({ id: d.id })), error: null, count: rows.length }) }
+  const db = rows.map((d) => liveRow(d))
+  const svc = { from: () => chain({ data: db[0] ?? null, error: null }) }
+  const userDb = { rpc: () => Promise.resolve({ data: db, error: null }), from: () => chain({ data: { id: rows[0]?.id }, error: null }) }
   return { r, ctx: { brief: r, attachments: [], text: '', env: () => undefined, svc, userDb, ...extra } as Record<string, unknown> }
 }
 
-Deno.test('round 10 #1: "delete the snow one" against two drafts with snow mid-opener: two chips, no action; the model pointer is ignored', async () => {
+Deno.test('round 10/11 #1: "delete the snow one" against two drafts with snow mid-opener: a display only (chips), no action entry', async () => {
   const a = draft(ID1, 'Fresh snow in the park this morning')
   const b = draft('bbbbbbbb-0000-4000-8000-000000000002', 'Old snow on the tram roof tonight', { scheduled_at: '2026-11-26T09:45:00Z' })
   const { r, ctx } = freshCtx([a, b])
   // the model names a and quotes a's words: ignored; his words say only "snow"
   const { p } = await planLive({ ...ctx, text: 'delete the snow one' } as never, { kind: 'delete', draft: r.handleOf.get(ID1)!, line: 'Fresh snow in the park' })
-  assertEquals(p.run, undefined); assertEquals(p.refuse, 'ambiguous')
+  assertEquals(p.run, undefined); assertEquals(p.refuse, 'ambiguous'); assertEquals(p.display, true)
   assertEquals(p.chips?.length, 2)
   for (const c of p.chips!) assert(c.send.includes('(2026-11-26)') || c.send.includes('(no date)'), c.send)
-  // his own words single out one: it proceeds whatever handle or line the model gave
-  const one = await planLive({ ...ctx, text: 'delete the snow in the park one' } as never, { kind: 'delete', draft: r.handleOf.get(b.id)!, line: 'Old snow on the tram' })
-  assertEquals(one.p.target_id, ID1)
+  // an array-shaped model pointer goes through the same resolver (round 11 #8)
+  const arr = await planLive({ ...ctx, text: 'delete the snow one' } as never, { kind: 'delete', draft: [r.handleOf.get(ID1)!, r.handleOf.get(b.id)!] })
+  assertEquals(arr.p.display, true)
 })
 
-Deno.test('round 10 #1 + #3: a draft outside the brief still competes; an incomplete or failed read resolves nothing', async () => {
-  const a = draft(ID1, 'Fresh snow in the park this morning')
-  const hidden = draft('cccccccc-0000-4000-8000-000000000003', 'Fresh snow in the park again today')
-  const r = render(brief([a]))
-  const dbRows = [a, hidden].map((d) => ({ id: d.id, status: 'review', type: 'text', scheduled_at: null, published_at: null, post_body: d.first_line, taxonomy: {}, created_at: d.created_at, updated_at: 'U1' }))
-  const mk = (res: unknown) => ({ brief: r, attachments: [], text: 'approve the fresh snow in the park one', env: () => undefined,
-    svc: { from: () => chain(res) }, userDb: { from: () => chain({ data: dbRows.map((x) => ({ id: x.id })), error: null, count: 2 }) } }) as never
-  const { p } = await planLive(mk({ data: dbRows, error: null, count: 2 }), { kind: 'approve' })
-  assertEquals(p.refuse, 'ambiguous'); assertEquals(p.chips?.length, 2)
-  assertEquals((await planLive(mk({ data: null, error: { message: 'down' } }), { kind: 'approve' })).p.refuse, 'read_failed')
-  // the exact count says 3 rows but only 2 came back: incomplete, fail closed
-  assertEquals((await planLive(mk({ data: dbRows, error: null, count: 3 }), { kind: 'approve' })).p.refuse, 'read_failed')
-  // no count at all: unknown completeness, fail closed
-  assertEquals((await planLive(mk({ data: dbRows, error: null }), { kind: 'approve' })).p.refuse, 'read_failed')
+Deno.test('round 11 #3/#7: resolution runs over all visible drafts, then eligibility; a failed read resolves nothing', async () => {
+  const approved = draft(ID1, 'Fresh snow in the park this morning', { status: 'approved' })
+  const { r, ctx } = freshCtx([approved])
+  // "approve" matches the approved draft by its words, and is refused as itself, never swapped
+  const { p } = await planLive({ ...ctx, text: 'approve the fresh snow in the park one' } as never, { kind: 'approve' })
+  assertEquals(p.refuse, 'not_eligible'); assertEquals(p.target_id, ID1); assertEquals(p.display, undefined)
+  const bad = { ...ctx, text: 'approve the fresh snow in the park one', userDb: { rpc: () => Promise.resolve({ data: null, error: { message: 'down' } }) } } as never
+  assertEquals((await planLive(bad, { kind: 'approve' })).p.refuse, 'read_failed')
+  void r
 })
 
 Deno.test('r8 #2 + #3: idea keys fold case and spaces; disambiguation chips carry identity only', async () => {
@@ -797,10 +794,10 @@ const FX = [
 ]
 
 Deno.test('round 10 #1: the eval command texts resolve from his words alone', () => {
-  const id = (t: string, o: { dayIsArg?: boolean } = {}) => identify(t, FX, null, { today: '2026-11-18', ...o }).ids.sort()
+  const id = (t: string, o: { kind?: string } = {}) => identify(t, FX, null, { today: '2026-11-18', ...o }).ids.sort()
   assertEquals(id('approve the gdansk one'), ['amber', 'ferry'])                      // C01: act on none, both as chips
   assertEquals(id('approve the cold brew one'), ['cold'])                              // C02
-  assertEquals(id('put the cold brew one on tuesday 9 march', { dayIsArg: true }), ['cold'])   // C03: the day is the new date
+  assertEquals(id('put the cold brew one on tuesday 9 march', { kind: 'date' }), ['cold'])   // C03: the destination is never identity
   assertEquals(id('remove the date from the tram one'), ['tram'])                     // C04
   assertEquals(id('delete the gdansk ferry one, it makes no sense'), ['ferry'])       // C05
   assertEquals(id('redo the tram one, more about the business, less about the city'), ['tram'])   // C06: "about" never counts
@@ -815,11 +812,16 @@ Deno.test('round 10 #1: the eval command texts resolve from his words alone', ()
 
 Deno.test('round 10 #1a: a list number resolves only to what the previous answer displayed', () => {
   const body = '- "Cold brew at 7am and a 40 minute queue"\n\n- "Tram 33 at rush hour is the best market research"'
-  const shown = shownDrafts(body, FX)
-  assertEquals(shown, [{ n: 1, id: 'cold' }, { n: 2, id: 'tram' }])
-  const map = new Map(shown.map((x) => [x.n, x.id]))
-  assertEquals(identify('approve number 2', FX, map).ids, ['tram'])
-  assertEquals(identify('the second one', FX, map).ids, ['tram'])
+  const shown = shownDrafts(body, FX.map((f) => ({ ...f, updated_at: 'R1' })))
+  assertEquals(shown, [{ n: 1, id: 'cold', rev: 'R1' }, { n: 2, id: 'tram', rev: 'R1' }])
+  const map = new Map(shown.map((x) => [x.n, { id: x.id, rev: x.rev }]))
+  const fx = FX.map((f) => ({ ...f, rev: 'R1' }))
+  assertEquals(identify('approve number 2', fx, map).ids, ['tram'])
+  assertEquals(identify('approve 2', fx, map).ids, ['tram'])
+  assertEquals(identify('the second one', fx, map).ids, ['tram'])
+  // round 11 #1: a number only in the target position, and only while the row's revision is unchanged
+  assertEquals(listNumber('delete the gdansk ferry one, reason number 2'), null)
+  assertEquals(identify('approve number 2', fx.map((f) => (f.id === 'tram' ? { ...f, rev: 'R2' } : f)), map).why, 'list_changed')
   assertEquals(listNumber('put the cold brew one on tuesday 9 march'), null)   // a date is never a list number
   assertEquals(identify('approve number 2', FX, null).ids, [])                  // nothing displayed: no list
   assertEquals(namedDays('on tuesday 9 march', '2026-11-18').dates.includes('03-09'), true)
@@ -857,4 +859,76 @@ Deno.test('round 10 #6-#9: unknown kinds, NFKC casefold, index-sliced spans, quo
   // no release ever ends inside the complete quoted span
   let acc = ''
   for (const o of outs.slice(0, -1)) { acc += o; assert(((acc.match(/"/g) ?? []).length % 2) === 0, acc) }
+})
+
+// ---- Round 11 (made-up data only) ------------------------------------------------
+import { referencePart, explicitDayRef } from './target.ts'
+
+Deno.test('round 11 #2: a source day is a required intersection; the destination is never identity', () => {
+  const ds = [
+    { id: 'a', first_line: 'Snow in the park this morning', day: '2026-11-19' },
+    { id: 'b', first_line: 'Snow in the park again', day: '2026-11-20' },
+    { id: 'c', first_line: 'A DM that got a reply', day: '2026-11-20' },
+  ]
+  const t = { today: '2026-11-18' }
+  assertEquals(identify("pull thursday's snow in the park post", ds, null, t).ids, ['a'])      // source day narrows
+  assertEquals(identify('pull the snow in the park post from saturday', ds, null, t).ids, [])  // no match on that day: none
+  assertEquals(identify("pull friday's post", ds, null, t).ids.sort(), ['b', 'c'])            // day-only, explicit: both on friday
+  assertEquals(identify('move the dm that got a reply to friday', ds, null, { ...t, kind: 'date' }).ids, ['c'])   // "to friday" is the destination
+  assert(!referencePart('move the cold brew one to friday 10:45', 'date').toLowerCase().includes('friday'))
+  assert(!referencePart('approve the cold brew one').toLowerCase().includes('approve'))
+  assert(explicitDayRef("tomorrow's post") && !explicitDayRef('move it to tomorrow'))
+})
+
+Deno.test('round 11 #3: more relevant rivals than the cap: act on none', () => {
+  const many = Array.from({ length: 8 }, (_, i) => ({ id: `d${i}`, first_line: `Outreach lesson number ${i} from this week`, day: 'undated' }))
+  many.push({ id: 'win', first_line: 'Outreach lesson that beats the rest of them', day: 'undated' })
+  const r = identify('approve the outreach lesson that beats the rest', many, null, { today: '2026-11-18' })
+  assertEquals(r.ids, ['win'])   // clear winner, rivals far below
+  const tie = identify('approve the outreach lesson', many, null, { today: '2026-11-18' })
+  assert(tie.ids.length !== 1)
+})
+
+Deno.test('round 11 #5: JSON-string-aware tool blocks, nested tags, open outer block', () => {
+  const a = scan('<actions>[{"kind":"idea","text":"a </actions> inside a string and <reply>x</reply>"}]</actions><reply>Ok.</reply>')
+  assert(a.actions!.includes('a </actions> inside a string')); assertEquals(a.reply, 'Ok.')
+  const b = scan('<actions>[{"kind":"idea"}] <chips>[{"send":"x"}]</chips> ]</actions><reply>Ok.</reply>')
+  assertEquals(b.chips, null); assertEquals(b.reply, 'Ok.')   // a nested <chips> inside <actions> never counts
+  const c = scan('<reply>Hi</reply><actions>[{"kind":"idea","text":"never closed </actions'); assertEquals(c.cut, true); assertEquals(c.actions, null)
+  const d = scan('<tool_call><tool_call>x</tool_call> still inside</tool_call><reply>After.</reply>')
+  assertEquals(d.reply, 'After.')   // nesting depth for other tool tags
+})
+
+Deno.test('round 11 #8 + #9: every server chip round-trips to its own draft; the note slices from his words', async () => {
+  const { verifiedChips } = await import('./actions.ts')
+  const a = draft(ID1, 'Three things I learned this week about cold email')
+  const b = draft('bbbbbbbb-0000-4000-8000-000000000002', 'Three things I learned this week about hiring')
+  const chips = verifiedChips({ kind: 'delete' }, [a, b], [a, b], { today: '2026-11-18', kind: 'delete' })
+  assertEquals(chips.length, 2)
+  for (const [c, d] of [[chips[0], a], [chips[1], b]] as const) {
+    const r = identify(c.send, [a, b].map((x) => ({ id: x.id, first_line: x.first_line, day: 'undated' })), null, { today: '2026-11-18', kind: 'delete' })
+    assertEquals(r.ids, [d.id])
+  }
+  const j = journalArgs({ kind: 'redo', note: '  More   about the business ' }, { refuse: 'direction_unsupported', canon: { note: 'More about the business' } }, null, {}, 'redo the tram one, More   about the business')
+  assertEquals(j.note, 'More   about the business')
+})
+
+Deno.test('round 11 core: every draft action is created held (confirm-to-act); the move keeps its instant for the commit', async () => {
+  const d = draft(ID1, 'Snow in the park this morning', { updated_at: 'U1' })
+  const r = render(brief([d]))
+  const ctx = { brief: r, attachments: [{ kind: 'photo', url: 'https://img.test/a.jpg' }], text: '', env: () => undefined } as never
+  for (const a of [{ kind: 'date', at: '2027-03-09 10:45' }, { kind: 'photo_attach', photo: 1 }, { kind: 'redo' }, { kind: 'approve' }, { kind: 'delete' }]) {
+    const p = await plan(ctx, { ...a, draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
+    assertEquals(p.echo.state, 'held', a.kind)
+  }
+  const pd = await plan(ctx, { kind: 'date', at: '2027-03-09 10:45', draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
+  const j = journalArgs({ kind: 'date', at: '2027-03-09 10:45' }, pd, null, {}, '')
+  assertEquals(j._at, '2027-03-09T09:45:00.000Z')
+  // the commit re-plans from the journal alone: the instant survives
+  assertEquals(canonArgs('date', { kind: 'date', ...j } as never, { text: '', attachments: [], brief: r } as never).at, '2027-03-09T09:45:00.000Z')
+  const pp = await plan(ctx, { kind: 'photo_attach', photo: 1, draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
+  const jp = journalArgs({ kind: 'photo_attach' }, pp, null, {}, '')
+  assertEquals(canonArgs('photo_attach', { kind: 'photo_attach', ...jp } as never, { text: '', attachments: [], brief: r } as never).url, 'https://img.test/a.jpg')
+  // the model can never supply the server-owned url: parse() drops "_" keys
+  assertEquals(parse('<actions>[{"kind":"photo_attach","_url":"https://evil.test/x.jpg"}]</actions>').actions[0]._url, undefined)
 })
