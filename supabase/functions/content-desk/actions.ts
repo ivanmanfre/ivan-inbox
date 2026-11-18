@@ -264,7 +264,7 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
           const { data, error } = await ctx.userDb.rpc('operator_set_schedule_date', { p_gate: GATE, p_draft_id: id, p_scheduled_at: iso })
           const r = rpcOk(data, error)
           const at = typeof r.scheduled_at === 'string' ? r.scheduled_at : iso
-          return { result: r, undo: { op: 'date', draft_id: id, prev, applied: at }, detail: at !== iso ? `The calendar stored ${warsaw(at)}.` : undefined }
+          return { result: r, undo: { op: 'date', draft_id: id, prev, applied: at }, detail: Date.parse(at) !== Date.parse(iso) ? `The calendar stored ${warsaw(at)}.` : undefined }
         },
       }
     }

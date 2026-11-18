@@ -53,7 +53,7 @@ const CLIENT_TEXT: Record<string, string> = {
   desk_llm_unavailable: 'The desk model did not answer. Send it again in a moment.',
   desk_llm_not_configured: 'The desk is not set up right now.',
   turn_in_progress: 'That message is still being answered.',
-  key_reused: 'That message id was already used for a different message.',
+  key_mismatch: 'That message id was already used for a different message.',
   desk_failed: 'The desk could not answer just now. Send it again in a moment.',
 }
 const safeCode = (c: string) => (c in CLIENT_TEXT ? c : 'desk_failed')
@@ -261,6 +261,28 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
 
   const userMeta = { attachments, voice: body.voice === true, chip: body.chip === true, ...(mode.evalMode ? { test: true } : {}) }
 
+  // Sol r1 #5 / the UI's contract: one key = one turn. The user row is written before the stream:
+  // a new key runs the turn; a known key with the same text and a stored answer gets ack + final and
+  // runs nothing; a known key still being answered is 409 turn_in_progress; a known key with other
+  // text or attachments is 409 key_mismatch. Nothing ever runs twice for one key.
+  let userRow: { id: string }
+  let replayAnswer: Record<string, unknown> | null = null
+  {
+    const { data, error } = await svc.from('desk_messages').insert({ user_id: userId, role: 'user', origin: 'operator', body: text, meta: userMeta, client_key: clientKey }).select('id').single()
+    if (!error && data) userRow = data
+    else {
+      const { data: again } = await svc.from('desk_messages').select('id, body, meta').eq('user_id', userId).eq('client_key', clientKey).maybeSingle()
+      if (!again) return json({ error: 'desk_failed', detail: CLIENT_TEXT.desk_failed }, 500, origin)
+      const sameAtt = JSON.stringify((again.meta as { attachments?: unknown } | null)?.attachments ?? []) === JSON.stringify(attachments)
+      if (again.body !== text || !sameAtt) return json({ error: 'key_mismatch' }, 409, origin)
+      const { data: prior } = await svc.from('desk_messages').select('*').eq('user_id', userId).eq('role', 'assistant')
+        .filter('meta->>reply_to', 'eq', again.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      if (!prior || prior.status === 'streaming') return json({ error: 'turn_in_progress' }, 409, origin)
+      userRow = { id: again.id }
+      replayAnswer = prior
+    }
+  }
+
   const enc = new TextEncoder()
   const stream = new ReadableStream({
     async start(ctl) {
@@ -271,28 +293,11 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
       try {
         // the user's row (idempotent on client_key: a retried send is the same message) and the
         // rate cap run alongside the brief read, so the model call starts as early as possible
-        // Sol r1 #5: a replayed client_key never runs the model or any action again.
-        const saveUser = (async (): Promise<{ id: string; replay: boolean }> => {
-          const { data, error } = await svc.from('desk_messages').insert({ user_id: userId, role: 'user', origin: 'operator', body: text, meta: userMeta, client_key: clientKey }).select('id').single()
-          if (!error) return { id: (data as { id: string }).id, replay: false }
-          const { data: again } = await svc.from('desk_messages').select('id, body, meta').eq('user_id', userId).eq('client_key', clientKey).maybeSingle()
-          if (!again) throw new LlmError('desk_failed', 'save failed')
-          const sameAtt = JSON.stringify((again.meta as { attachments?: unknown } | null)?.attachments ?? []) === JSON.stringify(attachments)
-          if (again.body !== text || !sameAtt) throw new LlmError('key_reused', 'key reused')
-          return { id: again.id, replay: true }
-        })()
         const rate = svc.from('desk_messages').select('id', { count: 'exact', head: true })
           .eq('user_id', userId).eq('role', 'user').gte('created_at', new Date(Date.now() - RATE_WINDOW_MS).toISOString())
         const rest = Promise.all([rate, loadBrief(svc, mode.fixtures), recentMessages(svc, userId, mode.evalMode), openJobs(svc, userId), visibleDrafts(userDb)])
-        const userRow = await saveUser
         emit('ack', { user_message_id: userRow.id, client_key: clientKey })
-        if (userRow.replay) {
-          rest.catch(() => {})
-          const { data: prior } = await svc.from('desk_messages').select('*').eq('user_id', userId).eq('role', 'assistant')
-            .filter('meta->>reply_to', 'eq', userRow.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
-          if (prior && prior.status !== 'streaming') { emit('final', { message: prior }); return }
-          throw new LlmError('turn_in_progress', 'in progress')
-        }
+        if (replayAnswer) { rest.catch(() => {}); emit('final', { message: replayAnswer }); return }
         const [rateRes, brief, recent, jobs, visible] = await rest
         if ((rateRes.count ?? 0) > RATE_MAX) throw new LlmError('rate_limited', 'Too many messages in 10 minutes.')
         timings.ack_ms = Date.now() - t0
@@ -427,7 +432,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         timings.total_ms = Date.now() - t0
         const t3 = echoes.find((e) => e.t3_job)?.t3_job
         const meta = {
-          model: m1.model, timings, tool_calls: toolCalls, brief_chars: r.text.length,
+          model: m1.model, reply_to: userRow.id, client_key: clientKey, timings, tool_calls: toolCalls, brief_chars: r.text.length,
           ...(echoes.length ? { actions: echoes } : {}), ...(chips.length ? { chips } : {}), ...(t3 ? { t3_job: t3 } : {}),
           ...(mode.evalMode ? { test: true } : {}),
         }
@@ -453,10 +458,9 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         const code = safeCode(e instanceof LlmError ? e.code : 'desk_failed')
         const detail = CLIENT_TEXT[code]
         console.error('desk turn failed', code)
-        if (code === 'turn_in_progress' || code === 'key_reused') { emit('error', { error: code, detail }); return }
         // settle the answer row this turn already opened, or open one, so nothing stays "streaming"
         const errFields = { status: 'error', body: detail,
-          meta: { error: code, client_key: clientKey, ...(mode.evalMode ? { test: true } : {}) }, updated_at: new Date().toISOString() }
+          meta: { error: code, client_key: clientKey, reply_to: userRow.id, ...(mode.evalMode ? { test: true } : {}) }, updated_at: new Date().toISOString() }
         const { data: errRow } = assistantId
           ? await svc.from('desk_messages').update(errFields).eq('id', assistantId).select('*').single()
           : await svc.from('desk_messages').insert({ user_id: userId, role: 'assistant', origin: 'desk', ...errFields }).select('*').single()
@@ -515,7 +519,8 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
       const snap = args._snapshot
       if (!snap?.target_id) throw new Error('changed')
       // re-plan from the stored target UUID only (Sol r1 #2): never a handle, never a fuzzy match
-      const ctx: Ctx = { userDb, svc, userId, messageId: a.message_id, brief: render(emptyBrief()), attachments: [], text: '', env }
+      const emptyBrief: Rendered = { text: '', drafts: new Map(), handleOf: new Map(), lines: new Map(), queueByDraft: new Map(), weeks: [] }
+      const ctx: Ctx = { userDb, svc, userId, messageId: a.message_id, brief: emptyBrief, attachments: [], text: '', env }
       const p = await planForTarget(ctx, { ...args }, snap)
       if (!('echo' in p) || !p.run || p.echo.state !== 'held') throw new Error(('refuse' in p && p.refuse) || 'changed')
       const isDry = dryReq || args._dry === true
@@ -539,10 +544,6 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
     return { ok: newState !== 'failed', message: updated }
   }
   return { ok: newState !== 'failed' }
-}
-
-function emptyBrief(): BriefJson {
-  return { as_of: new Date().toISOString(), today: '', this_monday: '', panel: {}, drafts: [], queue: [], posts: {}, calls: [], call_lines: [], beliefs: [], rulings: [], autopilot: [], ideas: { reviewing: 0, newest: [] } }
 }
 
 // ---- proactive tick -----------------------------------------------------------
