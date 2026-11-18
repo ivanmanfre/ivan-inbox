@@ -35,7 +35,11 @@ with fx as (
     (select jsonb_agg(jsonb_build_object('speaker', 'Ivanka', 'text', repeat('w ', 60))) from generate_series(1, 5)) as noivan2,
     -- uppercase label
     (select jsonb_agg(jsonb_build_object('speaker', 'IVAN', 'text', repeat('w ', 60))) from generate_series(1, 5)) ||
-    (select jsonb_agg(jsonb_build_object('speaker', 'Other', 'text', repeat('w ', 20))) from generate_series(1, 5)) as upper
+    (select jsonb_agg(jsonb_build_object('speaker', 'Other', 'text', repeat('w ', 20))) from generate_series(1, 5)) as upper,
+    -- 20261118b: a different person named Ivan Petrov is not Ivan (Ivan 100 of 500 = 20)
+    (select jsonb_agg(jsonb_build_object('speaker', 'Ivan', 'text', repeat('w ', 20))) from generate_series(1, 5)) ||
+    (select jsonb_agg(jsonb_build_object('speaker', 'Ivan Petrov', 'text', repeat('w ', 60))) from generate_series(1, 5)) ||
+    (select jsonb_agg(jsonb_build_object('speaker', 'Alice', 'text', repeat('w ', 20))) from generate_series(1, 5)) as petrov
 ), chk(name, ok) as (
   select 'two speakers 300/100 = 75', transcript_talk_stats(two)->>'ivan_pct' = '75' and (transcript_talk_stats(two)->>'total')::int = 400
          and (transcript_talk_stats(two)->'words'->>'Ivan')::int = 300 from fx
@@ -49,6 +53,8 @@ with fx as (
   union all select 'Ivana Petrova is not Ivan (Ivan 300 of 400 = 75)', transcript_talk_stats(ivana)->>'ivan_pct' = '75' and (transcript_talk_stats(ivana)->'words'->>'Ivan')::int = 300 from fx
   union all select 'Ivana / Ivanka only = no Ivan = null ivan_pct', transcript_talk_stats(noivan2)->'ivan_pct' = 'null'::jsonb from fx
   union all select 'IVAN uppercase counts as Ivan', transcript_talk_stats(upper)->>'ivan_pct' = '75' from fx
+  union all select 'Ivan Petrov is not Ivan (20261118b)', transcript_talk_stats(petrov)->>'ivan_pct' = '20' from fx
+  union all select 'anon cannot execute (20261118b)', not has_function_privilege('anon', 'public.transcript_talk_stats(jsonb)', 'execute')
   union all select 'null input = null', transcript_talk_stats(null) is null
   union all select 'json null = null', transcript_talk_stats('null'::jsonb) is null
   union all select 'object input = null', transcript_talk_stats('{"a":1}'::jsonb) is null
