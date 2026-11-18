@@ -21,6 +21,7 @@ vi.mock('../../lib/swr', async orig => ({
 vi.mock('./api', () => ({
   readMessages: vi.fn(async () => [stored({ id: 'h1', body: 'Saved answer from yesterday.', created_at: '2026-11-17T10:00:00Z' })]),
   readJobs: vi.fn(async () => []),
+  warmDesk: vi.fn(async () => {}),
   subscribeDesk: vi.fn(() => () => {}),
   uploadDeskPhoto: vi.fn(async () => 'https://example.com/p.jpg'),
   sendDesk: vi.fn(async (body: { text: string; client_key: string }, h: { onAck: (a: unknown) => void; onDelta: (t: string) => void; onFinal: (m: DeskMessage) => void }) => {
