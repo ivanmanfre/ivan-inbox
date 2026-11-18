@@ -12,7 +12,7 @@ import { useKeyboardInset } from './useKeyboardInset'
 import { actionStore } from './actionGuards'
 import { heldSeenStore, reportHeldSeen } from './heldSeen'
 import {
-  T3_LABEL, T3_LIVE,
+  T3_LABEL, T3_LIVE, cleanLabel,
   type DeskAction, type DeskDraftCard, type DeskMessage, type T3Job,
 } from './model'
 import '../claude/claude.css'
@@ -68,7 +68,7 @@ export function Desk({ layout, onBack }: { layout: 'phone' | 'desktop'; onBack?:
         </a>
       </header>
       <DeskList desk={desk} />
-      <DeskComposer busy={desk.busy} onSend={desk.send} prefill={desk.prefill} suggest={quiet ? STARTERS : undefined} />
+      <DeskComposer busy={desk.busy} onSend={desk.send} prefill={desk.prefill} suggest={quiet ? STARTERS : undefined} autoFocus={layout === 'desktop'} />
     </section>
   )
 }
@@ -159,6 +159,29 @@ function Body({ text, latest }: { text: string; latest: boolean }) {
   )
 }
 
+/** Copy the answer's text (the markdown as written). Says "Copied" for a moment; quiet when the clipboard refuses. */
+function CopyKey({ text }: { text: string }) {
+  const [done, setDone] = useState<'ok' | 'no' | null>(null)
+  useEffect(() => {
+    if (!done) return
+    const t = window.setTimeout(() => setDone(null), 1600)
+    return () => window.clearTimeout(t)
+  }, [done])
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(text); setDone('ok') } catch { setDone('no') }
+  }
+  return (
+    <div className="dk-ans-keys">
+      <button type="button" className="dk-copy" onClick={() => void copy()} aria-label={done === 'ok' ? 'Copied' : 'Copy the answer'}>
+        {done === 'ok'
+          ? <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+          : <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="8.5" width="11" height="11" rx="2.5" /><path d="M15.5 5.5h-8a2 2 0 0 0-2 2v8" /></svg>}
+        <span>{done === 'ok' ? 'Copied' : done === 'no' ? 'Could not copy' : 'Copy'}</span>
+      </button>
+    </div>
+  )
+}
+
 function Byline({ m, live }: { m: DeskMessage; live?: boolean }) {
   const note = ORIGIN_NOTE[m.origin]
   return (
@@ -166,6 +189,16 @@ function Byline({ m, live }: { m: DeskMessage; live?: boolean }) {
       <Mark /><b>Desk</b>{note && <span>{note}</span>}{!live && <time>{warsawHm(m.created_at)}</time>}
     </div>
   )
+}
+
+/** The answer only restates the change its card shows (the server's "Proposed (ref …): move "…" … It runs only when
+ *  you tap Do it now.", or the card's own sentence): the card says it once, with the post and the keys. */
+function repeatsCard(m: DeskMessage): boolean {
+  const acts = m.meta.actions
+  if (!acts?.length) return false
+  const body = m.body.replace(/\s+/g, ' ').trim()
+  if (/^Proposed \(ref [0-9a-f]{6,}\)/i.test(body)) return true
+  return acts.some(a => { const l = a.label.replace(/\s+/g, ' ').trim(); return l.length > 12 && body.startsWith(l.slice(0, Math.min(40, l.length))) })
 }
 
 function DraftCard({ d }: { d: DeskDraftCard }) {
@@ -222,7 +255,8 @@ function Row({ m, desk, fresh, latest }: { m: DeskMessage; desk: DeskHandle; fre
   return (
     <div className={`dk-ans${m.origin === 'proactive' ? ' dk-pro' : ''}${byline ? '' : ' dk-cont'}`} data-msg={m.id}>
       {byline && <Byline m={m} />}
-      {m.body && <Body text={m.body} latest={latest} />}
+      {m.body && !repeatsCard(m) && <Body text={m.body} latest={latest} />}
+      {m.body && !repeatsCard(m) && <CopyKey text={m.body} />}
       {!!m.meta.drafts?.length && <div className="dk-cards">{m.meta.drafts.map(d => <DraftCard key={d.handle} d={d} />)}</div>}
       {m.meta.actions?.map(a => <ActionRow key={a.id} a={a} at={m.created_at} desk={desk} />)}
       {m.meta.t3_job && <T3Card job={desk.jobs[m.meta.t3_job.id]} fallback={m.meta.t3_job} />}
@@ -356,26 +390,29 @@ function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle })
   }
   const waiting = held && !counting && !finishing && !busy
   const expired = failed?.error === SETTLED_NOTE.hold_expired
+  // The server's sentence, cleaned; the eyebrow already names the state, so a stated label gets no prefix.
+  const clean = cleanLabel(a.label, a.target)
+  const shown = clean.text
+  const say = (word: string) => (clean.stated ? clean.text : `${word}: ${clean.text}`)
   const stateWord = a.state === 'done' ? 'Done' : held ? (counting ? 'Doing it soon' : finishing || busy === 'commit' ? 'Doing it' : busy === 'cancel' ? 'Cancelling' : 'Waiting for your tap')
     : a.state === 'committing' ? 'Doing it' : a.state === 'undoing' ? 'Undoing' : a.state === 'undone' ? 'Undone' : a.state === 'cancelled' ? 'Cancelled'
     : a.state === 'failed' ? 'Failed' : 'Not confirmed'
   return (
     <div className={`dk-act dk-act-${a.state}${counting ? ' dk-act-counting' : ''}`} data-action={a.id} data-state={a.state} data-seen={seen?.state}>
-      <div className="dk-act-eye"><i aria-hidden="true" />{stateWord}</div>
+      <div className="dk-act-eye"><i aria-hidden="true" />{counting ? <>Doing it in <b className="dk-count">{left}s</b></> : stateWord}</div>
       <span className="dk-act-t">
         <span className="dk-act-l">
-          {a.state === 'done' && <>Done: {a.label}</>}
-          {counting && <>{a.label} in <b className="dk-count">{left}s</b></>}
-          {finishing && <>Doing it: {a.label}</>}
-          {held && busy === 'commit' && <>Doing it: {a.label}</>}
-          {held && busy === 'cancel' && <>Cancelling: {a.label}</>}
-          {waiting && <>Not done yet: {a.label}.</>}
-          {a.state === 'committing' && <>Doing it: {a.label}</>}
-          {a.state === 'undoing' && <>Undoing: {a.label}</>}
-          {a.state === 'undone' && <>Undone: {a.label}</>}
-          {a.state === 'cancelled' && <>Cancelled: {a.label}</>}
-          {a.state === 'failed' && <>Failed: {a.label}{a.detail ? `. ${a.detail}` : ''}</>}
-          {a.state === 'unconfirmed' && <>Not confirmed: {a.label}. The writer may be running, check Review in a few minutes.</>}
+          {held && busy === 'commit' && <>Doing it: {shown}</>}
+          {held && busy === 'cancel' && <>Cancelling: {shown}</>}
+          {(counting || waiting) && <>{shown}</>}
+          {finishing && <>Doing it: {shown}</>}
+          {a.state === 'committing' && <>Doing it: {shown}</>}
+          {a.state === 'undoing' && <>Undoing: {shown}</>}
+          {a.state === 'done' && <>{say('Done')}</>}
+          {a.state === 'undone' && <>{say('Undone')}</>}
+          {a.state === 'cancelled' && <>{say('Cancelled')}</>}
+          {a.state === 'failed' && <>{say('Failed')}{a.detail ? `. ${a.detail}` : ''}</>}
+          {a.state === 'unconfirmed' && <>{say('Not confirmed')}. The writer may be running, check Review in a few minutes.</>}
         </span>
         {a.target && <small className="dk-act-post"><span className="dk-h">{a.target.handle}</span> {a.target.first_line}</small>}
         {failed && <small className="dk-warn" role="alert">{failed.error}</small>}

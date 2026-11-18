@@ -8,8 +8,10 @@ import { CIcon } from '../claude/icons'
 import { uploadDeskPhoto } from './api'
 import type { DeskAttachment } from './model'
 
-export function DeskComposer({ busy, onSend, prefill, suggest }: {
+export function DeskComposer({ busy, onSend, prefill, suggest, autoFocus }: {
   busy: boolean
+  /** Desktop: the field takes the focus when the desk opens (never on the phone: it would raise the keyboard). */
+  autoFocus?: boolean
   /** Starter questions shown above the field while it is empty; a tap sends one as typed text. */
   suggest?: string[]
   onSend: (text: string, opts?: { attachments?: DeskAttachment[]; voice?: boolean }) => void
@@ -34,6 +36,7 @@ export function DeskComposer({ busy, onSend, prefill, suggest }: {
     field.current?.focus()
   })
   const recording = stt.state === 'recording'
+  useEffect(() => { if (autoFocus) field.current?.focus({ preventScroll: true }) }, [autoFocus])
   // Each new prefill (a new n) replaces the field once; it never sends.
   const applied = useRef(0)
   useEffect(() => {

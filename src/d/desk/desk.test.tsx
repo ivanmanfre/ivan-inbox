@@ -107,7 +107,7 @@ describe('Desk', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     type('approve the trains one')
     await act(async () => { streamGate?.() })
-    await waitFor(() => expect(document.querySelector('[data-state="held"]')?.textContent).toMatch(/Approve #a1b2c in \d+s/))
+    await waitFor(() => expect(document.querySelector('[data-state="held"]')?.textContent).toMatch(/Doing it in \d+s.*Approve #a1b2c/))
     fireEvent.click(screen.getByText('Undo'))
     await act(async () => { vi.advanceTimersByTime(9000) })
     await waitFor(() => expect(ops).toEqual([{ kind: 'cancel', id: 'act-1' }]))

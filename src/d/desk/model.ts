@@ -210,3 +210,42 @@ export function newKey(): string {
     ? crypto.randomUUID()
     : `k${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`
 }
+
+// ---- action labels ---------------------------------------------------------
+
+/** The server writes most labels as whole sentences that already say what happened ("Moved "…" to Tue 9 Mar",
+ *  "Undone.", "Done (ref 1a2b3c4d): approve "…""). The card's eyebrow names the state, so a label is shown
+ *  cleaned (no ref, no UTC offset, the post's own text as "this post" when the card shows the post below) and
+ *  without a second state word in front of it. An imperative label ("Approve the trains post") keeps its prefix. */
+const STATED = /^(done|undone|cancelled|not done|not confirmed|could not|couldn't|moved|removed|saved|added|rewriting|opened|proposed|failed|nothing|back|i |i'|the |this |that |["“])/i
+
+function quotedPost(label: string, firstLine: string): [number, number] | null {
+  const head = firstLine.replace(/\s+/g, ' ').trim().slice(0, 16)
+  if (head.length < 8) return null
+  const flat = label
+  const start = flat.indexOf(`"${head}`)
+  if (start < 0) return null
+  // The quote closes where the sentence goes on: ` (`, ` to `, `.`/`,` then space or end, or the end.
+  const rest = flat.slice(start + 1 + head.length)
+  const m = /"(?=\s\(|\s+to\s|[.,](?:\s|$)|\s*$)/.exec(rest)
+  if (!m) return null
+  return [start, start + 1 + head.length + m.index + 1]
+}
+
+export function cleanLabel(label: string, target?: { first_line: string } | null): { text: string; stated: boolean } {
+  let t = label.replace(/\s+/g, ' ').trim()
+  t = t.replace(/\s*\(ref [0-9a-f]{6,}\)/gi, '').replace(/\s*\(UTC[+-]\d\d:\d\d\)/g, '').replace(/\s*\(no date\)/gi, '')
+  if (target?.first_line) {
+    const q = quotedPost(t, target.first_line)
+    if (q) t = `${t.slice(0, q[0])}this post${t.slice(q[1])}`
+  }
+  let stated = STATED.test(t)
+  // "Proposed: move …", "Done: approve …", "Not done: The write …": the eyebrow says the state, so the word goes.
+  const lead = /^(proposed|done|not done)\s*:\s*/i.exec(t)
+  if (lead) { t = t.slice(lead[0].length); stated = true }
+  // A label that is only its state word says nothing the eyebrow does not.
+  const bare = /^(undone|cancelled)\.?\s*/i.exec(t)
+  if (bare) { t = t.slice(bare[0].length) || (bare[1].toLowerCase() === 'undone' ? 'Back as it was.' : 'Nothing changed.'); stated = true }
+  if (t) t = t[0].toUpperCase() + t.slice(1)
+  return { text: t, stated }
+}
