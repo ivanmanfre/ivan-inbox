@@ -340,6 +340,16 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
             }
           }
           echoes.push(echo)
+          // A held action commits on the SERVER when its hold ends, unless Undo's compare-and-set
+          // (held -> cancelled) wins first. No browser timer decides anything (Sol desk-ui r1-r3).
+          // The eval runner drives commit itself, so eval turns are left held.
+          if (echo.state === 'held' && !mode.evalMode && aRec?.id) {
+            const actionId = aRec.id as string
+            later((async () => {
+              await new Promise((r) => setTimeout(r, (echo.hold_ms ?? 8000) + 500))
+              await settle(svc, userDb, userId, 'commit', actionId, false)
+            })())
+          }
         }
         if (wrote) invalidate()
         // The reply streamed before the actions ran. If one failed, say so in the body too, so the
