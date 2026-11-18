@@ -77,12 +77,9 @@ export function referencePart(text: string, kind?: string, note?: unknown, destS
   let t = text
   if (kind === 'date' && destSpan) t = text.slice(0, destSpan.at) + ' ' + text.slice(destSpan.end)
   t = t.replace(verbHead(kind), '')
-  if (kind === 'redo') {
-    const n = typeof note === 'string' ? note.trim() : ''
-    if (n) { const i = t.toLowerCase().indexOf(n.toLowerCase()); if (i >= 0) t = t.slice(0, i) + ' ' + t.slice(i + n.length) }
-  }
-  const masked = maskQuotes(t)
-  const m = masked.match(kind === 'redo' ? /,|;|\s(?:and\s+)?make it\s|\sbut\s|\swith more\s|\swith less\s/i : /,|;/)
+  // GRAMMAR.md 1 T2 (d): a trailing clause after the first comma or semicolon outside quotes; nothing else
+  void note
+  const m = maskQuotes(t).match(/,|;/)
   if (m && m.index != null) t = t.slice(0, m.index)
   return t
 }
@@ -126,10 +123,10 @@ export function positional(ref: string): boolean {
 // words that only point at "a post" and never identify one
 const GENERIC = new Set(['post', 'posts', 'one', 'ones', 'draft', 'drafts', 'the', 'this', 'that', 'my', 'it', 's', 'from', 'on', 'for', 'of', 'a', 'an', 'next'])
 
-const DAY_ONLY_WORD = `(?:today|tonight|tomorrow|next\\s+${WEEKDAY_WORD}|${WEEKDAY_WORD})`
+// GRAMMAR.md 1 T3: exactly `tomorrow's post` | `today's post` | `<weekday>'s post` | `the post on <weekday>`
 const DAY_ONLY = [
-  new RegExp(`^(?:the\\s+)?(?:post|one|draft)\\s+(?:on|for|from)\\s+(?:the\\s+)?${DAY_ONLY_WORD}$`, 'i'),
-  new RegExp(`^(?:the\\s+)?${DAY_ONLY_WORD}(?:'s|\u2019s)?(?:\\s+(?:post|one|draft))?$`, 'i'),
+  new RegExp(`^(?:tomorrow|today|${WEEKDAY_WORD})(?:'s|\u2019s)\\s+post$`, 'i'),
+  new RegExp(`^the\\s+post\\s+on\\s+${WEEKDAY_WORD}$`, 'i'),
 ]
 /**
  * The reference is EXACTLY a day phrase ("tomorrow's post", "friday's one", "the post on friday"), with no
@@ -183,13 +180,14 @@ const pad = (n: number) => String(n).padStart(2, '0')
 const MONTH_WORD = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)'
 // every token that can be part of a date or a time
 const DATE_TOKEN = new RegExp(`\\b(?:next\\s+${WEEKDAY_WORD}|this\\s+${WEEKDAY_WORD}|${WEEKDAY_WORD}|today|tonight|tomorrow|${MONTH_WORD}|\\d{4}-\\d{2}-\\d{2}|\\d{1,2}(?::\\d{2})?\\s*(?:am|pm)|\\d{1,2}:\\d{2}|\\d{1,4}(?:st|nd|rd|th)?|at|noon|midday)\\b`, 'gi')
-// the grammar, consumed as ONE complete span:
-//   [weekday[,]] D Month [YYYY] | Month D [YYYY] | weekday | today | tomorrow | next weekday
-//   optionally followed by "at H[:MM]" (0-23, 0-59) or "[at] H[:MM]am/pm"
-const DATE_PART = `(?:(?:(?<wd1>${WEEKDAY_WORD}),?\\s+)?(?<d1>\\d{1,2})(?:st|nd|rd|th)?\\s+(?<m1>${MONTH_WORD})(?:\\s+(?<y1>\\d{4}))?`
-  + `|(?<m2>${MONTH_WORD})\\s+(?<d2>\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(?<y2>\\d{4}))?`
-  + `|(?<nx>next\\s+)?(?<wd3>${WEEKDAY_WORD})|(?<rel>today|tomorrow))`
-const TIME_PART = `(?:\\s+at\\s+(?<h1>\\d{1,2})(?::(?<mi1>\\d{2}))?(?!\\s*(?:am|pm))|\\s+(?:at\\s+)?(?<h2>\\d{1,2})(?::(?<mi2>\\d{2}))?\\s*(?<ap>am|pm))?`
+// GRAMMAR.md 2, the ONLY destination forms, consumed as ONE complete span:
+//   <weekday> | <day> <month> [<yyyy>] | <month> <day> [<yyyy>] | <weekday> <day> <month> [<yyyy>]
+//   optionally followed by "at H:MM" / "at HH:MM" (24-hour, exactly two-digit minutes)
+// no today, tomorrow, next, noon, am/pm, hour-only, ordinals or commas
+const DATE_PART = `(?:(?:(?<wd1>${WEEKDAY_WORD})\\s+)?(?<d1>\\d{1,2})\\s+(?<m1>${MONTH_WORD})(?:\\s+(?<y1>\\d{4}))?`
+  + `|(?<m2>${MONTH_WORD})\\s+(?<d2>\\d{1,2})(?:\\s+(?<y2>\\d{4}))?`
+  + `|(?<wd3>${WEEKDAY_WORD}))`
+const TIME_PART = `(?:\\s+at\\s+(?<h1>\\d{1,2}):(?<mi1>\\d{2}))?`
 const DEST_RE = new RegExp(`^${DATE_PART}${TIME_PART}$`, 'i')
 
 /**
@@ -220,7 +218,7 @@ export function parseDestination(text: string, today: string): Destination {
     || before(r, /\b(?:post|one|draft)\s+(?:on|for|from)\s+(?:the\s+)?$/i)
   let cands = counted.filter((r) => !isSource(r))
   if (cands.length > 1) {
-    const marked = cands.filter((r) => before(r, /\b(?:to|until|for)\s+(?:the\s+)?$/i))
+    const marked = cands.filter((r) => before(r, /\b(?:to|on)\s+$/i))
     if (marked.length === 1) {
       const rest = cands.filter((r) => r !== marked[0])
       return { ok: false, code: 'unclear_date', label: `I could not read the date: "${text.slice(rest[0].at, rest[0].end)}" is a second day or time.` }
@@ -243,19 +241,16 @@ export function parseDestination(text: string, today: string): Destination {
   const m = span.trim().match(DEST_RE)
   if (!m || !m.groups) return bad
   const g = m.groups
-  // the time: "at H[:MM]" (0-23, 0-59) or "H[:MM]am/pm" (1-12)
+  // the time: "at H:MM" / "at HH:MM", 00:00-23:59
   let time: string | null = null
   if (g.h1 != null) {
-    const h = +g.h1, mi = g.mi1 != null ? +g.mi1 : 0
+    const h = +g.h1, mi = +g.mi1
     if (h > 23 || mi > 59) return bad
     time = `${pad(h)}:${pad(mi)}`
-  } else if (g.h2 != null) {
-    const h = +g.h2, mi = g.mi2 != null ? +g.mi2 : 0
-    if (h < 1 || h > 12 || mi > 59) return bad
-    time = `${pad((h % 12) + (g.ap!.toLowerCase() === 'pm' ? 12 : 0))}:${pad(mi)}`
   }
   const monthNo = (w: string) => MONTHS.indexOf(w.slice(0, 3).toLowerCase()) + 1
-  let date: string | null = null, note: string | undefined
+  let date: string | null = null
+  const note: string | undefined = undefined
   if (g.d1 != null || g.d2 != null) {
     const d = +(g.d1 ?? g.d2), mo = monthNo(g.m1 ?? g.m2), yGiven = g.y1 ?? g.y2
     if (yGiven) date = validDate(+yGiven, mo, d)   // a year in the text is used as given
@@ -270,20 +265,19 @@ export function parseDestination(text: string, today: string): Destination {
       if (wd && WEEKDAYS[new Date(date + 'T12:00:00Z').getUTCDay()] !== wd) return { ok: false, code: 'unclear_date', label: `I could not read the date: ${niceDay(date)} is not a ${cap(wd)}.` }
     }
   } else if (g.wd3) {
+    // GRAMMAR.md 2: the next occurrence AFTER today (Warsaw); a weekday that is today means next week's
     const wd = WEEKDAYS.find((w) => WD(w, 'i').test(g.wd3))!
-    date = addDays(today, toNearest(today, wd) + (g.nx ? 7 : 0))
-    if (g.nx) note = `"${span.trim()}" read as ${niceDay(date)}, the ${cap(wd)} after the coming one.`
-  } else if (g.rel) {
-    date = g.rel.toLowerCase() === 'today' ? today : addDays(today, 1)
+    date = addDays(today, toNearest(today, wd) || 7)
   }
   if (!date) return bad
   // the exact span: the grammar's own match, plus the destination preposition right before it ("to", "until",
   // "for", "on"), which belongs to the destination and to nothing else
   const lead = span.length - span.trimStart().length
   let at = r.at + lead
-  // the preposition is read on the ORIGINAL text (round 17 #D), never on the quote-masked copy
-  const prep = text.slice(0, at).match(/\b(?:to|until|for|on)\s+(?:the\s+)?$/i)
-  if (prep) at -= prep[0].length
+  // GRAMMAR.md 2: `to|on <D>`; the preposition is read on the ORIGINAL text, never on the quote-masked copy
+  const prep = text.slice(0, at).match(/\b(?:to|on)\s+$/i)
+  if (!prep) return bad
+  at -= prep[0].length
   return { ok: true, date, time, span: { at, end: r.at + lead + span.trim().length }, ...(note ? { note } : {}) }
 }
 
@@ -326,7 +320,10 @@ export function identify(text: string, cands: (IdDraft & { ok?: boolean })[], op
   if (justADay(ref)) {
     // day-only identity: held kinds only; an immediate kind gets chips and must name words
     if (!DAY_ONLY_KINDS.has(opts.kind ?? '')) return { ids: [], how: 'none', rivals: onNamedDays(), why: 'needs_words' }
-    const ids = onNamedDays()
+    // GRAMMAR.md 1 T3: exactly one live ELIGIBLE draft dated that day (a single ineligible one is refused as itself)
+    const onDay = onNamedDays()
+    const ok = onDay.filter((id) => cands.find((c) => c.id === id)?.ok !== false)
+    const ids = ok.length ? ok : onDay
     return ids.length ? { ids, how: 'day', rivals: [] } : { ids: [], how: 'none', rivals: [] }
   }
   const tokens = refTokens(ref)

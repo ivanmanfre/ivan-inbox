@@ -48,7 +48,7 @@ Actions. When his message tells you to change something, write the ACTIONS block
 - link {url, note}  a link he sent, url copied character for character as it appears in his message (a LinkedIn or X post becomes a copy candidate; any other URL becomes an idea); note = his own words only, copied exactly
 - draft_line {line_handle:"L2"}  make a post from a call line through the writer
 - t3 {title, brief}  only for heavy work: building or fixing software, deep research, multi-step jobs. brief = a self-contained task for a coding agent, with what done looks like.
-Ambiguity: when his words could mean more than one post, still propose the action; the server acts on none and shows him one chip per match. If he names a weekday, it means the next one coming (this week if it is still ahead, else next week); "next Friday" means the Friday after that one. If he gives no clear day ("next week", "soon"), propose no date action: ask for the day in the reply.
+Ambiguity: when his words could mean more than one post, still propose the action; the server acts on none and shows him one chip per match. A date move needs his day in one of these forms: a weekday (the next one after today), "27 Nov", "Nov 27", "Friday 27 Nov" (a year may follow), optionally "at 9:30" (24-hour). If he says today, tomorrow, next week, "next Friday", "9am" or no clear day, propose no date action: ask him for the day in that form.
 If nothing needs changing, no ACTIONS block.
 
 Reads (only when the brief truly lacks it):

@@ -114,6 +114,11 @@ export function confirmMatches(c: Confirmation | undefined, live: { id: string; 
 
 
 export const HOLD_MS = 8000
+const SAY_VERB: Record<string, string> = { approve: 'approve', delete: 'delete', pull: 'pull', redo: 'redo', date: 'move', undate: 'remove the date from', photo_attach: 'attach this photo to' }
+/** GRAMMAR.md: the one line a message that does not fully match the grammar gets when there are no chips. */
+export function sayItAs(kind: string): string {
+  return `Say it as: ${SAY_VERB[kind] ?? kind} "<opener words>"${kind === 'date' ? ' to <day> [at HH:MM]' : ''}`
+}
 /** An immediate kind on a draft with a live queue row (round 14 #3). */
 export const IN_QUEUE = 'This one is already in the queue. Move it in the calendar.'
 /** Confirm-to-act: a held draft action waits for Ivan's tap up to this long, then is cancelled, never committed. */
@@ -408,7 +413,8 @@ export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: 
   let destSpan: { at: number; end: number } | null = null
   if (act.kind === 'date') {
     const dp = parseDestination(ctx.text, today)
-    if (!dp.ok) return ask(dp.code, dp.label)
+    // GRAMMAR.md 2: a destination that does not fully match means no write, and the one "Say it as" line
+    if (!dp.ok) return ask(dp.code, sayItAs('date'))
     destSpan = dp.span
   }
   const idOpts = { today, kind: act.kind, note: act.note, destSpan }
@@ -427,20 +433,22 @@ export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: 
   const chipsFor = (ds: Draft[]) => verifiedChips(act, ds, all, idOpts)
   if (res.ids.length !== 1) {
     const shown = [...res.ids, ...res.rivals].map((x) => byId.get(x)!).filter(Boolean)
-    if (res.why === 'no_words') return ask('no_match', 'Name a few words of the post you mean.')
+    // GRAMMAR.md: no full match = no write; chips if there are candidates, else the one "Say it as" line
+    const orSay = (code: string, line: string, cs: { label: string; send: string }[]) => (cs.length ? ask(code, line, cs) : ask(code, sayItAs(act.kind)))
+    if (res.why === 'no_words') return ask('no_match', sayItAs(act.kind))
     if (res.why === 'positional') {
       // no numbered references (round 15 #1): a position is refused, with chips for the posts this kind can act on
       const pick = all.filter((d) => eligible(act.kind, d))
         .sort((a, z) => (a.scheduled_at && z.scheduled_at ? Date.parse(a.scheduled_at) - Date.parse(z.scheduled_at) : a.scheduled_at ? -1 : z.scheduled_at ? 1 : Date.parse(z.created_at) - Date.parse(a.created_at)))
-      return ask('positional', 'I do not pick posts by number. Tap the one you mean, or name a few of its words.', chipsFor(pick))
+      return orSay('positional', 'I do not pick posts by number. Tap the one you mean.', chipsFor(pick))
     }
     if (res.why === 'needs_words') {
       // day-only identity is for held kinds only (round 16 #1+2): an immediate change names the post's words
-      return ask('needs_words', shown.length ? 'Name a few words of the post, or tap it.' : 'Name a few words of the post you mean.', chipsFor(shown))
+      return orSay('needs_words', 'Name a few words of the post, or tap it.', chipsFor(shown))
     }
     return res.ids.length
-      ? ask('ambiguous', `${res.ids.length} posts match your words. Pick one.`, chipsFor(shown))
-      : ask('no_match', shown.length ? 'No post holds all of your words. Tap the one you mean.' : 'I could not tell which post you mean from your words.', chipsFor(shown))
+      ? orSay('ambiguous', `${res.ids.length} posts match your words. Pick one.`, chipsFor(shown))
+      : orSay('no_match', 'No post holds all of your words. Tap the one you mean.', chipsFor(shown))
   }
   const match = byId.get(res.ids[0])!
   // resolved, but not one this kind can act on: refused as itself, never swapped for another draft
@@ -618,7 +626,7 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
       // the SERVER resolves the destination instant from his words (round 15 #2): day plus his explicit
       // time, else the draft's current time, else 10:45. The planned instant must equal it exactly.
       const dc = parseDestination(ctx.text, warsawDay(new Date().toISOString()))
-      if (!dc.ok) return { echo: { kind, label: dc.label, state: 'failed', undo: false, target }, refuse: dc.code }
+      if (!dc.ok) return { echo: { kind, label: sayItAs('date'), state: 'failed', undo: false, target }, refuse: dc.code }
       // defaults only after a full parse: his time, else the draft's current time, else 10:45
       const hhmm = dc.time ?? (d!.scheduled_at ? warsawClock(d!.scheduled_at) : '10:45')
       const want = warsawToIso(`${dc.date} ${hhmm}`)

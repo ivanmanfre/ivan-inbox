@@ -915,39 +915,7 @@ Deno.test('round 14 #2: dates never narrow identity, except a reference that is 
   assertEquals(identify('approve the monthly sunny saturated one', [{ id: 'm', first_line: 'Monthly sunny saturated colours', day: 'undated' }], t).ids, ['m'])
 })
 
-Deno.test('round 16 #3: the destination is a strict grammar consumed as one complete span', () => {
-  const today = '2026-11-18'   // a Wednesday
-  const P = (t: string) => parseDestination(t, today)
-  const ok = (t: string, date: string, time: string | null) => { const r = P(t); assert(r.ok && r.date === date && r.time === time, `${t} -> ${JSON.stringify(r)}`) }
-  const no = (t: string) => { const r = P(t); assert(!r.ok && r.label.startsWith('I could not read the date'), `${t} -> ${JSON.stringify(r)}`) }
-  ok('move the snow one to friday', '2026-11-20', null)
-  ok('move the snow one to next friday', '2026-11-27', null)
-  ok('move it to tomorrow', '2026-11-19', null)
-  ok('move it to friday at 9', '2026-11-20', '09:00')
-  ok('move it to friday at 14:05', '2026-11-20', '14:05')
-  ok('move it to friday 4pm', '2026-11-20', '16:00')
-  ok('move it to friday at 9:30am', '2026-11-20', '09:30')
-  ok('put the cold brew one on tuesday 9 march', '2027-03-09', null)
-  ok('put the cold brew one on 9 march 2028 at 10:45', '2028-03-09', '10:45')   // a year is used as given
-  ok('move it to march 9', '2027-03-09', null)
-  ok('move it to Nov 27, 2026 at 18:00', '2026-11-27', '18:00')
-  ok("move tomorrow's post to friday", '2026-11-20', null)                      // the possessive source stays
-  ok('move the post on friday to monday', '2026-11-23', null)
-  ok('move the post that starts "Friday at 7am I ship" to monday', '2026-11-23', null)   // quoted: text
-  no('move it to friday 10:45')            // a bare time is not in the grammar
-  no('move it to friday at 25:00')         // invalid time
-  no('move it to friday at 9:75')
-  no('move it to 31 feb')                  // not a real date
-  no('put the cold brew one on monday 9 march')   // the weekday disagrees
-  no('move it to this friday')             // not in the grammar
-  no('move it to 2027-03-09')              // ISO is not in the grammar
-  no('move it to friday or monday')        // a second day
-  no('move the cold brew at 7am one to friday')   // a leftover time outside the destination
-  no('move it to next week')
-  no('move it')
-  const n = P('move the snow one to next friday'); assert(n.ok && n.note!.includes('after the coming one'))
-  const sp = P('move the snow one to next friday at 9:30'); assert(sp.ok && 'move the snow one to next friday at 9:30'.slice(sp.span.at, sp.span.end) === 'to next friday at 9:30')
-})
+// round 16 #3 destination cases now live in grammar.test.ts (the GRAMMAR.md table, round 18)
 
 Deno.test('round 16 #1+2: day-only identity is for held kinds and an exact day phrase only', () => {
   const ds = [
@@ -1080,9 +1048,8 @@ Deno.test('round 12 #2: the v2 confirmation must match the live row and the re-p
 })
 
 Deno.test('round 12 #4: the target phrase drops verb, destination and redo direction', () => {
-  assert(!referencePart('redo the tram one, make it shorter and punchier', 'redo').includes('shorter'))
-  assert(!referencePart('redo the tram one and make it about cafés', 'redo', 'about cafés').includes('cafés'))
-  assert(justADay("tomorrow's post") && justADay('the one on friday') && !justADay('the snow one from friday'))
+  assert(!referencePart('redo the tram one, make it shorter and punchier', 'redo').includes('shorter'))   // GRAMMAR.md T2 (d)
+  assert(justADay("tomorrow's post") && justADay('the post on friday') && !justADay('the one on friday') && !justADay('the snow one from friday'))
 })
 
 Deno.test('round 12 #5: complete tag names only, offsets on the original buffer', () => {
