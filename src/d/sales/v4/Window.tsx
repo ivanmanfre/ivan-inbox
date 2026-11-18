@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { actionItems, callTopics, people, talkLine, type CallRow } from '../../../lib/transcripts'
+import { actionItems, callTopics, people, talkLine, type CallRow, type ReviewPattern } from '../../../lib/transcripts'
+import { Review } from './Review'
 import { Items, Text, Said } from '../CallWindow'
 import { CallRoom, callWhen } from '../CallRoom'
 import { otherPerson } from './model'
@@ -9,7 +10,7 @@ const unowned = (o: string | null) => !o || /^(?:unclear|unknown|tbd)$/i.test(o.
 
 /** `sendsRecorded`: some call on record has follow_up_sent true. Nothing writes that flag today (0 of 24 drafts), so
  *  "Not sent" would be on every draft; the pill shows only once something records sends (review 2026-11-06). */
-export function Window({ row, at, of, onStep, layout, missing, sendsRecorded = false }: { row: CallRow | null; at: number; of: number; onStep: (d: 1 | -1) => void; layout: 'phone' | 'desktop'; missing?: boolean; sendsRecorded?: boolean }) {
+export function Window({ row, at, of, onStep, layout, missing, sendsRecorded = false, pattern = null }: { row: CallRow | null; at: number; of: number; onStep: (d: 1 | -1) => void; layout: 'phone' | 'desktop'; missing?: boolean; sendsRecorded?: boolean; pattern?: ReviewPattern | null }) {
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState('')
   const timer = useRef<number | null>(null)
@@ -50,6 +51,7 @@ export function Window({ row, at, of, onStep, layout, missing, sendsRecorded = f
       <Items head="They owe" list={items.filter(i => !i.mine && !unowned(i.owner))} />
       <Items head="Open, no owner" list={items.filter(i => !i.mine && unowned(i.owner))} />
       <Text head="Next step" text={b?.next_step} />
+      <Review row={row} pattern={pattern} />
       {repeats.length > 0 && <div className="sl-cb" data-repeats><div className="sl-cbh">Said more than once</div><ul className="sl-dots">{repeats.map((r,i) => <li key={i}>{r.times} times: {r.point.trim()}</li>)}</ul></div>}
       {row.follow_up_draft?.trim() && <section className="sl4-follow"><div className="sl4-follow-head"><h3 className="sl4-eyebrow">Follow-up draft</h3>{(row.follow_up_sent || sendsRecorded) && <span className={`sl4-pill${row.follow_up_sent ? ' sl4-sent' : ''}`}>{row.follow_up_sent ? 'Sent' : 'Not sent'}</span>}<button type="button" data-verb="copy" onClick={() => void copy()} className={copied ? 'sl4-copied' : undefined}><span key={copied ? 'check' : 'copy'} className={copied ? 'sl4-check-pop' : undefined}>{copied ? '✓ Copied' : 'Copy'}</span></button></div><p>{row.follow_up_draft}</p>{copyError && <small role="alert">{copyError}</small>}</section>}
       <Text head="Summary" text={row.summary} />

@@ -37,6 +37,8 @@ export type CallRow = {
   meeting_type: string | null
   brief: CallBrief | null
   talk_stats?: TalkStats | null
+  /** After-call review (db/20261118a, Mac job call-review). Null until reviewed. */
+  call_review?: CallReviewRaw | null
 }
 
 export type TalkStats = { words: Record<string, number>; total: number; ivan_pct: number | null }
@@ -71,7 +73,7 @@ export type CallBrief = {
 // why the raw body is a second, per-row read (fetchCallBody) rather than
 // something the list drags along and then hides behind a disclosure.
 const LIST_COLS = 'id, title, date, duration_minutes, participants, summary, action_items, '
-  + 'topics, follow_up_draft, follow_up_sent, source, meeting_type, brief, talk_stats'
+  + 'topics, follow_up_draft, follow_up_sent, source, meeting_type, brief, talk_stats, call_review'
 
 const PAGE = 200
 const MAX_PAGES = 10
@@ -358,6 +360,48 @@ export const MINE_SOURCES = ['ivan-listener', 'manual', 'manual-paste', 'firefli
 export const isMine = (c: CallRow): boolean => (MINE_SOURCES as readonly string[]).includes(c.source ?? '')
 
 /** The share of the talking that was Ivan's. Null when it is unknown. */
+// ---------------------------------------------------------------------------
+// After-call review (2026-11-18)
+// ---------------------------------------------------------------------------
+
+/** As stored. The job only keeps quotes it found word for word in the transcript. */
+export type CallReviewRaw = {
+  v?: number; status?: string; call_kind?: string
+  items?: { id: string; label: string; status: 'answered' | 'partial' | 'missed'; quote: string | null }[]
+  missed_follow_ups?: { buyer_quote: string; what_ivan_did: string; better_question: string }[]
+  next_step?: { booked: boolean; when: string | null; everyone_who_decides: boolean | null; quote: string | null; note: string }
+  next_call?: string[]
+  talk?: { ivan_pct: number | null; longest_run_words: number; longest_run_at_pct: number }
+}
+
+export type CallReview = Required<Pick<CallReviewRaw, 'items' | 'missed_follow_ups' | 'next_step' | 'next_call' | 'talk'>>
+
+/** The review to show, or null: not reviewed, skipped, failed, or not a sales call (client work, internal). */
+export function reviewOf(c: CallRow): CallReview | null {
+  const r = c.call_review
+  if (!r || r.v !== 1 || r.status || !r.call_kind || r.call_kind === 'not_a_sales_call') return null
+  if (!Array.isArray(r.items) || !r.next_step || typeof r.next_step !== 'object') return null
+  const items = r.items.filter(i => i && typeof i.label === 'string' && ['answered', 'partial', 'missed'].includes(i.status))
+  const follow = (Array.isArray(r.missed_follow_ups) ? r.missed_follow_ups : []).filter(f => f && typeof f.buyer_quote === 'string' && f.buyer_quote.trim() && typeof f.better_question === 'string')
+  const next = (Array.isArray(r.next_call) ? r.next_call : []).filter(x => typeof x === 'string' && x.trim())
+  return { items, missed_follow_ups: follow, next_step: r.next_step, next_call: next, talk: r.talk ?? { ivan_pct: null, longest_run_words: 0, longest_run_at_pct: 0 } }
+}
+
+export type ReviewPattern = { n: number; booked: number; talkAvg: number | null }
+
+/** Across the newest `max` reviewed sales calls: how many ended with a next call booked, and the average talk share. */
+export function reviewPattern(rows: CallRow[], max = 10): ReviewPattern | null {
+  const seen = rows.map(r => ({ r, rv: reviewOf(r) })).filter(x => x.rv)
+    .sort((a, b) => timeOf(b.r) - timeOf(a.r)).slice(0, max)
+  if (seen.length < 2) return null
+  const pcts = seen.map(x => x.r.talk_stats?.ivan_pct).filter((p): p is number => typeof p === 'number')
+  return {
+    n: seen.length,
+    booked: seen.filter(x => x.rv!.next_step.booked === true).length,
+    talkAvg: pcts.length ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : null,
+  }
+}
+
 export function talkLine(c: CallRow): { text: string; warn: boolean } | null {
   const pct = c.talk_stats?.ivan_pct
   if (pct == null) return null

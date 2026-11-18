@@ -1,7 +1,7 @@
 import { useMotionLevel } from '../../../ds/motionLevel'
 import { useCallback, useMemo, useState } from 'react'
 import { packsInWindow } from '../../../wb/sales/match'
-import { segmentCalls, type SalesSegment } from '../../../lib/transcripts'
+import { reviewPattern, segmentCalls, type SalesSegment } from '../../../lib/transcripts'
 import type { PlaceProps } from '../../places'
 import { dHash } from '../../route'
 import { useReportFailed } from '../../shell/health'
@@ -43,6 +43,7 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
   const seg: SalesSegment = segQ && SEGS.includes(segQ) ? segQ : 'mine'
   const sendsRecorded = useMemo(() => data.calls.some(c => c.follow_up_sent === true), [data.calls])
   const queue = useMemo(() => segmentCalls(data.calls, seg, data.now), [data.calls, seg, data.now])
+  const pattern = useMemo(() => reviewPattern(data.calls), [data.calls])
   const want = q.get('call')
   const wanted = want ? queue.find(c => c.id === want) ?? data.calls.find(c => c.id === want) ?? null : null
   // Today's "This call didn't load": the address names a call the archive read does not hold.
@@ -107,7 +108,7 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
           <button type="button" className="d-ib" aria-label="Back to Sales" onClick={() => navigate(dHash('sales', null, { seg }))}><DIcon name="back" /></button>
           <div><small>Calls on record</small><b>{at} of {queue.length}, {SEG_BAR[seg]}</b></div>
         </div>
-        <Window row={open} at={at} of={queue.length} onStep={step} layout="phone" missing={missing} sendsRecorded={sendsRecorded} />
+        <Window row={open} at={at} of={queue.length} onStep={step} layout="phone" missing={missing} sendsRecorded={sendsRecorded} pattern={pattern} />
       </div>
     )
   }
@@ -129,7 +130,7 @@ export default function SalesPage({ layout, route, navigate }: PlaceProps) {
         <div className="sl4-rail-tabs"><Segmented markerId="sl4-rail" label="Sales rail" value={rail} options={[{ id:'schedule', label:'Schedule' }, { id:'calls', label:'Calls' }]} onChange={r => setRail(r as 'schedule' | 'calls')} /></div>
         <section className="sl4-cal" data-d-scroll>{cal}</section>
         <section className="sl4-mid">{calls()}</section>
-        <section className="sl4-win"><Window row={open} at={at} of={queue.length} onStep={step} layout="desktop" missing={missing} sendsRecorded={sendsRecorded} /></section>
+        <section className="sl4-win"><Window row={open} at={at} of={queue.length} onStep={step} layout="desktop" missing={missing} sendsRecorded={sendsRecorded} pattern={pattern} /></section>
       </div>
     </div>
   )

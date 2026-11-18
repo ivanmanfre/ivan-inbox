@@ -57,3 +57,10 @@ html.brief-motion-off .sl4 *,html.brief-motion-subtle .sl4 .sl-join::after{anima
 .sl4-crn.sl4-mine{background:var(--ds-sev-attention-soft);color:var(--warn)}
 .sl4-crtalk{font:400 12px/16px var(--f);color:var(--t3)}.sl4-crtalk.sl4-warn,.sl4-talk .sl4-warn{color:var(--warn)}
 .sl4-talk{display:flex;flex-direction:column;gap:2px;margin-top:6px;font:400 12px/16px var(--f);color:var(--t2)}.sl4-talk small{font-size:12px;color:var(--t3)}
+/* After-call review (2026-11-18) */
+.sl4-review{margin-top:8px;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.sl4-review>.sl4-eyebrow{margin:0 0 8px}
+.sl4-rv-next{font:500 14px/20px var(--f);color:var(--t1);margin:0}.sl4-rv-next.sl4-warn{color:var(--warn)}.sl4-rv-next span{font-weight:400;color:var(--t2)}
+.sl4-rv-pattern,.sl4-rv-run{font:400 13px/20px var(--f);color:var(--t2);margin:6px 0 0}
+.sl4-rv-q{margin:4px 0 0;padding-left:10px;border-left:2px solid var(--line);font:italic 400 13px/20px var(--f);color:var(--t2)}
+.sl4-rv-list{list-style:none;padding:0;margin:0}.sl4-rv-list li{display:flex;flex-direction:column;gap:2px;padding:6px 0;font-size:13px;line-height:20px}
+.sl4-rv-got{margin-top:8px}.sl4-rv-got summary{cursor:pointer;font:500 12px/16px var(--f);color:var(--t2)}
