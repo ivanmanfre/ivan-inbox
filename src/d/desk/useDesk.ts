@@ -26,14 +26,21 @@ export type DeskHandle = {
   reload: () => void
   /** The original send of a failed answer is loaded, so a retry can resend it. */
   canRetry: (m: DeskMessage) => boolean
+  /** A stored question this tab sent whose send ended with no terminal answer yet (Sol desk-ui r5 U4). */
+  awaitingAnswer: (m: DeskMessage) => boolean
   /** Read the rows back now; resolves when that read has answered (or failed). */
   refresh: () => Promise<void>
 }
 
 // Held actions commit on the SERVER, timed from the moment the row was first visibly on screen
 // (held_seen, src/d/desk/heldSeen.ts); nothing in the browser ever commits by itself.
-/** Tests only: kept for the test files' resets. */
-export function resetLiveHolds(): void { /* see heldSeen.ts resetHeldSeen */ }
+// Keys of sends from this tab that ended (final, error or a dropped socket). Module level, so a
+// reopened desk still knows a stored question of this tab is waiting for its answer.
+const endedKeys = new Set<string>()
+// Keys whose turn delivered its terminal answer (an SSE final, the answer or the stored error row).
+const answeredKeys = new Set<string>()
+/** Tests only. */
+export function resetLiveHolds(): void { endedKeys.clear(); answeredKeys.clear() }
 
 // Every mounted desk's read-back. refresh() reads back in all of them (none open: nothing to show).
 const openDesks = new Set<() => Promise<void>>()
@@ -94,7 +101,7 @@ export function useDesk(): DeskHandle {
   }, [apply, note])
   // Sends that ended (final, error or a dropped socket): an unmatched 'sending' row for one of
   // these keys was never stored, so it shows "Not sent" with a retry (Sol desk-ui r1 #4).
-  const ended = useRef(new Set<string>())
+  const ended = useRef(endedKeys)
 
   // Callers waiting for the next read to finish (desk.refresh): resolved when this read answers, when
   // the desk unmounts, or after 10 s at the latest, so a waiting row can never stay stuck.
@@ -189,6 +196,7 @@ export function useDesk(): DeskHandle {
       },
       onDelta: t => setMessages(prev => patch(prev, phId, m => ({ ...m, body: m.body + t }))),
       onFinal: m => {
+        answeredKeys.add(key)
         mergeLive([m], x => x.id === phId)
       },
       onError: (code, detail) => {
@@ -241,7 +249,10 @@ export function useDesk(): DeskHandle {
     // and a refused key cannot be reused: those two retry under a NEW key. Every other case (unsent,
     // unconfirmed, the stream lost) retries under the ORIGINAL key, which the server answers
     // idempotently: an existing turn returns its stored answer, so nothing runs twice (Sol desk-ui r4 #2).
-    const knownFailure = (m.role === 'assistant' && m.status === 'error' && !m.answers) || asked.retryFresh === true
+    // A new key only when the server recorded that the failed turn did nothing (meta.side_effects
+    // 'none', backend r5 B11) or refused the key outright (key_mismatch). Anything else, a missing
+    // side_effects included, retries under the original key, which only replays (Sol desk-ui r5 U3).
+    const knownFailure = (m.role === 'assistant' && m.status === 'error' && !m.answers && m.meta.side_effects === 'none') || asked.retryFresh === true
     if (knownFailure) {
       setMessages(prev => prev.filter(x => x !== asked && x !== m && x.id !== `stream:${key}` && x.id !== `local:${key}`))
       send(asked.body, { attachments: asked.meta.attachments, voice: asked.meta.voice })
@@ -273,6 +284,15 @@ export function useDesk(): DeskHandle {
     return !!key && listRef.current.some(x => x.role === 'user' && x.client_key === key)
   }, [])
 
+  const awaitingAnswer = useCallback((m: DeskMessage) => {
+    if (m.role !== 'user' || m.local || !m.client_key || !ended.current.has(m.client_key) || answeredKeys.has(m.client_key)) return false
+    const key = m.client_key
+    // Any bubble for this key (a live placeholder carries its own state), or a stored answer that is
+    // terminal (not still streaming), ends the wait.
+    return !messages.some(x => x.role === 'assistant' && (x.answers === key ||
+      ((x.meta.client_key === key || x.meta.reply_to === m.id) && x.status !== 'streaming')))
+  }, [messages])
+
   const reload = useCallback(() => setN(x => x + 1), [])
   // This mount's read-back. Registered while mounted, so an op that ends after its desk was closed
   // still reads the row back in the desk that is open now (Sol desk-ui r4 #3).
@@ -288,5 +308,5 @@ export function useDesk(): DeskHandle {
     openDesks.add(refreshSelf)
     return () => { openDesks.delete(refreshSelf) }
   }, [refreshSelf])
-  return { messages, jobs, fromCache, loaded, readFailed, busy, send, retry, act, reload, canRetry, refresh: refreshOpenDesks }
+  return { messages, jobs, fromCache, loaded, readFailed, busy, send, retry, act, reload, canRetry, awaitingAnswer, refresh: refreshOpenDesks }
 }

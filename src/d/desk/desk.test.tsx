@@ -49,7 +49,7 @@ vi.mock('./api', () => ({
         ? { actions: [{ id: 'act-1', kind: 'approve', label: 'Approve #a1b2c', state: 'held', undo: false, hold_ms: 8000 }] }
         : /move/.test(t)
           ? { actions: [{ id: 'act-2', kind: 'schedule', label: 'Moved #d3e4f to Thu', state: 'done', undo: true }] }
-          : { chips: [{ label: '#a1b2c trains', send: 'move #a1b2c to thursday' }] },
+          : { chips: [{ label: 'Show the draft', send: 'move #a1b2c to thursday' }] },
     }))
     return 'final'
   }),
@@ -63,10 +63,11 @@ vi.mock('../../exp/v2c/chat/useStt', () => ({
 
 const { Desk } = await import('./Desk')
 const { resetHeldSeen } = await import('./heldSeen')
+const { installVisibility, removeVisibility } = await import('./testVisibility')
 const { resetActionGuards } = await import('./actionGuards')
 
-beforeEach(() => { sent.length = 0; ops.length = 0; streamGate = null; localStorage.clear(); resetActionGuards(); resetHeldSeen(); seenCalls.length = 0; heldSeenOk = true })
-afterEach(() => { cleanup(); vi.useRealTimers() })
+beforeEach(() => { sent.length = 0; ops.length = 0; streamGate = null; localStorage.clear(); resetActionGuards(); resetHeldSeen(); seenCalls.length = 0; heldSeenOk = true; installVisibility() })
+afterEach(() => { cleanup(); vi.useRealTimers(); removeVisibility() })
 
 function type(text: string) {
   fireEvent.change(screen.getByLabelText('Message the desk'), { target: { value: text } })
@@ -93,8 +94,9 @@ describe('Desk', () => {
     await act(async () => { streamGate?.() })
     await screen.findByText('Four posts this week.')
     expect(container.querySelector('[data-streaming]')).toBeNull()
-    // A chip sends its own text.
-    fireEvent.click(await screen.findByText('#a1b2c trains'))
+    // B1: a chip shows exactly the text it sends; a label that differs is never shown.
+    fireEvent.click(await screen.findByText('move #a1b2c to thursday', { selector: 'button' }))
+    expect(screen.queryByText('Show the draft')).toBeNull()
     await waitFor(() => expect(sent).toHaveLength(2))
     expect((sent[1].body as { text: string; chip: boolean })).toMatchObject({ text: 'move #a1b2c to thursday', chip: true })
   })

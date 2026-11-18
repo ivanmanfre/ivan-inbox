@@ -12,7 +12,9 @@ export type DeskAction = {
   hold_ms?: number; detail?: string
   target?: { kind: 'draft'; handle: string; first_line: string }
 }
-export type DeskChip = { label: string; send: string }
+/** A chip has ONE text: what it shows is exactly what it sends (Sol backend r5 B1). Any `label` a row
+ *  still carries is ignored. */
+export type DeskChip = { send: string; label?: string }
 export type DeskDraftCard = { handle: string; first_line: string; status: string; scheduled_at?: string | null }
 export type DeskT3 = { id: string; status: T3Status; title: string; link?: string | null }
 export type DeskAttachment = { kind: 'photo' | 'link'; url: string; name?: string }
@@ -23,7 +25,12 @@ export type DeskMeta = {
   trigger?: string; voice?: boolean; test?: boolean
   /** On a failed answer row: the client_key of the send it failed to answer (the retry's key). */
   client_key?: string
+  /** On the user row an answer belongs to (server). */
+  reply_to?: string
   error?: string
+  /** On a terminal answer, from that turn's action journal (Sol backend r5 B11): 'none' only when the
+   *  turn wrote nothing and queued no job. Only 'none' allows a retry under a new key. */
+  side_effects?: 'none' | 'some' | 'unknown'
 }
 
 export type DeskMessage = {

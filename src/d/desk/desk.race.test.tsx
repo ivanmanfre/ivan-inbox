@@ -19,6 +19,8 @@ let commitAnswer: { ok: boolean; error?: string } = { ok: true }
 let readRows: () => Promise<DeskMessage[]> = async () => []
 let realtime: ((m: DeskMessage) => void) | null = null
 let sendMode: 'held' | 'drop-before-ack' | 'error-final' | 'offline' | 'in-progress' | 'key-reused' = 'held'
+// B11: what the stored error answer says the failed turn did (undefined = an older row without it).
+let errorSideEffects: 'none' | 'some' | 'unknown' | undefined = 'none'
 
 const row = (over: Partial<DeskMessage> & { id: string }): DeskMessage => ({
   role: 'assistant', origin: 'desk', body: '', status: 'done', meta: {}, client_key: null, created_at: new Date().toISOString(), ...over,
@@ -59,11 +61,11 @@ vi.mock('./api', () => ({
     if (sendMode === 'in-progress') { h.onError('turn_in_progress', 'That message is still being answered.'); return 'error' }
     if (sendMode === 'error-final') {
       h.onError('desk_llm_unavailable', 'The desk model did not answer.')
-      h.onFinal(row({ id: `e-${body.client_key}`, status: 'error', body: 'The desk could not answer just now. Send it again in a moment.', meta: { error: 'desk_llm_unavailable', client_key: body.client_key } }))
+      h.onFinal(row({ id: `e-${body.client_key}`, status: 'error', body: 'The desk could not answer just now. Send it again in a moment.', meta: { error: 'desk_llm_unavailable', client_key: body.client_key, reply_to: `u-${body.client_key}`, ...(errorSideEffects ? { side_effects: errorSideEffects } : {}) } }))
       return 'error'
     }
     if (finalGate) await finalGate
-    h.onFinal(row({ id: `a-${body.client_key}`, body: 'Approving it.', updated_at: '2026-11-18T12:00:01Z', meta: { actions: [{ id: 'act-live', kind: 'approve', label: 'Approve the trains post', state: 'held', undo: true, hold_ms: 8000 }] } }))
+    h.onFinal(row({ id: `a-${body.client_key}`, body: 'Approving it.', updated_at: '2026-11-18T12:00:01Z', meta: { client_key: body.client_key, reply_to: `u-${body.client_key}`, actions: [{ id: 'act-live', kind: 'approve', label: 'Approve the trains post', state: 'held', undo: true, hold_ms: 8000 }] } }))
     return 'final'
   }),
   undoAction: vi.fn(async (id: string) => { ops.push({ kind: 'undo', id }); return { ok: true } }),
@@ -76,15 +78,16 @@ vi.mock('../../exp/v2c/chat/useStt', () => ({
 
 const { Desk } = await import('./Desk')
 const { resetHeldSeen } = await import('./heldSeen')
+const { installVisibility, removeVisibility, setVisibleRatio, setCovered } = await import('./testVisibility')
 const { resetActionGuards } = await import('./actionGuards')
 const { resetLiveHolds } = await import('./useDesk')
 
 beforeEach(() => {
   ops.length = 0; sends.length = 0; cancelGate = null; commitAnswer = { ok: true }
-  readRows = async () => []; realtime = null; sendMode = 'held'; finalGate = null; uploadGate = null; ackGate = null; cancelAnswer = { ok: true }
-  localStorage.clear(); resetLiveHolds(); resetActionGuards(); resetHeldSeen(); seenCalls.length = 0; heldSeenOk = true; heldSeenEntry = null; heldSeenGate = null
+  readRows = async () => []; realtime = null; sendMode = 'held'; errorSideEffects = 'none'; finalGate = null; uploadGate = null; ackGate = null; cancelAnswer = { ok: true }
+  localStorage.clear(); resetLiveHolds(); resetActionGuards(); resetHeldSeen(); seenCalls.length = 0; heldSeenOk = true; heldSeenEntry = null; heldSeenGate = null; installVisibility()
 })
-afterEach(() => { cleanup(); vi.useRealTimers() })
+afterEach(() => { cleanup(); vi.useRealTimers(); removeVisibility() })
 
 function type(text: string) {
   fireEvent.change(screen.getByLabelText('Message the desk'), { target: { value: text } })
@@ -696,4 +699,128 @@ it('held_seen: a failed report is sent again when the tab returns, and the count
   expect(seenCalls).toEqual([['act-live'], ['act-live']])
   expect(document.querySelector('.dk-count')).toBeTruthy()
   expect(ops).toEqual([])
+})
+
+
+describe('round 6 (Sol desk-ui r5 U1-U4, backend B11 on the client)', () => {
+  it('U1: a clipped Undo (part of the button off screen) is not reported seen; once fully visible it is', async () => {
+    render(<Desk layout="phone" />)
+    setVisibleRatio(0.5)
+    type('approve the trains one')
+    await screen.findByText(/Approving it\./)
+    await act(async () => { setVisibleRatio(0.5) })
+    expect(seenCalls).toEqual([])
+    expect(document.querySelector('.dk-count')).toBeNull()
+    expect(screen.getByText('Undo')).toBeTruthy()
+    await act(async () => { setVisibleRatio(1) })
+    await waitFor(() => expect(seenCalls).toEqual([['act-live']]))
+  })
+
+  it('U1: an Undo covered by something else is not reported seen', async () => {
+    setCovered(true)
+    render(<Desk layout="phone" />)
+    type('approve the trains one')
+    await screen.findByText(/Approving it\./)
+    await act(async () => { setVisibleRatio(1) })
+    expect(seenCalls).toEqual([])
+    setCovered(false)
+    await act(async () => { setVisibleRatio(1) })
+    await waitFor(() => expect(seenCalls).toEqual([['act-live']]))
+  })
+
+  it('U1: without IntersectionObserver held_seen is never sent; the hold stays manual', async () => {
+    removeVisibility()
+    render(<Desk layout="phone" />)
+    type('approve the trains one')
+    await screen.findByText(/Approving it\./)
+    // a return to the tab (which re-reads; the server still holds the row) does not send it either
+    readRows = async () => [row({ id: 'a-' + sends[0].client_key, body: 'Approving it.', meta: { client_key: sends[0].client_key, actions: [{ id: 'act-live', kind: 'approve', label: 'Approve the trains post', state: 'held', undo: true, hold_ms: 8000 }] } })]
+    await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
+    await screen.findByText('Undo')
+    expect(seenCalls).toEqual([])
+    expect(document.querySelector('.dk-count')).toBeNull()
+    expect(screen.getByText('Undo')).toBeTruthy()
+    expect(screen.getByText('Do it now')).toBeTruthy()
+    expect(ops).toEqual([])
+  })
+
+  it('U2: a failed cancel shows "Try Undo again" at once, even while the read-back hangs', async () => {
+    render(<Desk layout="phone" />)
+    type('approve the trains one')
+    await screen.findByText('Undo')
+    cancelAnswer = { ok: false, error: 'No connection.' }
+    readRows = () => new Promise(() => {}) // the history read never answers
+    fireEvent.click(screen.getByText('Undo'))
+    await screen.findByText('Try Undo again')
+    expect(screen.queryByText(/Cancelling/)).toBeNull()
+    cancelAnswer = { ok: true }
+    fireEvent.click(screen.getByText('Try Undo again'))
+    await waitFor(() => expect(ops.filter(o => o.kind === 'cancel')).toHaveLength(2))
+    expect(ops.filter(o => o.kind === 'commit')).toHaveLength(0)
+  })
+
+  it('U3: a stored error that may have done something offers only Check again, never a new run', async () => {
+    errorSideEffects = 'some'
+    sendMode = 'error-final'
+    render(<Desk layout="phone" />)
+    type('how did the made up post do')
+    await screen.findByText(/could not answer just now/)
+    expect(screen.queryByText('Try again')).toBeNull()
+    expect(screen.getByText('Check Review before repeating.')).toBeTruthy()
+    let reads = 0
+    readRows = async () => { reads++; return [] }
+    fireEvent.click(screen.getByText('Check again'))
+    await waitFor(() => expect(reads).toBeGreaterThan(0))
+    expect(sends).toHaveLength(1)
+  })
+
+  it('U3: a stored error without side_effects (unknown) is treated the same: no Try again', async () => {
+    errorSideEffects = undefined
+    sendMode = 'error-final'
+    render(<Desk layout="phone" />)
+    type('how did the made up post do')
+    await screen.findByText(/could not answer just now/)
+    expect(screen.queryByText('Try again')).toBeNull()
+    expect(screen.getByText('Check again')).toBeTruthy()
+  })
+
+  it('U3: side_effects "unknown" offers only Check again too', async () => {
+    errorSideEffects = 'unknown'
+    sendMode = 'error-final'
+    render(<Desk layout="phone" />)
+    type('how did the made up post do')
+    await screen.findByText(/could not answer just now/)
+    expect(screen.queryByText('Try again')).toBeNull()
+  })
+
+  it('U4: a read that finds the stored question without its answer keeps Check again and a same-key Retry', async () => {
+    sendMode = 'drop-before-ack'
+    render(<Desk layout="phone" />)
+    await screen.findByText(/Ask about this week/)
+    readRows = async () => [row({ id: 'u-stored', role: 'user', origin: 'operator', body: 'whats going out this week', client_key: sends[0].client_key })]
+    type('whats going out this week')
+    await screen.findByText('No answer yet.', {}, { timeout: 3000 })
+    expect(screen.getByText('Check again')).toBeTruthy()
+    sendMode = 'held'
+    fireEvent.click(screen.getByText('Retry'))
+    await waitFor(() => expect(sends).toHaveLength(2))
+    expect(sends[1].client_key).toBe(sends[0].client_key)
+    await screen.findByText(/Approving it\./)
+    expect(screen.queryByText('No answer yet.')).toBeNull()
+    expect(screen.queryByText('Retry')).toBeNull()
+  })
+
+  it('U4: the wait ends when the answer arrives by realtime', async () => {
+    sendMode = 'drop-before-ack'
+    render(<Desk layout="phone" />)
+    await screen.findByText(/Ask about this week/)
+    type('whats going out this week')
+    const key = sends[0].client_key
+    readRows = async () => [row({ id: 'u-stored', role: 'user', origin: 'operator', body: 'whats going out this week', client_key: key })]
+    await screen.findByText('No answer yet.', {}, { timeout: 3000 })
+    await act(async () => { realtime?.(row({ id: 'late-answer', body: 'Four posts are out this week.', meta: { client_key: key, reply_to: 'u-stored' }, created_at: new Date(Date.now() + 1000).toISOString() })) })
+    await screen.findByText('Four posts are out this week.')
+    expect(screen.queryByText('No answer yet.')).toBeNull()
+    expect(screen.queryByText('Retry')).toBeNull()
+  })
 })

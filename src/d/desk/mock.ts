@@ -31,7 +31,7 @@ let rows: DeskMessage[] = [
     meta: { trigger: 'week_plan', drafts: [
       { handle: '#a1b2c', first_line: 'A made up post about trains in the rain.', status: 'scheduled', scheduled_at: at(60 * 25) },
       { handle: '#d3e4f', first_line: 'A made up post about a quiet Monday.', status: 'review', scheduled_at: null },
-    ], chips: [{ label: 'Fill the open slot', send: 'fill the open slot' }] } },
+    ], chips: [{ send: 'fill the open slot' }] } },
   { id: 'm-2', role: 'user', origin: 'operator', body: 'whats going out this week', status: 'done', meta: {}, client_key: 'k-2', created_at: at(30) },
   { id: 'm-3', role: 'assistant', origin: 'desk', body: 'Four posts this week. Tuesday 09:30 the trains post, Wednesday the Monday post, Thursday and Saturday the two copies.', status: 'done', meta: { model: 'mock' }, client_key: null, created_at: at(31) },
 ]
@@ -55,7 +55,7 @@ function answerFor(text: string, id: string): DeskMessage {
   const base: DeskMessage = { id, role: 'assistant', origin: 'desk', body: '', status: 'done', meta: { model: 'mock' }, client_key: null, created_at: new Date().toISOString() }
   if (/approve/.test(t)) return { ...base, body: 'Approving the trains post.', meta: { ...base.meta, actions: [{ id: `a-${id}`, kind: 'approve', label: 'Approve #a1b2c', state: 'held', undo: false, hold_ms: 8000, target: { kind: 'draft', handle: '#a1b2c', first_line: 'A made up post about trains in the rain.' } }] } }
   if (/move|thursday/.test(t)) return { ...base, body: 'Moved the Monday post to Thursday 09:30.', meta: { ...base.meta, actions: [{ id: `a-${id}`, kind: 'schedule', label: 'Moved #d3e4f to Thu 26 Nov 09:30', state: 'done', undo: true, target: { kind: 'draft', handle: '#d3e4f', first_line: 'A made up post about a quiet Monday.' } }] } }
-  if (/poland|which one/.test(t)) return { ...base, body: 'Two drafts match. Tap the one you mean.', meta: { ...base.meta, chips: [{ label: '#a1b2c trains in the rain', send: 'move #a1b2c to thursday' }, { label: '#d3e4f a quiet Monday', send: 'move #d3e4f to thursday' }] } }
+  if (/poland|which one/.test(t)) return { ...base, body: 'Two drafts match. Tap the one you mean.', meta: { ...base.meta, chips: [{ send: 'move #a1b2c to thursday' }, { send: 'move #d3e4f to thursday' }] } }
   if (/build|fix|research/.test(t)) {
     const jid = `j-${id}`
     const job: T3Job = { id: jid, status: 'queued', title: 'Made up build job', t3_link: null, result_summary: null }
@@ -67,7 +67,7 @@ function answerFor(text: string, id: string): DeskMessage {
     })()
     return { ...base, body: 'That needs real work, so I opened a T3 thread for it.', meta: { ...base.meta, t3_job: { id: jid, status: 'queued', title: 'Made up build job' } } }
   }
-  return { ...base, body: 'Two posts are dated next week. Belief 4 has nothing yet, so the Thursday slot is the one to fill. I can draft it from the last call if you want.', meta: { ...base.meta, chips: [{ label: 'Draft it', send: 'draft the thursday slot from the last call' }] } }
+  return { ...base, body: 'Two posts are dated next week. Belief 4 has nothing yet, so the Thursday slot is the one to fill. I can draft it from the last call if you want.', meta: { ...base.meta, chips: [{ send: 'draft the thursday slot from the last call' }] } }
 }
 
 export const mockApi = {

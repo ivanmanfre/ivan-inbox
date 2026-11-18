@@ -7,7 +7,6 @@
 type Op = 'commit' | 'cancel' | 'undo'
 const inFlightMap = new Map<string, Op>()
 const failedMap = new Map<string, { op: Op; error: string }>()
-const checkingSet = new Set<string>()
 const listeners = new Set<() => void>()
 let version = 0
 
@@ -18,9 +17,6 @@ export const actionStore = {
   version(): number { return version },
   inFlight(id: string): Op | undefined { return inFlightMap.get(id) },
   failed(id: string): { op: Op; error: string } | undefined { return failedMap.get(id) },
-  /** After a failed or timed-out op, the row is being read back: no new action is offered meanwhile. */
-  checking(id: string): boolean { return checkingSet.has(id) },
-  setChecking(id: string, on: boolean): void { if (on) checkingSet.add(id); else checkingSet.delete(id); changed() },
   start(id: string, op: Op): boolean {
     if (inFlightMap.has(id)) return false
     inFlightMap.set(id, op); failedMap.delete(id); changed()
@@ -34,4 +30,4 @@ export const actionStore = {
 }
 
 /** Tests only. */
-export function resetActionGuards(): void { inFlightMap.clear(); failedMap.clear(); checkingSet.clear(); listeners.clear(); version = 0 }
+export function resetActionGuards(): void { inFlightMap.clear(); failedMap.clear(); listeners.clear(); version = 0 }
