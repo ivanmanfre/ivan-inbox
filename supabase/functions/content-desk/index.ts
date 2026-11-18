@@ -18,7 +18,7 @@ import { render, applyVisibility, warsaw, type BriefJson, type Rendered } from '
 import { buildPrompt } from './prompt.ts'
 import { parse, shortParagraphs, oneText, sanitize, HandleStream, type Act } from './parse.ts'
 import { askDesk, askDeskStream, LlmError, DESK_MODEL } from './llm.ts'
-import { planLive, planForTarget, runUndo, UndoRefused, lockCode, stillSame, actionKey, journalArgs, confirmMatches, draftRef, HOLD_EXPIRE_MS, type Confirmation, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
+import { planLive, planForTarget, runUndo, UndoRefused, lockCode, dispatchRedo, stillSame, actionKey, journalArgs, confirmMatches, draftRef, HOLD_EXPIRE_MS, type Confirmation, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
 import { authorize } from './auth.ts'
 import { planTriggers } from './triggers.ts'
 import { queueT3Job, sweepT3Stalls } from '../_shared/desk-t3.ts'
@@ -90,7 +90,7 @@ function failText(e: unknown): string {
     too_many_photos: 'The post already has the most photos it can take.', not_single_photo: 'That post type does not take a photo.',
     published: 'It is already published.', refused: 'The app refused it, so nothing changed.',
     human_edited: 'It has your hand edits, and the writer will not overwrite them.',
-    in_queue: 'This one is already in the queue. Move it in the calendar.', no_action: 'I could not match this to its saved action, so I did nothing.',
+    in_queue: 'This one is already in the queue. Move it in the calendar.', dispatch_unclear: 'The writer may not have received it. Check Review before trying again.', no_action: 'I could not match this to its saved action, so I did nothing.',
     claim_failed: 'I could not reach the database, so nothing ran. Tap again.', undo_failed: 'The undo did not go through, so I left it as it is.',
   }
   // the exact code first (queue_changed must never read as changed), then a code inside a longer message
@@ -867,6 +867,22 @@ async function claimCommit(svc: any, a: { id: string; user_id?: string }, token:
   return data === 'claimed' || data === 'expired' || data === 'not_held' || data === 'busy' ? data : 'error'
 }
 
+/** The card for a journal state (round 16 #5): the card never says more than the stored action. */
+function cardFor(journal: string, e: unknown, what: string): { state: ActionEcho['state']; label: string } {
+  const msg = e instanceof Error ? e.message : e ? String(e) : ''
+  switch (journal) {
+    case 'done': return { state: 'done', label: 'Done.' }
+    case 'dispatching': return { state: 'done', label: msg === 'dispatch_unclear'
+      ? `The writer may not have received ${what}. Check Review in a few minutes before trying again.`
+      : `Sent ${what} to your writer. It has not confirmed yet; check Review in a few minutes.` }
+    case 'committing': return { state: 'held', label: 'It is running right now. Check again in a minute.' }
+    case 'held': return { state: 'held', label: 'Nothing ran. Tap Do it now again.' }
+    case 'cancelled': return { state: 'cancelled', label: 'Cancelled. Nothing changed.' }
+    case 'failed_release': return { state: 'failed', label: failText('failed_release') }
+    default: return { state: 'failed', label: `Not done: ${failText(e ?? 'changed')}` }
+  }
+}
+
 /** Reread the action row: the state, and whether the stored claim token is this attempt's. */
 // deno-lint-ignore no-explicit-any
 async function claimState2(svc: any, id: string, token: string): Promise<{ state: string | null; ours: boolean; undo: unknown } | null> {
@@ -947,6 +963,23 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
   } else if (op === 'cancel') {
     if (state !== 'held' || !await claimState(svc, a, 'held', 'cancelled')) return { ok: false, error: 'not_held' }
     newState = 'cancelled'; label = 'Cancelled. Nothing changed.'
+  } else if (state === 'dispatching') {
+    // a redo whose writer call is in flight or unanswered (round 16 #6): resume it from its dispatch row,
+    // never a second job; only a call that was never made may go out, once
+    const token = crypto.randomUUID()
+    const { data: rc, error: rcErr } = await svc.rpc('desk_redo_reconcile', { p_action: actionId, p_user: userId, p_token: token })
+    if (rcErr || !rc) return { ok: false, error: 'read_failed' }
+    let st = (rc as { state?: string | null }).state ?? null
+    const r = rc as { resume?: boolean; dispatch?: string | null }
+    let err: unknown = null
+    if (st === 'dispatching' && r.resume) {
+      try { const res = await dispatchRedo({ svc, env }, actionId, token); resDetail = res.detail } catch (e) { err = e }
+      st = (await claimState2(svc, actionId, token))?.state ?? null
+    }
+    if (st == null) return { ok: false, error: 'read_failed' }
+    const c = cardFor(st, err, 'your post')
+    newState = c.state; label = c.label
+    invalidate()
   } else {
     // a row left committing past its lease is reconciled by the claim below (never run twice: the write
     // and its "done" are one transaction, so a committing row past the lease never committed a write)
@@ -992,17 +1025,21 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
       if (!confirmMatches(args._confirm as Confirmation, { id: snap.target_id, updated_at: snap.updated_at, scheduled_at: snap.scheduled_at }, p.canon)) throw new Error('changed')
       const isDry = dryReq || args._dry === true
       const res = isDry ? { result: { dry: true } } : await p.run(actionId, token)
-      // the held write's SQL already set the row done in its own transaction; this records its value, only
-      // over this attempt's claim
-      const recorded = await retry3(() => svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'done', value: res.result ?? null, claim_token: token }, undo: (res as { undo?: unknown }).undo ?? null })
+      // the held write's SQL already set the journal state in its own transaction (done; a redo stays
+      // 'dispatching' until the writer accepts): this records the value under that SAME state, only over
+      // this attempt's claim; a dry run (no SQL) ends done
+      const cur = await claimState2(svc, actionId, token)
+      const journal = !cur || cur.state === 'committing' ? 'done' : cur.state ?? 'done'
+      const recorded = await retry3(() => svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: journal, value: res.result ?? null, claim_token: token }, undo: (res as { undo?: unknown }).undo ?? null })
         .eq('id', actionId).filter('result->>claim_token', 'eq', token))
       newState = 'done'
+      if (journal === 'dispatching') { label = cardFor('dispatching', null, p.echo.target?.first_line ? `"${p.echo.target.first_line.slice(0, 60)}"` : 'your post').label }
       if (!recorded) receiptLost = true
       canUndo = !!(res as { undo?: unknown }).undo && recorded
       resDetail = (res as { detail?: string }).detail
-      label = doneLabel(p) || p.echo.label.replace(/^Approving/, 'Approved').replace(/^Deleting/, 'Deleted').replace(/^Taking (.*) off the schedule$/, 'Took $1 off the schedule')
+      label = label ?? (doneLabel(p) || p.echo.label.replace(/^Approving/, 'Approved').replace(/^Deleting/, 'Deleted').replace(/^Taking (.*) off the schedule$/, 'Took $1 off the schedule')
         .replace(/^Moving/, 'Moved').replace(/^Removing the date/, 'Removed the date').replace(/^Adding your photo/, 'Added your photo')
-        .replace(/^Rewriting (.*) through your writer\. It takes a few minutes\.$/, 'Sent $1 to your writer. It takes a few minutes.')
+        .replace(/^Rewriting (.*) through your writer\. It takes a few minutes\.$/, 'Sent $1 to your writer. It takes a few minutes.'))
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       // the write's own transaction marks the row done: if it did, only the response was lost, and the
@@ -1011,11 +1048,18 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
       if (cur?.state === 'done' && cur.ours && msg !== 'writer_refused' && msg !== 'failed_release') {
         newState = 'done'; label = doneLabel(planned); canUndo = !!cur.undo
       } else {
-        // a claimed action that throws ends failed, never stuck in "committing", and only over our own claim
-        await svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'failed', error: failText(e), claim_token: token } })
-          .eq('id', actionId).filter('result->>claim_token', 'eq', token)
+        // the failure is recorded only over a row still 'committing' under OUR token, exactly one row
+        // (round 16 #5); the card is then patched only from the journal state a reread shows
+        const { data: upd, error: uErr } = await svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'failed', error: failText(e), claim_token: token } })
+          .eq('id', actionId).filter('result->>state', 'eq', 'committing').filter('result->>claim_token', 'eq', token).select('id')
+        if (!uErr && Array.isArray(upd) && upd.length > 1) console.error('desk failure update touched more than one row')
+        const after = await claimState2(svc, actionId, token)
+        if (!after?.state) return { ok: false, error: 'read_failed' }
         const why = typeof (a.args as { reason?: unknown } | null)?.reason === 'string' ? String((a.args as { reason: string }).reason).replace(/\s+/g, ' ').trim().slice(0, 200) : ''
-        newState = 'failed'; label = `Not done: ${failText(e)}${why ? ` Your reason was: "${why}".` : ''}`
+        const c = cardFor(after.state, e, 'your post')
+        newState = c.state
+        label = c.state === 'failed' ? `${c.label}${why ? ` Your reason was: "${why}".` : ''}` : c.state === 'done' && after.state === 'done' ? doneLabel(planned) : c.label
+        canUndo = after.state === 'done' && !!after.undo
       }
     }
     invalidate()

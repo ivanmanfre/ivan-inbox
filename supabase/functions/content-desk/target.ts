@@ -1,17 +1,19 @@
-// Target identity from IVAN'S OWN WORDS (Sol desk-backend r9 #1, round 10 design, round 14 scope cut).
+// Target identity from IVAN'S OWN WORDS (Sol desk-backend r9 #1, round 10 design, rounds 14-16).
 //
 // The model proposes only an action kind and its arguments. Which draft it acts on is decided here,
 // by data matching against his CURRENT message, never from the model's handle, excerpt or day:
 //   (a) the longest word-level span shared by his message and each draft's first line (casefolded,
 //       accents folded, whitespace-normalized, with at least one content word of 4+ letters); the
 //       candidates are the drafts that reach the maximum. Day words never score and never narrow.
-//   (b) the ONE exception: an UNQUOTED calendar reference with no other selector ("tomorrow's post",
-//       "the post on Friday") resolves to the drafts dated that day.
+//   (b) the ONE exception, for HELD kinds only (pull, approve, delete): a reference that is exactly a day
+//       phrase with no leftover token ("tomorrow's post", "the post on Friday") resolves to the drafts
+//       dated that day. Immediate kinds (date, remove date, photo) always need a content-word match.
 //   (c) a source day he names next to other words may only VETO a unique text match on another day;
-//       it never selects. Quoted words are always text, never a date.
+//       it never selects. Quoted words (straight or curly, single or double) are always text.
 // There are no numbered references: a positional selector ("#2", "number 2", "the second one") is refused
-// with chips, and a choice between candidates is made only through chips that send identity text. Exactly one candidate proceeds. This is identity matching, not a consent gate: the
-// verifier still judges whether he asked for the action.
+// with chips, and a choice between candidates is made only through chips that send identity text.
+// Exactly one candidate proceeds. This is identity matching, not a consent gate: the verifier still
+// judges whether he asked for the action.
 
 export type IdDraft = { id: string; first_line: string; day: string; rev?: string | null }   // day: YYYY-MM-DD (Warsaw) or 'undated'; rev = updated_at
 
@@ -25,7 +27,9 @@ export function words(s: string): string[] {
 const STOP = new Set(['about', 'above', 'after', 'again', 'also', 'been', 'before', 'being', 'both', 'could', 'does', 'done', 'down', 'each',
   'even', 'from', 'have', 'here', 'into', 'just', 'less', 'like', 'make', 'makes', 'many', 'more', 'most', 'much', 'must', 'only', 'other',
   'over', 'same', 'should', 'some', 'such', 'than', 'that', 'their', 'them', 'then', 'there', 'these', 'they', 'this', 'those', 'very',
-  'want', 'were', 'what', 'when', 'where', 'which', 'while', 'will', 'with', 'would', 'your', 'yours', 'thing', 'things', 'really'])
+  'want', 'were', 'what', 'when', 'where', 'which', 'while', 'will', 'with', 'would', 'your', 'yours', 'thing', 'things', 'really',
+  // words that point at "a post" and never say which one (round 16: "tomorrow's post" must not match every opener with "post")
+  'post', 'posts', 'draft', 'drafts'])
 export const contentWord = (w: string) => (w.match(/\p{L}/gu) ?? []).length >= 4 && !STOP.has(w)
 
 /**
@@ -61,33 +65,29 @@ const DAY_WORD = `(?:\\btoday\\b|\\btonight\\b|\\btomorrow\\b|\\b(?:next|this)\\
 const DAY_PHRASE = new RegExp(`(?:\\b(?:to|on|for|at|until|from)\\s+(?:the\\s+)?)?${DAY_WORD}(?:'s)?(?:\\s+\\d{1,2}(?:\\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*)?)?(?:\\s+(?:at\\s+)?\\d{1,2}(?::\\d{2})?\\s*(?:am|pm)?)?`, 'gi')
 
 /**
- * The target phrase of his message: no command verb. For a date move the DESTINATION goes ("to/until
- * X", or the day phrase that names the move's own Warsaw day `dest`, plus a bare time). For a redo the
- * direction goes (the proposed note's own span, and anything after the first comma, "make it", "but"
- * ...), where punctuation inside a quoted opener never counts as the cut.
+ * The target phrase of his message: no command verb. For a date move only the EXACT destination span
+ * the destination parser returned is removed (round 16); every other day phrase is a source and stays for
+ * the veto. For a redo the direction goes (the proposed note's own span, and anything after the first
+ * comma, "make it", "but" ...), where punctuation inside a quoted opener never counts as the cut.
  */
-export function referencePart(text: string, kind?: string, note?: unknown, dest?: string | null, today?: string): string {
-  let t = text.replace(VERB_HEAD, '')
-  if (kind === 'date') {
-    // only outside quotes: a quoted word is text, never a date or a time
-    t = outsideQuotes(t, (seg) => seg.replace(DAY_PHRASE, (m) => {
-      if (/^\s*(?:to|until)\b/i.test(m)) return ' '
-      if (!dest) return m
-      return namedDays(m, today).dates.some((d) => (d.length === 5 ? dest.slice(5) === d : dest === d)) ? ' ' : m
-    }).replace(/\b(?:to|at)\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?\b/gi, ' '))
-  }
+export function referencePart(text: string, kind?: string, note?: unknown, destSpan?: { at: number; end: number } | null): string {
+  let t = text
+  if (kind === 'date' && destSpan) t = text.slice(0, destSpan.at) + ' ' + text.slice(destSpan.end)
+  t = t.replace(VERB_HEAD, '')
   if (kind === 'redo') {
     const n = typeof note === 'string' ? note.trim() : ''
     if (n) { const i = t.toLowerCase().indexOf(n.toLowerCase()); if (i >= 0) t = t.slice(0, i) + ' ' + t.slice(i + n.length) }
     // cut at the first direction marker OUTSIDE a quoted span
-    const masked = t.replace(/"[^"\n]*"|“[^”\n]*”/g, (q) => 'x'.repeat(q.length))
+    const masked = maskQuotes(t)
     const m = masked.match(/,|;|\s(?:and\s+)?make it\s|\sbut\s|\swith more\s|\swith less\s/i)
     if (m && m.index != null) t = t.slice(0, m.index)
   }
   return t
 }
 
-const QUOTED = /"[^"\n]*"|\u201c[^\u201d\n]*\u201d/g
+// straight and curly, double and single quoted spans; a single quote inside a word ("Friday's", "I'm",
+// "Friday\u2019s") is an apostrophe, never a quote
+const QUOTED = /"[^"\n]*"|\u201c[^\u201d\n]*\u201d|(?<![\p{L}\p{N}])'[^'\n]*'(?![\p{L}\p{N}])|\u2018[^\u2019\n]*\u2019(?![\p{L}\p{N}])/gu
 /** Apply `f` to the text outside quoted spans only; quoted spans come back unchanged. */
 export function outsideQuotes(text: string, f: (seg: string) => string): string {
   let out = '', last = 0
@@ -124,16 +124,22 @@ export function positional(ref: string): boolean {
 // words that only point at "a post" and never identify one
 const GENERIC = new Set(['post', 'posts', 'one', 'ones', 'draft', 'drafts', 'the', 'this', 'that', 'my', 'it', 's', 'from', 'on', 'for', 'of', 'a', 'an', 'next'])
 
+const DAY_ONLY_WORD = `(?:today|tonight|tomorrow|next\\s+${WEEKDAY_WORD}|${WEEKDAY_WORD})`
+const DAY_ONLY = [
+  new RegExp(`^(?:the\\s+)?(?:post|one|draft)\\s+(?:on|for|from)\\s+(?:the\\s+)?${DAY_ONLY_WORD}$`, 'i'),
+  new RegExp(`^(?:the\\s+)?${DAY_ONLY_WORD}(?:'s|\u2019s)?(?:\\s+(?:post|one|draft))?$`, 'i'),
+]
 /**
- * The reference is JUST an unquoted calendar reference ("tomorrow's post", "the one on friday"): the only
- * case where a date says which post. Any quoted span or positional selector means it is not.
+ * The reference is EXACTLY a day phrase ("tomorrow's post", "friday's one", "the post on friday"), with no
+ * leftover token: any digit, "#", quote or other word means it is not (round 16 #1+2).
  */
 export function justADay(ref: string): boolean {
-  if (/["\u201c\u201d]/.test(ref) || positional(ref)) return false
-  const stripped = withoutDays(ref).toLowerCase()
-  const rest = words(stripped).filter((w) => !GENERIC.has(w) && !/^\d+$/.test(w) && !MONTHS.includes(w.slice(0, 3)))
-  return rest.length === 0 && new RegExp(DAY_WORD, 'i').test(ref)
+  const t = ref.trim().replace(/[?!.]+$/, '').trim()
+  return DAY_ONLY.some((r) => r.test(t))
 }
+
+/** The kinds that may act on a day-only reference: held ones, confirmed on a card that names the post. */
+export const DAY_ONLY_KINDS = new Set(['pull', 'approve', 'delete'])
 
 const addDays = (today: string, n: number) => new Date(Date.parse(today + 'T12:00:00Z') + n * 86400e3).toISOString().slice(0, 10)
 /** Days from today to the nearest coming `weekday` (today included). */
@@ -168,78 +174,108 @@ export function namedDays(text: string, today?: string): { weekdays: string[]; d
   return { weekdays, dates }
 }
 
-/** A destination the server read from his words alone (round 15 #2): a Warsaw day and a wall time. */
-export type Destination = { ok: true; date: string; time: string; note?: string } | { ok: false; code: string; label: string }
+/** A destination the server read from his words alone (round 16 #3): a Warsaw day, a wall time if he gave one, and the exact span. */
+export type Destination = { ok: true; date: string; time: string | null; span: { at: number; end: number }; note?: string } | { ok: false; code: string; label: string }
 
-const UNCLEAR_DAY = 'I could not tell the new day from your words, so I did nothing. Say it like Friday or 27 Nov.'
-const VAGUE = /\b(?:next|this|coming)\s+(?:week|weekend|month)\b|\bend of (?:the )?(?:week|month)\b|\bsoon\b|\blater\b|\bsometime\b|\bin a (?:few|couple of) days\b/i
 const pad = (n: number) => String(n).padStart(2, '0')
+const MONTH_WORD = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)'
+// every token that can be part of a date or a time
+const DATE_TOKEN = new RegExp(`\\b(?:next\\s+${WEEKDAY_WORD}|this\\s+${WEEKDAY_WORD}|${WEEKDAY_WORD}|today|tonight|tomorrow|${MONTH_WORD}|\\d{4}-\\d{2}-\\d{2}|\\d{1,2}(?::\\d{2})?\\s*(?:am|pm)|\\d{1,2}:\\d{2}|\\d{1,4}(?:st|nd|rd|th)?|at|noon|midday)\\b`, 'gi')
+// the grammar, consumed as ONE complete span:
+//   [weekday[,]] D Month [YYYY] | Month D [YYYY] | weekday | today | tomorrow | next weekday
+//   optionally followed by "at H[:MM]" (0-23, 0-59) or "[at] H[:MM]am/pm"
+const DATE_PART = `(?:(?:(?<wd1>${WEEKDAY_WORD}),?\\s+)?(?<d1>\\d{1,2})(?:st|nd|rd|th)?\\s+(?<m1>${MONTH_WORD})(?:\\s+(?<y1>\\d{4}))?`
+  + `|(?<m2>${MONTH_WORD})\\s+(?<d2>\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(?<y2>\\d{4}))?`
+  + `|(?<nx>next\\s+)?(?<wd3>${WEEKDAY_WORD})|(?<rel>today|tomorrow))`
+const TIME_PART = `(?:\\s+at\\s+(?<h1>\\d{1,2})(?::(?<mi1>\\d{2}))?(?!\\s*(?:am|pm))|\\s+(?:at\\s+)?(?<h2>\\d{1,2})(?::(?<mi2>\\d{2}))?\\s*(?<ap>am|pm))?`
+const DEST_RE = new RegExp(`^${DATE_PART}${TIME_PART}$`, 'i')
 
 /**
- * The destination of a date move, resolved by the SERVER from his words (round 15 #2); the model's
- * instant is never trusted, only compared. Quoted spans are text and never read as a day or a time.
- * - the day: the destination day phrase (the one after to/until/for, else the last one that is neither a
- *   possessive source like "tomorrow's post" nor after "from"). An explicit date wins ("9 March" is the
- *   next 9 March on or after today, 2026-11-26 is itself); a weekday next to it must agree. Otherwise
- *   today, tomorrow, a weekday (the nearest coming one, today included) or "next <weekday>" (the one
- *   after the nearest). With no day phrase but an explicit time, the draft's own day is kept.
- * - the time: one explicit time in the destination part ("10:45", "9am", "at 9", "noon"); none = the
- *   draft's current time if it has one, else 10:45 (the prompt's rule). Two different times are unclear.
+ * The destination of a date move, read by the SERVER from his words (rounds 15-16); the model's instant is
+ * never trusted, only compared. Quoted spans are text and never read. Date-like tokens are grouped into
+ * runs; a run counts when it holds a day word, an ISO date, a time or a month next to a number. A run that
+ * is a possessive ("tomorrow's post"), after "from", or "post/one/draft on X" is a source, kept for the
+ * veto. Exactly one other run is the destination: the one after to/until/for when there are several. It
+ * must match the grammar as ONE complete span; a leftover date-like token, an invalid time or a second
+ * day means nothing is done ("I could not read the date: <span>"). Defaults apply only after a full parse.
  */
-export function resolveDestination(text: string, today: string, current: { day: string; time: string } | null): Destination {
-  const masked = maskQuotes(text).toLowerCase()
-  const tokens = [...masked.matchAll(new RegExp(DAY_WORD, 'gi'))].map((m) => ({ at: m.index!, end: m.index! + m[0].length, w: m[0] }))
-  // adjacent tokens ("tuesday 9 march") are one phrase
-  const groups: { at: number; end: number; ws: string[] }[] = []
-  for (const t of tokens) {
-    const g = groups[groups.length - 1]
-    if (g && /^[\s,]*(?:the\s+)?$/.test(masked.slice(g.end, t.at))) { g.end = t.end; g.ws.push(t.w) } else groups.push({ at: t.at, end: t.end, ws: [t.w] })
+export function parseDestination(text: string, today: string): Destination {
+  const masked = maskQuotes(text)
+  const toks = [...masked.matchAll(DATE_TOKEN)].map((m) => ({ at: m.index!, end: m.index! + m[0].length, w: m[0] }))
+  const runs: { at: number; end: number; ws: string[] }[] = []
+  for (const t of toks) {
+    const r = runs[runs.length - 1]
+    if (r && /^[\s,]*$/.test(masked.slice(r.end, t.at))) { r.end = t.end; r.ws.push(t.w) } else runs.push({ at: t.at, end: t.end, ws: [t.w] })
   }
-  const usable = groups.filter((g) => !/^'s\b/.test(masked.slice(g.end)) && !/\bfrom\s+(?:the\s+)?$/.test(masked.slice(Math.max(0, g.at - 12), g.at)))
-  const dest = usable.filter((g) => /\b(?:to|until|for)\s+(?:the\s+)?$/.test(masked.slice(Math.max(0, g.at - 12), g.at))).pop() ?? usable.pop() ?? null
-  if (VAGUE.test(masked) && !dest) return { ok: false, code: 'unclear_day', label: UNCLEAR_DAY }
-  // the time: only in the destination part (from its day phrase on), never in a quoted span
-  const region = dest ? masked.slice(dest.at) : masked
-  const times = new Set<string>()
-  for (const m of region.matchAll(/\b([01]?\d|2[0-3]):([0-5]\d)\s*(am|pm)?\b/g)) times.add(clock(+m[1], +m[2], m[3]))
-  for (const m of region.matchAll(/\b(1[0-2]|0?[1-9])\s*(am|pm)\b/g)) times.add(clock(+m[1], 0, m[2]))
-  for (const m of region.matchAll(/\bat\s+([01]?\d|2[0-3])\b(?!\s*(?::|am|pm|\d))(?!\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec))/g)) times.add(clock(+m[1], 0))
-  if (/\b(?:noon|midday)\b/.test(region)) times.add('12:00')
-  times.delete('')
-  if (times.size > 1) return { ok: false, code: 'unclear_time', label: `I found more than one time in your words (${[...times].join(', ')}), so I did nothing. Say one time, like 9:30.` }
-  const time = [...times][0] ?? current?.time ?? '10:45'
-  if (!dest) {
-    // only a time: the draft keeps its own day; nothing at all: unclear
-    if (times.size === 1 && current?.day) return { ok: true, date: current.day, time }
-    return { ok: false, code: 'unclear_day', label: UNCLEAR_DAY }
+  const dateLike = (r: { ws: string[] }) => {
+    const j = r.ws.join(' ').toLowerCase()
+    return new RegExp(`\\b(?:${WEEKDAY_WORD}|today|tonight|tomorrow)\\b`, 'i').test(j) || /\d{4}-\d{2}-\d{2}|\d:\d{2}|\d\s*(?:am|pm)\b|\bnoon\b|\bmidday\b/i.test(j)
+      || (new RegExp(`\\b${MONTH_WORD}\\b`, 'i').test(j) && /\d/.test(j))
   }
-  const phrase = dest.ws.join(' ')
-  let date: string | null = null
-  const iso = phrase.match(/\b(\d{4})-(\d{2})-(\d{2})\b/)
-  const dm = phrase.match(/\b(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/)
-  if (iso) date = validDate(+iso[1], +iso[2], +iso[3])
-  else if (dm) {
-    const mo = MONTHS.indexOf(dm[2]) + 1, d = +dm[1], y = +today.slice(0, 4)
-    date = validDate(y, mo, d)
-    if (date && date < today) date = validDate(y + 1, mo, d)
-  }
-  if ((iso || dm) && !date) return { ok: false, code: 'unclear_day', label: `"${phrase}" is not a real date, so I did nothing. Say the date again.` }
-  const wd = WEEKDAYS.find((w) => WD(w).test(phrase))
-  const isNext = /\bnext\s/.test(phrase)
-  if (date) {
-    if (wd && WEEKDAYS[new Date(date + 'T12:00:00Z').getUTCDay()] !== wd) {
-      return { ok: false, code: 'unclear_day', label: `${niceDay(date)} is not a ${cap(wd)}, so I did nothing. Say the date again.` }
+  const counted = runs.filter(dateLike)
+  const before = (r: { at: number }, re: RegExp) => re.test(masked.slice(Math.max(0, r.at - 24), r.at))
+  const isSource = (r: { at: number; end: number }) => /^(?:'s|\u2019s)\b/i.test(masked.slice(r.end)) || before(r, /\bfrom\s+(?:the\s+)?$/i)
+    || before(r, /\b(?:post|one|draft)\s+(?:on|for|from)\s+(?:the\s+)?$/i)
+  let cands = counted.filter((r) => !isSource(r))
+  if (cands.length > 1) {
+    const marked = cands.filter((r) => before(r, /\b(?:to|until|for)\s+(?:the\s+)?$/i))
+    if (marked.length === 1) {
+      const rest = cands.filter((r) => r !== marked[0])
+      return { ok: false, code: 'unclear_date', label: `I could not read the date: "${text.slice(rest[0].at, rest[0].end)}" is a second day or time.` }
     }
-    return { ok: true, date, time }
   }
-  const rel = namedDays(phrase, today).dates
-  if (rel.length !== 1) return { ok: false, code: 'unclear_day', label: UNCLEAR_DAY }
-  return { ok: true, date: rel[0], time, ...(isNext && wd ? { note: `"${phrase}" read as ${niceDay(rel[0])}, the ${cap(wd)} after the coming one.` } : {}) }
+  if (!cands.length && counted.length === 1 && before(counted[0], /\b(?:post|one|draft)\s+(?:on|for)\s+(?:the\s+)?$/i)) cands = counted   // "put the cold brew one on friday"
+  if (!cands.length) return { ok: false, code: 'unclear_date', label: 'I could not read the date: there is no day in your words. Say it like "Friday" or "27 Nov at 9:30".' }
+  if (cands.length > 1) return { ok: false, code: 'unclear_date', label: `I could not read the date: "${text.slice(cands[0].at, cands[0].end)}" and "${text.slice(cands[1].at, cands[1].end)}" are two days.` }
+  const r = cands[0]
+  const span = text.slice(r.at, r.end)
+  const bad = { ok: false as const, code: 'unclear_date', label: `I could not read the date: "${span}".` }
+  const m = span.trim().match(DEST_RE)
+  if (!m || !m.groups) return bad
+  const g = m.groups
+  // the time: "at H[:MM]" (0-23, 0-59) or "H[:MM]am/pm" (1-12)
+  let time: string | null = null
+  if (g.h1 != null) {
+    const h = +g.h1, mi = g.mi1 != null ? +g.mi1 : 0
+    if (h > 23 || mi > 59) return bad
+    time = `${pad(h)}:${pad(mi)}`
+  } else if (g.h2 != null) {
+    const h = +g.h2, mi = g.mi2 != null ? +g.mi2 : 0
+    if (h < 1 || h > 12 || mi > 59) return bad
+    time = `${pad((h % 12) + (g.ap!.toLowerCase() === 'pm' ? 12 : 0))}:${pad(mi)}`
+  }
+  const monthNo = (w: string) => MONTHS.indexOf(w.slice(0, 3).toLowerCase()) + 1
+  let date: string | null = null, note: string | undefined
+  if (g.d1 != null || g.d2 != null) {
+    const d = +(g.d1 ?? g.d2), mo = monthNo(g.m1 ?? g.m2), yGiven = g.y1 ?? g.y2
+    if (yGiven) date = validDate(+yGiven, mo, d)   // a year in the text is used as given
+    else {
+      const y = +today.slice(0, 4)
+      date = validDate(y, mo, d)
+      if (date && date < today) date = validDate(y + 1, mo, d)
+    }
+    if (!date) return bad
+    if (g.wd1) {
+      const wd = WEEKDAYS.find((w) => WD(w, 'i').test(g.wd1))
+      if (wd && WEEKDAYS[new Date(date + 'T12:00:00Z').getUTCDay()] !== wd) return { ok: false, code: 'unclear_date', label: `I could not read the date: ${niceDay(date)} is not a ${cap(wd)}.` }
+    }
+  } else if (g.wd3) {
+    const wd = WEEKDAYS.find((w) => WD(w, 'i').test(g.wd3))!
+    date = addDays(today, toNearest(today, wd) + (g.nx ? 7 : 0))
+    if (g.nx) note = `"${span.trim()}" read as ${niceDay(date)}, the ${cap(wd)} after the coming one.`
+  } else if (g.rel) {
+    date = g.rel.toLowerCase() === 'today' ? today : addDays(today, 1)
+  }
+  if (!date) return bad
+  // the exact span: the grammar's own match, plus the destination preposition right before it ("to", "until",
+  // "for", "on"), which belongs to the destination and to nothing else
+  const lead = span.length - span.trimStart().length
+  let at = r.at + lead
+  const prep = masked.slice(0, at).match(/\b(?:to|until|for|on)\s+(?:the\s+)?$/i)
+  if (prep) at -= prep[0].length
+  return { ok: true, date, time, span: { at, end: r.at + lead + span.trim().length }, ...(note ? { note } : {}) }
 }
-const clock = (h: number, m: number, ap?: string) => {
-  if (ap) { if (h < 1 || h > 12) return ''; h = (h % 12) + (ap === 'pm' ? 12 : 0) }
-  return `${pad(h)}:${pad(m)}`
-}
+
 function validDate(y: number, m: number, d: number): string | null {
   const t = new Date(Date.UTC(y, m - 1, d))
   return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d ? `${y}-${pad(m)}-${pad(d)}` : null
@@ -253,20 +289,21 @@ function dayMatches(day: string, named: { weekdays: string[]; dates: string[] },
   return named.dates.some((d) => d.length === 5 ? day.slice(5) === d : day === d)
 }
 
-export type IdResult = { ids: string[]; how: 'span' | 'day' | 'none'; span: number; rivals: string[]; why?: 'too_many_rivals' | 'positional' | 'day_conflict' }
+export type IdResult = { ids: string[]; how: 'span' | 'day' | 'none'; span: number; rivals: string[]; why?: 'too_many_rivals' | 'positional' | 'day_conflict' | 'needs_words' }
 
 /** At most this many relevant alternatives are shown to the verifier; more = act on none (Sol r10 #3). */
 export const RIVAL_CAP = 5
 
 /** Resolve the target from his message (see the header). */
-export function identify(text: string, cands: IdDraft[], opts: { today?: string; kind?: string; note?: unknown; dest?: string | null } = {}): IdResult {
-  const ref = referencePart(text, opts.kind, opts.note, opts.dest, opts.today)
+export function identify(text: string, cands: IdDraft[], opts: { today?: string; kind?: string; note?: unknown; destSpan?: { at: number; end: number } | null } = {}): IdResult {
+  const ref = referencePart(text, opts.kind, opts.note, opts.destSpan)
   // a positional selector never resolves: there are no numbered references
   if (positional(ref)) return { ids: [], how: 'none', span: 0, rivals: [], why: 'positional' }
+  const onNamedDays = () => { const n = sourceDays(ref, opts.today); return cands.filter((c) => dayMatches(c.day, n, opts.today)).map((c) => c.id) }
   if (justADay(ref)) {
-    // the ONE case where a date says which post: every draft dated that day; it resolves only if that is one
-    const named = namedDays(ref, opts.today)
-    const ids = cands.filter((c) => dayMatches(c.day, named, opts.today)).map((c) => c.id)
+    // day-only identity: held kinds only (round 16 #1+2); an immediate kind gets chips and must name words
+    if (!DAY_ONLY_KINDS.has(opts.kind ?? '')) return { ids: [], how: 'none', span: 0, rivals: onNamedDays(), why: 'needs_words' }
+    const ids = onNamedDays()
     return ids.length ? { ids, how: 'day', span: 0, rivals: [] } : { ids: [], how: 'none', span: 0, rivals: [] }
   }
   // dates never narrow identity: day words are dropped and every candidate is scored on his other words
@@ -274,7 +311,11 @@ export function identify(text: string, cands: IdDraft[], opts: { today?: string;
   const scored = cands.map((c) => ({ c, s: sharedSpan(msg, words(c.first_line)) }))
   const max = Math.max(0, ...scored.map((x) => x.s))
   const top = max > 0 ? scored.filter((x) => x.s === max) : []
-  if (!top.length) return { ids: [], how: 'none', span: 0, rivals: [] }
+  if (!top.length) {
+    // a day with leftover tokens ("tomorrow's 2nd post", a quote, a digit): no match, but chips for that day
+    const onDay = onNamedDays()
+    return onDay.length ? { ids: [], how: 'none', span: 0, rivals: onDay, why: 'needs_words' } : { ids: [], how: 'none', span: 0, rivals: [] }
+  }
   const ids = top.map((x) => x.c.id)
   // relevant alternatives: other drafts that come within one content word of the best
   const relevant = scored.filter((x) => !ids.includes(x.c.id) && x.s >= Math.max(1, max - 1)).sort((a, z) => z.s - a.s).map((x) => x.c.id)

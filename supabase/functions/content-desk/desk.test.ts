@@ -274,7 +274,7 @@ Deno.test('r4#3 + r14 #3/#4 date and photo: service role, bound to the action ro
     calls.push([name, args])
     return Promise.resolve({ error: null, data: name === 'desk_set_date' ? { ok: true, before: null, applied: '2027-03-09T09:45:00+00:00', rpc: { ok: true } } : { ok: true, rpc: { ok: true } } })
   }, from: () => { throw new Error('no table read') } }
-  const ctx = { brief: r, attachments: [{ kind: 'photo', url: 'https://img.test/a.jpg' }], text: 'move the snow in the park one to 2027-03-09 10:45', env: () => undefined, userDb: forbidden, svc } as never
+  const ctx = { brief: r, attachments: [{ kind: 'photo', url: 'https://img.test/a.jpg' }], text: 'move the snow in the park one to 9 march 2027 at 10:45', env: () => undefined, userDb: forbidden, svc } as never
   const h = r.handleOf.get(ID1)!
   const pd = await plan(ctx, { kind: 'date', draft: h, line: 'Snow in the park', at: '2027-03-09 10:45' })
   const rd = await pd.run!('A1')
@@ -339,7 +339,8 @@ Deno.test('r4#5 redo: refused while generating; the flip requires an eligible st
   // the claim is desk_redo_claim (locks, authorized status + updated_at, no live queued copy: Sol r6 #6)
   const calls: unknown[][] = []
   let reply: Record<string, unknown> = { ok: false, error: 'changed' }
-  const userDb = { rpc: (n: string, a: unknown) => { calls.push([n, a]); return Promise.resolve({ data: reply, error: null }) }, from: () => { throw new Error('no direct table write') } }
+  const SEND = { ok: true, draft_id: ID1, payload: { before_status: 'review', type: 'text', topic: 't', title: 't' }, started_at: 'S1' }
+  const userDb = { rpc: (n: string, a: unknown) => { calls.push([n, a]); return Promise.resolve({ data: n === 'desk_redo_send' ? SEND : n === 'desk_redo_claim' ? reply : { ok: true }, error: null }) }, from: () => { throw new Error('no direct table write') } }
   let fired = 0
   const ctx = { brief: r, attachments: [], text: '', env: () => undefined, svc: userDb, userDb: forbidden, fetchImpl: () => { fired++; return Promise.resolve(new Response('ok')) } } as never
   const p = await plan(ctx, { kind: 'redo', draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
@@ -358,8 +359,24 @@ Deno.test('r4#5 redo: refused while generating; the flip requires an eligible st
   reply = { ok: true, type: 'text', topic: 't', title: 't' }
   const ctx4 = { brief: r, attachments: [], text: '', env: () => undefined, svc: userDb, userDb: forbidden, fetchImpl: () => { fired++; return Promise.resolve(new Response('no', { status: 422 })) } } as never
   const p4 = await plan(ctx4, { kind: 'redo', draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
-  err = ''; try { await p4.run!('A4') } catch (e) { err = (e as Error).message }
-  assertEquals(err, 'writer_refused'); assertEquals(calls.at(-1)![0], 'desk_redo_release'); assertEquals((calls.at(-1)![1] as { p_action: string }).p_action, 'A4')
+  err = ''; try { await p4.run!('A4', 'C4') } catch (e) { err = (e as Error).message }
+  assertEquals(err, 'writer_refused')
+  // round 16 #6: claim (-> dispatching + one dispatch row), the single send CAS, the release, then the refusal recorded
+  const tail = calls.slice(-4).map((c) => c[0])
+  assertEquals(tail, ['desk_redo_claim', 'desk_redo_send', 'desk_redo_release', 'desk_redo_result'])
+  assertEquals((calls.at(-1)![1] as { p_outcome: string; p_claim: string }).p_outcome, 'refused')
+  assertEquals((calls.at(-1)![1] as { p_claim: string }).p_claim, 'C4')
+  // the writer accepted: done only through desk_redo_result 'accepted'
+  const ctx2 = { brief: r, attachments: [], text: '', env: () => undefined, svc: userDb, userDb: forbidden, fetchImpl: () => { fired++; return Promise.resolve(new Response('ok')) } } as never
+  const p2 = await plan(ctx2, { kind: 'redo', draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
+  await p2.run!('A5', 'C5')
+  assertEquals((calls.at(-1)![1] as { p_outcome: string }).p_outcome, 'accepted')
+  // the send CAS lost (another attempt already sent it): no writer call at all
+  const before = fired
+  const noSend = { rpc: (n: string) => Promise.resolve({ data: n === 'desk_redo_send' ? { ok: false, state: 'sending' } : { ok: true }, error: null }) }
+  const p3 = await plan({ brief: r, attachments: [], text: '', env: () => undefined, svc: noSend, userDb: forbidden, fetchImpl: () => { fired++; return Promise.resolve(new Response('ok')) } } as never, { kind: 'redo', draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
+  err = ''; try { await p3.run!('A6', 'C6') } catch (e) { err = (e as Error).message }
+  assertEquals(err, 'dispatch_unclear'); assertEquals(fired, before)
 })
 
 Deno.test('r4#8 last post: one time-sorted list; SUMMARY "Last post out" is its first row', () => {
@@ -607,6 +624,8 @@ Deno.test('r7 #5: a writer 4xx with a release that stays busy gives failed_relea
   let releases = 0
   const userDb = { rpc: (n: string) => {
     if (n === 'desk_redo_claim') return Promise.resolve({ data: { ok: true, type: 'text', topic: 't', title: 't' }, error: null })
+    if (n === 'desk_redo_send') return Promise.resolve({ data: { ok: true, draft_id: ID1, payload: { before_status: 'review' }, started_at: 'S1' }, error: null })
+    if (n === 'desk_redo_result') return Promise.resolve({ data: 'failed_release', error: null })
     releases++
     return Promise.resolve({ data: { ok: false, error: 'busy' }, error: null })
   } }
@@ -796,7 +815,8 @@ Deno.test('round 9b: every quota renders with its own stored note (the lane rule
 })
 
 // ---- Round 10 (made-up data only) -------------------------------------------------
-import { identify, namedDays, resolveDestination, words, sharedSpan } from './target.ts'
+import { identify, namedDays, parseDestination, words, sharedSpan } from './target.ts'
+const spanOf = (t: string) => { const d = parseDestination(t, '2026-11-18'); return d.ok ? d.span : null }
 import { scan } from './parse.ts'
 import { ReplyStreamer } from './llm.ts'
 
@@ -811,15 +831,15 @@ Deno.test('round 10 #1: the eval command texts resolve from his words alone', ()
   const id = (t: string, o: { kind?: string } = {}) => identify(t, FX, { today: '2026-11-18', ...o }).ids.sort()
   assertEquals(id('approve the gdansk one'), ['amber', 'ferry'])                      // C01: act on none, both as chips
   assertEquals(id('approve the cold brew one'), ['cold'])                              // C02
-  assertEquals(identify('put the cold brew one on tuesday 9 march', FX, { today: '2026-11-18', kind: 'date', dest: '2027-03-09' }).ids, ['cold'])   // C03: the destination is never identity
+  assertEquals(identify('put the cold brew one on tuesday 9 march', FX, { today: '2026-11-18', kind: 'date', destSpan: spanOf('put the cold brew one on tuesday 9 march') }).ids, ['cold'])   // C03: the destination is never identity
   assertEquals(id('remove the date from the tram one'), ['tram'])                     // C04
   assertEquals(id('delete the gdansk ferry one, it makes no sense'), ['ferry'])       // C05
   assertEquals(id('redo the tram one, more about the business, less about the city'), ['tram'])   // C06: "about" never counts
   assertEquals(id('attach this photo to the cold brew one'), ['cold'])                 // C07
   // C08: "tomorrow's post" = the one post dated tomorrow (Warsaw), with no word match at all
   const sched = [{ id: 'tue', first_line: 'A DM that got a reply', day: '2026-11-19' }, { id: 'fri', first_line: 'Outreach starts with a free resource', day: '2026-11-20' }]
-  assertEquals(identify("pull tomorrow's post", sched, { today: '2026-11-18' }).ids, ['tue'])
-  assertEquals(identify("pull friday's post", sched, { today: '2026-11-18' }).ids, ['fri'])
+  assertEquals(identify("pull tomorrow's post", sched, { today: '2026-11-18', kind: 'pull' }).ids, ['tue'])
+  assertEquals(identify("pull friday's post", sched, { today: '2026-11-18', kind: 'pull' }).ids, ['fri'])
   // a function word never breaks a tie, and accents fold
   assertEquals(sharedSpan(words('the gdansk'), words('The Gdańsk ferry')), sharedSpan(words('the gdansk'), words('Amber sellers in Gdańsk old town')))
 })
@@ -877,47 +897,80 @@ Deno.test('round 14 #2: dates never narrow identity, except a reference that is 
   ]
   const t = { today: '2026-11-18' }
   // a day next to other words is ignored: both snow posts match the words, so act on none
-  assertEquals(identify("pull thursday's snow in the park post", ds, t).ids.sort(), ['a', 'b'])
-  assertEquals(identify('pull the snow in the park post from saturday', ds, t).ids.sort(), ['a', 'b'])
-  assertEquals(identify('pull the snow in the park after the storm post from thursday', ds, t).why, 'day_conflict')   // the day only vetoes
-  assertEquals(identify('pull the snow in the park after the storm post from friday', ds, t).ids, ['b'])
+  assertEquals(identify("pull thursday's snow in the park post", ds, { ...t, kind: 'pull' }).ids.sort(), ['a', 'b'])
+  assertEquals(identify('pull the snow in the park post from saturday', ds, { ...t, kind: 'pull' }).ids.sort(), ['a', 'b'])
+  assertEquals(identify('pull the snow in the park after the storm post from thursday', ds, { ...t, kind: 'pull' }).why, 'day_conflict')   // the day only vetoes
+  assertEquals(identify('pull the snow in the park after the storm post from friday', ds, { ...t, kind: 'pull' }).ids, ['b'])
   // a reference that is only a day: the drafts dated that day
-  assertEquals(identify("pull friday's post", ds, t).ids.sort(), ['b', 'c'])
-  assertEquals(identify("pull tomorrow's post", ds, t).ids, ['a'])
-  assertEquals(identify('pull the post on thursday', ds, t).ids, ['a'])
+  assertEquals(identify("pull friday's post", ds, { ...t, kind: 'pull' }).ids.sort(), ['b', 'c'])
+  assertEquals(identify("pull tomorrow's post", ds, { ...t, kind: 'pull' }).ids, ['a'])
+  assertEquals(identify('pull the post on thursday', ds, { ...t, kind: 'pull' }).ids, ['a'])
   // a move: the destination is never identity; "tomorrow's post" is still the source
-  assertEquals(identify('move the dm that got a reply to friday', ds, { ...t, kind: 'date' }).ids, ['c'])
-  assertEquals(identify("move tomorrow's post to friday", ds, { ...t, kind: 'date', dest: '2026-11-20' }).ids, ['a'])
-  assert(!referencePart('move the cold brew one to friday 10:45', 'date').toLowerCase().includes('friday'))
+  assertEquals(identify('move the dm that got a reply to friday', ds, { ...t, kind: 'date', destSpan: spanOf('move the dm that got a reply to friday') }).ids, ['c'])
+  // round 16: an immediate kind never takes a day-only reference; it gets chips for that day
+  const tm = identify("move tomorrow's post to friday", ds, { ...t, kind: 'date', destSpan: spanOf("move tomorrow's post to friday") })
+  assertEquals(tm.ids, []); assertEquals(tm.why, 'needs_words'); assertEquals(tm.rivals, ['a'])
+  // only the exact destination span leaves the reference
+  assert(!referencePart('move the cold brew one to friday at 10:45', 'date', null, spanOf('move the cold brew one to friday at 10:45')).toLowerCase().includes('friday'))
   assert(!referencePart('approve the cold brew one').toLowerCase().includes('approve'))
   // weekday words are whole words only: "month", "sunny", "saturated" are not days
   assertEquals(identify('approve the monthly sunny saturated one', [{ id: 'm', first_line: 'Monthly sunny saturated colours', day: 'undated' }], t).ids, ['m'])
 })
 
-Deno.test('round 15 #2: the server resolves the destination instant from his words alone', () => {
+Deno.test('round 16 #3: the destination is a strict grammar consumed as one complete span', () => {
   const today = '2026-11-18'   // a Wednesday
-  const R = (t: string, cur: { day: string; time: string } | null = null) => resolveDestination(t, today, cur)
-  // day + default time (10:45 undated, else the draft's own time); "next friday" = the one after the nearest
-  assertEquals(R('move the snow one to friday'), { ok: true, date: '2026-11-20', time: '10:45' })
-  assertEquals(R('move the snow one to friday', { day: '2026-11-25', time: '17:30' }), { ok: true, date: '2026-11-20', time: '17:30' })
-  const nx = R('move the snow one to next friday')
-  assert(nx.ok && nx.date === '2026-11-27' && nx.note!.includes('after the coming one'), JSON.stringify(nx))
-  // explicit times
-  assertEquals(R('move it to friday at 9'), { ok: true, date: '2026-11-20', time: '09:00' })
-  assertEquals(R('move it to friday 4pm'), { ok: true, date: '2026-11-20', time: '16:00' })
-  assertEquals(R('move it to tomorrow at 14:05'), { ok: true, date: '2026-11-19', time: '14:05' })
-  // an explicit date: the next one on or after today; a weekday next to it must agree
-  assertEquals(R('put the cold brew one on tuesday 9 march'), { ok: true, date: '2027-03-09', time: '10:45' })
-  assert(!R('put the cold brew one on monday 9 march').ok)
-  assert(!R('move it to 31 feb').ok)
-  // the source "tomorrow's post" and a quoted opener are never the destination or its time
-  assertEquals(R("move tomorrow's post to friday"), { ok: true, date: '2026-11-20', time: '10:45' })
-  assertEquals(R('move the post that starts "Friday at 7am I ship" to monday'), { ok: true, date: '2026-11-23', time: '10:45' })
-  // only a time: the draft keeps its day; unclear parts are named
-  assertEquals(R('move it to 9:30', { day: '2026-11-25', time: '10:45' }), { ok: true, date: '2026-11-25', time: '09:30' })
-  const v = R('move the snow one to next week'); assert(!v.ok && v.code === 'unclear_day', JSON.stringify(v))
-  const two = R('move it to friday at 9:00 or 10:00'); assert(!two.ok && two.code === 'unclear_time' && two.label.includes('09:00'), JSON.stringify(two))
-  assert(!R('move it').ok)
+  const P = (t: string) => parseDestination(t, today)
+  const ok = (t: string, date: string, time: string | null) => { const r = P(t); assert(r.ok && r.date === date && r.time === time, `${t} -> ${JSON.stringify(r)}`) }
+  const no = (t: string) => { const r = P(t); assert(!r.ok && r.label.startsWith('I could not read the date'), `${t} -> ${JSON.stringify(r)}`) }
+  ok('move the snow one to friday', '2026-11-20', null)
+  ok('move the snow one to next friday', '2026-11-27', null)
+  ok('move it to tomorrow', '2026-11-19', null)
+  ok('move it to friday at 9', '2026-11-20', '09:00')
+  ok('move it to friday at 14:05', '2026-11-20', '14:05')
+  ok('move it to friday 4pm', '2026-11-20', '16:00')
+  ok('move it to friday at 9:30am', '2026-11-20', '09:30')
+  ok('put the cold brew one on tuesday 9 march', '2027-03-09', null)
+  ok('put the cold brew one on 9 march 2028 at 10:45', '2028-03-09', '10:45')   // a year is used as given
+  ok('move it to march 9', '2027-03-09', null)
+  ok('move it to Nov 27, 2026 at 18:00', '2026-11-27', '18:00')
+  ok("move tomorrow's post to friday", '2026-11-20', null)                      // the possessive source stays
+  ok('move the post on friday to monday', '2026-11-23', null)
+  ok('move the post that starts "Friday at 7am I ship" to monday', '2026-11-23', null)   // quoted: text
+  no('move it to friday 10:45')            // a bare time is not in the grammar
+  no('move it to friday at 25:00')         // invalid time
+  no('move it to friday at 9:75')
+  no('move it to 31 feb')                  // not a real date
+  no('put the cold brew one on monday 9 march')   // the weekday disagrees
+  no('move it to this friday')             // not in the grammar
+  no('move it to 2027-03-09')              // ISO is not in the grammar
+  no('move it to friday or monday')        // a second day
+  no('move the cold brew at 7am one to friday')   // a leftover time outside the destination
+  no('move it to next week')
+  no('move it')
+  const n = P('move the snow one to next friday'); assert(n.ok && n.note!.includes('after the coming one'))
+  const sp = P('move the snow one to next friday at 9:30'); assert(sp.ok && 'move the snow one to next friday at 9:30'.slice(sp.span.at, sp.span.end) === 'to next friday at 9:30')
+})
+
+Deno.test('round 16 #1+2: day-only identity is for held kinds and an exact day phrase only', () => {
+  const ds = [
+    { id: 'a', first_line: 'Snow in the park this morning', day: '2026-11-19' },
+    { id: 'b', first_line: 'A DM that got a reply', day: '2026-11-20' },
+  ]
+  const t = { today: '2026-11-18' }
+  for (const k of ['pull', 'approve', 'delete']) assertEquals(identify("tomorrow's post", ds, { ...t, kind: k }).ids, ['a'], k)
+  for (const k of ['undate', 'photo_attach']) {
+    const r = identify("remove the date from tomorrow's post", ds, { ...t, kind: k })
+    assertEquals(r.ids, [], k); assertEquals(r.why, 'needs_words', k)
+  }
+  // leftover tokens are not a day-only reference: digits, #, quotes or other words mean chips
+  for (const x of ["pull tomorrow's 2 post", "pull tomorrow's #1", 'pull "tomorrow" post', "pull tomorrow's big post"]) {
+    const r = identify(x, ds, { ...t, kind: 'pull' })
+    assertEquals(r.ids.length === 1 && r.how === 'day', false, x)
+  }
+  // curly and single quotes are text; a possessive is not a quote
+  assertEquals(identify('approve the \u2018got a reply\u2019 one', ds, { ...t, kind: 'approve' }).ids, ['b'])
+  assertEquals(identify("approve the 'got a reply' one", ds, { ...t, kind: 'approve' }).ids, ['b'])
+  assertEquals(identify('pull friday\u2019s post', ds, { ...t, kind: 'pull' }).ids, ['b'])
 })
 
 Deno.test('round 15 #1: positional selectors are refused; a quoted word is text; a source day only vetoes', () => {
@@ -936,11 +989,11 @@ Deno.test('round 15 #1: positional selectors are refused; a quoted word is text;
   assertEquals(identify('approve "Friday deploys"', ds, t).ids, ['says'])
   assertEquals(identify('approve the "friday" one', ds, t).ids, ['says'])
   // an unquoted calendar reference with no other selector still picks by day
-  assertEquals(identify("pull friday's post", ds, t).ids, ['fri'])
+  assertEquals(identify("pull friday's post", ds, { ...t, kind: 'pull' }).ids, ['fri'])
   // a source day vetoes a unique text match on another day, and never selects
-  const v = identify("pull thursday's snow in the park post", ds, t)
+  const v = identify("pull thursday's snow in the park post", ds, { ...t, kind: 'pull' })
   assertEquals(v.ids, []); assertEquals(v.why, 'day_conflict')
-  assertEquals(identify("pull friday's snow in the park post", ds, t).ids, ['fri'])
+  assertEquals(identify("pull friday's snow in the park post", ds, { ...t, kind: 'pull' }).ids, ['fri'])
 })
 
 Deno.test('round 11 #3: more relevant rivals than the cap: act on none', () => {
@@ -979,7 +1032,7 @@ Deno.test('round 11 #8 + #9: every server chip round-trips to its own draft; the
 Deno.test('round 11/12 core: approve, delete, pull and redo held; date and photo immediate with undo; the instant survives a re-plan', async () => {
   const d = draft(ID1, 'Snow in the park this morning', { updated_at: 'U1' })
   const r = render(brief([d]))
-  const ctx = { brief: r, attachments: [{ kind: 'photo', url: 'https://img.test/a.jpg' }], text: 'move it to 2027-03-09 10:45', env: () => undefined } as never
+  const ctx = { brief: r, attachments: [{ kind: 'photo', url: 'https://img.test/a.jpg' }], text: 'move it to 9 march 2027 at 10:45', env: () => undefined } as never
   // the locked split (round 12 correction): approve, delete, pull and redo are held; date, undate and photo attach run at once with an exact undo
   for (const a of [{ kind: 'redo' }, { kind: 'approve' }, { kind: 'delete' }]) {
     const p = await plan(ctx, { ...a, draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
@@ -1059,7 +1112,7 @@ Deno.test('round 13 #2 (r14): an opener that says "Friday" is not Friday\'s post
     { id: 'says', first_line: 'Friday deploys are a bad idea', day: '2026-11-24' },
   ]
   const t = { today: '2026-11-18' }
-  assertEquals(identify("pull friday's post", ds, t).ids, ['fri'])
+  assertEquals(identify("pull friday's post", ds, { ...t, kind: 'pull' }).ids, ['fri'])
   assert(!withoutDays("friday's snow post").toLowerCase().includes('friday'))
 })
 
@@ -1093,12 +1146,12 @@ Deno.test('round 15 #2: the date action does nothing unless the planned instant 
   const r = render(brief([d]))
   const base = { brief: r, attachments: [], env: () => undefined, userDb: forbidden, svc: forbidden }
   const h = r.handleOf.get(ID1)!
-  const ok = await plan({ ...base, text: 'move the snow one to 2027-03-09' } as never, { kind: 'date', draft: h, line: 'Snow in the park', at: '2027-03-09 10:45' })
+  const ok = await plan({ ...base, text: 'move the snow one to 9 march 2027' } as never, { kind: 'date', draft: h, line: 'Snow in the park', at: '2027-03-09 10:45' })
   assertEquals(ok.echo.state, 'done')
-  const off = await plan({ ...base, text: 'move the snow one to 2027-03-09' } as never, { kind: 'date', draft: h, line: 'Snow in the park', at: '2027-03-09 11:00' })
+  const off = await plan({ ...base, text: 'move the snow one to 9 march 2027' } as never, { kind: 'date', draft: h, line: 'Snow in the park', at: '2027-03-09 11:00' })
   assertEquals(off.refuse, 'date_mismatch'); assertEquals(off.run, undefined)
   const unclear = await plan({ ...base, text: 'move the snow one somewhere' } as never, { kind: 'date', draft: h, line: 'Snow in the park', at: '2027-03-09 10:45' })
-  assertEquals(unclear.refuse, 'unclear_day'); assertEquals(unclear.run, undefined)
+  assertEquals(unclear.refuse, 'unclear_date'); assertEquals(unclear.run, undefined)
 })
 
 Deno.test('eval rV10 S10: the published-post window is the last 30 days, and the brief says that is "this month"', () => {
@@ -1107,4 +1160,15 @@ Deno.test('eval rV10 S10: the published-post window is the last 30 days, and the
   assert(txt.includes("RECENT PUBLISHED POSTS (last 30 days (this is what 'this month' means);"), txt.slice(0, 600))
   assert(txt.includes("Best post of the last 30 days (this is what 'this month' means) by impressions:"))
   assert(!/31 days/.test(txt))
+})
+
+Deno.test('round 16: "move tomorrow\'s post to friday" never text-matches openers that say "post"', () => {
+  const ds = [
+    { id: 'a', first_line: 'Snow in the park this morning', day: '2026-11-19' },
+    { id: 'p', first_line: 'My last post got three replies', day: 'undated' },
+    { id: 'q', first_line: 'Every post I write starts on paper', day: 'undated' },
+  ]
+  const t = 'move tomorrow\'s post to friday'
+  const r = identify(t, ds, { today: '2026-11-18', kind: 'date', destSpan: spanOf(t) })
+  assertEquals(r.ids, []); assertEquals(r.why, 'needs_words'); assertEquals(r.rivals, ['a'])
 })

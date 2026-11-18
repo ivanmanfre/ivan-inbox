@@ -28,7 +28,7 @@ import { warsaw, warsawDay } from './brief.ts'
 import { oneText, type Act } from './parse.ts'
 import { urlInMessage } from './unfurl.ts'
 import { MAX_BRIEF_CHARS, MAX_TITLE_CHARS } from '../_shared/desk-t3.ts'
-import { identify, words, sharedSpan, withoutDays, resolveDestination, type IdDraft } from './target.ts'
+import { identify, words, sharedSpan, withoutDays, parseDestination, type IdDraft } from './target.ts'
 
 // deno-lint-ignore no-explicit-any
 type Db = any
@@ -209,10 +209,10 @@ export function chipKind(text: string): string {
 }
 
 /** Server chips that survive a round trip: each chip's own text, resolved by identify, returns its draft alone (Sol r10 #8). */
-export function verifiedChips(act: Act, ds: Draft[], all: Draft[], opts: { today?: string; kind?: string }): { label: string; send: string }[] {
+export function verifiedChips(act: Act, ds: Draft[], all: Draft[], opts: { today?: string; kind?: string; destSpan?: { at: number; end: number } | null }): { label: string; send: string }[] {
   const ids: IdDraft[] = all.map((d) => ({ id: d.id, first_line: d.first_line, day: dayOf(d), rev: d.updated_at ?? null }))
   return ds.slice(0, 6).map((d) => ({ d, c: pickChips(act, [d], all)[0] }))
-    .filter(({ d, c }) => { const t = oneText([{ send: c.send }])[0]?.send ?? c.send; const r = identify(t, ids, { ...opts, kind: act.kind }); return r.ids.length === 1 && r.ids[0] === d.id })
+    .filter(({ d, c }) => { const t = oneText([{ send: c.send }])[0]?.send ?? c.send; const r = identify(t, ids, { ...opts, kind: act.kind, destSpan: null }); return r.ids.length === 1 && r.ids[0] === d.id })
     .slice(0, 3).map(({ c }) => c)
 }
 
@@ -406,11 +406,15 @@ export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: 
   let cands = await liveCandidates(ctx)
   if (!cands) return ask('read_failed', 'I could not read your drafts, so I did nothing.')
   const today = warsawDay(new Date().toISOString())
-  // a date move's destination is the move's own Warsaw day: only that day phrase is removed from identity
-  // a date move's destination day, resolved by the SERVER from his words (never the model's instant):
-  // only that day phrase is taken out of the identity reference
-  const destDay = act.kind === 'date' ? (() => { const r = resolveDestination(ctx.text, today, null); return r.ok ? r.date : null })() : null
-  const idOpts = { today, kind: act.kind, note: act.note, dest: destDay }
+  // a date move's destination, parsed by the SERVER from his words as one complete span (round 16 #3):
+  // nothing is done when it cannot be read, and only that exact span leaves the identity reference
+  let destSpan: { at: number; end: number } | null = null
+  if (act.kind === 'date') {
+    const dp = parseDestination(ctx.text, today)
+    if (!dp.ok) return ask(dp.code, dp.label)
+    destSpan = dp.span
+  }
+  const idOpts = { today, kind: act.kind, note: act.note, destSpan }
   const asId = (ds: Draft[]): IdDraft[] => ds.map((d) => ({ id: d.id, first_line: d.first_line, day: dayOf(d), rev: d.updated_at ?? null }))
   let res = identify(ctx.text, asId(cands), idOpts)
   if (ctx.fixtures && !res.ids.length && res.why !== 'too_many_rivals' && res.why !== 'positional' && res.why !== 'day_conflict') {
@@ -431,6 +435,10 @@ export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: 
       const pick = all.filter((d) => eligible(act.kind, d))
         .sort((a, z) => (a.scheduled_at && z.scheduled_at ? Date.parse(a.scheduled_at) - Date.parse(z.scheduled_at) : a.scheduled_at ? -1 : z.scheduled_at ? 1 : Date.parse(z.created_at) - Date.parse(a.created_at)))
       return ask('positional', 'I do not pick posts by number. Tap the one you mean, or name a few of its words.', chipsFor(pick))
+    }
+    if (res.why === 'needs_words') {
+      // day-only identity is for held kinds only (round 16 #1+2): an immediate change names the post's words
+      return ask('needs_words', shown.length ? 'Name a few words of the post, or tap it.' : 'Name a few words of the post you mean.', chipsFor(shown))
     }
     if (res.why === 'day_conflict') {
       // a source day only vetoes (round 15 #1): the post his words match is on another day
@@ -615,10 +623,12 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
       if (d!.queue_ids?.length) return { echo: { kind, label: IN_QUEUE, state: 'failed', undo: false, target }, refuse: 'in_queue' }
       // the SERVER resolves the destination instant from his words (round 15 #2): day plus his explicit
       // time, else the draft's current time, else 10:45. The planned instant must equal it exactly.
-      const dc = resolveDestination(ctx.text, warsawDay(new Date().toISOString()), d!.scheduled_at ? { day: warsawDay(d!.scheduled_at), time: warsawClock(d!.scheduled_at) } : null)
+      const dc = parseDestination(ctx.text, warsawDay(new Date().toISOString()))
       if (!dc.ok) return { echo: { kind, label: dc.label, state: 'failed', undo: false, target }, refuse: dc.code }
-      const want = warsawToIso(`${dc.date} ${dc.time}`)
-      if (!want) return { echo: { kind, label: `${dc.date} ${dc.time} does not exist in Warsaw time, so I did nothing. Say another time.`, state: 'failed', undo: false, target }, refuse: 'unclear_time' }
+      // defaults only after a full parse: his time, else the draft's current time, else 10:45
+      const hhmm = dc.time ?? (d!.scheduled_at ? warsawClock(d!.scheduled_at) : '10:45')
+      const want = warsawToIso(`${dc.date} ${hhmm}`)
+      if (!want) return { echo: { kind, label: `I could not read the date: ${dc.date} ${hhmm} does not exist in Warsaw time.`, state: 'failed', undo: false, target }, refuse: 'unclear_date' }
       if (Date.parse(want) !== Date.parse(iso)) {
         return { echo: { kind, label: `I read the new time as ${warsaw(want)}, and that is not what I was about to use, so I did nothing. Say the day and time again.`, state: 'failed', undo: false, target }, refuse: 'date_mismatch' }
       }
@@ -736,38 +746,10 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
           if (!d!.updated_at) throw new Error('changed')
           const startedAt = new Date().toISOString()
           const before = d!.status
-          const row = await deskWrite(ctx, actionId, claim, 'desk_redo_claim', { p_draft: id, p_expected_updated_at: d!.updated_at, p_expected_status: before, p_started_at: startedAt, p_expected_scheduled_at: sourceAt(act, d!) }) as
-            { type?: string; topic?: string | null; title?: string | null }
-          const postFormat = row.type === 'carousel' ? 'Carousel' : row.type === 'single_image' ? 'Single Image' : 'Text Post'
-          const f = ctx.fetchImpl ?? fetch
-          let status = 0
-          try {
-            const res = await f(ctx.env('VITE_POSTGEN_WEBHOOK') || POSTGEN, {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ draft_id: id, topic: row.topic ?? row.title ?? '', title: row.title ?? '', author: 'Ivan', source: 'Inbox', post_format: postFormat, include_image: 'No' }),
-              signal: AbortSignal.timeout(15_000),
-            })
-            status = res.status
-          } catch { status = 0 }
-          if (status >= 400 && status < 500) {
-            // an explicit rejection: the writer will not run, so the row goes back if it is still ours
-            // up to 3 tries while the row is busy (lock wait / deadlock); a row that is no longer our claim
-            // needs no release. Still busy after 3: say so plainly (Sol r7 #5)
-            let released = false
-            for (let i = 0; i < 3 && !released; i++) {
-              const { data, error } = await ctx.svc.rpc('desk_redo_release', { p_action: actionId, p_claim: claim ?? null, p_draft: id, p_started_at: startedAt, p_status: before })
-              const code = error ? (lockCode(error) ? 'busy' : 'error') : String((data as { ok?: boolean; error?: string } | null)?.ok === true ? 'ok' : (data as { error?: string } | null)?.error ?? 'error')
-              if (code === 'ok' || code === 'changed' || code === 'gone') released = true
-              else await new Promise((res) => setTimeout(res, 150 * (i + 1)))
-            }
-            if (!released) throw new Error('failed_release')
-            throw new Error('writer_refused')
-          }
-          if (status < 200 || status >= 300) {
-            // timeout, reset or 5xx: the writer may well be running; no rollback
-            return { result: { fired: 'unconfirmed' }, detail: 'The writer did not confirm. It may still be running; check Review in a few minutes.' }
-          }
-          return { result: { fired: true } }
+          // the 'generating' flip, the action -> 'dispatching' and its ONE dispatch row, in one transaction
+          // (round 16 #6); then exactly one writer call goes out through the dispatch row
+          await deskWrite(ctx, actionId, claim, 'desk_redo_claim', { p_draft: id, p_expected_updated_at: d!.updated_at, p_expected_status: before, p_started_at: startedAt, p_expected_scheduled_at: sourceAt(act, d!) })
+          return await dispatchRedo(ctx, actionId, claim ?? '')
         },
       }
     }
@@ -989,6 +971,51 @@ export function actionKey(p: Pick<Planned, 'echo' | 'target_id' | 'canon'>): str
   const fold = p.echo.kind === 'idea' ? (v: unknown) => (typeof v === 'string' ? v.normalize('NFKC').toUpperCase().toLowerCase().replace(/\s+/g, ' ').trim() : v) : (v: unknown) => v
   const canon = Object.entries(p.canon ?? {}).map(([k, v]) => [k, fold(v)] as [string, unknown]).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
   return JSON.stringify([p.echo.kind, p.target_id ?? null, canon])
+}
+
+/**
+ * The ONE writer call of a redo (round 16 #6). desk_redo_send moves the action's dispatch row pending ->
+ * sending for this claim only, so a second call can never go out; the writer's answer is recorded by
+ * desk_redo_result, and the action becomes done only when the writer accepted. A timeout or 5xx leaves it
+ * 'dispatching' (the call may be running) and is never repeated.
+ */
+export async function dispatchRedo(ctx: Pick<Ctx, 'svc' | 'env' | 'fetchImpl'>, actionId: string, claim: string): Promise<{ result: unknown; detail?: string }> {
+  const { data: sent, error: sErr } = await ctx.svc.rpc('desk_redo_send', { p_action: actionId, p_claim: claim })
+  const s = (sent ?? {}) as { ok?: boolean; draft_id?: string; payload?: { before_status?: string; type?: string; topic?: string | null; title?: string | null }; started_at?: string }
+  if (sErr || s.ok !== true || !s.draft_id) throw new Error('dispatch_unclear')
+  const row = s.payload ?? {}
+  const postFormat = row.type === 'carousel' ? 'Carousel' : row.type === 'single_image' ? 'Single Image' : 'Text Post'
+  const f = ctx.fetchImpl ?? fetch
+  let status = 0
+  try {
+    const res = await f(ctx.env('VITE_POSTGEN_WEBHOOK') || POSTGEN, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ draft_id: s.draft_id, topic: row.topic ?? row.title ?? '', title: row.title ?? '', author: 'Ivan', source: 'Inbox', post_format: postFormat, include_image: 'No' }),
+      signal: AbortSignal.timeout(15_000),
+    })
+    status = res.status
+  } catch { status = 0 }
+  const record = async (outcome: string) => { try { await ctx.svc.rpc('desk_redo_result', { p_action: actionId, p_claim: claim, p_outcome: outcome, p_http: status || null }) } catch { /* reconcile reads the row */ } }
+  if (status >= 400 && status < 500) {
+    // an explicit rejection: the writer will not run, so the row goes back if it is still ours (up to 3
+    // tries while busy, Sol r7 #5), then the refusal is recorded
+    let released = false
+    for (let i = 0; i < 3 && !released; i++) {
+      const { data, error } = await ctx.svc.rpc('desk_redo_release', { p_action: actionId, p_claim: claim, p_draft: s.draft_id, p_started_at: s.started_at, p_status: row.before_status ?? 'review' })
+      const code = error ? (lockCode(error) ? 'busy' : 'error') : String((data as { ok?: boolean; error?: string } | null)?.ok === true ? 'ok' : (data as { error?: string } | null)?.error ?? 'error')
+      if (code === 'ok' || code === 'changed' || code === 'gone') released = true
+      else await new Promise((res) => setTimeout(res, 150 * (i + 1)))
+    }
+    await record(released ? 'refused' : 'refused_stuck')
+    throw new Error(released ? 'writer_refused' : 'failed_release')
+  }
+  if (status < 200 || status >= 300) {
+    // timeout, reset or 5xx: the writer may well be running; never sent again, no rollback
+    await record('unconfirmed')
+    return { result: { fired: 'unconfirmed' }, detail: 'The writer did not confirm. It may still be running; check Review in a few minutes.' }
+  }
+  await record('accepted')
+  return { result: { fired: true } }
 }
 
 /** 55P03 lock_not_available / 40P01 deadlock_detected: Postgres rolled the call back; it is "it changed, nothing done". */
