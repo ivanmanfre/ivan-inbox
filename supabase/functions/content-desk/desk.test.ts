@@ -765,3 +765,14 @@ Deno.test('round 9 #5: the Poland quota also reaches an older post through its l
     panel: { quotas: [{ slot_kind: 'poland_with_him', per_week: 1, every_n_weeks: 1, vehicle: 'poland_place', belief: 5, note: '' }] } })).text
   assert(txt.includes('I came to Poland for a few weeks": 151 impressions') && txt.includes('Poland post (quota: 1 a week with him in it; copies are extras)'))
 })
+
+Deno.test('round 9b: every quota renders with its own stored note (the lane rule reaches a "more Poland?" ask from the data)', () => {
+  const txt = render(brief([], { panel: { quotas: [
+    { slot_kind: 'poland_with_him', per_week: 1, every_n_weeks: 1, vehicle: 'poland_place', belief: 5, note: '1 Poland post with him in it (belief 5).' },
+    { slot_kind: 'selling_claim', per_week: 1, every_n_weeks: 2, vehicle: null, belief: null, note: 'The selling claim replaces one business_event post every two weeks.' },
+  ] } })).text
+  const block = txt.split('QUOTA RULES')[1]
+  assert(block.includes('- poland_with_him 1/wk: 1 Poland post with him in it (belief 5).'), block)
+  assert(block.includes('- selling_claim 1/wk every 2 wks: The selling claim replaces one business_event post every two weeks.'), block)
+  assert(block.includes('Copies are extras, never counted.'), block)
+})

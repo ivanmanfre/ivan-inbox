@@ -219,7 +219,12 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
       (unlabeled === w.originals && w.originals > 0 ? ' (no post this week has a belief set, so no belief is covered yet)' : ''))
     if (w.open.length) L.push(`  open quota: ${w.open.join('; ')}`)
   }
-  L.push('', 'QUOTA RULES (weekly): ' + quotas.map((q) => `${q.slot_kind}${q.per_week != null ? ' ' + Number(q.per_week) + '/wk' : ''}${(q.every_n_weeks ?? 1) > 1 ? ' every ' + q.every_n_weeks + ' wks' : ''}`).join('; ') + '. Max 2 originals per belief per week. Copies are extras, never counted.')
+  // each quota with its own stored note (content_plan_quotas.note), so a lane question meets the rule in his words
+  L.push('', 'QUOTA RULES (weekly, from the calendar; these govern any "more X?" lane question):')
+  for (const q of quotas) {
+    L.push(`- ${q.slot_kind}${q.per_week != null ? ' ' + Number(q.per_week) + '/wk' : ''}${(q.every_n_weeks ?? 1) > 1 ? ' every ' + q.every_n_weeks + ' wks' : ''}${q.note ? ': ' + clip(q.note, 160) : ''}`)
+  }
+  L.push('- Max 2 originals per belief per week. Copies are extras, never counted.')
   const enforce = (b.panel as { enforce?: unknown }).enforce
   L.push(`Quota enforcement: ${typeof enforce === 'string' ? enforce : JSON.stringify(enforce ?? 'unknown')}.`)
 
