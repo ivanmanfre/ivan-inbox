@@ -486,8 +486,29 @@ export function heldReasonText(reason: string | null | undefined): string {
 // only in a WhatsApp alert; the draft itself looked like any other draft.
 export function holdReason(m: InboxMessage): string | null {
   const r = m.send_blocked_reason
-  if (isSwishdmReplyHold(m) && isDraft(m)) return null
-  if (!isDraft(m) || !isRecoverableHold(r)) return null
+  if (!isDraft(m)) return null
+  if (isSwishdmReplyHold(m)) {
+    switch (m.draft_evidence?.calendar_hold?.reason) {
+      case 'calendar_relative_day_changed':
+        return 'Returned to review. The weekday wording in the message does not match the proposed date.'
+      case 'calendar_proposal_edited':
+        return 'Returned to review. The time in the edited message could not be matched to the checked slot.'
+      case 'calendar_slot_too_soon':
+        return 'Returned to review. The proposed time is less than 12 hours away. Offer a later slot.'
+      case 'calendar_slot_no_longer_available':
+        return 'Returned to review. The proposed time is no longer available.'
+      case 'calendar_check_unavailable':
+        return 'Returned to review. The sender could not verify the proposed time in TidyCal.'
+      case 'calendar_booking_pending':
+        return 'Returned to review. Book the agreed time from Ops before sending the confirmation.'
+      case undefined:
+      case null:
+        return null
+      default:
+        return 'Returned to review. The sender flagged the proposed time. Check it before approving again.'
+    }
+  }
+  if (!isRecoverableHold(r)) return null
   if (isRaceHold(r)) return r === `${RACE_HOLD_PREFIX}outbound`
     ? 'Came back: a message went out on this thread while it was queued. Re-read the thread, then approve again.'
     : 'Came back: they wrote while it was queued. Re-read their message, then approve again.'
@@ -1672,6 +1693,7 @@ export type DraftEvidence = {
   client?: string | null
   lane?: string | null
   dm_queue?: { state?: string | null } | null
+  calendar_hold?: { reason?: string | null } | null
   stopped?: unknown
   email_subject?: string | null
   email_headers?: Record<string, string> | null
