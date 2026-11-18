@@ -169,6 +169,9 @@ function DeskList({ desk, locked, layout }: { desk: DeskHandle; locked: boolean;
   // same minute are both announced.
   const [said, setSaid] = useState('')
   const seenReplies = useRef<Set<string> | null>(null)
+  // Replies waiting to be announced: kept until the line is actually published, so a second finish before the
+  // next frame joins the same announcement instead of cancelling the first.
+  const queued = useRef<DeskMessage[]>([])
   const doneKey = messages.filter(m => m.role === 'assistant' && !m.answers && m.status === 'done').map(m => m.id).join(',')
   useEffect(() => {
     if (!desk.loaded) return
@@ -178,11 +181,15 @@ function DeskList({ desk, locked, layout }: { desk: DeskHandle; locked: boolean;
     const fresh = done.filter(m => !seenReplies.current!.has(m.id))
     if (!fresh.length) return
     fresh.forEach(m => seenReplies.current!.add(m.id))
-    const one = fresh[0]
-    const line = fresh.length > 1 ? `${fresh.length} new messages from the desk.`
-      : one.origin === 'proactive' ? 'The desk wrote first.' : one.origin === 't3' ? 'A result came back from T3.' : 'The desk answered.'
+    queued.current.push(...fresh)
     setSaid('')
-    const raf = requestAnimationFrame(() => setSaid(line))
+    const raf = requestAnimationFrame(() => {
+      const all = queued.current.splice(0)
+      if (!all.length) return
+      const one = all[0]
+      setSaid(all.length > 1 ? `${all.length} new messages from the desk.`
+        : one.origin === 'proactive' ? 'The desk wrote first.' : one.origin === 't3' ? 'A result came back from T3.' : 'The desk answered.')
+    })
     return () => cancelAnimationFrame(raf)
   }, [doneKey, desk.loaded]) // eslint-disable-line react-hooks/exhaustive-deps
   const lastUser = (() => { for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === 'user') return i; return -1 })()
@@ -307,32 +314,13 @@ function Byline({ m, live }: { m: DeskMessage; live?: boolean }) {
   )
 }
 
-/** A turn with change cards: the server's body is its lines in order (supabase content-desk index.ts): one per
- *  card (a held card's "Proposed (ref …): … It runs only when you tap Do it now.", any other card's sentence and
- *  note) and the lines that are no card (a post it could not match, "I could not save this answer"), then cut
- *  into short paragraphs. The cards say their own part live, so what is shown beside them is the body without
- *  those card lines: every proposal (from "Proposed (ref" to its "Do it now." end, across the cuts), every other
- *  sentence carrying a card ref, and each card's current sentence and note. Whatever is left is a real note and stays. */
-const SEP = '\u0000'
-const ws = `[\\s${SEP}]+`
-const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-const loose = (t: string) => t.trim().split(/\s+/).map(esc).join(ws)
+/** A turn with change cards: the cards say their own part, live. Beside them the app shows only the server's
+ *  notes (meta.notes: the lines that are no card, such as a post it could not match or a could-not-save notice).
+ *  A row from before notes existed shows its cards alone: its body is the cards' old receipts, which go stale
+ *  when a card later changes (every such row is a test row). */
 function bodyBesideCards(m: DeskMessage): string {
-  const acts = m.meta.actions
-  if (!acts?.length) return m.body
-  let t = m.body.split(/\n\s*\n/).join(SEP)
-  t = t.replace(new RegExp(`Proposed \\(ref [0-9a-f]{6,}\\):[\\s\\S]*?It runs only when you tap Do it now\\.`, 'g'), '')
-  t = t.replace(new RegExp(`It runs only when you tap Do it now\\.`, 'g'), '')
-  // A finished card's sentence keeps its ref ("Moved (ref …) "…" (Tue 16 Mar) to …", "Done (ref …): approve "…""):
-  // from its first word through the quoted post, its date in brackets and the sentence's end (or the line's).
-  t = t.replace(new RegExp(`[A-Z][^${SEP}(".]{0,40}?\\(ref [0-9a-f]{6,}\\):?[\\s\\S]*?"[\\s\\S]*?"(?:[\\s${SEP}]*\\([^)]*\\))?[^${SEP}"]*?(?:\\.(?=[\\s${SEP}]|$)|(?=${SEP}|$))`, 'g'), '')
-  for (const a of acts) {
-    for (const part of [a.label, a.detail]) {
-      if (!part || part.trim().length < 8 || /^[a-z_]+$/.test(part)) continue
-      t = t.replace(new RegExp(loose(part)), '')
-    }
-  }
-  return t.split(SEP).map(x => x.trim()).filter(Boolean).join('\n\n')
+  if (!m.meta.actions?.length) return m.body
+  return Array.isArray(m.meta.notes) ? m.meta.notes.filter(n => typeof n === 'string' && n.trim()).join('\n\n') : ''
 }
 
 function DraftCard({ d }: { d: DeskDraftCard }) {

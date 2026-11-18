@@ -31,6 +31,9 @@ export type DeskMeta = {
   /** On a terminal answer, from that turn's action journal (Sol backend r5 B11): 'none' only when the
    *  turn wrote nothing and queued no job. Shown as a note; it never makes the UI send anything. */
   side_effects?: 'none' | 'some' | 'unknown'
+  /** On a turn with change cards (server, Content Desk UI polish r5): the lines that are no card (a post it could not
+   *  match, a could-not-save notice, a recovery line), kept apart from the cards' own receipts. */
+  notes?: string[]
 }
 
 export type DeskMessage = {

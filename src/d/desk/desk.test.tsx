@@ -187,12 +187,13 @@ describe('Desk polish (review of the new layout)', () => {
     expect(screen.getByText(label)).toBeTruthy()
   })
 
-  it('beside its cards, a turn keeps the lines that are no card (a post it could not match, a save warning)', async () => {
+  it('beside its cards, a turn shows the server notes (a post it could not match, a save warning) and no receipt', async () => {
     const proposal = 'Proposed (ref 1a2b3c4d): move "A made up post about trains in the rain and a long platform wait."'
     vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p3',
       // as the server cuts it: the proposal split over two paragraphs, then a line with no card, then the save notice
       body: `${proposal}\n\n(no date) to Thu 26 Nov, 09:30 (UTC+01:00). It runs only when you tap Do it now.\n\nNo draft matches "the ferry one". Say its first words.\n\n(I could not save this answer. The held actions were cancelled.)`,
-      meta: { actions: [{ id: 'act-r', kind: 'date', label: 'Cancelled: I could not save this answer.', state: 'cancelled', undo: false }] } })])
+      meta: { actions: [{ id: 'act-r', kind: 'date', label: 'Cancelled: I could not save this answer.', state: 'cancelled', undo: false }],
+        notes: ['No draft matches "the ferry one". Say its first words.', '(I could not save this answer. The held actions were cancelled.)'] } })])
     render(<Desk layout="phone" />)
     await screen.findByText(/No draft matches "the ferry one"/)
     expect(screen.getByText(/I could not save this answer\. The held actions were cancelled/)).toBeTruthy()
@@ -220,6 +221,15 @@ describe('Desk polish (review of the new layout)', () => {
     await screen.findByText('Back as it was.')
     expect(screen.queryByText(/Moved \(ref/)).toBeNull()
     expect(screen.queryByText(/Nobody looked up/)).toBeNull()
+  })
+
+  it('an idea undone later does not bring its old receipt back above the card', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p5',
+      body: 'Saved as an idea: "A made up idea about slow trains". The scorer picks it up next.',
+      meta: { actions: [{ id: 'act-t', kind: 'idea', label: 'Undone.', state: 'undone', undo: false }], notes: [] } })])
+    render(<Desk layout="phone" />)
+    await screen.findByText('Back as it was.')
+    expect(screen.queryByText(/The scorer picks it up next/)).toBeNull()
   })
 
   it('a cancelled proposal never keeps "It runs only when you tap Do it now" above its card', async () => {
