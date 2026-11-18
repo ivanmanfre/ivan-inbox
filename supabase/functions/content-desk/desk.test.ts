@@ -713,3 +713,9 @@ Deno.test('eval E12: a directed redo keeps its note in the canon (the refusal is
     { kind: 'redo', draft: r.handleOf.get(ID1)!, line: 'Tram 33 at rush hour', note: 'more about the business' })
   assertEquals(p.refuse, 'direction_unsupported'); assertEquals(p.canon, { note: 'more about the business' })
 })
+
+import { ivanSpan } from './actions.ts'
+Deno.test('eval E12: the refused redo journals his own words for the note, found case-insensitively', () => {
+  assertEquals(ivanSpan('More about the business', 'redo the tram one, more about the business, less about the city'), 'more about the business')
+  assertEquals(ivanSpan('a rewrite about cats', 'redo the tram one'), null)
+})

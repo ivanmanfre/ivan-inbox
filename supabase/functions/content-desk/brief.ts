@@ -237,7 +237,8 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
     S.push(`Review: ${rv.length} drafts, ${rv.filter((d) => d.recipe === 'cp17').length} of them from the new writer recipe; ${rv.filter((d) => d.scheduled_at).length} dated.`)
     S.push(`(Only if he asks:) Review also has ${rv.filter((d) => d.is_copy).length} copies and ${rv.filter((d) => d.brain).length} brain drafts that take Keep/Drop.`)
     S.push(`All live drafts by status: ${Object.entries(byStatus).map(([k, v]) => `${k} ${v}`).join(', ')}.`)
-    for (const w of weeks) S.push(`${w.label.toLowerCase()}: ${weekCount(w)}, ${w.copies} ${w.copies === 1 ? 'copy' : 'copies'}, ${w.dated.filter((x) => x.status === 'published').length} already published.`)
+    // eval E13/E14: the stored form for state answers, the planning form only for planning answers
+    for (const w of weeks) S.push(`${w.label.toLowerCase()}: ${w.originals} originals dated, ${w.copies} ${w.copies === 1 ? 'copy' : 'copies'}, ${w.dated.filter((x) => x.status === 'published').length} already published. (Planning form only: "${w.label.toLowerCase()} (${weekCount(w)})".)`)
     // one list, measured posts and published drafts the metrics have not caught yet, newest first;
     // the same call (same inputs) builds RECENT PUBLISHED POSTS below, so its first row is this line (Sol r4 #8)
     const merged = mergedPosts(drafts, (b.posts as { posts?: PostRow[] }).posts ?? [], b.post_links)

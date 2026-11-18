@@ -856,6 +856,14 @@ export function verbatimIn(s: unknown, text: string): boolean {
   return q.length > 0 && text.includes(q)
 }
 
+/** The exact span of his message that the quote names, found case-insensitively; null when it is not there. */
+export function ivanSpan(quote: unknown, text: string): string | null {
+  const q = typeof quote === 'string' ? quote.trim() : ''
+  if (!q) return null
+  const i = text.toLowerCase().indexOf(q.toLowerCase())
+  return i >= 0 ? text.slice(i, i + q.length) : null
+}
+
 /** What may be stored as Ivan's own words: the model's quote only if it is a verbatim span of his message, else nothing (Sol r6 #1). */
 export function ivanQuote(quote: unknown, text: string, cap = 1200): string | null {
   return verbatimIn(quote, text) && String(quote).trim().length <= cap ? String(quote).trim() : null

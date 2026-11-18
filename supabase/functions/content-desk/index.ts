@@ -18,7 +18,7 @@ import { render, applyVisibility, warsaw, type BriefJson, type Rendered } from '
 import { buildPrompt } from './prompt.ts'
 import { parse, shortParagraphs, oneText, sanitize, HandleStream, type Act } from './parse.ts'
 import { askDesk, askDeskStream, LlmError, DESK_MODEL } from './llm.ts'
-import { planLive, planForTarget, runUndo, UndoRefused, stillSame, actionKey, verbatimIn, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
+import { planLive, planForTarget, runUndo, UndoRefused, stillSame, actionKey, ivanSpan, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
 import { authorize } from './auth.ts'
 import { planTriggers } from './triggers.ts'
 import { queueT3Job, sweepT3Stalls } from '../_shared/desk-t3.ts'
@@ -518,7 +518,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
               ? { kind: act.kind, ...(p.canon ?? {}), ...(act._qa_override === true ? { _qa_override: true } : {}),
                 ...(typeof act.dated === 'string' && act.dated.trim() ? { dated: act.dated.trim() } : {}),
                 ...(snap ? { _snapshot: snap } : {}), ...(mode.fixtures ? { _fixtures: true } : {}), ...(mode.dry ? { _dry: true } : {}) }
-              : { kind: act.kind, refusal_code: p.refuse ?? 'refused', ...(p.refuse === 'direction_unsupported' && verbatimIn(p.canon?.note, text) ? { note: p.canon!.note } : {}) },
+              : { kind: act.kind, refusal_code: p.refuse ?? 'refused', ...(p.refuse === 'direction_unsupported' && ivanSpan(p.canon?.note, text) ? { note: ivanSpan(p.canon?.note, text) } : {}) },
             result: { state: immediate ? 'pending' : p.echo.state, refuse: p.refuse ?? null, ...(p.echo.state === 'held' ? { hold_ms: p.echo.hold_ms ?? 8000 } : {}) },
           }).select('id').single()
           if (recErr || !aRec?.id) {
