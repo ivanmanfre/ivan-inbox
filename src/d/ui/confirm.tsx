@@ -14,7 +14,14 @@ import { Key } from './Key'
 // DANGER (`danger: true`: delete, spam, discard, stop contact, skip...): the confirm key is red,
 // the CANCEL key takes the focus, and Enter never confirms (today's ConfirmSheet `danger`).
 // A danger action is confirmed by a click or a tap on the red key, never by a stray Enter.
-export type ConfirmOpts = { title: ReactNode; message?: ReactNode; confirmText: string; cancelText?: string; verb?: string; danger?: boolean }
+//
+// REASON (optional): `reason: { chips }` adds one short free-text box with quick chips under the message;
+// the text is handed to `onReason` when the confirm key is pressed (never on cancel). Leaving it empty is fine.
+export type ConfirmReason = { chips?: readonly string[]; placeholder?: string }
+export type ConfirmOpts = {
+  title: ReactNode; message?: ReactNode; confirmText: string; cancelText?: string; verb?: string; danger?: boolean
+  reason?: ConfirmReason; onReason?: (text: string) => void
+}
 
 type Pending = ConfirmOpts & { resolve: (ok: boolean) => void }
 const OpenCtx = createContext(false)
@@ -72,6 +79,8 @@ function ConfirmBox({ p, done }: { p: Pending; done: (ok: boolean) => void }) {
   const ok = useRef<HTMLButtonElement>(null)
   const cancel = useRef<HTMLButtonElement>(null)
   const danger = Boolean(p.danger)
+  const [why, setWhy] = useState('')
+  const yes = () => { p.onReason?.(why.trim().slice(0, 200)); done(true) }
   useConfirmKeys({ danger, cancel, ok, onCancel: useCallback(() => done(false), [done]) })
   return (
     <>
@@ -79,9 +88,23 @@ function ConfirmBox({ p, done }: { p: Pending; done: (ok: boolean) => void }) {
       <div className={`d-confirm d-confirm-${f?.layout ?? 'desktop'}${danger ? ' d-confirm-danger' : ''}`} role="alertdialog" aria-modal="true">
         <h3>{p.title}</h3>
         {p.message != null && <div className="d-confirm-message">{p.message}</div>}
+        {p.reason && (
+          <div className="d-confirm-reason">
+            {p.reason.chips && p.reason.chips.length > 0 && (
+              <div className="d-confirm-chips">
+                {p.reason.chips.map(c => (
+                  <button key={c} type="button" className="d-confirm-chip" aria-pressed={why === c} data-verb="reason-chip"
+                    onClick={() => setWhy(why === c ? '' : c)}>{c}</button>
+                ))}
+              </div>
+            )}
+            <input className="d-confirm-reason-input" type="text" maxLength={200} value={why} aria-label="Reason, optional"
+              placeholder={p.reason.placeholder ?? 'Why? (optional)'} onChange={e => setWhy(e.target.value)} />
+          </div>
+        )}
         <div className="d-confirm-k">
           <Key ref={cancel} onClick={() => done(false)} verb="cancel">{p.cancelText ?? 'Cancel'}</Key>
-          <Key primary={!danger} danger={danger} ref={ok} onClick={() => done(true)} verb={p.verb ?? 'confirm'}>{p.confirmText}</Key>
+          <Key primary={!danger} danger={danger} ref={ok} onClick={yes} verb={p.verb ?? 'confirm'}>{p.confirmText}</Key>
         </div>
       </div>
     </>

@@ -159,7 +159,7 @@ describe('client posts stay accessible after promotion', () => {
     expect(lib.deleteDraft).not.toHaveBeenCalled()
     fireEvent.click(verb(card('held-ivan'), 'card-delete')!)
     fireEvent.click(document.querySelector('[data-verb="confirm"]')!)
-    await waitFor(() => expect(lib.deleteDraft).toHaveBeenCalledWith('held-ivan', null))
+    await waitFor(() => expect(lib.deleteDraft).toHaveBeenCalledWith('held-ivan', null, ''))
     expect(lib.deleteClientDraft).not.toHaveBeenCalled()
   })
 
