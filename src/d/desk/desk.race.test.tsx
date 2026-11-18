@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // The desk's races (Sol desk-ui r1 and r2, incl. the reviewer's r2 reproducers): Undo against a running commit,
-// cache, a history snapshot older than a realtime row, a send dropped before its ack, and a
+// holds restored from the cache, a history snapshot older than a realtime row, a send dropped before its ack, and a
 // failed answer that keeps its retry. Made-up rows only.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
