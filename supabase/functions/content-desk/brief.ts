@@ -1,0 +1,273 @@
+// The desk's preloaded brief: desk_brief_ivan() JSON rendered to compact text,
+// plus the handle maps the action layer resolves against. Pure (no I/O), so the
+// tests and the trigger replay run it on fixtures.
+//
+// Handles: every draft gets `#` + the shortest unique uuid prefix (min 5 hex).
+// The model never sees or types a uuid; the server only acts on a handle it
+// handed out in THIS brief.
+
+export type Draft = {
+  id: string; status: string; type: string | null
+  scheduled_at: string | null; published_at: string | null
+  first_line: string; title: string
+  belief: number | null; vehicle: string | null; recipe: string | null; qa_verdict: string | null
+  is_copy: boolean; photos: number; brain: boolean; human_edited: boolean
+  slot_kind: string | null; selling: boolean; chars: number; created_at: string; fixture: string | null
+}
+export type QueueRow = { queue_id: string; draft_id: string; slot_at: string; origin: string; first_line: string }
+export type CallLine = { id: string; ingested_at: string; status: string; topic: string; said: string; when: string | null; belief: string | null; vehicle: string | null; score: number | null; draft_id: string | null }
+export type BriefJson = {
+  as_of: string; today: string; this_monday: string
+  panel: Record<string, unknown>
+  drafts: Draft[]; queue: QueueRow[]
+  posts: { posts?: PostRow[]; bar?: number; median?: number; error?: string } | Record<string, unknown>
+  calls: { id: string; date: string | null; title: string; call_kind: string | null; booked: string | null; next_when: string | null; next_note: string }[]
+  call_lines: CallLine[]
+  beliefs: { n: string; belief: string; why: string }[]
+  rulings: { note: string; at: string; rule: string }[]
+  autopilot: { ran_at: string; week_start: string; mode: string; picked: number; scheduled: number; open_before: number; outcome: string; summary: string }[]
+  ideas: { reviewing: number; newest: { id: string; source: string; topic: string; at: string }[] }
+}
+export type PostRow = { url?: string; first_line?: string; posted_at?: string; impressions?: number | null; likes?: number | null; comments?: number | null; worked?: boolean; too_new?: boolean; boosted?: boolean; times_median?: number | null }
+
+export type Rendered = {
+  text: string
+  drafts: Map<string, Draft>        // handle -> draft
+  handleOf: Map<string, string>     // draft id -> handle
+  lines: Map<string, CallLine>      // L-handle -> call line
+  queueByDraft: Map<string, QueueRow>
+  weeks: WeekFill[]
+}
+
+export type WeekFill = {
+  week_start: string; label: string
+  dated: { handle: string; at: string; status: string; belief: number | null; vehicle: string | null; copy: boolean; event: boolean; poland: boolean; selling: boolean; first_line: string }[]
+  originals: number; cap: number; events: number; poland: number; selling: number
+  beliefs: Record<string, number>; missing_beliefs: number[]
+  open: string[]
+}
+
+const TZ = 'Europe/Warsaw'
+const EVENT_VEHICLES = new Set(['rant', 'dm_i_got', 'scene_dialogue', 'scene_quote', 'receipt', 'take'])
+
+export function warsaw(iso: string | null | undefined, withTime = true): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  const opts: Intl.DateTimeFormatOptions = withTime
+    ? { timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }
+    : { timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short' }
+  return new Intl.DateTimeFormat('en-GB', opts).format(d).replace(',', '')
+}
+
+/** The Warsaw calendar day (YYYY-MM-DD) of an instant. */
+export function warsawDay(iso: string): string {
+  const p = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))
+  return p
+}
+
+function addDays(day: string, n: number): string {
+  const d = new Date(day + 'T12:00:00Z')
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+export function makeHandles(ids: string[]): Map<string, string> {
+  const out = new Map<string, string>()
+  const hex = ids.map((id) => id.replace(/-/g, '').toLowerCase())
+  for (let i = 0; i < ids.length; i++) {
+    let len = 5
+    while (len < 32 && hex.some((h, j) => j !== i && h.startsWith(hex[i].slice(0, len)))) len++
+    out.set(ids[i], '#' + hex[i].slice(0, len))
+  }
+  return out
+}
+
+const clip = (s: string | null | undefined, n: number) => {
+  const t = (s ?? '').replace(/\s+/g, ' ').trim()
+  return t.length > n ? t.slice(0, n - 1) + '…' : t
+}
+
+/** Keep only the unfinished drafts Ivan's own Review shows (cb34_p2_safe_drafts read with his session),
+ *  and take the brain-member flag from the same view. Scheduled and published rows are never filtered.
+ *  `visible` null = the view could not be read; the brief is then used unfiltered. */
+export function applyVisibility(b: BriefJson, visible: Map<string, boolean> | null): BriefJson {
+  if (!visible) return b
+  const unfinished = new Set(['review', 'approved', 'error', 'generating'])
+  return {
+    ...b,
+    drafts: (b.drafts ?? []).filter((d) => !unfinished.has(d.status) || visible.has(d.id) || !!d.fixture)
+      .map((d) => (visible.get(d.id) ? { ...d, brain: true } : d)),
+  }
+}
+
+export function render(b: BriefJson, recent: { role: string; origin: string; body: string; created_at: string }[] = [],
+  jobs: { title: string; status: string; created_at: string; t3_link: string | null }[] = []): Rendered {
+  const drafts = b.drafts ?? []
+  const handleOf = makeHandles(drafts.map((d) => d.id))
+  const byHandle = new Map<string, Draft>()
+  for (const d of drafts) byHandle.set(handleOf.get(d.id)!, d)
+  const queueByDraft = new Map<string, QueueRow>()
+  for (const q of b.queue ?? []) queueByDraft.set(q.draft_id, q)
+  const slots = Array.isArray((b.panel as { slots?: unknown }).slots) ? (b.panel as { slots: { draft_id: string | null; belief: number | null; vehicle: string | null }[] }).slots : []
+  const slotOf = new Map<string, { belief: number | null; vehicle: string | null }>()
+  for (const s of slots) if (s.draft_id) slotOf.set(s.draft_id, s)
+  const beliefOf = (d: Draft) => d.belief ?? slotOf.get(d.id)?.belief ?? null
+  const vehicleOf = (d: Draft) => d.vehicle ?? slotOf.get(d.id)?.vehicle ?? null
+
+  const L: string[] = []
+  const now = b.as_of
+  L.push(`NOW: ${warsaw(now)} Warsaw time (today ${b.today}). This week starts Mon ${b.this_monday}.`)
+
+  // ---- beliefs
+  L.push('', 'THE 5 BELIEFS (kept):')
+  for (const x of b.beliefs ?? []) L.push(`- Belief ${x.n}: ${x.belief}`)
+
+  // ---- weeks
+  const weeks: WeekFill[] = []
+  const quotas = Array.isArray((b.panel as { quotas?: unknown }).quotas) ? (b.panel as { quotas: { slot_kind: string; per_week: number | string | null; every_n_weeks: number | null; vehicle: string | null; belief: number | null; note: string }[] }).quotas : []
+  const cap = quotas.filter((q) => q.slot_kind !== 'outlier_copy_extra' && (q.every_n_weeks ?? 1) === 1 && q.per_week != null)
+    .reduce((a, q) => a + Number(q.per_week), 0) || 5
+  for (const [i, label] of [[0, 'THIS WEEK'], [7, 'NEXT WEEK'], [14, 'WEEK AFTER NEXT']] as const) {
+    const ws = addDays(b.this_monday, i)
+    const we = addDays(ws, 7)
+    const dated = drafts.filter((d) => {
+      const at = d.status === 'published' ? (d.published_at ?? d.scheduled_at) : d.scheduled_at
+      if (!at || !['review', 'approved', 'scheduled', 'published'].includes(d.status)) return false
+      const day = warsawDay(at)
+      return day >= ws && day < we
+    }).map((d) => {
+      const at = (d.status === 'published' ? (d.published_at ?? d.scheduled_at) : d.scheduled_at)!
+      const v = vehicleOf(d)
+      return {
+        handle: handleOf.get(d.id)!, at, status: d.status, belief: beliefOf(d), vehicle: v, copy: d.is_copy,
+        event: !d.selling && (d.slot_kind === 'business_event' || (!d.slot_kind && !!v && EVENT_VEHICLES.has(v))),
+        poland: d.slot_kind === 'poland_with_him' || v === 'poland_place', selling: d.selling, first_line: d.first_line,
+      }
+    }).sort((a, z) => a.at.localeCompare(z.at))
+    const orig = dated.filter((x) => !x.copy)
+    const beliefs: Record<string, number> = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 }
+    for (const x of orig) if (x.belief) beliefs[String(x.belief)]++
+    const w: WeekFill = {
+      week_start: ws, label, dated, originals: orig.length, cap,
+      events: orig.filter((x) => x.event).length, poland: orig.filter((x) => x.poland).length,
+      selling: orig.filter((x) => x.selling).length, beliefs,
+      missing_beliefs: [1, 2, 3, 4, 5].filter((n) => beliefs[String(n)] === 0), open: [],
+    }
+    if (w.originals < cap) w.open.push(`${cap - w.originals} of ${cap} original slots still open`)
+    if (w.poland < 1) w.open.push('Poland-with-him post (belief 5, vehicle poland_place) not dated')
+    if (w.events < 2) w.open.push(`${2 - w.events} of 2 business-event posts not dated`)
+    weeks.push(w)
+  }
+  for (const w of weeks) {
+    L.push('', `${w.label} (Mon ${w.week_start} to Sun ${addDays(w.week_start, 6)}): ${w.originals} originals dated of ${w.cap}, ${w.dated.length - w.originals} ${w.dated.length - w.originals === 1 ? 'copy' : 'copies'} (extras).`)
+    for (const x of w.dated) {
+      const q = queueByDraft.get(byHandle.get(x.handle)!.id)
+      L.push(`- ${warsaw(x.at)} ${x.handle} [${x.status}${q ? ', queued ' + q.origin : ''}] belief ${x.belief ?? '-'} vehicle ${x.vehicle ?? '-'}${x.copy ? ' COPY' : ''}${x.poland ? ' POLAND' : ''}${x.event ? ' EVENT' : ''}${x.selling ? ' SELLING' : ''}: "${clip(x.first_line, 110)}"`)
+    }
+    if (!w.dated.length) L.push('- nothing dated')
+    const unlabeled = w.dated.filter((x) => !x.copy && !x.belief).length
+    L.push(`  belief counts (originals): ${Object.entries(w.beliefs).map(([k, v]) => `B${k}=${v}`).join(' ')}; ` +
+      (unlabeled ? `${unlabeled} of ${w.originals} originals have NO belief label, so which belief is missing cannot be known for sure; among labeled ones missing: ` : 'missing beliefs: ') +
+      (w.missing_beliefs.length ? w.missing_beliefs.map((n) => 'B' + n).join(', ') : 'none'))
+    if (w.open.length) L.push(`  open quota: ${w.open.join('; ')}`)
+  }
+  L.push('', 'QUOTA RULES (weekly): ' + quotas.map((q) => `${q.slot_kind}${q.per_week != null ? ' ' + Number(q.per_week) + '/wk' : ''}${(q.every_n_weeks ?? 1) > 1 ? ' every ' + q.every_n_weeks + ' wks' : ''}`).join('; ') + '. Max 2 originals per belief per week. Copies are extras, never counted.')
+  const enforce = (b.panel as { enforce?: unknown }).enforce
+  L.push(`Quota enforcement: ${typeof enforce === 'string' ? enforce : JSON.stringify(enforce ?? 'unknown')}.`)
+
+  // ---- summary: counts precomputed so the model never counts rows itself
+  {
+    const rv = drafts.filter((d) => d.status === 'review')
+    const byStatus: Record<string, number> = {}
+    for (const d of drafts) byStatus[d.status] = (byStatus[d.status] ?? 0) + 1
+    const posts = ((b.posts as { posts?: PostRow[] }).posts ?? []).filter((p) => p.posted_at)
+    const last = posts.slice().sort((a, z) => String(z.posted_at).localeCompare(String(a.posted_at)))[0]
+    const best = posts.filter((p) => !p.boosted).sort((a, z) => (z.impressions ?? 0) - (a.impressions ?? 0))[0]
+    const S: string[] = []
+    S.push(`Review: ${rv.length} drafts (${rv.filter((d) => !d.is_copy).length} originals, ${rv.filter((d) => d.is_copy).length} copies; ${rv.filter((d) => d.scheduled_at).length} dated, ${rv.filter((d) => !d.scheduled_at).length} undated; ${rv.filter((d) => d.brain).length} brain drafts that take Keep/Drop; ${rv.filter((d) => d.recipe === 'cp17').length} from the new writer recipe; QA verdicts ${Object.entries(rv.reduce((a, d) => (a[d.qa_verdict ?? 'none'] = (a[d.qa_verdict ?? 'none'] ?? 0) + 1, a), {} as Record<string, number>)).map(([k, v]) => `${k} ${v}`).join(', ')}).`)
+    S.push(`All live drafts by status: ${Object.entries(byStatus).map(([k, v]) => `${k} ${v}`).join(', ')}.`)
+    for (const w of weeks) S.push(`${w.label.toLowerCase()}: ${w.originals} of ${w.cap} originals dated, ${w.dated.length - w.originals} ${w.dated.length - w.originals === 1 ? 'copy' : 'copies'}, ${w.dated.filter((x) => x.status === 'published').length} already published.`)
+    if (last) S.push(`Last post out: ${warsaw(last.posted_at)} "${clip(last.first_line, 70)}" (${last.impressions ?? '?'} impressions so far).`)
+    if (best) S.push(`Best post of the last 21 days by impressions: "${clip(best.first_line, 70)}" ${warsaw(best.posted_at, false)}, ${best.impressions} impressions.`)
+    S.push(`Ideas waiting: ${b.ideas?.reviewing ?? 0}. Queue armed (next 21 days): ${(b.queue ?? []).length} posts, ${(b.queue ?? []).filter((x) => x.origin === 'autopilot').length} picked by the autopilot.`)
+    L.splice(1, 0, '', 'SUMMARY (exact counts, use these):', ...S.map((x) => '- ' + x))
+  }
+
+  // ---- autopilot
+  if (b.autopilot?.length) {
+    const a = b.autopilot[0]
+    L.push('', `AUTOPILOT last run ${warsaw(a.ran_at)} (week ${a.week_start}, ${a.mode}): picked ${a.picked}, scheduled ${a.scheduled}, open before ${a.open_before}, outcome ${a.outcome}. ${clip(a.summary, 300)}`)
+  }
+  // ---- queue
+  if (b.queue?.length) {
+    L.push('', 'PUBLISH QUEUE (armed, next 21 days):')
+    for (const q of b.queue) L.push(`- ${warsaw(q.slot_at)} ${handleOf.get(q.draft_id) ?? '(not in drafts)'} ${q.origin}: "${clip(q.first_line, 90)}"`)
+  }
+
+  // ---- review
+  const review = drafts.filter((d) => d.status === 'review' || d.status === 'error' || d.status === 'generating' || d.status === 'approved')
+  L.push('', `DRAFTS NOT YET SCHEDULED OR PUBLISHED (${review.length}). Format: handle [status] date | belief | vehicle | recipe | flags: first line`)
+  for (const d of review) {
+    const flags = [d.is_copy && 'copy', d.brain && 'brain(keep/drop)', d.human_edited && 'hand-edited', d.photos ? `${d.photos} photo` : 'no photo', d.fixture && 'TEST-FIXTURE'].filter(Boolean).join(',')
+    L.push(`- ${handleOf.get(d.id)} [${d.status}${d.qa_verdict ? '/' + d.qa_verdict : ''}] ${d.scheduled_at ? warsaw(d.scheduled_at) : 'undated'} | B${beliefOf(d) ?? '-'} | ${vehicleOf(d) ?? '-'} | ${d.recipe ?? '-'} | ${flags}: "${clip(d.first_line, 120)}"`)
+  }
+
+  // ---- posts
+  const posts = (b.posts as { posts?: PostRow[] }).posts ?? []
+  const bar = (b.posts as { bar?: number }).bar
+  L.push('', `RECENT PUBLISHED POSTS (last 21 days; "worked" = 1.5x his organic median, bar ${bar ?? '?'} impressions; boosted never counts; under 48h = too new):`)
+  for (const p of posts.slice().sort((a, z) => String(z.posted_at).localeCompare(String(a.posted_at)))) {
+    L.push(`- ${warsaw(p.posted_at)} "${clip(p.first_line, 90)}": ${p.impressions ?? '?'} impressions, ${p.likes ?? 0} likes, ${p.comments ?? 0} comments, ${p.times_median ?? '?'}x median${p.boosted ? ', BOOSTED' : ''}${p.too_new ? ', too new' : p.worked ? ', WORKED' : ''}`)
+  }
+  const pv = Array.isArray((b.panel as { pv48?: unknown }).pv48) ? (b.panel as { pv48: { posted_at: string; first_line: string; contacted_viewers_48h: number | null; contacted_fit_viewers_48h: number | null; baseline_per_48h: number | null; window_open: boolean }[] }).pv48 : []
+  if (pv.length) {
+    L.push('', 'PROFILE VIEWS FROM CONTACTED PEOPLE within 48h of each post (baseline = normal 48h rate):')
+    for (const p of pv) L.push(`- ${warsaw(p.posted_at)} "${clip(p.first_line, 70)}": ${p.contacted_viewers_48h ?? 0} contacted viewers (${p.contacted_fit_viewers_48h ?? 0} fit), baseline ${p.baseline_per_48h != null ? Number(p.baseline_per_48h).toFixed(1) : '?'}${p.window_open ? ', window still open' : ''}`)
+  }
+
+  // ---- calls
+  if (b.calls?.length) {
+    L.push('', 'LAST CALL REVIEWS:')
+    for (const c of b.calls) L.push(`- ${warsaw(c.date, false)} ${c.call_kind ?? ''}${c.booked != null ? ', next step booked ' + c.booked : ''}${c.next_when ? ' (' + c.next_when + ')' : ''}${c.next_note ? ': ' + clip(c.next_note, 140) : ''}`)
+  }
+  const lines = new Map<string, CallLine>()
+  if (b.call_lines?.length) {
+    L.push('', 'POSTABLE LINES FROM CALLS (his own words, from the call extractor). Handle L1.. for draft_line actions:')
+    b.call_lines.forEach((c, i) => {
+      const h = 'L' + (i + 1)
+      lines.set(h, c)
+      L.push(`- ${h} ${warsaw(c.ingested_at, false)} [${c.status}${c.draft_id ? ', draft exists ' + (handleOf.get(c.draft_id) ?? '') : ''}] B${c.belief ?? '-'} ${c.vehicle ?? ''}: ${clip(c.topic, 120)} | said: "${clip(c.said, 220)}"`)
+    })
+  }
+  const br = Array.isArray((b.panel as { booking_reasons?: unknown }).booking_reasons) ? (b.panel as { booking_reasons: { call_date: string; reason_class: string; quote: string }[] }).booking_reasons : []
+  if (br.length) {
+    L.push('', 'WHY PEOPLE BOOKED (verbatim, newest first):')
+    for (const r of br.slice(0, 8)) L.push(`- ${warsaw(r.call_date, false)} ${r.reason_class}: "${clip(r.quote, 160)}"`)
+  }
+
+  // ---- ideas
+  if (b.ideas) {
+    L.push('', `IDEAS: ${b.ideas.reviewing} waiting in Ideas (reviewing). Newest: ` + (b.ideas.newest ?? []).map((i) => `${i.source}: ${clip(i.topic, 70)}`).join(' | '))
+  }
+
+  // ---- rulings
+  if (b.rulings?.length) {
+    L.push('', "IVAN'S DATED RULINGS ON CONTENT (newest first; follow them):")
+    for (const r of b.rulings) L.push(`- ${String(r.at).slice(0, 10)}: ${clip(r.rule, 240)}`)
+  }
+
+  // ---- T3 jobs
+  if (jobs.length) {
+    L.push('', 'CLOUD JOBS (T3):')
+    for (const j of jobs) L.push(`- ${warsaw(j.created_at)} "${clip(j.title, 80)}": ${j.status}`)
+  }
+
+  // ---- recent desk messages
+  if (recent.length) {
+    L.push('', 'LAST DESK MESSAGES (oldest first):')
+    for (const m of recent) L.push(`- ${m.role === 'user' ? 'Ivan' : m.origin === 'proactive' ? 'Desk (wrote first)' : 'Desk'} ${warsaw(m.created_at)}: ${clip(m.body, 500)}`)
+  }
+
+  return { text: L.join('\n'), drafts: byHandle, handleOf, lines, queueByDraft, weeks }
+}

@@ -38,3 +38,8 @@ verify_jwt = false
 
 [functions.content-stranger-read]
 verify_jwt = false
+
+# Content Desk: the handler verifies the signed-in inbox owner with auth.getUser; the
+# trigger tick (pg_cron) authenticates with x-desk-secret in the handler.
+[functions.content-desk]
+verify_jwt = false
