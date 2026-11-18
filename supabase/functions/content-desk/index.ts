@@ -18,7 +18,8 @@ import { render, applyVisibility, type BriefJson, type Rendered } from './brief.
 import { buildPrompt } from './prompt.ts'
 import { parse, plain, type Act } from './parse.ts'
 import { askDesk, askDeskStream, LlmError, DESK_MODEL } from './llm.ts'
-import { plan, runUndo, type ActionEcho, type Ctx } from './actions.ts'
+import { plan, planForTarget, runUndo, UndoRefused, sha256Hex, firstLineOf, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
+import { authorize } from './auth.ts'
 import { planTriggers } from './triggers.ts'
 import { queueT3Job, sweepT3Stalls } from '../_shared/desk-t3.ts'
 import { unfurl } from '../inbox-claude/unfurl.ts'
@@ -45,6 +46,34 @@ const MAX_ATTACH = 4
 const RATE_WINDOW_MS = 10 * 60 * 1000
 const RATE_MAX = 40
 const DESK_URL = 'https://ivanmanfre.github.io/ivan-inbox/#exp/d/content/desk'
+
+// Stable codes and fixed client text: no upstream or database text ever reaches the browser or the logs.
+const CLIENT_TEXT: Record<string, string> = {
+  rate_limited: 'Too many messages in 10 minutes. Give it a minute.',
+  desk_llm_unavailable: 'The desk model did not answer. Send it again in a moment.',
+  desk_llm_not_configured: 'The desk is not set up right now.',
+  turn_in_progress: 'That message is still being answered.',
+  key_reused: 'That message id was already used for a different message.',
+  desk_failed: 'The desk could not answer just now. Send it again in a moment.',
+}
+const safeCode = (c: string) => (c in CLIENT_TEXT ? c : 'desk_failed')
+// Plain, fixed reasons for a failed action (no raw database text in the chat).
+function failText(e: unknown): string {
+  const m = e instanceof Error ? e.message : String(e)
+  if (e instanceof UndoRefused) return m === 'changed_since' ? 'It was changed again since, so I left it as it is.' : 'That post is gone.'
+  const known: Record<string, string> = {
+    qa_override_missing: 'It failed its quality check, and you did not say to approve it anyway.',
+    queue_cancel_failed: 'I could not clear its queued copy, so I deleted nothing.',
+    writer_unavailable: 'The writer did not take it. Nothing changed.',
+    writer_unconfirmed: 'The writer did not confirm in time. It may still run.',
+    idea_not_ours: 'That call line belongs to another workspace, so I left it.',
+    t3_queue_failed: 'The cloud job could not be queued.',
+    past_date: 'That time is in the past.', bad_status: 'The post is not in a state that allows this.',
+    not_found: 'That post is gone.', changed: 'The post changed since, so I did nothing.',
+  }
+  for (const [k, v] of Object.entries(known)) if (m.includes(k)) return v
+  return 'Something went wrong, so nothing changed.'
+}
 
 function cors(origin: string | null): Record<string, string> {
   const ok = !!origin && (origin === 'https://ivanmanfre.github.io' || /^http:\/\/localhost:\d{4,5}$/.test(origin))
@@ -242,18 +271,28 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
       try {
         // the user's row (idempotent on client_key: a retried send is the same message) and the
         // rate cap run alongside the brief read, so the model call starts as early as possible
-        const saveUser = (async () => {
+        // Sol r1 #5: a replayed client_key never runs the model or any action again.
+        const saveUser = (async (): Promise<{ id: string; replay: boolean }> => {
           const { data, error } = await svc.from('desk_messages').insert({ user_id: userId, role: 'user', origin: 'operator', body: text, meta: userMeta, client_key: clientKey }).select('id').single()
-          if (!error) return data as { id: string }
-          const { data: again } = await svc.from('desk_messages').select('id').eq('user_id', userId).eq('client_key', clientKey).maybeSingle()
-          if (!again) throw new Error('save_failed')
-          return again as { id: string }
+          if (!error) return { id: (data as { id: string }).id, replay: false }
+          const { data: again } = await svc.from('desk_messages').select('id, body, meta').eq('user_id', userId).eq('client_key', clientKey).maybeSingle()
+          if (!again) throw new LlmError('desk_failed', 'save failed')
+          const sameAtt = JSON.stringify((again.meta as { attachments?: unknown } | null)?.attachments ?? []) === JSON.stringify(attachments)
+          if (again.body !== text || !sameAtt) throw new LlmError('key_reused', 'key reused')
+          return { id: again.id, replay: true }
         })()
         const rate = svc.from('desk_messages').select('id', { count: 'exact', head: true })
           .eq('user_id', userId).eq('role', 'user').gte('created_at', new Date(Date.now() - RATE_WINDOW_MS).toISOString())
         const rest = Promise.all([rate, loadBrief(svc, mode.fixtures), recentMessages(svc, userId, mode.evalMode), openJobs(svc, userId), visibleDrafts(userDb)])
         const userRow = await saveUser
         emit('ack', { user_message_id: userRow.id, client_key: clientKey })
+        if (userRow.replay) {
+          rest.catch(() => {})
+          const { data: prior } = await svc.from('desk_messages').select('*').eq('user_id', userId).eq('role', 'assistant')
+            .filter('meta->>reply_to', 'eq', userRow.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
+          if (prior && prior.status !== 'streaming') { emit('final', { message: prior }); return }
+          throw new LlmError('turn_in_progress', 'in progress')
+        }
         const [rateRes, brief, recent, jobs, visible] = await rest
         if ((rateRes.count ?? 0) > RATE_MAX) throw new LlmError('rate_limited', 'Too many messages in 10 minutes.')
         timings.ack_ms = Date.now() - t0
@@ -297,10 +336,11 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         // insert the assistant row now so actions can reference it
         const { data: aRow } = await svc.from('desk_messages').insert({
           user_id: userId, role: 'assistant', origin: 'desk', body: reply, status: 'streaming',
-          meta: { model: m1.model, ...(mode.evalMode ? { test: true } : {}) },
+          meta: { model: m1.model, reply_to: userRow.id, client_key: clientKey, ...(mode.evalMode ? { test: true } : {}) },
         }).select('id').single()
-        const messageId = aRow?.id as string
-        assistantId = messageId ?? null
+        if (!aRow?.id) throw new LlmError('desk_failed', 'answer row')
+        const messageId = aRow.id as string
+        assistantId = messageId
 
         const ctx: Ctx = {
           userDb, svc, userId, messageId, brief: r, attachments, text, env,
@@ -315,15 +355,46 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         const echoes: ActionEcho[] = []
         let chips = parsed.chips
         let wrote = false
+        // 1) plan every proposed action (no writes)
+        const planned: { act: Act; p: Planned }[] = []
         for (const act of parsed.actions.slice(0, 6)) {
           toolCalls++
-          const p = await plan(ctx, act)
+          planned.push({ act, p: await plan(ctx, act) })
+        }
+        // 2) one reasoned check: did Ivan's own message ask for exactly this? (Sol r1 #1)
+        const writable = planned.filter((x) => x.p.run)
+        const verdicts = await authorize(text, writable.map((x) => x.p.describe ?? x.p.echo.label))
+        writable.forEach((x, i) => {
+          if (verdicts[i]) {
+            if (x.act.kind === 'approve' && /FAILED its quality check/.test(x.p.describe ?? '')) x.act._qa_override = true
+            return
+          }
+          x.p.run = undefined
+          x.p.refuse = 'not_asked'
+          x.p.echo = { ...x.p.echo, state: 'failed', undo: false, hold_ms: undefined, detail: 'not_asked',
+            label: `Not done: ${x.p.describe ?? 'that'}. Tap below if you want it.` }
+          if (x.p.command) chips = [{ label: `Do it: ${x.p.command}`.slice(0, 60), send: x.p.command }, ...chips].slice(0, 3)
+        })
+        timings.auth_ms = Date.now() - t0
+        // 3) a durable journal row first, then the write (Sol r1: no write without its record)
+        const heldIds: { id: string; hold_ms: number }[] = []
+        for (const { act, p } of planned) {
           if (mode.dry && p.run) { const label = p.echo.label; p.run = async () => ({ result: { dry: true, label } }) }
-          const { data: aRec } = await svc.from('desk_actions').insert({
-            user_id: userId, message_id: messageId, kind: p.echo.kind, target_id: p.echo.target ? ctx.brief.drafts.get(p.echo.target.handle)?.id ?? null : null,
-            args: { ...act, ...(mode.fixtures ? { _fixtures: true } : {}), ...(mode.dry ? { _dry: true } : {}) }, result: { state: p.echo.state, refuse: p.refuse ?? null },
+          let snapshot: Snapshot | null = null
+          if (p.target_id && p.run) {
+            const { data: cur } = await svc.from('carousel_drafts').select('updated_at, post_body').eq('id', p.target_id).maybeSingle()
+            if (cur) snapshot = { target_id: p.target_id, updated_at: cur.updated_at, first_line_sha: await sha256Hex(firstLineOf(cur.post_body)) }
+          }
+          const { data: aRec, error: recErr } = await svc.from('desk_actions').insert({
+            user_id: userId, message_id: messageId, kind: p.echo.kind, target_id: p.target_id ?? null,
+            args: { ...act, ...(snapshot ? { _snapshot: snapshot } : {}), ...(mode.fixtures ? { _fixtures: true } : {}), ...(mode.dry ? { _dry: true } : {}) },
+            result: { state: p.echo.state, refuse: p.refuse ?? null },
           }).select('id').single()
-          const echo: ActionEcho = { id: aRec?.id ?? crypto.randomUUID(), ...p.echo }
+          if (recErr || !aRec?.id) {
+            echoes.push({ id: crypto.randomUUID(), ...p.echo, state: 'failed', undo: false, label: 'I could not record this action, so I did not do it.' })
+            continue
+          }
+          const echo: ActionEcho = { id: aRec.id, ...p.echo }
           if (p.chips?.length) chips = [...p.chips, ...chips].slice(0, 3)
           if (p.run && p.echo.state === 'done') {
             try {
@@ -335,21 +406,13 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
               await svc.from('desk_actions').update({ result: { state: 'done', value: res.result ?? null }, undo: res.undo ?? null }).eq('id', echo.id)
             } catch (e) {
               echo.state = 'failed'; echo.undo = false
-              echo.label = `Could not do it: ${plain(e instanceof Error ? e.message : String(e)).slice(0, 160)}`
-              await svc.from('desk_actions').update({ result: { state: 'failed', error: String(e).slice(0, 300) } }).eq('id', echo.id)
+              echo.label = `Could not do it: ${failText(e)}`
+              console.error('desk action failed', echo.kind)
+              await svc.from('desk_actions').update({ result: { state: 'failed', error: failText(e) } }).eq('id', echo.id)
             }
           }
+          if (echo.state === 'held') heldIds.push({ id: echo.id, hold_ms: echo.hold_ms ?? 8000 })
           echoes.push(echo)
-          // A held action commits on the SERVER when its hold ends, unless Undo's compare-and-set
-          // (held -> cancelled) wins first. No browser timer decides anything (Sol desk-ui r1-r3).
-          // The eval runner drives commit itself, so eval turns are left held.
-          if (echo.state === 'held' && !mode.evalMode && aRec?.id) {
-            const actionId = aRec.id as string
-            later((async () => {
-              await new Promise((r) => setTimeout(r, (echo.hold_ms ?? 8000) + 500))
-              await settle(svc, userDb, userId, 'commit', actionId, false)
-            })())
-          }
         }
         if (wrote) invalidate()
         // The reply streamed before the actions ran. If one failed, say so in the body too, so the
@@ -368,15 +431,31 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           ...(echoes.length ? { actions: echoes } : {}), ...(chips.length ? { chips } : {}), ...(t3 ? { t3_job: t3 } : {}),
           ...(mode.evalMode ? { test: true } : {}),
         }
-        const { data: final } = await svc.from('desk_messages').update({ status: 'done', body: finalBody, meta, updated_at: new Date().toISOString() })
+        const { data: final, error: finErr } = await svc.from('desk_messages').update({ status: 'done', body: finalBody, meta, updated_at: new Date().toISOString() })
           .eq('id', messageId).select('*').single()
+        if (finErr || !final) throw new LlmError('desk_failed', 'final')
         emit('final', { message: final })
+        // Sol r1 #6: a hold starts when Ivan can see it (the final is out); the server commits at
+        // hold_until unless Undo's compare-and-set wins first. The eval runner commits itself.
+        const shownAt = Date.now()
+        for (const h of heldIds) {
+          const holdUntil = new Date(shownAt + h.hold_ms).toISOString()
+          const { data: a } = await svc.from('desk_actions').select('result').eq('id', h.id).maybeSingle()
+          await svc.from('desk_actions').update({ result: { ...(a?.result ?? {}), hold_until: holdUntil } }).eq('id', h.id).filter('result->>state', 'eq', 'held')
+          if (!mode.evalMode) {
+            later((async () => {
+              await new Promise((r) => setTimeout(r, h.hold_ms + 300))
+              await settle(svc, userDb, userId, 'commit', h.id, false, true)
+            })())
+          }
+        }
       } catch (e) {
-        const code = e instanceof LlmError ? e.code : 'desk_failed'
-        const detail = e instanceof Error ? e.message.slice(0, 300) : String(e)
-        console.error('desk turn failed', code, detail)
+        const code = safeCode(e instanceof LlmError ? e.code : 'desk_failed')
+        const detail = CLIENT_TEXT[code]
+        console.error('desk turn failed', code)
+        if (code === 'turn_in_progress' || code === 'key_reused') { emit('error', { error: code, detail }); return }
         // settle the answer row this turn already opened, or open one, so nothing stays "streaming"
-        const errFields = { status: 'error', body: 'The desk could not answer just now. Send it again in a moment.',
+        const errFields = { status: 'error', body: detail,
           meta: { error: code, client_key: clientKey, ...(mode.evalMode ? { test: true } : {}) }, updated_at: new Date().toISOString() }
         const { data: errRow } = assistantId
           ? await svc.from('desk_messages').update(errFields).eq('id', assistantId).select('*').single()
@@ -403,7 +482,7 @@ async function claimState(svc: any, a: { id: string; result: Record<string, unkn
 }
 
 // deno-lint-ignore no-explicit-any
-async function settle(svc: any, userDb: any, userId: string, op: string, actionId: string, dryReq = false) {
+async function settle(svc: any, userDb: any, userId: string, op: string, actionId: string, dryReq = false, auto = false) {
   if (!/^[0-9a-f-]{36}$/i.test(actionId)) return { ok: false, error: 'bad_action' }
   const { data: a } = await svc.from('desk_actions').select('*').eq('id', actionId).eq('user_id', userId).maybeSingle()
   if (!a) return { ok: false, error: 'not_found' }
@@ -415,57 +494,55 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
     if (!await claimState(svc, a, 'done', 'undoing')) return { ok: false, error: 'nothing_to_undo' }
     try { await runUndo({ userDb, svc }, a.undo) } catch (e) {
       await svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'done' } }).eq('id', actionId)
-      return { ok: false, error: String(e).slice(0, 200) }
+      return { ok: false, error: e instanceof UndoRefused ? 'changed_since' : 'undo_failed', detail: failText(e) }
     }
     await svc.from('desk_actions').update({ undone_at: new Date().toISOString(), result: { ...(a.result ?? {}), state: 'undone' } }).eq('id', actionId)
     newState = 'undone'; label = 'Undone.'
+    invalidate()
   } else if (op === 'cancel') {
     if (state !== 'held' || !await claimState(svc, a, 'held', 'cancelled')) return { ok: false, error: 'not_held' }
     newState = 'cancelled'; label = 'Cancelled. Nothing changed.'
   } else {
     if (state !== 'held') return { ok: false, error: 'not_held' }
     if (Date.now() - Date.parse(a.created_at) > HOLD_COMMIT_WINDOW_MS) return { ok: false, error: 'hold_expired' }
+    // the server timer commits only once the hold Ivan saw has run out; a tap ("Do it now") may commit early
+    const holdUntil = (a.result as { hold_until?: string } | null)?.hold_until
+    if (auto && (!holdUntil || Date.now() < Date.parse(holdUntil) - 200)) return { ok: false, error: 'hold_not_over' }
     // exactly one commit wins, and a cancel that already won makes this one refuse
     if (!await claimState(svc, a, 'held', 'committing')) return { ok: false, error: 'not_held' }
-    // rebuild the same plan against a fresh brief and run it
-    const [b, recent] = await Promise.all([loadBrief(svc, !!(a.args as { _fixtures?: boolean })?._fixtures || false, true), recentMessages(svc, userId)])
-    const r = render(b.json, recent)
-    const ctx: Ctx = { userDb, svc, userId, messageId: a.message_id, brief: r, attachments: [], text: '', env }
-    // the brief may be rebuilt without fixtures; retry with fixtures when the draft is a fixture
-    let p = await plan(ctx, a.args as Act)
-    if (p.refuse === 'unknown_draft') {
-      const b2 = await loadBrief(svc, true, true)
-      ctx.brief = render(b2.json, recent)
-      p = await plan(ctx, a.args as Act)
-    }
-    if (!p.run || p.echo.state !== 'held') {
-      await svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'failed', error: p.refuse ?? 'changed' } }).eq('id', actionId)
-      newState = 'failed'; label = 'The post changed since, so I did nothing.'
-    } else {
-      try {
-        const isDry = dryReq || (a.args as { _dry?: boolean })?._dry === true
-        const res = isDry ? { result: { dry: true } } : await p.run()
-        await svc.from('desk_actions').update({ result: { state: 'done', value: res.result ?? null } }).eq('id', actionId)
-        newState = 'done'
-        label = p.echo.label.replace(/^Approving/, 'Approved').replace(/^Deleting/, 'Deleted').replace(/^Taking (.*) off the schedule$/, 'Took $1 off the schedule')
-      } catch (e) {
-        await svc.from('desk_actions').update({ result: { state: 'failed', error: String(e).slice(0, 300) } }).eq('id', actionId)
-        newState = 'failed'; label = `Could not do it: ${plain(e instanceof Error ? e.message : String(e)).slice(0, 160)}`
-      }
+    try {
+      const args = (a.args ?? {}) as Act & { _snapshot?: Snapshot; _dry?: boolean; _fixtures?: boolean }
+      const snap = args._snapshot
+      if (!snap?.target_id) throw new Error('changed')
+      // re-plan from the stored target UUID only (Sol r1 #2): never a handle, never a fuzzy match
+      const ctx: Ctx = { userDb, svc, userId, messageId: a.message_id, brief: render(emptyBrief()), attachments: [], text: '', env }
+      const p = await planForTarget(ctx, { ...args }, snap)
+      if (!('echo' in p) || !p.run || p.echo.state !== 'held') throw new Error(('refuse' in p && p.refuse) || 'changed')
+      const isDry = dryReq || args._dry === true
+      const res = isDry ? { result: { dry: true } } : await p.run()
+      await svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'done', value: res.result ?? null } }).eq('id', actionId)
+      newState = 'done'
+      label = p.echo.label.replace(/^Approving/, 'Approved').replace(/^Deleting/, 'Deleted').replace(/^Taking (.*) off the schedule$/, 'Took $1 off the schedule')
+    } catch (e) {
+      // a claimed action that throws anywhere ends failed, never stuck in "committing"
+      await svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'failed', error: failText(e) } }).eq('id', actionId)
+      newState = 'failed'; label = `Not done: ${failText(e)}`
     }
     invalidate()
   }
-  if (op === 'undo') invalidate()
-  // reflect the new state in the message's echo
+  // reflect the new state in the message's echo (the stored action is the source of truth)
   const { data: msg } = await svc.from('desk_messages').select('id, meta').eq('id', a.message_id).maybeSingle()
   if (msg) {
     const meta = msg.meta ?? {}
-    // after a commit, undo, cancel or failure nothing more can be undone from the echo
     const actions = (meta.actions ?? []).map((x: ActionEcho) => x.id === actionId ? { ...x, state: newState, label: label ?? x.label, undo: false } : x)
     const { data: updated } = await svc.from('desk_messages').update({ meta: { ...meta, actions }, updated_at: new Date().toISOString() }).eq('id', msg.id).select('*').single()
     return { ok: newState !== 'failed', message: updated }
   }
   return { ok: newState !== 'failed' }
+}
+
+function emptyBrief(): BriefJson {
+  return { as_of: new Date().toISOString(), today: '', this_monday: '', panel: {}, drafts: [], queue: [], posts: {}, calls: [], call_lines: [], beliefs: [], rulings: [], autopilot: [], ideas: { reviewing: 0, newest: [] } }
 }
 
 // ---- proactive tick -----------------------------------------------------------
@@ -493,8 +570,10 @@ async function tick(svc: any, opts: { dry: boolean }) {
   const fired: string[] = []
   for (const p of planned) {
     // claim the dedupe key first: a second tick racing this one cannot fire it twice
-    const { data: claim, error } = await svc.from('desk_triggers').insert({ kind: p.kind, dedupe_key: p.dedupe_key, payload: { artifact: p.artifact } }).select('id').single()
-    if (error || !claim) continue
+    // dedupe and the Warsaw-week cap in one locked transaction (desk_claim_trigger)
+    const { data: claimId, error } = await svc.rpc('desk_claim_trigger', { p_kind: p.kind, p_dedupe_key: p.dedupe_key, p_payload: { artifact: p.artifact }, p_cap: cap })
+    if (error || !claimId) continue
+    const claim = { id: claimId as string }
     if (p.kind === 't3_done') { fired.push(p.dedupe_key); continue } // the report RPC already wrote the message
     const { data: m } = await svc.from('desk_messages').insert({
       user_id: ALLOWED, role: 'assistant', origin: 'proactive', body: plain(p.body),
@@ -504,8 +583,9 @@ async function tick(svc: any, opts: { dry: boolean }) {
       await svc.from('desk_triggers').update({ message_id: m.id }).eq('id', claim.id)
       try {
         await notify(svc, { family: 'content_desk', source: 'content-desk', dedupe_key: `desk:${p.dedupe_key}`, severity: 'info',
-          title: 'Content Desk', body: plain(p.body).slice(0, 140), url: DESK_URL, push: true, tenant: 'ivan' })
-      } catch (e) { console.warn('desk push failed', String(e).slice(0, 200)) }
+          // no content in the notification row or the push: the words stay in the owner-only desk (Sol r1 #3)
+          title: 'Content Desk', body: 'You have a new message in your Content Desk.', url: DESK_URL, push: true, tenant: 'ivan' })
+      } catch { console.warn('desk push failed') }
     }
     fired.push(p.dedupe_key)
   }

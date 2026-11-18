@@ -212,7 +212,7 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
     .slice().sort((a, z) => String(z.created_at).localeCompare(String(a.created_at)))
   L.push('', `DRAFTS NOT YET SCHEDULED OR PUBLISHED (${review.length}), NEWEST FIRST. Format: handle [status] date | belief | vehicle | recipe | flags: first line`)
   for (const d of review) {
-    const flags = [d.is_copy && 'copy', d.brain && 'brain(keep/drop)', d.human_edited && 'hand-edited', d.photos ? `${d.photos} photo` : 'no photo', d.fixture && 'TEST-FIXTURE'].filter(Boolean).join(',')
+    const flags = [d.is_copy && 'copy', d.brain && 'brain(keep/drop)', d.human_edited && 'hand-edited', d.photos ? `${d.photos} photo` : 'no photo'].filter(Boolean).join(',')
     L.push(`- ${handleOf.get(d.id)} [${d.status}${d.qa_verdict ? '/' + d.qa_verdict : ''}] ${d.scheduled_at ? warsaw(d.scheduled_at) : 'undated'} | B${beliefOf(d) ?? '-'} | ${vehicleOf(d) ?? '-'} | ${d.recipe ?? '-'} | ${flags}: "${clip(d.first_line, 120)}"`)
   }
 
@@ -229,11 +229,7 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
     for (const p of pv) L.push(`- ${warsaw(p.posted_at)} "${clip(p.first_line, 70)}": ${p.contacted_viewers_48h ?? 0} contacted viewers (${p.contacted_fit_viewers_48h ?? 0} fit), baseline ${p.baseline_per_48h != null ? Number(p.baseline_per_48h).toFixed(1) : '?'}${p.window_open ? ', window still open' : ''}`)
   }
 
-  // ---- calls
-  if (b.calls?.length) {
-    L.push('', 'LAST CALL REVIEWS:')
-    for (const c of b.calls) L.push(`- ${warsaw(c.date, false)} ${c.call_kind ?? ''}${c.booked != null ? ', next step booked ' + c.booked : ''}${c.next_when ? ' (' + c.next_when + ')' : ''}${c.next_note ? ': ' + clip(c.next_note, 140) : ''}`)
-  }
+  // (call reviews are not shown: their dates read as call lines; the postable lines below are what matters)
   const lines = new Map<string, CallLine>()
   if (b.call_lines?.length) {
     L.push('', 'POSTABLE LINES FROM CALLS (his own words, from the call extractor; newest call first). "call" = the day he SAID it. Handle L1.. for draft_line actions:')
@@ -246,7 +242,7 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
   }
   const br = Array.isArray((b.panel as { booking_reasons?: unknown }).booking_reasons) ? (b.panel as { booking_reasons: { call_date: string; reason_class: string; quote: string }[] }).booking_reasons : []
   if (br.length) {
-    L.push('', 'WHY PEOPLE BOOKED (verbatim, newest first):')
+    L.push('', 'WHY PEOPLE BOOKED (prospects\' own words on calls, newest first; never Ivan\'s call lines):')
     for (const r of br.slice(0, 8)) L.push(`- ${warsaw(r.call_date, false)} ${r.reason_class}: "${clip(r.quote, 160)}"`)
   }
 

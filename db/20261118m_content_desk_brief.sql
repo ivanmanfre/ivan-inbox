@@ -136,7 +136,8 @@ begin
       'next_note', left(coalesce(t.call_review->'next_step'->>'note', ''), 200)
     ) as x
     from public.transcripts t
-    where t.call_review is not null and t.call_review->>'status' is null
+    -- Ivan's own calls only (his Mac listener), never a client's recordings
+    where t.source = 'ivan-listener' and t.call_review is not null and t.call_review->>'status' is null
     order by t.date desc nulls last
     limit 5
   ) s;
@@ -154,6 +155,8 @@ begin
     ) as x
     from public.lm_idea_candidates i
     where i.source in ('ivan_call', 'calls')
+      -- the app's ideaDecidable lane guard: own workspace, no campaign
+      and lower(btrim(coalesce(i.workspace_type, ''))) in ('', 'own') and i.campaign_id is null
       and i.status in ('scored', 'reviewing', 'promoted')  -- scored lines only; pending ones are not yet judged
       and i.ingested_at > v_now - interval '21 days'
     order by i.ingested_at desc

@@ -4,16 +4,21 @@
 //   approve      -> carousel_drafts update (approveDraft) / cb39_verdict_set keep for a brain draft
 //   date, undate -> operator_set_schedule_date('clientops', …)  (WhenEditor / Calendar)
 //   pull         -> content_next_pull(queue, slot_at, reason)    (Next rows)
-//   delete       -> deleteDraft (reason stamp, delete, archive fallback, queue cancel) / cb39 drop
+//   delete       -> deleteDraft (queue cancel, reason stamp, delete, archive fallback) / cb39 drop
 //   redo         -> regenerateDraft (status generating + post-gen-v2 webhook)
 //   photo_attach -> operator_set_draft_photos('clientops', …)    (PictureRow)
-//   draft_line   -> lm-curator-decide approve                    (Ideas approve)
+//   draft_line   -> lm-curator-decide approve                    (Ideas approve, with ideaDecidable)
 // Ideas, links and staged photos have no app insert path; they use the same row
 // shapes the app's producers write (operator_outlier_use, content-radar), with
 // the service role.
 //
-// SAFETY: an action names a draft by the handle the brief handed out AND the
-// first words of its first line. Both must agree or nothing happens.
+// SAFETY (Sol desk-backend r1):
+// - an action names a draft by the EXACT handle the brief handed out AND the first
+//   words of its first line (a strict prefix/containment match, min 3 words or 12 chars);
+// - every write is first checked against Ivan's own message by a reasoned
+//   authorization call (index.ts authorize); nothing here decides that;
+// - a held action stores the target UUID + updated_at + first-line hash and is
+//   re-planned at commit from that UUID only (planForTarget), never from a handle.
 
 import type { Rendered, Draft } from './brief.ts'
 import { warsaw } from './brief.ts'
@@ -54,6 +59,11 @@ export type Planned = {
   run?: () => Promise<{ result: unknown; undo?: Record<string, unknown> | null; detail?: string; t3_job?: ActionEcho['t3_job'] }>
   refuse?: string
   chips?: { label: string; send: string }[]
+  /** the action in plain words, for the authorization check */
+  describe?: string
+  /** an explicit command Ivan can tap to ask for exactly this */
+  command?: string
+  target_id?: string
 }
 
 export const HOLD_MS = 8000
@@ -63,37 +73,31 @@ const POSTGEN = 'https://n8n.ivanmanfredi.com/webhook/post-gen-v2'
 const norm = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim()
 const short = (s: string, n = 60) => { const t = s.replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1) + '…' : t }
 
-/** Does the model's quoted line really belong to this draft? Needs 2+ words and a prefix or containment match. */
+export async function sha256Hex(s: string): Promise<string> {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))
+  return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('')
+}
+
+/** Strict: the quoted words (normalized) must start, or appear whole inside, the draft's first line; min 3 words or 12 chars. */
 export function lineMatches(firstLine: string, quoted: unknown): boolean {
   if (typeof quoted !== 'string') return false
-  const q = norm(quoted).split(' ').filter(Boolean).slice(0, 6)
-  if (q.length < 2 && !(q.length === 1 && q[0].length >= 6)) return false
+  const q = norm(quoted)
+  if (!q || (q.split(' ').length < 3 && q.length < 12)) return false
   const f = norm(firstLine)
-  const head = q.join(' ')
-  if (f.startsWith(head) || f.includes(head)) return true
-  // tolerate a dropped or changed word: 80% of the quoted words appear in order
-  const words = f.split(' ')
-  let i = 0, hits = 0
-  for (const w of q) { const j = words.indexOf(w, i); if (j >= 0) { hits++; i = j + 1 } }
-  return q.length >= 3 && hits / q.length >= 0.8
+  return f.startsWith(q) || ` ${f} `.includes(` ${q} `)
 }
 
 export function resolveDraft(brief: Rendered, act: Act): { d: Draft; handle: string } | { error: string; chips?: { label: string; send: string }[] } {
   const raw = act.draft
   if (Array.isArray(raw)) {
-    const chips = raw.slice(0, 3).map((h) => brief.drafts.get(String(h).startsWith('#') ? String(h) : '#' + String(h)))
+    const chips = raw.slice(0, 3).map((h) => brief.drafts.get(String(h).startsWith('#') ? String(h).toLowerCase() : '#' + String(h).toLowerCase()))
       .filter(Boolean).map((d) => ({ label: short(d!.first_line, 40), send: `${act.kind} the one that starts "${short(d!.first_line, 70)}"` }))
     return { error: 'ambiguous', chips }
   }
   let handle = String(raw ?? '').trim().toLowerCase()
   if (!handle) return { error: 'no_draft' }
   if (!handle.startsWith('#')) handle = '#' + handle
-  let d = brief.drafts.get(handle)
-  if (!d) {
-    // a longer or shorter prefix of a handle we gave out, if it is unique
-    const hits = [...brief.drafts.entries()].filter(([h]) => h.startsWith(handle) || handle.startsWith(h))
-    if (hits.length === 1) { handle = hits[0][0]; d = hits[0][1] }
-  }
+  const d = brief.drafts.get(handle)   // exact handle only: no prefix fallback (Sol r1 #2)
   if (!d) return { error: 'unknown_draft' }
   if (!lineMatches(d.first_line, act.line)) {
     return { error: 'line_mismatch', chips: [{ label: short(d.first_line, 40), send: `${act.kind} the one that starts "${short(d.first_line, 70)}"` }] }
@@ -101,19 +105,21 @@ export function resolveDraft(brief: Rendered, act: Act): { d: Draft; handle: str
   return { d, handle }
 }
 
-/** "2026-11-26 10:45" in Warsaw -> UTC ISO. */
+/** "2026-11-26 10:45" in Warsaw -> UTC ISO. A date or time that does not exist in Warsaw is null. */
 export function warsawToIso(s: string): string | null {
   const m = String(s ?? '').trim().match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})$/)
   if (!m) return null
   const [_, y, mo, d, h, mi] = m.map(Number) as unknown as number[]
-  // find the UTC instant whose Warsaw wall time is y-mo-d h:mi (DST-safe, two passes)
+  const wallOf = (t: number) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
+    .formatToParts(new Date(t)).reduce((a, p) => (a[p.type] = p.value, a), {} as Record<string, string>)
   let t = Date.UTC(y, mo - 1, d, h, mi)
   for (let k = 0; k < 2; k++) {
-    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
-      .formatToParts(new Date(t)).reduce((a, p) => (a[p.type] = p.value, a), {} as Record<string, string>)
-    const wall = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour % 24, +parts.minute)
-    t += Date.UTC(y, mo - 1, d, h, mi) - wall
+    const p = wallOf(t)
+    t += Date.UTC(y, mo - 1, d, h, mi) - Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute)
   }
+  // round trip: the instant must show exactly the requested wall time (rejects 31 Nov, DST gaps)
+  const p = wallOf(t)
+  if (+p.year !== y || +p.month !== mo || +p.day !== d || +p.hour % 24 !== h || +p.minute !== mi) return null
   return new Date(t).toISOString()
 }
 
@@ -132,6 +138,12 @@ function stampTaxonomy(t: unknown, marks: Record<string, unknown>): Record<strin
   return { ...marks }
 }
 
+/** The app's ideaDecidable (src/lib/content.ts): only Ivan's own workspace and no campaign. */
+export function ideaDecidable(i: { workspace_type?: string | null; campaign_id?: string | null }): boolean {
+  const w = (i.workspace_type ?? '').trim().toLowerCase()
+  return (w === '' || w === 'own') && (i.campaign_id ?? null) === null
+}
+
 const BRAIN_REASONS: [RegExp, string][] = [
   [/invent|made up|fake|not true|fabricat/i, 'invented_fact'], [/voice|sound like me|not me/i, 'not_my_voice'],
   [/generic|bland|boring/i, 'generic'], [/topic|off.?topic|wrong subject/i, 'wrong_topic'], [/long/i, 'too_long'],
@@ -143,10 +155,52 @@ const IN_ALIAS: Record<string, string> = { attach_photo: 'photo_attach', stage_p
 const OUT_NAME: Record<string, string> = { photo_attach: 'attach_photo', photo_stage: 'stage_photo', undate: 'remove_date' }
 
 export async function plan(ctx: Ctx, act: Act): Promise<Planned> {
-  const p = await planInner(ctx, { ...act, kind: IN_ALIAS[act.kind] ?? act.kind })
+  // the same object goes in, so a later flag on it (the authorized QA override) reaches run()
+  act.kind = IN_ALIAS[act.kind] ?? act.kind
+  const p = await planInner(ctx, act)
   const k = p.echo.kind
   p.echo.kind = k === 'link' ? (classifyPostUrl(String(act.url ?? '')) ? 'copy' : 'idea') : (OUT_NAME[k] ?? k)
   return p
+}
+
+/** The draft fields a held action pins at proposal and checks again at commit. */
+export type Snapshot = { target_id: string; updated_at: string | null; first_line_sha: string }
+
+/**
+ * Re-plan a held action at commit time from the stored target UUID only (Sol r1 #2):
+ * the draft is loaded by id (Ivan's lane), checked against Ivan's Review visibility
+ * for unfinished statuses, and refused if it changed since it was proposed.
+ */
+export async function planForTarget(ctx: Ctx, act: Act, snap: Snapshot): Promise<Planned | { refuse: string }> {
+  const { data: row, error } = await ctx.svc.from('carousel_drafts')
+    .select('id, status, type, scheduled_at, published_at, post_body, title, topic, taxonomy, qa, source_ref, image_urls, created_at, updated_at, client_id')
+    .eq('id', snap.target_id).is('client_id', null).maybeSingle()
+  if (error || !row) return { refuse: 'gone' }
+  if (String(row.updated_at) !== String(snap.updated_at)) return { refuse: 'changed' }
+  const firstLine = firstLineOf(row.post_body)
+  if (await sha256Hex(firstLine) !== snap.first_line_sha) return { refuse: 'changed' }
+  const tax = (row.taxonomy && typeof row.taxonomy === 'object' && !Array.isArray(row.taxonomy)) ? row.taxonomy as Record<string, unknown> : {}
+  let member = false
+  if (['review', 'approved', 'error', 'generating'].includes(row.status)) {
+    const { data: vis } = await ctx.userDb.from('cb34_p2_safe_drafts').select('id, cb34_p2_member').eq('id', row.id).maybeSingle()
+    if (!vis && !tax.desk_eval_fixture) return { refuse: 'not_visible' }
+    member = vis?.cb34_p2_member === true
+  }
+  const d: Draft = {
+    id: row.id, status: row.status, type: row.type, scheduled_at: row.scheduled_at, published_at: row.published_at,
+    first_line: firstLine, title: String(row.title ?? row.topic ?? ''), belief: null, vehicle: null,
+    recipe: (row.qa as { recipe?: string } | null)?.recipe ?? null, qa_verdict: (row.qa as { verdict?: string } | null)?.verdict ?? null,
+    is_copy: tax.outlier_copy === 'true' || tax.outlier_copy === true, photos: Array.isArray(row.image_urls) ? row.image_urls.length : 0,
+    brain: member || tax.source === 'content-brain', human_edited: String(tax.human_edited ?? '') === 'true',
+    slot_kind: null, selling: false, chars: String(row.post_body ?? '').length, created_at: row.created_at, fixture: (tax.desk_eval_fixture as string) ?? null,
+  }
+  const handle = String(act.draft ?? '#target').toLowerCase()
+  const brief: Rendered = { ...ctx.brief, drafts: new Map([[handle.startsWith('#') ? handle : '#' + handle, d]]), handleOf: new Map([[d.id, handle]]) }
+  return await plan({ ...ctx, brief }, { ...act, draft: handle, line: firstLine.slice(0, 60) })
+}
+
+export function firstLineOf(body: unknown): string {
+  return (String(body ?? '').split('\n').map((l) => l.trim()).find((l) => l !== '') ?? '').slice(0, 160)
 }
 
 async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
@@ -165,22 +219,25 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
   }
   const target = d ? { kind: 'draft' as const, handle, first_line: d.first_line } : undefined
   const q = d ? `"${short(d.first_line, 50)}"` : ''
+  const qq = d ? `the post that starts "${short(d.first_line, 70)}"` : ''
+  const base = d ? { target_id: d.id } : {}
 
   switch (kind) {
     case 'approve': {
       if (!['review', 'error'].includes(d!.status)) {
         return { echo: { kind, label: `${q} is ${d!.status}, so there is nothing to approve.`, state: 'failed', undo: false, target }, refuse: 'bad_status' }
       }
-      if (d!.status === 'error' && !/anyway/i.test(ctx.text)) {
-        return {
-          echo: { kind, label: `${q} failed its check. Approve it anyway?`, state: 'failed', undo: false, target }, refuse: 'qa_error',
-          chips: [{ label: 'Approve anyway', send: `approve the one that starts "${short(d!.first_line, 70)}" anyway` }],
-        }
-      }
+      // A post that failed its quality check is approved only when Ivan says so outright; the
+      // authorization check sees these words and decides (no keyword list).
+      const failedCheck = d!.status === 'error'
       const id = d!.id, brain = d!.brain
       return {
-        echo: { kind, label: `Approving ${q}`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
+        ...base,
+        echo: { kind, label: `Approving ${q}${failedCheck ? ' (it failed its check)' : ''}`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
+        describe: `approve ${qq}${failedCheck ? ', even though it FAILED its quality check' : ''}`,
+        command: `approve ${qq}${failedCheck ? ' even though it failed its check' : ''}`,
         run: async () => {
+          if (failedCheck && act._qa_override !== true) throw new Error('qa_override_missing')
           if (brain) {
             const { data, error } = await ctx.userDb.rpc('cb39_verdict_set', { p_draft: id, p_verdict: 'keep', p_reasons: [], p_note: null, p_invocation: null, p_ms_to_verdict: null })
             if (error) throw new Error(error.message)
@@ -199,12 +256,15 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       if (d!.status === 'published') return { echo: { kind, label: `${q} is already published.`, state: 'failed', undo: false, target }, refuse: 'published' }
       const id = d!.id, prev = d!.scheduled_at
       return {
+        ...base,
         echo: { kind, label: `Moved ${q} to ${warsaw(iso)}${prev ? ` (was ${warsaw(prev)})` : ''}`, state: 'done', undo: true, target },
+        describe: `date ${qq} for ${warsaw(iso)} Warsaw time`,
+        command: `move ${qq} to ${String(act.at)}`,
         run: async () => {
           const { data, error } = await ctx.userDb.rpc('operator_set_schedule_date', { p_gate: GATE, p_draft_id: id, p_scheduled_at: iso })
           const r = rpcOk(data, error)
           const at = typeof r.scheduled_at === 'string' ? r.scheduled_at : iso
-          return { result: r, undo: { op: 'date', draft_id: id, prev }, detail: at !== iso ? `The calendar stored ${warsaw(at)}.` : undefined }
+          return { result: r, undo: { op: 'date', draft_id: id, prev, applied: at }, detail: at !== iso ? `The calendar stored ${warsaw(at)}.` : undefined }
         },
       }
     }
@@ -218,7 +278,10 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       if (d!.status === 'scheduled') {
         // Pull: the queued copy is cancelled and the draft goes back to Review. No undo exists in the app.
         return {
+          ...base,
           echo: { kind: 'pull', label: `Taking ${q} off the schedule`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
+          describe: `take ${qq} off the schedule (it is scheduled for ${warsaw(prev)})`,
+          command: `pull ${qq} off the schedule`,
           run: async () => {
             if (queue && kind === 'pull') {
               const { data, error } = await ctx.userDb.rpc('content_next_pull', { p_queue: queue.queue_id, p_slot_at: queue.slot_at, p_reason: reason })
@@ -230,26 +293,41 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
         }
       }
       return {
+        ...base,
         echo: { kind: 'undate', label: `Removed the date from ${q} (was ${warsaw(prev)})`, state: 'done', undo: true, target },
+        describe: `remove the date from ${qq} (now ${warsaw(prev)})`,
+        command: `remove the date from ${qq}`,
         run: async () => {
           const { data, error } = await ctx.userDb.rpc('operator_set_schedule_date', { p_gate: GATE, p_draft_id: id, p_scheduled_at: null })
-          return { result: rpcOk(data, error), undo: { op: 'date', draft_id: id, prev } }
+          return { result: rpcOk(data, error), undo: { op: 'date', draft_id: id, prev, applied: null } }
         },
       }
     }
     case 'delete': {
-      const id = d!.id, brain = d!.brain
-      if (d!.status === 'published') return { echo: { kind, label: `${q} is published; delete it on LinkedIn.`, state: 'failed', undo: false, target }, refuse: 'published' }
+      const id = d!.id, brain = d!.brain, status = d!.status
+      if (status === 'published') return { echo: { kind, label: `${q} is published; delete it on LinkedIn.`, state: 'failed', undo: false, target }, refuse: 'published' }
       const why = typeof act.reason === 'string' ? act.reason.replace(/\s+/g, ' ').trim().slice(0, 200) || null : null
       return {
+        ...base,
         echo: { kind, label: `Deleting ${q}${why ? ` (${why})` : ''}`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
+        describe: `delete ${qq}${why ? ` because "${why}"` : ''}`,
+        command: `delete ${qq}${why ? `, reason: ${why}` : ''}`,
         run: async () => {
-          if (brain && ['review', 'error'].includes(d!.status)) {
+          if (brain && ['review', 'error'].includes(status)) {
             const reasons = why ? [...new Set(BRAIN_REASONS.filter(([re]) => re.test(why)).map(([, r]) => r))] : []
             const { data, error } = await ctx.userDb.rpc('cb39_verdict_set', { p_draft: id, p_verdict: 'drop', p_reasons: reasons.length ? reasons : ['other'], p_note: why, p_invocation: null, p_ms_to_verdict: null })
             if (error) throw new Error(error.message)
             return { result: data }
           }
+          // Sol r1 #7: a dated/scheduled post is first taken off the schedule through the app's own
+          // guarded path, and its queue rows are cancelled; if either fails, nothing is deleted.
+          if (status === 'scheduled' || d!.scheduled_at) {
+            const { data, error } = await ctx.userDb.rpc('operator_set_schedule_date', { p_gate: GATE, p_draft_id: id, p_scheduled_at: null })
+            rpcOk(data, error)
+          }
+          const cancel = await ctx.userDb.from('scheduled_posts').update({ status: 'cancelled', error_message: 'draft_deleted_by_operator' })
+            .eq('clickup_task_id', id).in('status', ['pending', 'queued_v2', 'posting']).select('id')
+          if (cancel.error) throw new Error('queue_cancel_failed')
           const { data: row } = await ctx.userDb.from('carousel_drafts').select('taxonomy').eq('id', id).maybeSingle()
           let tax = row?.taxonomy
           if (why) {
@@ -257,20 +335,13 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
             try { await ctx.userDb.from('carousel_drafts').update({ taxonomy: tax }).eq('id', id).is('client_id', null) } catch { /* fail-soft, as the app */ }
           }
           const del = await ctx.userDb.from('carousel_drafts').delete().eq('id', id).is('client_id', null).select('id')
-          let outcome = 'deleted'
-          if (del.error || !del.data?.length) {
-            const upd = await ctx.userDb.from('carousel_drafts')
-              .update({ status: 'disqualified', taxonomy: stampTaxonomy(tax, { deleted_by_operator: true, deleted_at: new Date().toISOString() }) })
-              .eq('id', id).is('client_id', null).select('id')
-            if (upd.error) throw new Error(upd.error.message)
-            if (!upd.data?.length) throw new Error('Delete failed: the row was neither removed nor archived.')
-            outcome = 'disqualified'
-          }
-          try {
-            await ctx.userDb.from('scheduled_posts').update({ status: 'cancelled', error_message: 'draft_deleted_by_operator' })
-              .eq('clickup_task_id', id).in('status', ['pending', 'queued_v2', 'posting'])
-          } catch { /* as the app: never fail a completed delete on the second write */ }
-          return { result: { outcome } }
+          if (!del.error && del.data?.length) return { result: { outcome: 'deleted' } }
+          const upd = await ctx.userDb.from('carousel_drafts')
+            .update({ status: 'disqualified', taxonomy: stampTaxonomy(tax, { deleted_by_operator: true, deleted_at: new Date().toISOString() }) })
+            .eq('id', id).is('client_id', null).select('id')
+          if (upd.error) throw new Error(upd.error.message)
+          if (!upd.data?.length) throw new Error('Delete failed: the row was neither removed nor archived.')
+          return { result: { outcome: 'disqualified' } }
         },
       }
     }
@@ -279,23 +350,48 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       if (d!.status === 'scheduled') return { echo: { kind, label: `${q} is scheduled. Pull it first, then rewrite.`, state: 'failed', undo: false, target }, refuse: 'scheduled' }
       if (d!.human_edited) return { echo: { kind, label: `${q} has your hand edits, and the writer will not overwrite them.`, state: 'failed', undo: false, target }, refuse: 'human_edited' }
       const note = typeof act.note === 'string' ? act.note.trim() : ''
+      if (note) {
+        // Sol r1: the writer takes no direction from here, so a directed redo is refused, never silently dropped.
+        return {
+          echo: { kind, label: `The writer can't take a direction from here yet, so I left ${q} as it is. Say "redo it" to rerun it on the same idea.`, state: 'failed', undo: false, target },
+          refuse: 'direction_unsupported', chips: [{ label: 'Redo on the same idea', send: `redo ${qq} through the writer, same idea` }],
+        }
+      }
       return {
+        ...base,
         echo: { kind, label: `Rewriting ${q} through your writer. It takes a few minutes.`, state: 'done', undo: false, target },
+        describe: `rerun the writer on ${qq} (rewrites its copy)`,
+        command: `redo ${qq} through the writer, same idea`,
         run: async () => {
-          const { data: row, error: rErr } = await ctx.userDb.from('carousel_drafts').select('id, type, topic, title, taxonomy').eq('id', id).maybeSingle()
+          const { data: row, error: rErr } = await ctx.userDb.from('carousel_drafts').select('id, type, topic, title, taxonomy, status').eq('id', id).maybeSingle()
           if (rErr || !row) throw new Error(rErr?.message ?? 'draft not found')
-          const tax = { ...(row.taxonomy && typeof row.taxonomy === 'object' && !Array.isArray(row.taxonomy) ? row.taxonomy : {}), generating_started_at: new Date().toISOString() }
-          const { error } = await ctx.userDb.from('carousel_drafts').update({ status: 'generating', taxonomy: tax }).eq('id', id)
+          const startedAt = new Date().toISOString()
+          const before = row.status
+          const tax0 = row.taxonomy && typeof row.taxonomy === 'object' && !Array.isArray(row.taxonomy) ? row.taxonomy : {}
+          const { error } = await ctx.userDb.from('carousel_drafts').update({ status: 'generating', taxonomy: { ...tax0, generating_started_at: startedAt } }).eq('id', id)
           if (error) throw new Error(error.message)
           const postFormat = row.type === 'carousel' ? 'Carousel' : row.type === 'single_image' ? 'Single Image' : 'Text Post'
           const f = ctx.fetchImpl ?? fetch
-          const res = await f(ctx.env('VITE_POSTGEN_WEBHOOK') || POSTGEN, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ draft_id: id, topic: row.topic ?? row.title ?? '', title: row.title ?? '', author: 'Ivan', source: 'Inbox', post_format: postFormat, include_image: 'No' }),
-            signal: AbortSignal.timeout(15_000),
-          })
-          if (!res.ok) throw new Error(`the writer answered ${res.status}`)
-          return { result: { fired: true }, detail: note ? 'The writer reruns on the same idea; it does not take a direction from here yet.' : undefined }
+          let ok = false
+          try {
+            const res = await f(ctx.env('VITE_POSTGEN_WEBHOOK') || POSTGEN, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ draft_id: id, topic: row.topic ?? row.title ?? '', title: row.title ?? '', author: 'Ivan', source: 'Inbox', post_format: postFormat, include_image: 'No' }),
+              signal: AbortSignal.timeout(15_000),
+            })
+            ok = res.ok
+            if (!ok && res.status < 500) throw new Error(`writer_refused_${res.status}`)
+          } catch (e) {
+            if (e instanceof Error && e.name === 'TimeoutError') throw new Error('writer_unconfirmed') // may still run: keep "generating"
+            ok = false
+          }
+          if (!ok) {
+            // a definite enqueue failure: put the status back if the row is still ours in "generating"
+            await ctx.userDb.from('carousel_drafts').update({ status: before, taxonomy: tax0 }).eq('id', id).eq('status', 'generating')
+              .filter('taxonomy->>generating_started_at', 'eq', startedAt)
+            throw new Error('writer_unavailable')
+          }
+          return { result: { fired: true } }
         },
       }
     }
@@ -305,14 +401,19 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       if (!att) return { echo: { kind, label: 'I do not see a photo on your message.', state: 'failed', undo: false, target }, refuse: 'no_photo' }
       const id = d!.id
       return {
+        ...base,
         echo: { kind, label: `Added your photo to ${q}`, state: 'done', undo: true, target },
+        describe: `attach the photo he sent to ${qq}`,
+        command: `attach this photo to ${qq}`,
         run: async () => {
           const { data: row } = await ctx.userDb.from('carousel_drafts').select('image_urls').eq('id', id).maybeSingle()
           const prev: string[] = Array.isArray(row?.image_urls) ? row.image_urls.filter((u: unknown) => typeof u === 'string') : []
-          const { data, error } = await ctx.userDb.rpc('operator_set_draft_photos', { p_gate: GATE, p_draft_id: id, p_urls: [...prev, att.url] })
+          const applied = [...prev, att.url]
+          const { data, error } = await ctx.userDb.rpc('operator_set_draft_photos', { p_gate: GATE, p_draft_id: id, p_urls: applied })
           if (error) throw new Error(error.message)
           if ((data as { ok?: boolean })?.ok !== true) throw new Error(String((data as { error?: string })?.error ?? 'refused'))
-          return { result: data, undo: { op: 'photos', draft_id: id, prev } }
+          const stored = Array.isArray((data as { image_urls?: unknown }).image_urls) ? (data as { image_urls: string[] }).image_urls : applied
+          return { result: data, undo: { op: 'photos', draft_id: id, prev, applied: stored } }
         },
       }
     }
@@ -326,6 +427,8 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       const subject = ['selfie', 'him', 'no-people'].includes(String(act.subject)) ? String(act.subject) : 'no-people'
       return {
         echo: { kind, label: `Saved your photo to the library${tags.length ? ' (' + tags.join(', ') + ')' : ''} for a later post`, state: 'done', undo: true },
+        describe: `save the photo he sent to the photo library${tags.length ? ` tagged ${tags.join(', ')}` : ''} for a later post`,
+        command: `save this photo to the library for a later post`,
         run: async () => {
           const path = (att.url.match(/\/object\/public\/post-stills\/(.+)$/) ?? [])[1] ?? att.url
           const { data, error } = await ctx.svc.from('content_photos').insert({
@@ -343,6 +446,8 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       if (!text) return { echo: { kind, label: 'Nothing to save as an idea.', state: 'failed', undo: false }, refuse: 'empty' }
       return {
         echo: { kind, label: `Saved as an idea: "${short(text, 70)}". The scorer picks it up next.`, state: 'done', undo: true },
+        describe: `save his thought as a post idea in Ideas: "${short(text, 100)}"`,
+        command: `save this as an idea: ${short(text, 200)}`,
         run: async () => {
           const { data, error } = await ctx.svc.from('lm_idea_candidates').insert({
             source: 'manual', content_type: 'post', status: 'pending', raw_topic: text.slice(0, 500),
@@ -358,13 +463,19 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
     case 'link': {
       const url = String(act.url ?? '').trim()
       if (!/^https:\/\//i.test(url)) return { echo: { kind, label: 'That link does not look right, so I did nothing.', state: 'failed', undo: false }, refuse: 'bad_url' }
+      // Sol r1: only a link Ivan actually sent, and only social post hosts get fetched.
+      if (!ctx.text.includes(url) && !ctx.attachments.some((a) => a.url === url)) {
+        return { echo: { kind, label: 'I only file links you send me.', state: 'failed', undo: false }, refuse: 'url_not_in_message' }
+      }
       const post = classifyPostUrl(url)
       const note = typeof act.note === 'string' ? act.note.trim().slice(0, 500) : ''
       return {
         echo: { kind, label: post ? `Added the ${post.platform === 'x' ? 'X' : 'LinkedIn'} post as a copy candidate in Ideas` : 'Saved the link as an idea', state: 'done', undo: true },
+        describe: post ? `file the ${post.platform} post he sent as a copy candidate in Ideas` : `file the link he sent as a post idea in Ideas`,
+        command: `file this link: ${url}`,
         run: async () => {
           let meta: { title?: string; description?: string; author?: string } | null = null
-          try { meta = ctx.unfurl ? await ctx.unfurl(url) : null } catch { meta = null }
+          if (post) { try { meta = ctx.unfurl ? await ctx.unfurl(url) : null } catch { meta = null } }
           const excerpt = [meta?.title, meta?.description].filter(Boolean).join(' - ').slice(0, 600)
           if (post) {
             const ref = `outlier:${post.platform}:${post.id}`
@@ -383,12 +494,12 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
           const host = (() => { try { return new URL(url).hostname.replace(/^www\./, '') } catch { return 'web' } })()
           const { data, error } = await ctx.svc.from('lm_idea_candidates').insert({
             source: 'manual', content_type: 'post', status: 'pending',
-            raw_topic: (note || excerpt || `Link: ${url}`).slice(0, 500),
+            raw_topic: (note || `Link: ${url}`).slice(0, 500),
             evidence: [
-              { who: meta?.author || host, tier: 'OBSERVATION', url, excerpt, instrument: 'content desk', source: 'content_desk' },
+              { who: host, tier: 'OBSERVATION', url, instrument: 'content desk', source: 'content_desk' },
               ...(note ? [{ who: 'Ivan', tier: 'OBSERVATION', quote: note, instrument: 'content desk', source: 'content_desk' }] : []),
             ],
-            raw_context: `Ivan shared ${url} in the Content Desk.${note ? ' His note: ' + note : ''}${excerpt ? ' Page: ' + excerpt : ''}`,
+            raw_context: `Ivan shared ${url} in the Content Desk.${note ? ' His note: ' + note : ''}`,
             source_ref: `desk:${ctx.messageId}`, format_recommendation: 'text',
           }).select('id').single()
           if (error) throw new Error(error.message)
@@ -403,7 +514,12 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       if (line.draft_id) return { echo: { kind, label: 'That line already has a draft in Review.', state: 'failed', undo: false }, refuse: 'exists' }
       return {
         echo: { kind, label: `Sent the call line "${short(line.said || line.topic, 60)}" to your writer. The draft lands in Review in a few minutes.`, state: 'done', undo: false },
+        describe: `make a post from his call line "${short(line.said || line.topic, 100)}" through the writer`,
+        command: `draft a post from the call line that starts "${short(line.said || line.topic, 60)}"`,
         run: async () => {
+          // the app's lane guard (ideaDecidable), on the live row, right before the call (Sol r1 #4)
+          const { data: cand } = await ctx.svc.from('lm_idea_candidates').select('id, workspace_type, campaign_id, status').eq('id', line.id).maybeSingle()
+          if (!cand || !ideaDecidable(cand)) throw new Error('idea_not_ours')
           const f = ctx.fetchImpl ?? fetch
           const base = (ctx.env('SUPABASE_URL') ?? '').replace(/\/$/, '')
           const anon = ctx.env('SUPABASE_ANON_KEY') ?? ''
@@ -411,7 +527,7 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
             method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${anon}`, apikey: anon },
             body: JSON.stringify({ candidate_id: line.id, decision: 'approve' }), signal: AbortSignal.timeout(20_000),
           })
-          if (!r.ok) throw new Error(`the idea desk answered ${r.status}`)
+          if (!r.ok) throw new Error(`idea_desk_${r.status}`)
           return { result: await r.json().catch(() => ({})) }
         },
       }
@@ -423,9 +539,11 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       if (!ctx.t3) return { echo: { kind, label: 'Cloud jobs are off right now.', state: 'failed', undo: false }, refuse: 't3_off' }
       return {
         echo: { kind, label: `Opened a cloud thread on Ivan Cloud: "${short(title, 60)}"`, state: 'done', undo: false },
+        describe: `open a coding/research job on his cloud machine: "${short(title, 100)}"`,
+        command: `open a cloud job: ${short(title, 100)}`,
         run: async () => {
           const j = await ctx.t3!({ title, brief: `${brief}\n\nIvan's own words: ${ctx.text.slice(0, 2000)}` })
-          if (j.error && j.status === 'failed') throw new Error(j.error)
+          if (j.error && j.status === 'failed') throw new Error('t3_queue_failed')
           return { result: j, t3_job: { id: j.job_id, status: j.status, title } }
         },
       }
@@ -451,14 +569,28 @@ export function classifyPostUrl(url: string): { platform: 'linkedin' | 'x'; id: 
   return null
 }
 
-/** Undo a done action from its stored undo payload, through the same app paths. */
+const sameInstant = (a: unknown, b: unknown) => (a == null && b == null) || (a != null && b != null && Date.parse(String(a)) === Date.parse(String(b)))
+const sameList = (a: unknown, b: unknown) => JSON.stringify(Array.isArray(a) ? a : []) === JSON.stringify(Array.isArray(b) ? b : [])
+
+export class UndoRefused extends Error {}
+
+/**
+ * Undo a done action through the same app paths, but only while the value is still the one this
+ * action applied (Sol r1): a later edit in the calendar or the app is never overwritten.
+ */
 export async function runUndo(ctx: Pick<Ctx, 'userDb' | 'svc'>, undo: Record<string, unknown>): Promise<void> {
   if (undo.op === 'date') {
+    const { data: row } = await ctx.svc.from('carousel_drafts').select('scheduled_at').eq('id', undo.draft_id).is('client_id', null).maybeSingle()
+    if (!row) throw new UndoRefused('gone')
+    if ('applied' in undo && !sameInstant(row.scheduled_at, undo.applied)) throw new UndoRefused('changed_since')
     const { data, error } = await ctx.userDb.rpc('operator_set_schedule_date', { p_gate: GATE, p_draft_id: undo.draft_id, p_scheduled_at: undo.prev ?? null })
     rpcOk(data, error)
     return
   }
   if (undo.op === 'photos') {
+    const { data: row } = await ctx.svc.from('carousel_drafts').select('image_urls').eq('id', undo.draft_id).is('client_id', null).maybeSingle()
+    if (!row) throw new UndoRefused('gone')
+    if ('applied' in undo && !sameList(row.image_urls, undo.applied)) throw new UndoRefused('changed_since')
     const { data, error } = await ctx.userDb.rpc('operator_set_draft_photos', { p_gate: GATE, p_draft_id: undo.draft_id, p_urls: undo.prev ?? [] })
     if (error) throw new Error(error.message)
     if ((data as { ok?: boolean })?.ok !== true) throw new Error(String((data as { error?: string })?.error ?? 'refused'))

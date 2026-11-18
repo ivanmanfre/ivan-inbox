@@ -110,3 +110,41 @@ Deno.test('parse: an answer written outside or before the tags still becomes the
   assertEquals(parse('<reply>\n</reply>Two posts go out.').reply, 'Two posts go out.')
   assertEquals(parse('<reply>Two posts go out.').reply, 'Two posts go out.')
 })
+
+import { authPrompt, parseAuth, authorize } from './auth.ts'
+import { ideaDecidable } from './actions.ts'
+
+Deno.test('lineMatches: strict, no fuzzy word overlap', () => {
+  assert(!lineMatches('I left Vienna for Berlin last spring', 'I left Poland for Berlin'))
+  assert(lineMatches('I left Vienna for Berlin last spring', 'I left Vienna'))
+  assert(!lineMatches('I left Vienna for Berlin last spring', 'left Vienna'))  // 2 words, 11 chars
+})
+
+Deno.test('resolveDraft: exact handle only, no prefix fallback', () => {
+  const r = render(brief([draft('abcde111-0000-4000-8000-000000000001', 'I left Vienna for Berlin'), draft('abcde222-0000-4000-8000-000000000002', 'I left Poland for Berlin')]))
+  const res = resolveDraft(r, { kind: 'delete', draft: '#abcde', line: 'I left Vienna for Berlin' })
+  assert('error' in res && res.error === 'unknown_draft')
+})
+
+Deno.test('warsawToIso: nonexistent dates and DST gaps are rejected', () => {
+  assertEquals(warsawToIso('2026-11-31 10:45'), null)
+  assertEquals(warsawToIso('2026-03-29 02:30'), null)
+  assertEquals(warsawToIso('2026-10-25 02:30') !== null, true) // ambiguous fall-back hour exists
+})
+
+Deno.test('authorization: fail closed on junk, per-action verdicts', async () => {
+  assertEquals(parseAuth('nonsense', 2), [false, false])
+  assertEquals(parseAuth('[{"n":2,"ok":true},{"n":1,"ok":false}]', 2), [false, true])
+  assert(authPrompt('move the snow one to thursday', ['date X for Thu']).includes('move the snow one to thursday'))
+  const refused = await authorize('approve it', ['approve X'], (async () => { throw new Error('refused') }) as never)
+  assertEquals(refused, [false])
+  const yes = await authorize('approve it', ['approve X'], (async () => ({ text: '[{"n":1,"ok":true}]', ms: 1, attempts: 1, model: 'm', hedged: false })) as never)
+  assertEquals(yes, [true])
+})
+
+Deno.test('ideaDecidable mirrors the app lane guard', () => {
+  assert(ideaDecidable({ workspace_type: null, campaign_id: null }))
+  assert(ideaDecidable({ workspace_type: ' Own ', campaign_id: null }))
+  assert(!ideaDecidable({ workspace_type: 'client', campaign_id: null }))
+  assert(!ideaDecidable({ workspace_type: null, campaign_id: 'c1' }))
+})
