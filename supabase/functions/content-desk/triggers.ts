@@ -153,7 +153,7 @@ export function planTriggers(input: TriggerInput): Planned[] {
       const fit = fillers(wk, input.drafts)
       out.push({
         kind: 'empty_slot', dedupe_key: key,
-        body: `${wk.label === 'THIS WEEK' ? 'This week' : 'Week of ' + wk.week_start} still has ${wk.cap - wk.originals} open original slot${wk.cap - wk.originals > 1 ? 's' : ''}${wk.open.length ? ': ' + wk.open.slice(1).join('; ') : ''}.${fit.length ? ` Drafts that fit: ${fit.map((d) => q(d.first_line, 60)).join(' and ')}.` : ' No undated draft fits yet.'}`,
+        body: `${wk.label === 'THIS WEEK' ? 'This week' : 'Week of ' + wk.week_start} still has ${wk.cap - wk.originals} open original slot${wk.cap - wk.originals > 1 ? 's' : ''}${wk.open.length ? ': ' + wk.open.join('; ') : ''}.${fit.length ? ` Drafts that fit: ${fit.map((d) => q(d.first_line, 60)).join(' and ')}.` : ' No undated draft fits yet.'}`,
         artifact: { kind: 'week', ref: wk.week_start },
         chips: fit.length ? [{ label: 'Date the first one', send: `date the one that starts ${q(fit[0].first_line, 70)} in the open slot of the week of ${wk.week_start}` }] : [],
       })

@@ -45,8 +45,9 @@ export type Rendered = {
 
 export type WeekFill = {
   week_start: string; label: string
-  dated: { handle: string; at: string; status: string; belief: number | null; vehicle: string | null; copy: boolean; event: boolean; poland: boolean; selling: boolean; first_line: string }[]
-  originals: number; cap: number; events: number; poland: number; selling: number
+  dated: { handle: string; at: string; status: string; copy: boolean; first_line: string }[]
+  /** ALL counts come from cp17_calendar_panel_ivan().week_fill: originals = slots, open = 5 - slots */
+  originals: number; cap: number; open_count: number; poland: number
   beliefs: Record<string, number>; missing_beliefs: number[]
   open: string[]
   /** copies (extras) and originals with no belief label: the calendar panel's week_fill when present (Sol r8 #7) */
@@ -56,7 +57,8 @@ export type WeekFill = {
 }
 
 const TZ = 'Europe/Warsaw'
-const EVENT_VEHICLES = new Set(['rant', 'dm_i_got', 'scene_dialogue', 'scene_quote', 'receipt', 'take'])
+/** The weekly target of originals (eval/gold.py: open = 5 - week_fill.slots). */
+export const WEEK_TARGET = 5
 
 export function warsaw(iso: string | null | undefined, withTime = true): string {
   if (!iso) return ''
@@ -122,17 +124,20 @@ export function unmeasured(drafts: Draft[], posts: PostRow[], links: Record<stri
     .sort((a, z) => String(z.published_at).localeCompare(String(a.published_at)))
 }
 
-export function mergedPosts(drafts: Draft[], posts: PostRow[], links: Record<string, string[]> | null | undefined): { at: string; first_line: string; p: PostRow | null }[] {
+export function mergedPosts(drafts: Draft[], posts: PostRow[], links: Record<string, string[]> | null | undefined): { at: string; first_line: string; p: PostRow | null; d: Draft | null }[] {
+  // the linked draft of a measured post (own_posts / social id link), for its labeled vehicle
+  const byUrl = new Map<string, Draft>()
+  for (const d of drafts) for (const u of (links ?? {})[d.id] ?? []) byUrl.set(u, d)
   const rows = [
-    ...posts.filter((p) => p.posted_at).map((p) => ({ at: String(p.posted_at), first_line: p.first_line ?? '', p })),
-    ...unmeasured(drafts, posts, links).map((d) => ({ at: String(d.published_at), first_line: d.first_line, p: null as PostRow | null })),
+    ...posts.filter((p) => p.posted_at).map((p) => ({ at: String(p.posted_at), first_line: p.first_line ?? '', p, d: (p.url ? byUrl.get(p.url) : undefined) ?? null })),
+    ...unmeasured(drafts, posts, links).map((d) => ({ at: String(d.published_at), first_line: d.first_line, p: null as PostRow | null, d })),
   ]
   return rows.sort((a, z) => Date.parse(z.at) - Date.parse(a.at))
 }
 
-/** The one way a week's fill is said (eval E8, E14): "N of 5 originals dated", never an open count. */
+/** The one way a week's fill is said: "N of 5 originals dated, M open", M = 5 - week_fill.slots (eval/gold.py). */
 export function weekCount(w: { originals: number; cap: number }): string {
-  return `${w.originals} of ${w.cap} originals dated`
+  return `${w.originals} of ${w.cap} originals dated, ${Math.max(0, w.cap - w.originals)} open`
 }
 
 export function render(b: BriefJson, recent: { role: string; origin: string; body: string; created_at: string }[] = [],
@@ -160,8 +165,7 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
   // ---- weeks
   const weeks: WeekFill[] = []
   const quotas = Array.isArray((b.panel as { quotas?: unknown }).quotas) ? (b.panel as { quotas: { slot_kind: string; per_week: number | string | null; every_n_weeks: number | null; vehicle: string | null; belief: number | null; note: string }[] }).quotas : []
-  const cap = quotas.filter((q) => q.slot_kind !== 'outlier_copy_extra' && (q.every_n_weeks ?? 1) === 1 && q.per_week != null)
-    .reduce((a, q) => a + Number(q.per_week), 0) || 5
+  const cap = WEEK_TARGET
   const weekFill = Array.isArray((b.panel as { week_fill?: unknown }).week_fill)
     ? (b.panel as { week_fill: { week_start: string; slots?: number; copies?: number; no_belief?: number; by_belief?: Record<string, number>; by_vehicle?: Record<string, number> }[] }).week_fill : []
   for (const [i, label] of [[0, 'THIS WEEK'], [7, 'NEXT WEEK'], [14, 'WEEK AFTER NEXT']] as const) {
@@ -174,47 +178,38 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
       return day >= ws && day < we
     }).map((d) => {
       const at = (d.status === 'published' ? (d.published_at ?? d.scheduled_at) : d.scheduled_at)!
-      // calendar coverage = the calendar panel's own slot labels only (eval E3): a draft's own tag or the
-      // post labeler never counts as coverage, so the week blocks agree with week_fill/by_vehicle
-      const v = slotOf.get(d.id)?.vehicle ?? null
-      return {
-        handle: handleOf.get(d.id)!, at, status: d.status, belief: slotOf.get(d.id)?.belief ?? null, vehicle: v, copy: d.is_copy,
-        // kinds come from the calendar's own labels only (eval E15): no draft flag makes a post "selling" or an "event" here
-        event: !!v && EVENT_VEHICLES.has(v), poland: v === 'poland_place', selling: v === 'selling', first_line: d.first_line,
-      }
+      // a listing only: no count, belief, vehicle or kind is ever derived from it
+      return { handle: handleOf.get(d.id)!, at, status: d.status, copy: d.is_copy, first_line: d.first_line }
     }).sort((a, z) => a.at.localeCompare(z.at))
-    const orig = dated.filter((x) => !x.copy)
-    // the calendar panel's own count of dated originals wins (eval E8: week_fill.slots), else ours
+    // ONE source for every number of a week: the calendar panel's week_fill (no draft-list arithmetic);
+    // a week the panel does not have counts as 0 dated, exactly as eval/gold.py reads it
     const wf = weekFill.find((x) => x.week_start === ws)
     const beliefs: Record<string, number> = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 }
     if (wf?.by_belief && typeof wf.by_belief === 'object') {
       for (const [k, v] of Object.entries(wf.by_belief)) if (k in beliefs && typeof v === 'number') beliefs[k] = v
-    } else for (const x of orig) if (x.belief) beliefs[String(x.belief)]++
-    // every count of a week comes from ONE source: the panel's week_fill when it has the week (Sol r8 #7)
-    const originals = typeof wf?.slots === 'number' ? wf.slots : orig.length
-    const w: WeekFill = {
-      week_start: ws, label, dated, originals, cap,
-      events: orig.filter((x) => x.event).length, poland: orig.filter((x) => x.poland).length,
-      selling: orig.filter((x) => x.selling).length, beliefs,
-      missing_beliefs: [1, 2, 3, 4, 5].filter((n) => beliefs[String(n)] === 0), open: [],
-      copies: Math.max(0, typeof wf?.copies === 'number' ? wf.copies : dated.length - orig.length),
-      unlabeled: Math.max(0, Math.min(originals, typeof wf?.no_belief === 'number' ? wf.no_belief : orig.filter((x) => !x.belief).length)),
-      vehicles: wf?.by_vehicle && typeof wf.by_vehicle === 'object' ? wf.by_vehicle as Record<string, number> : {},
     }
-    if (w.originals < cap) w.open.push(`originals not dated yet: ${cap - w.originals} (say this only if he asks about open slots; the brief does not say which day)`)
-    const unlabeledV = orig.filter((x) => !x.vehicle).length
-    if (w.poland < 1) w.open.push(unlabeledV ? `no dated original is LABELED as the Poland-with-him post (belief 5); ${unlabeledV} originals have no vehicle label, so this is not certain` : 'Poland-with-him post (belief 5) not dated')
+    const originals = typeof wf?.slots === 'number' ? wf.slots : 0
+    const vehicles = wf?.by_vehicle && typeof wf.by_vehicle === 'object' ? wf.by_vehicle as Record<string, number> : {}
+    const w: WeekFill = {
+      week_start: ws, label, dated, originals, cap, open_count: Math.max(0, cap - originals),
+      poland: Number(vehicles.poland_place ?? 0), beliefs,
+      missing_beliefs: [1, 2, 3, 4, 5].filter((n) => beliefs[String(n)] === 0), open: [],
+      copies: typeof wf?.copies === 'number' ? Math.max(0, wf.copies) : 0,
+      unlabeled: typeof wf?.no_belief === 'number' ? Math.max(0, Math.min(originals, wf.no_belief)) : 0,
+      vehicles,
+    }
+    if (w.poland < 1) w.open.push('the Poland-with-him post (quota: 1 a week with him in it, belief 5) has no vehicle label in this week')
     weeks.push(w)
   }
   for (const w of weeks) {
-    L.push('', `${w.label} (Mon ${w.week_start} to Sun ${addDays(w.week_start, 6)}): ${weekCount(w)}, ${w.copies} ${w.copies === 1 ? 'copy' : 'copies'} (extras). Stored form: "${w.originals} originals dated, ${w.copies} ${w.copies === 1 ? 'copy' : 'copies'}".`)
+    L.push('', `${w.label} (Mon ${w.week_start} to Sun ${addDays(w.week_start, 6)}): ${weekCount(w)}; ${w.copies} ${w.copies === 1 ? 'copy' : 'copies'} (extras, never counted).`)
     for (const x of w.dated) {
       const q = queueByDraft.get(byHandle.get(x.handle)!.id)
-      L.push(`- ${warsaw(x.at)} ${x.handle} [${x.status}${q ? ', queued ' + q.origin : ''}] calendar belief ${x.belief ?? '-'} calendar vehicle ${x.vehicle ?? '-'}${x.copy ? ' COPY' : ''}: "${clip(x.first_line, 110)}"`)
+      L.push(`- ${warsaw(x.at)} ${x.handle} [${x.status}${q ? ', queued ' + q.origin : ''}]${x.copy ? ' COPY' : ''}: "${clip(x.first_line, 110)}"`)
     }
     if (!w.dated.length) L.push('- nothing dated')
     const vk = Object.entries(w.vehicles).filter(([, n]) => Number(n) > 0)
-    L.push(`  calendar vehicles (post kinds): ${vk.length ? vk.map(([k, n]) => `${k}=${n}`).join(' ') : 'none labeled'}`)
+    L.push(`  vehicles (calendar labels): ${vk.length ? vk.map(([k, n]) => `${k}=${n}`).join(' ') : 'no vehicle labels yet'}`)
     const unlabeled = w.unlabeled
     L.push(`  belief counts (originals): ${Object.entries(w.beliefs).map(([k, v]) => `B${k}=${v}`).join(' ')}; ` +
       (unlabeled ? `${unlabeled} of ${w.originals} originals have NO belief label. Beliefs not covered by any labeled post: ` : 'missing beliefs: ') +
@@ -238,7 +233,7 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
     S.push(`(Only if he asks:) Review also has ${rv.filter((d) => d.is_copy).length} copies and ${rv.filter((d) => d.brain).length} brain drafts that take Keep/Drop.`)
     S.push(`All live drafts by status: ${Object.entries(byStatus).map(([k, v]) => `${k} ${v}`).join(', ')}.`)
     // eval E13/E14: the stored form for state answers, the planning form only for planning answers
-    for (const w of weeks) S.push(`${w.label.toLowerCase()}: ${w.originals} originals dated, ${w.copies} ${w.copies === 1 ? 'copy' : 'copies'}, ${w.dated.filter((x) => x.status === 'published').length} already published. (Planning form only: "${w.label.toLowerCase()} (${weekCount(w)})".)`)
+    for (const w of weeks) S.push(`${w.label.toLowerCase()}: ${weekCount(w)}; ${w.copies} ${w.copies === 1 ? 'copy' : 'copies'} (extras).`)
     // one list, measured posts and published drafts the metrics have not caught yet, newest first;
     // the same call (same inputs) builds RECENT PUBLISHED POSTS below, so its first row is this line (Sol r4 #8)
     const merged = mergedPosts(drafts, (b.posts as { posts?: PostRow[] }).posts ?? [], b.post_links)
@@ -277,10 +272,16 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
     return h == null || Number.isNaN(h) ? '48h window unknown' : `${h}h since posting, 48h window ${h < 48 ? 'OPEN' : 'CLOSED'}`
   }
   L.push('', `RECENT PUBLISHED POSTS (last 31 days; "worked" = 1.5x his organic median, bar ${bar ?? '?'} impressions; boosted never counts; "early read" = its numbers were read before its 48h mark and may still be low; each row states its own 48h window):`)
+  // the lane's quota sits next to the posts it governs (content_plan_quotas via the panel)
+  const lane = (d: Draft | null) => {
+    const v = d ? vehicleOf(d) : null
+    const qv = v ? quotas.find((x) => x.vehicle === v && x.per_week != null) : undefined
+    return qv && v === 'poland_place' ? `; Poland post (quota: ${Number(qv.per_week)} a week with him in it; copies are extras)` : ''
+  }
   for (const m of mergedPosts(drafts, posts, b.post_links)) {
     const p = m.p
-    if (!p) { L.push(`- ${warsaw(m.at)} "${clip(m.first_line, 90)}": (no numbers yet; ${win(m.at)})`); continue }
-    L.push(`- ${warsaw(p.posted_at)} "${clip(p.first_line, 90)}": ${p.impressions ?? '?'} impressions, ${p.likes ?? 0} likes, ${p.comments ?? 0} comments, ${p.times_median ?? '?'}x median${p.boosted ? ', BOOSTED' : ''}${p.too_new ? ', early read' : p.worked ? ', WORKED' : ''}; ${win(p.posted_at)}`)
+    if (!p) { L.push(`- ${warsaw(m.at)} "${clip(m.first_line, 90)}": (no numbers yet; ${win(m.at)})${lane(m.d)}`); continue }
+    L.push(`- ${warsaw(p.posted_at)} "${clip(p.first_line, 90)}": ${p.impressions ?? '?'} impressions, ${p.likes ?? 0} likes, ${p.comments ?? 0} comments, ${p.times_median ?? '?'}x median${p.boosted ? ', BOOSTED' : ''}${p.too_new ? ', early read' : p.worked ? ', WORKED' : ''}; ${win(p.posted_at)}${lane(m.d)}`)
   }
   const pv = Array.isArray((b.panel as { pv48?: unknown }).pv48) ? (b.panel as { pv48: { posted_at: string; first_line: string; contacted_viewers_48h: number | null; contacted_fit_viewers_48h: number | null; baseline_per_48h: number | null; window_open: boolean }[] }).pv48 : []
   if (pv.length) {

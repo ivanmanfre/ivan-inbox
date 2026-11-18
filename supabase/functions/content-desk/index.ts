@@ -18,7 +18,7 @@ import { render, applyVisibility, warsaw, type BriefJson, type Rendered } from '
 import { buildPrompt } from './prompt.ts'
 import { parse, shortParagraphs, oneText, sanitize, HandleStream, type Act } from './parse.ts'
 import { askDesk, askDeskStream, LlmError, DESK_MODEL } from './llm.ts'
-import { planLive, planForTarget, runUndo, UndoRefused, stillSame, actionKey, ivanSpan, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
+import { planLive, planForTarget, runUndo, UndoRefused, stillSame, actionKey, journalArgs, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
 import { authorize } from './auth.ts'
 import { planTriggers } from './triggers.ts'
 import { queueT3Job, sweepT3Stalls } from '../_shared/desk-t3.ts'
@@ -511,14 +511,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           const immediate = !!p.run && p.echo.state === 'done'
           const { data: aRec, error: recErr } = await svc.from('desk_actions').insert({
             user_id: userId, message_id: messageId, kind: p.echo.kind, target_id: p.target_id ?? null,
-            // a run: only the canonical args the write consumes, plus what a held commit re-plans from (Sol r7 #3).
-            // A refusal: only kind + refusal code (Sol r8 #3); the one exception is a directed redo, which
-            // keeps the note it was refused for, and only as a verbatim span of his own message (eval E12)
-            args: p.run
-              ? { kind: act.kind, ...(p.canon ?? {}), ...(act._qa_override === true ? { _qa_override: true } : {}),
-                ...(typeof act.dated === 'string' && act.dated.trim() ? { dated: act.dated.trim() } : {}),
-                ...(snap ? { _snapshot: snap } : {}), ...(mode.fixtures ? { _fixtures: true } : {}), ...(mode.dry ? { _dry: true } : {}) }
-              : { kind: act.kind, refusal_code: p.refuse ?? 'refused', ...(p.refuse === 'direction_unsupported' && ivanSpan(p.canon?.note, text) ? { note: ivanSpan(p.canon?.note, text) } : {}) },
+            args: journalArgs(act, p, snap, mode, text),
             result: { state: immediate ? 'pending' : p.echo.state, refuse: p.refuse ?? null, ...(p.echo.state === 'held' ? { hold_ms: p.echo.hold_ms ?? 8000 } : {}) },
           }).select('id').single()
           if (recErr || !aRec?.id) {

@@ -856,6 +856,21 @@ export function verbatimIn(s: unknown, text: string): boolean {
   return q.length > 0 && text.includes(q)
 }
 
+/**
+ * What the journal stores for one planned action (Sol r7 #3, r8 #3, eval E12): a run keeps the
+ * canonical args its write consumes plus what a held commit re-plans from; a refusal keeps only kind
+ * and refusal code, except that a refused directed redo keeps its note as his own words.
+ */
+export function journalArgs(act: Act, p: Pick<Planned, 'run' | 'refuse' | 'canon'>, snap: Snapshot | null, mode: { fixtures?: boolean; dry?: boolean }, text: string): Record<string, unknown> {
+  if (p.run) {
+    return { kind: act.kind, ...(p.canon ?? {}), ...(act._qa_override === true ? { _qa_override: true } : {}),
+      ...(typeof act.dated === 'string' && act.dated.trim() ? { dated: act.dated.trim() } : {}),
+      ...(snap ? { _snapshot: snap } : {}), ...(mode.fixtures ? { _fixtures: true } : {}), ...(mode.dry ? { _dry: true } : {}) }
+  }
+  const note = p.refuse === 'direction_unsupported' ? ivanSpan(p.canon?.note, text) : null
+  return { kind: act.kind, refusal_code: p.refuse ?? 'refused', ...(note ? { note } : {}) }
+}
+
 /** The exact span of his message that the quote names, found case-insensitively; null when it is not there. */
 export function ivanSpan(quote: unknown, text: string): string | null {
   const q = typeof quote === 'string' ? quote.trim() : ''

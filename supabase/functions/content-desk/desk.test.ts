@@ -82,10 +82,13 @@ Deno.test('applyVisibility: unfinished drafts the Review hides are dropped; sche
 })
 
 Deno.test('render: week counts and unlabeled beliefs are stated, not guessed', () => {
-  const r = render(brief([draft('aaaaaaaa-0000-4000-8000-000000000001', 'Tuesday post', { status: 'scheduled', scheduled_at: '2026-11-17T09:00:00Z' })]))
+  const r = render(brief([draft('aaaaaaaa-0000-4000-8000-000000000001', 'Tuesday post', { status: 'scheduled', scheduled_at: '2026-11-17T09:00:00Z' })],
+    { panel: { quotas: [], week_fill: [{ week_start: '2026-11-16', slots: 1, copies: 0, no_belief: 1, by_belief: {}, by_vehicle: {} }] } }))
   assert(r.text.includes('THIS WEEK'))
   assert(r.text.includes('NO belief label'))
   assertEquals(r.weeks[0].originals, 1)
+  // no week_fill row for a week = 0 dated, as eval/gold.py reads it (never counted from the draft list)
+  assertEquals(render(brief([draft('aaaaaaaa-0000-4000-8000-000000000001', 'Tuesday post', { status: 'scheduled', scheduled_at: '2026-11-17T09:00:00Z' })])).weeks[0].originals, 0)
 })
 
 Deno.test('triggers: Monday plan once, call line quoted verbatim, cap 5 a week, no duplicates', () => {
@@ -476,12 +479,13 @@ Deno.test('r5 B9 + E4: abbreviations never cut; lists become one block per bulle
   for (const b of shortParagraphs(failed).split(/\n\s*\n/)) assert((b.match(/\S+/g) ?? []).length < 40, b)
 })
 
-Deno.test('eval E3: week blocks show only the calendar panel labels as coverage', () => {
-  const thisMon = '2026-11-16'
-  const d = draft(ID1, 'Kraków in the snow and a long train ride', { status: 'scheduled', scheduled_at: '2026-11-19T09:45:00Z', vehicle: 'poland_place', belief: 5 })
-  const txt = render(brief([d], { this_monday: thisMon, panel: { quotas: [], slots: [{ draft_id: ID1, belief: null, vehicle: null }] } })).text
-  const line = txt.split('\n').find((l) => l.includes('Kraków in the snow'))!
-  assert(line.includes('calendar belief -') && line.includes('calendar vehicle -') && !line.includes('POLAND'), line)
+Deno.test('round 9 #4: week coverage comes only from week_fill; no draft flag can make a selling or Poland claim', () => {
+  const d = draft(ID1, 'Kraków in the snow and a long train ride', { status: 'scheduled', scheduled_at: '2026-11-19T09:45:00Z', vehicle: 'poland_place', belief: 5, selling: true, slot_kind: 'poland_with_him' })
+  const txt = render(brief([d], { this_monday: '2026-11-16', panel: { quotas: [], slots: [{ draft_id: ID1, belief: 5, vehicle: 'selling' }],
+    week_fill: [{ week_start: '2026-11-16', slots: 1, copies: 0, no_belief: 1, by_belief: {}, by_vehicle: {} }] } })).text
+  const week = txt.split('THIS WEEK (')[1].split('\n\n')[0]
+  assert(week.includes('vehicles (calendar labels): no vehicle labels yet'), week)
+  assert(!/POLAND|SELLING|EVENT|selling|calendar vehicle/.test(week), week)
 })
 
 // ---- Sol r6 fixes (made-up data only) ----------------------------------------
@@ -691,11 +695,12 @@ Deno.test('r8 #7 + E13/E14: the week counts all come from week_fill and never go
   const dated = draft(ID1, 'Snow in the park this morning', { status: 'scheduled', scheduled_at: '2026-11-17T09:45:00Z' })
   const txt = render(brief([dated], { this_monday: '2026-11-16', panel: { quotas: [], week_fill: [{ week_start: '2026-11-16', slots: 4, copies: 1, no_belief: 4, by_belief: {}, by_vehicle: {} }] } })).text
   assert(!/-\d+ (copy|copies|of)/.test(txt), txt.slice(0, 800))
-  assert(txt.includes('THIS WEEK (Mon 2026-11-16 to Sun 2026-11-22): 4 of 5 originals dated, 1 copy (extras). Stored form: "4 originals dated, 1 copy".'))
+  assert(txt.includes('THIS WEEK (Mon 2026-11-16 to Sun 2026-11-22): 4 of 5 originals dated, 1 open; 1 copy (extras, never counted).'), txt.slice(0, 900))
   assert(txt.includes('4 of 4 originals have NO belief label'))
-  assert(txt.includes('calendar vehicles (post kinds): none labeled'))
-  assert(!txt.includes('(1 open)') && !txt.includes('SELLING'))
-  assertEquals(weekCount({ originals: 4, cap: 5 }), '4 of 5 originals dated')
+  assert(txt.includes('vehicles (calendar labels): no vehicle labels yet'))
+  // round 9 #1: no appended closers about the week fill
+  assert(!txt.includes('Stored form') && !txt.includes('Planning form') && !txt.includes('SELLING'))
+  assertEquals(weekCount({ originals: 4, cap: 5 }), '4 of 5 originals dated, 1 open')
 })
 
 Deno.test('r8 #8: one quote-aware sanitizer: complete quotes protected, an unmatched quote protects nothing, any case', () => {
@@ -718,4 +723,38 @@ import { ivanSpan } from './actions.ts'
 Deno.test('eval E12: the refused redo journals his own words for the note, found case-insensitively', () => {
   assertEquals(ivanSpan('More about the business', 'redo the tram one, more about the business, less about the city'), 'more about the business')
   assertEquals(ivanSpan('a rewrite about cats', 'redo the tram one'), null)
+})
+
+import { journalArgs } from './actions.ts'
+import { WEEK_TARGET } from './brief.ts'
+
+Deno.test('round 9 #2: open = 5 - week_fill.slots, the only count the brief states', () => {
+  assertEquals(WEEK_TARGET, 5)
+  const txt = render(brief([], { this_monday: '2026-11-16', panel: { quotas: [{ slot_kind: 'business_event', per_week: 2, every_n_weeks: 1, vehicle: null, belief: null, note: '' }],
+    week_fill: [{ week_start: '2026-11-23', slots: 4, copies: 0 }] } })).text
+  assert(txt.includes('NEXT WEEK (Mon 2026-11-23 to Sun 2026-11-29): 4 of 5 originals dated, 1 open'))
+  assert(txt.includes('THIS WEEK (Mon 2026-11-16 to Sun 2026-11-22): 0 of 5 originals dated, 5 open'))
+})
+
+Deno.test('round 9 #3: a redo journal never lacks the note (direct, dry and held)', () => {
+  const text = 'redo the tram one, more about the business, less about the city'
+  const act = { kind: 'redo', note: 'More about the business, less about the city' }
+  const canon = { note: 'More about the business, less about the city' }
+  // direct and dry: a directed redo is refused (the writer takes no direction) and keeps his words
+  for (const mode of [{}, { dry: true }, { fixtures: true, dry: true }]) {
+    const j = journalArgs(act, { refuse: 'direction_unsupported', canon }, null, mode, text)
+    assertEquals(j.note, 'more about the business, less about the city')
+  }
+  // a held or run redo journals its canonical args, note included
+  const held = journalArgs(act, { run: async () => ({ result: null }), canon }, null, {}, text)
+  assertEquals(held.note, canon.note)
+})
+
+Deno.test('round 9 #5: a Poland post row carries its weekly quota from the panel', () => {
+  const d = draft(ID1, 'Do people even speak English in Poland?', { status: 'published', published_at: '2026-11-10T10:00:00Z', vehicle: 'poland_place' })
+  const posts = [{ url: 'https://www.linkedin.com/posts/p-1', first_line: 'Do people even speak English in Poland?', posted_at: '2026-11-10T10:00:00Z', impressions: 841, times_median: 6.3 }]
+  const txt = render(brief([d], { posts: { posts }, post_links: { [ID1]: ['https://www.linkedin.com/posts/p-1'] },
+    panel: { quotas: [{ slot_kind: 'poland_with_him', per_week: 1, every_n_weeks: 1, vehicle: 'poland_place', belief: 5, note: '' }] } })).text
+  const row = txt.split('RECENT PUBLISHED POSTS')[1].split('\n').find((l) => l.includes('speak English'))!
+  assert(row.includes('Poland post (quota: 1 a week with him in it; copies are extras)'), row)
 })
