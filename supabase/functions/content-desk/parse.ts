@@ -161,20 +161,22 @@ export type Scan = {
  * tag counts nesting depth of its own name.
  */
 function closerOf(text: string, from: number, name: string, json: boolean): number {
-  const lower = text.toLowerCase()
-  const close = `</${name}>`
+  // offsets on the ORIGINAL buffer: a case-insensitive sticky match at each position, never a lowercased
+  // copy (a length-changing case map would shift them); complete tag names only (Sol r11 #5)
+  const safe = name.replace(/[^\w:-]/g, '')
   if (json) {
+    const close = new RegExp(`</${safe}>`, 'iy')
     let inStr = false
     for (let i = from; i < text.length; i++) {
       const ch = text[i]
       if (inStr) { if (ch === '\\') i++; else if (ch === '"') inStr = false; continue }
       if (ch === '"') { inStr = true; continue }
-      if (ch === '<' && lower.startsWith(close, i)) return i
+      if (ch === '<') { close.lastIndex = i; if (close.test(text)) return i }
     }
     return -1
   }
   let depth = 1
-  const re = new RegExp(`<(/?)${name.replace(/[^\w:-]/g, '')}\\b[^<>]*>`, 'gi')
+  const re = new RegExp(`<(/?)${safe}(?=[\\s/>])[^<>]*>`, 'gi')
   re.lastIndex = from
   for (let m = re.exec(text); m; m = re.exec(text)) {
     depth += m[1] ? -1 : 1
@@ -291,6 +293,8 @@ export function shortParagraphs(text: string, max = 30, trigger = 35): string {
     if (i % 2 === 1) return para   // the original blank-line separators stay as they were
     const lines = para.split('\n')
     if (!lines.some((l) => BULLET.test(l))) return splitProse(para, max, trigger)
+    // a numbered list stays ONE block, so the renderer never restarts its count (Sol r11 #3)
+    if (lines.filter((l) => l.trim()).every((l) => /^\s*\d+[.)]\s/.test(l))) return para
     // a list: the heading lines, then one block per bullet (continuation lines stay with their bullet)
     const blocks: string[] = []
     for (const l of lines) {

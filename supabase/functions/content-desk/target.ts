@@ -57,11 +57,30 @@ const DAY_WORD = '(?:today|tonight|tomorrow|(?:next|this)\\s+(?:mon|tue|wed|thu|
 // a date move's destination ("to Friday", "on tuesday 9 march 10:45"): never identity (Sol r10 #2)
 const DESTINATION = new RegExp(`\\b(?:to|on|for|at|until)\\s+(?:the\\s+)?${DAY_WORD}[^,.;!?]*`, 'gi')
 
-/** The part of his message that names the post: no command verb, and for a date move no destination. */
-export function referencePart(text: string, kind?: string): string {
+/**
+ * The target phrase of his message (Sol r11 #4): no command verb, no destination for a date move
+ * ("to Friday"), and no redo direction (the proposed note's own span, and anything after the first
+ * comma or "make it ..."). Source days stay.
+ */
+export function referencePart(text: string, kind?: string, note?: unknown): string {
   let t = text.replace(VERB_HEAD, '')
   if (kind === 'date') t = t.replace(DESTINATION, ' ').replace(/\b(?:to|at)\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?\b/gi, ' ')
+  if (kind === 'redo') {
+    const n = typeof note === 'string' ? note.trim() : ''
+    if (n) { const i = t.toLowerCase().indexOf(n.toLowerCase()); if (i >= 0) t = t.slice(0, i) + ' ' + t.slice(i + n.length) }
+    t = t.split(/,|;|\s(?:and\s+)?make it\s|\sbut\s|\swith more\s|\swith less\s/i)[0]
+  }
   return t
+}
+
+// words that only point at "a post" and never identify one
+const GENERIC = new Set(['post', 'posts', 'one', 'ones', 'draft', 'drafts', 'the', 'this', 'that', 'my', 'it', 's', 'from', 'on', 'for', 'of', 'a', 'an'])
+
+/** The reference is JUST a day ("tomorrow's post", "the one on friday"): day-only matching is allowed only then. */
+export function justADay(ref: string): boolean {
+  const stripped = ref.toLowerCase().replace(new RegExp(DAY_WORD, 'gi'), ' ')
+  const rest = words(stripped).filter((w) => !GENERIC.has(w) && !/^\d+$/.test(w) && !MONTHS.includes(w.slice(0, 3)))
+  return rest.length === 0 && new RegExp(DAY_WORD, 'i').test(ref)
 }
 
 /**
@@ -118,27 +137,29 @@ export const RIVAL_CAP = 5
  * desk answer rendered to {id, rev}; a number resolves only while that draft's revision is unchanged.
  */
 export function identify(text: string, cands: IdDraft[], shown?: Map<number, { id: string; rev?: string | null }> | null,
-  opts: { today?: string; kind?: string } = {}): IdResult {
+  opts: { today?: string; kind?: string; note?: unknown } = {}): IdResult {
+  const ref = referencePart(text, opts.kind, opts.note)
+  const named = namedDays(ref, opts.today)
+  const namesDay = named.dates.length > 0 || (!opts.today && named.weekdays.length > 0)
   const n = listNumber(text)
   if (n != null && shown?.has(n)) {
     const row = shown.get(n)!
     const c = cands.find((x) => x.id === row.id)
     if (!c) return { ids: [], how: 'list', span: 0, rivals: [] }
     if (row.rev && c.rev && row.rev !== c.rev) return { ids: [], how: 'list', span: 0, rivals: [], why: 'list_changed' }
+    // a source day on a numbered reference must hold too ("pull number 1 from Friday")
+    if (namesDay && !dayMatches(c.day, named, opts.today)) return { ids: [], how: 'list', span: 0, rivals: [] }
     return { ids: [c.id], how: 'list', span: 0, rivals: [] }
   }
-  const ref = referencePart(text, opts.kind)
   const msg = words(ref)
   const scored = cands.map((c) => ({ c, s: sharedSpan(msg, words(c.first_line)) }))
-  const named = namedDays(ref, opts.today)
-  const namesDay = named.dates.length > 0 || (!opts.today && named.weekdays.length > 0)
   // a source day is a REQUIRED intersection; day-only matching only for an explicit day reference
   const onDay = (c: IdDraft) => !namesDay || dayMatches(c.day, named, opts.today)
   const pool = scored.filter((x) => onDay(x.c))
   const max = Math.max(0, ...pool.map((x) => x.s))
   let top = max > 0 ? pool.filter((x) => x.s === max) : []
   let how: IdResult['how'] = 'span'
-  if (!top.length && namesDay && explicitDayRef(ref)) { top = pool; how = 'day' }
+  if (!top.length && namesDay && justADay(ref)) { top = pool; how = 'day' }
   if (!top.length) return { ids: [], how: 'none', span: 0, rivals: [] }
   const ids = top.map((x) => x.c.id)
   // relevant alternatives: other drafts on the day that come within one content word of the best
@@ -148,16 +169,52 @@ export function identify(text: string, cands: IdDraft[], shown?: Map<number, { i
 }
 
 /**
- * The numbered rows an answer rendered (Sol r10 #1): only list lines ("1." / "- " / "•"), numbered in
- * order, each the draft whose first 6 words the line carries, with its revision.
+ * Number an answer's draft rows (Sol r11 #3). The visible numbers and the stored map come from the SAME
+ * rows: a list line is numbered only if exactly one draft's opener (its first 6 words) is in it, and its
+ * number then maps to that draft with the brief revision the answer was built from. Unclear rows stay
+ * unnumbered bullets and unmapped. Numbered rows of a list are written as one block (no blank lines),
+ * so a Markdown renderer never restarts the count.
  */
-export function shownDrafts(body: string, drafts: { id: string; first_line: string; updated_at?: string | null }[]): { n: number; id: string; rev: string | null }[] {
-  const out: { n: number; id: string; rev: string | null }[] = []
-  for (const line of body.split('\n')) {
-    if (!/^\s*(?:\d{1,2}[.)]|[-•*])\s+/.test(line)) continue
-    const lw = ` ${words(line).join(' ')} `
-    const hit = drafts.find((d) => { const h = words(d.first_line).slice(0, 6); return h.length >= 3 && lw.includes(` ${h.join(' ')} `) })
-    if (hit && !out.some((x) => x.id === hit.id)) out.push({ n: out.length + 1, id: hit.id, rev: hit.updated_at ?? null })
+export function numberRows(body: string, drafts: { id: string; first_line: string; updated_at?: string | null }[]): { body: string; rows: { n: number; id: string; rev: string | null }[] } {
+  const heads = drafts.map((d) => ({ d, w: words(d.first_line) })).filter((x) => x.w.length >= 3)
+  // how many leading words of the draft's first line the line carries, contiguously (0 below 3)
+  const reach = (lw: string[], w: string[]) => {
+    let best = 0
+    for (let s0 = 0; s0 < lw.length; s0++) { let k = 0; while (k < w.length && lw[s0 + k] === w[k]) k++; if (k > best) best = k }
+    return best >= 3 ? best : 0
   }
-  return out
+  const item = /^\s*(?:\d{1,2}[.)]|[-•*])\s+(.*)$/
+  const lines = body.split('\n')
+  const out: string[] = []
+  const rows: { n: number; id: string; rev: string | null }[] = []
+  let i = 0
+  while (i < lines.length) {
+    if (!item.test(lines[i])) { out.push(lines[i]); i++; continue }
+    // one list: its items, blank lines between them allowed
+    const items: string[] = []
+    while (i < lines.length && (item.test(lines[i]) || (lines[i].trim() === '' && i + 1 < lines.length && item.test(lines[i + 1])))) {
+      if (lines[i].trim()) items.push(lines[i].match(item)![1])
+      i++
+    }
+    const numbered: string[] = [], plainItems: string[] = []
+    for (const t of items) {
+      // the row maps only to the ONE draft whose opener it carries furthest (a tie stays unmapped)
+      const lw = words(t)
+      const scored = heads.map((x) => ({ d: x.d, k: reach(lw, x.w) })).filter((x) => x.k > 0)
+      const top = Math.max(0, ...scored.map((x) => x.k))
+      const hits = scored.filter((x) => x.k === top)
+      if (top > 0 && hits.length === 1 && !rows.some((r) => r.id === hits[0].d.id)) {
+        rows.push({ n: rows.length + 1, id: hits[0].d.id, rev: hits[0].d.updated_at ?? null })
+        numbered.push(`${rows.length}. ${t}`)
+      } else plainItems.push(`- ${t}`)
+    }
+    if (numbered.length) out.push(numbered.join('\n'))
+    if (plainItems.length) { if (numbered.length) out.push(''); out.push(plainItems.join('\n\n')) }
+  }
+  return { body: out.join('\n'), rows }
+}
+
+/** Back-compat name: the rows numberRows maps. */
+export function shownDrafts(body: string, drafts: { id: string; first_line: string; updated_at?: string | null }[]): { n: number; id: string; rev: string | null }[] {
+  return numberRows(body, drafts).rows
 }

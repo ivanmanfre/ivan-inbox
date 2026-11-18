@@ -18,12 +18,12 @@ import { render, applyVisibility, warsaw, type BriefJson, type Rendered } from '
 import { buildPrompt } from './prompt.ts'
 import { parse, shortParagraphs, oneText, sanitize, HandleStream, type Act } from './parse.ts'
 import { askDesk, askDeskStream, LlmError, DESK_MODEL } from './llm.ts'
-import { planLive, planForTarget, runUndo, UndoRefused, stillSame, actionKey, journalArgs, HOLD_EXPIRE_MS, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
+import { planLive, planForTarget, runUndo, UndoRefused, stillSame, actionKey, journalArgs, confirmMatches, draftRef, HOLD_EXPIRE_MS, type Confirmation, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
 import { authorize } from './auth.ts'
 import { planTriggers } from './triggers.ts'
 import { queueT3Job, sweepT3Stalls } from '../_shared/desk-t3.ts'
 import { deskUnfurl } from './unfurl.ts'
-import { shownDrafts } from './target.ts'
+import { numberRows } from './target.ts'
 import { notify } from '../_shared/notify.ts'
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined
@@ -116,7 +116,7 @@ function json(body: unknown, status: number, origin: string | null) {
 // Kept while desk_brief_stamp() (a ~20 ms fingerprint of every table the brief
 // reads) is unchanged, for at most 15 minutes; dropped on every desk write.
 let briefCache: { at: number; fixtures: boolean; stamp: string; json: BriefJson } | null = null
-let panelCache: { at: number; panel: Record<string, unknown> } | null = null
+let panelCache: { at: number; panel: Record<string, unknown>; pv: string } | null = null
 const BRIEF_MAX_AGE_MS = 15 * 60_000
 const PANEL_MAX_AGE_MS = 10 * 60_000
 // deno-lint-ignore no-explicit-any
@@ -129,8 +129,12 @@ async function loadBrief(svc: any, fixtures: boolean, force = false): Promise<{ 
   }
   // The calendar panel (slots, quotas, 48h profile views, booking reasons) is the slow ~1.2 s
   // part and changes slowly: it is reused for up to 10 minutes; the fast core is always fresh.
-  const panelFresh = !force && !!panelCache && Date.now() - panelCache.at < PANEL_MAX_AGE_MS
-  const [{ data, error }, stamp] = await Promise.all([svc.rpc('desk_brief_core', { p_fixtures: fixtures, p_with_panel: !panelFresh }), stampP])
+  // the panel is reused only while its profile-view fingerprint is unchanged: a new or newly classified
+  // view changes the 48h counts, so the panel is rebuilt (round 12, S06)
+  const stamp: string = await stampP
+  const pvPart = stamp.split('|').find((x: string) => x.startsWith('pv:')) ?? ''
+  const panelFresh = !force && !!panelCache && Date.now() - panelCache.at < PANEL_MAX_AGE_MS && !!pvPart && panelCache.pv === pvPart
+  const { data, error } = await svc.rpc('desk_brief_core', { p_fixtures: fixtures, p_with_panel: !panelFresh })
   if (error || !data) throw new Error(`brief failed: ${error?.message ?? 'empty'}`)
   const json = data as BriefJson
   // published draft -> its published post URLs (own_posts link), so the last-post list matches posts by link, never by text (Sol r5 B7)
@@ -139,7 +143,7 @@ async function loadBrief(svc: any, fixtures: boolean, force = false): Promise<{ 
   else json.post_links = {}
   json.post_vehicles = await postVehicles(svc, ((json.posts as { posts?: { url?: string }[] }).posts ?? []).map((p) => p.url).filter((u): u is string => !!u))
   if (panelFresh) json.panel = panelCache!.panel
-  else if ((json.panel as { ok?: boolean })?.ok !== false) panelCache = { at: Date.now(), panel: json.panel }
+  else if ((json.panel as { ok?: boolean })?.ok !== false) panelCache = { at: Date.now(), panel: json.panel, pv: pvPart }
   briefCache = { at: Date.now(), fixtures, stamp, json }
   return { json, ms: Date.now() - t0, cached: false }
 }
@@ -567,7 +571,8 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           const { data: aRec, error: recErr } = await svc.from('desk_actions').insert({
             user_id: userId, message_id: messageId, kind: p.echo.kind, target_id: p.target_id ?? null,
             args: journalArgs(act, p, snap, mode, text),
-            result: { state: immediate ? 'pending' : p.echo.state, refuse: p.refuse ?? null, ...(p.echo.state === 'held' ? { hold_ms: p.echo.hold_ms ?? 8000 } : {}) },
+            result: { state: immediate ? 'pending' : p.echo.state, refuse: p.refuse ?? null,
+              ...(p.echo.state === 'held' ? { hold_ms: p.echo.hold_ms ?? 8000, expires_at: new Date(Date.now() + HOLD_EXPIRE_MS).toISOString() } : {}) },
           }).select('id').single()
           if (recErr || !aRec?.id) {
             echoes.push({ id: crypto.randomUUID(), ...p.echo, state: 'failed', undo: false, label: 'I could not record this action, so I did not do it.' })
@@ -604,7 +609,8 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           }
           echoes.push(echo)
           // the body line: for a held draft action, a fixed label naming exactly what he will tap on
-          bodyLines.push(echo.state === 'held' ? proposedLine(act, p, snap) : echo.label + (echo.detail && !/^[a-z_]+$/.test(echo.detail) ? ` ${echo.detail}` : ''))
+          if (echo.state === 'held') echo.label = proposedLine(act, p, snap)
+          bodyLines.push(echo.state === 'held' ? `${echo.label} It runs only when you tap Do it now.` : echo.label + (echo.detail && !/^[a-z_]+$/.test(echo.detail) ? ` ${echo.detail}` : ''))
         }
         if (wrote) invalidate()
         // Sol r8 #5: write confirmations come only from action results. A turn that proposed a write
@@ -616,7 +622,9 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         // <opener>, held for Undo"); its live state lives only in the structured echo.
         let finalBody = reply
         if (parsed.actions.length) finalBody = bodyLines.length ? bodyLines.join('\n\n') : 'I did not do anything.'
-        finalBody = shortParagraphs(sanitize(finalBody, r.lines.keys()))
+        // the visible numbers and the stored map come from the same uniquely matched rows (Sol r11 #3)
+        const numbered = numberRows(sanitize(finalBody, r.lines.keys()), [...r.drafts.values()])
+        finalBody = shortParagraphs(numbered.body)
         const sideEffects = await turnSideEffects(svc, messageId)
         timings.total_ms = Date.now() - t0
         const t3 = echoes.find((e) => e.t3_job)?.t3_job
@@ -625,7 +633,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           ...(echoes.length ? { actions: echoes } : {}), ...(chips.length ? { chips: oneText(chips) } : {}), ...(t3 ? { t3_job: t3 } : {}),
           turn_token: turnToken, side_effects: sideEffects, ...(mode.evalMode ? { test: true } : {}),
           // the drafts this answer shows, in order: a later "number 2" means the second of these (Sol r9 #1a)
-          shown_drafts: await shownWithRevision(userDb, finalBody, [...r.drafts.values()], mode.fixtures),
+          shown_drafts: numbered.rows,
         }
         // The final row (with its echoes) is the only thing that lets a hold arm: held_seen and commit
         // both require it (echoDurable). It is written only over this turn's own streaming row (a
@@ -712,22 +720,14 @@ const clipLine = (s: string, n = 70) => { const t = s.replace(/\s+/g, ' ').trim(
  */
 function proposedLine(act: Act, p: Planned, snap: Snapshot | null): string {
   const VERB: Record<string, string> = { approve: 'approve', date: 'move', undate: 'remove the date from', pull: 'pull', delete: 'delete', redo: 'rewrite', photo_attach: 'add your photo to' }
-  const line = (p.echo.target?.first_line ?? '').replace(/\s+/g, ' ').trim().slice(0, 120)
+  // the FULL opener (the UI wraps), a short distinct reference, the source date and, for a move, the new date (Sol r11 #2)
+  const line = (p.echo.target?.first_line ?? '').replace(/\s+/g, ' ').trim()
+  const ref = draftRef(p.target_id ?? '')
   const day = snap?.scheduled_at ? warsaw(snap.scheduled_at) : 'no date'
   const to = act.kind === 'date' && typeof p.canon?.at === 'string' ? ` to ${warsaw(p.canon.at)}` : ''
-  return `Proposed: ${VERB[act.kind] ?? act.kind} "${line}" (${day})${to}. It runs only when you tap Do it now.`
+  return `Proposed (ref ${ref}): ${VERB[act.kind] ?? act.kind} "${line}" (${day})${to}.`
 }
 
-/** The numbered rows an answer rendered, each with its draft's current revision (Sol r10 #1). */
-// deno-lint-ignore no-explicit-any
-async function shownWithRevision(userDb: any, body: string, drafts: { id: string; first_line: string }[], fixtures: boolean) {
-  const rows = shownDrafts(body, drafts)
-  if (!rows.length) return []
-  const { data } = await userDb.rpc('desk_live_drafts', { p_fixtures: fixtures })
-  const rev = new Map(((Array.isArray(data) ? data : []) as { id: string; updated_at: string }[]).map((d) => [d.id, d.updated_at]))
-  // a row whose revision cannot be read is not stored: a number then never resolves to it
-  return rows.filter((x) => rev.has(x.id)).map((x) => ({ ...x, rev: rev.get(x.id) ?? null }))
-}
 
 // ---- turn recovery and side effects (Sol r5 B4, B11) ----------------------------
 /** No worker can still be alive after this (the edge wall-clock limit is far below it). */
@@ -821,6 +821,25 @@ async function echoDurable(svc: any, messageId: string, actionId: string): Promi
 }
 
 /** Compare-and-set on desk_actions.result.state: only one of two racing requests wins (Sol desk-ui r1 #1). */
+/** held -> committing, only while the hold's deadline has not passed (one atomic update). */
+// deno-lint-ignore no-explicit-any
+async function claimCommit(svc: any, a: { id: string; result: Record<string, unknown> | null }): Promise<boolean> {
+  const { data } = await svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'committing' } })
+    .eq('id', a.id).filter('result->>state', 'eq', 'held').filter('result->>expires_at', 'gt', new Date().toISOString()).select('id')
+  return Array.isArray(data) && data.length === 1
+}
+
+/** A hold that will never run: CAS held -> cancelled, and the message's echo says so (Sol r11 #6). */
+// deno-lint-ignore no-explicit-any
+async function expireHold(svc: any, a: { id: string; result: Record<string, unknown> | null; message_id?: string }, label: string): Promise<void> {
+  if (!await claimState(svc, a, 'held', 'cancelled')) return
+  const messageId = a.message_id ?? (await svc.from('desk_actions').select('message_id').eq('id', a.id).maybeSingle()).data?.message_id
+  if (messageId) for (let i = 0; i < 3; i++) {
+    const { data } = await svc.rpc('desk_patch_action_echo', { p_message: messageId, p_action: a.id, p_patch: { state: 'cancelled', undo: false, label } })
+    if (data) break
+  }
+}
+
 // deno-lint-ignore no-explicit-any
 async function claimState(svc: any, a: { id: string; result: Record<string, unknown> | null }, from: string, to: string): Promise<boolean> {
   const { data } = await svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: to } })
@@ -854,17 +873,23 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
     newState = 'cancelled'; label = 'Cancelled. Nothing changed.'
   } else {
     if (state !== 'held') return { ok: false, error: 'not_held' }
-    // Confirm-to-act (round 11): ONLY this op, Ivan's "Do it now" tap, runs a draft write. There is no
-    // server clock. After 24 h a hold is cancelled, never committed.
-    if (Date.now() - Date.parse(a.created_at) > HOLD_EXPIRE_MS) {
-      await claimState(svc, a, 'held', 'cancelled')
-      return { ok: false, error: 'hold_expired' }
-    }
+    // Confirm-to-act: ONLY this op, Ivan's "Do it now" tap, runs a draft write. No server clock.
+    // A hold without the v2 confirmation (made before round 11) is cancelled, never run (Sol r11 #2).
+    const conf = (a.args as { _confirm?: Confirmation } | null)?._confirm
+    if (conf?.v !== 2) { await expireHold(svc, a, 'Cancelled: this proposal is from an older version. Ask again.'); return { ok: false, error: 'stale_hold' } }
     const durable = await echoDurable(svc, a.message_id, actionId)
     if (durable === null) return { ok: false, error: 'read_failed' }
     if (!durable) return { ok: false, error: 'not_saved', detail: failText('not_saved') }
-    // exactly one commit wins, and a cancel that already won makes this one refuse
-    if (!await claimState(svc, a, 'held', 'committing')) return { ok: false, error: 'not_held' }
+    // exactly one commit wins, a cancel that already won makes this one refuse, and the 24 h deadline is
+    // part of the SAME atomic claim: held -> committing only while now < expires_at (Sol r11 #6)
+    if (!await claimCommit(svc, a)) {
+      const { data: cur } = await svc.from('desk_actions').select('id, result').eq('id', actionId).maybeSingle()
+      if ((cur?.result as { state?: string } | null)?.state === 'held') {
+        await expireHold(svc, cur, 'Expired after 24 hours. Nothing changed.')
+        return { ok: false, error: 'hold_expired' }
+      }
+      return { ok: false, error: 'not_held' }
+    }
     try {
       const args = (a.args ?? {}) as Act & { _snapshot?: Snapshot; _dry?: boolean; _fixtures?: boolean }
       const snap = args._snapshot
@@ -874,6 +899,9 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
       const ctx: Ctx = { userDb, svc, userId, messageId: a.message_id, brief: emptyBrief, attachments: [], text: '', env }
       const p = await planForTarget(ctx, { ...args }, snap)
       if (!('echo' in p) || !p.run || p.echo.state !== 'held') throw new Error(('refuse' in p && p.refuse) || 'changed')
+      // the live row and the re-planned args must still be exactly what the card showed (planForTarget
+      // checked the live row against the snapshot; the card was built from that same snapshot)
+      if (!confirmMatches(args._confirm as Confirmation, { id: snap.target_id, updated_at: snap.updated_at, scheduled_at: snap.scheduled_at }, p.canon)) throw new Error('changed')
       const isDry = dryReq || args._dry === true
       const res = isDry ? { result: { dry: true } } : await p.run()
       // the undo payload of a committed write is kept, so Undo works after the tap (date, photo)
@@ -882,7 +910,7 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
       if (!recorded) receiptLost = true
       canUndo = !!(res as { undo?: unknown }).undo && recorded
       resDetail = (res as { detail?: string }).detail
-      label = p.echo.label.replace(/^Approving/, 'Approved').replace(/^Deleting/, 'Deleted').replace(/^Taking (.*) off the schedule$/, 'Took $1 off the schedule')
+      label = proposedLine(args as Act, { ...p, target_id: snap.target_id }, snap).replace(/^Proposed/, 'Done') || p.echo.label.replace(/^Approving/, 'Approved').replace(/^Deleting/, 'Deleted').replace(/^Taking (.*) off the schedule$/, 'Took $1 off the schedule')
         .replace(/^Moving/, 'Moved').replace(/^Removing the date/, 'Removed the date').replace(/^Adding your photo/, 'Added your photo')
         .replace(/^Rewriting (.*) through your writer\. It takes a few minutes\.$/, 'Sent $1 to your writer. It takes a few minutes.')
     } catch (e) {
@@ -916,9 +944,16 @@ async function heldSeen(svc: any, userDb: any, userId: string, ids: string[], ev
       if (error) { results.push({ id, error: 'read_failed' }); continue }
       if (!a) { results.push({ id, error: 'not_found' }); continue }
       let r = (a.result ?? {}) as { state?: string; seen_at?: string; hold_ms?: number }
-      if (r.state === 'held' && Date.now() - Date.parse(a.created_at) > HOLD_EXPIRE_MS) {
-        // older than 24 h: cancelled, never committed
-        if (await claimState(svc, a, 'held', 'cancelled')) r = { ...r, state: 'cancelled' }
+      if (r.state === 'held') {
+        // a hold past its deadline, or without the v2 confirmation, will never run: cancelled, echo persisted
+        const { data: full } = await svc.from('desk_actions').select('args').eq('id', id).maybeSingle()
+        const v2 = (full?.args as { _confirm?: { v?: number } } | null)?._confirm?.v === 2
+        const exp = (r as { expires_at?: string }).expires_at
+        const expired = exp ? Date.now() >= Date.parse(exp) : Date.now() - Date.parse(a.created_at) > HOLD_EXPIRE_MS
+        if (!v2 || expired) {
+          await expireHold(svc, a, expired ? 'Expired after 24 hours. Nothing changed.' : 'Cancelled: this proposal is from an older version. Ask again.')
+          r = { ...r, state: 'cancelled' }
+        }
       }
       const ms = Number(r.hold_ms ?? 8000)
       if (r.state === 'held' && !r.seen_at) {

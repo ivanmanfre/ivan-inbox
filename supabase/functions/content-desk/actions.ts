@@ -79,7 +79,26 @@ export type Planned = {
   context?: string
   /** an unresolved or ambiguous reference: a display (a line and chips) only, never an action entry (Sol r10 #10) */
   display?: boolean
+  /** the confirmation the held card stands for (round 12): the commit runs only while the live row still matches it */
+  confirm?: Confirmation
 }
+
+/** Versioned confirmation payload stored with a held draft action (Sol r11 #2). */
+export type Confirmation = { v: 2; draft_id: string; revision: string | null; source_at: string | null; args: Record<string, unknown> }
+
+/** A short distinct draft reference shown to Ivan: the first 6 hex of the draft UUID. */
+export const draftRef = (id: string) => id.replace(/-/g, '').slice(0, 6)
+
+const sameInstant = (a: string | null | undefined, b: string | null | undefined) => (a ? Date.parse(a) : null) === (b ? Date.parse(b) : null)
+
+/** Does the live row (and the re-planned args) still match what the card showed? */
+export function confirmMatches(c: Confirmation | undefined, live: { id: string; updated_at?: string | null; scheduled_at: string | null }, canon: Record<string, unknown> | undefined): boolean {
+  if (!c || c.v !== 2) return false
+  return c.draft_id === live.id && String(c.revision) === String(live.updated_at) && sameInstant(c.source_at, live.scheduled_at)
+    && JSON.stringify(c.args ?? {}) === JSON.stringify(canon ?? {})
+}
+
+
 
 export const HOLD_MS = 8000
 /** Confirm-to-act: a held draft action waits for Ivan's tap up to this long, then is cancelled, never committed. */
@@ -149,6 +168,13 @@ export function pickChips(act: Act, ds: Draft[], all: Draft[]): { label: string;
     const send = (VERB[IN_ALIAS[act.kind] ?? act.kind] ?? ((r: string) => `${act.kind} ${r}`))(ref)
     return { label: send, send }
   })
+}
+
+/** A chip's own text, resolved by identify against the same candidates, returns exactly this draft. */
+export function roundTrips(send: string, draftId: string, all: Draft[]): boolean {
+  const ids: IdDraft[] = all.map((d) => ({ id: d.id, first_line: d.first_line, day: dayOf(d), rev: d.updated_at ?? null }))
+  const r = identify(send, ids, null, { today: warsawDay(new Date().toISOString()) })
+  return r.ids.length === 1 && r.ids[0] === draftId
 }
 
 /** Server chips that survive a round trip: each chip's own text, resolved by identify, returns its draft alone (Sol r10 #8). */
@@ -342,7 +368,7 @@ export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: 
   let cands = await liveCandidates(ctx)
   if (!cands) return ask('read_failed', 'I could not read your drafts, so I did nothing.')
   const today = warsawDay(new Date().toISOString())
-  const idOpts = { today, kind: act.kind }
+  const idOpts = { today, kind: act.kind, note: act.note }
   const asId = (ds: Draft[]): IdDraft[] => ds.map((d) => ({ id: d.id, first_line: d.first_line, day: dayOf(d), rev: d.updated_at ?? null }))
   let res = identify(ctx.text, asId(cands), ctx.shown, idOpts)
   if (ctx.fixtures && !res.ids.length && res.why !== 'too_many_rivals') {
@@ -387,6 +413,9 @@ export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: 
   act.line = live.d.first_line
   const p = await plan({ ...ctx, brief: liveBrief(ctx, live.d, live.snap, r.handle) }, act)
   p.target_id = live.d.id
+  // every draft-targeting chip, refusal follow-ups included, is emitted only if it resolves to this draft alone (Sol r11 #7)
+  if (p.chips?.length) p.chips = p.chips.filter((c) => roundTrips(c.send, live!.d.id, all))
+  if (p.run) p.confirm = { v: 2, draft_id: live.d.id, revision: live.d.updated_at ?? null, source_at: live.d.scheduled_at ?? null, args: p.canon ?? {} }
   // the verifier reads the resolved post's whole live opener and every rival opener with its day
   const dayText = (x: Draft) => (dayOf(x) === 'undated' ? 'undated' : `dated ${dayOf(x)}`)
   p.context = `Target post, found from his words, full first line: "${live.d.first_line.slice(0, 300)}" (${dayText(live.d)}).` +
@@ -414,7 +443,8 @@ export async function planForTarget(ctx: Ctx, act: Act, snap: Snapshot): Promise
     throw e
   }
   if (!live) return { refuse: 'gone' }
-  if (String(live.snap.updated_at) !== String(snap.updated_at) || live.snap.status !== snap.status || live.snap.first_line_sha !== snap.first_line_sha) return { refuse: 'changed' }
+  if (String(live.snap.updated_at) !== String(snap.updated_at) || live.snap.status !== snap.status || live.snap.first_line_sha !== snap.first_line_sha
+      || !sameInstant(live.snap.scheduled_at, snap.scheduled_at)) return { refuse: 'changed' }   // the source date the card showed (round 12 #1)
   // the queue set the action was authorized on (Sol r5 B2); desk_pull checks it again under the locks
   if (JSON.stringify(snap.queue_ids ?? null) !== JSON.stringify(live.snap.queue_ids ?? null)) return { refuse: 'queue_changed' }
   if ((IN_ALIAS[act.kind] ?? act.kind) === 'pull') {
@@ -523,7 +553,8 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
       const id = d!.id, prev = d!.scheduled_at
       return {
         ...base,
-        echo: { kind, label: `Moving ${q} to ${warsaw(iso)}${prev ? ` (was ${warsaw(prev)})` : ''}`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
+        // immediate (the locked split): date runs at once through desk_set_date, with an exact server undo
+        echo: { kind, label: `Moved (ref ${draftRef(id)}) "${d!.first_line}" (${prev ? warsaw(prev) : 'no date'}) to ${warsaw(iso)}`, state: 'done', undo: true, target },
         describe: `date ${qq} for ${String(act.at)} Warsaw time (${warsaw(iso)})`,
         command: `move ${qq} to ${String(act.at)}`,
         run: async () => {
@@ -562,14 +593,14 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
             return { result: await deskWrite(ctx, 'desk_pull', {
               p_draft: id, p_expected_updated_at: d!.updated_at ?? null, p_queue_ids: d!.queue_ids,
               p_next_queue: kind === 'pull' ? queue!.queue_id : null, p_next_slot: kind === 'pull' ? queue!.slot_at : null,
-              p_reason: kind === 'pull' ? reason : null,
+              p_reason: kind === 'pull' ? reason : null, p_expected_scheduled_at: d!.scheduled_at ?? null,
             }) }
           },
         }
       }
       return {
         ...base,
-        echo: { kind: 'undate', label: `Removing the date from ${q} (was ${warsaw(prev)})`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
+        echo: { kind: 'undate', label: `Removed the date (ref ${draftRef(id)}) from "${d!.first_line}" (was ${warsaw(prev)})`, state: 'done', undo: true, target },
         describe: `remove the date from ${qq} (now ${warsaw(prev)})`,
         command: `remove the date from ${qq}`,
         run: async () => {
@@ -673,7 +704,7 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
       const id = d!.id
       return {
         ...base,
-        echo: { kind, label: `Adding your photo to ${q}`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
+        echo: { kind, label: `Added your photo (ref ${draftRef(id)}) to "${d!.first_line}" (${d!.scheduled_at ? warsaw(d!.scheduled_at) : 'no date'})`, state: 'done', undo: true, target },
         describe: `attach the photo he sent to ${qq}`,
         command: `attach this photo to ${qq}`,
         run: async () => {
@@ -897,12 +928,12 @@ export function verbatimIn(s: unknown, text: string): boolean {
  * canonical args its write consumes plus what a held commit re-plans from; a refusal keeps only kind
  * and refusal code, except that a refused directed redo keeps its note as his own words.
  */
-export function journalArgs(act: Act, p: Pick<Planned, 'run' | 'refuse' | 'canon'>, snap: Snapshot | null, mode: { fixtures?: boolean; dry?: boolean }, text: string): Record<string, unknown> {
+export function journalArgs(act: Act, p: Pick<Planned, 'run' | 'refuse' | 'canon' | 'confirm'>, snap: Snapshot | null, mode: { fixtures?: boolean; dry?: boolean }, text: string): Record<string, unknown> {
   if (p.run) {
     const canon = { ...(p.canon ?? {}) }
     // what a held commit re-plans from, as server-owned fields
     const own = act.kind === 'date' && canon.at ? { _at: canon.at } : act.kind === 'photo_attach' && canon.url ? { _url: canon.url } : {}
-    return { kind: act.kind, ...canon, ...own, ...(act._qa_override === true ? { _qa_override: true } : {}),
+    return { kind: act.kind, ...canon, ...own, ...(p.confirm ? { _confirm: p.confirm } : {}), ...(act._qa_override === true ? { _qa_override: true } : {}),
       ...(snap ? { _snapshot: snap } : {}), ...(mode.fixtures ? { _fixtures: true } : {}), ...(mode.dry ? { _dry: true } : {}) }
   }
   // the ORIGINAL proposed note, matched against his message and sliced from it (Sol r10 #9)
@@ -934,7 +965,7 @@ export class QueueReadError extends Error { constructor() { super('queue_read_fa
 
 /** Date write through desk_set_date: lock, version check, before value, app RPC, applied value: one transaction (Sol r4). */
 async function setDate(ctx: Ctx, d: Draft, iso: string | null) {
-  const { data, error } = await ctx.userDb.rpc('desk_set_date', { p_draft: d.id, p_expected_updated_at: d.updated_at ?? null, p_expected_status: d.status, p_at: iso })
+  const { data, error } = await ctx.userDb.rpc('desk_set_date', { p_draft: d.id, p_expected_updated_at: d.updated_at ?? null, p_expected_status: d.status, p_at: iso, p_expected_scheduled_at: d.scheduled_at ?? null })
   if (error) throw new Error(lockCode(error) ? 'changed' : 'write_failed')
   const w = (data ?? {}) as { ok?: boolean; error?: string; before?: string | null; applied?: string | null; applied_status?: string; applied_updated_at?: string; rpc?: unknown }
   if (w.ok !== true) throw new Error(String(w.error ?? 'refused'))
