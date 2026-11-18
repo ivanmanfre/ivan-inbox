@@ -4,6 +4,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 let subscribeCb: ((status: string) => void) | null = null
+let readRows: Array<Record<string, unknown>> = []
+const orCalls: string[] = []
+const pgHandlers: Array<(p: unknown) => void> = []
 let sessionHangs = false
 let sessionGate: Promise<void> | null = null
 vi.mock('../../lib/supabase', () => ({
@@ -13,9 +16,18 @@ vi.mock('../../lib/supabase', () => ({
       if (sessionGate) await sessionGate
       return { data: { session: { access_token: 'made-up-token' } } }
     } },
+    from: () => {
+      const b = {
+        select: () => b,
+        or: (f: string) => { orCalls.push(f); return b },
+        order: () => b,
+        limit: async () => ({ data: readRows, error: null }),
+      }
+      return b
+    },
     channel: () => {
       const ch = {
-        on: () => ch,
+        on: (_e: string, _f: unknown, h: (p: unknown) => void) => { pgHandlers.push(h); return ch },
         subscribe: (cb: (status: string) => void) => { subscribeCb = cb; return ch },
       }
       return ch
@@ -134,6 +146,32 @@ describe('desk api', () => {
   it('a plain network failure stays "No connection."', async () => {
     vi.spyOn(window, 'fetch').mockRejectedValue(new TypeError('failed to fetch'))
     expect(await api.commitAction('made-up-id')).toEqual({ ok: false, error: 'No connection.' })
+  })
+
+  it('test rows (meta.test) are filtered out of the history read and realtime outside eval mode', async () => {
+    localStorage.removeItem('desk-eval'); orCalls.length = 0; pgHandlers.length = 0
+    readRows = [
+      { id: 'm2', role: 'assistant', body: 'Made-up eval answer.', status: 'done', meta: { test: true }, created_at: '2026-11-18T12:00:02Z' },
+      { id: 'm1', role: 'assistant', body: 'Made-up real answer.', status: 'done', meta: {}, created_at: '2026-11-18T12:00:01Z' },
+    ]
+    const rows = await api.readMessages()
+    expect(orCalls).toEqual(['meta->>test.is.null,meta->>test.neq.true'])
+    expect(rows.map(r => r.id)).toEqual(['m1'])
+    const message = vi.fn()
+    const stop = api.subscribeDesk('desk:test', '00000000-0000-4000-8000-000000000001', { message, job: vi.fn(), resubscribed: vi.fn() })
+    pgHandlers[0]({ new: { id: 'm3', role: 'assistant', body: 'x', status: 'done', meta: { test: true } } })
+    pgHandlers[0]({ new: { id: 'm4', role: 'assistant', body: 'y', status: 'done', meta: {} } })
+    expect(message.mock.calls.map(c => c[0].id)).toEqual(['m4'])
+    stop()
+  })
+
+  it('eval mode keeps test rows visible (the eval and G9 read them)', async () => {
+    localStorage.setItem('desk-eval', '1'); orCalls.length = 0
+    readRows = [{ id: 'm2', role: 'assistant', body: 'Made-up eval answer.', status: 'done', meta: { test: true }, created_at: '2026-11-18T12:00:02Z' }]
+    const rows = await api.readMessages()
+    expect(orCalls).toEqual([])
+    expect(rows.map(r => r.id)).toEqual(['m2'])
+    localStorage.removeItem('desk-eval')
   })
 
   it('the first SUBSCRIBED re-reads too, so a settlement between the read and the subscription is not missed', () => {
