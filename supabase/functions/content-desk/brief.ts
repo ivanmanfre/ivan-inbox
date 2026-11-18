@@ -102,6 +102,15 @@ export function applyVisibility(b: BriefJson, visible: Map<string, boolean> | nu
   }
 }
 
+const normLine = (s: string | null | undefined) => (s ?? '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().slice(0, 50)
+
+/** Published drafts the metrics read has not caught up with yet (newest first). */
+export function unmeasured(drafts: Draft[], posts: PostRow[]): Draft[] {
+  const seen = new Set(posts.map((p) => normLine(p.first_line)))
+  return drafts.filter((d) => d.status === 'published' && d.published_at && !seen.has(normLine(d.first_line)))
+    .sort((a, z) => String(z.published_at).localeCompare(String(a.published_at)))
+}
+
 export function render(b: BriefJson, recent: { role: string; origin: string; body: string; created_at: string }[] = [],
   jobs: { title: string; status: string; created_at: string; t3_link: string | null }[] = []): Rendered {
   const drafts = b.drafts ?? []
@@ -191,7 +200,11 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
     S.push(`(Only if he asks:) Review also has ${rv.filter((d) => d.is_copy).length} copies and ${rv.filter((d) => d.brain).length} brain drafts that take Keep/Drop.`)
     S.push(`All live drafts by status: ${Object.entries(byStatus).map(([k, v]) => `${k} ${v}`).join(', ')}.`)
     for (const w of weeks) S.push(`${w.label.toLowerCase()}: ${w.originals} of ${w.cap} originals dated, ${w.dated.length - w.originals} ${w.dated.length - w.originals === 1 ? 'copy' : 'copies'}, ${w.dated.filter((x) => x.status === 'published').length} already published.`)
-    if (last) S.push(`Last post out: ${warsaw(last.posted_at)} "${clip(last.first_line, 70)}" (${last.impressions ?? '?'} impressions so far).`)
+    // the newest PUBLISHED DRAFT is the last post out; the metrics read can lag a day behind it
+    const newestPub = drafts.filter((d) => d.status === 'published' && d.published_at).sort((a, z) => String(z.published_at).localeCompare(String(a.published_at)))[0]
+    if (newestPub && (!last || Date.parse(String(newestPub.published_at)) > Date.parse(String(last.posted_at)) + 3600e3)) {
+      S.push(`Last post out: ${warsaw(newestPub.published_at)} "${clip(newestPub.first_line, 70)}" (no numbers yet).`)
+    } else if (last) S.push(`Last post out: ${warsaw(last.posted_at)} "${clip(last.first_line, 70)}" (${last.impressions ?? '?'} impressions so far).`)
     if (best) S.push(`Best post of the last 31 days by impressions: "${clip(best.first_line, 70)}" ${warsaw(best.posted_at, false)}, ${best.impressions} impressions.`)
     S.push(`Ideas waiting: ${b.ideas?.reviewing ?? 0}. Queue armed (next 21 days): ${(b.queue ?? []).length} posts, ${(b.queue ?? []).filter((x) => x.origin === 'autopilot').length} picked by the autopilot.`)
     L.splice(1, 0, '', 'SUMMARY (exact counts, use these):', ...S.map((x) => '- ' + x))
@@ -221,6 +234,7 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
   const posts = (b.posts as { posts?: PostRow[] }).posts ?? []
   const bar = (b.posts as { bar?: number }).bar
   L.push('', `RECENT PUBLISHED POSTS (last 31 days; "worked" = 1.5x his organic median, bar ${bar ?? '?'} impressions; boosted never counts; under 48h = too new):`)
+  for (const d of unmeasured(drafts, posts)) L.push(`- ${warsaw(d.published_at)} "${clip(d.first_line, 90)}": (no numbers yet)`)
   for (const p of posts.slice().sort((a, z) => String(z.posted_at).localeCompare(String(a.posted_at)))) {
     L.push(`- ${warsaw(p.posted_at)} "${clip(p.first_line, 90)}": ${p.impressions ?? '?'} impressions, ${p.likes ?? 0} likes, ${p.comments ?? 0} comments, ${p.times_median ?? '?'}x median${p.boosted ? ', BOOSTED' : ''}${p.too_new ? ', too new' : p.worked ? ', WORKED' : ''}`)
   }

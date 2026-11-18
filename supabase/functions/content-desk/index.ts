@@ -16,7 +16,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { render, applyVisibility, warsaw, type BriefJson, type Rendered } from './brief.ts'
 import { buildPrompt } from './prompt.ts'
-import { parse, plain, type Act } from './parse.ts'
+import { parse, plain, shortParagraphs, type Act } from './parse.ts'
 import { askDesk, askDeskStream, LlmError, DESK_MODEL } from './llm.ts'
 import { planLive, planForTarget, runUndo, UndoRefused, stillSame, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
 import { authorize } from './auth.ts'
@@ -465,7 +465,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         // The reply streamed before the actions ran. If one failed, say so in the body too, so the
         // text never claims a change that did not happen.
         const failedEchoes = echoes.filter((e) => e.state === 'failed' && !['ambiguous', 'line_mismatch'].includes(e.detail ?? ''))
-        let finalBody = reply
+        let finalBody = shortParagraphs(reply)
         if (failedEchoes.length) {
           const note = failedEchoes.map((e) => e.label).join(' ')
           finalBody = `${reply}\n\nThat did not go through: ${note}`

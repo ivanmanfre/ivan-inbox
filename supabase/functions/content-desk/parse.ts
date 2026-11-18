@@ -52,3 +52,26 @@ export function parse(text: string): Parsed {
     .map((c) => ({ label: plain(String(c.label)).slice(0, 60), send: String(c.send).slice(0, 400) }))
   return { reply: plain(reply), actions, reads, chips }
 }
+
+/**
+ * Keep desk prose in short paragraphs: any paragraph that is not a list and has 35+ words is split
+ * at sentence ends into paragraphs of at most ~30 words. Lists and short paragraphs are untouched.
+ */
+export function shortParagraphs(text: string, max = 30, trigger = 35): string {
+  const words = (s: string) => (s.match(/\S+/g) ?? []).length
+  return text.split(/\n\s*\n/).map((para) => {
+    const lines = para.split('\n')
+    if (lines.some((l) => /^\s*([-•→*]|\d+[.)])\s/.test(l)) || words(para) < trigger) return para
+    const sentences = para.replace(/\s*\n\s*/g, ' ').match(/[^.!?]+(?:[.!?]+["')\]]*|$)\s*/g)?.map((x) => x.trim()).filter(Boolean) ?? [para]
+    const out: string[] = []
+    let cur: string[] = []
+    let n = 0
+    for (const sen of sentences) {
+      const w = words(sen)
+      if (cur.length && n + w > max) { out.push(cur.join(' ')); cur = []; n = 0 }
+      cur.push(sen); n += w
+    }
+    if (cur.length) out.push(cur.join(' '))
+    return out.join('\n\n')
+  }).join('\n\n')
+}

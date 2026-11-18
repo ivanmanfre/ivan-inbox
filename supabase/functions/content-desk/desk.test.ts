@@ -183,3 +183,25 @@ Deno.test('delete: a dated draft is refused with a pull chip; an undated review 
   const p2 = await plan(ctx, { kind: 'delete', draft: h(free.id), line: 'Coffee in the old town' })
   assertEquals(p2.echo.state, 'held')
 })
+
+import { shortParagraphs } from './parse.ts'
+import { unmeasured } from './brief.ts'
+
+Deno.test('shortParagraphs: long prose split at sentences, lists untouched', () => {
+  const long = Array.from({ length: 8 }, (_, i) => `Sentence number ${i} has exactly seven words here.`).join(' ')
+  const out = shortParagraphs(long)
+  for (const p of out.split('\n\n')) assert((p.match(/\S+/g) ?? []).length <= 30)
+  assertEquals(out.replace(/\n\n/g, ' '), long)
+  const list = '- ' + 'word '.repeat(40).trim()
+  assertEquals(shortParagraphs(list), list)
+  assertEquals(shortParagraphs('Short one.'), 'Short one.')
+})
+
+Deno.test('unmeasured: a published draft the metrics have not caught is listed, newest first', () => {
+  const ds = [
+    draft('aaaaaaaa-0000-4000-8000-000000000001', 'Kraków weekend', { status: 'published', published_at: '2026-11-16T13:04:00Z' }),
+    draft('bbbbbbbb-0000-4000-8000-000000000002', 'Creators who doubled', { status: 'published', published_at: '2026-11-17T14:34:00Z' }),
+  ]
+  const u = unmeasured(ds, [{ first_line: 'Kraków weekend', posted_at: '2026-11-16T13:04:00Z', impressions: 400 }])
+  assertEquals(u.map((d) => d.first_line), ['Creators who doubled'])
+})
