@@ -6,7 +6,7 @@ import { currentUserId, readSwr, redactCapability, writeSwr } from '../../lib/sw
 import { cancelAction, commitAction, readJobs, readMessages, sendDesk, subscribeDesk, undoAction, warmDesk, type ActionResult } from './api'
 import { MOCK_USER, mockOn } from './mock'
 import {
-  cacheable, mergeRows, newKey, optimisticPair, patch,
+  cacheable, mergeRows, newKey, olderThan, optimisticPair, patch,
   type DeskAttachment, type DeskMessage, type T3Job,
 } from './model'
 
@@ -24,18 +24,18 @@ export type DeskHandle = {
   retry: (m: DeskMessage) => void
   act: (kind: 'undo' | 'commit' | 'cancel', actionId: string) => Promise<ActionResult>
   reload: () => void
-  /** When a held action was delivered live in this session (its countdown start), else null. */
+  /** When a held action was delivered live to THIS mounted desk (its countdown start), else null. */
   liveHoldStart: (actionId: string) => number | null
+  /** The original send of a failed answer is loaded, so a retry can resend it. */
+  canRetry: (m: DeskMessage) => boolean
 }
 
-// Holds delivered by a live turn in THIS session, with the moment their countdown began.
-// Module level: a remount (or StrictMode's double effect) keeps the same countdown and
-// never starts a second one. A hold read from the cache or history is never in here,
-// so it never auto-commits (Sol desk-ui r1 #2).
-const liveHolds = new Map<string, number>()
-export function liveHoldStartOf(id: string): number | null { return liveHolds.get(id) ?? null }
-/** Tests only. */
-export function resetLiveHolds(): void { liveHolds.clear() }
+// Holds that may count down and commit by themselves: only those a live turn delivered to THIS
+// mounted desk while the tab was visible, and only while it stays mounted and visible. Leaving the
+// desk (unmount) or hiding the tab drops them all for good; they then wait for "Do it now"
+// (Sol desk-ui r1/r2 #2). Kept per mount, so a reopened desk starts with none.
+/** Tests only: kept for the test files' resets; live holds are per mount now. */
+export function resetLiveHolds(): void { /* per-mount state: nothing global to clear */ }
 
 function userId(): string | null {
   return mockOn() ? MOCK_USER : currentUserId()
@@ -59,6 +59,14 @@ export function useDesk(): DeskHandle {
   const topic = `desk:${useId()}`
   const listRef = useRef(messages)
   listRef.current = messages
+  const liveHolds = useRef(new Map<string, number>())
+  const [, setHoldsVersion] = useState(0)
+  useEffect(() => {
+    const holds = liveHolds.current
+    const onVis = () => { if (document.visibilityState !== 'visible' && holds.size) { holds.clear(); setHoldsVersion(v => v + 1) } }
+    document.addEventListener('visibilitychange', onVis)
+    return () => { document.removeEventListener('visibilitychange', onVis); holds.clear() }
+  }, [])
 
   const apply = useCallback((fn: (l: DeskMessage[]) => DeskMessage[]) => {
     setMessages(prev => {
@@ -75,7 +83,15 @@ export function useDesk(): DeskHandle {
   // row, an action's answer, an acked user row): the snapshot may predate them, so they are merged
   // again on top of it and never erased (Sol desk-ui r1 #3).
   const sinceRead = useRef<Map<string, DeskMessage> | null>(null)
-  const note = useCallback((rows: DeskMessage[]) => { for (const r of rows) sinceRead.current?.set(r.id, r) }, [])
+  const note = useCallback((rows: DeskMessage[]) => {
+    const j = sinceRead.current
+    if (!j) return
+    for (const r of rows) {
+      const have = j.get(r.id) ?? listRef.current.find(m => m.id === r.id && !m.local)
+      if (have && olderThan(r, have)) continue // an older write never replaces a newer one in the journal
+      j.set(r.id, r)
+    }
+  }, [])
   const mergeLive = useCallback((rows: DeskMessage[], drop?: (m: DeskMessage) => boolean) => {
     note(rows)
     apply(prev => mergeRows(drop ? prev.filter(m => !drop(m)) : prev, rows))
@@ -98,11 +114,19 @@ export function useDesk(): DeskHandle {
         let next = mergeRows(prev.filter(m => m.local || m.answers || (m.client_key && open.has(m.client_key))), rows)
         if (late.length) next = mergeRows(next, late)
         const stored = new Set(next.filter(m => !m.local && m.client_key).map(m => m.client_key))
-        return next.map(m => (m.local === 'sending' && m.client_key && ended.current.has(m.client_key) && !stored.has(m.client_key)
+        return next.map(m => ((m.local === 'sending' || m.local === 'unconfirmed') && m.client_key && ended.current.has(m.client_key) && !stored.has(m.client_key)
           ? { ...m, local: 'failed' as const, error: 'Not sent.' } : m))
       })
       setLoaded(true); setFromCache(false); setReadFailed(false)
-    }, () => { if (live) { sinceRead.current = null; setReadFailed(true); setLoaded(true) } })
+    }, () => {
+      if (!live) return
+      sinceRead.current = null
+      // The check could not reach the server: a send that ended without a confirmed row is not left on
+      // "Sending"; it says it is unconfirmed and offers Check again and Retry (Sol desk-ui r2 #4).
+      apply(prev => prev.map(m => (m.local === 'sending' && m.client_key && ended.current.has(m.client_key)
+        ? { ...m, local: 'unconfirmed' as const, error: 'Not confirmed.' } : m)))
+      setReadFailed(true); setLoaded(true)
+    })
     return () => { live = false }
   }, [n, apply])
 
@@ -148,7 +172,9 @@ export function useDesk(): DeskHandle {
       onDelta: t => setMessages(prev => patch(prev, phId, m => ({ ...m, body: m.body + t }))),
       onFinal: m => {
         // Holds delivered by this live turn are the only ones that may count down and commit.
-        for (const x of m.meta.actions ?? []) if (x.state === 'held' && !liveHolds.has(x.id)) liveHolds.set(x.id, Date.now())
+        if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+          for (const x of m.meta.actions ?? []) if (x.state === 'held' && !liveHolds.current.has(x.id)) liveHolds.current.set(x.id, Date.now())
+        }
         mergeLive([m], x => x.id === phId)
       },
       onError: (_code, detail) => apply(prev => patch(
@@ -197,6 +223,12 @@ export function useDesk(): DeskHandle {
     return r
   }, [mergeLive])
 
+  const canRetry = useCallback((m: DeskMessage) => {
+    const key = m.answers ?? m.meta.client_key ?? m.client_key
+    return !!key && listRef.current.some(x => x.role === 'user' && x.client_key === key)
+  }, [])
+
   const reload = useCallback(() => setN(x => x + 1), [])
-  return { messages, jobs, fromCache, loaded, readFailed, busy, send, retry, act, reload, liveHoldStart: liveHoldStartOf }
+  const liveHoldStart = useCallback((id: string) => liveHolds.current.get(id) ?? null, [])
+  return { messages, jobs, fromCache, loaded, readFailed, busy, send, retry, act, reload, liveHoldStart, canRetry }
 }

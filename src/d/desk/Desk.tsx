@@ -8,7 +8,7 @@ import { warsawDm, warsawDow, warsawHm } from '../ui/time'
 import { DeskComposer } from './Composer'
 import { useDesk, type DeskHandle } from './useDesk'
 import { useKeyboardInset } from './useKeyboardInset'
-import { committed, disarmed } from './actionGuards'
+import { disarmed, failedOp, inFlight } from './actionGuards'
 import {
   DEFAULT_HOLD_MS, T3_LABEL, T3_LIVE, holdLeft,
   type DeskAction, type DeskMessage, type T3Job,
@@ -81,8 +81,9 @@ function Row({ m, desk }: { m: DeskMessage; desk: DeskHandle }) {
       <div className={`dk-me${m.local === 'failed' ? ' dk-failed' : ''}`} data-msg={m.id}>
         {m.meta.attachments?.filter(a => a.kind === 'photo').map(a => <img key={a.url} className="dk-photo" src={a.url} alt="Photo you sent" width={120} height={120} />)}
         {m.body && <div className="dk-me-t">{m.body}</div>}
-        <small>{m.meta.voice ? 'Voice · ' : ''}{m.local === 'sending' ? 'Sending' : m.local === 'failed' ? 'Not sent' : warsawHm(m.created_at)}</small>
-        {m.local === 'failed' && <button type="button" className="dk-pill" onClick={() => desk.retry(m)}>Retry</button>}
+        <small>{m.meta.voice ? 'Voice · ' : ''}{m.local === 'sending' ? 'Sending' : m.local === 'failed' ? 'Not sent' : m.local === 'unconfirmed' ? 'Not confirmed: the app could not check' : warsawHm(m.created_at)}</small>
+        {m.local === 'unconfirmed' && <button type="button" className="dk-pill" onClick={desk.reload}>Check again</button>}
+        {(m.local === 'failed' || m.local === 'unconfirmed') && <button type="button" className="dk-pill" onClick={() => desk.retry(m)}>Retry</button>}
       </div>
     )
   }
@@ -91,7 +92,7 @@ function Row({ m, desk }: { m: DeskMessage; desk: DeskHandle }) {
     if (m.status === 'error') return (
       <div className="dk-ans dk-ans-err" data-msg={m.id} role="alert">
         <p>{m.error}</p>
-        <button type="button" className="dk-pill" onClick={() => desk.retry(m)}>Try again</button>
+        {desk.canRetry(m) && <button type="button" className="dk-pill" onClick={() => desk.retry(m)}>Try again</button>}
       </div>
     )
     return (
@@ -104,7 +105,7 @@ function Row({ m, desk }: { m: DeskMessage; desk: DeskHandle }) {
     // A stored failed answer keeps its retry, tied to the send it failed (meta.client_key).
     <div className="dk-ans dk-ans-err" data-msg={m.id} role="alert">
       <p>{m.body || 'The desk could not answer just now.'}</p>
-      {m.meta.client_key && <button type="button" className="dk-pill" onClick={() => desk.retry(m)}>Try again</button>}
+      {desk.canRetry(m) && <button type="button" className="dk-pill" onClick={() => desk.retry(m)}>Try again</button>}
     </div>
   )
   const note = ORIGIN_NOTE[m.origin]
@@ -136,63 +137,68 @@ const SETTLED_NOTE: Record<string, string> = {
 }
 
 function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle }) {
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
+  const [, rerender] = useState(0)
   const holdMs = a.hold_ms ?? DEFAULT_HOLD_MS
-  // Only a hold this session's live turn delivered counts down; anything restored waits for a tap.
+  // Only a hold this mounted desk received live (tab visible) counts down; anything restored, or a
+  // hold whose desk was left or hidden, waits for a tap.
   const start = desk.liveHoldStart(a.id)
-  const [hiddenAtExpiry, setHiddenAtExpiry] = useState(false)
   const [now, setNow] = useState(() => Date.now())
-  const live = a.state === 'held' && start !== null && !disarmed.has(a.id) && !hiddenAtExpiry
+  const busy = inFlight.get(a.id)
+  const failed = failedOp.get(a.id)
+  const live = a.state === 'held' && start !== null && !disarmed.has(a.id) && !busy && !failed
   useEffect(() => {
     if (!live) return
     const t = window.setInterval(() => setNow(Date.now()), 250)
-    // A hidden tab never commits by itself: if the page is hidden while the hold runs, it waits for a tap.
-    const onVis = () => { if (document.visibilityState !== 'visible') setHiddenAtExpiry(true) }
-    document.addEventListener('visibilitychange', onVis)
-    return () => { window.clearInterval(t); document.removeEventListener('visibilitychange', onVis) }
+    return () => window.clearInterval(t)
   }, [live])
   const left = live ? holdLeft(start as number, holdMs, now) : 0
-  const go = async (kind: 'undo' | 'commit' | 'cancel') => {
-    if (kind === 'cancel') disarmed.add(a.id) // synchronous: the timer below can no longer commit
-    if (kind === 'commit') { if (committed.has(a.id) || disarmed.has(a.id)) return; committed.add(a.id) }
-    setBusy(true); setErr(null)
+  const go = async (kind: 'undo' | 'commit' | 'cancel', auto = false) => {
+    if (inFlight.has(a.id)) return
+    if (auto && disarmed.has(a.id)) return
+    // Synchronous, before any await: after any op (a tap, or the clock's one try) the clock can never
+    // commit by itself again; a lost race is read back, never retried in a loop.
+    disarmed.add(a.id)
+    inFlight.set(a.id, kind); failedOp.delete(a.id); rerender(x => x + 1)
     const r = await desk.act(kind, a.id)
-    setBusy(false)
-    if (r.ok) return
-    // A lost race is settled, not an error: the row is read back and shows what really happened.
-    if (r.error === 'not_held' || r.error === 'nothing_to_undo') return
-    setErr(SETTLED_NOTE[r.error ?? ''] ?? r.error ?? 'That did not go through.')
-    if (kind === 'commit' && r.error !== 'hold_expired') committed.delete(a.id)
+    inFlight.delete(a.id)
+    if (!r.ok && r.error !== 'not_held' && r.error !== 'nothing_to_undo') {
+      // A failed op is offered again; the hold stays disarmed (Sol desk-ui r2 #1).
+      disarmed.add(a.id)
+      failedOp.set(a.id, { op: kind, error: SETTLED_NOTE[r.error ?? ''] ?? r.error ?? 'That did not go through.' })
+    }
+    // A lost race ('not_held' / 'nothing_to_undo') is settled: the row is read back and shows the truth.
+    rerender(x => x + 1)
   }
   // go is rebuilt each render; only the clock decides when the hold runs out.
   useEffect(() => {
     if (!live || left !== 0) return
-    if (document.visibilityState !== 'visible') { setHiddenAtExpiry(true); return }
-    void go('commit')
+    if (document.visibilityState !== 'visible') { disarmed.add(a.id); rerender(x => x + 1); return }
+    void go('commit', true)
   // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [live, left])
-  const waiting = a.state === 'held' && !live && !committed.has(a.id) && !disarmed.has(a.id)
-  const cls = `dk-act dk-act-${a.state}`
+  const held = a.state === 'held'
+  const waiting = held && !live && !busy
+  const expired = failed?.error === SETTLED_NOTE.hold_expired
   return (
-    <div className={cls} data-action={a.id} data-state={a.state}>
+    <div className={`dk-act dk-act-${a.state}`} data-action={a.id} data-state={a.state}>
       <span className="dk-act-t">
         {a.state === 'done' && <>Done: {a.label}</>}
-        {a.state === 'held' && live && <>{a.label} in <b className="dk-count">{left}s</b></>}
+        {held && live && <>{a.label} in <b className="dk-count">{left}s</b></>}
+        {held && busy === 'commit' && <>Doing it: {a.label}</>}
+        {held && busy === 'cancel' && <>Cancelling: {a.label}</>}
         {waiting && <>Not done: {a.label}.</>}
-        {a.state === 'held' && !live && disarmed.has(a.id) && <>Cancelling: {a.label}</>}
-        {a.state === 'held' && !live && committed.has(a.id) && !disarmed.has(a.id) && <>Doing it: {a.label}</>}
         {a.state === 'committing' && <>Doing it: {a.label}</>}
         {a.state === 'undoing' && <>Undoing: {a.label}</>}
         {a.state === 'undone' && <>Undone: {a.label}</>}
         {a.state === 'cancelled' && <>Cancelled: {a.label}</>}
         {a.state === 'failed' && <>Failed: {a.label}{a.detail ? `. ${a.detail}` : ''}</>}
         {a.target && <small>{a.target.handle} {a.target.first_line}</small>}
-        {err && <small className="dk-warn" role="alert">{err}</small>}
+        {failed && <small className="dk-warn" role="alert">{failed.error}</small>}
       </span>
-      {a.state === 'done' && a.undo && <button type="button" className="dk-pill" disabled={busy} onClick={() => go('undo')}>Undo</button>}
-      {a.state === 'held' && live && <button type="button" className="dk-pill" disabled={busy} onClick={() => go('cancel')}>Undo</button>}
-      {waiting && !err && <button type="button" className="dk-pill" disabled={busy} onClick={() => go('commit')}>Do it now</button>}
+      {a.state === 'done' && a.undo && <button type="button" className="dk-pill" disabled={!!busy} onClick={() => go('undo')}>{failed?.op === 'undo' ? 'Try Undo again' : 'Undo'}</button>}
+      {held && live && <button type="button" className="dk-pill" onClick={() => go('cancel')}>Undo</button>}
+      {waiting && failed?.op === 'cancel' && <button type="button" className="dk-pill" onClick={() => go('cancel')}>Try Undo again</button>}
+      {waiting && failed?.op !== 'cancel' && !expired && <button type="button" className="dk-pill" onClick={() => go('commit')}>Do it now</button>}
     </div>
   )
 }

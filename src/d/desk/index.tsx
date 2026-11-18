@@ -22,7 +22,9 @@ export default function DeskPage({ layout, navigate }: { layout: 'phone' | 'desk
     else if (navigate) navigate(dHash('content', 'plan'))
     else window.location.hash = dHash('content', 'plan')
   }
-  const open = flags.desk_enabled || mockOn() || evalOn()
+  // Normal entry needs the CONFIRMED flag (this session's authenticated read), never only the device's
+  // last copy: a cached "on" while the read says "off" must not mount the desk (Sol desk-ui r2 #6).
+  const open = (flags.read && flags.desk_enabled) || mockOn() || evalOn()
   const body = open
     ? <Desk layout={layout} onBack={layout === 'phone' ? back : undefined} />
     : (

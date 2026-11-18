@@ -38,7 +38,7 @@ export type DeskMessage = {
   /** The row's last write; when two copies of a row meet, the newer one wins. */
   updated_at?: string
   /** Local only: an optimistic row the server has not stored yet. */
-  local?: 'sending' | 'failed'
+  local?: 'sending' | 'failed' | 'unconfirmed'
   /** Local only: the stream placeholder answering the user message with this client_key. */
   answers?: string
   /** Local only: why a send failed, in plain words. */

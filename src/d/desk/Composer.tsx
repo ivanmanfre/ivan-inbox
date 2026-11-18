@@ -18,6 +18,8 @@ export function DeskComposer({ busy, onSend }: {
   const [uploading, setUploading] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const voiced = useRef(false)
+  const latestText = useRef(text)
+  latestText.current = text
   const field = useRef<HTMLTextAreaElement>(null)
   const file = useRef<HTMLInputElement>(null)
   const stt = useStt(t => {
@@ -43,12 +45,17 @@ export function DeskComposer({ busy, onSend }: {
   const canSend = !busy && !uploading && (text.trim().length > 0 || photos.length > 0)
   const send = async () => {
     if (!canSend) return
+    // What THIS tap sends. Anything typed, dictated or picked while the photos upload is a new draft
+    // and stays in the composer (Sol desk-ui r2 #7).
+    const sentText = text
+    const sentVoice = voiced.current
+    const sentPhotos = photos
     let attachments: DeskAttachment[] | undefined
-    if (photos.length) {
+    if (sentPhotos.length) {
       setUploading(true); setNote(null)
       try {
         attachments = []
-        for (const p of photos) attachments.push({ kind: 'photo', url: await uploadDeskPhoto(p.file) })
+        for (const p of sentPhotos) attachments.push({ kind: 'photo', url: await uploadDeskPhoto(p.file) })
       } catch (e) {
         // Nothing was sent: the text and the photos stay for another try.
         setNote(e instanceof Error ? e.message : 'The photo did not upload.')
@@ -57,9 +64,14 @@ export function DeskComposer({ busy, onSend }: {
       }
       setUploading(false)
     }
-    onSend(text, { attachments, voice: voiced.current || undefined })
-    photos.forEach(p => URL.revokeObjectURL(p.preview))
-    setText(''); setPhotos([]); setNote(null); voiced.current = false; stt.clearClip()
+    onSend(sentText, { attachments, voice: sentVoice || undefined })
+    sentPhotos.forEach(p => URL.revokeObjectURL(p.preview))
+    const gone = new Set(sentPhotos.map(p => p.id))
+    setPhotos(ps => ps.filter(p => !gone.has(p.id)))
+    setText(cur => (cur === sentText ? '' : cur))
+    setNote(null)
+    // Dictation that landed during the upload belongs to the new draft and keeps its voice mark.
+    if (latestText.current === sentText) { voiced.current = false; stt.clearClip() }
   }
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send() }
