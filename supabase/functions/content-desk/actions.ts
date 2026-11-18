@@ -23,7 +23,7 @@
 //   re-planned at commit from that UUID only (planForTarget), never from a handle.
 
 import type { Rendered, Draft } from './brief.ts'
-import { warsaw } from './brief.ts'
+import { warsaw, warsawDay } from './brief.ts'
 import type { Act } from './parse.ts'
 import { urlInMessage } from './unfurl.ts'
 import { MAX_BRIEF_CHARS, MAX_TITLE_CHARS } from '../_shared/desk-t3.ts'
@@ -90,21 +90,61 @@ export function lineMatches(firstLine: string, quoted: unknown): boolean {
   return f.startsWith(q) || ` ${f} `.includes(` ${q} `)
 }
 
+const normHandle = (h: unknown) => { const x = String(h ?? '').trim().toLowerCase(); return x ? (x.startsWith('#') ? x : '#' + x) : '' }
+
+/** The Warsaw day a draft is on (published day for a published post), or 'undated'. */
+export function dayOf(d: Draft): string {
+  const at = d.status === 'published' ? (d.published_at ?? d.scheduled_at) : d.scheduled_at
+  return at ? warsawDay(at) : 'undated'
+}
+
+/** The shortest opening of the draft's first line that matches no other draft in the brief (else the whole line). */
+export function distinctExcerpt(d: Draft, all: Draft[]): string {
+  const words = d.first_line.split(/\s+/).filter(Boolean)
+  for (let n = 3; n <= Math.min(words.length, 24); n++) {
+    const ex = words.slice(0, n).join(' ')
+    if (all.filter((o) => lineMatches(o.first_line, ex)).length === 1) return ex
+  }
+  return d.first_line
+}
+
+const VERB: Record<string, (ref: string, act: Act) => string> = {
+  approve: (r) => `approve ${r}`, delete: (r) => `delete ${r}`, redo: (r) => `redo ${r} through the writer, same idea`,
+  date: (r, a) => `move ${r} to ${String(a.at ?? '')}`.trim(), undate: (r) => `remove the date from ${r}`,
+  pull: (r) => `pull ${r} off the schedule`, photo_attach: (r) => `attach the photo to ${r}`,
+}
+
+/** One chip per candidate: a distinct excerpt plus its day, so each chip names exactly one draft. */
+function pickChips(act: Act, ds: Draft[], all: Draft[]): { label: string; send: string }[] {
+  return ds.slice(0, 3).map((d) => {
+    const day = dayOf(d)
+    const ref = `the one that starts "${distinctExcerpt(d, all)}" ${day === 'undated' ? 'undated' : `dated ${day}`}`
+    const send = (VERB[IN_ALIAS[act.kind] ?? act.kind] ?? ((r: string) => `${act.kind} ${r}`))(ref, act)
+    return { label: send, send }
+  })
+}
+
+/**
+ * Resolve the target (Sol r6 #2): the quoted excerpt is checked against EVERY draft in the brief. It
+ * must match exactly one (narrowed by `dated` when he named the day), and that one must carry the
+ * server-assigned handle the action names. Several matches act on none and show one chip each.
+ */
 export function resolveDraft(brief: Rendered, act: Act): { d: Draft; handle: string } | { error: string; chips?: { label: string; send: string }[] } {
-  const raw = act.draft
-  if (Array.isArray(raw)) {
-    const chips = raw.slice(0, 3).map((h) => brief.drafts.get(String(h).startsWith('#') ? String(h).toLowerCase() : '#' + String(h).toLowerCase()))
-      .filter(Boolean).map((d) => ({ label: short(d!.first_line, 40), send: `${act.kind} the one that starts "${short(d!.first_line, 70)}"` }))
-    return { error: 'ambiguous', chips }
+  const all = [...brief.drafts.values()]
+  if (Array.isArray(act.draft)) {
+    const ds = act.draft.map((h) => brief.drafts.get(normHandle(h))).filter((d): d is Draft => !!d)
+    return { error: 'ambiguous', chips: pickChips(act, ds, all) }
   }
-  let handle = String(raw ?? '').trim().toLowerCase()
+  const handle = normHandle(act.draft)
   if (!handle) return { error: 'no_draft' }
-  if (!handle.startsWith('#')) handle = '#' + handle
-  const d = brief.drafts.get(handle)   // exact handle only: no prefix fallback (Sol r1 #2)
-  if (!d) return { error: 'unknown_draft' }
-  if (!lineMatches(d.first_line, act.line)) {
-    return { error: 'line_mismatch', chips: [{ label: short(d.first_line, 40), send: `${act.kind} the one that starts "${short(d.first_line, 70)}"` }] }
-  }
+  const named = brief.drafts.get(handle)
+  const byLine = [...brief.drafts.entries()].filter(([, d]) => lineMatches(d.first_line, act.line))
+  const dated = typeof act.dated === 'string' && act.dated.trim() ? act.dated.trim() : null
+  const pool = byLine.length > 1 && dated ? byLine.filter(([, d]) => dayOf(d) === dated) : byLine
+  if (pool.length > 1 || (byLine.length > 1 && !pool.length)) return { error: 'ambiguous', chips: pickChips(act, byLine.map(([, d]) => d), all) }
+  if (!pool.length) return named ? { error: 'line_mismatch', chips: pickChips(act, [named], all) } : { error: 'unknown_draft' }
+  const [h, d] = pool[0]
+  if (h !== handle) return { error: 'handle_mismatch', chips: pickChips(act, named ? [d, named] : [d], all) }
   return { d, handle }
 }
 
@@ -423,19 +463,13 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
         describe: `rerun the writer on ${qq} (rewrites its copy)`,
         command: `redo ${qq} through the writer, same idea`,
         run: async () => {
-          const { data: row, error: rErr } = await ctx.userDb.from('carousel_drafts').select('id, type, topic, title, taxonomy, status').eq('id', id).maybeSingle()
-          if (rErr || !row) throw new Error('not_found')
+          // the 'generating' claim under the publisher's locks: authorized status + updated_at, and no
+          // live queued copy (Sol r6 #6); only the request that gets the row fires the writer
+          if (!d!.updated_at) throw new Error('changed')
           const startedAt = new Date().toISOString()
           const before = d!.status
-          const tax0 = row.taxonomy && typeof row.taxonomy === 'object' && !Array.isArray(row.taxonomy) ? row.taxonomy : {}
-          // guarded on the status we read: a row that changed meanwhile is not touched
-          // only the request that gets the row fires the writer: status AND updated_at as authorized (Sol r3)
-          let flip = ctx.userDb.from('carousel_drafts').update({ status: 'generating', taxonomy: { ...tax0, generating_started_at: startedAt } })
-            .eq('id', id).is('client_id', null).eq('status', d!.status).in('status', ['review', 'error', 'approved'])
-          if (!d!.updated_at) throw new Error('changed')
-          flip = flip.eq('updated_at', d!.updated_at)
-          const { data: flipped, error } = await flip.select('id')
-          if (error || !flipped?.length) throw new Error('changed')
+          const row = await deskWrite(ctx, 'desk_redo_claim', { p_draft: id, p_expected_updated_at: d!.updated_at, p_expected_status: before, p_started_at: startedAt }) as
+            { type?: string; topic?: string | null; title?: string | null }
           const postFormat = row.type === 'carousel' ? 'Carousel' : row.type === 'single_image' ? 'Single Image' : 'Text Post'
           const f = ctx.fetchImpl ?? fetch
           let status = 0
@@ -449,8 +483,7 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
           } catch { status = 0 }
           if (status >= 400 && status < 500) {
             // an explicit rejection: the writer will not run, so the row goes back if it is still ours
-            await ctx.userDb.from('carousel_drafts').update({ status: before, taxonomy: tax0 }).eq('id', id).eq('status', 'generating')
-              .filter('taxonomy->>generating_started_at', 'eq', startedAt)
+            try { await deskWrite(ctx, 'desk_redo_release', { p_draft: id, p_started_at: startedAt, p_status: before }) } catch { /* it changed since: leave it */ }
             throw new Error('writer_refused')
           }
           if (status < 200 || status >= 300) {
@@ -473,7 +506,7 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
         command: `attach this photo to ${qq}`,
         run: async () => {
           const { data, error } = await ctx.userDb.rpc('desk_set_photos', { p_draft: id, p_expected_updated_at: d!.updated_at ?? null, p_expected_status: d!.status, p_add_url: att.url })
-          if (error) throw new Error('write_failed')
+          if (error) throw new Error(lockCode(error) ? 'changed' : 'write_failed')
           const w = (data ?? {}) as { ok?: boolean; error?: string; before?: string[]; applied?: string[]; applied_status?: string; applied_updated_at?: string; rpc?: unknown }
           if (w.ok !== true) throw new Error(String(w.error ?? 'refused'))
           return { result: w.rpc ?? null, undo: { op: 'photos', draft_id: id, prev: w.before ?? [], applied: w.applied ?? [], applied_status: w.applied_status, applied_updated_at: w.applied_updated_at } }
@@ -505,20 +538,23 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
     }
     case 'idea': {
       const text = String(act.text ?? '').trim()
-      // attributed to Ivan, so only his exact words: a verbatim span of THIS message, else the message itself (Sol r5 B5)
-      const quote = ivanWords(act.quote, ctx.text)
       if (!text) return { echo: { kind, label: 'Nothing to save as an idea.', state: 'failed', undo: false }, refuse: 'empty' }
+      // Sol r6 #1: the row is built here, once; the verifier reads exactly its Ivan-facing fields and
+      // run() inserts exactly this row. A quote is kept only as a verbatim span of THIS message; with
+      // none, the evidence carries no quote at all (no fallback to the whole message).
+      const quote = ivanQuote(act.quote, ctx.text)
+      const row = {
+        source: 'manual', content_type: 'post', status: 'pending', raw_topic: text.slice(0, 500),
+        evidence: [{ who: 'Ivan', tier: 'OBSERVATION', ...(quote ? { quote } : {}), instrument: 'content desk', source: 'content_desk', when: new Date().toISOString().slice(0, 10) }],
+        raw_context: `Ivan in the Content Desk${ctx.attachments.length ? ' (with attachment)' : ''}${quote ? `: ${quote}` : '.'}`,
+        source_ref: `desk:${ctx.messageId}`, format_recommendation: 'text',
+      }
       return {
         echo: { kind, label: `Saved as an idea: "${short(text, 70)}". The scorer picks it up next.`, state: 'done', undo: true },
-        describe: `save his thought as a post idea in Ideas: "${short(text, 100)}"`,
+        describe: `save a post idea in Ideas. Stored topic: "${row.raw_topic}". Stored as his own words: ${quote ? `"${quote}"` : 'nothing'}. Stored context: "${row.raw_context}"`,
         command: `save this as an idea: ${short(text, 200)}`,
         run: async () => {
-          const { data, error } = await ctx.svc.from('lm_idea_candidates').insert({
-            source: 'manual', content_type: 'post', status: 'pending', raw_topic: text.slice(0, 500),
-            evidence: [{ who: 'Ivan', tier: 'OBSERVATION', quote: quote.slice(0, 1200), instrument: 'content desk', source: 'content_desk', when: new Date().toISOString().slice(0, 10) }],
-            raw_context: `Ivan in the Content Desk${ctx.attachments.length ? ' (with attachment)' : ''}: ${quote.slice(0, 1500)}`,
-            source_ref: `desk:${ctx.messageId}`, format_recommendation: 'text',
-          }).select('id').single()
+          const { data, error } = await ctx.svc.from('lm_idea_candidates').insert(row).select('id').single()
           if (error) throw new Error(error.message)
           return { result: data, undo: { op: 'delete_row', table: 'lm_idea_candidates', id: data.id } }
         },
@@ -536,7 +572,9 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       const note = typeof act.note === 'string' && verbatimIn(act.note, ctx.text) ? act.note.trim().slice(0, 500) : ''
       return {
         echo: { kind, label: post ? `Added the ${post.platform === 'x' ? 'X' : 'LinkedIn'} post as a copy candidate in Ideas` : 'Saved the link as an idea', state: 'done', undo: true },
-        describe: post ? `file the ${post.platform} post he sent as a copy candidate in Ideas` : `file the link he sent as a post idea in Ideas`,
+        // Sol r6 #1: the verifier reads the exact url and the exact note stored as his words
+        describe: (post ? `file the ${post.platform} post he sent as a copy candidate in Ideas (its own title and description are stored as the topic)` : `file the link he sent as a post idea in Ideas. Stored topic: "${(note || `Link: ${url}`).slice(0, 500)}"`) +
+          `. Stored as his note: ${note ? `"${note}"` : 'nothing'}`,
         command: `file this link: ${url}`,
         run: async () => {
           let meta: { title?: string; description?: string; author?: string } | null = null
@@ -662,10 +700,28 @@ export function normT3(title: string, brief: string): { title: string; brief: st
 /** A desk SQL write (db/20261118m_content_desk_r6.sql): locks, checks, then the app's own write; a refusal is a code. */
 async function deskWrite(ctx: Pick<Ctx, 'userDb'>, fn: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
   const { data, error } = await ctx.userDb.rpc(fn, args)
-  if (error) throw new Error('write_failed')
+  if (error) throw new Error(lockCode(error) ? 'changed' : 'write_failed')
   const r = (data ?? {}) as Record<string, unknown>
   if (r.ok !== true) throw new Error(typeof r.error === 'string' ? r.error : 'refused')
   return r
+}
+
+/**
+ * The identity of a proposed action (Sol r6 #3): kind, resolved target and its arguments, normalized
+ * (server-owned "_" keys and the handle/excerpt/day that only locate the target are left out; text is
+ * whitespace-collapsed and lowercased). Two actions with one key are one action.
+ */
+export function actionKey(act: Act, targetId?: string | null): string {
+  const args = Object.entries(act)
+    .filter(([k]) => !k.startsWith('_') && !['kind', 'draft', 'line', 'dated'].includes(k))
+    .map(([k, v]) => [k, typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().toLowerCase() : v] as [string, unknown])
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+  return JSON.stringify([IN_ALIAS[act.kind] ?? act.kind, targetId ?? null, args])
+}
+
+/** 55P03 lock_not_available / 40P01 deadlock_detected: Postgres rolled the call back; it is "it changed, nothing done". */
+export function lockCode(error: { code?: string } | null | undefined): boolean {
+  return !!error && (error.code === '55P03' || error.code === '40P01')
 }
 
 /** The text is an exact span of Ivan's message (trimmed, non-empty). */
@@ -674,9 +730,9 @@ export function verbatimIn(s: unknown, text: string): boolean {
   return q.length > 0 && text.includes(q)
 }
 
-/** What may be stored as Ivan's own words: the model's quote only if it is a verbatim span of his message, else his whole message (capped). */
-export function ivanWords(quote: unknown, text: string, cap = 1200): string {
-  return (verbatimIn(quote, text) ? String(quote).trim() : text.trim()).slice(0, cap)
+/** What may be stored as Ivan's own words: the model's quote only if it is a verbatim span of his message, else nothing (Sol r6 #1). */
+export function ivanQuote(quote: unknown, text: string, cap = 1200): string | null {
+  return verbatimIn(quote, text) && String(quote).trim().length <= cap ? String(quote).trim() : null
 }
 
 /** The queue could not be read: never assumed empty (Sol r4 #4). */
@@ -685,7 +741,7 @@ export class QueueReadError extends Error { constructor() { super('queue_read_fa
 /** Date write through desk_set_date: lock, version check, before value, app RPC, applied value: one transaction (Sol r4). */
 async function setDate(ctx: Ctx, d: Draft, iso: string | null) {
   const { data, error } = await ctx.userDb.rpc('desk_set_date', { p_draft: d.id, p_expected_updated_at: d.updated_at ?? null, p_expected_status: d.status, p_at: iso })
-  if (error) throw new Error('write_failed')
+  if (error) throw new Error(lockCode(error) ? 'changed' : 'write_failed')
   const w = (data ?? {}) as { ok?: boolean; error?: string; before?: string | null; applied?: string | null; applied_status?: string; applied_updated_at?: string; rpc?: unknown }
   if (w.ok !== true) throw new Error(String(w.error ?? 'refused'))
   return { rpc: w.rpc ?? null, before: w.before ?? null, applied: w.applied ?? null, applied_status: w.applied_status ?? null, applied_updated_at: w.applied_updated_at ?? null }
@@ -704,7 +760,7 @@ export async function runUndo(ctx: Pick<Ctx, 'userDb' | 'svc'>, undo: Record<str
     const { data, error } = undo.op === 'date'
       ? await ctx.userDb.rpc('desk_undo_schedule_v2', { p_draft: undo.draft_id, p_applied: undo.applied ?? null, p_applied_status: undo.applied_status, p_applied_updated_at: undo.applied_updated_at, p_prev: undo.prev ?? null })
       : await ctx.userDb.rpc('desk_undo_photos_v2', { p_draft: undo.draft_id, p_applied: undo.applied ?? [], p_applied_status: undo.applied_status, p_applied_updated_at: undo.applied_updated_at, p_prev: undo.prev ?? [] })
-    if (error) throw new Error('undo_failed')
+    if (error) { if (lockCode(error)) throw new UndoRefused('changed_since'); throw new Error('undo_failed') }
     const r = (data ?? {}) as { ok?: boolean; error?: string }
     if (r.ok !== true) {
       if (r.error === 'changed_since' || r.error === 'gone') throw new UndoRefused(r.error)

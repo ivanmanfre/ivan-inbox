@@ -43,11 +43,13 @@ Deno.test('resolveDraft: handle and line must agree; arrays are ambiguity', () =
   const ok = resolveDraft(r, { kind: 'approve', draft: h1, line: 'A walk by the river' })
   assert('d' in ok && ok.d.first_line.startsWith('A walk'))
   const wrong = resolveDraft(r, { kind: 'approve', draft: h1, line: 'Coffee in the old town' })
-  assert('error' in wrong && wrong.error === 'line_mismatch')
+  assert('error' in wrong && wrong.error === 'handle_mismatch')   // the excerpt names another draft: act on none (Sol r6 #2)
+  const nomatch = resolveDraft(r, { kind: 'approve', draft: h1, line: 'Snow on the tram roof' })
+  assert('error' in nomatch && nomatch.error === 'line_mismatch')
   const amb = resolveDraft(r, { kind: 'approve', draft: [...r.drafts.keys()], line: 'x' })
   assert('error' in amb && amb.error === 'ambiguous' && amb.chips?.length === 2)
   const none = resolveDraft(r, { kind: 'approve', draft: '#fffff', line: 'A walk by the river' })
-  assert('error' in none && none.error === 'unknown_draft')
+  assert('error' in none && none.error === 'handle_mismatch')   // a made-up handle never resolves
 })
 
 Deno.test('makeHandles: unique prefixes, 5+ hex', () => {
@@ -123,7 +125,9 @@ Deno.test('lineMatches: strict, no fuzzy word overlap', () => {
 Deno.test('resolveDraft: exact handle only, no prefix fallback', () => {
   const r = render(brief([draft('abcde111-0000-4000-8000-000000000001', 'I left Vienna for Berlin'), draft('abcde222-0000-4000-8000-000000000002', 'I left Poland for Berlin')]))
   const res = resolveDraft(r, { kind: 'delete', draft: '#abcde', line: 'I left Vienna for Berlin' })
-  assert('error' in res && res.error === 'unknown_draft')
+  assert('error' in res && res.error === 'handle_mismatch')
+  const res2 = resolveDraft(r, { kind: 'delete', draft: '#abcde', line: 'Snow on the tram roof' })
+  assert('error' in res2 && res2.error === 'unknown_draft')
 })
 
 Deno.test('warsawToIso: nonexistent dates and DST gaps are rejected', () => {
@@ -317,17 +321,29 @@ Deno.test('r4#5 redo: refused while generating; the flip requires an eligible st
   assertEquals(pg.refuse, 'not_redoable'); assertEquals(pg.run, undefined)
   const d = draft(ID1, 'Snow in the park this morning', { status: 'review', updated_at: 'U1' })
   r = render(brief([d]))
-  const log: unknown[][] = []
-  const results = [{ data: { id: ID1, type: 'text', topic: 't', title: 't', taxonomy: {}, status: 'review' }, error: null }, { data: [], error: null }]
-  const userDb = { from: () => chain(results.shift(), log) }
+  // the claim is desk_redo_claim (locks, authorized status + updated_at, no live queued copy: Sol r6 #6)
+  const calls: unknown[][] = []
+  let reply: Record<string, unknown> = { ok: false, error: 'changed' }
+  const userDb = { rpc: (n: string, a: unknown) => { calls.push([n, a]); return Promise.resolve({ data: reply, error: null }) }, from: () => { throw new Error('no direct table write') } }
   let fired = 0
   const ctx = { brief: r, attachments: [], text: '', env: () => undefined, userDb, fetchImpl: () => { fired++; return Promise.resolve(new Response('ok')) } } as never
   const p = await plan(ctx, { kind: 'redo', draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
   let err = ''
   try { await p.run!() } catch (e) { err = (e as Error).message }
   assertEquals(err, 'changed'); assertEquals(fired, 0)   // the row was taken by another redo: no second writer call
-  assert(log.some((l) => l[0] === 'in' && l[1] === 'status' && JSON.stringify(l[2]) === JSON.stringify(['review', 'error', 'approved'])))
-  assert(log.some((l) => l[0] === 'eq' && l[1] === 'updated_at' && l[2] === 'U1'))
+  assertEquals((calls[0] as [string, Record<string, unknown>])[0], 'desk_redo_claim')
+  assertEquals((calls[0] as [string, Record<string, unknown>])[1].p_expected_updated_at, 'U1')
+  assertEquals((calls[0] as [string, Record<string, unknown>])[1].p_expected_status, 'review')
+  // a live queued copy is refused by the claim, and nothing fires
+  reply = { ok: false, error: 'queue_still_live' }; err = ''
+  try { await p.run!() } catch (e) { err = (e as Error).message }
+  assertEquals(err, 'queue_still_live'); assertEquals(fired, 0)
+  // a writer 4xx gives the row back through desk_redo_release
+  reply = { ok: true, type: 'text', topic: 't', title: 't' }
+  const ctx4 = { brief: r, attachments: [], text: '', env: () => undefined, userDb, fetchImpl: () => { fired++; return Promise.resolve(new Response('no', { status: 422 })) } } as never
+  const p4 = await plan(ctx4, { kind: 'redo', draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
+  err = ''; try { await p4.run!() } catch (e) { err = (e as Error).message }
+  assertEquals(err, 'writer_refused'); assertEquals(calls.at(-1)![0], 'desk_redo_release')
 })
 
 Deno.test('r4#8 last post: one time-sorted list; SUMMARY "Last post out" is its first row', () => {
@@ -366,7 +382,7 @@ Deno.test('r4#10 urlInMessage: raw token first, one matched wrapper, trailing pu
 })
 
 // ---- Sol r5 fixes + eval rV1 items (made-up data only) ---------------------
-import { ivanWords, verbatimIn } from './actions.ts'
+import { ivanQuote, verbatimIn, actionKey, distinctExcerpt, lockCode } from './actions.ts'
 import { canonicalUrl } from './unfurl.ts'
 import { oneText } from './parse.ts'
 
@@ -401,19 +417,29 @@ Deno.test('r5 B2/B3: approve, Brain Keep and delete go only through the locked d
   assertEquals(err, 'changed')
 })
 
-Deno.test('r5 B5: an idea or link note attributed to Ivan is only his exact words', async () => {
+Deno.test('r5 B5 + r6 #1: Ivan-attributed text is only his exact words, and the verifier reads exactly the stored fields', async () => {
   const text = 'cold brew queues in Warsaw are wild, worth a post'
-  assertEquals(ivanWords('cold brew queues in Warsaw', text), 'cold brew queues in Warsaw')
-  assertEquals(ivanWords('Ivan said his clients love cold brew', text), text)
-  assertEquals(ivanWords(undefined, text), text)
+  assertEquals(ivanQuote('cold brew queues in Warsaw', text), 'cold brew queues in Warsaw')
+  assertEquals(ivanQuote('Ivan said his clients love cold brew', text), null)   // no fallback to the whole message
+  assertEquals(ivanQuote(undefined, text), null)
   assert(!verbatimIn('', text))
-  let inserted: Record<string, unknown> | null = null
-  const svc = { from: () => ({ insert: (row: Record<string, unknown>) => { inserted = row; return chain({ data: { id: 'i1' }, error: null }) } }) }
-  const p = await plan({ brief: render(brief([])), attachments: [], text, env: () => undefined, svc, messageId: 'm1' } as never, { kind: 'idea', text: 'Cold brew queues', quote: 'a private line from somewhere else' })
-  await p.run!()
-  const ev = (inserted!.evidence as { quote: string }[])[0]
-  assertEquals(ev.quote, text)
-  assert(!String(inserted!.raw_context).includes('private line'))
+  for (const [quote, stored] of [['a private line from somewhere else', null], ['cold brew queues in Warsaw', 'cold brew queues in Warsaw']] as const) {
+    let inserted: Record<string, unknown> | null = null
+    const svc = { from: () => ({ insert: (row: Record<string, unknown>) => { inserted = row; return chain({ data: { id: 'i1' }, error: null }) } }) }
+    const topic = 'Cold brew queues ' + 'x'.repeat(300)
+    const p = await plan({ brief: render(brief([])), attachments: [], text, env: () => undefined, svc, messageId: 'm1' } as never, { kind: 'idea', text: topic, quote })
+    await p.run!()
+    const ev = (inserted!.evidence as { quote?: string }[])[0]
+    assertEquals(ev.quote ?? null, stored)
+    assert(!JSON.stringify(inserted).includes('private line'))
+    // every Ivan-facing stored field appears verbatim in what the verifier reads
+    assert(p.describe!.includes(String(inserted!.raw_topic)) && p.describe!.includes(String(inserted!.raw_context)))
+    assert(stored ? p.describe!.includes(`"${stored}"`) : p.describe!.includes('his own words: nothing'))
+  }
+  const pl = await plan({ brief: render(brief([])), attachments: [], text: 'file https://example.test/a my take: too long', env: () => undefined } as never, { kind: 'link', url: 'https://example.test/a', note: 'too long' })
+  assert(pl.describe!.includes('Stored as his note: "too long"'), pl.describe)
+  const pn = await plan({ brief: render(brief([])), attachments: [], text: 'file https://example.test/a', env: () => undefined } as never, { kind: 'link', url: 'https://example.test/a', note: 'he loves it' })
+  assert(pn.describe!.includes('Stored as his note: nothing'), pn.describe)
 })
 
 Deno.test('r5 B8: one token gives one canonical URL', () => {
@@ -456,4 +482,66 @@ Deno.test('eval E3: week blocks show only the calendar panel labels as coverage'
   const txt = render(brief([d], { this_monday: thisMon, panel: { quotas: [], slots: [{ draft_id: ID1, belief: null, vehicle: null }] } })).text
   const line = txt.split('\n').find((l) => l.includes('Kraków in the snow'))!
   assert(line.includes('calendar belief -') && line.includes('calendar vehicle -') && !line.includes('POLAND'), line)
+})
+
+// ---- Sol r6 fixes (made-up data only) ----------------------------------------
+Deno.test('r6 #2: an opener shared by two drafts acts on none and shows one chip per draft with a distinct excerpt and day', () => {
+  const a = draft(ID1, 'Three things I learned this week about cold email', { scheduled_at: '2026-11-26T09:45:00Z' })
+  const b = draft('bbbbbbbb-0000-4000-8000-000000000002', 'Three things I learned this week about hiring')
+  const r = render(brief([a, b]))
+  const res = resolveDraft(r, { kind: 'delete', draft: r.handleOf.get(ID1)!, line: 'Three things I learned this week' })
+  assert('error' in res && res.error === 'ambiguous')
+  const chips = (res as { chips: { label: string; send: string }[] }).chips
+  assertEquals(chips.length, 2)
+  for (const c of chips) assertEquals(c.label, c.send)
+  assert(chips[0].send.includes('"Three things I learned this week about cold"') && chips[0].send.includes('dated 2026-11-26'), chips[0].send)
+  assert(chips[1].send.includes('"Three things I learned this week about hiring"') && chips[1].send.includes('undated'), chips[1].send)
+  // each chip's excerpt names exactly one draft
+  for (const d of [a, b]) assertEquals([a, b].filter((o) => lineMatches(o.first_line, distinctExcerpt(d, [a, b]))).length, 1)
+  // the longer excerpt resolves, and only with the right handle
+  const ok = resolveDraft(r, { kind: 'delete', draft: r.handleOf.get(ID1)!, line: 'Three things I learned this week about cold' })
+  assert('d' in ok && ok.d.id === ID1)
+  // identical openers: the day narrows it
+  const c = draft('cccccccc-0000-4000-8000-000000000003', 'Same opener for both of these posts', { scheduled_at: '2026-11-27T09:45:00Z' })
+  const e = draft('dddddddd-0000-4000-8000-000000000004', 'Same opener for both of these posts')
+  const r2 = render(brief([c, e]))
+  const amb = resolveDraft(r2, { kind: 'approve', draft: r2.handleOf.get(c.id)!, line: 'Same opener for both' })
+  assert('error' in amb && amb.error === 'ambiguous')
+  const byDay = resolveDraft(r2, { kind: 'approve', draft: r2.handleOf.get(c.id)!, line: 'Same opener for both', dated: '2026-11-27' })
+  assert('d' in byDay && byDay.d.id === c.id)
+})
+
+Deno.test('r6 #3: one key per (kind, target, normalized args)', () => {
+  const k1 = actionKey({ kind: 'idea', text: 'Cold  brew queues', quote: 'x' })
+  const k2 = actionKey({ kind: 'idea', text: 'cold brew queues ', quote: 'x', _t3_normalized: true })
+  assertEquals(k1, k2)
+  assertEquals(actionKey({ kind: 'delete', draft: '#a', line: 'one', reason: 'r' }, ID1), actionKey({ kind: 'delete', draft: '#b', line: 'two', reason: 'R' }, ID1))
+  assert(actionKey({ kind: 'date', at: '2027-03-09 10:45' }, ID1) !== actionKey({ kind: 'date', at: '2027-03-10 10:45' }, ID1))
+  assertEquals(actionKey({ kind: 'schedule', at: 'x' }, ID1), actionKey({ kind: 'date', at: 'x' }, ID1))
+})
+
+Deno.test('r6 #7: a lock timeout or deadlock from any desk write is "it changed, nothing done"', async () => {
+  assert(lockCode({ code: '55P03' }) && lockCode({ code: '40P01' }) && !lockCode({ code: '23505' }) && !lockCode(null))
+  const d = draft(ID1, 'Snow in the park this morning', { updated_at: 'U1' })
+  const r = render(brief([d]))
+  for (const code of ['55P03', '40P01']) {
+    const userDb = { rpc: () => Promise.resolve({ data: null, error: { code, message: 'x' } }) }
+    const p = await plan({ brief: r, attachments: [], text: '', env: () => undefined, userDb, svc: forbidden } as never, { kind: 'approve', draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
+    let err = ''; try { await p.run!() } catch (e) { err = (e as Error).message }
+    assertEquals(err, 'changed')
+  }
+})
+
+Deno.test('eval E5: each published post row states its own 48h window, computed at brief build', () => {
+  const posts = [
+    { url: 'https://www.linkedin.com/posts/k-1', first_line: 'Just back from a weekend in the mountains', posted_at: '2026-11-16T13:04:00Z', impressions: 400, too_new: true },
+    { url: 'https://www.linkedin.com/posts/k-2', first_line: 'A ferry at dawn and a cold coffee', posted_at: '2026-11-18T05:00:00Z', impressions: 90 },
+  ]
+  const txt = render(brief([], { as_of: '2026-11-18T11:00:00Z', posts: { posts }, post_links: {} })).text
+  const lines = txt.split('RECENT PUBLISHED POSTS')[1].split('\n').filter((l) => l.startsWith('- '))
+  assert(lines.find((l) => l.includes('mountains'))!.includes('45h since posting, 48h window OPEN'))
+  assert(lines.find((l) => l.includes('ferry'))!.includes('6h since posting, 48h window OPEN'))
+  const later = render(brief([], { as_of: '2026-11-18T14:00:00Z', posts: { posts }, post_links: {} })).text
+  const m = later.split('RECENT PUBLISHED POSTS')[1].split('\n').find((l) => l.includes('mountains'))!
+  assert(m.includes('48h since posting, 48h window CLOSED') && m.includes('early read') && !m.includes('too new'), m)
 })

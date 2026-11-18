@@ -248,16 +248,21 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
   // ---- posts
   const posts = (b.posts as { posts?: PostRow[] }).posts ?? []
   const bar = (b.posts as { bar?: number }).bar
-  L.push('', `RECENT PUBLISHED POSTS (last 31 days; "worked" = 1.5x his organic median, bar ${bar ?? '?'} impressions; boosted never counts; under 48h = too new):`)
+  // eval E5: the 48h window is precomputed here, at brief build, for every post (the model never computes it)
+  const win = (at: string | null | undefined) => {
+    const h = at ? Math.max(0, Math.floor((Date.parse(b.as_of) - Date.parse(at)) / 3600e3)) : null
+    return h == null || Number.isNaN(h) ? '48h window unknown' : `${h}h since posting, 48h window ${h < 48 ? 'OPEN' : 'CLOSED'}`
+  }
+  L.push('', `RECENT PUBLISHED POSTS (last 31 days; "worked" = 1.5x his organic median, bar ${bar ?? '?'} impressions; boosted never counts; "early read" = its numbers were read before its 48h mark and may still be low; each row states its own 48h window):`)
   for (const m of mergedPosts(drafts, posts, b.post_links)) {
     const p = m.p
-    if (!p) { L.push(`- ${warsaw(m.at)} "${clip(m.first_line, 90)}": (no numbers yet)`); continue }
-    L.push(`- ${warsaw(p.posted_at)} "${clip(p.first_line, 90)}": ${p.impressions ?? '?'} impressions, ${p.likes ?? 0} likes, ${p.comments ?? 0} comments, ${p.times_median ?? '?'}x median${p.boosted ? ', BOOSTED' : ''}${p.too_new ? ', too new' : p.worked ? ', WORKED' : ''}`)
+    if (!p) { L.push(`- ${warsaw(m.at)} "${clip(m.first_line, 90)}": (no numbers yet; ${win(m.at)})`); continue }
+    L.push(`- ${warsaw(p.posted_at)} "${clip(p.first_line, 90)}": ${p.impressions ?? '?'} impressions, ${p.likes ?? 0} likes, ${p.comments ?? 0} comments, ${p.times_median ?? '?'}x median${p.boosted ? ', BOOSTED' : ''}${p.too_new ? ', early read' : p.worked ? ', WORKED' : ''}; ${win(p.posted_at)}`)
   }
   const pv = Array.isArray((b.panel as { pv48?: unknown }).pv48) ? (b.panel as { pv48: { posted_at: string; first_line: string; contacted_viewers_48h: number | null; contacted_fit_viewers_48h: number | null; baseline_per_48h: number | null; window_open: boolean }[] }).pv48 : []
   if (pv.length) {
     L.push('', 'PROFILE VIEWS FROM CONTACTED PEOPLE within 48h of each post (baseline = normal 48h rate):')
-    for (const p of pv) L.push(`- ${warsaw(p.posted_at)} "${clip(p.first_line, 70)}": ${p.contacted_viewers_48h ?? 0} contacted viewers (${p.contacted_fit_viewers_48h ?? 0} fit), baseline ${p.baseline_per_48h != null ? Number(p.baseline_per_48h).toFixed(1) : '?'}${p.window_open ? ', window still open' : ''}`)
+    for (const p of pv) L.push(`- ${warsaw(p.posted_at)} "${clip(p.first_line, 70)}": ${p.contacted_viewers_48h ?? 0} contacted viewers (${p.contacted_fit_viewers_48h ?? 0} fit), baseline ${p.baseline_per_48h != null ? Number(p.baseline_per_48h).toFixed(1) : '?'}, 48h window ${p.window_open ? 'OPEN' : 'CLOSED'}`)
   }
 
   // (call reviews are not shown: their dates read as call lines; the postable lines below are what matters)

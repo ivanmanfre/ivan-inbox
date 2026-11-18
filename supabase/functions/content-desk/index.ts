@@ -18,7 +18,7 @@ import { render, applyVisibility, warsaw, type BriefJson, type Rendered } from '
 import { buildPrompt } from './prompt.ts'
 import { parse, plain, shortParagraphs, oneText, type Act } from './parse.ts'
 import { askDesk, askDeskStream, LlmError, DESK_MODEL } from './llm.ts'
-import { planLive, planForTarget, runUndo, UndoRefused, stillSame, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
+import { planLive, planForTarget, runUndo, UndoRefused, stillSame, actionKey, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
 import { authorize } from './auth.ts'
 import { planTriggers } from './triggers.ts'
 import { queueT3Job, sweepT3Stalls } from '../_shared/desk-t3.ts'
@@ -90,6 +90,7 @@ function failText(e: unknown): string {
     calendar_busy: 'The calendar is busy right now, so I did nothing. Try again in a minute.', duplicate_photo: 'That photo is already on the post.',
     too_many_photos: 'The post already has the most photos it can take.', not_single_photo: 'That post type does not take a photo.',
     published: 'It is already published.', refused: 'The app refused it, so nothing changed.',
+    human_edited: 'It has your hand edits, and the writer will not overwrite them.',
   }
   // the exact code first (queue_changed must never read as changed), then a code inside a longer message
   if (known[m]) return known[m]
@@ -134,13 +135,8 @@ async function loadBrief(svc: any, fixtures: boolean, force = false): Promise<{ 
   const json = data as BriefJson
   // published draft -> its published post URLs (own_posts link), so the last-post list matches posts by link, never by text (Sol r5 B7)
   const pubIds = (json.drafts ?? []).filter((d) => d.status === 'published').map((d) => d.id)
-  if (pubIds.length) {
-    const { data: links, error: lErr } = await svc.from('own_posts').select('clickup_task_id, linkedin_url').in('clickup_task_id', pubIds)
-    json.post_links = lErr ? null : (links ?? []).reduce((m: Record<string, string[]>, r: { clickup_task_id: string; linkedin_url: string | null }) => {
-      if (r.linkedin_url) (m[r.clickup_task_id] ??= []).push(r.linkedin_url)
-      return m
-    }, {})
-  } else json.post_links = {}
+  if (pubIds.length) json.post_links = await postLinks(svc, pubIds)
+  else json.post_links = {}
   if (panelFresh) json.panel = panelCache!.panel
   else if ((json.panel as { ok?: boolean })?.ok !== false) panelCache = { at: Date.now(), panel: json.panel }
   briefCache = { at: Date.now(), fixtures, stamp, json }
@@ -148,6 +144,31 @@ async function loadBrief(svc: any, fixtures: boolean, force = false): Promise<{ 
 }
 
 function invalidate() { briefCache = null }
+
+/**
+ * Published draft id -> the URLs of its published post, by two links: own_posts.clickup_task_id = the
+ * draft, and scheduled_posts.unipile_social_id (the post the publisher made) = own_posts.social_id
+ * (Sol r5 B7, r6 #8). Any failed read gives null: the last-post list then guesses nothing.
+ */
+// deno-lint-ignore no-explicit-any
+async function postLinks(svc: any, pubIds: string[]): Promise<Record<string, string[]> | null> {
+  const [byTask, sent] = await Promise.all([
+    svc.from('own_posts').select('clickup_task_id, linkedin_url').in('clickup_task_id', pubIds),
+    svc.from('scheduled_posts').select('clickup_task_id, unipile_social_id').in('clickup_task_id', pubIds).not('unipile_social_id', 'is', null),
+  ])
+  if (byTask.error || sent.error) return null
+  const m: Record<string, string[]> = {}
+  const add = (id: string, u: string | null | undefined) => { if (id && u && !(m[id] ??= []).includes(u)) m[id].push(u) }
+  for (const r of (byTask.data ?? []) as { clickup_task_id: string; linkedin_url: string | null }[]) add(r.clickup_task_id, r.linkedin_url)
+  const bySocial = new Map<string, string>()
+  for (const r of (sent.data ?? []) as { clickup_task_id: string; unipile_social_id: string }[]) bySocial.set(r.unipile_social_id, r.clickup_task_id)
+  if (bySocial.size) {
+    const { data, error } = await svc.from('own_posts').select('social_id, linkedin_url').in('social_id', [...bySocial.keys()])
+    if (error) return null
+    for (const r of (data ?? []) as { social_id: string; linkedin_url: string | null }[]) add(bySocial.get(r.social_id) ?? '', r.linkedin_url)
+  }
+  return m
+}
 
 let flagCache: { at: number; value: Record<string, unknown> } | null = null
 // deno-lint-ignore no-explicit-any
@@ -312,14 +333,17 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
     const { data, error } = await svc.from('desk_messages').insert({ user_id: userId, role: 'user', origin: 'operator', body: text, meta: userMeta, client_key: clientKey }).select('id').single()
     if (!error && data) userRow = data
     else {
-      const { data: again } = await svc.from('desk_messages').select('id, body, meta, created_at').eq('user_id', userId).eq('client_key', clientKey).maybeSingle()
+      const { data: again, error: aErr } = await svc.from('desk_messages').select('id, body, meta, created_at').eq('user_id', userId).eq('client_key', clientKey).maybeSingle()
+      if (aErr) return json({ error: 'turn_in_progress' }, 409, origin)   // a failed lookup is never "no turn" (Sol r6 #4)
       if (!again) return json({ error: 'desk_failed', detail: CLIENT_TEXT.desk_failed }, 500, origin)
       const prevAtt = ((again.meta as { attachments?: { kind?: string; url?: string; name?: string }[] } | null)?.attachments ?? [])
       const sameAtt = prevAtt.length === attachments.length &&
         prevAtt.every((a, i) => a?.kind === attachments[i].kind && a?.url === attachments[i].url && (a?.name ?? null) === ((attachments[i] as { name?: string }).name ?? null))
       if (again.body !== text || !sameAtt) return json({ error: 'key_mismatch' }, 409, origin)
-      const { data: prior } = await svc.from('desk_messages').select('*').eq('user_id', userId).eq('role', 'assistant')
+      const { data: prior, error: pErr } = await svc.from('desk_messages').select('*').eq('user_id', userId).eq('role', 'assistant')
         .filter('meta->>reply_to', 'eq', again.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      // a failed answer lookup fails closed: it never reads as "no answer" (that would close a live turn)
+      if (pErr) return json({ error: 'turn_in_progress' }, 409, origin)
       // Sol r5 B4: a turn without a terminal answer is "in progress" until no worker can still be alive
       // (RECOVER_AFTER_MS, far past the edge wall-clock limit). Only then may a same-key replay close it.
       if (!prior || prior.status === 'streaming') {
@@ -353,7 +377,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           .eq('user_id', userId).eq('role', 'user').gte('created_at', new Date(Date.now() - RATE_WINDOW_MS).toISOString())
         const rest = Promise.all([rate, loadBrief(svc, mode.fixtures), recentMessages(svc, userId, mode.evalMode), openJobs(svc, userId), visibleDrafts(userDb)])
         emit('ack', { user_message_id: userRow.id, client_key: clientKey })
-        if (replayAnswer) { rest.catch(() => {}); emit('final', { message: replayAnswer }); return }
+        if (replayAnswer) { rest.catch(() => {}); emit('final', { message: forClient(replayAnswer) }); return }
         const [rateRes, brief, recent, jobs, visible] = await rest
         if (!mode.evalMode && (rateRes.count ?? 0) > RATE_MAX) throw new LlmError('rate_limited', 'Too many messages in 10 minutes.')
         timings.ack_ms = Date.now() - t0
@@ -419,10 +443,22 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         // 1) plan every proposed action (no writes), and read the live row of every target BEFORE
         //    authorization, so the verifier sees the real state and every write is pinned to it
         const planned: { act: Act; p: Planned; snap: Snapshot | null }[] = []
+        const seenKeys = new Set<string>()
+        let t3s = 0
         for (const act of parsed.actions.slice(0, 6)) {
           toolCalls++
           // resolve the handle, then plan from the LIVE row: what the verifier reads is what runs (Sol r3 P1a)
           const { p, snap } = await planLive(ctx, act)
+          // Sol r6 #3: one action per (kind, target, normalized args), before authorization and journaling;
+          // a repeat is dropped, never verified, journaled or run twice
+          const key = actionKey(act, p.target_id)
+          if (seenKeys.has(key)) continue
+          seenKeys.add(key)
+          // and at most one cloud job per turn
+          if (act.kind === 't3' && p.run && ++t3s > 1) {
+            p.run = undefined; p.refuse = 'one_t3'
+            p.echo = { ...p.echo, state: 'failed', undo: false, label: 'One cloud job per message, so I opened only the first.' }
+          }
           planned.push({ act, p, snap })
         }
         // 2) one reasoned check: did Ivan's own message ask for exactly this, with these values? (Sol r1 #1, r2 #1)
@@ -543,7 +579,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
             body: shortParagraphs(`${finalBody}\n\n(I could not save this answer.${held.length ? ' The held actions were cancelled.' : ''} If an action is listed as done, check before repeating it.)`),
             meta: { ...meta, actions: echoes }, created_at: new Date().toISOString() }
         }
-        emit('final', { message: final })
+        emit('final', { message: forClient(final) })
       } catch (e) {
         const code = safeCode(e instanceof LlmError ? e.code : 'desk_failed')
         const detail = CLIENT_TEXT[code]
@@ -561,10 +597,11 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           if (!errRow) { const { data: cur } = await svc.from('desk_messages').select('*').eq('id', assistantId).maybeSingle(); errRow = cur ?? null }
         } else {
           const { data } = await svc.from('desk_messages').insert({ user_id: userId, role: 'assistant', origin: 'desk', ...errFields }).select('*').single()
-          errRow = data ?? null
+          // one answer per user message (unique index): if another answer won, that row is the record
+          errRow = data ?? await answerFor(svc, userRow.id)
         }
         emit('error', { error: code, detail })
-        if (errRow) emit('final', { message: errRow })
+        if (errRow) emit('final', { message: forClient(errRow) })
       } finally {
         ctl.close()
       }
@@ -626,7 +663,30 @@ async function recoverTurn(svc: any, prior: Record<string, any>): Promise<Record
 async function closeUnanswered(svc: any, userId: string, userMessageId: string, clientKey: string, evalMode: boolean): Promise<Record<string, unknown> | null> {
   const { data } = await svc.from('desk_messages').insert({ user_id: userId, role: 'assistant', origin: 'desk', status: 'error', body: CLIENT_TEXT.desk_failed,
     meta: { error: 'desk_failed', reply_to: userMessageId, client_key: clientKey, recovered: true, side_effects: 'none', ...(evalMode ? { test: true } : {}) } }).select('*').single()
-  return data ?? null
+  if (data) return data
+  // the unique answer index refused a second row: reread the one that won; still streaming = in progress
+  const won = await answerFor(svc, userMessageId)
+  return won && won.status !== 'streaming' ? won : null
+}
+
+/** The one assistant answer of a user message (desk_messages_one_answer), or null. */
+// deno-lint-ignore no-explicit-any
+async function answerFor(svc: any, userMessageId: string): Promise<Record<string, unknown> | null> {
+  const { data, error } = await svc.from('desk_messages').select('*').eq('role', 'assistant').filter('meta->>reply_to', 'eq', userMessageId).maybeSingle()
+  return error ? null : (data ?? null)
+}
+
+/**
+ * Every message the endpoint hands back goes through here (Sol r6 #5): stored chips are shown as one
+ * text (label = send) whatever wrote them, and an older terminal answer with no side_effects says 'unknown'.
+ */
+// deno-lint-ignore no-explicit-any
+function forClient(m: any): any {
+  if (!m || typeof m !== 'object') return m
+  const meta = { ...((m.meta ?? {}) as Record<string, unknown>) }
+  if (Array.isArray(meta.chips)) meta.chips = oneText(meta.chips as { send: unknown }[])
+  if (m.role === 'assistant' && m.origin !== 'proactive' && m.status !== 'streaming' && !['none', 'some', 'unknown'].includes(String(meta.side_effects))) meta.side_effects = 'unknown'
+  return { ...m, meta }
 }
 
 // ---- undo / commit / cancel ------------------------------------------------
@@ -721,7 +781,7 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
     const { data } = await svc.rpc('desk_patch_action_echo', { p_message: a.message_id, p_action: actionId, p_patch: patch })
     updated = data ?? null
   }
-  return { ok: newState !== 'failed', ...(updated ? { message: updated } : { detail: receiptLost || newState === 'done' ? 'Done, but I could not record it. Check before repeating it.' : undefined }) }
+  return { ok: newState !== 'failed', ...(updated ? { message: forClient(updated) } : { detail: receiptLost || newState === 'done' ? 'Done, but I could not record it. Check before repeating it.' : undefined }) }
 }
 
 // The held row is on Ivan's screen: record seen_at once (only while held) and start the server clock.
