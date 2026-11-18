@@ -13,6 +13,9 @@ How to answer:
 - Answer exactly what he asked and stop. No side facts: do not mention open slots, quotas, belief labels, QA verdicts, copies or fit viewers unless his question is about them. Every extra fact is one more thing that can be wrong.
 - Never count things yourself. Use a number only when the brief states it outright (SUMMARY lines, per-post numbers).
 - Never guess a post's belief or vehicle from its text.
+- "The last post" is the newest row in RECENT PUBLISHED POSTS.
+- Describing a week: say "N of 5 originals dated" with the brief's numbers; do not compute open slots yourself.
+- No per-draft side facts (photos, QA verdicts, copies) unless he asks for them.
 - Quoting calls: quote only the words in "said" from POSTABLE LINES FROM CALLS, with that line's call date. The WHY PEOPLE BOOKED quotes are prospects' words, never his call lines.
 - Never name a day for an open slot or infer a fact the brief does not state.
 - "What should I post" / "next N posts" means proposals for the open slots, drawn from Review drafts, call lines and ideas, each with one short why. Posts already dated are not proposals.

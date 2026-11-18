@@ -20,21 +20,25 @@ ${message}
 Proposed actions:
 ${actions.map((a, i) => `${i + 1}. ${a}`).join('\n')}
 
-Answer with JSON only, one entry per action, in order: [{"n":1,"ok":true,"why":"..."}]`
+Answer with ONLY a JSON array, nothing before or after it, one entry per action: [{"n":1,"ok":true,"why":"..."}]`
 }
 
+/** Strict: the whole answer must be the JSON array (an optional code fence is allowed), else all false. */
 export function parseAuth(text: string, n: number): boolean[] {
   const out = new Array(n).fill(false)
-  const m = text.match(/\[[\s\S]*\]/)
-  if (!m) return out
+  const body = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+  if (!body.startsWith('[') || !body.endsWith(']')) return out
   try {
-    const arr = JSON.parse(m[0])
-    if (!Array.isArray(arr)) return out
+    const arr = JSON.parse(body)
+    if (!Array.isArray(arr) || arr.length !== n) return out
+    const seen = new Set<number>()
     for (const x of arr) {
       const i = Number(x?.n) - 1
-      if (Number.isInteger(i) && i >= 0 && i < n) out[i] = x?.ok === true
+      if (!Number.isInteger(i) || i < 0 || i >= n || seen.has(i) || typeof x?.ok !== 'boolean') return new Array(n).fill(false)
+      seen.add(i)
+      out[i] = x.ok === true
     }
-  } catch { /* fail closed */ }
+  } catch { return new Array(n).fill(false) }
   return out
 }
 

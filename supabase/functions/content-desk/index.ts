@@ -14,20 +14,21 @@
 // from the allowlisted user bypasses the off flags and stamps meta.test (the eval).
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { render, applyVisibility, type BriefJson, type Rendered } from './brief.ts'
+import { render, applyVisibility, warsaw, type BriefJson, type Rendered } from './brief.ts'
 import { buildPrompt } from './prompt.ts'
 import { parse, plain, type Act } from './parse.ts'
 import { askDesk, askDeskStream, LlmError, DESK_MODEL } from './llm.ts'
-import { plan, planForTarget, runUndo, UndoRefused, sha256Hex, firstLineOf, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
+import { plan, planForTarget, runUndo, UndoRefused, readSnapshot, stillSame, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
 import { authorize } from './auth.ts'
 import { planTriggers } from './triggers.ts'
 import { queueT3Job, sweepT3Stalls } from '../_shared/desk-t3.ts'
-import { unfurl } from '../inbox-claude/unfurl.ts'
+import { deskUnfurl } from './unfurl.ts'
 import { notify } from '../_shared/notify.ts'
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined
-function later(p: PromiseLike<unknown>) {
-  const q = Promise.resolve(p).catch((e) => console.error('desk after-response failed', e))
+function later(p: PromiseLike<unknown>, op = 'after_response') {
+  // logs a stable op name and an error code only, never the error text (Sol r2 #13)
+  const q = Promise.resolve(p).catch((e) => console.error('desk later failed', op, e instanceof LlmError ? e.code : (e instanceof Error ? e.name : 'error')))
   if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(q)
 }
 
@@ -42,9 +43,10 @@ const MAX_TEXT = 6000
 // A held action can be committed for this long after it was proposed; the client auto-commits only
 // holds delivered live while the desk is visible (older ones need an explicit tap).
 const HOLD_COMMIT_WINDOW_MS = 2 * 60 * 1000
+const EXPLICIT_COMMIT_WINDOW_MS = 10 * 60 * 1000
 const MAX_ATTACH = 4
 const RATE_WINDOW_MS = 10 * 60 * 1000
-const RATE_MAX = 40
+const RATE_MAX = 60
 const DESK_URL = 'https://ivanmanfre.github.io/ivan-inbox/#exp/d/content/desk'
 
 // Stable codes and fixed client text: no upstream or database text ever reaches the browser or the logs.
@@ -173,14 +175,19 @@ async function openJobs(svc: any, userId: string) {
 }
 
 // deno-lint-ignore no-explicit-any
-async function runReads(svc: any, r: Rendered, reads: Act[]): Promise<string> {
+async function runReads(svc: any, userDb: any, r: Rendered, reads: Act[]): Promise<string> {
   const out: string[] = []
   for (const rd of reads.slice(0, 3)) {
     if (rd.kind === 'read_draft') {
       const h = String(rd.draft ?? '').toLowerCase()
       const d = r.drafts.get(h.startsWith('#') ? h : '#' + h)
       if (!d) { out.push(`read_draft ${h}: no such draft`); continue }
-      const { data } = await svc.from('carousel_drafts').select('post_body, qa').eq('id', d.id).maybeSingle()
+      const { data } = await svc.from('carousel_drafts').select('post_body, qa, status').eq('id', d.id).is('client_id', null).maybeSingle()
+      if (!data) { out.push(`read_draft ${h}: no such draft`); continue }
+      if (['review', 'approved', 'error', 'generating'].includes(data.status) && !d.fixture) {
+        const { data: vis } = await userDb.from('cb34_p2_safe_drafts').select('id').eq('id', d.id).maybeSingle()
+        if (!vis) { out.push(`read_draft ${h}: not in his Review`); continue }
+      }
       out.push(`read_draft ${h} ("${d.first_line.slice(0, 60)}"):\n${String(data?.post_body ?? '').slice(0, 3500)}\nQA feedback: ${String((data?.qa as { feedback?: string } | null)?.feedback ?? '').slice(0, 500)}`)
     } else if (rd.kind === 'read_posts') {
       const words = String(rd.q ?? '').toLowerCase().split(/\W+/).filter((w) => w.length > 2).slice(0, 4)
@@ -237,8 +244,13 @@ Deno.serve(async (req) => {
   if (cfg.desk_enabled !== true && !evalMode) return json({ error: 'desk_off' }, 403, origin)
 
   if (op === 'warm') {
-    later(loadBrief(svc, fixtures, true))
+    later(loadBrief(svc, fixtures, true), 'warm')
     return json({ ok: true }, 200, origin)
+  }
+  if (op === 'held_seen') {
+    // the UI sends this when a held row is first visibly rendered; only then does the server clock run
+    const ids = (Array.isArray(body.action_ids) ? body.action_ids : []).map(String).filter((x) => /^[0-9a-f-]{36}$/i.test(x)).slice(0, 10)
+    return json(await heldSeen(svc, userDb, userId, ids, evalMode), 200, origin)
   }
   if (op === 'undo' || op === 'commit' || op === 'cancel') {
     return json(await settle(svc, userDb, userId, op, String(body.action_id ?? ''), dry), 200, origin)
@@ -273,7 +285,9 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
     else {
       const { data: again } = await svc.from('desk_messages').select('id, body, meta').eq('user_id', userId).eq('client_key', clientKey).maybeSingle()
       if (!again) return json({ error: 'desk_failed', detail: CLIENT_TEXT.desk_failed }, 500, origin)
-      const sameAtt = JSON.stringify((again.meta as { attachments?: unknown } | null)?.attachments ?? []) === JSON.stringify(attachments)
+      const prevAtt = ((again.meta as { attachments?: { kind?: string; url?: string; name?: string }[] } | null)?.attachments ?? [])
+      const sameAtt = prevAtt.length === attachments.length &&
+        prevAtt.every((a, i) => a?.kind === attachments[i].kind && a?.url === attachments[i].url && (a?.name ?? null) === ((attachments[i] as { name?: string }).name ?? null))
       if (again.body !== text || !sameAtt) return json({ error: 'key_mismatch' }, 409, origin)
       const { data: prior } = await svc.from('desk_messages').select('*').eq('user_id', userId).eq('role', 'assistant')
         .filter('meta->>reply_to', 'eq', again.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
@@ -299,11 +313,11 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         emit('ack', { user_message_id: userRow.id, client_key: clientKey })
         if (replayAnswer) { rest.catch(() => {}); emit('final', { message: replayAnswer }); return }
         const [rateRes, brief, recent, jobs, visible] = await rest
-        if ((rateRes.count ?? 0) > RATE_MAX) throw new LlmError('rate_limited', 'Too many messages in 10 minutes.')
+        if (!mode.evalMode && (rateRes.count ?? 0) > RATE_MAX) throw new LlmError('rate_limited', 'Too many messages in 10 minutes.')
         timings.ack_ms = Date.now() - t0
         timings.brief_ms = brief.ms
-        later(sweepT3Stalls(svc))
-        const r = render(applyVisibility(brief.json, visible), recent.filter((m: { role: string; body: string; created_at: string }) => !(m.role === 'user' && m.body === text && Date.now() - Date.parse(m.created_at) < 60_000)).slice(-10), jobs)
+        later(sweepT3Stalls(svc), 't3_sweep')
+        const r = render(applyVisibility(brief.json, visible ?? new Map()), recent.filter((m: { role: string; body: string; created_at: string }) => !(m.role === 'user' && m.body === text && Date.now() - Date.parse(m.created_at) < 60_000)).slice(-10), jobs)
         let prompt = buildPrompt({ brief: r.text, message: text || '(no text, see attachment)', attachments, voice: body.voice === true })
         // Token streaming through the proxy's opt-in stream (DESK_STREAM=1): the reply reaches
         // the phone as it is written. Otherwise the whole answer goes out the moment it exists.
@@ -320,7 +334,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         let parsed = parse(m1.text)
         if (parsed.reads.length && !parsed.actions.length) {
           toolCalls += parsed.reads.length
-          const results = await runReads(svc, r, parsed.reads)
+          const results = await runReads(svc, userDb, r, parsed.reads)
           prompt = buildPrompt({ brief: r.text, message: text, attachments, voice: body.voice === true, readResults: results })
           const m2 = await ask(prompt)
           timings.model_ms += m2.ms
@@ -349,7 +363,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
 
         const ctx: Ctx = {
           userDb, svc, userId, messageId, brief: r, attachments, text, env,
-          unfurl: async (u) => { try { const x = await unfurl(u); return x.ok ? { title: x.title, description: x.description, author: x.author } : null } catch { return null } },
+          unfurl: (u) => deskUnfurl(u),
           t3: mode.t3On ? async ({ title, brief: b }) => {
             const j = mode.t3Test
               ? await queueT3Job(svc, { userId, messageId, title: `[test] ${title}`, brief: `TEST RUN from the desk eval. Do NOT do this job. Reply with a 3-line plan for it, then stop.\n\nThe job:\n${b}` })
@@ -360,18 +374,35 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         const echoes: ActionEcho[] = []
         let chips = parsed.chips
         let wrote = false
-        // 1) plan every proposed action (no writes)
-        const planned: { act: Act; p: Planned }[] = []
+        // 1) plan every proposed action (no writes), and read the live row of every target BEFORE
+        //    authorization, so the verifier sees the real state and every write is pinned to it
+        const planned: { act: Act; p: Planned; snap: Snapshot | null }[] = []
         for (const act of parsed.actions.slice(0, 6)) {
           toolCalls++
-          planned.push({ act, p: await plan(ctx, act) })
+          const p = await plan(ctx, act)
+          const snap = p.target_id ? await readSnapshot(svc, p.target_id) : null
+          if (p.target_id && p.run && !snap) { p.run = undefined; p.refuse = 'gone'; p.echo = { ...p.echo, state: 'failed', undo: false, label: 'That post is gone.' } }
+          planned.push({ act, p, snap })
         }
-        // 2) one reasoned check: did Ivan's own message ask for exactly this? (Sol r1 #1)
+        // 2) one reasoned check: did Ivan's own message ask for exactly this, with these values? (Sol r1 #1, r2 #1)
         const writable = planned.filter((x) => x.p.run)
-        const verdicts = await authorize(text, writable.map((x) => x.p.describe ?? x.p.echo.label))
+        const describe = (x: { act: Act; p: Planned; snap: Snapshot | null }) => {
+          const parts = [x.p.describe ?? x.p.echo.label]
+          if (x.snap) parts.push(`(post status now: ${x.snap.status}; dated now: ${x.snap.scheduled_at ? warsaw(x.snap.scheduled_at) : 'no date'}${x.snap.queue ? `; queued copy ${x.snap.queue.status}` : ''})`)
+          if (x.act.kind === 'approve') parts.push(`QA override: ${x.snap?.status === 'error' ? 'yes, it failed its check' : 'no'}`)
+          if (x.act.kind === 'photo_attach' || x.act.kind === 'photo_stage') {
+            const n = Number(x.act.photo ?? 1); const att = attachments.filter((a) => a.kind === 'photo')[n - 1]
+            parts.push(`photo: attachment ${n}${att?.name ? ` (${att.name})` : ''}`)
+          }
+          if (x.act.kind === 't3') parts.push(`job title: ${String(x.act.title ?? '').slice(0, 120)}; job brief: ${String(x.act.brief ?? '').slice(0, 1500)}`)
+          if (x.act.kind === 'link') parts.push(`url: ${String(x.act.url ?? '')}`)
+          return parts.join(' ')
+        }
+        const verdicts = await authorize(text, writable.map(describe))
         writable.forEach((x, i) => {
           if (verdicts[i]) {
-            if (x.act.kind === 'approve' && /FAILED its quality check/.test(x.p.describe ?? '')) x.act._qa_override = true
+            // server-owned: the override comes from the live status + the verifier, never from the model
+            if (x.act.kind === 'approve' && x.snap?.status === 'error') x.act._qa_override = true
             return
           }
           x.p.run = undefined
@@ -381,19 +412,14 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           if (x.p.command) chips = [{ label: `Do it: ${x.p.command}`.slice(0, 60), send: x.p.command }, ...chips].slice(0, 3)
         })
         timings.auth_ms = Date.now() - t0
-        // 3) a durable journal row first, then the write (Sol r1: no write without its record)
-        const heldIds: { id: string; hold_ms: number }[] = []
-        for (const { act, p } of planned) {
+        // 3) a durable journal row first ('pending'), then the guarded write, then the terminal state
+        for (const { act, p, snap } of planned) {
           if (mode.dry && p.run) { const label = p.echo.label; p.run = async () => ({ result: { dry: true, label } }) }
-          let snapshot: Snapshot | null = null
-          if (p.target_id && p.run) {
-            const { data: cur } = await svc.from('carousel_drafts').select('updated_at, post_body').eq('id', p.target_id).maybeSingle()
-            if (cur) snapshot = { target_id: p.target_id, updated_at: cur.updated_at, first_line_sha: await sha256Hex(firstLineOf(cur.post_body)) }
-          }
+          const immediate = !!p.run && p.echo.state === 'done'
           const { data: aRec, error: recErr } = await svc.from('desk_actions').insert({
             user_id: userId, message_id: messageId, kind: p.echo.kind, target_id: p.target_id ?? null,
-            args: { ...act, ...(snapshot ? { _snapshot: snapshot } : {}), ...(mode.fixtures ? { _fixtures: true } : {}), ...(mode.dry ? { _dry: true } : {}) },
-            result: { state: p.echo.state, refuse: p.refuse ?? null },
+            args: { ...act, ...(snap ? { _snapshot: snap } : {}), ...(mode.fixtures ? { _fixtures: true } : {}), ...(mode.dry ? { _dry: true } : {}) },
+            result: { state: immediate ? 'pending' : p.echo.state, refuse: p.refuse ?? null, ...(p.echo.state === 'held' ? { hold_ms: p.echo.hold_ms ?? 8000 } : {}) },
           }).select('id').single()
           if (recErr || !aRec?.id) {
             echoes.push({ id: crypto.randomUUID(), ...p.echo, state: 'failed', undo: false, label: 'I could not record this action, so I did not do it.' })
@@ -401,22 +427,27 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           }
           const echo: ActionEcho = { id: aRec.id, ...p.echo }
           if (p.chips?.length) chips = [...p.chips, ...chips].slice(0, 3)
-          if (p.run && p.echo.state === 'done') {
+          if (immediate) {
+            let terminal: Record<string, unknown>
+            let undo: Record<string, unknown> | null = null
             try {
-              const res = await p.run()
+              if (snap && !mode.dry && !await stillSame(svc, snap)) throw new Error('changed')
+              const res = await p.run!()
               wrote = true
               if (res.detail) echo.detail = res.detail
               if (res.t3_job) echo.t3_job = res.t3_job
               if (!res.undo) echo.undo = false
-              await svc.from('desk_actions').update({ result: { state: 'done', value: res.result ?? null }, undo: res.undo ?? null }).eq('id', echo.id)
+              undo = res.undo ?? null
+              terminal = { state: 'done', value: res.result ?? null }
             } catch (e) {
               echo.state = 'failed'; echo.undo = false
               echo.label = `Could not do it: ${failText(e)}`
               console.error('desk action failed', echo.kind)
-              await svc.from('desk_actions').update({ result: { state: 'failed', error: failText(e) } }).eq('id', echo.id)
+              terminal = { state: 'failed', error: failText(e) }
             }
+            const { error: termErr } = await svc.from('desk_actions').update({ result: terminal, undo }).eq('id', echo.id)
+            if (termErr) throw new LlmError('desk_failed', 'journal')
           }
-          if (echo.state === 'held') heldIds.push({ id: echo.id, hold_ms: echo.hold_ms ?? 8000 })
           echoes.push(echo)
         }
         if (wrote) invalidate()
@@ -440,20 +471,6 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           .eq('id', messageId).select('*').single()
         if (finErr || !final) throw new LlmError('desk_failed', 'final')
         emit('final', { message: final })
-        // Sol r1 #6: a hold starts when Ivan can see it (the final is out); the server commits at
-        // hold_until unless Undo's compare-and-set wins first. The eval runner commits itself.
-        const shownAt = Date.now()
-        for (const h of heldIds) {
-          const holdUntil = new Date(shownAt + h.hold_ms).toISOString()
-          const { data: a } = await svc.from('desk_actions').select('result').eq('id', h.id).maybeSingle()
-          await svc.from('desk_actions').update({ result: { ...(a?.result ?? {}), hold_until: holdUntil } }).eq('id', h.id).filter('result->>state', 'eq', 'held')
-          if (!mode.evalMode) {
-            later((async () => {
-              await new Promise((r) => setTimeout(r, h.hold_ms + 300))
-              await settle(svc, userDb, userId, 'commit', h.id, false, true)
-            })())
-          }
-        }
       } catch (e) {
         const code = safeCode(e instanceof LlmError ? e.code : 'desk_failed')
         const detail = CLIENT_TEXT[code]
@@ -508,10 +525,16 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
     newState = 'cancelled'; label = 'Cancelled. Nothing changed.'
   } else {
     if (state !== 'held') return { ok: false, error: 'not_held' }
-    if (Date.now() - Date.parse(a.created_at) > HOLD_COMMIT_WINDOW_MS) return { ok: false, error: 'hold_expired' }
-    // the server timer commits only once the hold Ivan saw has run out; a tap ("Do it now") may commit early
-    const holdUntil = (a.result as { hold_until?: string } | null)?.hold_until
-    if (auto && (!holdUntil || Date.now() < Date.parse(holdUntil) - 200)) return { ok: false, error: 'hold_not_over' }
+    const seenAt = (a.result as { seen_at?: string } | null)?.seen_at
+    const holdMs = Number((a.result as { hold_ms?: number } | null)?.hold_ms ?? 8000)
+    if (auto) {
+      // the server clock: only after Ivan saw the hold (held_seen), once it ran out, within 2 min of seeing it
+      if (!seenAt || Date.now() < Date.parse(seenAt) + holdMs - 200) return { ok: false, error: 'hold_not_over' }
+      if (Date.now() > Date.parse(seenAt) + HOLD_COMMIT_WINDOW_MS) return { ok: false, error: 'hold_expired' }
+    } else if (Date.now() - Date.parse(a.created_at) > EXPLICIT_COMMIT_WINDOW_MS) {
+      // "Do it now" may commit any time within 10 minutes of the proposal
+      return { ok: false, error: 'hold_expired' }
+    }
     // exactly one commit wins, and a cancel that already won makes this one refuse
     if (!await claimState(svc, a, 'held', 'committing')) return { ok: false, error: 'not_held' }
     try {
@@ -536,14 +559,34 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
     invalidate()
   }
   // reflect the new state in the message's echo (the stored action is the source of truth)
-  const { data: msg } = await svc.from('desk_messages').select('id, meta').eq('id', a.message_id).maybeSingle()
-  if (msg) {
-    const meta = msg.meta ?? {}
-    const actions = (meta.actions ?? []).map((x: ActionEcho) => x.id === actionId ? { ...x, state: newState, label: label ?? x.label, undo: false } : x)
-    const { data: updated } = await svc.from('desk_messages').update({ meta: { ...meta, actions }, updated_at: new Date().toISOString() }).eq('id', msg.id).select('*').single()
-    return { ok: newState !== 'failed', message: updated }
+  const patch: Record<string, unknown> = { state: newState, undo: false }
+  if (label) patch.label = label
+  const { data: updated } = await svc.rpc('desk_patch_action_echo', { p_message: a.message_id, p_action: actionId, p_patch: patch })
+  return { ok: newState !== 'failed', ...(updated ? { message: updated } : {}) }
+}
+
+// The held row is on Ivan's screen: record seen_at once (only while held) and start the server clock.
+// deno-lint-ignore no-explicit-any
+async function heldSeen(svc: any, userDb: any, userId: string, ids: string[], evalMode: boolean) {
+  const armed: string[] = []
+  for (const id of ids) {
+    const { data: a } = await svc.from('desk_actions').select('id, result').eq('id', id).eq('user_id', userId).maybeSingle()
+    const r = (a?.result ?? {}) as { state?: string; seen_at?: string; hold_ms?: number }
+    if (!a || r.state !== 'held' || r.seen_at) continue
+    const seenAt = new Date().toISOString()
+    const { data: won } = await svc.from('desk_actions').update({ result: { ...r, seen_at: seenAt } })
+      .eq('id', id).filter('result->>state', 'eq', 'held').is('result->>seen_at', null).select('id')
+    if (!Array.isArray(won) || !won.length) continue
+    armed.push(id)
+    if (!evalMode) {
+      const ms = Number(r.hold_ms ?? 8000)
+      later((async () => {
+        await new Promise((res) => setTimeout(res, ms + 300))
+        await settle(svc, userDb, userId, 'commit', id, false, true)
+      })(), 'hold_commit')
+    }
   }
-  return { ok: newState !== 'failed' }
+  return { ok: true, armed }
 }
 
 // ---- proactive tick -----------------------------------------------------------
@@ -551,7 +594,7 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
 async function tick(svc: any, opts: { dry: boolean }) {
   const cfg = await flags(svc)
   if (cfg.triggers_enabled !== true && !opts.dry) return { ok: true, skipped: 'triggers_off' }
-  await sweepT3Stalls(svc)
+  if (!opts.dry) await sweepT3Stalls(svc)
   const b = await loadBrief(svc, false, true)
   const r = render(b.json)
   const { data: ledger } = await svc.from('desk_triggers').select('kind, dedupe_key, fired_at, suppressed')
@@ -571,20 +614,17 @@ async function tick(svc: any, opts: { dry: boolean }) {
   const fired: string[] = []
   for (const p of planned) {
     // claim the dedupe key first: a second tick racing this one cannot fire it twice
-    // dedupe and the Warsaw-week cap in one locked transaction (desk_claim_trigger)
-    const { data: claimId, error } = await svc.rpc('desk_claim_trigger', { p_kind: p.kind, p_dedupe_key: p.dedupe_key, p_payload: { artifact: p.artifact }, p_cap: cap })
-    if (error || !claimId) continue
-    const claim = { id: claimId as string }
-    if (p.kind === 't3_done') { fired.push(p.dedupe_key); continue } // the report RPC already wrote the message
-    const { data: m } = await svc.from('desk_messages').insert({
-      user_id: ALLOWED, role: 'assistant', origin: 'proactive', body: plain(p.body),
-      meta: { trigger: p.kind, artifact: p.artifact, ...(p.chips.length ? { chips: p.chips } : {}) },
-    }).select('id').single()
-    if (m) {
-      await svc.from('desk_triggers').update({ message_id: m.id }).eq('id', claim.id)
+    // dedupe + Warsaw-week cap + the message itself in ONE transaction (desk_fire_trigger)
+    const { data: res, error } = await svc.rpc('desk_fire_trigger', {
+      p_kind: p.kind, p_dedupe_key: p.dedupe_key, p_payload: { artifact: p.artifact }, p_cap: cap, p_user: ALLOWED,
+      p_body: p.kind === 't3_done' ? null : plain(p.body),
+      p_meta: { trigger: p.kind, artifact: p.artifact, ...(p.chips.length ? { chips: p.chips } : {}) },
+    })
+    if (error || !(res as { fired?: boolean } | null)?.fired) continue
+    if (p.kind !== 't3_done' && (res as { message_id?: string }).message_id) {
       try {
+        // no content in the notification row or the push: the words stay in the owner-only desk (Sol r1 #3)
         await notify(svc, { family: 'content_desk', source: 'content-desk', dedupe_key: `desk:${p.dedupe_key}`, severity: 'info',
-          // no content in the notification row or the push: the words stay in the owner-only desk (Sol r1 #3)
           title: 'Content Desk', body: 'You have a new message in your Content Desk.', url: DESK_URL, push: true, tenant: 'ivan' })
       } catch { console.warn('desk push failed') }
     }

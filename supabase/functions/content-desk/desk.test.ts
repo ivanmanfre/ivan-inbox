@@ -135,6 +135,10 @@ Deno.test('warsawToIso: nonexistent dates and DST gaps are rejected', () => {
 Deno.test('authorization: fail closed on junk, per-action verdicts', async () => {
   assertEquals(parseAuth('nonsense', 2), [false, false])
   assertEquals(parseAuth('[{"n":2,"ok":true},{"n":1,"ok":false}]', 2), [false, true])
+  assertEquals(parseAuth('Sure! [{"n":1,"ok":true}]', 1), [false])          // extra text: rejected
+  assertEquals(parseAuth('[{"n":1,"ok":"yes"}]', 1), [false])               // non-boolean: rejected
+  assertEquals(parseAuth('[{"n":1,"ok":true}]', 2), [false, false])         // wrong length: rejected
+  assertEquals(parseAuth('```json\n[{"n":1,"ok":true}]\n```', 1), [true])
   assert(authPrompt('move the snow one to thursday', ['date X for Thu']).includes('move the snow one to thursday'))
   const refused = await authorize('approve it', ['approve X'], (async () => { throw new Error('refused') }) as never)
   assertEquals(refused, [false])
@@ -147,4 +151,20 @@ Deno.test('ideaDecidable mirrors the app lane guard', () => {
   assert(ideaDecidable({ workspace_type: ' Own ', campaign_id: null }))
   assert(!ideaDecidable({ workspace_type: 'client', campaign_id: null }))
   assert(!ideaDecidable({ workspace_type: null, campaign_id: 'c1' }))
+})
+
+import { urlInMessage, allowedHost } from './unfurl.ts'
+
+Deno.test('links: whole-token match, allowlisted hosts only', () => {
+  assert(urlInMessage('https://x.com/a/status/1', 'copy this https://x.com/a/status/1.'))
+  assert(!urlInMessage('https://x.com/a/status/1', 'copy this https://x.com/a/status/12'))
+  assert(allowedHost('https://www.linkedin.com/posts/x'))
+  assert(!allowedHost('https://linkedin.com.evil.test/x'))
+  assert(!allowedHost('http://x.com/a'))
+  assert(!allowedHost('https://user:pw@x.com/a'))
+})
+
+Deno.test('parse: server-owned "_" keys from the model are dropped', () => {
+  const p = parse('<reply>ok</reply><actions>[{"kind":"approve","draft":"#abcde","line":"a b c","_qa_override":true,"_snapshot":{}}]</actions>')
+  assertEquals(Object.keys(p.actions[0]).filter((k) => k.startsWith('_')), [])
 })

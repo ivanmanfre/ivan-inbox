@@ -193,9 +193,13 @@ begin
   ) s;
 
   select jsonb_build_object(
-    'reviewing', (select count(*) from public.lm_idea_candidates where status = 'reviewing'),
+    -- the same lane guard as the app's ideaDecidable: own workspace, no campaign
+    'reviewing', (select count(*) from public.lm_idea_candidates where status = 'reviewing'
+                    and lower(btrim(coalesce(workspace_type, ''))) in ('', 'own') and campaign_id is null),
     'newest', coalesce((select jsonb_agg(jsonb_build_object('id', i.id, 'source', i.source, 'topic', left(coalesce(i.raw_topic, ''), 140), 'at', i.ingested_at) order by i.ingested_at desc)
-       from (select * from public.lm_idea_candidates where status in ('reviewing', 'pending', 'scored') order by ingested_at desc limit 6) i), '[]'::jsonb)
+       from (select * from public.lm_idea_candidates where status in ('reviewing', 'pending', 'scored')
+               and lower(btrim(coalesce(workspace_type, ''))) in ('', 'own') and campaign_id is null
+             order by ingested_at desc limit 6) i), '[]'::jsonb)
   ) into v_ideas;
 
   return jsonb_build_object(

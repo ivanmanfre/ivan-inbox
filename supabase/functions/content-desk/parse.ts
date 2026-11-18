@@ -40,8 +40,10 @@ export function parse(text: string): Parsed {
     // No (or an empty, or an unclosed) reply tag: take everything outside the other blocks.
     reply = text.replace(/<(actions|reads|chips)>[\s\S]*?<\/\1>/gi, '').replace(/<\/?reply>/gi, '').trim()
   }
+  // Keys starting with "_" are server-owned (overrides, snapshots, flags): never taken from the model.
   const actions = jsonArray(block(text, 'actions'))
-    .filter((a) => typeof a.kind === 'string') as Act[]
+    .filter((a) => typeof a.kind === 'string')
+    .map((a) => Object.fromEntries(Object.entries(a).filter(([k]) => !k.startsWith('_')))) as Act[]
   const reads = jsonArray(block(text, 'reads'))
     .filter((a) => typeof a.kind === 'string' && /^read_/.test(a.kind as string)) as Act[]
   const chips = jsonArray(block(text, 'chips'))

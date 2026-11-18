@@ -23,6 +23,7 @@
 import type { Rendered, Draft } from './brief.ts'
 import { warsaw } from './brief.ts'
 import type { Act } from './parse.ts'
+import { urlInMessage } from './unfurl.ts'
 
 // deno-lint-ignore no-explicit-any
 type Db = any
@@ -158,13 +159,42 @@ export async function plan(ctx: Ctx, act: Act): Promise<Planned> {
   // the same object goes in, so a later flag on it (the authorized QA override) reaches run()
   act.kind = IN_ALIAS[act.kind] ?? act.kind
   const p = await planInner(ctx, act)
+  // every draft action records its target UUID, whatever its state (done, held, dry, refused)
+  if (!p.target_id && p.echo.target) p.target_id = ctx.brief.drafts.get(p.echo.target.handle)?.id
   const k = p.echo.kind
   p.echo.kind = k === 'link' ? (classifyPostUrl(String(act.url ?? '')) ? 'copy' : 'idea') : (OUT_NAME[k] ?? k)
   return p
 }
 
-/** The draft fields a held action pins at proposal and checks again at commit. */
-export type Snapshot = { target_id: string; updated_at: string | null; first_line_sha: string }
+/** The draft fields read from the DB before authorization, pinned on the action and checked again right before the write. */
+export type Snapshot = {
+  target_id: string; updated_at: string | null; status: string; first_line_sha: string
+  scheduled_at: string | null; image_urls: string[]
+  queue: { queue_id: string; slot_at: string; status: string } | null
+}
+
+/** Read the live row (Ivan's lane) and its live queue rows. Null when the draft is gone or not his. */
+export async function readSnapshot(svc: Db, id: string): Promise<Snapshot | null> {
+  const { data: row } = await svc.from('carousel_drafts').select('id, updated_at, status, post_body, scheduled_at, image_urls')
+    .eq('id', id).is('client_id', null).maybeSingle()
+  if (!row) return null
+  const { data: q } = await svc.from('scheduled_posts').select('id, scheduled_at, status')
+    .eq('clickup_task_id', id).in('status', ['pending', 'queued_v2', 'posting']).order('scheduled_at', { ascending: true }).limit(1)
+  const qr = Array.isArray(q) && q.length ? q[0] : null
+  return {
+    target_id: row.id, updated_at: row.updated_at, status: row.status, first_line_sha: await sha256Hex(firstLineOf(row.post_body)),
+    scheduled_at: row.scheduled_at, image_urls: Array.isArray(row.image_urls) ? row.image_urls.filter((u: unknown) => typeof u === 'string') : [],
+    queue: qr ? { queue_id: qr.id, slot_at: qr.scheduled_at, status: qr.status } : null,
+  }
+}
+
+/** Immediately before a write: the row must still be exactly as it was authorized (status + updated_at). */
+export async function stillSame(svc: Db, snap: Snapshot): Promise<boolean> {
+  const { data: row } = await svc.from('carousel_drafts').select('updated_at, status').eq('id', snap.target_id).is('client_id', null).maybeSingle()
+  // residual window: the app RPCs take no version argument, so a write landing in the few ms between
+  // this read and the RPC is not caught; every app path has the same window
+  return !!row && String(row.updated_at) === String(snap.updated_at) && row.status === snap.status
+}
 
 /**
  * Re-plan a held action at commit time from the stored target UUID only (Sol r1 #2):
@@ -176,7 +206,7 @@ export async function planForTarget(ctx: Ctx, act: Act, snap: Snapshot): Promise
     .select('id, status, type, scheduled_at, published_at, post_body, title, topic, taxonomy, qa, source_ref, image_urls, created_at, updated_at, client_id')
     .eq('id', snap.target_id).is('client_id', null).maybeSingle()
   if (error || !row) return { refuse: 'gone' }
-  if (String(row.updated_at) !== String(snap.updated_at)) return { refuse: 'changed' }
+  if (String(row.updated_at) !== String(snap.updated_at) || row.status !== snap.status) return { refuse: 'changed' }
   const firstLine = firstLineOf(row.post_body)
   if (await sha256Hex(firstLine) !== snap.first_line_sha) return { refuse: 'changed' }
   const tax = (row.taxonomy && typeof row.taxonomy === 'object' && !Array.isArray(row.taxonomy)) ? row.taxonomy as Record<string, unknown> : {}
@@ -195,7 +225,8 @@ export async function planForTarget(ctx: Ctx, act: Act, snap: Snapshot): Promise
     slot_kind: null, selling: false, chars: String(row.post_body ?? '').length, created_at: row.created_at, fixture: (tax.desk_eval_fixture as string) ?? null,
   }
   const handle = String(act.draft ?? '#target').toLowerCase()
-  const brief: Rendered = { ...ctx.brief, drafts: new Map([[handle.startsWith('#') ? handle : '#' + handle, d]]), handleOf: new Map([[d.id, handle]]) }
+  const queueByDraft = new Map(snap.queue ? [[d.id, { queue_id: snap.queue.queue_id, draft_id: d.id, slot_at: snap.queue.slot_at, origin: 'own', first_line: firstLine }]] : [])
+  const brief: Rendered = { ...ctx.brief, drafts: new Map([[handle.startsWith('#') ? handle : '#' + handle, d]]), handleOf: new Map([[d.id, handle]]), queueByDraft }
   return await plan({ ...ctx, brief }, { ...act, draft: handle, line: firstLine.slice(0, 60) })
 }
 
@@ -261,10 +292,12 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
         describe: `date ${qq} for ${warsaw(iso)} Warsaw time`,
         command: `move ${qq} to ${String(act.at)}`,
         run: async () => {
+          const { data: cur } = await ctx.svc.from('carousel_drafts').select('scheduled_at').eq('id', id).is('client_id', null).maybeSingle()
+          const before = cur ? cur.scheduled_at : prev
           const { data, error } = await ctx.userDb.rpc('operator_set_schedule_date', { p_gate: GATE, p_draft_id: id, p_scheduled_at: iso })
           const r = rpcOk(data, error)
           const at = typeof r.scheduled_at === 'string' ? r.scheduled_at : iso
-          return { result: r, undo: { op: 'date', draft_id: id, prev, applied: at }, detail: Date.parse(at) !== Date.parse(iso) ? `The calendar stored ${warsaw(at)}.` : undefined }
+          return { result: r, undo: { op: 'date', draft_id: id, prev: before, applied: at }, detail: Date.parse(at) !== Date.parse(iso) ? `The calendar stored ${warsaw(at)}.` : undefined }
         },
       }
     }
@@ -298,8 +331,10 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
         describe: `remove the date from ${qq} (now ${warsaw(prev)})`,
         command: `remove the date from ${qq}`,
         run: async () => {
+          const { data: cur } = await ctx.svc.from('carousel_drafts').select('scheduled_at').eq('id', id).is('client_id', null).maybeSingle()
+          const before = cur ? cur.scheduled_at : prev
           const { data, error } = await ctx.userDb.rpc('operator_set_schedule_date', { p_gate: GATE, p_draft_id: id, p_scheduled_at: null })
-          return { result: rpcOk(data, error), undo: { op: 'date', draft_id: id, prev, applied: null } }
+          return { result: rpcOk(data, error), undo: { op: 'date', draft_id: id, prev: before, applied: null } }
         },
       }
     }
@@ -313,21 +348,40 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
         describe: `delete ${qq}${why ? ` because "${why}"` : ''}`,
         command: `delete ${qq}${why ? `, reason: ${why}` : ''}`,
         run: async () => {
+          const queueLive = async () => {
+            const { data, error } = await ctx.svc.from('scheduled_posts').select('id, status, scheduled_at')
+              .eq('clickup_task_id', id).in('status', ['pending', 'queued_v2', 'posting'])
+            if (error) throw new Error('queue_check_failed')
+            return (data ?? []) as { id: string; status: string; scheduled_at: string }[]
+          }
+          let live = await queueLive()
+          if (live.some((r) => r.status === 'posting')) throw new Error('posting_now')
           if (brain && ['review', 'error'].includes(status)) {
+            if (live.length) throw new Error('queued_brain')
             const reasons = why ? [...new Set(BRAIN_REASONS.filter(([re]) => re.test(why)).map(([, r]) => r))] : []
             const { data, error } = await ctx.userDb.rpc('cb39_verdict_set', { p_draft: id, p_verdict: 'drop', p_reasons: reasons.length ? reasons : ['other'], p_note: why, p_invocation: null, p_ms_to_verdict: null })
             if (error) throw new Error(error.message)
             return { result: data }
           }
-          // Sol r1 #7: a dated/scheduled post is first taken off the schedule through the app's own
-          // guarded path, and its queue rows are cancelled; if either fails, nothing is deleted.
-          if (status === 'scheduled' || d!.scheduled_at) {
+          // Sol r1 #7 / r2 #5: a queued copy is pulled first through the app's own paths, then the
+          // queue is read again; any live copy left means nothing is deleted.
+          if (live.length) {
+            const q = ctx.brief.queueByDraft.get(id)
+            let pulled = false
+            if (q) {
+              const { data, error } = await ctx.userDb.rpc('content_next_pull', { p_queue: q.queue_id, p_slot_at: q.slot_at, p_reason: why })
+              pulled = !error && (data as { ok?: boolean } | null)?.ok === true
+            }
+            if (!pulled) {
+              const { data, error } = await ctx.userDb.rpc('operator_set_schedule_date', { p_gate: GATE, p_draft_id: id, p_scheduled_at: null })
+              rpcOk(data, error)
+            }
+            live = await queueLive()
+            if (live.length) throw new Error('queue_still_live')
+          } else if (d!.scheduled_at) {
             const { data, error } = await ctx.userDb.rpc('operator_set_schedule_date', { p_gate: GATE, p_draft_id: id, p_scheduled_at: null })
             rpcOk(data, error)
           }
-          const cancel = await ctx.userDb.from('scheduled_posts').update({ status: 'cancelled', error_message: 'draft_deleted_by_operator' })
-            .eq('clickup_task_id', id).in('status', ['pending', 'queued_v2', 'posting']).select('id')
-          if (cancel.error) throw new Error('queue_cancel_failed')
           const { data: row } = await ctx.userDb.from('carousel_drafts').select('taxonomy').eq('id', id).maybeSingle()
           let tax = row?.taxonomy
           if (why) {
@@ -364,32 +418,34 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
         command: `redo ${qq} through the writer, same idea`,
         run: async () => {
           const { data: row, error: rErr } = await ctx.userDb.from('carousel_drafts').select('id, type, topic, title, taxonomy, status').eq('id', id).maybeSingle()
-          if (rErr || !row) throw new Error(rErr?.message ?? 'draft not found')
+          if (rErr || !row) throw new Error('not_found')
           const startedAt = new Date().toISOString()
           const before = row.status
           const tax0 = row.taxonomy && typeof row.taxonomy === 'object' && !Array.isArray(row.taxonomy) ? row.taxonomy : {}
-          const { error } = await ctx.userDb.from('carousel_drafts').update({ status: 'generating', taxonomy: { ...tax0, generating_started_at: startedAt } }).eq('id', id)
-          if (error) throw new Error(error.message)
+          // guarded on the status we read: a row that changed meanwhile is not touched
+          const { data: flipped, error } = await ctx.userDb.from('carousel_drafts').update({ status: 'generating', taxonomy: { ...tax0, generating_started_at: startedAt } })
+            .eq('id', id).eq('status', before).select('id')
+          if (error || !flipped?.length) throw new Error('changed')
           const postFormat = row.type === 'carousel' ? 'Carousel' : row.type === 'single_image' ? 'Single Image' : 'Text Post'
           const f = ctx.fetchImpl ?? fetch
-          let ok = false
+          let status = 0
           try {
             const res = await f(ctx.env('VITE_POSTGEN_WEBHOOK') || POSTGEN, {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ draft_id: id, topic: row.topic ?? row.title ?? '', title: row.title ?? '', author: 'Ivan', source: 'Inbox', post_format: postFormat, include_image: 'No' }),
               signal: AbortSignal.timeout(15_000),
             })
-            ok = res.ok
-            if (!ok && res.status < 500) throw new Error(`writer_refused_${res.status}`)
-          } catch (e) {
-            if (e instanceof Error && e.name === 'TimeoutError') throw new Error('writer_unconfirmed') // may still run: keep "generating"
-            ok = false
-          }
-          if (!ok) {
-            // a definite enqueue failure: put the status back if the row is still ours in "generating"
+            status = res.status
+          } catch { status = 0 }
+          if (status >= 400 && status < 500) {
+            // an explicit rejection: the writer will not run, so the row goes back if it is still ours
             await ctx.userDb.from('carousel_drafts').update({ status: before, taxonomy: tax0 }).eq('id', id).eq('status', 'generating')
               .filter('taxonomy->>generating_started_at', 'eq', startedAt)
-            throw new Error('writer_unavailable')
+            throw new Error('writer_refused')
+          }
+          if (status < 200 || status >= 300) {
+            // timeout, reset or 5xx: the writer may well be running; no rollback
+            return { result: { fired: 'unconfirmed' }, detail: 'The writer did not confirm. It may still be running; check Review in a few minutes.' }
           }
           return { result: { fired: true } }
         },
@@ -464,7 +520,7 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       const url = String(act.url ?? '').trim()
       if (!/^https:\/\//i.test(url)) return { echo: { kind, label: 'That link does not look right, so I did nothing.', state: 'failed', undo: false }, refuse: 'bad_url' }
       // Sol r1: only a link Ivan actually sent, and only social post hosts get fetched.
-      if (!ctx.text.includes(url) && !ctx.attachments.some((a) => a.url === url)) {
+      if (!urlInMessage(url, ctx.text) && !ctx.attachments.some((a) => a.url === url)) {
         return { echo: { kind, label: 'I only file links you send me.', state: 'failed', undo: false }, refuse: 'url_not_in_message' }
       }
       const post = classifyPostUrl(url)
@@ -553,8 +609,13 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
 }
 
 export function classifyPostUrl(url: string): { platform: 'linkedin' | 'x'; id: string; author?: string } | null {
+  try { return classifyPostUrlInner(url) } catch { return null }   // total: never throws
+}
+
+function classifyPostUrlInner(url: string): { platform: 'linkedin' | 'x'; id: string; author?: string } | null {
   let u: URL
   try { u = new URL(url) } catch { return null }
+  if (u.protocol !== 'https:') return null
   const host = u.hostname.replace(/^www\.|^mobile\./, '').toLowerCase()
   if (host === 'x.com' || host === 'twitter.com') {
     const m = u.pathname.match(/^\/([A-Za-z0-9_]+)\/status\/(\d+)/)
@@ -569,8 +630,6 @@ export function classifyPostUrl(url: string): { platform: 'linkedin' | 'x'; id: 
   return null
 }
 
-const sameInstant = (a: unknown, b: unknown) => (a == null && b == null) || (a != null && b != null && Date.parse(String(a)) === Date.parse(String(b)))
-const sameList = (a: unknown, b: unknown) => JSON.stringify(Array.isArray(a) ? a : []) === JSON.stringify(Array.isArray(b) ? b : [])
 
 export class UndoRefused extends Error {}
 
@@ -579,26 +638,23 @@ export class UndoRefused extends Error {}
  * action applied (Sol r1): a later edit in the calendar or the app is never overwritten.
  */
 export async function runUndo(ctx: Pick<Ctx, 'userDb' | 'svc'>, undo: Record<string, unknown>): Promise<void> {
-  if (undo.op === 'date') {
-    const { data: row } = await ctx.svc.from('carousel_drafts').select('scheduled_at').eq('id', undo.draft_id).is('client_id', null).maybeSingle()
-    if (!row) throw new UndoRefused('gone')
-    if ('applied' in undo && !sameInstant(row.scheduled_at, undo.applied)) throw new UndoRefused('changed_since')
-    const { data, error } = await ctx.userDb.rpc('operator_set_schedule_date', { p_gate: GATE, p_draft_id: undo.draft_id, p_scheduled_at: undo.prev ?? null })
-    rpcOk(data, error)
-    return
-  }
-  if (undo.op === 'photos') {
-    const { data: row } = await ctx.svc.from('carousel_drafts').select('image_urls').eq('id', undo.draft_id).is('client_id', null).maybeSingle()
-    if (!row) throw new UndoRefused('gone')
-    if ('applied' in undo && !sameList(row.image_urls, undo.applied)) throw new UndoRefused('changed_since')
-    const { data, error } = await ctx.userDb.rpc('operator_set_draft_photos', { p_gate: GATE, p_draft_id: undo.draft_id, p_urls: undo.prev ?? [] })
-    if (error) throw new Error(error.message)
-    if ((data as { ok?: boolean })?.ok !== true) throw new Error(String((data as { error?: string })?.error ?? 'refused'))
+  if (undo.op === 'date' || undo.op === 'photos') {
+    if (!('applied' in undo)) throw new UndoRefused('legacy')
+    // compare + app RPC in one statement, under a row lock, as Ivan's own session (db/20261118m_content_desk_r3.sql)
+    const { data, error } = undo.op === 'date'
+      ? await ctx.userDb.rpc('desk_undo_schedule', { p_draft: undo.draft_id, p_applied: undo.applied ?? null, p_prev: undo.prev ?? null })
+      : await ctx.userDb.rpc('desk_undo_photos', { p_draft: undo.draft_id, p_applied: undo.applied ?? [], p_prev: undo.prev ?? [] })
+    if (error) throw new Error('undo_failed')
+    const r = (data ?? {}) as { ok?: boolean; error?: string }
+    if (r.ok !== true) {
+      if (r.error === 'changed_since' || r.error === 'gone') throw new UndoRefused(r.error)
+      throw new Error(String(r.error ?? 'undo_failed'))
+    }
     return
   }
   if (undo.op === 'delete_row' && (undo.table === 'lm_idea_candidates' || undo.table === 'content_photos')) {
     const { error } = await ctx.svc.from(undo.table).delete().eq('id', undo.id)
-    if (error) throw new Error(error.message)
+    if (error) throw new Error('undo_failed')
     return
   }
   throw new Error('nothing to undo')
