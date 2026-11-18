@@ -102,6 +102,9 @@ export async function sweepT3Stalls(db: Db, now = Date.now()): Promise<number> {
     .in('status', ['queued', 'sent'])
     .is('t3_thread_id', null)
     .lt('updated_at', cutoff)
+    // a job the Mac poller is still holding (its lease, poller_seen_at, renewed each tick) is
+    // not stalled; only one nobody has looked at for STALL_AFTER_MS is (Sol desk-t3 r3 #1)
+    .or(`poller_seen_at.is.null,poller_seen_at.lt.${cutoff}`)
     .select('id')
   if (error) return 0
   return Array.isArray(data) ? data.length : 0

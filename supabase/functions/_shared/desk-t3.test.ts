@@ -5,7 +5,7 @@ import { MAX_BRIEF_CHARS, queueT3Job, STALL_AFTER_MS, sweepT3Stalls, t3OpenUrl, 
 function fakeDb(result: { data?: unknown; error?: unknown } = {}) {
   const calls: { op: string; args: unknown[] }[] = []
   const chain: Record<string, unknown> = {}
-  for (const op of ['insert', 'update', 'select', 'single', 'in', 'is', 'lt', 'eq']) {
+  for (const op of ['insert', 'update', 'select', 'single', 'in', 'is', 'lt', 'eq', 'or']) {
     chain[op] = (...args: unknown[]) => { calls.push({ op, args }); return chain }
   }
   chain.then = (res: (v: unknown) => unknown) => res({ data: result.data ?? null, error: result.error ?? null })
@@ -51,6 +51,8 @@ Deno.test('stall sweep targets only unlaunched queued/sent rows older than 10 mi
   assertEquals(calls.find((c) => c.op === 'in')!.args, ['status', ['queued', 'sent']])
   assertEquals(calls.find((c) => c.op === 'is')!.args, ['t3_thread_id', null])
   assertEquals(calls.find((c) => c.op === 'lt')!.args, ['updated_at', new Date(now - STALL_AFTER_MS).toISOString()])
+  // a job the poller still holds (fresh lease) is never stalled
+  assertEquals(calls.find((c) => c.op === 'or')!.args, [`poller_seen_at.is.null,poller_seen_at.lt.${new Date(now - STALL_AFTER_MS).toISOString()}`])
 })
 
 Deno.test('links and status lines', () => {

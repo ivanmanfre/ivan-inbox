@@ -7,6 +7,32 @@
 -- An unknown job and a wrong token get the same answer, so the endpoint is
 -- no oracle for which job ids exist.
 
+-- Sol desk-t3 r1 #1: a stable launch id, persisted on the job BEFORE the poller
+-- asks Ivan Cloud to start a thread. The host looks for a thread already made for
+-- this id before launching, so a lost reply or a lost report never starts a
+-- second thread for one job.
+alter table public.desk_t3_jobs add column if not exists launch_id uuid;
+-- Sol desk-t3 r2 #1: the poller's ownership lease. It is refreshed on every tick for each job
+-- the poller holds; a poller without local state may adopt a job only after the lease ran out.
+alter table public.desk_t3_jobs add column if not exists poller_seen_at timestamptz;
+
+-- A launch id is set once and never changes (Sol desk-t3 r2 #1).
+create or replace function public.desk_t3_jobs_launch_id_once() returns trigger
+language plpgsql set search_path = public, pg_temp as $f$
+begin
+  if old.launch_id is not null and new.launch_id is distinct from old.launch_id then
+    raise exception 'desk_t3_jobs.launch_id is set once' using errcode = '23514';
+  end if;
+  return new;
+end $f$;
+revoke all on function public.desk_t3_jobs_launch_id_once() from public, anon, authenticated;
+do $t$ begin
+  if not exists (select 1 from pg_trigger where tgname = 'desk_t3_jobs_launch_id_once') then
+    create trigger desk_t3_jobs_launch_id_once before update of launch_id on public.desk_t3_jobs
+      for each row execute function public.desk_t3_jobs_launch_id_once();
+  end if;
+end $t$;
+
 create or replace function public.desk_t3_report(
   p_job uuid,
   p_token text,
@@ -59,9 +85,28 @@ begin
   end if;
   v_thread := nullif(left(btrim(coalesce(p_t3_thread_id, '')), 200), '');
 
+  -- Sol desk-t3 r1 #5: a job is bound to exactly one thread. 'launched' names it,
+  -- 'running' and 'done' need it, a binding never changes; only 'failed' may come
+  -- without one (a launch that never produced a thread).
+  if j.t3_thread_id is not null and v_thread is not null and v_thread <> j.t3_thread_id then
+    return jsonb_build_object('ok', false, 'error', 'thread_binding_conflict');
+  end if;
+  if p_status = 'launched' and v_thread is null and j.t3_thread_id is null then
+    return jsonb_build_object('ok', false, 'error', 'thread_required');
+  end if;
+  -- the first binding happens only on 'launched' (Sol desk-t3 r2 #5)
+  if p_status in ('running', 'done') and j.t3_thread_id is null then
+    return jsonb_build_object('ok', false, 'error', 'thread_required');
+  end if;
+  -- a summary needs one visible character; tabs and newlines alone do not count (Sol r3 #5)
+  if p_status = 'done' and coalesce(p_summary, '') !~ '[^[:space:]]' then
+    return jsonb_build_object('ok', false, 'error', 'summary_required');
+  end if;
+
   update public.desk_t3_jobs set
     status = p_status,
-    t3_thread_id = coalesce(v_thread, t3_thread_id),
+    -- only 'launched' ever binds a thread (Sol r3 #5); other statuses keep the binding as is
+    t3_thread_id = case when p_status = 'launched' then coalesce(t3_thread_id, v_thread) else t3_thread_id end,
     t3_link = coalesce(v_link, t3_link),
     result_summary = case when rank_new = 4 then coalesce(v_summary, result_summary) else result_summary end,
     events = events || jsonb_build_array(jsonb_build_object('at', now(), 'status', p_status)),
