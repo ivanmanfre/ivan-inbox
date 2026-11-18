@@ -27,6 +27,21 @@ async function bearer(): Promise<string | null> {
   return data.session?.access_token ?? null
 }
 
+/** Ask the backend to build the brief now, so the first message does not wait for it. Never throws. */
+export async function warmDesk(): Promise<void> {
+  if (mockOn()) return
+  try {
+    const token = await bearer()
+    if (!token) return
+    await window.fetch(FN, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...evalHeader() },
+      body: JSON.stringify({ op: 'warm' }),
+      keepalive: true,
+    })
+  } catch { /* a warm-up is best effort */ }
+}
+
 /** Read the SSE answer of a send. Resolves when the stream ends (final, error or a dropped socket). */
 export async function sendDesk(body: SendBody, h: SendHandlers, signal?: AbortSignal): Promise<'final' | 'error' | 'dropped'> {
   if (mockOn()) return mockApi.send(body, h)

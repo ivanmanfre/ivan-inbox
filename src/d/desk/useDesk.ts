@@ -3,7 +3,7 @@
 // and a send draws Ivan's bubble plus a reserved answer bubble at once.
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { currentUserId, readSwr, redactCapability, writeSwr } from '../../lib/swr'
-import { cancelAction, commitAction, readJobs, readMessages, sendDesk, subscribeDesk, undoAction, type ActionResult } from './api'
+import { cancelAction, commitAction, readJobs, readMessages, sendDesk, subscribeDesk, undoAction, warmDesk, type ActionResult } from './api'
 import { MOCK_USER, mockOn } from './mock'
 import {
   cacheable, mergeRows, newKey, optimisticPair, patch,
@@ -56,6 +56,9 @@ export function useDesk(): DeskHandle {
       return next
     })
   }, [uid])
+
+  // Build the brief while Ivan reads and types.
+  useEffect(() => { void warmDesk() }, [])
 
   // Live read: reconciles the saved copy (stored rows replace, local rows stay).
   useEffect(() => {
