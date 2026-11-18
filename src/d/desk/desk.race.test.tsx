@@ -670,6 +670,16 @@ describe('round 5 (Sol desk-ui r4 follow-ups)', () => {
     expect(screen.queryByText('No answer from the desk.')).toBeNull()
   })
 
+  it('r19: an unconfirmed redo shows its own line with no Undo and no Do it now', async () => {
+    readRows = async () => [row({ id: 'a-r19', body: 'Redo: the trains post.', meta: {
+      actions: [{ id: 'act-redo', kind: 'redo', label: 'Redo the trains post', state: 'unconfirmed', undo: false }],
+    } })]
+    render(<Desk layout="phone" />)
+    await screen.findByText(/Not confirmed: Redo the trains post/)
+    expect(screen.queryByText('Undo')).toBeNull()
+    expect(screen.queryByText('Do it now')).toBeNull()
+  })
+
   it('r4 #2: a retry under the original key shows the stored answer once (the server replays it, nothing runs twice)', async () => {
     sendMode = 'offline'
     render(<Desk layout="phone" />)

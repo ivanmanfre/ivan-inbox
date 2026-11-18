@@ -4,7 +4,7 @@
 
 export type DeskRole = 'user' | 'assistant'
 export type DeskOrigin = 'operator' | 'desk' | 'proactive' | 't3'
-export type ActionState = 'done' | 'held' | 'undone' | 'failed' | 'cancelled' | 'committing' | 'undoing'
+export type ActionState = 'done' | 'held' | 'undone' | 'failed' | 'cancelled' | 'committing' | 'undoing' | 'unconfirmed'
 export type T3Status = 'queued' | 'sent' | 'launched' | 'running' | 'done' | 'failed' | 'stalled'
 
 export type DeskAction = {

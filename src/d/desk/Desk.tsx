@@ -260,6 +260,7 @@ function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle })
         {a.state === 'undone' && <>Undone: {a.label}</>}
         {a.state === 'cancelled' && <>Cancelled: {a.label}</>}
         {a.state === 'failed' && <>Failed: {a.label}{a.detail ? `. ${a.detail}` : ''}</>}
+        {a.state === 'unconfirmed' && <>Not confirmed: {a.label}. The writer may be running, check Review in a few minutes.</>}
         {a.target && <small>{a.target.handle} {a.target.first_line}</small>}
         {failed && <small className="dk-warn" role="alert">{failed.error}</small>}
       </span>
