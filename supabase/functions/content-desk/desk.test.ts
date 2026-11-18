@@ -1212,3 +1212,57 @@ Deno.test('round 19 #5: queue eligibility counts before uniqueness for a move or
   assert(eligible('date', { status: 'review', scheduled_at: null, queued: false }))
   assert(eligible('undate', { status: 'scheduled', scheduled_at: '2026-11-26T09:45:00Z', queued: true }))   // a remove date there is a pull
 })
+
+// ---- Round 20 (made-up data only) ------------------------------------------------
+Deno.test('round 20 #1: the move card dates carry the year and the Warsaw UTC offset', async () => {
+  const { warsawFull } = await import('./brief.ts')
+  assertEquals(warsawFull('2027-03-09T09:45:00.000Z'), 'Tue 9 Mar 2027, 10:45 (UTC+01:00)')
+  assertEquals(warsawFull('2027-07-01T08:00:00.000Z'), 'Thu 1 Jul 2027, 10:00 (UTC+02:00)')
+})
+
+Deno.test('round 20 #2: the photo card names the selected attachment, and the commit re-plans the same values', () => {
+  const r = render(brief([]))
+  const atts = [{ kind: 'photo', url: 'https://img.test/u/first-shot.jpg', name: 'first-shot.jpg' }, { kind: 'photo', url: 'https://img.test/u/second%20shot.jpg' }]
+  const c1 = canonArgs('photo_attach', { kind: 'photo_attach', photo: 1 } as never, { text: '', attachments: atts, brief: r } as never)
+  const c2 = canonArgs('photo_attach', { kind: 'photo_attach', photo: 2 } as never, { text: '', attachments: atts, brief: r } as never)
+  assertEquals([c1.photo_n, c1.photo_of, c1.photo_name], [1, 2, 'first-shot.jpg'])
+  assertEquals([c2.photo_n, c2.photo_of, c2.photo_name], [2, 2, 'second shot.jpg'])
+  assert(c1.photo_id !== c2.photo_id)
+  // at the commit (no attachments, the journal's server-owned fields) the canon is identical
+  const j = journalArgs({ kind: 'photo_attach', photo: 2 }, { run: async () => ({ result: null }), canon: c2 }, null, {}, '')
+  assertEquals(canonArgs('photo_attach', { kind: 'photo_attach', ...j } as never, { text: '', attachments: [], brief: r } as never), c2)
+})
+
+Deno.test('round 20 #3 + #4: a converted remove date checks the exact Next row at commit; a scheduled draft without a queue row takes the no-queue path', async () => {
+  const future = new Date(Date.now() + 5 * 86400e3).toISOString()
+  const row = { id: ID1, status: 'scheduled', type: 'text', scheduled_at: future, published_at: null, post_body: 'Snow in the park this morning\nmore', title: '', topic: '',
+    taxonomy: {}, qa: null, source_ref: null, image_urls: [], created_at: '2026-11-10T10:00:00Z', updated_at: 'U1', client_id: null }
+  const sha = await sha256Hex('Snow in the park this morning')
+  const q = (id: string) => ({ data: [{ id, scheduled_at: future, status: 'pending', platform: 'linkedin', is_repost: false }], error: null })
+  const svcWith = (qr: unknown) => ({ from: (t: string) => chain(t === 'carousel_drafts' ? { data: row, error: null } : qr), rpc: () => Promise.resolve({ data: { ok: true }, error: null }) })
+  const snap: Snapshot = { target_id: ID1, updated_at: 'U1', status: 'scheduled', first_line_sha: sha, scheduled_at: future, image_urls: [],
+    queue: { queue_id: 'q-A', slot_at: future, status: 'pending' }, next: { queue_id: 'q-A', slot_at: future }, queue_ids: ['q-A'] }
+  const base = { brief: render(brief([])), attachments: [], text: '', env: () => undefined, userDb: { rpc: () => { throw new Error('no') } } }
+  // the Next row was swapped for another one with the same queue set size: refused, like a pull
+  assertEquals(await planForTarget({ ...base, svc: svcWith(q('q-A')) } as never, { kind: 'undate' }, { ...snap, next: { queue_id: 'q-A', slot_at: new Date(Date.now() + 6 * 86400e3).toISOString() } }), { refuse: 'queue_changed' })
+  // a scheduled draft with no live queue row: remove date through desk_set_date (locked, undo images), never desk_pull
+  const calls: string[] = []
+  const d = { ...draft(ID1, 'Snow in the park this morning', { status: 'scheduled', scheduled_at: future, updated_at: 'U1' }), queue_ids: [] }
+  const r = render(brief([d]))
+  const svc = { rpc: (n: string) => { calls.push(n); return Promise.resolve({ data: { ok: true }, error: null }) } }
+  const p = await plan({ brief: { ...r, queueByDraft: new Map() }, attachments: [], text: '', env: () => undefined, svc, userDb: forbidden } as never, { kind: 'undate', draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
+  assertEquals(p.echo.state, 'held'); assertEquals(p.echo.kind, 'remove_date')
+  await p.run!('A1', 'C1')
+  assertEquals(calls, ['desk_set_date'])
+})
+
+Deno.test('round 20 #6: the suffix after the destination is read on the original text', () => {
+  assert(!parseDestination('move it to friday "later"', '2026-11-18').ok)
+  assert(parseDestination('move it to friday', '2026-11-18').ok)
+})
+
+Deno.test('round 20: the confirmation compares the args independent of key order (jsonb reorders keys)', () => {
+  const c = { v: 3 as const, draft_id: ID1, revision: 'U1', source_at: null, args: { url: 'https://img.test/a.jpg', photo_n: 1, photo_id: 'abc123', photo_of: 1, photo_name: 'a.jpg' }, proof: { grammar: 3 as const, how: 'words', tokens: ['snow'] } }
+  assert(confirmMatches(c, { id: ID1, updated_at: 'U1', scheduled_at: null }, { url: 'https://img.test/a.jpg', photo_n: 1, photo_of: 1, photo_name: 'a.jpg', photo_id: 'abc123' }))
+  assert(!confirmMatches(c, { id: ID1, updated_at: 'U1', scheduled_at: null }, { url: 'https://img.test/b.jpg', photo_n: 1, photo_of: 1, photo_name: 'a.jpg', photo_id: 'abc123' }))
+})

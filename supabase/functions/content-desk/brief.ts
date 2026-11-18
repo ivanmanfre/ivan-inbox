@@ -73,6 +73,17 @@ export function warsaw(iso: string | null | undefined, withTime = true): string 
   return new Intl.DateTimeFormat('en-GB', opts).format(d).replace(',', '')
 }
 
+/** The full Warsaw date of an instant, with year and UTC offset: "Tue 9 Mar 2027, 10:45 (UTC+01:00)" (round 20 #1). */
+export function warsawFull(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  const p = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZoneName: 'longOffset' })
+    .formatToParts(d).reduce((a, x) => (a[x.type] = x.value, a), {} as Record<string, string>)
+  const off = (p.timeZoneName ?? '').replace(/^GMT$/, 'GMT+00:00').replace(/^GMT/, 'UTC')
+  return `${p.weekday} ${p.day} ${p.month} ${p.year}, ${String(+p.hour % 24).padStart(2, '0')}:${p.minute} (${off})`
+}
+
 /** The Warsaw calendar day (YYYY-MM-DD) of an instant. */
 export function warsawDay(iso: string): string {
   const p = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))

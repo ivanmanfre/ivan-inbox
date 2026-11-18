@@ -14,7 +14,7 @@
 // from the allowlisted user bypasses the off flags and stamps meta.test (the eval).
 
 import { createClient } from 'npm:@supabase/supabase-js@2.119.0'   // pinned: 2.119.1's storage-js was missing from the bundler registry (11-18)
-import { render, applyVisibility, warsaw, type BriefJson, type Rendered } from './brief.ts'
+import { render, applyVisibility, warsaw, warsawFull, type BriefJson, type Rendered } from './brief.ts'
 import { buildPrompt } from './prompt.ts'
 import { parse, shortParagraphs, oneText, sanitize, HandleStream, type Act } from './parse.ts'
 import { askDesk, askDeskStream, LlmError, DESK_MODEL } from './llm.ts'
@@ -90,7 +90,7 @@ function failText(e: unknown): string {
     too_many_photos: 'The post already has the most photos it can take.', not_single_photo: 'That post type does not take a photo.',
     published: 'It is already published.', refused: 'The app refused it, so nothing changed.',
     human_edited: 'It has your hand edits, and the writer will not overwrite them.',
-    in_queue: 'This one is already in the queue. Move it in the calendar.', writer_refused: 'The writer refused it, so the draft is back as it was.', no_action: 'I could not match this to its saved action, so I did nothing.',
+    in_queue: 'This one is already in the queue. Move it in the calendar.', stored_differs: 'The calendar did not store the time on the card, so I changed nothing.', writer_refused: 'The writer refused it, so the draft is back as it was.', no_action: 'I could not match this to its saved action, so I did nothing.',
     claim_failed: 'I could not reach the database, so nothing ran. Tap again.', undo_failed: 'The undo did not go through, so I left it as it is.',
   }
   // the exact code first (queue_changed must never read as changed), then a code inside a longer message
@@ -758,10 +758,15 @@ function proposedLine(act: Act, p: Planned, snap: Snapshot | null): string {
   // the FULL opener (the UI wraps), a short distinct reference, the source date and, for a move, the new date (Sol r11 #2)
   const line = (p.echo.target?.first_line ?? '').replace(/\s+/g, ' ').trim()
   const ref = p.ref ?? ((act as { _ref?: string })._ref) ?? draftRef(p.target_id ?? '')
-  const day = snap?.scheduled_at ? warsaw(snap.scheduled_at) : 'no date'
-  const to = act.kind === 'date' && typeof p.canon?.at === 'string' ? ` to ${warsaw(p.canon.at)}` : ''
+  // a move shows the full dates with year and the Warsaw UTC offset, the new one from the saved instant (round 20 #1)
+  const isMove = act.kind === 'date'
+  const day = snap?.scheduled_at ? (isMove ? warsawFull(snap.scheduled_at) : warsaw(snap.scheduled_at)) : 'no date'
+  const to = isMove && typeof p.canon?.at === 'string' ? ` to ${warsawFull(p.canon.at)}` : ''
+  // a photo names the selected attachment: "photo N of M", its file name and a short id (round 20 #2)
+  const c = p.canon ?? {}
+  const ph = act.kind === 'photo_attach' && c.photo_n ? `, photo ${c.photo_n} of ${c.photo_of ?? '?'} "${String(c.photo_name ?? '')}" (id ${String(c.photo_id ?? '')})` : ''
   // the card's verb is what will run (a remove date on a queued draft is a pull, round 19 #3)
-  return `Proposed (ref ${ref}): ${VERB[p.echo.kind] ?? VERB[act.kind] ?? act.kind} "${line}" (${day})${to}.`
+  return `Proposed (ref ${ref}): ${VERB[p.echo.kind] ?? VERB[act.kind] ?? act.kind} "${line}" (${day})${to}${ph}.`
 }
 
 

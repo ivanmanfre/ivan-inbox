@@ -237,8 +237,9 @@ export function parseDestination(text: string, today: string): Destination {
   const bad = { ok: false as const, code: 'unclear_date', label: `I could not read the date: "${span}".` }
   // one day and one time only: any date-like token after the destination ("or 10", "and monday") means nothing is done
   const after = masked.slice(end)
-  // round 19 #6: the destination ends the message: a dangling ':' or a trailing clause means no write
-  if (!/^[\s.!?]*$/.test(after)) return { ok: false, code: 'unclear_date', label: `I could not read the date: "${text.slice(r.at).trim()}".` }
+  // round 19 #6: the destination ends the message: a dangling ':' or a trailing clause means no write. Read
+  // on the ORIGINAL text after the span (round 20 #6), so a quoted trailing clause counts too
+  if (!/^[\s.!?]*$/.test(text.slice(end))) return { ok: false, code: 'unclear_date', label: `I could not read the date: "${text.slice(r.at).trim()}".` }
   if (/\d/.test(after) || new RegExp(`\\b(?:${WEEKDAY_WORD}|today|tonight|tomorrow|${MONTH_WORD}|noon|midday)\\b`, 'i').test(after)) {
     return { ok: false, code: 'unclear_date', label: `I could not read the date: "${text.slice(r.at).trim()}".` }
   }

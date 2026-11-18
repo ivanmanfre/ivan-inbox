@@ -106,11 +106,18 @@ export function uniqueRef(id: string, all: { id: string }[]): string {
 
 const sameInstant = (a: string | null | undefined, b: string | null | undefined) => (a ? Date.parse(a) : null) === (b ? Date.parse(b) : null)
 
+/** JSON with object keys sorted at every level: the journal is jsonb, which does not keep key order (round 20). */
+export function stableJson(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(stableJson).join(',')}]`
+  if (v && typeof v === 'object') return `{${Object.keys(v as Record<string, unknown>).sort().map((k) => `${JSON.stringify(k)}:${stableJson((v as Record<string, unknown>)[k])}`).join(',')}}`
+  return JSON.stringify(v ?? null)
+}
+
 /** Does the live row (and the re-planned args) still match what the card showed? */
 export function confirmMatches(c: Confirmation | undefined, live: { id: string; updated_at?: string | null; scheduled_at: string | null }, canon: Record<string, unknown> | undefined): boolean {
   if (!c || c.v !== 3 || c.proof?.grammar !== 3) return false
   return c.draft_id === live.id && String(c.revision) === String(live.updated_at) && sameInstant(c.source_at, live.scheduled_at)
-    && JSON.stringify(c.args ?? {}) === JSON.stringify(canon ?? {})
+    && stableJson(c.args ?? {}) === stableJson(canon ?? {})
 }
 
 
@@ -133,6 +140,18 @@ const short = (s: string, n = 60) => { const t = s.replace(/\s+/g, ' ').trim(); 
 export async function sha256Hex(s: string): Promise<string> {
   const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))
   return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('')
+}
+
+/** The file name of a photo URL (its last path segment, decoded). */
+export function fileNameOf(url: string): string {
+  const seg = url.split('?')[0].split('#')[0].split('/').filter(Boolean).pop() ?? ''
+  try { return decodeURIComponent(seg) } catch { return seg }
+}
+/** A short stable id of a string (FNV-1a, 6 hex): two different photo URLs give different cards. */
+export function shortHash(s: string): string {
+  let h = 0x811c9dc5
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0 }
+  return h.toString(16).padStart(8, '0').slice(0, 6)
 }
 
 /** The ONE matcher (Sol r8 #1): the quoted words, normalized, appear whole anywhere in the first line. */
@@ -516,7 +535,8 @@ export async function planForTarget(ctx: Ctx, act: Act, snap: Snapshot): Promise
       || !sameInstant(live.snap.scheduled_at, snap.scheduled_at)) return { refuse: 'changed' }   // the source date the card showed (round 12 #1)
   // the queue set the action was authorized on (Sol r5 B2); desk_pull checks it again under the locks
   if (JSON.stringify(snap.queue_ids ?? null) !== JSON.stringify(live.snap.queue_ids ?? null)) return { refuse: 'queue_changed' }
-  if ((IN_ALIAS[act.kind] ?? act.kind) === 'pull') {
+  const kk = IN_ALIAS[act.kind] ?? act.kind
+  if (kk === 'pull' || (kk === 'undate' && (snap.queue_ids?.length ?? 0) > 0)) {
     // the held pull acts on the very Next row it was proposed for (Sol r4 #4): same queue id and slot, or nothing
     const a = snap.next, b = live.snap.next
     if (!a || !b || a.queue_id !== b.queue_id || Date.parse(a.slot_at) !== Date.parse(b.slot_at)) return { refuse: 'queue_changed' }
@@ -546,7 +566,17 @@ export function canonArgs(kind: string, act: Act, ctx: Pick<Ctx, 'text' | 'attac
     case 'date': return { at: warsawToIso(String(act.at ?? '')) ?? (typeof act._at === 'string' && !Number.isNaN(Date.parse(act._at)) ? act._at : null) }
     case 'pull': case 'delete': return { reason }
     // at commit the journal holds the url of his attachment as a server-owned field (the model cannot set "_" keys)
-    case 'photo_attach': return { url: photoUrl() ?? (typeof act._url === 'string' && act._url.startsWith('https://') ? act._url : null) }
+    case 'photo_attach': {
+      // the selected attachment, named on the card: "photo N of M" and its file name (round 20 #2); at the
+      // commit the same values come from the journal's server-owned _url / _photo
+      const photos = ctx.attachments.filter((a) => a.kind === 'photo')
+      const n = Number(act.photo ?? 1)
+      const att = photos[n - 1]
+      if (att?.url) return { url: att.url, photo_n: n, photo_of: photos.length, photo_name: att.name || fileNameOf(att.url), photo_id: shortHash(att.url) }
+      const url = typeof act._url === 'string' && act._url.startsWith('https://') ? act._url : null
+      const ph = (act._photo ?? {}) as { n?: number; of?: number; name?: string }
+      return { url, photo_n: ph.n ?? null, photo_of: ph.of ?? null, photo_name: ph.name ?? (url ? fileNameOf(url) : null), photo_id: url ? shortHash(url) : null }
+    }
     case 'photo_stage': return {
       url: photoUrl(),
       tags: [...new Set((Array.isArray(act.tags) ? act.tags : []).map((t) => String(t).toLowerCase().trim()).filter(Boolean))].slice(0, 8).sort(),
@@ -678,7 +708,7 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
         }
         return { echo: { kind: 'pull', label: `${q} has a queued copy, but not one I can pull exactly, so I did nothing. Move it in the calendar.`, state: 'failed', undo: false, target }, refuse: 'no_queue_row' }
       }
-      if (asPull || d!.status === 'scheduled') {
+      if (asPull) {
         // Pull: the queued copy is cancelled and the draft goes back to Review. No undo exists in the app.
         return {
           ...base,
@@ -1050,7 +1080,8 @@ export function journalArgs(act: Act, p: Pick<Planned, 'run' | 'refuse' | 'canon
   if (p.run) {
     const canon = { ...(p.canon ?? {}) }
     // what a held commit re-plans from, as server-owned fields
-    const own = { ...(act.kind === 'date' && canon.at ? { _at: canon.at } : act.kind === 'photo_attach' && canon.url ? { _url: canon.url } : {}), ...(p.ref ? { _ref: p.ref } : {}) }
+    const own = { ...(act.kind === 'date' && canon.at ? { _at: canon.at }
+      : act.kind === 'photo_attach' && canon.url ? { _url: canon.url, _photo: { n: canon.photo_n, of: canon.photo_of, name: canon.photo_name } } : {}), ...(p.ref ? { _ref: p.ref } : {}) }
     return { kind: act.kind, ...canon, ...own, ...(p.confirm ? { _confirm: p.confirm } : {}), ...(act._qa_override === true ? { _qa_override: true } : {}),
       ...(snap ? { _snapshot: snap } : {}), ...(mode.fixtures ? { _fixtures: true } : {}), ...(mode.dry ? { _dry: true } : {}) }
   }
