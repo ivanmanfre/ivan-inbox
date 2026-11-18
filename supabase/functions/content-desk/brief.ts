@@ -209,7 +209,8 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
 
   // ---- review
   const review = drafts.filter((d) => d.status === 'review' || d.status === 'error' || d.status === 'generating' || d.status === 'approved')
-  L.push('', `DRAFTS NOT YET SCHEDULED OR PUBLISHED (${review.length}). Format: handle [status] date | belief | vehicle | recipe | flags: first line`)
+    .slice().sort((a, z) => String(z.created_at).localeCompare(String(a.created_at)))
+  L.push('', `DRAFTS NOT YET SCHEDULED OR PUBLISHED (${review.length}), NEWEST FIRST. Format: handle [status] date | belief | vehicle | recipe | flags: first line`)
   for (const d of review) {
     const flags = [d.is_copy && 'copy', d.brain && 'brain(keep/drop)', d.human_edited && 'hand-edited', d.photos ? `${d.photos} photo` : 'no photo', d.fixture && 'TEST-FIXTURE'].filter(Boolean).join(',')
     L.push(`- ${handleOf.get(d.id)} [${d.status}${d.qa_verdict ? '/' + d.qa_verdict : ''}] ${d.scheduled_at ? warsaw(d.scheduled_at) : 'undated'} | B${beliefOf(d) ?? '-'} | ${vehicleOf(d) ?? '-'} | ${d.recipe ?? '-'} | ${flags}: "${clip(d.first_line, 120)}"`)
@@ -239,7 +240,8 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
     b.call_lines.forEach((c, i) => {
       const h = 'L' + (i + 1)
       lines.set(h, c)
-      L.push(`- ${h} call ${c.when ?? 'date unknown'} (found ${String(c.ingested_at).slice(0, 10)}) [${c.status}${c.draft_id ? ', draft exists ' + (handleOf.get(c.draft_id) ?? '') : ''}] B${c.belief ?? '-'} ${c.vehicle ?? ''}: ${clip(c.topic, 120)} | said: "${clip(c.said, 220)}"`)
+      // his words only: the extractor's topic paraphrase is not shown, so nothing about the call gets invented from it
+      L.push(`- ${h} call ${c.when ?? 'date unknown'} [${c.status}${c.draft_id ? ', draft exists ' + (handleOf.get(c.draft_id) ?? '') : ''}] B${c.belief ?? '-'} ${c.vehicle ?? ''} | said: "${clip(c.said, 260)}"`)
     })
   }
   const br = Array.isArray((b.panel as { booking_reasons?: unknown }).booking_reasons) ? (b.panel as { booking_reasons: { call_date: string; reason_class: string; quote: string }[] }).booking_reasons : []
