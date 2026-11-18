@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, screen, waitFor } from '@testing-library/react'
 
 let flagGate: Promise<void> | null = null
+let flagError: Error | null = null
 let flags: Record<string, boolean> = { desk_enabled: true, nav_visible: false }
 vi.mock('../../lib/supabase', async orig => {
   const real = await orig<typeof import('../../lib/supabase')>()
@@ -13,7 +14,7 @@ vi.mock('../../lib/supabase', async orig => {
     supabase: new Proxy(real.supabase, {
       get(t, k) {
         if (k === 'from') return (table: string) => (table === 'desk_config'
-          ? { select: async () => { await flagGate; return { data: Object.entries(flags).map(([key, value]) => ({ key, value })), error: null } } }
+          ? { select: async () => { await flagGate; return { data: Object.entries(flags).map(([key, value]) => ({ key, value })), error: flagError } } }
           : t.from(table))
         return Reflect.get(t, k)
       },
@@ -27,7 +28,7 @@ const { claudeNav, saveDeskFlags, FLAGS_OFF, resetDeskFlagStore } = await import
 const { resetDeskFlagReads } = await import('./flags')
 const { PLACES } = await import('../places')
 
-afterEach(() => { cleanup(); localStorage.clear(); resetDeskFlagStore(); resetDeskFlagReads() })
+afterEach(() => { cleanup(); localStorage.clear(); resetDeskFlagStore(); resetDeskFlagReads(); flagError = null; flagGate = null })
 
 describe('desk entry points', () => {
   it('the Content tab row carries a Desk key when desk_enabled is on', async () => {
@@ -85,4 +86,12 @@ it('removes the Claude nav link when the flag store sends a disable without navi
   act(() => { saveDeskFlags(FLAGS_OFF) })
   expect(PLACES.claude.nav).toBe('hidden')
   expect(container.querySelector('a[href="#exp/d/claude"]')).toBeNull()
+})
+
+it('r3 review: a failed flag read leaves a recovery state for a previously enabled Desk', async () => {
+  localStorage.setItem('desk-flags-v1', JSON.stringify({ ...FLAGS_OFF, desk_enabled: true }))
+  flagError = new Error('offline')
+  await act(async () => { renderInFrame(<DeskPage layout="desktop" />) })
+  expect(screen.queryByText('Desk opened')).toBeNull()
+  expect(screen.queryByText('Checking the desk')).toBeNull()
 })

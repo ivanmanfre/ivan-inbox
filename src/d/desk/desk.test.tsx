@@ -50,8 +50,9 @@ vi.mock('../../exp/v2c/chat/useStt', () => ({
 }))
 
 const { Desk } = await import('./Desk')
+const { resetActionGuards } = await import('./actionGuards')
 
-beforeEach(() => { sent.length = 0; ops.length = 0; streamGate = null; localStorage.clear() })
+beforeEach(() => { sent.length = 0; ops.length = 0; streamGate = null; localStorage.clear(); resetActionGuards() })
 afterEach(() => { cleanup(); vi.useRealTimers() })
 
 function type(text: string) {
@@ -85,15 +86,16 @@ describe('Desk', () => {
     expect((sent[1].body as { text: string; chip: boolean })).toMatchObject({ text: 'move #a1b2c to thursday', chip: true })
   })
 
-  it('a held action counts down and commits once; Undo during the hold cancels', async () => {
+  it('a held action counts down and the browser never commits it; Undo during the hold cancels', async () => {
     render(<Desk layout="phone" />)
     await screen.findByText('Saved answer from yesterday.')
     vi.useFakeTimers({ shouldAdvanceTime: true })
     type('approve the trains one')
     await act(async () => { streamGate?.() })
     await waitFor(() => expect(document.querySelector('[data-state="held"]')?.textContent).toMatch(/Approve #a1b2c in \d+s/))
+    fireEvent.click(screen.getByText('Undo'))
     await act(async () => { vi.advanceTimersByTime(9000) })
-    await waitFor(() => expect(ops).toEqual([{ kind: 'commit', id: 'act-1' }]))
+    await waitFor(() => expect(ops).toEqual([{ kind: 'cancel', id: 'act-1' }]))
   })
 
   it('a done action with undo calls undo', async () => {

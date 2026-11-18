@@ -8,7 +8,7 @@
 import { createPortal } from 'react-dom'
 import { dHash } from '../route'
 import { Desk } from './Desk'
-import { useDeskFlags } from './flags'
+import { refreshDeskFlags, useDeskFlags } from './flags'
 import { mockOn } from './mock'
 
 function evalOn(): boolean {
@@ -35,7 +35,12 @@ export default function DeskPage({ layout, navigate }: { layout: 'phone' | 'desk
           </button>}
           <div className="dk-title"><b>Content desk</b></div>
         </header>
-        <div className="dk-empty" role="status">{flags.read ? 'The Content Desk is off.' : 'Checking the desk'}</div>
+        {flags.read && !flags.desk_enabled
+          ? <div className="dk-empty" role="status">The Content Desk is off.</div>
+          : flags.failed
+            // The check itself failed: say so and offer it again, never "Checking" forever (Sol desk-ui r3 #5).
+            ? <div className="dk-empty" role="alert">Could not check the desk. <button type="button" className="dk-pill" onClick={() => void refreshDeskFlags(true)}>Try again</button></div>
+            : <div className="dk-empty" role="status">Checking the desk</div>}
       </section>
     )
   if (layout === 'desktop') return body

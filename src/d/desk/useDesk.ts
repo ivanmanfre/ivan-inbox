@@ -30,11 +30,10 @@ export type DeskHandle = {
   canRetry: (m: DeskMessage) => boolean
 }
 
-// Holds that may count down and commit by themselves: only those a live turn delivered to THIS
-// mounted desk while the tab was visible, and only while it stays mounted and visible. Leaving the
-// desk (unmount) or hiding the tab drops them all for good; they then wait for "Do it now"
-// (Sol desk-ui r1/r2 #2). Kept per mount, so a reopened desk starts with none.
-/** Tests only: kept for the test files' resets; live holds are per mount now. */
+// Held actions commit on the SERVER when the hold ends, unless Undo's compare-and-set wins first
+// (content-desk 0d7edb6a). The desk only shows the countdown for holds a live turn delivered to this
+// mount; nothing in the browser ever commits by itself.
+/** Tests only: kept for the test files' resets; countdown starts are per mount. */
 export function resetLiveHolds(): void { /* per-mount state: nothing global to clear */ }
 
 function userId(): string | null {
@@ -59,14 +58,8 @@ export function useDesk(): DeskHandle {
   const topic = `desk:${useId()}`
   const listRef = useRef(messages)
   listRef.current = messages
+  // Countdown starts of holds a live turn delivered to this mount (display only).
   const liveHolds = useRef(new Map<string, number>())
-  const [, setHoldsVersion] = useState(0)
-  useEffect(() => {
-    const holds = liveHolds.current
-    const onVis = () => { if (document.visibilityState !== 'visible' && holds.size) { holds.clear(); setHoldsVersion(v => v + 1) } }
-    document.addEventListener('visibilitychange', onVis)
-    return () => { document.removeEventListener('visibilitychange', onVis); holds.clear() }
-  }, [])
 
   const apply = useCallback((fn: (l: DeskMessage[]) => DeskMessage[]) => {
     setMessages(prev => {
@@ -163,18 +156,21 @@ export function useDesk(): DeskHandle {
     void sendDesk({ text, client_key: key, ...opts }, {
       onAck: a => {
         acked = true
-        apply(prev => {
-          const next = patch(prev, `local:${key}`, m => ({ ...m, id: a.user_message_id || m.id, local: undefined }))
-          note(next.filter(m => m.role === 'user' && m.client_key === key && !m.local))
-          return next
-        })
+        // Journal the stored question NOW, not inside the queued state update: a stale history read
+        // resolving in the same batch must not drop it (Sol desk-ui r3 #3).
+        const mine = listRef.current.find(m => m.id === `local:${key}`)
+        const stored: DeskMessage = {
+          ...(mine ?? { role: 'user' as const, origin: 'operator' as const, body: text, status: 'done' as const, client_key: key, created_at: new Date().toISOString(),
+            meta: { ...(opts.attachments?.length ? { attachments: opts.attachments } : {}), ...(opts.voice ? { voice: true } : {}) } }),
+          id: a.user_message_id || `local:${key}`, local: undefined,
+        }
+        if (a.user_message_id) note([stored])
+        apply(prev => patch(prev, `local:${key}`, m => ({ ...m, id: a.user_message_id || m.id, local: undefined })))
       },
       onDelta: t => setMessages(prev => patch(prev, phId, m => ({ ...m, body: m.body + t }))),
       onFinal: m => {
         // Holds delivered by this live turn are the only ones that may count down and commit.
-        if (typeof document === 'undefined' || document.visibilityState === 'visible') {
-          for (const x of m.meta.actions ?? []) if (x.state === 'held' && !liveHolds.current.has(x.id)) liveHolds.current.set(x.id, Date.now())
-        }
+        for (const x of m.meta.actions ?? []) if (x.state === 'held' && !liveHolds.current.has(x.id)) liveHolds.current.set(x.id, Date.now())
         mergeLive([m], x => x.id === phId)
       },
       onError: (_code, detail) => apply(prev => patch(

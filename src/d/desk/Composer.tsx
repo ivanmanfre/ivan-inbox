@@ -18,13 +18,15 @@ export function DeskComposer({ busy, onSend }: {
   const [uploading, setUploading] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const voiced = useRef(false)
-  const latestText = useRef(text)
-  latestText.current = text
+  // Every edit (typing or dictation) bumps the revision; an upload that finishes clears the field and
+  // the voice mark only if nothing was edited since its Send (Sol desk-ui r3 #6).
+  const rev = useRef(0)
+  const edit = (fn: (prev: string) => string) => { rev.current++; setText(fn) }
   const field = useRef<HTMLTextAreaElement>(null)
   const file = useRef<HTMLInputElement>(null)
   const stt = useStt(t => {
     voiced.current = true
-    setText(prev => (prev.trim() ? `${prev.trim()} ${t}` : t))
+    edit(prev => (prev.trim() ? `${prev.trim()} ${t}` : t))
     field.current?.focus()
   })
   const recording = stt.state === 'recording'
@@ -50,6 +52,7 @@ export function DeskComposer({ busy, onSend }: {
     const sentText = text
     const sentVoice = voiced.current
     const sentPhotos = photos
+    const sentRev = rev.current
     let attachments: DeskAttachment[] | undefined
     if (sentPhotos.length) {
       setUploading(true); setNote(null)
@@ -68,10 +71,8 @@ export function DeskComposer({ busy, onSend }: {
     sentPhotos.forEach(p => URL.revokeObjectURL(p.preview))
     const gone = new Set(sentPhotos.map(p => p.id))
     setPhotos(ps => ps.filter(p => !gone.has(p.id)))
-    setText(cur => (cur === sentText ? '' : cur))
     setNote(null)
-    // Dictation that landed during the upload belongs to the new draft and keeps its voice mark.
-    if (latestText.current === sentText) { voiced.current = false; stt.clearClip() }
+    if (rev.current === sentRev) { setText(''); voiced.current = false; stt.clearClip() }
   }
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send() }
@@ -113,7 +114,7 @@ export function DeskComposer({ busy, onSend }: {
         </button>
         <input ref={file} type="file" accept="image/*" hidden onChange={e => pick(e.target.files?.[0])} data-desk-photo />
         <textarea
-          ref={field} rows={1} value={text} onChange={e => setText(e.target.value)} onKeyDown={onKey}
+          ref={field} rows={1} value={text} onChange={e => { const v = e.target.value; edit(() => v) }} onKeyDown={onKey}
           placeholder="Ask, or paste a link" aria-label="Message the desk" enterKeyHint="send"
         />
         {stt.supported && (

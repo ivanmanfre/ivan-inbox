@@ -24,7 +24,10 @@ export function saveDeskFlags(f: DeskFlags): void {
 }
 
 // ---- the store ---------------------------------------------------------------
-export type DeskFlagState = DeskFlags & { /** The authenticated read has answered in this session. */ read: boolean }
+export type DeskFlagState = DeskFlags & {
+  /** The authenticated read has answered in this session. */ read: boolean
+  /** The last authenticated read failed (offline, auth): the desk page offers a retry. */ failed?: boolean
+}
 let state: DeskFlagState | null = null
 const listeners = new Set<() => void>()
 
@@ -33,11 +36,11 @@ export function deskFlagState(): DeskFlagState {
   return state
 }
 
-export function setDeskFlags(f: DeskFlags, read: boolean): void {
+export function setDeskFlags(f: DeskFlags, read: boolean, failed = false): void {
   const cur = deskFlagState()
-  const next = { ...f, read: read || cur.read }
+  const next: DeskFlagState = { ...f, read: read || cur.read, failed }
   if (cur.desk_enabled === next.desk_enabled && cur.nav_visible === next.nav_visible && cur.t3_enabled === next.t3_enabled
-    && cur.triggers_enabled === next.triggers_enabled && cur.read === next.read) return
+    && cur.triggers_enabled === next.triggers_enabled && cur.read === next.read && !!cur.failed === failed) return
   state = next
   listeners.forEach(l => l())
 }
@@ -45,6 +48,12 @@ export function setDeskFlags(f: DeskFlags, read: boolean): void {
 export function subscribeDeskFlags(l: () => void): () => void {
   listeners.add(l)
   return () => { listeners.delete(l) }
+}
+
+/** The authenticated read failed: keep the flags, mark the failure so the page can offer a retry. */
+export function markDeskFlagsFailed(): void {
+  const { read: _r, failed: _f, ...f } = deskFlagState()
+  setDeskFlags(f, false, true)
 }
 
 /** Tests: forget the in-memory state so the next read starts from localStorage again. */

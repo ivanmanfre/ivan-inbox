@@ -1,19 +1,19 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { supabase } from '../../lib/supabase'
-import { deskFlagState, saveDeskFlags, subscribeDeskFlags, type DeskFlagState } from './navFlag'
+import { deskFlagState, markDeskFlagsFailed, saveDeskFlags, subscribeDeskFlags, type DeskFlagState } from './navFlag'
 import { mockOn } from './mock'
 
 // One authenticated read of desk_config per 30 s at most, shared by every caller.
 let inflight: Promise<void> | null = null
 let lastRead = 0
 
-export function refreshDeskFlags(): Promise<void> {
+export function refreshDeskFlags(force = false): Promise<void> {
   if (inflight) return inflight
-  if (Date.now() - lastRead < 30_000 && deskFlagState().read) return Promise.resolve()
+  if (!force && Date.now() - lastRead < 30_000 && deskFlagState().read) return Promise.resolve()
   inflight = (async () => {
     try {
       const { data, error } = await supabase.from('desk_config').select('key,value')
-      if (error || !data) return
+      if (error || !data) { markDeskFlagsFailed(); return }
       const got: Record<string, unknown> = Object.fromEntries(data.map(r => [r.key as string, r.value]))
       lastRead = Date.now()
       saveDeskFlags({
@@ -22,7 +22,7 @@ export function refreshDeskFlags(): Promise<void> {
         t3_enabled: got.t3_enabled === true,
         triggers_enabled: got.triggers_enabled === true,
       })
-    } finally { inflight = null }
+    } catch { markDeskFlagsFailed() } finally { inflight = null }
   })()
   return inflight
 }
