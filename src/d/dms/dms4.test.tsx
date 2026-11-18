@@ -17,7 +17,9 @@ vi.mock('../../lib/inbox', async orig => {
   }
 })
 vi.mock('../../lib/followUp', async orig => ({ ...(await orig<typeof import('../../lib/followUp')>()),
-  fetchFollowUp: vi.fn(async () => null), setFollowUp: vi.fn(async () => {}), clearFollowUp: vi.fn(async () => {}) }))
+  fetchFollowUp: vi.fn(async () => null),
+  setFollowUp: vi.fn(async (prospectId: string) => ({ prospectId, updatedAt: null, handOff: null })),
+  clearFollowUp: vi.fn(async () => {}) }))
 vi.mock('../../lib/emailCompositionSave', async orig => ({ ...(await orig<typeof import('../../lib/emailCompositionSave')>()), saveEmailComposition: vi.fn() }))
 
 vi.mock('../../lib/dmDraft', () => ({ requestDmDraft: vi.fn() }))
