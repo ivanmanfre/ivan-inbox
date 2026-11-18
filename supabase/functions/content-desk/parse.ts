@@ -34,6 +34,19 @@ export function plain(s: string): string {
     .trim()
 }
 
+/**
+ * Call-line handles (L1..L12) are for the ACTIONS block only: any that the brief handed out is taken
+ * out of the reply text (with a trailing comma), and an emptied "()" goes with it.
+ */
+export function stripLineHandles(text: string, handles: Iterable<string>): string {
+  const hs = new Set([...handles].map((h) => h.toUpperCase()))
+  if (!hs.size) return text
+  return text.replace(/\(?\b(L\d{1,2})\b\)?(,[ \t]*|[ \t]+)?/g, (m, h: string, tail?: string) => {
+    if (!hs.has(h.toUpperCase())) return m
+    return m.startsWith('(') && m.includes(')') ? (tail ?? '') : ''
+  }).replace(/[ \t]{2,}/g, ' ').replace(/ +([,.!?])/g, '$1')
+}
+
 /** One text per chip (Sol r5 B1): label = send, both the trimmed, capped send text. */
 export function oneText(chips: { label?: unknown; send: unknown }[]): Chip[] {
   return chips.map((c) => plain(String(c.send ?? '')).slice(0, 400)).filter(Boolean).map((t) => ({ label: t, send: t }))

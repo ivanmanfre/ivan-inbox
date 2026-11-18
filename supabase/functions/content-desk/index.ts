@@ -16,7 +16,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { render, applyVisibility, warsaw, type BriefJson, type Rendered } from './brief.ts'
 import { buildPrompt } from './prompt.ts'
-import { parse, plain, shortParagraphs, oneText, type Act } from './parse.ts'
+import { parse, plain, shortParagraphs, oneText, stripLineHandles, type Act } from './parse.ts'
 import { askDesk, askDeskStream, LlmError, DESK_MODEL } from './llm.ts'
 import { planLive, planForTarget, runUndo, UndoRefused, stillSame, actionKey, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
 import { authorize } from './auth.ts'
@@ -541,7 +541,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           finalBody = `${reply}\n\nThat did not go through: ${note}`
           emit('delta', { text: `\n\nThat did not go through: ${note}` })
         }
-        finalBody = shortParagraphs(finalBody)
+        finalBody = shortParagraphs(stripLineHandles(finalBody, r.lines.keys()))
         const sideEffects = await turnSideEffects(svc, messageId)
         timings.total_ms = Date.now() - t0
         const t3 = echoes.find((e) => e.t3_job)?.t3_job

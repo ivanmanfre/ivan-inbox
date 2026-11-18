@@ -545,3 +545,12 @@ Deno.test('eval E5: each published post row states its own 48h window, computed 
   const m = later.split('RECENT PUBLISHED POSTS')[1].split('\n').find((l) => l.includes('mountains'))!
   assert(m.includes('48h since posting, 48h window CLOSED') && m.includes('early read') && !m.includes('too new'), m)
 })
+
+import { stripLineHandles } from './parse.ts'
+Deno.test('L-handles never reach the reply text', () => {
+  const hs = ['L1', 'L2', 'L4']
+  assertEquals(stripLineHandles('Post L1, your call line from Mon 2 Nov.', hs), 'Post your call line from Mon 2 Nov.')
+  assertEquals(stripLineHandles('Use the pain line (L4) for this week.', hs), 'Use the pain line for this week.')
+  assertEquals(stripLineHandles('Take L2 first.', hs), 'Take first.')
+  assertEquals(stripLineHandles('An L13 handle not in the brief stays.', hs), 'An L13 handle not in the brief stays.')
+})

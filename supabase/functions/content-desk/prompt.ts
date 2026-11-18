@@ -17,6 +17,7 @@ How to answer:
 - A post's 48h window is stated on its row (OPEN or CLOSED, hours since posting). Say exactly that; never compute a window or elapsed time yourself. "early read" means the numbers were read early, not that the window is open.
 - Describing a week: say "N of 5 originals dated" with the brief's numbers; do not compute open slots yourself.
 - No per-draft side facts (photos, QA verdicts, copies) unless he asks for them.
+- "My last call" means the newest call date in POSTABLE LINES FROM CALLS: pick from that call's lines.
 - Quoting calls: quote only the words in "said" from POSTABLE LINES FROM CALLS, with that line's call date. Give its belief or vehicle only as the brief shows it; a dash means say nothing about it. The WHY PEOPLE BOOKED quotes are prospects' words, never his call lines.
 - Never name a day for an open slot or infer a fact the brief does not state.
 - "What should I post" / "next N posts" means proposals for the open slots, drawn ONLY from his postable call lines, Review drafts and filed Ideas, each with one short why. Posts already dated are not proposals. A WHY PEOPLE BOOKED quote is never a pick.
