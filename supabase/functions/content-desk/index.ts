@@ -38,6 +38,9 @@ const ALLOWED = env('INBOX_CLAUDE_ALLOWED_USER_ID')
 const TICK_SECRET = env('DESK_TICK_SECRET')
 
 const MAX_TEXT = 6000
+// A held action can be committed for this long after it was proposed; the client auto-commits only
+// holds delivered live while the desk is visible (older ones need an explicit tap).
+const HOLD_COMMIT_WINDOW_MS = 2 * 60 * 1000
 const MAX_ATTACH = 4
 const RATE_WINDOW_MS = 10 * 60 * 1000
 const RATE_MAX = 40
@@ -235,6 +238,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
       const emit = (ev: string, data: unknown) => ctl.enqueue(enc.encode(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`))
       const timings: Record<string, number> = {}
       let toolCalls = 0
+      let assistantId: string | null = null
       try {
         // the user's row (idempotent on client_key: a retried send is the same message) and the
         // rate cap run alongside the brief read, so the model call starts as early as possible
@@ -296,6 +300,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           meta: { model: m1.model, ...(mode.evalMode ? { test: true } : {}) },
         }).select('id').single()
         const messageId = aRow?.id as string
+        assistantId = messageId ?? null
 
         const ctx: Ctx = {
           userDb, svc, userId, messageId, brief: r, attachments, text, env,
@@ -360,10 +365,12 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         const code = e instanceof LlmError ? e.code : 'desk_failed'
         const detail = e instanceof Error ? e.message.slice(0, 300) : String(e)
         console.error('desk turn failed', code, detail)
-        const { data: errRow } = await svc.from('desk_messages').insert({
-          user_id: userId, role: 'assistant', origin: 'desk', status: 'error',
-          body: 'The desk could not answer just now. Send it again in a moment.', meta: { error: code, ...(mode.evalMode ? { test: true } : {}) },
-        }).select('*').single()
+        // settle the answer row this turn already opened, or open one, so nothing stays "streaming"
+        const errFields = { status: 'error', body: 'The desk could not answer just now. Send it again in a moment.',
+          meta: { error: code, client_key: clientKey, ...(mode.evalMode ? { test: true } : {}) }, updated_at: new Date().toISOString() }
+        const { data: errRow } = assistantId
+          ? await svc.from('desk_messages').update(errFields).eq('id', assistantId).select('*').single()
+          : await svc.from('desk_messages').insert({ user_id: userId, role: 'assistant', origin: 'desk', ...errFields }).select('*').single()
         emit('error', { error: code, detail })
         if (errRow) emit('final', { message: errRow })
       } finally {
@@ -377,6 +384,14 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
 }
 
 // ---- undo / commit / cancel ------------------------------------------------
+/** Compare-and-set on desk_actions.result.state: only one of two racing requests wins (Sol desk-ui r1 #1). */
+// deno-lint-ignore no-explicit-any
+async function claimState(svc: any, a: { id: string; result: Record<string, unknown> | null }, from: string, to: string): Promise<boolean> {
+  const { data } = await svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: to } })
+    .eq('id', a.id).filter('result->>state', 'eq', from).select('id')
+  return Array.isArray(data) && data.length === 1
+}
+
 // deno-lint-ignore no-explicit-any
 async function settle(svc: any, userDb: any, userId: string, op: string, actionId: string, dryReq = false) {
   if (!/^[0-9a-f-]{36}$/i.test(actionId)) return { ok: false, error: 'bad_action' }
@@ -387,16 +402,21 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
   let label: string | null = null
   if (op === 'undo') {
     if (state !== 'done' || a.undone_at || !a.undo) return { ok: false, error: 'nothing_to_undo' }
-    try { await runUndo({ userDb, svc }, a.undo) } catch (e) { return { ok: false, error: String(e).slice(0, 200) } }
+    if (!await claimState(svc, a, 'done', 'undoing')) return { ok: false, error: 'nothing_to_undo' }
+    try { await runUndo({ userDb, svc }, a.undo) } catch (e) {
+      await svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'done' } }).eq('id', actionId)
+      return { ok: false, error: String(e).slice(0, 200) }
+    }
     await svc.from('desk_actions').update({ undone_at: new Date().toISOString(), result: { ...(a.result ?? {}), state: 'undone' } }).eq('id', actionId)
     newState = 'undone'; label = 'Undone.'
   } else if (op === 'cancel') {
-    if (state !== 'held') return { ok: false, error: 'not_held' }
-    await svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'cancelled' } }).eq('id', actionId)
+    if (state !== 'held' || !await claimState(svc, a, 'held', 'cancelled')) return { ok: false, error: 'not_held' }
     newState = 'cancelled'; label = 'Cancelled. Nothing changed.'
   } else {
     if (state !== 'held') return { ok: false, error: 'not_held' }
-    if (Date.now() - Date.parse(a.created_at) > 5 * 60 * 1000) return { ok: false, error: 'hold_expired' }
+    if (Date.now() - Date.parse(a.created_at) > HOLD_COMMIT_WINDOW_MS) return { ok: false, error: 'hold_expired' }
+    // exactly one commit wins, and a cancel that already won makes this one refuse
+    if (!await claimState(svc, a, 'held', 'committing')) return { ok: false, error: 'not_held' }
     // rebuild the same plan against a fresh brief and run it
     const [b, recent] = await Promise.all([loadBrief(svc, !!(a.args as { _fixtures?: boolean })?._fixtures || false, true), recentMessages(svc, userId)])
     const r = render(b.json, recent)
