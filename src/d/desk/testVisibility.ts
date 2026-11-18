@@ -12,10 +12,10 @@ function box(top: number) {
   return { left: 10, top, right: 90, bottom: top + 30, width: 80, height: 30, x: 10, y: top, toJSON: () => ({}) }
 }
 
-function fire(rec: Rec) {
+function fire(rec: Rec, at = ratio) {
   const r = rec.el.getBoundingClientRect()
   rec.cb([{
-    target: rec.el, isIntersecting: ratio > 0, intersectionRatio: ratio, time: 0,
+    target: rec.el, isIntersecting: at > 0, intersectionRatio: at, time: 0,
     boundingClientRect: r as DOMRectReadOnly, intersectionRect: r as DOMRectReadOnly, rootBounds: null,
   }], rec.io as unknown as IntersectionObserver)
 }
@@ -35,8 +35,11 @@ class FakeIO {
   }
   unobserve(el: Element) { for (let i = observed.length - 1; i >= 0; i--) if (observed[i].el === el && observed[i].io === this) observed.splice(i, 1) }
   disconnect() { for (let i = observed.length - 1; i >= 0; i--) if (observed[i].io === this) observed.splice(i, 1) }
-  takeRecords(): IntersectionObserverEntry[] { return [] }
+  /** Entries queued for this observer's callback and not yet delivered (see queueStaleEntry). */
+  pending: { rec: Rec; at: number }[] = []
+  takeRecords(): IntersectionObserverEntry[] { const n = this.pending.length; this.pending = []; takenRecords += n; return [] }
 }
+let takenRecords = 0
 
 function elementAt(x: number, y: number): Element | null {
   if (covered) return document.body
@@ -52,7 +55,7 @@ const d = document as unknown as { elementFromPoint?: unknown }
 
 /** Undo buttons are fully visible and uncovered unless a test says otherwise. */
 export function installVisibility(): void {
-  observed.length = 0; ratio = 1; covered = false; nextTop = 0
+  observed.length = 0; ratio = 1; covered = false; nextTop = 0; takenRecords = 0
   g.IntersectionObserver = FakeIO
   d.elementFromPoint = elementAt
 }
@@ -63,7 +66,23 @@ export function removeVisibility(): void {
   delete d.elementFromPoint
 }
 /** The observer reports this visible fraction for every observed element, now. */
-export function setVisibleRatio(r: number): void { ratio = r; observed.slice().forEach(fire) }
+export function setVisibleRatio(r: number): void { ratio = r; observed.slice().forEach(rec => fire(rec)) }
+/** Queue an entry with this fraction for every observer, delivered on the next task unless the
+ *  observer's takeRecords() empties its queue first (an entry the browser queued before a tab return). */
+export function queueStaleEntry(at: number): void {
+  for (const rec of observed.slice()) {
+    const item = { rec, at }
+    rec.io.pending.push(item)
+    setTimeout(() => {
+      const i = rec.io.pending.indexOf(item)
+      if (i < 0) return // taken; a queued entry is delivered even after unobserve, as in a browser
+      rec.io.pending.splice(i, 1)
+      fire(rec, at)
+    }, 0)
+  }
+}
+/** How many queued entries takeRecords() discarded. */
+export function discardedRecords(): number { return takenRecords }
 /** The next observation (a new observe) reports this fraction; nothing fires now (a hidden tab's layout moved). */
 export function setRatioQuiet(r: number): void { ratio = r }
 /** Something (a sheet, the keyboard bar) lies over every button. */

@@ -78,7 +78,7 @@ vi.mock('../../exp/v2c/chat/useStt', () => ({
 
 const { Desk } = await import('./Desk')
 const { resetHeldSeen } = await import('./heldSeen')
-const { installVisibility, removeVisibility, setVisibleRatio, setCovered, setRatioQuiet } = await import('./testVisibility')
+const { installVisibility, removeVisibility, setVisibleRatio, setCovered, setRatioQuiet, queueStaleEntry, discardedRecords } = await import('./testVisibility')
 const { resetActionGuards } = await import('./actionGuards')
 const { resetLiveHolds } = await import('./useDesk')
 
@@ -906,6 +906,66 @@ describe('round 7 (Sol desk-ui r6 #1-#4)', () => {
       readRows = async () => [heldRow()] // the return re-reads; the server still holds it
       visibility = 'visible'
       await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
+      expect(seenCalls).toEqual([])
+      await act(async () => { setVisibleRatio(1) })
+      await waitFor(() => expect(seenCalls).toEqual([['act-live']]))
+    } finally { override.mockRestore() }
+  })
+})
+
+
+describe('round 8 (Sol desk-ui r7 P1, P2)', () => {
+  const heldRow = () => row({ id: 'a-' + sends[0].client_key, body: 'Approving it.', meta: { client_key: sends[0].client_key, actions: [{ id: 'act-live', kind: 'approve', label: 'Approve the trains post', state: 'held', undo: true, hold_ms: 8000 }] } })
+
+  it('r7 P1: Undo on a row whose report is queued behind an earlier batch takes it out of that batch', async () => {
+    const actions = Array.from({ length: 12 }, (_, i) => ({ id: `act-${i}`, kind: 'approve', label: `Approve post ${i}`, state: 'held' as const, undo: true, hold_ms: 8000 }))
+    readRows = async () => [row({ id: 'many', body: 'Approving them.', meta: { actions } })]
+    let release!: () => void
+    heldSeenGate = new Promise(r => { release = r })
+    render(<Desk layout="phone" />)
+    await waitFor(() => expect(document.querySelectorAll('[data-seen="pending"]')).toHaveLength(12))
+    // the first batch (10 ids) is on its way; act-11 waits for the second batch
+    fireEvent.click(document.querySelector('[data-action="act-11"] .dk-pill') as HTMLElement)
+    await screen.findByText('Try Undo again')
+    heldSeenGate = null
+    await act(async () => { release() })
+    await waitFor(() => expect(seenCalls).toHaveLength(2))
+    expect(seenCalls[0]).toHaveLength(10)
+    expect(seenCalls[1]).toEqual(['act-10'])
+    expect(document.querySelector('[data-action="act-11"]')?.getAttribute('data-seen')).toBeNull()
+  })
+
+  it('r7 P1: when every id of a queued batch was undone, that batch sends nothing', async () => {
+    const actions = Array.from({ length: 11 }, (_, i) => ({ id: `act-${i}`, kind: 'approve', label: `Approve post ${i}`, state: 'held' as const, undo: true, hold_ms: 8000 }))
+    readRows = async () => [row({ id: 'many', body: 'Approving them.', meta: { actions } })]
+    let release!: () => void
+    heldSeenGate = new Promise(r => { release = r })
+    render(<Desk layout="phone" />)
+    await waitFor(() => expect(document.querySelectorAll('[data-seen="pending"]')).toHaveLength(11))
+    fireEvent.click(document.querySelector('[data-action="act-10"] .dk-pill') as HTMLElement)
+    await screen.findByText('Try Undo again')
+    heldSeenGate = null
+    await act(async () => { release() })
+    await waitFor(() => expect(document.querySelectorAll('[data-seen="armed"]')).toHaveLength(10))
+    await act(async () => {})
+    expect(seenCalls).toHaveLength(1)
+  })
+
+  it('r7 P2: on a tab return a queued (stale) full entry is discarded by takeRecords and cannot arm the hold', async () => {
+    let visibility: DocumentVisibilityState = 'hidden'
+    const override = vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility)
+    try {
+      render(<Desk layout="phone" />)
+      type('approve the trains one')
+      await screen.findByText('Undo')
+      await act(async () => { setVisibleRatio(1) }) // full while hidden: not reported
+      setRatioQuiet(0.9) // the layout moved while hidden
+      queueStaleEntry(1) // but a full entry from before is still queued for the callback
+      readRows = async () => [heldRow()]
+      visibility = 'visible'
+      await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
+      await act(async () => { await new Promise(r => setTimeout(r, 5)) }) // the queued entry's turn
+      expect(discardedRecords()).toBeGreaterThan(0)
       expect(seenCalls).toEqual([])
       await act(async () => { setVisibleRatio(1) })
       await waitFor(() => expect(seenCalls).toEqual([['act-live']]))

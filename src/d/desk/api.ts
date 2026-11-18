@@ -96,7 +96,7 @@ export const OP_TIMEOUT_MS = 15_000
  * OP_TIMEOUT_MS, so no op can hang a row on "Cancelling" (Sol desk-ui r4 #3). A timeout comes back as
  * error 'timeout', any other network failure as 'No connection.'.
  */
-async function post<T>(payload: Record<string, unknown>): Promise<{ ok: true; status: number; okHttp: boolean; j: T } | { ok: false; error: string }> {
+async function post<T>(payload: Record<string, unknown> | (() => Record<string, unknown> | null)): Promise<{ ok: true; status: number; okHttp: boolean; j: T } | { ok: true; skipped: true } | { ok: false; error: string }> {
   const c = new AbortController()
   const t = setTimeout(() => c.abort(), OP_TIMEOUT_MS)
   const aborted = new Promise<never>((_, rej) => c.signal.addEventListener('abort', () => rej(new Error('timeout')), { once: true }))
@@ -104,10 +104,13 @@ async function post<T>(payload: Record<string, unknown>): Promise<{ ok: true; st
   try {
     const token = await Promise.race([bearer(), aborted])
     if (!token) return { ok: false, error: 'Sign in again.' }
+    // A payload built now, right before the request (after the token wait): null sends nothing.
+    const body = typeof payload === 'function' ? payload() : payload
+    if (!body) return { ok: true, skipped: true }
     const res = await Promise.race([window.fetch(FN, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...evalHeader() },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
       signal: c.signal,
     }), aborted])
     const j = await Promise.race([res.json().catch(() => ({})), aborted]) as T
@@ -123,6 +126,7 @@ async function op(o: 'undo' | 'commit' | 'cancel', actionId: string): Promise<Ac
   if (mockOn()) return mockApi.op(o, actionId)
   const r = await post<ActionResult & { detail?: string }>({ op: o, action_id: actionId })
   if (!r.ok) return { ok: false, error: r.error }
+  if ('skipped' in r) return { ok: false, error: 'No connection.' } // never: a fixed payload is always sent
   const j = r.j ?? {} as ActionResult
   if (!r.okHttp) return { ok: false, error: j.error ?? `http_${r.status}` }
   return { ok: j.ok !== false, message: j.message ? asMessage(j.message) : undefined, error: j.error }
@@ -138,11 +142,19 @@ export type HeldSeenResult = { ok: boolean; error?: string; results?: HeldSeenEn
  * timer only from this moment (commit at seen + hold_ms, through the same compare-and-set as a tap),
  * so nothing can commit before he could see its Undo. Bounded like every op. The top-level `ok` is
  * false when any id failed; the per-id `results` still say which.
+ *
+ * `stillWanted` is checked for every id at the last moment, after the session token resolves and right
+ * before the request: an id Ivan tapped Undo on while this call waited is left out, and when none is
+ * left nothing is sent at all (Sol desk-ui r7 P1). Left-out ids have no entry in `results`.
  */
-export async function markHeldSeen(actionIds: string[]): Promise<HeldSeenResult> {
-  if (mockOn()) return mockApi.heldSeen(actionIds)
-  const r = await post<HeldSeenResult>({ op: 'held_seen', action_ids: actionIds })
+export async function markHeldSeen(actionIds: string[], stillWanted: (id: string) => boolean = () => true): Promise<HeldSeenResult> {
+  if (mockOn()) { const ids = actionIds.filter(stillWanted); return ids.length ? mockApi.heldSeen(ids) : { ok: true, results: [] } }
+  const r = await post<HeldSeenResult>(() => {
+    const ids = actionIds.filter(stillWanted)
+    return ids.length ? { op: 'held_seen', action_ids: ids } : null
+  })
   if (!r.ok) return { ok: false, error: r.error }
+  if ('skipped' in r) return { ok: true, results: [] }
   const j = r.j ?? {} as HeldSeenResult
   if (!r.okHttp) return { ok: false, error: j.error ?? `http_${r.status}` }
   return { ok: j.ok !== false, results: Array.isArray(j.results) ? j.results : [], error: j.error }

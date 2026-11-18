@@ -189,11 +189,13 @@ function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle })
       tryReport()
     }, { threshold: 1 })
     io.observe(undoEl)
-    // A tab return never trusts the last observation (layout may have moved while hidden): it drops it
-    // and re-observes, so only a FRESH entry with ratio 1 can report (Sol desk-ui r6 #4).
+    // A tab return never trusts the last observation (layout may have moved while hidden): it drops it,
+    // discards any entry still queued for the callback (takeRecords), and re-observes, so only a FRESH
+    // entry with ratio 1 can report (Sol desk-ui r6 #4, r7 P2).
     const onVis = () => {
       full = false
       if (document.visibilityState !== 'visible') return
+      io.takeRecords()
       io.unobserve(undoEl)
       io.observe(undoEl)
     }

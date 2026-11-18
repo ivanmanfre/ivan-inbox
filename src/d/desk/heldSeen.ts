@@ -40,11 +40,17 @@ export function reportHeldSeen(id: string): void {
     const ids = queue.splice(0).filter(x => !actionStore.undoTapped(x) || (seen.delete(x), changed(), false))
     flushing = false
     // The server takes at most 10 ids per call.
+    // Each batch re-checks the Undo taps right before its call (a batch can wait behind an earlier one),
+    // and markHeldSeen checks again after the session token resolves; an empty batch sends nothing.
+    const wanted = (x: string) => !actionStore.undoTapped(x)
     for (let i = 0; i < ids.length; i += 10) {
-      const part = ids.slice(i, i + 10)
-      const r: HeldSeenResult = await markHeldSeen(part).catch(() => ({ ok: false }))
+      const part = ids.slice(i, i + 10).filter(x => wanted(x) || (seen.delete(x), false))
+      if (!part.length) { changed(); continue }
+      const r: HeldSeenResult = await markHeldSeen(part, wanted).catch(() => ({ ok: false }))
       const byId = new Map((r.results ?? []).map(e => [e.id, e]))
       for (const x of part) {
+        // Tapped while this call was on its way: it is not reported, and never will be.
+        if (!wanted(x)) { seen.delete(x); continue }
         const e = byId.get(x)
         const until = e?.hold_until ? Date.parse(e.hold_until) : NaN
         if (!e || e.error) seen.set(x, { state: 'failed' })

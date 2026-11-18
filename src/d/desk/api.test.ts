@@ -5,9 +5,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 let subscribeCb: ((status: string) => void) | null = null
 let sessionHangs = false
+let sessionGate: Promise<void> | null = null
 vi.mock('../../lib/supabase', () => ({
   supabase: {
-    auth: { getSession: () => (sessionHangs ? new Promise(() => {}) : Promise.resolve({ data: { session: { access_token: 'made-up-token' } } })) },
+    auth: { getSession: async () => {
+      if (sessionHangs) await new Promise(() => {})
+      if (sessionGate) await sessionGate
+      return { data: { session: { access_token: 'made-up-token' } } }
+    } },
     channel: () => {
       const ch = {
         on: () => ch,
@@ -20,8 +25,55 @@ vi.mock('../../lib/supabase', () => ({
 }))
 
 const api = await import('./api')
+const { reportHeldSeen, heldSeenStore, resetHeldSeen } = await import('./heldSeen')
+const { actionStore, resetActionGuards } = await import('./actionGuards')
 
-afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); sessionHangs = false })
+afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); sessionHangs = false; sessionGate = null; resetHeldSeen(); resetActionGuards() })
+
+describe('held_seen after Undo (Sol desk-ui r7 P1): the taps are checked after the token resolves', () => {
+  const heldAnswer = (ids: string[]) => new Response(JSON.stringify({ ok: true, results: ids.map(id => ({ id, state: 'held', seen_at: '2026-01-01T10:00:00.000Z', hold_until: '2026-01-01T10:00:08.000Z' })) }), { status: 200 })
+
+  it('Undo while the report waits for the session token: that id is left out of the request', async () => {
+    let release!: () => void
+    sessionGate = new Promise(r => { release = r })
+    const bodies: { action_ids: string[] }[] = []
+    vi.spyOn(window, 'fetch').mockImplementation(async (_u, init) => {
+      const b = JSON.parse(String((init as RequestInit).body)); bodies.push(b); return heldAnswer(b.action_ids)
+    })
+    reportHeldSeen('a1'); reportHeldSeen('a2')
+    await new Promise(r => setTimeout(r, 0)) // the batch is now waiting for the token
+    actionStore.markUndoTapped('a1')
+    release()
+    await vi.waitFor(() => expect(heldSeenStore.get('a2')?.state).toBe('armed'))
+    expect(bodies).toEqual([{ op: 'held_seen', action_ids: ['a2'] }])
+    expect(heldSeenStore.get('a1')).toBeUndefined()
+  })
+
+  it('Undo on every id while the report waits for the token: no request at all', async () => {
+    let release!: () => void
+    sessionGate = new Promise(r => { release = r })
+    const fetch = vi.spyOn(window, 'fetch')
+    reportHeldSeen('a1')
+    await new Promise(r => setTimeout(r, 0))
+    actionStore.markUndoTapped('a1')
+    release()
+    await new Promise(r => setTimeout(r, 10))
+    expect(fetch).not.toHaveBeenCalled()
+    expect(heldSeenStore.get('a1')).toBeUndefined()
+  })
+
+  it('markHeldSeen checks stillWanted after the token: an id dropped meanwhile is not sent, none left = no request', async () => {
+    let release!: () => void
+    sessionGate = new Promise(r => { release = r })
+    const fetch = vi.spyOn(window, 'fetch')
+    const gone = new Set<string>()
+    const p = api.markHeldSeen(['b1'], id => !gone.has(id))
+    gone.add('b1')
+    release()
+    expect(await p).toEqual({ ok: true, results: [] })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+})
 
 describe('desk api', () => {
   it('an op that never answers ends as "timeout" after 15 s, and its request is aborted', async () => {
