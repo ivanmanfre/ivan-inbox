@@ -18,7 +18,7 @@ import { render, applyVisibility, warsaw, type BriefJson, type Rendered } from '
 import { buildPrompt } from './prompt.ts'
 import { parse, plain, type Act } from './parse.ts'
 import { askDesk, askDeskStream, LlmError, DESK_MODEL } from './llm.ts'
-import { plan, planForTarget, runUndo, UndoRefused, readSnapshot, stillSame, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
+import { planLive, planForTarget, runUndo, UndoRefused, stillSame, type ActionEcho, type Ctx, type Planned, type Snapshot } from './actions.ts'
 import { authorize } from './auth.ts'
 import { planTriggers } from './triggers.ts'
 import { queueT3Job, sweepT3Stalls } from '../_shared/desk-t3.ts'
@@ -48,6 +48,15 @@ const MAX_ATTACH = 4
 const RATE_WINDOW_MS = 10 * 60 * 1000
 const RATE_MAX = 60
 const DESK_URL = 'https://ivanmanfre.github.io/ivan-inbox/#exp/d/content/desk'
+
+/** Try a write up to three times; true when one succeeded. */
+async function retry3(op: () => PromiseLike<{ error: unknown }>): Promise<boolean> {
+  for (let i = 0; i < 3; i++) {
+    try { const { error } = await op(); if (!error) return true } catch { /* try again */ }
+    await new Promise((r) => setTimeout(r, 150 * (i + 1)))
+  }
+  return false
+}
 
 // Stable codes and fixed client text: no upstream or database text ever reaches the browser or the logs.
 const CLIENT_TEXT: Record<string, string> = {
@@ -379,9 +388,8 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
         const planned: { act: Act; p: Planned; snap: Snapshot | null }[] = []
         for (const act of parsed.actions.slice(0, 6)) {
           toolCalls++
-          const p = await plan(ctx, act)
-          const snap = p.target_id ? await readSnapshot(svc, p.target_id) : null
-          if (p.target_id && p.run && !snap) { p.run = undefined; p.refuse = 'gone'; p.echo = { ...p.echo, state: 'failed', undo: false, label: 'That post is gone.' } }
+          // resolve the handle, then plan from the LIVE row: what the verifier reads is what runs (Sol r3 P1a)
+          const { p, snap } = await planLive(ctx, act)
           planned.push({ act, p, snap })
         }
         // 2) one reasoned check: did Ivan's own message ask for exactly this, with these values? (Sol r1 #1, r2 #1)
@@ -394,7 +402,7 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
             const n = Number(x.act.photo ?? 1); const att = attachments.filter((a) => a.kind === 'photo')[n - 1]
             parts.push(`photo: attachment ${n}${att?.name ? ` (${att.name})` : ''}`)
           }
-          if (x.act.kind === 't3') parts.push(`job title: ${String(x.act.title ?? '').slice(0, 120)}; job brief: ${String(x.act.brief ?? '').slice(0, 1500)}`)
+          if (x.act.kind === 't3') parts.push(`job title: ${String(x.act.title ?? '').slice(0, 120)}; job brief: ${String(x.act.brief ?? '').slice(0, 8000)}`)
           if (x.act.kind === 'link') parts.push(`url: ${String(x.act.url ?? '')}`)
           return parts.join(' ')
         }
@@ -445,8 +453,11 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
               console.error('desk action failed', echo.kind)
               terminal = { state: 'failed', error: failText(e) }
             }
-            const { error: termErr } = await svc.from('desk_actions').update({ result: terminal, undo }).eq('id', echo.id)
-            if (termErr) throw new LlmError('desk_failed', 'journal')
+            if (!await retry3(() => svc.from('desk_actions').update({ result: terminal, undo }).eq('id', echo.id))) {
+              // the write happened; only its record failed: never invite a repeat (Sol r3 lost receipt)
+              echo.detail = 'Done, but I could not record it. Check before repeating it.'
+              echo.undo = false
+            }
           }
           echoes.push(echo)
         }
@@ -467,9 +478,16 @@ async function send(_req: Request, origin: string | null, svc: any, userDb: any,
           ...(echoes.length ? { actions: echoes } : {}), ...(chips.length ? { chips } : {}), ...(t3 ? { t3_job: t3 } : {}),
           ...(mode.evalMode ? { test: true } : {}),
         }
-        const { data: final, error: finErr } = await svc.from('desk_messages').update({ status: 'done', body: finalBody, meta, updated_at: new Date().toISOString() })
-          .eq('id', messageId).select('*').single()
-        if (finErr || !final) throw new LlmError('desk_failed', 'final')
+        let final: Record<string, unknown> | null = null
+        for (let i = 0; i < 3 && !final; i++) {
+          const { data } = await svc.from('desk_messages').update({ status: 'done', body: finalBody, meta, updated_at: new Date().toISOString() })
+            .eq('id', messageId).select('*').single()
+          final = data ?? null
+        }
+        if (!final) {
+          // the answer and its actions stand; only the stored copy failed. Show it as sent, never "send again".
+          final = { id: messageId, role: 'assistant', origin: 'desk', status: 'done', body: `${finalBody}\n\n(I could not save this answer. If an action is listed, check before repeating it.)`, meta, created_at: new Date().toISOString() }
+        }
         emit('final', { message: final })
       } catch (e) {
         const code = safeCode(e instanceof LlmError ? e.code : 'desk_failed')
@@ -510,6 +528,7 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
   const state = (a.result as { state?: string } | null)?.state
   let newState: ActionEcho['state'] | null = null
   let label: string | null = null
+  let receiptLost = false
   if (op === 'undo') {
     if (state !== 'done' || a.undone_at || !a.undo) return { ok: false, error: 'nothing_to_undo' }
     if (!await claimState(svc, a, 'done', 'undoing')) return { ok: false, error: 'nothing_to_undo' }
@@ -548,8 +567,9 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
       if (!('echo' in p) || !p.run || p.echo.state !== 'held') throw new Error(('refuse' in p && p.refuse) || 'changed')
       const isDry = dryReq || args._dry === true
       const res = isDry ? { result: { dry: true } } : await p.run()
-      await svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'done', value: res.result ?? null } }).eq('id', actionId)
+      const recorded = await retry3(() => svc.from('desk_actions').update({ result: { ...(a.result ?? {}), state: 'done', value: res.result ?? null } }).eq('id', actionId))
       newState = 'done'
+      if (!recorded) receiptLost = true
       label = p.echo.label.replace(/^Approving/, 'Approved').replace(/^Deleting/, 'Deleted').replace(/^Taking (.*) off the schedule$/, 'Took $1 off the schedule')
     } catch (e) {
       // a claimed action that throws anywhere ends failed, never stuck in "committing"
@@ -561,32 +581,48 @@ async function settle(svc: any, userDb: any, userId: string, op: string, actionI
   // reflect the new state in the message's echo (the stored action is the source of truth)
   const patch: Record<string, unknown> = { state: newState, undo: false }
   if (label) patch.label = label
-  const { data: updated } = await svc.rpc('desk_patch_action_echo', { p_message: a.message_id, p_action: actionId, p_patch: patch })
-  return { ok: newState !== 'failed', ...(updated ? { message: updated } : {}) }
+  if (receiptLost) patch.detail = 'Done, but I could not record it. Check before repeating it.'
+  let updated: unknown = null
+  for (let i = 0; i < 3 && !updated; i++) {
+    const { data } = await svc.rpc('desk_patch_action_echo', { p_message: a.message_id, p_action: actionId, p_patch: patch })
+    updated = data ?? null
+  }
+  return { ok: newState !== 'failed', ...(updated ? { message: updated } : { detail: receiptLost || newState === 'done' ? 'Done, but I could not record it. Check before repeating it.' : undefined }) }
 }
 
 // The held row is on Ivan's screen: record seen_at once (only while held) and start the server clock.
 // deno-lint-ignore no-explicit-any
 async function heldSeen(svc: any, userDb: any, userId: string, ids: string[], evalMode: boolean) {
-  const armed: string[] = []
+  const results: { id: string; state?: string; seen_at?: string | null; hold_until?: string | null; error?: string }[] = []
   for (const id of ids) {
-    const { data: a } = await svc.from('desk_actions').select('id, result').eq('id', id).eq('user_id', userId).maybeSingle()
-    const r = (a?.result ?? {}) as { state?: string; seen_at?: string; hold_ms?: number }
-    if (!a || r.state !== 'held' || r.seen_at) continue
-    const seenAt = new Date().toISOString()
-    const { data: won } = await svc.from('desk_actions').update({ result: { ...r, seen_at: seenAt } })
-      .eq('id', id).filter('result->>state', 'eq', 'held').is('result->>seen_at', null).select('id')
-    if (!Array.isArray(won) || !won.length) continue
-    armed.push(id)
-    if (!evalMode) {
+    try {
+      const { data: a, error } = await svc.from('desk_actions').select('id, result').eq('id', id).eq('user_id', userId).maybeSingle()
+      if (error) { results.push({ id, error: 'read_failed' }); continue }
+      if (!a) { results.push({ id, error: 'not_found' }); continue }
+      let r = (a.result ?? {}) as { state?: string; seen_at?: string; hold_ms?: number }
       const ms = Number(r.hold_ms ?? 8000)
-      later((async () => {
-        await new Promise((res) => setTimeout(res, ms + 300))
-        await settle(svc, userDb, userId, 'commit', id, false, true)
-      })(), 'hold_commit')
-    }
+      if (r.state === 'held' && !r.seen_at) {
+        const seenAt = new Date().toISOString()
+        const { data: won } = await svc.from('desk_actions').update({ result: { ...r, seen_at: seenAt } })
+          .eq('id', id).filter('result->>state', 'eq', 'held').is('result->>seen_at', null).select('id, result')
+        if (Array.isArray(won) && won.length) {
+          r = won[0].result
+          if (!evalMode) {
+            later((async () => {
+              await new Promise((res) => setTimeout(res, ms + 300))
+              await settle(svc, userDb, userId, 'commit', id, false, true)
+            })(), 'hold_commit')
+          }
+        } else {
+          const { data: again } = await svc.from('desk_actions').select('result').eq('id', id).maybeSingle()
+          r = (again?.result ?? r) as typeof r
+        }
+      }
+      // the stored row is the truth: the UI counts down to hold_until
+      results.push({ id, state: r.state, seen_at: r.seen_at ?? null, hold_until: r.seen_at ? new Date(Date.parse(r.seen_at) + ms).toISOString() : null })
+    } catch { results.push({ id, error: 'failed' }) }
   }
-  return { ok: true, armed }
+  return { ok: results.every((x) => !x.error), results }
 }
 
 // ---- proactive tick -----------------------------------------------------------

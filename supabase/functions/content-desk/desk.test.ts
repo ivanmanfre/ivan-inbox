@@ -156,7 +156,8 @@ Deno.test('ideaDecidable mirrors the app lane guard', () => {
 import { urlInMessage, allowedHost } from './unfurl.ts'
 
 Deno.test('links: whole-token match, allowlisted hosts only', () => {
-  assert(urlInMessage('https://x.com/a/status/1', 'copy this https://x.com/a/status/1.'))
+  assert(urlInMessage('https://x.com/a/status/1', 'copy this <https://x.com/a/status/1>, ok'))
+  assert(!urlInMessage('https://x.com/a/status/1', 'copy this https://x.com/a/status/1.2'))
   assert(!urlInMessage('https://x.com/a/status/1', 'copy this https://x.com/a/status/12'))
   assert(allowedHost('https://www.linkedin.com/posts/x'))
   assert(!allowedHost('https://linkedin.com.evil.test/x'))
@@ -167,4 +168,18 @@ Deno.test('links: whole-token match, allowlisted hosts only', () => {
 Deno.test('parse: server-owned "_" keys from the model are dropped', () => {
   const p = parse('<reply>ok</reply><actions>[{"kind":"approve","draft":"#abcde","line":"a b c","_qa_override":true,"_snapshot":{}}]</actions>')
   assertEquals(Object.keys(p.actions[0]).filter((k) => k.startsWith('_')), [])
+})
+
+import { plan } from './actions.ts'
+
+Deno.test('delete: a dated draft is refused with a pull chip; an undated review draft is held', async () => {
+  const dated = draft('aaaaaaaa-0000-4000-8000-000000000001', 'Snow in the park this morning', { scheduled_at: '2026-11-26T09:45:00Z' })
+  const free = draft('bbbbbbbb-0000-4000-8000-000000000002', 'Coffee in the old town again')
+  const r = render(brief([dated, free]))
+  const ctx = { brief: r, attachments: [], text: '', env: () => undefined } as never
+  const h = (id: string) => r.handleOf.get(id)!
+  const p1 = await plan(ctx, { kind: 'delete', draft: h(dated.id), line: 'Snow in the park' })
+  assertEquals(p1.refuse, 'dated'); assert(p1.chips?.[0].label === 'Pull it first')
+  const p2 = await plan(ctx, { kind: 'delete', draft: h(free.id), line: 'Coffee in the old town' })
+  assertEquals(p2.echo.state, 'held')
 })

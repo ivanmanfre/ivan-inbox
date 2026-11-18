@@ -13,6 +13,7 @@ export type Draft = {
   belief: number | null; vehicle: string | null; recipe: string | null; qa_verdict: string | null
   is_copy: boolean; photos: number; brain: boolean; human_edited: boolean
   slot_kind: string | null; selling: boolean; chars: number; created_at: string; fixture: string | null
+  updated_at?: string | null  // set only on a live row read (actions.ts loadLive), never from the brief
 }
 export type QueueRow = { queue_id: string; draft_id: string; slot_at: string; origin: string; first_line: string }
 export type CallLine = { id: string; ingested_at: string; status: string; topic: string; said: string; when: string | null; belief: string | null; vehicle: string | null; score: number | null; draft_id: string | null }

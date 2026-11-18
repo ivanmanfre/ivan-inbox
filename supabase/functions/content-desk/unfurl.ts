@@ -13,7 +13,8 @@ export function allowedHost(url: string): boolean {
 
 /** The URL is one of the whitespace-separated tokens of his message (trailing punctuation ignored). */
 export function urlInMessage(url: string, text: string): boolean {
-  return text.split(/\s+/).some((t) => t.replace(/[)\].,!?;:'"]+$/, '') === url)
+  // exact token; only surrounding quotes, brackets or <> and a trailing comma/semicolon are ignored
+  return text.split(/\s+/).some((t) => t.replace(/[,;]$/, '').replace(/^[<(\['"]+/, '').replace(/[>)\]'"]+$/, '').replace(/[,;]$/, '') === url)
 }
 
 function og(html: string, prop: string): string | undefined {

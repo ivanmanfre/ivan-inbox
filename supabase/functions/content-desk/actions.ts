@@ -170,22 +170,80 @@ export async function plan(ctx: Ctx, act: Act): Promise<Planned> {
 export type Snapshot = {
   target_id: string; updated_at: string | null; status: string; first_line_sha: string
   scheduled_at: string | null; image_urls: string[]
+  /** any live queue copy (pending / queued_v2 / posting): delete safety */
   queue: { queue_id: string; slot_at: string; status: string } | null
+  /** the exact eligible Next row (linkedin, pending, not a repost, in the future): what a pull acts on */
+  next: { queue_id: string; slot_at: string } | null
 }
 
 /** Read the live row (Ivan's lane) and its live queue rows. Null when the draft is gone or not his. */
 export async function readSnapshot(svc: Db, id: string): Promise<Snapshot | null> {
-  const { data: row } = await svc.from('carousel_drafts').select('id, updated_at, status, post_body, scheduled_at, image_urls')
-    .eq('id', id).is('client_id', null).maybeSingle()
-  if (!row) return null
-  const { data: q } = await svc.from('scheduled_posts').select('id, scheduled_at, status')
-    .eq('clickup_task_id', id).in('status', ['pending', 'queued_v2', 'posting']).order('scheduled_at', { ascending: true }).limit(1)
-  const qr = Array.isArray(q) && q.length ? q[0] : null
-  return {
-    target_id: row.id, updated_at: row.updated_at, status: row.status, first_line_sha: await sha256Hex(firstLineOf(row.post_body)),
-    scheduled_at: row.scheduled_at, image_urls: Array.isArray(row.image_urls) ? row.image_urls.filter((u: unknown) => typeof u === 'string') : [],
-    queue: qr ? { queue_id: qr.id, slot_at: qr.scheduled_at, status: qr.status } : null,
+  const live = await loadLive({ svc } as Ctx, id)
+  return live ? live.snap : null
+}
+
+const LIVE_COLS = 'id, status, type, scheduled_at, published_at, post_body, title, topic, taxonomy, qa, source_ref, image_urls, created_at, updated_at, client_id'
+
+/** The live row as a Draft plus its snapshot (Sol r3 P1a: describe and run come from the same live row). */
+export async function loadLive(ctx: Pick<Ctx, 'svc'> & Partial<Pick<Ctx, 'userDb'>>, id: string): Promise<{ d: Draft; snap: Snapshot; tax: Record<string, unknown> } | null> {
+  const { data: row, error } = await ctx.svc.from('carousel_drafts').select(LIVE_COLS).eq('id', id).is('client_id', null).maybeSingle()
+  if (error || !row) return null
+  const { data: q } = await ctx.svc.from('scheduled_posts').select('id, scheduled_at, status, platform, is_repost')
+    .eq('clickup_task_id', id).in('status', ['pending', 'queued_v2', 'posting']).order('scheduled_at', { ascending: true }).limit(20)
+  const rows = (Array.isArray(q) ? q : []) as { id: string; scheduled_at: string; status: string; platform: string | null; is_repost: boolean | null }[]
+  const anyLive = rows[0] ?? null
+  const next = rows.find((r) => r.platform === 'linkedin' && r.status === 'pending' && !r.is_repost && Date.parse(r.scheduled_at) > Date.now()) ?? null
+  const firstLine = firstLineOf(row.post_body)
+  const tax = (row.taxonomy && typeof row.taxonomy === 'object' && !Array.isArray(row.taxonomy)) ? row.taxonomy as Record<string, unknown> : {}
+  let member = tax.source === 'content-brain'
+  if (ctx.userDb && ['review', 'approved', 'error', 'generating'].includes(row.status)) {
+    const { data: vis } = await ctx.userDb.from('cb34_p2_safe_drafts').select('id, cb34_p2_member').eq('id', row.id).maybeSingle()
+    if (!vis && !tax.desk_eval_fixture) return null   // not in his Review: not his to act on
+    member = member || vis?.cb34_p2_member === true
   }
+  const d: Draft = {
+    id: row.id, status: row.status, type: row.type, scheduled_at: row.scheduled_at, published_at: row.published_at,
+    first_line: firstLine, title: String(row.title ?? row.topic ?? ''), belief: null, vehicle: null,
+    recipe: (row.qa as { recipe?: string } | null)?.recipe ?? null, qa_verdict: (row.qa as { verdict?: string } | null)?.verdict ?? null,
+    is_copy: tax.outlier_copy === 'true' || tax.outlier_copy === true, photos: Array.isArray(row.image_urls) ? row.image_urls.length : 0,
+    brain: member, human_edited: String(tax.human_edited ?? '') === 'true',
+    slot_kind: null, selling: false, chars: String(row.post_body ?? '').length, created_at: row.created_at,
+    fixture: (tax.desk_eval_fixture as string) ?? null, updated_at: row.updated_at,
+  }
+  const snap: Snapshot = {
+    target_id: row.id, updated_at: row.updated_at, status: row.status, first_line_sha: await sha256Hex(firstLine),
+    scheduled_at: row.scheduled_at, image_urls: Array.isArray(row.image_urls) ? row.image_urls.filter((u: unknown) => typeof u === 'string') : [],
+    queue: anyLive ? { queue_id: anyLive.id, slot_at: anyLive.scheduled_at, status: anyLive.status } : null,
+    next: next ? { queue_id: next.id, slot_at: next.scheduled_at } : null,
+  }
+  return { d, snap, tax }
+}
+
+function liveBrief(ctx: Ctx, d: Draft, snap: Snapshot, handle: string): Rendered {
+  const queueByDraft = new Map(snap.next ? [[d.id, { queue_id: snap.next.queue_id, draft_id: d.id, slot_at: snap.next.slot_at, origin: 'own', first_line: d.first_line }]] : [])
+  return { ...ctx.brief, drafts: new Map([[handle, d]]), handleOf: new Map([[d.id, handle]]), queueByDraft }
+}
+
+/**
+ * Plan a draft action against the LIVE row (Sol r3 P1a): the brief only resolves the exact handle to
+ * an id; the quoted line is checked against the live first line, and the description the verifier
+ * sees and the write that runs are both built from that same live row.
+ */
+export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: Snapshot | null }> {
+  act.kind = IN_ALIAS[act.kind] ?? act.kind
+  const needsDraft = ['approve', 'date', 'undate', 'pull', 'delete', 'redo', 'photo_attach'].includes(act.kind)
+  if (!needsDraft || Array.isArray(act.draft)) return { p: await plan(ctx, act), snap: null }
+  const r = resolveDraft(ctx.brief, act)
+  if ('error' in r) return { p: await plan(ctx, act), snap: null }   // plan() renders the refusal + chips
+  const live = await loadLive(ctx, r.d.id)
+  if (!live) return { p: { echo: { kind: OUT_NAME[act.kind] ?? act.kind, label: 'That post is gone or no longer in your Review.', state: 'failed', undo: false }, refuse: 'gone', target_id: r.d.id }, snap: null }
+  if (!lineMatches(live.d.first_line, act.line)) {
+    return { p: { echo: { kind: OUT_NAME[act.kind] ?? act.kind, label: 'That post was rewritten since, so I did nothing.', state: 'failed', undo: false, detail: 'line_mismatch' }, refuse: 'line_mismatch', target_id: r.d.id,
+      chips: [{ label: short(live.d.first_line, 40), send: `${act.kind} the one that starts "${short(live.d.first_line, 70)}"` }] }, snap: live.snap }
+  }
+  const p = await plan({ ...ctx, brief: liveBrief(ctx, live.d, live.snap, r.handle) }, act)
+  p.target_id = live.d.id
+  return { p, snap: live.snap }
 }
 
 /** Immediately before a write: the row must still be exactly as it was authorized (status + updated_at). */
@@ -202,32 +260,11 @@ export async function stillSame(svc: Db, snap: Snapshot): Promise<boolean> {
  * for unfinished statuses, and refused if it changed since it was proposed.
  */
 export async function planForTarget(ctx: Ctx, act: Act, snap: Snapshot): Promise<Planned | { refuse: string }> {
-  const { data: row, error } = await ctx.svc.from('carousel_drafts')
-    .select('id, status, type, scheduled_at, published_at, post_body, title, topic, taxonomy, qa, source_ref, image_urls, created_at, updated_at, client_id')
-    .eq('id', snap.target_id).is('client_id', null).maybeSingle()
-  if (error || !row) return { refuse: 'gone' }
-  if (String(row.updated_at) !== String(snap.updated_at) || row.status !== snap.status) return { refuse: 'changed' }
-  const firstLine = firstLineOf(row.post_body)
-  if (await sha256Hex(firstLine) !== snap.first_line_sha) return { refuse: 'changed' }
-  const tax = (row.taxonomy && typeof row.taxonomy === 'object' && !Array.isArray(row.taxonomy)) ? row.taxonomy as Record<string, unknown> : {}
-  let member = false
-  if (['review', 'approved', 'error', 'generating'].includes(row.status)) {
-    const { data: vis } = await ctx.userDb.from('cb34_p2_safe_drafts').select('id, cb34_p2_member').eq('id', row.id).maybeSingle()
-    if (!vis && !tax.desk_eval_fixture) return { refuse: 'not_visible' }
-    member = vis?.cb34_p2_member === true
-  }
-  const d: Draft = {
-    id: row.id, status: row.status, type: row.type, scheduled_at: row.scheduled_at, published_at: row.published_at,
-    first_line: firstLine, title: String(row.title ?? row.topic ?? ''), belief: null, vehicle: null,
-    recipe: (row.qa as { recipe?: string } | null)?.recipe ?? null, qa_verdict: (row.qa as { verdict?: string } | null)?.verdict ?? null,
-    is_copy: tax.outlier_copy === 'true' || tax.outlier_copy === true, photos: Array.isArray(row.image_urls) ? row.image_urls.length : 0,
-    brain: member || tax.source === 'content-brain', human_edited: String(tax.human_edited ?? '') === 'true',
-    slot_kind: null, selling: false, chars: String(row.post_body ?? '').length, created_at: row.created_at, fixture: (tax.desk_eval_fixture as string) ?? null,
-  }
-  const handle = String(act.draft ?? '#target').toLowerCase()
-  const queueByDraft = new Map(snap.queue ? [[d.id, { queue_id: snap.queue.queue_id, draft_id: d.id, slot_at: snap.queue.slot_at, origin: 'own', first_line: firstLine }]] : [])
-  const brief: Rendered = { ...ctx.brief, drafts: new Map([[handle.startsWith('#') ? handle : '#' + handle, d]]), handleOf: new Map([[d.id, handle]]), queueByDraft }
-  return await plan({ ...ctx, brief }, { ...act, draft: handle, line: firstLine.slice(0, 60) })
+  const live = await loadLive(ctx, snap.target_id)
+  if (!live) return { refuse: 'gone' }
+  if (String(live.snap.updated_at) !== String(snap.updated_at) || live.snap.status !== snap.status || live.snap.first_line_sha !== snap.first_line_sha) return { refuse: 'changed' }
+  const handle = '#target'
+  return await plan({ ...ctx, brief: liveBrief(ctx, live.d, live.snap, handle) }, { ...act, draft: handle, line: live.d.first_line })
 }
 
 export function firstLineOf(body: unknown): string {
@@ -289,15 +326,17 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
       return {
         ...base,
         echo: { kind, label: `Moved ${q} to ${warsaw(iso)}${prev ? ` (was ${warsaw(prev)})` : ''}`, state: 'done', undo: true, target },
-        describe: `date ${qq} for ${warsaw(iso)} Warsaw time`,
+        describe: `date ${qq} for ${String(act.at)} Warsaw time (${warsaw(iso)})`,
         command: `move ${qq} to ${String(act.at)}`,
         run: async () => {
           const { data: cur } = await ctx.svc.from('carousel_drafts').select('scheduled_at').eq('id', id).is('client_id', null).maybeSingle()
           const before = cur ? cur.scheduled_at : prev
           const { data, error } = await ctx.userDb.rpc('operator_set_schedule_date', { p_gate: GATE, p_draft_id: id, p_scheduled_at: iso })
           const r = rpcOk(data, error)
-          const at = typeof r.scheduled_at === 'string' ? r.scheduled_at : iso
-          return { result: r, undo: { op: 'date', draft_id: id, prev: before, applied: at }, detail: Date.parse(at) !== Date.parse(iso) ? `The calendar stored ${warsaw(at)}.` : undefined }
+          const after = await appliedState(ctx, id)
+          const at = after?.scheduled_at ?? (typeof r.scheduled_at === 'string' ? r.scheduled_at : iso)
+          return { result: r, undo: { op: 'date', draft_id: id, prev: before, applied: at, applied_status: after?.status ?? null, applied_updated_at: after?.updated_at ?? null },
+            detail: at && Date.parse(at) !== Date.parse(iso) ? `The calendar stored ${warsaw(at)}.` : undefined }
         },
       }
     }
@@ -313,7 +352,7 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
         return {
           ...base,
           echo: { kind: 'pull', label: `Taking ${q} off the schedule`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
-          describe: `take ${qq} off the schedule (it is scheduled for ${warsaw(prev)})`,
+          describe: `take ${qq} off the schedule (it is scheduled for ${warsaw(prev)})${reason ? `, reason: "${reason}"` : ''}`,
           command: `pull ${qq} off the schedule`,
           run: async () => {
             if (queue && kind === 'pull') {
@@ -334,67 +373,59 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
           const { data: cur } = await ctx.svc.from('carousel_drafts').select('scheduled_at').eq('id', id).is('client_id', null).maybeSingle()
           const before = cur ? cur.scheduled_at : prev
           const { data, error } = await ctx.userDb.rpc('operator_set_schedule_date', { p_gate: GATE, p_draft_id: id, p_scheduled_at: null })
-          return { result: rpcOk(data, error), undo: { op: 'date', draft_id: id, prev: before, applied: null } }
+          const r = rpcOk(data, error)
+          const after = await appliedState(ctx, id)
+          return { result: r, undo: { op: 'date', draft_id: id, prev: before, applied: null, applied_status: after?.status ?? null, applied_updated_at: after?.updated_at ?? null } }
         },
       }
     }
     case 'delete': {
       const id = d!.id, brain = d!.brain, status = d!.status
       if (status === 'published') return { echo: { kind, label: `${q} is published; delete it on LinkedIn.`, state: 'failed', undo: false, target }, refuse: 'published' }
+      // Sol r3 P1d: the desk deletes only an UNDATED draft in review or error. A dated or scheduled
+      // one is pulled first (its own action), so a delete can never race a schedule.
+      if (d!.scheduled_at || !['review', 'error'].includes(status)) {
+        return {
+          echo: { kind, label: `${q} is ${d!.scheduled_at ? 'dated' : status}. Pull it first, then delete it.`, state: 'failed', undo: false, target }, refuse: 'dated',
+          chips: [{ label: 'Pull it first', send: d!.status === 'scheduled' ? `pull ${qq} off the schedule` : `remove the date from ${qq}` }],
+        }
+      }
       const why = typeof act.reason === 'string' ? act.reason.replace(/\s+/g, ' ').trim().slice(0, 200) || null : null
+      const pinned = d!.updated_at ?? null
       return {
         ...base,
         echo: { kind, label: `Deleting ${q}${why ? ` (${why})` : ''}`, state: 'held', undo: true, hold_ms: HOLD_MS, target },
-        describe: `delete ${qq}${why ? ` because "${why}"` : ''}`,
+        describe: `delete ${qq}${why ? `, reason: "${why}"` : ', no reason given'}`,
         command: `delete ${qq}${why ? `, reason: ${why}` : ''}`,
         run: async () => {
-          const queueLive = async () => {
-            const { data, error } = await ctx.svc.from('scheduled_posts').select('id, status, scheduled_at')
-              .eq('clickup_task_id', id).in('status', ['pending', 'queued_v2', 'posting'])
-            if (error) throw new Error('queue_check_failed')
-            return (data ?? []) as { id: string; status: string; scheduled_at: string }[]
-          }
-          let live = await queueLive()
-          if (live.some((r) => r.status === 'posting')) throw new Error('posting_now')
-          if (brain && ['review', 'error'].includes(status)) {
-            if (live.length) throw new Error('queued_brain')
+          const { data: live, error: qErr } = await ctx.svc.from('scheduled_posts').select('id')
+            .eq('clickup_task_id', id).in('status', ['pending', 'queued_v2', 'posting']).limit(1)
+          if (qErr) throw new Error('queue_check_failed')
+          if (live?.length) throw new Error('queue_still_live')
+          if (brain) {
             const reasons = why ? [...new Set(BRAIN_REASONS.filter(([re]) => re.test(why)).map(([, r]) => r))] : []
             const { data, error } = await ctx.userDb.rpc('cb39_verdict_set', { p_draft: id, p_verdict: 'drop', p_reasons: reasons.length ? reasons : ['other'], p_note: why, p_invocation: null, p_ms_to_verdict: null })
             if (error) throw new Error(error.message)
             return { result: data }
           }
-          // Sol r1 #7 / r2 #5: a queued copy is pulled first through the app's own paths, then the
-          // queue is read again; any live copy left means nothing is deleted.
-          if (live.length) {
-            const q = ctx.brief.queueByDraft.get(id)
-            let pulled = false
-            if (q) {
-              const { data, error } = await ctx.userDb.rpc('content_next_pull', { p_queue: q.queue_id, p_slot_at: q.slot_at, p_reason: why })
-              pulled = !error && (data as { ok?: boolean } | null)?.ok === true
-            }
-            if (!pulled) {
-              const { data, error } = await ctx.userDb.rpc('operator_set_schedule_date', { p_gate: GATE, p_draft_id: id, p_scheduled_at: null })
-              rpcOk(data, error)
-            }
-            live = await queueLive()
-            if (live.length) throw new Error('queue_still_live')
-          } else if (d!.scheduled_at) {
-            const { data, error } = await ctx.userDb.rpc('operator_set_schedule_date', { p_gate: GATE, p_draft_id: id, p_scheduled_at: null })
-            rpcOk(data, error)
-          }
+          if (!pinned) throw new Error('changed')
+          // every statement carries the full predicate: same row, his lane, still undated, still
+          // review/error, unchanged since it was authorized; zero rows = it changed, nothing deleted
+          const guard = (qb: Db, at: string) => qb.eq('id', id).is('client_id', null).is('scheduled_at', null).in('status', ['review', 'error']).eq('updated_at', at)
+          let at = pinned
           const { data: row } = await ctx.userDb.from('carousel_drafts').select('taxonomy').eq('id', id).maybeSingle()
           let tax = row?.taxonomy
           if (why) {
             tax = stampTaxonomy(tax, { delete_reason: why })
-            try { await ctx.userDb.from('carousel_drafts').update({ taxonomy: tax }).eq('id', id).is('client_id', null) } catch { /* fail-soft, as the app */ }
+            const st = await guard(ctx.userDb.from('carousel_drafts').update({ taxonomy: tax }), at).select('updated_at')
+            if (st.error || !st.data?.length) throw new Error('changed')
+            at = st.data[0].updated_at
           }
-          const del = await ctx.userDb.from('carousel_drafts').delete().eq('id', id).is('client_id', null).select('id')
+          const del = await guard(ctx.userDb.from('carousel_drafts').delete(), at).select('id')
           if (!del.error && del.data?.length) return { result: { outcome: 'deleted' } }
-          const upd = await ctx.userDb.from('carousel_drafts')
-            .update({ status: 'disqualified', taxonomy: stampTaxonomy(tax, { deleted_by_operator: true, deleted_at: new Date().toISOString() }) })
-            .eq('id', id).is('client_id', null).select('id')
-          if (upd.error) throw new Error(upd.error.message)
-          if (!upd.data?.length) throw new Error('Delete failed: the row was neither removed nor archived.')
+          const upd = await guard(ctx.userDb.from('carousel_drafts')
+            .update({ status: 'disqualified', taxonomy: stampTaxonomy(tax, { deleted_by_operator: true, deleted_at: new Date().toISOString() }) }), at).select('id')
+          if (upd.error || !upd.data?.length) throw new Error('changed')
           return { result: { outcome: 'disqualified' } }
         },
       }
@@ -420,11 +451,14 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
           const { data: row, error: rErr } = await ctx.userDb.from('carousel_drafts').select('id, type, topic, title, taxonomy, status').eq('id', id).maybeSingle()
           if (rErr || !row) throw new Error('not_found')
           const startedAt = new Date().toISOString()
-          const before = row.status
+          const before = d!.status
           const tax0 = row.taxonomy && typeof row.taxonomy === 'object' && !Array.isArray(row.taxonomy) ? row.taxonomy : {}
           // guarded on the status we read: a row that changed meanwhile is not touched
-          const { data: flipped, error } = await ctx.userDb.from('carousel_drafts').update({ status: 'generating', taxonomy: { ...tax0, generating_started_at: startedAt } })
-            .eq('id', id).eq('status', before).select('id')
+          // only the request that gets the row fires the writer: status AND updated_at as authorized (Sol r3)
+          let flip = ctx.userDb.from('carousel_drafts').update({ status: 'generating', taxonomy: { ...tax0, generating_started_at: startedAt } })
+            .eq('id', id).is('client_id', null).eq('status', d!.status)
+          if (d!.updated_at) flip = flip.eq('updated_at', d!.updated_at)
+          const { data: flipped, error } = await flip.select('id')
           if (error || !flipped?.length) throw new Error('changed')
           const postFormat = row.type === 'carousel' ? 'Carousel' : row.type === 'single_image' ? 'Single Image' : 'Text Post'
           const f = ctx.fetchImpl ?? fetch
@@ -468,8 +502,9 @@ async function planInner(ctx: Ctx, act: Act): Promise<Planned> {
           const { data, error } = await ctx.userDb.rpc('operator_set_draft_photos', { p_gate: GATE, p_draft_id: id, p_urls: applied })
           if (error) throw new Error(error.message)
           if ((data as { ok?: boolean })?.ok !== true) throw new Error(String((data as { error?: string })?.error ?? 'refused'))
-          const stored = Array.isArray((data as { image_urls?: unknown }).image_urls) ? (data as { image_urls: string[] }).image_urls : applied
-          return { result: data, undo: { op: 'photos', draft_id: id, prev, applied: stored } }
+          const after = await appliedState(ctx, id)
+          const stored = after?.image_urls ?? (Array.isArray((data as { image_urls?: unknown }).image_urls) ? (data as { image_urls: string[] }).image_urls : applied)
+          return { result: data, undo: { op: 'photos', draft_id: id, prev, applied: stored, applied_status: after?.status ?? null, applied_updated_at: after?.updated_at ?? null } }
         },
       }
     }
@@ -633,17 +668,23 @@ function classifyPostUrlInner(url: string): { platform: 'linkedin' | 'x'; id: st
 
 export class UndoRefused extends Error {}
 
+async function appliedState(ctx: Pick<Ctx, 'svc'>, id: string): Promise<{ scheduled_at: string | null; status: string; updated_at: string; image_urls: string[] } | null> {
+  const { data } = await ctx.svc.from('carousel_drafts').select('scheduled_at, status, updated_at, image_urls').eq('id', id).is('client_id', null).maybeSingle()
+  return data ? { scheduled_at: data.scheduled_at, status: data.status, updated_at: data.updated_at, image_urls: Array.isArray(data.image_urls) ? data.image_urls : [] } : null
+}
+
 /**
  * Undo a done action through the same app paths, but only while the value is still the one this
  * action applied (Sol r1): a later edit in the calendar or the app is never overwritten.
  */
 export async function runUndo(ctx: Pick<Ctx, 'userDb' | 'svc'>, undo: Record<string, unknown>): Promise<void> {
   if (undo.op === 'date' || undo.op === 'photos') {
-    if (!('applied' in undo)) throw new UndoRefused('legacy')
-    // compare + app RPC in one statement, under a row lock, as Ivan's own session (db/20261118m_content_desk_r3.sql)
+    if (!('applied' in undo) || !undo.applied_status || !undo.applied_updated_at) throw new UndoRefused('legacy')
+    // compare (value, status, updated_at) + app RPC in one statement under a row lock, as Ivan's own
+    // session (db/20261118m_content_desk_r4.sql); a post scheduled or edited since is never touched
     const { data, error } = undo.op === 'date'
-      ? await ctx.userDb.rpc('desk_undo_schedule', { p_draft: undo.draft_id, p_applied: undo.applied ?? null, p_prev: undo.prev ?? null })
-      : await ctx.userDb.rpc('desk_undo_photos', { p_draft: undo.draft_id, p_applied: undo.applied ?? [], p_prev: undo.prev ?? [] })
+      ? await ctx.userDb.rpc('desk_undo_schedule_v2', { p_draft: undo.draft_id, p_applied: undo.applied ?? null, p_applied_status: undo.applied_status, p_applied_updated_at: undo.applied_updated_at, p_prev: undo.prev ?? null })
+      : await ctx.userDb.rpc('desk_undo_photos_v2', { p_draft: undo.draft_id, p_applied: undo.applied ?? [], p_applied_status: undo.applied_status, p_applied_updated_at: undo.applied_updated_at, p_prev: undo.prev ?? [] })
     if (error) throw new Error('undo_failed')
     const r = (data ?? {}) as { ok?: boolean; error?: string }
     if (r.ok !== true) {

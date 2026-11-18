@@ -33,8 +33,9 @@ export function parseAuth(text: string, n: number): boolean[] {
     if (!Array.isArray(arr) || arr.length !== n) return out
     const seen = new Set<number>()
     for (const x of arr) {
-      const i = Number(x?.n) - 1
-      if (!Number.isInteger(i) || i < 0 || i >= n || seen.has(i) || typeof x?.ok !== 'boolean') return new Array(n).fill(false)
+      if (typeof x?.n !== 'number' || !Number.isInteger(x.n)) return new Array(n).fill(false)
+      const i = x.n - 1
+      if (i < 0 || i >= n || seen.has(i) || typeof x?.ok !== 'boolean') return new Array(n).fill(false)
       seen.add(i)
       out[i] = x.ok === true
     }
