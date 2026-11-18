@@ -186,7 +186,8 @@ export function render(b: BriefJson, recent: { role: string; origin: string; bod
     const last = posts.slice().sort((a, z) => String(z.posted_at).localeCompare(String(a.posted_at)))[0]
     const best = posts.filter((p) => !p.boosted).sort((a, z) => (z.impressions ?? 0) - (a.impressions ?? 0))[0]
     const S: string[] = []
-    S.push(`Review: ${rv.length} drafts (${rv.filter((d) => !d.is_copy).length} originals, ${rv.filter((d) => d.is_copy).length} copies; ${rv.filter((d) => d.scheduled_at).length} dated, ${rv.filter((d) => !d.scheduled_at).length} undated; ${rv.filter((d) => d.brain).length} brain drafts that take Keep/Drop; ${rv.filter((d) => d.recipe === 'cp17').length} from the new writer recipe; QA verdicts ${Object.entries(rv.reduce((a, d) => (a[d.qa_verdict ?? 'none'] = (a[d.qa_verdict ?? 'none'] ?? 0) + 1, a), {} as Record<string, number>)).map(([k, v]) => `${k} ${v}`).join(', ')}).`)
+    S.push(`Review: ${rv.length} drafts, ${rv.filter((d) => d.recipe === 'cp17').length} of them from the new writer recipe; ${rv.filter((d) => d.scheduled_at).length} dated.`)
+    S.push(`(Only if he asks:) Review also has ${rv.filter((d) => d.is_copy).length} copies and ${rv.filter((d) => d.brain).length} brain drafts that take Keep/Drop.`)
     S.push(`All live drafts by status: ${Object.entries(byStatus).map(([k, v]) => `${k} ${v}`).join(', ')}.`)
     for (const w of weeks) S.push(`${w.label.toLowerCase()}: ${w.originals} of ${w.cap} originals dated, ${w.dated.length - w.originals} ${w.dated.length - w.originals === 1 ? 'copy' : 'copies'}, ${w.dated.filter((x) => x.status === 'published').length} already published.`)
     if (last) S.push(`Last post out: ${warsaw(last.posted_at)} "${clip(last.first_line, 70)}" (${last.impressions ?? '?'} impressions so far).`)
