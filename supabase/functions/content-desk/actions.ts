@@ -28,7 +28,7 @@ import { warsaw, warsawDay } from './brief.ts'
 import { oneText, type Act } from './parse.ts'
 import { urlInMessage } from './unfurl.ts'
 import { MAX_BRIEF_CHARS, MAX_TITLE_CHARS } from '../_shared/desk-t3.ts'
-import { identify, words, sharedSpan, withoutDays, parseDestination, type IdDraft } from './target.ts'
+import { identify, words, hasAll, refTokens, parseDestination, type IdDraft } from './target.ts'
 
 // deno-lint-ignore no-explicit-any
 type Db = any
@@ -154,33 +154,30 @@ export function dayOf(d: Draft): string {
   return at ? warsawDay(at) : 'undated'
 }
 
-/** The shortest opening of the draft's first line that matches no other draft in the brief (else the whole line). */
+/** The shortest opening (3+ words) of the draft's first line whose tokens no other draft's opener holds all of (else the whole line). */
 export function distinctExcerpt(d: Draft, all: Draft[]): string {
   const ws = d.first_line.split(/\s+/).filter(Boolean)
-  for (let n = 3; n <= Math.min(ws.length, 24); n++) {
+  for (let n = Math.min(3, ws.length); n <= Math.min(ws.length, 24); n++) {
     const ex = ws.slice(0, n).join(' ')
-    // unique under the identity rule itself (round 14: the chip's day never narrows): this draft's
-    // content-word span strictly beats every other draft's
-    const exw = words(withoutDays(ex))
-    const own = sharedSpan(exw, words(d.first_line))
-    if (own > 0 && all.every((o) => o.id === d.id || sharedSpan(exw, words(o.first_line)) < own)) return ex
+    // unique under the identity rule itself (round 17, conjunctive): no other opener holds every token
+    const tk = refTokens(ex)
+    if (tk.length && all.every((o) => o.id === d.id || !hasAll(o.first_line, tk))) return ex
   }
   return d.first_line
 }
 
-// the verb only: a chip carries draft identity and never a rejected argument (no time, no reason) (Sol r8 #3)
-// short verbs: a chip's own boilerplate must never outweigh the excerpt in the span match (target.ts)
+// the kind's own fixed verb and the quoted excerpt, nothing else: a chip carries draft identity only, never
+// a day, a time or a reason (Sol r8 #3); under conjunctive identity every other word would have to be in the opener
 const VERB: Record<string, (ref: string) => string> = {
   approve: (r) => `approve ${r}`, delete: (r) => `delete ${r}`, redo: (r) => `redo ${r}`,
-  date: (r) => `move ${r}`, undate: (r) => `undate ${r}`,
-  pull: (r) => `pull ${r}`, photo_attach: (r) => `add photo to ${r}`,
+  date: (r) => `move ${r}`, undate: (r) => `remove the date from ${r}`,
+  pull: (r) => `pull ${r}`, photo_attach: (r) => `attach this photo to ${r}`,
 }
 
-/** One chip per candidate, built from draft identity only: a distinct opener excerpt plus its day. */
+/** One chip per candidate, built from draft identity only: a distinct opener excerpt, quoted. */
 export function pickChips(act: Act, ds: Draft[], all: Draft[]): { label: string; send: string }[] {
   return ds.slice(0, 3).map((d) => {
-    const day = dayOf(d)
-    const ref = `"${distinctExcerpt(d, all)}" ${day === 'undated' ? '(no date)' : `(${day})`}`
+    const ref = `"${distinctExcerpt(d, all)}"`
     const send = (VERB[IN_ALIAS[act.kind] ?? act.kind] ?? ((r: string) => `${act.kind} ${r}`))(ref)
     return { label: send, send }
   })
@@ -415,9 +412,10 @@ export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: 
     destSpan = dp.span
   }
   const idOpts = { today, kind: act.kind, note: act.note, destSpan }
-  const asId = (ds: Draft[]): IdDraft[] => ds.map((d) => ({ id: d.id, first_line: d.first_line, day: dayOf(d), rev: d.updated_at ?? null }))
+  // each candidate carries its eligibility for this kind: exactly one live ELIGIBLE draft must hold every token
+  const asId = (ds: Draft[]) => ds.map((d) => ({ id: d.id, first_line: d.first_line, day: dayOf(d), rev: d.updated_at ?? null, ok: eligible(act.kind, d) }))
   let res = identify(ctx.text, asId(cands), idOpts)
-  if (ctx.fixtures && !res.ids.length && res.why !== 'too_many_rivals' && res.why !== 'positional' && res.why !== 'day_conflict') {
+  if (ctx.fixtures && !res.ids.length && res.why !== 'positional') {
     // eval fixtures mode: fixtures first; only when no fixture fits his words do his real drafts count
     const real = await liveCandidates({ ...ctx, fixtures: false })
     if (!real) return ask('read_failed', 'I could not read your drafts, so I did nothing.')
@@ -429,7 +427,7 @@ export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: 
   const chipsFor = (ds: Draft[]) => verifiedChips(act, ds, all, idOpts)
   if (res.ids.length !== 1) {
     const shown = [...res.ids, ...res.rivals].map((x) => byId.get(x)!).filter(Boolean)
-    if (res.why === 'too_many_rivals') return ask('ambiguous', 'Several posts match your words. Pick one.', chipsFor(shown))
+    if (res.why === 'no_words') return ask('no_match', 'Name a few words of the post you mean.')
     if (res.why === 'positional') {
       // no numbered references (round 15 #1): a position is refused, with chips for the posts this kind can act on
       const pick = all.filter((d) => eligible(act.kind, d))
@@ -440,13 +438,9 @@ export async function planLive(ctx: Ctx, act: Act): Promise<{ p: Planned; snap: 
       // day-only identity is for held kinds only (round 16 #1+2): an immediate change names the post's words
       return ask('needs_words', shown.length ? 'Name a few words of the post, or tap it.' : 'Name a few words of the post you mean.', chipsFor(shown))
     }
-    if (res.why === 'day_conflict') {
-      // a source day only vetoes (round 15 #1): the post his words match is on another day
-      return ask('day_conflict', 'The post your words match is not on the day you named, so I did nothing. Tap it if you mean it.', chipsFor(shown))
-    }
-    return shown.length
+    return res.ids.length
       ? ask('ambiguous', `${res.ids.length} posts match your words. Pick one.`, chipsFor(shown))
-      : ask('no_match', 'I could not tell which post you mean from your words.')
+      : ask('no_match', shown.length ? 'No post holds all of your words. Tap the one you mean.' : 'I could not tell which post you mean from your words.', chipsFor(shown))
   }
   const match = byId.get(res.ids[0])!
   // resolved, but not one this kind can act on: refused as itself, never swapped for another draft
@@ -657,7 +651,7 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
         if (kind === 'pull' && !queue) {
           // a pull acts on the exact Next row only (Sol r4 #4); without one it is the calendar's Remove date, asked for as such
           return { echo: { kind: 'pull', label: `${q} has no queued copy I can pull, so I did nothing.`, state: 'failed', undo: false, target }, refuse: 'no_queue_row',
-            chips: [{ label: 'Remove the date', send: `remove the date from ${qq}` }] }
+            chips: [{ label: 'Remove the date', send: `remove the date from "${d!.first_line}"` }] }
         }
         // Pull: the queued copy is cancelled and the draft goes back to Review. No undo exists in the app.
         return {
@@ -704,7 +698,7 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
       if (d!.scheduled_at || !['review', 'error'].includes(status)) {
         return {
           echo: { kind, label: `${q} is ${d!.scheduled_at ? 'dated' : status}. Pull it first, then delete it.`, state: 'failed', undo: false, target }, refuse: 'dated',
-          chips: [{ label: 'Pull it first', send: d!.status === 'scheduled' ? `pull ${qq} off the schedule` : `remove the date from ${qq}` }],
+          chips: [{ label: 'Pull it first', send: d!.status === 'scheduled' ? `pull "${d!.first_line}"` : `remove the date from "${d!.first_line}"` }],
         }
       }
       const why = (c.reason as string | null) ?? null
@@ -732,7 +726,7 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
         // Sol r1: the writer takes no direction from here, so a directed redo is refused, never silently dropped.
         return {
           echo: { kind, label: `The writer can't take a direction from here yet, so I left ${q} as it is. Say "redo it" to rerun it on the same idea.`, state: 'failed', undo: false, target },
-          refuse: 'direction_unsupported', chips: [{ label: 'Redo on the same idea', send: `redo ${qq} through the writer, same idea` }],
+          refuse: 'direction_unsupported', chips: [{ label: 'Redo on the same idea', send: `redo "${d!.first_line}"` }],
         }
       }
       return {
@@ -746,10 +740,11 @@ async function planCase(ctx: Ctx, act: Act, c: Record<string, unknown>): Promise
           if (!d!.updated_at) throw new Error('changed')
           const startedAt = new Date().toISOString()
           const before = d!.status
-          // the 'generating' flip, the action -> 'dispatching' and its ONE dispatch row, in one transaction
-          // (round 16 #6); then exactly one writer call goes out through the dispatch row
-          await deskWrite(ctx, actionId, claim, 'desk_redo_claim', { p_draft: id, p_expected_updated_at: d!.updated_at, p_expected_status: before, p_started_at: startedAt, p_expected_scheduled_at: sourceAt(act, d!) })
-          return await dispatchRedo(ctx, actionId, claim ?? '')
+          // the 'generating' claim under the lock (lane, revision, status, source date, no live queue row);
+          // the action stays 'committing' until the writer answers (round 17 C)
+          const row = await deskWrite(ctx, actionId, claim, 'desk_redo_claim', { p_draft: id, p_expected_updated_at: d!.updated_at, p_expected_status: before, p_started_at: startedAt, p_expected_scheduled_at: sourceAt(act, d!) }) as
+            { type?: string; topic?: string | null; title?: string | null }
+          return await callWriter(ctx, actionId, claim ?? '', id, startedAt, before, row)
         },
       }
     }
@@ -974,47 +969,37 @@ export function actionKey(p: Pick<Planned, 'echo' | 'target_id' | 'canon'>): str
 }
 
 /**
- * The ONE writer call of a redo (round 16 #6). desk_redo_send moves the action's dispatch row pending ->
- * sending for this claim only, so a second call can never go out; the writer's answer is recorded by
- * desk_redo_result, and the action becomes done only when the writer accepted. A timeout or 5xx leaves it
- * 'dispatching' (the call may be running) and is never repeated.
+ * The ONE writer call of a redo (round 17 C): one forward step, never re-sent and never resumed. The
+ * 'generating' claim already ran under the lock; this calls the writer once. An affirmative accept marks
+ * the action done (desk_redo_finish); a 4xx records the refusal AND releases the draft in ONE SQL call
+ * (desk_redo_refused); a timeout, network error or 5xx marks it 'unconfirmed' (the writer may be running).
  */
-export async function dispatchRedo(ctx: Pick<Ctx, 'svc' | 'env' | 'fetchImpl'>, actionId: string, claim: string): Promise<{ result: unknown; detail?: string }> {
-  const { data: sent, error: sErr } = await ctx.svc.rpc('desk_redo_send', { p_action: actionId, p_claim: claim })
-  const s = (sent ?? {}) as { ok?: boolean; draft_id?: string; payload?: { before_status?: string; type?: string; topic?: string | null; title?: string | null }; started_at?: string }
-  if (sErr || s.ok !== true || !s.draft_id) throw new Error('dispatch_unclear')
-  const row = s.payload ?? {}
+export async function callWriter(ctx: Pick<Ctx, 'svc' | 'env' | 'fetchImpl'>, actionId: string, claim: string, draftId: string, startedAt: string, before: string, row: { type?: string; topic?: string | null; title?: string | null }): Promise<{ result: unknown; detail?: string }> {
   const postFormat = row.type === 'carousel' ? 'Carousel' : row.type === 'single_image' ? 'Single Image' : 'Text Post'
   const f = ctx.fetchImpl ?? fetch
   let status = 0
   try {
     const res = await f(ctx.env('VITE_POSTGEN_WEBHOOK') || POSTGEN, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ draft_id: s.draft_id, topic: row.topic ?? row.title ?? '', title: row.title ?? '', author: 'Ivan', source: 'Inbox', post_format: postFormat, include_image: 'No' }),
+      body: JSON.stringify({ draft_id: draftId, topic: row.topic ?? row.title ?? '', title: row.title ?? '', author: 'Ivan', source: 'Inbox', post_format: postFormat, include_image: 'No' }),
       signal: AbortSignal.timeout(15_000),
     })
     status = res.status
   } catch { status = 0 }
-  const record = async (outcome: string) => { try { await ctx.svc.rpc('desk_redo_result', { p_action: actionId, p_claim: claim, p_outcome: outcome, p_http: status || null }) } catch { /* reconcile reads the row */ } }
   if (status >= 400 && status < 500) {
-    // an explicit rejection: the writer will not run, so the row goes back if it is still ours (up to 3
-    // tries while busy, Sol r7 #5), then the refusal is recorded
-    let released = false
-    for (let i = 0; i < 3 && !released; i++) {
-      const { data, error } = await ctx.svc.rpc('desk_redo_release', { p_action: actionId, p_claim: claim, p_draft: s.draft_id, p_started_at: s.started_at, p_status: row.before_status ?? 'review' })
-      const code = error ? (lockCode(error) ? 'busy' : 'error') : String((data as { ok?: boolean; error?: string } | null)?.ok === true ? 'ok' : (data as { error?: string } | null)?.error ?? 'error')
-      if (code === 'ok' || code === 'changed' || code === 'gone') released = true
-      else await new Promise((res) => setTimeout(res, 150 * (i + 1)))
+    // refusal + release in one atomic SQL call; up to 3 tries while the row is busy (Sol r7 #5)
+    for (let i = 0; i < 3; i++) {
+      const { data, error } = await ctx.svc.rpc('desk_redo_refused', { p_action: actionId, p_claim: claim, p_draft: draftId, p_started_at: startedAt, p_status: before, p_http: status })
+      if (!error && (data as { ok?: boolean } | null)?.ok === true) throw new Error('writer_refused')
+      await new Promise((res) => setTimeout(res, 150 * (i + 1)))
     }
-    await record(released ? 'refused' : 'refused_stuck')
-    throw new Error(released ? 'writer_refused' : 'failed_release')
+    throw new Error('failed_release')
   }
   if (status < 200 || status >= 300) {
-    // timeout, reset or 5xx: the writer may well be running; never sent again, no rollback
-    await record('unconfirmed')
-    return { result: { fired: 'unconfirmed' }, detail: 'The writer did not confirm. It may still be running; check Review in a few minutes.' }
+    try { await ctx.svc.rpc('desk_redo_finish', { p_action: actionId, p_claim: claim, p_outcome: 'unconfirmed', p_http: status || null }) } catch { /* the reread shows unconfirmed anyway */ }
+    return { result: { fired: 'unconfirmed' }, detail: 'The writer may be running. Check Review in a few minutes.' }
   }
-  await record('accepted')
+  try { await ctx.svc.rpc('desk_redo_finish', { p_action: actionId, p_claim: claim, p_outcome: 'accepted', p_http: status }) } catch { /* the reread shows unconfirmed, never done */ }
   return { result: { fired: true } }
 }
 

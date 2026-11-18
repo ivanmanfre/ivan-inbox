@@ -1,19 +1,14 @@
-// Target identity from IVAN'S OWN WORDS (Sol desk-backend r9 #1, round 10 design, rounds 14-16).
+// Target identity from IVAN'S OWN WORDS (Sol desk-backend r9 #1, round 10 design, rounds 14-17).
 //
 // The model proposes only an action kind and its arguments. Which draft it acts on is decided here,
-// by data matching against his CURRENT message, never from the model's handle, excerpt or day:
-//   (a) the longest word-level span shared by his message and each draft's first line (casefolded,
-//       accents folded, whitespace-normalized, with at least one content word of 4+ letters); the
-//       candidates are the drafts that reach the maximum. Day words never score and never narrow.
-//   (b) the ONE exception, for HELD kinds only (pull, approve, delete): a reference that is exactly a day
-//       phrase with no leftover token ("tomorrow's post", "the post on Friday") resolves to the drafts
-//       dated that day. Immediate kinds (date, remove date, photo) always need a content-word match.
-//   (c) a source day he names next to other words may only VETO a unique text match on another day;
-//       it never selects. Quoted words (straight or curly, single or double) are always text.
-// There are no numbered references: a positional selector ("#2", "number 2", "the second one") is refused
-// with chips, and a choice between candidates is made only through chips that send identity text.
-// Exactly one candidate proceeds. This is identity matching, not a consent gate: the verifier still
-// judges whether he asked for the action.
+// by data matching against his CURRENT message, never from the model's handle, excerpt or day.
+// CONJUNCTIVE identity, the same for every kind (round 17): from his message remove only the fixed
+// command verb phrase of the kind, the parsed destination span (moves), and the frame words
+// "the/one/post/posts/draft/drafts"; every remaining token (letters or digits; quoted spans count as their
+// words) must appear in the draft's first line (casefolded, accent-folded, whole words). Exactly one live
+// eligible draft must satisfy that; zero or several act on none, with chips. For held kinds (pull,
+// approve, delete) a reference that is only a day phrase ("tomorrow's post") keeps the day-only path. A
+// source date never selects, and there are no numbered references.
 
 export type IdDraft = { id: string; first_line: string; day: string; rev?: string | null }   // day: YYYY-MM-DD (Warsaw) or 'undated'; rev = updated_at
 
@@ -56,8 +51,15 @@ export function sharedSpan(a: string[], b: string[]): number {
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
 const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 
-// the command verb a message starts with: never part of the reference (Sol r10 #3)
-const VERB_HEAD = /^\s*(?:ok(?:ay)?,?\s+|please\s+|can you\s+|could you\s+)*(?:approve|delete|remove the date from|remove|undate|unschedule|move|put|schedule|reschedule|date|pull|redo|rewrite|attach (?:this|the|my) (?:photo|picture|pic) to|add (?:this|the|my) (?:photo|picture|pic) to|attach|add)\b\s*/i
+// the fixed command verb phrase of each kind: the only verb words ever removed from his message (round 17)
+const KIND_VERB: Record<string, string> = {
+  approve: 'approve', delete: 'delete', pull: 'pull', redo: 'redo|rewrite',
+  date: 'move|put|schedule|reschedule|date', undate: 'remove the date from|undate|unschedule',
+  photo_attach: '(?:attach|add) (?:this|the|my) (?:photo|picture|pic) to',
+}
+const verbHead = (kind?: string) => new RegExp(`^\\s*(?:${kind && KIND_VERB[kind] ? KIND_VERB[kind] : Object.values(KIND_VERB).join('|')})\\b\\s*`, 'i')
+/** The frame words: they point at "a post" and never say which one. The ONLY words dropped besides the verb. */
+export const FRAME = new Set(['the', 'one', 'post', 'posts', 'draft', 'drafts'])
 // a weekday as a whole word: full names, and the short forms that are not ordinary words ("sat", "sun" are)
 const WEEKDAY_WORD = '(?:mon(?:day)?|tue(?:s(?:day)?)?|wed(?:nesday)?|thu(?:r(?:s(?:day)?)?)?|fri(?:day)?|saturday|sunday)'
 const DAY_WORD = `(?:\\btoday\\b|\\btonight\\b|\\btomorrow\\b|\\b(?:next|this)\\s+${WEEKDAY_WORD}\\b|\\b${WEEKDAY_WORD}\\b|\\b\\d{1,2}\\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\b|\\b\\d{4}-\\d{2}-\\d{2}\\b)`
@@ -65,29 +67,29 @@ const DAY_WORD = `(?:\\btoday\\b|\\btonight\\b|\\btomorrow\\b|\\b(?:next|this)\\
 const DAY_PHRASE = new RegExp(`(?:\\b(?:to|on|for|at|until|from)\\s+(?:the\\s+)?)?${DAY_WORD}(?:'s)?(?:\\s+\\d{1,2}(?:\\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*)?)?(?:\\s+(?:at\\s+)?\\d{1,2}(?::\\d{2})?\\s*(?:am|pm)?)?`, 'gi')
 
 /**
- * The target phrase of his message: no command verb. For a date move only the EXACT destination span
- * the destination parser returned is removed (round 16); every other day phrase is a source and stays for
- * the veto. For a redo the direction goes (the proposed note's own span, and anything after the first
- * comma, "make it", "but" ...), where punctuation inside a quoted opener never counts as the cut.
+ * The target phrase of his message: the kind's fixed verb phrase is removed, and for a date move the
+ * EXACT destination span the parser returned. The reference is the message's first clause (it ends at
+ * the first comma or semicolon outside quotes: "delete the ferry one, it makes no sense"). For a redo the
+ * direction also goes (the proposed note's own span, "make it", "but" ...). Punctuation inside a quoted
+ * opener never counts as a cut.
  */
 export function referencePart(text: string, kind?: string, note?: unknown, destSpan?: { at: number; end: number } | null): string {
   let t = text
   if (kind === 'date' && destSpan) t = text.slice(0, destSpan.at) + ' ' + text.slice(destSpan.end)
-  t = t.replace(VERB_HEAD, '')
+  t = t.replace(verbHead(kind), '')
   if (kind === 'redo') {
     const n = typeof note === 'string' ? note.trim() : ''
     if (n) { const i = t.toLowerCase().indexOf(n.toLowerCase()); if (i >= 0) t = t.slice(0, i) + ' ' + t.slice(i + n.length) }
-    // cut at the first direction marker OUTSIDE a quoted span
-    const masked = maskQuotes(t)
-    const m = masked.match(/,|;|\s(?:and\s+)?make it\s|\sbut\s|\swith more\s|\swith less\s/i)
-    if (m && m.index != null) t = t.slice(0, m.index)
   }
+  const masked = maskQuotes(t)
+  const m = masked.match(kind === 'redo' ? /,|;|\s(?:and\s+)?make it\s|\sbut\s|\swith more\s|\swith less\s/i : /,|;/)
+  if (m && m.index != null) t = t.slice(0, m.index)
   return t
 }
 
 // straight and curly, double and single quoted spans; a single quote inside a word ("Friday's", "I'm",
 // "Friday\u2019s") is an apostrophe, never a quote
-const QUOTED = /"[^"\n]*"|\u201c[^\u201d\n]*\u201d|(?<![\p{L}\p{N}])'[^'\n]*'(?![\p{L}\p{N}])|\u2018[^\u2019\n]*\u2019(?![\p{L}\p{N}])/gu
+const QUOTED = /"[^"\n]*"|\u201c[^\u201d\n]*\u201d|(?<![\p{L}\p{N}])'(?:[^'\n]|'(?=[\p{L}\p{N}]))*'(?![\p{L}\p{N}])|\u2018(?:[^\u2019\n]|\u2019(?=[\p{L}\p{N}]))*\u2019(?![\p{L}\p{N}])/gu
 /** Apply `f` to the text outside quoted spans only; quoted spans come back unchanged. */
 export function outsideQuotes(text: string, f: (seg: string) => string): string {
   let out = '', last = 0
@@ -228,8 +230,16 @@ export function parseDestination(text: string, today: string): Destination {
   if (!cands.length) return { ok: false, code: 'unclear_date', label: 'I could not read the date: there is no day in your words. Say it like "Friday" or "27 Nov at 9:30".' }
   if (cands.length > 1) return { ok: false, code: 'unclear_date', label: `I could not read the date: "${text.slice(cands[0].at, cands[0].end)}" and "${text.slice(cands[1].at, cands[1].end)}" are two days.` }
   const r = cands[0]
-  const span = text.slice(r.at, r.end)
+  // the destination span takes any characters glued to it ("10:45:30", "9/3"), so the grammar must consume them
+  const glued = masked.slice(r.end).match(/^(?:[:./\-]\d+)+/)
+  const end = r.end + (glued ? glued[0].length : 0)
+  const span = text.slice(r.at, end)
   const bad = { ok: false as const, code: 'unclear_date', label: `I could not read the date: "${span}".` }
+  // one day and one time only: any date-like token after the destination ("or 10", "and monday") means nothing is done
+  const after = masked.slice(end)
+  if (/\d/.test(after) || new RegExp(`\\b(?:${WEEKDAY_WORD}|today|tonight|tomorrow|${MONTH_WORD}|noon|midday)\\b`, 'i').test(after)) {
+    return { ok: false, code: 'unclear_date', label: `I could not read the date: "${text.slice(r.at).trim()}".` }
+  }
   const m = span.trim().match(DEST_RE)
   if (!m || !m.groups) return bad
   const g = m.groups
@@ -271,7 +281,8 @@ export function parseDestination(text: string, today: string): Destination {
   // "for", "on"), which belongs to the destination and to nothing else
   const lead = span.length - span.trimStart().length
   let at = r.at + lead
-  const prep = masked.slice(0, at).match(/\b(?:to|until|for|on)\s+(?:the\s+)?$/i)
+  // the preposition is read on the ORIGINAL text (round 17 #D), never on the quote-masked copy
+  const prep = text.slice(0, at).match(/\b(?:to|until|for|on)\s+(?:the\s+)?$/i)
   if (prep) at -= prep[0].length
   return { ok: true, date, time, span: { at, end: r.at + lead + span.trim().length }, ...(note ? { note } : {}) }
 }
@@ -289,42 +300,43 @@ function dayMatches(day: string, named: { weekdays: string[]; dates: string[] },
   return named.dates.some((d) => d.length === 5 ? day.slice(5) === d : day === d)
 }
 
-export type IdResult = { ids: string[]; how: 'span' | 'day' | 'none'; span: number; rivals: string[]; why?: 'too_many_rivals' | 'positional' | 'day_conflict' | 'needs_words' }
+export type IdResult = { ids: string[]; how: 'words' | 'day' | 'none'; rivals: string[]; why?: 'positional' | 'needs_words' | 'no_words' }
 
-/** At most this many relevant alternatives are shown to the verifier; more = act on none (Sol r10 #3). */
-export const RIVAL_CAP = 5
+/** The tokens a reference must find in an opener: every word left after the verb, destination and frame words. */
+export function refTokens(ref: string): string[] {
+  return words(ref).filter((w) => !FRAME.has(w))
+}
 
-/** Resolve the target from his message (see the header). */
-export function identify(text: string, cands: IdDraft[], opts: { today?: string; kind?: string; note?: unknown; destSpan?: { at: number; end: number } | null } = {}): IdResult {
+/** Does this opener contain every token as a whole word? */
+export function hasAll(firstLine: string, tokens: string[]): boolean {
+  const w = new Set(words(firstLine))
+  return tokens.length > 0 && tokens.every((t) => w.has(t))
+}
+
+/**
+ * Resolve the target from his message (see the header). A candidate's `ok` is its eligibility for the
+ * kind: exactly one eligible draft holding every token resolves; a single ineligible match is returned
+ * so the caller refuses it as itself (never swapped); zero or several act on none, with chips.
+ */
+export function identify(text: string, cands: (IdDraft & { ok?: boolean })[], opts: { today?: string; kind?: string; note?: unknown; destSpan?: { at: number; end: number } | null } = {}): IdResult {
   const ref = referencePart(text, opts.kind, opts.note, opts.destSpan)
   // a positional selector never resolves: there are no numbered references
-  if (positional(ref)) return { ids: [], how: 'none', span: 0, rivals: [], why: 'positional' }
+  if (positional(ref)) return { ids: [], how: 'none', rivals: [], why: 'positional' }
   const onNamedDays = () => { const n = sourceDays(ref, opts.today); return cands.filter((c) => dayMatches(c.day, n, opts.today)).map((c) => c.id) }
   if (justADay(ref)) {
-    // day-only identity: held kinds only (round 16 #1+2); an immediate kind gets chips and must name words
-    if (!DAY_ONLY_KINDS.has(opts.kind ?? '')) return { ids: [], how: 'none', span: 0, rivals: onNamedDays(), why: 'needs_words' }
+    // day-only identity: held kinds only; an immediate kind gets chips and must name words
+    if (!DAY_ONLY_KINDS.has(opts.kind ?? '')) return { ids: [], how: 'none', rivals: onNamedDays(), why: 'needs_words' }
     const ids = onNamedDays()
-    return ids.length ? { ids, how: 'day', span: 0, rivals: [] } : { ids: [], how: 'none', span: 0, rivals: [] }
+    return ids.length ? { ids, how: 'day', rivals: [] } : { ids: [], how: 'none', rivals: [] }
   }
-  // dates never narrow identity: day words are dropped and every candidate is scored on his other words
-  const msg = words(withoutDays(ref))
-  const scored = cands.map((c) => ({ c, s: sharedSpan(msg, words(c.first_line)) }))
-  const max = Math.max(0, ...scored.map((x) => x.s))
-  const top = max > 0 ? scored.filter((x) => x.s === max) : []
-  if (!top.length) {
-    // a day with leftover tokens ("tomorrow's 2nd post", a quote, a digit): no match, but chips for that day
-    const onDay = onNamedDays()
-    return onDay.length ? { ids: [], how: 'none', span: 0, rivals: onDay, why: 'needs_words' } : { ids: [], how: 'none', span: 0, rivals: [] }
-  }
-  const ids = top.map((x) => x.c.id)
-  // relevant alternatives: other drafts that come within one content word of the best
-  const relevant = scored.filter((x) => !ids.includes(x.c.id) && x.s >= Math.max(1, max - 1)).sort((a, z) => z.s - a.s).map((x) => x.c.id)
-  if (ids.length === 1 && relevant.length > RIVAL_CAP) return { ids: [], how: 'span', span: max, rivals: relevant, why: 'too_many_rivals' }
-  // an explicit source day only VETOES a unique text match on another day; it never selects among ties
-  const named = sourceDays(ref, opts.today)
-  if (ids.length === 1 && (named.dates.length || (!opts.today && named.weekdays.length))) {
-    const c = top[0].c
-    if (!dayMatches(c.day, named, opts.today)) return { ids: [], how: 'span', span: max, rivals: [c.id], why: 'day_conflict' }
-  }
-  return { ids, how: 'span', span: max, rivals: relevant }
+  const tokens = refTokens(ref)
+  if (!tokens.length) return { ids: [], how: 'none', rivals: [], why: 'no_words' }
+  const matches = cands.filter((c) => hasAll(c.first_line, tokens))
+  const eligible = matches.filter((c) => c.ok !== false)
+  if (eligible.length >= 1) return { ids: eligible.map((c) => c.id), how: 'words', rivals: matches.filter((c) => c.ok === false).map((c) => c.id) }
+  if (matches.length) return { ids: matches.map((c) => c.id), how: 'words', rivals: [] }
+  // no draft holds every token: chips for the drafts that hold the most of them (never acted on)
+  const scored = cands.map((c) => { const w = new Set(words(c.first_line)); return { c, n: tokens.filter((t) => w.has(t)).length } }).filter((x) => x.n > 0)
+  const best = Math.max(0, ...scored.map((x) => x.n))
+  return { ids: [], how: 'none', rivals: best ? scored.filter((x) => x.n === best).map((x) => x.c.id) : onNamedDays() }
 }

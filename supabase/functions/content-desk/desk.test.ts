@@ -339,8 +339,7 @@ Deno.test('r4#5 redo: refused while generating; the flip requires an eligible st
   // the claim is desk_redo_claim (locks, authorized status + updated_at, no live queued copy: Sol r6 #6)
   const calls: unknown[][] = []
   let reply: Record<string, unknown> = { ok: false, error: 'changed' }
-  const SEND = { ok: true, draft_id: ID1, payload: { before_status: 'review', type: 'text', topic: 't', title: 't' }, started_at: 'S1' }
-  const userDb = { rpc: (n: string, a: unknown) => { calls.push([n, a]); return Promise.resolve({ data: n === 'desk_redo_send' ? SEND : n === 'desk_redo_claim' ? reply : { ok: true }, error: null }) }, from: () => { throw new Error('no direct table write') } }
+  const userDb = { rpc: (n: string, a: unknown) => { calls.push([n, a]); return Promise.resolve({ data: n === 'desk_redo_claim' ? reply : { ok: true }, error: null }) }, from: () => { throw new Error('no direct table write') } }
   let fired = 0
   const ctx = { brief: r, attachments: [], text: '', env: () => undefined, svc: userDb, userDb: forbidden, fetchImpl: () => { fired++; return Promise.resolve(new Response('ok')) } } as never
   const p = await plan(ctx, { kind: 'redo', draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
@@ -361,22 +360,22 @@ Deno.test('r4#5 redo: refused while generating; the flip requires an eligible st
   const p4 = await plan(ctx4, { kind: 'redo', draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
   err = ''; try { await p4.run!('A4', 'C4') } catch (e) { err = (e as Error).message }
   assertEquals(err, 'writer_refused')
-  // round 16 #6: claim (-> dispatching + one dispatch row), the single send CAS, the release, then the refusal recorded
-  const tail = calls.slice(-4).map((c) => c[0])
-  assertEquals(tail, ['desk_redo_claim', 'desk_redo_send', 'desk_redo_release', 'desk_redo_result'])
-  assertEquals((calls.at(-1)![1] as { p_outcome: string; p_claim: string }).p_outcome, 'refused')
-  assertEquals((calls.at(-1)![1] as { p_claim: string }).p_claim, 'C4')
-  // the writer accepted: done only through desk_redo_result 'accepted'
+  // round 17 C: the claim, then the refusal AND the release in ONE SQL call
+  assertEquals(calls.slice(-2).map((c) => c[0]), ['desk_redo_claim', 'desk_redo_refused'])
+  assertEquals((calls.at(-1)![1] as { p_claim: string; p_draft: string }).p_claim, 'C4')
+  // an affirmative accept: done only through desk_redo_finish 'accepted'
   const ctx2 = { brief: r, attachments: [], text: '', env: () => undefined, svc: userDb, userDb: forbidden, fetchImpl: () => { fired++; return Promise.resolve(new Response('ok')) } } as never
   const p2 = await plan(ctx2, { kind: 'redo', draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
   await p2.run!('A5', 'C5')
-  assertEquals((calls.at(-1)![1] as { p_outcome: string }).p_outcome, 'accepted')
-  // the send CAS lost (another attempt already sent it): no writer call at all
+  assertEquals(calls.at(-1)![0], 'desk_redo_finish'); assertEquals((calls.at(-1)![1] as { p_outcome: string }).p_outcome, 'accepted')
+  // a 5xx: 'unconfirmed', exactly one writer call, never re-sent
   const before = fired
-  const noSend = { rpc: (n: string) => Promise.resolve({ data: n === 'desk_redo_send' ? { ok: false, state: 'sending' } : { ok: true }, error: null }) }
-  const p3 = await plan({ brief: r, attachments: [], text: '', env: () => undefined, svc: noSend, userDb: forbidden, fetchImpl: () => { fired++; return Promise.resolve(new Response('ok')) } } as never, { kind: 'redo', draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
-  err = ''; try { await p3.run!('A6', 'C6') } catch (e) { err = (e as Error).message }
-  assertEquals(err, 'dispatch_unclear'); assertEquals(fired, before)
+  const ctx5 = { brief: r, attachments: [], text: '', env: () => undefined, svc: userDb, userDb: forbidden, fetchImpl: () => { fired++; return Promise.resolve(new Response('x', { status: 504 })) } } as never
+  const p5 = await plan(ctx5, { kind: 'redo', draft: r.handleOf.get(ID1)!, line: 'Snow in the park' })
+  const r5 = await p5.run!('A6', 'C6')
+  assertEquals(fired, before + 1)
+  assertEquals((calls.at(-1)![1] as { p_outcome: string }).p_outcome, 'unconfirmed')
+  assertEquals(r5.detail, 'The writer may be running. Check Review in a few minutes.')
 })
 
 Deno.test('r4#8 last post: one time-sorted list; SUMMARY "Last post out" is its first row', () => {
@@ -531,8 +530,9 @@ Deno.test('r6 #2: an opener shared by two drafts acts on none and shows one chip
   const chips = (res as { chips: { label: string; send: string }[] }).chips
   assertEquals(chips.length, 2)
   for (const c of chips) assertEquals(c.label, c.send)
-  assert(chips[0].send.includes('"Three things I learned this week about cold"') && chips[0].send.includes('(2026-11-26)'), chips[0].send)
-  assert(chips[1].send.includes('"Three things I learned this week about hiring"') && chips[1].send.includes('(no date)'), chips[1].send)
+  // round 17: the verb and the quoted excerpt only, never a day; the excerpt's words are in this opener only
+  assertEquals(chips[0].send, 'delete "Three things I learned this week about cold"')
+  assertEquals(chips[1].send, 'delete "Three things I learned this week about hiring"')
   // each chip's excerpt names exactly one draft
   for (const d of [a, b]) assertEquals([a, b].filter((o) => lineMatches(o.first_line, distinctExcerpt(d, [a, b]))).length, 1)
   // the longer excerpt resolves, and only with the right handle
@@ -624,8 +624,6 @@ Deno.test('r7 #5: a writer 4xx with a release that stays busy gives failed_relea
   let releases = 0
   const userDb = { rpc: (n: string) => {
     if (n === 'desk_redo_claim') return Promise.resolve({ data: { ok: true, type: 'text', topic: 't', title: 't' }, error: null })
-    if (n === 'desk_redo_send') return Promise.resolve({ data: { ok: true, draft_id: ID1, payload: { before_status: 'review' }, started_at: 'S1' }, error: null })
-    if (n === 'desk_redo_result') return Promise.resolve({ data: 'failed_release', error: null })
     releases++
     return Promise.resolve({ data: { ok: false, error: 'busy' }, error: null })
   } }
@@ -684,7 +682,7 @@ Deno.test('round 10/11 #1: "delete the snow one" against two drafts with snow mi
   const { p } = await planLive({ ...ctx, text: 'delete the snow one' } as never, { kind: 'delete', draft: r.handleOf.get(ID1)!, line: 'Fresh snow in the park' })
   assertEquals(p.run, undefined); assertEquals(p.refuse, 'ambiguous'); assertEquals(p.display, true)
   assertEquals(p.chips?.length, 2)
-  for (const c of p.chips!) assert(c.send.includes('(2026-11-26)') || c.send.includes('(no date)'), c.send)
+  for (const c of p.chips!) assert(/^delete "[^"]+"$/.test(c.send), c.send)   // identity only, no day (round 17)
   // an array-shaped model pointer goes through the same resolver (round 11 #8)
   const arr = await planLive({ ...ctx, text: 'delete the snow one' } as never, { kind: 'delete', draft: [r.handleOf.get(ID1)!, r.handleOf.get(b.id)!] })
   assertEquals(arr.p.display, true)
@@ -710,7 +708,7 @@ Deno.test('r8 #2 + #3: idea keys fold case and spaces; disambiguation chips carr
   const d = draft(ID1, 'Snow in the park this morning', { scheduled_at: '2026-11-26T09:45:00Z' })
   const chips = pickChips({ kind: 'date', at: '2027-01-01 10:00', reason: 'secret' }, [d], [d])
   assert(!chips[0].send.includes('2027-01-01') && !chips[0].send.includes('secret'), chips[0].send)
-  assertEquals(chips[0].send, 'move "Snow in the" (2026-11-26)')
+  assertEquals(chips[0].send, 'move "Snow in the"')
 })
 
 Deno.test('r8 #6: an unclosed tool block is dropped from its open tag in every path', () => {
@@ -896,11 +894,11 @@ Deno.test('round 14 #2: dates never narrow identity, except a reference that is 
     { id: 'c', first_line: 'A DM that got a reply', day: '2026-11-20' },
   ]
   const t = { today: '2026-11-18' }
-  // a day next to other words is ignored: both snow posts match the words, so act on none
-  assertEquals(identify("pull thursday's snow in the park post", ds, { ...t, kind: 'pull' }).ids.sort(), ['a', 'b'])
-  assertEquals(identify('pull the snow in the park post from saturday', ds, { ...t, kind: 'pull' }).ids.sort(), ['a', 'b'])
-  assertEquals(identify('pull the snow in the park after the storm post from thursday', ds, { ...t, kind: 'pull' }).why, 'day_conflict')   // the day only vetoes
-  assertEquals(identify('pull the snow in the park after the storm post from friday', ds, { ...t, kind: 'pull' }).ids, ['b'])
+  // round 17: a source day is a token like any other; it must be in the opener, so it never selects
+  assertEquals(identify("pull thursday's snow in the park post", ds, { ...t, kind: 'pull' }).ids, [])
+  assertEquals(identify('pull the snow in the park post from saturday', ds, { ...t, kind: 'pull' }).ids, [])
+  assertEquals(identify('pull the snow in the park post', ds, { ...t, kind: 'pull' }).ids.sort(), ['a', 'b'])
+  assertEquals(identify('pull the snow in the park after the storm post', ds, { ...t, kind: 'pull' }).ids, ['b'])
   // a reference that is only a day: the drafts dated that day
   assertEquals(identify("pull friday's post", ds, { ...t, kind: 'pull' }).ids.sort(), ['b', 'c'])
   assertEquals(identify("pull tomorrow's post", ds, { ...t, kind: 'pull' }).ids, ['a'])
@@ -958,8 +956,8 @@ Deno.test('round 16 #1+2: day-only identity is for held kinds and an exact day p
   ]
   const t = { today: '2026-11-18' }
   for (const k of ['pull', 'approve', 'delete']) assertEquals(identify("tomorrow's post", ds, { ...t, kind: k }).ids, ['a'], k)
-  for (const k of ['undate', 'photo_attach']) {
-    const r = identify("remove the date from tomorrow's post", ds, { ...t, kind: k })
+  for (const [k, x] of [['undate', "remove the date from tomorrow's post"], ['photo_attach', "attach this photo to tomorrow's post"]]) {
+    const r = identify(x, ds, { ...t, kind: k })
     assertEquals(r.ids, [], k); assertEquals(r.why, 'needs_words', k)
   }
   // leftover tokens are not a day-only reference: digits, #, quotes or other words mean chips
@@ -990,10 +988,9 @@ Deno.test('round 15 #1: positional selectors are refused; a quoted word is text;
   assertEquals(identify('approve the "friday" one', ds, t).ids, ['says'])
   // an unquoted calendar reference with no other selector still picks by day
   assertEquals(identify("pull friday's post", ds, { ...t, kind: 'pull' }).ids, ['fri'])
-  // a source day vetoes a unique text match on another day, and never selects
-  const v = identify("pull thursday's snow in the park post", ds, { ...t, kind: 'pull' })
-  assertEquals(v.ids, []); assertEquals(v.why, 'day_conflict')
-  assertEquals(identify("pull friday's snow in the park post", ds, { ...t, kind: 'pull' }).ids, ['fri'])
+  // round 17: a source day never selects; it is a token, and "friday" is not in the snow opener
+  assertEquals(identify("pull thursday's snow in the park post", ds, { ...t, kind: 'pull' }).ids, [])
+  assertEquals(identify("pull friday's snow in the park post", ds, { ...t, kind: 'pull' }).ids, [])
 })
 
 Deno.test('round 11 #3: more relevant rivals than the cap: act on none', () => {
@@ -1098,8 +1095,9 @@ Deno.test('round 12 #5: complete tag names only, offsets on the original buffer'
 Deno.test('round 12 #7: a follow-up chip is emitted only if it resolves to its draft alone', () => {
   const a = draft(ID1, 'Snow in the park this morning')
   const b = draft('bbbbbbbb-0000-4000-8000-000000000002', 'Snow in the park again tonight')
-  assert(roundTrips('remove the date from the post that starts "Snow in the park this morning"', ID1, [a, b]))
-  assert(!roundTrips('remove the date from the post that starts "Snow in the park"', ID1, [a, b]))
+  assert(roundTrips('remove the date from "Snow in the park this morning"', ID1, [a, b]))
+  assert(!roundTrips('remove the date from "Snow in the park"', ID1, [a, b]))
+  assert(!roundTrips('remove the date from the post that starts "Snow in the park this morning"', ID1, [a, b]))   // "that starts" is not in it
 })
 
 // ---- Round 13 (made-up data only) ------------------------------------------------
@@ -1171,4 +1169,47 @@ Deno.test('round 16: "move tomorrow\'s post to friday" never text-matches opener
   const t = 'move tomorrow\'s post to friday'
   const r = identify(t, ds, { today: '2026-11-18', kind: 'date', destSpan: spanOf(t) })
   assertEquals(r.ids, []); assertEquals(r.why, 'needs_words'); assertEquals(r.rivals, ['a'])
+})
+
+// ---- Round 17 (made-up data only) ------------------------------------------------
+Deno.test('round 17 A: conjunctive identity: every leftover token must be in exactly one eligible opener', () => {
+  const t = { today: '2026-11-18' }
+  const id = (x: string, kind: string) => identify(x, FX, { ...t, kind }).ids.sort()
+  // the eval commands
+  assertEquals(id('approve the gdansk one', 'approve'), ['amber', 'ferry'])            // C01: two openers hold "gdansk"
+  assertEquals(id('approve the cold brew one', 'approve'), ['cold'])                   // C02
+  assertEquals(identify('put the cold brew one on tuesday 9 march', FX, { ...t, kind: 'date', destSpan: spanOf('put the cold brew one on tuesday 9 march') }).ids, ['cold'])   // C03
+  assertEquals(id('remove the date from the tram one', 'undate'), ['tram'])            // C04
+  assertEquals(id('delete the gdansk ferry one, it makes no sense', 'delete'), ['ferry'])   // C05: the reference is the first clause
+  assertEquals(id('redo the tram one, more about the business, less about the city', 'redo'), ['tram'])   // C06
+  assertEquals(id('attach this photo to the cold brew one', 'photo_attach'), ['cold'])  // C07
+  // any leftover that is not in the opener means no match
+  for (const x of ['please approve the cold brew one', 'approve the cold brew one please', 'approve the cold brew #100 one', 'approve the 100th cold brew one', 'approve the cold brew one from November 19']) {
+    assertEquals(identify(x, FX, { ...t, kind: 'approve' }).ids, [], x)
+  }
+  // tokens are whole words: "brewing" is not "brew"
+  assertEquals(identify('approve the brewing one', FX, { ...t, kind: 'approve' }).ids, [])
+  // quoted spans count as their words
+  assertEquals(id('approve "a 40 minute queue"', 'approve'), ['cold'])
+  // frame words only: nothing to match acts on none
+  assertEquals(identify('approve the one', FX, { ...t, kind: 'approve' }).why, 'no_words')
+  // exactly one ELIGIBLE draft: an ineligible match never lets another one through, and is returned to be refused as itself
+  const withOk = FX.map((f) => ({ ...f, ok: f.id !== 'ferry' }))
+  assertEquals(identify('approve the gdansk one', withOk, { ...t, kind: 'approve' }).ids, ['amber'])
+  assertEquals(identify('approve the ferry one', withOk, { ...t, kind: 'approve' }).ids, ['ferry'])   // the caller refuses it as itself
+})
+
+Deno.test('round 17 B + D: the destination grammar consumes the whole span; quotes keep inner apostrophes', () => {
+  const P = (x: string) => parseDestination(x, '2026-11-18')
+  for (const x of ['move it to friday at 10:45:30', 'move it to friday at 9:5', 'move it to friday at 9 or 10', 'move it to friday and monday', 'move it to friday 9/3', 'move it to friday at 9 then 10']) {
+    const r = P(x); assert(!r.ok && r.label.startsWith('I could not read the date: '), `${x} -> ${JSON.stringify(r)}`)
+  }
+  const ok = P('move it to friday at 9:05.'); assert(ok.ok && ok.time === '09:05', JSON.stringify(ok))   // a full stop is not part of the time
+  // an apostrophe inside a word is literal inside quotes: the quoted span stays text, never a date
+  const q = P('move the \u2018Friday\u2019s cold brew\u2019 one to monday'); assert(q.ok && q.date === '2026-11-23', JSON.stringify(q))
+  const q2 = P("move the 'Friday's cold brew' one to monday"); assert(q2.ok && q2.date === '2026-11-23', JSON.stringify(q2))
+  const fx = [{ id: 'f', first_line: "Friday's cold brew line was out the door", day: 'undated' }]
+  assertEquals(identify('approve the \u2018Friday\u2019s cold brew\u2019 one', fx.map((x) => ({ ...x, first_line: 'Friday\u2019s cold brew line was out the door' })), { today: '2026-11-18', kind: 'approve' }).ids, ['f'])
+  // the destination preposition is read on the original text
+  const s1 = 'move the cold brew one to friday'; const d1 = P(s1); assert(d1.ok && s1.slice(d1.span.at, d1.span.end) === 'to friday')
 })
