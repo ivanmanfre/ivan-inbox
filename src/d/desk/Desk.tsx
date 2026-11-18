@@ -10,7 +10,7 @@ import { DeskComposer } from './Composer'
 import { useDesk, type DeskHandle } from './useDesk'
 import { useKeyboardInset } from './useKeyboardInset'
 import { actionStore } from './actionGuards'
-import { heldSeenStore, reportHeldSeen } from './heldSeen'
+import { heldSeenStore, heldSeenTabBack, reportHeldSeen } from './heldSeen'
 import {
   T3_LABEL, T3_LIVE, cleanLabel,
   type DeskAction, type DeskDraftCard, type DeskMessage, type T3Job,
@@ -63,9 +63,13 @@ export function Desk({ layout, onBack }: { layout: 'phone' | 'desktop'; onBack?:
     title.current?.focus({ preventScroll: true })
     return () => {
       if (covers) app.removeAttribute('inert')
-      // The opener may have unmounted on the way in (the Chats page): its remounted twin takes the focus back.
-      const back = opener?.isConnected ? opener : document.querySelector<HTMLElement>('[data-verb="open-desk"]')
-      back?.focus({ preventScroll: true })
+      // The opener may have unmounted on the way in (the Chats page): after the page behind has mounted again,
+      // the opener (or its remounted twin) takes the focus back, never the bare body.
+      requestAnimationFrame(() => {
+        const live = opener && opener !== document.body && opener.isConnected ? opener : null
+        const back = live ?? document.querySelector<HTMLElement>('[data-verb="open-desk"]')
+        back?.focus({ preventScroll: true })
+      })
     }
   }, [layout])
   // One turn at a time: a photo still uploading counts as a turn, so a chip, a starter or a retry waits for it.
@@ -74,7 +78,8 @@ export function Desk({ layout, onBack }: { layout: 'phone' | 'desktop'; onBack?:
   const last = desk.messages[desk.messages.length - 1]
   const quiet = !!last && !locked && !last.meta.chips?.length && !last.meta.actions?.some(a => a.state === 'held')
     && (desk.messages.length < 6 || Date.now() - Date.parse(last.created_at) > QUIET_MS)
-  const status = desk.readFailed ? (desk.messages.length ? 'Offline, showing the saved copy' : 'Offline') : desk.fromCache ? 'Saved copy, checking for new' : desk.busy ? 'Answering' : 'Knows your week, drafts and calls'
+  const savedShown = desk.messages.some(m => !m.local && !m.answers)
+  const status = desk.readFailed ? (savedShown ? 'Offline, showing the saved copy' : 'Offline') : desk.fromCache ? 'Saved copy, checking for new' : desk.busy ? 'Answering' : 'Knows your week, drafts and calls'
   return (
     <section ref={root} className={`dk dk-${layout}`} data-desk aria-labelledby="dk-title">
       <header className="dk-head">
@@ -128,11 +133,13 @@ function DeskList({ desk, locked, layout }: { desk: DeskHandle; locked: boolean;
   }, [])
   // Reading back: the first row in view and its offset are kept, so growth above it (a card finishing, an image
   // loading, an older answer opening) never moves what Ivan is reading. Safari has no scroll anchoring of its own.
-  const anchor = useRef<{ el: Element; top: number } | null>(null)
+  // The offset is kept relative to the scroller's own top, so the whole layer moving (the keyboard panning it)
+  // is not taken for content moving inside it.
+  const anchor = useRef<{ el: Element; off: number } | null>(null)
   const keepAnchor = () => {
     const el = list.current, a = anchor.current
     if (!el || pinned.current || !a || !a.el.isConnected) return
-    const moved = a.el.getBoundingClientRect().top - a.top
+    const moved = (a.el.getBoundingClientRect().top - el.getBoundingClientRect().top) - a.off
     if (Math.abs(moved) >= 1) el.scrollTop += moved
   }
   const takeAnchor = () => {
@@ -140,7 +147,7 @@ function DeskList({ desk, locked, layout }: { desk: DeskHandle; locked: boolean;
     if (!el || pinned.current) { anchor.current = null; return }
     const top = el.getBoundingClientRect().top
     const row = [...el.querySelectorAll('[data-msg]')].find(r => r.getBoundingClientRect().bottom > top + 1)
-    anchor.current = row ? { el: row, top: row.getBoundingClientRect().top } : null
+    anchor.current = row ? { el: row, off: row.getBoundingClientRect().top - top } : null
   }
   const onScroll = () => {
     const el = list.current
@@ -165,14 +172,19 @@ function DeskList({ desk, locked, layout }: { desk: DeskHandle; locked: boolean;
   const newest = [...messages].reverse().find(m => m.role === 'assistant' && !m.answers && m.status === 'done')
   useEffect(() => {
     if (!desk.loaded) return
-    if (!seenReplies.current) { seenReplies.current = new Set(messages.filter(m => m.role === 'assistant').map(m => m.id)); return }
-    if (!newest || seenReplies.current.has(newest.id)) return
-    seenReplies.current.add(newest.id)
-    const line = newest.origin === 'proactive' ? 'The desk wrote first.' : newest.origin === 't3' ? 'A result came back from T3.' : 'The desk answered.'
+    const done = messages.filter(m => m.role === 'assistant' && !m.answers && m.status === 'done')
+    if (!seenReplies.current) { seenReplies.current = new Set(done.map(m => m.id)); return }
+    // Every reply that is new since the last announcement, even when several land in one update.
+    const fresh = done.filter(m => !seenReplies.current!.has(m.id))
+    if (!fresh.length) return
+    fresh.forEach(m => seenReplies.current!.add(m.id))
+    const one = fresh[0]
+    const line = fresh.length > 1 ? `${fresh.length} new messages from the desk.`
+      : one.origin === 'proactive' ? 'The desk wrote first.' : one.origin === 't3' ? 'A result came back from T3.' : 'The desk answered.'
     setSaid('')
     const raf = requestAnimationFrame(() => setSaid(line))
     return () => cancelAnimationFrame(raf)
-  }, [newest?.id, desk.loaded]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [newest?.id, messages.length, desk.loaded]) // eslint-disable-line react-hooks/exhaustive-deps
   const lastUser = (() => { for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === 'user') return i; return -1 })()
   let day = ''
   let prevRole: DeskMessage['role'] | null = null
@@ -231,7 +243,7 @@ function preview(text: string): string {
     if (out && out.length + p.length > FOLD_AT * 0.6) break
     out = out ? `${out}\n\n${p}` : p
   }
-  if (out.length > FOLD_AT * 0.75) out = `${out.slice(0, Math.round(FOLD_AT * 0.6)).replace(/\s+\S*$/, '')}…`
+  // Whole Markdown blocks only (a paragraph, a list, a table): a block is never cut, so no link or table breaks.
   return out
 }
 function Body({ id, text, recent }: { id: string; text: string; recent: boolean }) {
@@ -281,28 +293,11 @@ function Byline({ m, live }: { m: DeskMessage; live?: boolean }) {
   )
 }
 
-/** The answer minus the paragraphs its change cards already say: the server's "Proposed (ref …): move "…" …"
- *  sentence, its "It runs only when you tap Do it now." line, and a paragraph that is a card's own sentence. Every
- *  other paragraph stays (a second request it could not match, a warning that something was not saved). */
+/** A turn with change cards: the server builds its body only from those cards (one line per card: its sentence,
+ *  any note, and for a held one "It runs only when you tap Do it now."), and keeps that text when a card later
+ *  changes state. So the body is not shown beside cards; each card shows its own sentence and its note, live. */
 function bodyBesideCards(m: DeskMessage): string {
-  const acts = m.meta.actions
-  if (!acts?.length) return m.body
-  const flat = (t: string) => t.replace(/\s+/g, ' ').trim()
-  let paras = m.body.split(/\n\s*\n/)
-  for (const a of acts) {
-    const label = flat(a.label)
-    if (label.length < 12) continue
-    // The leading paragraphs that together spell the card's sentence (a quoted post keeps its own blank lines).
-    let acc = '', used = 0
-    for (let i = 0; i < paras.length; i++) {
-      const next = acc ? `${acc} ${flat(paras[i])}` : flat(paras[i])
-      if (!label.startsWith(next) && !next.startsWith(label)) break
-      acc = next; used = i + 1
-      if (acc.length >= label.length) break
-    }
-    if (used && acc.length >= label.length * 0.9) paras = paras.slice(used)
-  }
-  return paras.filter(p => !/^It runs only when you tap Do it now\.?$/i.test(flat(p))).join('\n\n').trim()
+  return m.meta.actions?.length ? '' : m.body
 }
 
 function DraftCard({ d }: { d: DeskDraftCard }) {
@@ -478,21 +473,19 @@ function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle })
     const onVis = () => {
       full = false
       if (document.visibilityState !== 'visible') return
+      heldSeenTabBack()
       io.takeRecords()
       io.unobserve(undoEl)
       io.observe(undoEl)
     }
     document.addEventListener('visibilitychange', onVis)
     // A cover that goes away (a sheet closing, the keyboard dropping) changes no intersection, so while the
-    // button is fully in view the check runs again every 600 ms. It stops once the sighting is recorded, and a
-    // report that failed is tried again only after a growing pause (2 s, 4 s, ... up to a minute).
-    let wait = 0, nextTry = 0
+    // button is fully in view the check runs again every 600 ms, through a slow request, until the sighting is
+    // recorded. A failed report is sent again only after a growing pause (heldSeen.ts: 2 s up to a minute).
     const again = window.setInterval(() => {
       const st = heldSeenStore.get(a.id)?.state
-      if (st && st !== 'failed') { window.clearInterval(again); return }
-      if (!full || Date.now() < nextTry) return
-      if (st === 'failed') { wait = Math.min(60_000, wait ? wait * 2 : 2000); nextTry = Date.now() + wait }
-      tryReport()
+      if (st === 'armed' || st === 'manual' || st === 'settled') { window.clearInterval(again); return }
+      if (full && st !== 'pending') tryReport()
     }, 600)
     return () => { io.disconnect(); window.clearInterval(again); document.removeEventListener('visibilitychange', onVis) }
   }, [isHeld, a.id, undoEl, tapped])
@@ -565,6 +558,8 @@ function ActionRow({ a, desk }: { a: DeskAction; at: string; desk: DeskHandle })
           {a.state === 'unconfirmed' && <>{say('Not confirmed')}. The writer may be running, check Review in a few minutes.</>}
         </span>
         {a.target && <small className="dk-act-post"><span className="dk-h">{a.target.handle}</span> {a.target.first_line}</small>}
+        {/* The server's note on this change (a duplicate, a write it could not record): on the card, every state. */}
+        {a.detail && a.state !== 'failed' && !/^[a-z_]+$/.test(a.detail) && <small className="dk-act-note">{a.detail}</small>}
         {failed && <small className="dk-warn" role="alert">{failed.error}</small>}
       </span>
       {(a.state === 'done' && a.undo) || (held && !busy) ? <div className="dk-act-keys">

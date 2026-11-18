@@ -29,7 +29,9 @@ export function useKeyboardInset(ref: RefObject<HTMLElement | null>): void {
         // The keyboard is up when the visible height drops; the top and bottom insets are measured apart, so a
         // visual viewport iOS pans up (offsetTop > 0, nothing covered below) still puts the head at its top.
         const open = keyboardOpen(window.innerHeight, vv.height)
-        const kb = keyboardInset(window.innerHeight, vv.height, vv.offsetTop)
+        // Open: the whole covered height counts, however small (a panned viewport can leave 36 px under the keys).
+        const kb = open ? Math.max(0, Math.round(window.innerHeight - (vv.height + vv.offsetTop))) : keyboardInset(window.innerHeight, vv.height, vv.offsetTop)
+        el.style.setProperty('--dk-vh', `${Math.round(vv.height)}px`)
         el.style.setProperty('--dk-kb', `${kb}px`)
         el.style.setProperty('--dk-top', `${open ? Math.max(0, Math.round(vv.offsetTop)) : 0}px`)
         el.toggleAttribute('data-kb', open)

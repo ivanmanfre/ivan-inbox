@@ -243,7 +243,8 @@ describe('round 2 independent reproducers', () => {
     render(<Desk layout="phone" />)
     await screen.findByText(/What are we posting/)
     type('whats going out this week')
-    await screen.findByText(/Offline, showing the saved copy/)
+    // Nothing stored is on screen (only the unsent bubble), so the head says Offline without claiming a saved copy.
+    await screen.findByText(/^Offline$/)
     expect(screen.queryByText('Sending')).toBeNull()
     expect(screen.queryByText('Check again')).toBeTruthy()
     fireEvent.click(screen.getByText('Retry'))
@@ -427,7 +428,7 @@ it('r3 review: an old read preserves an ack and final batched together', async (
   render(<Desk layout="phone" />)
   type('approve the trains one')
   await act(async () => { streamDone(); readDone([]) })
-  expect(screen.queryByText('Approving it.')).toBeTruthy()
+  expect(document.querySelector('[data-action]')).toBeTruthy()
   expect(screen.queryByText('approve the trains one')).toBeTruthy()
 })
 
@@ -554,7 +555,7 @@ describe('held_seen (the server arms a hold when Ivan can first see it)', () => 
     try {
       render(<Desk layout="phone" />)
       type('approve the trains one')
-      await screen.findByText(/Approving it\./)
+      await waitFor(() => expect(document.querySelector('[data-action]')).toBeTruthy())
       await act(async () => {})
       expect(seenCalls).toEqual([])
       visibility = 'visible'
@@ -572,7 +573,7 @@ describe('held_seen (the server arms a hold when Ivan can first see it)', () => 
     first.unmount()
     readRows = async () => [row({ id: 'a-' + sends[0].client_key, body: 'Approving it.', meta: { actions: [{ id: 'act-live', kind: 'approve', label: 'Approve the trains post', state: 'held', undo: true, hold_ms: 8000 }] } })]
     render(<Desk layout="phone" />)
-    await screen.findByText(/Approving it\./)
+    await waitFor(() => expect(document.querySelector('[data-action]')).toBeTruthy())
     await act(async () => {})
     expect(seenCalls).toHaveLength(1)
   })
@@ -702,9 +703,9 @@ describe('round 5 (Sol desk-ui r4 follow-ups)', () => {
     await screen.findByText(/Not confirmed: the connection dropped/)
     sendMode = 'held'
     fireEvent.click(screen.getByText('Retry'))
-    await screen.findByText(/Approving it\./)
+    await waitFor(() => expect(document.querySelector('[data-action]')).toBeTruthy())
     expect(sends.map(x => x.client_key)).toEqual([sends[0].client_key, sends[0].client_key])
-    expect(screen.getAllByText(/Approving it\./)).toHaveLength(1)
+    expect(document.querySelectorAll("[data-action]")).toHaveLength(1)
     expect(screen.queryByText('Retry')).toBeNull()
   })
 
@@ -740,7 +741,7 @@ describe('round 6 (Sol desk-ui r5 U1-U4, backend B11 on the client)', () => {
     render(<Desk layout="phone" />)
     setVisibleRatio(0.5)
     type('approve the trains one')
-    await screen.findByText(/Approving it\./)
+    await waitFor(() => expect(document.querySelector('[data-action]')).toBeTruthy())
     await act(async () => { setVisibleRatio(0.5) })
     expect(seenCalls).toEqual([])
     expect(document.querySelector('.dk-count')).toBeNull()
@@ -753,7 +754,7 @@ describe('round 6 (Sol desk-ui r5 U1-U4, backend B11 on the client)', () => {
     setCovered(true)
     render(<Desk layout="phone" />)
     type('approve the trains one')
-    await screen.findByText(/Approving it\./)
+    await waitFor(() => expect(document.querySelector('[data-action]')).toBeTruthy())
     await act(async () => { setVisibleRatio(1) })
     expect(seenCalls).toEqual([])
     setCovered(false)
@@ -765,7 +766,7 @@ describe('round 6 (Sol desk-ui r5 U1-U4, backend B11 on the client)', () => {
     removeVisibility()
     render(<Desk layout="phone" />)
     type('approve the trains one')
-    await screen.findByText(/Approving it\./)
+    await waitFor(() => expect(document.querySelector('[data-action]')).toBeTruthy())
     // a return to the tab (which re-reads; the server still holds the row) does not send it either
     readRows = async () => [row({ id: 'a-' + sends[0].client_key, body: 'Approving it.', meta: { client_key: sends[0].client_key, actions: [{ id: 'act-live', kind: 'approve', label: 'Approve the trains post', state: 'held', undo: true, hold_ms: 8000 }] } })]
     await act(async () => { document.dispatchEvent(new Event('visibilitychange')) })
@@ -838,7 +839,7 @@ describe('round 6 (Sol desk-ui r5 U1-U4, backend B11 on the client)', () => {
     fireEvent.click(screen.getByText('Retry'))
     await waitFor(() => expect(sends).toHaveLength(2))
     expect(sends[1].client_key).toBe(sends[0].client_key)
-    await screen.findByText(/Approving it\./)
+    await waitFor(() => expect(document.querySelector('[data-action]')).toBeTruthy())
     expect(screen.queryByText('No answer yet.')).toBeNull()
     expect(screen.queryByText('Retry')).toBeNull()
   })

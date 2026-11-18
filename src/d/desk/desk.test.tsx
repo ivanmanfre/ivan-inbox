@@ -176,15 +176,24 @@ describe('Desk polish (review of the new layout)', () => {
     expect(document.querySelectorAll('.dk-chip')).toHaveLength(10)
   })
 
-  it('an answer beside a change card drops only what the card says and keeps the rest', async () => {
-    const label = 'Proposed (ref 1a2b3c4d): move "A made up post about trains in the rain." to Thu 26 Nov, 09:30 (UTC+01:00).'
+  it('a change turn shows its cards and not their echo text; a note from the server sits on its card', async () => {
+    const label = 'Saved as an idea: "A made up idea about slow trains". The scorer picks it up next.'
     vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p1',
-      body: `${label}\n\nNo post matches "the ferry one", so I left it.\n\nIt runs only when you tap Do it now.`,
-      meta: { actions: [{ id: 'act-p', kind: 'date', label, state: 'held', undo: false, target: { kind: 'draft', handle: '#a1b2c', first_line: 'A made up post about trains in the rain.' } }] } })])
+      body: `${label} It is already in Ideas from Monday.`,
+      meta: { actions: [{ id: 'act-p', kind: 'idea', label, detail: 'It is already in Ideas from Monday.', state: 'done', undo: true }] } })])
     render(<Desk layout="phone" />)
-    await screen.findByText(/No post matches/)
+    await screen.findByText('It is already in Ideas from Monday.')
+    expect(document.querySelectorAll('[data-msg="p1"] .dk-text')).toHaveLength(0)
+    expect(screen.getByText(label)).toBeTruthy()
+  })
+
+  it('a cancelled proposal never keeps "It runs only when you tap Do it now" above its card', async () => {
+    vi.mocked(api.readMessages).mockResolvedValueOnce([stored({ id: 'p2',
+      body: 'Proposed (ref 1a2b3c4d): move "A made up post about trains." (no date) to Thu 26 Nov, 09:30 (UTC+01:00). It runs only when you tap Do it now.',
+      meta: { actions: [{ id: 'act-q', kind: 'date', label: 'Cancelled. Nothing changed.', state: 'cancelled', undo: false }] } })])
+    render(<Desk layout="phone" />)
+    await screen.findByText('Nothing changed.')
     expect(screen.queryByText(/It runs only when you tap/)).toBeNull()
-    expect(screen.getByText('Move this post to Thu 26 Nov, 09:30 (UTC+01:00).')).toBeTruthy()
   })
 
   it('Retry waits while another turn runs', async () => {
